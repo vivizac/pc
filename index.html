@@ -131,48 +131,48 @@
       height: 100vh;
       background: #fff;
       border-right: 1px solid var(--line);
-      padding: 30px 22px 22px;
+      padding: 24px 16px 18px;
       display: flex;
       flex-direction: column;
-      gap: 22px;
+      gap: 18px;
     }
 
     .pcBrand {
-      font-size: 32px;
+      font-size: 25px;
       font-weight: 950;
       line-height: 1;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .pcAcademyName {
       color: var(--muted);
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 700;
-      min-height: 20px;
+      min-height: 18px;
     }
 
-    .pcNav { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .pcNav { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 
     .pcNavBtn {
       border: 0;
       background: transparent;
-      border-radius: 18px;
-      height: 56px;
-      padding: 0 14px;
+      border-radius: 14px;
+      height: 43px;
+      padding: 0 11px;
       display: flex;
       align-items: center;
-      gap: 13px;
+      gap: 10px;
       color: #2b2c32;
-      font-size: 17px;
-      font-weight: 850;
+      font-size: 14px;
+      font-weight: 820;
       text-align: left;
     }
 
     .pcNavBtn svg {
-      width: 26px;
-      height: 26px;
+      width: 21px;
+      height: 21px;
       stroke: currentColor;
-      stroke-width: 2.1;
+      stroke-width: 2;
       fill: none;
       stroke-linecap: round;
       stroke-linejoin: round;
@@ -183,34 +183,150 @@
     .pcNavBtn:hover { background: #f5f6f8; }
     .pcNavBtn.active:hover { background: var(--blue-soft); }
 
+    .pcSidebarContext {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow: hidden;
+      flex: 1 1 auto;
+    }
+
     .pcSidebarGroup {
       border-top: 1px solid var(--line);
-      padding-top: 18px;
+      padding-top: 15px;
     }
 
     .pcSidebarLabel {
-      font-size: 13px;
+      font-size: 11px;
       color: var(--muted-2);
       font-weight: 850;
-      margin: 0 0 10px 14px;
+      margin: 0 0 8px 10px;
     }
 
     .pcFilterBtn {
       width: 100%;
-      height: 40px;
+      height: 34px;
       border: 0;
       background: transparent;
-      border-radius: 14px;
-      padding: 0 14px;
+      border-radius: 12px;
+      padding: 0 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       color: #77787f;
       font-weight: 750;
-      font-size: 14px;
+      font-size: 12px;
     }
 
     .pcFilterBtn:hover, .pcFilterBtn.active { background: #f6f7f9; color: #111; }
+
+    .pcSidebarStudentList {
+      border-top: 1px solid var(--line);
+      padding-top: 15px;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+    }
+
+    .pcSidebarStudentScroll {
+      min-height: 0;
+      overflow: auto;
+      padding-right: 2px;
+      margin-right: -2px;
+    }
+
+    .pcSidebarStudentRow {
+      position: relative;
+      width: 100%;
+      min-height: 34px;
+      border: 0;
+      background: transparent;
+      border-radius: 12px;
+      padding: 7px 34px 7px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
+      margin-bottom: 3px;
+      color: #2b2c32;
+    }
+
+    .pcSidebarStudentRow:hover { background: #f6f7f9; }
+
+    .pcSidebarStudentName {
+      font-size: 12.5px;
+      font-weight: 850;
+      line-height: 1.2;
+      color: #191a1f;
+    }
+
+    .pcSidebarStudentMeta {
+      margin-top: 3px;
+      max-width: 100%;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #9a9ba1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .pcSidebarStudentMore {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 25px;
+      height: 25px;
+      border: 0;
+      border-radius: 50%;
+      background: #eceef2;
+      color: #595a61;
+      font-size: 15px;
+      font-weight: 900;
+      line-height: 1;
+      opacity: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pcSidebarStudentRow:hover .pcSidebarStudentMore { opacity: 1; }
+
+    .pcSidebarStudentFooter {
+      flex: 0 0 auto;
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .pcSidebarMiniBtn {
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.05);
+    }
+
+    .pcSidebarMiniBtn svg {
+      width: 18px;
+      height: 18px;
+      stroke: #111;
+      stroke-width: 2.2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
 
     .pcSidebarBottom {
       margin-top: auto;
@@ -220,8 +336,8 @@
     }
 
     .pcCircleBtn {
-      width: 48px;
-      height: 48px;
+      width: 42px;
+      height: 42px;
       border: 1px solid var(--line);
       background: #fff;
       border-radius: 50%;
@@ -231,7 +347,7 @@
       box-shadow: 0 8px 22px rgba(0,0,0,0.06);
     }
 
-    .pcCircleBtn svg { width: 24px; height: 24px; stroke: #111; stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .pcCircleBtn svg { width: 21px; height: 21px; stroke: #111; stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 
     .pcContentShell {
       min-width: 0;
@@ -422,6 +538,123 @@
       font-weight: 750;
     }
 
+
+    .pcModalOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 110;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      background: rgba(16,17,20,0.28);
+      backdrop-filter: blur(10px);
+    }
+
+    .pcModalOverlay.open { display: flex; }
+
+    .pcStudentModalCard {
+      width: min(560px, calc(100vw - 64px));
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.16);
+      padding: 24px;
+    }
+
+    .pcStudentModalHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .pcStudentModalTitle {
+      font-size: 22px;
+      font-weight: 930;
+    }
+
+    .pcModalCloseBtn {
+      width: 36px;
+      height: 36px;
+      border: 0;
+      border-radius: 50%;
+      background: #f3f4f6;
+      color: #33343a;
+      font-size: 20px;
+      font-weight: 850;
+      line-height: 1;
+    }
+
+    .pcStudentFormGrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .pcStudentFormField.full { grid-column: 1 / -1; }
+
+    .pcStudentFormLabel {
+      display: block;
+      margin: 0 0 7px 4px;
+      color: #898a91;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .pcStudentFormInput,
+    .pcStudentFormSelect {
+      width: 100%;
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: #fbfbfc;
+      padding: 0 13px;
+      color: #15161b;
+      font-size: 14px;
+      font-weight: 750;
+      outline: none;
+    }
+
+    .pcStudentFormInput:focus,
+    .pcStudentFormSelect:focus {
+      border-color: rgba(24,135,255,0.45);
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(24,135,255,0.08);
+    }
+
+    .pcStudentModalActions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .pcModalGhostBtn,
+    .pcModalSaveBtn {
+      height: 42px;
+      border-radius: 14px;
+      padding: 0 16px;
+      font-size: 14px;
+      font-weight: 850;
+    }
+
+    .pcModalGhostBtn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #686971;
+    }
+
+    .pcModalSaveBtn {
+      border: 1px solid var(--blue);
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .pcModalSaveBtn:disabled { opacity: 0.58; cursor: default; }
+
     .pcA4Overlay {
       position: fixed;
       inset: 0;
@@ -516,22 +749,7 @@
         </button>
       </nav>
 
-      <div class="pcSidebarGroup">
-        <div class="pcSidebarLabel">빠른 보기</div>
-        <button class="pcFilterBtn active" data-filter="all" onclick="setPcTypeFilter('all')"><span>전체</span><span id="pcFilterAllCount">0</span></button>
-        <button class="pcFilterBtn" data-filter="elementary" onclick="setPcTypeFilter('elementary')"><span>초등부</span><span id="pcFilterElementaryCount">0</span></button>
-        <button class="pcFilterBtn" data-filter="kinder" onclick="setPcTypeFilter('kinder')"><span>유치부</span><span id="pcFilterKinderCount">0</span></button>
-      </div>
-
-      <div class="pcSidebarGroup">
-        <div class="pcSidebarLabel">요일</div>
-        <button class="pcFilterBtn" data-day="월" onclick="setPcDayFilter('월')"><span>월요일</span><span></span></button>
-        <button class="pcFilterBtn" data-day="화" onclick="setPcDayFilter('화')"><span>화요일</span><span></span></button>
-        <button class="pcFilterBtn" data-day="수" onclick="setPcDayFilter('수')"><span>수요일</span><span></span></button>
-        <button class="pcFilterBtn" data-day="목" onclick="setPcDayFilter('목')"><span>목요일</span><span></span></button>
-        <button class="pcFilterBtn" data-day="금" onclick="setPcDayFilter('금')"><span>금요일</span><span></span></button>
-        <button class="pcFilterBtn" data-day="토" onclick="setPcDayFilter('토')"><span>토요일</span><span></span></button>
-      </div>
+      <div class="pcSidebarContext" id="pcSidebarContext"></div>
 
       <div class="pcSidebarBottom">
         <button class="pcCircleBtn" title="신규 등록은 모바일 앱 원생관리에서 우선 사용" onclick="showToast('PC 등록 기능은 다음 단계에서 연결합니다.')">
@@ -622,6 +840,66 @@
     </section>
   </main>
 
+
+  <div class="pcModalOverlay" id="pcStudentModal" onclick="closePcStudentModal(event)">
+    <div class="pcStudentModalCard" onclick="event.stopPropagation()">
+      <div class="pcStudentModalHeader">
+        <div class="pcStudentModalTitle" id="pcStudentModalTitle">학생정보 수정</div>
+        <button class="pcModalCloseBtn" type="button" onclick="closePcStudentModal(null, true)">×</button>
+      </div>
+      <div class="pcStudentFormGrid">
+        <label class="pcStudentFormField">
+          <span class="pcStudentFormLabel">이름</span>
+          <input class="pcStudentFormInput" id="pcStudentModalName" autocomplete="off" />
+        </label>
+        <label class="pcStudentFormField">
+          <span class="pcStudentFormLabel">구분</span>
+          <select class="pcStudentFormSelect" id="pcStudentModalType">
+            <option value="elementary">초등부</option>
+            <option value="kinder">유치부</option>
+          </select>
+        </label>
+        <label class="pcStudentFormField">
+          <span class="pcStudentFormLabel">상태</span>
+          <select class="pcStudentFormSelect" id="pcStudentModalStatus">
+            <option value="active">재원</option>
+            <option value="paused">휴원</option>
+            <option value="withdrawn">퇴원</option>
+            <option value="inactive">비활성</option>
+          </select>
+        </label>
+        <label class="pcStudentFormField">
+          <span class="pcStudentFormLabel">등록일</span>
+          <input class="pcStudentFormInput" id="pcStudentModalEnrolledAt" type="date" />
+        </label>
+        <label class="pcStudentFormField">
+          <span class="pcStudentFormLabel">등원 요일</span>
+          <input class="pcStudentFormInput" id="pcStudentModalLessonDay" placeholder="예: 월-수 / 화-목" autocomplete="off" />
+        </label>
+        <label class="pcStudentFormField">
+          <span class="pcStudentFormLabel">담임</span>
+          <input class="pcStudentFormInput" id="pcStudentModalTeacher" placeholder="담임 이름" autocomplete="off" />
+        </label>
+        <label class="pcStudentFormField">
+          <span class="pcStudentFormLabel">학년</span>
+          <input class="pcStudentFormInput" id="pcStudentModalGrade" placeholder="예: 2 / 초2" autocomplete="off" />
+        </label>
+        <label class="pcStudentFormField">
+          <span class="pcStudentFormLabel">나이</span>
+          <input class="pcStudentFormInput" id="pcStudentModalAge" placeholder="예: 6" autocomplete="off" />
+        </label>
+        <label class="pcStudentFormField full">
+          <span class="pcStudentFormLabel">학교 / 유치원</span>
+          <input class="pcStudentFormInput" id="pcStudentModalSchool" placeholder="학교 또는 유치원 이름" autocomplete="off" />
+        </label>
+      </div>
+      <div class="pcStudentModalActions">
+        <button class="pcModalGhostBtn" type="button" onclick="closePcStudentModal(null, true)">취소</button>
+        <button class="pcModalSaveBtn" id="pcStudentModalSaveBtn" type="button" onclick="savePcStudentInfo()">저장</button>
+      </div>
+    </div>
+  </div>
+
   <div class="pcA4Overlay" id="pcA4Overlay" onclick="closeA4Overlay(event)">
     <div class="pcA4Wrap">
       <div class="pcA4Toolbar">
@@ -650,7 +928,10 @@
       summaries: [],
       selectedConsultKey: '',
       selectedSummary: null,
-      consultationTargets: []
+      consultationTargets: [],
+      studentModalMode: 'edit',
+      studentModalStudent: null,
+      studentModalDefaultType: 'elementary'
     };
 
     const PC_DEFAULT_CONSULT_RULES = [1, 3, 6, 12];
@@ -993,11 +1274,200 @@
     }
 
     function renderAllPc() {
+      renderPcSidebarContext();
       renderCounts();
       renderConsultationList();
       renderAttendanceList();
       renderObservationList();
       renderSidePanel();
+    }
+
+    function renderPcSidebarContext() {
+      const wrap = document.getElementById('pcSidebarContext');
+      if (!wrap) return;
+      if (pcState.page === 'observation') {
+        wrap.innerHTML = renderPcSidebarStudentList('elementary', '초등부 명단');
+        return;
+      }
+      if (pcState.page === 'minute') {
+        wrap.innerHTML = renderPcSidebarStudentList('kinder', '유치부 명단');
+        return;
+      }
+      const active = pcState.students.filter(isActiveStudent);
+      const elementary = active.filter(s => s.type === 'elementary');
+      const kinder = active.filter(s => s.type === 'kinder');
+      wrap.innerHTML = `
+        <div class="pcSidebarGroup">
+          <div class="pcSidebarLabel">빠른 보기</div>
+          <button class="pcFilterBtn ${pcState.typeFilter === 'all' ? 'active' : ''}" data-filter="all" onclick="setPcTypeFilter('all')"><span>전체</span><span id="pcFilterAllCount">${active.length}</span></button>
+          <button class="pcFilterBtn ${pcState.typeFilter === 'elementary' ? 'active' : ''}" data-filter="elementary" onclick="setPcTypeFilter('elementary')"><span>초등부</span><span id="pcFilterElementaryCount">${elementary.length}</span></button>
+          <button class="pcFilterBtn ${pcState.typeFilter === 'kinder' ? 'active' : ''}" data-filter="kinder" onclick="setPcTypeFilter('kinder')"><span>유치부</span><span id="pcFilterKinderCount">${kinder.length}</span></button>
+        </div>
+        <div class="pcSidebarGroup">
+          <div class="pcSidebarLabel">요일</div>
+          ${['월','화','수','목','금','토'].map(day => `<button class="pcFilterBtn ${pcState.dayFilter === day ? 'active' : ''}" data-day="${day}" onclick="setPcDayFilter('${day}')"><span>${day}요일</span><span></span></button>`).join('')}
+        </div>`;
+    }
+
+    function renderPcSidebarStudentList(type, title) {
+      const q = pcState.search.trim().toLowerCase();
+      const students = pcState.students
+        .filter(isActiveStudent)
+        .filter(student => student.type === type)
+        .filter(student => !q || String(student.name || '').toLowerCase().includes(q))
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ko'));
+      const rows = students.map(student => `
+        <button class="pcSidebarStudentRow" onclick="selectPcSidebarStudent('${escapeHtml(student.id || student.name)}')">
+          <span class="pcSidebarStudentName">${escapeHtml(student.name)}</span>
+          <span class="pcSidebarStudentMeta">${escapeHtml(getStudentMeta(student))}</span>
+          <span class="pcSidebarStudentMore" onclick="event.stopPropagation(); openPcStudentEdit('${escapeHtml(student.id || student.name)}')">•••</span>
+        </button>`).join('') || `<div class="pcPlaceholder" style="min-height:160px; font-size:12px;">표시할 학생이 없습니다.</div>`;
+      return `<div class="pcSidebarStudentList">
+        <div class="pcSidebarLabel">${escapeHtml(title)} <span style="color:#111;">${students.length}</span></div>
+        <div class="pcSidebarStudentScroll">${rows}</div>
+        <div class="pcSidebarStudentFooter">
+          <button class="pcSidebarMiniBtn" title="학생 등록" onclick="openPcStudentCreate('${escapeHtml(type)}')"><svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button>
+          <button class="pcSidebarMiniBtn" title="정렬" onclick="openPcStudentSort('${escapeHtml(type)}')"><svg viewBox="0 0 24 24"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path><circle cx="8" cy="7" r="1.7"></circle><circle cx="15" cy="12" r="1.7"></circle><circle cx="10" cy="17" r="1.7"></circle></svg></button>
+        </div>
+      </div>`;
+    }
+
+    function selectPcSidebarStudent(studentKey) {
+      const student = pcState.students.find(s => String(s.id || s.name) === String(studentKey));
+      if (!student) return;
+      showToast(`${student.name} 학생을 선택했습니다.`);
+    }
+
+    function openPcStudentEdit(studentKey) {
+      const student = pcState.students.find(s => String(s.id || s.name) === String(studentKey));
+      if (!student) {
+        showToast('학생 정보를 찾지 못했습니다.');
+        return;
+      }
+      pcState.studentModalMode = 'edit';
+      pcState.studentModalStudent = student;
+      pcState.studentModalDefaultType = student.type || 'elementary';
+      fillPcStudentModal(student);
+      document.getElementById('pcStudentModalTitle').textContent = '학생정보 수정';
+      document.getElementById('pcStudentModal')?.classList.add('open');
+    }
+
+    function openPcStudentCreate(type) {
+      pcState.studentModalMode = 'create';
+      pcState.studentModalStudent = null;
+      pcState.studentModalDefaultType = type === 'kinder' ? 'kinder' : 'elementary';
+      fillPcStudentModal({ type: pcState.studentModalDefaultType, status: 'active' });
+      document.getElementById('pcStudentModalTitle').textContent = `${type === 'kinder' ? '유치부' : '초등부'} 학생 등록`;
+      document.getElementById('pcStudentModal')?.classList.add('open');
+    }
+
+    function closePcStudentModal(event, force) {
+      if (force || !event || event.target.id === 'pcStudentModal') {
+        document.getElementById('pcStudentModal')?.classList.remove('open');
+      }
+    }
+
+    function toDateInputValue(value) {
+      const d = new Date(value || '');
+      if (Number.isNaN(d.getTime())) return '';
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function fillPcStudentModal(student) {
+      const type = student?.type === 'kinder' ? 'kinder' : 'elementary';
+      const schoolValue = type === 'kinder'
+        ? (student?.kindergarten || student?.school || '')
+        : (student?.school || student?.kindergarten || '');
+      document.getElementById('pcStudentModalName').value = student?.name || '';
+      document.getElementById('pcStudentModalType').value = type;
+      document.getElementById('pcStudentModalStatus').value = student?.status || 'active';
+      document.getElementById('pcStudentModalEnrolledAt').value = toDateInputValue(student?.enrolled_at || student?.registered_at || student?.created_at || '');
+      document.getElementById('pcStudentModalLessonDay').value = student?.lesson_day || student?.day || '';
+      document.getElementById('pcStudentModalTeacher').value = student?.teacher || student?.homeroom_teacher || student?.teacher_name || '';
+      document.getElementById('pcStudentModalGrade').value = student?.grade || '';
+      document.getElementById('pcStudentModalAge').value = student?.age || '';
+      document.getElementById('pcStudentModalSchool').value = schoolValue;
+    }
+
+    function pickExistingColumn(row, candidates, fallback) {
+      for (const key of candidates) {
+        if (row && Object.prototype.hasOwnProperty.call(row, key)) return key;
+      }
+      return fallback || candidates[0];
+    }
+
+    function assignIfColumnExists(payload, sourceRow, candidates, value, allowFallback) {
+      const key = pickExistingColumn(sourceRow, candidates, allowFallback ? candidates[0] : '');
+      if (key) payload[key] = value || null;
+    }
+
+    function buildPcStudentPayload() {
+      const current = pcState.studentModalStudent || {};
+      const mode = pcState.studentModalMode;
+      const type = document.getElementById('pcStudentModalType').value;
+      const name = document.getElementById('pcStudentModalName').value.trim();
+      const status = document.getElementById('pcStudentModalStatus').value;
+      const enrolledAt = document.getElementById('pcStudentModalEnrolledAt').value;
+      const lessonDay = document.getElementById('pcStudentModalLessonDay').value.trim();
+      const teacher = document.getElementById('pcStudentModalTeacher').value.trim();
+      const grade = document.getElementById('pcStudentModalGrade').value.trim();
+      const age = document.getElementById('pcStudentModalAge').value.trim();
+      const school = document.getElementById('pcStudentModalSchool').value.trim();
+      if (!name) throw new Error('학생 이름을 입력해 주세요.');
+
+      const payload = {};
+      const allowFallback = mode === 'create';
+      if (allowFallback) payload.academy_id = getPcAcademyId();
+
+      payload[pickExistingColumn(current, ['name', 'student_name'], 'name')] = name;
+      payload[pickExistingColumn(current, ['type', 'division', 'student_type'], 'type')] = type;
+      const statusKey = pickExistingColumn(current, ['status', 'student_status', 'state'], allowFallback ? 'status' : '');
+      if (statusKey) payload[statusKey] = status;
+
+      assignIfColumnExists(payload, current, ['enrolled_at', 'registered_at'], enrolledAt, allowFallback);
+      assignIfColumnExists(payload, current, ['lesson_day', 'day'], lessonDay, allowFallback);
+      assignIfColumnExists(payload, current, ['teacher', 'homeroom_teacher', 'teacher_name'], teacher, allowFallback);
+      assignIfColumnExists(payload, current, ['grade'], grade, allowFallback);
+      assignIfColumnExists(payload, current, ['age'], age, allowFallback);
+      if (type === 'kinder') {
+        assignIfColumnExists(payload, current, ['kindergarten', 'school'], school, allowFallback);
+      } else {
+        assignIfColumnExists(payload, current, ['school', 'kindergarten'], school, allowFallback);
+      }
+      return payload;
+    }
+
+    async function savePcStudentInfo() {
+      const btn = document.getElementById('pcStudentModalSaveBtn');
+      try {
+        if (btn) { btn.disabled = true; btn.textContent = '저장 중...'; }
+        const payload = buildPcStudentPayload();
+        const mode = pcState.studentModalMode;
+        const current = pcState.studentModalStudent || {};
+        let savedRows;
+        if (mode === 'create') {
+          savedRows = await supabaseRequest('POST', 'students', payload);
+        } else {
+          if (!current.id) throw new Error('학생 ID가 없어 수정할 수 없습니다.');
+          savedRows = await supabaseRequest('PATCH', `students?id=eq.${encodeURIComponent(current.id)}`, payload);
+        }
+        await loadPcData();
+        renderAllPc();
+        closePcStudentModal(null, true);
+        const saved = Array.isArray(savedRows) && savedRows[0] ? normalizeStudent(savedRows[0]) : null;
+        showToast(saved ? `${saved.name} 학생정보를 저장했습니다.` : '학생정보를 저장했습니다.');
+      } catch (err) {
+        alert('학생정보 저장 실패\n' + (err.message || err));
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '저장'; }
+      }
+    }
+
+    function openPcStudentSort(type) {
+      showToast(`${type === 'kinder' ? '유치부' : '초등부'} 정렬은 다음 단계에서 연결합니다.`);
     }
 
     function renderCounts() {
@@ -1030,9 +1500,12 @@
       document.getElementById('pcInactiveCount').textContent = paused.length + withdrawn.length;
       document.getElementById('pcInactiveGuide').textContent = `휴원 ${paused.length}명 · 퇴원 ${withdrawn.length}명`;
       document.getElementById('pcConsultTotalBadge').textContent = consult.length;
-      document.getElementById('pcFilterAllCount').textContent = active.length;
-      document.getElementById('pcFilterElementaryCount').textContent = elementary.length;
-      document.getElementById('pcFilterKinderCount').textContent = kinder.length;
+      const allCountEl = document.getElementById('pcFilterAllCount');
+      const elementaryCountEl = document.getElementById('pcFilterElementaryCount');
+      const kinderCountEl = document.getElementById('pcFilterKinderCount');
+      if (allCountEl) allCountEl.textContent = active.length;
+      if (elementaryCountEl) elementaryCountEl.textContent = elementary.length;
+      if (kinderCountEl) kinderCountEl.textContent = kinder.length;
     }
 
     function renderConsultationList() {
