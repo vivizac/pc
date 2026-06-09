@@ -138,17 +138,18 @@
     }
 
     .pcBrand {
-      font-size: 25px;
-      font-weight: 950;
+      font-size: 20px;
+      font-weight: 700;
       line-height: 1;
-      margin-bottom: 6px;
+      margin-bottom: 5px;
+      letter-spacing: -0.03em;
     }
 
     .pcAcademyName {
       color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-      min-height: 18px;
+      font-size: 11px;
+      font-weight: 500;
+      min-height: 16px;
     }
 
     .pcNav { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
@@ -156,23 +157,23 @@
     .pcNavBtn {
       border: 0;
       background: transparent;
-      border-radius: 14px;
-      height: 43px;
-      padding: 0 11px;
+      border-radius: 13px;
+      height: 38px;
+      padding: 0 10px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 9px;
       color: #2b2c32;
-      font-size: 14px;
-      font-weight: 820;
+      font-size: 13px;
+      font-weight: 560;
       text-align: left;
     }
 
     .pcNavBtn svg {
-      width: 21px;
-      height: 21px;
+      width: 18px;
+      height: 18px;
       stroke: currentColor;
-      stroke-width: 2;
+      stroke-width: 1.9;
       fill: none;
       stroke-linecap: round;
       stroke-linejoin: round;
@@ -200,7 +201,7 @@
     .pcSidebarLabel {
       font-size: 11px;
       color: var(--muted-2);
-      font-weight: 850;
+      font-weight: 620;
       margin: 0 0 8px 10px;
     }
 
@@ -240,33 +241,35 @@
     .pcSidebarStudentRow {
       position: relative;
       width: 100%;
-      min-height: 34px;
+      min-height: 38px;
       border: 0;
       background: transparent;
       border-radius: 12px;
-      padding: 7px 34px 7px 10px;
+      padding: 7px 34px 7px 8px;
       display: flex;
-      flex-direction: column;
-      align-items: flex-start;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
       text-align: left;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
       color: #2b2c32;
     }
 
     .pcSidebarStudentRow:hover { background: #f6f7f9; }
 
+    .pcSidebarStudentText { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+
     .pcSidebarStudentName {
       font-size: 12.5px;
-      font-weight: 850;
-      line-height: 1.2;
+      font-weight: 500;
+      line-height: 1.22;
       color: #191a1f;
     }
 
     .pcSidebarStudentMeta {
-      margin-top: 3px;
       max-width: 100%;
       font-size: 10.5px;
-      font-weight: 700;
+      font-weight: 400;
       color: #9a9ba1;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -369,8 +372,8 @@
       z-index: 10;
     }
 
-    .pcPageTitle { font-size: 26px; font-weight: 920; }
-    .pcPageSub { font-size: 14px; color: var(--muted); margin-top: 5px; font-weight: 650; }
+    .pcPageTitle { font-size: 22px; font-weight: 650; }
+    .pcPageSub { font-size: 13px; color: var(--muted); margin-top: 4px; font-weight: 400; }
 
     .pcTopActions { display: flex; align-items: center; gap: 12px; }
     .pcSearch {
@@ -421,22 +424,22 @@
       box-shadow: var(--shadow);
     }
 
-    .pcStatCard { padding: 22px 24px; min-height: 142px; }
-    .pcStatLabel { color: #8e8f95; font-size: 16px; font-weight: 850; margin-bottom: 14px; }
-    .pcStatNumber { font-size: 44px; line-height: 1; font-weight: 950; }
-    .pcStatGuide { color: #9c9da3; font-size: 15px; font-weight: 700; margin-top: 14px; line-height: 1.35; }
+    .pcStatCard { padding: 19px 21px; min-height: 128px; }
+    .pcStatLabel { color: #8e8f95; font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+    .pcStatNumber { font-size: 34px; line-height: 1; font-weight: 650; }
+    .pcStatGuide { color: #9c9da3; font-size: 12px; font-weight: 400; margin-top: 12px; line-height: 1.35; }
 
-    .pcCard { padding: 24px; margin-bottom: 20px; }
+    .pcCard { padding: 22px; margin-bottom: 20px; }
     .pcCardHead { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
-    .pcCardTitle { font-size: 22px; font-weight: 920; }
-    .pcCardSub { color: var(--muted); font-size: 14px; font-weight: 700; }
+    .pcCardTitle { font-size: 18px; font-weight: 650; }
+    .pcCardSub { color: var(--muted); font-size: 13px; font-weight: 400; }
     .pcBadge { display: inline-flex; align-items: center; justify-content: center; min-width: 52px; height: 34px; border-radius: 999px; background: #f1f2f4; color: #77787f; font-size: 15px; font-weight: 850; padding: 0 12px; }
     .pcBadge.ready { background: var(--blue-soft); color: var(--blue); }
     .pcBadge.warn { background: #fff6e1; color: #ba7a00; }
     .pcBadge.danger { background: #fff0f2; color: var(--red); }
 
     .pcConsultGroup + .pcConsultGroup { margin-top: 26px; }
-    .pcConsultGroupTitle { color: #8d8e94; font-size: 17px; font-weight: 900; margin-bottom: 12px; }
+    .pcConsultGroupTitle { color: #8d8e94; font-size: 14px; font-weight: 600; margin-bottom: 10px; }
 
     .pcStudentRow {
       background: #f7f7f8;
@@ -455,8 +458,8 @@
     .pcStudentRow.selected { background: #fff; border-color: rgba(24,135,255,0.35); box-shadow: 0 8px 22px rgba(24,135,255,0.08); }
 
     .pcStudentLeft { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-    .pcStudentName { font-size: 19px; font-weight: 900; color: #111; }
-    .pcStudentMeta { font-size: 13px; color: #96979e; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pcStudentName { font-size: 15px; font-weight: 500; color: #111; }
+    .pcStudentMeta { font-size: 12px; color: #96979e; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .pcRowActions { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
 
     .pcSidePanel {
@@ -520,9 +523,9 @@
       padding: 16px;
     }
     .pcRecordTop { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 8px; }
-    .pcRecordName { font-weight: 900; font-size: 17px; }
-    .pcRecordDate { color: var(--muted); font-size: 13px; font-weight: 700; }
-    .pcRecordText { color: #55565d; font-size: 14px; line-height: 1.55; max-height: 86px; overflow: hidden; }
+    .pcRecordName { font-weight: 560; font-size: 14px; }
+    .pcRecordDate { color: var(--muted); font-size: 12px; font-weight: 400; }
+    .pcRecordText { color: #55565d; font-size: 13px; line-height: 1.55; max-height: 86px; overflow: hidden; }
 
     .pcPlaceholder {
       border: 1px dashed var(--line-strong);
@@ -571,8 +574,8 @@
     }
 
     .pcStudentModalTitle {
-      font-size: 22px;
-      font-weight: 930;
+      font-size: 19px;
+      font-weight: 650;
     }
 
     .pcModalCloseBtn {
@@ -600,7 +603,7 @@
       margin: 0 0 7px 4px;
       color: #898a91;
       font-size: 12px;
-      font-weight: 850;
+      font-weight: 560;
     }
 
     .pcStudentFormInput,
@@ -613,7 +616,7 @@
       padding: 0 13px;
       color: #15161b;
       font-size: 14px;
-      font-weight: 750;
+      font-weight: 400;
       outline: none;
     }
 
@@ -654,6 +657,61 @@
     }
 
     .pcModalSaveBtn:disabled { opacity: 0.58; cursor: default; }
+
+
+
+    .pcLeadIcon {
+      width: 24px;
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      color: #c5c5cb;
+    }
+    .pcLeadIcon svg { width: 24px; height: 24px; display: block; }
+
+    .pcStudentLeft { flex-direction: row; align-items: center; gap: 10px; }
+    .pcStudentText { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+
+    .pcStudentFormGrid.appLike {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .pcStudentFormField.inlineGrid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .pcStudentFieldGroup { display: flex; flex-direction: column; gap: 7px; }
+    .pcStudentTypeFields { display: none; flex-direction: column; gap: 12px; }
+    .pcStudentTypeFields.active { display: flex; }
+    .pcToggleRow, .pcDayToggleRow, .pcTeacherToggleRow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+    .pcToggleBtn, .pcDayBtn, .pcTeacherBtn {
+      min-height: 34px;
+      border: 1px solid #e5e5ea;
+      background: #fff;
+      color: #55565d;
+      border-radius: 999px;
+      padding: 0 13px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .pcToggleBtn.active, .pcDayBtn.active, .pcTeacherBtn.active {
+      background: #1887ff;
+      border-color: #1887ff;
+      color: #fff;
+    }
+    .pcToggleBtn.groupBtn {
+      min-width: 39px;
+      padding-left: 0;
+      padding-right: 0;
+      font-weight: 600;
+    }
 
     .pcA4Overlay {
       position: fixed;
@@ -847,52 +905,59 @@
         <div class="pcStudentModalTitle" id="pcStudentModalTitle">학생정보 수정</div>
         <button class="pcModalCloseBtn" type="button" onclick="closePcStudentModal(null, true)">×</button>
       </div>
-      <div class="pcStudentFormGrid">
+
+      <div class="pcStudentFormGrid appLike">
         <label class="pcStudentFormField">
-          <span class="pcStudentFormLabel">이름</span>
-          <input class="pcStudentFormInput" id="pcStudentModalName" autocomplete="off" />
+          <span class="pcStudentFormLabel">이름 *</span>
+          <input class="pcStudentFormInput" id="pcStudentModalName" autocomplete="off" placeholder="예: 김민준" />
         </label>
-        <label class="pcStudentFormField">
-          <span class="pcStudentFormLabel">구분</span>
-          <select class="pcStudentFormSelect" id="pcStudentModalType">
-            <option value="elementary">초등부</option>
-            <option value="kinder">유치부</option>
-          </select>
-        </label>
-        <label class="pcStudentFormField">
-          <span class="pcStudentFormLabel">상태</span>
-          <select class="pcStudentFormSelect" id="pcStudentModalStatus">
-            <option value="active">재원</option>
-            <option value="paused">휴원</option>
-            <option value="withdrawn">퇴원</option>
-            <option value="inactive">비활성</option>
-          </select>
-        </label>
-        <label class="pcStudentFormField">
-          <span class="pcStudentFormLabel">등록일</span>
-          <input class="pcStudentFormInput" id="pcStudentModalEnrolledAt" type="date" />
-        </label>
-        <label class="pcStudentFormField">
-          <span class="pcStudentFormLabel">등원 요일</span>
-          <input class="pcStudentFormInput" id="pcStudentModalLessonDay" placeholder="예: 월-수 / 화-목" autocomplete="off" />
-        </label>
-        <label class="pcStudentFormField">
-          <span class="pcStudentFormLabel">담임</span>
-          <input class="pcStudentFormInput" id="pcStudentModalTeacher" placeholder="담임 이름" autocomplete="off" />
-        </label>
-        <label class="pcStudentFormField">
-          <span class="pcStudentFormLabel">학년</span>
-          <input class="pcStudentFormInput" id="pcStudentModalGrade" placeholder="예: 2 / 초2" autocomplete="off" />
-        </label>
-        <label class="pcStudentFormField">
-          <span class="pcStudentFormLabel">나이</span>
-          <input class="pcStudentFormInput" id="pcStudentModalAge" placeholder="예: 6" autocomplete="off" />
-        </label>
-        <label class="pcStudentFormField full">
-          <span class="pcStudentFormLabel">학교 / 유치원</span>
-          <input class="pcStudentFormInput" id="pcStudentModalSchool" placeholder="학교 또는 유치원 이름" autocomplete="off" />
-        </label>
+
+        <div class="pcStudentFieldGroup">
+          <span class="pcStudentFormLabel">등록 날짜 *</span>
+          <div class="pcStudentFormField inlineGrid">
+            <input class="pcStudentFormInput" id="pcStudentModalYear" type="number" min="1900" max="2100" inputmode="numeric" placeholder="년" />
+            <input class="pcStudentFormInput" id="pcStudentModalMonth" type="number" min="1" max="12" inputmode="numeric" placeholder="월" />
+            <input class="pcStudentFormInput" id="pcStudentModalDay" type="number" min="1" max="31" inputmode="numeric" placeholder="일" />
+          </div>
+        </div>
+
+        <div class="pcStudentTypeFields" id="pcElementaryStudentFields">
+          <div class="pcStudentFieldGroup">
+            <span class="pcStudentFormLabel">그룹</span>
+            <div class="pcToggleRow" id="pcStudentGroupToggleRow"></div>
+          </div>
+          <div class="pcStudentFieldGroup">
+            <span class="pcStudentFormLabel">담임</span>
+            <div class="pcTeacherToggleRow" id="pcStudentElementaryTeacherToggleRow"></div>
+          </div>
+          <div class="pcStudentFieldGroup">
+            <span class="pcStudentFormLabel">요일</span>
+            <div class="pcDayToggleRow" id="pcStudentElementaryDayToggleRow"></div>
+          </div>
+        </div>
+
+        <div class="pcStudentTypeFields" id="pcKinderStudentFields">
+          <div class="pcStudentFormField inlineGrid" style="grid-template-columns: 1fr 1fr;">
+            <label>
+              <span class="pcStudentFormLabel">유치원</span>
+              <input class="pcStudentFormInput" id="pcStudentModalKindergarten" autocomplete="off" placeholder="예: OO유치원" />
+            </label>
+            <label>
+              <span class="pcStudentFormLabel">나이</span>
+              <input class="pcStudentFormInput" id="pcStudentModalAge" type="number" min="1" max="7" inputmode="numeric" placeholder="예: 5" />
+            </label>
+          </div>
+          <div class="pcStudentFieldGroup">
+            <span class="pcStudentFormLabel">담임</span>
+            <div class="pcTeacherToggleRow" id="pcStudentKinderTeacherToggleRow"></div>
+          </div>
+          <div class="pcStudentFieldGroup">
+            <span class="pcStudentFormLabel">요일</span>
+            <div class="pcDayToggleRow" id="pcStudentKinderDayToggleRow"></div>
+          </div>
+        </div>
       </div>
+
       <div class="pcStudentModalActions">
         <button class="pcModalGhostBtn" type="button" onclick="closePcStudentModal(null, true)">취소</button>
         <button class="pcModalSaveBtn" id="pcStudentModalSaveBtn" type="button" onclick="savePcStudentInfo()">저장</button>
@@ -1059,6 +1124,7 @@
         enrolled_at: row?.enrolled_at || row?.registered_at || row?.created_at || '',
         lesson_day: row?.lesson_day || row?.day || '',
         teacher: row?.teacher || row?.homeroom_teacher || row?.teacher_name || '',
+        group: row?.group || row?.student_group || '',
         grade: row?.grade || '',
         school: row?.school || '',
         kindergarten: row?.kindergarten || '',
@@ -1265,6 +1331,89 @@
       return [type, detail, student.lesson_day, student.teacher].filter(Boolean).join(' / ');
     }
 
+
+    const PC_DAYS = ['월','화','수','목','금','토','일'];
+    const PC_GROUPS = [['1','A'], ['2','B'], ['3','C'], ['4','D'], ['5','E'], ['6','F']];
+    let pcStudentModalDaysDraft = [];
+    let pcStudentModalTeacherDraft = '';
+    let pcStudentModalGroupDraft = '';
+
+    function parsePcDays(value) {
+      const raw = String(value || '').replace(/요일/g, '').replace(/[·,\/]/g, ' ');
+      return PC_DAYS.filter(day => raw.includes(day));
+    }
+
+    function pcDaysToText(days) {
+      return (Array.isArray(days) ? days : []).filter(Boolean).join('-');
+    }
+
+    function getPcTeacherOptions() {
+      const set = new Set();
+      pcState.students.forEach(student => {
+        const teacher = String(student.teacher || student.homeroom_teacher || student.teacher_name || '').trim();
+        if (teacher) set.add(teacher);
+      });
+      return Array.from(set).sort((a, b) => a.localeCompare(b, 'ko'));
+    }
+
+    function renderPcLeadIcon(student) {
+      return `<span class="pcLeadIcon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 35" role="img" aria-label="student icon"><polygon points="20.5,5.5 31,11.7 31,23.8 20.5,30.5 10,23.8 10,11.7" fill="transparent" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></polygon><path d="M10 11.7 L20.5 17.8 L31 11.7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><path d="M20.5 17.8 L20.5 30.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>`;
+    }
+
+    function renderPcDayButtons(containerId) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      const set = new Set(pcStudentModalDaysDraft);
+      el.innerHTML = PC_DAYS.map(day => `<button type="button" class="pcDayBtn ${set.has(day) ? 'active' : ''}" onclick="togglePcStudentModalDay('${day}')">${day}</button>`).join('');
+    }
+
+    function renderPcGroupButtons() {
+      const el = document.getElementById('pcStudentGroupToggleRow');
+      if (!el) return;
+      el.innerHTML = PC_GROUPS.map(([value, label]) => `<button type="button" class="pcToggleBtn groupBtn ${String(pcStudentModalGroupDraft || '') === value ? 'active' : ''}" onclick="selectPcStudentModalGroup('${value}')">${label}</button>`).join('');
+    }
+
+    function renderPcTeacherButtons(containerId) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      const teachers = getPcTeacherOptions();
+      if (!teachers.length) {
+        el.innerHTML = '<button type="button" class="pcTeacherBtn active" onclick="selectPcStudentModalTeacher(\'\')">담임 없음</button>';
+        return;
+      }
+      el.innerHTML = teachers.map(name => `<button type="button" class="pcTeacherBtn ${String(pcStudentModalTeacherDraft || '') === name ? 'active' : ''}" onclick="selectPcStudentModalTeacher('${escapeHtml(name)}')">${escapeHtml(name)}</button>`).join('');
+    }
+
+    function refreshPcStudentModalToggles() {
+      renderPcGroupButtons();
+      renderPcTeacherButtons('pcStudentElementaryTeacherToggleRow');
+      renderPcTeacherButtons('pcStudentKinderTeacherToggleRow');
+      renderPcDayButtons('pcStudentElementaryDayToggleRow');
+      renderPcDayButtons('pcStudentKinderDayToggleRow');
+    }
+
+    function selectPcStudentModalTeacher(name) {
+      pcStudentModalTeacherDraft = String(name || '').trim();
+      refreshPcStudentModalToggles();
+    }
+
+    function togglePcStudentModalDay(day) {
+      const idx = pcStudentModalDaysDraft.indexOf(day);
+      if (idx >= 0) pcStudentModalDaysDraft.splice(idx, 1);
+      else pcStudentModalDaysDraft.push(day);
+      refreshPcStudentModalToggles();
+    }
+
+    function selectPcStudentModalGroup(group) {
+      pcStudentModalGroupDraft = String(pcStudentModalGroupDraft || '') === String(group) ? '' : String(group);
+      refreshPcStudentModalToggles();
+    }
+
+    function setPcStudentModalTypeFields(type) {
+      document.getElementById('pcElementaryStudentFields')?.classList.toggle('active', type !== 'kinder');
+      document.getElementById('pcKinderStudentFields')?.classList.toggle('active', type === 'kinder');
+    }
+
     function passesFilters(student) {
       if (pcState.typeFilter !== 'all' && student.type !== pcState.typeFilter) return false;
       if (pcState.dayFilter && !String(student.lesson_day || '').includes(pcState.dayFilter)) return false;
@@ -1318,8 +1467,8 @@
         .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ko'));
       const rows = students.map(student => `
         <button class="pcSidebarStudentRow" onclick="selectPcSidebarStudent('${escapeHtml(student.id || student.name)}')">
-          <span class="pcSidebarStudentName">${escapeHtml(student.name)}</span>
-          <span class="pcSidebarStudentMeta">${escapeHtml(getStudentMeta(student))}</span>
+          ${renderPcLeadIcon(student)}
+          <span class="pcSidebarStudentText"><span class="pcSidebarStudentName">${escapeHtml(student.name)}</span><span class="pcSidebarStudentMeta">${escapeHtml(getStudentMeta(student))}</span></span>
           <span class="pcSidebarStudentMore" onclick="event.stopPropagation(); openPcStudentEdit('${escapeHtml(student.id || student.name)}')">•••</span>
         </button>`).join('') || `<div class="pcPlaceholder" style="min-height:160px; font-size:12px;">표시할 학생이 없습니다.</div>`;
       return `<div class="pcSidebarStudentList">
@@ -1348,7 +1497,7 @@
       pcState.studentModalStudent = student;
       pcState.studentModalDefaultType = student.type || 'elementary';
       fillPcStudentModal(student);
-      document.getElementById('pcStudentModalTitle').textContent = '학생정보 수정';
+      document.getElementById('pcStudentModalTitle').textContent = `${pcState.studentModalDefaultType === 'kinder' ? '유치부' : '초등'} 학생 정보`;
       document.getElementById('pcStudentModal')?.classList.add('open');
     }
 
@@ -1378,18 +1527,26 @@
 
     function fillPcStudentModal(student) {
       const type = student?.type === 'kinder' ? 'kinder' : 'elementary';
-      const schoolValue = type === 'kinder'
-        ? (student?.kindergarten || student?.school || '')
-        : (student?.school || student?.kindergarten || '');
+      pcState.studentModalDefaultType = type;
+      setPcStudentModalTypeFields(type);
       document.getElementById('pcStudentModalName').value = student?.name || '';
-      document.getElementById('pcStudentModalType').value = type;
-      document.getElementById('pcStudentModalStatus').value = student?.status || 'active';
-      document.getElementById('pcStudentModalEnrolledAt').value = toDateInputValue(student?.enrolled_at || student?.registered_at || student?.created_at || '');
-      document.getElementById('pcStudentModalLessonDay').value = student?.lesson_day || student?.day || '';
-      document.getElementById('pcStudentModalTeacher').value = student?.teacher || student?.homeroom_teacher || student?.teacher_name || '';
-      document.getElementById('pcStudentModalGrade').value = student?.grade || '';
+      const enrolled = toDateInputValue(student?.enrolled_at || student?.registered_at || student?.created_at || '');
+      if (enrolled) {
+        const [year, month, day] = enrolled.split('-');
+        document.getElementById('pcStudentModalYear').value = year || new Date().getFullYear();
+        document.getElementById('pcStudentModalMonth').value = String(Number(month || '')) || '';
+        document.getElementById('pcStudentModalDay').value = String(Number(day || '')) || '';
+      } else {
+        document.getElementById('pcStudentModalYear').value = new Date().getFullYear();
+        document.getElementById('pcStudentModalMonth').value = '';
+        document.getElementById('pcStudentModalDay').value = '';
+      }
+      document.getElementById('pcStudentModalKindergarten').value = student?.kindergarten || (type === 'kinder' ? student?.school || '' : '');
       document.getElementById('pcStudentModalAge').value = student?.age || '';
-      document.getElementById('pcStudentModalSchool').value = schoolValue;
+      pcStudentModalTeacherDraft = String(student?.teacher || student?.homeroom_teacher || student?.teacher_name || '').trim();
+      pcStudentModalDaysDraft = parsePcDays(student?.lesson_day || student?.day || '');
+      pcStudentModalGroupDraft = type === 'elementary' ? String(student?.group || '').trim() : '';
+      refreshPcStudentModalToggles();
     }
 
     function pickExistingColumn(row, candidates, fallback) {
@@ -1407,35 +1564,39 @@
     function buildPcStudentPayload() {
       const current = pcState.studentModalStudent || {};
       const mode = pcState.studentModalMode;
-      const type = document.getElementById('pcStudentModalType').value;
+      const type = pcState.studentModalDefaultType === 'kinder' ? 'kinder' : 'elementary';
       const name = document.getElementById('pcStudentModalName').value.trim();
-      const status = document.getElementById('pcStudentModalStatus').value;
-      const enrolledAt = document.getElementById('pcStudentModalEnrolledAt').value;
-      const lessonDay = document.getElementById('pcStudentModalLessonDay').value.trim();
-      const teacher = document.getElementById('pcStudentModalTeacher').value.trim();
-      const grade = document.getElementById('pcStudentModalGrade').value.trim();
+      const year = Number(document.getElementById('pcStudentModalYear').value);
+      const month = Number(document.getElementById('pcStudentModalMonth').value);
+      const day = Number(document.getElementById('pcStudentModalDay').value);
+      const kindergarten = document.getElementById('pcStudentModalKindergarten').value.trim();
       const age = document.getElementById('pcStudentModalAge').value.trim();
-      const school = document.getElementById('pcStudentModalSchool').value.trim();
       if (!name) throw new Error('학생 이름을 입력해 주세요.');
+      if (!year || year < 1900 || year > 2100) throw new Error('등록 연도를 올바르게 입력해 주세요.');
+      if (!month || month < 1 || month > 12) throw new Error('등록 월을 올바르게 입력해 주세요.');
+      if (!day || day < 1 || day > 31) throw new Error('등록 일을 올바르게 입력해 주세요.');
 
+      const enrolledAt = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const teacher = pcStudentModalTeacherDraft;
+      const lessonDay = pcDaysToText(pcStudentModalDaysDraft);
       const payload = {};
       const allowFallback = mode === 'create';
       if (allowFallback) payload.academy_id = getPcAcademyId();
 
       payload[pickExistingColumn(current, ['name', 'student_name'], 'name')] = name;
       payload[pickExistingColumn(current, ['type', 'division', 'student_type'], 'type')] = type;
-      const statusKey = pickExistingColumn(current, ['status', 'student_status', 'state'], allowFallback ? 'status' : '');
-      if (statusKey) payload[statusKey] = status;
+      if (allowFallback) payload.status = 'active';
 
       assignIfColumnExists(payload, current, ['enrolled_at', 'registered_at'], enrolledAt, allowFallback);
       assignIfColumnExists(payload, current, ['lesson_day', 'day'], lessonDay, allowFallback);
       assignIfColumnExists(payload, current, ['teacher', 'homeroom_teacher', 'teacher_name'], teacher, allowFallback);
-      assignIfColumnExists(payload, current, ['grade'], grade, allowFallback);
-      assignIfColumnExists(payload, current, ['age'], age, allowFallback);
+      assignIfColumnExists(payload, current, ['homeroom_teacher', 'teacher', 'teacher_name'], teacher, allowFallback);
+
       if (type === 'kinder') {
-        assignIfColumnExists(payload, current, ['kindergarten', 'school'], school, allowFallback);
+        assignIfColumnExists(payload, current, ['kindergarten', 'school'], kindergarten, allowFallback);
+        assignIfColumnExists(payload, current, ['age'], age, allowFallback);
       } else {
-        assignIfColumnExists(payload, current, ['school', 'kindergarten'], school, allowFallback);
+        assignIfColumnExists(payload, current, ['group', 'student_group'], pcStudentModalGroupDraft, allowFallback);
       }
       return payload;
     }
@@ -1562,7 +1723,7 @@
       const wrap = document.getElementById('pcAttendanceList');
       const students = pcState.students.filter(isActiveStudent).filter(passesFilters);
       document.getElementById('pcAttendanceBadge').textContent = students.length;
-      wrap.innerHTML = students.map(student => `<button class="pcStudentRow" onclick="showToast('${escapeHtml(student.name)} 출석 상세는 다음 단계에서 연결합니다.')"><span class="pcStudentLeft"><span class="pcStudentName">${escapeHtml(student.name)}</span><span class="pcStudentMeta">${escapeHtml(getStudentMeta(student))}</span></span><span class="pcBadge">재원</span></button>`).join('') || `<div class="pcPlaceholder">표시할 학생이 없습니다.</div>`;
+      wrap.innerHTML = students.map(student => `<button class="pcStudentRow" onclick="showToast('${escapeHtml(student.name)} 출석 상세는 다음 단계에서 연결합니다.')"><span class="pcStudentLeft">${renderPcLeadIcon(student)}<span class="pcStudentText"><span class="pcStudentName">${escapeHtml(student.name)}</span><span class="pcStudentMeta">${escapeHtml(getStudentMeta(student))}</span></span></span><span class="pcBadge">재원</span></button>`).join('') || `<div class="pcPlaceholder">표시할 학생이 없습니다.</div>`;
     }
 
     function renderObservationList() {
