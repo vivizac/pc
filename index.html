@@ -1,0 +1,1180 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VIVIZAC PC Dashboard</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel-soft: #f9fafb;
+      --line: #e8e8ec;
+      --line-strong: #d9d9df;
+      --text: #101114;
+      --muted: #8f9096;
+      --muted-2: #b3b4ba;
+      --blue: #1887ff;
+      --blue-soft: #eef6ff;
+      --red: #ff6d7a;
+      --yellow: #ffd88a;
+      --shadow: 0 12px 34px rgba(0,0,0,0.055);
+      --radius: 26px;
+      --sidebar-w: 268px;
+      --right-w: 430px;
+      --font: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      letter-spacing: -0.04em;
+    }
+
+    button, input, textarea { font-family: inherit; letter-spacing: -0.04em; }
+    button { cursor: pointer; }
+
+    .pcLoginScreen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      background: radial-gradient(circle at top left, #f2f8ff 0, #f6f7f9 36%, #ffffff 100%);
+    }
+
+    .pcLoginCard {
+      width: 420px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 34px;
+      box-shadow: var(--shadow);
+      padding: 34px;
+    }
+
+    .pcLoginBrand {
+      font-size: 36px;
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+
+    .pcLoginTitle {
+      font-size: 22px;
+      font-weight: 800;
+      margin-top: 18px;
+    }
+
+    .pcLoginDesc {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.55;
+      margin: 10px 0 24px;
+    }
+
+    .pcFieldLabel {
+      font-size: 14px;
+      color: #77787f;
+      font-weight: 750;
+      margin: 16px 0 8px;
+    }
+
+    .pcInput {
+      width: 100%;
+      height: 52px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 0 16px;
+      font-size: 18px;
+      font-weight: 650;
+      background: #fbfbfc;
+      outline: none;
+    }
+
+    .pcInput:focus { border-color: rgba(24,135,255,0.45); background: #fff; box-shadow: 0 0 0 4px rgba(24,135,255,0.08); }
+
+    .pcPrimaryBtn {
+      width: 100%;
+      height: 54px;
+      border: 0;
+      border-radius: 18px;
+      background: var(--blue);
+      color: #fff;
+      font-size: 17px;
+      font-weight: 850;
+      margin-top: 22px;
+    }
+
+    .pcPrimaryBtn:disabled { opacity: 0.58; cursor: default; }
+
+    .pcLoginHelp {
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .pcApp {
+      min-height: 100vh;
+      display: none;
+    }
+
+    body.pcLoggedIn .pcLoginScreen { display: none; }
+    body.pcLoggedIn .pcApp { display: grid; grid-template-columns: var(--sidebar-w) 1fr; }
+
+    .pcSidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      background: #fff;
+      border-right: 1px solid var(--line);
+      padding: 30px 22px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .pcBrand {
+      font-size: 32px;
+      font-weight: 950;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .pcAcademyName {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+      min-height: 20px;
+    }
+
+    .pcNav { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+
+    .pcNavBtn {
+      border: 0;
+      background: transparent;
+      border-radius: 18px;
+      height: 56px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      color: #2b2c32;
+      font-size: 17px;
+      font-weight: 850;
+      text-align: left;
+    }
+
+    .pcNavBtn svg {
+      width: 26px;
+      height: 26px;
+      stroke: currentColor;
+      stroke-width: 2.1;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex: 0 0 auto;
+    }
+
+    .pcNavBtn.active { background: var(--blue-soft); color: var(--blue); }
+    .pcNavBtn:hover { background: #f5f6f8; }
+    .pcNavBtn.active:hover { background: var(--blue-soft); }
+
+    .pcSidebarGroup {
+      border-top: 1px solid var(--line);
+      padding-top: 18px;
+    }
+
+    .pcSidebarLabel {
+      font-size: 13px;
+      color: var(--muted-2);
+      font-weight: 850;
+      margin: 0 0 10px 14px;
+    }
+
+    .pcFilterBtn {
+      width: 100%;
+      height: 40px;
+      border: 0;
+      background: transparent;
+      border-radius: 14px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #77787f;
+      font-weight: 750;
+      font-size: 14px;
+    }
+
+    .pcFilterBtn:hover, .pcFilterBtn.active { background: #f6f7f9; color: #111; }
+
+    .pcSidebarBottom {
+      margin-top: auto;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .pcCircleBtn {
+      width: 48px;
+      height: 48px;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.06);
+    }
+
+    .pcCircleBtn svg { width: 24px; height: 24px; stroke: #111; stroke-width: 2.4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+    .pcContentShell {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .pcTopbar {
+      height: 88px;
+      background: rgba(246,247,249,0.92);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 34px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .pcPageTitle { font-size: 26px; font-weight: 920; }
+    .pcPageSub { font-size: 14px; color: var(--muted); margin-top: 5px; font-weight: 650; }
+
+    .pcTopActions { display: flex; align-items: center; gap: 12px; }
+    .pcSearch {
+      width: 280px;
+      height: 46px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      padding: 0 16px;
+      font-size: 16px;
+      outline: none;
+    }
+
+    .pcLogoutBtn {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      height: 46px;
+      padding: 0 18px;
+      color: #66676e;
+      font-weight: 800;
+    }
+
+    .pcMainGrid {
+      display: grid;
+      grid-template-columns: minmax(620px, 1fr) var(--right-w);
+      gap: 22px;
+      padding: 26px 26px 34px;
+      min-width: 0;
+    }
+
+    .pcMainOnly { grid-template-columns: 1fr; }
+
+    .pcPage { display: none; min-width: 0; }
+    .pcPage.active { display: block; }
+
+    .pcStatsGrid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .pcStatCard, .pcCard {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .pcStatCard { padding: 22px 24px; min-height: 142px; }
+    .pcStatLabel { color: #8e8f95; font-size: 16px; font-weight: 850; margin-bottom: 14px; }
+    .pcStatNumber { font-size: 44px; line-height: 1; font-weight: 950; }
+    .pcStatGuide { color: #9c9da3; font-size: 15px; font-weight: 700; margin-top: 14px; line-height: 1.35; }
+
+    .pcCard { padding: 24px; margin-bottom: 20px; }
+    .pcCardHead { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    .pcCardTitle { font-size: 22px; font-weight: 920; }
+    .pcCardSub { color: var(--muted); font-size: 14px; font-weight: 700; }
+    .pcBadge { display: inline-flex; align-items: center; justify-content: center; min-width: 52px; height: 34px; border-radius: 999px; background: #f1f2f4; color: #77787f; font-size: 15px; font-weight: 850; padding: 0 12px; }
+    .pcBadge.ready { background: var(--blue-soft); color: var(--blue); }
+    .pcBadge.warn { background: #fff6e1; color: #ba7a00; }
+    .pcBadge.danger { background: #fff0f2; color: var(--red); }
+
+    .pcConsultGroup + .pcConsultGroup { margin-top: 26px; }
+    .pcConsultGroupTitle { color: #8d8e94; font-size: 17px; font-weight: 900; margin-bottom: 12px; }
+
+    .pcStudentRow {
+      background: #f7f7f8;
+      border: 1px solid transparent;
+      border-radius: 22px;
+      min-height: 72px;
+      padding: 13px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+
+    .pcStudentRow:hover { background: #fff; border-color: rgba(24,135,255,0.22); }
+    .pcStudentRow.selected { background: #fff; border-color: rgba(24,135,255,0.35); box-shadow: 0 8px 22px rgba(24,135,255,0.08); }
+
+    .pcStudentLeft { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    .pcStudentName { font-size: 19px; font-weight: 900; color: #111; }
+    .pcStudentMeta { font-size: 13px; color: #96979e; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pcRowActions { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
+
+    .pcSidePanel {
+      position: sticky;
+      top: 114px;
+      align-self: start;
+      min-height: calc(100vh - 140px);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    .pcSideEmpty {
+      height: 100%;
+      min-height: 300px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      color: var(--muted);
+      text-align: center;
+      font-weight: 750;
+      line-height: 1.5;
+    }
+
+    .pcSummaryTitle { font-size: 22px; font-weight: 950; margin-bottom: 6px; }
+    .pcSummaryMeta { color: var(--muted); font-size: 14px; font-weight: 700; margin-bottom: 18px; }
+    .pcSummaryBox {
+      max-height: calc(100vh - 290px);
+      overflow: auto;
+      background: #f7f8fa;
+      border-radius: 22px;
+      padding: 18px;
+      font-size: 15px;
+      line-height: 1.72;
+      white-space: pre-wrap;
+    }
+
+    .pcPanelActions { display: flex; gap: 10px; margin-top: 16px; }
+    .pcSmallBtn {
+      height: 42px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #55565d;
+      border-radius: 14px;
+      padding: 0 14px;
+      font-size: 14px;
+      font-weight: 850;
+    }
+    .pcSmallBtn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+    .pcTwoCol { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .pcList { display: flex; flex-direction: column; gap: 10px; }
+
+    .pcRecordItem {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 22px;
+      padding: 16px;
+    }
+    .pcRecordTop { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 8px; }
+    .pcRecordName { font-weight: 900; font-size: 17px; }
+    .pcRecordDate { color: var(--muted); font-size: 13px; font-weight: 700; }
+    .pcRecordText { color: #55565d; font-size: 14px; line-height: 1.55; max-height: 86px; overflow: hidden; }
+
+    .pcPlaceholder {
+      border: 1px dashed var(--line-strong);
+      border-radius: 24px;
+      background: #fff;
+      min-height: 280px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.55;
+      font-weight: 750;
+    }
+
+    .pcA4Overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.28);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 30px;
+    }
+    .pcA4Overlay.open { display: flex; }
+    .pcA4Wrap { display: flex; flex-direction: column; gap: 14px; align-items: center; }
+    .pcA4Toolbar { display: flex; gap: 10px; }
+    .pcA4Sheet {
+      width: 794px;
+      min-height: 1123px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.22);
+      padding: 58px 62px;
+      color: #111;
+    }
+    .pcA4Brand { font-size: 22px; font-weight: 950; letter-spacing: 0.08em; margin-bottom: 32px; }
+    .pcA4Title { font-size: 32px; font-weight: 950; margin-bottom: 10px; }
+    .pcA4Meta { color: #777; font-size: 14px; font-weight: 700; border-bottom: 2px solid #111; padding-bottom: 18px; margin-bottom: 28px; }
+    .pcA4Content { font-size: 16px; line-height: 1.85; white-space: pre-wrap; }
+
+    .pcToast {
+      position: fixed;
+      right: 28px;
+      bottom: 28px;
+      background: #111;
+      color: #fff;
+      border-radius: 18px;
+      padding: 14px 18px;
+      font-size: 14px;
+      font-weight: 800;
+      opacity: 0;
+      transform: translateY(16px);
+      transition: 0.22s ease;
+      z-index: 120;
+      pointer-events: none;
+    }
+    .pcToast.show { opacity: 1; transform: translateY(0); }
+
+    @media print {
+      body * { visibility: hidden; }
+      .pcA4Sheet, .pcA4Sheet * { visibility: visible; }
+      .pcA4Sheet { position: absolute; left: 0; top: 0; box-shadow: none; border-radius: 0; width: 210mm; min-height: 297mm; }
+      .pcA4Toolbar { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <section class="pcLoginScreen" id="pcLoginScreen">
+    <div class="pcLoginCard">
+      <div class="pcLoginBrand">VIVIZAC</div>
+      <div class="pcLoginTitle">PC 전용 관리 화면</div>
+      <div class="pcLoginDesc">모바일 앱과 같은 Supabase 데이터를 사용합니다. PC에서는 상담 준비, 종합 피드백 확인, A4 출력 중심으로 사용합니다.</div>
+      <div class="pcFieldLabel">학원 ID</div>
+      <input class="pcInput" id="pcAcademyCodeInput" placeholder="학원 ID" autocomplete="off" />
+      <div class="pcFieldLabel">원장 비밀번호</div>
+      <input class="pcInput" id="pcOwnerPasswordInput" type="password" placeholder="비밀번호" autocomplete="current-password" />
+      <button class="pcPrimaryBtn" id="pcOwnerLoginBtn" onclick="pcOwnerLogin()">원장 로그인</button>
+      <div class="pcLoginHelp">처음 1차 PC 버전은 원장 전용으로 구성했습니다. 선생님 PC 화면은 이후 별도 권한 기준으로 확장할 수 있습니다.</div>
+    </div>
+  </section>
+
+  <main class="pcApp" id="pcApp">
+    <aside class="pcSidebar">
+      <div>
+        <div class="pcBrand">VIVIZAC</div>
+        <div class="pcAcademyName" id="pcAcademyName">-</div>
+      </div>
+
+      <nav class="pcNav">
+        <button class="pcNavBtn active" data-page="dashboard" onclick="switchPcPage('dashboard')">
+          <svg viewBox="0 0 24 24"><path d="M4 20V10.5L12 4l8 6.5V20"></path><path d="M9 20v-6h6v6"></path></svg>
+          <span>학원 관리</span>
+        </button>
+        <button class="pcNavBtn" data-page="attendance" onclick="switchPcPage('attendance')">
+          <svg viewBox="0 0 24 24"><path d="M4 5h16"></path><path d="M4 19h16"></path><path d="M7 19V9"></path><path d="M12 19V3"></path><path d="M17 19v-7"></path></svg>
+          <span>출석부</span>
+        </button>
+        <button class="pcNavBtn" data-page="observation" onclick="switchPcPage('observation')">
+          <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"></path><path d="M8 9h8"></path><path d="M8 13h5"></path></svg>
+          <span>관찰노트</span>
+        </button>
+        <button class="pcNavBtn" data-page="minute" onclick="switchPcPage('minute')">
+          <svg viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path></svg>
+          <span>1분 피드백</span>
+        </button>
+      </nav>
+
+      <div class="pcSidebarGroup">
+        <div class="pcSidebarLabel">빠른 보기</div>
+        <button class="pcFilterBtn active" data-filter="all" onclick="setPcTypeFilter('all')"><span>전체</span><span id="pcFilterAllCount">0</span></button>
+        <button class="pcFilterBtn" data-filter="elementary" onclick="setPcTypeFilter('elementary')"><span>초등부</span><span id="pcFilterElementaryCount">0</span></button>
+        <button class="pcFilterBtn" data-filter="kinder" onclick="setPcTypeFilter('kinder')"><span>유치부</span><span id="pcFilterKinderCount">0</span></button>
+      </div>
+
+      <div class="pcSidebarGroup">
+        <div class="pcSidebarLabel">요일</div>
+        <button class="pcFilterBtn" data-day="월" onclick="setPcDayFilter('월')"><span>월요일</span><span></span></button>
+        <button class="pcFilterBtn" data-day="화" onclick="setPcDayFilter('화')"><span>화요일</span><span></span></button>
+        <button class="pcFilterBtn" data-day="수" onclick="setPcDayFilter('수')"><span>수요일</span><span></span></button>
+        <button class="pcFilterBtn" data-day="목" onclick="setPcDayFilter('목')"><span>목요일</span><span></span></button>
+        <button class="pcFilterBtn" data-day="금" onclick="setPcDayFilter('금')"><span>금요일</span><span></span></button>
+        <button class="pcFilterBtn" data-day="토" onclick="setPcDayFilter('토')"><span>토요일</span><span></span></button>
+      </div>
+
+      <div class="pcSidebarBottom">
+        <button class="pcCircleBtn" title="신규 등록은 모바일 앱 원생관리에서 우선 사용" onclick="showToast('PC 등록 기능은 다음 단계에서 연결합니다.')">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+        </button>
+        <button class="pcCircleBtn" title="설정" onclick="showToast('PC 설정 화면은 다음 단계에서 분리합니다.')">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path><circle cx="8" cy="7" r="1.8"></circle><circle cx="15" cy="12" r="1.8"></circle><circle cx="10" cy="17" r="1.8"></circle></svg>
+        </button>
+      </div>
+    </aside>
+
+    <section class="pcContentShell">
+      <header class="pcTopbar">
+        <div>
+          <div class="pcPageTitle" id="pcPageTitle">학원 관리</div>
+          <div class="pcPageSub" id="pcPageSub">상담 예정, 종합 피드백, 재원생 흐름을 한 화면에서 확인합니다.</div>
+        </div>
+        <div class="pcTopActions">
+          <input class="pcSearch" id="pcSearchInput" placeholder="학생 검색" oninput="handlePcSearchInput()" />
+          <button class="pcLogoutBtn" onclick="pcLogout()">로그아웃</button>
+        </div>
+      </header>
+
+      <div class="pcMainGrid" id="pcMainGrid">
+        <div>
+          <section class="pcPage active" id="pcPageDashboard">
+            <div class="pcStatsGrid">
+              <div class="pcStatCard"><div class="pcStatLabel">재원생</div><div class="pcStatNumber" id="pcActiveCount">0</div><div class="pcStatGuide" id="pcActiveGuide">초등 0명 · 유치 0명</div></div>
+              <div class="pcStatCard"><div class="pcStatLabel" id="pcConsultCardLabel">상담 예정</div><div class="pcStatNumber" id="pcConsultCount">0</div><div class="pcStatGuide" id="pcConsultGuide">초등 0명 · 유치 0명</div></div>
+              <div class="pcStatCard"><div class="pcStatLabel">올해 등록</div><div class="pcStatNumber" id="pcYearJoinCount">0</div><div class="pcStatGuide" id="pcMonthJoinGuide">이달 등록 0명</div></div>
+              <div class="pcStatCard"><div class="pcStatLabel">휴원 · 퇴원</div><div class="pcStatNumber" id="pcInactiveCount">0</div><div class="pcStatGuide" id="pcInactiveGuide">휴원 0명 · 퇴원 0명</div></div>
+            </div>
+            <div class="pcCard">
+              <div class="pcCardHead">
+                <div>
+                  <div class="pcCardTitle">상담 준비</div>
+                  <div class="pcCardSub">학생 이름을 누르면 저장된 종합 피드백을 오른쪽에서 확인합니다.</div>
+                </div>
+                <span class="pcBadge" id="pcConsultTotalBadge">0</span>
+              </div>
+              <div id="pcConsultList"></div>
+            </div>
+          </section>
+
+          <section class="pcPage" id="pcPageAttendance">
+            <div class="pcCard">
+              <div class="pcCardHead">
+                <div>
+                  <div class="pcCardTitle">출석부</div>
+                  <div class="pcCardSub">PC 1차 버전은 학생 현황 확인 중심입니다. 출결 체크 기능은 다음 단계에서 연결합니다.</div>
+                </div>
+                <span class="pcBadge" id="pcAttendanceBadge">0</span>
+              </div>
+              <div class="pcList" id="pcAttendanceList"></div>
+            </div>
+          </section>
+
+          <section class="pcPage" id="pcPageObservation">
+            <div class="pcCard">
+              <div class="pcCardHead">
+                <div>
+                  <div class="pcCardTitle">관찰노트 기록</div>
+                  <div class="pcCardSub">저장된 수업 피드백과 관찰 기록을 최신순으로 확인합니다.</div>
+                </div>
+                <span class="pcBadge" id="pcObservationBadge">0</span>
+              </div>
+              <div class="pcList" id="pcObservationList"></div>
+            </div>
+          </section>
+
+          <section class="pcPage" id="pcPageMinute">
+            <div class="pcCard">
+              <div class="pcCardHead">
+                <div>
+                  <div class="pcCardTitle">1분 피드백</div>
+                  <div class="pcCardSub">PC에서는 빠른 작성보다 피드백 확인과 상담자료 정리가 우선입니다.</div>
+                </div>
+              </div>
+              <div class="pcPlaceholder">1분 피드백 작성 화면은 모바일 UX와 다르게 설계해야 합니다.<br>다음 단계에서 PC 전용 입력창과 학생 선택 패널을 연결합니다.</div>
+            </div>
+          </section>
+        </div>
+
+        <aside class="pcSidePanel" id="pcSidePanel">
+          <div class="pcSideEmpty">상담 예정 학생을 선택하면<br>저장된 종합 피드백이 여기에 표시됩니다.</div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div class="pcA4Overlay" id="pcA4Overlay" onclick="closeA4Overlay(event)">
+    <div class="pcA4Wrap">
+      <div class="pcA4Toolbar">
+        <button class="pcSmallBtn" onclick="closeA4Overlay(event, true)">닫기</button>
+        <button class="pcSmallBtn primary" onclick="window.print()">인쇄</button>
+      </div>
+      <div class="pcA4Sheet" id="pcA4Sheet"></div>
+    </div>
+  </div>
+
+  <div class="pcToast" id="pcToast"></div>
+
+  <script>
+    const SUPABASE_URL = 'https://fvkxipjwgeyosgnfhdnx.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2a3hpcGp3Z2V5b3NnbmZoZG54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MzAxMDUsImV4cCI6MjA5MTEwNjEwNX0.dqP0V2RIKBLWqXWfwJgCgufpO6gQ_lAZDQ_prOhlNI8';
+    const API_CHAT_ENDPOINT = '/api/chat';
+
+    const pcState = {
+      page: 'dashboard',
+      typeFilter: 'all',
+      dayFilter: '',
+      search: '',
+      students: [],
+      feedbacks: [],
+      failFeedbacks: [],
+      summaries: [],
+      selectedConsultKey: '',
+      selectedSummary: null,
+      consultationTargets: []
+    };
+
+    const PC_DEFAULT_CONSULT_RULES = [1, 3, 6, 12];
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function formatDate(value) {
+      if (!value) return '';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return String(value).slice(0, 10);
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    function getMonthKey(date = new Date()) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    function getPcAcademyId() { return localStorage.getItem('vivicot_current_academy_id') || ''; }
+    function getPcAcademyName() { return localStorage.getItem('vivicot_current_academy_name') || ''; }
+    function getPcRole() { return localStorage.getItem('vivicot_current_member_role') || (localStorage.getItem('vivicot_owner_logged_in') === 'true' ? 'owner' : 'guest'); }
+    function isPcOwnerLoggedIn() { return localStorage.getItem('vivicot_owner_logged_in') === 'true' && !!getPcAcademyId(); }
+
+    async function supabaseRequest(method, path, body) {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      if (!res.ok) {
+        const message = data && typeof data === 'object'
+          ? [data.message, data.details, data.hint, data.code].filter(Boolean).join('\n')
+          : String(data || 'Supabase 요청 실패');
+        throw new Error(message || 'Supabase 요청 실패');
+      }
+      return data || [];
+    }
+
+    async function callVivicotRpc(functionName, payload) {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${functionName}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        },
+        body: JSON.stringify(payload || {})
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      if (!res.ok) {
+        const message = data && typeof data === 'object'
+          ? [data.message, data.details, data.hint, data.code].filter(Boolean).join('\n')
+          : String(data || 'RPC 요청 실패');
+        throw new Error(message || 'RPC 요청 실패');
+      }
+      return data;
+    }
+
+    async function pcOwnerLogin() {
+      const code = document.getElementById('pcAcademyCodeInput')?.value.trim();
+      const password = document.getElementById('pcOwnerPasswordInput')?.value.trim();
+      const btn = document.getElementById('pcOwnerLoginBtn');
+      if (!code) return alert('학원 ID를 입력해 주세요.');
+      if (!password) return alert('원장 비밀번호를 입력해 주세요.');
+      try {
+        if (btn) { btn.disabled = true; btn.textContent = '로그인 중...'; }
+        const result = await callVivicotRpc('test_owner_login', { p_academy_code: code, p_owner_password: password });
+        const academy = Array.isArray(result) ? result[0] : result;
+        if (!academy || !academy.id) throw new Error('학원 ID 또는 비밀번호가 맞지 않습니다.');
+        localStorage.setItem('vivicot_current_academy_id', academy.id || '');
+        localStorage.setItem('vivicot_current_academy_code', academy.academy_code || '');
+        localStorage.setItem('vivicot_current_academy_name', academy.academy_name || '');
+        localStorage.setItem('vivicot_current_academy_region', academy.region || academy.academy_region || '');
+        localStorage.setItem('vivicot_owner_logged_in', 'true');
+        localStorage.setItem('vivicot_current_member_role', 'owner');
+        localStorage.setItem('vivicot_current_member_name', '원장');
+        await bootPcApp();
+      } catch (err) {
+        alert('원장 로그인 실패\n' + (err.message || err));
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '원장 로그인'; }
+      }
+    }
+
+    function pcLogout() {
+      localStorage.removeItem('vivicot_owner_logged_in');
+      localStorage.removeItem('vivicot_current_member_role');
+      localStorage.removeItem('vivicot_current_member_name');
+      document.body.classList.remove('pcLoggedIn');
+    }
+
+    async function bootPcApp() {
+      if (!isPcOwnerLoggedIn()) return;
+      document.body.classList.add('pcLoggedIn');
+      document.getElementById('pcAcademyName').textContent = getPcAcademyName() || '원장 관리';
+      await loadPcData();
+      renderAllPc();
+    }
+
+    function normalizeStudent(row) {
+      const typeRaw = String(row?.type || row?.division || row?.student_type || '').toLowerCase();
+      const type = typeRaw.includes('kinder') || typeRaw.includes('유치') ? 'kinder' : 'elementary';
+      return {
+        ...row,
+        id: row?.id || '',
+        name: row?.name || row?.student_name || '이름 없음',
+        type,
+        status: normalizeStatus(row),
+        enrolled_at: row?.enrolled_at || row?.registered_at || row?.created_at || '',
+        lesson_day: row?.lesson_day || row?.day || '',
+        teacher: row?.teacher || row?.homeroom_teacher || row?.teacher_name || '',
+        grade: row?.grade || '',
+        school: row?.school || '',
+        kindergarten: row?.kindergarten || '',
+        age: row?.age || ''
+      };
+    }
+
+    function normalizeStatus(row) {
+      const raw = String(row?.status || row?.student_status || row?.state || '').toLowerCase();
+      if (raw.includes('withdraw') || raw.includes('퇴원')) return 'withdrawn';
+      if (raw.includes('pause') || raw.includes('휴원')) return 'paused';
+      if (raw.includes('inactive') || raw.includes('delete') || raw.includes('삭제')) return 'inactive';
+      return 'active';
+    }
+
+    function isActiveStudent(student) {
+      return student?.status === 'active' && (student.type === 'elementary' || student.type === 'kinder');
+    }
+
+    async function loadPcData() {
+      const academyId = getPcAcademyId();
+      if (!academyId) return;
+      showToast('PC 데이터를 불러오는 중입니다.');
+      const q = `academy_id=eq.${encodeURIComponent(academyId)}`;
+      const [students, feedbacks, failFeedbacks, summaries] = await Promise.all([
+        supabaseRequest('GET', `students?select=*&${q}&order=name.asc`),
+        supabaseRequest('GET', `feedbacks?select=*&${q}&order=id.desc&limit=700`).catch(() => []),
+        supabaseRequest('GET', `fail_feedbacks?select=*&${q}&order=id.desc&limit=700`).catch(() => []),
+        supabaseRequest('GET', `summary_feedbacks?select=*&${q}&order=id.desc&limit=500`).catch(() => [])
+      ]);
+      pcState.students = (Array.isArray(students) ? students : []).map(normalizeStudent);
+      pcState.feedbacks = Array.isArray(feedbacks) ? feedbacks : [];
+      pcState.failFeedbacks = Array.isArray(failFeedbacks) ? failFeedbacks : [];
+      pcState.summaries = Array.isArray(summaries) ? summaries : [];
+      pcState.consultationTargets = getConsultationTargets();
+      autoPrepareConsultationSummaries();
+    }
+
+    function getEnrollmentDate(student) {
+      const d = new Date(student?.enrolled_at || student?.registered_at || student?.created_at || '');
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    function getMonthDiffFromEnrollment(student, baseDate = new Date()) {
+      const d = getEnrollmentDate(student);
+      if (!d) return 0;
+      let months = (baseDate.getFullYear() - d.getFullYear()) * 12 + (baseDate.getMonth() - d.getMonth());
+      if (baseDate.getDate() < d.getDate()) months -= 1;
+      return Math.max(0, months);
+    }
+
+    function getDueConsultLabels(student) {
+      if (!isActiveStudent(student)) return [];
+      const diff = getMonthDiffFromEnrollment(student);
+      const labels = [];
+      if (diff === 1) labels.push('1개월');
+      if (diff === 3) labels.push('3개월');
+      if (diff > 0 && diff % 6 === 0) labels.push('6개월');
+      if (diff > 0 && diff % 12 === 0) labels.push('12개월');
+      return labels;
+    }
+
+    function getConsultMonths(labels) {
+      const nums = labels.map(label => Number(String(label).match(/\d+/)?.[0] || 0)).filter(Boolean);
+      return nums.length ? Math.max(...nums) : 0;
+    }
+
+    function getConsultationTargets() {
+      return pcState.students
+        .filter(isActiveStudent)
+        .map(student => {
+          const labels = getDueConsultLabels(student);
+          const months = getConsultMonths(labels);
+          if (!months) return null;
+          const key = `${student.id || student.name}_${months}_${getMonthKey()}`;
+          const summary = findSummaryForStudent(student, months);
+          return { key, student, labels, months, summary, status: summary ? 'ready' : 'checking' };
+        })
+        .filter(Boolean);
+    }
+
+    function rowDate(row) {
+      return new Date(row?.created_at || row?.date || row?.updated_at || row?.saved_at || '');
+    }
+
+    function isSameMonthRow(row, monthKey = getMonthKey()) {
+      const d = rowDate(row);
+      return !Number.isNaN(d.getTime()) && getMonthKey(d) === monthKey;
+    }
+
+    function findSummaryForStudent(student, months) {
+      const name = String(student?.name || '').trim();
+      const id = String(student?.id || '');
+      return pcState.summaries
+        .filter(row => String(row?.content || '').trim())
+        .filter(row => Number(row?.summary_months || 0) === Number(months))
+        .filter(row => String(row?.student_id || '') === id || String(row?.student_name || '').trim() === name)
+        .filter(row => isSameMonthRow(row))
+        .sort((a, b) => (rowDate(b).getTime() || 0) - (rowDate(a).getTime() || 0))[0] || null;
+    }
+
+    function collectSourceFeedbacks(student, months) {
+      const start = new Date();
+      start.setMonth(start.getMonth() - Number(months || 1));
+      const name = String(student?.name || '').trim();
+      const id = String(student?.id || '');
+      const rows = [...pcState.feedbacks, ...pcState.failFeedbacks]
+        .filter(row => String(row?.student_id || '') === id || String(row?.student_name || '').trim() === name)
+        .filter(row => {
+          const d = rowDate(row);
+          return !Number.isNaN(d.getTime()) && d >= start;
+        })
+        .filter(row => String(row?.content || row?.feedback || row?.text || '').trim())
+        .sort((a, b) => (rowDate(a).getTime() || 0) - (rowDate(b).getTime() || 0));
+      return rows;
+    }
+
+    function buildSummaryUserText(student, months, rows) {
+      const typeLabel = student.type === 'kinder' ? '유치부' : '초등부';
+      const blocks = rows.map((row, index) => {
+        const content = String(row?.content || row?.feedback || row?.text || '').trim();
+        return `[${index + 1}] ${formatDate(row?.created_at || row?.date || row?.updated_at)}\n${content}`;
+      }).join('\n\n');
+      return `[학생 정보]\n이름: ${student.name}\n구분: ${typeLabel}\n등록일: ${formatDate(student.enrolled_at)}\n상담 기준: ${months}개월\n\n[최근 ${months}개월 저장 피드백]\n${blocks}`;
+    }
+
+    async function generateSummary(student, months, rows) {
+      const res = await fetch(API_CHAT_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          promptType: 'summary',
+          messages: [{ role: 'user', content: buildSummaryUserText(student, months, rows) }]
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || '종합 피드백 생성 실패');
+      return String(data?.reply || '').trim();
+    }
+
+    async function saveSummary(student, months, content) {
+      const payload = {
+        academy_id: getPcAcademyId(),
+        student_id: student.id || null,
+        student_name: student.name || '',
+        content,
+        summary_months: Number(months),
+        year: new Date().getFullYear(),
+        date: new Date().toLocaleDateString('ko-KR')
+      };
+      const rows = await supabaseRequest('POST', 'summary_feedbacks', payload);
+      const saved = Array.isArray(rows) && rows[0] ? rows[0] : payload;
+      pcState.summaries.unshift(saved);
+      return saved;
+    }
+
+    async function autoPrepareConsultationSummaries() {
+      const targets = pcState.consultationTargets.filter(target => !target.summary);
+      if (!targets.length) return;
+      for (const target of targets) {
+        try {
+          target.status = 'generating';
+          renderConsultationList();
+          const rows = collectSourceFeedbacks(target.student, target.months);
+          if (!rows.length) {
+            target.status = 'insufficient';
+            renderConsultationList();
+            continue;
+          }
+          const content = await generateSummary(target.student, target.months, rows);
+          if (!content) throw new Error('응답이 비어 있습니다.');
+          target.summary = await saveSummary(target.student, target.months, content);
+          target.status = 'ready';
+          renderConsultationList();
+        } catch (err) {
+          console.warn('PC 상담 피드백 자동 생성 실패:', err);
+          target.status = 'error';
+          target.error = err.message || String(err);
+          renderConsultationList();
+        }
+      }
+    }
+
+    function statusBadgeClass(status) {
+      if (status === 'ready') return 'pcBadge ready';
+      if (status === 'insufficient') return 'pcBadge warn';
+      if (status === 'error') return 'pcBadge danger';
+      return 'pcBadge';
+    }
+
+    function statusText(status) {
+      if (status === 'ready') return '준비완료';
+      if (status === 'generating') return '생성중';
+      if (status === 'insufficient') return '자료부족';
+      if (status === 'error') return '오류';
+      return '확인중';
+    }
+
+    function getStudentMeta(student) {
+      const type = student.type === 'kinder' ? '유치부' : '초등부';
+      const detail = student.type === 'kinder'
+        ? [student.kindergarten, student.age ? `${student.age}세` : ''].filter(Boolean).join(' ')
+        : [student.school, student.grade ? `${student.grade}` : ''].filter(Boolean).join(' ');
+      return [type, detail, student.lesson_day, student.teacher].filter(Boolean).join(' / ');
+    }
+
+    function passesFilters(student) {
+      if (pcState.typeFilter !== 'all' && student.type !== pcState.typeFilter) return false;
+      if (pcState.dayFilter && !String(student.lesson_day || '').includes(pcState.dayFilter)) return false;
+      const q = pcState.search.trim().toLowerCase();
+      if (q && !String(student.name || '').toLowerCase().includes(q)) return false;
+      return true;
+    }
+
+    function renderAllPc() {
+      renderCounts();
+      renderConsultationList();
+      renderAttendanceList();
+      renderObservationList();
+      renderSidePanel();
+    }
+
+    function renderCounts() {
+      const active = pcState.students.filter(isActiveStudent);
+      const elementary = active.filter(s => s.type === 'elementary');
+      const kinder = active.filter(s => s.type === 'kinder');
+      const paused = pcState.students.filter(s => s.status === 'paused');
+      const withdrawn = pcState.students.filter(s => s.status === 'withdrawn');
+      const now = new Date();
+      const thisYear = now.getFullYear();
+      const thisMonth = now.getMonth();
+      const joinedYear = pcState.students.filter(s => {
+        const d = getEnrollmentDate(s);
+        return d && d.getFullYear() === thisYear;
+      });
+      const joinedMonth = joinedYear.filter(s => {
+        const d = getEnrollmentDate(s);
+        return d && d.getMonth() === thisMonth;
+      });
+      const consult = pcState.consultationTargets;
+      const consultElementary = consult.filter(t => t.student.type === 'elementary');
+      const consultKinder = consult.filter(t => t.student.type === 'kinder');
+      document.getElementById('pcActiveCount').textContent = active.length;
+      document.getElementById('pcActiveGuide').textContent = `초등 ${elementary.length}명 · 유치 ${kinder.length}명`;
+      document.getElementById('pcConsultCardLabel').textContent = `${now.getMonth() + 1}월 상담`;
+      document.getElementById('pcConsultCount').textContent = consult.length;
+      document.getElementById('pcConsultGuide').textContent = `초등 ${consultElementary.length}명 · 유치 ${consultKinder.length}명`;
+      document.getElementById('pcYearJoinCount').textContent = joinedYear.length;
+      document.getElementById('pcMonthJoinGuide').textContent = `이달 등록 ${joinedMonth.length}명`;
+      document.getElementById('pcInactiveCount').textContent = paused.length + withdrawn.length;
+      document.getElementById('pcInactiveGuide').textContent = `휴원 ${paused.length}명 · 퇴원 ${withdrawn.length}명`;
+      document.getElementById('pcConsultTotalBadge').textContent = consult.length;
+      document.getElementById('pcFilterAllCount').textContent = active.length;
+      document.getElementById('pcFilterElementaryCount').textContent = elementary.length;
+      document.getElementById('pcFilterKinderCount').textContent = kinder.length;
+    }
+
+    function renderConsultationList() {
+      const wrap = document.getElementById('pcConsultList');
+      const targets = pcState.consultationTargets.filter(t => passesFilters(t.student));
+      const groups = [
+        ['elementary', '초등부 상담 예정'],
+        ['kinder', '유치부 상담 예정']
+      ];
+      wrap.innerHTML = groups.map(([type, title]) => {
+        const rows = targets.filter(t => t.student.type === type);
+        if (!rows.length) return '';
+        return `<div class="pcConsultGroup"><div class="pcConsultGroupTitle">${title}</div>${rows.map(renderConsultRow).join('')}</div>`;
+      }).join('') || `<div class="pcPlaceholder">현재 조건에 맞는 상담 예정 학생이 없습니다.</div>`;
+    }
+
+    function renderConsultRow(target) {
+      const selected = pcState.selectedConsultKey === target.key ? ' selected' : '';
+      return `<button class="pcStudentRow${selected}" onclick="selectConsultationTarget('${escapeHtml(target.key)}')">
+        <span class="pcStudentLeft"><span class="pcStudentName">${escapeHtml(target.student.name)}</span><span class="pcStudentMeta">${escapeHtml(getStudentMeta(target.student))} · ${escapeHtml(target.labels.join(' · '))}</span></span>
+        <span class="pcRowActions"><span class="${statusBadgeClass(target.status)}">${statusText(target.status)}</span></span>
+      </button>`;
+    }
+
+    function selectConsultationTarget(key) {
+      pcState.selectedConsultKey = key;
+      const target = pcState.consultationTargets.find(t => t.key === key);
+      pcState.selectedSummary = target || null;
+      renderConsultationList();
+      renderSidePanel();
+    }
+
+    function renderSidePanel() {
+      const panel = document.getElementById('pcSidePanel');
+      const target = pcState.selectedSummary;
+      if (!target) {
+        panel.innerHTML = `<div class="pcSideEmpty">상담 예정 학생을 선택하면<br>저장된 종합 피드백이 여기에 표시됩니다.</div>`;
+        return;
+      }
+      const summary = target.summary;
+      if (target.status !== 'ready' || !summary) {
+        const guide = target.status === 'insufficient' ? '최근 기간 안에 저장된 피드백이 부족합니다.' : target.status === 'error' ? `자동 생성 오류: ${target.error || ''}` : '상담용 종합 피드백을 준비하고 있습니다.';
+        panel.innerHTML = `<div class="pcSummaryTitle">${escapeHtml(target.student.name)}</div><div class="pcSummaryMeta">${escapeHtml(target.months)}개월 상담 피드백</div><div class="pcPlaceholder">${escapeHtml(guide)}</div>`;
+        return;
+      }
+      const content = String(summary.content || '').trim();
+      panel.innerHTML = `<div class="pcSummaryTitle">${escapeHtml(target.student.name)}</div>
+        <div class="pcSummaryMeta">${escapeHtml(target.months)}개월 상담 피드백 · ${escapeHtml(formatDate(summary.date || summary.created_at))}</div>
+        <div class="pcSummaryBox">${escapeHtml(content)}</div>
+        <div class="pcPanelActions"><button class="pcSmallBtn primary" onclick="openA4Summary()">A4 보기</button><button class="pcSmallBtn" onclick="copySelectedSummary()">복사</button></div>`;
+    }
+
+    function renderAttendanceList() {
+      const wrap = document.getElementById('pcAttendanceList');
+      const students = pcState.students.filter(isActiveStudent).filter(passesFilters);
+      document.getElementById('pcAttendanceBadge').textContent = students.length;
+      wrap.innerHTML = students.map(student => `<button class="pcStudentRow" onclick="showToast('${escapeHtml(student.name)} 출석 상세는 다음 단계에서 연결합니다.')"><span class="pcStudentLeft"><span class="pcStudentName">${escapeHtml(student.name)}</span><span class="pcStudentMeta">${escapeHtml(getStudentMeta(student))}</span></span><span class="pcBadge">재원</span></button>`).join('') || `<div class="pcPlaceholder">표시할 학생이 없습니다.</div>`;
+    }
+
+    function renderObservationList() {
+      const wrap = document.getElementById('pcObservationList');
+      const rows = [...pcState.feedbacks, ...pcState.failFeedbacks]
+        .filter(row => {
+          const name = String(row.student_name || '').toLowerCase();
+          const q = pcState.search.trim().toLowerCase();
+          return !q || name.includes(q);
+        })
+        .sort((a, b) => (rowDate(b).getTime() || 0) - (rowDate(a).getTime() || 0))
+        .slice(0, 80);
+      document.getElementById('pcObservationBadge').textContent = rows.length;
+      wrap.innerHTML = rows.map(row => {
+        const text = String(row.content || row.feedback || row.text || '').trim();
+        return `<div class="pcRecordItem"><div class="pcRecordTop"><div class="pcRecordName">${escapeHtml(row.student_name || '이름 없음')}</div><div class="pcRecordDate">${escapeHtml(formatDate(row.created_at || row.date || row.updated_at))}</div></div><div class="pcRecordText">${escapeHtml(text)}</div></div>`;
+      }).join('') || `<div class="pcPlaceholder">저장된 관찰 기록이 없습니다.</div>`;
+    }
+
+    function switchPcPage(page) {
+      pcState.page = page;
+      document.querySelectorAll('.pcNavBtn').forEach(btn => btn.classList.toggle('active', btn.dataset.page === page));
+      document.querySelectorAll('.pcPage').forEach(el => el.classList.remove('active'));
+      document.getElementById('pcPage' + page.charAt(0).toUpperCase() + page.slice(1))?.classList.add('active');
+      const titleMap = { dashboard: ['학원 관리', '상담 예정, 종합 피드백, 재원생 흐름을 한 화면에서 확인합니다.'], attendance: ['출석부', '초등부와 유치부 출석 현황을 PC 화면에서 넓게 확인합니다.'], observation: ['관찰노트', '저장된 관찰 기록과 수업 피드백을 검색합니다.'], minute: ['1분 피드백', 'PC 전용 피드백 작성 화면을 준비합니다.'] };
+      document.getElementById('pcPageTitle').textContent = titleMap[page]?.[0] || '';
+      document.getElementById('pcPageSub').textContent = titleMap[page]?.[1] || '';
+      document.getElementById('pcMainGrid').classList.toggle('pcMainOnly', page !== 'dashboard');
+      document.getElementById('pcSidePanel').style.display = page === 'dashboard' ? 'block' : 'none';
+      renderAllPc();
+    }
+
+    function setPcTypeFilter(type) {
+      pcState.typeFilter = type;
+      document.querySelectorAll('.pcFilterBtn[data-filter]').forEach(btn => btn.classList.toggle('active', btn.dataset.filter === type));
+      renderAllPc();
+    }
+
+    function setPcDayFilter(day) {
+      pcState.dayFilter = pcState.dayFilter === day ? '' : day;
+      document.querySelectorAll('.pcFilterBtn[data-day]').forEach(btn => btn.classList.toggle('active', pcState.dayFilter === btn.dataset.day));
+      renderAllPc();
+    }
+
+    function handlePcSearchInput() {
+      pcState.search = document.getElementById('pcSearchInput')?.value || '';
+      renderAllPc();
+    }
+
+    function openA4Summary() {
+      const target = pcState.selectedSummary;
+      const summary = target?.summary;
+      if (!target || !summary) return;
+      const content = String(summary.content || '').trim();
+      const sheet = document.getElementById('pcA4Sheet');
+      sheet.innerHTML = `<div class="pcA4Brand">VIVIZAC</div><div class="pcA4Title">${escapeHtml(target.student.name)} 상담 피드백</div><div class="pcA4Meta">${escapeHtml(target.student.type === 'kinder' ? '유치부' : '초등부')} · ${escapeHtml(target.months)}개월 상담 · ${escapeHtml(formatDate(summary.date || summary.created_at))}</div><div class="pcA4Content">${escapeHtml(content)}</div>`;
+      document.getElementById('pcA4Overlay').classList.add('open');
+    }
+
+    function closeA4Overlay(event, force) {
+      if (force || event.target.id === 'pcA4Overlay') document.getElementById('pcA4Overlay').classList.remove('open');
+    }
+
+    async function copySelectedSummary() {
+      const content = String(pcState.selectedSummary?.summary?.content || '').trim();
+      if (!content) return;
+      await navigator.clipboard.writeText(content).catch(() => {});
+      showToast('상담 피드백을 복사했습니다.');
+    }
+
+    let toastTimer = null;
+    function showToast(message) {
+      const toast = document.getElementById('pcToast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (isPcOwnerLoggedIn()) bootPcApp();
+      document.getElementById('pcOwnerPasswordInput')?.addEventListener('keydown', event => {
+        if (event.key === 'Enter') pcOwnerLogin();
+      });
+    });
+  </script>
+</body>
+</html>
