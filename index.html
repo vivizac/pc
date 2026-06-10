@@ -793,6 +793,165 @@
       font-weight: 380;
     }
 
+
+    .pcApp.pcMinutePage .pcContentShell,
+    .pcApp.pcMinutePage .pcTopbar,
+    .pcApp.pcMinutePage .pcMainGrid {
+      background: #fff;
+    }
+
+    .pcApp.pcMinutePage .pcTopbar {
+      backdrop-filter: none;
+      border-bottom-color: #f0f0f2;
+    }
+
+    .pcMinuteQuestionGuide {
+      display: none;
+      margin: 0 2px 9px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 12px 14px;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.045);
+    }
+
+    .pcMinuteQuestionGuide.show { display: block; }
+
+    .pcMinuteQuestionTitle {
+      color: #17181d;
+      font-size: 12.5px;
+      font-weight: 620;
+      margin-bottom: 8px;
+    }
+
+    .pcMinuteQuestionList {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .pcMinuteQuestionList li {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      color: #686970;
+      font-size: 12.5px;
+      line-height: 1.45;
+      font-weight: 400;
+    }
+
+    .pcMinuteQuestionIcon {
+      width: 14px;
+      height: 14px;
+      flex: 0 0 auto;
+      margin-top: 2px;
+      stroke: var(--blue);
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .pcArchiveOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 120;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+      background: rgba(16,17,20,0.24);
+    }
+
+    .pcArchivePanel {
+      width: min(720px, calc(100vw - 80px));
+      max-height: min(720px, calc(100vh - 80px));
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.16);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .pcArchiveHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .pcArchiveTitle {
+      font-size: 17px;
+      font-weight: 650;
+      color: #15161b;
+    }
+
+    .pcArchiveClose {
+      width: 34px;
+      height: 34px;
+      border: 0;
+      border-radius: 50%;
+      background: #f3f4f6;
+      color: #55565d;
+      font-size: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pcArchiveList {
+      padding: 18px 22px 22px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .pcArchiveItem {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 20px;
+      padding: 14px 15px;
+    }
+
+    .pcArchiveItemTop {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .pcArchiveItemName {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #191a1f;
+    }
+
+    .pcArchiveItemDate {
+      font-size: 12px;
+      color: #9a9ba1;
+      font-weight: 400;
+      flex: 0 0 auto;
+    }
+
+    .pcArchiveItemText {
+      color: #55565d;
+      font-size: 13px;
+      line-height: 1.6;
+      font-weight: 380;
+      max-height: 120px;
+      overflow: hidden;
+      white-space: pre-wrap;
+    }
+
     .pcChatBubble {
       max-width: 78%;
       border-radius: 22px;
@@ -1307,6 +1466,210 @@
       to { opacity: 1; transform: translate(-50%, -50%); }
     }
 
+
+    .pcApp.pcObservationPage .pcContentShell,
+    .pcApp.pcObservationPage .pcTopbar,
+    .pcApp.pcObservationPage .pcMainGrid {
+      background: #fff;
+    }
+
+    .pcApp.pcObservationPage .pcTopbar {
+      backdrop-filter: none;
+      border-bottom-color: #f0f0f2;
+    }
+
+    .pcObservationNoteShell {
+      width: min(820px, calc(100vw - var(--sidebar-w) - 96px));
+      min-height: calc(100vh - 120px);
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+    }
+
+    .pcObservationNoteHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      padding: 6px 2px 18px;
+      border-bottom: 1px solid #f0f0f2;
+      margin-bottom: 16px;
+    }
+
+    .pcMemoNotebook {
+      flex: 1 1 auto;
+      min-height: 420px;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: #15161b;
+      font-size: 15px;
+      line-height: 1.78;
+      font-weight: 380;
+      padding: 4px 2px 18px;
+      white-space: pre-wrap;
+    }
+
+    .pcMemoNotebook:empty::before {
+      content: attr(data-placeholder);
+      color: #b6b7bd;
+    }
+
+    .pcNotebookResultArea {
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+
+    .pcObservationActionBar {
+      margin: 12px auto 0;
+      width: min(760px, 100%);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.08);
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .pcUtilityOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 150;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+      background: rgba(16,17,20,0.24);
+    }
+
+    .pcUtilityPanel {
+      width: min(560px, calc(100vw - 60px));
+      max-height: min(720px, calc(100vh - 80px));
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.16);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pcUtilityHeader {
+      height: 62px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .pcUtilityTitle { font-size: 17px; font-weight: 650; }
+
+    .pcUtilityClose {
+      width: 36px;
+      height: 36px;
+      border: 0;
+      border-radius: 50%;
+      background: #f5f6f8;
+      color: #55565d;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .pcUtilityBody {
+      padding: 20px;
+      overflow: auto;
+    }
+
+    .pcQuestionGroups,
+    .pcSortOptionList,
+    .pcSettingsPanelBody,
+    .pcAttendanceDetail {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .pcQuestionGroup {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: #fbfbfc;
+    }
+
+    .pcQuestionGroupTitle {
+      font-size: 13px;
+      font-weight: 650;
+      color: #111;
+      margin-bottom: 10px;
+    }
+
+    .pcQuestionInsertBtn,
+    .pcSortOptionBtn,
+    .pcAttendanceStatusBtn {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: #fff;
+      color: #4f5057;
+      font-size: 13px;
+      font-weight: 430;
+      text-align: left;
+      padding: 10px 12px;
+      margin-top: 7px;
+    }
+
+    .pcQuestionInsertBtn:hover,
+    .pcSortOptionBtn:hover,
+    .pcAttendanceStatusBtn:hover,
+    .pcSortOptionBtn.active,
+    .pcAttendanceStatusBtn.active {
+      border-color: rgba(24,135,255,0.28);
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .pcSortOptionBtn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 0;
+      font-weight: 520;
+    }
+
+    .pcAttendanceStudentLine {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fbfbfc;
+    }
+
+    .pcAttendanceStudentName { font-size: 15px; font-weight: 600; color: #111; }
+    .pcAttendanceStudentMeta, .pcAttendanceDate { font-size: 12px; color: var(--muted); font-weight: 400; }
+    .pcAttendanceStatusGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .pcAttendanceStatusBtn { text-align: center; margin-top: 0; }
+
+    .pcSettingsRow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 42px;
+      border-bottom: 1px solid #f0f0f2;
+      color: #77787f;
+      font-size: 13px;
+    }
+
+    .pcSettingsRow strong { color: #111; font-weight: 620; }
+    .pcSettingsActions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+
     @media print {
       body * { visibility: hidden; }
       .pcA4Sheet, .pcA4Sheet * { visibility: visible; }
@@ -1360,10 +1723,10 @@
       <div class="pcSidebarContext" id="pcSidebarContext"></div>
 
       <div class="pcSidebarBottom">
-        <button class="pcCircleBtn" title="신규 등록은 모바일 앱 원생관리에서 우선 사용" onclick="showToast('PC 등록 기능은 다음 단계에서 연결합니다.')">
+        <button class="pcCircleBtn" title="학생 등록" onclick="openPcStudentCreate(pcState.page === 'minute' ? 'kinder' : 'elementary')">
           <svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
         </button>
-        <button class="pcCircleBtn" title="설정" onclick="showToast('PC 설정 화면은 다음 단계에서 분리합니다.')">
+        <button class="pcCircleBtn" title="설정" onclick="openPcSettingsPanel()">
           <svg viewBox="0 0 24 24"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path><circle cx="8" cy="7" r="1.8"></circle><circle cx="15" cy="12" r="1.8"></circle><circle cx="10" cy="17" r="1.8"></circle></svg>
         </button>
       </div>
@@ -1407,7 +1770,7 @@
               <div class="pcCardHead">
                 <div>
                   <div class="pcCardTitle">출석부</div>
-                  <div class="pcCardSub">PC 1차 버전은 학생 현황 확인 중심입니다. 출결 체크 기능은 다음 단계에서 연결합니다.</div>
+                  <div class="pcCardSub">학생 이름을 누르면 오늘 출석 상태와 학생 정보를 확인합니다.</div>
                 </div>
                 <span class="pcBadge" id="pcAttendanceBadge">0</span>
               </div>
@@ -1533,11 +1896,25 @@
       selectedObservationStudentId: '',
       selectedMinuteStudentId: '',
       minuteMessages: [],
+      minuteDraft: '',
       selectedMinuteKeywords: [],
-      minutePhotoPreviews: []
+      selectedMinuteGuideKey: '',
+      minutePhotoPreviews: [],
+      studentSort: { elementary: 'name', kinder: 'name' }
     };
 
     const PC_DEFAULT_CONSULT_RULES = [1, 3, 6, 12];
+
+    const pcMinuteKeywordQuestions = {
+      material: { title:'재료 탐색', questions:['아이가 어떤 재료에 관심을 보였나요?', '재료를 어떻게 사용해 보았나요?', '새로운 표현으로 이어진 부분이 있었나요?'] },
+      thought: { title:'생각 표현', questions:['아이가 직접 말한 생각은 무엇이었나요?', '그 생각이 그림에서 어떻게 표현되었나요?', '특별히 인상 깊었던 말은 무엇인가요?'] },
+      confidence: { title:'자신감', questions:['아이가 스스로 해보려 한 장면은 무엇이었나요?', '완성 후 표정이나 말은 어땠나요?', '이전보다 자신감이 보인 부분은 무엇인가요?'] },
+      help: { title:'도움 요청', questions:['아이가 어떤 순간에 도움을 요청했나요?', '도움을 받은 뒤 다시 시도했나요?', '그 과정에서 성장으로 보인 부분은 무엇인가요?'] },
+      transition: { title:'망설임→전환', questions:['아이가 처음 망설인 장면은 무엇이었나요?', '어떤 도움을 받고 다시 시도했나요?', '다시 시도한 뒤 모습은 어땠나요?'] },
+      joy: { title:'즐겁게 참여', questions:['아이가 즐거워한 장면은 언제였나요?', '웃거나 말로 표현한 반응이 있었나요?', '활동에 몰입한 모습은 어땠나요?'] },
+      friend: { title:'친구와 협력', questions:['친구와 어떤 상호작용이 있었나요?', '양보하거나 도와준 장면이 있었나요?', '협력 후 아이의 반응은 어땠나요?'] },
+      focus: { title:'집중', questions:['아이가 집중한 장면은 무엇이었나요?', '얼마나 오래 이어가려 했나요?', '집중이 표현으로 이어진 부분은 무엇인가요?'] }
+    };
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -1984,36 +2361,25 @@
       if (!wrap) return;
       const student = getSelectedObservationStudent();
       if (!student) {
-        wrap.innerHTML = `<div class="pcWorkspaceShell"><div class="pcPlaceholder">왼쪽 초등부 명단에서 학생을 선택해 주세요.</div></div>`;
+        wrap.innerHTML = `<div class="pcObservationNoteShell"><div class="pcPlaceholder">왼쪽 초등부 명단에서 학생을 선택해 주세요.</div></div>`;
         return;
       }
       const latest = getLatestFeedbackForStudent(student);
       wrap.innerHTML = `
-        <div class="pcWorkspaceShell">
-          <div class="pcWorkspaceHeader">
+        <div class="pcObservationNoteShell">
+          <div class="pcObservationNoteHeader">
             <div>
-              <div class="pcWorkspaceEyebrow">초등부 관찰노트</div>
-              <div class="pcWorkspaceTitle">수업 내용을 기록해 주세요.</div>
-              <div class="pcWorkspaceSub">앱의 관찰노트와 같은 기준으로 수업 장면을 기록하고 초등부 피드백을 생성합니다.</div>
+              <div class="pcWorkspaceEyebrow">관찰노트</div>
+              <div class="pcWorkspaceTitle">${escapeHtml(student.name)}</div>
+              <div class="pcMemoStudentMeta">${escapeHtml(getStudentMeta(student) || '초등부')}</div>
             </div>
+            <div class="pcMemoUpdatedDate">${latest ? `최근 수정 ${escapeHtml(formatDate(latest.created_at || latest.date || latest.updated_at))}` : '최근 수정 없음'}</div>
           </div>
-          <div class="pcWorkspaceCard">
-            <div class="pcMemoMetaTop">
-              <div class="pcMemoStudentBlock">
-                ${renderPcLeadIcon(student)}
-                <div style="min-width:0;">
-                  <div class="pcMemoStudentName">${escapeHtml(student.name)}</div>
-                  <div class="pcMemoStudentMeta">${escapeHtml(getStudentMeta(student) || '초등부')}</div>
-                </div>
-              </div>
-              <div class="pcMemoUpdatedDate">${latest ? `최근 수정 ${escapeHtml(formatDate(latest.created_at || latest.date || latest.updated_at))}` : '최근 수정 없음'}</div>
-            </div>
-            <textarea id="pcMemoEditor" class="pcMemoEditor" placeholder="학생의 수업 내용을 기록해 주세요."></textarea>
-            <div id="pcMemoFeedbackResultArea" class="pcMemoResultArea"></div>
-          </div>
-          <div class="pcBottomComposer">
-            <button type="button" class="pcComposerIconBtn" onclick="showToast('초등부 분석 설문은 다음 단계에서 앱 구조 그대로 연결합니다.')" aria-label="분석 설문"><svg viewBox="0 0 24 24"><rect x="5.2" y="4.6" width="13.6" height="14.8" rx="3"></rect><path d="M8.4 9h7.2"></path><path d="M8.4 12.4h7.2"></path><path d="M8.4 15.8h4.4"></path></svg></button>
-            <div class="pcComposerInputLabel">${escapeHtml(student.name)} 수업 기록 작성 중</div>
+          <div id="pcMemoEditor" class="pcMemoNotebook" contenteditable="true" data-placeholder="학생의 수업 내용을 바로 기록해 주세요."></div>
+          <div id="pcMemoFeedbackResultArea" class="pcMemoResultArea pcNotebookResultArea"></div>
+          <div class="pcObservationActionBar">
+            <button type="button" class="pcComposerIconBtn" onclick="openPcObservationSurvey()" aria-label="분석 설문"><svg viewBox="0 0 24 24"><rect x="5.2" y="4.6" width="13.6" height="14.8" rx="3"></rect><path d="M8.4 9h7.2"></path><path d="M8.4 12.4h7.2"></path><path d="M8.4 15.8h4.4"></path></svg></button>
+            <div class="pcComposerInputLabel">${escapeHtml(student.name)} 수업 기록</div>
             <button id="pcMemoFeedbackBtn" type="button" class="pcComposerSendBtn" onclick="submitPcMemoFeedback()" aria-label="피드백 생성"><svg viewBox="0 0 24 24"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg></button>
           </div>
         </div>`;
@@ -2050,12 +2416,13 @@
             <div class="pcKeywordScroller">
               ${renderPcKeywordButtons()}
             </div>
+            ${renderPcMinuteQuestionGuide()}
             <div class="pcMinuteComposer">
               ${renderPcMinutePhotoPreviews()}
               <input id="pcMinutePhotoInput" type="file" accept="image/*" multiple hidden onchange="handlePcMinutePhotoChange(event)">
               <div class="pcMinuteInputBar">
                 <button type="button" class="pcComposerIconBtn" onclick="document.getElementById('pcMinutePhotoInput')?.click()" aria-label="사진 첨부"><svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button>
-                <textarea id="pcMinuteInput" class="pcMinuteInput" rows="1" placeholder="메시지 입력"></textarea>
+                <textarea id="pcMinuteInput" class="pcMinuteInput" rows="1" placeholder="메시지 입력" oninput="handlePcMinuteInput(event)">${escapeHtml(pcState.minuteDraft || '')}</textarea>
                 <button id="pcMinuteSendBtn" type="button" class="pcComposerSendBtn" onclick="submitPcMinuteFeedback()" aria-label="피드백 전송"><svg viewBox="0 0 24 24"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg></button>
               </div>
             </div>
@@ -2072,6 +2439,18 @@
       ];
       const selected = new Set(pcState.selectedMinuteKeywords || []);
       return keywords.map(([key, label]) => `<button type="button" class="pcKeywordBtn ${selected.has(key) ? 'active' : ''}" onclick="togglePcMinuteKeyword('${key}')">${label}</button>`).join('');
+    }
+
+    function renderPcMinuteQuestionGuide() {
+      const key = pcState.selectedMinuteGuideKey || '';
+      const data = pcMinuteKeywordQuestions[key];
+      if (!data) return `<div class="pcMinuteQuestionGuide" aria-hidden="true"></div>`;
+      const icon = '<svg class="pcMinuteQuestionIcon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"></circle><path d="M15 15l4 4"></path></svg>';
+      return `<div class="pcMinuteQuestionGuide show"><div class="pcMinuteQuestionTitle">${escapeHtml(data.title)}</div><ul class="pcMinuteQuestionList">${data.questions.map(q => `<li>${icon}<span>${escapeHtml(q)}</span></li>`).join('')}</ul></div>`;
+    }
+
+    function handlePcMinuteInput(event) {
+      pcState.minuteDraft = String(event?.target?.value || '');
     }
 
     function handlePcMinutePhotoChange(event) {
@@ -2094,14 +2473,11 @@
     }
 
     function togglePcMinuteKeyword(key) {
-      const arr = pcState.selectedMinuteKeywords || [];
-      const idx = arr.indexOf(key);
-      if (idx >= 0) arr.splice(idx, 1);
-      else arr.push(key);
-      pcState.selectedMinuteKeywords = arr;
+      const isSame = pcState.selectedMinuteGuideKey === key;
+      pcState.selectedMinuteGuideKey = isSame ? '' : key;
+      pcState.selectedMinuteKeywords = isSame ? [] : [key];
       const input = document.getElementById('pcMinuteInput');
-      const labelMap = { material:'재료 탐색', thought:'생각 표현', confidence:'자신감', help:'도움 요청', transition:'망설임→전환', joy:'즐겁게 참여', friend:'친구와 협력', focus:'집중' };
-      if (input && idx < 0) input.value = `${input.value}${input.value.trim() ? '\n' : ''}#${labelMap[key] || key} `;
+      if (input) pcState.minuteDraft = String(input.value || '');
       renderMinuteWorkspace();
     }
 
@@ -2231,11 +2607,47 @@
       return saved;
     }
 
+    function getPcMemoText() {
+      const el = document.getElementById('pcMemoEditor');
+      if (!el) return '';
+      if ('value' in el) return String(el.value || '');
+      return String(el.innerText || el.textContent || '');
+    }
+
+    function appendPcMemoText(text) {
+      const el = document.getElementById('pcMemoEditor');
+      if (!el) return;
+      const addition = String(text || '').trim();
+      if (!addition) return;
+      const current = getPcMemoText().trimEnd();
+      const next = current ? `${current}
+${addition}` : addition;
+      if ('value' in el) el.value = next;
+      else el.innerText = next;
+      el.focus();
+    }
+
+    function openPcObservationSurvey() {
+      const student = getSelectedObservationStudent();
+      const title = student ? `${student.name} 분석 설문` : '초등부 분석 설문';
+      const questions = [
+        ['수업 태도', ['오늘 아이가 스스로 시작한 부분은 무엇이었나요?', '집중이 길게 이어진 장면은 언제였나요?', '망설임이 보였던 부분은 무엇이었나요?']],
+        ['표현 과정', ['형태를 잡을 때 어려워한 부분은 무엇이었나요?', '색을 선택할 때 아이의 기준이 보였나요?', '자기 생각을 그림으로 바꾼 장면은 무엇인가요?']],
+        ['지도 방향', ['다음 수업에서 더 확장해 볼 부분은 무엇인가요?', '반복해서 훈련해야 할 표현 습관은 무엇인가요?', '칭찬으로 강화해야 할 장점은 무엇인가요?']]
+      ];
+      const body = `<div class="pcQuestionGroups">${questions.map(([group, items]) => `
+        <div class="pcQuestionGroup">
+          <div class="pcQuestionGroupTitle">${escapeHtml(group)}</div>
+          ${items.map(item => `<button type="button" class="pcQuestionInsertBtn" onclick="appendPcMemoText('${escapeHtml(item)}'); closePcUtilityModal();">${escapeHtml(item)}</button>`).join('')}
+        </div>`).join('')}</div>`;
+      openPcUtilityModal(title, body);
+    }
+
     async function submitPcMemoFeedback() {
       const student = getSelectedObservationStudent();
       const input = document.getElementById('pcMemoEditor');
       const btn = document.getElementById('pcMemoFeedbackBtn');
-      const memo = String(input?.value || '').trim();
+      const memo = getPcMemoText().trim();
       if (!student) return alert('왼쪽 초등부 명단에서 학생을 선택해 주세요.');
       if (!memo) return alert('수업 내용을 입력해 주세요.');
       try {
@@ -2269,11 +2681,15 @@
 
     function insertPcMinuteStudentName(name) {
       const input = document.getElementById('pcMinuteInput');
-      if (!input) return;
-      const current = String(input.value || '');
+      const current = input ? String(input.value || '') : String(pcState.minuteDraft || '');
       const lines = current.split('\n');
       const rest = lines.length > 1 ? lines.slice(1).join('\n').trimStart() : '';
-      input.value = rest ? `${name}\n${rest}` : `${name}\n`;
+      pcState.minuteDraft = rest ? `${name}\n${rest}` : `${name}\n`;
+      if (!input) {
+        renderMinuteWorkspace();
+        return;
+      }
+      input.value = pcState.minuteDraft;
       input.focus();
       input.selectionStart = input.selectionEnd = input.value.length;
     }
@@ -2290,7 +2706,8 @@
     async function submitPcMinuteFeedback() {
       const input = document.getElementById('pcMinuteInput');
       const btn = document.getElementById('pcMinuteSendBtn');
-      const memo = String(input?.value || '').trim();
+      const memo = String(input?.value || pcState.minuteDraft || '').trim();
+      pcState.minuteDraft = String(input?.value || pcState.minuteDraft || '');
       const student = resolvePcMinuteStudentFromMemo(memo);
       if (!memo) return alert('관찰 내용을 입력해 주세요.');
       if (!student) return alert('첫 줄에 유치부 학생 이름을 입력해 주세요.');
@@ -2304,7 +2721,9 @@
         pcState.minuteMessages.push({ role: 'assistant', content: reply });
         await savePcGeneratedFeedback(student, reply, 'class');
         pcState.selectedMinuteKeywords = [];
+        pcState.selectedMinuteGuideKey = '';
         pcState.minutePhotoPreviews = [];
+        pcState.minuteDraft = '';
         renderMinuteWorkspace();
         showToast('1분 피드백을 생성하고 저장했습니다.');
       } catch (err) {
@@ -2365,7 +2784,7 @@
         .filter(isActiveStudent)
         .filter(student => student.type === type)
         .filter(student => !q || String(student.name || '').toLowerCase().includes(q))
-        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ko'));
+        .sort((a, b) => comparePcStudents(a, b, pcState.studentSort?.[type] || 'name'));
       const selectedKey = type === 'kinder' ? pcState.selectedMinuteStudentId : pcState.selectedObservationStudentId;
       const rows = students.map(student => {
         const key = String(student.id || student.name);
@@ -2543,8 +2962,101 @@
       }
     }
 
+    function comparePcStudents(a, b, sortKey) {
+      const byName = () => String(a.name || '').localeCompare(String(b.name || ''), 'ko');
+      if (sortKey === 'enrolled') {
+        const ad = getEnrollmentDate(a)?.getTime() || 0;
+        const bd = getEnrollmentDate(b)?.getTime() || 0;
+        return bd - ad || byName();
+      }
+      if (sortKey === 'day') {
+        return String(a.lesson_day || a.day || '').localeCompare(String(b.lesson_day || b.day || ''), 'ko') || byName();
+      }
+      if (sortKey === 'teacher') {
+        return String(a.teacher || a.homeroom_teacher || '').localeCompare(String(b.teacher || b.homeroom_teacher || ''), 'ko') || byName();
+      }
+      return byName();
+    }
+
     function openPcStudentSort(type) {
-      showToast(`${type === 'kinder' ? '유치부' : '초등부'} 정렬은 다음 단계에서 연결합니다.`);
+      const label = type === 'kinder' ? '유치부' : '초등부';
+      const current = pcState.studentSort?.[type] || 'name';
+      const options = [
+        ['name', '이름순'],
+        ['enrolled', '최근 등록순'],
+        ['day', '요일순'],
+        ['teacher', '담임순']
+      ];
+      const body = `<div class="pcSortOptionList">${options.map(([key, text]) => `<button type="button" class="pcSortOptionBtn ${current === key ? 'active' : ''}" onclick="setPcStudentSort('${escapeHtml(type)}','${escapeHtml(key)}')"><span>${escapeHtml(text)}</span><span>${current === key ? '선택됨' : ''}</span></button>`).join('')}</div>`;
+      openPcUtilityModal(`${label} 정렬`, body);
+    }
+
+    function setPcStudentSort(type, key) {
+      pcState.studentSort = pcState.studentSort || { elementary: 'name', kinder: 'name' };
+      pcState.studentSort[type] = key;
+      renderPcSidebarContext();
+      closePcUtilityModal();
+      showToast('정렬 기준을 변경했습니다.');
+    }
+
+    function getPcTodayKey() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    function getPcAttendanceStorageKey(studentKey) {
+      return `vivicot_pc_attendance_${getPcAcademyId()}_${getPcTodayKey()}_${studentKey}`;
+    }
+
+    function getPcAttendanceStatus(studentKey) {
+      return localStorage.getItem(getPcAttendanceStorageKey(studentKey)) || '';
+    }
+
+    function setPcAttendanceStatus(studentKey, status) {
+      const key = getPcAttendanceStorageKey(studentKey);
+      if (status) localStorage.setItem(key, status);
+      else localStorage.removeItem(key);
+      renderAttendanceList();
+      openPcAttendanceDetail(studentKey);
+    }
+
+    function openPcAttendanceDetail(studentKey) {
+      const student = pcState.students.find(s => String(s.id || s.name) === String(studentKey));
+      if (!student) return showToast('학생 정보를 찾지 못했습니다.');
+      const status = getPcAttendanceStatus(studentKey);
+      const options = [['present','출석'], ['absent','결석'], ['makeup','보강'], ['','미체크']];
+      const body = `<div class="pcAttendanceDetail">
+        <div class="pcAttendanceStudentLine">${renderPcLeadIcon(student)}<div><div class="pcAttendanceStudentName">${escapeHtml(student.name)}</div><div class="pcAttendanceStudentMeta">${escapeHtml(getStudentMeta(student) || '')}</div></div></div>
+        <div class="pcAttendanceDate">${escapeHtml(getPcTodayKey())}</div>
+        <div class="pcAttendanceStatusGrid">${options.map(([key, label]) => `<button type="button" class="pcAttendanceStatusBtn ${status === key ? 'active' : ''}" onclick="setPcAttendanceStatus('${escapeHtml(studentKey)}','${escapeHtml(key)}')">${escapeHtml(label)}</button>`).join('')}</div>
+      </div>`;
+      openPcUtilityModal('출석 상세', body);
+    }
+
+    function openPcSettingsPanel() {
+      const active = pcState.students.filter(isActiveStudent);
+      const body = `<div class="pcSettingsPanelBody">
+        <div class="pcSettingsRow"><span>학원</span><strong>${escapeHtml(getPcAcademyName() || '-')}</strong></div>
+        <div class="pcSettingsRow"><span>학원 ID</span><strong>${escapeHtml(getPcAcademyId() || '-')}</strong></div>
+        <div class="pcSettingsRow"><span>권한</span><strong>${escapeHtml(getPcRole())}</strong></div>
+        <div class="pcSettingsRow"><span>재원생</span><strong>${active.length}명</strong></div>
+        <div class="pcSettingsActions"><button type="button" class="pcSmallBtn" onclick="loadPcData().then(renderAllPc).then(()=>showToast('데이터를 새로 불러왔습니다.'))">새로고침</button><button type="button" class="pcSmallBtn primary" onclick="pcLogout()">로그아웃</button></div>
+      </div>`;
+      openPcUtilityModal('PC 설정', body);
+    }
+
+    function openPcUtilityModal(title, bodyHtml) {
+      closePcUtilityModal();
+      const overlay = document.createElement('div');
+      overlay.id = 'pcUtilityOverlay';
+      overlay.className = 'pcUtilityOverlay';
+      overlay.onclick = (event) => { if (event.target === overlay) closePcUtilityModal(); };
+      overlay.innerHTML = `<div class="pcUtilityPanel" onclick="event.stopPropagation()"><div class="pcUtilityHeader"><div class="pcUtilityTitle">${escapeHtml(title)}</div><button type="button" class="pcUtilityClose" onclick="closePcUtilityModal()">×</button></div><div class="pcUtilityBody">${bodyHtml}</div></div>`;
+      document.body.appendChild(overlay);
+    }
+
+    function closePcUtilityModal() {
+      document.getElementById('pcUtilityOverlay')?.remove();
     }
 
     function renderCounts() {
@@ -2639,7 +3151,13 @@
       const wrap = document.getElementById('pcAttendanceList');
       const students = pcState.students.filter(isActiveStudent).filter(passesFilters);
       document.getElementById('pcAttendanceBadge').textContent = students.length;
-      wrap.innerHTML = students.map(student => `<button class="pcStudentRow" onclick="showToast('${escapeHtml(student.name)} 출석 상세는 다음 단계에서 연결합니다.')"><span class="pcStudentLeft">${renderPcLeadIcon(student)}<span class="pcStudentText"><span class="pcStudentName">${escapeHtml(student.name)}</span><span class="pcStudentMeta">${escapeHtml(getStudentMeta(student))}</span></span></span><span class="pcBadge">재원</span></button>`).join('') || `<div class="pcPlaceholder">표시할 학생이 없습니다.</div>`;
+      wrap.innerHTML = students.map(student => {
+        const key = String(student.id || student.name || '');
+        const status = getPcAttendanceStatus(key);
+        const statusText = status === 'present' ? '출석' : status === 'absent' ? '결석' : status === 'makeup' ? '보강' : '미체크';
+        const badgeClass = status === 'present' ? ' ready' : status === 'absent' ? ' danger' : status === 'makeup' ? ' warn' : '';
+        return `<button class="pcStudentRow" onclick="openPcAttendanceDetail('${escapeHtml(key)}')"><span class="pcStudentLeft">${renderPcLeadIcon(student)}<span class="pcStudentText"><span class="pcStudentName">${escapeHtml(student.name)}</span><span class="pcStudentMeta">${escapeHtml(getStudentMeta(student))}</span></span></span><span class="pcBadge${badgeClass}">${statusText}</span></button>`;
+      }).join('') || `<div class="pcPlaceholder">표시할 학생이 없습니다.</div>`;
     }
 
     function renderObservationList() {
@@ -2659,11 +3177,46 @@
       }).join('') || `<div class="pcPlaceholder">저장된 관찰 기록이 없습니다.</div>`;
     }
 
+
+    function getPcMinuteArchiveRows() {
+      return (pcState.feedbacks || [])
+        .filter(row => {
+          const type = String(row.feedback_type || row.type || '').toLowerCase();
+          const studentType = String(row.student_type || '').toLowerCase();
+          const name = String(row.student_name || '').trim();
+          const isKinderName = pcState.students.some(student => isActiveStudent(student) && student.type === 'kinder' && String(student.name || '').trim() === name);
+          return type === 'class' || studentType === 'kinder' || isKinderName;
+        })
+        .sort((a, b) => new Date(b.created_at || b.date || b.updated_at || 0).getTime() - new Date(a.created_at || a.date || a.updated_at || 0).getTime())
+        .slice(0, 80);
+    }
+
+    function openPcMinuteArchive() {
+      closePcMinuteArchive();
+      const rows = getPcMinuteArchiveRows();
+      const overlay = document.createElement('div');
+      overlay.id = 'pcMinuteArchiveOverlay';
+      overlay.className = 'pcArchiveOverlay';
+      overlay.onclick = event => {
+        if (event.target === overlay) closePcMinuteArchive();
+      };
+      const listHtml = rows.length ? rows.map(row => {
+        const text = String(row.content || row.feedback || row.text || '').trim();
+        return `<div class="pcArchiveItem"><div class="pcArchiveItemTop"><div class="pcArchiveItemName">${escapeHtml(row.student_name || '이름 없음')}</div><div class="pcArchiveItemDate">${escapeHtml(formatDate(row.created_at || row.date || row.updated_at))}</div></div><div class="pcArchiveItemText">${escapeHtml(text)}</div></div>`;
+      }).join('') : `<div class="pcPlaceholder" style="min-height:220px; font-size:13px;">저장된 1분 피드백이 없습니다.</div>`;
+      overlay.innerHTML = `<div class="pcArchivePanel" onclick="event.stopPropagation()"><div class="pcArchiveHeader"><div class="pcArchiveTitle">1분 피드백 보관함</div><button class="pcArchiveClose" type="button" onclick="closePcMinuteArchive()">×</button></div><div class="pcArchiveList">${listHtml}</div></div>`;
+      document.body.appendChild(overlay);
+    }
+
+    function closePcMinuteArchive() {
+      document.getElementById('pcMinuteArchiveOverlay')?.remove();
+    }
+
     function renderPcTopActions() {
       const wrap = document.getElementById('pcTopActions');
       if (!wrap) return;
       if (pcState.page === 'minute') {
-        wrap.innerHTML = `<button class="pcArchiveBtn" type="button" onclick="showToast('보관함은 다음 단계에서 연결합니다.')">보관</button>`;
+        wrap.innerHTML = `<button class="pcArchiveBtn" type="button" onclick="openPcMinuteArchive()">보관</button>`;
         return;
       }
       wrap.innerHTML = `<input class="pcSearch" id="pcSearchInput" placeholder="학생 검색" oninput="handlePcSearchInput()" />
@@ -2674,6 +3227,8 @@
 
     function switchPcPage(page) {
       pcState.page = page;
+      document.getElementById('pcApp')?.classList.toggle('pcMinutePage', page === 'minute');
+      document.getElementById('pcApp')?.classList.toggle('pcObservationPage', page === 'observation');
       document.querySelectorAll('.pcNavBtn').forEach(btn => btn.classList.toggle('active', btn.dataset.page === page));
       document.querySelectorAll('.pcPage').forEach(el => el.classList.remove('active'));
       document.getElementById('pcPage' + page.charAt(0).toUpperCase() + page.slice(1))?.classList.add('active');
