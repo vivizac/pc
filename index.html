@@ -255,7 +255,7 @@
       color: #2b2c32;
     }
 
-    .pcSidebarStudentRow:hover { background: #f6f7f9; }
+    .pcSidebarStudentRow:hover, .pcSidebarStudentRow.selected { background: #f6f7f9; }
 
     .pcSidebarStudentText { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 
@@ -542,6 +542,401 @@
     }
 
 
+
+
+    /* PC 전용: 앱 구조를 PC 폭에 맞춘 관찰노트 / 1분 피드백 작업영역 */
+    .pcWorkspaceShell {
+      width: min(820px, calc(100vw - var(--sidebar-w) - 96px));
+      min-height: calc(100vh - 146px);
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pcWorkspaceHeader {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 14px;
+    }
+
+    .pcWorkspaceEyebrow {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 460;
+      margin-bottom: 6px;
+    }
+
+    .pcWorkspaceTitle {
+      font-size: 22px;
+      line-height: 1.18;
+      font-weight: 650;
+      color: #111;
+    }
+
+    .pcWorkspaceSub {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      font-weight: 380;
+    }
+
+    .pcWorkspacePill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--line);
+      color: #595a61;
+      font-size: 12px;
+      font-weight: 520;
+      white-space: nowrap;
+    }
+
+    .pcWorkspaceCard {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+      min-height: 360px;
+    }
+
+    .pcMemoMetaTop {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .pcMemoStudentBlock {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .pcMemoStudentName {
+      font-size: 18px;
+      font-weight: 620;
+      color: #111;
+      line-height: 1.2;
+    }
+
+    .pcMemoStudentMeta {
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 380;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pcMemoUpdatedDate {
+      color: #b0b1b7;
+      font-size: 12px;
+      font-weight: 380;
+      white-space: nowrap;
+    }
+
+    .pcMemoEditor {
+      width: 100%;
+      min-height: 260px;
+      resize: vertical;
+      border: 0;
+      outline: none;
+      border-radius: 22px;
+      background: #f7f8fa;
+      padding: 18px;
+      color: #15161b;
+      font-size: 15px;
+      line-height: 1.7;
+      font-weight: 380;
+    }
+
+    .pcMemoEditor::placeholder,
+    .pcMinuteInput::placeholder { color: #b6b7bd; }
+
+    .pcMemoResultArea {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .pcFeedbackResultCard {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 22px;
+      padding: 17px;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.045);
+    }
+
+    .pcFeedbackResultLabel {
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 620;
+      margin-bottom: 10px;
+    }
+
+    .pcFeedbackResultText {
+      color: #303137;
+      font-size: 14px;
+      line-height: 1.72;
+      font-weight: 380;
+      white-space: pre-wrap;
+    }
+
+    .pcFeedbackResultActions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .pcBottomComposer {
+      margin: 16px auto 0;
+      width: min(760px, 100%);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.08);
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .pcComposerIconBtn,
+    .pcComposerSendBtn {
+      flex: 0 0 auto;
+      width: 38px;
+      height: 38px;
+      border: 0;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pcComposerIconBtn { background: #f5f6f8; color: #111; }
+    .pcComposerSendBtn { background: #111; color: #fff; }
+    .pcComposerSendBtn:disabled { background: #d9d9df; color: #fff; cursor: default; }
+
+    .pcComposerIconBtn svg,
+    .pcComposerSendBtn svg {
+      width: 19px;
+      height: 19px;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .pcComposerInputLabel {
+      flex: 1 1 auto;
+      min-width: 0;
+      color: #7c7d84;
+      font-size: 13px;
+      font-weight: 400;
+      padding-left: 4px;
+    }
+
+    .pcMinuteShell {
+      width: min(820px, calc(100vw - var(--sidebar-w) - 96px));
+      height: calc(100vh - 146px);
+      margin: 0 auto;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 560px;
+    }
+
+    .pcMinuteChatArea {
+      min-height: 0;
+      overflow: auto;
+      padding: 10px 2px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .pcMinuteEmpty {
+      height: 100%;
+      min-height: 300px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+      font-weight: 380;
+    }
+
+    .pcChatBubble {
+      max-width: 78%;
+      border-radius: 22px;
+      padding: 14px 16px;
+      font-size: 14px;
+      line-height: 1.65;
+      font-weight: 380;
+      white-space: pre-wrap;
+    }
+
+    .pcChatBubble.user {
+      align-self: flex-end;
+      background: #111;
+      color: #fff;
+      border-bottom-right-radius: 8px;
+    }
+
+    .pcChatBubble.assistant {
+      align-self: flex-start;
+      background: #fff;
+      color: #303137;
+      border: 1px solid var(--line);
+      border-bottom-left-radius: 8px;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.045);
+    }
+
+    .pcMinuteComposerWrap {
+      width: min(760px, 100%);
+      margin: 0 auto;
+    }
+
+    .pcKeywordScroller {
+      display: flex;
+      gap: 7px;
+      overflow-x: auto;
+      padding: 0 2px 9px;
+    }
+
+    .pcKeywordBtn {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #6f7077;
+      border-radius: 999px;
+      height: 31px;
+      padding: 0 11px;
+      font-size: 12px;
+      font-weight: 480;
+    }
+
+    .pcKeywordBtn.active {
+      border-color: rgba(24,135,255,0.28);
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .pcMinuteComposer {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.08);
+      padding: 12px;
+    }
+
+    .pcMinutePhotoPreviewRow {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 2px 4px 8px;
+    }
+
+    .pcMinutePhotoPreviewItem {
+      position: relative;
+      flex: 0 0 auto;
+      width: 54px;
+      height: 54px;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #f4f5f7;
+      border: 1px solid var(--line);
+    }
+
+    .pcMinutePhotoPreviewItem img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .pcMinutePhotoRemoveBtn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 18px;
+      height: 18px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(17,17,17,0.72);
+      color: #fff;
+      font-size: 13px;
+      line-height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .pcChatPhotoGrid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .pcChatPhotoGrid img {
+      width: 72px;
+      height: 72px;
+      object-fit: cover;
+      border-radius: 14px;
+      display: block;
+    }
+
+    .pcMinuteInput {
+      width: 100%;
+      min-height: 78px;
+      max-height: 180px;
+      resize: vertical;
+      border: 0;
+      outline: none;
+      background: transparent;
+      padding: 6px 7px;
+      color: #15161b;
+      font-size: 15px;
+      line-height: 1.55;
+      font-weight: 380;
+    }
+
+    .pcMinuteComposerBottom {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .pcSelectedStudentHint {
+      flex: 1 1 auto;
+      min-width: 0;
+      color: #8f9096;
+      font-size: 12px;
+      font-weight: 380;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .pcModalOverlay {
       position: fixed;
       inset: 0;
@@ -758,6 +1153,128 @@
     }
     .pcToast.show { opacity: 1; transform: translateY(0); }
 
+
+
+    /* 앱 버전과 동일한 피드백 생성 로딩 카드 */
+    .feedbackLoadingOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      background: transparent;
+    }
+    .feedbackLoadingCard {
+      width: min(320px, calc(100vw - 48px));
+      border-radius: 26px;
+      background: rgba(255,255,255,0.88);
+      border: 1px solid rgba(255,255,255,0.96);
+      box-shadow: 0 18px 48px rgba(0,0,0,0.075), 0 6px 18px rgba(0,0,0,0.04);
+      backdrop-filter: blur(22px) saturate(1.18);
+      -webkit-backdrop-filter: blur(22px) saturate(1.18);
+      padding: 22px 20px 18px;
+      text-align: left;
+    }
+    .feedbackLoadingKicker {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 10px;
+    }
+    .feedbackLoadingTitle {
+      font-size: 16px;
+      font-weight: 650;
+      color: #111;
+      line-height: 1.45;
+      margin-bottom: 8px;
+      min-height: 23px;
+    }
+    .feedbackLoadingText {
+      font-size: 14px;
+      color: #555;
+      line-height: 1.55;
+      min-height: 44px;
+      white-space: pre-wrap;
+    }
+    .feedbackLoadingCursor {
+      display: inline-block;
+      width: 1px;
+      height: 1em;
+      margin-left: 1px;
+      background: #111;
+      vertical-align: -2px;
+      animation: feedbackCursorBlink .8s steps(1) infinite;
+    }
+    @keyframes feedbackCursorBlink {
+      0%, 45% { opacity: 1; }
+      46%, 100% { opacity: 0; }
+    }
+    .feedbackLoadingDots {
+      display: flex;
+      gap: 5px;
+      margin-top: 14px;
+    }
+    .feedbackLoadingDots span {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #111;
+      opacity: .22;
+      animation: feedbackDotPulse 1.2s infinite ease-in-out;
+    }
+    .feedbackLoadingDots span:nth-child(2) { animation-delay: .16s; }
+    .feedbackLoadingDots span:nth-child(3) { animation-delay: .32s; }
+    @keyframes feedbackDotPulse {
+      0%, 100% { opacity: .18; transform: translateY(0); }
+      50% { opacity: .75; transform: translateY(-3px); }
+    }
+
+    /* 앱 버전과 동일한 첫 진입 VIVIZAC 로딩 화면 */
+    .vivicotBootScreen {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background: #ffffff;
+      z-index: 2147483000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition: opacity 0.72s ease, visibility 0s linear 0s;
+      -webkit-font-smoothing: antialiased;
+    }
+    .vivicotBootScreen.hide {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.72s ease, visibility 0s linear 0.72s;
+    }
+    .vivicotBootLogo {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 220px;
+      text-align: center;
+      font-family: 'Montserrat', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 17px;
+      font-weight: 500;
+      letter-spacing: 0.22em;
+      color: #111111;
+      line-height: 1;
+      opacity: 0;
+      transform: translate(-50%, calc(-50% + 2px));
+      animation: vivicotBootLogoCenterFadeIn .9s ease forwards;
+      will-change: opacity, transform;
+    }
+    @keyframes vivicotBootLogoCenterFadeIn {
+      from { opacity: 0; transform: translate(-50%, calc(-50% + 2px)); }
+      to { opacity: 1; transform: translate(-50%, -50%); }
+    }
+
     @media print {
       body * { visibility: hidden; }
       .pcA4Sheet, .pcA4Sheet * { visibility: visible; }
@@ -767,6 +1284,7 @@
   </style>
 </head>
 <body>
+  <div id="vivicotBootScreen" class="vivicotBootScreen" aria-hidden="true"><div class="vivicotBootLogo">VIVIZAC</div></div>
   <section class="pcLoginScreen" id="pcLoginScreen">
     <div class="pcLoginCard">
       <div class="pcLoginBrand">VIVIZAC</div>
@@ -866,28 +1384,11 @@
           </section>
 
           <section class="pcPage" id="pcPageObservation">
-            <div class="pcCard">
-              <div class="pcCardHead">
-                <div>
-                  <div class="pcCardTitle">관찰노트 기록</div>
-                  <div class="pcCardSub">저장된 수업 피드백과 관찰 기록을 최신순으로 확인합니다.</div>
-                </div>
-                <span class="pcBadge" id="pcObservationBadge">0</span>
-              </div>
-              <div class="pcList" id="pcObservationList"></div>
-            </div>
+            <div id="pcObservationWorkspace"></div>
           </section>
 
           <section class="pcPage" id="pcPageMinute">
-            <div class="pcCard">
-              <div class="pcCardHead">
-                <div>
-                  <div class="pcCardTitle">1분 피드백</div>
-                  <div class="pcCardSub">PC에서는 빠른 작성보다 피드백 확인과 상담자료 정리가 우선입니다.</div>
-                </div>
-              </div>
-              <div class="pcPlaceholder">1분 피드백 작성 화면은 모바일 UX와 다르게 설계해야 합니다.<br>다음 단계에서 PC 전용 입력창과 학생 선택 패널을 연결합니다.</div>
-            </div>
+            <div id="pcMinuteWorkspace"></div>
           </section>
         </div>
 
@@ -996,7 +1497,12 @@
       consultationTargets: [],
       studentModalMode: 'edit',
       studentModalStudent: null,
-      studentModalDefaultType: 'elementary'
+      studentModalDefaultType: 'elementary',
+      selectedObservationStudentId: '',
+      selectedMinuteStudentId: '',
+      minuteMessages: [],
+      selectedMinuteKeywords: [],
+      minutePhotoPreviews: []
     };
 
     const PC_DEFAULT_CONSULT_RULES = [1, 3, 6, 12];
@@ -1252,17 +1758,7 @@
     }
 
     async function generateSummary(student, months, rows) {
-      const res = await fetch(API_CHAT_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          promptType: 'summary',
-          messages: [{ role: 'user', content: buildSummaryUserText(student, months, rows) }]
-        })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || '종합 피드백 생성 실패');
-      return String(data?.reply || '').trim();
+      return await requestPcFeedback('summary', buildSummaryUserText(student, months, rows));
     }
 
     async function saveSummary(student, months, content) {
@@ -1422,12 +1918,374 @@
       return true;
     }
 
+
+    function getStudentKey(student) {
+      return String(student?.id || student?.name || '');
+    }
+
+    function getSelectedObservationStudent() {
+      return pcState.students.find(s => getStudentKey(s) === String(pcState.selectedObservationStudentId || '')) || null;
+    }
+
+    function getSelectedMinuteStudent() {
+      return pcState.students.find(s => getStudentKey(s) === String(pcState.selectedMinuteStudentId || '')) || null;
+    }
+
+    function ensurePcSelectedStudents() {
+      const elementary = pcState.students.filter(isActiveStudent).find(s => s.type === 'elementary');
+      const kinder = pcState.students.filter(isActiveStudent).find(s => s.type === 'kinder');
+      if (!getSelectedObservationStudent() && elementary) pcState.selectedObservationStudentId = getStudentKey(elementary);
+      if (!getSelectedMinuteStudent() && kinder) pcState.selectedMinuteStudentId = getStudentKey(kinder);
+    }
+
+    function getLatestFeedbackForStudent(student) {
+      if (!student) return null;
+      const id = String(student.id || '');
+      const name = String(student.name || '').trim();
+      return [...pcState.feedbacks, ...pcState.failFeedbacks]
+        .filter(row => String(row?.student_id || '') === id || String(row?.student_name || '').trim() === name)
+        .sort((a, b) => (rowDate(b).getTime() || 0) - (rowDate(a).getTime() || 0))[0] || null;
+    }
+
+    function renderObservationWorkspace() {
+      const wrap = document.getElementById('pcObservationWorkspace');
+      if (!wrap) return;
+      const student = getSelectedObservationStudent();
+      if (!student) {
+        wrap.innerHTML = `<div class="pcWorkspaceShell"><div class="pcPlaceholder">왼쪽 초등부 명단에서 학생을 선택해 주세요.</div></div>`;
+        return;
+      }
+      const latest = getLatestFeedbackForStudent(student);
+      wrap.innerHTML = `
+        <div class="pcWorkspaceShell">
+          <div class="pcWorkspaceHeader">
+            <div>
+              <div class="pcWorkspaceEyebrow">초등부 관찰노트</div>
+              <div class="pcWorkspaceTitle">수업 내용을 기록해 주세요.</div>
+              <div class="pcWorkspaceSub">앱의 관찰노트와 같은 기준으로 수업 장면을 기록하고 초등부 피드백을 생성합니다.</div>
+            </div>
+          </div>
+          <div class="pcWorkspaceCard">
+            <div class="pcMemoMetaTop">
+              <div class="pcMemoStudentBlock">
+                ${renderPcLeadIcon(student)}
+                <div style="min-width:0;">
+                  <div class="pcMemoStudentName">${escapeHtml(student.name)}</div>
+                  <div class="pcMemoStudentMeta">${escapeHtml(getStudentMeta(student) || '초등부')}</div>
+                </div>
+              </div>
+              <div class="pcMemoUpdatedDate">${latest ? `최근 수정 ${escapeHtml(formatDate(latest.created_at || latest.date || latest.updated_at))}` : '최근 수정 없음'}</div>
+            </div>
+            <textarea id="pcMemoEditor" class="pcMemoEditor" placeholder="학생의 수업 내용을 기록해 주세요."></textarea>
+            <div id="pcMemoFeedbackResultArea" class="pcMemoResultArea"></div>
+          </div>
+          <div class="pcBottomComposer">
+            <button type="button" class="pcComposerIconBtn" onclick="showToast('초등부 분석 설문은 다음 단계에서 앱 구조 그대로 연결합니다.')" aria-label="분석 설문"><svg viewBox="0 0 24 24"><rect x="5.2" y="4.6" width="13.6" height="14.8" rx="3"></rect><path d="M8.4 9h7.2"></path><path d="M8.4 12.4h7.2"></path><path d="M8.4 15.8h4.4"></path></svg></button>
+            <div class="pcComposerInputLabel">${escapeHtml(student.name)} 수업 기록 작성 중</div>
+            <button id="pcMemoFeedbackBtn" type="button" class="pcComposerSendBtn" onclick="submitPcMemoFeedback()" aria-label="피드백 생성"><svg viewBox="0 0 24 24"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg></button>
+          </div>
+        </div>`;
+    }
+
+    function renderPcMinuteMessage(msg) {
+      const photos = Array.isArray(msg?.photos) ? msg.photos : [];
+      const photosHtml = photos.length
+        ? `<div class="pcChatPhotoGrid">${photos.map(src => `<img src="${escapeHtml(src)}" alt="첨부 사진">`).join('')}</div>`
+        : '';
+      return `<div class="pcChatBubble ${escapeHtml(msg?.role || '')}">${photosHtml}<div>${escapeHtml(msg?.content || '')}</div></div>`;
+    }
+
+    function renderPcMinutePhotoPreviews() {
+      const photos = Array.isArray(pcState.minutePhotoPreviews) ? pcState.minutePhotoPreviews : [];
+      if (!photos.length) return '';
+      return `<div class="pcMinutePhotoPreviewRow">${photos.map((src, index) => `
+        <div class="pcMinutePhotoPreviewItem">
+          <img src="${escapeHtml(src)}" alt="첨부 사진 ${index + 1}">
+          <button type="button" class="pcMinutePhotoRemoveBtn" onclick="removePcMinutePhoto(${index})" aria-label="사진 삭제">×</button>
+        </div>`).join('')}</div>`;
+    }
+
+    function renderMinuteWorkspace() {
+      const wrap = document.getElementById('pcMinuteWorkspace');
+      if (!wrap) return;
+      const student = getSelectedMinuteStudent();
+      const messagesHtml = pcState.minuteMessages.length
+        ? pcState.minuteMessages.map(renderPcMinuteMessage).join('')
+        : `<div class="pcMinuteEmpty"><div style="font-weight:620;color:#111;margin-bottom:8px;">1분 피드백</div><div>앱과 같은 방식으로 관찰 장면을 짧게 입력해 주세요.<br>왼쪽 유치부 명단에서 학생을 선택하면 이름이 함께 반영됩니다.</div></div>`;
+      wrap.innerHTML = `
+        <div class="pcMinuteShell">
+          <div class="pcWorkspaceHeader">
+            <div>
+              <div class="pcWorkspaceEyebrow">유치부 1분 피드백</div>
+              <div class="pcWorkspaceTitle">관찰 장면을 빠르게 정리해 주세요.</div>
+              <div class="pcWorkspaceSub">앱의 1분 피드백처럼 키워드를 고르고 관찰 내용을 입력합니다.</div>
+            </div>
+          </div>
+          <div id="pcMinuteChatArea" class="pcMinuteChatArea">${messagesHtml}</div>
+          <div class="pcMinuteComposerWrap">
+            <div class="pcKeywordScroller">
+              ${renderPcKeywordButtons()}
+            </div>
+            <div class="pcMinuteComposer">
+              ${renderPcMinutePhotoPreviews()}
+              <textarea id="pcMinuteInput" class="pcMinuteInput" rows="2" placeholder="첫 줄에 이름, 아래에 관찰 내용을 적어주세요"></textarea>
+              <input id="pcMinutePhotoInput" type="file" accept="image/*" multiple hidden onchange="handlePcMinutePhotoChange(event)">
+              <div class="pcMinuteComposerBottom">
+                <button type="button" class="pcComposerIconBtn" onclick="document.getElementById('pcMinutePhotoInput')?.click()" aria-label="사진 첨부"><svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button>
+                <div class="pcSelectedStudentHint">${student ? `${escapeHtml(student.name)} · ${escapeHtml(getStudentMeta(student) || '유치부')}` : '왼쪽 유치부 명단에서 학생을 선택해 주세요.'}</div>
+                <button id="pcMinuteSendBtn" type="button" class="pcComposerSendBtn" onclick="submitPcMinuteFeedback()" aria-label="피드백 전송"><svg viewBox="0 0 24 24"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      const area = document.getElementById('pcMinuteChatArea');
+      if (area) area.scrollTop = area.scrollHeight;
+    }
+
+    function renderPcKeywordButtons() {
+      const keywords = [
+        ['material', '재료 탐색'], ['thought', '생각 표현'], ['confidence', '자신감'], ['help', '도움 요청'],
+        ['transition', '망설임→전환'], ['joy', '즐겁게 참여'], ['friend', '친구와 협력'], ['focus', '집중']
+      ];
+      const selected = new Set(pcState.selectedMinuteKeywords || []);
+      return keywords.map(([key, label]) => `<button type="button" class="pcKeywordBtn ${selected.has(key) ? 'active' : ''}" onclick="togglePcMinuteKeyword('${key}')">${label}</button>`).join('');
+    }
+
+    function handlePcMinutePhotoChange(event) {
+      const files = Array.from(event?.target?.files || []).filter(file => file && file.type && file.type.startsWith('image/'));
+      if (!files.length) return;
+      const next = Array.isArray(pcState.minutePhotoPreviews) ? [...pcState.minutePhotoPreviews] : [];
+      files.forEach(file => next.push(URL.createObjectURL(file)));
+      pcState.minutePhotoPreviews = next.slice(0, 6);
+      renderMinuteWorkspace();
+    }
+
+    function removePcMinutePhoto(index) {
+      const photos = Array.isArray(pcState.minutePhotoPreviews) ? pcState.minutePhotoPreviews : [];
+      const [removed] = photos.splice(index, 1);
+      if (removed && String(removed).startsWith('blob:')) {
+        try { URL.revokeObjectURL(removed); } catch {}
+      }
+      pcState.minutePhotoPreviews = photos;
+      renderMinuteWorkspace();
+    }
+
+    function togglePcMinuteKeyword(key) {
+      const arr = pcState.selectedMinuteKeywords || [];
+      const idx = arr.indexOf(key);
+      if (idx >= 0) arr.splice(idx, 1);
+      else arr.push(key);
+      pcState.selectedMinuteKeywords = arr;
+      const input = document.getElementById('pcMinuteInput');
+      const labelMap = { material:'재료 탐색', thought:'생각 표현', confidence:'자신감', help:'도움 요청', transition:'망설임→전환', joy:'즐겁게 참여', friend:'친구와 협력', focus:'집중' };
+      if (input && idx < 0) input.value = `${input.value}${input.value.trim() ? '\n' : ''}#${labelMap[key] || key} `;
+      renderMinuteWorkspace();
+    }
+
+
+
+    let feedbackLoadingTimer = null;
+    let feedbackLoadingTypingTimer = null;
+    let feedbackLoadingStep = 0;
+
+    function getFeedbackLoadingSteps(type) {
+      return [
+        ['선생님의 관찰 기록을 바탕으로', '아이의 수업 상황을 시뮬레이션 중입니다.'],
+        ['선생님의 관찰 기록을 바탕으로', '아이의 실패 / 막힘 / 감정변화를 성장의 흐름으로 정리하고 있습니다.'],
+        ['선생님의 관찰 기록이', '부모님께 잘 전달 될수 있도록 키워드 요소를 분석 중입니다.']
+      ];
+    }
+
+    function typeFeedbackLoadingText(el, text, done) {
+      if (!el) { if (done) done(); return; }
+      if (feedbackLoadingTypingTimer) {
+        clearInterval(feedbackLoadingTypingTimer);
+        feedbackLoadingTypingTimer = null;
+      }
+      let i = 0;
+      el.innerHTML = '<span class="feedbackLoadingCursor"></span>';
+      feedbackLoadingTypingTimer = setInterval(() => {
+        i += 1;
+        el.innerHTML = escapeHtml(text.slice(0, i)) + '<span class="feedbackLoadingCursor"></span>';
+        if (i >= text.length) {
+          clearInterval(feedbackLoadingTypingTimer);
+          feedbackLoadingTypingTimer = null;
+          if (done) done();
+        }
+      }, 42);
+    }
+
+    function renderFeedbackLoadingStep(steps) {
+      const title = document.getElementById('feedbackLoadingTitle');
+      const body = document.getElementById('feedbackLoadingText');
+      const step = steps[feedbackLoadingStep];
+      if (!step) return;
+      typeFeedbackLoadingText(title, step[0], () => {
+        typeFeedbackLoadingText(body, step[1]);
+      });
+    }
+
+    function showFeedbackLoading(type = 'class') {
+      hideFeedbackLoading();
+      const steps = getFeedbackLoadingSteps(type);
+      feedbackLoadingStep = 0;
+      const overlay = document.createElement('div');
+      overlay.id = 'feedbackLoadingOverlay';
+      overlay.className = 'feedbackLoadingOverlay';
+      overlay.innerHTML = `<div class="feedbackLoadingCard">
+        <div class="feedbackLoadingKicker">피드백 문장 정리 중</div>
+        <div class="feedbackLoadingTitle" id="feedbackLoadingTitle"></div>
+        <div class="feedbackLoadingText" id="feedbackLoadingText"></div>
+        <div class="feedbackLoadingDots"><span></span><span></span><span></span></div>
+      </div>`;
+      document.body.appendChild(overlay);
+      renderFeedbackLoadingStep(steps);
+      feedbackLoadingTimer = setInterval(() => {
+        const nextStep = feedbackLoadingStep + 1;
+        if (nextStep >= steps.length) {
+          clearInterval(feedbackLoadingTimer);
+          feedbackLoadingTimer = null;
+          return;
+        }
+        feedbackLoadingStep = nextStep;
+        renderFeedbackLoadingStep(steps);
+      }, 9750);
+    }
+
+    function hideFeedbackLoading() {
+      if (feedbackLoadingTimer) {
+        clearInterval(feedbackLoadingTimer);
+        feedbackLoadingTimer = null;
+      }
+      if (feedbackLoadingTypingTimer) {
+        clearInterval(feedbackLoadingTypingTimer);
+        feedbackLoadingTypingTimer = null;
+      }
+      const overlay = document.getElementById('feedbackLoadingOverlay');
+      if (overlay) overlay.remove();
+    }
+
+    function hideVivicotBootScreen() {
+      const boot = document.getElementById('vivicotBootScreen');
+      if (!boot) return;
+      boot.classList.add('hide');
+      setTimeout(() => boot.remove(), 900);
+    }
+
+    async function requestPcFeedback(promptType, userText) {
+      showFeedbackLoading(promptType || 'class');
+      try {
+        const res = await fetch(API_CHAT_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            promptType,
+            messages: [{ role: 'user', content: userText }]
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || '피드백 생성 실패');
+        return String(data?.reply || '').trim();
+      } finally {
+        hideFeedbackLoading();
+      }
+    }
+
+    async function savePcGeneratedFeedback(student, content, feedbackType = 'class') {
+      if (!student || !content) return null;
+      const payload = {
+        academy_id: getPcAcademyId(),
+        student_id: student.id || null,
+        student_name: student.name || '',
+        content,
+        feedback_type: feedbackType,
+        year: new Date().getFullYear(),
+        date: new Date().toLocaleDateString('ko-KR')
+      };
+      const rows = await supabaseRequest('POST', 'feedbacks', payload);
+      const saved = Array.isArray(rows) && rows[0] ? rows[0] : payload;
+      pcState.feedbacks.unshift(saved);
+      return saved;
+    }
+
+    async function submitPcMemoFeedback() {
+      const student = getSelectedObservationStudent();
+      const input = document.getElementById('pcMemoEditor');
+      const btn = document.getElementById('pcMemoFeedbackBtn');
+      const memo = String(input?.value || '').trim();
+      if (!student) return alert('왼쪽 초등부 명단에서 학생을 선택해 주세요.');
+      if (!memo) return alert('수업 내용을 입력해 주세요.');
+      try {
+        if (btn) btn.disabled = true;
+        const userText = `[학생 정보]\n이름: ${student.name}\n구분: 초등부\n등록일: ${formatDate(student.enrolled_at)}\n\n[수업 내용]\n${memo}`;
+        const reply = await requestPcFeedback('elementary', userText);
+        const area = document.getElementById('pcMemoFeedbackResultArea');
+        if (area) {
+          area.innerHTML = `<div class="pcFeedbackResultCard"><div class="pcFeedbackResultLabel">초등부 피드백</div><div class="pcFeedbackResultText">${escapeHtml(reply)}</div><div class="pcFeedbackResultActions"><button class="pcSmallBtn" onclick="copyTextFromElement(this.closest('.pcFeedbackResultCard').querySelector('.pcFeedbackResultText'))">복사</button><button class="pcSmallBtn primary" onclick="saveCurrentPcMemoFeedback()">저장</button></div></div>`;
+          area.dataset.feedbackText = reply;
+        }
+      } catch (err) {
+        alert('피드백 생성 실패\n' + (err.message || err));
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    async function saveCurrentPcMemoFeedback() {
+      const student = getSelectedObservationStudent();
+      const area = document.getElementById('pcMemoFeedbackResultArea');
+      const content = String(area?.dataset.feedbackText || '').trim();
+      if (!student || !content) return;
+      try {
+        await savePcGeneratedFeedback(student, content, 'class');
+        showToast('관찰노트 피드백을 저장했습니다.');
+      } catch (err) {
+        alert('피드백 저장 실패\n' + (err.message || err));
+      }
+    }
+
+    async function submitPcMinuteFeedback() {
+      const student = getSelectedMinuteStudent();
+      const input = document.getElementById('pcMinuteInput');
+      const btn = document.getElementById('pcMinuteSendBtn');
+      const memo = String(input?.value || '').trim();
+      if (!student) return alert('왼쪽 유치부 명단에서 학생을 선택해 주세요.');
+      if (!memo) return alert('관찰 내용을 입력해 주세요.');
+      try {
+        if (btn) btn.disabled = true;
+        const attachedPhotos = Array.isArray(pcState.minutePhotoPreviews) ? [...pcState.minutePhotoPreviews] : [];
+        pcState.minuteMessages.push({ role: 'user', content: memo, photos: attachedPhotos });
+        renderMinuteWorkspace();
+        const userText = `[학생 정보]\n이름: ${student.name}\n구분: 유치부\n등록일: ${formatDate(student.enrolled_at)}\n\n[관찰 내용]\n${memo}`;
+        const reply = await requestPcFeedback('class', userText);
+        pcState.minuteMessages.push({ role: 'assistant', content: reply });
+        await savePcGeneratedFeedback(student, reply, 'class');
+        pcState.selectedMinuteKeywords = [];
+        pcState.minutePhotoPreviews = [];
+        renderMinuteWorkspace();
+        showToast('1분 피드백을 생성하고 저장했습니다.');
+      } catch (err) {
+        alert('1분 피드백 생성 실패\n' + (err.message || err));
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    async function copyTextFromElement(el) {
+      const text = String(el?.textContent || '').trim();
+      if (!text) return;
+      await navigator.clipboard.writeText(text).catch(() => {});
+      showToast('복사했습니다.');
+    }
+
     function renderAllPc() {
+      ensurePcSelectedStudents();
       renderPcSidebarContext();
       renderCounts();
       renderConsultationList();
       renderAttendanceList();
-      renderObservationList();
+      renderObservationWorkspace();
+      renderMinuteWorkspace();
       renderSidePanel();
     }
 
@@ -1465,12 +2323,17 @@
         .filter(student => student.type === type)
         .filter(student => !q || String(student.name || '').toLowerCase().includes(q))
         .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ko'));
-      const rows = students.map(student => `
-        <button class="pcSidebarStudentRow" onclick="selectPcSidebarStudent('${escapeHtml(student.id || student.name)}')">
+      const selectedKey = type === 'kinder' ? pcState.selectedMinuteStudentId : pcState.selectedObservationStudentId;
+      const rows = students.map(student => {
+        const key = String(student.id || student.name);
+        const selected = String(selectedKey || '') === key ? ' selected' : '';
+        return `
+        <button class="pcSidebarStudentRow${selected}" onclick="selectPcSidebarStudent('${escapeHtml(key)}')">
           ${renderPcLeadIcon(student)}
           <span class="pcSidebarStudentText"><span class="pcSidebarStudentName">${escapeHtml(student.name)}</span><span class="pcSidebarStudentMeta">${escapeHtml(getStudentMeta(student))}</span></span>
-          <span class="pcSidebarStudentMore" onclick="event.stopPropagation(); openPcStudentEdit('${escapeHtml(student.id || student.name)}')">•••</span>
-        </button>`).join('') || `<div class="pcPlaceholder" style="min-height:160px; font-size:12px;">표시할 학생이 없습니다.</div>`;
+          <span class="pcSidebarStudentMore" onclick="event.stopPropagation(); openPcStudentEdit('${escapeHtml(key)}')">•••</span>
+        </button>`;
+      }).join('') || `<div class="pcPlaceholder" style="min-height:160px; font-size:12px;">표시할 학생이 없습니다.</div>`;
       return `<div class="pcSidebarStudentList">
         <div class="pcSidebarLabel">${escapeHtml(title)} <span style="color:#111;">${students.length}</span></div>
         <div class="pcSidebarStudentScroll">${rows}</div>
@@ -1484,6 +2347,16 @@
     function selectPcSidebarStudent(studentKey) {
       const student = pcState.students.find(s => String(s.id || s.name) === String(studentKey));
       if (!student) return;
+      if (pcState.page === 'minute' || student.type === 'kinder') {
+        pcState.selectedMinuteStudentId = String(student.id || student.name);
+        renderPcSidebarContext();
+        renderMinuteWorkspace();
+        showToast(`${student.name} 학생을 선택했습니다.`);
+        return;
+      }
+      pcState.selectedObservationStudentId = String(student.id || student.name);
+      renderPcSidebarContext();
+      renderObservationWorkspace();
       showToast(`${student.name} 학생을 선택했습니다.`);
     }
 
@@ -1748,7 +2621,7 @@
       document.querySelectorAll('.pcNavBtn').forEach(btn => btn.classList.toggle('active', btn.dataset.page === page));
       document.querySelectorAll('.pcPage').forEach(el => el.classList.remove('active'));
       document.getElementById('pcPage' + page.charAt(0).toUpperCase() + page.slice(1))?.classList.add('active');
-      const titleMap = { dashboard: ['학원 관리', '상담 예정, 종합 피드백, 재원생 흐름을 한 화면에서 확인합니다.'], attendance: ['출석부', '초등부와 유치부 출석 현황을 PC 화면에서 넓게 확인합니다.'], observation: ['관찰노트', '저장된 관찰 기록과 수업 피드백을 검색합니다.'], minute: ['1분 피드백', 'PC 전용 피드백 작성 화면을 준비합니다.'] };
+      const titleMap = { dashboard: ['학원 관리', '상담 예정, 종합 피드백, 재원생 흐름을 한 화면에서 확인합니다.'], attendance: ['출석부', '초등부와 유치부 출석 현황을 PC 화면에서 넓게 확인합니다.'], observation: ['관찰노트', '초등부 수업 내용을 기록하고 앱과 같은 흐름으로 피드백을 만듭니다.'], minute: ['1분 피드백', '유치부 관찰 장면을 빠르게 입력하고 피드백을 만듭니다.'] };
       document.getElementById('pcPageTitle').textContent = titleMap[page]?.[0] || '';
       document.getElementById('pcPageSub').textContent = titleMap[page]?.[1] || '';
       document.getElementById('pcMainGrid').classList.toggle('pcMainOnly', page !== 'dashboard');
@@ -1804,11 +2677,13 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(hideVivicotBootScreen, 650);
       if (isPcOwnerLoggedIn()) bootPcApp();
       document.getElementById('pcOwnerPasswordInput')?.addEventListener('keydown', event => {
         if (event.key === 'Enter') pcOwnerLogin();
       });
     });
+    window.addEventListener('load', () => setTimeout(hideVivicotBootScreen, 150));
   </script>
 </body>
 </html>
