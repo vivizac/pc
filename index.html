@@ -2271,7 +2271,7 @@
       const input = document.getElementById('pcMinuteInput');
       if (!input) return;
       const current = String(input.value || '');
-      const lines = current.split('\\n');
+      const lines = current.split('\n');
       const rest = lines.length > 1 ? lines.slice(1).join('\n').trimStart() : '';
       input.value = rest ? `${name}\n${rest}` : `${name}\n`;
       input.focus();
@@ -2281,8 +2281,7 @@
     function resolvePcMinuteStudentFromMemo(memo) {
       const selected = getSelectedMinuteStudent();
       if (selected) return selected;
-      const firstLine = String(memo || '').split('
-').map(v => v.trim()).find(Boolean) || '';
+      const firstLine = String(memo || '').split('\n').map(v => v.trim()).find(Boolean) || '';
       if (!firstLine) return null;
       const name = firstLine.replace(/[:：].*$/, '').trim();
       return pcState.students.find(student => isActiveStudent(student) && student.type === 'kinder' && String(student.name || '').trim() === name) || null;
