@@ -1499,7 +1499,24 @@
     }
 
     .pcObservationNoteHeader {
-      display: none;
+      padding: 4px 2px 18px;
+      display: block;
+    }
+
+    .pcMemoUpdatedDate {
+      font-size: 12px;
+      line-height: 1.2;
+      color: #a1a3aa;
+      font-weight: 400;
+      margin-bottom: 8px;
+    }
+
+    .pcMemoStudentName {
+      font-size: 20px;
+      line-height: 1.2;
+      color: #111217;
+      font-weight: 660;
+      letter-spacing: -0.02em;
     }
 
     .pcMemoNotebook {
@@ -1540,20 +1557,33 @@
     }
     .pcObservationActionBar .pcComposerInputLabel { display: none; }
     .pcObservationSurveyBtn {
-      width: 68px;
-      height: 68px;
-      border-radius: 50%;
-      border: 0;
-      background: #f1f2f4;
+      width: 58px;
+      min-width: 58px;
+      height: 58px;
+      min-height: 58px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.96);
+      background: #fff;
       color: #111;
+      padding: 0;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.92),
+        0 0 0 1px rgba(255,255,255,0.92),
+        0 0 34px 10px rgba(0,0,0,0.045),
+        0 0 78px 22px rgba(0,0,0,0.035);
+      backdrop-filter: blur(20px) saturate(1.18);
     }
     .pcObservationSurveyBtn svg {
-      width: 41px;
-      height: 41px;
-      stroke-width: 1.65;
+      width: 32px;
+      height: 32px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .pcUtilityOverlay {
@@ -2499,15 +2529,28 @@
         .sort((a, b) => (rowDate(b).getTime() || 0) - (rowDate(a).getTime() || 0))[0] || null;
     }
 
+    function getPcObservationUpdatedDateText(student) {
+      const latest = getLatestFeedbackForStudent(student);
+      const latestDate = latest ? formatDate(latest.updated_at || latest.created_at || latest.date || latest.saved_at) : '';
+      return latestDate ? `최근 수정 ${latestDate}` : '최근 수정 없음';
+    }
+
     function renderObservationWorkspace() {
       const wrap = document.getElementById('pcObservationWorkspace');
       if (!wrap) return;
+      const student = getSelectedObservationStudent();
+      const studentName = student?.name || '학생 이름';
+      const updatedText = getPcObservationUpdatedDateText(student);
       wrap.innerHTML = `
         <div class="pcObservationNoteShell">
+          <div class="pcObservationNoteHeader">
+            <div id="pcMemoUpdatedDate" class="pcMemoUpdatedDate">${escapeHtml(updatedText)}</div>
+            <div id="pcMemoStudentName" class="pcMemoStudentName">${escapeHtml(studentName)}</div>
+          </div>
           <div id="pcMemoEditor" class="pcMemoNotebook" contenteditable="true"></div>
           <div id="pcMemoFeedbackResultArea" class="pcMemoResultArea pcNotebookResultArea"></div>
           <div class="pcObservationActionBar">
-            <button type="button" class="pcObservationSurveyBtn" onclick="openPcObservationSurvey()" aria-label="분석 설문"><svg viewBox="0 0 24 24"><rect x="5.2" y="4.6" width="13.6" height="14.8" rx="3"></rect><path d="M8.4 9h7.2"></path><path d="M8.4 12.4h7.2"></path><path d="M8.4 15.8h4.4"></path></svg></button>
+            <button type="button" class="pcObservationSurveyBtn memoBottomIconBtn memoBottomAnalysisBtn" onclick="openPcObservationSurvey()" aria-label="오늘의 분석 설문" title="오늘의 분석 설문"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5.2" y="4.6" width="13.6" height="14.8" rx="3"></rect><path d="M8.4 9h7.2"></path><path d="M8.4 12.4h7.2"></path><path d="M8.4 15.8h4.4"></path></svg></button>
             <button id="pcMemoFeedbackBtn" type="button" class="pcComposerSendBtn" onclick="submitPcMemoFeedback()" aria-label="피드백 생성"><svg viewBox="0 0 24 24"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg></button>
           </div>
         </div>`;
@@ -2911,6 +2954,9 @@ ${addition}` : addition;
       try {
         await savePcGeneratedFeedback(student, content, 'class');
         showToast('관찰노트 피드백을 저장했습니다.');
+        await loadPcCoreData();
+        const updatedDateEl = document.getElementById('pcMemoUpdatedDate');
+        if (updatedDateEl) updatedDateEl.textContent = getPcObservationUpdatedDateText(student);
       } catch (err) {
         alert('피드백 저장 실패\n' + (err.message || err));
       }
