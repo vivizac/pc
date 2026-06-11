@@ -1542,6 +1542,19 @@
       margin-bottom: 12px;
     }
 
+    .pcMemoNotebook[data-placeholder]:empty::before {
+      content: attr(data-placeholder);
+      color: #9ca3af;
+      font-weight: 360;
+      pointer-events: none;
+    }
+    .pcMemoSavedStatus {
+      font-size: 12px;
+      color: #9ca3af;
+      font-weight: 380;
+      margin-top: 4px;
+    }
+
     .pcObservationActionBar {
       margin: auto 0 0;
       width: 100%;
@@ -2042,8 +2055,20 @@
       selectedMinuteKeywords: [],
       selectedMinuteGuideKey: '',
       minutePhotoPreviews: [],
-      studentSort: { elementary: 'name', kinder: 'name' }
+      studentSort: { elementary: 'name', kinder: 'name' },
+      loadedObservationStudentId: '',
+      observationDraftUpdatedAt: '',
+      observationDraftLoadingToken: 0
     };
+
+    const PC_ELEMENTARY_MEMO_PREFIX = 'vivicot_elementary_memo_';
+    const PC_ELEMENTARY_ANALYSIS_PREFIX = 'vivicot_elementary_analysis_';
+    const PC_ELEMENTARY_RECORDS_PREFIX = 'vivicot_elementary_records_';
+    const PC_MEMO_FEEDBACK_ARCHIVE_PREFIX = 'vivicot_memo_feedback_archive_';
+    const PC_MEMO_AUTOSAVE_DELAY = 1000;
+    const PC_KCF_DRAFT_KEY = 'vivicot_kinder_chat_feedback_draft_v1';
+    const PC_TODAY_FEEDBACK_QUEUE_KEY = 'vivicot_today_feedback_queue_v1';
+    let pcMemoAutoSaveTimer = null;
 
 
     const PC_ELEMENTARY_ANALYSIS_OPTIONS = {
@@ -2540,20 +2565,28 @@
       if (!wrap) return;
       const student = getSelectedObservationStudent();
       const studentName = student?.name || '학생 이름';
-      const updatedText = getPcObservationUpdatedDateText(student);
+      const localEntry = getPcMemoEntryByStudent(student);
+      const updatedText = localEntry.updatedAt ? `최근 수정 ${formatDate(localEntry.updatedAt)}` : '최근 수정 없음';
+      const studentKey = student?.id || '';
+      const shouldLoadDraft = pcState.loadedObservationStudentId !== studentKey;
       wrap.innerHTML = `
         <div class="pcObservationNoteShell">
           <div class="pcObservationNoteHeader">
             <div id="pcMemoUpdatedDate" class="pcMemoUpdatedDate">${escapeHtml(updatedText)}</div>
             <div id="pcMemoStudentName" class="pcMemoStudentName">${escapeHtml(studentName)}</div>
           </div>
-          <div id="pcMemoEditor" class="pcMemoNotebook" contenteditable="true"></div>
+          <div id="pcMemoEditor" class="pcMemoNotebook" contenteditable="true" data-placeholder="학생의 수업 내용을 기록해 주세요." oninput="handlePcMemoEditorInput()" onblur="flushPcMemoAutoSave(true)"></div>
           <div id="pcMemoFeedbackResultArea" class="pcMemoResultArea pcNotebookResultArea"></div>
           <div class="pcObservationActionBar">
             <button type="button" class="pcObservationSurveyBtn memoBottomIconBtn memoBottomAnalysisBtn" onclick="openPcObservationSurvey()" aria-label="오늘의 분석 설문" title="오늘의 분석 설문"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5.2" y="4.6" width="13.6" height="14.8" rx="3"></rect><path d="M8.4 9h7.2"></path><path d="M8.4 12.4h7.2"></path><path d="M8.4 15.8h4.4"></path></svg></button>
             <button id="pcMemoFeedbackBtn" type="button" class="pcComposerSendBtn" onclick="submitPcMemoFeedback()" aria-label="피드백 생성"><svg viewBox="0 0 24 24"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg></button>
           </div>
         </div>`;
+      if (shouldLoadDraft) loadPcObservationDraftForStudent(student);
+      else {
+        setPcMemoEditorText(localEntry.content || '');
+        updatePcMemoMetaDisplay(student, localEntry.updatedAt || '');
+      }
     }
 
     function renderPcMinuteMessage(msg) {
@@ -2575,6 +2608,7 @@
     }
 
     function renderMinuteWorkspace() {
+      loadPcMinuteDraft();
       const wrap = document.getElementById('pcMinuteWorkspace');
       if (!wrap) return;
       const messagesHtml = pcState.minuteMessages.length
@@ -2622,6 +2656,7 @@
 
     function handlePcMinuteInput(event) {
       pcState.minuteDraft = String(event?.target?.value || '');
+      savePcMinuteDraft();
     }
 
     function handlePcMinutePhotoChange(event) {
@@ -2778,6 +2813,305 @@
       return saved;
     }
 
+    function rowTimestampValue(value) {
+      const d = new Date(value || '');
+      return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+    }
+
+    function getPcMemoKey(student) {
+      return student?.id ? PC_ELEMENTARY_MEMO_PREFIX + student.id : '';
+    }
+
+    function getPcMemoEntryByStudent(student) {
+      const key = getPcMemoKey(student);
+      if (!key) return { content: '', updatedAt: '' };
+      const raw = localStorage.getItem(key);
+      if (!raw) return { content: '', updatedAt: '' };
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') return { content: parsed.content || '', updatedAt: parsed.updatedAt || '' };
+      } catch {}
+      return { content: raw || '', updatedAt: '' };
+    }
+
+    function setPcMemoByStudent(student, content, updatedAt) {
+      const key = getPcMemoKey(student);
+      if (!key) return '';
+      const stamp = updatedAt || new Date().toISOString();
+      localStorage.setItem(key, JSON.stringify({ content: content || '', updatedAt: stamp }));
+      return stamp;
+    }
+
+    function getPcStudentNoteDraftPath(student, noteType = 'elementary_observation') {
+      const academyId = getPcAcademyId();
+      const studentId = student?.id || '';
+      if (!academyId || !studentId || !noteType) return '';
+      return `student_note_drafts?academy_id=eq.${encodeURIComponent(academyId)}&student_id=eq.${encodeURIComponent(studentId)}&note_type=eq.${encodeURIComponent(noteType)}`;
+    }
+
+    async function loadPcStudentNoteDraftFromSupabase(student, noteType = 'elementary_observation') {
+      const path = getPcStudentNoteDraftPath(student, noteType);
+      if (!path) return null;
+      const rows = await supabaseRequest('GET', `${path}&select=*&limit=1`).catch(() => []);
+      return Array.isArray(rows) && rows.length ? rows[0] : null;
+    }
+
+    async function clearPcStudentNoteDraftFromSupabase(student, noteType = 'elementary_observation') {
+      const path = getPcStudentNoteDraftPath(student, noteType);
+      if (!path) return;
+      await supabaseRequest('DELETE', path).catch(err => console.warn('PC student_note_drafts 삭제 실패:', err.message || err));
+    }
+
+    async function savePcStudentNoteDraftToSupabase(student, content, noteType = 'elementary_observation') {
+      if (!student?.id || !getPcAcademyId()) return null;
+      const text = String(content || '');
+      if (!text.trim()) {
+        await clearPcStudentNoteDraftFromSupabase(student, noteType);
+        return null;
+      }
+      const academyId = getPcAcademyId();
+      const payload = {
+        academy_id: academyId,
+        student_id: student.id,
+        student_name: student.name || '',
+        note_type: noteType,
+        content: text,
+        updated_at: new Date().toISOString()
+      };
+      const filterPath = `student_note_drafts?academy_id=eq.${encodeURIComponent(academyId)}&student_id=eq.${encodeURIComponent(student.id)}&note_type=eq.${encodeURIComponent(noteType)}`;
+      try {
+        const updated = await supabaseRequest('PATCH', `${filterPath}&select=*`, payload);
+        if (Array.isArray(updated) && updated.length) return updated;
+      } catch (err) {
+        console.warn('PC student_note_drafts PATCH 실패, INSERT 재시도:', err.message || err);
+      }
+      try {
+        return await supabaseRequest('POST', 'student_note_drafts', payload);
+      } catch (err) {
+        const message = String(err?.message || err || '');
+        if (/duplicate key|23505|already exists/i.test(message)) return await supabaseRequest('PATCH', `${filterPath}&select=*`, payload);
+        throw err;
+      }
+    }
+
+    function updatePcMemoMetaDisplay(student, updatedAt) {
+      const nameEl = document.getElementById('pcMemoStudentName');
+      const dateEl = document.getElementById('pcMemoUpdatedDate');
+      if (nameEl) nameEl.textContent = student?.name || '학생 이름';
+      const dateText = updatedAt ? `최근 수정 ${formatDate(updatedAt)}` : '최근 수정 없음';
+      if (dateEl) dateEl.textContent = dateText;
+      pcState.observationDraftUpdatedAt = updatedAt || '';
+    }
+
+    function setPcMemoEditorText(content) {
+      const el = document.getElementById('pcMemoEditor');
+      if (!el) return;
+      if ('value' in el) el.value = content || '';
+      else el.innerText = content || '';
+    }
+
+    function loadPcObservationDraftForStudent(student) {
+      const key = student?.id || '';
+      const token = Date.now() + Math.random();
+      pcState.loadedObservationStudentId = key;
+      pcState.observationDraftLoadingToken = token;
+      const local = getPcMemoEntryByStudent(student);
+      setPcMemoEditorText(local.content || '');
+      updatePcMemoMetaDisplay(student, local.updatedAt || '');
+      if (!student?.id) return;
+      loadPcStudentNoteDraftFromSupabase(student, 'elementary_observation')
+        .then(row => {
+          if (pcState.observationDraftLoadingToken !== token) return;
+          if (!row || !row.content) return;
+          const currentStudent = getSelectedObservationStudent();
+          if (!currentStudent || String(currentStudent.id || '') !== String(student.id || '')) return;
+          const currentText = getPcMemoText();
+          const latestLocal = getPcMemoEntryByStudent(student);
+          const remoteUpdatedAt = row.updated_at || '';
+          const localUpdatedAt = latestLocal.updatedAt || local.updatedAt || '';
+          if (!currentText.trim() || (rowTimestampValue(remoteUpdatedAt) >= rowTimestampValue(localUpdatedAt))) {
+            setPcMemoEditorText(row.content || '');
+            setPcMemoByStudent(student, row.content || '', remoteUpdatedAt || new Date().toISOString());
+            updatePcMemoMetaDisplay(student, remoteUpdatedAt || '');
+          }
+        })
+        .catch(err => console.warn('PC student_note_drafts 불러오기 실패:', err.message || err));
+    }
+
+    async function saveCurrentPcObservationMemo(options = {}) {
+      const student = options.student || getSelectedObservationStudent();
+      if (!student) return;
+      const content = options.content !== undefined ? String(options.content || '') : getPcMemoText();
+      const updatedAt = setPcMemoByStudent(student, content, new Date().toISOString());
+      updatePcMemoMetaDisplay(student, updatedAt);
+      try {
+        await savePcStudentNoteDraftToSupabase(student, content, 'elementary_observation');
+        if (options.status) showToast('관찰노트가 저장되었습니다.');
+      } catch (err) {
+        console.warn('PC 관찰노트 Supabase 저장 실패:', err.message || err);
+        if (options.status) showToast('기기에는 저장됐지만 Supabase 저장은 실패했습니다.');
+      }
+    }
+
+    function schedulePcMemoAutoSave() {
+      const student = getSelectedObservationStudent();
+      if (!student) return;
+      const content = getPcMemoText();
+      setPcMemoByStudent(student, content, new Date().toISOString());
+      updatePcMemoMetaDisplay(student, new Date().toISOString());
+      if (pcMemoAutoSaveTimer) clearTimeout(pcMemoAutoSaveTimer);
+      pcMemoAutoSaveTimer = setTimeout(() => {
+        pcMemoAutoSaveTimer = null;
+        saveCurrentPcObservationMemo({ silent: true });
+      }, PC_MEMO_AUTOSAVE_DELAY);
+    }
+
+    function flushPcMemoAutoSave(force = false) {
+      if (pcMemoAutoSaveTimer) {
+        clearTimeout(pcMemoAutoSaveTimer);
+        pcMemoAutoSaveTimer = null;
+      }
+      if (force || pcState.page === 'observation') return saveCurrentPcObservationMemo({ silent: true });
+      return Promise.resolve();
+    }
+
+    function handlePcMemoEditorInput() {
+      schedulePcMemoAutoSave();
+    }
+
+    function getPcElementaryAnalysisKey(student) { return student?.id ? PC_ELEMENTARY_ANALYSIS_PREFIX + student.id : ''; }
+    function getPcElementaryRecordsKey(student) { return student?.id ? PC_ELEMENTARY_RECORDS_PREFIX + student.id : ''; }
+    function getEmptyPcElementaryAnalysisStateFull() {
+      return { strengths: [], needs: [], blockedStages: [], tendencies: [], guideAreas: [], teacherActions: [], futureDirections: [], extraTexts: { strengths: '', needs: '', guideAreas: '', teacherActions: '', futureDirections: '' }, updatedAt: '' };
+    }
+    function normalizePcElementaryAnalysisState(data) {
+      const base = getEmptyPcElementaryAnalysisStateFull();
+      const source = data && typeof data === 'object' ? data : {};
+      ['strengths','needs','blockedStages','tendencies','guideAreas','teacherActions','futureDirections'].forEach(field => {
+        base[field] = Array.isArray(source[field]) ? source[field].filter(Boolean) : [];
+      });
+      base.extraTexts = { ...base.extraTexts, ...(source.extraTexts && typeof source.extraTexts === 'object' ? source.extraTexts : {}) };
+      base.updatedAt = source.updatedAt || '';
+      return base;
+    }
+    function getPcElementaryAnalysisByStudent(student) {
+      const key = getPcElementaryAnalysisKey(student);
+      if (!key) return getEmptyPcElementaryAnalysisStateFull();
+      try { return normalizePcElementaryAnalysisState(JSON.parse(localStorage.getItem(key) || '{}')); } catch { return getEmptyPcElementaryAnalysisStateFull(); }
+    }
+    function setPcElementaryAnalysisByStudent(student, data) {
+      const key = getPcElementaryAnalysisKey(student);
+      if (!key) return null;
+      const next = normalizePcElementaryAnalysisState(data);
+      next.studentId = student.id || '';
+      next.studentName = student.name || '';
+      next.updatedAt = new Date().toISOString();
+      localStorage.setItem(key, JSON.stringify(next));
+      return next;
+    }
+    function pcElementaryAnalysisPayloadForCompare(state) {
+      const normalized = normalizePcElementaryAnalysisState(state);
+      return JSON.stringify({
+        strengths: normalized.strengths || [], needs: normalized.needs || [], blockedStages: normalized.blockedStages || [], tendencies: normalized.tendencies || [],
+        guideAreas: normalized.guideAreas || [], teacherActions: normalized.teacherActions || [], futureDirections: normalized.futureDirections || [], extraTexts: normalized.extraTexts || {}
+      });
+    }
+    function pcElementaryAnalysisStatesEqual(a, b) { return pcElementaryAnalysisPayloadForCompare(a) === pcElementaryAnalysisPayloadForCompare(b); }
+    function pcElementaryAnalysisHasContent(state) {
+      const normalized = normalizePcElementaryAnalysisState(state);
+      const hasList = ['strengths','needs','blockedStages','tendencies','guideAreas','teacherActions','futureDirections'].some(field => Array.isArray(normalized[field]) && normalized[field].length > 0);
+      const hasExtra = Object.values(normalized.extraTexts || {}).some(value => String(value || '').trim());
+      return hasList || hasExtra;
+    }
+    function getPcElementaryAnalysisHistoryKey(student) { return student?.id ? `${PC_ELEMENTARY_ANALYSIS_PREFIX}${student.id}_history` : ''; }
+    function getPcElementaryAnalysisHistoryByStudent(student) {
+      const key = getPcElementaryAnalysisHistoryKey(student);
+      if (!key) return [];
+      try { const list = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(list) ? list : []; } catch { return []; }
+    }
+    function setPcElementaryAnalysisHistoryByStudent(student, items) {
+      const key = getPcElementaryAnalysisHistoryKey(student);
+      if (!key) return;
+      localStorage.setItem(key, JSON.stringify(Array.isArray(items) ? items.slice(0, 3) : []));
+    }
+    function archivePcElementaryAnalysisSnapshot(student, data) {
+      if (!student?.id || !pcElementaryAnalysisHasContent(data)) return null;
+      const item = { id: `elem_analysis_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, createdAt: data.updatedAt || new Date().toISOString(), data: normalizePcElementaryAnalysisState(data) };
+      const history = getPcElementaryAnalysisHistoryByStudent(student);
+      setPcElementaryAnalysisHistoryByStudent(student, [item, ...history].slice(0, 3));
+      return item;
+    }
+    function buildPcElementaryAnalysisPromptText(state) {
+      const normalized = normalizePcElementaryAnalysisState(state);
+      const lines = ['[초등부 분석 선택 데이터]'];
+      const addList = (field) => {
+        const list = normalized[field] || [];
+        const extra = normalized.extraTexts?.[field] || '';
+        if (!list.length && !extra) return;
+        lines.push('');
+        lines.push(`${PC_ELEMENTARY_ANALYSIS_FIELD_LABELS[field]} :`);
+        if (list.length) list.forEach(item => lines.push(`- ${item}`));
+        if (extra) lines.push(`- 기타: ${extra}`);
+      };
+      ['strengths','needs','blockedStages','tendencies','guideAreas','teacherActions','futureDirections'].forEach(addList);
+      return lines.join('\n').trim();
+    }
+    function getPcElementaryMemoRecords(student) {
+      const key = getPcElementaryRecordsKey(student);
+      if (!key) return [];
+      try { const list = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(list) ? list : []; } catch { return []; }
+    }
+    function setPcElementaryMemoRecords(student, records) {
+      const key = getPcElementaryRecordsKey(student);
+      if (!key) return;
+      localStorage.setItem(key, JSON.stringify(Array.isArray(records) ? records.slice(0, 80) : []));
+    }
+    async function savePcStudentNoteArchiveToSupabase(student, record, feedbackId = '') {
+      if (!student?.id || !record?.content || !getPcAcademyId()) return null;
+      const payload = {
+        academy_id: getPcAcademyId(), student_id: student.id, student_name: student.name || '', note_type: 'elementary_observation',
+        content: String(record.content || ''), analysis: record.analysis || null, record_label: record.label || '', local_record_id: record.id,
+        feedback_id: feedbackId || null, year: record.year || null, month: record.month || null, day: record.day || null, created_at: record.createdAt || new Date().toISOString()
+      };
+      return await supabaseRequest('POST', 'student_note_archives?on_conflict=academy_id,student_id,local_record_id', payload).catch(err => console.warn('PC student_note_archives 저장 실패:', err.message || err));
+    }
+    function archiveCurrentPcElementaryMemoRecord(student, content, analysis) {
+      if (!student?.id || !String(content || '').trim()) return null;
+      const now = new Date();
+      const record = { id: `elem_record_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate(), label: `${now.getFullYear()}년 ${now.getMonth() + 1}월 기록`, content, analysis: normalizePcElementaryAnalysisState(analysis), createdAt: now.toISOString() };
+      const records = getPcElementaryMemoRecords(student);
+      setPcElementaryMemoRecords(student, [record, ...records]);
+      savePcStudentNoteArchiveToSupabase(student, record);
+      return record;
+    }
+    function getPcMemoFeedbackArchiveKey(student) { return student?.id ? `${PC_MEMO_FEEDBACK_ARCHIVE_PREFIX}${student.id}` : ''; }
+    function addPcMemoFeedbackArchiveItem(student, content) {
+      const key = getPcMemoFeedbackArchiveKey(student);
+      if (!key || !String(content || '').trim()) return null;
+      let list = [];
+      try { list = JSON.parse(localStorage.getItem(key) || '[]'); } catch {}
+      const item = { id: `memo_feedback_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, content: String(content || '').trim(), createdAt: new Date().toISOString(), studentName: student.name || '' };
+      localStorage.setItem(key, JSON.stringify([item, ...(Array.isArray(list) ? list : [])].slice(0, 80)));
+      return item;
+    }
+
+    function getPcTodayFeedbackItemsRaw() {
+      try { const list = JSON.parse(localStorage.getItem(PC_TODAY_FEEDBACK_QUEUE_KEY) || '[]'); return Array.isArray(list) ? list : []; } catch { return []; }
+    }
+    function setPcTodayFeedbackItemsRaw(list) { localStorage.setItem(PC_TODAY_FEEDBACK_QUEUE_KEY, JSON.stringify(Array.isArray(list) ? list.slice(0, 300) : [])); }
+    function createPcTodayFeedbackItem(data = {}) {
+      const item = { id: `today_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, dateKey: getMonthKey(new Date()).slice(0, 7) + '-' + String(new Date().getDate()).padStart(2, '0'), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), status: 'generating', reviewed: false, saved: false, ...data };
+      setPcTodayFeedbackItemsRaw([item, ...getPcTodayFeedbackItemsRaw()]);
+      return item;
+    }
+    function updatePcTodayFeedbackItem(id, patch = {}) {
+      const next = getPcTodayFeedbackItemsRaw().map(item => item.id === id ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item);
+      setPcTodayFeedbackItemsRaw(next);
+    }
+    function savePcMinuteDraft() { try { localStorage.setItem(PC_KCF_DRAFT_KEY, pcState.minuteDraft || ''); } catch {} }
+    function loadPcMinuteDraft() { try { pcState.minuteDraft = localStorage.getItem(PC_KCF_DRAFT_KEY) || pcState.minuteDraft || ''; } catch {} }
+    function clearPcMinuteDraft() { try { localStorage.removeItem(PC_KCF_DRAFT_KEY); } catch {} }
+
     function getPcMemoText() {
       const el = document.getElementById('pcMemoEditor');
       if (!el) return '';
@@ -2886,8 +3220,9 @@ ${addition}` : addition;
       return state;
     }
 
-    function buildPcElementaryAnalysisMemoText(state) {
-      const normalized = state || getEmptyPcElementaryAnalysisState();
+    function buildPcElementaryAnalysisMemoText(state, options = {}) {
+      const normalized = normalizePcElementaryAnalysisState(state || getEmptyPcElementaryAnalysisStateFull());
+      if (options.forPrompt) return buildPcElementaryAnalysisPromptText(normalized);
       const now = new Date();
       const student = getSelectedObservationStudent();
       const lines = [];
@@ -2904,14 +3239,37 @@ ${addition}` : addition;
         lines.push('');
       };
       ['strengths','needs','blockedStages','tendencies','guideAreas','teacherActions','futureDirections'].forEach(addList);
+      lines.push('');
+      lines.push('');
+      lines.push('[선생님 직접 메모]');
+      lines.push('');
+      lines.push('아이가 한 말 :');
+      lines.push('');
+      lines.push('선생님이 실제로 개입한 순간 :');
+      lines.push('');
+      lines.push('작품에서 보인 특징 :');
+      lines.push('');
+      lines.push('최근 성장 또는 변화 :');
+      lines.push('');
+      lines.push('학부모에게 꼭 전달하고 싶은 성장 포인트 :');
+      lines.push('');
       return lines.join('\n').trim();
     }
 
     function applyPcObservationAnalysisToMemo() {
+      const student = getSelectedObservationStudent();
+      if (!student) return;
       const state = getPcAnalysisStateFromModal();
-      const text = buildPcElementaryAnalysisMemoText(state);
-      if (text) appendPcMemoText(text);
+      if (!pcElementaryAnalysisHasContent(state)) {
+        closePcUtilityModal();
+        showToast('선택된 분석 내용이 없어 기존 분석을 유지했습니다.');
+        return;
+      }
+      const previous = getPcElementaryAnalysisByStudent(student);
+      if (pcElementaryAnalysisHasContent(previous) && !pcElementaryAnalysisStatesEqual(previous, state)) archivePcElementaryAnalysisSnapshot(student, previous);
+      setPcElementaryAnalysisByStudent(student, state);
       closePcUtilityModal();
+      showToast('분석 내용이 메모장 기준으로 저장되었습니다.');
     }
 
     function openPcObservationSurvey() {
@@ -2925,15 +3283,18 @@ ${addition}` : addition;
 
     async function submitPcMemoFeedback() {
       const student = getSelectedObservationStudent();
-      const input = document.getElementById('pcMemoEditor');
       const btn = document.getElementById('pcMemoFeedbackBtn');
       const memo = getPcMemoText().trim();
+      const analysisData = getPcElementaryAnalysisByStudent(student);
+      const analysisPromptText = buildPcElementaryAnalysisMemoText(analysisData, { forPrompt: true });
       if (!student) return alert('왼쪽 초등부 명단에서 학생을 선택해 주세요.');
-      if (!memo) return alert('수업 내용을 입력해 주세요.');
+      if (!memo && !analysisPromptText) return alert('기록 또는 분석 내용을 먼저 작성해 주세요.');
       try {
         if (btn) btn.disabled = true;
-        const userText = `[학생 정보]\n이름: ${student.name}\n구분: 초등부\n등록일: ${formatDate(student.enrolled_at)}\n\n[수업 내용]\n${memo}`;
-        const reply = await requestPcFeedback('elementary', userText);
+        await saveCurrentPcObservationMemo({ silent: true });
+        archiveCurrentPcElementaryMemoRecord(student, memo, analysisData);
+        const combined = `${student.name} 초등부 피드백 기록\n\n${memo}${analysisPromptText ? `\n\n[초등부 분석 데이터]\n${analysisPromptText}` : ''}`;
+        const reply = await requestPcFeedback('elementary', combined);
         const area = document.getElementById('pcMemoFeedbackResultArea');
         if (area) {
           area.innerHTML = `<div class="pcFeedbackResultCard"><div class="pcFeedbackResultLabel">초등부 피드백</div><div class="pcFeedbackResultText">${escapeHtml(reply)}</div><div class="pcFeedbackResultActions"><button class="pcSmallBtn" onclick="copyTextFromElement(this.closest('.pcFeedbackResultCard').querySelector('.pcFeedbackResultText'))">복사</button><button class="pcSmallBtn primary" onclick="saveCurrentPcMemoFeedback()">저장</button></div></div>`;
@@ -2953,10 +3314,10 @@ ${addition}` : addition;
       if (!student || !content) return;
       try {
         await savePcGeneratedFeedback(student, content, 'class');
+        addPcMemoFeedbackArchiveItem(student, content);
         showToast('관찰노트 피드백을 저장했습니다.');
         await loadPcCoreData();
-        const updatedDateEl = document.getElementById('pcMemoUpdatedDate');
-        if (updatedDateEl) updatedDateEl.textContent = getPcObservationUpdatedDateText(student);
+        renderObservationWorkspace();
       } catch (err) {
         alert('피드백 저장 실패\n' + (err.message || err));
       }
@@ -2991,25 +3352,35 @@ ${addition}` : addition;
       const btn = document.getElementById('pcMinuteSendBtn');
       const memo = String(input?.value || pcState.minuteDraft || '').trim();
       pcState.minuteDraft = String(input?.value || pcState.minuteDraft || '');
+      savePcMinuteDraft();
       const student = resolvePcMinuteStudentFromMemo(memo);
       if (!memo) return alert('관찰 내용을 입력해 주세요.');
-      if (!student) return alert('첫 줄에 유치부 학생 이름을 입력해 주세요.');
+      if (!student) return alert('첫 줄에는 학생 이름을, 아래에는 관찰 내용을 적어주세요.');
+      const item = createPcTodayFeedbackItem({
+        status: 'generating', studentName: student.name || '', studentDivision: 'kinder', feedbackType: 'class', label: '유치부 1분 피드백',
+        sourcePage: 'kinderChatFeedback', sourceText: memo, attachments: Array.isArray(pcState.minutePhotoPreviews) ? [...pcState.minutePhotoPreviews] : []
+      });
       try {
         if (btn) btn.disabled = true;
         const attachedPhotos = Array.isArray(pcState.minutePhotoPreviews) ? [...pcState.minutePhotoPreviews] : [];
         pcState.minuteMessages.push({ role: 'user', content: memo, photos: attachedPhotos });
+        pcState.minuteMessages.push({ role: 'assistant', content: '관찰 내용을 부모님께 잘 전달될 수 있도록 정리해둘게요.\n다음 학생 기록을 이어서 작성해 주세요.' });
         renderMinuteWorkspace();
-        const userText = `[학생 정보]\n이름: ${student.name}\n구분: 유치부\n등록일: ${formatDate(student.enrolled_at)}\n\n[관찰 내용]\n${memo}`;
-        const reply = await requestPcFeedback('class', userText);
+        const bodyOnly = memo.split('\n').slice(1).join('\n').trim() || memo;
+        const reply = await requestPcFeedback('class', bodyOnly);
+        updatePcTodayFeedbackItem(item.id, { status: 'done', resultText: reply, errorMessage: '' });
         pcState.minuteMessages.push({ role: 'assistant', content: reply });
         await savePcGeneratedFeedback(student, reply, 'class');
+        updatePcTodayFeedbackItem(item.id, { saved: true, reviewed: true });
         pcState.selectedMinuteKeywords = [];
         pcState.selectedMinuteGuideKey = '';
         pcState.minutePhotoPreviews = [];
         pcState.minuteDraft = '';
+        clearPcMinuteDraft();
         renderMinuteWorkspace();
         showToast('1분 피드백을 생성하고 저장했습니다.');
       } catch (err) {
+        updatePcTodayFeedbackItem(item.id, { status: 'error', errorMessage: err.message || '알 수 없는 오류입니다.' });
         alert('1분 피드백 생성 실패\n' + (err.message || err));
       } finally {
         if (btn) btn.disabled = false;
@@ -3089,17 +3460,21 @@ ${addition}` : addition;
       </div>`;
     }
 
-    function selectPcSidebarStudent(studentKey) {
+    async function selectPcSidebarStudent(studentKey) {
       const student = pcState.students.find(s => String(s.id || s.name) === String(studentKey));
       if (!student) return;
       if (pcState.page === 'minute' || student.type === 'kinder') {
+        savePcMinuteDraft();
         pcState.selectedMinuteStudentId = String(student.id || student.name);
         renderPcSidebarContext();
         renderMinuteWorkspace();
         insertPcMinuteStudentName(student.name || '');
+        savePcMinuteDraft();
         return;
       }
+      await flushPcMemoAutoSave(true);
       pcState.selectedObservationStudentId = String(student.id || student.name);
+      pcState.loadedObservationStudentId = '';
       renderPcSidebarContext();
       renderObservationWorkspace();
       showToast(`${student.name} 학생을 선택했습니다.`);
@@ -3466,16 +3841,24 @@ ${addition}` : addition;
       const student = getSelectedObservationStudent();
       const selectedId = String(student?.id || '');
       const selectedName = String(student?.name || '').trim();
-      return (pcState.feedbacks || [])
-        .filter(row => {
-          const type = String(row.feedback_type || row.type || '').toLowerCase();
-          const rowStudentId = String(row.student_id || '');
-          const rowName = String(row.student_name || '').trim();
-          const isElementaryName = pcState.students.some(s => isActiveStudent(s) && s.type === 'elementary' && String(s.name || '').trim() === rowName);
-          const isSelected = selectedId ? rowStudentId === selectedId : false;
-          const isSelectedName = selectedName ? rowName === selectedName : false;
-          return type === 'elementary' || type === 'memo' || (type === 'class' && (isSelected || isSelectedName || isElementaryName));
-        })
+      let localItems = [];
+      const localKey = getPcMemoFeedbackArchiveKey(student);
+      if (localKey) {
+        try { localItems = JSON.parse(localStorage.getItem(localKey) || '[]'); } catch {}
+      }
+      const localRows = (Array.isArray(localItems) ? localItems : []).map(item => ({
+        student_name: item.studentName || selectedName, content: item.content || '', created_at: item.createdAt || item.updatedAt || '', _local: true
+      }));
+      const remoteRows = (pcState.feedbacks || []).filter(row => {
+        const type = String(row.feedback_type || row.type || '').toLowerCase();
+        const rowStudentId = String(row.student_id || '');
+        const rowName = String(row.student_name || '').trim();
+        const isSelected = selectedId ? rowStudentId === selectedId : false;
+        const isSelectedName = selectedName ? rowName === selectedName : false;
+        return type === 'elementary' || type === 'memo' || (type === 'class' && (isSelected || isSelectedName));
+      });
+      return [...localRows, ...remoteRows]
+        .filter(row => String(row.content || row.feedback || row.text || '').trim())
         .sort((a, b) => new Date(b.created_at || b.date || b.updated_at || 0).getTime() - new Date(a.created_at || a.date || a.updated_at || 0).getTime())
         .slice(0, 80);
     }
@@ -3502,14 +3885,18 @@ ${addition}` : addition;
     }
 
     function getPcMinuteArchiveRows() {
-      return (pcState.feedbacks || [])
-        .filter(row => {
-          const type = String(row.feedback_type || row.type || '').toLowerCase();
-          const studentType = String(row.student_type || '').toLowerCase();
-          const name = String(row.student_name || '').trim();
-          const isKinderName = pcState.students.some(student => isActiveStudent(student) && student.type === 'kinder' && String(student.name || '').trim() === name);
-          return type === 'class' || studentType === 'kinder' || isKinderName;
-        })
+      const queueRows = getPcTodayFeedbackItemsRaw()
+        .filter(item => item && item.sourcePage === 'kinderChatFeedback' && (item.resultText || item.sourceText))
+        .map(item => ({ student_name: item.studentName || '', content: item.resultText || item.sourceText || '', created_at: item.updatedAt || item.createdAt || '', feedback_type: item.feedbackType || 'class', _localQueue: true }));
+      const remoteRows = (pcState.feedbacks || []).filter(row => {
+        const type = String(row.feedback_type || row.type || '').toLowerCase();
+        const studentType = String(row.student_type || '').toLowerCase();
+        const name = String(row.student_name || '').trim();
+        const isKinderName = pcState.students.some(student => isActiveStudent(student) && student.type === 'kinder' && String(student.name || '').trim() === name);
+        return type === 'class' || studentType === 'kinder' || isKinderName;
+      });
+      return [...queueRows, ...remoteRows]
+        .filter(row => String(row.content || row.feedback || row.text || '').trim())
         .sort((a, b) => new Date(b.created_at || b.date || b.updated_at || 0).getTime() - new Date(a.created_at || a.date || a.updated_at || 0).getTime())
         .slice(0, 80);
     }
@@ -3556,6 +3943,8 @@ ${addition}` : addition;
     }
 
     function switchPcPage(page) {
+      if (pcState.page === 'observation' && page !== 'observation') flushPcMemoAutoSave(true);
+      if (pcState.page === 'minute' && page !== 'minute') savePcMinuteDraft();
       pcState.page = page;
       document.getElementById('pcApp')?.classList.toggle('pcMinutePage', page === 'minute');
       document.getElementById('pcApp')?.classList.toggle('pcObservationPage', page === 'observation');
@@ -3630,6 +4019,21 @@ ${addition}` : addition;
       });
     });
     window.addEventListener('load', () => setTimeout(hideVivicotBootScreen, 150));
+
+
+    window.addEventListener('beforeunload', () => {
+      try {
+        const student = getSelectedObservationStudent && getSelectedObservationStudent();
+        if (student) setPcMemoByStudent(student, getPcMemoText(), new Date().toISOString());
+        savePcMinuteDraft();
+      } catch {}
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        try { flushPcMemoAutoSave(true); } catch {}
+        try { savePcMinuteDraft(); } catch {}
+      }
+    });
   </script>
 </body>
 </html>
