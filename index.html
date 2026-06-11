@@ -236,32 +236,6 @@
       overflow: auto;
       padding-right: 2px;
       margin-right: -2px;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(25, 26, 31, 0.16) transparent;
-    }
-
-    .pcSidebarStudentScroll::-webkit-scrollbar {
-      width: 4px;
-      height: 4px;
-    }
-
-    .pcSidebarStudentScroll::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    .pcSidebarStudentScroll::-webkit-scrollbar-thumb {
-      background: rgba(25, 26, 31, 0.14);
-      border-radius: 999px;
-    }
-
-    .pcSidebarStudentScroll::-webkit-scrollbar-thumb:hover {
-      background: rgba(25, 26, 31, 0.22);
-    }
-
-    .pcSidebarStudentScroll::-webkit-scrollbar-button {
-      width: 0;
-      height: 0;
-      display: none;
     }
 
     .pcSidebarStudentRow {
@@ -307,22 +281,32 @@
       right: 6px;
       top: 50%;
       transform: translateY(-50%);
-      width: 24px;
-      height: 24px;
+      width: 25px;
+      height: 25px;
       border: 0;
       border-radius: 50%;
-      background: #f0f1f3;
-      color: #6f7077;
-      font-size: 18px;
+      background: #eceef2;
+      color: #595a61;
+      font-size: 16px;
       font-weight: 300;
       line-height: 1;
-      letter-spacing: 0;
       opacity: 0;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      text-align: center;
-      font-family: Arial, sans-serif;
+      letter-spacing: 0;
+      padding: 0;
+    }
+
+    .pcSidebarStudentMoreDots {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      line-height: 1;
+      font-weight: 300;
+      transform: translateY(-1px);
     }
 
     .pcSidebarStudentRow:hover .pcSidebarStudentMore { opacity: 1; }
@@ -1910,6 +1894,30 @@
       .pcA4Sheet { position: absolute; left: 0; top: 0; box-shadow: none; border-radius: 0; width: 210mm; min-height: 297mm; }
       .pcA4Toolbar { display: none; }
     }
+
+    .pcSidebarStudentScroll {
+      scrollbar-width: thin;
+      scrollbar-color: #e3e5ea transparent;
+    }
+    .pcSidebarStudentScroll::-webkit-scrollbar { width: 4px; height: 4px; }
+    .pcSidebarStudentScroll::-webkit-scrollbar-track { background: transparent; }
+    .pcSidebarStudentScroll::-webkit-scrollbar-thumb { background: #e3e5ea; border-radius: 999px; }
+    .pcSidebarStudentScroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+
+    .pcCardHeadCompact { justify-content: flex-end; margin-bottom: 14px; }
+
+    #pcAttendanceList .pcStudentLeft {
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr);
+      align-items: center;
+      column-gap: 10px;
+      min-width: 0;
+    }
+    #pcAttendanceList .pcStudentText { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    #pcAttendanceList .pcStudentName { line-height: 1.25; }
+
+    .pcMinuteComposerWrap .pcMinuteQuestionGuide.show { margin-bottom: 9px; margin-top: 0; }
+
   </style>
 </head>
 <body>
@@ -1941,7 +1949,7 @@
           <span>학원 관리</span>
         </button>
         <button class="pcNavBtn" data-page="attendance" onclick="switchPcPage('attendance')">
-          <svg viewBox="0 0 24 24"><path d="M4 5h16"></path><path d="M4 19h16"></path><path d="M7 19V9"></path><path d="M12 19V3"></path><path d="M17 19v-7"></path></svg>
+          <svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2.5"></rect><path d="M9 4.5V3h6v1.5"></path><path d="M8.5 10.5l1.6 1.6 3.4-3.5"></path><path d="M8.5 16h7"></path></svg>
           <span>출석부</span>
         </button>
         <button class="pcNavBtn" data-page="observation" onclick="switchPcPage('observation')">
@@ -1955,22 +1963,13 @@
       </nav>
 
       <div class="pcSidebarContext" id="pcSidebarContext"></div>
-
-      <div class="pcSidebarBottom">
-        <button class="pcCircleBtn" title="학생 등록" onclick="openPcStudentCreate(pcState.page === 'minute' ? 'kinder' : 'elementary')">
-          <svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
-        </button>
-        <button class="pcCircleBtn" title="설정" onclick="openPcSettingsPanel()">
-          <svg viewBox="0 0 24 24"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h16"></path><circle cx="8" cy="7" r="1.8"></circle><circle cx="15" cy="12" r="1.8"></circle><circle cx="10" cy="17" r="1.8"></circle></svg>
-        </button>
-      </div>
     </aside>
 
     <section class="pcContentShell">
       <header class="pcTopbar">
         <div>
           <div class="pcPageTitle" id="pcPageTitle">학원 관리</div>
-          <div class="pcPageSub" id="pcPageSub">상담 예정, 종합 피드백, 재원생 흐름을 한 화면에서 확인합니다.</div>
+          <div class="pcPageSub" id="pcPageSub" style="display:none;"></div>
         </div>
         <div class="pcTopActions" id="pcTopActions">
           <input class="pcSearch" id="pcSearchInput" placeholder="학생 검색" oninput="handlePcSearchInput()" />
@@ -1990,7 +1989,6 @@
               <div class="pcCardHead">
                 <div>
                   <div class="pcCardTitle">상담 준비</div>
-                  <div class="pcCardSub">학생 이름을 누르면 저장된 종합 피드백을 오른쪽에서 확인합니다.</div>
                 </div>
                 <span class="pcBadge" id="pcConsultTotalBadge">0</span>
               </div>
@@ -2000,11 +1998,7 @@
 
           <section class="pcPage" id="pcPageAttendance">
             <div class="pcCard">
-              <div class="pcCardHead">
-                <div>
-                  <div class="pcCardTitle">출석부</div>
-                  <div class="pcCardSub">학생 이름을 누르면 오늘 출석 상태와 학생 정보를 확인합니다.</div>
-                </div>
+              <div class="pcCardHead pcCardHeadCompact">
                 <span class="pcBadge" id="pcAttendanceBadge">0</span>
               </div>
               <div class="pcList" id="pcAttendanceList"></div>
@@ -2700,10 +2694,10 @@
         <div class="pcMinuteShell">
           <div id="pcMinuteChatArea" class="pcMinuteChatArea">${messagesHtml}</div>
           <div class="pcMinuteComposerWrap">
+            ${renderPcMinuteQuestionGuide()}
             <div class="pcKeywordScroller">
               ${renderPcKeywordButtons()}
             </div>
-            ${renderPcMinuteQuestionGuide()}
             <div class="pcMinuteComposer">
               ${renderPcMinutePhotoPreviews()}
               <input id="pcMinutePhotoInput" type="file" accept="image/*" multiple hidden onchange="handlePcMinutePhotoChange(event)">
@@ -3542,6 +3536,19 @@ ${addition}` : addition;
         wrap.innerHTML = renderPcSidebarStudentList('kinder', '유치부 명단');
         return;
       }
+      if (pcState.page === 'dashboard') {
+        const targets = Array.isArray(pcState.consultationTargets) ? pcState.consultationTargets : [];
+        const elementaryTargets = targets.filter(t => t?.student?.type === 'elementary');
+        const kinderTargets = targets.filter(t => t?.student?.type === 'kinder');
+        wrap.innerHTML = `
+        <div class="pcSidebarGroup">
+          <div class="pcSidebarLabel">상담 보기</div>
+          <button class="pcFilterBtn ${pcState.typeFilter === 'all' ? 'active' : ''}" data-filter="all" onclick="setPcTypeFilter('all')"><span>전체</span><span>${targets.length}</span></button>
+          <button class="pcFilterBtn ${pcState.typeFilter === 'elementary' ? 'active' : ''}" data-filter="elementary" onclick="setPcTypeFilter('elementary')"><span>초등부</span><span>${elementaryTargets.length}</span></button>
+          <button class="pcFilterBtn ${pcState.typeFilter === 'kinder' ? 'active' : ''}" data-filter="kinder" onclick="setPcTypeFilter('kinder')"><span>유치부</span><span>${kinderTargets.length}</span></button>
+        </div>`;
+        return;
+      }
       const active = pcState.students.filter(isActiveStudent);
       const elementary = active.filter(s => s.type === 'elementary');
       const kinder = active.filter(s => s.type === 'kinder');
@@ -3573,7 +3580,7 @@ ${addition}` : addition;
         <button class="pcSidebarStudentRow${selected}" onclick="selectPcSidebarStudent('${escapeHtml(key)}')">
           ${renderPcLeadIcon(student)}
           <span class="pcSidebarStudentText"><span class="pcSidebarStudentName">${escapeHtml(student.name)}</span><span class="pcSidebarStudentMeta">${escapeHtml(getStudentMeta(student))}</span></span>
-          <span class="pcSidebarStudentMore" onclick="event.stopPropagation(); openPcStudentEdit('${escapeHtml(key)}')" aria-label="학생정보 수정">...</span>
+          <span class="pcSidebarStudentMore" onclick="event.stopPropagation(); openPcStudentEdit('${escapeHtml(key)}')"><span class="pcSidebarStudentMoreDots">...</span></span>
         </button>`;
       }).join('') || `<div class="pcPlaceholder" style="min-height:160px; font-size:12px;">표시할 학생이 없습니다.</div>`;
       return `<div class="pcSidebarStudentList">
@@ -3884,7 +3891,7 @@ ${addition}` : addition;
 
     function renderConsultationList() {
       const wrap = document.getElementById('pcConsultList');
-      const targets = pcState.consultationTargets.filter(t => passesFilters(t.student));
+      const targets = pcState.consultationTargets.filter(t => pcState.typeFilter === 'all' || t.student.type === pcState.typeFilter);
       const groups = [
         ['elementary', '초등부 상담 예정'],
         ['kinder', '유치부 상담 예정']
@@ -4077,7 +4084,7 @@ ${addition}` : addition;
       document.querySelectorAll('.pcNavBtn').forEach(btn => btn.classList.toggle('active', btn.dataset.page === page));
       document.querySelectorAll('.pcPage').forEach(el => el.classList.remove('active'));
       document.getElementById('pcPage' + page.charAt(0).toUpperCase() + page.slice(1))?.classList.add('active');
-      const titleMap = { dashboard: ['학원 관리', '상담 예정, 종합 피드백, 재원생 흐름을 한 화면에서 확인합니다.'], attendance: ['출석부', '초등부와 유치부 출석 현황을 PC 화면에서 넓게 확인합니다.'], observation: ['관찰노트', ''], minute: ['1분 피드백', ''] };
+      const titleMap = { dashboard: ['학원 관리', ''], attendance: ['출석부', ''], observation: ['관찰노트', ''], minute: ['1분 피드백', ''] };
       document.getElementById('pcPageTitle').textContent = titleMap[page]?.[0] || '';
       const subEl = document.getElementById('pcPageSub');
       if (subEl) {
