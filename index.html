@@ -236,6 +236,32 @@
       overflow: auto;
       padding-right: 2px;
       margin-right: -2px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(25, 26, 31, 0.16) transparent;
+    }
+
+    .pcSidebarStudentScroll::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+
+    .pcSidebarStudentScroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .pcSidebarStudentScroll::-webkit-scrollbar-thumb {
+      background: rgba(25, 26, 31, 0.14);
+      border-radius: 999px;
+    }
+
+    .pcSidebarStudentScroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(25, 26, 31, 0.22);
+    }
+
+    .pcSidebarStudentScroll::-webkit-scrollbar-button {
+      width: 0;
+      height: 0;
+      display: none;
     }
 
     .pcSidebarStudentRow {
@@ -281,19 +307,22 @@
       right: 6px;
       top: 50%;
       transform: translateY(-50%);
-      width: 25px;
-      height: 25px;
+      width: 24px;
+      height: 24px;
       border: 0;
       border-radius: 50%;
-      background: #eceef2;
-      color: #595a61;
-      font-size: 15px;
-      font-weight: 900;
+      background: #f0f1f3;
+      color: #6f7077;
+      font-size: 18px;
+      font-weight: 300;
       line-height: 1;
+      letter-spacing: 0;
       opacity: 0;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      text-align: center;
+      font-family: Arial, sans-serif;
     }
 
     .pcSidebarStudentRow:hover .pcSidebarStudentMore { opacity: 1; }
@@ -3544,7 +3573,7 @@ ${addition}` : addition;
         <button class="pcSidebarStudentRow${selected}" onclick="selectPcSidebarStudent('${escapeHtml(key)}')">
           ${renderPcLeadIcon(student)}
           <span class="pcSidebarStudentText"><span class="pcSidebarStudentName">${escapeHtml(student.name)}</span><span class="pcSidebarStudentMeta">${escapeHtml(getStudentMeta(student))}</span></span>
-          <span class="pcSidebarStudentMore" onclick="event.stopPropagation(); openPcStudentEdit('${escapeHtml(key)}')">•••</span>
+          <span class="pcSidebarStudentMore" onclick="event.stopPropagation(); openPcStudentEdit('${escapeHtml(key)}')" aria-label="학생정보 수정">...</span>
         </button>`;
       }).join('') || `<div class="pcPlaceholder" style="min-height:160px; font-size:12px;">표시할 학생이 없습니다.</div>`;
       return `<div class="pcSidebarStudentList">
