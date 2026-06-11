@@ -1519,6 +1519,55 @@
       letter-spacing: -0.02em;
     }
 
+
+
+    .pcMemoStudentNameLine {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .pcElementaryAnalysisSummaryWrap {
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .pcElementaryAnalysisSummaryCard {
+      width: 28px;
+      height: 28px;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(34, 197, 94, 0.12);
+      color: #16a34a;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .pcElementaryAnalysisSummaryCard svg {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    vercel-live-feedback,
+    vercel-toolbar,
+    [data-vercel-toolbar],
+    [data-vercel-live-feedback],
+    iframe[src*="vercel.live"],
+    iframe[title*="Vercel"],
+    iframe[aria-label*="Vercel"] {
+      display: none;
+    }
+
     .pcMemoNotebook {
       flex: 1 1 auto;
       min-height: 560px;
@@ -2573,15 +2622,19 @@
         <div class="pcObservationNoteShell">
           <div class="pcObservationNoteHeader">
             <div id="pcMemoUpdatedDate" class="pcMemoUpdatedDate">${escapeHtml(updatedText)}</div>
-            <div id="pcMemoStudentName" class="pcMemoStudentName">${escapeHtml(studentName)}</div>
+            <div class="pcMemoStudentNameLine">
+              <div id="pcMemoStudentName" class="pcMemoStudentName">${escapeHtml(studentName)}</div>
+              <div id="pcElementaryAnalysisSummaryWrap" class="pcElementaryAnalysisSummaryWrap" aria-label="분석 결과"></div>
+            </div>
           </div>
-          <div id="pcMemoEditor" class="pcMemoNotebook" contenteditable="true" data-placeholder="학생의 수업 내용을 기록해 주세요." oninput="handlePcMemoEditorInput()" onblur="flushPcMemoAutoSave(true)"></div>
+          <div id="pcMemoEditor" class="pcMemoNotebook" contenteditable="true" data-placeholder="학생의 수업 내용을 바로 기록해 주세요." oninput="handlePcMemoEditorInput()" onblur="flushPcMemoAutoSave(true)"></div>
           <div id="pcMemoFeedbackResultArea" class="pcMemoResultArea pcNotebookResultArea"></div>
           <div class="pcObservationActionBar">
             <button type="button" class="pcObservationSurveyBtn memoBottomIconBtn memoBottomAnalysisBtn" onclick="openPcObservationSurvey()" aria-label="오늘의 분석 설문" title="오늘의 분석 설문"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5.2" y="4.6" width="13.6" height="14.8" rx="3"></rect><path d="M8.4 9h7.2"></path><path d="M8.4 12.4h7.2"></path><path d="M8.4 15.8h4.4"></path></svg></button>
             <button id="pcMemoFeedbackBtn" type="button" class="pcComposerSendBtn" onclick="submitPcMemoFeedback()" aria-label="피드백 생성"><svg viewBox="0 0 24 24"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg></button>
           </div>
         </div>`;
+      renderPcElementaryAnalysisSummaryCard(getPcElementaryAnalysisByStudent(student));
       if (shouldLoadDraft) loadPcObservationDraftForStudent(student);
       else {
         setPcMemoEditorText(localEntry.content || '');
@@ -3023,6 +3076,48 @@
       const hasExtra = Object.values(normalized.extraTexts || {}).some(value => String(value || '').trim());
       return hasList || hasExtra;
     }
+    function renderPcElementaryAnalysisSummaryCard(state) {
+      const wrap = document.getElementById('pcElementaryAnalysisSummaryWrap');
+      if (!wrap) return;
+      const normalized = normalizePcElementaryAnalysisState(state);
+      if (!pcElementaryAnalysisHasContent(normalized)) {
+        wrap.style.display = 'none';
+        wrap.innerHTML = '';
+        return;
+      }
+      wrap.style.display = 'inline-flex';
+      wrap.innerHTML = `<button type="button" class="pcElementaryAnalysisSummaryCard" onclick="event.stopPropagation(); openPcObservationAnalysisDetailFromCurrent();" aria-label="분석 결과 보기" title="분석 결과 보기">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5.2" y="4.6" width="13.6" height="14.8" rx="3"></rect><path d="M8.4 9h7.2"></path><path d="M8.4 12.4h7.2"></path><path d="M8.4 15.8h4.4"></path></svg>
+      </button>`;
+    }
+
+    function buildPcObservationAnalysisDetailBody(state) {
+      const normalized = normalizePcElementaryAnalysisState(state);
+      const addSection = (field) => {
+        const list = Array.isArray(normalized[field]) ? normalized[field].filter(Boolean) : [];
+        const extra = String(normalized.extraTexts?.[field] || '').trim();
+        if (!list.length && !extra) return '';
+        return `<div class="pcAnalysisSection">
+          <div class="pcAnalysisSectionTitle">${escapeHtml(PC_ELEMENTARY_ANALYSIS_FIELD_LABELS[field] || field)}</div>
+          <div class="pcAnalysisGrid pcAnalysisDetailList">
+            ${list.map(item => `<span class="pcAnalysisChip active">${escapeHtml(item)}</span>`).join('')}
+            ${extra ? `<span class="pcAnalysisChip active">기타: ${escapeHtml(extra)}</span>` : ''}
+          </div>
+        </div>`;
+      };
+      const dateText = normalized.updatedAt ? `저장일 ${formatDate(normalized.updatedAt)}` : '저장된 분석';
+      const body = ['strengths','needs','blockedStages','tendencies','guideAreas','teacherActions','futureDirections'].map(addSection).join('');
+      return `<div class="pcAnalysisIntro">${escapeHtml(dateText)}</div>${body || '<div class="pcModalEmpty">저장된 분석 내용이 없습니다.</div>'}`;
+    }
+
+    function openPcObservationAnalysisDetailFromCurrent() {
+      const student = getSelectedObservationStudent();
+      if (!student) return;
+      const state = getPcElementaryAnalysisByStudent(student);
+      if (!pcElementaryAnalysisHasContent(state)) return;
+      openPcUtilityModal('분석 결과', buildPcObservationAnalysisDetailBody(state), `<button class="pcSmallBtn primary" type="button" onclick="closePcUtilityModal()">닫기</button>`);
+    }
+
     function getPcElementaryAnalysisHistoryKey(student) { return student?.id ? `${PC_ELEMENTARY_ANALYSIS_PREFIX}${student.id}_history` : ''; }
     function getPcElementaryAnalysisHistoryByStudent(student) {
       const key = getPcElementaryAnalysisHistoryKey(student);
@@ -3261,15 +3356,17 @@ ${addition}` : addition;
       if (!student) return;
       const state = getPcAnalysisStateFromModal();
       if (!pcElementaryAnalysisHasContent(state)) {
+        renderPcElementaryAnalysisSummaryCard(getPcElementaryAnalysisByStudent(student));
         closePcUtilityModal();
         showToast('선택된 분석 내용이 없어 기존 분석을 유지했습니다.');
         return;
       }
       const previous = getPcElementaryAnalysisByStudent(student);
       if (pcElementaryAnalysisHasContent(previous) && !pcElementaryAnalysisStatesEqual(previous, state)) archivePcElementaryAnalysisSnapshot(student, previous);
-      setPcElementaryAnalysisByStudent(student, state);
+      const currentState = setPcElementaryAnalysisByStudent(student, state);
+      renderPcElementaryAnalysisSummaryCard(currentState);
       closePcUtilityModal();
-      showToast('분석 내용이 메모장 기준으로 저장되었습니다.');
+      showToast('분석 내용이 카드로 정리되었습니다.');
     }
 
     function openPcObservationSurvey() {
@@ -4018,7 +4115,29 @@ ${addition}` : addition;
         if (event.key === 'Enter') pcOwnerLogin();
       });
     });
-    window.addEventListener('load', () => setTimeout(hideVivicotBootScreen, 150));
+    function removeVercelToolbarIfPresent() {
+      const selectors = [
+        'vercel-live-feedback',
+        'vercel-toolbar',
+        '[data-vercel-toolbar]',
+        '[data-vercel-live-feedback]',
+        'iframe[src*="vercel.live"]',
+        'iframe[title*="Vercel"]',
+        'iframe[aria-label*="Vercel"]'
+      ];
+      selectors.forEach(selector => {
+        document.querySelectorAll(selector).forEach(node => {
+          try { node.remove(); } catch { try { node.style.display = 'none'; } catch {} }
+        });
+      });
+    }
+
+    window.addEventListener('load', () => {
+      setTimeout(hideVivicotBootScreen, 150);
+      removeVercelToolbarIfPresent();
+      setTimeout(removeVercelToolbarIfPresent, 1200);
+      setTimeout(removeVercelToolbarIfPresent, 3000);
+    });
 
 
     window.addEventListener('beforeunload', () => {
