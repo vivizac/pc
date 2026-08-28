@@ -43430,9 +43430,16 @@ document.addEventListener('DOMContentLoaded', function(){
     else if (panel) panel.style.display = '';
   }
 
+  function pcHideMainScreensExcept(targetId){
+    document.querySelectorAll('.pageScreen').forEach(screen => {
+      if (screen.id !== targetId) screen.style.display = 'none';
+    });
+  }
+
   async function pcOpenSection(section){
     pcSetChrome(section);
     if (section === 'academy') {
+      pcHideMainScreensExcept('recordRoomScreen');
       if (typeof showRecordRoom === 'function') await showRecordRoom();
       if (typeof currentRecordView !== 'undefined' && currentRecordView !== 'academy' && typeof toggleRecordAcademyManagementMode === 'function') {
         await toggleRecordAcademyManagementMode();
@@ -43442,6 +43449,7 @@ document.addEventListener('DOMContentLoaded', function(){
       return;
     }
     if (section === 'attendance') {
+      pcHideMainScreensExcept('recordRoomScreen');
       // PC 메뉴가 기준입니다. 기존 학원관리 currentRecordView가 남아 있지 않도록
       // 원본 기록실의 학생목록 모드로 먼저 전환한 뒤 PC 출석부를 그립니다.
       if (typeof showRecordRoom === 'function') await showRecordRoom();
@@ -43457,6 +43465,7 @@ document.addEventListener('DOMContentLoaded', function(){
       return;
     }
     if (section === 'observation') {
+      pcHideMainScreensExcept('studentMemoScreen');
       const students = pcActiveStudents('elementary');
       const target = (window.currentMemoStudent && window.currentMemoStudent.type === 'elementary')
         ? window.currentMemoStudent
