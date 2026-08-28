@@ -8790,6 +8790,9 @@ body.olliPcApp{margin:0;color:var(--pc-text);}
 .olliPcContextTitle{padding:0 10px 8px;font-size:11px;font-weight:750;color:#9a9ea6;}
 .olliPcContextBody{min-height:0;overflow:auto;padding:0 0 10px;scrollbar-width:thin;}
 .olliPcContextBody::-webkit-scrollbar{width:5px}.olliPcContextBody::-webkit-scrollbar-thumb{background:#d9dce1;border-radius:9px;}
+.olliPcShell[data-pc-section="observation"] .olliPcContextBody{scrollbar-width:none;}
+.olliPcShell[data-pc-section="observation"] .olliPcContextBody::-webkit-scrollbar{width:0;height:0;background:transparent;}
+.olliPcShell[data-pc-section="observation"] .olliPcContextBody::-webkit-scrollbar-thumb{background:transparent;}
 .olliPcQuickBtn,.olliPcRosterBtn{width:100%;border:0;background:transparent;font-family:inherit;cursor:pointer;}
 .olliPcQuickBtn{height:34px;border-radius:10px;padding:0 10px;display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;color:#60646b;}
 .olliPcQuickBtn.active{background:#f2f3f5;color:#111;}
@@ -43402,7 +43405,10 @@ document.addEventListener('DOMContentLoaded', function(){
     pcSection = section || pcSection;
     const shell = document.getElementById('olliPcShell');
     const topbar = document.getElementById('olliPcTopbar');
-    if (shell) shell.classList.add('visible');
+    if (shell) {
+      shell.classList.add('visible');
+      shell.dataset.pcSection = pcSection;
+    }
     if (topbar) topbar.classList.add('visible');
     document.querySelectorAll('[data-pc-nav]').forEach(btn => btn.classList.toggle('active', btn.dataset.pcNav === pcSection));
     const title = document.getElementById('olliPcTopbarTitle');
@@ -43436,7 +43442,14 @@ document.addEventListener('DOMContentLoaded', function(){
       return;
     }
     if (section === 'attendance') {
+      // PC 메뉴가 기준입니다. 기존 학원관리 currentRecordView가 남아 있지 않도록
+      // 원본 기록실의 학생목록 모드로 먼저 전환한 뒤 PC 출석부를 그립니다.
       if (typeof showRecordRoom === 'function') await showRecordRoom();
+      if (typeof openRecordAttendanceDashboard === 'function') {
+        await openRecordAttendanceDashboard();
+      } else if (typeof currentRecordView !== 'undefined') {
+        currentRecordView = (typeof currentObservationView !== 'undefined' && currentObservationView === 'kinder') ? 'kinder' : 'elementary';
+      }
       pcAttendanceDivision = 'all';
       pcAttendanceDay = '';
       pcRenderContext();
@@ -43513,8 +43526,16 @@ document.addEventListener('DOMContentLoaded', function(){
 
   function pcSelectRosterStudent(studentId, mode){
     if (mode === 'observation') {
-      if (typeof openStudentMemoPageById === 'function') openStudentMemoPageById(studentId);
-      setTimeout(pcRenderContext, 0);
+      const openMemo = (typeof window.openStudentMemoPageById === 'function')
+        ? window.openStudentMemoPageById
+        : (typeof openStudentMemoPageById === 'function' ? openStudentMemoPageById : null);
+      if (!openMemo) {
+        if (typeof showPushToast === 'function') showPushToast('관찰노트를 여는 기능을 찾지 못했어요.');
+        return;
+      }
+      openMemo(studentId);
+      // 학생 선택 뒤에만 명단의 선택 표시를 갱신합니다.
+      requestAnimationFrame(pcRenderContext);
       return;
     }
     try {
@@ -43621,11 +43642,19 @@ document.addEventListener('DOMContentLoaded', function(){
     }
     const page = pcVisibleMainPage();
     if (!page) return;
-    if (page === 'kinderChatFeedbackScreen') pcSection = 'feedback';
-    else if (page === 'studentMemoScreen' || page === 'kinderRiskMemoScreen') pcSection = 'observation';
-    else if (page === 'recordRoomScreen' && typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') pcSection = 'academy';
-    else if (page === 'recordRoomScreen' && pcSection !== 'academy') pcSection = 'attendance';
-    pcSetChrome(pcSection);
+    let nextSection = pcSection;
+    if (page === 'kinderChatFeedbackScreen') nextSection = 'feedback';
+    else if (page === 'studentMemoScreen' || page === 'kinderRiskMemoScreen') nextSection = 'observation';
+    else if (page === 'recordRoomScreen' && !['academy','attendance'].includes(nextSection)) {
+      nextSection = (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') ? 'academy' : 'attendance';
+    }
+    if (nextSection !== pcSection) pcSetChrome(nextSection);
+    else {
+      const shell = document.getElementById('olliPcShell');
+      const topbar = document.getElementById('olliPcTopbar');
+      shell?.classList.add('visible');
+      topbar?.classList.add('visible');
+    }
     if (pcSection === 'academy') setTimeout(pcBindAcademyRows, 0);
   }
 
@@ -43645,8 +43674,13 @@ document.addEventListener('DOMContentLoaded', function(){
       });
       observer.observe(dashboard,{childList:true,subtree:true});
     }
-    pcSyncTimer = setInterval(pcSyncFromVisiblePage, 700);
+    // 화면을 0.7초마다 다시 그리면 메뉴 상태가 서로 덮이고 클릭 중 DOM이 교체될 수 있습니다.
+    // 최초 1회와 실제 브라우저 복귀 시에만 화면 상태를 맞춥니다.
     setTimeout(pcSyncFromVisiblePage, 0);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') pcSyncFromVisiblePage();
+    });
+    window.addEventListener('focus', pcSyncFromVisiblePage);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once:true});
   else start();
