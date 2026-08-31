@@ -8810,8 +8810,11 @@ body.olliPcApp[data-olli-text-size="large"],html[data-olli-text-size="large"] bo
 .olliPcRosterInfoBtn svg{width:18px;height:18px;fill:currentColor;stroke:none;}
 .olliPcRosterBtn:hover .olliPcRosterInfoBtn,.olliPcRosterInfoBtn:focus-visible{opacity:1;pointer-events:auto;}
 .olliPcRosterInfoBtn:hover{background:transparent;color:#111;}
-.olliPcSidebarBottom{position:relative;height:58px;border-top:1px solid var(--pc-line);padding:8px 10px;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box;}
-body.olliPcApp .olliPcSidebarBottom #recordSortPopup{right:8px;bottom:52px;width:min(220px,calc(var(--pc-sidebar-w) - 20px));max-height:430px;}
+.olliPcSidebarBottom{position:relative;height:58px;border-top:1px solid var(--pc-line);padding:8px 10px;display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center;box-sizing:border-box;}
+.olliPcSidebarBottom .olliPcRoundBtn:nth-child(1){justify-self:start;}
+.olliPcSidebarBottom .olliPcRoundBtn:nth-child(2){justify-self:center;}
+.olliPcSidebarBottom .olliPcRoundBtn:nth-child(3){justify-self:end;}
+body.olliPcApp .olliPcSidebarBottom #recordSortPopup{left:50%;right:auto;bottom:52px;transform:translateX(-50%);width:min(220px,calc(var(--pc-sidebar-w) - 20px));max-height:430px;}
 .olliPcRoundBtn{width:34px;height:34px;border:1px solid #e3e5e8;background:#fff;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:#15171a;box-shadow:0 3px 12px rgba(0,0,0,.04);}
 .olliPcRoundBtn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 
@@ -8970,11 +8973,14 @@ body.olliPcApp #settingsDetailScreen{left:0;top:0;width:100%;height:100%;}
     <div class="olliPcContextBody" id="olliPcContextBody"></div>
   </div>
   <div class="olliPcSidebarBottom">
-    <button class="olliPcRoundBtn" type="button" onclick="openStudentModal()" aria-label="학생 추가">
+    <button class="olliPcRoundBtn" id="olliPcAddStudentBtn" type="button" onclick="openStudentModal()" aria-label="학생 추가" title="학생 추가">
       <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>
     </button>
-    <button class="olliPcRoundBtn" id="olliPcSidebarUtilityBtn" type="button" onclick="pcHandleSidebarUtility(event)" aria-label="설정" title="설정">
+    <button class="olliPcRoundBtn" id="olliPcSortBtn" type="button" onclick="pcOpenSidebarSort(event)" aria-label="정렬" title="정렬">
       <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"></path><circle cx="16" cy="7" r="2"></circle><circle cx="8" cy="17" r="2"></circle></svg>
+    </button>
+    <button class="olliPcRoundBtn" id="olliPcSettingsBtn" type="button" onclick="openSettingsPage()" aria-label="설정" title="설정">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.04 1.56V20h-3v-.08a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 7 15a1.7 1.7 0 0 0-1.56-1.04H5v-3h.44A1.7 1.7 0 0 0 7 9.92a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.12-2.12.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 11.7 4.7V4h3v.7a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.12 2.12-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 20.96 11H21v3h-.04A1.7 1.7 0 0 0 19.4 15z"></path></svg>
     </button>
   </div>
 </div>
@@ -43467,14 +43473,10 @@ document.addEventListener('DOMContentLoaded', function(){
     if (title) title.textContent = sectionTitles[pcSection] || 'OLLI';
     const search = document.getElementById('olliPcSearch');
     const archive = document.getElementById('olliPcTopArchiveBtn');
-    const utilityBtn = document.getElementById('olliPcSidebarUtilityBtn');
+    const sortBtn = document.getElementById('olliPcSortBtn');
     if (search) search.style.display = (pcSection === 'academy' || pcSection === 'attendance') ? '' : 'none';
     if (archive) archive.classList.toggle('show', pcSection === 'observation' || pcSection === 'feedback');
-    if (utilityBtn) {
-      const rosterMode = pcSection === 'observation' || pcSection === 'feedback';
-      utilityBtn.setAttribute('aria-label', rosterMode ? '정렬' : '설정');
-      utilityBtn.setAttribute('title', rosterMode ? '정렬' : '설정');
-    }
+    if (sortBtn) sortBtn.style.visibility = (pcSection === 'observation' || pcSection === 'feedback') ? 'visible' : 'hidden';
     if (pcSection !== 'observation' && pcSection !== 'feedback') {
       const sortPopup = document.getElementById('recordSortPopup');
       if (sortPopup) sortPopup.classList.remove('show');
@@ -43627,18 +43629,6 @@ document.addEventListener('DOMContentLoaded', function(){
     if (popup.parentElement !== bottom) bottom.appendChild(popup);
     if (typeof window.refreshRecordSortPopup === 'function') window.refreshRecordSortPopup(view);
     popup.classList.toggle('show');
-  }
-
-  function pcHandleSidebarUtility(event){
-    if (pcSection === 'observation' || pcSection === 'feedback') {
-      pcOpenSidebarSort(event);
-      return;
-    }
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-    if (typeof openSettingsPage === 'function') openSettingsPage();
   }
 
   function pcRefreshSidebarRoster(){
@@ -43838,7 +43828,7 @@ document.addEventListener('DOMContentLoaded', function(){
   window.pcSelectAcademyConsultationStudent = pcSelectAcademyConsultationStudent;
   window.pcRefreshAcademyConsultationCompletionState = pcRefreshAcademyConsultationCompletionState;
   window.pcOpenRosterStudentInfo = pcOpenRosterStudentInfo;
-  window.pcHandleSidebarUtility = pcHandleSidebarUtility;
+  window.pcOpenSidebarSort = pcOpenSidebarSort;
   window.pcRefreshSidebarRoster = pcRefreshSidebarRoster;
   window.pcSelectRosterStudent = pcSelectRosterStudent;
   window.pcHandleTopSearch = pcHandleTopSearch;
