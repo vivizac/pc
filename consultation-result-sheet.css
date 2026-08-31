@@ -1,0 +1,23 @@
+/* 2026-09-01: 최종 상담 핵심 결과 + 학부모 상담문 */
+.consultationResultSheet{margin-top:16px;padding-top:16px;border-top:1px solid #eceef1;}
+.consultationResultIntro{padding:13px 14px;border:1px solid #dfe8f4;border-radius:16px;background:#f8fbff;}
+.consultationResultIntro b{display:block;font-size:13px;color:#202226;}
+.consultationResultIntro span{display:block;margin-top:4px;font-size:10.5px;line-height:1.45;color:#818995;}
+.consultationResultBlock{margin-top:13px;}
+.consultationResultLabel{display:flex;align-items:center;gap:6px;margin-bottom:7px;font-size:11px;font-weight:850;color:#686e76;}
+.consultationResultLabel b{display:inline-flex;align-items:center;justify-content:center;min-width:23px;height:23px;border-radius:8px;background:#edf4ff;color:#3478c9;font-size:10px;font-weight:900;}
+.consultationResultCards{display:grid;gap:7px;}
+.consultationResultCard{padding:10px 11px;border:1px solid #e4e7eb;border-radius:13px;background:#fff;}
+.consultationResultCardHead{display:flex;align-items:center;gap:7px;}
+.consultationResultCode{display:inline-flex;align-items:center;justify-content:center;min-width:31px;height:23px;padding:0 6px;border-radius:8px;background:#f1f4f8;color:#5f6873;font-size:9.5px;font-weight:900;}
+.consultationResultName{font-size:12px;font-weight:850;color:#25282d;}
+.consultationResultCard p{margin:6px 0 0;font-size:10.8px;line-height:1.5;color:#727881;}
+.consultationResultEvidence{margin-top:12px;padding:10px 11px;border-radius:13px;background:#f7f7f8;color:#656b73;font-size:10.8px;line-height:1.5;}
+.consultationParentText{margin-top:14px;padding:13px;border:1px solid #dfe3e8;border-radius:16px;background:#fff;}
+.consultationParentTextHead{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.consultationParentTextHead div b{display:block;font-size:12px;color:#24272b;}
+.consultationParentTextHead div span{display:block;margin-top:3px;font-size:9.8px;color:#9398a0;}
+.consultationParentCopyBtn{flex:0 0 auto;min-height:32px;padding:0 10px;border:1px solid #dce1e7;border-radius:9px;background:#fff;color:#555c65;font-family:inherit;font-size:10px;font-weight:850;cursor:pointer;}
+.consultationParentText p{margin:10px 0 0;padding-top:10px;border-top:1px solid #eef0f2;font-size:11.5px;line-height:1.7;color:#464b52;white-space:pre-wrap;}
+.consultationResultEmpty{padding:10px 11px;border-radius:12px;background:#f7f7f8;color:#92979f;font-size:10.5px;line-height:1.45;}
+@media(max-width:900px){.consultationParentTextHead{align-items:flex-start}.consultationParentCopyBtn{min-width:74px}}
