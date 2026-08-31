@@ -1,7 +1,11 @@
 (function(){
 'use strict';
 const base=(document.currentScript&&document.currentScript.src)?document.currentScript.src:location.href;
-const files=['consultation-analysis.js','consultation-observation.js','consultation-survey-core.js','consultation-observation-ui.js'];
+const style=document.createElement('link');
+style.rel='stylesheet';
+style.href=new URL('consultation-final-analysis.css',base).toString();
+document.head.appendChild(style);
+const files=['consultation-analysis.js','consultation-observation.js','consultation-final-analysis.js','consultation-survey-core.js','consultation-observation-ui.js','consultation-final-analysis-ui.js'];
 function load(index){
   if(index>=files.length)return;
   const script=document.createElement('script');
