@@ -8798,13 +8798,18 @@ body.olliPcApp{margin:0;color:var(--pc-text);}
 .olliPcQuickBtn.active{background:#f2f3f5;color:#111;}
 .olliPcQuickBtn span:last-child{font-variant-numeric:tabular-nums;}
 .olliPcContextSectionLabel{padding:14px 10px 5px;font-size:10.5px;font-weight:800;color:#a5a8ae;}
-.olliPcRosterBtn{display:grid;grid-template-columns:22px minmax(0,1fr);gap:6px;align-items:center;padding:8px 8px;border-radius:12px;text-align:left;color:#25272a;}
+.olliPcRosterBtn{position:relative;display:grid;grid-template-columns:22px minmax(0,1fr);gap:6px;align-items:center;padding:8px 36px 8px 8px;border-radius:12px;text-align:left;color:#25272a;}
 .olliPcRosterBtn:hover,.olliPcRosterBtn.active{background:#f4f5f7;}
 .olliPcRosterIcon{width:18px;height:18px;display:grid;place-items:center;color:#c3c7cd;}
 .olliPcRosterIcon svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.5;}
 .olliPcRosterName{font-size:12.5px;font-weight:780;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .olliPcRosterMeta{margin-top:2px;font-size:10px;line-height:1.25;color:#9a9ea5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.olliPcSidebarBottom{height:58px;border-top:1px solid var(--pc-line);padding:8px 10px;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box;}
+.olliPcRosterInfoBtn{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:#7d828a;display:flex;align-items:center;justify-content:center;padding:0;opacity:0;pointer-events:none;cursor:pointer;}
+.olliPcRosterInfoBtn svg{width:18px;height:18px;fill:currentColor;stroke:none;}
+.olliPcRosterBtn:hover .olliPcRosterInfoBtn,.olliPcRosterInfoBtn:focus-visible{opacity:1;pointer-events:auto;}
+.olliPcRosterInfoBtn:hover{background:transparent;color:#111;}
+.olliPcSidebarBottom{position:relative;height:58px;border-top:1px solid var(--pc-line);padding:8px 10px;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box;}
+body.olliPcApp .olliPcSidebarBottom #recordSortPopup{right:8px;bottom:52px;width:min(220px,calc(var(--pc-sidebar-w) - 20px));max-height:430px;}
 .olliPcRoundBtn{width:34px;height:34px;border:1px solid #e3e5e8;background:#fff;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:#15171a;box-shadow:0 3px 12px rgba(0,0,0,.04);}
 .olliPcRoundBtn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 
@@ -8897,7 +8902,6 @@ body.olliPcApp #studentMemoScreen .elementaryAnalysisBlock{padding:4px 0 10px;}
 body.olliPcApp #studentMemoScreen .memoPageStudentName{font-size:19px;font-weight:850;}
 body.olliPcApp #studentMemoScreen .memoEditor{font-size:15px;line-height:1.8;padding:18px 0;min-height:360px;}
 body.olliPcApp #studentMemoScreen .memoBottomBar{position:static;width:auto;display:block;}
-body.olliPcApp #studentMemoScreen #memoStudentSelectWrap{display:none;}
 body.olliPcApp #studentMemoScreen #memoBottomAnalysisBtn{position:absolute;right:24px;bottom:78px;}
 body.olliPcApp #studentMemoScreen .memoFeedbackBottomBtn{position:absolute;right:24px;bottom:18px;}
 body.olliPcApp #studentMemoScreen .memoRecordsDropup{left:50%;right:auto;transform:translateX(-50%);bottom:76px;width:min(760px,calc(100% - 100px));}
@@ -8963,7 +8967,7 @@ body.olliPcApp #settingsDetailScreen{left:0;top:0;width:100%;height:100%;}
     <button class="olliPcRoundBtn" type="button" onclick="openStudentModal()" aria-label="학생 추가">
       <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>
     </button>
-    <button class="olliPcRoundBtn" type="button" onclick="openSettingsPage()" aria-label="설정">
+    <button class="olliPcRoundBtn" id="olliPcSidebarUtilityBtn" type="button" onclick="pcHandleSidebarUtility(event)" aria-label="설정" title="설정">
       <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"></path><circle cx="16" cy="7" r="2"></circle><circle cx="8" cy="17" r="2"></circle></svg>
     </button>
   </div>
@@ -9145,12 +9149,6 @@ body.olliPcApp #settingsDetailScreen{left:0;top:0;width:100%;height:100%;}
 </div>
 <div class="memoFeedbackResultArea" id="memoFeedbackResultArea"></div>
 <div class="memoBottomBar">
-<div class="memoStudentSelectWrap" id="memoStudentSelectWrap">
-<button aria-label="학생 목록" class="memoBottomIconBtn memoStudentListBtn" id="memoStudentListBtn" onclick="toggleMemoStudentSelectPopup(event)" title="학생 목록" type="button">
-<svg aria-hidden="true" viewbox="0 0 24 24"><circle cx="12" cy="8.6" r="4.1"></circle><path d="M5.9 20.1c.8-3.6 3.1-5.6 6.1-5.6s5.3 2 6.1 5.6"></path></svg>
-</button>
-<div aria-label="학생 선택" class="memoStudentSelectPopup" id="memoStudentSelectPopup"></div>
-</div>
 <button aria-label="오늘의 분석 설문" class="memoBottomIconBtn memoBottomAnalysisBtn" id="memoBottomAnalysisBtn" onclick="openElementaryAnalysisModal()" title="오늘의 분석 설문" type="button">
 <svg aria-hidden="true" viewbox="0 0 24 24"><rect height="14.8" rx="3" width="13.6" x="5.2" y="4.6"></rect><path d="M8.4 9h7.2"></path><path d="M8.4 12.4h7.2"></path><path d="M8.4 15.8h4.4"></path></svg>
 </button>
@@ -33670,12 +33668,14 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
       : '<div class="recordSortMonthHint">그룹을 누르면 발송월을 설정할 수 있어요.</div>';
     return '<div class="recordSortDivider"></div><div class="recordSortFeedbackTitle">그룹별 피드백 발송월</div><div class="recordSortGroupIconGrid">'+groupButtons+'</div>'+monthGrid;
   }
-  function renderSeparatedSortPopup(){
-    const view = getActiveRecordView(); const selected = getCriteria(view); const options = view === 'kinder' ? kinderOptions : elementaryOptions;
+  function renderSeparatedSortPopup(viewOverride){
+    const view = (viewOverride === 'kinder' || viewOverride === 'elementary') ? viewOverride : getActiveRecordView();
+    const selected = getCriteria(view);
+    const options = view === 'kinder' ? kinderOptions : elementaryOptions;
     const chips = options.map(([key,label]) => '<button type="button" class="recordSortChip '+(selected===key?'active':'')+'" data-olli-sort-view="'+view+'" data-olli-sort-criteria="'+key+'">'+label+'</button>').join('');
     return '<div class="recordSortCriteriaTitle">'+(view === 'kinder' ? '유치부 정렬 기준' : '초등부 정렬 기준')+'</div><div class="recordSortCriteriaGrid">'+chips+'</div>';
   }
-  function refreshRecordSortPopup(){ const popup = document.getElementById('recordSortPopup'); if (popup) popup.innerHTML = renderSeparatedSortPopup(); }
+  function refreshRecordSortPopup(viewOverride){ const popup = document.getElementById('recordSortPopup'); if (popup) popup.innerHTML = renderSeparatedSortPopup(viewOverride); }
   window.refreshRecordSortPopup = refreshRecordSortPopup;
   function reloadRecordList(){ try { const input = document.getElementById('searchName'); if (typeof loadRecords === 'function') loadRecords(input ? input.value.trim() : ''); } catch(e) {} }
   document.addEventListener('click', function(event){
@@ -33701,8 +33701,11 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
     const chip = event.target.closest('[data-olli-sort-criteria]');
     if (!chip) return;
     event.preventDefault(); event.stopPropagation();
-    writeSortState(chip.dataset.olliSortView || getActiveRecordView(), chip.dataset.olliSortCriteria);
-    refreshRecordSortPopup(); reloadRecordList();
+    const sortView = chip.dataset.olliSortView || getActiveRecordView();
+    writeSortState(sortView, chip.dataset.olliSortCriteria);
+    refreshRecordSortPopup(sortView);
+    reloadRecordList();
+    if (typeof window.pcRefreshSidebarRoster === 'function') window.pcRefreshSidebarRoster();
   }, true);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refreshRecordSortPopup); else setTimeout(refreshRecordSortPopup, 0);
 })();
@@ -43378,13 +43381,21 @@ document.addEventListener('DOMContentLoaded', function(){
     } catch(_) { return ''; }
   }
 
+  function pcRosterInfoSvg(){
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="12" r="1.45"></circle><circle cx="12" cy="12" r="1.45"></circle><circle cx="18" cy="12" r="1.45"></circle></svg>';
+  }
+
   function pcRosterHtml(students, type, mode){
     return students.map(student => {
-      const active = mode === 'observation' && window.currentMemoStudent && String(window.currentMemoStudent.id || '') === String(student.id || '');
-      return '<button class="olliPcRosterBtn'+(active?' active':'')+'" type="button" data-pc-student-id="'+String(student.id || '').replace(/"/g,'&quot;')+'" onclick="pcSelectRosterStudent(\''+String(student.id || '').replace(/'/g,"\\'")+'\',\''+mode+'\')">'
+      const studentId = String(student.id || '');
+      const escapedId = studentId.replace(/'/g,"\\'");
+      const active = mode === 'observation' && window.currentMemoStudent && String(window.currentMemoStudent.id || '') === studentId;
+      return '<div class="olliPcRosterBtn'+(active?' active':'')+'" data-pc-student-id="'+studentId.replace(/"/g,'&quot;')+'" onclick="pcSelectRosterStudent(\''+escapedId+'\',\''+mode+'\')">'
         + '<span class="olliPcRosterIcon">'+pcStudentCubeSvg()+'</span>'
         + '<span><div class="olliPcRosterName">'+(typeof escapeHtml === 'function' ? escapeHtml(student.name || '') : (student.name || ''))+'</div>'
-        + '<div class="olliPcRosterMeta">'+(typeof escapeHtml === 'function' ? escapeHtml(pcMetaText(student,type)) : pcMetaText(student,type))+'</div></span></button>';
+        + '<div class="olliPcRosterMeta">'+(typeof escapeHtml === 'function' ? escapeHtml(pcMetaText(student,type)) : pcMetaText(student,type))+'</div></span>'
+        + '<button type="button" class="olliPcRosterInfoBtn" aria-label="학생정보" title="학생정보" onclick="pcOpenRosterStudentInfo(\''+escapedId+'\', event)">'+pcRosterInfoSvg()+'</button>'
+        + '</div>';
     }).join('');
   }
 
@@ -43392,8 +43403,10 @@ document.addEventListener('DOMContentLoaded', function(){
     const title = document.getElementById('olliPcContextTitle');
     const body = document.getElementById('olliPcContextBody');
     if (!title || !body) return;
-    const elementary = pcActiveStudents('elementary');
-    const kinder = pcActiveStudents('kinder');
+    const elementaryRaw = pcActiveStudents('elementary');
+    const kinderRaw = pcActiveStudents('kinder');
+    const elementary = typeof sortElementaryStudents === 'function' ? sortElementaryStudents(elementaryRaw) : elementaryRaw;
+    const kinder = typeof sortKinderStudents === 'function' ? sortKinderStudents(kinderRaw) : kinderRaw;
 
     if (pcSection === 'academy') {
       let due = [];
@@ -43448,8 +43461,18 @@ document.addEventListener('DOMContentLoaded', function(){
     if (title) title.textContent = sectionTitles[pcSection] || 'OLLI';
     const search = document.getElementById('olliPcSearch');
     const archive = document.getElementById('olliPcTopArchiveBtn');
+    const utilityBtn = document.getElementById('olliPcSidebarUtilityBtn');
     if (search) search.style.display = (pcSection === 'academy' || pcSection === 'attendance') ? '' : 'none';
     if (archive) archive.classList.toggle('show', pcSection === 'observation' || pcSection === 'feedback');
+    if (utilityBtn) {
+      const rosterMode = pcSection === 'observation' || pcSection === 'feedback';
+      utilityBtn.setAttribute('aria-label', rosterMode ? '정렬' : '설정');
+      utilityBtn.setAttribute('title', rosterMode ? '정렬' : '설정');
+    }
+    if (pcSection !== 'observation' && pcSection !== 'feedback') {
+      const sortPopup = document.getElementById('recordSortPopup');
+      if (sortPopup) sortPopup.classList.remove('show');
+    }
     pcRenderContext();
     pcUpdateRecordLayout();
   }
@@ -43565,6 +43588,55 @@ document.addEventListener('DOMContentLoaded', function(){
       group.style.display = pcAcademyFilter === 'all' || (pcAcademyFilter === 'elementary' && isE) || (pcAcademyFilter === 'kinder' && isK) ? '' : 'none';
     });
     pcRenderContext();
+  }
+
+  function pcOpenRosterStudentInfo(studentId, event){
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (typeof openKinderChatFeedbackStudentInfoFromManage === 'function') {
+      openKinderChatFeedbackStudentInfoFromManage(studentId, null);
+      return;
+    }
+    const student = typeof findStudentById === 'function' ? findStudentById(studentId) : null;
+    if (!student) return;
+    try { studentInfoModalTarget = student; } catch(_) {}
+    if ((student.type || 'kinder') === 'elementary') {
+      if (typeof openElementaryInfoModal === 'function') openElementaryInfoModal();
+    } else if (typeof openKinderInfoModal === 'function') {
+      openKinderInfoModal();
+    }
+  }
+
+  function pcOpenSidebarSort(event){
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const view = pcSection === 'feedback' ? 'kinder' : 'elementary';
+    const popup = document.getElementById('recordSortPopup');
+    const bottom = document.querySelector('#olliPcShell .olliPcSidebarBottom');
+    if (!popup || !bottom) return;
+    if (popup.parentElement !== bottom) bottom.appendChild(popup);
+    if (typeof window.refreshRecordSortPopup === 'function') window.refreshRecordSortPopup(view);
+    popup.classList.toggle('show');
+  }
+
+  function pcHandleSidebarUtility(event){
+    if (pcSection === 'observation' || pcSection === 'feedback') {
+      pcOpenSidebarSort(event);
+      return;
+    }
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (typeof openSettingsPage === 'function') openSettingsPage();
+  }
+
+  function pcRefreshSidebarRoster(){
+    if (pcSection === 'observation' || pcSection === 'feedback') pcRenderContext();
   }
 
   function pcSelectRosterStudent(studentId, mode){
@@ -43759,6 +43831,9 @@ document.addEventListener('DOMContentLoaded', function(){
   window.pcFilterAcademy = pcFilterAcademy;
   window.pcSelectAcademyConsultationStudent = pcSelectAcademyConsultationStudent;
   window.pcRefreshAcademyConsultationCompletionState = pcRefreshAcademyConsultationCompletionState;
+  window.pcOpenRosterStudentInfo = pcOpenRosterStudentInfo;
+  window.pcHandleSidebarUtility = pcHandleSidebarUtility;
+  window.pcRefreshSidebarRoster = pcRefreshSidebarRoster;
   window.pcSelectRosterStudent = pcSelectRosterStudent;
   window.pcHandleTopSearch = pcHandleTopSearch;
   window.pcOpenTopArchive = pcOpenTopArchive;
