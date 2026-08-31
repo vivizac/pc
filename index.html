@@ -8904,8 +8904,8 @@ body.olliPcApp #studentMemoScreen .memoEditorWrap{
   width:min(760px,calc(100% - 120px));height:calc(100% - 150px);margin:26px auto 0;padding:0;background:#fff;
 }
 body.olliPcApp #studentMemoScreen .elementaryAnalysisBlock{padding:4px 0 10px;}
-body.olliPcApp #studentMemoScreen .memoPageStudentName{font-size:18px;font-weight:850;}
-body.olliPcApp #studentMemoScreen .memoEditor{font-size:14px;line-height:1.75;padding:18px 0;min-height:360px;}
+body.olliPcApp #studentMemoScreen #memoPageStudentName{font-size:18px;font-weight:850;}
+body.olliPcApp #studentMemoScreen #memoEditor{font-size:15.5px;line-height:1.75;padding:18px 0;min-height:360px;}
 body.olliPcApp #studentMemoScreen .memoBottomBar{position:static;width:auto;display:block;}
 body.olliPcApp #studentMemoScreen #memoBottomAnalysisBtn{position:absolute;right:24px;bottom:78px;}
 body.olliPcApp #studentMemoScreen .memoFeedbackBottomBtn{position:absolute;right:24px;bottom:18px;}
@@ -8924,10 +8924,10 @@ body.olliPcApp #kinderChatFeedbackScreen .kcfComposerWrap > #kcfKeywordScroller.
 body.olliPcApp #kinderChatFeedbackScreen .kcfComposer{position:static;left:auto;bottom:auto;transform:none;width:100%;border:1px solid #e1e4e8;border-radius:30px;background:#fff;box-shadow:0 12px 32px rgba(0,0,0,.05);}
 body.olliPcApp #kinderChatFeedbackScreen .kcfStudentManageWrap{display:none;}
 body.olliPcApp #kinderChatFeedbackScreen .kcfComposerBottom{padding:8px;}
-body.olliPcApp #kinderChatFeedbackScreen .kcfBubble{font-size:14px;line-height:1.55;}
-body.olliPcApp #kinderChatFeedbackScreen .kcfInput{font-size:14px;line-height:1.4;}
+body.olliPcApp #kinderChatFeedbackScreen .kcfBubble{font-size:15.5px;line-height:1.55;}
+body.olliPcApp #kinderChatFeedbackScreen #kcfInput{font-size:15.5px;line-height:1.4;}
 body.olliPcApp #kinderChatFeedbackScreen .kcfKeywordBtn{font-size:12.5px;}
-body.olliPcApp #kinderChatFeedbackScreen .kcfQuestionList li{font-size:14px;}
+body.olliPcApp #kinderChatFeedbackScreen .kcfQuestionList li{font-size:15.5px;}
 body.olliPcApp #kinderChatFeedbackScreen .kcfSendBtn{background:#111;}
 body.olliPcApp #kinderChatFeedbackScreen .kcfInboxOverlay,
 body.olliPcApp #kinderChatFeedbackScreen .kcfGrowthOverlay{left:0;top:0;}
@@ -39580,7 +39580,7 @@ body[data-olli-text-size="large"] .studentMetaText,
 body[data-olli-text-size="large"] .recordText {
   font-size: calc(16px * var(--olli-text-scale));
 }
-body[data-olli-text-size="large"] .memoStudentName,
+body[data-olli-text-size="large"]:not(.olliPcApp) .memoStudentName,
 body[data-olli-text-size="large"] .memoBottomBtn,
 body[data-olli-text-size="large"] .memoFeedbackBtn,
 body[data-olli-text-size="large"] .memoAnalysisBtn,
@@ -39622,8 +39622,8 @@ body[data-olli-text-size="large"] .attendanceFeedbackSheetCardDate,
 body[data-olli-text-size="large"] .memoFeedbackArchiveDate {
   font-size: calc(12px * var(--olli-text-scale));
 }
-body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfBubble,
-body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfInput,
+body[data-olli-text-size="large"]:not(.olliPcApp) #kinderChatFeedbackScreen .kcfBubble,
+body[data-olli-text-size="large"]:not(.olliPcApp) #kinderChatFeedbackScreen .kcfInput,
 body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfQuestionList li,
 body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfModeOptionTitle,
 body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxText,
