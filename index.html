@@ -19325,6 +19325,15 @@ async function toggleAcademyConsultationCompleted(studentRef, event){
   const progress = ensureOlliConsultationProgressTrackingStart(getOlliConsultationProgress());
   const nextCompleted = { ...(progress.completed || {}) };
   const shouldComplete = !tasks.every(task => !!nextCompleted[task.key]);
+
+  // 서버 응답을 기다리지 않고 사용자가 누른 즉시 현재 버튼 상태를 먼저 반영합니다.
+  const pressedBtn = event?.currentTarget || null;
+  if (pressedBtn) {
+    pressedBtn.classList.toggle('active', shouldComplete);
+    pressedBtn.setAttribute('aria-pressed', shouldComplete ? 'true' : 'false');
+    pressedBtn.disabled = true;
+  }
+
   if (shouldComplete) {
     const completedAt = new Date().toISOString();
     const completedMonth = getAcademyConsultationMonthKey();
@@ -19342,6 +19351,7 @@ async function toggleAcademyConsultationCompleted(studentRef, event){
     ...progress,
     completed: nextCompleted
   });
+  if (pressedBtn && pressedBtn.isConnected) pressedBtn.disabled = false;
   if (typeof showPushToast === 'function') {
     showPushToast(shouldComplete ? `${student.name} 상담을 완료로 표시했어요.` : `${student.name} 상담 완료 표시를 취소했어요.`);
   }
@@ -19499,7 +19509,7 @@ function renderAcademyConsultationList(students){
           const consultationCompleted = isAcademyConsultationCompletedForCurrentList(student);
           const consultationStudentRef = student.id ? `id:${student.id}` : `name:${String(student.name || '').trim()}`;
           const consultationBtn = `<button type="button" class="recordAcademyConsultCompleteBtn${consultationCompleted ? ' active' : ''}" aria-pressed="${consultationCompleted ? 'true' : 'false'}" onclick="toggleAcademyConsultationCompleted('${escapeJsSingleQuote(consultationStudentRef)}', event)">상담</button>`;
-          return `<div class="recordAcademyListItem recordAcademyConsultListItem" onclick="toggleAcademyConsultationSummaryPreview('${escapedKey}')"><div class="recordAcademyConsultStudentMain"><div class="recordAcademyListName">${escapeHtml(student.name)}</div><div class="recordAcademyChipRow">${chips.map(label => `<span class="recordAcademyInfoChip recordAcademyRuleChip">${escapeHtml(label)}</span>`).join('')}</div></div><div class="recordAcademyConsultActions">${consultationBtn}<span class="recordAcademyConsultStatusChip ${escapeHtml(status)}">${escapeHtml(statusLabel)}</span></div></div>${preview}`;
+          return `<div class="recordAcademyListItem recordAcademyConsultListItem" data-pc-student-ref="${escapeHtml(consultationStudentRef)}" onclick="pcSelectAcademyConsultationStudent('${escapeJsSingleQuote(consultationStudentRef)}', event)"><div class="recordAcademyConsultStudentMain"><div class="recordAcademyListName">${escapeHtml(student.name)}</div><div class="recordAcademyChipRow">${chips.map(label => `<span class="recordAcademyInfoChip recordAcademyRuleChip">${escapeHtml(label)}</span>`).join('')}</div></div><div class="recordAcademyConsultActions">${consultationBtn}<span class="recordAcademyConsultStatusChip ${escapeHtml(status)}">${escapeHtml(statusLabel)}</span></div></div>`;
         }).join('') + '</div>'
       : '<div class="recordAcademyConsultGroupEmpty">상담 예정 학생 없음</div>';
     return `<div class="recordAcademyConsultGroup"><div class="recordAcademyConsultGroupTitle"><span>${escapeHtml(group.label)}</span></div>${rows}</div>`;
@@ -43322,6 +43332,7 @@ document.addEventListener('DOMContentLoaded', function(){
   let pcAttendanceDivision = 'all';
   let pcAttendanceDay = '';
   let pcAcademyFilter = 'all';
+  let pcAcademySelectedStudentRef = '';
   let pcSyncTimer = null;
 
   function pcActiveStudents(type){
@@ -43440,6 +43451,7 @@ document.addEventListener('DOMContentLoaded', function(){
     pcSetChrome(section);
     if (section === 'academy') {
       pcHideMainScreensExcept('recordRoomScreen');
+      pcResetAcademyDetail();
       if (typeof showRecordRoom === 'function') await showRecordRoom();
       if (typeof currentRecordView !== 'undefined' && currentRecordView !== 'academy' && typeof toggleRecordAcademyManagementMode === 'function') {
         await toggleRecordAcademyManagementMode();
@@ -43576,6 +43588,44 @@ document.addEventListener('DOMContentLoaded', function(){
     }
   }
 
+  function pcResetAcademyDetail(){
+    pcAcademySelectedStudentRef = '';
+    document.querySelectorAll('#recordAcademyDashboard .recordAcademyConsultListItem.pcSelected').forEach(row => row.classList.remove('pcSelected'));
+    const nameEl = document.getElementById('pcAcademyDetailName');
+    const subEl = document.getElementById('pcAcademyDetailSub');
+    const boxEl = document.getElementById('pcAcademyDetailBox');
+    if (nameEl) nameEl.textContent = '상담 학생';
+    if (subEl) subEl.textContent = '상담 피드백';
+    if (boxEl) {
+      boxEl.classList.remove('hasContent');
+      boxEl.textContent = '학생을 선택하면 상담 자료를 확인할 수 있습니다.';
+    }
+  }
+
+  function pcResolveAcademyStudent(studentRef){
+    const ref = String(studentRef || '');
+    let students = [];
+    try { students = typeof getAcademyManagementStudentsForStats === 'function' ? getAcademyManagementStudentsForStats() : []; } catch(_) {}
+    if (ref.startsWith('id:')) return students.find(item => String(item.id || '') === ref.slice(3)) || null;
+    if (ref.startsWith('name:')) return students.find(item => String(item.name || '').trim() === ref.slice(5).trim()) || null;
+    return null;
+  }
+
+  function pcSelectAcademyConsultationStudent(studentRef, event){
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const student = pcResolveAcademyStudent(studentRef);
+    if (!student) return;
+    pcAcademySelectedStudentRef = String(studentRef || '');
+
+    document.querySelectorAll('#recordAcademyDashboard .recordAcademyConsultListItem').forEach(row => {
+      row.classList.toggle('pcSelected', String(row.dataset.pcStudentRef || '') === pcAcademySelectedStudentRef);
+    });
+    pcShowAcademyStudent(student);
+  }
+
   function pcShowAcademyStudent(student){
     if (!student) return;
     const nameEl = document.getElementById('pcAcademyDetailName');
@@ -43600,21 +43650,19 @@ document.addEventListener('DOMContentLoaded', function(){
   function pcBindAcademyRows(){
     if (pcSection !== 'academy') return;
     const rows = Array.from(document.querySelectorAll('#recordAcademyDashboard .recordAcademyConsultListItem'));
+
+    // 목록이 서버 동기화로 다시 그려져도 사용자가 직접 선택한 학생만 복원합니다.
     rows.forEach(row => {
-      if (row.dataset.pcBound === '1') return;
-      row.dataset.pcBound = '1';
-      row.addEventListener('click', () => {
-        rows.forEach(item => item.classList.remove('pcSelected'));
-        row.classList.add('pcSelected');
-        const name = row.querySelector('.recordAcademyListName')?.textContent?.trim() || '';
-        let students = [];
-        try { students = typeof getAcademyManagementStudentsForStats === 'function' ? getAcademyManagementStudentsForStats() : []; } catch(_) {}
-        const student = students.find(item => String(item.name || '').trim() === name);
-        pcShowAcademyStudent(student);
-      });
+      row.classList.toggle('pcSelected', !!pcAcademySelectedStudentRef && String(row.dataset.pcStudentRef || '') === pcAcademySelectedStudentRef);
     });
+
     pcFilterAcademy(pcAcademyFilter);
-    if (rows.length && !rows.some(row => row.classList.contains('pcSelected'))) rows[0].click();
+
+    if (pcAcademySelectedStudentRef) {
+      const selectedStudent = pcResolveAcademyStudent(pcAcademySelectedStudentRef);
+      if (selectedStudent) pcShowAcademyStudent(selectedStudent);
+      else pcResetAcademyDetail();
+    }
   }
 
   function pcOpenTopArchive(){
@@ -43671,6 +43719,7 @@ document.addEventListener('DOMContentLoaded', function(){
   window.pcFilterAttendanceDivision = pcFilterAttendanceDivision;
   window.pcFilterAttendanceDay = pcFilterAttendanceDay;
   window.pcFilterAcademy = pcFilterAcademy;
+  window.pcSelectAcademyConsultationStudent = pcSelectAcademyConsultationStudent;
   window.pcSelectRosterStudent = pcSelectRosterStudent;
   window.pcHandleTopSearch = pcHandleTopSearch;
   window.pcOpenTopArchive = pcOpenTopArchive;
