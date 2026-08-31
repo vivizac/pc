@@ -8896,7 +8896,9 @@ body.olliPcApp #studentMemoScreen .memoEditorWrap{
 body.olliPcApp #studentMemoScreen .elementaryAnalysisBlock{padding:4px 0 10px;}
 body.olliPcApp #studentMemoScreen .memoPageStudentName{font-size:19px;font-weight:850;}
 body.olliPcApp #studentMemoScreen .memoEditor{font-size:15px;line-height:1.8;padding:18px 0;min-height:360px;}
-body.olliPcApp #studentMemoScreen .memoBottomBar{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);width:auto;display:flex;gap:8px;}
+body.olliPcApp #studentMemoScreen .memoBottomBar{position:static;width:auto;display:block;}
+body.olliPcApp #studentMemoScreen #memoStudentSelectWrap{display:none;}
+body.olliPcApp #studentMemoScreen #memoBottomAnalysisBtn{position:absolute;right:24px;bottom:78px;}
 body.olliPcApp #studentMemoScreen .memoFeedbackBottomBtn{position:absolute;right:24px;bottom:18px;}
 body.olliPcApp #studentMemoScreen .memoRecordsDropup{left:50%;right:auto;transform:translateX(-50%);bottom:76px;width:min(760px,calc(100% - 100px));}
 
@@ -8907,9 +8909,10 @@ body.olliPcApp #kinderRiskMemoScreen{background:#fff;overflow:auto;}
 body.olliPcApp #kinderChatFeedbackScreen{background:#fff;overflow:hidden;}
 body.olliPcApp #kinderChatFeedbackScreen .kcfHeader{display:none;}
 body.olliPcApp #kinderChatFeedbackScreen .kcfPageInner{width:100%;max-width:none;height:100%;padding:0;box-sizing:border-box;}
-body.olliPcApp #kinderChatFeedbackScreen .kcfMain{width:min(760px,calc(100% - 120px));max-width:none;margin:0 auto;height:100%;padding:24px 0 126px;box-sizing:border-box;}
-body.olliPcApp #kinderChatFeedbackScreen .kcfKeywordRow{position:absolute;left:50%;bottom:98px;transform:translateX(-50%);width:min(760px,calc(100% - 120px));justify-content:flex-start;overflow:visible;flex-wrap:wrap;}
-body.olliPcApp #kinderChatFeedbackScreen .kcfComposer{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);width:min(760px,calc(100% - 120px));border:1px solid #e1e4e8;border-radius:30px;background:#fff;box-shadow:0 12px 32px rgba(0,0,0,.05);}
+body.olliPcApp #kinderChatFeedbackScreen .kcfMain{width:min(760px,calc(100% - 120px));max-width:none;margin:0 auto;height:100%;padding:24px 0 164px;box-sizing:border-box;}
+body.olliPcApp #kinderChatFeedbackScreen .kcfComposerWrap{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);width:min(760px,calc(100% - 120px));max-width:none;padding:0;}
+body.olliPcApp #kinderChatFeedbackScreen .kcfComposerWrap > #kcfKeywordScroller.kcfKeywordScroller{position:static;width:100%;margin:0 0 10px;padding:0 2px;justify-content:flex-start;overflow:visible;flex-wrap:wrap;}
+body.olliPcApp #kinderChatFeedbackScreen .kcfComposer{position:static;left:auto;bottom:auto;transform:none;width:100%;border:1px solid #e1e4e8;border-radius:30px;background:#fff;box-shadow:0 12px 32px rgba(0,0,0,.05);}
 body.olliPcApp #kinderChatFeedbackScreen .kcfStudentManageWrap{display:none;}
 body.olliPcApp #kinderChatFeedbackScreen .kcfComposerBottom{padding:8px;}
 body.olliPcApp #kinderChatFeedbackScreen .kcfSendBtn{background:#111;}
