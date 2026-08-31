@@ -18920,8 +18920,8 @@ async function loadOlliConsultationRulesFromServer(options = {}){
 
   olliConsultationLastRefreshAt = now;
   olliConsultationRefreshPromise = (async () => {
+    const beforeRules = JSON.stringify(getOlliConsultationRulesMap());
     const request = loadOlliData('consultation_rules', { academyId, backgroundRefresh: true });
-    refreshOlliConsultationViews();
     const refreshed = await request.refreshPromise;
 
     if (refreshed && refreshed.protectedPending && request.localData) {
@@ -18932,7 +18932,11 @@ async function loadOlliConsultationRulesFromServer(options = {}){
         forceCommon: true
       });
     }
-    refreshOlliConsultationViews();
+
+    // 같은 상담 기준을 다시 받은 것뿐이라면 목록 전체를 다시 그리지 않습니다.
+    // 실제 기준이 바뀐 경우에만 상담예정 명단을 다시 생성합니다.
+    const afterRules = JSON.stringify(getOlliConsultationRulesMap());
+    if (beforeRules !== afterRules) refreshOlliConsultationViews();
     return !!(refreshed && (refreshed.refreshed || refreshed.protectedPending));
   })().catch(err => {
     console.warn('상담기준 불러오기 실패:', err && (err.message || err));
@@ -19057,8 +19061,12 @@ async function saveOlliConsultationProgressShared(progress){
   const academyId = ensureOlliConsultationContext();
   const normalized = ensureOlliConsultationProgressTrackingStart(progress);
   writeOlliConsultationProgressLocal(normalized, 'pending');
-  if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy' && typeof renderRecordAcademyManagementDashboard === 'function') {
-    renderRecordAcademyManagementDashboard();
+  if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') {
+    if (document.body?.classList?.contains('olliPcApp') && typeof window.pcRefreshAcademyConsultationCompletionState === 'function') {
+      window.pcRefreshAcademyConsultationCompletionState();
+    } else if (typeof renderRecordAcademyManagementDashboard === 'function') {
+      renderRecordAcademyManagementDashboard();
+    }
   }
   if (!academyId || typeof saveOlliData !== 'function') return normalized;
 
@@ -19103,8 +19111,12 @@ async function loadOlliConsultationProgressFromServer(options = {}){
       });
     }
 
-    if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy' && typeof renderRecordAcademyManagementDashboard === 'function') {
-      renderRecordAcademyManagementDashboard();
+    if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') {
+      if (document.body?.classList?.contains('olliPcApp') && typeof window.pcRefreshAcademyConsultationCompletionState === 'function') {
+        window.pcRefreshAcademyConsultationCompletionState();
+      } else if (typeof renderRecordAcademyManagementDashboard === 'function') {
+        renderRecordAcademyManagementDashboard();
+      }
     }
     return !!(refreshed && (refreshed.refreshed || refreshed.protectedPending));
   })().catch(err => {
@@ -19508,8 +19520,10 @@ function renderAcademyConsultationList(students){
             : '';
           const consultationCompleted = isAcademyConsultationCompletedForCurrentList(student);
           const consultationStudentRef = student.id ? `id:${student.id}` : `name:${String(student.name || '').trim()}`;
+          const pcSelectedRef = String(window.__olliPcAcademySelectedStudentRef || '');
+          const pcSelectedClass = pcSelectedRef && pcSelectedRef === consultationStudentRef ? ' pcSelected' : '';
           const consultationBtn = `<button type="button" class="recordAcademyConsultCompleteBtn${consultationCompleted ? ' active' : ''}" aria-pressed="${consultationCompleted ? 'true' : 'false'}" onclick="toggleAcademyConsultationCompleted('${escapeJsSingleQuote(consultationStudentRef)}', event)">상담</button>`;
-          return `<div class="recordAcademyListItem recordAcademyConsultListItem" data-pc-student-ref="${escapeHtml(consultationStudentRef)}" onclick="pcSelectAcademyConsultationStudent('${escapeJsSingleQuote(consultationStudentRef)}', event)"><div class="recordAcademyConsultStudentMain"><div class="recordAcademyListName">${escapeHtml(student.name)}</div><div class="recordAcademyChipRow">${chips.map(label => `<span class="recordAcademyInfoChip recordAcademyRuleChip">${escapeHtml(label)}</span>`).join('')}</div></div><div class="recordAcademyConsultActions">${consultationBtn}<span class="recordAcademyConsultStatusChip ${escapeHtml(status)}">${escapeHtml(statusLabel)}</span></div></div>`;
+          return `<div class="recordAcademyListItem recordAcademyConsultListItem${pcSelectedClass}" data-pc-student-ref="${escapeHtml(consultationStudentRef)}" onclick="pcSelectAcademyConsultationStudent('${escapeJsSingleQuote(consultationStudentRef)}', event)"><div class="recordAcademyConsultStudentMain"><div class="recordAcademyListName">${escapeHtml(student.name)}</div><div class="recordAcademyChipRow">${chips.map(label => `<span class="recordAcademyInfoChip recordAcademyRuleChip">${escapeHtml(label)}</span>`).join('')}</div></div><div class="recordAcademyConsultActions">${consultationBtn}<span class="recordAcademyConsultStatusChip ${escapeHtml(status)}">${escapeHtml(statusLabel)}</span></div></div>`;
         }).join('') + '</div>'
       : '<div class="recordAcademyConsultGroupEmpty">상담 예정 학생 없음</div>';
     return `<div class="recordAcademyConsultGroup"><div class="recordAcademyConsultGroupTitle"><span>${escapeHtml(group.label)}</span></div>${rows}</div>`;
@@ -29163,6 +29177,7 @@ async function enterOlliByStartPage(page){
     if (typeof openObservationNoteFromRecord === 'function') {
       openObservationNoteFromRecord();
     }
+    if (typeof window.pcSyncFromVisiblePage === 'function') window.pcSyncFromVisiblePage();
     return;
   }
   if (normalized === 'kinder_attendance') {
@@ -29174,6 +29189,7 @@ async function enterOlliByStartPage(page){
     } else {
       await showRecordRoom();
     }
+    if (typeof window.pcSyncFromVisiblePage === 'function') window.pcSyncFromVisiblePage();
     return;
   }
   if (normalized === 'director_dashboard') {
@@ -29181,12 +29197,14 @@ async function enterOlliByStartPage(page){
     currentRecordView = 'academy';
     setObservationButtonSide('elementary', false);
     await showRecordRoom();
+    if (typeof window.pcSyncFromVisiblePage === 'function') window.pcSyncFromVisiblePage();
     return;
   }
   currentObservationView = 'elementary';
   currentRecordView = 'elementary';
   setObservationButtonSide('elementary', false);
   await showRecordRoom();
+  if (typeof window.pcSyncFromVisiblePage === 'function') window.pcSyncFromVisiblePage();
 }
 function renderOlliStartPageSetupOptions(){
   const grid = document.getElementById('olliStartPageChoiceGrid');
@@ -43333,6 +43351,7 @@ document.addEventListener('DOMContentLoaded', function(){
   let pcAttendanceDay = '';
   let pcAcademyFilter = 'all';
   let pcAcademySelectedStudentRef = '';
+  window.__olliPcAcademySelectedStudentRef = '';
   let pcSyncTimer = null;
 
   function pcActiveStudents(type){
@@ -43590,6 +43609,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
   function pcResetAcademyDetail(){
     pcAcademySelectedStudentRef = '';
+    window.__olliPcAcademySelectedStudentRef = '';
     document.querySelectorAll('#recordAcademyDashboard .recordAcademyConsultListItem.pcSelected').forEach(row => row.classList.remove('pcSelected'));
     const nameEl = document.getElementById('pcAcademyDetailName');
     const subEl = document.getElementById('pcAcademyDetailSub');
@@ -43619,6 +43639,7 @@ document.addEventListener('DOMContentLoaded', function(){
     const student = pcResolveAcademyStudent(studentRef);
     if (!student) return;
     pcAcademySelectedStudentRef = String(studentRef || '');
+    window.__olliPcAcademySelectedStudentRef = pcAcademySelectedStudentRef;
 
     document.querySelectorAll('#recordAcademyDashboard .recordAcademyConsultListItem').forEach(row => {
       row.classList.toggle('pcSelected', String(row.dataset.pcStudentRef || '') === pcAcademySelectedStudentRef);
@@ -43645,6 +43666,19 @@ document.addEventListener('DOMContentLoaded', function(){
       boxEl.classList.toggle('hasContent', !!content);
       boxEl.textContent = content || '최근 기간 안에 저장된 피드백이 부족합니다.';
     }
+  }
+
+  function pcRefreshAcademyConsultationCompletionState(){
+    if (pcSection !== 'academy') return;
+    document.querySelectorAll('#recordAcademyDashboard .recordAcademyConsultListItem').forEach(row => {
+      const studentRef = String(row.dataset.pcStudentRef || '');
+      const student = pcResolveAcademyStudent(studentRef);
+      const btn = row.querySelector('.recordAcademyConsultCompleteBtn');
+      if (!student || !btn) return;
+      const completed = isAcademyConsultationCompletedForCurrentList(student);
+      btn.classList.toggle('active', completed);
+      btn.setAttribute('aria-pressed', completed ? 'true' : 'false');
+    });
   }
 
   function pcBindAcademyRows(){
@@ -43715,11 +43749,13 @@ document.addEventListener('DOMContentLoaded', function(){
     if (pcSection === 'academy') setTimeout(pcBindAcademyRows, 0);
   }
 
+  window.pcSyncFromVisiblePage = pcSyncFromVisiblePage;
   window.pcOpenSection = pcOpenSection;
   window.pcFilterAttendanceDivision = pcFilterAttendanceDivision;
   window.pcFilterAttendanceDay = pcFilterAttendanceDay;
   window.pcFilterAcademy = pcFilterAcademy;
   window.pcSelectAcademyConsultationStudent = pcSelectAcademyConsultationStudent;
+  window.pcRefreshAcademyConsultationCompletionState = pcRefreshAcademyConsultationCompletionState;
   window.pcSelectRosterStudent = pcSelectRosterStudent;
   window.pcHandleTopSearch = pcHandleTopSearch;
   window.pcOpenTopArchive = pcOpenTopArchive;
