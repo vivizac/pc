@@ -20,10 +20,12 @@ const QUESTIONS=[
 let rows=[];
 let selectedId='';
 let pollTimer=null;
+let analysisLoadPromise=null;
+const consultationScriptBase=(document.currentScript&&document.currentScript.src)?document.currentScript.src:location.href;
 
 function esc(value){
   if(typeof window.escapeHtml==='function')return window.escapeHtml(String(value??''));
-  return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  return String(value??'').replace(/[&<>\"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]));
 }
 function academyId(){
   return String((typeof window.getOlliCurrentAcademyId==='function'?window.getOlliCurrentAcademyId():'')||localStorage.getItem('olli_current_academy_id')||'').trim();
@@ -33,6 +35,37 @@ function answerLabel(value,q){return value==='YES'?'그렇다':value==='MID'?(q?
 function dateLabel(value){const d=new Date(value);if(Number.isNaN(d.getTime()))return'';return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;}
 function statusLabel(value){return({survey_completed:'설문 완료',observation_waiting:'수업 관찰 대기',observation_in_progress:'수업 관찰 중',final_analysis_waiting:'최종 분석 대기',ready:'상담 준비 완료',completed:'상담 완료'})[String(value||'')]||'설문 완료';}
 function setHint(text){const el=document.getElementById('consultationServerHint');if(!el)return;el.textContent=text||'';el.classList.toggle('show',!!text);}
+
+function loadAnalysisEngine(){
+  if(window.OlliConsultationAnalysis?.analyze)return Promise.resolve(window.OlliConsultationAnalysis);
+  if(analysisLoadPromise)return analysisLoadPromise;
+  analysisLoadPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    script.src=new URL('consultation-analysis.js',consultationScriptBase).toString();
+    script.async=true;
+    script.onload=()=>window.OlliConsultationAnalysis?.analyze?resolve(window.OlliConsultationAnalysis):reject(new Error('상담 분석 엔진을 초기화하지 못했습니다.'));
+    script.onerror=()=>reject(new Error('상담 분석 엔진 파일을 불러오지 못했습니다.'));
+    document.head.appendChild(script);
+  });
+  analysisLoadPromise.then(()=>{if(selectedId)renderDetail(selectedId);}).catch(err=>setHint(err?.message||'상담 분석 엔진을 불러오지 못했습니다.'));
+  return analysisLoadPromise;
+}
+function hypothesisHtml(items,type){
+  if(!items.length)return `<div class="consultationNoHypothesis ${type==='confirm'?'muted':''}">${type==='major'?'정확히 일치하는 주요 패턴은 없습니다. 수업 관찰 후 판단이 필요합니다.':'추가 확인이 필요한 근접 패턴이 없습니다.'}</div>`;
+  return `<div class="consultationHypothesisGrid">${items.map(item=>`<div class="consultationHypothesisCard ${type}"><div class="consultationHypothesisHead"><span class="consultationHypothesisName">${esc(item.name)}</span><span class="consultationHypothesisMatch">${esc(item.matched+'/'+item.total+' 일치')}</span></div><div class="consultationHypothesisRule">${esc(item.conditionText)}</div>${type==='confirm'&&item.opposites?`<div class="consultationOppositeNote">반대 방향 응답 ${esc(item.opposites)}개 포함 · 수업에서 확인 필요</div>`:''}</div>`).join('')}</div>`;
+}
+function analysisListHtml(title,items,emptyText){
+  return `<div class="consultationAnalysisBlock"><div class="consultationAnalysisLabel">${esc(title)}</div>${items.length?`<div class="consultationAnalysisList">${items.map(item=>`<div class="consultationAnalysisListItem">${esc(item)}</div>`).join('')}</div>`:`<div class="consultationNoHypothesis muted">${esc(emptyText)}</div>`}</div>`;
+}
+function renderAutomaticAnalysis(answers){
+  const engine=window.OlliConsultationAnalysis;
+  if(!engine?.analyze){
+    loadAnalysisEngine();
+    return '<div class="consultationAnalysisWaiting">28개 성향 분석 엔진을 불러오는 중입니다.</div>';
+  }
+  const analysis=engine.analyze(answers||{});
+  return `<div class="consultationAnalysisSummary"><div class="consultationAnalysisSummaryTop"><div><b>28개 패턴 자동 분석</b><span>설문 결과는 최종 판정이 아니라 수업에서 확인할 성향 가설입니다.</span></div><div class="consultationAnalysisCounts"><span>주요 ${analysis.primary.length}</span><span>확인 ${analysis.confirm.length}</span></div></div>${analysis.axes.length?`<div class="consultationCategoryRow"><span>관련 5대 영역</span>${analysis.axes.map(axis=>`<b>${esc(axis)}</b>`).join('')}</div>`:''}</div><div class="consultationAnalysisBlock"><div class="consultationAnalysisLabel">주요 성향 가설</div>${hypothesisHtml(analysis.primary,'major')}</div><div class="consultationAnalysisBlock"><div class="consultationAnalysisLabel">확인이 필요한 성향</div>${hypothesisHtml(analysis.confirm,'confirm')}</div>${analysisListHtml('추가 상담 질문',analysis.questions,'현재 자동으로 추려진 추가 질문이 없습니다.')}${analysisListHtml('수업 관찰 포인트',analysis.observations,'주요·확인 가설이 없어 전체 행동을 관찰해야 합니다.')}${analysisListHtml('설문 기반 지도 방향',analysis.directions,'수업 관찰 후 지도 방향을 정합니다.')}`;
+}
 
 function ensureScreen(){
   if(document.getElementById('consultationSurveyScreen'))return;
@@ -93,7 +126,7 @@ function renderEmpty(){const box=document.getElementById('consultationSurveyDeta
 function renderDetail(id){
   const box=document.getElementById('consultationSurveyDetailCard');const row=rows.find(r=>String(r.id)===String(id));if(!box||!row)return renderEmpty();
   const answers=row.answers&&typeof row.answers==='object'?row.answers:{};
-  box.innerHTML=`<div class="consultationDetailTop"><div><div class="consultationDetailName">${esc(row.student_name||'학생')}</div><div class="consultationDetailMeta">${esc(row.student_age||'')}${row.parent_phone4?' · 연락처 뒤 '+esc(row.parent_phone4):''} · ${esc(dateLabel(row.created_at))}</div></div><span class="consultationStatus">${esc(statusLabel(row.status))}</span></div><div class="consultationDetailSection"><div class="consultationDetailSectionTitle">학부모 설문 원본</div><div class="consultationAnswerList">${QUESTIONS.map((q,i)=>`<div class="consultationAnswerItem"><div class="consultationAnswerQ">${i+1}. ${esc(q.text)}</div><div class="consultationAnswerA">${esc(answerLabel(answers[q.id],q))}</div></div>`).join('')}</div></div><div class="consultationDetailSection"><div class="consultationDetailSectionTitle">자동 분석</div><div class="consultationAnalysisWaiting">28개 성향 분석 규칙표를 연결하면 이 영역에 <b>주요 가설 · 확인 가설 · 추가 질문 · 수업 관찰 포인트</b>가 자동으로 표시됩니다.</div></div>`;
+  box.innerHTML=`<div class="consultationDetailTop"><div><div class="consultationDetailName">${esc(row.student_name||'학생')}</div><div class="consultationDetailMeta">${esc(row.student_age||'')}${row.parent_phone4?' · 연락처 뒤 '+esc(row.parent_phone4):''} · ${esc(dateLabel(row.created_at))}</div></div><span class="consultationStatus">${esc(statusLabel(row.status))}</span></div><div class="consultationDetailSection"><div class="consultationDetailSectionTitle">학부모 설문 원본</div><div class="consultationAnswerList">${QUESTIONS.map((q,i)=>`<div class="consultationAnswerItem"><div class="consultationAnswerQ">${i+1}. ${esc(q.text)}</div><div class="consultationAnswerA">${esc(answerLabel(answers[q.id],q))}</div></div>`).join('')}</div></div><div class="consultationDetailSection"><div class="consultationDetailSectionTitle">자동 분석</div>${renderAutomaticAnalysis(answers)}</div>`;
 }
 window.openConsultationSurveyDetail=function(id){selectedId=String(id||'');render();};
 window.refreshConsultationSurveyManager=async function(){rows=await loadRows();rows.sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));window.__olliConsultationRows=rows.slice();render();return rows;};
@@ -126,6 +159,6 @@ function installPcHook(){
   wrapped.__consultationHook=true;window.pcOpenSection=wrapped;
 }
 function startPolling(){clearInterval(pollTimer);pollTimer=setInterval(()=>{const screen=document.getElementById('consultationSurveyScreen');if(screen&&getComputedStyle(screen).display!=='none')window.refreshConsultationSurveyManager();},20000);}
-function init(){ensureScreen();installPcHook();startPolling();}
+function init(){ensureScreen();installPcHook();startPolling();loadAnalysisEngine().catch(()=>{});}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();

@@ -32,6 +32,33 @@ body.olliPcApp #consultationSurveyScreen{background:var(--pc-bg);overflow:auto;a
 .consultationAnswerQ{font-size:11.5px;line-height:1.45;color:#7f848c;}
 .consultationAnswerA{margin-top:5px;font-size:13px;font-weight:800;color:#202226;}
 .consultationAnalysisWaiting{border-radius:16px;background:#f7f7f8;padding:14px;font-size:12.5px;line-height:1.55;color:#6f747c;}
+.consultationAnalysisSummary{border:1px solid #e6e8ec;border-radius:17px;padding:14px;background:#fbfbfc;}
+.consultationAnalysisSummaryTop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.consultationAnalysisSummaryTop>div:first-child{min-width:0;}
+.consultationAnalysisSummaryTop b{display:block;font-size:13px;color:#202226;}
+.consultationAnalysisSummaryTop span{display:block;margin-top:4px;font-size:11px;line-height:1.45;color:#8b9098;}
+.consultationAnalysisCounts{display:flex;gap:5px;flex:0 0 auto;}
+.consultationAnalysisCounts span{margin:0;padding:5px 8px;border-radius:999px;background:#fff;border:1px solid #e3e5e9;color:#60656d;font-size:10.5px;font-weight:800;white-space:nowrap;}
+.consultationCategoryRow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:11px;padding-top:10px;border-top:1px solid #eceef1;}
+.consultationCategoryRow>span{font-size:10.5px;color:#969aa1;font-weight:750;margin-right:2px;}
+.consultationCategoryRow b{display:inline-flex;align-items:center;min-height:24px;padding:0 8px;border-radius:999px;background:#eef5ff;color:#3478c9;font-size:10.5px;font-weight:800;}
+.consultationAnalysisBlock{margin-top:15px;}
+.consultationAnalysisLabel{font-size:11.5px;font-weight:850;color:#676c74;margin-bottom:8px;}
+.consultationHypothesisGrid{display:grid;gap:8px;}
+.consultationHypothesisCard{border:1px solid #e6e8ec;border-radius:15px;padding:12px;background:#fff;}
+.consultationHypothesisCard.major{border-color:#cfe2ff;background:#f8fbff;}
+.consultationHypothesisCard.confirm{background:#fffdf7;border-color:#eee5c7;}
+.consultationHypothesisHead{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.consultationHypothesisName{font-size:13px;font-weight:850;color:#202226;letter-spacing:-.02em;}
+.consultationHypothesisMatch{font-size:10px;font-weight:800;color:#7c828b;white-space:nowrap;}
+.consultationHypothesisRule{margin-top:5px;font-size:10.5px;font-weight:800;color:#1687ff;}
+.consultationHypothesisCard.confirm .consultationHypothesisRule{color:#9a7a20;}
+.consultationOppositeNote{margin-top:8px;padding:7px 9px;border-radius:10px;background:#fff7dd;color:#8c6c16;font-size:10.5px;line-height:1.4;font-weight:750;}
+.consultationNoHypothesis{padding:11px 12px;border-radius:13px;background:#f5f7fa;color:#5f6570;font-size:11.5px;line-height:1.5;}
+.consultationNoHypothesis.muted{color:#93979e;background:#f8f8f9;}
+.consultationAnalysisList{display:grid;gap:6px;}
+.consultationAnalysisListItem{position:relative;padding:9px 10px 9px 25px;border-radius:12px;background:#f7f7f8;color:#5f646c;font-size:11.5px;line-height:1.45;}
+.consultationAnalysisListItem:before{content:'•';position:absolute;left:11px;top:8px;color:#1687ff;font-weight:900;}
 .consultationServerHint{display:none;margin:0 0 14px;padding:11px 14px;border-radius:14px;background:#fff8e8;color:#8a6a21;font-size:12px;line-height:1.45;}
 .consultationServerHint.show{display:block;}
 @media(max-width:1200px){.consultationManagerGrid{grid-template-columns:minmax(0,1fr) 330px}.consultationListHeader,.consultationListRow{grid-template-columns:minmax(130px,1.2fr) 80px 110px 105px}}
