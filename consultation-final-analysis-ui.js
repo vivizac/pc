@@ -36,6 +36,7 @@ function makeState(row,observation,finalResult){
   const override=cleanObject(saved?.override_result);
   return {
     observation:observation||null,
+    survey_updated_at:String(row?.updated_at||''),
     auto,
     saved,
     can_save:!!finalResult?.can_save,
@@ -102,7 +103,9 @@ function renderSection(id){
 function ensureSection(){
   if(!currentId)currentId=selectedFromDom();
   if(!currentId)return;
-  if(!rowById(currentId))return;
+  const row=rowById(currentId);if(!row)return;
+  const state=cache.get(String(currentId));
+  if(state&&!state.error&&String(state.survey_updated_at||'')!==String(row.updated_at||''))cache.delete(String(currentId));
   renderSection(currentId);
 }
 window.setConsultationFinalStatus=function(id,patternId,status){
