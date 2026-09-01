@@ -23,6 +23,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
-          git commit -m "Set attendance print to 30px header, 21px rows, 0.5px lines"
+          git commit -m "Tune attendance row height columns and text weight"
           git push
-# trigger: 2026-09-01 attendance print final tune
+# trigger: 2026-09-01 attendance row/column/text tune
