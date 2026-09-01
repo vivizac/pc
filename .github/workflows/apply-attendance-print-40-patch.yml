@@ -1,0 +1,27 @@
+name: Apply attendance print 40-row patch
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-attendance-print-40-patch.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply attendance print patch
+        run: python scripts/apply_attendance_print_40_patch.py
+      - name: Commit patched attendance print
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "index.html already patched"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Update attendance print to 40 rows per page"
+          git push
