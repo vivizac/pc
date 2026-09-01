@@ -25,3 +25,4 @@ jobs:
           git add -A
           git commit -m "Preserve attendance print appearance after cleanup"
           git push
+# retry: verification now ignores CSS property order
