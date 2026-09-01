@@ -37,16 +37,32 @@ update_rule('.attendancePrintMonth', [
     ('line-height', '0.98'),
 ])
 
-# 정리 후 핵심 확정값 검증
-checks = [
-    r'\.attendancePrintHeader\s*\{[^}]*padding-top:\s*10px;[^}]*margin-bottom:\s*5px;',
-    r'\.attendancePrintAcademy\s*\{[^}]*font-size:\s*15px;[^}]*line-height:\s*1\.05;[^}]*font-weight:\s*760;',
-    r'\.attendancePrintMonth\s*\{[^}]*margin-top:\s*1px;[^}]*font-size:\s*31px;[^}]*line-height:\s*0\.98;',
-    r'\.attendancePrintTable th,\s*\n\s*\.attendancePrintTable td\s*\{[^}]*border:\s*0\.5px solid #777777;[^}]*height:\s*23px;[^}]*padding:\s*0\.5px 1\.5px;',
-]
-for pattern in checks:
-    if not re.search(pattern, s, re.S):
-        raise SystemExit(f'final attendance value verification failed: {pattern}')
+# 속성 순서와 무관하게 현재 최종값을 검증합니다.
+def rule_body(selector):
+    m = re.search(re.escape(selector) + r'\s*\{(?P<body>.*?)\}', s, re.S)
+    if not m:
+        raise SystemExit(f'CSS rule missing during verification: {selector}')
+    return m.group('body')
+
+def require_prop(selector, prop, value):
+    body = rule_body(selector)
+    if not re.search(re.escape(prop) + r'\s*:\s*' + re.escape(value) + r'\s*;', body):
+        raise SystemExit(f'final value verification failed: {selector} {prop}: {value}')
+
+for prop, value in [('padding-top','10px'),('margin-bottom','5px')]:
+    require_prop('.attendancePrintHeader', prop, value)
+for prop, value in [('font-size','15px'),('line-height','1.05'),('font-weight','760')]:
+    require_prop('.attendancePrintAcademy', prop, value)
+for prop, value in [('margin-top','1px'),('font-size','31px'),('line-height','0.98')]:
+    require_prop('.attendancePrintMonth', prop, value)
+
+cell_match = re.search(r'\.attendancePrintTable th,\s*\n\s*\.attendancePrintTable td\s*\{(?P<body>.*?)\}', s, re.S)
+if not cell_match:
+    raise SystemExit('attendance table cell rule missing')
+cell_body = cell_match.group('body')
+for prop, value in [('border','0.5px solid #777777'),('height','23px'),('padding','0.5px 1.5px')]:
+    if not re.search(re.escape(prop) + r'\s*:\s*' + re.escape(value) + r'\s*;', cell_body):
+        raise SystemExit(f'attendance table final value verification failed: {prop}: {value}')
 
 if s == original:
     raise SystemExit('No attendance consolidation fix needed')
