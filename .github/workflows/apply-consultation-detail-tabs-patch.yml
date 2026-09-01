@@ -1,0 +1,27 @@
+name: Apply consultation detail tabs patch
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-consultation-detail-tabs-patch.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply consultation detail tabs patch
+        run: python scripts/apply_consultation_detail_tabs_patch.py
+      - name: Commit consultation detail layout
+        run: |
+          if git diff --quiet -- consultation-survey.css consultation-survey-core.js consultation-observation-ui.js consultation-final-analysis-ui.js consultation-result-sheet-ui.js; then
+            echo "consultation detail layout already patched"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add consultation-survey.css consultation-survey-core.js consultation-observation-ui.js consultation-final-analysis-ui.js consultation-result-sheet-ui.js
+          git commit -m "Improve consultation detail tabs and layout"
+          git push
