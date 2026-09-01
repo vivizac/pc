@@ -167,7 +167,19 @@ document.getElementById('surveyForm').addEventListener('submit',async e=>{
   try{
     const result=await rpc('olli_submit_consultation_survey_by_token',{p_survey_token:token,p_student_name:document.getElementById('studentName').value.trim(),p_student_age:document.getElementById('studentAge').value.trim(),p_parent_phone4:document.getElementById('phone4').value.trim(),p_survey_version:SURVEY_VERSION,p_answers:answers,p_request_id:createId()});
     if(!result||result.ok!==true)throw new Error(result?.message||'설문을 저장하지 못했습니다.');
-    document.getElementById('formCard').classList.add('hidden');document.getElementById('completeCard').classList.add('show');window.scrollTo({top:0,behavior:'smooth'});
+    document.querySelector('.surveyHeader')?.classList.add('hidden');
+    document.querySelector('.surveyHero')?.classList.add('hidden');
+    document.getElementById('formCard').classList.add('hidden');
+    const wrap=document.querySelector('.surveyWrap');
+    wrap.style.minHeight='100dvh';
+    wrap.style.display='flex';
+    wrap.style.alignItems='center';
+    wrap.style.justifyContent='center';
+    wrap.style.padding='24px 0';
+    const complete=document.getElementById('completeCard');
+    complete.style.width='100%';
+    complete.classList.add('show');
+    window.scrollTo({top:0,behavior:'auto'});
   }catch(err){btn.disabled=false;btn.textContent='설문 제출하기';showError(err?.message||'설문을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.');}
 });
 renderQuestions();initialize();
