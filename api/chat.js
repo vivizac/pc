@@ -1,9 +1,48 @@
-import {
-  CLASS_SYSTEM_PROMPT,
-  FAIL_SYSTEM_PROMPT,
-  ELEMENTARY_SYSTEM_PROMPT,
-  SUMMARY_SYSTEM_PROMPT,
-} from './prompts.js';
+const SHARED_PROMPT_RPC_URL =
+  'https://fvkxipjwgeyosgnfhdnx.supabase.co/rest/v1/rpc/olli_get_ai_prompt';
+const SUPABASE_PUBLISHABLE_KEY =
+  process.env.SUPABASE_PUBLISHABLE_KEY ||
+  'sb_publishable_YroTnCAUuQm1KuT2B6O_Dw_84q2dCK_';
+const ALLOWED_PROMPT_TYPES = new Set([
+  'class',
+  'fail',
+  'elementary',
+  'summary',
+]);
+
+async function loadSharedSystemPrompt(promptType) {
+  const promptRes = await fetch(SHARED_PROMPT_RPC_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+    },
+    body: JSON.stringify({
+      p_prompt_type: promptType,
+    }),
+  });
+
+  const rawText = await promptRes.text();
+
+  let data;
+  try {
+    data = rawText ? JSON.parse(rawText) : {};
+  } catch {
+    data = { raw: rawText };
+  }
+
+  if (!promptRes.ok) {
+    throw new Error(
+      data?.message || data?.error || '공용 프롬프트를 불러오지 못했습니다.'
+    );
+  }
+
+  if (!data?.ok || !data?.prompt) {
+    throw new Error(data?.error || '활성화된 공용 프롬프트가 없습니다.');
+  }
+
+  return String(data.prompt);
+}
 
 export default async function handler(req, res) {
   // CORS
@@ -34,21 +73,13 @@ export default async function handler(req, res) {
       });
     }
 
-    const promptMap = {
-      class: CLASS_SYSTEM_PROMPT,
-      fail: FAIL_SYSTEM_PROMPT,
-      elementary: ELEMENTARY_SYSTEM_PROMPT,
-      summary: SUMMARY_SYSTEM_PROMPT,
-    };
-
-    const systemPrompt = promptMap[promptType];
-
-    if (!systemPrompt) {
+    if (!ALLOWED_PROMPT_TYPES.has(promptType)) {
       return res.status(400).json({
         error: `알 수 없는 promptType입니다: ${promptType}`,
       });
     }
 
+    const systemPrompt = await loadSharedSystemPrompt(promptType);
     const input = [];
 
     // system prompt
