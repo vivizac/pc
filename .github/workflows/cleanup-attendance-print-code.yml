@@ -1,0 +1,35 @@
+name: Cleanup attendance print code
+on:
+  push:
+    paths:
+      - '.github/workflows/cleanup-attendance-print-code.yml'
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Consolidate attendance print code
+        run: python scripts/cleanup_attendance_print_code.py
+      - name: Remove obsolete one-time attendance patch helpers
+        run: |
+          rm -f scripts/apply_attendance_print_finetune_patch.py
+          rm -f scripts/apply_attendance_print_header_exact_patch.py
+          rm -f .github/workflows/apply-attendance-print-finetune-patch.yml
+          rm -f .github/workflows/apply-attendance-print-header-exact-patch.yml
+          rm -f scripts/cleanup_attendance_print_code.py
+          rm -f .github/workflows/cleanup-attendance-print-code.yml
+      - name: Commit cleaned attendance print code
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No attendance cleanup changes"
+            exit 0
+          fi
+          git commit -m "Consolidate attendance print styles and remove patch helpers"
+          git push
