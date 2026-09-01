@@ -43814,5 +43814,427 @@ document.addEventListener('DOMContentLoaded', function(){
   else start();
 })();
 </script>
+<style id="olliPcAttendanceTimetableStyle">
+/* PC 사이드바 출석부: 명단 / 시간표 */
+#recordRoomScreen .olliPcAttendanceTabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px;
+  margin: 2px 0 18px;
+  border: 1px solid rgba(0,0,0,.055);
+  border-radius: 15px;
+  background: #f4f4f2;
+}
+#recordRoomScreen .olliPcAttendanceTab {
+  height: 34px;
+  min-width: 68px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #8c8c8c;
+  font: 700 calc(13px * var(--olli-text-scale)) 'Pretendard',sans-serif;
+  letter-spacing: -.035em;
+  cursor: pointer;
+}
+#recordRoomScreen .olliPcAttendanceTab.active {
+  background: #fff;
+  color: #111;
+  box-shadow: 0 2px 8px rgba(0,0,0,.07);
+}
+#recordRoomScreen .olliPcTimetable {
+  display: none;
+  padding: 0 0 34px;
+}
+#recordRoomScreen .olliPcTimetable.show { display: block; }
+#recordRoomScreen .olliPcTimetableIntro {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 16px;
+}
+#recordRoomScreen .olliPcTimetableIntroTitle {
+  font-size: calc(18px * var(--olli-text-scale));
+  font-weight: 780;
+  color: #111;
+  letter-spacing: -.055em;
+}
+#recordRoomScreen .olliPcTimetableIntroText {
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 600;
+  color: #999;
+  letter-spacing: -.025em;
+}
+#recordRoomScreen .olliPcTimetableSection {
+  overflow: hidden;
+  margin: 0 0 18px;
+  border: 1px solid rgba(0,0,0,.065);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(0,0,0,.04);
+}
+#recordRoomScreen .olliPcTimetableSectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 14px;
+}
+#recordRoomScreen .olliPcTimetableSectionTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: calc(15px * var(--olli-text-scale));
+  font-weight: 800;
+  color: #171717;
+  letter-spacing: -.045em;
+}
+#recordRoomScreen .olliPcTimetableSectionDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+#recordRoomScreen .olliPcTimetableSection.elementary .olliPcTimetableSectionDot { background: #edbd22; }
+#recordRoomScreen .olliPcTimetableSection.kinder .olliPcTimetableSectionDot { background: #ec9ab4; }
+#recordRoomScreen .olliPcTimetableSectionCount {
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 700;
+  color: #999;
+}
+#recordRoomScreen .olliPcTimetableScroll {
+  overflow-x: auto;
+  border-top: 1px solid rgba(0,0,0,.055);
+  -webkit-overflow-scrolling: touch;
+}
+#recordRoomScreen .olliPcTimetableGrid {
+  display: grid;
+  grid-template-columns: 62px repeat(6, minmax(128px, 1fr));
+  min-width: 830px;
+}
+#recordRoomScreen .olliPcTimetableCorner,
+#recordRoomScreen .olliPcTimetableDay {
+  min-height: 43px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid rgba(0,0,0,.055);
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 800;
+  color: #666;
+  letter-spacing: -.03em;
+}
+#recordRoomScreen .olliPcTimetableSection.elementary .olliPcTimetableCorner,
+#recordRoomScreen .olliPcTimetableSection.elementary .olliPcTimetableDay { background: #fff9e9; }
+#recordRoomScreen .olliPcTimetableSection.kinder .olliPcTimetableCorner,
+#recordRoomScreen .olliPcTimetableSection.kinder .olliPcTimetableDay { background: #fff3f6; }
+#recordRoomScreen .olliPcTimetableTime {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 15px;
+  border-right: 1px solid rgba(0,0,0,.055);
+  border-bottom: 1px solid rgba(0,0,0,.055);
+  background: #fafaf9;
+  color: #777;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 750;
+}
+#recordRoomScreen .olliPcTimetableCell {
+  min-height: 88px;
+  padding: 8px;
+  border-right: 1px solid rgba(0,0,0,.055);
+  border-bottom: 1px solid rgba(0,0,0,.055);
+  background: #fff;
+}
+#recordRoomScreen .olliPcTimetableGrid > :nth-child(7n) { border-right: 0; }
+#recordRoomScreen .olliPcTimetableGrid > :nth-last-child(-n+7) { border-bottom: 0; }
+#recordRoomScreen .olliPcTimetableCell:hover { background: #fcfcfb; }
+#recordRoomScreen .olliPcScheduleStudent {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 31px;
+  margin: 0 0 5px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  text-align: left;
+  font: 720 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif;
+  letter-spacing: -.035em;
+  color: #303030;
+  cursor: pointer;
+  transition: transform .14s ease, box-shadow .14s ease;
+}
+#recordRoomScreen .olliPcScheduleStudent:last-child { margin-bottom: 0; }
+#recordRoomScreen .olliPcTimetableSection.elementary .olliPcScheduleStudent { background: #fff4c9; border-color: #f8e6a2; }
+#recordRoomScreen .olliPcTimetableSection.kinder .olliPcScheduleStudent { background: #ffe2ea; border-color: #f9cad8; }
+#recordRoomScreen .olliPcScheduleStudent:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(0,0,0,.08); }
+#recordRoomScreen .olliPcScheduleEmpty { color: #d0d0cd; font-size: calc(12px * var(--olli-text-scale)); }
+#olliPcScheduleMoveOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: rgba(0,0,0,.28);
+}
+#olliPcScheduleMoveOverlay.show { display: flex; }
+#olliPcScheduleMoveDialog {
+  width: min(440px, 100%);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(0,0,0,.2);
+  padding: 22px;
+}
+#olliPcScheduleMoveTitle { font-size: calc(18px * var(--olli-text-scale)); font-weight: 820; letter-spacing: -.055em; color: #111; }
+#olliPcScheduleMoveSub { margin-top: 6px; color: #929292; font-size: calc(13px * var(--olli-text-scale)); font-weight: 600; letter-spacing: -.03em; }
+#olliPcScheduleMoveLabel { margin: 20px 0 8px; color: #777; font-size: calc(12px * var(--olli-text-scale)); font-weight: 800; }
+#olliPcScheduleMoveChoices { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+#olliPcScheduleMoveChoices.time { grid-template-columns: repeat(5, 1fr); }
+#olliPcScheduleMoveChoice { height: 38px; border: 0; border-radius: 12px; background: #f4f4f2; color: #666; font: 700 calc(13px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor: pointer; }
+#olliPcScheduleMoveChoice.active { background: #111; color: #fff; }
+#olliPcScheduleMoveActions { display: grid; grid-template-columns: 1fr 1.25fr; gap: 8px; margin-top: 24px; }
+#olliPcScheduleMoveActions button { height: 44px; border: 0; border-radius: 14px; font: 750 calc(13px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor: pointer; }
+#olliPcScheduleMoveCancel { background: #f2f2f0; color: #666; }
+#olliPcScheduleMoveSave { background: #111; color: #fff; }
+#olliPcScheduleMoveSave:disabled { opacity: .45; cursor: default; }
+@media (max-width: 760px) {
+  #recordRoomScreen .olliPcTimetableIntro { align-items: flex-start; flex-direction: column; gap: 4px; }
+  #recordRoomScreen .olliPcTimetableGrid { min-width: 720px; grid-template-columns: 52px repeat(6, minmax(110px,1fr)); }
+  #recordRoomScreen .olliPcTimetableCell { min-height: 76px; padding: 6px; }
+}
+</style>
+<script id="olliPcAttendanceTimetableScript">
+/* PC 사이드바 출석부의 명단/시간표 전환과 시간표 이동 */
+(function(){
+  var DAYS = ['월','화','수','목','금','토'];
+  var state = { view: 'list', move: null, day: '', time: '', saving: false };
+
+  function text(value){ return String(value == null ? '' : value).trim(); }
+  function escapeHtml(value){ return text(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function activeStudents(type){
+    var students = typeof getStudentsByType === 'function' ? getStudentsByType(type) : [];
+    return (Array.isArray(students) ? students : []).filter(function(student){
+      try { return typeof getStudentStatus !== 'function' || getStudentStatus(student) === 'active'; }
+      catch(_) { return true; }
+    });
+  }
+  function timesFor(type){ return type === 'kinder' ? ['3시','4시','5시','6시'] : ['1시','2시','3시','4시','5시','6시','7시']; }
+  function ordered(list, order){
+    var unique = [];
+    (Array.isArray(list) ? list : []).forEach(function(value){ if (unique.indexOf(value) < 0) unique.push(value); });
+    return unique.sort(function(a,b){ return order.indexOf(a) - order.indexOf(b); });
+  }
+  function readDays(student){
+    var raw = text(student && (student.lesson_day || student.lessonDay || student.class_day || student.classDay || ''));
+    if (!raw) raw = text(student && (student.lesson_time || student.lessonTime || student.class_time || student.classTime || ''));
+    return DAYS.filter(function(day){ return raw.indexOf(day) >= 0; });
+  }
+  function readTimes(value){
+    var found = [];
+    text(value).replace(/(?:오후\s*)?([1-7])\s*(?:시|:00)?/g, function(_, hour){
+      var label = Number(hour) + '시';
+      if (found.indexOf(label) < 0) found.push(label);
+      return '';
+    });
+    return found;
+  }
+  function schedulePairs(student){
+    var rawDay = text(student && (student.lesson_day || student.lessonDay || student.class_day || student.classDay || ''));
+    var rawTime = text(student && (student.lesson_time || student.lessonTime || student.class_time || student.classTime || ''));
+    var pairs = [];
+    rawTime.split(/[·,\/|\n]+/).map(text).filter(Boolean).forEach(function(part){
+      var dayMatch = part.match(/([월화수목금토])/);
+      var partTimes = readTimes(part);
+      if (dayMatch && partTimes.length) partTimes.forEach(function(time){ pairs.push({day:dayMatch[1], time:time}); });
+    });
+    if (!pairs.length) {
+      var days = DAYS.filter(function(day){ return rawDay.indexOf(day) >= 0; });
+      var times = readTimes(rawTime);
+      if (days.length === 1) times.forEach(function(time){ pairs.push({day:days[0], time:time}); });
+      else if (days.length > 1 && times.length === days.length) days.forEach(function(day, index){ pairs.push({day:day, time:times[index]}); });
+      else days.forEach(function(day){ times.forEach(function(time){ pairs.push({day:day, time:time}); }); });
+    }
+    var seen = {};
+    return pairs.filter(function(pair){
+      if (DAYS.indexOf(pair.day) < 0 || !pair.time) return false;
+      var key = pair.day + '/' + pair.time;
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    }).sort(function(a,b){ return DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || Number(a.time) - Number(b.time); });
+  }
+  function allPairsFor(type){
+    return activeStudents(type).map(function(student){ return { student: student, pairs: schedulePairs(student) }; });
+  }
+  function getTabHost(){ return document.getElementById('recordBodyNew'); }
+  function ensureUi(){
+    var host = getTabHost();
+    if (!host) return null;
+    var tabs = document.getElementById('olliPcAttendanceTabs');
+    if (!tabs) {
+      tabs = document.createElement('div');
+      tabs.id = 'olliPcAttendanceTabs';
+      tabs.className = 'olliPcAttendanceTabs';
+      tabs.setAttribute('role','tablist');
+      tabs.innerHTML = '<button type="button" class="olliPcAttendanceTab" data-olli-attendance-view="list">명단</button><button type="button" class="olliPcAttendanceTab" data-olli-attendance-view="schedule">시간표</button>';
+      var list = document.getElementById('recordList');
+      host.insertBefore(tabs, list || host.firstChild);
+      tabs.addEventListener('click', function(event){
+        var button = event.target.closest('[data-olli-attendance-view]');
+        if (button) setView(button.getAttribute('data-olli-attendance-view'));
+      });
+    }
+    var timetable = document.getElementById('olliPcTimetable');
+    if (!timetable) {
+      timetable = document.createElement('div');
+      timetable.id = 'olliPcTimetable';
+      timetable.className = 'olliPcTimetable';
+      host.insertBefore(timetable, document.getElementById('pcAcademyDetailPanel'));
+    }
+    return { tabs: tabs, timetable: timetable };
+  }
+  function sectionHtml(type, label){
+    var rows = timesFor(type);
+    var data = allPairsFor(type);
+    var grid = '<div class="olliPcTimetableGrid"><div class="olliPcTimetableCorner"></div>';
+    DAYS.forEach(function(day){ grid += '<div class="olliPcTimetableDay">' + day + '</div>'; });
+    rows.forEach(function(time){
+      grid += '<div class="olliPcTimetableTime">' + time + '</div>';
+      DAYS.forEach(function(day){
+        var names = [];
+        data.forEach(function(entry){
+          if (entry.pairs.some(function(pair){ return pair.day === day && pair.time === time; })) {
+            var id = escapeHtml(entry.student.id || '');
+            names.push('<button type="button" class="olliPcScheduleStudent" data-olli-schedule-id="'+id+'" data-olli-schedule-day="'+day+'" data-olli-schedule-time="'+time+'">'+escapeHtml(entry.student.name || '학생')+'</button>');
+          }
+        });
+        grid += '<div class="olliPcTimetableCell">' + (names.join('') || '<span class="olliPcScheduleEmpty">—</span>') + '</div>';
+      });
+    });
+    grid += '</div>';
+    return '<section class="olliPcTimetableSection '+type+'"><div class="olliPcTimetableSectionHead"><div class="olliPcTimetableSectionTitle"><span class="olliPcTimetableSectionDot"></span>'+label+'</div><div class="olliPcTimetableSectionCount">'+data.length+'명</div></div><div class="olliPcTimetableScroll">'+grid+'</div></section>';
+  }
+  function renderTimetable(){
+    var ui = ensureUi();
+    if (!ui) return;
+    ui.timetable.innerHTML = '<div class="olliPcTimetableIntro"><div class="olliPcTimetableIntroTitle">수업 시간표</div><div class="olliPcTimetableIntroText">학생을 누르면 요일과 시간을 옮길 수 있어요.</div></div>' + sectionHtml('elementary','초등부') + sectionHtml('kinder','유치부');
+    ui.timetable.querySelectorAll('[data-olli-schedule-id]').forEach(function(button){
+      button.addEventListener('click', function(){ openMove(button.getAttribute('data-olli-schedule-id'), button.getAttribute('data-olli-schedule-day'), button.getAttribute('data-olli-schedule-time')); });
+    });
+  }
+  function setView(view){
+    state.view = view === 'schedule' ? 'schedule' : 'list';
+    var ui = ensureUi();
+    if (!ui) return;
+    ui.tabs.querySelectorAll('[data-olli-attendance-view]').forEach(function(button){ button.classList.toggle('active', button.getAttribute('data-olli-attendance-view') === state.view); });
+    var list = document.getElementById('recordList');
+    var showSchedule = state.view === 'schedule';
+    if (list) list.style.display = showSchedule ? 'none' : '';
+    ui.timetable.classList.toggle('show', showSchedule);
+    if (showSchedule) renderTimetable();
+  }
+  function ensureMoveDialog(){
+    var overlay = document.getElementById('olliPcScheduleMoveOverlay');
+    if (overlay) return overlay;
+    overlay = document.createElement('div');
+    overlay.id = 'olliPcScheduleMoveOverlay';
+    overlay.innerHTML = '<div id="olliPcScheduleMoveDialog" role="dialog" aria-modal="true"></div>';
+    overlay.addEventListener('click', function(event){ if (event.target === overlay && !state.saving) closeMove(); });
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+  function moveDialogHtml(){
+    var current = state.move;
+    if (!current) return '';
+    var timeChoices = timesFor(current.student.type || 'elementary');
+    return '<div id="olliPcScheduleMoveTitle">'+escapeHtml(current.student.name || '학생')+' 수업 이동</div>'
+      + '<div id="olliPcScheduleMoveSub">'+current.from.day+' '+current.from.time+' 수업을 옮깁니다.</div>'
+      + '<div class="olliPcScheduleMoveLabel">요일</div><div class="olliPcScheduleMoveChoices">'
+      + DAYS.map(function(day){ return '<button type="button" class="olliPcScheduleMoveChoice '+(state.day === day ? 'active' : '')+'" data-olli-move-day="'+day+'">'+day+'</button>'; }).join('')
+      + '</div><div class="olliPcScheduleMoveLabel">시간</div><div class="olliPcScheduleMoveChoices time">'
+      + timeChoices.map(function(time){ return '<button type="button" class="olliPcScheduleMoveChoice '+(state.time === time ? 'active' : '')+'" data-olli-move-time="'+time+'">'+time+'</button>'; }).join('')
+      + '</div><div class="olliPcScheduleMoveActions"><button type="button" id="olliPcScheduleMoveCancel">취소</button><button type="button" id="olliPcScheduleMoveSave">이동하기</button></div>';
+  }
+  function openMove(studentId, day, time){
+    var student = typeof findStudentById === 'function' ? findStudentById(studentId) : null;
+    if (!student) return;
+    state.move = { student: student, from: { day: day, time: time } };
+    state.day = day;
+    state.time = time;
+    state.saving = false;
+    var overlay = ensureMoveDialog();
+    renderMoveDialog();
+    overlay.classList.add('show');
+  }
+  function renderMoveDialog(){
+    var dialog = document.getElementById('olliPcScheduleMoveDialog');
+    if (!dialog) return;
+    dialog.innerHTML = moveDialogHtml();
+    dialog.querySelectorAll('[data-olli-move-day]').forEach(function(button){ button.addEventListener('click', function(){ state.day = button.getAttribute('data-olli-move-day'); renderMoveDialog(); }); });
+    dialog.querySelectorAll('[data-olli-move-time]').forEach(function(button){ button.addEventListener('click', function(){ state.time = button.getAttribute('data-olli-move-time'); renderMoveDialog(); }); });
+    var cancel = document.getElementById('olliPcScheduleMoveCancel');
+    var save = document.getElementById('olliPcScheduleMoveSave');
+    if (cancel) cancel.addEventListener('click', closeMove);
+    if (save) { save.disabled = state.saving; save.textContent = state.saving ? '저장 중…' : '이동하기'; save.addEventListener('click', saveMove); }
+  }
+  function closeMove(){
+    if (state.saving) return;
+    var overlay = document.getElementById('olliPcScheduleMoveOverlay');
+    if (overlay) overlay.classList.remove('show');
+    state.move = null;
+  }
+  async function saveMove(){
+    if (state.saving || !state.move || !state.day || !state.time) return;
+    state.saving = true;
+    renderMoveDialog();
+    var moving = state.move;
+    var pairs = schedulePairs(moving.student).filter(function(pair){ return !(pair.day === moving.from.day && pair.time === moving.from.time); });
+    if (!pairs.some(function(pair){ return pair.day === state.day && pair.time === state.time; })) pairs.push({ day: state.day, time: state.time });
+    pairs.sort(function(a,b){ return DAYS.indexOf(a.day) - DAYS.indexOf(b.day) || Number(a.time) - Number(b.time); });
+    var lessonDay = ordered(pairs.map(function(pair){ return pair.day; }), DAYS).join(' · ');
+    var lessonTime = pairs.map(function(pair){ return pair.day+' '+pair.time; }).join(' · ');
+    var nextStudent = Object.assign({}, moving.student, { lesson_day: lessonDay, lesson_time: lessonTime, class_time: lessonTime });
+    try {
+      if (typeof ensureStudentSavedToSupabase !== 'function') throw new Error('학생정보 저장 기능을 찾지 못했습니다.');
+      await ensureStudentSavedToSupabase(nextStudent);
+      state.saving = false;
+      closeMove();
+      renderTimetable();
+      if (typeof window.pcRenderAttendanceList === 'function') window.pcRenderAttendanceList();
+      if (typeof showPushToast === 'function') showPushToast((nextStudent.name || '학생') + ' 수업 시간을 변경했어요.');
+    } catch(err) {
+      state.saving = false;
+      renderMoveDialog();
+      alert('수업 시간 저장에 실패했어요.\n\n' + (err && (err.message || err) || '다시 시도해 주세요.'));
+    }
+  }
+  function refresh(){ if (state.view === 'schedule') setView('schedule'); else setView('list'); }
+  function install(){
+    ensureUi();
+    setView(state.view);
+  }
+  var oldOpenSection = window.pcOpenSection;
+  if (typeof oldOpenSection === 'function') {
+    window.pcOpenSection = async function(section){
+      var result = await oldOpenSection.apply(this, arguments);
+      if (section === 'attendance') setTimeout(install, 0);
+      return result;
+    };
+  }
+  ['pcFilterAttendanceDivision','pcFilterAttendanceDay'].forEach(function(name){
+    var original = window[name];
+    if (typeof original !== 'function') return;
+    window[name] = function(){ var result = original.apply(this, arguments); setTimeout(refresh, 0); return result; };
+  });
+  window.olliPcSetAttendanceView = setView;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once:true });
+  else install();
+})();
+</script>
 <script src="consultation-survey.js"></script>
 </body></html>
