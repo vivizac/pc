@@ -43817,7 +43817,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <style id="olliPcAttendanceTimetableStyle">
 /* PC 사이드바 출석부: 명단 / 시간표 */
 #recordRoomScreen .olliPcAttendanceTabs {
-  display: inline-flex;
+  display: none;
   align-items: center;
   gap: 3px;
   padding: 4px;
@@ -43826,6 +43826,7 @@ document.addEventListener('DOMContentLoaded', function(){
   border-radius: 15px;
   background: #f4f4f2;
 }
+#recordRoomScreen.olliPcAttendanceActive .olliPcAttendanceTabs { display: inline-flex; }
 #recordRoomScreen .olliPcAttendanceTab {
   height: 34px;
   min-width: 68px;
@@ -43847,7 +43848,8 @@ document.addEventListener('DOMContentLoaded', function(){
   display: none;
   padding: 0 0 34px;
 }
-#recordRoomScreen .olliPcTimetable.show { display: block; }
+#recordRoomScreen.olliPcAttendanceActive .olliPcTimetable.show { display: block; }
+#recordRoomScreen.olliPcAttendanceScheduleView #recordList { display: none; }
 #recordRoomScreen .olliPcTimetableIntro {
   display: flex;
   align-items: baseline;
@@ -44012,7 +44014,7 @@ document.addEventListener('DOMContentLoaded', function(){
 /* PC 사이드바 출석부의 명단/시간표 전환과 시간표 이동 */
 (function(){
   var DAYS = ['월','화','수','목','금','토'];
-  var state = { view: 'list', move: null, day: '', time: '', saving: false };
+  var state = { view: 'list', active: false, move: null, day: '', time: '', saving: false };
 
   function text(value){ return String(value == null ? '' : value).trim(); }
   function escapeHtml(value){ return text(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -44132,11 +44134,34 @@ document.addEventListener('DOMContentLoaded', function(){
     var ui = ensureUi();
     if (!ui) return;
     ui.tabs.querySelectorAll('[data-olli-attendance-view]').forEach(function(button){ button.classList.toggle('active', button.getAttribute('data-olli-attendance-view') === state.view); });
+    var screen = document.getElementById('recordRoomScreen');
+    if (screen) screen.classList.toggle('olliPcAttendanceScheduleView', state.active && state.view === 'schedule');
+    if (!state.active) {
+      ui.timetable.classList.remove('show');
+      return;
+    }
     var list = document.getElementById('recordList');
     var showSchedule = state.view === 'schedule';
     if (list) list.style.display = showSchedule ? 'none' : '';
     ui.timetable.classList.toggle('show', showSchedule);
     if (showSchedule) renderTimetable();
+  }
+  function setAttendanceActive(active){
+    state.active = !!active;
+    var screen = document.getElementById('recordRoomScreen');
+    if (screen) {
+      screen.classList.toggle('olliPcAttendanceActive', state.active);
+      if (!state.active) screen.classList.remove('olliPcAttendanceScheduleView');
+    }
+    if (!state.active) {
+      var timetable = document.getElementById('olliPcTimetable');
+      if (timetable) timetable.classList.remove('show');
+      var overlay = document.getElementById('olliPcScheduleMoveOverlay');
+      if (overlay) overlay.classList.remove('show');
+      if (!state.saving) state.move = null;
+      return;
+    }
+    setView(state.view);
   }
   function ensureMoveDialog(){
     var overlay = document.getElementById('olliPcScheduleMoveOverlay');
@@ -44204,8 +44229,8 @@ document.addEventListener('DOMContentLoaded', function(){
       await ensureStudentSavedToSupabase(nextStudent);
       state.saving = false;
       closeMove();
-      renderTimetable();
       if (typeof window.pcRenderAttendanceList === 'function') window.pcRenderAttendanceList();
+      setView('schedule');
       if (typeof showPushToast === 'function') showPushToast((nextStudent.name || '학생') + ' 수업 시간을 변경했어요.');
     } catch(err) {
       state.saving = false;
@@ -44213,20 +44238,32 @@ document.addEventListener('DOMContentLoaded', function(){
       alert('수업 시간 저장에 실패했어요.\n\n' + (err && (err.message || err) || '다시 시도해 주세요.'));
     }
   }
-  function refresh(){ if (state.view === 'schedule') setView('schedule'); else setView('list'); }
+  function refresh(){
+    if (!state.active) return;
+    if (state.view === 'schedule') setView('schedule');
+    else setView('list');
+  }
   function install(){
     ensureUi();
-    setView(state.view);
+    var shell = document.getElementById('olliPcShell');
+    setAttendanceActive(!!(shell && shell.dataset.pcSection === 'attendance'));
+    if (shell && !shell.__olliAttendanceSectionObserver) {
+      shell.__olliAttendanceSectionObserver = new MutationObserver(function(){
+        setAttendanceActive(shell.dataset.pcSection === 'attendance');
+      });
+      shell.__olliAttendanceSectionObserver.observe(shell, { attributes:true, attributeFilter:['data-pc-section'] });
+    }
   }
   var oldOpenSection = window.pcOpenSection;
   if (typeof oldOpenSection === 'function') {
     window.pcOpenSection = async function(section){
+      setAttendanceActive(section === 'attendance');
       var result = await oldOpenSection.apply(this, arguments);
-      if (section === 'attendance') setTimeout(install, 0);
+      setAttendanceActive(section === 'attendance');
       return result;
     };
   }
-  ['pcFilterAttendanceDivision','pcFilterAttendanceDay'].forEach(function(name){
+  ['pcFilterAttendanceDivision','pcFilterAttendanceDay','pcHandleTopSearch'].forEach(function(name){
     var original = window[name];
     if (typeof original !== 'function') return;
     window[name] = function(){ var result = original.apply(this, arguments); setTimeout(refresh, 0); return result; };
