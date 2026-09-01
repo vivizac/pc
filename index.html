@@ -43795,6 +43795,8 @@ document.addEventListener('DOMContentLoaded', function(){
       const topbar = document.getElementById('olliPcTopbar');
       shell?.classList.add('visible');
       topbar?.classList.add('visible');
+      // 첫 화면이 이미 학원관리여도 오른쪽 상담 학생 패널 레이아웃을 즉시 적용합니다.
+      pcUpdateRecordLayout();
     }
     if (pcSection === 'academy') setTimeout(pcBindAcademyRows, 0);
   }
