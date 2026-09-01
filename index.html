@@ -21327,7 +21327,7 @@ window.saveTodayFeedbackItem = saveTodayFeedbackItem;
 }
 .settingsAttendancePreviewTable th,
 .settingsAttendancePreviewTable td {
-  border: 0.6px solid #b4b4b4;
+  border: 0.4px solid #b4b4b4;
   height: 26px;
   padding: 2px 4px;
   text-align: center;
@@ -21426,7 +21426,7 @@ window.saveTodayFeedbackItem = saveTodayFeedbackItem;
 }
 .attendancePrintTable th,
 .attendancePrintTable td {
-  border: 0.6px solid #777777;
+  border: 0.4px solid #777777;
   height: 26px;
   padding: 1.5px 1.5px;
   text-align: center;
@@ -21507,7 +21507,7 @@ window.saveTodayFeedbackItem = saveTodayFeedbackItem;
 }
 .attendancePrintTable th,
 .attendancePrintTable td {
-  height: 20px;
+  height: 20.5px;
   padding-top: 0.5px;
   padding-bottom: 0.5px;
 }
@@ -28133,7 +28133,7 @@ function settingsAttendanceDayClass(year, month, day) {
 
 function settingsAttendancePrintInlineStyle(type, forPrint) {
   if (!forPrint) return '';
-  const exact = '-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;border:0.6px solid #777777!important;border-color:#777777!important;';
+  const exact = '-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;border:0.4px solid #777777!important;border-color:#777777!important;';
   if (type === 'header') return ' style="background-color:#2f6f9f!important;color:#ffffff!important;' + exact + '"';
   if (type === 'daySat') return ' style="background-color:#fff7c8!important;color:#111111!important;' + exact + '"';
   if (type === 'daySun') return ' style="background-color:#ffd9df!important;color:#111111!important;' + exact + '"';
@@ -28348,7 +28348,7 @@ function settingsAttendanceBuildStandaloneHtml() {
   return '<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>출석부 출력</title>'
     + '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css">'
     + '<style>html,body{margin:0;padding:0;background:#fff;font-family:\'Pretendard\',-apple-system,BlinkMacSystemFont,sans-serif;color:#111;}body{padding:4mm 5mm;}@page{size:A4 portrait;margin:4mm 5mm;}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;}'
-    + '.attendancePrintSheet{width:100%;background:#fff;color:#111;font-family:\'Pretendard\',-apple-system,BlinkMacSystemFont,sans-serif}.attendancePrintPage{width:100%;page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid}.attendancePrintPage:last-child{page-break-after:auto;break-after:auto}.attendancePrintHeader{padding-top:8px;margin-bottom:5px}.attendancePrintAcademy{font-size:15px;line-height:1.05;font-weight:760;color:#1f4776;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.attendancePrintMonth{margin-top:1px;font-size:31px;line-height:.98;font-weight:900;color:#1f4776;letter-spacing:-.055em}.attendancePrintTable{width:100%;border-collapse:collapse;border-spacing:0;table-layout:fixed;color:#111}.attendancePrintTable th,.attendancePrintTable td{border:0.6px solid #777777;height:20px;padding:.5px 1.5px;text-align:center;vertical-align:middle;overflow:hidden;white-space:nowrap;text-overflow:clip}.attendancePrintTable th{background:#2f6f9f!important;background-color:#2f6f9f!important;color:#fff!important;font-size:8.4px;font-weight:760;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}.attendancePrintTable tbody td{font-size:10.6px;font-weight:560}.attendancePrintTable tbody td.nameCol,.attendancePrintTable tbody td.schoolGradeCol,.attendancePrintTable tbody td.personalityCol{line-height:1.05}.attendancePrintTable tbody td.nameCol{font-size:11.8px;font-weight:780}.attendancePrintTable tbody td.schoolGradeCol{font-size:11.4px;font-weight:680}.attendancePrintTable tbody td.personalityCol{font-size:11.2px;font-weight:680}.attendancePrintTable .noCol{width:20px;padding-left:0!important;padding-right:0!important}.attendancePrintTable .divisionCol{width:25px}.attendancePrintTable .nameCol{width:42px;padding-left:0!important;padding-right:0!important;text-align:center;font-weight:780}.attendancePrintTable .schoolGradeCol{width:51px;padding-left:0!important;padding-right:0!important;text-align:center;font-weight:660}.attendancePrintTable .personalityCol{width:20px;padding-left:0!important;padding-right:0!important}.attendancePrintTable .dateCol,.attendancePrintTable col.dateCol{width:var(--attendance-date-col-width,14px);padding-left:0!important;padding-right:0!important}.attendancePrintTable th.daySat,.attendancePrintTable td.daySat{background:#fff7c8!important;background-color:#fff7c8!important;color:#111!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}.attendancePrintTable th.daySun,.attendancePrintTable td.daySun{background:#ffd9df!important;background-color:#ffd9df!important;color:#111!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}body{padding:0}}'
+    + '.attendancePrintSheet{width:100%;background:#fff;color:#111;font-family:\'Pretendard\',-apple-system,BlinkMacSystemFont,sans-serif}.attendancePrintPage{width:100%;page-break-after:always;break-after:page;page-break-inside:avoid;break-inside:avoid}.attendancePrintPage:last-child{page-break-after:auto;break-after:auto}.attendancePrintHeader{padding-top:20px;margin-bottom:5px}.attendancePrintAcademy{font-size:15px;line-height:1.05;font-weight:760;color:#1f4776;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.attendancePrintMonth{margin-top:1px;font-size:31px;line-height:.98;font-weight:900;color:#1f4776;letter-spacing:-.055em}.attendancePrintTable{width:100%;border-collapse:collapse;border-spacing:0;table-layout:fixed;color:#111}.attendancePrintTable th,.attendancePrintTable td{border:0.4px solid #777777;height:20.5px;padding:.5px 1.5px;text-align:center;vertical-align:middle;overflow:hidden;white-space:nowrap;text-overflow:clip}.attendancePrintTable th{background:#2f6f9f!important;background-color:#2f6f9f!important;color:#fff!important;font-size:8.4px;font-weight:760;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}.attendancePrintTable tbody td{font-size:10.6px;font-weight:560}.attendancePrintTable tbody td.nameCol,.attendancePrintTable tbody td.schoolGradeCol,.attendancePrintTable tbody td.personalityCol{line-height:1.05}.attendancePrintTable tbody td.nameCol{font-size:11.8px;font-weight:780}.attendancePrintTable tbody td.schoolGradeCol{font-size:11.4px;font-weight:680}.attendancePrintTable tbody td.personalityCol{font-size:11.2px;font-weight:680}.attendancePrintTable .noCol{width:20px;padding-left:0!important;padding-right:0!important}.attendancePrintTable .divisionCol{width:25px}.attendancePrintTable .nameCol{width:42px;padding-left:0!important;padding-right:0!important;text-align:center;font-weight:780}.attendancePrintTable .schoolGradeCol{width:51px;padding-left:0!important;padding-right:0!important;text-align:center;font-weight:660}.attendancePrintTable .personalityCol{width:20px;padding-left:0!important;padding-right:0!important}.attendancePrintTable .dateCol,.attendancePrintTable col.dateCol{width:var(--attendance-date-col-width,14px);padding-left:0!important;padding-right:0!important}.attendancePrintTable th.daySat,.attendancePrintTable td.daySat{background:#fff7c8!important;background-color:#fff7c8!important;color:#111!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}.attendancePrintTable th.daySun,.attendancePrintTable td.daySun{background:#ffd9df!important;background-color:#ffd9df!important;color:#111!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}body{padding:0}}'
     + '</style>'
     + '</head><body>' + html + '<script>(function(){function fitTextCells(){var cells=document.querySelectorAll(".attendancePrintTable tbody td.nameCol,.attendancePrintTable tbody td.schoolGradeCol,.attendancePrintTable tbody td.personalityCol");cells.forEach(function(cell){if(!cell||!String(cell.textContent||"").trim())return;cell.style.whiteSpace="nowrap";cell.style.overflow="hidden";cell.style.textOverflow="clip";cell.style.fontSize="";var availableWidth=Math.max(0,cell.clientWidth-1);if(availableWidth<=4)return;if(cell.scrollWidth<=availableWidth+1)return;var cs=window.getComputedStyle(cell);var size=parseFloat(cs.fontSize)||10;var min=10.2;var loop=0;while(cell.scrollWidth>availableWidth+1&&size>min&&loop<12){size=Math.max(min,size-0.3);cell.style.fontSize=size.toFixed(1)+"px";loop++}})};var didPrint=false;var closeTimer=null;var printStartedAt=0;function backToApp(){if(closeTimer)return;closeTimer=setTimeout(function(){try{if(window.opener&&!window.opener.closed){window.opener.focus();}}catch(e){}try{window.close();}catch(e){}},120);}window.addEventListener("afterprint",backToApp);window.addEventListener("focus",function(){if(didPrint&&Date.now()-printStartedAt>900){setTimeout(backToApp,450);}});setTimeout(function(){fitTextCells();didPrint=true;printStartedAt=Date.now();window.focus();setTimeout(function(){window.print();},80);},350);})();<\/script></body></html>';
 }
@@ -28426,7 +28426,7 @@ async function downloadSettingsAttendanceRegisterPdf() {
             el.style.colorAdjust = 'exact';
           });
           doc.querySelectorAll('.attendancePrintTable th, .attendancePrintTable td').forEach(function(cell) {
-            cell.style.border = '0.6px solid #777777';
+            cell.style.border = '0.4px solid #777777';
             cell.style.borderColor = '#777777';
           });
         }
