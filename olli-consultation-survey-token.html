@@ -3,22 +3,106 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#f5f6f8">
+<meta name="theme-color" content="#079eb3">
 <meta name="robots" content="noindex,nofollow,noarchive">
 <title>상담 전 설문</title>
 <link href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}html,body{width:100%;min-width:0;min-height:100%;background:#f5f6f8;color:#17181a}html{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-text-size-adjust:100%}body{min-height:100dvh;overflow-x:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}button,input{font:inherit}.surveyWrap{width:min(760px,calc(100% - 32px));margin:0 auto;padding:clamp(24px,5vw,48px) 0 clamp(48px,8vw,80px)}.brand{font-size:17px;font-weight:850;letter-spacing:.18em;color:#111;margin:0 2px 14px}.academyName{margin:0 2px 12px;color:#777d85;font-size:12px;font-weight:750}.card{width:100%;background:#fff;border:1px solid #e4e6e9;border-radius:28px;padding:clamp(22px,4vw,34px);box-shadow:0 12px 34px rgba(20,24,30,.05)}.title{font-size:clamp(24px,4vw,28px);font-weight:850;letter-spacing:-.055em;line-height:1.28}.intro{margin-top:10px;color:#7f848c;font-size:14px;line-height:1.65}.infoGrid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.8fr) minmax(0,.9fr);gap:10px;margin-top:26px}.field{min-width:0}.field label{display:block;margin:0 0 7px 3px;font-size:11.5px;font-weight:800;color:#8c9199}.textInput{width:100%;min-width:0;height:48px;border:1px solid #dfe2e6;border-radius:14px;background:#fff;padding:0 14px;font-size:16px;outline:none;color:#111}.textInput:focus{border-color:#a8cff8;box-shadow:0 0 0 3px rgba(22,135,255,.08)}.questions{margin-top:28px;display:grid;gap:14px}.question{padding:18px;border:1px solid #eceef1;border-radius:20px;background:#fff}.questionText{font-size:15px;font-weight:750;line-height:1.55;letter-spacing:-.025em}.options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:13px}.option{position:relative;min-width:0}.option input{position:absolute;opacity:0;pointer-events:none}.option span{width:100%;height:40px;min-width:0;padding:0 8px;border:1px solid #e0e3e7;border-radius:14px;background:#fff;color:#555b63;font-size:13px;font-weight:750;display:flex;align-items:center;justify-content:center;cursor:pointer;white-space:nowrap}.option input:checked+span{background:#111;color:#fff;border-color:#111}.consent{margin-top:22px;padding:16px;border-radius:18px;background:#f7f7f8;display:flex;align-items:flex-start;gap:10px;font-size:12.5px;line-height:1.55;color:#646970;cursor:pointer}.consent input{margin-top:2px;width:18px;height:18px;flex:0 0 auto;accent-color:#111}.submitBtn{width:100%;height:54px;margin-top:18px;border:0;border-radius:17px;background:#111;color:#fff;font-size:15px;font-weight:800;cursor:pointer}.submitBtn:disabled{opacity:.45;cursor:default}.foot{margin-top:14px;text-align:center;font-size:11.5px;color:#a0a4ab;line-height:1.55}.complete{display:none;text-align:center;padding:70px 24px}.complete.show{display:block}.completeIcon{width:56px;height:56px;margin:0 auto 18px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center;font-size:24px;font-weight:800}.completeTitle{font-size:23px;font-weight:850;letter-spacing:-.05em}.completeText{margin-top:10px;font-size:14px;line-height:1.65;color:#858a92}.errorCard{display:none;margin-bottom:14px;padding:13px 15px;border-radius:15px;background:#fff1f1;color:#b14444;font-size:13px;line-height:1.5}.errorCard.show{display:block}.loadingCard{padding:60px 24px;text-align:center;color:#858a92;font-size:14px;line-height:1.6}.hidden{display:none!important}@media(max-width:760px){.surveyWrap{width:min(100% - 24px,620px);padding-top:22px;padding-bottom:54px}.brand{font-size:15px;margin-bottom:10px}.card{padding:22px 18px;border-radius:24px}.infoGrid{grid-template-columns:1fr;gap:13px;margin-top:22px}.questions{gap:12px;margin-top:22px}.question{padding:16px 14px;border-radius:18px}.questionText{font-size:14.5px}.options{gap:6px}.option span{font-size:12.5px}.consent{padding:14px;font-size:12px}.submitBtn{height:52px}}
+:root{--mint:#079eb3;--mint-dark:#087f91;--mint-soft:#e7f5f7;--page:#eef5f6;--text:#17191c;--muted:#747d83;--line:#dce6e8;--card:#fff}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;min-width:0;min-height:100%;background:var(--page);color:var(--text)}
+html{font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;-webkit-text-size-adjust:100%}
+body{min-height:100dvh;overflow-x:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+button,input{font:inherit}
+.surveyHeader{background:#fff;border-bottom:1px solid #e6ecee}
+.surveyHeaderInner{width:min(760px,calc(100% - 32px));margin:0 auto;padding:28px 0 25px}
+.academyName{font-size:clamp(22px,4vw,31px);font-weight:900;letter-spacing:-.055em;line-height:1.25;color:#17191c;min-height:1.25em}
+.brandLine{margin-top:8px;color:var(--mint);font-size:clamp(13px,2.2vw,17px);font-weight:850;letter-spacing:-.025em}
+.surveyHero{background:var(--mint);color:#fff}
+.surveyHeroInner{width:min(760px,calc(100% - 32px));margin:0 auto;padding:clamp(34px,6vw,56px) 0 clamp(38px,7vw,64px)}
+.heroKicker{font-size:12.5px;font-weight:800;letter-spacing:-.015em;opacity:.84}
+.title{margin-top:15px;font-size:clamp(38px,7vw,58px);font-weight:900;letter-spacing:-.065em;line-height:1.05}
+.intro{max-width:650px;margin-top:20px;color:rgba(255,255,255,.9);font-size:clamp(14px,2.4vw,17px);line-height:1.72;font-weight:560;letter-spacing:-.02em}
+.surveyWrap{width:min(760px,calc(100% - 32px));margin:0 auto;padding:clamp(24px,4vw,36px) 0 clamp(52px,8vw,82px)}
+.card{width:100%;background:var(--card);border:1px solid var(--line);border-radius:28px;box-shadow:0 10px 28px rgba(33,66,73,.045)}
+#formCard{background:transparent;border:0;border-radius:0;box-shadow:none}
+.infoGrid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.8fr) minmax(0,.9fr);gap:11px;padding:24px;background:#fff;border:1px solid var(--line);border-radius:26px;box-shadow:0 9px 25px rgba(33,66,73,.04)}
+.infoGrid:before{content:'기본 정보';grid-column:1/-1;margin:0 0 2px 2px;color:var(--mint-dark);font-size:14px;font-weight:900;letter-spacing:-.02em}
+.field{min-width:0}
+.field label{display:block;margin:0 0 8px 3px;font-size:11.5px;font-weight:800;color:#838d93}
+.textInput{width:100%;min-width:0;height:50px;border:1px solid #dbe3e5;border-radius:14px;background:#fbfdfd;padding:0 14px;font-size:15px;outline:none;color:#17191c;transition:border-color .16s ease,box-shadow .16s ease,background .16s ease}
+.textInput::placeholder{color:#a6adb2}
+.textInput:focus{border-color:#72cbd5;background:#fff;box-shadow:0 0 0 3px rgba(7,158,179,.09)}
+.questions{margin-top:18px;display:grid;gap:12px}
+.question{padding:19px 18px;border:1px solid var(--line);border-radius:22px;background:#fff;box-shadow:0 8px 22px rgba(33,66,73,.035)}
+.questionText{font-size:14.5px;font-weight:800;line-height:1.55;letter-spacing:-.025em;color:#24282b}
+.options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+.option{position:relative;min-width:0}
+.option input{position:absolute;opacity:0;pointer-events:none}
+.option span{width:100%;height:42px;min-width:0;padding:0 8px;border:1px solid #d8e2e4;border-radius:14px;background:#f9fbfb;color:#566067;font-size:13px;font-weight:760;display:flex;align-items:center;justify-content:center;cursor:pointer;white-space:nowrap;transition:background .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease}
+.option input:focus-visible+span{outline:2px solid var(--mint);outline-offset:2px}
+.option input:checked+span{background:var(--mint);color:#fff;border-color:var(--mint);box-shadow:0 6px 14px rgba(7,158,179,.16)}
+.consent{margin-top:18px;padding:17px 18px;border:1px solid var(--line);border-radius:20px;background:#fff;box-shadow:0 8px 22px rgba(33,66,73,.03);display:flex;align-items:flex-start;gap:11px;font-size:12.5px;line-height:1.55;color:#606a70;cursor:pointer}
+.consent input{margin-top:2px;width:19px;height:19px;flex:0 0 auto;accent-color:var(--mint)}
+.submitBtn{width:100%;height:56px;margin-top:14px;border:0;border-radius:18px;background:var(--mint);color:#fff;font-size:15px;font-weight:900;cursor:pointer;box-shadow:0 10px 20px rgba(7,158,179,.16)}
+.submitBtn:disabled{opacity:.45;cursor:default;box-shadow:none}
+.foot{margin-top:15px;text-align:center;font-size:11.5px;color:#90999e;line-height:1.55}
+.complete{display:none;text-align:center;padding:70px 24px}
+.complete.show{display:block}
+.completeIcon{width:58px;height:58px;margin:0 auto 18px;border-radius:50%;background:var(--mint);color:#fff;display:grid;place-items:center;font-size:24px;font-weight:900}
+.completeTitle{font-size:23px;font-weight:900;letter-spacing:-.05em}
+.completeText{margin-top:10px;font-size:14px;line-height:1.65;color:#7d868b}
+.errorCard{display:none;margin-bottom:14px;padding:13px 15px;border-radius:15px;background:#fff1f1;color:#b14444;font-size:13px;line-height:1.5}
+.errorCard.show{display:block}
+#loadingCard{overflow:hidden}
+.loadingCard{padding:60px 24px;text-align:center;color:#7d878c;font-size:14px;line-height:1.6}
+.hidden{display:none!important}
+@media(max-width:760px){
+  .surveyHeaderInner,.surveyHeroInner,.surveyWrap{width:min(100% - 28px,620px)}
+  .surveyHeaderInner{padding:22px 0 20px}
+  .academyName{font-size:24px}
+  .brandLine{margin-top:6px;font-size:14px}
+  .surveyHeroInner{padding:31px 0 37px}
+  .heroKicker{font-size:11.5px}
+  .title{margin-top:12px;font-size:40px}
+  .intro{margin-top:16px;font-size:14px;line-height:1.68}
+  .surveyWrap{padding-top:20px;padding-bottom:54px}
+  .infoGrid{grid-template-columns:1fr;gap:13px;padding:20px 17px;border-radius:22px}
+  .questions{gap:11px;margin-top:14px}
+  .question{padding:17px 14px;border-radius:20px}
+  .questionText{font-size:14px}
+  .options{gap:6px;margin-top:12px}
+  .option span{height:41px;font-size:12.5px;border-radius:13px}
+  .consent{padding:15px 14px;border-radius:18px;font-size:12px}
+  .submitBtn{height:54px;border-radius:16px}
+  .card{border-radius:24px}
+}
+@media(max-width:360px){
+  .surveyHeaderInner,.surveyHeroInner,.surveyWrap{width:calc(100% - 20px)}
+  .academyName{font-size:21px}
+  .title{font-size:36px}
+  .options{gap:5px}
+  .option span{font-size:12px;padding:0 4px}
+}
 </style>
 </head>
 <body>
+<header class="surveyHeader">
+  <div class="surveyHeaderInner">
+    <div class="academyName" id="academyName"></div>
+    <div class="brandLine">성향 상담 · 수업 관찰 설문</div>
+  </div>
+</header>
+<section class="surveyHero">
+  <div class="surveyHeroInner">
+    <div class="heroKicker">아이를 더 잘 이해하기 위한 첫 번째 기록</div>
+    <h1 class="title">상담 전 설문</h1>
+    <p class="intro">가정에서 평소 보이는 아이의 모습을 편안하게 알려주세요. 설문 답변은 체험수업에서 아이를 관찰하고, 아이에게 맞는 상담 방향을 잡는 데 활용됩니다.</p>
+  </div>
+</section>
 <main class="surveyWrap">
-  <div class="brand">OLLI</div>
-  <div class="academyName" id="academyName"></div>
   <section class="card" id="loadingCard"><div class="loadingCard">학원 전용 설문 링크를 확인하고 있습니다.</div></section>
   <section class="card hidden" id="formCard">
-    <h1 class="title">아이를 더 잘 이해하기 위한<br>상담 전 설문</h1>
-    <p class="intro">평소 가정에서 보이는 아이의 모습을 편안하게 선택해주세요. 답변은 체험수업에서 아이를 관찰하고 상담 방향을 잡는 데 활용됩니다.</p>
     <div class="errorCard" id="errorCard" role="alert"></div>
     <form id="surveyForm">
       <div class="infoGrid">
