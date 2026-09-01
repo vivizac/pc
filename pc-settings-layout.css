@@ -1,0 +1,208 @@
+/* OLLI PC settings layout: keep the PC shell visible and render settings in the main content area. */
+body.olliPcApp.pcSettingsOpen #olliPcShell{
+  display:flex;
+  flex-direction:column;
+}
+body.olliPcApp.pcSettingsOpen #olliPcTopbar{
+  display:flex;
+}
+body.olliPcApp.pcSettingsOpen #olliPcSettingsBtn{
+  color:var(--pc-blue);
+  background:var(--pc-blue-soft);
+  border-color:#cfe5ff;
+}
+
+body.olliPcApp.pcSettingsOpen #settingsPageScreen,
+body.olliPcApp.pcSettingsOpen #settingsDetailScreen{
+  position:fixed;
+  left:var(--pc-sidebar-w);
+  top:var(--pc-topbar-h);
+  right:0;
+  bottom:0;
+  width:auto;
+  height:auto;
+  max-width:none;
+  min-height:0;
+  background:var(--pc-bg);
+  overflow:hidden;
+  box-sizing:border-box;
+}
+body.olliPcApp.pcSettingsOpen #settingsPageScreen{z-index:84000;}
+body.olliPcApp.pcSettingsOpen #settingsDetailScreen{z-index:84100;}
+
+body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsPageInner,
+body.olliPcApp.pcSettingsOpen #settingsDetailScreen .settingsPageInner{
+  width:100%;
+  max-width:none;
+  height:100%;
+  margin:0;
+  background:transparent;
+  box-sizing:border-box;
+}
+
+body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsHeader{
+  display:none;
+}
+
+body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsBody{
+  width:min(1240px,100%);
+  height:100%;
+  margin:0 auto;
+  padding:28px 32px 48px;
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:18px;
+  align-content:start;
+  overflow-y:auto;
+  overflow-x:hidden;
+  box-sizing:border-box;
+}
+body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsProfileCard{
+  grid-column:1 / -1;
+  min-height:124px;
+  margin:0;
+  padding:22px 26px;
+  border:1px solid #e2e4e8;
+  border-radius:24px;
+  background:#fff;
+  box-shadow:0 8px 24px rgba(20,24,30,.035);
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:flex-start;
+  gap:20px;
+  text-align:left;
+}
+body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsProfileImage{
+  width:82px;
+  height:82px;
+  flex:0 0 82px;
+  border-radius:50%;
+  font-size:34px;
+}
+body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsProfileInfo{
+  width:auto;
+  flex:1;
+  align-items:flex-start;
+  justify-content:center;
+  text-align:left;
+}
+body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsProfileName{
+  width:auto;
+  max-width:100%;
+  font-size:22px;
+  line-height:1.25;
+  text-align:left;
+  word-break:keep-all;
+}
+body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsProfileEdit{
+  margin-top:8px;
+  min-height:34px;
+  padding:0 15px;
+  font-size:13px;
+}
+body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsSection,
+body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsSection:first-of-type,
+body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsDevSection{
+  min-width:0;
+  margin:0;
+  padding:0;
+}
+body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsCard{
+  height:100%;
+  border:1px solid #e2e4e8;
+  border-radius:22px;
+  background:#fff;
+  box-shadow:0 8px 24px rgba(20,24,30,.03);
+}
+body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsRow{
+  min-height:68px;
+  padding:14px 18px;
+}
+body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsRowIcon{
+  width:40px;
+  height:40px;
+  border-radius:13px;
+}
+body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsRowTitle{
+  font-size:14.5px;
+}
+body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsRowValue{
+  max-width:220px;
+  font-size:12.5px;
+}
+
+body.olliPcApp.pcSettingsOpen #settingsDetailScreen .settingsHeader{
+  width:min(1160px,100%);
+  height:62px;
+  min-height:62px;
+  margin:0 auto;
+  padding:12px 32px 4px;
+  background:transparent;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  box-sizing:border-box;
+}
+body.olliPcApp.pcSettingsOpen #settingsDetailScreen .settingsHeaderLeft{
+  gap:12px;
+}
+body.olliPcApp.pcSettingsOpen #settingsDetailScreen .settingsRoundBtn{
+  width:40px;
+  height:40px;
+  border:1px solid #e2e4e8;
+  background:#fff;
+  box-shadow:none;
+}
+body.olliPcApp.pcSettingsOpen #settingsDetailScreen .settingsRoundBtn svg{
+  width:22px;
+  height:22px;
+}
+body.olliPcApp.pcSettingsOpen #settingsDetailScreen .settingsTitlePill{
+  height:40px;
+  padding:0;
+  border-radius:0;
+  background:transparent;
+  color:#15171a;
+  box-shadow:none;
+  font-size:18px;
+  font-weight:850;
+  pointer-events:none;
+}
+body.olliPcApp.pcSettingsOpen #settingsDetailScreen .settingsBody{
+  width:min(1100px,calc(100% - 64px));
+  height:calc(100% - 62px);
+  margin:0 auto;
+  padding:14px 0 48px;
+  overflow-y:auto;
+  overflow-x:auto;
+  box-sizing:border-box;
+}
+body.olliPcApp.pcSettingsOpen #settingsDetailScreen .settingsDetailIntro,
+body.olliPcApp.pcSettingsOpen #settingsDetailScreen .settingsInfoCard,
+body.olliPcApp.pcSettingsOpen #settingsDetailScreen .settingsRoleCard,
+body.olliPcApp.pcSettingsOpen #settingsDetailScreen .settingsRequestCard,
+body.olliPcApp.pcSettingsOpen #settingsDetailScreen .settingsTeacherCard{
+  border:1px solid #e2e4e8;
+  box-shadow:0 8px 24px rgba(20,24,30,.03);
+}
+
+body.olliPcApp.pcSettingsOpen .settingsSheetOverlay{
+  left:var(--pc-sidebar-w);
+  top:var(--pc-topbar-h);
+  right:0;
+  bottom:0;
+}
+
+@media(max-width:980px){
+  body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsBody{
+    grid-template-columns:1fr;
+    padding-left:24px;
+    padding-right:24px;
+  }
+  body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsProfileCard{
+    grid-column:auto;
+  }
+  body.olliPcApp.pcSettingsOpen #settingsDetailScreen .settingsBody{
+    width:calc(100% - 48px);
+  }
+}
