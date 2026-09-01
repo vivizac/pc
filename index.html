@@ -21399,6 +21399,7 @@ window.saveTodayFeedbackItem = saveTodayFeedbackItem;
 }
 .attendancePrintHeader {
   margin-bottom: 10px;
+  padding-top: 10px;
 }
 .attendancePrintAcademy {
   font-size: 22px;
@@ -21427,8 +21428,8 @@ window.saveTodayFeedbackItem = saveTodayFeedbackItem;
 .attendancePrintTable th,
 .attendancePrintTable td {
   border: 0.5px solid #777777;
-  height: 26px;
-  padding: 1.5px 1.5px;
+  height: 23px;
+  padding: 0.5px 1.5px;
   text-align: center;
   vertical-align: middle;
   overflow: hidden;
@@ -21488,29 +21489,7 @@ window.saveTodayFeedbackItem = saveTodayFeedbackItem;
   body { background: #fff; }
 }
 
-/* 2026-09-01: 출석부 출력 40명 1페이지 맞춤 보정
-   iOS/브라우저 프린트 미리보기에서 26px 행 높이와 큰 제목 영역 때문에
-   40명 표가 다음 페이지로 밀리는 문제를 줄이기 위해 출력 전용 상하 높이를 재조정합니다. */
-.attendancePrintHeader {
-  padding-top: 10px;
-  margin-bottom: 5px;
-}
-.attendancePrintAcademy {
-  font-size: 15px;
-  line-height: 1.05;
-  font-weight: 760;
-}
-.attendancePrintMonth {
-  margin-top: 1px;
-  font-size: 31px;
-  line-height: 0.98;
-}
-.attendancePrintTable th,
-.attendancePrintTable td {
-  height: 23px;
-  padding-top: 0.5px;
-  padding-bottom: 0.5px;
-}
+/* 출석부 출력값은 위 기본 .attendancePrint* 선언에서 단일 관리합니다. */
 .attendancePrintTable th {
   font-size: 8.4px;
 }
