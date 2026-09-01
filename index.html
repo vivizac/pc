@@ -36169,58 +36169,17 @@ function addKinderChatDocumentMessage(title, subtitle, bodyText = '', variant = 
   row.className = 'kcfMsgRow user';
 
   const card = document.createElement('div');
-  card.className = `kcfDocumentCard hasSourceText ${variant === 'growth' ? 'growth' : ''}`.trim();
-  card.setAttribute('role', 'button');
-  card.tabIndex = 0;
+  card.className = `kcfDocumentCard ${variant === 'growth' ? 'growth' : ''}`.trim();
 
-  const body = String(bodyText || '').trim();
   const cleanTitle = String(title || '아이 이름').trim();
   const cleanSubtitle = String(subtitle || '1분 피드백').trim();
-  const copyText = [cleanTitle, body].filter(Boolean).join('\n');
-
-  card.dataset.kcfSourceTitle = cleanTitle;
-  card.dataset.kcfSourceSubtitle = cleanSubtitle;
-  card.dataset.kcfSourceBody = body;
-  card.dataset.kcfCopyText = copyText;
-  if (photoMeta && photoMeta.thumbnailUrl) {
-    card.dataset.kcfPhotoAttached = '1';
-    card.dataset.kcfPhotoMonthKey = String(photoMeta.monthKey || '');
-    card.dataset.kcfPhotoLessonTitle = String(photoMeta.lessonTitle || '');
-  }
-  card.setAttribute('aria-label', `${cleanTitle} 입력 내용 열기`);
-  card.setAttribute('aria-expanded', 'false');
 
   const photoThumbUrl = photoMeta && photoMeta.thumbnailUrl ? String(photoMeta.thumbnailUrl) : '';
   const iconHtml = photoThumbUrl
     ? `<span class="kcfDocumentIcon hasPhoto" aria-hidden="true"><img class="kcfDocumentPhotoThumb" src="${escapeHtml(photoThumbUrl)}" alt=""></span>`
     : `<span class="kcfDocumentIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3.8h7.2L18 7.6V20a1.2 1.2 0 0 1-1.2 1.2H7.2A1.2 1.2 0 0 1 6 20V5a1.2 1.2 0 0 1 1-1.2z"></path><path d="M14 4v4h4"></path><path d="M9 12h6"></path><path d="M9 15h6"></path></svg></span>`;
-  card.innerHTML = `${iconHtml}<span class="kcfDocumentText"><span class="kcfDocumentTitle">${escapeHtml(cleanTitle)}</span><span class="kcfDocumentSub">${escapeHtml(cleanSubtitle)} · 원문 보기</span></span>${body ? `<div class="kcfDocumentBody">${escapeHtml(body)}</div><button type="button" class="kcfDocumentCopyBtn">복사하기</button>` : ''}`;
 
-  const subText = card.querySelector('.kcfDocumentSub');
-  const copyBtn = card.querySelector('.kcfDocumentCopyBtn');
-  const setOpen = (nextOpen) => {
-    card.classList.toggle('open', nextOpen);
-    card.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
-    if (subText) subText.textContent = `${cleanSubtitle} · ${nextOpen ? '원문 닫기' : '원문 보기'}`;
-    if (nextOpen) requestAnimationFrame(() => { area.scrollTop = area.scrollHeight; });
-  };
-
-  card.addEventListener('click', () => {
-    setOpen(!card.classList.contains('open'));
-  });
-
-  card.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    event.preventDefault();
-    setOpen(!card.classList.contains('open'));
-  });
-
-  if (copyBtn) {
-    copyBtn.addEventListener('click', (event) => {
-      event.stopPropagation();
-      copyKinderChatSourceCardText(copyBtn, card.dataset.kcfCopyText || '');
-    });
-  }
+  card.innerHTML = `${iconHtml}<span class="kcfDocumentText"><span class="kcfDocumentTitle">${escapeHtml(cleanTitle)}</span><span class="kcfDocumentSub">${escapeHtml(cleanSubtitle)}</span></span>`;
 
   row.appendChild(card);
   area.appendChild(row);
