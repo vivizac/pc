@@ -90,7 +90,7 @@ function renderSection(id){
   if(String(id)!==String(currentId))return;
   const card=document.getElementById('consultationSurveyDetailCard');if(!card)return;
   let section=card.querySelector('[data-consultation-result-section]');
-  if(!section){section=document.createElement('div');section.className='consultationDetailSection';section.dataset.consultationResultSection='1';section.innerHTML='<div class="consultationDetailSectionTitle">상담 핵심 결과</div><div data-consultation-result-body></div>';card.appendChild(section);}
+  if(!section){section=document.createElement('div');section.className='consultationDetailSection consultationDetailTabPanel';section.dataset.consultationResultSection='1';section.dataset.consultationTabPanel='final';section.innerHTML='<div class="consultationDetailSectionTitle">상담 핵심 결과</div><div data-consultation-result-body></div>';card.appendChild(section);}
   const body=section.querySelector('[data-consultation-result-body]');if(!body)return;
   if(!window.OlliConsultationResultSheet?.build||!window.OlliConsultationFinalAnalysis?.analyze){body.innerHTML='<div class="consultationAnalysisWaiting">상담 결과 기준을 준비하는 중입니다.</div>';return;}
   const state=cache.get(String(id));
@@ -99,6 +99,7 @@ function renderSection(id){
   if(!state.observation?.is_completed){body.innerHTML='<div class="consultationAnalysisWaiting">체험수업 관찰을 완료하면 상담 핵심 결과와 학부모 상담 문장을 자동으로 만듭니다.</div>';return;}
   const result=resultFor(id,state);state.result=result;
   body.innerHTML=result?contentHtml(id,result):'<div class="consultationAnalysisWaiting">상담 결과를 계산하지 못했습니다.</div>';
+  if(typeof window.syncConsultationDetailTabs==='function')window.syncConsultationDetailTabs();
 }
 function ensureSection(){
   if(!currentId)currentId=selectedFromDom();

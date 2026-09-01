@@ -91,7 +91,7 @@ function renderSection(id){
   if(String(id)!==String(currentId))return;
   const card=document.getElementById('consultationSurveyDetailCard');if(!card)return;
   let section=card.querySelector('[data-consultation-final-section]');
-  if(!section){section=document.createElement('div');section.className='consultationDetailSection';section.dataset.consultationFinalSection='1';section.innerHTML='<div class="consultationDetailSectionTitle">최종 성향 판정</div><div data-final-analysis-body></div>';card.appendChild(section);}
+  if(!section){section=document.createElement('div');section.className='consultationDetailSection consultationDetailTabPanel';section.dataset.consultationFinalSection='1';section.dataset.consultationTabPanel='final';section.innerHTML='<div class="consultationDetailSectionTitle">최종 성향 판정</div><div data-final-analysis-body></div>';card.appendChild(section);}
   const body=section.querySelector('[data-final-analysis-body]');if(!body)return;
   if(!window.OlliConsultationFinalAnalysis?.analyze||!window.OlliConsultationAnalysis?.analyze){body.innerHTML='<div class="consultationAnalysisWaiting">최종 분석 기준을 준비하는 중입니다.</div>';return;}
   const state=cache.get(String(id));
@@ -99,6 +99,7 @@ function renderSection(id){
   if(state.error){body.innerHTML=`<div class="consultationAnalysisWaiting">${esc(state.error)}</div>`;return;}
   if(!state.observation?.is_completed){body.innerHTML='<div class="consultationAnalysisWaiting">체험수업 관찰을 완료하면 설문 가설과 수업 행동을 비교해 최종 성향을 자동 판정합니다.</div>';return;}
   body.innerHTML=completedHtml(id,state);
+  if(typeof window.syncConsultationDetailTabs==='function')window.syncConsultationDetailTabs();
 }
 function ensureSection(){
   if(!currentId)currentId=selectedFromDom();

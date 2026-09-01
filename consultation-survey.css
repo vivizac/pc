@@ -9,11 +9,11 @@ body.olliPcApp #consultationSurveyScreen{background:var(--pc-bg);overflow:auto;a
 .consultationLinkCopyBtn{border:0;background:#111;color:#fff;box-shadow:0 8px 20px rgba(0,0,0,.08);}
 .consultationRefreshBtn{border:1px solid #e3e5e8;background:#fff;color:#333;}
 .consultationLinkCopyBtn svg,.consultationRefreshBtn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
-.consultationManagerGrid{display:grid;grid-template-columns:minmax(0,1fr) 480px;gap:18px;align-items:start;}
+.consultationManagerGrid{display:grid;grid-template-columns:minmax(360px,430px) minmax(560px,1fr);gap:18px;align-items:start;}
 .consultationListCard,.consultationDetailCard{background:#fff;border:1px solid #e2e4e8;border-radius:24px;box-shadow:0 8px 24px rgba(20,24,30,.035);overflow:hidden;}
-.consultationListHeader{display:grid;grid-template-columns:minmax(150px,1.3fr) 90px 130px 120px;gap:12px;padding:14px 20px;border-bottom:1px solid #eceef1;color:#9a9ea6;font-size:11.5px;font-weight:800;}
+.consultationListHeader{display:grid;grid-template-columns:minmax(110px,1fr) 52px 84px 92px;gap:8px;padding:14px 14px;border-bottom:1px solid #eceef1;color:#9a9ea6;font-size:11px;font-weight:800;}
 .consultationListBody{min-height:360px;}
-.consultationListRow{width:100%;display:grid;grid-template-columns:minmax(150px,1.3fr) 90px 130px 120px;gap:12px;align-items:center;padding:16px 20px;border:0;border-bottom:1px solid #f0f1f3;background:#fff;text-align:left;font-family:inherit;cursor:pointer;color:#202226;}
+.consultationListRow{width:100%;display:grid;grid-template-columns:minmax(110px,1fr) 52px 84px 92px;gap:8px;align-items:center;padding:14px 14px;border:0;border-bottom:1px solid #f0f1f3;background:#fff;text-align:left;font-family:inherit;cursor:pointer;color:#202226;}
 .consultationListRow:hover,.consultationListRow.active{background:#f7f9fb;}
 .consultationListRow:last-child{border-bottom:0;}
 .consultationStudentName{font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -25,6 +25,17 @@ body.olliPcApp #consultationSurveyScreen{background:var(--pc-bg);overflow:auto;a
 .consultationDetailTop{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:16px;border-bottom:1px solid #eceef1;}
 .consultationDetailName{font-size:20px;font-weight:850;letter-spacing:-.045em;}
 .consultationDetailMeta{margin-top:5px;font-size:12.5px;color:#92969e;}
+.consultationDetailTabs{position:sticky;top:0;z-index:5;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 -4px 4px;padding:12px 4px 10px;background:#fff;border-bottom:1px solid #eceef1;}
+.consultationDetailTab{height:38px;border:0;border-radius:12px;background:#f4f5f7;color:#7d828a;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer;}
+.consultationDetailTab:hover{background:#eceff3;color:#454a51;}
+.consultationDetailTab.active{background:#111;color:#fff;}
+.consultationDetailTabPanel[hidden]{display:none;}
+.consultationSurveyAnswersFold{margin-top:18px;border:1px solid #e6e8ec;border-radius:16px;background:#fbfbfc;overflow:hidden;}
+.consultationSurveyAnswersFold>summary{list-style:none;cursor:pointer;padding:13px 14px;font-size:12px;font-weight:850;color:#666c74;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.consultationSurveyAnswersFold>summary::-webkit-details-marker{display:none;}
+.consultationSurveyAnswersFold>summary:after{content:'펼치기';font-size:10.5px;font-weight:750;color:#a0a4ab;}
+.consultationSurveyAnswersFold[open]>summary:after{content:'접기';}
+.consultationSurveyAnswersFold .consultationAnswerList{max-height:none;padding:0 12px 12px;}
 .consultationDetailSection{padding-top:18px;}
 .consultationDetailSectionTitle{font-size:12px;font-weight:850;color:#8e939b;margin-bottom:10px;}
 .consultationAnswerList{display:grid;gap:8px;max-height:420px;overflow:auto;padding-right:4px;}
@@ -82,5 +93,5 @@ body.olliPcApp #consultationSurveyScreen{background:var(--pc-bg);overflow:auto;a
 .consultationObservationFoot b{color:#5d6269;}
 .consultationServerHint{display:none;margin:0 0 14px;padding:11px 14px;border-radius:14px;background:#fff8e8;color:#8a6a21;font-size:12px;line-height:1.45;}
 .consultationServerHint.show{display:block;}
-@media(max-width:1200px){.consultationManagerGrid{grid-template-columns:minmax(0,1fr) 400px}.consultationListHeader,.consultationListRow{grid-template-columns:minmax(130px,1.2fr) 80px 110px 105px}}
+@media(max-width:1200px){.consultationManagerGrid{grid-template-columns:minmax(330px,380px) minmax(480px,1fr)}.consultationListHeader,.consultationListRow{grid-template-columns:minmax(98px,1fr) 48px 78px 88px;gap:7px;padding-left:12px;padding-right:12px}}
 @media(max-width:900px){.consultationManagerGrid{grid-template-columns:1fr}.consultationDetailCard{position:static}.consultationManagerHead{flex-direction:column}.consultationManagerActions{width:100%}.consultationListHeader{display:none}.consultationListRow{grid-template-columns:1fr auto;grid-template-areas:'name status' 'meta date'}.consultationStudentName{grid-area:name}.consultationListRow>.consultationCellSub:nth-child(2){grid-area:meta}.consultationListRow>.consultationCellSub:nth-child(3){grid-area:date}.consultationStatus{grid-area:status}}

@@ -58,13 +58,14 @@ function renderSection(id){
   if(String(id)!==String(currentId))return;
   const card=document.getElementById('consultationSurveyDetailCard');if(!card)return;
   let section=card.querySelector('[data-consultation-observation-section]');
-  if(!section){section=document.createElement('div');section.className='consultationDetailSection';section.dataset.consultationObservationSection='1';section.innerHTML='<div class="consultationDetailSectionTitle">체험수업 관찰</div><div data-observation-body></div>';card.appendChild(section);}
+  if(!section){section=document.createElement('div');section.className='consultationDetailSection consultationDetailTabPanel';section.dataset.consultationObservationSection='1';section.dataset.consultationTabPanel='observation';section.innerHTML='<div class="consultationDetailSectionTitle">체험수업 관찰</div><div data-observation-body></div>';card.appendChild(section);}
   const body=section.querySelector('[data-observation-body]');if(!body)return;
   if(!window.OlliConsultationAnalysis?.analyze||!window.OlliConsultationObservation?.selectItems){body.innerHTML='<div class="consultationAnalysisWaiting">관찰 기준을 준비하는 중입니다.</div>';return;}
   const draft=cache.get(String(id));
   if(!draft){body.innerHTML='<div class="consultationAnalysisWaiting">선택된 관찰 항목과 저장 기록을 불러오는 중입니다.</div>';loadRecord(id);return;}
   if(draft.error){body.innerHTML=`<div class="consultationAnalysisWaiting">${esc(draft.error)}</div>`;return;}
   body.innerHTML=formHtml(id,draft);
+  if(typeof window.syncConsultationDetailTabs==='function')window.syncConsultationDetailTabs();
 }
 function ensureSection(){
   if(!currentId)currentId=selectedFromDom();

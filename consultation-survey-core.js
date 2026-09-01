@@ -21,6 +21,7 @@ let rows=[];
 let selectedId='';
 let pollTimer=null;
 let analysisLoadPromise=null;
+const detailTabById=new Map();
 const consultationScriptBase=(document.currentScript&&document.currentScript.src)?document.currentScript.src:location.href;
 
 function esc(value){
@@ -122,11 +123,34 @@ function render(){
   if(selectedId&&!rows.some(r=>String(r.id)===selectedId))selectedId='';
   selectedId?renderDetail(selectedId):renderEmpty();renderContext();
 }
-function renderEmpty(){const box=document.getElementById('consultationSurveyDetailCard');if(box)box.innerHTML='<div class="consultationDetailEmpty">명단에서 학생을 선택하면<br>설문 응답과 분석 준비 내용을 확인할 수 있습니다.</div>';}
+function renderEmpty(){const box=document.getElementById('consultationSurveyDetailCard');if(box){box.removeAttribute('data-consultation-selected-id');box.innerHTML='<div class="consultationDetailEmpty">명단에서 학생을 선택하면<br>설문 응답과 분석 준비 내용을 확인할 수 있습니다.</div>';}}
+function defaultDetailTab(row){
+  const status=String(row?.status||'survey_completed');
+  if(status==='observation_waiting'||status==='observation_in_progress')return 'observation';
+  if(status==='final_analysis_waiting'||status==='ready'||status==='completed')return 'final';
+  return 'survey';
+}
+function activeDetailTab(id,row){return detailTabById.get(String(id||''))||defaultDetailTab(row);}
+window.setConsultationDetailTab=function(id,tab){
+  const allowed=['survey','observation','final'];
+  const next=allowed.includes(String(tab))?String(tab):'survey';
+  detailTabById.set(String(id||''),next);
+  window.syncConsultationDetailTabs();
+};
+window.syncConsultationDetailTabs=function(){
+  const box=document.getElementById('consultationSurveyDetailCard');if(!box)return;
+  const id=String(box.dataset.consultationSelectedId||selectedId||'');
+  const row=rows.find(r=>String(r.id)===id);if(!id||!row)return;
+  const active=activeDetailTab(id,row);
+  box.querySelectorAll('[data-consultation-tab]').forEach(btn=>btn.classList.toggle('active',btn.dataset.consultationTab===active));
+  box.querySelectorAll('[data-consultation-tab-panel]').forEach(panel=>{panel.hidden=panel.dataset.consultationTabPanel!==active;});
+};
 function renderDetail(id){
   const box=document.getElementById('consultationSurveyDetailCard');const row=rows.find(r=>String(r.id)===String(id));if(!box||!row)return renderEmpty();
   const answers=row.answers&&typeof row.answers==='object'?row.answers:{};
-  box.innerHTML=`<div class="consultationDetailTop"><div><div class="consultationDetailName">${esc(row.student_name||'학생')}</div><div class="consultationDetailMeta">${esc(row.student_age||'')}${row.parent_phone4?' · 연락처 뒤 '+esc(row.parent_phone4):''} · ${esc(dateLabel(row.created_at))}</div></div><span class="consultationStatus">${esc(statusLabel(row.status))}</span></div><div class="consultationDetailSection"><div class="consultationDetailSectionTitle">학부모 설문 원본</div><div class="consultationAnswerList">${QUESTIONS.map((q,i)=>`<div class="consultationAnswerItem"><div class="consultationAnswerQ">${i+1}. ${esc(q.text)}</div><div class="consultationAnswerA">${esc(answerLabel(answers[q.id],q))}</div></div>`).join('')}</div></div><div class="consultationDetailSection"><div class="consultationDetailSectionTitle">자동 분석</div>${renderAutomaticAnalysis(answers)}</div>`;
+  box.dataset.consultationSelectedId=String(id);
+  box.innerHTML=`<div class="consultationDetailTop"><div><div class="consultationDetailName">${esc(row.student_name||'학생')}</div><div class="consultationDetailMeta">${esc(row.student_age||'')}${row.parent_phone4?' · 연락처 뒤 '+esc(row.parent_phone4):''} · ${esc(dateLabel(row.created_at))}</div></div><span class="consultationStatus">${esc(statusLabel(row.status))}</span></div><div class="consultationDetailTabs" role="tablist" aria-label="상담 분석 단계"><button type="button" class="consultationDetailTab" data-consultation-tab="survey" onclick="setConsultationDetailTab('${esc(id)}','survey')">학부모 설문</button><button type="button" class="consultationDetailTab" data-consultation-tab="observation" onclick="setConsultationDetailTab('${esc(id)}','observation')">수업 관찰</button><button type="button" class="consultationDetailTab" data-consultation-tab="final" onclick="setConsultationDetailTab('${esc(id)}','final')">최종 분석</button></div><div class="consultationDetailTabPanel" data-consultation-tab-panel="survey"><div class="consultationDetailSection"><div class="consultationDetailSectionTitle">학부모 설문 분석</div>${renderAutomaticAnalysis(answers)}</div><details class="consultationSurveyAnswersFold"><summary>학부모 설문 답변 14문항</summary><div class="consultationAnswerList">${QUESTIONS.map((q,i)=>`<div class="consultationAnswerItem"><div class="consultationAnswerQ">${i+1}. ${esc(q.text)}</div><div class="consultationAnswerA">${esc(answerLabel(answers[q.id],q))}</div></div>`).join('')}</div></details></div>`;
+  window.syncConsultationDetailTabs();
 }
 window.openConsultationSurveyDetail=function(id){selectedId=String(id||'');render();};
 window.refreshConsultationSurveyManager=async function(){rows=await loadRows();rows.sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));window.__olliConsultationRows=rows.slice();render();return rows;};
