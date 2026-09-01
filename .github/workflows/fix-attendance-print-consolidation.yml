@@ -1,0 +1,27 @@
+name: Fix attendance print consolidation
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-attendance-print-consolidation.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore final attendance print values in base CSS
+        run: python scripts/fix_attendance_print_consolidation.py
+      - name: Remove one-time fix helpers
+        run: |
+          rm -f scripts/fix_attendance_print_consolidation.py
+          rm -f .github/workflows/fix-attendance-print-consolidation.yml
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Preserve attendance print appearance after cleanup"
+          git push
