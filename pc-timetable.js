@@ -422,7 +422,12 @@
     const division = divisionOf(student);
     const timeOptions = division === 'kinder' ? [3, 4, 5, 6] : [1, 2, 3, 4, 5, 6, 7];
     const capacity = capacityFor(division);
-    const sourceHtml = rows.length ? rows.map((item) => `<button type="button" class="olliTtEnrollmentChoice ${clean(item.id) === clean(dialog.sourceEnrollmentId) ? 'active' : ''}" data-tt-source="${esc(item.id)}"><strong>${weekdayLabel(item.weekday)}요일 · ${timeLabel(item.time_slot)}</strong><span>${clean(item.effective_from) > todayKey() ? `${shortDate(item.effective_from)}부터` : '정규 수업'}</span></button>`).join('') : '<div class="olliTtStatusNotice">현재 등록된 정규 수업이 없습니다. ‘주간 수업 추가’를 선택해 주세요.</div>';
+    const sourceHtml = rows.length ? rows.map((item) => {
+      const current = enrollmentEffectiveOn(item, new Date());
+      const selected = clean(item.id) === clean(dialog.sourceEnrollmentId);
+      const schedule = `${weekdayLabel(item.weekday)}요일 · ${timeLabel(item.time_slot)}`;
+      return `<div class='olliTtEnrollmentRow'><button type='button' class='olliTtEnrollmentChoice ${selected ? 'active' : ''}' data-tt-source='${esc(item.id)}'><strong>${schedule}</strong><span>${clean(item.effective_from) > todayKey() ? `${shortDate(item.effective_from)}부터` : '정규 수업'}</span></button><button type='button' class='olliTtEnrollmentDelete' data-tt-remove-enrollment='${esc(item.id)}' ${current ? '' : 'disabled'} aria-label='${esc(schedule)} 삭제'>삭제</button></div>`;
+    }).join('') : '<div class="olliTtStatusNotice">현재 등록된 정규 수업이 없습니다. ‘주간 수업 추가’를 선택해 주세요.</div>';
     const dayHtml = DAYS.map((day, index) => `<button type="button" class="olliTtChoice ${dialog.targetWeekday === index + 1 ? 'active' : ''}" data-tt-target-day="${index + 1}">${day}</button>`).join('');
     const timeHtml = timeOptions.map((time) => {
       const count = countAt(division, dialog.targetWeekday, time, dialog.effectiveDate);
@@ -430,8 +435,6 @@
       return `<button type="button" class="olliTtChoice ${dialog.targetTime === time ? 'active' : ''} ${full ? 'full' : ''}" data-tt-target-time="${time}">${time}시${capacity ? `<small>${count}/${capacity}${full ? ' · 대기' : ''}</small>` : ''}</button>`;
     }).join('');
     const sourceSummary = source ? `${weekdayLabel(source.weekday)}요일 ${timeLabel(source.time_slot)}` : '선택된 기존 수업 없음';
-    const sourceIsCurrent = source && enrollmentEffectiveOn(source, new Date());
-    const removeHtml = dialog.actionType === 'move' && source ? `<div class="olliTtRemoveEnrollment"><div><strong>이 수업 삭제</strong><span>${sourceIsCurrent ? '적용 날짜부터 주간 수업 횟수가 1회 줄어듭니다.' : '이미 종료됐거나 아직 시작되지 않은 수업입니다.'}</span></div><button type="button" data-tt-remove-enrollment ${sourceIsCurrent ? '' : 'disabled'}>삭제</button></div>` : '';
     const scheduledHtml = scheduledRows.length ? `<div class="olliTtField"><div class="olliTtFieldHead"><span>변경 예약</span><small>적용 전에는 취소할 수 있어요</small></div><div class="olliTtEnrollmentList">${scheduledRows.map((item) => {
       const scheduledSource = rows.find((row) => clean(row.id) === clean(item.source_enrollment_id));
       const target = rows.find((row) => clean(row.id) === clean(item.target_enrollment_id));
@@ -446,8 +449,7 @@
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>설정 방식</span><small>연강도 같은 요일에 여러 시간 등록 가능</small></div><div class="olliTtTypeGrid">'
       + `<button type="button" class="olliTtTypeBtn ${dialog.actionType === 'move' ? 'active' : ''}" data-tt-action-type="move">수업 이동<small>선택한 기존 수업 하나를 옮깁니다.</small></button>`
       + `<button type="button" class="olliTtTypeBtn ${dialog.actionType === 'add' ? 'active' : ''}" data-tt-action-type="add">주간 수업 추가<small>기존 수업을 유지하고 새 시간을 더합니다.</small></button></div></div>`
-      + (dialog.actionType === 'move' ? `<div class="olliTtField"><div class="olliTtFieldHead"><span>이동할 기존 수업</span><small>${esc(sourceSummary)}</small></div><div class="olliTtEnrollmentList">${sourceHtml}</div></div>` : '')
-      + removeHtml
+      + (dialog.actionType === 'move' ? `<div class='olliTtField'><div class='olliTtFieldHead'><span>이동할 기존 수업</span><small>${source ? `선택: ${esc(sourceSummary)} · 삭제는 오른쪽 버튼` : '수업을 선택하거나 오른쪽 삭제 버튼을 눌러주세요'}</small></div><div class='olliTtEnrollmentList'>${sourceHtml}</div></div>` : '')
       + scheduledHtml
       + `<div class="olliTtField"><div class="olliTtFieldHead"><span>새 요일</span><small>같은 요일 중복 가능</small></div><div class="olliTtChoiceGrid">${dayHtml}</div></div>`
       + `<div class="olliTtField"><div class="olliTtFieldHead"><span>새 시간</span><small>마감된 시간은 대기로 등록</small></div><div class="olliTtChoiceGrid times">${timeHtml}</div></div>`
@@ -537,8 +539,10 @@
     if (cancelWait) cancelWait.addEventListener('click', () => resolveWait('cancel'));
     const cancelMakeup = dialog.querySelector('[data-tt-cancel-makeup]');
     if (cancelMakeup) cancelMakeup.addEventListener('click', cancelMakeupSession);
-    const removeEnrollmentButton = dialog.querySelector('[data-tt-remove-enrollment]');
-    if (removeEnrollmentButton) removeEnrollmentButton.addEventListener('click', removeSelectedEnrollment);
+    dialog.querySelectorAll('[data-tt-remove-enrollment]').forEach((button) => button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      removeSelectedEnrollment(button.dataset.ttRemoveEnrollment);
+    }));
     dialog.querySelectorAll('[data-tt-cancel-change]').forEach((button) => button.addEventListener('click', () => cancelScheduledChange(button.dataset.ttCancelChange)));
   }
 
@@ -637,11 +641,13 @@
     if (result) notify(`${item.student_name} 학생의 시간표 변경 예약을 취소했어요.`);
   }
 
-  async function removeSelectedEnrollment() {
+  async function removeSelectedEnrollment(enrollmentId) {
     const dialog = state.dialog;
-    if (!dialog || dialog.kind !== 'move' || !dialog.sourceEnrollmentId) return;
+    if (!dialog || dialog.kind !== 'move') return;
+    const selectedEnrollmentId = clean(enrollmentId || dialog.sourceEnrollmentId);
+    if (!selectedEnrollmentId) return;
     const student = studentById(dialog.studentId);
-    const source = studentEnrollments(dialog.studentId).find((item) => clean(item.id) === clean(dialog.sourceEnrollmentId));
+    const source = studentEnrollments(dialog.studentId).find((item) => clean(item.id) === selectedEnrollmentId);
     if (!student || !source || !enrollmentEffectiveOn(source, new Date())) {
       alert('현재 이용 중인 수업을 선택해 주세요.');
       return;
@@ -651,7 +657,7 @@
     if (!global.confirm(`${student.name} 학생의 ${schedule} 수업을 ${dateText}부터 삭제할까요?\n주간 수업 횟수가 1회 줄어듭니다.`)) return;
     const result = await withSaving(() => service.removeEnrollment(
       dialog.studentId,
-      dialog.sourceEnrollmentId,
+      selectedEnrollmentId,
       dialog.effectiveDate
     ));
     if (!result) return;
