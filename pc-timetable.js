@@ -8,6 +8,10 @@
   }
 
   const DAYS = service.DAYS;
+  const TIME_SLOTS = {
+    elementary: [1, 2, 3, 4, 5, 6],
+    kinder: [4, 5]
+  };
   const state = {
     active: false,
     view: 'list',
@@ -17,6 +21,7 @@
     loadToken: 0,
     sidebarFilter: 'all',
     sidebarQuery: '',
+    scheduleDivision: 'elementary',
     dialog: null,
     saving: false
   };
@@ -259,14 +264,13 @@
     }).join('');
     const waitHtml = waits.map((item) => `<button type="button" class="olliTtStudent wait" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}"><span class="olliTtStudentTag">대기</span>${esc(item.student_name)}</button>`).join('');
     const makeupHtml = makeups.map((item) => `<button type="button" class="olliTtStudent makeup" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}"><span class="olliTtStudentTag">보강</span>${esc(item.student_name)}</button>`).join('');
-    const empty = !regularHtml && !waitHtml && !makeupHtml ? '<span class="olliTtEmptyHint">눌러서 학생 추가</span>' : '';
-    return `<div class="olliTtCell" data-tt-cell="1" data-division="${division}" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-time="${time}"><div class="olliTtCellMeta">${meta}</div>${regularHtml}${waitHtml}${makeupHtml}${empty}</div>`;
+    return `<div class="olliTtCell" data-tt-cell="1" data-division="${division}" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-time="${time}"><div class="olliTtCellMeta">${meta}</div>${regularHtml}${waitHtml}${makeupHtml}</div>`;
   }
 
   function sectionHtml(division) {
-    const times = division === 'kinder' ? [3, 4, 5, 6] : [1, 2, 3, 4, 5, 6, 7];
+    const times = TIME_SLOTS[division];
     const dates = DAYS.map((_, index) => addDays(state.weekStart, index));
-    let grid = '<div class="olliTtGrid"><div class="olliTtCorner"></div>';
+    let grid = `<div class="olliTtGrid" style="--olli-tt-rows:${times.length}"><div class="olliTtCorner"></div>`;
     dates.forEach((date, index) => {
       grid += `<div class="olliTtDay ${isToday(date) ? 'today' : ''}"><strong>${DAYS[index]}요일</strong><span>${date.getMonth() + 1}월 ${date.getDate()}일${isToday(date) ? ' · 오늘' : ''}</span></div>`;
     });
@@ -275,8 +279,7 @@
       dates.forEach((date) => { grid += cellHtml(division, date, time); });
     });
     grid += '</div>';
-    const studentCount = service.activeStudents().filter((student) => divisionOf(student) === division).length;
-    return `<section class="olliTtSection ${division}"><div class="olliTtSectionHead"><div class="olliTtSectionName"><span class="olliTtSectionDot"></span>${divisionLabel(division)}</div><div class="olliTtSectionCount">${studentCount}명</div></div><div class="olliTtScroll">${grid}</div></section>`;
+    return `<section class="olliTtSection ${division}"><div class="olliTtScroll">${grid}</div></section>`;
   }
 
   function renderTimetable() {
@@ -290,15 +293,23 @@
       ui.root.innerHTML = `<div class="olliTtError">${esc(state.data.error)}<br>로그인 상태를 확인한 후 다시 열어주세요.</div>`;
       return;
     }
-    ui.root.innerHTML = '<div class="olliTtToolbar"><div><div class="olliTtTitle">주간 수업 시간표</div><div class="olliTtHelp">빈 공간은 학생 추가 · 이름은 해당 수업 이동</div></div>'
+    ui.root.innerHTML = '<div class="olliTtToolbar"><div class="olliTtDivisionTabs" role="tablist" aria-label="시간표 반 선택">'
+      + `<button type="button" class="olliTtDivisionTab ${state.scheduleDivision === 'elementary' ? 'active' : ''}" data-tt-division="elementary" role="tab" aria-selected="${state.scheduleDivision === 'elementary'}">초등부</button>`
+      + `<button type="button" class="olliTtDivisionTab ${state.scheduleDivision === 'kinder' ? 'active' : ''}" data-tt-division="kinder" role="tab" aria-selected="${state.scheduleDivision === 'kinder'}">유치부</button></div>`
       + '<div class="olliTtWeekNav"><button type="button" class="olliTtWeekBtn icon" data-tt-week="prev" aria-label="이전 주">‹</button>'
       + `<button type="button" class="olliTtWeekBtn range">${weekRangeText()}</button>`
       + '<button type="button" class="olliTtWeekBtn icon" data-tt-week="next" aria-label="다음 주">›</button><button type="button" class="olliTtWeekBtn today" data-tt-week="today">이번 주</button></div></div>'
       + '<div class="olliTtLegend"><span class="olliTtLegendItem"><i class="olliTtLegendSwatch regular"></i>정규</span><span class="olliTtLegendItem"><i class="olliTtLegendSwatch wait"></i>대기</span><span class="olliTtLegendItem"><i class="olliTtLegendSwatch makeup"></i>보강</span><span>◷ 변경 예약</span></div>'
-      + sectionHtml('elementary') + sectionHtml('kinder');
+      + sectionHtml(state.scheduleDivision);
   }
 
   function onTimetableClick(event) {
+    const divisionTab = event.target.closest('[data-tt-division]');
+    if (divisionTab) {
+      state.scheduleDivision = divisionTab.dataset.ttDivision === 'kinder' ? 'kinder' : 'elementary';
+      renderTimetable();
+      return;
+    }
     const weekButton = event.target.closest('[data-tt-week]');
     if (weekButton) {
       if (weekButton.dataset.ttWeek === 'prev') state.weekStart = addDays(state.weekStart, -7);
@@ -380,11 +391,13 @@
     if (!student) return;
     const rows = studentEnrollments(studentId);
     const source = rows.find((item) => clean(item.id) === clean(enrollmentId)) || rows.find((item) => enrollmentEffectiveOn(item, new Date())) || rows[0];
+    const timeOptions = TIME_SLOTS[divisionOf(student)];
+    const sourceTime = source ? Number(source.time_slot) : null;
     state.dialog = {
       kind: 'move', studentId: clean(studentId), actionType: 'move',
       sourceEnrollmentId: source ? clean(source.id) : '',
       targetWeekday: source ? Number(source.weekday) : 1,
-      targetTime: source ? Number(source.time_slot) : (divisionOf(student) === 'kinder' ? 3 : 1),
+      targetTime: timeOptions.includes(sourceTime) ? sourceTime : timeOptions[0],
       effectiveDate: todayKey()
     };
     openOverlay();
@@ -424,7 +437,7 @@
     const scheduledRows = changes().filter((item) => clean(item.student_id) === clean(dialog.studentId) && item.status === 'scheduled');
     const source = rows.find((item) => clean(item.id) === clean(dialog.sourceEnrollmentId));
     const division = divisionOf(student);
-    const timeOptions = division === 'kinder' ? [3, 4, 5, 6] : [1, 2, 3, 4, 5, 6, 7];
+    const timeOptions = TIME_SLOTS[division];
     const capacity = capacityFor(division);
     const sourceHtml = rows.length ? rows.map((item) => {
       const current = enrollmentEffectiveOn(item, new Date());
