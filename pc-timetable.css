@@ -1,4 +1,4 @@
-/* OLLI PC 출석부 > 주간 시간표 모듈 */
+/* OLLI PC 사이드바 > 주간 시간표 모듈 */
 #recordRoomScreen .olliTtTabs {
   display: none;
   align-items: center;
@@ -9,7 +9,6 @@
   border-radius: 15px;
   background: #f1f3f5;
 }
-#olliPcShell[data-pc-section="attendance"] ~ #recordRoomScreen .olliTtTabs { display: inline-flex; }
 #recordRoomScreen .olliTtTab {
   min-width: 74px;
   height: 38px;
@@ -27,8 +26,8 @@
   box-shadow: 0 2px 8px rgba(18, 30, 48, .09);
 }
 #recordRoomScreen .olliTtRoot { display: none; padding: 0 0 40px; }
-#olliPcShell[data-pc-section="attendance"] ~ #recordRoomScreen .olliTtRoot.show { display: block; }
-#olliPcShell[data-pc-section="attendance"] ~ #recordRoomScreen.olliPcAttendanceScheduleView #recordList { display: none; }
+#olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen .olliTtRoot.show { display: block; }
+#olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen.olliPcAttendanceScheduleView #recordList { display: none; }
 
 #recordRoomScreen .olliTtToolbar {
   display: flex;
