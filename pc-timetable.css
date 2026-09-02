@@ -29,21 +29,15 @@
 #olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen .olliTtRoot.show { display: flex; min-height: 0; flex: 1; flex-direction: column; }
 #olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen.olliPcAttendanceScheduleView #recordList { display: none; }
 #olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen .recordPageInner { overflow: hidden; }
-#olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen .recordBodyNew { height: 100%; min-height: 0; padding-top: 18px; padding-bottom: 18px; display: flex; flex-direction: column; }
+#olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen .recordBodyNew { height: 100%; min-height: 0; padding-top: 14px; padding-bottom: 18px; display: flex; flex-direction: column; }
 
-#recordRoomScreen .olliTtToolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 10px;
-}
-#recordRoomScreen .olliTtDivisionTabs { display: flex; align-items: center; gap: 22px; }
-#recordRoomScreen .olliTtDivisionTab { padding: 0; border: 0; color: #a1a6ae; background: transparent; font: 850 calc(21px * var(--olli-text-scale)) 'Pretendard', sans-serif; letter-spacing: -.055em; cursor: pointer; }
-#recordRoomScreen .olliTtDivisionTab.active { color: #171a20; }
-#recordRoomScreen .olliTtDivisionTab:focus-visible { outline: 2px solid rgba(10,132,255,.28); outline-offset: 5px; border-radius: 3px; }
-#recordRoomScreen .olliTtWeekNav { display: flex; align-items: center; gap: 7px; }
-#recordRoomScreen .olliTtWeekBtn {
+#olliPcTopbar .olliPcTopbarTitle.olliTtTopbarSchedule { min-width: 0; display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 24px; }
+#olliPcTopbar .olliTtDivisionTabs { display: flex; align-items: center; gap: 22px; }
+#olliPcTopbar .olliTtDivisionTab { padding: 0; border: 0; color: #a1a6ae; background: transparent; font: 850 calc(21px * var(--olli-text-scale)) 'Pretendard', sans-serif; letter-spacing: -.055em; cursor: pointer; }
+#olliPcTopbar .olliTtDivisionTab.active { color: #171a20; }
+#olliPcTopbar .olliTtDivisionTab:focus-visible { outline: 2px solid rgba(10,132,255,.28); outline-offset: 5px; border-radius: 3px; }
+#olliPcTopbar .olliTtWeekNav { display: flex; align-items: center; gap: 7px; }
+#olliPcTopbar .olliTtWeekBtn {
   height: 40px;
   padding: 0 13px;
   border: 1px solid #e2e6eb;
@@ -53,10 +47,10 @@
   font: 720 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif;
   cursor: pointer;
 }
-#recordRoomScreen .olliTtWeekBtn.icon { width: 40px; padding: 0; font-size: 20px; }
-#recordRoomScreen .olliTtWeekBtn.range { min-width: 174px; color: #232830; font-weight: 800; }
-#recordRoomScreen .olliTtWeekBtn.today { color: #0A84FF; border-color: #cde5fc; background: #f5faff; }
-#recordRoomScreen .olliTtWeekBtn:hover { border-color: #badbfb; color: #0A73DC; }
+#olliPcTopbar .olliTtWeekBtn.icon { width: 40px; padding: 0; font-size: 20px; }
+#olliPcTopbar .olliTtWeekBtn.range { min-width: 174px; color: #232830; font-weight: 800; }
+#olliPcTopbar .olliTtWeekBtn.today { color: #0A84FF; border-color: #cde5fc; background: #f5faff; }
+#olliPcTopbar .olliTtWeekBtn:hover { border-color: #badbfb; color: #0A73DC; }
 
 #recordRoomScreen .olliTtLegend {
   display: flex;
@@ -87,7 +81,7 @@
   box-shadow: 0 7px 20px rgba(27, 39, 58, .045);
 }
 #recordRoomScreen .olliTtScroll { min-height: 0; display: flex; flex: 1; overflow: hidden; }
-#recordRoomScreen .olliTtGrid { width: 100%; height: 100%; min-width: 0; display: grid; grid-template-columns: 56px repeat(6, minmax(0, 1fr)); grid-template-rows: 58px repeat(var(--olli-tt-rows), minmax(0, 1fr)); }
+#recordRoomScreen .olliTtGrid { width: 100%; height: 100%; min-width: 0; display: grid; grid-template-columns: 56px repeat(6, minmax(0, 1fr)); grid-template-rows: 52px repeat(var(--olli-tt-rows), minmax(108px, 1fr)); }
 #recordRoomScreen .olliTtGrid > * { border-right: 1px solid #e8ebef; border-bottom: 1px solid #e8ebef; }
 #recordRoomScreen .olliTtGrid > :nth-child(7n) { border-right: 0; }
 #recordRoomScreen .olliTtGrid > :nth-last-child(-n+7) { border-bottom: 0; }
@@ -117,38 +111,39 @@
 }
 #recordRoomScreen .olliTtCell {
   min-height: 0;
-  padding: 8px;
+  padding: 6px;
   background: #fff;
   cursor: pointer;
-  overflow: hidden;
   transition: background .15s ease, box-shadow .15s ease;
 }
 #recordRoomScreen .olliTtCell:hover { background: #f5faff; box-shadow: inset 0 0 0 2px #c4e2ff; }
-#recordRoomScreen .olliTtCellMeta { min-height: 17px; display: flex; justify-content: space-between; gap: 6px; margin-bottom: 5px; color: #a0a6af; font-size: calc(9px * var(--olli-text-scale)); font-weight: 720; }
+#recordRoomScreen .olliTtCellMeta { min-height: 17px; display: flex; justify-content: space-between; gap: 6px; margin-bottom: 3px; color: #a0a6af; font-size: calc(9px * var(--olli-text-scale)); font-weight: 720; }
 #recordRoomScreen .olliTtCellMeta strong { color: #616975; font-size: calc(10px * var(--olli-text-scale)); font-weight: 820; }
+#recordRoomScreen .olliTtEntries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; }
 #recordRoomScreen .olliTtStudent {
   width: 100%;
-  min-height: 31px;
-  margin: 0 0 5px;
-  padding: 6px 8px;
+  min-height: 24px;
+  margin: 0;
+  padding: 3px 5px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 8px;
+  box-sizing: border-box;
   display: block;
-  overflow: hidden;
   color: #2b3038;
   text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font: 780 calc(11px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  white-space: normal;
+  word-break: break-all;
+  line-height: 1.15;
+  font: 780 calc(10px * var(--olli-text-scale)) 'Pretendard', sans-serif;
   cursor: pointer;
 }
-#recordRoomScreen .olliTtStudent:last-child { margin-bottom: 0; }
+#recordRoomScreen .olliTtStudent.scheduled { grid-column: 1 / -1; }
 #recordRoomScreen .olliTtStudent.regular.elementary { border-color: #f0dd8b; background: #fff3c6; }
 #recordRoomScreen .olliTtStudent.regular.kinder { border-color: #f5c7d4; background: #ffe4eb; }
 #recordRoomScreen .olliTtStudent.wait { border: 1px dashed #8b70dc; color: #654db3; background: #efeaff; }
 #recordRoomScreen .olliTtStudent.makeup { border-color: #73b9a5; color: #267763; background: #e5f6f0; }
 #recordRoomScreen .olliTtStudent:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(26, 38, 58, .09); }
-#recordRoomScreen .olliTtStudentTag { float: right; margin-left: 5px; padding: 2px 5px; border-radius: 999px; color: #fff; font-size: calc(8px * var(--olli-text-scale)); font-weight: 800; }
+#recordRoomScreen .olliTtStudentTag { float: right; margin-left: 3px; padding: 1px 3px; border-radius: 999px; color: #fff; font-size: calc(7px * var(--olli-text-scale)); font-weight: 800; }
 #recordRoomScreen .olliTtStudent.wait .olliTtStudentTag { background: #7b5ed0; }
 #recordRoomScreen .olliTtStudent.makeup .olliTtStudentTag { background: #338d74; }
 #recordRoomScreen .olliTtReservation { display: block; margin-top: 3px; color: #0A73DC; font-size: calc(8px * var(--olli-text-scale)); font-weight: 780; }
@@ -296,8 +291,9 @@
 .olliTtStudentInfoRows strong { color: #3d4652; }
 
 @media (max-width: 820px) {
-  #recordRoomScreen .olliTtToolbar { flex-direction: column; align-items: stretch; }
-  #recordRoomScreen .olliTtWeekNav { justify-content: flex-end; flex-wrap: wrap; }
+  #olliPcTopbar .olliPcTopbarTitle.olliTtTopbarSchedule { gap: 12px; }
+  #olliPcTopbar .olliTtDivisionTabs { gap: 12px; }
+  #olliPcTopbar .olliTtWeekBtn.range { min-width: 138px; }
   #recordRoomScreen .olliTtGrid { grid-template-columns: 50px repeat(6, minmax(0, 1fr)); }
 }
 @media (max-width: 580px) {
