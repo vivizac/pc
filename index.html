@@ -43450,12 +43450,16 @@ document.addEventListener('DOMContentLoaded', function(){
     document.querySelectorAll('[data-pc-nav]').forEach(btn => btn.classList.toggle('active', btn.dataset.pcNav === pcSection));
     const title = document.getElementById('olliPcTopbarTitle');
     if (title) {
+      title.classList.remove('olliTtTopbarSchedule');
       if (pcSection === 'observation') {
         const observationActive = pcObservationTab !== 'feedback';
         title.innerHTML = '<div class="olliPcTopbarTabs" role="tablist" aria-label="관찰기록 보기">'
           + '<button type="button" class="olliPcTopbarTab '+(observationActive?'active':'')+'" role="tab" aria-selected="'+String(observationActive)+'" onclick="pcSetObservationTab(\'observation\')">관찰기록</button>'
           + '<button type="button" class="olliPcTopbarTab '+(!observationActive?'active':'')+'" role="tab" aria-selected="'+String(!observationActive)+'" onclick="pcSetObservationTab(\'feedback\')">1분 피드백</button>'
           + '</div>';
+      } else if (pcSection === 'schedule') {
+        title.textContent = '';
+        if (typeof window.olliTtRenderScheduleHeader === 'function') window.olliTtRenderScheduleHeader();
       } else {
         title.textContent = sectionTitles[pcSection] || 'OLLI';
       }
