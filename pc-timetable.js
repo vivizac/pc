@@ -165,7 +165,10 @@
 
   function syncAttendanceActive() {
     const shell = document.getElementById('olliPcShell');
-    state.active = Boolean(shell && shell.dataset.pcSection === 'attendance');
+    const section = shell ? clean(shell.dataset.pcSection) : '';
+    const nextView = section === 'schedule' ? 'schedule' : 'list';
+    const leavingSchedule = state.view === 'schedule' && nextView !== 'schedule';
+    state.active = section === 'attendance' || section === 'schedule';
     const ui = ensureUi();
     if (!ui) return;
     if (!state.active) {
@@ -175,7 +178,8 @@
       closeDialog();
       return;
     }
-    setView(state.view);
+    if (leavingSchedule) closeDialog();
+    setView(nextView);
   }
 
   async function loadWeek() {
