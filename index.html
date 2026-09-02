@@ -8821,6 +8821,10 @@ body.olliPcApp .olliPcSidebarBottom #recordSortPopup{left:50%;right:auto;bottom:
 .olliPcTopbar{display:none;position:fixed;left:var(--pc-sidebar-w);right:0;top:0;height:var(--pc-topbar-h);z-index:85000;background:#fff;border-bottom:1px solid var(--pc-line);box-sizing:border-box;padding:0 28px;align-items:center;justify-content:space-between;}
 .olliPcTopbar.visible{display:flex;}
 .olliPcTopbarTitle{font-size:20px;font-weight:850;letter-spacing:-.05em;}
+.olliPcTopbarTabs{display:flex;align-items:center;gap:24px;}
+.olliPcTopbarTab{padding:0;border:0;background:transparent;color:#a2a6ad;font-family:inherit;font-size:inherit;font-weight:inherit;letter-spacing:inherit;line-height:1.2;cursor:pointer;}
+.olliPcTopbarTab.active{color:#111214;}
+.olliPcTopbarTab:focus-visible{outline:2px solid rgba(22,135,255,.32);outline-offset:5px;border-radius:3px;}
 .olliPcTopbarRight{display:flex;align-items:center;gap:10px;}
 .olliPcSearch{width:260px;height:42px;border:1px solid #e3e5e8;border-radius:24px;background:#fff;padding:0 18px;box-sizing:border-box;font-family:inherit;font-size:14px;outline:none;color:#222;}
 .olliPcSearch:focus{border-color:#b9d9ff;box-shadow:0 0 0 3px rgba(22,135,255,.08);}
@@ -8960,16 +8964,16 @@ body.olliPcApp #settingsDetailScreen{left:0;top:0;width:100%;height:100%;}
       <svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"></path><path d="M6.5 10v10h11V10"></path><path d="M10 20v-6h4v6"></path></svg><span>학생관리</span>
     </button>
     <button class="olliPcNavBtn" data-pc-nav="attendance" type="button" onclick="pcOpenSection('attendance')">
-      <svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2.5"></rect><path d="M8.5 12l2 2 4.5-5"></path></svg><span>출석부</span>
+      <svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2.5"></rect><path d="M8.5 12l2 2 4.5-5"></path></svg><span>성향기록</span>
     </button>
     <button class="olliPcNavBtn" data-pc-nav="observation" type="button" onclick="pcOpenSection('observation')">
-      <svg viewBox="0 0 24 24"><rect x="4.5" y="5" width="15" height="14" rx="2"></rect><path d="M8 9h8M8 13h5"></path></svg><span>관찰노트</span>
-    </button>
-    <button class="olliPcNavBtn" data-pc-nav="feedback" type="button" onclick="pcOpenSection('feedback')">
-      <svg viewBox="0 0 24 24"><path d="M5 19l2.2-.5L18.5 7.2a2 2 0 0 0-2.8-2.8L4.5 15.7 4 19z"></path><path d="M13.8 6.3l3.9 3.9"></path></svg><span>1분 피드백</span>
+      <svg viewBox="0 0 24 24"><rect x="4.5" y="5" width="15" height="14" rx="2"></rect><path d="M8 9h8M8 13h5"></path></svg><span>관찰기록</span>
     </button>
     <button class="olliPcNavBtn" data-pc-nav="consultation" type="button" onclick="pcOpenSection('consultation')">
-      <svg viewBox="0 0 24 24"><path d="M6 4.5h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-4.5 3v-3H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"></path><path d="M8 9h8M8 13h5"></path></svg><span>상담 설문</span>
+      <svg viewBox="0 0 24 24"><path d="M6 4.5h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-4.5 3v-3H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"></path><path d="M8 9h8M8 13h5"></path></svg><span>상담기록</span>
+    </button>
+    <button class="olliPcNavBtn" data-pc-nav="schedule" type="button" onclick="pcOpenSection('schedule')">
+      <svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14" rx="2.5"></rect><path d="M8 3.5v4M16 3.5v4M4 9.5h16M8 13h3M13 13h3M8 16.5h3"></path></svg><span>시간표</span>
     </button>
   </nav>
   <div class="olliPcContext">
@@ -8989,7 +8993,7 @@ body.olliPcApp #settingsDetailScreen{left:0;top:0;width:100%;height:100%;}
   </div>
 </div>
 <div class="olliPcTopbar" id="olliPcTopbar">
-  <div class="olliPcTopbarTitle" id="olliPcTopbarTitle">학원 관리</div>
+  <div class="olliPcTopbarTitle" id="olliPcTopbarTitle">학생관리</div>
   <div class="olliPcTopbarRight">
     <input class="olliPcSearch" id="olliPcSearch" type="search" placeholder="학생 검색" oninput="pcHandleTopSearch(this.value)">
     <button class="olliPcTopAction" id="olliPcTopArchiveBtn" type="button" onclick="pcOpenTopArchive()" aria-label="보관함">
@@ -43317,12 +43321,14 @@ document.addEventListener('DOMContentLoaded', function(){
 <script id="olliPcShellScript">
 (function(){
   const sectionTitles = {
-    academy: '학원 관리',
-    attendance: '출석부',
-    observation: '관찰노트',
-    feedback: '1분 피드백'
+    academy: '학생관리',
+    attendance: '성향기록',
+    observation: '관찰기록',
+    consultation: '상담기록',
+    schedule: '시간표'
   };
   let pcSection = 'academy';
+  let pcObservationTab = 'observation';
   let pcAttendanceDivision = 'all';
   let pcAttendanceDay = '';
   const pcSearchValues = { academy: '', attendance: '' };
@@ -43409,13 +43415,25 @@ document.addEventListener('DOMContentLoaded', function(){
     }
 
     if (pcSection === 'observation') {
-      title.textContent = '초등부 명단 '+elementary.length;
-      body.innerHTML = pcRosterHtml(elementary, 'elementary', 'observation');
+      const feedbackMode = pcObservationTab === 'feedback';
+      const list = feedbackMode ? kinder : elementary;
+      const type = feedbackMode ? 'kinder' : 'elementary';
+      title.textContent = (feedbackMode ? '유치부 명단 ' : '초등부 명단 ')+list.length;
+      body.innerHTML = pcRosterHtml(list, type, feedbackMode ? 'feedback' : 'observation');
       return;
     }
 
-    title.textContent = '유치부 명단 '+kinder.length;
-    body.innerHTML = pcRosterHtml(kinder, 'kinder', 'feedback');
+    if (pcSection === 'consultation') {
+      title.textContent = '상담 명단';
+      body.innerHTML = '';
+      return;
+    }
+
+    if (pcSection === 'schedule') {
+      title.textContent = '빠른 보기';
+      body.innerHTML = '';
+      return;
+    }
   }
 
   function pcSetChrome(section){
@@ -43433,7 +43451,17 @@ document.addEventListener('DOMContentLoaded', function(){
     if (topbar) topbar.classList.add('visible');
     document.querySelectorAll('[data-pc-nav]').forEach(btn => btn.classList.toggle('active', btn.dataset.pcNav === pcSection));
     const title = document.getElementById('olliPcTopbarTitle');
-    if (title) title.textContent = sectionTitles[pcSection] || 'OLLI';
+    if (title) {
+      if (pcSection === 'observation') {
+        const observationActive = pcObservationTab !== 'feedback';
+        title.innerHTML = '<div class="olliPcTopbarTabs" role="tablist" aria-label="관찰기록 보기">'
+          + '<button type="button" class="olliPcTopbarTab '+(observationActive?'active':'')+'" role="tab" aria-selected="'+String(observationActive)+'" onclick="pcSetObservationTab(\'observation\')">관찰기록</button>'
+          + '<button type="button" class="olliPcTopbarTab '+(!observationActive?'active':'')+'" role="tab" aria-selected="'+String(!observationActive)+'" onclick="pcSetObservationTab(\'feedback\')">1분 피드백</button>'
+          + '</div>';
+      } else {
+        title.textContent = sectionTitles[pcSection] || 'OLLI';
+      }
+    }
     const archive = document.getElementById('olliPcTopArchiveBtn');
     const sortBtn = document.getElementById('olliPcSortBtn');
     if (search) {
@@ -43441,9 +43469,9 @@ document.addEventListener('DOMContentLoaded', function(){
       search.style.display = searchable ? '' : 'none';
       if (searchable) search.value = pcSearchValues[pcSection] || '';
     }
-    if (archive) archive.classList.toggle('show', pcSection === 'observation' || pcSection === 'feedback');
-    if (sortBtn) sortBtn.style.visibility = (pcSection === 'observation' || pcSection === 'feedback') ? 'visible' : 'hidden';
-    if (pcSection !== 'observation' && pcSection !== 'feedback') {
+    if (archive) archive.classList.toggle('show', pcSection === 'observation');
+    if (sortBtn) sortBtn.style.visibility = pcSection === 'observation' ? 'visible' : 'hidden';
+    if (pcSection !== 'observation') {
       const sortPopup = document.getElementById('recordSortPopup');
       if (sortPopup) sortPopup.classList.remove('show');
     }
@@ -43467,6 +43495,12 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   async function pcOpenSection(section){
+    if (section === 'feedback') {
+      pcObservationTab = 'feedback';
+      section = 'observation';
+    } else if (section === 'observation') {
+      pcObservationTab = 'observation';
+    }
     pcSetChrome(section);
     if (section === 'academy') {
       pcHideMainScreensExcept('recordRoomScreen');
@@ -43495,7 +43529,23 @@ document.addEventListener('DOMContentLoaded', function(){
       pcRenderAttendanceList();
       return;
     }
+    if (section === 'schedule') {
+      pcHideMainScreensExcept('recordRoomScreen');
+      if (typeof showRecordRoom === 'function') await showRecordRoom();
+      if (typeof openRecordAttendanceDashboard === 'function') {
+        await openRecordAttendanceDashboard();
+      } else if (typeof currentRecordView !== 'undefined') {
+        currentRecordView = (typeof currentObservationView !== 'undefined' && currentObservationView === 'kinder') ? 'kinder' : 'elementary';
+      }
+      if (typeof window.olliPcSetAttendanceView === 'function') window.olliPcSetAttendanceView('schedule');
+      return;
+    }
     if (section === 'observation') {
+      if (pcObservationTab === 'feedback') {
+        if (typeof openKinderChatFeedbackPage === 'function') openKinderChatFeedbackPage();
+        pcRenderContext();
+        return;
+      }
       pcHideMainScreensExcept('studentMemoScreen');
       const students = pcActiveStudents('elementary');
       const target = (window.currentMemoStudent && window.currentMemoStudent.type === 'elementary')
@@ -43505,10 +43555,12 @@ document.addEventListener('DOMContentLoaded', function(){
       pcRenderContext();
       return;
     }
-    if (section === 'feedback') {
-      if (typeof openKinderChatFeedbackPage === 'function') openKinderChatFeedbackPage();
-      pcRenderContext();
-    }
+  }
+
+  function pcSetObservationTab(tab){
+    const next = tab === 'feedback' ? 'feedback' : 'observation';
+    if (pcSection === 'observation' && pcObservationTab === next) return;
+    return pcOpenSection(next === 'feedback' ? 'feedback' : 'observation');
   }
 
   function pcStudentMatchesDay(student, day){
@@ -43588,7 +43640,7 @@ document.addEventListener('DOMContentLoaded', function(){
       event.preventDefault();
       event.stopPropagation();
     }
-    const view = pcSection === 'feedback' ? 'kinder' : 'elementary';
+    const view = pcSection === 'observation' && pcObservationTab === 'feedback' ? 'kinder' : 'elementary';
     const popup = document.getElementById('recordSortPopup');
     const bottom = document.querySelector('#olliPcShell .olliPcSidebarBottom');
     if (!popup || !bottom) return;
@@ -43598,7 +43650,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   function pcRefreshSidebarRoster(){
-    if (pcSection === 'observation' || pcSection === 'feedback') pcRenderContext();
+    if (pcSection === 'observation') pcRenderContext();
   }
 
   function pcSelectRosterStudent(studentId, mode){
@@ -43741,11 +43793,11 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   function pcOpenTopArchive(){
-    if (pcSection === 'feedback') {
-      if (typeof openKinderChatFeedbackInbox === 'function') openKinderChatFeedbackInbox();
-      return;
-    }
     if (pcSection === 'observation') {
+      if (pcObservationTab === 'feedback') {
+        if (typeof openKinderChatFeedbackInbox === 'function') openKinderChatFeedbackInbox();
+        return;
+      }
       const btn = document.getElementById('memoRecordsBtn');
       if (btn) btn.click();
     }
@@ -43775,12 +43827,17 @@ document.addEventListener('DOMContentLoaded', function(){
     const page = pcVisibleMainPage();
     if (!page) return;
     let nextSection = pcSection;
-    if (page === 'kinderChatFeedbackScreen') nextSection = 'feedback';
-    else if (page === 'studentMemoScreen' || page === 'kinderRiskMemoScreen') nextSection = 'observation';
-    else if (page === 'recordRoomScreen' && !['academy','attendance'].includes(nextSection)) {
+    const previousObservationTab = pcObservationTab;
+    if (page === 'kinderChatFeedbackScreen') {
+      pcObservationTab = 'feedback';
+      nextSection = 'observation';
+    } else if (page === 'studentMemoScreen' || page === 'kinderRiskMemoScreen') {
+      pcObservationTab = 'observation';
+      nextSection = 'observation';
+    } else if (page === 'recordRoomScreen' && !['academy','attendance','schedule'].includes(nextSection)) {
       nextSection = (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') ? 'academy' : 'attendance';
     }
-    if (nextSection !== pcSection || shell?.dataset.pcSection !== nextSection) pcSetChrome(nextSection);
+    if (nextSection !== pcSection || shell?.dataset.pcSection !== nextSection || previousObservationTab !== pcObservationTab) pcSetChrome(nextSection);
     else {
       const shell = document.getElementById('olliPcShell');
       const topbar = document.getElementById('olliPcTopbar');
@@ -43794,6 +43851,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
   window.pcSyncFromVisiblePage = pcSyncFromVisiblePage;
   window.pcOpenSection = pcOpenSection;
+  window.pcSetObservationTab = pcSetObservationTab;
   window.pcFilterAttendanceDivision = pcFilterAttendanceDivision;
   window.pcFilterAttendanceDay = pcFilterAttendanceDay;
   window.pcRenderAttendanceList = pcRenderAttendanceList;
