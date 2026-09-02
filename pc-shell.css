@@ -1,0 +1,89 @@
+:root{
+  --pc-sidebar-w:246px;
+  --pc-topbar-h:78px;
+  --pc-bg:#f5f6f8;
+  --pc-line:#e8e9ec;
+  --pc-card:#ffffff;
+  --pc-soft:#f5f5f6;
+  --pc-text:#111214;
+  --pc-sub:#969aa2;
+  --pc-blue:#1687ff;
+  --pc-blue-soft:#eaf4ff;
+}
+html,body.olliPcApp{width:100%;height:100%;overflow:hidden;background:var(--pc-bg);}
+body.olliPcApp{margin:0;color:var(--pc-text);--olli-text-scale:1.00;}
+body.olliPcApp[data-olli-text-size="medium"],html[data-olli-text-size="medium"] body.olliPcApp{--olli-text-scale:1.08;}
+body.olliPcApp[data-olli-text-size="large"],html[data-olli-text-size="large"] body.olliPcApp{--olli-text-scale:1.16;}
+
+.olliPcShell{display:none;position:fixed;inset:0 auto 0 0;width:var(--pc-sidebar-w);z-index:86000;background:#fff;border-right:1px solid var(--pc-line);box-sizing:border-box;}
+.olliPcShell.visible{display:flex;flex-direction:column;}
+.olliPcBrand{padding:19px 12px 16px;}
+.olliPcBrandLogo{font-size:20px;line-height:1;font-weight:900;letter-spacing:-.055em;}
+.olliPcBrandSub{margin-top:7px;font-size:11px;color:#8e9299;letter-spacing:-.035em;}
+.olliPcNav{padding:10px 10px 0;display:grid;gap:4px;}
+.olliPcNavBtn{width:100%;height:44px;border:0;background:transparent;border-radius:12px;padding:0 12px;display:flex;align-items:center;gap:12px;font-family:inherit;font-size:15.5px;font-weight:700;color:#26282c;cursor:pointer;text-align:left;}
+.olliPcNavBtn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto;}
+.olliPcNavBtn.active{background:var(--pc-blue-soft);color:var(--pc-blue);}
+.olliPcContext{margin:16px 10px 0;border-top:1px solid var(--pc-line);padding-top:14px;min-height:0;display:flex;flex:1;flex-direction:column;overflow:hidden;}
+.olliPcContextTitle{padding:0 10px 8px;font-size:12px;font-weight:750;color:#9a9ea6;}
+.olliPcContextBody{min-height:0;overflow:auto;padding:0 0 10px;scrollbar-width:none;}
+.olliPcContextBody::-webkit-scrollbar{width:0;height:0;background:transparent;}
+.olliPcContextBody::-webkit-scrollbar-thumb{background:transparent;}
+.olliPcQuickBtn,.olliPcRosterBtn{width:100%;border:0;background:transparent;font-family:inherit;cursor:pointer;}
+.olliPcQuickBtn{height:40px;border-radius:10px;padding:0 10px;display:flex;align-items:center;justify-content:space-between;font-size:14.5px;font-weight:700;color:#60646b;}
+.olliPcQuickBtn.active{background:#f2f3f5;color:#111;}
+.olliPcQuickBtn span:last-child{font-variant-numeric:tabular-nums;}
+.olliPcContextSectionLabel{padding:14px 10px 5px;font-size:11.5px;font-weight:800;color:#a5a8ae;}
+.olliPcRosterBtn{position:relative;display:grid;grid-template-columns:30px minmax(0,1fr);gap:9px;align-items:center;padding:11px 40px 11px 8px;border-radius:12px;text-align:left;color:#25272a;}
+.olliPcRosterBtn:hover,.olliPcRosterBtn.active{background:#f4f5f7;}
+.olliPcRosterIcon{width:26px;height:26px;display:grid;place-items:center;color:#c3c7cd;}
+.olliPcRosterIcon svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.5;}
+.olliPcRosterName{font-size:16px;font-weight:780;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.olliPcRosterMeta{margin-top:3px;font-size:12.5px;line-height:1.3;color:#9a9ea5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.olliPcRosterInfoBtn{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:34px;height:34px;border:0;border-radius:50%;background:transparent;color:#7d828a;display:flex;align-items:center;justify-content:center;padding:0;opacity:0;pointer-events:none;cursor:pointer;}
+.olliPcRosterInfoBtn svg{width:24px;height:24px;fill:currentColor;stroke:none;}
+.olliPcRosterBtn:hover .olliPcRosterInfoBtn,.olliPcRosterInfoBtn:focus-visible{opacity:1;pointer-events:auto;}
+.olliPcRosterInfoBtn:hover{background:transparent;color:#111;}
+.olliPcSidebarBottom{position:relative;height:58px;border-top:1px solid var(--pc-line);padding:8px 10px;display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center;box-sizing:border-box;}
+.olliPcSidebarBottom .olliPcRoundBtn:nth-child(1){justify-self:start;}
+.olliPcSidebarBottom .olliPcRoundBtn:nth-child(2){justify-self:center;}
+.olliPcSidebarBottom .olliPcRoundBtn:nth-child(3){justify-self:end;}
+body.olliPcApp .olliPcSidebarBottom #recordSortPopup{left:50%;right:auto;bottom:52px;transform:translateX(-50%);width:min(220px,calc(var(--pc-sidebar-w) - 20px));max-height:430px;}
+.olliPcRoundBtn{width:40px;height:40px;border:1px solid #e3e5e8;background:#fff;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:#15171a;box-shadow:0 3px 12px rgba(0,0,0,.04);}
+.olliPcRoundBtn svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+
+.olliPcTopbar{display:none;position:fixed;left:var(--pc-sidebar-w);right:0;top:0;height:var(--pc-topbar-h);z-index:85000;background:#fff;border-bottom:1px solid var(--pc-line);box-sizing:border-box;padding:0 28px;align-items:center;justify-content:space-between;}
+.olliPcTopbar.visible{display:flex;}
+.olliPcTopbarTitle{font-size:20px;font-weight:850;letter-spacing:-.05em;}
+.olliPcTopbarTabs{display:flex;align-items:center;gap:24px;}
+.olliPcTopbarTab{padding:0;border:0;background:transparent;color:#a2a6ad;font-family:inherit;font-size:inherit;font-weight:inherit;letter-spacing:inherit;line-height:1.2;cursor:pointer;}
+.olliPcTopbarTab.active{color:#111214;}
+.olliPcTopbarTab:focus-visible{outline:2px solid rgba(22,135,255,.32);outline-offset:5px;border-radius:3px;}
+.olliPcTopbarRight{display:flex;align-items:center;gap:10px;}
+.olliPcSearch{width:260px;height:42px;border:1px solid #e3e5e8;border-radius:24px;background:#fff;padding:0 18px;box-sizing:border-box;font-family:inherit;font-size:14px;outline:none;color:#222;}
+.olliPcSearch:focus{border-color:#b9d9ff;box-shadow:0 0 0 3px rgba(22,135,255,.08);}
+.olliPcTopAction{width:42px;height:42px;border:1px solid #e3e5e8;border-radius:50%;background:#fff;display:none;place-items:center;cursor:pointer;}
+.olliPcTopAction.show{display:grid;}
+.olliPcTopAction svg{width:20px;height:20px;stroke:#111;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+
+body.olliPcApp > .pageScreen{
+  left:var(--pc-sidebar-w);
+  top:var(--pc-topbar-h);
+  right:0;
+  bottom:0;
+  width:auto;
+  height:auto;
+  max-width:none;
+  min-height:0;
+  box-sizing:border-box;
+}
+
+/* 로그인 / 설정 등은 기존 전체화면 유지 */
+body.olliPcApp .olliLoginScreen,
+body.olliPcApp #settingsPageScreen,
+body.olliPcApp #settingsDetailScreen{left:0;top:0;width:100%;height:100%;}
+
+/* 작은 PC 폭 */
+@media(max-width:1180px){
+  :root{--pc-sidebar-w:218px;}
+}
