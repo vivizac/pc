@@ -703,3 +703,48 @@
   function installStudentInfoBridge() {
     const original = global.olliPrepareInfoExtra;
     if (typeof original !== 'function' || original.__olliTimetableWrapped) return;
+
+const wrapped = function(type, student) {
+      const result = original.apply(this, arguments);
+      if (state.data) setTimeout(() => injectStudentInfoPanel(student), 0);
+      else {
+        service.loadWeek(dateKey(mondayOf(new Date()))).then((data) => {
+          state.data = data;
+          injectStudentInfoPanel(student);
+        }).catch((error) => console.warn('학생정보 시간표를 불러오지 못했습니다:', error));
+      }
+      return result;
+    };
+    wrapped.__olliTimetableWrapped = true;
+    global.olliPrepareInfoExtra = wrapped;
+  }
+
+  function install() {
+    ensureUi();
+    installStudentInfoBridge();
+    const shell = document.getElementById('olliPcShell');
+    if (shell && !shell.__olliTimetableObserver) {
+      shell.__olliTimetableObserver = new MutationObserver(syncAttendanceActive);
+      shell.__olliTimetableObserver.observe(shell, { attributes: true, attributeFilter: ['data-pc-section'] });
+    }
+    const originalSearch = global.pcHandleTopSearch;
+    if (typeof originalSearch === 'function' && !originalSearch.__olliTimetableWrapped) {
+      const wrappedSearch = function(value) {
+        if (state.active && state.view === 'schedule') {
+          state.sidebarQuery = clean(value);
+          renderSidebar();
+          return;
+        }
+        return originalSearch.apply(this, arguments);
+      };
+      wrappedSearch.__olliTimetableWrapped = true;
+      global.pcHandleTopSearch = wrappedSearch;
+    }
+    global.olliPcSetAttendanceView = setView;
+    global.olliTtOpenStudentSchedule = openMove;
+    syncAttendanceActive();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
+  else install();
+})(window);
