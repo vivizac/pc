@@ -43995,38 +43995,130 @@ document.addEventListener('DOMContentLoaded', function(){
   align-items: center;
   justify-content: center;
   padding: 28px;
-  background: rgba(0,0,0,.28);
+  background: rgba(24,31,43,.38);
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
 }
 #olliPcScheduleMoveOverlay.show { display: flex; }
 #olliPcScheduleMoveDialog {
-  width: min(620px, calc(100vw - 56px));
-  border-radius: 28px;
+  width: min(640px, calc(100vw - 56px));
+  max-height: calc(100vh - 56px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid rgba(18,32,53,.08);
+  border-radius: 32px;
   background: #fff;
-  box-shadow: 0 20px 60px rgba(0,0,0,.2);
-  padding: 30px;
+  box-shadow: 0 28px 80px rgba(20,31,48,.24), 0 8px 24px rgba(20,31,48,.10);
+  padding: 0;
+  outline: none;
 }
-#olliPcScheduleMoveTitle { font-size: calc(24px * var(--olli-text-scale)); font-weight: 820; letter-spacing: -.055em; color: #111; }
-#olliPcScheduleMoveSub { margin-top: 8px; color: #777; font-size: calc(16px * var(--olli-text-scale)); font-weight: 600; line-height: 1.45; letter-spacing: -.03em; }
-#olliPcScheduleMoveLabel { margin: 26px 0 10px; color: #666; font-size: calc(15px * var(--olli-text-scale)); font-weight: 800; }
-#olliPcScheduleMoveChoices { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
-#olliPcScheduleMoveChoices.time { grid-template-columns: repeat(5, 1fr); }
-#olliPcScheduleMoveChoice { height: 52px; border: 0; border-radius: 15px; background: #f4f4f2; color: #555; font: 750 calc(15px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor: pointer; }
-#olliPcScheduleMoveChoice.active { background: #111; color: #fff; }
-#olliPcScheduleMoveActions { display: grid; grid-template-columns: 1fr 1.25fr; gap: 10px; margin-top: 30px; }
-#olliPcScheduleMoveActions button { height: 56px; border: 0; border-radius: 17px; font: 750 calc(16px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor: pointer; }
-#olliPcScheduleMoveCancel { background: #f2f2f0; color: #666; }
-#olliPcScheduleMoveSave { background: #111; color: #fff; }
-#olliPcScheduleMoveSave:disabled { opacity: .45; cursor: default; }
+#olliPcScheduleMoveOverlay.show #olliPcScheduleMoveDialog { animation: olliPcScheduleDialogIn .2s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes olliPcScheduleDialogIn {
+  from { opacity: 0; transform: translateY(12px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.olliPcScheduleMoveHead {
+  display: grid;
+  grid-template-columns: 58px minmax(0,1fr) 42px;
+  align-items: center;
+  gap: 16px;
+  padding: 28px 30px 22px;
+}
+.olliPcScheduleMoveIcon {
+  width: 58px;
+  height: 58px;
+  border-radius: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0A84FF;
+  background: #EAF4FF;
+}
+.olliPcScheduleMoveIcon svg { width: 29px; height: 29px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.olliPcScheduleMoveHeading { min-width: 0; }
+#olliPcScheduleMoveTitle { overflow: hidden; color: #14171b; font-size: calc(24px * var(--olli-text-scale)); font-weight: 820; line-height: 1.25; letter-spacing: -.055em; text-overflow: ellipsis; white-space: nowrap; }
+#olliPcScheduleMoveSub { margin-top: 6px; color: #8A9099; font-size: calc(14px * var(--olli-text-scale)); font-weight: 600; line-height: 1.45; letter-spacing: -.025em; }
+#olliPcScheduleMoveClose {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #757B84;
+  background: #F2F4F7;
+  cursor: pointer;
+}
+#olliPcScheduleMoveClose:hover { color: #1E232A; background: #E9EDF2; }
+#olliPcScheduleMoveClose svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.olliPcScheduleMoveBody { padding: 0 30px 30px; }
+.olliPcScheduleMoveCurrent {
+  min-height: 58px;
+  padding: 0 17px;
+  border: 1px solid #DDEBFA;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: #4E5968;
+  background: #F4F9FF;
+}
+.olliPcScheduleMoveCurrentLabel { font-size: calc(13px * var(--olli-text-scale)); font-weight: 750; }
+.olliPcScheduleMoveCurrentValue { color: #0A73DC; font-size: calc(16px * var(--olli-text-scale)); font-weight: 820; letter-spacing: -.035em; }
+.olliPcScheduleMoveSection { margin-top: 24px; }
+.olliPcScheduleMoveLabel { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 2px 11px; }
+.olliPcScheduleMoveLabel span { color: #252A31; font-size: calc(15px * var(--olli-text-scale)); font-weight: 820; letter-spacing: -.035em; }
+.olliPcScheduleMoveLabel small { color: #A0A5AD; font-size: calc(12px * var(--olli-text-scale)); font-weight: 600; }
+.olliPcScheduleMoveChoices { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 9px; }
+.olliPcScheduleMoveChoices.time { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.olliPcScheduleMoveChoice {
+  height: 52px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  color: #555D68;
+  background: #F3F5F7;
+  font: 750 calc(15px * var(--olli-text-scale)) 'Pretendard',sans-serif;
+  cursor: pointer;
+  transition: color .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.olliPcScheduleMoveChoice:hover { border-color: #CFE5FC; color: #0A73DC; background: #F1F8FF; transform: translateY(-1px); }
+.olliPcScheduleMoveChoice.active { border-color: #0A84FF; color: #fff; background: #0A84FF; box-shadow: 0 7px 18px rgba(10,132,255,.22); }
+.olliPcScheduleMoveActions {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 10px;
+  margin: 30px -30px -30px;
+  padding: 20px 30px 24px;
+  border-top: 1px solid #EDF0F3;
+  background: #FAFBFC;
+}
+.olliPcScheduleMoveActions button { height: 56px; border: 0; border-radius: 17px; font: 780 calc(16px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor: pointer; }
+#olliPcScheduleMoveCancel { color: #666E78; background: #ECEFF3; }
+#olliPcScheduleMoveCancel:hover { background: #E3E7EC; }
+#olliPcScheduleMoveSave { color: #fff; background: #0A84FF; box-shadow: 0 8px 20px rgba(10,132,255,.2); }
+#olliPcScheduleMoveSave:hover { background: #0075E8; }
+#olliPcScheduleMoveSave:disabled { box-shadow: none; opacity: .45; cursor: default; }
 @media (max-width: 560px) {
   #olliPcScheduleMoveOverlay { padding: 18px; }
-  #olliPcScheduleMoveDialog { width: min(100%, 460px); border-radius: 24px; padding: 22px; }
-  #olliPcScheduleMoveTitle { font-size: calc(21px * var(--olli-text-scale)); }
-  #olliPcScheduleMoveSub { font-size: calc(14px * var(--olli-text-scale)); }
-  #olliPcScheduleMoveLabel { margin-top: 22px; font-size: calc(13px * var(--olli-text-scale)); }
-  #olliPcScheduleMoveChoices { gap: 7px; }
-  #olliPcScheduleMoveChoice { height: 46px; font-size: calc(13px * var(--olli-text-scale)); }
-  #olliPcScheduleMoveActions { margin-top: 24px; }
-  #olliPcScheduleMoveActions button { height: 50px; font-size: calc(14px * var(--olli-text-scale)); }
+  #olliPcScheduleMoveDialog { width: min(100%, 460px); border-radius: 25px; }
+  .olliPcScheduleMoveHead { grid-template-columns: 48px minmax(0,1fr) 40px; gap: 12px; padding: 22px 22px 18px; }
+  .olliPcScheduleMoveIcon { width: 48px; height: 48px; border-radius: 16px; }
+  .olliPcScheduleMoveIcon svg { width: 25px; height: 25px; }
+  #olliPcScheduleMoveTitle { font-size: calc(20px * var(--olli-text-scale)); }
+  #olliPcScheduleMoveSub { font-size: calc(13px * var(--olli-text-scale)); }
+  #olliPcScheduleMoveClose { width: 40px; height: 40px; }
+  .olliPcScheduleMoveBody { padding: 0 22px 22px; }
+  .olliPcScheduleMoveCurrent { min-height: 52px; padding: 0 14px; }
+  .olliPcScheduleMoveCurrentValue { font-size: calc(14px * var(--olli-text-scale)); }
+  .olliPcScheduleMoveSection { margin-top: 21px; }
+  .olliPcScheduleMoveLabel small { display: none; }
+  .olliPcScheduleMoveChoices { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 7px; }
+  .olliPcScheduleMoveChoices.time { grid-template-columns: repeat(4, minmax(0,1fr)); }
+  .olliPcScheduleMoveChoice { height: 46px; font-size: calc(13px * var(--olli-text-scale)); }
+  .olliPcScheduleMoveActions { margin: 24px -22px -22px; padding: 17px 22px 20px; }
+  .olliPcScheduleMoveActions button { height: 50px; font-size: calc(14px * var(--olli-text-scale)); }
 }
 @media (max-width: 760px) {
   #recordRoomScreen .olliPcTimetableIntro { align-items: flex-start; flex-direction: column; gap: 4px; }
@@ -44194,8 +44286,10 @@ document.addEventListener('DOMContentLoaded', function(){
     if (overlay) return overlay;
     overlay = document.createElement('div');
     overlay.id = 'olliPcScheduleMoveOverlay';
-    overlay.innerHTML = '<div id="olliPcScheduleMoveDialog" role="dialog" aria-modal="true"></div>';
+    overlay.tabIndex = -1;
+    overlay.innerHTML = '<div id="olliPcScheduleMoveDialog" role="dialog" aria-modal="true" aria-labelledby="olliPcScheduleMoveTitle" aria-describedby="olliPcScheduleMoveSub"></div>';
     overlay.addEventListener('click', function(event){ if (event.target === overlay && !state.saving) closeMove(); });
+    overlay.addEventListener('keydown', function(event){ if (event.key === 'Escape' && !state.saving) closeMove(); });
     document.body.appendChild(overlay);
     return overlay;
   }
@@ -44203,13 +44297,17 @@ document.addEventListener('DOMContentLoaded', function(){
     var current = state.move;
     if (!current) return '';
     var timeChoices = timesFor(current.student.type || 'elementary');
-    return '<div id="olliPcScheduleMoveTitle">'+escapeHtml(current.student.name || '학생')+' 수업 이동</div>'
-      + '<div id="olliPcScheduleMoveSub">'+current.from.day+' '+current.from.time+' 수업을 옮깁니다.</div>'
-      + '<div class="olliPcScheduleMoveLabel">요일</div><div class="olliPcScheduleMoveChoices">'
-      + DAYS.map(function(day){ return '<button type="button" class="olliPcScheduleMoveChoice '+(state.day === day ? 'active' : '')+'" data-olli-move-day="'+day+'">'+day+'</button>'; }).join('')
-      + '</div><div class="olliPcScheduleMoveLabel">시간</div><div class="olliPcScheduleMoveChoices time">'
-      + timeChoices.map(function(time){ return '<button type="button" class="olliPcScheduleMoveChoice '+(state.time === time ? 'active' : '')+'" data-olli-move-time="'+time+'">'+time+'</button>'; }).join('')
-      + '</div><div class="olliPcScheduleMoveActions"><button type="button" id="olliPcScheduleMoveCancel">취소</button><button type="button" id="olliPcScheduleMoveSave">이동하기</button></div>';
+    return '<div class="olliPcScheduleMoveHead">'
+      + '<div class="olliPcScheduleMoveIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"></rect><path d="M8 3v4M16 3v4M4 9h16M9 14h6M13 11l3 3-3 3"></path></svg></div>'
+      + '<div class="olliPcScheduleMoveHeading"><div id="olliPcScheduleMoveTitle">'+escapeHtml(current.student.name || '학생')+' 수업 이동</div><div id="olliPcScheduleMoveSub">수업 요일과 시간을 변경합니다.</div></div>'
+      + '<button type="button" id="olliPcScheduleMoveClose" aria-label="닫기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>'
+      + '</div><div class="olliPcScheduleMoveBody">'
+      + '<div class="olliPcScheduleMoveCurrent"><span class="olliPcScheduleMoveCurrentLabel">현재 수업</span><strong class="olliPcScheduleMoveCurrentValue">'+escapeHtml(current.from.day)+'요일 · '+escapeHtml(current.from.time)+'</strong></div>'
+      + '<div class="olliPcScheduleMoveSection"><div class="olliPcScheduleMoveLabel"><span>요일 선택</span><small>변경할 요일을 골라주세요</small></div><div class="olliPcScheduleMoveChoices">'
+      + DAYS.map(function(day){ return '<button type="button" class="olliPcScheduleMoveChoice '+(state.day === day ? 'active' : '')+'" aria-pressed="'+(state.day === day ? 'true' : 'false')+'" data-olli-move-day="'+day+'">'+day+'</button>'; }).join('')
+      + '</div></div><div class="olliPcScheduleMoveSection"><div class="olliPcScheduleMoveLabel"><span>시간 선택</span><small>변경할 시간을 골라주세요</small></div><div class="olliPcScheduleMoveChoices time">'
+      + timeChoices.map(function(time){ return '<button type="button" class="olliPcScheduleMoveChoice '+(state.time === time ? 'active' : '')+'" aria-pressed="'+(state.time === time ? 'true' : 'false')+'" data-olli-move-time="'+time+'">'+time+'</button>'; }).join('')
+      + '</div></div><div class="olliPcScheduleMoveActions"><button type="button" id="olliPcScheduleMoveCancel">취소</button><button type="button" id="olliPcScheduleMoveSave">수업 이동</button></div></div>';
   }
   function openMove(studentId, day, time){
     var student = typeof findStudentById === 'function' ? findStudentById(studentId) : null;
@@ -44221,6 +44319,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var overlay = ensureMoveDialog();
     renderMoveDialog();
     overlay.classList.add('show');
+    requestAnimationFrame(function(){ overlay.focus(); });
   }
   function renderMoveDialog(){
     var dialog = document.getElementById('olliPcScheduleMoveDialog');
@@ -44228,10 +44327,12 @@ document.addEventListener('DOMContentLoaded', function(){
     dialog.innerHTML = moveDialogHtml();
     dialog.querySelectorAll('[data-olli-move-day]').forEach(function(button){ button.addEventListener('click', function(){ state.day = button.getAttribute('data-olli-move-day'); renderMoveDialog(); }); });
     dialog.querySelectorAll('[data-olli-move-time]').forEach(function(button){ button.addEventListener('click', function(){ state.time = button.getAttribute('data-olli-move-time'); renderMoveDialog(); }); });
+    var close = document.getElementById('olliPcScheduleMoveClose');
     var cancel = document.getElementById('olliPcScheduleMoveCancel');
     var save = document.getElementById('olliPcScheduleMoveSave');
+    if (close) close.addEventListener('click', closeMove);
     if (cancel) cancel.addEventListener('click', closeMove);
-    if (save) { save.disabled = state.saving; save.textContent = state.saving ? '저장 중…' : '이동하기'; save.addEventListener('click', saveMove); }
+    if (save) { save.disabled = state.saving; save.textContent = state.saving ? '저장 중…' : '수업 이동'; save.addEventListener('click', saveMove); }
   }
   function closeMove(){
     if (state.saving) return;
