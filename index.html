@@ -43994,29 +43994,40 @@ document.addEventListener('DOMContentLoaded', function(){
   z-index: 9999;
   align-items: center;
   justify-content: center;
-  padding: 22px;
+  padding: 28px;
   background: rgba(0,0,0,.28);
 }
 #olliPcScheduleMoveOverlay.show { display: flex; }
 #olliPcScheduleMoveDialog {
-  width: min(440px, 100%);
-  border-radius: 24px;
+  width: min(620px, calc(100vw - 56px));
+  border-radius: 28px;
   background: #fff;
   box-shadow: 0 20px 60px rgba(0,0,0,.2);
-  padding: 22px;
+  padding: 30px;
 }
-#olliPcScheduleMoveTitle { font-size: calc(18px * var(--olli-text-scale)); font-weight: 820; letter-spacing: -.055em; color: #111; }
-#olliPcScheduleMoveSub { margin-top: 6px; color: #929292; font-size: calc(13px * var(--olli-text-scale)); font-weight: 600; letter-spacing: -.03em; }
-#olliPcScheduleMoveLabel { margin: 20px 0 8px; color: #777; font-size: calc(12px * var(--olli-text-scale)); font-weight: 800; }
-#olliPcScheduleMoveChoices { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+#olliPcScheduleMoveTitle { font-size: calc(24px * var(--olli-text-scale)); font-weight: 820; letter-spacing: -.055em; color: #111; }
+#olliPcScheduleMoveSub { margin-top: 8px; color: #777; font-size: calc(16px * var(--olli-text-scale)); font-weight: 600; line-height: 1.45; letter-spacing: -.03em; }
+#olliPcScheduleMoveLabel { margin: 26px 0 10px; color: #666; font-size: calc(15px * var(--olli-text-scale)); font-weight: 800; }
+#olliPcScheduleMoveChoices { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
 #olliPcScheduleMoveChoices.time { grid-template-columns: repeat(5, 1fr); }
-#olliPcScheduleMoveChoice { height: 38px; border: 0; border-radius: 12px; background: #f4f4f2; color: #666; font: 700 calc(13px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor: pointer; }
+#olliPcScheduleMoveChoice { height: 52px; border: 0; border-radius: 15px; background: #f4f4f2; color: #555; font: 750 calc(15px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor: pointer; }
 #olliPcScheduleMoveChoice.active { background: #111; color: #fff; }
-#olliPcScheduleMoveActions { display: grid; grid-template-columns: 1fr 1.25fr; gap: 8px; margin-top: 24px; }
-#olliPcScheduleMoveActions button { height: 44px; border: 0; border-radius: 14px; font: 750 calc(13px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor: pointer; }
+#olliPcScheduleMoveActions { display: grid; grid-template-columns: 1fr 1.25fr; gap: 10px; margin-top: 30px; }
+#olliPcScheduleMoveActions button { height: 56px; border: 0; border-radius: 17px; font: 750 calc(16px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor: pointer; }
 #olliPcScheduleMoveCancel { background: #f2f2f0; color: #666; }
 #olliPcScheduleMoveSave { background: #111; color: #fff; }
 #olliPcScheduleMoveSave:disabled { opacity: .45; cursor: default; }
+@media (max-width: 560px) {
+  #olliPcScheduleMoveOverlay { padding: 18px; }
+  #olliPcScheduleMoveDialog { width: min(100%, 460px); border-radius: 24px; padding: 22px; }
+  #olliPcScheduleMoveTitle { font-size: calc(21px * var(--olli-text-scale)); }
+  #olliPcScheduleMoveSub { font-size: calc(14px * var(--olli-text-scale)); }
+  #olliPcScheduleMoveLabel { margin-top: 22px; font-size: calc(13px * var(--olli-text-scale)); }
+  #olliPcScheduleMoveChoices { gap: 7px; }
+  #olliPcScheduleMoveChoice { height: 46px; font-size: calc(13px * var(--olli-text-scale)); }
+  #olliPcScheduleMoveActions { margin-top: 24px; }
+  #olliPcScheduleMoveActions button { height: 50px; font-size: calc(14px * var(--olli-text-scale)); }
+}
 @media (max-width: 760px) {
   #recordRoomScreen .olliPcTimetableIntro { align-items: flex-start; flex-direction: column; gap: 4px; }
   #recordRoomScreen .olliPcTimetableGrid { min-width: 720px; grid-template-columns: 52px repeat(6, minmax(110px,1fr)); }
