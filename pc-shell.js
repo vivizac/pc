@@ -3,7 +3,7 @@
 
   const sectionTitles = {
     academy: '학생관리',
-    attendance: '성향기록',
+    attendance: '성향기록부',
     observation: '관찰기록',
     consultation: '상담기록',
     schedule: '시간표'
@@ -43,9 +43,13 @@
     const body = document.getElementById('recordBodyNew');
     if (!body) return;
     body.classList.toggle('pcAcademyLayout', state.section === 'academy');
+    body.classList.toggle('pcAttendanceLayout', state.section === 'attendance');
     const panel = document.getElementById('pcAcademyDetailPanel');
     if (panel && state.section !== 'academy') panel.style.display = 'none';
     else if (panel) panel.style.display = '';
+    const attendancePanel = document.getElementById('pcAttendanceDetailPanel');
+    if (attendancePanel && state.section !== 'attendance') attendancePanel.style.display = 'none';
+    else if (attendancePanel) attendancePanel.style.display = '';
   }
 
   function feature(name) {

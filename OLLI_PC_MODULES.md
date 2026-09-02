@@ -6,7 +6,7 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 |---|---|---|
 | 사이드바·상단 헤더·화면 전환 | `pc-shell.js` | `pc-shell.css` |
 | 학생관리·할 일·상담예정 학생 영역 | `pc-student-management.js` | `pc-student-management.css` |
-| 성향기록·출석 학생 명단 | `pc-attendance.js` | `pc-attendance.css` |
+| 성향기록부·학생 명단·관찰기록 패널 | `pc-attendance.js` | `pc-attendance.css` |
 | 관찰기록·1분 피드백 전환과 명단 | `pc-observation.js` | `pc-observation.css` |
 | 시간표 화면·팝업 | `pc-timetable.js` | `pc-timetable.css` |
 | 시간표 데이터 호출 | `pc-timetable-service.js` | - |
