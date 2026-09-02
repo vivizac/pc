@@ -161,6 +161,7 @@
 
     if (!state.active) return;
     if (state.view === 'schedule') {
+      renderScheduleHeader();
       renderSidebar();
       loadWeek();
     } else if (typeof global.pcRenderAttendanceList === 'function') {
@@ -260,11 +261,11 @@
     const regularHtml = regular.map((item) => {
       const scheduled = scheduledChangeForSource(item.id);
       const scheduleText = scheduled ? `<span class="olliTtReservation">◷ ${shortDate(scheduled.effective_date)} ${scheduled.change_type === 'remove' ? '삭제' : '이동'} 예정</span>` : '';
-      return `<button type="button" class="olliTtStudent regular ${division}" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}">${esc(item.student_name)}${scheduleText}</button>`;
+      return `<button type="button" class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}">${esc(item.student_name)}${scheduleText}</button>`;
     }).join('');
     const waitHtml = waits.map((item) => `<button type="button" class="olliTtStudent wait" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}"><span class="olliTtStudentTag">대기</span>${esc(item.student_name)}</button>`).join('');
     const makeupHtml = makeups.map((item) => `<button type="button" class="olliTtStudent makeup" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}"><span class="olliTtStudentTag">보강</span>${esc(item.student_name)}</button>`).join('');
-    return `<div class="olliTtCell" data-tt-cell="1" data-division="${division}" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-time="${time}"><div class="olliTtCellMeta">${meta}</div>${regularHtml}${waitHtml}${makeupHtml}</div>`;
+    return `<div class="olliTtCell" data-tt-cell="1" data-division="${division}" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-time="${time}"><div class="olliTtCellMeta">${meta}</div><div class="olliTtEntries">${regularHtml}${waitHtml}${makeupHtml}</div></div>`;
   }
 
   function sectionHtml(division) {
@@ -293,22 +294,17 @@
       ui.root.innerHTML = `<div class="olliTtError">${esc(state.data.error)}<br>로그인 상태를 확인한 후 다시 열어주세요.</div>`;
       return;
     }
-    ui.root.innerHTML = '<div class="olliTtToolbar"><div class="olliTtDivisionTabs" role="tablist" aria-label="시간표 반 선택">'
-      + `<button type="button" class="olliTtDivisionTab ${state.scheduleDivision === 'elementary' ? 'active' : ''}" data-tt-division="elementary" role="tab" aria-selected="${state.scheduleDivision === 'elementary'}">초등부</button>`
-      + `<button type="button" class="olliTtDivisionTab ${state.scheduleDivision === 'kinder' ? 'active' : ''}" data-tt-division="kinder" role="tab" aria-selected="${state.scheduleDivision === 'kinder'}">유치부</button></div>`
-      + '<div class="olliTtWeekNav"><button type="button" class="olliTtWeekBtn icon" data-tt-week="prev" aria-label="이전 주">‹</button>'
-      + `<button type="button" class="olliTtWeekBtn range">${weekRangeText()}</button>`
-      + '<button type="button" class="olliTtWeekBtn icon" data-tt-week="next" aria-label="다음 주">›</button><button type="button" class="olliTtWeekBtn today" data-tt-week="today">이번 주</button></div></div>'
-      + '<div class="olliTtLegend"><span class="olliTtLegendItem"><i class="olliTtLegendSwatch regular"></i>정규</span><span class="olliTtLegendItem"><i class="olliTtLegendSwatch wait"></i>대기</span><span class="olliTtLegendItem"><i class="olliTtLegendSwatch makeup"></i>보강</span><span>◷ 변경 예약</span></div>'
+    renderScheduleHeader();
+    ui.root.innerHTML = '<div class="olliTtLegend"><span class="olliTtLegendItem"><i class="olliTtLegendSwatch regular"></i>정규</span><span class="olliTtLegendItem"><i class="olliTtLegendSwatch wait"></i>대기</span><span class="olliTtLegendItem"><i class="olliTtLegendSwatch makeup"></i>보강</span><span>◷ 변경 예약</span></div>'
       + sectionHtml(state.scheduleDivision);
   }
 
-  function onTimetableClick(event) {
+  function handleScheduleControl(event) {
     const divisionTab = event.target.closest('[data-tt-division]');
     if (divisionTab) {
       state.scheduleDivision = divisionTab.dataset.ttDivision === 'kinder' ? 'kinder' : 'elementary';
       renderTimetable();
-      return;
+      return true;
     }
     const weekButton = event.target.closest('[data-tt-week]');
     if (weekButton) {
@@ -317,8 +313,29 @@
       if (weekButton.dataset.ttWeek === 'today') state.weekStart = mondayOf(new Date());
       state.data = null;
       loadWeek();
-      return;
+      return true;
     }
+    return false;
+  }
+
+  function renderScheduleHeader() {
+    const title = document.getElementById('olliPcTopbarTitle');
+    if (!title) return;
+    title.classList.add('olliTtTopbarSchedule');
+    title.innerHTML = '<div class="olliTtDivisionTabs" role="tablist" aria-label="시간표 반 선택">'
+      + `<button type="button" class="olliTtDivisionTab ${state.scheduleDivision === 'elementary' ? 'active' : ''}" data-tt-division="elementary" role="tab" aria-selected="${state.scheduleDivision === 'elementary'}">초등부</button>`
+      + `<button type="button" class="olliTtDivisionTab ${state.scheduleDivision === 'kinder' ? 'active' : ''}" data-tt-division="kinder" role="tab" aria-selected="${state.scheduleDivision === 'kinder'}">유치부</button></div>`
+      + '<div class="olliTtWeekNav"><button type="button" class="olliTtWeekBtn icon" data-tt-week="prev" aria-label="이전 주">‹</button>'
+      + `<button type="button" class="olliTtWeekBtn range">${weekRangeText()}</button>`
+      + '<button type="button" class="olliTtWeekBtn icon" data-tt-week="next" aria-label="다음 주">›</button><button type="button" class="olliTtWeekBtn today" data-tt-week="today">이번 주</button></div>';
+    if (!title.__olliTtScheduleHeaderBound) {
+      title.__olliTtScheduleHeaderBound = true;
+      title.addEventListener('click', (event) => { handleScheduleControl(event); });
+    }
+  }
+
+  function onTimetableClick(event) {
+    if (handleScheduleControl(event)) return;
     const entry = event.target.closest('[data-tt-entry]');
     if (entry) {
       event.stopPropagation();
@@ -764,6 +781,7 @@ const wrapped = function(type, student) {
       global.pcHandleTopSearch = wrappedSearch;
     }
     global.olliPcSetAttendanceView = setView;
+    global.olliTtRenderScheduleHeader = renderScheduleHeader;
     global.olliTtOpenStudentSchedule = openMove;
     syncAttendanceActive();
   }
