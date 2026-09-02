@@ -144,6 +144,14 @@
     return rpc('olli_schedule_cancel_change', contextPayload({ p_change_id: changeId }));
   }
 
+  async function removeEnrollment(studentId, enrollmentId, effectiveDate) {
+    return rpc('olli_schedule_remove_enrollment', contextPayload({
+      p_student_id: studentId,
+      p_enrollment_id: enrollmentId,
+      p_effective_date: effectiveDate
+    }));
+  }
+
   global.OlliTimetableService = Object.freeze({
     DAYS,
     activeStudents,
@@ -154,6 +162,7 @@
     resolveWaitlist,
     addMakeup,
     cancelMakeup,
-    cancelChange
+    cancelChange,
+    removeEnrollment
   });
 })(window);

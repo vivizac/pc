@@ -22,6 +22,36 @@
   };
 
   function clean(value) { return String(value == null ? '' : value).trim(); }
+  function bindImeSafeSearch(input, updateValue, rerender, focusSelector) {
+    if (!input) return;
+    let composing = false;
+    let skipNextInput = false;
+    const applyValue = () => {
+      updateValue(clean(input.value));
+      rerender();
+      requestAnimationFrame(() => {
+        const next = document.querySelector(focusSelector);
+        if (next) {
+          next.focus();
+          next.setSelectionRange(next.value.length, next.value.length);
+        }
+      });
+    };
+    input.addEventListener('compositionstart', () => { composing = true; });
+    input.addEventListener('compositionend', () => {
+      composing = false;
+      skipNextInput = true;
+      applyValue();
+    });
+    input.addEventListener('input', (event) => {
+      if (composing || event.isComposing) return;
+      if (skipNextInput) {
+        skipNextInput = false;
+        return;
+      }
+      applyValue();
+    });
+  }
   function esc(value) {
     return clean(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -173,11 +203,13 @@
   function waitlist() { return Array.isArray(state.data && state.data.waitlist) ? state.data.waitlist : []; }
   function oneTimeSessions() { return Array.isArray(state.data && state.data.one_time_sessions) ? state.data.one_time_sessions : []; }
   function changes() { return Array.isArray(state.data && state.data.changes) ? state.data.changes : []; }
-  function enrollmentActiveOn(enrollment, date) {
+  function enrollmentEffectiveOn(enrollment, date) {
     const key = dateKey(date);
-    return Number(enrollment.weekday) === date.getDay()
-      && clean(enrollment.effective_from) <= key
+    return clean(enrollment.effective_from) <= key
       && (!clean(enrollment.effective_to) || clean(enrollment.effective_to) >= key);
+  }
+  function enrollmentActiveOn(enrollment, date) {
+    return Number(enrollment.weekday) === date.getDay() && enrollmentEffectiveOn(enrollment, date);
   }
   function slotRegulars(division, date, time) {
     return enrollments().filter((item) => clean(item.division) === division && Number(item.time_slot) === Number(time) && enrollmentActiveOn(item, date));
@@ -218,7 +250,7 @@
     const meta = capacity ? `<strong>${occupied}/${capacity}</strong><span>${occupied >= capacity ? '마감' : `${capacity - occupied}자리`}${waits.length ? ` · 대기 ${waits.length}` : ''}</span>` : `<strong>${occupied}명</strong><span>${makeups.length ? `보강 ${makeups.length}` : ''}</span>`;
     const regularHtml = regular.map((item) => {
       const scheduled = scheduledChangeForSource(item.id);
-      const scheduleText = scheduled ? `<span class="olliTtReservation">◷ ${shortDate(scheduled.effective_date)} 이동 예정</span>` : '';
+      const scheduleText = scheduled ? `<span class="olliTtReservation">◷ ${shortDate(scheduled.effective_date)} ${scheduled.change_type === 'remove' ? '삭제' : '이동'} 예정</span>` : '';
       return `<button type="button" class="olliTtStudent regular ${division}" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}">${esc(item.student_name)}${scheduleText}</button>`;
     }).join('');
     const waitHtml = waits.map((item) => `<button type="button" class="olliTtStudent wait" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}"><span class="olliTtStudentTag">대기</span>${esc(item.student_name)}</button>`).join('');
@@ -285,7 +317,7 @@
   }
 
   function studentScheduleText(studentId) {
-    const rows = enrollments().filter((item) => clean(item.student_id) === clean(studentId) && enrollmentActiveOn(item, new Date()));
+    const rows = enrollments().filter((item) => clean(item.student_id) === clean(studentId) && enrollmentEffectiveOn(item, new Date()));
     if (!rows.length) {
       const student = studentById(studentId);
       return service.legacyPairs(student).map((pair) => `${weekdayLabel(pair.weekday)} ${timeLabel(pair.time_slot)}`).join(' · ');
@@ -313,8 +345,12 @@
       + (students.length ? groupHtml(elementary, 'elementary') + groupHtml(kinder, 'kinder') : '<div class="olliTtQuickEmpty">조건에 맞는 학생이 없습니다.</div>');
     body.querySelectorAll('[data-tt-filter]').forEach((button) => button.addEventListener('click', () => { state.sidebarFilter = button.dataset.ttFilter; renderSidebar(); }));
     body.querySelectorAll('[data-tt-sidebar-student]').forEach((button) => button.addEventListener('click', () => openMove(button.dataset.ttSidebarStudent)));
-    const search = document.getElementById('olliTtQuickSearch');
-    if (search) search.addEventListener('input', () => { state.sidebarQuery = clean(search.value); renderSidebar(); requestAnimationFrame(() => { const next = document.getElementById('olliTtQuickSearch'); if (next) { next.focus(); next.setSelectionRange(next.value.length, next.value.length); } }); });
+    bindImeSafeSearch(
+      document.getElementById('olliTtQuickSearch'),
+      (value) => { state.sidebarQuery = value; },
+      renderSidebar,
+      '#olliTtQuickSearch'
+    );
   }
 
   function closeDialog() {
@@ -339,7 +375,7 @@
     const student = studentById(studentId);
     if (!student) return;
     const rows = studentEnrollments(studentId);
-    const source = rows.find((item) => clean(item.id) === clean(enrollmentId)) || rows.find((item) => enrollmentActiveOn(item, new Date())) || rows[0];
+    const source = rows.find((item) => clean(item.id) === clean(enrollmentId)) || rows.find((item) => enrollmentEffectiveOn(item, new Date())) || rows[0];
     state.dialog = {
       kind: 'move', studentId: clean(studentId), actionType: 'move',
       sourceEnrollmentId: source ? clean(source.id) : '',
@@ -394,9 +430,14 @@
       return `<button type="button" class="olliTtChoice ${dialog.targetTime === time ? 'active' : ''} ${full ? 'full' : ''}" data-tt-target-time="${time}">${time}시${capacity ? `<small>${count}/${capacity}${full ? ' · 대기' : ''}</small>` : ''}</button>`;
     }).join('');
     const sourceSummary = source ? `${weekdayLabel(source.weekday)}요일 ${timeLabel(source.time_slot)}` : '선택된 기존 수업 없음';
+    const sourceIsCurrent = source && enrollmentEffectiveOn(source, new Date());
+    const removeHtml = dialog.actionType === 'move' && source ? `<div class="olliTtRemoveEnrollment"><div><strong>이 수업 삭제</strong><span>${sourceIsCurrent ? '적용 날짜부터 주간 수업 횟수가 1회 줄어듭니다.' : '이미 종료됐거나 아직 시작되지 않은 수업입니다.'}</span></div><button type="button" data-tt-remove-enrollment ${sourceIsCurrent ? '' : 'disabled'}>삭제</button></div>` : '';
     const scheduledHtml = scheduledRows.length ? `<div class="olliTtField"><div class="olliTtFieldHead"><span>변경 예약</span><small>적용 전에는 취소할 수 있어요</small></div><div class="olliTtEnrollmentList">${scheduledRows.map((item) => {
+      const scheduledSource = rows.find((row) => clean(row.id) === clean(item.source_enrollment_id));
       const target = rows.find((row) => clean(row.id) === clean(item.target_enrollment_id));
-      const targetText = target ? `${weekdayLabel(target.weekday)}요일 ${timeLabel(target.time_slot)}` : '예약된 수업';
+      const targetText = item.change_type === 'remove' && scheduledSource
+        ? `${weekdayLabel(scheduledSource.weekday)}요일 ${timeLabel(scheduledSource.time_slot)} 삭제`
+        : target ? `${weekdayLabel(target.weekday)}요일 ${timeLabel(target.time_slot)}` : '예약된 수업';
       return `<button type="button" class="olliTtEnrollmentChoice" data-tt-cancel-change="${esc(item.id)}"><strong>${shortDate(item.effective_date)}부터 · ${esc(targetText)}</strong><span>예약 취소</span></button>`;
     }).join('')}</div></div>` : '';
     return dialogHead('↗', `${student.name} 수업 설정`, '이동하거나 주간 수업을 추가합니다.')
@@ -406,6 +447,7 @@
       + `<button type="button" class="olliTtTypeBtn ${dialog.actionType === 'move' ? 'active' : ''}" data-tt-action-type="move">수업 이동<small>선택한 기존 수업 하나를 옮깁니다.</small></button>`
       + `<button type="button" class="olliTtTypeBtn ${dialog.actionType === 'add' ? 'active' : ''}" data-tt-action-type="add">주간 수업 추가<small>기존 수업을 유지하고 새 시간을 더합니다.</small></button></div></div>`
       + (dialog.actionType === 'move' ? `<div class="olliTtField"><div class="olliTtFieldHead"><span>이동할 기존 수업</span><small>${esc(sourceSummary)}</small></div><div class="olliTtEnrollmentList">${sourceHtml}</div></div>` : '')
+      + removeHtml
       + scheduledHtml
       + `<div class="olliTtField"><div class="olliTtFieldHead"><span>새 요일</span><small>같은 요일 중복 가능</small></div><div class="olliTtChoiceGrid">${dayHtml}</div></div>`
       + `<div class="olliTtField"><div class="olliTtFieldHead"><span>새 시간</span><small>마감된 시간은 대기로 등록</small></div><div class="olliTtChoiceGrid times">${timeHtml}</div></div>`
@@ -475,8 +517,12 @@
     dialog.querySelectorAll('[data-tt-target-time]').forEach((button) => button.addEventListener('click', () => { state.dialog.targetTime = Number(button.dataset.ttTargetTime); renderDialog(); }));
     const effective = dialog.querySelector('[data-tt-effective-date]');
     if (effective) effective.addEventListener('change', () => { state.dialog.effectiveDate = effective.value || todayKey(); renderDialog(); });
-    const search = dialog.querySelector('[data-tt-add-search]');
-    if (search) search.addEventListener('input', () => { state.dialog.query = clean(search.value); renderDialog(); requestAnimationFrame(() => { const next = document.querySelector('[data-tt-add-search]'); if (next) { next.focus(); next.setSelectionRange(next.value.length, next.value.length); } }); });
+    bindImeSafeSearch(
+      dialog.querySelector('[data-tt-add-search]'),
+      (value) => { if (state.dialog && state.dialog.kind === 'add') state.dialog.query = value; },
+      renderDialog,
+      '[data-tt-add-search]'
+    );
     dialog.querySelectorAll('[data-tt-add-student]').forEach((button) => button.addEventListener('click', () => { state.dialog.studentId = button.dataset.ttAddStudent; renderDialog(); }));
     dialog.querySelectorAll('[data-tt-add-type]').forEach((button) => button.addEventListener('click', () => { state.dialog.addType = button.dataset.ttAddType; renderDialog(); }));
     const waitDate = dialog.querySelector('[data-tt-wait-date]');
@@ -491,6 +537,8 @@
     if (cancelWait) cancelWait.addEventListener('click', () => resolveWait('cancel'));
     const cancelMakeup = dialog.querySelector('[data-tt-cancel-makeup]');
     if (cancelMakeup) cancelMakeup.addEventListener('click', cancelMakeupSession);
+    const removeEnrollmentButton = dialog.querySelector('[data-tt-remove-enrollment]');
+    if (removeEnrollmentButton) removeEnrollmentButton.addEventListener('click', removeSelectedEnrollment);
     dialog.querySelectorAll('[data-tt-cancel-change]').forEach((button) => button.addEventListener('click', () => cancelScheduledChange(button.dataset.ttCancelChange)));
   }
 
@@ -589,15 +637,38 @@
     if (result) notify(`${item.student_name} 학생의 시간표 변경 예약을 취소했어요.`);
   }
 
+  async function removeSelectedEnrollment() {
+    const dialog = state.dialog;
+    if (!dialog || dialog.kind !== 'move' || !dialog.sourceEnrollmentId) return;
+    const student = studentById(dialog.studentId);
+    const source = studentEnrollments(dialog.studentId).find((item) => clean(item.id) === clean(dialog.sourceEnrollmentId));
+    if (!student || !source || !enrollmentEffectiveOn(source, new Date())) {
+      alert('현재 이용 중인 수업을 선택해 주세요.');
+      return;
+    }
+    const schedule = `${weekdayLabel(source.weekday)}요일 ${timeLabel(source.time_slot)}`;
+    const dateText = koreanDate(dialog.effectiveDate, true);
+    if (!global.confirm(`${student.name} 학생의 ${schedule} 수업을 ${dateText}부터 삭제할까요?\n주간 수업 횟수가 1회 줄어듭니다.`)) return;
+    const result = await withSaving(() => service.removeEnrollment(
+      dialog.studentId,
+      dialog.sourceEnrollmentId,
+      dialog.effectiveDate
+    ));
+    if (!result) return;
+    notify(result.result === 'scheduled'
+      ? `${student.name} 학생의 ${schedule} 수업 삭제를 예약했어요.`
+      : `${student.name} 학생의 ${schedule} 수업을 삭제했어요.`);
+  }
+
   function studentInfoPanelHtml(student) {
-    const rows = studentEnrollments(student.id).filter((item) => enrollmentActiveOn(item, new Date()));
+    const rows = studentEnrollments(student.id).filter((item) => enrollmentEffectiveOn(item, new Date()));
     const waits = waitlist().filter((item) => clean(item.student_id) === clean(student.id));
     const scheduled = changes().filter((item) => clean(item.student_id) === clean(student.id) && item.status === 'scheduled');
     const regularText = rows.length ? rows.map((item) => `${weekdayLabel(item.weekday)}요일 ${timeLabel(item.time_slot)}`).join(' · ') : studentScheduleText(student.id) || '등록된 수업 없음';
     const statusRows = [
       `<div><strong>정규 수업</strong>　${esc(regularText)}</div>`,
       waits.length ? `<div><strong>대기</strong>　${waits.map((item) => `${weekdayLabel(item.target_weekday)} ${timeLabel(item.target_time_slot)}`).join(' · ')}</div>` : '',
-      scheduled.length ? `<div><strong>변경 예약</strong>　${scheduled.map((item) => `${shortDate(item.effective_date)} 적용`).join(' · ')}</div>` : ''
+      scheduled.length ? `<div><strong>변경 예약</strong>　${scheduled.map((item) => `${shortDate(item.effective_date)} ${item.change_type === 'remove' ? '삭제' : '적용'}`).join(' · ')}</div>` : ''
     ].filter(Boolean).join('');
     return `<div class="olliTtStudentInfoPanel" data-tt-info-student="${esc(student.id)}"><div class="olliTtStudentInfoPanelHead"><div class="olliTtStudentInfoPanelTitle">수업 시간표</div><button type="button" class="olliTtStudentInfoManage">수업·대기 설정</button></div><div class="olliTtStudentInfoRows">${statusRows}</div></div>`;
   }
@@ -632,47 +703,3 @@
   function installStudentInfoBridge() {
     const original = global.olliPrepareInfoExtra;
     if (typeof original !== 'function' || original.__olliTimetableWrapped) return;
-    const wrapped = function(type, student) {
-      const result = original.apply(this, arguments);
-      if (state.data) setTimeout(() => injectStudentInfoPanel(student), 0);
-      else {
-        service.loadWeek(dateKey(mondayOf(new Date()))).then((data) => {
-          state.data = data;
-          injectStudentInfoPanel(student);
-        }).catch((error) => console.warn('학생정보 시간표를 불러오지 못했습니다:', error));
-      }
-      return result;
-    };
-    wrapped.__olliTimetableWrapped = true;
-    global.olliPrepareInfoExtra = wrapped;
-  }
-
-  function install() {
-    ensureUi();
-    installStudentInfoBridge();
-    const shell = document.getElementById('olliPcShell');
-    if (shell && !shell.__olliTimetableObserver) {
-      shell.__olliTimetableObserver = new MutationObserver(syncAttendanceActive);
-      shell.__olliTimetableObserver.observe(shell, { attributes: true, attributeFilter: ['data-pc-section'] });
-    }
-    const originalSearch = global.pcHandleTopSearch;
-    if (typeof originalSearch === 'function' && !originalSearch.__olliTimetableWrapped) {
-      const wrappedSearch = function(value) {
-        if (state.active && state.view === 'schedule') {
-          state.sidebarQuery = clean(value);
-          renderSidebar();
-          return;
-        }
-        return originalSearch.apply(this, arguments);
-      };
-      wrappedSearch.__olliTimetableWrapped = true;
-      global.pcHandleTopSearch = wrappedSearch;
-    }
-    global.olliPcSetAttendanceView = setView;
-    global.olliTtOpenStudentSchedule = openMove;
-    syncAttendanceActive();
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
-  else install();
-})(window);
