@@ -8892,9 +8892,8 @@ body.olli-login-open {
 <div aria-label="학원 관리" class="recordAcademyDashboard" id="recordAcademyDashboard"></div>
 <div id="recordList"></div>
 <aside class="pcAcademyDetailPanel" id="pcAcademyDetailPanel">
-  <div class="pcAcademyDetailName" id="pcAcademyDetailName">상담 학생</div>
-  <div class="pcAcademyDetailSub" id="pcAcademyDetailSub">상담 피드백</div>
-  <div class="pcAcademyDetailBox" id="pcAcademyDetailBox">학생을 선택하면 상담 자료를 확인할 수 있습니다.</div>
+  <div class="pcAcademyDetailName">상담예정 학생</div>
+  <div class="pcAcademyDetailSub">이번 달 상담이 필요한 학생</div>
 </aside>
 </div>
 </div>
@@ -18811,10 +18810,24 @@ function normalizeOlliConsultationProgress(value){
       completed[key] = { completed_at: '', completed_month: '' };
     }
   });
+  const todosRaw = Array.isArray(raw.todos) ? raw.todos : [];
+  const todos = todosRaw.map((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+    const text = String(item.text || '').trim().slice(0, 80);
+    if (!text) return null;
+    return {
+      id: String(item.id || `todo_legacy_${index}`).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80),
+      text,
+      completed: !!item.completed,
+      created_at: String(item.created_at || item.createdAt || ''),
+      completed_at: String(item.completed_at || item.completedAt || '')
+    };
+  }).filter(Boolean).slice(0, 100);
   return {
     version: 1,
     tracking_started_month: String(raw.tracking_started_month || raw.trackingStartedMonth || ''),
-    completed
+    completed,
+    todos
   };
 }
 
@@ -19320,94 +19333,10 @@ function getThisMonthConsultationDueStudents(students){
     .filter(student => getDueConsultationRuleLabelsForStudent(student).length > 0);
 }
 
-function buildAcademyStatCard(label, value, delta, tone, options = {}){
-  const subText = options && options.sub ? String(options.sub) : '';
-  const subHtml = subText
-    ? subText.split(' · ').map(part => escapeHtml(part)).join('<br>')
-    : '';
-  return `<div class="recordAcademyStatCard">
-    <div class="recordAcademyStatLabel">${escapeHtml(label)}</div>
-    <div class="recordAcademyStatBody">
-      <div class="recordAcademyStatValue">${escapeHtml(String(value ?? 0))}</div>
-      ${subHtml ? `<div class="recordAcademyStatSub">${subHtml}</div>` : ''}
-    </div>
-  </div>`;
-}
-
-
-function renderAcademyConsultationList(students){
-  const due = getThisMonthConsultationDueStudents(students);
-  if (!due.length) return '<div class="recordEmpty">이번 달 상담 예정 학생이 없습니다.</div>';
-  const groups = [
-    { key: 'elementary', label: '초등부 상담 예정', students: due.filter(student => student.type === 'elementary') },
-    { key: 'kinder', label: '유치부 상담 예정', students: due.filter(student => student.type === 'kinder') }
-  ];
-  return '<div class="recordAcademyConsultGroups">' + groups.map(group => {
-    const rows = group.students.length
-      ? '<div class="recordAcademyList">' + group.students.map(student => {
-          const dueLabels = getDueConsultationRuleLabelsForStudent(student);
-          const chips = dueLabels.length ? dueLabels.map(getOlliConsultationRuleShortLabel) : ['상담 예정'];
-          const summaryMonths = getConsultationSummaryMonthsFromLabels(dueLabels);
-          const summaryKey = getAcademyConsultationSummaryKey(student, summaryMonths);
-          const stateItem = getAcademyConsultationSummaryItem(student, summaryMonths);
-          const status = getAcademyConsultationSummaryDisplayStatus(stateItem.status);
-          const statusLabel = getAcademyConsultationSummaryStatusLabel(status);
-          const escapedKey = escapeJsSingleQuote(summaryKey);
-          const preview = academyConsultationSummaryState.expandedKey === summaryKey
-            ? renderAcademyConsultationSummaryPreview(summaryKey)
-            : '';
-          const consultationCompleted = isAcademyConsultationCompletedForCurrentList(student);
-          const consultationStudentRef = student.id ? `id:${student.id}` : `name:${String(student.name || '').trim()}`;
-          const pcSelectedRef = String(window.__olliPcAcademySelectedStudentRef || '');
-          const pcSelectedClass = pcSelectedRef && pcSelectedRef === consultationStudentRef ? ' pcSelected' : '';
-          const consultationBtn = `<button type="button" class="recordAcademyConsultCompleteBtn${consultationCompleted ? ' active' : ''}" aria-pressed="${consultationCompleted ? 'true' : 'false'}" onclick="toggleAcademyConsultationCompleted('${escapeJsSingleQuote(consultationStudentRef)}', event)">상담</button>`;
-          return `<div class="recordAcademyListItem recordAcademyConsultListItem${pcSelectedClass}" data-pc-student-ref="${escapeHtml(consultationStudentRef)}" onclick="pcSelectAcademyConsultationStudent('${escapeJsSingleQuote(consultationStudentRef)}', event)"><div class="recordAcademyConsultStudentMain"><div class="recordAcademyListName">${escapeHtml(student.name)}</div><div class="recordAcademyChipRow">${chips.map(label => `<span class="recordAcademyInfoChip recordAcademyRuleChip">${escapeHtml(label)}</span>`).join('')}</div></div><div class="recordAcademyConsultActions">${consultationBtn}<span class="recordAcademyConsultStatusChip ${escapeHtml(status)}">${escapeHtml(statusLabel)}</span></div></div>`;
-        }).join('') + '</div>'
-      : '<div class="recordAcademyConsultGroupEmpty">상담 예정 학생 없음</div>';
-    return `<div class="recordAcademyConsultGroup"><div class="recordAcademyConsultGroupTitle"><span>${escapeHtml(group.label)}</span></div>${rows}</div>`;
-  }).join('') + '</div>';
-}
-
 function renderRecordAcademyManagementDashboard(){
-  const dashboard = document.getElementById('recordAcademyDashboard');
-  if (!dashboard) return;
-  const students = getAcademyManagementStudentsForStats();
-  const active = students.filter(isAcademyManagementActiveStudent);
-  const thisYearRegistered = students.filter(s => {
-    const enrolled = getStudentEnrollmentDateForStats(s);
-    return isCurrentYearDate(enrolled) && getStudentStatus(s) !== 'inactive';
-  });
-  const thisMonthRegistered = students.filter(s => {
-    const enrolled = getStudentEnrollmentDateForStats(s);
-    return isCurrentMonthYear(enrolled) && getStudentStatus(s) !== 'inactive';
-  });
-  const thisMonthWithdrawn = students.filter(s => {
-    if (getStudentStatus(s) !== 'withdrawn') return false;
-    const withdrawnAt = getStudentWithdrawalDateForStats(s);
-    return withdrawnAt ? isCurrentMonthYear(withdrawnAt) : false;
-  });
-  const thisYearWithdrawn = students.filter(s => {
-    if (getStudentStatus(s) !== 'withdrawn') return false;
-    const withdrawnAt = getStudentWithdrawalDateForStats(s);
-    return withdrawnAt ? isCurrentYearDate(withdrawnAt) : true;
-  });
-  const pausedStudents = students.filter(s => getStudentStatus(s) === 'paused');
-  const consultationDue = getThisMonthConsultationDueStudents(students);
-  const activeElementary = active.filter(s => s.type === 'elementary').length;
-  const activeKinder = active.filter(s => s.type === 'kinder').length;
-  const consultationElementary = consultationDue.filter(s => s.type === 'elementary').length;
-  const consultationKinder = consultationDue.filter(s => s.type === 'kinder').length;
-  const now = new Date();
-  const consultationCardLabel = `${now.getMonth()+1}월 상담`;
-  dashboard.innerHTML = `
-    <div class="recordAcademyStatGrid">
-      ${buildAcademyStatCard('원생수', active.length, 0, 'blue', { sub: `초등부 ${activeElementary}명 · 유치부 ${activeKinder}명` })}
-      ${buildAcademyStatCard(consultationCardLabel, consultationDue.length, consultationDue.length, 'blue', { sub: `초등부 ${consultationElementary}명 · 유치부 ${consultationKinder}명` })}
-      ${buildAcademyStatCard('올해 등록', thisYearRegistered.length, thisYearRegistered.length, 'red', { sub: `이달 등록 ${thisMonthRegistered.length}명 · 이달 퇴원 ${thisMonthWithdrawn.length}명` })}
-      ${buildAcademyStatCard('올해 퇴원', thisYearWithdrawn.length, thisYearWithdrawn.length, 'red', { sub: `휴원 ${pausedStudents.length}명 · 퇴원 ${thisYearWithdrawn.length}명` })}
-    </div>
-    <div class="recordAcademyConsultSection">${renderAcademyConsultationList(students)}</div>
-  `;
+  if (window.OlliPcStudentManagement && typeof window.OlliPcStudentManagement.renderDashboard === 'function') {
+    window.OlliPcStudentManagement.renderDashboard();
+  }
 }
 
 async function openRecordAttendanceDashboard(){
