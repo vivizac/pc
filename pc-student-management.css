@@ -1,0 +1,41 @@
+/* 학원관리 */
+body.olliPcApp #recordRoomScreen .recordBodyNew.pcAcademyLayout{
+  display:grid;grid-template-columns:minmax(0,1fr) 402px;gap:20px;align-items:start;
+}
+body.olliPcApp #recordAcademyDashboard{display:none;width:100%;max-width:none;margin:0;}
+body.olliPcApp #recordAcademyDashboard.show{display:block;}
+body.olliPcApp #recordAcademyDashboard .recordAcademyStatGrid{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:0 0 20px;
+}
+body.olliPcApp #recordAcademyDashboard .recordAcademyStatCard{
+  min-height:122px;border:1px solid #e2e4e8;border-radius:24px;background:#fff;padding:20px;box-sizing:border-box;box-shadow:0 8px 24px rgba(20,24,30,.035);
+}
+body.olliPcApp #recordAcademyDashboard .recordAcademyConsultSection{
+  background:#fff;border:1px solid #e2e4e8;border-radius:26px;padding:22px;box-shadow:0 8px 24px rgba(20,24,30,.035);
+}
+body.olliPcApp #recordAcademyDashboard .recordAcademyConsultGroups{display:grid;grid-template-columns:1fr;gap:18px;}
+body.olliPcApp #recordAcademyDashboard .recordAcademyConsultGroupTitle{font-size:12.5px;font-weight:750;color:#69707a;margin-bottom:8px;}
+body.olliPcApp #recordAcademyDashboard .recordAcademyList{display:grid;gap:10px;}
+body.olliPcApp #recordAcademyDashboard .recordAcademyConsultListItem{
+  border:1px solid transparent;border-radius:20px;background:#f7f7f8;padding:14px 16px;cursor:pointer;
+}
+body.olliPcApp #recordAcademyDashboard .recordAcademyConsultListItem:hover{background:#f1f4f8;}
+body.olliPcApp #recordAcademyDashboard .recordAcademyConsultListItem.pcSelected{border-color:#9dceff;background:#fff;}
+body.olliPcApp #recordAcademyDashboard .recordAcademyListName{font-size:13.5px;font-weight:820;}
+body.olliPcApp #recordAcademyDashboard .recordAcademyInfoChip{font-size:10px;color:#9a9ea6;background:transparent;border:0;padding:0;}
+body.olliPcApp #recordAcademyDashboard .recordAcademyConsultStatusChip,
+body.olliPcApp #recordAcademyDashboard .recordAcademyConsultCompleteBtn{height:30px;padding:0 12px;border-radius:999px;font-size:11px;font-weight:800;}
+.pcAcademyDetailPanel{
+  display:none;position:sticky;top:0;min-height:calc(100vh - var(--pc-topbar-h) - 52px);
+  background:#fff;border:1px solid #e2e4e8;border-radius:26px;padding:22px;box-sizing:border-box;box-shadow:0 8px 24px rgba(20,24,30,.035);
+}
+.recordBodyNew.pcAcademyLayout .pcAcademyDetailPanel{display:block;}
+.pcAcademyDetailName{font-size:18px;font-weight:880;letter-spacing:-.045em;}
+.pcAcademyDetailSub{margin-top:7px;font-size:11.5px;font-weight:700;color:#9a9ea6;}
+.pcAcademyDetailBox{margin-top:18px;min-height:265px;border:1px dashed #d8dbe0;border-radius:22px;padding:20px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;color:#8d9199;font-size:12.5px;line-height:1.65;white-space:pre-wrap;}
+.pcAcademyDetailBox.hasContent{align-items:flex-start;justify-content:flex-start;text-align:left;color:#333;}
+
+@media(max-width:1180px){
+  body.olliPcApp #recordRoomScreen .recordBodyNew.pcAcademyLayout{grid-template-columns:minmax(0,1fr) 330px;}
+  body.olliPcApp #recordAcademyDashboard .recordAcademyStatGrid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
