@@ -1,0 +1,18 @@
+/* 기록실 공통 */
+body.olliPcApp #recordRoomScreen{background:var(--pc-bg);overflow:hidden;}
+body.olliPcApp #recordRoomScreen .recordPageInner{width:100%;max-width:none;height:100%;padding:0;overflow:auto;background:transparent;}
+body.olliPcApp #recordRoomScreen .recordStickyArea{display:none;}
+body.olliPcApp #recordRoomScreen .recordBodyNew{padding:26px 26px 34px;box-sizing:border-box;min-height:100%;max-width:none;margin:0;}
+body.olliPcApp #recordRoomScreen .recordRoomScreenFloatingBar{display:none;}
+body.olliPcApp #recordRoomScreen #recordList{width:100%;max-width:none;margin:0;}
+body.olliPcApp #recordRoomScreen .elementaryStudentRow,
+body.olliPcApp #recordRoomScreen .kinderStudentRow{
+  width:100%;min-height:68px;margin:0 0 12px;border:0;border-radius:22px;background:#f7f7f8;padding:0 22px;box-shadow:none;
+}
+body.olliPcApp #recordRoomScreen .elementaryStudentRow:hover,
+body.olliPcApp #recordRoomScreen .kinderStudentRow:hover{background:#f0f2f5;transform:none;}
+body.olliPcApp #recordRoomScreen .elementaryRowInner,
+body.olliPcApp #recordRoomScreen .kinderRowInner{min-height:68px;}
+body.olliPcApp #recordRoomScreen .studentTextWrap>span:first-child{font-size:13.5px;font-weight:800;}
+body.olliPcApp #recordRoomScreen .studentMetaText{font-size:10.5px;color:#9a9ea6;margin-top:3px;}
+body.olliPcApp #recordRoomScreen .recordEmpty{padding:40px 20px;color:#9a9ea6;text-align:center;}
