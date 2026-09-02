@@ -43827,7 +43827,9 @@ document.addEventListener('DOMContentLoaded', function(){
   else start();
 })();
 </script>
-<style id="olliPcAttendanceTimetableStyle">
+<link rel="stylesheet" href="pc-timetable.css">
+<script>window.__OLLI_MODULAR_TIMETABLE__ = true;</script>
+<style id="olliPcAttendanceTimetableStyle" media="not all">
 /* PC 사이드바 출석부: 명단 / 시간표 */
 #recordRoomScreen .olliPcAttendanceTabs {
   display: none;
@@ -44129,6 +44131,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <script id="olliPcAttendanceTimetableScript">
 /* PC 사이드바 출석부의 명단/시간표 전환과 시간표 이동 */
 (function(){
+  if (window.__OLLI_MODULAR_TIMETABLE__) return;
   var DAYS = ['월','화','수','목','금','토'];
   var state = { view: 'list', active: false, move: null, day: '', time: '', saving: false };
 
@@ -44402,5 +44405,7 @@ document.addEventListener('DOMContentLoaded', function(){
   else install();
 })();
 </script>
+<script src="pc-timetable-service.js"></script>
+<script src="pc-timetable.js"></script>
 <script src="consultation-survey.js"></script>
 </body></html>
