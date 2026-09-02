@@ -290,12 +290,12 @@
 .olliTtTypeBtn.active { border-color: #0A84FF; color: #0877df; background: #edf6ff; }
 .olliTtTypeBtn small { display: block; margin-top: 4px; color: #959ca6; font-size: calc(9px * var(--olli-text-scale)); font-weight: 620; }
 .olliTtStatusNotice { margin-top: 16px; padding: 11px 13px; border-radius: 13px; color: #6d5ab0; background: #f1edff; font-size: calc(11px * var(--olli-text-scale)); font-weight: 680; line-height: 1.5; }
-.olliTtRemoveEnrollment { min-height: 64px; margin-top: 18px; padding: 11px 12px 11px 15px; border: 1px solid #f1d7da; border-radius: 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; background: #fff8f8; }
-.olliTtRemoveEnrollment strong { display: block; color: #b94b54; font-size: calc(13px * var(--olli-text-scale)); font-weight: 820; }
-.olliTtRemoveEnrollment span { display: block; margin-top: 3px; color: #a37b80; font-size: calc(10px * var(--olli-text-scale)); font-weight: 650; line-height: 1.4; }
-.olliTtRemoveEnrollment button { min-width: 74px; height: 40px; border: 0; border-radius: 12px; color: #fff; background: #df5d67; font: 780 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
-.olliTtRemoveEnrollment button:hover { background: #cf4e58; }
-.olliTtRemoveEnrollment button:disabled { color: #b6a7a9; background: #eee8e9; cursor: default; }
+.olliTtEnrollmentRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; align-items: stretch; }
+.olliTtEnrollmentRow .olliTtEnrollmentChoice { min-width: 0; }
+.olliTtEnrollmentDelete { min-width: 58px; height: 50px; padding: 0 11px; border: 1px solid #f0d5d8; border-radius: 14px; color: #c34f58; background: #fff8f8; font: 780 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; transition: color .16s ease, background .16s ease, border-color .16s ease; }
+.olliTtEnrollmentDelete:hover:not(:disabled) { color: #fff; border-color: #df5d67; background: #df5d67; }
+.olliTtEnrollmentDelete:focus-visible { outline: 3px solid rgba(10,132,255,.2); outline-offset: 2px; }
+.olliTtEnrollmentDelete:disabled { color: #b6a7a9; border-color: #ece4e5; background: #f4f1f1; cursor: default; }
 .olliTtDialogActions { display: grid; grid-template-columns: 1fr 1.35fr; gap: 9px; margin: 26px -28px -28px; padding: 18px 28px 23px; border-top: 1px solid #eceff2; background: #fafbfc; }
 .olliTtDialogActions button { height: 54px; border: 0; border-radius: 16px; font: 780 calc(14px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 .olliTtDialogCancel { color: #626b77; background: #e9edf1; }
