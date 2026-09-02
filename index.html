@@ -43325,6 +43325,7 @@ document.addEventListener('DOMContentLoaded', function(){
   let pcSection = 'academy';
   let pcAttendanceDivision = 'all';
   let pcAttendanceDay = '';
+  const pcSearchValues = { academy: '', attendance: '' };
   let pcAcademyFilter = 'all';
   let pcAcademySelectedStudentRef = '';
   window.__olliPcAcademySelectedStudentRef = '';
@@ -43418,6 +43419,10 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   function pcSetChrome(section){
+    const search = document.getElementById('olliPcSearch');
+    if (search && Object.prototype.hasOwnProperty.call(pcSearchValues, pcSection)) {
+      pcSearchValues[pcSection] = String(search.value || '');
+    }
     pcSection = section || pcSection;
     const shell = document.getElementById('olliPcShell');
     const topbar = document.getElementById('olliPcTopbar');
@@ -43429,10 +43434,13 @@ document.addEventListener('DOMContentLoaded', function(){
     document.querySelectorAll('[data-pc-nav]').forEach(btn => btn.classList.toggle('active', btn.dataset.pcNav === pcSection));
     const title = document.getElementById('olliPcTopbarTitle');
     if (title) title.textContent = sectionTitles[pcSection] || 'OLLI';
-    const search = document.getElementById('olliPcSearch');
     const archive = document.getElementById('olliPcTopArchiveBtn');
     const sortBtn = document.getElementById('olliPcSortBtn');
-    if (search) search.style.display = (pcSection === 'academy' || pcSection === 'attendance') ? '' : 'none';
+    if (search) {
+      const searchable = pcSection === 'academy' || pcSection === 'attendance';
+      search.style.display = searchable ? '' : 'none';
+      if (searchable) search.value = pcSearchValues[pcSection] || '';
+    }
     if (archive) archive.classList.toggle('show', pcSection === 'observation' || pcSection === 'feedback');
     if (sortBtn) sortBtn.style.visibility = (pcSection === 'observation' || pcSection === 'feedback') ? 'visible' : 'hidden';
     if (pcSection !== 'observation' && pcSection !== 'feedback') {
@@ -43520,7 +43528,7 @@ document.addEventListener('DOMContentLoaded', function(){
     if (dashboard) dashboard.classList.remove('show');
     list.style.display = '';
 
-    const q = String(searchValue ?? document.getElementById('olliPcSearch')?.value ?? '').trim();
+    const q = String(searchValue ?? pcSearchValues.attendance ?? '').trim();
     const elementary = pcActiveStudents('elementary').filter(s => pcStudentMatchesDay(s, pcAttendanceDay) && (!q || String(s.name||'').includes(q)));
     const kinder = pcActiveStudents('kinder').filter(s => pcStudentMatchesDay(s, pcAttendanceDay) && (!q || String(s.name||'').includes(q)));
 
@@ -43623,6 +43631,9 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   function pcHandleTopSearch(value){
+    if (Object.prototype.hasOwnProperty.call(pcSearchValues, pcSection)) {
+      pcSearchValues[pcSection] = String(value || '');
+    }
     if (pcSection === 'attendance') {
       pcRenderAttendanceList(value);
       return;
@@ -43720,6 +43731,7 @@ document.addEventListener('DOMContentLoaded', function(){
     });
 
     pcFilterAcademy(pcAcademyFilter);
+    pcHandleTopSearch(pcSearchValues.academy);
 
     if (pcAcademySelectedStudentRef) {
       const selectedStudent = pcResolveAcademyStudent(pcAcademySelectedStudentRef);
@@ -43768,7 +43780,7 @@ document.addEventListener('DOMContentLoaded', function(){
     else if (page === 'recordRoomScreen' && !['academy','attendance'].includes(nextSection)) {
       nextSection = (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') ? 'academy' : 'attendance';
     }
-    if (nextSection !== pcSection) pcSetChrome(nextSection);
+    if (nextSection !== pcSection || shell?.dataset.pcSection !== nextSection) pcSetChrome(nextSection);
     else {
       const shell = document.getElementById('olliPcShell');
       const topbar = document.getElementById('olliPcTopbar');
@@ -43784,6 +43796,7 @@ document.addEventListener('DOMContentLoaded', function(){
   window.pcOpenSection = pcOpenSection;
   window.pcFilterAttendanceDivision = pcFilterAttendanceDivision;
   window.pcFilterAttendanceDay = pcFilterAttendanceDay;
+  window.pcRenderAttendanceList = pcRenderAttendanceList;
   window.pcFilterAcademy = pcFilterAcademy;
   window.pcSelectAcademyConsultationStudent = pcSelectAcademyConsultationStudent;
   window.pcRefreshAcademyConsultationCompletionState = pcRefreshAcademyConsultationCompletionState;
@@ -43826,7 +43839,7 @@ document.addEventListener('DOMContentLoaded', function(){
   border-radius: 15px;
   background: #f4f4f2;
 }
-#recordRoomScreen.olliPcAttendanceActive .olliPcAttendanceTabs { display: inline-flex; }
+#olliPcShell[data-pc-section="attendance"] ~ #recordRoomScreen .olliPcAttendanceTabs { display: inline-flex; }
 #recordRoomScreen .olliPcAttendanceTab {
   height: 34px;
   min-width: 68px;
@@ -43848,8 +43861,8 @@ document.addEventListener('DOMContentLoaded', function(){
   display: none;
   padding: 0 0 34px;
 }
-#recordRoomScreen.olliPcAttendanceActive .olliPcTimetable.show { display: block; }
-#recordRoomScreen.olliPcAttendanceScheduleView #recordList { display: none; }
+#olliPcShell[data-pc-section="attendance"] ~ #recordRoomScreen .olliPcTimetable.show { display: block; }
+#olliPcShell[data-pc-section="attendance"] ~ #recordRoomScreen.olliPcAttendanceScheduleView #recordList { display: none; }
 #recordRoomScreen .olliPcTimetableIntro {
   display: flex;
   align-items: baseline;
@@ -44140,9 +44153,7 @@ document.addEventListener('DOMContentLoaded', function(){
       ui.timetable.classList.remove('show');
       return;
     }
-    var list = document.getElementById('recordList');
     var showSchedule = state.view === 'schedule';
-    if (list) list.style.display = showSchedule ? 'none' : '';
     ui.timetable.classList.toggle('show', showSchedule);
     if (showSchedule) renderTimetable();
   }
@@ -44162,6 +44173,10 @@ document.addEventListener('DOMContentLoaded', function(){
       return;
     }
     setView(state.view);
+  }
+  function syncAttendanceActive(){
+    var shell = document.getElementById('olliPcShell');
+    setAttendanceActive(!!(shell && shell.dataset.pcSection === 'attendance'));
   }
   function ensureMoveDialog(){
     var overlay = document.getElementById('olliPcScheduleMoveOverlay');
@@ -44246,10 +44261,10 @@ document.addEventListener('DOMContentLoaded', function(){
   function install(){
     ensureUi();
     var shell = document.getElementById('olliPcShell');
-    setAttendanceActive(!!(shell && shell.dataset.pcSection === 'attendance'));
+    syncAttendanceActive();
     if (shell && !shell.__olliAttendanceSectionObserver) {
       shell.__olliAttendanceSectionObserver = new MutationObserver(function(){
-        setAttendanceActive(shell.dataset.pcSection === 'attendance');
+        syncAttendanceActive();
       });
       shell.__olliAttendanceSectionObserver.observe(shell, { attributes:true, attributeFilter:['data-pc-section'] });
     }
@@ -44258,9 +44273,11 @@ document.addEventListener('DOMContentLoaded', function(){
   if (typeof oldOpenSection === 'function') {
     window.pcOpenSection = async function(section){
       setAttendanceActive(section === 'attendance');
-      var result = await oldOpenSection.apply(this, arguments);
-      setAttendanceActive(section === 'attendance');
-      return result;
+      try {
+        return await oldOpenSection.apply(this, arguments);
+      } finally {
+        syncAttendanceActive();
+      }
     };
   }
   ['pcFilterAttendanceDivision','pcFilterAttendanceDay','pcHandleTopSearch'].forEach(function(name){
