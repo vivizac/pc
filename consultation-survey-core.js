@@ -114,7 +114,7 @@ function renderContext(){
   const title=document.getElementById('olliPcContextTitle');const body=document.getElementById('olliPcContextBody');
   if(title)title.textContent='설문 명단 '+rows.length;
   if(body){const done=rows.filter(r=>String(r.status||'survey_completed')==='survey_completed').length;body.innerHTML=`<button class="olliPcQuickBtn active" onclick="refreshConsultationSurveyManager()"><span>전체 제출</span><span>${rows.length}</span></button><button class="olliPcQuickBtn" onclick="refreshConsultationSurveyManager()"><span>설문 완료</span><span>${done}</span></button>`;}
-  const topTitle=document.getElementById('olliPcTopbarTitle');if(topTitle)topTitle.textContent='상담 설문';
+  const topTitle=document.getElementById('olliPcTopbarTitle');if(topTitle)topTitle.textContent='상담기록';
 }
 function render(){
   const list=document.getElementById('consultationSurveyListBody');if(!list)return;
