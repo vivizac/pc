@@ -7,7 +7,7 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 | 사이드바·상단 헤더·화면 전환 | `pc-shell.js` | `pc-shell.css` |
 | 학생관리·할 일·상담예정 학생 영역 | `pc-student-management.js` | `pc-student-management.css` |
 | 성향기록부·학생 명단·관찰기록 패널 | `pc-attendance.js` | `pc-attendance.css` |
-| 관찰기록·1분 피드백 전환과 명단 | `pc-observation.js` | `pc-observation.css` |
+| 관찰노트·1분 피드백 전환과 명단 | `pc-observation.js` | `pc-observation.css` |
 | 시간표 화면·팝업 | `pc-timetable.js` | `pc-timetable.css` |
 | 시간표 데이터 호출·변경 이력·복구 | `pc-timetable-service.js` | - |
 | 상담설문 | `consultation-survey.js`, `consultation-survey-core.js` | `consultation-survey.css` |
@@ -15,7 +15,9 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 ## 공통 연결 원칙
 
 - `pc-shell.js`는 현재 메뉴와 공통 검색값을 보관하고 각 기능 모듈의 `open`, `renderContext`를 호출한다.
-- 학생관리, 성향기록, 관찰기록 모듈은 기존 전역 함수 이름을 직접 바꾸지 않는다.
+- 메뉴를 열 때 로컬 캐시를 먼저 그려 화면을 즉시 전환하고, Supabase 확인은 백그라운드에서 실행한다. 서버 내용이 실제로 달라졌을 때만 현재 화면을 다시 그린다.
+- 화면 표시명은 `성향기록부`, `관찰노트`를 사용한다.
+- 내부 route key인 `attendance`, `observation`은 기존 저장값·onclick·모바일 공통 기능과의 호환을 위한 고정 식별자다. 새 PC 코드에서는 의미가 드러나는 `PERSONALITY_RECORDS`, `OBSERVATION_NOTE`, `OlliPcPersonalityRecords`, `OlliPcObservationNote` 이름을 사용하고, 과거 전역 이름은 호환 별칭으로만 유지한다.
 - 로그인 세션, `academy_id`, 학생 원본 데이터, Supabase 저장 함수는 공통 기존 코드를 그대로 사용한다.
 - 기능을 수정할 때 다른 모듈 코드를 복사하지 않는다. 공통 연결이 필요하면 `OlliPcCore`의 공개 함수만 사용한다.
 - 시간표와 상담설문은 독립 모듈 상태를 유지하며 PC 셸의 메뉴 전환 함수만 연결한다.

@@ -14,7 +14,8 @@
     return String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
   }
   function isPcAttendance() {
-    return core()?.state?.section === 'attendance' && (!global.matchMedia || global.matchMedia('(min-width: 900px)').matches);
+    const sectionKey = core()?.SECTION?.PERSONALITY_RECORDS || 'attendance';
+    return core()?.state?.section === sectionKey && (!global.matchMedia || global.matchMedia('(min-width: 900px)').matches);
   }
 
   function studentMatchesDay(student, day) {
@@ -214,23 +215,27 @@
     });
   }
 
-  async function open() {
+  function open() {
     const app = core();
-    app.hideMainScreensExcept('recordRoomScreen');
+    const targetView = typeof currentObservationView !== 'undefined' && currentObservationView === 'kinder' ? 'kinder' : 'elementary';
+    app.showRecordRoomImmediately(targetView);
     ensureDetailPanel();
     bindRosterClicks();
     installLegacyBridge();
     state.selectedStudentId = '';
     state.loadToken += 1;
     renderEmptyDetail();
-    if (typeof showRecordRoom === 'function') await showRecordRoom();
-    if (typeof openRecordAttendanceDashboard === 'function') await openRecordAttendanceDashboard();
-    else if (typeof currentRecordView !== 'undefined') currentRecordView = typeof currentObservationView !== 'undefined' && currentObservationView === 'kinder' ? 'kinder' : 'elementary';
     app.state.attendanceDivision = 'all';
     app.state.attendanceDay = '';
     app.updateRecordLayout();
     app.renderContext();
     renderList();
+    if (typeof loadStudentsFromSupabase === 'function') {
+      Promise.resolve(loadStudentsFromSupabase()).then((result) => {
+        if (!isPcAttendance() || result?.changed !== true) return;
+        renderList();
+      }).catch((error) => console.warn('성향기록부 학생 백그라운드 동기화 실패:', error));
+    }
   }
 
   function renderList(searchValue) {
@@ -244,6 +249,7 @@
     installLegacyBridge();
     if (dashboard) dashboard.classList.remove('show');
     list.style.display = '';
+    const previousScrollTop = list.scrollTop;
 
     const query = String(searchValue ?? app.state.searchValues.attendance ?? '').trim();
     const elementary = app.activeStudents('elementary').filter((student) => studentMatchesDay(student, app.state.attendanceDay) && (!query || String(student.name || '').includes(query)));
@@ -261,6 +267,7 @@
     list.innerHTML = html || '<div class="recordEmpty">조건에 맞는 학생이 없습니다.</div>';
     ensureRosterHeader(visibleCount);
     decorateRows();
+    list.scrollTop = previousScrollTop;
     app.renderContext();
   }
 
@@ -275,6 +282,9 @@
     renderList();
   }
 
-  global.OlliPcAttendance = { studentMatchesDay, renderContext, ensureDetailPanel, open, renderList, filterDivision, filterDay, selectStudent, decorateRows };
+  const api = { studentMatchesDay, renderContext, ensureDetailPanel, open, renderList, filterDivision, filterDay, selectStudent, decorateRows };
+  global.OlliPcPersonalityRecords = api;
+  // 이전 배포의 외부 호출과 저장된 route key를 깨지 않기 위한 호환 별칭입니다.
+  global.OlliPcAttendance = api;
   global.pcSelectAttendanceStudent = selectStudent;
 })(window);

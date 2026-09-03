@@ -17,7 +17,10 @@
     view: 'list',
     weekStart: mondayOf(new Date()),
     data: null,
+    dataWeek: '',
+    dataAcademyId: '',
     loading: false,
+    loadingWeek: '',
     loadToken: 0,
     sidebarFilter: 'all',
     sidebarQuery: '',
@@ -191,22 +194,49 @@
 
   async function loadWeek() {
     if (!state.active || state.view !== 'schedule') return;
+    const requestedWeek = dateKey(state.weekStart);
+    const requestedAcademyId = typeof service.currentAcademyId === 'function' ? service.currentAcademyId() : '';
+    if (state.loading && state.loadingWeek === requestedWeek && state.dataAcademyId === requestedAcademyId) return;
+    if ((!state.data || state.dataWeek !== requestedWeek || state.dataAcademyId !== requestedAcademyId) && typeof service.getCachedWeek === 'function') {
+      const cached = service.getCachedWeek(requestedWeek);
+      if (cached) {
+        state.data = cached;
+        state.dataWeek = requestedWeek;
+        state.dataAcademyId = requestedAcademyId;
+      } else {
+        state.data = null;
+        state.dataWeek = '';
+        state.dataAcademyId = requestedAcademyId;
+      }
+    }
     const token = ++state.loadToken;
     state.loading = true;
+    state.loadingWeek = requestedWeek;
     renderTimetable();
     try {
-      const data = await service.loadWeek(dateKey(state.weekStart));
+      const data = await service.loadWeek(requestedWeek);
       if (token !== state.loadToken) return;
+      const changed = state.dataWeek !== requestedWeek || state.dataAcademyId !== requestedAcademyId || JSON.stringify(state.data) !== JSON.stringify(data);
       state.data = data;
+      state.dataWeek = requestedWeek;
+      state.dataAcademyId = requestedAcademyId;
       state.loading = false;
-      renderTimetable();
-      renderSidebar();
-      refreshOpenStudentInfoPanel();
+      state.loadingWeek = '';
+      if (changed) {
+        renderTimetable();
+        renderSidebar();
+        refreshOpenStudentInfoPanel();
+      }
     } catch (error) {
       if (token !== state.loadToken) return;
       state.loading = false;
-      state.data = { error: error && (error.message || error) || '시간표를 불러오지 못했습니다.' };
-      renderTimetable();
+      state.loadingWeek = '';
+      if (!state.data || state.dataWeek !== requestedWeek || state.dataAcademyId !== requestedAcademyId) {
+        state.data = { error: error && (error.message || error) || '시간표를 불러오지 못했습니다.' };
+        state.dataWeek = requestedWeek;
+        state.dataAcademyId = requestedAcademyId;
+        renderTimetable();
+      }
     }
   }
 
@@ -318,6 +348,8 @@
       if (weekButton.dataset.ttWeek === 'next') state.weekStart = addDays(state.weekStart, 7);
       if (weekButton.dataset.ttWeek === 'today') state.weekStart = mondayOf(new Date());
       state.data = null;
+      state.dataWeek = '';
+      state.dataAcademyId = '';
       loadWeek();
       return true;
     }
@@ -724,6 +756,8 @@
       await service.restoreHistory(dialog.item.transaction_id);
       state.saving = false;
       state.data = null;
+      state.dataWeek = '';
+      state.dataAcademyId = '';
       await loadWeek();
       notify(`${dialog.item.student_name || '학생'} 시간표를 변경 전 상태로 복구했어요.`);
       openHistory();

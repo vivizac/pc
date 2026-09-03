@@ -3,6 +3,7 @@
 
   const DAYS = ['월', '화', '수', '목', '금', '토'];
   const SESSION_KEY = 'olli_account_session_token_v1';
+  const WEEK_CACHE_PREFIX = 'olli_schedule_week_cache_v1';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -20,6 +21,32 @@
 
   function currentSessionToken() {
     return clean(localStorage.getItem(SESSION_KEY));
+  }
+
+  function weekCacheKey(weekStart) {
+    return `${WEEK_CACHE_PREFIX}_${currentAcademyId() || 'unknown'}_${clean(weekStart)}`;
+  }
+
+  function getCachedWeek(weekStart) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(weekCacheKey(weekStart)) || 'null');
+      if (!cached || cached.academy_id !== currentAcademyId() || cached.week_start !== clean(weekStart)) return null;
+      return cached.data && typeof cached.data === 'object' ? cached.data : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function cacheWeek(weekStart, data) {
+    if (!data || typeof data !== 'object' || data.error) return;
+    try {
+      localStorage.setItem(weekCacheKey(weekStart), JSON.stringify({
+        academy_id: currentAcademyId(),
+        week_start: clean(weekStart),
+        cached_at: new Date().toISOString(),
+        data
+      }));
+    } catch (_) {}
   }
 
   function activeStudents() {
@@ -104,7 +131,9 @@
   async function loadWeek(weekStart) {
     await bootstrapLegacy();
     await rpc('olli_schedule_apply_due', contextPayload());
-    return rpc('olli_schedule_week', contextPayload({ p_week_start: weekStart }));
+    const data = await rpc('olli_schedule_week', contextPayload({ p_week_start: weekStart }));
+    cacheWeek(weekStart, data);
+    return data;
   }
 
   async function executeScheduleAction(action, params) {
@@ -176,6 +205,7 @@
     activeStudents,
     currentAcademyId,
     legacyPairs,
+    getCachedWeek,
     loadWeek,
     changeSchedule,
     resolveWaitlist,

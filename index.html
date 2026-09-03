@@ -8784,7 +8784,7 @@ body.olli-login-open {
       <svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2.5"></rect><path d="M8.5 12l2 2 4.5-5"></path></svg><span>성향기록부</span>
     </button>
     <button class="olliPcNavBtn" data-pc-nav="observation" type="button" onclick="pcOpenSection('observation')">
-      <svg viewBox="0 0 24 24"><rect x="4.5" y="5" width="15" height="14" rx="2"></rect><path d="M8 9h8M8 13h5"></path></svg><span>관찰기록</span>
+      <svg viewBox="0 0 24 24"><rect x="4.5" y="5" width="15" height="14" rx="2"></rect><path d="M8 9h8M8 13h5"></path></svg><span>관찰노트</span>
     </button>
     <button class="olliPcNavBtn" data-pc-nav="consultation" type="button" onclick="pcOpenSection('consultation')">
       <svg viewBox="0 0 24 24"><path d="M6 4.5h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-4.5 3v-3H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"></path><path d="M8 9h8M8 13h5"></path></svg><span>상담기록</span>
@@ -12797,8 +12797,7 @@ async function setSelectedStudentStatus(status) {
   const searchValue = document.getElementById('searchName')?.value.trim() || '';
 
   // 서버를 다시 읽기 전에 로컬 상태를 즉시 반영합니다.
-  if (currentRecordView === 'elementary') renderElementaryRecords(searchValue);
-  else if (currentRecordView === 'kinder') renderKinderRecords(searchValue);
+  if (currentRecordView === 'elementary' || currentRecordView === 'kinder') renderCurrentStudentRecords(searchValue);
   else if (currentRecordView === 'academy') renderRecordAcademyManagementDashboard();
 
   try {
@@ -13539,9 +13538,10 @@ async function ensureStudentSavedToSupabase(student) {
 }
 
 async function loadStudentsFromSupabase() {
-  if (!isSupabaseConfigured()) return;
+  if (!isSupabaseConfigured()) return { changed: false, skipped: true };
   const academyId = getOlliCurrentAcademyId();
-  if (!academyId) return;
+  if (!academyId) return { changed: false, skipped: true };
+  const beforeSnapshot = JSON.stringify(getAllStudents());
   const academyContext = window.OlliStorageCore?.AcademyContext;
   const requestToken = academyContext?.captureToken ? academyContext.captureToken() : null;
   const requestIsCurrent = () => academyContext?.isTokenCurrent
@@ -13549,7 +13549,7 @@ async function loadStudentsFromSupabase() {
     : getOlliCurrentAcademyId() === academyId;
   try {
     await flushPendingStudentStatuses();
-    if (!requestIsCurrent()) return;
+    if (!requestIsCurrent()) return { changed: false, stale: true };
     const rows = await supabase('GET', `students?select=*&academy_id=eq.${encodeURIComponent(academyId)}&order=name.asc`);
     const pendingStatusMap = getPendingStudentStatusMap();
     const localById = new Map(getAllStudents().map(s => [String(s.id || ''), s]));
@@ -13598,13 +13598,15 @@ async function loadStudentsFromSupabase() {
       byId.set(String(studentId), preserved);
     });
 
-    if (!requestIsCurrent()) return;
-    setAllStudents(Array.from(byId.values()).filter(s => s.academy_id === academyId).sort((a,b) => a.name.localeCompare(b.name, 'ko')));
+    if (!requestIsCurrent()) return { changed: false, stale: true };
+    const nextStudents = Array.from(byId.values()).filter(s => s.academy_id === academyId).sort((a,b) => a.name.localeCompare(b.name, 'ko'));
+    if (JSON.stringify(nextStudents) !== JSON.stringify(getAllStudents())) setAllStudents(nextStudents);
     await syncOlliStudentLifecycleAfterLoad();
+    return { changed: beforeSnapshot !== JSON.stringify(getAllStudents()) };
   } catch (err) {
-    if (!requestIsCurrent()) return;
+    if (!requestIsCurrent()) return { changed: false, stale: true };
     console.warn('students table load skipped:', err.message || err);
-    setAllStudents(getAllStudents());
+    return { changed: false, error: err };
   }
 }
 
@@ -13624,10 +13626,10 @@ async function syncVisibleStudentListSilently() {
   if (!['elementary', 'kinder', 'academy'].includes(currentRecordView)) return;
   olliStudentSyncInFlight = true;
   try {
-    await loadStudentsFromSupabase();
+    const result = await loadStudentsFromSupabase();
+    if (result && result.changed === false) return;
     const searchValue = document.getElementById('searchName')?.value.trim() || '';
-    if (currentRecordView === 'elementary') renderElementaryRecords(searchValue);
-    else if (currentRecordView === 'kinder') renderKinderRecords(searchValue);
+    if (currentRecordView === 'elementary' || currentRecordView === 'kinder') renderCurrentStudentRecords(searchValue);
     else if (currentRecordView === 'academy') renderRecordAcademyManagementDashboard();
     } catch (err) {
     console.warn('학생 목록 백그라운드 동기화 보류:', err?.message || err);
@@ -17328,7 +17330,7 @@ function openStudentMemoPageById(studentId) {
     const localEntry = getMemoEntryByStudent(student);
     memoEditor.value = localEntry.content || '';
 
-    // 성향기록지는 로컬 캐시를 먼저 표시해 화면 깜박임을 막고,
+    // 관찰노트는 로컬 캐시를 먼저 표시해 화면 깜박임을 막고,
     // Supabase 최신 확인은 화면 뒤에서 조용히 처리한다.
     loadStudentNoteDraftFromSupabase(student, 'elementary_observation')
       .then(row => {
@@ -17929,8 +17931,7 @@ function toggleRecordStatusSection(view, status) {
   if (!recordStatusSectionOpenState[view] || !(status in recordStatusSectionOpenState[view])) return;
   recordStatusSectionOpenState[view][status] = !recordStatusSectionOpenState[view][status];
   const searchValue = document.getElementById('searchName')?.value.trim() || '';
-  if (view === 'elementary') renderElementaryRecords(searchValue);
-  else if (view === 'kinder') renderKinderRecords(searchValue);
+  if (view === currentRecordView && (view === 'elementary' || view === 'kinder')) renderCurrentStudentRecords(searchValue);
 }
 
 function renderRecordStatusSection(view, status, label, rowsHtml, emptyText) {
@@ -18070,8 +18071,7 @@ function toggleRecordTodayAttendance(event, studentId) {
   const nextStatus = currentStatus === expectedStatus ? '' : expectedStatus;
   setRecordAttendanceStatus(student, dateKey, nextStatus);
   const searchValue = document.getElementById('searchName')?.value.trim() || '';
-  if (currentRecordView === 'elementary') renderElementaryRecords(searchValue);
-  else if (currentRecordView === 'kinder') renderKinderRecords(searchValue);
+  if (currentRecordView === 'elementary' || currentRecordView === 'kinder') renderCurrentStudentRecords(searchValue);
 }
 function getRecordAttendanceMonthRange(baseDate = new Date()) {
   const year = baseDate.getFullYear();
@@ -18117,8 +18117,7 @@ function renderRecordAttendanceSummary() {
   currentRecordView = currentObservationView === 'kinder' ? 'kinder' : 'elementary';
   updateRecordHeaderUI();
   const searchValue = document.getElementById('searchName')?.value.trim() || '';
-  if (currentRecordView === 'kinder') renderKinderRecords(searchValue);
-  else renderElementaryRecords(searchValue);
+  renderCurrentStudentRecords(searchValue);
 }
 
 function renderElementaryStudentRows(students) {
@@ -18544,6 +18543,7 @@ async function loadOlliSharedSettingsFromServer() {
   }
 
   try {
+    const beforeMap = JSON.stringify(readElementaryGroupFeedbackMonthsMap());
     const request = loadOlliData('elementary_group_feedback_months', { academyId, backgroundRefresh: true });
     const localMap = normalizeElementaryGroupFeedbackMonthsMap(request.localData);
     if (Object.keys(localMap).length) writeElementaryGroupFeedbackMonthsMap(localMap, { skipServerSync: true });
@@ -18553,7 +18553,7 @@ async function loadOlliSharedSettingsFromServer() {
       writeElementaryGroupFeedbackMonthsMap(serverMap, { skipServerSync: true });
     }
     olliSharedSettingsServerLoaded = true;
-    return true;
+    return beforeMap !== JSON.stringify(readElementaryGroupFeedbackMonthsMap());
   } catch(err) {
     recordOlliStorageIssue({ feature: '그룹별 피드백 발송월', resource: OLLI_SHARED_SETTINGS_TABLE, operation: 'load', message: err.message || err });
     console.warn('그룹별 피드백 발송월 공통 저장 불러오기 실패:', err.message || err);
@@ -18774,7 +18774,7 @@ async function loadOlliConsultationRulesFromServer(options = {}){
     // 실제 기준이 바뀐 경우에만 상담예정 명단을 다시 생성합니다.
     const afterRules = JSON.stringify(getOlliConsultationRulesMap());
     if (beforeRules !== afterRules) refreshOlliConsultationViews();
-    return !!(refreshed && (refreshed.refreshed || refreshed.protectedPending));
+    return beforeRules !== afterRules;
   })().catch(err => {
     console.warn('상담기준 불러오기 실패:', err && (err.message || err));
     return false;
@@ -18946,6 +18946,7 @@ async function loadOlliConsultationProgressFromServer(options = {}){
 
   olliConsultationProgressLastRefreshAt = now;
   olliConsultationProgressRefreshPromise = (async () => {
+    const beforeProgress = JSON.stringify(getOlliConsultationProgress());
     const request = loadOlliData(OLLI_CONSULTATION_PROGRESS_FEATURE, { academyId, backgroundRefresh: true });
     const refreshed = await request.refreshPromise;
     let progress = getOlliConsultationProgress();
@@ -18962,14 +18963,15 @@ async function loadOlliConsultationProgressFromServer(options = {}){
       });
     }
 
-    if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') {
+    const changed = beforeProgress !== JSON.stringify(getOlliConsultationProgress());
+    if (changed && typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') {
       if (document.body?.classList?.contains('olliPcApp') && typeof window.pcRefreshAcademyConsultationCompletionState === 'function') {
         window.pcRefreshAcademyConsultationCompletionState();
       } else if (typeof renderRecordAcademyManagementDashboard === 'function') {
         renderRecordAcademyManagementDashboard();
       }
     }
-    return !!(refreshed && (refreshed.refreshed || refreshed.protectedPending));
+    return changed;
   })().catch(err => {
     console.warn('상담 진행상태 불러오기 실패:', err && (err.message || err));
     // 서버 컬럼이 아직 준비되지 않은 경우에도 현재 기기의 이월 기능은 유지합니다.
@@ -19352,6 +19354,20 @@ async function openRecordAttendanceDashboard(){
   updateNotificationButtons();
 }
 
+function renderCurrentStudentRecords(name) {
+  const shell = document.getElementById('olliPcShell');
+  const usePcPersonalityRecords = shell?.dataset.pcSection === 'attendance'
+    && (!window.matchMedia || window.matchMedia('(min-width: 900px)').matches)
+    && window.OlliPcPersonalityRecords
+    && typeof window.OlliPcPersonalityRecords.renderList === 'function';
+  if (usePcPersonalityRecords) {
+    window.OlliPcPersonalityRecords.renderList(name);
+    return;
+  }
+  if (currentRecordView === 'kinder') renderKinderRecords(name);
+  else renderElementaryRecords(name);
+}
+
 async function toggleRecordAcademyManagementMode(){
   if (typeof canAccessOlliStartPageAcademyManagement === 'function' && !canAccessOlliStartPageAcademyManagement()) {
     if (currentRecordView === 'academy') {
@@ -19392,13 +19408,15 @@ async function loadRecords(name) {
       (typeof loadOlliSharedSettingsFromServer === 'function') ? loadOlliSharedSettingsFromServer() : Promise.resolve(false),
       (typeof loadOlliConsultationRulesFromServer === 'function') ? loadOlliConsultationRulesFromServer({ force: true }) : Promise.resolve(false),
       (typeof loadOlliConsultationProgressFromServer === 'function') ? loadOlliConsultationProgressFromServer({ force: true }) : Promise.resolve(false)
-    ]).catch(() => {});
-    const studentsPromise = loadStudentsFromSupabase().catch(err => {
+    ]).then(results => results.some(result => result === true || result?.changed === true)).catch(() => false);
+    const studentsPromise = loadStudentsFromSupabase().then(result => !!result?.changed).catch(err => {
       console.warn('학원관리 학생 동기화 실패:', err);
+      return false;
     });
-    Promise.all([settingsPromise, studentsPromise]).then(() => {
+    Promise.all([settingsPromise, studentsPromise]).then(([settingsChanged, studentsChanged]) => {
       if (currentRecordView !== 'academy') return;
       if (academyLoadToken !== academyManagementLoadToken) return;
+      if (!settingsChanged && !studentsChanged) return;
       renderRecordAcademyManagementDashboard();
       scheduleAcademyConsultationSummaryAutoCheck(900);
     }).catch(() => {});
@@ -19407,16 +19425,22 @@ async function loadRecords(name) {
 
 
   if (currentRecordView === 'elementary') {
-    renderElementaryRecords(name);
-    await loadStudentsFromSupabase();
-    renderElementaryRecords(name);
+    const requestedView = currentRecordView;
+    renderCurrentStudentRecords(name);
+    loadStudentsFromSupabase().then(result => {
+      if (currentRecordView !== requestedView || result?.changed !== true) return;
+      renderCurrentStudentRecords(name);
+    }).catch(err => console.warn('초등부 학생 백그라운드 동기화 실패:', err));
     return;
   }
 
   if (currentRecordView === 'kinder') {
-    renderKinderRecords(name);
-    await loadStudentsFromSupabase();
-    renderKinderRecords(name);
+    const requestedView = currentRecordView;
+    renderCurrentStudentRecords(name);
+    loadStudentsFromSupabase().then(result => {
+      if (currentRecordView !== requestedView || result?.changed !== true) return;
+      renderCurrentStudentRecords(name);
+    }).catch(err => console.warn('유치부 학생 백그라운드 동기화 실패:', err));
     return;
   }
 
@@ -28436,8 +28460,7 @@ document.addEventListener('DOMContentLoaded', function(){
   function refreshCurrentStudentRows(){
     var searchValue = document.getElementById('searchName')?.value.trim() || '';
     try {
-      if (currentRecordView === 'kinder' && typeof window.renderKinderRecords === 'function') window.renderKinderRecords(searchValue);
-      else if (currentRecordView === 'elementary' && typeof window.renderElementaryRecords === 'function') window.renderElementaryRecords(searchValue);
+      if ((currentRecordView === 'kinder' || currentRecordView === 'elementary') && typeof window.renderCurrentStudentRecords === 'function') window.renderCurrentStudentRecords(searchValue);
       else if (typeof window.loadRecords === 'function') window.loadRecords(searchValue);
     } catch(e) {}
   }
@@ -42934,8 +42957,7 @@ body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfSendBtn {
     var searchValue = document.getElementById('searchName')?.value.trim() || '';
     try {
       if (typeof window.scheduleRecordAttendanceGuideButtonAlign === 'function') window.scheduleRecordAttendanceGuideButtonAlign();
-      if (typeof currentRecordView !== 'undefined' && currentRecordView === 'kinder' && typeof window.renderKinderRecords === 'function') window.renderKinderRecords(searchValue);
-      else if (typeof currentRecordView !== 'undefined' && currentRecordView === 'elementary' && typeof window.renderElementaryRecords === 'function') window.renderElementaryRecords(searchValue);
+      if (typeof currentRecordView !== 'undefined' && (currentRecordView === 'kinder' || currentRecordView === 'elementary') && typeof window.renderCurrentStudentRecords === 'function') window.renderCurrentStudentRecords(searchValue);
       else if (typeof window.loadRecords === 'function') window.loadRecords(searchValue);
     } catch(_) {}
   }

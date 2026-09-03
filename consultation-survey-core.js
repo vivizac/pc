@@ -18,11 +18,13 @@ const QUESTIONS=[
 {id:'Q14',text:'아이는 자신이 궁금한 점이나 생각·경험을 질문이나 이야기로 자주 표현하는 편인가요?',mid:'가끔'}
 ];
 let rows=[];
+let rowsAcademyId='';
 let selectedId='';
 let pollTimer=null;
 let analysisLoadPromise=null;
 const detailTabById=new Map();
 const consultationScriptBase=(document.currentScript&&document.currentScript.src)?document.currentScript.src:location.href;
+const ROWS_CACHE_PREFIX='olli_consultation_rows_cache_v1';
 
 function esc(value){
   if(typeof window.escapeHtml==='function')return window.escapeHtml(String(value??''));
@@ -32,6 +34,10 @@ function academyId(){
   return String((typeof window.getOlliCurrentAcademyId==='function'?window.getOlliCurrentAcademyId():'')||localStorage.getItem('olli_current_academy_id')||'').trim();
 }
 function sessionToken(){return String(localStorage.getItem('olli_account_session_token_v1')||'').trim();}
+function rowsCacheKey(){return `${ROWS_CACHE_PREFIX}_${academyId()||'unknown'}`;}
+function readRowsCache(){try{const value=JSON.parse(localStorage.getItem(rowsCacheKey())||'[]');return Array.isArray(value)?value:[];}catch(_){return[];}}
+function writeRowsCache(items){try{localStorage.setItem(rowsCacheKey(),JSON.stringify(Array.isArray(items)?items:[]));}catch(_){}}
+function rowsSignature(items){return JSON.stringify(Array.isArray(items)?items:[]);}
 function answerLabel(value,q){return value==='YES'?'그렇다':value==='MID'?(q?.mid||'보통'):value==='NO'?'아니다':'응답 없음';}
 function dateLabel(value){const d=new Date(value);if(Number.isNaN(d.getTime()))return'';return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;}
 function statusLabel(value){return({survey_completed:'설문 완료',observation_waiting:'수업 관찰 대기',observation_in_progress:'수업 관찰 중',final_analysis_waiting:'최종 분석 대기',ready:'상담 준비 완료',completed:'상담 완료'})[String(value||'')]||'설문 완료';}
@@ -101,13 +107,13 @@ async function rpc(name,payload){
 }
 async function loadRows(){
   const aid=academyId();const token=sessionToken();
-  if(!aid){setHint('현재 학원 정보를 찾지 못했습니다. 다시 로그인한 뒤 확인해주세요.');return[];}
-  if(!token){setHint('상담 설문 명단을 불러오려면 올리 계정 로그인이 필요합니다.');return[];}
+  if(!aid){setHint('현재 학원 정보를 찾지 못했습니다. 다시 로그인한 뒤 확인해주세요.');return null;}
+  if(!token){setHint('상담 설문 명단을 불러오려면 올리 계정 로그인이 필요합니다.');return null;}
   try{
     const result=await rpc('olli_list_consultation_surveys',{p_session_token:token,p_academy_id:aid,p_limit:300});
     if(!result||result.ok!==true)throw new Error(result?.message||'상담 설문 명단 조회 권한을 확인해주세요.');
     setHint('');return Array.isArray(result.rows)?result.rows:[];
-  }catch(err){setHint(err?.message||'상담 설문 명단을 불러오지 못했습니다.');return[];}
+  }catch(err){setHint(err?.message||'상담 설문 명단을 불러오지 못했습니다.');return null;}
 }
 function renderContext(){
   const shell=document.getElementById('olliPcShell');if(shell?.dataset.pcSection!=='consultation')return;
@@ -153,7 +159,7 @@ function renderDetail(id){
   window.syncConsultationDetailTabs();
 }
 window.openConsultationSurveyDetail=function(id){selectedId=String(id||'');render();};
-window.refreshConsultationSurveyManager=async function(){rows=await loadRows();rows.sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));window.__olliConsultationRows=rows.slice();render();return rows;};
+window.refreshConsultationSurveyManager=async function(){const activeAcademyId=academyId();const loaded=await loadRows();if(!Array.isArray(loaded))return rows.slice();loaded.sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));const changed=rowsAcademyId!==activeAcademyId||rowsSignature(rows)!==rowsSignature(loaded);rows=loaded;rowsAcademyId=activeAcademyId;writeRowsCache(rows);window.__olliConsultationRows=rows.slice();if(changed)render();else renderContext();return rows;};
 window.getConsultationSurveyRows=function(){return rows.slice();};
 window.copyConsultationSurveyLink=async function(){
   const aid=academyId();if(!aid){alert('현재 학원 ID를 찾지 못했습니다. 로그인 상태를 확인해주세요.');return;}
@@ -166,7 +172,11 @@ window.copyConsultationSurveyLink=async function(){
 };
 
 function showConsultationScreen(){
-  ensureScreen();document.querySelectorAll('.pageScreen').forEach(s=>s.style.display=s.id==='consultationSurveyScreen'?'flex':'none');renderContext();window.refreshConsultationSurveyManager();
+  ensureScreen();document.querySelectorAll('.pageScreen').forEach(s=>s.style.display=s.id==='consultationSurveyScreen'?'flex':'none');
+  const activeAcademyId=academyId();
+  if(rowsAcademyId!==activeAcademyId){rows=readRowsCache();rowsAcademyId=activeAcademyId;}
+  render();
+  window.refreshConsultationSurveyManager();
 }
 function installPcHook(){
   if(typeof window.pcOpenSection!=='function'||window.pcOpenSection.__consultationHook)return;

@@ -51,8 +51,8 @@
 
   function renderTopbar(title) {
     const observationActive = core().state.observationTab !== 'feedback';
-    title.innerHTML = '<div class="olliPcTopbarTabs" role="tablist" aria-label="관찰기록 보기">'
-      + '<button type="button" class="olliPcTopbarTab '+(observationActive ? 'active' : '')+'" role="tab" aria-selected="'+String(observationActive)+'" onclick="pcSetObservationTab(\'observation\')">관찰기록</button>'
+    title.innerHTML = '<div class="olliPcTopbarTabs" role="tablist" aria-label="관찰노트 보기">'
+      + '<button type="button" class="olliPcTopbarTab '+(observationActive ? 'active' : '')+'" role="tab" aria-selected="'+String(observationActive)+'" onclick="pcSetObservationTab(\'observation\')">관찰노트</button>'
       + '<button type="button" class="olliPcTopbarTab '+(!observationActive ? 'active' : '')+'" role="tab" aria-selected="'+String(!observationActive)+'" onclick="pcSetObservationTab(\'feedback\')">1분 피드백</button>'
       + '</div>';
   }
@@ -142,5 +142,8 @@
     document.getElementById('memoRecordsBtn')?.click();
   }
 
-  global.OlliPcObservation = { studentCubeSvg, metaText, rosterHtml, renderContext, renderTopbar, open, openStudentInfo, openSidebarSort, refreshRoster, selectStudent, openArchive };
+  const api = { studentCubeSvg, metaText, rosterHtml, renderContext, renderTopbar, open, openStudentInfo, openSidebarSort, refreshRoster, selectStudent, openArchive };
+  global.OlliPcObservationNote = api;
+  // 기존 route key와 외부 호출은 호환 별칭으로 유지합니다.
+  global.OlliPcObservation = api;
 })(window);

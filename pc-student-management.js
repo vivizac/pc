@@ -167,12 +167,12 @@
     renderTodoCard();
   }
 
-  async function open() {
+  function open() {
     const app = core();
-    app.hideMainScreensExcept('recordRoomScreen');
-    if (typeof showRecordRoom === 'function') await showRecordRoom();
-    if (typeof currentRecordView !== 'undefined' && currentRecordView !== 'academy' && typeof toggleRecordAcademyManagementMode === 'function') await toggleRecordAcademyManagementMode();
+    app.showRecordRoomImmediately('academy');
     app.updateRecordLayout();
+    renderDashboard();
+    if (typeof loadRecords === 'function') Promise.resolve(loadRecords('')).catch((error) => console.warn('학생관리 백그라운드 동기화 실패:', error));
     setTimeout(bindRows, 50);
   }
 
