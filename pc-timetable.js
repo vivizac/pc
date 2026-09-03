@@ -38,6 +38,7 @@
     const applyValue = () => {
       updateValue(clean(input.value));
       rerender();
+      if (!focusSelector) return;
       requestAnimationFrame(() => {
         const next = document.querySelector(focusSelector);
         if (next) {
@@ -403,6 +404,36 @@
     const body = document.getElementById('olliPcContextBody');
     if (!title || !body) return;
     title.textContent = '빠른 보기';
+    // 한글 IME 조합이 끊기지 않도록 검색창은 유지하고 결과 영역만 갱신합니다.
+    let input = body.querySelector('#olliTtQuickSearch');
+    let results = body.querySelector('[data-tt-sidebar-results]');
+    if (!input || !results) {
+      body.innerHTML = `<div class="olliTtQuickFilter"><button type="button" class="olliTtQuickFilterBtn" data-tt-filter="all">전체</button><button type="button" class="olliTtQuickFilterBtn" data-tt-filter="elementary">초등부</button><button type="button" class="olliTtQuickFilterBtn" data-tt-filter="kinder">유치부</button></div>`
+        + `<input type="search" class="olliTtQuickSearch" id="olliTtQuickSearch" value="${esc(state.sidebarQuery)}" placeholder="학생 검색" aria-label="시간표 학생 검색">`
+        + '<div data-tt-sidebar-results></div>';
+      input = body.querySelector('#olliTtQuickSearch');
+      results = body.querySelector('[data-tt-sidebar-results]');
+      body.querySelectorAll('[data-tt-filter]').forEach((button) => button.addEventListener('click', () => {
+        state.sidebarFilter = button.dataset.ttFilter;
+        renderSidebar();
+      }));
+      bindImeSafeSearch(
+        input,
+        (value) => { state.sidebarQuery = value; },
+        () => renderSidebarResults(body),
+        null
+      );
+    } else if (document.activeElement !== input && input.value !== state.sidebarQuery) {
+      input.value = state.sidebarQuery;
+    }
+    body.querySelectorAll('[data-tt-filter]').forEach((button) => button.classList.toggle('active', button.dataset.ttFilter === state.sidebarFilter));
+    renderSidebarResults(body);
+  }
+
+  function renderSidebarResults(body) {
+    if (!body || !state.active || state.view !== 'schedule') return;
+    const results = body.querySelector('[data-tt-sidebar-results]');
+    if (!results) return;
     const students = service.activeStudents().filter((student) => {
       const division = divisionOf(student);
       return (state.sidebarFilter === 'all' || state.sidebarFilter === division)
@@ -411,17 +442,8 @@
     const elementary = students.filter((student) => divisionOf(student) === 'elementary');
     const kinder = students.filter((student) => divisionOf(student) === 'kinder');
     const groupHtml = (list, division) => list.length ? `<div class="olliTtQuickGroup"><div class="olliTtQuickGroupTitle">${divisionLabel(division)} · ${list.length}명</div>${list.map((student) => `<button type="button" class="olliTtQuickStudent" data-tt-sidebar-student="${esc(student.id)}"><span>${esc(student.name)}</span><span class="olliTtQuickStudentSchedule">${esc(studentScheduleText(student.id))}</span></button>`).join('')}</div>` : '';
-    body.innerHTML = `<div class="olliTtQuickFilter"><button type="button" class="olliTtQuickFilterBtn ${state.sidebarFilter === 'all' ? 'active' : ''}" data-tt-filter="all">전체</button><button type="button" class="olliTtQuickFilterBtn ${state.sidebarFilter === 'elementary' ? 'active' : ''}" data-tt-filter="elementary">초등부</button><button type="button" class="olliTtQuickFilterBtn ${state.sidebarFilter === 'kinder' ? 'active' : ''}" data-tt-filter="kinder">유치부</button></div>`
-      + `<input type="search" class="olliTtQuickSearch" id="olliTtQuickSearch" value="${esc(state.sidebarQuery)}" placeholder="학생 검색" aria-label="시간표 학생 검색">`
-      + (students.length ? groupHtml(elementary, 'elementary') + groupHtml(kinder, 'kinder') : '<div class="olliTtQuickEmpty">조건에 맞는 학생이 없습니다.</div>');
-    body.querySelectorAll('[data-tt-filter]').forEach((button) => button.addEventListener('click', () => { state.sidebarFilter = button.dataset.ttFilter; renderSidebar(); }));
-    body.querySelectorAll('[data-tt-sidebar-student]').forEach((button) => button.addEventListener('click', () => openMove(button.dataset.ttSidebarStudent)));
-    bindImeSafeSearch(
-      document.getElementById('olliTtQuickSearch'),
-      (value) => { state.sidebarQuery = value; },
-      renderSidebar,
-      '#olliTtQuickSearch'
-    );
+    results.innerHTML = students.length ? groupHtml(elementary, 'elementary') + groupHtml(kinder, 'kinder') : '<div class="olliTtQuickEmpty">조건에 맞는 학생이 없습니다.</div>';
+    results.querySelectorAll('[data-tt-sidebar-student]').forEach((button) => button.addEventListener('click', () => openMove(button.dataset.ttSidebarStudent)));
   }
 
   function closeDialog() {
