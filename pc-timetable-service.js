@@ -149,6 +149,7 @@
       source_enrollment_id: options.sourceEnrollmentId || null,
       target_weekday: Number(options.targetWeekday),
       target_time_slot: Number(options.targetTimeSlot),
+      target_class_group: options.targetClassGroup || 'A',
       effective_date: options.effectiveDate,
       change_type: options.changeType,
       allow_wait: options.allowWait !== false
@@ -163,11 +164,12 @@
     });
   }
 
-  async function addMakeup(studentId, sessionDate, timeSlot, note) {
+  async function addMakeup(studentId, sessionDate, timeSlot, note, classGroup) {
     return executeScheduleAction('add_one_time', {
       student_id: studentId,
       session_date: sessionDate,
       time_slot: Number(timeSlot),
+      class_group: classGroup || 'A',
       note: note || ''
     });
   }

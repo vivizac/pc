@@ -68,22 +68,6 @@
 #olliPcTopbar .olliTtHistoryBtn span { color: #0A84FF; font-size: 18px; line-height: 1; }
 #olliPcTopbar .olliTtHistoryBtn:hover { border-color: #acd5fb; color: #0877df; background: #f2f8ff; }
 
-#recordRoomScreen .olliTtLegend {
-  display: flex;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 14px;
-  margin: 0 2px 11px;
-  color: #7f8792;
-  font-size: calc(11px * var(--olli-text-scale));
-  font-weight: 700;
-}
-#recordRoomScreen .olliTtLegendItem { display: inline-flex; align-items: center; gap: 5px; }
-#recordRoomScreen .olliTtLegendSwatch { width: 9px; height: 9px; border-radius: 3px; }
-#recordRoomScreen .olliTtLegendSwatch.regular { background: #e2c756; }
-#recordRoomScreen .olliTtLegendSwatch.wait { background: #8668dc; }
-#recordRoomScreen .olliTtLegendSwatch.makeup { background: #3b987e; }
-
 #recordRoomScreen .olliTtSection {
   min-height: 0;
   margin: 0;
@@ -133,6 +117,14 @@
   transition: background .15s ease, box-shadow .15s ease;
 }
 #recordRoomScreen .olliTtCell:hover { background: #f5faff; box-shadow: inset 0 0 0 2px #c4e2ff; }
+#recordRoomScreen .olliTtCell.kinder { padding: 4px; cursor: default; }
+#recordRoomScreen .olliTtClassLanes { height: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+#recordRoomScreen .olliTtClassLane { min-width: 0; padding: 4px; border: 1px solid #edf0f3; border-radius: 9px; cursor: pointer; transition: background .15s ease, border-color .15s ease; }
+#recordRoomScreen .olliTtClassLane:hover { border-color: #abd8fb; background: #f5faff; }
+#recordRoomScreen .olliTtClassLaneHead { margin: 0 1px 3px; display: flex; align-items: center; justify-content: space-between; gap: 4px; color: #9ba2ac; font-size: calc(8px * var(--olli-text-scale)); font-weight: 720; }
+#recordRoomScreen .olliTtClassLaneHead strong { color: #697383; font-size: calc(9px * var(--olli-text-scale)); font-weight: 850; }
+#recordRoomScreen .olliTtClassLane .olliTtCellMeta { min-height: 15px; margin-bottom: 2px; }
+#recordRoomScreen .olliTtClassLane .olliTtEntries { grid-template-columns: 1fr; }
 #recordRoomScreen .olliTtCellMeta { min-height: 17px; display: flex; justify-content: space-between; gap: 6px; margin-bottom: 3px; color: #a0a6af; font-size: calc(9px * var(--olli-text-scale)); font-weight: 720; }
 #recordRoomScreen .olliTtCellMeta strong { color: #616975; font-size: calc(10px * var(--olli-text-scale)); font-weight: 820; }
 #recordRoomScreen .olliTtEntries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; }
@@ -156,11 +148,11 @@
 #recordRoomScreen .olliTtStudent.scheduled { grid-column: 1 / -1; }
 #recordRoomScreen .olliTtStudent.regular.elementary { border-color: #f0dd8b; background: #fff3c6; }
 #recordRoomScreen .olliTtStudent.regular.kinder { border-color: #f5c7d4; background: #ffe4eb; }
-#recordRoomScreen .olliTtStudent.wait { border: 1px dashed #8b70dc; color: #654db3; background: #efeaff; }
+#recordRoomScreen .olliTtStudent.wait { border: 1px dashed #c8bceb; color: #8373ac; background: #f8f6ff; }
 #recordRoomScreen .olliTtStudent.makeup { border-color: #73b9a5; color: #267763; background: #e5f6f0; }
 #recordRoomScreen .olliTtStudent:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(26, 38, 58, .09); }
 #recordRoomScreen .olliTtStudentTag { float: right; margin-left: 3px; padding: 1px 3px; border-radius: 999px; color: #fff; font-size: calc(7px * var(--olli-text-scale)); font-weight: 800; }
-#recordRoomScreen .olliTtStudent.wait .olliTtStudentTag { background: #7b5ed0; }
+#recordRoomScreen .olliTtStudent.wait .olliTtStudentTag { background: #b7a8df; }
 #recordRoomScreen .olliTtStudent.makeup .olliTtStudentTag { background: #338d74; }
 #recordRoomScreen .olliTtReservation { display: block; margin-top: 3px; color: #0A73DC; font-size: calc(8px * var(--olli-text-scale)); font-weight: 780; }
 #recordRoomScreen .olliTtLoading,
@@ -253,6 +245,7 @@
 .olliTtFieldHead small { color: #9ca2ab; font-size: calc(10px * var(--olli-text-scale)); font-weight: 620; }
 .olliTtChoiceGrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
 .olliTtChoiceGrid.times { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.olliTtClassChoiceGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .olliTtChoice {
   min-height: 48px;
   border: 1px solid transparent;
