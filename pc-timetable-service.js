@@ -190,6 +190,34 @@
     });
   }
 
+  async function toggleAttendance(options) {
+    return executeScheduleAction('toggle_attendance', {
+      student_id: options.studentId,
+      session_date: options.sessionDate,
+      time_slot: Number(options.timeSlot),
+      class_group: options.classGroup || 'A',
+      session_kind: options.sessionKind || 'regular'
+    });
+  }
+
+  async function savePickup(options) {
+    return executeScheduleAction('save_pickup', {
+      student_id: options.studentId,
+      weekday: Number(options.weekday),
+      class_time: Number(options.classTime),
+      pickup_label: options.pickupLabel,
+      pickup_time: options.pickupTime,
+      effective_date: options.effectiveDate
+    });
+  }
+
+  async function removePickup(pickupId, effectiveDate) {
+    return executeScheduleAction('remove_pickup', {
+      pickup_id: pickupId,
+      effective_date: effectiveDate
+    });
+  }
+
   async function loadHistory(limit) {
     return rpc('olli_schedule_history_list', contextPayload({
       p_limit: Math.min(Math.max(Number(limit) || 50, 1), 100)
@@ -215,6 +243,9 @@
     cancelMakeup,
     cancelChange,
     removeEnrollment,
+    toggleAttendance,
+    savePickup,
+    removePickup,
     loadHistory,
     restoreHistory
   });

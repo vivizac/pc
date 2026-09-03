@@ -250,6 +250,8 @@
   function waitlist() { return Array.isArray(state.data && state.data.waitlist) ? state.data.waitlist : []; }
   function oneTimeSessions() { return Array.isArray(state.data && state.data.one_time_sessions) ? state.data.one_time_sessions : []; }
   function changes() { return Array.isArray(state.data && state.data.changes) ? state.data.changes : []; }
+  function attendanceMarks() { return Array.isArray(state.data && state.data.attendance) ? state.data.attendance : []; }
+  function pickups() { return Array.isArray(state.data && state.data.pickups) ? state.data.pickups : []; }
   function enrollmentEffectiveOn(enrollment, date) {
     const key = dateKey(date);
     return clean(enrollment.effective_from) <= key
@@ -283,7 +285,34 @@
   function scheduledChangeForSource(enrollmentId) {
     return changes().find((item) => clean(item.source_enrollment_id) === clean(enrollmentId) && item.status === 'scheduled');
   }
-  function capacityFor(division) { return division === 'elementary' ? Number(state.data && state.data.elementary_capacity || 5) : null; }
+  function capacityFor(division) {
+    return division === 'kinder'
+      ? Number(state.data && state.data.kinder_capacity || 6)
+      : Number(state.data && state.data.elementary_capacity || 5);
+  }
+  function attendanceMarked(studentId, date, time, classGroup, sessionKind) {
+    const key = dateKey(date);
+    return attendanceMarks().some((item) => clean(item.student_id) === clean(studentId)
+      && clean(item.session_date) === key
+      && Number(item.time_slot) === Number(time)
+      && classGroupOf(item) === classGroupOf({ class_group: classGroup })
+      && clean(item.session_kind) === clean(sessionKind));
+  }
+  function pickupActiveOn(item, date) {
+    const key = dateKey(date);
+    return Number(item.weekday) === date.getDay()
+      && clean(item.effective_from) <= key
+      && (!clean(item.effective_to) || clean(item.effective_to) >= key);
+  }
+  function slotPickups(date, classTime) {
+    return pickups().filter((item) => Number(item.class_time) === Number(classTime) && pickupActiveOn(item, date));
+  }
+  function pickupTimeLabel(value) {
+    const match = clean(value).match(/^(\d{1,2}):(\d{2})/);
+    if (!match) return clean(value);
+    const hour = Number(match[1]);
+    return `${hour > 12 ? hour - 12 : hour}:${match[2]}`;
+  }
   function countAt(division, weekday, time, targetDate, classGroup) {
     const date = parseDate(targetDate || todayKey());
     const wantedDay = Number(weekday);
@@ -304,23 +333,39 @@
     const regular = slotRegulars(division, date, time, classGroup);
     const waits = slotWaitlist(division, date, time, classGroup);
     const makeups = slotMakeups(division, date, time, classGroup);
-    const capacity = capacityFor(division);
-    const occupied = regular.length + makeups.length;
-    const meta = capacity ? `<strong>${occupied}/${capacity}</strong><span>${occupied >= capacity ? '마감' : `${capacity - occupied}자리`}${waits.length ? ` · 대기 ${waits.length}` : ''}</span>` : `<strong>${occupied}명</strong><span>${makeups.length ? `보강 ${makeups.length}` : ''}</span>`;
     const regularHtml = regular.map((item) => {
       const scheduled = scheduledChangeForSource(item.id);
       const scheduleText = scheduled ? `<span class="olliTtReservation">◷ ${shortDate(scheduled.effective_date)} ${scheduled.change_type === 'remove' ? '삭제' : '이동'} 예정</span>` : '';
-      return `<button type="button" class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}">${esc(item.student_name)}${scheduleText}</button>`;
+      const attended = attendanceMarked(item.student_id, date, time, classGroup, 'regular');
+      return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${time}" data-class-group="${esc(classGroup)}">${esc(item.student_name)}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" aria-label="${esc(item.student_name)} 수업 설정">•••</button></div>`;
     }).join('');
     const waitHtml = waits.map((item) => `<button type="button" class="olliTtStudent wait" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}"><span class="olliTtStudentTag">대기</span>${esc(item.student_name)}</button>`).join('');
-    const makeupHtml = makeups.map((item) => `<button type="button" class="olliTtStudent makeup" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}"><span class="olliTtStudentTag">보강</span>${esc(item.student_name)}</button>`).join('');
-    return `<div class="olliTtCellMeta">${meta}</div><div class="olliTtEntries">${regularHtml}${waitHtml}${makeupHtml}</div>`;
+    const makeupHtml = makeups.map((item) => {
+      const attended = attendanceMarked(item.student_id, date, time, classGroup, 'makeup');
+      return `<div class="olliTtStudent makeup${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${time}" data-class-group="${esc(classGroup)}"><span class="olliTtStudentTag">보강</span>${esc(item.student_name)}</button><button type="button" class="olliTtStudentMore" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}" aria-label="${esc(item.student_name)} 보강 설정">•••</button></div>`;
+    }).join('');
+    return `<div class="olliTtEntries">${regularHtml}${waitHtml}${makeupHtml}</div>`;
   }
 
   function cellHtml(division, date, time) {
     const attrs = `data-tt-cell="1" data-division="${division}" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-time="${time}"`;
     if (division !== 'kinder') return `<div class="olliTtCell" ${attrs}>${cellContentsHtml(division, date, time, 'A')}</div>`;
-    return `<div class="olliTtCell kinder" ${attrs}><div class="olliTtClassLanes">${['A', 'B'].map((group) => `<div class="olliTtClassLane" ${attrs} data-class-group="${group}"><div class="olliTtClassLaneHead"><strong>${group}반</strong><span>선택</span></div>${cellContentsHtml(division, date, time, group)}</div>`).join('')}</div></div>`;
+    return `<div class="olliTtCell kinder" ${attrs}><div class="olliTtClassLanes">${['A', 'B'].map((group) => `<div class="olliTtClassLane" ${attrs} data-class-group="${group}"><div class="olliTtClassLaneHead"><strong>${group}반</strong></div>${cellContentsHtml(division, date, time, group)}</div>`).join('')}</div></div>`;
+  }
+
+  function pickupCellHtml(date, classTime) {
+    const rows = slotPickups(date, classTime);
+    const cards = rows.map((item) => `<div class="olliTtPickupCard" data-tt-pickup-manage="${esc(item.id)}"><div><strong>${esc(item.student_name)}</strong><span>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</span></div><button type="button" aria-label="${esc(item.student_name)} 픽업 설정">•••</button></div>`).join('');
+    return `<div class="olliTtPickupCell" data-tt-pickup-cell="1" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-class-time="${classTime}"><div class="olliTtPickupEntries">${cards}</div></div>`;
+  }
+
+  function pickupGridHtml(dates) {
+    let grid = '<div class="olliTtPickupGrid"><div class="olliTtPickupTitle">픽업 시간표</div>';
+    [4, 5].forEach((classTime) => {
+      grid += `<div class="olliTtPickupTime">${classTime}시</div>`;
+      dates.forEach((date) => { grid += pickupCellHtml(date, classTime); });
+    });
+    return `${grid}</div>`;
   }
 
   function sectionHtml(division) {
@@ -335,7 +380,7 @@
       dates.forEach((date) => { grid += cellHtml(division, date, time); });
     });
     grid += '</div>';
-    return `<section class="olliTtSection ${division}"><div class="olliTtScroll">${grid}</div></section>`;
+    return `<section class="olliTtSection ${division}"><div class="olliTtScroll">${grid}${division === 'kinder' ? pickupGridHtml(dates) : ''}</div></section>`;
   }
 
   function renderTimetable() {
@@ -398,12 +443,29 @@
 
   function onTimetableClick(event) {
     if (handleScheduleControl(event)) return;
+    const attendanceButton = event.target.closest('[data-tt-attendance]');
+    if (attendanceButton) {
+      event.stopPropagation();
+      toggleAttendance(attendanceButton);
+      return;
+    }
+    const pickupManage = event.target.closest('[data-tt-pickup-manage]');
+    if (pickupManage) {
+      event.stopPropagation();
+      openPickupManage(pickupManage.dataset.ttPickupManage);
+      return;
+    }
     const entry = event.target.closest('[data-tt-entry]');
     if (entry) {
       event.stopPropagation();
       if (entry.dataset.ttEntry === 'regular') openMove(entry.dataset.studentId, entry.dataset.enrollmentId);
       else if (entry.dataset.ttEntry === 'wait') openWait(entry.dataset.waitlistId);
       else if (entry.dataset.ttEntry === 'makeup') openMakeup(entry.dataset.makeupId);
+      return;
+    }
+    const pickupCell = event.target.closest('[data-tt-pickup-cell]');
+    if (pickupCell) {
+      openPickupAdd(pickupCell.dataset);
       return;
     }
     const cell = event.target.closest('[data-tt-cell]');
@@ -487,10 +549,15 @@
     return enrollments().filter((item) => clean(item.student_id) === clean(studentId));
   }
 
+  function currentStudentEnrollments(studentId) {
+    const today = todayKey();
+    return studentEnrollments(studentId).filter((item) => !clean(item.effective_to) || clean(item.effective_to) >= today);
+  }
+
   function openMove(studentId, enrollmentId) {
     const student = studentById(studentId);
     if (!student) return;
-    const rows = studentEnrollments(studentId);
+    const rows = currentStudentEnrollments(studentId);
     const source = rows.find((item) => clean(item.id) === clean(enrollmentId)) || rows.find((item) => enrollmentEffectiveOn(item, new Date())) || rows[0];
     const timeOptions = TIME_SLOTS[divisionOf(student)];
     const sourceTime = source ? Number(source.time_slot) : null;
@@ -529,6 +596,22 @@
     openOverlay();
   }
 
+  function openPickupAdd(dataset) {
+    const date = clean(dataset.date);
+    state.dialog = {
+      kind: 'pickupAdd', date, weekday: Number(dataset.weekday), classTime: Number(dataset.classTime),
+      studentId: '', query: '', pickupLabel: '', pickupTime: ''
+    };
+    openOverlay();
+  }
+
+  function openPickupManage(pickupId) {
+    const item = pickups().find((row) => clean(row.id) === clean(pickupId));
+    if (!item) return;
+    state.dialog = { kind: 'pickupManage', pickupId: clean(pickupId), effectiveDate: todayKey() };
+    openOverlay();
+  }
+
   function dialogHead(icon, title, sub) {
     return `<div class="olliTtDialogHead"><div class="olliTtDialogIcon" aria-hidden="true">${icon}</div><div><div class="olliTtDialogTitle" id="olliTtDialogTitle">${esc(title)}</div><div class="olliTtDialogSub">${esc(sub)}</div></div><button type="button" class="olliTtDialogClose" data-tt-dialog-close aria-label="닫기">×</button></div>`;
   }
@@ -543,7 +626,7 @@
 
   function moveDialogHtml(dialog) {
     const student = studentById(dialog.studentId);
-    const rows = studentEnrollments(dialog.studentId).sort((a, b) => Number(a.weekday) - Number(b.weekday) || Number(a.time_slot) - Number(b.time_slot));
+    const rows = currentStudentEnrollments(dialog.studentId).sort((a, b) => Number(a.weekday) - Number(b.weekday) || Number(a.time_slot) - Number(b.time_slot));
     const scheduledRows = changes().filter((item) => clean(item.student_id) === clean(dialog.studentId) && item.status === 'scheduled');
     const source = rows.find((item) => clean(item.id) === clean(dialog.sourceEnrollmentId));
     const division = divisionOf(student);
@@ -640,6 +723,44 @@
     return dialogHead('✓', `${item.student_name} 보강`, `${koreanDate(date)} ${DAYS[date.getDay() - 1]}요일 · ${timeLabel(item.time_slot)}`)
       + '<div class="olliTtDialogBody"><div class="olliTtCurrentBox"><strong>이 날짜에만 등록된 보강 수업입니다.</strong>정규 수업 시간은 변경되지 않습니다.</div>'
       + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>보강 취소</button></div></div>';
+  }
+
+  function pickupPickerHtml(dialog) {
+    const students = service.activeStudents().filter((student) => divisionOf(student) === 'kinder' && (!dialog.query || clean(student.name).includes(dialog.query)));
+    return students.length ? students.map((student) => `<button type="button" class="olliTtPickerStudent ${clean(student.id) === dialog.studentId ? 'active' : ''}" data-tt-pickup-student="${esc(student.id)}"><strong>${esc(student.name)}</strong><span>${esc(studentScheduleText(student.id)) || '수업 없음'}</span></button>`).join('') : '<div class="olliTtQuickEmpty">학생을 찾지 못했습니다.</div>';
+  }
+
+  function renderPickupPickerResults(dialogElement) {
+    const picker = dialogElement && dialogElement.querySelector('[data-tt-pickup-picker]');
+    if (!picker || !state.dialog || state.dialog.kind !== 'pickupAdd') return;
+    picker.innerHTML = pickupPickerHtml(state.dialog);
+    picker.querySelectorAll('[data-tt-pickup-student]').forEach((button) => button.addEventListener('click', () => {
+      state.dialog.studentId = button.dataset.ttPickupStudent;
+      renderDialog();
+    }));
+  }
+
+  function pickupAddDialogHtml(dialog) {
+    const selected = studentById(dialog.studentId);
+    return dialogHead('↳', '픽업 학생 추가', `${koreanDate(dialog.date)} ${weekdayLabel(dialog.weekday)}요일 · ${dialog.classTime}시 수업`)
+      + '<div class="olliTtDialogBody">'
+      + '<div class="olliTtField"><div class="olliTtFieldHead"><span>학생 선택</span><small>유치부 학생을 검색하세요</small></div>'
+      + `<input type="search" class="olliTtStudentSearch" data-tt-pickup-search value="${esc(dialog.query)}" placeholder="학생 검색"><div class="olliTtPickerList" data-tt-pickup-picker>${pickupPickerHtml(dialog)}</div></div>`
+      + '<div class="olliTtPickupForm">'
+      + `<label><span>픽업 장소</span><input type="text" maxlength="80" data-tt-pickup-label value="${esc(dialog.pickupLabel)}" placeholder="예: 리슈빌"></label>`
+      + `<label><span>픽업 시간</span><input type="time" data-tt-pickup-time value="${esc(dialog.pickupTime)}"></label></div>`
+      + (selected ? `<div class="olliTtStatusNotice">${esc(selected.name)} 학생의 픽업 정보를 매주 ${weekdayLabel(dialog.weekday)}요일 ${dialog.classTime}시 수업에 등록합니다.</div>` : '')
+      + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-pickup>픽업 등록</button></div></div>';
+  }
+
+  function pickupManageDialogHtml(dialog) {
+    const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
+    if (!item) return '';
+    return dialogHead('↳', `${item.student_name} 픽업`, `${weekdayLabel(item.weekday)}요일 · ${item.class_time}시 수업`)
+      + '<div class="olliTtDialogBody">'
+      + `<div class="olliTtCurrentBox"><strong>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</strong>매주 반복되는 픽업 일정입니다.</div>`
+      + `<div class="olliTtField"><div class="olliTtFieldHead"><span>삭제 적용 날짜</span><small>선택한 날짜부터 픽업 명단에서 제외됩니다.</small></div><input type="date" class="olliTtDateInput" data-tt-pickup-effective-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></div>`
+      + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-remove-pickup>픽업 삭제</button></div></div>';
   }
 
   function historyActionLabel(item) {
@@ -847,6 +968,8 @@
     else if (state.dialog.kind === 'add') dialog.innerHTML = addDialogHtml(state.dialog);
     else if (state.dialog.kind === 'wait') dialog.innerHTML = waitDialogHtml(state.dialog);
     else if (state.dialog.kind === 'makeup') dialog.innerHTML = makeupDialogHtml(state.dialog);
+    else if (state.dialog.kind === 'pickupAdd') dialog.innerHTML = pickupAddDialogHtml(state.dialog);
+    else if (state.dialog.kind === 'pickupManage') dialog.innerHTML = pickupManageDialogHtml(state.dialog);
     else if (state.dialog.kind === 'history') dialog.innerHTML = historyDialogHtml(state.dialog);
     else dialog.innerHTML = restoreConfirmDialogHtml(state.dialog);
     bindDialog();
@@ -876,12 +999,29 @@
     );
     dialog.querySelectorAll('[data-tt-add-student]').forEach((button) => button.addEventListener('click', () => { state.dialog.studentId = button.dataset.ttAddStudent; renderDialog(); }));
     dialog.querySelectorAll('[data-tt-add-type]').forEach((button) => button.addEventListener('click', () => { state.dialog.addType = button.dataset.ttAddType; renderDialog(); }));
+    bindImeSafeSearch(
+      dialog.querySelector('[data-tt-pickup-search]'),
+      (value) => { if (state.dialog && state.dialog.kind === 'pickupAdd') state.dialog.query = value; },
+      () => renderPickupPickerResults(dialog),
+      null
+    );
+    dialog.querySelectorAll('[data-tt-pickup-student]').forEach((button) => button.addEventListener('click', () => { state.dialog.studentId = button.dataset.ttPickupStudent; renderDialog(); }));
+    const pickupLabel = dialog.querySelector('[data-tt-pickup-label]');
+    if (pickupLabel) pickupLabel.addEventListener('input', () => { if (state.dialog && state.dialog.kind === 'pickupAdd') state.dialog.pickupLabel = pickupLabel.value; });
+    const pickupTime = dialog.querySelector('[data-tt-pickup-time]');
+    if (pickupTime) pickupTime.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupAdd') state.dialog.pickupTime = pickupTime.value; });
+    const pickupEffectiveDate = dialog.querySelector('[data-tt-pickup-effective-date]');
+    if (pickupEffectiveDate) pickupEffectiveDate.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.effectiveDate = pickupEffectiveDate.value || todayKey(); });
     const waitDate = dialog.querySelector('[data-tt-wait-date]');
     if (waitDate) waitDate.addEventListener('change', () => { state.dialog.effectiveDate = waitDate.value || todayKey(); renderDialog(); });
     const saveMoveButton = dialog.querySelector('[data-tt-save-move]');
     if (saveMoveButton) saveMoveButton.addEventListener('click', saveMove);
     const saveAddButton = dialog.querySelector('[data-tt-save-add]');
     if (saveAddButton) saveAddButton.addEventListener('click', saveAdd);
+    const savePickupButton = dialog.querySelector('[data-tt-save-pickup]');
+    if (savePickupButton) savePickupButton.addEventListener('click', savePickup);
+    const removePickupButton = dialog.querySelector('[data-tt-remove-pickup]');
+    if (removePickupButton) removePickupButton.addEventListener('click', removePickup);
     const acceptWait = dialog.querySelector('[data-tt-accept-wait]');
     if (acceptWait) acceptWait.addEventListener('click', () => resolveWait('accept'));
     const cancelWait = dialog.querySelector('[data-tt-cancel-wait]');
@@ -901,6 +1041,48 @@
       removeSelectedEnrollment(button.dataset.ttRemoveEnrollment);
     }));
     dialog.querySelectorAll('[data-tt-cancel-change]').forEach((button) => button.addEventListener('click', () => cancelScheduledChange(button.dataset.ttCancelChange)));
+  }
+
+  async function toggleAttendance(button) {
+    if (!button || button.disabled) return;
+    const sessionDate = clean(button.dataset.sessionDate);
+    if (sessionDate > todayKey()) {
+      alert('아직 수업하지 않은 날짜는 출석 체크할 수 없습니다.');
+      return;
+    }
+    const card = button.closest('.olliTtStudent');
+    const wasAttended = !!(card && card.classList.contains('attended'));
+    if (card) card.classList.toggle('attended', !wasAttended);
+    button.disabled = true;
+    try {
+      const result = await service.toggleAttendance({
+        studentId: button.dataset.studentId,
+        sessionDate,
+        timeSlot: Number(button.dataset.time),
+        classGroup: button.dataset.classGroup,
+        sessionKind: button.dataset.ttAttendance
+      });
+      const next = attendanceMarks().filter((item) => !(clean(item.student_id) === clean(button.dataset.studentId)
+        && clean(item.session_date) === sessionDate
+        && Number(item.time_slot) === Number(button.dataset.time)
+        && classGroupOf(item) === classGroupOf({ class_group: button.dataset.classGroup })
+        && clean(item.session_kind) === clean(button.dataset.ttAttendance)));
+      if (result.attended) next.push({
+        student_id: button.dataset.studentId,
+        session_date: sessionDate,
+        time_slot: Number(button.dataset.time),
+        class_group: classGroupOf({ class_group: button.dataset.classGroup }),
+        session_kind: button.dataset.ttAttendance,
+        marked_at: result.marked_at || new Date().toISOString()
+      });
+      state.data.attendance = next;
+      if (card) card.classList.toggle('attended', !!result.attended);
+    } catch (error) {
+      if (card) card.classList.toggle('attended', wasAttended);
+      alert(error && (error.message || error) || '출석 체크를 저장하지 못했습니다.');
+    } finally {
+      button.disabled = false;
+    }
   }
 
   async function withSaving(task) {
@@ -975,6 +1157,37 @@
     else if (result.result === 'waitlisted') notify(`${student.name} 학생을 대기로 등록했어요.`);
     else if (result.result === 'scheduled') notify(`${student.name} 학생의 주간 수업 추가를 예약했어요.`);
     else notify(`${student.name} 학생의 주간 수업을 추가했어요.`);
+  }
+
+  async function savePickup() {
+    const dialog = state.dialog;
+    if (!dialog || dialog.kind !== 'pickupAdd') return;
+    const root = document.getElementById('olliTtDialog');
+    dialog.pickupLabel = clean(root && root.querySelector('[data-tt-pickup-label]')?.value || dialog.pickupLabel);
+    dialog.pickupTime = clean(root && root.querySelector('[data-tt-pickup-time]')?.value || dialog.pickupTime);
+    if (!dialog.studentId) { alert('픽업할 학생을 선택해 주세요.'); return; }
+    if (!dialog.pickupLabel) { alert('픽업 장소를 입력해 주세요.'); return; }
+    if (!dialog.pickupTime) { alert('픽업 시간을 입력해 주세요.'); return; }
+    const student = studentById(dialog.studentId);
+    const result = await withSaving(() => service.savePickup({
+      studentId: dialog.studentId,
+      weekday: dialog.weekday,
+      classTime: dialog.classTime,
+      pickupLabel: dialog.pickupLabel,
+      pickupTime: dialog.pickupTime,
+      effectiveDate: dialog.date
+    }));
+    if (result) notify(`${student.name} 학생의 픽업을 등록했어요.`);
+  }
+
+  async function removePickup() {
+    const dialog = state.dialog;
+    if (!dialog || dialog.kind !== 'pickupManage') return;
+    const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
+    if (!item) return;
+    if (!global.confirm(`${item.student_name} 학생의 픽업 일정을 ${koreanDate(dialog.effectiveDate, true)}부터 삭제할까요?`)) return;
+    const result = await withSaving(() => service.removePickup(dialog.pickupId, dialog.effectiveDate));
+    if (result) notify(`${item.student_name} 학생의 픽업 일정을 삭제했어요.`);
   }
 
   async function resolveWait(action) {
