@@ -44,10 +44,11 @@ body.olliPcApp[data-olli-text-size="large"],html[data-olli-text-size="large"] bo
 .olliPcRosterInfoBtn svg{width:24px;height:24px;fill:currentColor;stroke:none;}
 .olliPcRosterBtn:hover .olliPcRosterInfoBtn,.olliPcRosterInfoBtn:focus-visible{opacity:1;pointer-events:auto;}
 .olliPcRosterInfoBtn:hover{background:transparent;color:#111;}
-.olliPcSidebarBottom{position:relative;height:58px;border-top:1px solid var(--pc-line);padding:8px 10px;display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center;box-sizing:border-box;}
+.olliPcSidebarBottom{position:relative;height:58px;border-top:1px solid var(--pc-line);padding:8px 10px;display:grid;grid-template-columns:repeat(4,1fr);align-items:center;box-sizing:border-box;}
 .olliPcSidebarBottom .olliPcRoundBtn:nth-child(1){justify-self:start;}
-.olliPcSidebarBottom .olliPcRoundBtn:nth-child(2){justify-self:center;}
-.olliPcSidebarBottom .olliPcRoundBtn:nth-child(3){justify-self:end;}
+.olliPcSidebarBottom .olliPcRoundBtn:nth-child(2),.olliPcSidebarBottom .olliPcRoundBtn:nth-child(3){justify-self:center;}
+.olliPcSidebarBottom .olliPcRoundBtn:nth-child(4){justify-self:end;}
+#olliPcTrashBtn{color:#777f89;}
 body.olliPcApp .olliPcSidebarBottom #recordSortPopup{left:50%;right:auto;bottom:52px;transform:translateX(-50%);width:min(220px,calc(var(--pc-sidebar-w) - 20px));max-height:430px;}
 .olliPcRoundBtn{width:40px;height:40px;border:1px solid #e3e5e8;background:#fff;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:#15171a;box-shadow:0 3px 12px rgba(0,0,0,.04);}
 .olliPcRoundBtn svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}

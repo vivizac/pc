@@ -188,6 +188,7 @@
 
 /* 시간표 탭 사이드바 빠른 보기 */
 #olliPcShell .olliTtQuickFilter { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 1px 0 10px; }
+#olliPcShell .olliTtQuickFilter.olliTtPaneTabs { grid-template-columns: repeat(2, 1fr); }
 #olliPcShell .olliTtQuickFilterBtn {
   height: 34px;
   border: 1px solid #e5e8ec;
@@ -232,6 +233,16 @@
 #olliPcShell .olliTtQuickStudent:hover { color: #0877df; background: #edf6ff; }
 #olliPcShell .olliTtQuickStudentSchedule { max-width: 94px; overflow: hidden; color: #9aa1aa; text-overflow: ellipsis; white-space: nowrap; font-size: calc(9px * var(--olli-text-scale)); font-weight: 650; }
 #olliPcShell .olliTtQuickEmpty { padding: 25px 8px; color: #a3a8b0; text-align: center; font-size: calc(11px * var(--olli-text-scale)); }
+
+/* 시간표와 같은 출석 데이터를 쓰는 월간 출석부 */
+#recordRoomScreen .olliTtAttendanceRegister{min-height:0;border:1px solid #e4e7eb;border-radius:21px;display:flex;flex:1;flex-direction:column;overflow:hidden;background:#fff;box-shadow:0 7px 20px rgba(27,39,58,.045)}
+#recordRoomScreen .olliTtAttendanceRegisterHead{min-height:62px;padding:12px 18px;border-bottom:1px solid #e9ecf0;display:flex;align-items:center;justify-content:space-between;gap:16px;background:#fbfcfd;box-sizing:border-box}
+#recordRoomScreen .olliTtAttendanceRegisterHead strong,#recordRoomScreen .olliTtAttendanceRegisterHead span{display:block}.olliTtAttendanceRegisterHead strong{color:#232830;font-size:calc(15px * var(--olli-text-scale));font-weight:840}.olliTtAttendanceRegisterHead span{margin-top:3px;color:#969da7;font-size:calc(10px * var(--olli-text-scale));font-weight:630}.olliTtAttendanceRegisterHead em{color:#0a73dc;font-size:calc(10px * var(--olli-text-scale));font-style:normal;font-weight:740}
+#recordRoomScreen .olliTtAttendanceRegisterScroll{min-height:0;padding:14px;flex:1;overflow:auto}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .settingsAttendancePreviewTable{min-width:900px}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendancePrintPage{margin:0 0 16px}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceLinkedMark{color:#12652f;background:#43d878!important;font-weight:900;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceLinkedMark span{display:block;font-size:11px;line-height:1}
 
 /* 공통 시간표 팝업 */
 #olliTtOverlay {

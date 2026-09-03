@@ -4,6 +4,7 @@
   const DAYS = ['월', '화', '수', '목', '금', '토'];
   const SESSION_KEY = 'olli_account_session_token_v1';
   const WEEK_CACHE_PREFIX = 'olli_schedule_week_cache_v1';
+  const ATTENDANCE_MONTH_CACHE_PREFIX = 'olli_schedule_attendance_month_cache_v1';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -47,6 +48,28 @@
         data
       }));
     } catch (_) {}
+  }
+
+  function attendanceMonthCacheKey(yearMonth) {
+    return `${ATTENDANCE_MONTH_CACHE_PREFIX}_${currentAcademyId() || 'unknown'}_${clean(yearMonth)}`;
+  }
+
+  function getCachedAttendanceMonth(yearMonth) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(attendanceMonthCacheKey(yearMonth)) || 'null');
+      return cached && Array.isArray(cached.attendance) ? cached.attendance : null;
+    } catch (_) { return null; }
+  }
+
+  function cacheAttendanceMonth(yearMonth, rows) {
+    try { localStorage.setItem(attendanceMonthCacheKey(yearMonth), JSON.stringify({ cached_at: new Date().toISOString(), attendance: rows || [] })); }
+    catch (_) {}
+  }
+
+  function invalidateAttendanceMonth(value) {
+    const yearMonth = clean(value).slice(0, 7);
+    if (!yearMonth) return;
+    try { localStorage.removeItem(attendanceMonthCacheKey(yearMonth)); } catch (_) {}
   }
 
   function activeStudents() {
@@ -202,13 +225,23 @@
   }
 
   async function toggleAttendance(options) {
-    return executeScheduleAction('toggle_attendance', {
+    const result = await executeScheduleAction('toggle_attendance', {
       student_id: options.studentId,
       session_date: options.sessionDate,
       time_slot: Number(options.timeSlot),
       class_group: options.classGroup || 'A',
       session_kind: options.sessionKind || 'regular'
     });
+    invalidateAttendanceMonth(options.sessionDate);
+    return result;
+  }
+
+  async function loadAttendanceMonth(yearMonth) {
+    const value = /^\d{4}-\d{2}$/.test(clean(yearMonth)) ? `${clean(yearMonth)}-01` : new Date().toISOString().slice(0, 8) + '01';
+    const data = await rpc('olli_schedule_attendance_month', contextPayload({ p_month: value }));
+    const rows = Array.isArray(data.attendance) ? data.attendance : [];
+    cacheAttendanceMonth(value.slice(0, 7), rows);
+    return rows;
   }
 
   async function savePickup(options) {
@@ -247,6 +280,7 @@
     currentAcademyId,
     legacyPairs,
     getCachedWeek,
+    getCachedAttendanceMonth,
     loadWeek,
     changeSchedule,
     resolveWaitlist,
@@ -257,6 +291,7 @@
     splitClass,
     mergeClass,
     toggleAttendance,
+    loadAttendanceMonth,
     savePickup,
     removePickup,
     loadHistory,

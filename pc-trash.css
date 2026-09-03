@@ -1,0 +1,15 @@
+#olliRecordTrashOverlay{position:fixed;inset:0;z-index:100020;display:none;align-items:center;justify-content:center;padding:28px;background:rgba(26,32,42,.42);backdrop-filter:blur(7px)}
+#olliRecordTrashOverlay.show{display:flex}
+.olliRecordTrashDialog{width:min(720px,calc(100vw - 56px));max-height:min(760px,calc(100vh - 56px));overflow:hidden;border:1px solid rgba(25,35,50,.08);border-radius:28px;background:#fff;box-shadow:0 28px 90px rgba(17,27,42,.24)}
+.olliRecordTrashDialog>header{padding:25px 27px 20px;border-bottom:1px solid #eceef1;display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+.olliRecordTrashDialog h2{margin:0;color:#181b20;font-size:24px;font-weight:850;letter-spacing:-.05em}
+.olliRecordTrashDialog header p{margin:6px 0 0;color:#9298a1;font-size:12px;font-weight:640}
+.olliRecordTrashClose{width:40px;height:40px;border:0;border-radius:13px;color:#6e7580;background:#f1f3f5;font:400 25px/1 sans-serif;cursor:pointer}
+.olliRecordTrashBody{max-height:calc(100vh - 190px);padding:16px 18px 22px;overflow:auto}
+.olliRecordTrashStatus,.olliRecordTrashEmpty{min-height:260px;display:flex;align-items:center;justify-content:center;color:#9298a1;font-size:13px;font-weight:680;text-align:center}
+.olliRecordTrashStatus.error{color:#b54d55}.olliRecordTrashEmpty{flex-direction:column;gap:7px}.olliRecordTrashEmpty strong{color:#5f6670;font-size:15px}.olliRecordTrashEmpty span{font-size:11px;font-weight:620}
+.olliRecordTrashItem{padding:17px 18px;border:1px solid #e8ebef;border-radius:17px;background:#fff}.olliRecordTrashItem+.olliRecordTrashItem{margin-top:10px}
+.olliRecordTrashItemTop{display:flex;align-items:center;justify-content:space-between;gap:14px}.olliRecordTrashItemTop>div{display:flex;align-items:center;gap:9px;min-width:0}.olliRecordTrashItemTop strong{overflow:hidden;color:#24282f;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:820}
+.olliRecordTrashType{padding:4px 7px;border-radius:7px;color:#32715d;background:#e8f6f0;font-size:9px;font-weight:820}.olliRecordTrashType.summary{color:#7c609d;background:#f3edfa}
+.olliRecordTrashItemTop button{height:32px;padding:0 13px;border:1px solid #c9e2fa;border-radius:10px;color:#0877df;background:#f2f8ff;font:760 11px 'Pretendard',sans-serif;cursor:pointer}.olliRecordTrashItemTop button:disabled{opacity:.55;cursor:wait}
+.olliRecordTrashItem p{margin:11px 0 8px;overflow:hidden;color:#606873;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:590}.olliRecordTrashItem time{color:#a0a6ae;font-size:10px;font-weight:620}

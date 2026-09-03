@@ -14,7 +14,7 @@
     attendance: '성향기록부',
     observation: '관찰노트',
     consultation: '상담기록',
-    schedule: '시간표'
+    schedule: '시간표 • 출석부'
   };
   const state = {
     section: 'academy',

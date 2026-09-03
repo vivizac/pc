@@ -24,7 +24,15 @@
     loadToken: 0,
     sidebarFilter: 'all',
     sidebarQuery: '',
+    pane: 'schedule',
     scheduleDivision: 'elementary',
+    attendanceDivision: 'elementary',
+    attendanceSort: 'grade',
+    attendanceMonth: dateKey(new Date()).slice(0, 7),
+    attendanceRows: [],
+    attendanceRowsMonth: '',
+    attendanceLoading: false,
+    attendanceLoadToken: 0,
     dialog: null,
     saving: false,
     historyLoadToken: 0
@@ -171,9 +179,10 @@
 
     if (!state.active) return;
     if (state.view === 'schedule') {
-      renderScheduleHeader();
+      renderWorkspaceHeader();
       renderSidebar();
-      loadWeek();
+      if (state.pane === 'attendance') loadAttendanceRegister();
+      else loadWeek();
     } else if (typeof global.pcRenderAttendanceList === 'function') {
       global.pcRenderAttendanceList();
     }
@@ -199,7 +208,7 @@
   }
 
   async function loadWeek() {
-    if (!state.active || state.view !== 'schedule') return;
+    if (!state.active || state.view !== 'schedule' || state.pane !== 'schedule') return;
     const requestedWeek = dateKey(state.weekStart);
     const requestedAcademyId = typeof service.currentAcademyId === 'function' ? service.currentAcademyId() : '';
     if (state.loading && state.loadingWeek === requestedWeek && state.dataAcademyId === requestedAcademyId) return;
@@ -334,6 +343,80 @@
     return `${state.weekStart.getMonth() + 1}월 ${state.weekStart.getDate()}일 – ${end.getMonth() + 1}월 ${end.getDate()}일`;
   }
 
+  function monthLabel(value) {
+    const match = clean(value).match(/^(\d{4})-(\d{2})$/);
+    return match ? `${Number(match[1])}년 ${Number(match[2])}월` : '';
+  }
+
+  function shiftAttendanceMonth(amount) {
+    const match = state.attendanceMonth.match(/^(\d{4})-(\d{2})$/);
+    const date = match ? new Date(Number(match[1]), Number(match[2]) - 1 + amount, 1) : new Date();
+    state.attendanceMonth = `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
+    state.attendanceRows = [];
+    state.attendanceRowsMonth = '';
+    renderAttendanceRegister();
+    loadAttendanceRegister();
+  }
+
+  async function loadAttendanceRegister() {
+    if (!state.active || state.view !== 'schedule' || state.pane !== 'attendance') return;
+    const month = state.attendanceMonth;
+    if (state.attendanceRowsMonth !== month && typeof service.getCachedAttendanceMonth === 'function') {
+      const cached = service.getCachedAttendanceMonth(month);
+      if (cached) {
+        state.attendanceRows = cached;
+        state.attendanceRowsMonth = month;
+        renderAttendanceRegister();
+      }
+    }
+    const token = ++state.attendanceLoadToken;
+    state.attendanceLoading = true;
+    if (state.attendanceRowsMonth !== month) renderAttendanceRegister();
+    try {
+      const rows = await service.loadAttendanceMonth(month);
+      if (token !== state.attendanceLoadToken || state.attendanceMonth !== month) return;
+      state.attendanceRows = rows;
+      state.attendanceRowsMonth = month;
+    } catch (error) {
+      if (token !== state.attendanceLoadToken) return;
+      if (state.attendanceRowsMonth !== month) state.attendanceRows = [];
+      notify(error && (error.message || error) || '출석부를 불러오지 못했습니다.');
+    } finally {
+      if (token === state.attendanceLoadToken) {
+        state.attendanceLoading = false;
+        renderAttendanceRegister();
+      }
+    }
+  }
+
+  function attendanceStudents() {
+    const query = clean(state.sidebarQuery);
+    return service.activeStudents().filter((student) => {
+      const division = divisionOf(student);
+      return (state.attendanceDivision === 'combined' || division === state.attendanceDivision)
+        && (!query || clean(student.name).includes(query));
+    });
+  }
+
+  function renderAttendanceRegister() {
+    const ui = ensureUi();
+    if (!ui || state.view !== 'schedule' || state.pane !== 'attendance') return;
+    renderAttendanceHeader();
+    if (typeof global.olliBuildLinkedAttendanceRegisterHtml !== 'function') {
+      ui.root.innerHTML = '<div class="olliTtError">출석부 표를 준비하지 못했습니다.</div>';
+      return;
+    }
+    const html = global.olliBuildLinkedAttendanceRegisterHtml({
+      division: state.attendanceDivision,
+      sort: state.attendanceSort,
+      yearMonth: state.attendanceMonth,
+      attendanceRows: state.attendanceRows,
+      students: attendanceStudents()
+    });
+    ui.root.innerHTML = `<section class="olliTtAttendanceRegister"><div class="olliTtAttendanceRegisterHead"><div><strong>${esc(monthLabel(state.attendanceMonth))} 출석부</strong><span>시간표에서 체크한 출석이 자동으로 표시됩니다.</span></div>${state.attendanceLoading ? '<em>동기화 중…</em>' : ''}</div><div class="olliTtAttendanceRegisterScroll">${html}</div></section>`;
+    if (typeof global.settingsAttendanceScheduleFitText === 'function') global.settingsAttendanceScheduleFitText(ui.root);
+  }
+
   function cellContentsHtml(division, date, time, classGroup) {
     const regular = slotRegulars(division, date, time, classGroup);
     const waits = slotWaitlist(division, date, time, classGroup);
@@ -392,6 +475,10 @@
   function renderTimetable() {
     const ui = ensureUi();
     if (!ui || state.view !== 'schedule') return;
+    if (state.pane === 'attendance') {
+      renderAttendanceRegister();
+      return;
+    }
     if (state.loading && !state.data) {
       ui.root.innerHTML = '<div class="olliTtLoading">주간 시간표를 불러오고 있어요.</div>';
       return;
@@ -405,6 +492,24 @@
   }
 
   function handleScheduleControl(event) {
+    const attendanceDivision = event.target.closest('[data-tt-attendance-division]');
+    if (attendanceDivision) {
+      state.attendanceDivision = attendanceDivision.dataset.ttAttendanceDivision === 'combined' ? 'combined' : (attendanceDivision.dataset.ttAttendanceDivision === 'kinder' ? 'kinder' : 'elementary');
+      renderAttendanceRegister();
+      renderAttendanceHeader();
+      return true;
+    }
+    const attendanceMonth = event.target.closest('[data-tt-attendance-month]');
+    if (attendanceMonth) {
+      if (attendanceMonth.dataset.ttAttendanceMonth === 'prev') shiftAttendanceMonth(-1);
+      else if (attendanceMonth.dataset.ttAttendanceMonth === 'next') shiftAttendanceMonth(1);
+      else {
+        state.attendanceMonth = dateKey(new Date()).slice(0, 7);
+        state.attendanceRowsMonth = '';
+        loadAttendanceRegister();
+      }
+      return true;
+    }
     const historyButton = event.target.closest('[data-tt-history]');
     if (historyButton) {
       openHistory();
@@ -445,6 +550,22 @@
       title.__olliTtScheduleHeaderBound = true;
       title.addEventListener('click', (event) => { handleScheduleControl(event); });
     }
+  }
+
+  function renderAttendanceHeader() {
+    const title = document.getElementById('olliPcTopbarTitle');
+    if (!title) return;
+    title.classList.add('olliTtTopbarSchedule');
+    title.innerHTML = '<div class="olliTtDivisionTabs" role="tablist" aria-label="출석부 부서 선택">'
+      + ['elementary', 'kinder', 'combined'].map((division) => `<button type="button" class="olliTtDivisionTab ${state.attendanceDivision === division ? 'active' : ''}" data-tt-attendance-division="${division}">${division === 'elementary' ? '초등부' : (division === 'kinder' ? '유치부' : '통합')}</button>`).join('') + '</div>'
+      + '<div class="olliTtWeekNav"><button type="button" class="olliTtWeekBtn icon" data-tt-attendance-month="prev" aria-label="이전 달">‹</button>'
+      + `<button type="button" class="olliTtWeekBtn range">${esc(monthLabel(state.attendanceMonth))}</button>`
+      + '<button type="button" class="olliTtWeekBtn icon" data-tt-attendance-month="next" aria-label="다음 달">›</button><button type="button" class="olliTtWeekBtn today" data-tt-attendance-month="today">이번 달</button></div>';
+  }
+
+  function renderWorkspaceHeader() {
+    if (state.pane === 'attendance') renderAttendanceHeader();
+    else renderScheduleHeader();
   }
 
   function onTimetableClick(event) {
@@ -489,35 +610,46 @@
       .map((item) => `${weekdayLabel(item.weekday)} ${timeLabel(item.time_slot)}${classGroupLabel(divisionOf(student), item.class_group) ? ` ${classGroupLabel(divisionOf(student), item.class_group)}` : ''}`).join(' · ');
   }
 
+  function setPane(pane) {
+    const next = pane === 'attendance' ? 'attendance' : 'schedule';
+    if (state.pane === next) return;
+    state.pane = next;
+    closeDialog();
+    renderSidebar();
+    renderWorkspaceHeader();
+    renderTimetable();
+    if (next === 'attendance') loadAttendanceRegister();
+    else loadWeek();
+  }
+
   function renderSidebar() {
     if (!state.active || state.view !== 'schedule') return;
     const title = document.getElementById('olliPcContextTitle');
     const body = document.getElementById('olliPcContextBody');
     if (!title || !body) return;
-    title.textContent = '빠른 보기';
+    title.textContent = '시간표 • 출석부';
     // 한글 IME 조합이 끊기지 않도록 검색창은 유지하고 결과 영역만 갱신합니다.
     let input = body.querySelector('#olliTtQuickSearch');
     let results = body.querySelector('[data-tt-sidebar-results]');
     if (!input || !results) {
-      body.innerHTML = `<div class="olliTtQuickFilter"><button type="button" class="olliTtQuickFilterBtn" data-tt-filter="all">전체</button><button type="button" class="olliTtQuickFilterBtn" data-tt-filter="elementary">초등부</button><button type="button" class="olliTtQuickFilterBtn" data-tt-filter="kinder">유치부</button></div>`
+      body.innerHTML = `<div class="olliTtQuickFilter olliTtPaneTabs"><button type="button" class="olliTtQuickFilterBtn" data-tt-pane="schedule">시간표</button><button type="button" class="olliTtQuickFilterBtn" data-tt-pane="attendance">출석부</button></div>`
         + `<input type="search" class="olliTtQuickSearch" id="olliTtQuickSearch" value="${esc(state.sidebarQuery)}" placeholder="학생 검색" aria-label="시간표 학생 검색">`
         + '<div data-tt-sidebar-results></div>';
       input = body.querySelector('#olliTtQuickSearch');
       results = body.querySelector('[data-tt-sidebar-results]');
-      body.querySelectorAll('[data-tt-filter]').forEach((button) => button.addEventListener('click', () => {
-        state.sidebarFilter = button.dataset.ttFilter;
-        renderSidebar();
+      body.querySelectorAll('[data-tt-pane]').forEach((button) => button.addEventListener('click', () => {
+        setPane(button.dataset.ttPane);
       }));
       bindImeSafeSearch(
         input,
         (value) => { state.sidebarQuery = value; },
-        () => renderSidebarResults(body),
+        () => { renderSidebarResults(body); if (state.pane === 'attendance') renderAttendanceRegister(); },
         null
       );
     } else if (document.activeElement !== input && input.value !== state.sidebarQuery) {
       input.value = state.sidebarQuery;
     }
-    body.querySelectorAll('[data-tt-filter]').forEach((button) => button.classList.toggle('active', button.dataset.ttFilter === state.sidebarFilter));
+    body.querySelectorAll('[data-tt-pane]').forEach((button) => button.classList.toggle('active', button.dataset.ttPane === state.pane));
     renderSidebarResults(body);
   }
 
@@ -527,14 +659,23 @@
     if (!results) return;
     const students = service.activeStudents().filter((student) => {
       const division = divisionOf(student);
-      return (state.sidebarFilter === 'all' || state.sidebarFilter === division)
-        && (!state.sidebarQuery || clean(student.name).includes(state.sidebarQuery));
+      return !state.sidebarQuery || clean(student.name).includes(state.sidebarQuery);
     });
     const elementary = students.filter((student) => divisionOf(student) === 'elementary');
     const kinder = students.filter((student) => divisionOf(student) === 'kinder');
     const groupHtml = (list, division) => list.length ? `<div class="olliTtQuickGroup"><div class="olliTtQuickGroupTitle">${divisionLabel(division)} · ${list.length}명</div>${list.map((student) => `<button type="button" class="olliTtQuickStudent" data-tt-sidebar-student="${esc(student.id)}"><span>${esc(student.name)}</span><span class="olliTtQuickStudentSchedule">${esc(studentScheduleText(student.id))}</span></button>`).join('')}</div>` : '';
     results.innerHTML = students.length ? groupHtml(elementary, 'elementary') + groupHtml(kinder, 'kinder') : '<div class="olliTtQuickEmpty">조건에 맞는 학생이 없습니다.</div>';
-    results.querySelectorAll('[data-tt-sidebar-student]').forEach((button) => button.addEventListener('click', () => openMove(button.dataset.ttSidebarStudent)));
+    results.querySelectorAll('[data-tt-sidebar-student]').forEach((button) => button.addEventListener('click', () => {
+      if (state.pane === 'schedule') openMove(button.dataset.ttSidebarStudent);
+      else {
+        const student = studentById(button.dataset.ttSidebarStudent);
+        state.sidebarQuery = clean(student && student.name);
+        const input = body.querySelector('#olliTtQuickSearch');
+        if (input) input.value = state.sidebarQuery;
+        renderSidebarResults(body);
+        renderAttendanceRegister();
+      }
+    }));
   }
 
   function closeDialog() {
@@ -1349,6 +1490,7 @@ const wrapped = function(type, student) {
         if (state.active && state.view === 'schedule') {
           state.sidebarQuery = clean(value);
           renderSidebar();
+          if (state.pane === 'attendance') renderAttendanceRegister();
           return;
         }
         return originalSearch.apply(this, arguments);
@@ -1357,7 +1499,7 @@ const wrapped = function(type, student) {
       global.pcHandleTopSearch = wrappedSearch;
     }
     global.olliPcSetAttendanceView = setView;
-    global.olliTtRenderScheduleHeader = renderScheduleHeader;
+    global.olliTtRenderScheduleHeader = renderWorkspaceHeader;
     global.olliTtOpenStudentSchedule = openMove;
     syncAttendanceActive();
   }

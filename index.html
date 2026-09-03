@@ -8765,6 +8765,7 @@ body.olli-login-open {
 <link rel="stylesheet" href="pc-attendance.css">
 <link rel="stylesheet" href="pc-student-management.css">
 <link rel="stylesheet" href="pc-observation.css">
+<link rel="stylesheet" href="pc-trash.css">
 <link rel="stylesheet" href="consultation-survey.css">
 </head>
 <body class="olliPcApp">
@@ -8790,7 +8791,7 @@ body.olli-login-open {
       <svg viewBox="0 0 24 24"><path d="M6 4.5h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-4.5 3v-3H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"></path><path d="M8 9h8M8 13h5"></path></svg><span>상담기록</span>
     </button>
     <button class="olliPcNavBtn" data-pc-nav="schedule" type="button" onclick="pcOpenSection('schedule')">
-      <svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14" rx="2.5"></rect><path d="M8 3.5v4M16 3.5v4M4 9.5h16M8 13h3M13 13h3M8 16.5h3"></path></svg><span>시간표</span>
+      <svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14" rx="2.5"></rect><path d="M8 3.5v4M16 3.5v4M4 9.5h16M8 13h3M13 13h3M8 16.5h3"></path></svg><span>시간표 • 출석부</span>
     </button>
   </nav>
   <div class="olliPcContext">
@@ -8803,6 +8804,9 @@ body.olli-login-open {
     </button>
     <button class="olliPcRoundBtn" id="olliPcSortBtn" type="button" onclick="pcOpenSidebarSort(event)" aria-label="정렬" title="정렬">
       <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"></path><circle cx="16" cy="7" r="2"></circle><circle cx="8" cy="17" r="2"></circle></svg>
+    </button>
+    <button class="olliPcRoundBtn" id="olliPcTrashBtn" type="button" onclick="pcOpenRecordTrash()" aria-label="휴지통" title="휴지통">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M9 3.5h6l1 3.5H8l1-3.5zM7 7l1 13h8l1-13M10 11v5M14 11v5"></path></svg>
     </button>
     <button class="olliPcRoundBtn" id="olliPcSettingsBtn" type="button" onclick="openSettingsPage()" aria-label="설정" title="설정">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.09a2 2 0 0 1 1 1.74v.5a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -12233,19 +12237,12 @@ function getSummaryMonthsFromAttendanceItem(item) {
 }
 
 async function softDeleteAttendanceSummaryFeedback(item) {
-  const academyId = requireOlliAcademyId('종합 피드백 재생성');
+  requireOlliAcademyId('종합 피드백 재생성');
   const row = item?.row || item || {};
   const recordId = String(row.id || item?.rowId || '').trim();
   if (!recordId) throw new Error('삭제할 종합 피드백의 서버 ID가 없습니다.');
-  if (typeof deleteOlliData !== 'function') throw new Error('공통 삭제 함수가 준비되지 않았습니다.');
-  return await deleteOlliData('summary_feedback_by_id_delete', {
-    academyId,
-    recordId,
-    id: recordId,
-    studentId: row.student_id || attendanceStudentFeedbackSheetState.student?.id || ''
-  }, {
-    reason: 'summary_feedback_regenerated'
-  });
+  if (!window.OlliRecordTrash) throw new Error('휴지통 기능이 준비되지 않았습니다.');
+  return await window.OlliRecordTrash.move('summary_feedbacks', recordId, 'summary_feedback_regenerated');
 }
 
 async function regenerateAttendanceSummaryFeedback(itemId, event) {
@@ -12381,26 +12378,13 @@ async function performAttendanceFeedbackSheetItemDelete(itemId, kind = 'feedback
   }
 
   try {
-    if (kind === 'summary' && typeof deleteOlliData === 'function') {
-      const academyId = requireOlliAcademyId('종합 성장 기록 삭제');
-      await deleteOlliData('summary_feedback_by_id_delete', {
-        academyId,
-        recordId: rowId,
-        id: rowId,
-        studentId: row.student_id || student.id || ''
-      }, {
-        reason: 'manual_delete_from_student_record'
-      });
-    } else {
-      const academyId = requireOlliAcademyId('관찰 기록 삭제');
-      const path = `${tableName}?id=eq.${encodeURIComponent(rowId)}&academy_id=eq.${encodeURIComponent(academyId)}`;
-      await supabase('DELETE', path);
-      removeAttendanceFeedbackItemFromLocalArchive(student, item);
-    }
+    if (!window.OlliRecordTrash) throw new Error('휴지통 기능이 준비되지 않았습니다.');
+    await window.OlliRecordTrash.move(tableName, rowId, 'manual_delete_from_student_record');
+    if (kind !== 'summary') removeAttendanceFeedbackItemFromLocalArchive(student, item);
 
     const refreshed = await loadAttendanceStudentFeedbackSheetItems(student);
     renderAttendanceStudentFeedbackSheet(student, refreshed);
-    if (typeof showPushToast === 'function') showPushToast('기록을 삭제했어요.');
+    if (typeof showPushToast === 'function') showPushToast('기록을 휴지통으로 이동했어요.');
   } catch (err) {
     console.error('학생 기록 삭제 오류:', err);
     alert(`기록 삭제 중 오류가 발생했어요.\n\n${err.message || '알 수 없는 오류입니다.'}`);
@@ -12419,7 +12403,7 @@ function ensureAttendanceRecordDeleteOverlay() {
   overlay.innerHTML = `
     <div class="attendanceRecordDeleteDialog" role="dialog" aria-modal="true" aria-labelledby="attendanceRecordDeleteTitle" onclick="event.stopPropagation()">
       <div class="attendanceRecordDeleteTitle" id="attendanceRecordDeleteTitle">기록을 삭제할까요?</div>
-      <div class="attendanceRecordDeleteDesc" id="attendanceRecordDeleteDesc">삭제한 기록은 되돌릴 수 없습니다.</div>
+      <div class="attendanceRecordDeleteDesc" id="attendanceRecordDeleteDesc">삭제한 기록은 휴지통에서 복구할 수 있습니다.</div>
       <div class="attendanceRecordDeleteActions">
         <button type="button" class="attendanceRecordDeleteBtn cancel" onclick="closeAttendanceRecordDeleteOverlay()">취소</button>
         <button type="button" class="attendanceRecordDeleteBtn confirm" id="attendanceRecordDeleteConfirmBtn" onclick="confirmAttendanceRecordDelete()">삭제</button>
@@ -12450,7 +12434,7 @@ function openAttendanceRecordDeleteOverlay(itemId, kind = 'feedback', event) {
   const titleEl = document.getElementById('attendanceRecordDeleteTitle');
   const descEl = document.getElementById('attendanceRecordDeleteDesc');
   if (titleEl) titleEl.textContent = `${title}을 삭제할까요?`;
-  if (descEl) descEl.textContent = '삭제한 기록은 되돌릴 수 없습니다.';
+  if (descEl) descEl.textContent = '삭제한 기록은 휴지통에서 복구할 수 있습니다.';
   overlay.classList.add('show');
 }
 
@@ -27900,7 +27884,9 @@ function settingsBuildAttendanceRegisterHtml(options = {}) {
     : (settingsAttendancePrintState.division === 'kinder' ? 'kinder' : 'elementary');
   const ym = settingsGetAttendanceYearMonth();
   const days = settingsGetDaysInMonth(ym.year, ym.month);
-  const students = settingsGetAttendanceRosterStudents();
+  const students = Array.isArray(options.students) ? options.students : settingsGetAttendanceRosterStudents();
+  const attendanceRows = Array.isArray(options.attendanceRows) ? options.attendanceRows : [];
+  const attendanceKeys = new Set(attendanceRows.map(row => String(row?.student_id || '') + '|' + String(row?.session_date || '').slice(0, 10)));
   const academyName = settingsAttendanceGetAcademyName();
   const divisionLabel = settingsAttendanceGetDivisionLabel(division);
   const tableClass = forPrint ? 'attendancePrintTable' : 'settingsAttendancePreviewTable';
@@ -27933,7 +27919,9 @@ function settingsBuildAttendanceRegisterHtml(options = {}) {
     const dateCells = Array.from({ length: days }, (_, i) => {
       const day = i + 1;
       const cls = settingsAttendanceDayClass(ym.year, ym.month, day);
-      return '<td class="dateCol ' + cls + '"' + settingsAttendancePrintInlineStyle(cls, forPrint) + '></td>';
+      const dateKey = ym.year + '-' + String(ym.month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+      const marked = attendanceKeys.has(String(student.id || '') + '|' + dateKey);
+      return '<td class="dateCol ' + cls + (marked ? ' attendanceLinkedMark' : '') + '"' + settingsAttendancePrintInlineStyle(cls, forPrint) + '>' + (marked ? '<span aria-label="출석">✓</span>' : '') + '</td>';
     }).join('');
     return '<tr>'
       + '<td class="noCol">' + (globalIndex + 1) + '</td>'
@@ -27981,6 +27969,19 @@ function settingsBuildAttendanceRegisterHtml(options = {}) {
   }
   return '<div class="' + sheetClass + '">' + pages.join('') + '</div>';
 }
+
+window.olliBuildLinkedAttendanceRegisterHtml = function(options = {}) {
+  const previous = { division: settingsAttendancePrintState.division, sort: settingsAttendancePrintState.sort, yearMonth: settingsAttendancePrintState.yearMonth };
+  settingsAttendancePrintState.division = options.division === 'combined' ? 'combined' : (options.division === 'kinder' ? 'kinder' : 'elementary');
+  settingsAttendancePrintState.sort = options.sort === 'name' ? 'name' : 'grade';
+  settingsAttendancePrintState.yearMonth = /^\d{4}-\d{2}$/.test(String(options.yearMonth || '')) ? String(options.yearMonth) : settingsGetCurrentYearMonthValue();
+  try {
+    const requestedIds = Array.isArray(options.students) ? new Set(options.students.map(student => String(student?.id || ''))) : null;
+    const students = requestedIds ? settingsGetAttendanceRosterStudents().filter(student => requestedIds.has(String(student?.id || ''))) : undefined;
+    return settingsBuildAttendanceRegisterHtml({ forPrint: false, attendanceRows: options.attendanceRows || [], students });
+  }
+  finally { settingsAttendancePrintState.division = previous.division; settingsAttendancePrintState.sort = previous.sort; settingsAttendancePrintState.yearMonth = previous.yearMonth; }
+};
 
 
 function settingsAttendanceFitTextCells(root) {
@@ -43090,6 +43091,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <script src="pc-student-management.js"></script>
 <script src="pc-attendance.js"></script>
 <script src="pc-observation.js"></script>
+<script src="pc-trash.js"></script>
 <link rel="stylesheet" href="pc-timetable.css">
 <script>window.__OLLI_MODULAR_TIMETABLE__ = true;</script>
 <style id="olliPcAttendanceTimetableStyle" media="not all">
