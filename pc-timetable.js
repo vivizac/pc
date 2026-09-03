@@ -704,7 +704,7 @@
       + '</div></div><div class="olliTtField"><div class="olliTtFieldHead"><span>추가 유형</span><small>정규 수업 또는 특정 날짜 보강</small></div><div class="olliTtTypeGrid">'
       + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'regular' ? 'active' : ''}" data-tt-add-type="regular">정규 수업 추가<small>이 날짜부터 매주 반복됩니다.</small></button>`
       + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'makeup' ? 'active' : ''}" data-tt-add-type="makeup">보강 추가<small>${shortDate(dialog.date)} 하루만 수업합니다.</small></button></div></div>`
-      + (division === 'elementary' && !isClassSplit(division, dialog.weekday, dialog.time) ? '<div class="olliTtField olliTtSplitClassField"><div class="olliTtFieldHead"><span>클래스 운영</span><small>현재 칸을 위·아래 A반·B반으로 나눕니다.</small></div><button type="button" class="olliTtSplitClassBtn" data-tt-split-class>클래스 분리</button></div>' : '')
+      + (division === 'elementary' ? `<div class="olliTtField olliTtSplitClassField"><div class="olliTtFieldHead"><span>클래스 운영</span><small>${isClassSplit(division, dialog.weekday, dialog.time) ? '분리된 A반·B반을 하나의 칸으로 통합합니다.' : '현재 칸을 위·아래 A반·B반으로 나눕니다.'}</small></div><button type="button" class="olliTtSplitClassBtn" ${isClassSplit(division, dialog.weekday, dialog.time) ? 'data-tt-merge-class' : 'data-tt-split-class'}>${isClassSplit(division, dialog.weekday, dialog.time) ? '클래스 통합' : '클래스 분리'}</button></div>` : '')
       + classGroupChoiceHtml(division, dialog.targetClassGroup, dialog.weekday, dialog.time)
       + (selected ? `<div class="olliTtStatusNotice">${esc(selected.name)} 학생을 ${dialog.addType === 'makeup' ? '보강으로' : occupied >= (capacity || 99999) ? '대기로' : '정규 수업으로'} 추가합니다.</div>` : '')
       + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-add ${selected ? '' : 'disabled'}>${dialog.addType === 'makeup' ? '보강 등록' : occupied >= (capacity || 99999) ? '대기 등록' : '학생 추가'}</button></div></div>`;
@@ -1038,6 +1038,8 @@
     if (saveAddButton) saveAddButton.addEventListener('click', saveAdd);
     const splitClassButton = dialog.querySelector('[data-tt-split-class]');
     if (splitClassButton) splitClassButton.addEventListener('click', splitClass);
+    const mergeClassButton = dialog.querySelector('[data-tt-merge-class]');
+    if (mergeClassButton) mergeClassButton.addEventListener('click', mergeClass);
     const savePickupButton = dialog.querySelector('[data-tt-save-pickup]');
     if (savePickupButton) savePickupButton.addEventListener('click', savePickup);
     const removePickupButton = dialog.querySelector('[data-tt-remove-pickup]');
@@ -1155,6 +1157,14 @@
     if (!confirm(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 수업을 A반·B반으로 분리할까요?\n기존 학생은 A반에 그대로 유지됩니다.`)) return;
     const result = await withSaving(() => service.splitClass(dialog.weekday, dialog.time));
     if (result) notify(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 수업을 위·아래 두 반으로 분리했어요.`);
+  }
+
+  async function mergeClass() {
+    const dialog = state.dialog;
+    if (!dialog || dialog.kind !== 'add' || dialog.division !== 'elementary') return;
+    if (!confirm(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 수업을 하나의 칸으로 통합할까요?`)) return;
+    const result = await withSaving(() => service.mergeClass(dialog.weekday, dialog.time));
+    if (result) notify(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 수업을 통합했어요.`);
   }
 
   async function saveAdd() {

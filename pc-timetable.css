@@ -82,8 +82,8 @@
 }
 #recordRoomScreen .olliTtScroll { min-height: 0; display: flex; flex: 1; flex-direction: column; overflow: auto; }
 #recordRoomScreen .olliTtGrid { width: 100%; height: 100%; min-width: 0; display: grid; grid-template-columns: 56px repeat(6, minmax(0, 1fr)); grid-template-rows: 52px repeat(var(--olli-tt-rows), minmax(108px, 1fr)); }
-#recordRoomScreen .olliTtSection.elementary .olliTtGrid { height: auto; min-height: 100%; grid-template-rows: 52px minmax(70px, max-content) repeat(5, minmax(108px, max-content)); align-content: start; }
-#recordRoomScreen .olliTtSection.kinder .olliTtGrid { height: auto; min-height: 428px; grid-template-rows: 52px repeat(2, 188px); }
+#recordRoomScreen .olliTtSection.elementary .olliTtGrid { min-height: 100%; }
+#recordRoomScreen .olliTtSection.kinder .olliTtGrid { height: 100%; min-height: 100%; grid-template-rows: 52px repeat(2, minmax(250px, 1fr)); }
 #recordRoomScreen .olliTtGrid > * { border-right: 1px solid #e8ebef; border-bottom: 1px solid #e8ebef; }
 #recordRoomScreen .olliTtGrid > :nth-child(7n) { border-right: 0; }
 #recordRoomScreen .olliTtGrid > :nth-last-child(-n+7) { border-bottom: 0; }
@@ -151,7 +151,7 @@
 }
 #recordRoomScreen button.olliTtStudent.wait { display: block; }
 #recordRoomScreen .olliTtAttendanceBtn { min-width: 0; padding: 3px 2px 3px 5px; border: 0; display: block; flex: 1; overflow: hidden; color: inherit; background: transparent; text-align: left; text-overflow: ellipsis; white-space: nowrap; font: inherit; cursor: pointer; }
-#recordRoomScreen .olliTtStudentMore { width: 23px; min-width: 23px; padding: 0 3px 1px 0; border: 0; color: #b4bac2; background: transparent; font: 800 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+#recordRoomScreen .olliTtStudentMore { width: 23px; min-width: 23px; padding: 0 3px 1px 0; border: 0; color: #b4bac2; background: transparent; font: 500 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 #recordRoomScreen .olliTtStudentMore:hover { color: #7f8792; }
 #recordRoomScreen .olliTtStudent.scheduled { grid-column: 1 / -1; }
 #recordRoomScreen .olliTtStudent.regular.elementary { border-color: #f0dd8b; background: #fff3c6; }
@@ -159,7 +159,7 @@
 #recordRoomScreen .olliTtStudent.wait { border: 1px dashed #c8bceb; color: #8373ac; background: #f8f6ff; }
 #recordRoomScreen .olliTtStudent.makeup { border-color: #73b9a5; color: #267763; background: #e5f6f0; }
 #recordRoomScreen .olliTtStudent.regular.attended,
-#recordRoomScreen .olliTtStudent.makeup.attended { border-color: #a6dfb8; background: #dff7e7; box-shadow: inset 0 0 0 1px rgba(80, 173, 108, .14); }
+#recordRoomScreen .olliTtStudent.makeup.attended { border-color: #29b765; background: #43d878; box-shadow: inset 0 0 0 1px rgba(17, 144, 70, .18); }
 #recordRoomScreen .olliTtStudent:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(26, 38, 58, .09); }
 #recordRoomScreen .olliTtStudentTag { float: right; margin-left: 3px; padding: 1px 3px; border-radius: 999px; color: #fff; font-size: calc(7px * var(--olli-text-scale)); font-weight: 800; }
 #recordRoomScreen .olliTtStudent.wait .olliTtStudentTag { background: #b7a8df; }

@@ -197,6 +197,10 @@
     });
   }
 
+  async function mergeClass(weekday, timeSlot) {
+    return executeScheduleAction('merge_class', { weekday: Number(weekday), time_slot: Number(timeSlot) });
+  }
+
   async function toggleAttendance(options) {
     return executeScheduleAction('toggle_attendance', {
       student_id: options.studentId,
@@ -251,6 +255,7 @@
     cancelChange,
     removeEnrollment,
     splitClass,
+    mergeClass,
     toggleAttendance,
     savePickup,
     removePickup,
