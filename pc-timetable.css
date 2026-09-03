@@ -51,6 +51,22 @@
 #olliPcTopbar .olliTtWeekBtn.range { min-width: 174px; color: #232830; font-weight: 800; }
 #olliPcTopbar .olliTtWeekBtn.today { color: #0A84FF; border-color: #cde5fc; background: #f5faff; }
 #olliPcTopbar .olliTtWeekBtn:hover { border-color: #badbfb; color: #0A73DC; }
+#olliPcTopbar .olliTtHistoryBtn {
+  height: 40px;
+  margin-left: 5px;
+  padding: 0 14px;
+  border: 1px solid #d8e2ec;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #4b5d70;
+  background: #f8fafc;
+  font: 790 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  cursor: pointer;
+}
+#olliPcTopbar .olliTtHistoryBtn span { color: #0A84FF; font-size: 18px; line-height: 1; }
+#olliPcTopbar .olliTtHistoryBtn:hover { border-color: #acd5fb; color: #0877df; background: #f2f8ff; }
 
 #recordRoomScreen .olliTtLegend {
   display: flex;
@@ -278,8 +294,49 @@
 .olliTtDialogActions button { height: 54px; border: 0; border-radius: 16px; font: 780 calc(14px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 .olliTtDialogCancel { color: #626b77; background: #e9edf1; }
 .olliTtDialogPrimary { color: #fff; background: #0A84FF; box-shadow: 0 8px 19px rgba(10,132,255,.19); }
+.olliTtDialogPrimary.secondary { color: #0877df; background: #eaf4ff; box-shadow: none; }
 .olliTtDialogPrimary.danger { background: #e15e67; box-shadow: 0 8px 19px rgba(225,94,103,.17); }
 .olliTtDialogPrimary:disabled { box-shadow: none; opacity: .45; cursor: default; }
+
+/* 시간표 변경 이력과 안전 복구 */
+#olliTtDialog.olliTtHistoryDialog { width: min(820px, calc(100vw - 52px)); overflow: hidden; }
+.olliTtHistoryBody { display: flex; min-height: 0; max-height: calc(100vh - 174px); flex-direction: column; }
+.olliTtHistorySafety { flex: 0 0 auto; padding: 13px 16px; border: 1px solid #d9eafa; border-radius: 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; color: #667486; background: #f4f9ff; font-size: calc(11px * var(--olli-text-scale)); font-weight: 650; }
+.olliTtHistorySafety strong { color: #0877df; font-size: calc(12px * var(--olli-text-scale)); font-weight: 820; }
+.olliTtHistoryList { min-height: 0; margin: 12px -4px 0 0; padding-right: 4px; display: grid; gap: 9px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #d8dde3 transparent; }
+.olliTtHistoryItem { position: relative; padding: 15px 16px; border: 1px solid #e3e7eb; border-radius: 17px; background: #fff; }
+.olliTtHistoryItem.restored { background: #f8f9fa; }
+.olliTtHistoryItem.restoreRecord { border-color: #d9eafa; background: #f7fbff; }
+.olliTtHistoryItemTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.olliTtHistoryItemTop > div { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.olliTtHistoryAction { flex: 0 0 auto; padding: 4px 7px; border-radius: 8px; color: #0877df; background: #eaf4ff; font-size: calc(9px * var(--olli-text-scale)); font-weight: 820; }
+.olliTtHistoryItemTop strong { overflow: hidden; color: #252b33; text-overflow: ellipsis; white-space: nowrap; font-size: calc(14px * var(--olli-text-scale)); font-weight: 830; }
+.olliTtHistoryItemTop time { flex: 0 0 auto; color: #9aa1aa; font-size: calc(10px * var(--olli-text-scale)); font-weight: 680; }
+.olliTtHistoryCompare { margin-top: 11px; padding: 10px 12px; border-radius: 12px; display: grid; grid-template-columns: minmax(0,1fr) 24px minmax(0,1fr); align-items: center; color: #5d6672; background: #f5f6f8; font-size: calc(11px * var(--olli-text-scale)); font-weight: 730; }
+.olliTtHistoryCompare span:last-child { color: #303943; }
+.olliTtHistoryCompare i { color: #0A84FF; text-align: center; font-style: normal; }
+.olliTtHistoryMeta { min-height: 31px; margin-top: 9px; display: flex; align-items: center; gap: 8px; color: #969da6; font-size: calc(10px * var(--olli-text-scale)); font-weight: 650; }
+.olliTtHistoryMeta b { padding: 3px 6px; border-radius: 7px; color: #7c8490; background: #eceff2; font-size: inherit; }
+.olliTtHistoryRestoreBtn { position: absolute; right: 15px; bottom: 12px; height: 32px; padding: 0 11px; border: 1px solid #f0cfd2; border-radius: 10px; color: #bd4e56; background: #fff8f8; font: 780 calc(10px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+.olliTtHistoryRestoreBtn:hover { color: #fff; border-color: #dc616a; background: #dc616a; }
+.olliTtHistoryLoading { min-height: 220px; display: grid; place-items: center; color: #9299a3; font-size: calc(12px * var(--olli-text-scale)); font-weight: 700; }
+.olliTtHistoryEmpty { min-height: 220px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #9aa1aa; text-align: center; }
+.olliTtHistoryEmpty strong { color: #555e69; font-size: calc(14px * var(--olli-text-scale)); }
+.olliTtHistoryEmpty span { margin-top: 7px; font-size: calc(11px * var(--olli-text-scale)); }
+.olliTtHistoryEmpty button { height: 36px; margin-top: 14px; padding: 0 14px; border: 0; border-radius: 11px; color: #fff; background: #0A84FF; font: 760 calc(11px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+.olliTtHistoryBody > .olliTtDialogActions { flex: 0 0 auto; margin-top: 16px; }
+
+.olliTtRestoreTarget { padding: 17px; border: 1px solid #dce4ec; border-radius: 17px; background: #f8fafc; }
+.olliTtRestoreTarget > span { display: inline-block; padding: 4px 7px; border-radius: 8px; color: #0877df; background: #eaf4ff; font-size: calc(9px * var(--olli-text-scale)); font-weight: 820; }
+.olliTtRestoreTarget > strong { display: block; margin-top: 8px; color: #252b33; font-size: calc(17px * var(--olli-text-scale)); font-weight: 850; }
+.olliTtRestoreTarget > div { margin-top: 14px; display: grid; grid-template-columns: minmax(0,1fr) 30px minmax(0,1fr); align-items: center; color: #4e5966; font-size: calc(12px * var(--olli-text-scale)); }
+.olliTtRestoreTarget i { color: #e15e67; text-align: center; font-style: normal; }
+.olliTtRestoreTarget b:last-child { color: #bd4e56; }
+.olliTtRestoreWarning { margin-top: 14px; padding: 14px 16px; border-radius: 15px; color: #786568; background: #fff4f4; }
+.olliTtRestoreWarning strong { display: block; color: #b84e56; font-size: calc(12px * var(--olli-text-scale)); font-weight: 820; }
+.olliTtRestoreWarning span { display: block; margin-top: 5px; font-size: calc(10px * var(--olli-text-scale)); font-weight: 650; line-height: 1.55; }
+.olliTtRestoreCheck { margin-top: 15px; padding: 13px 15px; border: 1px solid #e1e5e9; border-radius: 14px; display: flex; align-items: center; gap: 10px; color: #4e5865; background: #fff; font-size: calc(11px * var(--olli-text-scale)); font-weight: 730; cursor: pointer; }
+.olliTtRestoreCheck input { width: 18px; height: 18px; accent-color: #0A84FF; }
 
 /* 학생정보창 시간표 연결 */
 #elementaryInfoModal .olliTtStudentInfoPanel,
@@ -294,6 +351,8 @@
   #olliPcTopbar .olliPcTopbarTitle.olliTtTopbarSchedule { gap: 12px; }
   #olliPcTopbar .olliTtDivisionTabs { gap: 12px; }
   #olliPcTopbar .olliTtWeekBtn.range { min-width: 138px; }
+  #olliPcTopbar .olliTtHistoryBtn { width: 40px; padding: 0; justify-content: center; font-size: 0; }
+  #olliPcTopbar .olliTtHistoryBtn span { font-size: 18px; }
   #recordRoomScreen .olliTtGrid { grid-template-columns: 50px repeat(6, minmax(0, 1fr)); }
 }
 @media (max-width: 580px) {

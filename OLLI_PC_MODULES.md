@@ -9,7 +9,7 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 | 성향기록부·학생 명단·관찰기록 패널 | `pc-attendance.js` | `pc-attendance.css` |
 | 관찰기록·1분 피드백 전환과 명단 | `pc-observation.js` | `pc-observation.css` |
 | 시간표 화면·팝업 | `pc-timetable.js` | `pc-timetable.css` |
-| 시간표 데이터 호출 | `pc-timetable-service.js` | - |
+| 시간표 데이터 호출·변경 이력·복구 | `pc-timetable-service.js` | - |
 | 상담설문 | `consultation-survey.js`, `consultation-survey-core.js` | `consultation-survey.css` |
 
 ## 공통 연결 원칙
@@ -19,6 +19,14 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 - 로그인 세션, `academy_id`, 학생 원본 데이터, Supabase 저장 함수는 공통 기존 코드를 그대로 사용한다.
 - 기능을 수정할 때 다른 모듈 코드를 복사하지 않는다. 공통 연결이 필요하면 `OlliPcCore`의 공개 함수만 사용한다.
 - 시간표와 상담설문은 독립 모듈 상태를 유지하며 PC 셸의 메뉴 전환 함수만 연결한다.
+
+## 시간표 변경 이력과 복구
+
+- PC 시간표 상단의 `변경 이력`에서 최근 30일의 수정자, 수정 시각, 변경 전·후 내용을 확인한다.
+- 시간표를 바꾸는 화면 호출은 `pc-timetable-service.js`의 `olli_schedule_execute` 경로를 사용해 수정자와 작업 종류를 함께 기록한다.
+- 복구는 원장·관리자만 가능하며, 대상 변경을 한 번 더 비교하고 확인 체크를 해야 실행된다. 교사는 이력만 조회할 수 있다.
+- 복구 작업도 새 이력으로 남는다. 대상 항목이 이후 다시 수정된 경우 서버가 복구를 거절하므로 최근 변경부터 확인한다.
+- 서버 구조는 `supabase/migrations/20260903021908_olli_schedule_history.sql`에서 관리한다. 이력 테이블은 앱에서 직접 읽거나 쓰지 않고 권한을 확인하는 RPC만 사용한다.
 
 ## 로드 순서
 

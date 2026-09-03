@@ -23,7 +23,8 @@
     sidebarQuery: '',
     scheduleDivision: 'elementary',
     dialog: null,
-    saving: false
+    saving: false,
+    historyLoadToken: 0
   };
 
   function clean(value) { return String(value == null ? '' : value).trim(); }
@@ -300,6 +301,11 @@
   }
 
   function handleScheduleControl(event) {
+    const historyButton = event.target.closest('[data-tt-history]');
+    if (historyButton) {
+      openHistory();
+      return true;
+    }
     const divisionTab = event.target.closest('[data-tt-division]');
     if (divisionTab) {
       state.scheduleDivision = divisionTab.dataset.ttDivision === 'kinder' ? 'kinder' : 'elementary';
@@ -327,7 +333,8 @@
       + `<button type="button" class="olliTtDivisionTab ${state.scheduleDivision === 'kinder' ? 'active' : ''}" data-tt-division="kinder" role="tab" aria-selected="${state.scheduleDivision === 'kinder'}">유치부</button></div>`
       + '<div class="olliTtWeekNav"><button type="button" class="olliTtWeekBtn icon" data-tt-week="prev" aria-label="이전 주">‹</button>'
       + `<button type="button" class="olliTtWeekBtn range">${weekRangeText()}</button>`
-      + '<button type="button" class="olliTtWeekBtn icon" data-tt-week="next" aria-label="다음 주">›</button><button type="button" class="olliTtWeekBtn today" data-tt-week="today">이번 주</button></div>';
+      + '<button type="button" class="olliTtWeekBtn icon" data-tt-week="next" aria-label="다음 주">›</button><button type="button" class="olliTtWeekBtn today" data-tt-week="today">이번 주</button>'
+      + '<button type="button" class="olliTtHistoryBtn" data-tt-history><span aria-hidden="true">↶</span> 변경 이력</button></div>';
     if (!title.__olliTtScheduleHeaderBound) {
       title.__olliTtScheduleHeaderBound = true;
       title.addEventListener('click', (event) => { handleScheduleControl(event); });
@@ -533,13 +540,211 @@
       + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>보강 취소</button></div></div>';
   }
 
+  function historyActionLabel(item) {
+    if (item && item.is_restore) return '이전 변경 복구';
+    const details = Array.isArray(item && item.details) ? item.details : [];
+    const onlyWaitAdded = details.length && details.every((detail) => detail.table_name === 'olli_schedule_waitlist' && detail.operation === 'INSERT');
+    if (onlyWaitAdded) return clean(item.action_name) === 'move' ? '수업 이동 대기 등록' : '수업 추가 대기 등록';
+    return ({
+      move: '수업 이동',
+      add: '주간 수업 추가',
+      remove: '주간 수업 삭제',
+      wait_accept: '대기 학생 입장',
+      wait_cancel: '대기 취소',
+      makeup_add: '보강 등록',
+      makeup_cancel: '보강 취소',
+      scheduled_cancel: '변경 예약 취소',
+      restore: '이전 변경 복구'
+    })[clean(item && item.action_name)] || '시간표 변경';
+  }
+
+  function historyStatusLabel(data, tableName) {
+    const status = clean(data && data.status);
+    if (!status) return '';
+    if (tableName === 'olli_schedule_waitlist') return ({ waiting: '대기', offered: '입장 안내', accepted: '입장 완료', cancelled: '대기 취소' })[status] || status;
+    if (tableName === 'olli_schedule_one_time_sessions') return ({ scheduled: '보강', attended: '출석 완료', cancelled: '보강 취소' })[status] || status;
+    if (tableName === 'olli_schedule_changes') return ({ scheduled: '변경 예약', applied: '적용', cancelled: '예약 취소' })[status] || status;
+    return status === 'cancelled' ? '삭제' : '';
+  }
+
+  function historyPoint(data, tableName) {
+    if (!data) return '';
+    if (tableName === 'olli_schedule_enrollments') {
+      const point = `${weekdayLabel(data.weekday)}요일 ${timeLabel(data.time_slot)}`;
+      const status = historyStatusLabel(data, tableName);
+      return `${point}${status ? ` · ${status}` : ''}`;
+    }
+    if (tableName === 'olli_schedule_waitlist') {
+      const point = `${weekdayLabel(data.target_weekday)}요일 ${timeLabel(data.target_time_slot)}`;
+      return `${point} · ${historyStatusLabel(data, tableName) || '대기'}`;
+    }
+    if (tableName === 'olli_schedule_one_time_sessions') {
+      return `${shortDate(data.session_date)} ${timeLabel(data.time_slot)} · ${historyStatusLabel(data, tableName) || '보강'}`;
+    }
+    return '';
+  }
+
+  function historyComparison(item) {
+    const details = Array.isArray(item && item.details) ? item.details : [];
+    const action = clean(item && item.action_name);
+    const enrollmentsChanged = details.filter((detail) => detail.table_name === 'olli_schedule_enrollments');
+    const waitChanged = details.find((detail) => detail.table_name === 'olli_schedule_waitlist');
+    const makeupChanged = details.find((detail) => detail.table_name === 'olli_schedule_one_time_sessions');
+
+    let before = '';
+    let after = '';
+    if (action === 'move') {
+      const source = enrollmentsChanged.find((detail) => detail.operation === 'UPDATE');
+      const target = enrollmentsChanged.find((detail) => detail.operation === 'INSERT');
+      before = historyPoint(source && source.old_data, 'olli_schedule_enrollments');
+      after = historyPoint(target && target.new_data, 'olli_schedule_enrollments')
+        || historyPoint(waitChanged && waitChanged.new_data, 'olli_schedule_waitlist');
+    } else if (action === 'add') {
+      const target = enrollmentsChanged.find((detail) => detail.operation === 'INSERT');
+      before = '추가 전';
+      after = historyPoint(target && target.new_data, 'olli_schedule_enrollments')
+        || historyPoint(waitChanged && waitChanged.new_data, 'olli_schedule_waitlist');
+    } else if (action === 'remove') {
+      const source = enrollmentsChanged.find((detail) => detail.operation === 'UPDATE');
+      before = historyPoint(source && source.old_data, 'olli_schedule_enrollments');
+      after = source && source.new_data && source.new_data.effective_to
+        ? `${shortDate(source.new_data.effective_to)}까지 수업`
+        : '수업 삭제';
+    } else if (makeupChanged) {
+      before = historyPoint(makeupChanged.old_data, makeupChanged.table_name) || '등록 전';
+      after = historyPoint(makeupChanged.new_data, makeupChanged.table_name) || '등록 취소';
+    } else if (waitChanged) {
+      before = historyPoint(waitChanged.old_data, waitChanged.table_name) || '대기 전';
+      after = historyPoint(waitChanged.new_data, waitChanged.table_name) || '대기 취소';
+    }
+
+    if (!before || !after) {
+      const oldPoint = details.map((detail) => historyPoint(detail.old_data, detail.table_name)).find(Boolean);
+      const newPoint = details.slice().reverse().map((detail) => historyPoint(detail.new_data, detail.table_name)).find(Boolean);
+      before = before || oldPoint || '변경 전 상태';
+      after = after || newPoint || '변경 후 상태';
+    }
+    return { before, after };
+  }
+
+  function historyDateTime(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+
+  function historyItemHtml(item) {
+    const comparison = historyComparison(item);
+    const restored = !!item.is_restored;
+    const canRestore = !!item.can_restore && !item.is_restore && !restored;
+    return `<article class="olliTtHistoryItem ${restored ? 'restored' : ''} ${item.is_restore ? 'restoreRecord' : ''}">`
+      + `<div class="olliTtHistoryItemTop"><div><span class="olliTtHistoryAction">${esc(historyActionLabel(item))}</span><strong>${esc(item.student_name || '학생')}</strong></div><time>${esc(historyDateTime(item.created_at))}</time></div>`
+      + `<div class="olliTtHistoryCompare"><span>${esc(comparison.before)}</span><i aria-hidden="true">→</i><span>${esc(comparison.after)}</span></div>`
+      + `<div class="olliTtHistoryMeta"><span>${esc(item.actor_name || '기록 없음')} 수정</span>${restored ? '<b>복구 완료</b>' : item.is_restore ? '<b>복구 기록</b>' : ''}</div>`
+      + (canRestore ? `<button type="button" class="olliTtHistoryRestoreBtn" data-tt-prepare-restore="${esc(item.transaction_id)}">이 변경만 복구</button>` : '')
+      + '</article>';
+  }
+
+  function historyDialogHtml(dialog) {
+    const data = dialog.data;
+    let content = '<div class="olliTtHistoryLoading">변경 이력을 불러오고 있어요.</div>';
+    if (!dialog.loading && dialog.error) content = `<div class="olliTtHistoryEmpty"><strong>변경 이력을 불러오지 못했어요.</strong><span>${esc(dialog.error)}</span><button type="button" data-tt-history-refresh>다시 불러오기</button></div>`;
+    else if (!dialog.loading && data) {
+      const items = Array.isArray(data.items) ? data.items : [];
+      content = items.length ? `<div class="olliTtHistoryList">${items.map(historyItemHtml).join('')}</div>` : '<div class="olliTtHistoryEmpty"><strong>아직 저장된 변경이 없습니다.</strong><span>앞으로 발생하는 시간표 수정은 자동으로 기록됩니다.</span></div>';
+    }
+    const permissionText = data && data.can_restore
+      ? '최근 30일 변경을 확인하고 한 건씩 안전하게 복구할 수 있습니다.'
+      : '변경 내용은 확인할 수 있으며 복구는 원장·관리자만 가능합니다.';
+    return dialogHead('↶', '시간표 변경 이력', permissionText)
+      + `<div class="olliTtDialogBody olliTtHistoryBody"><div class="olliTtHistorySafety"><strong>자동 안전 기록</strong><span>시간표가 수정될 때마다 변경 전·후 상태를 서버에 저장합니다.</span></div>${content}`
+      + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary secondary" data-tt-history-refresh>새로고침</button></div></div>';
+  }
+
+  function restoreConfirmDialogHtml(dialog) {
+    const item = dialog.item;
+    const comparison = historyComparison(item);
+    return dialogHead('!', '시간표 복구 확인', '버튼을 잘못 눌러도 바로 복구되지 않도록 한 번 더 확인합니다.')
+      + '<div class="olliTtDialogBody olliTtRestoreConfirmBody">'
+      + `<div class="olliTtRestoreTarget"><span>${esc(historyActionLabel(item))}</span><strong>${esc(item.student_name || '학생')}</strong><div><b>${esc(comparison.after)}</b><i aria-hidden="true">→</i><b>${esc(comparison.before)}</b></div></div>`
+      + '<div class="olliTtRestoreWarning"><strong>복구 후에도 기록은 사라지지 않습니다.</strong><span>복구 작업도 새로운 변경 이력으로 남습니다. 이후 같은 학생의 시간표가 다시 수정된 경우에는 서버가 복구를 자동으로 막습니다.</span></div>'
+      + '<label class="olliTtRestoreCheck"><input type="checkbox" data-tt-restore-check><span>위의 변경 전·후 내용을 확인했습니다.</span></label>'
+      + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-back-history>이전</button><button type="button" class="olliTtDialogPrimary danger" data-tt-confirm-restore disabled>확인 후 복구</button></div></div>';
+  }
+
+  function openHistory() {
+    state.dialog = { kind: 'history', loading: true, data: null, error: '' };
+    openOverlay();
+    loadHistoryIntoDialog();
+  }
+
+  async function loadHistoryIntoDialog() {
+    const token = ++state.historyLoadToken;
+    if (!state.dialog || state.dialog.kind !== 'history') return;
+    state.dialog.loading = true;
+    state.dialog.error = '';
+    renderDialog();
+    try {
+      const data = await service.loadHistory(50);
+      if (token !== state.historyLoadToken || !state.dialog || state.dialog.kind !== 'history') return;
+      state.dialog.loading = false;
+      state.dialog.data = data;
+      renderDialog();
+    } catch (error) {
+      if (token !== state.historyLoadToken || !state.dialog || state.dialog.kind !== 'history') return;
+      state.dialog.loading = false;
+      state.dialog.error = error && (error.message || error) || '잠시 후 다시 시도해 주세요.';
+      renderDialog();
+    }
+  }
+
+  function prepareHistoryRestore(transactionId) {
+    const historyData = state.dialog && state.dialog.kind === 'history' ? state.dialog.data : null;
+    const items = Array.isArray(historyData && historyData.items) ? historyData.items : [];
+    const item = items.find((row) => clean(row.transaction_id) === clean(transactionId));
+    if (!item || !item.can_restore) return;
+    state.dialog = { kind: 'restoreConfirm', item, historyData };
+    renderDialog();
+  }
+
+  function backToHistory() {
+    const historyData = state.dialog && state.dialog.historyData;
+    state.dialog = { kind: 'history', loading: !historyData, data: historyData || null, error: '' };
+    renderDialog();
+    if (!historyData) loadHistoryIntoDialog();
+  }
+
+  async function restoreHistoryAction() {
+    const dialog = state.dialog;
+    if (!dialog || dialog.kind !== 'restoreConfirm' || state.saving) return;
+    state.saving = true;
+    const button = document.querySelector('[data-tt-confirm-restore]');
+    if (button) { button.disabled = true; button.textContent = '복구 중…'; }
+    try {
+      await service.restoreHistory(dialog.item.transaction_id);
+      state.saving = false;
+      state.data = null;
+      await loadWeek();
+      notify(`${dialog.item.student_name || '학생'} 시간표를 변경 전 상태로 복구했어요.`);
+      openHistory();
+    } catch (error) {
+      state.saving = false;
+      renderDialog();
+      alert(error && (error.message || error) || '시간표 복구에 실패했습니다.');
+    }
+  }
+
   function renderDialog() {
     const dialog = document.getElementById('olliTtDialog');
     if (!dialog || !state.dialog) return;
+    dialog.classList.toggle('olliTtHistoryDialog', state.dialog.kind === 'history');
+    dialog.classList.toggle('olliTtRestoreDialog', state.dialog.kind === 'restoreConfirm');
     if (state.dialog.kind === 'move') dialog.innerHTML = moveDialogHtml(state.dialog);
     else if (state.dialog.kind === 'add') dialog.innerHTML = addDialogHtml(state.dialog);
     else if (state.dialog.kind === 'wait') dialog.innerHTML = waitDialogHtml(state.dialog);
-    else dialog.innerHTML = makeupDialogHtml(state.dialog);
+    else if (state.dialog.kind === 'makeup') dialog.innerHTML = makeupDialogHtml(state.dialog);
+    else if (state.dialog.kind === 'history') dialog.innerHTML = historyDialogHtml(state.dialog);
+    else dialog.innerHTML = restoreConfirmDialogHtml(state.dialog);
     bindDialog();
   }
 
@@ -573,6 +778,14 @@
     if (cancelWait) cancelWait.addEventListener('click', () => resolveWait('cancel'));
     const cancelMakeup = dialog.querySelector('[data-tt-cancel-makeup]');
     if (cancelMakeup) cancelMakeup.addEventListener('click', cancelMakeupSession);
+    dialog.querySelectorAll('[data-tt-history-refresh]').forEach((button) => button.addEventListener('click', loadHistoryIntoDialog));
+    dialog.querySelectorAll('[data-tt-prepare-restore]').forEach((button) => button.addEventListener('click', () => prepareHistoryRestore(button.dataset.ttPrepareRestore)));
+    const restoreCheck = dialog.querySelector('[data-tt-restore-check]');
+    const confirmRestore = dialog.querySelector('[data-tt-confirm-restore]');
+    if (restoreCheck && confirmRestore) restoreCheck.addEventListener('change', () => { confirmRestore.disabled = !restoreCheck.checked; });
+    if (confirmRestore) confirmRestore.addEventListener('click', restoreHistoryAction);
+    const backHistory = dialog.querySelector('[data-tt-back-history]');
+    if (backHistory) backHistory.addEventListener('click', backToHistory);
     dialog.querySelectorAll('[data-tt-remove-enrollment]').forEach((button) => button.addEventListener('click', (event) => {
       event.stopPropagation();
       removeSelectedEnrollment(button.dataset.ttRemoveEnrollment);

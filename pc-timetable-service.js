@@ -107,48 +107,67 @@
     return rpc('olli_schedule_week', contextPayload({ p_week_start: weekStart }));
   }
 
-  async function changeSchedule(options) {
-    return rpc('olli_schedule_change', contextPayload({
-      p_student_id: options.studentId,
-      p_source_enrollment_id: options.sourceEnrollmentId || null,
-      p_target_weekday: Number(options.targetWeekday),
-      p_target_time_slot: Number(options.targetTimeSlot),
-      p_effective_date: options.effectiveDate,
-      p_change_type: options.changeType,
-      p_allow_wait: options.allowWait !== false
+  async function executeScheduleAction(action, params) {
+    return rpc('olli_schedule_execute', contextPayload({
+      p_action: action,
+      p_params: params || {}
     }));
+  }
+
+  async function changeSchedule(options) {
+    return executeScheduleAction('change', {
+      student_id: options.studentId,
+      source_enrollment_id: options.sourceEnrollmentId || null,
+      target_weekday: Number(options.targetWeekday),
+      target_time_slot: Number(options.targetTimeSlot),
+      effective_date: options.effectiveDate,
+      change_type: options.changeType,
+      allow_wait: options.allowWait !== false
+    });
   }
 
   async function resolveWaitlist(waitlistId, action, effectiveDate) {
-    return rpc('olli_schedule_resolve_waitlist', contextPayload({
-      p_waitlist_id: waitlistId,
-      p_action: action,
-      p_effective_date: effectiveDate || new Date().toISOString().slice(0, 10)
-    }));
+    return executeScheduleAction('resolve_waitlist', {
+      waitlist_id: waitlistId,
+      action,
+      effective_date: effectiveDate || new Date().toISOString().slice(0, 10)
+    });
   }
 
   async function addMakeup(studentId, sessionDate, timeSlot, note) {
-    return rpc('olli_schedule_add_one_time', contextPayload({
-      p_student_id: studentId,
-      p_session_date: sessionDate,
-      p_time_slot: Number(timeSlot),
-      p_note: note || ''
-    }));
+    return executeScheduleAction('add_one_time', {
+      student_id: studentId,
+      session_date: sessionDate,
+      time_slot: Number(timeSlot),
+      note: note || ''
+    });
   }
 
   async function cancelMakeup(oneTimeSessionId) {
-    return rpc('olli_schedule_cancel_one_time', contextPayload({ p_one_time_session_id: oneTimeSessionId }));
+    return executeScheduleAction('cancel_one_time', { one_time_session_id: oneTimeSessionId });
   }
 
   async function cancelChange(changeId) {
-    return rpc('olli_schedule_cancel_change', contextPayload({ p_change_id: changeId }));
+    return executeScheduleAction('cancel_change', { change_id: changeId });
   }
 
   async function removeEnrollment(studentId, enrollmentId, effectiveDate) {
-    return rpc('olli_schedule_remove_enrollment', contextPayload({
-      p_student_id: studentId,
-      p_enrollment_id: enrollmentId,
-      p_effective_date: effectiveDate
+    return executeScheduleAction('remove_enrollment', {
+      student_id: studentId,
+      enrollment_id: enrollmentId,
+      effective_date: effectiveDate
+    });
+  }
+
+  async function loadHistory(limit) {
+    return rpc('olli_schedule_history_list', contextPayload({
+      p_limit: Math.min(Math.max(Number(limit) || 50, 1), 100)
+    }));
+  }
+
+  async function restoreHistory(transactionId) {
+    return rpc('olli_schedule_restore_history', contextPayload({
+      p_transaction_id: String(transactionId || '')
     }));
   }
 
@@ -163,6 +182,8 @@
     addMakeup,
     cancelMakeup,
     cancelChange,
-    removeEnrollment
+    removeEnrollment,
+    loadHistory,
+    restoreHistory
   });
 })(window);
