@@ -1,0 +1,24 @@
+name: Audit remove risk feature
+on:
+  push:
+    paths:
+      - '.github/workflows/audit-remove-risk-feature.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit risk references
+        shell: bash
+        run: |
+          set -e
+          echo '===== ALL RISK/SIGNAL REFERENCES ====='
+          grep -RInE --exclude-dir=.git --exclude='audit-remove-risk-feature.yml' 'kinderRisk|RiskMemo|risk[_-]?signal|risk_signals|위험신호|위험 신호|위험•퇴원|위험·퇴원|signalStatus|signalDots|signal-date|signal-dot|recordNotifyBtn|notificationInbox|sendKinderRiskPush|hasRiskNotifications|getKinderFilledMemoCount|getKinderRiskStageLabel|updateMemoSignalCircle' . || true
+          echo '===== FILE NAMES ====='
+          find . -maxdepth 3 -type f | sort | grep -Ei 'risk|signal' || true
+          echo '===== OBSERVATION CORE RISK CONTEXT ====='
+          grep -nE 'kinderRisk|RiskMemo|risk[_-]?signal|risk_signals|위험신호|signalStatus|notificationInbox|sendKinderRiskPush|hasRiskNotifications|getKinderFilledMemoCount|getKinderRiskStageLabel|updateMemoSignalCircle' observation-memo-core.js || true
+          echo '===== INDEX RISK CONTEXT ====='
+          grep -nE 'kinderRisk|RiskMemo|risk[_-]?signal|risk_signals|위험신호|signalStatus|signalDots|recordNotifyBtn|notificationInbox|sendKinderRiskPush|hasRiskNotifications|getKinderFilledMemoCount|getKinderRiskStageLabel|updateMemoSignalCircle' index.html || true
+          echo '===== OTHER JS/CSS ====='
+          grep -RInE --include='*.js' --include='*.css' --exclude='index.html' --exclude='observation-memo-core.js' --exclude='audit-remove-risk-feature.yml' 'kinderRisk|RiskMemo|risk[_-]?signal|risk_signals|위험신호|signalStatus|signalDots|recordNotifyBtn|notificationInbox|sendKinderRiskPush|hasRiskNotifications|getKinderFilledMemoCount|getKinderRiskStageLabel|updateMemoSignalCircle' . || true
