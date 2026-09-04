@@ -1,0 +1,116 @@
+name: One-shot remove risk feature v6
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-remove-risk-feature-v6.yml'
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply v5 cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          wf=Path('.github/workflows/one-shot-remove-risk-feature-v5.yml').read_text(encoding='utf-8')
+          sm="          python3 - <<'PY'\n"; em="          PY\n"; pos=0; blocks=[]
+          while True:
+              s=wf.find(sm,pos)
+              if s<0: break
+              s+=len(sm); e=wf.find(em,s)
+              if e<0: raise RuntimeError('python block end missing')
+              block=wf[s:e]
+              script='\n'.join(line[10:] if line.startswith('          ') else line for line in block.splitlines())+'\n'
+              blocks.append(script); pos=e+len(em)
+          if len(blocks)<2: raise RuntimeError('expected two cleanup python blocks')
+          exec(compile(blocks[0],'v5_base.py','exec'),{'__name__':'__main__'})
+          exec(compile(blocks[1],'v5_residual.py','exec'),{'__name__':'__main__'})
+          PY
+      - name: Repair manager permission helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          text=Path('index.html').read_text(encoding='utf-8')
+          marker='async function setManagerPermission(roleKey,value)'
+          start=text.find(marker)
+          if start<0: raise RuntimeError('setManagerPermission not found')
+          brace=text.find('{',start)
+          d=0; q=None; esc=False; template=False; line=False; block=False; i=brace
+          while i<len(text):
+              c=text[i]; n=text[i+1] if i+1<len(text) else ''
+              if line:
+                  if c=='\n': line=False
+              elif block:
+                  if c=='*' and n=='/': block=False; i+=1
+              elif q:
+                  if esc: esc=False
+                  elif c=='\\': esc=True
+                  elif c==q: q=None
+              elif template:
+                  if esc: esc=False
+                  elif c=='\\': esc=True
+                  elif c=='`': template=False
+              else:
+                  if c=='/' and n=='/': line=True; i+=1
+                  elif c=='/' and n=='*': block=True; i+=1
+                  elif c in ('"',"'"): q=c
+                  elif c=='`': template=True
+                  elif c=='{': d+=1
+                  elif c=='}':
+                      d-=1
+                      if d==0:
+                          end=i+1
+                          break
+              i+=1
+          else: raise RuntimeError('setManagerPermission block unbalanced')
+          replacement="async function setManagerPermission(roleKey,value){if(roleKey!=='backup')return;const cached=settingsGetCachedState();const managerPermissions={...(cached.managerPermissions||{}),backup:!!value};settingsSaveCachePatch({managerPermissions});const academyId=settingsGetAcademyId();if(academyId&&isSupabaseConfigured()){try{await supabase('PATCH',`academies?id=eq.${encodeURIComponent(academyId)}`,{manager_can_backup:!!value});if(olliSettingsState&&olliSettingsState.academy)olliSettingsState.academy.manager_can_backup=!!value;}catch(err){console.warn('manager permission save failed:',err);alert('관리자 권한 저장 중 오류가 발생했습니다. '+(err.message||err));}}openSettingsDetail('roles');}"
+          text=text[:start]+replacement+text[end:]
+          Path('index.html').write_text(text,encoding='utf-8')
+          PY
+      - name: Verify complete removal
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check observation-memo-core.js
+          node --check kinder-feedback.js
+          node --check pc-shell.js
+          node --check pc-start-page.js
+          test ! -f kinder-risk-ui.js
+          if grep -RInE --exclude-dir=.git --exclude='audit-remove-risk-feature.yml' --exclude='one-shot-remove-risk-feature.yml' --exclude='one-shot-remove-risk-feature-v2.yml' --exclude='one-shot-remove-risk-feature-v3.yml' --exclude='one-shot-remove-risk-feature-v4.yml' --exclude='one-shot-remove-risk-feature-v5.yml' --exclude='one-shot-remove-risk-feature-v6.yml' 'kinderRisk|RiskMemo|risk_signal|risk_signals|위험신호|recordNotifyBtn|notificationInbox|hasRiskNotifications|sendKinderRiskPush|manager_can_director_note|directorNote|recordDoorDot|kinderMemoBox[1-5]|kinderSceneMemoInput|setKinderCombinedMode|autoResizeKinderMemoBoxes|getKinderRiskRank|getCurrentKinderDraftFilledCount|getSignalClassByCount|getKinderDraftStudentFromInputs|setSignalCircleLevelClass|getSignalLevelByCount|getKinderFilledMemoCount' .; then exit 1; fi
+          if grep -nE '\bmemo[1-5]\b' index.html observation-memo-core.js; then exit 1; fi
+          grep -q 'function openStudentMemoPageById' observation-memo-core.js
+          grep -q 'function saveCurrentMemo' observation-memo-core.js
+          grep -q 'function openKinderChatFeedbackPage' kinder-feedback.js
+          grep -q 'studentMemoScreen' observation-editor-ui.js
+          grep -q 'kinderChatFeedbackScreen' kinder-feedback-ui.js
+          grep -q 'function showBrowserNotification' observation-memo-core.js
+          grep -q 'function showPushToast' observation-memo-core.js
+          ! grep -q 'kinder-risk-ui.js' index.html
+          node <<'NODE'
+          const fs=require('fs'),vm=require('vm');
+          const html=fs.readFileSync('index.html','utf8');
+          const re=/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;
+          let m,n=0;
+          while((m=re.exec(html))){
+            const a=m[1]||'', b=m[2]||'';
+            if(/\bsrc\s*=/.test(a)||/type\s*=\s*["'](?:application\/json|application\/ld\+json)["']/.test(a)) continue;
+            try{new vm.Script(b,{filename:`inline-${++n}.js`});}catch(e){console.error(e.stack||e.message);process.exit(1)}
+          }
+          console.log('inline scripts checked',n);
+          NODE
+          echo "index bytes: $(wc -c < index.html)"
+      - name: Commit removal
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A index.html observation-memo-core.js kinder-feedback.js pc-shell.js pc-start-page.js OLLI_PC_MODULES.md kinder-risk-ui.js
+          git commit -m 'Remove retired risk signal feature'
+          git push
