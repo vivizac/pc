@@ -28,8 +28,8 @@ jobs:
               ('olli-data-students.js', 1737, 2295),
               ('olli-data-record-list.js', 2296, 2711),
               ('olli-data-attendance-feedback.js', 2712, 3166),
-              ('olli-data-student-operations.js', 3167, 4150),
-              ('olli-data-ui-utils.js', 4151, 4362),
+              ('olli-data-student-operations.js', 3167, 4149),
+              ('olli-data-ui-utils.js', 4150, 4362),
           ]
 
           rebuilt = ''
