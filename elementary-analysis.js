@@ -480,3 +480,71 @@ renderElementaryAnalysisSummaryCard(currentState, { title: '분석 결과', crea
   closeElementaryAnalysisModal();
   showPushToast('분석 내용이 카드로 정리되었습니다.');
 }
+
+/* 초등 분석 상세보기 공용 UI 로직 */
+function buildElementaryAnalysisDetailSections(state) {
+  const normalized = normalizeElementaryAnalysisState(state);
+  const sectionMap = [
+    ['오늘 아이의 강점', normalized.strengths || [], normalized.extraTexts?.strengths || ''],
+    ['오늘 가장 지도가 필요했던 부분', normalized.needs || [], normalized.extraTexts?.needs || ''],
+    ['막힘이 생긴 수업 단계', normalized.blockedStages || [], ''],
+    ['아이를 망설이게 한 성향 단서', normalized.tendencies || [], ''],
+    ['핵심 지도 영역', normalized.guideAreas || [], normalized.extraTexts?.guideAreas || ''],
+    ['오늘 적용한 지도 방식', normalized.teacherActions || [], normalized.extraTexts?.teacherActions || ''],
+    ['앞으로의 지도 방향', normalized.futureDirections || [], normalized.extraTexts?.futureDirections || '']
+  ];
+  return sectionMap.filter(([title, list, extra]) => (Array.isArray(list) && list.length) || String(extra || '').trim());
+}
+function openElementaryAnalysisDetailModal(state, options = {}) {
+  const modal = document.getElementById('elementaryAnalysisDetailModal');
+  const body = document.getElementById('elementaryAnalysisDetailBody');
+  const titleEl = document.getElementById('elementaryAnalysisDetailTitle');
+  if (!modal || !body || !titleEl) {
+    console.warn('분석내용 바텀시트 요소를 찾지 못했습니다.', { modal: !!modal, body: !!body, titleEl: !!titleEl });
+    return;
+  }
+  const normalized = normalizeElementaryAnalysisState(state || {});
+  titleEl.textContent = options.title || '분석 결과';
+  const dateText = formatElementaryAnalysisSummaryDate(options.createdAt || normalized.updatedAt || new Date().toISOString());
+  const sections = buildElementaryAnalysisDetailSections(normalized);
+  body.innerHTML = `<div class="analysisResultSheetDate">${escapeHtml(dateText)}</div>${sections.map(([title, list, extra]) => `
+    <div class="analysisResultSheetSection">
+      <div class="analysisResultSheetSectionTitle">${escapeHtml(title)}</div>
+      <div class="analysisResultSheetList">
+        ${(Array.isArray(list) ? list : []).map(item => `<div class="analysisResultSheetItem">- ${escapeHtml(item)}</div>`).join('')}
+        ${String(extra || '').trim() ? `<div class="analysisResultSheetItem">- 기타: ${escapeHtml(String(extra).trim())}</div>` : ''}
+      </div>
+    </div>`).join('')}`;
+  try { body.scrollTop = 0; } catch(e) {}
+  try {
+    const panel = modal.querySelector('.analysisResultSheetPanel');
+    if (panel) panel.scrollTop = 0;
+  } catch(e) {}
+  modal.style.display = 'flex';
+  modal.setAttribute('aria-hidden', 'false');
+}
+function closeElementaryAnalysisDetailModal(event) {
+  if (event && event.target && event.target.id !== 'elementaryAnalysisDetailModal') return;
+  const modal = document.getElementById('elementaryAnalysisDetailModal');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.setAttribute('aria-hidden', 'true');
+  }
+}
+function openElementaryAnalysisDetailFromCurrent() {
+  if (!currentMemoStudent || currentMemoType !== 'elementary') return;
+  if (viewingArchivedElementaryRecord) {
+    const record = getElementaryMemoRecords(currentMemoStudent).find(item => item.id === viewingArchivedElementaryRecord);
+    if (record?.analysis) {
+      openElementaryAnalysisDetailModal(record.analysis, { title: '분석 결과', createdAt: record.createdAt || '' });
+    }
+    return;
+  }
+  const displayState = (typeof getDisplayedElementaryAnalysisState === 'function')
+    ? getDisplayedElementaryAnalysisState()
+    : getPrimaryElementaryAnalysisDisplay(currentMemoStudent);
+  const data = displayState?.data || getElementaryAnalysisByStudent(currentMemoStudent);
+  const createdAt = displayState?.createdAt || data?.updatedAt || '';
+  if (!elementaryAnalysisHasContent(data)) return;
+  openElementaryAnalysisDetailModal(data, { title: '분석 결과', createdAt });
+}
