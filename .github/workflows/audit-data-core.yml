@@ -1,0 +1,47 @@
+name: Audit data core
+on:
+  push:
+    paths:
+      - '.github/workflows/audit-data-core.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Analyze data core
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('olli-data-core.js')
+          t=p.read_text(encoding='utf-8')
+          lines=t.splitlines()
+          print('BYTES', len(t.encode()))
+          print('LINES', len(lines))
+          print('TOP_LEVEL_FUNCTIONS')
+          for i,line in enumerate(lines,1):
+              s=line.strip()
+              m=re.match(r'(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(', s)
+              if m:
+                  print(f'{i}: {m.group(1)}')
+          print('TOP_LEVEL_DECLS')
+          for i,line in enumerate(lines,1):
+              s=line.strip()
+              if re.match(r'^(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*=', s):
+                  if len(s) < 180:
+                      print(f'{i}: {s}')
+          print('COMMENTS')
+          for i,line in enumerate(lines,1):
+              s=line.strip()
+              if s.startswith('//') or s.startswith('/*'):
+                  if len(s) < 180:
+                      print(f'{i}: {s}')
+          print('INDEX_SCRIPT_CONTEXT')
+          idx=Path('index.html').read_text(encoding='utf-8').splitlines()
+          for i,line in enumerate(idx,1):
+              if 'olli-data-core.js' in line:
+                  for j in range(max(1,i-6), min(len(idx),i+6)+1):
+                      print(f'{j}: {idx[j-1]}')
+          PY
