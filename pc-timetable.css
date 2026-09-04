@@ -83,7 +83,7 @@
 #recordRoomScreen .olliTtScroll { min-height: 0; display: flex; flex: 1; flex-direction: column; overflow: auto; }
 #recordRoomScreen .olliTtGrid { width: 100%; height: 100%; min-width: 0; display: grid; grid-template-columns: 56px repeat(6, minmax(0, 1fr)); grid-template-rows: 52px repeat(var(--olli-tt-rows), minmax(108px, 1fr)); }
 #recordRoomScreen .olliTtSection.elementary .olliTtGrid { min-height: 100%; }
-#recordRoomScreen .olliTtSection.kinder .olliTtGrid { height: 404px; min-height: 404px; flex: 0 0 404px; grid-template-rows: 52px repeat(2, 176px); }
+#recordRoomScreen .olliTtSection.kinder .olliTtGrid { height: 444px; min-height: 444px; flex: 0 0 444px; grid-template-rows: 52px repeat(2, 196px); }
 #recordRoomScreen .olliTtGrid > * { border-right: 1px solid #e8ebef; border-bottom: 1px solid #e8ebef; }
 #recordRoomScreen .olliTtGrid > :nth-child(7n) { border-right: 0; }
 #recordRoomScreen .olliTtGrid > :nth-last-child(-n+7) { border-bottom: 0; }
