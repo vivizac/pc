@@ -72,3 +72,6 @@ jobs:
           git add index.html kinder-feedback.css kinder-feedback.js
           git commit -m 'Extract kinder feedback module'
           git push
+
+      - name: Done
+        run: echo 'Kinder feedback extraction completed.'
