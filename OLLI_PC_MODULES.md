@@ -1,6 +1,6 @@
 # OLLI PC 모듈 안내
 
-PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한다. `index.html`은 로그인·공통 데이터·공통 화면 연결과 아직 분리되지 않은 레거시 기능을 유지하고, PC 기능과 관찰/피드백 공용 기능의 실제 동작은 각 모듈이 담당한다.
+PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한다. `index.html`은 공통 DOM 조립과 아직 분리되지 않은 레거시 연결만 유지하고, 로그인·설정·공통 저장·PC 기능·관찰/피드백 기능의 실제 동작은 각 모듈이 담당한다.
 
 | 수정 대상 | JavaScript | CSS |
 |---|---|---|
@@ -11,6 +11,9 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 | 초등 관찰기록 저장·자동저장·보관함·피드백 연결 | `observation-memo-core.js` | `observation-editor.css` |
 | 초등 오늘의 분석·분석 이력·상세보기 | `elementary-analysis.js` | `elementary-analysis-ui.css` |
 | 유치부 1분 피드백 공용 UI·기능 | `kinder-feedback-ui.js`, `kinder-feedback.js` | `kinder-feedback.css` |
+| 로그인·계정·학원 연결·세션 복구 | `olli-auth-core.js` | 현재 공통 스타일 |
+| 설정·권한·학원 설정·설정 화면 동작 | `olli-settings-core.js` | 현재 공통 스타일, `pc-settings-layout.css` |
+| 공통 저장 컨텍스트·FeatureRegistry·로컬/서버 동기화 기반 | `olli-storage-core.js` | - |
 | 시간표 화면·팝업 | `pc-timetable.js` | `pc-timetable.css` |
 | 시간표 데이터 호출·변경 이력·복구 | `pc-timetable-service.js` | - |
 | 상담설문 | `consultation-survey.js`, `consultation-survey-core.js` | `consultation-survey.css` |
@@ -25,9 +28,10 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 - `studentMemoScreen`과 초등 분석 모달의 정적 DOM은 더 이상 `index.html` 본문에 직접 두지 않고 `observation-editor-ui.js`가 원래 위치에서 동기적으로 주입한다.
 - 유치부 `kinderChatFeedbackScreen`과 관련 오버레이의 정적 DOM은 `kinder-feedback-ui.js`가 `kinder-feedback.js`보다 먼저 원래 위치에 주입한다.
 - 초등 분석의 선택값·이력·상세보기 함수는 `elementary-analysis.js`, 관찰 메모 저장/자동저장/피드백 연결은 `observation-memo-core.js`가 담당한다.
-- 로그인 세션, `academy_id`, 학생 원본 데이터, Supabase 공통 저장 함수는 기존 공통 코드를 그대로 사용한다.
+- 로그인·계정·학원 연결 함수는 `olli-auth-core.js`, 설정 화면과 권한 로직은 `olli-settings-core.js`, 공통 저장 기반은 `olli-storage-core.js`에서 수정한다. 이 코드를 다시 `index.html`로 복사하지 않는다.
+- `academy_id`, 학생 원본 데이터, Supabase 공통 저장 함수처럼 여러 기능이 함께 사용하는 값은 담당 공통 모듈을 통해 공유한다.
 - 기능을 수정할 때 다른 모듈 코드를 복사하지 않는다. 공통 연결이 필요하면 기존 공개 함수나 `OlliPcCore`의 공개 함수만 사용한다.
-- 외부 UI 모듈은 현재 삽입 위치가 실행 순서를 보장하므로 임의로 `defer` 처리하거나 문서 맨 아래로 옮기지 않는다.
+- 외부 UI/공통 모듈은 현재 삽입 위치가 실행 순서를 보장하므로 임의로 `defer` 처리하거나 문서 맨 아래로 옮기지 않는다.
 - 시간표와 상담설문은 독립 모듈 상태를 유지하며 PC 셸의 메뉴 전환 함수만 연결한다.
 
 ## 관찰기록·피드백 모듈 경계
@@ -70,6 +74,8 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 
 ## 로드 순서
 
+공통 코어는 `index.html`에서 원래 실행되던 위치를 그대로 유지한다. `olli-settings-core.js`, `olli-auth-core.js`, `olli-storage-core.js`를 임의로 문서 맨 아래로 이동하거나 `defer` 처리하지 않는다.
+
 PC 전용 모듈의 기본 순서는 다음과 같다.
 
 1. `pc-shell.js`
@@ -77,7 +83,7 @@ PC 전용 모듈의 기본 순서는 다음과 같다.
 3. `pc-attendance.js`
 4. 시간표·상담설문 모듈
 
-관찰기록/피드백 공용 모듈은 `index.html`에서 원래 기능이 있던 위치를 유지한다. 특히 UI 템플릿 파일은 대응 기능 JS보다 먼저 실행되어 DOM을 준비해야 한다.
+관찰기록/피드백 공용 모듈도 `index.html`에서 원래 기능이 있던 위치를 유지한다. 특히 UI 템플릿 파일은 대응 기능 JS보다 먼저 실행되어 DOM을 준비해야 한다.
 
 ## 수정 전 확인
 
@@ -86,6 +92,7 @@ PC 전용 모듈의 기본 순서는 다음과 같다.
 - 초등 관찰기록 UI를 수정할 때는 우선 `observation-editor-ui.js`, `observation-editor.css`, `elementary-analysis-ui.css`를 확인한다.
 - 초등 관찰기록 저장/분석 동작을 수정할 때는 `observation-memo-core.js`, `elementary-analysis.js`를 확인한다.
 - 유치부 1분 피드백은 `kinder-feedback-ui.js`, `kinder-feedback.js`, `kinder-feedback.css`에서 수정한다.
-- 공통 학생 데이터나 로그인·Supabase 기반 함수를 바꿀 때만 `index.html`과 공통 저장 코드를 추가로 확인한다.
+- 로그인/계정은 `olli-auth-core.js`, 설정/권한은 `olli-settings-core.js`, 공통 저장 기반은 `olli-storage-core.js`에서 먼저 확인한다.
+- `index.html`은 새 기능의 구현 파일로 사용하지 않는다. 정말 문서 조립이나 아직 미분리된 레거시 연결이 필요한 경우에만 수정한다.
 - `index.html`에 같은 기능을 다시 복사해 넣지 않는다. 새 UI/기능은 기존 모듈을 확장한다.
 - 한 기능씩 수정·검증·배포해 다른 화면의 회귀 범위를 줄인다.
