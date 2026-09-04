@@ -12,7 +12,14 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 | 초등 오늘의 분석·분석 이력·상세보기 | `elementary-analysis.js` | `elementary-analysis-ui.css` |
 | 유치부 1분 피드백 공용 UI·기능 | `kinder-feedback-ui.js`, `kinder-feedback.js` | `kinder-feedback.css` |
 | 로그인·계정·학원 연결·세션 복구 | `olli-auth-core.js` | 현재 공통 스타일 |
-| 설정·권한·학원 설정·설정 화면 동작 | `olli-settings-core.js` | 현재 공통 스타일, `pc-settings-layout.css` |
+| 설정 기본 상태·학원 전환·설정 화면·환경설정 | `olli-settings-base.js` | 현재 공통 스타일, `pc-settings-layout.css` |
+| 선생님·관리자·권한·승인 관리 | `olli-settings-members.js` | 현재 공통 스타일 |
+| 백업·저장 진단·재전송 | `olli-settings-storage.js` | 현재 공통 스타일 |
+| 학생 일괄등록·기존 피드백·출석부 사진 가져오기·테스트 초기화 | `olli-settings-imports.js` | 현재 공통 스타일 |
+| 선생님 초대·승인 링크 | `olli-settings-teacher-invite.js` | 현재 공통 스타일 |
+| 체험기간·학원 접근상태·올리 관리자용 학원 상태·선생님 학원 찾기 | `olli-settings-access.js` | 현재 공통 스타일 |
+| 출석부 출력·PDF 내보내기 | `olli-settings-attendance-export.js` | 현재 공통 스타일 |
+| 설정 상세 화면 라우팅 | `olli-settings-detail.js` | 현재 공통 스타일 |
 | 공통 저장 컨텍스트·FeatureRegistry·로컬/서버 동기화 기반 | `olli-storage-core.js` | - |
 | Supabase 호출·학생/피드백 공통 저장·저장 큐 | `olli-data-core.js` | - |
 | 기록 에디터 학생 선택·정렬·보관함/기록 편집 공용 동작 | `olli-record-editor-core.js` | 현재 공통 스타일 |
@@ -31,7 +38,7 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 - `studentMemoScreen`과 초등 분석 모달의 정적 DOM은 더 이상 `index.html` 본문에 직접 두지 않고 `observation-editor-ui.js`가 원래 위치에서 동기적으로 주입한다.
 - 유치부 `kinderChatFeedbackScreen`과 관련 오버레이의 정적 DOM은 `kinder-feedback-ui.js`가 `kinder-feedback.js`보다 먼저 원래 위치에 주입한다.
 - 초등 분석의 선택값·이력·상세보기 함수는 `elementary-analysis.js`, 관찰 메모 저장/자동저장/피드백 연결은 `observation-memo-core.js`가 담당한다.
-- 로그인·계정·학원 연결 함수는 `olli-auth-core.js`, 설정 화면과 권한 로직은 `olli-settings-core.js`, 공통 저장 기반은 `olli-storage-core.js`에서 수정한다.
+- 로그인·계정·학원 연결 함수는 `olli-auth-core.js`, 설정 공통 상태와 화면은 `olli-settings-base.js`, 선생님/권한은 `olli-settings-members.js`, 백업/진단은 `olli-settings-storage.js`, 공통 저장 기반은 `olli-storage-core.js`에서 수정한다.
 - Supabase 직접 호출과 학생/피드백 공통 저장 흐름은 `olli-data-core.js`, 기록 에디터 공용 동작은 `olli-record-editor-core.js`, 기록실/출석 공용 동작은 `olli-record-room-core.js`에서 수정한다. 이 코드를 다시 `index.html`로 복사하지 않는다.
 - `academy_id`, 학생 원본 데이터, Supabase 공통 저장 함수처럼 여러 기능이 함께 사용하는 값은 담당 공통 모듈을 통해 공유한다.
 - 기능을 수정할 때 다른 모듈 코드를 복사하지 않는다. 공통 연결이 필요하면 기존 공개 함수나 `OlliPcCore`의 공개 함수만 사용한다.
@@ -79,7 +86,20 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 
 ## 로드 순서
 
-공통 코어는 `index.html`에서 원래 실행되던 위치를 그대로 유지한다. `olli-data-core.js`, `olli-record-editor-core.js`, `olli-record-room-core.js`, `olli-settings-core.js`, `olli-auth-core.js`, `olli-storage-core.js`를 임의로 문서 맨 아래로 이동하거나 `defer` 처리하지 않는다.
+공통 코어는 `index.html`에서 원래 실행되던 위치를 그대로 유지한다. `olli-data-core.js`, `olli-record-editor-core.js`, `olli-record-room-core.js`, 설정 모듈 묶음, `olli-auth-core.js`, `olli-storage-core.js`를 임의로 문서 맨 아래로 이동하거나 `defer` 처리하지 않는다.
+
+설정 모듈은 다음 순서를 유지한다.
+
+1. `olli-settings-base.js`
+2. `olli-settings-members.js`
+3. `olli-settings-storage.js`
+4. `olli-settings-imports.js`
+5. `olli-settings-teacher-invite.js`
+6. `olli-settings-access.js`
+7. `olli-settings-attendance-export.js`
+8. `olli-settings-detail.js`
+
+이 8개 파일은 기존 `olli-settings-core.js`의 코드를 순서 그대로 나눈 것이므로 중간 순서를 바꾸지 않는다.
 
 PC 전용 모듈의 기본 순서는 다음과 같다.
 
@@ -97,7 +117,7 @@ PC 전용 모듈의 기본 순서는 다음과 같다.
 - 초등 관찰기록 UI를 수정할 때는 우선 `observation-editor-ui.js`, `observation-editor.css`, `elementary-analysis-ui.css`를 확인한다.
 - 초등 관찰기록 저장/분석 동작을 수정할 때는 `observation-memo-core.js`, `elementary-analysis.js`, 필요 시 `olli-record-editor-core.js`를 확인한다.
 - 유치부 1분 피드백은 `kinder-feedback-ui.js`, `kinder-feedback.js`, `kinder-feedback.css`에서 수정한다.
-- 로그인/계정은 `olli-auth-core.js`, 설정/권한은 `olli-settings-core.js`, 공통 저장 기반은 `olli-storage-core.js`, Supabase/학생/피드백 공통 저장은 `olli-data-core.js`에서 먼저 확인한다.
+- 로그인/계정은 `olli-auth-core.js`, 설정 기본 화면은 `olli-settings-base.js`, 선생님/권한은 `olli-settings-members.js`, 백업/진단은 `olli-settings-storage.js`, 가져오기 기능은 `olli-settings-imports.js`, 초대는 `olli-settings-teacher-invite.js`, 학원 접근/체험은 `olli-settings-access.js`, 출석부 출력은 `olli-settings-attendance-export.js`, 설정 상세 라우팅은 `olli-settings-detail.js`에서 먼저 확인한다.
 - 기록실·출석 공용 동작은 `olli-record-room-core.js`, 기록 편집/학생 선택 공용 동작은 `olli-record-editor-core.js`에서 먼저 확인한다.
 - `index.html`은 새 기능의 구현 파일로 사용하지 않는다. 정말 문서 조립이나 아직 미분리된 레거시 연결이 필요한 경우에만 수정한다.
 - `index.html`에 같은 기능을 다시 복사해 넣지 않는다. 새 UI/기능은 기존 모듈을 확장한다.
