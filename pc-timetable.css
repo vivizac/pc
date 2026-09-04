@@ -28,8 +28,8 @@
 #recordRoomScreen .olliTtRoot { display: none; min-height: 0; padding: 0; }
 #olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen .olliTtRoot.show { display: flex; min-height: 0; flex: 1; flex-direction: column; }
 #olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen.olliPcAttendanceScheduleView #recordList { display: none; }
-#olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen .recordPageInner { overflow: hidden; }
-#olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen .recordBodyNew { height: 100%; min-height: 0; padding-top: 14px; padding-bottom: 18px; display: flex; flex-direction: column; }
+#olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen .recordPageInner { min-width: 0; }
+#olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen .recordBodyNew { width: 100%; min-width: 0; height: 100%; min-height: 0; padding-top: 14px; padding-bottom: 18px; display: flex; flex-direction: column; }
 
 #olliPcTopbar .olliPcTopbarTitle.olliTtTopbarSchedule { min-width: 0; display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 24px; }
 #olliPcTopbar .olliTtDivisionTabs { display: flex; align-items: center; gap: 22px; }
@@ -69,6 +69,7 @@
 #olliPcTopbar .olliTtHistoryBtn:hover { border-color: #acd5fb; color: #0877df; background: #f2f8ff; }
 
 #recordRoomScreen .olliTtSection {
+  min-width: 0;
   min-height: 0;
   margin: 0;
   border: 1px solid #e4e7eb;
@@ -80,8 +81,8 @@
   background: #fff;
   box-shadow: 0 7px 20px rgba(27, 39, 58, .045);
 }
-#recordRoomScreen .olliTtScroll { min-height: 0; display: flex; flex: 1; flex-direction: column; overflow: auto; }
-#recordRoomScreen .olliTtGrid { width: 100%; height: 100%; min-width: 0; display: grid; grid-template-columns: 56px repeat(6, minmax(0, 1fr)); grid-template-rows: 52px repeat(var(--olli-tt-rows), minmax(108px, 1fr)); }
+#recordRoomScreen .olliTtScroll { min-width: 0; min-height: 0; display: flex; flex: 1; flex-direction: column; overflow: auto; }
+#recordRoomScreen .olliTtGrid { width: 100%; height: 100%; min-width: 0; box-sizing: border-box; display: grid; grid-template-columns: 56px repeat(6, minmax(0, 1fr)); grid-template-rows: 52px repeat(var(--olli-tt-rows), minmax(108px, 1fr)); }
 #recordRoomScreen .olliTtSection.elementary .olliTtGrid { min-height: 100%; }
 #recordRoomScreen .olliTtSection.kinder .olliTtGrid { height: 444px; min-height: 444px; flex: 0 0 444px; grid-template-rows: 52px repeat(2, 196px); }
 #recordRoomScreen .olliTtGrid > * { border-right: 1px solid #e8ebef; border-bottom: 1px solid #e8ebef; }
@@ -112,6 +113,7 @@
   font-weight: 820;
 }
 #recordRoomScreen .olliTtCell {
+  min-width: 0;
   min-height: 0;
   padding: 6px;
   background: #fff;
@@ -156,6 +158,7 @@
 }
 #recordRoomScreen button.olliTtStudent.wait { display: block; }
 #recordRoomScreen .olliTtAttendanceBtn { min-width: 0; padding: 3px 2px 3px 5px; border: 0; display: block; flex: 1; overflow: hidden; color: inherit; background: transparent; text-align: left; text-overflow: ellipsis; white-space: nowrap; font: inherit; cursor: pointer; }
+#recordRoomScreen .olliTtSecondSessionDot { margin-left: 2px; color: currentColor; font-weight: 900; }
 #recordRoomScreen .olliTtStudentMore { width: 23px; min-width: 23px; padding: 0 3px 1px 0; border: 0; color: #b4bac2; background: transparent; font: 500 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 #recordRoomScreen .olliTtStudentMore:hover { color: #7f8792; }
 #recordRoomScreen .olliTtStudent.scheduled { grid-column: 1 / -1; }
@@ -330,10 +333,11 @@
 .olliTtTypeBtn { min-height: 56px; padding: 8px 12px; border: 1px solid #dfe4e9; border-radius: 15px; color: #4d5662; background: #fff; text-align: left; font: 760 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 .olliTtTypeBtn.active { border-color: #0A84FF; color: #0877df; background: #edf6ff; }
 .olliTtTypeBtn small { display: block; margin-top: 4px; color: #959ca6; font-size: calc(9px * var(--olli-text-scale)); font-weight: 620; }
-.olliTtModeCards { display: grid; gap: 8px; }
-.olliTtModeCard { border: 1px solid #dfe4e9; border-radius: 15px; overflow: hidden; background: #fff; }
+.olliTtModeCards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: stretch; }
+.olliTtModeCard { min-width: 0; border: 1px solid #dfe4e9; border-radius: 15px; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
 .olliTtModeCard.active { border-color: #0A84FF; background: #f7fbff; box-shadow: 0 0 0 2px rgba(10,132,255,.06); }
 .olliTtModeCardButton { width: 100%; min-height: 52px; padding: 0 14px; border: 0; color: #4d5662; background: transparent; text-align: left; font: 800 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+.olliTtModeCard.simple > .olliTtModeCardButton { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; }
 .olliTtModeCard.active > .olliTtModeCardButton { color: #0877df; }
 .olliTtModeCardBody { padding: 0 10px 10px; }
 .olliTtModeCardBody > span { margin: 0 4px 8px; display: block; color: #555f6b; font-size: calc(11px * var(--olli-text-scale)); font-weight: 780; }
@@ -420,6 +424,7 @@
   .olliTtChoiceGrid { grid-template-columns: repeat(3, minmax(0,1fr)); }
   .olliTtChoiceGrid.times { grid-template-columns: repeat(4, minmax(0,1fr)); }
   .olliTtPickupForm { grid-template-columns: 1fr; }
+  .olliTtModeCards { grid-template-columns: 1fr; }
   .olliTtDialogActions { margin: 22px -20px -20px; padding: 16px 20px 19px; }
 }
 
