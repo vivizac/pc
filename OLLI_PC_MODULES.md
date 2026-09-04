@@ -34,7 +34,11 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 | 학생 이관·상태/삭제·Supabase 학생 저장·백그라운드 동기화 | `olli-data-student-operations.js` | - |
 | 등록일/메타 표시·복사/공유·저장 모달·API 응답 유틸 | `olli-data-ui-utils.js` | - |
 | 기록 에디터 학생 선택·정렬·보관함/기록 편집 공용 동작 | `olli-record-editor-core.js` | 현재 공통 스타일 |
-| 기록실·출석·학생 기록 목록 공용 동작 | `olli-record-room-core.js` | 현재 공통 스타일 |
+| 성향기록부 학생 목록·당일 출석 상태·기록 삭제 | `olli-record-list-view.js` | 현재 공통 스타일 |
+| 상담 기준·상담 진행 상태·학생관리 대시보드·기록 목록 로드 | `olli-consultation-runtime.js` | 현재 공통 스타일 |
+| 초등/유치 학생 정보 모달 열기·저장 | `olli-student-info-runtime.js` | 현재 공통 스타일 |
+| 앱 부팅·초기화·공용 함수 전역 연결 | `olli-app-startup.js` | 현재 공통 스타일 |
+| 장면카드 피드백·입력 방어·내부 피드백 작업 큐 | `olli-feedback-runtime.js` | 현재 공통 스타일 |
 | 시간표 화면·팝업 | `pc-timetable.js` | `pc-timetable.css` |
 | 시간표 데이터 호출·변경 이력·복구 | `pc-timetable-service.js` | - |
 | 상담설문 | `consultation-survey.js`, `consultation-survey-core.js` | `consultation-survey.css` |
@@ -51,7 +55,7 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 - 초등 분석의 선택값·이력·상세보기 함수는 `elementary-analysis.js`, 관찰 메모 저장/자동저장/피드백 연결은 `observation-memo-core.js`가 담당한다.
 - 로그인·계정·학원 연결 함수는 `olli-auth-core.js`, 설정 공통 상태와 화면은 `olli-settings-base.js`, 선생님/권한은 `olli-settings-members.js`, 백업/진단은 `olli-settings-storage.js`, 공통 저장 기반은 `olli-storage-core.js`에서 수정한다.
 - 설정의 데이터 가져오기는 공통 상태/탭은 `olli-settings-imports-base.js`, 학생 일괄등록은 `olli-settings-student-bulk-import.js`, 기존 피드백은 `olli-settings-existing-feedback-import.js`, 출석부 사진은 `olli-settings-attendance-photo-import.js`, 개발용 초기화는 `olli-settings-import-test-tools.js`가 담당한다. 서로 다른 가져오기 기능을 한 파일에 다시 합치지 않는다.
-- 데이터 공통 흐름은 역할에 따라 `olli-data-foundation.js`, `olli-data-feedback.js`, `olli-data-consultation-summary.js`, `olli-data-students.js`, `olli-data-record-list.js`, `olli-data-attendance-feedback.js`, `olli-data-student-operations.js`, `olli-data-ui-utils.js`로 나뉜다. 기록 에디터 공용 동작은 `olli-record-editor-core.js`, 기록실/출석 공용 동작은 `olli-record-room-core.js`에서 수정하며 이 코드를 다시 `index.html`로 복사하지 않는다.
+- 데이터 공통 흐름은 역할에 따라 `olli-data-foundation.js`, `olli-data-feedback.js`, `olli-data-consultation-summary.js`, `olli-data-students.js`, `olli-data-record-list.js`, `olli-data-attendance-feedback.js`, `olli-data-student-operations.js`, `olli-data-ui-utils.js`로 나뉜다. 기록 에디터 공용 동작은 `olli-record-editor-core.js`, 기록실 런타임은 `olli-record-list-view.js`, `olli-consultation-runtime.js`, `olli-student-info-runtime.js`, `olli-app-startup.js`, `olli-feedback-runtime.js`에서 수정하며 이 코드를 다시 `index.html`로 복사하지 않는다.
 - `academy_id`, 학생 원본 데이터, Supabase 공통 저장 함수처럼 여러 기능이 함께 사용하는 값은 담당 공통 모듈을 통해 공유한다.
 - 기능을 수정할 때 다른 모듈 코드를 복사하지 않는다. 공통 연결이 필요하면 기존 공개 함수나 `OlliPcCore`의 공개 함수만 사용한다.
 - 외부 UI/공통 모듈은 현재 삽입 위치가 실행 순서를 보장하므로 임의로 `defer` 처리하거나 문서 맨 아래로 옮기지 않는다.
@@ -69,6 +73,16 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 - `olli-data-ui-utils.js`: 등록일/학생 메타 표시, 복사·공유·저장 모달, API 응답/오류 유틸과 실패 설문 상수.
 
 이 8개 파일은 이전 데이터 통합 파일의 실행 순서를 그대로 보존해 기능 경계별로 분리한 것이다. 같은 전역 함수/상태를 순차적으로 공유하므로 ES module처럼 독립 로딩하거나 순서를 바꾸지 않는다.
+
+## 기록실 런타임 모듈 경계
+
+- `olli-record-list-view.js`: 성향기록부의 초등/유치 학생 목록 렌더링, 당일 출석/보강 표시, 기록 목록 선택과 삭제 흐름.
+- `olli-consultation-runtime.js`: 상담 기준, 공통 설정 동기화, 상담 진행 상태, 상담예정 계산, 학생관리 대시보드와 `loadRecords` 흐름.
+- `olli-student-info-runtime.js`: 초등/유치 학생 정보 모달의 열기, 입력 동기화, 저장과 목록 갱신.
+- `olli-app-startup.js`: 부팅 화면, 로그인/학원 접근 확인, 초기 학생 동기화, DOMContentLoaded 초기화와 공용 함수의 `window` 연결.
+- `olli-feedback-runtime.js`: 장면카드 선택/메모 상호작용, 1분 피드백 초기화, 입력값 방어, 내부 피드백 작업 큐와 AI 요청 연결.
+
+이 5개 파일은 이전 기록실 통합 파일의 기능 경계를 따라 분리했다. 특히 `olli-app-startup.js`는 DOMContentLoaded에서 뒤쪽 런타임 함수를 연결하므로 현재 로드 위치와 순서를 유지하고 `defer`로 바꾸지 않는다. `olli-feedback-runtime.js` 안의 장면카드 입력 방어와 작업 큐는 같은 파일에 유지해 기존 함수 호이스팅 동작을 보존한다.
 
 ## 관찰기록·피드백 모듈 경계
 
@@ -111,7 +125,7 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 
 ## 로드 순서
 
-공통 코어는 `index.html`에서 원래 실행되던 위치를 그대로 유지한다. 데이터 모듈 묶음, `olli-record-editor-core.js`, `olli-record-room-core.js`, 설정 모듈 묶음, `olli-auth-core.js`, `olli-storage-core.js`를 임의로 문서 맨 아래로 이동하거나 `defer` 처리하지 않는다.
+공통 코어는 `index.html`에서 원래 실행되던 위치를 그대로 유지한다. 데이터 모듈 묶음, `olli-record-editor-core.js`, 기록실 런타임 모듈 묶음, 설정 모듈 묶음, `olli-auth-core.js`, `olli-storage-core.js`를 임의로 문서 맨 아래로 이동하거나 `defer` 처리하지 않는다.
 
 데이터 모듈은 다음 순서를 유지한다.
 
@@ -124,7 +138,7 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 7. `olli-data-student-operations.js`
 8. `olli-data-ui-utils.js`
 
-이 순서 뒤에 `elementary-analysis.js`, `olli-record-editor-core.js`, `observation-memo-core.js`, `olli-record-room-core.js`가 이어진다. 데이터 모듈은 기존 한 파일의 실행 순서를 보존한 것이므로 중간 순서를 바꾸지 않는다.
+이 순서 뒤에 `elementary-analysis.js`, `olli-record-editor-core.js`, `observation-memo-core.js`, `olli-record-list-view.js`, `olli-consultation-runtime.js`, `olli-student-info-runtime.js`, `olli-app-startup.js`, `olli-feedback-runtime.js`가 이어진다. 데이터 모듈과 기록실 런타임 모듈은 기존 실행 순서를 보존한 것이므로 중간 순서를 바꾸지 않는다.
 
 설정 모듈은 다음 순서를 유지한다.
 
@@ -161,7 +175,7 @@ PC 전용 모듈의 기본 순서는 다음과 같다.
 - 유치부 1분 피드백은 `kinder-feedback-ui.js`, `kinder-feedback.js`, `kinder-feedback.css`에서 수정한다.
 - 로그인/계정은 `olli-auth-core.js`, 설정 기본 화면은 `olli-settings-base.js`, 선생님/권한은 `olli-settings-members.js`, 백업/진단은 `olli-settings-storage.js`, 학생 일괄등록은 `olli-settings-student-bulk-import.js`, 기존 피드백 가져오기는 `olli-settings-existing-feedback-import.js`, 출석부 사진 가져오기는 `olli-settings-attendance-photo-import.js`, 개발용 초기화는 `olli-settings-import-test-tools.js`, 초대는 `olli-settings-teacher-invite.js`, 학원 접근/체험은 `olli-settings-access.js`, 출석부 출력은 `olli-settings-attendance-export.js`, 설정 상세 라우팅은 `olli-settings-detail.js`에서 먼저 확인한다.
 - 데이터 수정은 공통 Supabase/저장 기반=`olli-data-foundation.js`, 피드백 저장=`olli-data-feedback.js`, 상담 종합분석=`olli-data-consultation-summary.js`, 학생 모델/생명주기=`olli-data-students.js`, 기록 목록=`olli-data-record-list.js`, 학생 피드백 시트=`olli-data-attendance-feedback.js`, 학생 저장/상태/동기화=`olli-data-student-operations.js`, 공통 표시/복사 유틸=`olli-data-ui-utils.js`부터 확인한다.
-- 기록실·출석 공용 동작은 `olli-record-room-core.js`, 기록 편집/학생 선택 공용 동작은 `olli-record-editor-core.js`에서 먼저 확인한다.
+- 기록실은 학생 목록/출석/삭제=`olli-record-list-view.js`, 상담 기준/진행/목록 로드=`olli-consultation-runtime.js`, 학생 정보 모달=`olli-student-info-runtime.js`, 앱 초기화=`olli-app-startup.js`, 장면카드/피드백 큐=`olli-feedback-runtime.js`에서 먼저 확인한다. 기록 편집/학생 선택 공용 동작은 `olli-record-editor-core.js`에서 확인한다.
 - `index.html`은 새 기능의 구현 파일로 사용하지 않는다. 정말 문서 조립이나 아직 미분리된 레거시 연결이 필요한 경우에만 수정한다.
 - `index.html`에 같은 기능을 다시 복사해 넣지 않는다. 새 UI/기능은 기존 모듈을 확장한다.
 - 한 기능씩 수정·검증·배포해 다른 화면의 회귀 범위를 줄인다.
