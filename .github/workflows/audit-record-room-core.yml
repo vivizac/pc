@@ -40,16 +40,10 @@ jobs:
           )
           for symbol in "${symbols[@]}"; do
             echo "===== $symbol ====="
-            rg -n --fixed-strings "$symbol" . \
-              --glob '!olli-record-room-core.js' \
-              --glob '!.github/workflows/audit-record-room-core.yml' \
-              --glob '!.git/**' || true
+            grep -RInF --exclude='olli-record-room-core.js' --exclude='audit-record-room-core.yml' --exclude-dir='.git' "$symbol" . || true
           done
           echo '===== DOM / legacy markers ====='
           for marker in kinderSceneInfo sceneMemoInput oneMinuteFeedbackScreen todayFeedbackPage recordList elementaryInfoModal kinderInfoModal olliBootScreen; do
             echo "--- $marker ---"
-            rg -n --fixed-strings "$marker" . \
-              --glob '!olli-record-room-core.js' \
-              --glob '!.github/workflows/audit-record-room-core.yml' \
-              --glob '!.git/**' || true
+            grep -RInF --exclude='olli-record-room-core.js' --exclude='audit-record-room-core.yml' --exclude-dir='.git' "$marker" . || true
           done
