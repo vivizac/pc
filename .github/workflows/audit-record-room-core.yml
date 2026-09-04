@@ -26,10 +26,30 @@ jobs:
           for i,line in enumerate(lines,1):
               if re.match(r'^(?:async\s+)?function\s+[A-Za-z_$][\w$]*\s*\(', line) or re.match(r'^(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*=', line):
                   print(f'{i}: {line[:180]}')
-          print('SECTION_COMMENTS')
-          for i,line in enumerate(lines,1):
-              s=line.strip()
-              if s.startswith('//') or s.startswith('/*'):
-                  if any(k in s for k in ['출석','기록','학생','피드백','보관','삭제','상담','검색','정렬','초등','유치','모달','상태','공통','동기화','선택']):
-                      print(f'{i}: {s[:200]}')
           PY
+      - name: Audit external references
+        run: |
+          set -e
+          symbols=(
+            renderElementaryRecords renderKinderRecords confirmDeleteRecordBoardSelected
+            getOlliConsultationRules getOlliConsultationProgress getConsultationDueTasksForStudent toggleAcademyConsultationCompleted
+            renderRecordAcademyManagementDashboard loadRecords openElementaryInfoModal openKinderInfoModal
+            showOlliBootScreen hideOlliBootScreen
+            handleKinderSceneCardTap openKinderSceneInfo resetOneMinuteFeedback insertTemplate requestSceneCardFeedback
+            getTodayFeedbackItems createTodayFeedbackItem addCompletedTodayFeedback saveTodayFeedbackItem startTodayFeedbackRequest
+          )
+          for symbol in "${symbols[@]}"; do
+            echo "===== $symbol ====="
+            rg -n --fixed-strings "$symbol" . \
+              --glob '!olli-record-room-core.js' \
+              --glob '!.github/workflows/audit-record-room-core.yml' \
+              --glob '!.git/**' || true
+          done
+          echo '===== DOM / legacy markers ====='
+          for marker in kinderSceneInfo sceneMemoInput oneMinuteFeedbackScreen todayFeedbackPage recordList elementaryInfoModal kinderInfoModal olliBootScreen; do
+            echo "--- $marker ---"
+            rg -n --fixed-strings "$marker" . \
+              --glob '!olli-record-room-core.js' \
+              --glob '!.github/workflows/audit-record-room-core.yml' \
+              --glob '!.git/**' || true
+          done
