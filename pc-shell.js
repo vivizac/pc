@@ -149,6 +149,7 @@
       state.observationTab = 'feedback';
       section = SECTION.OBSERVATION_NOTE;
     } else if (section === SECTION.OBSERVATION_NOTE) state.observationTab = 'observation';
+    if (section !== SECTION.PERSONALITY_RECORDS) personalityRecordsFeature()?.unmountEditor?.();
     setChrome(section);
 
     if (section === SECTION.ACADEMY) return feature('OlliPcStudentManagement')?.open();

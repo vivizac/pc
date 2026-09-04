@@ -5,7 +5,11 @@
     selectedStudentId: '',
     loadToken: 0,
     legacyOpenFeedback: null,
-    actionsWrapped: false
+    actionsWrapped: false,
+    editorScreen: null,
+    editorAnchor: null,
+    editorStudentId: '',
+    editorDivision: ''
   };
 
   function core() { return global.OlliPcCore; }
@@ -66,9 +70,110 @@
     return panel;
   }
 
+  function saveSharedEditorDraft() {
+    try {
+      if (state.editorDivision === 'elementary' && typeof saveCurrentMemo === 'function') {
+        Promise.resolve(saveCurrentMemo({ silent: true })).catch(() => {});
+      } else if (state.editorDivision === 'kinder' && typeof saveKinderChatFeedbackDraft === 'function') {
+        saveKinderChatFeedbackDraft();
+      }
+    } catch (_) {}
+  }
+
+  function unmountSharedEditor() {
+    const screen = state.editorScreen;
+    const anchor = state.editorAnchor;
+    if (!screen) return;
+    saveSharedEditorDraft();
+    if (anchor?.parentNode) {
+      const home = anchor.parentNode;
+      home.insertBefore(screen, anchor.nextSibling);
+      home.removeChild(anchor);
+    }
+    screen.classList.remove('pcAttendanceEmbeddedEditor');
+    screen.style.display = 'none';
+    state.editorScreen = null;
+    state.editorAnchor = null;
+    state.editorStudentId = '';
+    state.editorDivision = '';
+  }
+
+  function moveScreenIntoHost(screen, host) {
+    if (!screen || !host) return false;
+    const anchor = document.createComment('olli-pc-shared-editor-home');
+    screen.parentNode?.insertBefore(anchor, screen);
+    state.editorScreen = screen;
+    state.editorAnchor = anchor;
+    host.appendChild(screen);
+    screen.classList.add('pcAttendanceEmbeddedEditor');
+    return true;
+  }
+
+  function restoreRecordRoomVisibility() {
+    const recordRoom = document.getElementById('recordRoomScreen');
+    if (recordRoom) recordRoom.style.display = 'flex';
+    state.editorScreen?.style.setProperty('display', 'flex');
+  }
+
+  function mountSharedEditor(student) {
+    const host = document.getElementById('pcAttendanceSharedEditorHost');
+    if (!host || !student) return;
+    const division = student.type === 'kinder' ? 'kinder' : 'elementary';
+    const studentId = String(student.id || '');
+    const screenId = division === 'kinder' ? 'kinderChatFeedbackScreen' : 'studentMemoScreen';
+    const currentScreenMatches = state.editorScreen?.id === screenId && host.contains(state.editorScreen);
+
+    if (currentScreenMatches && state.editorStudentId === studentId) {
+      restoreRecordRoomVisibility();
+      return;
+    }
+
+    unmountSharedEditor();
+    const screen = document.getElementById(screenId);
+    if (!moveScreenIntoHost(screen, host)) {
+      host.innerHTML = '<div class="pcAttendanceEditorUnavailable">기록 화면을 불러오지 못했습니다.</div>';
+      return;
+    }
+    state.editorStudentId = studentId;
+    state.editorDivision = division;
+
+    try {
+      if (division === 'elementary' && typeof openStudentMemoPageById === 'function') {
+        openStudentMemoPageById(student.id);
+      } else if (division === 'kinder' && typeof openKinderChatFeedbackPage === 'function') {
+        openKinderChatFeedbackPage();
+        if (typeof global.selectKinderChatFeedbackStudentFromManage === 'function') {
+          global.selectKinderChatFeedbackStudentFromManage(student.id, null);
+        }
+      }
+    } catch (error) {
+      console.warn('성향기록부 공유 기록 화면 연결 실패:', error);
+    }
+    restoreRecordRoomVisibility();
+  }
+
+  function recordWorkspaceHtml(student, recordContent) {
+    const divisionLabel = student?.type === 'kinder' ? '유치부 1분 피드백' : '초등 관찰 노트';
+    return '<div class="pcAttendanceDetailBody">'
+      + '<section class="pcAttendanceEditorCard" aria-label="수업 기록 작성">'
+      + '<div class="pcAttendanceWorkspaceHead"><div><div class="pcAttendanceWorkspaceTitle">수업 기록</div><div class="pcAttendanceWorkspaceSub">'+divisionLabel+'</div></div></div>'
+      + '<div class="pcAttendanceSharedEditorHost" id="pcAttendanceSharedEditorHost"></div>'
+      + '</section>'
+      + '<section class="pcAttendanceCombinedCard" aria-label="종합 성장 기록">'
+      + '<div class="pcAttendanceWorkspaceHead"><div><div class="pcAttendanceWorkspaceTitle">종합 성장 기록</div><div class="pcAttendanceWorkspaceSub">수업 기록과 종합 기록을 함께 확인합니다.</div></div></div>'
+      + '<div class="pcAttendanceCombinedBody" id="pcAttendanceCombinedBody">'+recordContent+'</div>'
+      + '</section>'
+      + '</div>';
+  }
+
+  function recordLoadingHtml() {
+    return '<div class="pcAttendanceRecordLoading"><span></span><span></span><span></span></div>';
+  }
+
   function renderEmptyDetail() {
     const panel = ensureDetailPanel();
     if (!panel) return;
+    unmountSharedEditor();
     panel.innerHTML = '<div class="pcAttendanceDetailHead"><div><div class="pcAttendanceDetailTitle">관찰기록</div><div class="pcAttendanceDetailSub">학생의 수업 기록과 성장 기록을 확인합니다.</div></div></div>'
       + '<div class="pcAttendanceDetailEmpty"><span class="pcAttendanceDetailEmptyIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="3"></rect><path d="M8 9h8M8 13h5"></path></svg></span><strong>학생을 선택해 주세요.</strong><span>왼쪽 명단에서 학생 이름을 누르면<br>관찰기록이 이곳에 표시됩니다.</span></div>';
   }
@@ -85,10 +190,12 @@
   function renderLoadingDetail(student) {
     const panel = ensureDetailPanel();
     if (!panel) return;
+    unmountSharedEditor();
     const division = student?.type === 'kinder' ? '유치부' : '초등부';
     const meta = getStudentMeta(student);
     panel.innerHTML = '<div class="pcAttendanceDetailHead"><div><div class="pcAttendanceStudentLine"><span class="pcAttendanceDivisionChip">'+division+'</span><div class="pcAttendanceDetailTitle">'+escape(student?.name || '학생')+' 관찰기록</div></div><div class="pcAttendanceDetailSub">'+escape(meta || '저장된 관찰기록을 불러오고 있습니다.')+'</div></div></div>'
-      + '<div class="pcAttendanceDetailLoading"><span></span><span></span><span></span></div>';
+      + recordWorkspaceHtml(student, recordLoadingHtml());
+    mountSharedEditor(student);
   }
 
   function renderRecordSection(title, items, emptyText, student, kind) {
@@ -101,13 +208,9 @@
     return '<section class="attendanceFeedbackSheetSection pcAttendanceRecordSection"><div class="pcAttendanceRecordSectionHead"><div class="attendanceFeedbackSheetSectionTitle">'+title+'</div><span>'+items.length+'개</span></div><div class="attendanceFeedbackSheetScroll">'+(cards || '<div class="attendanceFeedbackSheetEmpty">'+emptyText+'</div>')+'</div></section>';
   }
 
-  function renderDetail(student, data) {
-    const panel = ensureDetailPanel();
-    if (!panel) return;
+  function renderCombinedRecords(student, data) {
     const feedbacks = Array.isArray(data?.feedbacks) ? data.feedbacks : [];
     const summaries = Array.isArray(data?.summaries) ? data.summaries : [];
-    const division = student?.type === 'kinder' ? '유치부' : '초등부';
-    const meta = getStudentMeta(student);
 
     // 기존 복사·삭제·재생성 기능이 사용하는 상태를 그대로 갱신합니다.
     try {
@@ -115,19 +218,16 @@
         renderAttendanceStudentFeedbackSheet(student, { feedbacks, summaries });
       }
     } catch (_) {}
-
-    panel.innerHTML = '<div class="pcAttendanceDetailHead"><div><div class="pcAttendanceStudentLine"><span class="pcAttendanceDivisionChip">'+division+'</span><div class="pcAttendanceDetailTitle">'+escape(student?.name || '학생')+' 관찰기록</div></div><div class="pcAttendanceDetailSub">'+escape(meta || '학생의 수업 기록과 성장 기록')+'</div></div></div>'
-      + '<div class="pcAttendanceDetailBody">'
-      + renderRecordSection('수업 기록', feedbacks, '저장된 관찰기록이 없습니다.', student, 'feedback')
-      + renderRecordSection('종합 성장 기록', summaries, '저장된 종합 성장 기록이 없습니다.', student, 'summary')
-      + '</div>';
+    const body = document.getElementById('pcAttendanceCombinedBody');
+    if (!body) return;
+    body.innerHTML = renderRecordSection('수업 기록', feedbacks, '저장된 관찰기록이 없습니다.', student, 'feedback')
+      + renderRecordSection('종합 성장 기록', summaries, '저장된 종합 성장 기록이 없습니다.', student, 'summary');
   }
 
   function renderDetailError(student, error) {
-    const panel = ensureDetailPanel();
-    if (!panel) return;
-    panel.innerHTML = '<div class="pcAttendanceDetailHead"><div><div class="pcAttendanceDetailTitle">'+escape(student?.name || '학생')+' 관찰기록</div><div class="pcAttendanceDetailSub">기록을 불러오지 못했습니다.</div></div></div>'
-      + '<div class="pcAttendanceDetailEmpty error"><strong>관찰기록을 불러오지 못했어요.</strong><span>'+escape(error?.message || '잠시 후 다시 선택해 주세요.')+'</span><button type="button" onclick="pcSelectAttendanceStudent(\''+escape(student?.id || '')+'\')">다시 불러오기</button></div>';
+    const body = document.getElementById('pcAttendanceCombinedBody');
+    if (!body) return;
+    body.innerHTML = '<div class="pcAttendanceRecordError"><strong>기록을 불러오지 못했어요.</strong><span>'+escape(error?.message || '잠시 후 다시 선택해 주세요.')+'</span><button type="button" onclick="pcSelectAttendanceStudent(\''+escape(student?.id || '')+'\')">다시 불러오기</button></div>';
   }
 
   async function selectStudent(studentOrId) {
@@ -135,14 +235,19 @@
     if (!student) return;
     state.selectedStudentId = String(student.id || '');
     decorateRows();
-    renderLoadingDetail(student);
+    const sameEditor = state.editorStudentId === state.selectedStudentId
+      && document.getElementById('pcAttendanceSharedEditorHost')?.contains(state.editorScreen);
+    if (sameEditor) {
+      const body = document.getElementById('pcAttendanceCombinedBody');
+      if (body) body.innerHTML = recordLoadingHtml();
+    } else renderLoadingDetail(student);
     const token = ++state.loadToken;
     try {
       const data = typeof loadAttendanceStudentFeedbackSheetItems === 'function'
         ? await loadAttendanceStudentFeedbackSheetItems(student)
         : { feedbacks: [], summaries: [] };
       if (token !== state.loadToken || !isPcAttendance()) return;
-      renderDetail(student, data);
+      renderCombinedRecords(student, data);
     } catch (error) {
       if (token !== state.loadToken || !isPcAttendance()) return;
       renderDetailError(student, error);
@@ -282,7 +387,7 @@
     renderList();
   }
 
-  const api = { studentMatchesDay, renderContext, ensureDetailPanel, open, renderList, filterDivision, filterDay, selectStudent, decorateRows };
+  const api = { studentMatchesDay, renderContext, ensureDetailPanel, open, renderList, filterDivision, filterDay, selectStudent, decorateRows, unmountEditor: unmountSharedEditor };
   global.OlliPcPersonalityRecords = api;
   // 이전 배포의 외부 호출과 저장된 route key를 깨지 않기 위한 호환 별칭입니다.
   global.OlliPcAttendance = api;
