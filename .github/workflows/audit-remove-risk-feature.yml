@@ -8,27 +8,48 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Audit risk references
+      - name: Apply cleanup in workspace only
         shell: bash
         run: |
-          set -e
-          echo '===== ALL RISK/SIGNAL REFERENCES ====='
-          grep -RInE --exclude-dir=.git --exclude='audit-remove-risk-feature.yml' 'kinderRisk|RiskMemo|risk[_-]?signal|risk_signals|위험신호|위험 신호|위험•퇴원|위험·퇴원|signalStatus|signalDots|signal-date|signal-dot|recordNotifyBtn|notificationInbox|sendKinderRiskPush|hasRiskNotifications|getKinderFilledMemoCount|getKinderRiskStageLabel|updateMemoSignalCircle|directorNote|manager_can_director_note|recordDoorDot' . || true
-          echo '===== LEGACY KINDER MEMO FIELDS ====='
-          grep -RInE --exclude-dir=.git --exclude='audit-remove-risk-feature.yml' 'memo[1-5]|sceneMemo|kinderSceneMemo|kinderMemoBox|autoResizeKinderMemoBoxes|setKinderCombinedMode|kinderCombined|kinderGuideToggleBtn|kinderRiskToggleBtn' . || true
-          echo '===== NOTIFICATION CALLS ====='
-          grep -RInE --exclude-dir=.git --exclude='audit-remove-risk-feature.yml' 'getRiskNotifications|setRiskNotifications|loadRiskNotificationsFromSupabase|saveRiskNotification|updateNotificationButtons|scheduleNotificationSync|openNotificationInbox|closeNotificationInbox|openRiskNotificationTarget|showBrowserNotification|sendKinderRiskPush' . || true
-          echo '===== BACKUP CONTEXT ====='
-          sed -n '21490,21575p' index.html
-          echo '===== PERMISSION CONTEXT ====='
-          sed -n '19140,19210p' index.html
-          sed -n '25590,25660p' index.html
-          sed -n '29790,29845p' index.html
-          echo '===== SAVE ROUTING CONTEXT ====='
-          sed -n '32770,32925p' index.html
-          echo '===== RECORD ROOM / INFO CONTEXT ====='
-          sed -n '7700,7980p' index.html
-          echo '===== LATE RISK PATCH START ====='
-          sed -n '28250,29660p' index.html
-          echo '===== FILE NAMES ====='
-          find . -maxdepth 3 -type f | sort | grep -Ei 'risk|signal' || true
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          workflow = Path('.github/workflows/one-shot-remove-risk-feature-v3.yml').read_text(encoding='utf-8')
+          sm = "          python3 - <<'PY'\n"; em = "          PY\n"
+          s = workflow.find(sm) + len(sm); e = workflow.find(em, s)
+          block = workflow[s:e]
+          script='\n'.join(line[10:] if line.startswith('          ') else line for line in block.splitlines())+'\n'
+          old="s=text.find(marker); b=text.find('{',s); e=balanced_end(text,b)"
+          new="fn_s=text.find(marker); s=fn_s-6 if fn_s>=6 and text[fn_s-6:fn_s]=='async ' else fn_s; b=text.find('{',fn_s); e=balanced_end(text,b)"
+          script=script.replace(old,new,1)
+          exec(compile(script,'audit_transform.py','exec'),{'__name__':'__main__'})
+          PY
+      - name: Show residual contexts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          terms=re.compile(r'kinderRisk|RiskMemo|risk_signal|risk_signals|위험신호|recordNotifyBtn|notificationInbox|hasRiskNotifications|sendKinderRiskPush|manager_can_director_note|directorNote|recordDoorDot|kinderMemoBox[1-5]|kinderSceneMemoInput|setKinderCombinedMode|autoResizeKinderMemoBoxes')
+          for fn in ['index.html','observation-memo-core.js','kinder-feedback.js','pc-shell.js','pc-start-page.js','OLLI_PC_MODULES.md']:
+              p=Path(fn)
+              if not p.exists(): continue
+              lines=p.read_text(encoding='utf-8').splitlines()
+              hits=[i for i,l in enumerate(lines) if terms.search(l)]
+              if not hits: continue
+              print('\n===== '+fn+' =====')
+              shown=set()
+              for i in hits:
+                  lo=max(0,i-5); hi=min(len(lines),i+6)
+                  key=(lo,hi)
+                  if key in shown: continue
+                  shown.add(key)
+                  print(f'--- hit line {i+1} ---')
+                  # nearest function signature above when available
+                  for j in range(i,-1,-1):
+                      if re.search(r'\b(?:async\s+)?function\s+\w+\s*\(',lines[j]):
+                          print('nearest:',lines[j].strip())
+                          break
+                  for n in range(lo,hi): print(f'{n+1}: {lines[n]}')
+          PY
