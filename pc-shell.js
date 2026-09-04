@@ -5,20 +5,17 @@
   const SECTION = Object.freeze({
     ACADEMY: 'academy',
     PERSONALITY_RECORDS: 'attendance',
-    OBSERVATION_NOTE: 'observation',
     CONSULTATION: 'consultation',
     SCHEDULE: 'schedule'
   });
   const sectionTitles = {
     academy: '학생관리',
     attendance: '성향기록부',
-    observation: '관찰노트',
     consultation: '상담기록',
     schedule: '시간표 • 출석부'
   };
   const state = {
     section: 'academy',
-    observationTab: 'observation',
     searchValues: { academy: '', attendance: '' },
     academyFilter: 'all',
     academySelectedStudentRef: '',
@@ -68,10 +65,6 @@
     return feature('OlliPcPersonalityRecords') || feature('OlliPcAttendance');
   }
 
-  function observationNoteFeature() {
-    return feature('OlliPcObservationNote') || feature('OlliPcObservation');
-  }
-
   function showRecordRoomImmediately(view) {
     hideMainScreensExcept('recordRoomScreen');
     const record = document.getElementById('recordRoomScreen');
@@ -97,7 +90,6 @@
     const kinder = sortedStudents('kinder');
     if (state.section === 'academy') return feature('OlliPcStudentManagement')?.renderContext(elementary, kinder);
     if (state.section === SECTION.PERSONALITY_RECORDS) return personalityRecordsFeature()?.renderContext(elementary, kinder);
-    if (state.section === SECTION.OBSERVATION_NOTE) return observationNoteFeature()?.renderContext(elementary, kinder);
     const title = document.getElementById('olliPcContextTitle');
     const body = document.getElementById('olliPcContextBody');
     if (!title || !body) return;
@@ -123,22 +115,19 @@
     const title = document.getElementById('olliPcTopbarTitle');
     if (title) {
       title.classList.remove('olliTtTopbarSchedule');
-      if (state.section === SECTION.OBSERVATION_NOTE) observationNoteFeature()?.renderTopbar(title);
-      else if (state.section === 'schedule') {
+      if (state.section === 'schedule') {
         title.textContent = '';
         if (typeof global.olliTtRenderScheduleHeader === 'function') global.olliTtRenderScheduleHeader();
       } else title.textContent = sectionTitles[state.section] || 'OLLI';
     }
 
-    const archive = document.getElementById('olliPcTopArchiveBtn');
     const sortButton = document.getElementById('olliPcSortBtn');
     const searchable = state.section === SECTION.ACADEMY || state.section === SECTION.PERSONALITY_RECORDS;
     if (search) {
       search.style.display = searchable ? '' : 'none';
       if (searchable) search.value = state.searchValues[state.section] || '';
     }
-    if (archive) archive.classList.toggle('show', state.section === SECTION.OBSERVATION_NOTE);
-    const sortVisible = state.section === SECTION.PERSONALITY_RECORDS || state.section === SECTION.OBSERVATION_NOTE;
+    const sortVisible = state.section === SECTION.PERSONALITY_RECORDS;
     if (sortButton) sortButton.style.visibility = sortVisible ? 'visible' : 'hidden';
     if (!sortVisible) document.getElementById('recordSortPopup')?.classList.remove('show');
     renderContext();
@@ -146,27 +135,18 @@
   }
 
   async function openSection(section) {
-    if (section === 'feedback') {
-      state.observationTab = 'feedback';
-      section = SECTION.OBSERVATION_NOTE;
-    } else if (section === SECTION.OBSERVATION_NOTE) state.observationTab = 'observation';
+    // 이전 PC 관찰노트 route/탭 호출은 성향기록부로 안전하게 흡수합니다.
+    if (section === 'feedback' || section === 'observation') section = SECTION.PERSONALITY_RECORDS;
     if (section !== SECTION.PERSONALITY_RECORDS) personalityRecordsFeature()?.unmountEditor?.();
     setChrome(section);
 
     if (section === SECTION.ACADEMY) return feature('OlliPcStudentManagement')?.open();
     if (section === SECTION.PERSONALITY_RECORDS) return personalityRecordsFeature()?.open();
-    if (section === SECTION.OBSERVATION_NOTE) return observationNoteFeature()?.open();
     if (section === SECTION.SCHEDULE) {
       const targetView = typeof currentObservationView !== 'undefined' && currentObservationView === 'kinder' ? 'kinder' : 'elementary';
       showRecordRoomImmediately(targetView);
       if (typeof global.olliPcSetAttendanceView === 'function') global.olliPcSetAttendanceView('schedule');
     }
-  }
-
-  function setObservationTab(tab) {
-    const next = tab === 'feedback' ? 'feedback' : 'observation';
-    if (state.section === SECTION.OBSERVATION_NOTE && state.observationTab === next) return;
-    return openSection(next === 'feedback' ? 'feedback' : SECTION.OBSERVATION_NOTE);
   }
 
   function handleTopSearch(value) {
@@ -199,17 +179,14 @@
     const page = visibleMainPage();
     if (!page) return;
     let nextSection = state.section;
-    const previousObservationTab = state.observationTab;
-    if (page === 'kinderChatFeedbackScreen') {
-      state.observationTab = 'feedback';
-      nextSection = 'observation';
-    } else if (page === 'studentMemoScreen' || page === 'kinderRiskMemoScreen') {
-      state.observationTab = 'observation';
-      nextSection = 'observation';
-    } else if (page === 'recordRoomScreen' && !['academy', 'attendance', 'schedule'].includes(nextSection)) {
+    if (page === 'recordRoomScreen' && !['academy', 'attendance', 'schedule'].includes(nextSection)) {
       nextSection = typeof currentRecordView !== 'undefined' && currentRecordView === 'academy' ? 'academy' : 'attendance';
+    } else if (page === 'studentMemoScreen' || page === 'kinderRiskMemoScreen' || page === 'kinderChatFeedbackScreen') {
+      // PC에서 과거 관찰노트 단독 화면이 열리면 성향기록부로 되돌립니다.
+      redirectLegacyStandaloneEditor(page);
+      return;
     }
-    if (nextSection !== state.section || shell?.dataset.pcSection !== nextSection || previousObservationTab !== state.observationTab) setChrome(nextSection);
+    if (nextSection !== state.section || shell?.dataset.pcSection !== nextSection) setChrome(nextSection);
     else {
       shell?.classList.add('visible');
       topbar?.classList.add('visible');
@@ -315,6 +292,108 @@
     global.confirmStudent = wrapped;
   }
 
+  function isPcDesktop() {
+    return !global.matchMedia || global.matchMedia('(min-width: 900px)').matches;
+  }
+
+  function isEditorEmbedded(screenId) {
+    const host = document.getElementById('pcAttendanceSharedEditorHost');
+    const screen = document.getElementById(screenId);
+    return !!(host && screen && host.contains(screen));
+  }
+
+  function legacyStudentForScreen(pageId, explicitStudentId) {
+    if (explicitStudentId) {
+      try {
+        if (typeof findStudentById === 'function') return findStudentById(explicitStudentId);
+      } catch (_) {}
+    }
+
+    if (pageId === 'studentMemoScreen' || pageId === 'kinderRiskMemoScreen') {
+      try {
+        if (typeof currentMemoStudent !== 'undefined' && currentMemoStudent) return currentMemoStudent;
+      } catch (_) {}
+      return activeStudents(pageId === 'kinderRiskMemoScreen' ? 'kinder' : 'elementary')[0] || null;
+    }
+
+    if (pageId === 'kinderChatFeedbackScreen') {
+      const inputName = String(document.getElementById('kcfInput')?.value || '').split(/\n/)[0].trim();
+      const kinder = activeStudents('kinder');
+      return kinder.find((student) => String(student.name || '').trim() === inputName) || kinder[0] || null;
+    }
+
+    return null;
+  }
+
+  function openPersonalityRecordForStudent(studentId, division) {
+    const nextDivision = division === 'kinder' ? 'kinder' : division === 'elementary' ? 'elementary' : 'all';
+    try {
+      if (nextDivision !== 'all' && typeof currentObservationView !== 'undefined') currentObservationView = nextDivision;
+      if (nextDivision !== 'all') global.currentObservationView = nextDivision;
+    } catch (_) {}
+
+    return Promise.resolve(openSection(SECTION.PERSONALITY_RECORDS)).then(() => {
+      const records = personalityRecordsFeature();
+      if (!records) return;
+      if (nextDivision !== 'all') {
+        state.attendanceDivision = nextDivision;
+        records.renderList?.();
+      }
+      if (studentId) setTimeout(() => records.selectStudent?.(studentId), 0);
+    });
+  }
+
+  function redirectLegacyStandaloneEditor(pageId, explicitStudentId) {
+    if (!isPcDesktop()) return false;
+    const student = legacyStudentForScreen(pageId, explicitStudentId);
+    const division = pageId === 'kinderChatFeedbackScreen' || pageId === 'kinderRiskMemoScreen'
+      ? 'kinder'
+      : (student?.type === 'kinder' ? 'kinder' : 'elementary');
+    openPersonalityRecordForStudent(student?.id || explicitStudentId || '', division);
+    return true;
+  }
+
+  function installLegacyObservationRedirects() {
+    const originalMemoOpen = global.openStudentMemoPageById;
+    if (typeof originalMemoOpen === 'function' && !originalMemoOpen.__olliPcPersonalityRedirect) {
+      const wrappedMemoOpen = function pcOpenMemoInsidePersonality(studentId) {
+        if (!isPcDesktop() || isEditorEmbedded('studentMemoScreen')) {
+          return originalMemoOpen.apply(this, arguments);
+        }
+        redirectLegacyStandaloneEditor('studentMemoScreen', studentId);
+      };
+      wrappedMemoOpen.__olliPcPersonalityRedirect = true;
+      wrappedMemoOpen.__olliOriginal = originalMemoOpen;
+      global.openStudentMemoPageById = wrappedMemoOpen;
+    }
+
+    const originalObservationOpen = global.openObservationNoteFromRecord;
+    if (typeof originalObservationOpen === 'function' && !originalObservationOpen.__olliPcPersonalityRedirect) {
+      const wrappedObservationOpen = function pcOpenObservationInsidePersonality() {
+        if (!isPcDesktop()) return originalObservationOpen.apply(this, arguments);
+        const student = legacyStudentForScreen('studentMemoScreen', '');
+        return openPersonalityRecordForStudent(student?.id || '', 'elementary');
+      };
+      wrappedObservationOpen.__olliPcPersonalityRedirect = true;
+      wrappedObservationOpen.__olliOriginal = originalObservationOpen;
+      global.openObservationNoteFromRecord = wrappedObservationOpen;
+    }
+
+    const originalKinderOpen = global.openKinderChatFeedbackPage;
+    if (typeof originalKinderOpen === 'function' && !originalKinderOpen.__olliPcPersonalityRedirect) {
+      const wrappedKinderOpen = function pcOpenKinderFeedbackInsidePersonality() {
+        if (!isPcDesktop() || isEditorEmbedded('kinderChatFeedbackScreen')) {
+          return originalKinderOpen.apply(this, arguments);
+        }
+        const student = legacyStudentForScreen('kinderChatFeedbackScreen', '');
+        return openPersonalityRecordForStudent(student?.id || '', 'kinder');
+      };
+      wrappedKinderOpen.__olliPcPersonalityRedirect = true;
+      wrappedKinderOpen.__olliOriginal = originalKinderOpen;
+      global.openKinderChatFeedbackPage = wrappedKinderOpen;
+    }
+  }
+
   function openPersonalityRecordsSort(event) {
     if (event) {
       event.preventDefault();
@@ -335,11 +414,7 @@
   }
 
   function refreshSidebarRoster() {
-    if (state.section === SECTION.PERSONALITY_RECORDS) {
-      personalityRecordsFeature()?.renderList?.();
-      return;
-    }
-    observationNoteFeature()?.refreshRoster?.();
+    if (state.section === SECTION.PERSONALITY_RECORDS) personalityRecordsFeature()?.renderList?.();
   }
 
   const core = { SECTION, state, activeStudents, sortedStudents, hideMainScreensExcept, showRecordRoomImmediately, updateRecordLayout, renderContext, setChrome, openSection, syncFromVisiblePage };
@@ -347,7 +422,6 @@
   global.__olliPcAcademySelectedStudentRef = '';
   global.pcSyncFromVisiblePage = syncFromVisiblePage;
   global.pcOpenSection = openSection;
-  global.pcSetObservationTab = setObservationTab;
   global.pcHandleTopSearch = handleTopSearch;
   global.pcFilterAttendanceDivision = (division) => personalityRecordsFeature()?.filterDivision(division);
   global.pcFilterAttendanceDay = (day) => personalityRecordsFeature()?.filterDay(day);
@@ -355,23 +429,20 @@
   global.pcFilterAcademy = (type) => feature('OlliPcStudentManagement')?.filter(type);
   global.pcSelectAcademyConsultationStudent = (ref, event) => feature('OlliPcStudentManagement')?.selectConsultationStudent(ref, event);
   global.pcRefreshAcademyConsultationCompletionState = () => feature('OlliPcStudentManagement')?.refreshConsultationCompletionState();
-  global.pcOpenRosterStudentInfo = (id, event) => observationNoteFeature()?.openStudentInfo(id, event);
-  global.pcOpenSidebarSort = (event) => state.section === SECTION.PERSONALITY_RECORDS
-    ? openPersonalityRecordsSort(event)
-    : observationNoteFeature()?.openSidebarSort(event);
+  global.pcOpenSidebarSort = openPersonalityRecordsSort;
   global.pcRefreshSidebarRoster = refreshSidebarRoster;
-  global.pcSelectRosterStudent = (id, mode) => observationNoteFeature()?.selectStudent(id, mode);
-  global.pcOpenTopArchive = () => observationNoteFeature()?.openArchive();
 
   function normalizeSidebarChrome() {
-    // 독립 관찰노트 메뉴만 제거하고, 관찰노트 본문/저장 기능은 성향기록부의 공용 화면으로 계속 사용합니다.
+    // 구버전 index 캐시와 섞여도 관찰노트 메뉴가 다시 노출되지 않도록 안전망만 유지합니다.
     document.querySelectorAll('#olliPcShell [data-pc-nav="observation"]').forEach((button) => button.remove());
     const brand = document.querySelector('#olliPcShell .olliPcBrandLogo');
     if (brand) brand.textContent = 'olli';
+    document.getElementById('olliPcTopArchiveBtn')?.remove();
   }
 
   function start() {
     normalizeSidebarChrome();
+    installLegacyObservationRedirects();
     installStudentAddDivisionTabs();
     installStudentScheduleSync();
     feature('OlliPcStudentManagement')?.start();
