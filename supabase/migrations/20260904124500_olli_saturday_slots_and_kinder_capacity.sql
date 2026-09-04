@@ -1,5 +1,16 @@
 begin;
 
+alter table public.olli_schedule_enrollments drop constraint if exists olli_schedule_enrollments_time_slot_check;
+alter table public.olli_schedule_enrollments add constraint olli_schedule_enrollments_time_slot_check check (time_slot between 1 and 12);
+alter table public.olli_schedule_waitlist drop constraint if exists olli_schedule_waitlist_target_time_slot_check;
+alter table public.olli_schedule_waitlist add constraint olli_schedule_waitlist_target_time_slot_check check (target_time_slot between 1 and 12);
+alter table public.olli_schedule_one_time_sessions drop constraint if exists olli_schedule_one_time_sessions_time_slot_check;
+alter table public.olli_schedule_one_time_sessions add constraint olli_schedule_one_time_sessions_time_slot_check check (time_slot between 1 and 12);
+alter table public.olli_schedule_attendance drop constraint if exists olli_schedule_attendance_time_slot_check;
+alter table public.olli_schedule_attendance add constraint olli_schedule_attendance_time_slot_check check (time_slot between 1 and 12);
+alter table public.olli_schedule_class_splits drop constraint if exists olli_schedule_class_splits_time_slot_check;
+alter table public.olli_schedule_class_splits add constraint olli_schedule_class_splits_time_slot_check check (time_slot between 1 and 12);
+
 -- Saturday elementary classes use their real clock times while remaining in the existing 1–3pm display rows.
 update public.olli_schedule_enrollments
 set time_slot = case time_slot when 1 then 10 when 2 then 11 when 3 then 12 end,
@@ -234,3 +245,4 @@ end;
 $$;
 
 commit;
+
