@@ -1,0 +1,118 @@
+name: One-shot split settings core
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-split-settings-core.yml'
+permissions:
+  contents: write
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Split settings core by cohesive domains
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          src = Path('olli-settings-core.js')
+          text = src.read_text(encoding='utf-8')
+          lines = text.splitlines(keepends=True)
+          if len(lines) != 6773:
+              raise RuntimeError(f'unexpected olli-settings-core.js line count: {len(lines)}')
+
+          anchors = {
+              1: '/* 2026-04-26 v40-fix-5: 설정 페이지 Supabase 1차 연결 */',
+              1720: 'function getOlliTeacherAdminSessionToken',
+              2590: 'async function downloadSettingsBackup',
+              2978: 'function getStudentManagementActiveTab',
+              5311: 'function getOlliTeacherInviteAcademyInfo',
+              5567: 'function getOlliAcademyAccessLocalKey',
+              6212: 'function settingsGetCurrentYearMonthValue',
+              6702: 'function renderSettingsDetailHtml',
+          }
+          for line_no, marker in anchors.items():
+              actual = lines[line_no-1].strip()
+              if marker not in actual:
+                  raise RuntimeError(f'anchor mismatch at {line_no}: {actual!r}')
+
+          ranges = [
+              ('olli-settings-base.js', 1, 1719),
+              ('olli-settings-members.js', 1720, 2589),
+              ('olli-settings-storage.js', 2590, 2977),
+              ('olli-settings-imports.js', 2978, 5310),
+              ('olli-settings-teacher-invite.js', 5311, 5566),
+              ('olli-settings-access.js', 5567, 6211),
+              ('olli-settings-attendance-export.js', 6212, 6701),
+              ('olli-settings-detail.js', 6702, 6773),
+          ]
+
+          rebuilt = ''
+          for name, start, end in ranges:
+              chunk = ''.join(lines[start-1:end])
+              Path(name).write_text(chunk, encoding='utf-8')
+              rebuilt += chunk
+              print(f'{name}: lines {start}-{end}, bytes {len(chunk.encode("utf-8"))}')
+          if rebuilt != text:
+              raise RuntimeError('split modules do not exactly reconstruct original settings core')
+
+          index = Path('index.html')
+          html = index.read_text(encoding='utf-8')
+          old = '<script src="olli-settings-core.js"></script>'
+          if html.count(old) != 1:
+              raise RuntimeError(f'expected one settings core script tag, got {html.count(old)}')
+          tags = '\n'.join(f'<script src="{name}"></script>' for name,_,_ in ranges)
+          html = html.replace(old, tags, 1)
+          index.write_text(html, encoding='utf-8')
+          PY
+          git rm olli-settings-core.js
+      - name: Verify syntax and load order
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in \
+            olli-settings-base.js \
+            olli-settings-members.js \
+            olli-settings-storage.js \
+            olli-settings-imports.js \
+            olli-settings-teacher-invite.js \
+            olli-settings-access.js \
+            olli-settings-attendance-export.js \
+            olli-settings-detail.js; do
+            node --check "$f"
+          done
+          node <<'NODE'
+          const fs=require('fs'), vm=require('vm');
+          const html=fs.readFileSync('index.html','utf8');
+          const expected=[
+            'olli-settings-base.js','olli-settings-members.js','olli-settings-storage.js','olli-settings-imports.js',
+            'olli-settings-teacher-invite.js','olli-settings-access.js','olli-settings-attendance-export.js','olli-settings-detail.js'
+          ];
+          let last=-1;
+          for(const f of expected){
+            const p=html.indexOf(`<script src="${f}"></script>`);
+            if(p<0 || p<=last) throw new Error('settings module load order invalid: '+f);
+            last=p;
+          }
+          if(html.includes('olli-settings-core.js')) throw new Error('old settings core reference remains');
+          const re=/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;
+          let m,n=0;
+          while((m=re.exec(html))){
+            const attrs=m[1]||'', body=m[2]||'';
+            if(/\bsrc\s*=/.test(attrs)||/type\s*=\s*["'](?:application\/json|application\/ld\+json)["']/.test(attrs)) continue;
+            n++;
+            new vm.Script(body,{filename:`inline-${n}.js`});
+          }
+          console.log('inline scripts parsed:',n);
+          NODE
+      - name: Commit split modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html olli-settings-*.js
+          git commit -m 'Split settings core into domain modules'
+          git push
