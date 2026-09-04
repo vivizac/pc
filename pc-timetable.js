@@ -334,14 +334,43 @@
     return true;
   }
 
-  function cellMemoKey(division, date, time, classGroup) {
+  function cellMemoKey(division, date, time) {
     const keyDate = date instanceof Date ? dateKey(date) : clean(date);
-    return `${clean(division)}|${keyDate}|${Number(time)}|${classGroupOf({ class_group: classGroup })}`;
+    return `${clean(division)}|${keyDate}|${Number(time)}|memo`;
   }
 
-  function cellMemoText(division, date, time, classGroup) {
+  function legacyCellMemoKeys(division, date, time) {
+    const keyDate = date instanceof Date ? dateKey(date) : clean(date);
+    return ['A', 'B'].map((group) => `${clean(division)}|${keyDate}|${Number(time)}|${group}`);
+  }
+
+  function cellMemoText(division, date, time) {
     if (typeof service.getCellMemo !== 'function') return '';
-    return clean(service.getCellMemo(cellMemoKey(division, date, time, classGroup)));
+    const key = cellMemoKey(division, date, time);
+    const current = clean(service.getCellMemo(key));
+    if (current) return current;
+    for (const legacyKey of legacyCellMemoKeys(division, date, time)) {
+      const legacy = clean(service.getCellMemo(legacyKey));
+      if (!legacy) continue;
+      if (typeof service.saveCellMemo === 'function') {
+        service.saveCellMemo(key, legacy);
+        legacyCellMemoKeys(division, date, time).forEach((oldKey) => service.saveCellMemo(oldKey, ''));
+      }
+      return legacy;
+    }
+    return '';
+  }
+
+  function saveCellMemoText(division, date, time, note) {
+    if (typeof service.saveCellMemo !== 'function') return;
+    service.saveCellMemo(cellMemoKey(division, date, time), note);
+    legacyCellMemoKeys(division, date, time).forEach((oldKey) => service.saveCellMemo(oldKey, ''));
+  }
+
+  function slotEntryCount(division, date, time, classGroup) {
+    return slotRegulars(division, date, time, classGroup).length
+      + slotWaitlist(division, date, time, classGroup).length
+      + slotMakeups(division, date, time, classGroup).length;
   }
   function slotRegulars(division, date, time, classGroup) {
     return enrollments().filter((item) => clean(item.division) === division && timeSlotMatches(division, date, time, item.time_slot) && enrollmentActiveOn(item, date)
@@ -554,7 +583,7 @@
     if (typeof global.settingsAttendanceScheduleFitText === 'function') global.settingsAttendanceScheduleFitText(ui.root);
   }
 
-  function cellContentsHtml(division, date, time, classGroup) {
+  function cellContentsHtml(division, date, time, classGroup, memoText) {
     const regular = slotRegulars(division, date, time, classGroup);
     const waits = slotWaitlist(division, date, time, classGroup);
     const makeups = slotMakeups(division, date, time, classGroup);
@@ -572,9 +601,9 @@
       const attended = isToday(date) && attendanceMarked(item.student_id, date, attendanceTime, classGroup, 'makeup');
       return `<div class="olliTtStudent makeup${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(classGroup)}">${esc(item.student_name)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">보강</button></div>`;
     }).join('');
-    const memo = cellMemoText(division, date, time, classGroup);
-    const memoHtml = memo ? `<div class="olliTtCellMemoCard" title="${esc(memo)}"><span aria-hidden="true">📝</span><strong>${esc(memo)}</strong></div>` : '';
-    return `<div class="olliTtEntries">${memoHtml}${regularHtml}${waitHtml}${makeupHtml}</div>`;
+    const memo = clean(memoText);
+    const memoHtml = memo ? `<button type="button" class="olliTtCellMemoCard" data-tt-memo-card="1" data-division="${esc(division)}" data-date="${dateKey(date)}" data-time="${Number(time)}" aria-label="시간표 메모 관리"><span aria-hidden="true">📝</span><strong>${esc(memo)}</strong></button>` : '';
+    return `<div class="olliTtEntries">${regularHtml}${waitHtml}${makeupHtml}${memoHtml}</div>`;
   }
 
   function cellHtml(division, date, displayTime) {
@@ -583,9 +612,17 @@
     }
     const time = storedTimeForCell(division, date, displayTime);
     const attrs = `data-tt-cell="1" data-division="${division}" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-time="${time}"`;
-    if (!isClassSplit(division, date.getDay(), time)) return `<div class="olliTtCell" ${attrs}>${cellContentsHtml(division, date, time, 'A')}</div>`;
+    const memo = cellMemoText(division, date, time);
+    if (!isClassSplit(division, date.getDay(), time)) {
+      return `<div class="olliTtCell" ${attrs}>${cellContentsHtml(division, date, time, 'A', memo)}</div>`;
+    }
     const heads = division === 'kinder';
-    return `<div class="olliTtCell ${division} split" ${attrs}><div class="olliTtClassLanes ${division}">${['A', 'B'].map((group) => `<div class="olliTtClassLane ${division}" ${attrs} data-class-group="${group}">${heads ? `<div class="olliTtClassLaneHead"><strong>${group}반</strong></div>` : ''}${cellContentsHtml(division, date, time, group)}</div>`).join('')}</div></div>`;
+    const counts = {
+      A: slotEntryCount(division, date, time, 'A'),
+      B: slotEntryCount(division, date, time, 'B')
+    };
+    const memoGroup = counts.A <= counts.B ? 'A' : 'B';
+    return `<div class="olliTtCell ${division} split" ${attrs}><div class="olliTtClassLanes ${division}">${['A', 'B'].map((group) => `<div class="olliTtClassLane ${division}" ${attrs} data-class-group="${group}">${heads ? `<div class="olliTtClassLaneHead"><strong>${group}반</strong></div>` : ''}${cellContentsHtml(division, date, time, group, memo && group === memoGroup ? memo : '')}</div>`).join('')}</div></div>`;
   }
 
   function pickupCellHtml(date, classTime) {
@@ -741,6 +778,12 @@
       openPickupAdd(pickupCell.dataset);
       return;
     }
+    const memoCard = event.target.closest('[data-tt-memo-card]');
+    if (memoCard) {
+      event.stopPropagation();
+      openMemoManage(memoCard.dataset);
+      return;
+    }
     const cell = event.target.closest('[data-tt-cell]');
     if (cell) openAdd(cell.dataset);
   }
@@ -871,12 +914,22 @@
     const division = clean(dataset.division);
     const time = Number(dataset.time);
     const targetClassGroup = classGroupOf({ class_group: dataset.classGroup });
-    const existingMemo = cellMemoText(division, targetDate, time, targetClassGroup);
+    const existingMemo = cellMemoText(division, targetDate, time);
     state.dialog = {
       kind: 'add', division, date: targetDate,
       weekday: Number(dataset.weekday), time, studentId: '',
       query: '', note: existingMemo, originalNote: existingMemo, addType: 'wait', targetClassGroup
     };
+    openOverlay();
+  }
+
+  function openMemoManage(dataset) {
+    const division = clean(dataset && dataset.division);
+    const date = clean(dataset && dataset.date);
+    const time = Number(dataset && dataset.time);
+    const memo = cellMemoText(division, date, time);
+    if (!division || !date || !time || !memo) return;
+    state.dialog = { kind: 'memoManage', division, date, time, memo };
     openOverlay();
   }
 
@@ -1009,6 +1062,16 @@
       + (division === 'elementary' ? `<div class="olliTtField olliTtSplitClassField"><div class="olliTtFieldHead"><span>클래스 운영</span><small>${isClassSplit(division, dialog.weekday, dialog.time) ? '분리된 A반·B반을 하나의 칸으로 통합합니다.' : '현재 칸을 위·아래 A반·B반으로 나눕니다.'}</small></div><button type="button" class="olliTtSplitClassBtn" ${isClassSplit(division, dialog.weekday, dialog.time) ? 'data-tt-merge-class' : 'data-tt-split-class'}>${isClassSplit(division, dialog.weekday, dialog.time) ? '클래스 통합' : '클래스 분리'}</button></div>` : '')
       + classGroupChoiceHtml(division, dialog.targetClassGroup, dialog.weekday, dialog.time)
       + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-add ${canRegister ? '' : 'disabled'}>${primaryLabel}</button></div></div>`;
+  }
+
+  function memoManageDialogHtml(dialog) {
+    const date = parseDate(dialog.date);
+    const day = weekdayLabel(date.getDay());
+    return dialogHead('📝', '메모 삭제', `${koreanDate(date, true)} ${day}요일 · ${timeLabel(dialog.time)}`)
+      + '<div class="olliTtDialogBody">'
+      + `<div class="olliTtMemoDeletePreview"><span>현재 메모</span><div>${esc(dialog.memo)}</div></div>`
+      + '<div class="olliTtStatusNotice">메모를 삭제하면 이 시간의 수업 설정 팝업에 저장된 메모 내용도 함께 지워집니다.</div>'
+      + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary danger" data-tt-delete-memo>메모 삭제</button></div></div>';
   }
 
   function waitDialogHtml(dialog) {
@@ -1274,8 +1337,12 @@
     dialog.classList.toggle('olliTtHistoryDialog', state.dialog.kind === 'history');
     dialog.classList.toggle('olliTtRestoreDialog', state.dialog.kind === 'restoreConfirm');
     dialog.classList.toggle('olliTtMoveDialog', state.dialog.kind === 'move');
+    dialog.classList.toggle('olliTtMoveOrAddMode', state.dialog.kind === 'move' && (state.dialog.actionType === 'move' || state.dialog.actionType === 'add'));
+    dialog.classList.toggle('olliTtMakeupMode', state.dialog.kind === 'move' && state.dialog.actionType === 'makeup');
+    dialog.classList.toggle('olliTtMemoManageDialog', state.dialog.kind === 'memoManage');
     if (state.dialog.kind === 'move') dialog.innerHTML = moveDialogHtml(state.dialog);
     else if (state.dialog.kind === 'add') dialog.innerHTML = addDialogHtml(state.dialog);
+    else if (state.dialog.kind === 'memoManage') dialog.innerHTML = memoManageDialogHtml(state.dialog);
     else if (state.dialog.kind === 'wait') dialog.innerHTML = waitDialogHtml(state.dialog);
     else if (state.dialog.kind === 'makeup') dialog.innerHTML = makeupDialogHtml(state.dialog);
     else if (state.dialog.kind === 'pickupAdd') dialog.innerHTML = pickupAddDialogHtml(state.dialog);
@@ -1401,6 +1468,8 @@
     if (waitDate) waitDate.addEventListener('change', () => { state.dialog.effectiveDate = waitDate.value || todayKey(); renderDialog(); });
     const saveMoveButton = dialog.querySelector('[data-tt-save-move]');
     if (saveMoveButton) saveMoveButton.addEventListener('click', saveMove);
+    const deleteMemoButton = dialog.querySelector('[data-tt-delete-memo]');
+    if (deleteMemoButton) deleteMemoButton.addEventListener('click', deleteCellMemo);
     const saveAddButton = dialog.querySelector('[data-tt-save-add]');
     if (saveAddButton) saveAddButton.addEventListener('click', saveAdd);
     const splitClassButton = dialog.querySelector('[data-tt-split-class]');
@@ -1546,8 +1615,17 @@
   }
 
   function persistDialogCellMemo(dialog) {
-    if (!dialog || dialog.kind !== 'add' || typeof service.saveCellMemo !== 'function') return;
-    service.saveCellMemo(cellMemoKey(dialog.division, dialog.date, dialog.time, dialog.targetClassGroup), dialog.note);
+    if (!dialog || dialog.kind !== 'add') return;
+    saveCellMemoText(dialog.division, dialog.date, dialog.time, dialog.note);
+  }
+
+  function deleteCellMemo() {
+    const dialog = state.dialog;
+    if (!dialog || dialog.kind !== 'memoManage') return;
+    saveCellMemoText(dialog.division, dialog.date, dialog.time, '');
+    closeDialog();
+    renderTimetable();
+    notify('시간표 메모를 삭제했어요.');
   }
 
   async function saveAdd() {
