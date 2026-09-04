@@ -563,7 +563,6 @@ function getTodayFeedbackSavedRowId(item = {}) {
   return String(item.savedRowId || item.serverRowId || item.feedbackRowId || item.rowId || item.row?.id || '').trim();
 }
 function getTodayFeedbackEditFeatureByTable(tableName) {
-  if (typeof getMemoFeedbackArchiveEditFeature === 'function') return getMemoFeedbackArchiveEditFeature(tableName);
   const table = String(tableName || '').trim();
   if (table === 'feedbacks') return 'general_feedback_edit';
   if (table === 'fail_feedbacks') return 'growth_feedback_edit';

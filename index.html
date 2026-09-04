@@ -1341,209 +1341,6 @@ background: #FEFEFE ;
   line-height: 1;
   transform: translateY(-1px);
 }
-.memoRecordsDropup {
-  display: flex;
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  max-height: none;
-  overflow: hidden;
-  background: rgba(0,0,0,.22);
-  border-radius: 0;
-  padding: 0;
-  box-shadow: none;
-  z-index: 8600;
-  align-items: flex-end;
-  justify-content: center;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity .22s ease, visibility .22s ease;
-}
-.memoRecordsDropup.show {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-}
-.memoFeedbackArchiveSheet {
-  width: 100%;
-  max-width: 860px;
-  height: calc(100vh - 75px);
-  max-height: calc(100vh - 75px);
-  background: #fff;
-  border-radius: 28px 28px 0 0;
-  padding: 10px 16px calc(18px + env(safe-area-inset-bottom));
-  box-shadow: none;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  transform: translateY(100%);
-  transition: transform .26s cubic-bezier(.22,.61,.36,1);
-}
-.memoRecordsDropup.show .memoFeedbackArchiveSheet {
-  transform: translateY(0);
-  animation: vivizacSheetInFromBottom .26s cubic-bezier(.22,.61,.36,1) both;
-}
-.memoFeedbackArchiveHandle {
-  width: 42px;
-  height: 5px;
-  border-radius: 999px;
-  background: #e5e5e5;
-  margin: 0 auto 14px;
-}
-.memoFeedbackArchiveHead {
-  min-height: 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0 2px 14px;
-}
-.memoFeedbackArchiveTitleWrap {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-.memoFeedbackArchiveHead .memoFeedbackArchiveTitle {
-  padding-bottom: 4px;
-}
-.memoFeedbackArchiveHead .memoFeedbackArchiveSubtitle {
-  padding-bottom: 0;
-}
-.memoFeedbackArchiveClose {
-  width: 38px;
-  height: 38px;
-  border: none;
-  border-radius: 999px;
-  background: #f1f1f1;
-  color: #111;
-  font-size: calc(24px * var(--olli-text-scale));
-  line-height: 1;
-  cursor: pointer;
-  flex: 0 0 auto;
-}
-.memoFeedbackArchiveTitle {
-  font-family:'Montserrat','Pretendard',sans-serif;
-  font-size:calc(20px * var(--olli-text-scale));
-  font-weight:440;
-  color:#111;
-  letter-spacing:-0.02em;
-  padding: 0 2px 4px;
-}
-.memoFeedbackArchiveSubtitle {
-  font-family: 'Pretendard', sans-serif;
-  font-size: calc(12px * var(--olli-text-scale));
-  color: #888;
-  line-height: 1.45;
-  padding: 0 2px 14px;
-}
-.memoFeedbackArchiveCard {
-  border: 1px solid rgba(0,0,0,.08);
-  background: rgba(255,255,255,.72);
-  border-radius: 18px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-  cursor: pointer;
-}
-.memoFeedbackArchiveCard.open {
-  padding: 14px 14px 15px;
-}
-.memoFeedbackArchiveDate {
-  font-size: calc(12px * var(--olli-text-scale));
-  line-height: 1.3;
-  color: #999;
-  margin-bottom: 0;
-}
-.memoFeedbackArchiveText {
-  font-size: calc(14px * var(--olli-text-scale));
-  line-height: 1.45;
-  color: #111;
-  font-weight: 600;
-  margin-bottom: 3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  word-break: keep-all;
-}
-.memoFeedbackArchiveFullText {
-  display: none;
-  margin-top: 9px;
-  font-size: calc(14px * var(--olli-text-scale));
-  line-height: 1.68;
-  color: #111;
-  white-space: pre-wrap;
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-}
-.memoFeedbackArchiveCard.open .memoFeedbackArchiveFullText {
-  display: block;
-}
-.memoFeedbackArchiveCard.open .memoFeedbackArchiveText {
-  display: block;
-}
-.memoFeedbackArchiveActions {
-  display: none;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 12px;
-  flex-wrap: wrap;
-}
-.memoFeedbackArchiveCard.open .memoFeedbackArchiveActions { display: flex; }
-.memoFeedbackArchiveActionBtn {
-  height: calc(34px * var(--olli-text-scale));
-  border: none;
-  border-radius: 999px;
-  background: #f1f1f1;
-  color: #111;
-  padding: 0 13px;
-  font-size: calc(12px * var(--olli-text-scale));
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-}
-.memoFeedbackArchiveActionBtn.primary {
-  background: #111;
-  color: #fff;
-}
-.memoFeedbackArchiveActionBtn:disabled {
-  opacity: .45;
-  cursor: default;
-}
-.memoFeedbackArchiveEditArea {
-  display: none;
-  width: 100%;
-  min-height: 0;
-  margin-top: 9px;
-  border: none;
-  border-radius: 0;
-  padding: 0;
-  font-size: calc(14px * var(--olli-text-scale));
-  line-height: 1.68;
-  font-family: inherit;
-  resize: none;
-  outline: none;
-  color: #111;
-  background: transparent;
-  box-shadow: none;
-  white-space: pre-wrap;
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-}
-.memoFeedbackArchiveCard.editing .memoFeedbackArchiveFullText { display: none; }
-.memoFeedbackArchiveCard.editing .memoFeedbackArchiveEditArea { display: block; }
-.memoFeedbackArchiveCard .memoFeedbackArchiveSaveBtn,
-.memoFeedbackArchiveCard .memoFeedbackArchiveCancelBtn { display: none; }
-.memoFeedbackArchiveCard.editing .memoFeedbackArchiveEditBtn,
-.memoFeedbackArchiveCard.editing .memoFeedbackArchiveCopyBtn { display: none; }
-.memoFeedbackArchiveCard.editing .memoFeedbackArchiveSaveBtn,
-.memoFeedbackArchiveCard.editing .memoFeedbackArchiveCancelBtn { display: inline-flex; align-items: center; justify-content: center; }
-.memoFeedbackArchiveEmpty {
-  padding: 28px 8px 34px;
-  font-size: calc(13px * var(--olli-text-scale));
-  line-height: 1.5;
-  color: #999;
-  text-align: center;
-}
-
 .attendanceFeedbackSheetOverlay {
   display: flex;
   position: fixed;
@@ -3873,8 +3670,7 @@ body {
   .pageScreen.vivizac-slide-in,
   .pageScreen.vivizac-slide-out,
   .analysisSheetPanel,
-  .analysisResultSheetPanel,
-  .memoFeedbackArchiveSheet {
+  .analysisResultSheetPanel {
     animation: none !important;
     transition: none !important;
   }
@@ -10441,10 +10237,6 @@ body[data-olli-text-size="large"]:not(.olliPcApp) .memoStudentName,
 body[data-olli-text-size="large"] .memoBottomBtn,
 body[data-olli-text-size="large"] .memoFeedbackBtn,
 body[data-olli-text-size="large"] .memoAnalysisBtn,
-body[data-olli-text-size="large"] .memoFeedbackArchiveText,
-body[data-olli-text-size="large"] .memoFeedbackArchiveFullText,
-body[data-olli-text-size="large"] .memoFeedbackArchiveEditArea,
-body[data-olli-text-size="large"] .memoFeedbackArchiveActionBtn,
 body[data-olli-text-size="large"] .modalInput,
 body[data-olli-text-size="large"] .modalBtnCancel,
 body[data-olli-text-size="large"] .modalBtnConfirm {
@@ -10452,7 +10244,6 @@ body[data-olli-text-size="large"] .modalBtnConfirm {
 }
 body[data-olli-text-size="large"] .memoSubLabel,
 body[data-olli-text-size="large"] .memoSaveStatus,
-body[data-olli-text-size="large"] .memoFeedbackArchiveDate,
 body[data-olli-text-size="large"] .modalLabel {
   font-size: calc(12px * var(--olli-text-scale));
 }
@@ -10460,7 +10251,6 @@ body[data-olli-text-size="large"] .memoEditor {
   font-size: calc(15px * var(--olli-text-scale));
   line-height:1.9;
 }
-body[data-olli-text-size="large"] .memoFeedbackArchiveTitle,
 body[data-olli-text-size="large"] .attendanceFeedbackSheetTitle,
 body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxTitle,
 body[data-olli-text-size="large"] .modalTitle {
@@ -10474,9 +10264,7 @@ body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfModeOptionGuide,
 body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfPhotoMetaText,
 body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfInputWarning,
 body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxSub,
-body[data-olli-text-size="large"] .memoFeedbackArchiveSubtitle,
-body[data-olli-text-size="large"] .attendanceFeedbackSheetCardDate,
-body[data-olli-text-size="large"] .memoFeedbackArchiveDate {
+body[data-olli-text-size="large"] .attendanceFeedbackSheetCardDate {
   font-size: calc(12px * var(--olli-text-scale));
 }
 body[data-olli-text-size="large"]:not(.olliPcApp) #kinderChatFeedbackScreen .kcfBubble,
@@ -10538,8 +10326,7 @@ body[data-olli-text-size="large"] .recordSortSwitchLabel,
 body[data-olli-text-size="large"] .recordSortChip,
 body[data-olli-text-size="large"] .recordSortGroupIconBtn,
 body[data-olli-text-size="large"] .recordSortMonthChip,
-body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxActionBtn,
-body[data-olli-text-size="large"] .memoFeedbackArchiveActionBtn {
+body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxActionBtn {
   font-size: calc(12px * var(--olli-text-scale));
 }
 body[data-olli-text-size="large"] .recordSortCriteriaTitle,
@@ -10588,7 +10375,6 @@ body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfSendBtn {
     updateVivizacMemoViewportVars();
     [
       'memoRecordRoomBtn',
-      'memoRecordsBtn',
       'memoStudentListBtn',
       'memoBottomAnalysisBtn',
       'memoFeedbackBtn'
@@ -10603,7 +10389,7 @@ body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfSendBtn {
       el.style.pointerEvents = 'auto';
       el.style.display = 'inline-flex';
     });
-    ['.memoHeaderActions', '.memoBottomBar', '#memoModeWrap'].forEach(function(sel){
+    ['.memoBottomBar', '#memoModeWrap'].forEach(function(sel){
       var el = document.querySelector('#studentMemoScreen ' + sel);
       if (!el) return;
       el.hidden = false;
@@ -10649,7 +10435,7 @@ body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfSendBtn {
     '.pageInner', '.recordPageInner', '.memoPageInner', '.settingsPageInner',
     '.settingsBody', '.settingsDetailBody', '.settingsPageBody',
     '.chatArea', '.kcfInner', '.kcfBody', '.kcfChatArea', '.kcfInboxList',
-    '.memoFeedbackArchiveSheet', '.attendanceFeedbackSheetPanel',
+    '.attendanceFeedbackSheetPanel',
     '.analysisSheetPanel', '.analysisResultSheetPanel',
     '#recordPageInner', '#recordList', '#memoEditor'
   ].join(',');

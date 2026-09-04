@@ -178,36 +178,6 @@ function getMemoStudentFeedbackMonthInfo(student) {
   };
 }
 
-function isMemoStudentFeedbackDateInCurrentMonth(value) {
-  if (!value) return false;
-  const normalized = String(value).replace(/\./g, '-');
-  const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return false;
-  const now = new Date();
-  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
-}
-
-function hasMemoStudentCurrentMonthFeedbackSaved(student) {
-  if (!student?.id) return false;
-  const info = getMemoStudentFeedbackMonthInfo(student);
-  if (!info.current) return false;
-  const currentMonth = new Date().getMonth() + 1;
-  const items = getMemoFeedbackArchiveItems(student);
-  return items.some(item => {
-    if (!String(item?.content || '').trim()) return false;
-    const explicitMonth = Number(item?.feedbackMonthNumber || item?.row?.feedback_month_number || 0);
-    if (explicitMonth === currentMonth) return true;
-    const rawMonthText = String(item?.feedbackMonth || item?.row?.feedback_month || '').trim();
-    if (rawMonthText && normalizeElementaryGroupMonths(rawMonthText).includes(currentMonth)) return true;
-    return isMemoStudentFeedbackDateInCurrentMonth(item?.createdAt || item?.created_at || item?.row?.created_at || item?.row?.updated_at || item?.row?.date || item?.date);
-  });
-}
-
-function renderMemoStudentFeedbackStatusDot(student) {
-  const completed = hasMemoStudentCurrentMonthFeedbackSaved(student);
-  return `<span class="memoStudentFeedbackDot ${completed ? 'completed' : ''}" aria-hidden="true"></span>`;
-}
-
 function renderMemoStudentMonthDivider(label) {
   return '<div class="memoStudentMonthDivider" aria-hidden="true"></div>';
 }
@@ -296,8 +266,7 @@ function renderMemoStudentSelectPopup() {
       rows.push(renderMemoStudentMonthDivider(monthInfo.label));
       lastDividerKey = monthInfo.key;
     }
-    const dot = !manageMode ? renderMemoStudentFeedbackStatusDot(student) : '';
-    const textBlock = `${dot}<span class="memoStudentSelectName">${escapeHtml(student.name || '이름 없음')}</span>${meta ? `<span class="memoStudentSelectMeta">${escapeHtml(meta)}</span>` : ''}`;
+    const textBlock = `<span class="memoStudentSelectName">${escapeHtml(student.name || '이름 없음')}</span>${meta ? `<span class="memoStudentSelectMeta">${escapeHtml(meta)}</span>` : ''}`;
     if (manageMode) {
       rows.push(`<div class="memoStudentSelectOption manageMode">
         <span class="memoStudentSelectTextBlock">${textBlock}</span>
@@ -314,7 +283,6 @@ function renderMemoStudentSelectPopup() {
 function toggleMemoStudentSelectPopup(event) {
   if (event) event.stopPropagation();
   if (currentMemoType !== 'elementary') return;
-  closeElementaryRecordsMenu();
   const popup = document.getElementById('memoStudentSelectPopup');
   if (!popup) return;
   renderMemoStudentSelectPopup();
@@ -473,290 +441,6 @@ function handleMemoStudentPickerListBounceEnd() {
   resetMemoStudentPickerListBounce(list);
 }
 
-function getMemoFeedbackArchivePreviewText(content) {
-  const text = String(content || '').replace(/\s+/g, ' ').trim();
-  return text.length > 78 ? `${text.slice(0, 78)}…` : text;
-}
-function getMemoFeedbackArchiveNoteTitle(item) {
-  const explicitMonth = Number(item?.feedbackMonthNumber || item?.row?.feedback_month_number || 0);
-  if (explicitMonth) return `${explicitMonth}월 성장노트`;
-  const monthText = String(item?.feedbackMonth || item?.row?.feedback_month || '').trim();
-  const monthMatch = monthText.match(/(\d{1,2})/);
-  if (monthMatch) return `${Number(monthMatch[1])}월 성장노트`;
-  const rawDate = String(item?.createdAt || item?.row?.created_at || item?.row?.updated_at || item?.row?.date || '').trim();
-  const date = new Date(rawDate);
-  if (!Number.isNaN(date.getTime())) return `${date.getMonth() + 1}월 성장노트`;
-  const match = rawDate.match(/(?:^|\D)(\d{1,2})\s*[월.]/);
-  return match ? `${Number(match[1])}월 성장노트` : '성장노트';
-}
-function buildMemoFeedbackArchiveCards(items, emptyMessage = '아직 저장된 피드백이 없습니다.<br>피드백을 생성하면 이곳에 바로 저장됩니다.') {
-  const list = Array.isArray(items) ? items : [];
-  return list.length
-    ? list.map((item, index) => {
-        const cardId = item.id || `memo_archive_${index}`;
-        const dateText = formatMemoFeedbackArchiveDate(item.createdAt) || '저장된 피드백';
-        const content = item.content || '';
-        const noteTitle = getMemoFeedbackArchiveNoteTitle(item);
-        return `<article class="memoFeedbackArchiveCard" data-memo-archive-id="${escapeHtml(String(cardId))}" onclick="toggleMemoFeedbackArchiveCard('${escapeHtml(String(cardId))}')">
-          <div class="memoFeedbackArchiveText" data-memo-preview="${escapeHtml(noteTitle)}">${escapeHtml(noteTitle)}</div>
-          <div class="memoFeedbackArchiveDate">${escapeHtml(dateText)}</div>
-          <div class="memoFeedbackArchiveFullText">${escapeHtml(content)}</div>
-          <textarea class="memoFeedbackArchiveEditArea" onclick="event.stopPropagation()">${escapeHtml(content)}</textarea>
-          <div class="memoFeedbackArchiveActions" onclick="event.stopPropagation()">
-            <button type="button" class="memoFeedbackArchiveActionBtn memoFeedbackArchiveCopyBtn" onclick="copyMemoFeedbackArchiveItem('${escapeHtml(String(cardId))}', this)">복사</button>
-            <button type="button" class="memoFeedbackArchiveActionBtn memoFeedbackArchiveEditBtn" onclick="enterMemoFeedbackArchiveEdit('${escapeHtml(String(cardId))}')">수정</button>
-            <button type="button" class="memoFeedbackArchiveActionBtn memoFeedbackArchiveCancelBtn" onclick="cancelMemoFeedbackArchiveEdit('${escapeHtml(String(cardId))}')">취소</button>
-            <button type="button" class="memoFeedbackArchiveActionBtn primary memoFeedbackArchiveSaveBtn" onclick="saveMemoFeedbackArchiveEdit('${escapeHtml(String(cardId))}', this)">저장</button>
-          </div>
-        </article>`;
-      }).join('')
-    : `<div class="memoFeedbackArchiveEmpty">${emptyMessage}</div>`;
-}
-function toggleMemoFeedbackArchiveCard(id) {
-  const card = document.querySelector(`[data-memo-archive-id="${CSS.escape(String(id))}"]`);
-  if (!card) return;
-  if (card.classList.contains('editing')) return;
-  const nextOpen = !card.classList.contains('open');
-  card.classList.toggle('open', nextOpen);
-  const textEl = card.querySelector('.memoFeedbackArchiveText');
-  if (textEl) textEl.textContent = textEl.dataset.memoPreview || '';
-}
-function getMemoFeedbackArchiveItemById(id) {
-  if (!currentMemoStudent) return null;
-  return getMemoFeedbackArchiveItems(currentMemoStudent).find(item => String(item?.id || '') === String(id || '')) || null;
-}
-function replaceMemoFeedbackArchiveItem(student, id, patch = {}) {
-  if (!student?.id) return null;
-  const items = getMemoFeedbackArchiveItems(student);
-  let updatedItem = null;
-  const next = items.map(item => {
-    if (String(item?.id || '') !== String(id || '')) return item;
-    updatedItem = { ...item, ...patch };
-    if (updatedItem.row) updatedItem.row = { ...updatedItem.row, content: updatedItem.content, updated_at: new Date().toISOString() };
-    return updatedItem;
-  });
-  setMemoFeedbackArchiveItems(student, next);
-  return updatedItem;
-}
-function enterMemoFeedbackArchiveEdit(id) {
-  const card = document.querySelector(`[data-memo-archive-id="${CSS.escape(String(id))}"]`);
-  if (!card) return;
-  card.classList.add('open');
-  const full = card.querySelector('.memoFeedbackArchiveFullText');
-  const area = card.querySelector('.memoFeedbackArchiveEditArea');
-  if (area) {
-    const fullHeight = full ? Math.max(full.scrollHeight, full.getBoundingClientRect().height) : 0;
-    card.classList.add('editing');
-    area.style.height = `${Math.max(120, Math.ceil(fullHeight || area.scrollHeight))}px`;
-    area.focus();
-    area.setSelectionRange(area.value.length, area.value.length);
-  } else {
-    card.classList.add('editing');
-  }
-}
-function cancelMemoFeedbackArchiveEdit(id) {
-  const card = document.querySelector(`[data-memo-archive-id="${CSS.escape(String(id))}"]`);
-  const item = getMemoFeedbackArchiveItemById(id);
-  if (!card) return;
-  const area = card.querySelector('.memoFeedbackArchiveEditArea');
-  if (area && item) {
-    area.value = item.content || '';
-    area.style.height = '';
-  }
-  card.classList.remove('editing');
-}
-async function copyMemoFeedbackArchiveItem(id, btn = null) {
-  const item = getMemoFeedbackArchiveItemById(id);
-  const text = String(item?.content || '').trim();
-  if (!text) return;
-
-  let copied = false;
-  try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(text);
-      copied = true;
-    }
-  } catch (_) {}
-
-  if (!copied) {
-    try {
-      const temp = document.createElement('textarea');
-      temp.value = text;
-      temp.setAttribute('readonly', '');
-      temp.style.position = 'fixed';
-      temp.style.left = '-9999px';
-      temp.style.top = '0';
-      document.body.appendChild(temp);
-      temp.focus();
-      temp.select();
-      copied = document.execCommand('copy');
-      temp.remove();
-    } catch (_) {
-      copied = false;
-    }
-  }
-
-  if (copied) {
-    if (btn) showOlliCopySuccess(btn);
-    showPushToast('피드백을 복사했어요.');
-  } else {
-    showPushToast('복사에 실패했어요.');
-  }
-}
-function getMemoFeedbackArchiveSourceTable(item) {
-  const table = String(item?.sourceTable || item?.row?.source_table || '').trim();
-  if (table) return table;
-  const type = String(item?.feedbackType || item?.row?.feedback_type || '').toLowerCase();
-  return type === 'fail' ? 'fail_feedbacks' : 'feedbacks';
-}
-function getMemoFeedbackArchiveEditFeature(tableName) {
-  const table = String(tableName || '').trim();
-  if (table === 'feedbacks') return 'general_feedback_edit';
-  if (table === 'fail_feedbacks') return 'growth_feedback_edit';
-  if (table === 'summary_feedbacks') return 'summary_feedback_edit';
-  return '';
-}
-async function saveMemoFeedbackArchiveEditViaCommonStorage(tableName, rowId, student, patch) {
-  const feature = getMemoFeedbackArchiveEditFeature(tableName);
-  const academyId = getOlliCurrentAcademyId();
-  const studentId = String(student?.id || '').trim();
-  const recordId = String(rowId || '').trim();
-  if (!feature) throw new Error(`지원하지 않는 피드백 수정 테이블입니다: ${tableName}`);
-  if (!academyId || !studentId || !recordId) throw new Error('피드백 수정 저장 식별값이 없습니다.');
-  if (typeof saveOlliData !== 'function') throw new Error('공통 저장 함수가 준비되지 않았습니다.');
-  const result = await saveOlliData(feature, {
-    academyId,
-    studentId,
-    recordId,
-    data: patch,
-    forceCommon: true
-  });
-  if (!result || !result.serverSaved || !result.verified) {
-    const error = result && result.error ? result.error : new Error('피드백 수정 서버 저장이 완료되지 않았습니다.');
-    throw error;
-  }
-  return result.serverRow || (Array.isArray(result.serverRows) ? result.serverRows[0] : result.serverRows) || null;
-}
-async function saveMemoFeedbackArchiveEdit(id, btn = null) {
-  if (!currentMemoStudent) return;
-  const card = document.querySelector(`[data-memo-archive-id="${CSS.escape(String(id))}"]`);
-  const area = card?.querySelector?.('.memoFeedbackArchiveEditArea');
-  const item = getMemoFeedbackArchiveItemById(id);
-  const content = String(area?.value || '').trim();
-  if (!card || !area || !item) return;
-  if (!content) {
-    showPushToast('저장할 피드백 내용이 비어 있어요.');
-    return;
-  }
-  try {
-    if (btn) {
-      btn.disabled = true;
-      btn.dataset.originalText = btn.textContent || '저장';
-      btn.textContent = '저장 중...';
-    }
-    const tableName = getMemoFeedbackArchiveSourceTable(item);
-    const rowId = item?.row?.id || item.id;
-    const patch = { content, updated_at: new Date().toISOString() };
-    let savedRow = null;
-    if (rowId && !String(rowId).startsWith('memo_feedback_') && isSupabaseConfigured()) {
-      savedRow = await saveMemoFeedbackArchiveEditViaCommonStorage(tableName, rowId, currentMemoStudent, patch);
-    }
-    const updated = replaceMemoFeedbackArchiveItem(currentMemoStudent, id, {
-      content,
-      createdAt: item.createdAt || new Date().toISOString(),
-      row: item.row ? { ...item.row, ...patch, ...(savedRow || {}) } : (savedRow || item.row)
-    });
-    const full = card.querySelector('.memoFeedbackArchiveFullText');
-    if (full) full.textContent = content;
-    area.value = content;
-    area.style.height = '';
-    card.classList.remove('editing');
-    showPushToast(updated ? '수정한 피드백을 저장했어요.' : '수정 내용을 저장했어요.');
-    if (typeof refreshRecordsAfterFeedbackSave === 'function') refreshRecordsAfterFeedbackSave().catch(err => console.warn('기록 갱신 실패:', err));
-  } catch (err) {
-    console.error('피드백 보관함 수정 저장 오류:', err);
-    alert(`수정 내용 저장 중 오류가 발생했어요.\n\n${err.message || '알 수 없는 오류입니다.'}`);
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = btn.dataset.originalText || '저장';
-      delete btn.dataset.originalText;
-    }
-  }
-}
-function renderMemoFeedbackArchiveSheet(menu, student, items, subtitle = '') {
-  if (!menu || !student) return;
-  menu.innerHTML = `<div class="memoFeedbackArchiveSheet" onclick="event.stopPropagation()">
-    <div class="memoFeedbackArchiveHandle"></div>
-    <div class="memoFeedbackArchiveHead">
-      <div class="memoFeedbackArchiveTitleWrap">
-        <div class="memoFeedbackArchiveTitle">피드백 보관함</div>
-        <div class="memoFeedbackArchiveSubtitle">${escapeHtml(subtitle || `${student.name || ''} 받은 피드백을 최신순으로 확인해요.`)}</div>
-      </div>
-      <button type="button" class="memoFeedbackArchiveClose" onclick="event.stopPropagation(); closeElementaryRecordsMenu();" aria-label="닫기">&times;</button>
-    </div>
-    ${buildMemoFeedbackArchiveCards(items)}
-  </div>`;
-  menu.onclick = function(event) {
-    if (event.target === menu) closeElementaryRecordsMenu();
-  };
-}
-async function renderElementaryRecordsMenu() {
-  const menu = document.getElementById('elementaryRecordsDropup');
-  if (!menu || !currentMemoStudent || currentMemoType !== 'elementary') return;
-
-  const student = currentMemoStudent;
-  const localItems = getMemoFeedbackArchiveItems(student);
-  renderMemoFeedbackArchiveSheet(menu, student, localItems);
-
-  try {
-    const remoteItems = await loadMemoFeedbackArchiveItemsFromSupabase(student);
-    if (!currentMemoStudent || String(currentMemoStudent.id || '') !== String(student.id || '')) return;
-    renderMemoFeedbackArchiveSheet(menu, student, remoteItems);
-  } catch (err) {
-    console.error('관찰노트 보관함 불러오기 오류:', err);
-    if (!localItems.length) {
-      menu.innerHTML = `<div class="memoFeedbackArchiveSheet" onclick="event.stopPropagation()">
-        <div class="memoFeedbackArchiveHandle"></div>
-        <div class="memoFeedbackArchiveHead">
-          <div class="memoFeedbackArchiveTitleWrap">
-            <div class="memoFeedbackArchiveTitle">피드백 보관함</div>
-            <div class="memoFeedbackArchiveSubtitle">서버 연결을 확인해 주세요.</div>
-          </div>
-          <button type="button" class="memoFeedbackArchiveClose" onclick="event.stopPropagation(); closeElementaryRecordsMenu();" aria-label="닫기">&times;</button>
-        </div>
-        <div class="memoFeedbackArchiveEmpty">슈파베이스 피드백을 불러오지 못했어요.<br>${escapeHtml(err.message || '알 수 없는 오류입니다.')}</div>
-      </div>`;
-    }
-  }
-}
-async function toggleElementaryRecordsMenu(event) {
-  if (event) event.stopPropagation();
-  if (!currentMemoStudent || currentMemoType !== 'elementary') return;
-  closeMemoStudentSelectPopup();
-  const menu = document.getElementById('elementaryRecordsDropup');
-  if (!menu) return;
-  if (menu.parentElement !== document.body) document.body.appendChild(menu);
-  if (menu.classList.contains('show')) {
-    closeElementaryRecordsMenu();
-    return;
-  }
-  menu.classList.remove('show');
-  await renderElementaryRecordsMenu();
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      menu.classList.add('show');
-    });
-  });
-}
-function closeElementaryRecordsMenu() {
-  const menu = document.getElementById('elementaryRecordsDropup');
-  if (menu) menu.classList.remove('show');
-}
-function openCurrentElementaryMemoRecord() { if (!currentMemoStudent) return; viewingArchivedElementaryRecord = false; const memo = document.getElementById('memoEditor'); if (memo) { memo.readOnly = false; memo.value = getMemoByStudent(currentMemoStudent); } const __displayAnalysis = getPrimaryElementaryAnalysisDisplay(currentMemoStudent); selectedElementaryAnalysisHistoryId = '';
-renderElementaryAnalysisSummaryCard(__displayAnalysis.data || {}, { title: '분석 결과', createdAt: __displayAnalysis.createdAt || '' }); renderElementaryAnalysisHistoryCards(currentMemoStudent); requestAnimationFrame(forceRenderCurrentElementaryAnalysisResult); setTimeout(forceRenderCurrentElementaryAnalysisResult, 80); setMemoSaveStatus('자동 저장'); closeElementaryRecordsMenu(); }
-function openArchivedElementaryMemoRecord(recordId) { if (!currentMemoStudent) return; if (!viewingArchivedElementaryRecord) saveCurrentMemo({ silent: true }); const record = getElementaryMemoRecords(currentMemoStudent).find(item => item.id === recordId); if (!record) return; viewingArchivedElementaryRecord = record.id; const memo = document.getElementById('memoEditor'); if (memo) { memo.value = record.content || ''; memo.readOnly = true; } selectedElementaryAnalysisHistoryId = '';
-renderElementaryAnalysisSummaryCard(record.analysis || {}, { title: '분석 결과', createdAt: record.createdAt || '' }); renderElementaryAnalysisHistoryCards(currentMemoStudent); setMemoSaveStatus((record.label || formatElementaryRecordLabel(record)) + ' · 읽기 전용'); closeElementaryRecordsMenu(); }
 function isMemoStudentSelectPopupOpen() {
   const popup = document.getElementById('memoStudentSelectPopup');
   return !!(popup && popup.classList.contains('show'));
@@ -772,10 +456,7 @@ function closeMemoStudentSelectPopupFromOutsideAction(event) {
   if (isMemoStudentSelectOutsideTarget(event.target)) closeMemoStudentSelectPopup();
 }
 document.addEventListener('click', (event) => {
-  const archiveBtn = document.getElementById('memoRecordsBtn');
-  const archiveSheet = document.querySelector('#elementaryRecordsDropup .memoFeedbackArchiveSheet');
   closeMemoStudentSelectPopupFromOutsideAction(event);
-  if (archiveBtn && archiveSheet && !archiveBtn.contains(event.target) && !archiveSheet.contains(event.target)) closeElementaryRecordsMenu();
 });
 document.addEventListener('pointerdown', handleMemoStudentPickerPointerDown, { capture: true, passive: true });
 document.addEventListener('pointermove', handleMemoStudentPickerPointerMove, { capture: true, passive: true });
@@ -1764,15 +1445,8 @@ function getMemoFutureDirectionLine(feedbackText, explicitDirection = '') {
     ? `앞으로의 지도방향 : ${compact.slice(0, 160)}${compact.length > 160 ? '…' : ''}`
     : '';
 }
-function resetElementaryMemoAfterFeedbackSave(feedbackText, explicitDirection = '', options = {}) {
+function resetElementaryMemoAfterFeedbackSave() {
   if (!currentMemoStudent || currentMemoType !== 'elementary') return;
-  const previousMemo = getMemoByStudent(currentMemoStudent);
-  if (String(previousMemo || '').trim()) {
-    archiveCurrentElementaryMemoRecord(currentMemoStudent, previousMemo, elementaryAnalysisDraft);
-  }
-  if (!options.skipArchive) {
-    addMemoFeedbackArchiveItem(currentMemoStudent, feedbackText);
-  }
   clearStudentNoteDraftFromSupabase(currentMemoStudent, 'elementary_observation').catch(err => console.warn('노트 초안 삭제 실패:', err.message || err));
   clearMemoByStudent(currentMemoStudent);
   currentMemoStudent = { ...currentMemoStudent, memoUpdatedAt: '' };
@@ -1780,14 +1454,13 @@ function resetElementaryMemoAfterFeedbackSave(feedbackText, explicitDirection = 
   clearElementaryAnalysisByStudent(currentMemoStudent);
   elementaryAnalysisDraft = getEmptyElementaryAnalysisState();
   selectedElementaryAnalysisHistoryId = '';
-const memo = document.getElementById('memoEditor');
-  if (memo && !viewingArchivedElementaryRecord) {
+  const memo = document.getElementById('memoEditor');
+  if (memo) {
     memo.readOnly = false;
     memo.value = '';
   }
   renderElementaryAnalysisSummaryCard(getEmptyElementaryAnalysisState(), { title: '분석 결과', createdAt: '' });
   renderElementaryAnalysisHistoryCards(currentMemoStudent);
-  renderElementaryRecordsMenu().catch(err => console.warn('관찰노트 보관함 갱신 실패:', err));
   setMemoSaveStatus('자동 저장');
   if (typeof refreshMemoStudentSelectPopupIfOpen === 'function') refreshMemoStudentSelectPopupIfOpen();
 }
@@ -1801,76 +1474,50 @@ async function autoSaveMemoFeedback(text, futureDirection = '') {
   if (!name) { alert('학생 이름을 찾지 못했어요.'); return; }
   if (!content) { alert('저장할 피드백 내용이 비어 있어요.'); return; }
 
-  let archiveStudent = currentMemoStudent && currentMemoStudent.id && currentMemoStudent.type === 'elementary' ? currentMemoStudent : null;
-  if (!archiveStudent) {
+  let targetStudent = currentMemoStudent && currentMemoStudent.id && currentMemoStudent.type === 'elementary' ? currentMemoStudent : null;
+  if (!targetStudent) {
     const matches = getAllStudents().filter(student =>
       (student.type || 'elementary') === 'elementary' &&
       String(student.name || '').trim() === String(name || '').trim()
     );
-    if (matches.length === 1) archiveStudent = matches[0];
+    if (matches.length === 1) targetStudent = matches[0];
     else if (matches.length > 1) {
       alert('같은 이름의 학생이 여러 명 있습니다. 학생 목록에서 해당 학생을 다시 선택해 주세요.');
       return;
     }
   }
-
-  if (!archiveStudent) {
-    alert('관찰노트 보관함에 저장할 학생 정보를 찾지 못했어요.');
+  if (!targetStudent) {
+    alert('피드백을 저장할 학생 정보를 찾지 못했어요.');
     return;
   }
 
   const year = new Date().getFullYear();
   const date = new Date().toLocaleDateString('ko-KR');
-
-  addMemoFeedbackArchiveItem(archiveStudent, content);
-
   try {
-    const memoFeedbackPayload = addOlliAcademyToPayload({
-      student_id: archiveStudent.id,
-      student_name: archiveStudent.name || name,
+    const payload = addOlliAcademyToPayload({
+      student_id: targetStudent.id,
+      student_name: targetStudent.name || name,
       content,
       feedback_type: 'class',
       future_direction: futureDirection || null,
       year,
       date
-    }, '초등부 관찰노트 피드백 저장');
-    await saveFeedbackRowVerified('feedbacks', memoFeedbackPayload, '초등부 관찰노트 피드백 저장');
-
-    if (typeof refreshRecordsAfterFeedbackSave === 'function') {
-      await refreshRecordsAfterFeedbackSave();
-    } else {
-      const recordRoomScreen = document.getElementById('recordRoomScreen');
-      const recordVisible = recordRoomScreen && recordRoomScreen.style.display !== 'none';
-      if (recordVisible && typeof loadRecords === 'function') await loadRecords('');
-      
-    }
-
-    if (currentMemoStudent && String(currentMemoStudent.id || '') === String(archiveStudent.id || '')) {
-      resetElementaryMemoAfterFeedbackSave(content, futureDirection, { skipArchive: true });
-      loadMemoFeedbackArchiveItemsFromSupabase(archiveStudent)
-        .then(() => renderElementaryRecordsMenu())
-        .catch(err => console.warn('관찰노트 보관함 동기화 실패:', err));
-    } else {
-      loadMemoFeedbackArchiveItemsFromSupabase(archiveStudent)
-        .then(() => renderElementaryRecordsMenu())
-        .catch(err => console.warn('관찰노트 보관함 동기화 실패:', err));
-    }
-
+    }, '초등부 관찰 피드백 저장');
+    await saveFeedbackRowVerified('feedbacks', payload, '초등부 관찰 피드백 저장');
+    if (typeof refreshRecordsAfterFeedbackSave === 'function') await refreshRecordsAfterFeedbackSave();
+    else if (typeof loadRecords === 'function') await loadRecords('');
+    if (currentMemoStudent && String(currentMemoStudent.id || '') === String(targetStudent.id || '')) resetElementaryMemoAfterFeedbackSave();
     closeMemoFeedbackPopup();
-    showPushToast('피드백 보관함과 기록실에 저장했어요.');
+    showPushToast('피드백을 기록실에 저장했어요.');
   } catch (err) {
-    console.error('초등부 관찰노트 피드백 저장 오류:', err);
-
-    if (currentMemoStudent && String(currentMemoStudent.id || '') === String(archiveStudent.id || '')) {
-      resetElementaryMemoAfterFeedbackSave(content, futureDirection, { skipArchive: true });
-    } else {
-      renderElementaryRecordsMenu().catch(err => console.warn('관찰노트 보관함 갱신 실패:', err));
-    }
-
+    console.error('초등부 관찰 피드백 저장 오류:', err);
     closeMemoFeedbackPopup();
-    alert(`피드백 보관함에는 저장했지만, 서버 저장 중 오류가 발생했어요.\n\n${err.message || '알 수 없는 오류입니다.'}`);
+    alert(`피드백 저장 중 오류가 발생했어요.
+
+${err.message || '알 수 없는 오류입니다.'}`);
   }
 }
+
 function closeMemoFeedbackPopup() {
   const overlay = document.getElementById('memoFeedbackPopupOverlay');
   if (overlay) overlay.remove();
@@ -1904,73 +1551,30 @@ function finishMemoFeedbackEdit(btn) {
   }
   card.classList.remove('editing');
 }
-async function saveElementaryFeedbackDirectlyToArchive(text, options = {}) {
+async function saveElementaryFeedbackDirectly(text, options = {}) {
   const content = String(text || '').trim();
   if (!content) throw new Error('저장할 피드백 내용이 비어 있습니다.');
-  const studentDivision = 'elementary';
   const studentName = normalizeTodayFeedbackStudentName(options.studentName || currentMemoStudent?.name || '');
   if (!studentName) throw new Error('아이 이름을 찾지 못했습니다.');
   const selectedStudentId = options.studentId || currentMemoStudent?.id || '';
-  const savedStudent = await getOrCreateStudentForSupabaseSave(studentName, studentDivision, selectedStudentId);
+  const savedStudent = await getOrCreateStudentForSupabaseSave(studentName, 'elementary', selectedStudentId);
   const rawType = options.feedbackType || 'class';
   const tableName = getFeedbackTableNameByType(rawType);
   const feedbackType = tableName === 'fail_feedbacks' ? 'fail' : String(rawType || 'class').toLowerCase();
   const now = new Date();
-  const year = now.getFullYear();
-  const date = now.toLocaleDateString('ko-KR');
-  const feedbackMonth = String(options.feedbackMonth || getFeedbackMonthLabel(now)).trim();
-  const feedbackMonthNumber = Number(options.feedbackMonthNumber || getFeedbackMonthNumber(now));
   const payload = addOlliAcademyToPayload({
     student_id: savedStudent.id,
     student_name: savedStudent.name || studentName,
     content,
     feedback_type: feedbackType,
-    year,
-    date
+    year: now.getFullYear(),
+    date: now.toLocaleDateString('ko-KR')
   }, tableName === 'fail_feedbacks' ? '초등부 성장 피드백 저장' : '초등부 피드백 저장');
   const savedRow = await saveFeedbackRowVerified(tableName, payload, tableName === 'fail_feedbacks' ? '초등부 성장 피드백 저장' : '초등부 피드백 저장');
-  const row = { ...savedRow, source_table: tableName };
-  const archiveStudent = currentMemoStudent && String(currentMemoStudent.id || '') === String(savedStudent.id || '') ? currentMemoStudent : savedStudent;
-  addMemoFeedbackArchiveItem(archiveStudent, content, {
-    id: row.id,
-    row,
-    sourceTable: tableName,
-    feedbackType,
-    feedbackMonth,
-    feedbackMonthNumber,
-    createdAt: row.created_at || row.updated_at || now.toISOString()
-  });
   await refreshRecordsAfterFeedbackSave();
-  if (tableName === 'feedbacks' && currentMemoStudent && String(currentMemoStudent.id || '') === String(archiveStudent.id || '')) {
-    resetElementaryMemoAfterFeedbackSave(content, options.futureDirection || '', { skipArchive: true });
-  }
-  if (tableName === 'fail_feedbacks' && typeof resetGrowthFeedbackAfterSuccessfulSave === 'function') {
-    resetGrowthFeedbackAfterSuccessfulSave('elementary');
-  }
-  try {
-    await loadMemoFeedbackArchiveItemsFromSupabase(archiveStudent);
-  } catch (err) {
-    console.warn('초등부 피드백 보관함 동기화 실패:', err.message || err);
-  }
-  return { student: archiveStudent, row, tableName };
-}
-
-async function openElementaryArchiveAfterDirectSave(student) {
-  if (student && currentMemoStudent && String(currentMemoStudent.id || '') !== String(student.id || '')) {
-    currentMemoStudent = student;
-  }
-  const menu = document.getElementById('elementaryRecordsDropup');
-  if (!menu) return;
-  if (menu.parentElement !== document.body) document.body.appendChild(menu);
-  menu.classList.remove('show');
-  await renderElementaryRecordsMenu();
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      menu.classList.add('show');
-      const firstCard = menu.querySelector('.memoFeedbackArchiveCard');
-      if (firstCard) firstCard.classList.add('open');
-    });
-  });
+  if (tableName === 'feedbacks' && currentMemoStudent && String(currentMemoStudent.id || '') === String(savedStudent.id || '')) resetElementaryMemoAfterFeedbackSave();
+  if (tableName === 'fail_feedbacks' && typeof resetGrowthFeedbackAfterSuccessfulSave === 'function') resetGrowthFeedbackAfterSuccessfulSave('elementary');
+  return { student: savedStudent, row: savedRow, tableName };
 }
 
 async function requestSceneCardFeedbackFromElementary(studentName, text, analysisPromptText, options = {}) {
@@ -2017,7 +1621,7 @@ ${analysisPromptText}` : ''}`;
     const cleanText = parsed.cleanText || rawReply;
     hideFeedbackLoading();
     const futureDirection = getFutureDirectionFromApiData(data, cleanText);
-    const saved = await saveElementaryFeedbackDirectlyToArchive(cleanText, {
+    await saveElementaryFeedbackDirectly(cleanText, {
       studentName: normalizeTodayFeedbackStudentName(studentName),
       studentId: currentMemoStudent?.id || '',
       feedbackType: options.feedbackType || 'class',
@@ -2025,8 +1629,7 @@ ${analysisPromptText}` : ''}`;
       feedbackMonthNumber,
       futureDirection
     });
-    await openElementaryArchiveAfterDirectSave(saved.student);
-    showPushToast(`${studentName} 피드백을 보관함에 저장했어요.`);
+    showPushToast(`${studentName} 피드백을 기록실에 저장했어요.`);
   } catch (err) {
     hideFeedbackLoading();
     console.error('초등부 피드백 생성/저장 오류:', err);
@@ -2509,53 +2112,6 @@ async function clearStudentNoteDraftFromSupabase(student, noteType = '') {
   if (isOlliPendingCommonSaveResult(result)) return result;
   const error = new Error('관찰노트 초안 삭제 상태를 서버에 확인하지 못했습니다.');
   recordOlliStorageIssue({ feature: 'student_note_draft', resource: 'student_note_drafts', operation: 'clear', student_id: student.id, message: result?.error?.message || result?.errorCode || error.message });
-  throw error;
-}
-
-async function saveStudentNoteArchiveToSupabase(student, record, feedbackId = '') {
-  if (!isSupabaseConfigured() || !student?.id || !record?.content) return null;
-  const academyId = requireOlliAcademyId('노트기록 저장');
-  const savedStudent = await ensureStudentSavedToSupabase(student);
-  const localRecordId = String(record.id || `note_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`);
-  const payload = {
-    academy_id: academyId,
-    student_id: savedStudent.id,
-    student_name: savedStudent.name || student.name || '',
-    note_type: 'elementary_observation',
-    content: String(record.content || ''),
-    analysis: record.analysis || null,
-    record_label: record.label || '',
-    local_record_id: localRecordId,
-    feedback_id: feedbackId || null,
-    year: record.year || null,
-    month: record.month || null,
-    day: record.day || null,
-    created_at: record.createdAt || new Date().toISOString()
-  };
-
-  if (typeof saveOlliData !== 'function') {
-    const error = new Error('관찰노트 기록 보관 공통 저장 함수가 준비되지 않았습니다.');
-    recordOlliStorageIssue({ feature: 'student_note_archive', resource: 'student_note_archives', operation: 'save', student_id: savedStudent.id, message: error.message });
-    throw error;
-  }
-
-  const result = await saveOlliData('student_note_archive', {
-    academyId,
-    studentId: savedStudent.id,
-    localRecordId,
-    data: payload,
-    forceCommon: true
-  });
-  if (result && result.serverSaved && result.verified) {
-    if (Array.isArray(result.serverRows) && result.serverRows.length) return result.serverRows;
-    if (result.serverRow) return [result.serverRow];
-    return [payload];
-  }
-  if (isOlliPendingCommonSaveResult(result)) {
-    return [makeOlliPendingRow(payload, localRecordId)];
-  }
-  const error = new Error('관찰노트 기록 서버 저장을 확인하지 못했습니다.');
-  recordOlliStorageIssue({ feature: 'student_note_archive', resource: 'student_note_archives', operation: 'save', student_id: savedStudent.id, message: result?.error?.message || result?.errorCode || error.message });
   throw error;
 }
 

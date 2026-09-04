@@ -84,7 +84,6 @@ body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScree
 }
 body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoHeader,
 body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoTopFadeLayer,
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoRecordsDropup{display:none!important;}
 body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoEditorWrap{
   display:flex!important;flex-direction:column!important;width:100%!important;height:auto!important;min-height:100%!important;margin:0!important;padding:0 14px 18px!important;background:#fff!important;box-sizing:border-box!important;overflow:visible!important;
 }

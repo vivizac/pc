@@ -8,7 +8,7 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 | 학생관리·할 일·상담예정 학생 영역 | `pc-student-management.js` | `pc-student-management.css` |
 | 성향기록부·학생 명단·관찰기록 패널·공용 에디터 임베드 | `pc-attendance.js` | `pc-attendance.css` |
 | 초등 관찰기록 공용 DOM | `observation-editor-ui.js` | `observation-editor.css` |
-| 초등 관찰기록 저장·자동저장·보관함·피드백 연결 | `observation-memo-core.js` | `observation-editor.css` |
+| 초등 관찰기록 저장·자동저장·피드백 연결 | `observation-memo-core.js` | `observation-editor.css` |
 | 초등 오늘의 분석·분석 이력·상세보기 | `elementary-analysis.js` | `elementary-analysis-ui.css` |
 | 유치부 1분 피드백 공용 UI·기능 | `kinder-feedback-ui.js`, `kinder-feedback.js` | `kinder-feedback.css` |
 | 로그인·계정·학원 연결·세션 복구 | `olli-auth-core.js` | 현재 공통 스타일 |
@@ -84,13 +84,20 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 
 이 5개 파일은 이전 기록실 통합 파일의 기능 경계를 따라 분리했다. 특히 `olli-app-startup.js`는 DOMContentLoaded에서 뒤쪽 런타임 함수를 연결하므로 현재 로드 위치와 순서를 유지하고 `defer`로 바꾸지 않는다. `olli-feedback-runtime.js` 안의 장면카드 입력 방어와 작업 큐는 같은 파일에 유지해 기존 함수 호이스팅 동작을 보존한다.
 
+## 초등부 PC 보관함 정책
+
+- PC 초등부 관찰기록에서는 별도 피드백 보관함과 과거 관찰노트 보관 기능을 사용하지 않는다. 생성된 피드백은 서버 기록실/성향기록부에서 확인한다.
+- `student_note_archives` 저장 기능과 초등 보관함 버튼·드롭업·편집 UI는 PC 런타임에서 제거했다.
+- 유치부 1분 피드백의 `임시 보관함`은 현재 작성 흐름에 필요한 별도 기능이므로 유지한다.
+- 1분 피드백 상단의 `장면카드` 버튼은 기존 장면카드 모달을 검토하기 위한 진입점이다. 장면카드 유지 여부가 확정될 때까지 관련 장면카드 엔진은 삭제하지 않는다.
+
 ## 관찰기록·피드백 모듈 경계
 
 ### 초등 관찰기록
 
 - `observation-editor-ui.js`: 학생 메모 화면, 분석 설문 모달, 분석 상세보기 모달의 DOM 템플릿.
 - `observation-editor.css`: 초등 관찰기록 상단바, 하단 버튼, 학생 선택/보관함 등 에디터 UI 스타일.
-- `observation-memo-core.js`: 학생 전환, 메모 자동저장, Supabase 동기화, 보관함, 피드백 생성 연결.
+- `observation-memo-core.js`: 학생 전환, 메모 자동저장, Supabase 동기화, 피드백 생성 연결.
 - `elementary-analysis.js`: 분석 선택값, 분석 이력, 요약 카드, 상세보기 로직.
 - `elementary-analysis-ui.css`: 분석 바텀시트와 요약 카드 스타일.
 - `olli-record-editor-core.js`: 학생 선택기, 정렬, 기록 편집에 필요한 공용 기록 동작. 초등 관찰기록에서 호출되더라도 기능을 중복 구현하지 않는다.

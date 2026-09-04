@@ -203,7 +203,7 @@ width: auto ;
   z-index: 950;
 }
 
-#studentMemoScreen .memoRecordRoomBtn:not(.memoRecordBtn) {
+#studentMemoScreen .memoRecordRoomBtn {
   position: fixed;
   left: var(--vivizac-memo-shell-x);
   top: var(--vivizac-memo-top-y);
@@ -216,19 +216,6 @@ width: auto ;
   z-index: 120000;
   isolation: isolate;
 }
-#studentMemoScreen .memoRecordRoomBtn.memoRecordBtn {
-  position: relative;
-  top: auto;
-  right: auto;
-  transform: none;
-  z-index: 951;
-}
-#studentMemoScreen #memoRecordsBtn {
-  display: inline-flex;
-  visibility: visible;
-  opacity: 1;
-  pointer-events: auto;
-}
 #studentMemoScreen #memoStudentListBtn,
 #studentMemoScreen #memoBottomAnalysisBtn {
   display: inline-flex;
@@ -237,7 +224,7 @@ width: auto ;
   pointer-events: auto;
 }
 
-#studentMemoScreen .memoRecordRoomBtn:not(.memoRecordBtn) svg {
+#studentMemoScreen .memoRecordRoomBtn svg {
   width: 27px;
   height: 27px;
   stroke: currentColor;

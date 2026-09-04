@@ -225,25 +225,6 @@ async function copyAttendanceFeedbackSheetItem(itemId, kind = 'feedback', event)
   }
 }
 
-function removeAttendanceFeedbackItemFromLocalArchive(student, item) {
-  if (!student?.id || !item) return;
-  try {
-    const items = getMemoFeedbackArchiveItems(student);
-    const rowId = String(item?.row?.id || item?.rowId || '').trim();
-    const itemId = String(item?.id || '').trim();
-    const next = items.filter(localItem => {
-      const localRowId = String(localItem?.row?.id || '').trim();
-      const localId = String(localItem?.id || '').trim();
-      if (rowId && localRowId && rowId === localRowId) return false;
-      if (itemId && localId && itemId === localId) return false;
-      return true;
-    });
-    if (next.length !== items.length) setMemoFeedbackArchiveItems(student, next);
-  } catch (err) {
-    console.warn('로컬 기록 삭제 동기화 실패:', err);
-  }
-}
-
 async function performAttendanceFeedbackSheetItemDelete(itemId, kind = 'feedback') {
   const state = attendanceStudentFeedbackSheetState;
   const student = state.student;
@@ -267,7 +248,6 @@ async function performAttendanceFeedbackSheetItemDelete(itemId, kind = 'feedback
   try {
     if (!window.OlliRecordTrash) throw new Error('휴지통 기능이 준비되지 않았습니다.');
     await window.OlliRecordTrash.move(tableName, rowId, 'manual_delete_from_student_record');
-    if (kind !== 'summary') removeAttendanceFeedbackItemFromLocalArchive(student, item);
 
     const refreshed = await loadAttendanceStudentFeedbackSheetItems(student);
     renderAttendanceStudentFeedbackSheet(student, refreshed);

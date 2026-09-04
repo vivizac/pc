@@ -437,8 +437,6 @@ function filterLocallyDeletedStudents(list) {
 }
 const ELEMENTARY_MEMO_PREFIX = 'olli_elementary_memo_';
 const ELEMENTARY_ANALYSIS_PREFIX = 'olli_elementary_analysis_';
-const ELEMENTARY_RECORDS_PREFIX = 'olli_elementary_records_';
-const MEMO_FEEDBACK_ARCHIVE_PREFIX = 'olli_memo_feedback_archive_';
 const KINDER_MEMO_PREFIX = 'olli_kinder_memo_';
 const DELETED_STUDENT_BACKUP_PREFIX = 'olli_deleted_student_backup_v1';
 
@@ -473,9 +471,7 @@ function backupAndRemoveStudentLocalData(studentId, studentSnapshot = null) {
   const keys = {
     elementary_memo: ELEMENTARY_MEMO_PREFIX + id,
     elementary_analysis: ELEMENTARY_ANALYSIS_PREFIX + id,
-    elementary_records: ELEMENTARY_RECORDS_PREFIX + id,
     kinder_memo: KINDER_MEMO_PREFIX + id,
-    memo_feedback_archive: MEMO_FEEDBACK_ARCHIVE_PREFIX + id
   };
   const backup = {
     schema_version: 1,
@@ -643,7 +639,6 @@ function getLastElementaryMemoStudentStorageKey() {
   const academyId = (typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '') || 'unscoped';
   return `${LAST_ELEMENTARY_MEMO_STUDENT_KEY}_${academyId}`;
 }
-let viewingArchivedElementaryRecord = false;
 let elementaryAnalysisDraft = null;
 let selectedElementaryAnalysisHistoryId = '';
 const RECORD_MODE_ORDER = ['class', 'fail', 'summary'];

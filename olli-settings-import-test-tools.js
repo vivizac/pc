@@ -52,9 +52,7 @@ function removeLocalStorageKeysForStudentTestReset(student) {
   const directKeys = [
     ELEMENTARY_MEMO_PREFIX + id,
     ELEMENTARY_ANALYSIS_PREFIX + id,
-    ELEMENTARY_RECORDS_PREFIX + id,
     KINDER_MEMO_PREFIX + id,
-    MEMO_FEEDBACK_ARCHIVE_PREFIX + id
   ];
   directKeys.forEach(key => {
     try { localStorage.removeItem(key); } catch (_) {}
@@ -67,9 +65,7 @@ function removeLocalStorageKeysForStudentTestReset(student) {
       const isLegacyStudentKey = key.includes(id) && (
         key.startsWith(ELEMENTARY_MEMO_PREFIX) ||
         key.startsWith(ELEMENTARY_ANALYSIS_PREFIX) ||
-        key.startsWith(ELEMENTARY_RECORDS_PREFIX) ||
-        key.startsWith(KINDER_MEMO_PREFIX) ||
-        key.startsWith(MEMO_FEEDBACK_ARCHIVE_PREFIX)
+        key.startsWith(KINDER_MEMO_PREFIX)
       );
       if (isCommonStudentKey || isLegacyStudentKey) localStorage.removeItem(key);
     });
@@ -134,7 +130,7 @@ async function deleteStudentNoteRowsForTestReset(student) {
   }
   const encodedAcademyId = encodeURIComponent(academyId);
   const encodedStudentId = encodeURIComponent(studentId);
-  const tables = ['student_note_drafts', 'student_note_archives'];
+  const tables = ['student_note_drafts'];
   for (const table of tables) {
     try {
       await supabase('DELETE', `${table}?academy_id=eq.${encodedAcademyId}&student_id=eq.${encodedStudentId}`);

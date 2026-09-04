@@ -122,6 +122,9 @@
 #kinderChatFeedbackScreen .kcfInboxBtn{
   right:16px;
 }
+#kinderChatFeedbackScreen .kcfSceneCardBtn{
+  right:68px;
+}
 #kinderChatFeedbackScreen .kcfRoundBtn svg {
   stroke:currentColor;
   fill:none;
@@ -137,6 +140,11 @@
   width:34px;
   height:34px;
   stroke-width:1.55;
+}
+#kinderChatFeedbackScreen .kcfSceneCardBtn svg {
+  width:24px;
+  height:24px;
+  stroke-width:1.6;
 }
 #kinderChatFeedbackScreen .kcfInboxBadge {
   display:none;

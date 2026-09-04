@@ -7,13 +7,11 @@ function forceStudentMemoControlsVisible() {
 
   const showInlineFlex = [
     '#memoRecordRoomBtn',
-    '#memoRecordsBtn',
     '#memoStudentListBtn',
     '#memoBottomAnalysisBtn',
     '#memoFeedbackBtn'
   ];
   const showFlex = [
-    '#studentMemoScreen .memoHeaderActions',
     '#studentMemoScreen .memoBottomBar'
   ];
   const showBlock = [
@@ -71,9 +69,7 @@ function openStudentMemoPageById(studentId) {
   currentMemoType = 'elementary';
   if (currentMemoType === 'elementary') setLastElementaryMemoStudent(student);
   closeMemoModeMenu();
-  closeElementaryRecordsMenu();
   closeMemoStudentSelectPopup();
-  viewingArchivedElementaryRecord = false;
 
   const recordRoomScreen = document.getElementById('recordRoomScreen');
   const studentMemoScreenEl = document.getElementById('studentMemoScreen');
@@ -166,7 +162,6 @@ function autoResizeTextarea(el) {
 
 function scheduleMemoAutoSave() {
   if (!currentMemoStudent) return;
-  if (currentMemoType === 'elementary' && viewingArchivedElementaryRecord) return;
 
   setMemoSaveStatus('작성 중...');
   if (memoAutoSaveTimer) clearTimeout(memoAutoSaveTimer);
@@ -195,7 +190,6 @@ return '';
 function handleMemoPauseAutoSaveInput(target) {
   const inputType = getMemoInputTypeFromTarget(target);
   if (!inputType || !currentMemoStudent || currentMemoType !== inputType) return;
-  if (inputType === 'elementary' && viewingArchivedElementaryRecord) return;
 
 
   scheduleMemoAutoSave();
@@ -270,7 +264,6 @@ async function saveCurrentMemo(options = {}) {
     currentMemoType === savingType;
 
 
-    if (viewingArchivedElementaryRecord) return;
     const memoText = document.getElementById('memoEditor')?.value || '';
     const hasMemoText = String(memoText || '').trim().length > 0;
     if (!hasMemoText) {
@@ -398,7 +391,6 @@ setTimeout(() => {
 
 async function requestElementaryFeedback() {
   if (!currentMemoStudent || currentMemoType !== 'elementary') return;
-  if (viewingArchivedElementaryRecord) { alert('과거 수업 기록은 읽기 전용입니다. 현재 기록을 선택한 뒤 피드백을 요청해 주세요.'); return; }
 
   const text = document.getElementById('memoEditor').value.trim();
   const analysisData = getElementaryAnalysisByStudent(currentMemoStudent);
@@ -414,7 +406,6 @@ async function requestElementaryFeedback() {
     setMemoByStudent(currentMemoStudent, text);
   }
 
-  archiveCurrentElementaryMemoRecord(currentMemoStudent, text, analysisData);
   showMemoSaveCheck();
 
   await requestSceneCardFeedbackFromElementary(currentMemoStudent.name, text, analysisPromptText);
