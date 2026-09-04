@@ -1,0 +1,40 @@
+name: Audit KCF topbar and elementary memo load
+on:
+  push:
+    paths:
+      - '.github/workflows/audit-kcf-topbar-elementary-memo.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit references
+        run: |
+          set -e
+          terms=(
+            kcfHeader kcfHeaderCenter kcfTopFadeLayer kcfRecordBtn kcfRoundBtn
+            kcfModeToggle kcfModeTitle kcfModeSub kcfModeMenu kcfModeOption
+            toggleKinderChatFeedbackModeMenu closeKinderChatFeedbackModeMenu switchKinderChatFeedbackMode
+            kcfSceneCardBtn kcfInboxBtn openSceneCardsFromAnyPage openKinderChatFeedbackInbox
+            updateMemoStudentMetaDisplay formatMemoFeedbackArchiveDate getMemoEntryByStudent loadStudentNoteDraftFromSupabase memoPageStudentName
+          )
+          for term in "${terms[@]}"; do
+            echo "===== $term ====="
+            grep -RInF --exclude='audit-kcf-topbar-elementary-memo.yml' --exclude-dir='.git' "$term" . || true
+          done
+      - name: Show KCF function declarations
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for fn in ['kinder-feedback.js','kinder-feedback-ui.js','kinder-feedback.css','pc-attendance.css','olli-record-editor-core.js','observation-memo-core.js']:
+              text=Path(fn).read_text(encoding='utf-8')
+              print('\n===== FILE', fn, 'bytes', len(text.encode('utf-8')), '=====')
+              if fn.endswith('.js'):
+                  for i,line in enumerate(text.splitlines(),1):
+                      if re.match(r'^(?:async\s+)?function\s+', line):
+                          if any(k in line for k in ['KinderChatFeedbackMode','MemoStudentMeta','MemoFeedbackArchiveDate','StudentNoteDraft','SceneCardsFromAnyPage']):
+                              print(i, line[:220])
+          PY
