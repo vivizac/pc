@@ -1,0 +1,72 @@
+name: One-shot observation cleanup
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-observation-cleanup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Remove standalone PC observation shell
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('index.html')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = [
+              ('<link rel="stylesheet" href="pc-observation.css">\n', ''),
+              ('  <div class="olliPcBrand">\n    <div class="olliPcBrandLogo">VIVIZAC</div>\n', '  <div class="olliPcBrand">\n    <div class="olliPcBrandLogo">olli</div>\n'),
+              ('    <button class="olliPcNavBtn" data-pc-nav="observation" type="button" onclick="pcOpenSection(\'observation\')">\n      <svg viewBox="0 0 24 24"><rect x="4.5" y="5" width="15" height="14" rx="2"></rect><path d="M8 9h8M8 13h5"></path></svg><span>관찰노트</span>\n    </button>\n', ''),
+              ('    <button class="olliPcTopAction" id="olliPcTopArchiveBtn" type="button" onclick="pcOpenTopArchive()" aria-label="보관함">\n      <svg viewBox="0 0 24 24"><path d="M8 5h8"></path><path d="M7 8h10"></path><rect x="5.5" y="10.5" width="13" height="8.5" rx="2"></rect><path d="M10 14.5h4"></path></svg>\n    </button>\n', ''),
+              ('<script src="pc-observation.js"></script>\n', ''),
+          ]
+
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit('Expected index.html cleanup target not found: ' + old.splitlines()[0][:120])
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+
+          for name in ('pc-observation.js', 'pc-observation.css'):
+              target = Path(name)
+              if not target.exists():
+                  raise SystemExit(f'Expected file not found: {name}')
+              target.unlink()
+          PY
+
+      - name: Verify cleanup
+        shell: bash
+        run: |
+          ! grep -q 'pc-observation.js' index.html
+          ! grep -q 'pc-observation.css' index.html
+          ! grep -q 'data-pc-nav="observation"' index.html
+          ! grep -q 'id="olliPcTopArchiveBtn"' index.html
+          test ! -e pc-observation.js
+          test ! -e pc-observation.css
+
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No cleanup changes to commit.'
+            exit 0
+          fi
+          git commit -m 'Remove standalone PC observation module'
+          git push
