@@ -154,9 +154,19 @@
   async function loadWeek(weekStart) {
     await bootstrapLegacy();
     await rpc('olli_schedule_apply_due', contextPayload());
-    const data = await rpc('olli_schedule_week', contextPayload({ p_week_start: weekStart }));
+    const [data, kinderLayout] = await Promise.all([
+      rpc('olli_schedule_week', contextPayload({ p_week_start: weekStart })),
+      rpc('olli_schedule_kinder_class_layouts', contextPayload())
+    ]);
+    data.kinder_class_merges = Array.isArray(kinderLayout && kinderLayout.merged_slots)
+      ? kinderLayout.merged_slots
+      : [];
     cacheWeek(weekStart, data);
     return data;
+  }
+
+  async function syncLegacyStudents() {
+    return bootstrapLegacy();
   }
 
   async function executeScheduleAction(action, params) {
@@ -252,6 +262,22 @@
     return executeScheduleAction('merge_class', { weekday: Number(weekday), time_slot: Number(timeSlot) });
   }
 
+  async function splitKinderClass(weekday, timeSlot) {
+    return rpc('olli_schedule_set_kinder_class_split', contextPayload({
+      p_weekday: Number(weekday),
+      p_time_slot: Number(timeSlot),
+      p_split: true
+    }));
+  }
+
+  async function mergeKinderClass(weekday, timeSlot) {
+    return rpc('olli_schedule_set_kinder_class_split', contextPayload({
+      p_weekday: Number(weekday),
+      p_time_slot: Number(timeSlot),
+      p_split: false
+    }));
+  }
+
   async function toggleAttendance(options) {
     const result = await executeScheduleAction('toggle_attendance', {
       student_id: options.studentId,
@@ -310,6 +336,7 @@
     getCachedWeek,
     getCachedAttendanceMonth,
     loadWeek,
+    syncLegacyStudents,
     changeSchedule,
     resolveWaitlist,
     addMakeup,
@@ -319,6 +346,8 @@
     removeEnrollment,
     splitClass,
     mergeClass,
+    splitKinderClass,
+    mergeKinderClass,
     toggleAttendance,
     loadAttendanceMonth,
     savePickup,
