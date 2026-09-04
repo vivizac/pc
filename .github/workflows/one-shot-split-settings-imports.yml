@@ -1,0 +1,147 @@
+name: One-shot split settings imports
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-split-settings-imports.yml'
+permissions:
+  contents: write
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Split import domains
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          imports_path = Path('olli-settings-imports.js')
+          storage_path = Path('olli-settings-storage.js')
+          index_path = Path('index.html')
+          if not imports_path.exists():
+              raise SystemExit('olli-settings-imports.js missing')
+
+          imports_lines = imports_path.read_text(encoding='utf-8').splitlines(keepends=True)
+          if len(imports_lines) != 2333:
+              raise SystemExit(f'unexpected imports line count: {len(imports_lines)}')
+
+          checks = {
+              1: 'function getStudentManagementActiveTab',
+              18: 'function getAttendancePhotoImportTodayValue',
+              269: 'function getStudentBulkImportPlaceholder',
+              685: 'function formatExistingFeedbackImportFileSize',
+              1730: 'function renderSettingsAttendancePhotoImportOnly',
+              2088: 'function showOlliTestResetMessage',
+          }
+          for line_no, prefix in checks.items():
+              if not imports_lines[line_no-1].lstrip().startswith(prefix):
+                  raise SystemExit(f'boundary mismatch at {line_no}: expected {prefix!r}')
+
+          storage_text = storage_path.read_text(encoding='utf-8')
+          marker = '\n\nlet attendancePhotoImportState = {'
+          pos = storage_text.find(marker)
+          if pos < 0:
+              raise SystemExit('import state marker not found in storage')
+          storage_core = storage_text[:pos].rstrip() + '\n'
+          state_text = storage_text[pos:].lstrip('\n')
+          if "let studentManagementActiveTab = 'bulk';" not in state_text:
+              raise SystemExit('studentManagementActiveTab state missing')
+          storage_path.write_text(storage_core, encoding='utf-8')
+
+          coordinator = ''.join(imports_lines[0:17])
+          photo_helpers = ''.join(imports_lines[17:268])
+          bulk = ''.join(imports_lines[268:684])
+          feedback = ''.join(imports_lines[684:1729])
+          photo_actions = ''.join(imports_lines[1729:2087])
+          test_tools = ''.join(imports_lines[2087:])
+
+          Path('olli-settings-imports-base.js').write_text(state_text.rstrip() + '\n\n' + coordinator.lstrip(), encoding='utf-8')
+          Path('olli-settings-student-bulk-import.js').write_text(bulk, encoding='utf-8')
+          Path('olli-settings-existing-feedback-import.js').write_text(feedback, encoding='utf-8')
+          Path('olli-settings-attendance-photo-import.js').write_text(photo_helpers.rstrip() + '\n\n' + photo_actions.lstrip(), encoding='utf-8')
+          Path('olli-settings-import-test-tools.js').write_text(test_tools, encoding='utf-8')
+          imports_path.unlink()
+
+          index = index_path.read_text(encoding='utf-8')
+          old = '<script src="olli-settings-imports.js"></script>'
+          new = '\n'.join([
+              '<script src="olli-settings-imports-base.js"></script>',
+              '<script src="olli-settings-student-bulk-import.js"></script>',
+              '<script src="olli-settings-existing-feedback-import.js"></script>',
+              '<script src="olli-settings-attendance-photo-import.js"></script>',
+              '<script src="olli-settings-import-test-tools.js"></script>',
+          ])
+          if index.count(old) != 1:
+              raise SystemExit(f'expected one imports script tag, found {index.count(old)}')
+          index_path.write_text(index.replace(old, new), encoding='utf-8')
+          PY
+      - name: Verify split and syntax
+        run: |
+          set -e
+          test ! -f olli-settings-imports.js
+          for f in \
+            olli-settings-storage.js \
+            olli-settings-imports-base.js \
+            olli-settings-student-bulk-import.js \
+            olli-settings-existing-feedback-import.js \
+            olli-settings-attendance-photo-import.js \
+            olli-settings-import-test-tools.js; do
+            node --check "$f"
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile
+          idx=Path('index.html').read_text(encoding='utf-8')
+          expected=[
+              'olli-settings-storage.js',
+              'olli-settings-imports-base.js',
+              'olli-settings-student-bulk-import.js',
+              'olli-settings-existing-feedback-import.js',
+              'olli-settings-attendance-photo-import.js',
+              'olli-settings-import-test-tools.js',
+              'olli-settings-teacher-invite.js',
+          ]
+          positions=[]
+          for name in expected:
+              token=f'<script src="{name}"></script>'
+              if idx.count(token)!=1:
+                  raise SystemExit(f'bad script count for {name}: {idx.count(token)}')
+              positions.append(idx.index(token))
+          if positions != sorted(positions):
+              raise SystemExit('settings import load order is wrong')
+          if 'olli-settings-imports.js' in idx:
+              raise SystemExit('old imports script reference remains')
+          # states must no longer live in storage
+          storage=Path('olli-settings-storage.js').read_text(encoding='utf-8')
+          if 'attendancePhotoImportState' in storage or 'studentBulkImportState' in storage or 'existingFeedbackImportState' in storage:
+              raise SystemExit('import states still remain in storage module')
+          # parse every inline classic script in index
+          scripts=re.findall(r'<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)</script>', idx, re.I)
+          for i,code in enumerate(scripts):
+              if not code.strip():
+                  continue
+              p=Path(tempfile.gettempdir())/f'olli-inline-{i}.js'
+              p.write_text(code,encoding='utf-8')
+              subprocess.run(['node','--check',str(p)],check=True,stdout=subprocess.DEVNULL)
+          print('index bytes', len(idx.encode()))
+          for f in expected[1:-1]:
+              p=Path(f)
+              print(f, p.stat().st_size)
+          PY
+      - name: Commit split modules
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html olli-settings-storage.js \
+            olli-settings-imports-base.js \
+            olli-settings-student-bulk-import.js \
+            olli-settings-existing-feedback-import.js \
+            olli-settings-attendance-photo-import.js \
+            olli-settings-import-test-tools.js \
+            olli-settings-imports.js
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+          else
+            git commit -m 'Split settings import tools by domain'
+            git push
+          fi
