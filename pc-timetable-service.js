@@ -5,6 +5,8 @@
   const SESSION_KEY = 'olli_account_session_token_v1';
   const WEEK_CACHE_PREFIX = 'olli_schedule_week_cache_v1';
   const ATTENDANCE_MONTH_CACHE_PREFIX = 'olli_schedule_attendance_month_cache_v1';
+  const SESSION_ORDER_PREFIX = 'olli_schedule_session_order_v1';
+  const CELL_MEMO_PREFIX = 'olli_schedule_cell_memo_v1';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -70,6 +72,56 @@
     const yearMonth = clean(value).slice(0, 7);
     if (!yearMonth) return;
     try { localStorage.removeItem(attendanceMonthCacheKey(yearMonth)); } catch (_) {}
+  }
+
+  function scopedLocalKey(prefix) {
+    return `${prefix}_${currentAcademyId() || 'unknown'}`;
+  }
+
+  function readLocalMap(prefix) {
+    try {
+      const value = JSON.parse(localStorage.getItem(scopedLocalKey(prefix)) || '{}');
+      return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function writeLocalMap(prefix, value) {
+    try { localStorage.setItem(scopedLocalKey(prefix), JSON.stringify(value || {})); }
+    catch (_) {}
+  }
+
+  function getSecondSessionKey(studentId) {
+    const id = clean(studentId);
+    if (!id) return '';
+    return clean(readLocalMap(SESSION_ORDER_PREFIX)[id]);
+  }
+
+  function setSecondSessionKey(studentId, sessionKey) {
+    const id = clean(studentId);
+    if (!id) return;
+    const map = readLocalMap(SESSION_ORDER_PREFIX);
+    const key = clean(sessionKey);
+    if (key) map[id] = key;
+    else delete map[id];
+    writeLocalMap(SESSION_ORDER_PREFIX, map);
+  }
+
+  function getCellMemo(cellKey) {
+    const key = clean(cellKey);
+    if (!key) return '';
+    return clean(readLocalMap(CELL_MEMO_PREFIX)[key]);
+  }
+
+  function saveCellMemo(cellKey, note) {
+    const key = clean(cellKey);
+    if (!key) return;
+    const map = readLocalMap(CELL_MEMO_PREFIX);
+    const value = clean(note);
+    if (value) map[key] = value;
+    else delete map[key];
+    writeLocalMap(CELL_MEMO_PREFIX, map);
   }
 
   function activeStudents() {
@@ -306,7 +358,11 @@
     savePickup,
     removePickup,
     loadHistory,
-    restoreHistory
+    restoreHistory,
+    getSecondSessionKey,
+    setSecondSessionKey,
+    getCellMemo,
+    saveCellMemo
   });
 })(window);
 

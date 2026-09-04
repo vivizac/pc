@@ -216,6 +216,78 @@
     if (state.section === 'academy') setTimeout(() => feature('OlliPcStudentManagement')?.bindRows(), 0);
   }
 
+  function getStudentAddDivision() {
+    try {
+      if (typeof currentRecordView !== 'undefined' && (currentRecordView === 'kinder' || currentRecordView === 'elementary')) return currentRecordView;
+    } catch (_) {}
+    try {
+      if (typeof currentObservationView !== 'undefined' && (currentObservationView === 'kinder' || currentObservationView === 'elementary')) return currentObservationView;
+    } catch (_) {}
+    return 'elementary';
+  }
+
+  function ensureStudentAddDivisionTabs() {
+    const card = document.querySelector('#studentModal .modalCard');
+    if (!card) return null;
+    let tabs = card.querySelector('.olliPcStudentAddTabs');
+    if (!tabs) {
+      tabs = document.createElement('div');
+      tabs.className = 'olliPcStudentAddTabs';
+      tabs.setAttribute('role', 'tablist');
+      tabs.setAttribute('aria-label', '학생 추가 부서 선택');
+      tabs.innerHTML = '<button type="button" data-pc-student-add-division="elementary" role="tab">초등부 학생 추가</button>'
+        + '<button type="button" data-pc-student-add-division="kinder" role="tab">유치부 학생 추가</button>';
+      const title = card.querySelector('#studentModalTitle');
+      if (title) title.insertAdjacentElement('afterend', tabs);
+      else card.insertBefore(tabs, card.firstChild);
+      tabs.addEventListener('click', (event) => {
+        const button = event.target.closest('[data-pc-student-add-division]');
+        if (button) setStudentAddDivision(button.dataset.pcStudentAddDivision);
+      });
+    }
+    return tabs;
+  }
+
+  function syncStudentAddDivisionTabs(division) {
+    const next = division === 'kinder' ? 'kinder' : 'elementary';
+    const tabs = ensureStudentAddDivisionTabs();
+    if (!tabs) return;
+    tabs.querySelectorAll('[data-pc-student-add-division]').forEach((button) => {
+      const active = button.dataset.pcStudentAddDivision === next;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    const title = document.getElementById('studentModalTitle');
+    if (title) title.textContent = '학생 추가';
+  }
+
+  function setStudentAddDivision(division) {
+    const next = division === 'kinder' ? 'kinder' : 'elementary';
+    try { if (typeof currentRecordView !== 'undefined') currentRecordView = next; } catch (_) {}
+    try { if (typeof currentObservationView !== 'undefined') currentObservationView = next; } catch (_) {}
+    try { global.currentRecordView = next; } catch (_) {}
+    try { global.currentObservationView = next; } catch (_) {}
+    if (typeof global.olliPrepareStudentAddExtra === 'function') global.olliPrepareStudentAddExtra(next);
+    syncStudentAddDivisionTabs(next);
+    const nameInput = document.getElementById('studentNameInput');
+    if (nameInput) setTimeout(() => nameInput.focus(), 0);
+  }
+
+  function installStudentAddDivisionTabs() {
+    const original = global.openStudentModal;
+    if (typeof original === 'function' && !original.__olliPcStudentAddTabsWrapped) {
+      const wrapped = function(...args) {
+        const result = original.apply(this, args);
+        setTimeout(() => syncStudentAddDivisionTabs(getStudentAddDivision()), 0);
+        return result;
+      };
+      wrapped.__olliPcStudentAddTabsWrapped = true;
+      global.openStudentModal = wrapped;
+    }
+    global.pcSetStudentAddDivision = setStudentAddDivision;
+    setTimeout(() => syncStudentAddDivisionTabs(getStudentAddDivision()), 0);
+  }
+
   const core = { SECTION, state, activeStudents, sortedStudents, hideMainScreensExcept, showRecordRoomImmediately, updateRecordLayout, renderContext, setChrome, openSection, syncFromVisiblePage };
   global.OlliPcCore = core;
   global.__olliPcAcademySelectedStudentRef = '';
@@ -236,6 +308,7 @@
   global.pcOpenTopArchive = () => observationNoteFeature()?.openArchive();
 
   function start() {
+    installStudentAddDivisionTabs();
     feature('OlliPcStudentManagement')?.start();
     setTimeout(syncFromVisiblePage, 0);
     document.addEventListener('visibilitychange', () => {

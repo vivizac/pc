@@ -295,20 +295,58 @@
       : null;
     return Number(storedTime) === expected || Number(storedTime) === legacySaturdayTime;
   }
-  function isKinderSecondWeeklySession(item, date) {
-    if (clean(item && item.division) !== 'kinder') return false;
-    const weeklySessions = enrollments().filter((candidate) => clean(candidate.division) === 'kinder'
-      && clean(candidate.student_id) === clean(item.student_id)
+  function enrollmentSessionKey(item) {
+    if (!item) return '';
+    return `${Number(item.weekday)}|${Number(item.time_slot)}|${classGroupOf(item)}`;
+  }
+
+  function activeWeeklySessions(studentId, date) {
+    return enrollments().filter((candidate) => clean(candidate.student_id) === clean(studentId)
       && enrollmentEffectiveOn(candidate, date))
       .sort((a, b) => Number(a.weekday) - Number(b.weekday)
         || Number(a.time_slot) - Number(b.time_slot)
         || classGroupOf(a).localeCompare(classGroupOf(b)));
-    return weeklySessions.length === 2 && clean(weeklySessions[1].id) === clean(item.id);
+  }
+
+  function secondWeeklySession(studentId, date) {
+    const weeklySessions = activeWeeklySessions(studentId, date);
+    if (weeklySessions.length !== 2) return null;
+    const preferredKey = typeof service.getSecondSessionKey === 'function'
+      ? clean(service.getSecondSessionKey(studentId))
+      : '';
+    return weeklySessions.find((item) => enrollmentSessionKey(item) === preferredKey) || weeklySessions[1];
+  }
+
+  function isSecondWeeklySession(item, date) {
+    const second = secondWeeklySession(item && item.student_id, date);
+    return !!second && clean(second.id) === clean(item && item.id);
+  }
+
+  function setWeeklySessionOrder(studentId, enrollmentId, order) {
+    const date = new Date();
+    const weeklySessions = activeWeeklySessions(studentId, date);
+    if (weeklySessions.length !== 2 || typeof service.setSecondSessionKey !== 'function') return false;
+    const selected = weeklySessions.find((item) => clean(item.id) === clean(enrollmentId));
+    if (!selected) return false;
+    const second = Number(order) === 2 ? selected : weeklySessions.find((item) => clean(item.id) !== clean(selected.id));
+    if (!second) return false;
+    service.setSecondSessionKey(studentId, enrollmentSessionKey(second));
+    return true;
+  }
+
+  function cellMemoKey(division, date, time, classGroup) {
+    const keyDate = date instanceof Date ? dateKey(date) : clean(date);
+    return `${clean(division)}|${keyDate}|${Number(time)}|${classGroupOf({ class_group: classGroup })}`;
+  }
+
+  function cellMemoText(division, date, time, classGroup) {
+    if (typeof service.getCellMemo !== 'function') return '';
+    return clean(service.getCellMemo(cellMemoKey(division, date, time, classGroup)));
   }
   function slotRegulars(division, date, time, classGroup) {
     return enrollments().filter((item) => clean(item.division) === division && timeSlotMatches(division, date, time, item.time_slot) && enrollmentActiveOn(item, date)
       && (!classGroup || classGroupOf(item) === classGroupOf({ class_group: classGroup })))
-      .sort((a, b) => Number(isKinderSecondWeeklySession(b, date)) - Number(isKinderSecondWeeklySession(a, date)));
+      .sort((a, b) => Number(isSecondWeeklySession(b, date)) - Number(isSecondWeeklySession(a, date)));
   }
   function waitRequestedDate(item) {
     const requestedAt = new Date(clean(item && item.requested_at));
@@ -525,7 +563,7 @@
       const scheduleText = scheduled ? `<span class="olliTtReservation">◷ ${shortDate(scheduled.effective_date)} ${scheduled.change_type === 'remove' ? '삭제' : '이동'} 예정</span>` : '';
       const attendanceTime = Number(item.time_slot);
       const attended = isToday(date) && attendanceMarked(item.student_id, date, attendanceTime, classGroup, 'regular');
-      const secondSessionDot = isKinderSecondWeeklySession(item, date) ? '<strong class="olliTtSecondSessionDot" aria-label="주 2회차">·</strong>' : '';
+      const secondSessionDot = isSecondWeeklySession(item, date) ? '<strong class="olliTtSecondSessionDot" aria-label="주 2회차">·</strong>' : '';
       return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(classGroup)}">${esc(item.student_name)}${secondSessionDot}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
     }).join('');
     const waitHtml = waits.map((item) => `<div class="olliTtStudent wait"><button type="button" class="olliTtAttendanceBtn" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}">${esc(item.student_name)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}">대기</button></div>`).join('');
@@ -534,7 +572,9 @@
       const attended = isToday(date) && attendanceMarked(item.student_id, date, attendanceTime, classGroup, 'makeup');
       return `<div class="olliTtStudent makeup${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(classGroup)}">${esc(item.student_name)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">보강</button></div>`;
     }).join('');
-    return `<div class="olliTtEntries">${regularHtml}${waitHtml}${makeupHtml}</div>`;
+    const memo = cellMemoText(division, date, time, classGroup);
+    const memoHtml = memo ? `<div class="olliTtCellMemoCard" title="${esc(memo)}"><span aria-hidden="true">📝</span><strong>${esc(memo)}</strong></div>` : '';
+    return `<div class="olliTtEntries">${memoHtml}${regularHtml}${waitHtml}${makeupHtml}</div>`;
   }
 
   function cellHtml(division, date, displayTime) {
@@ -828,10 +868,14 @@
 
   function openAdd(dataset) {
     const targetDate = clean(dataset.date);
+    const division = clean(dataset.division);
+    const time = Number(dataset.time);
+    const targetClassGroup = classGroupOf({ class_group: dataset.classGroup });
+    const existingMemo = cellMemoText(division, targetDate, time, targetClassGroup);
     state.dialog = {
-      kind: 'add', division: clean(dataset.division), date: targetDate,
-      weekday: Number(dataset.weekday), time: Number(dataset.time), studentId: '',
-      query: '', note: '', addType: 'wait', targetClassGroup: classGroupOf({ class_group: dataset.classGroup })
+      kind: 'add', division, date: targetDate,
+      weekday: Number(dataset.weekday), time, studentId: '',
+      query: '', note: existingMemo, originalNote: existingMemo, addType: 'wait', targetClassGroup
     };
     openOverlay();
   }
@@ -887,11 +931,15 @@
     const division = divisionOf(student);
     const timeOptions = timeOptionsFor(division, dialog.targetWeekday);
     const capacity = capacityFor(division);
+    const currentRows = rows.filter((item) => enrollmentEffectiveOn(item, new Date()));
+    const hasTwoCurrentSessions = currentRows.length === 2;
     const sourceHtml = rows.length ? rows.map((item) => {
       const current = enrollmentEffectiveOn(item, new Date());
       const selected = clean(item.id) === clean(dialog.sourceEnrollmentId);
       const schedule = `${weekdayLabel(item.weekday)}요일 · ${timeLabel(item.time_slot)}${classGroupLabel(division, item.class_group) ? ` · ${classGroupLabel(division, item.class_group)}` : ''}`;
-      return `<div class='olliTtEnrollmentRow'><button type='button' class='olliTtEnrollmentChoice ${selected ? 'active' : ''}' data-tt-source='${esc(item.id)}'><strong>${schedule}</strong></button><button type='button' class='olliTtEnrollmentDelete' data-tt-remove-enrollment='${esc(item.id)}' ${current ? '' : 'disabled'} aria-label='${esc(schedule)} 삭제'>삭제</button></div>`;
+      const order = hasTwoCurrentSessions && current ? (isSecondWeeklySession(item, new Date()) ? 2 : 1) : 0;
+      const orderHtml = order ? `<div class="olliTtSessionOrder" role="group" aria-label="${esc(schedule)} 회차 설정"><button type="button" class="${order === 1 ? 'active' : ''}" data-tt-session-order="1" data-enrollment-id="${esc(item.id)}">1회차</button><button type="button" class="${order === 2 ? 'active' : ''}" data-tt-session-order="2" data-enrollment-id="${esc(item.id)}">2회차</button></div>` : '';
+      return `<div class="olliTtEnrollmentRow${order ? ' hasSessionOrder' : ''}"><button type="button" class="olliTtEnrollmentChoice ${selected ? 'active' : ''}" data-tt-source="${esc(item.id)}"><strong>${schedule}</strong></button>${orderHtml}<button type="button" class="olliTtEnrollmentDelete" data-tt-remove-enrollment="${esc(item.id)}" ${current ? '' : 'disabled'} aria-label="${esc(schedule)} 삭제">삭제</button></div>`;
     }).join('') : '<div class="olliTtStatusNotice">현재 등록된 정규 수업이 없습니다.</div>';
     const dayHtml = DAYS.map((day, index) => `<button type="button" class="olliTtChoice ${dialog.targetWeekday === index + 1 ? 'active' : ''}" data-tt-target-day="${index + 1}">${day}</button>`).join('');
     const timeHtml = timeOptions.map((time) => {
@@ -910,9 +958,11 @@
     const isMakeup = dialog.actionType === 'makeup';
     const headerGuide = `${divisionLabel(division)} · 현재 수업 ${studentScheduleText(student.id) || '없음'}`;
     const modeCards = '<div class="olliTtModeCards">'
-      + `<section class="olliTtModeCard ${dialog.actionType === 'move' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="move">수업이동</button>${dialog.actionType === 'move' ? `<div class="olliTtModeCardBody"><span>이동할 기존 수업</span><div class="olliTtEnrollmentList">${sourceHtml}</div></div>` : ''}</section>`
+      + `<section class="olliTtModeCard move ${dialog.actionType === 'move' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="move">수업이동</button><div class="olliTtModeCardBody"><span>현재 정규수업</span><div class="olliTtEnrollmentList">${sourceHtml}</div></div></section>`
+      + '<div class="olliTtModeCardStack">'
       + `<section class="olliTtModeCard simple ${dialog.actionType === 'add' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="add">수업추가</button></section>`
-      + `<section class="olliTtModeCard simple ${dialog.actionType === 'makeup' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="makeup">보강</button></section></div>`;
+      + `<section class="olliTtModeCard simple ${dialog.actionType === 'makeup' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="makeup">보강</button></section>`
+      + '</div></div>';
     return dialogHead('↗', `${student.name} 수업 설정`, headerGuide)
       + '<div class="olliTtDialogBody">'
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>설정 방식</span></div>' + modeCards + '</div>'
@@ -942,7 +992,10 @@
   function addDialogHtml(dialog) {
     const division = dialog.division;
     const selected = studentById(dialog.studentId);
-    const canRegister = Boolean(selected && clean(dialog.note));
+    const note = clean(dialog.note);
+    const hadMemo = Boolean(clean(dialog.originalNote));
+    const canRegister = Boolean(selected || note || hadMemo);
+    const primaryLabel = selected ? '등록' : (note ? '메모 저장' : (hadMemo ? '메모 삭제' : '등록'));
     return dialogHead('+', '이 시간에 학생 추가', '')
       + '<div class="olliTtDialogBody">'
       + `<label class="olliTtAddMemo"><span>메모</span><textarea data-tt-add-note maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.note)}</textarea></label>`
@@ -955,7 +1008,7 @@
       + '</div></div>'
       + (division === 'elementary' ? `<div class="olliTtField olliTtSplitClassField"><div class="olliTtFieldHead"><span>클래스 운영</span><small>${isClassSplit(division, dialog.weekday, dialog.time) ? '분리된 A반·B반을 하나의 칸으로 통합합니다.' : '현재 칸을 위·아래 A반·B반으로 나눕니다.'}</small></div><button type="button" class="olliTtSplitClassBtn" ${isClassSplit(division, dialog.weekday, dialog.time) ? 'data-tt-merge-class' : 'data-tt-split-class'}>${isClassSplit(division, dialog.weekday, dialog.time) ? '클래스 통합' : '클래스 분리'}</button></div>` : '')
       + classGroupChoiceHtml(division, dialog.targetClassGroup, dialog.weekday, dialog.time)
-      + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-add ${canRegister ? '' : 'disabled'}>등록</button></div></div>`;
+      + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-add ${canRegister ? '' : 'disabled'}>${primaryLabel}</button></div></div>`;
   }
 
   function waitDialogHtml(dialog) {
@@ -1237,7 +1290,17 @@
     if (!dialog || !state.dialog) return;
     dialog.querySelectorAll('[data-tt-dialog-close]').forEach((button) => button.addEventListener('click', closeDialog));
     dialog.querySelectorAll('[data-tt-action-type]').forEach((button) => button.addEventListener('click', () => {
-      state.dialog.actionType = button.dataset.ttActionType;
+      const nextAction = button.dataset.ttActionType;
+      state.dialog.actionType = nextAction;
+      if (state.dialog.kind === 'move' && nextAction === 'move' && !state.dialog.sourceEnrollmentId) {
+        const source = activeWeeklySessions(state.dialog.studentId, new Date())[0] || currentStudentEnrollments(state.dialog.studentId)[0];
+        if (source) {
+          state.dialog.sourceEnrollmentId = clean(source.id);
+          state.dialog.targetWeekday = Number(source.weekday);
+          state.dialog.targetTime = Number(source.time_slot);
+          state.dialog.targetClassGroup = classGroupOf(source);
+        }
+      }
       if (state.dialog.kind === 'move' && state.dialog.actionType === 'makeup') {
         let selectedDate = parseDate(state.dialog.effectiveDate);
         if (selectedDate.getDay() === 0) selectedDate = addDays(selectedDate, 1);
@@ -1252,8 +1315,23 @@
     dialog.querySelectorAll('[data-tt-source]').forEach((button) => button.addEventListener('click', () => {
       state.dialog.sourceEnrollmentId = button.dataset.ttSource;
       const source = enrollments().find((item) => clean(item.id) === clean(button.dataset.ttSource));
-      if (source && state.dialog && state.dialog.kind === 'move') state.dialog.targetClassGroup = classGroupOf(source);
+      if (source && state.dialog && state.dialog.kind === 'move') {
+        state.dialog.actionType = 'move';
+        state.dialog.targetWeekday = Number(source.weekday);
+        state.dialog.targetTime = Number(source.time_slot);
+        state.dialog.targetClassGroup = classGroupOf(source);
+      }
       renderDialog();
+    }));
+
+    dialog.querySelectorAll('[data-tt-session-order]').forEach((button) => button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!state.dialog || state.dialog.kind !== 'move') return;
+      if (setWeeklySessionOrder(state.dialog.studentId, button.dataset.enrollmentId, Number(button.dataset.ttSessionOrder))) {
+        renderTimetable();
+        renderDialog();
+      }
     }));
     dialog.querySelectorAll('[data-tt-target-day]').forEach((button) => button.addEventListener('click', () => {
       state.dialog.targetWeekday = Number(button.dataset.ttTargetDay);
@@ -1298,7 +1376,13 @@
       if (!state.dialog || state.dialog.kind !== 'add') return;
       state.dialog.note = addNote.value;
       const saveButton = dialog.querySelector('[data-tt-save-add]');
-      if (saveButton) saveButton.disabled = !(state.dialog.studentId && clean(state.dialog.note));
+      if (saveButton) {
+        const hasSelectedStudent = Boolean(state.dialog.studentId);
+        const hasNote = Boolean(clean(state.dialog.note));
+        const hadMemo = Boolean(clean(state.dialog.originalNote));
+        saveButton.disabled = !(hasSelectedStudent || hasNote || hadMemo);
+        saveButton.textContent = hasSelectedStudent ? '등록' : (hasNote ? '메모 저장' : (hadMemo ? '메모 삭제' : '등록'));
+      }
     });
     bindImeSafeSearch(
       dialog.querySelector('[data-tt-pickup-search]'),
@@ -1417,6 +1501,10 @@
       alert('이동할 기존 수업을 선택해 주세요.');
       return;
     }
+    const sourceEnrollment = dialog.actionType === 'move'
+      ? enrollments().find((item) => clean(item.id) === clean(dialog.sourceEnrollmentId))
+      : null;
+    const sourceWasSecond = !!(sourceEnrollment && isSecondWeeklySession(sourceEnrollment, new Date()));
     const result = await withSaving(() => dialog.actionType === 'makeup'
       ? service.addMakeup(dialog.studentId, dialog.effectiveDate, dialog.targetTime, '', dialog.targetClassGroup)
       : service.changeSchedule({
@@ -1430,6 +1518,10 @@
         allowWait: true
       }));
     if (!result) return;
+    if (dialog.actionType === 'move' && sourceWasSecond && result.result !== 'waitlisted' && result.result !== 'scheduled' && typeof service.setSecondSessionKey === 'function') {
+      service.setSecondSessionKey(dialog.studentId, `${Number(dialog.targetWeekday)}|${Number(dialog.targetTime)}|${classGroupOf({ class_group: dialog.targetClassGroup })}`);
+      renderTimetable();
+    }
     const student = studentById(dialog.studentId);
     if (dialog.actionType === 'makeup') notify(`${student.name} 학생의 보강을 등록했어요.`);
     else if (result.result === 'waitlisted') notify(`${student.name} 학생을 대기로 등록했어요.`);
@@ -1453,16 +1545,34 @@
     if (result) notify(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 수업을 통합했어요.`);
   }
 
+  function persistDialogCellMemo(dialog) {
+    if (!dialog || dialog.kind !== 'add' || typeof service.saveCellMemo !== 'function') return;
+    service.saveCellMemo(cellMemoKey(dialog.division, dialog.date, dialog.time, dialog.targetClassGroup), dialog.note);
+  }
+
   async function saveAdd() {
     const dialog = state.dialog;
-    if (!dialog || dialog.kind !== 'add' || !dialog.studentId || !clean(dialog.note)) return;
+    if (!dialog || dialog.kind !== 'add') return;
+    const hasStudent = Boolean(dialog.studentId);
+    const note = clean(dialog.note);
+    const hadMemo = Boolean(clean(dialog.originalNote));
+    if (!hasStudent && !note && !hadMemo) return;
+
+    if (!hasStudent) {
+      persistDialogCellMemo(dialog);
+      closeDialog();
+      renderTimetable();
+      notify(note ? '시간표 메모를 저장했어요.' : '시간표 메모를 삭제했어요.');
+      return;
+    }
+
     if (dialog.date < todayKey()) {
       alert('지난 날짜에는 학생을 추가할 수 없습니다.');
       return;
     }
     let result;
     if (dialog.addType === 'makeup') {
-      result = await withSaving(() => service.addMakeup(dialog.studentId, dialog.date, dialog.time, dialog.note, dialog.targetClassGroup));
+      result = await withSaving(() => service.addMakeup(dialog.studentId, dialog.date, dialog.time, note, dialog.targetClassGroup));
     } else {
       result = await withSaving(() => service.addWaitlist({
         studentId: dialog.studentId,
@@ -1473,6 +1583,8 @@
       }));
     }
     if (!result) return;
+    persistDialogCellMemo(dialog);
+    renderTimetable();
     const student = studentById(dialog.studentId);
     if (dialog.addType === 'makeup') notify(`${student.name} 학생의 보강을 등록했어요.`);
     else notify(`${student.name} 학생을 대기로 등록했어요.`);
