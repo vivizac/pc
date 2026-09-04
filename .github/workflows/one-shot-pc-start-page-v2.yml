@@ -17,235 +17,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Patch PC start page options
+      - name: Add PC start page controller to index
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
 
           path = Path('index.html')
           text = path.read_text(encoding='utf-8')
-
-          script_id = 'olli-pc-start-page-v2'
-          pattern = re.compile(r'\n?<script id="' + re.escape(script_id) + r'">.*?</script>\s*', re.S)
-          text = pattern.sub('\n', text)
-
-          patch = r'''<script id="olli-pc-start-page-v2">
-(function(){
-  'use strict';
-  if (window.__OLLI_PC_START_PAGE_V2__) return;
-  window.__OLLI_PC_START_PAGE_V2__ = true;
-
-  function isPc(){
-    return !!(!window.matchMedia || window.matchMedia('(min-width: 900px)').matches);
-  }
-
-  var PAGES = {
-    academy: { value:'academy', label:'학생관리' },
-    attendance: { value:'attendance', label:'성향기록부' },
-    schedule: { value:'schedule', label:'시간표 • 출석부' }
-  };
-
-  function normalizePc(page){
-    page = String(page == null ? '' : page).trim();
-    if (!page) return '';
-    if (page === 'academy' || page === 'director' || page === 'dashboard' || page === 'academy_management' || page === 'director_dashboard') return 'academy';
-    if (page === 'attendance' || page === 'personality_records' || page === 'personality' || page === 'memo' || page === 'observation' || page === 'observation_note' || page === 'record_observation' || page === 'kinder' || page === 'record_kinder' || page === 'one_minute_feedback' || page === 'kinder_attendance') return 'attendance';
-    if (page === 'schedule' || page === 'timetable' || page === 'elementary' || page === 'record_elementary' || page === 'elementary_attendance') return 'schedule';
-    return '';
-  }
-
-  function storageKey(){
-    var stable = '';
-    try { if (typeof window.getOlliStartPageStableKey === 'function') stable = String(window.getOlliStartPageStableKey() || ''); } catch (_) {}
-    if (!stable) {
-      var member = '';
-      var academy = '';
-      var role = '';
-      try { member = localStorage.getItem('olli_current_member_id') || ''; } catch (_) {}
-      try { academy = localStorage.getItem('olli_current_academy_id') || localStorage.getItem('olli_current_academy_code') || ''; } catch (_) {}
-      try { role = localStorage.getItem('olli_current_member_role') || ''; } catch (_) {}
-      stable = [member || 'member', academy || 'academy', role || 'role'].join('_');
-    }
-    stable = stable.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
-    return 'olli_pc_start_page_' + stable;
-  }
-
-  function readLocal(){
-    try { return localStorage.getItem(storageKey()) || ''; } catch (_) { return ''; }
-  }
-
-  function writeLocal(page){
-    try { localStorage.setItem(storageKey(), page); } catch (_) {}
-  }
-
-  var previous = {
-    options: window.getOlliStartPageOptionsForCurrentRole,
-    allowed: window.getOlliAllowedStartPage,
-    label: window.getOlliStartPageLabel,
-    get: window.getOlliDefaultStartPage,
-    save: window.saveOlliDefaultStartPage,
-    enter: window.enterOlliByStartPage,
-    selectSetup: window.selectOlliStartPageAndEnter,
-    selectSettings: window.selectSettingsStartPageOption,
-    updateUI: window.updateOlliStartPageSettingUI,
-    renderSetup: window.renderOlliStartPageSetupOptions
-  };
-
-  function pcOptions(){
-    return [PAGES.academy, PAGES.attendance, PAGES.schedule].map(function(item){ return { value:item.value, label:item.label }; });
-  }
-
-  window.getOlliStartPageOptionsForCurrentRole = function(){
-    if (!isPc()) return typeof previous.options === 'function' ? previous.options.apply(this, arguments) : [];
-    return pcOptions();
-  };
-
-  window.getOlliAllowedStartPage = function(page){
-    if (!isPc()) return typeof previous.allowed === 'function' ? previous.allowed.apply(this, arguments) : page;
-    return normalizePc(page);
-  };
-
-  window.getOlliStartPageLabel = function(page){
-    if (!isPc()) return typeof previous.label === 'function' ? previous.label.apply(this, arguments) : String(page || '');
-    var normalized = normalizePc(page) || 'attendance';
-    return PAGES[normalized].label;
-  };
-
-  window.getOlliDefaultStartPage = function(){
-    if (!isPc()) return typeof previous.get === 'function' ? previous.get.apply(this, arguments) : '';
-    var stored = normalizePc(readLocal());
-    if (stored) return stored;
-    var legacy = '';
-    try { if (typeof previous.get === 'function') legacy = previous.get.apply(this, arguments) || ''; } catch (_) {}
-    var migrated = normalizePc(legacy);
-    if (migrated) writeLocal(migrated);
-    return migrated;
-  };
-
-  window.saveOlliDefaultStartPage = async function(page){
-    if (!isPc()) return typeof previous.save === 'function' ? previous.save.apply(this, arguments) : page;
-    var normalized = normalizePc(page) || 'attendance';
-    writeLocal(normalized);
-    try { if (typeof window.markOlliStartPageSetupDoneForCurrentContext === 'function') window.markOlliStartPageSetupDoneForCurrentContext(); } catch (_) {}
-    try { if (typeof window.updateOlliStartPageSettingUI === 'function') window.updateOlliStartPageSettingUI(); } catch (_) {}
-    return normalized;
-  };
-
-  window.enterOlliByStartPage = async function(page){
-    if (!isPc()) return typeof previous.enter === 'function' ? previous.enter.apply(this, arguments) : undefined;
-    var normalized = normalizePc(page) || 'attendance';
-    try { if (typeof window.hideOlliLoginScreens === 'function') window.hideOlliLoginScreens(); } catch (_) {}
-    try { document.body.classList.remove('olli-login-open'); } catch (_) {}
-    if (typeof window.pcOpenSection === 'function') {
-      var result = window.pcOpenSection(normalized);
-      await Promise.resolve(result);
-      try { if (typeof window.pcSyncFromVisiblePage === 'function') window.pcSyncFromVisiblePage(); } catch (_) {}
-      return normalized;
-    }
-    if (typeof previous.enter === 'function') {
-      var fallback = normalized === 'academy' ? 'director_dashboard' : (normalized === 'schedule' ? 'elementary_attendance' : 'observation_note');
-      return previous.enter.call(this, fallback);
-    }
-    return normalized;
-  };
-
-  window.selectOlliStartPageAndEnter = async function(page){
-    if (!isPc()) return typeof previous.selectSetup === 'function' ? previous.selectSetup.apply(this, arguments) : undefined;
-    var saved = await window.saveOlliDefaultStartPage(page);
-    return window.enterOlliByStartPage(saved);
-  };
-
-  window.selectSettingsStartPageOption = function(page){
-    if (!isPc()) return typeof previous.selectSettings === 'function' ? previous.selectSettings.apply(this, arguments) : undefined;
-    var normalized = normalizePc(page);
-    document.querySelectorAll('.settingsStartPageOption[data-start-page-option]').forEach(function(btn){
-      var active = normalizePc(btn.getAttribute('data-start-page-option')) === normalized;
-      btn.classList.toggle('active', active);
-      var check = btn.querySelector('.check');
-      if (check) check.textContent = active ? '✓' : '';
-    });
-  };
-
-  window.updateOlliStartPageSettingUI = function(){
-    if (!isPc()) return typeof previous.updateUI === 'function' ? previous.updateUI.apply(this, arguments) : undefined;
-    var page = window.getOlliDefaultStartPage() || 'attendance';
-    var value = document.getElementById('settingsStartPageValue');
-    if (value) value.textContent = window.getOlliStartPageLabel(page);
-    document.querySelectorAll('[data-start-page-option]').forEach(function(btn){
-      var active = normalizePc(btn.getAttribute('data-start-page-option')) === page;
-      btn.classList.toggle('active', active);
-      var check = btn.querySelector('.check');
-      if (check) check.textContent = active ? '✓' : '';
-    });
-  };
-
-  window.renderOlliStartPageSetupOptions = function(){
-    if (!isPc()) return typeof previous.renderSetup === 'function' ? previous.renderSetup.apply(this, arguments) : undefined;
-    var grid = document.getElementById('olliStartPageChoiceGrid');
-    if (!grid) return;
-    grid.innerHTML = pcOptions().map(function(item){
-      return '<button class="olliStartPageChoiceBtn" type="button" onclick="selectOlliStartPageAndEnter(\'' + item.value + '\')">' + item.label + '</button>';
-    }).join('');
-  };
-
-  try { getOlliStartPageOptionsForCurrentRole = window.getOlliStartPageOptionsForCurrentRole; } catch (_) {}
-  try { getOlliAllowedStartPage = window.getOlliAllowedStartPage; } catch (_) {}
-  try { getOlliStartPageLabel = window.getOlliStartPageLabel; } catch (_) {}
-  try { getOlliDefaultStartPage = window.getOlliDefaultStartPage; } catch (_) {}
-  try { saveOlliDefaultStartPage = window.saveOlliDefaultStartPage; } catch (_) {}
-  try { enterOlliByStartPage = window.enterOlliByStartPage; } catch (_) {}
-  try { selectOlliStartPageAndEnter = window.selectOlliStartPageAndEnter; } catch (_) {}
-  try { selectSettingsStartPageOption = window.selectSettingsStartPageOption; } catch (_) {}
-  try { updateOlliStartPageSettingUI = window.updateOlliStartPageSettingUI; } catch (_) {}
-  try { renderOlliStartPageSetupOptions = window.renderOlliStartPageSetupOptions; } catch (_) {}
-
-  try {
-    if (typeof settingsSheetData !== 'undefined' && settingsSheetData && settingsSheetData.startPage) {
-      settingsSheetData.startPage.desc = 'PC 앱을 열었을 때 처음 보여줄 화면을 선택합니다.';
-      settingsSheetData.startPage.html = function(){
-        var current = window.getOlliDefaultStartPage() || 'attendance';
-        var optionsHtml = pcOptions().map(function(item){
-          var active = item.value === current;
-          return '<button type="button" class="settingsStartPageOption ' + (active ? 'active' : '') + '" data-start-page-option="' + item.value + '" onclick="selectSettingsStartPageOption(\'' + item.value + '\')"><span>' + item.label + '</span><span class="check">' + (active ? '✓' : '') + '</span></button>';
-        }).join('');
-        return '<div class="settingsInputGroup">' + optionsHtml + '</div><div class="settingsMiniText">PC 시작 페이지는 학생관리, 성향기록부, 시간표 • 출석부 중에서 선택할 수 있습니다.</div>';
-      };
-      settingsSheetData.startPage.onSave = async function(){
-        var selected = document.querySelector('.settingsStartPageOption.active[data-start-page-option]')?.getAttribute('data-start-page-option') || window.getOlliDefaultStartPage() || 'attendance';
-        await window.saveOlliDefaultStartPage(selected);
-      };
-    }
-  } catch (_) {}
-
-  function refreshPcStartPageUi(){
-    if (!isPc()) return;
-    var value = document.getElementById('settingsStartPageValue');
-    if (value) value.textContent = window.getOlliStartPageLabel(window.getOlliDefaultStartPage() || 'attendance');
-    try { window.updateOlliStartPageSettingUI(); } catch (_) {}
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refreshPcStartPageUi);
-  else setTimeout(refreshPcStartPageUi, 0);
-})();
-</script>'''
-
-          marker = '</body>'
-          if marker not in text:
-              raise SystemExit('index.html has no </body> marker')
-          text = text.replace(marker, '\n' + patch + '\n' + marker, 1)
-          path.write_text(text, encoding='utf-8')
+          tag = '<script src="pc-start-page.js"></script>'
+          if tag not in text:
+              marker = '</body>'
+              if marker not in text:
+                  raise SystemExit('index.html has no </body> marker')
+              text = text.replace(marker, tag + '\n' + marker, 1)
+              path.write_text(text, encoding='utf-8')
           PY
 
       - name: Verify patch
         shell: bash
         run: |
-          grep -q 'id="olli-pc-start-page-v2"' index.html
-          grep -q "label:'학생관리'" index.html
-          grep -q "label:'성향기록부'" index.html
-          grep -q "label:'시간표 • 출석부'" index.html
-          grep -q "return 'olli_pc_start_page_'" index.html
+          grep -q '<script src="pc-start-page.js"></script>' index.html
+          test -f pc-start-page.js
+          node --check pc-start-page.js
 
       - name: Commit patch
         shell: bash
@@ -254,8 +48,8 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
           if git diff --cached --quiet; then
-            echo 'No start page changes to commit.'
+            echo 'No index changes to commit.'
             exit 0
           fi
-          git commit -m 'Use three PC start pages'
+          git commit -m 'Connect PC start page controller'
           git push
