@@ -197,6 +197,16 @@
     });
   }
 
+  async function addWaitlist(options) {
+    return executeScheduleAction('add_waitlist', {
+      student_id: options.studentId,
+      target_weekday: Number(options.targetWeekday),
+      target_time_slot: Number(options.targetTimeSlot),
+      target_class_group: options.targetClassGroup || 'A',
+      effective_date: options.effectiveDate
+    });
+  }
+
   async function cancelMakeup(oneTimeSessionId) {
     return executeScheduleAction('cancel_one_time', { one_time_session_id: oneTimeSessionId });
   }
@@ -285,6 +295,7 @@
     changeSchedule,
     resolveWaitlist,
     addMakeup,
+    addWaitlist,
     cancelMakeup,
     cancelChange,
     removeEnrollment,
@@ -298,3 +309,4 @@
     restoreHistory
   });
 })(window);
+
