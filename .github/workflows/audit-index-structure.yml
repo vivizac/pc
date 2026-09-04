@@ -1,0 +1,100 @@
+name: Audit index structure
+on:
+  push:
+    paths:
+      - '.github/workflows/audit-index-structure.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Analyze index structure
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, collections
+
+          text = Path('index.html').read_text(encoding='utf-8')
+          lines = text.splitlines()
+          print(f'INDEX_BYTES={len(text.encode("utf-8"))}')
+          print(f'INDEX_LINES={len(lines)}')
+
+          def line_of(pos):
+              return text.count('\n', 0, pos) + 1
+          def attr(attrs, name):
+              m = re.search(rf'\b{name}\s*=\s*["\']([^"\']+)["\']', attrs, re.I)
+              return m.group(1) if m else ''
+
+          domains = {
+              'settings': re.compile(r'settings|Setting|설정'),
+              'student': re.compile(r'student|Student|학생'),
+              'record': re.compile(r'record|Record|기록'),
+              'attendance': re.compile(r'attendance|Attendance|출석'),
+              'timetable': re.compile(r'timetable|schedule|Schedule|시간표'),
+              'feedback': re.compile(r'feedback|Feedback|피드백'),
+              'consultation': re.compile(r'consult|Consult|상담'),
+              'auth': re.compile(r'login|logout|account|session|role|teacher|owner|로그인|계정|권한'),
+              'storage': re.compile(r'supabase|storage|Storage|cache|backup|저장|백업'),
+              'ui': re.compile(r'modal|sheet|overlay|screen|toast|drawer|popup|dialog', re.I),
+          }
+
+          print('\n=== INLINE SCRIPT BLOCKS (largest first) ===')
+          script_pat = re.compile(r'<script\b([^>]*)>([\s\S]*?)</script\s*>', re.I)
+          scripts=[]
+          function_locations=collections.defaultdict(list)
+          for i,m in enumerate(script_pat.finditer(text),1):
+              attrs, body = m.group(1), m.group(2)
+              if re.search(r'\bsrc\s*=', attrs, re.I):
+                  continue
+              sid=attr(attrs,'id') or f'inline-{i}'
+              funcs=re.findall(r'\b(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(', body)
+              start=line_of(m.start())
+              for fn in funcs:
+                  function_locations[fn].append(start)
+              counts={k:len(rx.findall(body)) for k,rx in domains.items()}
+              scripts.append((len(body), body.count('\n')+1, start, sid, funcs[:14], counts))
+          for chars,nlines,start,sid,funcs,counts in sorted(scripts, reverse=True)[:24]:
+              hot=sorted(counts.items(), key=lambda x:x[1], reverse=True)[:4]
+              print(f'SCRIPT line={start} id={sid} chars={chars} lines={nlines} domains={hot} funcs={funcs}')
+
+          print('\n=== INLINE STYLE BLOCKS (largest first) ===')
+          style_pat=re.compile(r'<style\b([^>]*)>([\s\S]*?)</style\s*>', re.I)
+          styles=[]
+          for i,m in enumerate(style_pat.finditer(text),1):
+              attrs,body=m.group(1),m.group(2)
+              sid=attr(attrs,'id') or f'style-{i}'
+              start=line_of(m.start())
+              counts={k:len(rx.findall(body)) for k,rx in domains.items()}
+              styles.append((len(body), body.count('\n')+1, start, sid, counts))
+          for chars,nlines,start,sid,counts in sorted(styles, reverse=True)[:20]:
+              hot=sorted(counts.items(), key=lambda x:x[1], reverse=True)[:4]
+              print(f'STYLE line={start} id={sid} chars={chars} lines={nlines} domains={hot}')
+
+          print('\n=== DUPLICATE NAMED FUNCTIONS ===')
+          dups=[(fn,locs) for fn,locs in function_locations.items() if len(locs)>1]
+          for fn,locs in sorted(dups, key=lambda x:(-len(x[1]),x[0]))[:80]:
+              print(f'DUP {fn}: {locs}')
+          print(f'DUPLICATE_FUNCTION_COUNT={len(dups)}')
+
+          print('\n=== SCREEN/PAGE DOM IDS ===')
+          ids=[]
+          for m in re.finditer(r'\bid\s*=\s*["\']([^"\']*(?:Screen|Page|Modal|Overlay|Sheet)[^"\']*)["\']', text, re.I):
+              ids.append((line_of(m.start()),m.group(1)))
+          seen=set()
+          for ln,ident in ids:
+              if ident in seen: continue
+              seen.add(ident)
+              print(f'ID line={ln} {ident}')
+          print(f'UNIQUE_SCREENLIKE_IDS={len(seen)}')
+
+          print('\n=== PAGE/SECTION COMMENTS ===')
+          for m in re.finditer(r'<!--\s*(?:PAGE|SECTION|SCREEN|기능|화면)[^>]*-->', text, re.I):
+              print(f'COMMENT line={line_of(m.start())} {m.group(0)[:180]}')
+
+          print('\n=== EXTERNAL JS/CSS LOAD ORDER ===')
+          for m in re.finditer(r'<script\b[^>]*\bsrc=["\']([^"\']+)["\'][^>]*>', text, re.I):
+              print(f'JS line={line_of(m.start())} {m.group(1)}')
+          for m in re.finditer(r'<link\b[^>]*\bhref=["\']([^"\']+\.css(?:\?[^"\']*)?)["\'][^>]*>', text, re.I):
+              print(f'CSS line={line_of(m.start())} {m.group(1)}')
+          PY
