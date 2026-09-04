@@ -831,7 +831,7 @@
     state.dialog = {
       kind: 'add', division: clean(dataset.division), date: targetDate,
       weekday: Number(dataset.weekday), time: Number(dataset.time), studentId: '',
-      query: '', addType: 'wait', targetClassGroup: classGroupOf({ class_group: dataset.classGroup })
+      query: '', note: '', addType: 'wait', targetClassGroup: classGroupOf({ class_group: dataset.classGroup })
     };
     openOverlay();
   }
@@ -867,7 +867,8 @@
   }
 
   function dialogHead(icon, title, sub) {
-    return `<div class="olliTtDialogHead"><div class="olliTtDialogIcon" aria-hidden="true">${icon}</div><div><div class="olliTtDialogTitle" id="olliTtDialogTitle">${esc(title)}</div><div class="olliTtDialogSub">${esc(sub)}</div></div><button type="button" class="olliTtDialogClose" data-tt-dialog-close aria-label="닫기">×</button></div>`;
+    const subHtml = clean(sub) ? `<div class="olliTtDialogSub">${esc(sub)}</div>` : '';
+    return `<div class="olliTtDialogHead"><div class="olliTtDialogIcon" aria-hidden="true">${icon}</div><div><div class="olliTtDialogTitle" id="olliTtDialogTitle">${esc(title)}</div>${subHtml}</div><button type="button" class="olliTtDialogClose" data-tt-dialog-close aria-label="닫기">×</button></div>`;
   }
 
   function classGroupChoiceHtml(division, selectedGroup, weekday, time, hideGuide) {
@@ -940,23 +941,21 @@
 
   function addDialogHtml(dialog) {
     const division = dialog.division;
-    const capacity = capacityFor(division);
-    const occupied = countAt(division, dialog.weekday, dialog.time, dialog.date, dialog.targetClassGroup);
     const selected = studentById(dialog.studentId);
-    return dialogHead('+', '이 시간에 학생 추가', `${koreanDate(dialog.date)} ${weekdayLabel(dialog.weekday)}요일 · ${timeLabel(dialog.time)}`)
+    const canRegister = Boolean(selected && clean(dialog.note));
+    return dialogHead('+', '이 시간에 학생 추가', '')
       + '<div class="olliTtDialogBody">'
-      + `<div class="olliTtCurrentBox"><strong>${divisionLabel(division)} · ${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)}${classGroupLabel(division, dialog.targetClassGroup) ? ` · ${classGroupLabel(division, dialog.targetClassGroup)}` : ''}</strong>${capacity ? `현재 수업 ${occupied}/${capacity}` : `현재 ${occupied}명`}</div>`
+      + `<label class="olliTtAddMemo"><span>메모</span><textarea data-tt-add-note maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.note)}</textarea></label>`
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>추가 유형</span></div><div class="olliTtTypeGrid">'
-      + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'wait' ? 'active' : ''}" data-tt-add-type="wait">대기 등록<small>선택한 반의 대기 학생으로 등록합니다.</small></button>`
-      + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'makeup' ? 'active' : ''}" data-tt-add-type="makeup">보강 등록<small>${shortDate(dialog.date)} 하루만 수업합니다.</small></button></div></div>`
+      + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'wait' ? 'active' : ''}" data-tt-add-type="wait">대기 등록</button>`
+      + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'makeup' ? 'active' : ''}" data-tt-add-type="makeup">보강 등록</button></div></div>`
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>학생 선택</span></div>'
       + `<input type="search" class="olliTtStudentSearch" data-tt-add-search value="${esc(dialog.query)}" placeholder="학생 검색"><div class="olliTtPickerList" data-tt-add-picker>`
       + addPickerHtml(dialog)
       + '</div></div>'
       + (division === 'elementary' ? `<div class="olliTtField olliTtSplitClassField"><div class="olliTtFieldHead"><span>클래스 운영</span><small>${isClassSplit(division, dialog.weekday, dialog.time) ? '분리된 A반·B반을 하나의 칸으로 통합합니다.' : '현재 칸을 위·아래 A반·B반으로 나눕니다.'}</small></div><button type="button" class="olliTtSplitClassBtn" ${isClassSplit(division, dialog.weekday, dialog.time) ? 'data-tt-merge-class' : 'data-tt-split-class'}>${isClassSplit(division, dialog.weekday, dialog.time) ? '클래스 통합' : '클래스 분리'}</button></div>` : '')
       + classGroupChoiceHtml(division, dialog.targetClassGroup, dialog.weekday, dialog.time)
-      + (selected ? `<div class="olliTtStatusNotice">${esc(selected.name)} 학생을 ${dialog.addType === 'makeup' ? '보강으로' : '대기로'} 등록합니다.</div>` : '')
-      + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-add ${selected ? '' : 'disabled'}>${dialog.addType === 'makeup' ? '보강 등록' : '대기 등록'}</button></div></div>`;
+      + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-add ${canRegister ? '' : 'disabled'}>등록</button></div></div>`;
   }
 
   function waitDialogHtml(dialog) {
@@ -1221,6 +1220,7 @@
     if (!dialog || !state.dialog) return;
     dialog.classList.toggle('olliTtHistoryDialog', state.dialog.kind === 'history');
     dialog.classList.toggle('olliTtRestoreDialog', state.dialog.kind === 'restoreConfirm');
+    dialog.classList.toggle('olliTtMoveDialog', state.dialog.kind === 'move');
     if (state.dialog.kind === 'move') dialog.innerHTML = moveDialogHtml(state.dialog);
     else if (state.dialog.kind === 'add') dialog.innerHTML = addDialogHtml(state.dialog);
     else if (state.dialog.kind === 'wait') dialog.innerHTML = waitDialogHtml(state.dialog);
@@ -1293,6 +1293,13 @@
     );
     dialog.querySelectorAll('[data-tt-add-student]').forEach((button) => button.addEventListener('click', () => { state.dialog.studentId = button.dataset.ttAddStudent; renderDialog(); }));
     dialog.querySelectorAll('[data-tt-add-type]').forEach((button) => button.addEventListener('click', () => { state.dialog.addType = button.dataset.ttAddType; renderDialog(); }));
+    const addNote = dialog.querySelector('[data-tt-add-note]');
+    if (addNote) addNote.addEventListener('input', () => {
+      if (!state.dialog || state.dialog.kind !== 'add') return;
+      state.dialog.note = addNote.value;
+      const saveButton = dialog.querySelector('[data-tt-save-add]');
+      if (saveButton) saveButton.disabled = !(state.dialog.studentId && clean(state.dialog.note));
+    });
     bindImeSafeSearch(
       dialog.querySelector('[data-tt-pickup-search]'),
       (value) => { if (state.dialog && state.dialog.kind === 'pickupAdd') state.dialog.query = value; },
@@ -1448,14 +1455,14 @@
 
   async function saveAdd() {
     const dialog = state.dialog;
-    if (!dialog || dialog.kind !== 'add' || !dialog.studentId) return;
+    if (!dialog || dialog.kind !== 'add' || !dialog.studentId || !clean(dialog.note)) return;
     if (dialog.date < todayKey()) {
       alert('지난 날짜에는 학생을 추가할 수 없습니다.');
       return;
     }
     let result;
     if (dialog.addType === 'makeup') {
-      result = await withSaving(() => service.addMakeup(dialog.studentId, dialog.date, dialog.time, '', dialog.targetClassGroup));
+      result = await withSaving(() => service.addMakeup(dialog.studentId, dialog.date, dialog.time, dialog.note, dialog.targetClassGroup));
     } else {
       result = await withSaving(() => service.addWaitlist({
         studentId: dialog.studentId,
