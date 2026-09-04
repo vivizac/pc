@@ -88,7 +88,7 @@ jobs:
           index_path = Path('index.html')
           index = index_path.read_text(encoding='utf-8')
 
-          # 1) Active kinder risk screen is NOT mobile-only. Move its static DOM out of index instead of deleting it.
+          # 위험신호 화면은 PC에서도 실제 사용 중이므로 삭제하지 않고 정적 DOM만 모듈로 이동합니다.
           m = re.search(r'<div\b[^>]*\bid=["\']kinderRiskMemoScreen["\'][^>]*>', index, re.I)
           if not m:
               raise RuntimeError('kinderRiskMemoScreen DOM not found')
@@ -97,14 +97,14 @@ jobs:
           Path('kinder-risk-ui.js').write_text(ui_js, encoding='utf-8')
           index = index[:m.start()] + '<script src="kinder-risk-ui.js"></script>\n' + index[risk_end:]
 
-          # 2) PC no longer has a standalone elementary observation-note entry button/route.
+          # PC 성향기록부 외부의 예전 초등 관찰노트 단독 진입을 제거합니다.
           index = remove_button_by_id(index, 'recordModeToggleBtn')
           index = remove_js_function(index, 'openObservationNoteFromRecord')
           index = index.replace('  window.openObservationNoteFromRecord = openObservationNoteFromRecord;\n', '')
           index = index.replace('window.openObservationNoteFromRecord = openObservationNoteFromRecord;\n', '')
           index_path.write_text(index, encoding='utf-8')
 
-          # 3) Remove the old cross-navigation option from the kinder feedback mode menu.
+          # 유치부 1분 피드백 안의 예전 초등 관찰노트 교차 진입 옵션을 제거합니다.
           ui_path = Path('kinder-feedback-ui.js')
           ui_src = ui_path.read_text(encoding='utf-8')
           mm = re.search(r'const html = ("(?:\\.|[^"\\])*");', ui_src, re.S)
@@ -151,7 +151,7 @@ jobs:
               raise RuntimeError('elementaryMemo branch unbalanced')
           kcf_path.write_text(kcf, encoding='utf-8')
 
-          # 4) PC shell no longer needs to intercept the removed standalone observation route.
+          # 삭제된 단독 관찰노트 함수를 가로채던 PC 셸 래퍼도 제거합니다.
           shell_path = Path('pc-shell.js')
           shell = shell_path.read_text(encoding='utf-8')
           a = shell.find('    const originalObservationOpen = global.openObservationNoteFromRecord;')
@@ -161,7 +161,6 @@ jobs:
           shell = shell[:a] + shell[b:]
           shell_path.write_text(shell, encoding='utf-8')
 
-          # 5) Document that risk UI remains an active PC feature and is now modularized.
           doc_path = Path('OLLI_PC_MODULES.md')
           doc = doc_path.read_text(encoding='utf-8')
           needle = '| 유치부 1분 피드백 공용 UI·기능 | `kinder-feedback-ui.js`, `kinder-feedback.js` | `kinder-feedback.css` |\n'
@@ -178,19 +177,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --check kinder-risk-ui.js
-          node --check kinder-feedback-ui.js
-          node --check kinder-feedback.js
-          node --check pc-shell.js
-          test "$(grep -c '<div[^>]*id="kinderRiskMemoScreen"' index.html || true)" -eq 0
-          grep -q 'kinder-risk-ui.js' index.html
-          grep -q "id=\\\"kinderRiskMemoScreen\\\"" kinder-risk-ui.js
-          ! grep -q 'openObservationNoteFromRecord' index.html
-          ! grep -q 'openObservationNoteFromRecord' pc-shell.js
-          ! grep -q "elementaryMemo" kinder-feedback.js
-          ! grep -q "elementaryMemo" kinder-feedback-ui.js
-          grep -q 'function openRiskMemoPageById' index.html
-          grep -q 'risk_signals' observation-memo-core.js
+          check(){ echo "CHECK: $1"; shift; "$@"; }
+          check 'kinder-risk-ui syntax' node --check kinder-risk-ui.js
+          check 'kinder-feedback-ui syntax' node --check kinder-feedback-ui.js
+          check 'kinder-feedback syntax' node --check kinder-feedback.js
+          check 'pc-shell syntax' node --check pc-shell.js
+          echo 'CHECK: risk DOM removed from index'; test "$(grep -c '<div[^>]*id="kinderRiskMemoScreen"' index.html || true)" -eq 0
+          echo 'CHECK: risk UI script inserted'; grep -q 'kinder-risk-ui.js' index.html
+          echo 'CHECK: risk UI contains screen'; grep -q 'kinderRiskMemoScreen' kinder-risk-ui.js
+          echo 'CHECK: standalone observation function removed from index'; ! grep -q 'openObservationNoteFromRecord' index.html
+          echo 'CHECK: standalone observation wrapper removed from shell'; ! grep -q 'openObservationNoteFromRecord' pc-shell.js
+          echo 'CHECK: elementaryMemo branch removed'; ! grep -q 'elementaryMemo' kinder-feedback.js
+          echo 'CHECK: elementaryMemo option removed'; ! grep -q 'elementaryMemo' kinder-feedback-ui.js
+          echo 'CHECK: risk opener retained'; grep -q 'function openRiskMemoPageById' index.html
+          echo 'CHECK: risk Supabase engine retained'; grep -q 'risk_signals' observation-memo-core.js
           echo "index bytes: $(wc -c < index.html)"
       - name: Commit cleanup
         shell: bash
