@@ -1,0 +1,26 @@
+name: Audit elementary archive and scene card
+on:
+  push:
+    paths:
+      - '.github/workflows/audit-elementary-archive-scene-card.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit references
+        run: |
+          set -e
+          terms=(
+            memoRecordsBtn elementaryRecordsDropup toggleElementaryRecordsMenu renderElementaryRecordsMenu closeElementaryRecordsMenu
+            memoFeedbackArchive getMemoFeedbackArchive loadMemoFeedbackArchive openArchivedElementaryMemoRecord openCurrentElementaryMemoRecord
+            sceneCardModalOverlay openSceneCardsFromAnyPage toggleSceneInputMode sceneModeToggleBtn kinderSceneGrid sceneMemoInput mainPageScreen
+          )
+          for term in "${terms[@]}"; do
+            echo "===== $term ====="
+            grep -RInF --exclude='audit-elementary-archive-scene-card.yml' --exclude-dir='.git' "$term" . || true
+          done
+          echo '===== candidate file sizes ====='
+          wc -lc olli-record-editor-core.js observation-editor-ui.js observation-editor.css elementary-analysis.js kinder-feedback-ui.js kinder-feedback.js kinder-feedback.css olli-feedback-runtime.js index.html
