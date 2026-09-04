@@ -22,5 +22,24 @@ jobs:
             echo "===== $term ====="
             grep -RInF --exclude='audit-elementary-archive-scene-card.yml' --exclude-dir='.git' "$term" . || true
           done
+      - name: Audit editor structure
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          text=Path('olli-record-editor-core.js').read_text(encoding='utf-8')
+          lines=text.splitlines()
+          print('LINE_COUNT', len(lines))
+          print('BYTE_COUNT', len(text.encode('utf-8')))
+          print('DECLARATIONS')
+          for i,line in enumerate(lines,1):
+              if re.match(r'^(?:async\s+)?function\s+[A-Za-z_$][\w$]*\s*\(', line) or re.match(r'^(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*=', line):
+                  print(f'{i}: {line[:180]}')
+          print('COMMENTS')
+          for i,line in enumerate(lines,1):
+              s=line.strip()
+              if s.startswith('//') or s.startswith('/*'):
+                  print(f'{i}: {s[:180]}')
+          PY
           echo '===== candidate file sizes ====='
           wc -lc olli-record-editor-core.js observation-editor-ui.js observation-editor.css elementary-analysis.js kinder-feedback-ui.js kinder-feedback.js kinder-feedback.css olli-feedback-runtime.js index.html
