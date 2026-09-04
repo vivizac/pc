@@ -424,12 +424,12 @@
     const regularHtml = regular.map((item) => {
       const scheduled = scheduledChangeForSource(item.id);
       const scheduleText = scheduled ? `<span class="olliTtReservation">◷ ${shortDate(scheduled.effective_date)} ${scheduled.change_type === 'remove' ? '삭제' : '이동'} 예정</span>` : '';
-      const attended = attendanceMarked(item.student_id, date, time, classGroup, 'regular');
+      const attended = isToday(date) && attendanceMarked(item.student_id, date, time, classGroup, 'regular');
       return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${time}" data-class-group="${esc(classGroup)}">${esc(item.student_name)}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
     }).join('');
     const waitHtml = waits.map((item) => `<button type="button" class="olliTtStudent wait" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}"><span class="olliTtStudentTag">대기</span>${esc(item.student_name)}</button>`).join('');
     const makeupHtml = makeups.map((item) => {
-      const attended = attendanceMarked(item.student_id, date, time, classGroup, 'makeup');
+      const attended = isToday(date) && attendanceMarked(item.student_id, date, time, classGroup, 'makeup');
       return `<div class="olliTtStudent makeup${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${time}" data-class-group="${esc(classGroup)}"><span class="olliTtStudentTag">보강</span>${esc(item.student_name)}</button><button type="button" class="olliTtStudentMore" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}" aria-label="${esc(item.student_name)} 보강 설정">☰</button></div>`;
     }).join('');
     return `<div class="olliTtEntries">${regularHtml}${waitHtml}${makeupHtml}</div>`;
