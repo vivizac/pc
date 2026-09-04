@@ -1,16 +1,16 @@
 # OLLI PC 모듈 안내
 
-PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한다. `index.html`은 공통 화면 마크업과 아직 분리되지 않은 공통 기능을 유지하며, 분리된 기능은 각 모듈이 담당한다.
+PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한다. `index.html`은 로그인·공통 데이터·공통 화면 연결과 아직 분리되지 않은 레거시 기능을 유지하고, PC 기능과 관찰/피드백 공용 기능의 실제 동작은 각 모듈이 담당한다.
 
 | 수정 대상 | JavaScript | CSS |
 |---|---|---|
 | 사이드바·상단 헤더·화면 전환 | `pc-shell.js` | `pc-shell.css` |
-| PC 시작 페이지 | `pc-start-page.js` | - |
 | 학생관리·할 일·상담예정 학생 영역 | `pc-student-management.js` | `pc-student-management.css` |
-| 성향기록부·학생 명단·관찰기록 패널·공용 기록 화면 임베드 | `pc-attendance.js` | `pc-attendance.css` |
-| 초등 관찰 분석·분석 이력·분석 카드 | `elementary-analysis.js` | 기존 공통 스타일 |
-| 초등 관찰기록 편집·자동저장·피드백 생성·관찰 관련 알림 | `observation-memo-core.js` | 기존 공통 스타일 |
-| 유치부 1분 피드백 | `kinder-feedback.js` | `kinder-feedback.css` |
+| 성향기록부·학생 명단·관찰기록 패널·공용 에디터 임베드 | `pc-attendance.js` | `pc-attendance.css` |
+| 초등 관찰기록 공용 DOM | `observation-editor-ui.js` | `observation-editor.css` |
+| 초등 관찰기록 저장·자동저장·보관함·피드백 연결 | `observation-memo-core.js` | `observation-editor.css` |
+| 초등 오늘의 분석·분석 이력·상세보기 | `elementary-analysis.js` | `elementary-analysis-ui.css` |
+| 유치부 1분 피드백 공용 UI·기능 | `kinder-feedback-ui.js`, `kinder-feedback.js` | `kinder-feedback.css` |
 | 시간표 화면·팝업 | `pc-timetable.js` | `pc-timetable.css` |
 | 시간표 데이터 호출·변경 이력·복구 | `pc-timetable-service.js` | - |
 | 상담설문 | `consultation-survey.js`, `consultation-survey-core.js` | `consultation-survey.css` |
@@ -18,16 +18,39 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 ## 공통 연결 원칙
 
 - `pc-shell.js`는 현재 메뉴와 공통 검색값을 보관하고 각 기능 모듈의 `open`, `renderContext`를 호출한다.
-- PC 시작 페이지는 `pc-start-page.js`가 관리하며 `academy`(학생관리), `attendance`(성향기록부), `schedule`(시간표 • 출석부) 세 화면만 제공한다. 기존 관찰노트·1분 피드백 시작값은 PC에서 성향기록부로 호환 변환한다.
 - 메뉴를 열 때 로컬 캐시를 먼저 그려 화면을 즉시 전환하고, Supabase 확인은 백그라운드에서 실행한다. 서버 내용이 실제로 달라졌을 때만 현재 화면을 다시 그린다.
 - PC 화면의 관찰기록 입력은 별도 `관찰노트` 메뉴를 사용하지 않고 `성향기록부` 안에서 처리한다.
 - 기존 `observation`, `feedback` PC route 호출은 `pc-shell.js`에서 `attendance`(성향기록부)로 흡수한다.
 - 초등 관찰기록은 기존 `studentMemoScreen`, 유치부 1분 피드백은 기존 `kinderChatFeedbackScreen`을 복제하지 않고 `pc-attendance.js`가 성향기록부 카드 안으로 이동해 재사용한다.
-- 초등 분석 로직은 `elementary-analysis.js`, 관찰기록 편집·저장과 피드백 생성의 공용 로직은 `observation-memo-core.js`, 유치부 1분 피드백 로직과 전용 스타일은 `kinder-feedback.js` / `kinder-feedback.css`로 분리되어 있다.
-- 화면 DOM 중 아직 공용으로 사용하는 `studentMemoScreen`, `kinderChatFeedbackScreen` 마크업과 일부 공통 스타일은 `index.html`에 남아 있다. 기능 모듈을 분리해도 이 DOM을 임의로 삭제하지 않는다.
-- 로그인 세션, `academy_id`, 학생 원본 데이터, Supabase 저장 함수는 공통 기존 코드를 그대로 사용한다.
-- 기능을 수정할 때 다른 모듈 코드를 복사하지 않는다. 공통 연결이 필요하면 기존 공개 함수 또는 공용 모듈을 재사용한다.
+- `studentMemoScreen`과 초등 분석 모달의 정적 DOM은 더 이상 `index.html` 본문에 직접 두지 않고 `observation-editor-ui.js`가 원래 위치에서 동기적으로 주입한다.
+- 유치부 `kinderChatFeedbackScreen`과 관련 오버레이의 정적 DOM은 `kinder-feedback-ui.js`가 `kinder-feedback.js`보다 먼저 원래 위치에 주입한다.
+- 초등 분석의 선택값·이력·상세보기 함수는 `elementary-analysis.js`, 관찰 메모 저장/자동저장/피드백 연결은 `observation-memo-core.js`가 담당한다.
+- 로그인 세션, `academy_id`, 학생 원본 데이터, Supabase 공통 저장 함수는 기존 공통 코드를 그대로 사용한다.
+- 기능을 수정할 때 다른 모듈 코드를 복사하지 않는다. 공통 연결이 필요하면 기존 공개 함수나 `OlliPcCore`의 공개 함수만 사용한다.
+- 외부 UI 모듈은 현재 삽입 위치가 실행 순서를 보장하므로 임의로 `defer` 처리하거나 문서 맨 아래로 옮기지 않는다.
 - 시간표와 상담설문은 독립 모듈 상태를 유지하며 PC 셸의 메뉴 전환 함수만 연결한다.
+
+## 관찰기록·피드백 모듈 경계
+
+### 초등 관찰기록
+
+- `observation-editor-ui.js`: 학생 메모 화면, 분석 설문 모달, 분석 상세보기 모달의 DOM 템플릿.
+- `observation-editor.css`: 초등 관찰기록 상단바, 하단 버튼, 학생 선택/보관함 등 에디터 UI 스타일.
+- `observation-memo-core.js`: 학생 전환, 메모 자동저장, Supabase 동기화, 보관함, 피드백 생성 연결.
+- `elementary-analysis.js`: 분석 선택값, 분석 이력, 요약 카드, 상세보기 로직.
+- `elementary-analysis-ui.css`: 분석 바텀시트와 요약 카드 스타일.
+
+### 유치부 1분 피드백
+
+- `kinder-feedback-ui.js`: `kinderChatFeedbackScreen`, 임시 보관함, 학생 선택, 성장 피드백 설문 오버레이 DOM.
+- `kinder-feedback.js`: 초안, 키워드 질문, 사진, 저장, 피드백 생성, 성장 피드백 동작.
+- `kinder-feedback.css`: 1분 피드백 전용 스타일.
+
+### 삭제 금지 원칙
+
+- 사이드바에서 `관찰노트` 메뉴를 제거했다고 해서 관찰기록 엔진을 삭제하면 안 된다.
+- 성향기록부가 초등 `studentMemoScreen`과 유치부 `kinderChatFeedbackScreen`을 공용 에디터로 계속 사용한다.
+- 레거시 화면을 없애고 싶다면 먼저 호출 경로를 검색해 공용 모듈을 사용하는 모든 화면이 정상 동작하는지 확인한 뒤 래퍼만 삭제한다.
 
 ## 시간표 변경 이력과 복구
 
@@ -45,20 +68,24 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 - 같은 요일·시간 안에서 A반과 B반 사이를 이동할 때는 이동 전 원본 수업을 중복 검사와 정원 계산에서 제외한다.
 - 유치부 시간표 아래의 픽업 시간표는 요일별 4시·5시 수업에 각각 최대 6명을 등록하며 학생 이름, 픽업 장소, 실제 픽업 시간을 저장한다.
 
-## 주요 로드 흐름
+## 로드 순서
 
-1. 기존 공통 `index.html` 스크립트 구간
-2. `elementary-analysis.js` (기존 분석 코드가 있던 실행 위치)
-3. `observation-memo-core.js` (기존 관찰기록 편집 코드가 있던 실행 위치)
-4. `kinder-feedback.js` (기존 유치부 1분 피드백 코드가 있던 실행 위치)
-5. 하단 PC 모듈: `pc-shell.js`, `pc-student-management.js`, `pc-attendance.js`, 시간표·상담설문 모듈
-6. `pc-start-page.js`
+PC 전용 모듈의 기본 순서는 다음과 같다.
+
+1. `pc-shell.js`
+2. `pc-student-management.js`
+3. `pc-attendance.js`
+4. 시간표·상담설문 모듈
+
+관찰기록/피드백 공용 모듈은 `index.html`에서 원래 기능이 있던 위치를 유지한다. 특히 UI 템플릿 파일은 대응 기능 JS보다 먼저 실행되어 DOM을 준비해야 한다.
 
 ## 수정 전 확인
 
 - 화면 이름과 담당 모듈을 이 문서에서 먼저 확인한다.
 - 데이터 구조 변경이 없는 UI 수정은 담당 JavaScript와 CSS만 연다.
-- 공통 학생 데이터나 저장 방식을 바꿀 때만 `index.html`과 Supabase 연결 코드를 추가로 확인한다.
-- `elementary-analysis.js`, `observation-memo-core.js`, `kinder-feedback.js`는 기존 전역 데이터와 공용 저장 함수를 재사용한다. 함수나 데이터를 새로 복제하지 않는다.
-- `index.html`에 남아 있는 관찰기록 DOM·공통 스타일을 분리할 때는 기능 JS와 별도의 단계로 진행한다.
+- 초등 관찰기록 UI를 수정할 때는 우선 `observation-editor-ui.js`, `observation-editor.css`, `elementary-analysis-ui.css`를 확인한다.
+- 초등 관찰기록 저장/분석 동작을 수정할 때는 `observation-memo-core.js`, `elementary-analysis.js`를 확인한다.
+- 유치부 1분 피드백은 `kinder-feedback-ui.js`, `kinder-feedback.js`, `kinder-feedback.css`에서 수정한다.
+- 공통 학생 데이터나 로그인·Supabase 기반 함수를 바꿀 때만 `index.html`과 공통 저장 코드를 추가로 확인한다.
+- `index.html`에 같은 기능을 다시 복사해 넣지 않는다. 새 UI/기능은 기존 모듈을 확장한다.
 - 한 기능씩 수정·검증·배포해 다른 화면의 회귀 범위를 줄인다.
