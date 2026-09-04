@@ -105,8 +105,7 @@ function pruneExpiredKinderChatFeedbackItems() {
     try {
       setTodayFeedbackItemsRaw(next);
     } catch(e) {}
-    try { updateNotificationButtons(); } catch(e) {}
-    try { renderTodayFeedbackPage(); } catch(e) {}
+try { renderTodayFeedbackPage(); } catch(e) {}
   }
 
   return changed;
@@ -1099,8 +1098,7 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
   });
   if (!changed) return;
   setTodayFeedbackItemsRaw(nextList);
-  try { updateNotificationButtons(); } catch(e) {}
-  try { renderTodayFeedbackPage(); } catch(e) {}
+try { renderTodayFeedbackPage(); } catch(e) {}
   try { updateKinderChatFeedbackBadge(); } catch(e) {}
   if (card) {
     card.classList.remove('editing');

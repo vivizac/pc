@@ -101,7 +101,7 @@
   }
 
   function hideOlliAppScreensForRoute(){
-    ['studentMemoScreen','kinderRiskMemoScreen','kinderChatFeedbackScreen','mainPageScreen','settingsPageScreen','settingsDetailScreen'].forEach((id) => {
+    ['studentMemoScreen','kinderChatFeedbackScreen','mainPageScreen','settingsPageScreen','settingsDetailScreen'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
     });

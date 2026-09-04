@@ -444,23 +444,6 @@ background: #FEFEFE ;
   gap: 12px;
   flex-direction: column;
 }
-.kinderMemoBox {
-  width: 100%;
-  min-height: 140px;
-  border: none;
-  outline: none;
-  resize: none;
-  overflow: hidden;
-  background: #fff;
-  color: #111;
-  font-size: calc(15px * var(--olli-text-scale));
-  line-height: 1.7;
-  font-family: inherit;
-  padding: 16px;
-  border-radius: 18px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
-}
-.kinderMemoBox::placeholder { color:#b8b8b8; }
 
 .kinderInfoModalField {
   margin-bottom: 14px;
@@ -651,47 +634,6 @@ background: #FEFEFE ;
   color:#fff;
   font-weight:600;
   cursor:pointer;
-}
-.kinderRiskInfoPanel {
-  margin-top: 2px;
-  padding: 0;
-  background: #fff;
-}
-.kinderRiskInfoTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-.kinderRiskInfoTitle {
-  font-size: calc(13px * var(--olli-text-scale));
-  font-weight: 600;
-  color: #111;
-  line-height: 1.35;
-  letter-spacing: -0.03em;
-}
-.kinderRiskInfoText {
-  margin-top: 4px;
-  font-size: calc(12px * var(--olli-text-scale));
-  font-weight: 400;
-  color: #888;
-  line-height: 1.45;
-  letter-spacing: -0.03em;
-}
-.kinderRiskInfoLinkBtn {
-  flex: 0 0 auto;
-  min-width: 88px;
-  height: 34px;
-  border: none;
-  border-radius: 999px;
-  background: #111;
-  color: #fff;
-  padding: 0 13px;
-  font-family: inherit;
-  font-size: calc(12px * var(--olli-text-scale));
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  cursor: pointer;
 }
 
 
@@ -920,36 +862,8 @@ background: #FEFEFE ;
 }
 .headerActionPill .headerPillBtn:first-child svg { width: 24px; height: 24px; }
 .headerActionPill .headerPillBtn:nth-child(2) svg { width: 27px; height: 27px; }
-
-.recordNotifyBtn {
-  width: 46px;
-  height: 46px;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: #111;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 0;
-  position: relative;
-}
-.recordNotifyBtn svg {
-  width: 27px;
-  height: 27px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.recordNotifyBtn:active,
-.recordNotifyBtn.pillPressed { background: #eeeeee; }
 @media (hover:hover) {
-  .recordNotifyBtn:hover { background: #f1f1f1; }
 }
-.recordNotifyBtn:focus-visible { outline: none; background: #eeeeee; }
 .notificationDot {
   position: absolute;
   top: 3px;
@@ -972,8 +886,6 @@ background: #FEFEFE ;
   justify-content: center;
 }
 .hasNotifications .notificationDot { display: inline-flex; }
-.recordDoorDot { display: none; }
-.btnMenu.hasRiskNotifications .recordDoorDot { display: block; }
 .moreIcon {
   font-size: calc(18px * var(--olli-text-scale));
   font-weight: 700;
@@ -1026,7 +938,6 @@ background: #FEFEFE ;
 
 .btnMenu .recordDoorIcon { width: 34px; height: 34px; color: #111; }
 .btnMenu .recordDoorIcon path { stroke-width: 1.55; }
-.btnMenu .recordDoorDot { filter: none; }
 
 .flipBtn { position: relative; perspective: 900px; overflow: hidden; }
 .flipInner {
@@ -2734,51 +2645,10 @@ body {
 </style>
 <link rel="stylesheet" href="observation-editor.css">
 <style>
-/* 2026-04-23 추가 수정: PUSH 버튼 */
-
-.kinderRiskPushBtn {
-  width: var(--vivizac-top-h) ;
-  min-width: var(--vivizac-top-h) ;
-  height: var(--vivizac-top-h) ;
-  min-height: var(--vivizac-top-h) ;
-  padding: 0 ;
-  border: 1px solid rgba(255,255,255,0.96) ;
-  border-radius: 999px ;
-  background:#fff ;
-  color: #111 ;
-  box-shadow: var(--vivizac-soft-shadow) ;
-  backdrop-filter: blur(20px) saturate(1.18);
-  -webkit-backdrop-filter: blur(20px) saturate(1.18);
-  font-family: inherit ;
-  font-size: 0 ;
-  font-weight: 700 ;
-  letter-spacing: -0.02em ;
-  display: inline-flex ;
-  align-items: center ;
-  justify-content: center ;
-  cursor: pointer ;
-  white-space: nowrap ;
-}
-.kinderRiskPushBtn .kinderRiskPushIcon {
-  width: 24px ;
-  height: 24px ;
-  stroke: currentColor ;
-  fill: none ;
-  stroke-width: 1.85 ;
-  stroke-linecap: round ;
-  stroke-linejoin: round ;
-}
 @media (max-width: 430px) {
-  .kinderRiskPushBtn {
-    min-width: var(--vivizac-top-h) ;
-    padding-left: 0 ;
-    padding-right: 0 ;
-    font-size: 0 ;
-  }
 }
 
 /* 2026-04-23 추가 수정: 유치부 관찰노트 전용 페이지 + memo 박스 확장 + 부모박스 보강 */
-#kinderRiskMemoScreen .kinderRiskMemoPageInner {
   width: 100%;
   max-width: 860px;
   height: 100%;
@@ -2788,16 +2658,12 @@ body {
   background: #fff;
   overflow: hidden;
 }
-#kinderRiskMemoScreen .kinderRiskHeader {
   flex-shrink: 0;
 }
-#kinderRiskMemoScreen .memoHeaderLeftActions {
   max-width: calc(100% - 174px) ;
 }
-#kinderRiskMemoScreen .kinderRiskNamePill {
   cursor: pointer;
 }
-#kinderRiskMemoScreen #kinderMemoWrap {
   flex: 1 1 auto;
   min-height: 0;
   padding: 12px 16px 24px ;
@@ -2807,11 +2673,9 @@ body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
-#kinderRiskMemoScreen .kinderMemoBox {
   border: 1px solid #ededed ;
   box-shadow: none ;
 }
-#kinderRiskMemoScreen .kinderMemoFreeBox {
   flex: 1 1 auto ;
   min-height: 220px;
   height: auto ;
@@ -2819,11 +2683,8 @@ body {
 
 
 /* 유치부 관찰노트 전용 페이지: 상단 버튼/이름/학생정보 아이콘 */
-#kinderRiskMemoScreen,
-#kinderRiskMemoScreen .kinderRiskMemoPageInner {
   background: #FEFEFE ;
 }
-#kinderRiskMemoScreen .kinderRiskHeader {
   height: 66px ;
   min-height: 66px ;
   padding: 18px 16px 8px ;
@@ -2833,21 +2694,16 @@ body {
   gap: 8px ;
   background: #FEFEFE ;
 }
-#kinderRiskMemoScreen .memoHeaderLeftActions,
-#kinderRiskMemoScreen .memoHeaderActions {
   display: flex ;
   align-items: center ;
   gap: 8px ;
   min-width: 0 ;
 }
-#kinderRiskMemoScreen .memoHeaderLeftActions {
   flex: 1 1 auto ;
   max-width: none ;
 }
-#kinderRiskMemoScreen .memoHeaderActions {
   flex: 0 0 auto ;
 }
-#kinderRiskMemoScreen .memoRecordRoomBtn {
   width: 46px ;
   min-width: 46px ;
   height: 46px ;
@@ -2866,7 +2722,6 @@ body {
   font-family: inherit ;
   flex-shrink: 0 ;
 }
-#kinderRiskMemoScreen .memoRecordRoomBtn svg {
   width: 27px ;
   height: 27px ;
   stroke: currentColor ;
@@ -2875,7 +2730,6 @@ body {
   stroke-linecap: round ;
   stroke-linejoin: round ;
 }
-#kinderRiskMemoScreen .kinderRiskNamePill {
   height: 46px ;
   min-width: 0 ;
   max-width: 100% ;
@@ -2890,11 +2744,9 @@ body {
   gap: 8px ;
   flex: 1 1 auto ;
 }
-#kinderRiskMemoScreen #kinderRiskStudentName {
   color: #0A84FF ;
   font-weight: 700 ;
 }
-#kinderRiskMemoScreen #kinderRiskSignalCircle {
   display: inline-flex;
   width: 12px ;
   height: 12px ;
@@ -2904,10 +2756,6 @@ body {
   background: #5A96FF ;
   flex-shrink: 0 ;
 }
-#kinderRiskMemoScreen #kinderRiskSignalCircle.level-1 { background:#FFD88A ; border-color:#FFD88A ; }
-#kinderRiskMemoScreen #kinderRiskSignalCircle.level-2 { background:#FFCDB8 ; border-color:#FFCDB8 ; }
-#kinderRiskMemoScreen #kinderRiskSignalCircle.level-3 { background:#FFB8B8 ; border-color:#FFB8B8 ; }
-#kinderRiskMemoScreen .memoStudentInfoBtn .memoInfoDots {
   color: #111 ;
   font-size: calc(19px * var(--olli-text-scale)) ;
   font-weight: 800 ;
@@ -2915,18 +2763,13 @@ body {
   letter-spacing: 1.6px ;
   transform: translateY(-2px) ;
 }
-#kinderRiskMemoScreen #kinderMemoWrap {
   background: #FEFEFE ;
 }
 @media (max-width: 430px) {
-  #kinderRiskMemoScreen .kinderRiskHeader { padding-left: 14px ; padding-right: 14px ; }
-  #kinderRiskMemoScreen .kinderRiskPushBtn { min-width: 54px ; padding-left: 10px ; padding-right: 10px ; }
-  #kinderRiskMemoScreen .kinderRiskNamePill { padding-left: 12px ; padding-right: 12px ; }
 }
 
 
-/* 2026-04-23 fix: 위험신호 동그라미 즉시 반영 + 유치부 관찰노트 상단 박스 재정렬 */
-#kinderRiskMemoScreen .kinderRiskNamePill {
+
   flex: 0 1 auto ;
   width: auto ;
   min-width: 0 ;
@@ -2942,7 +2785,6 @@ body {
   -webkit-backdrop-filter: blur(20px) saturate(1.18);
   box-sizing: border-box ;
 }
-#kinderRiskMemoScreen #kinderRiskStudentName {
   max-width: 96px ;
   overflow: hidden ;
   text-overflow: ellipsis ;
@@ -2951,7 +2793,6 @@ body {
   font-size: calc(14px * var(--olli-text-scale)) ;
   font-weight: 430 ;
 }
-#kinderRiskMemoScreen #kinderRiskSignalCircle {
   display: inline-flex ;
   width: 12px ;
   min-width: 12px ;
@@ -2960,15 +2801,12 @@ body {
   border: 1.5px solid #5A96FF ;
   background: #5A96FF ;
 }
-#kinderRiskMemoScreen #kinderRiskSignalCircle.level-1 {
   background: #FFD88A ;
   border-color: #FFD88A ;
 }
-#kinderRiskMemoScreen #kinderRiskSignalCircle.level-2 {
   background: #FFCDB8 ;
   border-color: #FFCDB8 ;
 }
-#kinderRiskMemoScreen #kinderRiskSignalCircle.level-3 {
   background: #FFB8B8 ;
   border-color: #FFB8B8 ;
 }
@@ -2978,14 +2816,10 @@ body {
   min-width: 0 ;
 }
 @media (max-width: 430px) {
-  #kinderRiskMemoScreen .kinderRiskNamePill { max-width: 132px ; padding-left: 12px ; padding-right: 12px ; }
-  #kinderRiskMemoScreen #kinderRiskStudentName { max-width: 78px ; }
 }
 
 
 /* 2026-04-23 root fix: 유치부 자동저장/상태표시/초등부 전환버튼/그룹아이콘 정리 */
-#kinderRiskMemoScreen .kinderRiskNamePill,
-#kinderRiskMemoScreen .kinderRiskPushBtn {
   height: 46px ;
   min-height: 46px ;
   border-radius: 999px ;
@@ -2996,13 +2830,11 @@ body {
   -webkit-backdrop-filter: blur(20px) saturate(1.18);
   box-sizing: border-box ;
 }
-#kinderRiskMemoScreen .kinderRiskNamePill {
   flex: 0 1 auto ;
   max-width: 150px ;
   padding: 0 14px ;
   gap: 8px ;
 }
-#kinderRiskMemoScreen #kinderRiskStudentName {
   color: #0A84FF ;
   font-size: calc(14px * var(--olli-text-scale)) ;
   font-weight: 500 ;
@@ -3142,7 +2974,6 @@ body {
 /* 키워드 버튼 활성 상태 복구 */
 
 /* 유치부 이름 버튼은 표시만 하고 클릭 팝업 없음 */
-#kinderRiskMemoScreen #kinderRiskStudentNameBtn {
   cursor: default ;
 }
 
@@ -3152,116 +2983,7 @@ body {
   background: #f7f7f7 ;
 }
 
-/* 알림함 */
-.notificationInboxOverlay {
-  z-index: 320;
-  align-items: flex-start;
-  justify-content: flex-start;
-  padding: 0;
-  background: transparent;
-  pointer-events: none;
-}
-.notificationInboxCard {
-  position: fixed;
-  top: var(--notification-inbox-top, calc(env(safe-area-inset-top, 0px) + 104px));
-  right: var(--notification-inbox-right, 32px);
-  width: min(64vw, 320px);
-  max-width: 320px;
-  height: auto;
-  max-height: min(70vh, 460px);
-  min-height: 0;
-  margin: 0;
-  padding: 18px 16px 16px;
-  border-radius: 26px;
-  box-shadow: 0 12px 28px rgba(0,0,0,0.10), 0 4px 10px rgba(0,0,0,0.05);
-  display: flex;
-  flex-direction: column;
-  pointer-events: auto;
-}
-.notificationInboxHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-.notificationInboxClose {
-  width: 38px;
-  height: 38px;
-  border: none;
-  border-radius: 50%;
-  background: #f5f5f5;
-  color: #777;
-  font-size: calc(26px * var(--olli-text-scale));
-  line-height: 1;
-  cursor: pointer;
-}
-.notificationInboxList {
-  flex: 0 1 auto;
-  max-height: calc(min(70vh, 460px) - 82px);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-top: 4px;
-}
-.notificationInboxEmpty {
-  padding: 20px 6px 8px;
-  text-align: center;
-  color: #999;
-  font-size: calc(14px * var(--olli-text-scale));
-}
-.notificationInboxItem {
-  width: 100%;
-  border: none;
-  background: #f8f8f8;
-  border-radius: 16px;
-  padding: 14px 14px 12px;
-  text-align: left;
-  cursor: pointer;
-  margin-bottom: 10px;
-  font-family: inherit;
-}
-.notificationInboxItem.unread {
-  background: #f4f4f4;
-}
-.notificationInboxTop {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  min-width: 0;
-}
-.notificationInboxName {
-  font-size: calc(15px * var(--olli-text-scale));
-  font-weight: 700;
-  color: #111;
-  margin-bottom: 0;
-  line-height: 1.25;
-  flex-shrink: 0;
-}
-.notificationInboxText {
-  font-size: calc(15px * var(--olli-text-scale));
-  color: #444;
-  line-height: 1.45;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.notificationInboxDate {
-  margin-top: 12px;
-  font-size: calc(13px * var(--olli-text-scale));
-  color: #9b9b9b;
-}
-
 @media (max-width: 430px) {
-  .notificationInboxOverlay {
-    padding: 0;
-  }
-  .notificationInboxCard {
-    width: min(70vw, 300px);
-    min-width: 216px;
-    height: auto;
-    max-height: min(70vh, 430px);
-  }
 }
 
 /* 페이드 위치 재설정: 상단 버튼이 아니라 라인/구분선 바로 아래 */
@@ -3452,73 +3174,55 @@ body {
 /* 2026-04-24: 초등부 분석 상세 카드/모달 */
 
 /* 2026-04-24 refined: 유치부 관찰노트 카드형 통합 레이아웃 + 깔끔한 아이콘 + 노랑/주황/빨강 단계 */
-#kinderRiskMemoScreen {
   --risk-stage-color: #5A96FF;
   --risk-stage-soft: #EDF4FF;
   background: #f5f5f7 ;
 }
-#kinderRiskMemoScreen.risk-level-0 { --risk-stage-color: #5A96FF; --risk-stage-soft: #F2F7FF; }
-#kinderRiskMemoScreen.risk-level-1 { --risk-stage-color: #FFD88A; --risk-stage-soft: #FFF6E1; }
-#kinderRiskMemoScreen.risk-level-2 { --risk-stage-color: #FFCDB8; --risk-stage-soft: #FFF0EA; }
-#kinderRiskMemoScreen.risk-level-3 { --risk-stage-color: #FFB8B8; --risk-stage-soft: #FFECEC; }
-#kinderRiskMemoScreen .kinderRiskMemoPageInner {
   background: #f5f5f7 ;
 }
-#kinderRiskMemoScreen .kinderRiskHeader {
   background: rgba(245,245,247,0.94) ;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
-#kinderRiskMemoScreen #kinderMemoWrap {
   padding: 12px 16px 30px ;
   gap: 14px ;
   background: #f5f5f7 ;
 }
-#kinderRiskMemoScreen .kinderRiskIntroCard,
-#kinderRiskMemoScreen .kinderRiskCombinedCard {
   width: 100%;
   background: #fff;
   border: 1px solid rgba(0,0,0,0.04);
   box-shadow: 0 16px 34px rgba(0,0,0,0.07), 0 4px 12px rgba(0,0,0,0.04);
 }
-#kinderRiskMemoScreen .kinderRiskIntroCard {
   border-radius: 28px;
   padding: 18px;
 }
-#kinderRiskMemoScreen .kinderRiskIntroTop {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
-#kinderRiskMemoScreen .kinderRiskIntroLead {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 14px;
 }
-#kinderRiskMemoScreen .kinderRiskHeroIcon {
   width: 58px;
   height: 58px;
   flex-shrink: 0;
 }
-#kinderRiskMemoScreen .kinderRiskHeroIcon svg {
   width: 100%;
   height: 100%;
   display: block;
 }
-#kinderRiskMemoScreen .kinderRiskHeroIcon .riskIconBg {
   fill: var(--risk-stage-color);
 }
-#kinderRiskMemoScreen .kinderRiskIntroTitle {
   font-size: calc(22px * var(--olli-text-scale));
   line-height: 1.16;
   letter-spacing: -0.04em;
   font-weight: 700;
   color: #111;
 }
-#kinderRiskMemoScreen .kinderRiskIntroDesc {
   margin-top: 5px;
   font-size: calc(13px * var(--olli-text-scale));
   line-height: 1.55;
@@ -3526,7 +3230,6 @@ body {
   color: #767676;
   font-weight: 500;
 }
-#kinderRiskMemoScreen .kinderRiskStageBadge {
   flex-shrink: 0;
   min-height: 34px;
   padding: 0 12px;
@@ -3540,7 +3243,6 @@ body {
   font-weight: 700;
   white-space: nowrap;
 }
-#kinderRiskMemoScreen .kinderRiskIntroGuide {
   margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid #efefef;
@@ -3550,17 +3252,13 @@ body {
   color: #9a9a9a;
   font-weight: 500;
 }
-#kinderRiskMemoScreen .kinderRiskCombinedCard {
   border-radius: 30px;
   overflow: hidden;
 }
-#kinderRiskMemoScreen .kinderRiskSection {
   padding: 18px 18px 16px;
 }
-#kinderRiskMemoScreen .kinderRiskSection + .kinderRiskSection {
   border-top: 1px solid #ececec;
 }
-#kinderRiskMemoScreen .kinderRiskSectionTitle {
   font-size: calc(17px * var(--olli-text-scale));
   line-height: 1.2;
   letter-spacing: -0.04em;
@@ -3568,20 +3266,17 @@ body {
   color: #111;
   margin-bottom: 10px;
 }
-#kinderRiskMemoScreen .kinderRiskSectionTitle span {
   margin-left: 6px;
   font-size: calc(13px * var(--olli-text-scale));
   font-weight: 600;
   color: #8f8f8f;
 }
-#kinderRiskMemoScreen .kinderRiskMemoHelp {
   margin-bottom: 10px;
   font-size: calc(12px * var(--olli-text-scale));
   line-height: 1.5;
   color: #999;
   font-weight: 500;
 }
-#kinderRiskMemoScreen .kinderMemoBox {
   width: 100%;
   min-height: 76px;
   padding: 0;
@@ -3594,64 +3289,48 @@ body {
   line-height: 1.7;
   font-weight: 500;
 }
-#kinderRiskMemoScreen .kinderMemoBox::placeholder {
   color: #b8b8b8;
 }
-#kinderRiskMemoScreen #kinderMemoBox4 {
   min-height: 230px ;
 }
-#kinderRiskMemoScreen .kinderRiskIntroSection {
   padding-top: 20px;
   padding-bottom: 16px;
 }
-#kinderRiskMemoScreen .kinderRiskIntroSection .kinderRiskIntroGuide {
   margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid #efefef;
 }
 @media (max-width: 430px) {
-  #kinderRiskMemoScreen #kinderMemoWrap {
     padding-left: 12px ;
     padding-right: 12px ;
     padding-bottom: 24px;
   }
-  #kinderRiskMemoScreen .kinderRiskIntroCard {
     padding: 17px;
     border-radius: 26px;
   }
-  #kinderRiskMemoScreen .kinderRiskCombinedCard {
     border-radius: 28px;
   }
-  #kinderRiskMemoScreen .kinderRiskIntroSection {
     padding-top: 18px;
   }
-  #kinderRiskMemoScreen .kinderRiskSection {
     padding: 17px 16px 15px;
   }
-  #kinderRiskMemoScreen .kinderRiskIntroTop {
     align-items: flex-start;
   }
-  #kinderRiskMemoScreen .kinderRiskHeroIcon {
     width: 54px;
     height: 54px;
   }
-  #kinderRiskMemoScreen .kinderRiskIntroTitle {
     font-size: calc(21px * var(--olli-text-scale));
   }
 }
 
 
-/* 2026-04-24: 유치부 위험신호 페이지 본문을 제공 시안 기반으로 재구성 */
-#kinderRiskMemoScreen,
-#kinderRiskMemoScreen .kinderRiskMemoPageInner {
+
   background: #f7f7f5 ;
 }
-#kinderRiskMemoScreen .kinderRiskHeader {
   background: rgba(247,247,245,0.94) ;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
-#kinderRiskMemoScreen #kinderMemoWrap {
   flex: 1 1 auto;
   min-height: 0;
   padding: 0;
@@ -3660,7 +3339,6 @@ body {
   -webkit-overflow-scrolling: touch;
   background: #f7f7f5 ;
 }
-#kinderRiskMemoScreen .signal-page {
   width: 100%;
   min-height: 100%;
   padding: 18px 18px 42px;
@@ -3668,65 +3346,53 @@ body {
   color: #222;
   font-family: -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif;
 }
-#kinderRiskMemoScreen .signal-header h1 {
   margin: 0;
   font-size: calc(24px * var(--olli-text-scale));
   font-weight: 750;
   letter-spacing: -0.6px;
 }
-#kinderRiskMemoScreen .signal-header p {
   margin: 7px 0 18px;
   font-size: calc(13px * var(--olli-text-scale));
   color: #8b8b8b;
 }
-#kinderRiskMemoScreen .signal-status-card {
   background: #fff;
   border-radius: 28px;
   padding: 22px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.055);
   margin-bottom: 16px;
 }
-#kinderRiskMemoScreen .signal-status-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-#kinderRiskMemoScreen .signal-status-top span {
   font-size: calc(13px * var(--olli-text-scale));
   color: #999;
 }
-#kinderRiskMemoScreen .signal-status-top strong {
   font-size: calc(13px * var(--olli-text-scale));
   padding: 6px 12px;
   border-radius: 999px;
   font-weight: 700;
 }
-#kinderRiskMemoScreen .signal-dots {
   display: flex;
   gap: 10px;
   margin: 23px 0 18px;
 }
-#kinderRiskMemoScreen .signal-dot {
   width: 33px;
   height: 33px;
   border-radius: 50%;
   background: #e7e7e7;
 }
-#kinderRiskMemoScreen .signal-dot.active {
   box-shadow: inset 0 -2px 4px rgba(0,0,0,0.08);
 }
-#kinderRiskMemoScreen .signal-status-text {
   margin: 0;
   font-size: calc(14.5px * var(--olli-text-scale));
   line-height: 1.65;
   letter-spacing: -0.25px;
 }
-#kinderRiskMemoScreen .signal-record-list {
   display: flex;
   flex-direction: column;
   gap: 11px;
 }
-#kinderRiskMemoScreen .signal-record-card {
   display: flex;
   gap: 14px;
   background: #fff;
@@ -3734,31 +3400,25 @@ body {
   padding: 17px;
   box-shadow: 0 6px 18px rgba(0,0,0,0.04);
 }
-#kinderRiskMemoScreen .signal-record-num {
   font-size: calc(17px * var(--olli-text-scale));
   font-weight: 700;
   min-width: 32px;
   letter-spacing: -0.3px;
 }
-#kinderRiskMemoScreen .signal-record-content {
   border-left: 1px solid #eeeeee;
   padding-left: 13px;
   flex: 1 1 auto;
   min-width: 0;
 }
-#kinderRiskMemoScreen .signal-date {
   display: inline-block;
   font-size: calc(12px * var(--olli-text-scale));
   color: #aaa;
   margin-bottom: 8px;
 }
-#kinderRiskMemoScreen .signal-record-card.empty {
   opacity: 0.5;
 }
-#kinderRiskMemoScreen .signal-record-card.empty .signal-record-num {
   color: #c9c9c9 ;
 }
-#kinderRiskMemoScreen .signal-record-card .kinderMemoBox {
   width: 100%;
   min-height: 58px ;
   height: auto;
@@ -3778,43 +3438,36 @@ body {
   color: #222 ;
   font-family: inherit;
 }
-#kinderRiskMemoScreen .signal-record-card .kinderMemoBox::placeholder {
   color: #b4b4b4;
 }
-#kinderRiskMemoScreen .director-check-card {
   margin-top: 16px;
   background: #fff;
   border-radius: 28px;
   padding: 20px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.05);
 }
-#kinderRiskMemoScreen .director-check-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
 }
-#kinderRiskMemoScreen .director-check-title h2 {
   margin: 0;
   font-size: calc(17px * var(--olli-text-scale));
   font-weight: 750;
   letter-spacing: -0.35px;
 }
-#kinderRiskMemoScreen .director-check-title p {
   margin: 5px 0 0;
   font-size: calc(12.5px * var(--olli-text-scale));
   color: #9a9a9a;
   line-height: 1.45;
 }
-#kinderRiskMemoScreen .director-check-badge {
   flex-shrink: 0;
   font-size: calc(12px * var(--olli-text-scale));
   padding: 6px 10px;
   border-radius: 999px;
   font-weight: 600;
 }
-#kinderRiskMemoScreen .director-memo-block {
   background: #fafaf8;
   border-radius: 20px;
   padding: 15px;
@@ -3822,7 +3475,6 @@ body {
   border: 1px solid #eeeeea;
   overflow: visible;
 }
-#kinderRiskMemoScreen .director-memo-block label {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -3831,13 +3483,11 @@ body {
   color: #555;
   font-weight: 650;
 }
-#kinderRiskMemoScreen .director-memo-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-#kinderRiskMemoScreen .director-memo-block .kinderMemoBox {
   width: 100%;
   min-height: 76px ;
   height: auto;
@@ -3858,64 +3508,47 @@ body {
   word-break: keep-all;
   overflow-wrap: break-word;
 }
-#kinderRiskMemoScreen .director-memo-block .kinderMemoBox::placeholder {
   color: #b4b4b4;
 }
-#kinderRiskMemoScreen .signal-level-green .signal-status-top strong {
   color: #8A6A16;
   background: #FFF6E1;
 }
-#kinderRiskMemoScreen .signal-level-green .signal-dot.active {
   background: #FFD88A;
 }
-#kinderRiskMemoScreen .signal-level-green ~ .signal-record-list .signal-record-num {
   color: #C18A24;
 }
-#kinderRiskMemoScreen .signal-level-green ~ .director-check-card .director-check-badge {
   color: #8A6A16;
   background: #FFF6E1;
 }
-#kinderRiskMemoScreen .signal-level-green ~ .director-check-card .director-memo-dot {
   background: #FFD88A;
 }
-#kinderRiskMemoScreen .signal-level-yellow .signal-status-top strong {
   color: #A45B34;
   background: #FFF0EA;
 }
-#kinderRiskMemoScreen .signal-level-yellow .signal-dot.active {
   background: #FFCDB8;
 }
-#kinderRiskMemoScreen .signal-level-yellow ~ .signal-record-list .signal-record-num {
   color: #C46E3C;
 }
-#kinderRiskMemoScreen .signal-level-yellow ~ .director-check-card .director-check-badge {
   color: #A45B34;
   background: #FFF0EA;
 }
-#kinderRiskMemoScreen .signal-level-yellow ~ .director-check-card .director-memo-dot {
   background: #FFCDB8;
 }
-#kinderRiskMemoScreen .signal-level-red .signal-status-top strong {
   color: #A64040;
   background: #FFECEC;
 }
-#kinderRiskMemoScreen .signal-level-red .signal-dot.active {
   background: #FFB8B8;
 }
-#kinderRiskMemoScreen .signal-level-red ~ .signal-record-list .signal-record-num {
   color: #C84F4F;
 }
-#kinderRiskMemoScreen .signal-level-red ~ .director-check-card .director-check-badge {
   color: #A64040;
   background: #FFECEC;
 }
-#kinderRiskMemoScreen .signal-level-red ~ .director-check-card .director-memo-dot {
   background: #FFB8B8;
 }
 
 
 /* 2026-04-24 fix: 관찰노트 상단바 중앙정렬/학생명 앞 원 삭제/상단 신호기록 제목 삭제 */
-#kinderRiskMemoScreen .kinderRiskHeader {
   height: 66px ;
   min-height: 66px ;
   padding: 10px 16px ;
@@ -3924,60 +3557,35 @@ body {
   justify-content: space-between ;
   box-sizing: border-box ;
 }
-#kinderRiskMemoScreen .memoHeaderLeftActions,
-#kinderRiskMemoScreen .memoHeaderActions {
   height: 46px ;
   display: flex ;
   align-items: center ;
 }
-#kinderRiskMemoScreen .memoRecordRoomBtn,
-#kinderRiskMemoScreen .kinderRiskNamePill,
-#kinderRiskMemoScreen .kinderRiskPushBtn,
-#kinderRiskMemoScreen .memoStudentInfoBtn {
   align-self: center ;
 }
-#kinderRiskMemoScreen #kinderRiskSignalCircle {
   display: none ;
 }
-#kinderRiskMemoScreen .signal-page {
   padding-top: 12px ;
 }
-#kinderRiskMemoScreen .signal-header {
   display: none ;
 }
-#kinderRiskMemoScreen .director-check-badge {
   display: none ;
 }
 
 
 /* 2026-04-25 fix: 텍스트 입력 시 모바일 기본 회색 터치/포커스 하이라이트 제거 */
-#kinderRiskMemoScreen .signal-record-card,
-#kinderRiskMemoScreen .signal-record-content,
-#kinderRiskMemoScreen .director-memo-block,
-#kinderRiskMemoScreen .kinderMemoBox,
-#kinderRiskMemoScreen textarea,
 .signal-page .signal-record-card,
 .signal-page .signal-record-content,
 .signal-page .director-memo-block,
 .signal-page textarea {
   -webkit-tap-highlight-color: transparent ;
 }
-#kinderRiskMemoScreen .kinderMemoBox:focus,
-#kinderRiskMemoScreen .kinderMemoBox:active,
-#kinderRiskMemoScreen textarea:focus,
-#kinderRiskMemoScreen textarea:active,
 .signal-page textarea:focus,
 .signal-page textarea:active {
   outline: none ;
   background: transparent ;
   box-shadow: none ;
 }
-#kinderRiskMemoScreen .signal-record-card:active,
-#kinderRiskMemoScreen .signal-record-card:focus,
-#kinderRiskMemoScreen .signal-record-card:focus-within,
-#kinderRiskMemoScreen .director-memo-block:active,
-#kinderRiskMemoScreen .director-memo-block:focus,
-#kinderRiskMemoScreen .director-memo-block:focus-within,
 .signal-page .signal-record-card:active,
 .signal-page .signal-record-card:focus,
 .signal-page .signal-record-card:focus-within,
@@ -3986,31 +3594,23 @@ body {
 .signal-page .director-memo-block:focus-within {
   outline: none ;
 }
-#kinderRiskMemoScreen .signal-record-card.empty:focus-within,
 .signal-page .signal-record-card.empty:focus-within {
   opacity: 1 ;
 }
 
 
 /* 2026-04-25: 상단 학생이름 버튼 터치/포커스 회색 효과 제거 */
-#kinderRiskMemoScreen .kinderRiskNamePill,
-#kinderRiskMemoScreen .kinderRiskNamePill:focus,
-#kinderRiskMemoScreen .kinderRiskNamePill:focus-visible,
-#kinderRiskMemoScreen .kinderRiskNamePill:active,
-#kinderRiskMemoScreen .kinderRiskNamePill:hover {
   outline: none ;
   box-shadow: var(--vivizac-soft-shadow) ;
   background:#fff ;
   -webkit-tap-highlight-color: transparent ;
 }
-#kinderRiskMemoScreen .kinderRiskNamePill * {
   -webkit-tap-highlight-color: transparent ;
 }
 
 
 /* 2026-04-25 update: 초등부/유치부 학생정보 아이콘을 사람 실루엣 아이콘으로 통일 */
 #studentMemoScreen .memoStudentInfoBtn .memoStudentInfoIcon,
-#kinderRiskMemoScreen .memoStudentInfoBtn .memoStudentInfoIcon {
   width: 24px ;
   height: 24px ;
   stroke: currentColor ;
@@ -4021,24 +3621,19 @@ body {
   display: block ;
 }
 #studentMemoScreen .memoStudentInfoBtn .memoInfoDots,
-#kinderRiskMemoScreen .memoStudentInfoBtn .memoInfoDots {
   display: none ;
 }
 #studentMemoScreen .memoStudentInfoBtn,
-#kinderRiskMemoScreen .memoStudentInfoBtn {
   -webkit-tap-highlight-color: transparent ;
 }
 #studentMemoScreen .memoStudentInfoBtn:focus,
 #studentMemoScreen .memoStudentInfoBtn:focus-visible,
 #studentMemoScreen .memoStudentInfoBtn:active,
-#kinderRiskMemoScreen .memoStudentInfoBtn:focus,
-#kinderRiskMemoScreen .memoStudentInfoBtn:focus-visible,
-#kinderRiskMemoScreen .memoStudentInfoBtn:active {
   outline: none ;
 }
 
 
-/* 2026-04-25 final merge: 유치부 1분 피드백 + 위험신호 v13 유지 */
+
 /* 장면카드 팝업 새 스타일 */
 .sceneCardModalOverlay { background:rgba(17,17,17,0.28) ; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); padding:18px 14px ; z-index:6000 ; }
 .sceneCardModalCard { width:min(580px,100%) ; max-height:min(88vh,900px) ; border-radius:30px ; background:#f7f7f5 ; border:1px solid rgba(0,0,0,0.04); box-shadow:0 28px 60px rgba(0,0,0,0.18),0 8px 18px rgba(0,0,0,0.08) ; padding:14px 14px 12px ; }
@@ -4145,11 +3740,7 @@ body {
   margin-top: revert ;
 }
 
-/* 유치부 위험신호 / 1분 피드백 상단바 공통 기준 */
-#kinderRiskMemoScreen .memoTopBar,
-#kinderRiskMemoScreen .memoHeader,
-#kinderRiskMemoScreen .memoTopHeader,
-#kinderRiskMemoScreen .memoPageTopBar{
+
   width: 100% ;
   max-width: none ;
   height: var(--vivizac-note-header-h) ;
@@ -4162,27 +3753,16 @@ body {
   -webkit-backdrop-filter: blur(14px);
 }
 
-#kinderRiskMemoScreen .memoTopLeft,
-#kinderRiskMemoScreen .memoHeaderLeft,
-#kinderRiskMemoScreen .memoTopbarLeft {
   display: inline-flex ;
   align-items: center ;
   gap: var(--vivizac-note-gap) ;
 }
-#kinderRiskMemoScreen .memoTopRight,
-#kinderRiskMemoScreen .memoHeaderRight,
-#kinderRiskMemoScreen .memoTopbarRight {
   display: inline-flex ;
   align-items: center ;
   gap: var(--vivizac-note-gap) ;
 }
 
-/* 버튼 크기 기준: 1분 피드백 + 유치부 위험신호만 */
-#kinderRiskMemoScreen .memoBackBtn,
-#kinderRiskMemoScreen .memoStudentInfoBtn,
-#kinderRiskMemoScreen .memoSwitchBtn,
-#kinderRiskMemoScreen .memoPushBtn,
-#kinderRiskMemoScreen .memoTopIconBtn{
+
   height: var(--vivizac-note-btn) ;
   min-height: var(--vivizac-note-btn) ;
   min-width: var(--vivizac-note-btn) ;
@@ -4193,9 +3773,6 @@ body {
   box-sizing: border-box ;
   flex-shrink: 0 ;
 }
-#kinderRiskMemoScreen .memoStudentNamePill,
-#kinderRiskMemoScreen .memoStudentNameBtn,
-#kinderRiskMemoScreen .memoToggleTextBtn{
   height: var(--vivizac-note-btn) ;
   min-height: var(--vivizac-note-btn) ;
   border-radius: 999px ;
@@ -4208,20 +3785,12 @@ body {
 
 /* 1분 피드백: 상단 장면카드 팝업 버튼은 계속 사용하지 않음 */
 
-/* 유치부 위험신호와 1분 피드백의 좌우 시작선 통일 */
-#kinderRiskMemoScreen .memoPageInner,
-#kinderRiskMemoScreen .riskPageInner,
-#kinderRiskMemoScreen .kinderRiskMemoInner {
+
   padding-left: var(--vivizac-note-x) ;
   padding-right: var(--vivizac-note-x) ;
 }
 
-/* 유치부 위험신호 첫 카드와 1분 피드백 9개 카드 시작점을 맞춤 */
-#kinderRiskMemoScreen .riskSummaryCard,
-#kinderRiskMemoScreen .riskSignalSummaryCard,
-#kinderRiskMemoScreen .kinderRiskSummaryCard,
-#kinderRiskMemoScreen .riskSignalPanel,
-#kinderRiskMemoScreen .riskCard{
+
   max-width: var(--vivizac-note-max) ;
   margin-left: auto ;
   margin-right: auto ;
@@ -4238,7 +3807,7 @@ body {
 
 /* 2026-04-25 v26: 1분 피드백 본문 부모 박스(oneMinutePage) 구조화 */
 
-/* 위험신호의 signal-page와 같은 역할 */
+
 
 /* oneMinutePage 안쪽에서는 실제 콘텐츠만 담당 */
 
@@ -4248,8 +3817,7 @@ body {
 
 /* 수업 장면 박스와 결과 카드도 같은 본문 기준선 안에서 정렬 */
 
-/* 위험신호 signal-page와 좌우/상단 기준 동일 */
-#kinderRiskMemoScreen .signal-page {
+
   padding: 12px 18px 42px ;
 }
 
@@ -4257,7 +3825,6 @@ body {
 
 /* 작은 화면에서도 양쪽 동일 기준 유지 */
 @media (max-width: 380px) {
-  #kinderRiskMemoScreen .signal-page {
     padding-left: 16px ;
     padding-right: 16px ;
   }
@@ -5412,23 +4979,18 @@ body.olli-login-open {
 }
 
 
-/* 유치부 원장 확인 박스: 내용 없을 때 위험신호 빈 박스처럼 */
-#kinderRiskMemoScreen .director-memo-block {
+
   transition: opacity .16s ease, border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
 }
-#kinderRiskMemoScreen .director-memo-block.empty {
   opacity: 0.5;
   background: #fafaf8;
   border-color: #eeeeea ;
   box-shadow: none ;
 }
-#kinderRiskMemoScreen .director-memo-block.empty .director-memo-dot {
   background: #c9c9c9 ;
 }
-#kinderRiskMemoScreen .director-memo-block.empty label {
   color: #8f8f8f ;
 }
-#kinderRiskMemoScreen .director-memo-block.is-active {
   opacity: 1;
   background: #fff ;
   border-color: #D8D8D8 ;
@@ -5674,29 +5236,6 @@ body.olli-login-open {
   -webkit-tap-highlight-color: transparent;
 }
 
-#recordRoomScreen .recordRightActionGroup .recordNotifyBtn{
-  position: static;
-  top: auto;
-  right: auto;
-  width: var(--vivizac-pill-cell-w);
-  min-width: var(--vivizac-pill-cell-w);
-  max-width: var(--vivizac-pill-cell-w);
-  height: var(--vivizac-top-h);
-  min-height: var(--vivizac-top-h);
-  flex: 0 0 var(--vivizac-pill-cell-w);
-  border: none;
-  border-radius: 999px;
-  background: #fff;
-  box-shadow: none;
-  color: #111;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  margin: 0;
-  -webkit-tap-highlight-color: transparent;
-}
-
 #recordRoomScreen .recordRightActionGroup .recordStandaloneSettingsBtn:active,
 #recordRoomScreen .recordRightActionGroup .recordStandaloneSettingsBtn.pillPressed{
   background: #eeeeee;
@@ -5790,7 +5329,7 @@ body.olli-login-open {
 }
 
 
-/* 예전 유치부 단독 1분 피드백 페이지 비활성화: 현재는 유치부 위험신호 + 1분 피드백 통합 페이지를 사용 */
+
 
 
 /* 2026-04-29 초등부 학생 정보 2줄 표시: 이름 / 학교 학년 | 요일 | 담임T */
@@ -7737,13 +7276,7 @@ body.olli-login-open {
 <button aria-label="설정" class="recordStandaloneSettingsBtn" id="recordSettingsBtn" onclick="openSettingsPage()" title="설정" type="button">
 <span aria-hidden="true" class="recordAcademyMiniIcon" id="recordAcademyMiniIcon"></span>
 </button>
-<button aria-label="알림확인" class="recordNotifyBtn" onclick="openNotificationInbox()" title="알림확인">
-<svg fill="none" viewbox="0 0 24 24">
-<path d="M18 8.5a6 6 0 0 0-12 0c0 7-2.5 7-2.5 7h17S18 15.5 18 8.5"></path>
-<path d="M9.5 19a2.8 2.8 0 0 0 5 0"></path>
-</svg>
-<span class="notificationDot"></span>
-</button>
+
 </div>
 </div>
 <div class="recordUtilityRow">
@@ -7766,10 +7299,7 @@ body.olli-login-open {
 </button>
 <div class="recordUtilityLabel">출석부</div>
 </div>
-<div class="recordUtilityBtn">
 
-<div class="recordUtilityLabel">관찰노트</div>
-</div>
 <div class="recordUtilityBtn">
 <button class="recordUtilityCircle" id="recordStorageToggleBtn" onclick="openKinderChatFeedbackPage()" type="button">
 <svg fill="none" viewbox="0 0 24 24">
@@ -7841,9 +7371,6 @@ body.olli-login-open {
 </div>
 </div>
 <script src="observation-editor-ui.js" data-olli-observation-ui="student-memo"></script>
-<!-- PAGE: 유치부 관찰노트 -->
-<script src="kinder-risk-ui.js"></script>
-
 <script src="observation-editor-ui.js" data-olli-observation-ui="analysis-modal"></script>
 <div class="modalOverlay" id="saveModal">
 <div class="modalCard">
@@ -7947,15 +7474,7 @@ body.olli-login-open {
 <div class="modalLabel">수업 요일</div>
 <input class="modalInput" id="kinderLessonDayInput" placeholder="예: 월요일 · 수요일"/>
 </div>
-<div class="kinderInfoModalField kinderRiskInfoPanel">
-<div class="kinderRiskInfoTop">
-<div>
-<div class="kinderRiskInfoTitle">위험신호</div>
-<div class="kinderRiskInfoText" id="kinderInfoRiskText">최근 기록 없음</div>
-</div>
-<button class="kinderRiskInfoLinkBtn" onclick="openKinderRiskFromInfoModal()" type="button">위험신호 보기</button>
-</div>
-</div>
+
 <div class="modalActions">
 <button class="modalBtnCancel" data-modal-close="kinderInfoModal" type="button">취소</button>
 <button class="modalBtnConfirm" onclick="saveKinderInfo()">저장</button>
@@ -8581,10 +8100,6 @@ function backupAndRemoveStudentLocalData(studentId, studentSnapshot = null) {
 }
 
 const RISK_NOTIFICATIONS_KEY = 'olli_risk_notifications_v1';
-function getRiskNotificationsStorageKey() {
-  const academyId = (typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '') || 'unscoped';
-  return `${RISK_NOTIFICATIONS_KEY}_${academyId}`;
-}
 const LOCAL_MEMO_RETENTION_DAYS = 30;
 const MEMO_AUTOSAVE_DELAY = 1000;
 
@@ -8870,7 +8385,7 @@ async function refreshRecordsAfterFeedbackSave() {
   if (recordVisible && typeof loadRecords === 'function') {
     await loadRecords('');
   }
-  if (typeof updateNotificationButtons === 'function') updateNotificationButtons();
+  
 }
 
 function getFeedbackTableNameByType(feedbackType) {
@@ -10037,7 +9552,7 @@ function normalizeStudentObject(item, fallbackType = 'elementary') {
   if (typeof item === 'string') {
     return {
       id: uid(), type: fallbackType, name: item, year: getCurrentYear(), month: '', day: '',
-      enrolled_at: '', kindergarten: '', age: '', birth_year: '', school_entry_year: '', previous_division: '', division_changed_at: '', lesson_day: '', lesson_time: '', class_time: '', teacher: '', homeroom_teacher: '', group: '', group_months: '', feedback_months: '', personality: '', school: '', grade: '', className: '', memo1: '', memo2: '', memo3: '', memo4: '', memoUpdatedAt: '', status: 'active'
+      enrolled_at: '', kindergarten: '', age: '', birth_year: '', school_entry_year: '', previous_division: '', division_changed_at: '', lesson_day: '', lesson_time: '', class_time: '', teacher: '', homeroom_teacher: '', group: '', group_months: '', feedback_months: '', personality: '', school: '', grade: '', className: '', memoUpdatedAt: '', status: 'active'
     };
   }
   return {
@@ -10066,10 +9581,6 @@ function normalizeStudentObject(item, fallbackType = 'elementary') {
     school: item?.school || '',
     grade: item?.grade || '',
     className: item?.className || item?.class_no || '',
-    memo1: item?.memo1 || '',
-    memo2: item?.memo2 || '',
-    memo3: item?.memo3 || '',
-    memo4: item?.memo4 || '',
     memoUpdatedAt: item?.memoUpdatedAt || '',
     status: item?.status || 'active',
     is_deleted: item?.is_deleted === true || String(item?.is_deleted || '').toLowerCase() === 'true',
@@ -10556,24 +10067,8 @@ function sortElementaryStudents(students) {
   });
 }
 
-function getKinderRiskRank(student) {
-  const filledCount = getKinderFilledMemoCount(student);
-  return filledCount > 0 ? 0 : 1;
-}
 
-function getCurrentKinderDraftFilledCount() {
-  if (currentMemoType !== 'kinder' || !currentMemoStudent) return 0;
-  const ids = ['kinderMemoBox1', 'kinderMemoBox2', 'kinderMemoBox3'];
-  return ids
-    .map(id => document.getElementById(id)?.value || '')
-    .filter(value => String(value).trim()).length;
-}
 
-function hasAnyKinderRiskMemo() {
-  const savedHasRisk = getStudentsByType('kinder').some(student => getKinderFilledMemoCount(student) > 0);
-  if (savedHasRisk) return true;
-  return getCurrentKinderDraftFilledCount() > 0;
-}
 
 function getElementaryGroupSectionKey(student, cycleGroups = null) {
   return getRecordSortSectionKey(student, 'elementary');
@@ -11262,84 +10757,10 @@ function toggleAttendanceFeedbackSheetCard(id) {
   card.classList.toggle('open');
 }
 
-function updateKinderInfoRiskPanel(student) {
-  const textEl = document.getElementById('kinderInfoRiskText');
-  if (!textEl) return;
-  const count = getKinderFilledMemoCount(student);
-  if (count > 0) {
-    const label = typeof getKinderRiskStageLabel === 'function' ? getKinderRiskStageLabel(count) : '확인 필요';
-    textEl.textContent = `최근 위험신호 ${count}개 · ${label}`;
-  } else {
-    textEl.textContent = '최근 기록 없음';
-  }
-}
 
-function updateElementaryInfoRiskPanel(student) {
-  const textEl = document.getElementById('elementaryInfoRiskText');
-  if (!textEl) return;
-  const count = getKinderFilledMemoCount(student);
-  if (count > 0) {
-    const label = typeof getKinderRiskStageLabel === 'function' ? getKinderRiskStageLabel(count) : '확인 필요';
-    textEl.textContent = `최근 위험신호 ${count}개 · ${label}`;
-  } else {
-    textEl.textContent = '최근 기록 없음';
-  }
-}
 
-function openRiskMemoPageById(studentId) {
-  const student = findStudentById(studentId);
-  if (!student) return;
-  currentMemoStudent = student;
-  currentMemoType = 'kinder';
-  closeMemoModeMenu();
-  closeElementaryRecordsMenu();
-  closeMemoStudentSelectPopup();
-  viewingArchivedElementaryRecord = false;
 
-  const recordRoomScreen = document.getElementById('recordRoomScreen');
-  const studentMemoScreenEl = document.getElementById('studentMemoScreen');
-  const kinderRiskMemoScreenEl = document.getElementById('kinderRiskMemoScreen');
-  if (recordRoomScreen) recordRoomScreen.style.display = 'none';
-  if (studentMemoScreenEl) studentMemoScreenEl.style.display = 'none';
-  if (kinderRiskMemoScreenEl) {
-    kinderRiskMemoScreenEl.style.display = 'flex';
-    vivizacSlideInPage(kinderRiskMemoScreenEl);
-  }
 
-  const nameEl = document.getElementById('kinderObservationNoteTitle');
-  if (nameEl) nameEl.textContent = `${student.name || '학생'}의 위험신호`;
-  const subEl = document.getElementById('kinderObservationModeSub');
-  if (subEl) subEl.textContent = '위험신호';
-  document.getElementById('kinderMemoBox1').value = student.memo1 || '';
-  document.getElementById('kinderMemoBox2').value = student.memo2 || '';
-  document.getElementById('kinderMemoBox3').value = student.memo3 || '';
-  document.getElementById('kinderMemoBox4').value = student.memo4 || '';
-  const kinderMemoBox5 = document.getElementById('kinderMemoBox5');
-  if (kinderMemoBox5) kinderMemoBox5.value = student.memo5 || '';
-  const kinderSceneMemoInput = document.getElementById('kinderSceneMemoInput');
-  if (kinderSceneMemoInput) kinderSceneMemoInput.value = student.sceneMemo || student.kinderSceneMemo || '';
-  if (typeof setKinderCombinedMode === 'function') setKinderCombinedMode('risk');
-  selectedElementaryAnalysisHistoryId = '';
-  renderElementaryAnalysisSummaryCard({});
-  renderElementaryAnalysisHistoryCards(null);
-  updateMemoSignalCircle(student);
-  setMemoSaveStatus('자동 저장');
-  setTimeout(autoResizeKinderMemoBoxes, 0);
-}
-
-function openElementaryRiskFromInfoModal() {
-  const student = getStudentInfoModalTarget('elementary');
-  if (!student) return;
-  closeElementaryInfoModal();
-  openRiskMemoPageById(student.id);
-}
-
-function openKinderRiskFromInfoModal() {
-  const student = getStudentInfoModalTarget('kinder');
-  if (!student) return;
-  closeKinderInfoModal();
-  openRiskMemoPageById(student.id);
-}
 
 function openKinderTransferModal() {
   const modal = document.getElementById('kinderTransferModal');
@@ -11907,9 +11328,6 @@ function studentToSupabasePayload(student) {
     withdrawn_at: student.withdrawn_at || null,
     paused_at: student.paused_at || null,
     status_changed_at: student.status_changed_at || null,
-    memo1: student.memo1 || null,
-    memo2: student.memo2 || null,
-    memo3: student.memo3 || null
   };
 }
 
@@ -11944,11 +11362,6 @@ function supabaseRowToStudent(row) {
     className: row.class_no || row.className || '',
     teacher: row.teacher || row.homeroom_teacher || row.teacher_name || '',
     homeroom_teacher: row.homeroom_teacher || row.teacher || row.teacher_name || '',
-    memo1: row.memo1 || '',
-    memo2: row.memo2 || '',
-    memo3: row.memo3 || '',
-    memo4: row.memo4 || '',
-    memo5: row.memo5 || '',
     status: row.status || 'active',
     is_deleted: row.is_deleted === true || String(row.is_deleted || '').toLowerCase() === 'true',
     deleted_at: row.deleted_at || '',
@@ -11969,7 +11382,7 @@ function getSupabaseMissingColumnName(err) {
 
 const STUDENT_LEGACY_OPTIONAL_COLUMNS = new Set([
   'academy_name', 'academy_region', 'group_months', 'feedback_months',
-  'homeroom_teacher', 'memo1', 'memo2', 'memo3'
+  'homeroom_teacher'
 ]);
 
 async function postStudentWithColumnFallback(student) {
@@ -12189,10 +11602,6 @@ function mergeStudentInfoPreservingLocal(localStudent, remoteStudent) {
     school: remote.school || local.school,
     grade: remote.grade || local.grade,
     className: remote.className || local.className,
-    memo1: remote.memo1 || local.memo1,
-    memo2: remote.memo2 || local.memo2,
-    memo3: remote.memo3 || local.memo3,
-    memo4: remote.memo4 || local.memo4,
     memoUpdatedAt: remote.memoUpdatedAt || local.memoUpdatedAt,
     status: local.status || remote.status || 'active',
     withdrawn_at: remote.withdrawn_at || local.withdrawn_at || '',
@@ -12366,148 +11775,6 @@ function getKinderMetaText(student) {
 function getKinderMetaBits(student) {
   const metaText = getKinderMetaText(student);
   return metaText ? [metaText] : [];
-}
-function getKinderFilledMemoCount(student) {
-  if (!student) return 0;
-  return [student.memo1, student.memo2, student.memo3].filter(v => String(v || '').trim()).length;
-}
-function getSignalLevelByCount(count) {
-  if (count >= 3) return 3;
-  if (count >= 2) return 2;
-  if (count >= 1) return 1;
-  return 0;
-}
-function getSignalClassByCount(count) {
-  const level = getSignalLevelByCount(count);
-  return level ? `level-${level}` : '';
-}
-function getKinderRiskStageLabel(count) {
-  if (count >= 3) return '집중 확인';
-  if (count >= 2) return '주의 관찰';
-  if (count >= 1) return '관찰 시작';
-  return '기록 없음';
-}
-function formatSignalRecordDate(date = new Date()) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}.${m}.${d}`;
-}
-function getFocusedKinderSignalIndex() {
-  const active = document.activeElement;
-  const ids = ['kinderMemoBox1', 'kinderMemoBox2', 'kinderMemoBox3'];
-  const index = ids.findIndex(id => active && active.id === id);
-  return index >= 0 ? index + 1 : 0;
-}
-function updateKinderRiskStageUI(count) {
-  const focusedSignalIndex = getFocusedKinderSignalIndex();
-  const liveCount = Math.max(count, focusedSignalIndex);
-  const level = getSignalLevelByCount(liveCount);
-  const screen = document.getElementById('kinderRiskMemoScreen');
-  if (screen) {
-    screen.classList.remove('risk-level-0', 'risk-level-1', 'risk-level-2', 'risk-level-3');
-    screen.classList.add(`risk-level-${level}`);
-  }
-
-  const badge = document.getElementById('kinderRiskStageBadge');
-  if (badge) badge.textContent = getKinderRiskStageLabel(count);
-
-  const statusCard = document.getElementById('signalStatusCard');
-  const label = document.getElementById('signalStatusLabel');
-  const statusText = document.getElementById('signalStatusText');
-  const dots = document.querySelectorAll('#signalDots .signal-dot');
-
-  if (statusCard) {
-    statusCard.classList.remove('signal-level-green', 'signal-level-yellow', 'signal-level-red');
-    dots.forEach((dot, index) => dot.classList.toggle('active', index < Math.max(liveCount, 1)));
-
-    if (liveCount <= 1) {
-      statusCard.classList.add('signal-level-green');
-      if (label) label.textContent = '관찰';
-      if (statusText) statusText.innerHTML = liveCount === 0
-        ? '기록된 위험•퇴원 신호는 없어요.<br>첫 기록이 남지 않도록 평소에도 세심하게 살펴봐 주세요.'
-        : '위험•퇴원 신호가 1회 기록되었어요.<br>한 번의 기록도 가볍지 않으니 즉시 세심한 관찰이 필요합니다.';
-    } else if (liveCount === 2) {
-      statusCard.classList.add('signal-level-yellow');
-      if (label) label.textContent = '주의 관찰';
-      if (statusText) statusText.innerHTML = '위험•퇴원 신호가 2회 기록되었어요.<br>퇴원 가능성을 염두에 두고 원장 확인 후 대응을 정해주세요.';
-    } else {
-      statusCard.classList.add('signal-level-red');
-      if (label) label.textContent = '원장 확인';
-      if (statusText) statusText.innerHTML = '위험•퇴원 신호가 3회 누적되었어요.<br>즉시 원장 확인과 대응 방향 정리가 필요합니다.';
-    }
-  }
-
-  ['kinderMemoBox1', 'kinderMemoBox2', 'kinderMemoBox3'].forEach((id, index) => {
-    const box = document.getElementById(id);
-    const card = document.querySelector(`[data-signal-card="${index + 1}"]`);
-    const date = card?.querySelector('.signal-date');
-    const hasValue = !!String(box?.value || '').trim();
-    const isFocused = focusedSignalIndex === index + 1;
-    const isActive = hasValue || isFocused;
-    if (card) card.classList.toggle('empty', !isActive);
-    if (date) date.textContent = isActive ? formatSignalRecordDate() : '아직 기록 없음';
-  });
-
-  ['kinderMemoBox4', 'kinderMemoBox5'].forEach(id => {
-    const box = document.getElementById(id);
-    const block = box?.closest('.director-memo-block');
-    const hasValue = !!String(box?.value || '').trim();
-    const isFocused = document.activeElement === box;
-    const isActive = hasValue || isFocused;
-    if (block) {
-      block.classList.toggle('is-active', isActive);
-      block.classList.toggle('empty', !isActive);
-    }
-  });
-}
-function getKinderDraftStudentFromInputs(student = currentMemoStudent) {
-  if (!student) return null;
-  const box1 = document.getElementById('kinderMemoBox1');
-  const box2 = document.getElementById('kinderMemoBox2');
-  const box3 = document.getElementById('kinderMemoBox3');
-  const box4 = document.getElementById('kinderMemoBox4');
-  return {
-    ...student,
-    memo1: box1 ? box1.value : student.memo1,
-    memo2: box2 ? box2.value : student.memo2,
-    memo3: box3 ? box3.value : student.memo3,
-    memo4: box4 ? box4.value : student.memo4,
-    memo5: document.getElementById('kinderMemoBox5') ? document.getElementById('kinderMemoBox5').value : student.memo5,
-    sceneMemo: document.getElementById('kinderSceneMemoInput') ? document.getElementById('kinderSceneMemoInput').value : (student.sceneMemo || ''),
-  };
-}
-function setSignalCircleLevelClass(el, baseClass, count) {
-  if (!el) return;
-  el.classList.remove('level-1', 'level-2', 'level-3');
-  if (baseClass && !el.classList.contains(baseClass)) el.classList.add(baseClass);
-  const levelClass = getSignalClassByCount(count);
-  if (levelClass) el.classList.add(levelClass);
-}
-function updateMemoSignalCircle(student) {
-  const memoEl = document.getElementById('memoSignalCircle');
-  const kinderEl = document.getElementById('kinderRiskSignalCircle');
-
-  if (currentMemoType !== 'kinder' || !student) {
-    if (memoEl) memoEl.className = 'memoSignalCircle';
-    if (kinderEl) {
-      kinderEl.className = 'memoSignalCircle';
-      delete kinderEl.dataset.kinderSignalStudentId;
-    }
-    updateKinderRiskStageUI(0);
-    return;
-  }
-
-  const sourceStudent = getKinderDraftStudentFromInputs(student);
-  const count = getKinderFilledMemoCount(sourceStudent);
-
-  if (kinderEl) {
-    kinderEl.dataset.kinderSignalStudentId = String(sourceStudent.id);
-    setSignalCircleLevelClass(kinderEl, 'memoSignalCircle', count);
-  }
-
-  updateKinderRiskStageUI(count);
-
 }
 
 function getRecordModeLabel(mode) {
@@ -13892,7 +13159,7 @@ function resetVisibleFailGrowthPagesOnLeave() {}
 function vivizacSlideInPage(pageOrId) {
   const page = typeof pageOrId === 'string' ? document.getElementById(pageOrId) : pageOrId;
   if (!page) return;
-  const fromBottom = page.id === 'kinderRiskMemoScreen';
+  const fromBottom = false;
   page.classList.remove('vivizac-slide-in', 'vivizac-slide-out', 'vivizac-slide-from-bottom');
   if (fromBottom) page.classList.add('vivizac-slide-from-bottom');
   page.classList.add('vivizac-slide-page');
@@ -13927,7 +13194,7 @@ function vivizacSlideOutPageToRecord(pageOrId, after) {
 }
 
 function vivizacGetVisibleNotePage() {
-  const ids = ['studentMemoScreen', 'kinderRiskMemoScreen', 'settingsPageScreen', 'settingsDetailScreen'];
+  const ids = ['studentMemoScreen',  'settingsPageScreen', 'settingsDetailScreen'];
   for (const id of ids) {
     const el = document.getElementById(id);
     if (el && el.style.display !== 'none') return el;
@@ -14539,7 +13806,7 @@ async function autoSaveMemoFeedback(text, futureDirection = '') {
       const recordRoomScreen = document.getElementById('recordRoomScreen');
       const recordVisible = recordRoomScreen && recordRoomScreen.style.display !== 'none';
       if (recordVisible && typeof loadRecords === 'function') await loadRecords('');
-      if (typeof updateNotificationButtons === 'function') updateNotificationButtons();
+      
     }
 
     if (currentMemoStudent && String(currentMemoStudent.id || '') === String(archiveStudent.id || '')) {
@@ -14897,7 +14164,7 @@ async function toggleRecordViewMode(targetView) {
     await loadRecords('');
   }
 
-  updateNotificationButtons();
+  
 }
 
 
@@ -14912,7 +14179,7 @@ async function toggleRecordMode() {
     if (switchIcon) switchIcon.style.transform = `rotate(${recordStorageRotation}deg)`;
     updateRecordHeaderUI();
     await loadRecords('');
-    updateNotificationButtons();
+    
     return;
   }
 
@@ -14940,14 +14207,12 @@ async function toggleRecordMode() {
 async function showRecordRoom() {
   setFeedbackPageBackgroundActive(false);
   const memo = document.getElementById('studentMemoScreen');
-  const kinderRiskMemo = document.getElementById('kinderRiskMemoScreen');
-  const card = document.getElementById('mainPageScreen');
+const card = document.getElementById('mainPageScreen');
 
   const memoVisible = memo && memo.style.display !== 'none';
-  const kinderRiskMemoVisible = kinderRiskMemo && kinderRiskMemo.style.display !== 'none';
-  const cardVisible = card && card.style.display !== 'none';
+const cardVisible = card && card.style.display !== 'none';
 
-  previousScreenBeforeRecordRoom = kinderRiskMemoVisible ? 'kinderRiskMemo' : (memoVisible ? 'studentMemo' : (cardVisible ? 'mainPage' : 'recordRoom'));
+  previousScreenBeforeRecordRoom = memoVisible ? 'studentMemo' : (cardVisible ? 'mainPage' : 'recordRoom');
 
   const current = vivizacGetVisibleNotePage();
   const record = document.getElementById('recordRoomScreen');
@@ -14955,8 +14220,7 @@ async function showRecordRoom() {
 
   const finishRecordOpen = async () => {
     if (memo) memo.style.display = 'none';
-    if (kinderRiskMemo) kinderRiskMemo.style.display = 'none';
-    if (card) card.style.display = 'none';
+if (card) card.style.display = 'none';
     if (record) record.style.display = 'flex';
 
     const pill = document.getElementById('recordSearchPill');
@@ -14966,7 +14230,7 @@ async function showRecordRoom() {
     if (input) input.value = '';
     updateRecordHeaderUI();
     await loadRecords('');
-    updateNotificationButtons();
+    
   };
 
   if (current && current.id !== 'recordRoomScreen') {
@@ -14987,15 +14251,11 @@ function hideRecordRoom() {
     if (card) card.style.display = 'none';
     const memo = document.getElementById('studentMemoScreen');
     if (memo) { memo.style.display = 'flex'; vivizacSlideInPage(memo); }
-  } else if (previousScreenBeforeRecordRoom === 'kinderRiskMemo') {
-    if (card) card.style.display = 'none';
-    const kinderRiskMemo = document.getElementById('kinderRiskMemoScreen');
-    if (kinderRiskMemo) { kinderRiskMemo.style.display = 'flex'; vivizacSlideInPage(kinderRiskMemo); }
   } else {
     const record = document.getElementById('recordRoomScreen');
     if (record) record.style.display = 'flex';
   }
-  updateNotificationButtons();
+  
 }
 function toggleStudentBlock(el) {
   const block = el.closest('.recordStudentBlock');
@@ -15365,10 +14625,6 @@ async function confirmStudent() {
     teacher: selectedTeacher,
     homeroom_teacher: extraInfo.homeroom_teacher || selectedTeacher,
     group: selectedGroup, group_months: selectedGroupMonths, feedback_months: selectedGroupMonths, personality: extraInfo.personality || '', school: type === 'elementary' ? (extraInfo.school || '') : '', grade: type === 'elementary' ? (extraInfo.grade || '') : '', className: '',
-    memo1: '',
-    memo2: '',
-    memo3: '',
-    memo4: '',
     memoUpdatedAt: '',
     status: 'active'
   };
@@ -16824,7 +16080,7 @@ async function openRecordAttendanceDashboard(){
   updateRecordHeaderUI();
   if (typeof window.refreshRecordSortPopup === 'function') setTimeout(window.refreshRecordSortPopup, 0);
   await loadRecords('');
-  updateNotificationButtons();
+  
 }
 
 function renderCurrentStudentRecords(name) {
@@ -16847,7 +16103,7 @@ async function toggleRecordAcademyManagementMode(){
       currentRecordView = currentObservationView === 'kinder' ? 'kinder' : 'elementary';
       updateRecordHeaderUI();
       await loadRecords('');
-      updateNotificationButtons();
+      
     }
     return;
   }
@@ -16857,7 +16113,7 @@ async function toggleRecordAcademyManagementMode(){
   currentRecordView = 'academy';
   updateRecordHeaderUI();
   await loadRecords('');
-  updateNotificationButtons();
+  
 }
 
 async function loadRecords(name) {
@@ -17321,7 +16577,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       yearInput.defaultValue = currentYear;
     }
     setupPillPressFeedback();
-    scheduleNotificationSync();
+    
 
     setupMemoPauseAutoSaveBindings();
 
@@ -17372,7 +16628,6 @@ window.openMemoObservationMode = openMemoObservationMode;
   window.toggleSceneTag = toggleSceneTag;
   window.requestSceneCardFeedback = requestSceneCardFeedback;
   window.handleMemoHeaderAction = handleMemoHeaderAction;
-  window.sendKinderRiskPush = sendKinderRiskPush;
   window.openElementaryAnalysisModal = openElementaryAnalysisModal;
   window.closeElementaryAnalysisModal = closeElementaryAnalysisModal;
   window.openElementaryAnalysisDetailModal = openElementaryAnalysisDetailModal;
@@ -17419,18 +16674,15 @@ window.applyElementaryAnalysisToMemo = applyElementaryAnalysisToMemo;
   window.setSelectedStudentStatus = setSelectedStudentStatus;
   window.deleteSelectedStudents = deleteSelectedStudents;
   window.exitStudentSelectionMode = exitStudentSelectionMode;
-  window.openNotificationInbox = openNotificationInbox;
-  window.closeNotificationInbox = closeNotificationInbox;
-  window.openRiskNotificationTarget = openRiskNotificationTarget;
   window.openMoreMenuPlaceholder = openMoreMenuPlaceholder;
 });
 
 window.addEventListener('pageshow', () => {
-  try { scheduleNotificationSync(); } catch (err) { console.warn('notification sync skipped:', err); }
+  try {  } catch (err) { console.warn('notification sync skipped:', err); }
 });
 window.addEventListener('storage', (event) => {
   if (event.key === STUDENTS_KEY || event.key === RISK_NOTIFICATIONS_KEY) {
-    try { scheduleNotificationSync(); } catch (err) { console.warn('notification sync skipped:', err); }
+    try {  } catch (err) { console.warn('notification sync skipped:', err); }
   }
 });
 
@@ -17464,7 +16716,7 @@ function wrapOneMinuteLeaveFunction(fnName) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  ['showRecordRoom','showStudentMemoScreen','openStudentMemo','openKinderRiskMemo','openKinderRiskMemoScreen'].forEach(wrapOneMinuteLeaveFunction);
+  ['showRecordRoom','showStudentMemoScreen','openStudentMemo',].forEach(wrapOneMinuteLeaveFunction);
 });
 
 
@@ -17620,7 +16872,7 @@ function wrapOneMinuteLeaveFunction(fnName) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  ['showRecordRoom','showStudentMemoScreen','openStudentMemo','openKinderRiskMemo','openKinderRiskMemoScreen'].forEach(wrapOneMinuteLeaveFunction);
+  ['showRecordRoom','showStudentMemoScreen','openStudentMemo',].forEach(wrapOneMinuteLeaveFunction);
 });
 
 
@@ -17843,7 +17095,7 @@ function getTodayFeedbackItemsRaw() {
 }
 function setTodayFeedbackItemsRaw(list) {
   localStorage.setItem(getFeedbackJobQueueStorageKey(), JSON.stringify(Array.isArray(list) ? list.slice(0, 300) : []));
-  try { updateNotificationButtons(); } catch(e) {}
+  
   try { updateKinderChatFeedbackBadge(); } catch(e) {}
   try { renderKinderChatFeedbackInbox(); } catch(e) {}
 }
@@ -17924,7 +17176,7 @@ function showFeedbackQueueNotice(title, message) {
 function getCurrentFeedbackStudentNameForToday(preferredDivision) {
   const candidates = [];
   if (currentMemoStudent && currentMemoStudent.name) candidates.push(currentMemoStudent.name);
-  ['memoStudentName','kinderRiskStudentName','kinderObservationNoteTitle'].forEach(id => {
+  ['memoStudentName','kinderObservationNoteTitle'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     candidates.push(el.value || el.textContent || '');
@@ -18139,7 +17391,7 @@ function startTodayFeedbackRequest(options = {}) {
     feedbackMonthNumber
   });
   if (!options.silent) showFeedbackQueueNotice(`${item.studentName} 피드백을 정리하고 있어요.`, '이제 다음 아이 피드백을 작성해도 됩니다.');
-  updateNotificationButtons();
+  
   try { updateKinderChatFeedbackBadge(); } catch(e) {}
 
   fetch('/api/chat', {
@@ -18199,60 +17451,10 @@ function requestSceneCardFeedback(customText) {
   startTodayFeedbackRequest({ promptType:(isElementary ? 'elementary' : 'class'), userText, studentName, studentDivision:(isElementary ? 'elementary' : 'kinder'), feedbackType:'class', label:(isElementary ? '초등부 피드백' : '유치부 피드백') });
   resetSceneFeedbackInputAfterQueue();
 }
-function updateNotificationButtons() {
-  const riskCount = getRiskNotifications().filter(item => !item.handled).length;
-  const notificationCount = riskCount;
-  const hasRiskMemo = hasAnyKinderRiskMemo();
-  const recordBtn = document.querySelector('.btnMenu[aria-label="기록실"], .btnMenu[title="기록실"]');
-  if (recordBtn) {
-    if (hasRiskMemo) recordBtn.classList.add('hasRiskNotifications');
-    else recordBtn.classList.remove('hasRiskNotifications');
-    recordBtn.title = hasRiskMemo ? '기록실 · 관찰노트 메모 있음' : '기록실';
-  }
-  document.querySelectorAll('.recordNotifyBtn').forEach(btn => {
-    btn.classList.toggle('hasNotifications', notificationCount > 0);
-    btn.title = notificationCount > 0 ? `알림확인 · ${notificationCount}건` : '알림확인';
-    const badge = btn.querySelector('.notificationDot');
-    if (badge) badge.textContent = notificationCount > 0 ? String(Math.min(notificationCount, 9)) : '';
-  });
-}
-function openNotificationInbox() {
-  const overlay = document.getElementById('notificationInboxOverlay');
-  const listEl = document.getElementById('notificationInboxList');
-  if (!overlay || !listEl) return;
-  if (overlay.style.display === 'flex') { closeNotificationInbox(); return; }
-  const notifyBtn = document.querySelector('#recordRoomScreen .recordNotifyBtn');
-  if (notifyBtn) {
-    const rect = notifyBtn.getBoundingClientRect();
-    const top = Math.round(rect.bottom + 10);
-    const right = Math.max(14, Math.round(window.innerWidth - rect.right));
-    overlay.style.setProperty('--notification-inbox-top', top + 'px');
-    overlay.style.setProperty('--notification-inbox-right', right + 'px');
-  }
-  const notifications = getRiskNotifications().filter(item => !item.handled);
-  const riskHtml = !notifications.length ? '<div class="notificationInboxEmpty">확인할 위험신호 알림이 없습니다.</div>' : notifications.map(item => {
-    const dateText = formatNotificationDate(item.created_at);
-    const messageText = normalizeRiskNotificationMessage(item.message, item.student_name);
-    return `<button type="button" class="notificationInboxItem unread" onclick="openRiskNotificationTarget('${item.id}')">
-      <div class="notificationInboxTop"><div class="notificationInboxName">${escapeHtml(item.student_name || '학생')}</div><div class="notificationInboxText">${escapeHtml(messageText)}</div></div>
-      <div class="notificationInboxDate">${escapeHtml(dateText)}</div>
-    </button>`;
-  }).join('');
-  listEl.innerHTML = riskHtml;
-  overlay.style.display = 'flex';
-}
 window.saveTodayFeedbackItem = saveTodayFeedbackItem;
 
 </script>
-<div class="modalOverlay notificationInboxOverlay" id="notificationInboxOverlay" onclick="closeNotificationInbox(event)">
-<div class="modalCard notificationInboxCard" onclick="event.stopPropagation()">
-<div class="notificationInboxHead">
-<div class="modalTitle">위험신호 알림</div>
-<button class="notificationInboxClose" onclick="closeNotificationInbox()" type="button">×</button>
-</div>
-<div class="notificationInboxList" id="notificationInboxList"></div>
-</div>
-</div>
+
 <style>
 #settingsAcademySwitchRow {
   display: none;
@@ -19168,8 +18370,6 @@ function applySettingsPermissionUI() {
   const currentAcademyCode = String(localStorage.getItem('olli_current_academy_code') || olliSettingsState.academy?.academy_code || localStorage.getItem('olli_current_academy_id') || '').trim().toUpperCase();
 
   // 설정 페이지는 원장 외에는 알림 설정만 가능.
-  // 관리자는 예외적으로 위험신호의 원장 확인 메모 권한을 갖지만,
-  // 설정 메뉴 자체는 알림만 허용한다.
   const restricted = role !== 'owner';
 
   document.querySelectorAll('[data-owner-only="true"]').forEach(el => {
@@ -21530,11 +20730,10 @@ async function downloadSettingsBackup() {
     const academyId = settingsGetAcademyId();
     if (!academyId) throw new Error('academy_id가 없습니다.');
 
-    const [students, feedbacks, summaries, risks, members] = await Promise.all([
+    const [students, feedbacks, summaries, members] = await Promise.all([
       supabase('GET', `students?select=*&academy_id=eq.${encodeURIComponent(academyId)}`),
       supabase('GET', `feedbacks?select=*&academy_id=eq.${encodeURIComponent(academyId)}`),
       supabase('GET', `summary_feedbacks?select=*&academy_id=eq.${encodeURIComponent(academyId)}`),
-      supabase('GET', `risk_signals?select=*&academy_id=eq.${encodeURIComponent(academyId)}`),
       supabase('GET', `academy_members?select=*&academy_id=eq.${encodeURIComponent(academyId)}`)
     ]);
 
@@ -21545,8 +20744,7 @@ async function downloadSettingsBackup() {
       students,
       feedbacks,
       summary_feedbacks: summaries,
-      risk_signals: risks
-    };
+};
 
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -23603,7 +22801,7 @@ async function importExistingFeedbackCandidates() {
       const searchValue = document.getElementById('searchName')?.value?.trim() || '';
       if (typeof loadRecords === 'function') await loadRecords(searchValue);
     } catch(e) {}
-    try { if (typeof updateNotificationButtons === 'function') updateNotificationButtons(); } catch(e) {}
+    
     existingFeedbackImportState.statusMessage = savedIds.size
       ? `${savedIds.size}개의 기존 피드백을 앱에 저장했습니다.`
       : '';
@@ -25629,12 +24827,12 @@ const settingsDetailData = {
   academyAccess:{title:'사용 상태',html:renderOlliAcademyAccessSettings,beforeOpen:settingsLoadAcademy},
   attendancePhotoImport:{title:'학생정보 일괄 수정',html:renderSettingsAttendancePhotoImport},
   attendancePrint:{title:'출석부 출력',html:renderSettingsAttendancePrint,instantRender:true},
-  roles:{title:'권한 설정',html:function(){return '<div class="settingsDetailIntro"><div class="settingsDetailTitle">위험은 모두가 보고,<br/>판단은 원장이 합니다.</div></div><div class="settingsRoleCard"><div class="settingsRoleTop"><div class="settingsRoleName">원장</div><span class="settingsStatusBadge">전체 권한</span></div><div class="settingsRoleList"><div class="settingsRoleItem">전체 학생과 모든 피드백 확인</div><div class="settingsRoleItem">위험신호 대응 방향과 원장 확인 메모 작성</div><div class="settingsRoleItem">백업 / 내보내기 사용 가능</div><div class="settingsRoleItem">선생님 계정과 권한 관리</div></div></div><div class="settingsRoleCard"><div class="settingsRoleTop"><div class="settingsRoleName">관리자</div><span class="settingsStatusBadge">점검 권한</span></div><div class="settingsRoleList"><div class="settingsRoleItem">전체 위험신호 확인 가능</div><div class="settingsRoleItem">기록 점검과 수업 품질 확인</div><div class="settingsRoleItem">백업/내보내기와 대응 판단은 제한</div></div></div><div class="settingsRoleCard"><div class="settingsRoleTop"><div class="settingsRoleName">선생님</div><span class="settingsStatusBadge">기록 권한</span></div><div class="settingsRoleList"><div class="settingsRoleItem">담당 학생 기록 작성</div><div class="settingsRoleItem">피드백 작성과 위험신호 입력</div><div class="settingsRoleItem">전체 위험신호 확인 가능</div><div class="settingsRoleItem">원장 확인 메모와 대응 판단은 제한</div></div></div>';}},
+  roles:{title:'권한 설정',html:function(){return '<div class="settingsDetailIntro"><div class="settingsDetailTitle">역할에 맞는 권한으로<br/>학생 기록을 안전하게 관리합니다.</div></div><div class="settingsRoleCard"><div class="settingsRoleTop"><div class="settingsRoleName">원장</div><span class="settingsStatusBadge">전체 권한</span></div><div class="settingsRoleList"><div class="settingsRoleItem">전체 학생과 모든 피드백 확인</div><div class="settingsRoleItem">백업 / 내보내기 사용 가능</div><div class="settingsRoleItem">선생님 계정과 권한 관리</div></div></div><div class="settingsRoleCard"><div class="settingsRoleTop"><div class="settingsRoleName">관리자</div><span class="settingsStatusBadge">점검 권한</span></div><div class="settingsRoleList"><div class="settingsRoleItem">학생 기록과 피드백 흐름 점검</div><div class="settingsRoleItem">선생님 기록 상태 확인</div><div class="settingsRoleItem">백업/내보내기와 운영 판단은 제한</div></div></div><div class="settingsRoleCard"><div class="settingsRoleTop"><div class="settingsRoleName">선생님</div><span class="settingsStatusBadge">기록 권한</span></div><div class="settingsRoleList"><div class="settingsRoleItem">담당 학생 기록 작성</div><div class="settingsRoleItem">피드백 작성과 성장 피드백 입력</div><div class="settingsRoleItem">권한 변경과 데이터 내보내기는 제한</div></div></div>';}},
   teachers:{title:'선생님 관리',html:renderSettingsMembers,instantRender:true,beforeOpen:settingsLoadTeacherManagementMembers},
   teacherInvite:{title:'선생님 초대',html:renderSettingsTeacherInvite,instantRender:true,beforeOpen:settingsLoadAllApprovalRequests},
   approval:{title:'승인 요청',html:renderSettingsApprovalRequests, beforeOpen:settingsLoadAllApprovalRequests},
-  backup:{title:'백업 / 내보내기',html:function(){return '<div class="settingsDetailIntro"><div class="settingsDetailTitle">백업과 내보내기는<br/>원장만 사용할 수 있습니다.</div></div><div class="settingsCard"><div class="settingsRow"><div class="settingsRowLeft"><span class="settingsRowTitle">전체 학생 데이터</span></div><span class="settingsBadge">JSON</span></div><div class="settingsRow"><div class="settingsRowLeft"><span class="settingsRowTitle">피드백 기록</span></div><span class="settingsBadge">JSON</span></div><div class="settingsRow"><div class="settingsRowLeft"><span class="settingsRowTitle">위험신호 기록</span></div><span class="settingsBadge warn">중요</span></div></div><button class="settingsExportBtn" onclick="downloadSettingsBackup()" type="button">전체 데이터 내보내기</button>';}},
-  privacy:{title:'개인정보 처리방침',html:function(){return '<div class="settingsDetailIntro"><div class="settingsDetailTitle">학생 기록은<br/>안전하게 관리되어야 합니다.</div></div><div class="settingsInfoCard"><div class="settingsInfoHead">수집되는 정보</div><div class="settingsInfoList"><div class="settingsInfoItem">학생 이름, 등록일, 반 정보</div><div class="settingsInfoItem">수업 기록과 피드백 내용</div><div class="settingsInfoItem">위험신호 기록과 원장 확인 메모</div><div class="settingsInfoItem">선생님 계정 및 작성 기록</div></div></div><div class="settingsInfoCard"><div class="settingsInfoHead">AI 사용 안내</div><div class="settingsInfoList"><div class="settingsInfoItem">AI 생성 문구는 자동 발송되지 않습니다.</div><div class="settingsInfoItem">선생님 또는 원장의 검토 후 사용해야 합니다.</div></div></div>';}}
+  backup:{title:'백업 / 내보내기',html:function(){return '<div class="settingsDetailIntro"><div class="settingsDetailTitle">백업과 내보내기는<br/>원장만 사용할 수 있습니다.</div></div><div class="settingsCard"><div class="settingsRow"><div class="settingsRowLeft"><span class="settingsRowTitle">전체 학생 데이터</span></div><span class="settingsBadge">JSON</span></div><div class="settingsRow"><div class="settingsRowLeft"><span class="settingsRowTitle">피드백 기록</span></div><span class="settingsBadge">JSON</span></div></div><button class="settingsExportBtn" onclick="downloadSettingsBackup()" type="button">전체 데이터 내보내기</button>';}},
+  privacy:{title:'개인정보 처리방침',html:function(){return '<div class="settingsDetailIntro"><div class="settingsDetailTitle">학생 기록은<br/>안전하게 관리되어야 합니다.</div></div><div class="settingsInfoCard"><div class="settingsInfoHead">수집되는 정보</div><div class="settingsInfoList"><div class="settingsInfoItem">학생 이름, 등록일, 반 정보</div><div class="settingsInfoItem">수업 기록과 피드백 내용</div><div class="settingsInfoItem">선생님 계정 및 작성 기록</div></div></div><div class="settingsInfoCard"><div class="settingsInfoHead">AI 사용 안내</div><div class="settingsInfoList"><div class="settingsInfoItem">AI 생성 문구는 자동 발송되지 않습니다.</div><div class="settingsInfoItem">선생님 또는 원장의 검토 후 사용해야 합니다.</div></div></div>';}}
 };
 
 let settingsCurrentDetailType = '';
@@ -27112,7 +26310,7 @@ function renderOlliAcademyCachedView() {
       renderElementaryRecords('');
     }
     if (typeof settingsApplyStateToUI === 'function') settingsApplyStateToUI();
-    if (typeof updateNotificationButtons === 'function') updateNotificationButtons();
+    
   } catch (error) {
     console.warn('학원 전환 캐시 화면 표시 보류:', error);
   }
@@ -28253,278 +27451,13 @@ function shouldShowOlliLoginOnStart() {
 
 // 시작 화면 표시는 메인 시작 라우터에서 한 번만 처리합니다.
 </script>
-<script>
-/* v40-28: 원장 확인 박스 empty/active 상태 보강 */
-function updateDirectorMemoBlockState(target) {
-  if (!target || !['kinderMemoBox4', 'kinderMemoBox5'].includes(target.id)) return;
-  const block = target.closest('.director-memo-block');
-  if (!block) return;
-  const hasValue = !!String(target.value || '').trim();
-  const isFocused = document.activeElement === target;
-  const isActive = hasValue || isFocused;
-  block.classList.toggle('is-active', isActive);
-  block.classList.toggle('empty', !isActive);
-}
-
-document.addEventListener('focusin', function(event) {
-  updateDirectorMemoBlockState(event.target);
-});
-document.addEventListener('input', function(event) {
-  updateDirectorMemoBlockState(event.target);
-});
-document.addEventListener('focusout', function(event) {
-  setTimeout(() => updateDirectorMemoBlockState(event.target), 0);
-});
-document.addEventListener('DOMContentLoaded', function() {
-  ['kinderMemoBox4', 'kinderMemoBox5'].forEach(id => updateDirectorMemoBlockState(document.getElementById(id)));
-});
-</script>
-<script>
-/* 2026-04-27 유치부 통합 기록 모드 제어 */
-function setupKinderDirectorAccordion(){
-  var card = document.querySelector('#kinderRiskMemoScreen .director-check-card');
-  var head = document.querySelector('#kinderRiskMemoScreen .director-check-head');
-  if (!card || !head) return;
-  if (card.dataset.accordionReady !== 'true') {
-    card.dataset.accordionReady = 'true';
-    head.setAttribute('role','button');
-    head.setAttribute('tabindex','0');
-    head.addEventListener('click', function(event){
-      event.preventDefault();
-      card.classList.toggle('director-collapsed');
-      if (typeof autoResizeKinderMemoBoxes === 'function') requestAnimationFrame(autoResizeKinderMemoBoxes);
-    });
-    head.addEventListener('keydown', function(event){
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        card.classList.toggle('director-collapsed');
-        if (typeof autoResizeKinderMemoBoxes === 'function') requestAnimationFrame(autoResizeKinderMemoBoxes);
-      }
-    });
-  }
-  if (!card.classList.contains('director-ready')) {
-    card.classList.add('director-ready', 'director-collapsed');
-  }
-}
-
-function setKinderCombinedMode(mode){
-  var screen = document.getElementById('kinderRiskMemoScreen');
-  if (!screen) return;
-  var next = 'risk';
-  screen.classList.remove('mode-normal','mode-guide','mode-risk');
-  screen.classList.add('mode-' + next);
-
-  var guideBtn = document.getElementById('kinderGuideToggleBtn');
-  var riskBtn = document.getElementById('kinderRiskToggleBtn');
-  if (guideBtn) guideBtn.textContent = next === 'guide' ? '피드백 가이드 닫기' : '피드백 가이드';
-  if (riskBtn) riskBtn.textContent = next === 'risk' ? '관찰노트 닫기' : '관찰노트';
-  setupKinderDirectorAccordion();
-  var directorCard = document.querySelector('#kinderRiskMemoScreen .director-check-card');
-  if (directorCard && next === 'risk') directorCard.classList.add('director-collapsed');
-  if (typeof autoResizeKinderMemoBoxes === 'function') requestAnimationFrame(autoResizeKinderMemoBoxes);
-}
-function toggleKinderGuideMode(){ setKinderCombinedMode('risk'); }
-function toggleKinderRiskWriteMode(){ setKinderCombinedMode('risk'); }
-
-</script>
-
-<script>
-/* 2026-04-27 step4: 유치부 통합 페이지 - 장면카드/가로키워드 오류 복구 */
-const kinderCombinedSelectedSceneIds = new Set();
-let kinderCombinedOpenSceneInfoId = '';
-
-function getKinderCombinedSceneMemoInput(){
-  return document.getElementById('kinderSceneMemoInput');
-}
-function getKinderCombinedSceneLabel(id){
-  return (typeof SCENE_MEMO_LABELS !== 'undefined' && SCENE_MEMO_LABELS[id]) ? SCENE_MEMO_LABELS[id] : '';
-}
-function syncKinderCombinedMemoAfterInput(input){
-  if (!input) return;
-  if (typeof autoResizeTextarea === 'function') autoResizeTextarea(input);
-  if (typeof autoResizeKinderMemoBoxes === 'function') autoResizeKinderMemoBoxes();
-  if (typeof handleMemoPauseAutoSaveInput === 'function') handleMemoPauseAutoSaveInput(input);
-}
-function getKinderCombinedLines(value){
-  return String(value || '').split('\n').map(line => line.trim()).filter(Boolean);
-}
-function insertKinderCombinedLine(text){
-  const input = getKinderCombinedSceneMemoInput();
-  const phrase = String(text || '').trim();
-  if (!input || !phrase) return;
-  const lines = getKinderCombinedLines(input.value);
-  if (!lines.includes(phrase)) lines.push(phrase);
-  input.value = lines.join('\n');
-  syncKinderCombinedMemoAfterInput(input);
-}
-function removeKinderCombinedLine(text){
-  const input = getKinderCombinedSceneMemoInput();
-  const phrase = String(text || '').trim();
-  if (!input || !phrase) return;
-  const lines = getKinderCombinedLines(input.value).filter(line => line !== phrase);
-  input.value = lines.join('\n');
-  syncKinderCombinedMemoAfterInput(input);
-}
-function insertKinderCombinedSceneLabel(id){
-  const label = getKinderCombinedSceneLabel(id);
-  if (!label) return;
-  insertKinderCombinedLine(label);
-}
-function removeKinderCombinedSceneLabel(id){
-  const label = getKinderCombinedSceneLabel(id);
-  if (!label) return;
-  removeKinderCombinedLine(label);
-}
-function renderKinderCombinedSceneGrid(){
-  const area = document.getElementById('kinderCombinedSceneGrid');
-  if (!area || typeof SCENE_CARD_OPTIONS === 'undefined') return;
-  area.innerHTML = SCENE_CARD_OPTIONS.map(item => {
-    const active = kinderCombinedSelectedSceneIds.has(item.id) ? ' active' : '';
-    return `<div role="button" tabindex="0" class="kinderCombinedSceneChip${active}" data-id="${item.id}" onclick="handleKinderCombinedSceneCardTap(event,'${item.id}')">
-      <button type="button" class="kinderCombinedSceneMarkerWrap" onclick="toggleKinderCombinedSceneMarker(event,'${item.id}')" aria-label="선택 토글">
-        <span class="kinderCombinedChipNum">
-          <span class="kinderCombinedSceneNumText">${item.no}</span>
-          <svg class="kinderCombinedSceneCheckIcon" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7.3" stroke="currentColor" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </span>
-      </button>
-      <span class="kinderCombinedChipTitle">${escapeHtml(item.title)}</span>
-    </div>`;
-  }).join('');
-  updateKinderCombinedSceneInfoMarker();
-}
-function selectKinderCombinedScene(id){
-  if (kinderCombinedSelectedSceneIds.has(id)) return;
-  kinderCombinedSelectedSceneIds.add(id);
-  insertKinderCombinedSceneLabel(id);
-}
-function unselectKinderCombinedScene(id){
-  if (!kinderCombinedSelectedSceneIds.has(id)) return;
-  kinderCombinedSelectedSceneIds.delete(id);
-  removeKinderCombinedSceneLabel(id);
-  if (kinderCombinedOpenSceneInfoId === id) closeKinderCombinedSceneInfo();
-}
-function toggleKinderCombinedSceneMarker(event, id){
-  if (event){ event.preventDefault(); event.stopPropagation(); }
-  if (kinderCombinedSelectedSceneIds.has(id)) unselectKinderCombinedScene(id);
-  else selectKinderCombinedScene(id);
-  renderKinderCombinedSceneGrid();
-}
-function handleKinderCombinedSceneCardTap(event, id){
-  if (event){ event.preventDefault(); event.stopPropagation(); }
-  if (!kinderCombinedSelectedSceneIds.has(id)){
-    selectKinderCombinedScene(id);
-    renderKinderCombinedSceneGrid();
-    return;
-  }
-  if (kinderCombinedOpenSceneInfoId === id){
-    closeKinderCombinedSceneInfo();
-  } else {
-    openKinderCombinedSceneInfo(id);
-  }
-}
-function openKinderCombinedSceneInfo(id){
-  const item = getSceneById(id);
-  const overlay = document.getElementById('kinderCombinedSceneInfoOverlay');
-  if (!item || !overlay) return;
-  kinderCombinedOpenSceneInfoId = id;
-  const title = document.getElementById('kinderCombinedSceneInfoTitle');
-  const main = document.getElementById('kinderCombinedSceneInfoMain');
-  const sub = document.getElementById('kinderCombinedSceneInfoSub');
-  const key = document.getElementById('kinderCombinedSceneInfoKeywords');
-  const num = document.getElementById('kinderCombinedSceneInfoNumText');
-  if (title) title.textContent = `${item.no}. ${item.title}`;
-  if (main) main.textContent = item.main || '';
-  if (sub) sub.textContent = item.sub || '';
-  if (key) key.innerHTML = (item.keywords || []).map(k => `<span>${escapeHtml(k)}</span>`).join('');
-  if (num) num.textContent = item.no;
-  updateKinderCombinedSceneInfoMarker();
-  overlay.classList.add('show');
-}
-function closeKinderCombinedSceneInfo(){
-  const overlay = document.getElementById('kinderCombinedSceneInfoOverlay');
-  if (overlay) overlay.classList.remove('show');
-  kinderCombinedOpenSceneInfoId = '';
-}
-function handleKinderCombinedSceneInfoOverlayClick(event){
-  if (event.target && event.target.id === 'kinderCombinedSceneInfoOverlay') closeKinderCombinedSceneInfo();
-}
-function updateKinderCombinedSceneInfoMarker(){
-  const marker = document.getElementById('kinderCombinedSceneInfoMarker');
-  if (!marker || !kinderCombinedOpenSceneInfoId) return;
-  marker.dataset.selected = kinderCombinedSelectedSceneIds.has(kinderCombinedOpenSceneInfoId) ? 'true' : 'false';
-}
-function toggleKinderCombinedSceneInfoSelection(event){
-  if (event){ event.preventDefault(); event.stopPropagation(); }
-  const id = kinderCombinedOpenSceneInfoId;
-  if (!id) return;
-  if (kinderCombinedSelectedSceneIds.has(id)) unselectKinderCombinedScene(id);
-  else selectKinderCombinedScene(id);
-  renderKinderCombinedSceneGrid();
-  updateKinderCombinedSceneInfoMarker();
-}
-function insertKinderSceneTemplate(text){
-  insertKinderCombinedLine(text);
-}
-
-document.addEventListener('focusin', function(event){
-  if (event.target && event.target.id === 'kinderSceneMemoInput') {
-    /* 입력창 클릭 시 가이드 모드를 강제로 닫지 않음. 버튼으로만 모드 제어 */
-  }
-});
-document.addEventListener('DOMContentLoaded', renderKinderCombinedSceneGrid);
-renderKinderCombinedSceneGrid();
-</script>
 
 
-<script>
-/* 2026-04-27 step5: 전체 흰 화면 방지 및 유치부 통합 기능 안정화 */
-(function(){
-  function hasVisiblePage(){
-    return Array.prototype.some.call(document.querySelectorAll('.pageScreen'), function(el){
-      var style = window.getComputedStyle ? getComputedStyle(el) : null;
-      return el && style && style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
-    });
-  }
-  function safeRenderKinderCards(){
-    try {
-      if (typeof renderKinderCombinedSceneGrid === 'function') renderKinderCombinedSceneGrid();
-      var grid = document.getElementById('kinderCombinedSceneGrid');
-      if (grid && !grid.children.length && typeof SCENE_CARD_OPTIONS !== 'undefined') {
-        grid.innerHTML = SCENE_CARD_OPTIONS.map(function(item){
-          var id = String(item.id || '');
-          var title = (typeof escapeHtml === 'function') ? escapeHtml(item.title || '') : String(item.title || '');
-          var no = item.no || '';
-          return '<div role="button" tabindex="0" class="kinderCombinedSceneChip" data-id="' + id + '" onclick="handleKinderCombinedSceneCardTap(event,\'' + id + '\')">'
-            + '<button type="button" class="kinderCombinedSceneMarkerWrap" onclick="toggleKinderCombinedSceneMarker(event,\'' + id + '\')" aria-label="선택 토글">'
-            + '<span class="kinderCombinedChipNum"><span class="kinderCombinedSceneNumText">' + no + '</span><svg class="kinderCombinedSceneCheckIcon" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7.3" stroke="currentColor" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'
-            + '</button><span class="kinderCombinedChipTitle">' + title + '</span></div>';
-        }).join('');
-      }
-    } catch(e) { console.error('safeRenderKinderCards error', e); }
-  }
 
-  window.insertKinderSceneTemplate = function(text){
-    var input = document.getElementById('kinderSceneMemoInput');
-    var phrase = String(text || '').trim();
-    if (!input || !phrase) return;
-    var lines = String(input.value || '').split('\n').map(function(line){ return line.trim(); }).filter(Boolean);
-    if (lines.indexOf(phrase) < 0) lines.push(phrase);
-    input.value = lines.join('\n');
-    if (typeof autoResizeTextarea === 'function') autoResizeTextarea(input);
-    if (typeof autoResizeKinderMemoBoxes === 'function') autoResizeKinderMemoBoxes();
-    if (typeof handleMemoPauseAutoSaveInput === 'function') handleMemoPauseAutoSaveInput(input);
-  };
 
-  document.addEventListener('DOMContentLoaded', function(){
-    safeRenderKinderCards();
-  });
-  window.addEventListener('load', function(){
-    safeRenderKinderCards();
-  });
-  setTimeout(function(){ safeRenderKinderCards(); }, 0);
-  setTimeout(function(){ safeRenderKinderCards(); }, 300);
-})();
-</script>
+
+
+
 
 <script>
 document.addEventListener('DOMContentLoaded', setupKinderDirectorAccordion);
@@ -28532,1115 +27465,13 @@ window.addEventListener('load', setupKinderDirectorAccordion);
 setupKinderDirectorAccordion();
 </script>
 
-<script>
-/* 2026-04-27 유치부 통합 기록: 노트 토글과 성장노트 연결, 피드백 작성 */
-function resetFailGrowthScrollPositionOnly(){
-  ['',''].forEach(function(screenId){
-    var screen = document.getElementById(screenId);
-    if (!screen) return;
-    screen.scrollTop = 0;
-    var inner = screen.querySelector('.growthMemoPageInner');
-    var body = screen.querySelector('.growthMemoBody');
-    if (inner) inner.scrollTop = 0;
-    if (body) body.scrollTop = 0;
-  });
-}
-
-function renderKinderRiskModeMenu(){
-  var menu = document.getElementById('kinderRiskModeDropup');
-  if (menu) menu.innerHTML = '';
-}
-function toggleKinderRiskModeMenu(event){
-  if (event) event.stopPropagation();
-  closeKinderRiskModeMenu();
-}
-function closeKinderRiskModeMenu(){
-  var menu = document.getElementById('kinderRiskModeDropup');
-  if (menu) menu.classList.remove('show');
-}
-function openKinderGrowthNoteMode(event){
-  if (event) event.stopPropagation();
-  closeKinderRiskModeMenu();
-  if (typeof openKinderChatFeedbackGrowthSheet === 'function') {
-    openKinderChatFeedbackGrowthSheet();
-  } else {
-    alert('성장피드백은 새 버전으로 준비 중입니다.');
-  }
-}
-function getKinderCombinedSelectedScenePayload(){
-  if (typeof SCENE_CARD_OPTIONS === 'undefined') return [];
-  var selected = (typeof kinderCombinedSelectedSceneIds !== 'undefined') ? kinderCombinedSelectedSceneIds : new Set();
-  return SCENE_CARD_OPTIONS.filter(function(item){ return selected.has(item.id); });
-}
-function buildKinderCombinedFeedbackUserText(){
-  var selected = getKinderCombinedSelectedScenePayload();
-  var memo = document.getElementById('kinderSceneMemoInput')?.value.trim() || '';
-  var sceneLines = selected.length ? selected.map(function(item){
-    return '- ' + item.no + '. ' + item.title + '\n  메인질문: ' + item.main + '\n  확장질문: ' + item.sub + '\n  핵심키워드: ' + item.keywords.join(', ');
-  }).join('\n') : '- 선택된 장면 없음';
-  return '아래 유치부 수업 장면카드 선택 내용과 선생님 메모를 바탕으로 학부모에게 보낼 따뜻하고 전문적인 1분 피드백을 작성해줘.\n\n[선택된 장면카드]\n' + sceneLines + '\n\n[선생님 메모]\n' + (memo || '없음');
-}
-function requestKinderCombinedFeedback(){
-  var memo = document.getElementById('kinderSceneMemoInput')?.value.trim() || '';
-  var hasScenes = (typeof kinderCombinedSelectedSceneIds !== 'undefined' && kinderCombinedSelectedSceneIds.size > 0);
-  if (!memo && !hasScenes) {
-    alert('장면카드를 선택하거나 1분 피드백을 먼저 입력해 주세요.');
-    return;
-  }
-
-  var userText = buildKinderCombinedFeedbackUserText();
-  var studentName = '';
-  try { studentName = getCurrentFeedbackStudentNameForToday('kinder'); } catch(e) {}
-  if (!studentName && typeof currentMemoStudent !== 'undefined' && currentMemoStudent && currentMemoStudent.name) {
-    studentName = currentMemoStudent.name;
-  }
-
-  startTodayFeedbackRequest({
-    promptType:'class',
-    userText:userText,
-    studentName:studentName,
-    studentDivision:'kinder',
-    feedbackType:'class',
-    label:'유치부 1분 피드백'
-  });
-
-  try {
-    if (typeof kinderCombinedSelectedSceneIds !== 'undefined' && kinderCombinedSelectedSceneIds.clear) kinderCombinedSelectedSceneIds.clear();
-    if (typeof updateKinderSceneCards === 'function') updateKinderSceneCards();
-  } catch(e) {}
-  try {
-    var input = document.getElementById('kinderSceneMemoInput');
-    if (input) input.value = '';
-  } catch(e) {}
-  try { showPushToast((studentName || '학생') + ' 1분 피드백을 정리하고 있어요.'); } catch(e) {}
-}
-
-document.addEventListener('click', function(event){
-  var wrap = document.getElementById('kinderRiskModeWrap');
-  if (wrap && !wrap.contains(event.target)) closeKinderRiskModeMenu();
-});
 
 
-(function(){
-  if (window.__olliGrowthScrollResetPatched) return;
-  window.__olliGrowthScrollResetPatched = true;
-  var targets = ['showRecordRoom','closeMemoPage'];
-  targets.forEach(function(name){
-    var original = window[name];
-    if (typeof original !== 'function') return;
-    window[name] = function(){
-      return original.apply(this, arguments);
-    };
-  });
-})();
-</script>
 
-<script>
-/* 2026-04-27 patch: 유치부 버튼 라벨/접근성 보정 */
-(function(){
-  function syncKinderRiskButtonLabel(){
-    var btn = document.getElementById('kinderRiskToggleBtn');
-    if (!btn) return;
-    var text = (btn.textContent || '').trim();
-    btn.setAttribute('aria-label', text || '관찰노트');
-    btn.setAttribute('title', text || '관찰노트');
-  }
-  document.addEventListener('DOMContentLoaded', syncKinderRiskButtonLabel);
-  window.addEventListener('load', syncKinderRiskButtonLabel);
-  var originalSetKinderCombinedMode = window.setKinderCombinedMode;
-  if (typeof originalSetKinderCombinedMode === 'function') {
-    window.setKinderCombinedMode = function(mode){
-      var result = originalSetKinderCombinedMode.apply(this, arguments);
-      syncKinderRiskButtonLabel();
-      return result;
-    };
-  }
-  syncKinderRiskButtonLabel();
-})();
-</script>
 
-<script>
-/* 2026-04-27 v3: 수업 장면 포커스 시 하단 버튼/키보드 동작 보정 */
-(function(){
-  function getKinderKeyboardOffset(){
-    var vv = window.visualViewport;
-    if (!vv) return 0;
-    return Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
-  }
 
-  function syncKinderKeyboardUI(){
-    var screen = document.getElementById('kinderRiskMemoScreen');
-    var textarea = document.getElementById('kinderSceneMemoInput');
-    if (!screen || !textarea) return;
-    var active = document.activeElement === textarea;
-    var offset = active ? getKinderKeyboardOffset() : 0;
-    document.documentElement.style.setProperty('--kinder-keyboard-offset', offset + 'px');
-    screen.classList.toggle('keyboard-active', !!active);
-  }
 
-  function bindKinderKeyboardUI(){
-    var textarea = document.getElementById('kinderSceneMemoInput');
-    if (!textarea || textarea.dataset.kinderKeyboardBound === 'true') return;
-    textarea.dataset.kinderKeyboardBound = 'true';
-    textarea.addEventListener('focus', function(){
-      syncKinderKeyboardUI();
-      setTimeout(syncKinderKeyboardUI, 60);
-      setTimeout(syncKinderKeyboardUI, 260);
-    });
-    textarea.addEventListener('blur', function(){
-      setTimeout(syncKinderKeyboardUI, 60);
-      setTimeout(syncKinderKeyboardUI, 220);
-    });
-  }
-
-  function bindKinderQuickButtons(){
-    var row = document.querySelector('#kinderRiskMemoScreen .kinderQuickRow');
-    if (!row || row.dataset.quickBindDone === 'true') return;
-    row.dataset.quickBindDone = 'true';
-    row.querySelectorAll('.kinderQuickBtn').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        setTimeout(syncKinderKeyboardUI, 0);
-        setTimeout(syncKinderKeyboardUI, 80);
-      });
-    });
-  }
-
-  function placeKinderGuidePanelInsideScenePanel(){
-    var guidePanel = document.getElementById('kinderGuidePanel');
-    var scenePanel = document.getElementById('kinderScenePanel');
-    if (!guidePanel || !scenePanel) return;
-    var head = scenePanel.querySelector('.kinderSceneHead');
-    if (guidePanel.parentElement !== scenePanel) {
-      scenePanel.insertBefore(guidePanel, head ? head.nextSibling : scenePanel.firstChild);
-    } else if (head && guidePanel.previousElementSibling !== head) {
-      scenePanel.insertBefore(guidePanel, head.nextSibling);
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', function(){
-    placeKinderGuidePanelInsideScenePanel();
-    bindKinderKeyboardUI();
-    bindKinderQuickButtons();
-    syncKinderKeyboardUI();
-  });
-  window.addEventListener('load', function(){
-    placeKinderGuidePanelInsideScenePanel();
-    bindKinderKeyboardUI();
-    bindKinderQuickButtons();
-    syncKinderKeyboardUI();
-  });
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', syncKinderKeyboardUI);
-    window.visualViewport.addEventListener('scroll', syncKinderKeyboardUI);
-  }
-  window.addEventListener('resize', syncKinderKeyboardUI);
-})();
-</script>
-
-<style id="olliKinderRiskUnifiedStyle">
-/* 유치부 통합 기록 UI 단일 CSS 기준
-   기존에 분산되어 있던 스타일을 현재 최종 화면 기준으로 한 곳에 통합.
-   선언 순서는 실제 최종 화면의 cascade 결과를 유지하도록 정리함. */
-/* 모드 전환 / 기본 카드 */
-#kinderRiskMemoScreen .kinderGuidePanel,
-#kinderRiskMemoScreen .kinderScenePanel,
-#kinderRiskMemoScreen .signal-record-list,
-#kinderRiskMemoScreen .director-check-card{
-  transition: opacity .16s ease, transform .16s ease;
-}
-
-#kinderRiskMemoScreen.mode-normal .kinderGuidePanel,
-#kinderRiskMemoScreen.mode-normal .signal-record-list,
-#kinderRiskMemoScreen.mode-normal .director-check-card{
-  display:none ;
-}
-#kinderRiskMemoScreen.mode-normal .signal-status-card,
-#kinderRiskMemoScreen.mode-normal .kinderScenePanel{
-  display:block ;
-}
-
-#kinderRiskMemoScreen.mode-guide .signal-status-card,
-#kinderRiskMemoScreen.mode-guide .signal-record-list,
-#kinderRiskMemoScreen.mode-guide .director-check-card{
-  display:none ;
-}
-#kinderRiskMemoScreen.mode-guide .kinderGuidePanel,
-#kinderRiskMemoScreen.mode-guide .kinderScenePanel{
-  display:block ;
-}
-
-#kinderRiskMemoScreen.mode-risk .kinderGuidePanel,
-#kinderRiskMemoScreen.mode-risk .kinderScenePanel{
-  display:none ;
-}
-#kinderRiskMemoScreen.mode-risk .signal-status-card,
-#kinderRiskMemoScreen.mode-risk .signal-record-list,
-#kinderRiskMemoScreen.mode-risk .director-check-card{
-  display:block ;
-}
-
-#kinderRiskMemoScreen .kinderGuidePanel,
-#kinderRiskMemoScreen .kinderScenePanel{
-  background:#fff;
-  border:1px solid rgba(0,0,0,.06);
-  border-radius:28px;
-  box-shadow:0 12px 30px rgba(0,0,0,.06);
-  padding:18px;
-  margin:0 0 18px;
-}
-#kinderRiskMemoScreen .kinderGuideHead,
-#kinderRiskMemoScreen .kinderSceneHead{
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-  margin-bottom:14px;
-}
-#kinderRiskMemoScreen .kinderGuideHead strong,
-#kinderRiskMemoScreen .kinderSceneHead strong{
-  font-size:calc(18px * var(--olli-text-scale));
-  font-weight:680;
-  letter-spacing:-.04em;
-  color:#111;
-}
-#kinderRiskMemoScreen .kinderGuideHead span,
-#kinderRiskMemoScreen .kinderSceneHead span{
-  font-size:calc(13px * var(--olli-text-scale));
-  line-height:1.45;
-  color:#8a8a8f;
-  letter-spacing:-.03em;
-}
-#kinderRiskMemoScreen .kinderGuideGrid{
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:9px;
-}
-#kinderRiskMemoScreen .kinderGuideChip{
-  min-height:42px;
-  border:1px solid rgba(0,0,0,.08);
-  border-radius:999px;
-  background:#f8f8f8;
-  color:#333;
-  font-size:calc(14px * var(--olli-text-scale));
-  font-weight:560;
-  font-family:inherit;
-  letter-spacing:-.03em;
-  -webkit-tap-highlight-color:transparent;
-}
-#kinderRiskMemoScreen .kinderGuideChip.active{
-  background:#111;
-  color:#fff;
-  border-color:#111;
-}
-
-#kinderRiskMemoScreen .kinderGuideChip{
-  cursor:pointer;
-  user-select:none;
-}
-#kinderRiskMemoScreen .kinderGuideChip:active{
-  transform:scale(.97);
-}
-#kinderRiskMemoScreen.mode-guide .kinderGuidePanel{
-  margin-bottom:14px ;
-}
-#kinderRiskMemoScreen.mode-guide .kinderScenePanel{
-  margin-top:0 ;
-}
-#kinderRiskMemoScreen .kinderSceneMemoInput{
-  width:100%;
-  min-height:210px;
-  border:0;
-  outline:0;
-  resize:none;
-  background:#f8f8f8;
-  border-radius:22px;
-  padding:16px;
-  font-family:inherit;
-  font-size:calc(15px * var(--olli-text-scale));
-  line-height:1.68;
-  color:#111;
-  letter-spacing:-.03em;
-}
-#kinderRiskMemoScreen .kinderSceneMemoInput::placeholder{
-  color:#b8b8b8;
-}
-#kinderRiskMemoScreen .kinderCombinedBottomBar{
-  position:sticky;
-  bottom:14px;
-  z-index:20;
-  display:flex;
-  gap:10px;
-  align-items:center;
-  justify-content:center;
-  padding:10px 0 0;
-  margin-top:4px;
-  background:linear-gradient(to top, rgba(255,255,255,0.96), rgba(255,255,255,0));
-}
-#kinderRiskMemoScreen .kinderCombinedActionBtn{
-  flex:1 1 0;
-  max-width:220px;
-  min-height:52px;
-  border:0;
-  border-radius:999px;
-  background:#fff;
-  color:#111;
-  font-family:inherit;
-  font-size:calc(15px * var(--olli-text-scale));
-  font-weight:650;
-  letter-spacing:-.04em;
-  box-shadow:0 12px 30px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.04);
-}
-#kinderRiskMemoScreen .kinderCombinedActionBtn.risk{
-  background:#111;
-  color:#fff;
-}
-#kinderRiskMemoScreen.mode-guide #kinderGuideToggleBtn,
-#kinderRiskMemoScreen.mode-risk #kinderRiskToggleBtn{
-  background:#0A84FF;
-  color:#fff;
-}
-
-/* 위험신호 작성 모드에서는 기존 '비활성화' 느낌을 줄이고 입력 박스만 보이게 정리 */
-#kinderRiskMemoScreen.mode-risk .signal-record-card.empty,
-#kinderRiskMemoScreen.mode-risk .director-memo-block.empty{
-  opacity:1 ;
-  filter:none ;
-  background:#fff ;
-}
-#kinderRiskMemoScreen.mode-risk .signal-record-card.empty .signal-date{
-  display:none ;
-}
-
-/* 수업 장면 카드 / 빠른 키워드 */
-#kinderRiskMemoScreen .kinderGuideHead{display:none;}
-#kinderRiskMemoScreen .kinderGuidePanel{padding:0; background:transparent; border:none; box-shadow:none;}
-#kinderRiskMemoScreen .kinderCombinedSceneGrid{
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:8px;
-  padding:0;
-}
-#kinderRiskMemoScreen .kinderCombinedSceneChip{
-  min-height:78px;
-  border:1px solid #eeeeec;
-  border-radius:22px;
-  background:#fff;
-  color:#111;
-  padding:10px 9px;
-  display:flex;
-  flex-direction:column;
-  justify-content:space-between;
-  align-items:flex-start;
-  text-align:left;
-  box-shadow:0 5px 16px rgba(0,0,0,0.026);
-  position:relative;
-  cursor:pointer;
-  -webkit-tap-highlight-color:transparent;
-  transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
-}
-#kinderRiskMemoScreen .kinderCombinedSceneChip.active{
-  background:#111;
-  border-color:#111;
-  color:#fff;
-  box-shadow:0 10px 24px rgba(0,0,0,0.14);
-  transform:translateY(-1px);
-}
-#kinderRiskMemoScreen .kinderCombinedSceneMarkerWrap{
-  position:relative;
-  width:34px;
-  height:34px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  margin:-5px 0 0 -5px;
-  border:none;
-  background:transparent;
-  border-radius:50%;
-  cursor:pointer;
-  flex-shrink:0;
-  -webkit-tap-highlight-color:transparent;
-}
-#kinderRiskMemoScreen .kinderCombinedSceneMarkerWrap:focus,
-#kinderRiskMemoScreen .kinderCombinedSceneMarkerWrap:focus-visible,
-#kinderRiskMemoScreen .kinderCombinedSceneMarkerWrap:active{
-  outline:none;
-  background:transparent;
-  box-shadow:none;
-}
-#kinderRiskMemoScreen .kinderCombinedChipNum{
-  width:24px;
-  height:24px;
-  border-radius:50%;
-  background:#f0f0ee;
-  color:#777;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  font-size:calc(12px * var(--olli-text-scale));
-  font-weight:760;
-}
-#kinderRiskMemoScreen .kinderCombinedSceneChip.active .kinderCombinedChipNum{background:#fff;color:#111;}
-#kinderRiskMemoScreen .kinderCombinedSceneCheckIcon{width:12px;height:12px;display:none;}
-#kinderRiskMemoScreen .kinderCombinedSceneChip.active .kinderCombinedSceneNumText{display:none;}
-#kinderRiskMemoScreen .kinderCombinedSceneChip.active .kinderCombinedSceneCheckIcon{display:block;}
-#kinderRiskMemoScreen .kinderCombinedChipTitle{
-  font-size:calc(13.5px * var(--olli-text-scale));
-  font-weight:720;
-  letter-spacing:-0.045em;
-  line-height:1.18;
-}
-#kinderRiskMemoScreen .kinderScenePanel{
-  background:#fff;
-  border-radius:28px;
-  padding:16px;
-  box-shadow:0 10px 26px rgba(0,0,0,0.045),0 2px 8px rgba(0,0,0,0.025);
-}
-#kinderRiskMemoScreen .kinderSceneMemoInput{
-  min-height:146px;
-  background:#fafafa;
-  border-radius:22px;
-  padding:15px;
-  font-size:calc(15px * var(--olli-text-scale));
-  line-height:1.62;
-  font-weight:500;
-}
-#kinderRiskMemoScreen .kinderQuickRow{
-  margin-top:10px;
-  display:flex;
-  flex-direction:row;
-  flex-wrap:nowrap;
-  gap:8px;
-  overflow-x:auto;
-  overflow-y:hidden;
-  -webkit-overflow-scrolling:touch;
-  padding-bottom:1px;
-  white-space:nowrap;
-  scroll-snap-type:x proximity;
-  width:100%;
-}
-#kinderRiskMemoScreen .kinderQuickRow::-webkit-scrollbar{display:none;}
-#kinderRiskMemoScreen .kinderQuickBtn{
-  flex:0 0 auto;
-  width:auto;
-  max-width:none;
-  height:34px;
-  border:none;
-  border-radius:999px;
-  background:#f0f0ee;
-  color:#666;
-  padding:0 13px;
-  font-size:calc(12px * var(--olli-text-scale));
-  font-weight:650;
-  white-space:nowrap;
-  scroll-snap-align:start;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  font-family:inherit;
-}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoOverlay{
-  position:fixed;
-  inset:0;
-  z-index:90000;
-  display:none;
-  align-items:center;
-  justify-content:center;
-  padding:22px;
-  background:rgba(0,0,0,0.16);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoOverlay.show{display:flex;}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoCard{
-  width:min(520px,100%);
-  max-height:min(74vh,620px);
-  overflow-y:auto;
-  border-radius:30px;
-  background:#fff;
-  color:#111;
-  box-shadow:0 28px 70px rgba(0,0,0,0.22),0 8px 18px rgba(0,0,0,0.10);
-  padding:20px 16px 16px;
-  position:relative;
-  -webkit-overflow-scrolling:touch;
-}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoTopRow{display:flex;align-items:flex-start;justify-content:flex-start;gap:10px;margin-bottom:14px;}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoMarkerWrap{position:relative;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;margin:-3px 0 0 -3px;border:none;background:transparent;border-radius:50%;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoMarkerWrap:focus,
-#kinderRiskMemoScreen .kinderCombinedSceneInfoMarkerWrap:focus-visible,
-#kinderRiskMemoScreen .kinderCombinedSceneInfoMarkerWrap:active{outline:none;background:transparent;box-shadow:none;}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoNo{width:24px;height:24px;border-radius:50%;background:#111;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:calc(12px * var(--olli-text-scale));font-weight:760;}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoCheckIcon{display:block;width:12px;height:12px;}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoNumText{display:none;}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoMarkerWrap[data-selected="false"] .kinderCombinedSceneInfoNo{background:#f0f0ee;color:#777;}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoMarkerWrap[data-selected="false"] .kinderCombinedSceneInfoCheckIcon{display:none;}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoMarkerWrap[data-selected="false"] .kinderCombinedSceneInfoNumText{display:inline;}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoCloseBtn{
-  position:absolute;
-  top:17px;
-  right:14px;
-  width:34px;
-  height:34px;
-  border:none;
-  border-radius:999px;
-  background:#f0f0ee;
-  color:#111;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  font-size:calc(22px * var(--olli-text-scale));
-  font-weight:650;
-  line-height:1;
-  cursor:pointer;
-  padding:0;
-  -webkit-tap-highlight-color:transparent;
-}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoCloseBtn:active{transform:scale(.96);}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoTitle{padding-right:42px;}
-
-#kinderRiskMemoScreen .kinderCombinedSceneInfoTitle{font-size:calc(21px * var(--olli-text-scale));font-weight:780;letter-spacing:-0.05em;line-height:1.25;}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoMain{font-size:calc(17px * var(--olli-text-scale));font-weight:760;line-height:1.48;letter-spacing:-0.03em;margin-bottom:10px;}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoSub{font-size:calc(14px * var(--olli-text-scale));line-height:1.6;color:#666;letter-spacing:-0.025em;margin-bottom:15px;}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoKeywords{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:0;}
-#kinderRiskMemoScreen .kinderCombinedSceneInfoKeywords span{min-height:32px;padding:0 12px;border-radius:999px;background:#f3f3f1;color:#444;display:inline-flex;align-items:center;font-size:calc(12px * var(--olli-text-scale));font-weight:700;}
-
-/* 위험신호 작성 모드 간격: 결합 전 위험신호 페이지 값으로 복구 */
-#kinderRiskMemoScreen .signal-record-list{display:flex;flex-direction:column;gap:11px;}
-#kinderRiskMemoScreen .signal-record-card{display:flex;gap:14px;background:#fff;border-radius:23px;padding:17px;box-shadow:0 6px 18px rgba(0,0,0,0.04);}
-#kinderRiskMemoScreen .signal-record-content{border-left:1px solid #eeeeee;padding-left:13px;flex:1 1 auto;min-width:0;}
-#kinderRiskMemoScreen .signal-date{display:inline-block;font-size:calc(12px * var(--olli-text-scale));color:#aaa;margin-bottom:8px;}
-#kinderRiskMemoScreen .signal-record-card.empty{opacity:1;}
-#kinderRiskMemoScreen .signal-record-card .kinderMemoBox{min-height:58px;padding:0;margin:0;background:transparent;border-radius:0;box-shadow:none;line-height:1.62;}
-#kinderRiskMemoScreen .director-check-card{margin-top:16px;background:#fff;border-radius:28px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,0.05);}
-#kinderRiskMemoScreen .director-check-head{margin-bottom:16px;}
-#kinderRiskMemoScreen .director-memo-block{background:#fafaf8;border-radius:20px;padding:15px;margin-top:10px;border:1px solid #eeeeea;opacity:1;box-shadow:none;}
-#kinderRiskMemoScreen .director-memo-block label{margin-bottom:9px;font-size:calc(13px * var(--olli-text-scale));gap:7px;}
-#kinderRiskMemoScreen .director-memo-block .kinderMemoBox{min-height:76px;border-radius:16px;padding:2px 2px 6px;background:transparent;box-shadow:none;line-height:1.62;}
-@media(max-width:430px){
-  #kinderRiskMemoScreen .kinderCombinedSceneChip{min-height:74px;border-radius:20px;}
-  #kinderRiskMemoScreen .kinderCombinedChipTitle{font-size:calc(13px * var(--olli-text-scale));}
-  #kinderRiskMemoScreen .kinderSceneMemoInput{min-height:138px;}
-  #kinderRiskMemoScreen .kinderCombinedSceneInfoCard{padding:18px 14px 14px;}
-  #kinderRiskMemoScreen .kinderCombinedSceneInfoTitle{font-size:calc(20px * var(--olli-text-scale));}
-  #kinderRiskMemoScreen .kinderCombinedSceneInfoMain{font-size:calc(16px * var(--olli-text-scale));}
-}
-
-/* 가이드 / 위험신호 간격과 가로 키워드 */
-#kinderRiskMemoScreen.mode-guide .kinderGuidePanel{
-  display:block ;
-  visibility:visible ;
-  opacity:1 ;
-  min-height:0 ;
-  margin:0 0 14px ;
-}
-#kinderRiskMemoScreen.mode-guide .kinderCombinedSceneGrid{
-  display:grid ;
-  grid-template-columns:repeat(3,minmax(0,1fr)) ;
-  gap:8px ;
-}
-#kinderRiskMemoScreen.mode-normal .kinderGuidePanel,
-#kinderRiskMemoScreen.mode-risk .kinderGuidePanel{
-  display:none ;
-}
-#kinderRiskMemoScreen .kinderQuickRow{
-  margin-top:10px ;
-  display:flex ;
-  flex-direction:row ;
-  flex-wrap:nowrap ;
-  gap:8px ;
-  overflow-x:auto ;
-  overflow-y:hidden ;
-  -webkit-overflow-scrolling:touch ;
-  padding:0 0 2px ;
-  white-space:nowrap ;
-}
-#kinderRiskMemoScreen .kinderQuickBtn{
-  flex:0 0 auto ;
-  height:34px ;
-  min-height:34px ;
-  border:none ;
-  border-radius:999px ;
-  background:#f0f0ee ;
-  color:#666 ;
-  padding:0 13px ;
-  font-size:calc(12px * var(--olli-text-scale)) ;
-  font-weight:650 ;
-  white-space:nowrap ;
-}
-#kinderRiskMemoScreen.mode-risk .signal-record-list{
-  display:flex ;
-  flex-direction:column ;
-  gap:11px ;
-  margin:0 ;
-}
-#kinderRiskMemoScreen.mode-risk .signal-record-card{
-  display:flex ;
-  gap:14px ;
-  padding:17px ;
-  margin:0 ;
-  align-items:flex-start ;
-}
-#kinderRiskMemoScreen.mode-risk .signal-date{
-  display:inline-block ;
-  margin-bottom:8px ;
-}
-#kinderRiskMemoScreen.mode-risk .director-check-card{
-  display:block ;
-  margin-top:16px ;
-}
-#kinderRiskMemoScreen.mode-risk .director-memo-block{
-  margin-top:10px ;
-  padding:15px ;
-}
-
-/* 모드별 표시 상태 */
-#kinderRiskMemoScreen.mode-guide .kinderGuidePanel{
-  display:block ;
-  visibility:visible ;
-  opacity:1 ;
-  pointer-events:auto ;
-}
-#kinderRiskMemoScreen.mode-guide .kinderCombinedSceneGrid{
-  display:grid ;
-  grid-template-columns:repeat(3,minmax(0,1fr)) ;
-  gap:8px ;
-  min-height:74px ;
-}
-#kinderRiskMemoScreen.mode-guide .kinderCombinedSceneChip{
-  display:flex ;
-}
-#kinderRiskMemoScreen.mode-risk .signal-record-list{
-  display:flex ;
-  flex-direction:column ;
-  gap:11px ;
-  margin:0 ;
-  padding:0 ;
-}
-#kinderRiskMemoScreen.mode-risk .signal-record-card{
-  margin:0 ;
-  padding:17px ;
-  gap:14px ;
-  align-items:flex-start ;
-}
-#kinderRiskMemoScreen.mode-risk .signal-record-content{
-  padding-left:13px ;
-}
-#kinderRiskMemoScreen.mode-risk .director-check-card{
-  margin-top:16px ;
-  padding:20px ;
-}
-#kinderRiskMemoScreen.mode-risk .director-memo-block{
-  margin-top:10px ;
-  padding:15px ;
-}
-#kinderRiskMemoScreen .kinderQuickRow{
-  margin-top:10px ;
-  display:flex ;
-  flex-direction:row ;
-  flex-wrap:nowrap ;
-  gap:8px ;
-  overflow-x:auto ;
-  overflow-y:hidden ;
-  -webkit-overflow-scrolling:touch ;
-  white-space:nowrap ;
-  width:100% ;
-}
-#kinderRiskMemoScreen .kinderQuickRow::-webkit-scrollbar{display:none ;}
-#kinderRiskMemoScreen .kinderQuickBtn{
-  flex:0 0 auto ;
-  display:inline-flex ;
-  align-items:center ;
-  justify-content:center ;
-  white-space:nowrap ;
-}
-
-/* 원장확인 박스: 같은 카드가 접혔다가 길어지는 구조 */
-#kinderRiskMemoScreen.mode-risk .director-check-card{
-  overflow:hidden ;
-  cursor:default ;
-  transition:max-height .22s ease, padding .18s ease, box-shadow .18s ease ;
-  max-height:900px ;
-}
-#kinderRiskMemoScreen.mode-risk .director-check-card.director-collapsed{
-  max-height:92px ;
-}
-#kinderRiskMemoScreen .director-check-head{
-  cursor:pointer ;
-  user-select:none ;
-  -webkit-tap-highlight-color:transparent ;
-  position:relative ;
-}
-#kinderRiskMemoScreen .director-check-card .director-check-title{
-  padding-right:58px ;
-}
-#kinderRiskMemoScreen .director-check-head::after{
-  content:'열기' ;
-  position:absolute ;
-  right:0 ;
-  top:2px ;
-  height:28px ;
-  padding:0 11px ;
-  border-radius:999px ;
-  background:#f1f1ef ;
-  color:#777 ;
-  font-size:calc(12px * var(--olli-text-scale)) ;
-  font-weight:700 ;
-  display:inline-flex ;
-  align-items:center ;
-  justify-content:center ;
-}
-#kinderRiskMemoScreen .director-check-card:not(.director-collapsed) .director-check-head::after{
-  content:'접기' ;
-  background:#111 ;
-  color:#fff ;
-}
-#kinderRiskMemoScreen .director-check-card.director-collapsed .director-check-head{
-  margin-bottom:0 ;
-}
-#kinderRiskMemoScreen .director-check-card.director-collapsed .director-memo-block{
-  opacity:0 ;
-  pointer-events:none ;
-}
-
-/* 상단 노트 제목 / 하단 고정 액션 */
-#kinderRiskMemoScreen .kinderRiskModeWrap {
-  position:absolute ;
-  left:50% ;
-  top:50% ;
-  transform:translate(-50%, -50%) ;
-  display:inline-flex ;
-  flex-direction:column ;
-  align-items:center ;
-  justify-content:center ;
-  flex:0 0 auto ;
-  min-width:0 ;
-  max-width:none ;
-}
-#kinderRiskMemoScreen .kinderRiskModeWrap .kinderObservationNoteTitle{
-  color:#111;
-  font-size:calc(20px * var(--olli-text-scale)) ;
-  font-weight:440 ;
-  letter-spacing:-0.02em ;
-  line-height:1 ;
-  white-space:nowrap ;
-  overflow:visible ;
-  text-overflow:clip ;
-  max-width:none ;
-}
-#kinderRiskMemoScreen .kinderRiskModeWrap .kinderObservationModeSub{
-  margin-top:2px;
-  align-self:center;
-  color:#999;
-  font-size:calc(12px * var(--olli-text-scale));
-  font-weight:400;
-  letter-spacing:-0.03em;
-  line-height:1;
-  text-align:center;
-}
-#kinderRiskMemoScreen .memoNameArrow{
-  width:7px ;
-  height:7px ;
-  border-right:1.8px solid #111;
-  border-bottom:1.8px solid #111;
-  transform:rotate(45deg) translateY(-2px) ;
-  flex:0 0 auto ;
-  display:inline-block ;
-}
-#kinderRiskMemoScreen .kinderRiskModeDropup{
-  left:0 ;
-  right:auto ;
-  top:54px ;
-  bottom:auto ;
-  width:168px ;
-  z-index:120000 ;
-}
-
-/* 하단 3버튼은 일반/가이드/위험신호 모든 모드에서 같은 위치 고정 */
-#kinderRiskMemoScreen #kinderMemoWrap{
-  padding-bottom:138px ;
-}
-#kinderRiskMemoScreen .kinderCombinedBottomBar{
-  position:fixed ;
-  left:50% ;
-  right:auto ;
-  bottom:32px ;
-  transform:translateX(-50%) ;
-  width:calc(100% - 32px) ;
-  max-width:828px ;
-  z-index:120 ;
-  display:flex ;
-  align-items:center ;
-  justify-content:space-between ;
-  gap:10px ;
-  padding:0 ;
-  margin:0 ;
-  background:transparent ;
-  pointer-events:none ;
-}
-#kinderRiskMemoScreen .kinderCombinedModeActionGroup,
-#kinderRiskMemoScreen .kinderCombinedFeedbackBtn{
-  pointer-events:auto ;
-}
-#kinderRiskMemoScreen .kinderCombinedModeActionGroup{
-  flex:1 1 auto;
-  min-width:0;
-  height:62px;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:6px;
-  border-radius:999px;
-  background:rgba(255,255,255,0.84);
-  border:1px solid rgba(255,255,255,0.96);
-  box-shadow:0 10px 28px rgba(0,0,0,0.12), 0 3px 10px rgba(0,0,0,0.06);
-  backdrop-filter:blur(16px) saturate(1.08);
-  -webkit-backdrop-filter:blur(16px) saturate(1.08);
-}
-#kinderRiskMemoScreen .kinderCombinedModeActionGroup .kinderCombinedActionBtn{
-  flex:1 1 0 ;
-  max-width:none ;
-  min-width:0 ;
-  min-height:50px ;
-  height:50px ;
-  border:none ;
-  border-radius:999px ;
-  box-shadow:none ;
-  background:#f1f1ef ;
-  color:#111 ;
-  font-size:calc(14px * var(--olli-text-scale)) ;
-  font-weight:760 ;
-  padding:0 10px ;
-  font-family:inherit ;
-  letter-spacing:-0.035em ;
-  white-space:nowrap ;
-}
-#kinderRiskMemoScreen.mode-guide .kinderCombinedModeActionGroup #kinderGuideToggleBtn,
-#kinderRiskMemoScreen.mode-risk .kinderCombinedModeActionGroup #kinderRiskToggleBtn{
-  background:#111 ;
-  color:#fff ;
-}
-#kinderRiskMemoScreen:not(.mode-risk) .kinderCombinedModeActionGroup #kinderRiskToggleBtn{
-  color:#111 ;
-}
-#kinderRiskMemoScreen .kinderCombinedFeedbackBtn{
-  flex:0 0 auto;
-  height:62px;
-  min-width:128px;
-  border:none;
-  border-radius:999px;
-  background:#111;
-  color:#fff;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-  padding:0 17px;
-  font-family:inherit;
-  font-size:calc(14px * var(--olli-text-scale));
-  font-weight:780;
-  letter-spacing:-0.035em;
-  box-shadow:0 12px 30px rgba(0,0,0,0.20);
-  -webkit-tap-highlight-color:transparent;
-  white-space:nowrap;
-}
-#kinderRiskMemoScreen .kinderCombinedFeedbackBtn svg{
-  width:18px;
-  height:18px;
-  stroke:#fff;
-  fill:none;
-  stroke-width:3;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-}
-@media(max-width:430px){
-  #kinderRiskMemoScreen #kinderMemoWrap{
-    padding-left:12px;
-    padding-right:12px;
-  }
-  #kinderRiskMemoScreen .kinderCombinedBottomBar{gap:8px ;}
-  #kinderRiskMemoScreen .kinderCombinedModeActionGroup{height:58px; gap:6px; padding:5px;}
-  #kinderRiskMemoScreen .kinderCombinedModeActionGroup .kinderCombinedActionBtn{height:48px ; min-height:48px ; font-size:calc(13px * var(--olli-text-scale)) ; padding:0 8px ;}
-  #kinderRiskMemoScreen .kinderCombinedFeedbackBtn{min-width:112px;height:58px;font-size:calc(13px * var(--olli-text-scale));padding:0 13px;}
-}
-
-/* 기록실 설정 버튼: 심플 설정 아이콘 표시 */
-#recordRoomScreen .recordAcademyMiniIcon{
-  width:28px;
-  height:28px;
-  border-radius:0;
-  background:transparent;
-  border:none;
-  color:#111;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  overflow:visible;
-  line-height:1;
-  box-sizing:border-box;
-}
-#recordRoomScreen .recordAcademyMiniIcon .academySettingsIcon{
-  width:24px;
-  height:24px;
-  display:block;
-}
-
-/* 신호등 카드 / 하단 버튼 크기 */
-#kinderRiskMemoScreen .signal-status-card{
-  min-height:250px ;
-  box-sizing:border-box ;
-  display:flex ;
-  flex-direction:column ;
-}
-#kinderRiskMemoScreen .signal-status-top{
-  display:flex ;
-  flex-direction:column ;
-  align-items:flex-start ;
-  justify-content:flex-start ;
-  gap:8px ;
-}
-#kinderRiskMemoScreen .signal-status-heading{
-  font-size:calc(16px * var(--olli-text-scale)) ;
-  font-weight:780 ;
-  letter-spacing:-0.04em ;
-  color:#111 ;
-  line-height:1.2 ;
-}
-#kinderRiskMemoScreen .signal-status-top strong{
-  font-size:calc(13px * var(--olli-text-scale)) ;
-  line-height:1 ;
-}
-#kinderRiskMemoScreen .signal-status-top .signal-status-period{
-  font-size:calc(13px * var(--olli-text-scale)) ;
-  color:#999 ;
-  line-height:1.2 ;
-}
-#kinderRiskMemoScreen .signal-dots{
-  margin:18px 0 16px ;
-}
-#kinderRiskMemoScreen .signal-status-text{
-  margin-top:auto ;
-}
-#kinderRiskMemoScreen .signal-record-list .signal-record-card.empty .signal-record-num{
-  color:#c9c9c9;
-}
-#kinderRiskMemoScreen .director-check-card.director-collapsed .director-check-title h2,
-#kinderRiskMemoScreen .director-check-card.director-collapsed .director-check-title p{
-  color:#9b9b9b ;
-}
-#kinderRiskMemoScreen .kinderCombinedModeActionGroup,
-#kinderRiskMemoScreen .kinderCombinedFeedbackBtn{
-  height:62px ;
-  min-height:62px ;
-  box-sizing:border-box ;
-}
-#kinderRiskMemoScreen .kinderCombinedFeedbackBtn{
-  align-self:stretch ;
-}
-@media(max-width:430px){
-  #kinderRiskMemoScreen .kinderCombinedModeActionGroup,
-  #kinderRiskMemoScreen .kinderCombinedFeedbackBtn{
-    height:58px ;
-    min-height:58px ;
-  }
-}
-
-/* 수업 장면 키보드 반응 / 관찰 카드 */
-:root{
-  --kinder-keyboard-offset: 0px;
-}
-#kinderRiskMemoScreen .kinderSceneHead strong{
-  font-size:calc(18px * var(--olli-text-scale)) ;
-  letter-spacing:-0.04em ;
-}
-#kinderRiskMemoScreen .signal-status-card{
-  position:relative ;
-  height:250px ;
-  min-height:250px ;
-}
-#kinderRiskMemoScreen .signal-status-top{
-  position:relative ;
-  display:block ;
-  min-height:44px ;
-}
-#kinderRiskMemoScreen .signal-status-heading{
-  font-size:calc(24px * var(--olli-text-scale)) ;
-  font-weight:800 ;
-  line-height:1.18 ;
-  letter-spacing:-0.045em ;
-  padding-right:92px ;
-}
-#kinderRiskMemoScreen .signal-status-top strong{
-  position:absolute ;
-  top:0 ;
-  right:0 ;
-  margin:0 ;
-}
-#kinderRiskMemoScreen .signal-status-top .signal-status-period{
-  display:block ;
-  margin-top:8px ;
-}
-#kinderRiskMemoScreen .kinderScenePanel > .kinderGuidePanel{
-  margin:0 0 12px ;
-}
-#kinderRiskMemoScreen .kinderScenePanel > .kinderGuidePanel:last-child{
-  margin-bottom:0 ;
-}
-#kinderRiskMemoScreen .kinderCombinedBottomBar{
-  bottom:calc(22px + var(--kinder-keyboard-offset, 0px)) ;
-  transition:bottom .22s cubic-bezier(.22,.61,.36,1), opacity .18s ease ;
-}
-#kinderRiskMemoScreen.keyboard-active .kinderCombinedBottomBar{
-  justify-content:flex-end ;
-  bottom:calc(-4px + var(--kinder-keyboard-offset, 0px)) ;
-}
-#kinderRiskMemoScreen.keyboard-active .kinderCombinedModeActionGroup{
-  display:none ;
-}
-#kinderRiskMemoScreen.keyboard-active .kinderCombinedFeedbackBtn{
-  margin-left:auto ;
-}
-
-/* 가이드 모드: 수업 장면 박스가 위로 길어지고, 입력창/키워드 위치는 유지 */
-#kinderRiskMemoScreen .kinderScenePanel{
-  position:relative;
-  transition:margin-top .18s ease, padding-top .18s ease;
-}
-#kinderRiskMemoScreen .kinderScenePanel > .kinderGuidePanel{
-  display:none;
-  margin:0 0 12px;
-  padding:0;
-  background:transparent;
-  border:none;
-  box-shadow:none;
-}
-#kinderRiskMemoScreen.mode-guide .kinderScenePanel{
-  --kinder-guide-shift:250px;
-  margin-top:0;
-}
-#kinderRiskMemoScreen.mode-guide .kinderScenePanel > .kinderGuidePanel{
-  display:block;
-  height:calc(var(--kinder-guide-shift) - 26px);
-  min-height:0;
-  box-sizing:border-box;
-  overflow:visible;
-}
-#kinderRiskMemoScreen.mode-guide .kinderScenePanel > .kinderGuidePanel #kinderCombinedSceneGrid{
-  height:100%;
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  grid-template-rows:repeat(3,1fr);
-  gap:8px;
-}
-#kinderRiskMemoScreen.mode-guide .kinderScenePanel > .kinderGuidePanel .kinderCombinedSceneChip{
-  min-height:0;
-  height:auto;
-}
-
-/* 가이드 모드 하단 간격 */
-#kinderRiskMemoScreen.mode-guide .kinderScenePanel{
-  margin-bottom:18px ;
-}
-@media (max-width:420px){
-}
-</style><script id="v9-growth-survey-decorate">
+<script id="v9-growth-survey-decorate">
 (function(){
   var growthHelpMap = {
     'A1. 아이 이름':'피드백을 작성할 아이 이름을 확인해 주세요.',
@@ -29822,9 +27653,9 @@ document.addEventListener('click', function(event){
   window.saveSettingsSheet=async function(){const btn=document.querySelector('#settingsSheetOverlay .settingsSheetBtn.primary');try{const data=settingsSheetData[currentSettingsSheetType];if(!data||typeof data.onSave!=='function'){closeSettingsSheet();return;}if(btn){btn.disabled=true;btn.textContent='저장 중...';}await data.onSave();closeSettingsSheet();}catch(err){alert('저장 중 오류가 발생했습니다.\n'+(err.message||err));}finally{if(btn){btn.disabled=false;btn.textContent='저장';}}};
 
   function getManagerPermission(roleKey){const cached=settingsGetCachedState();const perms=cached.managerPermissions||{};return !!perms[roleKey];}
-  async function setManagerPermission(roleKey,value){const cached=settingsGetCachedState();const managerPermissions={...(cached.managerPermissions||{}),[roleKey]:!!value};settingsSaveCachePatch({managerPermissions});const academyId=settingsGetAcademyId();if(academyId&&isSupabaseConfigured()){const payload={};if(roleKey==='backup')payload.manager_can_backup=!!value;if(roleKey==='directorNote')payload.manager_can_director_note=!!value;if(Object.keys(payload).length){try{await supabase('PATCH',`academies?id=eq.${encodeURIComponent(academyId)}`,payload);if(olliSettingsState&&olliSettingsState.academy){if(Object.prototype.hasOwnProperty.call(payload,'manager_can_backup'))olliSettingsState.academy.manager_can_backup=!!payload.manager_can_backup;if(Object.prototype.hasOwnProperty.call(payload,'manager_can_director_note'))olliSettingsState.academy.manager_can_director_note=!!payload.manager_can_director_note;}}catch(err){console.warn('manager permission save failed:',err);alert('관리자 권한 저장 중 오류가 발생했습니다.\n' + (err.message || err));}}}openSettingsDetail('roles');}
+  async function setManagerPermission(roleKey,value){if(roleKey!=='backup')return;const cached=settingsGetCachedState();const managerPermissions={...(cached.managerPermissions||{}),backup:!!value};settingsSaveCachePatch({managerPermissions});const academyId=settingsGetAcademyId();if(academyId&&isSupabaseConfigured()){try{await supabase('PATCH',`academies?id=eq.${encodeURIComponent(academyId)}`,{manager_can_backup:!!value});if(olliSettingsState&&olliSettingsState.academy)olliSettingsState.academy.manager_can_backup=!!value;}catch(err){console.warn('manager permission save failed:',err);alert('관리자 권한 저장 중 오류가 발생했습니다. '+(err.message||err));}}openSettingsDetail('roles');}
   window.toggleManagerPermission=function(roleKey){setManagerPermission(roleKey,!getManagerPermission(roleKey));};
-  if(typeof settingsDetailData !== 'undefined' && settingsDetailData.roles){settingsDetailData.roles.html=function(){const backupOn=getManagerPermission('backup')||!!(olliSettingsState.academy&&olliSettingsState.academy.manager_can_backup);const noteOn=getManagerPermission('directorNote')||!!(olliSettingsState.academy&&olliSettingsState.academy.manager_can_director_note);return '<div class="settingsDetailIntro"><div class="settingsDetailTitle">관리자 기본 권한 위에<br>필요한 권한만 추가합니다.</div></div><div class="settingsRoleCard"><div class="settingsRoleTop"><div class="settingsRoleName">원장</div><span class="settingsStatusBadge">전체 권한</span></div><div class="settingsRoleList"><div class="settingsRoleItem">전체 설정, 선생님 관리, 학원 삭제/양도</div><div class="settingsRoleItem">백업 / 내보내기 사용 가능</div><div class="settingsRoleItem">위험신호 원장 확인 메모 작성</div></div></div><div class="settingsRoleCard"><div class="settingsRoleTop"><div class="settingsRoleName">관리자 기본 권한</div><span class="settingsStatusBadge">기본 권한</span></div><div class="settingsRoleList"><div class="settingsRoleItem">전체 위험신호 확인 가능</div><div class="settingsRoleItem">학생 기록과 피드백 흐름 점검 가능</div><div class="settingsRoleItem">선생님 기록 상태 확인 가능</div><div class="settingsRoleItem">알림 설정 사용 가능</div><div class="settingsRoleItem">학원 삭제, 원장 양도, 권한 부여는 제한</div></div></div><div class="settingsRoleCard"><div class="settingsRoleTop"><div class="settingsRoleName">관리자 추가 권한 부여</div><span class="settingsStatusBadge">선택 권한</span></div><div class="settingsPermissionRow"><div><div class="settingsPermissionText">백업 / 내보내기 사용 가능</div><div class="settingsPermissionDesc">관리자에게 데이터 내보내기 권한을 추가로 부여합니다.</div></div><button class="settingsMiniSwitch '+(backupOn?'on':'')+'" type="button" onclick="toggleManagerPermission(\'backup\')"></button></div><div class="settingsPermissionRow"><div><div class="settingsPermissionText">위험신호 원장 확인 메모 작성</div><div class="settingsPermissionDesc">관리자가 위험신호 대응 메모를 남길 수 있게 추가로 부여합니다.</div></div><button class="settingsMiniSwitch '+(noteOn?'on':'')+'" type="button" onclick="toggleManagerPermission(\'directorNote\')"></button></div></div><div class="settingsRoleCard"><div class="settingsRoleTop"><div class="settingsRoleName">선생님</div><span class="settingsStatusBadge">기록 권한</span></div><div class="settingsRoleList"><div class="settingsRoleItem">담당 학생 기록 작성</div><div class="settingsRoleItem">피드백 작성과 성장 피드백 입력</div><div class="settingsRoleItem">권한 변경과 데이터 내보내기는 제한</div></div></div>';};}
+  if(typeof settingsDetailData !== 'undefined' && settingsDetailData.roles){settingsDetailData.roles.html=function(){const backupOn=getManagerPermission('backup')||!!(olliSettingsState.academy&&olliSettingsState.academy.manager_can_backup);return '<div class="settingsDetailIntro"><div class="settingsDetailTitle">관리자 기본 권한 위에<br>필요한 권한만 추가합니다.</div></div><div class="settingsRoleCard"><div class="settingsRoleTop"><div class="settingsRoleName">원장</div><span class="settingsStatusBadge">전체 권한</span></div><div class="settingsRoleList"><div class="settingsRoleItem">전체 설정, 선생님 관리, 학원 삭제/양도</div><div class="settingsRoleItem">백업 / 내보내기 사용 가능</div></div></div><div class="settingsRoleCard"><div class="settingsRoleTop"><div class="settingsRoleName">관리자 기본 권한</div><span class="settingsStatusBadge">기본 권한</span></div><div class="settingsRoleList"><div class="settingsRoleItem">학생 기록과 피드백 흐름 점검 가능</div><div class="settingsRoleItem">선생님 기록 상태 확인 가능</div><div class="settingsRoleItem">학원 삭제, 원장 양도, 권한 부여는 제한</div></div></div><div class="settingsRoleCard"><div class="settingsRoleTop"><div class="settingsRoleName">관리자 추가 권한 부여</div><span class="settingsStatusBadge">선택 권한</span></div><div class="settingsPermissionRow"><div><div class="settingsPermissionText">백업 / 내보내기 사용 가능</div><div class="settingsPermissionDesc">관리자에게 데이터 내보내기 권한을 추가로 부여합니다.</div></div><button class="settingsMiniSwitch '+(backupOn?'on':'')+'" type="button" onclick="toggleManagerPermission(\'backup\')"></button></div></div><div class="settingsRoleCard"><div class="settingsRoleTop"><div class="settingsRoleName">선생님</div><span class="settingsStatusBadge">기록 권한</span></div><div class="settingsRoleList"><div class="settingsRoleItem">담당 학생 기록 작성</div><div class="settingsRoleItem">피드백 작성과 성장 피드백 입력</div><div class="settingsRoleItem">권한 변경과 데이터 내보내기는 제한</div></div></div>';};}
   const OLLI_LOGOUT_CLEAR_KEYS=['olli_owner_logged_in','olli_teacher_logged_in','olli_current_member_role','olli_current_member_name','olli_current_member_id','olli_owner_login_at','olli_teacher_login_at','olli_current_academy_id','olli_current_academy_code','olli_current_academy_name','olli_current_academy_region','olli_pending_academy_code','olli_pending_teacher_name','olli_account_session_token_v1','olli_account_login_id_v1','olli_account_id_v1','olli_account_name_v1','olli_account_academies_v1','olli_account_device_id_v1',OLLI_SETTINGS_LOCAL_KEY];
   function clearOlliAccountLogoutLocalState(){
     try{
@@ -30323,7 +28154,7 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
         + '<div class="kinderInfoModalField"><div class="modalLabel">요일</div><div id="elementaryLessonDayToggleRow" class="infoDayToggleRow"></div></div>'
         
         + '<div class="kinderInfoModalField"><div class="modalLabel">그룹</div><div id="elementaryGroupToggleRow" class="infoToggleRow"><button type="button" class="infoToggleBtn groupIconChoiceBtn" data-group="1" onclick="selectElementaryGroup(\'1\')">A</button><button type="button" class="infoToggleBtn groupIconChoiceBtn" data-group="2" onclick="selectElementaryGroup(\'2\')">B</button><button type="button" class="infoToggleBtn groupIconChoiceBtn" data-group="3" onclick="selectElementaryGroup(\'3\')">C</button><button type="button" class="infoToggleBtn groupIconChoiceBtn" data-group="4" onclick="selectElementaryGroup(\'4\')">D</button><button type="button" class="infoToggleBtn groupIconChoiceBtn" data-group="5" onclick="selectElementaryGroup(\'5\')">E</button><button type="button" class="infoToggleBtn groupIconChoiceBtn" data-group="6" onclick="selectElementaryGroup(\'6\')">F</button></div></div>'
-        + '<div id="elementaryRiskInfoPanel" class="kinderInfoModalField kinderRiskInfoPanel"><div class="kinderRiskInfoTop"><div><div class="kinderRiskInfoTitle">위험신호</div><div id="elementaryInfoRiskText" class="kinderRiskInfoText">최근 기록 없음</div></div><button type="button" class="kinderRiskInfoLinkBtn" onclick="openElementaryRiskFromInfoModal()">위험신호 보기</button></div></div>'
+        + ''
         + '<div class="modalActions"><button class="modalBtnCancel" data-modal-close="elementaryInfoModal" type="button">취소</button><button onclick="saveElementaryInfo()" class="modalBtnConfirm">저장</button></div>';
     }
 
@@ -30347,7 +28178,7 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
         + '</div>'
         + '<div class="kinderInfoModalField"><div class="modalLabel">요일</div><div id="kinderLessonDayToggleRow" class="infoDayToggleRow"></div><input id="kinderLessonDayInput" type="hidden"></div>'
         
-        + '<div class="kinderInfoModalField kinderRiskInfoPanel"><div class="kinderRiskInfoTop"><div><div class="kinderRiskInfoTitle">위험신호</div><div id="kinderInfoRiskText" class="kinderRiskInfoText">최근 기록 없음</div></div><button type="button" class="kinderRiskInfoLinkBtn" onclick="openKinderRiskFromInfoModal()">위험신호 보기</button></div></div>'
+        + ''
         + '<div class="modalActions"><button class="modalBtnCancel" data-modal-close="kinderInfoModal" type="button">취소</button><button onclick="saveKinderInfo()" class="modalBtnConfirm">저장</button></div>';
     }
   }
@@ -32524,9 +30355,9 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
       operation: 'upsert',
       createIfMissing: true,
       identityColumns: ['id'],
-      valueColumns: ['academy_id', 'academy_name', 'academy_region', 'name', 'division', 'enrolled_at', 'kindergarten', 'age', 'lesson_day', 'lesson_time', 'group_no', 'group_months', 'feedback_months', 'personality', 'school', 'grade', 'class_no', 'teacher', 'homeroom_teacher', 'status', 'withdrawn_at', 'paused_at', 'status_changed_at', 'memo1', 'memo2', 'memo3'],
+      valueColumns: ['academy_id', 'academy_name', 'academy_region', 'name', 'division', 'enrolled_at', 'kindergarten', 'age', 'lesson_day', 'lesson_time', 'group_no', 'group_months', 'feedback_months', 'personality', 'school', 'grade', 'class_no', 'teacher', 'homeroom_teacher', 'status', 'withdrawn_at', 'paused_at', 'status_changed_at'],
       requiredColumns: ['id', 'academy_id', 'name'],
-      selectColumns: ['id', 'academy_id', 'academy_name', 'academy_region', 'name', 'division', 'enrolled_at', 'kindergarten', 'age', 'lesson_day', 'lesson_time', 'group_no', 'group_months', 'feedback_months', 'personality', 'school', 'grade', 'class_no', 'teacher', 'homeroom_teacher', 'status', 'withdrawn_at', 'paused_at', 'status_changed_at', 'memo1', 'memo2', 'memo3', 'updated_at']
+      selectColumns: ['id', 'academy_id', 'academy_name', 'academy_region', 'name', 'division', 'enrolled_at', 'kindergarten', 'age', 'lesson_day', 'lesson_time', 'group_no', 'group_months', 'feedback_months', 'personality', 'school', 'grade', 'class_no', 'teacher', 'homeroom_teacher', 'status', 'withdrawn_at', 'paused_at', 'status_changed_at', 'updated_at']
     },
     verification: { mode: 'custom_returned_row', compareFields: ['id', 'academy_id', 'name'] },
     conflict: { policy: 'latest_valid_update', protectPendingLocal: true },
@@ -32806,43 +30637,7 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
   });
 
 
-  FeatureRegistry.register({
-    feature: 'risk_signal',
-    label: '위험신호 알림',
-    version: 1,
-    scope: 'academy',
-    identity: { requiresAcademyId: true, requiresRecordId: true },
-    persistence: 'server_source',
-    local: {
-      enabled: true,
-      defaultValue: null,
-      legacyKeys: [],
-      migrationPolicy: 'manual',
-      key(identity) {
-        return makeStorageKey({
-          scope: 'academy',
-          academyId: identity.academyId,
-          feature: `risk_signal:${identity.recordId}`,
-          version: 1
-        });
-      }
-    },
-    server: {
-      kind: 'table_row',
-      table: 'risk_signals',
-      operation: 'upsert',
-      createIfMissing: false,
-      identityColumns: ['id'],
-      valueColumns: ['id', 'academy_id', 'student_id', 'student_name', 'message', 'read_by', 'handled', 'created_at', 'updated_at'],
-      requiredColumns: ['id', 'academy_id', 'student_id', 'message', 'created_at'],
-      selectColumns: ['id', 'academy_id', 'student_id', 'student_name', 'message', 'read_by', 'handled', 'created_at', 'updated_at']
-    },
-    verification: { mode: 'custom_returned_row', compareFields: ['id', 'academy_id', 'student_id', 'message'] },
-    conflict: { policy: 'latest_valid_update', protectPendingLocal: true },
-    permissions: { read: ['teacher', 'manager', 'owner'], write: ['teacher', 'manager', 'owner'] },
-    diagnostics: { serverRequired: true, adminVisible: true }
-  });
-
+  
   FeatureRegistry.register({
     feature: 'member_default_start_page',
     label: '멤버 시작 페이지 설정',
@@ -32882,35 +30677,7 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
   });
 
 
-  FeatureRegistry.register({
-    feature: 'risk_signal_handled',
-    label: '위험신호 확인 처리',
-    version: 1,
-    scope: 'academy',
-    identity: { requiresAcademyId: true, requiresRecordId: true },
-    persistence: 'server_source',
-    local: {
-      enabled: false,
-      defaultValue: null,
-      legacyKeys: [],
-      migrationPolicy: 'manual'
-    },
-    server: {
-      kind: 'table_row',
-      table: 'risk_signals',
-      operation: 'patch',
-      createIfMissing: false,
-      identityColumns: ['academy_id', 'id'],
-      valueColumns: ['handled', 'updated_at'],
-      requiredColumns: ['academy_id', 'id', 'handled'],
-      selectColumns: ['id', 'academy_id', 'student_id', 'handled', 'updated_at']
-    },
-    verification: { mode: 'custom_returned_row', compareFields: ['academy_id', 'id', 'handled'] },
-    conflict: { policy: 'latest_valid_update', protectPendingLocal: true },
-    permissions: { read: ['teacher', 'manager', 'owner'], write: ['teacher', 'manager', 'owner'] },
-    diagnostics: { serverRequired: true, adminVisible: true }
-  });
-
+  
   const Core = {
     foundationVersion: FOUNDATION_VERSION,
     schemaVersion: STORAGE_SCHEMA_VERSION,
@@ -33272,11 +31039,10 @@ body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfSendBtn {
   const SCROLL_CONTAINER_SELECTOR = [
     '.pageInner', '.recordPageInner', '.memoPageInner', '.settingsPageInner',
     '.settingsBody', '.settingsDetailBody', '.settingsPageBody',
-    '.kinderRiskMemoPageInner', '.kinderRiskMemoBody', '.kinderMemoWrap',
     '.chatArea', '.kcfInner', '.kcfBody', '.kcfChatArea', '.kcfInboxList',
     '.memoFeedbackArchiveSheet', '.attendanceFeedbackSheetPanel',
     '.analysisSheetPanel', '.analysisResultSheetPanel',
-    '#recordPageInner', '#recordList', '#memoEditor', '#kinderSceneMemoInput'
+    '#recordPageInner', '#recordList', '#memoEditor'
   ].join(',');
 
   function isVisibleElement(el) {
@@ -34636,7 +32402,6 @@ body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfSendBtn {
   background: transparent;
 }
 #studentMemoScreen #memoRecordRoomBtn.memoRecordRoomBtn:not(.memoRecordBtn) svg,
-#kinderRiskMemoScreen .kinderRiskHeader .memoRecordRoomBtn svg,
 #kinderChatFeedbackScreen .kcfRecordBtn svg {
   transform: none;
 }
@@ -35581,10 +33346,6 @@ body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfSendBtn {
       school: mutableValue(remote, local, ['school','school_name','schoolName']),
       grade: mutableValue(remote, local, ['grade','school_grade','studentGrade']),
       className: mutableValue(remote, local, ['className','class_no','class','school_class']),
-      memo1: mutableValue(remote, local, ['memo1']),
-      memo2: mutableValue(remote, local, ['memo2']),
-      memo3: mutableValue(remote, local, ['memo3']),
-      memo4: mutableValue(remote, local, ['memo4']),
       memoUpdatedAt: mutableValue(remote, local, ['memoUpdatedAt','memo_updated_at']),
       status: requiredValue(local, remote, ['status'], 'active'),
       withdrawn_at: mutableValue(remote, local, ['withdrawn_at','withdrawal_at','quit_at']),

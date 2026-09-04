@@ -81,7 +81,6 @@
       if ((view === 'elementary' || view === 'kinder') && typeof currentObservationView !== 'undefined') currentObservationView = view;
     } catch (_) {}
     if (typeof global.updateRecordHeaderUI === 'function') global.updateRecordHeaderUI();
-    if (typeof global.updateNotificationButtons === 'function') global.updateNotificationButtons();
     updateRecordLayout();
   }
 
@@ -156,7 +155,7 @@
   }
 
   function visibleMainPage() {
-    const ids = ['recordRoomScreen', 'studentMemoScreen', 'kinderRiskMemoScreen', 'kinderChatFeedbackScreen'];
+    const ids = ['recordRoomScreen', 'studentMemoScreen', 'kinderChatFeedbackScreen'];
     return ids.find((id) => {
       const element = document.getElementById(id);
       return element && getComputedStyle(element).display !== 'none';
@@ -181,7 +180,7 @@
     let nextSection = state.section;
     if (page === 'recordRoomScreen' && !['academy', 'attendance', 'schedule'].includes(nextSection)) {
       nextSection = typeof currentRecordView !== 'undefined' && currentRecordView === 'academy' ? 'academy' : 'attendance';
-    } else if (page === 'studentMemoScreen' || page === 'kinderRiskMemoScreen' || page === 'kinderChatFeedbackScreen') {
+    } else if (page === 'studentMemoScreen' || page === 'kinderChatFeedbackScreen') {
       // PC에서 과거 관찰노트 단독 화면이 열리면 성향기록부로 되돌립니다.
       redirectLegacyStandaloneEditor(page);
       return;
@@ -305,11 +304,11 @@
       } catch (_) {}
     }
 
-    if (pageId === 'studentMemoScreen' || pageId === 'kinderRiskMemoScreen') {
+    if (pageId === 'studentMemoScreen') {
       try {
         if (typeof currentMemoStudent !== 'undefined' && currentMemoStudent) return currentMemoStudent;
       } catch (_) {}
-      return activeStudents(pageId === 'kinderRiskMemoScreen' ? 'kinder' : 'elementary')[0] || null;
+      return activeStudents('elementary')[0] || null;
     }
 
     if (pageId === 'kinderChatFeedbackScreen') {
@@ -341,7 +340,7 @@
 
   function redirectLegacyStandaloneEditor(pageId, explicitStudentId) {
     const student = legacyStudentForScreen(pageId, explicitStudentId);
-    const division = pageId === 'kinderChatFeedbackScreen' || pageId === 'kinderRiskMemoScreen'
+    const division = pageId === 'kinderChatFeedbackScreen'
       ? 'kinder'
       : (student?.type === 'kinder' ? 'kinder' : 'elementary');
     openPersonalityRecordForStudent(student?.id || explicitStudentId || '', division);
