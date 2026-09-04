@@ -140,21 +140,26 @@
 #recordRoomScreen .olliTtEntries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; }
 #recordRoomScreen .olliTtCellMemoCard {
   grid-column: 1 / -1;
+  width: 100%;
   min-width: 0;
   min-height: 28px;
-  padding: 5px 7px;
-  border: 1px solid #eadb8a;
+  padding: 6px 7px;
+  border: 1px solid #dfe4e9;
   border-radius: 8px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 5px;
-  color: #78651d;
-  background: #fff8cf;
+  color: #515965;
+  background: #fff;
   box-sizing: border-box;
-  pointer-events: none;
+  text-align: left;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(18,30,48,.035);
 }
-#recordRoomScreen .olliTtCellMemoCard span { flex: 0 0 auto; font-size: calc(9px * var(--olli-text-scale)); }
-#recordRoomScreen .olliTtCellMemoCard strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(9px * var(--olli-text-scale)); font-weight: 760; }
+#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #b9d8f5; background: #fff; box-shadow: 0 2px 7px rgba(18,30,48,.07); }
+#recordRoomScreen .olliTtCellMemoCard span { flex: 0 0 auto; margin-top: 1px; font-size: calc(9px * var(--olli-text-scale)); }
+#recordRoomScreen .olliTtCellMemoCard strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(9px * var(--olli-text-scale)); font-weight: 720; line-height: 1.35; }
 #recordRoomScreen .olliTtStudent {
   width: 100%;
   min-height: 24px;
@@ -282,7 +287,7 @@
   display: none;
   align-items: center;
   justify-content: center;
-  padding: 26px;
+  padding: 10px 26px;
   background: rgba(23, 31, 44, .40);
   -webkit-backdrop-filter: blur(7px);
   backdrop-filter: blur(7px);
@@ -386,10 +391,21 @@
 .olliTtDialogPrimary:disabled { box-shadow: none; opacity: .45; cursor: default; }
 
 /* 수업 이동은 어떤 설정 방식을 선택해도 카드·창·하단 버튼 위치를 유지한다. */
-#olliTtDialog.olliTtMoveDialog { height: min(760px, calc(100vh - 52px)); display: flex; flex-direction: column; overflow: hidden; }
+#olliTtDialog.olliTtMoveDialog { height: min(780px, calc(100vh - 20px)); display: flex; flex-direction: column; overflow: hidden; }
 #olliTtDialog.olliTtMoveDialog .olliTtDialogHead { flex: 0 0 auto; }
 #olliTtDialog.olliTtMoveDialog .olliTtDialogBody { min-height: 0; flex: 1; overflow-y: auto; }
 #olliTtDialog.olliTtMoveDialog .olliTtDialogActions { position: sticky; z-index: 2; bottom: -28px; }
+/* 수업이동·수업추가는 PC 화면에서 내부 스크롤 없이 한 화면에 맞춘다. */
+#olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode { height: min(850px, calc(100vh - 20px)); max-height: calc(100vh - 20px); }
+#olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtDialogBody { overflow-y: hidden; }
+#olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtField { margin-top: 16px; }
+#olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtDialogBody > .olliTtField:first-child { margin-top: 8px; }
+#olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtDialogActions { position: static; margin-top: 18px; }
+
+.olliTtMemoDeletePreview { margin-top: 8px; padding: 16px; border: 1px solid #dfe4e9; border-radius: 16px; background: #fff; color: #3f4752; }
+.olliTtMemoDeletePreview > span { display: block; margin-bottom: 8px; color: #8d949d; font-size: calc(11px * var(--olli-text-scale)); font-weight: 780; }
+.olliTtMemoDeletePreview > div { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(13px * var(--olli-text-scale)); font-weight: 680; line-height: 1.55; }
+#olliTtDialog.olliTtMemoManageDialog { width: min(520px, calc(100vw - 52px)); }
 
 /* 시간표 변경 이력과 안전 복구 */
 #olliTtDialog.olliTtHistoryDialog { width: min(820px, calc(100vw - 52px)); overflow: hidden; }
@@ -466,5 +482,8 @@
   .olliTtPickupForm { grid-template-columns: 1fr; }
   .olliTtDialogActions { margin: 22px -20px -20px; padding: 16px 20px 19px; }
   #olliTtDialog.olliTtMoveDialog .olliTtDialogActions { bottom: -20px; }
+  #olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode { height: calc(100vh - 32px); max-height: calc(100vh - 32px); }
+  #olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtDialogBody { overflow-y: auto; }
+  #olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtDialogActions { position: sticky; bottom: -20px; }
 }
 
