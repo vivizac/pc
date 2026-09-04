@@ -1,0 +1,70 @@
+name: One-shot extract elementary analysis
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-extract-elementary-analysis.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract elementary analysis module
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          index = Path('index.html')
+          text = index.read_text(encoding='utf-8')
+
+          start_marker = 'const ELEMENTARY_ANALYSIS_OPTIONS = {'
+          end_marker = "const MEMO_STUDENT_PICKER_SORT_KEY = 'olli_memo_student_picker_sort_v1';"
+
+          start = text.find(start_marker)
+          end = text.find(end_marker, start)
+          if start < 0 or end < 0 or end <= start:
+              raise SystemExit('Elementary analysis extraction markers not found in expected order')
+
+          chunk = text[start:end].rstrip() + '\n'
+          if 'function openElementaryAnalysisModal()' not in chunk:
+              raise SystemExit('openElementaryAnalysisModal missing from extraction chunk')
+          if 'function applyElementaryAnalysisToMemo()' not in chunk:
+              raise SystemExit('applyElementaryAnalysisToMemo missing from extraction chunk')
+          if end_marker in chunk:
+              raise SystemExit('Memo picker code leaked into extraction chunk')
+
+          replacement = "</script>\n<script src=\"elementary-analysis.js\"></script>\n<script>\n"
+          text = text[:start] + replacement + text[end:]
+
+          Path('elementary-analysis.js').write_text(chunk, encoding='utf-8')
+          index.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Verify extraction
+        shell: bash
+        run: |
+          test -s elementary-analysis.js
+          node --check elementary-analysis.js
+          grep -q '<script src="elementary-analysis.js"></script>' index.html
+          ! grep -q 'const ELEMENTARY_ANALYSIS_OPTIONS = {' index.html
+          grep -q "const MEMO_STUDENT_PICKER_SORT_KEY = 'olli_memo_student_picker_sort_v1';" index.html
+          grep -q 'function openElementaryAnalysisModal()' elementary-analysis.js
+          grep -q 'function applyElementaryAnalysisToMemo()' elementary-analysis.js
+
+      - name: Commit extraction
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html elementary-analysis.js
+          git commit -m 'Extract elementary analysis module'
+          git push
