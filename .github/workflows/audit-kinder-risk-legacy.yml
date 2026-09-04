@@ -1,0 +1,22 @@
+name: Audit kinder risk legacy
+on:
+  push:
+    paths:
+      - '.github/workflows/audit-kinder-risk-legacy.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit references
+        shell: bash
+        run: |
+          set -e
+          echo '=== kinderRiskMemoScreen ==='
+          grep -RIn --exclude-dir=.git --exclude='audit-kinder-risk-legacy.yml' 'kinderRiskMemoScreen' . || true
+          echo '=== openObservationNoteFromRecord ==='
+          grep -RIn --exclude-dir=.git --exclude='audit-kinder-risk-legacy.yml' 'openObservationNoteFromRecord' . || true
+          echo '=== kinder risk functions/ids ==='
+          grep -RInE --exclude-dir=.git --exclude='audit-kinder-risk-legacy.yml' 'kinderRisk|RiskMemo|risk memo|위험신호|위험 신호' . | head -n 300 || true
+          echo '=== standalone observation routing ==='
+          grep -RInE --exclude-dir=.git --exclude='audit-kinder-risk-legacy.yml' "observation_note|record_observation|openStudentMemoPageById|openKinderChatFeedbackPage" . | head -n 400 || true
