@@ -8764,7 +8764,6 @@ body.olli-login-open {
 <link rel="stylesheet" href="pc-shell.css">
 <link rel="stylesheet" href="pc-attendance.css">
 <link rel="stylesheet" href="pc-student-management.css">
-<link rel="stylesheet" href="pc-observation.css">
 <link rel="stylesheet" href="pc-trash.css">
 <link rel="stylesheet" href="consultation-survey.css">
 </head>
@@ -8774,7 +8773,7 @@ body.olli-login-open {
 </div>
 <div class="olliPcShell" id="olliPcShell" aria-label="PC 사이드바">
   <div class="olliPcBrand">
-    <div class="olliPcBrandLogo">VIVIZAC</div>
+    <div class="olliPcBrandLogo">olli</div>
     <div class="olliPcBrandSub">비비작아이성향미술학원</div>
   </div>
   <nav class="olliPcNav">
@@ -8783,9 +8782,6 @@ body.olli-login-open {
     </button>
     <button class="olliPcNavBtn" data-pc-nav="attendance" type="button" onclick="pcOpenSection('attendance')">
       <svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2.5"></rect><path d="M8.5 12l2 2 4.5-5"></path></svg><span>성향기록부</span>
-    </button>
-    <button class="olliPcNavBtn" data-pc-nav="observation" type="button" onclick="pcOpenSection('observation')">
-      <svg viewBox="0 0 24 24"><rect x="4.5" y="5" width="15" height="14" rx="2"></rect><path d="M8 9h8M8 13h5"></path></svg><span>관찰노트</span>
     </button>
     <button class="olliPcNavBtn" data-pc-nav="consultation" type="button" onclick="pcOpenSection('consultation')">
       <svg viewBox="0 0 24 24"><path d="M6 4.5h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-4.5 3v-3H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"></path><path d="M8 9h8M8 13h5"></path></svg><span>상담기록</span>
@@ -8817,9 +8813,6 @@ body.olli-login-open {
   <div class="olliPcTopbarTitle" id="olliPcTopbarTitle">학생관리</div>
   <div class="olliPcTopbarRight">
     <input class="olliPcSearch" id="olliPcSearch" type="search" placeholder="학생 검색" oninput="pcHandleTopSearch(this.value)">
-    <button class="olliPcTopAction" id="olliPcTopArchiveBtn" type="button" onclick="pcOpenTopArchive()" aria-label="보관함">
-      <svg viewBox="0 0 24 24"><path d="M8 5h8"></path><path d="M7 8h10"></path><rect x="5.5" y="10.5" width="13" height="8.5" rx="2"></rect><path d="M10 14.5h4"></path></svg>
-    </button>
   </div>
 </div>
 <!-- PAGE: 출석부 페이지 -->
@@ -43090,7 +43083,6 @@ document.addEventListener('DOMContentLoaded', function(){
 <script src="pc-shell.js"></script>
 <script src="pc-student-management.js"></script>
 <script src="pc-attendance.js"></script>
-<script src="pc-observation.js"></script>
 <script src="pc-trash.js"></script>
 <link rel="stylesheet" href="pc-timetable.css">
 <script>window.__OLLI_MODULAR_TIMETABLE__ = true;</script>
