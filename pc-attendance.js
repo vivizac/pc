@@ -153,14 +153,11 @@
   }
 
   function recordWorkspaceHtml(student, recordContent) {
-    const divisionLabel = student?.type === 'kinder' ? '유치부 1분 피드백' : '초등 관찰 노트';
     return '<div class="pcAttendanceDetailBody">'
       + '<section class="pcAttendanceEditorCard" aria-label="수업 기록 작성">'
-      + '<div class="pcAttendanceWorkspaceHead"><div><div class="pcAttendanceWorkspaceTitle">수업 기록</div><div class="pcAttendanceWorkspaceSub">'+divisionLabel+'</div></div></div>'
       + '<div class="pcAttendanceSharedEditorHost" id="pcAttendanceSharedEditorHost"></div>'
       + '</section>'
       + '<section class="pcAttendanceCombinedCard" aria-label="종합 성장 기록">'
-      + '<div class="pcAttendanceWorkspaceHead"><div><div class="pcAttendanceWorkspaceTitle">종합 성장 기록</div><div class="pcAttendanceWorkspaceSub">수업 기록과 종합 기록을 함께 확인합니다.</div></div></div>'
       + '<div class="pcAttendanceCombinedBody" id="pcAttendanceCombinedBody">'+recordContent+'</div>'
       + '</section>'
       + '</div>';
@@ -174,26 +171,15 @@
     const panel = ensureDetailPanel();
     if (!panel) return;
     unmountSharedEditor();
-    panel.innerHTML = '<div class="pcAttendanceDetailHead"><div><div class="pcAttendanceDetailTitle">관찰기록</div><div class="pcAttendanceDetailSub">학생의 수업 기록과 성장 기록을 확인합니다.</div></div></div>'
+    panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">관찰기록</div></div>'
       + '<div class="pcAttendanceDetailEmpty"><span class="pcAttendanceDetailEmptyIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="3"></rect><path d="M8 9h8M8 13h5"></path></svg></span><strong>학생을 선택해 주세요.</strong><span>왼쪽 명단에서 학생 이름을 누르면<br>관찰기록이 이곳에 표시됩니다.</span></div>';
-  }
-
-  function getStudentMeta(student) {
-    try {
-      const bits = student?.type === 'kinder'
-        ? (typeof getKinderMetaBits === 'function' ? getKinderMetaBits(student) : [])
-        : (typeof getElementaryMetaBits === 'function' ? getElementaryMetaBits(student) : []);
-      return Array.isArray(bits) ? bits.filter(Boolean).join(' · ') : '';
-    } catch (_) { return ''; }
   }
 
   function renderLoadingDetail(student) {
     const panel = ensureDetailPanel();
     if (!panel) return;
     unmountSharedEditor();
-    const division = student?.type === 'kinder' ? '유치부' : '초등부';
-    const meta = getStudentMeta(student);
-    panel.innerHTML = '<div class="pcAttendanceDetailHead"><div><div class="pcAttendanceStudentLine"><span class="pcAttendanceDivisionChip">'+division+'</span><div class="pcAttendanceDetailTitle">'+escape(student?.name || '학생')+' 관찰기록</div></div><div class="pcAttendanceDetailSub">'+escape(meta || '저장된 관찰기록을 불러오고 있습니다.')+'</div></div></div>'
+    panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">관찰기록</div></div>'
       + recordWorkspaceHtml(student, recordLoadingHtml());
     mountSharedEditor(student);
   }
@@ -278,7 +264,7 @@
     if (!list) return;
     const header = document.createElement('div');
     header.className = 'pcAttendanceRosterHead';
-    header.innerHTML = '<div><div class="pcAttendanceRosterTitle">학생 명단</div><div class="pcAttendanceRosterSub">이름을 눌러 관찰기록을 확인하세요.</div></div><span>'+count+'명</span>';
+    header.innerHTML = '<div class="pcAttendanceRosterTitle">학생 명단</div><span>'+count+'명</span>';
     list.insertBefore(header, list.firstChild);
   }
 
