@@ -1,20 +1,20 @@
 (function pcStartPageModule(global){
   'use strict';
-  if (global.__OLLI_PC_START_PAGE_V2__) return;
-  global.__OLLI_PC_START_PAGE_V2__ = true;
-
-  function isPc(){
-    return !!(!global.matchMedia || global.matchMedia('(min-width: 900px)').matches);
-  }
+  if (global.__OLLI_PC_START_PAGE_V3__) return;
+  global.__OLLI_PC_START_PAGE_V3__ = true;
 
   const PAGES = {
-    academy: { value:'academy', label:'학생관리' },
-    attendance: { value:'attendance', label:'성향기록부' },
-    schedule: { value:'schedule', label:'시간표 • 출석부' }
+    academy: { value: 'academy', label: '학생관리' },
+    attendance: { value: 'attendance', label: '성향기록부' },
+    schedule: { value: 'schedule', label: '시간표 • 출석부' }
   };
 
+  function text(value){ return String(value == null ? '' : value).trim(); }
+  function lsGet(key){ try { return localStorage.getItem(key) || ''; } catch (_) { return ''; } }
+  function lsSet(key, value){ try { localStorage.setItem(key, value); } catch (_) {} }
+
   function normalizePc(page){
-    page = String(page == null ? '' : page).trim();
+    page = text(page);
     if (!page) return '';
     if (page === 'academy' || page === 'director' || page === 'dashboard' || page === 'academy_management' || page === 'director_dashboard') return 'academy';
     if (page === 'attendance' || page === 'personality_records' || page === 'personality' || page === 'memo' || page === 'observation' || page === 'observation_note' || page === 'record_observation' || page === 'kinder' || page === 'record_kinder' || page === 'one_minute_feedback' || page === 'kinder_attendance') return 'attendance';
@@ -22,174 +22,214 @@
     return '';
   }
 
-  function storageKey(){
-    let stable = '';
-    try { if (typeof global.getOlliStartPageStableKey === 'function') stable = String(global.getOlliStartPageStableKey() || ''); } catch (_) {}
-    if (!stable) {
-      let member = '';
-      let academy = '';
-      let role = '';
-      try { member = localStorage.getItem('olli_current_member_id') || ''; } catch (_) {}
-      try { academy = localStorage.getItem('olli_current_academy_id') || localStorage.getItem('olli_current_academy_code') || ''; } catch (_) {}
-      try { role = localStorage.getItem('olli_current_member_role') || ''; } catch (_) {}
-      stable = [member || 'member', academy || 'academy', role || 'role'].join('_');
+  function getOlliStartPageStableKey(){
+    const accountPart = text(lsGet('olli_account_id_v1') || lsGet('olli_account_login_id_v1') || lsGet('olli_current_member_id') || 'local') || 'local';
+    const academyPart = text(lsGet('olli_current_academy_id') || lsGet('olli_current_academy_code') || 'academy') || 'academy';
+    const rolePart = text(lsGet('olli_current_member_role') || 'role') || 'role';
+    return `${accountPart}_${academyPart}_${rolePart}`.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+  }
+
+  function getOlliStartPageMemberKey(){
+    const memberId = text(lsGet('olli_current_member_id'));
+    if (memberId) return 'member_' + memberId;
+    const role = text(lsGet('olli_current_member_role')) || (lsGet('olli_owner_logged_in') === 'true' ? 'owner' : (lsGet('olli_teacher_logged_in') === 'true' ? 'teacher' : 'guest'));
+    const academy = text(lsGet('olli_current_academy_id') || lsGet('olli_current_academy_code') || 'local');
+    return `${role}_${academy}`.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+  }
+
+  function storageKey(){ return 'olli_pc_start_page_' + getOlliStartPageStableKey(); }
+  function setupDoneKey(){ return 'olli_pc_start_page_setup_done_' + getOlliStartPageStableKey(); }
+  function isOlliStartPageSetupDoneForCurrentContext(){ return lsGet(setupDoneKey()) === 'true'; }
+  function markOlliStartPageSetupDoneForCurrentContext(){ lsSet(setupDoneKey(), 'true'); }
+
+  function pcOptions(){ return [PAGES.academy, PAGES.attendance, PAGES.schedule].map((item) => ({ value: item.value, label: item.label })); }
+
+  function readLegacyStartPage(){
+    const keys = [
+      'olli_default_start_page_' + getOlliStartPageMemberKey(),
+      'olli_default_start_page_' + getOlliStartPageStableKey(),
+      'olli_default_start_page_fallback'
+    ];
+    for (const key of keys) {
+      const migrated = normalizePc(lsGet(key));
+      if (migrated) return migrated;
     }
-    stable = stable.replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
-    return 'olli_pc_start_page_' + stable;
+    try {
+      const academyId = text(lsGet('olli_current_academy_id'));
+      const academyCode = text(lsGet('olli_current_academy_code')).toUpperCase();
+      const academies = JSON.parse(lsGet('olli_account_academies_v1') || '[]');
+      if (Array.isArray(academies)) {
+        const matched = academies.find((item) => academyId && text(item?.academy_id || item?.academyId) === academyId)
+          || academies.find((item) => academyCode && text(item?.academy_code || item?.academyCode).toUpperCase() === academyCode);
+        const migrated = normalizePc(matched?.default_start_page || matched?.defaultStartPage || matched?.member_default_start_page || matched?.start_page || matched?.startPage || '');
+        if (migrated) return migrated;
+      }
+    } catch (_) {}
+    return '';
   }
 
-  function readLocal(){
-    try { return localStorage.getItem(storageKey()) || ''; } catch (_) { return ''; }
-  }
-
-  function writeLocal(page){
-    try { localStorage.setItem(storageKey(), page); } catch (_) {}
-  }
-
-  const previous = {
-    options: global.getOlliStartPageOptionsForCurrentRole,
-    allowed: global.getOlliAllowedStartPage,
-    label: global.getOlliStartPageLabel,
-    get: global.getOlliDefaultStartPage,
-    save: global.saveOlliDefaultStartPage,
-    enter: global.enterOlliByStartPage,
-    selectSetup: global.selectOlliStartPageAndEnter,
-    selectSettings: global.selectSettingsStartPageOption,
-    updateUI: global.updateOlliStartPageSettingUI,
-    renderSetup: global.renderOlliStartPageSetupOptions
-  };
-
-  function pcOptions(){
-    return [PAGES.academy, PAGES.attendance, PAGES.schedule].map((item) => ({ value:item.value, label:item.label }));
-  }
-
-  global.getOlliStartPageOptionsForCurrentRole = function(){
-    if (!isPc()) return typeof previous.options === 'function' ? previous.options.apply(this, arguments) : [];
-    return pcOptions();
-  };
-
-  global.getOlliAllowedStartPage = function(page){
-    if (!isPc()) return typeof previous.allowed === 'function' ? previous.allowed.apply(this, arguments) : page;
-    return normalizePc(page);
-  };
-
-  global.getOlliStartPageLabel = function(page){
-    if (!isPc()) return typeof previous.label === 'function' ? previous.label.apply(this, arguments) : String(page || '');
-    const normalized = normalizePc(page) || 'attendance';
-    return PAGES[normalized].label;
-  };
-
-  global.getOlliDefaultStartPage = function(){
-    if (!isPc()) return typeof previous.get === 'function' ? previous.get.apply(this, arguments) : '';
-    const stored = normalizePc(readLocal());
+  function getOlliDefaultStartPage(){
+    const stored = normalizePc(lsGet(storageKey()));
     if (stored) return stored;
-    let legacy = '';
-    try { if (typeof previous.get === 'function') legacy = previous.get.apply(this, arguments) || ''; } catch (_) {}
-    const migrated = normalizePc(legacy);
-    if (migrated) writeLocal(migrated);
+    const migrated = readLegacyStartPage();
+    if (migrated) {
+      lsSet(storageKey(), migrated);
+      markOlliStartPageSetupDoneForCurrentContext();
+    }
     return migrated;
-  };
+  }
 
-  global.saveOlliDefaultStartPage = async function(page){
-    if (!isPc()) return typeof previous.save === 'function' ? previous.save.apply(this, arguments) : page;
+  async function saveOlliDefaultStartPage(page){
     const normalized = normalizePc(page) || 'attendance';
-    writeLocal(normalized);
-    try { if (typeof global.markOlliStartPageSetupDoneForCurrentContext === 'function') global.markOlliStartPageSetupDoneForCurrentContext(); } catch (_) {}
-    try { if (typeof global.updateOlliStartPageSettingUI === 'function') global.updateOlliStartPageSettingUI(); } catch (_) {}
+    lsSet(storageKey(), normalized);
+    markOlliStartPageSetupDoneForCurrentContext();
+    updateOlliStartPageSettingUI();
     return normalized;
-  };
+  }
 
-  global.enterOlliByStartPage = async function(page){
-    if (!isPc()) return typeof previous.enter === 'function' ? previous.enter.apply(this, arguments) : undefined;
-    const normalized = normalizePc(page) || 'attendance';
+  function getOlliStartPageOptionsForCurrentRole(){ return pcOptions(); }
+  function isOlliStartPageAllowedForCurrentRole(page){ return !!normalizePc(page); }
+  function getOlliAllowedStartPage(page){ return normalizePc(page) || 'attendance'; }
+  function getOlliStartPageLabel(page){ return PAGES[getOlliAllowedStartPage(page)]?.label || PAGES.attendance.label; }
+  function canAccessOlliStartPageAcademyManagement(){ return true; }
+
+  function isOlliLoggedInForStartPage(){
+    return lsGet('olli_owner_logged_in') === 'true'
+      || lsGet('olli_teacher_logged_in') === 'true'
+      || !!lsGet('olli_current_academy_id')
+      || !!lsGet('olli_current_academy_code');
+  }
+
+  function hideOlliAppScreensForRoute(){
+    ['studentMemoScreen','kinderRiskMemoScreen','kinderChatFeedbackScreen','mainPageScreen','settingsPageScreen','settingsDetailScreen'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+  }
+
+  async function enterOlliByStartPage(page){
+    const normalized = getOlliAllowedStartPage(page);
     try { if (typeof global.hideOlliLoginScreens === 'function') global.hideOlliLoginScreens(); } catch (_) {}
     try { document.body.classList.remove('olli-login-open'); } catch (_) {}
+    hideOlliAppScreensForRoute();
+    try { if (typeof studentSelectionMode !== 'undefined') studentSelectionMode = false; } catch (_) {}
+    try { if (typeof selectedStudentIds !== 'undefined' && selectedStudentIds?.clear) selectedStudentIds.clear(); } catch (_) {}
+    try { if (typeof currentRecordMode !== 'undefined') currentRecordMode = 'class'; } catch (_) {}
     if (typeof global.pcOpenSection === 'function') {
       await Promise.resolve(global.pcOpenSection(normalized));
       try { if (typeof global.pcSyncFromVisiblePage === 'function') global.pcSyncFromVisiblePage(); } catch (_) {}
       return normalized;
     }
-    if (typeof previous.enter === 'function') {
-      const fallback = normalized === 'academy' ? 'director_dashboard' : (normalized === 'schedule' ? 'elementary_attendance' : 'observation_note');
-      return previous.enter.call(this, fallback);
+    throw new Error('PC 화면 전환 모듈을 찾지 못했습니다.');
+  }
+
+  function renderOlliStartPageSetupOptions(){
+    const grid = document.getElementById('olliStartPageChoiceGrid');
+    if (!grid) return;
+    grid.innerHTML = pcOptions().map((item) => `<button class="olliStartPageChoiceBtn" type="button" onclick="selectOlliStartPageAndEnter('${item.value}')">${item.label}</button>`).join('');
+  }
+
+  function showOlliStartPageSetup(){
+    if (typeof global.showOlliLoginScreenById === 'function') global.showOlliLoginScreenById('olliStartPageSetupScreen');
+    renderOlliStartPageSetupOptions();
+  }
+
+  async function selectOlliStartPageAndEnter(page){
+    const saved = await saveOlliDefaultStartPage(page);
+    return enterOlliByStartPage(saved);
+  }
+
+  async function enterOlliAfterLoginOrSetup(){
+    try { if (typeof global.recoverOlliCurrentMemberContextFromCache === 'function') global.recoverOlliCurrentMemberContextFromCache(); } catch (_) {}
+    try { if (typeof global.refreshOlliRoleBasedVisibilityUI === 'function') global.refreshOlliRoleBasedVisibilityUI(); } catch (_) {}
+    if (typeof global.validateOlliCurrentAcademyStillExists === 'function') {
+      const academyCheck = await global.validateOlliCurrentAcademyStillExists({ silent: true });
+      if (academyCheck?.blocked) return;
     }
-    return normalized;
-  };
+    if (typeof global.ensureOlliCurrentAcademyAccessAllowed === 'function') {
+      const allowed = await global.ensureOlliCurrentAcademyAccessAllowed({ refresh: true, autoPersistExpired: true });
+      if (!allowed) return;
+    }
+    const page = getOlliDefaultStartPage();
+    if (page) return enterOlliByStartPage(page);
+    showOlliStartPageSetup();
+  }
 
-  global.selectOlliStartPageAndEnter = async function(page){
-    if (!isPc()) return typeof previous.selectSetup === 'function' ? previous.selectSetup.apply(this, arguments) : undefined;
-    const saved = await global.saveOlliDefaultStartPage(page);
-    return global.enterOlliByStartPage(saved);
-  };
-
-  global.selectSettingsStartPageOption = function(page){
-    if (!isPc()) return typeof previous.selectSettings === 'function' ? previous.selectSettings.apply(this, arguments) : undefined;
-    const normalized = normalizePc(page);
+  function selectSettingsStartPageOption(page){
+    const normalized = getOlliAllowedStartPage(page);
     document.querySelectorAll('.settingsStartPageOption[data-start-page-option]').forEach((btn) => {
       const active = normalizePc(btn.getAttribute('data-start-page-option')) === normalized;
       btn.classList.toggle('active', active);
       const check = btn.querySelector('.check');
       if (check) check.textContent = active ? '✓' : '';
     });
-  };
+  }
 
-  global.updateOlliStartPageSettingUI = function(){
-    if (!isPc()) return typeof previous.updateUI === 'function' ? previous.updateUI.apply(this, arguments) : undefined;
-    const page = global.getOlliDefaultStartPage() || 'attendance';
+  function updateOlliStartPageSettingUI(){
+    const page = getOlliDefaultStartPage() || 'attendance';
     const value = document.getElementById('settingsStartPageValue');
-    if (value) value.textContent = global.getOlliStartPageLabel(page);
+    if (value) value.textContent = getOlliStartPageLabel(page);
     document.querySelectorAll('[data-start-page-option]').forEach((btn) => {
       const active = normalizePc(btn.getAttribute('data-start-page-option')) === page;
       btn.classList.toggle('active', active);
       const check = btn.querySelector('.check');
       if (check) check.textContent = active ? '✓' : '';
     });
-  };
+  }
 
-  global.renderOlliStartPageSetupOptions = function(){
-    if (!isPc()) return typeof previous.renderSetup === 'function' ? previous.renderSetup.apply(this, arguments) : undefined;
-    const grid = document.getElementById('olliStartPageChoiceGrid');
-    if (!grid) return;
-    grid.innerHTML = pcOptions().map((item) => '<button class="olliStartPageChoiceBtn" type="button" onclick="selectOlliStartPageAndEnter(\'' + item.value + '\')">' + item.label + '</button>').join('');
-  };
+  async function refreshOlliDefaultStartPageFromSupabase(){ return getOlliDefaultStartPage() || ''; }
 
-  try { getOlliStartPageOptionsForCurrentRole = global.getOlliStartPageOptionsForCurrentRole; } catch (_) {}
-  try { getOlliAllowedStartPage = global.getOlliAllowedStartPage; } catch (_) {}
-  try { getOlliStartPageLabel = global.getOlliStartPageLabel; } catch (_) {}
-  try { getOlliDefaultStartPage = global.getOlliDefaultStartPage; } catch (_) {}
-  try { saveOlliDefaultStartPage = global.saveOlliDefaultStartPage; } catch (_) {}
-  try { enterOlliByStartPage = global.enterOlliByStartPage; } catch (_) {}
-  try { selectOlliStartPageAndEnter = global.selectOlliStartPageAndEnter; } catch (_) {}
-  try { selectSettingsStartPageOption = global.selectSettingsStartPageOption; } catch (_) {}
-  try { updateOlliStartPageSettingUI = global.updateOlliStartPageSettingUI; } catch (_) {}
-  try { renderOlliStartPageSetupOptions = global.renderOlliStartPageSetupOptions; } catch (_) {}
+  Object.assign(global, {
+    normalizeOlliStartPage: normalizePc,
+    getOlliStartPageStableKey,
+    getOlliStartPageMemberKey,
+    getOlliStartPageSetupDoneKey: setupDoneKey,
+    isOlliStartPageSetupDoneForCurrentContext,
+    markOlliStartPageSetupDoneForCurrentContext,
+    getOlliStartPageOptionsForCurrentRole,
+    isOlliStartPageAllowedForCurrentRole,
+    getOlliAllowedStartPage,
+    getOlliStartPageLabel,
+    canAccessOlliStartPageAcademyManagement,
+    getOlliDefaultStartPage,
+    saveOlliDefaultStartPage,
+    isOlliLoggedInForStartPage,
+    hideOlliAppScreensForRoute,
+    enterOlliByStartPage,
+    renderOlliStartPageSetupOptions,
+    showOlliStartPageSetup,
+    selectOlliStartPageAndEnter,
+    enterOlliAfterLoginOrSetup,
+    selectSettingsStartPageOption,
+    updateOlliStartPageSettingUI,
+    refreshOlliDefaultStartPageFromSupabase
+  });
 
   try {
     if (typeof settingsSheetData !== 'undefined' && settingsSheetData?.startPage) {
       settingsSheetData.startPage.desc = 'PC 앱을 열었을 때 처음 보여줄 화면을 선택합니다.';
       settingsSheetData.startPage.html = function(){
-        const current = global.getOlliDefaultStartPage() || 'attendance';
+        const current = getOlliDefaultStartPage() || 'attendance';
         const optionsHtml = pcOptions().map((item) => {
           const active = item.value === current;
-          return '<button type="button" class="settingsStartPageOption ' + (active ? 'active' : '') + '" data-start-page-option="' + item.value + '" onclick="selectSettingsStartPageOption(\'' + item.value + '\')"><span>' + item.label + '</span><span class="check">' + (active ? '✓' : '') + '</span></button>';
+          return `<button type="button" class="settingsStartPageOption ${active ? 'active' : ''}" data-start-page-option="${item.value}" onclick="selectSettingsStartPageOption('${item.value}')"><span>${item.label}</span><span class="check">${active ? '✓' : ''}</span></button>`;
         }).join('');
-        return '<div class="settingsInputGroup">' + optionsHtml + '</div><div class="settingsMiniText">PC 시작 페이지는 학생관리, 성향기록부, 시간표 • 출석부 중에서 선택할 수 있습니다.</div>';
+        return `<div class="settingsInputGroup">${optionsHtml}</div><div class="settingsMiniText">PC 시작 페이지는 학생관리, 성향기록부, 시간표 • 출석부 중에서 선택할 수 있습니다.</div>`;
       };
       settingsSheetData.startPage.onSave = async function(){
-        const selected = document.querySelector('.settingsStartPageOption.active[data-start-page-option]')?.getAttribute('data-start-page-option') || global.getOlliDefaultStartPage() || 'attendance';
-        await global.saveOlliDefaultStartPage(selected);
+        const selected = document.querySelector('.settingsStartPageOption.active[data-start-page-option]')?.getAttribute('data-start-page-option') || getOlliDefaultStartPage() || 'attendance';
+        await saveOlliDefaultStartPage(selected);
       };
     }
   } catch (_) {}
 
   function refreshPcStartPageUi(){
-    if (!isPc()) return;
     const value = document.getElementById('settingsStartPageValue');
-    if (value) value.textContent = global.getOlliStartPageLabel(global.getOlliDefaultStartPage() || 'attendance');
-    try { global.updateOlliStartPageSettingUI(); } catch (_) {}
+    if (value) value.textContent = getOlliStartPageLabel(getOlliDefaultStartPage() || 'attendance');
+    updateOlliStartPageSettingUI();
   }
 
-  global.OlliPcStartPage = { isPc, normalize: normalizePc, options: pcOptions };
+  global.OlliPcStartPage = { normalize: normalizePc, options: pcOptions, storageKey };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refreshPcStartPageUi);
   else setTimeout(refreshPcStartPageUi, 0);
 })(window);
