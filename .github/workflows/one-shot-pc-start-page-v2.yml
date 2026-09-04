@@ -17,7 +17,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Add PC start page controller to index
+      - name: Fix and connect PC start page controller
         shell: bash
         run: |
           python - <<'PY'
@@ -26,20 +26,38 @@ jobs:
           path = Path('index.html')
           text = path.read_text(encoding='utf-8')
           tag = '<script src="pc-start-page.js"></script>'
-          if tag not in text:
-              marker = '</body>'
-              if marker not in text:
-                  raise SystemExit('index.html has no </body> marker')
-              text = text.replace(marker, tag + '\n' + marker, 1)
-              path.write_text(text, encoding='utf-8')
+
+          # 이전 1회성 작업이 인쇄용 HTML 문자열의 첫 </body>를 잡은 경우를 제거합니다.
+          text = text.replace('<script src=\\"pc-start-page.js\\"></script>\n', '')
+          text = text.replace(tag + '\n', '')
+
+          # 실제 문서의 마지막 </body> 바로 앞에만 한 번 연결합니다.
+          index = text.rfind('</body>')
+          if index < 0:
+              raise SystemExit('index.html has no final </body> marker')
+          text = text[:index] + tag + '\n' + text[index:]
+
+          if text.count('pc-start-page.js') != 1:
+              raise SystemExit('pc-start-page.js must be referenced exactly once')
+          if text.rfind(tag) > text.rfind('</body>'):
+              raise SystemExit('pc-start-page.js tag must be before final </body>')
+
+          path.write_text(text, encoding='utf-8')
           PY
 
       - name: Verify patch
         shell: bash
         run: |
-          grep -q '<script src="pc-start-page.js"></script>' index.html
           test -f pc-start-page.js
           node --check pc-start-page.js
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('index.html').read_text(encoding='utf-8')
+          tag = '<script src="pc-start-page.js"></script>'
+          assert text.count('pc-start-page.js') == 1
+          assert text.rfind(tag) >= 0
+          assert 0 <= text.rfind('</body>') - text.rfind(tag) < 200
+          PY
 
       - name: Commit patch
         shell: bash
@@ -51,5 +69,5 @@ jobs:
             echo 'No index changes to commit.'
             exit 0
           fi
-          git commit -m 'Connect PC start page controller'
+          git commit -m 'Fix PC start page controller load point'
           git push
