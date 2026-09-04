@@ -1,0 +1,594 @@
+/* 학생 메모장 상단: 오른쪽에 [기록실][학생정보] */
+
+#studentMemoScreen .memoStudentNameWrap { min-width: 0 ; }
+
+#studentMemoScreen .memoStudentName {
+max-width: 132px ;
+  overflow: hidden ;
+  text-overflow: ellipsis ;
+  white-space: nowrap ;
+  color: #111;
+  font-size: calc(20px * var(--olli-text-scale));
+  font-weight: 440;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  transform: translateY(-1px);
+}
+
+/* 학생 메모장 하단: 뒤로가기 삭제 후 피드백 생성 왼쪽 배치 */
+#studentMemoScreen .memoBackBtn {
+display: none ;
+}
+#studentMemoScreen .memoFeedbackBottomBtn:disabled {
+  opacity: .42 ;
+  background: transparent ;
+  color: #888 ;
+  border: none ;
+  box-shadow: none ;
+}
+#studentMemoScreen .memoBottomBar {
+  position: fixed;
+  left: calc(var(--vivizac-memo-shell-x) + 4px);
+  right: calc(var(--vivizac-memo-shell-x) + 55px);
+  bottom: var(--vivizac-memo-bottom-y);
+  top: auto;
+  width: auto;
+  max-width: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: none;
+  z-index: 119990;
+  background: transparent;
+  overflow: visible;
+}
+#studentMemoScreen .memoBottomBar > *,
+#studentMemoScreen .memoBottomBar button {
+  pointer-events: auto;
+}
+
+/* 초등부 메모 입력부 간격 */
+#studentMemoScreen .memoEditor {
+background: #FEFEFE;
+  background-color: #FEFEFE;
+  padding-top: 10px;
+  min-height: calc(100vh - 80px);
+  line-height: 1.62;
+}
+
+
+/* 2026-04-22 학생 메모장/초등 실패성장 상단 구조 정리 */
+#studentMemoScreen .memoHeader {
+  display: contents ;
+  position: static ;
+  top: auto ;
+  left: auto ;
+  right: auto ;
+  transform: none ;
+  z-index: auto ;
+  overflow: visible ;
+  isolation: auto ;
+  width: auto ;
+  max-width: none ;
+  height: 0 ;
+  min-height: 0 ;
+  margin: 0 ;
+  padding: 0 ;
+  background: transparent ;
+  border-bottom: none ;
+  backdrop-filter: none ;
+  -webkit-backdrop-filter: none ;
+}
+
+#studentMemoScreen .memoPageInner {
+  position: relative;
+  z-index: 1;
+  padding-top: calc(var(--vivizac-note-header-h) + max(18px, calc(env(safe-area-inset-top) + 6px)) + 12px);
+  overflow-x: visible;
+}
+
+#studentMemoScreen::before {
+  content: none ;
+  display: none ;
+  background: transparent ;
+  backdrop-filter: none ;
+  -webkit-backdrop-filter: none ;
+}
+#studentMemoScreen .memoTopFadeLayer {
+  position: fixed;
+  left: 50%;
+  right: auto;
+  top: 0;
+  transform: translateX(-50%);
+  width: min(100vw, 860px);
+  max-width: 860px;
+  height: calc(max(116px, calc(env(safe-area-inset-top) + 102px)));
+  z-index: 100;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(254,254,254,1) 0%,
+    rgba(254,254,254,.94) 24%,
+    rgba(254,254,254,.50) 54%,
+    rgba(254,254,254,0) 100%
+  );
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+#studentMemoScreen .memoHeaderLeftActions {
+  display: contents ;
+  position: static ;
+  overflow: visible ;
+  z-index: auto ;
+  min-width: 0 ;
+  max-width: none ;
+  flex: 0 0 auto ;
+}
+#studentMemoScreen .memoHeaderActions {
+  position: fixed;
+  right: var(--vivizac-memo-shell-x);
+  top: var(--vivizac-memo-top-y);
+  left: auto;
+  bottom: auto;
+  transform: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--vivizac-note-gap);
+  overflow: visible;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 120000;
+  flex: 0 0 auto;
+  isolation: isolate;
+}
+#studentMemoScreen .memoNamePill,
+#studentMemoScreen .memoModePill {
+width: auto ;
+  min-width: 0 ;
+  max-width: none ;
+  height: 25px ;
+  min-height: 25px ;
+  padding: 0 ;
+  border-radius: 0 ;
+  color: #111;
+  font-size: calc(20px * var(--olli-text-scale));
+  font-weight: 440;
+  letter-spacing: -0.02em;
+  background: transparent ;
+  border: none ;
+  box-shadow: none ;
+  backdrop-filter: none ;
+  -webkit-backdrop-filter: none ;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  display: inline-flex ;
+  align-items: center ;
+  justify-content: center ;
+  gap: 6px ;
+}
+
+#studentMemoScreen .memoNameMore,
+#studentMemoScreen .memoSignalCircle { display: none ; }
+#studentMemoScreen .memoRecordRoomBtn {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0;
+  color: #111;
+  background: #fff;
+  border: 1px solid rgba(255,255,255,0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.92),
+    0 0 0 1px rgba(255,255,255,0.92),
+    0 0 34px 10px rgba(0,0,0,0.045),
+    0 0 78px 22px rgba(0,0,0,0.035);
+  backdrop-filter: blur(20px) saturate(1.18);
+  -webkit-backdrop-filter: blur(20px) saturate(1.18);
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  overflow: visible;
+  position: relative;
+  top: auto;
+  transform: none;
+  z-index: 950;
+}
+
+#studentMemoScreen .memoRecordRoomBtn:not(.memoRecordBtn) {
+  position: fixed;
+  left: var(--vivizac-memo-shell-x);
+  top: var(--vivizac-memo-top-y);
+  right: auto;
+  bottom: auto;
+  display: inline-flex;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 120000;
+  isolation: isolate;
+}
+#studentMemoScreen .memoRecordRoomBtn.memoRecordBtn {
+  position: relative;
+  top: auto;
+  right: auto;
+  transform: none;
+  z-index: 951;
+}
+#studentMemoScreen #memoRecordsBtn {
+  display: inline-flex;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+#studentMemoScreen #memoStudentListBtn,
+#studentMemoScreen #memoBottomAnalysisBtn {
+  display: inline-flex;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#studentMemoScreen .memoRecordRoomBtn:not(.memoRecordBtn) svg {
+  width: 27px;
+  height: 27px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#studentMemoScreen .memoStudentInfoBtn .memoInfoDots {
+  font-size: calc(18px * var(--olli-text-scale));
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 1.5px;
+  transform: translateY(-1px);
+}
+#studentMemoScreen .memoModePill svg {
+  width:16px ;
+  height:16px ;
+  stroke:currentColor ;
+  fill:none ;
+  stroke-width:2.25 ;
+  stroke-linecap:round ;
+  stroke-linejoin:round ;
+}
+#studentMemoScreen .memoModeSub {
+  margin-top:2px;
+  margin-right:0;
+  align-self:center;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:400;
+  color:#999;
+  letter-spacing:-0.03em;
+  line-height:1;
+  text-align:center;
+}
+#studentMemoScreen .memoModeDropup {
+  display: none;
+  position: absolute ;
+  top: 50px ;
+  left: 50% ;
+  right: auto ;
+  bottom: auto ;
+  transform: translateX(-50%) ;
+  min-width: 250px ;
+  width: 250px ;
+  padding: 12px 0 ;
+  border-radius: 28px ;
+  background: rgba(255,255,255,.92) ;
+  box-shadow: 0 18px 46px rgba(0,0,0,.14), 0 4px 14px rgba(0,0,0,.07) ;
+  backdrop-filter: blur(18px) ;
+  -webkit-backdrop-filter: blur(18px) ;
+  z-index: 100 ;
+}
+#studentMemoScreen .memoModeDropup.show { display: block ; }
+#studentMemoScreen .memoModeDropup .memoRecordOption {
+  width: 100% ;
+  min-height: 64px ;
+  border: none ;
+  border-radius: 0 ;
+  background: transparent ;
+  color: #111 ;
+  font-family: inherit ;
+  cursor: pointer ;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  display: grid ;
+  grid-template-columns: 34px minmax(0,1fr) ;
+  align-items: center ;
+  gap: 8px ;
+  padding: 6px 18px 6px 14px ;
+  text-align: left ;
+}
+#studentMemoScreen .memoRecordOption.active::after {
+  content: none ;
+}
+.memoModeCheck {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  color: #111;
+}
+.memoModeCheck svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#studentMemoScreen .memoRecordOption.active .memoModeCheck { opacity: 1; }
+.memoModeOptionText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+.memoModeOptionTitle {
+  display: block;
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 400;
+  line-height: 1.16;
+  letter-spacing: -0.03em;
+  color: #111;
+  white-space: nowrap;
+}
+.memoModeOptionGuide {
+  display: block;
+  font-size: calc(12.5px * var(--olli-text-scale));
+  font-weight: 350;
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+  color: #888;
+  word-break: keep-all;
+}
+
+/* 학생 메모장 하단: 왼쪽 수업기록, 오른쪽 피드백 생성 */
+
+#studentMemoScreen .memoFeedbackBottomBtn {
+  position: fixed;
+  right: calc(var(--vivizac-memo-shell-x) + 4px);
+  bottom: var(--vivizac-memo-bottom-y);
+  left: auto;
+  top: auto;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  background: #0A84FF;
+  border: none;
+  box-shadow: none;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  visibility: visible;
+  opacity: 1;
+  z-index: 120001;
+  font-size: 0;
+  pointer-events: auto;
+  line-height: 1;
+}
+#studentMemoScreen .memoFeedbackBottomBtn svg {
+  width: 21px;
+  height: 21px;
+  margin: 0;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform: translateY(-0.5px);
+  display: block;
+}
+#studentMemoScreen .memoFeedbackBottomText {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+#studentMemoScreen .memoFeedbackArrowCircle {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 999px;
+  background: #0A84FF;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#studentMemoScreen .memoFeedbackArrowCircle svg {
+  width: 21px;
+  height: 21px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#studentMemoScreen .memoBottomBtn,
+#studentMemoScreen .memoBottomBar .memoRecordBtn,
+#studentMemoScreen .memoBottomIconBtn {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 999px;
+  color: #111;
+  background: #fff;
+  border: 1px solid rgba(255,255,255,0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.92),
+    0 0 0 1px rgba(255,255,255,0.92),
+    0 0 34px 10px rgba(0,0,0,0.045),
+    0 0 78px 22px rgba(0,0,0,0.035);
+  backdrop-filter: blur(20px) saturate(1.18);
+  -webkit-backdrop-filter: blur(20px) saturate(1.18);
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#studentMemoScreen .memoStudentSelectBtn {
+  color: #111;
+  background: #fff;
+  border: 1px solid rgba(255,255,255,0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.92),
+    0 0 0 1px rgba(255,255,255,0.92),
+    0 0 34px 10px rgba(0,0,0,0.045),
+    0 0 78px 22px rgba(0,0,0,0.035);
+  backdrop-filter: blur(20px) saturate(1.18);
+  -webkit-backdrop-filter: blur(20px) saturate(1.18);
+}
+
+/* 메인/실패성장 상단: 기록실 버튼 옆 텍스트 버튼도 같은 상단 버튼 스타일 */
+
+/* 관찰메모 상단 버튼 아래 라인 삭제 */
+
+
+/* 2026-04-22 실제 원인 수정: 상단 기준 통일 + 분석 버튼 복구 + 선택 팝업 */
+.cardFeedbackHeader { padding-left:16px ; padding-right:16px ; }
+.cardHeaderLeft { left:16px ; }
+.cardHeaderRight { right:16px ; }
+.cardModeWrap{
+  position:relative ;
+  display:inline-flex ;
+  align-items:center ;
+  flex:0 0 auto ;
+}
+#studentMemoScreen .memoModeWrap {
+  position: fixed;
+  left: 50%;
+  top: calc(var(--vivizac-memo-top-y) + 4px);
+  transform: translateX(-50%);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: none;
+  z-index: 120000;
+  pointer-events: auto;
+  isolation: isolate;
+  visibility: visible;
+  opacity: 1;
+}
+.cardModeDropup {
+  left:0 ;
+  right:auto ;
+  top:54px ;
+  bottom:auto ;
+  width:176px ;
+  z-index:140 ;
+}
+
+#studentMemoScreen .memoAnalysisBtn {
+  width: var(--vivizac-top-h) ;
+  min-width: var(--vivizac-top-h) ;
+  height: var(--vivizac-top-h) ;
+  min-height: var(--vivizac-top-h) ;
+  padding: 0 ;
+  display: inline-flex ;
+  align-items: center ;
+  justify-content: center ;
+  border: 1px solid rgba(255,255,255,0.96) ;
+  border-radius: 999px ;
+  color: #111 ;
+  background:#fff ;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.92),
+    0 0 0 1px rgba(255,255,255,0.92),
+    0 0 34px 10px rgba(0,0,0,0.045),
+    0 0 78px 22px rgba(0,0,0,0.035) ;
+  backdrop-filter: blur(20px) saturate(1.18) ;
+  -webkit-backdrop-filter: blur(20px) saturate(1.18) ;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 600;
+  line-height: 1;
+  font-family: inherit;
+  cursor: pointer ;
+  white-space: nowrap ;
+}
+#studentMemoScreen .memoStudentInfoBtn {
+  width:var(--vivizac-top-h) ;
+  min-width:var(--vivizac-top-h) ;
+}
+
+
+@media (max-width: 380px) {
+  
+}
+
+/* 2026-04-23 노트 명칭/버튼/레이아웃 실제 보정 */
+#mainCardModePill{
+  display: inline-flex ;
+  align-items: center ;
+  justify-content: center ;
+  gap: 6px ;
+  color: #111 ;
+}
+
+#mainCardModePill::after{
+  content: '' ;
+  width: 7px ;
+  height: 7px ;
+  border-right: 1.8px solid #0A84FF ;
+  border-bottom: 1.8px solid #0A84FF ;
+  transform: rotate(45deg) translateY(-2px) ;
+  flex: 0 0 auto ;
+}
+#studentMemoScreen .memoAnalysisBtn .memoAnalysisIcon {
+  width: 23px ;
+  height: 23px ;
+  stroke: currentColor ;
+  fill: none ;
+  stroke-width: 2.2 ;
+  stroke-linecap: round ;
+  stroke-linejoin: round ;
+}
+#studentMemoScreen .memoRecordBtn .memoRecordIcon {
+  width: 34px ;
+  height: 34px ;
+  stroke: currentColor ;
+  fill: none ;
+  stroke-width: 1.55 ;
+  stroke-linecap: round ;
+  stroke-linejoin: round ;
+}
+
+#studentMemoScreen .memoRecordBtn {
+  width: 44px ;
+  min-width: 44px ;
+  height: 44px ;
+  min-height: 44px ;
+  display: inline-flex ;
+  align-items: center ;
+  justify-content: center ;
+  gap: 0 ;
+  padding: 0 ;
+}
+#studentMemoScreen .memoRecordBtn span {
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 600;
+  line-height: 1;
+}

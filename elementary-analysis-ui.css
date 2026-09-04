@@ -1,0 +1,495 @@
+.analysisSheetOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background: rgba(255,255,255,.18);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+#elementaryAnalysisModal[style*="flex"] .analysisSheetPanel,
+.analysisSheetOverlay[style*="flex"] .analysisSheetPanel {
+  animation: vivizacSheetInFromBottom .28s cubic-bezier(.22,.61,.36,1) both;
+}
+.analysisSheetPanel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: none;
+  max-height: min(82vh, 720px);
+  overflow-y: auto;
+  background: rgba(255,255,255,.98);
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -8px 34px rgba(0,0,0,.10), 0 -1px 8px rgba(0,0,0,.04);
+  border: 1px solid rgba(255,255,255,.96);
+  border-bottom: 0;
+  padding: 0 0 calc(env(safe-area-inset-bottom) + 92px);
+  box-sizing: border-box;
+  margin: 0;
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+}
+.analysisSheetHeader {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 28px 12px;
+  margin: 0;
+  background: rgba(255,255,255,.98);
+  border-radius: 28px 28px 0 0;
+}
+.analysisSheetTitle {
+  font-size: calc(16px * 1.20 * var(--olli-text-scale));
+  font-weight: 800;
+  color: #111;
+  letter-spacing: -0.02em;
+}
+.analysisSheetClose {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: #F4F4F4;
+  color: #6B6B6B;
+  font-size: calc(20px * var(--olli-text-scale));
+  line-height: 1;
+  cursor: pointer;
+}
+.analysisSheetActions {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 220;
+  background: rgba(255,255,255,.99);
+  display: flex;
+  gap: 8px;
+  padding: 12px 28px calc(env(safe-area-inset-bottom) + 8px);
+  margin: 0;
+  border-radius: 0;
+  box-shadow: 0 -18px 26px rgba(255,255,255,.96);
+  box-sizing: border-box;
+}
+.analysisSheetCancel {
+  flex: 1;
+  min-height: 42px;
+  border-radius: 14px;
+  border: 0;
+  font-family: inherit;
+  font-size: calc(14px * 1.20 * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+  background: #F4F4F4;
+  color: #6B6B6B;
+}
+.analysisSheetConfirm {
+  flex: 1;
+  min-height: 42px;
+  border-radius: 14px;
+  border: 0;
+  font-family: inherit;
+  font-size: calc(14px * 1.20 * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+  background: #111;
+  color: #fff;
+}
+.analysisResultSheetOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background: rgba(255,255,255,.18);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+#elementaryAnalysisDetailModal[style*="flex"] .analysisResultSheetPanel,
+.analysisResultSheetOverlay[style*="flex"] .analysisResultSheetPanel {
+  animation: vivizacSheetInFromBottom .28s cubic-bezier(.22,.61,.36,1) both;
+}
+.analysisResultSheetPanel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: none;
+  max-height: min(78vh, 680px);
+  overflow-y: auto;
+  background: rgba(255,255,255,.98);
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -8px 34px rgba(0,0,0,.10), 0 -1px 8px rgba(0,0,0,.04);
+  border: 1px solid rgba(255,255,255,.96);
+  border-bottom: 0;
+  padding: 0 0 calc(env(safe-area-inset-bottom) + 18px);
+  box-sizing: border-box;
+  margin: 0;
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+}
+.analysisResultSheetHeader {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 28px 12px;
+  margin: 0;
+  background: rgba(255,255,255,.98);
+  border-radius: 28px 28px 0 0;
+}
+.analysisResultSheetTitle {
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 800;
+  color: #111;
+  letter-spacing: -0.02em;
+}
+.analysisResultSheetClose {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: #F4F4F4;
+  color: #6B6B6B;
+  font-size: calc(20px * var(--olli-text-scale));
+  line-height: 1;
+  cursor: pointer;
+}
+.analysisResultSheetBody {
+  padding: 0 28px 4px;
+  overflow-y: visible;
+}
+.analysisResultSheetDate {
+  font-size: calc(12px * var(--olli-text-scale));
+  color: #8e8e93;
+  margin-bottom: 14px;
+}
+.analysisResultSheetSection {
+  margin-bottom: 14px;
+}
+.analysisResultSheetSectionTitle {
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 800;
+  color: #111;
+  margin-bottom: 6px;
+}
+.analysisResultSheetList {
+  display: grid;
+  gap: 4px;
+}
+.analysisResultSheetItem {
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.45;
+  color: #0A84FF;
+}
+
+/* 2026-04-24: 초등부 분석 자동저장 요약 카드 */
+#studentMemoScreen #elementaryMemoWrap {
+  padding-bottom: 8px;
+  overflow: visible;
+  display: block;
+}
+
+#studentMemoScreen .elementaryAnalysisBlock {
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+  background: transparent;
+  margin: -20px 0 0;
+  padding: 0;
+  height: auto;
+}
+#studentMemoScreen .memoAnalysisTitleRow {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 4px 0 0 22px;
+  background: transparent;
+  box-sizing: border-box;
+}
+#studentMemoScreen .memoStudentMetaBlock {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  z-index: 2;
+  max-width: calc(100% - 22px);
+  pointer-events: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+#studentMemoScreen .memoStudentNameLine {
+  display: flex;
+  align-items: flex-end;
+  gap: 9px;
+  width: 100%;
+  max-width: 100%;
+}
+
+#studentMemoScreen .memoPageStudentName {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #111;
+  font-size: calc(25px * var(--olli-text-scale));
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#studentMemoScreen .memoStudentUpdatedDate {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0 0 0 auto;
+  color: #B3B3B8;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 400;
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+  white-space: nowrap;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+#studentMemoScreen .memoEditorWrap {
+  position: relative;
+  z-index: 1;
+  padding-top: 0;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+#studentMemoScreen .elementaryAnalysisSummaryWrap {
+  display: none;
+  position: relative;
+  top: auto;
+  right: auto;
+  left: auto;
+  z-index: 3;
+  margin: 0;
+  background: transparent;
+  overflow: visible;
+  text-align: left;
+  flex: 0 0 auto;
+  min-width: 0;
+  pointer-events: auto;
+}
+
+#studentMemoScreen .elementaryAnalysisSummaryCard {
+  width: 27px;
+  max-width: 27px;
+  height: 27px;
+  min-height: 27px;
+  max-height: 27px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  box-sizing: border-box;
+  overflow: visible;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+}
+#studentMemoScreen .elementaryAnalysisSummaryCard.is-collapsed {
+  cursor: pointer;
+}
+
+#studentMemoScreen .elementaryAnalysisSummaryHeader {
+  display: grid;
+  grid-template-columns: 30px minmax(0, max-content);
+  align-items: center;
+  justify-content: center;
+  column-gap: 8px;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  max-height: 47px;
+  overflow: hidden;
+}
+
+#studentMemoScreen .elementaryAnalysisSummaryIcon {
+  width: 27px;
+  height: 27px;
+  min-width: 27px;
+  flex: 0 0 27px;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#studentMemoScreen .elementaryAnalysisSummaryIcon svg {
+  width: 27px;
+  height: 27px;
+  fill: none;
+  stroke: #0A84FF;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#studentMemoScreen .elementaryAnalysisSummaryCard.has-analysis .elementaryAnalysisSummaryIcon svg rect {
+  fill: #0A84FF;
+  stroke: #0A84FF;
+}
+#studentMemoScreen .elementaryAnalysisSummaryCard.has-analysis .elementaryAnalysisSummaryIcon svg path {
+  stroke: #fff;
+}
+#studentMemoScreen .elementaryAnalysisSummaryTexts {
+  min-width: 0;
+  width: auto;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  overflow: hidden;
+}
+#studentMemoScreen .elementaryAnalysisSummaryTop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  height: 100%;
+  overflow: hidden;
+}
+#studentMemoScreen .elementaryAnalysisSummaryTopMain {
+  min-width: 0;
+  flex: 0 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  overflow: hidden;
+}
+#studentMemoScreen .elementaryAnalysisSummaryTitle {
+  display: block;
+  width: auto;
+  margin: 0;
+  color: #111;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1;
+  font-weight: 800;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#studentMemoScreen .elementaryAnalysisSummaryLabel {
+  display: none;
+}
+#studentMemoScreen .elementaryAnalysisSummaryPreview {
+  display: none;
+  width: 100%;
+  margin: 3px 0 0;
+  color: #7d7d7d;
+  font-size: calc(12.5px * var(--olli-text-scale));
+  line-height: 1.28;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#studentMemoScreen .elementaryAnalysisSummaryDate {
+  display: none;
+  width: 100%;
+  margin: 0;
+  color: #9a9a9a;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.35;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+/* 최근 분석 버튼: 텍스트 길이에 맞춰 자동 너비 + 왼쪽 시작 */
+#studentMemoScreen .elementaryAnalysisHistoryWrap {
+  display: none;
+  margin: 0 0 4px;
+  background: transparent;
+  overflow: visible;
+}
+#studentMemoScreen .elementaryAnalysisHistoryGrid,
+#studentMemoScreen .elementaryAnalysisHistoryGrid.elementaryAnalysisHistoryGridSingle {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  grid-template-columns: none;
+  background: transparent;
+}
+#studentMemoScreen .elementaryAnalysisHistoryBtn,
+#studentMemoScreen .elementaryAnalysisHistoryCycleBtn {
+  -webkit-appearance: none;
+  appearance: none;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 0 auto;
+  min-height: calc(36px * var(--olli-text-scale));
+  padding: 7px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  border: 1px solid #F0F0F0;
+  border-radius: 22px;
+  background: #FEFEFE;
+  box-shadow: 0 14px 28px rgba(0,0,0,0.08), 0 4px 10px rgba(0,0,0,0.035);
+  box-sizing: border-box;
+  text-align: left;
+  cursor: pointer;
+}
+#studentMemoScreen .elementaryAnalysisHistoryBtn.active {
+border-color: #F0F0F0;
+  box-shadow: 0 14px 28px rgba(0,0,0,0.08), 0 4px 10px rgba(0,0,0,0.035);
+}
+#studentMemoScreen .elementaryAnalysisHistoryLine,
+#studentMemoScreen .elementaryAnalysisHistoryCycleBtn .elementaryAnalysisHistoryLine {
+  width: auto;
+  max-width: 100%;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.35;
+  font-weight: 700;
+  color: #111;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  text-align: left;
+}
