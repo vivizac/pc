@@ -13,12 +13,22 @@ jobs:
         run: |
           set -e
           echo '===== ALL RISK/SIGNAL REFERENCES ====='
-          grep -RInE --exclude-dir=.git --exclude='audit-remove-risk-feature.yml' 'kinderRisk|RiskMemo|risk[_-]?signal|risk_signals|위험신호|위험 신호|위험•퇴원|위험·퇴원|signalStatus|signalDots|signal-date|signal-dot|recordNotifyBtn|notificationInbox|sendKinderRiskPush|hasRiskNotifications|getKinderFilledMemoCount|getKinderRiskStageLabel|updateMemoSignalCircle' . || true
+          grep -RInE --exclude-dir=.git --exclude='audit-remove-risk-feature.yml' 'kinderRisk|RiskMemo|risk[_-]?signal|risk_signals|위험신호|위험 신호|위험•퇴원|위험·퇴원|signalStatus|signalDots|signal-date|signal-dot|recordNotifyBtn|notificationInbox|sendKinderRiskPush|hasRiskNotifications|getKinderFilledMemoCount|getKinderRiskStageLabel|updateMemoSignalCircle|directorNote|manager_can_director_note|recordDoorDot' . || true
+          echo '===== LEGACY KINDER MEMO FIELDS ====='
+          grep -RInE --exclude-dir=.git --exclude='audit-remove-risk-feature.yml' 'memo[1-5]|sceneMemo|kinderSceneMemo|kinderMemoBox|autoResizeKinderMemoBoxes|setKinderCombinedMode|kinderCombined|kinderGuideToggleBtn|kinderRiskToggleBtn' . || true
+          echo '===== NOTIFICATION CALLS ====='
+          grep -RInE --exclude-dir=.git --exclude='audit-remove-risk-feature.yml' 'getRiskNotifications|setRiskNotifications|loadRiskNotificationsFromSupabase|saveRiskNotification|updateNotificationButtons|scheduleNotificationSync|openNotificationInbox|closeNotificationInbox|openRiskNotificationTarget|showBrowserNotification|sendKinderRiskPush' . || true
+          echo '===== BACKUP CONTEXT ====='
+          sed -n '21490,21575p' index.html
+          echo '===== PERMISSION CONTEXT ====='
+          sed -n '19140,19210p' index.html
+          sed -n '25590,25660p' index.html
+          sed -n '29790,29845p' index.html
+          echo '===== SAVE ROUTING CONTEXT ====='
+          sed -n '32770,32925p' index.html
+          echo '===== RECORD ROOM / INFO CONTEXT ====='
+          sed -n '7700,7980p' index.html
+          echo '===== LATE RISK PATCH START ====='
+          sed -n '28250,29660p' index.html
           echo '===== FILE NAMES ====='
           find . -maxdepth 3 -type f | sort | grep -Ei 'risk|signal' || true
-          echo '===== OBSERVATION CORE RISK CONTEXT ====='
-          grep -nE 'kinderRisk|RiskMemo|risk[_-]?signal|risk_signals|위험신호|signalStatus|notificationInbox|sendKinderRiskPush|hasRiskNotifications|getKinderFilledMemoCount|getKinderRiskStageLabel|updateMemoSignalCircle' observation-memo-core.js || true
-          echo '===== INDEX RISK CONTEXT ====='
-          grep -nE 'kinderRisk|RiskMemo|risk[_-]?signal|risk_signals|위험신호|signalStatus|signalDots|recordNotifyBtn|notificationInbox|sendKinderRiskPush|hasRiskNotifications|getKinderFilledMemoCount|getKinderRiskStageLabel|updateMemoSignalCircle' index.html || true
-          echo '===== OTHER JS/CSS ====='
-          grep -RInE --include='*.js' --include='*.css' --exclude='index.html' --exclude='observation-memo-core.js' --exclude='audit-remove-risk-feature.yml' 'kinderRisk|RiskMemo|risk[_-]?signal|risk_signals|위험신호|signalStatus|signalDots|recordNotifyBtn|notificationInbox|sendKinderRiskPush|hasRiskNotifications|getKinderFilledMemoCount|getKinderRiskStageLabel|updateMemoSignalCircle' . || true
