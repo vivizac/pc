@@ -1,0 +1,249 @@
+name: One-shot remove risk feature v2
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-remove-risk-feature-v2.yml'
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove risk feature safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def balanced_end(text, pos, op='{', cl='}'):
+              depth=0; quote=None; esc=False; line=False; block=False; template=False; i=pos
+              while i < len(text):
+                  c=text[i]; n=text[i+1] if i+1<len(text) else ''
+                  if line:
+                      if c=='\n': line=False
+                  elif block:
+                      if c=='*' and n=='/': block=False; i+=1
+                  elif quote:
+                      if esc: esc=False
+                      elif c=='\\': esc=True
+                      elif c==quote: quote=None
+                  elif template:
+                      if esc: esc=False
+                      elif c=='\\': esc=True
+                      elif c=='`': template=False
+                  else:
+                      if c=='/' and n=='/': line=True; i+=1
+                      elif c=='/' and n=='*': block=True; i+=1
+                      elif c in ('"',"'"): quote=c
+                      elif c=='`': template=True
+                      elif c==op: depth+=1
+                      elif c==cl:
+                          depth-=1
+                          if depth==0: return i+1
+                  i+=1
+              raise RuntimeError('unbalanced code block')
+
+          def remove_function(text,name):
+              marker=f'function {name}('
+              while marker in text:
+                  s=text.find(marker); b=text.find('{',s); e=balanced_end(text,b)
+                  while e<len(text) and text[e] in ' \t': e+=1
+                  if e<len(text) and text[e]==';': e+=1
+                  if e<len(text) and text[e]=='\n': e+=1
+                  text=text[:s]+text[e:]
+              return text
+
+          def remove_if(text, marker):
+              while marker in text:
+                  s=text.find(marker); b=text.find('{',s); e=balanced_end(text,b)
+                  while e<len(text) and text[e] in ' \t': e+=1
+                  if e<len(text) and text[e]=='\n': e+=1
+                  text=text[:s]+text[e:]
+              return text
+
+          def tag_end(text,start,tag):
+              pat=re.compile(rf'<{tag}\b[^>]*>|</{tag}\s*>',re.I); d=0
+              for m in pat.finditer(text,start):
+                  if m.group(0).lower().startswith(f'</{tag}'): d-=1
+                  else: d+=1
+                  if d==0: return m.end()
+              raise RuntimeError('unbalanced html')
+
+          def remove_div_pattern(text,pattern):
+              while True:
+                  m=re.search(pattern,text,re.I|re.S)
+                  if not m: return text
+                  text=text[:m.start()]+text[tag_end(text,m.start(),'div'):]
+
+          def remove_button_class(text,cls):
+              pat=rf'<button\b(?=[^>]*class=["\'][^"\']*\b{re.escape(cls)}\b)[^>]*>'
+              while True:
+                  m=re.search(pat,text,re.I)
+                  if not m: return text
+                  text=text[:m.start()]+text[tag_end(text,m.start(),'button'):]
+
+          def remove_container_label(text,label,cls):
+              while label in text:
+                  pos=text.find(label); starts=[m.start() for m in re.finditer(rf'<div\b[^>]*class=["\'][^"\']*\b{re.escape(cls)}\b[^"\']*["\'][^>]*>',text[:pos],re.I)]
+                  if not starts: break
+                  s=starts[-1]; text=text[:s]+text[tag_end(text,s,'div'):]
+              return text
+
+          def remove_scripts(text,markers):
+              pat=re.compile(r'<script\b(?![^>]*src=)[^>]*>([\s\S]*?)</script\s*>',re.I); out=[]; last=0
+              for m in pat.finditer(text):
+                  if any(x in m.group(1) for x in markers): out.append(text[last:m.start()]); last=m.end()
+              out.append(text[last:]); return ''.join(out)
+
+          def remove_registry(text,feature):
+              needle=f"feature: '{feature}'"
+              while needle in text:
+                  p=text.find(needle); s=text.rfind('FeatureRegistry.register({',0,p)
+                  if s<0: raise RuntimeError('registry start missing '+feature)
+                  par=text.find('(',s); e=balanced_end(text,par,'(',')')
+                  while e<len(text) and text[e] in ' \t': e+=1
+                  if e<len(text) and text[e]==';': e+=1
+                  if e<len(text) and text[e]=='\n': e+=1
+                  text=text[:s]+text[e:]
+              return text
+
+          RISK_CSS=('#kinderRiskMemoScreen','.kinderRisk','.recordNotifyBtn','.recordDoorDot','.hasRiskNotifications','.notificationInbox','.kinderMemoBox')
+          def clean_css(css):
+              css=re.sub(r'/\*[\s\S]*?\*/',lambda m:'' if ('위험신호' in m.group(0) or 'kinderRisk' in m.group(0)) else m.group(0),css)
+              rule=re.compile(r'([^{}]+)\{([^{}]*)\}')
+              for _ in range(4):
+                  changed=False
+                  def repl(m):
+                      nonlocal changed
+                      pre=m.group(1); body=m.group(2); stripped=pre.strip()
+                      if stripped.startswith('@'): return m.group(0)
+                      if not any(x in pre for x in RISK_CSS): return m.group(0)
+                      sels=[s for s in pre.split(',') if s.strip() and not any(x in s for x in RISK_CSS)]
+                      changed=True
+                      return (','.join(sels)+'{'+body+'}') if sels else ''
+                  css2=rule.sub(repl,css)
+                  css=css2
+                  if not changed: break
+              # Any residual standalone risk rule is obsolete; remove compactly.
+              for marker in RISK_CSS:
+                  css=re.sub(r'[^{}]*'+re.escape(marker)+r'[^{}]*\{[^{}]*\}','',css)
+              return css
+          def clean_styles(text):
+              text=re.sub(r'<style\b[^>]*id=["\']olliKinderRiskUnifiedStyle["\'][^>]*>[\s\S]*?</style\s*>','',text,flags=re.I)
+              pat=re.compile(r'(<style\b[^>]*>)([\s\S]*?)(</style\s*>)',re.I)
+              return pat.sub(lambda m:m.group(1)+clean_css(m.group(2))+m.group(3),text)
+
+          # INDEX
+          p=Path('index.html'); text=p.read_text(encoding='utf-8')
+          text=re.sub(r'\s*<!-- PAGE: 유치부 관찰노트 -->\s*<script src="kinder-risk-ui\.js"></script>\s*','\n',text)
+          text=re.sub(r'\s*<script src="kinder-risk-ui\.js"></script>\s*','\n',text)
+          text=remove_button_class(text,'recordNotifyBtn')
+          text=remove_container_label(text,'<div class="recordUtilityLabel">관찰노트</div>','recordUtilityBtn')
+          text=remove_div_pattern(text,r'<div\b(?=[^>]*class=["\'][^"\']*\bkinderRiskInfoPanel\b)[^>]*>')
+          text=remove_div_pattern(text,r'<div\b(?=[^>]*id=["\']notificationInboxOverlay["\'])[^>]*>')
+          for fn in ['getRiskNotificationsStorageKey','hasAnyKinderRiskMemo','updateKinderInfoRiskPanel','updateElementaryInfoRiskPanel','openRiskMemoPageById','openElementaryRiskFromInfoModal','openKinderRiskFromInfoModal','getKinderFilledMemoCount','getSignalLevelByCount','getKinderRiskStageLabel','formatSignalRecordDate','getFocusedKinderSignalIndex','updateKinderRiskStageUI','buildKinderSignalSourceStudent','updateMemoSignalCircle','updateNotificationButtons','openNotificationInbox','closeNotificationInbox','normalizeRiskNotificationMessage','markRiskNotificationHandled','openRiskNotificationTarget']:
+              text=remove_function(text,fn)
+          text=remove_scripts(text,['function updateDirectorMemoBlockState','function setupKinderDirectorAccordion','const kinderCombinedSelectedSceneIds','function safeRenderKinderCards','function renderKinderRiskModeMenu','function syncKinderRiskButtonLabel','function getKinderKeyboardOffset'])
+          text=remove_registry(text,'risk_signal'); text=remove_registry(text,'risk_signal_handled')
+          text=re.sub(r'^.*elementaryRiskInfoPanel.*\n?','',text,flags=re.M)
+          text=re.sub(r'^.*kinderRiskInfoPanel.*openKinderRiskFromInfoModal.*\n?','',text,flags=re.M)
+          text=re.sub(r'^\s*window\.(?:sendKinderRiskPush|openNotificationInbox|closeNotificationInbox|openRiskNotificationTarget)\s*=.*\n?','',text,flags=re.M)
+          text=re.sub(r'try\s*\{\s*(?:if\s*\(typeof updateNotificationButtons[^\)]*\)\s*)?updateNotificationButtons\(\);?\s*\}\s*catch\s*\([^\)]*\)\s*\{\s*\}','',text)
+          text=re.sub(r'if\s*\(typeof updateNotificationButtons[^\)]*\)\s*updateNotificationButtons\(\);?','',text)
+          text=text.replace('updateNotificationButtons();','').replace('scheduleNotificationSync();','')
+          text=text.replace("'openKinderRiskMemo','openKinderRiskMemoScreen',",'').replace("'openKinderRiskMemo','openKinderRiskMemoScreen'",'')
+          for tok in ["'kinderRiskMemoScreen',",", 'kinderRiskMemoScreen'","'kinderRiskStudentName',",", 'kinderRiskStudentName'","'kinderObservationNoteTitle',",", 'kinderObservationNoteTitle'"]:
+              text=text.replace(tok,'')
+          text=text.replace("const fromBottom = page.id === 'kinderRiskMemoScreen';",'const fromBottom = false;')
+          text=re.sub(r'^\s*const kinderRiskMemo = document\.getElementById\(["\']kinderRiskMemoScreen["\']\);\s*\n?','',text,flags=re.M)
+          text=re.sub(r'^\s*const kinderRiskMemoVisible = .*?;\s*\n?','',text,flags=re.M)
+          text=re.sub(r"previousScreenBeforeRecordRoom\s*=\s*kinderRiskMemoVisible\s*\?\s*'kinderRiskMemo'\s*:\s*\(memoVisible\s*\?\s*'studentMemo'\s*:\s*\(cardVisible\s*\?\s*'mainPage'\s*:\s*'recordRoom'\)\);","previousScreenBeforeRecordRoom = memoVisible ? 'studentMemo' : (cardVisible ? 'mainPage' : 'recordRoom');",text)
+          text=re.sub(r'^\s*if \(kinderRiskMemo\) kinderRiskMemo\.style\.display = ["\']none["\'];\s*\n?','',text,flags=re.M)
+          text=re.sub(r"\s*\}\s*else if \(previousScreenBeforeRecordRoom === 'kinderRiskMemo'\) \{[\s\S]*?\n\s*\} else \{",'\n  } else {',text,count=1)
+          # backup
+          text=text.replace('[students, feedbacks, summaries, risks, members]','[students, feedbacks, summaries, members]')
+          text=re.sub(r'^\s*supabase\(["\']GET["\'], `risk_signals\?[^\n]*\n?','',text,flags=re.M)
+          text=re.sub(r'^\s*risk_signals:\s*risks,?\s*\n?','',text,flags=re.M)
+          # settings copy: remove risk rows while keeping settings cards valid
+          text=text.replace('<div class="settingsRow"><div class="settingsRowLeft"><span class="settingsRowTitle">위험신호 기록</span></div><span class="settingsBadge">JSON</span></div>','')
+          text=text.replace('<div class="settingsInfoItem">위험신호 기록과 원장 확인 메모</div>','')
+          # permission implementation: keep backup permission only
+          text=re.sub(r"\s*async function setManagerPermission\(roleKey,value\)\{[^\n]*\}\n?","\n  async function setManagerPermission(roleKey,value){if(roleKey!=='backup')return;const cached=settingsGetCachedState();const managerPermissions={...(cached.managerPermissions||{}),backup:!!value};settingsSaveCachePatch({managerPermissions});const academyId=settingsGetAcademyId();if(academyId&&isSupabaseConfigured()){try{await supabase('PATCH',`academies?id=eq.${encodeURIComponent(academyId)}`,{manager_can_backup:!!value});if(olliSettingsState&&olliSettingsState.academy)olliSettingsState.academy.manager_can_backup=!!value;}catch(err){console.warn('manager permission save failed:',err);alert('관리자 권한 저장 중 오류가 발생했습니다.\\n'+(err.message||err));}}openSettingsDetail('roles');}\n",text)
+          text=re.sub(r'^.*manager_can_director_note.*\n?','',text,flags=re.M)
+          text=re.sub(r'^.*directorNote.*\n?','',text,flags=re.M)
+          # rewrite risk wording that can remain in static role descriptions without changing behavior
+          text=text.replace('위험신호 확인 및 원장 메모 작성','학생 기록과 피드백 흐름 점검').replace('위험신호 알림 확인','학생 기록 상태 확인').replace('위험신호 관련 정리','학생 기록 정리')
+          # retired memo1..memo5 student fields
+          text=text.replace(", memo1: '', memo2: '', memo3: '', memo4: ''",'')
+          text=re.sub(r'^\s*memo[1-5]:[^\n]*\n?','',text,flags=re.M)
+          text=re.sub(r'^\s*(?:sceneMemo|kinderSceneMemo):\s*(?:item\?\.|row\.|student\.|remote\.)[^\n]*\n?','',text,flags=re.M)
+          text=re.sub(r"(?:,\s*)?'memo1'\s*,\s*'memo2'\s*,\s*'memo3'",'',text)
+          text=re.sub(r"\s*memo1:\s*'',\s*memo2:\s*'',\s*memo3:\s*'',\s*memo4:\s*'',?",'',text)
+          # remove remaining risk-only lines, then CSS
+          text=re.sub(r'^.*(?:kinderRiskMemoScreen|recordDoorDot|hasRiskNotifications).*\n?','',text,flags=re.M)
+          text=clean_styles(text)
+          p.write_text(text,encoding='utf-8')
+
+          # OBSERVATION CORE: elementary editor remains; kinder old memo redirects to 1-minute feedback.
+          p=Path('observation-memo-core.js'); core=p.read_text(encoding='utf-8')
+          marker="function openStudentMemoPageById(studentId) {\n  const student = findStudentById(studentId);\n  if (!student) return;"
+          if marker in core:
+              core=core.replace(marker,marker+"\n  if (student.type === 'kinder') {\n    currentMemoStudent = student;\n    currentMemoType = 'kinder';\n    if (typeof openKinderChatFeedbackPage === 'function') openKinderChatFeedbackPage();\n    return;\n  }",1)
+          core=core.replace("currentMemoType = student.type === 'kinder' ? 'kinder' : 'elementary';","currentMemoType = 'elementary';")
+          core=remove_if(core,"  if (currentMemoType === 'kinder') {")
+          core=re.sub(r'^\s*const kinderRiskMemoScreenEl = .*\n?','',core,flags=re.M)
+          core=re.sub(r'^\s*if \(kinderRiskMemoScreenEl\).*\n?','',core,flags=re.M)
+          core=re.sub(r'^.*updateMemoSignalCircle\([^\n]*\n?','',core,flags=re.M)
+          core=remove_function(core,'autoResizeKinderMemoBoxes')
+          for fn in ['getRiskNotifications','setRiskNotifications','normalizeRiskSignalRow','loadRiskNotificationsFromSupabase','saveRiskNotificationToSupabase','saveRiskNotification','updateNotificationButtons','scheduleNotificationSync','normalizeRiskNotificationMessage','openNotificationInbox','closeNotificationInbox','formatNotificationDate','markRiskNotificationHandled','openRiskNotificationTarget','sendKinderRiskPush']:
+              core=remove_function(core,fn)
+          core=re.sub(r'^.*loadRiskNotificationsFromSupabase\([^\n]*\n?','',core,flags=re.M)
+          core=core.replace("tag: 'olli-risk-signal'","tag: 'olli-notification'")
+          core=re.sub(r'^.*sendKinderRiskPush\(\);.*\n?','',core,flags=re.M)
+          core=re.sub(r'^.*(?:kinderRiskMemoScreen|kinderMemoBox[1-5]|kinderSceneMemoInput).*\n?','',core,flags=re.M)
+          p.write_text(core,encoding='utf-8')
+
+          # KCF / shell / start page
+          p=Path('kinder-feedback.js'); s=p.read_text(encoding='utf-8'); s=re.sub(r'^\s*try \{ updateNotificationButtons\(\); \} catch\(e\) \{\}\s*\n?','',s,flags=re.M); s=re.sub(r'^\s*if \(typeof updateNotificationButtons[^\n]*\n?','',s,flags=re.M); p.write_text(s,encoding='utf-8')
+          p=Path('pc-shell.js'); s=p.read_text(encoding='utf-8'); s=re.sub(r'^\s*if \(typeof global\.updateNotificationButtons[^\n]*\n?','',s,flags=re.M); s=s.replace("'kinderRiskMemoScreen', ",'').replace(", 'kinderRiskMemoScreen'",'').replace(" || page === 'kinderRiskMemoScreen'",'').replace(" || pageId === 'kinderRiskMemoScreen'",'').replace("pageId === 'kinderRiskMemoScreen' ? 'kinder' : 'elementary'","'elementary'").replace("pageId === 'kinderChatFeedbackScreen' || pageId === 'kinderRiskMemoScreen'","pageId === 'kinderChatFeedbackScreen'"); p.write_text(s,encoding='utf-8')
+          p=Path('pc-start-page.js'); s=p.read_text(encoding='utf-8').replace("'kinderRiskMemoScreen',",'').replace(",'kinderRiskMemoScreen'",''); p.write_text(s,encoding='utf-8')
+
+          # docs and file
+          p=Path('OLLI_PC_MODULES.md'); d=p.read_text(encoding='utf-8'); d=re.sub(r'^\| 유치부 위험신호 화면 \|.*\n?','',d,flags=re.M); d=re.sub(r'### 유치부 위험신호\n[\s\S]*?(?=### |\Z)','',d); d=d.replace('기존 `observation`, `feedback` PC route 호출은 `pc-shell.js`에서 `attendance`(성향기록부)로 흡수한다. 별도 초등 관찰노트 진입 버튼은 제거한다.','기존 `observation`, `feedback` PC route 호출은 `pc-shell.js`에서 `attendance`(성향기록부)로 흡수한다. 별도 초등 관찰노트 진입 버튼은 제거한다. 유치부 위험신호 기능도 제거되어 유치부 기록은 1분 피드백을 사용한다.'); p.write_text(d,encoding='utf-8')
+          Path('kinder-risk-ui.js').unlink(missing_ok=True)
+          PY
+      - name: Verify removal
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check observation-memo-core.js
+          node --check kinder-feedback.js
+          node --check pc-shell.js
+          node --check pc-start-page.js
+          test ! -f kinder-risk-ui.js
+          ! grep -RInE --exclude-dir=.git --exclude='audit-remove-risk-feature.yml' --exclude='one-shot-remove-risk-feature.yml' --exclude='one-shot-remove-risk-feature-v2.yml' 'kinderRisk|RiskMemo|risk_signal|risk_signals|위험신호|recordNotifyBtn|notificationInbox|hasRiskNotifications|sendKinderRiskPush|manager_can_director_note|directorNote|recordDoorDot|kinderMemoBox[1-5]|kinderSceneMemoInput|setKinderCombinedMode|autoResizeKinderMemoBoxes' .
+          ! grep -RInE --exclude-dir=.git --exclude='audit-remove-risk-feature.yml' --exclude='one-shot-remove-risk-feature.yml' --exclude='one-shot-remove-risk-feature-v2.yml' '\bmemo[1-5]\b' index.html observation-memo-core.js
+          grep -q 'function openStudentMemoPageById' observation-memo-core.js
+          grep -q 'function saveCurrentMemo' observation-memo-core.js
+          grep -q 'function openKinderChatFeedbackPage' kinder-feedback.js
+          grep -q 'studentMemoScreen' observation-editor-ui.js
+          grep -q 'kinderChatFeedbackScreen' kinder-feedback-ui.js
+          grep -q 'function showBrowserNotification' observation-memo-core.js
+          grep -q 'function showPushToast' observation-memo-core.js
+          ! grep -q 'kinder-risk-ui.js' index.html
+          node <<'NODE'
+          const fs=require('fs'),vm=require('vm');const html=fs.readFileSync('index.html','utf8');const re=/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;let m,n=0;while((m=re.exec(html))){const a=m[1]||'',b=m[2]||'';if(/\bsrc\s*=/.test(a)||/type\s*=\s*["'](?:application\/json|application\/ld\+json)["']/.test(a))continue;try{new vm.Script(b);n++;}catch(e){console.error('inline script syntax failure',n+1,e.message);process.exit(1)}}console.log('inline scripts checked',n)
+          NODE
+          echo "index bytes: $(wc -c < index.html)"
+      - name: Commit removal
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A index.html observation-memo-core.js kinder-feedback.js pc-shell.js pc-start-page.js OLLI_PC_MODULES.md kinder-risk-ui.js
+          git commit -m 'Remove retired risk signal feature'
+          git push
