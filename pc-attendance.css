@@ -83,7 +83,9 @@ body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScree
   width:100%!important;max-width:none!important;height:100%!important;min-height:0!important;margin:0!important;padding:0 0 66px!important;overflow-y:auto!important;background:#fff!important;box-sizing:border-box!important;
 }
 body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoHeader,
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoTopFadeLayer,
+body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoTopFadeLayer{
+  display:none!important;
+}
 body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoEditorWrap{
   display:flex!important;flex-direction:column!important;width:100%!important;height:auto!important;min-height:100%!important;margin:0!important;padding:0 14px 18px!important;background:#fff!important;box-sizing:border-box!important;overflow:visible!important;
 }
@@ -103,11 +105,12 @@ body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScree
 body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfInner{
   position:relative!important;width:100%!important;max-width:none!important;height:100%!important;min-height:0!important;margin:0!important;overflow:hidden!important;background:#fff!important;
 }
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfInner::after,
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfHeader,
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfTopFadeLayer{display:none!important;content:none!important;}
+body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfInner::after{display:none!important;content:none!important;}
+body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfCardTools{
+  top:14px!important;right:14px!important;z-index:40!important;
+}
 body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfChatArea{
-  flex:1!important;min-height:0!important;padding:18px 14px 190px!important;overflow-y:auto!important;background:#fff!important;
+  flex:1!important;min-height:0!important;padding:64px 14px 190px!important;overflow-y:auto!important;background:#fff!important;
 }
 body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfCenterIntro{
   position:absolute!important;left:50%!important;top:42%!important;width:100%!important;max-width:none!important;font-size:18px!important;

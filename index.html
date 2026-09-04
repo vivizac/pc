@@ -10256,11 +10256,6 @@ body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxTitle,
 body[data-olli-text-size="large"] .modalTitle {
   font-size: calc(20px * var(--olli-text-scale));
 }
-body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfModeTitle {
-  font-size: calc(20px * var(--olli-text-scale));
-}
-body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfModeSub,
-body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfModeOptionGuide,
 body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfPhotoMetaText,
 body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfInputWarning,
 body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxSub,
@@ -10270,7 +10265,6 @@ body[data-olli-text-size="large"] .attendanceFeedbackSheetCardDate {
 body[data-olli-text-size="large"]:not(.olliPcApp) #kinderChatFeedbackScreen .kcfBubble,
 body[data-olli-text-size="large"]:not(.olliPcApp) #kinderChatFeedbackScreen .kcfInput,
 body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfQuestionList li,
-body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfModeOptionTitle,
 body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxText,
 body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxFullText {
   font-size: calc(14px * var(--olli-text-scale));
@@ -10883,12 +10877,6 @@ body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfSendBtn {
 
   document.addEventListener('DOMContentLoaded', function(){
     try {
-      document.querySelectorAll('.kcfModeOptionTitle').forEach(function(el){
-        if (el.textContent.trim() === '1분 피드백(유치부)') el.textContent = '1분 피드백';
-      });
-      document.querySelectorAll('.kcfModeOptionGuide').forEach(function(el){
-        if (el.textContent.trim() === '일상 관찰을 빠르게 정리') el.textContent = '유치부·초등부 관찰을 빠르게 정리';
-      });
       var input = document.getElementById('kcfInput');
       if (input) {
         input.addEventListener('input', function(){
@@ -11796,14 +11784,12 @@ body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfSendBtn {
 #kcfStudentManagePopup .memoStudentInfoDotsBtn:active {
   background: transparent;
 }
-#studentMemoScreen #memoRecordRoomBtn.memoRecordRoomBtn:not(.memoRecordBtn) svg,
-#kinderChatFeedbackScreen .kcfRecordBtn svg {
+#studentMemoScreen #memoRecordRoomBtn.memoRecordRoomBtn:not(.memoRecordBtn) svg {
   transform: none;
 }
 
 /* 2026-06-27: 뒤로가기 아이콘을 실제 화면 기준으로 아주 살짝 왼쪽 보정 */
-#studentMemoScreen #memoRecordRoomBtn.memoRecordRoomBtn:not(.memoRecordBtn) svg,
-#kinderChatFeedbackScreen .kcfRecordBtn svg {
+#studentMemoScreen #memoRecordRoomBtn.memoRecordRoomBtn:not(.memoRecordBtn) svg {
   transform: translateX(-1px);
 }
 </style>

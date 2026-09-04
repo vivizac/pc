@@ -25,25 +25,6 @@
   -webkit-mask-image:none;
   mask-image:none;
 }
-#kinderChatFeedbackScreen .kcfTopFadeLayer{
-  position:fixed;
-  left:0;
-  right:0;
-  top:0;
-  width:100%;
-  height:calc(max(116px, calc(env(safe-area-inset-top) + 102px)));
-  z-index:100;
-  pointer-events:none;
-  background:linear-gradient(
-    to bottom,
-    rgba(255,255,255,1) 0%,
-    rgba(255,255,255,.94) 24%,
-    rgba(255,255,255,.50) 54%,
-    rgba(255,255,255,0) 100%
-  );
-  backdrop-filter:none;
-  -webkit-backdrop-filter:none;
-}
 #kinderChatFeedbackScreen .kcfInner::after {
   content:'';
   position:fixed;
@@ -62,95 +43,58 @@
   mask-image:linear-gradient(to top,rgba(0,0,0,1),rgba(0,0,0,.74) 54%,rgba(0,0,0,0));
 }
 
-/* 상단바 */
-#kinderChatFeedbackScreen .kcfHeader{
-  display:contents;
-  position:static;
-  top:auto;
-  left:auto;
-  transform:none;
-  width:auto;
-  max-width:none;
-  height:0;
-  min-height:0;
-  padding:0;
-  background:transparent;
-  border-bottom:none;
-  flex-shrink:0;
-  z-index:auto;
-}
-#kinderChatFeedbackScreen .kcfHeaderCenter{
-  position:fixed;
-  left:50%;
-  top:calc(max(18px, calc(env(safe-area-inset-top) + 6px)) + 4px);
-  transform:translateX(-50%);
+/* 1분 피드백 카드 우상단 도구 */
+#kinderChatFeedbackScreen .kcfCardTools{
+  position:absolute;
+  top:14px;
+  right:14px;
   display:flex;
-  flex-direction:column;
   align-items:center;
-  justify-content:center;
-  z-index:5000;
+  gap:8px;
+  z-index:80;
   pointer-events:auto;
-  isolation:isolate;
 }
-#kinderChatFeedbackScreen .kcfRoundBtn{
-  width:44px;
-  height:44px;
-  border:1px solid rgba(255,255,255,0.96);
-  border-radius:999px;
+#kinderChatFeedbackScreen .kcfCardToolBtn{
+  position:relative;
+  width:38px;
+  height:38px;
+  border:1px solid #e5e8ec;
+  border-radius:12px;
   background:#fff;
-  color:#111;
+  color:#555b63;
   display:inline-flex;
   align-items:center;
   justify-content:center;
   padding:0;
   cursor:pointer;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.92),
-    0 0 0 1px rgba(255,255,255,0.92),
-    0 0 34px 10px rgba(0,0,0,0.045),
-    0 0 78px 22px rgba(0,0,0,0.035);
-  backdrop-filter:blur(20px) saturate(1.18);
-  -webkit-backdrop-filter:blur(20px) saturate(1.18);
-  position:fixed;
-  top:max(18px, calc(env(safe-area-inset-top) + 6px));
-  z-index:5000;
+  box-shadow:0 4px 12px rgba(15,23,42,.06);
   -webkit-tap-highlight-color:transparent;
 }
-#kinderChatFeedbackScreen .kcfRecordBtn{
-  left:16px;
+#kinderChatFeedbackScreen .kcfCardToolBtn:hover{
+  background:#f8fafc;
+  color:#111;
 }
-#kinderChatFeedbackScreen .kcfInboxBtn{
-  right:16px;
-}
-#kinderChatFeedbackScreen .kcfSceneCardBtn{
-  right:68px;
-}
-#kinderChatFeedbackScreen .kcfRoundBtn svg {
+#kinderChatFeedbackScreen .kcfCardToolBtn svg{
   stroke:currentColor;
   fill:none;
   stroke-linecap:round;
   stroke-linejoin:round;
 }
-#kinderChatFeedbackScreen .kcfRecordBtn svg {
-  width:27px;
-  height:27px;
-  stroke-width:1.9;
+#kinderChatFeedbackScreen .kcfSceneCardBtn svg{
+  width:21px;
+  height:21px;
+  stroke-width:1.7;
 }
-#kinderChatFeedbackScreen .kcfInboxBtn svg {
-  width:34px;
-  height:34px;
+#kinderChatFeedbackScreen .kcfInboxBtn svg{
+  width:25px;
+  height:25px;
   stroke-width:1.55;
 }
-#kinderChatFeedbackScreen .kcfSceneCardBtn svg {
-  width:24px;
-  height:24px;
-  stroke-width:1.6;
-}
-#kinderChatFeedbackScreen .kcfInboxBadge {
+#kinderChatFeedbackScreen .kcfInboxBadge{
   display:none;
   position:absolute;
-  top:-2px;
-  right:-2px;
+  top:-5px;
+  right:-5px;
   width:18px;
   min-width:18px;
   height:18px;
@@ -167,127 +111,7 @@
   justify-content:center;
   box-sizing:content-box;
 }
-#kinderChatFeedbackScreen .kcfInboxBadge.show { display:flex; }
-
-/* 상단 모드 토글 */
-#kinderChatFeedbackScreen .kcfModeToggle {
-  height:25px;
-  border:none;
-  border-radius:0;
-  background:transparent;
-  color:#111;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
-  padding:0;
-  font-family:inherit;
-  cursor:pointer;
-  box-shadow:none;
-  backdrop-filter:none;
-  -webkit-backdrop-filter:none;
-  -webkit-tap-highlight-color:transparent;
-}
-#kinderChatFeedbackScreen .kcfModeTitle {
-  font-family:'Montserrat','Pretendard',sans-serif;
-  font-size:calc(20px * var(--olli-text-scale));
-  font-weight:440;
-  letter-spacing:-0.02em;
-  line-height:1;
-}
-#kinderChatFeedbackScreen .kcfModeToggle svg {
-  width:16px;
-  height:16px;
-  stroke:currentColor;
-  fill:none;
-  stroke-width:2.25;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-}
-#kinderChatFeedbackScreen .kcfModeSub {
-  margin-top:2px;
-  font-size:calc(12px * var(--olli-text-scale));
-  font-weight:400;
-  color:#999;
-  letter-spacing:-0.03em;
-  line-height:1;
-}
-#kinderChatFeedbackScreen .kcfModeMenu {
-  display:none;
-  position:absolute;
-  top:50px;
-  left:50%;
-  transform:translateX(-50%);
-  min-width:250px;
-  padding:12px 0;
-  border-radius:28px;
-  background:rgba(255,255,255,.92);
-  box-shadow:0 18px 46px rgba(0,0,0,.14),0 4px 14px rgba(0,0,0,.07);
-  backdrop-filter:blur(18px);
-  -webkit-backdrop-filter:blur(18px);
-  z-index:100;
-}
-#kinderChatFeedbackScreen .kcfModeMenu.show { display:block; }
-#kinderChatFeedbackScreen .kcfModeOption {
-  width:100%;
-  min-height:64px;
-  border:none;
-  border-radius:0;
-  background:transparent;
-  color:#111;
-  font-family:inherit;
-  cursor:pointer;
-  display:grid;
-  grid-template-columns:34px minmax(0,1fr);
-  align-items:center;
-  gap:8px;
-  padding:6px 18px 6px 14px;
-  text-align:left;
-  -webkit-tap-highlight-color:transparent;
-}
-#kinderChatFeedbackScreen .kcfModeCheck {
-  width:24px;
-  height:24px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  opacity:0;
-  color:#111;
-}
-#kinderChatFeedbackScreen .kcfModeCheck svg {
-  width:20px;
-  height:20px;
-  stroke:currentColor;
-  fill:none;
-  stroke-width:1.7;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-}
-#kinderChatFeedbackScreen .kcfModeOption.active .kcfModeCheck { opacity:1; }
-#kinderChatFeedbackScreen .kcfModeOptionText {
-  display:flex;
-  flex-direction:column;
-  min-width:0;
-  gap:3px;
-}
-#kinderChatFeedbackScreen .kcfModeOptionTitle {
-  display:block;
-  font-size:calc(16px * var(--olli-text-scale));
-  font-weight:400;
-  line-height:1.16;
-  letter-spacing:-0.03em;
-  color:#111;
-  white-space:nowrap;
-}
-#kinderChatFeedbackScreen .kcfModeOptionGuide {
-  display:block;
-  font-size:calc(12.5px * var(--olli-text-scale));
-  font-weight:350;
-  line-height:1.35;
-  letter-spacing:-0.03em;
-  color:#888;
-  word-break:keep-all;
-}
+#kinderChatFeedbackScreen .kcfInboxBadge.show{display:flex;}
 
 /* 대화 영역 */
 #kinderChatFeedbackScreen .kcfChatArea{
@@ -295,7 +119,7 @@
   min-height:0;
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
-  padding:112px 16px 176px;
+  padding:64px 16px 176px;
   position:relative;
   z-index:1;
   background:#fff;

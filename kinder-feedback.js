@@ -42,24 +42,6 @@ function bindKinderChatFeedbackKeyboardOffset() {
   }
   window.addEventListener('resize', updateKinderChatFeedbackKeyboardOffset);
 }
-function toggleKinderChatFeedbackModeMenu(event) {
-  if (event) event.stopPropagation();
-  const menu = document.getElementById('kcfModeMenu');
-  if (menu) menu.classList.toggle('show');
-}
-function closeKinderChatFeedbackModeMenu() {
-  const menu = document.getElementById('kcfModeMenu');
-  if (menu) menu.classList.remove('show');
-}
-function switchKinderChatFeedbackMode(mode, event) {
-  if (event) event.stopPropagation();
-  closeKinderChatFeedbackModeMenu();
-  if (mode === 'growth') {
-    saveKinderChatFeedbackDraft();
-    openKinderChatFeedbackGrowthSheet();
-    return;
-  }
-}
 function openKinderChatFeedbackPage() {
   const screens = document.querySelectorAll('.pageScreen');
   screens.forEach(screen => { if (screen.id !== 'kinderChatFeedbackScreen') screen.style.display = 'none'; });
@@ -1602,9 +1584,6 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('pointerdown', keepInputAlive);
     btn.addEventListener('click', activateKeyword);
   });
-  document.addEventListener('click', event => {
-    if (!event.target.closest || !event.target.closest('.kcfHeaderCenter')) closeKinderChatFeedbackModeMenu();
-  });
   updateKinderChatFeedbackBadge();
 });
 
@@ -1800,9 +1779,6 @@ window.toggleKinderChatFeedbackInboxItem = toggleKinderChatFeedbackInboxItem;
 window.updateKinderChatFeedbackBadge = updateKinderChatFeedbackBadge;
 window.renderKinderChatFeedbackInbox = renderKinderChatFeedbackInbox;
 window.updateKinderChatFeedbackKeyboardOffset = updateKinderChatFeedbackKeyboardOffset;
-window.toggleKinderChatFeedbackModeMenu = toggleKinderChatFeedbackModeMenu;
-window.switchKinderChatFeedbackMode = switchKinderChatFeedbackMode;
-window.closeKinderChatFeedbackModeMenu = closeKinderChatFeedbackModeMenu;
 window.openKinderChatFeedbackSaveStudentPicker = openKinderChatFeedbackSaveStudentPicker;
 window.closeKinderChatFeedbackSaveStudentPicker = closeKinderChatFeedbackSaveStudentPicker;
 window.selectKinderChatFeedbackSaveStudent = selectKinderChatFeedbackSaveStudent;
