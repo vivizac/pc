@@ -1,0 +1,131 @@
+name: One-shot PC-only routing cleanup
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-pc-only-routing-cleanup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Remove mobile-only routing and legacy start-page code
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          index = Path('index.html')
+          text = index.read_text(encoding='utf-8')
+
+          start_marker = '/* 시작 페이지 개인 설정 */'
+          end_marker = 'function showOlliLoginScreenById(id) {'
+          if start_marker not in text or end_marker not in text:
+              raise SystemExit('start-page legacy block markers not found')
+          start = text.index(start_marker)
+          end = text.index(end_marker, start)
+          text = text[:start] + '/* PC 시작 페이지 설정은 pc-start-page.js가 담당합니다. */\n\n' + text[end:]
+
+          text, patch_count = re.subn(
+              r'\n?<script id="olli-start-page-local-only-final-patch">.*?</script>\s*',
+              '\n', text, count=1, flags=re.S
+          )
+          if patch_count != 1:
+              raise SystemExit(f'expected one local-only start-page patch, found {patch_count}')
+
+          mobile_tokens = [
+              'apple-mobile-web-app-capable',
+              'mobile-web-app-capable',
+              'apple-mobile-web-app-title',
+              'apple-mobile-web-app-status-bar-style',
+              'apple-touch-icon'
+          ]
+          for token in mobile_tokens:
+              text, count = re.subn(r'^.*' + re.escape(token) + r'.*\n', '', text, count=1, flags=re.M)
+              if count != 1:
+                  raise SystemExit(f'expected one mobile head tag for {token}, found {count}')
+
+          text = text.replace(
+              "enterOlliByStartPage(getOlliDefaultStartPage() || 'observation_note')",
+              "enterOlliByStartPage(getOlliDefaultStartPage() || 'attendance')"
+          )
+          index.write_text(text, encoding='utf-8')
+
+          shell = Path('pc-shell.js')
+          text = shell.read_text(encoding='utf-8')
+          desktop_fn = "  function isPcDesktop() {\n    return !global.matchMedia || global.matchMedia('(min-width: 900px)').matches;\n  }\n\n"
+          if desktop_fn not in text:
+              raise SystemExit('pc-shell isPcDesktop block not found')
+          text = text.replace(desktop_fn, '', 1)
+          text = text.replace("    if (!isPcDesktop()) return false;\n", '', 1)
+          text = text.replace(
+              "        if (!isPcDesktop() || isEditorEmbedded('studentMemoScreen')) {",
+              "        if (isEditorEmbedded('studentMemoScreen')) {",
+              1
+          )
+          text = text.replace(
+              "        if (!isPcDesktop()) return originalObservationOpen.apply(this, arguments);\n",
+              '',
+              1
+          )
+          text = text.replace(
+              "        if (!isPcDesktop() || isEditorEmbedded('kinderChatFeedbackScreen')) {",
+              "        if (isEditorEmbedded('kinderChatFeedbackScreen')) {",
+              1
+          )
+          shell.write_text(text, encoding='utf-8')
+
+          attendance = Path('pc-attendance.js')
+          text = attendance.read_text(encoding='utf-8')
+          old = "  function isPcAttendance() {\n    const sectionKey = core()?.SECTION?.PERSONALITY_RECORDS || 'attendance';\n    return core()?.state?.section === sectionKey && (!global.matchMedia || global.matchMedia('(min-width: 900px)').matches);\n  }"
+          new = "  function isPcAttendance() {\n    const sectionKey = core()?.SECTION?.PERSONALITY_RECORDS || 'attendance';\n    return core()?.state?.section === sectionKey;\n  }"
+          if old not in text:
+              raise SystemExit('pc-attendance desktop-width gate not found')
+          attendance.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Verify PC-only cleanup
+        shell: bash
+        run: |
+          node --check pc-start-page.js
+          node --check pc-shell.js
+          node --check pc-attendance.js
+          ! grep -q 'olli-start-page-local-only-final-patch' index.html
+          ! grep -q 'const OLLI_START_PAGE_LABELS' index.html
+          ! grep -q 'apple-mobile-web-app-capable' index.html
+          ! grep -q 'mobile-web-app-capable' index.html
+          ! grep -q 'apple-mobile-web-app-title' index.html
+          ! grep -q 'apple-mobile-web-app-status-bar-style' index.html
+          ! grep -q 'apple-touch-icon' index.html
+          ! grep -q 'isPcDesktop' pc-shell.js
+          ! grep -q "matchMedia('(min-width: 900px)')" pc-shell.js
+          ! grep -q "matchMedia('(min-width: 900px)')" pc-attendance.js
+          ! grep -q 'if (!isPc' pc-start-page.js
+          grep -q '<script src="pc-start-page.js"></script>' index.html
+          grep -q 'function showOlliLoginScreenById(id)' index.html
+          grep -q 'function isOlliLoggedInForStartPage' pc-start-page.js
+          grep -q 'function enterOlliAfterLoginOrSetup' pc-start-page.js
+          grep -q 'function showOlliStartPageSetup' pc-start-page.js
+          grep -q "academy: { value: 'academy', label: '학생관리' }" pc-start-page.js
+          grep -q "attendance: { value: 'attendance', label: '성향기록부' }" pc-start-page.js
+          grep -q "schedule: { value: 'schedule', label: '시간표 • 출석부' }" pc-start-page.js
+
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html pc-shell.js pc-attendance.js
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+            exit 0
+          fi
+          git commit -m 'Remove mobile-only PC routing legacy'
+          git push
