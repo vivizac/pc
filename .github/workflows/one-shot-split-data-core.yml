@@ -1,0 +1,101 @@
+name: One-shot split data core
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-split-data-core.yml'
+permissions:
+  contents: write
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Split data core by domain
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          src = Path('olli-data-core.js')
+          text = src.read_text(encoding='utf-8')
+          lines = text.splitlines(keepends=True)
+          if len(lines) != 4362:
+              raise SystemExit(f'unexpected olli-data-core.js line count: {len(lines)}')
+
+          segments = [
+              ('olli-data-foundation.js', 1, 682),
+              ('olli-data-feedback.js', 683, 947),
+              ('olli-data-consultation-summary.js', 948, 1736),
+              ('olli-data-students.js', 1737, 2295),
+              ('olli-data-record-list.js', 2296, 2711),
+              ('olli-data-attendance-feedback.js', 2712, 3166),
+              ('olli-data-student-operations.js', 3167, 4150),
+              ('olli-data-ui-utils.js', 4151, 4362),
+          ]
+
+          rebuilt = ''
+          for name, start, end in segments:
+              part = ''.join(lines[start-1:end])
+              Path(name).write_text(part, encoding='utf-8')
+              rebuilt += part
+              print(name, start, end, len(part.encode('utf-8')))
+
+          if rebuilt != text:
+              raise SystemExit('split content does not reconstruct original file exactly')
+
+          idx_path = Path('index.html')
+          idx = idx_path.read_text(encoding='utf-8')
+          marker = '<script src="olli-data-core.js"></script>'
+          if idx.count(marker) != 1:
+              raise SystemExit(f'unexpected data-core script count: {idx.count(marker)}')
+          replacement = '\n'.join(f'<script src="{name}"></script>' for name, _, _ in segments)
+          idx = idx.replace(marker, replacement, 1)
+          idx_path.write_text(idx, encoding='utf-8')
+          src.unlink()
+          PY
+      - name: Verify split and syntax
+        run: |
+          set -e
+          files=(
+            olli-data-foundation.js
+            olli-data-feedback.js
+            olli-data-consultation-summary.js
+            olli-data-students.js
+            olli-data-record-list.js
+            olli-data-attendance-feedback.js
+            olli-data-student-operations.js
+            olli-data-ui-utils.js
+          )
+          for f in "${files[@]}"; do node --check "$f"; done
+          test ! -f olli-data-core.js
+          python3 - <<'PY'
+          from pathlib import Path
+          idx=Path('index.html').read_text(encoding='utf-8')
+          expected=[
+            'olli-data-foundation.js',
+            'olli-data-feedback.js',
+            'olli-data-consultation-summary.js',
+            'olli-data-students.js',
+            'olli-data-record-list.js',
+            'olli-data-attendance-feedback.js',
+            'olli-data-student-operations.js',
+            'olli-data-ui-utils.js',
+          ]
+          positions=[]
+          for name in expected:
+              marker=f'<script src="{name}"></script>'
+              if idx.count(marker) != 1:
+                  raise SystemExit(f'bad script count for {name}: {idx.count(marker)}')
+              positions.append(idx.index(marker))
+          if positions != sorted(positions):
+              raise SystemExit('data module load order changed')
+          if 'olli-data-core.js' in idx:
+              raise SystemExit('old data core reference remains in index')
+          print('INDEX_BYTES', len(idx.encode('utf-8')))
+          PY
+      - name: Commit split modules
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html olli-data-*.js
+          git commit -m 'Split data core into domain modules'
+          git push
