@@ -295,9 +295,20 @@
       : null;
     return Number(storedTime) === expected || Number(storedTime) === legacySaturdayTime;
   }
+  function isKinderSecondWeeklySession(item, date) {
+    if (clean(item && item.division) !== 'kinder') return false;
+    const weeklySessions = enrollments().filter((candidate) => clean(candidate.division) === 'kinder'
+      && clean(candidate.student_id) === clean(item.student_id)
+      && enrollmentEffectiveOn(candidate, date))
+      .sort((a, b) => Number(a.weekday) - Number(b.weekday)
+        || Number(a.time_slot) - Number(b.time_slot)
+        || classGroupOf(a).localeCompare(classGroupOf(b)));
+    return weeklySessions.length === 2 && clean(weeklySessions[1].id) === clean(item.id);
+  }
   function slotRegulars(division, date, time, classGroup) {
     return enrollments().filter((item) => clean(item.division) === division && timeSlotMatches(division, date, time, item.time_slot) && enrollmentActiveOn(item, date)
-      && (!classGroup || classGroupOf(item) === classGroupOf({ class_group: classGroup })));
+      && (!classGroup || classGroupOf(item) === classGroupOf({ class_group: classGroup })))
+      .sort((a, b) => Number(isKinderSecondWeeklySession(b, date)) - Number(isKinderSecondWeeklySession(a, date)));
   }
   function waitRequestedDate(item) {
     const requestedAt = new Date(clean(item && item.requested_at));
@@ -514,7 +525,8 @@
       const scheduleText = scheduled ? `<span class="olliTtReservation">◷ ${shortDate(scheduled.effective_date)} ${scheduled.change_type === 'remove' ? '삭제' : '이동'} 예정</span>` : '';
       const attendanceTime = Number(item.time_slot);
       const attended = isToday(date) && attendanceMarked(item.student_id, date, attendanceTime, classGroup, 'regular');
-      return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(classGroup)}">${esc(item.student_name)}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
+      const secondSessionDot = isKinderSecondWeeklySession(item, date) ? '<strong class="olliTtSecondSessionDot" aria-label="주 2회차">·</strong>' : '';
+      return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(classGroup)}">${esc(item.student_name)}${secondSessionDot}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
     }).join('');
     const waitHtml = waits.map((item) => `<div class="olliTtStudent wait"><button type="button" class="olliTtAttendanceBtn" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}">${esc(item.student_name)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}">대기</button></div>`).join('');
     const makeupHtml = makeups.map((item) => {
@@ -898,8 +910,8 @@
     const headerGuide = `${divisionLabel(division)} · 현재 수업 ${studentScheduleText(student.id) || '없음'}`;
     const modeCards = '<div class="olliTtModeCards">'
       + `<section class="olliTtModeCard ${dialog.actionType === 'move' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="move">수업이동</button>${dialog.actionType === 'move' ? `<div class="olliTtModeCardBody"><span>이동할 기존 수업</span><div class="olliTtEnrollmentList">${sourceHtml}</div></div>` : ''}</section>`
-      + `<section class="olliTtModeCard ${dialog.actionType === 'add' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="add">수업추가</button></section>`
-      + `<section class="olliTtModeCard ${dialog.actionType === 'makeup' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="makeup">보강</button></section></div>`;
+      + `<section class="olliTtModeCard simple ${dialog.actionType === 'add' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="add">수업추가</button></section>`
+      + `<section class="olliTtModeCard simple ${dialog.actionType === 'makeup' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="makeup">보강</button></section></div>`;
     return dialogHead('↗', `${student.name} 수업 설정`, headerGuide)
       + '<div class="olliTtDialogBody">'
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>설정 방식</span></div>' + modeCards + '</div>'
