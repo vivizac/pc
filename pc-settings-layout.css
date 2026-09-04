@@ -33,6 +33,7 @@ body.olliPcApp.pcSettingsOpen #settingsDetailScreen{z-index:84100;}
 body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsPageInner,
 body.olliPcApp.pcSettingsOpen #settingsDetailScreen .settingsPageInner{
   width:100%;
+  min-width:0;
   max-width:none;
   height:100%;
   margin:0;
@@ -46,6 +47,7 @@ body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsHeader{
 
 body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsBody{
   width:min(1240px,100%);
+  min-width:0;
   height:100%;
   margin:0 auto;
   padding:28px 32px 48px;
@@ -53,8 +55,7 @@ body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsBody{
   grid-template-columns:repeat(2,minmax(0,1fr));
   gap:18px;
   align-content:start;
-  overflow-y:auto;
-  overflow-x:hidden;
+  overflow:auto;
   box-sizing:border-box;
 }
 body.olliPcApp.pcSettingsOpen #settingsPageScreen .settingsProfileCard{
@@ -170,6 +171,7 @@ body.olliPcApp.pcSettingsOpen #settingsDetailScreen .settingsTitlePill{
 }
 body.olliPcApp.pcSettingsOpen #settingsDetailScreen .settingsBody{
   width:min(1100px,calc(100% - 64px));
+  min-width:0;
   height:calc(100% - 62px);
   margin:0 auto;
   padding:14px 0 48px;
@@ -206,3 +208,4 @@ body.olliPcApp.pcSettingsOpen .settingsSheetOverlay{
     width:calc(100% - 48px);
   }
 }
+
