@@ -16,6 +16,7 @@ jobs:
           terms=(
             memoRecordsBtn elementaryRecordsDropup toggleElementaryRecordsMenu renderElementaryRecordsMenu closeElementaryRecordsMenu
             memoFeedbackArchive getMemoFeedbackArchive loadMemoFeedbackArchive openArchivedElementaryMemoRecord openCurrentElementaryMemoRecord
+            saveElementaryFeedbackDirectlyToArchive openElementaryArchiveAfterDirectSave archiveCurrentElementaryMemoRecord viewingArchivedElementaryRecord getElementaryMemoRecords addMemoFeedbackArchiveItem
             sceneCardModalOverlay openSceneCardsFromAnyPage toggleSceneInputMode sceneModeToggleBtn kinderSceneGrid sceneMemoInput mainPageScreen
           )
           for term in "${terms[@]}"; do
@@ -35,11 +36,6 @@ jobs:
           for i,line in enumerate(lines,1):
               if re.match(r'^(?:async\s+)?function\s+[A-Za-z_$][\w$]*\s*\(', line) or re.match(r'^(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*=', line):
                   print(f'{i}: {line[:180]}')
-          print('COMMENTS')
-          for i,line in enumerate(lines,1):
-              s=line.strip()
-              if s.startswith('//') or s.startswith('/*'):
-                  print(f'{i}: {s[:180]}')
           PY
           echo '===== candidate file sizes ====='
           wc -lc olli-record-editor-core.js observation-editor-ui.js observation-editor.css elementary-analysis.js kinder-feedback-ui.js kinder-feedback.js kinder-feedback.css olli-feedback-runtime.js index.html
