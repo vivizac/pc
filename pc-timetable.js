@@ -12,6 +12,20 @@
     elementary: [1, 2, 3, 4, 5, 6],
     kinder: [4, 5]
   };
+  const SATURDAY_ELEMENTARY_TIME_SLOTS = [10, 11, 12];
+
+  function timeOptionsFor(division, weekday) {
+    return division === 'elementary' && Number(weekday) === 6
+      ? SATURDAY_ELEMENTARY_TIME_SLOTS
+      : TIME_SLOTS[division];
+  }
+
+  function storedTimeForCell(division, date, displayTime) {
+    const time = Number(displayTime);
+    return division === 'elementary' && date.getDay() === 6 && time >= 1 && time <= 3
+      ? time + 9
+      : time;
+  }
   const state = {
     active: false,
     view: 'list',
@@ -301,7 +315,7 @@
   }
   function capacityFor(division) {
     return division === 'kinder'
-      ? Number(state.data && state.data.kinder_capacity || 6)
+      ? 5
       : Number(state.data && state.data.elementary_capacity || 5);
   }
   function attendanceMarked(studentId, date, time, classGroup, sessionKind) {
@@ -427,15 +441,19 @@
       const attended = isToday(date) && attendanceMarked(item.student_id, date, time, classGroup, 'regular');
       return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${time}" data-class-group="${esc(classGroup)}">${esc(item.student_name)}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
     }).join('');
-    const waitHtml = waits.map((item) => `<button type="button" class="olliTtStudent wait" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}"><span class="olliTtStudentTag">대기</span>${esc(item.student_name)}</button>`).join('');
+    const waitHtml = waits.map((item) => `<div class="olliTtStudent wait"><button type="button" class="olliTtAttendanceBtn" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}">${esc(item.student_name)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}">대기</button></div>`).join('');
     const makeupHtml = makeups.map((item) => {
       const attended = isToday(date) && attendanceMarked(item.student_id, date, time, classGroup, 'makeup');
-      return `<div class="olliTtStudent makeup${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${time}" data-class-group="${esc(classGroup)}"><span class="olliTtStudentTag">보강</span>${esc(item.student_name)}</button><button type="button" class="olliTtStudentMore" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}" aria-label="${esc(item.student_name)} 보강 설정">☰</button></div>`;
+      return `<div class="olliTtStudent makeup${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${time}" data-class-group="${esc(classGroup)}">${esc(item.student_name)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">보강</button></div>`;
     }).join('');
     return `<div class="olliTtEntries">${regularHtml}${waitHtml}${makeupHtml}</div>`;
   }
 
-  function cellHtml(division, date, time) {
+  function cellHtml(division, date, displayTime) {
+    if (division === 'elementary' && date.getDay() === 6 && Number(displayTime) > 3) {
+      return '<div class="olliTtCell saturdayUnavailable" aria-hidden="true"></div>';
+    }
+    const time = storedTimeForCell(division, date, displayTime);
     const attrs = `data-tt-cell="1" data-division="${division}" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-time="${time}"`;
     if (!isClassSplit(division, date.getDay(), time)) return `<div class="olliTtCell" ${attrs}>${cellContentsHtml(division, date, time, 'A')}</div>`;
     const heads = division === 'kinder';
@@ -706,12 +724,13 @@
     if (!student) return;
     const rows = currentStudentEnrollments(studentId);
     const source = rows.find((item) => clean(item.id) === clean(enrollmentId)) || rows.find((item) => enrollmentEffectiveOn(item, new Date())) || rows[0];
-    const timeOptions = TIME_SLOTS[divisionOf(student)];
+    const targetWeekday = source ? Number(source.weekday) : 1;
+    const timeOptions = timeOptionsFor(divisionOf(student), targetWeekday);
     const sourceTime = source ? Number(source.time_slot) : null;
     state.dialog = {
       kind: 'move', studentId: clean(studentId), actionType: 'move',
       sourceEnrollmentId: source ? clean(source.id) : '',
-      targetWeekday: source ? Number(source.weekday) : 1,
+      targetWeekday,
       targetTime: timeOptions.includes(sourceTime) ? sourceTime : timeOptions[0],
       targetClassGroup: source ? classGroupOf(source) : 'A',
       effectiveDate: todayKey()
@@ -778,7 +797,7 @@
     const scheduledRows = changes().filter((item) => clean(item.student_id) === clean(dialog.studentId) && item.status === 'scheduled');
     const source = rows.find((item) => clean(item.id) === clean(dialog.sourceEnrollmentId));
     const division = divisionOf(student);
-    const timeOptions = TIME_SLOTS[division];
+    const timeOptions = timeOptionsFor(division, dialog.targetWeekday);
     const capacity = capacityFor(division);
     const sourceHtml = rows.length ? rows.map((item) => {
       const current = enrollmentEffectiveOn(item, new Date());
@@ -1138,7 +1157,11 @@
     dialog.querySelectorAll('[data-tt-target-day]').forEach((button) => button.addEventListener('click', () => {
       state.dialog.targetWeekday = Number(button.dataset.ttTargetDay);
       const student = studentById(state.dialog.studentId);
-      if (student && !isClassSplit(divisionOf(student), state.dialog.targetWeekday, state.dialog.targetTime)) state.dialog.targetClassGroup = 'A';
+      if (student) {
+        const timeOptions = timeOptionsFor(divisionOf(student), state.dialog.targetWeekday);
+        if (!timeOptions.includes(state.dialog.targetTime)) state.dialog.targetTime = timeOptions[0];
+        if (!isClassSplit(divisionOf(student), state.dialog.targetWeekday, state.dialog.targetTime)) state.dialog.targetClassGroup = 'A';
+      }
       renderDialog();
     }));
     dialog.querySelectorAll('[data-tt-target-time]').forEach((button) => button.addEventListener('click', () => {
