@@ -288,8 +288,15 @@
   function enrollmentActiveOn(enrollment, date) {
     return Number(enrollment.weekday) === date.getDay() && enrollmentEffectiveOn(enrollment, date);
   }
+  function timeSlotMatches(division, date, displayedTime, storedTime) {
+    const expected = Number(displayedTime);
+    const legacySaturdayTime = division === 'elementary' && date.getDay() === 6 && expected >= 10 && expected <= 12
+      ? expected - 9
+      : null;
+    return Number(storedTime) === expected || Number(storedTime) === legacySaturdayTime;
+  }
   function slotRegulars(division, date, time, classGroup) {
-    return enrollments().filter((item) => clean(item.division) === division && Number(item.time_slot) === Number(time) && enrollmentActiveOn(item, date)
+    return enrollments().filter((item) => clean(item.division) === division && timeSlotMatches(division, date, time, item.time_slot) && enrollmentActiveOn(item, date)
       && (!classGroup || classGroupOf(item) === classGroupOf({ class_group: classGroup })));
   }
   function waitRequestedDate(item) {
@@ -301,13 +308,13 @@
   }
   function slotWaitlist(division, date, time, classGroup) {
     const dayKey = dateKey(date);
-    return waitlist().filter((item) => clean(item.division) === division && Number(item.target_weekday) === Number(date.getDay()) && Number(item.target_time_slot) === Number(time)
+    return waitlist().filter((item) => clean(item.division) === division && Number(item.target_weekday) === Number(date.getDay()) && timeSlotMatches(division, date, time, item.target_time_slot)
       && (!waitRequestedDate(item) || waitRequestedDate(item) <= dayKey)
       && (!classGroup || classGroupOf(item, 'target_class_group') === classGroupOf({ class_group: classGroup })));
   }
   function slotMakeups(division, date, time, classGroup) {
     const key = dateKey(date);
-    return oneTimeSessions().filter((item) => clean(item.division) === division && clean(item.session_date) === key && Number(item.time_slot) === Number(time)
+    return oneTimeSessions().filter((item) => clean(item.division) === division && clean(item.session_date) === key && timeSlotMatches(division, date, time, item.time_slot)
       && (!classGroup || classGroupOf(item) === classGroupOf({ class_group: classGroup })));
   }
   function scheduledChangeForSource(enrollmentId) {
@@ -438,13 +445,15 @@
     const regularHtml = regular.map((item) => {
       const scheduled = scheduledChangeForSource(item.id);
       const scheduleText = scheduled ? `<span class="olliTtReservation">◷ ${shortDate(scheduled.effective_date)} ${scheduled.change_type === 'remove' ? '삭제' : '이동'} 예정</span>` : '';
-      const attended = isToday(date) && attendanceMarked(item.student_id, date, time, classGroup, 'regular');
-      return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${time}" data-class-group="${esc(classGroup)}">${esc(item.student_name)}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
+      const attendanceTime = Number(item.time_slot);
+      const attended = isToday(date) && attendanceMarked(item.student_id, date, attendanceTime, classGroup, 'regular');
+      return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(classGroup)}">${esc(item.student_name)}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
     }).join('');
     const waitHtml = waits.map((item) => `<div class="olliTtStudent wait"><button type="button" class="olliTtAttendanceBtn" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}">${esc(item.student_name)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}">대기</button></div>`).join('');
     const makeupHtml = makeups.map((item) => {
-      const attended = isToday(date) && attendanceMarked(item.student_id, date, time, classGroup, 'makeup');
-      return `<div class="olliTtStudent makeup${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${time}" data-class-group="${esc(classGroup)}">${esc(item.student_name)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">보강</button></div>`;
+      const attendanceTime = Number(item.time_slot);
+      const attended = isToday(date) && attendanceMarked(item.student_id, date, attendanceTime, classGroup, 'makeup');
+      return `<div class="olliTtStudent makeup${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(classGroup)}">${esc(item.student_name)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">보강</button></div>`;
     }).join('');
     return `<div class="olliTtEntries">${regularHtml}${waitHtml}${makeupHtml}</div>`;
   }
