@@ -292,10 +292,6 @@
     global.confirmStudent = wrapped;
   }
 
-  function isPcDesktop() {
-    return !global.matchMedia || global.matchMedia('(min-width: 900px)').matches;
-  }
-
   function isEditorEmbedded(screenId) {
     const host = document.getElementById('pcAttendanceSharedEditorHost');
     const screen = document.getElementById(screenId);
@@ -344,7 +340,6 @@
   }
 
   function redirectLegacyStandaloneEditor(pageId, explicitStudentId) {
-    if (!isPcDesktop()) return false;
     const student = legacyStudentForScreen(pageId, explicitStudentId);
     const division = pageId === 'kinderChatFeedbackScreen' || pageId === 'kinderRiskMemoScreen'
       ? 'kinder'
@@ -357,7 +352,7 @@
     const originalMemoOpen = global.openStudentMemoPageById;
     if (typeof originalMemoOpen === 'function' && !originalMemoOpen.__olliPcPersonalityRedirect) {
       const wrappedMemoOpen = function pcOpenMemoInsidePersonality(studentId) {
-        if (!isPcDesktop() || isEditorEmbedded('studentMemoScreen')) {
+        if (isEditorEmbedded('studentMemoScreen')) {
           return originalMemoOpen.apply(this, arguments);
         }
         redirectLegacyStandaloneEditor('studentMemoScreen', studentId);
@@ -370,7 +365,6 @@
     const originalObservationOpen = global.openObservationNoteFromRecord;
     if (typeof originalObservationOpen === 'function' && !originalObservationOpen.__olliPcPersonalityRedirect) {
       const wrappedObservationOpen = function pcOpenObservationInsidePersonality() {
-        if (!isPcDesktop()) return originalObservationOpen.apply(this, arguments);
         const student = legacyStudentForScreen('studentMemoScreen', '');
         return openPersonalityRecordForStudent(student?.id || '', 'elementary');
       };
@@ -382,7 +376,7 @@
     const originalKinderOpen = global.openKinderChatFeedbackPage;
     if (typeof originalKinderOpen === 'function' && !originalKinderOpen.__olliPcPersonalityRedirect) {
       const wrappedKinderOpen = function pcOpenKinderFeedbackInsidePersonality() {
-        if (!isPcDesktop() || isEditorEmbedded('kinderChatFeedbackScreen')) {
+        if (isEditorEmbedded('kinderChatFeedbackScreen')) {
           return originalKinderOpen.apply(this, arguments);
         }
         const student = legacyStudentForScreen('kinderChatFeedbackScreen', '');

@@ -19,7 +19,7 @@
   }
   function isPcAttendance() {
     const sectionKey = core()?.SECTION?.PERSONALITY_RECORDS || 'attendance';
-    return core()?.state?.section === sectionKey && (!global.matchMedia || global.matchMedia('(min-width: 900px)').matches);
+    return core()?.state?.section === sectionKey;
   }
 
   function studentMatchesDay(student, day) {
