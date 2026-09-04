@@ -24,32 +24,17 @@ jobs:
           script=script.replace(old,new,1)
           exec(compile(script,'audit_transform.py','exec'),{'__name__':'__main__'})
           PY
-      - name: Show residual contexts
+      - name: Show transformed ranges
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          terms=re.compile(r'kinderRisk|RiskMemo|risk_signal|risk_signals|위험신호|recordNotifyBtn|notificationInbox|hasRiskNotifications|sendKinderRiskPush|manager_can_director_note|directorNote|recordDoorDot|kinderMemoBox[1-5]|kinderSceneMemoInput|setKinderCombinedMode|autoResizeKinderMemoBoxes')
-          for fn in ['index.html','observation-memo-core.js','kinder-feedback.js','pc-shell.js','pc-start-page.js','OLLI_PC_MODULES.md']:
-              p=Path(fn)
-              if not p.exists(): continue
-              lines=p.read_text(encoding='utf-8').splitlines()
-              hits=[i for i,l in enumerate(lines) if terms.search(l)]
-              if not hits: continue
-              print('\n===== '+fn+' =====')
-              shown=set()
-              for i in hits:
-                  lo=max(0,i-5); hi=min(len(lines),i+6)
-                  key=(lo,hi)
-                  if key in shown: continue
-                  shown.add(key)
-                  print(f'--- hit line {i+1} ---')
-                  # nearest function signature above when available
-                  for j in range(i,-1,-1):
-                      if re.search(r'\b(?:async\s+)?function\s+\w+\s*\(',lines[j]):
-                          print('nearest:',lines[j].strip())
-                          break
-                  for n in range(lo,hi): print(f'{n+1}: {lines[n]}')
-          PY
+          echo '===== RANGE 10020-10130 ====='
+          sed -n '10020,10130p' index.html
+          echo '===== RANGE 11740-11960 ====='
+          sed -n '11740,11960p' index.html
+          echo '===== RANGE 18390-18420 ====='
+          sed -n '18390,18420p' index.html
+          echo '===== RANGE 24855-24875 ====='
+          sed -n '24855,24875p' index.html
+          echo '===== RANGE 31068-31088 ====='
+          sed -n '31068,31088p' index.html
