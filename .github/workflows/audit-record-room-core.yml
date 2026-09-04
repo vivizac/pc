@@ -1,0 +1,35 @@
+name: Audit record room core
+on:
+  push:
+    paths:
+      - '.github/workflows/audit-record-room-core.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit structure
+        run: |
+          set -e
+          node --check olli-record-room-core.js
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('olli-record-room-core.js')
+          text=p.read_text(encoding='utf-8')
+          lines=text.splitlines()
+          print('LINE_COUNT', len(lines))
+          print('BYTE_COUNT', len(text.encode('utf-8')))
+          print('TOP_LEVEL_DECLARATIONS')
+          for i,line in enumerate(lines,1):
+              if re.match(r'^(?:async\s+)?function\s+[A-Za-z_$][\w$]*\s*\(', line) or re.match(r'^(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*=', line):
+                  print(f'{i}: {line[:180]}')
+          print('SECTION_COMMENTS')
+          for i,line in enumerate(lines,1):
+              s=line.strip()
+              if s.startswith('//') or s.startswith('/*'):
+                  if any(k in s for k in ['출석','기록','학생','피드백','보관','삭제','상담','검색','정렬','초등','유치','모달','상태','공통','동기화','선택']):
+                      print(f'{i}: {s[:200]}')
+          PY
