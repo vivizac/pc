@@ -11,6 +11,7 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 | 초등 관찰기록 저장·자동저장·보관함·피드백 연결 | `observation-memo-core.js` | `observation-editor.css` |
 | 초등 오늘의 분석·분석 이력·상세보기 | `elementary-analysis.js` | `elementary-analysis-ui.css` |
 | 유치부 1분 피드백 공용 UI·기능 | `kinder-feedback-ui.js`, `kinder-feedback.js` | `kinder-feedback.css` |
+| 유치부 위험신호 화면 | `kinder-risk-ui.js`, `observation-memo-core.js` | 현재 레거시 CSS는 `index.html`에 남아 있음 |
 | 시간표 화면·팝업 | `pc-timetable.js` | `pc-timetable.css` |
 | 시간표 데이터 호출·변경 이력·복구 | `pc-timetable-service.js` | - |
 | 상담설문 | `consultation-survey.js`, `consultation-survey-core.js` | `consultation-survey.css` |
@@ -20,7 +21,7 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 - `pc-shell.js`는 현재 메뉴와 공통 검색값을 보관하고 각 기능 모듈의 `open`, `renderContext`를 호출한다.
 - 메뉴를 열 때 로컬 캐시를 먼저 그려 화면을 즉시 전환하고, Supabase 확인은 백그라운드에서 실행한다. 서버 내용이 실제로 달라졌을 때만 현재 화면을 다시 그린다.
 - PC 화면의 관찰기록 입력은 별도 `관찰노트` 메뉴를 사용하지 않고 `성향기록부` 안에서 처리한다.
-- 기존 `observation`, `feedback` PC route 호출은 `pc-shell.js`에서 `attendance`(성향기록부)로 흡수한다.
+- 기존 `observation`, `feedback` PC route 호출은 `pc-shell.js`에서 `attendance`(성향기록부)로 흡수한다. 별도 초등 관찰노트 진입 버튼은 제거한다.
 - 초등 관찰기록은 기존 `studentMemoScreen`, 유치부 1분 피드백은 기존 `kinderChatFeedbackScreen`을 복제하지 않고 `pc-attendance.js`가 성향기록부 카드 안으로 이동해 재사용한다.
 - `studentMemoScreen`과 초등 분석 모달의 정적 DOM은 더 이상 `index.html` 본문에 직접 두지 않고 `observation-editor-ui.js`가 원래 위치에서 동기적으로 주입한다.
 - 유치부 `kinderChatFeedbackScreen`과 관련 오버레이의 정적 DOM은 `kinder-feedback-ui.js`가 `kinder-feedback.js`보다 먼저 원래 위치에 주입한다.
@@ -39,6 +40,13 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 - `observation-memo-core.js`: 학생 전환, 메모 자동저장, Supabase 동기화, 보관함, 피드백 생성 연결.
 - `elementary-analysis.js`: 분석 선택값, 분석 이력, 요약 카드, 상세보기 로직.
 - `elementary-analysis-ui.css`: 분석 바텀시트와 요약 카드 스타일.
+
+### 유치부 위험신호
+
+- `kinder-risk-ui.js`: 위험신호 화면의 정적 DOM 템플릿.
+- 위험신호 데이터 저장·알림·확인 처리 로직은 현재 `observation-memo-core.js`가 담당한다.
+- `kinderRiskMemoScreen`은 위험신호 보기/알림이 아직 사용하므로 삭제 대상이 아니다. 모바일 전용 코드로 분류하지 않는다.
+- 위험신호 전용 CSS는 다음 정리 단계에서 `index.html`에서 별도 CSS 모듈로 이동한다.
 
 ### 유치부 1분 피드백
 

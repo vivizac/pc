@@ -362,17 +362,6 @@
       global.openStudentMemoPageById = wrappedMemoOpen;
     }
 
-    const originalObservationOpen = global.openObservationNoteFromRecord;
-    if (typeof originalObservationOpen === 'function' && !originalObservationOpen.__olliPcPersonalityRedirect) {
-      const wrappedObservationOpen = function pcOpenObservationInsidePersonality() {
-        const student = legacyStudentForScreen('studentMemoScreen', '');
-        return openPersonalityRecordForStudent(student?.id || '', 'elementary');
-      };
-      wrappedObservationOpen.__olliPcPersonalityRedirect = true;
-      wrappedObservationOpen.__olliOriginal = originalObservationOpen;
-      global.openObservationNoteFromRecord = wrappedObservationOpen;
-    }
-
     const originalKinderOpen = global.openKinderChatFeedbackPage;
     if (typeof originalKinderOpen === 'function' && !originalKinderOpen.__olliPcPersonalityRedirect) {
       const wrappedKinderOpen = function pcOpenKinderFeedbackInsidePersonality() {

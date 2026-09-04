@@ -7767,12 +7767,7 @@ body.olli-login-open {
 <div class="recordUtilityLabel">출석부</div>
 </div>
 <div class="recordUtilityBtn">
-<button aria-label="관찰노트 열기" class="recordUtilityCircle" id="recordModeToggleBtn" onclick="openObservationNoteFromRecord()" type="button">
-<svg aria-hidden="true" fill="none" viewbox="0 0 24 24">
-<rect height="14.8" rx="2.8" stroke="currentColor" stroke-width="2" width="16" x="4" y="4.8"></rect>
-<path d="M8 9h8M8 13h5" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>
-</svg>
-</button>
+
 <div class="recordUtilityLabel">관찰노트</div>
 </div>
 <div class="recordUtilityBtn">
@@ -7847,88 +7842,8 @@ body.olli-login-open {
 </div>
 <script src="observation-editor-ui.js" data-olli-observation-ui="student-memo"></script>
 <!-- PAGE: 유치부 관찰노트 -->
-<div class="pageScreen mode-risk" data-legacy-page-key="kinder-risk-memo" data-page-key="kinder-observation-note" data-page-name="유치부 관찰노트" id="kinderRiskMemoScreen">
-<div class="kinderRiskMemoPageInner">
-<div class="memoHeader kinderRiskHeader">
-<div class="memoHeaderLeftActions">
-<button aria-label="뒤로가기" class="memoRecordRoomBtn" onclick="closeMemoPage()" title="뒤로가기" type="button">
-<svg aria-hidden="true" viewbox="0 0 24 24"><path d="M15.5 5l-7 7 7 7"></path></svg>
-</button>
-<div class="kinderRiskModeWrap" id="kinderRiskModeWrap">
-<div class="kinderObservationNoteTitle" data-code-name="유치부 관찰노트" id="kinderObservationNoteTitle">유치부의 노트</div>
-<div class="kinderObservationModeSub" data-code-name="유치부 관찰모드" id="kinderObservationModeSub">관찰 모드</div>
-</div>
-</div>
-<div class="memoHeaderActions">
-<button aria-label="관찰노트 알림" class="kinderRiskPushBtn" id="kinderRiskPushBtn" onclick="sendKinderRiskPush()" title="관찰노트 알림" type="button">
-<svg aria-hidden="true" class="kinderRiskPushIcon" fill="none" viewbox="0 0 24 24">
-<path d="M18 8.5a6 6 0 0 0-12 0c0 7-2.5 7-2.5 7h17S18 15.5 18 8.5"></path>
-<path d="M9.5 19a2.8 2.8 0 0 0 5 0"></path>
-</svg>
-</button>
-</div>
-</div>
-<div class="kinderMemoWrap" id="kinderMemoWrap">
-<section class="signal-page" id="signalPage">
-<div class="signal-status-card signal-level-green" id="signalStatusCard">
-<div class="signal-status-top">
-<div class="signal-status-heading">관찰 신호등</div>
-<strong id="signalStatusLabel">관찰</strong>
-<span class="signal-status-period">최근 6개월</span>
-</div>
-<div class="signal-dots" id="signalDots">
-<span class="signal-dot active"></span>
-<span class="signal-dot"></span>
-<span class="signal-dot"></span>
-</div>
-<p class="signal-status-text" id="signalStatusText">
-            위험•퇴원 신호가 1회 기록되었어요.<br/>
-            한 번의 기록도 가볍지 않으니 즉시 세심한 관찰이 필요합니다.
-          </p>
-</div>
-<div class="signal-record-list" id="signalRecordList">
-<article class="signal-record-card" data-signal-card="1">
-<div class="signal-record-num">01</div>
-<div class="signal-record-content">
-<span class="signal-date">2026.04.24</span>
-<textarea class="kinderMemoBox" data-min-height="58" id="kinderMemoBox1" placeholder="추가 신호가 기록되면 이곳에 표시됩니다."></textarea>
-</div>
-</article>
-<article class="signal-record-card empty" data-signal-card="2">
-<div class="signal-record-num">02</div>
-<div class="signal-record-content">
-<span class="signal-date">아직 기록 없음</span>
-<textarea class="kinderMemoBox" data-min-height="58" id="kinderMemoBox2" placeholder="추가 신호가 기록되면 이곳에 표시됩니다."></textarea>
-</div>
-</article>
-<article class="signal-record-card empty" data-signal-card="3">
-<div class="signal-record-num">03</div>
-<div class="signal-record-content">
-<span class="signal-date">아직 기록 없음</span>
-<textarea class="kinderMemoBox" data-min-height="58" id="kinderMemoBox3" placeholder="추가 신호가 기록되면 이곳에 표시됩니다."></textarea>
-</div>
-</article>
-</div>
-<div class="director-check-card">
-<div class="director-check-head">
-<div class="director-check-title">
-<h2>원장 확인</h2>
-<p>누적된 신호를 보고 대응 방향을 정리하는 공간입니다.</p>
-</div>
-</div>
-<div class="director-memo-block">
-<label><span class="director-memo-dot"></span>선생님 관찰 방향</label>
-<textarea class="kinderMemoBox kinderMemoFreeBox" data-min-height="76" id="kinderMemoBox4" placeholder="다음 수업에서 유심히 볼 장면을 기록하세요."></textarea>
-</div>
-<div class="director-memo-block">
-<label><span class="director-memo-dot"></span>대응 판단</label>
-<textarea class="kinderMemoBox kinderMemoFreeBox" data-min-height="76" id="kinderMemoBox5" placeholder="학부모 상담 여부와 수업 조정 여부를 기록하세요."></textarea>
-</div>
-</div>
-</section>
-</div>
-</div>
-</div>
+<script src="kinder-risk-ui.js"></script>
+
 <script src="observation-editor-ui.js" data-olli-observation-ui="analysis-modal"></script>
 <div class="modalOverlay" id="saveModal">
 <div class="modalCard">
@@ -14903,18 +14818,6 @@ function updateRecordHeaderUI() {
   }
 }
 
-function openObservationNoteFromRecord() {
-  const elementaryStudents = sortMemoStudentsForPicker(getStudentsByType('elementary'));
-  const lastStudent = getLastElementaryMemoStudent();
-  const targetStudent = (currentMemoStudent && currentMemoType === 'elementary')
-    ? currentMemoStudent
-    : (lastStudent || elementaryStudents[0]);
-  if (!targetStudent) {
-    alert('초등부 학생을 먼저 등록해 주세요.');
-    return;
-  }
-  openStudentMemoPageById(targetStudent.id);
-}
 
 function restoreRecordSearchFocus() {
   const screen = document.getElementById('recordRoomScreen');
@@ -17452,7 +17355,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.confirmStudent = confirmStudent;
   window.openStudentMemoPageById = openStudentMemoPageById;
   window.forceStudentMemoControlsVisible = forceStudentMemoControlsVisible;
-  window.openObservationNoteFromRecord = openObservationNoteFromRecord;
   window.closeMemoPage = closeMemoPage;
   window.saveCurrentMemo = saveCurrentMemo;
   window.requestElementaryFeedback = requestElementaryFeedback;

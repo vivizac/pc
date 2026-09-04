@@ -59,23 +59,6 @@ function switchKinderChatFeedbackMode(mode, event) {
     openKinderChatFeedbackGrowthSheet();
     return;
   }
-  if (mode === 'elementaryMemo') {
-    saveKinderChatFeedbackDraft();
-    const page = document.getElementById('kinderChatFeedbackScreen');
-    if (page) page.style.display = 'none';
-    const openFn = window.openObservationNoteFromRecord || (typeof openObservationNoteFromRecord === 'function' ? openObservationNoteFromRecord : null);
-    if (openFn) {
-      openFn();
-      return;
-    }
-    const elementaryStudents = (typeof getStudentsByType === 'function') ? getStudentsByType('elementary') : [];
-    const targetStudent = elementaryStudents && elementaryStudents.length ? elementaryStudents[0] : null;
-    if (targetStudent && typeof openStudentMemoPageById === 'function') {
-      openStudentMemoPageById(targetStudent.id);
-      return;
-    }
-    alert('초등부 관찰노트를 열 수 없습니다.');
-  }
 }
 function openKinderChatFeedbackPage() {
   const screens = document.querySelectorAll('.pageScreen');
