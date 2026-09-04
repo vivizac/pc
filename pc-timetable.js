@@ -276,6 +276,7 @@
   function attendanceMarks() { return Array.isArray(state.data && state.data.attendance) ? state.data.attendance : []; }
   function pickups() { return Array.isArray(state.data && state.data.pickups) ? state.data.pickups : []; }
   function classSplits() { return Array.isArray(state.data && state.data.class_splits) ? state.data.class_splits : []; }
+  function cellMemos() { return Array.isArray(state.data && state.data.cell_memos) ? state.data.cell_memos : []; }
   function isClassSplit(division, weekday, time) {
     if (division === 'kinder') return true;
     return classSplits().some((item) => Number(item.weekday) === Number(weekday) && Number(item.time_slot) === Number(time));
@@ -311,10 +312,7 @@
   function secondWeeklySession(studentId, date) {
     const weeklySessions = activeWeeklySessions(studentId, date);
     if (weeklySessions.length !== 2) return null;
-    const preferredKey = typeof service.getSecondSessionKey === 'function'
-      ? clean(service.getSecondSessionKey(studentId))
-      : '';
-    return weeklySessions.find((item) => enrollmentSessionKey(item) === preferredKey) || weeklySessions[1];
+    return weeklySessions.find((item) => Number(item.session_order) === 2) || weeklySessions[1];
   }
 
   function isSecondWeeklySession(item, date) {
@@ -322,49 +320,30 @@
     return !!second && clean(second.id) === clean(item && item.id);
   }
 
-  function setWeeklySessionOrder(studentId, enrollmentId, order) {
+  async function setWeeklySessionOrder(studentId, enrollmentId, order) {
     const date = new Date();
     const weeklySessions = activeWeeklySessions(studentId, date);
-    if (weeklySessions.length !== 2 || typeof service.setSecondSessionKey !== 'function') return false;
+    if (weeklySessions.length !== 2 || typeof service.setSessionOrder !== 'function') return false;
     const selected = weeklySessions.find((item) => clean(item.id) === clean(enrollmentId));
-    if (!selected) return false;
-    const second = Number(order) === 2 ? selected : weeklySessions.find((item) => clean(item.id) !== clean(selected.id));
-    if (!second) return false;
-    service.setSecondSessionKey(studentId, enrollmentSessionKey(second));
+    if (!selected || ![1, 2].includes(Number(order))) return false;
+    await service.setSessionOrder(studentId, enrollmentId, Number(order), todayKey());
+    state.data = null;
+    await loadWeek();
     return true;
   }
 
-  function cellMemoKey(division, date, time) {
-    const keyDate = date instanceof Date ? dateKey(date) : clean(date);
-    return `${clean(division)}|${keyDate}|${Number(time)}|memo`;
-  }
-
-  function legacyCellMemoKeys(division, date, time) {
-    const keyDate = date instanceof Date ? dateKey(date) : clean(date);
-    return ['A', 'B'].map((group) => `${clean(division)}|${keyDate}|${Number(time)}|${group}`);
-  }
-
   function cellMemoText(division, date, time) {
-    if (typeof service.getCellMemo !== 'function') return '';
-    const key = cellMemoKey(division, date, time);
-    const current = clean(service.getCellMemo(key));
-    if (current) return current;
-    for (const legacyKey of legacyCellMemoKeys(division, date, time)) {
-      const legacy = clean(service.getCellMemo(legacyKey));
-      if (!legacy) continue;
-      if (typeof service.saveCellMemo === 'function') {
-        service.saveCellMemo(key, legacy);
-        legacyCellMemoKeys(division, date, time).forEach((oldKey) => service.saveCellMemo(oldKey, ''));
-      }
-      return legacy;
-    }
-    return '';
+    const keyDate = date instanceof Date ? dateKey(date) : clean(date);
+    const memo = cellMemos().find((item) => clean(item.division) === clean(division)
+      && clean(item.session_date) === keyDate
+      && Number(item.time_slot) === Number(time));
+    return clean(memo && memo.note);
   }
 
-  function saveCellMemoText(division, date, time, note) {
-    if (typeof service.saveCellMemo !== 'function') return;
-    service.saveCellMemo(cellMemoKey(division, date, time), note);
-    legacyCellMemoKeys(division, date, time).forEach((oldKey) => service.saveCellMemo(oldKey, ''));
+  async function saveCellMemoText(division, date, time, note) {
+    if (typeof service.saveCellMemo !== 'function') throw new Error('시간표 메모 서버 연결을 찾지 못했습니다.');
+    const keyDate = date instanceof Date ? dateKey(date) : clean(date);
+    return service.saveCellMemo(clean(division), keyDate, Number(time), clean(note));
   }
 
   function slotEntryCount(division, date, time, classGroup) {
@@ -1391,13 +1370,23 @@
       renderDialog();
     }));
 
-    dialog.querySelectorAll('[data-tt-session-order]').forEach((button) => button.addEventListener('click', (event) => {
+    dialog.querySelectorAll('[data-tt-session-order]').forEach((button) => button.addEventListener('click', async (event) => {
       event.preventDefault();
       event.stopPropagation();
       if (!state.dialog || state.dialog.kind !== 'move') return;
-      if (setWeeklySessionOrder(state.dialog.studentId, button.dataset.enrollmentId, Number(button.dataset.ttSessionOrder))) {
-        renderTimetable();
-        renderDialog();
+      const studentId = state.dialog.studentId;
+      const enrollmentId = button.dataset.enrollmentId;
+      const sessionOrder = Number(button.dataset.ttSessionOrder);
+      const buttons = Array.from(dialog.querySelectorAll('[data-tt-session-order]'));
+      buttons.forEach((item) => { item.disabled = true; });
+      try {
+        if (await setWeeklySessionOrder(studentId, enrollmentId, sessionOrder)) {
+          renderTimetable();
+          if (state.dialog && state.dialog.kind === 'move') renderDialog();
+        }
+      } catch (error) {
+        alert(error && (error.message || error) || '수업 회차 저장에 실패했습니다.');
+        if (state.dialog && state.dialog.kind === 'move') renderDialog();
       }
     }));
     dialog.querySelectorAll('[data-tt-target-day]').forEach((button) => button.addEventListener('click', () => {
@@ -1570,10 +1559,6 @@
       alert('이동할 기존 수업을 선택해 주세요.');
       return;
     }
-    const sourceEnrollment = dialog.actionType === 'move'
-      ? enrollments().find((item) => clean(item.id) === clean(dialog.sourceEnrollmentId))
-      : null;
-    const sourceWasSecond = !!(sourceEnrollment && isSecondWeeklySession(sourceEnrollment, new Date()));
     const result = await withSaving(() => dialog.actionType === 'makeup'
       ? service.addMakeup(dialog.studentId, dialog.effectiveDate, dialog.targetTime, '', dialog.targetClassGroup)
       : service.changeSchedule({
@@ -1587,10 +1572,6 @@
         allowWait: true
       }));
     if (!result) return;
-    if (dialog.actionType === 'move' && sourceWasSecond && result.result !== 'waitlisted' && result.result !== 'scheduled' && typeof service.setSecondSessionKey === 'function') {
-      service.setSecondSessionKey(dialog.studentId, `${Number(dialog.targetWeekday)}|${Number(dialog.targetTime)}|${classGroupOf({ class_group: dialog.targetClassGroup })}`);
-      renderTimetable();
-    }
     const student = studentById(dialog.studentId);
     if (dialog.actionType === 'makeup') notify(`${student.name} 학생의 보강을 등록했어요.`);
     else if (result.result === 'waitlisted') notify(`${student.name} 학생을 대기로 등록했어요.`);
@@ -1614,18 +1595,16 @@
     if (result) notify(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 수업을 통합했어요.`);
   }
 
-  function persistDialogCellMemo(dialog) {
-    if (!dialog || dialog.kind !== 'add') return;
-    saveCellMemoText(dialog.division, dialog.date, dialog.time, dialog.note);
+  async function persistDialogCellMemo(dialog) {
+    if (!dialog || dialog.kind !== 'add') return null;
+    return saveCellMemoText(dialog.division, dialog.date, dialog.time, dialog.note);
   }
 
-  function deleteCellMemo() {
+  async function deleteCellMemo() {
     const dialog = state.dialog;
     if (!dialog || dialog.kind !== 'memoManage') return;
-    saveCellMemoText(dialog.division, dialog.date, dialog.time, '');
-    closeDialog();
-    renderTimetable();
-    notify('시간표 메모를 삭제했어요.');
+    const result = await withSaving(() => saveCellMemoText(dialog.division, dialog.date, dialog.time, ''));
+    if (result) notify('시간표 메모를 삭제했어요.');
   }
 
   async function saveAdd() {
@@ -1637,10 +1616,8 @@
     if (!hasStudent && !note && !hadMemo) return;
 
     if (!hasStudent) {
-      persistDialogCellMemo(dialog);
-      closeDialog();
-      renderTimetable();
-      notify(note ? '시간표 메모를 저장했어요.' : '시간표 메모를 삭제했어요.');
+      const memoResult = await withSaving(() => persistDialogCellMemo(dialog));
+      if (memoResult) notify(note ? '시간표 메모를 저장했어요.' : '시간표 메모를 삭제했어요.');
       return;
     }
 
@@ -1648,24 +1625,35 @@
       alert('지난 날짜에는 학생을 추가할 수 없습니다.');
       return;
     }
-    let result;
-    if (dialog.addType === 'makeup') {
-      result = await withSaving(() => service.addMakeup(dialog.studentId, dialog.date, dialog.time, note, dialog.targetClassGroup));
-    } else {
-      result = await withSaving(() => service.addWaitlist({
-        studentId: dialog.studentId,
-        targetWeekday: dialog.weekday,
-        targetTimeSlot: dialog.time,
-        targetClassGroup: dialog.targetClassGroup,
-        effectiveDate: dialog.date
-      }));
-    }
-    if (!result) return;
-    persistDialogCellMemo(dialog);
-    renderTimetable();
+
+    const combined = await withSaving(async () => {
+      const actionResult = dialog.addType === 'makeup'
+        ? await service.addMakeup(dialog.studentId, dialog.date, dialog.time, note, dialog.targetClassGroup)
+        : await service.addWaitlist({
+          studentId: dialog.studentId,
+          targetWeekday: dialog.weekday,
+          targetTimeSlot: dialog.time,
+          targetClassGroup: dialog.targetClassGroup,
+          effectiveDate: dialog.date
+        });
+
+      let memoError = '';
+      try {
+        await persistDialogCellMemo(dialog);
+      } catch (error) {
+        memoError = clean(error && (error.message || error)) || '메모 저장 실패';
+      }
+      return { actionResult, memoError };
+    });
+
+    if (!combined || !combined.actionResult) return;
+    const result = combined.actionResult;
     const student = studentById(dialog.studentId);
     if (dialog.addType === 'makeup') notify(`${student.name} 학생의 보강을 등록했어요.`);
     else notify(`${student.name} 학생을 대기로 등록했어요.`);
+    if (combined.memoError) {
+      alert(`학생 등록은 완료됐지만 시간표 메모는 저장하지 못했습니다.\n${combined.memoError}`);
+    }
   }
 
   async function savePickup() {
