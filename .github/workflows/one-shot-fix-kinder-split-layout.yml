@@ -1,0 +1,56 @@
+name: Fix kindergarten split layout
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-fix-kinder-split-layout.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch kindergarten split layout and bust stylesheet cache
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+
+          css_path = Path('pc-timetable.css')
+          css = css_path.read_text(encoding='utf-8')
+          old = '#recordRoomScreen .olliTtClassLanes.kinder { grid-template-columns: 1fr; grid-template-rows: repeat(2, minmax(32px, max-content)); gap: 0; }'
+          new = '#recordRoomScreen .olliTtClassLanes.kinder { display: flex; flex-direction: column; gap: 0; }\n#recordRoomScreen .olliTtClassLane.kinder { flex: 1 1 0; min-height: 0; }'
+          if css.count(old) != 1:
+              raise SystemExit(f'kinder split layout rule: expected 1 match, found {css.count(old)}')
+          css = css.replace(old, new, 1)
+          css_path.write_text(css, encoding='utf-8')
+
+          index_path = Path('index.html')
+          index = index_path.read_text(encoding='utf-8')
+          old_link = '<link rel="stylesheet" href="pc-timetable.css">'
+          new_link = '<link rel="stylesheet" href="pc-timetable.css?v=20260905-2">'
+          if index.count(old_link) != 1:
+              raise SystemExit(f'timetable stylesheet link: expected 1 match, found {index.count(old_link)}')
+          index = index.replace(old_link, new_link, 1)
+          index_path.write_text(index, encoding='utf-8')
+          PY
+      - name: Verify fix
+        shell: bash
+        run: |
+          set -e
+          grep -q '#recordRoomScreen .olliTtClassLanes.kinder { display: flex; flex-direction: column; gap: 0; }' pc-timetable.css
+          grep -q '#recordRoomScreen .olliTtClassLane.kinder { flex: 1 1 0; min-height: 0; }' pc-timetable.css
+          grep -q 'pc-timetable.css?v=20260905-2' index.html
+          node --check pc-timetable.js
+          echo 'kindergarten vertical split fix verified'
+      - name: Commit fix and remove temporary workflow
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f .github/workflows/one-shot-fix-kinder-split-layout.yml
+          git add pc-timetable.css index.html
+          git commit -m 'Fix kindergarten split timetable layout'
+          git push
