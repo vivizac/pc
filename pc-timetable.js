@@ -955,7 +955,7 @@
       + '<div class="olliTtDialogBody">'
       + `<label class="olliTtAddMemo"><span>메모</span><textarea data-tt-memo-edit maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.memo)}</textarea></label>`
       + '<div class="olliTtStatusNotice">메모 내용을 수정한 뒤 저장하거나, 더 이상 필요하지 않으면 삭제할 수 있습니다.</div>'
-      + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-save-memo>저장</button><button type="button" class="olliTtDialogPrimary danger" data-tt-delete-memo>메모 삭제</button></div></div>';
+      + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogPrimary" data-tt-save-memo>저장</button><button type="button" class="olliTtDialogPrimary danger" data-tt-delete-memo>메모 삭제</button></div></div>';
   }
 
   function waitDialogHtml(dialog) {
