@@ -11,14 +11,40 @@ function isRecordSearchOpen() {
   const screen = getRecordSearchScreen();
   return !!(screen && screen.classList.contains('record-search-open'));
 }
+let recordKeyboardBaselineHeight = 0;
+let recordKeyboardHeldOffset = 0;
+function captureRecordKeyboardBaseline() {
+  const viewport = window.visualViewport;
+  recordKeyboardBaselineHeight = Math.max(
+    recordKeyboardBaselineHeight,
+    Number(window.innerHeight || 0),
+    Number(document.documentElement.clientHeight || 0),
+    viewport ? Number(viewport.height || 0) + Number(viewport.offsetTop || 0) : 0
+  );
+}
+function resetRecordKeyboardTracking() {
+  recordKeyboardBaselineHeight = 0;
+  recordKeyboardHeldOffset = 0;
+}
 function getRecordKeyboardOffset() {
   const viewport = window.visualViewport;
   if (!viewport) return 0;
-  return Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop) - 6);
+  if (!recordKeyboardBaselineHeight) captureRecordKeyboardBaseline();
+  return Math.max(0, Math.round(recordKeyboardBaselineHeight - viewport.height - viewport.offsetTop) - 6);
 }
 function setRecordKeyboardOffset() {
   const input = getRecordSearchInput();
-  const offset = (isRecordSearchOpen() || document.activeElement === input) ? getRecordKeyboardOffset() : 0;
+  const focused = document.activeElement === input;
+  const active = isRecordSearchOpen() || focused;
+  if (!active) {
+    resetRecordKeyboardTracking();
+    document.documentElement.style.setProperty('--record-keyboard-offset', '0px');
+    return;
+  }
+  const rawOffset = getRecordKeyboardOffset();
+  if (focused) recordKeyboardHeldOffset = Math.max(recordKeyboardHeldOffset, rawOffset);
+  else recordKeyboardHeldOffset = rawOffset;
+  const offset = focused ? Math.max(rawOffset, recordKeyboardHeldOffset) : rawOffset;
   document.documentElement.style.setProperty('--record-keyboard-offset', `${offset}px`);
 }
 function syncRecordSearchQueryState() {
@@ -40,6 +66,8 @@ function handleSearchPillClick(event) {
   const screen = getRecordSearchScreen();
   const pill = getRecordSearchPill();
 
+  captureRecordKeyboardBaseline();
+  recordKeyboardHeldOffset = 0;
   if (screen) screen.classList.add('record-search-open');
   if (pill) pill.classList.add('active');
   syncRecordSearchQueryState();
@@ -65,6 +93,7 @@ function closeSearch(event) {
     try { input.blur(); } catch(err) {}
   }
 
+  resetRecordKeyboardTracking();
   document.documentElement.style.setProperty('--record-keyboard-offset', '0px');
   loadRecords('');
 }
@@ -73,11 +102,11 @@ async function searchRecords() {
   const input = getRecordSearchInput();
   const name = input ? input.value.trim() : '';
 
-  if (!isRecordSearchOpen()) {
-    await loadRecords('');
+  if (typeof window.refreshCurrentStudentRows === 'function') {
+    window.refreshCurrentStudentRows();
     return;
   }
-  if (!name) {
+  if (!isRecordSearchOpen()) {
     await loadRecords('');
     return;
   }
@@ -93,9 +122,9 @@ function restoreRecordSearchIfKeyboardClosed() {
   const suppressRestore = Date.now() < suppressUntil;
 
   if (keyboardClosed && !inputFocused) {
+    resetRecordKeyboardTracking();
     document.documentElement.style.setProperty('--record-keyboard-offset', '0px');
-    if (suppressRestore) return;
-    closeSearch();
+    return;
   }
 }
 function restoreRecordSearchAfterAppReturn() {
@@ -149,7 +178,19 @@ function bindRecordSearchInput() {
     syncRecordSearchQueryState();
     searchRecords();
   });
+  let compositionSearchTimer = null;
+  const flushCompositionSearch = function() {
+    clearTimeout(compositionSearchTimer);
+    compositionSearchTimer = setTimeout(function() {
+      syncRecordSearchQueryState();
+      searchRecords();
+    }, 0);
+  };
+  input.addEventListener('compositionupdate', flushCompositionSearch);
+  input.addEventListener('compositionend', flushCompositionSearch);
   input.addEventListener('focus', function(event) {
+    captureRecordKeyboardBaseline();
+    recordKeyboardHeldOffset = 0;
     if (!isRecordSearchOpen()) {
       setTimeout(function() { openRecordSearchFromInputFallback(event); }, 0);
     }

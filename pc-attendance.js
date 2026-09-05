@@ -128,6 +128,44 @@
     return raw.includes(day);
   }
 
+  function normalizePcAttendanceSearchText(value) {
+    const CHO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+    const JUNG = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
+    const JONG = ['', 'ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+    const text = String(value || '').trim().normalize('NFC').toLowerCase();
+    let out = '';
+    for (const ch of text) {
+      const code = ch.charCodeAt(0);
+      if (code >= 0xAC00 && code <= 0xD7A3) {
+        const index = code - 0xAC00;
+        const cho = Math.floor(index / 588);
+        const jung = Math.floor((index % 588) / 28);
+        const jong = index % 28;
+        out += (CHO[cho] || '') + (JUNG[jung] || '') + (JONG[jong] || '');
+      } else if (code >= 0x1100 && code <= 0x1112) {
+        out += CHO[code - 0x1100] || ch;
+      } else if (code >= 0x1161 && code <= 0x1175) {
+        out += JUNG[code - 0x1161] || ch;
+      } else if (code >= 0x11A8 && code <= 0x11C2) {
+        out += JONG[code - 0x11A7] || ch;
+      } else {
+        out += ch;
+      }
+    }
+    return out.replace(/\s+/g, '');
+  }
+
+  function studentMatchesPcAttendanceSearch(student, query) {
+    const q = String(query || '').trim();
+    if (!q) return true;
+    const name = String(student?.name || '').trim();
+    if (!name) return false;
+    if (name.toLowerCase().includes(q.toLowerCase())) return true;
+    const normalizedName = normalizePcAttendanceSearchText(name);
+    const normalizedQuery = normalizePcAttendanceSearchText(q);
+    return !!normalizedQuery && normalizedName.includes(normalizedQuery);
+  }
+
   function renderContext(elementary, kinder) {
     const app = core();
     const title = document.getElementById('olliPcContextTitle');
@@ -485,8 +523,8 @@
     const previousScrollTop = list.scrollTop;
 
     const query = String(searchValue ?? app.state.searchValues.attendance ?? '').trim();
-    const elementary = app.activeStudents('elementary').filter((student) => studentMatchesDay(student, app.state.attendanceDay) && (!query || String(student.name || '').includes(query)));
-    const kinder = app.activeStudents('kinder').filter((student) => studentMatchesDay(student, app.state.attendanceDay) && (!query || String(student.name || '').includes(query)));
+    const elementary = app.activeStudents('elementary').filter((student) => studentMatchesDay(student, app.state.attendanceDay) && studentMatchesPcAttendanceSearch(student, query));
+    const kinder = app.activeStudents('kinder').filter((student) => studentMatchesDay(student, app.state.attendanceDay) && studentMatchesPcAttendanceSearch(student, query));
     let html = '';
     if (app.state.attendanceDivision === 'all' || app.state.attendanceDivision === 'elementary') {
       try { html += typeof renderElementaryStudentRows === 'function' ? renderElementaryStudentRows(typeof sortStudentsForRecord === 'function' ? sortStudentsForRecord(elementary) : elementary) : ''; }

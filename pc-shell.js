@@ -154,6 +154,51 @@
     if (state.section === 'academy') return feature('OlliPcStudentManagement')?.handleSearch(value);
   }
 
+
+  function syncPcTopSearchVisualViewport() {
+    const input = document.getElementById('olliPcSearch');
+    const topbar = document.getElementById('olliPcTopbar');
+    if (!topbar) return;
+    const viewport = window.visualViewport;
+    if (!viewport || document.activeElement !== input) {
+      topbar.style.removeProperty('top');
+      return;
+    }
+    const offsetTop = Math.max(0, Math.round(Number(viewport.offsetTop || 0)));
+    topbar.style.top = offsetTop + 'px';
+  }
+
+  function bindPcTopSearchStability() {
+    const input = document.getElementById('olliPcSearch');
+    if (!input || input.dataset.pcSearchStableBound === '1') return;
+    input.dataset.pcSearchStableBound = '1';
+    let compositionTimer = null;
+    const flushCompositionSearch = () => {
+      clearTimeout(compositionTimer);
+      compositionTimer = setTimeout(() => handleTopSearch(input.value), 0);
+    };
+    input.addEventListener('compositionupdate', flushCompositionSearch);
+    input.addEventListener('compositionend', flushCompositionSearch);
+    input.addEventListener('focus', () => {
+      syncPcTopSearchVisualViewport();
+      setTimeout(syncPcTopSearchVisualViewport, 60);
+      setTimeout(syncPcTopSearchVisualViewport, 180);
+      setTimeout(syncPcTopSearchVisualViewport, 320);
+    });
+    input.addEventListener('blur', () => {
+      setTimeout(syncPcTopSearchVisualViewport, 80);
+      setTimeout(syncPcTopSearchVisualViewport, 260);
+    });
+    if (window.visualViewport && !window.__olliPcTopSearchViewportBound) {
+      window.__olliPcTopSearchViewportBound = true;
+      window.visualViewport.addEventListener('resize', syncPcTopSearchVisualViewport);
+      window.visualViewport.addEventListener('scroll', syncPcTopSearchVisualViewport);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', bindPcTopSearchStability);
+  setTimeout(bindPcTopSearchStability, 0);
+
   function visibleMainPage() {
     const ids = ['recordRoomScreen', 'studentMemoScreen', 'kinderChatFeedbackScreen'];
     return ids.find((id) => {
