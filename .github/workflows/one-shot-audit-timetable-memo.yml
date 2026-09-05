@@ -1,25 +1,160 @@
-name: Audit timetable memo/class layout
+name: Apply timetable class and memo updates
 on:
   push:
     paths:
       - '.github/workflows/one-shot-audit-timetable-memo.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
-  audit:
+  patch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect timetable memo SQL history support
+      - name: Patch timetable UI and history
         shell: bash
         run: |
           set -e
-          echo '=== CELL MEMO SQL REFERENCES ==='
-          grep -nEi 'cell_memo|cell memo|시간표 메모|save_cell_memo|schedule_cell' supabase/migrations/*.sql || true
-          echo '=== AUDIT TABLE / TRIGGER EXTENSIONS ==='
-          grep -nEi 'olli_schedule_audit_log|olli_schedule_capture_audit|table_name in|create trigger .*audit' supabase/migrations/*.sql | tail -n 260 || true
-          echo '=== EXECUTE FUNCTION DEFINITIONS ==='
-          grep -n 'create or replace function public.olli_schedule_execute' supabase/migrations/*.sql || true
-          echo '=== HISTORY FUNCTION DEFINITIONS ==='
-          grep -n 'create or replace function public.olli_schedule_history_list' supabase/migrations/*.sql || true
-          grep -n 'create or replace function public.olli_schedule_restore_history' supabase/migrations/*.sql || true
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 match, found {count}')
+              return text.replace(old, new, 1)
+
+          js_path = Path('pc-timetable.js')
+          js = js_path.read_text(encoding='utf-8')
+          old = '''    if (!isClassSplit(division, date.getDay(), time)) {
+              return `<div class="olliTtCell" ${attrs}>${cellContentsHtml(division, date, time, '', memo)}</div>`;
+            }'''
+          new = '''    if (!isClassSplit(division, date.getDay(), time)) {
+              const mergedClassHead = division === 'kinder'
+                ? '<div class="olliTtClassLaneHead olliTtMergedClassHead"><strong>A반</strong></div>'
+                : '';
+              return `<div class="olliTtCell${division === 'kinder' ? ' kinder merged' : ''}" ${attrs}>${mergedClassHead}${cellContentsHtml(division, date, time, '', memo)}</div>`;
+            }'''
+          js = replace_once(js, old, new, 'merged kinder class head')
+          js_path.write_text(js, encoding='utf-8')
+
+          css_path = Path('pc-timetable.css')
+          css = css_path.read_text(encoding='utf-8')
+          css = replace_once(
+              css,
+              '#recordRoomScreen .olliTtClassLanes.kinder { gap: 0; }',
+              '#recordRoomScreen .olliTtClassLanes.kinder { grid-template-columns: 1fr; grid-template-rows: repeat(2, minmax(32px, max-content)); gap: 0; }',
+              'kinder vertical lanes'
+          )
+          css = replace_once(
+              css,
+              '#recordRoomScreen .olliTtClassLane.kinder + .olliTtClassLane.kinder { border-left: 1px solid #dfe4e9; }',
+              '#recordRoomScreen .olliTtClassLane.kinder + .olliTtClassLane.kinder { border-left: 0; border-top: 1px solid #dfe4e9; }',
+              'kinder lane divider'
+          )
+          css = replace_once(
+              css,
+              "#recordRoomScreen .olliTtClassLaneHead strong { color: #697383; font-size: calc(9px * var(--olli-text-scale)); font-weight: 850; }",
+              "#recordRoomScreen .olliTtClassLaneHead strong { color: #697383; font-size: calc(9px * var(--olli-text-scale)); font-weight: 850; }\n#recordRoomScreen .olliTtMergedClassHead { margin-bottom: 5px; padding-bottom: 3px; border-bottom: 1px solid #eadc8a; }",
+              'merged class head style'
+          )
+          css = replace_once(css, '  border: 1px solid #dfe4e9;\n  border-radius: 8px;\n  display: flex;\n  align-items: flex-start;\n  gap: 5px;\n  color: #515965;\n  background: #fff;\n  box-sizing: border-box;\n  text-align: left;\n  font-family: \'Pretendard\', sans-serif;\n  cursor: pointer;\n  box-shadow: 0 1px 3px rgba(18,30,48,.035);\n}\n#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #b9d8f5; background: #fff; box-shadow: 0 2px 7px rgba(18,30,48,.07); }\n#recordRoomScreen .olliTtCellMemoCard span { flex: 0 0 auto; margin-top: 1px; font-size: calc(9px * var(--olli-text-scale)); }\n#recordRoomScreen .olliTtCellMemoCard strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(9px * var(--olli-text-scale)); font-weight: 720; line-height: 1.35; }',
+              '  border: 1px solid #e2cb63;\n  border-radius: 8px;\n  display: flex;\n  align-items: flex-start;\n  gap: 6px;\n  color: #544918;\n  background: #fff3a6;\n  box-sizing: border-box;\n  text-align: left;\n  font-family: \'Pretendard\', sans-serif;\n  cursor: pointer;\n  box-shadow: 0 2px 5px rgba(112,91,14,.10);\n}\n#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #d4b83f; background: #ffed85; box-shadow: 0 3px 8px rgba(112,91,14,.16); }\n#recordRoomScreen .olliTtCellMemoCard span { flex: 0 0 auto; margin-top: 1px; font-size: calc(11px * var(--olli-text-scale)); }\n#recordRoomScreen .olliTtCellMemoCard strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(12px * var(--olli-text-scale)); font-weight: 760; line-height: 1.45; }',
+              'memo post-it style')
+          css = replace_once(
+              css,
+              '.olliTtMemoDeletePreview > div { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(13px * var(--olli-text-scale)); font-weight: 680; line-height: 1.55; }',
+              '.olliTtMemoDeletePreview > div { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(15px * var(--olli-text-scale)); font-weight: 700; line-height: 1.55; }',
+              'memo delete preview text'
+          )
+          css_path.write_text(css, encoding='utf-8')
+
+          history_path = Path('pc-timetable-history.js')
+          h = history_path.read_text(encoding='utf-8')
+          h = replace_once(h, '''  function historyActionLabel(item) {
+            if (item && item.is_restore) return '이전 변경 복구';''', '''  function memoHistoryDetail(item) {
+            const details = Array.isArray(item && item.details) ? item.details : [];
+            return details.find((detail) => detail.table_name === 'olli_schedule_cell_memos') || null;
+          }
+
+          function memoHistoryText(value) {
+            const text = clean(value).replace(/\\s+/g, ' ');
+            if (!text) return '메모 없음';
+            return text.length > 48 ? `${text.slice(0, 48)}…` : text;
+          }
+
+          function historySubjectLabel(item) {
+            const detail = memoHistoryDetail(item);
+            if (!detail) return item && item.student_name || '학생';
+            const data = detail.new_data || detail.old_data || {};
+            return clean(data.division) === 'kinder' ? '유치부 메모' : (clean(data.division) === 'elementary' ? '초등부 메모' : '시간표 메모');
+          }
+
+          function historyActionLabel(item) {
+            if (item && item.is_restore) return '이전 변경 복구';
+            const memoDetail = memoHistoryDetail(item);
+            if (memoDetail) {
+              const oldNote = clean(memoDetail.old_data && memoDetail.old_data.note);
+              const newNote = clean(memoDetail.new_data && memoDetail.new_data.note);
+              if (memoDetail.operation === 'DELETE' || (oldNote && !newNote)) return '메모 삭제';
+              if (memoDetail.operation === 'INSERT' || (!oldNote && newNote)) return '메모 추가';
+              return '메모 수정';
+            }''', 'history memo helpers')
+
+          h = replace_once(h, '''  function historyPoint(data, tableName) {
+            if (!data) return '';
+            if (tableName === 'olli_schedule_enrollments') {''', '''  function historyPoint(data, tableName) {
+            if (!data) return '';
+            if (tableName === 'olli_schedule_cell_memos') {
+              return `${shortDate(data.session_date)} ${timeLabel(data.time_slot)} · ${memoHistoryText(data.note)}`;
+            }
+            if (tableName === 'olli_schedule_enrollments') {''', 'history memo point')
+
+          h = replace_once(h, '''    const makeupChanged = details.find((detail) => detail.table_name === 'olli_schedule_one_time_sessions');
+
+            let before = '';
+            let after = '';
+            if (action === 'move') {''', '''    const makeupChanged = details.find((detail) => detail.table_name === 'olli_schedule_one_time_sessions');
+            const memoChanged = details.find((detail) => detail.table_name === 'olli_schedule_cell_memos');
+
+            let before = '';
+            let after = '';
+            if (memoChanged) {
+              const memoData = memoChanged.new_data || memoChanged.old_data || {};
+              const point = `${shortDate(memoData.session_date)} ${timeLabel(memoData.time_slot)}`;
+              before = memoChanged.old_data ? historyPoint(memoChanged.old_data, memoChanged.table_name) : `${point} · 메모 없음`;
+              after = memoChanged.new_data ? historyPoint(memoChanged.new_data, memoChanged.table_name) : `${point} · 메모 삭제`;
+            } else if (action === 'move') {''', 'history memo comparison')
+
+          h = replace_once(h, '''    const canRestore = !!item.can_restore && !item.is_restore && !restored;
+            return `<article class="olliTtHistoryItem ${restored ? 'restored' : ''} ${item.is_restore ? 'restoreRecord' : ''}">`
+              + `<div class="olliTtHistoryItemTop"><div><span class="olliTtHistoryAction">${esc(historyActionLabel(item))}</span><strong>${esc(item.student_name || '학생')}</strong></div><time>${esc(historyDateTime(item.created_at))}</time></div>`''', '''    const canRestore = !!item.can_restore && !item.is_restore && !restored && !memoHistoryDetail(item);
+            return `<article class="olliTtHistoryItem ${restored ? 'restored' : ''} ${item.is_restore ? 'restoreRecord' : ''}">`
+              + `<div class="olliTtHistoryItemTop"><div><span class="olliTtHistoryAction">${esc(historyActionLabel(item))}</span><strong>${esc(historySubjectLabel(item))}</strong></div><time>${esc(historyDateTime(item.created_at))}</time></div>`''', 'history memo subject')
+
+          h = replace_once(h, '''      + `<div class="olliTtRestoreTarget"><span>${esc(historyActionLabel(item))}</span><strong>${esc(item.student_name || '학생')}</strong><div><b>${esc(comparison.after)}</b><i aria-hidden="true">→</i><b>${esc(comparison.before)}</b></div></div>`''', '''      + `<div class="olliTtRestoreTarget"><span>${esc(historyActionLabel(item))}</span><strong>${esc(historySubjectLabel(item))}</strong><div><b>${esc(comparison.after)}</b><i aria-hidden="true">→</i><b>${esc(comparison.before)}</b></div></div>`''', 'restore subject')
+          history_path.write_text(h, encoding='utf-8')
+          PY
+
+      - name: Verify timetable changes
+        shell: bash
+        run: |
+          set -e
+          node --check pc-timetable.js
+          node --check pc-timetable-history.js
+          grep -q 'olliTtMergedClassHead' pc-timetable.js
+          grep -q 'grid-template-rows: repeat(2' pc-timetable.css
+          grep -q 'background: #fff3a6' pc-timetable.css
+          grep -q "return '메모 삭제'" pc-timetable-history.js
+          grep -q 'olli_schedule_cell_memos' pc-timetable-history.js
+          echo 'timetable patch checks passed'
+
+      - name: Commit patch and remove temporary workflow
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f .github/workflows/one-shot-audit-timetable-memo.yml
+          git add pc-timetable.js pc-timetable.css pc-timetable-history.js
+          git commit -m 'Update kindergarten timetable and memo history UI'
+          git push
