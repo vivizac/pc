@@ -33,6 +33,8 @@ body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout #recordList::
 }
 .pcAttendanceRosterTitle{font-size:18px;font-weight:880;letter-spacing:-.045em;color:#15171a;}
 .pcAttendanceRosterHead>span{display:inline-flex;align-items:center;justify-content:center;min-width:48px;height:30px;padding:0 10px;border-radius:999px;background:#f2f4f7;color:#747b85;font-size:11px;font-weight:820;box-sizing:border-box;}
+.pcAttendanceRosterHead>span.pcAttendanceRosterDivision.elementary{background:#eaf4ff;color:#1687ff;}
+.pcAttendanceRosterHead>span.pcAttendanceRosterDivision.kinder{background:#ffe8f0;color:#e85b8d;}
 body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .recordStatusSection{margin-top:12px;}
 
 /* 오른쪽 관찰기록 카드 */

@@ -138,7 +138,6 @@
     ).join('');
     title.textContent = '빠른 보기';
     body.innerHTML =
-      '<button class="olliPcQuickBtn '+(app.state.attendanceDivision === 'all' ? 'active' : '')+'" onclick="pcFilterAttendanceDivision(\'all\')"><span>전체</span><span>'+(elementary.length + kinder.length)+'</span></button>'+
       '<button class="olliPcQuickBtn '+(app.state.attendanceDivision === 'elementary' ? 'active' : '')+'" onclick="pcFilterAttendanceDivision(\'elementary\')"><span>초등부</span><span>'+elementary.length+'</span></button>'+
       '<button class="olliPcQuickBtn '+(app.state.attendanceDivision === 'kinder' ? 'active' : '')+'" onclick="pcFilterAttendanceDivision(\'kinder\')"><span>유치부</span><span>'+kinder.length+'</span></button>'+
       '<div class="olliPcContextSectionLabel">요일</div>'+dayButtons;
@@ -396,12 +395,15 @@
     });
   }
 
-  function ensureRosterHeader(count) {
+  function ensureRosterHeader() {
     const list = document.getElementById('recordList');
-    if (!list) return;
+    const app = core();
+    if (!list || !app) return;
+    const division = app.state.attendanceDivision === 'kinder' ? 'kinder' : 'elementary';
+    const label = division === 'kinder' ? '유치부' : '초등부';
     const header = document.createElement('div');
     header.className = 'pcAttendanceRosterHead';
-    header.innerHTML = '<div class="pcAttendanceRosterTitle">학생 명단</div><span>'+count+'명</span>';
+    header.innerHTML = '<div class="pcAttendanceRosterTitle">학생 명단</div><span class="pcAttendanceRosterDivision '+division+'">'+label+'</span>';
     list.insertBefore(header, list.firstChild);
   }
 
@@ -456,7 +458,7 @@
     state.selectedStudentId = '';
     state.loadToken += 1;
     renderEmptyDetail();
-    app.state.attendanceDivision = 'all';
+    app.state.attendanceDivision = 'elementary';
     app.state.attendanceDay = '';
     app.updateRecordLayout();
     app.renderContext();
@@ -494,16 +496,15 @@
       try { html += typeof renderKinderStudentRows === 'function' ? renderKinderStudentRows(typeof sortStudentsForRecord === 'function' ? sortStudentsForRecord(kinder) : kinder) : ''; }
       catch (_) {}
     }
-    const visibleCount = (app.state.attendanceDivision === 'elementary' ? elementary.length : app.state.attendanceDivision === 'kinder' ? kinder.length : elementary.length + kinder.length);
     list.innerHTML = html || '<div class="recordEmpty">조건에 맞는 학생이 없습니다.</div>';
-    ensureRosterHeader(visibleCount);
+    ensureRosterHeader();
     decorateRows();
     list.scrollTop = previousScrollTop;
     app.renderContext();
   }
 
   function filterDivision(division) {
-    core().state.attendanceDivision = division || 'all';
+    core().state.attendanceDivision = division === 'kinder' ? 'kinder' : 'elementary';
     renderList();
   }
 
