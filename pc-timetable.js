@@ -786,7 +786,7 @@
     state.dialog = {
       kind: 'add', division, date: targetDate,
       weekday: Number(dataset.weekday), time, studentId: '',
-      query: '', note: existingMemo, originalNote: existingMemo, addType: 'wait', targetClassGroup, pendingKinderMerge: false
+      query: '', note: existingMemo, originalNote: existingMemo, addType: 'wait', targetClassGroup, pendingKinderMerge: false, pendingKinderSplit: false
     };
     openOverlay();
   }
@@ -797,7 +797,7 @@
     const time = Number(dataset && dataset.time);
     const memo = cellMemoText(division, date, time);
     if (!division || !date || !time || !memo) return;
-    state.dialog = { kind: 'memoManage', division, date, time, memo };
+    state.dialog = { kind: 'memoManage', division, date, time, memo, originalMemo: memo };
     openOverlay();
   }
 
@@ -840,11 +840,12 @@
     const split = isClassSplit(division, weekday, time);
     const selected = classGroupOf({ class_group: selectedGroup });
     const pendingKinderMerge = Boolean(state.dialog && state.dialog.kind === 'add' && state.dialog.division === 'kinder' && state.dialog.pendingKinderMerge);
+    const pendingKinderSplit = Boolean(state.dialog && state.dialog.kind === 'add' && state.dialog.division === 'kinder' && state.dialog.pendingKinderSplit);
 
     if (division === 'kinder' && includeKinderLayoutControl) {
       if (!split) {
         return '<div class="olliTtField"><div class="olliTtFieldHead"><span>수업 반</span><small>현재 A반·B반을 합반으로 운영하고 있습니다.</small></div>'
-          + '<button type="button" class="olliTtSplitClassBtn" data-tt-split-kinder-class>클래스 분반</button></div>';
+          + `<button type="button" class="olliTtSplitClassBtn ${pendingKinderSplit ? 'active' : ''}" data-tt-split-kinder-class>${pendingKinderSplit ? '클래스 분반 선택됨' : '클래스 분반'}</button></div>`;
       }
       return '<div class="olliTtField"><div class="olliTtFieldHead"><span>수업 반</span><small>반을 선택하거나 두 반을 합반할 수 있습니다.</small></div>'
         + '<div class="olliTtClassChoiceGrid kinderLayout">'
@@ -930,8 +931,8 @@
     const selected = studentById(dialog.studentId);
     const note = clean(dialog.note);
     const hadMemo = Boolean(clean(dialog.originalNote));
-    const canRegister = Boolean(selected || note || hadMemo || dialog.pendingKinderMerge);
-    const primaryLabel = dialog.pendingKinderMerge ? '등록' : (selected ? '등록' : (note ? '메모 저장' : (hadMemo ? '메모 삭제' : '등록')));
+    const canRegister = Boolean(selected || note || hadMemo || dialog.pendingKinderMerge || dialog.pendingKinderSplit);
+    const primaryLabel = (dialog.pendingKinderMerge || dialog.pendingKinderSplit) ? '등록' : (selected ? '등록' : (note ? '메모 저장' : (hadMemo ? '메모 삭제' : '등록')));
     return dialogHead('+', '이 시간에 학생 추가', '')
       + '<div class="olliTtDialogBody">'
       + `<label class="olliTtAddMemo"><span>메모</span><textarea data-tt-add-note maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.note)}</textarea></label>`
@@ -950,11 +951,11 @@
   function memoManageDialogHtml(dialog) {
     const date = parseDate(dialog.date);
     const day = weekdayLabel(date.getDay());
-    return dialogHead('📝', '메모 삭제', `${koreanDate(date, true)} ${day}요일 · ${timeLabel(dialog.time)}`)
+    return dialogHead('📝', '메모 관리', `${koreanDate(date, true)} ${day}요일 · ${timeLabel(dialog.time)}`)
       + '<div class="olliTtDialogBody">'
-      + `<div class="olliTtMemoDeletePreview"><span>현재 메모</span><div>${esc(dialog.memo)}</div></div>`
-      + '<div class="olliTtStatusNotice">메모를 삭제하면 이 시간의 수업 설정 팝업에 저장된 메모 내용도 함께 지워집니다.</div>'
-      + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary danger" data-tt-delete-memo>메모 삭제</button></div></div>';
+      + `<label class="olliTtAddMemo"><span>메모</span><textarea data-tt-memo-edit maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.memo)}</textarea></label>`
+      + '<div class="olliTtStatusNotice">메모 내용을 수정한 뒤 저장하거나, 더 이상 필요하지 않으면 삭제할 수 있습니다.</div>'
+      + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-save-memo>저장</button><button type="button" class="olliTtDialogPrimary danger" data-tt-delete-memo>메모 삭제</button></div></div>';
   }
 
   function waitDialogHtml(dialog) {
@@ -1140,7 +1141,7 @@
       if (student && !isClassSplit(divisionOf(student), state.dialog.targetWeekday, state.dialog.targetTime)) state.dialog.targetClassGroup = 'A';
       renderDialog();
     }));
-    dialog.querySelectorAll('[data-tt-target-class]').forEach((button) => button.addEventListener('click', () => { state.dialog.targetClassGroup = button.dataset.ttTargetClass; if (state.dialog.kind === 'add') state.dialog.pendingKinderMerge = false; renderDialog(); }));
+    dialog.querySelectorAll('[data-tt-target-class]').forEach((button) => button.addEventListener('click', () => { state.dialog.targetClassGroup = button.dataset.ttTargetClass; if (state.dialog.kind === 'add') { state.dialog.pendingKinderMerge = false; state.dialog.pendingKinderSplit = false; } renderDialog(); }));
     const effective = dialog.querySelector('[data-tt-effective-date]');
     if (effective) effective.addEventListener('change', () => {
       let selectedDate = parseDate(effective.value || todayKey());
@@ -1172,8 +1173,9 @@
         const hasNote = Boolean(clean(state.dialog.note));
         const hadMemo = Boolean(clean(state.dialog.originalNote));
         const pendingKinderMerge = Boolean(state.dialog.pendingKinderMerge);
-        saveButton.disabled = !(hasSelectedStudent || hasNote || hadMemo || pendingKinderMerge);
-        saveButton.textContent = pendingKinderMerge ? '등록' : (hasSelectedStudent ? '등록' : (hasNote ? '메모 저장' : (hadMemo ? '메모 삭제' : '등록')));
+        const pendingKinderSplit = Boolean(state.dialog.pendingKinderSplit);
+        saveButton.disabled = !(hasSelectedStudent || hasNote || hadMemo || pendingKinderMerge || pendingKinderSplit);
+        saveButton.textContent = (pendingKinderMerge || pendingKinderSplit) ? '등록' : (hasSelectedStudent ? '등록' : (hasNote ? '메모 저장' : (hadMemo ? '메모 삭제' : '등록')));
       }
     });
     bindImeSafeSearch(
@@ -1193,6 +1195,10 @@
     if (waitDate) waitDate.addEventListener('change', () => { state.dialog.effectiveDate = waitDate.value || todayKey(); renderDialog(); });
     const saveMoveButton = dialog.querySelector('[data-tt-save-move]');
     if (saveMoveButton) saveMoveButton.addEventListener('click', saveMove);
+    const memoEdit = dialog.querySelector('[data-tt-memo-edit]');
+    if (memoEdit) memoEdit.addEventListener('input', () => { if (state.dialog && state.dialog.kind === 'memoManage') state.dialog.memo = memoEdit.value; });
+    const saveMemoButton = dialog.querySelector('[data-tt-save-memo]');
+    if (saveMemoButton) saveMemoButton.addEventListener('click', saveManagedMemo);
     const deleteMemoButton = dialog.querySelector('[data-tt-delete-memo]');
     if (deleteMemoButton) deleteMemoButton.addEventListener('click', deleteCellMemo);
     const saveAddButton = dialog.querySelector('[data-tt-save-add]');
@@ -1367,16 +1373,17 @@
   async function splitKinderClass() {
     const dialog = state.dialog;
     if (!dialog || dialog.kind !== 'add' || dialog.division !== 'kinder') return;
-    if (!confirm(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 유치부 수업을 A반·B반으로 다시 분반할까요?`)) return;
     dialog.targetClassGroup = 'A';
-    const result = await withOpenDialogSaving(() => service.splitKinderClass(dialog.weekday, dialog.time));
-    if (result) notify(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 유치부 수업을 A반·B반으로 분반했어요.`);
+    dialog.pendingKinderMerge = false;
+    dialog.pendingKinderSplit = true;
+    renderDialog();
   }
 
   async function mergeKinderClass() {
     const dialog = state.dialog;
     if (!dialog || dialog.kind !== 'add' || dialog.division !== 'kinder') return;
     dialog.targetClassGroup = 'A';
+    dialog.pendingKinderSplit = false;
     dialog.pendingKinderMerge = true;
     renderDialog();
   }
@@ -1384,6 +1391,18 @@
   async function persistDialogCellMemo(dialog) {
     if (!dialog || dialog.kind !== 'add') return null;
     return saveCellMemoText(dialog.division, dialog.date, dialog.time, dialog.note);
+  }
+
+  async function saveManagedMemo() {
+    const dialog = state.dialog;
+    if (!dialog || dialog.kind !== 'memoManage') return;
+    const memo = clean(dialog.memo);
+    if (!memo) {
+      alert('메모 내용을 입력해 주세요. 삭제하려면 메모 삭제 버튼을 이용해 주세요.');
+      return;
+    }
+    const result = await withSaving(() => saveCellMemoText(dialog.division, dialog.date, dialog.time, dialog.memo));
+    if (result) notify(memo === clean(dialog.originalMemo) ? '메모를 저장했어요.' : '메모 수정 내용을 저장했어요.');
   }
 
   async function deleteCellMemo() {
@@ -1400,16 +1419,19 @@
     const note = clean(dialog.note);
     const hadMemo = Boolean(clean(dialog.originalNote));
     const pendingKinderMerge = Boolean(dialog.pendingKinderMerge && dialog.division === 'kinder');
-    if (!hasStudent && !note && !hadMemo && !pendingKinderMerge) return;
+    const pendingKinderSplit = Boolean(dialog.pendingKinderSplit && dialog.division === 'kinder');
+    if (!hasStudent && !note && !hadMemo && !pendingKinderMerge && !pendingKinderSplit) return;
 
     if (!hasStudent) {
       const result = await withSaving(async () => {
         if (pendingKinderMerge) await service.mergeKinderClass(dialog.weekday, dialog.time);
+        if (pendingKinderSplit) await service.splitKinderClass(dialog.weekday, dialog.time);
         if (note || hadMemo) await persistDialogCellMemo(dialog);
-        return { merged: pendingKinderMerge, memoChanged: note || hadMemo };
+        return { merged: pendingKinderMerge, split: pendingKinderSplit, memoChanged: note || hadMemo };
       });
       if (result) {
         if (pendingKinderMerge) notify(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 유치부 수업을 합반했어요.`);
+        else if (pendingKinderSplit) notify(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 유치부 수업을 A반·B반으로 분반했어요.`);
         else notify(note ? '시간표 메모를 저장했어요.' : '시간표 메모를 삭제했어요.');
       }
       return;
@@ -1422,6 +1444,7 @@
 
     const combined = await withSaving(async () => {
       if (pendingKinderMerge) await service.mergeKinderClass(dialog.weekday, dialog.time);
+      if (pendingKinderSplit) await service.splitKinderClass(dialog.weekday, dialog.time);
       const actionResult = dialog.addType === 'makeup'
         ? await service.addMakeup(dialog.studentId, dialog.date, dialog.time, note, dialog.targetClassGroup)
         : await service.addWaitlist({

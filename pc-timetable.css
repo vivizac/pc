@@ -154,20 +154,20 @@
   min-width: 0;
   min-height: 32px;
   padding: 7px 8px;
-  border: 1px solid #e2cb63;
+  border: 1px solid #bfdcf3;
   border-radius: 8px;
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  color: #544918;
-  background: #fff3a6;
+  color: #35566f;
+  background: #eaf5ff;
   box-sizing: border-box;
   text-align: left;
   font-family: 'Pretendard', sans-serif;
   cursor: pointer;
-  box-shadow: 0 2px 5px rgba(112,91,14,.10);
+  box-shadow: 0 2px 5px rgba(68,121,160,.10);
 }
-#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #d4b83f; background: #ffed85; box-shadow: 0 3px 8px rgba(112,91,14,.16); }
+#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #a9cfea; background: #dff0ff; box-shadow: 0 3px 8px rgba(68,121,160,.16); }
 #recordRoomScreen .olliTtCellMemoCard span { flex: 0 0 auto; margin-top: 1px; font-size: calc(11px * var(--olli-text-scale)); }
 #recordRoomScreen .olliTtCellMemoCard strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(12px * var(--olli-text-scale)); font-weight: 760; line-height: 1.45; }
 #recordRoomScreen .olliTtStudent {
@@ -202,7 +202,7 @@
 #recordRoomScreen .olliTtStudentMore { width: 23px; min-width: 23px; padding: 0 3px 1px 0; border: 0; color: #b4bac2; background: transparent; font: 500 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 #recordRoomScreen .olliTtStudentMore:hover { color: #7f8792; }
 #recordRoomScreen .olliTtStudent.scheduled { grid-column: 1 / -1; }
-#recordRoomScreen .olliTtStudent.regular.elementary { border-color: #f0dd8b; background: #fff3c6; }
+#recordRoomScreen .olliTtStudent.regular.elementary { border-color: #bfdcf3; background: #eaf5ff; }
 #recordRoomScreen .olliTtStudent.regular.kinder { border-color: #f5c7d4; background: #ffe4eb; }
 #recordRoomScreen .olliTtStudent.wait { border: 1px dashed #c8bceb; color: #8373ac; background: #f8f6ff; }
 #recordRoomScreen .olliTtStudent.makeup { border-color: #73b9a5; color: #267763; background: #e5f6f0; }
