@@ -68,6 +68,21 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 
 이 7개 파일은 기존 `olli-auth-core.js`의 실행 순서를 그대로 보존한 classic script 분리다. 로그인 화면 바로 뒤에서 표기된 순서대로 동기 로드하며 임의로 `defer` 처리하지 않는다.
 
+## `index.html` 대형 인라인 코드 분리
+
+`index.html`에는 화면 조립에 필요한 DOM은 남기되, 큰 CSS/JavaScript 구현은 외부 파일이 담당한다. 아래 파일은 기존 인라인 블록의 내용과 실행 위치를 그대로 보존해 이동한 것이므로 로드 위치를 임의로 바꾸지 않는다.
+
+- `olli-base.css`: 공통 초기화와 기본 화면 스타일.
+- `olli-common-components.css`: 모달·버튼·공통 컴포넌트 스타일.
+- `olli-responsive.css`: 좁은 PC 창/터치 환경까지 포함하는 반응형 보정. 모바일 전용 코드로 간주해 삭제하지 않는다.
+- `olli-settings-account-runtime.js`: 설정 프로필·선생님 역할·계정 로그아웃 연결.
+- `olli-record-sort-student-ui.js`: 기록 정렬과 학생/담임 선택 UI 보정.
+- `olli-feedback-registration-runtime.js`: 1분 피드백의 등록 학생 검증과 동명이인 선택 연결.
+- `olli-student-bulk-edit-runtime.js`: 학생정보 일괄 수정 문서 파싱/적용.
+- `olli-student-schedule-runtime.js`: 학생정보 수동 저장과 요일별 시간 편집.
+- `olli-attendance-policy-runtime.js`: 출결/보강 정책과 계산 시작일 처리.
+- `olli-attendance-timetable-bridge.js`: 출석부 명단/시간표 전환과 시간표 이동 연결.
+
 ## 공통 연결 원칙
 
 - `pc-shell.js`는 현재 메뉴와 공통 검색값을 보관하고 각 기능 모듈의 `open`, `renderContext`를 호출한다.

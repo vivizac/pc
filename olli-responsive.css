@@ -1,0 +1,2936 @@
+
+@media (max-width: 430px) {
+}
+
+/* 2026-04-23 추가 수정: 유치부 관찰노트 전용 페이지 + memo 박스 확장 + 부모박스 보강 */
+  width: 100%;
+  max-width: 860px;
+  height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  overflow: hidden;
+}
+  flex-shrink: 0;
+}
+  max-width: calc(100% - 174px) ;
+}
+  cursor: pointer;
+}
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 12px 16px 24px ;
+  display: flex ;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+  border: 1px solid #ededed ;
+  box-shadow: none ;
+}
+  flex: 1 1 auto ;
+  min-height: 220px;
+  height: auto ;
+}
+
+
+/* 유치부 관찰노트 전용 페이지: 상단 버튼/이름/학생정보 아이콘 */
+  background: #FEFEFE ;
+}
+  height: 66px ;
+  min-height: 66px ;
+  padding: 18px 16px 8px ;
+  display: flex ;
+  align-items: center ;
+  justify-content: space-between ;
+  gap: 8px ;
+  background: #FEFEFE ;
+}
+  display: flex ;
+  align-items: center ;
+  gap: 8px ;
+  min-width: 0 ;
+}
+  flex: 1 1 auto ;
+  max-width: none ;
+}
+  flex: 0 0 auto ;
+}
+  width: 46px ;
+  min-width: 46px ;
+  height: 46px ;
+  border: 1px solid rgba(255,255,255,0.96) ;
+  border-radius: 999px ;
+  background:#fff ;
+  color: #111 ;
+  display: inline-flex ;
+  align-items: center ;
+  justify-content: center ;
+  padding: 0 ;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.032) ;
+  backdrop-filter: blur(20px) saturate(1.18);
+  -webkit-backdrop-filter: blur(20px) saturate(1.18);
+  cursor: pointer ;
+  font-family: inherit ;
+  flex-shrink: 0 ;
+}
+  width: 27px ;
+  height: 27px ;
+  stroke: currentColor ;
+  fill: none ;
+  stroke-width: 1.85 ;
+  stroke-linecap: round ;
+  stroke-linejoin: round ;
+}
+  height: 46px ;
+  min-width: 0 ;
+  max-width: 100% ;
+  padding: 0 14px ;
+  border: 1px solid #eeeeee ;
+  border-radius: 999px ;
+  background: #ffffff ;
+  box-shadow: none ;
+  display: inline-flex ;
+  align-items: center ;
+  justify-content: flex-start ;
+  gap: 8px ;
+  flex: 1 1 auto ;
+}
+  color: #0A84FF ;
+  font-weight: 700 ;
+}
+  display: inline-flex;
+  width: 12px ;
+  height: 12px ;
+  min-width: 12px ;
+  border-radius: 50% ;
+  border: 1.5px solid #5A96FF ;
+  background: #5A96FF ;
+  flex-shrink: 0 ;
+}
+  color: #111 ;
+  font-size: calc(19px * var(--olli-text-scale)) ;
+  font-weight: 800 ;
+  line-height: 1 ;
+  letter-spacing: 1.6px ;
+  transform: translateY(-2px) ;
+}
+  background: #FEFEFE ;
+}
+@media (max-width: 430px) {
+}
+
+
+
+  flex: 0 1 auto ;
+  width: auto ;
+  min-width: 0 ;
+  max-width: 150px ;
+  height: var(--vivizac-top-h) ;
+  min-height: var(--vivizac-top-h) ;
+  padding: 0 14px ;
+  border-radius: 999px ;
+  background:#fff ;
+  border: 1px solid rgba(255,255,255,0.96) ;
+  box-shadow: var(--vivizac-soft-shadow) ;
+  backdrop-filter: blur(20px) saturate(1.18);
+  -webkit-backdrop-filter: blur(20px) saturate(1.18);
+  box-sizing: border-box ;
+}
+  max-width: 96px ;
+  overflow: hidden ;
+  text-overflow: ellipsis ;
+  white-space: nowrap ;
+  color: #0A84FF ;
+  font-size: calc(14px * var(--olli-text-scale)) ;
+  font-weight: 430 ;
+}
+  display: inline-flex ;
+  width: 12px ;
+  min-width: 12px ;
+  height: 12px ;
+  border-radius: 50% ;
+  border: 1.5px solid #5A96FF ;
+  background: #5A96FF ;
+}
+  background: #FFD88A ;
+  border-color: #FFD88A ;
+}
+  background: #FFCDB8 ;
+  border-color: #FFCDB8 ;
+}
+  background: #FFB8B8 ;
+  border-color: #FFB8B8 ;
+}
+#studentMemoScreen #memoStudentNameBtn{
+  padding-left: 0 ;
+  padding-right: 0 ;
+  min-width: 0 ;
+}
+@media (max-width: 430px) {
+}
+
+
+/* 2026-04-23 root fix: 유치부 자동저장/상태표시/초등부 전환버튼/그룹아이콘 정리 */
+  height: 46px ;
+  min-height: 46px ;
+  border-radius: 999px ;
+  background:#fff ;
+  border: 1px solid rgba(255,255,255,0.96) ;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.032) ;
+  backdrop-filter: blur(20px) saturate(1.18);
+  -webkit-backdrop-filter: blur(20px) saturate(1.18);
+  box-sizing: border-box ;
+}
+  flex: 0 1 auto ;
+  max-width: 150px ;
+  padding: 0 14px ;
+  gap: 8px ;
+}
+  color: #0A84FF ;
+  font-size: calc(14px * var(--olli-text-scale)) ;
+  font-weight: 500 ;
+}
+
+
+:root { --vivizac-header-start-x: 16px; }
+
+
+/* 2026-04-23 cleaned final: 유치부 1분 피드백 부모박스 정렬 단일 기준 */
+
+/* 2026-04-23 기록실 그룹아이콘 최종 기준 정리 */
+
+
+/* 2026-04-23 root-fix: 유치부 키워드/성장카드 부모박스 기준 재정렬 */
+:root {
+  --vivizac-header-start-x: 16px;
+  --vivizac-header-btn-size: 44px;
+}
+
+/* 2026-04-23 root-fix: 기록실 그룹아이콘 위치 단일 구조 */
+#recordRoomScreen .elementaryStudentRow {
+  padding-left: 10px;
+  padding-right: 16px;
+  border-radius: 0;
+}
+
+#recordRoomScreen .kinderStudentRow {
+  padding-left: 10px;
+  padding-right: 16px;
+  border-radius: 0;
+}
+
+#recordRoomScreen .kinderRowInner {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: center;
+}
+
+#recordRoomScreen .elementaryStudentRow .elementaryEmptyCircle,
+#recordRoomScreen .elementaryStudentRow 
+#recordRoomScreen .elementaryStudentRow .selectionCircle,
+#recordRoomScreen .elementaryStudentRow .elementaryGroupIcon,
+#recordRoomScreen .elementaryStudentRow .elementaryDefaultNoGroupIcon,
+#recordRoomScreen .elementaryStudentRow .kinderLeadIcon,
+#recordRoomScreen .kinderStudentRow .kinderLeadIcon {
+  grid-column: 1;
+  justify-self: start;
+  margin-left: 0;
+  transform: none;
+}
+
+#recordRoomScreen .kinderStudentRow .studentTextWrap {
+  grid-column: 2;
+  margin-left: 0;
+  min-width: 0;
+}
+
+#recordRoomScreen .elementaryRowInner {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: center;
+}
+
+#recordRoomScreen .elementaryGroupIcon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  justify-self: start;
+  margin: 0;
+  padding: 0;
+  transform: none;
+  overflow: visible;
+  background: transparent;
+  line-height: 1;
+}
+
+#recordRoomScreen .elementaryGroupIcon img {
+  width: 40px;
+  height: 40px;
+  display: block;
+  object-fit: contain;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+#recordRoomScreen .elementaryDefaultNoGroupIcon {
+  width: 36px ;
+  height: 36px ;
+  min-width: 36px ;
+  display: inline-flex ;
+  align-items: center ;
+  justify-content: flex-start ;
+  justify-self: start;
+  margin: 0;
+  padding: 0 ;
+  transform: none ;
+  overflow: visible ;
+  background: transparent ;
+  line-height: 1 ;
+}
+#recordRoomScreen .elementaryDefaultNoGroupIcon svg {
+  width: 36px ;
+  height: 35px ;
+  display: block ;
+  overflow: visible ;
+  margin: 0 ;
+  padding: 0 ;
+  background: transparent ;
+  transform: none ;
+}
+
+#recordRoomScreen .elementaryStudentRow .studentTextWrap {
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 2026-04-23 장면카드: 선택된 상태 유지, 뒤집혀도 제자리 */
+
+@media (max-width:430px) {
+}
+
+
+/* 2026-04-23 final fixes */
+
+/* 키워드 버튼 활성 상태 복구 */
+
+/* 유치부 이름 버튼은 표시만 하고 클릭 팝업 없음 */
+  cursor: default ;
+}
+
+/* 출석부 / 기록보드 버튼 조금 더 연하게 */
+#recordRoomScreen .recordUtilityCircle,
+#recordRoomScreen .recordUtilityBtn .recordUtilityCircle {
+  background: #f7f7f7 ;
+}
+
+@media (max-width: 430px) {
+}
+
+/* 페이드 위치 재설정: 상단 버튼이 아니라 라인/구분선 바로 아래 */
+:root {
+  --vivizac-page-rgb: 254, 254, 254;
+  --vivizac-fade-depth: 22px;
+}#studentMemoScreen .memoSubLabelRow {
+  position: sticky;
+  overflow: visible;
+  z-index: 24;
+}
+#studentMemoScreen .memoSubLabelRow::after {
+  content: '' ;
+  position: absolute ;
+  left: 0 ;
+  right: 0 ;
+  bottom: calc(-1 * var(--vivizac-fade-depth)) ;
+  height: var(--vivizac-fade-depth) ;
+  pointer-events: none ;
+  z-index: 2 ;
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--vivizac-page-rgb), 1) 0%,
+    rgba(var(--vivizac-page-rgb), .88) 42%,
+    rgba(var(--vivizac-page-rgb), .54) 74%,
+    rgba(var(--vivizac-page-rgb), 0) 100%
+  ) ;
+}
+
+
+
+/* 2026-04-23: 키워드 버튼 제거 / 장면카드 팝업화 */
+#sceneTagArea { display:none ; }
+
+.sceneCardModalOverlay {
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px 16px;
+  z-index:4000;
+  background:rgba(0,0,0,0.34);
+}
+.sceneCardModalOverlay.show { display:flex; }
+.sceneCardModalCard {
+  width:100%;
+  max-width:560px;
+  max-height:86vh;
+  padding:18px 16px 16px;
+  border-radius:24px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.sceneCardModalHeader {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+.sceneCardModalTitle {
+  font-size:calc(20px * var(--olli-text-scale));
+  font-weight:700;
+  color:#111;
+  letter-spacing:-0.02em;
+}
+.sceneCardModalCloseBtn {
+  width:38px;
+  height:38px;
+  border:none;
+  border-radius:999px;
+  background:#f3f3f3;
+  color:#666;
+  font-size:calc(24px * var(--olli-text-scale));
+  line-height:1;
+  cursor:pointer;
+}
+.sceneCardModalBody {
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:2px 2px 6px;
+}
+.sceneCardModalBody .sceneGrid {
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0,1fr));
+  gap:10px;
+  padding:0;
+}
+.sceneCardModalBody .sceneCardSlot {
+  position:relative;
+  min-height:122px;
+}
+.sceneCardModalBody .sceneCard {
+  width:100%;
+  min-height:122px;
+  height:100%;
+  border:1px solid #eeeeee;
+  border-radius:22px;
+  background:#fff;
+  padding:12px 10px;
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  cursor:pointer;
+  transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+  font-family:inherit;
+  box-shadow:none;
+}
+.sceneCardModalBody .sceneCard.selected {
+  transform:translateY(-8px);
+  box-shadow:0 12px 26px rgba(0,0,0,.14), 0 3px 8px rgba(0,0,0,.06);
+}
+.sceneCardModalBody .sceneCardSelectBtn {
+  position:absolute;
+  top:10px;
+  left:10px;
+  z-index:30;
+  width:32px;
+  height:32px;
+  border:none;
+  border-radius:999px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#f3f3f3;
+  color:#666;
+  cursor:pointer;
+  padding:0;
+}
+.sceneCardModalBody .sceneCardSelectBtn .sceneCheckIcon { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2.4; }
+.sceneCardModalBody .sceneCard.selected + .sceneCardSelectBtn { background:#0A84FF; color:#fff; }
+.sceneCardModalBody .sceneCard.flipped {
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  min-height:224px;
+  height:auto;
+  max-height:320px;
+  overflow-y:auto;
+  z-index:20;
+  justify-content:flex-start;
+  align-items:flex-start;
+  text-align:left;
+  padding:16px 14px;
+  transform:translateY(-8px);
+  box-shadow:0 18px 38px rgba(0,0,0,.18), 0 6px 14px rgba(0,0,0,.08);
+}
+.sceneCardModalBody .sceneCardSlot.hasFlipped {
+  z-index:22;
+}
+.sceneCardModalBody .sceneCheckIcon,
+.sceneCardModalBody .sceneIconBox,
+.sceneCardModalBody .sceneTitle,
+.sceneCardModalBody .sceneBackMain,
+.sceneCardModalBody .sceneBackSub,
+.sceneCardModalBody .sceneBackKeywords {
+  pointer-events:none;
+}
+@media (max-width:430px) {
+  .sceneCardModalCard { max-height:88vh; padding:16px 14px 14px; }
+  .sceneCardModalBody .sceneGrid { gap:8px; }
+  .sceneCardModalBody .sceneCardSlot,
+  .sceneCardModalBody .sceneCard { min-height:112px; }
+  .sceneCardModalBody .sceneCard.flipped { min-height:220px; }
+}
+
+
+/* 2026-04-24 clean fix: 장면카드 선택 원/팝업 레이어 */
+.sceneCardModalOverlay { z-index: 5000 ; }
+.sceneCardModalBody .sceneCardSlot.hasFlipped { z-index: 60 ; }
+.sceneCardModalBody .sceneCard.flipped { z-index: 61 ; }
+.sceneCardModalBody .sceneCard.selected + .sceneCardSelectBtn,
+.sceneCardModalBody .sceneCard.flipped + .sceneCardSelectBtn {
+  transform: translateY(-8px) ;
+}
+.sceneCardModalBody .sceneCard.selected .sceneNumber,
+.sceneCardModalBody .sceneCard.flipped .sceneNumber {
+  display: none ;
+}
+
+
+/* 2026-04-24: 초등부 분석 상세 카드/모달 */
+
+/* 2026-04-24 refined: 유치부 관찰노트 카드형 통합 레이아웃 + 깔끔한 아이콘 + 노랑/주황/빨강 단계 */
+  --risk-stage-color: #5A96FF;
+  --risk-stage-soft: #EDF4FF;
+  background: #f5f5f7 ;
+}
+  background: #f5f5f7 ;
+}
+  background: rgba(245,245,247,0.94) ;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+  padding: 12px 16px 30px ;
+  gap: 14px ;
+  background: #f5f5f7 ;
+}
+  width: 100%;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.04);
+  box-shadow: 0 16px 34px rgba(0,0,0,0.07), 0 4px 12px rgba(0,0,0,0.04);
+}
+  border-radius: 28px;
+  padding: 18px;
+}
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+  width: 58px;
+  height: 58px;
+  flex-shrink: 0;
+}
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+  fill: var(--risk-stage-color);
+}
+  font-size: calc(22px * var(--olli-text-scale));
+  line-height: 1.16;
+  letter-spacing: -0.04em;
+  font-weight: 700;
+  color: #111;
+}
+  margin-top: 5px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.55;
+  letter-spacing: -0.02em;
+  color: #767676;
+  font-weight: 500;
+}
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--risk-stage-soft);
+  color: #111;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 700;
+  white-space: nowrap;
+}
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #efefef;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.55;
+  letter-spacing: -0.02em;
+  color: #9a9a9a;
+  font-weight: 500;
+}
+  border-radius: 30px;
+  overflow: hidden;
+}
+  padding: 18px 18px 16px;
+}
+  border-top: 1px solid #ececec;
+}
+  font-size: calc(17px * var(--olli-text-scale));
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 10px;
+}
+  margin-left: 6px;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 600;
+  color: #8f8f8f;
+}
+  margin-bottom: 10px;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.5;
+  color: #999;
+  font-weight: 500;
+}
+  width: 100%;
+  min-height: 76px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  color: #111;
+  font-size: calc(14px * var(--olli-text-scale));
+  line-height: 1.7;
+  font-weight: 500;
+}
+  color: #b8b8b8;
+}
+  min-height: 230px ;
+}
+  padding-top: 20px;
+  padding-bottom: 16px;
+}
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #efefef;
+}
+@media (max-width: 430px) {
+    padding-left: 12px ;
+    padding-right: 12px ;
+    padding-bottom: 24px;
+  }
+    padding: 17px;
+    border-radius: 26px;
+  }
+    border-radius: 28px;
+  }
+    padding-top: 18px;
+  }
+    padding: 17px 16px 15px;
+  }
+    align-items: flex-start;
+  }
+    width: 54px;
+    height: 54px;
+  }
+    font-size: calc(21px * var(--olli-text-scale));
+  }
+}
+
+
+
+  background: #f7f7f5 ;
+}
+  background: rgba(247,247,245,0.94) ;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  display: block ;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #f7f7f5 ;
+}
+  width: 100%;
+  min-height: 100%;
+  padding: 18px 18px 42px;
+  background: #f7f7f5;
+  color: #222;
+  font-family: -apple-system, BlinkMacSystemFont, "Pretendard", sans-serif;
+}
+  margin: 0;
+  font-size: calc(24px * var(--olli-text-scale));
+  font-weight: 750;
+  letter-spacing: -0.6px;
+}
+  margin: 7px 0 18px;
+  font-size: calc(13px * var(--olli-text-scale));
+  color: #8b8b8b;
+}
+  background: #fff;
+  border-radius: 28px;
+  padding: 22px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.055);
+  margin-bottom: 16px;
+}
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+  font-size: calc(13px * var(--olli-text-scale));
+  color: #999;
+}
+  font-size: calc(13px * var(--olli-text-scale));
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+  display: flex;
+  gap: 10px;
+  margin: 23px 0 18px;
+}
+  width: 33px;
+  height: 33px;
+  border-radius: 50%;
+  background: #e7e7e7;
+}
+  box-shadow: inset 0 -2px 4px rgba(0,0,0,0.08);
+}
+  margin: 0;
+  font-size: calc(14.5px * var(--olli-text-scale));
+  line-height: 1.65;
+  letter-spacing: -0.25px;
+}
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+  display: flex;
+  gap: 14px;
+  background: #fff;
+  border-radius: 23px;
+  padding: 17px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+}
+  font-size: calc(17px * var(--olli-text-scale));
+  font-weight: 700;
+  min-width: 32px;
+  letter-spacing: -0.3px;
+}
+  border-left: 1px solid #eeeeee;
+  padding-left: 13px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+  display: inline-block;
+  font-size: calc(12px * var(--olli-text-scale));
+  color: #aaa;
+  margin-bottom: 8px;
+}
+  opacity: 0.5;
+}
+  color: #c9c9c9 ;
+}
+  width: 100%;
+  min-height: 58px ;
+  height: auto;
+  overflow: hidden ;
+  display: block;
+  border: none ;
+  outline: none ;
+  resize: none;
+  border-radius: 0 ;
+  padding: 0 ;
+  margin: 0 ;
+  background: transparent ;
+  box-shadow: none ;
+  font-size: calc(15px * var(--olli-text-scale)) ;
+  line-height: 1.62 ;
+  letter-spacing: -0.25px;
+  color: #222 ;
+  font-family: inherit;
+}
+  color: #b4b4b4;
+}
+  margin-top: 16px;
+  background: #fff;
+  border-radius: 28px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+}
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+  margin: 0;
+  font-size: calc(17px * var(--olli-text-scale));
+  font-weight: 750;
+  letter-spacing: -0.35px;
+}
+  margin: 5px 0 0;
+  font-size: calc(12.5px * var(--olli-text-scale));
+  color: #9a9a9a;
+  line-height: 1.45;
+}
+  flex-shrink: 0;
+  font-size: calc(12px * var(--olli-text-scale));
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+  background: #fafaf8;
+  border-radius: 20px;
+  padding: 15px;
+  margin-top: 10px;
+  border: 1px solid #eeeeea;
+  overflow: visible;
+}
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 9px;
+  font-size: calc(13px * var(--olli-text-scale));
+  color: #555;
+  font-weight: 650;
+}
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+  width: 100%;
+  min-height: 76px ;
+  height: auto;
+  overflow: hidden ;
+  display: block;
+  border: none ;
+  resize: none;
+  border-radius: 16px ;
+  padding: 2px 2px 6px ;
+  font-size: calc(15px * var(--olli-text-scale)) ;
+  line-height: 1.62 ;
+  background: transparent ;
+  outline: none ;
+  font-family: inherit;
+  color: #222 ;
+  box-shadow: none ;
+  overflow-y: hidden ;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+  color: #b4b4b4;
+}
+  color: #8A6A16;
+  background: #FFF6E1;
+}
+  background: #FFD88A;
+}
+  color: #C18A24;
+}
+  color: #8A6A16;
+  background: #FFF6E1;
+}
+  background: #FFD88A;
+}
+  color: #A45B34;
+  background: #FFF0EA;
+}
+  background: #FFCDB8;
+}
+  color: #C46E3C;
+}
+  color: #A45B34;
+  background: #FFF0EA;
+}
+  background: #FFCDB8;
+}
+  color: #A64040;
+  background: #FFECEC;
+}
+  background: #FFB8B8;
+}
+  color: #C84F4F;
+}
+  color: #A64040;
+  background: #FFECEC;
+}
+  background: #FFB8B8;
+}
+
+
+/* 2026-04-24 fix: 관찰노트 상단바 중앙정렬/학생명 앞 원 삭제/상단 신호기록 제목 삭제 */
+  height: 66px ;
+  min-height: 66px ;
+  padding: 10px 16px ;
+  display: flex ;
+  align-items: center ;
+  justify-content: space-between ;
+  box-sizing: border-box ;
+}
+  height: 46px ;
+  display: flex ;
+  align-items: center ;
+}
+  align-self: center ;
+}
+  display: none ;
+}
+  padding-top: 12px ;
+}
+  display: none ;
+}
+  display: none ;
+}
+
+
+/* 2026-04-25 fix: 텍스트 입력 시 모바일 기본 회색 터치/포커스 하이라이트 제거 */
+.signal-page .signal-record-card,
+.signal-page .signal-record-content,
+.signal-page .director-memo-block,
+.signal-page textarea {
+  -webkit-tap-highlight-color: transparent ;
+}
+.signal-page textarea:focus,
+.signal-page textarea:active {
+  outline: none ;
+  background: transparent ;
+  box-shadow: none ;
+}
+.signal-page .signal-record-card:active,
+.signal-page .signal-record-card:focus,
+.signal-page .signal-record-card:focus-within,
+.signal-page .director-memo-block:active,
+.signal-page .director-memo-block:focus,
+.signal-page .director-memo-block:focus-within {
+  outline: none ;
+}
+.signal-page .signal-record-card.empty:focus-within {
+  opacity: 1 ;
+}
+
+
+/* 2026-04-25: 상단 학생이름 버튼 터치/포커스 회색 효과 제거 */
+  outline: none ;
+  box-shadow: var(--vivizac-soft-shadow) ;
+  background:#fff ;
+  -webkit-tap-highlight-color: transparent ;
+}
+  -webkit-tap-highlight-color: transparent ;
+}
+
+
+/* 2026-04-25 update: 초등부/유치부 학생정보 아이콘을 사람 실루엣 아이콘으로 통일 */
+#studentMemoScreen .memoStudentInfoBtn .memoStudentInfoIcon,
+  width: 24px ;
+  height: 24px ;
+  stroke: currentColor ;
+  fill: none ;
+  stroke-width: 1.9 ;
+  stroke-linecap: round ;
+  stroke-linejoin: round ;
+  display: block ;
+}
+#studentMemoScreen .memoStudentInfoBtn .memoInfoDots,
+  display: none ;
+}
+#studentMemoScreen .memoStudentInfoBtn,
+  -webkit-tap-highlight-color: transparent ;
+}
+#studentMemoScreen .memoStudentInfoBtn:focus,
+#studentMemoScreen .memoStudentInfoBtn:focus-visible,
+#studentMemoScreen .memoStudentInfoBtn:active,
+  outline: none ;
+}
+
+
+
+/* 장면카드 팝업 새 스타일 */
+.sceneCardModalOverlay { background:rgba(17,17,17,0.28) ; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); padding:18px 14px ; z-index:6000 ; }
+.sceneCardModalCard { width:min(580px,100%) ; max-height:min(88vh,900px) ; border-radius:30px ; background:#f7f7f5 ; border:1px solid rgba(0,0,0,0.04); box-shadow:0 28px 60px rgba(0,0,0,0.18),0 8px 18px rgba(0,0,0,0.08) ; padding:14px 14px 12px ; }
+.sceneCardModalHeader { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px ; padding:2px 2px 0; }
+.sceneCardModalHeaderText { display:flex; flex-direction:column; gap:4px; }
+.sceneCardModalTitle { font-size:calc(21px * var(--olli-text-scale)) ; font-weight:780 ; letter-spacing:-0.055em ; color:#111 ; }
+.sceneCardModalCount { font-size:calc(12px * var(--olli-text-scale)); font-weight:650; color:#8f8f8f; }
+.sceneCardModalHeaderActions { display:flex; align-items:center; gap:8px; }
+.sceneCardModalGhostBtn,.sceneCardModalCloseBtn { height:38px; border:none; border-radius:999px; background:#fff; color:#444; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+.sceneCardModalGhostBtn { padding:0 14px; font-size:calc(13px * var(--olli-text-scale)); font-weight:700; }
+.sceneCardModalGhostBtn:disabled { opacity:.42; }
+.sceneCardModalCloseBtn { width:38px; font-size:calc(24px * var(--olli-text-scale)) ; line-height:1; }
+.sceneCardModalBody .sceneGrid { display:grid ; grid-template-columns:repeat(3,minmax(0,1fr)) ; gap:10px ; padding:0 ; }
+.sceneCardModalBody .sceneCardSlot { min-height:124px; }
+.sceneCardModalBody .sceneCard { min-height:124px; border-radius:24px ; border:1px solid #ececea ; background:#fff ; box-shadow:0 6px 16px rgba(0,0,0,0.035) ; padding:12px 10px ; }
+.sceneCardModalBody .sceneCard.selected:not(.flipped) { transform:translateY(-4px) ; background:#111 ; border-color:#111 ; box-shadow:0 16px 32px rgba(0,0,0,0.16),0 4px 10px rgba(0,0,0,0.08) ; }
+.sceneCardModalBody .sceneCard.selected:not(.flipped) * { color:#fff ; }
+.sceneCardModalBody .sceneCard.flipped { min-height:236px; max-height:330px; border-radius:26px ; background:#fff ; color:#111 ; border-color:#111 ; box-shadow:0 20px 40px rgba(0,0,0,0.18),0 8px 14px rgba(0,0,0,0.08) ; padding:16px 14px ; transform:translateY(-4px) ; }
+.sceneCardModalBody .sceneCard.flipped * { color:#111 ; }
+.sceneCardModalBody .sceneCardSelectBtn { top:10px; left:10px; width:32px; height:32px; border-radius:999px; background:#f1f1ef ; color:#5f5f5f ; box-shadow:none ; }
+.sceneCardModalBody .sceneCard.selected + .sceneCardSelectBtn,.sceneCardModalBody .sceneCard.flipped + .sceneCardSelectBtn { background:#111 ; color:#fff ; transform:translateY(-4px) ; }
+.sceneCardModalFooter { display:flex; gap:8px; padding-top:12px; }
+.sceneCardModalFooterBtn { flex:1; height:50px; border:none; border-radius:999px; font-size:calc(15px * var(--olli-text-scale)); font-weight:760; letter-spacing:-0.03em; }
+.sceneCardModalFooterBtn.secondary { background:#ececea; color:#444; }
+.sceneCardModalFooterBtn.primary { background:#111; color:#fff; box-shadow:0 10px 22px rgba(0,0,0,0.16); }
+@media (max-width:430px){ .sceneCardModalBody .sceneGrid{gap:8px;} .sceneCardModalBody .sceneCard,.sceneCardModalBody .sceneCardSlot{min-height:112px;} .sceneCardModalTitle{font-size:calc(19px * var(--olli-text-scale));} }
+
+
+/* 2026-04-25: 유치부 1분 피드백 간소화 */
+/* 하단 피드백 만들기 버튼 위치 조정 */
+
+
+/* 2026-04-25 v15: 1분 피드백 미리보기/실제화면 보정 */
+
+
+/* 2026-04-25 v19: 1분 피드백 안정화 */
+.sceneCardModalOverlay.show {
+  display: flex ;
+}
+
+
+/* 2026-04-25 v19: 화면 정리 유지 */
+
+
+/* 2026-04-25 v20: 본문 9개 장면카드 - 선택 후 재클릭 시 뒷면 팝업 */
+
+
+/* 2026-04-25 v23: 1분 피드백 카드 선택/뒷면 팝업 안정화 */
+@media(max-width:430px) {
+}
+
+
+/* 2026-04-25 v23 layout safety */
+
+
+/* 2026-04-25 v25: 초등부 상단바 복구 + 유치부 위험노트/1분피드백 시작선만 통일 */
+:root {
+  --vivizac-note-header-h: 66px;
+  --vivizac-note-x: 16px;
+  --vivizac-note-btn: 46px;
+  --vivizac-note-gap: 8px;
+  --vivizac-note-content-top: 24px;
+  --vivizac-note-max: 860px;
+}
+
+/* 초등부 상단바: 부모 박스는 화면 전체 폭을 사용하도록 복구 */
+#studentMemoScreen .memoTopBar,
+#studentMemoScreen .memoTopHeader,
+#studentMemoScreen .memoPageTopBar {
+  width: 100% ;
+  max-width: none ;
+  left: 0 ;
+  right: 0 ;
+  margin-left: 0 ;
+  margin-right: 0 ;
+  height: var(--vivizac-note-header-h) ;
+  min-height: var(--vivizac-note-header-h) ;
+  padding-left: var(--vivizac-note-x) ;
+  padding-right: var(--vivizac-note-x) ;
+  box-sizing: border-box ;
+}
+
+/* 초등부 상단바 안쪽 좌우 그룹만 정렬 */
+#studentMemoScreen .memoTopLeft,
+#studentMemoScreen .memoHeaderLeft,
+#studentMemoScreen .memoTopbarLeft {
+  display: inline-flex ;
+  align-items: center ;
+  gap: var(--vivizac-note-gap) ;
+}
+#studentMemoScreen .memoTopRight,
+#studentMemoScreen .memoHeaderRight,
+#studentMemoScreen .memoTopbarRight {
+  display: inline-flex ;
+  align-items: center ;
+  gap: var(--vivizac-note-gap) ;
+}
+
+/* 초등부 첫 콘텐츠 시작선은 통일 대상에서 제외 */
+#studentMemoScreen .memoAnalysisArea,
+#studentMemoScreen .analysisCardArea,
+#studentMemoScreen .memoTodayAnalysisArea,
+#studentMemoScreen .studentAnalysisCardArea {
+  margin-top: revert ;
+}
+
+
+  width: 100% ;
+  max-width: none ;
+  height: var(--vivizac-note-header-h) ;
+  min-height: var(--vivizac-note-header-h) ;
+  padding-left: var(--vivizac-note-x) ;
+  padding-right: var(--vivizac-note-x) ;
+  box-sizing: border-box ;
+  background: rgba(247,247,245,0.94) ;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+  display: inline-flex ;
+  align-items: center ;
+  gap: var(--vivizac-note-gap) ;
+}
+  display: inline-flex ;
+  align-items: center ;
+  gap: var(--vivizac-note-gap) ;
+}
+
+
+  height: var(--vivizac-note-btn) ;
+  min-height: var(--vivizac-note-btn) ;
+  min-width: var(--vivizac-note-btn) ;
+  border-radius: 999px ;
+  display: inline-flex ;
+  align-items: center ;
+  justify-content: center ;
+  box-sizing: border-box ;
+  flex-shrink: 0 ;
+}
+  height: var(--vivizac-note-btn) ;
+  min-height: var(--vivizac-note-btn) ;
+  border-radius: 999px ;
+  display: inline-flex ;
+  align-items: center ;
+  justify-content: center ;
+  box-sizing: border-box ;
+  flex-shrink: 0 ;
+}
+
+/* 1분 피드백: 상단 장면카드 팝업 버튼은 계속 사용하지 않음 */
+
+
+  padding-left: var(--vivizac-note-x) ;
+  padding-right: var(--vivizac-note-x) ;
+}
+
+
+  max-width: var(--vivizac-note-max) ;
+  margin-left: auto ;
+  margin-right: auto ;
+}
+
+/* 하단 버튼 위치 유지 */
+
+@media (max-width: 380px) {
+  :root {
+    --vivizac-note-x: 16px;
+  }
+}
+
+
+/* 2026-04-25 v26: 1분 피드백 본문 부모 박스(oneMinutePage) 구조화 */
+
+
+
+/* oneMinutePage 안쪽에서는 실제 콘텐츠만 담당 */
+
+/* 제목줄은 삭제 상태 유지 */
+
+/* 첫 콘텐츠는 oneMinutePage padding-top으로만 시작 위치를 결정 */
+
+/* 수업 장면 박스와 결과 카드도 같은 본문 기준선 안에서 정렬 */
+
+
+  padding: 12px 18px 42px ;
+}
+
+/* 기존 v25의 1분 피드백 padding-top 보정 무력화 */
+
+/* 작은 화면에서도 양쪽 동일 기준 유지 */
+@media (max-width: 380px) {
+    padding-left: 16px ;
+    padding-right: 16px ;
+  }
+}
+
+
+/* 2026-04-25 v28: 1분 피드백 배경 원래 톤으로 복구 */
+
+
+/* 2026-04-25 v31: 실제 페이지 전환 함수 기반 슬라이드 */
+.pageScreen.vivizac-slide-page {
+  will-change: transform, opacity;
+}
+.pageScreen.vivizac-slide-in {
+  animation: vivizacSlideInFromRight 280ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.pageScreen.vivizac-slide-out {
+  animation: vivizacSlideOutToRight 280ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.pageScreen.vivizac-slide-from-bottom.vivizac-slide-in {
+  animation: vivizacSlideInFromBottom 280ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+@keyframes vivizacSlideInFromRight {
+  from { transform: translateX(100%); opacity: 0.98; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes vivizacSlideOutToRight {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0.98; }
+}
+@keyframes vivizacSlideInFromBottom {
+  from { transform: translateY(100%); opacity: 0.98; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes vivizacSheetInFromBottom {
+  from { transform: translateY(100%); opacity: 0.98; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes vivizacSheetOutToBottom {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(100%); opacity: 0.98; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pageScreen.vivizac-slide-in,
+  .pageScreen.vivizac-slide-out,
+  .analysisSheetPanel,
+  .analysisResultSheetPanel {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+
+/* 2026-04-25 v32: 초등부 오늘의 분석 카드 기본값 복구 */
+#studentMemoScreen .elementaryAnalysisSummaryCardDefault {
+  display: none ;
+}
+
+#studentMemoScreen .elementaryAnalysisSummaryIcon:focus,
+#studentMemoScreen .elementaryAnalysisSummaryIcon:focus-visible,
+#studentMemoScreen .elementaryAnalysisSummaryIcon:active {
+  outline: none ;
+  box-shadow: none ;
+}
+
+
+/* 2026-04-25 v35: 1분 피드백 입력/복사/로딩 UX 수정 */
+.feedbackLoadingOverlay {
+  background: rgba(255,255,255,0.18);
+  backdrop-filter: blur(9px) saturate(1.08);
+  -webkit-backdrop-filter: blur(9px) saturate(1.08);
+  pointer-events: auto;
+}
+.feedbackCardActionBtn.copied {
+  min-width: 48px;
+  background: #111 ;
+  color: #fff ;
+}
+.feedbackCardActionBtn.copied svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+
+/* 2026-04-25 v37: 1분 피드백 결과를 초등부와 동일한 팝업창으로 표시 */
+.oneMinuteFeedbackPopupOverlay {
+  z-index: 120000 ;
+}
+.oneMinuteFeedbackPopupCard .memoFeedbackPopupLabel {
+  color: #999;
+}
+
+
+/* 2026-04-25 v38: 1분 피드백 직접 입력칸 한 줄 확장 */
+
+
+/* 2026-04-25 v39: 기록보드 저장 피드백 학생행/종합버튼/알림 온보딩 정리 */
+.savedFeedbackStudentHead {
+  min-height: 56px;
+  padding-left: 10px;
+  padding-right: 16px;
+}
+.savedFeedbackStudentLeft {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.savedFeedbackStudentLeft .elementaryGroupIcon,
+.savedFeedbackStudentLeft .elementaryDefaultNoGroupIcon,
+.savedFeedbackStudentLeft .kinderLeadIcon,
+.savedFeedbackStudentLeft .elementaryEmptyCircle,
+.savedFeedbackStudentLeft .recordBoardLeadIcon {
+  margin-left: -10px;
+}
+#recordRoomScreen .savedFeedbackStudentHead::after,
+#recordRoomScreen .savedFeedbackStudentBlock.open .savedFeedbackStudentHead::after {
+  content: "" ;
+  display: none ;
+}
+.recordBoardLeadIcon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-shrink: 0;
+  line-height: 1;
+  background: transparent;
+}
+.recordBoardLeadIconSvg {
+  width: 36px;
+  height: 35px;
+  display: block;
+  overflow: visible;
+}
+.recordBoardLeadIcon .recordBoardIconMinus {
+  display: none;
+}
+.recordStudentBlock.open .recordBoardLeadIcon .recordBoardIconPlus {
+  display: none;
+}
+.recordStudentBlock.open .recordBoardLeadIcon .recordBoardIconMinus {
+  display: block;
+}
+.savedFeedbackStudentLeft .studentTextWrap {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 0;
+  overflow: visible;
+}
+.savedFeedbackStudentLeft .recordStudentName {
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 500;
+  letter-spacing: -0.05em;
+}
+.savedFeedbackStudentLeft .studentMetaText {
+  margin-top: 0;
+  font-size: calc(16px * var(--olli-text-scale));
+  line-height: 1.2;
+}
+.recordSummaryBtn {
+  min-width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 999px;
+  background: #f0f0ee;
+  color: #111;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.recordSummaryPopupOverlay {
+  z-index: 130000 ;
+}
+
+
+/* 2026-04-26 v40: 기록실 설정 버튼 + 설정 페이지 */
+.recordSettingsBtn { margin-left: 0; }
+.recordSettingsBtn svg { width: 23px; height: 23px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.recordSettingsBtn svg circle { stroke: currentColor; fill: none; }
+#settingsPageScreen,#settingsDetailScreen{background:#f7f7f5;z-index:90000}
+.settingsPageInner{width:100%;max-width:860px;height:100%;background:#f7f7f5;display:flex;flex-direction:column}
+.settingsHeader{height:66px;min-height:66px;padding:0 18px;display:flex;align-items:center;justify-content:space-between;background:rgba(247,247,245,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:20}
+.settingsHeaderLeft{display:flex;align-items:center;gap:8px}
+.settingsRoundBtn,.settingsTitlePill{height:46px;border:none;border-radius:999px;background:rgba(255,255,255,.88);box-shadow:0 8px 22px rgba(0,0,0,.045);display:inline-flex;align-items:center;justify-content:center;font-family:inherit}
+.settingsRoundBtn{width:46px;color:#111}.settingsRoundBtn svg{width:25px;height:25px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.settingsTitlePill{padding:0 16px;color:#0A84FF;font-size:calc(14px * var(--olli-text-scale));font-weight:760;letter-spacing:-.035em}
+.settingsBody{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 18px 42px}
+.settingsProfileCard{min-height:112px;border-radius:30px;background:#fff;box-shadow:0 14px 34px rgba(0,0,0,.065),0 4px 10px rgba(0,0,0,.025);padding:18px;display:flex;align-items:center;gap:15px;margin-bottom:14px}
+.settingsProfileImage{width:70px;height:70px;border-radius:26px;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:calc(23px * var(--olli-text-scale));font-weight:850;letter-spacing:-.05em;flex-shrink:0;overflow:hidden}
+.settingsProfileInfo{min-width:0;flex:1}.settingsProfileName{font-size:calc(20px * var(--olli-text-scale));font-weight:850;letter-spacing:-.055em;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.settingsProfileEdit{margin-top:5px;font-size:calc(12.5px * var(--olli-text-scale));color:#999;font-weight:650;letter-spacing:-.03em}
+.settingsSection{margin-top:14px}.settingsSectionTitle{padding:0 4px 8px;font-size:calc(13px * var(--olli-text-scale));font-weight:780;color:#8a8a8a;letter-spacing:-.025em}
+.settingsCard{border-radius:28px;background:#fff;box-shadow:0 10px 26px rgba(0,0,0,.045),0 2px 8px rgba(0,0,0,.02);overflow:hidden}
+.settingsRow{width:100%;min-height:58px;padding:13px 15px;display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid #f0f0ee;background:#fff;text-align:left;cursor:pointer}
+.settingsRow:last-child{border-bottom:none}.settingsRowLeft{display:flex;align-items:center;gap:12px;min-width:0;flex:1}
+.settingsRowIcon{width:38px;height:38px;border-radius:15px;background:#f2f2f0;color:#111;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}.settingsRowIcon svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.settingsRowTitle{font-size:calc(15px * var(--olli-text-scale));font-weight:760;letter-spacing:-.045em;line-height:1.35}.settingsRowValue{max-width:128px;font-size:calc(13px * var(--olli-text-scale));color:#777;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+.settingsChevron{width:18px;height:18px;stroke:#aaa;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.settingsBadge,.settingsApprovalBadge,.settingsStatusBadge{height:28px;border-radius:999px;padding:0 10px;display:inline-flex;align-items:center;font-size:calc(12px * var(--olli-text-scale));font-weight:760;white-space:nowrap}.settingsBadge{background:#eff6ff;color:#0A84FF}.settingsBadge.warn,.settingsApprovalBadge,.settingsStatusBadge.waiting{background:#fff4df;color:#d98200}.settingsStatusBadge{background:#eff6ff;color:#0A84FF}.settingsStatusBadge.disabled{background:#f0f0ee;color:#777}
+.settingsToggle{width:48px;height:30px;border-radius:999px;background:#dcdcdc;position:relative;flex-shrink:0}.settingsToggle::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.18);transition:.2s ease}.settingsToggle.on{background:#34C759}.settingsToggle.on::after{left:21px}
+.settingsRow.danger .settingsRowIcon{background:#fff0f0;color:#e64848}.settingsRow.danger .settingsRowTitle{color:#e64848}
+.settingsDetailIntro{border-radius:30px;background:#fff;padding:20px 18px;margin-bottom:14px;box-shadow:0 14px 34px rgba(0,0,0,.06),0 4px 10px rgba(0,0,0,.02)}.settingsDetailTitle{font-size:calc(21px * var(--olli-text-scale));font-weight:850;letter-spacing:-.055em;line-height:1.25}
+.settingsInfoCard,.settingsRoleCard,.settingsRequestCard,.settingsTeacherCard{border-radius:26px;background:#fff;padding:16px;margin-bottom:10px;box-shadow:0 10px 26px rgba(0,0,0,.045)}.settingsInfoHead,.settingsRoleName,.settingsRequestName,.settingsTeacherName{font-size:calc(17px * var(--olli-text-scale));font-weight:850;letter-spacing:-.045em;margin-bottom:9px}.settingsRoleTop,.settingsRequestTop,.settingsTeacherTop{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.settingsInfoList,.settingsRoleList,.settingsRequestMeta,.settingsTeacherMeta{display:grid;gap:8px}.settingsInfoItem,.settingsRoleItem,.settingsRequestMeta div,.settingsTeacherMeta div{font-size:calc(13px * var(--olli-text-scale));color:#333;background:#f7f7f5;border-radius:15px;padding:9px 10px;line-height:1.45}
+.settingsActionGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.settingsActionBtn{height:42px;border:none;border-radius:999px;background:#f0f0ee;color:#111;font-size:calc(13px * var(--olli-text-scale));font-weight:780;font-family:inherit}.settingsActionBtn.primary{background:#111;color:#fff}.settingsActionBtn.red{background:#fff0f0;color:#e64848}.settingsExportBtn{width:100%;height:54px;border:none;border-radius:20px;background:#111;color:#fff;font-size:calc(15px * var(--olli-text-scale));font-weight:850;margin-top:12px;font-family:inherit}.settingsNoteBox{border-radius:22px;background:#fff4df;color:#8a5a00;padding:14px;font-size:calc(13px * var(--olli-text-scale));line-height:1.55;margin-top:10px;letter-spacing:-.025em}.settingsInviteLinkBox{width:100%;min-height:48px;border:none;border-radius:18px;background:#f5f5f3;color:#555;padding:13px 14px;font-size:calc(13px * var(--olli-text-scale));line-height:1.35;word-break:break-all;letter-spacing:-.025em}.settingsTeacherInvitePlainList{display:grid;gap:8px}.settingsTeacherInvitePlainLine{font-size:calc(13px * var(--olli-text-scale));color:#333;line-height:1.45;letter-spacing:-.025em}.settingsTeacherInviteQrCard{display:flex;align-items:center;justify-content:center}.settingsInviteQrBox{display:flex;align-items:center;justify-content:center;border-radius:24px;background:#f7f7f5;padding:16px;margin-top:12px}.settingsInviteQrImage{width:178px;height:178px;border-radius:16px;background:#fff;display:block}.settingsInviteActionGrid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
+.settingsSheetOverlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.18);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:130000;padding:18px 14px}.settingsSheetOverlay.show{display:flex}.settingsSheet{width:min(520px,100%);border-radius:30px;background:#fff;box-shadow:0 28px 70px rgba(0,0,0,.22),0 8px 18px rgba(0,0,0,.08);padding:20px 16px 16px;animation:settingsSheetPop .22s cubic-bezier(.22,.61,.36,1) both}@keyframes settingsSheetPop{from{transform:scale(.96);opacity:.6}to{transform:scale(1);opacity:1}}.settingsSheetTitle{font-size:calc(20px * var(--olli-text-scale));font-weight:850;letter-spacing:-.055em;margin-bottom:6px}.settingsSheetDesc{font-size:calc(13.5px * var(--olli-text-scale));color:#777;line-height:1.55;letter-spacing:-.03em;margin-bottom:16px}.settingsInputGroup{margin-bottom:12px}.settingsInputLabel{font-size:calc(12px * var(--olli-text-scale));font-weight:780;color:#777;margin:0 0 6px 2px}.settingsInput{width:100%;height:50px;border:none;border-radius:18px;background:#f5f5f3;padding:0 14px;font-size:calc(15px * var(--olli-text-scale));color:#111;font-family:inherit}.settingsSheetActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}.settingsSheetBtn{height:46px;border:none;border-radius:999px;background:#f0f0ee;color:#333;font-size:calc(14px * var(--olli-text-scale));font-weight:760;font-family:inherit;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1;padding:0}.settingsSheetBtn.primary{background:#111;color:#fff}.settingsLogoutDangerBox{display:grid;grid-template-columns:1fr;gap:8px;margin-top:14px}.settingsDangerFullBtn{width:100%;height:48px;border:none;border-radius:999px;background:#111;color:#fff;font-size:calc(14px * var(--olli-text-scale));font-weight:760;font-family:inherit;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1;padding:0}.settingsDangerFullBtn.red{background:#b91c1c;color:#fff}.settingsDangerFullBtn.light{background:#f0f0ee;color:#333}
+@media(max-width:380px){.settingsHeader,.settingsBody{padding-left:16px;padding-right:16px}}
+
+
+/* settings clean: remove small group headings and peach note boxes */
+#settingsPageScreen .settingsSectionTitle,
+#settingsDetailScreen .settingsSectionTitle,
+.settingsNoteBox {
+  display: none;
+}
+#settingsPageScreen .settingsSection {
+  margin-top: 12px;
+}
+#settingsPageScreen .settingsSection:first-of-type {
+  margin-top: 0;
+}
+
+/* v40-fix-3: 설정 기능 동작 보강 */
+.settingsProfileImage.editable {
+  cursor: pointer;
+  position: relative;
+}
+.settingsProfileImage.editable::after {
+  content: "+";
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #111;
+  color: #fff;
+  border: 2px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 850;
+}
+.settingsProfileImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.settingsEmptyBox {
+  border-radius: 24px;
+  background: #fff;
+  padding: 18px;
+  font-size: calc(14px * var(--olli-text-scale));
+  color: #777;
+  line-height: 1.55;
+  box-shadow: 0 10px 26px rgba(0,0,0,.045);
+}
+.settingsMiniText {
+  margin-top: 8px;
+  font-size: calc(12px * var(--olli-text-scale));
+  color: #999;
+  line-height: 1.5;
+}
+
+.attendancePhotoUploadBox {
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 1 / 1;
+  border: 1px dashed #d8d8d4;
+  border-radius: 26px;
+  background: #fff;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 10px 26px rgba(0,0,0,.045);
+  margin: 0 auto;
+}
+.attendancePhotoImportTitle {
+  font-size: calc(17px * var(--olli-text-scale));
+  font-weight: 400;
+  letter-spacing: -0.045em;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.attendancePhotoUploadIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 18px;
+  background: #eff6ff;
+  color: #0A84FF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.attendancePhotoUploadIcon svg {
+  width: 25px;
+  height: 25px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.attendancePhotoUploadTitle {
+  color: #111;
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 820;
+  letter-spacing: -0.045em;
+  line-height: 1.35;
+}
+.attendancePhotoUploadDesc {
+  color: #888;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.45;
+  letter-spacing: -0.03em;
+}
+.attendancePhotoPreview {
+  width: 100%;
+  max-height: 58%;
+  border-radius: 20px;
+  object-fit: contain;
+  background: #f7f7f5;
+  margin-top: 8px;
+}
+.attendancePhotoPreviewGrid {
+  width: 100%;
+  max-height: 58%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+.attendancePhotoPreviewThumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 16px;
+  object-fit: cover;
+  background: #f7f7f5;
+}
+.attendancePhotoResultSummary {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #777;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.35;
+}
+.attendancePhotoResultCount {
+  color: #111;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.attendancePhotoCandidateList {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.attendancePhotoCandidateCard {
+  background: #fff;
+  border-radius: 22px;
+  padding: 13px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.045);
+}
+.attendancePhotoCandidateTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.attendancePhotoCandidateCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 800;
+  color: #111;
+}
+.attendancePhotoCandidateCheck input {
+  width: 18px;
+  height: 18px;
+  accent-color: #0A84FF;
+}
+.attendancePhotoCandidateBadge {
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #777;
+  background: #f4f4f2;
+  font-size: calc(11px * var(--olli-text-scale));
+  font-weight: 800;
+  white-space: nowrap;
+}
+.attendancePhotoCandidateBadge.warn {
+  color: #d28b00;
+  background: #fff4d9;
+}
+.attendancePhotoCandidateBadge.dup {
+  color: #e64848;
+  background: #fff0f0;
+}
+.attendancePhotoCandidateGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.attendancePhotoCandidateField {
+  min-width: 0;
+}
+.attendancePhotoCandidateField.full {
+  grid-column: 1 / -1;
+}
+.attendancePhotoCandidateLabel {
+  color: #999;
+  font-size: calc(11px * var(--olli-text-scale));
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+.attendancePhotoCandidateInput,
+.attendancePhotoCandidateSelect {
+  width: 100%;
+  height: 38px;
+  border: none;
+  border-radius: 14px;
+  background: #f6f6f4;
+  color: #111;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-family: inherit;
+  padding: 0 11px;
+  outline: none;
+}
+.attendancePhotoCandidateNote {
+  margin-top: 9px;
+  color: #999;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.45;
+}
+.attendancePhotoStatusBox {
+  margin-top: 12px;
+  border-radius: 18px;
+  background: #f7f7f5;
+  color: #777;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.55;
+  padding: 12px 13px;
+  white-space: pre-wrap;
+}
+.attendancePhotoStatusBox.error {
+  color: #e64848;
+  background: #fff0f0;
+}
+.attendancePhotoActionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.attendancePhotoActionGrid.single {
+  grid-template-columns: 1fr;
+}
+
+
+/* 2026-06-25: 원생관리 - 원생 직접 등록(여러 명 한 번에) */
+.studentBulkImportPanel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.studentBulkImportModeRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.studentBulkImportModeBtn {
+  min-height: 42px;
+  border: none;
+  border-radius: 16px;
+  background: #f1f1ef;
+  color: #555;
+  font-family: inherit;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+}
+.studentBulkImportModeBtn.active {
+  background: #111;
+  color: #fff;
+}
+.studentBulkImportTextarea {
+  width: 100%;
+  min-height: 154px;
+  border: none;
+  border-radius: 22px;
+  background: #f6f6f4;
+  color: #111;
+  padding: 14px;
+  font-size: calc(14px * var(--olli-text-scale));
+  line-height: 1.55;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  white-space: pre-wrap;
+}
+.studentBulkImportTextarea::placeholder {
+  color: #aaa;
+}
+.studentBulkImportGuide {
+  border-radius: 18px;
+  background: #f7f7f5;
+  color: #777;
+  padding: 12px 13px;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.55;
+  letter-spacing: -0.025em;
+}
+.studentBulkImportSectionDivider {
+  height: 1px;
+  background: #eeeeec;
+  margin: 14px 0;
+}
+.studentManagementTabRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.studentManagementTabBtn {
+  min-height: 48px;
+  border: none;
+  border-radius: 18px;
+  background: #f1f1ef;
+  color: #555;
+  font-family: inherit;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  cursor: pointer;
+  padding: 0 8px;
+  word-break: keep-all;
+}
+.studentManagementTabBtn.active {
+  background: #111;
+  color: #fff;
+}
+.studentManagementTabGuide {
+  border-radius: 20px;
+  background: #fff;
+  color: #777;
+  padding: 13px 14px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+  letter-spacing: -0.03em;
+  margin-bottom: 12px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.04);
+}
+.studentBulkCandidateList {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.studentBulkCandidateCard {
+  background: #fff;
+  border-radius: 22px;
+  padding: 13px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.045);
+}
+.studentBulkCandidateTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.studentBulkCandidateCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #111;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 800;
+}
+.studentBulkCandidateCheck input {
+  width: 18px;
+  height: 18px;
+  accent-color: #0A84FF;
+}
+
+.studentBulkCandidateTopRight {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.studentBulkCandidateDeleteBtn {
+  min-height: 26px;
+  border: none;
+  border-radius: 999px;
+  background: #f1f1ef;
+  color: #777;
+  padding: 0 9px;
+  font-family: inherit;
+  font-size: calc(11px * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.studentBulkCandidateDeleteBtn.danger {
+  background: #fff0f0;
+  color: #e64848;
+}
+.existingFeedbackImportBox {
+  width: 100%;
+  border: 1px dashed #d8d8d4;
+  border-radius: 24px;
+  background: #fff;
+  padding: 18px;
+  display: grid;
+  gap: 8px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(0,0,0,.045);
+}
+.existingFeedbackImportIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 18px;
+  background: #eff6ff;
+  color: #0A84FF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+}
+.existingFeedbackImportIcon svg {
+  width: 25px;
+  height: 25px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.existingFeedbackImportTitle {
+  color: #111;
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 820;
+  letter-spacing: -0.045em;
+  line-height: 1.35;
+  word-break: keep-all;
+}
+.existingFeedbackImportDesc {
+  color: #888;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.45;
+  letter-spacing: -0.03em;
+  word-break: keep-all;
+}
+.existingFeedbackPreviewBox {
+  margin-top: 12px;
+  border-radius: 18px;
+  background: #f7f7f5;
+  color: #555;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.55;
+  padding: 12px 13px;
+  white-space: pre-wrap;
+  max-height: 180px;
+  overflow-y: auto;
+  text-align: left;
+}
+.studentBulkCandidateGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.studentBulkCandidateField.full {
+  grid-column: 1 / -1;
+}
+.studentBulkCandidateLabel {
+  margin-bottom: 5px;
+  color: #999;
+  font-size: calc(11px * var(--olli-text-scale));
+  font-weight: 700;
+}
+.studentBulkCandidateInput,
+.studentBulkCandidateSelect {
+  width: 100%;
+  height: 38px;
+  border: none;
+  border-radius: 14px;
+  background: #f6f6f4;
+  color: #111;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-family: inherit;
+  padding: 0 11px;
+  outline: none;
+}
+.studentBulkCandidateEmpty {
+  border-radius: 20px;
+  background: #f7f7f5;
+  color: #999;
+  padding: 14px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+  text-align: center;
+}
+
+.existingFeedbackCandidateTextArea {
+  width: 100%;
+  min-height: 112px;
+  border: none;
+  border-radius: 14px;
+  background: #f6f6f4;
+  color: #111;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.55;
+  font-family: inherit;
+  padding: 11px;
+  outline: none;
+  resize: vertical;
+}
+.existingFeedbackCandidateStudentSelect {
+  width: 100%;
+  height: 38px;
+  border: none;
+  border-radius: 14px;
+  background: #f6f6f4;
+  color: #111;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-family: inherit;
+  padding: 0 11px;
+  outline: none;
+}
+
+
+/* v40-fix-5: 설정 페이지 Supabase 연결 표시 */
+.settingsLoadingText {
+  font-size: calc(13px * var(--olli-text-scale));
+  color: #999;
+  padding: 14px 4px;
+  line-height: 1.5;
+}
+.settingsErrorBox {
+  border-radius: 22px;
+  background: #fff0f0;
+  color: #d33;
+  padding: 14px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.55;
+  margin-bottom: 10px;
+}
+.settingsSuccessBox {
+  border-radius: 22px;
+  background: #effaf3;
+  color: #188a42;
+  padding: 14px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.55;
+  margin-bottom: 10px;
+}
+
+
+/* v40-fix-6: 원장/선생님 로그인 화면 */
+.olliLoginScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 160000;
+  background: #f7f7f5;
+  color: #111;
+  font-family: inherit;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.olliLoginInner {
+  width: 100%;
+  min-height: 100vh;
+  padding: 34px 18px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.olliLoginPageInner {
+  width: 100%;
+  min-height: 100vh;
+  background: #f7f7f5;
+  display: flex;
+  flex-direction: column;
+}
+.olliLoginHeader {
+  height: 66px;
+  min-height: 66px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(247,247,245,.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.olliLoginBackBtn,
+.olliLoginTitlePill {
+  height: 46px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255,255,255,.88);
+  box-shadow: 0 8px 22px rgba(0,0,0,.045);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+.olliLoginBackBtn {
+  width: 46px;
+}
+.olliLoginBackBtn svg {
+  width: 25px;
+  height: 25px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.olliLoginTitlePill {
+  padding: 0 16px;
+  color: #0A84FF;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 760;
+  letter-spacing: -.035em;
+}
+.olliLoginBody {
+  flex: 1;
+  padding: 12px 18px 42px;
+}
+.olliLoginLogo {
+  width: 76px;
+  height: 76px;
+  border-radius: 28px;
+  background: #111;
+  color: #fff;
+  font-size: calc(25px * var(--olli-text-scale));
+  font-weight: 850;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.olliLoginTitle {
+  font-size: calc(28px * var(--olli-text-scale));
+  font-weight: 900;
+  letter-spacing: -.065em;
+  line-height: 1.22;
+  margin-bottom: 8px;
+}
+.olliLoginDesc {
+  font-size: calc(14px * var(--olli-text-scale));
+  color: #777;
+  line-height: 1.55;
+  letter-spacing: -.03em;
+  margin-bottom: 24px;
+}
+.olliLoginCard {
+  border-radius: 30px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(0,0,0,.065), 0 4px 10px rgba(0,0,0,.025);
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+.olliBigLoginBtn {
+  width: 100%;
+  min-height: 62px;
+  border: none;
+  border-radius: 22px;
+  background: #111;
+  color: #fff;
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 850;
+  text-align: left;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: inherit;
+}
+.olliBigLoginBtn.light {
+  background: #f1f1ef;
+  color: #111;
+}
+.olliIntroCard {
+  border-radius: 30px;
+  background: #fff;
+  padding: 20px 18px;
+  margin-bottom: 14px;
+  box-shadow: 0 14px 34px rgba(0,0,0,.06), 0 4px 10px rgba(0,0,0,.02);
+}
+.olliIntroTitle {
+  font-size: calc(21px * var(--olli-text-scale));
+  font-weight: 850;
+  letter-spacing: -.055em;
+  line-height: 1.25;
+}
+.olliSocialBtn {
+  width: 100%;
+  height: 54px;
+  border: none;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(0,0,0,.05);
+  font-size: calc(15px * var(--olli-text-scale));
+  font-weight: 800;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+.olliSocialBtn.google {
+  color: #111;
+}
+.olliSocialBtn.naver {
+  background: #03C75A;
+  color: #fff;
+}
+.olliInputCard,
+.olliInfoCard {
+  border-radius: 30px;
+  background: #fff;
+  padding: 18px;
+  margin-bottom: 12px;
+  box-shadow: 0 14px 34px rgba(0,0,0,.065), 0 4px 10px rgba(0,0,0,.025);
+}
+.olliInputGroup {
+  margin-bottom: 12px;
+}
+.olliInputLabel {
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 780;
+  color: #777;
+  margin: 0 0 6px 2px;
+}
+.olliInput {
+  width: 100%;
+  height: 50px;
+  border: none;
+  border-radius: 18px;
+  background: #f5f5f3;
+  padding: 0 14px;
+  font-size: calc(15px * var(--olli-text-scale));
+  color: #111;
+  font-family: inherit;
+}
+.olliPrimaryBtn {
+  width: 100%;
+  height: 54px;
+  border: none;
+  border-radius: 20px;
+  background: #111;
+  color: #fff;
+  font-size: calc(15px * var(--olli-text-scale));
+  font-weight: 850;
+  margin-top: 8px;
+  font-family: inherit;
+}
+.olliPrimaryBtn:disabled {
+  opacity: .45;
+}
+.olliInfoHead {
+  font-size: calc(17px * var(--olli-text-scale));
+  font-weight: 850;
+  letter-spacing: -.045em;
+  margin-bottom: 9px;
+}
+.olliInfoItem {
+  font-size: calc(13px * var(--olli-text-scale));
+  color: #333;
+  background: #f7f7f5;
+  border-radius: 15px;
+  padding: 9px 10px;
+  line-height: 1.45;
+  margin-top: 8px;
+}
+.olliTextLinkBtn {
+  width: 100%;
+  height: 44px;
+  border: none;
+  background: transparent;
+  color: #999;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 760;
+  margin-top: 6px;
+  font-family: inherit;
+}
+.olliErrorBox {
+  border-radius: 20px;
+  background: #fff0f0;
+  color: #d33;
+  padding: 12px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+  margin-top: 10px;
+}
+.olliSuccessBox {
+  border-radius: 20px;
+  background: #effaf3;
+  color: #188a42;
+  padding: 12px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+  margin-top: 10px;
+}
+
+
+/* v40-fix-9: 설정 버튼 위치 최종 고정
+   설정 버튼 위치 고정. */
+.recordStandaloneSettingsBtn {
+  position: absolute;
+  top: 0;
+  right: 112px;
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  border: none;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+  color: #111;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  z-index: 7;
+  -webkit-tap-highlight-color: transparent;
+}
+.recordStandaloneSettingsBtn svg {
+  width: 23px;
+  height: 23px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: block;
+}
+.recordStandaloneSettingsBtn svg circle {
+  stroke: currentColor;
+  fill: none;
+}
+
+
+/* v40-fix-10: 설정 페이지가 기존 기록실 전환 함수에 의해 닫히는 문제 방지 */
+#settingsPageScreen,
+#settingsDetailScreen {
+  position: fixed;
+  inset: 0;
+}
+#settingsPageScreen {
+  z-index: 90000;
+}
+#settingsDetailScreen {
+  z-index: 91000;
+}
+
+
+/* v40-fix-11: 로그인 화면이 잠깐 보였다가 사라지는 문제 수정 */
+.olliLoginScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 200000;
+  background: #f7f7f5;
+  pointer-events: auto;
+}
+.olliLoginScreen.olliLoginShow {
+  display: block;
+}
+body.olli-login-open {
+  overflow: hidden;
+}
+
+
+/* v40-fix-13: 앱 첫 진입 시 로그인 화면 즉시 표시 */
+#olliLoginEntryScreen.olliLoginShow {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 200000;
+}
+
+
+/* v40-fix-20: 선생님 입장 화면 승인 확인 버튼 */
+.olliSecondaryBtn {
+  width: 100%;
+  height: 54px;
+  border: none;
+  border-radius: 20px;
+  background: #f1f1ef;
+  color: #111;
+  font-size: calc(15px * var(--olli-text-scale));
+  font-weight: 850;
+  margin-top: 8px;
+  font-family: inherit;
+}
+.olliSecondaryBtn:disabled {
+  opacity: .45;
+}
+
+
+/* v40-fix-21: 권한별 설정 메뉴 제한 */
+[data-owner-only="true"] {
+  transition: opacity .15s ease;
+}
+
+
+/* v40-28: uploaded index(3).html 기준 최소 수정 */
+
+/* 초등부 관찰노트 텍스트 시작 위치만 조금 오른쪽 */
+#studentMemoScreen #memoEditor.memoEditor {
+  position: relative ;
+  z-index: 1 ;
+  padding-left: 22px ;
+  font-size: calc(18px * var(--olli-text-scale));
+  line-height: 1.68;
+}
+
+
+
+  transition: opacity .16s ease, border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+  opacity: 0.5;
+  background: #fafaf8;
+  border-color: #eeeeea ;
+  box-shadow: none ;
+}
+  background: #c9c9c9 ;
+}
+  color: #8f8f8f ;
+}
+  opacity: 1;
+  background: #fff ;
+  border-color: #D8D8D8 ;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.045) ;
+}
+
+
+/* 2026-04-26 v41: 설정 프로필 영역을 업로드 참고 이미지처럼 중앙 정렬형으로 재디자인 */
+#settingsPageScreen .settingsBody{
+  padding-top:18px;
+}
+#settingsPageScreen .settingsProfileCard{
+  min-height:auto;
+  margin:0 0 18px;
+  padding:18px 0 10px;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  text-align:center;
+}
+#settingsPageScreen .settingsProfileImage{
+  width:118px;
+  height:118px;
+  border-radius:999px;
+  background:#fff;
+  color:#2f5d73;
+  border:1px solid #ececea;
+  box-shadow:none;
+  font-size:calc(58px * var(--olli-text-scale));
+  font-weight:850;
+  letter-spacing:-.04em;
+  overflow:hidden;
+}
+#settingsPageScreen .settingsProfileImage img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  border-radius:999px;
+}
+#settingsPageScreen .settingsProfileInfo{
+  width:100%;
+  flex:none;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-width:0;
+}
+#settingsPageScreen .settingsProfileName{
+  width:100%;
+  font-size:calc(27px * var(--olli-text-scale));
+  font-weight:850;
+  line-height:1.2;
+  letter-spacing:-.06em;
+  color:#111;
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  word-break:keep-all;
+}
+#settingsPageScreen .settingsProfileEdit{
+  margin-top:6px;
+  min-height:38px;
+  padding:0 20px;
+  border:1.5px solid #d7d7d7;
+  border-radius:999px;
+  background:#fff;
+  color:#333;
+  font-size:calc(15px * var(--olli-text-scale));
+  font-weight:700;
+  letter-spacing:-.04em;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:none;
+}
+#settingsPageScreen .settingsSection:first-of-type{
+  margin-top:10px;
+}
+@media (max-width:420px){
+  #settingsPageScreen .settingsProfileImage{
+    width:104px;
+    height:104px;
+    font-size:calc(52px * var(--olli-text-scale));
+  }
+  #settingsPageScreen .settingsProfileName{
+    font-size:calc(24px * var(--olli-text-scale));
+  }
+  #settingsPageScreen .settingsProfileEdit{
+    min-height:36px;
+    font-size:calc(14px * var(--olli-text-scale));
+    padding:0 18px;
+  }
+}
+
+/* 설정 하단 테스트 섹션 여백만 정리 */
+#settingsPageScreen .settingsDevSection {
+  margin-top: 28px;
+  padding-bottom: 8px;
+}
+
+.growthMemoPageInner {
+  width: 100%;
+  max-width: 860px;
+  height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: #FEFEFE;
+  overflow: hidden;
+}/* 과거 관찰노트 버튼 크기 보정 메모 제거: 현재 최종 컴포넌트 CSS를 사용합니다. */
+/* 과거 성장페이지 팝업/설문박스 patch 메모 제거: 현재 최종 컴포넌트 CSS를 사용합니다. */
+#settingsPageScreen .settingsBody{
+  padding-top:10px;
+}
+
+#settingsPageScreen .settingsProfileCard{
+  padding:14px 0 10px;
+  margin:0 0 16px;
+  gap:14px;
+  min-height:0;
+}
+
+#settingsPageScreen .settingsProfileName{
+  font-size:calc(23px * var(--olli-text-scale));
+  font-weight:520;
+  letter-spacing:-0.045em;
+  line-height:1.22;
+}
+
+#settingsPageScreen .settingsProfileEdit{
+  margin-top:8px;
+  min-height:38px;
+  padding:0 18px;
+  border-radius:999px;
+  background:#f7f7f5;
+  border:1px solid #d9d9d7;
+  color:#444;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:400;
+  letter-spacing:-0.03em;
+  box-shadow:none;
+}
+
+#settingsPageScreen .settingsSectionTitle{
+  font-weight:500;
+}
+
+#settingsPageScreen .settingsRowTitle,
+#settingsPageScreen .settingsRowValue,
+#settingsPageScreen .settingsBadge,
+#settingsPageScreen .settingsApprovalBadge,
+#settingsPageScreen .settingsStatusBadge,
+#settingsPageScreen .settingsActionBtn,
+#settingsPageScreen .settingsExportBtn,
+#settingsPageScreen .settingsInfoHead,
+#settingsPageScreen .settingsRoleName,
+#settingsPageScreen .settingsRequestName,
+#settingsPageScreen .settingsTeacherName,
+#settingsPageScreen .settingsInfoItem,
+#settingsPageScreen .settingsRoleItem,
+#settingsPageScreen .settingsRequestMeta div,
+#settingsPageScreen .settingsTeacherMeta div{
+  font-weight:500;
+}
+
+#settingsPageScreen .settingsRowTitle{
+  letter-spacing:-0.035em;
+}
+
+#settingsPageScreen .settingsRowValue{
+  font-weight:400;
+}
+
+@media (max-width:420px){
+  #settingsPageScreen .settingsProfileCard{
+    padding:8px 0 2px;
+    gap:7px;
+  }
+  #settingsPageScreen .settingsProfileName{
+    font-size:calc(22px * var(--olli-text-scale));
+    font-weight:520;
+  }
+  #settingsPageScreen .settingsProfileEdit{
+    min-height:29px;
+    padding:0 13px;
+    font-size:calc(12.5px * var(--olli-text-scale));
+    font-weight:400;
+  }
+}
+
+
+/* 2026-04-27 기록실 상단: [검색][설정+알림] 재배치 + 설정 아이콘 학원 아이콘화 */
+#recordRoomScreen .recordHeaderRow{
+  position: relative;
+}
+
+#recordRoomScreen .recordRightActionGroup{
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 104px;
+  min-width: 104px;
+  max-width: 104px;
+  height: 46px;
+  min-height: 46px;
+  border-radius: 999px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+  z-index: 7;
+}
+
+#recordRoomScreen .recordRightActionGroup .recordStandaloneSettingsBtn{
+  position: static;
+  top: auto;
+  right: auto;
+  width: 52px;
+  min-width: 52px;
+  max-width: 52px;
+  height: 46px;
+  min-height: 46px;
+  flex: 0 0 52px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: #111;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#recordRoomScreen .recordRightActionGroup .recordStandaloneSettingsBtn:active,
+#recordRoomScreen .recordRightActionGroup .recordStandaloneSettingsBtn.pillPressed{
+  background: #eeeeee;
+}
+@media (hover:hover){
+  #recordRoomScreen .recordRightActionGroup .recordStandaloneSettingsBtn:hover{
+    background: #f1f1f1;
+  }
+}
+
+#recordRoomScreen .recordAcademyMiniIcon svg{
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+#recordRoomScreen .recordAcademyMiniIcon .academySettingsIcon path,
+#recordRoomScreen .recordAcademyMiniIcon .academySettingsIcon circle{
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+
+/* 기록실 하단 그라데이션 제거 */
+#recordRoomScreen::after{
+  content: none;
+  display: none;
+}
+
+
+/* 기록실 설정 아이콘 크기 보정 */
+/* 2026-06-29 계정 기반 로그인 3차: 첫 화면 이미지/애니메이션 제거 */
+#olliLoginEntryScreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  background: #f7f7f5;
+  overflow: hidden;
+  overscroll-behavior: none;
+  z-index: 200000;
+}
+#olliLoginEntryScreen .olliEntrySimpleInner {
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: max(28px, env(safe-area-inset-top, 0px) + 18px) 20px max(24px, env(safe-area-inset-bottom, 0px) + 18px);
+  background: #f7f7f5;
+}
+#olliLoginEntryScreen .olliEntrySimpleLogo {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+  color: #111;
+  font-family: 'Montserrat','Pretendard',sans-serif;
+  font-size: calc(30px * var(--olli-text-scale));
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  box-shadow: none;
+}
+#olliLoginEntryScreen .olliEntrySimpleTitle {
+  display: none;
+  margin: 0;
+}
+#olliLoginEntryScreen .olliEntrySimpleDesc {
+  display: none;
+}
+#olliLoginEntryScreen .olliEntrySimpleActions {
+  width: min(320px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+#olliLoginEntryScreen .olliEntrySimpleActions .olliPrimaryBtn,
+#olliLoginEntryScreen .olliEntrySimpleActions .olliSecondaryBtn {
+  margin-top: 0;
+  font-size: calc(13px * var(--olli-text-scale));
+}
+
+
+
+
+
+/* 2026-04-29 초등부 학생 정보 2줄 표시: 이름 / 학교 학년 | 요일 | 담임T */
+#recordRoomScreen .elementaryStudentRow .studentTextWrap,
+#recordRoomScreen .kinderStudentRow .studentTextWrap,
+#recordRoomScreen .savedFeedbackStudentLeft .studentTextWrap {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  overflow: visible;
+}
+#recordRoomScreen .elementaryStudentRow .studentTextWrap > span:first-child,
+#recordRoomScreen .kinderStudentRow .studentTextWrap > span:first-child,
+#recordRoomScreen .savedFeedbackStudentLeft .recordStudentName {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1.2;
+  letter-spacing: normal;
+}
+#recordRoomScreen .elementaryStudentRow .studentMetaText,
+#recordRoomScreen .kinderStudentRow .studentMetaText,
+#recordRoomScreen .savedFeedbackStudentLeft .studentMetaText {
+  display: block;
+  max-width: 72vw;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.04em;
+  color: #8f8f8f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#recordRoomScreen .elementaryStudentRow.studentStatusPaused .studentTextWrap > span:first-child,
+#recordRoomScreen .kinderStudentRow.studentStatusPaused .studentTextWrap > span:first-child,
+#recordRoomScreen .elementaryStudentRow.studentStatusPaused .studentMetaText,
+#recordRoomScreen .kinderStudentRow.studentStatusPaused .studentMetaText {
+  color: #aaa ;
+}
+
+
+/* 출석부 휴원·퇴원 접이식 목록 */
+.recordStatusSection {
+  width: 100%;
+  margin-top: 14px;
+}
+.recordStatusSection + .recordStatusSection {
+  margin-top: 8px;
+}
+.recordStatusSectionToggle {
+  width: 100%;
+  min-height: 42px;
+  border: none;
+  background: transparent;
+  color: #777;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  font-family: inherit;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.recordStatusSectionTriangle {
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid #999;
+  transform: rotate(0deg);
+  transition: transform .18s ease;
+  flex: 0 0 auto;
+}
+.recordStatusSection.open .recordStatusSectionTriangle {
+  transform: rotate(90deg);
+}
+.recordStatusSectionBody {
+  display: none;
+  width: 100%;
+}
+.recordStatusSection.open .recordStatusSectionBody {
+  display: block;
+}
+.recordStatusSectionEmpty {
+  padding: 10px 12px 16px;
+  color: #aaa;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.45;
+}
+#recordRoomScreen .elementaryStudentRow.studentStatusWithdrawn .studentTextWrap > span:first-child,
+#recordRoomScreen .kinderStudentRow.studentStatusWithdrawn .studentTextWrap > span:first-child,
+#recordRoomScreen .elementaryStudentRow.studentStatusWithdrawn .studentMetaText,
+#recordRoomScreen .kinderStudentRow.studentStatusWithdrawn .studentMetaText {
+  color: #aaa;
+}
+
+
+/* ── 피드백 보관함 공용 확인 표시 ── */
+.todayFeedbackIssueBox { margin:10px 0 0; border-radius:16px; background:#fff5f5; color:#c73636; font-size:calc(12px * var(--olli-text-scale)); line-height:1.45; padding:10px 11px; border:1px solid #ffe1e1; }
+.todayFeedbackIssueChars { display:inline-flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+.todayFeedbackIssueChar { border-radius:999px; background:#ffe4e4; color:#b82121; padding:3px 7px; font-weight:700; }
+.todayFeedbackSuspiciousChar { display:inline; background:#ffe2e2; color:#b82121; border-radius:6px; padding:0 3px; font-weight:700; }
+.feedbackQueueNotice { position:fixed; inset:0; z-index:9100; display:flex; align-items:center; justify-content:center; pointer-events:none; background:transparent; opacity:0; transition:opacity .18s ease; }
+.feedbackQueueNotice.show { opacity:1; }
+.feedbackQueueNoticeCard { width:min(320px, calc(100vw - 48px)); border-radius:24px; background:rgba(255,255,255,.92); border:1px solid rgba(255,255,255,.96); box-shadow:0 18px 48px rgba(0,0,0,.08), 0 6px 18px rgba(0,0,0,.04); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); padding:18px 18px 16px; text-align:center; }
+.feedbackQueueNoticeTitle { font-size:calc(15px * var(--olli-text-scale)); font-weight:700; color:#111; line-height:1.45; margin-bottom:6px; }
+.feedbackQueueNoticeText { font-size:calc(13px * var(--olli-text-scale)); color:#777; line-height:1.45; }
+.notificationTodayBtn { width:100%; height:36px; border:none; border-radius:999px; background:#111; color:#fff; font-size:calc(12px * var(--olli-text-scale)); font-weight:700; font-family:inherit; cursor:pointer; }
+
+/* integrated cleanup: olliSortChipWideKinderGroupLineStyle */
+/* 정렬칩/유치부 그룹 구분선/출석부 아이콘 위치 보정 */
+#recordRoomScreen .recordSortCriteriaGrid .recordSortChipWide{
+  grid-column:auto;
+  width:auto;
+}
+
+#recordRoomScreen .kinderStudentRow.groupBreak{
+  position:relative;
+  margin-top:24px;
+}
+
+#recordRoomScreen .kinderStudentRow.groupBreak::before{
+  content:'';
+  position:absolute;
+  left:10px;
+  top:-14px;
+  width:36px;
+  height:3px;
+  border-radius:999px;
+  background:#111;
+}
+
+#recordRoomScreen .elementaryRowInner,
+#recordRoomScreen .kinderRowInner{
+  grid-template-columns:36px minmax(0, 1fr);
+  column-gap:10px;
+}
+
+#recordRoomScreen .elementaryStudentRow .elementaryGroupIcon,
+#recordRoomScreen .elementaryStudentRow .elementaryDefaultNoGroupIcon,
+#recordRoomScreen .kinderStudentRow .kinderLeadIcon{
+  width:36px;
+  min-width:36px;
+  height:36px;
+  justify-content:center;
+  justify-self:start;
+  margin-left:0;
+}
+
+#recordRoomScreen .elementaryStudentRow .elementaryGroupIcon img{
+  width:36px;
+  height:36px;
+}
+
+/* integrated cleanup: olliRecordSortPatchStyle */
+/* 2026-04-29 patch 정리: 하단바/검색창 배치 기준은 olliRecordSearchFinalSingle에서만 관리합니다.
+   이 블록에는 정렬 팝업, 학생 정보 모달, 유치부 아이콘 보정만 남깁니다. */
+#recordSortPopup{
+  display:none;
+  position:absolute;
+  right:0;
+  bottom:60px;
+  width:min(286px, calc(100vw - 48px));
+  border-radius:22px;
+  background:#111;
+  color:#fff;
+  padding:12px;
+  box-shadow:0 18px 46px rgba(0,0,0,.28), 0 4px 12px rgba(0,0,0,.18);
+  z-index:260;
+  max-height:min(74vh, 560px);
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+#recordSortPopup.show{ display:block; }
+#recordSortPopup::after{content:none;display:none;}
+.recordSortPopupTitle{display:none;}
+.recordSortSwitchRow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:14px;background:rgba(255,255,255,.08);margin-bottom:10px;}
+.recordSortSwitchLabel{font-size:calc(12px * var(--olli-text-scale));font-weight:650;color:#fff;}
+.recordSortSwitch{width:43px;height:25px;border:none;border-radius:999px;background:rgba(255,255,255,.22);padding:3px;display:inline-flex;align-items:center;justify-content:flex-start;cursor:pointer;}
+.recordSortSwitch.on{justify-content:flex-end;background:#0A84FF;}
+.recordSortSwitchKnob{width:19px;height:19px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.25);}
+.recordSortCriteriaTitle{font-size:calc(11px * var(--olli-text-scale));font-weight:600;color:rgba(255,255,255,.58);padding:0 2px 8px;}
+.recordSortCriteriaGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.recordSortChip{height:calc(34px * var(--olli-text-scale));border:none;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;font-family:inherit;font-size:calc(12px * var(--olli-text-scale));font-weight:650;cursor:pointer;}
+.recordSortChip.active{background:#fff;color:#111;}
+.recordSortDivider{height:1px;background:rgba(255,255,255,.12);margin:13px 0 12px;}
+.recordSortFeedbackTitle{font-size:calc(11px * var(--olli-text-scale));font-weight:600;color:rgba(255,255,255,.58);padding:0 2px 8px;}
+.recordSortGroupIconGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:8px;}
+.recordSortGroupIconBtn{height:calc(34px * var(--olli-text-scale));border:none;border-radius:999px;background:rgba(255,255,255,.10);color:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;font-family:inherit;font-size:calc(12px * var(--olli-text-scale));font-weight:800;}
+.recordSortGroupIconBtn.active{background:#fff;color:#111;}
+.recordSortGroupLabel{display:inline-flex;align-items:center;justify-content:center;line-height:1;}
+.recordSortMonthHint{font-size:calc(11px * var(--olli-text-scale));line-height:1.35;color:rgba(255,255,255,.46);padding:2px 2px 0;}
+.recordSortMonthGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;}
+.recordSortMonthChip{height:calc(32px * var(--olli-text-scale));border:none;border-radius:999px;background:rgba(255,255,255,.10);color:rgba(255,255,255,.78);font-family:inherit;font-size:calc(12px * var(--olli-text-scale));font-weight:700;cursor:pointer;}
+.recordSortMonthChip.active{background:#fff;color:#111;}
+
+/* 유치부 이름 앞 신호색 테두리 삭제 */
+.kinderSignalCircle,.memoSignalCircle,.kinderLeadIcon .kinderSignalCircle{
+  border:none;
+  box-shadow:none;
+}
+.kinderSignalCircle.level-1,.memoSignalCircle.level-1{border:none;}
+.kinderSignalCircle.level-2,.memoSignalCircle.level-2{border:none;}
+.kinderSignalCircle.level-3,.memoSignalCircle.level-3{border:none;}
+
+/* 2026-04-30 유치부 이름 앞 아이콘: 초등부 미그룹 아이콘과 동일 구조 */
+#recordRoomScreen .kinderStudentRow .kinderLeadIcon{
+  width:36px;
+  height:36px;
+  min-width:36px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  justify-self:start;
+  margin:0;
+  padding:0;
+  transform:none;
+  overflow:visible;
+  background:transparent;
+  line-height:1;
+}
+#recordRoomScreen .kinderStudentRow .kinderLeadHexSvg{
+  width:36px;
+  height:35px;
+  display:block;
+  overflow:visible;
+}
+
+#recordRoomScreen .kinderLeadSignalDot,
+#recordRoomScreen .kinderLeadHexFill{
+  fill:transparent;
+}
+#recordRoomScreen .kinderLeadSignalDot.level-1,
+#recordRoomScreen .kinderLeadHexFill.level-1{
+  fill:#FFD88A;
+}
+#recordRoomScreen .kinderLeadSignalDot.level-2,
+#recordRoomScreen .kinderLeadHexFill.level-2{
+  fill:#FFCDB8;
+}
+#recordRoomScreen .kinderLeadSignalDot.level-3,
+#recordRoomScreen .kinderLeadHexFill.level-3{
+  fill:#FFB8B8;
+}

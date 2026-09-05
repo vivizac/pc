@@ -1,0 +1,1874 @@
+
+
+
+.modalTitle {
+  font-size:calc(15px * var(--olli-text-scale));
+  font-weight:600;
+  color:#111;
+  margin-bottom:16px;
+}
+.modalLabel {
+  font-size:calc(12px * var(--olli-text-scale));
+  color:#999;
+  margin-bottom:6px;
+}
+.modalInput {
+  width:100%;
+  border-radius:12px;
+  border:1px solid #e0e0e0;
+  padding:10px 14px;
+  font-size:calc(14px * var(--olli-text-scale));
+  font-family:inherit;
+  outline:none;
+  box-sizing:border-box;
+}
+.modalDateRow {
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.modalYearBadge {
+  width:90px;
+  min-width:90px;
+  height:42px;
+  border-radius:12px;
+  background:#FEFEFE;
+  color:#666;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:600;
+  text-align:center;
+  padding:0 10px;
+}
+.modalActions {
+  display:flex;
+  gap:8px;
+  margin-top:20px;
+}
+.modalBtnCancel {
+  flex:1;
+  background:#FEFEFE;
+  border:1px solid #e3e3e3;
+  border-radius:12px;
+  padding:10px;
+  font-size:calc(14px * var(--olli-text-scale));
+  color:#444;
+  cursor:pointer;
+}
+.modalBtnConfirm {
+  flex:1;
+  background:#111;
+  border:none;
+  border-radius:12px;
+  padding:10px;
+  font-size:calc(14px * var(--olli-text-scale));
+  color:#fff;
+  font-weight:600;
+  cursor:pointer;
+}
+
+
+/* 학생 길게 누르기 선택/삭제 */
+.studentActionOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.22);
+  z-index: 44;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 16px 104px;
+}
+.studentActionOverlay.show {
+  display: flex;
+}
+.studentActionCard {
+  width: 100%;
+  max-width: 520px;
+  background: rgba(255,255,255,0.96);
+  border-radius: 28px;
+  padding: 8px 0;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.16), 0 4px 14px rgba(0,0,0,0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  overflow: hidden;
+}
+.studentActionTitle {
+  padding: 12px 22px 4px;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 500;
+  color: #666;
+}
+.studentActionBtn {
+  width: 100%;
+  height: 56px;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 22px;
+  font-family: inherit;
+  font-size: calc(17px * var(--olli-text-scale));
+  font-weight: 500;
+  color: #111;
+  cursor: pointer;
+  text-align: left;
+}
+.studentActionBtn + .studentActionBtn {
+  border-top: 1px solid rgba(0,0,0,0.05);
+}
+.studentActionBtn.danger { color: #e04444; }
+.studentActionBtn svg {
+  width: 23px;
+  height: 23px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+.recordSelectionDeleteBtn {
+  display: none;
+  border: none;
+  background: #111;
+  color: #fff;
+  border-radius: 999px;
+  height: 30px;
+  padding: 0 12px;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.recordSelectionDeleteBtn.show { display: inline-flex; align-items: center; justify-content: center; }
+.recordSelectionControls {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+.recordSelectionControls.show { display: flex; }
+.recordSelectionControlBtn {
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: #f1f1f1;
+  color: #444;
+  padding: 0 16px;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+.recordSelectionControlBtn.danger {
+  background: #111;
+  color: #fff;
+}
+.selectionCircle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  border: 1.8px solid #bdbdbd;
+  background: #fff;
+}
+.selectionCircle.selected {
+  border-color: #0A84FF;
+  background: #0A84FF;
+}
+.selectionCircle.selected::after {
+  content: '';
+  width: 6px;
+  height: 10px;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(45deg) translate(-0.5px, -1px);
+}
+.studentActionCancelBtn {
+  width: 100%;
+  height: 50px;
+  border: none;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  background: transparent;
+  font-family: inherit;
+  font-size: calc(15px * var(--olli-text-scale));
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+}
+
+.infoToggleRow { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+.infoToggleBtn {
+  border:none; background:#f3f3f3; color:#444; border-radius:999px; min-width:42px; height:32px; padding:0 12px;
+  display:inline-flex; align-items:center; justify-content:center; font-size:calc(13px * var(--olli-text-scale)); font-weight:600; cursor:pointer; font-family:inherit;
+}
+.infoToggleBtn.active { background:#111; color:#fff; }
+.infoGrid3 { display:grid; grid-template-columns: 1fr 76px 76px; gap:8px; }
+
+@media (max-width: 768px) {
+  .memoBackFab {
+    right: 16px;
+    bottom: 32px;
+  }
+}
+
+
+/* ── 중간 안정화 정리: 상단 버튼/검색/알림/플립/기록 목록 ── */
+.selectionCircle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  border: 1.8px solid #bdbdbd;
+  background: #fff;
+}
+.selectionCircle.selected {
+  border-color: #0A84FF;
+  background: #0A84FF;
+}
+
+.headerActionPill {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 46px;
+  border-radius: 999px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+  z-index: 6;
+}
+.headerActionPill { position: static; }
+
+.headerPillBtn, .recordMoreBtn {
+  width: 52px;
+  height: 46px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #111;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  font-family: inherit;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color .14s ease;
+}
+.headerPillBtn:active, .recordMoreBtn:active,
+.headerPillBtn.pillPressed, .recordMoreBtn.pillPressed { background: #eeeeee; }
+@media (hover:hover) {
+  .headerPillBtn:hover,
+  .recordMoreBtn:hover { background: #f1f1f1; }
+}
+.headerPillBtn:focus-visible, .recordMoreBtn:focus-visible { outline: none; background: #eeeeee; }
+
+.headerPillBtn svg, .recordMoreBtn svg {
+  width: 27px;
+  height: 27px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.headerActionPill .headerPillBtn:first-child svg { width: 24px; height: 24px; }
+.headerActionPill .headerPillBtn:nth-child(2) svg { width: 27px; height: 27px; }
+@media (hover:hover) {
+}
+.notificationDot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  background: #EB5757;
+  color: #fff;
+  font-size: calc(10px * var(--olli-text-scale));
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  display: none;
+  border: 2px solid #fff;
+  box-sizing: content-box;
+  align-items: center;
+  justify-content: center;
+}
+.hasNotifications .notificationDot { display: inline-flex; }
+.moreIcon {
+  font-size: calc(18px * var(--olli-text-scale));
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 1.5px;
+  transform: translateY(-1px);
+}
+
+
+/* 구조 안정화: 각 영역은 서로의 위치를 건드리지 않게 분리 */
+.recordTitleWrap { margin-left: 10px; }
+.recordModeLabelRow { padding-left: 10px; padding-right: 0; }
+.recordUtilityRow { padding-left: 0; gap: 16px; }
+
+.kinderRowInner,
+.elementaryRowInner {
+  align-items: center;
+  gap: 10px;
+}
+.studentTextWrap > span:first-child {
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.065em;
+  display: inline-flex;
+  align-items: center;
+}
+.elementaryEmptyCircle,
+.kinderSignalCircle,
+.selectionCircle {
+  align-self: center;
+  margin-top: 0;
+  transform: none;
+}
+
+.elementaryGroupIcon,
+.elementaryDefaultNoGroupIcon,
+.elementaryEmptyCircle,
+.kinderLeadIcon,
+.kinderSignalCircle,
+.selectionCircle {
+  grid-column: 1;
+  justify-self: start;
+}
+
+.elementaryStudentRow .studentTextWrap,
+.kinderStudentRow .studentTextWrap {
+  grid-column: 2;
+}
+
+.btnMenu .recordDoorIcon { width: 34px; height: 34px; color: #111; }
+.btnMenu .recordDoorIcon path { stroke-width: 1.55; }
+
+.flipBtn { position: relative; perspective: 900px; overflow: hidden; }
+.flipInner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform .46s cubic-bezier(.22,.61,.36,1);
+  transform-origin: center center;
+}
+.flipInner.noTransition { transition: none; }
+.flipIcon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flipIcon svg { width: 32px; height: 32px; }
+.flipIcon.front { transform: rotateY(0deg) translateZ(0.1px); }
+.flipIcon.back { transform: rotateY(180deg) translateZ(0.1px); }
+.flipBtn.flipped .flipInner { transform: rotateY(180deg); }
+
+@media (max-width: 768px) {
+  .memoBackFab { right: 16px; bottom: 32px; }
+}
+/* 실패 설문 팝업 */
+.failSurveyCard {
+  max-width: 520px;
+  max-height: 86vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 24px 22px 0;
+}
+.failSurveyIntro { font-size: calc(12px * var(--olli-text-scale)); color: #8d8d8d; line-height: 1.45; margin: -6px 0 16px; }
+.failSurveySection { margin-bottom: 18px; }
+.failSurveySectionTitle { font-size: calc(13px * var(--olli-text-scale)); font-weight: 700; color: #111; margin-bottom: 8px; letter-spacing: -0.02em; }
+.failSurveyGrid { display: flex; flex-wrap: wrap; gap: 7px; }
+.failChip { border: 1px solid #e3e3e3; background: #fff; color: #333; min-height: 34px; border-radius: 999px; padding: 0 12px; font-size: calc(12px * var(--olli-text-scale)); font-weight: 500; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+.failChip.active { background: #111; border-color: #111; color: #fff; }
+.failSurveyTextArea { width: 100%; min-height: 76px; border-radius: 14px; border: 1px solid #e0e0e0; padding: 12px 14px; font-size: calc(14px * var(--olli-text-scale)); line-height: 1.55; font-family: inherit; resize: vertical; outline: none; background: #fff; }
+.failSurveyTextArea::placeholder { color: #b8b8b8; }
+
+.failOtherInput {
+  display:none;
+  width:100%;
+  margin-top:8px;
+  border:none;
+  border-bottom:1px solid #dcdcdc;
+  padding:8px 2px 9px;
+  font-size:calc(14px * var(--olli-text-scale));
+  font-family:inherit;
+  outline:none;
+  background:#fff;
+  color:#111;
+}
+.failOtherInput.show { display:block; }
+.failOtherInput::placeholder { color:#b8b8b8; }
+
+
+/* 초등부 분석 설문지 */
+.memoAnalysisBtn {
+  background: #f1f1f1;
+  color: #111;
+  border: none;
+  border-radius: 999px;
+  min-width: 66px;
+  height: 46px;
+  padding: 0 15px;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none;
+}
+.memoSaveStatus {
+  font-size: calc(11px * var(--olli-text-scale));
+  color: #aaa;
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 16px;
+}
+.memoBottomBar {
+  position: fixed;
+  left: 16px;
+  bottom: 32px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  z-index: 45;
+}
+.memoBottomBtn {
+  height: 46px;
+  border: none;
+  border-radius: 999px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: 'Pretendard', sans-serif;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 600;
+  box-shadow: none;
+  white-space: nowrap;
+}
+.memoBackBtn { background: #efefef; color: #111; width:46px; min-width:46px; padding:0; }
+.memoBackBtn svg { width:24px; height:24px; stroke:#111; fill:none; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
+.memoRecordBtn { background:#efefef; color:#111; font-weight:400; width:46px; min-width:46px; padding:0; }
+.memoRecordBtn svg,
+#studentMemoScreen .memoBottomIconBtn svg {
+  width:28px;
+  height:28px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+#studentMemoScreen .memoBottomAnalysisBtn svg {
+  width:28px;
+  height:28px;
+  stroke-width:1.8;
+}
+.memoStudentSelectBtn { background: #fff; color: #111; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,.045), 0 1px 3px rgba(0,0,0,.028); }
+.memoStudentSelectWrap,
+.memoRecordWrap { position: relative; }
+.memoStudentSelectPopup {
+  display: none;
+  position: fixed;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  width: min(370px, calc(100vw - 24px));
+  height: min(560px, calc(100vh - 92px));
+  max-height: min(600px, calc(100vh - 72px));
+  overflow: hidden;
+  padding: 11px;
+  border-radius: 24px;
+  background: rgba(17,17,17,.92);
+  box-shadow: 0 18px 52px rgba(0,0,0,.22), 0 6px 18px rgba(0,0,0,.12);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  z-index: 80;
+  box-sizing: border-box;
+  flex-direction: column;
+}
+.memoStudentSelectPopup.show { display: flex; }
+.memoStudentSelectHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 7px 7px 11px;
+}
+.memoStudentSelectTitle {
+  font-size: calc(13px * 1.12 * var(--olli-text-scale));
+  font-weight: 700;
+  color: rgba(255,255,255,.48);
+}
+.memoStudentSettingsIconBtn {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255,255,255,.10);
+  color: rgba(255,255,255,.78);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.memoStudentSettingsIconBtn.active {
+  background: #fff;
+  color: #111;
+}
+.memoStudentSettingsIconBtn svg {
+  width: 17px;
+  height: 17px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.memoStudentSelectOption {
+  width: 100%;
+  min-height: 40px;
+  border: none;
+  background: transparent;
+  border-radius: 13px;
+  padding: 7px 7px 7px 11px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  font-family: inherit;
+  text-align: left;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+.memoStudentSelectOption.active { background: rgba(255,255,255,.11); }
+.memoStudentSelectOption.manageMode {
+  justify-content: space-between;
+}
+.memoStudentSelectNameBtn,
+.memoStudentSelectTextBlock {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  border: none;
+  background: transparent;
+  padding: 3px 5px;
+  margin: -3px -5px;
+  border-radius: 9px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.memoStudentSelectTextBlock {
+  cursor: default;
+}
+.memoStudentSelectNameBtn:active { background: transparent; }
+.memoStudentInfoDotsBtn {
+  width: 30px;
+  height: 26px;
+  min-width: 30px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255,255,255,.10);
+  color: rgba(255,255,255,.86);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: calc(15px * 1.12 * var(--olli-text-scale));
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .6px;
+  cursor: pointer;
+  padding: 0 0 2px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.memoStudentInfoDotsBtn:active { background: rgba(255,255,255,.10); }
+.memoStudentSelectName {
+  display: inline-flex;
+  align-items: center;
+  color: #fff;
+  font-size: calc(15px * 1.12 * var(--olli-text-scale));
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.memoStudentSelectMeta {
+  min-width: 0;
+  flex: 1 1 auto;
+  color: rgba(255,255,255,.55);
+  font-size: calc(12px * 1.12 * var(--olli-text-scale));
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.memoStudentFeedbackDot {
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid rgba(255,255,255,.72);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.08);
+  display: inline-flex;
+}
+.memoStudentFeedbackDot.completed {
+  background: #5A96FF;
+  border-color: #5A96FF;
+}
+.memoStudentMonthDivider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px 6px;
+  color: rgba(255,255,255,.42);
+  font-size: calc(11px * 1.12 * var(--olli-text-scale));
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.memoStudentMonthDivider::before,
+.memoStudentMonthDivider::after {
+  content: '';
+  height: 1px;
+  flex: 1 1 auto;
+  background: rgba(255,255,255,.13);
+}
+.memoStudentSelectEmpty {
+  padding: 14px 10px;
+  font-size: calc(12px * 1.12 * var(--olli-text-scale));
+  color: rgba(255,255,255,.48);
+  line-height: 1.45;
+}
+.memoStudentSelectList {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+  will-change: transform;
+}
+.memoStudentSortPanel {
+  flex: 0 0 auto;
+  border-top: 1px solid rgba(255,255,255,.10);
+  margin-top: 2px;
+  padding-top: 7px;
+  padding-bottom: 9px;
+}
+.memoStudentManagePanel {
+  padding-top: 5px;
+  padding-bottom: 6px;
+}
+.memoStudentSortTitle {
+  padding: 0 10px 7px;
+  font-size: calc(11px * 1.12 * var(--olli-text-scale));
+  font-weight: 700;
+  color: rgba(255,255,255,.42);
+}
+.memoStudentSortDayRow {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 5px;
+}
+.memoStudentSortManageRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+}
+.memoStudentSortChip,
+.memoStudentManageChip {
+  border: none;
+  border-radius: 999px;
+  height: 30px;
+  min-height: 30px;
+  min-width: 0;
+  padding: 0 8px;
+  background: rgba(255,255,255,.10);
+  color: rgba(255,255,255,.74);
+  font-family: inherit;
+  font-size: calc(13px * 1.12 * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.memoStudentSortChip.active,
+.memoStudentManageChip.active {
+  background: #fff;
+  color: #111;
+}
+.memoStudentAddChip {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  border-radius: 50%;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0;
+  line-height: 1;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.memoStudentAddChip::before {
+  content: '+';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+.attendanceFeedbackSheetOverlay {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-height: none;
+  overflow: hidden;
+  background: rgba(0,0,0,.22);
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  z-index: 8700;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .22s ease, visibility .22s ease;
+}
+.attendanceFeedbackSheetOverlay.show {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+.attendanceFeedbackSheetPanel {
+  width: 100%;
+  max-width: 860px;
+  height: calc(100vh - 76px);
+  max-height: calc(100vh - 76px);
+  background: #fff;
+  border-radius: 28px 28px 0 0;
+  padding: 10px 16px calc(18px + env(safe-area-inset-bottom));
+  box-shadow: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform .26s cubic-bezier(.22,.61,.36,1);
+}
+.attendanceFeedbackSheetOverlay.show .attendanceFeedbackSheetPanel {
+  transform: translateY(0);
+  animation: vivizacSheetInFromBottom .26s cubic-bezier(.22,.61,.36,1) both;
+}
+.attendanceFeedbackSheetHandle {
+  width: 42px;
+  height: 5px;
+  border-radius: 999px;
+  background: #e5e5e5;
+  margin: 0 auto 14px;
+}
+.attendanceFeedbackSheetHead {
+  min-height: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px 14px;
+}
+.attendanceFeedbackSheetTitleWrap {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.attendanceFeedbackSheetTitle {
+  font-family:'Montserrat','Pretendard',sans-serif;
+  font-size:calc(20px * var(--olli-text-scale));
+  font-weight:440;
+  color:#111;
+  letter-spacing:-0.02em;
+  padding: 0 2px 4px;
+}
+.attendanceFeedbackSheetSubtitle {
+  display: none;
+}
+.attendanceFeedbackSheetClose {
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 999px;
+  background: #f1f1f1;
+  color: #111;
+  font-size: calc(24px * var(--olli-text-scale));
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.attendanceFeedbackSheetBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow: hidden;
+  padding-top: 22px;
+}
+.attendanceFeedbackSheetSection {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding-top: 0;
+}
+.attendanceFeedbackSheetSection:first-child {
+  flex: 0 0 62%;
+  max-height: 62%;
+}
+.attendanceFeedbackSheetSection + .attendanceFeedbackSheetSection {
+  flex: 1 1 0;
+  min-height: 0;
+  margin-top: 0;
+  transform: none;
+}
+.attendanceFeedbackSheetSectionTitle {
+  flex: 0 0 auto;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 800;
+  color: #8d8d8d;
+  letter-spacing: -0.02em;
+  padding: 0 2px 9px;
+}
+.attendanceFeedbackSheetScroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 0 8px;
+}
+.attendanceFeedbackSheetCard {
+  position: relative;
+  border: 1px solid rgba(0,0,0,.08);
+  background: rgba(255,255,255,.72);
+  border-radius: 20px;
+  padding: 14px 14px 15px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+.attendanceSummaryRegenerateBtn {
+  display: none;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 999px;
+  background: #f3f3f3;
+  color: #111;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+.attendanceSummaryRegenerateBtn svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.attendanceFeedbackSheetCard.open .attendanceSummaryRegenerateBtn {
+  display: inline-flex;
+}
+.attendanceSummaryRegenerateBtn:disabled {
+  opacity: .45;
+  cursor: default;
+}
+.attendanceFeedbackSheetCardTitle {
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 700;
+  line-height: 1.35;
+  color: #111;
+  margin-bottom: 3px;
+  letter-spacing: -0.02em;
+}
+.attendanceFeedbackSheetCardDate {
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.3;
+  color: #999;
+  margin-bottom: 8px;
+}
+.attendanceFeedbackSheetPreview {
+  font-size: calc(14px * var(--olli-text-scale));
+  line-height: 1.68;
+  color: #444;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: keep-all;
+}
+.attendanceFeedbackSheetFullText {
+  display: none;
+  margin-top: 9px;
+  font-size: calc(14px * var(--olli-text-scale));
+  line-height: 1.68;
+  color: #111;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.attendanceFeedbackSheetCard.open .attendanceFeedbackSheetFullText {
+  display: block;
+}
+.attendanceFeedbackSheetCard.open .attendanceFeedbackSheetPreview {
+  display: none;
+}
+.attendanceFeedbackSheetCardActions {
+  display: none;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.attendanceFeedbackSheetCard.open .attendanceFeedbackSheetCardActions {
+  display: flex;
+}
+.attendanceFeedbackSheetActionBtn {
+  min-width: 58px;
+  height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: #f2f2f2;
+  color: #555;
+  font-family: inherit;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+}
+.attendanceFeedbackSheetActionBtn.delete {
+  background: #fff0f0;
+  color: #e64848;
+}
+.attendanceFeedbackSheetActionBtn:disabled {
+  opacity: .45;
+  cursor: default;
+}
+.attendanceRecordDeleteOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0,0,0,.28);
+}
+.attendanceRecordDeleteOverlay.show {
+  display: flex;
+}
+.attendanceRecordDeleteDialog {
+  width: min(360px, 100%);
+  border-radius: 24px;
+  background: #fff;
+  padding: 22px 20px 18px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.18);
+}
+.attendanceRecordDeleteTitle {
+  font-size: calc(17px * var(--olli-text-scale));
+  line-height: 1.35;
+  font-weight: 800;
+  color: #111;
+  letter-spacing: -0.04em;
+}
+.attendanceRecordDeleteDesc {
+  margin-top: 8px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+  color: #777;
+  letter-spacing: -0.025em;
+  word-break: keep-all;
+}
+.attendanceRecordDeleteActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 20px;
+}
+.attendanceRecordDeleteBtn {
+  height: 44px;
+  border: none;
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 750;
+  cursor: pointer;
+}
+.attendanceRecordDeleteBtn.cancel {
+  background: #f2f2f2;
+  color: #555;
+}
+.attendanceRecordDeleteBtn.confirm {
+  background: #111;
+  color: #fff;
+}
+.attendanceFeedbackSheetEmpty {
+  padding: 26px 8px 30px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+  color: #999;
+  text-align: center;
+}
+.memoRecordsTitle {
+  padding: 8px 10px 6px;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 700;
+  color: #999;
+}
+.memoRecordOption {
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 12px;
+  min-height: 38px;
+  padding: 9px 10px;
+  text-align: left;
+  font-family: inherit;
+  font-size: calc(13px * var(--olli-text-scale));
+  color: #111;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+@media (hover:hover) { .memoRecordOption:hover { background: #FEFEFE; } }
+.memoRecordOption.active { background: #111; color: #fff; }
+.memoRecordEmpty {
+  padding: 10px;
+  font-size: calc(12px * var(--olli-text-scale));
+  color: #aaa;
+  line-height: 1.4;
+}
+
+.elementaryAnalysisIntro {
+  font-size: calc(12px * 1.20 * var(--olli-text-scale));
+  color: #8e8e93;
+  line-height: 1.45;
+  padding: 0 28px;
+  margin: 0 0 12px;
+}
+.elementaryAnalysisSection {
+  border-top: 1px solid rgba(0,0,0,0.06);
+  padding: 18px 28px 0;
+  margin-top: 18px;
+}
+.elementaryAnalysisSection:first-of-type { border-top: none; padding-top: 0; }
+.elementaryAnalysisSectionTitle {
+  font-size: calc(14px * 1.20 * var(--olli-text-scale));
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 6px;
+  letter-spacing: -0.02em;
+}
+.elementaryAnalysisHelp {
+  font-size: calc(12px * 1.20 * var(--olli-text-scale));
+  color: #999;
+  line-height: 1.25;
+  margin-bottom: 10px;
+}
+.elementaryAnalysisGrid,
+.elementaryTendencyGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.elementaryChip,
+.elementaryTendencyGroupBtn {
+  border: none;
+  border-radius: 999px;
+  background: #f3f3f3;
+  color: #444;
+  min-height: calc(32px * 1.20 * var(--olli-text-scale));
+  padding: 7px 12px;
+  font-size: calc(12px * 1.20 * var(--olli-text-scale));
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  line-height: 1.25;
+}
+.elementaryChip.active, .elementaryTendencyGroupBtn.active {
+  background: #0A84FF;
+  color: #fff;
+}
+.elementaryTendencyGroup {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #FEFEFE;
+}
+.elementaryTendencyGroupTitle {
+  font-size: calc(12px * 1.20 * var(--olli-text-scale));
+  font-weight: 700;
+  color: #777;
+  margin-bottom: 8px;
+}
+.elementaryAnalysisTextarea {
+  width: 100%;
+  min-height: 64px;
+  border-radius: 14px;
+  border: 1px solid #e3e3e3;
+  padding: 11px 13px;
+  font-size: calc(13px * 1.20 * var(--olli-text-scale));
+  line-height: 1.55;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  background: #fff;
+  margin-top: 10px;
+}
+.elementaryAnalysisTextarea::placeholder { color: #b8b8b8; }
+
+
+@media (max-width: 768px) {
+  .memoHeader { gap: 8px; }
+  .memoHeaderActions { gap: 6px; }
+  .memoAnalysisBtn, .memoFeedbackBtn { min-width: 58px; padding: 0 12px; }
+  .memoBottomBar { left: 16px; bottom: 32px; }
+  
+}
+
+
+/* 2026-04-20 record/memo clean fixes - refined */
+.memoSubLabelRow {
+  display: flex;
+  position: sticky;
+  top: 72px;
+  z-index: 19;
+  background: #fff;
+  padding: 0 16px 12px;
+}
+.memoSubLabelGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 16px;
+  white-space: nowrap;
+}
+.memoSubLabel,
+.memoSaveStatus {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  min-height: 16px;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.35;
+}
+.memoSubLabel { color: #999; }
+.memoSaveStatus { color: #aaa; font-weight: 400; }
+.memoBottomBtn:not(.memoStudentSelectBtn),
+.memoBackBtn {
+  box-shadow: none;
+  overflow-y: auto;
+}
+
+/* 기록실 고정 영역: 헤더 + 관찰기록 버튼 영역 + 구분선 + 부서 전환 텍스트까지 고정 */
+#recordPageInner.recordPageInner {
+  padding-top: 0;
+}
+.recordStickyArea {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  background: transparent;
+  padding-top: 12px;
+  padding-bottom: 0;
+  overflow: visible;
+  isolation: isolate;
+}
+.recordStickyArea::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  z-index: -1;
+}
+.recordStickyArea::after {
+  content: none;
+}
+.recordStickyArea > .recordHeaderRow,
+.recordStickyArea > .recordUtilityRow,
+.recordStickyArea > .recordDivider,
+.recordStickyArea > .recordModeLabelRow {
+  position: relative;
+  z-index: 1;
+}
+.recordStickyArea .recordUtilityRow {
+  margin-top: 18px;
+  margin-bottom: 22px;
+}
+.recordStickyArea .recordDivider {
+  margin-bottom: 0;
+}
+.recordModeLabelRow {
+  position: relative;
+  z-index: 72;
+  background: transparent;
+  margin-top: 24px;
+  margin-bottom: 0;
+  padding-top: 8px;
+  padding-bottom: 14px;
+}
+.recordModeLabelRow .recordLabelGroup {
+  position: relative;
+  z-index: 1;
+}
+.recordBodyNew {
+  position: relative;
+  z-index: 1;
+}
+
+/* 학생 이름 버튼은 원래 상태로 복구하고, 길게 누른 선택 애니메이션만 유지 */
+@media (hover:hover) {
+  .elementaryStudentRow:hover:not(.studentRowSelected),
+  .kinderStudentRow:hover:not(.studentRowSelected) { background: #FEFEFE; }
+}
+.elementaryStudentRow.studentRowSelected,
+.kinderStudentRow.studentRowSelected {
+  position: relative;
+  z-index: 46;
+  background: #fff;
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.14), 0 3px 10px rgba(0,0,0,0.08) ;
+}
+
+/* 모바일 터치 후 남는 연회색 잔상 제거 */
+.elementaryStudentRow:focus,
+.kinderStudentRow:focus,
+.elementaryStudentRow:focus-visible,
+.kinderStudentRow:focus-visible {
+  outline: none ;
+  background: #fff ;
+}
+@media (hover:none) {
+  .elementaryStudentRow:hover:not(.studentRowSelected),
+  .kinderStudentRow:hover:not(.studentRowSelected),
+  .elementaryStudentRow:active:not(.studentRowSelected),
+  .kinderStudentRow:active:not(.studentRowSelected) {
+    background: #fff ;
+  }
+}
+
+/* 초등부 그룹 구분선: 실제 그룹 이미지 박스의 시작점과 길이에 맞춤 */
+.elementaryStudentRow.groupBreak {
+  position: relative;
+  margin-top: 24px;
+}
+.elementaryStudentRow.groupBreak::before {
+  content: '';
+  position: absolute;
+  left:10px;
+  top: -14px;
+  width: 36px;
+  height: 3px;
+  border-radius: 999px;
+  background: #111;
+}
+
+
+/* ── 메인 페이지 ── */
+.cardFeedbackInner { width:100%; max-width:860px; height:100%; margin:0 auto; display:flex; flex-direction:column; background:#fff; overflow:hidden; }
+.cardFeedbackHeader { height:66px; min-height:66px; padding:0 16px; display:flex; align-items:center; justify-content:center; position:relative; background:#fff; z-index:30; flex-shrink:0; }
+.cardHeaderLeft { position:absolute; left:16px; top:50%; transform:translateY(-50%); }
+.cardHeaderRight { position:absolute; right:16px; top:50%; transform:translateY(-50%); display:flex; gap:8px; align-items:center; }
+.cardRoundBtn { width:44px; height:44px; border:none; border-radius:50%; background:#fff; color:#111; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; padding:0; box-shadow:0 2px 12px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.06); font-family:inherit; }
+.cardRoundBtn svg { width:23px; height:23px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.cardHeaderPill { height:44px; border-radius:999px; background:#fff; display:inline-flex; align-items:center; overflow:hidden; box-shadow:0 2px 12px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.06); }
+.cardPillBtn { width:48px; height:44px; border:none; border-radius:999px; background:transparent; color:#111; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; padding:0; font-family:inherit; -webkit-tap-highlight-color:transparent; }
+.cardPillBtn svg { width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.cardPillBtn:active { background:#eeeeee; }
+@media (hover:hover) { .cardPillBtn:hover { background:#f1f1f1; } }
+#sceneModeToggleBtn.active { background:#111; color:#fff; }
+#sceneModeToggleBtn svg { width:28px; height:28px; }/* 메인 피드백 페이지 배경/상단 버튼 톤 조정 */
+
+.cardPageTitle { display:none; }
+.sceneIntro { display:none; }
+.sceneQuestion { display:none; }
+
+.cardPageTitle { font-size:calc(18px * var(--olli-text-scale)); font-weight:600; letter-spacing:-.03em; color:#111; }
+.cardFeedbackBody { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:4px 0 136px; display:flex; flex-direction:column; background:#FEFEFE; }
+.sceneIntro { padding:8px 4px 10px; }
+.sceneIntroTitle { font-size:calc(22px * var(--olli-text-scale)); line-height:1.25; font-weight:650; letter-spacing:-.04em; color:#111; }
+.sceneIntroSub { display:none; }
+.sceneModeLabel { display:flex; align-items:center; justify-content:flex-start; padding:10px 16px 10px; flex-shrink:0; position:relative; z-index:3; }
+.cardFeedbackBody .sceneMemoPanel + .sceneModeLabel { padding:10px 16px 10px; position:relative; z-index:3; }
+.cardFeedbackBody .sceneTagWrap { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; padding:0 16px 18px; flex-shrink:0; position:relative; z-index:3; }
+.sceneModeLabel span:first-child { font-size:calc(14px * var(--olli-text-scale)); font-weight:600; color:#111; }
+.sceneModeLabel span:last-child { display:none; }
+.sceneGrid { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; padding:0 16px 18px; overflow:visible; flex-shrink:0; position:relative; z-index:3; }
+.sceneCardSlot { position:relative; min-height:122px; }
+.sceneCard { width:100%; min-height:122px; border:1px solid #eeeeee; border-radius:22px; background:#fff; padding:12px 10px; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; cursor:pointer; transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease; -webkit-tap-highlight-color:transparent; user-select:none; font-family:inherit; box-shadow:none; }
+.sceneCard.selected { transform:translateY(-8px); border-color:#eeeeee; box-shadow:0 12px 26px rgba(0,0,0,.14), 0 3px 8px rgba(0,0,0,.06); }
+.sceneCard.flipped { position:fixed; left:50%; top:118px; width:min(520px, calc(100vw - 32px)); min-height:224px; max-height:calc(100vh - 190px); overflow-y:auto; height:auto; z-index:3000; justify-content:flex-start; align-items:flex-start; text-align:left; padding:16px; transform:translateX(-50%); border-color:#eeeeee; box-shadow:0 18px 38px rgba(0,0,0,.18), 0 6px 14px rgba(0,0,0,.08); }
+
+.sceneBackCloseBtn {
+  position:absolute;
+  top:10px;
+  right:10px;
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  background:#f1f1ef;
+  color:#111;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:calc(20px * var(--olli-text-scale));
+  font-weight:600;
+  line-height:1;
+  z-index:5;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.sceneBackCloseBtn:active {
+  transform:scale(.96);
+}
+.sceneNumber { position:absolute; top:10px; left:10px; width:24px; height:24px; border-radius:50%; background:#f1f1f1; color:#777; font-size:calc(12px * var(--olli-text-scale)); font-weight:600; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:3; -webkit-tap-highlight-color:transparent; }
+.sceneCard.selected .sceneNumber { background:#0A84FF; color:#fff; }
+.sceneNumber:active { transform:scale(.96); }
+.sceneCheckIcon { width:14px; height:14px; stroke:#fff; fill:none; stroke-width:2.8; stroke-linecap:round; stroke-linejoin:round; }
+.sceneIconBox { width:96px; height:76px; margin-bottom:12px; display:flex; align-items:center; justify-content:center; opacity:1; }
+.sceneIconSvg { width:92px; height:72px; overflow:visible; }
+.sceneIconSvg .cardBack { fill:#f9f9f9; stroke:#d8d8d8; stroke-width:1.7; }
+.sceneIconSvg .cardFront { fill:#ffffff; stroke:#cfcfcf; stroke-width:1.7; }
+.sceneIconSvg .cardDiamond { fill:#f3f3f3; stroke:#bdbdbd; stroke-width:1.5; }
+.sceneTitle { font-size:calc(15px * var(--olli-text-scale)); font-weight:700; color:#111; line-height:1.15; margin-bottom:7px; }
+.sceneQuestion { font-size:calc(11px * var(--olli-text-scale)); color:#555; line-height:1.35; }
+.sceneBackMain { margin-top:30px; font-size:calc(13px * var(--olli-text-scale)); font-weight:700; line-height:1.45; color:#111; word-break:keep-all; }
+.sceneBackSub { margin-top:9px; font-size:calc(12px * var(--olli-text-scale)); line-height:1.5; color:#666; word-break:keep-all; }
+.sceneBackKeywords { margin-top:9px; display:flex; flex-wrap:wrap; gap:4px; }
+.sceneBackKeywords span { font-size:calc(10.5px * var(--olli-text-scale)); line-height:1; padding:6px 8px; border-radius:999px; background:#f3f3f3; color:#555; }
+.sceneTagWrap { display:flex; flex-wrap:wrap; gap:8px; padding:0 4px 18px; flex-shrink:0; }
+.sceneTagBtn { width:100%; min-height:42px; border:1.5px solid #d9d9d9; border-radius:999px; background:#fff; color:#111; padding:0 8px; font-size:calc(13px * var(--olli-text-scale)); font-weight:500; font-family:inherit; cursor:pointer; transition:background .16s ease, color .16s ease, border-color .16s ease; display:flex; align-items:center; justify-content:center; text-align:center; white-space:nowrap; }
+.sceneTagBtn.active { background:#0A84FF; border-color:#0A84FF; color:#fff; }
+.selectedSceneBar { margin:0 4px 14px; min-height:36px; border-radius:18px; background:#f7f7f7; color:#666; padding:10px 12px; font-size:calc(12px * var(--olli-text-scale)); line-height:1.4; }
+.sceneMemoPanel { margin:0; border-radius:0; background:#FEFEFE; border:none; box-shadow:none; overflow:hidden; flex:0 0 auto; min-height:360px; display:flex; flex-direction:column; position:relative; z-index:1; }
+.sceneMemoHeader { padding:16px 16px 6px; font-size:calc(14px * var(--olli-text-scale)); font-weight:700; color:#111; }
+.sceneMemoInput { width:100%; min-height:360px; flex:1 1 auto; border:none; outline:none; resize:none; padding:10px 16px 18px; font-size:calc(15px * var(--olli-text-scale)); line-height:1.72; font-family:inherit; color:#111; background:#FEFEFE; position:relative; z-index:1; }
+.sceneMemoInput::placeholder { color:transparent; opacity:0; }
+.sceneMemoPlaceholder { position:absolute; left:16px; right:16px; top:58px; z-index:2; pointer-events:none; color:#b8b8b8; font-size:calc(15px * var(--olli-text-scale)); line-height:1.72; white-space:pre-wrap; word-break:keep-all; }
+.sceneMemoPlaceholder.hide { display:none; }
+.feedbackTypeRow { display:flex; gap:8px; padding:0 4px 14px; flex-shrink:0; }
+.feedbackTypeBtn { flex:1; min-height:46px; border:none; border-radius:18px; background:#f4f4f4; color:#111; font-family:inherit; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; -webkit-tap-highlight-color:transparent; }
+.feedbackTypeBtn strong { font-size:calc(13.5px * var(--olli-text-scale)); font-weight:700; letter-spacing:-.02em; }
+.feedbackTypeBtn span { margin-top:4px; font-size:calc(11px * var(--olli-text-scale)); color:#777; font-weight:400; }
+.feedbackTypeBtn.active { background:#111; color:#fff; }
+.feedbackTypeBtn.active span { color:rgba(255,255,255,.72); }
+
+
+.failGrowthMemoHeader { padding:16px 16px 6px; font-size:calc(14px * var(--olli-text-scale)); font-weight:700; color:#111; }
+.failGrowthMemoInput { width:100%; min-height:220px; flex:1 1 auto; border:none; outline:none; resize:none; padding:10px 16px 18px; font-size:calc(15px * var(--olli-text-scale)); line-height:1.72; font-family:inherit; color:#111; background:#fff; }
+.failGrowthMemoInput::placeholder { color:#b8b8b8; }
+.sceneResultArea { padding:2px 4px 20px; display:flex; flex-direction:column; gap:12px; }
+.feedbackResultCard { background:#fff; border-radius:24px; box-shadow:0 2px 14px rgba(0,0,0,.08), 0 1px 4px rgba(0,0,0,.04); padding:18px 16px 14px; }
+.feedbackResultLabel { font-size:calc(12px * var(--olli-text-scale)); color:#999; margin-bottom:10px; }
+.feedbackResultText { font-size:calc(15px * var(--olli-text-scale)); line-height:1.72; color:#111; white-space:pre-wrap; word-break:keep-all; }
+.feedbackResultActions { display:flex; gap:8px; margin-top:14px; justify-content:flex-end; }
+.feedbackCardActionBtn { border:none; border-radius:999px; background:#f1f1f1; color:#111; height:36px; padding:0 14px; font-size:calc(13px * var(--olli-text-scale)); font-weight:600; font-family:inherit; cursor:pointer; }
+.feedbackCardActionBtn.primary { background:#111; color:#fff; }
+.cardBottomBar { position:fixed; left:50%; bottom:32px; transform:translateX(-50%); width:calc(100% - 32px); max-width:828px; display:flex; align-items:center; gap:10px; z-index:55; pointer-events:none; }
+.cardBottomStatus { flex:1; min-height:46px; border-radius:999px; background:rgba(255,255,255,.94); box-shadow:0 8px 22px rgba(0,0,0,.10); display:flex; align-items:center; padding:0 16px; font-size:calc(13px * var(--olli-text-scale)); color:#666; pointer-events:auto; }
+.cardGenerateBtn { min-width:126px; height:46px; border:none; border-radius:999px; background:#111; color:#fff; font-size:calc(14px * var(--olli-text-scale)); font-weight:700; font-family:'Pretendard', sans-serif; display:flex; align-items:center; justify-content:center; cursor:pointer; pointer-events:auto; box-shadow:0 10px 24px rgba(0,0,0,.18); }
+.cardGenerateBtn:disabled { background:#d8d8d8; cursor:default; box-shadow:none; }
+.cardGenerateBtn svg { width:17px; height:17px; margin-right:7px; stroke:currentColor; fill:none; stroke-width:2.2; }
+
+@media (max-width:430px) { .sceneGrid { gap:8px; } .sceneCardSlot { min-height:112px; } .sceneCard { min-height:112px; border-radius:20px; padding:10px 8px; } .sceneCard.flipped { top:96px; width:calc(100vw - 24px); min-height:220px; padding:14px; } .sceneIconBox { width:84px; height:68px; margin-bottom:10px; } .sceneIconSvg { width:80px; height:62px; } .sceneTitle { font-size:calc(14px * var(--olli-text-scale)); } .sceneQuestion { font-size:calc(10.5px * var(--olli-text-scale)); } }
+
+
+/* 선택 장면 개수/요약 표시 제거: 하단은 피드백 생성 버튼만 남김 */
+.selectedSceneBar,
+.cardBottomStatus { display: none ; }
+.cardBottomBar { justify-content: flex-end; }
+
+
+/* 메인 피드백 페이지 배경 안정화 */
+html, body {
+  background:#FEFEFE;
+}
+
+
+/* 피드백 페이지 상단 배경 고정 */
+body.feedbackPageActive {
+  background:#FEFEFE ;
+}/* ChatGPT 스타일 유리 버튼 - 그림자 연하게 */
+
+
+/* 안정 레이아웃 복구: 오버레이 없이 배경만 통일 */
+html,
+body {
+  background:#FEFEFE ;
+}
+
+/* 메모 입력 영역: 화면 배경을 메모처럼 사용하되 좌우 안전 여백 유지 */
+
+/* 키워드 영역은 메모 아래에서 잘 보이게 *//* 상단 유리 버튼 */
+
+/* 기록실 1분 피드백 / 기록보드 버튼 포함 */
+.recordTopAction,
+.recordQuickBtn,
+.recordTopAction .recordUtilityCircle,
+.recordQuickBtn .recordUtilityCircle {
+  background:#FEFEFE ;
+}
+
+/* 일반 버튼/태그 중 배경이 있는 요소도 메인 톤으로 맞춤 */
+.sceneTagBtn,
+.failChip,
+.failGrowthPageChip,
+.feedbackTypeBtn,
+.modalInput,
+.failSurveyTextArea {
+  background:#FEFEFE ;
+}/* 피드백 페이지 상단 유리 버튼은 기존 느낌 유지 */
+
+
+/* 기록실 실제 클래스 기준 배경 수정 */
+
+/* 기록실 상단 고정 영역과 그 뒤에 깔린 가상 배경 */
+#recordRoomScreen,
+#recordRoomScreen .recordPageInner,
+#recordRoomScreen .recordStickyArea,
+#recordRoomScreen .recordStickyArea::before {
+  background:#FEFEFE ;
+}
+
+/* 1분 피드백/기록보드 영역 뒤 배경 */
+#recordRoomScreen .recordModeWrap,
+#recordRoomScreen .recordModeArea,
+#recordRoomScreen .recordTopSection,
+#recordRoomScreen .recordUtilityArea,
+#recordRoomScreen .recordUtilityWrap {
+  background:#FEFEFE ;
+}
+
+/* 1분 피드백 밑 라인 */
+#recordRoomScreen .recordDivider {
+  background:#DEDEDE ;
+  border-color:#DEDEDE ;
+}
+
+/* 초등부/유치부 텍스트가 있는 그룹 헤더 레이어 */
+#recordRoomScreen .studentGroupHeader,
+#recordRoomScreen .studentGroupTitle,
+#recordRoomScreen .recordSectionTitle,
+#recordRoomScreen .recordGradeTitle,
+#recordRoomScreen .elementaryTitle,
+#recordRoomScreen .kinderTitle {
+  background:#FEFEFE ;
+}
+
+/* 실제 학생 이름 버튼 */
+/* 학생 이름 버튼 내부/보조 정보 레이어 */
+#recordRoomScreen .studentInfoLine,
+#recordRoomScreen .studentMemoStatus,
+#recordRoomScreen .studentRowText,
+#recordRoomScreen .studentNameText,
+#recordRoomScreen .studentSubText {
+  background:#FEFEFE ;
+}
+
+/* 1분 피드백 / 기록보드 둥근 버튼 */
+
+/* 1분 피드백 / 기록보드 바깥 버튼은 투명 */
+#recordRoomScreen .recordUtilityBtn {
+  background:transparent ;
+}
+
+/* 혹시 남아 있는 기록실 리스트 바닥 */
+#recordRoomScreen .recordListArea,
+#recordRoomScreen .studentList,
+#recordRoomScreen .studentGroupSection {
+  background:#FEFEFE ;
+}
+
+
+/* 기록실 둥근버튼/학생 메모장 배경 조정 */
+
+/* 1분 피드백 / 기록보드 둥근버튼 배경 살짝 연하게 */
+
+/* 1분 피드백 / 기록보드 아이콘 파랑 */
+#recordRoomScreen .recordUtilityCircle svg,
+#recordRoomScreen .recordUtilityCircle svg *,
+#recordRoomScreen .recordUtilityBtn svg,
+#recordRoomScreen .recordUtilityBtn svg *,
+#recordRoomScreen .recordTopAction svg,
+#recordRoomScreen .recordTopAction svg *,
+#recordRoomScreen .recordQuickBtn svg,
+#recordRoomScreen .recordQuickBtn svg * {
+  color:#0A84FF ;
+  stroke:#0A84FF ;
+}
+
+#recordRoomScreen .recordUtilityCircle svg [fill]:not([fill='none']),
+#recordRoomScreen .recordUtilityBtn svg [fill]:not([fill='none']),
+#recordRoomScreen .recordTopAction svg [fill]:not([fill='none']),
+#recordRoomScreen .recordQuickBtn svg [fill]:not([fill='none']) {
+  fill:#0A84FF ;
+}
+
+/* 학생 메모장 메모박스/입력영역 배경을 메인 배경색과 통일 */
+#studentMemoScreen .memoEditor,
+#studentMemoScreen #memoEditor,
+#studentMemoScreen .memoEditorWrap,
+#studentMemoScreen .memoTextArea,
+#studentMemoScreen .memoInput,
+#studentMemoScreen textarea,
+#studentMemoScreen .dangerMemoInput,
+#studentMemoScreen #dangerMemo1,
+#studentMemoScreen #dangerMemo2,
+#studentMemoScreen #dangerMemo3 {
+  background:#FEFEFE ;
+  background-color:#FEFEFE ;
+}
+
+/* 학생 메모장 페이지/본문 바닥도 같은 색으로 보정 */
+#studentMemoScreen,
+#studentMemoScreen .memoPageInner,
+#studentMemoScreen .memoBody,
+#studentMemoScreen .memoContent {
+  background:#FEFEFE ;
+}
+
+
+/* 기록실 둥근버튼 / 피드백 버튼 배경 조정 */
+
+/* 1분 피드백 / 기록보드 둥근버튼 배경을 더 연하게 */
+
+/* 메인 페이지 9가지 관찰 키워드 버튼 배경 흰색 */
+
+/* 선택된 키워드/버튼은 기존 active 색 유지 */
+
+
+/* 선택 버튼 active 색상 복구 + 장면카드 상단 배치 */
+
+
+/* 장면카드 상단 / 키워드 하단 분리 *//* 선택 상태 원래처럼 파랑 배경 + 흰색 글씨 */
+
+
+/* 장면카드 선택 상태 수정: 카드 배경은 유지, 숫자 버튼만 파랑 */
+
+
+/* 장면카드 뒷면: 길어져도 주변 레이아웃을 밀지 않게 고정 */
+
+/* 기존 :has로 슬롯 높이가 같이 커지던 보정 제거 */
+/* 장면카드 버튼을 눌러도 검정으로 변하지 않게 */
+
+@media (max-width:430px) {
+  }
+
+
+/* 상단 버튼 그림자 중간 농도 조정 */
+.headerRightPill{
+  box-shadow:
+    0 16px 38px rgba(0,0,0,0.045),
+    0 5px 14px rgba(0,0,0,0.026) ;
+}
+
+
+/* 상단 버튼 그림자: 범위 더 넓게, 농도는 중간값 유지 */
+.headerRightPill{
+  box-shadow:
+    0 22px 54px rgba(0,0,0,0.045),
+    0 7px 20px rgba(0,0,0,0.026) ;
+}
+
+
+/* 피드백 생성 로딩 카드 */
+.feedbackLoadingOverlay {
+  position:fixed;
+  inset:0;
+  z-index:9000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  pointer-events:none;
+  background:transparent;
+}
+.feedbackLoadingCard {
+  width:min(320px, calc(100vw - 48px));
+  border-radius:26px;
+  background:rgba(255,255,255,0.88);
+  border:1px solid rgba(255,255,255,0.96);
+  box-shadow:0 18px 48px rgba(0,0,0,0.075), 0 6px 18px rgba(0,0,0,0.04);
+  backdrop-filter:blur(22px) saturate(1.18);
+  -webkit-backdrop-filter:blur(22px) saturate(1.18);
+  padding:22px 20px 18px;
+  text-align:left;
+}
+.feedbackLoadingKicker {
+  font-size:calc(12px * var(--olli-text-scale));
+  color:#999;
+  margin-bottom:10px;
+}
+.feedbackLoadingTitle {
+  font-size:calc(16px * var(--olli-text-scale));
+  font-weight:650;
+  color:#111;
+  line-height:1.45;
+  margin-bottom:8px;
+  min-height:23px;
+}
+.feedbackLoadingText {
+  font-size:calc(14px * var(--olli-text-scale));
+  color:#555;
+  line-height:1.55;
+  min-height:44px;
+  white-space:pre-wrap;
+}
+.feedbackLoadingCursor {
+  display:inline-block;
+  width:1px;
+  height:1em;
+  margin-left:1px;
+  background:#111;
+  vertical-align:-2px;
+  animation:feedbackCursorBlink .8s steps(1) infinite;
+}
+@keyframes feedbackCursorBlink {
+  0%, 45% { opacity:1; }
+  46%, 100% { opacity:0; }
+}
+.feedbackLoadingDots {
+  display:flex;
+  gap:5px;
+  margin-top:14px;
+}
+.feedbackLoadingDots span {
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:#111;
+  opacity:.22;
+  animation:feedbackDotPulse 1.2s infinite ease-in-out;
+}
+.feedbackLoadingDots span:nth-child(2) { animation-delay:.16s; }
+.feedbackLoadingDots span:nth-child(3) { animation-delay:.32s; }
+@keyframes feedbackDotPulse {
+  0%, 100% { opacity:.18; transform:translateY(0); }
+  50% { opacity:.75; transform:translateY(-3px); }
+}
+
+/* 초등부 피드백 팝업 카드 */
+.memoFeedbackPopupOverlay {
+  position:fixed;
+  inset:0;
+  z-index:8500;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px 18px;
+  background:rgba(0,0,0,0.04);
+  backdrop-filter:blur(3px);
+  -webkit-backdrop-filter:blur(3px);
+}
+.memoFeedbackPopupCard {
+  width:min(520px, calc(100vw - 36px));
+  max-height:min(72vh, 620px);
+  border-radius:28px;
+  background:#fff;
+  box-shadow:0 18px 52px rgba(0,0,0,0.12), 0 6px 18px rgba(0,0,0,0.05);
+  padding:18px 16px 14px;
+  display:flex;
+  flex-direction:column;
+}
+.memoFeedbackPopupLabel {
+  font-size:calc(12px * var(--olli-text-scale));
+  color:#999;
+  margin-bottom:10px;
+}
+.memoFeedbackPopupText {
+  font-size:calc(15px * var(--olli-text-scale));
+  line-height:1.72;
+  color:#111;
+  white-space:pre-wrap;
+  word-break:keep-all;
+  overflow-y:auto;
+  padding-right:2px;
+}
+.memoFeedbackEditBox {
+  width:100%;
+  min-height:260px;
+  border:none;
+  outline:none;
+  resize:none;
+  background:#FEFEFE;
+  border-radius:18px;
+  padding:14px;
+  font-size:calc(15px * var(--olli-text-scale));
+  line-height:1.72;
+  color:#111;
+  font-family:inherit;
+}
+.memoFeedbackPopupActions {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:14px;
+}
+.memoFeedbackLeftActions,
+.memoFeedbackRightActions {
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+.memoFeedbackIconBtn {
+  border:none;
+  border-radius:999px;
+  background:#f1f1f1;
+  color:#111;
+  width:38px;
+  height:38px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  font-family:inherit;
+}
+.memoFeedbackIconBtn svg {
+  width:19px;
+  height:19px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.memoFeedbackActionBtn {
+  border:none;
+  border-radius:999px;
+  background:#f1f1f1;
+  color:#111;
+  padding:9px 13px;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-family:inherit;
+}
+.memoFeedbackActionBtn.primary {
+  background:#111;
+  color:#fff;
+}
+.memoFeedbackPopupCard.editing .memoFeedbackRightActions {
+  display:none;
+}
+.memoFeedbackPopupCard:not(.editing) .memoFeedbackEditSaveBtn {
+  display:none;
+}
+
+
+/* 2026-04-22 정리 수정: 중복 보정 제거 후 실제 구조 기준으로 재정렬 */
+:root {
+  --vivizac-top-h: 44px;
+  --vivizac-header-h: 66px;
+  --vivizac-pill-w: 96px;
+  --vivizac-pill-cell-w: 48px;
+  --vivizac-page-bg: #FEFEFE;
+  --vivizac-soft-shadow: 0 30px 72px rgba(0,0,0,0.060), 0 10px 30px rgba(0,0,0,0.035);
+  --vivizac-memo-shell-x: max(16px, calc((100vw - 860px) / 2 + 16px));
+  --vivizac-memo-top-y: max(18px, calc(env(safe-area-inset-top) + 6px + var(--vivizac-vv-offset-top, 0px)));
+  --vivizac-memo-bottom-y: max(18px, calc(env(safe-area-inset-bottom) + 8px + var(--vivizac-vv-bottom, 0px)));
+}
+
+.memoSubLabelRow { display: none ; }/* 공통 피드백 페이지 배경 *//* 메인/실패성장 상단 버튼: 메인 페이지 기준 44px */
+
+/* 두 칸 버튼은 실제 두 칸인 곳만 96px로 고정 */
+#recordRoomScreen .recordMoreBtn{
+  width: var(--vivizac-pill-cell-w);
+  min-width: var(--vivizac-pill-cell-w);
+  flex: 0 0 var(--vivizac-pill-cell-w);
+  height: var(--vivizac-top-h);
+  min-height: var(--vivizac-top-h);
+}
+
+/* 장면카드 선택 상태 */
+
+/* 기록실 1분 피드백/기록보드 원상복구: 상단 버튼 통일 대상 제외 */
+#recordRoomScreen .recordUtilityCircle,
+#recordRoomScreen .recordUtilityBtn .recordUtilityCircle,
+#recordRoomScreen .recordTopAction .recordUtilityCircle,
+#recordRoomScreen .recordQuickBtn .recordUtilityCircle {
+  width: 66px ;
+  min-width: 66px ;
+  height: 66px ;
+  min-height: 66px ;
+  border-radius: 999px ;
+  background: #EEEEEE ;
+}
+#recordRoomScreen .recordUtilityBtn svg,
+#recordRoomScreen .recordUtilityCircle svg,
+#recordRoomScreen .recordTopAction svg,
+#recordRoomScreen .recordQuickBtn svg {
+  width: 32px ;
+  height: 32px ;
+}
+
+/* 메인/실패성장 라인: 기록실 라인과 동일하게 1px 실제 선으로 정리 */
+
+
+
