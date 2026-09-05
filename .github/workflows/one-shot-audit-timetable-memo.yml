@@ -1,0 +1,26 @@
+name: Audit timetable memo/class layout
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-audit-timetable-memo.yml'
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect timetable and memo/history code
+        shell: bash
+        run: |
+          set -e
+          echo '=== PC TIMETABLE FUNCTIONS ==='
+          grep -nE '^(async )?function |const .*=>|let .*=>' pc-timetable.js | head -n 220 || true
+          echo '=== CLASS / KINDER / A-B REFERENCES ==='
+          grep -nEi 'kinder|kindergarten|class|반|merge|합반|group' pc-timetable.js pc-timetable.css pc-timetable-attendance-register.js pc-timetable-history.js pc-timetable-service.js | head -n 320 || true
+          echo '=== MEMO REFERENCES ==='
+          grep -nEi 'memo|note|메모|post' pc-timetable.js pc-timetable.css pc-timetable-attendance-register.js pc-timetable-history.js pc-timetable-service.js | head -n 360 || true
+          echo '=== HISTORY REFERENCES ==='
+          grep -nEi 'history|변경|restore|recover|undo|delete|삭제' pc-timetable.js pc-timetable.css pc-timetable-attendance-register.js pc-timetable-history.js pc-timetable-service.js | head -n 360 || true
+          echo '=== FILE SIZES ==='
+          wc -lc pc-timetable.js pc-timetable.css pc-timetable-attendance-register.js pc-timetable-history.js pc-timetable-service.js
