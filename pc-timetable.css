@@ -134,7 +134,8 @@
 #recordRoomScreen .olliTtClassLane { min-width: 0; padding: 4px; border: 1px solid transparent; border-radius: 9px; overflow-y: auto; cursor: pointer; transition: background .15s ease; }
 #recordRoomScreen .olliTtClassLane:hover { background: #f5faff; }
 #recordRoomScreen .olliTtClassLanes.elementary { grid-template-columns: 1fr; grid-template-rows: repeat(2, minmax(32px, max-content)); gap: 0; }
-#recordRoomScreen .olliTtClassLanes.kinder { grid-template-columns: 1fr; grid-template-rows: repeat(2, minmax(32px, max-content)); gap: 0; }
+#recordRoomScreen .olliTtClassLanes.kinder { display: flex; flex-direction: column; gap: 0; }
+#recordRoomScreen .olliTtClassLane.kinder { flex: 1 1 0; min-height: 0; }
 #recordRoomScreen .olliTtClassLane.kinder { border-radius: 0; }
 #recordRoomScreen .olliTtClassLane.kinder + .olliTtClassLane.kinder { border-left: 0; border-top: 1px solid #dfe4e9; }
 #recordRoomScreen .olliTtClassLane.elementary { min-height: 0; padding: 4px 2px; border: 0; border-radius: 0; overflow: visible; }
