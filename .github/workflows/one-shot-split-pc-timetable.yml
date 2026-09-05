@@ -1,0 +1,223 @@
+name: Split PC timetable by domain
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-shot-split-pc-timetable.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Split attendance register and history domains
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('pc-timetable.js')
+          source = path.read_text(encoding='utf-8')
+
+          def extract_block(text, start_marker, end_marker):
+              start = text.find(start_marker)
+              end = text.find(end_marker, start)
+              if start < 0 or end < 0 or end <= start:
+                  raise SystemExit(f'block markers not found: {start_marker} -> {end_marker}')
+              return text[start:end], start, end
+
+          attendance_block, a_start, a_end = extract_block(
+              source,
+              '  function monthLabel(value) {',
+              '  function cellContentsHtml('
+          )
+
+          attendance_exports = [
+              'monthLabel', 'shiftAttendanceMonth', 'loadAttendanceRegister',
+              'attendanceStudents', 'attendanceRosterMeta', 'sortedAttendanceStudents',
+              'linkedAttendanceRegisterHtml', 'renderAttendanceRegister'
+          ]
+          attendance_module = """(function timetableAttendanceRegisterModule(global) {
+  'use strict';
+
+  function create(ctx) {
+    const {
+      state, service, clean, pad, divisionOf, esc, todayKey,
+      notify, divisionLabel, ensureUi, renderAttendanceHeader
+    } = ctx;
+
+""" + attendance_block + """
+    return { """ + ', '.join(attendance_exports) + """ };
+  }
+
+  global.OlliTimetableAttendanceRegisterModule = { create };
+})(window);
+"""
+          Path('pc-timetable-attendance-register.js').write_text(attendance_module, encoding='utf-8')
+
+          attendance_wrappers = """  let attendanceRegisterRuntime = null;
+  function attendanceRegisterRuntimeApi() {
+    if (!attendanceRegisterRuntime) {
+      const module = global.OlliTimetableAttendanceRegisterModule;
+      if (!module || typeof module.create !== 'function') throw new Error('시간표 출석부 모듈을 불러오지 못했습니다.');
+      attendanceRegisterRuntime = module.create({
+        state, service, clean, pad, divisionOf, esc, todayKey,
+        notify, divisionLabel, ensureUi, renderAttendanceHeader
+      });
+    }
+    return attendanceRegisterRuntime;
+  }
+
+  function monthLabel(value) { return attendanceRegisterRuntimeApi().monthLabel(value); }
+  function shiftAttendanceMonth(amount) { return attendanceRegisterRuntimeApi().shiftAttendanceMonth(amount); }
+  async function loadAttendanceRegister() { return attendanceRegisterRuntimeApi().loadAttendanceRegister(); }
+  function attendanceStudents() { return attendanceRegisterRuntimeApi().attendanceStudents(); }
+  function attendanceRosterMeta(student) { return attendanceRegisterRuntimeApi().attendanceRosterMeta(student); }
+  function sortedAttendanceStudents() { return attendanceRegisterRuntimeApi().sortedAttendanceStudents(); }
+  function linkedAttendanceRegisterHtml() { return attendanceRegisterRuntimeApi().linkedAttendanceRegisterHtml(); }
+  function renderAttendanceRegister() { return attendanceRegisterRuntimeApi().renderAttendanceRegister(); }
+
+"""
+          source = source[:a_start] + attendance_wrappers + source[a_end:]
+
+          history_block, h_start, h_end = extract_block(
+              source,
+              '  function historyActionLabel(item) {',
+              '  function renderDialog() {'
+          )
+          history_exports = [
+              'historyActionLabel', 'historyStatusLabel', 'historyPoint', 'historyComparison',
+              'historyDateTime', 'historyItemHtml', 'historyDialogHtml', 'restoreConfirmDialogHtml',
+              'openHistory', 'loadHistoryIntoDialog', 'prepareHistoryRestore', 'backToHistory',
+              'restoreHistoryAction'
+          ]
+          history_module = """(function timetableHistoryModule(global) {
+  'use strict';
+
+  function create(ctx) {
+    const {
+      state, service, clean, weekdayLabel, timeLabel, shortDate, esc,
+      dialogHead, openOverlay, renderDialog, loadWeek, notify
+    } = ctx;
+
+""" + history_block + """
+    return { """ + ', '.join(history_exports) + """ };
+  }
+
+  global.OlliTimetableHistoryModule = { create };
+})(window);
+"""
+          Path('pc-timetable-history.js').write_text(history_module, encoding='utf-8')
+
+          history_wrappers = """  let timetableHistoryRuntime = null;
+  function timetableHistoryRuntimeApi() {
+    if (!timetableHistoryRuntime) {
+      const module = global.OlliTimetableHistoryModule;
+      if (!module || typeof module.create !== 'function') throw new Error('시간표 변경 이력 모듈을 불러오지 못했습니다.');
+      timetableHistoryRuntime = module.create({
+        state, service, clean, weekdayLabel, timeLabel, shortDate, esc,
+        dialogHead, openOverlay, renderDialog, loadWeek, notify
+      });
+    }
+    return timetableHistoryRuntime;
+  }
+
+  function historyActionLabel(item) { return timetableHistoryRuntimeApi().historyActionLabel(item); }
+  function historyStatusLabel(data, tableName) { return timetableHistoryRuntimeApi().historyStatusLabel(data, tableName); }
+  function historyPoint(data, tableName) { return timetableHistoryRuntimeApi().historyPoint(data, tableName); }
+  function historyComparison(item) { return timetableHistoryRuntimeApi().historyComparison(item); }
+  function historyDateTime(value) { return timetableHistoryRuntimeApi().historyDateTime(value); }
+  function historyItemHtml(item) { return timetableHistoryRuntimeApi().historyItemHtml(item); }
+  function historyDialogHtml(dialog) { return timetableHistoryRuntimeApi().historyDialogHtml(dialog); }
+  function restoreConfirmDialogHtml(dialog) { return timetableHistoryRuntimeApi().restoreConfirmDialogHtml(dialog); }
+  function openHistory() { return timetableHistoryRuntimeApi().openHistory(); }
+  async function loadHistoryIntoDialog() { return timetableHistoryRuntimeApi().loadHistoryIntoDialog(); }
+  function prepareHistoryRestore(transactionId) { return timetableHistoryRuntimeApi().prepareHistoryRestore(transactionId); }
+  function backToHistory() { return timetableHistoryRuntimeApi().backToHistory(); }
+  async function restoreHistoryAction() { return timetableHistoryRuntimeApi().restoreHistoryAction(); }
+
+"""
+          source = source[:h_start] + history_wrappers + source[h_end:]
+          path.write_text(source, encoding='utf-8')
+
+          index = Path('index.html')
+          html = index.read_text(encoding='utf-8')
+          old = '<script src="pc-timetable-service.js"></script>\n<script src="pc-timetable.js"></script>'
+          new = '<script src="pc-timetable-service.js"></script>\n<script src="pc-timetable-attendance-register.js"></script>\n<script src="pc-timetable-history.js"></script>\n<script src="pc-timetable.js"></script>'
+          if old not in html:
+              raise SystemExit('pc timetable script load anchor not found')
+          html = html.replace(old, new, 1)
+          index.write_text(html, encoding='utf-8')
+
+          doc_path = Path('OLLI_PC_MODULES.md')
+          doc = doc_path.read_text(encoding='utf-8')
+          old_row = '| 시간표 화면·팝업 | `pc-timetable.js` | `pc-timetable.css` |'
+          new_row = '| 시간표 화면·팝업·수업 이동 | `pc-timetable.js` | `pc-timetable.css` |\n| 월간 출석부 렌더링·월 이동·출석 동기화 | `pc-timetable-attendance-register.js` | `pc-timetable.css` |\n| 시간표 변경 이력·복구 | `pc-timetable-history.js` | `pc-timetable.css` |'
+          if old_row not in doc:
+              raise SystemExit('module document timetable row not found')
+          doc = doc.replace(old_row, new_row, 1)
+          marker = '- 시간표와 상담설문은 독립 모듈 상태를 유지하며 PC 셸의 메뉴 전환 함수만 연결한다.\n'
+          addition = marker + '- 시간표 UI는 `pc-timetable.js`가 화면/대화상자 조립을 담당하고, 월간 출석부는 `pc-timetable-attendance-register.js`, 변경 이력/복구는 `pc-timetable-history.js`가 담당한다. 두 보조 모듈은 `pc-timetable.js`보다 먼저 동기 로드한다.\n'
+          if marker not in doc:
+              raise SystemExit('module document common marker not found')
+          doc = doc.replace(marker, addition, 1)
+          doc_path.write_text(doc, encoding='utf-8')
+
+          print('pc-timetable.js bytes:', Path('pc-timetable.js').stat().st_size)
+          print('attendance module bytes:', Path('pc-timetable-attendance-register.js').stat().st_size)
+          print('history module bytes:', Path('pc-timetable-history.js').stat().st_size)
+          PY
+
+      - name: Verify split
+        shell: bash
+        run: |
+          set -e
+          node --check pc-timetable-attendance-register.js
+          node --check pc-timetable-history.js
+          node --check pc-timetable.js
+          grep -F 'global.OlliTimetableAttendanceRegisterModule = { create };' pc-timetable-attendance-register.js
+          grep -F 'global.OlliTimetableHistoryModule = { create };' pc-timetable-history.js
+          grep -F 'attendanceRegisterRuntimeApi' pc-timetable.js
+          grep -F 'timetableHistoryRuntimeApi' pc-timetable.js
+          grep -F '<script src="pc-timetable-attendance-register.js"></script>' index.html
+          grep -F '<script src="pc-timetable-history.js"></script>' index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          html = Path('index.html').read_text(encoding='utf-8')
+          order = [
+            'pc-timetable-service.js',
+            'pc-timetable-attendance-register.js',
+            'pc-timetable-history.js',
+            'pc-timetable.js'
+          ]
+          positions = [html.index(name) for name in order]
+          if positions != sorted(positions):
+              raise SystemExit(f'bad timetable load order: {positions}')
+          main = Path('pc-timetable.js').read_text(encoding='utf-8')
+          attendance = Path('pc-timetable-attendance-register.js').read_text(encoding='utf-8')
+          history = Path('pc-timetable-history.js').read_text(encoding='utf-8')
+          for needle in ['state.attendanceRows.forEach', 'settingsAttendanceScheduleFitText']:
+              if needle in main or needle not in attendance:
+                  raise SystemExit(f'attendance ownership check failed: {needle}')
+          for needle in ['service.restoreHistory', 'olliTtHistoryItem']:
+              if needle in main or needle not in history:
+                  raise SystemExit(f'history ownership check failed: {needle}')
+          print('verification passed')
+          PY
+
+      - name: Commit split and remove temporary workflows
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f .github/workflows/one-shot-split-pc-timetable.yml
+          git rm -f .github/workflows/one-shot-audit-pc-timetable-split.yml
+          git add pc-timetable.js pc-timetable-attendance-register.js pc-timetable-history.js index.html OLLI_PC_MODULES.md
+          git commit -m 'Split timetable attendance and history modules'
+          git push
