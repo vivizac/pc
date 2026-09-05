@@ -1,0 +1,59 @@
+name: One-shot memo colors and save button
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-shot-memo-colors-save-button.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply patch
+        shell: python
+        run: |
+          from pathlib import Path
+
+          css = Path('pc-timetable.css')
+          s = css.read_text()
+          s = s.replace('  border: 1px solid #bfdcf3;\n', '  border: 1px solid #e2cb63;\n', 1)
+          s = s.replace('  color: #35566f;\n', '  color: #544918;\n', 1)
+          s = s.replace('  box-shadow: 0 2px 5px rgba(68,121,160,.10);\n', '  box-shadow: 0 2px 5px rgba(112,91,14,.10);\n', 1)
+          old_hover = '#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #a9cfea; background: #dff0ff; box-shadow: 0 3px 8px rgba(68,121,160,.16); }'
+          new_hover = '#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #d4b83f; background: #ffed85; box-shadow: 0 3px 8px rgba(112,91,14,.16); }'
+          if old_hover not in s: raise SystemExit('memo hover style not found')
+          s = s.replace(old_hover, new_hover, 1)
+          css.write_text(s)
+
+          js = Path('pc-timetable.js')
+          j = js.read_text()
+          old = '<button type="button" class="olliTtDialogCancel" data-tt-save-memo>저장</button>'
+          new = '<button type="button" class="olliTtDialogPrimary" data-tt-save-memo>저장</button>'
+          if old not in j: raise SystemExit('memo save button not found')
+          j = j.replace(old, new, 1)
+          js.write_text(j)
+
+          idx = Path('index.html')
+          i = idx.read_text()
+          if 'pc-timetable.css?v=20260905-7' not in i: raise SystemExit('timetable css cache token not found')
+          i = i.replace('pc-timetable.css?v=20260905-7', 'pc-timetable.css?v=20260905-8', 1)
+          idx.write_text(i)
+      - name: Validate
+        run: |
+          node --check pc-timetable.js
+          git diff --check
+          grep -q 'border: 1px solid #e2cb63' pc-timetable.css
+          grep -q 'color: #544918' pc-timetable.css
+          grep -q 'class="olliTtDialogPrimary" data-tt-save-memo' pc-timetable.js
+      - name: Commit patch and remove workflow
+        run: |
+          rm .github/workflows/one-shot-memo-colors-save-button.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pc-timetable.css pc-timetable.js index.html .github/workflows/one-shot-memo-colors-save-button.yml
+          git commit -m "Restore memo styling and activate save button"
+          git push origin HEAD:main
