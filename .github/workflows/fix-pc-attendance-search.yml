@@ -16,7 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Patch attendance search
-        run: python3 .github/tmp/fix_pc_attendance_search.py
+        run: |
+          sed -i "s@s, count = re.subn(pattern, helper, s, count=1, flags=re.S)@s, count = re.subn(pattern, lambda m: m.group(1) + helper[2:-2] + m.group(2), s, count=1, flags=re.S)@" .github/tmp/fix_pc_attendance_search.py
+          python3 .github/tmp/fix_pc_attendance_search.py
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
