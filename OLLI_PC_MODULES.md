@@ -39,7 +39,9 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 | 초등/유치 학생 정보 모달 열기·저장 | `olli-student-info-runtime.js` | 현재 공통 스타일 |
 | 앱 부팅·초기화·공용 함수 전역 연결 | `olli-app-startup.js` | 현재 공통 스타일 |
 | 장면카드 피드백·입력 방어·내부 피드백 작업 큐 | `olli-feedback-runtime.js` | 현재 공통 스타일 |
-| 시간표 화면·팝업 | `pc-timetable.js` | `pc-timetable.css` |
+| 시간표 화면·팝업·수업 이동 | `pc-timetable.js` | `pc-timetable.css` |
+| 월간 출석부 렌더링·월 이동·출석 동기화 | `pc-timetable-attendance-register.js` | `pc-timetable.css` |
+| 시간표 변경 이력·복구 | `pc-timetable-history.js` | `pc-timetable.css` |
 | 시간표 데이터 호출·변경 이력·복구 | `pc-timetable-service.js` | - |
 | 상담설문 | `consultation-survey.js`, `consultation-survey-core.js` | `consultation-survey.css` |
 
@@ -60,6 +62,7 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 - 기능을 수정할 때 다른 모듈 코드를 복사하지 않는다. 공통 연결이 필요하면 기존 공개 함수나 `OlliPcCore`의 공개 함수만 사용한다.
 - 외부 UI/공통 모듈은 현재 삽입 위치가 실행 순서를 보장하므로 임의로 `defer` 처리하거나 문서 맨 아래로 옮기지 않는다.
 - 시간표와 상담설문은 독립 모듈 상태를 유지하며 PC 셸의 메뉴 전환 함수만 연결한다.
+- 시간표 UI는 `pc-timetable.js`가 화면/대화상자 조립을 담당하고, 월간 출석부는 `pc-timetable-attendance-register.js`, 변경 이력/복구는 `pc-timetable-history.js`가 담당한다. 두 보조 모듈은 `pc-timetable.js`보다 먼저 동기 로드한다.
 
 ## 데이터 모듈 경계
 

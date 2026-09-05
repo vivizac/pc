@@ -424,146 +424,27 @@
     return `${state.weekStart.getMonth() + 1}월 ${state.weekStart.getDate()}일 – ${end.getMonth() + 1}월 ${end.getDate()}일`;
   }
 
-  function monthLabel(value) {
-    const match = clean(value).match(/^(\d{4})-(\d{2})$/);
-    return match ? `${Number(match[1])}년 ${Number(match[2])}월` : '';
-  }
-
-  function shiftAttendanceMonth(amount) {
-    const match = state.attendanceMonth.match(/^(\d{4})-(\d{2})$/);
-    const date = match ? new Date(Number(match[1]), Number(match[2]) - 1 + amount, 1) : new Date();
-    state.attendanceMonth = `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
-    state.attendanceRows = [];
-    state.attendanceRowsMonth = '';
-    renderAttendanceRegister();
-    loadAttendanceRegister();
-  }
-
-  async function loadAttendanceRegister() {
-    if (!state.active || state.view !== 'schedule' || state.pane !== 'attendance') return;
-    const month = state.attendanceMonth;
-    if (state.attendanceRowsMonth !== month && typeof service.getCachedAttendanceMonth === 'function') {
-      const cached = service.getCachedAttendanceMonth(month);
-      if (cached) {
-        state.attendanceRows = cached;
-        state.attendanceRowsMonth = month;
-        renderAttendanceRegister();
-      }
+  let attendanceRegisterRuntime = null;
+  function attendanceRegisterRuntimeApi() {
+    if (!attendanceRegisterRuntime) {
+      const module = global.OlliTimetableAttendanceRegisterModule;
+      if (!module || typeof module.create !== 'function') throw new Error('시간표 출석부 모듈을 불러오지 못했습니다.');
+      attendanceRegisterRuntime = module.create({
+        state, service, clean, pad, divisionOf, esc, todayKey,
+        notify, divisionLabel, ensureUi, renderAttendanceHeader
+      });
     }
-    const token = ++state.attendanceLoadToken;
-    state.attendanceLoading = true;
-    if (state.attendanceRowsMonth !== month) renderAttendanceRegister();
-    try {
-      const rows = await service.loadAttendanceMonth(month);
-      if (token !== state.attendanceLoadToken || state.attendanceMonth !== month) return;
-      state.attendanceRows = rows;
-      state.attendanceRowsMonth = month;
-    } catch (error) {
-      if (token !== state.attendanceLoadToken) return;
-      if (state.attendanceRowsMonth !== month) state.attendanceRows = [];
-      notify(error && (error.message || error) || '출석부를 불러오지 못했습니다.');
-    } finally {
-      if (token === state.attendanceLoadToken) {
-        state.attendanceLoading = false;
-        renderAttendanceRegister();
-      }
-    }
+    return attendanceRegisterRuntime;
   }
 
-  function attendanceStudents() {
-    const query = clean(state.sidebarQuery);
-    return service.activeStudents().filter((student) => {
-      const division = divisionOf(student);
-      return (state.attendanceDivision === 'combined' || division === state.attendanceDivision)
-        && (!query || clean(student.name).includes(query));
-    });
-  }
-
-  function attendanceRosterMeta(student) {
-    const division = divisionOf(student);
-    let school = clean(student && (division === 'kinder' ? (student.kindergarten || student.school) : student.school)).replace(/\s+/g, '');
-    school = division === 'kinder'
-      ? school.replace(/유치원/g, '')
-      : school.replace(/초등학교|초등/g, '초').replace(/등학교/g, '');
-    const gradeValue = clean(student && (division === 'kinder' ? student.age : student.grade)).replace(/\s+/g, '');
-    const gradeNumber = (gradeValue.match(/\d+/) || [gradeValue])[0];
-    return `${school}${gradeNumber}`;
-  }
-
-  function sortedAttendanceStudents() {
-    const students = attendanceStudents().slice();
-    const numberOf = (value) => Number((clean(value).match(/\d+/) || [9999])[0]);
-    return students.sort((a, b) => {
-      if (state.attendanceSort === 'name') return clean(a.name).localeCompare(clean(b.name), 'ko');
-      const ad = divisionOf(a);
-      const bd = divisionOf(b);
-      if (ad !== bd) return ad === 'kinder' ? -1 : 1;
-      return numberOf(ad === 'kinder' ? a.age : a.grade) - numberOf(bd === 'kinder' ? b.age : b.grade)
-        || clean(a.name).localeCompare(clean(b.name), 'ko');
-    });
-  }
-
-  function linkedAttendanceRegisterHtml() {
-    const match = state.attendanceMonth.match(/^(\d{4})-(\d{2})$/);
-    const year = match ? Number(match[1]) : new Date().getFullYear();
-    const month = match ? Number(match[2]) : new Date().getMonth() + 1;
-    const days = new Date(year, month, 0).getDate();
-    const students = sortedAttendanceStudents();
-    const rowsByStudentDate = new Map();
-    state.attendanceRows.forEach((row) => {
-      const key = `${clean(row.student_id)}|${clean(row.session_date).slice(0, 10)}`;
-      const list = rowsByStudentDate.get(key) || [];
-      list.push(row);
-      rowsByStudentDate.set(key, list);
-    });
-    const staticWidth = 20 + 42 + 51 + 20;
-    const tableStyle = ` style="--attendance-static-col-width:${staticWidth}px;--attendance-date-col-count:${days};--attendance-date-col-width:calc((100% - ${staticWidth}px) / ${days});"`;
-    const colGroup = '<colgroup><col class="noCol"><col class="nameCol"><col class="schoolGradeCol"><col class="personalityCol">'
-      + Array.from({ length: days }, () => '<col class="dateCol">').join('') + '</colgroup>';
-    const dayHeaders = Array.from({ length: days }, (_, index) => {
-      const day = index + 1;
-      const sunday = new Date(year, month - 1, day).getDay() === 0 ? ' daySun' : '';
-      return `<th class="dateCol${sunday}">${day}</th>`;
-    }).join('');
-    const schoolHeader = state.attendanceDivision === 'combined' ? '소속' : (state.attendanceDivision === 'kinder' ? '유치원/나이' : '학교/학년');
-    const header = `<thead><tr><th class="noCol"></th><th class="nameCol">이름</th><th class="schoolGradeCol">${schoolHeader}</th><th class="personalityCol">성향</th>${dayHeaders}</tr></thead>`;
-    const rowHtml = students.map((student, index) => {
-      const dateCells = Array.from({ length: days }, (_, offset) => {
-        const day = offset + 1;
-        const key = `${year}-${pad(month)}-${pad(day)}`;
-        const sunday = new Date(year, month - 1, day).getDay() === 0 ? ' daySun' : '';
-        const records = rowsByStudentDate.get(`${clean(student.id)}|${key}`) || [];
-        const makeupRows = records.filter((row) => clean(row.session_kind) === 'makeup');
-        const regular = records.find((row) => clean(row.session_kind) === 'regular' && row.attended !== false);
-        if (makeupRows.some((row) => row.attended !== false)) return `<td class="dateCol${sunday} attendanceMakeupMark"><span aria-label="보강 출석">보</span></td>`;
-        if (makeupRows.length && key <= todayKey()) return `<td class="dateCol${sunday} attendanceAbsentMark"><span aria-label="결석">결</span></td>`;
-        if (regular) return `<td class="dateCol${sunday} attendanceLinkedMark"><span aria-label="출석">✓</span></td>`;
-        return `<td class="dateCol${sunday}"></td>`;
-      }).join('');
-      return `<tr><td class="noCol">${index + 1}</td><td class="nameCol">${esc(student.name)}</td><td class="schoolGradeCol">${esc(attendanceRosterMeta(student))}</td><td class="personalityCol">${esc(student.personality)}</td>${dateCells}</tr>`;
-    }).join('');
-    const blankRows = Array.from({ length: Math.max(0, 40 - students.length) }, (_, index) => {
-      const dateCells = Array.from({ length: days }, (_, offset) => {
-        const sunday = new Date(year, month - 1, offset + 1).getDay() === 0 ? ' daySun' : '';
-        return `<td class="dateCol${sunday}"></td>`;
-      }).join('');
-      return `<tr class="attendanceBlankRow"><td class="noCol">${students.length + index + 1}</td><td class="nameCol"></td><td class="schoolGradeCol"></td><td class="personalityCol"></td>${dateCells}</tr>`;
-    }).join('');
-    const academyName = typeof global.getOlliCurrentAcademyName === 'function'
-      ? clean(global.getOlliCurrentAcademyName())
-      : clean(localStorage.getItem('olli_current_academy_name'));
-    const registerDivision = state.attendanceDivision === 'combined' ? '유치부/초등부' : divisionLabel(state.attendanceDivision);
-    return `<div><div class="attendancePrintPage"><div class="attendancePrintHeader"><div class="attendancePrintAcademy">${esc(academyName || '비비작 아이성향 미술학원')} (${registerDivision})</div><div class="attendancePrintMonth">${year}년 ${month}월</div></div><table class="settingsAttendancePreviewTable"${tableStyle}>${colGroup}${header}<tbody>${rowHtml}${blankRows}</tbody></table></div></div>`;
-  }
-
-  function renderAttendanceRegister() {
-    const ui = ensureUi();
-    if (!ui || state.view !== 'schedule' || state.pane !== 'attendance') return;
-    renderAttendanceHeader();
-    const html = linkedAttendanceRegisterHtml();
-    ui.root.innerHTML = `<section class="olliTtAttendanceRegister"><div class="olliTtAttendanceRegisterHead"><div><strong>${esc(monthLabel(state.attendanceMonth))} 출석부</strong><span>시간표에서 체크한 출석이 자동으로 표시됩니다.</span></div>${state.attendanceLoading ? '<em>동기화 중…</em>' : ''}</div><div class="olliTtAttendanceRegisterScroll">${html}</div></section>`;
-    if (typeof global.settingsAttendanceScheduleFitText === 'function') global.settingsAttendanceScheduleFitText(ui.root);
-  }
+  function monthLabel(value) { return attendanceRegisterRuntimeApi().monthLabel(value); }
+  function shiftAttendanceMonth(amount) { return attendanceRegisterRuntimeApi().shiftAttendanceMonth(amount); }
+  async function loadAttendanceRegister() { return attendanceRegisterRuntimeApi().loadAttendanceRegister(); }
+  function attendanceStudents() { return attendanceRegisterRuntimeApi().attendanceStudents(); }
+  function attendanceRosterMeta(student) { return attendanceRegisterRuntimeApi().attendanceRosterMeta(student); }
+  function sortedAttendanceStudents() { return attendanceRegisterRuntimeApi().sortedAttendanceStudents(); }
+  function linkedAttendanceRegisterHtml() { return attendanceRegisterRuntimeApi().linkedAttendanceRegisterHtml(); }
+  function renderAttendanceRegister() { return attendanceRegisterRuntimeApi().renderAttendanceRegister(); }
 
   function cellContentsHtml(division, date, time, classGroup, memoText) {
     const regular = slotRegulars(division, date, time, classGroup);
@@ -1133,201 +1014,32 @@
       + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-remove-pickup>픽업 삭제</button></div></div>';
   }
 
-  function historyActionLabel(item) {
-    if (item && item.is_restore) return '이전 변경 복구';
-    const details = Array.isArray(item && item.details) ? item.details : [];
-    const onlyWaitAdded = details.length && details.every((detail) => detail.table_name === 'olli_schedule_waitlist' && detail.operation === 'INSERT');
-    if (onlyWaitAdded) return clean(item.action_name) === 'move' ? '수업 이동 대기 등록' : '수업 추가 대기 등록';
-    return ({
-      move: '수업 이동',
-      add: '주간 수업 추가',
-      remove: '주간 수업 삭제',
-      wait_accept: '대기 학생 입장',
-      wait_cancel: '대기 취소',
-      makeup_add: '보강 등록',
-      makeup_cancel: '보강 취소',
-      scheduled_cancel: '변경 예약 취소',
-      restore: '이전 변경 복구'
-    })[clean(item && item.action_name)] || '시간표 변경';
-  }
-
-  function historyStatusLabel(data, tableName) {
-    const status = clean(data && data.status);
-    if (!status) return '';
-    if (tableName === 'olli_schedule_waitlist') return ({ waiting: '대기', offered: '입장 안내', accepted: '입장 완료', cancelled: '대기 취소' })[status] || status;
-    if (tableName === 'olli_schedule_one_time_sessions') return ({ scheduled: '보강', attended: '출석 완료', cancelled: '보강 취소' })[status] || status;
-    if (tableName === 'olli_schedule_changes') return ({ scheduled: '변경 예약', applied: '적용', cancelled: '예약 취소' })[status] || status;
-    return status === 'cancelled' ? '삭제' : '';
-  }
-
-  function historyPoint(data, tableName) {
-    if (!data) return '';
-    if (tableName === 'olli_schedule_enrollments') {
-      const point = `${weekdayLabel(data.weekday)}요일 ${timeLabel(data.time_slot)}`;
-      const status = historyStatusLabel(data, tableName);
-      return `${point}${status ? ` · ${status}` : ''}`;
+  let timetableHistoryRuntime = null;
+  function timetableHistoryRuntimeApi() {
+    if (!timetableHistoryRuntime) {
+      const module = global.OlliTimetableHistoryModule;
+      if (!module || typeof module.create !== 'function') throw new Error('시간표 변경 이력 모듈을 불러오지 못했습니다.');
+      timetableHistoryRuntime = module.create({
+        state, service, clean, weekdayLabel, timeLabel, shortDate, esc,
+        dialogHead, openOverlay, renderDialog, loadWeek, notify
+      });
     }
-    if (tableName === 'olli_schedule_waitlist') {
-      const point = `${weekdayLabel(data.target_weekday)}요일 ${timeLabel(data.target_time_slot)}`;
-      return `${point} · ${historyStatusLabel(data, tableName) || '대기'}`;
-    }
-    if (tableName === 'olli_schedule_one_time_sessions') {
-      return `${shortDate(data.session_date)} ${timeLabel(data.time_slot)} · ${historyStatusLabel(data, tableName) || '보강'}`;
-    }
-    return '';
+    return timetableHistoryRuntime;
   }
 
-  function historyComparison(item) {
-    const details = Array.isArray(item && item.details) ? item.details : [];
-    const action = clean(item && item.action_name);
-    const enrollmentsChanged = details.filter((detail) => detail.table_name === 'olli_schedule_enrollments');
-    const waitChanged = details.find((detail) => detail.table_name === 'olli_schedule_waitlist');
-    const makeupChanged = details.find((detail) => detail.table_name === 'olli_schedule_one_time_sessions');
-
-    let before = '';
-    let after = '';
-    if (action === 'move') {
-      const source = enrollmentsChanged.find((detail) => detail.operation === 'UPDATE');
-      const target = enrollmentsChanged.find((detail) => detail.operation === 'INSERT');
-      before = historyPoint(source && source.old_data, 'olli_schedule_enrollments');
-      after = historyPoint(target && target.new_data, 'olli_schedule_enrollments')
-        || historyPoint(waitChanged && waitChanged.new_data, 'olli_schedule_waitlist');
-    } else if (action === 'add') {
-      const target = enrollmentsChanged.find((detail) => detail.operation === 'INSERT');
-      before = '추가 전';
-      after = historyPoint(target && target.new_data, 'olli_schedule_enrollments')
-        || historyPoint(waitChanged && waitChanged.new_data, 'olli_schedule_waitlist');
-    } else if (action === 'remove') {
-      const source = enrollmentsChanged.find((detail) => detail.operation === 'UPDATE');
-      before = historyPoint(source && source.old_data, 'olli_schedule_enrollments');
-      after = source && source.new_data && source.new_data.effective_to
-        ? `${shortDate(source.new_data.effective_to)}까지 수업`
-        : '수업 삭제';
-    } else if (makeupChanged) {
-      before = historyPoint(makeupChanged.old_data, makeupChanged.table_name) || '등록 전';
-      after = historyPoint(makeupChanged.new_data, makeupChanged.table_name) || '등록 취소';
-    } else if (waitChanged) {
-      before = historyPoint(waitChanged.old_data, waitChanged.table_name) || '대기 전';
-      after = historyPoint(waitChanged.new_data, waitChanged.table_name) || '대기 취소';
-    }
-
-    if (!before || !after) {
-      const oldPoint = details.map((detail) => historyPoint(detail.old_data, detail.table_name)).find(Boolean);
-      const newPoint = details.slice().reverse().map((detail) => historyPoint(detail.new_data, detail.table_name)).find(Boolean);
-      before = before || oldPoint || '변경 전 상태';
-      after = after || newPoint || '변경 후 상태';
-    }
-    return { before, after };
-  }
-
-  function historyDateTime(value) {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return date.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-  }
-
-  function historyItemHtml(item) {
-    const comparison = historyComparison(item);
-    const restored = !!item.is_restored;
-    const canRestore = !!item.can_restore && !item.is_restore && !restored;
-    return `<article class="olliTtHistoryItem ${restored ? 'restored' : ''} ${item.is_restore ? 'restoreRecord' : ''}">`
-      + `<div class="olliTtHistoryItemTop"><div><span class="olliTtHistoryAction">${esc(historyActionLabel(item))}</span><strong>${esc(item.student_name || '학생')}</strong></div><time>${esc(historyDateTime(item.created_at))}</time></div>`
-      + `<div class="olliTtHistoryCompare"><span>${esc(comparison.before)}</span><i aria-hidden="true">→</i><span>${esc(comparison.after)}</span></div>`
-      + `<div class="olliTtHistoryMeta"><span>${esc(item.actor_name || '기록 없음')} 수정</span>${restored ? '<b>복구 완료</b>' : item.is_restore ? '<b>복구 기록</b>' : ''}</div>`
-      + (canRestore ? `<button type="button" class="olliTtHistoryRestoreBtn" data-tt-prepare-restore="${esc(item.transaction_id)}">이 변경만 복구</button>` : '')
-      + '</article>';
-  }
-
-  function historyDialogHtml(dialog) {
-    const data = dialog.data;
-    let content = '<div class="olliTtHistoryLoading">변경 이력을 불러오고 있어요.</div>';
-    if (!dialog.loading && dialog.error) content = `<div class="olliTtHistoryEmpty"><strong>변경 이력을 불러오지 못했어요.</strong><span>${esc(dialog.error)}</span><button type="button" data-tt-history-refresh>다시 불러오기</button></div>`;
-    else if (!dialog.loading && data) {
-      const items = Array.isArray(data.items) ? data.items : [];
-      content = items.length ? `<div class="olliTtHistoryList">${items.map(historyItemHtml).join('')}</div>` : '<div class="olliTtHistoryEmpty"><strong>아직 저장된 변경이 없습니다.</strong><span>앞으로 발생하는 시간표 수정은 자동으로 기록됩니다.</span></div>';
-    }
-    const permissionText = data && data.can_restore
-      ? '최근 30일 변경을 확인하고 한 건씩 안전하게 복구할 수 있습니다.'
-      : '변경 내용은 확인할 수 있으며 복구는 원장·관리자만 가능합니다.';
-    return dialogHead('↶', '시간표 변경 이력', permissionText)
-      + `<div class="olliTtDialogBody olliTtHistoryBody"><div class="olliTtHistorySafety"><strong>자동 안전 기록</strong><span>시간표가 수정될 때마다 변경 전·후 상태를 서버에 저장합니다.</span></div>${content}`
-      + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary secondary" data-tt-history-refresh>새로고침</button></div></div>';
-  }
-
-  function restoreConfirmDialogHtml(dialog) {
-    const item = dialog.item;
-    const comparison = historyComparison(item);
-    return dialogHead('!', '시간표 복구 확인', '버튼을 잘못 눌러도 바로 복구되지 않도록 한 번 더 확인합니다.')
-      + '<div class="olliTtDialogBody olliTtRestoreConfirmBody">'
-      + `<div class="olliTtRestoreTarget"><span>${esc(historyActionLabel(item))}</span><strong>${esc(item.student_name || '학생')}</strong><div><b>${esc(comparison.after)}</b><i aria-hidden="true">→</i><b>${esc(comparison.before)}</b></div></div>`
-      + '<div class="olliTtRestoreWarning"><strong>복구 후에도 기록은 사라지지 않습니다.</strong><span>복구 작업도 새로운 변경 이력으로 남습니다. 이후 같은 학생의 시간표가 다시 수정된 경우에는 서버가 복구를 자동으로 막습니다.</span></div>'
-      + '<label class="olliTtRestoreCheck"><input type="checkbox" data-tt-restore-check><span>위의 변경 전·후 내용을 확인했습니다.</span></label>'
-      + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-back-history>이전</button><button type="button" class="olliTtDialogPrimary danger" data-tt-confirm-restore disabled>확인 후 복구</button></div></div>';
-  }
-
-  function openHistory() {
-    state.dialog = { kind: 'history', loading: true, data: null, error: '' };
-    openOverlay();
-    loadHistoryIntoDialog();
-  }
-
-  async function loadHistoryIntoDialog() {
-    const token = ++state.historyLoadToken;
-    if (!state.dialog || state.dialog.kind !== 'history') return;
-    state.dialog.loading = true;
-    state.dialog.error = '';
-    renderDialog();
-    try {
-      const data = await service.loadHistory(50);
-      if (token !== state.historyLoadToken || !state.dialog || state.dialog.kind !== 'history') return;
-      state.dialog.loading = false;
-      state.dialog.data = data;
-      renderDialog();
-    } catch (error) {
-      if (token !== state.historyLoadToken || !state.dialog || state.dialog.kind !== 'history') return;
-      state.dialog.loading = false;
-      state.dialog.error = error && (error.message || error) || '잠시 후 다시 시도해 주세요.';
-      renderDialog();
-    }
-  }
-
-  function prepareHistoryRestore(transactionId) {
-    const historyData = state.dialog && state.dialog.kind === 'history' ? state.dialog.data : null;
-    const items = Array.isArray(historyData && historyData.items) ? historyData.items : [];
-    const item = items.find((row) => clean(row.transaction_id) === clean(transactionId));
-    if (!item || !item.can_restore) return;
-    state.dialog = { kind: 'restoreConfirm', item, historyData };
-    renderDialog();
-  }
-
-  function backToHistory() {
-    const historyData = state.dialog && state.dialog.historyData;
-    state.dialog = { kind: 'history', loading: !historyData, data: historyData || null, error: '' };
-    renderDialog();
-    if (!historyData) loadHistoryIntoDialog();
-  }
-
-  async function restoreHistoryAction() {
-    const dialog = state.dialog;
-    if (!dialog || dialog.kind !== 'restoreConfirm' || state.saving) return;
-    state.saving = true;
-    const button = document.querySelector('[data-tt-confirm-restore]');
-    if (button) { button.disabled = true; button.textContent = '복구 중…'; }
-    try {
-      await service.restoreHistory(dialog.item.transaction_id);
-      state.saving = false;
-      state.data = null;
-      state.dataWeek = '';
-      state.dataAcademyId = '';
-      await loadWeek();
-      notify(`${dialog.item.student_name || '학생'} 시간표를 변경 전 상태로 복구했어요.`);
-      openHistory();
-    } catch (error) {
-      state.saving = false;
-      renderDialog();
-      alert(error && (error.message || error) || '시간표 복구에 실패했습니다.');
-    }
-  }
+  function historyActionLabel(item) { return timetableHistoryRuntimeApi().historyActionLabel(item); }
+  function historyStatusLabel(data, tableName) { return timetableHistoryRuntimeApi().historyStatusLabel(data, tableName); }
+  function historyPoint(data, tableName) { return timetableHistoryRuntimeApi().historyPoint(data, tableName); }
+  function historyComparison(item) { return timetableHistoryRuntimeApi().historyComparison(item); }
+  function historyDateTime(value) { return timetableHistoryRuntimeApi().historyDateTime(value); }
+  function historyItemHtml(item) { return timetableHistoryRuntimeApi().historyItemHtml(item); }
+  function historyDialogHtml(dialog) { return timetableHistoryRuntimeApi().historyDialogHtml(dialog); }
+  function restoreConfirmDialogHtml(dialog) { return timetableHistoryRuntimeApi().restoreConfirmDialogHtml(dialog); }
+  function openHistory() { return timetableHistoryRuntimeApi().openHistory(); }
+  async function loadHistoryIntoDialog() { return timetableHistoryRuntimeApi().loadHistoryIntoDialog(); }
+  function prepareHistoryRestore(transactionId) { return timetableHistoryRuntimeApi().prepareHistoryRestore(transactionId); }
+  function backToHistory() { return timetableHistoryRuntimeApi().backToHistory(); }
+  async function restoreHistoryAction() { return timetableHistoryRuntimeApi().restoreHistoryAction(); }
 
   function renderDialog() {
     const dialog = document.getElementById('olliTtDialog');
