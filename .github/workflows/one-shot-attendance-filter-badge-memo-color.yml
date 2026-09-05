@@ -1,0 +1,71 @@
+name: One-shot attendance filter badge memo color
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-shot-attendance-filter-badge-memo-color.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Apply patch
+        shell: python
+        run: |
+          from pathlib import Path
+
+          js = Path('pc-attendance.js')
+          s = js.read_text()
+          old = """    body.innerHTML =\n      '<button class=\"olliPcQuickBtn '+(app.state.attendanceDivision === 'all' ? 'active' : '')+'\" onclick=\"pcFilterAttendanceDivision(\\'all\\')\"><span>전체</span><span>'+(elementary.length + kinder.length)+'</span></button>'+\n      '<button class=\"olliPcQuickBtn '+(app.state.attendanceDivision === 'elementary' ? 'active' : '')+'\" onclick=\"pcFilterAttendanceDivision(\\'elementary\\')\"><span>초등부</span><span>'+elementary.length+'</span></button>'+\n      '<button class=\"olliPcQuickBtn '+(app.state.attendanceDivision === 'kinder' ? 'active' : '')+'\" onclick=\"pcFilterAttendanceDivision(\\'kinder\\')\"><span>유치부</span><span>'+kinder.length+'</span></button>'+\n"""
+          new = """    body.innerHTML =\n      '<button class=\"olliPcQuickBtn '+(app.state.attendanceDivision === 'elementary' ? 'active' : '')+'\" onclick=\"pcFilterAttendanceDivision(\\'elementary\\')\"><span>초등부</span><span>'+elementary.length+'</span></button>'+\n      '<button class=\"olliPcQuickBtn '+(app.state.attendanceDivision === 'kinder' ? 'active' : '')+'\" onclick=\"pcFilterAttendanceDivision(\\'kinder\\')\"><span>유치부</span><span>'+kinder.length+'</span></button>'+\n"""
+          if old not in s: raise SystemExit('quick view block not found')
+          s = s.replace(old, new, 1)
+          s = s.replace("    app.state.attendanceDivision = 'all';", "    app.state.attendanceDivision = 'elementary';", 1)
+          old_header = """  function ensureRosterHeader(count) {\n    const list = document.getElementById('recordList');\n    if (!list) return;\n    const header = document.createElement('div');\n    header.className = 'pcAttendanceRosterHead';\n    header.innerHTML = '<div class=\"pcAttendanceRosterTitle\">학생 명단</div><span>'+count+'명</span>';\n    list.insertBefore(header, list.firstChild);\n  }\n"""
+          new_header = """  function ensureRosterHeader() {\n    const list = document.getElementById('recordList');\n    const app = core();\n    if (!list || !app) return;\n    const division = app.state.attendanceDivision === 'kinder' ? 'kinder' : 'elementary';\n    const label = division === 'kinder' ? '유치부' : '초등부';\n    const header = document.createElement('div');\n    header.className = 'pcAttendanceRosterHead';\n    header.innerHTML = '<div class=\"pcAttendanceRosterTitle\">학생 명단</div><span class=\"pcAttendanceRosterDivision '+division+'\">'+label+'</span>';\n    list.insertBefore(header, list.firstChild);\n  }\n"""
+          if old_header not in s: raise SystemExit('roster header block not found')
+          s = s.replace(old_header, new_header, 1)
+          s = s.replace('    ensureRosterHeader(visibleCount);', '    ensureRosterHeader();', 1)
+          s = s.replace("    const visibleCount = (app.state.attendanceDivision === 'elementary' ? elementary.length : app.state.attendanceDivision === 'kinder' ? kinder.length : elementary.length + kinder.length);\n", '', 1)
+          s = s.replace("    core().state.attendanceDivision = division || 'all';", "    core().state.attendanceDivision = division === 'kinder' ? 'kinder' : 'elementary';", 1)
+          js.write_text(s)
+
+          css = Path('pc-attendance.css')
+          c = css.read_text()
+          old_css = ".pcAttendanceRosterHead>span{display:inline-flex;align-items:center;justify-content:center;min-width:48px;height:30px;padding:0 10px;border-radius:999px;background:#f2f4f7;color:#747b85;font-size:11px;font-weight:820;box-sizing:border-box;}"
+          new_css = old_css + "\n.pcAttendanceRosterHead>span.pcAttendanceRosterDivision.elementary{background:#eaf4ff;color:#1687ff;}\n.pcAttendanceRosterHead>span.pcAttendanceRosterDivision.kinder{background:#ffe8f0;color:#e85b8d;}"
+          if old_css not in c: raise SystemExit('roster badge css not found')
+          c = c.replace(old_css, new_css, 1)
+          css.write_text(c)
+
+          tt = Path('pc-timetable.css')
+          t = tt.read_text()
+          t = t.replace('  border: 1px solid #b9d8f3;\n', '  border: 1px solid #e2cb63;\n', 1)
+          t = t.replace('  color: #315d7c;\n', '  color: #544918;\n', 1)
+          t = t.replace('  background: #eaf5ff;\n', '  background: #fff3a6;\n', 1)
+          t = t.replace('  box-shadow: 0 2px 5px rgba(55,112,153,.10);\n', '  box-shadow: 0 2px 5px rgba(112,91,14,.10);\n', 1)
+          t = t.replace('#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #8fc2eb; background: #dff0ff; box-shadow: 0 3px 8px rgba(55,112,153,.16); }', '#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #d4b83f; background: #ffed85; box-shadow: 0 3px 8px rgba(112,91,14,.16); }', 1)
+          tt.write_text(t)
+
+          idx = Path('index.html')
+          i = idx.read_text()
+          i = i.replace('pc-timetable.css?v=20260905-6', 'pc-timetable.css?v=20260905-7', 1)
+          idx.write_text(i)
+      - name: Validate
+        run: |
+          node --check pc-attendance.js
+          git diff --check
+          grep -q "pcAttendanceRosterDivision" pc-attendance.js
+          grep -q "background:#fff3a6" pc-timetable.css
+      - name: Commit patch and remove workflow
+        run: |
+          rm .github/workflows/one-shot-attendance-filter-badge-memo-color.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pc-attendance.js pc-attendance.css pc-timetable.css index.html .github/workflows/one-shot-attendance-filter-badge-memo-color.yml
+          git commit -m "Refine personality record filters and memo color"
+          git push origin HEAD:main
