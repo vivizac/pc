@@ -144,7 +144,8 @@
 #recordRoomScreen .olliTtClassLane.kinder .olliTtEntries { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 #recordRoomScreen .olliTtClassLaneHead { margin: 0 1px 4px; display: flex; align-items: center; justify-content: space-between; gap: 4px; color: #9ba2ac; font-size: calc(8px * var(--olli-text-scale)); font-weight: 720; }
 #recordRoomScreen .olliTtClassLaneHead strong { color: #697383; font-size: calc(9px * var(--olli-text-scale)); font-weight: 850; }
-#recordRoomScreen .olliTtMergedClassHead { margin-bottom: 5px; padding-bottom: 3px; border-bottom: 1px solid #eadc8a; }
+#recordRoomScreen .olliTtMergedClassHead { margin-bottom: 5px; padding-bottom: 0; border-bottom: 0; }
+#recordRoomScreen .olliTtMergedClassHead strong { font-size: calc(9px * var(--olli-text-scale)); font-weight: 850; }
 #recordRoomScreen .olliTtClassLane .olliTtEntries { grid-template-columns: 1fr; }
 #recordRoomScreen .olliTtEntries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; }
 #recordRoomScreen .olliTtCellMemoCard {

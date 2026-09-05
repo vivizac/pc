@@ -786,7 +786,7 @@
     state.dialog = {
       kind: 'add', division, date: targetDate,
       weekday: Number(dataset.weekday), time, studentId: '',
-      query: '', note: existingMemo, originalNote: existingMemo, addType: 'wait', targetClassGroup
+      query: '', note: existingMemo, originalNote: existingMemo, addType: 'wait', targetClassGroup, pendingKinderMerge: false
     };
     openOverlay();
   }
@@ -839,6 +839,7 @@
   function classGroupChoiceHtml(division, selectedGroup, weekday, time, hideGuide, includeKinderLayoutControl) {
     const split = isClassSplit(division, weekday, time);
     const selected = classGroupOf({ class_group: selectedGroup });
+    const pendingKinderMerge = Boolean(state.dialog && state.dialog.kind === 'add' && state.dialog.division === 'kinder' && state.dialog.pendingKinderMerge);
 
     if (division === 'kinder' && includeKinderLayoutControl) {
       if (!split) {
@@ -847,8 +848,8 @@
       }
       return '<div class="olliTtField"><div class="olliTtFieldHead"><span>수업 반</span><small>반을 선택하거나 두 반을 합반할 수 있습니다.</small></div>'
         + '<div class="olliTtClassChoiceGrid kinderLayout">'
-        + ['A', 'B'].map((group) => `<button type="button" class="olliTtChoice ${selected === group ? 'active' : ''}" data-tt-target-class="${group}">${group}반</button>`).join('')
-        + '<button type="button" class="olliTtChoice olliTtKinderMergeChoice" data-tt-merge-kinder-class>클래스 합반</button>'
+        + ['A', 'B'].map((group) => `<button type="button" class="olliTtChoice ${!pendingKinderMerge && selected === group ? 'active' : ''}" data-tt-target-class="${group}">${group}반</button>`).join('')
+        + `<button type="button" class="olliTtChoice olliTtKinderMergeChoice ${pendingKinderMerge ? 'active' : ''}" data-tt-merge-kinder-class>클래스 합반</button>`
         + '</div></div>';
     }
 
@@ -929,8 +930,8 @@
     const selected = studentById(dialog.studentId);
     const note = clean(dialog.note);
     const hadMemo = Boolean(clean(dialog.originalNote));
-    const canRegister = Boolean(selected || note || hadMemo);
-    const primaryLabel = selected ? '등록' : (note ? '메모 저장' : (hadMemo ? '메모 삭제' : '등록'));
+    const canRegister = Boolean(selected || note || hadMemo || dialog.pendingKinderMerge);
+    const primaryLabel = dialog.pendingKinderMerge ? '등록' : (selected ? '등록' : (note ? '메모 저장' : (hadMemo ? '메모 삭제' : '등록')));
     return dialogHead('+', '이 시간에 학생 추가', '')
       + '<div class="olliTtDialogBody">'
       + `<label class="olliTtAddMemo"><span>메모</span><textarea data-tt-add-note maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.note)}</textarea></label>`
@@ -1139,7 +1140,7 @@
       if (student && !isClassSplit(divisionOf(student), state.dialog.targetWeekday, state.dialog.targetTime)) state.dialog.targetClassGroup = 'A';
       renderDialog();
     }));
-    dialog.querySelectorAll('[data-tt-target-class]').forEach((button) => button.addEventListener('click', () => { state.dialog.targetClassGroup = button.dataset.ttTargetClass; renderDialog(); }));
+    dialog.querySelectorAll('[data-tt-target-class]').forEach((button) => button.addEventListener('click', () => { state.dialog.targetClassGroup = button.dataset.ttTargetClass; if (state.dialog.kind === 'add') state.dialog.pendingKinderMerge = false; renderDialog(); }));
     const effective = dialog.querySelector('[data-tt-effective-date]');
     if (effective) effective.addEventListener('change', () => {
       let selectedDate = parseDate(effective.value || todayKey());
@@ -1170,8 +1171,9 @@
         const hasSelectedStudent = Boolean(state.dialog.studentId);
         const hasNote = Boolean(clean(state.dialog.note));
         const hadMemo = Boolean(clean(state.dialog.originalNote));
-        saveButton.disabled = !(hasSelectedStudent || hasNote || hadMemo);
-        saveButton.textContent = hasSelectedStudent ? '등록' : (hasNote ? '메모 저장' : (hadMemo ? '메모 삭제' : '등록'));
+        const pendingKinderMerge = Boolean(state.dialog.pendingKinderMerge);
+        saveButton.disabled = !(hasSelectedStudent || hasNote || hadMemo || pendingKinderMerge);
+        saveButton.textContent = pendingKinderMerge ? '등록' : (hasSelectedStudent ? '등록' : (hasNote ? '메모 저장' : (hadMemo ? '메모 삭제' : '등록')));
       }
     });
     bindImeSafeSearch(
@@ -1374,10 +1376,9 @@
   async function mergeKinderClass() {
     const dialog = state.dialog;
     if (!dialog || dialog.kind !== 'add' || dialog.division !== 'kinder') return;
-    if (!confirm(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 유치부 A반·B반을 합반할까요?\n기존 A반·B반 학생은 그대로 유지되며 한 칸에 함께 표시됩니다.`)) return;
     dialog.targetClassGroup = 'A';
-    const result = await withOpenDialogSaving(() => service.mergeKinderClass(dialog.weekday, dialog.time));
-    if (result) notify(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 유치부 수업을 합반했어요.`);
+    dialog.pendingKinderMerge = true;
+    renderDialog();
   }
 
   async function persistDialogCellMemo(dialog) {
@@ -1398,11 +1399,19 @@
     const hasStudent = Boolean(dialog.studentId);
     const note = clean(dialog.note);
     const hadMemo = Boolean(clean(dialog.originalNote));
-    if (!hasStudent && !note && !hadMemo) return;
+    const pendingKinderMerge = Boolean(dialog.pendingKinderMerge && dialog.division === 'kinder');
+    if (!hasStudent && !note && !hadMemo && !pendingKinderMerge) return;
 
     if (!hasStudent) {
-      const memoResult = await withSaving(() => persistDialogCellMemo(dialog));
-      if (memoResult) notify(note ? '시간표 메모를 저장했어요.' : '시간표 메모를 삭제했어요.');
+      const result = await withSaving(async () => {
+        if (pendingKinderMerge) await service.mergeKinderClass(dialog.weekday, dialog.time);
+        if (note || hadMemo) await persistDialogCellMemo(dialog);
+        return { merged: pendingKinderMerge, memoChanged: note || hadMemo };
+      });
+      if (result) {
+        if (pendingKinderMerge) notify(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 유치부 수업을 합반했어요.`);
+        else notify(note ? '시간표 메모를 저장했어요.' : '시간표 메모를 삭제했어요.');
+      }
       return;
     }
 
@@ -1412,6 +1421,7 @@
     }
 
     const combined = await withSaving(async () => {
+      if (pendingKinderMerge) await service.mergeKinderClass(dialog.weekday, dialog.time);
       const actionResult = dialog.addType === 'makeup'
         ? await service.addMakeup(dialog.studentId, dialog.date, dialog.time, note, dialog.targetClassGroup)
         : await service.addWaitlist({
