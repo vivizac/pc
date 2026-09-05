@@ -11,7 +11,13 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 | 초등 관찰기록 저장·자동저장·피드백 연결 | `observation-memo-core.js` | `observation-editor.css` |
 | 초등 오늘의 분석·분석 이력·상세보기 | `elementary-analysis.js` | `elementary-analysis-ui.css` |
 | 유치부 1분 피드백 공용 UI·기능 | `kinder-feedback-ui.js`, `kinder-feedback.js` | `kinder-feedback.css` |
-| 로그인·계정·학원 연결·세션 복구 | `olli-auth-core.js` | 현재 공통 스타일 |
+| 로그인 진입 화면·계정/학원 연결 화면 전환 | `olli-auth-entry-ui.js` | 현재 공통 스타일 |
+| 계정 로그인 상태·세션 복구·접근 학원 캐시 | `olli-auth-account-session.js` | 현재 공통 스타일 |
+| 여러 학원 전환·전환 전 저장·전환 후 재로딩 | `olli-auth-academy-switch.js` | 현재 공통 스타일 |
+| 원장 로그인·새 학원 생성·초기 원장 연결 | `olli-auth-owner-onboarding.js` | 현재 공통 스타일 |
+| 승인된 선생님 멤버십 확인·선생님 입장 | `olli-auth-teacher-membership.js` | 현재 공통 스타일 |
+| 기존 학원 찾기·학원 접근 요청·승인 상태 확인 | `olli-auth-academy-access.js` | 현재 공통 스타일 |
+| 기기 식별·현재 멤버 접근 권한 재검증 | `olli-auth-member-validation.js` | 현재 공통 스타일 |
 | 설정 기본 상태·학원 전환·설정 화면·환경설정 | `olli-settings-base.js` | 현재 공통 스타일, `pc-settings-layout.css` |
 | 선생님·관리자·권한·승인 관리 | `olli-settings-members.js` | 현재 공통 스타일 |
 | 백업·저장 진단·재전송 | `olli-settings-storage.js` | 현재 공통 스타일 |
@@ -50,6 +56,18 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 | 시간표 데이터 호출·변경 이력·복구 | `pc-timetable-service.js` | - |
 | 상담설문 | `consultation-survey.js`, `consultation-survey-core.js` | `consultation-survey.css` |
 
+## 로그인·계정 모듈 경계
+
+- `olli-auth-entry-ui.js`: 로그인/계정생성/학원연결/선생님 요청 화면 전환과 진입 폼 연결.
+- `olli-auth-account-session.js`: 계정 세션 토큰, 접근 가능한 학원 캐시, 학원 존재 확인, 로그인 상태 저장과 세션 복구.
+- `olli-auth-academy-switch.js`: 다학원 상태, 학원 전환 오버레이, 전환 전 미저장 데이터 보존과 전환 후 데이터 재로딩.
+- `olli-auth-owner-onboarding.js`: 원장 계정 로그인, 새 학원 생성, 레거시 학원 생성 후 원장 멤버 연결과 최초 진입.
+- `olli-auth-teacher-membership.js`: 승인된 선생님 멤버십 탐색과 선생님 계정 입장.
+- `olli-auth-academy-access.js`: 기존 학원 검색, 계정의 학원 접근 요청, 승인 여부 확인과 요청 상태 UI.
+- `olli-auth-member-validation.js`: 기기 이름/기기 ID와 현재 멤버 접근 권한 재검증.
+
+이 7개 파일은 기존 `olli-auth-core.js`의 실행 순서를 그대로 보존한 classic script 분리다. 로그인 화면 바로 뒤에서 표기된 순서대로 동기 로드하며 임의로 `defer` 처리하지 않는다.
+
 ## 공통 연결 원칙
 
 - `pc-shell.js`는 현재 메뉴와 공통 검색값을 보관하고 각 기능 모듈의 `open`, `renderContext`를 호출한다.
@@ -60,7 +78,7 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 - `studentMemoScreen`과 초등 분석 모달의 정적 DOM은 더 이상 `index.html` 본문에 직접 두지 않고 `observation-editor-ui.js`가 원래 위치에서 동기적으로 주입한다.
 - 유치부 `kinderChatFeedbackScreen`과 관련 오버레이의 정적 DOM은 `kinder-feedback-ui.js`가 `kinder-feedback.js`보다 먼저 원래 위치에 주입한다.
 - 초등 분석의 선택값·이력·상세보기 함수는 `elementary-analysis.js`, 관찰 메모 저장/자동저장/피드백 연결은 `observation-memo-core.js`가 담당한다.
-- 로그인·계정·학원 연결 함수는 `olli-auth-core.js`, 설정 공통 상태와 화면은 `olli-settings-base.js`, 선생님/권한은 `olli-settings-members.js`, 백업/진단은 `olli-settings-storage.js`, 공통 저장 기반은 `olli-storage-core.js`에서 수정한다.
+- 로그인 계층은 `olli-auth-entry-ui.js`, `olli-auth-account-session.js`, `olli-auth-academy-switch.js`, `olli-auth-owner-onboarding.js`, `olli-auth-teacher-membership.js`, `olli-auth-academy-access.js`, `olli-auth-member-validation.js`로 나뉜다. 설정 공통 상태와 화면은 `olli-settings-base.js`, 선생님/권한은 `olli-settings-members.js`, 백업/진단은 `olli-settings-storage.js`, 공통 저장 기반은 `olli-storage-core.js`에서 수정한다.
 - 설정의 데이터 가져오기는 공통 상태/탭은 `olli-settings-imports-base.js`, 학생 일괄등록은 `olli-settings-student-bulk-import.js`, 기존 피드백은 `olli-settings-existing-feedback-import.js`, 출석부 사진은 `olli-settings-attendance-photo-import.js`, 개발용 초기화는 `olli-settings-import-test-tools.js`가 담당한다. 서로 다른 가져오기 기능을 한 파일에 다시 합치지 않는다.
 - 데이터 공통 흐름은 역할에 따라 `olli-data-foundation.js`, `olli-data-feedback.js`, `olli-data-consultation-summary.js`, `olli-data-students.js`, `olli-data-record-list.js`, `olli-data-attendance-feedback.js`, `olli-data-student-operations.js`, `olli-data-ui-utils.js`로 나뉜다. 기록 에디터 공용 동작은 `olli-record-student-picker.js`, `olli-record-scene-tools.js`, `olli-record-search-controls.js`, `olli-record-feedback-generation.js`, `olli-record-room-navigation.js`, `olli-record-memo-storage.js`로 나뉘며, 기록실 런타임은 `olli-record-list-view.js`, `olli-consultation-runtime.js`, `olli-student-info-runtime.js`, `olli-app-startup.js`, `olli-feedback-runtime.js`에서 수정한다. 이 코드를 다시 `index.html`로 복사하지 않는다.
 - `academy_id`, 학생 원본 데이터, Supabase 공통 저장 함수처럼 여러 기능이 함께 사용하는 값은 담당 공통 모듈을 통해 공유한다.
