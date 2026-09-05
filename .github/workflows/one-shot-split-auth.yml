@@ -1,0 +1,85 @@
+name: Split auth by domain
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-shot-split-auth.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Split auth
+        run: python3 scripts/tmp_split_auth.py
+      - name: Verify split
+        shell: bash
+        run: |
+          set -e
+          for f in \
+            olli-auth-entry-ui.js \
+            olli-auth-account-session.js \
+            olli-auth-academy-switch.js \
+            olli-auth-owner-onboarding.js \
+            olli-auth-teacher-membership.js \
+            olli-auth-academy-access.js \
+            olli-auth-member-validation.js; do
+            node --check "$f"
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          files = [
+            'olli-auth-entry-ui.js','olli-auth-account-session.js','olli-auth-academy-switch.js',
+            'olli-auth-owner-onboarding.js','olli-auth-teacher-membership.js',
+            'olli-auth-academy-access.js','olli-auth-member-validation.js'
+          ]
+          html = Path('index.html').read_text(encoding='utf-8')
+          positions = [html.index(name) for name in files]
+          if positions != sorted(positions):
+              raise SystemExit(f'bad auth load order: {positions}')
+          if 'olli-auth-core.js' in html:
+              raise SystemExit('old auth core tag remains')
+          checks = {
+            'olli-auth-entry-ui.js': ['showOlliLoginEntry', 'submitOlliTeacherApprovalRequestFromEntry'],
+            'olli-auth-account-session.js': ['OLLI_ACCOUNT_SESSION_TOKEN_KEY', 'restoreOlliAccountSession'],
+            'olli-auth-academy-switch.js': ['switchOlliAcademy', 'preserveOlliAcademyPendingDataBeforeSwitch'],
+            'olli-auth-owner-onboarding.js': ['submitOlliOwnerIdLogin', 'createOlliAcademyPreview'],
+            'olli-auth-teacher-membership.js': ['findOlliApprovedTeacherMembership', 'submitOlliTeacherEnter'],
+            'olli-auth-academy-access.js': ['lookupOlliAcademyForAccountAccess', 'checkOlliTeacherApprovalStatus'],
+            'olli-auth-member-validation.js': ['getOlliLoginDeviceId', 'validateOlliCurrentMemberAccess']
+          }
+          for file, needles in checks.items():
+              text = Path(file).read_text(encoding='utf-8')
+              for needle in needles:
+                  if needle not in text:
+                      raise SystemExit(f'{needle} missing from {file}')
+          total = sum(Path(name).stat().st_size for name in files)
+          old_size = Path('olli-auth-core.js').stat().st_size
+          if total != old_size:
+              raise SystemExit(f'byte-preserving auth split mismatch: {total} != {old_size}')
+          print('auth split verification passed', total)
+          PY
+      - name: Commit split and remove temporary files
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f olli-auth-core.js
+          git rm -f .github/workflows/one-shot-split-auth.yml
+          git rm -f .github/workflows/one-shot-audit-auth-split.yml
+          git rm -f scripts/tmp_split_auth.py
+          git add index.html OLLI_PC_MODULES.md \
+            olli-auth-entry-ui.js \
+            olli-auth-account-session.js \
+            olli-auth-academy-switch.js \
+            olli-auth-owner-onboarding.js \
+            olli-auth-teacher-membership.js \
+            olli-auth-academy-access.js \
+            olli-auth-member-validation.js
+          git commit -m 'Split authentication by responsibility'
+          git push
