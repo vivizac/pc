@@ -479,7 +479,10 @@
     const attrs = `data-tt-cell="1" data-division="${division}" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-time="${time}"`;
     const memo = cellMemoText(division, date, time);
     if (!isClassSplit(division, date.getDay(), time)) {
-      return `<div class="olliTtCell" ${attrs}>${cellContentsHtml(division, date, time, '', memo)}</div>`;
+      const mergedClassHead = division === 'kinder'
+        ? '<div class="olliTtClassLaneHead olliTtMergedClassHead"><strong>A반</strong></div>'
+        : '';
+      return `<div class="olliTtCell${division === 'kinder' ? ' kinder merged' : ''}" ${attrs}>${mergedClassHead}${cellContentsHtml(division, date, time, '', memo)}</div>`;
     }
     const heads = division === 'kinder';
     const counts = {

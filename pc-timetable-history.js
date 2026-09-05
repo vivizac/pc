@@ -7,8 +7,34 @@
       dialogHead, openOverlay, renderDialog, loadWeek, notify
     } = ctx;
 
+  function memoHistoryDetail(item) {
+    const details = Array.isArray(item && item.details) ? item.details : [];
+    return details.find((detail) => detail.table_name === 'olli_schedule_cell_memos') || null;
+  }
+
+  function memoHistoryText(value) {
+    const text = clean(value).replace(/\s+/g, ' ');
+    if (!text) return '메모 없음';
+    return text.length > 48 ? `${text.slice(0, 48)}…` : text;
+  }
+
+  function historySubjectLabel(item) {
+    const detail = memoHistoryDetail(item);
+    if (!detail) return item && item.student_name || '학생';
+    const data = detail.new_data || detail.old_data || {};
+    return clean(data.division) === 'kinder' ? '유치부 메모' : (clean(data.division) === 'elementary' ? '초등부 메모' : '시간표 메모');
+  }
+
   function historyActionLabel(item) {
     if (item && item.is_restore) return '이전 변경 복구';
+    const memoDetail = memoHistoryDetail(item);
+    if (memoDetail) {
+      const oldNote = clean(memoDetail.old_data && memoDetail.old_data.note);
+      const newNote = clean(memoDetail.new_data && memoDetail.new_data.note);
+      if (memoDetail.operation === 'DELETE' || (oldNote && !newNote)) return '메모 삭제';
+      if (memoDetail.operation === 'INSERT' || (!oldNote && newNote)) return '메모 추가';
+      return '메모 수정';
+    }
     const details = Array.isArray(item && item.details) ? item.details : [];
     const onlyWaitAdded = details.length && details.every((detail) => detail.table_name === 'olli_schedule_waitlist' && detail.operation === 'INSERT');
     if (onlyWaitAdded) return clean(item.action_name) === 'move' ? '수업 이동 대기 등록' : '수업 추가 대기 등록';
@@ -36,6 +62,9 @@
 
   function historyPoint(data, tableName) {
     if (!data) return '';
+    if (tableName === 'olli_schedule_cell_memos') {
+      return `${shortDate(data.session_date)} ${timeLabel(data.time_slot)} · ${memoHistoryText(data.note)}`;
+    }
     if (tableName === 'olli_schedule_enrollments') {
       const point = `${weekdayLabel(data.weekday)}요일 ${timeLabel(data.time_slot)}`;
       const status = historyStatusLabel(data, tableName);
@@ -57,10 +86,16 @@
     const enrollmentsChanged = details.filter((detail) => detail.table_name === 'olli_schedule_enrollments');
     const waitChanged = details.find((detail) => detail.table_name === 'olli_schedule_waitlist');
     const makeupChanged = details.find((detail) => detail.table_name === 'olli_schedule_one_time_sessions');
+    const memoChanged = details.find((detail) => detail.table_name === 'olli_schedule_cell_memos');
 
     let before = '';
     let after = '';
-    if (action === 'move') {
+    if (memoChanged) {
+      const memoData = memoChanged.new_data || memoChanged.old_data || {};
+      const point = `${shortDate(memoData.session_date)} ${timeLabel(memoData.time_slot)}`;
+      before = memoChanged.old_data ? historyPoint(memoChanged.old_data, memoChanged.table_name) : `${point} · 메모 없음`;
+      after = memoChanged.new_data ? historyPoint(memoChanged.new_data, memoChanged.table_name) : `${point} · 메모 삭제`;
+    } else if (action === 'move') {
       const source = enrollmentsChanged.find((detail) => detail.operation === 'UPDATE');
       const target = enrollmentsChanged.find((detail) => detail.operation === 'INSERT');
       before = historyPoint(source && source.old_data, 'olli_schedule_enrollments');
@@ -103,9 +138,9 @@
   function historyItemHtml(item) {
     const comparison = historyComparison(item);
     const restored = !!item.is_restored;
-    const canRestore = !!item.can_restore && !item.is_restore && !restored;
+    const canRestore = !!item.can_restore && !item.is_restore && !restored && !memoHistoryDetail(item);
     return `<article class="olliTtHistoryItem ${restored ? 'restored' : ''} ${item.is_restore ? 'restoreRecord' : ''}">`
-      + `<div class="olliTtHistoryItemTop"><div><span class="olliTtHistoryAction">${esc(historyActionLabel(item))}</span><strong>${esc(item.student_name || '학생')}</strong></div><time>${esc(historyDateTime(item.created_at))}</time></div>`
+      + `<div class="olliTtHistoryItemTop"><div><span class="olliTtHistoryAction">${esc(historyActionLabel(item))}</span><strong>${esc(historySubjectLabel(item))}</strong></div><time>${esc(historyDateTime(item.created_at))}</time></div>`
       + `<div class="olliTtHistoryCompare"><span>${esc(comparison.before)}</span><i aria-hidden="true">→</i><span>${esc(comparison.after)}</span></div>`
       + `<div class="olliTtHistoryMeta"><span>${esc(item.actor_name || '기록 없음')} 수정</span>${restored ? '<b>복구 완료</b>' : item.is_restore ? '<b>복구 기록</b>' : ''}</div>`
       + (canRestore ? `<button type="button" class="olliTtHistoryRestoreBtn" data-tt-prepare-restore="${esc(item.transaction_id)}">이 변경만 복구</button>` : '')
@@ -133,7 +168,7 @@
     const comparison = historyComparison(item);
     return dialogHead('!', '시간표 복구 확인', '버튼을 잘못 눌러도 바로 복구되지 않도록 한 번 더 확인합니다.')
       + '<div class="olliTtDialogBody olliTtRestoreConfirmBody">'
-      + `<div class="olliTtRestoreTarget"><span>${esc(historyActionLabel(item))}</span><strong>${esc(item.student_name || '학생')}</strong><div><b>${esc(comparison.after)}</b><i aria-hidden="true">→</i><b>${esc(comparison.before)}</b></div></div>`
+      + `<div class="olliTtRestoreTarget"><span>${esc(historyActionLabel(item))}</span><strong>${esc(historySubjectLabel(item))}</strong><div><b>${esc(comparison.after)}</b><i aria-hidden="true">→</i><b>${esc(comparison.before)}</b></div></div>`
       + '<div class="olliTtRestoreWarning"><strong>복구 후에도 기록은 사라지지 않습니다.</strong><span>복구 작업도 새로운 변경 이력으로 남습니다. 이후 같은 학생의 시간표가 다시 수정된 경우에는 서버가 복구를 자동으로 막습니다.</span></div>'
       + '<label class="olliTtRestoreCheck"><input type="checkbox" data-tt-restore-check><span>위의 변경 전·후 내용을 확인했습니다.</span></label>'
       + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-back-history>이전</button><button type="button" class="olliTtDialogPrimary danger" data-tt-confirm-restore disabled>확인 후 복구</button></div></div>';

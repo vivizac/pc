@@ -134,38 +134,39 @@
 #recordRoomScreen .olliTtClassLane { min-width: 0; padding: 4px; border: 1px solid transparent; border-radius: 9px; overflow-y: auto; cursor: pointer; transition: background .15s ease; }
 #recordRoomScreen .olliTtClassLane:hover { background: #f5faff; }
 #recordRoomScreen .olliTtClassLanes.elementary { grid-template-columns: 1fr; grid-template-rows: repeat(2, minmax(32px, max-content)); gap: 0; }
-#recordRoomScreen .olliTtClassLanes.kinder { gap: 0; }
+#recordRoomScreen .olliTtClassLanes.kinder { grid-template-columns: 1fr; grid-template-rows: repeat(2, minmax(32px, max-content)); gap: 0; }
 #recordRoomScreen .olliTtClassLane.kinder { border-radius: 0; }
-#recordRoomScreen .olliTtClassLane.kinder + .olliTtClassLane.kinder { border-left: 1px solid #dfe4e9; }
+#recordRoomScreen .olliTtClassLane.kinder + .olliTtClassLane.kinder { border-left: 0; border-top: 1px solid #dfe4e9; }
 #recordRoomScreen .olliTtClassLane.elementary { min-height: 0; padding: 4px 2px; border: 0; border-radius: 0; overflow: visible; }
 #recordRoomScreen .olliTtClassLane.elementary + .olliTtClassLane.elementary { border-top: 1px solid #dfe4e9; }
 #recordRoomScreen .olliTtClassLane.elementary .olliTtEntries { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 #recordRoomScreen .olliTtClassLaneHead { margin: 0 1px 4px; display: flex; align-items: center; justify-content: space-between; gap: 4px; color: #9ba2ac; font-size: calc(8px * var(--olli-text-scale)); font-weight: 720; }
 #recordRoomScreen .olliTtClassLaneHead strong { color: #697383; font-size: calc(9px * var(--olli-text-scale)); font-weight: 850; }
+#recordRoomScreen .olliTtMergedClassHead { margin-bottom: 5px; padding-bottom: 3px; border-bottom: 1px solid #eadc8a; }
 #recordRoomScreen .olliTtClassLane .olliTtEntries { grid-template-columns: 1fr; }
 #recordRoomScreen .olliTtEntries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; }
 #recordRoomScreen .olliTtCellMemoCard {
   grid-column: 1 / -1;
   width: 100%;
   min-width: 0;
-  min-height: 28px;
-  padding: 6px 7px;
-  border: 1px solid #dfe4e9;
+  min-height: 32px;
+  padding: 7px 8px;
+  border: 1px solid #e2cb63;
   border-radius: 8px;
   display: flex;
   align-items: flex-start;
-  gap: 5px;
-  color: #515965;
-  background: #fff;
+  gap: 6px;
+  color: #544918;
+  background: #fff3a6;
   box-sizing: border-box;
   text-align: left;
   font-family: 'Pretendard', sans-serif;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(18,30,48,.035);
+  box-shadow: 0 2px 5px rgba(112,91,14,.10);
 }
-#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #b9d8f5; background: #fff; box-shadow: 0 2px 7px rgba(18,30,48,.07); }
-#recordRoomScreen .olliTtCellMemoCard span { flex: 0 0 auto; margin-top: 1px; font-size: calc(9px * var(--olli-text-scale)); }
-#recordRoomScreen .olliTtCellMemoCard strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(9px * var(--olli-text-scale)); font-weight: 720; line-height: 1.35; }
+#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #d4b83f; background: #ffed85; box-shadow: 0 3px 8px rgba(112,91,14,.16); }
+#recordRoomScreen .olliTtCellMemoCard span { flex: 0 0 auto; margin-top: 1px; font-size: calc(11px * var(--olli-text-scale)); }
+#recordRoomScreen .olliTtCellMemoCard strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(12px * var(--olli-text-scale)); font-weight: 760; line-height: 1.45; }
 #recordRoomScreen .olliTtStudent {
   width: 100%;
   min-height: 24px;
@@ -421,7 +422,7 @@
 
 .olliTtMemoDeletePreview { margin-top: 8px; padding: 16px; border: 1px solid #dfe4e9; border-radius: 16px; background: #fff; color: #3f4752; }
 .olliTtMemoDeletePreview > span { display: block; margin-bottom: 8px; color: #8d949d; font-size: calc(11px * var(--olli-text-scale)); font-weight: 780; }
-.olliTtMemoDeletePreview > div { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(13px * var(--olli-text-scale)); font-weight: 680; line-height: 1.55; }
+.olliTtMemoDeletePreview > div { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(15px * var(--olli-text-scale)); font-weight: 700; line-height: 1.55; }
 #olliTtDialog.olliTtMemoManageDialog { width: min(520px, calc(100vw - 52px)); }
 
 /* 시간표 변경 이력과 안전 복구 */
