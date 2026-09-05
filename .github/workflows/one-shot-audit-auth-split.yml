@@ -1,0 +1,27 @@
+name: Audit auth module boundaries
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-shot-audit-auth-split.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print auth function map
+        shell: bash
+        run: |
+          set -e
+          wc -lc olli-auth-core.js
+          echo '=== FUNCTIONS ==='
+          grep -nE '^(async )?function [A-Za-z0-9_]+' olli-auth-core.js || true
+          echo '=== STATE ==='
+          grep -nE '^(const|let) [A-Za-z0-9_]+' olli-auth-core.js || true
+          echo '=== INDEX LOAD ==='
+          grep -n -B4 -A4 'olli-auth-core.js' index.html || true
