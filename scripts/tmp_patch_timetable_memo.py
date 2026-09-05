@@ -1,0 +1,159 @@
+from pathlib import Path
+import re
+
+
+def replace_once(text, old, new, label):
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(f"{label}: expected 1 match, found {count}")
+    return text.replace(old, new, 1)
+
+
+js_path = Path("pc-timetable.js")
+js = js_path.read_text(encoding="utf-8")
+target = "return `<div class=\"olliTtCell\" ${attrs}>${cellContentsHtml(division, date, time, '', memo)}</div>`;"
+replacement = """const mergedClassHead = division === 'kinder'
+        ? '<div class="olliTtClassLaneHead olliTtMergedClassHead"><strong>A반</strong></div>'
+        : '';
+      return `<div class="olliTtCell${division === 'kinder' ? ' kinder merged' : ''}" ${attrs}>${mergedClassHead}${cellContentsHtml(division, date, time, '', memo)}</div>`;"""
+js = replace_once(js, target, replacement, "merged kinder class head")
+js_path.write_text(js, encoding="utf-8")
+
+css_path = Path("pc-timetable.css")
+css = css_path.read_text(encoding="utf-8")
+css = replace_once(
+    css,
+    "#recordRoomScreen .olliTtClassLanes.kinder { gap: 0; }",
+    "#recordRoomScreen .olliTtClassLanes.kinder { grid-template-columns: 1fr; grid-template-rows: repeat(2, minmax(32px, max-content)); gap: 0; }",
+    "kinder vertical lanes",
+)
+css = replace_once(
+    css,
+    "#recordRoomScreen .olliTtClassLane.kinder + .olliTtClassLane.kinder { border-left: 1px solid #dfe4e9; }",
+    "#recordRoomScreen .olliTtClassLane.kinder + .olliTtClassLane.kinder { border-left: 0; border-top: 1px solid #dfe4e9; }",
+    "kinder lane divider",
+)
+css = replace_once(
+    css,
+    "#recordRoomScreen .olliTtClassLaneHead strong { color: #697383; font-size: calc(9px * var(--olli-text-scale)); font-weight: 850; }",
+    "#recordRoomScreen .olliTtClassLaneHead strong { color: #697383; font-size: calc(9px * var(--olli-text-scale)); font-weight: 850; }\n#recordRoomScreen .olliTtMergedClassHead { margin-bottom: 5px; padding-bottom: 3px; border-bottom: 1px solid #eadc8a; }",
+    "merged class head style",
+)
+
+memo_pattern = re.compile(r"#recordRoomScreen \.olliTtCellMemoCard \{.*?\n\}", re.S)
+if len(list(memo_pattern.finditer(css))) != 1:
+    raise SystemExit("memo card block must exist exactly once")
+memo_block = """#recordRoomScreen .olliTtCellMemoCard {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  padding: 7px 8px;
+  border: 1px solid #e2cb63;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: #544918;
+  background: #fff3a6;
+  box-sizing: border-box;
+  text-align: left;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(112,91,14,.10);
+}"""
+css = memo_pattern.sub(memo_block, css, count=1)
+css = replace_once(
+    css,
+    "#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #b9d8f5; background: #fff; box-shadow: 0 2px 7px rgba(18,30,48,.07); }",
+    "#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #d4b83f; background: #ffed85; box-shadow: 0 3px 8px rgba(112,91,14,.16); }",
+    "memo hover",
+)
+css = replace_once(
+    css,
+    "#recordRoomScreen .olliTtCellMemoCard span { flex: 0 0 auto; margin-top: 1px; font-size: calc(9px * var(--olli-text-scale)); }",
+    "#recordRoomScreen .olliTtCellMemoCard span { flex: 0 0 auto; margin-top: 1px; font-size: calc(11px * var(--olli-text-scale)); }",
+    "memo icon size",
+)
+css = replace_once(
+    css,
+    "#recordRoomScreen .olliTtCellMemoCard strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(9px * var(--olli-text-scale)); font-weight: 720; line-height: 1.35; }",
+    "#recordRoomScreen .olliTtCellMemoCard strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(12px * var(--olli-text-scale)); font-weight: 760; line-height: 1.45; }",
+    "memo text size",
+)
+css = replace_once(
+    css,
+    ".olliTtMemoDeletePreview > div { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(13px * var(--olli-text-scale)); font-weight: 680; line-height: 1.55; }",
+    ".olliTtMemoDeletePreview > div { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(15px * var(--olli-text-scale)); font-weight: 700; line-height: 1.55; }",
+    "memo delete preview text",
+)
+css_path.write_text(css, encoding="utf-8")
+
+history_path = Path("pc-timetable-history.js")
+h = history_path.read_text(encoding="utf-8")
+helper_anchor = "  function historyActionLabel(item) {"
+helpers = """  function memoHistoryDetail(item) {
+    const details = Array.isArray(item && item.details) ? item.details : [];
+    return details.find((detail) => detail.table_name === 'olli_schedule_cell_memos') || null;
+  }
+
+  function memoHistoryText(value) {
+    const text = clean(value).replace(/\\s+/g, ' ');
+    if (!text) return '메모 없음';
+    return text.length > 48 ? `${text.slice(0, 48)}…` : text;
+  }
+
+  function historySubjectLabel(item) {
+    const detail = memoHistoryDetail(item);
+    if (!detail) return item && item.student_name || '학생';
+    const data = detail.new_data || detail.old_data || {};
+    return clean(data.division) === 'kinder' ? '유치부 메모' : (clean(data.division) === 'elementary' ? '초등부 메모' : '시간표 메모');
+  }
+
+"""
+h = replace_once(h, helper_anchor, helpers + helper_anchor, "memo history helpers")
+restore_line = "    if (item && item.is_restore) return '이전 변경 복구';"
+memo_action = """    const memoDetail = memoHistoryDetail(item);
+    if (memoDetail) {
+      const oldNote = clean(memoDetail.old_data && memoDetail.old_data.note);
+      const newNote = clean(memoDetail.new_data && memoDetail.new_data.note);
+      if (memoDetail.operation === 'DELETE' || (oldNote && !newNote)) return '메모 삭제';
+      if (memoDetail.operation === 'INSERT' || (!oldNote && newNote)) return '메모 추가';
+      return '메모 수정';
+    }"""
+h = replace_once(h, restore_line, restore_line + "\n" + memo_action, "memo action labels")
+
+point_anchor = "    if (!data) return '';"
+point_branch = """    if (tableName === 'olli_schedule_cell_memos') {
+      return `${shortDate(data.session_date)} ${timeLabel(data.time_slot)} · ${memoHistoryText(data.note)}`;
+    }"""
+h = replace_once(h, point_anchor, point_anchor + "\n" + point_branch, "memo history point")
+
+makeup_line = "    const makeupChanged = details.find((detail) => detail.table_name === 'olli_schedule_one_time_sessions');"
+h = replace_once(
+    h,
+    makeup_line,
+    makeup_line + "\n    const memoChanged = details.find((detail) => detail.table_name === 'olli_schedule_cell_memos');",
+    "memo comparison detail",
+)
+move_line = "    if (action === 'move') {"
+memo_compare = """    if (memoChanged) {
+      const memoData = memoChanged.new_data || memoChanged.old_data || {};
+      const point = `${shortDate(memoData.session_date)} ${timeLabel(memoData.time_slot)}`;
+      before = memoChanged.old_data ? historyPoint(memoChanged.old_data, memoChanged.table_name) : `${point} · 메모 없음`;
+      after = memoChanged.new_data ? historyPoint(memoChanged.new_data, memoChanged.table_name) : `${point} · 메모 삭제`;
+    } else if (action === 'move') {"""
+h = replace_once(h, move_line, memo_compare, "memo comparison")
+h = replace_once(
+    h,
+    "    const canRestore = !!item.can_restore && !item.is_restore && !restored;",
+    "    const canRestore = !!item.can_restore && !item.is_restore && !restored && !memoHistoryDetail(item);",
+    "disable memo restore",
+)
+subject_token = "${esc(item.student_name || '학생')}"
+if h.count(subject_token) != 2:
+    raise SystemExit(f"history subjects: expected 2 matches, found {h.count(subject_token)}")
+h = h.replace(subject_token, "${esc(historySubjectLabel(item))}")
+history_path.write_text(h, encoding="utf-8")
+
+print("patched timetable UI and memo history")
