@@ -89,7 +89,7 @@
   height: auto;
   min-height: 444px;
   flex: 1 1 444px;
-  grid-template-rows: 52px repeat(2, minmax(196px, 1fr));
+  grid-template-rows: 52px repeat(2, minmax(230px, 1fr));
 }
 #recordRoomScreen .olliTtGrid > * { border-right: 1px solid #e8ebef; border-bottom: 1px solid #e8ebef; }
 #recordRoomScreen .olliTtGrid > :nth-child(7n) { border-right: 0; }
@@ -213,23 +213,21 @@
 #recordRoomScreen .olliTtStudent.wait .olliTtStudentTag { background: #b7a8df; }
 #recordRoomScreen .olliTtStudent.makeup .olliTtStudentTag { background: #338d74; }
 #recordRoomScreen .olliTtReservation { display: block; margin-top: 3px; color: #0A73DC; font-size: calc(8px * var(--olli-text-scale)); font-weight: 780; }
-#recordRoomScreen .olliTtPickupGrid { width: 100%; flex: 0 0 326px; display: grid; grid-template-columns: 56px repeat(6, minmax(0, 1fr)); grid-template-rows: 34px repeat(2, 146px); background: #fff; }
+#recordRoomScreen .olliTtPickupGrid { width: 100%; flex: 0 0 258px; display: grid; grid-template-columns: 56px repeat(6, minmax(0, 1fr)); grid-template-rows: 34px repeat(2, 112px); background: #fff; }
 #recordRoomScreen .olliTtPickupGrid > * { border-right: 1px solid #e8ebef; border-bottom: 1px solid #e8ebef; }
 #recordRoomScreen .olliTtPickupGrid > :nth-child(8),
 #recordRoomScreen .olliTtPickupGrid > :nth-child(15) { border-right: 0; }
 #recordRoomScreen .olliTtPickupGrid > :nth-last-child(-n+7) { border-bottom: 0; }
 #recordRoomScreen .olliTtPickupTitle { grid-column: 1 / -1; padding: 0 15px; display: flex; align-items: center; color: #536171; background: #f5f8fa; font-size: calc(12px * var(--olli-text-scale)); font-weight: 850; }
 #recordRoomScreen .olliTtPickupTime { padding-top: 13px; color: #7b838e; background: #fafbfc; text-align: center; font-size: calc(11px * var(--olli-text-scale)); font-weight: 820; }
-#recordRoomScreen .olliTtPickupCell { min-height: 0; padding: 6px; background: #fff; cursor: pointer; transition: background .15s ease, box-shadow .15s ease; }
+#recordRoomScreen .olliTtPickupCell { min-height: 0; padding: 5px; background: #fff; cursor: pointer; transition: background .15s ease, box-shadow .15s ease; }
 #recordRoomScreen .olliTtPickupCell:hover { background: #f5faff; box-shadow: inset 0 0 0 2px #c4e2ff; }
 #recordRoomScreen .olliTtPickupEntries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
-#recordRoomScreen .olliTtPickupCard { min-width: 0; min-height: 40px; padding: 4px 3px 4px 7px; border: 1px solid #cfe0e8; border-radius: 9px; display: flex; align-items: center; color: #3d5360; background: #eef6f8; }
-#recordRoomScreen .olliTtPickupCard > div { min-width: 0; flex: 1; }
+#recordRoomScreen .olliTtPickupCard { min-width: 0; min-height: 28px; padding: 4px 7px; border: 1px solid #cfe0e8; border-radius: 9px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px; color: #3d5360; background: #eef6f8; }
 #recordRoomScreen .olliTtPickupCard strong,
-#recordRoomScreen .olliTtPickupCard span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#recordRoomScreen .olliTtPickupCard span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #recordRoomScreen .olliTtPickupCard strong { font-size: calc(10px * var(--olli-text-scale)); font-weight: 820; }
-#recordRoomScreen .olliTtPickupCard span { margin-top: 2px; color: #708792; font-size: calc(8px * var(--olli-text-scale)); font-weight: 680; }
-#recordRoomScreen .olliTtPickupCard button { width: 22px; min-width: 22px; height: 28px; padding: 0 3px 2px 0; border: 0; color: #adb9bf; background: transparent; font: 800 calc(9px * var(--olli-text-scale)) 'Pretendard', sans-serif; letter-spacing: -2px; cursor: pointer; }
+#recordRoomScreen .olliTtPickupCard span { color: #708792; font-size: calc(8px * var(--olli-text-scale)); font-weight: 680; text-align: right; }
 #recordRoomScreen .olliTtLoading,
 #recordRoomScreen .olliTtError { min-height: 260px; display: flex; align-items: center; justify-content: center; border: 1px solid #e3e7eb; border-radius: 20px; color: #8b929d; background: #fff; text-align: center; font-size: calc(13px * var(--olli-text-scale)); font-weight: 680; }
 #recordRoomScreen .olliTtError { color: #b34a50; }
