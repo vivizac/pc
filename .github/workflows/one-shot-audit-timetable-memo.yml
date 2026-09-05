@@ -10,17 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect timetable and memo/history code
+      - name: Inspect timetable memo SQL history support
         shell: bash
         run: |
           set -e
-          echo '=== PC TIMETABLE FUNCTIONS ==='
-          grep -nE '^(async )?function |const .*=>|let .*=>' pc-timetable.js | head -n 220 || true
-          echo '=== CLASS / KINDER / A-B REFERENCES ==='
-          grep -nEi 'kinder|kindergarten|class|반|merge|합반|group' pc-timetable.js pc-timetable.css pc-timetable-attendance-register.js pc-timetable-history.js pc-timetable-service.js | head -n 320 || true
-          echo '=== MEMO REFERENCES ==='
-          grep -nEi 'memo|note|메모|post' pc-timetable.js pc-timetable.css pc-timetable-attendance-register.js pc-timetable-history.js pc-timetable-service.js | head -n 360 || true
-          echo '=== HISTORY REFERENCES ==='
-          grep -nEi 'history|변경|restore|recover|undo|delete|삭제' pc-timetable.js pc-timetable.css pc-timetable-attendance-register.js pc-timetable-history.js pc-timetable-service.js | head -n 360 || true
-          echo '=== FILE SIZES ==='
-          wc -lc pc-timetable.js pc-timetable.css pc-timetable-attendance-register.js pc-timetable-history.js pc-timetable-service.js
+          echo '=== CELL MEMO SQL REFERENCES ==='
+          grep -nEi 'cell_memo|cell memo|시간표 메모|save_cell_memo|schedule_cell' supabase/migrations/*.sql || true
+          echo '=== AUDIT TABLE / TRIGGER EXTENSIONS ==='
+          grep -nEi 'olli_schedule_audit_log|olli_schedule_capture_audit|table_name in|create trigger .*audit' supabase/migrations/*.sql | tail -n 260 || true
+          echo '=== EXECUTE FUNCTION DEFINITIONS ==='
+          grep -n 'create or replace function public.olli_schedule_execute' supabase/migrations/*.sql || true
+          echo '=== HISTORY FUNCTION DEFINITIONS ==='
+          grep -n 'create or replace function public.olli_schedule_history_list' supabase/migrations/*.sql || true
+          grep -n 'create or replace function public.olli_schedule_restore_history' supabase/migrations/*.sql || true
