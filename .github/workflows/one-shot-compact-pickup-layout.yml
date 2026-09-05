@@ -1,0 +1,74 @@
+name: Compact pickup timetable layout
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-compact-pickup-layout.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Patch pickup cards and timetable heights
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          js_path = Path('pc-timetable.js')
+          js = js_path.read_text()
+          old_js = "const cards = rows.map((item) => `<div class=\"olliTtPickupCard\" data-tt-pickup-manage=\"${esc(item.id)}\"><div><strong>${esc(item.student_name)}</strong><span>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</span></div><button type=\"button\" aria-label=\"${esc(item.student_name)} 픽업 설정\">•••</button></div>`).join('');"
+          new_js = "const cards = rows.map((item) => `<div class=\"olliTtPickupCard\" data-tt-pickup-manage=\"${esc(item.id)}\"><strong>${esc(item.student_name)}</strong><span>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</span></div>`).join('');"
+          if old_js not in js:
+              raise SystemExit('pickup card markup anchor not found')
+          js = js.replace(old_js, new_js, 1)
+          js_path.write_text(js)
+
+          css_path = Path('pc-timetable.css')
+          css = css_path.read_text()
+          replacements = {
+            "grid-template-rows: 52px repeat(2, minmax(196px, 1fr));": "grid-template-rows: 52px repeat(2, minmax(230px, 1fr));",
+            "#recordRoomScreen .olliTtPickupGrid { width: 100%; flex: 0 0 326px; display: grid; grid-template-columns: 56px repeat(6, minmax(0, 1fr)); grid-template-rows: 34px repeat(2, 146px); background: #fff; }": "#recordRoomScreen .olliTtPickupGrid { width: 100%; flex: 0 0 258px; display: grid; grid-template-columns: 56px repeat(6, minmax(0, 1fr)); grid-template-rows: 34px repeat(2, 112px); background: #fff; }",
+            "#recordRoomScreen .olliTtPickupCell { min-height: 0; padding: 6px; background: #fff; cursor: pointer; transition: background .15s ease, box-shadow .15s ease; }": "#recordRoomScreen .olliTtPickupCell { min-height: 0; padding: 5px; background: #fff; cursor: pointer; transition: background .15s ease, box-shadow .15s ease; }",
+            "#recordRoomScreen .olliTtPickupCard { min-width: 0; min-height: 40px; padding: 4px 3px 4px 7px; border: 1px solid #cfe0e8; border-radius: 9px; display: flex; align-items: center; color: #3d5360; background: #eef6f8; }\n#recordRoomScreen .olliTtPickupCard > div { min-width: 0; flex: 1; }\n#recordRoomScreen .olliTtPickupCard strong,\n#recordRoomScreen .olliTtPickupCard span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n#recordRoomScreen .olliTtPickupCard strong { font-size: calc(10px * var(--olli-text-scale)); font-weight: 820; }\n#recordRoomScreen .olliTtPickupCard span { margin-top: 2px; color: #708792; font-size: calc(8px * var(--olli-text-scale)); font-weight: 680; }\n#recordRoomScreen .olliTtPickupCard button { width: 22px; min-width: 22px; height: 28px; padding: 0 3px 2px 0; border: 0; color: #adb9bf; background: transparent; font: 800 calc(9px * var(--olli-text-scale)) 'Pretendard', sans-serif; letter-spacing: -2px; cursor: pointer; }": "#recordRoomScreen .olliTtPickupCard { min-width: 0; min-height: 28px; padding: 4px 7px; border: 1px solid #cfe0e8; border-radius: 9px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px; color: #3d5360; background: #eef6f8; }\n#recordRoomScreen .olliTtPickupCard strong,\n#recordRoomScreen .olliTtPickupCard span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n#recordRoomScreen .olliTtPickupCard strong { font-size: calc(10px * var(--olli-text-scale)); font-weight: 820; }\n#recordRoomScreen .olliTtPickupCard span { color: #708792; font-size: calc(8px * var(--olli-text-scale)); font-weight: 680; text-align: right; }"
+          }
+          for old, new in replacements.items():
+              if old not in css:
+                  raise SystemExit('CSS anchor not found: ' + old[:80])
+              css = css.replace(old, new, 1)
+          css_path.write_text(css)
+
+          index_path = Path('index.html')
+          index = index_path.read_text()
+          old_ver = 'pc-timetable.css?v=20260905-3'
+          new_ver = 'pc-timetable.css?v=20260905-4'
+          if new_ver not in index:
+              if old_ver not in index:
+                  raise SystemExit('CSS version anchor not found')
+              index = index.replace(old_ver, new_ver, 1)
+          index_path.write_text(index)
+
+          assert '•••' not in new_js
+          assert 'repeat(2, minmax(230px, 1fr))' in css
+          assert 'repeat(2, 112px)' in css
+          assert 'min-height: 28px' in css
+          assert 'pc-timetable.css?v=20260905-4' in index
+          PY
+      - name: Validate
+        run: |
+          node --check pc-timetable.js
+          git diff --check
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pc-timetable.js pc-timetable.css index.html
+          if git diff --cached --quiet; then
+            echo 'No changes needed'
+            exit 0
+          fi
+          git commit -m "Compact pickup cards and enlarge kindergarten timetable rows"
+          git push origin main
