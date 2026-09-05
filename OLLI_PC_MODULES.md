@@ -33,7 +33,12 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 | 성향기록부 학생 피드백 시트·복사·삭제·재생성 | `olli-data-attendance-feedback.js` | - |
 | 학생 이관·상태/삭제·Supabase 학생 저장·백그라운드 동기화 | `olli-data-student-operations.js` | - |
 | 등록일/메타 표시·복사/공유·저장 모달·API 응답 유틸 | `olli-data-ui-utils.js` | - |
-| 기록 에디터 학생 선택·정렬·보관함/기록 편집 공용 동작 | `olli-record-editor-core.js` | 현재 공통 스타일 |
+| 기록 학생 선택·요일/그룹 정렬·학생 선택 팝업 | `olli-record-student-picker.js` | 현재 공통 스타일 |
+| 기록 모드 전환·장면카드·공용 모달 전환 | `olli-record-scene-tools.js` | 현재 공통 스타일 |
+| 기록 검색·검색 키보드 처리·추가 메뉴 | `olli-record-search-controls.js` | 현재 공통 스타일 |
+| 초등 장면카드 피드백 생성·저장·편집 | `olli-record-feedback-generation.js` | 현재 공통 스타일 |
+| 기록실 화면 전환·공유·초등/유치 보기 전환 | `olli-record-room-navigation.js` | 현재 공통 스타일 |
+| 관찰 메모 로컬/Supabase 초안 저장·학생등록 모달 | `olli-record-memo-storage.js` | 현재 공통 스타일 |
 | 성향기록부 학생 목록·당일 출석 상태·기록 삭제 | `olli-record-list-view.js` | 현재 공통 스타일 |
 | 상담 기준·상담 진행 상태·학생관리 대시보드·기록 목록 로드 | `olli-consultation-runtime.js` | 현재 공통 스타일 |
 | 초등/유치 학생 정보 모달 열기·저장 | `olli-student-info-runtime.js` | 현재 공통 스타일 |
@@ -57,7 +62,7 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 - 초등 분석의 선택값·이력·상세보기 함수는 `elementary-analysis.js`, 관찰 메모 저장/자동저장/피드백 연결은 `observation-memo-core.js`가 담당한다.
 - 로그인·계정·학원 연결 함수는 `olli-auth-core.js`, 설정 공통 상태와 화면은 `olli-settings-base.js`, 선생님/권한은 `olli-settings-members.js`, 백업/진단은 `olli-settings-storage.js`, 공통 저장 기반은 `olli-storage-core.js`에서 수정한다.
 - 설정의 데이터 가져오기는 공통 상태/탭은 `olli-settings-imports-base.js`, 학생 일괄등록은 `olli-settings-student-bulk-import.js`, 기존 피드백은 `olli-settings-existing-feedback-import.js`, 출석부 사진은 `olli-settings-attendance-photo-import.js`, 개발용 초기화는 `olli-settings-import-test-tools.js`가 담당한다. 서로 다른 가져오기 기능을 한 파일에 다시 합치지 않는다.
-- 데이터 공통 흐름은 역할에 따라 `olli-data-foundation.js`, `olli-data-feedback.js`, `olli-data-consultation-summary.js`, `olli-data-students.js`, `olli-data-record-list.js`, `olli-data-attendance-feedback.js`, `olli-data-student-operations.js`, `olli-data-ui-utils.js`로 나뉜다. 기록 에디터 공용 동작은 `olli-record-editor-core.js`, 기록실 런타임은 `olli-record-list-view.js`, `olli-consultation-runtime.js`, `olli-student-info-runtime.js`, `olli-app-startup.js`, `olli-feedback-runtime.js`에서 수정하며 이 코드를 다시 `index.html`로 복사하지 않는다.
+- 데이터 공통 흐름은 역할에 따라 `olli-data-foundation.js`, `olli-data-feedback.js`, `olli-data-consultation-summary.js`, `olli-data-students.js`, `olli-data-record-list.js`, `olli-data-attendance-feedback.js`, `olli-data-student-operations.js`, `olli-data-ui-utils.js`로 나뉜다. 기록 에디터 공용 동작은 `olli-record-student-picker.js`, `olli-record-scene-tools.js`, `olli-record-search-controls.js`, `olli-record-feedback-generation.js`, `olli-record-room-navigation.js`, `olli-record-memo-storage.js`로 나뉘며, 기록실 런타임은 `olli-record-list-view.js`, `olli-consultation-runtime.js`, `olli-student-info-runtime.js`, `olli-app-startup.js`, `olli-feedback-runtime.js`에서 수정한다. 이 코드를 다시 `index.html`로 복사하지 않는다.
 - `academy_id`, 학생 원본 데이터, Supabase 공통 저장 함수처럼 여러 기능이 함께 사용하는 값은 담당 공통 모듈을 통해 공유한다.
 - 기능을 수정할 때 다른 모듈 코드를 복사하지 않는다. 공통 연결이 필요하면 기존 공개 함수나 `OlliPcCore`의 공개 함수만 사용한다.
 - 외부 UI/공통 모듈은 현재 삽입 위치가 실행 순서를 보장하므로 임의로 `defer` 처리하거나 문서 맨 아래로 옮기지 않는다.
@@ -76,6 +81,17 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 - `olli-data-ui-utils.js`: 등록일/학생 메타 표시, 복사·공유·저장 모달, API 응답/오류 유틸과 실패 설문 상수.
 
 이 8개 파일은 이전 데이터 통합 파일의 실행 순서를 그대로 보존해 기능 경계별로 분리한 것이다. 같은 전역 함수/상태를 순차적으로 공유하므로 ES module처럼 독립 로딩하거나 순서를 바꾸지 않는다.
+
+## 기록 에디터 모듈 경계
+
+- `olli-record-student-picker.js`: 초등 관찰기록의 학생 선택 팝업, 요일/그룹 정렬, 학생 관리 진입과 선택 제스처.
+- `olli-record-scene-tools.js`: 기록 모드 메뉴, 장면카드 선택/메모 UI, 공용 모달 닫기와 화면 전환 보조.
+- `olli-record-search-controls.js`: 기록 검색 화면, 키보드/포커스 복구, 기록실 추가 메뉴와 학생/유치부 피드백 진입.
+- `olli-record-feedback-generation.js`: 장면카드 기반 초등 피드백 요청, 로딩, 저장, 편집과 다음 지도 방향 처리.
+- `olli-record-room-navigation.js`: 기록 공유, 헤더/보기 전환, 기록실 열기·닫기와 초등/유치 전환.
+- `olli-record-memo-storage.js`: 관찰 메모 로컬 캐시, Supabase `student_note_drafts` 동기화, 학생 등록 모달 흐름.
+
+이 6개 파일은 기존 `olli-record-editor-core.js`의 원본 실행 순서를 그대로 유지한 classic script 분리다. `index.html`에서 적힌 순서를 바꾸거나 임의로 `defer` 처리하지 않는다.
 
 ## 기록실 런타임 모듈 경계
 
