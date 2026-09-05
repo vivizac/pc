@@ -321,13 +321,6 @@ function buildConsultationSummaryFeedbackUserText(student, months, rows, labels 
 }
 
 function buildConsultationFeedbackMessages(student, months, userText) {
-  const promptType = getConsultationFeedbackPromptType(student, months);
-  if (promptType === KINDER_ONE_MONTH_PROMPT_TYPE) {
-    return [
-      { role: 'system', content: KINDER_ONE_MONTH_CONSULTATION_PROMPT },
-      { role: 'user', content: userText }
-    ];
-  }
   return [{ role: 'user', content: userText }];
 }
 
@@ -351,11 +344,7 @@ async function createSummaryFeedbackFromRows(student, months, rows, labels = [])
   const promptType = getConsultationFeedbackPromptType(student, months);
   const userText = buildConsultationSummaryFeedbackUserText(student, months, rows, labels);
   const messages = buildConsultationFeedbackMessages(student, months, userText);
-  let { res, data } = await fetchConsultationFeedbackByPromptType(promptType, messages);
-
-  if (!res.ok && promptType === KINDER_ONE_MONTH_PROMPT_TYPE && res.status === 400) {
-    ({ res, data } = await fetchConsultationFeedbackByPromptType('summary', messages));
-  }
+  const { res, data } = await fetchConsultationFeedbackByPromptType(promptType, messages);
 
   if (!res.ok) throw new Error(getApiErrorMessage(res.status, data));
 
