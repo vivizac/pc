@@ -1,0 +1,61 @@
+name: Final PC module audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/one-shot-final-module-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit index and large modules
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          index = Path('index.html').read_text(encoding='utf-8')
+          print('INDEX_BYTES', len(index.encode('utf-8')))
+          print('INDEX_LINES', index.count('\n') + 1)
+
+          styles = list(re.finditer(r'<style\b[^>]*>(.*?)</style>', index, re.I | re.S))
+          scripts = list(re.finditer(r'<script\b(?![^>]*\bsrc=)[^>]*>(.*?)</script>', index, re.I | re.S))
+          print('INLINE_STYLE_COUNT', len(styles))
+          print('INLINE_SCRIPT_COUNT', len(scripts))
+
+          def label(text):
+              lines = [line.strip() for line in text.splitlines() if line.strip()]
+              return (lines[0][:140] if lines else '(empty)').replace('\t', ' ')
+
+          print('=== LARGEST INLINE STYLES ===')
+          for m in sorted(styles, key=lambda x: len(x.group(1).encode('utf-8')), reverse=True)[:12]:
+              body = m.group(1)
+              line = index[:m.start()].count('\n') + 1
+              print(line, len(body.encode('utf-8')), label(body))
+
+          print('=== LARGEST INLINE SCRIPTS ===')
+          for m in sorted(scripts, key=lambda x: len(x.group(1).encode('utf-8')), reverse=True)[:15]:
+              body = m.group(1)
+              line = index[:m.start()].count('\n') + 1
+              print(line, len(body.encode('utf-8')), label(body))
+
+          print('=== LARGE JS FILES >= 60000 ===')
+          for p in sorted(Path('.').glob('*.js'), key=lambda p: p.stat().st_size, reverse=True):
+              if p.stat().st_size >= 60000:
+                  print(p.name, p.stat().st_size)
+
+          print('=== LEGACY/PATCH MARKERS IN INDEX ===')
+          for i, line in enumerate(index.splitlines(), 1):
+              low = line.lower()
+              if ('patch' in low or 'fix-' in low or 'legacy' in low or '보정' in line or '호환' in line) and ('script' not in low or '<script' not in low):
+                  if len(line.strip()) < 220:
+                      print(i, line.strip())
+          PY
