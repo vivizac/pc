@@ -46,7 +46,8 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 | 기록실 화면 전환·공유·초등/유치 보기 전환 | `olli-record-room-navigation.js` | 현재 공통 스타일 |
 | 관찰 메모 로컬/Supabase 초안 저장·학생등록 모달 | `olli-record-memo-storage.js` | 현재 공통 스타일 |
 | 성향기록부 학생 목록·당일 출석 상태·기록 삭제 | `olli-record-list-view.js` | 현재 공통 스타일 |
-| 상담 기준·상담 진행 상태·학생관리 대시보드·기록 목록 로드 | `olli-consultation-runtime.js` | 현재 공통 스타일 |
+| 상담 기준·상담 시점 계산·초등 그룹별 피드백 발송월 공통 운영 정책 | `olli-operations-consultation-policy.js`, `olli-operations-feedback-policy.js` | - |
+| 상담 진행 상태·학생관리 대시보드·기록 목록 로드 | `olli-consultation-runtime.js` | 현재 공통 스타일 |
 | 초등/유치 학생 정보 모달 열기·저장 | `olli-student-info-runtime.js` | 현재 공통 스타일 |
 | 앱 부팅·초기화·공용 함수 전역 연결 | `olli-app-startup.js` | 현재 공통 스타일 |
 | 장면카드 피드백·입력 방어·내부 피드백 작업 큐 | `olli-feedback-runtime.js` | 현재 공통 스타일 |
