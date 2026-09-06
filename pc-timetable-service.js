@@ -55,6 +55,8 @@
   }
 
   function getCachedAttendanceMonth(yearMonth) {
+    const shared = global.OlliAttendanceData;
+    if (shared && typeof shared.getCachedMonth === 'function') return shared.getCachedMonth(yearMonth);
     try {
       const cached = JSON.parse(localStorage.getItem(attendanceMonthCacheKey(yearMonth)) || 'null');
       return cached && Array.isArray(cached.attendance) ? cached.attendance : null;
@@ -279,6 +281,8 @@
   }
 
   async function toggleAttendance(options) {
+    const shared = global.OlliAttendanceData;
+    if (shared && typeof shared.toggleAttendance === 'function') return shared.toggleAttendance(options);
     const result = await executeScheduleAction('toggle_attendance', {
       student_id: options.studentId,
       session_date: options.sessionDate,
@@ -291,6 +295,8 @@
   }
 
   async function loadAttendanceMonth(yearMonth) {
+    const shared = global.OlliAttendanceData;
+    if (shared && typeof shared.loadMonth === 'function') return shared.loadMonth(yearMonth);
     const value = /^\d{4}-\d{2}$/.test(clean(yearMonth)) ? `${clean(yearMonth)}-01` : new Date().toISOString().slice(0, 8) + '01';
     const data = await rpc('olli_schedule_attendance_month', contextPayload({ p_month: value }));
     const rows = Array.isArray(data.attendance) ? data.attendance : [];
