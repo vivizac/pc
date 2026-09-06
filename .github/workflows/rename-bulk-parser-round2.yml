@@ -1,0 +1,59 @@
+name: Rename bulk parser round2
+on:
+  push:
+    paths:
+      - '.github/workflows/rename-bulk-parser-round2.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  rename:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rename exact parser module
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          old='olli-student-bulk-edit-runtime.js'
+          new='olli-student-bulk-edit-parser.js'
+          p=Path(old)
+          if not p.exists(): raise SystemExit('old parser file missing')
+          data=p.read_bytes()
+          expected='33d346a3d4448e6cde19592e4fa00b1dae9eadf4c348bd68415c0fda4659967c'
+          actual=hashlib.sha256(data).hexdigest()
+          print('SHA256',actual)
+          if actual != expected: raise SystemExit('parser content changed; abort rename')
+          index=Path('index.html')
+          text=index.read_text(encoding='utf-8')
+          count=text.count(old)
+          print('OLD_LOADER_COUNT',count)
+          if count != 1: raise SystemExit('expected exactly one old loader')
+          if new in text: raise SystemExit('new loader already present unexpectedly')
+          Path(new).write_bytes(data)
+          p.unlink()
+          index.write_text(text.replace(old,new,1),encoding='utf-8')
+          PY
+      - name: Validate renamed parser
+        run: |
+          node --check olli-student-bulk-edit-parser.js
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          p=Path('olli-student-bulk-edit-parser.js')
+          expected='33d346a3d4448e6cde19592e4fa00b1dae9eadf4c348bd68415c0fda4659967c'
+          if hashlib.sha256(p.read_bytes()).hexdigest()!=expected: raise SystemExit('renamed parser sha mismatch')
+          text=Path('index.html').read_text(encoding='utf-8')
+          if text.count('olli-student-bulk-edit-parser.js')!=1: raise SystemExit('new loader count mismatch')
+          if 'olli-student-bulk-edit-runtime.js' in text: raise SystemExit('old loader remains')
+          if Path('olli-student-bulk-edit-runtime.js').exists(): raise SystemExit('old file remains')
+          print('RENAME_OK',p.stat().st_size)
+          PY
+      - name: Commit parser rename
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "refactor: 학생 일괄수정 파서를 폰과 공통 파일명으로 정렬" || exit 0
+          git push
