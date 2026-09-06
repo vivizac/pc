@@ -60,6 +60,45 @@ async function loadOlliSharedSettingsFromServer() {
 
 
 
+async function loadOlliConsultationRulesFromServer(options = {}){
+  const academyId = ensureOlliConsultationContext();
+  if (!academyId || typeof loadOlliData !== 'function') return false;
+  migrateOlliConsultationRulesOnce();
+
+  const now = Date.now();
+  if (!options.force && now - olliConsultationLastRefreshAt < 1200) return false;
+  if (olliConsultationRefreshPromise) return olliConsultationRefreshPromise;
+
+  olliConsultationLastRefreshAt = now;
+  olliConsultationRefreshPromise = (async () => {
+    const beforeRules = JSON.stringify(getOlliConsultationRulesMap());
+    const request = loadOlliData('consultation_rules', { academyId, backgroundRefresh: true });
+    const refreshed = await request.refreshPromise;
+
+    if (refreshed && refreshed.protectedPending && request.localData) {
+      // 로컬 변경이 서버보다 새로울 때만 한 번 재전송합니다.
+      await saveOlliData('consultation_rules', {
+        academyId,
+        data: normalizeOlliConsultationRulesByType(request.localData),
+        forceCommon: true
+      });
+    }
+
+    // 같은 상담 기준을 다시 받은 것뿐이라면 목록 전체를 다시 그리지 않습니다.
+    // 실제 기준이 바뀐 경우에만 상담예정 명단을 다시 생성합니다.
+    const afterRules = JSON.stringify(getOlliConsultationRulesMap());
+    if (beforeRules !== afterRules) refreshOlliConsultationViews();
+    return beforeRules !== afterRules;
+  })().catch(err => {
+    console.warn('상담기준 불러오기 실패:', err && (err.message || err));
+    return false;
+  }).finally(() => {
+    olliConsultationRefreshPromise = null;
+  });
+
+  return olliConsultationRefreshPromise;
+}
+
 let olliConsultationProgressRefreshPromise = null;
 let olliConsultationProgressLastRefreshAt = 0;
 
