@@ -1588,6 +1588,46 @@
   });
 
   FeatureRegistry.register({
+    feature: 'student_note_archive',
+    label: '관찰노트 기록 보관',
+    version: 1,
+    scope: 'record',
+    identity: { requiresAcademyId: true, requiresStudentId: true, requiresLocalRecordId: true },
+    persistence: 'append_only_server',
+    local: {
+      enabled: true,
+      defaultValue: null,
+      legacyKeys: [],
+      migrationPolicy: 'manual',
+      key(identity) {
+        return makeStorageKey({
+          scope: 'record',
+          academyId: identity.academyId,
+          studentId: identity.studentId,
+          recordId: identity.localRecordId,
+          feature: 'student_note_archive',
+          version: 1
+        });
+      }
+    },
+    server: {
+      kind: 'table_row',
+      table: 'student_note_archives',
+      operation: 'upsert',
+      createIfMissing: false,
+      identityColumns: ['academy_id', 'student_id', 'local_record_id'],
+      valueColumns: ['student_name', 'note_type', 'content', 'analysis', 'record_label', 'feedback_id', 'year', 'month', 'day', 'created_at'],
+      requiredColumns: ['academy_id', 'student_id', 'local_record_id', 'content'],
+      selectColumns: ['academy_id', 'student_id', 'student_name', 'note_type', 'content', 'analysis', 'record_label', 'local_record_id', 'feedback_id', 'year', 'month', 'day', 'created_at']
+    },
+    verification: { mode: 'custom_returned_row', compareFields: ['academy_id', 'student_id', 'local_record_id', 'content'] },
+    conflict: { policy: 'append_only', protectPendingLocal: true },
+    permissions: { read: ['teacher', 'manager', 'owner'], write: ['teacher', 'manager', 'owner'] },
+    diagnostics: { serverRequired: true, adminVisible: true }
+  });
+
+
+  FeatureRegistry.register({
     feature: 'member_default_start_page',
     label: '멤버 시작 페이지 설정',
     version: 1,
@@ -1626,7 +1666,6 @@
   });
 
 
-  
   const Core = {
     foundationVersion: FOUNDATION_VERSION,
     schemaVersion: STORAGE_SCHEMA_VERSION,
