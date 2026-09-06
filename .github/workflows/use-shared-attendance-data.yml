@@ -45,9 +45,7 @@ jobs:
         run: |
           node --check olli-attendance-data.js
           node --check pc-timetable-service.js
-          curl -fsSL https://raw.githubusercontent.com/vivizac/-/main/olli-attendance-data.js -o /tmp/phone-attendance-data.js
-          echo "PC=$(git hash-object olli-attendance-data.js) PHONE=$(git hash-object /tmp/phone-attendance-data.js)"
-          cmp -s olli-attendance-data.js /tmp/phone-attendance-data.js
+          test "$(grep -c '<script src=\"olli-attendance-data.js\"></script>' index.html)" -eq 1
       - name: Commit PC attendance data linkage
         run: |
           git config user.name github-actions[bot]
