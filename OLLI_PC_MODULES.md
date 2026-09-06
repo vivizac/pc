@@ -11,7 +11,7 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 | 초등 관찰기록 저장·자동저장·피드백 연결 | `observation-memo-core.js` | `observation-editor.css` |
 | 초등 오늘의 분석·분석 이력·상세보기 | `elementary-analysis.js` | `elementary-analysis-ui.css` |
 | 유치부 1분 피드백 공용 UI·기능 | `kinder-feedback-ui.js`, `kinder-feedback.js` | `kinder-feedback.css` |
-| 로그인 진입 화면·계정/학원 연결 화면 전환 | `olli-auth-entry-ui.js` | 현재 공통 스타일 |
+| 로그인 진입 화면·계정/학원 연결 화면 전환 | `olli-auth-entry-ui.js` | `olli-login.css` |
 | 계정 로그인 상태·세션 복구·접근 학원 캐시 | `olli-auth-account-session.js` | 현재 공통 스타일 |
 | 여러 학원 전환·전환 전 저장·전환 후 재로딩 | `olli-auth-academy-switch.js` | 현재 공통 스타일 |
 | 원장 로그인·새 학원 생성·초기 원장 연결 | `olli-auth-owner-onboarding.js` | 현재 공통 스타일 |
@@ -240,5 +240,6 @@ PC 전용 모듈의 기본 순서는 다음과 같다.
 - 한 기능씩 수정·검증·배포해 다른 화면의 회귀 범위를 줄인다.
 ### 로그인 공통 UI
 - `olli-login-ui.js`: PC·폰 공통 로그인 화면 DOM. PC 기준 로그인 화면을 공통 컴포넌트로 사용한다.
+- `olli-login.css`: PC·폰 공통 로그인 화면 스타일. 두 플랫폼에서 동일 파일을 유지한다.
 - `olli-auth-entry-ui.js` 및 인증 계층은 폰과 공통 기준을 유지하고, 로그인 이후 시작 페이지/쉘 전환은 플랫폼 어댑터가 담당한다.
 

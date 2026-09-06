@@ -667,59 +667,7 @@
 }
 </style>
 
-<style id="olli-entry-safe-area-fix">
-/* 2026-06-29 OLLI: 입장/계정 화면 상단 안전영역 보정
-   원인: 계정 기반 화면(.olliLoginScreen)의 header가 fixed inset 0 기준 화면 최상단에서 시작해
-   iOS 상태바/노치 영역과 겹치면서 상단 버튼이 잘리거나 위로 붙어 보였음. */
-.olliLoginScreen {
-  width: 100vw;
-  height: 100dvh;
-  min-height: 100dvh;
-  box-sizing: border-box;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-.olliLoginScreen .olliLoginPageInner {
-  min-height: 100dvh;
-  box-sizing: border-box;
-  padding-top: max(14px, env(safe-area-inset-top, 0px));
-  background: #f7f7f5;
-}
-.olliLoginScreen .olliLoginHeader {
-  height: auto;
-  min-height: 58px;
-  flex: 0 0 auto;
-  box-sizing: border-box;
-  padding: 6px 18px 10px;
-  align-items: center;
-}
-.olliLoginScreen .olliLoginBody {
-  box-sizing: border-box;
-  padding-top: 10px;
-  padding-bottom: max(42px, calc(env(safe-area-inset-bottom, 0px) + 24px));
-}
-#olliLoginEntryScreen .olliEntrySimpleInner {
-  height: 100dvh;
-  min-height: 100dvh;
-  box-sizing: border-box;
-  padding-top: max(44px, calc(env(safe-area-inset-top, 0px) + 28px));
-  padding-bottom: max(28px, calc(env(safe-area-inset-bottom, 0px) + 22px));
-}
-.olliLoginScreen .olliLoginInner {
-  min-height: 100dvh;
-  box-sizing: border-box;
-  padding-top: max(54px, calc(env(safe-area-inset-top, 0px) + 34px));
-  padding-bottom: max(44px, calc(env(safe-area-inset-bottom, 0px) + 28px));
-}
-@supports not (height: 100dvh) {
-  .olliLoginScreen,
-  .olliLoginScreen .olliLoginPageInner,
-  #olliLoginEntryScreen .olliEntrySimpleInner,
-  .olliLoginScreen .olliLoginInner {
-    min-height: 100vh;
-  }
-}
-</style>
+<link rel="stylesheet" href="olli-login.css">
 <style id="olliLookupResultListPatch">
 .olliLookupResultList{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
 .olliLookupResultBtn{width:100%;border:0;border-radius:18px;background:#f4f4f2;padding:14px 16px;text-align:left;display:flex;flex-direction:column;gap:4px;font:inherit;color:#111;}
