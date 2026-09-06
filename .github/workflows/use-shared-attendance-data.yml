@@ -15,91 +15,30 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-
+          import re
           index_path = Path('index.html')
           text = index_path.read_text(encoding='utf-8')
           old = '<script id="olliPcAttendanceTimetableScript" src="olli-attendance-timetable-bridge.js"></script>\n<script src="pc-timetable-service.js"></script>'
           new = '<script id="olliPcAttendanceTimetableScript" src="olli-attendance-timetable-bridge.js"></script>\n<script src="olli-attendance-data.js"></script>\n<script src="pc-timetable-service.js"></script>'
-          if text.count(old) != 1:
-            raise SystemExit(f'PC attendance loader anchor count={text.count(old)}')
+          if text.count(old) != 1: raise SystemExit(f'PC attendance loader anchor count={text.count(old)}')
           text = text.replace(old, new, 1)
           index_path.write_text(text, encoding='utf-8')
-
           service_path = Path('pc-timetable-service.js')
           service = service_path.read_text(encoding='utf-8')
-
-          old_cached = """  function getCachedAttendanceMonth(yearMonth) {
-    try {
-      const cached = JSON.parse(localStorage.getItem(attendanceMonthCacheKey(yearMonth)) || 'null');
-      return cached && Array.isArray(cached.attendance) ? cached.attendance : null;
-    } catch (_) { return null; }
-  }
-"""
-          new_cached = """  function getCachedAttendanceMonth(yearMonth) {
-    const shared = global.OlliAttendanceData;
-    if (shared && typeof shared.getCachedMonth === 'function') return shared.getCachedMonth(yearMonth);
-    try {
-      const cached = JSON.parse(localStorage.getItem(attendanceMonthCacheKey(yearMonth)) || 'null');
-      return cached && Array.isArray(cached.attendance) ? cached.attendance : null;
-    } catch (_) { return null; }
-  }
-"""
-          if service.count(old_cached) != 1: raise SystemExit('getCachedAttendanceMonth anchor mismatch')
-          service = service.replace(old_cached, new_cached, 1)
-
-          old_toggle = """  async function toggleAttendance(options) {
-    const result = await executeScheduleAction('toggle_attendance', {
-      student_id: options.studentId,
-      session_date: options.sessionDate,
-      time_slot: Number(options.timeSlot),
-      class_group: options.classGroup || 'A',
-      session_kind: options.sessionKind || 'regular'
-    });
-    invalidateAttendanceMonth(options.sessionDate);
-    return result;
-  }
-"""
-          new_toggle = """  async function toggleAttendance(options) {
-    const shared = global.OlliAttendanceData;
-    if (shared && typeof shared.toggleAttendance === 'function') return shared.toggleAttendance(options);
-    const result = await executeScheduleAction('toggle_attendance', {
-      student_id: options.studentId,
-      session_date: options.sessionDate,
-      time_slot: Number(options.timeSlot),
-      class_group: options.classGroup || 'A',
-      session_kind: options.sessionKind || 'regular'
-    });
-    invalidateAttendanceMonth(options.sessionDate);
-    return result;
-  }
-"""
-          if service.count(old_toggle) != 1: raise SystemExit('toggleAttendance anchor mismatch')
-          service = service.replace(old_toggle, new_toggle, 1)
-
-          old_load = """  async function loadAttendanceMonth(yearMonth) {
-    const value = /^\\d{4}-\\d{2}$/.test(clean(yearMonth)) ? `${clean(yearMonth)}-01` : new Date().toISOString().slice(0, 8) + '01';
-    const data = await rpc('olli_schedule_attendance_month', contextPayload({ p_month: value }));
-    const rows = Array.isArray(data.attendance) ? data.attendance : [];
-    cacheAttendanceMonth(value.slice(0, 7), rows);
-    return rows;
-  }
-"""
-          new_load = """  async function loadAttendanceMonth(yearMonth) {
-    const shared = global.OlliAttendanceData;
-    if (shared && typeof shared.loadMonth === 'function') return shared.loadMonth(yearMonth);
-    const value = /^\\d{4}-\\d{2}$/.test(clean(yearMonth)) ? `${clean(yearMonth)}-01` : new Date().toISOString().slice(0, 8) + '01';
-    const data = await rpc('olli_schedule_attendance_month', contextPayload({ p_month: value }));
-    const rows = Array.isArray(data.attendance) ? data.attendance : [];
-    cacheAttendanceMonth(value.slice(0, 7), rows);
-    return rows;
-  }
-"""
-          if service.count(old_load) != 1: raise SystemExit('loadAttendanceMonth anchor mismatch')
-          service = service.replace(old_load, new_load, 1)
+          p1 = r"  function getCachedAttendanceMonth\(yearMonth\) \{[\s\S]*?\n  \}\n\n  function cacheAttendanceMonth"
+          r1 = "  function getCachedAttendanceMonth(yearMonth) {\n    const shared = global.OlliAttendanceData;\n    if (shared && typeof shared.getCachedMonth === 'function') return shared.getCachedMonth(yearMonth);\n    try {\n      const cached = JSON.parse(localStorage.getItem(attendanceMonthCacheKey(yearMonth)) || 'null');\n      return cached && Array.isArray(cached.attendance) ? cached.attendance : null;\n    } catch (_) { return null; }\n  }\n\n  function cacheAttendanceMonth"
+          service, n1 = re.subn(p1, lambda m: r1, service, count=1)
+          if n1 != 1: raise SystemExit('getCachedAttendanceMonth anchor mismatch')
+          p2 = r"  async function toggleAttendance\(options\) \{[\s\S]*?\n  \}\n\n  async function loadAttendanceMonth"
+          r2 = "  async function toggleAttendance(options) {\n    const shared = global.OlliAttendanceData;\n    if (shared && typeof shared.toggleAttendance === 'function') return shared.toggleAttendance(options);\n    const result = await executeScheduleAction('toggle_attendance', {\n      student_id: options.studentId,\n      session_date: options.sessionDate,\n      time_slot: Number(options.timeSlot),\n      class_group: options.classGroup || 'A',\n      session_kind: options.sessionKind || 'regular'\n    });\n    invalidateAttendanceMonth(options.sessionDate);\n    return result;\n  }\n\n  async function loadAttendanceMonth"
+          service, n2 = re.subn(p2, lambda m: r2, service, count=1)
+          if n2 != 1: raise SystemExit('toggleAttendance anchor mismatch')
+          p3 = r"  async function loadAttendanceMonth\(yearMonth\) \{[\s\S]*?\n  \}\n\n  async function savePickup"
+          r3 = "  async function loadAttendanceMonth(yearMonth) {\n    const shared = global.OlliAttendanceData;\n    if (shared && typeof shared.loadMonth === 'function') return shared.loadMonth(yearMonth);\n    const value = /^\\d{4}-\\d{2}$/.test(clean(yearMonth)) ? `${clean(yearMonth)}-01` : new Date().toISOString().slice(0, 8) + '01';\n    const data = await rpc('olli_schedule_attendance_month', contextPayload({ p_month: value }));\n    const rows = Array.isArray(data.attendance) ? data.attendance : [];\n    cacheAttendanceMonth(value.slice(0, 7), rows);\n    return rows;\n  }\n\n  async function savePickup"
+          service, n3 = re.subn(p3, lambda m: r3, service, count=1)
+          if n3 != 1: raise SystemExit('loadAttendanceMonth anchor mismatch')
           service_path.write_text(service, encoding='utf-8')
-
-          if text.count('<script src="olli-attendance-data.js"></script>') != 1:
-            raise SystemExit('shared attendance loader count invalid')
+          if text.count('<script src="olli-attendance-data.js"></script>') != 1: raise SystemExit('shared attendance loader count invalid')
           print('PC_INDEX_BYTES', len(text.encode('utf-8')))
           PY
       - name: Validate shared attendance wiring
