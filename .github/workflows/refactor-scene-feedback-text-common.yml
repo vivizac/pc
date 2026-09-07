@@ -1,0 +1,98 @@
+name: Refactor scene feedback text common
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refactor-scene-feedback-text-common.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract shared feedback text helpers
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          target_path = Path('olli-record-feedback-generation.js')
+          index_path = Path('index.html')
+          common_path = Path('scene-feedback-text-common.js')
+
+          source = target_path.read_text(encoding='utf-8')
+          index = index_path.read_text(encoding='utf-8')
+
+          build_marker = 'function buildSceneCardUserText(extraText) {'
+          if source.count(build_marker) != 1:
+              raise SystemExit('buildSceneCardUserText target count mismatch')
+          build_start = source.index(build_marker)
+          build_end = source.index('\n', build_start) + 1
+          build_func = source[build_start:build_end].rstrip()
+          source = source[:build_start] + source[build_end:]
+
+          helper_start_marker = 'function extractFutureDirectionFromFeedback(text, fallback = \'\') {'
+          helper_end_marker = 'function resetElementaryMemoAfterFeedbackSave'
+          if source.count(helper_start_marker) != 1:
+              raise SystemExit('future direction helper start count mismatch')
+          helper_start = source.index(helper_start_marker)
+          helper_end = source.index(helper_end_marker, helper_start)
+          helper_block = source[helper_start:helper_end].strip()
+          source = source[:helper_start] + source[helper_end:]
+
+          common = (
+              '/* PC/Phone common scene-card feedback text helpers. */\n\n'
+              + build_func
+              + '\n\n'
+              + helper_block
+              + '\n'
+          )
+
+          old_scripts = '<script src="scene-card-model-common.js"></script>\n<script src="olli-record-scene-tools.js"></script>'
+          new_scripts = old_scripts + '\n<script src="scene-feedback-text-common.js"></script>'
+          if new_scripts not in index:
+              if index.count(old_scripts) != 1:
+                  raise SystemExit('index common script insertion target count mismatch')
+              index = index.replace(old_scripts, new_scripts, 1)
+
+          required_common = [
+              'function buildSceneCardUserText(extraText)',
+              'function extractFutureDirectionFromFeedback',
+              'function getFutureDirectionFromApiData',
+              'function getMemoFutureDirectionLine'
+          ]
+          for token in required_common:
+              if token not in common:
+                  raise SystemExit(f'missing common helper: {token}')
+              if token in source:
+                  raise SystemExit(f'legacy helper remains in PC feedback generation: {token}')
+
+          if index.index('scene-card-model-common.js') > index.index('scene-feedback-text-common.js'):
+              raise SystemExit('scene model must load before feedback text common')
+          if index.index('scene-feedback-text-common.js') > index.index('olli-record-feedback-generation.js'):
+              raise SystemExit('feedback text common must load before PC feedback generation')
+
+          target_path.write_text(source, encoding='utf-8')
+          common_path.write_text(common, encoding='utf-8')
+          index_path.write_text(index, encoding='utf-8')
+          PY
+
+      - name: Validate JavaScript syntax
+        run: |
+          node --check scene-feedback-text-common.js
+          node --check olli-record-feedback-generation.js
+
+      - name: Commit refactor and remove workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/refactor-scene-feedback-text-common.yml
+          git add scene-feedback-text-common.js olli-record-feedback-generation.js index.html
+          git commit -m 'refactor: PC 장면 피드백 텍스트 공통화'
+          git push
