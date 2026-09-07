@@ -1,5 +1,5 @@
 /* PC/Phone common observation memo session loading.
-   UI rendering and platform-specific navigation intentionally stay outside this file. */
+   Platform-specific navigation stays outside this file; shared editor reconciliation lives here. */
 (function initObservationMemoSessionCommon(global) {
   'use strict';
 
@@ -29,6 +29,33 @@
         ? getPrimaryElementaryAnalysisDisplay(student)
         : null
     };
+  }
+
+  function applyReconciledObservationMemoDraft(student, memoEditor, result) {
+    if (!student || !memoEditor || !result || !result.adoptedRemote || !result.content) {
+      return { applied: false, reason: 'no-remote-update' };
+    }
+
+    const isSameMemoPage =
+      currentMemoStudent &&
+      String(currentMemoStudent.id || '') === String(student.id || '') &&
+      currentMemoType === 'elementary';
+
+    if (!isSameMemoPage) {
+      return { applied: false, reason: 'stale-session' };
+    }
+
+    const currentEditorText = memoEditor.value || '';
+    if (currentEditorText.trim().length > 0) {
+      return { applied: false, reason: 'visible-local-content' };
+    }
+
+    memoEditor.value = result.content;
+    if (typeof updateMemoStudentMetaDisplay === 'function') {
+      updateMemoStudentMetaDisplay(student, result.updatedAt || '');
+    }
+
+    return { applied: true, reason: 'remote-applied' };
   }
 
   async function reconcileObservationMemoDraft(student, noteType = '') {
@@ -92,5 +119,6 @@
 
   global.getObservationMemoLocalSnapshot = getObservationMemoLocalSnapshot;
   global.beginObservationMemoSession = beginObservationMemoSession;
+  global.applyReconciledObservationMemoDraft = applyReconciledObservationMemoDraft;
   global.reconcileObservationMemoDraft = reconcileObservationMemoDraft;
 })(window);
