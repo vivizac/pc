@@ -117,7 +117,7 @@
       } else if (days.length > 1 && days.length === times.length) {
         days.forEach((day, index) => pairs.push({ weekday: DAYS.indexOf(day) + 1, time_slot: times[index] }));
       } else {
-        days.forEach((day) => times.forEach((time) => pairs.push({ weekday: DAYS.indexOf(day) + 1, time_slot: time })));
+        days.forEach((day) => times.forEach((time) => pairs.push({ weekday: DAYS.indexOf(day) + 1, time_slot: time }));
       }
     }
 
@@ -153,16 +153,38 @@
     return rpc('olli_schedule_bootstrap', contextPayload({ p_students: students }));
   }
 
+  async function loadCalendarRange(startDate, endDate) {
+    const data = await rpc('olli_schedule_calendar_range', contextPayload({
+      p_start_date: clean(startDate),
+      p_end_date: clean(endDate || startDate)
+    }));
+    return Array.isArray(data.days) ? data.days : [];
+  }
+
+  async function setNormalClassDay(sessionDate, normalClass) {
+    return rpc('olli_schedule_set_normal_class_day', contextPayload({
+      p_session_date: clean(sessionDate),
+      p_normal_class: !!normalClass
+    }));
+  }
+
   async function loadWeek(weekStart) {
     await bootstrapLegacy();
     await rpc('olli_schedule_apply_due', contextPayload());
-    const [data, kinderLayout] = await Promise.all([
+    const start = clean(weekStart);
+    const startDate = /^\d{4}-\d{2}-\d{2}$/.test(start) ? new Date(`${start}T00:00:00`) : new Date();
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 5);
+    const end = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+    const [data, kinderLayout, calendarDays] = await Promise.all([
       rpc('olli_schedule_week', contextPayload({ p_week_start: weekStart })),
-      rpc('olli_schedule_kinder_class_layouts', contextPayload())
+      rpc('olli_schedule_kinder_class_layouts', contextPayload()),
+      loadCalendarRange(start, end)
     ]);
     data.kinder_class_merges = Array.isArray(kinderLayout && kinderLayout.merged_slots)
       ? kinderLayout.merged_slots
       : [];
+    data.calendar_days = calendarDays;
     cacheWeek(weekStart, data);
     return data;
   }
@@ -315,6 +337,15 @@
     });
   }
 
+  async function updatePickup(pickupId, pickupTime, effectiveDate, mode) {
+    return executeScheduleAction('update_pickup', {
+      pickup_id: pickupId,
+      pickup_time: pickupTime,
+      effective_date: effectiveDate || new Date().toISOString().slice(0, 10),
+      mode: mode === 'schedule' ? 'schedule' : 'edit'
+    });
+  }
+
   async function removePickup(pickupId, effectiveDate) {
     return executeScheduleAction('remove_pickup', {
       pickup_id: pickupId,
@@ -342,6 +373,8 @@
     getCachedWeek,
     getCachedAttendanceMonth,
     loadWeek,
+    loadCalendarRange,
+    setNormalClassDay,
     syncLegacyStudents,
     changeSchedule,
     resolveWaitlist,
@@ -357,6 +390,7 @@
     toggleAttendance,
     loadAttendanceMonth,
     savePickup,
+    updatePickup,
     removePickup,
     loadHistory,
     restoreHistory,
@@ -364,4 +398,3 @@
     saveCellMemo
   });
 })(window);
-
