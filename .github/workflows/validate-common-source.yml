@@ -1,0 +1,50 @@
+name: Validate OLLI common source
+
+'on':
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'OLLI_COMMON_FILES.txt'
+      - 'observation-memo-common.js'
+      - 'observation-memo-save-common.js'
+      - 'observation-memo-session-common.js'
+      - 'observation-memo-storage-common.js'
+      - 'olli-record-scene-tools.js'
+      - 'record-feedback-mode-common.js'
+      - 'scene-card-kinder-feedback-common.js'
+      - 'scene-card-model-common.js'
+      - 'scene-card-ui-common.js'
+      - 'scene-feedback-text-common.js'
+      - '.github/workflows/validate-common-source.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate common manifest and JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s OLLI_COMMON_FILES.txt
+          while IFS= read -r file || [ -n "$file" ]; do
+            [ -n "$file" ] || continue
+            test -f "$file"
+            case "$file" in
+              *.js) node --check "$file" ;;
+            esac
+          done < OLLI_COMMON_FILES.txt
+
+      - name: Reject platform adapters from common manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -Eiq '(phone|pc)-adapter|attendance-export|risk|notification' OLLI_COMMON_FILES.txt; then
+            echo 'Protected/platform-specific file detected in common manifest.'
+            exit 1
+          fi
