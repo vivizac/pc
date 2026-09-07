@@ -101,6 +101,24 @@ function applyReconciledObservationMemoDraft(student, memoEditor, result) {
   return { applied: true, reason: 'remote-applied' };
 }
 
+function openObservationMemoScreenShell(session) {
+  if (!session || session.type !== 'elementary') return false;
+
+  const recordRoomScreen = document.getElementById('recordRoomScreen');
+  const studentMemoScreenEl = document.getElementById('studentMemoScreen');
+  if (recordRoomScreen) recordRoomScreen.style.display = 'none';
+
+  if (studentMemoScreenEl) {
+    studentMemoScreenEl.classList.remove('vivizac-slide-page', 'vivizac-slide-in', 'vivizac-slide-out');
+    studentMemoScreenEl.style.animation = '';
+    studentMemoScreenEl.style.transform = '';
+    studentMemoScreenEl.style.display = 'flex';
+    studentMemoScreenEl.setAttribute('data-current-memo-type', 'elementary');
+  }
+
+  return !!studentMemoScreenEl;
+}
+
 function renderObservationMemoScreenChrome(session) {
   if (!session || session.type !== 'elementary' || !session.student) return false;
   const student = session.student;
