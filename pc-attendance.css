@@ -96,56 +96,6 @@ body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .kinderStuden
 .pcAttendanceRecordError strong{color:#555b63;font-size:13px;}
 .pcAttendanceRecordError button{height:34px;margin-top:6px;padding:0 14px;border:0;border-radius:11px;background:#1887ff;color:#fff;font:inherit;font-weight:800;cursor:pointer;}
 
-/* 기존 관찰노트/1분 피드백 화면을 복제하지 않고 카드 안에서 그대로 재사용합니다. */
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>.pcAttendanceEmbeddedEditor{
-  position:relative!important;inset:auto!important;width:100%!important;height:100%!important;min-height:0!important;padding:0!important;margin:0!important;align-items:stretch!important;background:#fff!important;overflow:hidden!important;
-}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoPageInner{
-  width:100%!important;max-width:none!important;height:100%!important;min-height:0!important;margin:0!important;padding:0 0 66px!important;overflow-y:auto!important;background:#fff!important;box-sizing:border-box!important;
-}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoHeader,
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoTopFadeLayer{
-  display:none!important;
-}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoEditorWrap{
-  display:flex!important;flex-direction:column!important;width:100%!important;height:auto!important;min-height:100%!important;margin:0!important;padding:0 14px 18px!important;background:#fff!important;box-sizing:border-box!important;overflow:visible!important;
-}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .elementaryAnalysisBlock{margin:0!important;padding:16px 0 8px!important;}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoAnalysisTitleRow{padding:0!important;}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen #memoPageStudentName{font-size:18px!important;font-weight:820!important;}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen #memoEditor{
-  flex:1 1 auto!important;width:100%!important;min-height:310px!important;height:auto!important;padding:12px 4px!important;font-size:14px!important;line-height:1.7!important;box-sizing:border-box!important;
-}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoBottomBar{
-  position:absolute!important;left:auto!important;right:62px!important;bottom:13px!important;top:auto!important;width:auto!important;display:inline-flex!important;z-index:20!important;pointer-events:auto!important;
-}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen #memoBottomAnalysisBtn{position:static!important;right:auto!important;bottom:auto!important;}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoFeedbackBottomBtn{
-  position:absolute!important;left:auto!important;right:14px!important;bottom:13px!important;top:auto!important;z-index:21!important;
-}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfInner{
-  position:relative!important;width:100%!important;max-width:none!important;height:100%!important;min-height:0!important;margin:0!important;overflow:hidden!important;background:#fff!important;
-}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfInner::after{display:none!important;content:none!important;}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfCardTools{
-  top:14px!important;right:14px!important;z-index:40!important;
-}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfChatArea{
-  flex:1!important;min-height:0!important;padding:64px 14px 190px!important;overflow-y:auto!important;background:#fff!important;
-}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfCenterIntro{
-  position:absolute!important;left:50%!important;top:42%!important;width:100%!important;max-width:none!important;font-size:18px!important;
-}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfComposerWrap{
-  position:absolute!important;left:0!important;right:0!important;bottom:0!important;transform:none!important;width:100%!important;max-width:none!important;padding:10px!important;background:rgba(255,255,255,.96)!important;box-sizing:border-box!important;z-index:30!important;
-}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfComposerWrap>#kcfKeywordScroller.kcfKeywordScroller{
-  position:static!important;width:100%!important;margin:0 0 8px!important;padding:0!important;justify-content:flex-start!important;overflow-x:auto!important;flex-wrap:nowrap!important;
-}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfComposer{position:static!important;width:100%!important;border-radius:22px!important;}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfBubble{font-size:13.5px!important;}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen #kcfInput{font-size:13.5px!important;}
-
 @media(max-width:1180px){
   body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout{grid-template-columns:minmax(205px,225px) minmax(0,1fr);gap:14px;padding:20px;}
   .pcAttendanceDetailBody{gap:12px;padding:14px;}

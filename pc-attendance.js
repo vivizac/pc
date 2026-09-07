@@ -364,89 +364,29 @@
     return panel;
   }
 
-  function saveSharedEditorDraft() {
-    try {
-      if (state.editorDivision === 'elementary' && typeof saveCurrentMemo === 'function') {
-        Promise.resolve(saveCurrentMemo({ silent: true })).catch(() => {});
-      } else if (state.editorDivision === 'kinder' && typeof saveKinderChatFeedbackDraft === 'function') {
-        saveKinderChatFeedbackDraft();
-      }
-    } catch (_) {}
+  function unmountRecordEditor() {
+  const editor = global.OlliPcRecordEditor;
+  if (!editor || typeof editor.unmount !== 'function') return;
+  Promise.resolve(editor.unmount({ save: true })).catch((error) => {
+    console.warn('PC 기록 에디터 정리 실패:', error && (error.message || error));
+  });
+}
+
+function mountRecordEditor(student) {
+  const host = document.getElementById('pcAttendanceSharedEditorHost');
+  const editor = global.OlliPcRecordEditor;
+  if (!host || !student) return;
+  if (!editor || typeof editor.mount !== 'function') {
+    host.innerHTML = '<div class="pcAttendanceEditorUnavailable">PC 기록 에디터를 불러오지 못했습니다.</div>';
+    return;
   }
+  Promise.resolve(editor.mount(host, student)).catch((error) => {
+    console.warn('PC 기록 에디터 연결 실패:', error && (error.message || error));
+    host.innerHTML = '<div class="pcAttendanceEditorUnavailable">기록 화면을 불러오지 못했습니다.</div>';
+  });
+}
 
-  function unmountSharedEditor() {
-    const screen = state.editorScreen;
-    const anchor = state.editorAnchor;
-    if (!screen) return;
-    saveSharedEditorDraft();
-    if (anchor?.parentNode) {
-      const home = anchor.parentNode;
-      home.insertBefore(screen, anchor.nextSibling);
-      home.removeChild(anchor);
-    }
-    screen.classList.remove('pcAttendanceEmbeddedEditor');
-    screen.style.display = 'none';
-    state.editorScreen = null;
-    state.editorAnchor = null;
-    state.editorStudentId = '';
-    state.editorDivision = '';
-  }
-
-  function moveScreenIntoHost(screen, host) {
-    if (!screen || !host) return false;
-    const anchor = document.createComment('olli-pc-shared-editor-home');
-    screen.parentNode?.insertBefore(anchor, screen);
-    state.editorScreen = screen;
-    state.editorAnchor = anchor;
-    host.appendChild(screen);
-    screen.classList.add('pcAttendanceEmbeddedEditor');
-    return true;
-  }
-
-  function restoreRecordRoomVisibility() {
-    const recordRoom = document.getElementById('recordRoomScreen');
-    if (recordRoom) recordRoom.style.display = 'flex';
-    state.editorScreen?.style.setProperty('display', 'flex');
-  }
-
-  function mountSharedEditor(student) {
-    const host = document.getElementById('pcAttendanceSharedEditorHost');
-    if (!host || !student) return;
-    const division = student.type === 'kinder' ? 'kinder' : 'elementary';
-    const studentId = String(student.id || '');
-    const screenId = division === 'kinder' ? 'kinderChatFeedbackScreen' : 'studentMemoScreen';
-    const currentScreenMatches = state.editorScreen?.id === screenId && host.contains(state.editorScreen);
-
-    if (currentScreenMatches && state.editorStudentId === studentId) {
-      restoreRecordRoomVisibility();
-      return;
-    }
-
-    unmountSharedEditor();
-    const screen = document.getElementById(screenId);
-    if (!moveScreenIntoHost(screen, host)) {
-      host.innerHTML = '<div class="pcAttendanceEditorUnavailable">기록 화면을 불러오지 못했습니다.</div>';
-      return;
-    }
-    state.editorStudentId = studentId;
-    state.editorDivision = division;
-
-    try {
-      if (division === 'elementary' && typeof openStudentMemoPageById === 'function') {
-        openStudentMemoPageById(student.id);
-      } else if (division === 'kinder' && typeof openKinderChatFeedbackPage === 'function') {
-        openKinderChatFeedbackPage();
-        if (typeof global.selectKinderChatFeedbackStudentFromManage === 'function') {
-          global.selectKinderChatFeedbackStudentFromManage(student.id, null);
-        }
-      }
-    } catch (error) {
-      console.warn('성향기록부 공유 기록 화면 연결 실패:', error);
-    }
-    restoreRecordRoomVisibility();
-  }
-
-  function recordWorkspaceHtml(student, recordContent) {
+function recordWorkspaceHtml(student, recordContent) {
     return '<div class="pcAttendanceDetailBody">'
       + '<section class="pcAttendanceEditorCard" aria-label="수업 기록 작성">'
       + '<div class="pcAttendanceSharedEditorHost" id="pcAttendanceSharedEditorHost"></div>'
@@ -471,20 +411,20 @@
     let host = document.getElementById('pcAttendanceSharedEditorHost');
     let body = document.getElementById('pcAttendanceCombinedBody');
     if (!host || !body || !panel.contains(host) || !panel.contains(body)) {
-      unmountSharedEditor();
+      unmountRecordEditor();
       panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">관찰기록</div></div>'
         + recordWorkspaceHtml(student, recordQuietLoadingHtml());
       host = document.getElementById('pcAttendanceSharedEditorHost');
       body = document.getElementById('pcAttendanceCombinedBody');
     }
-    mountSharedEditor(student);
+    mountRecordEditor(student);
     return body;
   }
 
   function renderEmptyDetail() {
     const panel = ensureDetailPanel();
     if (!panel) return;
-    unmountSharedEditor();
+    unmountRecordEditor();
     panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">관찰기록</div></div>'
       + '<div class="pcAttendanceDetailEmpty"><span class="pcAttendanceDetailEmptyIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="3"></rect><path d="M8 9h8M8 13h5"></path></svg></span><strong>학생을 선택해 주세요.</strong><span>왼쪽 명단에서 학생 이름을 누르면<br>관찰기록이 이곳에 표시됩니다.</span></div>';
   }
@@ -518,6 +458,13 @@
     body.innerHTML = renderRecordSection('수업 기록', feedbacks, '저장된 관찰기록이 없습니다.', student, 'feedback')
       + renderRecordSection('종합 성장 기록', summaries, '저장된 종합 성장 기록이 없습니다.', student, 'summary');
   }
+
+  async function refreshSelectedRecord() {
+  const studentId = String(state.selectedStudentId || '');
+  if (!studentId) return;
+  dropRecordCache(studentId);
+  await selectStudent(studentId);
+}
 
   function renderDetailError(student, error) {
     const body = document.getElementById('pcAttendanceCombinedBody');
@@ -714,7 +661,7 @@
     renderList();
   }
 
-  const api = { studentMatchesDay, renderContext, ensureDetailPanel, open, renderList, filterDivision, filterDay, setSortMode, selectStudent, decorateRows, unmountEditor: unmountSharedEditor };
+  const api = { studentMatchesDay, renderContext, ensureDetailPanel, open, renderList, filterDivision, filterDay, setSortMode, selectStudent, refreshSelected: refreshSelectedRecord, decorateRows, unmountEditor: unmountRecordEditor };
   global.OlliPcPersonalityRecords = api;
   global.OlliPcAttendance = api;
   global.pcSelectAttendanceStudent = selectStudent;
