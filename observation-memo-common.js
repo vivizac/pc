@@ -1,7 +1,5 @@
 /* PC/Phone common observation memo helpers. Notification behavior intentionally excluded. */
 
-let memoAutoSaveTimer = null;
-
 function autoResizeTextarea(el) {
   if (!el) return;
   const minHeight = Number(el.dataset.minHeight || 140);
@@ -20,10 +18,12 @@ function scheduleMemoAutoSave() {
   if (isObservationMemoAutoSaveBlocked()) return;
 
   setMemoSaveStatus('작성 중...');
-  if (memoAutoSaveTimer) clearTimeout(memoAutoSaveTimer);
+  if (window.__olliObservationMemoAutoSaveTimer) {
+    clearTimeout(window.__olliObservationMemoAutoSaveTimer);
+  }
 
-  memoAutoSaveTimer = setTimeout(() => {
-    memoAutoSaveTimer = null;
+  window.__olliObservationMemoAutoSaveTimer = setTimeout(() => {
+    window.__olliObservationMemoAutoSaveTimer = null;
     saveCurrentMemo({ silent: true, status: true });
   }, MEMO_AUTOSAVE_DELAY);
 }
@@ -42,9 +42,9 @@ function handleMemoPauseAutoSaveInput(target) {
 
 function flushMemoAutoSave() {
   if (!currentMemoStudent) return;
-  if (memoAutoSaveTimer) {
-    clearTimeout(memoAutoSaveTimer);
-    memoAutoSaveTimer = null;
+  if (window.__olliObservationMemoAutoSaveTimer) {
+    clearTimeout(window.__olliObservationMemoAutoSaveTimer);
+    window.__olliObservationMemoAutoSaveTimer = null;
     saveCurrentMemo({ silent: true, status: true });
   }
 }
