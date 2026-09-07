@@ -74,6 +74,63 @@ function bindPauseAutoSaveForMemoInput(el, options = {}) {
   setupMemoPauseAutoSaveBindings();
 }
 
+function applyReconciledObservationMemoDraft(student, memoEditor, result) {
+  if (!student || !memoEditor || !result || !result.adoptedRemote || !result.content) {
+    return { applied: false, reason: 'no-remote-update' };
+  }
+
+  const isSameMemoPage =
+    currentMemoStudent &&
+    String(currentMemoStudent.id || '') === String(student.id || '') &&
+    currentMemoType === 'elementary';
+
+  if (!isSameMemoPage) {
+    return { applied: false, reason: 'stale-session' };
+  }
+
+  const currentEditorText = memoEditor.value || '';
+  if (currentEditorText.trim().length > 0) {
+    return { applied: false, reason: 'visible-local-content' };
+  }
+
+  memoEditor.value = result.content;
+  if (typeof updateMemoStudentMetaDisplay === 'function') {
+    updateMemoStudentMetaDisplay(student, result.updatedAt || '');
+  }
+
+  return { applied: true, reason: 'remote-applied' };
+}
+
+function renderObservationMemoInitialView(session) {
+  const view = typeof prepareObservationMemoInitialView === 'function'
+    ? prepareObservationMemoInitialView(session)
+    : null;
+  if (!view) return null;
+
+  const memoEditor = document.getElementById('memoEditor');
+  if (memoEditor) {
+    memoEditor.readOnly = false;
+    memoEditor.value = view.memoText || '';
+
+    reconcileObservationMemoDraft(view.student, view.noteType)
+      .then(result => {
+        applyReconciledObservationMemoDraft(view.student, memoEditor, result);
+      })
+      .catch(err => {
+        console.warn('student_note_drafts 불러오기 실패:', err.message || err);
+      });
+  }
+
+  renderElementaryAnalysisSummaryCard(view.analysis.data || {}, {
+    title: '분석 결과',
+    createdAt: view.analysis.createdAt || ''
+  });
+  renderElementaryAnalysisHistoryCards(view.student);
+  setMemoSaveStatus('자동 저장');
+
+  return view;
+}
+
 function setMemoSaveStatus(text) {
   const el = document.getElementById('memoSaveStatus');
   if (!el) return;
