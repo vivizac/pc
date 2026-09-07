@@ -107,11 +107,11 @@
   transition: background .15s ease, box-shadow .15s ease;
 }
 #recordRoomScreen .olliTtCell:hover { background: #f5faff; box-shadow: inset 0 0 0 2px #c4e2ff; }
-#recordRoomScreen .olliTtCell.holiday, #recordRoomScreen .olliTtCell.holiday:hover { background:#eceff1; box-shadow:none; cursor:not-allowed; }
+#recordRoomScreen .olliTtCell.holiday, #recordRoomScreen .olliTtCell.holiday:hover { background:#fff; box-shadow:none; cursor:not-allowed; }
 #recordRoomScreen .olliTtCell.holiday .olliTtClassLane, #recordRoomScreen .olliTtCell.holiday .olliTtClassLane:hover { background:transparent; cursor:not-allowed; }
 #recordRoomScreen .olliTtCell.holiday .olliTtStudent, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.regular.elementary, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.regular.kinder, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.makeup, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.wait, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.attended { color:#858b93; border-color:#d4d8dd; background:#dfe2e5; box-shadow:none; transform:none; }
 #recordRoomScreen .olliTtCell.holiday .olliTtAttendanceBtn, #recordRoomScreen .olliTtCell.holiday .olliTtStudentMore, #recordRoomScreen .olliTtCell.holiday .olliTtStudentTag { color:#858b93; pointer-events:none; }
-#recordRoomScreen .olliTtCell.holiday .olliTtCellMemoCard { color:#858b93; border-color:#d4d8dd; background:#dfe2e5; box-shadow:none; }
+#recordRoomScreen .olliTtCell.holiday .olliTtCellMemoCard { color:#858b93; border-color:#fff; background:#fff; box-shadow:none; }
 #recordRoomScreen .olliTtCell.saturdayUnavailable { cursor: default; background: #fafbfc; }
 #recordRoomScreen .olliTtCell.saturdayUnavailable:hover { box-shadow: none; }
 #recordRoomScreen .olliTtCell.split { padding: 4px; cursor: default; }
@@ -500,4 +500,3 @@
   #olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtDialogBody { overflow-y: auto; }
   #olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtDialogActions { position: sticky; bottom: -20px; }
 }
-

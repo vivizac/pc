@@ -110,6 +110,15 @@
     }).sort((a, b) => a.weekday - b.weekday || a.time_slot - b.time_slot);
   }
 
+  function schedulePairsEqual(left, right) {
+    const normalizeForCompare = (rows) => normalizePairs(rows).map((pair) => ({
+      weekday: pair.weekday,
+      time_slot: pair.time_slot,
+      class_group: pair.class_group || null
+    }));
+    return JSON.stringify(normalizeForCompare(left)) === JSON.stringify(normalizeForCompare(right));
+  }
+
   function pairsFromLessonFields(lessonDay, lessonTime) {
     const rawDay = clean(lessonDay).replace(/요일/g, '');
     const rawTime = clean(lessonTime);
@@ -610,6 +619,8 @@
     const division = target.type === 'kinder' ? 'kinder' : 'elementary';
     const saveBtn = document.getElementById('pcStudentInfoSaveBtn');
     cardState.saveInFlight = true;
+    let saveStage = 'profile';
+    let profileSaved = false;
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
     try {
       const extra = typeof global.olliGetInfoExtra === 'function' ? (global.olliGetInfoExtra(division) || {}) : {};
@@ -667,8 +678,14 @@
       }
 
       if (typeof global.ensureStudentSavedToSupabase !== 'function') throw new Error('학생정보 저장 함수를 찾지 못했습니다.');
+      const scheduleChanged = !schedulePairsEqual(pairs, cardState.enrollments);
       const savedStudent = await global.ensureStudentSavedToSupabase(profile);
-      await setAuthoritativeSchedule(savedStudent.id, pairs);
+      profileSaved = true;
+      if (scheduleChanged) {
+        saveStage = 'schedule';
+        await setAuthoritativeSchedule(savedStudent.id, pairs);
+      }
+      saveStage = 'reload';
       if (typeof global.loadStudentsFromSupabase === 'function') await global.loadStudentsFromSupabase();
       if (typeof global.showPushToast === 'function') global.showPushToast('학생정보와 시간표를 저장했어요.');
       const id = savedStudent.id;
@@ -680,7 +697,14 @@
       if (global.OlliPcAttendance && typeof global.OlliPcAttendance.renderList === 'function') global.OlliPcAttendance.renderList();
       setTimeout(ensureStudentInfoButton, 0);
     } catch (error) {
-      alert(`학생정보 저장 중 오류가 발생했어요.\n\n${error.message || error}`);
+      const message = error.message || error;
+      if (saveStage === 'schedule' && profileSaved) {
+        alert(`학생정보는 저장되었지만 시간표 저장에 실패했어요.\n\n${message}\n\n시간표 변경예약이 있다면 시간표 페이지에서 예약 내용을 먼저 확인해 주세요.`);
+      } else if (saveStage === 'reload' && profileSaved) {
+        alert(`학생정보는 저장되었지만 화면 새로고침 중 오류가 발생했어요.\n\n${message}`);
+      } else {
+        alert(`학생정보 서버 저장 중 오류가 발생했어요.\n\n${message}`);
+      }
     } finally {
       cardState.saveInFlight = false;
       if (saveBtn && saveBtn.isConnected) { saveBtn.disabled = false; saveBtn.textContent = '저장'; }

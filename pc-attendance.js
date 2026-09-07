@@ -1,7 +1,7 @@
 (function pcAttendanceModule(global) {
   'use strict';
 
-  const PC_SORT_MODES = Object.freeze({ DAY: 'day', GROUP: 'group', GRADE: 'grade' });
+  const PC_SORT_MODES = Object.freeze({ DAY: 'day', GROUP: 'group', GRADE: 'grade', PAUSED: 'paused', WITHDRAWN: 'withdrawn' });
   const PC_SORT_TIME_ORDER = ['1시', '2시', '3시', '4시', '5시', '6시', '7시'];
   const PC_GROUP_LABELS = { '1': 'A그룹', '2': 'B그룹', '3': 'C그룹', '4': 'D그룹', '5': 'E그룹', '6': 'F그룹' };
   const PC_DAY_NAMES = { 0: '일', 1: '월', 2: '화', 3: '수', 4: '목', 5: '금', 6: '토' };
@@ -35,6 +35,26 @@
 
   function normalizeSortMode(mode) {
     return Object.values(PC_SORT_MODES).includes(mode) ? mode : PC_SORT_MODES.DAY;
+  }
+
+  function statusForSortMode(mode) {
+    if (mode === PC_SORT_MODES.PAUSED) return 'paused';
+    if (mode === PC_SORT_MODES.WITHDRAWN) return 'withdrawn';
+    return '';
+  }
+
+  function studentsForSortMode(app, type) {
+    const status = statusForSortMode(normalizeSortMode(state.sortMode));
+    if (!status) return app.activeStudents(type);
+    const all = typeof global.getStudentsByType === 'function' ? global.getStudentsByType(type) : [];
+    return all.filter((student) => {
+      try {
+        const current = typeof global.getStudentStatus === 'function' ? global.getStudentStatus(student) : String(student?.status || 'active');
+        return current === status;
+      } catch (_) {
+        return false;
+      }
+    });
   }
 
   function removeLegacyPcSortControl() {
@@ -276,6 +296,10 @@
     const mode = normalizeSortMode(state.sortMode);
     if (!students.length) return '';
 
+    if (mode === PC_SORT_MODES.PAUSED || mode === PC_SORT_MODES.WITHDRAWN) {
+      return renderPlainRows(students.slice().sort(compareStudentsByName), division);
+    }
+
     if (mode === PC_SORT_MODES.DAY) {
       const today = todayPcAttendanceDay();
       const todayStudents = students.filter((student) => studentMatchesDay(student, today));
@@ -330,7 +354,9 @@
     const sortButtons = [
       [PC_SORT_MODES.DAY, '요일별'],
       [PC_SORT_MODES.GROUP, '그룹별'],
-      [PC_SORT_MODES.GRADE, '학년별']
+      [PC_SORT_MODES.GRADE, '학년별'],
+      [PC_SORT_MODES.PAUSED, '휴원별'],
+      [PC_SORT_MODES.WITHDRAWN, '퇴원별']
     ].map(([mode, label]) =>
       '<button class="olliPcQuickBtn '+(state.sortMode === mode ? 'active' : '')+'" onclick="pcSetAttendanceSortMode(\''+mode+'\')"><span>'+label+'</span><span></span></button>'
     ).join('');
@@ -629,8 +655,8 @@ function recordWorkspaceHtml(student, recordContent) {
     const previousScrollTop = list.scrollTop;
 
     const query = String(searchValue ?? app.state.searchValues.attendance ?? '').trim();
-    const elementary = app.activeStudents('elementary').filter((student) => studentMatchesPcAttendanceSearch(student, query));
-    const kinder = app.activeStudents('kinder').filter((student) => studentMatchesPcAttendanceSearch(student, query));
+    const elementary = studentsForSortMode(app, 'elementary').filter((student) => studentMatchesPcAttendanceSearch(student, query));
+    const kinder = studentsForSortMode(app, 'kinder').filter((student) => studentMatchesPcAttendanceSearch(student, query));
     let html = '';
     if (app.state.attendanceDivision === 'all' || app.state.attendanceDivision === 'elementary') {
       html += renderStudentsForSortMode(elementary, 'elementary');
