@@ -84,3 +84,5 @@ jobs:
           git add olli-record-memo-storage.js index.html .github/workflows/refactor-observation-memo-storage.yml
           git commit -m 'refactor: PC 관찰노트 저장 데이터 계층 분리'
           git push
+
+      # rerun after shared core was added
