@@ -1,0 +1,41 @@
+name: Fix student registration schedule safety
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-student-registration-safe-deploy.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Remove unsafe existing-student fallback
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('pc-student-info-card-runtime.js')
+          text = path.read_text()
+          old = """        const created = students.find((s) => !beforeIds.has(String(s.id || '')) && clean(s.name) === name && Number(s.year) === year && Number(s.month) === month && Number(s.day) === day)\n          || students.find((s) => clean(s.name) === name && Number(s.year) === year && Number(s.month) === month && Number(s.day) === day);"""
+          new = """        const created = students.find((s) => !beforeIds.has(String(s.id || '')) && clean(s.name) === name && Number(s.year) === year && Number(s.month) === month && Number(s.day) === day);"""
+          if old not in text:
+              raise SystemExit('Expected unsafe registration fallback was not found; refusing to patch blindly.')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          node --check pc-student-info-card-runtime.js
+      - name: Commit patch and remove temporary workflow
+        shell: bash
+        run: |
+          rm .github/workflows/fix-student-registration-safe-deploy.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add pc-student-info-card-runtime.js .github/workflows/fix-student-registration-safe-deploy.yml
+          git commit -m '학생등록 실패 시 기존 학생 시간표 덮어쓰기 방지'
+          git push origin main
