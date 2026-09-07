@@ -3,6 +3,15 @@
   if (global.__OLLI_PC_START_PAGE_V3__) return;
   global.__OLLI_PC_START_PAGE_V3__ = true;
 
+  function installPcStudentInfoCardRuntime(){
+    if (document.querySelector('script[data-olli-pc-student-info-card="1"]')) return;
+    const script = document.createElement('script');
+    script.src = 'pc-student-info-card-runtime.js?v=20260907';
+    script.dataset.olliPcStudentInfoCard = '1';
+    document.head.appendChild(script);
+  }
+  installPcStudentInfoCardRuntime();
+
   function installPcTimetableMemoCardStyle(){
     if (document.getElementById('olliPcTimetableMemoCardCompactStyle')) return;
     const style = document.createElement('style');
