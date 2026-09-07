@@ -1,29 +1,3 @@
-function renderMemoModeMenu() {
-  const menu = document.getElementById('memoModeDropup');
-  if (!menu) return;
-  const checkSvg = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"></path></svg>';
-  const option = (active, title, guide, action) => `
-    <button type="button" class="memoRecordOption ${active ? 'active' : ''}" onclick="${action}">
-      <span class="memoModeCheck" aria-hidden="true">${active ? checkSvg : ''}</span>
-      <span class="memoModeOptionText">
-        <span class="memoModeOptionTitle">${title}</span>
-        <span class="memoModeOptionGuide">${guide}</span>
-      </span>
-    </button>`;
-  menu.innerHTML = `
-    ${option(false, '1분 피드백(유치부)', '일상 관찰을 빠르게 정리', "closeMemoModeMenu(); openKinderChatFeedbackPage();")}
-    ${option(false, '성장 피드백(유치부)', '막힘·전환 장면을 깊게 정리', "closeMemoModeMenu(); openKinderChatFeedbackGrowthSheet();")}
-    ${option(true, '관찰 노트(초등부)', '초등부 관찰노트로 이동', "closeMemoModeMenu(); openMemoObservationMode(event);")}
-  `;
-}
-function closeMemoModeMenu() { const menu = document.getElementById('memoModeDropup'); if (menu) menu.classList.remove('show'); }
-function toggleMemoModeMenu(event) {
-  if (event) event.stopPropagation();
-  if (currentMemoType === 'kinder') return;
-  renderMemoModeMenu();
-  const menu = document.getElementById('memoModeDropup');
-  if (menu) menu.classList.toggle('show');
-}
 function closeGlobalFeedbackModeMenus() {
   ['mainCardModeDropup'].forEach(id => {
     const menu = document.getElementById(id);
@@ -93,17 +67,6 @@ function openGlobalFailGrowthMode(event) {
   }
   alert('성장피드백은 새 버전으로 준비 중입니다.');
 }
-function openMemoObservationMode(event) { if (event) event.stopPropagation(); closeMemoModeMenu(); const memo = document.getElementById('studentMemoScreen'); if (memo) memo.style.display = 'flex'; if (typeof forceStudentMemoControlsVisible === 'function') { forceStudentMemoControlsVisible(); requestAnimationFrame(forceStudentMemoControlsVisible); } }
-function openMemoFailGrowthMode(event) {
-  if (event) event.stopPropagation();
-  closeMemoModeMenu();
-  if (typeof openElementaryGrowthFeedbackSheet === 'function') {
-    openElementaryGrowthFeedbackSheet();
-    return;
-  }
-  alert('초등부 성장피드백을 열 수 없습니다.');
-}
-document.addEventListener('click', (event) => { const wrap = document.getElementById('memoModeWrap'); if (wrap && !wrap.contains(event.target)) closeMemoModeMenu(); });
 document.addEventListener('click', (event) => {
   const mainWrap = document.getElementById('mainCardModeWrap');
   if (!mainWrap || !mainWrap.contains(event.target)) closeGlobalFeedbackModeMenus();
