@@ -1,0 +1,78 @@
+name: Refactor record feedback mode common
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refactor-record-feedback-mode-common.yml'
+permissions:
+  contents: write
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract global feedback mode menu
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          scene_path = Path('olli-record-scene-tools.js')
+          scene = scene_path.read_text(encoding='utf-8')
+          marker = 'const SCENE_CARD_OPTIONS = ['
+          if marker not in scene:
+              raise SystemExit('scene card marker not found')
+          prefix, rest = scene.split(marker, 1)
+          required = [
+              'function closeGlobalFeedbackModeMenus()',
+              'function renderGlobalFeedbackModeMenu(',
+              'function toggleGlobalFeedbackModeMenu(',
+              'function openGlobalObservationMode(',
+              'function openGlobalFailGrowthMode('
+          ]
+          if not all(token in prefix for token in required):
+              raise SystemExit('expected global feedback menu block not found before scene cards')
+          if 'function renderMemoModeMenu(' in prefix:
+              raise SystemExit('observation memo menu unexpectedly remains in scene prefix')
+          scene_path.write_text(marker + rest, encoding='utf-8')
+
+          html_path = Path('index.html')
+          html = html_path.read_text(encoding='utf-8')
+          anchor = '<script src="olli-record-scene-tools.js"></script>'
+          include = '<script src="record-feedback-mode-common.js"></script>\n' + anchor
+          if html.count('record-feedback-mode-common.js') == 0:
+              if html.count(anchor) != 1:
+                  raise SystemExit('scene-tools script anchor count mismatch')
+              html = html.replace(anchor, include, 1)
+          elif html.count('record-feedback-mode-common.js') != 1:
+              raise SystemExit('common feedback script duplicate')
+          html_path.write_text(html, encoding='utf-8')
+
+          common = Path('record-feedback-mode-common.js').read_text(encoding='utf-8')
+          for token in required:
+              if token not in common:
+                  raise SystemExit(f'missing common helper: {token}')
+          updated_scene = scene_path.read_text(encoding='utf-8')
+          if not updated_scene.startswith(marker):
+              raise SystemExit('scene-tools should start with scene cards')
+          if any(token in updated_scene for token in required):
+              raise SystemExit('global feedback menu duplicate remains in scene-tools')
+          updated_html = html_path.read_text(encoding='utf-8')
+          if updated_html.count('record-feedback-mode-common.js') != 1:
+              raise SystemExit('common script include count mismatch')
+          if updated_html.index('record-feedback-mode-common.js') > updated_html.index('olli-record-scene-tools.js'):
+              raise SystemExit('common script must load before scene-tools')
+          print('SAFE_REFACTOR_OK')
+          PY
+
+          node --check record-feedback-mode-common.js
+          node --check olli-record-scene-tools.js
+          git diff --check
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/refactor-record-feedback-mode-common.yml
+          git add index.html olli-record-scene-tools.js record-feedback-mode-common.js .github/workflows/refactor-record-feedback-mode-common.yml
+          if ! git diff --cached --quiet; then
+            git commit -m "refactor: PC 전역 피드백 메뉴 공통 파일 분리"
+            git push
+          fi
