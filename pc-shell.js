@@ -120,15 +120,11 @@
       } else title.textContent = sectionTitles[state.section] || 'OLLI';
     }
 
-    const sortButton = document.getElementById('olliPcSortBtn');
     const searchable = state.section === SECTION.ACADEMY || state.section === SECTION.PERSONALITY_RECORDS;
     if (search) {
       search.style.display = searchable ? '' : 'none';
       if (searchable) search.value = state.searchValues[state.section] || '';
     }
-    const sortVisible = state.section === SECTION.PERSONALITY_RECORDS;
-    if (sortButton) sortButton.style.visibility = sortVisible ? 'visible' : 'hidden';
-    if (!sortVisible) document.getElementById('recordSortPopup')?.classList.remove('show');
     renderContext();
     updateRecordLayout();
   }
@@ -153,7 +149,6 @@
     if (state.section === SECTION.PERSONALITY_RECORDS) return personalityRecordsFeature()?.renderList(value);
     if (state.section === 'academy') return feature('OlliPcStudentManagement')?.handleSearch(value);
   }
-
 
   function syncPcTopSearchVisualViewport() {
     const input = document.getElementById('olliPcSearch');
@@ -421,25 +416,6 @@
     }
   }
 
-  function openPersonalityRecordsSort(event) {
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-    let view = 'elementary';
-    if (state.attendanceDivision === 'kinder') view = 'kinder';
-    else if (state.attendanceDivision === 'all') {
-      try { view = currentObservationView === 'kinder' ? 'kinder' : 'elementary'; }
-      catch (_) {}
-    }
-    const popup = document.getElementById('recordSortPopup');
-    const bottom = document.querySelector('#olliPcShell .olliPcSidebarBottom');
-    if (!popup || !bottom) return;
-    if (popup.parentElement !== bottom) bottom.appendChild(popup);
-    if (typeof global.refreshRecordSortPopup === 'function') global.refreshRecordSortPopup(view);
-    popup.classList.toggle('show');
-  }
-
   function refreshSidebarRoster() {
     if (state.section === SECTION.PERSONALITY_RECORDS) personalityRecordsFeature()?.renderList?.();
   }
@@ -451,17 +427,16 @@
   global.pcOpenSection = openSection;
   global.pcHandleTopSearch = handleTopSearch;
   global.pcFilterAttendanceDivision = (division) => personalityRecordsFeature()?.filterDivision(division);
-  global.pcFilterAttendanceDay = (day) => personalityRecordsFeature()?.filterDay(day);
   global.pcRenderAttendanceList = (value) => personalityRecordsFeature()?.renderList(value);
   global.pcFilterAcademy = (type) => feature('OlliPcStudentManagement')?.filter(type);
   global.pcSelectAcademyConsultationStudent = (ref, event) => feature('OlliPcStudentManagement')?.selectConsultationStudent(ref, event);
   global.pcRefreshAcademyConsultationCompletionState = () => feature('OlliPcStudentManagement')?.refreshConsultationCompletionState();
-  global.pcOpenSidebarSort = openPersonalityRecordsSort;
   global.pcRefreshSidebarRoster = refreshSidebarRoster;
 
   function normalizeSidebarChrome() {
-    // 구버전 index 캐시와 섞여도 관찰노트 메뉴가 다시 노출되지 않도록 안전망만 유지합니다.
+    // 구버전 index 캐시와 섞여도 관찰노트 메뉴/레거시 하단 정렬 버튼이 다시 노출되지 않도록 안전망만 유지합니다.
     document.querySelectorAll('#olliPcShell [data-pc-nav="observation"]').forEach((button) => button.remove());
+    document.getElementById('olliPcSortBtn')?.remove();
     const brand = document.querySelector('#olliPcShell .olliPcBrandLogo');
     if (brand) brand.textContent = 'olli';
     document.getElementById('olliPcTopArchiveBtn')?.remove();
