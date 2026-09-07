@@ -715,8 +715,7 @@
         const result = await original.apply(this, arguments);
         if (!name || !year || !month || !day) return result;
         const students = typeof global.getStudentsByType === 'function' ? global.getStudentsByType(type) : [];
-        const created = students.find((s) => !beforeIds.has(String(s.id || '')) && clean(s.name) === name && Number(s.year) === year && Number(s.month) === month && Number(s.day) === day)
-          || students.find((s) => clean(s.name) === name && Number(s.year) === year && Number(s.month) === month && Number(s.day) === day);
+        const created = students.find((s) => !beforeIds.has(String(s.id || '')) && clean(s.name) === name && Number(s.year) === year && Number(s.month) === month && Number(s.day) === day);
         if (!created || !created.id) return result;
         try {
           await setAuthoritativeSchedule(created.id, pairs);
