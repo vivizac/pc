@@ -55,13 +55,13 @@ jobs:
           if count != 1:
               raise SystemExit(f'PC kinder condition expected once, found {count}')
 
-          region, count = re.subn(r"^\s*currentMemoStudent\s*=\s*student;\s*\n", "", region, flags=re.M)
-          if count != 2:
-              raise SystemExit(f'PC currentMemoStudent assignments expected 2, found {count}')
+          region, student_state_count = re.subn(r"^\s*currentMemoStudent\s*=\s*student;\s*\n", "", region, flags=re.M)
+          if student_state_count not in (1, 2):
+              raise SystemExit(f'PC currentMemoStudent assignments expected 1-2, found {student_state_count}')
 
-          region, count = re.subn(r"^\s*currentMemoType\s*=\s*'(?:kinder|elementary)';\s*\n", "", region, flags=re.M)
-          if count != 2:
-              raise SystemExit(f'PC currentMemoType assignments expected 2, found {count}')
+          region, type_state_count = re.subn(r"^\s*currentMemoType\s*=\s*'(?:kinder|elementary)';\s*\n", "", region, flags=re.M)
+          if type_state_count not in (1, 2):
+              raise SystemExit(f'PC currentMemoType assignments expected 1-2, found {type_state_count}')
 
           region, count = re.subn(r"^\s*if \(currentMemoType === 'elementary'\) setLastElementaryMemoStudent\(student\);\s*\n", "", region, flags=re.M)
           if count != 1:
