@@ -37,6 +37,25 @@ body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout #recordList::
 .pcAttendanceRosterHead>span.pcAttendanceRosterDivision.kinder{background:#ffe8f0;color:#e85b8d;}
 body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .recordStatusSection{margin-top:12px;}
 
+/* PC 학생명단 정렬 구분선: 박스 대신 얇은 라인 + 텍스트 */
+body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider{
+  display:flex;align-items:center;gap:10px;width:100%;margin:15px 0 10px;color:#8a9099;font-size:11px;font-weight:820;line-height:1;letter-spacing:-.02em;box-sizing:border-box;
+}
+body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::before,
+body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::after{
+  content:"";height:1px;flex:1;min-width:12px;background:#e2e5e9;
+}
+body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider span{
+  flex:0 0 auto;white-space:nowrap;padding:0 2px;background:transparent;color:inherit;
+}
+body.olliPcApp #recordRoomScreen .pcAttendanceRosterHead + .pcAttendanceSortDivider{margin-top:2px;}
+body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .elementaryStudentRow.groupBreak,
+body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .kinderStudentRow.groupBreak{
+  margin-top:0!important;padding-top:0!important;border-top-color:transparent!important;
+}
+body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .elementaryStudentRow.groupBreak::before,
+body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .kinderStudentRow.groupBreak::before{display:none!important;content:none!important;}
+
 /* 오른쪽 관찰기록 카드 */
 .pcAttendanceDetailPanel{
   display:none;height:100%;min-height:0;overflow:hidden;background:#fff;border:1px solid #e2e4e8;border-radius:26px;padding:0;box-sizing:border-box;box-shadow:0 8px 24px rgba(20,24,30,.035);
@@ -64,7 +83,7 @@ body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .recordStatus
 .pcAttendanceRecordSectionHead{display:none;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetScroll{flex:1;min-height:0;overflow-y:auto;padding:0 2px 4px;scrollbar-width:none;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetScroll::-webkit-scrollbar{display:none;}
-.pcAttendanceDetailPanel .attendanceFeedbackSheetCard{margin-bottom:9px;border:1px solid #e7eaee;background:#fff;border-radius:17px;padding:14px;box-shadow:none;}
+.pcAttendanceDetailPanel .attendanceFeedbackSheetCard{margin-bottom:9px;border:1px solid #e7eaee;background:#fff;border-radius:17px;padding:14px;box-sizing:border-box;box-shadow:none;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCard:hover{border-color:#d5e4f5;background:#fcfdff;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCardTitle{font-size:13px;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCardDate{font-size:10.5px;margin-top:4px;margin-bottom:0;}
