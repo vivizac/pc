@@ -1,7 +1,14 @@
 name: Refactor observation memo save
-'on': [push]
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refactor-observation-memo-save.yml'
+
 permissions:
   contents: write
+
 jobs:
   refactor:
     runs-on: ubuntu-latest
