@@ -1,0 +1,103 @@
+name: Refactor scene card model common
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refactor-scene-card-model-common.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract scene card model from UI tools
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          scene_path = Path('olli-record-scene-tools.js')
+          index_path = Path('index.html')
+          model_path = Path('scene-card-model-common.js')
+
+          scene = scene_path.read_text(encoding='utf-8')
+          index = index_path.read_text(encoding='utf-8')
+          model = model_path.read_text(encoding='utf-8')
+
+          if not scene.startswith('const SCENE_CARD_OPTIONS = ['):
+              raise SystemExit('scene card options block not found at file start')
+
+          array_end = scene.index('\n];') + 3
+          scene = scene[array_end:].lstrip('\n')
+
+          state_start = scene.index('const selectedSceneIds = new Set();')
+          state_end = scene.index("let previousScreenBeforeRecordRoom = 'mainPage';", state_start)
+          scene = scene[:state_start] + scene[state_end:]
+
+          get_scene = "function getSceneById(id) { return SCENE_CARD_OPTIONS.find(item => item.id === id); }\n"
+          if scene.count(get_scene) != 1:
+              raise SystemExit('getSceneById removal target count mismatch')
+          scene = scene.replace(get_scene, '', 1)
+
+          get_payload = "function getSelectedScenePayload() { return Array.from(selectedSceneIds).map(id => getSceneById(id)).filter(Boolean); }\n"
+          if scene.count(get_payload) != 1:
+              raise SystemExit('getSelectedScenePayload removal target count mismatch')
+          scene = scene.replace(get_payload, '', 1)
+
+          old_scripts = '<script src="record-feedback-mode-common.js"></script>\n<script src="olli-record-scene-tools.js"></script>'
+          new_scripts = '<script src="record-feedback-mode-common.js"></script>\n<script src="scene-card-model-common.js"></script>\n<script src="olli-record-scene-tools.js"></script>'
+          if new_scripts not in index:
+              if index.count(old_scripts) != 1:
+                  raise SystemExit('index script insertion target count mismatch')
+              index = index.replace(old_scripts, new_scripts, 1)
+
+          forbidden_scene = [
+              'const SCENE_CARD_OPTIONS = [',
+              'const selectedSceneIds = new Set();',
+              'const flippedSceneIds = new Set();',
+              'const SCENE_MEMO_LABELS = {',
+              'function getSceneById(id)',
+              'function getSelectedScenePayload()'
+          ]
+          for token in forbidden_scene:
+              if token in scene:
+                  raise SystemExit(f'legacy scene model token remains: {token}')
+
+          required_model = [
+              'global.SCENE_CARD_OPTIONS',
+              'global.selectedSceneIds',
+              'global.flippedSceneIds',
+              'global.SCENE_MEMO_LABELS',
+              'global.getSceneById',
+              'global.getSelectedScenePayload'
+          ]
+          for token in required_model:
+              if token not in model:
+                  raise SystemExit(f'missing common model token: {token}')
+
+          if index.index('scene-card-model-common.js') > index.index('olli-record-scene-tools.js'):
+              raise SystemExit('scene card model must load before scene tools')
+
+          scene_path.write_text(scene, encoding='utf-8')
+          index_path.write_text(index, encoding='utf-8')
+          PY
+
+      - name: Validate JavaScript syntax
+        run: |
+          node --check scene-card-model-common.js
+          node --check olli-record-scene-tools.js
+
+      - name: Commit refactor and remove workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/refactor-scene-card-model-common.yml
+          git add scene-card-model-common.js olli-record-scene-tools.js index.html
+          git commit -m 'refactor: PC 장면카드 데이터 모델 공통화'
+          git push
