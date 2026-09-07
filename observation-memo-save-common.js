@@ -15,11 +15,8 @@
       clearMemoByStudent(student);
       const clearedStudent = { ...student, memoUpdatedAt: '' };
 
-      try {
-        await clearStudentNoteDraftFromSupabase(clearedStudent, noteType);
-      } catch (err) {
-        console.warn('빈 관찰노트 초안 삭제 실패:', err.message || err);
-      }
+      clearStudentNoteDraftFromSupabase(clearedStudent, noteType)
+        .catch(err => console.warn('빈 관찰노트 초안 삭제 실패:', err.message || err));
 
       await saveStudent(clearedStudent, { skipRemote: true });
       return { state: 'cleared', student: clearedStudent, error: null };
