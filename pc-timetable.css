@@ -109,6 +109,12 @@
 #recordRoomScreen .olliTtDay.today { background: #edf6ff; }
 #recordRoomScreen .olliTtDay.today strong,
 #recordRoomScreen .olliTtDay.today span { color: #0A73DC; }
+#recordRoomScreen .olliTtDay { position: relative; }
+#recordRoomScreen .olliTtDay.holiday { background: #e5484d; }
+#recordRoomScreen .olliTtDay.holiday strong, #recordRoomScreen .olliTtDay.holiday span { color: #fff; }
+#recordRoomScreen .olliTtNormalClassBtn { position:absolute; right:4px; top:50%; transform:translateY(-50%); height:24px; padding:0 7px; border:1px solid rgba(255,255,255,.7); border-radius:8px; color:#fff; background:rgba(120,0,0,.18); font:700 calc(8px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
+#recordRoomScreen .olliTtNormalClassBtn.active { color:#c53d45; border-color:#efc4c7; background:#fff; }
+#recordRoomScreen .olliTtNormalClassBtn:disabled { opacity:.5; cursor:default; }
 #recordRoomScreen .olliTtTime {
   min-height: 0;
   padding-top: 13px;
@@ -127,6 +133,11 @@
   transition: background .15s ease, box-shadow .15s ease;
 }
 #recordRoomScreen .olliTtCell:hover { background: #f5faff; box-shadow: inset 0 0 0 2px #c4e2ff; }
+#recordRoomScreen .olliTtCell.holiday, #recordRoomScreen .olliTtCell.holiday:hover { background:#eceff1; box-shadow:none; cursor:not-allowed; }
+#recordRoomScreen .olliTtCell.holiday .olliTtClassLane, #recordRoomScreen .olliTtCell.holiday .olliTtClassLane:hover { background:transparent; cursor:not-allowed; }
+#recordRoomScreen .olliTtCell.holiday .olliTtStudent, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.regular.elementary, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.regular.kinder, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.makeup, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.wait, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.attended { color:#858b93; border-color:#d4d8dd; background:#dfe2e5; box-shadow:none; transform:none; }
+#recordRoomScreen .olliTtCell.holiday .olliTtAttendanceBtn, #recordRoomScreen .olliTtCell.holiday .olliTtStudentMore, #recordRoomScreen .olliTtCell.holiday .olliTtStudentTag { color:#858b93; pointer-events:none; }
+#recordRoomScreen .olliTtCell.holiday .olliTtCellMemoCard { color:#858b93; border-color:#d4d8dd; background:#dfe2e5; box-shadow:none; }
 #recordRoomScreen .olliTtCell.saturdayUnavailable { cursor: default; background: #fafbfc; }
 #recordRoomScreen .olliTtCell.saturdayUnavailable:hover { box-shadow: none; }
 #recordRoomScreen .olliTtCell.split { padding: 4px; cursor: default; }
@@ -154,7 +165,7 @@
   min-width: 0;
   min-height: 24px;
   padding: 3px 5px;
-  border: 1px solid transparent;
+  border: 1px solid #fff3a6;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -167,7 +178,7 @@
   cursor: pointer;
   box-shadow: none;
 }
-#recordRoomScreen .olliTtCellMemoCard:hover { border-color: transparent; background: #ffed85; box-shadow: none; }
+#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #ffed85; background: #ffed85; box-shadow: none; }
 #recordRoomScreen .olliTtCellMemoCard span { flex: 0 0 auto; margin-top: 0; font-size: calc(11px * var(--olli-text-scale)); line-height: 1; }
 #recordRoomScreen .olliTtCellMemoCard strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(12px * var(--olli-text-scale)); font-weight: 760; line-height: 1.2; }
 #recordRoomScreen .olliTtStudent {
@@ -223,6 +234,9 @@
 #recordRoomScreen .olliTtPickupTime { padding-top: 13px; color: #7b838e; background: #fafbfc; text-align: center; font-size: calc(11px * var(--olli-text-scale)); font-weight: 820; }
 #recordRoomScreen .olliTtPickupCell { min-height: 0; padding: 5px; background: #fff; cursor: pointer; transition: background .15s ease, box-shadow .15s ease; }
 #recordRoomScreen .olliTtPickupCell:hover { background: #f5faff; box-shadow: inset 0 0 0 2px #c4e2ff; }
+#recordRoomScreen .olliTtPickupCell.holiday, #recordRoomScreen .olliTtPickupCell.holiday:hover { background:#eceff1; box-shadow:none; cursor:not-allowed; }
+#recordRoomScreen .olliTtPickupCell.holiday .olliTtPickupCard { color:#858b93; border-color:#d4d8dd; background:#dfe2e5; pointer-events:none; }
+#recordRoomScreen .olliTtPickupCell.holiday .olliTtPickupCard span { color:#8f959d; }
 #recordRoomScreen .olliTtPickupEntries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 #recordRoomScreen .olliTtPickupCard { min-width: 0; min-height: 28px; padding: 4px 7px; border: 1px solid #cfe0e8; border-radius: 9px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px; color: #3d5360; background: #eef6f8; }
 #recordRoomScreen .olliTtPickupCard strong,
@@ -292,6 +306,8 @@
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceLinkedMark span{display:block;font-size:11px;line-height:1}
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceMakeupMark{color:#111;background:#ffd84d!important;font-weight:900;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceAbsentMark{color:#fff;background:#e5484d!important;font-weight:900;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll th.attendanceHolidayHead{color:#fff!important;background:#e5484d!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceHolidayCell{background:#eceff1!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceMakeupMark span,
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceAbsentMark span{display:block;font-size:11px;line-height:1}
 
@@ -369,6 +385,9 @@
 .olliTtPickupForm label span { margin: 0 2px 7px; display: block; color: #525c68; font-size: calc(11px * var(--olli-text-scale)); font-weight: 780; }
 .olliTtPickupForm input { width: 100%; height: 46px; padding: 0 13px; border: 1px solid #dfe4e9; border-radius: 14px; outline: none; color: #323944; background: #fff; font: 660 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; }
 .olliTtPickupForm input:focus { border-color: #80c2fb; box-shadow: 0 0 0 3px rgba(10,132,255,.09); }
+.olliTtPickupManageActions { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:18px; }
+.olliTtPickupManageActions button { height:48px; border:0; border-radius:14px; font:780 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
+.olliTtPickupDeleteActions { margin-top:14px; }
 .olliTtPickerList { height: 144px; max-height: 144px; overflow-y: auto; overflow-x: hidden; margin-top: 8px; }
 .olliTtPickerStudent { width: 100%; min-height: 48px; padding: 0 12px; border: 0; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #343b45; background: transparent; text-align: left; font: 750 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 .olliTtPickerStudent:hover,

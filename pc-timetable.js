@@ -275,6 +275,13 @@
   function changes() { return Array.isArray(state.data && state.data.changes) ? state.data.changes : []; }
   function attendanceMarks() { return Array.isArray(state.data && state.data.attendance) ? state.data.attendance : []; }
   function pickups() { return Array.isArray(state.data && state.data.pickups) ? state.data.pickups : []; }
+  function calendarDays() { return Array.isArray(state.data && state.data.calendar_days) ? state.data.calendar_days : []; }
+  function calendarInfo(value) {
+    const key = value instanceof Date ? dateKey(value) : clean(value).slice(0, 10);
+    return calendarDays().find((item) => clean(item && item.session_date).slice(0, 10) === key) || null;
+  }
+  function isHolidayDate(value) { const info = calendarInfo(value); return !!(info && info.is_holiday === true); }
+  function holidayName(value) { return clean(calendarInfo(value)?.name); }
   function classSplits() { return Array.isArray(state.data && state.data.class_splits) ? state.data.class_splits : []; }
   function kinderClassMerges() { return Array.isArray(state.data && state.data.kinder_class_merges) ? state.data.kinder_class_merges : []; }
   function cellMemos() { return Array.isArray(state.data && state.data.cell_memos) ? state.data.cell_memos : []; }
@@ -408,6 +415,11 @@
     const hour = Number(match[1]);
     return `${hour > 12 ? hour - 12 : hour}:${match[2]}`;
   }
+  function pickupTimeInputValue(value) {
+    const match = clean(value).match(/^(\d{1,2}):(\d{2})/);
+    if (!match) return '';
+    return `${pad(Number(match[1]))}:${match[2]}`;
+  }
   function countAt(division, weekday, time, targetDate, classGroup) {
     const date = parseDate(targetDate || todayKey());
     const wantedDay = Number(weekday);
@@ -476,13 +488,14 @@
       return '<div class="olliTtCell saturdayUnavailable" aria-hidden="true"></div>';
     }
     const time = storedTimeForCell(division, date, displayTime);
-    const attrs = `data-tt-cell="1" data-division="${division}" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-time="${time}"`;
+    const holiday = isHolidayDate(date);
+    const attrs = `data-tt-cell="1" data-division="${division}" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-time="${time}"${holiday ? ' data-holiday="1" aria-disabled="true"' : ''}`;
     const memo = cellMemoText(division, date, time);
     if (!isClassSplit(division, date.getDay(), time)) {
       const mergedClassHead = division === 'kinder'
         ? '<div class="olliTtClassLaneHead olliTtMergedClassHead"><strong>A반</strong></div>'
         : '';
-      return `<div class="olliTtCell${division === 'kinder' ? ' kinder merged' : ''}" ${attrs}>${mergedClassHead}${cellContentsHtml(division, date, time, '', memo)}</div>`;
+      return `<div class="olliTtCell${division === 'kinder' ? ' kinder merged' : ''}${holiday ? ' holiday' : ''}" ${attrs}>${mergedClassHead}${cellContentsHtml(division, date, time, '', memo)}</div>`;
     }
     const heads = division === 'kinder';
     const counts = {
@@ -490,13 +503,14 @@
       B: slotEntryCount(division, date, time, 'B')
     };
     const memoGroup = counts.A <= counts.B ? 'A' : 'B';
-    return `<div class="olliTtCell ${division} split" ${attrs}><div class="olliTtClassLanes ${division}">${['A', 'B'].map((group) => `<div class="olliTtClassLane ${division}" ${attrs} data-class-group="${group}">${heads ? `<div class="olliTtClassLaneHead"><strong>${group}반</strong></div>` : ''}${cellContentsHtml(division, date, time, group, memo && group === memoGroup ? memo : '')}</div>`).join('')}</div></div>`;
+    return `<div class="olliTtCell ${division} split${holiday ? ' holiday' : ''}" ${attrs}><div class="olliTtClassLanes ${division}">${['A', 'B'].map((group) => `<div class="olliTtClassLane ${division}" ${attrs} data-class-group="${group}">${heads ? `<div class="olliTtClassLaneHead"><strong>${group}반</strong></div>` : ''}${cellContentsHtml(division, date, time, group, memo && group === memoGroup ? memo : '')}</div>`).join('')}</div></div>`;
   }
 
   function pickupCellHtml(date, classTime) {
     const rows = slotPickups(date, classTime);
+    const holiday = isHolidayDate(date);
     const cards = rows.map((item) => `<div class="olliTtPickupCard" data-tt-pickup-manage="${esc(item.id)}"><strong>${esc(item.student_name)}</strong><span>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</span></div>`).join('');
-    return `<div class="olliTtPickupCell" data-tt-pickup-cell="1" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-class-time="${classTime}"><div class="olliTtPickupEntries">${cards}</div></div>`;
+    return `<div class="olliTtPickupCell${holiday ? ' holiday' : ''}" data-tt-pickup-cell="1" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-class-time="${classTime}"${holiday ? ' data-holiday="1" aria-disabled="true"' : ''}><div class="olliTtPickupEntries">${cards}</div></div>`;
   }
 
   function pickupGridHtml(dates) {
@@ -513,7 +527,13 @@
     const dates = DAYS.map((_, index) => addDays(state.weekStart, index));
     let grid = `<div class="olliTtGrid" style="--olli-tt-rows:${times.length}"><div class="olliTtCorner"></div>`;
     dates.forEach((date, index) => {
-      grid += `<div class="olliTtDay ${isToday(date) ? 'today' : ''}"><strong>${DAYS[index]}요일</strong><span>${date.getMonth() + 1}월 ${date.getDate()}일${isToday(date) ? ' · 오늘' : ''}</span></div>`;
+      const info = calendarInfo(date);
+      const holiday = !!(info && info.is_holiday === true);
+      const defaultHoliday = !!(info && info.default_holiday === true);
+      const toggle = defaultHoliday
+        ? `<button type="button" class="olliTtNormalClassBtn${holiday ? '' : ' active'}" data-tt-normal-class-date="${dateKey(date)}" data-tt-make-normal="${holiday ? '1' : '0'}">${holiday ? '정상수업' : '공휴일'}</button>`
+        : '';
+      grid += `<div class="olliTtDay ${isToday(date) ? 'today ' : ''}${holiday ? 'holiday' : ''}"${holidayName(date) ? ` title="${esc(holidayName(date))}"` : ''}><strong>${DAYS[index]}요일</strong><span>${date.getMonth() + 1}월 ${date.getDate()}일${isToday(date) ? ' · 오늘' : ''}</span>${toggle}</div>`;
     });
     times.forEach((time) => {
       grid += `<div class="olliTtTime">${time}시</div>`;
@@ -543,6 +563,24 @@
   }
 
   function handleScheduleControl(event) {
+    const normalClassButton = event.target.closest('[data-tt-normal-class-date]');
+    if (normalClassButton) {
+      const sessionDate = normalClassButton.dataset.ttNormalClassDate;
+      const makeNormal = normalClassButton.dataset.ttMakeNormal === '1';
+      normalClassButton.disabled = true;
+      service.setNormalClassDay(sessionDate, makeNormal).then(async () => {
+        state.data = null;
+        state.dataWeek = '';
+        state.attendanceCalendarMonth = '';
+        state.attendanceCalendarDays = [];
+        await loadWeek();
+        notify(makeNormal ? '공휴일을 정상수업일로 변경했어요.' : '다시 공휴일로 설정했어요.');
+      }).catch((error) => {
+        normalClassButton.disabled = false;
+        notify(error && (error.message || error) || '수업일 설정을 변경하지 못했습니다.');
+      });
+      return true;
+    }
     const attendanceDivision = event.target.closest('[data-tt-attendance-division]');
     if (attendanceDivision) {
       state.attendanceDivision = attendanceDivision.dataset.ttAttendanceDivision === 'combined' ? 'combined' : (attendanceDivision.dataset.ttAttendanceDivision === 'kinder' ? 'kinder' : 'elementary');
@@ -621,6 +659,13 @@
 
   function onTimetableClick(event) {
     if (handleScheduleControl(event)) return;
+    const holidayTarget = event.target.closest('[data-holiday="1"]');
+    if (holidayTarget) {
+      event.preventDefault();
+      event.stopPropagation();
+      notify(`${holidayName(holidayTarget.dataset.date) || '공휴일'}에는 시간표 작업을 할 수 없습니다. 정상수업으로 변경한 뒤 이용해 주세요.`);
+      return;
+    }
     const attendanceButton = event.target.closest('[data-tt-attendance]');
     if (attendanceButton) {
       event.stopPropagation();
@@ -827,7 +872,8 @@
   function openPickupManage(pickupId) {
     const item = pickups().find((row) => clean(row.id) === clean(pickupId));
     if (!item) return;
-    state.dialog = { kind: 'pickupManage', pickupId: clean(pickupId), effectiveDate: todayKey() };
+    const tomorrow = addDays(new Date(), 1);
+    state.dialog = { kind: 'pickupManage', pickupId: clean(pickupId), pickupTime: pickupTimeInputValue(item.pickup_time), effectiveDate: dateKey(tomorrow) };
     openOverlay();
   }
 
@@ -1014,9 +1060,12 @@
     if (!item) return '';
     return dialogHead('↳', `${item.student_name} 픽업`, `${weekdayLabel(item.weekday)}요일 · ${item.class_time}시 수업`)
       + '<div class="olliTtDialogBody">'
-      + `<div class="olliTtCurrentBox"><strong>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</strong>매주 반복되는 픽업 일정입니다.</div>`
-      + `<div class="olliTtField"><div class="olliTtFieldHead"><span>삭제 적용 날짜</span><small>선택한 날짜부터 픽업 명단에서 제외됩니다.</small></div><input type="date" class="olliTtDateInput" data-tt-pickup-effective-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></div>`
-      + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-remove-pickup>픽업 삭제</button></div></div>';
+      + `<div class="olliTtCurrentBox"><strong>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</strong>현재 적용 중인 픽업 일정입니다.</div>`
+      + '<div class="olliTtField"><div class="olliTtFieldHead"><span>픽업시간 수정</span><small>잘못 입력한 현재 시간을 바로 고칩니다.</small></div>'
+      + `<input type="time" class="olliTtDateInput" data-tt-pickup-edit-time value="${esc(dialog.pickupTime)}"></div>`
+      + `<div class="olliTtField"><div class="olliTtFieldHead"><span>변경 예약 적용일</span><small>선택한 날짜부터 위 시간이 적용됩니다.</small></div><input type="date" class="olliTtDateInput" data-tt-pickup-effective-date min="${dateKey(addDays(new Date(), 1))}" value="${esc(dialog.effectiveDate)}"></div>`
+      + '<div class="olliTtPickupManageActions"><button type="button" class="olliTtDialogPrimary secondary" data-tt-update-pickup>현재 시간 수정</button><button type="button" class="olliTtDialogPrimary" data-tt-schedule-pickup>변경 예약</button></div>'
+      + '<div class="olliTtDialogActions olliTtPickupDeleteActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-remove-pickup>픽업 삭제</button></div></div>';
   }
 
   let timetableHistoryRuntime = null;
@@ -1189,8 +1238,10 @@
     if (pickupLabel) pickupLabel.addEventListener('input', () => { if (state.dialog && state.dialog.kind === 'pickupAdd') state.dialog.pickupLabel = pickupLabel.value; });
     const pickupTime = dialog.querySelector('[data-tt-pickup-time]');
     if (pickupTime) pickupTime.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupAdd') state.dialog.pickupTime = pickupTime.value; });
+    const pickupEditTime = dialog.querySelector('[data-tt-pickup-edit-time]');
+    if (pickupEditTime) pickupEditTime.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.pickupTime = pickupEditTime.value; });
     const pickupEffectiveDate = dialog.querySelector('[data-tt-pickup-effective-date]');
-    if (pickupEffectiveDate) pickupEffectiveDate.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.effectiveDate = pickupEffectiveDate.value || todayKey(); });
+    if (pickupEffectiveDate) pickupEffectiveDate.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.effectiveDate = pickupEffectiveDate.value || dateKey(addDays(new Date(), 1)); });
     const waitDate = dialog.querySelector('[data-tt-wait-date]');
     if (waitDate) waitDate.addEventListener('change', () => { state.dialog.effectiveDate = waitDate.value || todayKey(); renderDialog(); });
     const saveMoveButton = dialog.querySelector('[data-tt-save-move]');
@@ -1213,6 +1264,10 @@
     if (mergeKinderClassButton) mergeKinderClassButton.addEventListener('click', mergeKinderClass);
     const savePickupButton = dialog.querySelector('[data-tt-save-pickup]');
     if (savePickupButton) savePickupButton.addEventListener('click', savePickup);
+    const updatePickupButton = dialog.querySelector('[data-tt-update-pickup]');
+    if (updatePickupButton) updatePickupButton.addEventListener('click', updatePickupNow);
+    const schedulePickupButton = dialog.querySelector('[data-tt-schedule-pickup]');
+    if (schedulePickupButton) schedulePickupButton.addEventListener('click', schedulePickupChange);
     const removePickupButton = dialog.querySelector('[data-tt-remove-pickup]');
     if (removePickupButton) removePickupButton.addEventListener('click', removePickup);
     const acceptWait = dialog.querySelector('[data-tt-accept-wait]');
@@ -1493,6 +1548,27 @@
       effectiveDate: dialog.date
     }));
     if (result) notify(`${student.name} 학생의 픽업을 등록했어요.`);
+  }
+
+  async function updatePickupNow() {
+    const dialog = state.dialog;
+    if (!dialog || dialog.kind !== 'pickupManage') return;
+    const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
+    if (!item) return;
+    if (!clean(dialog.pickupTime)) { alert('수정할 픽업 시간을 입력해 주세요.'); return; }
+    const result = await withSaving(() => service.updatePickup(dialog.pickupId, dialog.pickupTime, todayKey(), 'edit'));
+    if (result) notify(`${item.student_name} 학생의 픽업 시간을 수정했어요.`);
+  }
+
+  async function schedulePickupChange() {
+    const dialog = state.dialog;
+    if (!dialog || dialog.kind !== 'pickupManage') return;
+    const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
+    if (!item) return;
+    if (!clean(dialog.pickupTime)) { alert('변경할 픽업 시간을 입력해 주세요.'); return; }
+    if (!clean(dialog.effectiveDate) || dialog.effectiveDate <= todayKey()) { alert('변경 예약은 내일부터 설정할 수 있습니다.'); return; }
+    const result = await withSaving(() => service.updatePickup(dialog.pickupId, dialog.pickupTime, dialog.effectiveDate, 'schedule'));
+    if (result) notify(`${item.student_name} 학생의 픽업 시간 변경을 ${koreanDate(dialog.effectiveDate, true)}부터 예약했어요.`);
   }
 
   async function removePickup() {
