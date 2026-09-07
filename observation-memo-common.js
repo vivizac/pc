@@ -53,6 +53,24 @@ function prepareObservationMemoPageClose() {
   flushMemoAutoSave();
   saveCurrentMemo({ silent: true });
 }
+
+function returnFromObservationMemoScreen(onReturned) {
+  const current = vivizacGetVisibleNotePage();
+  if (current && current.id === 'studentMemoScreen') {
+    vivizacSlideOutPageToRecord(current, () => {
+      if (typeof onReturned === 'function') onReturned();
+    });
+    return true;
+  }
+
+  const studentMemoScreen = document.getElementById('studentMemoScreen');
+  if (studentMemoScreen) studentMemoScreen.style.display = 'none';
+  const recordRoom = document.getElementById('recordRoomScreen');
+  if (recordRoom) recordRoom.style.display = 'flex';
+  if (typeof onReturned === 'function') onReturned();
+  return false;
+}
+
 function handleMemoPauseAutoSaveBlur(target) {
   const inputType = getMemoInputTypeFromTarget(target);
   if (!inputType || currentMemoType !== inputType) return;
@@ -153,7 +171,7 @@ function renderObservationMemoScreenChrome(session) {
 
   if (feedbackBtn) {
     feedbackBtn.style.display = 'inline-flex';
-    feedbackBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>피드백 생성';
+    feedbackBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7\"></path></svg>피드백 생성';
   }
   if (analysisBtn) analysisBtn.style.display = 'inline-flex';
   if (elementaryWrap) elementaryWrap.style.display = 'block';
