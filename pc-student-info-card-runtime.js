@@ -335,7 +335,11 @@
       const base = typeof baseGetInfo === 'function' ? (baseGetInfo.apply(this, arguments) || {}) : {};
       const kind = type === 'kinder' ? 'kinder' : 'elementary';
       const fields = lessonFieldsFromState(scheduleStates[kind]);
-      return Object.assign({}, base, fields, { class_time: fields.lesson_time });
+      const result = Object.assign({}, base, fields, { class_time: fields.lesson_time });
+      // 학생정보에서는 담임을 수정하지 않습니다. 담임의 유일한 원본은 시간표 1회차 반입니다.
+      delete result.teacher;
+      delete result.homeroom_teacher;
+      return result;
     };
 
     global.toggleStudentModalDay = (day) => toggleDay('student', day);
@@ -390,6 +394,8 @@
       #recordRoomScreen .pcStudentInfoCard .infoToggleBtn.groupIconChoiceBtn{height:36px;border:0;border-radius:11px;background:#f0f2f4;color:#707780;font-size:11px;font-weight:720;cursor:pointer;}
       #recordRoomScreen .pcStudentInfoCard .infoToggleBtn.groupIconChoiceBtn.active{background:#23262a;color:#fff;}
       #recordRoomScreen .pcStudentInfoCard .infoTeacherSelectBox{height:40px;border-radius:12px;border-color:#e4e6e9;font-size:12px;}
+      #recordRoomScreen .pcStudentInfoTeacherReadonly{height:40px;display:flex;align-items:center;padding:0 11px;border:1px solid #e4e6e9;border-radius:12px;background:#f6f7f8;color:#555c65;font-size:12px;font-weight:700;box-sizing:border-box;}
+      #recordRoomScreen .pcStudentInfoTeacherReadonly.isEmpty{color:#a0a5ad;font-weight:600;}
       #recordRoomScreen .pcStudentInfoActions{display:flex;justify-content:flex-end;gap:8px;padding-top:4px;}
       #recordRoomScreen .pcStudentInfoActionBtn{height:38px;padding:0 16px;border:0;border-radius:12px;background:#f0f2f4;color:#555c65;font:inherit;font-size:11px;font-weight:760;cursor:pointer;}
       #recordRoomScreen .pcStudentInfoActionBtn.primary{background:#1687ff;color:#fff;}
@@ -440,7 +446,7 @@
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><div class="modalLabel">이름</div><input class="modalInput" id="elementaryInfoNameInput"></div>
           <div class="pcStudentInfoField"><div class="modalLabel">성향</div><div id="elementaryPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">담임</div><div id="elementaryTeacherToggleRow" class="infoTeacherToggleRow"></div></div>
+          <div class="pcStudentInfoField"><div class="modalLabel">담임 · 시간표 1회차 기준</div><div class="pcStudentInfoTeacherReadonly ${clean(student.teacher || student.homeroom_teacher) ? '' : 'isEmpty'}">${esc(student.teacher || student.homeroom_teacher || '미지정')}</div></div>
         </div>
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><div class="modalLabel">학교</div><input class="modalInput" id="elementarySchoolInput"></div>
@@ -466,7 +472,7 @@
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><div class="modalLabel">이름</div><input class="modalInput" id="kinderInfoNameInput"></div>
           <div class="pcStudentInfoField"><div class="modalLabel">성향</div><div id="kinderPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">담임</div><div id="kinderTeacherToggleRow" class="infoTeacherToggleRow"></div></div>
+          <div class="pcStudentInfoField"><div class="modalLabel">담임 · 시간표 1회차 기준</div><div class="pcStudentInfoTeacherReadonly ${clean(student.teacher || student.homeroom_teacher) ? '' : 'isEmpty'}">${esc(student.teacher || student.homeroom_teacher || '미지정')}</div></div>
         </div>
         <div class="pcStudentInfoGrid2">
           <div class="pcStudentInfoField"><div class="modalLabel">유치원</div><input class="modalInput" id="kinderKindergartenInput"></div>
@@ -624,8 +630,8 @@
           name,
           group: (typeof elementaryInfoDraft !== 'undefined' && elementaryInfoDraft) ? (elementaryInfoDraft.group || '') : (target.group || ''),
           personality: (typeof elementaryInfoDraft !== 'undefined' && elementaryInfoDraft) ? (elementaryInfoDraft.personality || '') : (target.personality || ''),
-          teacher: Object.prototype.hasOwnProperty.call(extra, 'teacher') ? extra.teacher : (target.teacher || ''),
-          homeroom_teacher: Object.prototype.hasOwnProperty.call(extra, 'homeroom_teacher') ? extra.homeroom_teacher : (target.homeroom_teacher || ''),
+          teacher: target.teacher || target.homeroom_teacher || '',
+          homeroom_teacher: target.homeroom_teacher || target.teacher || '',
           school: clean(document.getElementById('elementarySchoolInput')?.value),
           grade,
           age: typeof global.getElementaryAgeFromGrade === 'function' ? global.getElementaryAgeFromGrade(grade) : (target.age || ''),
@@ -652,8 +658,8 @@
           age,
           birth_year: typeof global.inferOlliBirthYearFromAge === 'function' ? global.inferOlliBirthYearFromAge(age) : (target.birth_year || ''),
           personality: Object.prototype.hasOwnProperty.call(extra, 'personality') ? extra.personality : ((typeof kinderInfoDraft !== 'undefined' && kinderInfoDraft) ? (kinderInfoDraft.personality || '') : (target.personality || '')),
-          teacher: Object.prototype.hasOwnProperty.call(extra, 'teacher') ? extra.teacher : (target.teacher || ''),
-          homeroom_teacher: Object.prototype.hasOwnProperty.call(extra, 'homeroom_teacher') ? extra.homeroom_teacher : (target.homeroom_teacher || ''),
+          teacher: target.teacher || target.homeroom_teacher || '',
+          homeroom_teacher: target.homeroom_teacher || target.teacher || '',
           lesson_day: target.lesson_day || '',
           lesson_time: target.lesson_time || '',
           class_time: target.lesson_time || target.class_time || ''
