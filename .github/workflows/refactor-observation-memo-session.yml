@@ -1,0 +1,102 @@
+name: Refactor observation memo session
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refactor-observation-memo-session.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use shared memo session loader on PC
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          core_path = Path('observation-memo-core.js')
+          core = core_path.read_text(encoding='utf-8')
+          fn_start = core.index('function openStudentMemoPageById(studentId) {')
+          fn_end = core.index('\nlet memoAutoSaveTimer = null;', fn_start)
+          region = core[fn_start:fn_end]
+
+          block_start = region.index("  const memoEditor = document.getElementById('memoEditor');")
+          block_end = region.index('  const __studentAnalysis =', block_start)
+          old_block = region[block_start:block_end]
+          required = [
+            'getMemoEntryByStudent(student)',
+            "loadStudentNoteDraftFromSupabase(student, 'elementary_observation')",
+            'isRemoteMemoNewerThanLocal(',
+            'setMemoByStudent(student, remoteText'
+          ]
+          missing = [token for token in required if token not in old_block]
+          if missing:
+            raise SystemExit('PC memo loading block changed unexpectedly: ' + ', '.join(missing))
+
+          new_block = r'''  const memoEditor = document.getElementById('memoEditor');
+          if (memoEditor) {
+            memoEditor.readOnly = false;
+            const localEntry = getObservationMemoLocalSnapshot(student);
+            memoEditor.value = localEntry.content || '';
+
+            // 로컬 캐시는 즉시 표시하고, 서버 최신판 판정/로컬 캐시 갱신은 공통 세션 코어가 담당합니다.
+            reconcileObservationMemoDraft(student, 'elementary_observation')
+              .then(result => {
+                if (!result || !result.adoptedRemote || !result.content) return;
+
+                const isSameMemoPage = currentMemoStudent && currentMemoStudent.id === student.id && currentMemoType === 'elementary';
+                const currentEditorText = isSameMemoPage ? (memoEditor.value || '') : '';
+                const hasVisibleLocalText = currentEditorText.trim().length > 0;
+
+                // 이미 로컬 내용이 보이는 상태에서는 화면을 덮어쓰지 않는다.
+                // 로컬이 비어 있는 첫 진입일 때만 서버 내용을 조용히 채운다.
+                if (isSameMemoPage && !hasVisibleLocalText) {
+                  memoEditor.value = result.content;
+                  updateMemoStudentMetaDisplay(student, result.updatedAt || '');
+                }
+              })
+              .catch(err => {
+                console.warn('student_note_drafts 불러오기 실패:', err.message || err);
+              });
+          }
+'''
+          region = region[:block_start] + new_block + region[block_end:]
+          core = core[:fn_start] + region + core[fn_end:]
+          core_path.write_text(core, encoding='utf-8')
+
+          index_path = Path('index.html')
+          index = index_path.read_text(encoding='utf-8')
+          old = '<script src="olli-record-memo-storage.js"></script>\n<script src="observation-memo-common.js"></script>'
+          new = '<script src="olli-record-memo-storage.js"></script>\n<script src="observation-memo-session-common.js"></script>\n<script src="observation-memo-common.js"></script>'
+          if old not in index:
+            raise SystemExit('PC index insertion point not found')
+          index_path.write_text(index.replace(old, new, 1), encoding='utf-8')
+
+          updated_region = core[core.index('function openStudentMemoPageById(studentId) {'):core.index('\nlet memoAutoSaveTimer = null;', core.index('function openStudentMemoPageById(studentId) {'))]
+          forbidden = [
+            "loadStudentNoteDraftFromSupabase(student, 'elementary_observation')",
+            'isRemoteMemoNewerThanLocal(remoteUpdatedAt',
+            'setMemoByStudent(student, remoteText'
+          ]
+          leftover = [token for token in forbidden if token in updated_region]
+          if leftover:
+            raise SystemExit('PC direct draft reconciliation still remains: ' + ', '.join(leftover))
+          if "reconcileObservationMemoDraft(student, 'elementary_observation')" not in updated_region:
+            raise SystemExit('PC shared session loader missing')
+          PY
+
+          node --check observation-memo-session-common.js
+          node --check observation-memo-core.js
+
+          rm -f .github/workflows/refactor-observation-memo-session.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add observation-memo-core.js index.html .github/workflows/refactor-observation-memo-session.yml
+          git commit -m 'refactor: PC 관찰노트 세션 로딩 공통화'
+          git push
