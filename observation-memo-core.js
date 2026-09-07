@@ -138,43 +138,6 @@ renderElementaryAnalysisSummaryCard(__studentAnalysis.data || {}, { title: '분�
 setMemoSaveStatus('자동 저장');
 }
 
-let memoAutoSaveTimer = null;
-
-
-
-
-function scheduleMemoAutoSave() {
-  if (!currentMemoStudent) return;
-
-  setMemoSaveStatus('작성 중...');
-  if (memoAutoSaveTimer) clearTimeout(memoAutoSaveTimer);
-
-  memoAutoSaveTimer = setTimeout(() => {
-    memoAutoSaveTimer = null;
-    saveCurrentMemo({ silent: true, status: true });
-  }, MEMO_AUTOSAVE_DELAY);
-}
-
-
-
-function getMemoInputTypeFromTarget(target) {
-  if (!target || !target.id) return '';
-  if (target.id === 'memoEditor') return 'elementary';
-return '';
-}
-
-function handleMemoPauseAutoSaveInput(target) {
-  const inputType = getMemoInputTypeFromTarget(target);
-  if (!inputType || !currentMemoStudent || currentMemoType !== inputType) return;
-
-
-  scheduleMemoAutoSave();
-}
-
-
-
-
-
 
 
 function closeMemoPage() {
