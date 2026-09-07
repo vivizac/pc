@@ -1,0 +1,32 @@
+name: Fix PC timetable legacy list
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-pc-timetable-legacy-list.yml'
+      - '.github/tmp/fix_pc_timetable_legacy_list.py'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch PC timetable legacy list path
+        run: |
+          python3 .github/tmp/fix_pc_timetable_legacy_list.py
+          node --check pc-timetable.js
+          node --check pc-shell.js
+          node --check olli-data-attendance-feedback.js
+          git diff --check
+      - name: Commit original file fixes and remove temporary files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/tmp/fix_pc_timetable_legacy_list.py .github/workflows/fix-pc-timetable-legacy-list.yml
+          git add pc-timetable.js pc-timetable.css pc-shell.js olli-data-attendance-feedback.js .github/tmp/fix_pc_timetable_legacy_list.py .github/workflows/fix-pc-timetable-legacy-list.yml
+          git commit -m "PC 시간표에서 모바일 명단·바텀시트 레거시 경로 제거"
+          git push
