@@ -40,30 +40,33 @@ jobs:
               raise SystemExit('PC openStudentMemoPageById end not found')
 
           region = text[start:end]
-
-          old_prefix = """function openStudentMemoPageById(studentId) {
-  const student = findStudentById(studentId);
-  if (!student) return;
-  if (student.type === 'kinder') {
-    currentMemoStudent = student;
-    currentMemoType = 'kinder';
-    if (typeof openKinderChatFeedbackPage === 'function') openKinderChatFeedbackPage();
-    return;
-  }
-
-  currentMemoStudent = student;
-  currentMemoType = 'elementary';
-  if (currentMemoType === 'elementary') setLastElementaryMemoStudent(student);
-"""
-          new_prefix = """function openStudentMemoPageById(studentId) {
-  const session = beginObservationMemoSession(studentId);
-  if (!session) return;
-  const { student } = session;
-  if (session.type === 'kinder') {
-    if (typeof openKinderChatFeedbackPage === 'function') openKinderChatFeedbackPage();
-    return;
-  }
-"""
+          old_prefix = '\n'.join([
+              'function openStudentMemoPageById(studentId) {',
+              '  const student = findStudentById(studentId);',
+              '  if (!student) return;',
+              "  if (student.type === 'kinder') {",
+              '    currentMemoStudent = student;',
+              "    currentMemoType = 'kinder';",
+              "    if (typeof openKinderChatFeedbackPage === 'function') openKinderChatFeedbackPage();",
+              '    return;',
+              '  }',
+              '',
+              '  currentMemoStudent = student;',
+              "  currentMemoType = 'elementary';",
+              "  if (currentMemoType === 'elementary') setLastElementaryMemoStudent(student);",
+              ''
+          ])
+          new_prefix = '\n'.join([
+              'function openStudentMemoPageById(studentId) {',
+              '  const session = beginObservationMemoSession(studentId);',
+              '  if (!session) return;',
+              '  const { student } = session;',
+              "  if (session.type === 'kinder') {",
+              "    if (typeof openKinderChatFeedbackPage === 'function') openKinderChatFeedbackPage();",
+              '    return;',
+              '  }',
+              ''
+          ])
 
           replacements = [
               (old_prefix, new_prefix, 'session prefix'),
