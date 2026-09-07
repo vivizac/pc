@@ -1,0 +1,83 @@
+name: Patch PC timetable memo card
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-pc-timetable-memo-card.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch timetable memo card style
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('pc-timetable.css')
+          text = path.read_text(encoding='utf-8')
+
+          old = '''#recordRoomScreen .olliTtCellMemoCard {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  padding: 7px 8px;
+  border: 1px solid #e2cb63;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: #544918;
+  background: #fff3a6;
+  box-sizing: border-box;
+  text-align: left;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(112,91,14,.10);
+}
+#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #d4b83f; background: #ffed85; box-shadow: 0 3px 8px rgba(112,91,14,.16); }
+#recordRoomScreen .olliTtCellMemoCard span { flex: 0 0 auto; margin-top: 1px; font-size: calc(11px * var(--olli-text-scale)); }
+#recordRoomScreen .olliTtCellMemoCard strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(12px * var(--olli-text-scale)); font-weight: 760; line-height: 1.45; }
+'''
+
+          new = '''#recordRoomScreen .olliTtCellMemoCard {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  padding: 3px 5px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  color: #544918;
+  background: #fff3a6;
+  box-sizing: border-box;
+  text-align: left;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(112,91,14,.10);
+}
+#recordRoomScreen .olliTtCellMemoCard:hover { border-color: transparent; background: #ffed85; box-shadow: 0 3px 8px rgba(112,91,14,.16); }
+#recordRoomScreen .olliTtCellMemoCard span { flex: 0 0 auto; margin-top: 0; font-size: calc(11px * var(--olli-text-scale)); line-height: 1.25; }
+#recordRoomScreen .olliTtCellMemoCard strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(12px * var(--olli-text-scale)); font-weight: 760; line-height: 1.25; }
+'''
+
+          if text.count(old) != 1:
+              raise SystemExit(f'unexpected memo card style block count: {text.count(old)}')
+
+          text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/patch-pc-timetable-memo-card.yml
+          git add pc-timetable.css
+          git diff --cached --check
+          git commit -m "시간표 메모 카드 높이와 테두리 조정"
+          git push
