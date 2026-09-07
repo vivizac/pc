@@ -7,6 +7,30 @@
     return getMemoEntryByStudent(student);
   }
 
+  function beginObservationMemoSession(studentId) {
+    const student = findStudentById(studentId);
+    if (!student) return null;
+
+    const type = student.type === 'kinder' ? 'kinder' : 'elementary';
+    currentMemoStudent = student;
+    currentMemoType = type;
+
+    if (type === 'elementary') {
+      setLastElementaryMemoStudent(student);
+      selectedElementaryAnalysisHistoryId = '';
+    }
+
+    return {
+      student,
+      type,
+      noteType: type === 'elementary' ? 'elementary_observation' : getSupabaseNoteDraftType(student),
+      localEntry: type === 'elementary' ? getObservationMemoLocalSnapshot(student) : null,
+      analysisDisplay: type === 'elementary'
+        ? getPrimaryElementaryAnalysisDisplay(student)
+        : null
+    };
+  }
+
   async function reconcileObservationMemoDraft(student, noteType = '') {
     const resolvedType = noteType || getSupabaseNoteDraftType(student);
     const localEntry = getMemoEntryByStudent(student);
@@ -67,5 +91,6 @@
   }
 
   global.getObservationMemoLocalSnapshot = getObservationMemoLocalSnapshot;
+  global.beginObservationMemoSession = beginObservationMemoSession;
   global.reconcileObservationMemoDraft = reconcileObservationMemoDraft;
 })(window);
