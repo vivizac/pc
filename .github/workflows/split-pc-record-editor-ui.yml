@@ -1,0 +1,148 @@
+name: Split PC record editor UI
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/split-pc-record-editor-ui.yml'
+permissions:
+  contents: write
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace embedded phone editors with PC editor
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          attendance_path = Path('pc-attendance.js')
+          attendance = attendance_path.read_text(encoding='utf-8')
+          start = attendance.find('  function saveSharedEditorDraft()')
+          end = attendance.find('  function recordWorkspaceHtml', start)
+          if start < 0 or end < 0:
+              raise SystemExit('pc-attendance embedded editor block not found')
+          replacement = '''  function unmountRecordEditor() {
+            const editor = global.OlliPcRecordEditor;
+            if (!editor || typeof editor.unmount !== 'function') return;
+            Promise.resolve(editor.unmount({ save: true })).catch((error) => {
+              console.warn('PC 기록 에디터 정리 실패:', error && (error.message || error));
+            });
+          }
+
+          function mountRecordEditor(student) {
+            const host = document.getElementById('pcAttendanceSharedEditorHost');
+            const editor = global.OlliPcRecordEditor;
+            if (!host || !student) return;
+            if (!editor || typeof editor.mount !== 'function') {
+              host.innerHTML = '<div class="pcAttendanceEditorUnavailable">PC 기록 에디터를 불러오지 못했습니다.</div>';
+              return;
+            }
+            Promise.resolve(editor.mount(host, student)).catch((error) => {
+              console.warn('PC 기록 에디터 연결 실패:', error && (error.message || error));
+              host.innerHTML = '<div class="pcAttendanceEditorUnavailable">기록 화면을 불러오지 못했습니다.</div>';
+            });
+          }
+
+          function recordWorkspaceHtml'''
+          attendance = attendance[:start] + replacement + attendance[end + len('  function recordWorkspaceHtml'):]
+          attendance = attendance.replace('unmountSharedEditor()', 'unmountRecordEditor()')
+          attendance = attendance.replace('mountSharedEditor(student)', 'mountRecordEditor(student)')
+          attendance = attendance.replace('unmountEditor: unmountSharedEditor', 'unmountEditor: unmountRecordEditor')
+
+          refresh_anchor = "  function renderDetailError(student, error) {"
+          if 'async function refreshSelectedRecord()' not in attendance:
+              idx = attendance.find(refresh_anchor)
+              if idx < 0:
+                  raise SystemExit('refresh insertion anchor not found')
+              helper = '''  async function refreshSelectedRecord() {
+            const studentId = String(state.selectedStudentId || '');
+            if (!studentId) return;
+            dropRecordCache(studentId);
+            await selectStudent(studentId);
+          }
+
+          '''
+              attendance = attendance[:idx] + helper + attendance[idx:]
+          attendance = attendance.replace(
+              'const api = { studentMatchesDay, renderContext, ensureDetailPanel, open, renderList, filterDivision, filterDay, setSortMode, selectStudent, decorateRows, unmountEditor: unmountRecordEditor };',
+              'const api = { studentMatchesDay, renderContext, ensureDetailPanel, open, renderList, filterDivision, filterDay, setSortMode, selectStudent, refreshSelected: refreshSelectedRecord, decorateRows, unmountEditor: unmountRecordEditor };'
+          )
+          if 'moveScreenIntoHost' in attendance or 'pcAttendanceEmbeddedEditor' in attendance or 'studentMemoScreen' in attendance or 'kinderChatFeedbackScreen' in attendance:
+              raise SystemExit('phone editor dependency remains in pc-attendance.js')
+          attendance_path.write_text(attendance, encoding='utf-8')
+
+          css_path = Path('pc-attendance.css')
+          css = css_path.read_text(encoding='utf-8')
+          css_start_marker = '/* 기존 관찰노트/1분 피드백 화면을 복제하지 않고 카드 안에서 그대로 재사용합니다. */'
+          css_end_marker = '@media(max-width:1180px){'
+          css_start = css.find(css_start_marker)
+          css_end = css.find(css_end_marker, css_start)
+          if css_start < 0 or css_end < 0:
+              raise SystemExit('pc-attendance embedded phone CSS block not found')
+          css = css[:css_start] + css[css_end:]
+          if 'pcAttendanceEmbeddedEditor' in css or '>#studentMemoScreen' in css or '>#kinderChatFeedbackScreen' in css:
+              raise SystemExit('embedded phone CSS remains')
+          css_path.write_text(css, encoding='utf-8')
+
+          html_path = Path('index.html')
+          html = html_path.read_text(encoding='utf-8')
+          student_memo_include = '<script src="observation-editor-ui.js" data-olli-observation-ui="student-memo"></script>\n'
+          if student_memo_include not in html:
+              raise SystemExit('student memo UI include not found')
+          html = html.replace(student_memo_include, '', 1)
+
+          kinder_bundle = '<link rel="stylesheet" href="kinder-feedback.css">\n<script src="kinder-feedback-ui.js"></script>\n<script src="kinder-feedback.js"></script>\n'
+          if kinder_bundle not in html:
+              raise SystemExit('kinder phone UI bundle not found')
+          html = html.replace(kinder_bundle, '', 1)
+
+          css_anchor = '<link rel="stylesheet" href="pc-attendance.css">'
+          pc_editor_css = css_anchor + '\n<link rel="stylesheet" href="pc-record-editor.css">'
+          if 'href="pc-record-editor.css"' not in html:
+              if html.count(css_anchor) != 1:
+                  raise SystemExit('pc attendance css anchor mismatch')
+              html = html.replace(css_anchor, pc_editor_css, 1)
+
+          js_anchor = '<script src="pc-attendance.js"></script>'
+          pc_editor_js = '<script src="pc-record-editor.js"></script>\n' + js_anchor
+          if 'src="pc-record-editor.js"' not in html:
+              if html.count(js_anchor) != 1:
+                  raise SystemExit('pc attendance js anchor mismatch')
+              html = html.replace(js_anchor, pc_editor_js, 1)
+
+          if html.count('data-olli-observation-ui="student-memo"') != 0:
+              raise SystemExit('phone student memo DOM injection still active')
+          if html.count('src="kinder-feedback-ui.js"') != 0 or html.count('href="kinder-feedback.css"') != 0 or html.count('src="kinder-feedback.js"') != 0:
+              raise SystemExit('phone kinder UI bundle still active')
+          if html.count('src="pc-record-editor.js"') != 1 or html.count('href="pc-record-editor.css"') != 1:
+              raise SystemExit('PC editor include count mismatch')
+          html_path.write_text(html, encoding='utf-8')
+
+          doc_path = Path('OLLI_PC_MODULES.md')
+          doc = doc_path.read_text(encoding='utf-8')
+          doc = doc.replace(
+              '| 성향기록부·학생 명단·관찰기록 패널·공용 에디터 임베드 | `pc-attendance.js` | `pc-attendance.css` |',
+              '| 성향기록부·학생 명단·관찰기록 패널 | `pc-attendance.js` | `pc-attendance.css` |\n| PC 전용 초등 관찰노트·유치부 1분 피드백 작성 UI | `pc-record-editor.js` | `pc-record-editor.css` |'
+          )
+          doc = doc.replace(
+              '- 초등 관찰기록은 기존 `studentMemoScreen`, 유치부 1분 피드백은 기존 `kinderChatFeedbackScreen`을 복제하지 않고 `pc-attendance.js`가 성향기록부 카드 안으로 이동해 재사용한다.',
+              '- PC 성향기록부의 작성 화면은 `pc-record-editor.js`가 PC 전용 DOM으로 렌더링한다. 초등 `studentMemoScreen`과 유치부 `kinderChatFeedbackScreen` 같은 Phone 화면 DOM은 PC 카드에 이동하거나 재사용하지 않는다.\n- 초안 저장·Supabase 동기화·학생 데이터·AI 피드백 생성처럼 화면과 무관한 데이터 로직만 기존 공통 함수를 재사용한다.'
+          )
+          doc_path.write_text(doc, encoding='utf-8')
+          print('PC_RECORD_EDITOR_SPLIT_OK')
+          PY
+
+          node --check pc-record-editor.js
+          node --check pc-attendance.js
+          git diff --check
+      - name: Commit PC-only editor refactor and remove workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/split-pc-record-editor-ui.yml
+          git add pc-attendance.js pc-attendance.css pc-record-editor.js pc-record-editor.css index.html OLLI_PC_MODULES.md .github/workflows/split-pc-record-editor-ui.yml
+          if ! git diff --cached --quiet; then
+            git commit -m "PC 관찰노트와 유치부 피드백 UI를 Phone 화면에서 분리"
+            git push
+          fi
