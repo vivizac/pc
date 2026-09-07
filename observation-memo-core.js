@@ -56,18 +56,13 @@ function forceStudentMemoControlsVisible() {
 }
 
 function openStudentMemoPageById(studentId) {
-  const student = findStudentById(studentId);
-  if (!student) return;
-  if (student.type === 'kinder') {
-    currentMemoStudent = student;
-    currentMemoType = 'kinder';
+  const session = beginObservationMemoSession(studentId);
+  if (!session) return;
+  const { student } = session;
+  if (session.type === 'kinder') {
     if (typeof openKinderChatFeedbackPage === 'function') openKinderChatFeedbackPage();
     return;
   }
-
-  currentMemoStudent = student;
-  currentMemoType = 'elementary';
-  if (currentMemoType === 'elementary') setLastElementaryMemoStudent(student);
   closeMemoModeMenu();
   closeMemoStudentSelectPopup();
 
@@ -110,11 +105,11 @@ if (studentMemoScreenEl) {
   const memoEditor = document.getElementById('memoEditor');
 if (memoEditor) {
   memoEditor.readOnly = false;
-  const localEntry = getObservationMemoLocalSnapshot(student);
+  const localEntry = session.localEntry || { content: '' };
   memoEditor.value = localEntry.content || '';
 
   // 로컬 캐시는 즉시 표시하고, 서버 최신판 판정/로컬 캐시 갱신은 공통 세션 코어가 담당합니다.
-  reconcileObservationMemoDraft(student, 'elementary_observation')
+  reconcileObservationMemoDraft(student, session.noteType)
     .then(result => {
       if (!result || !result.adoptedRemote || !result.content) return;
 
@@ -133,7 +128,7 @@ if (memoEditor) {
       console.warn('student_note_drafts 불러오기 실패:', err.message || err);
     });
 }
-  const __studentAnalysis = getPrimaryElementaryAnalysisDisplay(student); selectedElementaryAnalysisHistoryId = '';
+  const __studentAnalysis = session.analysisDisplay || { data: {}, createdAt: '' };
 renderElementaryAnalysisSummaryCard(__studentAnalysis.data || {}, { title: '분석 결과', createdAt: __studentAnalysis.createdAt || '' }); renderElementaryAnalysisHistoryCards(student); 
 setMemoSaveStatus('자동 저장');
 }
