@@ -108,43 +108,31 @@ if (studentMemoScreenEl) {
   forceStudentMemoControlsVisible();
 
   const memoEditor = document.getElementById('memoEditor');
-  if (memoEditor) {
-    memoEditor.readOnly = false;
-    const localEntry = getMemoEntryByStudent(student);
-    memoEditor.value = localEntry.content || '';
+if (memoEditor) {
+  memoEditor.readOnly = false;
+  const localEntry = getObservationMemoLocalSnapshot(student);
+  memoEditor.value = localEntry.content || '';
 
-    // 관찰노트는 로컬 캐시를 먼저 표시해 화면 깜박임을 막고,
-    // Supabase 최신 확인은 화면 뒤에서 조용히 처리한다.
-    loadStudentNoteDraftFromSupabase(student, 'elementary_observation')
-      .then(row => {
-        if (!row || !row.content) return;
-        const remoteText = row.content || '';
-        const remoteUpdatedAt = row.updated_at || '';
-        const latestLocalEntry = getMemoEntryByStudent(student);
-        const shouldAdoptRemote = isRemoteMemoNewerThanLocal(remoteUpdatedAt, latestLocalEntry.updatedAt || '');
-        if (!shouldAdoptRemote) return;
+  // 로컬 캐시는 즉시 표시하고, 서버 최신판 판정/로컬 캐시 갱신은 공통 세션 코어가 담당합니다.
+  reconcileObservationMemoDraft(student, 'elementary_observation')
+    .then(result => {
+      if (!result || !result.adoptedRemote || !result.content) return;
 
-        const isSameMemoPage = currentMemoStudent && currentMemoStudent.id === student.id && currentMemoType === 'elementary';
-        const currentEditorText = isSameMemoPage ? (memoEditor.value || '') : '';
-        const hasVisibleLocalText = currentEditorText.trim().length > 0;
+      const isSameMemoPage = currentMemoStudent && currentMemoStudent.id === student.id && currentMemoType === 'elementary';
+      const currentEditorText = isSameMemoPage ? (memoEditor.value || '') : '';
+      const hasVisibleLocalText = currentEditorText.trim().length > 0;
 
-        setMemoByStudent(student, remoteText, {
-          updatedAt: remoteUpdatedAt || new Date().toISOString(),
-          lastSyncedAt: remoteUpdatedAt || new Date().toISOString(),
-          syncStatus: 'synced'
-        });
-
-        // 이미 로컬 내용이 보이는 상태에서는 화면을 덮어쓰지 않는다.
-        // 로컬이 비어 있는 첫 진입일 때만 서버 내용을 조용히 채운다.
-        if (isSameMemoPage && !hasVisibleLocalText) {
-          memoEditor.value = remoteText;
-          updateMemoStudentMetaDisplay(student, remoteUpdatedAt);
-        }
-      })
-      .catch(err => {
-        console.warn('student_note_drafts 불러오기 실패:', err.message || err);
-      });
-  }
+      // 이미 로컬 내용이 보이는 상태에서는 화면을 덮어쓰지 않는다.
+      // 로컬이 비어 있는 첫 진입일 때만 서버 내용을 조용히 채운다.
+      if (isSameMemoPage && !hasVisibleLocalText) {
+        memoEditor.value = result.content;
+        updateMemoStudentMetaDisplay(student, result.updatedAt || '');
+      }
+    })
+    .catch(err => {
+      console.warn('student_note_drafts 불러오기 실패:', err.message || err);
+    });
+}
   const __studentAnalysis = getPrimaryElementaryAnalysisDisplay(student); selectedElementaryAnalysisHistoryId = '';
 renderElementaryAnalysisSummaryCard(__studentAnalysis.data || {}, { title: '분석 결과', createdAt: __studentAnalysis.createdAt || '' }); renderElementaryAnalysisHistoryCards(student); 
 setMemoSaveStatus('자동 저장');
