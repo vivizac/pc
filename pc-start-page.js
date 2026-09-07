@@ -17,18 +17,26 @@
     const style = document.createElement('style');
     style.id = 'olliPcTimetableMemoCardCompactStyle';
     style.textContent = `
-      #recordRoomScreen .olliTtCellMemoCard {
-        min-height: 24px;
-        padding: 3px 5px;
-        border-color: transparent;
-        gap: 5px;
+      body.olliPcApp #recordRoomScreen .olliTtCellMemoCard {
+        height: auto !important;
+        min-height: 24px !important;
+        padding: 3px 5px !important;
+        border: 1px solid transparent !important;
+        gap: 5px !important;
+        align-items: center !important;
+        box-shadow: none !important;
       }
-      #recordRoomScreen .olliTtCellMemoCard:hover { border-color: transparent; }
-      #recordRoomScreen .olliTtCellMemoCard span {
-        margin-top: 0;
-        line-height: 1.25;
+      body.olliPcApp #recordRoomScreen .olliTtCellMemoCard:hover {
+        border-color: transparent !important;
+        box-shadow: none !important;
       }
-      #recordRoomScreen .olliTtCellMemoCard strong { line-height: 1.25; }
+      body.olliPcApp #recordRoomScreen .olliTtCellMemoCard span {
+        margin-top: 0 !important;
+        line-height: 1 !important;
+      }
+      body.olliPcApp #recordRoomScreen .olliTtCellMemoCard strong {
+        line-height: 1.2 !important;
+      }
 
       body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider {
         gap: 7px;
