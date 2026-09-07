@@ -1,0 +1,34 @@
+name: Fix records status student save holiday
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-records-status-student-save-holiday.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply canonical fixes
+        run: python3 .github/tmp/fix_records_status_student_save_holiday.py
+      - name: Validate
+        run: |
+          node --check pc-attendance.js
+          node --check pc-student-info-card-runtime.js
+          git diff --check
+          grep -q "PAUSED: 'paused'" pc-attendance.js
+          grep -q "WITHDRAWN: 'withdrawn'" pc-attendance.js
+          grep -q "scheduleChanged = !schedulePairsEqual" pc-student-info-card-runtime.js
+          grep -q 'olliTtCell.holiday.*background:#fff' pc-timetable.css
+      - name: Commit and clean temporary files
+        run: |
+          rm -f .github/tmp/fix_records_status_student_save_holiday.py
+          rm -f .github/workflows/fix-records-status-student-save-holiday.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "성향기록부 상태정렬·학생정보 저장·공휴일 메모색 수정"
+          git push origin main
