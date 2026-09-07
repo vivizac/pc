@@ -1,58 +1,6 @@
-/* v-fix: 선생님/관리자 계정에서도 초등부 관찰노트 상단·하단 버튼 강제 복구 */
+/* PC는 공통 관찰노트 기본 컨트롤만 표시합니다. */
 function forceStudentMemoControlsVisible() {
-  const screen = document.getElementById('studentMemoScreen');
-  if (!screen) return;
-  const screenVisible = screen.style.display !== 'none';
-  if (!screenVisible) return;
-
-  const showInlineFlex = [
-    '#memoRecordRoomBtn',
-    '#memoStudentListBtn',
-    '#memoBottomAnalysisBtn',
-    '#memoFeedbackBtn'
-  ];
-  const showFlex = [
-    '#studentMemoScreen .memoBottomBar'
-  ];
-  const showBlock = [
-    '#memoStudentSelectWrap'
-  ];
-
-  showInlineFlex.forEach(selector => {
-    const el = document.querySelector(selector);
-    if (!el) return;
-    el.hidden = false;
-    el.removeAttribute('hidden');
-    el.removeAttribute('aria-hidden');
-    el.style.visibility = 'visible';
-    el.style.opacity = '1';
-    el.style.pointerEvents = 'auto';
-    el.style.display = 'inline-flex';
-  });
-
-  showFlex.forEach(selector => {
-    const el = document.querySelector(selector);
-    if (!el) return;
-    el.hidden = false;
-    el.removeAttribute('hidden');
-    el.removeAttribute('aria-hidden');
-    el.style.visibility = 'visible';
-    el.style.opacity = '1';
-    el.style.pointerEvents = 'auto';
-    el.style.display = 'flex';
-  });
-
-  showBlock.forEach(selector => {
-    const el = document.querySelector(selector);
-    if (!el) return;
-    el.hidden = false;
-    el.removeAttribute('hidden');
-    el.removeAttribute('aria-hidden');
-    el.style.visibility = 'visible';
-    el.style.opacity = '1';
-    el.style.pointerEvents = 'auto';
-    el.style.display = '';
-  });
+  return forceObservationMemoControlsVisible();
 }
 
 function openStudentMemoPageById(studentId) {

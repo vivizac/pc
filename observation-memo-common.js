@@ -71,6 +71,76 @@ function returnFromObservationMemoScreen(onReturned) {
   return false;
 }
 
+function setMemoModePillLabel(label = '학생 이름', modeLabel = '관찰 모드') {
+  const el = document.getElementById('memoStudentName');
+  const sub = document.getElementById('memoModeSub');
+  if (el) el.textContent = '관찰 노트';
+  if (sub) sub.textContent = modeLabel || '관찰 모드';
+}
+function formatMemoUpdatedDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  return `${y}.${m}.${d} ${hh}:${mm}`;
+}
+function updateMemoStudentMetaDisplay(student, updatedAt = '') {
+  const nameEl = document.getElementById('memoPageStudentName');
+  const dateEl = document.getElementById('memoStudentUpdatedDate');
+  if (nameEl) nameEl.textContent = student?.name || '학생 이름';
+  if (dateEl) {
+    const localEntry = getMemoEntryByStudent(student);
+    const hasMemoContent = String(localEntry.content || '').trim().length > 0;
+    const dateSource = updatedAt || (hasMemoContent ? localEntry.updatedAt : '');
+    const dateText = formatMemoUpdatedDate(dateSource || '');
+    if (dateText) {
+      dateEl.hidden = false;
+      dateEl.style.display = 'flex';
+      dateEl.innerHTML = `<span>마지막 수정</span><span>${escapeHtml(dateText)}</span>`;
+    } else {
+      dateEl.hidden = true;
+      dateEl.style.display = 'none';
+      dateEl.innerHTML = '';
+    }
+  }
+}
+function forceObservationMemoControlsVisible(options = {}) {
+  const screen = document.getElementById('studentMemoScreen');
+  if (!screen) return false;
+  if (screen.style.display === 'none') return false;
+
+  const extraInlineFlex = Array.isArray(options.extraInlineFlex) ? options.extraInlineFlex : [];
+  const showInlineFlex = [
+    '#memoRecordRoomBtn',
+    '#memoStudentListBtn',
+    '#memoBottomAnalysisBtn',
+    '#memoFeedbackBtn',
+    ...extraInlineFlex
+  ];
+  const showFlex = ['#studentMemoScreen .memoBottomBar'];
+  const showBlock = ['#memoStudentSelectWrap'];
+
+  const reveal = (selector, display) => {
+    const el = document.querySelector(selector);
+    if (!el) return;
+    el.hidden = false;
+    el.removeAttribute('hidden');
+    el.removeAttribute('aria-hidden');
+    el.style.visibility = 'visible';
+    el.style.opacity = '1';
+    el.style.pointerEvents = 'auto';
+    el.style.display = display;
+  };
+
+  [...new Set(showInlineFlex)].forEach(selector => reveal(selector, 'inline-flex'));
+  showFlex.forEach(selector => reveal(selector, 'flex'));
+  showBlock.forEach(selector => reveal(selector, ''));
+  return true;
+}
 function handleMemoPauseAutoSaveBlur(target) {
   const inputType = getMemoInputTypeFromTarget(target);
   if (!inputType || currentMemoType !== inputType) return;

@@ -17,43 +17,6 @@ function renderMemoModeMenu() {
   `;
 }
 function closeMemoModeMenu() { const menu = document.getElementById('memoModeDropup'); if (menu) menu.classList.remove('show'); }
-function setMemoModePillLabel(label = '학생 이름', modeLabel = '관찰 모드') {
-  const el = document.getElementById('memoStudentName');
-  const sub = document.getElementById('memoModeSub');
-  if (el) el.textContent = '관찰 노트';
-  if (sub) sub.textContent = modeLabel || '관찰 모드';
-}
-function formatMemoUpdatedDate(value) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  const hh = String(date.getHours()).padStart(2, '0');
-  const mm = String(date.getMinutes()).padStart(2, '0');
-  return `${y}.${m}.${d} ${hh}:${mm}`;
-}
-function updateMemoStudentMetaDisplay(student, updatedAt = '') {
-  const nameEl = document.getElementById('memoPageStudentName');
-  const dateEl = document.getElementById('memoStudentUpdatedDate');
-  if (nameEl) nameEl.textContent = student?.name || '학생 이름';
-  if (dateEl) {
-    const localEntry = getMemoEntryByStudent(student);
-    const hasMemoContent = String(localEntry.content || '').trim().length > 0;
-    const dateSource = updatedAt || (hasMemoContent ? localEntry.updatedAt : '');
-    const dateText = formatMemoUpdatedDate(dateSource || '');
-    if (dateText) {
-      dateEl.hidden = false;
-      dateEl.style.display = 'flex';
-      dateEl.innerHTML = `<span>마지막 수정</span><span>${escapeHtml(dateText)}</span>`;
-    } else {
-      dateEl.hidden = true;
-      dateEl.style.display = 'none';
-      dateEl.innerHTML = '';
-    }
-  }
-}
 function toggleMemoModeMenu(event) {
   if (event) event.stopPropagation();
   if (currentMemoType === 'kinder') return;
