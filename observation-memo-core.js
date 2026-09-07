@@ -76,19 +76,7 @@ function openStudentMemoPageById(studentId) {
 
 function closeMemoPage() {
   prepareObservationMemoPageClose();
-
-  const current = vivizacGetVisibleNotePage();
-  if (current && current.id === 'studentMemoScreen') {
-    vivizacSlideOutPageToRecord(current, () => {
-      loadRecords('');
-    });
-    return;
-  }
-
-  const studentMemoScreen = document.getElementById('studentMemoScreen');
-if (studentMemoScreen) studentMemoScreen.style.display = 'none';
-document.getElementById('recordRoomScreen').style.display = 'flex';
-  loadRecords('');
+  returnFromObservationMemoScreen(() => loadRecords(''));
 }
 
 
