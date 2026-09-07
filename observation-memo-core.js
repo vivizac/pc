@@ -66,16 +66,7 @@ function openStudentMemoPageById(studentId) {
   closeMemoModeMenu();
   closeMemoStudentSelectPopup();
 
-  const recordRoomScreen = document.getElementById('recordRoomScreen');
-  const studentMemoScreenEl = document.getElementById('studentMemoScreen');
-if (recordRoomScreen) recordRoomScreen.style.display = 'none';
-if (studentMemoScreenEl) {
-    studentMemoScreenEl.classList.remove('vivizac-slide-page', 'vivizac-slide-in', 'vivizac-slide-out');
-    studentMemoScreenEl.style.animation = '';
-    studentMemoScreenEl.style.transform = '';
-    studentMemoScreenEl.style.display = 'flex';
-    studentMemoScreenEl.setAttribute('data-current-memo-type', 'elementary');
-  }
+  openObservationMemoScreenShell(session);
 
   renderObservationMemoScreenChrome(session);
   renderObservationMemoInitialView(session);
