@@ -1,0 +1,86 @@
+name: Refactor observation memo storage
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refactor-observation-memo-storage.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Split shared storage core and PC adapter
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          common = Path('observation-memo-storage-common.js')
+          if not common.exists():
+            raise SystemExit('shared storage core must be added before this workflow runs')
+
+          storage_path = Path('olli-record-memo-storage.js')
+          storage = storage_path.read_text(encoding='utf-8')
+          start = storage.index('function getMemoKey(student) {')
+          end = storage.index('function openStudentModal()', start)
+          adapter = r'''/* PC observation memo storage adapter.
+             PC keeps elementary observation + kinder risk draft behavior. */
+          installObservationMemoStorage({
+            getMemoKey(student) {
+              if (!student?.id) return '';
+              return (student.type === 'kinder' ? KINDER_MEMO_PREFIX : ELEMENTARY_MEMO_PREFIX) + student.id;
+            },
+            getDraftType(student) {
+              return student?.type === 'kinder' ? 'kinder_risk' : 'elementary_observation';
+            }
+          });
+
+          '''
+          storage = storage[:start] + adapter + storage[end:]
+          storage_path.write_text(storage, encoding='utf-8')
+
+          index_path = Path('index.html')
+          index = index_path.read_text(encoding='utf-8')
+          old = '<script src="olli-record-room-navigation.js"></script>\n<script src="olli-record-memo-storage.js"></script>'
+          new = '<script src="olli-record-room-navigation.js"></script>\n<script src="observation-memo-storage-common.js"></script>\n<script src="olli-record-memo-storage.js"></script>'
+          if old not in index:
+            raise SystemExit('PC index insertion point not found')
+          index_path.write_text(index.replace(old, new, 1), encoding='utf-8')
+
+          forbidden = [
+            'function getMemoKey(student)',
+            'function getMemoByStudent(student)',
+            'function getMemoEntryByStudent(student)',
+            'function setMemoByStudent(student',
+            'function clearMemoByStudent(student)',
+            'function setMemoSyncStateByStudent(student',
+            'function isRemoteMemoNewerThanLocal(',
+            'function getSupabaseNoteDraftType(student)',
+            'function getStudentNoteDraftPath(student',
+            'async function saveStudentNoteDraftToSupabase(',
+            'async function loadStudentNoteDraftFromSupabase(',
+            'async function clearStudentNoteDraftFromSupabase('
+          ]
+          leftover = [token for token in forbidden if token in storage]
+          if leftover:
+            raise SystemExit('shared storage definitions still in PC storage adapter: ' + ', '.join(leftover))
+          if 'function purgeOldLocalMemos()' not in storage:
+            raise SystemExit('PC local purge policy was removed unexpectedly')
+          PY
+
+          node --check observation-memo-storage-common.js
+          node --check olli-record-memo-storage.js
+
+          rm -f .github/workflows/refactor-observation-memo-storage.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add olli-record-memo-storage.js index.html .github/workflows/refactor-observation-memo-storage.yml
+          git commit -m 'refactor: PC 관찰노트 저장 데이터 계층 분리'
+          git push
