@@ -102,24 +102,7 @@ if (studentMemoScreenEl) {
   if (elementaryWrap) elementaryWrap.style.display = 'block';
   forceStudentMemoControlsVisible();
 
-  const memoEditor = document.getElementById('memoEditor');
-if (memoEditor) {
-  memoEditor.readOnly = false;
-  const localEntry = session.localEntry || { content: '' };
-  memoEditor.value = localEntry.content || '';
-
-  // 로컬 캐시는 즉시 표시하고, 서버 최신판 판정/로컬 캐시 갱신은 공통 세션 코어가 담당합니다.
-  reconcileObservationMemoDraft(student, session.noteType)
-    .then(result => {
-      applyReconciledObservationMemoDraft(student, memoEditor, result);
-    })
-    .catch(err => {
-      console.warn('student_note_drafts 불러오기 실패:', err.message || err);
-    });
-}
-  const __studentAnalysis = session.analysisDisplay || { data: {}, createdAt: '' };
-renderElementaryAnalysisSummaryCard(__studentAnalysis.data || {}, { title: '분석 결과', createdAt: __studentAnalysis.createdAt || '' }); renderElementaryAnalysisHistoryCards(student); 
-setMemoSaveStatus('자동 저장');
+  renderObservationMemoInitialView(session);
 }
 
 
