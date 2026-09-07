@@ -1,6 +1,11 @@
 (function pcAttendanceModule(global) {
   'use strict';
 
+  const PC_SORT_MODES = Object.freeze({ DAY: 'day', GROUP: 'group', GRADE: 'grade' });
+  const PC_SORT_TIME_ORDER = ['1시', '2시', '3시', '4시', '5시', '6시', '7시'];
+  const PC_GROUP_LABELS = { '1': 'A그룹', '2': 'B그룹', '3': 'C그룹', '4': 'D그룹', '5': 'E그룹', '6': 'F그룹' };
+  const PC_DAY_NAMES = { 0: '일', 1: '월', 2: '화', 3: '수', 4: '목', 5: '금', 6: '토' };
+
   const state = {
     selectedStudentId: '',
     loadToken: 0,
@@ -10,7 +15,8 @@
     editorAnchor: null,
     editorStudentId: '',
     editorDivision: '',
-    recordCache: new Map()
+    recordCache: new Map(),
+    sortMode: PC_SORT_MODES.DAY
   };
 
   function core() { return global.OlliPcCore; }
@@ -23,6 +29,18 @@
     return core()?.state?.section === sectionKey;
   }
 
+  function todayPcAttendanceDay() {
+    return PC_DAY_NAMES[new Date().getDay()] || '월';
+  }
+
+  function normalizeSortMode(mode) {
+    return Object.values(PC_SORT_MODES).includes(mode) ? mode : PC_SORT_MODES.DAY;
+  }
+
+  function removeLegacyPcSortControl() {
+    document.getElementById('olliPcSortBtn')?.remove();
+    try { delete global.pcOpenSidebarSort; } catch (_) { global.pcOpenSidebarSort = undefined; }
+  }
 
   const PC_RECORD_CACHE_PREFIX = 'olli_pc_feedback_record_cache_v1';
   const PC_RECORD_CACHE_MAX_STUDENTS = 12;
@@ -166,19 +184,161 @@
     return !!normalizedQuery && normalizedName.includes(normalizedQuery);
   }
 
+  function getStudentGroupKey(student) {
+    const raw = String(student?.group || student?.group_no || '').trim();
+    const match = raw.match(/[1-6]/);
+    return match ? match[0] : '';
+  }
+
+  function getStudentGradeNumber(student) {
+    const raw = String(student?.grade || student?.school_grade || student?.studentGrade || student?.class_grade || '').trim();
+    const match = raw.match(/\d+/);
+    const grade = match ? Number(match[0]) : NaN;
+    return Number.isFinite(grade) && grade > 0 ? grade : 999;
+  }
+
+  function getLessonTimeText(student) {
+    return String(student?.lesson_time || student?.class_time || student?.lessonTime || student?.classTime || '').trim();
+  }
+
+  function extractTimeLabels(value) {
+    const text = String(value || '');
+    const found = [];
+    text.replace(/(?:오후\s*)?([1-7])\s*(?:시|:00)?/g, (_, hour) => {
+      const label = `${Number(hour)}시`;
+      if (!found.includes(label)) found.push(label);
+      return '';
+    });
+    return found.sort((a, b) => PC_SORT_TIME_ORDER.indexOf(a) - PC_SORT_TIME_ORDER.indexOf(b));
+  }
+
+  function getStudentTimesForDay(student, day) {
+    const raw = getLessonTimeText(student);
+    if (!raw) return [];
+    const segments = raw.split(/[·,\/|\n]+/).map((value) => value.trim()).filter(Boolean);
+    const daySpecific = [];
+    let hasDaySpecificData = false;
+    segments.forEach((segment) => {
+      const dayMatch = segment.match(/([월화수목금토일])(?:요일)?/);
+      if (!dayMatch) return;
+      hasDaySpecificData = true;
+      if (dayMatch[1] !== day) return;
+      extractTimeLabels(segment).forEach((time) => {
+        if (!daySpecific.includes(time)) daySpecific.push(time);
+      });
+    });
+    if (hasDaySpecificData) return daySpecific;
+    const days = (() => {
+      try { return typeof parseRecordSortDays === 'function' ? parseRecordSortDays(student) : []; }
+      catch (_) { return []; }
+    })();
+    if (days.length === 1 && days[0] === day) return extractTimeLabels(raw);
+    return extractTimeLabels(raw);
+  }
+
+  function getStudentPrimaryTimeForDay(student, day) {
+    return getStudentTimesForDay(student, day)[0] || '';
+  }
+
+  function compareStudentsByName(a, b) {
+    return String(a?.name || '').localeCompare(String(b?.name || ''), 'ko');
+  }
+
+  function renderPcSortDivider(label) {
+    return '<div class="pcAttendanceSortDivider"><span>'+escape(label)+'</span></div>';
+  }
+
+  function renderPlainRows(students, division) {
+    try {
+      const renderer = division === 'kinder' ? global.renderKinderStudentRows || renderKinderStudentRows : global.renderElementaryStudentRows || renderElementaryStudentRows;
+      const html = typeof renderer === 'function' ? renderer(students) : '';
+      return String(html || '').replace(/\s+groupBreak(?=[\s"])/g, '');
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function renderGroupedRows(students, division, keyGetter, labelGetter, keySorter) {
+    const groups = new Map();
+    students.forEach((student) => {
+      const key = keyGetter(student);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(student);
+    });
+    const keys = Array.from(groups.keys()).sort(keySorter);
+    return keys.map((key) => {
+      const members = groups.get(key).slice().sort(compareStudentsByName);
+      return renderPcSortDivider(labelGetter(key)) + renderPlainRows(members, division);
+    }).join('');
+  }
+
+  function renderStudentsForSortMode(students, division) {
+    const mode = normalizeSortMode(state.sortMode);
+    if (!students.length) return '';
+
+    if (mode === PC_SORT_MODES.DAY) {
+      const today = todayPcAttendanceDay();
+      const todayStudents = students.filter((student) => studentMatchesDay(student, today));
+      return renderGroupedRows(
+        todayStudents,
+        division,
+        (student) => getStudentPrimaryTimeForDay(student, today) || '미지정',
+        (key) => key === '미지정' ? '시간 미지정' : key,
+        (a, b) => {
+          if (a === '미지정') return 1;
+          if (b === '미지정') return -1;
+          return PC_SORT_TIME_ORDER.indexOf(a) - PC_SORT_TIME_ORDER.indexOf(b);
+        }
+      );
+    }
+
+    if (mode === PC_SORT_MODES.GROUP) {
+      return renderGroupedRows(
+        students,
+        division,
+        (student) => getStudentGroupKey(student) || '미지정',
+        (key) => key === '미지정' ? '그룹 미지정' : (PC_GROUP_LABELS[key] || `${key}그룹`),
+        (a, b) => {
+          if (a === '미지정') return 1;
+          if (b === '미지정') return -1;
+          return Number(a) - Number(b);
+        }
+      );
+    }
+
+    return renderGroupedRows(
+      students,
+      division,
+      (student) => {
+        const grade = getStudentGradeNumber(student);
+        return grade === 999 ? '미지정' : String(grade);
+      },
+      (key) => key === '미지정' ? '학년 미지정' : `${key}학년`,
+      (a, b) => {
+        if (a === '미지정') return 1;
+        if (b === '미지정') return -1;
+        return Number(a) - Number(b);
+      }
+    );
+  }
+
   function renderContext(elementary, kinder) {
     const app = core();
     const title = document.getElementById('olliPcContextTitle');
     const body = document.getElementById('olliPcContextBody');
     if (!title || !body) return;
-    const dayButtons = ['월', '화', '수', '목', '금', '토'].map((day) =>
-      '<button class="olliPcQuickBtn '+(app.state.attendanceDay === day ? 'active' : '')+'" onclick="pcFilterAttendanceDay(\''+day+'\')"><span>'+day+'요일</span><span></span></button>'
+    const sortButtons = [
+      [PC_SORT_MODES.DAY, '요일별'],
+      [PC_SORT_MODES.GROUP, '그룹별'],
+      [PC_SORT_MODES.GRADE, '학년별']
+    ].map(([mode, label]) =>
+      '<button class="olliPcQuickBtn '+(state.sortMode === mode ? 'active' : '')+'" onclick="pcSetAttendanceSortMode(\''+mode+'\')"><span>'+label+'</span><span></span></button>'
     ).join('');
     title.textContent = '빠른 보기';
     body.innerHTML =
       '<button class="olliPcQuickBtn '+(app.state.attendanceDivision === 'elementary' ? 'active' : '')+'" onclick="pcFilterAttendanceDivision(\'elementary\')"><span>초등부</span><span>'+elementary.length+'</span></button>'+
       '<button class="olliPcQuickBtn '+(app.state.attendanceDivision === 'kinder' ? 'active' : '')+'" onclick="pcFilterAttendanceDivision(\'kinder\')"><span>유치부</span><span>'+kinder.length+'</span></button>'+
-      '<div class="olliPcContextSectionLabel">요일</div>'+dayButtons;
+      '<div class="olliPcContextSectionLabel">정렬</div>'+sortButtons;
   }
 
   function ensureDetailPanel() {
@@ -348,7 +508,6 @@
     const feedbacks = Array.isArray(data?.feedbacks) ? data.feedbacks : [];
     const summaries = Array.isArray(data?.summaries) ? data.summaries : [];
 
-    // 기존 복사·삭제·재생성 기능이 사용하는 상태를 그대로 갱신합니다.
     try {
       if (typeof renderAttendanceStudentFeedbackSheet === 'function') {
         renderAttendanceStudentFeedbackSheet(student, { feedbacks, summaries });
@@ -377,14 +536,12 @@
     const body = ensureRecordWorkspace(student);
     const cached = readRecordCache(student);
     if (cached) {
-      // 캐시를 즉시 표시하고 Supabase는 뒤에서 최신 상태만 확인합니다.
       if (!wasSelected || !body?.dataset?.recordStudentId || body.dataset.recordStudentId !== nextStudentId) {
         renderCombinedRecords(student, cached);
       }
       const currentBody = document.getElementById('pcAttendanceCombinedBody');
       if (currentBody) currentBody.dataset.recordStudentId = nextStudentId;
     } else if (body) {
-      // 최초 1회만 조용한 로딩 상태를 사용하고 카드 전체 DOM은 다시 만들지 않습니다.
       body.dataset.recordStudentId = nextStudentId;
       body.innerHTML = recordQuietLoadingHtml();
     }
@@ -401,7 +558,6 @@
       const freshFingerprint = recordDataFingerprint(fresh);
       rememberRecordCache(student, fresh);
 
-      // 서버 내용이 캐시와 같으면 DOM을 다시 그리지 않아 깜박임을 만들지 않습니다.
       if (!cached || cachedFingerprint !== freshFingerprint) {
         renderCombinedRecords(student, fresh);
         const currentBody = document.getElementById('pcAttendanceCombinedBody');
@@ -487,6 +643,7 @@
   }
 
   function open() {
+    removeLegacyPcSortControl();
     const app = core();
     const targetView = typeof currentObservationView !== 'undefined' && currentObservationView === 'kinder' ? 'kinder' : 'elementary';
     app.showRecordRoomImmediately(targetView);
@@ -495,6 +652,7 @@
     installLegacyBridge();
     state.selectedStudentId = '';
     state.loadToken += 1;
+    state.sortMode = PC_SORT_MODES.DAY;
     renderEmptyDetail();
     app.state.attendanceDivision = 'elementary';
     app.state.attendanceDay = '';
@@ -518,21 +676,20 @@
     ensureDetailPanel();
     bindRosterClicks();
     installLegacyBridge();
+    removeLegacyPcSortControl();
     if (dashboard) dashboard.classList.remove('show');
     list.style.display = '';
     const previousScrollTop = list.scrollTop;
 
     const query = String(searchValue ?? app.state.searchValues.attendance ?? '').trim();
-    const elementary = app.activeStudents('elementary').filter((student) => studentMatchesDay(student, app.state.attendanceDay) && studentMatchesPcAttendanceSearch(student, query));
-    const kinder = app.activeStudents('kinder').filter((student) => studentMatchesDay(student, app.state.attendanceDay) && studentMatchesPcAttendanceSearch(student, query));
+    const elementary = app.activeStudents('elementary').filter((student) => studentMatchesPcAttendanceSearch(student, query));
+    const kinder = app.activeStudents('kinder').filter((student) => studentMatchesPcAttendanceSearch(student, query));
     let html = '';
     if (app.state.attendanceDivision === 'all' || app.state.attendanceDivision === 'elementary') {
-      try { html += typeof renderElementaryStudentRows === 'function' ? renderElementaryStudentRows(typeof sortStudentsForRecord === 'function' ? sortStudentsForRecord(elementary) : elementary) : ''; }
-      catch (_) {}
+      html += renderStudentsForSortMode(elementary, 'elementary');
     }
     if (app.state.attendanceDivision === 'all' || app.state.attendanceDivision === 'kinder') {
-      try { html += typeof renderKinderStudentRows === 'function' ? renderKinderStudentRows(typeof sortStudentsForRecord === 'function' ? sortStudentsForRecord(kinder) : kinder) : ''; }
-      catch (_) {}
+      html += renderStudentsForSortMode(kinder, 'kinder');
     }
     list.innerHTML = html || '<div class="recordEmpty">조건에 맞는 학생이 없습니다.</div>';
     ensureRosterHeader();
@@ -547,14 +704,22 @@
   }
 
   function filterDay(day) {
-    const app = core();
-    app.state.attendanceDay = app.state.attendanceDay === day ? '' : day;
+    if (!day) return;
+    state.sortMode = PC_SORT_MODES.DAY;
     renderList();
   }
 
-  const api = { studentMatchesDay, renderContext, ensureDetailPanel, open, renderList, filterDivision, filterDay, selectStudent, decorateRows, unmountEditor: unmountSharedEditor };
+  function setSortMode(mode) {
+    state.sortMode = normalizeSortMode(mode);
+    renderList();
+  }
+
+  const api = { studentMatchesDay, renderContext, ensureDetailPanel, open, renderList, filterDivision, filterDay, setSortMode, selectStudent, decorateRows, unmountEditor: unmountSharedEditor };
   global.OlliPcPersonalityRecords = api;
-  // 이전 배포의 외부 호출과 저장된 route key를 깨지 않기 위한 호환 별칭입니다.
   global.OlliPcAttendance = api;
   global.pcSelectAttendanceStudent = selectStudent;
+  global.pcSetAttendanceSortMode = setSortMode;
+
+  removeLegacyPcSortControl();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', removeLegacyPcSortControl, { once: true });
 })(window);
