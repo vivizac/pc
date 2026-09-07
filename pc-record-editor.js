@@ -50,9 +50,8 @@
     clearSaveTimer();
     const student = state.student;
     if (!student || !state.host) return null;
-    const input = state.division === 'kinder'
-      ? document.getElementById('pcKinderFeedbackInput')
-      : document.getElementById('memoEditor');
+    const inputSelector = state.division === 'kinder' ? '#pcKinderFeedbackInput' : '#memoEditor';
+    const input = state.host?.querySelector(inputSelector) || document.querySelector(inputSelector);
     if (!input || typeof global.persistObservationMemoDraft !== 'function') return null;
     const token = state.sessionToken;
     const noteType = state.division === 'kinder' ? 'kinder_risk' : 'elementary_observation';
@@ -288,7 +287,7 @@
   async function mount(host, student) {
     if (!host || !student) return false;
     if (sameStudent(student) && state.host === host && host.firstElementChild) return true;
-    await unmount({ save: true });
+    unmount({ save: true });
     state.host = host;
     state.student = student;
     state.division = student.type === 'kinder' ? 'kinder' : 'elementary';
@@ -321,6 +320,7 @@
     } else {
       bindKinder();
       await loadKinderDraft(state.student, token);
+      if (token !== state.sessionToken || !state.student || clean(state.student.id) !== clean(student.id)) return false;
       renderKinderQueue(false);
       clearQueueTimer();
       state.queueTimer = setInterval(() => {
@@ -331,21 +331,34 @@
     return true;
   }
 
-  async function unmount(options = {}) {
+  function unmount(options = {}) {
     const shouldSave = options.save !== false;
-    if (shouldSave && state.student && state.host) await saveDraftNow({ silent: true });
+    const previousHost = state.host;
+    const previousStudent = state.student;
+    const previousDivision = state.division;
+    const inputSelector = previousDivision === 'kinder' ? '#pcKinderFeedbackInput' : '#memoEditor';
+    const previousInput = previousHost?.querySelector(inputSelector);
+    const capturedText = previousInput ? String(previousInput.value || '') : '';
+    const noteType = previousDivision === 'kinder' ? 'kinder_risk' : 'elementary_observation';
+
     clearSaveTimer();
     clearQueueTimer();
-    if (state.host) {
-      state.host.innerHTML = '';
-      delete state.host.dataset.pcRecordDivision;
-      delete state.host.dataset.pcRecordStudentId;
+    if (previousHost) {
+      previousHost.innerHTML = '';
+      delete previousHost.dataset.pcRecordDivision;
+      delete previousHost.dataset.pcRecordStudentId;
     }
     state.host = null;
     state.student = null;
     state.division = '';
     state.activeKeyword = '';
     state.sessionToken += 1;
+
+    if (shouldSave && previousStudent && typeof global.persistObservationMemoDraft === 'function') {
+      Promise.resolve(global.persistObservationMemoDraft(previousStudent, capturedText, { noteType }))
+        .catch((error) => console.warn('PC 기록 초안 종료 저장 실패:', error && (error.message || error)));
+    }
+    return true;
   }
 
   function getSelectedKinderStudent() {

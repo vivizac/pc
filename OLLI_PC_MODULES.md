@@ -11,7 +11,6 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 | 초등 관찰기록 공용 DOM | `observation-editor-ui.js` | `observation-editor.css` |
 | 초등 관찰기록 저장·자동저장·피드백 연결 | `observation-memo-core.js` | `observation-editor.css` |
 | 초등 오늘의 분석·분석 이력·상세보기 | `elementary-analysis.js` | `elementary-analysis-ui.css` |
-| 유치부 1분 피드백 공용 UI·기능 | `kinder-feedback-ui.js`, `kinder-feedback.js` | `kinder-feedback.css` |
 | 로그인 진입 화면·계정/학원 연결 화면 전환 | `olli-auth-entry-ui.js` | `olli-login.css` |
 | 계정 로그인 상태·세션 복구·접근 학원 캐시 | `olli-auth-account-session.js` | 현재 공통 스타일 |
 | 여러 학원 전환·전환 전 저장·전환 후 재로딩 | `olli-auth-academy-switch.js` | 현재 공통 스타일 |
@@ -92,6 +91,7 @@ PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한
 - PC 화면의 관찰기록 입력은 별도 `관찰노트` 메뉴를 사용하지 않고 `성향기록부` 안에서 처리한다.
 - 기존 `observation`, `feedback` PC route 호출은 `pc-shell.js`에서 `attendance`(성향기록부)로 흡수한다. 별도 초등 관찰노트 진입 버튼은 제거한다. 유치부 기록은 1분 피드백을 사용한다.
 - PC 성향기록부의 작성 화면은 `pc-record-editor.js`가 PC 전용 DOM으로 렌더링한다. 초등 `studentMemoScreen`과 유치부 `kinderChatFeedbackScreen` 같은 Phone 화면 DOM은 PC 카드에 이동하거나 재사용하지 않는다.
+- PC 저장소에서는 과거 Phone 전용 `kinder-feedback-ui.js`, `kinder-feedback.js`, `kinder-feedback.css`를 보관하지 않는다. 유치부 작성 화면은 `pc-record-editor.js`가 담당한다.
 - 초안 저장·Supabase 동기화·학생 데이터·AI 피드백 생성처럼 화면과 무관한 데이터 로직만 기존 공통 함수를 재사용한다.
 - `studentMemoScreen`과 초등 분석 모달의 정적 DOM은 더 이상 `index.html` 본문에 직접 두지 않고 `observation-editor-ui.js`가 원래 위치에서 동기적으로 주입한다.
 - 유치부 `kinderChatFeedbackScreen`과 관련 오버레이의 정적 DOM은 `kinder-feedback-ui.js`가 `kinder-feedback.js`보다 먼저 원래 위치에 주입한다.

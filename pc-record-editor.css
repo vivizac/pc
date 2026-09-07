@@ -188,7 +188,6 @@
   background:#fff;
 }
 .pcKinderQueue.show{display:block;}
-.pcKinderQueue:not(.show){display:block;}
 .pcKinderQueueEmpty{
   min-height:220px;
   display:flex;
