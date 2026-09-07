@@ -213,62 +213,22 @@ async function saveCurrentMemo(options = {}) {
     String(currentMemoStudent.id || '') === String(savingStudent.id || '') &&
     currentMemoType === savingType;
 
+  const memoText = document.getElementById('memoEditor')?.value || '';
+  const result = await persistObservationMemoDraft(savingStudent, memoText, {
+    noteType: 'elementary_observation'
+  });
 
-    const memoText = document.getElementById('memoEditor')?.value || '';
-    const hasMemoText = String(memoText || '').trim().length > 0;
-    if (!hasMemoText) {
-      clearMemoByStudent(savingStudent);
-      const clearedStudent = { ...savingStudent, memoUpdatedAt: '' };
-      clearStudentNoteDraftFromSupabase(clearedStudent, 'elementary_observation').catch(err => console.warn('빈 관찰노트 초안 삭제 실패:', err.message || err));
-      await saveStudent(clearedStudent, { skipRemote: true });
-      if (isStillCurrentMemoStudent()) {
-        currentMemoStudent = clearedStudent;
-        updateMemoStudentMetaDisplay(clearedStudent, '');
-      }
-      if (options.status) setMemoSaveStatus('');
-      return;
-    }
+  if (result?.state === 'pending' && result.error) {
+    console.warn('초등부 관찰노트 Supabase 저장 실패:', result.error.message || result.error);
+  }
 
-    const studentToSave = { ...savingStudent, memoUpdatedAt: new Date().toISOString() };
-    setMemoByStudent(studentToSave, memoText, { syncStatus: 'pending' });
+  if (isStillCurrentMemoStudent() && result?.student) {
+    currentMemoStudent = result.student;
+    if (result.state === 'cleared') updateMemoStudentMetaDisplay(result.student, '');
+  }
 
-    try {
-      const savedStudent = await ensureStudentSavedToSupabase(studentToSave);
-      const stableStudent = {
-        ...studentToSave,
-        id: savedStudent.id,
-        academy_id: savedStudent.academy_id || studentToSave.academy_id
-      };
-      const draftRows = await saveStudentNoteDraftToSupabase(stableStudent, memoText, 'elementary_observation');
-      const finalStudent = Array.isArray(draftRows) && draftRows.length
-        ? {
-            ...stableStudent,
-            id: draftRows[0].student_id || stableStudent.id,
-            academy_id: draftRows[0].academy_id || stableStudent.academy_id
-          }
-        : stableStudent;
-
-      await saveStudent(finalStudent, { skipRemote: true });
-      setMemoByStudent(finalStudent, memoText, {
-        updatedAt: studentToSave.memoUpdatedAt,
-        lastSyncedAt: new Date().toISOString(),
-        syncStatus: 'synced'
-      });
-
-      if (isStillCurrentMemoStudent()) {
-        currentMemoStudent = finalStudent;
-      }
-      if (options.status) setMemoSaveStatus('');
-    } catch (err) {
-      console.warn('초등부 관찰노트 Supabase 저장 실패:', err.message || err);
-      setMemoSyncStateByStudent(studentToSave, { syncStatus: 'pending' });
-      if (isStillCurrentMemoStudent()) {
-        currentMemoStudent = studentToSave;
-      }
-      if (options.status) setMemoSaveStatus('');
-    }
-  
-
+  if (options.status) setMemoSaveStatus('');
+  if (result?.state === 'cleared') return;
   if (!options.silent || options.status) showMemoSaveCheck();
 }
 
