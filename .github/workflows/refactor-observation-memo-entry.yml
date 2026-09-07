@@ -19,6 +19,7 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           path = Path('observation-memo-core.js')
           text = path.read_text(encoding='utf-8')
@@ -40,39 +41,37 @@ jobs:
               raise SystemExit('PC openStudentMemoPageById end not found')
 
           region = text[start:end]
-          replacements = [
-              (
-                  "  const student = findStudentById(studentId);\n  if (!student) return;",
-                  "  const session = beginObservationMemoSession(studentId);\n  if (!session) return;\n  const { student } = session;",
-                  'student lookup'
-              ),
-              (
-                  "  if (student.type === 'kinder') {\n    currentMemoStudent = student;\n    currentMemoType = 'kinder';",
-                  "  if (session.type === 'kinder') {",
-                  'kinder state'
-              ),
-              (
-                  "  currentMemoStudent = student;\n  currentMemoType = 'elementary';\n  if (currentMemoType === 'elementary') setLastElementaryMemoStudent(student);",
-                  "",
-                  'elementary state'
-              ),
-              (
-                  "const localEntry = getObservationMemoLocalSnapshot(student);",
-                  "const localEntry = session.localEntry || { content: '' };",
-                  'local snapshot'
-              ),
-              (
-                  "reconcileObservationMemoDraft(student, 'elementary_observation')",
-                  "reconcileObservationMemoDraft(student, session.noteType)",
-                  'draft note type'
-              ),
-              (
-                  "const __studentAnalysis = getPrimaryElementaryAnalysisDisplay(student); selectedElementaryAnalysisHistoryId = '';",
-                  "const __studentAnalysis = session.analysisDisplay || { data: {}, createdAt: '' };",
-                  'analysis display'
-              )
-          ]
 
+          region, count = re.subn(
+              r"\s*const student = findStudentById\(studentId\);\s*\n\s*if \(!student\) return;",
+              "\n  const session = beginObservationMemoSession(studentId);\n  if (!session) return;\n  const { student } = session;",
+              region,
+              count=1
+          )
+          if count != 1:
+              raise SystemExit(f'PC student lookup expected once, found {count}')
+
+          region, count = re.subn(r"student\.type\s*===\s*'kinder'", "session.type === 'kinder'", region, count=1)
+          if count != 1:
+              raise SystemExit(f'PC kinder condition expected once, found {count}')
+
+          region, count = re.subn(r"^\s*currentMemoStudent\s*=\s*student;\s*\n", "", region, flags=re.M)
+          if count != 2:
+              raise SystemExit(f'PC currentMemoStudent assignments expected 2, found {count}')
+
+          region, count = re.subn(r"^\s*currentMemoType\s*=\s*'(?:kinder|elementary)';\s*\n", "", region, flags=re.M)
+          if count != 2:
+              raise SystemExit(f'PC currentMemoType assignments expected 2, found {count}')
+
+          region, count = re.subn(r"^\s*if \(currentMemoType === 'elementary'\) setLastElementaryMemoStudent\(student\);\s*\n", "", region, flags=re.M)
+          if count != 1:
+              raise SystemExit(f'PC setLastElementaryMemoStudent expected once, found {count}')
+
+          replacements = [
+              ("const localEntry = getObservationMemoLocalSnapshot(student);", "const localEntry = session.localEntry || { content: '' };", 'local snapshot'),
+              ("reconcileObservationMemoDraft(student, 'elementary_observation')", "reconcileObservationMemoDraft(student, session.noteType)", 'draft note type'),
+              ("const __studentAnalysis = getPrimaryElementaryAnalysisDisplay(student); selectedElementaryAnalysisHistoryId = '';", "const __studentAnalysis = session.analysisDisplay || { data: {}, createdAt: '' };", 'analysis display')
+          ]
           for old, new, label in replacements:
               count = region.count(old)
               if count != 1:
@@ -94,6 +93,7 @@ jobs:
           forbidden = [
               'findStudentById(studentId)',
               "currentMemoType = 'elementary';",
+              "currentMemoType = 'kinder';",
               'setLastElementaryMemoStudent(student);',
               'getObservationMemoLocalSnapshot(student)',
               "reconcileObservationMemoDraft(student, 'elementary_observation')",
