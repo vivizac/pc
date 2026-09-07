@@ -3,6 +3,28 @@
   if (global.__OLLI_PC_START_PAGE_V3__) return;
   global.__OLLI_PC_START_PAGE_V3__ = true;
 
+  function installPcTimetableMemoCardStyle(){
+    if (document.getElementById('olliPcTimetableMemoCardCompactStyle')) return;
+    const style = document.createElement('style');
+    style.id = 'olliPcTimetableMemoCardCompactStyle';
+    style.textContent = `
+      #recordRoomScreen .olliTtCellMemoCard {
+        min-height: 24px;
+        padding: 3px 5px;
+        border-color: transparent;
+        gap: 5px;
+      }
+      #recordRoomScreen .olliTtCellMemoCard:hover { border-color: transparent; }
+      #recordRoomScreen .olliTtCellMemoCard span {
+        margin-top: 0;
+        line-height: 1.25;
+      }
+      #recordRoomScreen .olliTtCellMemoCard strong { line-height: 1.25; }
+    `;
+    document.head.appendChild(style);
+  }
+  installPcTimetableMemoCardStyle();
+
   const PAGES = {
     academy: { value: 'academy', label: '학생관리' },
     attendance: { value: 'attendance', label: '성향기록부' },
