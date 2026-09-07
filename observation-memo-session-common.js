@@ -1,5 +1,5 @@
 /* PC/Phone common observation memo session loading.
-   Platform-specific navigation stays outside this file; shared editor reconciliation lives here. */
+   Platform-specific navigation and DOM rendering stay outside this file. */
 (function initObservationMemoSessionCommon(global) {
   'use strict';
 
@@ -31,31 +31,21 @@
     };
   }
 
-  function applyReconciledObservationMemoDraft(student, memoEditor, result) {
-    if (!student || !memoEditor || !result || !result.adoptedRemote || !result.content) {
-      return { applied: false, reason: 'no-remote-update' };
-    }
+  function prepareObservationMemoInitialView(session) {
+    if (!session || session.type !== 'elementary' || !session.student) return null;
 
-    const isSameMemoPage =
-      currentMemoStudent &&
-      String(currentMemoStudent.id || '') === String(student.id || '') &&
-      currentMemoType === 'elementary';
+    const localEntry = session.localEntry || { content: '' };
+    const analysisDisplay = session.analysisDisplay || { data: {}, createdAt: '' };
 
-    if (!isSameMemoPage) {
-      return { applied: false, reason: 'stale-session' };
-    }
-
-    const currentEditorText = memoEditor.value || '';
-    if (currentEditorText.trim().length > 0) {
-      return { applied: false, reason: 'visible-local-content' };
-    }
-
-    memoEditor.value = result.content;
-    if (typeof updateMemoStudentMetaDisplay === 'function') {
-      updateMemoStudentMetaDisplay(student, result.updatedAt || '');
-    }
-
-    return { applied: true, reason: 'remote-applied' };
+    return {
+      student: session.student,
+      noteType: session.noteType || 'elementary_observation',
+      memoText: localEntry.content || '',
+      analysis: {
+        data: analysisDisplay.data || {},
+        createdAt: analysisDisplay.createdAt || ''
+      }
+    };
   }
 
   async function reconcileObservationMemoDraft(student, noteType = '') {
@@ -119,6 +109,6 @@
 
   global.getObservationMemoLocalSnapshot = getObservationMemoLocalSnapshot;
   global.beginObservationMemoSession = beginObservationMemoSession;
-  global.applyReconciledObservationMemoDraft = applyReconciledObservationMemoDraft;
+  global.prepareObservationMemoInitialView = prepareObservationMemoInitialView;
   global.reconcileObservationMemoDraft = reconcileObservationMemoDraft;
 })(window);
