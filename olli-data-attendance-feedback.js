@@ -391,6 +391,17 @@ function renderAttendanceStudentFeedbackSheet(student, data, statusText = '') {
 }
 
 async function openAttendanceStudentFeedbackSheet(studentOrId) {
+  const pcShell = document.getElementById('olliPcShell');
+  if (pcShell && pcShell.classList.contains('visible')) {
+    const pcSection = String(pcShell.dataset.pcSection || '');
+    if (pcSection === 'attendance' && window.OlliPcPersonalityRecords?.selectStudent) {
+      return window.OlliPcPersonalityRecords.selectStudent(studentOrId);
+    }
+    if (pcSection === 'schedule') {
+      if (typeof closeAttendanceStudentFeedbackSheet === 'function') closeAttendanceStudentFeedbackSheet();
+      return;
+    }
+  }
   const student = typeof studentOrId === 'object' ? studentOrId : findStudentById(studentOrId);
   if (!student) return;
   const sheet = document.getElementById('attendanceStudentFeedbackSheet');

@@ -28,7 +28,7 @@
   }
   const state = {
     active: false,
-    view: 'list',
+    view: 'schedule',
     weekStart: mondayOf(new Date()),
     data: null,
     dataWeek: '',
@@ -133,21 +133,8 @@
   function ensureUi() {
     const host = document.getElementById('recordBodyNew');
     if (!host) return null;
-    let tabs = document.getElementById('olliTtTabs');
-    if (!tabs) {
-      tabs = document.createElement('div');
-      tabs.id = 'olliTtTabs';
-      tabs.className = 'olliTtTabs';
-      tabs.setAttribute('role', 'tablist');
-      tabs.setAttribute('aria-label', '출석부 보기');
-      tabs.innerHTML = '<button type="button" class="olliTtTab active" data-tt-view="list" role="tab" aria-selected="true">명단</button>'
-        + '<button type="button" class="olliTtTab" data-tt-view="schedule" role="tab" aria-selected="false">시간표</button>';
-      host.insertBefore(tabs, document.getElementById('recordList') || host.firstChild);
-      tabs.addEventListener('click', (event) => {
-        const button = event.target.closest('[data-tt-view]');
-        if (button) setView(button.dataset.ttView);
-      });
-    }
+    const legacyTabs = document.getElementById('olliTtTabs');
+    if (legacyTabs) legacyTabs.remove();
     let root = document.getElementById('olliTtRoot');
     if (!root) {
       root = document.createElement('div');
@@ -158,7 +145,7 @@
       root.addEventListener('click', onTimetableClick);
     }
     ensureDialog();
-    return { host, tabs, root };
+    return { host, root };
   }
 
   function ensureDialog() {
@@ -178,36 +165,25 @@
     return overlay;
   }
 
-  function setView(view) {
-    state.view = view === 'schedule' ? 'schedule' : 'list';
+  function setView() {
+    state.view = 'schedule';
     const ui = ensureUi();
     if (!ui) return;
-    ui.tabs.querySelectorAll('[data-tt-view]').forEach((button) => {
-      const active = button.dataset.ttView === state.view;
-      button.classList.toggle('active', active);
-      button.setAttribute('aria-selected', String(active));
-    });
     const screen = document.getElementById('recordRoomScreen');
-    if (screen) screen.classList.toggle('olliPcAttendanceScheduleView', state.active && state.view === 'schedule');
-    ui.root.classList.toggle('show', state.active && state.view === 'schedule');
+    if (screen) screen.classList.toggle('olliPcAttendanceScheduleView', state.active);
+    ui.root.classList.toggle('show', state.active);
 
     if (!state.active) return;
-    if (state.view === 'schedule') {
-      renderWorkspaceHeader();
-      renderSidebar();
-      if (state.pane === 'attendance') loadAttendanceRegister();
-      else loadWeek();
-    } else if (typeof global.pcRenderAttendanceList === 'function') {
-      global.pcRenderAttendanceList();
-    }
+    renderWorkspaceHeader();
+    renderSidebar();
+    if (state.pane === 'attendance') loadAttendanceRegister();
+    else loadWeek();
   }
 
   function syncAttendanceActive() {
     const shell = document.getElementById('olliPcShell');
     const section = shell ? clean(shell.dataset.pcSection) : '';
-    const nextView = section === 'schedule' ? 'schedule' : 'list';
-    const leavingSchedule = state.view === 'schedule' && nextView !== 'schedule';
-    state.active = section === 'attendance' || section === 'schedule';
+    state.active = section === 'schedule';
     const ui = ensureUi();
     if (!ui) return;
     if (!state.active) {
@@ -217,8 +193,7 @@
       closeDialog();
       return;
     }
-    if (leavingSchedule) closeDialog();
-    setView(nextView);
+    setView();
   }
 
   async function loadWeek() {

@@ -138,6 +138,7 @@
     if (section === SECTION.ACADEMY) return feature('OlliPcStudentManagement')?.open();
     if (section === SECTION.PERSONALITY_RECORDS) return personalityRecordsFeature()?.open();
     if (section === SECTION.SCHEDULE) {
+      try { if (typeof global.closeAttendanceStudentFeedbackSheet === 'function') global.closeAttendanceStudentFeedbackSheet(); } catch (_) {}
       const targetView = typeof currentObservationView !== 'undefined' && currentObservationView === 'kinder' ? 'kinder' : 'elementary';
       showRecordRoomImmediately(targetView);
       if (typeof global.olliPcSetAttendanceView === 'function') global.olliPcSetAttendanceView('schedule');
