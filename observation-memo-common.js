@@ -1,10 +1,43 @@
 /* PC/Phone common observation memo helpers. Notification behavior intentionally excluded. */
 
+let memoAutoSaveTimer = null;
+
 function autoResizeTextarea(el) {
   if (!el) return;
   const minHeight = Number(el.dataset.minHeight || 140);
   el.style.height = 'auto';
   el.style.height = Math.max(el.scrollHeight, minHeight) + 'px';
+}
+
+function isObservationMemoAutoSaveBlocked() {
+  return typeof window.shouldBlockObservationMemoAutoSave === 'function'
+    ? !!window.shouldBlockObservationMemoAutoSave()
+    : false;
+}
+
+function scheduleMemoAutoSave() {
+  if (!currentMemoStudent) return;
+  if (isObservationMemoAutoSaveBlocked()) return;
+
+  setMemoSaveStatus('작성 중...');
+  if (memoAutoSaveTimer) clearTimeout(memoAutoSaveTimer);
+
+  memoAutoSaveTimer = setTimeout(() => {
+    memoAutoSaveTimer = null;
+    saveCurrentMemo({ silent: true, status: true });
+  }, MEMO_AUTOSAVE_DELAY);
+}
+
+function getMemoInputTypeFromTarget(target) {
+  if (!target || !target.id) return '';
+  return target.id === 'memoEditor' ? 'elementary' : '';
+}
+
+function handleMemoPauseAutoSaveInput(target) {
+  const inputType = getMemoInputTypeFromTarget(target);
+  if (!inputType || !currentMemoStudent || currentMemoType !== inputType) return;
+  if (isObservationMemoAutoSaveBlocked()) return;
+  scheduleMemoAutoSave();
 }
 
 function flushMemoAutoSave() {
