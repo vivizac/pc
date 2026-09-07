@@ -17,6 +17,11 @@ jobs:
         run: python3 .github/tmp/restore_pc_record_editor_visual.py
       - name: Validate
         run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('pc-record-editor.css')
+          p.write_text(p.read_text(encoding='utf-8').rstrip()+'\n', encoding='utf-8')
+          PY
           node --check pc-kinder-feedback.js
           node --check pc-record-editor.js
           node --check pc-attendance.js
