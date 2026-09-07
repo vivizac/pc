@@ -1,0 +1,55 @@
+name: Refactor observation memo screen shell
+
+'on':
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refactor-observation-memo-screen-shell.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Move PC observation memo screen shell to common helper
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('observation-memo-core.js')
+          text = path.read_text(encoding='utf-8')
+          func_start = text.index('function openStudentMemoPageById(studentId) {')
+          func_end = text.index('\nfunction closeMemoPage()', func_start)
+          block = text[func_start:func_end]
+          start_token = "  const recordRoomScreen = document.getElementById('recordRoomScreen');"
+          end_token = '  renderObservationMemoScreenChrome(session);'
+          if start_token not in block or end_token not in block:
+              raise SystemExit('PC memo screen shell markers changed unexpectedly')
+          start = block.index(start_token)
+          end = block.index(end_token)
+          if end <= start:
+              raise SystemExit('PC memo screen shell marker order invalid')
+          block = block[:start] + '  openObservationMemoScreenShell(session);\n\n' + block[end:]
+          if "const recordRoomScreen = document.getElementById('recordRoomScreen');" in block:
+              raise SystemExit('PC duplicate recordRoomScreen setup remains')
+          if "const studentMemoScreenEl = document.getElementById('studentMemoScreen');" in block:
+              raise SystemExit('PC duplicate studentMemoScreen setup remains')
+          if "if (session.type === 'kinder')" not in block:
+              raise SystemExit('PC kinder branch missing after shell refactor')
+          text = text[:func_start] + block + text[func_end:]
+          path.write_text(text, encoding='utf-8')
+          common = Path('observation-memo-common.js').read_text(encoding='utf-8')
+          if 'function openObservationMemoScreenShell(session)' not in common:
+              raise SystemExit('common memo screen shell helper missing')
+          PY
+          node --check observation-memo-common.js
+          node --check observation-memo-core.js
+          rm -f .github/workflows/refactor-observation-memo-screen-shell.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add observation-memo-common.js observation-memo-core.js .github/workflows/refactor-observation-memo-screen-shell.yml
+          git commit -m 'refactor: PC 관찰노트 화면 셸 공통화'
+          git push
