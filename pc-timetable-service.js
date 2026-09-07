@@ -117,7 +117,7 @@
       } else if (days.length > 1 && days.length === times.length) {
         days.forEach((day, index) => pairs.push({ weekday: DAYS.indexOf(day) + 1, time_slot: times[index] }));
       } else {
-        days.forEach((day) => times.forEach((time) => pairs.push({ weekday: DAYS.indexOf(day) + 1, time_slot: time }));
+        days.forEach((day) => times.forEach((time) => pairs.push({ weekday: DAYS.indexOf(day) + 1, time_slot: time })));
       }
     }
 
@@ -176,15 +176,18 @@
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + 5);
     const end = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
-    const [data, kinderLayout, calendarDays] = await Promise.all([
+    const [data, kinderLayout, calendarDays, teacherContext] = await Promise.all([
       rpc('olli_schedule_week', contextPayload({ p_week_start: weekStart })),
       rpc('olli_schedule_kinder_class_layouts', contextPayload()),
-      loadCalendarRange(start, end)
+      loadCalendarRange(start, end),
+      rpc('olli_schedule_class_teacher_context', contextPayload())
     ]);
     data.kinder_class_merges = Array.isArray(kinderLayout && kinderLayout.merged_slots)
       ? kinderLayout.merged_slots
       : [];
     data.calendar_days = calendarDays;
+    data.class_teachers = Array.isArray(teacherContext && teacherContext.assignments) ? teacherContext.assignments : [];
+    data.teacher_members = Array.isArray(teacherContext && teacherContext.teachers) ? teacherContext.teachers : [];
     cacheWeek(weekStart, data);
     return data;
   }
@@ -207,6 +210,16 @@
       session_order: Number(sessionOrder),
       effective_date: effectiveDate || new Date().toISOString().slice(0, 10)
     });
+  }
+
+  async function setClassTeacher(division, weekday, timeSlot, classGroup, teacherMemberId) {
+    return rpc('olli_schedule_set_class_teacher', contextPayload({
+      p_division: clean(division),
+      p_weekday: Number(weekday),
+      p_time_slot: Number(timeSlot),
+      p_class_group: clean(classGroup || 'A').toUpperCase(),
+      p_teacher_member_id: clean(teacherMemberId) || null
+    }));
   }
 
   async function saveCellMemo(division, sessionDate, timeSlot, note) {
@@ -395,6 +408,7 @@
     loadHistory,
     restoreHistory,
     setSessionOrder,
+    setClassTeacher,
     saveCellMemo
   });
 })(window);
