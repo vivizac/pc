@@ -111,18 +111,7 @@ if (memoEditor) {
   // 로컬 캐시는 즉시 표시하고, 서버 최신판 판정/로컬 캐시 갱신은 공통 세션 코어가 담당합니다.
   reconcileObservationMemoDraft(student, session.noteType)
     .then(result => {
-      if (!result || !result.adoptedRemote || !result.content) return;
-
-      const isSameMemoPage = currentMemoStudent && currentMemoStudent.id === student.id && currentMemoType === 'elementary';
-      const currentEditorText = isSameMemoPage ? (memoEditor.value || '') : '';
-      const hasVisibleLocalText = currentEditorText.trim().length > 0;
-
-      // 이미 로컬 내용이 보이는 상태에서는 화면을 덮어쓰지 않는다.
-      // 로컬이 비어 있는 첫 진입일 때만 서버 내용을 조용히 채운다.
-      if (isSameMemoPage && !hasVisibleLocalText) {
-        memoEditor.value = result.content;
-        updateMemoStudentMetaDisplay(student, result.updatedAt || '');
-      }
+      applyReconciledObservationMemoDraft(student, memoEditor, result);
     })
     .catch(err => {
       console.warn('student_note_drafts 불러오기 실패:', err.message || err);
