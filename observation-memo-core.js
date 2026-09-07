@@ -77,31 +77,7 @@ if (studentMemoScreenEl) {
     studentMemoScreenEl.setAttribute('data-current-memo-type', 'elementary');
   }
 
-  forceStudentMemoControlsVisible();
-  requestAnimationFrame(forceStudentMemoControlsVisible);
-  setTimeout(forceStudentMemoControlsVisible, 120);
-
-  setMemoModePillLabel(student.name || '학생 이름');
-  updateMemoStudentMetaDisplay(student);
-  const memoNameBtn = document.getElementById('memoStudentNameBtn');
-  if (memoNameBtn) {
-    memoNameBtn.onclick = toggleMemoModeMenu;
-    memoNameBtn.title = '메모 유형 선택';
-    memoNameBtn.setAttribute('aria-label', '메모 유형 선택');
-  }
-
-  const feedbackBtn = document.getElementById('memoFeedbackBtn');
-  const analysisBtn = document.getElementById('memoBottomAnalysisBtn') || document.getElementById('memoAnalysisBtn');
-  const elementaryWrap = document.getElementById('elementaryMemoWrap');
-
-  if (feedbackBtn) {
-    feedbackBtn.style.display = 'inline-flex';
-    feedbackBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>피드백 생성';
-  }
-  if (analysisBtn) analysisBtn.style.display = 'inline-flex';
-  if (elementaryWrap) elementaryWrap.style.display = 'block';
-  forceStudentMemoControlsVisible();
-
+  renderObservationMemoScreenChrome(session);
   renderObservationMemoInitialView(session);
 }
 
