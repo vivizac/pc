@@ -1,0 +1,124 @@
+name: Refactor observation memo UI helpers
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refactor-observation-memo-ui-helpers.yml'
+permissions:
+  contents: write
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Move shared memo UI helpers
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          common_path = Path('observation-memo-common.js')
+          scene_path = Path('olli-record-scene-tools.js')
+          runtime_path = Path('observation-memo-core.js')
+
+          common = common_path.read_text(encoding='utf-8')
+          scene = scene_path.read_text(encoding='utf-8')
+          runtime = runtime_path.read_text(encoding='utf-8')
+
+          if 'function forceObservationMemoControlsVisible(options = {})' in common:
+              raise SystemExit('common UI primitive already exists')
+          if common.count('function setMemoModePillLabel') != 0:
+              raise SystemExit('memo display helpers already moved to common')
+          if scene.count('function setMemoModePillLabel') != 1:
+              raise SystemExit('unexpected setMemoModePillLabel count')
+          if scene.count('function updateMemoStudentMetaDisplay') != 1:
+              raise SystemExit('unexpected updateMemoStudentMetaDisplay count')
+
+          helper_start = scene.index('function setMemoModePillLabel')
+          helper_end = scene.index('function toggleMemoModeMenu', helper_start)
+          helper_block = scene[helper_start:helper_end]
+          if 'function formatMemoUpdatedDate' not in helper_block or 'function updateMemoStudentMetaDisplay' not in helper_block:
+              raise SystemExit('memo display helper block incomplete')
+          scene = scene[:helper_start] + scene[helper_end:]
+
+          primitive_lines = [
+              'function forceObservationMemoControlsVisible(options = {}) {',
+              "  const screen = document.getElementById('studentMemoScreen');",
+              '  if (!screen) return false;',
+              "  if (screen.style.display === 'none') return false;",
+              '',
+              '  const extraInlineFlex = Array.isArray(options.extraInlineFlex) ? options.extraInlineFlex : [];',
+              '  const showInlineFlex = [',
+              "    '#memoRecordRoomBtn',",
+              "    '#memoStudentListBtn',",
+              "    '#memoBottomAnalysisBtn',",
+              "    '#memoFeedbackBtn',",
+              '    ...extraInlineFlex',
+              '  ];',
+              "  const showFlex = ['#studentMemoScreen .memoBottomBar'];",
+              "  const showBlock = ['#memoStudentSelectWrap'];",
+              '',
+              '  const reveal = (selector, display) => {',
+              '    const el = document.querySelector(selector);',
+              '    if (!el) return;',
+              '    el.hidden = false;',
+              "    el.removeAttribute('hidden');",
+              "    el.removeAttribute('aria-hidden');",
+              "    el.style.visibility = 'visible';",
+              "    el.style.opacity = '1';",
+              "    el.style.pointerEvents = 'auto';",
+              '    el.style.display = display;',
+              '  };',
+              '',
+              "  [...new Set(showInlineFlex)].forEach(selector => reveal(selector, 'inline-flex'));",
+              "  showFlex.forEach(selector => reveal(selector, 'flex'));",
+              "  showBlock.forEach(selector => reveal(selector, ''));",
+              '  return true;',
+              '}',
+              ''
+          ]
+          primitive = '\n'.join(primitive_lines)
+          insert_marker = 'function handleMemoPauseAutoSaveBlur(target) {'
+          if common.count(insert_marker) != 1:
+              raise SystemExit('common insert marker mismatch')
+          common = common.replace(insert_marker, helper_block + primitive + insert_marker, 1)
+
+          force_start = runtime.index('function forceStudentMemoControlsVisible()')
+          comment_start = runtime.rfind('/* v-fix:', 0, force_start)
+          if comment_start >= 0 and force_start - comment_start < 200:
+              force_start = comment_start
+          force_end = runtime.index('function openStudentMemoPageById', force_start)
+          old_force = runtime[force_start:force_end]
+          if '#memoRecordsBtn' in old_force:
+              raise SystemExit('PC force helper unexpectedly contains phone records button')
+          wrapper = "/* PC는 공통 관찰노트 기본 컨트롤만 표시합니다. */\nfunction forceStudentMemoControlsVisible() {\n  return forceObservationMemoControlsVisible();\n}\n\n"
+          runtime = runtime[:force_start] + wrapper + runtime[force_end:]
+
+          if 'function setMemoModePillLabel' in scene or 'function updateMemoStudentMetaDisplay' in scene:
+              raise SystemExit('scene tools still contain moved memo helpers')
+          if common.count('function setMemoModePillLabel') != 1 or common.count('function updateMemoStudentMetaDisplay') != 1:
+              raise SystemExit('common memo helper count mismatch')
+          if common.count('function forceObservationMemoControlsVisible') != 1:
+              raise SystemExit('common force primitive count mismatch')
+          if runtime.count('function forceStudentMemoControlsVisible') != 1:
+              raise SystemExit('PC force wrapper count mismatch')
+          if '#memoRecordsBtn' in runtime[:runtime.index('function openStudentMemoPageById')]:
+              raise SystemExit('PC wrapper contains phone records button')
+          if "currentMemoType === 'kinder'" not in runtime:
+              raise SystemExit('PC kinder save branch lost')
+
+          common_path.write_text(common, encoding='utf-8')
+          scene_path.write_text(scene, encoding='utf-8')
+          runtime_path.write_text(runtime, encoding='utf-8')
+          PY
+
+          node --check observation-memo-common.js
+          node --check olli-record-scene-tools.js
+          node --check observation-memo-core.js
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/refactor-observation-memo-ui-helpers.yml
+          git add observation-memo-common.js olli-record-scene-tools.js observation-memo-core.js
+          git diff --cached --check
+          git commit -m "refactor: PC 관찰노트 보조 UI 공통화"
+          git push
