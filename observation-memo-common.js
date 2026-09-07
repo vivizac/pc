@@ -101,6 +101,47 @@ function applyReconciledObservationMemoDraft(student, memoEditor, result) {
   return { applied: true, reason: 'remote-applied' };
 }
 
+function renderObservationMemoScreenChrome(session) {
+  if (!session || session.type !== 'elementary' || !session.student) return false;
+  const student = session.student;
+
+  if (typeof forceStudentMemoControlsVisible === 'function') {
+    forceStudentMemoControlsVisible();
+    requestAnimationFrame(forceStudentMemoControlsVisible);
+    setTimeout(forceStudentMemoControlsVisible, 120);
+  }
+
+  if (typeof setMemoModePillLabel === 'function') {
+    setMemoModePillLabel(student.name || '학생 이름');
+  }
+  if (typeof updateMemoStudentMetaDisplay === 'function') {
+    updateMemoStudentMetaDisplay(student);
+  }
+
+  const memoNameBtn = document.getElementById('memoStudentNameBtn');
+  if (memoNameBtn) {
+    if (typeof toggleMemoModeMenu === 'function') memoNameBtn.onclick = toggleMemoModeMenu;
+    memoNameBtn.title = '메모 유형 선택';
+    memoNameBtn.setAttribute('aria-label', '메모 유형 선택');
+  }
+
+  const feedbackBtn = document.getElementById('memoFeedbackBtn');
+  const analysisBtn = document.getElementById('memoBottomAnalysisBtn') || document.getElementById('memoAnalysisBtn');
+  const elementaryWrap = document.getElementById('elementaryMemoWrap');
+
+  if (feedbackBtn) {
+    feedbackBtn.style.display = 'inline-flex';
+    feedbackBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>피드백 생성';
+  }
+  if (analysisBtn) analysisBtn.style.display = 'inline-flex';
+  if (elementaryWrap) elementaryWrap.style.display = 'block';
+
+  if (typeof forceStudentMemoControlsVisible === 'function') {
+    forceStudentMemoControlsVisible();
+  }
+  return true;
+}
+
 function renderObservationMemoInitialView(session) {
   const view = typeof prepareObservationMemoInitialView === 'function'
     ? prepareObservationMemoInitialView(session)
