@@ -16,6 +16,7 @@ name: Validate OLLI common source
       - 'scene-card-model-common.js'
       - 'scene-card-ui-common.js'
       - 'scene-feedback-text-common.js'
+      - 'index.html'
       - '.github/workflows/validate-common-source.yml'
 
 permissions:
@@ -37,6 +38,23 @@ jobs:
             test -f "$file"
             case "$file" in
               *.js) node --check "$file" ;;
+            esac
+          done < OLLI_COMMON_FILES.txt
+
+      - name: Validate common scripts are loaded once
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r file || [ -n "$file" ]; do
+            [ -n "$file" ] || continue
+            case "$file" in
+              *.js)
+                count="$(grep -Foc "src=\"$file\"" index.html || true)"
+                if [ "$count" -ne 1 ]; then
+                  echo "$file must be loaded exactly once from index.html (found: $count)."
+                  exit 1
+                fi
+                ;;
             esac
           done < OLLI_COMMON_FILES.txt
 
