@@ -171,7 +171,7 @@ function renderObservationMemoScreenChrome(session) {
 
   if (feedbackBtn) {
     feedbackBtn.style.display = 'inline-flex';
-    feedbackBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7\"></path></svg>피드백 생성';
+    feedbackBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>피드백 생성';
   }
   if (analysisBtn) analysisBtn.style.display = 'inline-flex';
   if (elementaryWrap) elementaryWrap.style.display = 'block';
