@@ -51,38 +51,40 @@ jobs:
           if missing:
               raise SystemExit('PC saveCurrentMemo changed unexpectedly: ' + ', '.join(missing))
 
-          new = '''async function saveCurrentMemo(options = {}) {
-  if (!currentMemoStudent) return;
-  if (currentMemoType === 'kinder') {
-    if (typeof saveKinderChatFeedbackDraft === 'function') saveKinderChatFeedbackDraft();
-    return;
-  }
-
-  const savingStudent = { ...currentMemoStudent };
-  const savingType = currentMemoType;
-  const isStillCurrentMemoStudent = () =>
-    currentMemoStudent &&
-    String(currentMemoStudent.id || '') === String(savingStudent.id || '') &&
-    currentMemoType === savingType;
-
-  const memoText = document.getElementById('memoEditor')?.value || '';
-  const result = await persistObservationMemoDraft(savingStudent, memoText, {
-    noteType: 'elementary_observation'
-  });
-
-  if (result?.state === 'pending' && result.error) {
-    console.warn('초등부 관찰노트 Supabase 저장 실패:', result.error.message || result.error);
-  }
-
-  if (isStillCurrentMemoStudent() && result?.student) {
-    currentMemoStudent = result.student;
-    if (result.state === 'cleared') updateMemoStudentMetaDisplay(result.student, '');
-  }
-
-  if (options.status) setMemoSaveStatus('');
-  if (result?.state === 'cleared') return;
-  if (!options.silent || options.status) showMemoSaveCheck();
-}'''
+          new = '\n'.join([
+              'async function saveCurrentMemo(options = {}) {',
+              '  if (!currentMemoStudent) return;',
+              "  if (currentMemoType === 'kinder') {",
+              "    if (typeof saveKinderChatFeedbackDraft === 'function') saveKinderChatFeedbackDraft();",
+              '    return;',
+              '  }',
+              '',
+              '  const savingStudent = { ...currentMemoStudent };',
+              '  const savingType = currentMemoType;',
+              '  const isStillCurrentMemoStudent = () =>',
+              '    currentMemoStudent &&',
+              "    String(currentMemoStudent.id || '') === String(savingStudent.id || '') &&",
+              '    currentMemoType === savingType;',
+              '',
+              "  const memoText = document.getElementById('memoEditor')?.value || '';",
+              '  const result = await persistObservationMemoDraft(savingStudent, memoText, {',
+              "    noteType: 'elementary_observation'",
+              '  });',
+              '',
+              "  if (result?.state === 'pending' && result.error) {",
+              "    console.warn('초등부 관찰노트 Supabase 저장 실패:', result.error.message || result.error);",
+              '  }',
+              '',
+              '  if (isStillCurrentMemoStudent() && result?.student) {',
+              '    currentMemoStudent = result.student;',
+              "    if (result.state === 'cleared') updateMemoStudentMetaDisplay(result.student, '');",
+              '  }',
+              '',
+              "  if (options.status) setMemoSaveStatus('');",
+              "  if (result?.state === 'cleared') return;",
+              '  if (!options.silent || options.status) showMemoSaveCheck();',
+              '}'
+          ])
 
           text = text[:start] + new + text[end:]
           path.write_text(text, encoding='utf-8')
