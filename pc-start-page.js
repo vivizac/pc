@@ -20,6 +20,24 @@
         line-height: 1.25;
       }
       #recordRoomScreen .olliTtCellMemoCard strong { line-height: 1.25; }
+
+      body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider {
+        gap: 7px;
+        margin: 11px 0 7px;
+        color: #aeb3bb;
+        font-size: 9.5px;
+        font-weight: 620;
+        line-height: 1;
+        letter-spacing: -.01em;
+      }
+      body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::before,
+      body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::after {
+        min-width: 10px;
+        background: #eceef1;
+      }
+      body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider span {
+        padding: 0 1px;
+      }
     `;
     document.head.appendChild(style);
   }
