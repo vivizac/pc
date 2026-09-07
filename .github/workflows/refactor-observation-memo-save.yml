@@ -1,0 +1,113 @@
+name: Refactor observation memo save
+on: [push]
+permissions:
+  contents: write
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use shared observation memo save core on PC
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('observation-memo-core.js')
+          text = path.read_text(encoding='utf-8')
+          marker = 'async function saveCurrentMemo(options = {}) {'
+          start = text.index(marker)
+
+          depth = 0
+          end = None
+          for i in range(start, len(text)):
+              ch = text[i]
+              if ch == '{':
+                  depth += 1
+              elif ch == '}':
+                  depth -= 1
+                  if depth == 0:
+                      end = i + 1
+                      break
+          if end is None:
+              raise SystemExit('saveCurrentMemo end not found')
+
+          old = text[start:end]
+          required = [
+              "currentMemoType === 'kinder'",
+              'ensureStudentSavedToSupabase',
+              'saveStudentNoteDraftToSupabase',
+              'setMemoSyncStateByStudent',
+              'clearStudentNoteDraftFromSupabase'
+          ]
+          missing = [token for token in required if token not in old]
+          if missing:
+              raise SystemExit('PC saveCurrentMemo changed unexpectedly: ' + ', '.join(missing))
+
+          new = '''async function saveCurrentMemo(options = {}) {
+  if (!currentMemoStudent) return;
+  if (currentMemoType === 'kinder') {
+    if (typeof saveKinderChatFeedbackDraft === 'function') saveKinderChatFeedbackDraft();
+    return;
+  }
+
+  const savingStudent = { ...currentMemoStudent };
+  const savingType = currentMemoType;
+  const isStillCurrentMemoStudent = () =>
+    currentMemoStudent &&
+    String(currentMemoStudent.id || '') === String(savingStudent.id || '') &&
+    currentMemoType === savingType;
+
+  const memoText = document.getElementById('memoEditor')?.value || '';
+  const result = await persistObservationMemoDraft(savingStudent, memoText, {
+    noteType: 'elementary_observation'
+  });
+
+  if (result?.state === 'pending' && result.error) {
+    console.warn('초등부 관찰노트 Supabase 저장 실패:', result.error.message || result.error);
+  }
+
+  if (isStillCurrentMemoStudent() && result?.student) {
+    currentMemoStudent = result.student;
+    if (result.state === 'cleared') updateMemoStudentMetaDisplay(result.student, '');
+  }
+
+  if (options.status) setMemoSaveStatus('');
+  if (result?.state === 'cleared') return;
+  if (!options.silent || options.status) showMemoSaveCheck();
+}'''
+
+          text = text[:start] + new + text[end:]
+          path.write_text(text, encoding='utf-8')
+
+          index_path = Path('index.html')
+          index = index_path.read_text(encoding='utf-8')
+          old_scripts = '<script src="observation-memo-session-common.js"></script>\n<script src="observation-memo-common.js"></script>'
+          new_scripts = '<script src="observation-memo-session-common.js"></script>\n<script src="observation-memo-save-common.js"></script>\n<script src="observation-memo-common.js"></script>'
+          if old_scripts not in index:
+              raise SystemExit('PC memo save script insertion point not found')
+          index = index.replace(old_scripts, new_scripts, 1)
+          index_path.write_text(index, encoding='utf-8')
+
+          updated = path.read_text(encoding='utf-8')
+          fn_start = updated.index(marker)
+          fn_tail = updated[fn_start:fn_start + 2400]
+          forbidden = ['ensureStudentSavedToSupabase', 'saveStudentNoteDraftToSupabase', 'setMemoSyncStateByStudent', 'clearStudentNoteDraftFromSupabase']
+          leftovers = [token for token in forbidden if token in fn_tail]
+          if leftovers:
+              raise SystemExit('PC direct save logic still remains: ' + ', '.join(leftovers))
+          if 'persistObservationMemoDraft(' not in fn_tail:
+              raise SystemExit('PC shared save core call missing')
+          if "currentMemoType === 'kinder'" not in fn_tail:
+              raise SystemExit('PC kinder adapter guard missing')
+          PY
+
+          node --check observation-memo-save-common.js
+          node --check observation-memo-core.js
+
+          rm -f .github/workflows/refactor-observation-memo-save.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add observation-memo-core.js index.html .github/workflows/refactor-observation-memo-save.yml
+          git commit -m 'refactor: PC 관찰노트 저장 실행 공통화'
+          git push
