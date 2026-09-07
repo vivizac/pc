@@ -1,0 +1,118 @@
+name: Refactor observation memo entry
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refactor-observation-memo-entry.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use shared observation memo session entry on PC
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('observation-memo-core.js')
+          text = path.read_text(encoding='utf-8')
+          marker = 'function openStudentMemoPageById(studentId) {'
+          start = text.index(marker)
+          body_start = text.index('{', start) + 1
+          depth = 1
+          end = None
+          for i in range(body_start, len(text)):
+              ch = text[i]
+              if ch == '{':
+                  depth += 1
+              elif ch == '}':
+                  depth -= 1
+                  if depth == 0:
+                      end = i + 1
+                      break
+          if end is None:
+              raise SystemExit('PC openStudentMemoPageById end not found')
+
+          region = text[start:end]
+          replacements = [
+              (
+                  "  const student = findStudentById(studentId);\n  if (!student) return;",
+                  "  const session = beginObservationMemoSession(studentId);\n  if (!session) return;\n  const { student } = session;",
+                  'student lookup'
+              ),
+              (
+                  "  if (student.type === 'kinder') {\n    currentMemoStudent = student;\n    currentMemoType = 'kinder';",
+                  "  if (session.type === 'kinder') {",
+                  'kinder state'
+              ),
+              (
+                  "  currentMemoStudent = student;\n  currentMemoType = 'elementary';\n  if (currentMemoType === 'elementary') setLastElementaryMemoStudent(student);",
+                  "",
+                  'elementary state'
+              ),
+              (
+                  "const localEntry = getObservationMemoLocalSnapshot(student);",
+                  "const localEntry = session.localEntry || { content: '' };",
+                  'local snapshot'
+              ),
+              (
+                  "reconcileObservationMemoDraft(student, 'elementary_observation')",
+                  "reconcileObservationMemoDraft(student, session.noteType)",
+                  'draft note type'
+              ),
+              (
+                  "const __studentAnalysis = getPrimaryElementaryAnalysisDisplay(student); selectedElementaryAnalysisHistoryId = '';",
+                  "const __studentAnalysis = session.analysisDisplay || { data: {}, createdAt: '' };",
+                  'analysis display'
+              )
+          ]
+
+          for old, new, label in replacements:
+              count = region.count(old)
+              if count != 1:
+                  raise SystemExit(f'PC {label} expected once, found {count}')
+              region = region.replace(old, new, 1)
+
+          required = [
+              'beginObservationMemoSession(studentId)',
+              'closeMemoModeMenu();',
+              'closeMemoStudentSelectPopup();',
+              'session.localEntry',
+              'session.noteType',
+              'session.analysisDisplay'
+          ]
+          missing = [token for token in required if token not in region]
+          if missing:
+              raise SystemExit('PC required entry behavior missing: ' + ', '.join(missing))
+
+          forbidden = [
+              'findStudentById(studentId)',
+              "currentMemoType = 'elementary';",
+              'setLastElementaryMemoStudent(student);',
+              'getObservationMemoLocalSnapshot(student)',
+              "reconcileObservationMemoDraft(student, 'elementary_observation')",
+              'getPrimaryElementaryAnalysisDisplay(student)'
+          ]
+          leftovers = [token for token in forbidden if token in region]
+          if leftovers:
+              raise SystemExit('PC direct session setup still remains: ' + ', '.join(leftovers))
+
+          text = text[:start] + region + text[end:]
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          node --check observation-memo-session-common.js
+          node --check observation-memo-core.js
+
+          rm -f .github/workflows/refactor-observation-memo-entry.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add observation-memo-core.js .github/workflows/refactor-observation-memo-entry.yml
+          git commit -m 'refactor: PC 관찰노트 세션 진입 공통화'
+          git push
