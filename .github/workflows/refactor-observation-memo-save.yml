@@ -24,10 +24,11 @@ jobs:
           text = path.read_text(encoding='utf-8')
           marker = 'async function saveCurrentMemo(options = {}) {'
           start = text.index(marker)
+          body_start = start + len(marker) - 1
 
           depth = 0
           end = None
-          for i in range(start, len(text)):
+          for i in range(body_start, len(text)):
               ch = text[i]
               if ch == '{':
                   depth += 1
