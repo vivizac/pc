@@ -1,0 +1,61 @@
+name: Lock student info teacher to timetable
+on:
+  push:
+    paths:
+      - '.github/workflows/lock-student-info-teacher-to-timetable.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch student info teacher UI
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('pc-student-info-card-runtime.js')
+          s = p.read_text()
+
+          old = """    global.olliGetInfoExtra = function(type) {\n      const base = typeof baseGetInfo === 'function' ? (baseGetInfo.apply(this, arguments) || {}) : {};\n      const kind = type === 'kinder' ? 'kinder' : 'elementary';\n      const fields = lessonFieldsFromState(scheduleStates[kind]);\n      return Object.assign({}, base, fields, { class_time: fields.lesson_time });\n    };"""
+          new = """    global.olliGetInfoExtra = function(type) {\n      const base = typeof baseGetInfo === 'function' ? (baseGetInfo.apply(this, arguments) || {}) : {};\n      const kind = type === 'kinder' ? 'kinder' : 'elementary';\n      const fields = lessonFieldsFromState(scheduleStates[kind]);\n      const result = Object.assign({}, base, fields, { class_time: fields.lesson_time });\n      // 학생정보에서는 담임을 수정하지 않습니다. 담임의 유일한 원본은 시간표 1회차 반입니다.\n      delete result.teacher;\n      delete result.homeroom_teacher;\n      return result;\n    };"""
+          assert old in s, 'olliGetInfoExtra block not found'
+          s = s.replace(old, new, 1)
+
+          old = "      #recordRoomScreen .pcStudentInfoCard .infoTeacherSelectBox{height:40px;border-radius:12px;border-color:#e4e6e9;font-size:12px;}"
+          new = """      #recordRoomScreen .pcStudentInfoCard .infoTeacherSelectBox{height:40px;border-radius:12px;border-color:#e4e6e9;font-size:12px;}\n      #recordRoomScreen .pcStudentInfoTeacherReadonly{height:40px;display:flex;align-items:center;padding:0 11px;border:1px solid #e4e6e9;border-radius:12px;background:#f6f7f8;color:#555c65;font-size:12px;font-weight:700;box-sizing:border-box;}\n      #recordRoomScreen .pcStudentInfoTeacherReadonly.isEmpty{color:#a0a5ad;font-weight:600;}"""
+          assert old in s, 'teacher style anchor not found'
+          s = s.replace(old, new, 1)
+
+          old = "          <div class=\"pcStudentInfoField\"><div class=\"modalLabel\">담임</div><div id=\"elementaryTeacherToggleRow\" class=\"infoTeacherToggleRow\"></div></div>"
+          new = "          <div class=\"pcStudentInfoField\"><div class=\"modalLabel\">담임 · 시간표 1회차 기준</div><div class=\"pcStudentInfoTeacherReadonly ${clean(student.teacher || student.homeroom_teacher) ? '' : 'isEmpty'}\">${esc(student.teacher || student.homeroom_teacher || '미지정')}</div></div>"
+          assert old in s, 'elementary teacher field not found'
+          s = s.replace(old, new, 1)
+
+          old = "          <div class=\"pcStudentInfoField\"><div class=\"modalLabel\">담임</div><div id=\"kinderTeacherToggleRow\" class=\"infoTeacherToggleRow\"></div></div>"
+          new = "          <div class=\"pcStudentInfoField\"><div class=\"modalLabel\">담임 · 시간표 1회차 기준</div><div class=\"pcStudentInfoTeacherReadonly ${clean(student.teacher || student.homeroom_teacher) ? '' : 'isEmpty'}\">${esc(student.teacher || student.homeroom_teacher || '미지정')}</div></div>"
+          assert old in s, 'kinder teacher field not found'
+          s = s.replace(old, new, 1)
+
+          old = "          teacher: Object.prototype.hasOwnProperty.call(extra, 'teacher') ? extra.teacher : (target.teacher || ''),\n          homeroom_teacher: Object.prototype.hasOwnProperty.call(extra, 'homeroom_teacher') ? extra.homeroom_teacher : (target.homeroom_teacher || ''),"
+          new = "          teacher: target.teacher || target.homeroom_teacher || '',\n          homeroom_teacher: target.homeroom_teacher || target.teacher || '',"
+          count = s.count(old)
+          assert count == 2, f'expected 2 teacher save blocks, found {count}'
+          s = s.replace(old, new)
+
+          p.write_text(s)
+          PY
+          node --check pc-student-info-card-runtime.js
+      - name: Commit patch and remove temporary workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/lock-student-info-teacher-to-timetable.yml
+          git add pc-student-info-card-runtime.js
+          git commit -m '학생정보 담임을 시간표 1회차 기준 읽기전용으로 전환'
+          git push
