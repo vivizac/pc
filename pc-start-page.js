@@ -12,32 +12,11 @@
   }
   installPcStudentInfoCardRuntime();
 
-  function installPcTimetableMemoCardStyle(){
-    if (document.getElementById('olliPcTimetableMemoCardCompactStyle')) return;
+  function installPcRecordSortGuideStyle(){
+    if (document.getElementById('olliPcRecordSortGuideStyle')) return;
     const style = document.createElement('style');
-    style.id = 'olliPcTimetableMemoCardCompactStyle';
+    style.id = 'olliPcRecordSortGuideStyle';
     style.textContent = `
-      body.olliPcApp #recordRoomScreen .olliTtCellMemoCard {
-        height: auto !important;
-        min-height: 24px !important;
-        padding: 3px 5px !important;
-        border: 1px solid transparent !important;
-        gap: 5px !important;
-        align-items: center !important;
-        box-shadow: none !important;
-      }
-      body.olliPcApp #recordRoomScreen .olliTtCellMemoCard:hover {
-        border-color: transparent !important;
-        box-shadow: none !important;
-      }
-      body.olliPcApp #recordRoomScreen .olliTtCellMemoCard span {
-        margin-top: 0 !important;
-        line-height: 1 !important;
-      }
-      body.olliPcApp #recordRoomScreen .olliTtCellMemoCard strong {
-        line-height: 1.2 !important;
-      }
-
       body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider {
         gap: 7px;
         margin: 11px 0 7px;
@@ -58,7 +37,95 @@
     `;
     document.head.appendChild(style);
   }
-  installPcTimetableMemoCardStyle();
+  installPcRecordSortGuideStyle();
+
+  function installPcTimetableDivisionWheelSwitch(){
+    if (global.__OLLI_PC_TIMETABLE_DIVISION_WHEEL__) return;
+    global.__OLLI_PC_TIMETABLE_DIVISION_WHEEL__ = true;
+
+    const THRESHOLD = 100;
+    const COOLDOWN = 450;
+    let accumulated = 0;
+    let direction = 0;
+    let lastWheelAt = 0;
+    let lockedUntil = 0;
+
+    function resetWheelState(){
+      accumulated = 0;
+      direction = 0;
+      lastWheelAt = 0;
+    }
+
+    document.addEventListener('wheel', (event) => {
+      if (event.ctrlKey || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target || target.closest('#olliTtOverlay.show, input, textarea, select, [contenteditable="true"]')) return;
+
+      const shell = document.getElementById('olliPcShell');
+      if (!shell || shell.dataset.pcSection !== 'schedule') return;
+
+      const scroll = target.closest('#recordRoomScreen .olliTtRoot.show .olliTtScroll');
+      if (!scroll) return;
+
+      const activeTab = document.querySelector('#olliPcTopbar .olliTtDivisionTab.active[data-tt-division]');
+      const currentDivision = activeTab?.dataset.ttDivision;
+      if (currentDivision !== 'elementary' && currentDivision !== 'kinder') return;
+
+      const delta = Number(event.deltaY) || 0;
+      if (Math.abs(delta) < 2) return;
+      const nextDirection = delta > 0 ? 1 : -1;
+      const targetDivision = nextDirection > 0 ? 'kinder' : 'elementary';
+      if (currentDivision === targetDivision) {
+        resetWheelState();
+        return;
+      }
+
+      const innerLane = target.closest('.olliTtClassLane');
+      if (innerLane && innerLane.scrollHeight > innerLane.clientHeight + 2) {
+        const innerAtTop = innerLane.scrollTop <= 2;
+        const innerAtBottom = innerLane.scrollTop + innerLane.clientHeight >= innerLane.scrollHeight - 2;
+        if ((nextDirection < 0 && !innerAtTop) || (nextDirection > 0 && !innerAtBottom)) {
+          resetWheelState();
+          return;
+        }
+      }
+
+      const atTop = scroll.scrollTop <= 2;
+      const atBottom = scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 2;
+      if ((nextDirection < 0 && !atTop) || (nextDirection > 0 && !atBottom)) {
+        resetWheelState();
+        return;
+      }
+
+      const now = Date.now();
+      if (now < lockedUntil) return;
+      if (direction !== nextDirection || now - lastWheelAt > 260) {
+        accumulated = 0;
+        direction = nextDirection;
+      }
+      lastWheelAt = now;
+      accumulated += Math.min(Math.abs(delta), 120);
+      if (accumulated < THRESHOLD) return;
+
+      const nextButton = document.querySelector(`#olliPcTopbar .olliTtDivisionTab[data-tt-division="${targetDivision}"]`);
+      if (!nextButton) {
+        resetWheelState();
+        return;
+      }
+
+      event.preventDefault();
+      lockedUntil = now + COOLDOWN;
+      resetWheelState();
+      nextButton.click();
+
+      requestAnimationFrame(() => {
+        const nextScroll = document.querySelector('#recordRoomScreen .olliTtRoot.show .olliTtScroll');
+        if (!nextScroll) return;
+        nextScroll.scrollTop = targetDivision === 'elementary' ? nextScroll.scrollHeight : 0;
+      });
+    }, { passive: false, capture: true });
+  }
+  installPcTimetableDivisionWheelSwitch();
 
   const PAGES = {
     academy: { value: 'academy', label: '학생관리' },
