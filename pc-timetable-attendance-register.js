@@ -18,8 +18,21 @@
     state.attendanceMonth = `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
     state.attendanceRows = [];
     state.attendanceRowsMonth = '';
+    state.attendanceCalendarDays = [];
+    state.attendanceCalendarMonth = '';
     renderAttendanceRegister();
     loadAttendanceRegister();
+  }
+
+  function monthRange(month) {
+    const match = clean(month).match(/^(\d{4})-(\d{2})$/);
+    const year = match ? Number(match[1]) : new Date().getFullYear();
+    const monthNumber = match ? Number(match[2]) : new Date().getMonth() + 1;
+    const lastDay = new Date(year, monthNumber, 0).getDate();
+    return {
+      start: `${year}-${pad(monthNumber)}-01`,
+      end: `${year}-${pad(monthNumber)}-${pad(lastDay)}`
+    };
   }
 
   async function loadAttendanceRegister() {
@@ -35,15 +48,22 @@
     }
     const token = ++state.attendanceLoadToken;
     state.attendanceLoading = true;
-    if (state.attendanceRowsMonth !== month) renderAttendanceRegister();
+    if (state.attendanceRowsMonth !== month || state.attendanceCalendarMonth !== month) renderAttendanceRegister();
     try {
-      const rows = await service.loadAttendanceMonth(month);
+      const range = monthRange(month);
+      const [rows, calendarDays] = await Promise.all([
+        service.loadAttendanceMonth(month),
+        typeof service.loadCalendarRange === 'function' ? service.loadCalendarRange(range.start, range.end) : Promise.resolve([])
+      ]);
       if (token !== state.attendanceLoadToken || state.attendanceMonth !== month) return;
       state.attendanceRows = rows;
       state.attendanceRowsMonth = month;
+      state.attendanceCalendarDays = Array.isArray(calendarDays) ? calendarDays : [];
+      state.attendanceCalendarMonth = month;
     } catch (error) {
       if (token !== state.attendanceLoadToken) return;
       if (state.attendanceRowsMonth !== month) state.attendanceRows = [];
+      if (state.attendanceCalendarMonth !== month) state.attendanceCalendarDays = [];
       notify(error && (error.message || error) || '출석부를 불러오지 못했습니다.');
     } finally {
       if (token === state.attendanceLoadToken) {
@@ -51,6 +71,27 @@
         renderAttendanceRegister();
       }
     }
+  }
+
+  function attendanceCalendarInfo(dateKey) {
+    const rows = Array.isArray(state.attendanceCalendarDays) ? state.attendanceCalendarDays : [];
+    return rows.find((item) => clean(item && item.session_date).slice(0, 10) === clean(dateKey).slice(0, 10)) || null;
+  }
+
+  function isAttendanceClosedDate(year, month, day) {
+    const date = new Date(year, month - 1, day);
+    if (date.getDay() === 0) return true;
+    const key = `${year}-${pad(month)}-${pad(day)}`;
+    const info = attendanceCalendarInfo(key);
+    return !!(info && info.is_holiday === true);
+  }
+
+  function attendanceHolidayTitle(year, month, day) {
+    const date = new Date(year, month - 1, day);
+    if (date.getDay() === 0) return '일요일';
+    const key = `${year}-${pad(month)}-${pad(day)}`;
+    const info = attendanceCalendarInfo(key);
+    return clean(info && info.name);
   }
 
   function attendanceStudents() {
@@ -105,8 +146,9 @@
       + Array.from({ length: days }, () => '<col class="dateCol">').join('') + '</colgroup>';
     const dayHeaders = Array.from({ length: days }, (_, index) => {
       const day = index + 1;
-      const sunday = new Date(year, month - 1, day).getDay() === 0 ? ' daySun' : '';
-      return `<th class="dateCol${sunday}">${day}</th>`;
+      const closed = isAttendanceClosedDate(year, month, day);
+      const title = attendanceHolidayTitle(year, month, day);
+      return `<th class="dateCol${closed ? ' attendanceHolidayHead' : ''}"${title ? ` title="${esc(title)}"` : ''}>${day}</th>`;
     }).join('');
     const schoolHeader = state.attendanceDivision === 'combined' ? '소속' : (state.attendanceDivision === 'kinder' ? '유치원/나이' : '학교/학년');
     const header = `<thead><tr><th class="noCol"></th><th class="nameCol">이름</th><th class="schoolGradeCol">${schoolHeader}</th><th class="personalityCol">성향</th>${dayHeaders}</tr></thead>`;
@@ -114,21 +156,23 @@
       const dateCells = Array.from({ length: days }, (_, offset) => {
         const day = offset + 1;
         const key = `${year}-${pad(month)}-${pad(day)}`;
-        const sunday = new Date(year, month - 1, day).getDay() === 0 ? ' daySun' : '';
+        if (isAttendanceClosedDate(year, month, day)) return '<td class="dateCol attendanceHolidayCell" aria-disabled="true"></td>';
         const records = rowsByStudentDate.get(`${clean(student.id)}|${key}`) || [];
         const makeupRows = records.filter((row) => clean(row.session_kind) === 'makeup');
         const regular = records.find((row) => clean(row.session_kind) === 'regular' && row.attended !== false);
-        if (makeupRows.some((row) => row.attended !== false)) return `<td class="dateCol${sunday} attendanceMakeupMark"><span aria-label="보강 출석">보</span></td>`;
-        if (makeupRows.length && key <= todayKey()) return `<td class="dateCol${sunday} attendanceAbsentMark"><span aria-label="결석">결</span></td>`;
-        if (regular) return `<td class="dateCol${sunday} attendanceLinkedMark"><span aria-label="출석">✓</span></td>`;
-        return `<td class="dateCol${sunday}"></td>`;
+        if (makeupRows.some((row) => row.attended !== false)) return '<td class="dateCol attendanceMakeupMark"><span aria-label="보강 출석">보</span></td>';
+        if (makeupRows.length && key <= todayKey()) return '<td class="dateCol attendanceAbsentMark"><span aria-label="결석">결</span></td>';
+        if (regular) return '<td class="dateCol attendanceLinkedMark"><span aria-label="출석">✓</span></td>';
+        return '<td class="dateCol"></td>';
       }).join('');
       return `<tr><td class="noCol">${index + 1}</td><td class="nameCol">${esc(student.name)}</td><td class="schoolGradeCol">${esc(attendanceRosterMeta(student))}</td><td class="personalityCol">${esc(student.personality)}</td>${dateCells}</tr>`;
     }).join('');
     const blankRows = Array.from({ length: Math.max(0, 40 - students.length) }, (_, index) => {
       const dateCells = Array.from({ length: days }, (_, offset) => {
-        const sunday = new Date(year, month - 1, offset + 1).getDay() === 0 ? ' daySun' : '';
-        return `<td class="dateCol${sunday}"></td>`;
+        const day = offset + 1;
+        return isAttendanceClosedDate(year, month, day)
+          ? '<td class="dateCol attendanceHolidayCell" aria-disabled="true"></td>'
+          : '<td class="dateCol"></td>';
       }).join('');
       return `<tr class="attendanceBlankRow"><td class="noCol">${students.length + index + 1}</td><td class="nameCol"></td><td class="schoolGradeCol"></td><td class="personalityCol"></td>${dateCells}</tr>`;
     }).join('');
