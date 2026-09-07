@@ -1,0 +1,90 @@
+name: Refactor observation memo remote apply
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refactor-observation-memo-remote-apply.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use shared remote draft apply helper on PC
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('observation-memo-core.js')
+          text = path.read_text(encoding='utf-8')
+
+          old = '\n'.join([
+              '  reconcileObservationMemoDraft(student, session.noteType)',
+              '    .then(result => {',
+              '      if (!result || !result.adoptedRemote || !result.content) return;',
+              '',
+              "      const isSameMemoPage = currentMemoStudent && currentMemoStudent.id === student.id && currentMemoType === 'elementary';",
+              "      const currentEditorText = isSameMemoPage ? (memoEditor.value || '') : '';",
+              '      const hasVisibleLocalText = currentEditorText.trim().length > 0;',
+              '',
+              '      // 이미 로컬 내용이 보이는 상태에서는 화면을 덮어쓰지 않는다.',
+              '      // 로컬이 비어 있는 첫 진입일 때만 서버 내용을 조용히 채운다.',
+              '      if (isSameMemoPage && !hasVisibleLocalText) {',
+              '        memoEditor.value = result.content;',
+              "        updateMemoStudentMetaDisplay(student, result.updatedAt || '');",
+              '      }',
+              '    })',
+              '    .catch(err => {',
+              "      console.warn('student_note_drafts 불러오기 실패:', err.message || err);",
+              '    });'
+          ])
+
+          new = '\n'.join([
+              '  reconcileObservationMemoDraft(student, session.noteType)',
+              '    .then(result => {',
+              '      applyReconciledObservationMemoDraft(student, memoEditor, result);',
+              '    })',
+              '    .catch(err => {',
+              "      console.warn('student_note_drafts 불러오기 실패:', err.message || err);",
+              '    });'
+          ])
+
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f'PC remote apply block expected once, found {count}')
+
+          text = text.replace(old, new, 1)
+
+          required = [
+              'applyReconciledObservationMemoDraft(student, memoEditor, result);',
+              'reconcileObservationMemoDraft(student, session.noteType)'
+          ]
+          missing = [token for token in required if token not in text]
+          if missing:
+              raise SystemExit('PC shared remote apply missing: ' + ', '.join(missing))
+
+          forbidden = [
+              'const isSameMemoPage = currentMemoStudent',
+              'const hasVisibleLocalText = currentEditorText.trim().length > 0;'
+          ]
+          leftovers = [token for token in forbidden if token in text]
+          if leftovers:
+              raise SystemExit('PC direct remote apply logic still remains: ' + ', '.join(leftovers))
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          node --check observation-memo-session-common.js
+          node --check observation-memo-core.js
+
+          rm -f .github/workflows/refactor-observation-memo-remote-apply.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add observation-memo-core.js .github/workflows/refactor-observation-memo-remote-apply.yml
+          git commit -m 'refactor: PC 관찰노트 서버 최신판 화면 반영 공통화'
+          git push
