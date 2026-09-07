@@ -75,8 +75,7 @@ function openStudentMemoPageById(studentId) {
 
 
 function closeMemoPage() {
-  flushMemoAutoSave();
-  saveCurrentMemo({ silent: true });
+  prepareObservationMemoPageClose();
 
   const current = vivizacGetVisibleNotePage();
   if (current && current.id === 'studentMemoScreen') {

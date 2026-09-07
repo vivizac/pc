@@ -49,6 +49,10 @@ function flushMemoAutoSave() {
   }
 }
 
+function prepareObservationMemoPageClose() {
+  flushMemoAutoSave();
+  saveCurrentMemo({ silent: true });
+}
 function handleMemoPauseAutoSaveBlur(target) {
   const inputType = getMemoInputTypeFromTarget(target);
   if (!inputType || currentMemoType !== inputType) return;
