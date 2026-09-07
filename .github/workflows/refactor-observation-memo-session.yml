@@ -65,7 +65,7 @@ jobs:
                 console.warn('student_note_drafts 불러오기 실패:', err.message || err);
               });
           }
-'''
+          '''
           region = region[:block_start] + new_block + region[block_end:]
           core = core[:fn_start] + region + core[fn_end:]
           core_path.write_text(core, encoding='utf-8')
