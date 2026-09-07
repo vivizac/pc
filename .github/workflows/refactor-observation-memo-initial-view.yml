@@ -1,0 +1,76 @@
+name: Refactor observation memo initial view
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refactor-observation-memo-initial-view.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace PC memo initial render block
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('observation-memo-core.js')
+          text = path.read_text(encoding='utf-8')
+          func_start = text.index('function openStudentMemoPageById')
+          render_start = text.index("  const memoEditor = document.getElementById('memoEditor');", func_start)
+          close_func = text.index('function closeMemoPage()', render_start)
+          region = text[render_start:close_func]
+
+          required = [
+              'session.localEntry',
+              'session.analysisDisplay',
+              'reconcileObservationMemoDraft',
+              'applyReconciledObservationMemoDraft',
+              'renderElementaryAnalysisSummaryCard',
+              'renderElementaryAnalysisHistoryCards'
+          ]
+          missing = [token for token in required if token not in region]
+          if missing:
+              raise SystemExit('PC initial memo render block changed unexpectedly: ' + ', '.join(missing))
+          if 'renderObservationMemoInitialView(session)' in region:
+              raise SystemExit('PC initial memo render already refactored')
+
+          status_pos = region.rfind("setMemoSaveStatus('자동 저장');")
+          if status_pos < 0:
+              raise SystemExit('PC memo status marker not found')
+          close_pos = region.find('}', status_pos)
+          if close_pos < 0:
+              raise SystemExit('PC openStudentMemoPageById closing brace not found')
+
+          replacement = "  renderObservationMemoInitialView(session);\n}"
+          updated = text[:render_start] + replacement + text[render_start + close_pos + 1:]
+          path.write_text(updated, encoding='utf-8')
+
+          check = path.read_text(encoding='utf-8')
+          open_start = check.index('function openStudentMemoPageById')
+          open_end = check.index('function closeMemoPage()', open_start)
+          open_region = check[open_start:open_end]
+          if 'renderObservationMemoInitialView(session);' not in open_region:
+              raise SystemExit('PC common initial renderer call missing')
+          forbidden = ['session.localEntry', 'session.analysisDisplay', 'applyReconciledObservationMemoDraft(student, memoEditor']
+          leftovers = [token for token in forbidden if token in open_region]
+          if leftovers:
+              raise SystemExit('PC initial render duplicates remain: ' + ', '.join(leftovers))
+          PY
+
+          node --check observation-memo-session-common.js
+          node --check observation-memo-common.js
+          node --check observation-memo-core.js
+
+          rm -f .github/workflows/refactor-observation-memo-initial-view.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add observation-memo-core.js .github/workflows/refactor-observation-memo-initial-view.yml
+          git commit -m 'refactor: PC 관찰노트 초기 화면 렌더 공통화'
+          git push
