@@ -255,6 +255,77 @@ function compareElementaryGroupFeedbackOrder(a, b) {
     }
   }
 
+  function feedbackQueueCore() {
+    const core = global.OlliStorageCore;
+    return core && core.SyncQueue ? core : null;
+  }
+
+  function tableNameFromFeedbackItem(item) {
+    const direct = clean(item && (item.feedback_table || item.tableName || item.table_name));
+    if (TARGETS[direct]) return direct;
+    const feature = clean(item && item.feature);
+    return Object.keys(TARGETS).find(tableName => TARGETS[tableName].feature === feature) || '';
+  }
+
+  function feedbackQueueItem(academyId, mutationId) {
+    const core = feedbackQueueCore();
+    if (!core || !academyId || !mutationId) return null;
+    try {
+      return core.SyncQueue.read(academyId).find(item =>
+        clean(item && item.client_mutation_id) === clean(mutationId)
+        && !!tableNameFromFeedbackItem(item)
+      ) || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function mirrorPendingToSyncQueue(entry, payload, status, errorMessage) {
+    if (!entry || !entry.academyId || !entry.mutationId || !entry.tableName) return;
+    const core = feedbackQueueCore();
+    if (!core) return;
+    const spec = TARGETS[entry.tableName];
+    if (!spec) return;
+    const serverPayload = {
+      ...(payload || entry.payload || {}),
+      academy_id: entry.academyId,
+      client_mutation_id: entry.mutationId
+    };
+    const patch = {
+      feature: spec.feature,
+      operation: 'create',
+      academy_id: entry.academyId,
+      student_id: clean(serverPayload.student_id) || null,
+      client_mutation_id: entry.mutationId,
+      feedback_table: entry.tableName,
+      payload: serverPayload,
+      status: status || entry.status || 'pending',
+      error_code: null,
+      error_message: clean(errorMessage || entry.lastError) || null
+    };
+    try {
+      const existing = feedbackQueueItem(entry.academyId, entry.mutationId);
+      if (existing) core.SyncQueue.update(entry.academyId, existing.queue_id, patch);
+      else core.SyncQueue.enqueue(patch, { coalesce: false });
+    } catch (error) {
+      console.warn('피드백 공통 재전송 대기열 연결 실패:', error?.message || error);
+    }
+  }
+
+  function removeFeedbackFromSyncQueue(entry) {
+    if (!entry || !entry.academyId || !entry.mutationId) return;
+    const core = feedbackQueueCore();
+    if (!core) return;
+    try {
+      core.SyncQueue.read(entry.academyId)
+        .filter(item => clean(item && item.client_mutation_id) === clean(entry.mutationId))
+        .filter(item => !!tableNameFromFeedbackItem(item))
+        .forEach(item => core.SyncQueue.remove(entry.academyId, item.queue_id));
+    } catch (error) {
+      console.warn('피드백 공통 재전송 대기열 정리 실패:', error?.message || error);
+    }
+  }
+
   function rememberPending(tableName, payload, label) {
     const academyId = currentAcademyId(payload);
     if (!academyId) throw new Error(`${label || '피드백'} 저장 학원 정보를 찾지 못했습니다.`);
@@ -265,6 +336,7 @@ function compareElementaryGroupFeedbackOrder(a, b) {
       existing.updatedAt = new Date().toISOString();
       existing.attempts = Number(existing.attempts || 0);
       writePending(academyId, list);
+      mirrorPendingToSyncQueue(existing, { ...(existing.payload || payload || {}), client_mutation_id: existing.mutationId }, existing.status || 'pending', existing.lastError || '');
       return existing;
     }
 
@@ -284,6 +356,7 @@ function compareElementaryGroupFeedbackOrder(a, b) {
     };
     list.unshift(entry);
     writePending(academyId, list);
+    mirrorPendingToSyncQueue(entry, { ...entry.payload, client_mutation_id: entry.mutationId }, 'pending', '');
     return entry;
   }
 
@@ -291,9 +364,13 @@ function compareElementaryGroupFeedbackOrder(a, b) {
     if (!entry || !entry.academyId || !entry.mutationId) return;
     const list = readPending(entry.academyId);
     const index = list.findIndex(item => item.mutationId === entry.mutationId);
-    if (index < 0) return;
-    list[index] = { ...list[index], ...(patch || {}), updatedAt: new Date().toISOString() };
-    writePending(entry.academyId, list);
+    let nextEntry = { ...entry, ...(patch || {}), updatedAt: new Date().toISOString() };
+    if (index >= 0) {
+      list[index] = { ...list[index], ...(patch || {}), updatedAt: nextEntry.updatedAt };
+      nextEntry = list[index];
+      writePending(entry.academyId, list);
+    }
+    mirrorPendingToSyncQueue(nextEntry, { ...(nextEntry.payload || {}), client_mutation_id: nextEntry.mutationId }, nextEntry.status || 'pending', nextEntry.lastError || '');
   }
 
   function clearPending(entry) {
@@ -301,6 +378,7 @@ function compareElementaryGroupFeedbackOrder(a, b) {
     const list = readPending(entry.academyId)
       .filter(item => item.mutationId !== entry.mutationId);
     writePending(entry.academyId, list);
+    removeFeedbackFromSyncQueue(entry);
   }
 
   function verifyReturnedRow(tableName, row, payload, mutationId, label) {
@@ -433,6 +511,56 @@ function compareElementaryGroupFeedbackOrder(a, b) {
     throw lastError || new Error(`${safeLabel} 서버 저장에 실패했습니다.`);
   }
 
+  async function retryPendingFeedbackIdempotentWrite(item = {}) {
+    const tableName = tableNameFromFeedbackItem(item);
+    const spec = TARGETS[tableName];
+    const academyId = clean(item.academy_id || item.academyId || (item.payload && item.payload.academy_id));
+    const mutationId = clean(item.client_mutation_id || item.mutationId || (item.payload && item.payload.client_mutation_id));
+    if (!spec || !academyId || !mutationId) {
+      const error = new Error('피드백 재전송 식별값을 확인할 수 없습니다.');
+      error.code = 'FEEDBACK_RETRY_IDENTITY_MISSING';
+      throw error;
+    }
+    if (typeof global.supabase !== 'function') {
+      const error = new Error('피드백 서버 연결 함수가 준비되지 않았습니다.');
+      error.code = 'SERVER_UNAVAILABLE';
+      throw error;
+    }
+
+    const payload = { ...((item && item.payload) || {}), academy_id: academyId, client_mutation_id: mutationId };
+    const entry = {
+      tableName,
+      academyId,
+      mutationId,
+      payload,
+      label: String(item.label || spec.label || '피드백 저장'),
+      status: 'pending',
+      lastError: ''
+    };
+    mirrorPendingToSyncQueue(entry, payload, 'pending', '');
+    writeFeedbackLocal(tableName, payload, mutationId, 'pending', null);
+
+    let lastError = null;
+    const retryDelays = [0, 260, 720];
+    for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
+      if (retryDelays[attempt]) await delay(retryDelays[attempt]);
+      try {
+        const rows = await global.supabase('POST', `rpc/${spec.rpc}`, { p_payload: payload });
+        const row = Array.isArray(rows) ? rows[0] : rows;
+        const verified = verifyReturnedRow(tableName, row, payload, mutationId, entry.label);
+        clearPending(entry);
+        writeFeedbackLocal(tableName, payload, mutationId, 'synced', verified);
+        return { ok: true, serverSaved: true, row: verified, clientMutationId: mutationId };
+      } catch (error) {
+        lastError = error;
+        const retryable = isRetryableError(error);
+        updatePending(entry, { status: retryable ? 'pending' : 'blocked', lastError: String(error && (error.message || error) || '') });
+        if (!retryable || attempt == retryDelays.length - 1) break;
+      }
+    }
+    throw lastError || new Error(`${entry.label} 재전송에 실패했습니다.`);
+  }
+
   function install() {
     if (global.__olliFeedbackCreateIdempotencyInstalled) return true;
     if (typeof global.saveFeedbackRowVerified !== 'function' || typeof global.supabase !== 'function') return false;
@@ -450,6 +578,10 @@ function compareElementaryGroupFeedbackOrder(a, b) {
     global.getPendingFeedbackIdempotentWrites = function getPendingFeedbackIdempotentWrites() {
       const academyId = currentAcademyId({});
       return academyId ? readPending(academyId).map(item => ({ ...item })) : [];
+    };
+    global.retryPendingFeedbackIdempotentWrite = retryPendingFeedbackIdempotentWrite;
+    global.isFeedbackIdempotentQueueItem = function isFeedbackIdempotentQueueItem(item) {
+      return !!tableNameFromFeedbackItem(item);
     };
     return true;
   }

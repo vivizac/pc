@@ -298,7 +298,15 @@ async function retryOlliStorageQueue() {
 
     try {
       let result;
-      if (operation === 'delete' || operation === 'soft_delete') {
+      const isFeedbackCreate = operation === 'create' && ['general_feedback', 'growth_feedback', 'summary_feedback'].includes(feature);
+      if (isFeedbackCreate) {
+        if (typeof window.retryPendingFeedbackIdempotentWrite !== 'function') {
+          const error = new Error('피드백 멱등 재전송 모듈이 아직 준비되지 않았습니다.');
+          error.code = 'FEEDBACK_RETRY_MODULE_NOT_READY';
+          throw error;
+        }
+        result = await window.retryPendingFeedbackIdempotentWrite(item);
+      } else if (operation === 'delete' || operation === 'soft_delete') {
         result = await deleteOlliData(feature, Object.assign({}, request, {
           deleteMode: (item.payload && item.payload.deleteMode) || 'soft',
           reason: (item.payload && item.payload.reason) || 'retry'
