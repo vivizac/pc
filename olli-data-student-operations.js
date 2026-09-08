@@ -436,7 +436,7 @@ function formatTeacherNameWithT(value) {
 }
 
 function getStudentTeacherDisplay(student) {
-  return formatTeacherNameWithT(student?.teacher || student?.homeroom_teacher || student?.teacher_name || '');
+  return formatTeacherNameWithT(student?.__olli_timetable_teacher || '');
 }
 
 function normalizeLessonDayDisplay(value) {
@@ -596,8 +596,6 @@ function supabaseRowToStudent(row) {
     school: row.school || '',
     grade: row.grade || '',
     className: row.class_no || row.className || '',
-    teacher: row.teacher || row.homeroom_teacher || row.teacher_name || '',
-    homeroom_teacher: row.homeroom_teacher || row.teacher || row.teacher_name || '',
     status: row.status || 'active',
     is_deleted: row.is_deleted === true || String(row.is_deleted || '').toLowerCase() === 'true',
     deleted_at: row.deleted_at || '',
@@ -617,8 +615,7 @@ function getSupabaseMissingColumnName(err) {
 }
 
 const STUDENT_LEGACY_OPTIONAL_COLUMNS = new Set([
-  'academy_name', 'academy_region', 'group_months', 'feedback_months',
-  'homeroom_teacher'
+  'academy_name', 'academy_region', 'group_months', 'feedback_months'
 ]);
 
 async function postStudentWithColumnFallback(student) {
@@ -829,8 +826,6 @@ function mergeStudentInfoPreservingLocal(localStudent, remoteStudent) {
     lesson_day: remote.lesson_day ?? local.lesson_day ?? remote.lessonDay ?? local.lessonDay ?? '',
     lesson_time: remote.lesson_time ?? local.lesson_time ?? remote.lessonTime ?? local.lessonTime ?? remote.class_time ?? local.class_time ?? '',
     class_time: remote.class_time ?? local.class_time ?? remote.lesson_time ?? local.lesson_time ?? '',
-    teacher: remote.teacher ?? local.teacher ?? remote.homeroom_teacher ?? local.homeroom_teacher ?? '',
-    homeroom_teacher: remote.homeroom_teacher ?? local.homeroom_teacher ?? remote.teacher ?? local.teacher ?? '',
     group: remote.group || local.group,
     group_months: remote.group_months || local.group_months || remote.feedback_months || local.feedback_months,
     feedback_months: remote.feedback_months || local.feedback_months || remote.group_months || local.group_months,

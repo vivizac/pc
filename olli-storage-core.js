@@ -1348,7 +1348,7 @@
       // teacher / homeroom_teacher는 시간표 반 담당 정보가 유일한 원본이므로 학생정보 저장에서 제외합니다.
       valueColumns: ['academy_id', 'academy_name', 'academy_region', 'name', 'division', 'enrolled_at', 'kindergarten', 'age', 'lesson_day', 'lesson_time', 'group_no', 'group_months', 'feedback_months', 'personality', 'school', 'grade', 'class_no', 'status', 'withdrawn_at', 'paused_at', 'status_changed_at'],
       requiredColumns: ['id', 'academy_id', 'name'],
-      selectColumns: ['id', 'academy_id', 'academy_name', 'academy_region', 'name', 'division', 'enrolled_at', 'kindergarten', 'age', 'lesson_day', 'lesson_time', 'group_no', 'group_months', 'feedback_months', 'personality', 'school', 'grade', 'class_no', 'teacher', 'homeroom_teacher', 'status', 'withdrawn_at', 'paused_at', 'status_changed_at', 'updated_at']
+      selectColumns: ['id', 'academy_id', 'academy_name', 'academy_region', 'name', 'division', 'enrolled_at', 'kindergarten', 'age', 'lesson_day', 'lesson_time', 'group_no', 'group_months', 'feedback_months', 'personality', 'school', 'grade', 'class_no', 'status', 'withdrawn_at', 'paused_at', 'status_changed_at', 'updated_at']
     },
     verification: { mode: 'custom_returned_row', compareFields: ['id', 'academy_id', 'name'] },
     conflict: { policy: 'latest_valid_update', protectPendingLocal: true },

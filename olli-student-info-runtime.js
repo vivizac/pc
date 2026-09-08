@@ -105,8 +105,6 @@ async function saveElementaryInfo() {
     lesson_day: Object.prototype.hasOwnProperty.call(extraInfo, 'lesson_day') ? extraInfo.lesson_day : (targetStudent.lesson_day || ''),
     lesson_time: Object.prototype.hasOwnProperty.call(extraInfo, 'lesson_time') ? normalizeLessonTimeDisplay(extraInfo.lesson_time || extraInfo.class_time || '') : normalizeLessonTimeDisplay(targetStudent.lesson_time || targetStudent.class_time || ''),
     class_time: Object.prototype.hasOwnProperty.call(extraInfo, 'lesson_time') ? normalizeLessonTimeDisplay(extraInfo.lesson_time || extraInfo.class_time || '') : normalizeLessonTimeDisplay(targetStudent.class_time || targetStudent.lesson_time || ''),
-    teacher: Object.prototype.hasOwnProperty.call(extraInfo, 'teacher') ? extraInfo.teacher : (targetStudent.teacher || ''),
-    homeroom_teacher: Object.prototype.hasOwnProperty.call(extraInfo, 'homeroom_teacher') ? extraInfo.homeroom_teacher : (targetStudent.homeroom_teacher || ''),
     school: document.getElementById('elementarySchoolInput').value.trim(),
     age: getElementaryAgeFromGrade(normalizeElementaryGradeValue(document.getElementById('elementaryGradeInput').value)),
     birth_year: '',
@@ -184,8 +182,6 @@ async function saveKinderInfo() {
     lesson_time,
     class_time: lesson_time,
     personality: typeof extraInfo.personality === 'string' ? extraInfo.personality : (kinderInfoDraft.personality || ''),
-    teacher: Object.prototype.hasOwnProperty.call(extraInfo, 'teacher') ? extraInfo.teacher : (targetStudent.teacher || ''),
-    homeroom_teacher: Object.prototype.hasOwnProperty.call(extraInfo, 'homeroom_teacher') ? extraInfo.homeroom_teacher : (targetStudent.homeroom_teacher || '')
   };
   try {
     const savedStudent = await ensureStudentSavedToSupabase(student);

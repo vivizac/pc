@@ -494,7 +494,7 @@
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><div class="modalLabel">이름</div><input class="modalInput" id="elementaryInfoNameInput"></div>
           <div class="pcStudentInfoField"><div class="modalLabel">성향</div><div id="elementaryPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">담임 · 시간표 1회차 기준</div><div class="pcStudentInfoTeacherReadonly ${clean(student.teacher || student.homeroom_teacher) ? '' : 'isEmpty'}">${esc(student.teacher || student.homeroom_teacher || '미지정')}</div></div>
+          <div class="pcStudentInfoField"><div class="modalLabel">담임 · 시간표 1회차 기준</div><div class="pcStudentInfoTeacherReadonly ${clean(student.__olli_timetable_teacher) ? '' : 'isEmpty'}">${esc(student.__olli_timetable_teacher || '미지정')}</div></div>
         </div>
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><div class="modalLabel">학교</div><input class="modalInput" id="elementarySchoolInput"></div>
@@ -520,7 +520,7 @@
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><div class="modalLabel">이름</div><input class="modalInput" id="kinderInfoNameInput"></div>
           <div class="pcStudentInfoField"><div class="modalLabel">성향</div><div id="kinderPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">담임 · 시간표 1회차 기준</div><div class="pcStudentInfoTeacherReadonly ${clean(student.teacher || student.homeroom_teacher) ? '' : 'isEmpty'}">${esc(student.teacher || student.homeroom_teacher || '미지정')}</div></div>
+          <div class="pcStudentInfoField"><div class="modalLabel">담임 · 시간표 1회차 기준</div><div class="pcStudentInfoTeacherReadonly ${clean(student.__olli_timetable_teacher) ? '' : 'isEmpty'}">${esc(student.__olli_timetable_teacher || '미지정')}</div></div>
         </div>
         <div class="pcStudentInfoGrid2">
           <div class="pcStudentInfoField"><div class="modalLabel">유치원</div><input class="modalInput" id="kinderKindergartenInput"></div>
@@ -569,8 +569,6 @@
     const timetableTeacher = resolveTimetableTeacherName(division, enrollments, teacherAssignments);
     const authoritativeStudent = Object.assign({}, student, fields, {
       class_time: fields.lesson_time,
-      teacher: timetableTeacher,
-      homeroom_teacher: timetableTeacher,
       __olli_timetable_teacher: timetableTeacher,
       __olli_authoritative_enrollments: enrollments
     });
@@ -678,8 +676,6 @@
 
       const profileBase = Object.assign({}, target);
       // 담임은 학생정보 저장 대상이 아닙니다. 시간표의 반 담당 정보만 원본으로 사용합니다.
-      delete profileBase.teacher;
-      delete profileBase.homeroom_teacher;
       delete profileBase.__olli_timetable_teacher;
       delete profileBase.__olli_authoritative_enrollments;
 

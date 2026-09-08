@@ -82,7 +82,7 @@ function normalizeStudentObject(item, fallbackType = 'elementary') {
   if (typeof item === 'string') {
     return {
       id: uid(), type: fallbackType, name: item, year: getCurrentYear(), month: '', day: '',
-      enrolled_at: '', kindergarten: '', age: '', birth_year: '', school_entry_year: '', previous_division: '', division_changed_at: '', lesson_day: '', lesson_time: '', class_time: '', teacher: '', homeroom_teacher: '', group: '', group_months: '', feedback_months: '', personality: '', school: '', grade: '', className: '', memoUpdatedAt: '', status: 'active'
+      enrolled_at: '', kindergarten: '', age: '', birth_year: '', school_entry_year: '', previous_division: '', division_changed_at: '', lesson_day: '', lesson_time: '', class_time: '', group: '', group_months: '', feedback_months: '', personality: '', school: '', grade: '', className: '', memoUpdatedAt: '', status: 'active'
     };
   }
   return {
@@ -102,8 +102,6 @@ function normalizeStudentObject(item, fallbackType = 'elementary') {
     lesson_day: item?.lesson_day || item?.lessonDay || item?.class_day || '',
     lesson_time: item?.lesson_time || item?.lessonTime || item?.class_time || item?.classTime || '',
     class_time: item?.class_time || item?.classTime || item?.lesson_time || item?.lessonTime || '',
-    teacher: item?.teacher || item?.homeroom_teacher || item?.teacher_name || '',
-    homeroom_teacher: item?.homeroom_teacher || item?.teacher || item?.teacher_name || '',
     group: item?.group || item?.group_no || '',
     group_months: elementaryGroupMonthsToText(item?.group_months || item?.feedback_months || item?.feedbackMonths || item?.groupFeedbackMonths || ''),
     feedback_months: elementaryGroupMonthsToText(item?.feedback_months || item?.group_months || item?.feedbackMonths || item?.groupFeedbackMonths || ''),
