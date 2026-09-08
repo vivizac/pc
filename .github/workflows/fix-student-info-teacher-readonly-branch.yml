@@ -1,0 +1,99 @@
+name: Fix student info teacher readonly branch
+
+on:
+  push:
+    branches:
+      - fix/student-info-teacher-readonly
+    paths:
+      - .github/workflows/fix-student-info-teacher-readonly-branch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/student-info-teacher-readonly
+          fetch-depth: 0
+
+      - name: Patch canonical student info files
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('pc-student-info-card-runtime.js')
+          s = p.read_text()
+
+          anchor = """  async function loadAuthoritativeSchedule(studentId) {\n    const result = await scheduleRpc('olli_schedule_student_enrollments', {\n      p_student_id: studentId,\n      p_reference_date: todayKey()\n    });\n    return Array.isArray(result.enrollments) ? result.enrollments : [];\n  }\n"""
+          insert = anchor + """\n  async function loadAuthoritativeTeacherAssignments() {\n    const result = await scheduleRpc('olli_schedule_class_teacher_context');\n    return Array.isArray(result.assignments) ? result.assignments : [];\n  }\n\n  function primaryEnrollmentForTeacher(rows) {\n    return (Array.isArray(rows) ? rows : []).slice().sort((a, b) => {\n      const aOrder = Number(a && a.session_order);\n      const bOrder = Number(b && b.session_order);\n      const aRank = aOrder === 1 ? 0 : (a && a.session_order == null ? 1 : 2);\n      const bRank = bOrder === 1 ? 0 : (b && b.session_order == null ? 1 : 2);\n      if (aRank !== bRank) return aRank - bRank;\n      if (aRank === 2 && aOrder !== bOrder) return aOrder - bOrder;\n      return Number(a && a.weekday) - Number(b && b.weekday)\n        || Number(a && a.time_slot) - Number(b && b.time_slot)\n        || clean(a && a.class_group).localeCompare(clean(b && b.class_group));\n    })[0] || null;\n  }\n\n  function resolveTimetableTeacherName(division, enrollments, assignments) {\n    const first = primaryEnrollmentForTeacher(enrollments);\n    if (!first) return '';\n    const group = clean(first.class_group || 'A').toUpperCase() || 'A';\n    const matched = (Array.isArray(assignments) ? assignments : []).find((item) =>\n      clean(item && item.division) === clean(division)\n      && Number(item && item.weekday) === Number(first.weekday)\n      && Number(item && item.time_slot) === Number(first.time_slot)\n      && (clean(item && item.class_group).toUpperCase() || 'A') === group\n    );\n    return clean(matched && matched.teacher_name);\n  }\n"""
+          if anchor not in s:
+              raise SystemExit('loadAuthoritativeSchedule anchor not found')
+          s = s.replace(anchor, insert, 1)
+
+          old = """    global.olliGetInfoExtra = function(type) {\n      const base = typeof baseGetInfo === 'function' ? (baseGetInfo.apply(this, arguments) || {}) : {};\n      const kind = type === 'kinder' ? 'kinder' : 'elementary';\n      const fields = lessonFieldsFromState(scheduleStates[kind]);\n      const result = Object.assign({}, base, fields, { class_time: fields.lesson_time });\n      // 학생정보에서는 담임을 수정하지 않습니다. 담임의 유일한 원본은 시간표 1회차 반입니다.\n      delete result.teacher;\n      delete result.homeroom_teacher;\n      return result;\n    };\n"""
+          new = """    global.olliGetInfoExtra = function(type) {\n      let base = {};\n      try {\n        base = typeof baseGetInfo === 'function' ? (baseGetInfo.apply(this, arguments) || {}) : {};\n      } catch (error) {\n        // PC 학생정보 카드는 기존 수동 담임 선택 DOM을 사용하지 않습니다.\n        // 레거시 extra 수집기가 제거된 담임 선택창을 참조해도 저장 전체를 막지 않습니다.\n        console.warn('PC 학생정보 레거시 추가정보 수집 건너뜀:', error && (error.message || error));\n      }\n      const kind = type === 'kinder' ? 'kinder' : 'elementary';\n      const fields = lessonFieldsFromState(scheduleStates[kind]);\n      const result = Object.assign({}, base, fields, { class_time: fields.lesson_time });\n      // 학생정보에서는 담임을 수정하지 않습니다. 담임의 유일한 원본은 시간표 1회차 반입니다.\n      delete result.teacher;\n      delete result.homeroom_teacher;\n      return result;\n    };\n"""
+          if old not in s:
+              raise SystemExit('olliGetInfoExtra anchor not found')
+          s = s.replace(old, new, 1)
+
+          old = """  async function renderStudentInfoCard(student, enrollments) {\n    const panel = document.getElementById('pcAttendanceDetailPanel');\n    if (!panel) throw new Error('학생정보를 표시할 관찰기록 카드를 찾지 못했습니다.');\n    const division = student.type === 'kinder' ? 'kinder' : 'elementary';\n    const fields = lessonFieldsFromEnrollments(enrollments);\n    const authoritativeStudent = Object.assign({}, student, fields, {\n      class_time: fields.lesson_time,\n      __olli_authoritative_enrollments: enrollments\n    });\n"""
+          new = """  async function renderStudentInfoCard(student, enrollments, teacherAssignments) {\n    const panel = document.getElementById('pcAttendanceDetailPanel');\n    if (!panel) throw new Error('학생정보를 표시할 관찰기록 카드를 찾지 못했습니다.');\n    const division = student.type === 'kinder' ? 'kinder' : 'elementary';\n    const fields = lessonFieldsFromEnrollments(enrollments);\n    const timetableTeacher = resolveTimetableTeacherName(division, enrollments, teacherAssignments);\n    const authoritativeStudent = Object.assign({}, student, fields, {\n      class_time: fields.lesson_time,\n      teacher: timetableTeacher,\n      homeroom_teacher: timetableTeacher,\n      __olli_timetable_teacher: timetableTeacher,\n      __olli_authoritative_enrollments: enrollments\n    });\n"""
+          if old not in s:
+              raise SystemExit('renderStudentInfoCard anchor not found')
+          s = s.replace(old, new, 1)
+
+          old = """    try {\n      const enrollments = await loadAuthoritativeSchedule(id);\n      student = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;\n      if (cardState.studentId !== id) return;\n      await renderStudentInfoCard(student, enrollments);\n"""
+          new = """    try {\n      const [enrollments, teacherAssignments] = await Promise.all([\n        loadAuthoritativeSchedule(id),\n        loadAuthoritativeTeacherAssignments()\n      ]);\n      student = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;\n      if (cardState.studentId !== id) return;\n      await renderStudentInfoCard(student, enrollments, teacherAssignments);\n"""
+          if old not in s:
+              raise SystemExit('openStudentInfoCard load anchor not found')
+          s = s.replace(old, new, 1)
+
+          old = """      let profile;\n      if (division === 'elementary') {\n"""
+          new = """      const profileBase = Object.assign({}, target);\n      // 담임은 학생정보 저장 대상이 아닙니다. 시간표의 반 담당 정보만 원본으로 사용합니다.\n      delete profileBase.teacher;\n      delete profileBase.homeroom_teacher;\n      delete profileBase.__olli_timetable_teacher;\n      delete profileBase.__olli_authoritative_enrollments;\n\n      let profile;\n      if (division === 'elementary') {\n"""
+          if old not in s:
+              raise SystemExit('profile base anchor not found')
+          s = s.replace(old, new, 1)
+          s = s.replace("profile = Object.assign({}, target, dateInfo, {", "profile = Object.assign({}, profileBase, dateInfo, {", 2)
+
+          s = s.replace("""          teacher: target.teacher || target.homeroom_teacher || '',\n          homeroom_teacher: target.homeroom_teacher || target.teacher || '',\n""", "", 2)
+
+          old = """      if (typeof global.showPushToast === 'function') global.showPushToast('학생정보와 시간표를 저장했어요.');\n"""
+          new = """      if (typeof global.showPushToast === 'function') {\n        global.showPushToast(scheduleChanged ? '학생정보와 시간표를 저장했어요.' : '학생정보를 저장했어요.');\n      }\n"""
+          if old not in s:
+              raise SystemExit('toast anchor not found')
+          s = s.replace(old, new, 1)
+
+          p.write_text(s)
+
+          p = Path('olli-storage-core.js')
+          s = p.read_text()
+          old = """      valueColumns: ['academy_id', 'academy_name', 'academy_region', 'name', 'division', 'enrolled_at', 'kindergarten', 'age', 'lesson_day', 'lesson_time', 'group_no', 'group_months', 'feedback_months', 'personality', 'school', 'grade', 'class_no', 'teacher', 'homeroom_teacher', 'status', 'withdrawn_at', 'paused_at', 'status_changed_at'],\n"""
+          new = """      // teacher / homeroom_teacher는 시간표 반 담당 정보가 유일한 원본이므로 학생정보 저장에서 제외합니다.\n      valueColumns: ['academy_id', 'academy_name', 'academy_region', 'name', 'division', 'enrolled_at', 'kindergarten', 'age', 'lesson_day', 'lesson_time', 'group_no', 'group_months', 'feedback_months', 'personality', 'school', 'grade', 'class_no', 'status', 'withdrawn_at', 'paused_at', 'status_changed_at'],\n"""
+          if old not in s:
+              raise SystemExit('student_profile valueColumns anchor not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+
+      - name: Verify changes
+        shell: bash
+        run: |
+          node --check pc-student-info-card-runtime.js
+          node --check olli-storage-core.js
+          git diff --check
+          grep -n "loadAuthoritativeTeacherAssignments\|resolveTimetableTeacherName\|profileBase\|학생정보를 저장했어요" pc-student-info-card-runtime.js
+          grep -n "teacher / homeroom_teacher는 시간표" olli-storage-core.js
+
+      - name: Commit branch-only changes and remove helper workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/fix-student-info-teacher-readonly-branch.yml
+          git add pc-student-info-card-runtime.js olli-storage-core.js
+          git commit -m "학생정보 담임을 시간표 원본으로 전환하고 저장 오류 방어"
+          git push origin HEAD:fix/student-info-teacher-readonly
