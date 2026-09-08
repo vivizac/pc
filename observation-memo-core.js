@@ -1,5 +1,5 @@
 /* PC는 공통 관찰노트 기본 컨트롤만 표시합니다. */
-(function prepareObservationMemoCasSafety(global) {
+(function prepareObservationMemoRequestSafety(global) {
   try {
     if (!Object.prototype.hasOwnProperty.call(global, 'currentMemoStudent')) {
       Object.defineProperty(global, 'currentMemoStudent', {
@@ -19,27 +19,14 @@
     console.warn('관찰노트 편집 상태 브리지 준비 실패:', error?.message || error);
   }
 
-  function installObservationMemoCasCompat() {
-    if (typeof global.persistObservationMemoDraft !== 'function') return;
-    global.clearStudentNoteDraftFromSupabase = async function clearStudentNoteDraftViaCas(student, noteType = '') {
-      const result = await global.persistObservationMemoDraft(student, '', { noteType });
-      if (result?.state === 'conflict') return result;
-      if (result?.state === 'pending' || result?.state === 'blocked') {
-        throw result.error || new Error('관찰노트 비우기 서버 저장이 완료되지 않았습니다.');
-      }
-      return result;
-    };
-  }
-
-  if (global.__olliObservationMemoCasLoaderAdded) return;
-  global.__olliObservationMemoCasLoaderAdded = true;
+  if (global.__olliObservationMemoRequestGuardLoaderAdded) return;
+  global.__olliObservationMemoRequestGuardLoaderAdded = true;
   const script = document.createElement('script');
-  script.src = 'observation-memo-cas-common.js?v=20260908-cas-3';
+  script.src = 'observation-memo-request-guard-common.js?v=20260908-order-1';
   script.async = false;
-  script.onload = installObservationMemoCasCompat;
   script.onerror = () => {
-    global.__olliObservationMemoCasLoaderAdded = false;
-    console.warn('관찰노트 다중기기 안전 모듈을 불러오지 못했습니다.');
+    global.__olliObservationMemoRequestGuardLoaderAdded = false;
+    console.warn('관찰노트 요청 순서 보호 모듈을 불러오지 못했습니다.');
   };
   document.head.appendChild(script);
 })(window);
@@ -88,6 +75,9 @@ async function saveCurrentMemo(options = {}) {
     noteType: 'elementary_observation'
   });
 
+  if (result?.superseded === true || result?.state === 'superseded') {
+    return result;
+  }
   if (result?.state === 'pending' && result.error) {
     console.warn('초등부 관찰노트 Supabase 저장 실패:', result.error.message || result.error);
   }
