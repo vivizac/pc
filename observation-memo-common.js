@@ -13,6 +13,45 @@ function isObservationMemoAutoSaveBlocked() {
     : false;
 }
 
+function getObservationMemoEditState() {
+  return window.__olliObservationMemoEditState || null;
+}
+
+function beginObservationMemoEditSession(student, noteType = '', initialText = '') {
+  window.__olliObservationMemoEditState = {
+    studentId: String(student?.id || ''),
+    noteType: String(noteType || ''),
+    baselineText: String(initialText || ''),
+    dirty: false
+  };
+  return window.__olliObservationMemoEditState;
+}
+
+function isObservationMemoEditStateCurrent(student = currentMemoStudent) {
+  const state = getObservationMemoEditState();
+  if (!state || !student) return false;
+  return String(state.studentId || '') === String(student.id || '') && currentMemoType === 'elementary';
+}
+
+function markObservationMemoEditorDirty(target) {
+  if (!target || target.id !== 'memoEditor' || !isObservationMemoEditStateCurrent()) return;
+  const state = getObservationMemoEditState();
+  state.dirty = true;
+}
+
+function markObservationMemoEditorClean() {
+  const state = getObservationMemoEditState();
+  if (!state || !isObservationMemoEditStateCurrent()) return;
+  const memoEditor = document.getElementById('memoEditor');
+  state.baselineText = String(memoEditor?.value || '');
+  state.dirty = false;
+}
+
+function hasObservationMemoDirtyChanges() {
+  const state = getObservationMemoEditState();
+  return !!(state && isObservationMemoEditStateCurrent() && state.dirty);
+}
+
 function scheduleMemoAutoSave() {
   if (!currentMemoStudent) return;
   if (isObservationMemoAutoSaveBlocked()) return;
@@ -25,6 +64,7 @@ function scheduleMemoAutoSave() {
   window.__olliObservationMemoAutoSaveTimer = setTimeout(() => {
     window.__olliObservationMemoAutoSaveTimer = null;
     saveCurrentMemo({ silent: true, status: true });
+    markObservationMemoEditorClean();
   }, MEMO_AUTOSAVE_DELAY);
 }
 
@@ -37,21 +77,28 @@ function handleMemoPauseAutoSaveInput(target) {
   const inputType = getMemoInputTypeFromTarget(target);
   if (!inputType || !currentMemoStudent || currentMemoType !== inputType) return;
   if (isObservationMemoAutoSaveBlocked()) return;
+  markObservationMemoEditorDirty(target);
   scheduleMemoAutoSave();
 }
 
 function flushMemoAutoSave() {
-  if (!currentMemoStudent) return;
+  if (!currentMemoStudent) return false;
   if (window.__olliObservationMemoAutoSaveTimer) {
     clearTimeout(window.__olliObservationMemoAutoSaveTimer);
     window.__olliObservationMemoAutoSaveTimer = null;
     saveCurrentMemo({ silent: true, status: true });
+    markObservationMemoEditorClean();
+    return true;
   }
+  return false;
 }
 
 function prepareObservationMemoPageClose() {
-  flushMemoAutoSave();
-  saveCurrentMemo({ silent: true });
+  const flushed = flushMemoAutoSave();
+  if (!flushed && hasObservationMemoDirtyChanges()) {
+    saveCurrentMemo({ silent: true });
+    markObservationMemoEditorClean();
+  }
 }
 
 function returnFromObservationMemoScreen(onReturned) {
@@ -218,12 +265,16 @@ function applyReconciledObservationMemoDraft(student, memoEditor, result) {
     return { applied: false, reason: 'stale-session' };
   }
 
-  const currentEditorText = memoEditor.value || '';
-  if (currentEditorText.trim().length > 0) {
-    return { applied: false, reason: 'visible-local-content' };
+  const state = getObservationMemoEditState();
+  if (state && isObservationMemoEditStateCurrent(student) && state.dirty) {
+    return { applied: false, reason: 'user-edited-during-sync' };
   }
 
   memoEditor.value = result.content;
+  if (state && isObservationMemoEditStateCurrent(student)) {
+    state.baselineText = String(result.content || '');
+    state.dirty = false;
+  }
   if (typeof updateMemoStudentMetaDisplay === 'function') {
     updateMemoStudentMetaDisplay(student, result.updatedAt || '');
   }
@@ -299,6 +350,7 @@ function renderObservationMemoInitialView(session) {
   const memoEditor = document.getElementById('memoEditor');
   if (memoEditor) {
     memoEditor.readOnly = false;
+    beginObservationMemoEditSession(view.student, view.noteType, view.memoText || '');
     memoEditor.value = view.memoText || '';
 
     reconcileObservationMemoDraft(view.student, view.noteType)
