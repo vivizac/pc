@@ -1382,12 +1382,16 @@
     if (card) card.classList.toggle('attended', !wasAttended);
     button.disabled = true;
     try {
-      const result = await service.toggleAttendance({
+      if (typeof service.setAttendance !== 'function') {
+        throw new Error('출석 안전 저장 모듈을 찾지 못했습니다. 페이지를 새로고침해 주세요.');
+      }
+      const result = await service.setAttendance({
         studentId: button.dataset.studentId,
         sessionDate,
         timeSlot: Number(button.dataset.time),
         classGroup: button.dataset.classGroup,
-        sessionKind: button.dataset.ttAttendance
+        sessionKind: button.dataset.ttAttendance,
+        present: !wasAttended
       });
       const next = attendanceMarks().filter((item) => !(clean(item.student_id) === clean(button.dataset.studentId)
         && clean(item.session_date) === sessionDate

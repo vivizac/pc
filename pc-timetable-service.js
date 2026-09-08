@@ -329,6 +329,21 @@
     return result;
   }
 
+  async function setAttendance(options) {
+    const shared = global.OlliAttendanceData;
+    if (shared && typeof shared.setAttendance === 'function') return shared.setAttendance(options);
+    const result = await executeScheduleAction('set_attendance', {
+      student_id: options.studentId,
+      session_date: options.sessionDate,
+      time_slot: Number(options.timeSlot),
+      class_group: options.classGroup || 'A',
+      session_kind: options.sessionKind || 'regular',
+      attended: !!options.present
+    });
+    invalidateAttendanceMonth(options.sessionDate);
+    return result;
+  }
+
   async function loadAttendanceMonth(yearMonth) {
     const shared = global.OlliAttendanceData;
     if (shared && typeof shared.loadMonth === 'function') return shared.loadMonth(yearMonth);
@@ -401,6 +416,7 @@
     splitKinderClass,
     mergeKinderClass,
     toggleAttendance,
+    setAttendance,
     loadAttendanceMonth,
     savePickup,
     updatePickup,

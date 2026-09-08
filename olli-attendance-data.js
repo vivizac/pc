@@ -264,6 +264,19 @@
     return result;
   }
 
+  async function setAttendance(options) {
+    const result = await execute('set_attendance', {
+      student_id: options.studentId,
+      session_date: dateKey(options.sessionDate),
+      time_slot: Number(options.timeSlot),
+      class_group: options.classGroup || 'A',
+      session_kind: options.sessionKind || 'regular',
+      attended: !!options.present
+    });
+    invalidateMonth(options.sessionDate);
+    return result;
+  }
+
   async function setAttendancePresent(options) {
     const student = options && options.student;
     const key = dateKey(options && options.sessionDate);
@@ -283,15 +296,13 @@
       target = await resolveTarget(student, key, kind, null);
     }
 
-    if (!!target.present === desired) {
-      return { ok: true, attended: desired, unchanged: true, target };
-    }
-    const result = await toggleAttendance({
+    const result = await setAttendance({
       studentId: clean(student.id),
       sessionDate: key,
       timeSlot: target.timeSlot,
       classGroup: target.classGroup,
-      sessionKind: kind
+      sessionKind: kind,
+      present: desired
     });
     return Object.assign({}, result, { target });
   }
@@ -320,6 +331,7 @@
     bootstrapLegacy,
     loadWeek,
     toggleAttendance,
+    setAttendance,
     setAttendancePresent,
     presentStatusMap
   });
