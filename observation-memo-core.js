@@ -1,7 +1,5 @@
 /* PC는 공통 관찰노트 기본 컨트롤만 표시합니다. */
 (function prepareObservationMemoCasSafety(global) {
-  // currentMemoStudent/currentMemoType are global lexical bindings (let), not window properties.
-  // Expose controlled accessors so the shared CAS module sees the same live edit session.
   try {
     if (!Object.prototype.hasOwnProperty.call(global, 'currentMemoStudent')) {
       Object.defineProperty(global, 'currentMemoStudent', {
@@ -21,11 +19,28 @@
     console.warn('관찰노트 편집 상태 브리지 준비 실패:', error?.message || error);
   }
 
+  function installObservationMemoCasCompat() {
+    if (typeof global.persistObservationMemoDraft !== 'function') return;
+    global.clearStudentNoteDraftFromSupabase = async function clearStudentNoteDraftViaCas(student, noteType = '') {
+      const result = await global.persistObservationMemoDraft(student, '', { noteType });
+      if (result?.state === 'conflict') return result;
+      if (result?.state === 'pending' || result?.state === 'blocked') {
+        throw result.error || new Error('관찰노트 비우기 서버 저장이 완료되지 않았습니다.');
+      }
+      return result;
+    };
+  }
+
   if (global.__olliObservationMemoCasLoaderAdded) return;
   global.__olliObservationMemoCasLoaderAdded = true;
   const script = document.createElement('script');
-  script.src = 'observation-memo-cas-common.js?v=20260908-cas-2';
+  script.src = 'observation-memo-cas-common.js?v=20260908-cas-3';
   script.async = false;
+  script.onload = installObservationMemoCasCompat;
+  script.onerror = () => {
+    global.__olliObservationMemoCasLoaderAdded = false;
+    console.warn('관찰노트 다중기기 안전 모듈을 불러오지 못했습니다.');
+  };
   document.head.appendChild(script);
 })(window);
 
@@ -45,7 +60,6 @@ function openStudentMemoPageById(studentId) {
   closeMemoStudentSelectPopup();
 
   openObservationMemoScreenShell(session);
-
   renderObservationMemoScreenChrome(session);
   renderObservationMemoInitialView(session);
 }
@@ -99,13 +113,11 @@ async function saveCurrentMemo(options = {}) {
 
 async function showBrowserNotification(message) {
   if (!('Notification' in window)) return false;
-
   try {
     if (Notification.permission === 'granted') {
       new Notification('올리', { body: message, tag: 'olli-notification' });
       return true;
     }
-
     if (Notification.permission === 'default') {
       const permission = await Notification.requestPermission();
       if (permission === 'granted') {
@@ -116,7 +128,6 @@ async function showBrowserNotification(message) {
   } catch (err) {
     console.warn('browser notification failed:', err);
   }
-
   return false;
 }
 
@@ -127,7 +138,6 @@ setTimeout(() => {
 
 async function requestElementaryFeedback() {
   if (!currentMemoStudent || currentMemoType !== 'elementary') return;
-
   const text = document.getElementById('memoEditor').value.trim();
   const analysisData = getElementaryAnalysisByStudent(currentMemoStudent);
   const hasAnalysisContent = (typeof elementaryAnalysisHasContent === 'function') ? elementaryAnalysisHasContent(analysisData) : false;
@@ -137,12 +147,7 @@ async function requestElementaryFeedback() {
     alert('수업 내용이 부족합니다.');
     return;
   }
-
-  if (text) {
-    setMemoByStudent(currentMemoStudent, text);
-  }
-
+  if (text) setMemoByStudent(currentMemoStudent, text);
   showMemoSaveCheck();
-
   await requestSceneCardFeedbackFromElementary(currentMemoStudent.name, text, analysisPromptText);
 }
