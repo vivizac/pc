@@ -1,0 +1,80 @@
+name: Patch idempotent attendance clients
+
+'on':
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-attendance-idempotent.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace toggle writes with explicit attendance state
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected exactly one match, found {count}')
+              p.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              'olli-attendance-data.js',
+              """  async function toggleAttendance(options) {\n    const result = await execute('toggle_attendance', {\n      student_id: options.studentId,\n      session_date: dateKey(options.sessionDate),\n      time_slot: Number(options.timeSlot),\n      class_group: options.classGroup || 'A',\n      session_kind: options.sessionKind || 'regular'\n    });\n    invalidateMonth(options.sessionDate);\n    return result;\n  }\n""",
+              """  async function toggleAttendance(options) {\n    const result = await execute('toggle_attendance', {\n      student_id: options.studentId,\n      session_date: dateKey(options.sessionDate),\n      time_slot: Number(options.timeSlot),\n      class_group: options.classGroup || 'A',\n      session_kind: options.sessionKind || 'regular'\n    });\n    invalidateMonth(options.sessionDate);\n    return result;\n  }\n\n  async function setAttendance(options) {\n    const result = await execute('set_attendance', {\n      student_id: options.studentId,\n      session_date: dateKey(options.sessionDate),\n      time_slot: Number(options.timeSlot),\n      class_group: options.classGroup || 'A',\n      session_kind: options.sessionKind || 'regular',\n      attended: !!options.present\n    });\n    invalidateMonth(options.sessionDate);\n    return result;\n  }\n"""
+          )
+
+          replace_once(
+              'olli-attendance-data.js',
+              """    if (!!target.present === desired) {\n      return { ok: true, attended: desired, unchanged: true, target };\n    }\n    const result = await toggleAttendance({\n      studentId: clean(student.id),\n      sessionDate: key,\n      timeSlot: target.timeSlot,\n      classGroup: target.classGroup,\n      sessionKind: kind\n    });\n    return Object.assign({}, result, { target });\n""",
+              """    const result = await setAttendance({\n      studentId: clean(student.id),\n      sessionDate: key,\n      timeSlot: target.timeSlot,\n      classGroup: target.classGroup,\n      sessionKind: kind,\n      present: desired\n    });\n    return Object.assign({}, result, { target });\n"""
+          )
+
+          replace_once(
+              'olli-attendance-data.js',
+              """    toggleAttendance,\n    setAttendancePresent,\n""",
+              """    toggleAttendance,\n    setAttendance,\n    setAttendancePresent,\n"""
+          )
+
+          replace_once(
+              'pc-timetable-service.js',
+              """  async function toggleAttendance(options) {\n    const shared = global.OlliAttendanceData;\n    if (shared && typeof shared.toggleAttendance === 'function') return shared.toggleAttendance(options);\n    const result = await executeScheduleAction('toggle_attendance', {\n      student_id: options.studentId,\n      session_date: options.sessionDate,\n      time_slot: Number(options.timeSlot),\n      class_group: options.classGroup || 'A',\n      session_kind: options.sessionKind || 'regular'\n    });\n    invalidateAttendanceMonth(options.sessionDate);\n    return result;\n  }\n""",
+              """  async function toggleAttendance(options) {\n    const shared = global.OlliAttendanceData;\n    if (shared && typeof shared.toggleAttendance === 'function') return shared.toggleAttendance(options);\n    const result = await executeScheduleAction('toggle_attendance', {\n      student_id: options.studentId,\n      session_date: options.sessionDate,\n      time_slot: Number(options.timeSlot),\n      class_group: options.classGroup || 'A',\n      session_kind: options.sessionKind || 'regular'\n    });\n    invalidateAttendanceMonth(options.sessionDate);\n    return result;\n  }\n\n  async function setAttendance(options) {\n    const shared = global.OlliAttendanceData;\n    if (shared && typeof shared.setAttendance === 'function') return shared.setAttendance(options);\n    const result = await executeScheduleAction('set_attendance', {\n      student_id: options.studentId,\n      session_date: options.sessionDate,\n      time_slot: Number(options.timeSlot),\n      class_group: options.classGroup || 'A',\n      session_kind: options.sessionKind || 'regular',\n      attended: !!options.present\n    });\n    invalidateAttendanceMonth(options.sessionDate);\n    return result;\n  }\n"""
+          )
+
+          replace_once(
+              'pc-timetable-service.js',
+              """    toggleAttendance,\n    loadAttendanceMonth,\n""",
+              """    toggleAttendance,\n    setAttendance,\n    loadAttendanceMonth,\n"""
+          )
+
+          replace_once(
+              'pc-timetable.js',
+              """      const result = await service.toggleAttendance({\n        studentId: button.dataset.studentId,\n        sessionDate,\n        timeSlot: Number(button.dataset.time),\n        classGroup: button.dataset.classGroup,\n        sessionKind: button.dataset.ttAttendance\n      });\n""",
+              """      if (typeof service.setAttendance !== 'function') {\n        throw new Error('출석 안전 저장 모듈을 찾지 못했습니다. 페이지를 새로고침해 주세요.');\n      }\n      const result = await service.setAttendance({\n        studentId: button.dataset.studentId,\n        sessionDate,\n        timeSlot: Number(button.dataset.time),\n        classGroup: button.dataset.classGroup,\n        sessionKind: button.dataset.ttAttendance,\n        present: !wasAttended\n      });\n"""
+          )
+
+      - name: Validate JavaScript
+        run: |
+          node --check olli-attendance-data.js
+          node --check pc-timetable-service.js
+          node --check pc-timetable.js
+
+      - name: Commit patch
+        run: |
+          set -euo pipefail
+          git add olli-attendance-data.js pc-timetable-service.js pc-timetable.js
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix: make attendance writes idempotent across devices'
+          git push
