@@ -475,10 +475,32 @@ function recordWorkspaceHtml(student, recordContent) {
     const studentName = escape(student?.name || '해당');
     panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">관찰기록</div></div>'
       + '<div class="pcAttendanceDetailEmpty pcAttendanceDetailInactive">'
-      + '<span class="pcAttendanceDetailEmptyIcon pcAttendanceReenrollIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14.5 7.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"></path><path d="M5.5 18.5c.8-3 2.8-4.5 5.5-4.5 1.2 0 2.3.3 3.2.8"></path><path d="M17 12.5h3v3"></path><path d="M20 15.5a4.5 4.5 0 0 1-7.3 3.5"></path><path d="M14 20h-3v-3"></path></svg></span>'
+      + '<button type="button" class="pcAttendanceDetailEmptyIcon pcAttendanceReenrollIcon" aria-label="'+studentName+' 학생 재등록" onclick="pcReenrollAttendanceStudent(\''+escape(student?.id || '')+'\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 7.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"></path><path d="M5.5 18.5c.8-3 2.8-4.5 5.5-4.5 1.2 0 2.3.3 3.2.8"></path><path d="M17 12.5h3v3"></path><path d="M20 15.5a4.5 4.5 0 0 1-7.3 3.5"></path><path d="M14 20h-3v-3"></path></svg></button>'
       + '<strong>재등록 후 관찰기록을 이용할 수 있어요.</strong>'
-      + '<span>'+studentName+' 학생은 현재 '+statusLabel+' 상태입니다.<br>학생관리에서 재등록하면 관찰기록 작성과 수정 기능이 다시 활성화됩니다.</span>'
+      + '<span>'+studentName+' 학생은 현재 '+statusLabel+' 상태입니다.</span>'
       + '</div>';
+  }
+
+  async function reenrollInactiveStudent(studentOrId) {
+    const student = typeof studentOrId === 'object'
+      ? studentOrId
+      : (typeof findStudentById === 'function' ? findStudentById(studentOrId) : null);
+    if (!student || !inactiveStudentStatus(student)) return;
+    if (!global.confirm('재등록 하시겠습니까?')) return;
+    if (typeof global.reactivateStudentById !== 'function') {
+      alert('재등록 기능을 불러오지 못했습니다. 학생관리에서 다시 시도해 주세요.');
+      return;
+    }
+    try {
+      await global.reactivateStudentById(student.id);
+      state.selectedStudentId = '';
+      state.loadToken += 1;
+      renderList();
+      renderEmptyDetail();
+      if (typeof global.showPushToast === 'function') global.showPushToast(`${student.name} 학생을 재등록했어요.`);
+    } catch (error) {
+      alert(`재등록에 실패했어요.\n\n${error?.message || error}`);
+    }
   }
 
   function renderLoadingDetail(student) {
@@ -724,6 +746,7 @@ function recordWorkspaceHtml(student, recordContent) {
   global.OlliPcPersonalityRecords = api;
   global.OlliPcAttendance = api;
   global.pcSelectAttendanceStudent = selectStudent;
+  global.pcReenrollAttendanceStudent = reenrollInactiveStudent;
   global.pcSetAttendanceSortMode = setSortMode;
 
   removeLegacyPcSortControl();

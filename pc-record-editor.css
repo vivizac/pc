@@ -1273,3 +1273,23 @@ body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedba
   body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout #recordList{max-height:360px;}
   .pcAttendanceDetailPanel{min-height:540px;}
 }
+
+/* 성향기록부 휴원·퇴원 학생 재등록 아이콘 */
+#recordRoomScreen .pcAttendanceDetailInactive .pcAttendanceReenrollIcon {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  transition: transform .15s ease, opacity .15s ease;
+}
+#recordRoomScreen .pcAttendanceDetailInactive .pcAttendanceReenrollIcon:hover { transform: translateY(-2px); }
+#recordRoomScreen .pcAttendanceDetailInactive .pcAttendanceReenrollIcon:active { transform: translateY(0) scale(.97); }
+#recordRoomScreen .pcAttendanceDetailInactive .pcAttendanceReenrollIcon:focus-visible {
+  outline: 2px solid rgba(10,132,255,.34);
+  outline-offset: 5px;
+  border-radius: 12px;
+}
+

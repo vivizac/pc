@@ -99,11 +99,11 @@ function enterStudentSelectionMode() {
   loadRecords(searchValue);
 }
 
-async function setSelectedStudentStatus(status) {
-  if (!selectedStudentActionId) return;
-  const targetId = selectedStudentActionId;
+async function setStudentStatusById(studentId, status, options = {}) {
+  const targetId = String(studentId || '').trim();
+  if (!targetId) return null;
   const student = findStudentById(targetId);
-  if (!student) return;
+  if (!student) return null;
 
   const nextStatus = status === 'active' ? 'active' : status;
   const changedAt = new Date().toISOString();
@@ -135,7 +135,7 @@ async function setSelectedStudentStatus(status) {
     currentMemoStudent = nextStudent;
   }
 
-  closeStudentActionMenu();
+  if (options.closeActionMenu !== false) closeStudentActionMenu();
   const searchValue = document.getElementById('searchName')?.value.trim() || '';
 
   // 서버를 다시 읽기 전에 로컬 상태를 즉시 반영합니다.
@@ -151,7 +151,19 @@ async function setSelectedStudentStatus(status) {
 
   await loadRecords(searchValue);
   if (currentRecordView === 'academy') renderRecordAcademyManagementDashboard();
+  return findStudentById(targetId) || nextStudent;
 }
+
+async function setSelectedStudentStatus(status) {
+  if (!selectedStudentActionId) return null;
+  return setStudentStatusById(selectedStudentActionId, status, { closeActionMenu: true });
+}
+
+async function reactivateStudentById(studentId) {
+  return setStudentStatusById(studentId, 'active', { closeActionMenu: false });
+}
+
+if (typeof window !== 'undefined') window.reactivateStudentById = reactivateStudentById;
 
 async function deleteSelectedStudents() {
   const ids = Array.from(selectedStudentIds);

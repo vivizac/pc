@@ -531,10 +531,39 @@
     return `${grid}</div>`;
   }
 
+  function elementaryAdaptiveEdgeRowHeight(displayTime, dates) {
+    let required = 64;
+    dates.forEach((date) => {
+      if (date.getDay() === 6 && Number(displayTime) > 3) return;
+      const storedTime = storedTimeForCell('elementary', date, displayTime);
+      const hasMemo = !!cellMemoText('elementary', date, storedTime);
+      let contentRows = 0;
+      let headerHeight = 0;
+
+      if (isClassSplit('elementary', date.getDay(), storedTime)) {
+        contentRows = Math.ceil(slotEntryCount('elementary', date, storedTime, 'A') / 2)
+          + Math.ceil(slotEntryCount('elementary', date, storedTime, 'B') / 2);
+        if (classTeacherLabel('elementary', date.getDay(), storedTime, 'A')) headerHeight += 14;
+        if (classTeacherLabel('elementary', date.getDay(), storedTime, 'B')) headerHeight += 14;
+      } else {
+        contentRows = Math.ceil(slotEntryCount('elementary', date, storedTime, '') / 2);
+        if (classTeacherLabel('elementary', date.getDay(), storedTime, 'A')) headerHeight += 14;
+      }
+
+      const memoHeight = hasMemo ? 41 : 0;
+      required = Math.max(required, 18 + headerHeight + (contentRows * 27) + memoHeight);
+    });
+    return Math.max(64, Math.min(220, Math.ceil(required)));
+  }
+
   function sectionHtml(division) {
     const times = TIME_SLOTS[division];
     const dates = DAYS.map((_, index) => addDays(state.weekStart, index));
-    let grid = `<div class="olliTtGrid" style="--olli-tt-rows:${times.length}"><div class="olliTtCorner"></div>`;
+    const adaptiveClass = division === 'elementary' ? ' olliTtAdaptiveEdgeRows' : '';
+    const adaptiveVars = division === 'elementary'
+      ? `;--olli-tt-edge-row-1:${elementaryAdaptiveEdgeRowHeight(1, dates)}px;--olli-tt-edge-row-6:${elementaryAdaptiveEdgeRowHeight(6, dates)}px`
+      : '';
+    let grid = `<div class="olliTtGrid${adaptiveClass}" style="--olli-tt-rows:${times.length}${adaptiveVars}"><div class="olliTtCorner"></div>`;
     dates.forEach((date, index) => {
       const info = calendarInfo(date);
       const holiday = !!(info && info.is_holiday === true);
