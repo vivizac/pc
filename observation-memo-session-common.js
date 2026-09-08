@@ -3,6 +3,11 @@
 (function initObservationMemoSessionCommon(global) {
   'use strict';
 
+  function memoRevision(value) {
+    const revision = Number(value || 0);
+    return Number.isFinite(revision) && revision >= 0 ? Math.floor(revision) : 0;
+  }
+
   function getObservationMemoLocalSnapshot(student) {
     return getMemoEntryByStudent(student);
   }
@@ -41,10 +46,30 @@
       student: session.student,
       noteType: session.noteType || 'elementary_observation',
       memoText: localEntry.content || '',
+      revision: memoRevision(localEntry.revision),
       analysis: {
         data: analysisDisplay.data || {},
         createdAt: analysisDisplay.createdAt || ''
       }
+    };
+  }
+
+  function isCurrentObservationMemoDirty(student) {
+    try {
+      if (!currentMemoStudent || String(currentMemoStudent.id || '') !== String(student?.id || '')) return false;
+      if (currentMemoType !== 'elementary') return false;
+      if (typeof hasObservationMemoDirtyChanges === 'function') return !!hasObservationMemoDirtyChanges();
+    } catch (_) {}
+    return false;
+  }
+
+  function makeConflictFromRemote(row) {
+    return {
+      code: 'REVISION_CONFLICT',
+      serverRevision: memoRevision(row?.revision),
+      serverContent: String(row?.content || ''),
+      serverUpdatedAt: String(row?.updated_at || ''),
+      detectedAt: new Date().toISOString()
     };
   }
 
@@ -58,35 +83,112 @@
         localEntry,
         remoteRow: null,
         content: localEntry.content || '',
-        updatedAt: localEntry.updatedAt || ''
+        updatedAt: localEntry.updatedAt || '',
+        revision: memoRevision(localEntry.revision)
       };
     }
 
     const row = await loadStudentNoteDraftFromSupabase(student, resolvedType);
-    if (!row || !row.content) {
+    if (!row) {
       return {
         adoptedRemote: false,
         source: 'local',
         localEntry: getMemoEntryByStudent(student),
-        remoteRow: row || null,
+        remoteRow: null,
         content: localEntry.content || '',
-        updatedAt: localEntry.updatedAt || ''
+        updatedAt: localEntry.updatedAt || '',
+        revision: memoRevision(localEntry.revision)
       };
     }
 
-    const remoteText = row.content || '';
-    const remoteUpdatedAt = row.updated_at || '';
+    const remoteText = String(row.content || '');
+    const remoteUpdatedAt = String(row.updated_at || '');
+    const remoteRevision = memoRevision(row.revision);
+    const remoteMutationId = String(row.last_mutation_id || '');
     const latestLocalEntry = getMemoEntryByStudent(student);
-    const shouldAdoptRemote = isRemoteMemoNewerThanLocal(remoteUpdatedAt, latestLocalEntry.updatedAt || '');
+    const localRevision = memoRevision(latestLocalEntry.revision);
+    const localMutationId = String(latestLocalEntry.mutationId || '');
+    const localStatus = String(latestLocalEntry.syncStatus || 'local');
+    const editorDirty = isCurrentObservationMemoDirty(student);
+    const protectedLocal = editorDirty || ['pending', 'conflict', 'blocked'].includes(localStatus);
 
-    if (!shouldAdoptRemote) {
+    if (
+      protectedLocal &&
+      localMutationId &&
+      remoteMutationId === localMutationId &&
+      remoteText === String(latestLocalEntry.content || '')
+    ) {
+      const syncedAt = remoteUpdatedAt || new Date().toISOString();
+      setMemoByStudent(student, remoteText, {
+        updatedAt: syncedAt,
+        lastSyncedAt: syncedAt,
+        syncStatus: 'synced',
+        revision: remoteRevision,
+        mutationId: '',
+        conflict: null
+      });
+      return {
+        adoptedRemote: false,
+        recoveredPending: true,
+        source: 'remote-confirmed-local',
+        localEntry: getMemoEntryByStudent(student),
+        remoteRow: row,
+        content: remoteText,
+        updatedAt: syncedAt,
+        revision: remoteRevision
+      };
+    }
+
+    const revisionAdvanced = remoteRevision > localRevision;
+    const legacyTimestampAdvanced = remoteRevision === localRevision &&
+      isRemoteMemoNewerThanLocal(remoteUpdatedAt, latestLocalEntry.updatedAt || '');
+    const serverChanged = revisionAdvanced || legacyTimestampAdvanced;
+
+    if (serverChanged && protectedLocal) {
+      const conflict = makeConflictFromRemote(row);
+      setMemoByStudent(student, latestLocalEntry.content || '', {
+        updatedAt: latestLocalEntry.updatedAt,
+        lastSyncedAt: latestLocalEntry.lastSyncedAt,
+        syncStatus: 'conflict',
+        revision: localRevision,
+        mutationId: localMutationId,
+        conflict
+      });
+      try {
+        if (typeof setMemoSaveStatus === 'function') setMemoSaveStatus('다른 기기에서 수정됨');
+      } catch (_) {}
+      return {
+        adoptedRemote: false,
+        conflictDetected: true,
+        source: 'conflict',
+        localEntry: getMemoEntryByStudent(student),
+        remoteRow: row,
+        content: latestLocalEntry.content || '',
+        updatedAt: latestLocalEntry.updatedAt || '',
+        revision: localRevision,
+        conflict
+      };
+    }
+
+    if (!serverChanged) {
+      if (!protectedLocal && remoteRevision !== localRevision) {
+        setMemoByStudent(student, latestLocalEntry.content || '', {
+          updatedAt: latestLocalEntry.updatedAt || remoteUpdatedAt,
+          lastSyncedAt: latestLocalEntry.lastSyncedAt || remoteUpdatedAt,
+          syncStatus: 'synced',
+          revision: remoteRevision,
+          mutationId: '',
+          conflict: null
+        });
+      }
       return {
         adoptedRemote: false,
         source: 'local',
-        localEntry: latestLocalEntry,
+        localEntry: getMemoEntryByStudent(student),
         remoteRow: row,
         content: latestLocalEntry.content || '',
-        updatedAt: latestLocalEntry.updatedAt || ''
+        updatedAt: latestLocalEntry.updatedAt || '',
+        revision: memoRevision(getMemoEntryByStudent(student).revision)
       };
     }
 
@@ -94,7 +196,10 @@
     setMemoByStudent(student, remoteText, {
       updatedAt: syncedAt,
       lastSyncedAt: syncedAt,
-      syncStatus: 'synced'
+      syncStatus: 'synced',
+      revision: remoteRevision,
+      mutationId: '',
+      conflict: null
     });
 
     return {
@@ -103,7 +208,8 @@
       localEntry: getMemoEntryByStudent(student),
       remoteRow: row,
       content: remoteText,
-      updatedAt: syncedAt
+      updatedAt: syncedAt,
+      revision: remoteRevision
     };
   }
 
