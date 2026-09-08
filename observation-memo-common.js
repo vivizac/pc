@@ -52,6 +52,85 @@ function hasObservationMemoDirtyChanges() {
   return !!(state && isObservationMemoEditStateCurrent() && state.dirty);
 }
 
+const OLLI_MEMO_SERVER_AUTOSAVE_DELAY = 1500;
+
+function getMemoInputTypeFromTarget(target) {
+  if (!target || !target.id) return '';
+  return target.id === 'memoEditor' ? 'elementary' : '';
+}
+
+function persistObservationMemoInputLocally(target) {
+  const inputType = getMemoInputTypeFromTarget(target);
+  if (!inputType || !currentMemoStudent || currentMemoType !== inputType) return false;
+  if (isObservationMemoAutoSaveBlocked()) return false;
+
+  const content = String(target.value || '');
+  const updatedAt = new Date().toISOString();
+  const state = getObservationMemoEditState();
+  const noteType = String(state?.noteType || 'elementary_observation');
+
+  if (typeof window.protectObservationMemoLocalDraft === 'function') {
+    const protectedLocally = window.protectObservationMemoLocalDraft(
+      currentMemoStudent,
+      noteType,
+      content,
+      updatedAt
+    );
+    if (protectedLocally) return true;
+  }
+
+  try {
+    const previous = typeof getMemoEntryByStudent === 'function'
+      ? (getMemoEntryByStudent(currentMemoStudent) || {})
+      : {};
+    if (typeof setMemoByStudent === 'function') {
+      setMemoByStudent(currentMemoStudent, content, {
+        updatedAt,
+        lastSyncedAt: previous.lastSyncedAt || '',
+        syncStatus: 'pending',
+        revision: previous.revision || 0,
+        mutationId: previous.mutationId || '',
+        conflict: previous.conflict || null
+      });
+      return true;
+    }
+  } catch (error) {
+    console.warn('관찰노트 즉시 로컬 저장 실패:', error?.message || error);
+  }
+  return false;
+}
+
+async function saveObservationMemoServerSnapshot(options = {}) {
+  if (!currentMemoStudent || currentMemoType !== 'elementary') return null;
+  const editor = document.getElementById('memoEditor');
+  if (!editor) return null;
+
+  const studentId = String(currentMemoStudent.id || '');
+  const textAtStart = String(editor.value || '');
+  try {
+    const result = await saveCurrentMemo({
+      silent: true,
+      status: options.status === true
+    });
+    const stillSameDraft =
+      currentMemoStudent &&
+      String(currentMemoStudent.id || '') === studentId &&
+      String(document.getElementById('memoEditor')?.value || '') === textAtStart;
+    if (
+      stillSameDraft &&
+      result &&
+      (result.state === 'synced' || result.state === 'cleared') &&
+      result.superseded !== true
+    ) {
+      markObservationMemoEditorClean();
+    }
+    return result;
+  } catch (error) {
+    console.warn('관찰노트 서버 자동저장 실패:', error?.message || error);
+    return null;
+  }
+}
+
 function scheduleMemoAutoSave() {
   if (!currentMemoStudent) return;
   if (isObservationMemoAutoSaveBlocked()) return;
@@ -63,20 +142,15 @@ function scheduleMemoAutoSave() {
 
   window.__olliObservationMemoAutoSaveTimer = setTimeout(() => {
     window.__olliObservationMemoAutoSaveTimer = null;
-    saveCurrentMemo({ silent: true, status: true });
-    markObservationMemoEditorClean();
-  }, MEMO_AUTOSAVE_DELAY);
-}
-
-function getMemoInputTypeFromTarget(target) {
-  if (!target || !target.id) return '';
-  return target.id === 'memoEditor' ? 'elementary' : '';
+    void saveObservationMemoServerSnapshot({ status: true });
+  }, OLLI_MEMO_SERVER_AUTOSAVE_DELAY);
 }
 
 function handleMemoPauseAutoSaveInput(target) {
   const inputType = getMemoInputTypeFromTarget(target);
   if (!inputType || !currentMemoStudent || currentMemoType !== inputType) return;
   if (isObservationMemoAutoSaveBlocked()) return;
+  persistObservationMemoInputLocally(target);
   markObservationMemoEditorDirty(target);
   scheduleMemoAutoSave();
 }
@@ -86,8 +160,7 @@ function flushMemoAutoSave() {
   if (window.__olliObservationMemoAutoSaveTimer) {
     clearTimeout(window.__olliObservationMemoAutoSaveTimer);
     window.__olliObservationMemoAutoSaveTimer = null;
-    saveCurrentMemo({ silent: true, status: true });
-    markObservationMemoEditorClean();
+    void saveObservationMemoServerSnapshot({ status: true });
     return true;
   }
   return false;
@@ -96,8 +169,7 @@ function flushMemoAutoSave() {
 function prepareObservationMemoPageClose() {
   const flushed = flushMemoAutoSave();
   if (!flushed && hasObservationMemoDirtyChanges()) {
-    saveCurrentMemo({ silent: true });
-    markObservationMemoEditorClean();
+    void saveObservationMemoServerSnapshot({ status: false });
   }
 }
 
