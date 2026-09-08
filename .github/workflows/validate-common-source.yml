@@ -10,6 +10,7 @@ name: Validate OLLI common source
       - 'observation-memo-save-common.js'
       - 'observation-memo-session-common.js'
       - 'observation-memo-storage-common.js'
+      - 'observation-memo-request-guard-common.js'
       - 'olli-record-scene-tools.js'
       - 'record-feedback-mode-common.js'
       - 'scene-card-kinder-feedback-common.js'
@@ -17,6 +18,7 @@ name: Validate OLLI common source
       - 'scene-card-ui-common.js'
       - 'scene-feedback-text-common.js'
       - 'index.html'
+      - 'observation-memo-core.js'
       - '.github/workflows/validate-common-source.yml'
 
 permissions:
@@ -49,9 +51,11 @@ jobs:
             [ -n "$file" ] || continue
             case "$file" in
               *.js)
-                count="$(grep -Foc "src=\"$file\"" index.html || true)"
+                static_count="$(grep -Foc "src=\"$file\"" index.html || true)"
+                dynamic_count="$(grep -Foc "$file" observation-memo-core.js 2>/dev/null || true)"
+                count=$((static_count + dynamic_count))
                 if [ "$count" -ne 1 ]; then
-                  echo "$file must be loaded exactly once from index.html (found: $count)."
+                  echo "$file must be loaded exactly once (static: $static_count, dynamic: $dynamic_count)."
                   exit 1
                 fi
                 ;;
