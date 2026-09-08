@@ -133,3 +133,332 @@ function compareElementaryGroupFeedbackOrder(a, b) {
   if (result !== 0) return result;
   return 0;
 }
+
+/* ── P0: feedback creation idempotency ─────────────────────────
+   A feedback save gets one mutation id and keeps it until the
+   server confirms the row. Re-sending the same pending save uses
+   the same RPC + mutation id, so response loss cannot create a
+   duplicate feedback row. Existing feedback edits are untouched.
+────────────────────────────────────────────────────────────── */
+(function installFeedbackCreateIdempotency(global) {
+  'use strict';
+
+  if (global.__olliFeedbackCreateIdempotencyInstalled) return;
+
+  const TARGETS = Object.freeze({
+    feedbacks: {
+      rpc: 'olli_feedback_insert_idempotent',
+      feature: 'general_feedback',
+      label: '일반 피드백'
+    },
+    fail_feedbacks: {
+      rpc: 'olli_growth_feedback_insert_idempotent',
+      feature: 'growth_feedback',
+      label: '성장 피드백'
+    },
+    summary_feedbacks: {
+      rpc: 'olli_summary_feedback_insert_idempotent',
+      feature: 'summary_feedback',
+      label: '종합 피드백'
+    }
+  });
+  const PENDING_KEY_PREFIX = 'olli_feedback_idempotency_pending_v1';
+  const PENDING_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+  const MAX_PENDING_PER_ACADEMY = 80;
+  const VOLATILE_FINGERPRINT_FIELDS = new Set([
+    'client_mutation_id',
+    'clientMutationId',
+    'client_record_id',
+    'record_id',
+    'id',
+    'created_at',
+    'updated_at',
+    'date',
+    'year'
+  ]);
+
+  function clean(value) {
+    return String(value == null ? '' : value).trim();
+  }
+
+  function currentAcademyId(payload) {
+    const fromPayload = clean(payload && payload.academy_id);
+    if (fromPayload) return fromPayload;
+    try {
+      if (typeof global.getOlliCurrentAcademyId === 'function') {
+        const current = clean(global.getOlliCurrentAcademyId());
+        if (current) return current;
+      }
+    } catch (_) {}
+    try { return clean(localStorage.getItem('olli_current_academy_id')); }
+    catch (_) { return ''; }
+  }
+
+  function pendingStorageKey(academyId) {
+    return `${PENDING_KEY_PREFIX}_${clean(academyId) || 'unscoped'}`;
+  }
+
+  function normalizeFingerprintValue(value) {
+    if (Array.isArray(value)) return value.map(normalizeFingerprintValue);
+    if (value && typeof value === 'object') {
+      return Object.keys(value)
+        .filter(key => !VOLATILE_FINGERPRINT_FIELDS.has(key))
+        .sort()
+        .reduce((result, key) => {
+          result[key] = normalizeFingerprintValue(value[key]);
+          return result;
+        }, {});
+    }
+    return value == null ? null : value;
+  }
+
+  function feedbackFingerprint(tableName, payload) {
+    return JSON.stringify([
+      clean(tableName),
+      normalizeFingerprintValue(payload && typeof payload === 'object' ? payload : {})
+    ]);
+  }
+
+  function createMutationId() {
+    try {
+      if (global.crypto && typeof global.crypto.randomUUID === 'function') {
+        return `fbm_${global.crypto.randomUUID()}`;
+      }
+    } catch (_) {}
+    return `fbm_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+  }
+
+  function readPending(academyId) {
+    try {
+      const raw = JSON.parse(localStorage.getItem(pendingStorageKey(academyId)) || '[]');
+      const now = Date.now();
+      return (Array.isArray(raw) ? raw : [])
+        .filter(item => item && item.mutationId && item.fingerprint)
+        .filter(item => {
+          const created = new Date(item.createdAt || item.updatedAt || 0).getTime();
+          return !created || Number.isNaN(created) || now - created <= PENDING_MAX_AGE_MS;
+        })
+        .slice(0, MAX_PENDING_PER_ACADEMY);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function writePending(academyId, list) {
+    try {
+      localStorage.setItem(
+        pendingStorageKey(academyId),
+        JSON.stringify((Array.isArray(list) ? list : []).slice(0, MAX_PENDING_PER_ACADEMY))
+      );
+    } catch (error) {
+      console.warn('피드백 중복방지 대기정보 저장 실패:', error?.message || error);
+    }
+  }
+
+  function rememberPending(tableName, payload, label) {
+    const academyId = currentAcademyId(payload);
+    if (!academyId) throw new Error(`${label || '피드백'} 저장 학원 정보를 찾지 못했습니다.`);
+    const fingerprint = feedbackFingerprint(tableName, payload);
+    const list = readPending(academyId);
+    const existing = list.find(item => item.fingerprint === fingerprint && item.tableName === tableName);
+    if (existing) {
+      existing.updatedAt = new Date().toISOString();
+      existing.attempts = Number(existing.attempts || 0);
+      writePending(academyId, list);
+      return existing;
+    }
+
+    const now = new Date().toISOString();
+    const entry = {
+      tableName,
+      academyId,
+      mutationId: createMutationId(),
+      fingerprint,
+      payload: { ...(payload || {}) },
+      label: String(label || TARGETS[tableName]?.label || '피드백 저장'),
+      attempts: 0,
+      status: 'pending',
+      lastError: '',
+      createdAt: now,
+      updatedAt: now
+    };
+    list.unshift(entry);
+    writePending(academyId, list);
+    return entry;
+  }
+
+  function updatePending(entry, patch) {
+    if (!entry || !entry.academyId || !entry.mutationId) return;
+    const list = readPending(entry.academyId);
+    const index = list.findIndex(item => item.mutationId === entry.mutationId);
+    if (index < 0) return;
+    list[index] = { ...list[index], ...(patch || {}), updatedAt: new Date().toISOString() };
+    writePending(entry.academyId, list);
+  }
+
+  function clearPending(entry) {
+    if (!entry || !entry.academyId || !entry.mutationId) return;
+    const list = readPending(entry.academyId)
+      .filter(item => item.mutationId !== entry.mutationId);
+    writePending(entry.academyId, list);
+  }
+
+  function verifyReturnedRow(tableName, row, payload, mutationId, label) {
+    if (!row || typeof row !== 'object') {
+      throw new Error(`${label} 서버 저장 행을 확인하지 못했습니다.`);
+    }
+    const expectedAcademy = clean(payload.academy_id);
+    const expectedStudent = clean(payload.student_id);
+    if (expectedAcademy && clean(row.academy_id) !== expectedAcademy) {
+      throw new Error(`${label} 서버 검증 실패: academy_id가 일치하지 않습니다.`);
+    }
+    if (expectedStudent && clean(row.student_id) !== expectedStudent) {
+      throw new Error(`${label} 서버 검증 실패: student_id가 일치하지 않습니다.`);
+    }
+    if (String(row.content == null ? '' : row.content) !== String(payload.content == null ? '' : payload.content)) {
+      throw new Error(`${label} 서버 검증 실패: 피드백 내용이 일치하지 않습니다.`);
+    }
+    const expectedType = tableName === 'fail_feedbacks'
+      ? clean(payload.feedback_type || 'fail')
+      : clean(payload.feedback_type);
+    if (expectedType && clean(row.feedback_type) !== expectedType) {
+      throw new Error(`${label} 서버 검증 실패: feedback_type이 일치하지 않습니다.`);
+    }
+    if (clean(row.client_mutation_id) !== clean(mutationId)) {
+      throw new Error(`${label} 서버 검증 실패: mutation ID가 일치하지 않습니다.`);
+    }
+    return row;
+  }
+
+  function statusFromError(error) {
+    const message = String(error && (error.message || error) || '');
+    const match = message.match(/Supabase 요청 실패\s*\((\d{3})\)/);
+    return match ? Number(match[1]) : 0;
+  }
+
+  function isRetryableError(error) {
+    const message = String(error && (error.message || error) || '');
+    if (/FEEDBACK_IDEMPOTENCY_(?:MISMATCH|INPUT_MISSING)/.test(message)) return false;
+    const status = statusFromError(error);
+    if (!status) return true;
+    return status === 408 || status === 425 || status === 429 || status >= 500;
+  }
+
+  function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  function writeFeedbackLocal(tableName, payload, mutationId, syncStatus, row) {
+    try {
+      if (typeof global.getFeedbackCommonStorageFeature !== 'function' ||
+          typeof global.writeFeedbackCommonLocal !== 'function') return;
+      const commonFeature = global.getFeedbackCommonStorageFeature(tableName, payload);
+      if (!commonFeature) return;
+      global.writeFeedbackCommonLocal(
+        commonFeature,
+        { ...payload, client_mutation_id: mutationId, client_record_id: mutationId },
+        mutationId,
+        syncStatus,
+        row || null
+      );
+    } catch (error) {
+      console.warn('피드백 공통 로컬 기록 실패:', error?.message || error);
+    }
+  }
+
+  function recordFeedbackIdempotencyIssue(tableName, payload, entry, error, phase) {
+    try {
+      if (typeof global.recordOlliStorageIssue !== 'function') return;
+      global.recordOlliStorageIssue({
+        feature: TARGETS[tableName]?.feature || 'feedback_idempotency',
+        resource: tableName,
+        operation: phase || 'save',
+        student_id: payload?.student_id || '',
+        message: `${String(error && (error.message || error) || '')} [mutation:${entry?.mutationId || ''}]`
+      });
+    } catch (_) {}
+  }
+
+  async function saveIdempotentFeedback(tableName, payload = {}, label = '') {
+    const spec = TARGETS[tableName];
+    if (!spec) return null;
+
+    const safeLabel = String(label || spec.label || '피드백 저장');
+    const academyId = currentAcademyId(payload);
+    const studentId = clean(payload.student_id);
+    const content = String(payload.content == null ? '' : payload.content);
+
+    if (!academyId || !studentId) throw new Error(`${safeLabel} 저장 식별값이 없습니다.`);
+    if (!content.trim()) throw new Error(`${safeLabel} 내용이 비어 있습니다.`);
+    if (typeof global.supabase !== 'function') throw new Error(`${safeLabel} 서버 연결 함수가 준비되지 않았습니다.`);
+
+    const normalizedPayload = { ...payload, academy_id: academyId };
+    const entry = rememberPending(tableName, normalizedPayload, safeLabel);
+    const serverPayload = {
+      ...normalizedPayload,
+      client_mutation_id: entry.mutationId
+    };
+
+    writeFeedbackLocal(tableName, serverPayload, entry.mutationId, 'pending', null);
+
+    let lastError = null;
+    const retryDelays = [0, 260, 720];
+
+    for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
+      if (retryDelays[attempt]) await delay(retryDelays[attempt]);
+      updatePending(entry, { attempts: Number(entry.attempts || 0) + attempt + 1, status: 'pending' });
+
+      try {
+        const rows = await global.supabase('POST', `rpc/${spec.rpc}`, { p_payload: serverPayload });
+        const row = Array.isArray(rows) ? rows[0] : rows;
+        const verified = verifyReturnedRow(tableName, row, serverPayload, entry.mutationId, safeLabel);
+        clearPending(entry);
+        writeFeedbackLocal(tableName, serverPayload, entry.mutationId, 'synced', verified);
+        return verified;
+      } catch (error) {
+        lastError = error;
+        updatePending(entry, {
+          status: isRetryableError(error) ? 'pending' : 'blocked',
+          lastError: String(error && (error.message || error) || '')
+        });
+        if (!isRetryableError(error) || attempt === retryDelays.length - 1) break;
+      }
+    }
+
+    recordFeedbackIdempotencyIssue(tableName, serverPayload, entry, lastError, 'idempotent_create');
+
+    if (String(lastError && (lastError.message || lastError) || '').includes('FEEDBACK_IDEMPOTENCY_MISMATCH')) {
+      clearPending(entry);
+    }
+    throw lastError || new Error(`${safeLabel} 서버 저장에 실패했습니다.`);
+  }
+
+  function install() {
+    if (global.__olliFeedbackCreateIdempotencyInstalled) return true;
+    if (typeof global.saveFeedbackRowVerified !== 'function' || typeof global.supabase !== 'function') return false;
+
+    const legacySave = global.saveFeedbackRowVerified;
+    global.saveFeedbackRowVerified = async function saveFeedbackRowVerifiedIdempotent(tableName, payload, label) {
+      const table = clean(tableName);
+      if (!TARGETS[table]) return legacySave.apply(this, arguments);
+      return saveIdempotentFeedback(table, payload || {}, label || TARGETS[table].label);
+    };
+    global.saveFeedbackRowVerified.__olliFeedbackIdempotentCreate = true;
+    global.saveFeedbackRowVerified.__originalFeedbackSave = legacySave;
+    global.__olliFeedbackCreateIdempotencyInstalled = true;
+
+    global.getPendingFeedbackIdempotentWrites = function getPendingFeedbackIdempotentWrites() {
+      const academyId = currentAcademyId({});
+      return academyId ? readPending(academyId).map(item => ({ ...item })) : [];
+    };
+    return true;
+  }
+
+  if (!install()) {
+    let retries = 0;
+    const timer = setInterval(() => {
+      retries += 1;
+      if (install() || retries >= 80) clearInterval(timer);
+    }, 50);
+  }
+})(window);
