@@ -213,7 +213,7 @@
     const state = emptyScheduleState();
     const rows = Array.isArray(student && student.__olli_authoritative_enrollments)
       ? student.__olli_authoritative_enrollments
-      : pairsFromLessonFields(student && student.lesson_day, student && (student.lesson_time || student.class_time));
+      : [];
     normalizePairs(rows).forEach((row) => {
       const day = NUM_DAY[row.weekday];
       if (!day) return;
@@ -668,9 +668,10 @@
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '저장 중...'; }
     try {
       const extra = typeof global.olliGetInfoExtra === 'function' ? (global.olliGetInfoExtra(division) || {}) : {};
-      const pairs = typeof global.olliGetInfoSchedulePairs === 'function'
-        ? global.olliGetInfoSchedulePairs(division)
-        : pairsFromLessonFields(extra.lesson_day, extra.lesson_time || extra.class_time);
+      if (typeof global.olliGetInfoSchedulePairs !== 'function') {
+        throw new Error('학생 시간표 편집기가 준비되지 않았습니다. 화면을 새로고침한 뒤 다시 시도해 주세요.');
+      }
+      const pairs = global.olliGetInfoSchedulePairs(division);
       const dateInfo = readDateInputs(division === 'kinder' ? 'kinderInfo' : 'elementaryInfo');
       if (!dateInfo) throw new Error('등록 날짜를 올바르게 입력해 주세요.');
 
