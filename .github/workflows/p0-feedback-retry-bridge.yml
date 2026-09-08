@@ -6,31 +6,20 @@ name: P0 feedback idempotent retry bridge
       - main
     paths:
       - '.github/workflows/p0-feedback-retry-bridge.yml'
-      - '.github/scripts/p0_feedback_retry_bridge.py'
+      - '.github/scripts/p0_feedback_retry_test.js'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  patch:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Apply guarded patch
-        run: python .github/scripts/p0_feedback_retry_bridge.py
       - name: Validate JavaScript
         run: |
           node --check olli-operations-feedback-policy.js
           node --check olli-settings-storage.js
-          git diff --check
-      - name: Commit patch
-        run: |
-          git add olli-operations-feedback-policy.js olli-settings-storage.js
-          if git diff --cached --quiet; then
-            echo 'No patch needed.'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'fix: keep feedback mutation id through retry queue'
-          git push
+          node --check .github/scripts/p0_feedback_retry_test.js
+      - name: Verify retry mutation safety
+        run: node .github/scripts/p0_feedback_retry_test.js
