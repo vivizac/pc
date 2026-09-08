@@ -1,4 +1,13 @@
 /* PC는 공통 관찰노트 기본 컨트롤만 표시합니다. */
+(function loadObservationMemoCasSafety(global) {
+  if (global.__olliObservationMemoCasLoaderAdded) return;
+  global.__olliObservationMemoCasLoaderAdded = true;
+  const script = document.createElement('script');
+  script.src = 'observation-memo-cas-common.js?v=20260908-cas-1';
+  script.async = false;
+  document.head.appendChild(script);
+})(window);
+
 function forceStudentMemoControlsVisible() {
   return forceObservationMemoControlsVisible();
 }
@@ -20,16 +29,10 @@ function openStudentMemoPageById(studentId) {
   renderObservationMemoInitialView(session);
 }
 
-
-
 function closeMemoPage() {
   prepareObservationMemoPageClose();
   returnFromObservationMemoScreen(() => loadRecords(''));
 }
-
-
-
-
 
 async function saveCurrentMemo(options = {}) {
   if (!currentMemoStudent) return;
@@ -53,6 +56,14 @@ async function saveCurrentMemo(options = {}) {
   if (result?.state === 'pending' && result.error) {
     console.warn('초등부 관찰노트 Supabase 저장 실패:', result.error.message || result.error);
   }
+  if (result?.state === 'conflict') {
+    if (options.status) setMemoSaveStatus('다른 기기에서 수정됨');
+    return result;
+  }
+  if (result?.state === 'blocked') {
+    if (options.status) setMemoSaveStatus('저장 확인 필요');
+    return result;
+  }
 
   if (isStillCurrentMemoStudent() && result?.student) {
     currentMemoStudent = result.student;
@@ -60,29 +71,10 @@ async function saveCurrentMemo(options = {}) {
   }
 
   if (options.status) setMemoSaveStatus('');
-  if (result?.state === 'cleared') return;
+  if (result?.state === 'cleared') return result;
   if (!options.silent || options.status) showMemoSaveCheck();
+  return result;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 async function showBrowserNotification(message) {
   if (!('Notification' in window)) return false;
@@ -106,7 +98,6 @@ async function showBrowserNotification(message) {
 
   return false;
 }
-
 
 window.addEventListener('focus', () => {
 });
