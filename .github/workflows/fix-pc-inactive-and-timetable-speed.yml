@@ -16,7 +16,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Patch PC inactive records and timetable performance
-        run: python3 .github/tmp/fix_pc_inactive_and_timetable_speed.py
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('.github/tmp/fix_pc_inactive_and_timetable_speed.py')
+          source = path.read_text(encoding='utf-8')
+          source = source.replace(
+              "updated, count = re.subn(pattern, replacement, text, count=1, flags=re.S)",
+              "updated, count = re.subn(pattern, lambda _match: replacement, text, count=1, flags=re.S)"
+          )
+          path.write_text(source, encoding='utf-8')
+          PY
+          python3 .github/tmp/fix_pc_inactive_and_timetable_speed.py
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
