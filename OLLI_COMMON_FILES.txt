@@ -3,6 +3,7 @@ observation-memo-save-common.js
 observation-memo-session-common.js
 observation-memo-storage-common.js
 observation-memo-request-guard-common.js
+observation-memo-version-history-common.js
 olli-record-scene-tools.js
 record-feedback-mode-common.js
 scene-card-kinder-feedback-common.js
