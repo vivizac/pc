@@ -1,9 +1,30 @@
 /* PC는 공통 관찰노트 기본 컨트롤만 표시합니다. */
-(function loadObservationMemoCasSafety(global) {
+(function prepareObservationMemoCasSafety(global) {
+  // currentMemoStudent/currentMemoType are global lexical bindings (let), not window properties.
+  // Expose controlled accessors so the shared CAS module sees the same live edit session.
+  try {
+    if (!Object.prototype.hasOwnProperty.call(global, 'currentMemoStudent')) {
+      Object.defineProperty(global, 'currentMemoStudent', {
+        configurable: true,
+        get() { return currentMemoStudent; },
+        set(value) { currentMemoStudent = value; }
+      });
+    }
+    if (!Object.prototype.hasOwnProperty.call(global, 'currentMemoType')) {
+      Object.defineProperty(global, 'currentMemoType', {
+        configurable: true,
+        get() { return currentMemoType; },
+        set(value) { currentMemoType = value; }
+      });
+    }
+  } catch (error) {
+    console.warn('관찰노트 편집 상태 브리지 준비 실패:', error?.message || error);
+  }
+
   if (global.__olliObservationMemoCasLoaderAdded) return;
   global.__olliObservationMemoCasLoaderAdded = true;
   const script = document.createElement('script');
-  script.src = 'observation-memo-cas-common.js?v=20260908-cas-1';
+  script.src = 'observation-memo-cas-common.js?v=20260908-cas-2';
   script.async = false;
   document.head.appendChild(script);
 })(window);
