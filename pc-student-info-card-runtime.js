@@ -66,6 +66,38 @@
     return Array.isArray(result.enrollments) ? result.enrollments : [];
   }
 
+  async function loadAuthoritativeTeacherAssignments() {
+    const result = await scheduleRpc('olli_schedule_class_teacher_context');
+    return Array.isArray(result.assignments) ? result.assignments : [];
+  }
+
+  function primaryEnrollmentForTeacher(rows) {
+    return (Array.isArray(rows) ? rows : []).slice().sort((a, b) => {
+      const aOrder = Number(a && a.session_order);
+      const bOrder = Number(b && b.session_order);
+      const aRank = aOrder === 1 ? 0 : (a && a.session_order == null ? 1 : 2);
+      const bRank = bOrder === 1 ? 0 : (b && b.session_order == null ? 1 : 2);
+      if (aRank !== bRank) return aRank - bRank;
+      if (aRank === 2 && aOrder !== bOrder) return aOrder - bOrder;
+      return Number(a && a.weekday) - Number(b && b.weekday)
+        || Number(a && a.time_slot) - Number(b && b.time_slot)
+        || clean(a && a.class_group).localeCompare(clean(b && b.class_group));
+    })[0] || null;
+  }
+
+  function resolveTimetableTeacherName(division, enrollments, assignments) {
+    const first = primaryEnrollmentForTeacher(enrollments);
+    if (!first) return '';
+    const group = clean(first.class_group || 'A').toUpperCase() || 'A';
+    const matched = (Array.isArray(assignments) ? assignments : []).find((item) =>
+      clean(item && item.division) === clean(division)
+      && Number(item && item.weekday) === Number(first.weekday)
+      && Number(item && item.time_slot) === Number(first.time_slot)
+      && (clean(item && item.class_group).toUpperCase() || 'A') === group
+    );
+    return clean(matched && matched.teacher_name);
+  }
+
   async function setAuthoritativeSchedule(studentId, pairs) {
     const normalized = normalizePairs(pairs);
     const result = await scheduleRpc('olli_schedule_set_student_weekly_schedule', {
@@ -341,7 +373,14 @@
       renderSchedule(kind);
     };
     global.olliGetInfoExtra = function(type) {
-      const base = typeof baseGetInfo === 'function' ? (baseGetInfo.apply(this, arguments) || {}) : {};
+      let base = {};
+      try {
+        base = typeof baseGetInfo === 'function' ? (baseGetInfo.apply(this, arguments) || {}) : {};
+      } catch (error) {
+        // PC 학생정보 카드는 기존 수동 담임 선택 DOM을 사용하지 않습니다.
+        // 레거시 extra 수집기가 제거된 담임 선택창을 참조해도 저장 전체를 막지 않습니다.
+        console.warn('PC 학생정보 레거시 추가정보 수집 건너뜀:', error && (error.message || error));
+      }
       const kind = type === 'kinder' ? 'kinder' : 'elementary';
       const fields = lessonFieldsFromState(scheduleStates[kind]);
       const result = Object.assign({}, base, fields, { class_time: fields.lesson_time });
@@ -522,13 +561,17 @@
     return { year: y, month: String(m), day: String(d), enrolled_at: `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` };
   }
 
-  async function renderStudentInfoCard(student, enrollments) {
+  async function renderStudentInfoCard(student, enrollments, teacherAssignments) {
     const panel = document.getElementById('pcAttendanceDetailPanel');
     if (!panel) throw new Error('학생정보를 표시할 관찰기록 카드를 찾지 못했습니다.');
     const division = student.type === 'kinder' ? 'kinder' : 'elementary';
     const fields = lessonFieldsFromEnrollments(enrollments);
+    const timetableTeacher = resolveTimetableTeacherName(division, enrollments, teacherAssignments);
     const authoritativeStudent = Object.assign({}, student, fields, {
       class_time: fields.lesson_time,
+      teacher: timetableTeacher,
+      homeroom_teacher: timetableTeacher,
+      __olli_timetable_teacher: timetableTeacher,
       __olli_authoritative_enrollments: enrollments
     });
     cardState.student = authoritativeStudent;
@@ -589,10 +632,13 @@
     cardState.loading = true;
     panel.innerHTML = infoHeadHtml('info') + '<div class="pcStudentInfoLoading">학생정보와 시간표를 불러오고 있습니다.</div>';
     try {
-      const enrollments = await loadAuthoritativeSchedule(id);
+      const [enrollments, teacherAssignments] = await Promise.all([
+        loadAuthoritativeSchedule(id),
+        loadAuthoritativeTeacherAssignments()
+      ]);
       student = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;
       if (cardState.studentId !== id) return;
-      await renderStudentInfoCard(student, enrollments);
+      await renderStudentInfoCard(student, enrollments, teacherAssignments);
     } catch (error) {
       if (cardState.studentId !== id) return;
       panel.innerHTML = infoHeadHtml('info') + `<div class="pcStudentInfoLoading">${esc(error.message || '학생정보를 불러오지 못했습니다.')}</div>`;
@@ -630,6 +676,13 @@
       const dateInfo = readDateInputs(division === 'kinder' ? 'kinderInfo' : 'elementaryInfo');
       if (!dateInfo) throw new Error('등록 날짜를 올바르게 입력해 주세요.');
 
+      const profileBase = Object.assign({}, target);
+      // 담임은 학생정보 저장 대상이 아닙니다. 시간표의 반 담당 정보만 원본으로 사용합니다.
+      delete profileBase.teacher;
+      delete profileBase.homeroom_teacher;
+      delete profileBase.__olli_timetable_teacher;
+      delete profileBase.__olli_authoritative_enrollments;
+
       let profile;
       if (division === 'elementary') {
         const name = clean(document.getElementById('elementaryInfoNameInput')?.value);
@@ -637,12 +690,10 @@
         const duplicate = typeof global.getStudentsByType === 'function' && global.getStudentsByType('elementary').some((item) => String(item.id) !== String(target.id) && clean(item.name) === name);
         if (duplicate) throw new Error('이미 등록된 학생 이름입니다.');
         const grade = typeof global.normalizeElementaryGradeValue === 'function' ? global.normalizeElementaryGradeValue(document.getElementById('elementaryGradeInput')?.value || '') : clean(document.getElementById('elementaryGradeInput')?.value);
-        profile = Object.assign({}, target, dateInfo, {
+        profile = Object.assign({}, profileBase, dateInfo, {
           name,
           group: (typeof elementaryInfoDraft !== 'undefined' && elementaryInfoDraft) ? (elementaryInfoDraft.group || '') : (target.group || ''),
           personality: (typeof elementaryInfoDraft !== 'undefined' && elementaryInfoDraft) ? (elementaryInfoDraft.personality || '') : (target.personality || ''),
-          teacher: target.teacher || target.homeroom_teacher || '',
-          homeroom_teacher: target.homeroom_teacher || target.teacher || '',
           school: clean(document.getElementById('elementarySchoolInput')?.value),
           grade,
           age: typeof global.getElementaryAgeFromGrade === 'function' ? global.getElementaryAgeFromGrade(grade) : (target.age || ''),
@@ -663,14 +714,12 @@
         const duplicate = typeof global.getStudentsByType === 'function' && global.getStudentsByType('kinder').some((item) => String(item.id) !== String(target.id) && clean(item.name) === name);
         if (duplicate) throw new Error('이미 등록된 학생 이름입니다.');
         const age = clean(document.getElementById('kinderAgeInput')?.value);
-        profile = Object.assign({}, target, dateInfo, {
+        profile = Object.assign({}, profileBase, dateInfo, {
           name,
           kindergarten: clean(document.getElementById('kinderKindergartenInput')?.value),
           age,
           birth_year: typeof global.inferOlliBirthYearFromAge === 'function' ? global.inferOlliBirthYearFromAge(age) : (target.birth_year || ''),
           personality: Object.prototype.hasOwnProperty.call(extra, 'personality') ? extra.personality : ((typeof kinderInfoDraft !== 'undefined' && kinderInfoDraft) ? (kinderInfoDraft.personality || '') : (target.personality || '')),
-          teacher: target.teacher || target.homeroom_teacher || '',
-          homeroom_teacher: target.homeroom_teacher || target.teacher || '',
           lesson_day: target.lesson_day || '',
           lesson_time: target.lesson_time || '',
           class_time: target.lesson_time || target.class_time || ''
@@ -687,7 +736,9 @@
       }
       saveStage = 'reload';
       if (typeof global.loadStudentsFromSupabase === 'function') await global.loadStudentsFromSupabase();
-      if (typeof global.showPushToast === 'function') global.showPushToast('학생정보와 시간표를 저장했어요.');
+      if (typeof global.showPushToast === 'function') {
+        global.showPushToast(scheduleChanged ? '학생정보와 시간표를 저장했어요.' : '학생정보를 저장했어요.');
+      }
       const id = savedStudent.id;
       cardState.studentId = '';
       cardState.student = null;
