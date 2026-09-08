@@ -51,15 +51,3 @@ function renderStudentManagementTabs() {
     + tab('photo', '출석부 사진')
     + '</div>';
 }
-
-/* P0: settings-storage 다음 순서에서 공통 재전송 브리지를 한 번만 로드합니다. */
-(function loadOlliStorageRetryBridgeP0() {
-  if (window.__olliStorageRetryBridgeLoaderP0) return;
-  window.__olliStorageRetryBridgeLoaderP0 = true;
-  const script = document.createElement('script');
-  script.src = 'olli-storage-retry-bridge.js?v=20260909-p0-1';
-  script.async = false;
-  script.dataset.olliStorageRetryBridge = 'p0';
-  script.onerror = () => console.error('P0 저장 재전송 브리지를 불러오지 못했습니다.');
-  (document.head || document.documentElement).appendChild(script);
-})();
