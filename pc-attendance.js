@@ -455,6 +455,32 @@ function recordWorkspaceHtml(student, recordContent) {
       + '<div class="pcAttendanceDetailEmpty"><span class="pcAttendanceDetailEmptyIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="3"></rect><path d="M8 9h8M8 13h5"></path></svg></span><strong>학생을 선택해 주세요.</strong><span>왼쪽 명단에서 학생 이름을 누르면<br>관찰기록이 이곳에 표시됩니다.</span></div>';
   }
 
+
+  function inactiveStudentStatus(student) {
+    try {
+      const status = typeof global.getStudentStatus === 'function'
+        ? String(global.getStudentStatus(student) || '')
+        : String(student?.status || 'active');
+      return status === 'paused' || status === 'withdrawn' ? status : '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function renderInactiveDetail(student, status) {
+    const panel = ensureDetailPanel();
+    if (!panel) return;
+    unmountRecordEditor();
+    const statusLabel = status === 'paused' ? '휴원' : '퇴원';
+    const studentName = escape(student?.name || '해당');
+    panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">관찰기록</div></div>'
+      + '<div class="pcAttendanceDetailEmpty pcAttendanceDetailInactive">'
+      + '<span class="pcAttendanceDetailEmptyIcon pcAttendanceReenrollIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14.5 7.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"></path><path d="M5.5 18.5c.8-3 2.8-4.5 5.5-4.5 1.2 0 2.3.3 3.2.8"></path><path d="M17 12.5h3v3"></path><path d="M20 15.5a4.5 4.5 0 0 1-7.3 3.5"></path><path d="M14 20h-3v-3"></path></svg></span>'
+      + '<strong>재등록 후 관찰기록을 이용할 수 있어요.</strong>'
+      + '<span>'+studentName+' 학생은 현재 '+statusLabel+' 상태입니다.<br>학생관리에서 재등록하면 관찰기록 작성과 수정 기능이 다시 활성화됩니다.</span>'
+      + '</div>';
+  }
+
   function renderLoadingDetail(student) {
     const body = ensureRecordWorkspace(student);
     if (body) body.innerHTML = recordQuietLoadingHtml();
@@ -505,6 +531,13 @@ function recordWorkspaceHtml(student, recordContent) {
     const wasSelected = state.selectedStudentId === nextStudentId;
     state.selectedStudentId = nextStudentId;
     decorateRows();
+
+    const inactiveStatus = inactiveStudentStatus(student);
+    if (inactiveStatus) {
+      state.loadToken += 1;
+      renderInactiveDetail(student, inactiveStatus);
+      return;
+    }
 
     const body = ensureRecordWorkspace(student);
     const cached = readRecordCache(student);

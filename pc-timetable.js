@@ -726,11 +726,15 @@
     if (state.pane === next) return;
     state.pane = next;
     closeDialog();
+    // 탭/헤더 상태를 먼저 반영하고, 큰 시간표·출석부 DOM 생성은 다음 프레임에서 실행합니다.
+    // 클릭 이벤트 안에서 표 전체를 만들지 않아 버튼 피드백이 즉시 보입니다.
     renderSidebar();
     renderWorkspaceHeader();
-    renderTimetable();
-    if (next === 'attendance') loadAttendanceRegister();
-    else loadWeek();
+    requestAnimationFrame(() => {
+      if (!state.active || state.pane !== next) return;
+      if (next === 'attendance') loadAttendanceRegister();
+      else loadWeek();
+    });
   }
 
   function renderSidebar() {
