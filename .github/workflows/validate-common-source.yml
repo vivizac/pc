@@ -11,6 +11,7 @@ name: Validate OLLI common source
       - 'observation-memo-session-common.js'
       - 'observation-memo-storage-common.js'
       - 'observation-memo-request-guard-common.js'
+      - 'observation-memo-version-history-common.js'
       - 'olli-record-scene-tools.js'
       - 'record-feedback-mode-common.js'
       - 'scene-card-kinder-feedback-common.js'
@@ -53,9 +54,11 @@ jobs:
               *.js)
                 static_count="$(grep -Foc "src=\"$file\"" index.html || true)"
                 dynamic_count=0
-                if [ "$file" = 'observation-memo-request-guard-common.js' ]; then
-                  dynamic_count="$(grep -Foc "$file" observation-memo-core.js 2>/dev/null || true)"
-                fi
+                case "$file" in
+                  observation-memo-request-guard-common.js|observation-memo-version-history-common.js)
+                    dynamic_count="$(grep -Foc "$file" observation-memo-core.js 2>/dev/null || true)"
+                    ;;
+                esac
                 count=$((static_count + dynamic_count))
                 if [ "$count" -ne 1 ]; then
                   echo "$file must be loaded exactly once (static: $static_count, dynamic: $dynamic_count)."
