@@ -1,0 +1,48 @@
+name: Cleanup current homeroom source
+
+on:
+  push:
+    branches:
+      - cleanup/current-homeroom-source
+    paths:
+      - .github/workflows/cleanup-current-homeroom.yml
+      - .github/tmp/cleanup_current_homeroom.py
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanup/current-homeroom-source
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Patch canonical PC sources
+        run: python .github/tmp/cleanup_current_homeroom.py
+      - name: Validate JavaScript
+        run: |
+          node --check olli-storage-core.js
+          node --check olli-data-students.js
+          node --check olli-data-student-operations.js
+          node --check olli-student-info-runtime.js
+          node --check pc-student-info-card-runtime.js
+          git diff --check
+      - name: Ensure legacy student teacher persistence is gone
+        run: |
+          ! grep -n "row.teacher\|row.homeroom_teacher" olli-data-student-operations.js
+          ! grep -n "item?.teacher\|item?.homeroom_teacher" olli-data-students.js
+          ! grep -n "'class_no', 'teacher', 'homeroom_teacher'" olli-storage-core.js
+          ! grep -n "Object.prototype.hasOwnProperty.call(extraInfo, 'teacher')" olli-student-info-runtime.js
+      - name: Commit cleanup and remove temporary files
+        run: |
+          rm -f .github/workflows/cleanup-current-homeroom.yml .github/tmp/cleanup_current_homeroom.py
+          git config user.name "OpenAI"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "PC 학생정보 담임을 현재 시간표 단일 원본으로 정리"
+          git push origin HEAD:cleanup/current-homeroom-source
