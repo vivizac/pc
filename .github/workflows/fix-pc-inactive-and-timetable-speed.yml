@@ -28,6 +28,11 @@ jobs:
           path.write_text(source, encoding='utf-8')
           PY
           python3 .github/tmp/fix_pc_inactive_and_timetable_speed.py
+      - name: Validate JavaScript syntax
+        run: |
+          node --check pc-attendance.js
+          node --check pc-timetable.js
+          node --check pc-timetable-attendance-register.js
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
