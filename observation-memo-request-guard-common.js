@@ -164,6 +164,28 @@
     return task;
   }
 
+  function protectObservationMemoLocalDraft(student, noteType = '', content = '', updatedAt = '') {
+    if (!student) return false;
+    const type = noteTypeFor(student, noteType);
+    const key = requestKey(student, type);
+    if (!key) return false;
+    const before = localEntry(student);
+    const request = {
+      sequence: ++sequence,
+      student: { ...student },
+      noteType: type,
+      content: String(content == null ? '' : content),
+      expectedRevision: revision(before.revision),
+      mutationId: newMutationId(),
+      updatedAt: updatedAt || new Date().toISOString(),
+      options: { localOnly: true }
+    };
+    latestRequests.set(key, request);
+    writePending(request, request.expectedRevision);
+    return true;
+  }
+
+  global.protectObservationMemoLocalDraft = protectObservationMemoLocalDraft;
   global.persistObservationMemoDraft = guardedPersistObservationMemoDraft;
 
   // Clearing a draft is a normal revisioned write too. Route direct clear callers through
