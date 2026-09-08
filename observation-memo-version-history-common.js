@@ -208,8 +208,8 @@
     overlay.setAttribute('aria-hidden', 'false');
     document.body.classList.add('olliMemoHistoryOpen');
   }
-  function closeHistory() {
-    if (state.restoring) return;
+  function closeHistory(force = false) {
+    if (state.restoring && !force) return;
     const overlay = document.getElementById(OVERLAY_ID);
     if (!overlay) return;
     overlay.classList.remove('show', 'preview');
@@ -604,7 +604,7 @@
       state.currentUpdatedAt = text(response.updated_at);
       applyServerSnapshot(state.student, response.content || '', state.currentRevision, state.currentUpdatedAt);
       try { global.dispatchEvent(new CustomEvent('olli:observation-memo-version-restored', { detail: { studentId: clean(state.student.id), revision: state.currentRevision, restoredFromRevision: targetRevision } })); } catch (_) {}
-      closeHistory();
+      closeHistory(true);
       setStatus('이전 기록으로 복구됨');
       try { if (typeof global.showMemoSaveCheck === 'function') global.showMemoSaveCheck(); } catch (_) {}
       setTimeout(() => setStatus(''), 1500);
