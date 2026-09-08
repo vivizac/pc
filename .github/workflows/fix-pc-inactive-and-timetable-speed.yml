@@ -1,0 +1,30 @@
+name: Fix PC inactive records and timetable speed
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-pc-inactive-and-timetable-speed.yml'
+      - '.github/tmp/fix_pc_inactive_and_timetable_speed.py'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch PC inactive records and timetable performance
+        run: python3 .github/tmp/fix_pc_inactive_and_timetable_speed.py
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pc-attendance.js pc-timetable.js pc-timetable-attendance-register.js
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "fix: 휴원 퇴원 기록 비활성화 및 시간표 출석부 전환 최적화"
+          git push
