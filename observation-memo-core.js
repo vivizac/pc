@@ -19,11 +19,28 @@
     console.warn('관찰노트 편집 상태 브리지 준비 실패:', error?.message || error);
   }
 
-  if (global.__olliObservationMemoRequestGuardLoaderAdded) return;
+  function loadObservationMemoVersionHistory() {
+    if (global.__olliObservationMemoVersionHistoryLoaderAdded) return;
+    global.__olliObservationMemoVersionHistoryLoaderAdded = true;
+    const historyScript = document.createElement('script');
+    historyScript.src = 'observation-memo-version-history-common.js?v=20260908-history-1';
+    historyScript.async = false;
+    historyScript.onerror = () => {
+      global.__olliObservationMemoVersionHistoryLoaderAdded = false;
+      console.warn('관찰노트 이전 기록 모듈을 불러오지 못했습니다.');
+    };
+    document.head.appendChild(historyScript);
+  }
+
+  if (global.__olliObservationMemoRequestGuardLoaderAdded) {
+    loadObservationMemoVersionHistory();
+    return;
+  }
   global.__olliObservationMemoRequestGuardLoaderAdded = true;
   const script = document.createElement('script');
   script.src = 'observation-memo-request-guard-common.js?v=20260908-order-1';
   script.async = false;
+  script.onload = loadObservationMemoVersionHistory;
   script.onerror = () => {
     global.__olliObservationMemoRequestGuardLoaderAdded = false;
     console.warn('관찰노트 요청 순서 보호 모듈을 불러오지 못했습니다.');
@@ -49,10 +66,14 @@ function openStudentMemoPageById(studentId) {
   openObservationMemoScreenShell(session);
   renderObservationMemoScreenChrome(session);
   renderObservationMemoInitialView(session);
+  if (typeof refreshObservationMemoVersionHistoryButton === 'function') {
+    requestAnimationFrame(refreshObservationMemoVersionHistoryButton);
+  }
 }
 
 function closeMemoPage() {
   prepareObservationMemoPageClose();
+  if (typeof closeObservationMemoVersionHistory === 'function') closeObservationMemoVersionHistory();
   returnFromObservationMemoScreen(() => loadRecords(''));
 }
 
