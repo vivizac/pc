@@ -36,7 +36,7 @@ write(p,s)
 
 # 4) 예전 학생정보 팝업 저장 경로에서도 수동 담임 필드 제거
 p='olli-student-info-runtime.js'; s=read(p)
-s,n=re.subn(r"\n\s*teacher:\s*Object\.prototype\.hasOwnProperty\.call\(extraInfo, 'teacher'\) \? extraInfo\.teacher : \(targetStudent\.teacher \|\| ''\),\n\s*homeroom_teacher:\s*Object\.prototype\.hasOwnProperty\.call\(extraInfo, 'homeroom_teacher'\) \? extraInfo\.homeroom_teacher : \(targetStudent\.homeroom_teacher \|\| ''\),", "", s)
+s,n=re.subn(r"\n\s*teacher:\s*Object\.prototype\.hasOwnProperty\.call\(extraInfo, 'teacher'\) \? extraInfo\.teacher : \(targetStudent\.teacher \|\| ''\),\n\s*homeroom_teacher:\s*Object\.prototype\.hasOwnProperty\.call\(extraInfo, 'homeroom_teacher'\) \? extraInfo\.homeroom_teacher : \(targetStudent\.homeroom_teacher \|\| ''\),?", "", s)
 if n<2: raise RuntimeError(f'legacy student-info teacher save fields expected 2, got {n}')
 write(p,s)
 
