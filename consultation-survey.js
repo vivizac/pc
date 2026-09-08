@@ -7,7 +7,7 @@ for(const file of ['consultation-final-analysis.css','consultation-result-sheet.
   style.href=new URL(file,base).toString();
   document.head.appendChild(style);
 }
-const files=['pc-student-class-routing.js','pc-settings-layout.js','consultation-analysis.js','consultation-observation.js','consultation-final-analysis.js','consultation-result-library-st.js','consultation-result-library-gm.js','consultation-result-sheet.js','consultation-survey-core.js','consultation-survey-token-link.js','consultation-observation-ui.js','consultation-final-analysis-ui.js','consultation-result-sheet-ui.js'];
+const files=['pc-student-class-routing.js','pc-student-info-schedule-readonly.js','pc-settings-layout.js','consultation-analysis.js','consultation-observation.js','consultation-final-analysis.js','consultation-result-library-st.js','consultation-result-library-gm.js','consultation-result-sheet.js','consultation-survey-core.js','consultation-survey-token-link.js','consultation-observation-ui.js','consultation-final-analysis-ui.js','consultation-result-sheet-ui.js'];
 function load(index){
   if(index>=files.length)return;
   const script=document.createElement('script');
