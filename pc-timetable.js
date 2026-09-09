@@ -1317,6 +1317,15 @@
       () => renderPickupPickerResults(dialog),
       null
     );
+    if (!dialog.__olliPickupPointerBound) {
+      dialog.__olliPickupPointerBound = true;
+      dialog.addEventListener('pointerdown', (event) => {
+        const button = event.target.closest('[data-tt-pickup-student]');
+        if (!button || !state.dialog || state.dialog.kind !== 'pickupAdd') return;
+        // 한글 검색창이 blur/compositionend로 결과 목록을 다시 그리기 전에 학생 ID를 먼저 보존합니다.
+        state.dialog.studentId = clean(button.dataset.ttPickupStudent);
+      }, true);
+    }
     dialog.querySelectorAll('[data-tt-pickup-student]').forEach((button) => button.addEventListener('click', () => { state.dialog.studentId = button.dataset.ttPickupStudent; renderDialog(); }));
     const pickupLabel = dialog.querySelector('[data-tt-pickup-label]');
     if (pickupLabel) pickupLabel.addEventListener('input', () => { if (state.dialog && state.dialog.kind === 'pickupAdd') state.dialog.pickupLabel = pickupLabel.value; });
