@@ -77,7 +77,8 @@
   function attendanceRowsFingerprint(rows) {
     return JSON.stringify((Array.isArray(rows) ? rows : []).map((row) => [
       clean(row && row.id), clean(row && row.student_id), clean(row && row.session_date).slice(0, 10),
-      Number(row && row.time_slot || 0), clean(row && row.class_group), clean(row && row.session_kind), row && row.attended !== false
+      Number(row && row.time_slot || 0), clean(row && row.class_group), clean(row && row.session_kind),
+      row && row.attended !== false, clean(row && row.register_status)
     ]));
   }
 
@@ -232,6 +233,35 @@
     });
   }
 
+  const ATTENDANCE_REGISTER_STATUS_ORDER = ['blank', 'present', 'absent', 'makeup'];
+
+  function attendanceRegisterStatus(records, sessionDate) {
+    const rows = Array.isArray(records) ? records : [];
+    const override = rows.find((row) => clean(row && row.session_kind) === 'register_override'
+      && ATTENDANCE_REGISTER_STATUS_ORDER.includes(clean(row && row.register_status)));
+    if (override) return clean(override.register_status);
+    const makeup = rows.some((row) => clean(row && row.session_kind) === 'makeup' && row.attended !== false);
+    if (makeup) return 'makeup';
+    const present = rows.some((row) => clean(row && row.session_kind) === 'regular' && row.attended !== false);
+    if (present) return 'present';
+    const expected = rows.some((row) => clean(row && row.session_kind) === 'regular_expected');
+    if (expected && clean(sessionDate) < todayKey()) return 'absent';
+    return 'blank';
+  }
+
+  function nextAttendanceRegisterStatus(status) {
+    const current = ATTENDANCE_REGISTER_STATUS_ORDER.includes(clean(status)) ? clean(status) : 'blank';
+    const index = ATTENDANCE_REGISTER_STATUS_ORDER.indexOf(current);
+    return ATTENDANCE_REGISTER_STATUS_ORDER[(index + 1) % ATTENDANCE_REGISTER_STATUS_ORDER.length];
+  }
+
+  function attendanceRegisterStatusMeta(status) {
+    if (status === 'present') return { className: ' attendanceLinkedMark', mark: '<span aria-label="출석">✓</span>', label: '출석' };
+    if (status === 'absent') return { className: ' attendanceAbsentMark', mark: '<span aria-label="결석">결</span>', label: '결석' };
+    if (status === 'makeup') return { className: ' attendanceMakeupMark', mark: '<span aria-label="보강">보</span>', label: '보강' };
+    return { className: '', mark: '', label: '빈칸' };
+  }
+
   function linkedAttendanceRegisterHtml() {
     const match = state.attendanceMonth.match(/^(\d{4})-(\d{2})$/);
     const year = match ? Number(match[1]) : new Date().getFullYear();
@@ -272,13 +302,9 @@
       const dateCells = dayMeta.map((meta) => {
         if (meta.closed) return '<td class="dateCol attendanceHolidayCell" aria-disabled="true"></td>';
         const records = rowsByStudentDate.get(`${clean(student.id)}|${meta.key}`) || [];
-        const makeupRows = records.filter((row) => clean(row.session_kind) === 'makeup');
-        const regular = records.find((row) => clean(row.session_kind) === 'regular' && row.attended !== false);
-        const expectedRegular = records.some((row) => clean(row.session_kind) === 'regular_expected');
-        if (makeupRows.some((row) => row.attended !== false)) return '<td class="dateCol attendanceMakeupMark"><span aria-label="보강 출석">보</span></td>';
-        if (regular) return '<td class="dateCol attendanceLinkedMark"><span aria-label="출석">✓</span></td>';
-        if (expectedRegular && meta.key < todayKey()) return '<td class="dateCol attendanceAbsentMark"><span aria-label="결석">결</span></td>';
-        return '<td class="dateCol"></td>';
+        const status = attendanceRegisterStatus(records, meta.key);
+        const statusMeta = attendanceRegisterStatusMeta(status);
+        return `<td class="dateCol attendanceRegisterEditable${statusMeta.className}" data-tt-attendance-register-cell="1" data-student-id="${esc(student.id)}" data-session-date="${meta.key}" data-status="${status}" role="button" tabindex="0" title="클릭: 출석 → 결석 → 보강 → 빈칸" aria-label="${esc(student.name)} ${meta.day}일 ${statusMeta.label}">${statusMeta.mark}</td>`;
       }).join('');
       return `<tr><td class="noCol">${index + 1}</td><td class="nameCol">${esc(student.name)}</td><td class="schoolGradeCol">${esc(attendanceRosterMeta(student))}</td><td class="personalityCol">${esc(student.personality)}</td>${dateCells}</tr>`;
     }).join('');
@@ -295,6 +321,66 @@
     return `<div><div class="attendancePrintPage"><div class="attendancePrintHeader"><div class="attendancePrintAcademy">${esc(academyName || '비비작 아이성향 미술학원')} (${registerDivision})</div><div class="attendancePrintMonth">${year}년 ${month}월</div></div><table class="settingsAttendancePreviewTable"${tableStyle}>${colGroup}${header}<tbody>${rowHtml}${blankRows}</tbody></table></div></div>`;
   }
 
+  async function cycleAttendanceRegisterCell(cell) {
+    if (!cell || cell.dataset.attendanceSaving === '1') return;
+    const studentId = clean(cell.dataset.studentId);
+    const sessionDate = clean(cell.dataset.sessionDate);
+    const currentStatus = clean(cell.dataset.status) || 'blank';
+    const nextStatus = nextAttendanceRegisterStatus(currentStatus);
+    if (!studentId || !sessionDate) return;
+    if (typeof service.setAttendanceRegisterStatus !== 'function') {
+      notify('출석부 수정 모듈을 불러오지 못했습니다. 페이지를 새로고침해 주세요.');
+      return;
+    }
+
+    cell.dataset.attendanceSaving = '1';
+    try {
+      await service.setAttendanceRegisterStatus(studentId, sessionDate, nextStatus);
+      const rows = (Array.isArray(state.attendanceRows) ? state.attendanceRows : []).filter((row) => !(
+        clean(row && row.student_id) === studentId
+        && clean(row && row.session_date).slice(0, 10) === sessionDate
+        && clean(row && row.session_kind) === 'register_override'
+      ));
+      rows.push({
+        student_id: studentId,
+        session_date: sessionDate,
+        time_slot: 0,
+        class_group: 'A',
+        session_kind: 'register_override',
+        attended: nextStatus === 'present' || nextStatus === 'makeup',
+        register_status: nextStatus,
+        marked_at: new Date().toISOString()
+      });
+      state.attendanceRows = rows;
+      state.attendanceRowsMonth = state.attendanceMonth;
+      lastAttendanceRenderSignature = '';
+      renderAttendanceRegister();
+    } catch (error) {
+      notify(error && (error.message || error) || '출석부 상태를 저장하지 못했습니다.');
+      cell.dataset.attendanceSaving = '';
+    }
+  }
+
+  function bindAttendanceRegisterEditing(root) {
+    if (!root || root.__olliAttendanceRegisterEditBound) return;
+    root.__olliAttendanceRegisterEditBound = true;
+    root.addEventListener('click', (event) => {
+      const cell = event.target.closest('[data-tt-attendance-register-cell]');
+      if (!cell || !root.contains(cell)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      cycleAttendanceRegisterCell(cell);
+    });
+    root.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const cell = event.target.closest('[data-tt-attendance-register-cell]');
+      if (!cell || !root.contains(cell)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      cycleAttendanceRegisterCell(cell);
+    });
+  }
+
   function renderAttendanceRegister() {
     const ui = ensureUi();
     if (!ui || state.view !== 'schedule' || state.pane !== 'attendance') return;
@@ -304,8 +390,9 @@
     if (alreadyShowingAttendance && signature === lastAttendanceRenderSignature) return;
 
     const html = linkedAttendanceRegisterHtml();
-    ui.root.innerHTML = `<section class="olliTtAttendanceRegister"><div class="olliTtAttendanceRegisterHead"><div><strong>${esc(monthLabel(state.attendanceMonth))} 출석부</strong><span>시간표에서 체크한 출석이 자동으로 표시됩니다.</span></div></div><div class="olliTtAttendanceRegisterScroll">${html}</div></section>`;
+    ui.root.innerHTML = `<section class="olliTtAttendanceRegister"><div class="olliTtAttendanceRegisterHead"><div><strong>${esc(monthLabel(state.attendanceMonth))} 출석부</strong><span>시간표 출석이 자동 반영되며, 날짜 칸을 클릭해 출석 상태를 수정할 수 있습니다.</span></div></div><div class="olliTtAttendanceRegisterScroll">${html}</div></section>`;
     lastAttendanceRenderSignature = signature;
+    bindAttendanceRegisterEditing(ui.root);
 
     // 글자 맞춤은 큰 표 DOM 생성 직후 강제로 실행하지 않고 다음 프레임으로 미뤄 첫 화면 표시를 막지 않습니다.
     scheduleAttendanceFitText(ui.root);

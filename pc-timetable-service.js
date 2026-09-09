@@ -344,6 +344,16 @@
     return result;
   }
 
+  async function setAttendanceRegisterStatus(studentId, sessionDate, status) {
+    const result = await rpc('olli_schedule_set_attendance_register_status', contextPayload({
+      p_student_id: studentId,
+      p_session_date: sessionDate,
+      p_status: status
+    }));
+    invalidateAttendanceMonth(sessionDate);
+    return result;
+  }
+
   async function loadAttendanceMonth(yearMonth) {
     const shared = global.OlliAttendanceData;
     if (shared && typeof shared.loadMonth === 'function') return shared.loadMonth(yearMonth);
@@ -417,6 +427,7 @@
     mergeKinderClass,
     toggleAttendance,
     setAttendance,
+    setAttendanceRegisterStatus,
     loadAttendanceMonth,
     savePickup,
     updatePickup,

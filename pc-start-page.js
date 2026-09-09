@@ -20,7 +20,7 @@
       body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider {
         gap: 7px;
         margin: 11px 0 7px;
-        color: #aeb3bb;
+        color: #000;
         font-size: 9.5px;
         font-weight: 620;
         line-height: 1;
@@ -29,7 +29,7 @@
       body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::before,
       body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::after {
         min-width: 10px;
-        background: #eceef1;
+        background: #000;
       }
       body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider span {
         padding: 0 1px;
