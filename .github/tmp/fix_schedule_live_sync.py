@@ -39,6 +39,7 @@ if 'const LIVE_SYNC_INTERVAL_MS = 3000;' not in core:
 
   async function refreshActiveSchedulePane() {
     if (!state.active || state.view !== 'schedule') return;
+    await refreshStudentsFromServer();
     if (state.pane === 'attendance') await loadAttendanceRegister();
     else await loadWeek();
   }
@@ -108,6 +109,13 @@ if 'const LIVE_SYNC_INTERVAL_MS = 3000;' not in core:
     if anchor not in core:
         raise SystemExit('loadWeek anchor not found')
     core = core.replace(anchor, insert + anchor, 1)
+
+old_refresh = "  async function refreshActiveSchedulePane() {\n    if (!state.active || state.view !== 'schedule') return;\n    if (state.pane === 'attendance') await loadAttendanceRegister();\n    else await loadWeek();\n  }\n"
+new_refresh = "  async function refreshActiveSchedulePane() {\n    if (!state.active || state.view !== 'schedule') return;\n    await refreshStudentsFromServer();\n    if (state.pane === 'attendance') await loadAttendanceRegister();\n    else await loadWeek();\n  }\n"
+if 'await refreshStudentsFromServer();\n    if (state.pane === \'attendance\')' not in core:
+    if old_refresh not in core:
+        raise SystemExit('refreshActiveSchedulePane anchor not found')
+    core = core.replace(old_refresh, new_refresh, 1)
 
 if 'await syncBeforeScheduleMutation();\n      const result = await task();' not in core:
     anchor = "    try {\n      const result = await task();\n      state.saving = false;\n      closeDialog();\n"
