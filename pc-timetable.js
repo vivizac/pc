@@ -49,7 +49,10 @@
     attendanceLoadToken: 0,
     dialog: null,
     saving: false,
-    historyLoadToken: 0
+    historyLoadToken: 0,
+    syncRevision: 0,
+    syncAcademyId: '',
+    syncChecking: false
   };
 
   function clean(value) { return String(value == null ? '' : value).trim(); }
@@ -199,6 +202,79 @@
       return;
     }
     setView();
+  }
+
+  const LIVE_SYNC_INTERVAL_MS = 3000;
+
+  function currentSyncAcademyId() {
+    return typeof service.currentAcademyId === 'function' ? clean(service.currentAcademyId()) : '';
+  }
+
+  async function refreshActiveSchedulePane() {
+    if (!state.active || state.view !== 'schedule') return;
+    if (state.pane === 'attendance') await loadAttendanceRegister();
+    else await loadWeek();
+  }
+
+  async function readScheduleSyncRevision() {
+    if (typeof service.loadSyncRevision !== 'function') return 0;
+    const info = await service.loadSyncRevision();
+    return Number(info && info.version || 0);
+  }
+
+  async function checkLiveScheduleSync(forceRefresh) {
+    if (!state.active || state.view !== 'schedule' || state.saving || state.syncChecking) return;
+    if (!forceRefresh && typeof document !== 'undefined' && document.hidden) return;
+    const academyId = currentSyncAcademyId();
+    if (!academyId) return;
+    if (state.syncAcademyId !== academyId) {
+      state.syncAcademyId = academyId;
+      state.syncRevision = 0;
+    }
+
+    state.syncChecking = true;
+    try {
+      const version = await readScheduleSyncRevision();
+      if (!version) return;
+      const previous = Number(state.syncRevision || 0);
+      const shouldRefresh = !!forceRefresh || !previous || version !== previous;
+      state.syncRevision = version;
+      if (shouldRefresh) await refreshActiveSchedulePane();
+    } catch (error) {
+      console.warn('시간표 실시간 동기화 확인 실패:', error);
+    } finally {
+      state.syncChecking = false;
+    }
+  }
+
+  async function syncBeforeScheduleMutation() {
+    if (typeof service.loadSyncRevision !== 'function') return;
+    const academyId = currentSyncAcademyId();
+    if (!academyId) return;
+    if (state.syncAcademyId !== academyId) {
+      state.syncAcademyId = academyId;
+      state.syncRevision = 0;
+    }
+    try {
+      const version = await readScheduleSyncRevision();
+      if (!version) return;
+      const previous = Number(state.syncRevision || 0);
+      if (!previous || version !== previous) {
+        state.syncRevision = version;
+        await refreshActiveSchedulePane();
+      }
+    } catch (error) {
+      console.warn('저장 전 시간표 최신 확인 실패:', error);
+    }
+  }
+
+  if (!global.__OLLI_TIMETABLE_LIVE_SYNC_V1__) {
+    global.__OLLI_TIMETABLE_LIVE_SYNC_V1__ = true;
+    global.setInterval(() => { checkLiveScheduleSync(false); }, LIVE_SYNC_INTERVAL_MS);
+    global.addEventListener('focus', () => { checkLiveScheduleSync(true); });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) checkLiveScheduleSync(true);
+    });
   }
 
   async function loadWeek() {
@@ -1440,6 +1516,7 @@
     const primary = document.querySelector('#olliTtDialog .olliTtDialogPrimary');
     if (primary) { primary.disabled = true; primary.textContent = '저장 중…'; }
     try {
+      await syncBeforeScheduleMutation();
       const result = await task();
       state.saving = false;
       closeDialog();
@@ -1493,6 +1570,7 @@
     const layoutButtons = document.querySelectorAll('#olliTtDialog [data-tt-split-kinder-class], #olliTtDialog [data-tt-merge-kinder-class]');
     layoutButtons.forEach((button) => { button.disabled = true; });
     try {
+      await syncBeforeScheduleMutation();
       const result = await task();
       const requestedWeek = dateKey(state.weekStart);
       const requestedAcademyId = typeof service.currentAcademyId === 'function' ? service.currentAcademyId() : '';

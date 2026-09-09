@@ -146,6 +146,10 @@
     return Object.assign({ p_session_token: sessionToken, p_academy_id: academyId }, extra || {});
   }
 
+  async function loadSyncRevision() {
+    return rpc('olli_schedule_sync_revision', contextPayload());
+  }
+
   async function bootstrapLegacy() {
     const students = activeStudents()
       .filter((student) => clean(student && student.id))
@@ -407,6 +411,7 @@
     DAYS,
     activeStudents,
     currentAcademyId,
+    loadSyncRevision,
     legacyPairs,
     getCachedWeek,
     getCachedAttendanceMonth,
