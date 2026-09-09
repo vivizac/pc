@@ -518,7 +518,7 @@
   function pickupCellHtml(date, classTime) {
     const rows = slotPickups(date, classTime);
     const holiday = isHolidayDate(date);
-    const cards = rows.map((item) => `<div class="olliTtPickupCard" data-tt-pickup-manage="${esc(item.id)}"><strong>${esc(item.student_name)}</strong><span>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</span></div>`).join('');
+    const cards = rows.map((item) => `<div class="olliTtPickupCard" data-tt-pickup-manage="${esc(item.id)}" data-tt-pickup-date="${dateKey(date)}"><strong>${esc(item.student_name)}</strong><span>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</span></div>`).join('');
     return `<div class="olliTtPickupCell${holiday ? ' holiday' : ''}" data-tt-pickup-cell="1" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-class-time="${classTime}"${holiday ? ' data-holiday="1" aria-disabled="true"' : ''}><div class="olliTtPickupEntries">${cards}</div></div>`;
   }
 
@@ -713,7 +713,7 @@
     const pickupManage = event.target.closest('[data-tt-pickup-manage]');
     if (pickupManage) {
       event.stopPropagation();
-      openPickupManage(pickupManage.dataset.ttPickupManage);
+      openPickupManage(pickupManage.dataset.ttPickupManage, pickupManage.dataset.ttPickupDate);
       return;
     }
     const entry = event.target.closest('[data-tt-entry]');
@@ -915,11 +915,15 @@
     openOverlay();
   }
 
-  function openPickupManage(pickupId) {
+  function openPickupManage(pickupId, clickedDate) {
     const item = pickups().find((row) => clean(row.id) === clean(pickupId));
     if (!item) return;
-    const tomorrow = addDays(new Date(), 1);
-    state.dialog = { kind: 'pickupManage', pickupId: clean(pickupId), pickupTime: pickupTimeInputValue(item.pickup_time), effectiveDate: dateKey(tomorrow) };
+    const tomorrowKey = dateKey(addDays(new Date(), 1));
+    const requestedDate = clean(clickedDate);
+    const initialEffectiveDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate > todayKey()
+      ? requestedDate
+      : tomorrowKey;
+    state.dialog = { kind: 'pickupManage', pickupId: clean(pickupId), pickupTime: pickupTimeInputValue(item.pickup_time), effectiveDate: initialEffectiveDate };
     openOverlay();
   }
 
