@@ -63,13 +63,57 @@
     return false;
   }
 
-  function makeConflictFromRemote(row) {
+  function makeConflictFromRemote(row, reason = 'REVISION_CONFLICT', extra = {}) {
     return {
       code: 'REVISION_CONFLICT',
+      reason,
+      origin: 'reconcile-lineage',
       serverRevision: memoRevision(row?.revision),
       serverContent: String(row?.content || ''),
       serverUpdatedAt: String(row?.updated_at || ''),
-      detectedAt: new Date().toISOString()
+      detectedAt: new Date().toISOString(),
+      ...extra
+    };
+  }
+
+  function markLocalProtectedConflict(student, row, latestLocalEntry, reason, lineage = null) {
+    const localText = String(latestLocalEntry?.content || '');
+    const localRevision = memoRevision(latestLocalEntry?.revision);
+    const localMutationId = String(latestLocalEntry?.mutationId || '');
+    const conflict = makeConflictFromRemote(row, reason, lineage ? { lineage } : {});
+
+    setMemoByStudent(student, localText, {
+      updatedAt: latestLocalEntry?.updatedAt || '',
+      lastSyncedAt: latestLocalEntry?.lastSyncedAt || '',
+      syncStatus: 'conflict',
+      revision: localRevision,
+      mutationId: localMutationId,
+      conflict
+    });
+
+    try {
+      if (typeof setMemoSaveStatus === 'function') setMemoSaveStatus('다른 기기 기록 확인 필요');
+    } catch (_) {}
+
+    try {
+      global.dispatchEvent(new CustomEvent('olli:observation-memo-conflict', {
+        detail: {
+          studentId: String(student?.id || ''),
+          ...conflict
+        }
+      }));
+    } catch (_) {}
+
+    return {
+      adoptedRemote: false,
+      conflictDetected: true,
+      source: reason,
+      localEntry: getMemoEntryByStudent(student),
+      remoteRow: row,
+      content: localText,
+      updatedAt: latestLocalEntry?.updatedAt || '',
+      revision: localRevision,
+      conflict
     };
   }
 
@@ -97,6 +141,85 @@
       updatedAt: syncedAt,
       revision: remoteRevision
     };
+  }
+
+  function currentAcademyId() {
+    try {
+      if (typeof global.getOlliCurrentAcademyId === 'function') {
+        return String(global.getOlliCurrentAcademyId() || '').trim();
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  function currentSessionToken() {
+    try {
+      return String(localStorage.getItem('olli_account_session_token_v1') || '').trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  async function loadObservationMemoVersionLineage(student, noteType) {
+    if (typeof global.supabase !== 'function') return null;
+    const academyId = currentAcademyId();
+    const token = currentSessionToken();
+    const studentId = String(student?.id || '').trim();
+    const type = String(noteType || '').trim();
+    if (!academyId || !token || !studentId || !type) return null;
+
+    const response = await global.supabase('POST', 'rpc/olli_note_draft_version_list', {
+      p_session_token: token,
+      p_academy_id: academyId,
+      p_student_id: studentId,
+      p_note_type: type,
+      p_limit: 50
+    });
+
+    if (!response || response.ok === false || !Array.isArray(response.items)) return null;
+    return response.items;
+  }
+
+  function analyzeObservationMemoLineage(items, localText, remoteText, localRevision, remoteRevision) {
+    const versions = Array.isArray(items) ? items : [];
+    let localSeenRevision = 0;
+    let remotePriorRevision = 0;
+    let localExactRevision = false;
+
+    versions.forEach(item => {
+      const revision = memoRevision(item?.revision);
+      const content = String(item?.content || '');
+      if (content === localText) {
+        localSeenRevision = Math.max(localSeenRevision, revision);
+        if (revision === localRevision) localExactRevision = true;
+      }
+      if (revision < remoteRevision && content === remoteText) {
+        remotePriorRevision = Math.max(remotePriorRevision, revision);
+      }
+    });
+
+    const localKnown = localExactRevision || localSeenRevision > 0;
+    const remoteIsHistoricalReversion =
+      remotePriorRevision > 0 &&
+      localSeenRevision > remotePriorRevision;
+
+    return {
+      localKnown,
+      localExactRevision,
+      localSeenRevision,
+      remotePriorRevision,
+      remoteIsHistoricalReversion
+    };
+  }
+
+  function localHasMeaningfulSnapshot(entry) {
+    const status = String(entry?.syncStatus || '');
+    return !!(
+      String(entry?.content || '').length ||
+      memoRevision(entry?.revision) > 0 ||
+      String(entry?.updatedAt || '').trim() ||
+      ['synced', 'pending', 'blocked', 'conflict'].includes(status)
+    );
   }
 
   async function reconcileObservationMemoDraft(student, noteType = '') {
@@ -137,13 +260,19 @@
     const localRevision = memoRevision(latestLocalEntry.revision);
     const localMutationId = String(latestLocalEntry.mutationId || '');
     const localStatus = String(latestLocalEntry.syncStatus || 'local');
+    const localConflict = latestLocalEntry.conflict && typeof latestLocalEntry.conflict === 'object'
+      ? latestLocalEntry.conflict
+      : null;
     const editorDirty = isCurrentObservationMemoDirty(student);
-    const protectedLocal = editorDirty || ['pending', 'conflict', 'blocked'].includes(localStatus);
+    const isReconcileConflict = localStatus === 'conflict' && localConflict?.origin === 'reconcile-lineage';
+    const protectedLocal =
+      editorDirty ||
+      ['pending', 'blocked'].includes(localStatus) ||
+      (localStatus === 'conflict' && !isReconcileConflict);
 
-    // A pending/blocked copy that is byte-for-byte identical to the server is not a
-    // conflict. Normalize it to the authoritative server revision/timestamp so a
-    // previously interrupted save cannot keep this device permanently stale.
-    if (protectedLocal && remoteText === localText) {
+    // Identical content is always safe to normalize to the server metadata. This
+    // never changes the visible text and clears stale pending/conflict metadata.
+    if (remoteText === localText) {
       const syncedAt = remoteUpdatedAt || new Date().toISOString();
       setMemoByStudent(student, remoteText, {
         updatedAt: syncedAt,
@@ -155,7 +284,7 @@
       });
       return {
         adoptedRemote: false,
-        recoveredPending: true,
+        recoveredPending: protectedLocal || isReconcileConflict,
         source: remoteMutationId && localMutationId && remoteMutationId === localMutationId
           ? 'remote-confirmed-local'
           : 'remote-equivalent-local',
@@ -167,72 +296,95 @@
       };
     }
 
-    // When the user has no unsaved edit, Supabase is the source of truth. Do not
-    // let an old local timestamp/revision or a historically corrupted local copy
-    // hide a change made on another device. This also repairs same-revision text
-    // mismatches left by older clients.
-    if (!protectedLocal) {
-      const differsFromServer =
-        remoteText !== localText ||
-        remoteRevision !== localRevision ||
-        remoteUpdatedAt !== localUpdatedAt ||
-        localStatus !== 'synced';
+    // If the user is actively editing or a write is pending/blocked, never replace
+    // local text. A content mismatch itself is enough to enter conflict protection,
+    // even when revision numbers happen to match.
+    if (protectedLocal) {
+      return markLocalProtectedConflict(
+        student,
+        row,
+        latestLocalEntry,
+        'active-local-conflict'
+      );
+    }
 
-      if (differsFromServer) {
-        return adoptRemoteSnapshot(student, row, 'remote-authoritative');
+    // A truly empty device with no meaningful local snapshot can safely accept the
+    // server copy. This is the new-device / cleared-browser case.
+    if (!localHasMeaningfulSnapshot(latestLocalEntry)) {
+      return adoptRemoteSnapshot(student, row, 'remote-new-device');
+    }
+
+    // Revision numbers created before the no-op fix cannot be trusted by themselves.
+    // Before replacing divergent local text, inspect immutable version history.
+    let lineageItems = null;
+    try {
+      lineageItems = await loadObservationMemoVersionLineage(student, resolvedType);
+    } catch (error) {
+      console.warn('관찰노트 버전 계보 확인 실패:', error?.message || error);
+    }
+
+    if (!lineageItems) {
+      return markLocalProtectedConflict(
+        student,
+        row,
+        latestLocalEntry,
+        'lineage-unavailable'
+      );
+    }
+
+    const lineage = analyzeObservationMemoLineage(
+      lineageItems,
+      localText,
+      remoteText,
+      localRevision,
+      remoteRevision
+    );
+
+    // Critical safety rule: if today's server text already existed at an older
+    // revision and this device's text existed at a later revision, the numeric
+    // current revision is a historical reversion. Never auto-overwrite the later
+    // local text with that older content.
+    if (lineage.remoteIsHistoricalReversion) {
+      return markLocalProtectedConflict(
+        student,
+        row,
+        latestLocalEntry,
+        'historical-reversion-conflict',
+        lineage
+      );
+    }
+
+    // If the local text cannot be proven to have been a server-confirmed version,
+    // it may be an unsynced A-device edit. Preserve it instead of trusting a newer
+    // timestamp/revision from another device.
+    if (!lineage.localKnown) {
+      return markLocalProtectedConflict(
+        student,
+        row,
+        latestLocalEntry,
+        'unverified-local-conflict',
+        lineage
+      );
+    }
+
+    // Safe automatic adoption is allowed only when lineage proves the local text was
+    // an older server-confirmed state AND the remote text is genuinely newer, not an
+    // older text reintroduced after it.
+    if (remoteRevision > lineage.localSeenRevision) {
+      if (lineage.remotePriorRevision === 0 || lineage.remotePriorRevision >= lineage.localSeenRevision) {
+        return adoptRemoteSnapshot(student, row, 'remote-lineage-verified');
       }
-
-      return {
-        adoptedRemote: false,
-        source: 'server-equal-local',
-        localEntry: latestLocalEntry,
-        remoteRow: row,
-        content: localText,
-        updatedAt: localUpdatedAt,
-        revision: localRevision
-      };
     }
 
-    const revisionAdvanced = remoteRevision > localRevision;
-    const legacyTimestampAdvanced = remoteRevision === localRevision &&
-      isRemoteMemoNewerThanLocal(remoteUpdatedAt, localUpdatedAt);
-    const serverChanged = revisionAdvanced || legacyTimestampAdvanced;
-
-    if (serverChanged) {
-      const conflict = makeConflictFromRemote(row);
-      setMemoByStudent(student, localText, {
-        updatedAt: latestLocalEntry.updatedAt,
-        lastSyncedAt: latestLocalEntry.lastSyncedAt,
-        syncStatus: 'conflict',
-        revision: localRevision,
-        mutationId: localMutationId,
-        conflict
-      });
-      try {
-        if (typeof setMemoSaveStatus === 'function') setMemoSaveStatus('다른 기기에서 수정됨');
-      } catch (_) {}
-      return {
-        adoptedRemote: false,
-        conflictDetected: true,
-        source: 'conflict',
-        localEntry: getMemoEntryByStudent(student),
-        remoteRow: row,
-        content: localText,
-        updatedAt: latestLocalEntry.updatedAt || '',
-        revision: localRevision,
-        conflict
-      };
-    }
-
-    return {
-      adoptedRemote: false,
-      source: 'protected-local',
-      localEntry: latestLocalEntry,
-      remoteRow: row,
-      content: localText,
-      updatedAt: latestLocalEntry.updatedAt || '',
-      revision: localRevision
-    };
+    // Any remaining ambiguity is intentionally conservative: keep the local text and
+    // require resolution rather than risk destroying a real classroom record.
+    return markLocalProtectedConflict(
+      student,
+      row,
+      latestLocalEntry,
+      'ambiguous-lineage-conflict',
+      lineage
+    );
   }
 
   global.getObservationMemoLocalSnapshot = getObservationMemoLocalSnapshot;
