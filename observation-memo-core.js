@@ -84,6 +84,27 @@ async function saveCurrentMemo(options = {}) {
     return;
   }
 
+  // Navigation, focus changes and merely opening a student are not edits.
+  // Some legacy callers still invoke saveCurrentMemo during student switching, so
+  // enforce the read-only guard here as the final write boundary on PC. A genuine
+  // text edit marks the current observation session dirty before reaching this path.
+  if (
+    options.force !== true &&
+    typeof hasObservationMemoDirtyChanges === 'function' &&
+    !hasObservationMemoDirtyChanges()
+  ) {
+    const entry = typeof getMemoEntryByStudent === 'function'
+      ? (getMemoEntryByStudent(currentMemoStudent) || {})
+      : {};
+    return {
+      state: 'unchanged',
+      student: currentMemoStudent,
+      error: null,
+      revision: Number(entry.revision || 0),
+      syncedAt: entry.lastSyncedAt || entry.updatedAt || ''
+    };
+  }
+
   const savingStudent = { ...currentMemoStudent };
   const savingType = currentMemoType;
   const isStillCurrentMemoStudent = () =>
