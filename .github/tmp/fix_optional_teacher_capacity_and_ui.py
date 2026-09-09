@@ -4,13 +4,14 @@ from pathlib import Path
 def replace_once(path, old, new, label):
     p = Path(path)
     text = p.read_text(encoding='utf-8')
+    if old in text:
+        p.write_text(text.replace(old, new, 1), encoding='utf-8')
+        print(f'[ok] {label}')
+        return
     if new in text:
         print(f'[skip] {label}: already applied')
         return
-    if old not in text:
-        raise SystemExit(f'[error] {label}: target text not found in {path}')
-    p.write_text(text.replace(old, new, 1), encoding='utf-8')
-    print(f'[ok] {label}')
+    raise SystemExit(f'[error] {label}: target text not found in {path}')
 
 
 routing = 'pc-student-class-routing.js'
@@ -66,8 +67,8 @@ replace_once(
 
 replace_once(
     'pc-attendance.css',
-    """body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider{\n  display:flex;align-items:center;gap:10px;width:100%;margin:15px 0 10px;\n  color:#8a9099;font-size:11px;font-weight:820;letter-spacing:-.03em;\n}\nbody.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::before,\nbody.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::after{\n  content:\"\";height:1px;flex:1;min-width:12px;background:#e2e5e9;\n}""",
-    """body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider{\n  display:flex;align-items:center;gap:10px;width:100%;margin:15px 0 10px;\n  color:#555b63;font-size:11px;font-weight:820;letter-spacing:-.03em;\n}\nbody.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::before,\nbody.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::after{\n  content:\"\";height:1px;flex:1;min-width:12px;background:#666b72;\n}""",
+    """body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider{\n  display:flex;align-items:center;gap:10px;width:100%;margin:15px 0 10px;color:#8a9099;font-size:11px;font-weight:820;line-height:1;letter-spacing:-.02em;box-sizing:border-box;\n}\nbody.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::before,\nbody.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::after{\n  content:\"\";height:1px;flex:1;min-width:12px;background:#e2e5e9;\n}""",
+    """body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider{\n  display:flex;align-items:center;gap:10px;width:100%;margin:15px 0 10px;color:#555b63;font-size:11px;font-weight:820;line-height:1;letter-spacing:-.02em;box-sizing:border-box;\n}\nbody.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::before,\nbody.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::after{\n  content:\"\";height:1px;flex:1;min-width:12px;background:#666b72;\n}""",
     'darken attendance group divider text and lines'
 )
 
