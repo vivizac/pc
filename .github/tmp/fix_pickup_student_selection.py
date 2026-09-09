@@ -49,5 +49,29 @@ if 'visibleButtons.length === 1' not in text:
         raise SystemExit('savePickup target not found')
     text = text.replace(old_save, new_save, 1)
 
+pickup_bind_anchor = '''    bindImeSafeSearch(
+      dialog.querySelector('[data-tt-pickup-search]'),
+      (value) => { if (state.dialog && state.dialog.kind === 'pickupAdd') state.dialog.query = value; },
+      () => renderPickupPickerResults(dialog),
+      null
+    );
+'''
+
+pickup_pointer_guard = pickup_bind_anchor + '''    if (!dialog.__olliPickupPointerBound) {
+      dialog.__olliPickupPointerBound = true;
+      dialog.addEventListener('pointerdown', (event) => {
+        const button = event.target.closest('[data-tt-pickup-student]');
+        if (!button || !state.dialog || state.dialog.kind !== 'pickupAdd') return;
+        // 한글 검색창이 blur/compositionend로 결과 목록을 다시 그리기 전에 학생 ID를 먼저 보존합니다.
+        state.dialog.studentId = clean(button.dataset.ttPickupStudent);
+      }, true);
+    }
+'''
+
+if '__olliPickupPointerBound' not in text:
+    if pickup_bind_anchor not in text:
+        raise SystemExit('pickup search binding anchor not found')
+    text = text.replace(pickup_bind_anchor, pickup_pointer_guard, 1)
+
 path.write_text(text, encoding='utf-8')
 print('Pickup student selection patch applied.')
