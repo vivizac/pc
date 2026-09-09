@@ -212,6 +212,7 @@
 
   async function refreshActiveSchedulePane() {
     if (!state.active || state.view !== 'schedule') return;
+    await refreshStudentsFromServer();
     if (state.pane === 'attendance') await loadAttendanceRegister();
     else await loadWeek();
   }
