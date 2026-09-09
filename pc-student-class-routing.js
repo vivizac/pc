@@ -18,7 +18,6 @@
   };
   let teacherAssignmentsCache = { academyId:'', at:0, rows:[] };
   let teacherRenderTimer = 0;
-  let bypassStudentScheduleSaveGuard = false;
 
   function clean(value) { return String(value == null ? '' : value).trim(); }
   function esc(value) {
@@ -494,27 +493,6 @@
     document.addEventListener('click', (event) => {
       const choice = event.target.closest('[data-tt-target-day],[data-tt-target-time],[data-tt-target-class],[data-tt-action-type]');
       if (choice) scheduleTeacherRender();
-      const save = event.target.closest('[data-tt-save-move]');
-      if (!save || bypassStudentScheduleSaveGuard) return;
-      const dialog = document.getElementById('olliTtDialog');
-      if (!dialog || !dialog.classList.contains('olliTtMoveDialog')) return;
-      event.preventDefault();
-      event.stopPropagation();
-      if (event.stopImmediatePropagation) event.stopImmediatePropagation();
-      (async () => {
-        try {
-          const target = timetableMoveTarget(dialog);
-          if (!target) throw new Error('선택한 수업 클래스를 확인해 주세요.');
-          const assignments = await loadTeacherAssignments(true);
-          const teacher = teacherForTarget(assignments, target);
-          if (!teacher) throw new Error(`${NUM_DAY[target.weekday]}요일 ${target.time_slot}시 ${target.class_group}반은 담임이 지정되지 않았습니다.\n시간표 설정에서 담임을 먼저 지정해 주세요.`);
-          bypassStudentScheduleSaveGuard = true;
-          save.click();
-          setTimeout(() => { bypassStudentScheduleSaveGuard = false; }, 0);
-        } catch (error) {
-          alert(error.message || error);
-        }
-      })();
     }, true);
   }
 
