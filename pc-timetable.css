@@ -347,7 +347,15 @@
 }
 .olliTtChoice:hover { border-color: #c6e1fb; color: #0877df; background: #f2f8ff; }
 .olliTtChoice.active { border-color: #0A84FF; color: #fff; background: #0A84FF; box-shadow: 0 7px 17px rgba(10, 132, 255, .20); }
-.olliTtChoice.full:not(.active) { color: #d64a4a; background: #fff0f0; border-color: #f1c7c7; }
+#olliTtDialog .olliTtChoice.full,
+#olliTtDialog .olliTtChoice.full.active,
+#olliTtDialog .olliTtChoice.full:hover {
+  color: #d64a4a !important;
+  background: #fff0f0 !important;
+  border-color: #f1c7c7 !important;
+  box-shadow: none !important;
+}
+#olliTtDialog .olliTtChoice.full small { color: inherit !important; }
 .olliTtChoice small { display: block; margin-top: 2px; font-size: calc(8px * var(--olli-text-scale)); font-weight: 700; }
 .olliTtEnrollmentList { display: grid; gap: 7px; }
 .olliTtEnrollmentChoice { min-height: 50px; padding: 0 14px; border: 1px solid #e1e5e9; border-radius: 14px; display: flex; align-items: center; justify-content: space-between; color: #4f5864; background: #fff; font: 720 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }

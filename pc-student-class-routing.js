@@ -538,7 +538,7 @@
     }
     installStyles();
     installRegistrationRouting();
-    installStudentScheduleTeacherLock();
+    // 하단 담임 박스는 더 이상 생성하지 않습니다. 담임은 현재 정규수업 줄에만 표시합니다.
     hideLegacyRegistrationScheduleFields();
   }
 
