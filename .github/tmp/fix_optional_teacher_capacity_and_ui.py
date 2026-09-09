@@ -59,6 +59,20 @@ replace_once(
 )
 
 replace_once(
+    routing,
+    """  let teacherRenderTimer = 0;\n  let bypassStudentScheduleSaveGuard = false;""",
+    """  let teacherRenderTimer = 0;""",
+    'remove obsolete timetable teacher save guard state'
+)
+
+replace_once(
+    routing,
+    """    document.addEventListener('click', (event) => {\n      const choice = event.target.closest('[data-tt-target-day],[data-tt-target-time],[data-tt-target-class],[data-tt-action-type]');\n      if (choice) scheduleTeacherRender();\n      const save = event.target.closest('[data-tt-save-move]');\n      if (!save || bypassStudentScheduleSaveGuard) return;\n      const dialog = document.getElementById('olliTtDialog');\n      if (!dialog || !dialog.classList.contains('olliTtMoveDialog')) return;\n      event.preventDefault();\n      event.stopPropagation();\n      if (event.stopImmediatePropagation) event.stopImmediatePropagation();\n      (async () => {\n        try {\n          const target = timetableMoveTarget(dialog);\n          if (!target) throw new Error('선택한 수업 클래스를 확인해 주세요.');\n          const assignments = await loadTeacherAssignments(true);\n          const teacher = teacherForTarget(assignments, target);\n          if (!teacher) throw new Error(`${NUM_DAY[target.weekday]}요일 ${target.time_slot}시 ${target.class_group}반은 담임이 지정되지 않았습니다.\\n시간표 설정에서 담임을 먼저 지정해 주세요.`);\n          bypassStudentScheduleSaveGuard = true;\n          save.click();\n          setTimeout(() => { bypassStudentScheduleSaveGuard = false; }, 0);\n        } catch (error) {\n          alert(error.message || error);\n        }\n      })();\n    }, true);""",
+    """    document.addEventListener('click', (event) => {\n      const choice = event.target.closest('[data-tt-target-day],[data-tt-target-time],[data-tt-target-class],[data-tt-action-type]');\n      if (choice) scheduleTeacherRender();\n    }, true);""",
+    'allow timetable add and move when teacher is unassigned'
+)
+
+replace_once(
     'pc-timetable.css',
     ".olliTtChoice.full:not(.active) { color: #7c65c6; background: #f1edff; }",
     ".olliTtChoice.full:not(.active) { color: #d64a4a; background: #fff0f0; border-color: #f1c7c7; }",
