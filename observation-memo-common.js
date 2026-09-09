@@ -34,9 +34,10 @@ function isObservationMemoEditStateCurrent(student = currentMemoStudent) {
 }
 
 function markObservationMemoEditorDirty(target) {
-  if (!target || target.id !== 'memoEditor' || !isObservationMemoEditStateCurrent()) return;
+  if (!target || target.id !== 'memoEditor' || !isObservationMemoEditStateCurrent()) return false;
   const state = getObservationMemoEditState();
-  state.dirty = true;
+  state.dirty = String(target.value || '') !== String(state.baselineText || '');
+  return state.dirty;
 }
 
 function markObservationMemoEditorClean() {
@@ -65,8 +66,15 @@ function persistObservationMemoInputLocally(target) {
   if (isObservationMemoAutoSaveBlocked()) return false;
 
   const content = String(target.value || '');
-  const updatedAt = new Date().toISOString();
   const state = getObservationMemoEditState();
+  if (
+    state &&
+    isObservationMemoEditStateCurrent() &&
+    content === String(state.baselineText || '')
+  ) {
+    return false;
+  }
+  const updatedAt = new Date().toISOString();
   const noteType = String(state?.noteType || 'elementary_observation');
 
   if (typeof window.protectObservationMemoLocalDraft === 'function') {
@@ -187,8 +195,9 @@ function handleMemoPauseAutoSaveInput(target) {
   const inputType = getMemoInputTypeFromTarget(target);
   if (!inputType || !currentMemoStudent || currentMemoType !== inputType) return;
   if (isObservationMemoAutoSaveBlocked()) return;
-  persistObservationMemoInputLocally(target);
   markObservationMemoEditorDirty(target);
+  if (!hasObservationMemoDirtyChanges()) return;
+  persistObservationMemoInputLocally(target);
   scheduleMemoAutoSave();
 }
 
@@ -359,7 +368,7 @@ function bindPauseAutoSaveForMemoInput(el, options = {}) {
 }
 
 function applyReconciledObservationMemoDraft(student, memoEditor, result) {
-  if (!student || !memoEditor || !result || !result.adoptedRemote) {
+  if (!student || !memoEditor || !result) {
     return { applied: false, reason: 'no-remote-update' };
   }
 
@@ -375,6 +384,24 @@ function applyReconciledObservationMemoDraft(student, memoEditor, result) {
   const state = getObservationMemoEditState();
   if (state && isObservationMemoEditStateCurrent(student) && state.dirty) {
     return { applied: false, reason: 'user-edited-during-sync' };
+  }
+
+  if (!result.adoptedRemote) {
+    const metadataOnly =
+      result.conflictDetected !== true &&
+      !!result.remoteRow &&
+      ['remote-confirmed-local', 'remote-equivalent-local'].includes(String(result.source || ''));
+    if (metadataOnly) {
+      if (state && isObservationMemoEditStateCurrent(student)) {
+        state.baselineText = String(result.content ?? memoEditor.value ?? '');
+        state.dirty = false;
+      }
+      if (typeof updateMemoStudentMetaDisplay === 'function') {
+        updateMemoStudentMetaDisplay(student, result.updatedAt || '');
+      }
+      return { applied: false, metadataUpdated: true, reason: 'remote-metadata-normalized' };
+    }
+    return { applied: false, reason: 'no-remote-update' };
   }
 
   memoEditor.value = String(result.content || '');
