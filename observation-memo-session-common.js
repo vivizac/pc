@@ -73,6 +73,32 @@
     };
   }
 
+  function adoptRemoteSnapshot(student, row, source = 'remote') {
+    const remoteText = String(row?.content || '');
+    const remoteUpdatedAt = String(row?.updated_at || '');
+    const remoteRevision = memoRevision(row?.revision);
+    const syncedAt = remoteUpdatedAt || new Date().toISOString();
+
+    setMemoByStudent(student, remoteText, {
+      updatedAt: syncedAt,
+      lastSyncedAt: syncedAt,
+      syncStatus: 'synced',
+      revision: remoteRevision,
+      mutationId: '',
+      conflict: null
+    });
+
+    return {
+      adoptedRemote: true,
+      source,
+      localEntry: getMemoEntryByStudent(student),
+      remoteRow: row,
+      content: remoteText,
+      updatedAt: syncedAt,
+      revision: remoteRevision
+    };
+  }
+
   async function reconcileObservationMemoDraft(student, noteType = '') {
     const resolvedType = noteType || getSupabaseNoteDraftType(student);
     const localEntry = getMemoEntryByStudent(student);
@@ -106,18 +132,18 @@
     const remoteRevision = memoRevision(row.revision);
     const remoteMutationId = String(row.last_mutation_id || '');
     const latestLocalEntry = getMemoEntryByStudent(student);
+    const localText = String(latestLocalEntry.content || '');
+    const localUpdatedAt = String(latestLocalEntry.updatedAt || '');
     const localRevision = memoRevision(latestLocalEntry.revision);
     const localMutationId = String(latestLocalEntry.mutationId || '');
     const localStatus = String(latestLocalEntry.syncStatus || 'local');
     const editorDirty = isCurrentObservationMemoDirty(student);
     const protectedLocal = editorDirty || ['pending', 'conflict', 'blocked'].includes(localStatus);
 
-    if (
-      protectedLocal &&
-      localMutationId &&
-      remoteMutationId === localMutationId &&
-      remoteText === String(latestLocalEntry.content || '')
-    ) {
+    // A pending/blocked copy that is byte-for-byte identical to the server is not a
+    // conflict. Normalize it to the authoritative server revision/timestamp so a
+    // previously interrupted save cannot keep this device permanently stale.
+    if (protectedLocal && remoteText === localText) {
       const syncedAt = remoteUpdatedAt || new Date().toISOString();
       setMemoByStudent(student, remoteText, {
         updatedAt: syncedAt,
@@ -130,7 +156,9 @@
       return {
         adoptedRemote: false,
         recoveredPending: true,
-        source: 'remote-confirmed-local',
+        source: remoteMutationId && localMutationId && remoteMutationId === localMutationId
+          ? 'remote-confirmed-local'
+          : 'remote-equivalent-local',
         localEntry: getMemoEntryByStudent(student),
         remoteRow: row,
         content: remoteText,
@@ -139,14 +167,40 @@
       };
     }
 
+    // When the user has no unsaved edit, Supabase is the source of truth. Do not
+    // let an old local timestamp/revision or a historically corrupted local copy
+    // hide a change made on another device. This also repairs same-revision text
+    // mismatches left by older clients.
+    if (!protectedLocal) {
+      const differsFromServer =
+        remoteText !== localText ||
+        remoteRevision !== localRevision ||
+        remoteUpdatedAt !== localUpdatedAt ||
+        localStatus !== 'synced';
+
+      if (differsFromServer) {
+        return adoptRemoteSnapshot(student, row, 'remote-authoritative');
+      }
+
+      return {
+        adoptedRemote: false,
+        source: 'server-equal-local',
+        localEntry: latestLocalEntry,
+        remoteRow: row,
+        content: localText,
+        updatedAt: localUpdatedAt,
+        revision: localRevision
+      };
+    }
+
     const revisionAdvanced = remoteRevision > localRevision;
     const legacyTimestampAdvanced = remoteRevision === localRevision &&
-      isRemoteMemoNewerThanLocal(remoteUpdatedAt, latestLocalEntry.updatedAt || '');
+      isRemoteMemoNewerThanLocal(remoteUpdatedAt, localUpdatedAt);
     const serverChanged = revisionAdvanced || legacyTimestampAdvanced;
 
-    if (serverChanged && protectedLocal) {
+    if (serverChanged) {
       const conflict = makeConflictFromRemote(row);
-      setMemoByStudent(student, latestLocalEntry.content || '', {
+      setMemoByStudent(student, localText, {
         updatedAt: latestLocalEntry.updatedAt,
         lastSyncedAt: latestLocalEntry.lastSyncedAt,
         syncStatus: 'conflict',
@@ -163,53 +217,21 @@
         source: 'conflict',
         localEntry: getMemoEntryByStudent(student),
         remoteRow: row,
-        content: latestLocalEntry.content || '',
+        content: localText,
         updatedAt: latestLocalEntry.updatedAt || '',
         revision: localRevision,
         conflict
       };
     }
 
-    if (!serverChanged) {
-      if (!protectedLocal && remoteRevision !== localRevision) {
-        setMemoByStudent(student, latestLocalEntry.content || '', {
-          updatedAt: latestLocalEntry.updatedAt || remoteUpdatedAt,
-          lastSyncedAt: latestLocalEntry.lastSyncedAt || remoteUpdatedAt,
-          syncStatus: 'synced',
-          revision: remoteRevision,
-          mutationId: '',
-          conflict: null
-        });
-      }
-      return {
-        adoptedRemote: false,
-        source: 'local',
-        localEntry: getMemoEntryByStudent(student),
-        remoteRow: row,
-        content: latestLocalEntry.content || '',
-        updatedAt: latestLocalEntry.updatedAt || '',
-        revision: memoRevision(getMemoEntryByStudent(student).revision)
-      };
-    }
-
-    const syncedAt = remoteUpdatedAt || new Date().toISOString();
-    setMemoByStudent(student, remoteText, {
-      updatedAt: syncedAt,
-      lastSyncedAt: syncedAt,
-      syncStatus: 'synced',
-      revision: remoteRevision,
-      mutationId: '',
-      conflict: null
-    });
-
     return {
-      adoptedRemote: true,
-      source: 'remote',
-      localEntry: getMemoEntryByStudent(student),
+      adoptedRemote: false,
+      source: 'protected-local',
+      localEntry: latestLocalEntry,
       remoteRow: row,
-      content: remoteText,
-      updatedAt: syncedAt,
-      revision: remoteRevision
+      content: localText,
+      updatedAt: latestLocalEntry.updatedAt || '',
+      revision: localRevision
     };
   }
 
