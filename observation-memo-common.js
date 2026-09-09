@@ -100,40 +100,75 @@ function persistObservationMemoInputLocally(target) {
   return false;
 }
 
+function getObservationMemoUnchangedResult() {
+  const entry = currentMemoStudent && typeof getMemoEntryByStudent === 'function'
+    ? (getMemoEntryByStudent(currentMemoStudent) || {})
+    : {};
+  return {
+    state: 'unchanged',
+    student: currentMemoStudent || null,
+    error: null,
+    revision: Number(entry.revision || 0),
+    syncedAt: entry.lastSyncedAt || entry.updatedAt || ''
+  };
+}
+
 async function saveObservationMemoServerSnapshot(options = {}) {
   if (!currentMemoStudent || currentMemoType !== 'elementary') return null;
   const editor = document.getElementById('memoEditor');
   if (!editor) return null;
 
+  // A read-only visit must never become a write. Only an actual input event marks
+  // the edit session dirty. Blur, Done and page close are flush triggers, not save
+  // triggers by themselves.
+  if (options.force !== true && !hasObservationMemoDirtyChanges()) {
+    return getObservationMemoUnchangedResult();
+  }
+
+  if (window.__olliObservationMemoServerSavePromise) {
+    return window.__olliObservationMemoServerSavePromise;
+  }
+
   const studentId = String(currentMemoStudent.id || '');
   const textAtStart = String(editor.value || '');
-  try {
-    const result = await saveCurrentMemo({
-      silent: true,
-      status: options.status === true
-    });
-    const stillSameDraft =
-      currentMemoStudent &&
-      String(currentMemoStudent.id || '') === studentId &&
-      String(document.getElementById('memoEditor')?.value || '') === textAtStart;
-    if (
-      stillSameDraft &&
-      result &&
-      (result.state === 'synced' || result.state === 'cleared') &&
-      result.superseded !== true
-    ) {
-      markObservationMemoEditorClean();
+  let savePromise;
+  savePromise = (async () => {
+    try {
+      const result = await saveCurrentMemo({
+        silent: true,
+        status: options.status === true
+      });
+      const stillSameDraft =
+        currentMemoStudent &&
+        String(currentMemoStudent.id || '') === studentId &&
+        String(document.getElementById('memoEditor')?.value || '') === textAtStart;
+      if (
+        stillSameDraft &&
+        result &&
+        (result.state === 'synced' || result.state === 'cleared' || result.state === 'unchanged') &&
+        result.superseded !== true
+      ) {
+        markObservationMemoEditorClean();
+      }
+      return result;
+    } catch (error) {
+      console.warn('관찰노트 서버 자동저장 실패:', error?.message || error);
+      return null;
+    } finally {
+      if (window.__olliObservationMemoServerSavePromise === savePromise) {
+        window.__olliObservationMemoServerSavePromise = null;
+      }
     }
-    return result;
-  } catch (error) {
-    console.warn('관찰노트 서버 자동저장 실패:', error?.message || error);
-    return null;
-  }
+  })();
+
+  window.__olliObservationMemoServerSavePromise = savePromise;
+  return savePromise;
 }
 
 function scheduleMemoAutoSave() {
   if (!currentMemoStudent) return;
   if (isObservationMemoAutoSaveBlocked()) return;
+  if (!hasObservationMemoDirtyChanges()) return;
 
   setMemoSaveStatus('작성 중...');
   if (window.__olliObservationMemoAutoSaveTimer) {
@@ -142,7 +177,9 @@ function scheduleMemoAutoSave() {
 
   window.__olliObservationMemoAutoSaveTimer = setTimeout(() => {
     window.__olliObservationMemoAutoSaveTimer = null;
-    void saveObservationMemoServerSnapshot({ status: true });
+    if (hasObservationMemoDirtyChanges()) {
+      void saveObservationMemoServerSnapshot({ status: true });
+    }
   }, OLLI_MEMO_SERVER_AUTOSAVE_DELAY);
 }
 
@@ -160,10 +197,10 @@ function flushMemoAutoSave() {
   if (window.__olliObservationMemoAutoSaveTimer) {
     clearTimeout(window.__olliObservationMemoAutoSaveTimer);
     window.__olliObservationMemoAutoSaveTimer = null;
-    void saveObservationMemoServerSnapshot({ status: true });
-    return true;
   }
-  return false;
+  if (!hasObservationMemoDirtyChanges()) return false;
+  void saveObservationMemoServerSnapshot({ status: true });
+  return true;
 }
 
 function prepareObservationMemoPageClose() {
@@ -318,13 +355,11 @@ function setupMemoPauseAutoSaveBindings() {
 }
 
 function bindPauseAutoSaveForMemoInput(el, options = {}) {
-  // 기존 개별 바인딩 방식은 초기화 중 오류가 나면 누락될 수 있어,
-  // 실제 자동저장은 setupMemoPauseAutoSaveBindings()의 이벤트 위임으로 처리합니다.
   setupMemoPauseAutoSaveBindings();
 }
 
 function applyReconciledObservationMemoDraft(student, memoEditor, result) {
-  if (!student || !memoEditor || !result || !result.adoptedRemote || !result.content) {
+  if (!student || !memoEditor || !result || !result.adoptedRemote) {
     return { applied: false, reason: 'no-remote-update' };
   }
 
@@ -342,7 +377,8 @@ function applyReconciledObservationMemoDraft(student, memoEditor, result) {
     return { applied: false, reason: 'user-edited-during-sync' };
   }
 
-  memoEditor.value = result.content;
+  memoEditor.value = String(result.content || '');
+  autoResizeTextarea(memoEditor);
   if (state && isObservationMemoEditStateCurrent(student)) {
     state.baselineText = String(result.content || '');
     state.dirty = false;
@@ -352,6 +388,56 @@ function applyReconciledObservationMemoDraft(student, memoEditor, result) {
   }
 
   return { applied: true, reason: 'remote-applied' };
+}
+
+function isObservationMemoScreenActive() {
+  const screen = document.getElementById('studentMemoScreen');
+  return !!(
+    screen &&
+    screen.style.display !== 'none' &&
+    currentMemoStudent &&
+    currentMemoType === 'elementary'
+  );
+}
+
+async function refreshCurrentObservationMemoFromServer() {
+  if (!isObservationMemoScreenActive()) return null;
+  if (hasObservationMemoDirtyChanges()) return null;
+  if (isObservationMemoAutoSaveBlocked()) return null;
+
+  const student = currentMemoStudent ? { ...currentMemoStudent } : null;
+  const editor = document.getElementById('memoEditor');
+  if (!student?.id || !editor) return null;
+
+  try {
+    const state = getObservationMemoEditState();
+    const noteType = String(state?.noteType || 'elementary_observation');
+    if (typeof window.getObservationMemoRequestGuardState === 'function') {
+      const guard = window.getObservationMemoRequestGuardState(student, noteType);
+      if (guard?.inFlight) return null;
+    }
+    const result = await reconcileObservationMemoDraft(student, noteType);
+    applyReconciledObservationMemoDraft(student, editor, result);
+    return result;
+  } catch (error) {
+    console.warn('관찰노트 서버 최신본 확인 실패:', error?.message || error);
+    return null;
+  }
+}
+
+if (!window.__olliObservationMemoCrossDeviceRefreshBound) {
+  window.__olliObservationMemoCrossDeviceRefreshBound = true;
+  window.addEventListener('focus', () => {
+    setTimeout(() => { void refreshCurrentObservationMemoFromServer(); }, 0);
+  });
+  window.addEventListener('online', () => {
+    setTimeout(() => { void refreshCurrentObservationMemoFromServer(); }, 0);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      setTimeout(() => { void refreshCurrentObservationMemoFromServer(); }, 0);
+    }
+  });
 }
 
 function openObservationMemoScreenShell(session) {
@@ -447,7 +533,6 @@ function renderObservationMemoInitialView(session) {
 function setMemoSaveStatus(text) {
   const el = document.getElementById('memoSaveStatus');
   if (!el) return;
-  // 로컬 저장/서버 동기화 상태는 사용자 화면에 노출하지 않고 내부에서만 관리한다.
   el.textContent = '';
 }
 
