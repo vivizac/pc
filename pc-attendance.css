@@ -39,11 +39,11 @@ body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .recordStatus
 
 /* PC 학생명단 정렬 구분선: 박스 대신 얇은 라인 + 텍스트 */
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider{
-  display:flex;align-items:center;gap:10px;width:100%;margin:15px 0 10px;color:#8a9099;font-size:11px;font-weight:820;line-height:1;letter-spacing:-.02em;box-sizing:border-box;
+  display:flex;align-items:center;gap:10px;width:100%;margin:15px 0 10px;color:#555b63;font-size:11px;font-weight:820;line-height:1;letter-spacing:-.02em;box-sizing:border-box;
 }
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::before,
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::after{
-  content:"";height:1px;flex:1;min-width:12px;background:#e2e5e9;
+  content:"";height:1px;flex:1;min-width:12px;background:#666b72;
 }
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider span{
   flex:0 0 auto;white-space:nowrap;padding:0 2px;background:transparent;color:inherit;

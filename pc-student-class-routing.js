@@ -127,8 +127,16 @@
     enrollments.filter((row) => clean(row && row.division) === division && enrollmentEffectiveOn(row, effectiveDate)).forEach((row) => addSlot(row.weekday, row.time_slot));
     if (division === 'elementary') {
       (Array.isArray(data && data.class_splits) ? data.class_splits : []).forEach((row) => addSlot(row.weekday, row.time_slot));
+      // 담임/기존 학생이 없어도 시간표의 기본 수업칸은 학생 등록에서 선택할 수 있습니다.
+      for (let weekday = 1; weekday <= 5; weekday += 1) {
+        for (let timeSlot = 1; timeSlot <= 6; timeSlot += 1) addSlot(weekday, timeSlot);
+      }
+      [10, 11, 12].forEach((timeSlot) => addSlot(6, timeSlot));
     } else {
       (Array.isArray(data && data.kinder_class_merges) ? data.kinder_class_merges : []).forEach((row) => addSlot(row.weekday, row.time_slot));
+      for (let weekday = 1; weekday <= 6; weekday += 1) {
+        [4, 5].forEach((timeSlot) => addSlot(weekday, timeSlot));
+      }
     }
 
     const capacity = capacityFor(data, division);
@@ -148,14 +156,12 @@
           && normalizeGroup(row.class_group) === group
           && enrollmentEffectiveOn(row, effectiveDate)).length;
         const teacherName = teacherDisplay(teacher && teacher.teacher_name);
-        const configured = !!teacher || count > 0 || split || merged;
-        if (!configured) return;
         options.push({
           division, weekday:slot.weekday, time_slot:slot.time_slot, class_group:group,
           split, merged, teacher_name:teacherName, count, capacity,
           remaining: Math.max(capacity - count, 0),
           full: count >= capacity,
-          selectable: !!teacherName && count < capacity
+          selectable: count < capacity
         });
       });
     });
@@ -216,7 +222,7 @@
       return;
     }
     if (!registration.options.length) {
-      host.innerHTML = header + '<div class="pcStudentRegistrationClassState">선택 가능한 클래스가 없습니다.<br>시간표 설정에서 클래스 담임을 먼저 지정해 주세요.</div>';
+      host.innerHTML = header + '<div class="pcStudentRegistrationClassState">선택 가능한 수업이 없습니다.</div>';
       return;
     }
     const grouped = new Map();
@@ -233,7 +239,7 @@
         const key = classKey(option);
         const selected = selectedKeys.has(key);
         const disabled = !option.selectable && !selected;
-        const stateText = !option.teacher_name ? '담임 미지정' : (option.full ? '정원 마감' : `${option.count}/${option.capacity} · ${option.remaining}자리`);
+        const stateText = option.full ? '정원 마감' : `${option.count}/${option.capacity} · ${option.remaining}자리`;
         return `<button type="button" class="pcStudentRegistrationClassBtn ${selected ? 'active' : ''} ${disabled ? 'disabled' : ''}" data-registration-class="${esc(key)}" ${disabled ? 'disabled' : ''}>`
           + `<span><strong>${esc(optionLabel(option))}</strong><em>${esc(option.teacher_name || '담임 미지정')}</em></span><small>${esc(stateText)}</small></button>`;
       }).join('');
@@ -309,7 +315,6 @@
     for (const selected of registration.selected) {
       const option = freshMap.get(classKey(selected));
       if (!option) throw new Error('선택한 클래스가 시간표에서 변경되었습니다. 다시 선택해 주세요.');
-      if (!option.teacher_name) throw new Error(`${NUM_DAY[option.weekday]}요일 ${option.time_slot}시 ${optionLabel(option)}의 담임이 지정되지 않았습니다.`);
       if (option.full) throw new Error(`${NUM_DAY[option.weekday]}요일 ${option.time_slot}시 ${optionLabel(option)}의 정원이 마감되었습니다.`);
     }
     registration.options = fresh;
