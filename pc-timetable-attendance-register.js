@@ -274,9 +274,10 @@
         const records = rowsByStudentDate.get(`${clean(student.id)}|${meta.key}`) || [];
         const makeupRows = records.filter((row) => clean(row.session_kind) === 'makeup');
         const regular = records.find((row) => clean(row.session_kind) === 'regular' && row.attended !== false);
+        const expectedRegular = records.some((row) => clean(row.session_kind) === 'regular_expected');
         if (makeupRows.some((row) => row.attended !== false)) return '<td class="dateCol attendanceMakeupMark"><span aria-label="보강 출석">보</span></td>';
-        if (makeupRows.length && meta.key <= todayKey()) return '<td class="dateCol attendanceAbsentMark"><span aria-label="결석">결</span></td>';
         if (regular) return '<td class="dateCol attendanceLinkedMark"><span aria-label="출석">✓</span></td>';
+        if (expectedRegular && meta.key < todayKey()) return '<td class="dateCol attendanceAbsentMark"><span aria-label="결석">결</span></td>';
         return '<td class="dateCol"></td>';
       }).join('');
       return `<tr><td class="noCol">${index + 1}</td><td class="nameCol">${esc(student.name)}</td><td class="schoolGradeCol">${esc(attendanceRosterMeta(student))}</td><td class="personalityCol">${esc(student.personality)}</td>${dateCells}</tr>`;
