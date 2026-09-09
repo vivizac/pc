@@ -1,0 +1,160 @@
+name: Fix observation readonly timestamp now
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-observation-readonly-now.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch observation memo readonly handling
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('observation-memo-common.js')
+          text = path.read_text()
+
+          old = """function markObservationMemoEditorDirty(target) {
+            if (!target || target.id !== 'memoEditor' || !isObservationMemoEditStateCurrent()) return;
+            const state = getObservationMemoEditState();
+            state.dirty = true;
+          }
+          """
+          new = """function markObservationMemoEditorDirty(target) {
+            if (!target || target.id !== 'memoEditor' || !isObservationMemoEditStateCurrent()) return false;
+            const state = getObservationMemoEditState();
+            state.dirty = String(target.value || '') !== String(state.baselineText || '');
+            return state.dirty;
+          }
+          """
+          if old not in text:
+            raise SystemExit('dirty marker block not found')
+          text = text.replace(old, new, 1)
+
+          old = """  const content = String(target.value || '');
+            const updatedAt = new Date().toISOString();
+            const state = getObservationMemoEditState();
+            const noteType = String(state?.noteType || 'elementary_observation');
+          """
+          new = """  const content = String(target.value || '');
+            const state = getObservationMemoEditState();
+            if (
+              state &&
+              isObservationMemoEditStateCurrent() &&
+              content === String(state.baselineText || '')
+            ) {
+              return false;
+            }
+            const updatedAt = new Date().toISOString();
+            const noteType = String(state?.noteType || 'elementary_observation');
+          """
+          if old not in text:
+            raise SystemExit('local persistence block not found')
+          text = text.replace(old, new, 1)
+
+          old = """function handleMemoPauseAutoSaveInput(target) {
+            const inputType = getMemoInputTypeFromTarget(target);
+            if (!inputType || !currentMemoStudent || currentMemoType !== inputType) return;
+            if (isObservationMemoAutoSaveBlocked()) return;
+            persistObservationMemoInputLocally(target);
+            markObservationMemoEditorDirty(target);
+            scheduleMemoAutoSave();
+          }
+          """
+          new = """function handleMemoPauseAutoSaveInput(target) {
+            const inputType = getMemoInputTypeFromTarget(target);
+            if (!inputType || !currentMemoStudent || currentMemoType !== inputType) return;
+            if (isObservationMemoAutoSaveBlocked()) return;
+            markObservationMemoEditorDirty(target);
+            if (!hasObservationMemoDirtyChanges()) return;
+            persistObservationMemoInputLocally(target);
+            scheduleMemoAutoSave();
+          }
+          """
+          if old not in text:
+            raise SystemExit('input handler block not found')
+          text = text.replace(old, new, 1)
+
+          old = """function applyReconciledObservationMemoDraft(student, memoEditor, result) {
+            if (!student || !memoEditor || !result || !result.adoptedRemote) {
+              return { applied: false, reason: 'no-remote-update' };
+            }
+
+            const isSameMemoPage =
+          """
+          new = """function applyReconciledObservationMemoDraft(student, memoEditor, result) {
+            if (!student || !memoEditor || !result) {
+              return { applied: false, reason: 'no-remote-update' };
+            }
+
+            const isSameMemoPage =
+          """
+          if old not in text:
+            raise SystemExit('reconcile function start not found')
+          text = text.replace(old, new, 1)
+
+          old = """  const state = getObservationMemoEditState();
+            if (state && isObservationMemoEditStateCurrent(student) && state.dirty) {
+              return { applied: false, reason: 'user-edited-during-sync' };
+            }
+
+            memoEditor.value = String(result.content || '');
+          """
+          new = """  const state = getObservationMemoEditState();
+            if (state && isObservationMemoEditStateCurrent(student) && state.dirty) {
+              return { applied: false, reason: 'user-edited-during-sync' };
+            }
+
+            if (!result.adoptedRemote) {
+              const metadataOnly =
+                result.conflictDetected !== true &&
+                !!result.remoteRow &&
+                ['remote-confirmed-local', 'remote-equivalent-local'].includes(String(result.source || ''));
+              if (metadataOnly) {
+                if (state && isObservationMemoEditStateCurrent(student)) {
+                  state.baselineText = String(result.content ?? memoEditor.value ?? '');
+                  state.dirty = false;
+                }
+                if (typeof updateMemoStudentMetaDisplay === 'function') {
+                  updateMemoStudentMetaDisplay(student, result.updatedAt || '');
+                }
+                return { applied: false, metadataUpdated: true, reason: 'remote-metadata-normalized' };
+              }
+              return { applied: false, reason: 'no-remote-update' };
+            }
+
+            memoEditor.value = String(result.content || '');
+          """
+          if old not in text:
+            raise SystemExit('reconcile metadata insertion point not found')
+          text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+          node --check observation-memo-common.js
+          git diff --check
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add observation-memo-common.js
+          if git diff --cached --quiet; then
+            echo 'Already patched.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix: prevent read-only observation memo timestamp changes'
+          git push
