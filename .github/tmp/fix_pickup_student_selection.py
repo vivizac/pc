@@ -73,5 +73,48 @@ if '__olliPickupPointerBound' not in text:
         raise SystemExit('pickup search binding anchor not found')
     text = text.replace(pickup_bind_anchor, pickup_pointer_guard, 1)
 
+old_cards = '''    const cards = rows.map((item) => `<div class="olliTtPickupCard" data-tt-pickup-manage="${esc(item.id)}"><strong>${esc(item.student_name)}</strong><span>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</span></div>`).join('');
+'''
+new_cards = '''    const cards = rows.map((item) => `<div class="olliTtPickupCard" data-tt-pickup-manage="${esc(item.id)}" data-tt-pickup-date="${dateKey(date)}"><strong>${esc(item.student_name)}</strong><span>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</span></div>`).join('');
+'''
+if 'data-tt-pickup-date=' not in text:
+    if old_cards not in text:
+        raise SystemExit('pickup card date anchor not found')
+    text = text.replace(old_cards, new_cards, 1)
+
+old_click = '''      openPickupManage(pickupManage.dataset.ttPickupManage);
+'''
+new_click = '''      openPickupManage(pickupManage.dataset.ttPickupManage, pickupManage.dataset.ttPickupDate);
+'''
+if 'openPickupManage(pickupManage.dataset.ttPickupManage, pickupManage.dataset.ttPickupDate);' not in text:
+    if old_click not in text:
+        raise SystemExit('pickup manage click anchor not found')
+    text = text.replace(old_click, new_click, 1)
+
+old_manage = '''  function openPickupManage(pickupId) {
+    const item = pickups().find((row) => clean(row.id) === clean(pickupId));
+    if (!item) return;
+    const tomorrow = addDays(new Date(), 1);
+    state.dialog = { kind: 'pickupManage', pickupId: clean(pickupId), pickupTime: pickupTimeInputValue(item.pickup_time), effectiveDate: dateKey(tomorrow) };
+    openOverlay();
+  }
+'''
+new_manage = '''  function openPickupManage(pickupId, clickedDate) {
+    const item = pickups().find((row) => clean(row.id) === clean(pickupId));
+    if (!item) return;
+    const tomorrowKey = dateKey(addDays(new Date(), 1));
+    const requestedDate = clean(clickedDate);
+    const initialEffectiveDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(requestedDate) && requestedDate > todayKey()
+      ? requestedDate
+      : tomorrowKey;
+    state.dialog = { kind: 'pickupManage', pickupId: clean(pickupId), pickupTime: pickupTimeInputValue(item.pickup_time), effectiveDate: initialEffectiveDate };
+    openOverlay();
+  }
+'''
+if 'function openPickupManage(pickupId, clickedDate)' not in text:
+    if old_manage not in text:
+        raise SystemExit('openPickupManage target not found')
+    text = text.replace(old_manage, new_manage, 1)
+
 path.write_text(text, encoding='utf-8')
-print('Pickup student selection patch applied.')
+print('Pickup student selection and clicked-date defaults patch applied.')
