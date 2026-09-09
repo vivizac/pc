@@ -1,0 +1,36 @@
+name: Fix pickup student selection
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-pickup-student-selection.yml'
+      - '.github/tmp/fix_pickup_student_selection.py'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply pickup selection fix
+        run: python3 .github/tmp/fix_pickup_student_selection.py
+      - name: Validate timetable JavaScript
+        run: node --check pc-timetable.js
+      - name: Verify pickup selection fallback
+        run: |
+          grep -F "visibleButtons.length === 1" pc-timetable.js
+          grep -F "exactMatches.length === 1" pc-timetable.js
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pc-timetable.js
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "fix: 픽업 학생 선택 저장 오류 수정"
+          git push
