@@ -183,3 +183,8 @@ async function requestElementaryFeedback() {
   showMemoSaveCheck();
   await requestSceneCardFeedbackFromElementary(currentMemoStudent.name, text, analysisPromptText);
 }
+
+/* Feedback completion is a semantic clear, not a historical reversion. The shared
+   guard confirms the server clear before removing the local memo. */
+import('./observation-memo-feedback-clear-common.js?v=20260910-feedback-clear-1')
+  .catch(error => console.warn('관찰노트 피드백 초기화 보호 모듈 로드 실패:', error?.message || error));
