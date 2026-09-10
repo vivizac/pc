@@ -635,25 +635,31 @@ function recordWorkspaceHtml(student, recordContent) {
     list.__olliPcAttendanceClickBound = true;
 
     let pointerScroll = null;
-    const captureRosterScroll = (event) => {
-      if (!isPcAttendance() || event.target.closest('.recordAttendanceLeadBtn')) return;
+    const rosterRowFromEvent = (event) => {
+      if (!isPcAttendance() || event.target.closest('.recordAttendanceLeadBtn')) return null;
       const row = event.target.closest('.elementaryStudentRow,.kinderStudentRow');
-      if (!row || !list.contains(row)) return;
-      pointerScroll = { top: list.scrollTop, left: list.scrollLeft };
+      return row && list.contains(row) ? row : null;
     };
     const restoreRosterScroll = (saved) => {
       if (!saved || !list.isConnected) return;
-      list.scrollTop = saved.top;
-      list.scrollLeft = saved.left;
+      if (list.scrollTop !== saved.top) list.scrollTop = saved.top;
+      if (list.scrollLeft !== saved.left) list.scrollLeft = saved.left;
     };
 
-    // Save the position before the button receives browser focus. This prevents
-    // focus/editor replacement from snapping the roster back to the top.
-    list.addEventListener('pointerdown', captureRosterScroll, true);
+    // Capture before focus can move. On desktop, cancelling mousedown's default
+    // keeps the roster button from receiving focus and scrolling itself into view.
+    list.addEventListener('pointerdown', (event) => {
+      const row = rosterRowFromEvent(event);
+      if (!row) return;
+      pointerScroll = { top: list.scrollTop, left: list.scrollLeft };
+    }, true);
+    list.addEventListener('mousedown', (event) => {
+      if (rosterRowFromEvent(event)) event.preventDefault();
+    }, true);
+
     list.addEventListener('click', (event) => {
-      if (!isPcAttendance() || event.target.closest('.recordAttendanceLeadBtn')) return;
-      const row = event.target.closest('.elementaryStudentRow,.kinderStudentRow');
-      if (!row || !list.contains(row)) return;
+      const row = rosterRowFromEvent(event);
+      if (!row) return;
       const studentId = extractRowStudentId(row);
       if (!studentId) return;
       const saved = pointerScroll || { top: list.scrollTop, left: list.scrollLeft };
@@ -661,12 +667,13 @@ function recordWorkspaceHtml(student, recordContent) {
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
-      selectStudent(studentId);
-      try { row.blur(); } catch (_) {}
+
+      const selection = selectStudent(studentId);
       restoreRosterScroll(saved);
-      queueMicrotask(() => restoreRosterScroll(saved));
-      requestAnimationFrame(() => restoreRosterScroll(saved));
-      setTimeout(() => restoreRosterScroll(saved), 40);
+      Promise.resolve(selection).then(
+        () => restoreRosterScroll(saved),
+        () => restoreRosterScroll(saved)
+      );
     }, true);
   }
 
