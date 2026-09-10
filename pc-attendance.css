@@ -43,7 +43,7 @@ body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider{
 }
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::before,
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::after{
-  content:"";height:1px;flex:1;min-width:12px;background:#666b72;
+  content:"";height:1px;flex:1;min-width:12px;background:transparent;
 }
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider span{
   flex:0 0 auto;white-space:nowrap;padding:0 2px;background:transparent;color:inherit;

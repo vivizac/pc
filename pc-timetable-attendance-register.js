@@ -247,18 +247,30 @@
     const rows = Array.isArray(records) ? records : [];
     const kind = sessionKind === 'makeup' ? 'makeup' : 'regular';
     const allowed = kind === 'makeup' ? MAKEUP_ATTENDANCE_STATUS_ORDER : REGULAR_ATTENDANCE_STATUS_ORDER;
-    const override = rows.find((row) =>
-      clean(row && row.session_kind) === 'register_override'
-      && attendanceRegisterOverrideKind(row) === kind
-      && allowed.includes(clean(row && row.register_status))
-    );
-    if (override) return clean(override.register_status);
+    const timeOf = (row) => {
+      const time = Date.parse(clean(row && row.marked_at));
+      return Number.isFinite(time) ? time : 0;
+    };
+    const override = rows
+      .filter((row) =>
+        clean(row && row.session_kind) === 'register_override'
+        && attendanceRegisterOverrideKind(row) === kind
+        && allowed.includes(clean(row && row.register_status))
+      )
+      .sort((a, b) => timeOf(b) - timeOf(a))[0] || null;
+    const actual = rows
+      .filter((row) => clean(row && row.session_kind) === kind && row.attended !== false)
+      .sort((a, b) => timeOf(b) - timeOf(a))[0] || null;
 
-    if (kind === 'makeup') {
-      return rows.some((row) => clean(row && row.session_kind) === 'makeup' && row.attended !== false) ? 'makeup' : 'blank';
+    // 출석부 수동값과 시간표 체크가 모두 있을 때는 가장 나중에 저장된 조작을 표시합니다.
+    // 따라서 출석부에서 사후 수정한 값은 유지되고, 그 뒤 시간표에서 다시 체크하면
+    // 최신 시간표 출석이 즉시 출석부에 반영됩니다.
+    if (override && (!actual || timeOf(override) >= timeOf(actual))) {
+      return clean(override.register_status);
     }
+    if (actual) return kind === 'makeup' ? 'makeup' : 'present';
 
-    if (rows.some((row) => clean(row && row.session_kind) === 'regular' && row.attended !== false)) return 'present';
+    if (kind === 'makeup') return 'blank';
     const expected = rows.some((row) => clean(row && row.session_kind) === 'regular_expected');
     if (expected && clean(sessionDate) < todayKey()) return 'absent';
     return 'blank';
@@ -298,7 +310,7 @@
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterCellInner{position:absolute;inset:0;display:flex;align-items:stretch;justify-content:stretch}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment{min-width:0;min-height:0;margin:0;padding:0;border:0;outline:0;display:flex;flex:1 1 50%;align-items:center;justify-content:center;color:inherit;background:transparent;font:inherit;font-weight:900;cursor:default!important;box-sizing:border-box}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment+.attendanceRegisterSegment{border-left:1px solid rgba(50,57,66,.16)}
-#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceLinkedMark{color:#fff;background:#0A84FF!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceLinkedMark{color:#fff;background:#43d878!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceAbsentMark{color:#fff;background:#e5484d!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceMakeupMark{color:#111;background:#ffd84d!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment span{display:block;font-size:10px;line-height:1}
