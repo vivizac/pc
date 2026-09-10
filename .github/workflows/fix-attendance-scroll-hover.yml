@@ -1,0 +1,41 @@
+name: Fix attendance scroll and hover
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-attendance-scroll-hover.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply attendance scroll, holiday and split-hover fixes
+        run: python3 .github/tmp/fix_attendance_scroll_holiday_split_hover.py
+      - name: Validate JavaScript
+        run: |
+          node --check pc-timetable-attendance-register.js
+          node --check pc-timetable.js
+      - name: Verify expected behavior
+        run: |
+          grep -F "attendancePublicHolidayCell" pc-timetable-attendance-register.js
+          grep -F "const previousScrollTop" pc-timetable-attendance-register.js
+          grep -F "cell.innerHTML = statusMeta.mark" pc-timetable-attendance-register.js
+          grep -F "td.attendanceRegisterEditable" pc-timetable.css
+          grep -F ".olliTtCell.split:hover" pc-timetable.css
+          grep -F ".olliTtCell.split .olliTtClassLane:hover" pc-timetable.css
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pc-timetable-attendance-register.js pc-timetable.css
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "fix: 출석부 스크롤·휴일 색상과 분반 hover 수정"
+          git push
