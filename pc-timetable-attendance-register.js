@@ -288,7 +288,8 @@
       const date = new Date(year, month - 1, day);
       const info = calendarMap.get(key) || null;
       const sunday = date.getDay() === 0;
-      return { day, key, closed: sunday || !!(info && info.is_holiday === true), title: sunday ? '일요일' : clean(info && info.name) };
+      const holiday = !!(info && info.is_holiday === true);
+      return { day, key, sunday, holiday, closed: sunday || holiday, title: sunday ? '일요일' : clean(info && info.name) };
     });
 
     const staticWidth = 20 + 42 + 51 + 20;
@@ -300,7 +301,7 @@
     const header = `<thead><tr><th class="noCol"></th><th class="nameCol">이름</th><th class="schoolGradeCol">${schoolHeader}</th><th class="personalityCol">성향</th>${dayHeaders}</tr></thead>`;
     const rowHtml = students.map((student, index) => {
       const dateCells = dayMeta.map((meta) => {
-        if (meta.closed) return '<td class="dateCol attendanceHolidayCell" aria-disabled="true"></td>';
+        if (meta.closed) return `<td class="dateCol attendanceHolidayCell ${meta.sunday ? 'attendanceSundayCell' : 'attendancePublicHolidayCell'}" aria-disabled="true"></td>`;
         const records = rowsByStudentDate.get(`${clean(student.id)}|${meta.key}`) || [];
         const status = attendanceRegisterStatus(records, meta.key);
         const statusMeta = attendanceRegisterStatusMeta(status);
@@ -310,7 +311,7 @@
     }).join('');
     const blankRows = Array.from({ length: Math.max(0, 40 - students.length) }, (_, index) => {
       const dateCells = dayMeta.map((meta) => meta.closed
-        ? '<td class="dateCol attendanceHolidayCell" aria-disabled="true"></td>'
+        ? `<td class="dateCol attendanceHolidayCell ${meta.sunday ? 'attendanceSundayCell' : 'attendancePublicHolidayCell'}" aria-disabled="true"></td>`
         : '<td class="dateCol"></td>').join('');
       return `<tr class="attendanceBlankRow"><td class="noCol">${students.length + index + 1}</td><td class="nameCol"></td><td class="schoolGradeCol"></td><td class="personalityCol"></td>${dateCells}</tr>`;
     }).join('');
@@ -353,8 +354,28 @@
       });
       state.attendanceRows = rows;
       state.attendanceRowsMonth = state.attendanceMonth;
-      lastAttendanceRenderSignature = '';
-      renderAttendanceRegister();
+
+      const statusMeta = attendanceRegisterStatusMeta(nextStatus);
+      cell.dataset.status = nextStatus;
+      cell.dataset.attendanceSaving = '';
+      cell.classList.remove('attendanceLinkedMark', 'attendanceAbsentMark', 'attendanceMakeupMark');
+      if (nextStatus === 'present') cell.classList.add('attendanceLinkedMark');
+      else if (nextStatus === 'absent') cell.classList.add('attendanceAbsentMark');
+      else if (nextStatus === 'makeup') cell.classList.add('attendanceMakeupMark');
+      cell.innerHTML = statusMeta.mark;
+      const currentAria = cell.getAttribute('aria-label') || '';
+      cell.setAttribute('aria-label', currentAria.replace(/(출석|결석|보강|빈칸)$/u, statusMeta.label));
+      lastAttendanceRenderSignature = attendanceRenderSignature();
+
+      // This PC already has the saved value. Advance its sync revision too so the
+      // 3-second multi-PC watcher does not immediately rebuild this same table.
+      if (typeof service.loadSyncRevision === 'function') {
+        try {
+          const syncInfo = await service.loadSyncRevision();
+          const version = Number(syncInfo && syncInfo.version || 0);
+          if (version) state.syncRevision = version;
+        } catch (_) {}
+      }
     } catch (error) {
       notify(error && (error.message || error) || '출석부 상태를 저장하지 못했습니다.');
       cell.dataset.attendanceSaving = '';
@@ -389,10 +410,33 @@
     const alreadyShowingAttendance = !!ui.root.querySelector('.olliTtAttendanceRegister');
     if (alreadyShowingAttendance && signature === lastAttendanceRenderSignature) return;
 
+    const previousScroll = ui.root.querySelector('.olliTtAttendanceRegisterScroll');
+    const previousScrollTop = previousScroll ? previousScroll.scrollTop : 0;
+    const previousScrollLeft = previousScroll ? previousScroll.scrollLeft : 0;
+    const activeCell = document.activeElement && document.activeElement.closest
+      ? document.activeElement.closest('[data-tt-attendance-register-cell]')
+      : null;
+    const activeStudentId = activeCell ? clean(activeCell.dataset.studentId) : '';
+    const activeSessionDate = activeCell ? clean(activeCell.dataset.sessionDate) : '';
+
     const html = linkedAttendanceRegisterHtml();
     ui.root.innerHTML = `<section class="olliTtAttendanceRegister"><div class="olliTtAttendanceRegisterHead"><div><strong>${esc(monthLabel(state.attendanceMonth))} 출석부</strong><span>시간표 출석이 자동 반영되며, 날짜 칸을 클릭해 출석 상태를 수정할 수 있습니다.</span></div></div><div class="olliTtAttendanceRegisterScroll">${html}</div></section>`;
     lastAttendanceRenderSignature = signature;
     bindAttendanceRegisterEditing(ui.root);
+
+    const nextScroll = ui.root.querySelector('.olliTtAttendanceRegisterScroll');
+    if (nextScroll) {
+      nextScroll.scrollTop = previousScrollTop;
+      nextScroll.scrollLeft = previousScrollLeft;
+    }
+    if (activeStudentId && activeSessionDate) {
+      const nextCell = Array.from(ui.root.querySelectorAll('[data-tt-attendance-register-cell]')).find((item) =>
+        clean(item.dataset.studentId) === activeStudentId && clean(item.dataset.sessionDate) === activeSessionDate
+      );
+      if (nextCell) {
+        try { nextCell.focus({ preventScroll: true }); } catch (_) { nextCell.focus(); }
+      }
+    }
 
     // 글자 맞춤은 큰 표 DOM 생성 직후 강제로 실행하지 않고 다음 프레임으로 미뤄 첫 화면 표시를 막지 않습니다.
     scheduleAttendanceFitText(ui.root);

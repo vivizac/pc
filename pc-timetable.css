@@ -518,3 +518,30 @@
     min(var(--olli-tt-edge-row-6, 108px), calc(16.6667% - 8.6667px));
 }
 
+
+
+/* 출석부 스크롤·휴일 색상·분반 hover 보정 */
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterEditable,
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterEditable * {
+  cursor: default !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceHolidayCell.attendanceSundayCell {
+  background: #eceff1 !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceHolidayCell.attendancePublicHolidayCell {
+  background: #fff0f4 !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+#recordRoomScreen .olliTtCell.split:hover {
+  background: #fff;
+  box-shadow: none;
+}
+#recordRoomScreen .olliTtCell.split .olliTtClassLane:hover {
+  background: #f5faff;
+  box-shadow: inset 0 0 0 2px #c4e2ff;
+}
