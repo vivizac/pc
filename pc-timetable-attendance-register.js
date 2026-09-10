@@ -78,7 +78,7 @@
     return JSON.stringify((Array.isArray(rows) ? rows : []).map((row) => [
       clean(row && row.id), clean(row && row.student_id), clean(row && row.session_date).slice(0, 10),
       Number(row && row.time_slot || 0), clean(row && row.class_group), clean(row && row.session_kind),
-      row && row.attended !== false, clean(row && row.register_status)
+      row && row.attended !== false, clean(row && row.register_status), clean(row && row.register_session_kind)
     ]));
   }
 
@@ -233,33 +233,114 @@
     });
   }
 
-  const ATTENDANCE_REGISTER_STATUS_ORDER = ['blank', 'present', 'absent', 'makeup'];
+  const REGULAR_ATTENDANCE_STATUS_ORDER = ['blank', 'present', 'absent'];
+  const MAKEUP_ATTENDANCE_STATUS_ORDER = ['blank', 'makeup'];
+  const ATTENDANCE_SESSION_KINDS = ['regular', 'makeup'];
 
-  function attendanceRegisterStatus(records, sessionDate) {
+  function attendanceRegisterOverrideKind(row) {
+    const explicit = clean(row && row.register_session_kind).toLowerCase();
+    if (ATTENDANCE_SESSION_KINDS.includes(explicit)) return explicit;
+    return clean(row && row.register_status).toLowerCase() === 'makeup' ? 'makeup' : 'regular';
+  }
+
+  function attendanceRegisterSessionStatus(records, sessionDate, sessionKind) {
     const rows = Array.isArray(records) ? records : [];
-    const override = rows.find((row) => clean(row && row.session_kind) === 'register_override'
-      && ATTENDANCE_REGISTER_STATUS_ORDER.includes(clean(row && row.register_status)));
+    const kind = sessionKind === 'makeup' ? 'makeup' : 'regular';
+    const allowed = kind === 'makeup' ? MAKEUP_ATTENDANCE_STATUS_ORDER : REGULAR_ATTENDANCE_STATUS_ORDER;
+    const override = rows.find((row) =>
+      clean(row && row.session_kind) === 'register_override'
+      && attendanceRegisterOverrideKind(row) === kind
+      && allowed.includes(clean(row && row.register_status))
+    );
     if (override) return clean(override.register_status);
-    const makeup = rows.some((row) => clean(row && row.session_kind) === 'makeup' && row.attended !== false);
-    if (makeup) return 'makeup';
-    const present = rows.some((row) => clean(row && row.session_kind) === 'regular' && row.attended !== false);
-    if (present) return 'present';
+
+    if (kind === 'makeup') {
+      return rows.some((row) => clean(row && row.session_kind) === 'makeup' && row.attended !== false) ? 'makeup' : 'blank';
+    }
+
+    if (rows.some((row) => clean(row && row.session_kind) === 'regular' && row.attended !== false)) return 'present';
     const expected = rows.some((row) => clean(row && row.session_kind) === 'regular_expected');
     if (expected && clean(sessionDate) < todayKey()) return 'absent';
     return 'blank';
   }
 
-  function nextAttendanceRegisterStatus(status) {
-    const current = ATTENDANCE_REGISTER_STATUS_ORDER.includes(clean(status)) ? clean(status) : 'blank';
-    const index = ATTENDANCE_REGISTER_STATUS_ORDER.indexOf(current);
-    return ATTENDANCE_REGISTER_STATUS_ORDER[(index + 1) % ATTENDANCE_REGISTER_STATUS_ORDER.length];
+  function attendanceRegisterHasSession(records, sessionKind) {
+    const rows = Array.isArray(records) ? records : [];
+    const kind = sessionKind === 'makeup' ? 'makeup' : 'regular';
+    if (kind === 'makeup') {
+      return rows.some((row) => ['makeup', 'makeup_expected'].includes(clean(row && row.session_kind)))
+        || rows.some((row) => clean(row && row.session_kind) === 'register_override' && attendanceRegisterOverrideKind(row) === 'makeup');
+    }
+    return rows.some((row) => ['regular', 'regular_expected'].includes(clean(row && row.session_kind)))
+      || rows.some((row) => clean(row && row.session_kind) === 'register_override' && attendanceRegisterOverrideKind(row) === 'regular');
+  }
+
+  function nextAttendanceRegisterStatus(status, sessionKind) {
+    const order = sessionKind === 'makeup' ? MAKEUP_ATTENDANCE_STATUS_ORDER : REGULAR_ATTENDANCE_STATUS_ORDER;
+    const current = order.includes(clean(status)) ? clean(status) : 'blank';
+    const index = order.indexOf(current);
+    return order[(index + 1) % order.length];
   }
 
   function attendanceRegisterStatusMeta(status) {
-    if (status === 'present') return { className: ' attendanceLinkedMark', mark: '<span aria-label="출석">✓</span>', label: '출석' };
-    if (status === 'absent') return { className: ' attendanceAbsentMark', mark: '<span aria-label="결석">결</span>', label: '결석' };
-    if (status === 'makeup') return { className: ' attendanceMakeupMark', mark: '<span aria-label="보강">보</span>', label: '보강' };
+    if (status === 'present') return { className: 'attendanceLinkedMark', mark: '<span aria-label="출석">✓</span>', label: '출석' };
+    if (status === 'absent') return { className: 'attendanceAbsentMark', mark: '<span aria-label="결석">결</span>', label: '결석' };
+    if (status === 'makeup') return { className: 'attendanceMakeupMark', mark: '<span aria-label="보강">보</span>', label: '보강' };
     return { className: '', mark: '', label: '빈칸' };
+  }
+
+  function ensureAttendanceSessionSplitStyles() {
+    if (document.getElementById('olliPcAttendanceSessionSplitStyle')) return;
+    const style = document.createElement('style');
+    style.id = 'olliPcAttendanceSessionSplitStyle';
+    style.textContent = `
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell{position:relative;padding:0!important;overflow:hidden}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterCellInner{position:absolute;inset:0;display:flex;align-items:stretch;justify-content:stretch}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment{min-width:0;min-height:0;margin:0;padding:0;border:0;outline:0;display:flex;flex:1 1 50%;align-items:center;justify-content:center;color:inherit;background:transparent;font:inherit;font-weight:900;cursor:default!important;box-sizing:border-box}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment+.attendanceRegisterSegment{border-left:1px solid rgba(50,57,66,.16)}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceLinkedMark{color:#fff;background:#0A84FF!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceAbsentMark{color:#fff;background:#e5484d!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceMakeupMark{color:#111;background:#ffd84d!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment span{display:block;font-size:10px;line-height:1}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell.isSplit .attendanceRegisterSegment{flex-basis:50%}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell:not(.isSplit) .attendanceRegisterSegment{flex-basis:100%}
+`;
+    document.head.appendChild(style);
+  }
+
+  function renderAttendanceRegisterSegment(student, meta, sessionKind, status) {
+    const kind = sessionKind === 'makeup' ? 'makeup' : 'regular';
+    const statusMeta = attendanceRegisterStatusMeta(status);
+    const cycleTitle = kind === 'makeup' ? '클릭: 보강 ↔ 빈칸' : '클릭: 출석 → 결석 → 빈칸';
+    const kindLabel = kind === 'makeup' ? '보강' : '정규수업';
+    return `<button type="button" class="attendanceRegisterSegment ${kind}${statusMeta.className ? ` ${statusMeta.className}` : ''}" data-tt-attendance-register-cell="1" data-student-id="${esc(student.id)}" data-session-date="${meta.key}" data-session-kind="${kind}" data-status="${status}" title="${cycleTitle}" aria-label="${esc(student.name)} ${meta.day}일 ${kindLabel} ${statusMeta.label}">${statusMeta.mark}</button>`;
+  }
+
+  async function setAttendanceSessionStatus(studentId, sessionDate, sessionKind, status) {
+    if (typeof service.setAttendanceSessionStatus === 'function') {
+      return service.setAttendanceSessionStatus(studentId, sessionDate, sessionKind, status);
+    }
+    if (typeof global.supabase !== 'function') throw new Error('출석 서버 연결을 찾지 못했습니다.');
+    const academyId = currentAcademyId();
+    const sessionToken = clean(localStorage.getItem('olli_account_session_token_v1'));
+    if (!academyId) throw new Error('현재 학원 정보를 찾지 못했습니다. 다시 로그인해 주세요.');
+    if (!sessionToken) throw new Error('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.');
+    const result = await global.supabase('POST', 'rpc/olli_schedule_set_attendance_session_status', {
+      p_session_token: sessionToken,
+      p_academy_id: academyId,
+      p_student_id: studentId,
+      p_session_date: sessionDate,
+      p_session_kind: sessionKind,
+      p_status: status
+    });
+    const data = Array.isArray(result) && result.length === 1 ? result[0] : result;
+    if (data && data.ok === false) throw new Error(data.message || '출석부 상태를 저장하지 못했습니다.');
+    try {
+      if (global.OlliAttendanceData && typeof global.OlliAttendanceData.invalidateMonth === 'function') {
+        global.OlliAttendanceData.invalidateMonth(sessionDate);
+      }
+    } catch (_) {}
+    return data || {};
   }
 
   function linkedAttendanceRegisterHtml() {
@@ -303,9 +384,18 @@
       const dateCells = dayMeta.map((meta) => {
         if (meta.closed) return `<td class="dateCol attendanceHolidayCell ${meta.sunday ? 'attendanceSundayCell' : 'attendancePublicHolidayCell'}" aria-disabled="true"></td>`;
         const records = rowsByStudentDate.get(`${clean(student.id)}|${meta.key}`) || [];
-        const status = attendanceRegisterStatus(records, meta.key);
-        const statusMeta = attendanceRegisterStatusMeta(status);
-        return `<td class="dateCol attendanceRegisterEditable${statusMeta.className}" data-tt-attendance-register-cell="1" data-student-id="${esc(student.id)}" data-session-date="${meta.key}" data-status="${status}" role="button" tabindex="0" title="클릭: 출석 → 결석 → 보강 → 빈칸" aria-label="${esc(student.name)} ${meta.day}일 ${statusMeta.label}">${statusMeta.mark}</td>`;
+        const hasRegular = attendanceRegisterHasSession(records, 'regular');
+        const hasMakeup = attendanceRegisterHasSession(records, 'makeup');
+        if (!hasRegular && !hasMakeup) return '<td class="dateCol"></td>';
+
+        const regularStatus = hasRegular ? attendanceRegisterSessionStatus(records, meta.key, 'regular') : 'blank';
+        const makeupStatus = hasMakeup ? attendanceRegisterSessionStatus(records, meta.key, 'makeup') : 'blank';
+        const split = hasRegular && hasMakeup;
+        const segments = [
+          hasRegular ? renderAttendanceRegisterSegment(student, meta, 'regular', regularStatus) : '',
+          hasMakeup ? renderAttendanceRegisterSegment(student, meta, 'makeup', makeupStatus) : ''
+        ].join('');
+        return `<td class="dateCol attendanceRegisterEditable attendanceRegisterSessionCell${split ? ' isSplit' : ''}"><div class="attendanceRegisterCellInner">${segments}</div></td>`;
       }).join('');
       return `<tr><td class="noCol">${index + 1}</td><td class="nameCol">${esc(student.name)}</td><td class="schoolGradeCol">${esc(attendanceRosterMeta(student))}</td><td class="personalityCol">${esc(student.personality)}</td>${dateCells}</tr>`;
     }).join('');
@@ -326,21 +416,19 @@
     if (!cell || cell.dataset.attendanceSaving === '1') return;
     const studentId = clean(cell.dataset.studentId);
     const sessionDate = clean(cell.dataset.sessionDate);
+    const sessionKind = clean(cell.dataset.sessionKind) === 'makeup' ? 'makeup' : 'regular';
     const currentStatus = clean(cell.dataset.status) || 'blank';
-    const nextStatus = nextAttendanceRegisterStatus(currentStatus);
+    const nextStatus = nextAttendanceRegisterStatus(currentStatus, sessionKind);
     if (!studentId || !sessionDate) return;
-    if (typeof service.setAttendanceRegisterStatus !== 'function') {
-      notify('출석부 수정 모듈을 불러오지 못했습니다. 페이지를 새로고침해 주세요.');
-      return;
-    }
 
     cell.dataset.attendanceSaving = '1';
     try {
-      await service.setAttendanceRegisterStatus(studentId, sessionDate, nextStatus);
+      await setAttendanceSessionStatus(studentId, sessionDate, sessionKind, nextStatus);
       const rows = (Array.isArray(state.attendanceRows) ? state.attendanceRows : []).filter((row) => !(
         clean(row && row.student_id) === studentId
         && clean(row && row.session_date).slice(0, 10) === sessionDate
         && clean(row && row.session_kind) === 'register_override'
+        && attendanceRegisterOverrideKind(row) === sessionKind
       ));
       rows.push({
         student_id: studentId,
@@ -348,6 +436,7 @@
         time_slot: 0,
         class_group: 'A',
         session_kind: 'register_override',
+        register_session_kind: sessionKind,
         attended: nextStatus === 'present' || nextStatus === 'makeup',
         register_status: nextStatus,
         marked_at: new Date().toISOString()
@@ -359,12 +448,12 @@
       cell.dataset.status = nextStatus;
       cell.dataset.attendanceSaving = '';
       cell.classList.remove('attendanceLinkedMark', 'attendanceAbsentMark', 'attendanceMakeupMark');
-      if (nextStatus === 'present') cell.classList.add('attendanceLinkedMark');
-      else if (nextStatus === 'absent') cell.classList.add('attendanceAbsentMark');
-      else if (nextStatus === 'makeup') cell.classList.add('attendanceMakeupMark');
+      if (statusMeta.className) cell.classList.add(statusMeta.className);
       cell.innerHTML = statusMeta.mark;
-      const currentAria = cell.getAttribute('aria-label') || '';
-      cell.setAttribute('aria-label', currentAria.replace(/(출석|결석|보강|빈칸)$/u, statusMeta.label));
+      const kindLabel = sessionKind === 'makeup' ? '보강' : '정규수업';
+      const student = service.activeStudents().find((item) => clean(item && item.id) === studentId);
+      const dayNumber = Number(sessionDate.slice(-2));
+      cell.setAttribute('aria-label', `${clean(student && student.name)} ${dayNumber}일 ${kindLabel} ${statusMeta.label}`.trim());
       lastAttendanceRenderSignature = attendanceRenderSignature();
 
       // This PC already has the saved value. Advance its sync revision too so the
@@ -405,6 +494,7 @@
   function renderAttendanceRegister() {
     const ui = ensureUi();
     if (!ui || state.view !== 'schedule' || state.pane !== 'attendance') return;
+    ensureAttendanceSessionSplitStyles();
     renderAttendanceHeader();
     const signature = attendanceRenderSignature();
     const alreadyShowingAttendance = !!ui.root.querySelector('.olliTtAttendanceRegister');
@@ -418,9 +508,10 @@
       : null;
     const activeStudentId = activeCell ? clean(activeCell.dataset.studentId) : '';
     const activeSessionDate = activeCell ? clean(activeCell.dataset.sessionDate) : '';
+    const activeSessionKind = activeCell ? clean(activeCell.dataset.sessionKind) : '';
 
     const html = linkedAttendanceRegisterHtml();
-    ui.root.innerHTML = `<section class="olliTtAttendanceRegister"><div class="olliTtAttendanceRegisterHead"><div><strong>${esc(monthLabel(state.attendanceMonth))} 출석부</strong><span>시간표 출석이 자동 반영되며, 날짜 칸을 클릭해 출석 상태를 수정할 수 있습니다.</span></div></div><div class="olliTtAttendanceRegisterScroll">${html}</div></section>`;
+    ui.root.innerHTML = `<section class="olliTtAttendanceRegister"><div class="olliTtAttendanceRegisterHead"><div><strong>${esc(monthLabel(state.attendanceMonth))} 출석부</strong><span>정규수업과 보강 출석이 각각 기록되며, 같은 날 두 수업이 있으면 날짜 칸이 좌우로 나뉩니다.</span></div></div><div class="olliTtAttendanceRegisterScroll">${html}</div></section>`;
     lastAttendanceRenderSignature = signature;
     bindAttendanceRegisterEditing(ui.root);
 
@@ -431,7 +522,9 @@
     }
     if (activeStudentId && activeSessionDate) {
       const nextCell = Array.from(ui.root.querySelectorAll('[data-tt-attendance-register-cell]')).find((item) =>
-        clean(item.dataset.studentId) === activeStudentId && clean(item.dataset.sessionDate) === activeSessionDate
+        clean(item.dataset.studentId) === activeStudentId
+        && clean(item.dataset.sessionDate) === activeSessionDate
+        && (!activeSessionKind || clean(item.dataset.sessionKind) === activeSessionKind)
       );
       if (nextCell) {
         try { nextCell.focus({ preventScroll: true }); } catch (_) { nextCell.focus(); }
