@@ -1,0 +1,48 @@
+name: Fix PC rerender focus and timetable memo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-pc-rerender-focus-memo.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply fixes
+        run: python3 .github/tmp/fix_pc_rerender_focus_memo.py
+      - name: Validate JavaScript
+        run: |
+          node --check pc-timetable.js
+          node --check pc-timetable-service.js
+          node --check pc-record-editor.js
+          node --check pc-student-management.js
+      - name: Verify intended changes
+        run: |
+          grep -F "previous > 0 && version !== previous" pc-timetable.js
+          grep -F "ensureLegacyBootstrap" pc-timetable-service.js
+          grep -F "olli_schedule_save_cell_memo_v2" pc-timetable-service.js
+          grep -F "const memoGroup = cellMemoClassGroup" pc-timetable.js
+          grep -F "openEmbeddedElementaryRecord" pc-record-editor.js
+          grep -F "todoFocus" pc-student-management.js
+          grep -F ".olliTtMemoHoverPreview" pc-timetable.css
+          if grep -F "counts.A <= counts.B ? 'A' : 'B'" pc-timetable.js; then
+            echo 'Old emptier-lane memo placement still exists' >&2
+            exit 1
+          fi
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pc-timetable.js pc-timetable-service.js pc-timetable.css pc-record-editor.js pc-student-management.js
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "fix: PC 포커스·스크롤·시간표 메모 동작 안정화"
+          git push
