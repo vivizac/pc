@@ -16,6 +16,46 @@ jobs:
       - uses: actions/checkout@v4
       - name: Apply attendance scroll, holiday and split-hover fixes
         run: python3 .github/tmp/fix_attendance_scroll_holiday_split_hover.py
+      - name: Make split hover fill each class area
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('pc-timetable.css')
+          css = path.read_text(encoding='utf-8')
+          old = '''#recordRoomScreen .olliTtCell.split:hover {
+            background: #fff;
+            box-shadow: none;
+          }
+          #recordRoomScreen .olliTtCell.split .olliTtClassLane:hover {
+            background: #f5faff;
+            box-shadow: inset 0 0 0 2px #c4e2ff;
+          }'''
+          new = '''#recordRoomScreen .olliTtCell.split {
+            padding: 0;
+            overflow: hidden;
+          }
+          #recordRoomScreen .olliTtCell.split:hover {
+            background: #fff;
+            box-shadow: none;
+          }
+          #recordRoomScreen .olliTtCell.split .olliTtClassLanes {
+            width: 100%;
+            height: 100%;
+          }
+          #recordRoomScreen .olliTtCell.split .olliTtClassLane {
+            box-sizing: border-box;
+            padding: 6px;
+          }
+          #recordRoomScreen .olliTtCell.split .olliTtClassLane:hover {
+            background: #f5faff;
+            box-shadow: inset 0 0 0 2px #c4e2ff;
+          }'''
+          if old in css:
+              css = css.replace(old, new, 1)
+          elif '#recordRoomScreen .olliTtCell.split {\n  padding: 0;' not in css:
+              raise SystemExit('split hover override anchor not found')
+          path.write_text(css, encoding='utf-8')
+          PY
       - name: Validate JavaScript
         run: |
           node --check pc-timetable-attendance-register.js
@@ -26,7 +66,8 @@ jobs:
           grep -F "const previousScrollTop" pc-timetable-attendance-register.js
           grep -F "cell.innerHTML = statusMeta.mark" pc-timetable-attendance-register.js
           grep -F "td.attendanceRegisterEditable" pc-timetable.css
-          grep -F ".olliTtCell.split:hover" pc-timetable.css
+          grep -F ".olliTtCell.split" pc-timetable.css
+          grep -F "padding: 0;" pc-timetable.css
           grep -F ".olliTtCell.split .olliTtClassLane:hover" pc-timetable.css
       - name: Commit changes
         run: |
@@ -37,5 +78,5 @@ jobs:
             echo "No changes to commit"
             exit 0
           fi
-          git commit -m "fix: 출석부 스크롤·휴일 색상과 분반 hover 수정"
+          git commit -m "fix: 분반 hover 영역을 시간표 칸에 맞춤"
           git push
