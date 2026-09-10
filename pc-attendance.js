@@ -633,16 +633,40 @@ function recordWorkspaceHtml(student, recordContent) {
     const list = document.getElementById('recordList');
     if (!list || list.__olliPcAttendanceClickBound) return;
     list.__olliPcAttendanceClickBound = true;
+
+    let pointerScroll = null;
+    const captureRosterScroll = (event) => {
+      if (!isPcAttendance() || event.target.closest('.recordAttendanceLeadBtn')) return;
+      const row = event.target.closest('.elementaryStudentRow,.kinderStudentRow');
+      if (!row || !list.contains(row)) return;
+      pointerScroll = { top: list.scrollTop, left: list.scrollLeft };
+    };
+    const restoreRosterScroll = (saved) => {
+      if (!saved || !list.isConnected) return;
+      list.scrollTop = saved.top;
+      list.scrollLeft = saved.left;
+    };
+
+    // Save the position before the button receives browser focus. This prevents
+    // focus/editor replacement from snapping the roster back to the top.
+    list.addEventListener('pointerdown', captureRosterScroll, true);
     list.addEventListener('click', (event) => {
       if (!isPcAttendance() || event.target.closest('.recordAttendanceLeadBtn')) return;
       const row = event.target.closest('.elementaryStudentRow,.kinderStudentRow');
       if (!row || !list.contains(row)) return;
       const studentId = extractRowStudentId(row);
       if (!studentId) return;
+      const saved = pointerScroll || { top: list.scrollTop, left: list.scrollLeft };
+      pointerScroll = null;
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
       selectStudent(studentId);
+      try { row.blur(); } catch (_) {}
+      restoreRosterScroll(saved);
+      queueMicrotask(() => restoreRosterScroll(saved));
+      requestAnimationFrame(() => restoreRosterScroll(saved));
+      setTimeout(() => restoreRosterScroll(saved), 40);
     }, true);
   }
 
