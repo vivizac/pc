@@ -1,0 +1,37 @@
+name: Fix split fill and observation roster scroll
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-split-fill-observation-scroll.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply split fill and observation roster scroll fixes
+        run: python3 .github/tmp/fix_split_fill_and_observation_roster_scroll.py
+      - name: Validate JavaScript
+        run: node --check pc-attendance.js
+      - name: Verify expected behavior
+        run: |
+          grep -F "grid-template-rows: repeat(2, minmax(0, 1fr))" pc-timetable.css
+          grep -F "flex: 1 1 50%" pc-timetable.css
+          grep -F "let pointerScroll = null" pc-attendance.js
+          grep -F "queueMicrotask(() => restoreRosterScroll(saved))" pc-attendance.js
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pc-timetable.css pc-attendance.js
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "fix: 분반 박스 채움과 관찰노트 명단 스크롤 유지"
+          git push
