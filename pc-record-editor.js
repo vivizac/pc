@@ -34,6 +34,36 @@
     restoreRecordRoomVisibility();
   }
 
+  function openEmbeddedElementaryRecord(student) {
+    const session = typeof global.beginObservationMemoSession === 'function'
+      ? global.beginObservationMemoSession(student.id)
+      : null;
+    if (!session || session.type !== 'elementary') return false;
+    try { if (typeof global.closeMemoModeMenu === 'function') global.closeMemoModeMenu(); } catch (_) {}
+    try { if (typeof global.closeMemoStudentSelectPopup === 'function') global.closeMemoStudentSelectPopup(); } catch (_) {}
+    if (state.screen) {
+      state.screen.style.display = 'flex';
+      state.screen.setAttribute('data-current-memo-type', 'elementary');
+    }
+    if (typeof global.renderObservationMemoScreenChrome === 'function') global.renderObservationMemoScreenChrome(session);
+    if (typeof global.renderObservationMemoInitialView === 'function') global.renderObservationMemoInitialView(session);
+    if (typeof global.refreshObservationMemoVersionHistoryButton === 'function') {
+      requestAnimationFrame(global.refreshObservationMemoVersionHistoryButton);
+    }
+    restoreRecordRoomVisibility();
+    return true;
+  }
+
+  function openEmbeddedKinderRecord() {
+    if (state.screen) state.screen.style.display = 'flex';
+    try { if (typeof global.bindKinderChatFeedbackKeyboardOffset === 'function') global.bindKinderChatFeedbackKeyboardOffset(); } catch (_) {}
+    try { if (typeof global.loadKinderChatFeedbackDraft === 'function') global.loadKinderChatFeedbackDraft(); } catch (_) {}
+    try { if (typeof global.updateKinderChatFeedbackBadge === 'function') global.updateKinderChatFeedbackBadge(); } catch (_) {}
+    try { if (typeof global.updateKinderChatFeedbackKeyboardOffset === 'function') global.updateKinderChatFeedbackKeyboardOffset(); } catch (_) {}
+    restoreRecordRoomVisibility();
+    return true;
+  }
+
   function mount(host, student) {
     if (!host || !student) return false;
     const division = student.type === 'kinder' ? 'kinder' : 'elementary';
@@ -60,9 +90,9 @@
 
     try {
       if (division === 'elementary' && typeof global.openStudentMemoPageById === 'function') {
-        global.openStudentMemoPageById(student.id);
+        openEmbeddedElementaryRecord(student);
       } else if (division === 'kinder' && typeof global.openKinderChatFeedbackPage === 'function') {
-        global.openKinderChatFeedbackPage();
+        openEmbeddedKinderRecord();
         if (typeof global.selectKinderChatFeedbackStudentFromManage === 'function') {
           global.selectKinderChatFeedbackStudentFromManage(student.id, null);
         }

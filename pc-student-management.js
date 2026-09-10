@@ -50,6 +50,14 @@
   function renderDashboard() {
     const dashboard = document.getElementById('recordAcademyDashboard');
     if (!dashboard) return;
+    const activeElement = document.activeElement;
+    const todoFocus = activeElement && activeElement.id === 'pcAcademyTodoInput'
+      ? {
+          value: activeElement.value || '',
+          start: Number.isInteger(activeElement.selectionStart) ? activeElement.selectionStart : null,
+          end: Number.isInteger(activeElement.selectionEnd) ? activeElement.selectionEnd : null
+        }
+      : null;
     const allStudents = students();
     const active = allStudents.filter((student) => typeof isAcademyManagementActiveStudent !== 'function' || isAcademyManagementActiveStudent(student));
     const thisYearRegistered = allStudents.filter((student) => {
@@ -88,6 +96,16 @@
     renderConsultationPanel(due);
     filter(core().state.academyFilter);
     handleSearch(core().state.searchValues.academy);
+    if (todoFocus) {
+      const nextInput = document.getElementById('pcAcademyTodoInput');
+      if (nextInput) {
+        nextInput.value = todoFocus.value;
+        try { nextInput.focus({ preventScroll: true }); } catch (_) { nextInput.focus(); }
+        if (todoFocus.start !== null && todoFocus.end !== null) {
+          try { nextInput.setSelectionRange(todoFocus.start, todoFocus.end); } catch (_) {}
+        }
+      }
+    }
   }
 
   function renderTodoCard() {

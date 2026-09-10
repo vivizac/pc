@@ -578,9 +578,40 @@
   border: 0;
   border-radius: 0;
   box-sizing: border-box;
-  overflow-y: auto;
+  overflow: hidden;
 }
 #recordRoomScreen .olliTtCell.split .olliTtClassLane.kinder + .olliTtClassLane.kinder {
   border-left: 0;
   border-top: 1px solid #dfe4e9;
+}
+
+
+/* 잘린 시간표 메모는 hover 시 body 레이어에서 전체 내용을 표시 */
+.olliTtMemoHoverPreview {
+  position: fixed;
+  z-index: 100000;
+  min-height: 38px;
+  max-height: none;
+  padding: 7px 9px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  box-sizing: border-box;
+  border: 1px solid #ffed85;
+  border-radius: 9px;
+  background: #fff3a6;
+  color: #544918;
+  box-shadow: 0 8px 24px rgba(20,24,30,.18);
+  pointer-events: none;
+  overflow: visible;
+  white-space: normal;
+}
+.olliTtMemoHoverPreview > span { flex: 0 0 auto; line-height: 1.25; }
+.olliTtMemoHoverPreview > strong {
+  min-width: 0;
+  font: 760 calc(12px * var(--olli-text-scale, 1)) 'Pretendard', sans-serif;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }

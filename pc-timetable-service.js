@@ -157,6 +157,32 @@
     return rpc('olli_schedule_bootstrap', contextPayload({ p_students: students }));
   }
 
+  let legacyBootstrapAcademyId = '';
+  let legacyBootstrapPromise = null;
+  let legacyBootstrapPromiseAcademyId = '';
+
+  async function ensureLegacyBootstrap() {
+    const academyId = currentAcademyId();
+    if (!academyId || legacyBootstrapAcademyId === academyId) return;
+    if (legacyBootstrapPromise && legacyBootstrapPromiseAcademyId === academyId) {
+      await legacyBootstrapPromise;
+      return;
+    }
+    legacyBootstrapPromiseAcademyId = academyId;
+    legacyBootstrapPromise = (async () => {
+      await bootstrapLegacy();
+      legacyBootstrapAcademyId = academyId;
+    })();
+    try {
+      await legacyBootstrapPromise;
+    } finally {
+      if (legacyBootstrapPromiseAcademyId === academyId) {
+        legacyBootstrapPromise = null;
+        legacyBootstrapPromiseAcademyId = '';
+      }
+    }
+  }
+
   async function loadCalendarRange(startDate, endDate) {
     const data = await rpc('olli_schedule_calendar_range', contextPayload({
       p_start_date: clean(startDate),
@@ -173,18 +199,19 @@
   }
 
   async function loadWeek(weekStart) {
-    await bootstrapLegacy();
+    await ensureLegacyBootstrap();
     await rpc('olli_schedule_apply_due', contextPayload());
     const start = clean(weekStart);
     const startDate = /^\d{4}-\d{2}-\d{2}$/.test(start) ? new Date(`${start}T00:00:00`) : new Date();
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + 5);
     const end = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
-    const [data, kinderLayout, calendarDays, teacherContext] = await Promise.all([
+    const [data, kinderLayout, calendarDays, teacherContext, memoContext] = await Promise.all([
       rpc('olli_schedule_week', contextPayload({ p_week_start: weekStart })),
       rpc('olli_schedule_kinder_class_layouts', contextPayload()),
       loadCalendarRange(start, end),
-      rpc('olli_schedule_class_teacher_context', contextPayload())
+      rpc('olli_schedule_class_teacher_context', contextPayload()),
+      rpc('olli_schedule_cell_memos_week_v2', contextPayload({ p_week_start: start }))
     ]);
     data.kinder_class_merges = Array.isArray(kinderLayout && kinderLayout.merged_slots)
       ? kinderLayout.merged_slots
@@ -192,12 +219,15 @@
     data.calendar_days = calendarDays;
     data.class_teachers = Array.isArray(teacherContext && teacherContext.assignments) ? teacherContext.assignments : [];
     data.teacher_members = Array.isArray(teacherContext && teacherContext.teachers) ? teacherContext.teachers : [];
+    data.cell_memos = Array.isArray(memoContext && memoContext.memos) ? memoContext.memos : (Array.isArray(data.cell_memos) ? data.cell_memos : []);
     cacheWeek(weekStart, data);
     return data;
   }
 
   async function syncLegacyStudents() {
-    return bootstrapLegacy();
+    const result = await bootstrapLegacy();
+    legacyBootstrapAcademyId = currentAcademyId();
+    return result;
   }
 
   async function executeScheduleAction(action, params) {
@@ -226,13 +256,14 @@
     }));
   }
 
-  async function saveCellMemo(division, sessionDate, timeSlot, note) {
-    return executeScheduleAction('save_cell_memo', {
-      division,
-      session_date: sessionDate,
-      time_slot: Number(timeSlot),
-      note: note || ''
-    });
+  async function saveCellMemo(division, sessionDate, timeSlot, note, classGroup) {
+    return rpc('olli_schedule_save_cell_memo_v2', contextPayload({
+      p_division: clean(division),
+      p_session_date: clean(sessionDate),
+      p_time_slot: Number(timeSlot),
+      p_note: note || '',
+      p_class_group: clean(classGroup || 'A').toUpperCase() === 'B' ? 'B' : 'A'
+    }));
   }
 
   async function changeSchedule(options) {
