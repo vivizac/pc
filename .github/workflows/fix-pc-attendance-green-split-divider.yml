@@ -1,0 +1,37 @@
+name: Fix PC attendance green split and divider
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-pc-attendance-green-split-divider.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply fixes
+        run: python3 .github/tmp/fix_pc_attendance_green_split_and_divider.py
+      - name: Validate JavaScript
+        run: node --check pc-timetable-attendance-register.js
+      - name: Verify intended changes
+        run: |
+          grep -F 'background:#43d878!important' pc-timetable-attendance-register.js
+          grep -F 'timeOf(override) >= timeOf(actual)' pc-timetable-attendance-register.js
+          grep -F 'content:"";height:1px;flex:1;min-width:12px;background:transparent;' pc-attendance.css
+          grep -F 'const split = hasRegular && hasMakeup;' pc-timetable-attendance-register.js
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pc-timetable-attendance-register.js pc-attendance.css
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "fix: PC 출석 색상과 정규·보강 연동 보정"
+          git push
