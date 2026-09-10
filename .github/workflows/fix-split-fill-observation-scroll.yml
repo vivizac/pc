@@ -21,9 +21,15 @@ jobs:
       - name: Verify expected behavior
         run: |
           grep -F "grid-template-rows: repeat(2, minmax(0, 1fr))" pc-timetable.css
-          grep -F "flex: 1 1 50%" pc-timetable.css
-          grep -F "let pointerScroll = null" pc-attendance.js
-          grep -F "queueMicrotask(() => restoreRosterScroll(saved))" pc-attendance.js
+          grep -F "#recordRoomScreen .olliTtCell.split .olliTtClassLanes.kinder" pc-timetable.css
+          grep -F "display: grid;" pc-timetable.css
+          grep -F "const rosterRowFromEvent = (event) =>" pc-attendance.js
+          grep -F "list.addEventListener('mousedown'" pc-attendance.js
+          grep -F "Promise.resolve(selection).then(" pc-attendance.js
+          if grep -F "queueMicrotask(() => restoreRosterScroll(saved))" pc-attendance.js; then
+            echo "Old multi-restore scroll workaround still present" >&2
+            exit 1
+          fi
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
@@ -33,5 +39,5 @@ jobs:
             echo "No changes to commit"
             exit 0
           fi
-          git commit -m "fix: 분반 박스 채움과 관찰노트 명단 스크롤 유지"
+          git commit -m "fix: 유치부 분반과 관찰노트 스크롤 안정화"
           git push
