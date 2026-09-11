@@ -1,0 +1,73 @@
+name: Patch realtime phase 1
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-realtime-phase1.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Wire shared realtime to observation memo
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f'{label}: target not found')
+              if text.count(old) != 1:
+                  raise SystemExit(f'{label}: expected one target, found {text.count(old)}')
+              return text.replace(old, new, 1)
+
+          index = Path('index.html')
+          text = index.read_text()
+          script = '<script src="olli-realtime-common.js?v=20260911-1"></script>\n'
+          if script not in text:
+              marker = '<script src="olli-data-foundation.js"></script>\n'
+              text = replace_once(text, marker, marker + script, 'index realtime script')
+              index.write_text(text)
+
+          observation = Path('observation-memo-common.js')
+          text = observation.read_text()
+          listener = """  window.addEventListener('olli:realtime-change', event => {\n    if (event?.detail?.domain !== 'observation') return;\n    requestObservationMemoCrossDeviceRefresh();\n  });\n"""
+          if listener not in text:
+              marker = "  window.addEventListener('online', requestObservationMemoCrossDeviceRefresh);\n"
+              text = replace_once(text, marker, marker + listener, 'observation realtime listener')
+              observation.write_text(text)
+
+          common_list = Path('OLLI_COMMON_FILES.txt')
+          text = common_list.read_text()
+          if 'olli-realtime-common.js\n' not in text:
+              marker = 'observation-memo-version-history-common.js\n'
+              text = replace_once(text, marker, marker + 'olli-realtime-common.js\n', 'common file list')
+              common_list.write_text(text)
+          PY
+
+      - name: Validate JavaScript and patch
+        run: |
+          node --check olli-realtime-common.js
+          node --check observation-memo-common.js
+          git diff --check
+          grep -F 'olli-realtime-common.js?v=20260911-1' index.html
+          grep -F "detail?.domain !== 'observation'" observation-memo-common.js
+
+      - name: Commit phase 1 wiring
+        run: |
+          if git diff --quiet; then
+            echo 'No changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html observation-memo-common.js OLLI_COMMON_FILES.txt
+          git commit -m 'feat: wire realtime observation sync'
+          git push origin HEAD:main
