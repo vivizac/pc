@@ -317,6 +317,17 @@
     });
   }
 
+  async function addGuestEntry(options) {
+    return rpc('olli_schedule_add_guest_entry', contextPayload({
+      p_guest_name: clean(options.guestName),
+      p_division: clean(options.division),
+      p_entry_type: clean(options.entryType),
+      p_session_date: clean(options.sessionDate),
+      p_time_slot: Number(options.timeSlot),
+      p_class_group: options.classGroup || 'A'
+    }));
+  }
+
   async function cancelMakeup(oneTimeSessionId) {
     return executeScheduleAction('cancel_one_time', { one_time_session_id: oneTimeSessionId });
   }
@@ -464,6 +475,7 @@
     resolveWaitlist,
     addMakeup,
     addWaitlist,
+    addGuestEntry,
     cancelMakeup,
     cancelChange,
     removeEnrollment,

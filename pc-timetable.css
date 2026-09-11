@@ -109,7 +109,7 @@
 #recordRoomScreen .olliTtCell:hover { background: #f5faff; box-shadow: inset 0 0 0 2px #c4e2ff; }
 #recordRoomScreen .olliTtCell.holiday, #recordRoomScreen .olliTtCell.holiday:hover { background:#fff; box-shadow:none; cursor:not-allowed; }
 #recordRoomScreen .olliTtCell.holiday .olliTtClassLane, #recordRoomScreen .olliTtCell.holiday .olliTtClassLane:hover { background:transparent; cursor:not-allowed; }
-#recordRoomScreen .olliTtCell.holiday .olliTtStudent, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.regular.elementary, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.regular.kinder, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.makeup, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.wait, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.attended { color:#858b93; border-color:#d4d8dd; background:#dfe2e5; box-shadow:none; transform:none; }
+#recordRoomScreen .olliTtCell.holiday .olliTtStudent, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.regular.elementary, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.regular.kinder, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.makeup, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.trial, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.wait, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.attended { color:#858b93; border-color:#d4d8dd; background:#dfe2e5; box-shadow:none; transform:none; }
 #recordRoomScreen .olliTtCell.holiday .olliTtAttendanceBtn, #recordRoomScreen .olliTtCell.holiday .olliTtStudentMore, #recordRoomScreen .olliTtCell.holiday .olliTtStudentTag { color:#858b93; pointer-events:none; }
 #recordRoomScreen .olliTtCell.holiday .olliTtCellMemoCard { color:#858b93; border-color:#fff; background:#fff; box-shadow:none; }
 #recordRoomScreen .olliTtCell.saturdayUnavailable { cursor: default; background: #fafbfc; }
@@ -191,6 +191,7 @@
 #recordRoomScreen .olliTtStudent.regular.kinder { border-color: #f5c7d4; background: #ffe4eb; }
 #recordRoomScreen .olliTtStudent.wait { border: 1px dashed #c8bceb; color: #8373ac; background: #f8f6ff; }
 #recordRoomScreen .olliTtStudent.makeup { border-color: #73b9a5; color: #267763; background: #e5f6f0; }
+#recordRoomScreen .olliTtStudent.trial { border-color: #e6b56e; color: #9a5a10; background: #fff1dc; }
 #recordRoomScreen .olliTtStudent.regular.attended,
 #recordRoomScreen .olliTtStudent.makeup.attended { border-color: transparent; background: #43d878; box-shadow: none; }
 #recordRoomScreen .olliTtStudent:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(26, 38, 58, .09); }
@@ -198,6 +199,7 @@
 #recordRoomScreen button.olliTtStudentTag { flex: 0 0 auto; margin: 3px 2px 3px 3px; }
 #recordRoomScreen .olliTtStudent.wait .olliTtStudentTag { background: #b7a8df; }
 #recordRoomScreen .olliTtStudent.makeup .olliTtStudentTag { background: #338d74; }
+#recordRoomScreen .olliTtStudent.trial .olliTtStudentTag { background: #d98b28; }
 #recordRoomScreen .olliTtReservation { display: block; margin-top: 3px; color: #0A73DC; font-size: calc(8px * var(--olli-text-scale)); font-weight: 780; }
 #recordRoomScreen .olliTtPickupGrid { width: 100%; flex: 0 0 258px; display: grid; grid-template-columns: 56px repeat(6, minmax(0, 1fr)); grid-template-rows: 34px repeat(2, 112px); background: #fff; }
 #recordRoomScreen .olliTtPickupGrid > * { border-right: 1px solid #e8ebef; border-bottom: 1px solid #e8ebef; }
