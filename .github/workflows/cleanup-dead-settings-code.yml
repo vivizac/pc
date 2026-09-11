@@ -1,0 +1,117 @@
+name: Cleanup dead settings code
+
+'on':
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cleanup-dead-settings-code.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify dead settings references
+        shell: bash
+        run: |
+          set -euo pipefail
+          for sym in resetAcademyManagementPageForTest resetAttendanceStudentRosterForTest showOlliTestResetMessage guardOlliTestResetTool clearAcademyManagementRuntimeForTest; do
+            hits=$(grep -RIn --exclude-dir=.git --exclude-dir=.github --exclude=olli-settings-import-test-tools.js "$sym" . || true)
+            if [ -n "$hits" ]; then
+              echo "Unexpected external reference for $sym"
+              echo "$hits"
+              exit 1
+            fi
+          done
+          for sym in canUseOlliPlatformAdmin getOlliCurrentAccountLoginText; do
+            hits=$(grep -RIn --exclude-dir=.git --exclude-dir=.github --exclude=olli-settings-base.js "$sym" . || true)
+            if [ -n "$hits" ]; then
+              echo "Unexpected external reference for $sym"
+              echo "$hits"
+              exit 1
+            fi
+          done
+          if grep -RIn --exclude-dir=.git --exclude-dir=.github --exclude=olli-settings-base.js 'data-platform-admin-only' .; then
+            echo 'Unexpected remaining platform-admin UI outside shared settings base.'
+            exit 1
+          fi
+
+      - name: Remove obsolete code
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          index = Path('index.html')
+          text = index.read_text(encoding='utf-8')
+          text, n = re.subn(r'\s*<script\s+src=["\']olli-settings-import-test-tools\.js["\']></script>\s*', '\n', text, count=1)
+          if n != 1:
+              raise SystemExit(f'Expected one test-tools script tag, removed {n}')
+          index.write_text(text, encoding='utf-8')
+
+          base = Path('olli-settings-base.js')
+          text = base.read_text(encoding='utf-8')
+          start = text.find('function getOlliCurrentAccountLoginText()')
+          end = text.find('function applySettingsPermissionUI()')
+          if start < 0 or end < 0 or end <= start:
+              raise SystemExit('Could not locate obsolete platform admin function block')
+          text = text[:start] + text[end:]
+
+          lines = text.splitlines(True)
+          out = []
+          i = 0
+          removed = 0
+          while i < len(lines):
+              if 'const canViewPlatformAdmin =' in lines[i]:
+                  removed += 1
+                  i += 1
+                  while i < len(lines):
+                      if lines[i].strip() == '});':
+                          i += 1
+                          break
+                      i += 1
+                  continue
+              out.append(lines[i])
+              i += 1
+          if removed != 2:
+              raise SystemExit(f'Expected two platform-admin visibility blocks, removed {removed}')
+          text = ''.join(out)
+          base.write_text(text, encoding='utf-8')
+
+          test_file = Path('olli-settings-import-test-tools.js')
+          if not test_file.exists():
+              raise SystemExit('Missing test tools file')
+          test_file.unlink()
+          Path('.github/workflows/cleanup-dead-settings-code.yml').unlink()
+          PY
+
+      - name: Validate cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e olli-settings-import-test-tools.js
+          ! grep -Fq 'olli-settings-import-test-tools.js' index.html
+          ! grep -Fq 'canUseOlliPlatformAdmin' olli-settings-base.js
+          ! grep -Fq 'getOlliCurrentAccountLoginText' olli-settings-base.js
+          ! grep -Fq 'data-platform-admin-only' olli-settings-base.js
+          grep -Fq 'canUseOlliDevTestTools' olli-settings-base.js
+          grep -Fq 'settingsDevSection' olli-settings-base.js
+          node --check olli-settings-base.js
+
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Remove dead settings test and platform admin code'
+          git push
