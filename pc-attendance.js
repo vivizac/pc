@@ -741,14 +741,32 @@ function recordWorkspaceHtml(student, recordContent) {
     const previousScrollTop = list.scrollTop;
 
     const query = String(searchValue ?? app.state.searchValues.attendance ?? '').trim();
-    const elementary = studentsForSortMode(app, 'elementary').filter((student) => studentMatchesPcAttendanceSearch(student, query));
-    const kinder = studentsForSortMode(app, 'kinder').filter((student) => studentMatchesPcAttendanceSearch(student, query));
+    const studentsForDisplay = (type) => {
+      if (!query) return studentsForSortMode(app, type);
+      const all = typeof global.getStudentsByType === 'function' ? global.getStudentsByType(type) : [];
+      return all.filter((student) => {
+        try {
+          const status = typeof global.getStudentStatus === 'function'
+            ? global.getStudentStatus(student)
+            : String(student?.status || 'active');
+          return status === 'active' || status === 'paused' || status === 'withdrawn';
+        } catch (_) {
+          return false;
+        }
+      });
+    };
+    const elementary = studentsForDisplay('elementary').filter((student) => studentMatchesPcAttendanceSearch(student, query));
+    const kinder = studentsForDisplay('kinder').filter((student) => studentMatchesPcAttendanceSearch(student, query));
     let html = '';
     if (app.state.attendanceDivision === 'all' || app.state.attendanceDivision === 'elementary') {
-      html += renderStudentsForSortMode(elementary, 'elementary');
+      html += query
+        ? renderPlainRows(elementary.slice().sort(compareStudentsByName), 'elementary')
+        : renderStudentsForSortMode(elementary, 'elementary');
     }
     if (app.state.attendanceDivision === 'all' || app.state.attendanceDivision === 'kinder') {
-      html += renderStudentsForSortMode(kinder, 'kinder');
+      html += query
+        ? renderPlainRows(kinder.slice().sort(compareStudentsByName), 'kinder')
+        : renderStudentsForSortMode(kinder, 'kinder');
     }
     list.innerHTML = html || '<div class="recordEmpty">조건에 맞는 학생이 없습니다.</div>';
     ensureRosterHeader();
