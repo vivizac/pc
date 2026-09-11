@@ -1,0 +1,68 @@
+name: Remove obsolete settings items
+
+'on':
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/remove-obsolete-settings-items.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Remove obsolete settings entries
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import pathlib, re
+
+          path = pathlib.Path('index.html')
+          text = path.read_text(encoding='utf-8')
+
+          targets = [
+              (r'\n?<section class="settingsSection" data-platform-admin-only="true">.*?</section>', '올리 관리'),
+              (r'\n?<div class="settingsRow" onclick="showOlliLoginEntry\(\)" role="button">\s*<div class="settingsRowLeft">.*?</div>\s*<svg class="settingsChevron"[^>]*>.*?</svg>\s*</div>', '로그인 테스트'),
+              (r'\n?<div class="settingsRow" onclick="openKinderChatFeedbackPage\(\)" role="button">\s*<div class="settingsRowLeft">.*?</div>\s*<svg class="settingsChevron"[^>]*>.*?</svg>\s*</div>', '1분 피드백 테스트 진입'),
+              (r'\n?<div class="settingsRow" onclick="resetAcademyManagementPageForTest\(\)" role="button">\s*<div class="settingsRowLeft">.*?</div>\s*<svg class="settingsChevron"[^>]*>.*?</svg>\s*</div>', '학원관리 페이지 리셋'),
+              (r'\n?<div class="settingsRow" onclick="resetAttendanceStudentRosterForTest\(\)" role="button">\s*<div class="settingsRowLeft">.*?</div>\s*<svg class="settingsChevron"[^>]*>.*?</svg>\s*</div>', '출석부 학생명단 리셋'),
+          ]
+
+          for pattern, label in targets:
+              text, count = re.subn(pattern, '', text, count=1, flags=re.S)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one settings entry for {label}, removed {count}')
+
+          path.write_text(text, encoding='utf-8')
+          pathlib.Path('.github/workflows/remove-obsolete-settings-items.yml').unlink()
+          PY
+
+      - name: Validate settings cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          for label in '올리 관리' '학원관리 페이지 리셋' '출석부 학생명단 리셋' '로그인 테스트' '1분 피드백 테스트 진입'; do
+            if grep -Fq "$label" index.html; then
+              echo "Obsolete settings label still exists: $label"
+              exit 1
+            fi
+          done
+          grep -Fq "openSettingsDetail('storageDiagnostics')" index.html
+          grep -Fq '설정' index.html
+
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Remove obsolete settings entries'
+          git push
