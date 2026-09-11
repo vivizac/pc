@@ -1,0 +1,143 @@
+name: Convert attendance register to Realtime
+on:
+  push:
+    paths:
+      - '.github/workflows/convert-attendance-realtime.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch attendance Realtime
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('pc-timetable.js')
+          s = p.read_text()
+          old = """    attendanceLoading: false,\n    attendanceLoadToken: 0,"""
+          new = """    attendanceLoading: false,\n    attendanceLoadToken: 0,\n    attendanceSavingCount: 0,"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          s = s.replace("\n  const ATTENDANCE_POLL_INTERVAL_MS = 3000;\n", "\n", 1)
+          s = s.replace(
+            "// 시간표 Realtime/폴링 갱신은 학생 정보를 읽기만 합니다.",
+            "// 시간표/출석부 Realtime 갱신은 학생 정보를 읽기만 합니다.",
+            1,
+          )
+          s = s.replace(
+            "if (state.pane === 'attendance') return loadAttendanceRegister();",
+            "if (state.pane === 'attendance') return loadAttendanceRegister(realtimeContext);",
+            1,
+          )
+          old = """    if (!state.active || state.view !== 'schedule' || state.saving || state.syncChecking\n      || state.loading || scheduleEditorOpen()) return false;"""
+          new = """    if (!state.active || state.view !== 'schedule' || state.saving || state.syncChecking\n      || state.loading\n      || (state.pane === 'attendance' && state.attendanceLoading)\n      || Number(state.attendanceSavingCount || 0) > 0\n      || scheduleEditorOpen()) return false;"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = """  if (!global.__OLLI_TIMETABLE_LIVE_SYNC_V1__) {\n    global.__OLLI_TIMETABLE_LIVE_SYNC_V1__ = true;\n    global.setInterval(() => {\n      // 시간표는 Supabase Realtime으로만 갱신합니다.\n      // 기존 3초 확인은 출석부 안전망으로만 유지합니다.\n      if (state.pane === 'attendance') checkLiveScheduleSync(false);\n    }, ATTENDANCE_POLL_INTERVAL_MS);\n    global.addEventListener('focus', () => { checkLiveScheduleSync(true); });\n    document.addEventListener('visibilitychange', () => {\n      if (!document.hidden) checkLiveScheduleSync(true);\n    });\n  }"""
+          new = """  if (!global.__OLLI_TIMETABLE_LIVE_SYNC_V1__) {\n    global.__OLLI_TIMETABLE_LIVE_SYNC_V1__ = true;\n    // 시간표와 출석부 모두 Supabase Realtime을 사용합니다.\n    // 포커스/화면 복귀 때만 revision을 한 번 확인해 연결 공백을 보완합니다.\n    global.addEventListener('focus', () => { checkLiveScheduleSync(true); });\n    document.addEventListener('visibilitychange', () => {\n      if (!document.hidden) checkLiveScheduleSync(true);\n    });\n  }"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = """    global.OlliRealtime.watchDomain('schedule', (context) => {\n      // 시간표는 Realtime 신호를 기준으로 최신 revision과 서버 원본을 다시 읽습니다.\n      if (!state.active || state.view !== 'schedule' || state.pane !== 'schedule') return false;\n      return checkLiveScheduleSync(true, context);\n    });"""
+          new = """    global.OlliRealtime.watchDomain('schedule', (context) => {\n      // 시간표와 출석부는 같은 schedule revision 신호를 기준으로\n      // 현재 열려 있는 pane의 서버 원본을 다시 읽습니다.\n      if (!state.active || state.view !== 'schedule') return false;\n      if (state.pane !== 'schedule' && state.pane !== 'attendance') return false;\n      return checkLiveScheduleSync(true, context);\n    });"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = "async function loadAttendanceRegister() { return attendanceRegisterRuntimeApi().loadAttendanceRegister(); }"
+          new = "async function loadAttendanceRegister(realtimeContext) { return attendanceRegisterRuntimeApi().loadAttendanceRegister(realtimeContext); }"
+          assert old in s
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+          p = Path('pc-timetable-attendance-register.js')
+          s = p.read_text()
+          old = """  async function loadAttendanceRegister() {\n    if (!state.active || state.view !== 'schedule' || state.pane !== 'attendance') return;\n    const month = state.attendanceMonth;"""
+          new = """  async function loadAttendanceRegister(realtimeContext) {\n    if (!state.active || state.view !== 'schedule' || state.pane !== 'attendance') return false;\n    const month = state.attendanceMonth;\n    const requestedAcademyId = currentAcademyId();\n    const requestedSession = clean(localStorage.getItem('olli_account_session_token_v1'));\n    const isCurrent = () => requestedAcademyId === currentAcademyId()\n      && requestedSession === clean(localStorage.getItem('olli_account_session_token_v1'))\n      && state.active && state.view === 'schedule' && state.pane === 'attendance'\n      && state.attendanceMonth === month\n      && (!realtimeContext || realtimeContext.isCurrent());"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = """      if (token !== state.attendanceLoadToken || state.attendanceMonth !== month) return;"""
+          new = """      if (token !== state.attendanceLoadToken || !isCurrent()) return false;"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = """      // 서버 내용이 로컬과 실제로 달라진 경우에만 표를 다시 만듭니다.\n      if (rowsChanged || calendarChanged) renderAttendanceRegister();\n    } catch (error) {\n      if (token !== state.attendanceLoadToken) return;\n      const hasLocal = state.attendanceRowsMonth === month || state.attendanceCalendarMonth === month;\n      if (!hasLocal) notify(error && (error.message || error) || '출석부를 불러오지 못했습니다.');\n      else console.warn('출석부 백그라운드 최신 확인 실패:', error);\n    } finally {\n      if (token === state.attendanceLoadToken) state.attendanceLoading = false;\n    }\n  }"""
+          new = """      // 서버 내용이 로컬과 실제로 달라진 경우에만 표를 다시 만듭니다.\n      if (rowsChanged || calendarChanged) renderAttendanceRegister();\n      return true;\n    } catch (error) {\n      if (token !== state.attendanceLoadToken || !isCurrent()) return false;\n      const hasLocal = state.attendanceRowsMonth === month || state.attendanceCalendarMonth === month;\n      if (!hasLocal) notify(error && (error.message || error) || '출석부를 불러오지 못했습니다.');\n      else console.warn('출석부 백그라운드 최신 확인 실패:', error);\n      return false;\n    } finally {\n      if (token === state.attendanceLoadToken) state.attendanceLoading = false;\n    }\n  }"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = """    cell.dataset.attendanceSaving = '1';\n    try {"""
+          new = """    cell.dataset.attendanceSaving = '1';\n    state.attendanceSavingCount = Number(state.attendanceSavingCount || 0) + 1;\n    try {"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = """      lastAttendanceRenderSignature = attendanceRenderSignature();\n\n      // This PC already has the saved value. Advance its sync revision too so the\n      // 3-second multi-PC watcher does not immediately rebuild this same table.\n      if (typeof service.loadSyncRevision === 'function') {\n        try {\n          const syncInfo = await service.loadSyncRevision();\n          const version = Number(syncInfo && syncInfo.version || 0);\n          if (version) state.syncRevision = version;\n        } catch (_) {}\n      }\n    } catch (error) {\n      notify(error && (error.message || error) || '출석부 상태를 저장하지 못했습니다.');\n      cell.dataset.attendanceSaving = '';\n    }\n  }"""
+          new = """      lastAttendanceRenderSignature = attendanceRenderSignature();\n    } catch (error) {\n      notify(error && (error.message || error) || '출석부 상태를 저장하지 못했습니다.');\n    } finally {\n      cell.dataset.attendanceSaving = '';\n      state.attendanceSavingCount = Math.max(0, Number(state.attendanceSavingCount || 0) - 1);\n    }\n  }"""
+          assert old in s
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+          p = Path('tests/schedule-realtime.test.cjs')
+          s = p.read_text()
+          old = """  const env=sandbox();let revision=10,revisionReads=0,weekReads=0,readWeek=async()=>({enrollments:[{student_id:'fixture',time_slot:5}]});"""
+          new = """  const env=sandbox();let revision=10,revisionReads=0,weekReads=0,readWeek=async()=>({enrollments:[{student_id:'fixture',time_slot:5}]});\n  env.win.__attendanceReads=0;"""
+          assert old in s
+          s = s.replace(old, new, 1)
+          old = """  code=code.replace('})(window);',`global.testApi={state,checkLiveScheduleSync,loadWeek};renderTimetable=()=>{};renderSidebar=()=>{};refreshOpenStudentInfoPanel=()=>{};})(window);`);"""
+          new = """  code=code.replace('})(window);',`loadAttendanceRegister=async()=>{global.__attendanceReads=(global.__attendanceReads||0)+1;return true;};global.testApi={state,checkLiveScheduleSync,loadWeek};renderTimetable=()=>{};renderSidebar=()=>{};refreshOpenStudentInfoPanel=()=>{};})(window);`);"""
+          assert old in s
+          s = s.replace(old, new, 1)
+          old = """  return {...env,state,get reads(){return weekReads;},get revisionReads(){return revisionReads;},setRevision:v=>revision=v,setRead:fn=>readWeek=fn,check:()=>watcher({academyId:'academy-a',isCurrent:()=>env.values.get('olli_current_academy_id')==='academy-a'})};"""
+          new = """  return {...env,state,get reads(){return weekReads;},get revisionReads(){return revisionReads;},get attendanceReads(){return env.win.__attendanceReads||0;},setRevision:v=>revision=v,setRead:fn=>readWeek=fn,check:()=>watcher({academyId:'academy-a',isCurrent:()=>env.values.get('olli_current_academy_id')==='academy-a'})};"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          s = s.replace(
+            "assert.equal(await env.check(),true);assert.equal(env.reads,1);assert.equal(env.intervals.some(x=>x.delay===3000),true);",
+            "assert.equal(await env.check(),true);assert.equal(env.reads,1);assert.equal(env.intervals.some(x=>x.delay===3000),false);",
+            1,
+          )
+          old = """test('PC 3s timer skips timetable pane and is reserved for attendance',async()=>{\n  const env=pc();const interval=env.intervals.find(x=>x.delay===3000);assert.ok(interval);\n  const before=env.revisionReads;interval.fn();await settle();assert.equal(env.revisionReads,before);\n  env.state.pane='attendance';env.state.syncRevision=10;interval.fn();await settle();assert.equal(env.revisionReads,before+1);\n});"""
+          new = """test('PC schedule and attendance do not install the legacy 3s polling timer',async()=>{\n  const env=pc();assert.equal(env.intervals.some(x=>x.delay===3000),false);\n});"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = """test('PC attendance register is not activated by the new realtime watcher',async()=>{const env=pc();env.state.pane='attendance';assert.equal(await env.check(),false);assert.equal(env.reads,0);});"""
+          new = """test('PC attendance register refreshes from the same schedule Realtime signal',async()=>{\n  const env=pc();env.state.pane='attendance';env.state.syncRevision=9;\n  assert.equal(await env.check(),true);assert.equal(env.attendanceReads,1);assert.equal(env.reads,0);assert.equal(env.state.syncRevision,10);\n});\ntest('PC attendance Realtime defers while attendance is loading or saving',async()=>{\n  const env=pc();env.state.pane='attendance';env.state.syncRevision=9;\n  env.state.attendanceLoading=true;assert.equal(await env.check(),false);assert.equal(env.attendanceReads,0);\n  env.state.attendanceLoading=false;env.state.attendanceSavingCount=1;assert.equal(await env.check(),false);assert.equal(env.attendanceReads,0);\n  env.state.attendanceSavingCount=0;assert.equal(await env.check(),true);assert.equal(env.attendanceReads,1);\n});"""
+          assert old in s
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+          p = Path('OLLI_REALTIME_STATUS.md')
+          s = p.read_text()
+          marker = "기준일: 2026-09-11\n"
+          insert = """\n## 현재 운영 상태\n\n- 관찰노트: Realtime 전환 완료. 기존 2초 polling 제거.\n- PC 시간표: Realtime 전환 완료. 기존 3초 polling 제거.\n- PC 출석부: Realtime 전환 완료. 기존 3초 polling 제거. `schedule` revision 신호를 공유하며 현재 열린 출석부 월을 서버에서 다시 확인한다.\n- 포커스·화면 복귀·온라인 재연결 시에는 연결 공백 보완을 위해 1회 최신 revision/원본을 확인한다.\n- 편집/저장/조회 중 도착한 실제 변경 신호는 완료 처리하지 않고 안전하게 재시도한다.\n\n아래 내용은 단계 전환 당시의 구현·검증 기록으로, 현재 운영 상태와 다를 수 있다.\n"""
+          assert marker in s
+          if '## 현재 운영 상태' not in s:
+            s = s.replace(marker, marker + insert, 1)
+          p.write_text(s)
+
+          Path('.github/workflows/convert-attendance-realtime.yml').unlink()
+      - name: Syntax checks
+        run: |
+          node --check pc-timetable.js
+          node --check pc-timetable-attendance-register.js
+      - name: Realtime regression tests
+        run: node --test tests/schedule-realtime.test.cjs
+      - name: Verify polling removal
+        run: |
+          ! grep -q 'ATTENDANCE_POLL_INTERVAL_MS' pc-timetable.js
+          ! grep -q '3-second multi-PC watcher' pc-timetable-attendance-register.js
+          grep -q "state.pane !== 'schedule' && state.pane !== 'attendance'" pc-timetable.js
+      - name: Commit attendance Realtime conversion
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Convert PC attendance register from polling to Realtime'
+          git push
