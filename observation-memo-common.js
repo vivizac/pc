@@ -452,19 +452,42 @@ async function refreshCurrentObservationMemoFromServer() {
   }
 }
 
+const OLLI_OBSERVATION_MEMO_REMOTE_REFRESH_INTERVAL = 2000;
+
+function requestObservationMemoCrossDeviceRefresh() {
+  if (window.__olliObservationMemoRemoteRefreshPending) return;
+  window.__olliObservationMemoRemoteRefreshPending = true;
+  setTimeout(async () => {
+    try {
+      await refreshCurrentObservationMemoFromServer();
+    } finally {
+      window.__olliObservationMemoRemoteRefreshPending = false;
+    }
+  }, 0);
+}
+
 if (!window.__olliObservationMemoCrossDeviceRefreshBound) {
   window.__olliObservationMemoCrossDeviceRefreshBound = true;
-  window.addEventListener('focus', () => {
-    setTimeout(() => { void refreshCurrentObservationMemoFromServer(); }, 0);
-  });
-  window.addEventListener('online', () => {
-    setTimeout(() => { void refreshCurrentObservationMemoFromServer(); }, 0);
-  });
+  window.addEventListener('focus', requestObservationMemoCrossDeviceRefresh);
+  window.addEventListener('online', requestObservationMemoCrossDeviceRefresh);
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-      setTimeout(() => { void refreshCurrentObservationMemoFromServer(); }, 0);
-    }
+    if (!document.hidden) requestObservationMemoCrossDeviceRefresh();
   });
+  document.addEventListener('focusin', event => {
+    if (event.target?.id !== 'memoEditor') return;
+    if (hasObservationMemoDirtyChanges()) return;
+    requestObservationMemoCrossDeviceRefresh();
+  });
+
+  if (!window.__olliObservationMemoRemoteRefreshTimer) {
+    window.__olliObservationMemoRemoteRefreshTimer = setInterval(() => {
+      if (document.hidden) return;
+      if (!isObservationMemoScreenActive()) return;
+      if (hasObservationMemoDirtyChanges()) return;
+      if (isObservationMemoAutoSaveBlocked()) return;
+      requestObservationMemoCrossDeviceRefresh();
+    }, OLLI_OBSERVATION_MEMO_REMOTE_REFRESH_INTERVAL);
+  }
 }
 
 function openObservationMemoScreenShell(session) {
