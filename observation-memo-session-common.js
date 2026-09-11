@@ -222,6 +222,14 @@
     );
   }
 
+  function isExplicitRecoveryPromotionMutation(value) {
+    return /^local_recovery_promote_\d{8}_/.test(String(value || '').trim());
+  }
+
+  function isIntentionalFeedbackClear(row) {
+    return String(row?.content || '') === '' && String(row?.last_mutation_id || '').startsWith('feedback_clear_');
+  }
+
   async function reconcileObservationMemoDraft(student, noteType = '') {
     const resolvedType = noteType || getSupabaseNoteDraftType(student);
     const localEntry = getMemoEntryByStudent(student);
@@ -294,6 +302,29 @@
         updatedAt: syncedAt,
         revision: remoteRevision
       };
+    }
+
+    // Explicitly promoted recovery versions are operator-approved canonical states.
+    // A device that already holds an old conflict may adopt them when it is not being
+    // actively edited. The rejected local text is preserved in the server conflict store.
+    if (
+      localStatus === 'conflict' &&
+      !editorDirty &&
+      isExplicitRecoveryPromotionMutation(remoteMutationId) &&
+      remoteRevision > localRevision
+    ) {
+      return adoptRemoteSnapshot(student, row, 'remote-explicit-recovery-promotion');
+    }
+
+    // Feedback completion is an intentional lifecycle clear, not an accidental return
+    // to an older empty revision. Never override a genuine pending/blocked/conflicting
+    // local edit, but otherwise accept a newer server-confirmed feedback clear directly.
+    if (
+      isIntentionalFeedbackClear(row) &&
+      !protectedLocal &&
+      remoteRevision > localRevision
+    ) {
+      return adoptRemoteSnapshot(student, row, 'remote-feedback-clear');
     }
 
     // If the user is actively editing or a write is pending/blocked, never replace
