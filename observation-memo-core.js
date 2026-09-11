@@ -1,5 +1,5 @@
 /* PC는 공통 관찰노트 기본 컨트롤만 표시합니다. */
-(function prepareObservationMemoRequestSafety(global) {
+(function prepareObservationMemoRuntime(global) {
   try {
     if (!Object.prototype.hasOwnProperty.call(global, 'currentMemoStudent')) {
       Object.defineProperty(global, 'currentMemoStudent', {
@@ -19,8 +19,7 @@
     console.warn('관찰노트 편집 상태 브리지 준비 실패:', error?.message || error);
   }
 
-  function loadObservationMemoVersionHistory() {
-    if (global.__olliObservationMemoVersionHistoryLoaderAdded) return;
+  if (!global.__olliObservationMemoVersionHistoryLoaderAdded) {
     global.__olliObservationMemoVersionHistoryLoaderAdded = true;
     const historyScript = document.createElement('script');
     historyScript.src = 'observation-memo-version-history-common.js?v=20260908-history-1';
@@ -31,21 +30,6 @@
     };
     document.head.appendChild(historyScript);
   }
-
-  if (global.__olliObservationMemoRequestGuardLoaderAdded) {
-    loadObservationMemoVersionHistory();
-    return;
-  }
-  global.__olliObservationMemoRequestGuardLoaderAdded = true;
-  const script = document.createElement('script');
-  script.src = 'observation-memo-request-guard-common.js?v=20260908-order-1';
-  script.async = false;
-  script.onload = loadObservationMemoVersionHistory;
-  script.onerror = () => {
-    global.__olliObservationMemoRequestGuardLoaderAdded = false;
-    console.warn('관찰노트 요청 순서 보호 모듈을 불러오지 못했습니다.');
-  };
-  document.head.appendChild(script);
 })(window);
 
 function forceStudentMemoControlsVisible() {
@@ -85,9 +69,6 @@ async function saveCurrentMemo(options = {}) {
   }
 
   // Navigation, focus changes and merely opening a student are not edits.
-  // Some legacy callers still invoke saveCurrentMemo during student switching, so
-  // enforce the read-only guard here as the final write boundary on PC. A genuine
-  // text edit marks the current observation session dirty before reaching this path.
   if (
     options.force !== true &&
     typeof hasObservationMemoDirtyChanges === 'function' &&
@@ -117,9 +98,7 @@ async function saveCurrentMemo(options = {}) {
     noteType: 'elementary_observation'
   });
 
-  if (result?.superseded === true || result?.state === 'superseded') {
-    return result;
-  }
+  if (result?.superseded === true || result?.state === 'superseded') return result;
   if (result?.state === 'pending' && result.error) {
     console.warn('초등부 관찰노트 Supabase 저장 실패:', result.error.message || result.error);
   }
@@ -163,10 +142,8 @@ async function showBrowserNotification(message) {
   return false;
 }
 
-window.addEventListener('focus', () => {
-});
-setTimeout(() => {
-}, 700);
+window.addEventListener('focus', () => {});
+setTimeout(() => {}, 700);
 
 async function requestElementaryFeedback() {
   if (!currentMemoStudent || currentMemoType !== 'elementary') return;
@@ -183,8 +160,3 @@ async function requestElementaryFeedback() {
   showMemoSaveCheck();
   await requestSceneCardFeedbackFromElementary(currentMemoStudent.name, text, analysisPromptText);
 }
-
-/* Feedback completion is a semantic clear, not a historical reversion. The shared
-   guard confirms the server clear before removing the local memo. */
-import('./observation-memo-feedback-clear-common.js?v=20260910-feedback-clear-1')
-  .catch(error => console.warn('관찰노트 피드백 초기화 보호 모듈 로드 실패:', error?.message || error));
