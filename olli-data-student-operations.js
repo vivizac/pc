@@ -874,7 +874,7 @@ async function ensureStudentSavedToSupabase(student) {
   return savedStudent;
 }
 
-async function loadStudentsFromSupabase() {
+async function loadStudentsFromSupabase(options = {}) {
   if (!isSupabaseConfigured()) return { changed: false, skipped: true };
   const academyId = getOlliCurrentAcademyId();
   if (!academyId) return { changed: false, skipped: true };
@@ -938,7 +938,9 @@ async function loadStudentsFromSupabase() {
     if (!requestIsCurrent()) return { changed: false, stale: true };
     const nextStudents = Array.from(byId.values()).filter(s => s.academy_id === academyId).sort((a,b) => a.name.localeCompare(b.name, 'ko'));
     if (JSON.stringify(nextStudents) !== JSON.stringify(getAllStudents())) setAllStudents(nextStudents);
-    await syncOlliStudentLifecycleAfterLoad();
+    if (!options.skipLifecycleSync) {
+      await syncOlliStudentLifecycleAfterLoad();
+    }
     return { changed: beforeSnapshot !== JSON.stringify(getAllStudents()) };
   } catch (err) {
     if (!requestIsCurrent()) return { changed: false, stale: true };
@@ -963,7 +965,8 @@ async function syncVisibleStudentListSilently() {
   if (!['elementary', 'kinder', 'academy'].includes(currentRecordView)) return;
   olliStudentSyncInFlight = true;
   try {
-    const result = await loadStudentsFromSupabase();
+    // 백그라운드 목록 새로고침은 서버 원본을 읽기만 하고 학생 프로필을 자동 저장하지 않습니다.
+    const result = await loadStudentsFromSupabase({ skipLifecycleSync: true });
     if (result && result.changed === false) return;
     const searchValue = document.getElementById('searchName')?.value.trim() || '';
     if (currentRecordView === 'elementary' || currentRecordView === 'kinder') renderCurrentStudentRecords(searchValue);

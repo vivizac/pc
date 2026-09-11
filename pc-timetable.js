@@ -119,9 +119,9 @@
     if (typeof global.showPushToast === 'function') global.showPushToast(message);
     else alert(message);
   }
-  async function refreshStudentsFromServer() {
+  async function refreshStudentsFromServer(options = {}) {
     if (typeof global.loadStudentsFromSupabase === 'function') {
-      try { await global.loadStudentsFromSupabase(); } catch (error) { console.warn('담임 학생정보 동기화 실패:', error); }
+      try { await global.loadStudentsFromSupabase(options); } catch (error) { console.warn('담임 학생정보 동기화 실패:', error); }
     }
   }
   function studentById(studentId) {
@@ -278,7 +278,9 @@
 
   async function refreshActiveSchedulePane(realtimeContext) {
     if (!state.active || state.view !== 'schedule') return false;
-    await refreshStudentsFromServer();
+    // 시간표 Realtime/폴링 갱신은 학생 정보를 읽기만 합니다.
+    // 연령/학년 자동 보정 저장은 앱 시작 시 별도 경로에서만 수행합니다.
+    await refreshStudentsFromServer({ skipLifecycleSync: true });
     if (realtimeContext && (!realtimeContext.isCurrent() || state.saving || scheduleEditorOpen())) return false;
     if (state.pane === 'attendance') return loadAttendanceRegister();
     return loadWeek(realtimeContext);
