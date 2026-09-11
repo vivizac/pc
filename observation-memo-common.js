@@ -470,6 +470,10 @@ if (!window.__olliObservationMemoCrossDeviceRefreshBound) {
   window.__olliObservationMemoCrossDeviceRefreshBound = true;
   window.addEventListener('focus', requestObservationMemoCrossDeviceRefresh);
   window.addEventListener('online', requestObservationMemoCrossDeviceRefresh);
+  window.addEventListener('olli:realtime-change', event => {
+    if (event?.detail?.domain !== 'observation') return;
+    requestObservationMemoCrossDeviceRefresh();
+  });
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) requestObservationMemoCrossDeviceRefresh();
   });

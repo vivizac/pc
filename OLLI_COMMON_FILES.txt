@@ -4,6 +4,7 @@ observation-memo-session-common.js
 observation-memo-storage-common.js
 observation-memo-request-guard-common.js
 observation-memo-version-history-common.js
+olli-realtime-common.js
 observation-memo-feedback-clear-common.js
 olli-record-scene-tools.js
 record-feedback-mode-common.js
