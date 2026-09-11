@@ -19,7 +19,9 @@ jobs:
           fetch-depth: 0
 
       - name: Patch Realtime retry behavior
-        run: python .github/scripts/fix-realtime-retry-loop.py
+        run: |
+          sed -i "s/state.pane !== 'schedule') return true;/state.pane !== 'schedule') return false;/" .github/scripts/fix-realtime-retry-loop.py
+          python .github/scripts/fix-realtime-retry-loop.py
 
       - name: Syntax checks
         run: |
