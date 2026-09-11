@@ -1,17 +1,17 @@
-name: Add temporary timetable sync debug logs
+name: Add timetable sync debug logs
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
-      - '.github/workflows/add-timetable-sync-debug.yml'
+      - .github/workflows/add-timetable-sync-debug.yml
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: github.event.head_commit.message == 'chore: add temporary timetable sync debug patch workflow'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,9 +20,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: 24
 
-      - name: Add source-specific timetable sync diagnostics
+      - name: Patch timetable diagnostics
         shell: bash
         run: |
           python - <<'PY'
@@ -60,7 +60,6 @@ jobs:
               (
                   "    global.OlliRealtime.watchDomain('schedule', (context) => {\n      // Stage 2 covers the timetable. The attendance register keeps its existing polling.\n      if (!state.active || state.view !== 'schedule' || state.pane !== 'schedule') return false;\n      return checkLiveScheduleSync(true, context);\n    });\n",
                   "    global.OlliRealtime.watchDomain('schedule', (context) => {\n"
-                  "      // Temporary production diagnostic: distinguish Realtime from the legacy 3-second poller.\n"
                   "      const realtimeStatus = typeof global.OlliRealtime?.getStatus === 'function' ? global.OlliRealtime.getStatus() : null;\n"
                   "      logScheduleSyncDebug('REALTIME', 'schedule 신호 수신', {\n"
                   "        connected: !!realtimeStatus?.connected,\n"
@@ -94,8 +93,8 @@ jobs:
             echo 'No timetable debug changes to commit.'
             exit 0
           fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add pc-timetable.js
           git commit -m 'chore: add temporary timetable sync source logs'
           git push origin main
