@@ -1,0 +1,40 @@
+name: Refactor observation request guard once
+
+on:
+  push:
+    branches:
+      - refactor-observation-wrappers-20260911
+    paths:
+      - .github/workflows/refactor-observation-request-guard-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor-observation-wrappers-20260911
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Integrate request guard
+        run: python scripts/refactor_observation_request_guard_once.py
+      - name: Validate
+        run: |
+          node --check observation-memo-save-common.js
+          grep -q "function persistObservationMemoDraftBase" observation-memo-save-common.js
+          grep -q "function protectObservationMemoLocalDraft" observation-memo-save-common.js
+          grep -q "global.getObservationMemoRequestGuardState" observation-memo-save-common.js
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name "olli-refactor-bot"
+          git config user.email "olli-refactor-bot@users.noreply.github.com"
+          git add observation-memo-save-common.js
+          git diff --cached --check
+          git commit -m "refactor: integrate observation request ordering into save core"
+          git push origin HEAD:refactor-observation-wrappers-20260911
