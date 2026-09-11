@@ -114,9 +114,16 @@
     });
   }
 
-  async function loadAttendanceRegister() {
-    if (!state.active || state.view !== 'schedule' || state.pane !== 'attendance') return;
+  async function loadAttendanceRegister(realtimeContext) {
+    if (!state.active || state.view !== 'schedule' || state.pane !== 'attendance') return false;
     const month = state.attendanceMonth;
+    const requestedAcademyId = currentAcademyId();
+    const requestedSession = clean(localStorage.getItem('olli_account_session_token_v1'));
+    const isCurrent = () => requestedAcademyId === currentAcademyId()
+      && requestedSession === clean(localStorage.getItem('olli_account_session_token_v1'))
+      && state.active && state.view === 'schedule' && state.pane === 'attendance'
+      && state.attendanceMonth === month
+      && (!realtimeContext || realtimeContext.isCurrent());
 
     // 1. 네트워크를 기다리지 않고 로컬 출석/휴일 캐시를 먼저 화면 상태에 넣습니다.
     if (state.attendanceRowsMonth !== month && typeof service.getCachedAttendanceMonth === 'function') {
@@ -154,7 +161,7 @@
         service.loadAttendanceMonth(month),
         typeof service.loadCalendarRange === 'function' ? service.loadCalendarRange(range.start, range.end) : Promise.resolve([])
       ]);
-      if (token !== state.attendanceLoadToken || state.attendanceMonth !== month) return;
+      if (token !== state.attendanceLoadToken || !isCurrent()) return false;
 
       const freshRows = Array.isArray(rows) ? rows : [];
       const freshCalendar = Array.isArray(calendarDays) ? calendarDays : [];
@@ -169,11 +176,13 @@
 
       // 서버 내용이 로컬과 실제로 달라진 경우에만 표를 다시 만듭니다.
       if (rowsChanged || calendarChanged) renderAttendanceRegister();
+      return true;
     } catch (error) {
-      if (token !== state.attendanceLoadToken) return;
+      if (token !== state.attendanceLoadToken || !isCurrent()) return false;
       const hasLocal = state.attendanceRowsMonth === month || state.attendanceCalendarMonth === month;
       if (!hasLocal) notify(error && (error.message || error) || '출석부를 불러오지 못했습니다.');
       else console.warn('출석부 백그라운드 최신 확인 실패:', error);
+      return false;
     } finally {
       if (token === state.attendanceLoadToken) state.attendanceLoading = false;
     }
@@ -434,6 +443,7 @@
     if (!studentId || !sessionDate) return;
 
     cell.dataset.attendanceSaving = '1';
+    state.attendanceSavingCount = Number(state.attendanceSavingCount || 0) + 1;
     try {
       await setAttendanceSessionStatus(studentId, sessionDate, sessionKind, nextStatus);
       const rows = (Array.isArray(state.attendanceRows) ? state.attendanceRows : []).filter((row) => !(
@@ -467,19 +477,11 @@
       const dayNumber = Number(sessionDate.slice(-2));
       cell.setAttribute('aria-label', `${clean(student && student.name)} ${dayNumber}일 ${kindLabel} ${statusMeta.label}`.trim());
       lastAttendanceRenderSignature = attendanceRenderSignature();
-
-      // This PC already has the saved value. Advance its sync revision too so the
-      // 3-second multi-PC watcher does not immediately rebuild this same table.
-      if (typeof service.loadSyncRevision === 'function') {
-        try {
-          const syncInfo = await service.loadSyncRevision();
-          const version = Number(syncInfo && syncInfo.version || 0);
-          if (version) state.syncRevision = version;
-        } catch (_) {}
-      }
     } catch (error) {
       notify(error && (error.message || error) || '출석부 상태를 저장하지 못했습니다.');
+    } finally {
       cell.dataset.attendanceSaving = '';
+      state.attendanceSavingCount = Math.max(0, Number(state.attendanceSavingCount || 0) - 1);
     }
   }
 

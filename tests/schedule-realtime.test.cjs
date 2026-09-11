@@ -91,24 +91,23 @@ test('dispose removes listeners and scheduled refreshes',async()=>{
 
 function pc() {
   const env=sandbox();let revision=10,revisionReads=0,weekReads=0,readWeek=async()=>({enrollments:[{student_id:'fixture',time_slot:5}]});
+  env.win.__attendanceReads=0;
   env.win.OlliTimetableService={DAYS:['월','화','수','목','금','토'],currentAcademyId:()=>env.values.get('olli_current_academy_id'),loadSyncRevision:async()=>{revisionReads++;return {ok:true,version:revision};},loadWeek:()=>{weekReads++;return readWeek();},activeStudents:()=>[]};
   let watcher;
   env.win.OlliRealtime={watchDomain:(domain,fn)=>{assert.equal(domain,'schedule');watcher=fn;}};
   let code=source('pc-timetable.js');
   // Expose closures for behavior tests; rendering is separately exercised by browser fixtures.
-  code=code.replace('})(window);',`global.testApi={state,checkLiveScheduleSync,loadWeek};renderTimetable=()=>{};renderSidebar=()=>{};refreshOpenStudentInfoPanel=()=>{};})(window);`);
+  code=code.replace('})(window);',`loadAttendanceRegister=async()=>{global.__attendanceReads=(global.__attendanceReads||0)+1;return true;};global.testApi={state,checkLiveScheduleSync,loadWeek};renderTimetable=()=>{};renderSidebar=()=>{};refreshOpenStudentInfoPanel=()=>{};})(window);`);
   vm.runInContext(code,env.win);
   const state=env.win.testApi.state;state.active=true;state.syncAcademyId='academy-a';state.syncRevision=9;
-  return {...env,state,get reads(){return weekReads;},get revisionReads(){return revisionReads;},setRevision:v=>revision=v,setRead:fn=>readWeek=fn,check:()=>watcher({academyId:'academy-a',isCurrent:()=>env.values.get('olli_current_academy_id')==='academy-a'})};
+  return {...env,state,get reads(){return weekReads;},get revisionReads(){return revisionReads;},get attendanceReads(){return env.win.__attendanceReads||0;},setRevision:v=>revision=v,setRead:fn=>readWeek=fn,check:()=>watcher({academyId:'academy-a',isCurrent:()=>env.values.get('olli_current_academy_id')==='academy-a'})};
 }
 test('PC signal reads server revision and week; unchanged revision does not rerender',async()=>{
   const env=pc();assert.equal(await env.check(),true);assert.equal(env.reads,1);assert.equal(env.state.syncRevision,10);
-  assert.equal(await env.check(),true);assert.equal(env.reads,1);assert.equal(env.intervals.some(x=>x.delay===3000),true);
+  assert.equal(await env.check(),true);assert.equal(env.reads,1);assert.equal(env.intervals.some(x=>x.delay===3000),false);
 });
-test('PC 3s timer skips timetable pane and is reserved for attendance',async()=>{
-  const env=pc();const interval=env.intervals.find(x=>x.delay===3000);assert.ok(interval);
-  const before=env.revisionReads;interval.fn();await settle();assert.equal(env.revisionReads,before);
-  env.state.pane='attendance';env.state.syncRevision=10;interval.fn();await settle();assert.equal(env.revisionReads,before+1);
+test('PC schedule and attendance do not install the legacy 3s polling timer',async()=>{
+  const env=pc();assert.equal(env.intervals.some(x=>x.delay===3000),false);
 });
 test('PC first signal refreshes even without a baseline revision',async()=>{
   const env=pc();env.state.syncRevision=0;assert.equal(await env.check(),true);assert.equal(env.reads,1);
@@ -130,7 +129,16 @@ test('PC dialog opened during a request preserves draft and retries after close'
   const env=pc(),d=deferred();env.setRead(()=>d.promise);const p=env.check();await settle();env.state.dialog={memo:'draft'};d.resolve({enrollments:[]});assert.equal(await p,false);assert.equal(env.state.dialog.memo,'draft');assert.equal(env.state.syncRevision,9);
   env.state.dialog=null;env.setRead(async()=>({enrollments:[]}));assert.equal(await env.check(),true);
 });
-test('PC attendance register is not activated by the new realtime watcher',async()=>{const env=pc();env.state.pane='attendance';assert.equal(await env.check(),false);assert.equal(env.reads,0);});
+test('PC attendance register refreshes from the same schedule Realtime signal',async()=>{
+  const env=pc();env.state.pane='attendance';env.state.syncRevision=9;
+  assert.equal(await env.check(),true);assert.equal(env.attendanceReads,1);assert.equal(env.reads,0);assert.equal(env.state.syncRevision,10);
+});
+test('PC attendance Realtime defers while attendance is loading or saving',async()=>{
+  const env=pc();env.state.pane='attendance';env.state.syncRevision=9;
+  env.state.attendanceLoading=true;assert.equal(await env.check(),false);assert.equal(env.attendanceReads,0);
+  env.state.attendanceLoading=false;env.state.attendanceSavingCount=1;assert.equal(await env.check(),false);assert.equal(env.attendanceReads,0);
+  env.state.attendanceSavingCount=0;assert.equal(await env.check(),true);assert.equal(env.attendanceReads,1);
+});
 
 test('PC week service never caches an old-academy response under the new academy',async()=>{
   const env=sandbox(),d=deferred();let calls=0;

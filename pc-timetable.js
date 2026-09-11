@@ -47,6 +47,7 @@
     attendanceRowsMonth: '',
     attendanceLoading: false,
     attendanceLoadToken: 0,
+    attendanceSavingCount: 0,
     dialog: null,
     saving: false,
     historyLoadToken: 0,
@@ -259,7 +260,6 @@
     setView();
   }
 
-  const ATTENDANCE_POLL_INTERVAL_MS = 3000;
 
   function currentSyncAcademyId() {
     return typeof service.currentAcademyId === 'function' ? clean(service.currentAcademyId()) : '';
@@ -272,11 +272,11 @@
 
   async function refreshActiveSchedulePane(realtimeContext) {
     if (!state.active || state.view !== 'schedule') return false;
-    // 시간표 Realtime/폴링 갱신은 학생 정보를 읽기만 합니다.
+    // 시간표/출석부 Realtime 갱신은 학생 정보를 읽기만 합니다.
     // 연령/학년 자동 보정 저장은 앱 시작 시 별도 경로에서만 수행합니다.
     await refreshStudentsFromServer({ skipLifecycleSync: true });
     if (realtimeContext && (!realtimeContext.isCurrent() || state.saving || scheduleEditorOpen())) return false;
-    if (state.pane === 'attendance') return loadAttendanceRegister();
+    if (state.pane === 'attendance') return loadAttendanceRegister(realtimeContext);
     return loadWeek(realtimeContext);
   }
 
@@ -288,7 +288,10 @@
 
   async function checkLiveScheduleSync(forceRefresh, realtimeContext) {
     if (!state.active || state.view !== 'schedule' || state.saving || state.syncChecking
-      || state.loading || scheduleEditorOpen()) return false;
+      || state.loading
+      || (state.pane === 'attendance' && state.attendanceLoading)
+      || Number(state.attendanceSavingCount || 0) > 0
+      || scheduleEditorOpen()) return false;
     if (!forceRefresh && typeof document !== 'undefined' && document.hidden) return false;
     const academyId = currentSyncAcademyId();
     if (!academyId) return false;
@@ -348,11 +351,8 @@
 
   if (!global.__OLLI_TIMETABLE_LIVE_SYNC_V1__) {
     global.__OLLI_TIMETABLE_LIVE_SYNC_V1__ = true;
-    global.setInterval(() => {
-      // 시간표는 Supabase Realtime으로만 갱신합니다.
-      // 기존 3초 확인은 출석부 안전망으로만 유지합니다.
-      if (state.pane === 'attendance') checkLiveScheduleSync(false);
-    }, ATTENDANCE_POLL_INTERVAL_MS);
+    // 시간표와 출석부 모두 Supabase Realtime을 사용합니다.
+    // 포커스/화면 복귀 때만 revision을 한 번 확인해 연결 공백을 보완합니다.
     global.addEventListener('focus', () => { checkLiveScheduleSync(true); });
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) checkLiveScheduleSync(true);
@@ -361,8 +361,10 @@
 
   if (typeof global.OlliRealtime?.watchDomain === 'function') {
     global.OlliRealtime.watchDomain('schedule', (context) => {
-      // 시간표는 Realtime 신호를 기준으로 최신 revision과 서버 원본을 다시 읽습니다.
-      if (!state.active || state.view !== 'schedule' || state.pane !== 'schedule') return false;
+      // 시간표와 출석부는 같은 schedule revision 신호를 기준으로
+      // 현재 열려 있는 pane의 서버 원본을 다시 읽습니다.
+      if (!state.active || state.view !== 'schedule') return false;
+      if (state.pane !== 'schedule' && state.pane !== 'attendance') return false;
       return checkLiveScheduleSync(true, context);
     });
   }
@@ -644,7 +646,7 @@
 
   function monthLabel(value) { return attendanceRegisterRuntimeApi().monthLabel(value); }
   function shiftAttendanceMonth(amount) { return attendanceRegisterRuntimeApi().shiftAttendanceMonth(amount); }
-  async function loadAttendanceRegister() { return attendanceRegisterRuntimeApi().loadAttendanceRegister(); }
+  async function loadAttendanceRegister(realtimeContext) { return attendanceRegisterRuntimeApi().loadAttendanceRegister(realtimeContext); }
   function attendanceStudents() { return attendanceRegisterRuntimeApi().attendanceStudents(); }
   function attendanceRosterMeta(student) { return attendanceRegisterRuntimeApi().attendanceRosterMeta(student); }
   function sortedAttendanceStudents() { return attendanceRegisterRuntimeApi().sortedAttendanceStudents(); }
