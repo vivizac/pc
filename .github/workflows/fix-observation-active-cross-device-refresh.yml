@@ -1,0 +1,163 @@
+name: Fix observation active cross-device refresh
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-observation-active-cross-device-refresh.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch active observation cross-device refresh
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('observation-memo-common.js')
+          text = path.read_text()
+
+          old = """async function refreshCurrentObservationMemoFromServer() {
+  if (!isObservationMemoScreenActive()) return null;
+  if (hasObservationMemoDirtyChanges()) return null;
+  if (isObservationMemoAutoSaveBlocked()) return null;
+
+  const student = currentMemoStudent ? { ...currentMemoStudent } : null;
+  const editor = document.getElementById('memoEditor');
+  if (!student?.id || !editor) return null;
+
+  try {
+    const state = getObservationMemoEditState();
+    const noteType = String(state?.noteType || 'elementary_observation');
+    if (typeof window.getObservationMemoRequestGuardState === 'function') {
+      const guard = window.getObservationMemoRequestGuardState(student, noteType);
+      if (guard?.inFlight) return null;
+    }
+    const result = await reconcileObservationMemoDraft(student, noteType);
+    applyReconciledObservationMemoDraft(student, editor, result);
+    return result;
+  } catch (error) {
+    console.warn('관찰노트 서버 최신본 확인 실패:', error?.message || error);
+    return null;
+  }
+}
+
+if (!window.__olliObservationMemoCrossDeviceRefreshBound) {
+  window.__olliObservationMemoCrossDeviceRefreshBound = true;
+  window.addEventListener('focus', () => {
+    setTimeout(() => { void refreshCurrentObservationMemoFromServer(); }, 0);
+  });
+  window.addEventListener('online', () => {
+    setTimeout(() => { void refreshCurrentObservationMemoFromServer(); }, 0);
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      setTimeout(() => { void refreshCurrentObservationMemoFromServer(); }, 0);
+    }
+  });
+}
+"""
+
+          new = """async function refreshCurrentObservationMemoFromServer() {
+  if (!isObservationMemoScreenActive()) return null;
+  if (hasObservationMemoDirtyChanges()) return null;
+  if (isObservationMemoAutoSaveBlocked()) return null;
+  if (window.__olliObservationMemoRemoteRefreshPromise) {
+    return window.__olliObservationMemoRemoteRefreshPromise;
+  }
+
+  const student = currentMemoStudent ? { ...currentMemoStudent } : null;
+  const editor = document.getElementById('memoEditor');
+  if (!student?.id || !editor) return null;
+
+  let refreshPromise;
+  refreshPromise = (async () => {
+    try {
+      const state = getObservationMemoEditState();
+      const noteType = String(state?.noteType || 'elementary_observation');
+      if (typeof window.getObservationMemoRequestGuardState === 'function') {
+        const guard = window.getObservationMemoRequestGuardState(student, noteType);
+        if (guard?.inFlight) return null;
+      }
+      const result = await reconcileObservationMemoDraft(student, noteType);
+      applyReconciledObservationMemoDraft(student, editor, result);
+      return result;
+    } catch (error) {
+      console.warn('관찰노트 서버 최신본 확인 실패:', error?.message || error);
+      return null;
+    } finally {
+      if (window.__olliObservationMemoRemoteRefreshPromise === refreshPromise) {
+        window.__olliObservationMemoRemoteRefreshPromise = null;
+      }
+    }
+  })();
+
+  window.__olliObservationMemoRemoteRefreshPromise = refreshPromise;
+  return refreshPromise;
+}
+
+const OLLI_OBSERVATION_MEMO_REMOTE_REFRESH_INTERVAL = 2000;
+
+function requestObservationMemoCrossDeviceRefresh() {
+  setTimeout(() => { void refreshCurrentObservationMemoFromServer(); }, 0);
+}
+
+if (!window.__olliObservationMemoCrossDeviceRefreshBound) {
+  window.__olliObservationMemoCrossDeviceRefreshBound = true;
+  window.addEventListener('focus', requestObservationMemoCrossDeviceRefresh);
+  window.addEventListener('online', requestObservationMemoCrossDeviceRefresh);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) requestObservationMemoCrossDeviceRefresh();
+  });
+  document.addEventListener('focusin', event => {
+    if (event.target?.id !== 'memoEditor') return;
+    if (hasObservationMemoDirtyChanges()) return;
+    requestObservationMemoCrossDeviceRefresh();
+  });
+
+  if (!window.__olliObservationMemoRemoteRefreshTimer) {
+    window.__olliObservationMemoRemoteRefreshTimer = setInterval(() => {
+      if (document.hidden) return;
+      if (!isObservationMemoScreenActive()) return;
+      if (hasObservationMemoDirtyChanges()) return;
+      if (isObservationMemoAutoSaveBlocked()) return;
+      void refreshCurrentObservationMemoFromServer();
+    }, OLLI_OBSERVATION_MEMO_REMOTE_REFRESH_INTERVAL);
+  }
+}
+"""
+
+          if old not in text:
+            if new in text:
+              print('Already patched.')
+            else:
+              raise SystemExit('cross-device refresh block not found')
+          else:
+            text = text.replace(old, new, 1)
+            path.write_text(text)
+          PY
+
+          node --check observation-memo-common.js
+          git diff --check
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add observation-memo-common.js
+          if git diff --cached --quiet; then
+            echo 'Already patched.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix: refresh active observation memo across devices'
+          git push
