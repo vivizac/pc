@@ -261,6 +261,12 @@
 
   const LIVE_SYNC_INTERVAL_MS = 3000;
 
+  function logScheduleSyncDebug(source, stage, details) {
+    try {
+      console.info(`[OLLI SYNC][${source}] ${stage}`, details || {});
+    } catch (_) {}
+  }
+
   function currentSyncAcademyId() {
     return typeof service.currentAcademyId === 'function' ? clean(service.currentAcademyId()) : '';
   }
@@ -284,7 +290,7 @@
     return Number(info && info.version || 0);
   }
 
-  async function checkLiveScheduleSync(forceRefresh, realtimeContext) {
+  async function checkLiveScheduleSync(forceRefresh, realtimeContext, debugSource) {
     if (!state.active || state.view !== 'schedule' || state.saving || state.syncChecking
       || state.loading || scheduleEditorOpen()) return false;
     if (!forceRefresh && typeof document !== 'undefined' && document.hidden) return false;
@@ -309,7 +315,11 @@
       if (!version || !isCurrent() || state.saving || scheduleEditorOpen()) return false;
       const previous = Number(state.syncRevision || 0);
       const shouldRefresh = (previous > 0 && version !== previous) || (!!realtimeContext && !previous);
-      if (shouldRefresh && await refreshActiveSchedulePane({ isCurrent }) === false) return false;
+      if (shouldRefresh) {
+        if (debugSource) logScheduleSyncDebug(debugSource, '변경 감지 → 시간표 재조회', { previous, version, academyId, week, pane });
+        if (await refreshActiveSchedulePane({ isCurrent }) === false) return false;
+        if (debugSource) logScheduleSyncDebug(debugSource, '시간표 화면 반영 완료', { version, academyId, week, pane });
+      }
       if (!isCurrent()) return false;
       state.syncRevision = version;
       return true;
@@ -344,7 +354,7 @@
 
   if (!global.__OLLI_TIMETABLE_LIVE_SYNC_V1__) {
     global.__OLLI_TIMETABLE_LIVE_SYNC_V1__ = true;
-    global.setInterval(() => { checkLiveScheduleSync(false); }, LIVE_SYNC_INTERVAL_MS);
+    global.setInterval(() => { checkLiveScheduleSync(false, null, 'POLLING'); }, LIVE_SYNC_INTERVAL_MS);
     global.addEventListener('focus', () => { checkLiveScheduleSync(true); });
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) checkLiveScheduleSync(true);
@@ -353,9 +363,16 @@
 
   if (typeof global.OlliRealtime?.watchDomain === 'function') {
     global.OlliRealtime.watchDomain('schedule', (context) => {
+      const realtimeStatus = typeof global.OlliRealtime?.getStatus === 'function' ? global.OlliRealtime.getStatus() : null;
+      logScheduleSyncDebug('REALTIME', 'schedule 신호 수신', {
+        connected: !!realtimeStatus?.connected,
+        status: realtimeStatus?.status || '',
+        lastSignalAt: realtimeStatus?.lastSignalAt || 0,
+        academyId: currentSyncAcademyId()
+      });
       // Stage 2 covers the timetable. The attendance register keeps its existing polling.
       if (!state.active || state.view !== 'schedule' || state.pane !== 'schedule') return false;
-      return checkLiveScheduleSync(true, context);
+      return checkLiveScheduleSync(true, context, 'REALTIME');
     });
   }
 
