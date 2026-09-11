@@ -3,7 +3,7 @@
 
   if (global.OlliRealtime && global.OlliRealtime.version) return;
 
-  const VERSION = '1.1.0';
+  const VERSION = '1.1.1';
   const SDK_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/+esm';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
   const CONTEXT_CHECK_INTERVAL_MS = 5000;
@@ -253,16 +253,21 @@
     let disposed = false;
     let sequence = 0;
     let timer = null;
+    let retryPending = false;
+    let pendingTrigger = '';
 
     function schedule(delay) {
       if (disposed || !pending || running || timer !== null || document.hidden) return;
       timer = global.setTimeout(() => { timer = null; flush(); }, delay);
     }
 
-    function request() {
+    function request(reason = 'manual', retryUntilApplied = false) {
       if (disposed) return;
       sequence += 1;
       pending = true;
+      if (retryUntilApplied) retryPending = true;
+      const trigger = clean(reason) || 'manual';
+      if (trigger === 'change' || pendingTrigger !== 'change') pendingTrigger = trigger;
       schedule(120);
     }
 
@@ -270,9 +275,15 @@
       if (disposed || running || !pending || document.hidden) return;
       const academyId = currentAcademyId();
       const sessionToken = currentSessionToken();
-      if (!academyId || !sessionToken) { pending = false; return; }
+      if (!academyId || !sessionToken) {
+        pending = false;
+        retryPending = false;
+        pendingTrigger = '';
+        return;
+      }
       if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
       const receivedSequence = sequence;
+      const trigger = pendingTrigger || 'manual';
       const academyContext = global.OlliStorageCore?.AcademyContext;
       const contextToken = academyContext?.captureToken?.();
       const isCurrent = () => !disposed && academyId === currentAcademyId()
@@ -281,47 +292,60 @@
       running = true;
       let retryDelay = 1000;
       try {
-        const applied = await refresh({ academyId, isCurrent });
-        if (applied === true && isCurrent() && sequence === receivedSequence) pending = false;
+        const applied = await refresh({ academyId, isCurrent, trigger });
+        if (applied === true && isCurrent() && sequence === receivedSequence) {
+          pending = false;
+          retryPending = false;
+          pendingTrigger = '';
+        }
       } catch (error) {
         retryDelay = 5000;
         console.warn('올리 Realtime 최신 데이터 확인 재시도:', error?.message || error);
       } finally {
         running = false;
-        schedule(retryDelay);
+        if (!pending) return;
+        if (retryPending) schedule(retryDelay);
+        else {
+          pending = false;
+          pendingTrigger = '';
+        }
       }
     }
 
     function onChange(event) {
       const detail = event?.detail;
-      if (detail?.domain === domain && clean(detail.academyId) === currentAcademyId()) request();
+      if (detail?.domain === domain && clean(detail.academyId) === currentAcademyId()) request('change', true);
     }
     function onStatus(event) {
       const detail = event?.detail;
-      if (detail?.status === 'SUBSCRIBED' && clean(detail.academyId) === currentAcademyId()) request();
+      if (detail?.status === 'SUBSCRIBED' && clean(detail.academyId) === currentAcademyId()) request('subscribed', false);
     }
-    function onVisible() { if (!document.hidden) request(); }
+    function onVisible() { if (!document.hidden) request('visible', false); }
+    function onOnline() { request('online', false); }
+    function onFocus() { request('focus', false); }
     function onStorage(event) {
-      if (!event || event.key === null || [ACCOUNT_SESSION_TOKEN_KEY, 'olli_current_academy_id'].includes(event.key)) request();
+      if (!event || event.key === null || [ACCOUNT_SESSION_TOKEN_KEY, 'olli_current_academy_id'].includes(event.key)) request('storage', false);
     }
     global.addEventListener('olli:realtime-change', onChange);
     global.addEventListener('olli:realtime-status', onStatus);
-    global.addEventListener('online', request);
-    global.addEventListener('focus', request);
+    global.addEventListener('online', onOnline);
+    global.addEventListener('focus', onFocus);
     global.addEventListener('storage', onStorage);
     document.addEventListener('visibilitychange', onVisible);
-    if (state.status === 'SUBSCRIBED') request();
+    if (state.status === 'SUBSCRIBED') request('already_subscribed', false);
 
     return Object.freeze({
-      request,
+      request: () => request('manual', false),
       dispose() {
         disposed = true;
         pending = false;
+        retryPending = false;
+        pendingTrigger = '';
         if (timer !== null) global.clearTimeout(timer);
         global.removeEventListener('olli:realtime-change', onChange);
         global.removeEventListener('olli:realtime-status', onStatus);
-        global.removeEventListener('online', request);
-        global.removeEventListener('focus', request);
+        global.removeEventListener('online', onOnline);
+        global.removeEventListener('focus', onFocus);
         global.removeEventListener('storage', onStorage);
         document.removeEventListener('visibilitychange', onVisible);
       }

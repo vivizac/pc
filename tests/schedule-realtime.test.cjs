@@ -44,6 +44,19 @@ test('retains a signal while editing and retries without another signal',async()
   signal(env);await env.tick(150);assert.equal(calls,1);busy=false;await env.tick(1000);assert.equal(calls,2);
   await env.tick(5000);assert.equal(calls,2);
 });
+test('non-change catch-up checks never enter the 1s retry loop when not applied',async()=>{
+  const env=realtime();let calls=0,trigger='';
+  env.win.OlliRealtime.watchDomain('schedule',ctx=>{calls++;trigger=ctx.trigger;return false;});
+  env.emit('olli:realtime-status',{status:'SUBSCRIBED',academyId:'academy-a'});
+  await env.tick(150);assert.equal(calls,1);assert.equal(trigger,'subscribed');
+  await env.tick(5000);assert.equal(calls,1);
+});
+test('actual change signals keep retrying and expose change trigger',async()=>{
+  const env=realtime();let busy=true,calls=0,triggers=[];
+  env.win.OlliRealtime.watchDomain('schedule',ctx=>{calls++;triggers.push(ctx.trigger);return !busy;});
+  signal(env);await env.tick(150);assert.equal(calls,1);assert.equal(triggers[0],'change');
+  busy=false;await env.tick(1000);assert.equal(calls,2);assert.equal(triggers[1],'change');
+});
 test('a change during a read causes one additional read, never concurrent reads',async()=>{
   const env=realtime(),d=deferred();let calls=0;
   env.win.OlliRealtime.watchDomain('schedule',()=>++calls===1?d.promise:true);

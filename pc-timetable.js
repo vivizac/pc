@@ -365,16 +365,19 @@
 
   if (typeof global.OlliRealtime?.watchDomain === 'function') {
     global.OlliRealtime.watchDomain('schedule', (context) => {
-      const realtimeStatus = typeof global.OlliRealtime?.getStatus === 'function' ? global.OlliRealtime.getStatus() : null;
-      logScheduleSyncDebug('REALTIME', 'schedule 신호 수신', {
-        connected: !!realtimeStatus?.connected,
-        status: realtimeStatus?.status || '',
-        lastSignalAt: realtimeStatus?.lastSignalAt || 0,
-        academyId: currentSyncAcademyId()
-      });
+      const isActualSignal = context?.trigger === 'change';
+      if (isActualSignal) {
+        const realtimeStatus = typeof global.OlliRealtime?.getStatus === 'function' ? global.OlliRealtime.getStatus() : null;
+        logScheduleSyncDebug('REALTIME', 'schedule 신호 수신', {
+          connected: !!realtimeStatus?.connected,
+          status: realtimeStatus?.status || '',
+          lastSignalAt: realtimeStatus?.lastSignalAt || 0,
+          academyId: currentSyncAcademyId()
+        });
+      }
       // Stage 2 covers the timetable. The attendance register keeps its existing polling.
       if (!state.active || state.view !== 'schedule' || state.pane !== 'schedule') return false;
-      return checkLiveScheduleSync(true, context, 'REALTIME');
+      return checkLiveScheduleSync(true, context, isActualSignal ? 'REALTIME' : null);
     });
   }
 
