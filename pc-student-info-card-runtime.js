@@ -13,8 +13,10 @@
     studentId: '',
     student: null,
     enrollments: [],
+    pickups: [],
     loading: false,
     saveInFlight: false,
+    dirty: false,
     observer: null,
     installed: false
   };
@@ -58,12 +60,19 @@
     return result;
   }
 
-  async function loadAuthoritativeSchedule(studentId) {
+  async function loadAuthoritativeStudentContext(studentId) {
     const result = await scheduleRpc('olli_schedule_student_enrollments', {
       p_student_id: studentId,
       p_reference_date: todayKey()
     });
-    return Array.isArray(result.enrollments) ? result.enrollments : [];
+    return {
+      enrollments: Array.isArray(result.enrollments) ? result.enrollments : [],
+      pickups: Array.isArray(result.pickups) ? result.pickups : []
+    };
+  }
+
+  async function loadAuthoritativeSchedule(studentId) {
+    return (await loadAuthoritativeStudentContext(studentId)).enrollments;
   }
 
   async function loadAuthoritativeTeacherAssignments() {
@@ -88,6 +97,8 @@
   function resolveTimetableTeacherName(division, enrollments, assignments) {
     const first = primaryEnrollmentForTeacher(enrollments);
     if (!first) return '';
+    const directTeacher = clean(first.teacher_name);
+    if (directTeacher) return directTeacher;
     const group = clean(first.class_group || 'A').toUpperCase() || 'A';
     const matched = (Array.isArray(assignments) ? assignments : []).find((item) =>
       clean(item && item.division) === clean(division)
@@ -513,6 +524,23 @@
     </div></div>`;
   }
 
+  function pickupSummary(rows) {
+    return (Array.isArray(rows) ? rows : []).map((row) => {
+      const day = NUM_DAY[Number(row && row.weekday)] || '';
+      const label = clean(row && row.pickup_label);
+      const raw = clean(row && row.pickup_time);
+      const match = raw.match(/^(\d{1,2}):(\d{2})/);
+      let time = raw;
+      if (match) {
+        const hour24 = Number(match[1]);
+        const hour12 = hour24 > 12 ? hour24 - 12 : hour24;
+        time = `${hour12}:${match[2]}`;
+      }
+      const classTime = Number(row && row.class_time);
+      return [day && `${day}요일`, classTime ? `${classTime}시` : '', label, time].filter(Boolean).join(' · ');
+    }).filter(Boolean).join(' / ');
+  }
+
   function kinderCardHtml(student) {
     return `<div class="pcStudentInfoCardViewport"><div class="pcStudentInfoCard" data-division="kinder">
       <div class="pcStudentInfoCardIntro"><strong>${esc(student.name || '학생')} 학생정보</strong><span>요일·시간은 시간표 기준으로 저장됩니다.</span></div>
@@ -533,6 +561,7 @@
         </div>
         <input id="kinderLessonDayInput" type="hidden">
         <div class="pcStudentInfoSchedule"><div class="pcStudentInfoScheduleTitle">요일 / 시간</div><div id="kinderLessonDayToggleRow" class="infoDayToggleRow"></div><div id="kinderLessonTimeToggleRow" class="infoTimeToggleRow"></div></div>
+        <div class="pcStudentInfoField"><div class="modalLabel">픽업</div><div id="kinderInfoPickupReadonly" class="pcStudentInfoTeacherReadonly isEmpty">등록된 픽업 없음</div></div>
         <div class="pcStudentInfoActions"><button type="button" class="pcStudentInfoActionBtn" onclick="closeOlliPcStudentInfoCard()">취소</button><button type="button" class="pcStudentInfoActionBtn primary" id="pcStudentInfoSaveBtn" onclick="saveOlliPcStudentInfoCard()">저장</button></div>
       </div>
     </div></div>`;
@@ -561,7 +590,7 @@
     return { year: y, month: String(m), day: String(d), enrolled_at: `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` };
   }
 
-  async function renderStudentInfoCard(student, enrollments, teacherAssignments) {
+  async function renderStudentInfoCard(student, enrollments, teacherAssignments, pickups = []) {
     const panel = document.getElementById('pcAttendanceDetailPanel');
     if (!panel) throw new Error('학생정보를 표시할 관찰기록 카드를 찾지 못했습니다.');
     const division = student.type === 'kinder' ? 'kinder' : 'elementary';
@@ -570,10 +599,12 @@
     const authoritativeStudent = Object.assign({}, student, fields, {
       class_time: fields.lesson_time,
       __olli_timetable_teacher: timetableTeacher,
-      __olli_authoritative_enrollments: enrollments
+      __olli_authoritative_enrollments: enrollments,
+      __olli_authoritative_pickups: pickups
     });
     cardState.student = authoritativeStudent;
     cardState.enrollments = enrollments;
+    cardState.pickups = pickups;
     try { studentInfoModalTarget = authoritativeStudent; } catch (_) {}
 
     panel.innerHTML = infoHeadHtml('info') + (division === 'kinder' ? kinderCardHtml(authoritativeStudent) : elementaryCardHtml(authoritativeStudent));
@@ -606,8 +637,15 @@
       if (age) age.value = authoritativeStudent.age || '';
       if (hiddenDay) hiddenDay.value = fields.lesson_day;
       setDateInputs('kinderInfo', authoritativeStudent);
+      const pickupEl = document.getElementById('kinderInfoPickupReadonly');
+      if (pickupEl) {
+        const text = pickupSummary(pickups);
+        pickupEl.textContent = text || '등록된 픽업 없음';
+        pickupEl.classList.toggle('isEmpty', !text);
+      }
       if (typeof global.olliPrepareInfoExtra === 'function') global.olliPrepareInfoExtra('kinder', authoritativeStudent);
     }
+    cardState.dirty = false;
   }
 
   async function openStudentInfoCard(studentId) {
@@ -628,15 +666,21 @@
     if (global.OlliPcAttendance && typeof global.OlliPcAttendance.unmountEditor === 'function') global.OlliPcAttendance.unmountEditor();
     cardState.studentId = id;
     cardState.loading = true;
+    cardState.dirty = false;
     panel.innerHTML = infoHeadHtml('info') + '<div class="pcStudentInfoLoading">학생정보와 시간표를 불러오고 있습니다.</div>';
     try {
-      const [enrollments, teacherAssignments] = await Promise.all([
-        loadAuthoritativeSchedule(id),
-        loadAuthoritativeTeacherAssignments()
-      ]);
+      if (typeof global.loadStudentsFromSupabase === 'function') {
+        await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
+        student = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;
+      }
+      const context = await loadAuthoritativeStudentContext(id);
+      let teacherAssignments = [];
+      if (context.enrollments.length && !resolveTimetableTeacherName(student.type === 'kinder' ? 'kinder' : 'elementary', context.enrollments, [])) {
+        teacherAssignments = await loadAuthoritativeTeacherAssignments();
+      }
       student = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;
       if (cardState.studentId !== id) return;
-      await renderStudentInfoCard(student, enrollments, teacherAssignments);
+      await renderStudentInfoCard(student, context.enrollments, teacherAssignments, context.pickups);
     } catch (error) {
       if (cardState.studentId !== id) return;
       panel.innerHTML = infoHeadHtml('info') + `<div class="pcStudentInfoLoading">${esc(error.message || '학생정보를 불러오지 못했습니다.')}</div>`;
@@ -650,6 +694,8 @@
     cardState.studentId = '';
     cardState.student = null;
     cardState.enrollments = [];
+    cardState.pickups = [];
+    cardState.dirty = false;
     try { studentInfoModalTarget = null; } catch (_) {}
     if (id && typeof global.pcSelectAttendanceStudent === 'function') {
       await Promise.resolve(global.pcSelectAttendanceStudent(id));
@@ -732,7 +778,7 @@
         await setAuthoritativeSchedule(savedStudent.id, pairs);
       }
       saveStage = 'reload';
-      if (typeof global.loadStudentsFromSupabase === 'function') await global.loadStudentsFromSupabase();
+      if (typeof global.loadStudentsFromSupabase === 'function') await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
       if (typeof global.showPushToast === 'function') {
         global.showPushToast(scheduleChanged ? '학생정보와 시간표를 저장했어요.' : '학생정보를 저장했어요.');
       }
@@ -740,6 +786,8 @@
       cardState.studentId = '';
       cardState.student = null;
       cardState.enrollments = [];
+      cardState.pickups = [];
+      cardState.dirty = false;
       try { studentInfoModalTarget = null; } catch (_) {}
       if (typeof global.pcSelectAttendanceStudent === 'function') await Promise.resolve(global.pcSelectAttendanceStudent(id));
       if (global.OlliPcAttendance && typeof global.OlliPcAttendance.renderList === 'function') global.OlliPcAttendance.renderList();
@@ -757,6 +805,65 @@
       cardState.saveInFlight = false;
       if (saveBtn && saveBtn.isConnected) { saveBtn.disabled = false; saveBtn.textContent = '저장'; }
     }
+  }
+
+  function isStudentInfoEditEvent(event) {
+    const target = event && event.target;
+    const card = target && target.closest ? target.closest('.pcStudentInfoCard') : null;
+    if (!card || !cardState.studentId || cardState.loading || cardState.saveInFlight) return false;
+    if (event.type === 'click') {
+      return !!target.closest('.infoDayBtn, .infoTimeBtn, .infoToggleBtn, .groupIconChoiceBtn');
+    }
+    return event.type === 'input' || event.type === 'change';
+  }
+
+  function bindStudentInfoDirtyTracking() {
+    if (global.__OLLI_PC_STUDENT_INFO_DIRTY_TRACKING_V1__) return;
+    global.__OLLI_PC_STUDENT_INFO_DIRTY_TRACKING_V1__ = true;
+    ['input', 'change', 'click'].forEach((type) => document.addEventListener(type, (event) => {
+      if (isStudentInfoEditEvent(event)) cardState.dirty = true;
+    }, true));
+  }
+
+  async function refreshOpenStudentInfoFromRealtime(realtimeContext) {
+    const id = clean(cardState.studentId);
+    if (!id) return true;
+    if (cardState.loading || cardState.saveInFlight || cardState.dirty) return false;
+    const academyId = currentAcademyId();
+    const sessionToken = currentSessionToken();
+    const isCurrent = () => clean(cardState.studentId) === id
+      && academyId === currentAcademyId()
+      && sessionToken === currentSessionToken()
+      && (!realtimeContext || realtimeContext.isCurrent());
+    try {
+      if (typeof global.loadStudentsFromSupabase === 'function') {
+        await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
+      }
+      if (!isCurrent() || cardState.dirty || cardState.saveInFlight) return false;
+      const latest = typeof global.findStudentById === 'function' ? global.findStudentById(id) : null;
+      if (!latest) return true;
+      const context = await loadAuthoritativeStudentContext(id);
+      if (!isCurrent() || cardState.dirty || cardState.saveInFlight) return false;
+      let teacherAssignments = [];
+      const division = latest.type === 'kinder' ? 'kinder' : 'elementary';
+      if (context.enrollments.length && !resolveTimetableTeacherName(division, context.enrollments, [])) {
+        teacherAssignments = await loadAuthoritativeTeacherAssignments();
+      }
+      if (!isCurrent() || cardState.dirty || cardState.saveInFlight) return false;
+      await renderStudentInfoCard(latest, context.enrollments, teacherAssignments, context.pickups);
+      return true;
+    } catch (error) {
+      console.warn('학생정보 Realtime 최신본 확인 실패:', error && (error.message || error));
+      return false;
+    }
+  }
+
+  function installStudentInfoRealtimeWatcher() {
+    if (global.__OLLI_PC_STUDENT_INFO_REALTIME_V1__) return true;
+    if (typeof global.OlliRealtime?.watchDomain !== 'function') return false;
+    global.__OLLI_PC_STUDENT_INFO_REALTIME_V1__ = true;
+    global.OlliRealtime.watchDomain('schedule', (context) => refreshOpenStudentInfoFromRealtime(context));
+    return true;
   }
 
   async function openStudentInfoFromLegacyTarget(target) {
@@ -797,7 +904,7 @@
         if (!created || !created.id) return result;
         try {
           await setAuthoritativeSchedule(created.id, pairs);
-          if (typeof global.loadStudentsFromSupabase === 'function') await global.loadStudentsFromSupabase();
+          if (typeof global.loadStudentsFromSupabase === 'function') await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
           if (global.OlliPcAttendance && typeof global.OlliPcAttendance.renderList === 'function') global.OlliPcAttendance.renderList();
         } catch (error) {
           alert(`학생은 등록되었지만 시간표 반영에 실패했어요.\n\n${error.message || error}\n\n학생정보에서 다시 저장하거나 시간표에서 확인해 주세요.`);
@@ -846,6 +953,11 @@
     cardState.installed = true;
     installStyles();
     installAuthoritativeScheduleEditor();
+    bindStudentInfoDirtyTracking();
+    if (!installStudentInfoRealtimeWatcher()) {
+      global.addEventListener('olli:realtime-status', installStudentInfoRealtimeWatcher, { once: true });
+      setTimeout(installStudentInfoRealtimeWatcher, 1000);
+    }
     wrapStudentRegistration();
     installLegacyInfoRoutes();
     removeLegacyInfoModals();
