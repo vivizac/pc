@@ -199,8 +199,17 @@
   }
 
   async function loadWeek(weekStart) {
+    const requestedAcademyId = currentAcademyId();
+    const requestedSession = currentSessionToken();
+    const assertCurrentContext = () => {
+      if (requestedAcademyId !== currentAcademyId() || requestedSession !== currentSessionToken()) {
+        throw new Error('학원 또는 세션이 변경되어 이전 시간표 조회를 취소했습니다.');
+      }
+    };
     await ensureLegacyBootstrap();
+    assertCurrentContext();
     await rpc('olli_schedule_apply_due', contextPayload());
+    assertCurrentContext();
     const start = clean(weekStart);
     const startDate = /^\d{4}-\d{2}-\d{2}$/.test(start) ? new Date(`${start}T00:00:00`) : new Date();
     const endDate = new Date(startDate);
@@ -213,6 +222,7 @@
       rpc('olli_schedule_class_teacher_context', contextPayload()),
       rpc('olli_schedule_cell_memos_week_v2', contextPayload({ p_week_start: start }))
     ]);
+    assertCurrentContext();
     data.kinder_class_merges = Array.isArray(kinderLayout && kinderLayout.merged_slots)
       ? kinderLayout.merged_slots
       : [];

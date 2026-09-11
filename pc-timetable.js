@@ -265,11 +265,17 @@
     return typeof service.currentAcademyId === 'function' ? clean(service.currentAcademyId()) : '';
   }
 
-  async function refreshActiveSchedulePane() {
-    if (!state.active || state.view !== 'schedule') return;
+  function scheduleEditorOpen() {
+    return !!state.dialog || Array.from(document.querySelectorAll('.modalOverlay')).some(el => el.getClientRects().length)
+      || !!document.activeElement?.matches('input, textarea, select, [contenteditable="true"]');
+  }
+
+  async function refreshActiveSchedulePane(realtimeContext) {
+    if (!state.active || state.view !== 'schedule') return false;
     await refreshStudentsFromServer();
-    if (state.pane === 'attendance') await loadAttendanceRegister();
-    else await loadWeek();
+    if (realtimeContext && (!realtimeContext.isCurrent() || state.saving || scheduleEditorOpen())) return false;
+    if (state.pane === 'attendance') return loadAttendanceRegister();
+    return loadWeek(realtimeContext);
   }
 
   async function readScheduleSyncRevision() {
@@ -278,11 +284,20 @@
     return Number(info && info.version || 0);
   }
 
-  async function checkLiveScheduleSync(forceRefresh) {
-    if (!state.active || state.view !== 'schedule' || state.saving || state.syncChecking) return;
-    if (!forceRefresh && typeof document !== 'undefined' && document.hidden) return;
+  async function checkLiveScheduleSync(forceRefresh, realtimeContext) {
+    if (!state.active || state.view !== 'schedule' || state.saving || state.syncChecking
+      || state.loading || scheduleEditorOpen()) return false;
+    if (!forceRefresh && typeof document !== 'undefined' && document.hidden) return false;
     const academyId = currentSyncAcademyId();
-    if (!academyId) return;
+    if (!academyId) return false;
+    const sessionToken = localStorage.getItem('olli_account_session_token_v1');
+    const pane = state.pane;
+    const week = dateKey(state.weekStart);
+    const month = state.attendanceMonth;
+    const isCurrent = () => academyId === currentSyncAcademyId()
+      && sessionToken === localStorage.getItem('olli_account_session_token_v1')
+      && pane === state.pane && week === dateKey(state.weekStart) && month === state.attendanceMonth
+      && (!realtimeContext || realtimeContext.isCurrent());
     if (state.syncAcademyId !== academyId) {
       state.syncAcademyId = academyId;
       state.syncRevision = 0;
@@ -291,13 +306,16 @@
     state.syncChecking = true;
     try {
       const version = await readScheduleSyncRevision();
-      if (!version) return;
+      if (!version || !isCurrent() || state.saving || scheduleEditorOpen()) return false;
       const previous = Number(state.syncRevision || 0);
-      const shouldRefresh = previous > 0 && version !== previous;
+      const shouldRefresh = (previous > 0 && version !== previous) || (!!realtimeContext && !previous);
+      if (shouldRefresh && await refreshActiveSchedulePane({ isCurrent }) === false) return false;
+      if (!isCurrent()) return false;
       state.syncRevision = version;
-      if (shouldRefresh) await refreshActiveSchedulePane();
+      return true;
     } catch (error) {
       console.warn('시간표 실시간 동기화 확인 실패:', error);
+      return false;
     } finally {
       state.syncChecking = false;
     }
@@ -333,12 +351,21 @@
     });
   }
 
-  async function loadWeek() {
-    if (!state.active || state.view !== 'schedule' || state.pane !== 'schedule') return;
+  if (typeof global.OlliRealtime?.watchDomain === 'function') {
+    global.OlliRealtime.watchDomain('schedule', (context) => {
+      // Stage 2 covers the timetable. The attendance register keeps its existing polling.
+      if (!state.active || state.view !== 'schedule' || state.pane !== 'schedule') return false;
+      return checkLiveScheduleSync(true, context);
+    });
+  }
+
+  async function loadWeek(realtimeContext) {
+    if (!state.active || state.view !== 'schedule' || state.pane !== 'schedule') return false;
     const requestedWeek = dateKey(state.weekStart);
     const requestedAcademyId = typeof service.currentAcademyId === 'function' ? service.currentAcademyId() : '';
+    const requestedSession = localStorage.getItem('olli_account_session_token_v1');
     const wasShowingRequestedWeek = state.dataWeek === requestedWeek && state.dataAcademyId === requestedAcademyId;
-    if (state.loading && state.loadingWeek === requestedWeek && state.dataAcademyId === requestedAcademyId) return;
+    if (state.loading && state.loadingWeek === requestedWeek && state.dataAcademyId === requestedAcademyId) return false;
     if ((!state.data || state.dataWeek !== requestedWeek || state.dataAcademyId !== requestedAcademyId) && typeof service.getCachedWeek === 'function') {
       const cached = service.getCachedWeek(requestedWeek);
       if (cached) {
@@ -358,7 +385,15 @@
     if (!wasShowingRequestedWeek || !hasRenderedGrid) renderTimetable();
     try {
       const data = await service.loadWeek(requestedWeek);
-      if (token !== state.loadToken) return;
+      if (token !== state.loadToken) return false;
+      if (requestedAcademyId !== currentSyncAcademyId()
+        || requestedSession !== localStorage.getItem('olli_account_session_token_v1')
+        || requestedWeek !== dateKey(state.weekStart)
+        || (realtimeContext && (!realtimeContext.isCurrent() || state.saving || scheduleEditorOpen()))) {
+        state.loading = false;
+        state.loadingWeek = '';
+        return false;
+      }
       const changed = state.dataWeek !== requestedWeek || state.dataAcademyId !== requestedAcademyId || JSON.stringify(state.data) !== JSON.stringify(data);
       state.data = data;
       state.dataWeek = requestedWeek;
@@ -370,16 +405,21 @@
         renderSidebar();
         refreshOpenStudentInfoPanel();
       }
+      return true;
     } catch (error) {
-      if (token !== state.loadToken) return;
+      if (token !== state.loadToken) return false;
       state.loading = false;
       state.loadingWeek = '';
+      if (requestedAcademyId !== currentSyncAcademyId()
+        || requestedSession !== localStorage.getItem('olli_account_session_token_v1')
+        || (realtimeContext && !realtimeContext.isCurrent())) return false;
       if (!state.data || state.dataWeek !== requestedWeek || state.dataAcademyId !== requestedAcademyId) {
         state.data = { error: error && (error.message || error) || '시간표를 불러오지 못했습니다.' };
         state.dataWeek = requestedWeek;
         state.dataAcademyId = requestedAcademyId;
         renderTimetable();
       }
+      return false;
     }
   }
 
@@ -2001,4 +2041,3 @@ const wrapped = function(type, student) {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install, { once: true });
   else install();
 })(window);
-

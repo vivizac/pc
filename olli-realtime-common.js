@@ -3,7 +3,7 @@
 
   if (global.OlliRealtime && global.OlliRealtime.version) return;
 
-  const VERSION = '1.0.0';
+  const VERSION = '1.1.0';
   const SDK_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/+esm';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
   const CONTEXT_CHECK_INTERVAL_MS = 5000;
@@ -242,8 +242,95 @@
     };
   }
 
+  // Platform adapters re-read authoritative data. Signals never carry UI data.
+  // Keep one pending refresh during edits, in-flight reads, and transient failures.
+  function watchDomain(domain, refresh) {
+    if (!VALID_DOMAINS.has(domain) || typeof refresh !== 'function') {
+      throw new Error('Invalid OLLI Realtime watcher');
+    }
+    let pending = false;
+    let running = false;
+    let disposed = false;
+    let sequence = 0;
+    let timer = null;
+
+    function schedule(delay) {
+      if (disposed || !pending || running || timer !== null || document.hidden) return;
+      timer = global.setTimeout(() => { timer = null; flush(); }, delay);
+    }
+
+    function request() {
+      if (disposed) return;
+      sequence += 1;
+      pending = true;
+      schedule(120);
+    }
+
+    async function flush() {
+      if (disposed || running || !pending || document.hidden) return;
+      const academyId = currentAcademyId();
+      const sessionToken = currentSessionToken();
+      if (!academyId || !sessionToken) { pending = false; return; }
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      const receivedSequence = sequence;
+      const academyContext = global.OlliStorageCore?.AcademyContext;
+      const contextToken = academyContext?.captureToken?.();
+      const isCurrent = () => !disposed && academyId === currentAcademyId()
+        && sessionToken === currentSessionToken()
+        && (!academyContext?.isTokenCurrent || academyContext.isTokenCurrent(contextToken));
+      running = true;
+      let retryDelay = 1000;
+      try {
+        const applied = await refresh({ academyId, isCurrent });
+        if (applied === true && isCurrent() && sequence === receivedSequence) pending = false;
+      } catch (error) {
+        retryDelay = 5000;
+        console.warn('올리 Realtime 최신 데이터 확인 재시도:', error?.message || error);
+      } finally {
+        running = false;
+        schedule(retryDelay);
+      }
+    }
+
+    function onChange(event) {
+      const detail = event?.detail;
+      if (detail?.domain === domain && clean(detail.academyId) === currentAcademyId()) request();
+    }
+    function onStatus(event) {
+      const detail = event?.detail;
+      if (detail?.status === 'SUBSCRIBED' && clean(detail.academyId) === currentAcademyId()) request();
+    }
+    function onVisible() { if (!document.hidden) request(); }
+    function onStorage(event) {
+      if (!event || event.key === null || [ACCOUNT_SESSION_TOKEN_KEY, 'olli_current_academy_id'].includes(event.key)) request();
+    }
+    global.addEventListener('olli:realtime-change', onChange);
+    global.addEventListener('olli:realtime-status', onStatus);
+    global.addEventListener('online', request);
+    global.addEventListener('focus', request);
+    global.addEventListener('storage', onStorage);
+    document.addEventListener('visibilitychange', onVisible);
+    if (state.status === 'SUBSCRIBED') request();
+
+    return Object.freeze({
+      request,
+      dispose() {
+        disposed = true;
+        pending = false;
+        if (timer !== null) global.clearTimeout(timer);
+        global.removeEventListener('olli:realtime-change', onChange);
+        global.removeEventListener('olli:realtime-status', onStatus);
+        global.removeEventListener('online', request);
+        global.removeEventListener('focus', request);
+        global.removeEventListener('storage', onStorage);
+        document.removeEventListener('visibilitychange', onVisible);
+      }
+    });
+  }
+
   global.OlliRealtime = Object.freeze({
     version: VERSION,
+    watchDomain,
     ensureConnected,
     disconnect: removeCurrentChannel,
     getStatus
