@@ -75,24 +75,60 @@ function hideFeedbackLoading() {
   document.querySelectorAll('#feedbackLoadingOverlay, .feedbackLoadingOverlay').forEach(overlay => overlay.remove());
 }
 
-function resetElementaryMemoAfterFeedbackSave() {
-  if (!currentMemoStudent || currentMemoType !== 'elementary') return;
-  clearStudentNoteDraftFromSupabase(currentMemoStudent, 'elementary_observation').catch(err => console.warn('노트 초안 삭제 실패:', err.message || err));
-  clearMemoByStudent(currentMemoStudent);
-  currentMemoStudent = { ...currentMemoStudent, memoUpdatedAt: '' };
-  updateMemoStudentMetaDisplay(currentMemoStudent, '');
-  clearElementaryAnalysisByStudent(currentMemoStudent);
-  elementaryAnalysisDraft = getEmptyElementaryAnalysisState();
-  selectedElementaryAnalysisHistoryId = '';
-  const memo = document.getElementById('memoEditor');
-  if (memo) {
-    memo.readOnly = false;
-    memo.value = '';
+async function resetElementaryMemoAfterFeedbackSave() {
+  if (!currentMemoStudent || currentMemoType !== 'elementary') return { state: 'skipped' };
+  const studentSnapshot = { ...currentMemoStudent };
+
+  if (typeof clearObservationMemoAfterFeedbackOnServer !== 'function') {
+    const error = new Error('관찰노트 초기화 서비스가 준비되지 않았습니다.');
+    setMemoSaveStatus('메모 유지 · 동기화 확인 필요');
+    showPushToast('피드백은 저장됐지만 수업 메모는 그대로 보존했습니다.');
+    return { state: 'clear_failed', student: studentSnapshot, error };
   }
-  renderElementaryAnalysisSummaryCard(getEmptyElementaryAnalysisState(), { title: '분석 결과', createdAt: '' });
-  renderElementaryAnalysisHistoryCards(currentMemoStudent);
-  setMemoSaveStatus('자동 저장');
-  if (typeof refreshMemoStudentSelectPopupIfOpen === 'function') refreshMemoStudentSelectPopupIfOpen();
+
+  let serverRow;
+  try {
+    serverRow = await clearObservationMemoAfterFeedbackOnServer(studentSnapshot);
+  } catch (error) {
+    console.error('피드백 저장 후 관찰노트 초기화 실패:', error?.message || error);
+    setMemoSaveStatus('메모 유지 · 동기화 확인 필요');
+    const message = error?.code === 'REVISION_CONFLICT'
+      ? '피드백은 저장됐지만 다른 기기에서 관찰노트가 변경되어 메모를 지우지 않았어요.'
+      : '피드백은 저장됐지만 관찰노트 초기화를 완료하지 못해 수업 메모를 그대로 보존했습니다.';
+    showPushToast(message);
+    return { state: 'clear_failed', student: studentSnapshot, error };
+  }
+
+  clearMemoByStudent(studentSnapshot);
+  const stillCurrent = currentMemoStudent &&
+    String(currentMemoStudent.id || '') === String(studentSnapshot.id || '') &&
+    currentMemoType === 'elementary';
+
+  if (stillCurrent) {
+    currentMemoStudent = { ...currentMemoStudent, memoUpdatedAt: '' };
+    updateMemoStudentMetaDisplay(currentMemoStudent, '');
+    clearElementaryAnalysisByStudent(currentMemoStudent);
+    elementaryAnalysisDraft = getEmptyElementaryAnalysisState();
+    selectedElementaryAnalysisHistoryId = '';
+    const memo = document.getElementById('memoEditor');
+    if (memo) {
+      memo.readOnly = false;
+      memo.value = '';
+    }
+    renderElementaryAnalysisSummaryCard(getEmptyElementaryAnalysisState(), { title: '분석 결과', createdAt: '' });
+    renderElementaryAnalysisHistoryCards(currentMemoStudent);
+    setMemoSaveStatus('자동 저장');
+    if (typeof markObservationMemoEditorClean === 'function') markObservationMemoEditorClean();
+    if (typeof refreshMemoStudentSelectPopupIfOpen === 'function') refreshMemoStudentSelectPopupIfOpen();
+  }
+
+  return {
+    state: 'cleared',
+    student: studentSnapshot,
+    revision: Number(serverRow?.revision || 0),
+    syncedAt: String(serverRow?.updated_at || ''),
+    intentionalClear: true
+  };
 }
 
 function getCurrentMemoStudentName() {
@@ -136,15 +172,15 @@ async function autoSaveMemoFeedback(text, futureDirection = '') {
     await saveFeedbackRowVerified('feedbacks', payload, '초등부 관찰 피드백 저장');
     if (typeof refreshRecordsAfterFeedbackSave === 'function') await refreshRecordsAfterFeedbackSave();
     else if (typeof loadRecords === 'function') await loadRecords('');
-    if (currentMemoStudent && String(currentMemoStudent.id || '') === String(targetStudent.id || '')) resetElementaryMemoAfterFeedbackSave();
+    if (currentMemoStudent && String(currentMemoStudent.id || '') === String(targetStudent.id || '')) {
+      await resetElementaryMemoAfterFeedbackSave();
+    }
     closeMemoFeedbackPopup();
     showPushToast('피드백을 기록실에 저장했어요.');
   } catch (err) {
     console.error('초등부 관찰 피드백 저장 오류:', err);
     closeMemoFeedbackPopup();
-    alert(`피드백 저장 중 오류가 발생했어요.
-
-${err.message || '알 수 없는 오류입니다.'}`);
+    alert(`피드백 저장 중 오류가 발생했어요.\n\n${err.message || '알 수 없는 오류입니다.'}`);
   }
 }
 
@@ -202,7 +238,9 @@ async function saveElementaryFeedbackDirectly(text, options = {}) {
   }, tableName === 'fail_feedbacks' ? '초등부 성장 피드백 저장' : '초등부 피드백 저장');
   const savedRow = await saveFeedbackRowVerified(tableName, payload, tableName === 'fail_feedbacks' ? '초등부 성장 피드백 저장' : '초등부 피드백 저장');
   await refreshRecordsAfterFeedbackSave();
-  if (tableName === 'feedbacks' && currentMemoStudent && String(currentMemoStudent.id || '') === String(savedStudent.id || '')) resetElementaryMemoAfterFeedbackSave();
+  if (tableName === 'feedbacks' && currentMemoStudent && String(currentMemoStudent.id || '') === String(savedStudent.id || '')) {
+    await resetElementaryMemoAfterFeedbackSave();
+  }
   if (tableName === 'fail_feedbacks' && typeof resetGrowthFeedbackAfterSuccessfulSave === 'function') resetGrowthFeedbackAfterSuccessfulSave('elementary');
   return { student: savedStudent, row: savedRow, tableName };
 }
@@ -212,13 +250,7 @@ async function requestSceneCardFeedbackFromElementary(studentName, text, analysi
 
   const feedbackMonth = String(options.feedbackMonth || getFeedbackMonthLabel()).trim();
   const feedbackMonthNumber = Number(options.feedbackMonthNumber || getFeedbackMonthNumber());
-  const combined = `${studentName} 초등부 피드백 기록
-피드백 기준 월: ${feedbackMonth}
-
-${text}${analysisPromptText ? `
-
-[초등부 분석 데이터]
-${analysisPromptText}` : ''}`;
+  const combined = `${studentName} 초등부 피드백 기록\n피드백 기준 월: ${feedbackMonth}\n\n${text}${analysisPromptText ? `\n\n[초등부 분석 데이터]\n${analysisPromptText}` : ''}`;
   const userText = buildSceneCardUserText(combined);
 
   const btn = document.getElementById('memoFeedbackBtn');
