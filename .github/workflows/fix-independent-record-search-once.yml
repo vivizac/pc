@@ -1,0 +1,36 @@
+name: Fix independent PC attendance search once
+
+on:
+  push:
+    branches: [fix-independent-record-search-20260911]
+    paths:
+      - '.github/tmp/fix_independent_record_search.py'
+      - '.github/workflows/fix-independent-record-search-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix-independent-record-search-20260911
+      - name: Patch original PC attendance source
+        run: python3 .github/tmp/fix_independent_record_search.py
+      - name: Syntax and structure checks
+        run: |
+          node --check pc-attendance.js
+          grep -F "if (!query) return studentsForSortMode(app, type);" pc-attendance.js
+          grep -F "status === 'active' || status === 'paused' || status === 'withdrawn'" pc-attendance.js
+          grep -F "renderPlainRows(elementary.slice().sort(compareStudentsByName), 'elementary')" pc-attendance.js
+          grep -F "renderPlainRows(kinder.slice().sort(compareStudentsByName), 'kinder')" pc-attendance.js
+      - name: Commit original source change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pc-attendance.js
+          git diff --cached --check
+          git commit -m "fix: make PC attendance search independent of sort"
+          git push origin HEAD:fix-independent-record-search-20260911
