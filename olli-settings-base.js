@@ -132,100 +132,6 @@ function canShowRecordAttendanceBetaTab() {
   return currentAcademyName === '비비작아이성향미술학원' || currentAcademyCode === 'VIVI-5578';
 }
 
-function getOlliCurrentAccountLoginText() {
-  const values = [];
-  try { if (typeof OLLI_ACCOUNT_LOGIN_ID_KEY !== 'undefined') values.push(localStorage.getItem(OLLI_ACCOUNT_LOGIN_ID_KEY)); } catch (_) {}
-  values.push(
-    localStorage.getItem('olli_account_login_id_v1'),
-    localStorage.getItem('olli_account_name_v1'),
-    localStorage.getItem('olli_account_id_v1')
-  );
-  for (const value of values) {
-    const text = String(value || '').trim();
-    if (text) return text;
-  }
-  return '';
-}
-
-function canUseOlliPlatformAdmin() {
-  // 올리 관리는 임시로 VIVI-5578 관리용 계정에서만 사용합니다.
-  // 실제 로그인 ID는 세션 복구 과정에서 로컬스토리지에 남지 않는 경우가 있어,
-  // 1차 조건은 "현재 접속 학원이 VIVI-5578인지"와 "현재 계정이 관리 권한인지"로 판단합니다.
-  const settingsAcademy = (typeof olliSettingsState !== 'undefined' && olliSettingsState && olliSettingsState.academy) ? olliSettingsState.academy : null;
-  const context = (() => {
-    try { return window.OlliStorageCore?.AcademyContext?.getCurrent?.() || null; } catch (_) { return null; }
-  })();
-
-  const currentAcademyId = String(
-    localStorage.getItem('olli_current_academy_id') ||
-    context?.academyId ||
-    (settingsAcademy ? settingsAcademy.id : '') ||
-    ''
-  ).trim();
-
-  let currentAcademyCode = String(
-    localStorage.getItem('olli_current_academy_code') ||
-    context?.academyCode ||
-    (settingsAcademy ? settingsAcademy.academy_code : '') ||
-    ''
-  ).trim().toUpperCase();
-
-  let currentAcademyName = normalizeOlliAcademyNameForBetaFeature(
-    (typeof getOlliCurrentAcademyName === 'function' ? getOlliCurrentAcademyName() : '') ||
-    localStorage.getItem('olli_current_academy_name') ||
-    context?.academyName ||
-    (settingsAcademy ? settingsAcademy.academy_name : '') ||
-    ''
-  );
-
-  let matchedAcademyRole = '';
-  try {
-    const list = JSON.parse(localStorage.getItem('olli_account_academies_v1') || '[]');
-    const academies = Array.isArray(list) ? list : [];
-    const matched = academies.find(item => {
-      const id = String(item?.academy_id || item?.academyId || item?.id || '').trim();
-      const code = String(item?.academy_code || item?.academyCode || '').trim().toUpperCase();
-      const name = normalizeOlliAcademyNameForBetaFeature(item?.academy_name || item?.academyName || '');
-      return (currentAcademyId && id && id === currentAcademyId)
-        || (currentAcademyCode && code && code === currentAcademyCode)
-        || (currentAcademyName && name && name === currentAcademyName);
-    }) || academies.find(item => String(item?.academy_code || item?.academyCode || '').trim().toUpperCase() === 'VIVI-5578');
-
-    if (matched) {
-      currentAcademyCode = currentAcademyCode || String(matched.academy_code || matched.academyCode || '').trim().toUpperCase();
-      currentAcademyName = currentAcademyName || normalizeOlliAcademyNameForBetaFeature(matched.academy_name || matched.academyName || '');
-      matchedAcademyRole = normalizeOlliMemberRoleValue(
-        matched.role || matched.member_role || matched.membership_role || matched.role_name || matched.account_role
-      );
-    }
-  } catch (_) {}
-
-  let role = (typeof getOlliCurrentRole === 'function') ? getOlliCurrentRole() : '';
-  if (matchedAcademyRole) role = matchedAcademyRole;
-  const isManagementRole = role === 'owner' || role === 'manager' || role === 'super_admin';
-  const isVivizacAcademy = currentAcademyCode === 'VIVI-5578' || currentAcademyName === '비비작아이성향미술학원';
-
-  const identityValues = [];
-  try { if (typeof OLLI_ACCOUNT_LOGIN_ID_KEY !== 'undefined') identityValues.push(localStorage.getItem(OLLI_ACCOUNT_LOGIN_ID_KEY)); } catch (_) {}
-  identityValues.push(
-    localStorage.getItem('olli_account_login_id_v1'),
-    localStorage.getItem('olli_account_name_v1'),
-    localStorage.getItem('olli_account_id_v1'),
-    localStorage.getItem('olli_current_member_name')
-  );
-  const accountIdentity = identityValues
-    .map(value => String(value || '').trim().toLowerCase())
-    .filter(Boolean)
-    .join(' ');
-  const isVivizacAccount = accountIdentity.includes('vivizac') || accountIdentity.includes('비비작');
-
-  // 실제 테스트에서 계정 세션 복구 후 role/login_id가 비어 있거나 teacher로 남는 경우가 있었습니다.
-  // 그래서 올리 관리는 우선 현재 접속 학원이 VIVI-5578인지로 확실히 노출하고,
-  // 나중에 관리앱을 분리할 때 계정 단위 관리자 권한으로 다시 제한합니다.
-  if (isVivizacAcademy) return true;
-  return isVivizacAcademy && isManagementRole && (isVivizacAccount || role === 'super_admin');
-}
-
 function applySettingsPermissionUI() {
   const role = getOlliCurrentRole();
   const currentAcademyName = String(localStorage.getItem('olli_current_academy_name') || olliSettingsState.academy?.academy_name || '').trim();
@@ -255,10 +161,6 @@ function applySettingsPermissionUI() {
     el.style.display = canViewDevTestEntry ? '' : 'none';
   });
 
-  const canViewPlatformAdmin = canUseOlliPlatformAdmin();
-  document.querySelectorAll('[data-platform-admin-only="true"]').forEach(el => {
-    el.style.display = canViewPlatformAdmin ? '' : 'none';
-  });
 
   const canViewAcademyManagement = role === 'owner' || role === 'manager' || role === 'super_admin';
   document.querySelectorAll('[data-academy-management="true"]').forEach(el => {
@@ -298,10 +200,6 @@ function refreshOlliRoleBasedVisibilityUI() {
     el.style.display = canUseAcademyManagement ? '' : 'none';
   });
 
-  const canViewPlatformAdmin = (typeof canUseOlliPlatformAdmin === 'function') ? canUseOlliPlatformAdmin() : false;
-  document.querySelectorAll('[data-platform-admin-only="true"]').forEach(el => {
-    el.style.display = canViewPlatformAdmin ? '' : 'none';
-  });
 
   document.querySelectorAll('[data-role-value]').forEach(el => {
     if (typeof getOlliRoleLabel === 'function') el.textContent = getOlliRoleLabel(role);
