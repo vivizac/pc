@@ -1,0 +1,167 @@
+name: Convert PC student info to Realtime
+on:
+  push:
+    paths:
+      - '.github/workflows/convert-student-info-realtime-pc.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Patch PC student info Realtime
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('pc-student-info-card-runtime.js')
+          s = p.read_text()
+
+          old = """  const cardState = {\n    studentId: '',\n    student: null,\n    enrollments: [],\n    loading: false,\n    saveInFlight: false,\n    observer: null,\n    installed: false\n  };"""
+          new = """  const cardState = {\n    studentId: '',\n    student: null,\n    enrollments: [],\n    pickups: [],\n    loading: false,\n    saveInFlight: false,\n    dirty: false,\n    observer: null,\n    installed: false\n  };"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = """  async function loadAuthoritativeSchedule(studentId) {\n    const result = await scheduleRpc('olli_schedule_student_enrollments', {\n      p_student_id: studentId,\n      p_reference_date: todayKey()\n    });\n    return Array.isArray(result.enrollments) ? result.enrollments : [];\n  }"""
+          new = """  async function loadAuthoritativeStudentContext(studentId) {\n    const result = await scheduleRpc('olli_schedule_student_enrollments', {\n      p_student_id: studentId,\n      p_reference_date: todayKey()\n    });\n    return {\n      enrollments: Array.isArray(result.enrollments) ? result.enrollments : [],\n      pickups: Array.isArray(result.pickups) ? result.pickups : []\n    };\n  }\n\n  async function loadAuthoritativeSchedule(studentId) {\n    return (await loadAuthoritativeStudentContext(studentId)).enrollments;\n  }"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = """  function resolveTimetableTeacherName(division, enrollments, assignments) {\n    const first = primaryEnrollmentForTeacher(enrollments);\n    if (!first) return '';\n    const group = clean(first.class_group || 'A').toUpperCase() || 'A';"""
+          new = """  function resolveTimetableTeacherName(division, enrollments, assignments) {\n    const first = primaryEnrollmentForTeacher(enrollments);\n    if (!first) return '';\n    const directTeacher = clean(first.teacher_name);\n    if (directTeacher) return directTeacher;\n    const group = clean(first.class_group || 'A').toUpperCase() || 'A';"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          marker = "  function kinderCardHtml(student) {"
+          assert marker in s
+          helper = """  function pickupSummary(rows) {\n    return (Array.isArray(rows) ? rows : []).map((row) => {\n      const day = NUM_DAY[Number(row && row.weekday)] || '';\n      const label = clean(row && row.pickup_label);\n      const raw = clean(row && row.pickup_time);\n      const match = raw.match(/^(\\d{1,2}):(\\d{2})/);\n      let time = raw;\n      if (match) {\n        const hour24 = Number(match[1]);\n        const hour12 = hour24 > 12 ? hour24 - 12 : hour24;\n        time = `${hour12}:${match[2]}`;\n      }\n      const classTime = Number(row && row.class_time);\n      return [day && `${day}요일`, classTime ? `${classTime}시` : '', label, time].filter(Boolean).join(' · ');\n    }).filter(Boolean).join(' / ');\n  }\n\n"""
+          s = s.replace(marker, helper + marker, 1)
+
+          old = """        <div class=\"pcStudentInfoSchedule\"><div class=\"pcStudentInfoScheduleTitle\">요일 / 시간</div><div id=\"kinderLessonDayToggleRow\" class=\"infoDayToggleRow\"></div><div id=\"kinderLessonTimeToggleRow\" class=\"infoTimeToggleRow\"></div></div>\n        <div class=\"pcStudentInfoActions\">"""
+          new = """        <div class=\"pcStudentInfoSchedule\"><div class=\"pcStudentInfoScheduleTitle\">요일 / 시간</div><div id=\"kinderLessonDayToggleRow\" class=\"infoDayToggleRow\"></div><div id=\"kinderLessonTimeToggleRow\" class=\"infoTimeToggleRow\"></div></div>\n        <div class=\"pcStudentInfoField\"><div class=\"modalLabel\">픽업</div><div id=\"kinderInfoPickupReadonly\" class=\"pcStudentInfoTeacherReadonly isEmpty\">등록된 픽업 없음</div></div>\n        <div class=\"pcStudentInfoActions\">"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          s = s.replace("async function renderStudentInfoCard(student, enrollments, teacherAssignments) {", "async function renderStudentInfoCard(student, enrollments, teacherAssignments, pickups = []) {", 1)
+          old = """      __olli_timetable_teacher: timetableTeacher,\n      __olli_authoritative_enrollments: enrollments\n    });\n    cardState.student = authoritativeStudent;\n    cardState.enrollments = enrollments;"""
+          new = """      __olli_timetable_teacher: timetableTeacher,\n      __olli_authoritative_enrollments: enrollments,\n      __olli_authoritative_pickups: pickups\n    });\n    cardState.student = authoritativeStudent;\n    cardState.enrollments = enrollments;\n    cardState.pickups = pickups;"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = """      if (hiddenDay) hiddenDay.value = fields.lesson_day;\n      setDateInputs('kinderInfo', authoritativeStudent);\n      if (typeof global.olliPrepareInfoExtra === 'function') global.olliPrepareInfoExtra('kinder', authoritativeStudent);\n    }\n  }"""
+          new = """      if (hiddenDay) hiddenDay.value = fields.lesson_day;\n      setDateInputs('kinderInfo', authoritativeStudent);\n      const pickupEl = document.getElementById('kinderInfoPickupReadonly');\n      if (pickupEl) {\n        const text = pickupSummary(pickups);\n        pickupEl.textContent = text || '등록된 픽업 없음';\n        pickupEl.classList.toggle('isEmpty', !text);\n      }\n      if (typeof global.olliPrepareInfoExtra === 'function') global.olliPrepareInfoExtra('kinder', authoritativeStudent);\n    }\n    cardState.dirty = false;\n  }"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = """    cardState.studentId = id;\n    cardState.loading = true;\n    panel.innerHTML = infoHeadHtml('info') + '<div class=\"pcStudentInfoLoading\">학생정보와 시간표를 불러오고 있습니다.</div>';\n    try {\n      const [enrollments, teacherAssignments] = await Promise.all([\n        loadAuthoritativeSchedule(id),\n        loadAuthoritativeTeacherAssignments()\n      ]);\n      student = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;\n      if (cardState.studentId !== id) return;\n      await renderStudentInfoCard(student, enrollments, teacherAssignments);"""
+          new = """    cardState.studentId = id;\n    cardState.loading = true;\n    cardState.dirty = false;\n    panel.innerHTML = infoHeadHtml('info') + '<div class=\"pcStudentInfoLoading\">학생정보와 시간표를 불러오고 있습니다.</div>';\n    try {\n      if (typeof global.loadStudentsFromSupabase === 'function') {\n        await global.loadStudentsFromSupabase({ skipLifecycleSync: true });\n        student = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;\n      }\n      const context = await loadAuthoritativeStudentContext(id);\n      let teacherAssignments = [];\n      if (context.enrollments.length && !resolveTimetableTeacherName(student.type === 'kinder' ? 'kinder' : 'elementary', context.enrollments, [])) {\n        teacherAssignments = await loadAuthoritativeTeacherAssignments();\n      }\n      student = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;\n      if (cardState.studentId !== id) return;\n      await renderStudentInfoCard(student, context.enrollments, teacherAssignments, context.pickups);"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          s = s.replace("    cardState.enrollments = [];\n    try { studentInfoModalTarget = null; } catch (_) {}", "    cardState.enrollments = [];\n    cardState.pickups = [];\n    cardState.dirty = false;\n    try { studentInfoModalTarget = null; } catch (_) {}", 1)
+          # Same reset occurs after a successful save; replace the next untouched occurrence too.
+          s = s.replace("      cardState.enrollments = [];\n      try { studentInfoModalTarget = null; } catch (_) {}", "      cardState.enrollments = [];\n      cardState.pickups = [];\n      cardState.dirty = false;\n      try { studentInfoModalTarget = null; } catch (_) {}", 1)
+          s = s.replace("if (typeof global.loadStudentsFromSupabase === 'function') await global.loadStudentsFromSupabase();", "if (typeof global.loadStudentsFromSupabase === 'function') await global.loadStudentsFromSupabase({ skipLifecycleSync: true });", 2)
+
+          marker = "  async function openStudentInfoFromLegacyTarget(target) {"
+          assert marker in s
+          realtime = r'''  function isStudentInfoEditEvent(event) {
+    const target = event && event.target;
+    const card = target && target.closest ? target.closest('.pcStudentInfoCard') : null;
+    if (!card || !cardState.studentId || cardState.loading || cardState.saveInFlight) return false;
+    if (event.type === 'click') {
+      return !!target.closest('.infoDayBtn, .infoTimeBtn, .infoToggleBtn, .groupIconChoiceBtn');
+    }
+    return event.type === 'input' || event.type === 'change';
+  }
+
+  function bindStudentInfoDirtyTracking() {
+    if (global.__OLLI_PC_STUDENT_INFO_DIRTY_TRACKING_V1__) return;
+    global.__OLLI_PC_STUDENT_INFO_DIRTY_TRACKING_V1__ = true;
+    ['input', 'change', 'click'].forEach((type) => document.addEventListener(type, (event) => {
+      if (isStudentInfoEditEvent(event)) cardState.dirty = true;
+    }, true));
+  }
+
+  async function refreshOpenStudentInfoFromRealtime(realtimeContext) {
+    const id = clean(cardState.studentId);
+    if (!id) return true;
+    if (cardState.loading || cardState.saveInFlight || cardState.dirty) return false;
+    const academyId = currentAcademyId();
+    const sessionToken = currentSessionToken();
+    const isCurrent = () => clean(cardState.studentId) === id
+      && academyId === currentAcademyId()
+      && sessionToken === currentSessionToken()
+      && (!realtimeContext || realtimeContext.isCurrent());
+    try {
+      if (typeof global.loadStudentsFromSupabase === 'function') {
+        await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
+      }
+      if (!isCurrent() || cardState.dirty || cardState.saveInFlight) return false;
+      const latest = typeof global.findStudentById === 'function' ? global.findStudentById(id) : null;
+      if (!latest) return true;
+      const context = await loadAuthoritativeStudentContext(id);
+      if (!isCurrent() || cardState.dirty || cardState.saveInFlight) return false;
+      let teacherAssignments = [];
+      const division = latest.type === 'kinder' ? 'kinder' : 'elementary';
+      if (context.enrollments.length && !resolveTimetableTeacherName(division, context.enrollments, [])) {
+        teacherAssignments = await loadAuthoritativeTeacherAssignments();
+      }
+      if (!isCurrent() || cardState.dirty || cardState.saveInFlight) return false;
+      await renderStudentInfoCard(latest, context.enrollments, teacherAssignments, context.pickups);
+      return true;
+    } catch (error) {
+      console.warn('학생정보 Realtime 최신본 확인 실패:', error && (error.message || error));
+      return false;
+    }
+  }
+
+  function installStudentInfoRealtimeWatcher() {
+    if (global.__OLLI_PC_STUDENT_INFO_REALTIME_V1__) return true;
+    if (typeof global.OlliRealtime?.watchDomain !== 'function') return false;
+    global.__OLLI_PC_STUDENT_INFO_REALTIME_V1__ = true;
+    global.OlliRealtime.watchDomain('schedule', (context) => refreshOpenStudentInfoFromRealtime(context));
+    return true;
+  }
+
+'''
+          s = s.replace(marker, realtime + marker, 1)
+
+          old = """    installAuthoritativeScheduleEditor();\n    wrapStudentRegistration();"""
+          new = """    installAuthoritativeScheduleEditor();\n    bindStudentInfoDirtyTracking();\n    if (!installStudentInfoRealtimeWatcher()) {\n      global.addEventListener('olli:realtime-status', installStudentInfoRealtimeWatcher, { once: true });\n      setTimeout(installStudentInfoRealtimeWatcher, 1000);\n    }\n    wrapStudentRegistration();"""
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          p.write_text(s)
+          PY
+      - name: Syntax check
+        run: node --check pc-student-info-card-runtime.js
+      - name: Static Realtime checks
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const s = fs.readFileSync('pc-student-info-card-runtime.js','utf8');
+          for (const token of [
+            "watchDomain('schedule'",
+            'refreshOpenStudentInfoFromRealtime',
+            'skipLifecycleSync: true',
+            '__olli_authoritative_pickups',
+            'kinderInfoPickupReadonly',
+            'cardState.dirty'
+          ]) if (!s.includes(token)) throw new Error('missing: ' + token);
+          NODE
+      - name: Existing Realtime regression tests
+        run: node --test tests/schedule-realtime.test.cjs
+      - name: Commit PC student info Realtime
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add pc-student-info-card-runtime.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Connect PC student info to Realtime server context'
+          git push origin HEAD:main
