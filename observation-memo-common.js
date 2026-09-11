@@ -452,7 +452,6 @@ async function refreshCurrentObservationMemoFromServer() {
   }
 }
 
-const OLLI_OBSERVATION_MEMO_REMOTE_REFRESH_INTERVAL = 2000;
 
 function requestObservationMemoCrossDeviceRefresh() {
   if (window.__olliObservationMemoRemoteRefreshPending) return;
@@ -483,15 +482,6 @@ if (!window.__olliObservationMemoCrossDeviceRefreshBound) {
     requestObservationMemoCrossDeviceRefresh();
   });
 
-  if (!window.__olliObservationMemoRemoteRefreshTimer) {
-    window.__olliObservationMemoRemoteRefreshTimer = setInterval(() => {
-      if (document.hidden) return;
-      if (!isObservationMemoScreenActive()) return;
-      if (hasObservationMemoDirtyChanges()) return;
-      if (isObservationMemoAutoSaveBlocked()) return;
-      requestObservationMemoCrossDeviceRefresh();
-    }, OLLI_OBSERVATION_MEMO_REMOTE_REFRESH_INTERVAL);
-  }
 }
 
 function openObservationMemoScreenShell(session) {

@@ -4,7 +4,7 @@
 
 ## 1단계 — 관찰노트
 
-사용자가 PC·Phone 동작 확인 완료를 보고했다. 이번 시간표 작업에서는 관찰노트 저장 코어, Phone 관찰노트 adapter, CAS, 세션 복구, 2초 polling을 변경하지 않았다. 이 기록은 사용자 확인이며 이번 작업의 실기기 재시험을 뜻하지 않는다.
+사용자가 PC·Phone Realtime 동작 확인을 완료한 뒤 관찰노트의 기존 2초 polling을 제거했다. 관찰노트는 observation Realtime 신호를 기준으로 최신 서버 원본을 다시 읽고, focus·online·visibility 복귀 시 1회 재확인한다. 저장 코어, CAS, 세션 복구는 유지한다.
 
 ## 2단계 — 시간표와 Phone 오늘 수업 목록
 
