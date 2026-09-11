@@ -90,8 +90,8 @@ test('dispose removes listeners and scheduled refreshes',async()=>{
 });
 
 function pc() {
-  const env=sandbox();let revision=10,weekReads=0,readWeek=async()=>({enrollments:[{student_id:'fixture',time_slot:5}]});
-  env.win.OlliTimetableService={DAYS:['월','화','수','목','금','토'],currentAcademyId:()=>env.values.get('olli_current_academy_id'),loadSyncRevision:async()=>({ok:true,version:revision}),loadWeek:()=>{weekReads++;return readWeek();},activeStudents:()=>[]};
+  const env=sandbox();let revision=10,revisionReads=0,weekReads=0,readWeek=async()=>({enrollments:[{student_id:'fixture',time_slot:5}]});
+  env.win.OlliTimetableService={DAYS:['월','화','수','목','금','토'],currentAcademyId:()=>env.values.get('olli_current_academy_id'),loadSyncRevision:async()=>{revisionReads++;return {ok:true,version:revision};},loadWeek:()=>{weekReads++;return readWeek();},activeStudents:()=>[]};
   let watcher;
   env.win.OlliRealtime={watchDomain:(domain,fn)=>{assert.equal(domain,'schedule');watcher=fn;}};
   let code=source('pc-timetable.js');
@@ -99,11 +99,16 @@ function pc() {
   code=code.replace('})(window);',`global.testApi={state,checkLiveScheduleSync,loadWeek};renderTimetable=()=>{};renderSidebar=()=>{};refreshOpenStudentInfoPanel=()=>{};})(window);`);
   vm.runInContext(code,env.win);
   const state=env.win.testApi.state;state.active=true;state.syncAcademyId='academy-a';state.syncRevision=9;
-  return {...env,state,get reads(){return weekReads;},setRevision:v=>revision=v,setRead:fn=>readWeek=fn,check:()=>watcher({academyId:'academy-a',isCurrent:()=>env.values.get('olli_current_academy_id')==='academy-a'})};
+  return {...env,state,get reads(){return weekReads;},get revisionReads(){return revisionReads;},setRevision:v=>revision=v,setRead:fn=>readWeek=fn,check:()=>watcher({academyId:'academy-a',isCurrent:()=>env.values.get('olli_current_academy_id')==='academy-a'})};
 }
 test('PC signal reads server revision and week; unchanged revision does not rerender',async()=>{
   const env=pc();assert.equal(await env.check(),true);assert.equal(env.reads,1);assert.equal(env.state.syncRevision,10);
   assert.equal(await env.check(),true);assert.equal(env.reads,1);assert.equal(env.intervals.some(x=>x.delay===3000),true);
+});
+test('PC 3s timer skips timetable pane and is reserved for attendance',async()=>{
+  const env=pc();const interval=env.intervals.find(x=>x.delay===3000);assert.ok(interval);
+  const before=env.revisionReads;interval.fn();await settle();assert.equal(env.revisionReads,before);
+  env.state.pane='attendance';env.state.syncRevision=10;interval.fn();await settle();assert.equal(env.revisionReads,before+1);
 });
 test('PC first signal refreshes even without a baseline revision',async()=>{
   const env=pc();env.state.syncRevision=0;assert.equal(await env.check(),true);assert.equal(env.reads,1);
