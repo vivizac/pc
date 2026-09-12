@@ -1,4 +1,4 @@
-name: refactor-shared-auth-entry-source-owner
+name: cleanup-redundant-wrapper-and-preserve-student-data
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  refactor:
+  cleanup:
     if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
@@ -19,38 +19,86 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Compose phone auth-entry extensions from canonical source
+      - name: Remove redundant wrapper and preserve legacy student class data
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('olli-auth-entry-ui.js')
-          s = p.read_text(encoding='utf-8')
-          marker1 = "  showOlliLoginScreenById('olliLoginEntryScreen');\n}"
-          repl1 = "  showOlliLoginScreenById('olliLoginEntryScreen');\n  if (typeof window.olliAfterShowLoginEntry === 'function') window.olliAfterShowLoginEntry();\n}"
-          marker2 = "  if (loginId && !loginId.value) loginId.value = localStorage.getItem(OLLI_ACCOUNT_LOGIN_ID_KEY) || '';\n}"
-          repl2 = "  if (loginId && !loginId.value) loginId.value = localStorage.getItem(OLLI_ACCOUNT_LOGIN_ID_KEY) || '';\n  if (typeof window.olliAfterShowOwnerLogin === 'function') window.olliAfterShowOwnerLogin();\n}"
-          marker3 = "  if (loginId && !loginId.value) loginId.focus();\n}"
-          repl3 = "  if (loginId && !loginId.value) loginId.focus();\n  if (typeof window.olliAfterShowAccountCreate === 'function') window.olliAfterShowAccountCreate();\n}"
-          for label, old, new in [('entry', marker1, repl1), ('owner', marker2, repl2), ('create', marker3, repl3)]:
-              if s.count(old) != 1:
-                  raise SystemExit(f'{label} auth owner marker count={s.count(old)}')
-              s = s.replace(old, new, 1)
-          p.write_text(s, encoding='utf-8')
+
+          def replace_once(path, old, new, label):
+              p = Path(path)
+              s = p.read_text(encoding='utf-8')
+              count = s.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label} count={count}')
+              p.write_text(s.replace(old, new, 1), encoding='utf-8')
+
+          settings = Path('olli-settings-base.js').read_text(encoding='utf-8')
+          required_settings_hooks = [
+              "if (typeof window.cacheTeacherOptions === 'function')",
+              "if (typeof window.refreshAllTeacherDropdowns === 'function')",
+          ]
+          for marker in required_settings_hooks:
+              if marker not in settings:
+                  raise SystemExit(f'canonical settings hook missing: {marker}')
+
+          wrapper = """  const originalSettingsApplyStateToUI = window.settingsApplyStateToUI;
+          if (typeof originalSettingsApplyStateToUI === 'function') {
+            window.settingsApplyStateToUI = function(){
+              const r = originalSettingsApplyStateToUI.apply(this, arguments);
+              cacheTeacherOptions();
+              refreshAllTeacherDropdowns();
+              return r;
+            };
+          }
+          """
+          replace_once(
+              'olli-record-sort-student-ui.js',
+              wrapper,
+              '',
+              'redundant settingsApplyStateToUI wrapper'
+          )
+
+          replace_once(
+              'olli-student-info-runtime.js',
+              "    className: '',\n",
+              '',
+              'elementary info className erase'
+          )
+
+          lifecycle_erase = """    // 초등부의 기존 '반' 정보는 더 이상 사용하지 않습니다.
+            if (next.className) {
+              next.className = '';
+              changed = true;
+            }
+          """
+          replace_once(
+              'olli-data-students.js',
+              lifecycle_erase,
+              "    // 초등부의 기존 반 정보는 UI에서 사용하지 않아도 과거 데이터 보존을 위해 유지합니다.\n",
+              'student lifecycle className erase'
+          )
           PY
-          node --check olli-auth-entry-ui.js
+
+          node --check olli-record-sort-student-ui.js
+          node --check olli-student-info-runtime.js
+          node --check olli-data-students.js
           git diff --check
-          grep -Fq "typeof window.olliAfterShowLoginEntry === 'function'" olli-auth-entry-ui.js
-          grep -Fq "typeof window.olliAfterShowOwnerLogin === 'function'" olli-auth-entry-ui.js
-          grep -Fq "typeof window.olliAfterShowAccountCreate === 'function'" olli-auth-entry-ui.js
-      - name: Commit source changes
+          ! grep -Fq "const originalSettingsApplyStateToUI = window.settingsApplyStateToUI" olli-record-sort-student-ui.js
+          ! grep -Fq "next.className = '';" olli-data-students.js
+          grep -Fq "window.cacheTeacherOptions" olli-settings-base.js
+          grep -Fq "window.refreshAllTeacherDropdowns" olli-settings-base.js
+
+      - name: Commit cleanup and remove one-time tooling
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet; then exit 0; fi
+          git rm -f .github/workflows/refactor-source-owner-once.yml
+          git rm -f .github/tmp/refactor_shared_attendance.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add olli-auth-entry-ui.js
-          git commit -m 'refactor: compose auth entry extensions from canonical source'
+          git add olli-record-sort-student-ui.js olli-student-info-runtime.js olli-data-students.js
+          git diff --cached --check
+          git commit -m 'refactor: remove redundant settings wrapper safely'
           git push origin HEAD:refactor/source-owned-no-overrides-20260912
