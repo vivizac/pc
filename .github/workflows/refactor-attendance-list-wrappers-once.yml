@@ -1,0 +1,265 @@
+name: Refactor attendance list wrappers once
+
+on:
+  push:
+    branches:
+      - refactor/source-owned-no-overrides-20260912
+    paths:
+      - .github/workflows/refactor-attendance-list-wrappers-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/source-owned-no-overrides-20260912
+          fetch-depth: 0
+
+      - name: Refactor source ownership
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path, old, new, label):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected 1 match, got {count}")
+              p.write_text(text.replace(old, new, 1))
+
+          # 1) Canonical student-row renderers own attendance-guide metadata rendering.
+          path = Path('olli-record-list-view.js')
+          text = path.read_text()
+          marker = "function renderElementaryStudentRows(students) {\n"
+          if text.count(marker) != 1:
+              raise SystemExit('renderElementaryStudentRows marker mismatch')
+          helper = '''function getRecordAttendanceGuideHtml(student) {
+            try {
+              if (typeof window.isRecordAttendanceGuideModeActive !== 'function' || !window.isRecordAttendanceGuideModeActive()) return null;
+              if (typeof window.getOlliAttendancePolicyCounts !== 'function') return null;
+              const counts = window.getOlliAttendancePolicyCounts(student);
+              if (!counts) return null;
+              return `<span class="recordAttendanceGuideMeta">
+                <span class="recordAttendanceMetric recordAttendanceYearMetric"><b>${Number(counts.year) || new Date().getFullYear()}년</b></span>
+                <span class="recordAttendanceMetric">결석 <b>${Number(counts.yearAbsence) || 0}회</b></span>
+                <span class="recordAttendanceMetric">보강 <b>${Number(counts.yearMakeup) || 0}회</b></span>
+                <span class="recordAttendanceMetric">남은 보강 <b>${Number(counts.remainingMakeup) || 0}회</b></span>
+              </span>`;
+            } catch(err) {
+              return null;
+            }
+          }
+
+          '''
+          text = text.replace(marker, helper + marker, 1)
+
+          old = '''    const metaBits = getElementaryMetaBits(student);
+            const metaText = metaBits.join('\\u00A0\\u00A0|\\u00A0\\u00A0');
+'''
+          new = '''    const metaBits = getElementaryMetaBits(student);
+            const metaText = metaBits.join('\\u00A0\\u00A0|\\u00A0\\u00A0');
+            const attendanceGuideHtml = getRecordAttendanceGuideHtml(student);
+            const metaHtml = attendanceGuideHtml !== null
+              ? attendanceGuideHtml
+              : (metaText ? escapeHtml(metaText) : '');
+'''
+          if text.count(old) != 1:
+              raise SystemExit('elementary meta block mismatch')
+          text = text.replace(old, new, 1)
+          old = '''          ${metaText ? `<span class="studentMetaText">${escapeHtml(metaText)}</span>` : ''}
+'''
+          new = '''          ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
+'''
+          if text.count(old) != 1:
+              raise SystemExit('elementary meta render mismatch')
+          text = text.replace(old, new, 1)
+
+          old = '''    const metaBits = getKinderMetaBits(student);
+            const sectionKey = (typeof getRecordSortSectionKey === 'function') ? getRecordSortSectionKey(student, 'kinder') : `status:${getStudentStatus(student)}:${student.age || ''}`;
+'''
+          new = '''    const metaBits = getKinderMetaBits(student);
+            const attendanceGuideHtml = getRecordAttendanceGuideHtml(student);
+            const normalMetaText = metaBits.join('\\u00A0\\u00A0|\\u00A0\\u00A0');
+            const metaHtml = attendanceGuideHtml !== null
+              ? attendanceGuideHtml
+              : (normalMetaText ? escapeHtml(normalMetaText) : '');
+            const sectionKey = (typeof getRecordSortSectionKey === 'function') ? getRecordSortSectionKey(student, 'kinder') : `status:${getStudentStatus(student)}:${student.age || ''}`;
+'''
+          if text.count(old) != 1:
+              raise SystemExit('kinder meta block mismatch')
+          text = text.replace(old, new, 1)
+          old = '''          ${metaBits.length ? `<span class="studentMetaText">${escapeHtml(metaBits.join('\\u00A0\\u00A0|\\u00A0\\u00A0'))}</span>` : ''}
+'''
+          new = '''          ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
+'''
+          if text.count(old) != 1:
+              raise SystemExit('kinder meta render mismatch')
+          text = text.replace(old, new, 1)
+          path.write_text(text)
+
+          # 2) Attendance policy becomes calculation-only for student rows.
+          path = Path('olli-attendance-policy-runtime.js')
+          text = path.read_text()
+          start = text.find('  function safeTemplate(value){')
+          end_marker = '  window.shouldCountRecordAttendanceDate = countablePastDate;'
+          end = text.find(end_marker)
+          if start < 0 or end < 0 or end <= start:
+              raise SystemExit('attendance policy renderer wrapper block not found')
+          text = text[:start] + text[end:]
+          path.write_text(text)
+
+          # 3) Inline guide script owns only mode/button lifecycle; no row renderer wrappers.
+          path = Path('index.html')
+          text = path.read_text()
+          script_start = text.find('<script id="olliRecordAttendanceGuideButtonPatch">')
+          script_end = text.find('</script>', script_start)
+          if script_start < 0 or script_end < 0:
+              raise SystemExit('attendance guide script not found')
+          script_end += len('</script>')
+          replacement = '''<script id="olliRecordAttendanceGuideButtonPatch">
+          /* 2026-09-13: 출결 가이드 상태/버튼만 관리합니다. 학생 행 렌더링은 olli-record-list-view.js가 소유합니다. */
+          (function(){
+            var attendanceGuideMode = false;
+
+            function refreshCurrentStudentRows(){
+              var searchValue = document.getElementById('searchName')?.value.trim() || '';
+              try {
+                if ((currentRecordView === 'kinder' || currentRecordView === 'elementary') && typeof window.renderCurrentStudentRecords === 'function') window.renderCurrentStudentRecords(searchValue);
+                else if (typeof window.loadRecords === 'function') window.loadRecords(searchValue);
+              } catch(e) {}
+            }
+            function updateGuideButton(){
+              var btn = document.getElementById('recordAttendanceGuideToggle');
+              if (!btn) return;
+              btn.classList.toggle('active', attendanceGuideMode);
+              btn.setAttribute('aria-pressed', attendanceGuideMode ? 'true' : 'false');
+              btn.title = attendanceGuideMode ? '출결 가이드 끄기' : '출결 가이드 보기';
+            }
+            function installGuideButton(){
+              var row = document.querySelector('#recordRoomScreen .recordModeLabelRow');
+              if (!row || document.getElementById('recordAttendanceGuideToggle')) {
+                updateGuideButton();
+                return;
+              }
+              var btn = document.createElement('button');
+              btn.id = 'recordAttendanceGuideToggle';
+              btn.className = 'recordAttendanceGuideBtn';
+              btn.type = 'button';
+              btn.textContent = '출결';
+              btn.setAttribute('aria-label', '출결 가이드 보기');
+              btn.onclick = window.toggleRecordAttendanceGuideMode;
+              row.appendChild(btn);
+              updateGuideButton();
+            }
+
+            window.isRecordAttendanceGuideModeActive = function(){ return attendanceGuideMode; };
+            window.olliEnsureRecordAttendanceGuideButton = installGuideButton;
+            window.toggleRecordAttendanceGuideMode = function(event){
+              if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+              }
+              attendanceGuideMode = !attendanceGuideMode;
+              updateGuideButton();
+              refreshCurrentStudentRows();
+              if (typeof window.scheduleRecordAttendanceGuideButtonAlign === 'function') window.scheduleRecordAttendanceGuideButtonAlign();
+            };
+
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', installGuideButton);
+            } else {
+              installGuideButton();
+            }
+          })();
+          </script>'''
+          text = text[:script_start] + replacement + text[script_end:]
+
+          # Remove alignment wrappers; canonical header/toggle call alignment directly.
+          old = '''  var oldUpdateRecordHeaderUI = window.updateRecordHeaderUI;
+            if (typeof oldUpdateRecordHeaderUI === 'function' && !oldUpdateRecordHeaderUI.__olliAttendanceAlignWrapped) {
+              var wrappedUpdate = function(){
+                var result = oldUpdateRecordHeaderUI.apply(this, arguments);
+                scheduleAlign();
+                return result;
+              };
+              wrappedUpdate.__olliAttendanceAlignWrapped = true;
+              window.updateRecordHeaderUI = wrappedUpdate;
+              try { updateRecordHeaderUI = window.updateRecordHeaderUI; } catch (_) {}
+            }
+
+            var oldToggleRecordAttendanceGuideMode = window.toggleRecordAttendanceGuideMode;
+            if (typeof oldToggleRecordAttendanceGuideMode === 'function' && !oldToggleRecordAttendanceGuideMode.__olliAttendanceAlignWrapped) {
+              var wrappedToggle = function(){
+                var result = oldToggleRecordAttendanceGuideMode.apply(this, arguments);
+                scheduleAlign();
+                return result;
+              };
+              wrappedToggle.__olliAttendanceAlignWrapped = true;
+              window.toggleRecordAttendanceGuideMode = wrappedToggle;
+            }
+
+'''
+          if text.count(old) != 1:
+              raise SystemExit(f'alignment wrapper block mismatch: {text.count(old)}')
+          text = text.replace(old, '', 1)
+          path.write_text(text)
+
+          # 4) Canonical header explicitly invokes guide-button hooks.
+          path = Path('olli-record-room-navigation.js')
+          text = path.read_text()
+          old = '''  const selectionControls = document.getElementById('recordSelectionControls');
+            if (selectionControls) {
+              if (isObservationView && studentSelectionMode) selectionControls.classList.add('show');
+              else selectionControls.classList.remove('show');
+            }
+          }
+'''
+          new = '''  const selectionControls = document.getElementById('recordSelectionControls');
+            if (selectionControls) {
+              if (isObservationView && studentSelectionMode) selectionControls.classList.add('show');
+              else selectionControls.classList.remove('show');
+            }
+
+            if (typeof window.olliEnsureRecordAttendanceGuideButton === 'function') {
+              setTimeout(window.olliEnsureRecordAttendanceGuideButton, 0);
+            }
+            if (typeof window.scheduleRecordAttendanceGuideButtonAlign === 'function') {
+              window.scheduleRecordAttendanceGuideButtonAlign();
+            }
+          }
+'''
+          if text.count(old) != 1:
+              raise SystemExit('updateRecordHeaderUI tail mismatch')
+          path.write_text(text.replace(old, new, 1))
+
+          # Remove temporary audit report now that ownership has been resolved.
+          audit = Path('TMP_ATTENDANCE_WRAPPER_TARGETS.txt')
+          if audit.exists():
+              audit.unlink()
+
+      - name: Validate JavaScript and wrapper removal
+        run: |
+          node --check olli-record-list-view.js
+          node --check olli-attendance-policy-runtime.js
+          node --check olli-record-room-navigation.js
+          git diff --check
+          ! grep -q "previousElementaryRenderer\|previousKinderRenderer" olli-attendance-policy-runtime.js
+          ! grep -q "originalRenderElementaryStudentRows\|originalRenderKinderStudentRows" index.html
+          ! grep -q "__olliAttendanceAlignWrapped" index.html
+          grep -q "isRecordAttendanceGuideModeActive" index.html
+          grep -q "getOlliAttendancePolicyCounts" olli-record-list-view.js
+          grep -q "olliEnsureRecordAttendanceGuideButton" olli-record-room-navigation.js
+
+      - name: Commit refactor and remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/refactor-attendance-list-wrappers-once.yml
+          git add -A
+          git commit -m "refactor: source-own PC attendance student list rendering"
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
