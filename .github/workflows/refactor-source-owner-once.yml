@@ -1,4 +1,4 @@
-name: audit-shared-student-schedule-source
+name: refactor-shared-feedback-policy-source
 
 on:
   push:
@@ -6,38 +6,57 @@ on:
       - refactor/source-owned-no-overrides-20260912
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  audit:
+  refactor:
     if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Locate shared student schedule source owners
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Move cleared group behavior into policy source
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          needles = [
-            'getElementaryGroupFeedbackMonths',
-            'ELEMENTARY_GROUP_MONTH',
-            'mergeStudentInfoPreservingLocal',
-            'normalizeLessonTimeDisplay',
-            'getElementaryMetaText',
-            'getKinderMetaText',
-            'olliPatchStudentModalMarkup',
-            'olliPrepareInfoExtra',
-            'olliGetInfoExtra',
-          ]
-          for path in sorted(Path('.').rglob('*')):
-            if not path.is_file() or path.suffix.lower() not in {'.js','.html','.mjs','.cjs'}:
-              continue
-            text = path.read_text(encoding='utf-8', errors='replace')
-            hits = [(i,line.strip()) for i,line in enumerate(text.splitlines(),1) if any(n in line for n in needles)]
-            if hits:
-              print(f'\n### {path}')
-              for i,line in hits:
-                print(f'{i}: {line}')
+          p = Path('olli-operations-feedback-policy.js')
+          s = p.read_text(encoding='utf-8')
+          old = """function getElementaryGroupFeedbackMonths(group, student = null) {
+  const groupKey = String(group || student?.group || '').trim();
+  const saved = readElementaryGroupFeedbackMonthsMap();
+  if (groupKey && Array.isArray(saved[groupKey]) && saved[groupKey].length) return saved[groupKey];
+  return normalizeElementaryGroupMonths(student?.group_months || student?.feedback_months || student?.feedbackMonths || student?.groupFeedbackMonths || '');
+}
+"""
+          new = """function getElementaryGroupFeedbackMonths(group, student = null) {
+  const explicitGroup = arguments.length >= 1;
+  const groupKey = String(explicitGroup ? (group || '') : (student?.group || '')).trim();
+  if (explicitGroup && !groupKey) return [];
+  const saved = readElementaryGroupFeedbackMonthsMap();
+  if (groupKey && Array.isArray(saved[groupKey]) && saved[groupKey].length) return saved[groupKey];
+  return normalizeElementaryGroupMonths(student?.group_months || student?.feedback_months || student?.feedbackMonths || student?.groupFeedbackMonths || '');
+}
+"""
+          if s.count(old) != 1:
+              raise SystemExit(f'feedback month source block count={s.count(old)}')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
           PY
+          node --check olli-operations-feedback-policy.js
+          git diff --check
+          grep -q 'if (explicitGroup && !groupKey) return \[\];' olli-operations-feedback-policy.js
+      - name: Commit source correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add olli-operations-feedback-policy.js
+          git commit -m 'refactor: own cleared group feedback months in policy source'
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
