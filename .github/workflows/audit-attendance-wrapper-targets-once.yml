@@ -1,0 +1,42 @@
+name: audit-attendance-wrapper-targets-once
+
+on:
+  push:
+    branches:
+      - refactor/source-owned-no-overrides-20260912
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Locate source owners
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo '# renderElementaryStudentRows'
+            git grep -n -E '(^|[^A-Za-z0-9_])renderElementaryStudentRows([^A-Za-z0-9_]|$)' -- '*.js' '*.html' || true
+            echo
+            echo '# renderKinderStudentRows'
+            git grep -n -E '(^|[^A-Za-z0-9_])renderKinderStudentRows([^A-Za-z0-9_]|$)' -- '*.js' '*.html' || true
+            echo
+            echo '# updateRecordHeaderUI'
+            git grep -n -E '(^|[^A-Za-z0-9_])updateRecordHeaderUI([^A-Za-z0-9_]|$)' -- '*.js' '*.html' || true
+          } > TMP_ATTENDANCE_WRAPPER_TARGETS.txt
+      - name: Commit report and remove workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm -f .github/workflows/audit-attendance-wrapper-targets-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add TMP_ATTENDANCE_WRAPPER_TARGETS.txt
+          git commit -m 'chore: locate attendance wrapper source owners'
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
