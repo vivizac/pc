@@ -205,12 +205,33 @@ function renderRecordAttendanceSummary() {
   renderCurrentStudentRecords(searchValue);
 }
 
+function getRecordAttendanceGuideHtml(student) {
+  try {
+    if (typeof window.isRecordAttendanceGuideModeActive !== 'function' || !window.isRecordAttendanceGuideModeActive()) return null;
+    if (typeof window.getOlliAttendancePolicyCounts !== 'function') return null;
+    const counts = window.getOlliAttendancePolicyCounts(student);
+    if (!counts) return null;
+    return `<span class="recordAttendanceGuideMeta">
+      <span class="recordAttendanceMetric recordAttendanceYearMetric"><b>${Number(counts.year) || new Date().getFullYear()}년</b></span>
+      <span class="recordAttendanceMetric">결석 <b>${Number(counts.yearAbsence) || 0}회</b></span>
+      <span class="recordAttendanceMetric">보강 <b>${Number(counts.yearMakeup) || 0}회</b></span>
+      <span class="recordAttendanceMetric">남은 보강 <b>${Number(counts.remainingMakeup) || 0}회</b></span>
+    </span>`;
+  } catch(err) {
+    return null;
+  }
+}
+
 function renderElementaryStudentRows(students) {
   const cycleGroups = getElementaryCycleGroups(students);
   let previousSectionKey = '';
   return students.map((student, index) => {
     const metaBits = getElementaryMetaBits(student);
     const metaText = metaBits.join('\u00A0\u00A0|\u00A0\u00A0');
+    const attendanceGuideHtml = getRecordAttendanceGuideHtml(student);
+    const metaHtml = attendanceGuideHtml !== null
+      ? attendanceGuideHtml
+      : (metaText ? escapeHtml(metaText) : '');
     const sectionKey = (typeof getRecordSortSectionKey === 'function') ? getRecordSortSectionKey(student, 'elementary', cycleGroups) : getElementaryGroupSectionKey(student, cycleGroups);
     const groupBreakClass = index > 0 && sectionKey !== previousSectionKey ? ' groupBreak' : '';
     previousSectionKey = sectionKey;
@@ -222,7 +243,7 @@ function renderElementaryStudentRows(students) {
         ${renderElementaryLeadIcon(student)}
         <span class="studentTextWrap">
           <span>${escapeHtml(student.name)}</span>
-          ${metaText ? `<span class="studentMetaText">${escapeHtml(metaText)}</span>` : ''}
+          ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
         </span>
       </div>
     </button>`;
@@ -233,6 +254,11 @@ function renderKinderStudentRows(students) {
   let previousSectionKey = '';
   return students.map((student, index) => {
     const metaBits = getKinderMetaBits(student);
+    const attendanceGuideHtml = getRecordAttendanceGuideHtml(student);
+    const normalMetaText = metaBits.join('\u00A0\u00A0|\u00A0\u00A0');
+    const metaHtml = attendanceGuideHtml !== null
+      ? attendanceGuideHtml
+      : (normalMetaText ? escapeHtml(normalMetaText) : '');
     const sectionKey = (typeof getRecordSortSectionKey === 'function') ? getRecordSortSectionKey(student, 'kinder') : `status:${getStudentStatus(student)}:${student.age || ''}`;
     const groupBreakClass = index > 0 && sectionKey !== previousSectionKey ? ' groupBreak' : '';
     previousSectionKey = sectionKey;
@@ -244,7 +270,7 @@ function renderKinderStudentRows(students) {
         ${renderKinderLeadIcon(student)}
         <span class="studentTextWrap">
           <span>${escapeHtml(student.name)}</span>
-          ${metaBits.length ? `<span class="studentMetaText">${escapeHtml(metaBits.join('\u00A0\u00A0|\u00A0\u00A0'))}</span>` : ''}
+          ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
         </span>
       </div>
     </button>`;

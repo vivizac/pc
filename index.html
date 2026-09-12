@@ -2666,170 +2666,9 @@
 <script src="olli-settings-attendance-export.js"></script>
 <script src="olli-settings-detail.js"></script>
 <script id="olliRecordAttendanceGuideButtonPatch">
-/* 2026-07-03: 출결 버튼을 누르면 학생 목록 가이드가 출결 요약으로 전환됩니다. */
+/* 2026-09-13: 출결 가이드 상태/버튼만 관리합니다. 학생 행 렌더링은 olli-record-list-view.js가 소유합니다. */
 (function(){
   var attendanceGuideMode = false;
-  var originalRenderElementaryStudentRows = window.renderElementaryStudentRows;
-  var originalRenderKinderStudentRows = window.renderKinderStudentRows;
-
-  function toText(value){
-    return String(value == null ? '' : value).trim();
-  }
-  function safeEscape(value){
-    if (typeof window.escapeHtml === 'function') return window.escapeHtml(value);
-    return String(value == null ? '' : value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-  function safeTemplate(value){
-    if (typeof window.escapeTemplateLiteral === 'function') return window.escapeTemplateLiteral(value);
-    return String(value == null ? '' : value).replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
-  }
-  function formatDateKey(date){
-    if (typeof window.formatRecordAttendanceDateKey === 'function') return window.formatRecordAttendanceDateKey(date);
-    var d = date instanceof Date ? date : new Date(date);
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  }
-  function getEnrollmentDate(student){
-    var raw = '';
-    try {
-      raw = typeof window.getEnrolledAtFromStudent === 'function' ? window.getEnrolledAtFromStudent(student) : '';
-    } catch(e) { raw = ''; }
-    raw = raw || student?.enrolled_at || '';
-    if (!raw && student) {
-      var y = student.year || '';
-      var m = student.month || '';
-      var d = student.day || '';
-      if (y && m && d) raw = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-    }
-    if (!raw) return null;
-    var parsed = new Date(String(raw).split('T')[0]);
-    if (Number.isNaN(parsed.getTime())) return null;
-    parsed.setHours(0, 0, 0, 0);
-    return parsed;
-  }
-  function isLessonDate(student, date){
-    try {
-      if (typeof window.isRecordStudentLessonDate === 'function') return !!window.isRecordStudentLessonDate(student, date);
-    } catch(e) {}
-    return false;
-  }
-  function getAttendanceStatus(student, date){
-    try {
-      if (typeof window.getRecordAttendanceStatus === 'function') return window.getRecordAttendanceStatus(student?.id, formatDateKey(date));
-    } catch(e) {}
-    return '';
-  }
-  function getStudentAttendanceCounts(student){
-    var today = new Date();
-    today.setHours(0, 0, 0, 0);
-    var year = today.getFullYear();
-    var enrollment = getEnrollmentDate(student);
-    var yearStart = new Date(year, 0, 1);
-    var start = enrollment && enrollment > yearStart ? enrollment : yearStart;
-    var yearAbsence = 0;
-    var yearMakeup = 0;
-
-    for (var d = new Date(start.getTime()); d <= today; d.setDate(d.getDate() + 1)) {
-      var status = getAttendanceStatus(student, d);
-      var lessonDate = isLessonDate(student, d);
-      if (status === 'makeup') {
-        yearMakeup += 1;
-      }
-      // 결석은 당일이 지난 수업일만 카운트합니다.
-      // 오늘 수업은 아직 출석 체크 전일 수 있으므로 결석으로 보지 않습니다.
-      if (lessonDate && d < today && status !== 'attended') {
-        yearAbsence += 1;
-      }
-    }
-    return {
-      year: year,
-      yearAbsence: yearAbsence,
-      yearMakeup: yearMakeup,
-      remainingMakeup: Math.max(yearAbsence - yearMakeup, 0)
-    };
-  }
-  function renderAttendanceGuideHtml(student){
-    var c = getStudentAttendanceCounts(student);
-    return '<span class="recordAttendanceGuideMeta">'
-      + '<span class="recordAttendanceMetric recordAttendanceYearMetric"><b>' + c.year + '년</b></span>'
-      + '<span class="recordAttendanceMetric">결석 <b>' + c.yearAbsence + '회</b></span>'
-      + '<span class="recordAttendanceMetric">보강 <b>' + c.yearMakeup + '회</b></span>'
-      + '<span class="recordAttendanceMetric">남은 보강 <b>' + c.remainingMakeup + '회</b></span>'
-      + '</span>';
-  }
-  function getNormalElementaryMeta(student){
-    var bits = [];
-    try { bits = typeof window.getElementaryMetaBits === 'function' ? window.getElementaryMetaBits(student) : []; } catch(e) { bits = []; }
-    return (Array.isArray(bits) ? bits : []).join('\u00A0\u00A0|\u00A0\u00A0');
-  }
-  function getNormalKinderMeta(student){
-    var bits = [];
-    try { bits = typeof window.getKinderMetaBits === 'function' ? window.getKinderMetaBits(student) : []; } catch(e) { bits = []; }
-    return (Array.isArray(bits) ? bits : []).join('\u00A0\u00A0|\u00A0\u00A0');
-  }
-  function renderElementaryRowsWithAttendanceGuide(students){
-    var cycleGroups = typeof window.getElementaryCycleGroups === 'function' ? window.getElementaryCycleGroups(students) : {};
-    var previousSectionKey = '';
-    return (Array.isArray(students) ? students : []).map(function(student, index){
-      var guideHtml = attendanceGuideMode ? renderAttendanceGuideHtml(student) : safeEscape(getNormalElementaryMeta(student));
-      var sectionKey = '';
-      try {
-        sectionKey = typeof window.getRecordSortSectionKey === 'function'
-          ? window.getRecordSortSectionKey(student, 'elementary', cycleGroups)
-          : (typeof window.getElementaryGroupSectionKey === 'function' ? window.getElementaryGroupSectionKey(student, cycleGroups) : '');
-      } catch(e) { sectionKey = ''; }
-      var groupBreakClass = index > 0 && sectionKey !== previousSectionKey ? ' groupBreak' : '';
-      previousSectionKey = sectionKey;
-      var status = typeof window.getStudentStatus === 'function' ? window.getStudentStatus(student) : (student?.status || 'active');
-      var statusClass = status === 'paused' ? ' studentStatusPaused' : (status === 'withdrawn' ? ' studentStatusWithdrawn' : '');
-      var leadIcon = typeof window.renderElementaryLeadIcon === 'function' ? window.renderElementaryLeadIcon(student) : '';
-      return '\n    <button class="elementaryStudentRow' + groupBreakClass + statusClass + '" onclick="handleStudentRowClick(event,\'' + safeTemplate(student.id) + '\')" onpointerdown="startStudentLongPress(event,\'' + safeTemplate(student.id) + '\')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">'
-        + '<div class="elementaryRowInner">'
-        + leadIcon
-        + '<span class="studentTextWrap">'
-        + '<span>' + safeEscape(student.name || '') + '</span>'
-        + (guideHtml ? '<span class="studentMetaText">' + guideHtml + '</span>' : '')
-        + '</span></div></button>';
-    }).join('');
-  }
-  function renderKinderRowsWithAttendanceGuide(students){
-    var previousSectionKey = '';
-    return (Array.isArray(students) ? students : []).map(function(student, index){
-      var guideHtml = attendanceGuideMode ? renderAttendanceGuideHtml(student) : safeEscape(getNormalKinderMeta(student));
-      var sectionKey = '';
-      try {
-        sectionKey = typeof window.getRecordSortSectionKey === 'function'
-          ? window.getRecordSortSectionKey(student, 'kinder')
-          : 'status:' + (typeof window.getStudentStatus === 'function' ? window.getStudentStatus(student) : (student?.status || 'active')) + ':' + (student?.age || '');
-      } catch(e) { sectionKey = ''; }
-      var groupBreakClass = index > 0 && sectionKey !== previousSectionKey ? ' groupBreak' : '';
-      previousSectionKey = sectionKey;
-      var status = typeof window.getStudentStatus === 'function' ? window.getStudentStatus(student) : (student?.status || 'active');
-      var statusClass = status === 'paused' ? ' studentStatusPaused' : (status === 'withdrawn' ? ' studentStatusWithdrawn' : '');
-      var leadIcon = typeof window.renderKinderLeadIcon === 'function' ? window.renderKinderLeadIcon(student) : '';
-      return '\n    <button class="kinderStudentRow' + groupBreakClass + statusClass + '" onclick="handleStudentRowClick(event,\'' + safeTemplate(student.id) + '\')" onpointerdown="startStudentLongPress(event,\'' + safeTemplate(student.id) + '\')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">'
-        + '<div class="kinderRowInner">'
-        + leadIcon
-        + '<span class="studentTextWrap">'
-        + '<span>' + safeEscape(student.name || '') + '</span>'
-        + (guideHtml ? '<span class="studentMetaText">' + guideHtml + '</span>' : '')
-        + '</span></div></button>';
-    }).join('');
-  }
-  window.renderElementaryStudentRows = function(students){
-    if (!attendanceGuideMode && typeof originalRenderElementaryStudentRows === 'function') return originalRenderElementaryStudentRows(students);
-    return renderElementaryRowsWithAttendanceGuide(students);
-  };
-  window.renderKinderStudentRows = function(students){
-    if (!attendanceGuideMode && typeof originalRenderKinderStudentRows === 'function') return originalRenderKinderStudentRows(students);
-    return renderKinderRowsWithAttendanceGuide(students);
-  };
-  try { renderElementaryStudentRows = window.renderElementaryStudentRows; } catch(e) {}
-  try { renderKinderStudentRows = window.renderKinderStudentRows; } catch(e) {}
 
   function refreshCurrentStudentRows(){
     var searchValue = document.getElementById('searchName')?.value.trim() || '';
@@ -2845,15 +2684,6 @@
     btn.setAttribute('aria-pressed', attendanceGuideMode ? 'true' : 'false');
     btn.title = attendanceGuideMode ? '출결 가이드 끄기' : '출결 가이드 보기';
   }
-  window.toggleRecordAttendanceGuideMode = function(event){
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-    attendanceGuideMode = !attendanceGuideMode;
-    updateGuideButton();
-    refreshCurrentStudentRows();
-  };
   function installGuideButton(){
     var row = document.querySelector('#recordRoomScreen .recordModeLabelRow');
     if (!row || document.getElementById('recordAttendanceGuideToggle')) {
@@ -2871,15 +2701,19 @@
     updateGuideButton();
   }
 
-  var oldUpdateRecordHeaderUI = window.updateRecordHeaderUI;
-  if (typeof oldUpdateRecordHeaderUI === 'function') {
-    window.updateRecordHeaderUI = function(){
-      var result = oldUpdateRecordHeaderUI.apply(this, arguments);
-      setTimeout(installGuideButton, 0);
-      return result;
-    };
-    try { updateRecordHeaderUI = window.updateRecordHeaderUI; } catch(e) {}
-  }
+  window.isRecordAttendanceGuideModeActive = function(){ return attendanceGuideMode; };
+  window.olliEnsureRecordAttendanceGuideButton = installGuideButton;
+  window.toggleRecordAttendanceGuideMode = function(event){
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    attendanceGuideMode = !attendanceGuideMode;
+    updateGuideButton();
+    refreshCurrentStudentRows();
+    if (typeof window.scheduleRecordAttendanceGuideButtonAlign === 'function') window.scheduleRecordAttendanceGuideButtonAlign();
+  };
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', installGuideButton);
   } else {
@@ -4692,29 +4526,6 @@ body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfSendBtn {
 
   window.alignRecordAttendanceGuideButton = alignRecordAttendanceGuideButton;
   window.scheduleRecordAttendanceGuideButtonAlign = scheduleAlign;
-
-  var oldUpdateRecordHeaderUI = window.updateRecordHeaderUI;
-  if (typeof oldUpdateRecordHeaderUI === 'function' && !oldUpdateRecordHeaderUI.__olliAttendanceAlignWrapped) {
-    var wrappedUpdate = function(){
-      var result = oldUpdateRecordHeaderUI.apply(this, arguments);
-      scheduleAlign();
-      return result;
-    };
-    wrappedUpdate.__olliAttendanceAlignWrapped = true;
-    window.updateRecordHeaderUI = wrappedUpdate;
-    try { updateRecordHeaderUI = window.updateRecordHeaderUI; } catch (_) {}
-  }
-
-  var oldToggleRecordAttendanceGuideMode = window.toggleRecordAttendanceGuideMode;
-  if (typeof oldToggleRecordAttendanceGuideMode === 'function' && !oldToggleRecordAttendanceGuideMode.__olliAttendanceAlignWrapped) {
-    var wrappedToggle = function(){
-      var result = oldToggleRecordAttendanceGuideMode.apply(this, arguments);
-      scheduleAlign();
-      return result;
-    };
-    wrappedToggle.__olliAttendanceAlignWrapped = true;
-    window.toggleRecordAttendanceGuideMode = wrappedToggle;
-  }
 
   if (typeof ResizeObserver !== 'undefined') {
     try {
