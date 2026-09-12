@@ -222,16 +222,6 @@
     })().finally(() => { teacherOptionsLoading = null; });
     return teacherOptionsLoading;
   }
-  const originalSettingsApplyStateToUI = window.settingsApplyStateToUI;
-  if (typeof originalSettingsApplyStateToUI === 'function') {
-    window.settingsApplyStateToUI = function(){
-      const r = originalSettingsApplyStateToUI.apply(this, arguments);
-      cacheTeacherOptions();
-      refreshAllTeacherDropdowns();
-      return r;
-    };
-  }
-  
 function refreshAllTeacherDropdowns(){
     try {
       const targets = [
