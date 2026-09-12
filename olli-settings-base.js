@@ -214,6 +214,11 @@ function settingsSetCachedAcademy(academy) {
   localStorage.setItem('olli_current_academy_id', academy.id);
   localStorage.setItem('olli_current_academy_code', academy.academy_code || '');
   localStorage.setItem('olli_current_academy_name', academy.academy_name || '');
+  const region = academy.region || academy.academy_region || '';
+  if (region) localStorage.setItem('olli_current_academy_region', region);
+  if (academy.profile_image_url) {
+    settingsSaveCachePatch({ profileImageUrl: academy.profile_image_url, profileImageDataUrl: '' });
+  }
   if (typeof window.olliOnSettingsCachedAcademy === 'function') {
     try { window.olliOnSettingsCachedAcademy(academy); } catch (err) { console.warn('settings cached academy extension skipped:', err); }
   }
@@ -1171,7 +1176,9 @@ function settingsApplyStateToUI() {
     el.textContent = academyName;
   });
 
-  const imageUrl = olliSettingsState.academy?.profile_image_url || cached.profileImageDataUrl || '';
+  const imageUrl = (typeof window.olliGetSettingsProfileImageUrl === 'function'
+    ? window.olliGetSettingsProfileImageUrl()
+    : '') || olliSettingsState.academy?.profile_image_url || cached.profileImageUrl || cached.profileImageDataUrl || '';
   document.querySelectorAll('.settingsProfileImage').forEach(el => {
     if (imageUrl) {
       el.innerHTML = '<img src="' + settingsEscapeAttr(imageUrl) + '" alt="학원 프로필">';
@@ -1601,15 +1608,42 @@ function openSettingsSheet(type) {
   document.getElementById('settingsSheetTitle').textContent = data.title;
   document.getElementById('settingsSheetDesc').textContent = data.desc;
   document.getElementById('settingsSheetContent').innerHTML = typeof data.html === 'function' ? data.html() : data.html;
+
+  const actions = overlay.querySelector('.settingsSheetActions');
+  const saveBtn = overlay.querySelector('.settingsSheetBtn.primary');
+  const cancelBtn = overlay.querySelector('.settingsSheetBtn:not(.primary)');
+  const consultationReadOnly = type === 'consultationMonths'
+    && typeof canEditOlliConsultationSettings === 'function'
+    && !canEditOlliConsultationSettings();
+  if (actions) actions.style.display = type === 'logout' ? 'none' : 'grid';
+  if (saveBtn) saveBtn.style.display = data && typeof data.onSave === 'function' && !consultationReadOnly ? 'flex' : 'none';
+  if (cancelBtn) cancelBtn.textContent = consultationReadOnly ? '닫기' : '취소';
+
   overlay.classList.add('show');
 }
 
 async function saveSettingsSheet() {
-  const data = settingsSheetData[currentSettingsSheetType];
-  if (data && typeof data.onSave === 'function') {
+  const btn = document.querySelector('#settingsSheetOverlay .settingsSheetBtn.primary');
+  try {
+    const data = settingsSheetData[currentSettingsSheetType];
+    if (!data || typeof data.onSave !== 'function') {
+      closeSettingsSheet();
+      return;
+    }
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '저장 중...';
+    }
     await data.onSave();
+    closeSettingsSheet();
+  } catch (err) {
+    alert('저장 중 오류가 발생했습니다.\n' + (err.message || err));
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '저장';
+    }
   }
-  closeSettingsSheet();
 }
 
 function closeSettingsSheet(event) {
