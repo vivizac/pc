@@ -43,16 +43,18 @@ jobs:
               if marker not in settings:
                   raise SystemExit(f'canonical settings hook missing: {marker}')
 
-          wrapper = """  const originalSettingsApplyStateToUI = window.settingsApplyStateToUI;
-          if (typeof originalSettingsApplyStateToUI === 'function') {
-            window.settingsApplyStateToUI = function(){
-              const r = originalSettingsApplyStateToUI.apply(this, arguments);
-              cacheTeacherOptions();
-              refreshAllTeacherDropdowns();
-              return r;
-            };
-          }
-          """
+          wrapper = (
+              "  const originalSettingsApplyStateToUI = window.settingsApplyStateToUI;\n"
+              "  if (typeof originalSettingsApplyStateToUI === 'function') {\n"
+              "    window.settingsApplyStateToUI = function(){\n"
+              "      const r = originalSettingsApplyStateToUI.apply(this, arguments);\n"
+              "      cacheTeacherOptions();\n"
+              "      refreshAllTeacherDropdowns();\n"
+              "      return r;\n"
+              "    };\n"
+              "  }\n"
+              "  \n"
+          )
           replace_once(
               'olli-record-sort-student-ui.js',
               wrapper,
@@ -67,12 +69,13 @@ jobs:
               'elementary info className erase'
           )
 
-          lifecycle_erase = """    // 초등부의 기존 '반' 정보는 더 이상 사용하지 않습니다.
-            if (next.className) {
-              next.className = '';
-              changed = true;
-            }
-          """
+          lifecycle_erase = (
+              "    // 초등부의 기존 '반' 정보는 더 이상 사용하지 않습니다.\n"
+              "    if (next.className) {\n"
+              "      next.className = '';\n"
+              "      changed = true;\n"
+              "    }\n"
+          )
           replace_once(
               'olli-data-students.js',
               lifecycle_erase,
