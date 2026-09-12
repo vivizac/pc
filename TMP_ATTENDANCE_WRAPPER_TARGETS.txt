@@ -1,0 +1,54 @@
+# renderElementaryStudentRows
+index.html:2672:  var originalRenderElementaryStudentRows = window.renderElementaryStudentRows;
+index.html:2823:  window.renderElementaryStudentRows = function(students){
+index.html:2831:  try { renderElementaryStudentRows = window.renderElementaryStudentRows; } catch(e) {}
+olli-attendance-policy-runtime.js:230:  var previousElementaryRenderer = window.renderElementaryStudentRows;
+olli-attendance-policy-runtime.js:233:  window.renderElementaryStudentRows = function(students){
+olli-attendance-policy-runtime.js:256:  try { renderElementaryStudentRows = window.renderElementaryStudentRows; } catch(_) {}
+olli-record-list-view.js:208:function renderElementaryStudentRows(students) {
+olli-record-list-view.js:263:  const activeHtml = renderElementaryStudentRows(activeStudents);
+olli-record-list-view.js:264:  const pausedHtml = renderElementaryStudentRows(pausedStudents);
+olli-record-list-view.js:265:  const withdrawnHtml = renderElementaryStudentRows(withdrawnStudents);
+pc-attendance.js:273:      const renderer = division === 'kinder' ? global.renderKinderStudentRows || renderKinderStudentRows : global.renderElementaryStudentRows || renderElementaryStudentRows;
+
+# renderKinderStudentRows
+index.html:2673:  var originalRenderKinderStudentRows = window.renderKinderStudentRows;
+index.html:2827:  window.renderKinderStudentRows = function(students){
+index.html:2832:  try { renderKinderStudentRows = window.renderKinderStudentRows; } catch(e) {}
+olli-attendance-policy-runtime.js:231:  var previousKinderRenderer = window.renderKinderStudentRows;
+olli-attendance-policy-runtime.js:258:  window.renderKinderStudentRows = function(students){
+olli-attendance-policy-runtime.js:280:  try { renderKinderStudentRows = window.renderKinderStudentRows; } catch(_) {}
+olli-record-list-view.js:232:function renderKinderStudentRows(students) {
+olli-record-list-view.js:282:  const activeHtml = renderKinderStudentRows(activeStudents);
+olli-record-list-view.js:283:  const pausedHtml = renderKinderStudentRows(pausedStudents);
+olli-record-list-view.js:284:  const withdrawnHtml = renderKinderStudentRows(withdrawnStudents);
+pc-attendance.js:273:      const renderer = division === 'kinder' ? global.renderKinderStudentRows || renderKinderStudentRows : global.renderElementaryStudentRows || renderElementaryStudentRows;
+
+# updateRecordHeaderUI
+index.html:2874:  var oldUpdateRecordHeaderUI = window.updateRecordHeaderUI;
+index.html:2876:    window.updateRecordHeaderUI = function(){
+index.html:2881:    try { updateRecordHeaderUI = window.updateRecordHeaderUI; } catch(e) {}
+index.html:4696:  var oldUpdateRecordHeaderUI = window.updateRecordHeaderUI;
+index.html:4704:    window.updateRecordHeaderUI = wrappedUpdate;
+index.html:4705:    try { updateRecordHeaderUI = window.updateRecordHeaderUI; } catch (_) {}
+olli-app-startup.js:64:    updateRecordHeaderUI();
+olli-auth-academy-switch.js:72:    if (typeof updateRecordHeaderUI === 'function') updateRecordHeaderUI();
+olli-consultation-runtime.js:558:  updateRecordHeaderUI();
+olli-consultation-runtime.js:582:      updateRecordHeaderUI();
+olli-consultation-runtime.js:592:  updateRecordHeaderUI();
+olli-consultation-runtime.js:608:    updateRecordHeaderUI();
+olli-data-record-list.js:287:  updateRecordHeaderUI();
+olli-data-record-list.js:293:  updateRecordHeaderUI();
+olli-data-student-operations.js:51:    updateRecordHeaderUI();
+olli-data-student-operations.js:97:  updateRecordHeaderUI();
+olli-data-student-operations.js:195:  updateRecordHeaderUI();
+olli-data-student-operations.js:259:  updateRecordHeaderUI();
+olli-record-list-view.js:203:  updateRecordHeaderUI();
+olli-record-list-view.js:489:  updateRecordHeaderUI();
+olli-record-room-navigation.js:38:function updateRecordHeaderUI() {
+olli-record-room-navigation.js:133:  updateRecordHeaderUI();
+olli-record-room-navigation.js:173:    updateRecordHeaderUI();
+olli-record-room-navigation.js:184:  updateRecordHeaderUI();
+olli-record-room-navigation.js:224:    updateRecordHeaderUI();
+olli-record-search-controls.js:266:  updateRecordHeaderUI();
+pc-shell.js:83:    if (typeof global.updateRecordHeaderUI === 'function') global.updateRecordHeaderUI();
