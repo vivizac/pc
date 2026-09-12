@@ -111,6 +111,17 @@ function getSummaryRegenerateIconSvg() {
   </svg>`;
 }
 
+function getAttendanceFeedbackCopyIconSvg() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="8.5" y="8.5" width="10.5" height="10.5" rx="2" />
+    <path d="M15.5 8.5V6.8A1.8 1.8 0 0 0 13.7 5H6.8A1.8 1.8 0 0 0 5 6.8v6.9a1.8 1.8 0 0 0 1.8 1.8h1.7" />
+  </svg>`;
+}
+
+function getAttendanceFeedbackCopySuccessIconSvg() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 12.5l4.1 4.1L18.8 7.4" /></svg>`;
+}
+
 function getSummaryMonthsFromAttendanceItem(item) {
   const row = item?.row || item || {};
   const candidates = [row.summary_months, row.summaryMonths, row.months, item?.summary_months, item?.months];
@@ -190,6 +201,7 @@ async function copyAttendanceFeedbackSheetItem(itemId, kind = 'feedback', event)
   if (!content) return;
 
   const btn = event?.currentTarget || null;
+  const originalHtml = btn ? btn.innerHTML : '';
   const originalText = btn ? (btn.textContent || '복사') : '복사';
 
   try {
@@ -214,12 +226,25 @@ async function copyAttendanceFeedbackSheetItem(itemId, kind = 'feedback', event)
 
     if (!copied) throw new Error('clipboard_failed');
 
-    if (btn) showOlliCopySuccess(btn, { restoreHtml: originalText, restoreDisabled: false });
+    if (btn?.classList?.contains('attendanceFeedbackSheetCopyIconBtn')) {
+      btn.classList.add('copied');
+      btn.innerHTML = getAttendanceFeedbackCopySuccessIconSvg();
+      setTimeout(() => {
+        btn.innerHTML = originalHtml || getAttendanceFeedbackCopyIconSvg();
+        btn.classList.remove('copied');
+      }, 900);
+    } else if (btn) {
+      showOlliCopySuccess(btn, { restoreHtml: originalHtml || originalText, restoreDisabled: false });
+    }
     if (typeof showPushToast === 'function') showPushToast('기록을 복사했어요.');
   } catch (err) {
-    if (btn) {
+    if (btn?.classList?.contains('attendanceFeedbackSheetCopyIconBtn')) {
+      btn.innerHTML = originalHtml || getAttendanceFeedbackCopyIconSvg();
+      btn.classList.add('copyFailed');
+      setTimeout(() => btn.classList.remove('copyFailed'), 1200);
+    } else if (btn) {
       btn.textContent = '복사 실패';
-      setTimeout(() => { btn.textContent = originalText; }, 1200);
+      setTimeout(() => { btn.innerHTML = originalHtml || originalText; }, 1200);
     }
     if (typeof showPushToast === 'function') showPushToast('복사에 실패했어요.');
   }
@@ -343,6 +368,9 @@ function renderAttendanceFeedbackSheetCards(items, emptyText, student, options =
   if (!items.length) return `<div class="attendanceFeedbackSheetEmpty">${escapeHtml(emptyText)}</div>`;
   const kind = options.kind === 'summary' ? 'summary' : 'feedback';
   const hidePreview = !!options.hidePreview;
+  const iconCopy = !!options.iconCopy;
+  const showSummaryBadge = !!options.showSummaryBadge;
+  const useInlineCardTools = iconCopy || showSummaryBadge;
   return items.map(item => {
     const id = escapeHtml(String(item.id || ''));
     const title = getAttendanceFeedbackItemTitle(item, student, kind);
@@ -352,14 +380,22 @@ function renderAttendanceFeedbackSheetCards(items, emptyText, student, options =
     const summaryRegenerateButton = kind === 'summary'
       ? `<button type="button" class="attendanceSummaryRegenerateBtn" onclick="regenerateAttendanceSummaryFeedback('${escapeJsSingleQuote(String(item.id || ''))}', event)" aria-label="종합 성장 기록 재생성">${getSummaryRegenerateIconSvg()}</button>`
       : '';
+    const summaryBadge = showSummaryBadge && kind === 'summary'
+      ? '<span class="attendanceFeedbackSummaryBadge">종합성장기록</span>'
+      : '';
+    const copyIconButton = iconCopy
+      ? `<button type="button" class="attendanceFeedbackSheetCopyIconBtn" onclick="copyAttendanceFeedbackSheetItem('${escapeJsSingleQuote(String(item.id || ''))}', '${kind}', event)" aria-label="${escapeHtml(title)} 본문 복사" title="본문 복사">${getAttendanceFeedbackCopyIconSvg()}</button>`
+      : '';
+    const titleMarkup = useInlineCardTools
+      ? `<div class="attendanceFeedbackSheetCardTopRow"><div class="attendanceFeedbackSheetCardTitleWrap"><div class="attendanceFeedbackSheetCardTitle">${escapeHtml(title)}</div>${summaryBadge}</div><div class="attendanceFeedbackSheetCardTopActions">${summaryRegenerateButton}${copyIconButton}</div></div>`
+      : `${summaryRegenerateButton}<div class="attendanceFeedbackSheetCardTitle">${escapeHtml(title)}</div>`;
     return `<article class="attendanceFeedbackSheetCard${hidePreview ? ' noPreview' : ''}" data-attendance-feedback-id="${id}" onclick="toggleAttendanceFeedbackSheetCard('${escapeJsSingleQuote(String(item.id || ''))}')">
-      ${summaryRegenerateButton}
-      <div class="attendanceFeedbackSheetCardTitle">${escapeHtml(title)}</div>
+      ${titleMarkup}
       <div class="attendanceFeedbackSheetCardDate">${escapeHtml(dateText)}</div>
       ${hidePreview ? '' : `<div class="attendanceFeedbackSheetPreview">${escapeHtml(preview)}</div>`}
       <div class="attendanceFeedbackSheetFullText">${escapeHtml(content)}</div>
       <div class="attendanceFeedbackSheetCardActions" onclick="event.stopPropagation()">
-        <button type="button" class="attendanceFeedbackSheetActionBtn" onclick="copyAttendanceFeedbackSheetItem('${escapeJsSingleQuote(String(item.id || ''))}', '${kind}', event)">복사</button>
+        ${iconCopy ? '' : `<button type="button" class="attendanceFeedbackSheetActionBtn" onclick="copyAttendanceFeedbackSheetItem('${escapeJsSingleQuote(String(item.id || ''))}', '${kind}', event)">복사</button>`}
         <button type="button" class="attendanceFeedbackSheetActionBtn delete" onclick="openAttendanceRecordDeleteOverlay('${escapeJsSingleQuote(String(item.id || ''))}', '${kind}', event)">삭제</button>
       </div>
     </article>`;

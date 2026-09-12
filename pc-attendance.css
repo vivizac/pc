@@ -75,7 +75,7 @@ body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .kinderStuden
 .pcAttendanceDetailBody{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:18px;flex:1;min-width:0;min-height:0;padding:18px 20px 20px;box-sizing:border-box;overflow:hidden;}
 .pcAttendanceEditorCard,.pcAttendanceCombinedCard{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;border:1px solid #edf0f3;border-radius:21px;background:#fafbfc;box-sizing:border-box;}
 .pcAttendanceSharedEditorHost{position:relative;flex:1;min-width:0;min-height:0;overflow:hidden;background:#fff;}
-.pcAttendanceCombinedBody{display:grid;grid-template-rows:minmax(0,1fr) minmax(0,1fr);gap:0;flex:1;min-height:0;overflow:hidden;padding:0 10px 10px;}
+.pcAttendanceCombinedBody{display:flex;flex-direction:column;gap:0;flex:1;min-height:0;overflow:hidden;padding:0 10px 10px;}
 /* 로컬 캐시가 없는 최초 조회에서도 로딩 문구는 노출하지 않고 서버 갱신은 뒤에서 계속 진행 */
 body.olliPcApp #recordRoomScreen #pcAttendanceCombinedBody > .attendanceFeedbackSheetEmpty{visibility:hidden;}
 .pcAttendanceDetailPanel .pcAttendanceRecordSection{display:flex;flex-direction:column;min-height:0;overflow:hidden;border:0;border-radius:0;background:transparent;padding:13px 0 0;box-sizing:border-box;}
@@ -88,6 +88,18 @@ body.olliPcApp #recordRoomScreen #pcAttendanceCombinedBody > .attendanceFeedback
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCard{margin-bottom:9px;border:1px solid #e7eaee;background:#fff;border-radius:17px;padding:14px;box-sizing:border-box;box-shadow:none;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCard:hover{border-color:#d5e4f5;background:#fcfdff;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCardTitle{font-size:13px;}
+.pcAttendanceDetailPanel .pcAttendanceRecordSectionUnified{flex:1;padding-top:13px;}
+.pcAttendanceDetailPanel .attendanceFeedbackSheetCardTopRow{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;min-width:0;}
+.pcAttendanceDetailPanel .attendanceFeedbackSheetCardTitleWrap{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0;padding-top:3px;}
+.pcAttendanceDetailPanel .attendanceFeedbackSummaryBadge{display:inline-flex;align-items:center;justify-content:center;min-height:21px;padding:0 8px;border-radius:999px;background:#eaf4ff;color:#1687ff;font-size:9.5px;font-weight:820;line-height:1;letter-spacing:-.025em;white-space:nowrap;box-sizing:border-box;}
+.pcAttendanceDetailPanel .attendanceFeedbackSheetCardTopActions{display:inline-flex;align-items:center;justify-content:flex-end;gap:3px;flex:0 0 auto;margin-left:auto;}
+.pcAttendanceDetailPanel .attendanceFeedbackSheetCopyIconBtn{width:28px;height:28px;min-width:28px;border:0;border-radius:0;background:transparent;color:#8b929b;padding:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:none;-webkit-tap-highlight-color:transparent;}
+.pcAttendanceDetailPanel .attendanceFeedbackSheetCopyIconBtn:hover{background:transparent;color:#1687ff;}
+.pcAttendanceDetailPanel .attendanceFeedbackSheetCopyIconBtn:focus-visible{outline:2px solid rgba(22,135,255,.26);outline-offset:1px;}
+.pcAttendanceDetailPanel .attendanceFeedbackSheetCopyIconBtn.copied{color:#1687ff;}
+.pcAttendanceDetailPanel .attendanceFeedbackSheetCopyIconBtn.copyFailed{color:#d94d4d;}
+.pcAttendanceDetailPanel .attendanceFeedbackSheetCopyIconBtn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+.pcAttendanceDetailPanel .attendanceSummaryRegenerateBtn{position:static;top:auto;right:auto;flex:0 0 auto;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCardDate{font-size:10.5px;margin-top:4px;margin-bottom:0;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetFullText{font-size:13px;line-height:1.72;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetActionBtn{height:32px;min-width:54px;font-size:11px;}

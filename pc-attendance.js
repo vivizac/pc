@@ -379,7 +379,7 @@
     const academyPanel = document.getElementById('pcAcademyDetailPanel');
     host.insertBefore(panel, academyPanel || null);
     panel.addEventListener('click', (event) => {
-      if (event.target.closest('.attendanceFeedbackSheetCardActions, .attendanceSummaryRegenerateBtn')) return;
+      if (event.target.closest('.attendanceFeedbackSheetCardActions, .attendanceSummaryRegenerateBtn, .attendanceFeedbackSheetCopyIconBtn')) return;
       const card = event.target.closest('.attendanceFeedbackSheetCard');
       if (!card || !panel.contains(card)) return;
       event.preventDefault();
@@ -508,29 +508,57 @@ function recordWorkspaceHtml(student, recordContent) {
     if (body) body.innerHTML = recordQuietLoadingHtml();
   }
 
-  function renderRecordSection(title, items, emptyText, student, kind) {
-    let cards = '';
-    try {
-      cards = typeof renderAttendanceFeedbackSheetCards === 'function'
-        ? renderAttendanceFeedbackSheetCards(items, emptyText, student, { kind, hidePreview: true })
-        : '';
-    } catch (_) {}
-    return '<section class="attendanceFeedbackSheetSection pcAttendanceRecordSection"><div class="pcAttendanceRecordSectionHead"><div class="attendanceFeedbackSheetSectionTitle">'+title+'</div><span>'+items.length+'개</span></div><div class="attendanceFeedbackSheetScroll">'+(cards || '<div class="attendanceFeedbackSheetEmpty">'+emptyText+'</div>')+'</div></section>';
+  function getPcAttendanceRecordTimestamp(item) {
+    const raw = item?.createdAt || item?.row?.date || item?.row?.created_at || item?.row?.updated_at || '';
+    const time = new Date(raw).getTime();
+    return Number.isFinite(time) ? time : 0;
+  }
+
+  function renderUnifiedRecordCards(student, feedbacks, summaries) {
+    const combined = [
+      ...feedbacks.map((item, index) => ({ item, kind: 'feedback', index })),
+      ...summaries.map((item, index) => ({ item, kind: 'summary', index: feedbacks.length + index }))
+    ].sort((a, b) => {
+      const dateDelta = getPcAttendanceRecordTimestamp(b.item) - getPcAttendanceRecordTimestamp(a.item);
+      return dateDelta || (a.index - b.index);
+    });
+
+    if (!combined.length) return '<div class="attendanceFeedbackSheetEmpty">저장된 기록이 없습니다.</div>';
+
+    const cards = combined.map(({ item, kind }) => {
+      try {
+        return typeof renderAttendanceFeedbackSheetCards === 'function'
+          ? renderAttendanceFeedbackSheetCards([item], '', student, {
+              kind,
+              hidePreview: true,
+              iconCopy: true,
+              showSummaryBadge: true
+            })
+          : '';
+      } catch (_) {
+        return '';
+      }
+    }).join('');
+
+    return cards || '<div class="attendanceFeedbackSheetEmpty">저장된 기록이 없습니다.</div>';
   }
 
   function renderCombinedRecords(student, data) {
     const feedbacks = Array.isArray(data?.feedbacks) ? data.feedbacks : [];
     const summaries = Array.isArray(data?.summaries) ? data.summaries : [];
 
+    // 기존 공통 시트 상태는 그대로 유지해 복사·삭제·종합기록 재생성 로직을 변경하지 않습니다.
     try {
       if (typeof renderAttendanceStudentFeedbackSheet === 'function') {
         renderAttendanceStudentFeedbackSheet(student, { feedbacks, summaries });
       }
     } catch (_) {}
+
     const body = document.getElementById('pcAttendanceCombinedBody');
     if (!body) return;
-    body.innerHTML = renderRecordSection('수업 기록', feedbacks, '저장된 관찰기록이 없습니다.', student, 'feedback')
-      + renderRecordSection('종합 성장 기록', summaries, '저장된 종합 성장 기록이 없습니다.', student, 'summary');
+    body.innerHTML = '<section class="attendanceFeedbackSheetSection pcAttendanceRecordSection pcAttendanceRecordSectionUnified" aria-label="관찰 및 성장 기록"><div class="attendanceFeedbackSheetScroll">'
+      + renderUnifiedRecordCards(student, feedbacks, summaries)
+      + '</div></section>';
   }
 
   async function refreshSelectedRecord() {
