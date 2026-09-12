@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   refactor:
-    if: github.actor != 'github-actions[bot]'
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,63 +19,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Move attendance sort and settings hooks into shared owners
+      - name: Apply shared attendance source changes
+        run: python3 .github/tmp/refactor_shared_attendance.py
+      - name: Validate shared attendance source changes
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          # '전체' 정렬은 상태 순서 + 이름 한글순만 사용합니다.
-          p = Path('olli-data-record-list.js')
-          s = p.read_text(encoding='utf-8')
-          old_elem = """function compareElementaryByRecordSort(a,b) {
-  const criterion = getRecordSortCriteria('elementary');
-  let result = 0;
-"""
-          new_elem = """function compareElementaryByRecordSort(a,b) {
-  const criterion = getRecordSortCriteria('elementary');
-  if (criterion === 'initial') return compareRecordSortName(a,b);
-  let result = 0;
-"""
-          if s.count(old_elem) != 1:
-              raise SystemExit(f'elementary comparator owner block count={s.count(old_elem)}')
-          s = s.replace(old_elem, new_elem, 1)
-          old_kinder = """function compareKinderByRecordSort(a,b) {
-  const criterion = getRecordSortCriteria('kinder');
-  let result = 0;
-"""
-          new_kinder = """function compareKinderByRecordSort(a,b) {
-  const criterion = getRecordSortCriteria('kinder');
-  if (criterion === 'initial') return compareRecordSortName(a,b);
-  let result = 0;
-"""
-          if s.count(old_kinder) != 1:
-              raise SystemExit(f'kinder comparator owner block count={s.count(old_kinder)}')
-          p.write_text(s.replace(old_kinder, new_kinder, 1), encoding='utf-8')
-
-          # 출결 설정 기능은 canonical settingsApplyStateToUI가 명시적으로 호출합니다.
-          p = Path('olli-settings-base.js')
-          s = p.read_text(encoding='utf-8')
-          marker = """  if (typeof window.olliApplySettingsAccountEnhancements === 'function') {
-    try { window.olliApplySettingsAccountEnhancements(); } catch (err) { console.warn('settings account UI extension skipped:', err); }
-  }
-"""
-          replacement = marker + """  if (typeof window.olliApplyAttendancePolicySettings === 'function') {
-    try { window.olliApplyAttendancePolicySettings(); } catch (err) { console.warn('attendance policy settings extension skipped:', err); }
-  }
-"""
-          if s.count(marker) != 1:
-              raise SystemExit(f'settings extension marker count={s.count(marker)}')
-          p.write_text(s.replace(marker, replacement, 1), encoding='utf-8')
-          PY
           node --check olli-data-record-list.js
           node --check olli-settings-base.js
           git diff --check
-          grep -Fq "if (criterion === 'initial') return compareRecordSortName(a,b);" olli-data-record-list.js
           test "$(grep -Fc "if (criterion === 'initial') return compareRecordSortName(a,b);" olli-data-record-list.js)" -eq 2
           grep -Fq "typeof window.olliApplyAttendancePolicySettings === 'function'" olli-settings-base.js
-      - name: Commit source correction
+      - name: Commit source changes
         shell: bash
         run: |
           set -euo pipefail
