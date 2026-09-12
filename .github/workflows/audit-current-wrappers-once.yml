@@ -1,0 +1,72 @@
+name: audit-current-wrappers-once
+
+on:
+  push:
+    branches:
+      - refactor/source-owned-no-overrides-20260912
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build current wrapper audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          files = [Path('index.html')] + sorted(Path('.').glob('*.js'))
+          alias_re = re.compile(r'\b(?:const|let|var)\s+([A-Za-z_$][\w$]*(?:original|previous|old)[A-Za-z0-9_$]*|(?:original|previous|old)[A-Za-z0-9_$]*)\s*=\s*(?:window|global)\.([A-Za-z_$][\w$]*)', re.I)
+          wrap_fn_re = re.compile(r'\bfunction\s+([A-Za-z_$][\w$]*(?:wrap|patch)[A-Za-z0-9_$]*|(?:wrap|patch)[A-Za-z0-9_$]*)\s*\(', re.I)
+          apply_re = re.compile(r'\.apply\(this,\s*arguments\)')
+          marker_re = re.compile(r'(?:__\w*(?:Wrapped|Patch)\w*|FinalFix|PatchScript|patch\b)', re.I)
+
+          lines = ['# Current wrapper / override audit', '', 'Generated from branch `refactor/source-owned-no-overrides-20260912`.', '', 'This is a candidate list only. Sync/idempotency/realtime guards are not removal targets without separate review.', '']
+          total = 0
+          for path in files:
+              if not path.exists():
+                  continue
+              text = path.read_text(encoding='utf-8', errors='replace')
+              rows = text.splitlines()
+              hits = []
+              for i, line in enumerate(rows, start=1):
+                  reasons = []
+                  if alias_re.search(line): reasons.append('alias-original/previous/old')
+                  if wrap_fn_re.search(line): reasons.append('wrap/patch function')
+                  if apply_re.search(line): reasons.append('apply(this, arguments)')
+                  if marker_re.search(line): reasons.append('patch/wrapped marker')
+                  if reasons:
+                      excerpt = line.strip().replace('|', '\\|')
+                      if len(excerpt) > 220: excerpt = excerpt[:217] + '...'
+                      hits.append((i, ', '.join(reasons), excerpt))
+              if hits:
+                  total += len(hits)
+                  lines += [f'## `{path.as_posix()}`', '', '| line | signal | excerpt |', '|---:|---|---|']
+                  for lineno, reason, excerpt in hits:
+                      lines.append(f'| {lineno} | {reason} | `{excerpt}` |')
+                  lines.append('')
+          lines.insert(6, f'Candidate signal rows: **{total}**')
+          lines.insert(7, '')
+          Path('OLLI_WRAPPER_AUDIT_CURRENT.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+          git diff --check
+
+      - name: Commit audit and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm -f .github/workflows/audit-current-wrappers-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add OLLI_WRAPPER_AUDIT_CURRENT.md
+          git commit -m 'chore: audit remaining wrapper patterns'
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
