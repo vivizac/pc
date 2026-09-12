@@ -71,6 +71,12 @@ function openStudentModal() {
   if (lessonDayInput) lessonDayInput.value = '';
   if (kinderExtraFields) kinderExtraFields.style.display = targetView === 'kinder' ? 'block' : 'none';
   if (typeof window.olliPrepareStudentAddExtra === 'function') window.olliPrepareStudentAddExtra(targetView);
+  if (typeof window.pcSyncStudentAddDivisionTabs === 'function') {
+    setTimeout(() => window.pcSyncStudentAddDivisionTabs(targetView), 0);
+  }
+  if (typeof window.olliTuneStudentModalGuideText === 'function') {
+    setTimeout(window.olliTuneStudentModalGuideText, 0);
+  }
 
   setTimeout(() => nameInput.focus(), 50);
 }

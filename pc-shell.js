@@ -293,17 +293,8 @@
   }
 
   function installStudentAddDivisionTabs() {
-    const original = global.openStudentModal;
-    if (typeof original === 'function' && !original.__olliPcStudentAddTabsWrapped) {
-      const wrapped = function(...args) {
-        const result = original.apply(this, args);
-        setTimeout(() => syncStudentAddDivisionTabs(getStudentAddDivision()), 0);
-        return result;
-      };
-      wrapped.__olliPcStudentAddTabsWrapped = true;
-      global.openStudentModal = wrapped;
-    }
     global.pcSetStudentAddDivision = setStudentAddDivision;
+    global.pcSyncStudentAddDivisionTabs = syncStudentAddDivisionTabs;
     setTimeout(() => syncStudentAddDivisionTabs(getStudentAddDivision()), 0);
   }
 

@@ -4181,27 +4181,7 @@ body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfSendBtn {
     });
   }
 
-  var previousPatchStudentModalMarkup = window.olliPatchStudentModalMarkup;
-  if (typeof previousPatchStudentModalMarkup === 'function' && !previousPatchStudentModalMarkup.__olliGuideTextWrapped) {
-    var wrappedPatch = function(){
-      var result = previousPatchStudentModalMarkup.apply(this, arguments);
-      tuneStudentModalGuideText();
-      return result;
-    };
-    wrappedPatch.__olliGuideTextWrapped = true;
-    window.olliPatchStudentModalMarkup = wrappedPatch;
-  }
-
-  var previousOpenStudentModal = window.openStudentModal;
-  if (typeof previousOpenStudentModal === 'function' && !previousOpenStudentModal.__olliGuideTextWrapped) {
-    var wrappedOpenStudentModal = function(){
-      var result = previousOpenStudentModal.apply(this, arguments);
-      setTimeout(tuneStudentModalGuideText, 0);
-      return result;
-    };
-    wrappedOpenStudentModal.__olliGuideTextWrapped = true;
-    window.openStudentModal = wrappedOpenStudentModal;
-  }
+  window.olliTuneStudentModalGuideText = tuneStudentModalGuideText;
 
   window.openKinderChatFeedbackStudentAddFromManage = function(event) {
     if (event) {
@@ -4212,7 +4192,6 @@ body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfSendBtn {
     try { currentRecordView = targetView; } catch (_) {}
     try { currentObservationView = targetView; } catch (_) {}
     if (typeof window.openStudentModal === 'function') window.openStudentModal();
-    setTimeout(tuneStudentModalGuideText, 0);
   };
 
   if (document.readyState === 'loading') {

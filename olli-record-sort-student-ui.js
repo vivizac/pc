@@ -455,6 +455,7 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
         + ''
         + '<div class="modalActions"><button class="modalBtnCancel" data-modal-close="kinderInfoModal" type="button">취소</button><button onclick="saveKinderInfo()" class="modalBtnConfirm">저장</button></div>';
     }
+    if (typeof window.olliTuneStudentModalGuideText === 'function') window.olliTuneStudentModalGuideText();
   }
 
   window.olliPatchStudentModalMarkup = patchStudentModalMarkup;
