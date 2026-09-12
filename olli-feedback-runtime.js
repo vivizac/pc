@@ -461,6 +461,7 @@ function createTodayFeedbackItem(options = {}) {
     status: options.status || 'generating',
     studentName: normalizeTodayFeedbackStudentName(options.studentName) || '학생',
     studentDivision: options.studentDivision === 'kinder' ? 'kinder' : 'elementary',
+    studentId: String(options.studentId || options.savedStudentId || ''),
     feedbackType: options.feedbackType || 'class',
     label: options.label || '피드백',
     sourcePage: String(options.sourcePage || ''),
@@ -559,7 +560,7 @@ async function saveTodayFeedbackItem(id, btn, selectedStudentId = '') {
   }
   const studentName = normalizeTodayFeedbackStudentName(item.studentName || '');
   const studentDivision = item.studentDivision || 'elementary';
-  let finalStudentId = String(selectedStudentId || '');
+  let finalStudentId = String(selectedStudentId || item.studentId || item.savedStudentId || '');
   if (!finalStudentId) {
     const candidates = typeof getKinderChatFeedbackSaveStudentCandidates === 'function'
       ? getKinderChatFeedbackSaveStudentCandidates(studentName, studentDivision)
@@ -636,6 +637,7 @@ function startTodayFeedbackRequest(options = {}) {
     status:'generating',
     studentName: options.studentName,
     studentDivision: options.studentDivision,
+    studentId: options.studentId,
     feedbackType: options.feedbackType,
     label: options.label,
     sourcePage: options.sourcePage,
