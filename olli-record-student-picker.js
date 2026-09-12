@@ -149,13 +149,13 @@ function renderMemoStudentPickerSortControls() {
     </div>`;
   }
 
+  const groupButton = `<button type="button" class="memoStudentSortChip memoStudentGroupSortChip ${state.group ? 'active' : ''}" onclick="toggleMemoStudentPickerGroup(event)">그룹</button>`;
   const dayButtons = MEMO_STUDENT_PICKER_DAYS.map(day => {
     const active = state.day === day;
     return `<button type="button" class="memoStudentSortChip memoStudentDaySortChip ${active ? 'active' : ''}" onclick="toggleMemoStudentPickerDay('${day}', event)">${day}</button>`;
   }).join('');
-  const groupButton = `<button type="button" class="memoStudentSortChip memoStudentGroupSortChip ${state.group ? 'active' : ''}" onclick="toggleMemoStudentPickerGroup(event)">그룹</button>`;
   return `<div class="memoStudentSortPanel">
-    <div class="memoStudentSortDayRow">${dayButtons}${groupButton}</div>
+    <div class="memoStudentSortDayRow">${groupButton}${dayButtons}</div>
   </div>`;
 }
 
