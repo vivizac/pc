@@ -1,0 +1,43 @@
+name: refactor-shared-source-owner
+
+on:
+  push:
+    branches:
+      - refactor/source-owned-no-overrides-20260912
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Move KCF sort layout into shared original
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('olli-record-student-picker.js')
+          s = p.read_text(encoding='utf-8')
+          old = '''  const dayButtons = MEMO_STUDENT_PICKER_DAYS.map(day => {\n    const active = state.day === day;\n    return `<button type="button" class="memoStudentSortChip memoStudentDaySortChip ${active ? 'active' : ''}" onclick="toggleMemoStudentPickerDay('${day}', event)">${day}</button>`;\n  }).join('');\n  const groupButton = `<button type="button" class="memoStudentSortChip memoStudentGroupSortChip ${state.group ? 'active' : ''}" onclick="toggleMemoStudentPickerGroup(event)">그룹</button>`;\n  return `<div class="memoStudentSortPanel">\n    <div class="memoStudentSortDayRow">${dayButtons}${groupButton}</div>\n  </div>`;'''
+          new = '''  const groupButton = `<button type="button" class="memoStudentSortChip memoStudentGroupSortChip ${state.group ? 'active' : ''}" onclick="toggleMemoStudentPickerGroup(event)">그룹</button>`;\n  const dayButtons = MEMO_STUDENT_PICKER_DAYS.map(day => {\n    const active = state.day === day;\n    return `<button type="button" class="memoStudentSortChip memoStudentDaySortChip ${active ? 'active' : ''}" onclick="toggleMemoStudentPickerDay('${day}', event)">${day}</button>`;\n  }).join('');\n  return `<div class="memoStudentSortPanel">\n    <div class="memoStudentSortDayRow">${groupButton}${dayButtons}</div>\n  </div>`;'''
+          if s.count(old) != 1:
+              raise SystemExit(f'picker sort owner block count={s.count(old)}')
+          p.write_text(s.replace(old,new,1), encoding='utf-8')
+          PY
+          node --check olli-record-student-picker.js
+          git diff --check
+      - name: Commit
+        shell: bash
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add olli-record-student-picker.js
+          git commit -m 'refactor: keep picker sort UI in shared source'
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
