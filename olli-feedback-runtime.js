@@ -1,27 +1,3 @@
-function resetOneMinuteFeedbackBeforeLeaving() {
-  const main = document.getElementById('mainPageScreen');
-  if (!main) return;
-  const style = window.getComputedStyle(main);
-  const isVisible = style.display !== 'none' && main.offsetParent !== null;
-  if (isVisible) resetOneMinuteFeedback();
-}
-
-function wrapOneMinuteLeaveFunction(fnName) {
-  const original = window[fnName];
-  if (typeof original !== 'function' || original.__oneMinuteWrapped) return;
-  const wrapped = function(...args) {
-    resetOneMinuteFeedbackBeforeLeaving();
-    return original.apply(this, args);
-  };
-  wrapped.__oneMinuteWrapped = true;
-  window[fnName] = wrapped;
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  ['showRecordRoom','showStudentMemoScreen','openStudentMemo',].forEach(wrapOneMinuteLeaveFunction);
-});
-
-
 let currentKinderSceneInfoId = null;
 
 function handleKinderSceneCardTap(event, id) {
@@ -153,29 +129,6 @@ function resetOneMinuteFeedback() {
     console.warn('resetOneMinuteFeedback skipped:', err);
   }
 }
-
-function resetOneMinuteFeedbackBeforeLeaving() {
-  const main = document.getElementById('mainPageScreen');
-  if (!main) return;
-  const style = window.getComputedStyle(main);
-  const isVisible = style.display !== 'none';
-  if (isVisible) resetOneMinuteFeedback();
-}
-
-function wrapOneMinuteLeaveFunction(fnName) {
-  const original = window[fnName];
-  if (typeof original !== 'function' || original.__oneMinuteWrapped) return;
-  const wrapped = function(...args) {
-    resetOneMinuteFeedbackBeforeLeaving();
-    return original.apply(this, args);
-  };
-  wrapped.__oneMinuteWrapped = true;
-  window[fnName] = wrapped;
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  ['showRecordRoom','showStudentMemoScreen','openStudentMemo',].forEach(wrapOneMinuteLeaveFunction);
-});
 
 
 function setSceneMemoCursorAfterFirstLine(textarea) {
