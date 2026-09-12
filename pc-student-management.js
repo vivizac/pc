@@ -1,6 +1,9 @@
 (function pcStudentManagementModule(global) {
   'use strict';
 
+  const consultationStatusCache = new Map();
+  const consultationStatusInFlight = new Map();
+
   function core() { return global.OlliPcCore; }
   function escape(value) {
     if (typeof global.escapeHtml === 'function') return global.escapeHtml(String(value ?? ''));
@@ -23,6 +26,75 @@
       const progress = typeof getOlliConsultationProgress === 'function' ? getOlliConsultationProgress() : {};
       return Array.isArray(progress?.todos) ? progress.todos : [];
     } catch (_) { return []; }
+  }
+
+  function dueLabelsForStudent(student) {
+    try { return typeof getDueConsultationRuleLabelsForStudent === 'function' ? getDueConsultationRuleLabelsForStudent(student) : []; }
+    catch (_) { return []; }
+  }
+
+  function consultationStudentRef(student) {
+    return student?.id ? 'id:'+student.id : 'name:'+String(student?.name || '').trim();
+  }
+
+  function consultationStatusKey(student, labels) {
+    return consultationStudentRef(student)+'|'+(Array.isArray(labels) ? labels.join('|') : '');
+  }
+
+  function consultationStatusChipHtml(student, labels) {
+    const cached = consultationStatusCache.get(consultationStatusKey(student, labels));
+    const status = cached?.status === 'ready' ? 'ready' : (cached?.status === 'insufficient' ? 'insufficient' : 'checking');
+    const label = status === 'ready' ? '준비완료' : (status === 'insufficient' ? '자료부족' : '확인중');
+    return '<span class="recordAcademyConsultStatusChip '+status+'" data-pc-consult-material-status="'+status+'">'+label+'</span>';
+  }
+
+  function updateConsultationStatusChip(student, labels, status, reason = '') {
+    const ref = consultationStudentRef(student);
+    const normalizedStatus = status === 'ready' ? 'ready' : (status === 'insufficient' ? 'insufficient' : 'error');
+    const label = normalizedStatus === 'ready' ? '준비완료' : (normalizedStatus === 'insufficient' ? '자료부족' : '확인오류');
+    consultationStatusCache.set(consultationStatusKey(student, labels), { status: normalizedStatus, reason: String(reason || ''), checkedAt: Date.now() });
+    document.querySelectorAll('#pcAcademyDetailPanel .recordAcademyConsultListItem').forEach((row) => {
+      if (String(row.dataset.pcStudentRef || '') !== ref) return;
+      const chip = row.querySelector('.recordAcademyConsultStatusChip');
+      if (!chip) return;
+      chip.classList.remove('ready', 'insufficient', 'checking', 'generating', 'error');
+      chip.classList.add(normalizedStatus);
+      chip.dataset.pcConsultMaterialStatus = normalizedStatus;
+      chip.textContent = label;
+      if (reason) chip.title = String(reason);
+      else chip.removeAttribute('title');
+    });
+  }
+
+  async function resolveConsultationStatus(student, labels) {
+    const key = consultationStatusKey(student, labels);
+    if (consultationStatusInFlight.has(key)) return consultationStatusInFlight.get(key);
+    const promise = (async () => {
+      if (typeof prepareConsultationFeedbackMaterial !== 'function') {
+        updateConsultationStatusChip(student, labels, 'error', '상담 자료 확인 기능을 불러오지 못했습니다.');
+        return;
+      }
+      try {
+        const months = typeof getConsultationSummaryMonthsFromLabels === 'function'
+          ? getConsultationSummaryMonthsFromLabels(labels)
+          : 1;
+        const material = await prepareConsultationFeedbackMaterial(student, months, labels);
+        const status = material?.status === 'ready' ? 'ready' : 'insufficient';
+        updateConsultationStatusChip(student, labels, status, material?.reason || '');
+      } catch (error) {
+        console.warn('PC 상담 자료 상태 확인 실패:', student?.name || '', error?.message || error);
+        updateConsultationStatusChip(student, labels, 'error', error?.message || '상담 자료 상태를 확인하지 못했습니다.');
+      }
+    })().finally(() => consultationStatusInFlight.delete(key));
+    consultationStatusInFlight.set(key, promise);
+    return promise;
+  }
+
+  function refreshConsultationMaterialStatuses(due) {
+    (Array.isArray(due) ? due : []).forEach((student) => {
+      const labels = dueLabelsForStudent(student);
+      resolveConsultationStatus(student, labels);
+    });
   }
 
   function renderContext(elementary, kinder) {
@@ -134,16 +206,18 @@
     ];
     return groups.map((group) => {
       const rows = group.students.length ? group.students.map((student) => {
-        let dueLabels = [];
-        try { dueLabels = typeof getDueConsultationRuleLabelsForStudent === 'function' ? getDueConsultationRuleLabelsForStudent(student) : []; } catch (_) {}
+        const dueLabels = dueLabelsForStudent(student);
         const chips = dueLabels.length ? dueLabels.map((label) => typeof getOlliConsultationRuleShortLabel === 'function' ? getOlliConsultationRuleShortLabel(label) : label) : ['상담 예정'];
         let completed = false;
         try { completed = typeof isAcademyConsultationCompletedForCurrentList === 'function' && isAcademyConsultationCompletedForCurrentList(student); } catch (_) {}
-        const ref = student.id ? 'id:'+student.id : 'name:'+String(student.name || '').trim();
+        const ref = consultationStudentRef(student);
         const refJs = jsSingleQuote(ref);
         return '<div class="recordAcademyConsultListItem" data-pc-student-ref="'+escape(ref)+'">'
           + '<div class="recordAcademyConsultStudentMain"><div class="recordAcademyListName">'+escape(student.name)+'</div><div class="recordAcademyChipRow">'+chips.map((label) => '<span class="recordAcademyInfoChip recordAcademyRuleChip">'+escape(label)+'</span>').join('')+'</div></div>'
-          + '<button type="button" class="recordAcademyConsultCompleteBtn'+(completed ? ' active' : '')+'" aria-pressed="'+(completed ? 'true' : 'false')+'" onclick="toggleAcademyConsultationCompleted(\''+refJs+'\', event)">'+(completed ? '완료' : '상담')+'</button></div>';
+          + '<div class="recordAcademyConsultActions">'
+          + consultationStatusChipHtml(student, dueLabels)
+          + '<button type="button" class="recordAcademyConsultCompleteBtn'+(completed ? ' active' : '')+'" aria-pressed="'+(completed ? 'true' : 'false')+'" onclick="toggleAcademyConsultationCompleted(\''+refJs+'\', event)">'+(completed ? '완료' : '상담')+'</button>'
+          + '</div></div>';
       }).join('') : '<div class="recordAcademyConsultGroupEmpty">예정 학생 없음</div>';
       return '<div class="recordAcademyConsultGroup" data-pc-division="'+group.type+'"><div class="recordAcademyConsultGroupTitle"><span>'+group.label+'</span><span>'+group.students.length+'명</span></div><div class="recordAcademyList">'+rows+'</div></div>';
     }).join('');
@@ -154,6 +228,7 @@
     if (!panel) return;
     panel.innerHTML = '<div class="pcAcademySectionHeader pcAcademyConsultHeader"><div><div class="pcAcademyDetailName">상담예정 학생</div><div class="pcAcademyDetailSub">이번 달 상담이 필요한 학생</div></div><span class="pcAcademySectionCount">'+due.length+'명</span></div>'
       + '<div class="pcAcademyConsultationList">'+consultationListHtml(due)+'</div>';
+    refreshConsultationMaterialStatuses(due);
   }
 
   async function persistTodos(nextTodos) {
