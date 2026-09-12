@@ -4226,79 +4226,6 @@ body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfSendBtn {
 <script>
 /* 2026-06-29: 계정 입력값 리셋 + 계정 소프트 삭제 */
 (function(){
-  const ACCOUNT_AUTH_INPUT_IDS = [
-    'olliOwnerAcademyCodeInput',
-    'olliOwnerPasswordInput',
-    'olliAccountCreateLoginIdInput',
-    'olliAccountCreateNameInput',
-    'olliAccountCreatePasswordInput',
-    'olliAccountCreatePasswordConfirmInput'
-  ];
-
-  function resetOlliAccountAuthInputs(target) {
-    const resetAll = !target || target === 'all';
-    const loginIds = ['olliOwnerAcademyCodeInput', 'olliOwnerPasswordInput'];
-    const createIds = [
-      'olliAccountCreateLoginIdInput',
-      'olliAccountCreateNameInput',
-      'olliAccountCreatePasswordInput',
-      'olliAccountCreatePasswordConfirmInput'
-    ];
-    const ids = resetAll ? ACCOUNT_AUTH_INPUT_IDS : (target === 'login' ? loginIds : createIds);
-    ids.forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.value = '';
-      el.defaultValue = '';
-      el.setAttribute('autocomplete', 'off');
-      el.setAttribute('autocapitalize', 'none');
-      el.setAttribute('autocorrect', 'off');
-      el.setAttribute('spellcheck', 'false');
-      if (!el.getAttribute('name')) el.setAttribute('name', id + '_' + Date.now());
-    });
-    const resultBox = document.getElementById('olliAccountCreateResult');
-    if (resultBox && (resetAll || target === 'create')) {
-      resultBox.style.display = 'none';
-      resultBox.innerHTML = '';
-    }
-  }
-
-  function prepareOlliAccountAuthInputs() {
-    ACCOUNT_AUTH_INPUT_IDS.forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.setAttribute('autocomplete', 'off');
-      el.setAttribute('autocapitalize', 'none');
-      el.setAttribute('autocorrect', 'off');
-      el.setAttribute('spellcheck', 'false');
-      el.setAttribute('name', id + '_fresh');
-    });
-  }
-
-  window.resetOlliAccountAuthInputs = resetOlliAccountAuthInputs;
-
-  const previousShowOlliLoginEntry = window.showOlliLoginEntry;
-  window.showOlliLoginEntry = function() {
-    if (typeof previousShowOlliLoginEntry === 'function') previousShowOlliLoginEntry();
-    resetOlliAccountAuthInputs('all');
-  };
-
-  const previousShowOlliOwnerLogin = window.showOlliOwnerLogin;
-  window.showOlliOwnerLogin = function() {
-    if (typeof previousShowOlliOwnerLogin === 'function') previousShowOlliOwnerLogin();
-    resetOlliAccountAuthInputs('login');
-    const loginId = document.getElementById('olliOwnerAcademyCodeInput');
-    if (loginId) loginId.focus();
-  };
-
-  const previousShowOlliAccountCreate = window.showOlliAccountCreate;
-  window.showOlliAccountCreate = function() {
-    if (typeof previousShowOlliAccountCreate === 'function') previousShowOlliAccountCreate();
-    resetOlliAccountAuthInputs('create');
-    const loginId = document.getElementById('olliAccountCreateLoginIdInput');
-    if (loginId) loginId.focus();
-  };
-
   async function doOlliAccountSoftDelete() {
     const first = confirm('현재 개인계정을 삭제할까요?\n\nSupabase 데이터는 즉시 지우지 않고 soft delete 상태로 변경됩니다. 연결된 학원 데이터와 학생 기록은 삭제하지 않습니다.');
     if (!first) return;
@@ -4351,7 +4278,6 @@ body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfSendBtn {
   }
 
   document.addEventListener('DOMContentLoaded', function() {
-    prepareOlliAccountAuthInputs();
     patchOlliLogoutSheetForDelete();
   });
   patchOlliLogoutSheetForDelete();

@@ -5,6 +5,62 @@ function getOlliAuthAccessToken() {
   return '';
 }
 
+const OLLI_ACCOUNT_AUTH_INPUT_IDS = [
+  'olliOwnerAcademyCodeInput',
+  'olliOwnerPasswordInput',
+  'olliAccountCreateLoginIdInput',
+  'olliAccountCreateNameInput',
+  'olliAccountCreatePasswordInput',
+  'olliAccountCreatePasswordConfirmInput'
+];
+
+function resetOlliAccountAuthInputs(target) {
+  const resetAll = !target || target === 'all';
+  const loginIds = ['olliOwnerAcademyCodeInput', 'olliOwnerPasswordInput'];
+  const createIds = [
+    'olliAccountCreateLoginIdInput',
+    'olliAccountCreateNameInput',
+    'olliAccountCreatePasswordInput',
+    'olliAccountCreatePasswordConfirmInput'
+  ];
+  const ids = resetAll ? OLLI_ACCOUNT_AUTH_INPUT_IDS : (target === 'login' ? loginIds : createIds);
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = '';
+    el.defaultValue = '';
+    el.setAttribute('autocomplete', 'off');
+    el.setAttribute('autocapitalize', 'none');
+    el.setAttribute('autocorrect', 'off');
+    el.setAttribute('spellcheck', 'false');
+    if (!el.getAttribute('name')) el.setAttribute('name', id + '_' + Date.now());
+  });
+  const resultBox = document.getElementById('olliAccountCreateResult');
+  if (resultBox && (resetAll || target === 'create')) {
+    resultBox.style.display = 'none';
+    resultBox.innerHTML = '';
+  }
+}
+
+function prepareOlliAccountAuthInputs() {
+  OLLI_ACCOUNT_AUTH_INPUT_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.setAttribute('autocomplete', 'off');
+    el.setAttribute('autocapitalize', 'none');
+    el.setAttribute('autocorrect', 'off');
+    el.setAttribute('spellcheck', 'false');
+    el.setAttribute('name', id + '_fresh');
+  });
+}
+
+window.resetOlliAccountAuthInputs = resetOlliAccountAuthInputs;
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', prepareOlliAccountAuthInputs, { once: true });
+} else {
+  prepareOlliAccountAuthInputs();
+}
+
 function hideOlliLoginScreens() {
   if (typeof stopOlliApprovalAutoCheck === 'function') stopOlliApprovalAutoCheck();
   [
@@ -78,6 +134,7 @@ function showOlliLoginEntry() {
 
   showOlliLoginScreenById('olliLoginEntryScreen');
   if (typeof window.olliAfterShowLoginEntry === 'function') window.olliAfterShowLoginEntry();
+  resetOlliAccountAuthInputs('all');
 }
 
 function showOlliOwnerLogin() {
@@ -86,6 +143,8 @@ function showOlliOwnerLogin() {
   const loginId = document.getElementById('olliOwnerAcademyCodeInput');
   if (loginId && !loginId.value) loginId.value = localStorage.getItem(OLLI_ACCOUNT_LOGIN_ID_KEY) || '';
   if (typeof window.olliAfterShowOwnerLogin === 'function') window.olliAfterShowOwnerLogin();
+  resetOlliAccountAuthInputs('login');
+  if (loginId) loginId.focus();
 }
 
 function showOlliAccountCreate() {
@@ -93,6 +152,8 @@ function showOlliAccountCreate() {
   const loginId = document.getElementById('olliAccountCreateLoginIdInput');
   if (loginId && !loginId.value) loginId.focus();
   if (typeof window.olliAfterShowAccountCreate === 'function') window.olliAfterShowAccountCreate();
+  resetOlliAccountAuthInputs('create');
+  if (loginId) loginId.focus();
 }
 
 function showOlliAcademyConnectChoice() {
