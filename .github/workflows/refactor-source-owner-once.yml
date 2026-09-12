@@ -1,4 +1,4 @@
-name: refactor-shared-feedback-policy-source
+name: refactor-shared-meta-source
 
 on:
   push:
@@ -19,23 +19,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Move cleared group behavior into policy source
+      - name: Move day-only student guide behavior into shared meta source
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          p = Path('olli-operations-feedback-policy.js')
+          p = Path('olli-data-ui-utils.js')
           s = p.read_text(encoding='utf-8')
-          old = "function getElementaryGroupFeedbackMonths(group, student = null) {\n  const groupKey = String(group || student?.group || '').trim();\n  const saved = readElementaryGroupFeedbackMonthsMap();\n  if (groupKey && Array.isArray(saved[groupKey]) && saved[groupKey].length) return saved[groupKey];\n  return normalizeElementaryGroupMonths(student?.group_months || student?.feedback_months || student?.feedbackMonths || student?.groupFeedbackMonths || '');\n}\n"
-          new = "function getElementaryGroupFeedbackMonths(group, student = null) {\n  const explicitGroup = arguments.length >= 1;\n  const groupKey = String(explicitGroup ? (group || '') : (student?.group || '')).trim();\n  if (explicitGroup && !groupKey) return [];\n  const saved = readElementaryGroupFeedbackMonthsMap();\n  if (groupKey && Array.isArray(saved[groupKey]) && saved[groupKey].length) return saved[groupKey];\n  return normalizeElementaryGroupMonths(student?.group_months || student?.feedback_months || student?.feedbackMonths || student?.groupFeedbackMonths || '');\n}\n"
+          old = "function getKinderMetaText(student) {\n  const personality = formatElementaryPersonalityDisplay(student);\n  const kindergarten = normalizeRecordInfoValue(student?.kindergarten, student?.kindergarten_name, student?.kindergartenName);\n  const age = normalizeRecordInfoValue(student?.age, student?.student_age, student?.studentAge);\n  const teacherName = getStudentTeacherDisplay(student);\n  const lessonDay = normalizeLessonDayDisplay(normalizeRecordInfoValue(student?.lesson_day, student?.lessonDay, student?.class_day, student?.classDay));\n  return [personality, kindergarten, age ? `${age}세` : '', teacherName, lessonDay].filter(Boolean).join(' / ');\n}\n"
+          new = "function normalizeStudentLessonDayOnly(student) {\n  const clean = value => String(value == null ? '' : value).trim();\n  const normalize = value => {\n    const raw = clean(value);\n    if (!raw) return '';\n    const days = [];\n    raw\n      .replace(/월요일/g, '월').replace(/화요일/g, '화').replace(/수요일/g, '수')\n      .replace(/목요일/g, '목').replace(/금요일/g, '금').replace(/토요일/g, '토').replace(/일요일/g, '일')\n      .replace(/\\d{1,2}\\s*시/g, ' ').replace(/\\d{1,2}:\\d{2}/g, ' ')\n      .split(/[^월화수목금토일]+/)\n      .forEach(part => String(part || '').split('').forEach(ch => {\n        if ('월화수목금토일'.includes(ch) && !days.includes(ch)) days.push(ch);\n      }));\n    const order = ['월','화','수','목','금','토','일'];\n    days.sort((a, b) => order.indexOf(a) - order.indexOf(b));\n    return days.join('·');\n  };\n  const dayValue = clean(student?.lesson_day || student?.lessonDay || student?.class_day || student?.classDay || student?.weekdays || student?.days || '');\n  return normalize(dayValue) || normalize(student?.lesson_time || student?.lessonTime || student?.class_time || student?.classTime || '');\n}\n\nfunction getKinderMetaText(student) {\n  const personality = formatElementaryPersonalityDisplay(student);\n  const kindergarten = normalizeRecordInfoValue(student?.kindergarten, student?.kindergarten_name, student?.kindergartenName);\n  const age = normalizeRecordInfoValue(student?.age, student?.student_age, student?.studentAge);\n  const teacherName = getStudentTeacherDisplay(student) || '담임';\n  const lessonDay = normalizeStudentLessonDayOnly(student);\n  return [personality, kindergarten, age ? `${age}세` : '', teacherName, lessonDay].filter(Boolean).join(' / ');\n}\n"
           if s.count(old) != 1:
-              raise SystemExit(f'feedback month source block count={s.count(old)}')
+              raise SystemExit(f'kinder meta source block count={s.count(old)}')
           p.write_text(s.replace(old, new, 1), encoding='utf-8')
           PY
-          node --check olli-operations-feedback-policy.js
+          node --check olli-data-ui-utils.js
           git diff --check
-          grep -Fq 'if (explicitGroup && !groupKey) return [];' olli-operations-feedback-policy.js
+          grep -Fq 'function normalizeStudentLessonDayOnly(student)' olli-data-ui-utils.js
+          grep -Fq "const teacherName = getStudentTeacherDisplay(student) || '담임';" olli-data-ui-utils.js
       - name: Commit source correction
         shell: bash
         run: |
@@ -43,6 +44,6 @@ jobs:
           if git diff --quiet; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add olli-operations-feedback-policy.js
-          git commit -m 'refactor: own cleared group feedback months in policy source'
+          git add olli-data-ui-utils.js
+          git commit -m 'refactor: own day-only student guide in shared meta source'
           git push origin HEAD:refactor/source-owned-no-overrides-20260912
