@@ -1,4 +1,4 @@
-name: refactor-shared-attendance-source-owner
+name: refactor-shared-auth-entry-source-owner
 
 on:
   push:
@@ -19,17 +19,31 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Apply shared attendance source changes
-        run: python3 .github/tmp/refactor_shared_attendance.py
-      - name: Validate shared attendance source changes
+      - name: Compose phone auth-entry extensions from canonical source
         shell: bash
         run: |
           set -euo pipefail
-          node --check olli-data-record-list.js
-          node --check olli-settings-base.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('olli-auth-entry-ui.js')
+          s = p.read_text(encoding='utf-8')
+          marker1 = "  showOlliLoginScreenById('olliLoginEntryScreen');\n}"
+          repl1 = "  showOlliLoginScreenById('olliLoginEntryScreen');\n  if (typeof window.olliAfterShowLoginEntry === 'function') window.olliAfterShowLoginEntry();\n}"
+          marker2 = "  if (loginId && !loginId.value) loginId.value = localStorage.getItem(OLLI_ACCOUNT_LOGIN_ID_KEY) || '';\n}"
+          repl2 = "  if (loginId && !loginId.value) loginId.value = localStorage.getItem(OLLI_ACCOUNT_LOGIN_ID_KEY) || '';\n  if (typeof window.olliAfterShowOwnerLogin === 'function') window.olliAfterShowOwnerLogin();\n}"
+          marker3 = "  if (loginId && !loginId.value) loginId.focus();\n}"
+          repl3 = "  if (loginId && !loginId.value) loginId.focus();\n  if (typeof window.olliAfterShowAccountCreate === 'function') window.olliAfterShowAccountCreate();\n}"
+          for label, old, new in [('entry', marker1, repl1), ('owner', marker2, repl2), ('create', marker3, repl3)]:
+              if s.count(old) != 1:
+                  raise SystemExit(f'{label} auth owner marker count={s.count(old)}')
+              s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+          node --check olli-auth-entry-ui.js
           git diff --check
-          test "$(grep -Fc "if (criterion === 'initial') return compareRecordSortName(a,b);" olli-data-record-list.js)" -eq 2
-          grep -Fq "typeof window.olliApplyAttendancePolicySettings === 'function'" olli-settings-base.js
+          grep -Fq "typeof window.olliAfterShowLoginEntry === 'function'" olli-auth-entry-ui.js
+          grep -Fq "typeof window.olliAfterShowOwnerLogin === 'function'" olli-auth-entry-ui.js
+          grep -Fq "typeof window.olliAfterShowAccountCreate === 'function'" olli-auth-entry-ui.js
       - name: Commit source changes
         shell: bash
         run: |
@@ -37,6 +51,6 @@ jobs:
           if git diff --quiet; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add olli-data-record-list.js olli-settings-base.js
-          git commit -m 'refactor: own attendance sort and settings hooks in shared sources'
+          git add olli-auth-entry-ui.js
+          git commit -m 'refactor: compose auth entry extensions from canonical source'
           git push origin HEAD:refactor/source-owned-no-overrides-20260912
