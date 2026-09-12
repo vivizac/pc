@@ -214,6 +214,9 @@ function settingsSetCachedAcademy(academy) {
   localStorage.setItem('olli_current_academy_id', academy.id);
   localStorage.setItem('olli_current_academy_code', academy.academy_code || '');
   localStorage.setItem('olli_current_academy_name', academy.academy_name || '');
+  if (typeof window.olliOnSettingsCachedAcademy === 'function') {
+    try { window.olliOnSettingsCachedAcademy(academy); } catch (err) { console.warn('settings cached academy extension skipped:', err); }
+  }
 }
 function settingsGetCachedState() {
   try {
@@ -1199,6 +1202,15 @@ function settingsApplyStateToUI() {
   updateOlliAcademyAccessSettingUI();
   applySettingsPermissionUI();
   updateOlliAcademySwitchUI();
+  if (typeof window.olliApplySettingsAccountEnhancements === 'function') {
+    try { window.olliApplySettingsAccountEnhancements(); } catch (err) { console.warn('settings account UI extension skipped:', err); }
+  }
+  if (typeof window.cacheTeacherOptions === 'function') {
+    try { window.cacheTeacherOptions(); } catch (err) { console.warn('settings teacher cache extension skipped:', err); }
+  }
+  if (typeof window.refreshAllTeacherDropdowns === 'function') {
+    try { window.refreshAllTeacherDropdowns(); } catch (err) { console.warn('settings teacher dropdown extension skipped:', err); }
+  }
 }
 
 function openSettingsPage() {
