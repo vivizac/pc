@@ -1205,6 +1205,9 @@ function settingsApplyStateToUI() {
   if (typeof window.olliApplySettingsAccountEnhancements === 'function') {
     try { window.olliApplySettingsAccountEnhancements(); } catch (err) { console.warn('settings account UI extension skipped:', err); }
   }
+  if (typeof window.olliApplyAttendancePolicySettings === 'function') {
+    try { window.olliApplyAttendancePolicySettings(); } catch (err) { console.warn('attendance policy settings extension skipped:', err); }
+  }
   if (typeof window.cacheTeacherOptions === 'function') {
     try { window.cacheTeacherOptions(); } catch (err) { console.warn('settings teacher cache extension skipped:', err); }
   }
