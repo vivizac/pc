@@ -64,7 +64,7 @@ jobs:
 
           replace_once(
               'olli-student-info-runtime.js',
-              "    className: '',\n",
+              "    className: ''\n",
               '',
               'elementary info className erase'
           )
