@@ -77,6 +77,7 @@ function showOlliLoginEntry() {
   if (detail) detail.style.display = 'none';
 
   showOlliLoginScreenById('olliLoginEntryScreen');
+  if (typeof window.olliAfterShowLoginEntry === 'function') window.olliAfterShowLoginEntry();
 }
 
 function showOlliOwnerLogin() {
@@ -84,12 +85,14 @@ function showOlliOwnerLogin() {
 
   const loginId = document.getElementById('olliOwnerAcademyCodeInput');
   if (loginId && !loginId.value) loginId.value = localStorage.getItem(OLLI_ACCOUNT_LOGIN_ID_KEY) || '';
+  if (typeof window.olliAfterShowOwnerLogin === 'function') window.olliAfterShowOwnerLogin();
 }
 
 function showOlliAccountCreate() {
   showOlliLoginScreenById('olliAccountCreateScreen');
   const loginId = document.getElementById('olliAccountCreateLoginIdInput');
   if (loginId && !loginId.value) loginId.focus();
+  if (typeof window.olliAfterShowAccountCreate === 'function') window.olliAfterShowAccountCreate();
 }
 
 function showOlliAcademyConnectChoice() {
