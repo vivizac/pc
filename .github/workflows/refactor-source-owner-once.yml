@@ -1,4 +1,4 @@
-name: audit-shared-settings-source-owner
+name: refactor-shared-settings-source-owner
 
 on:
   push:
@@ -6,28 +6,86 @@ on:
       - refactor/source-owned-no-overrides-20260912
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  audit:
+  refactor:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect canonical settings source functions
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Move phone settings composition into canonical source calls
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
           p = Path('olli-settings-base.js')
-          lines = p.read_text(encoding='utf-8').splitlines()
-          for needle in ['function settingsSetCachedAcademy(', 'function settingsApplyStateToUI(']:
-              for i, line in enumerate(lines):
-                  if needle in line:
-                      start=max(0,i-5); end=min(len(lines),i+90)
-                      print(f'\n### {needle} line {i+1}')
-                      for n in range(start,end):
-                          print(f'{n+1}: {lines[n]}')
-                      break
+          s = p.read_text(encoding='utf-8')
+
+          old_cached = """function settingsSetCachedAcademy(academy) {
+  if (!academy) return;
+  localStorage.setItem('olli_current_academy_id', academy.id);
+  localStorage.setItem('olli_current_academy_code', academy.academy_code || '');
+  localStorage.setItem('olli_current_academy_name', academy.academy_name || '');
+}
+"""
+          new_cached = """function settingsSetCachedAcademy(academy) {
+  if (!academy) return;
+  localStorage.setItem('olli_current_academy_id', academy.id);
+  localStorage.setItem('olli_current_academy_code', academy.academy_code || '');
+  localStorage.setItem('olli_current_academy_name', academy.academy_name || '');
+  if (typeof window.olliOnSettingsCachedAcademy === 'function') {
+    try { window.olliOnSettingsCachedAcademy(academy); } catch (err) { console.warn('settings cached academy extension skipped:', err); }
+  }
+}
+"""
+          if s.count(old_cached) != 1:
+              raise SystemExit(f'settingsSetCachedAcademy block count={s.count(old_cached)}')
+          s = s.replace(old_cached, new_cached, 1)
+
+          old_tail = """  updateOlliAcademyAccessSettingUI();
+  applySettingsPermissionUI();
+  updateOlliAcademySwitchUI();
+}
+"""
+          new_tail = """  updateOlliAcademyAccessSettingUI();
+  applySettingsPermissionUI();
+  updateOlliAcademySwitchUI();
+  if (typeof window.olliApplySettingsAccountEnhancements === 'function') {
+    try { window.olliApplySettingsAccountEnhancements(); } catch (err) { console.warn('settings account UI extension skipped:', err); }
+  }
+  if (typeof window.cacheTeacherOptions === 'function') {
+    try { window.cacheTeacherOptions(); } catch (err) { console.warn('settings teacher cache extension skipped:', err); }
+  }
+  if (typeof window.refreshAllTeacherDropdowns === 'function') {
+    try { window.refreshAllTeacherDropdowns(); } catch (err) { console.warn('settings teacher dropdown extension skipped:', err); }
+  }
+}
+"""
+          if s.count(old_tail) != 1:
+              raise SystemExit(f'settingsApplyStateToUI tail count={s.count(old_tail)}')
+          s = s.replace(old_tail, new_tail, 1)
+          p.write_text(s, encoding='utf-8')
           PY
+          node --check olli-settings-base.js
+          git diff --check
+          grep -Fq "typeof window.olliOnSettingsCachedAcademy === 'function'" olli-settings-base.js
+          grep -Fq "typeof window.olliApplySettingsAccountEnhancements === 'function'" olli-settings-base.js
+          grep -Fq "typeof window.cacheTeacherOptions === 'function'" olli-settings-base.js
+          grep -Fq "typeof window.refreshAllTeacherDropdowns === 'function'" olli-settings-base.js
+      - name: Commit source correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add olli-settings-base.js
+          git commit -m 'refactor: compose settings extensions from canonical source'
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
