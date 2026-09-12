@@ -88,17 +88,6 @@
     return typeof normalizeStudentObject === 'function' ? normalizeStudentObject(merged, type) : merged;
   };
 
-  // 그룹을 수동으로 해제했을 때, 예전 그룹의 발송월이 다시 따라붙지 않게 합니다.
-  const oldGetElementaryGroupFeedbackMonths = window.getElementaryGroupFeedbackMonths;
-  window.getElementaryGroupFeedbackMonths = function(group, student = null){
-    const groupProvided = arguments.length >= 1;
-    const groupText = text(group);
-    if (groupProvided && !groupText) return [];
-    return typeof oldGetElementaryGroupFeedbackMonths === 'function'
-      ? oldGetElementaryGroupFeedbackMonths.apply(this, arguments)
-      : [];
-  };
-
   function uniqueOrdered(list, order){
     const seen = new Set();
     const values = (Array.isArray(list) ? list : [])

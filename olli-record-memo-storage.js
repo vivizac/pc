@@ -147,6 +147,30 @@ async function confirmStudent() {
     closeStudentModal();
     await loadRecords('');
     showPushToast(`${savedStudent.name} 학생이 저장되었습니다.`);
+
+    // 신규 학생의 시간표 연결도 원본 등록 함수가 직접 책임집니다.
+    // 학생 저장 성공 뒤에만 시간표를 저장해 기존 저장 순서를 유지합니다.
+    if (typeof window.saveOlliStudentScheduleFromInfo === 'function') {
+      try {
+        const schedulePairs = typeof window.olliGetStudentAddSchedulePairs === 'function'
+          ? window.olliGetStudentAddSchedulePairs()
+          : null;
+        await window.saveOlliStudentScheduleFromInfo(
+          savedStudent.id,
+          selectedLessonDay,
+          selectedLessonTime,
+          Array.isArray(schedulePairs) ? { pairs: schedulePairs } : undefined
+        );
+        if (typeof window.loadStudentsFromSupabase === 'function') {
+          await window.loadStudentsFromSupabase({ skipLifecycleSync: true });
+        }
+        if (window.OlliPcAttendance && typeof window.OlliPcAttendance.renderList === 'function') {
+          window.OlliPcAttendance.renderList();
+        }
+      } catch (error) {
+        alert(`학생은 등록되었지만 시간표 반영에 실패했어요.\n\n${error.message || error}\n\n학생정보에서 다시 저장하거나 시간표에서 확인해 주세요.`);
+      }
+    }
   } catch (err) {
     alert(`학생 저장에 실패했어요.\n\n${err.message || err}`);
   }
