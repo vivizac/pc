@@ -1,0 +1,64 @@
+name: refactor-dead-feedback-wrapper-once
+
+on:
+  push:
+    branches:
+      - refactor/source-owned-no-overrides-20260912
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Remove dead legacy page wrappers
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('olli-feedback-runtime.js')
+          text = path.read_text(encoding='utf-8')
+          if 'mainPageScreen' not in text:
+              raise SystemExit('legacy mainPageScreen marker already absent')
+
+          top_pattern = re.compile(r"^function resetOneMinuteFeedbackBeforeLeaving\(\) \{.*?\n\}\n\nfunction wrapOneMinuteLeaveFunction\(fnName\) \{.*?\n\}\n\ndocument\.addEventListener\('DOMContentLoaded', function\(\) \{\n  \['showRecordRoom','showStudentMemoScreen','openStudentMemo',\]\.forEach\(wrapOneMinuteLeaveFunction\);\n\}\);\n\n\n", re.S)
+          text, first = top_pattern.subn('', text, count=1)
+          if first != 1:
+              raise SystemExit(f'first dead feedback wrapper block count={first}')
+
+          later_pattern = re.compile(r"\nfunction resetOneMinuteFeedbackBeforeLeaving\(\) \{.*?\n\}\n\nfunction wrapOneMinuteLeaveFunction\(fnName\) \{.*?\n\}\n\ndocument\.addEventListener\('DOMContentLoaded', function\(\) \{\n  \['showRecordRoom','showStudentMemoScreen','openStudentMemo',\]\.forEach\(wrapOneMinuteLeaveFunction\);\n\}\);\n\n", re.S)
+          text, second = later_pattern.subn('\n', text, count=1)
+          if second != 1:
+              raise SystemExit(f'second dead feedback wrapper block count={second}')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          node --check olli-feedback-runtime.js
+          git diff --check
+          ! grep -Fq "mainPageScreen" olli-feedback-runtime.js
+          ! grep -Fq "wrapOneMinuteLeaveFunction" olli-feedback-runtime.js
+          grep -Fq "function resetOneMinuteFeedback()" olli-feedback-runtime.js
+
+      - name: Commit and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm -f .github/workflows/refactor-dead-feedback-wrapper-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add olli-feedback-runtime.js
+          git diff --cached --check
+          git commit -m 'refactor: remove dead one-minute feedback wrappers'
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
