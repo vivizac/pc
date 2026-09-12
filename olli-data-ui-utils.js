@@ -16,12 +16,34 @@ function getElementaryMetaBits(student) {
   return metaText ? [metaText] : [];
 }
 
+function normalizeStudentLessonDayOnly(student) {
+  const clean = value => String(value == null ? '' : value).trim();
+  const normalize = value => {
+    const raw = clean(value);
+    if (!raw) return '';
+    const days = [];
+    raw
+      .replace(/월요일/g, '월').replace(/화요일/g, '화').replace(/수요일/g, '수')
+      .replace(/목요일/g, '목').replace(/금요일/g, '금').replace(/토요일/g, '토').replace(/일요일/g, '일')
+      .replace(/\d{1,2}\s*시/g, ' ').replace(/\d{1,2}:\d{2}/g, ' ')
+      .split(/[^월화수목금토일]+/)
+      .forEach(part => String(part || '').split('').forEach(ch => {
+        if ('월화수목금토일'.includes(ch) && !days.includes(ch)) days.push(ch);
+      }));
+    const order = ['월','화','수','목','금','토','일'];
+    days.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    return days.join('·');
+  };
+  const dayValue = clean(student?.lesson_day || student?.lessonDay || student?.class_day || student?.classDay || student?.weekdays || student?.days || '');
+  return normalize(dayValue) || normalize(student?.lesson_time || student?.lessonTime || student?.class_time || student?.classTime || '');
+}
+
 function getKinderMetaText(student) {
   const personality = formatElementaryPersonalityDisplay(student);
   const kindergarten = normalizeRecordInfoValue(student?.kindergarten, student?.kindergarten_name, student?.kindergartenName);
   const age = normalizeRecordInfoValue(student?.age, student?.student_age, student?.studentAge);
-  const teacherName = getStudentTeacherDisplay(student);
-  const lessonDay = normalizeLessonDayDisplay(normalizeRecordInfoValue(student?.lesson_day, student?.lessonDay, student?.class_day, student?.classDay));
+  const teacherName = getStudentTeacherDisplay(student) || '담임';
+  const lessonDay = normalizeStudentLessonDayOnly(student);
   return [personality, kindergarten, age ? `${age}세` : '', teacherName, lessonDay].filter(Boolean).join(' / ');
 }
 
