@@ -307,31 +307,6 @@
     setTimeout(() => syncStudentAddDivisionTabs(getStudentAddDivision()), 0);
   }
 
-  function installStudentScheduleSync() {
-    const original = global.confirmStudent;
-    if (typeof original !== 'function' || original.__olliPcScheduleSyncWrapped) return;
-    const wrapped = async function(...args) {
-      const result = await original.apply(this, args);
-      const modal = document.getElementById('studentModal');
-      const modalStillOpen = modal && getComputedStyle(modal).display !== 'none';
-      if (modalStillOpen) return result;
-      try {
-        const timetableService = global.OlliTimetableService;
-        if (timetableService && typeof timetableService.syncLegacyStudents === 'function') {
-          await timetableService.syncLegacyStudents();
-        }
-        if (typeof global.olliTtRefreshSchedule === 'function') {
-          await global.olliTtRefreshSchedule();
-        }
-      } catch (error) {
-        console.warn('학생 등록 시간표 동기화 실패:', error && (error.message || error));
-      }
-      return result;
-    };
-    wrapped.__olliPcScheduleSyncWrapped = true;
-    global.confirmStudent = wrapped;
-  }
-
   function isEditorEmbedded(screenId) {
     const host = document.getElementById('pcAttendanceSharedEditorHost');
     const screen = document.getElementById(screenId);
@@ -447,7 +422,6 @@
     normalizeSidebarChrome();
     installLegacyObservationRedirects();
     installStudentAddDivisionTabs();
-    installStudentScheduleSync();
     feature('OlliPcStudentManagement')?.start();
     setTimeout(syncFromVisiblePage, 0);
     document.addEventListener('visibilitychange', () => {

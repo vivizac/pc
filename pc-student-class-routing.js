@@ -369,46 +369,48 @@
     // 실제 클래스 배정은 아래의 단일 weekly-schedule RPC에서 처리합니다.
     global.olliGetStudentAddSchedulePairs = function() { return []; };
 
-    const originalConfirm = global.confirmStudent;
-    if (typeof originalConfirm === 'function' && !originalConfirm.__olliClassRoutingLinked) {
-      const wrapped = async function confirmStudentWithClassRouting() {
-        if (registration.saving) return;
-        const type = (() => { try { return currentRecordView === 'kinder' ? 'kinder' : 'elementary'; } catch (_) { return registration.division; } })();
-        registration.division = type;
-        const name = clean(document.getElementById('studentNameInput')?.value);
-        const effectiveDate = registrationDate();
-        const pairs = registration.selected.map((row) => ({ weekday:row.weekday, time_slot:row.time_slot, class_group:row.class_group }));
-        if (pairs.length) {
-          try { await validateRegistrationSelection(); }
-          catch (error) { alert(error.message || error); renderRegistrationPicker(); return; }
-        }
-        const beforeIds = new Set((typeof global.getAllStudents === 'function' ? global.getAllStudents() : []).map((s) => String(s.id || '')));
-        registration.saving = true;
-        try {
-          const result = await originalConfirm.apply(this, arguments);
-          if (!name || !effectiveDate) return result;
-          const students = typeof global.getStudentsByType === 'function' ? global.getStudentsByType(type) : [];
-          const created = students.find((s) => !beforeIds.has(String(s.id || '')) && clean(s.name) === name);
-          if (!created || !created.id) return result;
-          if (pairs.length) {
-            try {
-              await setRegistrationSchedule(created.id, pairs, effectiveDate);
-              if (typeof global.loadStudentsFromSupabase === 'function') await global.loadStudentsFromSupabase();
-              if (global.OlliPcAttendance && typeof global.OlliPcAttendance.renderList === 'function') global.OlliPcAttendance.renderList();
-              notify('학생 등록과 수업 클래스를 저장했어요.');
-            } catch (error) {
-              alert(`학생은 등록되었지만 수업 클래스 저장에 실패했어요.\n\n${error.message || error}\n\n시간표에서 해당 학생의 수업을 확인해 주세요.`);
-            }
-          }
-          return result;
-        } finally {
-          registration.saving = false;
-        }
-      };
-      wrapped.__olliClassRoutingLinked = true;
-      wrapped.__olliScheduleLinked = true;
-      global.confirmStudent = wrapped;
-    }
+    global.olliPrepareStudentRegistrationRouting = async function(type) {
+      if (registration.saving) throw new Error('학생 등록을 저장하고 있습니다.');
+      registration.saving = true;
+      registration.division = type === 'kinder' ? 'kinder' : 'elementary';
+      const effectiveDate = registrationDate();
+      const pairs = registration.selected.map((row) => ({
+        weekday: row.weekday,
+        time_slot: row.time_slot,
+        class_group: row.class_group
+      }));
+      try {
+        if (pairs.length) await validateRegistrationSelection();
+        return { handled: true, effectiveDate, pairs };
+      } catch (error) {
+        registration.saving = false;
+        renderRegistrationPicker();
+        throw error;
+      }
+    };
+
+    global.olliCommitStudentRegistrationRouting = async function(savedStudent, context) {
+      const studentId = clean(savedStudent && savedStudent.id);
+      if (!studentId) throw new Error('등록된 학생 ID를 확인하지 못했습니다.');
+      const effectiveDate = clean(context && context.effectiveDate) || registrationDate();
+      const pairs = Array.isArray(context && context.pairs) ? context.pairs : [];
+      if (!pairs.length) return;
+      await setRegistrationSchedule(studentId, pairs, effectiveDate);
+      if (typeof global.loadStudentsFromSupabase === 'function') {
+        await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
+      }
+      if (global.OlliPcAttendance && typeof global.OlliPcAttendance.renderList === 'function') {
+        global.OlliPcAttendance.renderList();
+      }
+      if (typeof global.olliTtRefreshSchedule === 'function') {
+        await global.olliTtRefreshSchedule();
+      }
+      notify('학생 등록과 수업 클래스를 저장했어요.');
+    };
+
+    global.olliReleaseStudentRegistrationRouting = function() {
+      registration.saving = false;
+    };
 
     let dateTimer = 0;
     document.addEventListener('input', (event) => {
@@ -531,8 +533,7 @@
   }
 
   function installWhenReady(attempt) {
-    const linked = typeof global.confirmStudent === 'function' && global.confirmStudent.__olliScheduleLinked;
-    if (!linked || typeof global.olliPrepareStudentAddExtra !== 'function') {
+    if (typeof global.confirmStudent !== 'function' || typeof global.olliPrepareStudentAddExtra !== 'function') {
       if ((attempt || 0) < 100) setTimeout(() => installWhenReady((attempt || 0) + 1), 80);
       return;
     }
