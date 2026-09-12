@@ -1,0 +1,106 @@
+name: refactor-wrapper-batch2-once
+
+on:
+  push:
+    branches:
+      - refactor/source-owned-no-overrides-20260912
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Source-own safe wrappers and preserve student data
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(path, old, new, label):
+              p = Path(path)
+              s = p.read_text(encoding='utf-8')
+              count = s.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 exact match, found {count}')
+              p.write_text(s.replace(old, new, 1), encoding='utf-8')
+
+          # 1) The canonical policy already handles an explicitly cleared group.
+          policy = Path('olli-operations-feedback-policy.js').read_text(encoding='utf-8')
+          for marker in (
+              'const explicitGroup = arguments.length >= 1;',
+              'if (explicitGroup && !groupKey) return [];'
+          ):
+              if marker not in policy:
+                  raise SystemExit(f'canonical group-month behavior missing: {marker}')
+
+          redundant_group_wrapper = """  // 그룹을 수동으로 해제했을 때, 예전 그룹의 발송월이 다시 따라붙지 않게 합니다.\n  const oldGetElementaryGroupFeedbackMonths = window.getElementaryGroupFeedbackMonths;\n  window.getElementaryGroupFeedbackMonths = function(group, student = null){\n    const groupProvided = arguments.length >= 1;\n    const groupText = text(group);\n    if (groupProvided && !groupText) return [];\n    return typeof oldGetElementaryGroupFeedbackMonths === 'function'\n      ? oldGetElementaryGroupFeedbackMonths.apply(this, arguments)\n      : [];\n  };\n\n"""
+          replace_once(
+              'olli-student-schedule-runtime.js',
+              redundant_group_wrapper,
+              '',
+              'redundant group feedback months wrapper'
+          )
+
+          # 2) Existing historical className must survive PC student-info edits.
+          replace_once(
+              'pc-student-info-card-runtime.js',
+              "          className: '',\n",
+              '',
+              'PC student info className erase'
+          )
+
+          # 3) Move new-student schedule linkage into the canonical confirmStudent owner.
+          owner_path = Path('olli-record-memo-storage.js')
+          owner = owner_path.read_text(encoding='utf-8')
+          owner_old = """    const savedStudent = await ensureStudentSavedToSupabase(newStudent);\n    closeStudentModal();\n    await loadRecords('');\n    showPushToast(`${savedStudent.name} 학생이 저장되었습니다.`);\n"""
+          owner_new = """    const savedStudent = await ensureStudentSavedToSupabase(newStudent);\n    closeStudentModal();\n    await loadRecords('');\n    showPushToast(`${savedStudent.name} 학생이 저장되었습니다.`);\n\n    // 신규 학생의 시간표 연결도 원본 등록 함수가 직접 책임집니다.\n    // 학생 저장 성공 뒤에만 시간표를 저장해 기존 저장 순서를 유지합니다.\n    if (typeof window.saveOlliStudentScheduleFromInfo === 'function') {\n      try {\n        const schedulePairs = typeof window.olliGetStudentAddSchedulePairs === 'function'\n          ? window.olliGetStudentAddSchedulePairs()\n          : null;\n        await window.saveOlliStudentScheduleFromInfo(\n          savedStudent.id,\n          selectedLessonDay,\n          selectedLessonTime,\n          Array.isArray(schedulePairs) ? { pairs: schedulePairs } : undefined\n        );\n        if (typeof window.loadStudentsFromSupabase === 'function') {\n          await window.loadStudentsFromSupabase({ skipLifecycleSync: true });\n        }\n        if (window.OlliPcAttendance && typeof window.OlliPcAttendance.renderList === 'function') {\n          window.OlliPcAttendance.renderList();\n        }\n      } catch (error) {\n        alert(`학생은 등록되었지만 시간표 반영에 실패했어요.\\n\\n${error.message || error}\\n\\n학생정보에서 다시 저장하거나 시간표에서 확인해 주세요.`);\n      }\n    }\n"""
+          if owner.count(owner_old) != 1:
+              raise SystemExit(f'confirmStudent insertion anchor count={owner.count(owner_old)}')
+          owner_path.write_text(owner.replace(owner_old, owner_new, 1), encoding='utf-8')
+
+          runtime_path = Path('pc-student-info-card-runtime.js')
+          runtime = runtime_path.read_text(encoding='utf-8')
+          pattern = re.compile(r"\n  function wrapStudentRegistration\(\) \{.*?\n  \}\n\n  function installLegacyInfoRoutes\(\)", re.S)
+          runtime, count = pattern.subn("\n  function installLegacyInfoRoutes()", runtime, count=1)
+          if count != 1:
+              raise SystemExit(f'wrapStudentRegistration block count={count}')
+          call = '    wrapStudentRegistration();\n'
+          if runtime.count(call) != 1:
+              raise SystemExit(f'wrapStudentRegistration call count={runtime.count(call)}')
+          runtime = runtime.replace(call, '', 1)
+          runtime_path.write_text(runtime, encoding='utf-8')
+          PY
+
+          node --check olli-student-schedule-runtime.js
+          node --check pc-student-info-card-runtime.js
+          node --check olli-record-memo-storage.js
+          git diff --check
+
+          ! grep -Fq "oldGetElementaryGroupFeedbackMonths" olli-student-schedule-runtime.js
+          ! grep -Fq "function wrapStudentRegistration()" pc-student-info-card-runtime.js
+          ! grep -Fq "className: ''," pc-student-info-card-runtime.js
+          grep -Fq "saveOlliStudentScheduleFromInfo" olli-record-memo-storage.js
+          grep -Fq "if (explicitGroup && !groupKey) return [];" olli-operations-feedback-policy.js
+
+      - name: Commit batch and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm -f .github/workflows/refactor-wrapper-batch2-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add olli-student-schedule-runtime.js pc-student-info-card-runtime.js olli-record-memo-storage.js
+          git diff --cached --check
+          git commit -m 'refactor: source-own student registration schedule linkage'
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
