@@ -1,0 +1,88 @@
+name: refactor-feedback-student-id-owner-once
+
+on:
+  push:
+    branches:
+      - refactor/source-owned-no-overrides-20260912
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Move feedback student ID handling into canonical functions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def one(path, old, new, label):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label} count={count}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          one(
+              'olli-feedback-runtime.js',
+              "    studentDivision: options.studentDivision === 'kinder' ? 'kinder' : 'elementary',\n    feedbackType: options.feedbackType || 'class',\n",
+              "    studentDivision: options.studentDivision === 'kinder' ? 'kinder' : 'elementary',\n    studentId: String(options.studentId || options.savedStudentId || ''),\n    feedbackType: options.feedbackType || 'class',\n",
+              'createTodayFeedbackItem studentId'
+          )
+
+          one(
+              'olli-feedback-runtime.js',
+              "  let finalStudentId = String(selectedStudentId || '');\n",
+              "  let finalStudentId = String(selectedStudentId || item.studentId || item.savedStudentId || '');\n",
+              'saveTodayFeedbackItem direct studentId'
+          )
+
+          one(
+              'olli-feedback-runtime.js',
+              "    studentName: options.studentName,\n    studentDivision: options.studentDivision,\n    feedbackType: options.feedbackType,\n",
+              "    studentName: options.studentName,\n    studentDivision: options.studentDivision,\n    studentId: options.studentId,\n    feedbackType: options.feedbackType,\n",
+              'startTodayFeedbackRequest studentId'
+          )
+
+          registration = Path('olli-feedback-registration-runtime.js')
+          text = registration.read_text(encoding='utf-8')
+          pattern = re.compile(r"\n  var originalCreateTodayFeedbackItem = window\.createTodayFeedbackItem;.*?\n  window\.openKinderChatFeedbackSaveStudentPicker", re.S)
+          text, count = pattern.subn("\n  window.openKinderChatFeedbackSaveStudentPicker", text, count=1)
+          if count != 1:
+              raise SystemExit(f'feedback student-id wrapper chain count={count}')
+          registration.write_text(text, encoding='utf-8')
+          PY
+
+          node --check olli-feedback-runtime.js
+          node --check olli-feedback-registration-runtime.js
+          git diff --check
+          grep -Fq "studentId: String(options.studentId || options.savedStudentId || '')" olli-feedback-runtime.js
+          grep -Fq "studentId: options.studentId" olli-feedback-runtime.js
+          grep -Fq "selectedStudentId || item.studentId || item.savedStudentId" olli-feedback-runtime.js
+          ! grep -Fq "originalCreateTodayFeedbackItem" olli-feedback-registration-runtime.js
+          ! grep -Fq "originalStartTodayFeedbackRequest" olli-feedback-registration-runtime.js
+          ! grep -Fq "originalSaveTodayFeedbackItem" olli-feedback-registration-runtime.js
+
+      - name: Commit and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm -f .github/workflows/refactor-feedback-student-id-owner-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add olli-feedback-runtime.js olli-feedback-registration-runtime.js
+          git diff --cached --check
+          git commit -m 'refactor: source-own feedback student id handling'
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
