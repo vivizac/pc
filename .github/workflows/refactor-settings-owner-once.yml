@@ -1,0 +1,195 @@
+name: refactor-settings-owner-once
+
+on:
+  push:
+    branches:
+      - refactor/source-owned-no-overrides-20260912
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Move settings wrapper behavior into canonical owner
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(path, old, new, label):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected 1 match, found {count}')
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          base = Path('olli-settings-base.js')
+          text = base.read_text(encoding='utf-8')
+
+          old_cached = """function settingsSetCachedAcademy(academy) {
+  if (!academy) return;
+  localStorage.setItem('olli_current_academy_id', academy.id);
+  localStorage.setItem('olli_current_academy_code', academy.academy_code || '');
+  localStorage.setItem('olli_current_academy_name', academy.academy_name || '');
+  if (typeof window.olliOnSettingsCachedAcademy === 'function') {
+    try { window.olliOnSettingsCachedAcademy(academy); } catch (err) { console.warn('settings cached academy extension skipped:', err); }
+  }
+}
+"""
+          new_cached = """function settingsSetCachedAcademy(academy) {
+  if (!academy) return;
+  localStorage.setItem('olli_current_academy_id', academy.id);
+  localStorage.setItem('olli_current_academy_code', academy.academy_code || '');
+  localStorage.setItem('olli_current_academy_name', academy.academy_name || '');
+  const region = academy.region || academy.academy_region || '';
+  if (region) localStorage.setItem('olli_current_academy_region', region);
+  if (academy.profile_image_url) {
+    settingsSaveCachePatch({ profileImageUrl: academy.profile_image_url, profileImageDataUrl: '' });
+  }
+  if (typeof window.olliOnSettingsCachedAcademy === 'function') {
+    try { window.olliOnSettingsCachedAcademy(academy); } catch (err) { console.warn('settings cached academy extension skipped:', err); }
+  }
+}
+"""
+          if text.count(old_cached) != 1:
+              raise SystemExit(f'settingsSetCachedAcademy owner count={text.count(old_cached)}')
+          text = text.replace(old_cached, new_cached, 1)
+
+          old_image = "  const imageUrl = olliSettingsState.academy?.profile_image_url || cached.profileImageDataUrl || '';\n"
+          new_image = """  const imageUrl = (typeof window.olliGetSettingsProfileImageUrl === 'function'
+    ? window.olliGetSettingsProfileImageUrl()
+    : '') || olliSettingsState.academy?.profile_image_url || cached.profileImageUrl || cached.profileImageDataUrl || '';
+"""
+          if text.count(old_image) != 1:
+              raise SystemExit(f'settings profile image source count={text.count(old_image)}')
+          text = text.replace(old_image, new_image, 1)
+
+          old_open = """function openSettingsSheet(type) {
+  const data = settingsSheetData[type] || settingsSheetData.ai;
+  currentSettingsSheetType = type;
+  const overlay = document.getElementById('settingsSheetOverlay');
+  if (!overlay) return;
+
+  document.getElementById('settingsSheetTitle').textContent = data.title;
+  document.getElementById('settingsSheetDesc').textContent = data.desc;
+  document.getElementById('settingsSheetContent').innerHTML = typeof data.html === 'function' ? data.html() : data.html;
+  overlay.classList.add('show');
+}
+
+async function saveSettingsSheet() {
+  const data = settingsSheetData[currentSettingsSheetType];
+  if (data && typeof data.onSave === 'function') {
+    await data.onSave();
+  }
+  closeSettingsSheet();
+}
+"""
+          new_open = """function openSettingsSheet(type) {
+  const data = settingsSheetData[type] || settingsSheetData.ai;
+  currentSettingsSheetType = type;
+  const overlay = document.getElementById('settingsSheetOverlay');
+  if (!overlay) return;
+
+  document.getElementById('settingsSheetTitle').textContent = data.title;
+  document.getElementById('settingsSheetDesc').textContent = data.desc;
+  document.getElementById('settingsSheetContent').innerHTML = typeof data.html === 'function' ? data.html() : data.html;
+
+  const actions = overlay.querySelector('.settingsSheetActions');
+  const saveBtn = overlay.querySelector('.settingsSheetBtn.primary');
+  const cancelBtn = overlay.querySelector('.settingsSheetBtn:not(.primary)');
+  const consultationReadOnly = type === 'consultationMonths'
+    && typeof canEditOlliConsultationSettings === 'function'
+    && !canEditOlliConsultationSettings();
+  if (actions) actions.style.display = type === 'logout' ? 'none' : 'grid';
+  if (saveBtn) saveBtn.style.display = data && typeof data.onSave === 'function' && !consultationReadOnly ? 'flex' : 'none';
+  if (cancelBtn) cancelBtn.textContent = consultationReadOnly ? '닫기' : '취소';
+
+  overlay.classList.add('show');
+}
+
+async function saveSettingsSheet() {
+  const btn = document.querySelector('#settingsSheetOverlay .settingsSheetBtn.primary');
+  try {
+    const data = settingsSheetData[currentSettingsSheetType];
+    if (!data || typeof data.onSave !== 'function') {
+      closeSettingsSheet();
+      return;
+    }
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '저장 중...';
+    }
+    await data.onSave();
+    closeSettingsSheet();
+  } catch (err) {
+    alert('저장 중 오류가 발생했습니다.\\n' + (err.message || err));
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '저장';
+    }
+  }
+}
+"""
+          if text.count(old_open) != 1:
+              raise SystemExit(f'open/save settings owner block count={text.count(old_open)}')
+          base.write_text(text.replace(old_open, new_open, 1), encoding='utf-8')
+
+          runtime = Path('olli-settings-account-runtime.js')
+          text = runtime.read_text(encoding='utf-8')
+
+          set_wrapper = "  const oldSettingsSetCachedAcademy=window.settingsSetCachedAcademy;window.settingsSetCachedAcademy=function(academy){if(typeof oldSettingsSetCachedAcademy==='function')oldSettingsSetCachedAcademy(academy);if(!academy)return;if(academy.region||academy.academy_region)localStorage.setItem('olli_current_academy_region',academy.region||academy.academy_region||'');if(academy.profile_image_url)settingsSaveCachePatch({profileImageUrl:academy.profile_image_url, profileImageDataUrl:''});};\n"
+          if text.count(set_wrapper) != 1:
+              raise SystemExit(f'settingsSetCachedAcademy wrapper count={text.count(set_wrapper)}')
+          text = text.replace(set_wrapper, '', 1)
+
+          apply_wrapper = "  const oldSettingsApplyStateToUI=window.settingsApplyStateToUI;window.settingsApplyStateToUI=function(){if(typeof oldSettingsApplyStateToUI==='function')oldSettingsApplyStateToUI();const academyName=getSettingsAcademyName();const imageUrl=getSettingsProfileImageUrl();document.querySelectorAll('.settingsProfileName').forEach(el=>{el.textContent=academyName;});document.querySelectorAll('.settingsProfileImage').forEach(el=>{if(imageUrl)el.innerHTML='<img src=\"'+settingsEscapeAttr(imageUrl)+'\" alt=\"학원 프로필\">';else el.textContent='V';});injectAcademyIdLine();};\n"
+          if text.count(apply_wrapper) != 1:
+              raise SystemExit(f'settingsApplyStateToUI wrapper count={text.count(apply_wrapper)}')
+          text = text.replace(apply_wrapper, "  window.olliGetSettingsProfileImageUrl=getSettingsProfileImageUrl;\n  window.olliApplySettingsAccountEnhancements=injectAcademyIdLine;\n", 1)
+
+          open_pattern = re.compile(r"\n  const oldOpenSettingsSheetForSettingsFix=window\.openSettingsSheet\|\|openSettingsSheet;\n  window\.openSettingsSheet=function\(type\)\{.*?\n  \};\n  window\.saveSettingsSheet=async function\(\)\{.*?\};\n", re.S)
+          text, count = open_pattern.subn('\n', text, count=1)
+          if count != 1:
+              raise SystemExit(f'open/save settings wrapper chain count={count}')
+
+          runtime.write_text(text, encoding='utf-8')
+          PY
+
+          node --check olli-settings-base.js
+          node --check olli-settings-account-runtime.js
+          git diff --check
+          grep -Fq "olliGetSettingsProfileImageUrl" olli-settings-base.js
+          grep -Fq "profileImageUrl" olli-settings-base.js
+          grep -Fq "consultationReadOnly" olli-settings-base.js
+          grep -Fq "저장 중..." olli-settings-base.js
+          grep -Fq "window.olliGetSettingsProfileImageUrl=getSettingsProfileImageUrl" olli-settings-account-runtime.js
+          grep -Fq "window.olliApplySettingsAccountEnhancements=injectAcademyIdLine" olli-settings-account-runtime.js
+          ! grep -Fq "oldSettingsSetCachedAcademy" olli-settings-account-runtime.js
+          ! grep -Fq "oldSettingsApplyStateToUI" olli-settings-account-runtime.js
+          ! grep -Fq "oldOpenSettingsSheetForSettingsFix" olli-settings-account-runtime.js
+          ! grep -Fq "window.saveSettingsSheet=async function" olli-settings-account-runtime.js
+
+      - name: Commit and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm -f .github/workflows/refactor-settings-owner-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add olli-settings-base.js olli-settings-account-runtime.js
+          git diff --cached --check
+          git commit -m 'refactor: source-own settings runtime behavior'
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
