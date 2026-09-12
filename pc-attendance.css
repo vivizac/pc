@@ -37,13 +37,13 @@ body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout #recordList::
 .pcAttendanceRosterHead>span.pcAttendanceRosterDivision.kinder{background:#ffe8f0;color:#e85b8d;}
 body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .recordStatusSection{margin-top:12px;}
 
-/* PC 학생명단 정렬 구분선: 박스 대신 얇은 라인 + 텍스트 */
+/* PC 학생명단 정렬 구분: 텍스트 위치는 유지하고 양쪽 라인만 숨김 */
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider{
   display:flex;align-items:center;gap:10px;width:100%;margin:15px 0 10px;color:#555b63;font-size:11px;font-weight:820;line-height:1;letter-spacing:-.02em;box-sizing:border-box;
 }
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::before,
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::after{
-  content:"";height:1px;flex:1;min-width:12px;background:transparent;
+  content:"";height:1px;flex:1;min-width:12px;background:none!important;border:0!important;box-shadow:none!important;visibility:hidden!important;
 }
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider span{
   flex:0 0 auto;white-space:nowrap;padding:0 2px;background:transparent;color:inherit;
@@ -76,6 +76,8 @@ body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .kinderStuden
 .pcAttendanceEditorCard,.pcAttendanceCombinedCard{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;border:1px solid #edf0f3;border-radius:21px;background:#fafbfc;box-sizing:border-box;}
 .pcAttendanceSharedEditorHost{position:relative;flex:1;min-width:0;min-height:0;overflow:hidden;background:#fff;}
 .pcAttendanceCombinedBody{display:grid;grid-template-rows:minmax(0,1fr) minmax(0,1fr);gap:0;flex:1;min-height:0;overflow:hidden;padding:0 10px 10px;}
+/* 로컬 캐시가 없는 최초 조회에서도 로딩 문구는 노출하지 않고 서버 갱신은 뒤에서 계속 진행 */
+body.olliPcApp #recordRoomScreen #pcAttendanceCombinedBody > .attendanceFeedbackSheetEmpty{visibility:hidden;}
 .pcAttendanceDetailPanel .pcAttendanceRecordSection{display:flex;flex-direction:column;min-height:0;overflow:hidden;border:0;border-radius:0;background:transparent;padding:13px 0 0;box-sizing:border-box;}
 .pcAttendanceDetailPanel .pcAttendanceRecordSection+.pcAttendanceRecordSection{border-top:0;margin-top:0;padding-top:13px;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetSection:first-child,
