@@ -1,4 +1,4 @@
-name: Source-own authoritative editor once
+name: Source-own authoritative editor once v2
 
 on:
   push:
@@ -41,8 +41,8 @@ jobs:
                 if re.search(rf'(?:window|global)\.{re.escape(name)}\s*=(?!=)',line):
                   counts[name]+=1
                   locations[name].append(f'{p}:{i}')
-          print(counts)
-          print(locations)
+          print('ownership counts:', counts)
+          print('ownership locations:', locations)
           expected={
             'olliPrepareStudentAddExtra':1,
             'olliGetStudentAddExtra':1,
@@ -55,54 +55,77 @@ jobs:
             raise SystemExit(f'unexpected global ownership counts: {counts}')
 
           canonical=Path('olli-record-sort-student-ui.js').read_text()
-          prepare_add=canonical[canonical.index('window.olliPrepareStudentAddExtra'):canonical.index('window.olliGetStudentAddExtra')]
+
+          prepare_add_start=canonical.index('window.olliPrepareStudentAddExtra =')
+          prepare_add_end=canonical.index('window.olliGetStudentAddExtra =', prepare_add_start)
+          prepare_add=canonical[prepare_add_start:prepare_add_end]
           order=[prepare_add.index('olliStudentScheduleAfterPrepareStudentAdd'),prepare_add.index('olliPcAuthoritativeScheduleAfterPrepareStudentAdd'),prepare_add.index('olliPcClassRoutingAfterPrepareStudentAdd')]
           if order != sorted(order) or len(set(order)) != 3:
             raise SystemExit(f'prepare-add hook order invalid: {order}')
 
-          get_add=canonical[canonical.index('window.olliGetStudentAddExtra'):canonical.index('window.olliPrepareInfoExtra')]
+          get_add_start=prepare_add_end
+          get_add_end=canonical.index('window.olliPrepareInfoExtra =', get_add_start)
+          get_add=canonical[get_add_start:get_add_end]
           order=[get_add.index('olliStudentScheduleAugmentStudentAddExtra'),get_add.index('olliPcAuthoritativeScheduleAugmentStudentAddExtra'),get_add.index('olliPcClassRoutingFinalizeStudentAddExtra')]
           if order != sorted(order) or len(set(order)) != 3:
             raise SystemExit(f'get-add hook order invalid: {order}')
 
-          prepare_info=canonical[canonical.index('window.olliPrepareInfoExtra'):canonical.index('window.olliGetInfoExtra')]
-          for branch in ['kinder','elementary']:
-            pass
-          if prepare_info.count('olliPcAuthoritativeScheduleAfterPrepareInfo') != 2:
-            raise SystemExit('authoritative prepare-info hook must exist in both branches')
-          if prepare_info.count('olliTimetableAfterPrepareStudentInfo') != 2:
-            raise SystemExit('timetable prepare-info hook must remain in both branches')
-          if prepare_info.find('olliStudentScheduleAfterPrepareInfo') > prepare_info.find('olliPcAuthoritativeScheduleAfterPrepareInfo'):
-            raise SystemExit('prepare-info schedule order invalid')
+          prepare_info_start=get_add_end
+          prepare_info_end=canonical.index('window.olliGetInfoExtra =', prepare_info_start)
+          prepare_info=canonical[prepare_info_start:prepare_info_end]
+          auth_count=prepare_info.count('olliPcAuthoritativeScheduleAfterPrepareInfo')
+          timetable_count=prepare_info.count('olliTimetableAfterPrepareStudentInfo')
+          print('prepare-info auth/timetable counts:', auth_count, timetable_count)
+          if auth_count != 2:
+            raise SystemExit(f'authoritative prepare-info hook count invalid: {auth_count}')
+          if timetable_count != 2:
+            raise SystemExit(f'timetable prepare-info hook count invalid: {timetable_count}')
+          for branch_marker in ["if (type === 'kinder')", "if (type === 'elementary')"]:
+            branch_start=prepare_info.index(branch_marker)
+            next_branch=prepare_info.find("if (type === '", branch_start+len(branch_marker))
+            branch=prepare_info[branch_start:next_branch if next_branch >= 0 else len(prepare_info)]
+            schedule_pos=branch.index('olliStudentScheduleAfterPrepareInfo')
+            authoritative_pos=branch.index('olliPcAuthoritativeScheduleAfterPrepareInfo')
+            timetable_pos=branch.index('olliTimetableAfterPrepareStudentInfo')
+            if not (schedule_pos < authoritative_pos < timetable_pos):
+              raise SystemExit(f'prepare-info hook order invalid for {branch_marker}: {schedule_pos}, {authoritative_pos}, {timetable_pos}')
 
-          get_info=canonical[canonical.index('window.olliGetInfoExtra'):canonical.index("document.addEventListener('DOMContentLoaded'")]
-          if get_info.index('olliStudentScheduleAugmentInfoExtra') > get_info.index('olliPcAuthoritativeScheduleAugmentInfoExtra'):
-            raise SystemExit('get-info augment order invalid')
+          get_info_start=prepare_info_end
+          get_info_end=canonical.index("document.addEventListener('DOMContentLoaded'", get_info_start)
+          get_info=canonical[get_info_start:get_info_end]
+          info_order=[get_info.index('olliStudentScheduleAugmentInfoExtra'),get_info.index('olliPcAuthoritativeScheduleAugmentInfoExtra')]
+          if info_order != sorted(info_order) or len(set(info_order)) != 2:
+            raise SystemExit(f'get-info augment order invalid: {info_order}')
 
           card=Path('pc-student-info-card-runtime.js').read_text()
           for forbidden in ['const basePrepareAdd =','const baseGetAdd =','const basePrepareInfo =','const baseGetInfo =','global.olliPrepareStudentAddExtra =','global.olliGetStudentAddExtra =','global.olliPrepareInfoExtra =','global.olliGetInfoExtra =']:
             if forbidden in card:
               raise SystemExit(f'authoritative wrapper remains: {forbidden}')
+          for required in ['olliPcAuthoritativeScheduleAfterPrepareStudentAdd','olliPcAuthoritativeScheduleAugmentStudentAddExtra','olliPcAuthoritativeScheduleAfterPrepareInfo','olliPcAuthoritativeScheduleAugmentInfoExtra','olliGetStudentAddSchedulePairs','olliGetInfoSchedulePairs']:
+            if required not in card:
+              raise SystemExit(f'authoritative hook lost: {required}')
+
           routing=Path('pc-student-class-routing.js').read_text()
           for forbidden in ['const basePrepare = global.olliPrepareStudentAddExtra','const baseGetExtra = global.olliGetStudentAddExtra','global.olliPrepareStudentAddExtra =','global.olliGetStudentAddExtra =','global.olliGetStudentAddSchedulePairs =']:
             if forbidden in routing:
               raise SystemExit(f'class-routing wrapper remains: {forbidden}')
-          for required in ['olliPrepareStudentRegistrationRouting','olliCommitStudentRegistrationRouting','olliReleaseStudentRegistrationRouting','olli_schedule_set_student_weekly_schedule']:
+          for required in ['olliPcClassRoutingAfterPrepareStudentAdd','olliPcClassRoutingFinalizeStudentAddExtra','olliPrepareStudentRegistrationRouting','olliCommitStudentRegistrationRouting','olliReleaseStudentRegistrationRouting','olli_schedule_set_student_weekly_schedule']:
             if required not in routing:
               raise SystemExit(f'registration routing lost: {required}')
+
           memo=Path('olli-record-memo-storage.js').read_text()
           save_pos=memo.index('const savedStudent = await ensureStudentSavedToSupabase(newStudent);')
           route_pos=memo.index('if (registrationRouting?.handled === true', save_pos)
           fallback_pos=memo.index("else if (typeof window.saveOlliStudentScheduleFromInfo === 'function')", route_pos)
           if not (save_pos < route_pos < fallback_pos):
             raise SystemExit('new-student save routing order changed')
+
           card_save=card.index('const savedStudent = await global.ensureStudentSavedToSupabase(profile);')
           card_schedule=card.index('await setAuthoritativeSchedule(savedStudent.id, pairs);', card_save)
           if card_save >= card_schedule:
             raise SystemExit('existing-student profile/schedule save order changed')
+          print('save-order checks: passed')
           PY
-          grep -q "olliPcAuthoritativeScheduleAfterPrepareStudentAdd" pc-student-info-card-runtime.js
-          grep -q "olliPcClassRoutingFinalizeStudentAddExtra" pc-student-class-routing.js
       - name: Commit and cleanup
         run: |
           git config user.name "github-actions[bot]"
