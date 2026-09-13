@@ -1,0 +1,127 @@
+name: Student schedule runtime regression once
+
+on:
+  push:
+    branches:
+      - refactor/source-owned-no-overrides-20260912
+    paths:
+      - .github/workflows/student-schedule-runtime-regression-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/source-owned-no-overrides-20260912
+          fetch-depth: 0
+
+      - name: Static regression checks
+        shell: bash
+        run: |
+          node --check olli-record-sort-student-ui.js
+          node --check olli-record-memo-storage.js
+          node --check pc-student-info-card-runtime.js
+          node --check pc-student-class-routing.js
+          node --check pc-timetable.js
+          node --check tmp-student-schedule-runtime-regression.js
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          files=[p for p in Path('.').rglob('*') if p.is_file() and p.suffix.lower() in {'.js','.html'} and '.git' not in p.parts]
+          expected={
+            'olliPrepareStudentAddExtra':'olli-record-sort-student-ui.js',
+            'olliGetStudentAddExtra':'olli-record-sort-student-ui.js',
+            'olliPrepareInfoExtra':'olli-record-sort-student-ui.js',
+            'olliGetInfoExtra':'olli-record-sort-student-ui.js',
+            'olliGetStudentAddSchedulePairs':'pc-student-info-card-runtime.js',
+            'olliGetInfoSchedulePairs':'pc-student-info-card-runtime.js',
+          }
+          for name,owner in expected.items():
+            locs=[]
+            pat=re.compile(rf'(?:window|global)\.{re.escape(name)}\s*=(?!=)')
+            for p in files:
+              for i,line in enumerate(p.read_text(errors='ignore').splitlines(),1):
+                if pat.search(line): locs.append(f'{p}:{i}')
+            print(name, locs)
+            if len(locs)!=1 or not locs[0].startswith(owner+':'):
+              raise SystemExit(f'owner mismatch {name}: {locs}')
+
+          memo=Path('olli-record-memo-storage.js').read_text()
+          card=Path('pc-student-info-card-runtime.js').read_text()
+          profile=memo.index('const savedStudent = await ensureStudentSavedToSupabase(newStudent);')
+          commit=memo.index("if (registrationRouting?.handled === true && typeof window.olliCommitStudentRegistrationRouting === 'function')",profile)
+          fallback=memo.index("else if (typeof window.saveOlliStudentScheduleFromInfo === 'function')",commit)
+          release=memo.index("if (registrationRouting?.handled === true && typeof window.olliReleaseStudentRegistrationRouting === 'function')",fallback)
+          if not profile < commit < fallback < release:
+            raise SystemExit('new student save routing order changed')
+          existing_profile=card.index('const savedStudent = await global.ensureStudentSavedToSupabase(profile);')
+          existing_schedule=card.index('await setAuthoritativeSchedule(savedStudent.id, pairs);',existing_profile)
+          if not existing_profile < existing_schedule:
+            raise SystemExit('existing student save order changed')
+          if "className: ''" in card[card.index('async function saveStudentInfoCard'):card.index('function isStudentInfoEditEvent')]:
+            raise SystemExit('existing student save path clears className')
+          print('STATIC_REGRESSION_PASS')
+          PY
+
+      - name: Prepare isolated browser page
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          src=Path('index.html').read_text()
+          marker='</body>'
+          injection='\n<script src="tmp-student-schedule-runtime-regression.js"></script>\n'
+          if marker not in src:
+            raise SystemExit('index.html body end not found')
+          Path('regression-runtime.html').write_text(src.replace(marker,injection+marker,1))
+          PY
+
+      - name: Browser runtime regression with mocked writes
+        shell: bash
+        run: |
+          CHROME="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium || true)"
+          if [ -z "$CHROME" ]; then
+            echo "Chrome executable not found"
+            exit 1
+          fi
+          echo "Using $CHROME"
+          python3 -m http.server 8765 >/tmp/olli-regression-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          sleep 1
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --disable-dev-shm-usage \
+            --user-data-dir=/tmp/olli-runtime-regression-profile \
+            --virtual-time-budget=30000 \
+            --dump-dom \
+            http://127.0.0.1:8765/regression-runtime.html \
+            >/tmp/olli-regression-dom.txt \
+            2>/tmp/olli-regression-chrome.err || true
+          echo '--- regression result ---'
+          grep -n -A120 -B2 'REGRESSION_' /tmp/olli-regression-dom.txt || true
+          echo '--- chrome stderr tail ---'
+          tail -80 /tmp/olli-regression-chrome.err || true
+          if ! grep -q 'REGRESSION_PASS' /tmp/olli-regression-dom.txt; then
+            echo 'Runtime regression did not pass.'
+            exit 1
+          fi
+
+      - name: Cleanup temporary regression tooling
+        if: always()
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f tmp-student-schedule-runtime-regression.js
+          rm -f regression-runtime.html
+          rm -f .github/workflows/student-schedule-runtime-regression-once.yml
+          git add -A
+          git commit -m "chore: remove temporary student schedule regression" || true
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
