@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 # 1) Canonical student modal owner: establish deterministic hook order.
 p = Path('olli-record-sort-student-ui.js')
@@ -85,10 +86,12 @@ text = text.replace(old, new, 1)
 prepare_start = text.index('window.olliPrepareInfoExtra =')
 prepare_end = text.index('window.olliGetInfoExtra =', prepare_start)
 prepare_section = text[prepare_start:prepare_end]
-if prepare_section.count('olliPcAuthoritativeScheduleAfterPrepareInfo') != 2:
-    raise SystemExit(f'canonical authoritative prepare-info hook count mismatch: {prepare_section.count("olliPcAuthoritativeScheduleAfterPrepareInfo")}')
-if prepare_section.count('olliTimetableAfterPrepareStudentInfo') != 2:
-    raise SystemExit(f'canonical timetable prepare-info hook count mismatch: {prepare_section.count("olliTimetableAfterPrepareStudentInfo")}')
+authoritative_calls = re.findall(r'window\.olliPcAuthoritativeScheduleAfterPrepareInfo\(type, student\)', prepare_section)
+timetable_calls = re.findall(r'window\.olliTimetableAfterPrepareStudentInfo\(type, student\)', prepare_section)
+if len(authoritative_calls) != 2:
+    raise SystemExit(f'canonical authoritative prepare-info call count mismatch: {len(authoritative_calls)}')
+if len(timetable_calls) != 2:
+    raise SystemExit(f'canonical timetable prepare-info call count mismatch: {len(timetable_calls)}')
 for branch_marker in ["if (type === 'kinder')", "if (type === 'elementary')"]:
     branch_start = prepare_section.index(branch_marker)
     next_branch = prepare_section.find("if (type === '", branch_start + len(branch_marker))
