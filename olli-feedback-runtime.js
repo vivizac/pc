@@ -240,42 +240,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
 
-  function wrapFunction(name, validator) {
-    const original = window[name];
-    if (typeof original !== 'function') return false;
-    if (original.__feedbackInputGuardWrapped) return true;
-
-    const wrapped = function(...args) {
-      if (!validator(...args)) {
-        notifyFeedbackInputRequired();
-        return;
-      }
-      return original.apply(this, args);
-    };
-
-    wrapped.__feedbackInputGuardWrapped = true;
-    wrapped.__originalFeedbackFunction = original;
-    window[name] = wrapped;
-    return true;
-  }
-
-  function installFeedbackInputGuards() {
-    wrapFunction('requestSceneCardFeedback', function(customText) {
-      return hasSceneCardFeedbackInput(customText);
-    });
-
-    wrapFunction('requestElementaryFeedback', function() {
-      return hasElementaryMemoFeedbackInput();
-    });
-
-    wrapFunction('requestSceneCardFeedbackFromElementary', function(studentName, text, analysisPromptText) {
-      return hasElementaryMemoFeedbackInput(text, analysisPromptText);
-    });
-}
-
-  installFeedbackInputGuards();
-
-  document.addEventListener('DOMContentLoaded', installFeedbackInputGuards);
+  /* 입력 검증은 각 canonical request 함수가 직접 소유한다.
+   이 블록은 버튼 capture 단계의 조기 안내만 담당하며 전역 함수를 교체하지 않는다. */
 
   /* onclick보다 먼저 막아야 하는 버튼은 capture 단계에서도 한 번 더 방어 */
   document.addEventListener('click', function(event) {
@@ -320,7 +286,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }, true);
 
-  window.installFeedbackInputGuards = installFeedbackInputGuards;
 })();
 
 
@@ -349,8 +314,10 @@ function getTodayFeedbackItemsRaw() {
   } catch { return []; }
 }
 function setTodayFeedbackItemsRaw(list) {
-  localStorage.setItem(getFeedbackJobQueueStorageKey(), JSON.stringify(Array.isArray(list) ? list.slice(0, 300) : []));
-  
+  const filtered = window.KcfAutoMode && typeof window.KcfAutoMode.filterFeedbackItems === 'function'
+    ? window.KcfAutoMode.filterFeedbackItems(list)
+    : list;
+  localStorage.setItem(getFeedbackJobQueueStorageKey(), JSON.stringify(Array.isArray(filtered) ? filtered.slice(0, 300) : []));
   try { updateKinderChatFeedbackBadge(); } catch(e) {}
   try { renderKinderChatFeedbackInbox(); } catch(e) {}
 }
@@ -461,7 +428,7 @@ function createTodayFeedbackItem(options = {}) {
     status: options.status || 'generating',
     studentName: normalizeTodayFeedbackStudentName(options.studentName) || '학생',
     studentDivision: options.studentDivision === 'kinder' ? 'kinder' : 'elementary',
-    studentId: String(options.studentId || options.savedStudentId || ''),
+    studentId: String(options.studentId || options.student_id || options.savedStudentId || '').trim(),
     feedbackType: options.feedbackType || 'class',
     label: options.label || '피드백',
     sourcePage: String(options.sourcePage || ''),
@@ -484,6 +451,7 @@ function createTodayFeedbackItem(options = {}) {
   return item;
 }
 function updateTodayFeedbackItem(id, patch = {}) {
+  if (window.KcfAutoMode && typeof window.KcfAutoMode.shouldDiscardFeedbackJob === 'function' && window.KcfAutoMode.shouldDiscardFeedbackJob(id)) return null;
   const list = getTodayFeedbackItemsRaw();
   let changed = false;
   const next = list.map(item => {
@@ -517,6 +485,7 @@ function getTodayFeedbackSavedRowId(item = {}) {
   return String(item.savedRowId || item.serverRowId || item.feedbackRowId || item.rowId || item.row?.id || '').trim();
 }
 function getTodayFeedbackEditFeatureByTable(tableName) {
+  if (typeof getMemoFeedbackArchiveEditFeature === 'function') return getMemoFeedbackArchiveEditFeature(tableName);
   const table = String(tableName || '').trim();
   if (table === 'feedbacks') return 'general_feedback_edit';
   if (table === 'fail_feedbacks') return 'growth_feedback_edit';

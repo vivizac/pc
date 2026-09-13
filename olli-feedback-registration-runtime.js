@@ -58,13 +58,43 @@
     });
   }
 
-  function getKcfSelectedStudentForName(studentName){
-    var selectedId = String(window.__kcfSelectedStudentId || '').trim();
+  function getKcfSelectedStudent(){
+    var selectedId = '';
+    try {
+      var autoSelection = window.KcfAutoMode && typeof window.KcfAutoMode.getSelection === 'function'
+        ? window.KcfAutoMode.getSelection()
+        : null;
+      if (autoSelection && autoSelection.studentId) selectedId = String(autoSelection.studentId || '').trim();
+    } catch (err) {}
+    if (!selectedId) {
+      try {
+        var manualSelection = typeof window.getKinderChatFeedbackManualSelection === 'function'
+          ? window.getKinderChatFeedbackManualSelection()
+          : null;
+        if (manualSelection && manualSelection.studentId) selectedId = String(manualSelection.studentId || '').trim();
+      } catch (err) {}
+    }
+    if (!selectedId) selectedId = String(window.__kcfSelectedStudentId || '').trim();
     if (!selectedId || typeof findStudentById !== 'function') return null;
-    var student = findStudentById(selectedId);
-    if (!student) return null;
-    if (String(student.name || '').trim() !== String(studentName || '').trim()) return null;
-    return student;
+    return findStudentById(selectedId) || null;
+  }
+
+  function setKcfSelectedStudent(student){
+    var id = String(student && student.id || '').trim();
+    var name = String(student && student.name || '').trim();
+    window.__kcfSelectedStudentId = id;
+    window.__kcfSelectedStudentName = name;
+    if (typeof window.setKinderChatFeedbackManualSelection === 'function') {
+      try { window.setKinderChatFeedbackManualSelection(student); } catch (err) {}
+    }
+  }
+
+  function clearKcfSelectedStudent(){
+    window.__kcfSelectedStudentId = '';
+    window.__kcfSelectedStudentName = '';
+    if (typeof window.clearKinderChatFeedbackManualSelection === 'function') {
+      try { window.clearKinderChatFeedbackManualSelection(); } catch (err) {}
+    }
   }
 
   window.getKinderChatFeedbackSaveStudentCandidates = function(studentName, studentDivision){
@@ -152,28 +182,23 @@
     }
     var student = (typeof findStudentById === 'function') ? findStudentById(studentId) : null;
     if (!student) return;
-    window.__kcfSelectedStudentId = String(student.id || '');
+    setKcfSelectedStudent(student);
     var input = document.getElementById('kcfInput');
     if (input) {
-      var lines = String(input.value || '').split(/\n/);
-      if (lines.length <= 1 && !String(lines[0] || '').trim()) input.value = (student.name || '') + '\n';
-      else {
-        lines[0] = student.name || '';
-        input.value = lines.join('\n');
-      }
       if (typeof autoResizeKinderChatFeedbackInput === 'function') autoResizeKinderChatFeedbackInput(input);
       if (typeof saveKinderChatFeedbackDraft === 'function') saveKinderChatFeedbackDraft();
-      input.focus();
+      try { input.focus(); } catch (err) {}
     }
     if (typeof closeKinderChatFeedbackStudentManagePopup === 'function') closeKinderChatFeedbackStudentManagePopup();
   };
 
-  async function continueKinderChatFeedbackSubmit(parsed, student){
+  async function continueKinderChatFeedbackSubmit(body, student, autoSubmitContext){
     var input = document.getElementById('kcfInput');
-    var text = input ? String(input.value || '').trim() : '';
+    var text = String(body || (input ? input.value || '' : '')).trim();
+    if (!text || !student) return;
     var feedbackJobId = 'fbjob_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
     var studentType = normalizeKcfStudentType(student);
-    var studentName = String(student && student.name || parsed.studentName || '').trim();
+    var studentName = String(student.name || '').trim();
     var photoSnapshot = null;
 
     if (typeof kcfPendingPhoto !== 'undefined' && kcfPendingPhoto) {
@@ -187,29 +212,41 @@
       }
     }
 
-    if (typeof addKinderChatDocumentMessage === 'function') addKinderChatDocumentMessage(studentName, getKcfStudentFeedbackLabel(student, 'class'), parsed.body || text, 'minute', photoSnapshot);
+    if (typeof addKinderChatDocumentMessage === 'function') addKinderChatDocumentMessage(studentName, getKcfStudentFeedbackLabel(student, 'class'), text, 'minute', photoSnapshot);
     if (typeof addKinderChatMessage === 'function') addKinderChatMessage('bot', '관찰 내용을 부모님께 잘 전달될 수 있도록 정리해둘게요.\n다음 학생 기록을 이어서 작성해 주세요.');
-    if (typeof startTodayFeedbackRequest === 'function') {
-      startTodayFeedbackRequest({
-        id: feedbackJobId,
-        promptType: getKcfStudentPromptType(student, 'class'),
-        userText: parsed.body || text,
-        studentName: studentName,
-        studentId: student.id || '',
-        studentDivision: studentType,
-        feedbackType: 'class',
-        label: getKcfStudentFeedbackLabel(student, 'class'),
-        sourcePage: 'kinderChatFeedback',
-        silent: true,
-        attachments: photoSnapshot ? [photoSnapshot] : []
-      });
+    var requestOptions = {
+      id: feedbackJobId,
+      promptType: getKcfStudentPromptType(student, 'class'),
+      userText: text,
+      studentName: studentName,
+      studentId: student.id || '',
+      studentDivision: studentType,
+      feedbackType: 'class',
+      label: getKcfStudentFeedbackLabel(student, 'class'),
+      sourcePage: 'kinderChatFeedback',
+      silent: true,
+      attachments: photoSnapshot ? [photoSnapshot] : []
+    };
+    var feedbackItem = null;
+    if (typeof startTodayFeedbackRequest === 'function') feedbackItem = startTodayFeedbackRequest(requestOptions);
+    if (window.KcfAutoMode && typeof window.KcfAutoMode.onFeedbackRequestStarted === 'function') {
+      try { window.KcfAutoMode.onFeedbackRequestStarted(requestOptions, feedbackItem); } catch (err) {}
+    }
+    if (typeof markKcfStudentFeedbackSent === 'function') {
+      try { markKcfStudentFeedbackSent(String(student.id || '')); } catch (err) {}
+    }
+    if (window.KcfAutoMode && typeof window.KcfAutoMode.completeSuccessfulSubmit === 'function') {
+      try { window.KcfAutoMode.completeSuccessfulSubmit(autoSubmitContext || null); } catch (err) {}
     }
 
+    var autoSelection = window.KcfAutoMode && typeof window.KcfAutoMode.getSelection === 'function'
+      ? window.KcfAutoMode.getSelection()
+      : null;
+    if (!autoSelection || !autoSelection.studentId) clearKcfSelectedStudent();
     if (input) {
       input.value = '';
       if (typeof autoResizeKinderChatFeedbackInput === 'function') autoResizeKinderChatFeedbackInput(input);
     }
-    window.__kcfSelectedStudentId = '';
     if (typeof clearKinderChatFeedbackPhoto === 'function') clearKinderChatFeedbackPhoto();
     if (typeof clearKinderChatFeedbackDraft === 'function') clearKinderChatFeedbackDraft();
     if (typeof clearKinderChatFeedbackKeyword === 'function') clearKinderChatFeedbackKeyword();
@@ -220,30 +257,47 @@
     var input = document.getElementById('kcfInput');
     if (!input) return;
     var text = String(input.value || '').trim();
+    var compactCommand = text.replace(/\s+/g, '');
+    var guideCommand = compactCommand === '가이드'
+      ? 'show'
+      : ((compactCommand === '가이드삭제' || compactCommand === '가이드숨김') ? 'hide' : '');
+    if (guideCommand) {
+      if (typeof window.setKinderChatFeedbackGuideVisibility === 'function') {
+        try { window.setKinderChatFeedbackGuideVisibility(guideCommand === 'show'); } catch (err) {}
+      }
+      input.value = '';
+      if (typeof clearKinderChatFeedbackDraft === 'function') clearKinderChatFeedbackDraft();
+      if (typeof autoResizeKinderChatFeedbackInput === 'function') autoResizeKinderChatFeedbackInput(input);
+      if (typeof setKinderChatFeedbackWarning === 'function') setKinderChatFeedbackWarning('');
+      try { input.dispatchEvent(new Event('input', { bubbles:true })); } catch (err) {}
+      return;
+    }
+    if (window.KcfAutoMode && typeof window.KcfAutoMode.isEditing === 'function' && window.KcfAutoMode.isEditing()) {
+      if (typeof window.KcfAutoMode.saveSubmittedRecordEdit === 'function') await window.KcfAutoMode.saveSubmittedRecordEdit();
+      return;
+    }
+    if (text === '학생') {
+      input.value = '';
+      if (typeof clearKinderChatFeedbackDraft === 'function') clearKinderChatFeedbackDraft();
+      if (typeof autoResizeKinderChatFeedbackInput === 'function') autoResizeKinderChatFeedbackInput(input);
+      if (typeof setKinderChatFeedbackWarning === 'function') setKinderChatFeedbackWarning('');
+      if (typeof openKinderChatFeedbackStudentManagePopup === 'function') openKinderChatFeedbackStudentManagePopup();
+      return;
+    }
     if (!text) {
-      setKinderChatFeedbackWarning('학생 이름과 관찰 내용을 적어주세요.');
+      setKinderChatFeedbackWarning('수업기록을 적어주세요.');
       return;
     }
-    var parsed = parseKinderChatFeedbackInput(text);
-    if (!parsed.studentName || parsed.lines.length < 2) {
-      setKinderChatFeedbackWarning('첫 줄에는 학생 이름을, 아래에는 관찰 내용을 적어주세요.');
+    var selectedStudent = getKcfSelectedStudent();
+    if (!selectedStudent) {
+      setKinderChatFeedbackWarning("학생을 먼저 선택해 주세요. 입력창에 '학생'을 입력해 선택할 수 있어요.");
       return;
     }
-
-    var selectedStudent = getKcfSelectedStudentForName(parsed.studentName);
-    var candidates = selectedStudent ? [selectedStudent] : findKcfStudentsByName(parsed.studentName);
-    if (!candidates.length) {
-      setKinderChatFeedbackWarning('등록된 학생이 없습니다. 학생관리에서 먼저 등록해 주세요.');
-      alert('등록된 학생이 없습니다.\n학생관리에서 먼저 등록해 주세요.');
-      return;
-    }
-    if (candidates.length > 1) {
-      setKinderChatFeedbackWarning('같은 이름의 학생이 있어요. 학생을 선택해 주세요.');
-      openKinderChatFeedbackSaveStudentPicker('', candidates, 'submit', { parsed: parsed });
-      return;
-    }
+    var autoSubmitContext = window.KcfAutoMode && typeof window.KcfAutoMode.captureSubmitContext === 'function'
+      ? window.KcfAutoMode.captureSubmitContext()
+      : null;
     setKinderChatFeedbackWarning('');
-    await continueKinderChatFeedbackSubmit(parsed, candidates[0]);
+    await continueKinderChatFeedbackSubmit(text, selectedStudent, autoSubmitContext);
   };
 
   window.openKinderChatFeedbackSaveStudentPicker = function(itemId, candidates, mode, submitPayload){
@@ -261,7 +315,7 @@
     var guideEl = overlay.querySelector('.kcfSaveStudentPickerGuide');
     var saveBtn = overlay.querySelector('.kcfSaveStudentSaveBtn');
     if (titleEl) titleEl.textContent = '학생을 선택해 주세요';
-    if (guideEl) guideEl.textContent = safeMode === 'submit' ? '같은 이름의 학생이 있어요. 피드백을 작성할 학생을 선택해 주세요.' : '같은 이름의 학생이 있어요. 기록실에 저장할 학생을 선택해 주세요.';
+    if (guideEl) guideEl.textContent = safeMode === 'submit' ? '피드백을 작성할 학생을 선택해 주세요.' : '같은 이름의 학생이 있어요. 기록실에 저장할 학생을 선택해 주세요.';
     if (saveBtn) saveBtn.textContent = safeMode === 'submit' ? '피드백 전송' : '기록실 저장';
     list.innerHTML = candidates.map(function(student, index){
       var id = String(student.id || '');
@@ -296,26 +350,11 @@
         alert('선택한 학생 정보를 찾지 못했습니다.');
         return;
       }
-      window.__kcfSelectedStudentId = selectedId;
-      var parsed = pending.submitPayload && pending.submitPayload.parsed;
-      if (parsed) continueKinderChatFeedbackSubmit(parsed, student);
+      setKcfSelectedStudent(student);
+      var body = String(pending.submitPayload && pending.submitPayload.body || '').trim();
+      if (body) continueKinderChatFeedbackSubmit(body, student, null);
       return;
     }
     if (pending.itemId && typeof saveTodayFeedbackItem === 'function') saveTodayFeedbackItem(pending.itemId, null, selectedId);
   };
-
-  document.addEventListener('DOMContentLoaded', function(){
-    try {
-      var input = document.getElementById('kcfInput');
-      if (input) {
-        input.addEventListener('input', function(){
-          var parsed = (typeof parseKinderChatFeedbackInput === 'function') ? parseKinderChatFeedbackInput(input.value || '') : { studentName:'' };
-          var selected = getKcfSelectedStudentForName(parsed.studentName);
-          if (!selected) window.__kcfSelectedStudentId = '';
-        });
-      }
-    } catch (err) {
-      console.warn('1분 피드백 초등부 패치 초기화 실패:', err);
-    }
-  });
 })();
