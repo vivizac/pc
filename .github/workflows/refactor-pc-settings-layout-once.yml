@@ -1,0 +1,118 @@
+name: Refactor PC settings layout wrappers once
+
+on:
+  push:
+    branches:
+      - refactor/source-owned-no-overrides-20260912
+    paths:
+      - .github/workflows/refactor-pc-settings-layout-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/source-owned-no-overrides-20260912
+          fetch-depth: 0
+
+      - name: Refactor settings layout ownership
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path, old, new, label):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected 1 match, got {count}")
+              p.write_text(text.replace(old, new, 1))
+
+          # Canonical settings page owns its lifecycle and calls PC layout hooks explicitly.
+          replace_once(
+              'olli-settings-base.js',
+              """  if (!settings) return;\n\n  if (detail) detail.style.display = 'none';\n""",
+              """  if (!settings) return;\n\n  if (typeof window.olliPcSettingsLayoutBeforeOpenPage === 'function') {\n    try { window.olliPcSettingsLayoutBeforeOpenPage(); } catch (_) {}\n  }\n\n  if (detail) detail.style.display = 'none';\n""",
+              'openSettingsPage before hook'
+          )
+          replace_once(
+              'olli-settings-base.js',
+              """  settingsRefreshAll();\n}\n\nfunction closeSettingsPage() {\n""",
+              """  settingsRefreshAll();\n  if (typeof window.olliPcSettingsLayoutAfterOpenPage === 'function') {\n    try { window.olliPcSettingsLayoutAfterOpenPage(); } catch (_) {}\n  }\n}\n\nfunction closeSettingsPage() {\n""",
+              'openSettingsPage after hook'
+          )
+          replace_once(
+              'olli-settings-base.js',
+              """  if (record) record.style.display = 'flex';\n}\nfunction toggleSettingsNotification() {\n""",
+              """  if (record) record.style.display = 'flex';\n  if (typeof window.olliPcSettingsLayoutAfterClosePage === 'function') {\n    try { window.olliPcSettingsLayoutAfterClosePage(); } catch (_) {}\n  }\n}\nfunction toggleSettingsNotification() {\n""",
+              'closeSettingsPage hook'
+          )
+
+          # Canonical detail screen calls PC layout hooks instead of being wrapped.
+          replace_once(
+              'olli-settings-detail.js',
+              """  if(!detail || !body) return;\n\n  settingsCurrentDetailType = type;\n""",
+              """  if(!detail || !body) return;\n\n  if (typeof window.olliPcSettingsLayoutBeforeOpenDetail === 'function') {\n    try { window.olliPcSettingsLayoutBeforeOpenDetail(type); } catch (_) {}\n  }\n\n  settingsCurrentDetailType = type;\n""",
+              'openSettingsDetail before hook'
+          )
+          replace_once(
+              'olli-settings-detail.js',
+              """  detail.style.zIndex = '91000';\n\n  try {\n""",
+              """  detail.style.zIndex = '91000';\n  if (typeof window.olliPcSettingsLayoutAfterOpenDetail === 'function') {\n    try { window.olliPcSettingsLayoutAfterOpenDetail(type); } catch (_) {}\n  }\n\n  try {\n""",
+              'openSettingsDetail immediate hook'
+          )
+          replace_once(
+              'olli-settings-detail.js',
+              """      : renderSettingsErrorIfNeeded();\n  }\n}\n\nfunction closeSettingsDetail(){\n""",
+              """      : renderSettingsErrorIfNeeded();\n  }\n\n  if (typeof window.olliPcSettingsLayoutAfterOpenDetail === 'function') {\n    try { window.olliPcSettingsLayoutAfterOpenDetail(type); } catch (_) {}\n  }\n}\n\nfunction closeSettingsDetail(){\n""",
+              'openSettingsDetail settled hook'
+          )
+          replace_once(
+              'olli-settings-detail.js',
+              """  if(settings) settings.style.display = 'flex';\n}\n\n// 설정 상세 페이지 버튼은 기존 openSettingsDetail 함수를 전역에 명시적으로 노출합니다.\n""",
+              """  if(settings) settings.style.display = 'flex';\n  if (typeof window.olliPcSettingsLayoutAfterCloseDetail === 'function') {\n    try { window.olliPcSettingsLayoutAfterCloseDetail(); } catch (_) {}\n  }\n}\n\n// 설정 상세 페이지 버튼은 기존 openSettingsDetail 함수를 전역에 명시적으로 노출합니다.\n""",
+              'closeSettingsDetail hook'
+          )
+
+          # Canonical PC section router explicitly closes PC settings chrome before navigation.
+          replace_once(
+              'pc-shell.js',
+              """  async function openSection(section) {\n    // 이전 PC 관찰노트 route/탭 호출은 성향기록부로 안전하게 흡수합니다.\n""",
+              """  async function openSection(section) {\n    if (typeof global.olliPcSettingsLayoutBeforeOpenSection === 'function') {\n      try { global.olliPcSettingsLayoutBeforeOpenSection(section); } catch (_) {}\n    }\n    // 이전 PC 관찰노트 route/탭 호출은 성향기록부로 안전하게 흡수합니다.\n""",
+              'pcOpenSection hook'
+          )
+
+          # PC layout file becomes hook-only; it no longer captures/replaces canonical functions.
+          Path('pc-settings-layout.js').write_text("""(function(){\n'use strict';\n\nif(!document.body || !document.body.classList.contains('olliPcApp')) return;\n\nlet previousPcSection='academy';\nlet restoringPreviousSection=false;\n\nfunction isSettingsMode(){\n  return document.body.classList.contains('pcSettingsOpen');\n}\n\nfunction currentPcSection(){\n  const shell=document.getElementById('olliPcShell');\n  return String(shell?.dataset?.pcSection||previousPcSection||'academy');\n}\n\nfunction placeSettingsScreen(element,zIndex){\n  if(!element) return;\n  element.style.position='fixed';\n  element.style.inset='auto';\n  element.style.left='var(--pc-sidebar-w)';\n  element.style.top='var(--pc-topbar-h)';\n  element.style.right='0';\n  element.style.bottom='0';\n  element.style.width='auto';\n  element.style.height='auto';\n  element.style.maxWidth='none';\n  element.style.transform='translateX(0)';\n  element.style.opacity='1';\n  element.style.pointerEvents='auto';\n  element.style.zIndex=String(zIndex);\n}\n\nfunction showPcSettingsChrome(){\n  const body=document.body;\n  const shell=document.getElementById('olliPcShell');\n  const topbar=document.getElementById('olliPcTopbar');\n  const title=document.getElementById('olliPcTopbarTitle');\n  const search=document.getElementById('olliPcSearch');\n  const archive=document.getElementById('olliPcTopArchiveBtn');\n  const sortBtn=document.getElementById('olliPcSortBtn');\n  const settingsBtn=document.getElementById('olliPcSettingsBtn');\n\n  body.classList.add('pcSettingsOpen');\n  shell?.classList.add('visible');\n  topbar?.classList.add('visible');\n  if(title) title.textContent='설정';\n  if(search) search.style.display='none';\n  archive?.classList.remove('show');\n  if(sortBtn) sortBtn.style.visibility='hidden';\n  settingsBtn?.classList.add('pcSettingsActive');\n\n  document.querySelectorAll('[data-pc-nav]').forEach(btn=>btn.classList.remove('active'));\n  placeSettingsScreen(document.getElementById('settingsPageScreen'),84000);\n  placeSettingsScreen(document.getElementById('settingsDetailScreen'),84100);\n}\n\nfunction leavePcSettingsChrome(){\n  document.body.classList.remove('pcSettingsOpen');\n  document.getElementById('olliPcSettingsBtn')?.classList.remove('pcSettingsActive');\n}\n\nfunction hideSettingsScreens(){\n  const settings=document.getElementById('settingsPageScreen');\n  const detail=document.getElementById('settingsDetailScreen');\n  if(settings) settings.style.display='none';\n  if(detail) detail.style.display='none';\n}\n\nfunction restorePreviousPcSection(){\n  if(restoringPreviousSection) return;\n  if(typeof window.pcOpenSection==='function'){\n    restoringPreviousSection=true;\n    Promise.resolve(window.pcOpenSection(previousPcSection)).catch(()=>{}).finally(()=>{ restoringPreviousSection=false; });\n    return;\n  }\n  const shell=document.getElementById('olliPcShell');\n  const topbar=document.getElementById('olliPcTopbar');\n  shell?.classList.add('visible');\n  topbar?.classList.add('visible');\n}\n\nfunction applyDetailLayout(){\n  if(!isSettingsMode()) return;\n  showPcSettingsChrome();\n  placeSettingsScreen(document.getElementById('settingsPageScreen'),84000);\n  placeSettingsScreen(document.getElementById('settingsDetailScreen'),84100);\n}\n\nwindow.olliPcSettingsLayoutBeforeOpenPage=function(){\n  previousPcSection=currentPcSection();\n};\n\nwindow.olliPcSettingsLayoutAfterOpenPage=function(){\n  showPcSettingsChrome();\n  const settings=document.getElementById('settingsPageScreen');\n  if(settings) settings.style.display='flex';\n  requestAnimationFrame(showPcSettingsChrome);\n};\n\nwindow.olliPcSettingsLayoutAfterClosePage=function(){\n  leavePcSettingsChrome();\n  hideSettingsScreens();\n  restorePreviousPcSection();\n};\n\nwindow.olliPcSettingsLayoutBeforeOpenDetail=function(){\n  showPcSettingsChrome();\n};\n\nwindow.olliPcSettingsLayoutAfterOpenDetail=function(){\n  requestAnimationFrame(applyDetailLayout);\n};\n\nwindow.olliPcSettingsLayoutAfterCloseDetail=function(){\n  showPcSettingsChrome();\n  const settings=document.getElementById('settingsPageScreen');\n  if(settings) settings.style.display='flex';\n};\n\nwindow.olliPcSettingsLayoutBeforeOpenSection=function(){\n  if(!isSettingsMode()) return;\n  leavePcSettingsChrome();\n  hideSettingsScreens();\n};\n\nfunction keepChromeVisible(){\n  if(isSettingsMode()) requestAnimationFrame(showPcSettingsChrome);\n}\nwindow.addEventListener('focus',keepChromeVisible);\ndocument.addEventListener('visibilitychange',()=>{\n  if(document.visibilityState==='visible') keepChromeVisible();\n});\n})();\n""")
+
+          audit=Path('TMP_PC_SETTINGS_LAYOUT_AUDIT.txt')
+          if audit.exists():
+              audit.unlink()
+
+      - name: Validate source ownership
+        run: |
+          node --check olli-settings-base.js
+          node --check olli-settings-detail.js
+          node --check pc-shell.js
+          node --check pc-settings-layout.js
+          git diff --check
+          ! grep -q "originalOpenSettingsPage\|originalCloseSettingsPage\|originalOpenSettingsDetail\|originalCloseSettingsDetail\|originalPcOpenSection" pc-settings-layout.js
+          ! grep -q "window.openSettingsPage=\|window.closeSettingsPage=\|window.openSettingsDetail=\|window.closeSettingsDetail=\|window.pcOpenSection=" pc-settings-layout.js
+          grep -q "olliPcSettingsLayoutBeforeOpenPage" olli-settings-base.js
+          grep -q "olliPcSettingsLayoutAfterClosePage" olli-settings-base.js
+          grep -q "olliPcSettingsLayoutBeforeOpenDetail" olli-settings-detail.js
+          grep -q "olliPcSettingsLayoutAfterCloseDetail" olli-settings-detail.js
+          grep -q "olliPcSettingsLayoutBeforeOpenSection" pc-shell.js
+
+      - name: Commit refactor and remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/refactor-pc-settings-layout-once.yml
+          git add -A
+          git commit -m "refactor: source-own PC settings layout lifecycle"
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
