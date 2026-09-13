@@ -1,0 +1,102 @@
+name: Refactor PC timetable info bridge once
+
+on:
+  push:
+    branches:
+      - refactor/source-owned-no-overrides-20260912
+    paths:
+      - .github/workflows/refactor-pc-timetable-info-bridge-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/source-owned-no-overrides-20260912
+          fetch-depth: 0
+
+      - name: Source-own timetable student-info bridge
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('olli-record-sort-student-ui.js')
+          text = p.read_text()
+
+          kinder_old = """      if (typeof window.olliStudentScheduleAfterPrepareInfo === 'function') window.olliStudentScheduleAfterPrepareInfo(type, student);
+      return;
+"""
+          kinder_new = """      if (typeof window.olliStudentScheduleAfterPrepareInfo === 'function') window.olliStudentScheduleAfterPrepareInfo(type, student);
+      if (typeof window.olliTimetableAfterPrepareStudentInfo === 'function') window.olliTimetableAfterPrepareStudentInfo(type, student);
+      return;
+"""
+          if text.count(kinder_old) != 1:
+              raise SystemExit(f'kinder prepare hook mismatch: {text.count(kinder_old)}')
+          text = text.replace(kinder_old, kinder_new, 1)
+
+          elem_old = """      if (typeof window.olliStudentScheduleAfterPrepareInfo === 'function') window.olliStudentScheduleAfterPrepareInfo(type, student);
+    }
+  };
+  window.olliGetInfoExtra = function(type){
+"""
+          elem_new = """      if (typeof window.olliStudentScheduleAfterPrepareInfo === 'function') window.olliStudentScheduleAfterPrepareInfo(type, student);
+      if (typeof window.olliTimetableAfterPrepareStudentInfo === 'function') window.olliTimetableAfterPrepareStudentInfo(type, student);
+    }
+  };
+  window.olliGetInfoExtra = function(type){
+"""
+          if text.count(elem_old) != 1:
+              raise SystemExit(f'elementary prepare hook mismatch: {text.count(elem_old)}')
+          text = text.replace(elem_old, elem_new, 1)
+          p.write_text(text)
+
+          p = Path('pc-timetable.js')
+          text = p.read_text()
+          start = text.find('  function installStudentInfoBridge() {')
+          end = text.find('\n  async function refreshScheduleFromServer()', start)
+          if start < 0 or end < 0:
+              raise SystemExit('installStudentInfoBridge block not found')
+          replacement = """  function handlePreparedStudentInfo(type, student) {
+    if (!student) return;
+    if (state.data) setTimeout(() => injectStudentInfoPanel(student), 0);
+    else {
+      service.loadWeek(dateKey(mondayOf(new Date()))).then((data) => {
+        state.data = data;
+        injectStudentInfoPanel(student);
+      }).catch((error) => console.warn('학생정보 시간표를 불러오지 못했습니다:', error));
+    }
+  }
+
+  function installStudentInfoBridge() {
+    global.olliTimetableAfterPrepareStudentInfo = handlePreparedStudentInfo;
+  }
+"""
+          text = text[:start] + replacement + text[end:]
+          p.write_text(text)
+          PY
+
+      - name: Validate timetable student-info bridge
+        shell: bash
+        run: |
+          node --check olli-record-sort-student-ui.js
+          node --check pc-timetable.js
+          git diff --check
+          grep -q "olliTimetableAfterPrepareStudentInfo" olli-record-sort-student-ui.js
+          grep -q "global.olliTimetableAfterPrepareStudentInfo = handlePreparedStudentInfo" pc-timetable.js
+          ! grep -q "global.olliPrepareInfoExtra = wrapped" pc-timetable.js
+          ! grep -q "const original = global.olliPrepareInfoExtra" pc-timetable.js
+
+      - name: Commit refactor and cleanup
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/refactor-pc-timetable-info-bridge-once.yml
+          git add -A
+          git commit -m "refactor: source-own PC timetable student-info bridge"
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
