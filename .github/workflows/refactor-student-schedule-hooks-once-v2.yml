@@ -1,0 +1,170 @@
+name: Refactor student schedule hooks once v2
+
+on:
+  push:
+    branches:
+      - refactor/source-owned-no-overrides-20260912
+    paths:
+      - .github/workflows/refactor-student-schedule-hooks-once-v2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/source-owned-no-overrides-20260912
+          fetch-depth: 0
+
+      - name: Refactor student schedule extension ownership
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('olli-record-sort-student-ui.js')
+          text = p.read_text()
+
+          marker = '  window.olliPatchStudentModalMarkup = patchStudentModalMarkup;'
+          if text.count(marker) != 1: raise SystemExit(f'patch marker mismatch: {text.count(marker)}')
+          text = text.replace(marker, """  window.olliPatchStudentModalMarkup = function(){
+            const result = patchStudentModalMarkup.apply(this, arguments);
+            if (typeof window.olliStudentScheduleAfterPatchStudentModalMarkup === 'function') window.olliStudentScheduleAfterPatchStudentModalMarkup();
+            return result;
+          };""", 1)
+
+          def insert_before_function_end(text, start_marker, end_marker, insert, label):
+              start = text.find(start_marker)
+              end = text.find(end_marker, start)
+              if start < 0 or end < 0: raise SystemExit(label + ': markers not found')
+              block = text[start:end]
+              tail = block.rfind('\n  };')
+              if tail < 0: raise SystemExit(label + ': function end not found')
+              block = block[:tail] + insert + block[tail:]
+              return text[:start] + block + text[end:]
+
+          text = insert_before_function_end(
+              text,
+              '  window.olliPrepareStudentAddExtra = function(targetView){',
+              '  window.olliGetStudentAddExtra = function(type){',
+              "\n    if (typeof window.olliStudentScheduleAfterPrepareStudentAdd === 'function') window.olliStudentScheduleAfterPrepareStudentAdd(targetView);",
+              'prepare add')
+
+          start = text.find('  window.olliGetStudentAddExtra = function(type){')
+          end = text.find('  window.olliPrepareInfoExtra = function(type, student){', start)
+          if start < 0 or end < 0: raise SystemExit('get add markers not found')
+          block = text[start:end]
+          if block.count('    return {') != 1: raise SystemExit(f'get add return mismatch: {block.count("    return {")}')
+          block = block.replace('    return {', '    const extra = {', 1)
+          tail = block.rfind('\n    };')
+          if tail < 0: raise SystemExit('get add object end not found')
+          tail_end = tail + len('\n    };')
+          block = block[:tail_end] + "\n    return typeof window.olliStudentScheduleAugmentStudentAddExtra === 'function'\n      ? (window.olliStudentScheduleAugmentStudentAddExtra(type, extra) || extra)\n      : extra;" + block[tail_end:]
+          text = text[:start] + block + text[end:]
+
+          start = text.find('  window.olliPrepareInfoExtra = function(type, student){')
+          end = text.find('  window.olliGetInfoExtra = function(type){', start)
+          if start < 0 or end < 0: raise SystemExit('prepare info markers not found')
+          block = text[start:end]
+          kinder_line = "      renderDayButtons('kinderLessonDayToggleRow', kinderInfoDaysDraft, 'toggleKinderInfoDay');"
+          if block.count(kinder_line) != 1: raise SystemExit('kinder prepare marker mismatch')
+          block = block.replace(kinder_line, kinder_line + "\n      if (typeof window.olliStudentScheduleAfterPrepareInfo === 'function') window.olliStudentScheduleAfterPrepareInfo(type, student);", 1)
+          elementary_line = "      renderDayButtons('elementaryLessonDayToggleRow', elementaryInfoDaysDraft, 'toggleElementaryInfoDay');"
+          if block.count(elementary_line) != 1: raise SystemExit('elementary prepare marker mismatch')
+          block = block.replace(elementary_line, elementary_line + "\n      if (typeof window.olliStudentScheduleAfterPrepareInfo === 'function') window.olliStudentScheduleAfterPrepareInfo(type, student);", 1)
+          text = text[:start] + block + text[end:]
+
+          start = text.find('  window.olliGetInfoExtra = function(type){')
+          end = text.find('\n\n  document.addEventListener', start)
+          if start < 0 or end < 0: raise SystemExit('get info markers not found')
+          block = text[start:end]
+          replacement = """  window.olliGetInfoExtra = function(type){
+            let extra = {};
+            if (type === 'kinder') {
+              const teacher = formatTeacherNameWithT(kinderInfoTeacherDraft);
+              extra = { lesson_day: daysToText(kinderInfoDaysDraft), teacher, homeroom_teacher: teacher, personality: kinderInfoDraft.personality || '' };
+            } else if (type === 'elementary') {
+              const teacher = formatTeacherNameWithT(elementaryInfoTeacherDraft);
+              extra = { lesson_day: daysToText(elementaryInfoDaysDraft), teacher, homeroom_teacher: teacher, group_months: elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(elementaryInfoDraft.group)), feedback_months: elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(elementaryInfoDraft.group)) };
+            }
+            return typeof window.olliStudentScheduleAugmentInfoExtra === 'function'
+              ? (window.olliStudentScheduleAugmentInfoExtra(type, extra) || extra)
+              : extra;
+          };"""
+          text = text[:start] + replacement + text[end:]
+          p.write_text(text)
+
+          p = Path('olli-student-schedule-runtime.js')
+          text = p.read_text()
+          start = text.find('  const oldPatchStudentModalMarkup = window.olliPatchStudentModalMarkup;')
+          end = text.find('\n  function normalizeScheduleMeta(student){', start)
+          if start < 0 or end < 0: raise SystemExit('schedule wrapper block not found')
+          replacement = """  window.olliStudentScheduleAfterPatchStudentModalMarkup = function(){
+            patchScheduleLabels();
+            renderSchedule('student');
+            renderSchedule('elementary');
+            renderSchedule('kinder');
+          };
+
+          window.olliStudentScheduleAfterPrepareStudentAdd = function(){
+            addState = emptyState();
+            patchScheduleLabels();
+            renderSchedule('student');
+          };
+
+          window.olliStudentScheduleAugmentStudentAddExtra = function(type, base){
+            const lessonDay = scheduleLessonDay(addState);
+            const lessonTime = scheduleLessonTime(addState);
+            return Object.assign({}, base || {}, { lesson_day: lessonDay, lesson_time: lessonTime, class_time: lessonTime });
+          };
+
+          window.olliStudentScheduleAfterPrepareInfo = function(type, student){
+            patchScheduleLabels();
+            if (type === 'elementary') {
+              elementaryInfoState = parseScheduleState(student && (student.lesson_day || student.lessonDay || ''), student && (student.lesson_time || student.class_time || student.lessonTime || student.classTime || ''));
+              renderSchedule('elementary');
+            } else if (type === 'kinder') {
+              kinderInfoState = parseScheduleState(student && (student.lesson_day || student.lessonDay || ''), student && (student.lesson_time || student.class_time || student.lessonTime || student.classTime || ''));
+              renderSchedule('kinder');
+            }
+          };
+
+          window.olliStudentScheduleAugmentInfoExtra = function(type, base){
+            if (type === 'elementary') {
+              const lessonDay = scheduleLessonDay(elementaryInfoState);
+              const lessonTime = scheduleLessonTime(elementaryInfoState);
+              return Object.assign({}, base || {}, { lesson_day: lessonDay, lesson_time: lessonTime, class_time: lessonTime });
+            }
+            if (type === 'kinder') {
+              const lessonDay = scheduleLessonDay(kinderInfoState);
+              const lessonTime = scheduleLessonTime(kinderInfoState);
+              return Object.assign({}, base || {}, { lesson_day: lessonDay, lesson_time: lessonTime, class_time: lessonTime });
+            }
+            return base || {};
+          };
+          """
+          p.write_text(text[:start] + replacement + text[end:])
+          PY
+
+      - name: Validate student schedule hook refactor
+        run: |
+          node --check olli-record-sort-student-ui.js
+          node --check olli-student-schedule-runtime.js
+          git diff --check
+          ! grep -q "oldPatchStudentModalMarkup\|oldPrepareStudentAddExtra\|oldGetStudentAddExtra\|oldPrepareInfoExtra\|oldGetInfoExtra" olli-student-schedule-runtime.js
+          grep -q "olliStudentScheduleAugmentStudentAddExtra" olli-record-sort-student-ui.js
+          grep -q "olliStudentScheduleAugmentInfoExtra" olli-record-sort-student-ui.js
+          grep -q "olliStudentScheduleAfterPrepareInfo" olli-record-sort-student-ui.js
+
+      - name: Commit and cleanup temporary tooling
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/refactor-student-schedule-hooks-once.yml
+          rm -f .github/workflows/refactor-student-schedule-hooks-once-v2.yml
+          rm -f .github/workflows/audit-pc-settings-layout-once.yml
+          git add -A
+          git commit -m "refactor: source-own student schedule modal hooks"
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
