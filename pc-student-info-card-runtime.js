@@ -361,40 +361,24 @@
     if (global.__OLLI_AUTHORITATIVE_SCHEDULE_EDITOR_V1__) return;
     global.__OLLI_AUTHORITATIVE_SCHEDULE_EDITOR_V1__ = true;
 
-    const basePrepareAdd = global.olliPrepareStudentAddExtra;
-    const baseGetAdd = global.olliGetStudentAddExtra;
-    const basePrepareInfo = global.olliPrepareInfoExtra;
-    const baseGetInfo = global.olliGetInfoExtra;
-
-    global.olliPrepareStudentAddExtra = function(type) {
-      if (typeof basePrepareAdd === 'function') basePrepareAdd.apply(this, arguments);
+    global.olliPcAuthoritativeScheduleAfterPrepareStudentAdd = function(type) {
       studentAddDivision = type === 'kinder' ? 'kinder' : 'elementary';
       scheduleStates.student = emptyScheduleState();
       renderSchedule('student');
     };
-    global.olliGetStudentAddExtra = function(type) {
-      const base = typeof baseGetAdd === 'function' ? (baseGetAdd.apply(this, arguments) || {}) : {};
+    global.olliPcAuthoritativeScheduleAugmentStudentAddExtra = function(type, base) {
       const fields = lessonFieldsFromState(scheduleStates.student);
-      return Object.assign({}, base, fields, { class_time: fields.lesson_time });
+      return Object.assign({}, base || {}, fields, { class_time: fields.lesson_time });
     };
-    global.olliPrepareInfoExtra = function(type, student) {
-      if (typeof basePrepareInfo === 'function') basePrepareInfo.apply(this, arguments);
+    global.olliPcAuthoritativeScheduleAfterPrepareInfo = function(type, student) {
       const kind = type === 'kinder' ? 'kinder' : 'elementary';
       scheduleStates[kind] = stateFromStudent(student || {});
       renderSchedule(kind);
     };
-    global.olliGetInfoExtra = function(type) {
-      let base = {};
-      try {
-        base = typeof baseGetInfo === 'function' ? (baseGetInfo.apply(this, arguments) || {}) : {};
-      } catch (error) {
-        // PC 학생정보 카드는 기존 수동 담임 선택 DOM을 사용하지 않습니다.
-        // 레거시 extra 수집기가 제거된 담임 선택창을 참조해도 저장 전체를 막지 않습니다.
-        console.warn('PC 학생정보 레거시 추가정보 수집 건너뜀:', error && (error.message || error));
-      }
+    global.olliPcAuthoritativeScheduleAugmentInfoExtra = function(type, base) {
       const kind = type === 'kinder' ? 'kinder' : 'elementary';
       const fields = lessonFieldsFromState(scheduleStates[kind]);
-      const result = Object.assign({}, base, fields, { class_time: fields.lesson_time });
+      const result = Object.assign({}, base || {}, fields, { class_time: fields.lesson_time });
       // 학생정보에서는 담임을 수정하지 않습니다. 담임의 유일한 원본은 시간표 1회차 반입니다.
       delete result.teacher;
       delete result.homeroom_teacher;
@@ -741,7 +725,6 @@
           grade,
           age: typeof global.getElementaryAgeFromGrade === 'function' ? global.getElementaryAgeFromGrade(grade) : (target.age || ''),
           school_entry_year: typeof global.inferOlliSchoolEntryYearFromGrade === 'function' ? global.inferOlliSchoolEntryYearFromGrade(grade) : (target.school_entry_year || ''),
-          className: '',
           lesson_day: target.lesson_day || '',
           lesson_time: target.lesson_time || '',
           class_time: target.lesson_time || target.class_time || ''
@@ -881,41 +864,6 @@
     ['elementaryInfoModal', 'kinderInfoModal'].forEach((id) => document.getElementById(id)?.remove());
   }
 
-  function wrapStudentRegistration() {
-    if (global.confirmStudent && !global.confirmStudent.__olliScheduleLinked) {
-      const original = global.confirmStudent;
-      const wrapped = async function linkedStudentRegistration() {
-        const type = (() => {
-          try { return currentRecordView === 'kinder' ? 'kinder' : 'elementary'; } catch (_) { return 'elementary'; }
-        })();
-        const name = clean(document.getElementById('studentNameInput')?.value);
-        const year = Number(document.getElementById('studentYearBadge')?.value || 0);
-        const month = Number(document.getElementById('studentMonthInput')?.value || 0);
-        const day = Number(document.getElementById('studentDayInput')?.value || 0);
-        const extra = typeof global.olliGetStudentAddExtra === 'function' ? (global.olliGetStudentAddExtra(type) || {}) : {};
-        const pairs = typeof global.olliGetStudentAddSchedulePairs === 'function'
-          ? global.olliGetStudentAddSchedulePairs()
-          : pairsFromLessonFields(extra.lesson_day, extra.lesson_time || extra.class_time);
-        const beforeIds = new Set((typeof global.getAllStudents === 'function' ? global.getAllStudents() : []).map((s) => String(s.id || '')));
-        const result = await original.apply(this, arguments);
-        if (!name || !year || !month || !day) return result;
-        const students = typeof global.getStudentsByType === 'function' ? global.getStudentsByType(type) : [];
-        const created = students.find((s) => !beforeIds.has(String(s.id || '')) && clean(s.name) === name && Number(s.year) === year && Number(s.month) === month && Number(s.day) === day);
-        if (!created || !created.id) return result;
-        try {
-          await setAuthoritativeSchedule(created.id, pairs);
-          if (typeof global.loadStudentsFromSupabase === 'function') await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
-          if (global.OlliPcAttendance && typeof global.OlliPcAttendance.renderList === 'function') global.OlliPcAttendance.renderList();
-        } catch (error) {
-          alert(`학생은 등록되었지만 시간표 반영에 실패했어요.\n\n${error.message || error}\n\n학생정보에서 다시 저장하거나 시간표에서 확인해 주세요.`);
-        }
-        return result;
-      };
-      wrapped.__olliScheduleLinked = true;
-      global.confirmStudent = wrapped;
-    }
-  }
-
   function installLegacyInfoRoutes() {
     global.openCurrentStudentInfoModal = function() {
       const student = (() => {
@@ -958,7 +906,6 @@
       global.addEventListener('olli:realtime-status', installStudentInfoRealtimeWatcher, { once: true });
       setTimeout(installStudentInfoRealtimeWatcher, 1000);
     }
-    wrapStudentRegistration();
     installLegacyInfoRoutes();
     removeLegacyInfoModals();
     observeAttendancePanel();

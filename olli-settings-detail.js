@@ -11,6 +11,10 @@ async function openSettingsDetail(type){
   const body = document.getElementById('settingsDetailBody');
   if(!detail || !body) return;
 
+  if (typeof window.olliPcSettingsLayoutBeforeOpenDetail === 'function') {
+    try { window.olliPcSettingsLayoutBeforeOpenDetail(type); } catch (_) {}
+  }
+
   settingsCurrentDetailType = type;
   if (settings) settings.style.display = 'flex';
   if (titlePill) titlePill.textContent = data.title;
@@ -31,6 +35,9 @@ async function openSettingsDetail(type){
   detail.style.opacity = '1';
   detail.style.pointerEvents = 'auto';
   detail.style.zIndex = '91000';
+  if (typeof window.olliPcSettingsLayoutAfterOpenDetail === 'function') {
+    try { window.olliPcSettingsLayoutAfterOpenDetail(type); } catch (_) {}
+  }
 
   try {
     if (typeof data.beforeOpen === 'function') await data.beforeOpen();
@@ -43,6 +50,10 @@ async function openSettingsDetail(type){
     body.innerHTML = data.instantRender
       ? (renderSettingsErrorIfNeeded() + renderSettingsDetailHtml(data))
       : renderSettingsErrorIfNeeded();
+  }
+
+  if (typeof window.olliPcSettingsLayoutAfterOpenDetail === 'function') {
+    try { window.olliPcSettingsLayoutAfterOpenDetail(type); } catch (_) {}
   }
 }
 
@@ -59,6 +70,9 @@ function closeSettingsDetail(){
   }
 
   if(settings) settings.style.display = 'flex';
+  if (typeof window.olliPcSettingsLayoutAfterCloseDetail === 'function') {
+    try { window.olliPcSettingsLayoutAfterCloseDetail(); } catch (_) {}
+  }
 }
 
 // 설정 상세 페이지 버튼은 기존 openSettingsDetail 함수를 전역에 명시적으로 노출합니다.

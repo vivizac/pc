@@ -110,7 +110,6 @@ async function saveElementaryInfo() {
     birth_year: '',
     grade: normalizeElementaryGradeValue(document.getElementById('elementaryGradeInput').value),
     school_entry_year: inferOlliSchoolEntryYearFromGrade(normalizeElementaryGradeValue(document.getElementById('elementaryGradeInput').value)),
-    className: ''
   };
   try {
     const savedStudent = await ensureStudentSavedToSupabase(student);

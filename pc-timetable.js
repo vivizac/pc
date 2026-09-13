@@ -2082,23 +2082,19 @@ ${combined.memoError}`);
     if (target) injectStudentInfoPanel(target);
   }
 
-  function installStudentInfoBridge() {
-    const original = global.olliPrepareInfoExtra;
-    if (typeof original !== 'function' || original.__olliTimetableWrapped) return;
+  function handlePreparedStudentInfo(type, student) {
+    if (!student) return;
+    if (state.data) setTimeout(() => injectStudentInfoPanel(student), 0);
+    else {
+      service.loadWeek(dateKey(mondayOf(new Date()))).then((data) => {
+        state.data = data;
+        injectStudentInfoPanel(student);
+      }).catch((error) => console.warn('학생정보 시간표를 불러오지 못했습니다:', error));
+    }
+  }
 
-const wrapped = function(type, student) {
-      const result = original.apply(this, arguments);
-      if (state.data) setTimeout(() => injectStudentInfoPanel(student), 0);
-      else {
-        service.loadWeek(dateKey(mondayOf(new Date()))).then((data) => {
-          state.data = data;
-          injectStudentInfoPanel(student);
-        }).catch((error) => console.warn('학생정보 시간표를 불러오지 못했습니다:', error));
-      }
-      return result;
-    };
-    wrapped.__olliTimetableWrapped = true;
-    global.olliPrepareInfoExtra = wrapped;
+  function installStudentInfoBridge() {
+    global.olliTimetableAfterPrepareStudentInfo = handlePreparedStudentInfo;
   }
 
   async function refreshScheduleFromServer() {

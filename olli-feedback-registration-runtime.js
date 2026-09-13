@@ -246,43 +246,6 @@
     await continueKinderChatFeedbackSubmit(parsed, candidates[0]);
   };
 
-  var originalCreateTodayFeedbackItem = window.createTodayFeedbackItem;
-  if (typeof originalCreateTodayFeedbackItem === 'function' && !originalCreateTodayFeedbackItem.__kcfStudentIdPatched) {
-    var patchedCreate = function(options){
-      var item = originalCreateTodayFeedbackItem.call(this, options || {});
-      if (item && options && options.studentId) {
-        try { updateTodayFeedbackItem(item.id, { studentId:String(options.studentId || '') }); item.studentId = String(options.studentId || ''); } catch(e) {}
-      }
-      return item;
-    };
-    patchedCreate.__kcfStudentIdPatched = true;
-    window.createTodayFeedbackItem = patchedCreate;
-  }
-
-  var originalStartTodayFeedbackRequest = window.startTodayFeedbackRequest;
-  if (typeof originalStartTodayFeedbackRequest === 'function' && !originalStartTodayFeedbackRequest.__kcfStudentIdPatched) {
-    var patchedStart = function(options){
-      var item = originalStartTodayFeedbackRequest.call(this, options || {});
-      if (item && options && options.studentId) {
-        try { updateTodayFeedbackItem(item.id, { studentId:String(options.studentId || '') }); item.studentId = String(options.studentId || ''); } catch(e) {}
-      }
-      return item;
-    };
-    patchedStart.__kcfStudentIdPatched = true;
-    window.startTodayFeedbackRequest = patchedStart;
-  }
-
-  var originalSaveTodayFeedbackItem = window.saveTodayFeedbackItem;
-  if (typeof originalSaveTodayFeedbackItem === 'function' && !originalSaveTodayFeedbackItem.__kcfStudentIdPatched) {
-    var patchedSave = function(id, btn, selectedStudentId){
-      var item = (typeof getTodayFeedbackItemById === 'function') ? getTodayFeedbackItemById(id) : null;
-      var directId = String(selectedStudentId || item?.studentId || item?.savedStudentId || '');
-      return originalSaveTodayFeedbackItem.call(this, id, btn, directId);
-    };
-    patchedSave.__kcfStudentIdPatched = true;
-    window.saveTodayFeedbackItem = patchedSave;
-  }
-
   window.openKinderChatFeedbackSaveStudentPicker = function(itemId, candidates, mode, submitPayload){
     var overlay = document.getElementById('kcfSaveStudentPickerOverlay');
     var list = document.getElementById('kcfSaveStudentPickerList');

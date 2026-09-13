@@ -337,11 +337,7 @@ function applyOlliStudentLifecycle(student, date = new Date()) {
       changed = true;
     }
 
-    // 초등부의 기존 '반' 정보는 더 이상 사용하지 않습니다.
-    if (next.className) {
-      next.className = '';
-      changed = true;
-    }
+    // 초등부의 기존 반 정보는 UI에서 사용하지 않아도 과거 데이터 보존을 위해 유지합니다.
   }
 
   return { student: next, changed };

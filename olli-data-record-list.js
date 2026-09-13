@@ -97,6 +97,7 @@ function compareRecordSortString(a,b) {
 }
 function compareElementaryByRecordSort(a,b) {
   const criterion = getRecordSortCriteria('elementary');
+  if (criterion === 'initial') return compareRecordSortName(a,b);
   let result = 0;
   if (criterion === 'tendency') {
     result = (getRecordSortTendencyValue(a) ? 0 : 1) - (getRecordSortTendencyValue(b) ? 0 : 1);
@@ -126,6 +127,7 @@ function compareElementaryByRecordSort(a,b) {
 }
 function compareKinderByRecordSort(a,b) {
   const criterion = getRecordSortCriteria('kinder');
+  if (criterion === 'initial') return compareRecordSortName(a,b);
   let result = 0;
   if (criterion === 'age') result = safeRecordSortNumber(a?.age) - safeRecordSortNumber(b?.age);
   else if (criterion === 'lessonDay') result = getRecordSortDayRank(a) - getRecordSortDayRank(b);

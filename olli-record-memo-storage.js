@@ -71,6 +71,12 @@ function openStudentModal() {
   if (lessonDayInput) lessonDayInput.value = '';
   if (kinderExtraFields) kinderExtraFields.style.display = targetView === 'kinder' ? 'block' : 'none';
   if (typeof window.olliPrepareStudentAddExtra === 'function') window.olliPrepareStudentAddExtra(targetView);
+  if (typeof window.pcSyncStudentAddDivisionTabs === 'function') {
+    setTimeout(() => window.pcSyncStudentAddDivisionTabs(targetView), 0);
+  }
+  if (typeof window.olliTuneStudentModalGuideText === 'function') {
+    setTimeout(window.olliTuneStudentModalGuideText, 0);
+  }
 
   setTimeout(() => nameInput.focus(), 50);
 }
@@ -118,6 +124,16 @@ async function confirmStudent() {
   const selectedGroup = type === 'elementary' ? (extraInfo.group || '') : '';
   const selectedGroupMonths = type === 'elementary' ? elementaryGroupMonthsToText(extraInfo.group_months || extraInfo.feedback_months || getElementaryGroupFeedbackMonths(selectedGroup)) : '';
 
+  let registrationRouting = null;
+  if (typeof window.olliPrepareStudentRegistrationRouting === 'function') {
+    try {
+      registrationRouting = await window.olliPrepareStudentRegistrationRouting(type);
+    } catch (error) {
+      alert(error?.message || error || '선택한 수업 클래스를 확인하지 못했습니다.');
+      return;
+    }
+  }
+
   const newStudent = {
     id: uid(),
     type,
@@ -147,7 +163,44 @@ async function confirmStudent() {
     closeStudentModal();
     await loadRecords('');
     showPushToast(`${savedStudent.name} 학생이 저장되었습니다.`);
+
+    // PC 클래스 라우팅이 활성화되어 있으면 그 경로가 시간표의 단일 원본입니다.
+    // 그렇지 않은 화면에서는 기존 요일/시간 기반 저장을 하위 호환 경로로 유지합니다.
+    if (registrationRouting?.handled === true && typeof window.olliCommitStudentRegistrationRouting === 'function') {
+      try {
+        await window.olliCommitStudentRegistrationRouting(savedStudent, registrationRouting);
+      } catch (error) {
+        alert(`학생은 등록되었지만 수업 클래스 저장에 실패했어요.\n\n${error.message || error}\n\n시간표에서 해당 학생의 수업을 확인해 주세요.`);
+      }
+    } else if (typeof window.saveOlliStudentScheduleFromInfo === 'function') {
+      try {
+        const schedulePairs = typeof window.olliGetStudentAddSchedulePairs === 'function'
+          ? window.olliGetStudentAddSchedulePairs()
+          : null;
+        await window.saveOlliStudentScheduleFromInfo(
+          savedStudent.id,
+          selectedLessonDay,
+          selectedLessonTime,
+          Array.isArray(schedulePairs) ? { pairs: schedulePairs } : undefined
+        );
+        if (typeof window.loadStudentsFromSupabase === 'function') {
+          await window.loadStudentsFromSupabase({ skipLifecycleSync: true });
+        }
+        if (window.OlliPcAttendance && typeof window.OlliPcAttendance.renderList === 'function') {
+          window.OlliPcAttendance.renderList();
+        }
+        if (typeof window.olliTtRefreshSchedule === 'function') {
+          await window.olliTtRefreshSchedule();
+        }
+      } catch (error) {
+        alert(`학생은 등록되었지만 시간표 반영에 실패했어요.\n\n${error.message || error}\n\n학생정보에서 다시 저장하거나 시간표에서 확인해 주세요.`);
+      }
+    }
   } catch (err) {
     alert(`학생 저장에 실패했어요.\n\n${err.message || err}`);
+  } finally {
+    if (registrationRouting?.handled === true && typeof window.olliReleaseStudentRegistrationRouting === 'function') {
+      window.olliReleaseStudentRegistrationRouting();
+    }
   }
 }

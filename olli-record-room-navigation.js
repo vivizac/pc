@@ -76,6 +76,13 @@ function updateRecordHeaderUI() {
     if (isObservationView && studentSelectionMode) selectionControls.classList.add('show');
     else selectionControls.classList.remove('show');
   }
+
+  if (typeof window.olliEnsureRecordAttendanceGuideButton === 'function') {
+    setTimeout(window.olliEnsureRecordAttendanceGuideButton, 0);
+  }
+  if (typeof window.scheduleRecordAttendanceGuideButtonAlign === 'function') {
+    window.scheduleRecordAttendanceGuideButtonAlign();
+  }
 }
 
 

@@ -65,7 +65,9 @@ function writeElementaryGroupFeedbackMonthsMap(map, options = {}) {
 }
 
 function getElementaryGroupFeedbackMonths(group, student = null) {
-  const groupKey = String(group || student?.group || '').trim();
+  const explicitGroup = arguments.length >= 1;
+  const groupKey = String(explicitGroup ? (group || '') : (student?.group || '')).trim();
+  if (explicitGroup && !groupKey) return [];
   const saved = readElementaryGroupFeedbackMonthsMap();
   if (groupKey && Array.isArray(saved[groupKey]) && saved[groupKey].length) return saved[groupKey];
   return normalizeElementaryGroupMonths(student?.group_months || student?.feedback_months || student?.feedbackMonths || student?.groupFeedbackMonths || '');

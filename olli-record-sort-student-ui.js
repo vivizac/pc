@@ -222,16 +222,6 @@
     })().finally(() => { teacherOptionsLoading = null; });
     return teacherOptionsLoading;
   }
-  const originalSettingsApplyStateToUI = window.settingsApplyStateToUI;
-  if (typeof originalSettingsApplyStateToUI === 'function') {
-    window.settingsApplyStateToUI = function(){
-      const r = originalSettingsApplyStateToUI.apply(this, arguments);
-      cacheTeacherOptions();
-      refreshAllTeacherDropdowns();
-      return r;
-    };
-  }
-  
 function refreshAllTeacherDropdowns(){
     try {
       const targets = [
@@ -410,11 +400,13 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
         + '</div>'
         + '<div id="studentElementaryFields">'
         + '<div id="elementaryStudentLessonDayField" class="kinderInfoModalField"><div class="modalLabel">요일</div><div id="elementaryStudentLessonDayToggleRow" class="infoDayToggleRow"></div></div>'
+        + '<div id="elementaryStudentLessonTimeField" class="kinderInfoModalField studentScheduleTimeField"><div class="modalLabel">시간</div><div id="elementaryStudentLessonTimeToggleRow" class="infoTimeToggleRow"></div><input type="hidden" id="elementaryStudentLessonTimeToggleRowInput"></div>'
         
         + '<div id="elementaryStudentGroupField" class="kinderInfoModalField"><div class="modalLabel">그룹</div><div id="elementaryStudentGroupToggleRow" class="infoToggleRow"></div></div>'
         + '</div>'
         + '<div id="kinderExtraFields" style="display:none;">'
         + '<div class="kinderInfoModalField"><div class="modalLabel">요일</div><div id="studentLessonDayToggleRow" class="infoDayToggleRow"></div><input id="studentLessonDayInput" type="hidden"></div>'
+        + '<div id="studentLessonTimeField" class="kinderInfoModalField studentScheduleTimeField"><div class="modalLabel">시간</div><div id="studentLessonTimeToggleRow" class="infoTimeToggleRow"></div><input type="hidden" id="studentLessonTimeToggleRowInput"></div>'
         
         + '</div>'
         + '<div class="modalActions"><button class="modalBtnCancel" data-modal-close="studentModal" type="button">취소</button><button onclick="confirmStudent()" class="modalBtnConfirm">추가</button></div>';
@@ -436,6 +428,7 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
         + '<div class="kinderInfoModalField studentPopupDayField"><div class="modalLabel">일</div><input id="elementaryInfoDayInput" class="modalInput" type="number" min="1" max="31" inputmode="numeric" placeholder="일"></div>'
         + '</div>'
         + '<div class="kinderInfoModalField"><div class="modalLabel">요일</div><div id="elementaryLessonDayToggleRow" class="infoDayToggleRow"></div></div>'
+        + '<div id="elementaryLessonTimeField" class="kinderInfoModalField studentScheduleTimeField"><div class="modalLabel">시간</div><div id="elementaryLessonTimeToggleRow" class="infoTimeToggleRow"></div><input type="hidden" id="elementaryLessonTimeToggleRowInput"></div>'
         
         + '<div class="kinderInfoModalField"><div class="modalLabel">그룹</div><div id="elementaryGroupToggleRow" class="infoToggleRow"><button type="button" class="infoToggleBtn groupIconChoiceBtn" data-group="1" onclick="selectElementaryGroup(\'1\')">A</button><button type="button" class="infoToggleBtn groupIconChoiceBtn" data-group="2" onclick="selectElementaryGroup(\'2\')">B</button><button type="button" class="infoToggleBtn groupIconChoiceBtn" data-group="3" onclick="selectElementaryGroup(\'3\')">C</button><button type="button" class="infoToggleBtn groupIconChoiceBtn" data-group="4" onclick="selectElementaryGroup(\'4\')">D</button><button type="button" class="infoToggleBtn groupIconChoiceBtn" data-group="5" onclick="selectElementaryGroup(\'5\')">E</button><button type="button" class="infoToggleBtn groupIconChoiceBtn" data-group="6" onclick="selectElementaryGroup(\'6\')">F</button></div></div>'
         + ''
@@ -461,13 +454,19 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
         + '<div class="kinderInfoModalField studentPopupDayField"><div class="modalLabel">일</div><input id="kinderInfoDayInput" class="modalInput" type="number" min="1" max="31" inputmode="numeric" placeholder="일"></div>'
         + '</div>'
         + '<div class="kinderInfoModalField"><div class="modalLabel">요일</div><div id="kinderLessonDayToggleRow" class="infoDayToggleRow"></div><input id="kinderLessonDayInput" type="hidden"></div>'
+        + '<div id="kinderLessonTimeField" class="kinderInfoModalField studentScheduleTimeField"><div class="modalLabel">시간</div><div id="kinderLessonTimeToggleRow" class="infoTimeToggleRow"></div><input type="hidden" id="kinderLessonTimeToggleRowInput"></div>'
         
         + ''
         + '<div class="modalActions"><button class="modalBtnCancel" data-modal-close="kinderInfoModal" type="button">취소</button><button onclick="saveKinderInfo()" class="modalBtnConfirm">저장</button></div>';
     }
+    if (typeof window.olliTuneStudentModalGuideText === 'function') window.olliTuneStudentModalGuideText();
   }
 
-  window.olliPatchStudentModalMarkup = patchStudentModalMarkup;
+  window.olliPatchStudentModalMarkup = function(){
+  const result = patchStudentModalMarkup.apply(this, arguments);
+  if (typeof window.olliStudentScheduleAfterPatchStudentModalMarkup === 'function') window.olliStudentScheduleAfterPatchStudentModalMarkup();
+  return result;
+};
   window.olliPrepareStudentAddExtra = function(targetView){
     patchStudentModalMarkup();
     studentModalTeacherDraft = '';
@@ -514,10 +513,13 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
     hydrateTeacherOptionsFromSupabase().then(refreshAllTeacherDropdowns);
     renderDayButtons('studentLessonDayToggleRow', studentModalDaysDraft, 'toggleStudentModalDay');
     renderDayButtons('elementaryStudentLessonDayToggleRow', studentModalDaysDraft, 'toggleStudentModalDay');
+    if (typeof window.olliStudentScheduleAfterPrepareStudentAdd === 'function') window.olliStudentScheduleAfterPrepareStudentAdd(targetView);
+    if (typeof window.olliPcAuthoritativeScheduleAfterPrepareStudentAdd === 'function') window.olliPcAuthoritativeScheduleAfterPrepareStudentAdd(targetView);
+    if (typeof window.olliPcClassRoutingAfterPrepareStudentAdd === 'function') window.olliPcClassRoutingAfterPrepareStudentAdd(targetView);
   };
   window.olliGetStudentAddExtra = function(type){
     const teacher = formatTeacherNameWithT(studentModalTeacherDraft);
-    return {
+    const extra = {
       lesson_day: daysToText(studentModalDaysDraft),
       teacher,
       homeroom_teacher: teacher,
@@ -530,6 +532,17 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
       className: '',
       personality: studentModalPersonalityDraft || ''
     };
+    let result = extra;
+    if (typeof window.olliStudentScheduleAugmentStudentAddExtra === 'function') {
+      result = window.olliStudentScheduleAugmentStudentAddExtra(type, result) || result;
+    }
+    if (typeof window.olliPcAuthoritativeScheduleAugmentStudentAddExtra === 'function') {
+      result = window.olliPcAuthoritativeScheduleAugmentStudentAddExtra(type, result) || result;
+    }
+    if (typeof window.olliPcClassRoutingFinalizeStudentAddExtra === 'function') {
+      result = window.olliPcClassRoutingFinalizeStudentAddExtra(type, result) || result;
+    }
+    return result;
   };
   window.olliPrepareInfoExtra = function(type, student){
     patchStudentModalMarkup();
@@ -542,6 +555,9 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
       renderPersonalityButtons('kinderPersonalityToggleRow', kinderInfoDraft.personality, 'selectKinderPersonality');
       hydrateTeacherOptionsFromSupabase().then(refreshAllTeacherDropdowns);
       renderDayButtons('kinderLessonDayToggleRow', kinderInfoDaysDraft, 'toggleKinderInfoDay');
+      if (typeof window.olliStudentScheduleAfterPrepareInfo === 'function') window.olliStudentScheduleAfterPrepareInfo(type, student);
+      if (typeof window.olliPcAuthoritativeScheduleAfterPrepareInfo === 'function') window.olliPcAuthoritativeScheduleAfterPrepareInfo(type, student);
+      if (typeof window.olliTimetableAfterPrepareStudentInfo === 'function') window.olliTimetableAfterPrepareStudentInfo(type, student);
       return;
     }
     if (type === 'elementary') {
@@ -554,19 +570,29 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
       renderPersonalityButtons('elementaryPersonalityToggleRow', elementaryInfoDraft.personality, 'selectElementaryPersonality');
       hydrateTeacherOptionsFromSupabase().then(refreshAllTeacherDropdowns);
       renderDayButtons('elementaryLessonDayToggleRow', elementaryInfoDaysDraft, 'toggleElementaryInfoDay');
+      if (typeof window.olliStudentScheduleAfterPrepareInfo === 'function') window.olliStudentScheduleAfterPrepareInfo(type, student);
+      if (typeof window.olliPcAuthoritativeScheduleAfterPrepareInfo === 'function') window.olliPcAuthoritativeScheduleAfterPrepareInfo(type, student);
+      if (typeof window.olliTimetableAfterPrepareStudentInfo === 'function') window.olliTimetableAfterPrepareStudentInfo(type, student);
     }
   };
   window.olliGetInfoExtra = function(type){
-    if (type === 'kinder') {
-      const teacher = formatTeacherNameWithT(kinderInfoTeacherDraft);
-      return { lesson_day: daysToText(kinderInfoDaysDraft), teacher, homeroom_teacher: teacher, personality: kinderInfoDraft.personality || '' };
-    }
-    if (type === 'elementary') {
-      const teacher = formatTeacherNameWithT(elementaryInfoTeacherDraft);
-      return { lesson_day: daysToText(elementaryInfoDaysDraft), teacher, homeroom_teacher: teacher, group_months: elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(elementaryInfoDraft.group)), feedback_months: elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(elementaryInfoDraft.group)) };
-    }
-    return {};
-  };
+  let extra = {};
+  if (type === 'kinder') {
+    const teacher = formatTeacherNameWithT(kinderInfoTeacherDraft);
+    extra = { lesson_day: daysToText(kinderInfoDaysDraft), teacher, homeroom_teacher: teacher, personality: kinderInfoDraft.personality || '' };
+  } else if (type === 'elementary') {
+    const teacher = formatTeacherNameWithT(elementaryInfoTeacherDraft);
+    extra = { lesson_day: daysToText(elementaryInfoDaysDraft), teacher, homeroom_teacher: teacher, group_months: elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(elementaryInfoDraft.group)), feedback_months: elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(elementaryInfoDraft.group)) };
+  }
+  let result = extra;
+  if (typeof window.olliStudentScheduleAugmentInfoExtra === 'function') {
+    result = window.olliStudentScheduleAugmentInfoExtra(type, result) || result;
+  }
+  if (typeof window.olliPcAuthoritativeScheduleAugmentInfoExtra === 'function') {
+    result = window.olliPcAuthoritativeScheduleAugmentInfoExtra(type, result) || result;
+  }
+  return result;
+};
 
   document.addEventListener('DOMContentLoaded', function(){
     installRecordSortButton();

@@ -130,6 +130,9 @@
   }
 
   async function openSection(section) {
+    if (typeof global.olliPcSettingsLayoutBeforeOpenSection === 'function') {
+      try { global.olliPcSettingsLayoutBeforeOpenSection(section); } catch (_) {}
+    }
     // 이전 PC 관찰노트 route/탭 호출은 성향기록부로 안전하게 흡수합니다.
     if (section === 'feedback' || section === 'observation') section = SECTION.PERSONALITY_RECORDS;
     if (section !== SECTION.PERSONALITY_RECORDS) personalityRecordsFeature()?.unmountEditor?.();
@@ -293,43 +296,9 @@
   }
 
   function installStudentAddDivisionTabs() {
-    const original = global.openStudentModal;
-    if (typeof original === 'function' && !original.__olliPcStudentAddTabsWrapped) {
-      const wrapped = function(...args) {
-        const result = original.apply(this, args);
-        setTimeout(() => syncStudentAddDivisionTabs(getStudentAddDivision()), 0);
-        return result;
-      };
-      wrapped.__olliPcStudentAddTabsWrapped = true;
-      global.openStudentModal = wrapped;
-    }
     global.pcSetStudentAddDivision = setStudentAddDivision;
+    global.pcSyncStudentAddDivisionTabs = syncStudentAddDivisionTabs;
     setTimeout(() => syncStudentAddDivisionTabs(getStudentAddDivision()), 0);
-  }
-
-  function installStudentScheduleSync() {
-    const original = global.confirmStudent;
-    if (typeof original !== 'function' || original.__olliPcScheduleSyncWrapped) return;
-    const wrapped = async function(...args) {
-      const result = await original.apply(this, args);
-      const modal = document.getElementById('studentModal');
-      const modalStillOpen = modal && getComputedStyle(modal).display !== 'none';
-      if (modalStillOpen) return result;
-      try {
-        const timetableService = global.OlliTimetableService;
-        if (timetableService && typeof timetableService.syncLegacyStudents === 'function') {
-          await timetableService.syncLegacyStudents();
-        }
-        if (typeof global.olliTtRefreshSchedule === 'function') {
-          await global.olliTtRefreshSchedule();
-        }
-      } catch (error) {
-        console.warn('학생 등록 시간표 동기화 실패:', error && (error.message || error));
-      }
-      return result;
-    };
-    wrapped.__olliPcScheduleSyncWrapped = true;
-    global.confirmStudent = wrapped;
   }
 
   function isEditorEmbedded(screenId) {
@@ -447,7 +416,6 @@
     normalizeSidebarChrome();
     installLegacyObservationRedirects();
     installStudentAddDivisionTabs();
-    installStudentScheduleSync();
     feature('OlliPcStudentManagement')?.start();
     setTimeout(syncFromVisiblePage, 0);
     document.addEventListener('visibilitychange', () => {

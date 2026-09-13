@@ -1,27 +1,3 @@
-function resetOneMinuteFeedbackBeforeLeaving() {
-  const main = document.getElementById('mainPageScreen');
-  if (!main) return;
-  const style = window.getComputedStyle(main);
-  const isVisible = style.display !== 'none' && main.offsetParent !== null;
-  if (isVisible) resetOneMinuteFeedback();
-}
-
-function wrapOneMinuteLeaveFunction(fnName) {
-  const original = window[fnName];
-  if (typeof original !== 'function' || original.__oneMinuteWrapped) return;
-  const wrapped = function(...args) {
-    resetOneMinuteFeedbackBeforeLeaving();
-    return original.apply(this, args);
-  };
-  wrapped.__oneMinuteWrapped = true;
-  window[fnName] = wrapped;
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  ['showRecordRoom','showStudentMemoScreen','openStudentMemo',].forEach(wrapOneMinuteLeaveFunction);
-});
-
-
 let currentKinderSceneInfoId = null;
 
 function handleKinderSceneCardTap(event, id) {
@@ -153,29 +129,6 @@ function resetOneMinuteFeedback() {
     console.warn('resetOneMinuteFeedback skipped:', err);
   }
 }
-
-function resetOneMinuteFeedbackBeforeLeaving() {
-  const main = document.getElementById('mainPageScreen');
-  if (!main) return;
-  const style = window.getComputedStyle(main);
-  const isVisible = style.display !== 'none';
-  if (isVisible) resetOneMinuteFeedback();
-}
-
-function wrapOneMinuteLeaveFunction(fnName) {
-  const original = window[fnName];
-  if (typeof original !== 'function' || original.__oneMinuteWrapped) return;
-  const wrapped = function(...args) {
-    resetOneMinuteFeedbackBeforeLeaving();
-    return original.apply(this, args);
-  };
-  wrapped.__oneMinuteWrapped = true;
-  window[fnName] = wrapped;
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  ['showRecordRoom','showStudentMemoScreen','openStudentMemo',].forEach(wrapOneMinuteLeaveFunction);
-});
 
 
 function setSceneMemoCursorAfterFirstLine(textarea) {
@@ -508,6 +461,7 @@ function createTodayFeedbackItem(options = {}) {
     status: options.status || 'generating',
     studentName: normalizeTodayFeedbackStudentName(options.studentName) || '학생',
     studentDivision: options.studentDivision === 'kinder' ? 'kinder' : 'elementary',
+    studentId: String(options.studentId || options.savedStudentId || ''),
     feedbackType: options.feedbackType || 'class',
     label: options.label || '피드백',
     sourcePage: String(options.sourcePage || ''),
@@ -606,7 +560,7 @@ async function saveTodayFeedbackItem(id, btn, selectedStudentId = '') {
   }
   const studentName = normalizeTodayFeedbackStudentName(item.studentName || '');
   const studentDivision = item.studentDivision || 'elementary';
-  let finalStudentId = String(selectedStudentId || '');
+  let finalStudentId = String(selectedStudentId || item.studentId || item.savedStudentId || '');
   if (!finalStudentId) {
     const candidates = typeof getKinderChatFeedbackSaveStudentCandidates === 'function'
       ? getKinderChatFeedbackSaveStudentCandidates(studentName, studentDivision)
@@ -683,6 +637,7 @@ function startTodayFeedbackRequest(options = {}) {
     status:'generating',
     studentName: options.studentName,
     studentDivision: options.studentDivision,
+    studentId: options.studentId,
     feedbackType: options.feedbackType,
     label: options.label,
     sourcePage: options.sourcePage,
