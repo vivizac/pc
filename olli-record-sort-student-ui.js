@@ -458,7 +458,11 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
     if (typeof window.olliTuneStudentModalGuideText === 'function') window.olliTuneStudentModalGuideText();
   }
 
-  window.olliPatchStudentModalMarkup = patchStudentModalMarkup;
+  window.olliPatchStudentModalMarkup = function(){
+  const result = patchStudentModalMarkup.apply(this, arguments);
+  if (typeof window.olliStudentScheduleAfterPatchStudentModalMarkup === 'function') window.olliStudentScheduleAfterPatchStudentModalMarkup();
+  return result;
+};
   window.olliPrepareStudentAddExtra = function(targetView){
     patchStudentModalMarkup();
     studentModalTeacherDraft = '';
@@ -505,10 +509,11 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
     hydrateTeacherOptionsFromSupabase().then(refreshAllTeacherDropdowns);
     renderDayButtons('studentLessonDayToggleRow', studentModalDaysDraft, 'toggleStudentModalDay');
     renderDayButtons('elementaryStudentLessonDayToggleRow', studentModalDaysDraft, 'toggleStudentModalDay');
+    if (typeof window.olliStudentScheduleAfterPrepareStudentAdd === 'function') window.olliStudentScheduleAfterPrepareStudentAdd(targetView);
   };
   window.olliGetStudentAddExtra = function(type){
     const teacher = formatTeacherNameWithT(studentModalTeacherDraft);
-    return {
+    const extra = {
       lesson_day: daysToText(studentModalDaysDraft),
       teacher,
       homeroom_teacher: teacher,
@@ -521,6 +526,9 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
       className: '',
       personality: studentModalPersonalityDraft || ''
     };
+    return typeof window.olliStudentScheduleAugmentStudentAddExtra === 'function'
+      ? (window.olliStudentScheduleAugmentStudentAddExtra(type, extra) || extra)
+      : extra;
   };
   window.olliPrepareInfoExtra = function(type, student){
     patchStudentModalMarkup();
@@ -533,6 +541,7 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
       renderPersonalityButtons('kinderPersonalityToggleRow', kinderInfoDraft.personality, 'selectKinderPersonality');
       hydrateTeacherOptionsFromSupabase().then(refreshAllTeacherDropdowns);
       renderDayButtons('kinderLessonDayToggleRow', kinderInfoDaysDraft, 'toggleKinderInfoDay');
+      if (typeof window.olliStudentScheduleAfterPrepareInfo === 'function') window.olliStudentScheduleAfterPrepareInfo(type, student);
       return;
     }
     if (type === 'elementary') {
@@ -545,19 +554,22 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
       renderPersonalityButtons('elementaryPersonalityToggleRow', elementaryInfoDraft.personality, 'selectElementaryPersonality');
       hydrateTeacherOptionsFromSupabase().then(refreshAllTeacherDropdowns);
       renderDayButtons('elementaryLessonDayToggleRow', elementaryInfoDaysDraft, 'toggleElementaryInfoDay');
+      if (typeof window.olliStudentScheduleAfterPrepareInfo === 'function') window.olliStudentScheduleAfterPrepareInfo(type, student);
     }
   };
   window.olliGetInfoExtra = function(type){
-    if (type === 'kinder') {
-      const teacher = formatTeacherNameWithT(kinderInfoTeacherDraft);
-      return { lesson_day: daysToText(kinderInfoDaysDraft), teacher, homeroom_teacher: teacher, personality: kinderInfoDraft.personality || '' };
-    }
-    if (type === 'elementary') {
-      const teacher = formatTeacherNameWithT(elementaryInfoTeacherDraft);
-      return { lesson_day: daysToText(elementaryInfoDaysDraft), teacher, homeroom_teacher: teacher, group_months: elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(elementaryInfoDraft.group)), feedback_months: elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(elementaryInfoDraft.group)) };
-    }
-    return {};
-  };
+  let extra = {};
+  if (type === 'kinder') {
+    const teacher = formatTeacherNameWithT(kinderInfoTeacherDraft);
+    extra = { lesson_day: daysToText(kinderInfoDaysDraft), teacher, homeroom_teacher: teacher, personality: kinderInfoDraft.personality || '' };
+  } else if (type === 'elementary') {
+    const teacher = formatTeacherNameWithT(elementaryInfoTeacherDraft);
+    extra = { lesson_day: daysToText(elementaryInfoDaysDraft), teacher, homeroom_teacher: teacher, group_months: elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(elementaryInfoDraft.group)), feedback_months: elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(elementaryInfoDraft.group)) };
+  }
+  return typeof window.olliStudentScheduleAugmentInfoExtra === 'function'
+    ? (window.olliStudentScheduleAugmentInfoExtra(type, extra) || extra)
+    : extra;
+};
 
   document.addEventListener('DOMContentLoaded', function(){
     installRecordSortButton();

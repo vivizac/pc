@@ -323,63 +323,49 @@
     ['studentLessonTimeToggleRow','elementaryStudentLessonTimeToggleRow','kinderLessonTimeToggleRow','elementaryLessonTimeToggleRow'].forEach(hideTimeLabelForContainer);
   }
 
-  const oldPatchStudentModalMarkup = window.olliPatchStudentModalMarkup;
-  window.olliPatchStudentModalMarkup = function(){
-    if (typeof oldPatchStudentModalMarkup === 'function') oldPatchStudentModalMarkup.apply(this, arguments);
-    patchScheduleLabels();
-    renderSchedule('student');
+  window.olliStudentScheduleAfterPatchStudentModalMarkup = function(){
+  patchScheduleLabels();
+  renderSchedule('student');
+  renderSchedule('elementary');
+  renderSchedule('kinder');
+};
+
+window.olliStudentScheduleAfterPrepareStudentAdd = function(){
+  addState = emptyState();
+  patchScheduleLabels();
+  renderSchedule('student');
+};
+
+window.olliStudentScheduleAugmentStudentAddExtra = function(type, base){
+  const lessonDay = scheduleLessonDay(addState);
+  const lessonTime = scheduleLessonTime(addState);
+  return Object.assign({}, base || {}, { lesson_day: lessonDay, lesson_time: lessonTime, class_time: lessonTime });
+};
+
+window.olliStudentScheduleAfterPrepareInfo = function(type, student){
+  patchScheduleLabels();
+  if (type === 'elementary') {
+    elementaryInfoState = parseScheduleState(student && (student.lesson_day || student.lessonDay || ''), student && (student.lesson_time || student.class_time || student.lessonTime || student.classTime || ''));
     renderSchedule('elementary');
+  } else if (type === 'kinder') {
+    kinderInfoState = parseScheduleState(student && (student.lesson_day || student.lessonDay || ''), student && (student.lesson_time || student.class_time || student.lessonTime || student.classTime || ''));
     renderSchedule('kinder');
-  };
+  }
+};
 
-  const oldPrepareStudentAddExtra = window.olliPrepareStudentAddExtra;
-  window.olliPrepareStudentAddExtra = function(type){
-    if (typeof oldPrepareStudentAddExtra === 'function') oldPrepareStudentAddExtra.apply(this, arguments);
-    addState = emptyState();
-    patchScheduleLabels();
-    renderSchedule('student');
-  };
-
-  const oldGetStudentAddExtra = window.olliGetStudentAddExtra;
-  window.olliGetStudentAddExtra = function(type){
-    const base = typeof oldGetStudentAddExtra === 'function' ? (oldGetStudentAddExtra.apply(this, arguments) || {}) : {};
-    const lessonDay = scheduleLessonDay(addState);
-    const lessonTime = scheduleLessonTime(addState);
-    return Object.assign({}, base, {
-      lesson_day: lessonDay,
-      lesson_time: lessonTime,
-      class_time: lessonTime
-    });
-  };
-
-  const oldPrepareInfoExtra = window.olliPrepareInfoExtra;
-  window.olliPrepareInfoExtra = function(type, student){
-    if (typeof oldPrepareInfoExtra === 'function') oldPrepareInfoExtra.apply(this, arguments);
-    patchScheduleLabels();
-    if (type === 'elementary') {
-      elementaryInfoState = parseScheduleState(student && (student.lesson_day || student.lessonDay || ''), student && (student.lesson_time || student.class_time || student.lessonTime || student.classTime || ''));
-      renderSchedule('elementary');
-    } else if (type === 'kinder') {
-      kinderInfoState = parseScheduleState(student && (student.lesson_day || student.lessonDay || ''), student && (student.lesson_time || student.class_time || student.lessonTime || student.classTime || ''));
-      renderSchedule('kinder');
-    }
-  };
-
-  const oldGetInfoExtra = window.olliGetInfoExtra;
-  window.olliGetInfoExtra = function(type){
-    const base = typeof oldGetInfoExtra === 'function' ? (oldGetInfoExtra.apply(this, arguments) || {}) : {};
-    if (type === 'elementary') {
-      const lessonDay = scheduleLessonDay(elementaryInfoState);
-      const lessonTime = scheduleLessonTime(elementaryInfoState);
-      return Object.assign({}, base, { lesson_day: lessonDay, lesson_time: lessonTime, class_time: lessonTime });
-    }
-    if (type === 'kinder') {
-      const lessonDay = scheduleLessonDay(kinderInfoState);
-      const lessonTime = scheduleLessonTime(kinderInfoState);
-      return Object.assign({}, base, { lesson_day: lessonDay, lesson_time: lessonTime, class_time: lessonTime });
-    }
-    return base;
-  };
+window.olliStudentScheduleAugmentInfoExtra = function(type, base){
+  if (type === 'elementary') {
+    const lessonDay = scheduleLessonDay(elementaryInfoState);
+    const lessonTime = scheduleLessonTime(elementaryInfoState);
+    return Object.assign({}, base || {}, { lesson_day: lessonDay, lesson_time: lessonTime, class_time: lessonTime });
+  }
+  if (type === 'kinder') {
+    const lessonDay = scheduleLessonDay(kinderInfoState);
+    const lessonTime = scheduleLessonTime(kinderInfoState);
+    return Object.assign({}, base || {}, { lesson_day: lessonDay, lesson_time: lessonTime, class_time: lessonTime });
+  }
+  return base || {};
+};
 
   function normalizeScheduleMeta(student){
     const timeValue = text(student && (student.lesson_time || student.class_time || student.lessonTime || student.classTime || ''));
