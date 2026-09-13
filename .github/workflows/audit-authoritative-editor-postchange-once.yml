@@ -1,4 +1,4 @@
-name: Audit authoritative editor postchange once
+name: Audit authoritative editor postchange once v2
 
 on:
   push:
@@ -29,7 +29,6 @@ jobs:
           files=[p for p in Path('.').rglob('*') if p.is_file() and '.git' not in p.parts and p.suffix.lower() in {'.js','.html','.sql'}]
           jshtml=[p for p in files if p.suffix.lower() in {'.js','.html'}]
 
-          # Reverse audit 1: find every assignment of the old wrapper-owned globals.
           names=['olliPrepareStudentAddExtra','olliGetStudentAddExtra','olliPrepareInfoExtra','olliGetInfoExtra','olliGetStudentAddSchedulePairs','olliGetInfoSchedulePairs']
           assignments={name:[] for name in names}
           for p in jshtml:
@@ -52,7 +51,6 @@ jobs:
             if len(locs)!=1 or not locs[0].startswith(owner+':'):
               raise SystemExit(f'{name} owner mismatch: {locs}')
 
-          # Reverse audit 2: hook providers must each be single-source.
           hooks={
             'olliPcAuthoritativeScheduleAfterPrepareStudentAdd':'pc-student-info-card-runtime.js',
             'olliPcAuthoritativeScheduleAugmentStudentAddExtra':'pc-student-info-card-runtime.js',
@@ -73,7 +71,6 @@ jobs:
             if len(locs)!=1 or not locs[0].startswith(owner+':'):
               raise SystemExit(f'{hook} provider mismatch: {locs}')
 
-          # No captured-base wrapper patterns should remain in the two high-risk modules.
           card=Path('pc-student-info-card-runtime.js').read_text()
           routing=Path('pc-student-class-routing.js').read_text()
           legacy=[
@@ -88,7 +85,6 @@ jobs:
             if token in card or token in routing:
               raise SystemExit(f'legacy captured wrapper remains: {token}')
 
-          # Save paths: exactly the intended schedule-write paths remain.
           rpc='olli_schedule_set_student_weekly_schedule'
           rpc_locs=[]
           for p in jshtml:
@@ -97,23 +93,29 @@ jobs:
           print('=== SCHEDULE RPC JS REFERENCES ===')
           for loc in rpc_locs: print(loc)
           rpc_files={loc.split(':',1)[0] for loc in rpc_locs}
-          expected_rpc_files={'pc-student-class-routing.js','pc-student-info-card-runtime.js'}
-          if rpc_files != expected_rpc_files:
+          if rpc_files != {'pc-student-class-routing.js','pc-student-info-card-runtime.js'}:
             raise SystemExit(f'unexpected schedule RPC JS files: {rpc_files}')
 
           memo=Path('olli-record-memo-storage.js').read_text()
-          if memo.count('const savedStudent = await ensureStudentSavedToSupabase(newStudent);') != 1:
-            raise SystemExit('new-student profile save count changed')
-          if memo.count('if (registrationRouting?.handled === true') != 1:
-            raise SystemExit('new-student handled routing count changed')
-          if memo.count("else if (typeof window.saveOlliStudentScheduleFromInfo === 'function')") != 1:
-            raise SystemExit('new-student fallback schedule path count changed')
+          profile_save='const savedStudent = await ensureStudentSavedToSupabase(newStudent);'
+          routed_commit="if (registrationRouting?.handled === true && typeof window.olliCommitStudentRegistrationRouting === 'function')"
+          fallback="else if (typeof window.saveOlliStudentScheduleFromInfo === 'function')"
+          routed_release="if (registrationRouting?.handled === true && typeof window.olliReleaseStudentRegistrationRouting === 'function')"
+          for token,label in [(profile_save,'profile save'),(routed_commit,'routed commit'),(fallback,'fallback'),(routed_release,'routed release')]:
+            if memo.count(token)!=1:
+              raise SystemExit(f'new-student {label} count changed: {memo.count(token)}')
+          positions=[memo.index(profile_save),memo.index(routed_commit),memo.index(fallback),memo.index(routed_release)]
+          print('=== NEW STUDENT SAVE POSITIONS ===',positions)
+          if positions != sorted(positions):
+            raise SystemExit(f'new-student save/release order changed: {positions}')
           if card.count('const savedStudent = await global.ensureStudentSavedToSupabase(profile);') != 1:
             raise SystemExit('existing-student profile save count changed')
           if card.count('await setAuthoritativeSchedule(savedStudent.id, pairs);') != 1:
             raise SystemExit('existing-student authoritative schedule save count changed')
+          existing_positions=[card.index('const savedStudent = await global.ensureStudentSavedToSupabase(profile);'),card.index('await setAuthoritativeSchedule(savedStudent.id, pairs);')]
+          if existing_positions != sorted(existing_positions):
+            raise SystemExit(f'existing-student save order changed: {existing_positions}')
 
-          # Migration audit: report, do not mutate DB/repo here.
           sql_hits=[]
           for p in [x for x in files if x.suffix.lower()=='.sql']:
             if rpc in p.read_text(errors='ignore'):
