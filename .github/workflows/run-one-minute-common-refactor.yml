@@ -1,0 +1,29 @@
+name: run-one-minute-common-refactor
+on:
+  push:
+    branches:
+      - refactor/one-minute-feedback-common-20260913
+permissions:
+  contents: write
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: python scripts/refactor_one_minute_common.py
+      - run: node --check olli-feedback-runtime.js
+      - run: node --check olli-feedback-registration-runtime.js
+      - run: node --test tests/one-minute-feedback-common.test.cjs tests/schedule-realtime.test.cjs
+      - run: git diff --check
+      - name: Commit validated refactor
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f .github/workflows/refactor-one-minute-common-once.yml || true
+          git rm -f .github/workflows/run-one-minute-common-refactor.yml
+          git rm -f scripts/refactor_one_minute_common.py
+          git add olli-feedback-runtime.js olli-feedback-registration-runtime.js tests/one-minute-feedback-common.test.cjs
+          git commit -m 'refactor: unify one-minute feedback common runtime'
+          git push origin HEAD:refactor/one-minute-feedback-common-20260913
