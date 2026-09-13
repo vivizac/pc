@@ -130,6 +130,9 @@
   }
 
   async function openSection(section) {
+    if (typeof global.olliPcSettingsLayoutBeforeOpenSection === 'function') {
+      try { global.olliPcSettingsLayoutBeforeOpenSection(section); } catch (_) {}
+    }
     // 이전 PC 관찰노트 route/탭 호출은 성향기록부로 안전하게 흡수합니다.
     if (section === 'feedback' || section === 'observation') section = SECTION.PERSONALITY_RECORDS;
     if (section !== SECTION.PERSONALITY_RECORDS) personalityRecordsFeature()?.unmountEditor?.();

@@ -1230,6 +1230,10 @@ function openSettingsPage() {
 
   if (!settings) return;
 
+  if (typeof window.olliPcSettingsLayoutBeforeOpenPage === 'function') {
+    try { window.olliPcSettingsLayoutBeforeOpenPage(); } catch (_) {}
+  }
+
   if (detail) detail.style.display = 'none';
 
   // 기존 슬라이드 함수와 충돌하지 않도록 설정 페이지는 독립 오버레이처럼 연다.
@@ -1251,6 +1255,9 @@ function openSettingsPage() {
     try { if (typeof applySettingsPermissionUI === 'function') applySettingsPermissionUI(); } catch (_) {}
   }, 600);
   settingsRefreshAll();
+  if (typeof window.olliPcSettingsLayoutAfterOpenPage === 'function') {
+    try { window.olliPcSettingsLayoutAfterOpenPage(); } catch (_) {}
+  }
 }
 
 function closeSettingsPage() {
@@ -1268,6 +1275,9 @@ function closeSettingsPage() {
   }
 
   if (record) record.style.display = 'flex';
+  if (typeof window.olliPcSettingsLayoutAfterClosePage === 'function') {
+    try { window.olliPcSettingsLayoutAfterClosePage(); } catch (_) {}
+  }
 }
 function toggleSettingsNotification() {
   const cached = settingsGetCachedState();

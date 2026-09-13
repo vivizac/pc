@@ -3,12 +3,8 @@
 
 if(!document.body || !document.body.classList.contains('olliPcApp')) return;
 
-const originalOpenSettingsPage=window.openSettingsPage;
-const originalCloseSettingsPage=window.closeSettingsPage;
-const originalOpenSettingsDetail=window.openSettingsDetail;
-const originalCloseSettingsDetail=window.closeSettingsDetail;
-const originalPcOpenSection=window.pcOpenSection;
 let previousPcSection='academy';
+let restoringPreviousSection=false;
 
 function isSettingsMode(){
   return document.body.classList.contains('pcSettingsOpen');
@@ -73,8 +69,10 @@ function hideSettingsScreens(){
 }
 
 function restorePreviousPcSection(){
-  if(typeof originalPcOpenSection==='function'){
-    Promise.resolve(originalPcOpenSection(previousPcSection)).catch(()=>{});
+  if(restoringPreviousSection) return;
+  if(typeof window.pcOpenSection==='function'){
+    restoringPreviousSection=true;
+    Promise.resolve(window.pcOpenSection(previousPcSection)).catch(()=>{}).finally(()=>{ restoringPreviousSection=false; });
     return;
   }
   const shell=document.getElementById('olliPcShell');
@@ -83,70 +81,49 @@ function restorePreviousPcSection(){
   topbar?.classList.add('visible');
 }
 
-function pcOpenSettingsPage(){
+function applyDetailLayout(){
+  if(!isSettingsMode()) return;
+  showPcSettingsChrome();
+  placeSettingsScreen(document.getElementById('settingsPageScreen'),84000);
+  placeSettingsScreen(document.getElementById('settingsDetailScreen'),84100);
+}
+
+window.olliPcSettingsLayoutBeforeOpenPage=function(){
   previousPcSection=currentPcSection();
-  let result;
-  if(typeof originalOpenSettingsPage==='function') result=originalOpenSettingsPage.apply(this,arguments);
+};
+
+window.olliPcSettingsLayoutAfterOpenPage=function(){
   showPcSettingsChrome();
   const settings=document.getElementById('settingsPageScreen');
   if(settings) settings.style.display='flex';
   requestAnimationFrame(showPcSettingsChrome);
-  return result;
-}
+};
 
-function pcCloseSettingsPage(){
-  let result;
-  if(typeof originalCloseSettingsPage==='function') result=originalCloseSettingsPage.apply(this,arguments);
+window.olliPcSettingsLayoutAfterClosePage=function(){
   leavePcSettingsChrome();
   hideSettingsScreens();
   restorePreviousPcSection();
-  return result;
-}
+};
 
-function pcOpenSettingsDetail(type){
+window.olliPcSettingsLayoutBeforeOpenDetail=function(){
   showPcSettingsChrome();
-  let result;
-  if(typeof originalOpenSettingsDetail==='function') result=originalOpenSettingsDetail.apply(this,arguments);
-  const applyLayout=()=>{
-    if(!isSettingsMode()) return;
-    showPcSettingsChrome();
-    placeSettingsScreen(document.getElementById('settingsPageScreen'),84000);
-    placeSettingsScreen(document.getElementById('settingsDetailScreen'),84100);
-  };
-  requestAnimationFrame(applyLayout);
-  if(result && typeof result.finally==='function') result.finally(applyLayout);
-  return result;
-}
+};
 
-function pcCloseSettingsDetail(){
-  let result;
-  if(typeof originalCloseSettingsDetail==='function') result=originalCloseSettingsDetail.apply(this,arguments);
+window.olliPcSettingsLayoutAfterOpenDetail=function(){
+  requestAnimationFrame(applyDetailLayout);
+};
+
+window.olliPcSettingsLayoutAfterCloseDetail=function(){
   showPcSettingsChrome();
   const settings=document.getElementById('settingsPageScreen');
   if(settings) settings.style.display='flex';
-  return result;
-}
+};
 
-function pcOpenSectionFromSettings(section){
-  if(isSettingsMode()){
-    leavePcSettingsChrome();
-    if(typeof originalCloseSettingsPage==='function') originalCloseSettingsPage();
-    hideSettingsScreens();
-  }
-  if(typeof originalPcOpenSection==='function') return originalPcOpenSection.apply(this,arguments);
-}
-
-window.openSettingsPage=pcOpenSettingsPage;
-window.closeSettingsPage=pcCloseSettingsPage;
-window.openSettingsDetail=pcOpenSettingsDetail;
-window.closeSettingsDetail=pcCloseSettingsDetail;
-window.pcOpenSection=pcOpenSectionFromSettings;
-
-try{openSettingsPage=pcOpenSettingsPage;}catch(_){}
-try{closeSettingsPage=pcCloseSettingsPage;}catch(_){}
-try{openSettingsDetail=pcOpenSettingsDetail;}catch(_){}
-try{closeSettingsDetail=pcCloseSettingsDetail;}catch(_){}
-try{pcOpenSection=pcOpenSectionFromSettings;}catch(_){}
+window.olliPcSettingsLayoutBeforeOpenSection=function(){
+  if(!isSettingsMode()) return;
+  leavePcSettingsChrome();
+  hideSettingsScreens();
+};
 
 function keepChromeVisible(){
   if(isSettingsMode()) requestAnimationFrame(showPcSettingsChrome);
