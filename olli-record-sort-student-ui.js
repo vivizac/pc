@@ -542,6 +542,7 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
       hydrateTeacherOptionsFromSupabase().then(refreshAllTeacherDropdowns);
       renderDayButtons('kinderLessonDayToggleRow', kinderInfoDaysDraft, 'toggleKinderInfoDay');
       if (typeof window.olliStudentScheduleAfterPrepareInfo === 'function') window.olliStudentScheduleAfterPrepareInfo(type, student);
+      if (typeof window.olliTimetableAfterPrepareStudentInfo === 'function') window.olliTimetableAfterPrepareStudentInfo(type, student);
       return;
     }
     if (type === 'elementary') {
@@ -555,6 +556,7 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
       hydrateTeacherOptionsFromSupabase().then(refreshAllTeacherDropdowns);
       renderDayButtons('elementaryLessonDayToggleRow', elementaryInfoDaysDraft, 'toggleElementaryInfoDay');
       if (typeof window.olliStudentScheduleAfterPrepareInfo === 'function') window.olliStudentScheduleAfterPrepareInfo(type, student);
+      if (typeof window.olliTimetableAfterPrepareStudentInfo === 'function') window.olliTimetableAfterPrepareStudentInfo(type, student);
     }
   };
   window.olliGetInfoExtra = function(type){
