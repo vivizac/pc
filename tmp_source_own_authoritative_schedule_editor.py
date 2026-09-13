@@ -80,6 +80,24 @@ new = """  let result = extra;
 if text.count(old) != 1:
     raise SystemExit(f'get-info return anchor mismatch: {text.count(old)}')
 text = text.replace(old, new, 1)
+
+# Validate canonical hook placement before writing anything.
+prepare_start = text.index('window.olliPrepareInfoExtra =')
+prepare_end = text.index('window.olliGetInfoExtra =', prepare_start)
+prepare_section = text[prepare_start:prepare_end]
+if prepare_section.count('olliPcAuthoritativeScheduleAfterPrepareInfo') != 2:
+    raise SystemExit(f'canonical authoritative prepare-info hook count mismatch: {prepare_section.count("olliPcAuthoritativeScheduleAfterPrepareInfo")}')
+if prepare_section.count('olliTimetableAfterPrepareStudentInfo') != 2:
+    raise SystemExit(f'canonical timetable prepare-info hook count mismatch: {prepare_section.count("olliTimetableAfterPrepareStudentInfo")}')
+for branch_marker in ["if (type === 'kinder')", "if (type === 'elementary')"]:
+    branch_start = prepare_section.index(branch_marker)
+    next_branch = prepare_section.find("if (type === '", branch_start + len(branch_marker))
+    branch = prepare_section[branch_start: next_branch if next_branch >= 0 else len(prepare_section)]
+    schedule_pos = branch.index('olliStudentScheduleAfterPrepareInfo')
+    authoritative_pos = branch.index('olliPcAuthoritativeScheduleAfterPrepareInfo')
+    timetable_pos = branch.index('olliTimetableAfterPrepareStudentInfo')
+    if not (schedule_pos < authoritative_pos < timetable_pos):
+        raise SystemExit(f'prepare-info hook order invalid for {branch_marker}: {schedule_pos}, {authoritative_pos}, {timetable_pos}')
 p.write_text(text)
 
 # 2) PC authoritative editor: expose hooks instead of replacing canonical globals.
