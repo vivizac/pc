@@ -1,4 +1,4 @@
-name: Source-own student time rows once
+name: Source-own student time rows once v2
 
 on:
   push:
