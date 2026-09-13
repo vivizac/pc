@@ -361,40 +361,24 @@
     if (global.__OLLI_AUTHORITATIVE_SCHEDULE_EDITOR_V1__) return;
     global.__OLLI_AUTHORITATIVE_SCHEDULE_EDITOR_V1__ = true;
 
-    const basePrepareAdd = global.olliPrepareStudentAddExtra;
-    const baseGetAdd = global.olliGetStudentAddExtra;
-    const basePrepareInfo = global.olliPrepareInfoExtra;
-    const baseGetInfo = global.olliGetInfoExtra;
-
-    global.olliPrepareStudentAddExtra = function(type) {
-      if (typeof basePrepareAdd === 'function') basePrepareAdd.apply(this, arguments);
+    global.olliPcAuthoritativeScheduleAfterPrepareStudentAdd = function(type) {
       studentAddDivision = type === 'kinder' ? 'kinder' : 'elementary';
       scheduleStates.student = emptyScheduleState();
       renderSchedule('student');
     };
-    global.olliGetStudentAddExtra = function(type) {
-      const base = typeof baseGetAdd === 'function' ? (baseGetAdd.apply(this, arguments) || {}) : {};
+    global.olliPcAuthoritativeScheduleAugmentStudentAddExtra = function(type, base) {
       const fields = lessonFieldsFromState(scheduleStates.student);
-      return Object.assign({}, base, fields, { class_time: fields.lesson_time });
+      return Object.assign({}, base || {}, fields, { class_time: fields.lesson_time });
     };
-    global.olliPrepareInfoExtra = function(type, student) {
-      if (typeof basePrepareInfo === 'function') basePrepareInfo.apply(this, arguments);
+    global.olliPcAuthoritativeScheduleAfterPrepareInfo = function(type, student) {
       const kind = type === 'kinder' ? 'kinder' : 'elementary';
       scheduleStates[kind] = stateFromStudent(student || {});
       renderSchedule(kind);
     };
-    global.olliGetInfoExtra = function(type) {
-      let base = {};
-      try {
-        base = typeof baseGetInfo === 'function' ? (baseGetInfo.apply(this, arguments) || {}) : {};
-      } catch (error) {
-        // PC 학생정보 카드는 기존 수동 담임 선택 DOM을 사용하지 않습니다.
-        // 레거시 extra 수집기가 제거된 담임 선택창을 참조해도 저장 전체를 막지 않습니다.
-        console.warn('PC 학생정보 레거시 추가정보 수집 건너뜀:', error && (error.message || error));
-      }
+    global.olliPcAuthoritativeScheduleAugmentInfoExtra = function(type, base) {
       const kind = type === 'kinder' ? 'kinder' : 'elementary';
       const fields = lessonFieldsFromState(scheduleStates[kind]);
-      const result = Object.assign({}, base, fields, { class_time: fields.lesson_time });
+      const result = Object.assign({}, base || {}, fields, { class_time: fields.lesson_time });
       // 학생정보에서는 담임을 수정하지 않습니다. 담임의 유일한 원본은 시간표 1회차 반입니다.
       delete result.teacher;
       delete result.homeroom_teacher;

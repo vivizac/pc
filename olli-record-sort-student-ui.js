@@ -514,6 +514,8 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
     renderDayButtons('studentLessonDayToggleRow', studentModalDaysDraft, 'toggleStudentModalDay');
     renderDayButtons('elementaryStudentLessonDayToggleRow', studentModalDaysDraft, 'toggleStudentModalDay');
     if (typeof window.olliStudentScheduleAfterPrepareStudentAdd === 'function') window.olliStudentScheduleAfterPrepareStudentAdd(targetView);
+    if (typeof window.olliPcAuthoritativeScheduleAfterPrepareStudentAdd === 'function') window.olliPcAuthoritativeScheduleAfterPrepareStudentAdd(targetView);
+    if (typeof window.olliPcClassRoutingAfterPrepareStudentAdd === 'function') window.olliPcClassRoutingAfterPrepareStudentAdd(targetView);
   };
   window.olliGetStudentAddExtra = function(type){
     const teacher = formatTeacherNameWithT(studentModalTeacherDraft);
@@ -530,9 +532,17 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
       className: '',
       personality: studentModalPersonalityDraft || ''
     };
-    return typeof window.olliStudentScheduleAugmentStudentAddExtra === 'function'
-      ? (window.olliStudentScheduleAugmentStudentAddExtra(type, extra) || extra)
-      : extra;
+    let result = extra;
+    if (typeof window.olliStudentScheduleAugmentStudentAddExtra === 'function') {
+      result = window.olliStudentScheduleAugmentStudentAddExtra(type, result) || result;
+    }
+    if (typeof window.olliPcAuthoritativeScheduleAugmentStudentAddExtra === 'function') {
+      result = window.olliPcAuthoritativeScheduleAugmentStudentAddExtra(type, result) || result;
+    }
+    if (typeof window.olliPcClassRoutingFinalizeStudentAddExtra === 'function') {
+      result = window.olliPcClassRoutingFinalizeStudentAddExtra(type, result) || result;
+    }
+    return result;
   };
   window.olliPrepareInfoExtra = function(type, student){
     patchStudentModalMarkup();
@@ -546,6 +556,7 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
       hydrateTeacherOptionsFromSupabase().then(refreshAllTeacherDropdowns);
       renderDayButtons('kinderLessonDayToggleRow', kinderInfoDaysDraft, 'toggleKinderInfoDay');
       if (typeof window.olliStudentScheduleAfterPrepareInfo === 'function') window.olliStudentScheduleAfterPrepareInfo(type, student);
+      if (typeof window.olliPcAuthoritativeScheduleAfterPrepareInfo === 'function') window.olliPcAuthoritativeScheduleAfterPrepareInfo(type, student);
       if (typeof window.olliTimetableAfterPrepareStudentInfo === 'function') window.olliTimetableAfterPrepareStudentInfo(type, student);
       return;
     }
@@ -560,6 +571,7 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
       hydrateTeacherOptionsFromSupabase().then(refreshAllTeacherDropdowns);
       renderDayButtons('elementaryLessonDayToggleRow', elementaryInfoDaysDraft, 'toggleElementaryInfoDay');
       if (typeof window.olliStudentScheduleAfterPrepareInfo === 'function') window.olliStudentScheduleAfterPrepareInfo(type, student);
+      if (typeof window.olliPcAuthoritativeScheduleAfterPrepareInfo === 'function') window.olliPcAuthoritativeScheduleAfterPrepareInfo(type, student);
       if (typeof window.olliTimetableAfterPrepareStudentInfo === 'function') window.olliTimetableAfterPrepareStudentInfo(type, student);
     }
   };
@@ -572,9 +584,14 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
     const teacher = formatTeacherNameWithT(elementaryInfoTeacherDraft);
     extra = { lesson_day: daysToText(elementaryInfoDaysDraft), teacher, homeroom_teacher: teacher, group_months: elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(elementaryInfoDraft.group)), feedback_months: elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(elementaryInfoDraft.group)) };
   }
-  return typeof window.olliStudentScheduleAugmentInfoExtra === 'function'
-    ? (window.olliStudentScheduleAugmentInfoExtra(type, extra) || extra)
-    : extra;
+  let result = extra;
+  if (typeof window.olliStudentScheduleAugmentInfoExtra === 'function') {
+    result = window.olliStudentScheduleAugmentInfoExtra(type, result) || result;
+  }
+  if (typeof window.olliPcAuthoritativeScheduleAugmentInfoExtra === 'function') {
+    result = window.olliPcAuthoritativeScheduleAugmentInfoExtra(type, result) || result;
+  }
+  return result;
 };
 
   document.addEventListener('DOMContentLoaded', function(){

@@ -345,29 +345,20 @@
     if (registration.installed) return;
     registration.installed = true;
 
-    const basePrepare = global.olliPrepareStudentAddExtra;
-    global.olliPrepareStudentAddExtra = function classBasedStudentAddPrepare(type) {
-      const result = typeof basePrepare === 'function' ? basePrepare.apply(this, arguments) : undefined;
+    global.olliPcClassRoutingAfterPrepareStudentAdd = function(type) {
       registration.division = type === 'kinder' ? 'kinder' : 'elementary';
       registration.selected = [];
       registration.options = [];
       hideLegacyRegistrationScheduleFields();
       setTimeout(refreshRegistrationOptions, 0);
-      return result;
     };
 
-    const baseGetExtra = global.olliGetStudentAddExtra;
-    global.olliGetStudentAddExtra = function classBasedStudentAddExtra(type) {
-      const base = typeof baseGetExtra === 'function' ? (baseGetExtra.apply(this, arguments) || {}) : {};
-      const next = Object.assign({}, base, { lesson_day:'', lesson_time:'', class_time:'' });
+    global.olliPcClassRoutingFinalizeStudentAddExtra = function(type, base) {
+      const next = Object.assign({}, base || {}, { lesson_day:'', lesson_time:'', class_time:'' });
       delete next.teacher;
       delete next.homeroom_teacher;
       return next;
     };
-
-    // 기존 학생등록 연결기가 요일/시간을 다시 저장하지 않도록 비워 두고,
-    // 실제 클래스 배정은 아래의 단일 weekly-schedule RPC에서 처리합니다.
-    global.olliGetStudentAddSchedulePairs = function() { return []; };
 
     global.olliPrepareStudentRegistrationRouting = async function(type) {
       if (registration.saving) throw new Error('학생 등록을 저장하고 있습니다.');
