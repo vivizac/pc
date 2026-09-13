@@ -1,0 +1,221 @@
+name: Refactor student schedule hooks once
+
+on:
+  push:
+    branches:
+      - refactor/source-owned-no-overrides-20260912
+    paths:
+      - .github/workflows/refactor-student-schedule-hooks-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/source-owned-no-overrides-20260912
+          fetch-depth: 0
+
+      - name: Refactor student schedule extension ownership
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('olli-record-sort-student-ui.js')
+          text = p.read_text()
+
+          old = "  window.olliPatchStudentModalMarkup = patchStudentModalMarkup;\n"
+          new = """  window.olliPatchStudentModalMarkup = function(){
+            const result = patchStudentModalMarkup.apply(this, arguments);
+            if (typeof window.olliStudentScheduleAfterPatchStudentModalMarkup === 'function') {
+              window.olliStudentScheduleAfterPatchStudentModalMarkup();
+            }
+            return result;
+          };
+          """
+          if text.count(old) != 1: raise SystemExit(f'patch owner mismatch: {text.count(old)}')
+          text = text.replace(old, new, 1)
+
+          old = """    renderDayButtons('studentLessonDayToggleRow', studentModalDaysDraft, 'toggleStudentModalDay');
+            renderDayButtons('elementaryStudentLessonDayToggleRow', studentModalDaysDraft, 'toggleStudentModalDay');
+          };
+          window.olliGetStudentAddExtra = function(type){
+          """
+          new = """    renderDayButtons('studentLessonDayToggleRow', studentModalDaysDraft, 'toggleStudentModalDay');
+            renderDayButtons('elementaryStudentLessonDayToggleRow', studentModalDaysDraft, 'toggleStudentModalDay');
+            if (typeof window.olliStudentScheduleAfterPrepareStudentAdd === 'function') {
+              window.olliStudentScheduleAfterPrepareStudentAdd(targetView);
+            }
+          };
+          window.olliGetStudentAddExtra = function(type){
+          """
+          if text.count(old) != 1: raise SystemExit(f'prepare add mismatch: {text.count(old)}')
+          text = text.replace(old, new, 1)
+
+          old = """    return {
+              lesson_day: daysToText(studentModalDaysDraft),
+              teacher,
+              homeroom_teacher: teacher,
+              group: type === 'elementary' ? studentModalElementaryGroupDraft : '',
+              group_months: type === 'elementary' ? elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(studentModalElementaryGroupDraft)) : '',
+              feedback_months: type === 'elementary' ? elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(studentModalElementaryGroupDraft)) : '',
+              school: type === 'elementary' ? (document.getElementById('studentSchoolInput')?.value || '').trim() : '',
+              grade: type === 'elementary' ? normalizeElementaryGradeValue(document.getElementById('studentGradeInput')?.value || '') : '',
+              age: type === 'elementary' ? getElementaryAgeFromGrade(normalizeElementaryGradeValue(document.getElementById('studentGradeInput')?.value || '')) : '',
+              className: '',
+              personality: studentModalPersonalityDraft || ''
+            };
+          };
+          """
+          new = """    const extra = {
+              lesson_day: daysToText(studentModalDaysDraft),
+              teacher,
+              homeroom_teacher: teacher,
+              group: type === 'elementary' ? studentModalElementaryGroupDraft : '',
+              group_months: type === 'elementary' ? elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(studentModalElementaryGroupDraft)) : '',
+              feedback_months: type === 'elementary' ? elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(studentModalElementaryGroupDraft)) : '',
+              school: type === 'elementary' ? (document.getElementById('studentSchoolInput')?.value || '').trim() : '',
+              grade: type === 'elementary' ? normalizeElementaryGradeValue(document.getElementById('studentGradeInput')?.value || '') : '',
+              age: type === 'elementary' ? getElementaryAgeFromGrade(normalizeElementaryGradeValue(document.getElementById('studentGradeInput')?.value || '')) : '',
+              className: '',
+              personality: studentModalPersonalityDraft || ''
+            };
+            return typeof window.olliStudentScheduleAugmentStudentAddExtra === 'function'
+              ? (window.olliStudentScheduleAugmentStudentAddExtra(type, extra) || extra)
+              : extra;
+          };
+          """
+          if text.count(old) != 1: raise SystemExit(f'get add extra mismatch: {text.count(old)}')
+          text = text.replace(old, new, 1)
+
+          old = """      renderDayButtons('kinderLessonDayToggleRow', kinderInfoDaysDraft, 'toggleKinderInfoDay');
+                return;
+          """
+          new = """      renderDayButtons('kinderLessonDayToggleRow', kinderInfoDaysDraft, 'toggleKinderInfoDay');
+                if (typeof window.olliStudentScheduleAfterPrepareInfo === 'function') {
+                  window.olliStudentScheduleAfterPrepareInfo(type, student);
+                }
+                return;
+          """
+          if text.count(old) != 1: raise SystemExit(f'prepare kinder mismatch: {text.count(old)}')
+          text = text.replace(old, new, 1)
+
+          old = """      renderDayButtons('elementaryLessonDayToggleRow', elementaryInfoDaysDraft, 'toggleElementaryInfoDay');
+              }
+            };
+          """
+          new = """      renderDayButtons('elementaryLessonDayToggleRow', elementaryInfoDaysDraft, 'toggleElementaryInfoDay');
+              }
+              if (typeof window.olliStudentScheduleAfterPrepareInfo === 'function') {
+                window.olliStudentScheduleAfterPrepareInfo(type, student);
+              }
+            };
+          """
+          if text.count(old) != 1: raise SystemExit(f'prepare elementary mismatch: {text.count(old)}')
+          text = text.replace(old, new, 1)
+
+          old = """  window.olliGetInfoExtra = function(type){
+            if (type === 'kinder') {
+              const teacher = formatTeacherNameWithT(kinderInfoTeacherDraft);
+              return { lesson_day: daysToText(kinderInfoDaysDraft), teacher, homeroom_teacher: teacher, personality: kinderInfoDraft.personality || '' };
+            }
+            if (type === 'elementary') {
+              const teacher = formatTeacherNameWithT(elementaryInfoTeacherDraft);
+              return { lesson_day: daysToText(elementaryInfoDaysDraft), teacher, homeroom_teacher: teacher, group_months: elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(elementaryInfoDraft.group)), feedback_months: elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(elementaryInfoDraft.group)) };
+            }
+            return {};
+          };
+          """
+          new = """  window.olliGetInfoExtra = function(type){
+            let extra = {};
+            if (type === 'kinder') {
+              const teacher = formatTeacherNameWithT(kinderInfoTeacherDraft);
+              extra = { lesson_day: daysToText(kinderInfoDaysDraft), teacher, homeroom_teacher: teacher, personality: kinderInfoDraft.personality || '' };
+            } else if (type === 'elementary') {
+              const teacher = formatTeacherNameWithT(elementaryInfoTeacherDraft);
+              extra = { lesson_day: daysToText(elementaryInfoDaysDraft), teacher, homeroom_teacher: teacher, group_months: elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(elementaryInfoDraft.group)), feedback_months: elementaryGroupMonthsToText(getElementaryGroupFeedbackMonths(elementaryInfoDraft.group)) };
+            }
+            return typeof window.olliStudentScheduleAugmentInfoExtra === 'function'
+              ? (window.olliStudentScheduleAugmentInfoExtra(type, extra) || extra)
+              : extra;
+          };
+          """
+          if text.count(old) != 1: raise SystemExit(f'get info extra mismatch: {text.count(old)}')
+          text = text.replace(old, new, 1)
+          p.write_text(text)
+
+          p = Path('olli-student-schedule-runtime.js')
+          text = p.read_text()
+          start = text.find('  const oldPatchStudentModalMarkup = window.olliPatchStudentModalMarkup;')
+          end = text.find('\n  function normalizeScheduleMeta(student){', start)
+          if start < 0 or end < 0: raise SystemExit('schedule wrapper block not found')
+          replacement = """  window.olliStudentScheduleAfterPatchStudentModalMarkup = function(){
+            patchScheduleLabels();
+            renderSchedule('student');
+            renderSchedule('elementary');
+            renderSchedule('kinder');
+          };
+
+          window.olliStudentScheduleAfterPrepareStudentAdd = function(){
+            addState = emptyState();
+            patchScheduleLabels();
+            renderSchedule('student');
+          };
+
+          window.olliStudentScheduleAugmentStudentAddExtra = function(type, base){
+            const lessonDay = scheduleLessonDay(addState);
+            const lessonTime = scheduleLessonTime(addState);
+            return Object.assign({}, base || {}, { lesson_day: lessonDay, lesson_time: lessonTime, class_time: lessonTime });
+          };
+
+          window.olliStudentScheduleAfterPrepareInfo = function(type, student){
+            patchScheduleLabels();
+            if (type === 'elementary') {
+              elementaryInfoState = parseScheduleState(student && (student.lesson_day || student.lessonDay || ''), student && (student.lesson_time || student.class_time || student.lessonTime || student.classTime || ''));
+              renderSchedule('elementary');
+            } else if (type === 'kinder') {
+              kinderInfoState = parseScheduleState(student && (student.lesson_day || student.lessonDay || ''), student && (student.lesson_time || student.class_time || student.lessonTime || student.classTime || ''));
+              renderSchedule('kinder');
+            }
+          };
+
+          window.olliStudentScheduleAugmentInfoExtra = function(type, base){
+            if (type === 'elementary') {
+              const lessonDay = scheduleLessonDay(elementaryInfoState);
+              const lessonTime = scheduleLessonTime(elementaryInfoState);
+              return Object.assign({}, base || {}, { lesson_day: lessonDay, lesson_time: lessonTime, class_time: lessonTime });
+            }
+            if (type === 'kinder') {
+              const lessonDay = scheduleLessonDay(kinderInfoState);
+              const lessonTime = scheduleLessonTime(kinderInfoState);
+              return Object.assign({}, base || {}, { lesson_day: lessonDay, lesson_time: lessonTime, class_time: lessonTime });
+            }
+            return base || {};
+          };
+          """
+          p.write_text(text[:start] + replacement + text[end:])
+          PY
+
+      - name: Validate student schedule hook refactor
+        run: |
+          node --check olli-record-sort-student-ui.js
+          node --check olli-student-schedule-runtime.js
+          git diff --check
+          ! grep -q "oldPatchStudentModalMarkup\|oldPrepareStudentAddExtra\|oldGetStudentAddExtra\|oldPrepareInfoExtra\|oldGetInfoExtra" olli-student-schedule-runtime.js
+          grep -q "olliStudentScheduleAugmentStudentAddExtra" olli-record-sort-student-ui.js
+          grep -q "olliStudentScheduleAugmentInfoExtra" olli-record-sort-student-ui.js
+          grep -q "olliStudentScheduleAfterPrepareInfo" olli-record-sort-student-ui.js
+
+      - name: Commit refactor and remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/refactor-student-schedule-hooks-once.yml
+          rm -f .github/workflows/audit-pc-settings-layout-once.yml
+          git add -A
+          git commit -m "refactor: source-own student schedule modal hooks"
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
