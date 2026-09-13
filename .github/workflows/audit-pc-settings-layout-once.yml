@@ -1,0 +1,42 @@
+name: Audit PC settings layout wrappers once
+
+on:
+  push:
+    branches:
+      - refactor/source-owned-no-overrides-20260912
+    paths:
+      - .github/workflows/audit-pc-settings-layout-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/source-owned-no-overrides-20260912
+          fetch-depth: 0
+      - name: Capture source owners
+        run: |
+          {
+            echo '### olli-settings-base.js'
+            grep -n -A70 -B5 'function openSettingsPage()' olli-settings-base.js || true
+            grep -n -A45 -B5 'function closeSettingsPage()' olli-settings-base.js || true
+            echo '### olli-settings-detail.js'
+            grep -n -A75 -B5 'async function openSettingsDetail' olli-settings-detail.js || true
+            grep -n -A35 -B5 'function closeSettingsDetail' olli-settings-detail.js || true
+            echo '### pc-shell.js'
+            grep -n -A45 -B5 'async function openSection' pc-shell.js || true
+            echo '### pc-settings-layout.js wrappers'
+            grep -n 'originalOpenSettings\|originalCloseSettings\|originalPcOpenSection\|window.openSettingsPage\|window.pcOpenSection' pc-settings-layout.js || true
+          } > TMP_PC_SETTINGS_LAYOUT_AUDIT.txt
+      - name: Commit audit and remove workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/audit-pc-settings-layout-once.yml
+          git add -A
+          git commit -m "chore: audit PC settings layout wrapper owners"
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
