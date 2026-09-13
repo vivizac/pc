@@ -1,0 +1,114 @@
+name: Source-own authoritative editor once
+
+on:
+  push:
+    branches:
+      - refactor/source-owned-no-overrides-20260912
+    paths:
+      - .github/workflows/source-own-authoritative-editor-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refactor/source-owned-no-overrides-20260912
+          fetch-depth: 0
+      - name: Apply source ownership refactor
+        run: python tmp_source_own_authoritative_schedule_editor.py
+      - name: Validate deterministic ownership
+        shell: bash
+        run: |
+          node --check olli-record-sort-student-ui.js
+          node --check pc-student-info-card-runtime.js
+          node --check pc-student-class-routing.js
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          files=[p for p in Path('.').rglob('*') if p.is_file() and p.suffix in {'.js','.html'} and '.git' not in p.parts]
+          names=['olliPrepareStudentAddExtra','olliGetStudentAddExtra','olliPrepareInfoExtra','olliGetInfoExtra','olliGetStudentAddSchedulePairs','olliGetInfoSchedulePairs']
+          counts={name:0 for name in names}
+          locations={name:[] for name in names}
+          for p in files:
+            for i,line in enumerate(p.read_text(errors='ignore').splitlines(),1):
+              for name in names:
+                if re.search(rf'(?:window|global)\.{re.escape(name)}\s*=(?!=)',line):
+                  counts[name]+=1
+                  locations[name].append(f'{p}:{i}')
+          print(counts)
+          print(locations)
+          expected={
+            'olliPrepareStudentAddExtra':1,
+            'olliGetStudentAddExtra':1,
+            'olliPrepareInfoExtra':1,
+            'olliGetInfoExtra':1,
+            'olliGetStudentAddSchedulePairs':1,
+            'olliGetInfoSchedulePairs':1,
+          }
+          if counts != expected:
+            raise SystemExit(f'unexpected global ownership counts: {counts}')
+
+          canonical=Path('olli-record-sort-student-ui.js').read_text()
+          prepare_add=canonical[canonical.index('window.olliPrepareStudentAddExtra'):canonical.index('window.olliGetStudentAddExtra')]
+          order=[prepare_add.index('olliStudentScheduleAfterPrepareStudentAdd'),prepare_add.index('olliPcAuthoritativeScheduleAfterPrepareStudentAdd'),prepare_add.index('olliPcClassRoutingAfterPrepareStudentAdd')]
+          if order != sorted(order) or len(set(order)) != 3:
+            raise SystemExit(f'prepare-add hook order invalid: {order}')
+
+          get_add=canonical[canonical.index('window.olliGetStudentAddExtra'):canonical.index('window.olliPrepareInfoExtra')]
+          order=[get_add.index('olliStudentScheduleAugmentStudentAddExtra'),get_add.index('olliPcAuthoritativeScheduleAugmentStudentAddExtra'),get_add.index('olliPcClassRoutingFinalizeStudentAddExtra')]
+          if order != sorted(order) or len(set(order)) != 3:
+            raise SystemExit(f'get-add hook order invalid: {order}')
+
+          prepare_info=canonical[canonical.index('window.olliPrepareInfoExtra'):canonical.index('window.olliGetInfoExtra')]
+          for branch in ['kinder','elementary']:
+            pass
+          if prepare_info.count('olliPcAuthoritativeScheduleAfterPrepareInfo') != 2:
+            raise SystemExit('authoritative prepare-info hook must exist in both branches')
+          if prepare_info.count('olliTimetableAfterPrepareStudentInfo') != 2:
+            raise SystemExit('timetable prepare-info hook must remain in both branches')
+          if prepare_info.find('olliStudentScheduleAfterPrepareInfo') > prepare_info.find('olliPcAuthoritativeScheduleAfterPrepareInfo'):
+            raise SystemExit('prepare-info schedule order invalid')
+
+          get_info=canonical[canonical.index('window.olliGetInfoExtra'):canonical.index("document.addEventListener('DOMContentLoaded'")]
+          if get_info.index('olliStudentScheduleAugmentInfoExtra') > get_info.index('olliPcAuthoritativeScheduleAugmentInfoExtra'):
+            raise SystemExit('get-info augment order invalid')
+
+          card=Path('pc-student-info-card-runtime.js').read_text()
+          for forbidden in ['const basePrepareAdd =','const baseGetAdd =','const basePrepareInfo =','const baseGetInfo =','global.olliPrepareStudentAddExtra =','global.olliGetStudentAddExtra =','global.olliPrepareInfoExtra =','global.olliGetInfoExtra =']:
+            if forbidden in card:
+              raise SystemExit(f'authoritative wrapper remains: {forbidden}')
+          routing=Path('pc-student-class-routing.js').read_text()
+          for forbidden in ['const basePrepare = global.olliPrepareStudentAddExtra','const baseGetExtra = global.olliGetStudentAddExtra','global.olliPrepareStudentAddExtra =','global.olliGetStudentAddExtra =','global.olliGetStudentAddSchedulePairs =']:
+            if forbidden in routing:
+              raise SystemExit(f'class-routing wrapper remains: {forbidden}')
+          for required in ['olliPrepareStudentRegistrationRouting','olliCommitStudentRegistrationRouting','olliReleaseStudentRegistrationRouting','olli_schedule_set_student_weekly_schedule']:
+            if required not in routing:
+              raise SystemExit(f'registration routing lost: {required}')
+          memo=Path('olli-record-memo-storage.js').read_text()
+          save_pos=memo.index('const savedStudent = await ensureStudentSavedToSupabase(newStudent);')
+          route_pos=memo.index('if (registrationRouting?.handled === true', save_pos)
+          fallback_pos=memo.index("else if (typeof window.saveOlliStudentScheduleFromInfo === 'function')", route_pos)
+          if not (save_pos < route_pos < fallback_pos):
+            raise SystemExit('new-student save routing order changed')
+          card_save=card.index('const savedStudent = await global.ensureStudentSavedToSupabase(profile);')
+          card_schedule=card.index('await setAuthoritativeSchedule(savedStudent.id, pairs);', card_save)
+          if card_save >= card_schedule:
+            raise SystemExit('existing-student profile/schedule save order changed')
+          PY
+          grep -q "olliPcAuthoritativeScheduleAfterPrepareStudentAdd" pc-student-info-card-runtime.js
+          grep -q "olliPcClassRoutingFinalizeStudentAddExtra" pc-student-class-routing.js
+      - name: Commit and cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f tmp_source_own_authoritative_schedule_editor.py
+          rm -f .github/workflows/source-own-authoritative-editor-once.yml
+          git add -A
+          git commit -m "refactor: source-own authoritative student schedule editor"
+          git push origin HEAD:refactor/source-owned-no-overrides-20260912
