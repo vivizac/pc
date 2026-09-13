@@ -1,4 +1,4 @@
-name: Source-own authoritative editor once v2
+name: Source-own authoritative editor once v3
 
 on:
   push:
@@ -73,27 +73,27 @@ jobs:
           prepare_info_start=get_add_end
           prepare_info_end=canonical.index('window.olliGetInfoExtra =', prepare_info_start)
           prepare_info=canonical[prepare_info_start:prepare_info_end]
-          auth_count=prepare_info.count('olliPcAuthoritativeScheduleAfterPrepareInfo')
-          timetable_count=prepare_info.count('olliTimetableAfterPrepareStudentInfo')
-          print('prepare-info auth/timetable counts:', auth_count, timetable_count)
-          if auth_count != 2:
-            raise SystemExit(f'authoritative prepare-info hook count invalid: {auth_count}')
-          if timetable_count != 2:
-            raise SystemExit(f'timetable prepare-info hook count invalid: {timetable_count}')
+          auth_calls=len(re.findall(r'window\.olliPcAuthoritativeScheduleAfterPrepareInfo\(type, student\)',prepare_info))
+          timetable_calls=len(re.findall(r'window\.olliTimetableAfterPrepareStudentInfo\(type, student\)',prepare_info))
+          print('prepare-info actual calls:', auth_calls, timetable_calls)
+          if auth_calls != 2:
+            raise SystemExit(f'authoritative prepare-info actual call count invalid: {auth_calls}')
+          if timetable_calls != 2:
+            raise SystemExit(f'timetable prepare-info actual call count invalid: {timetable_calls}')
           for branch_marker in ["if (type === 'kinder')", "if (type === 'elementary')"]:
             branch_start=prepare_info.index(branch_marker)
             next_branch=prepare_info.find("if (type === '", branch_start+len(branch_marker))
             branch=prepare_info[branch_start:next_branch if next_branch >= 0 else len(prepare_info)]
-            schedule_pos=branch.index('olliStudentScheduleAfterPrepareInfo')
-            authoritative_pos=branch.index('olliPcAuthoritativeScheduleAfterPrepareInfo')
-            timetable_pos=branch.index('olliTimetableAfterPrepareStudentInfo')
-            if not (schedule_pos < authoritative_pos < timetable_pos):
-              raise SystemExit(f'prepare-info hook order invalid for {branch_marker}: {schedule_pos}, {authoritative_pos}, {timetable_pos}')
+            schedule_call=branch.index('window.olliStudentScheduleAfterPrepareInfo(type, student)')
+            authoritative_call=branch.index('window.olliPcAuthoritativeScheduleAfterPrepareInfo(type, student)')
+            timetable_call=branch.index('window.olliTimetableAfterPrepareStudentInfo(type, student)')
+            if not (schedule_call < authoritative_call < timetable_call):
+              raise SystemExit(f'prepare-info actual call order invalid for {branch_marker}: {schedule_call}, {authoritative_call}, {timetable_call}')
 
           get_info_start=prepare_info_end
           get_info_end=canonical.index("document.addEventListener('DOMContentLoaded'", get_info_start)
           get_info=canonical[get_info_start:get_info_end]
-          info_order=[get_info.index('olliStudentScheduleAugmentInfoExtra'),get_info.index('olliPcAuthoritativeScheduleAugmentInfoExtra')]
+          info_order=[get_info.index('window.olliStudentScheduleAugmentInfoExtra(type, result)'),get_info.index('window.olliPcAuthoritativeScheduleAugmentInfoExtra(type, result)')]
           if info_order != sorted(info_order) or len(set(info_order)) != 2:
             raise SystemExit(f'get-info augment order invalid: {info_order}')
 
