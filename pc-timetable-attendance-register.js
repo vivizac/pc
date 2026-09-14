@@ -513,7 +513,7 @@
       const statusMeta = attendanceRegisterStatusMeta(nextStatus);
       cell.dataset.status = nextStatus;
       cell.dataset.attendanceSaving = '';
-      cell.classList.remove('attendanceLinkedMark', 'attendanceAbsentMark', 'attendanceMakeupMark');
+      cell.classList.remove('attendanceBlankMark', 'attendanceLinkedMark', 'attendanceAbsentMark', 'attendanceMakeupMark');
       if (statusMeta.className) cell.classList.add(statusMeta.className);
       cell.innerHTML = statusMeta.mark;
       const kindLabel = sessionKind === 'makeup' ? '보강' : '정규수업';
