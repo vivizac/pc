@@ -250,6 +250,149 @@ async function copyAttendanceFeedbackSheetItem(itemId, kind = 'feedback', event)
   }
 }
 
+function getAttendanceFeedbackEditTable(item, kind = 'feedback') {
+  const row = item?.row || {};
+  if (kind === 'summary') return 'summary_feedbacks';
+  return String(item?.sourceTable || row.source_table || 'feedbacks').trim();
+}
+
+function getAttendanceFeedbackEditFeature(tableName) {
+  const table = String(tableName || '').trim();
+  if (table === 'feedbacks') return 'general_feedback_edit';
+  if (table === 'fail_feedbacks') return 'growth_feedback_edit';
+  if (table === 'summary_feedbacks') return 'summary_feedback_edit';
+  return '';
+}
+
+function getAttendanceFeedbackActionCard(itemId, event) {
+  const directCard = event?.currentTarget?.closest?.('.attendanceFeedbackSheetCard');
+  if (directCard) return directCard;
+  const selector = `.attendanceFeedbackSheetCard[data-attendance-feedback-id="${CSS.escape(String(itemId || ''))}"]`;
+  return document.querySelector(selector);
+}
+
+function resizeAttendanceFeedbackEditArea(area) {
+  if (!area) return;
+  area.style.height = 'auto';
+  area.style.height = `${Math.max(120, Math.ceil(area.scrollHeight || 0))}px`;
+}
+
+function openAttendanceFeedbackSheetItemEdit(itemId, kind = 'feedback', event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const item = getAttendanceFeedbackSheetItemById(itemId, kind);
+  const card = getAttendanceFeedbackActionCard(itemId, event);
+  if (!item || !card) {
+    if (typeof showPushToast === 'function') showPushToast('수정할 기록을 찾지 못했어요.');
+    return;
+  }
+  const area = card.querySelector('.attendanceFeedbackSheetEditArea');
+  if (!area) return;
+  area.value = item.content || '';
+  card.classList.add('open', 'editing');
+  resizeAttendanceFeedbackEditArea(area);
+  area.oninput = () => resizeAttendanceFeedbackEditArea(area);
+  area.focus();
+  area.setSelectionRange(area.value.length, area.value.length);
+}
+
+function cancelAttendanceFeedbackSheetItemEdit(itemId, kind = 'feedback', event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const item = getAttendanceFeedbackSheetItemById(itemId, kind);
+  const card = getAttendanceFeedbackActionCard(itemId, event);
+  if (!card) return;
+  const area = card.querySelector('.attendanceFeedbackSheetEditArea');
+  if (area && item) area.value = item.content || '';
+  card.classList.remove('editing');
+}
+
+async function saveAttendanceFeedbackSheetItemEdit(itemId, kind = 'feedback', event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const state = attendanceStudentFeedbackSheetState;
+  const student = state.student;
+  const item = getAttendanceFeedbackSheetItemById(itemId, kind);
+  const card = getAttendanceFeedbackActionCard(itemId, event);
+  const area = card?.querySelector?.('.attendanceFeedbackSheetEditArea');
+  const content = String(area?.value || '').trim();
+  if (!student || !item || !card || !area) {
+    if (typeof showPushToast === 'function') showPushToast('수정할 기록을 찾지 못했어요.');
+    return;
+  }
+  if (!content) {
+    if (typeof showPushToast === 'function') showPushToast('기록 내용은 비워둘 수 없어요.');
+    area.focus();
+    return;
+  }
+
+  const row = item.row || {};
+  const recordId = String(row.id || item.rowId || '').trim();
+  const academyId = String(typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '').trim();
+  const studentId = String(student.id || row.student_id || '').trim();
+  const tableName = getAttendanceFeedbackEditTable(item, kind);
+  const feature = getAttendanceFeedbackEditFeature(tableName);
+  if (!academyId || !studentId || !recordId || !feature) {
+    if (typeof showPushToast === 'function') showPushToast('기록 수정에 필요한 서버 정보를 찾지 못했어요.');
+    return;
+  }
+  if (typeof saveOlliData !== 'function') {
+    if (typeof showPushToast === 'function') showPushToast('기록 저장 기능을 불러오지 못했어요.');
+    return;
+  }
+
+  const btn = event?.currentTarget || null;
+  const originalText = btn ? (btn.textContent || '저장') : '저장';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '저장 중...';
+  }
+
+  try {
+    const patch = { content, updated_at: new Date().toISOString() };
+    const result = await saveOlliData(feature, {
+      academyId,
+      studentId,
+      recordId,
+      data: patch,
+      forceCommon: true
+    });
+    const pending = typeof isOlliPendingCommonSaveResult === 'function' && isOlliPendingCommonSaveResult(result);
+    if (pending || !result || !result.serverSaved || !result.verified) {
+      throw result?.error || new Error(pending
+        ? '서버 저장이 완료되지 않아 수정 내용은 화면에 반영하지 않았어요.'
+        : '기록 수정 서버 저장이 완료되지 않았어요.');
+    }
+
+    const savedRow = result.serverRow || (Array.isArray(result.serverRows) ? result.serverRows[0] : result.serverRows) || null;
+    item.content = String(savedRow?.content ?? content);
+    item.row = { ...row, ...(savedRow || patch), content: String(savedRow?.content ?? content) };
+
+    if (window.OlliPcPersonalityRecords?.refreshSelected && document.getElementById('pcAttendanceCombinedBody')) {
+      await window.OlliPcPersonalityRecords.refreshSelected();
+    } else {
+      const refreshed = await loadAttendanceStudentFeedbackSheetItems(student);
+      renderAttendanceStudentFeedbackSheet(student, refreshed);
+    }
+    if (typeof showPushToast === 'function') showPushToast('기록을 수정했어요.');
+  } catch (err) {
+    console.error('학생 기록 수정 오류:', err);
+    if (typeof showPushToast === 'function') showPushToast(err?.message || '기록 수정 저장에 실패했어요.');
+    else alert(`기록 수정 중 오류가 발생했어요.\n\n${err?.message || '알 수 없는 오류입니다.'}`);
+  } finally {
+    if (btn?.isConnected) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+}
+
 async function performAttendanceFeedbackSheetItemDelete(itemId, kind = 'feedback') {
   const state = attendanceStudentFeedbackSheetState;
   const student = state.student;
@@ -360,6 +503,9 @@ async function confirmAttendanceRecordDelete() {
 }
 
 window.copyAttendanceFeedbackSheetItem = copyAttendanceFeedbackSheetItem;
+window.openAttendanceFeedbackSheetItemEdit = openAttendanceFeedbackSheetItemEdit;
+window.cancelAttendanceFeedbackSheetItemEdit = cancelAttendanceFeedbackSheetItemEdit;
+window.saveAttendanceFeedbackSheetItemEdit = saveAttendanceFeedbackSheetItemEdit;
 window.openAttendanceRecordDeleteOverlay = openAttendanceRecordDeleteOverlay;
 window.closeAttendanceRecordDeleteOverlay = closeAttendanceRecordDeleteOverlay;
 window.confirmAttendanceRecordDelete = confirmAttendanceRecordDelete;
@@ -373,31 +519,47 @@ function renderAttendanceFeedbackSheetCards(items, emptyText, student, options =
   const useInlineCardTools = iconCopy || showSummaryBadge;
   return items.map(item => {
     const id = escapeHtml(String(item.id || ''));
+    const itemId = escapeJsSingleQuote(String(item.id || ''));
     const title = getAttendanceFeedbackItemTitle(item, student, kind);
     const dateText = formatAttendanceFeedbackSheetDate(item.createdAt || item.row?.date || '');
     const content = item.content || '';
     const preview = content.replace(/\s+/g, ' ').trim();
     const summaryRegenerateButton = kind === 'summary'
-      ? `<button type="button" class="attendanceSummaryRegenerateBtn" onclick="regenerateAttendanceSummaryFeedback('${escapeJsSingleQuote(String(item.id || ''))}', event)" aria-label="종합 성장 기록 재생성">${getSummaryRegenerateIconSvg()}</button>`
+      ? `<button type="button" class="attendanceSummaryRegenerateBtn" onclick="regenerateAttendanceSummaryFeedback('${itemId}', event)" aria-label="종합 성장 기록 재생성">${getSummaryRegenerateIconSvg()}</button>`
       : '';
     const summaryBadge = showSummaryBadge && kind === 'summary'
       ? '<span class="attendanceFeedbackSummaryBadge">종합성장기록</span>'
       : '';
     const copyIconButton = iconCopy
-      ? `<button type="button" class="attendanceFeedbackSheetCopyIconBtn" onclick="copyAttendanceFeedbackSheetItem('${escapeJsSingleQuote(String(item.id || ''))}', '${kind}', event)" aria-label="${escapeHtml(title)} 본문 복사" title="본문 복사">${getAttendanceFeedbackCopyIconSvg()}</button>`
+      ? `<button type="button" class="attendanceFeedbackSheetCopyIconBtn" onclick="copyAttendanceFeedbackSheetItem('${itemId}', '${kind}', event)" aria-label="${escapeHtml(title)} 본문 복사" title="본문 복사">${getAttendanceFeedbackCopyIconSvg()}</button>`
       : '';
     const titleMarkup = useInlineCardTools
       ? `<div class="attendanceFeedbackSheetCardTopRow"><div class="attendanceFeedbackSheetCardTitleWrap"><div class="attendanceFeedbackSheetCardTitle">${escapeHtml(title)}</div>${summaryBadge}</div><div class="attendanceFeedbackSheetCardTopActions">${summaryRegenerateButton}${copyIconButton}</div></div>`
       : `${summaryRegenerateButton}<div class="attendanceFeedbackSheetCardTitle">${escapeHtml(title)}</div>`;
-    return `<article class="attendanceFeedbackSheetCard${hidePreview ? ' noPreview' : ''}" data-attendance-feedback-id="${id}" onclick="toggleAttendanceFeedbackSheetCard('${escapeJsSingleQuote(String(item.id || ''))}')">
+    const editArea = iconCopy
+      ? `<textarea class="attendanceFeedbackSheetEditArea" aria-label="${escapeHtml(title)} 수정 내용">${escapeHtml(content)}</textarea>`
+      : '';
+    const editButton = iconCopy
+      ? `<button type="button" class="attendanceFeedbackSheetActionBtn" onclick="openAttendanceFeedbackSheetItemEdit('${itemId}', '${kind}', event)">수정</button>`
+      : '';
+    const editActions = iconCopy
+      ? `<div class="attendanceFeedbackSheetCardActions attendanceFeedbackSheetEditActions" onclick="event.stopPropagation()">
+          <button type="button" class="attendanceFeedbackSheetActionBtn" onclick="cancelAttendanceFeedbackSheetItemEdit('${itemId}', '${kind}', event)">취소</button>
+          <button type="button" class="attendanceFeedbackSheetActionBtn save" onclick="saveAttendanceFeedbackSheetItemEdit('${itemId}', '${kind}', event)">저장</button>
+        </div>`
+      : '';
+    return `<article class="attendanceFeedbackSheetCard${hidePreview ? ' noPreview' : ''}" data-attendance-feedback-id="${id}" onclick="toggleAttendanceFeedbackSheetCard('${itemId}')">
       ${titleMarkup}
       <div class="attendanceFeedbackSheetCardDate">${escapeHtml(dateText)}</div>
       ${hidePreview ? '' : `<div class="attendanceFeedbackSheetPreview">${escapeHtml(preview)}</div>`}
       <div class="attendanceFeedbackSheetFullText">${escapeHtml(content)}</div>
-      <div class="attendanceFeedbackSheetCardActions" onclick="event.stopPropagation()">
-        ${iconCopy ? '' : `<button type="button" class="attendanceFeedbackSheetActionBtn" onclick="copyAttendanceFeedbackSheetItem('${escapeJsSingleQuote(String(item.id || ''))}', '${kind}', event)">복사</button>`}
-        <button type="button" class="attendanceFeedbackSheetActionBtn delete" onclick="openAttendanceRecordDeleteOverlay('${escapeJsSingleQuote(String(item.id || ''))}', '${kind}', event)">삭제</button>
+      ${editArea}
+      <div class="attendanceFeedbackSheetCardActions attendanceFeedbackSheetViewActions" onclick="event.stopPropagation()">
+        <button type="button" class="attendanceFeedbackSheetActionBtn" onclick="copyAttendanceFeedbackSheetItem('${itemId}', '${kind}', event)">복사</button>
+        ${editButton}
+        <button type="button" class="attendanceFeedbackSheetActionBtn delete" onclick="openAttendanceRecordDeleteOverlay('${itemId}', '${kind}', event)">삭제</button>
       </div>
+      ${editActions}
     </article>`;
   }).join('');
 }
@@ -474,7 +636,6 @@ function toggleAttendanceFeedbackSheetCard(id) {
   if (!card) return;
   card.classList.toggle('open');
 }
-
 
 
 
