@@ -1,0 +1,502 @@
+name: Temporary multiple timetable memo source fix
+
+on:
+  push:
+    branches:
+      - fix/pc-multiple-timetable-memos-20260914
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/pc-multiple-timetable-memos-20260914
+      - name: Patch original timetable sources
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f'{label} not found')
+              return text.replace(old, new, 1)
+
+          js_path = Path('pc-timetable.js')
+          js = js_path.read_text(encoding='utf-8')
+
+          # Remove the previous per-line memo icon helper feature.
+          js, count = re.subn(
+              r"\n  function escMemoLine\(value\) \{.*?\n  \}\n  function renderTimetableMemoLines\(value\) \{.*?\n  \}\n(?=  function pad\(value\))",
+              "\n",
+              js,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit('memo line helper block not found')
+
+          old = """    const memoLines = card.querySelector('.olliTtMemoLines');
+    if (!memoLines || !clean(memoLines.textContent)) return;
+
+    hideTimetableMemoHoverPreview();
+    const preview = document.createElement('div');
+    preview.className = 'olliTtMemoHoverPreview';
+    preview.innerHTML = `<span class=\"olliTtMemoLines\">${memoLines.innerHTML}</span>`;
+"""
+          new = """    const text = clean(card.querySelector('strong')?.textContent);
+    if (!text) return;
+
+    hideTimetableMemoHoverPreview();
+    const preview = document.createElement('div');
+    preview.className = 'olliTtMemoHoverPreview';
+    preview.innerHTML = `<span aria-hidden=\"true\">📝</span><strong>${esc(text)}</strong>`;
+"""
+          js = replace_once(js, old, new, 'memo hover block')
+
+          old = """  function cellMemoInfo(division, date, time) {
+    const keyDate = date instanceof Date ? dateKey(date) : clean(date);
+    return cellMemos().find((item) => clean(item.division) === clean(division)
+      && clean(item.session_date) === keyDate
+      && Number(item.time_slot) === Number(time)) || null;
+  }
+
+  function cellMemoText(division, date, time) {
+    return clean(cellMemoInfo(division, date, time)?.note);
+  }
+
+  function cellMemoClassGroup(division, date, time) {
+    const raw = clean(cellMemoInfo(division, date, time)?.class_group).toUpperCase();
+    return raw === 'B' ? 'B' : 'A';
+  }
+
+  async function saveCellMemoText(division, date, time, note, classGroup) {
+    if (typeof service.saveCellMemo !== 'function') throw new Error('시간표 메모 서버 연결을 찾지 못했습니다.');
+    const keyDate = date instanceof Date ? dateKey(date) : clean(date);
+    return service.saveCellMemo(clean(division), keyDate, Number(time), clean(note), classGroupOf({ class_group: classGroup }));
+  }
+"""
+          new = """  function cellMemoItems(division, date, time, classGroup) {
+    const keyDate = date instanceof Date ? dateKey(date) : clean(date);
+    const wantedGroup = clean(classGroup).toUpperCase();
+    return cellMemos().filter((item) => clean(item.division) === clean(division)
+      && clean(item.session_date) === keyDate
+      && Number(item.time_slot) === Number(time)
+      && (!wantedGroup || classGroupOf(item) === classGroupOf({ class_group: wantedGroup })))
+      .sort((a, b) => clean(a.created_at).localeCompare(clean(b.created_at)) || clean(a.id).localeCompare(clean(b.id)));
+  }
+
+  function cellMemoById(memoId) {
+    const id = clean(memoId);
+    return cellMemos().find((item) => clean(item.id) === id) || null;
+  }
+
+  async function addCellMemoText(division, date, time, note, classGroup) {
+    if (typeof service.addCellMemo !== 'function') throw new Error('시간표 메모 추가 서버 연결을 찾지 못했습니다.');
+    const keyDate = date instanceof Date ? dateKey(date) : clean(date);
+    return service.addCellMemo(clean(division), keyDate, Number(time), clean(note), classGroupOf({ class_group: classGroup }));
+  }
+
+  async function updateCellMemoText(memoId, note) {
+    if (typeof service.updateCellMemo !== 'function') throw new Error('시간표 메모 수정 서버 연결을 찾지 못했습니다.');
+    return service.updateCellMemo(clean(memoId), clean(note));
+  }
+
+  async function deleteCellMemoById(memoId) {
+    if (typeof service.deleteCellMemo !== 'function') throw new Error('시간표 메모 삭제 서버 연결을 찾지 못했습니다.');
+    return service.deleteCellMemo(clean(memoId));
+  }
+"""
+          js = replace_once(js, old, new, 'memo data helpers')
+
+          js = replace_once(js,
+              '  function cellContentsHtml(division, date, time, classGroup, memoText) {',
+              '  function cellContentsHtml(division, date, time, classGroup, memoItems) {',
+              'cellContentsHtml signature')
+
+          old = """    const memo = clean(memoText);
+    const memoHtml = memo ? `<button type=\"button\" class=\"olliTtCellMemoCard\" data-tt-memo-card=\"1\" data-division=\"${esc(division)}\" data-date=\"${dateKey(date)}\" data-time=\"${Number(time)}\" data-class-group=\"${esc(classGroupOf({ class_group: classGroup }))}\" aria-label=\"시간표 메모 관리\"><span class=\"olliTtMemoLines\">${renderTimetableMemoLines(memo)}</span></button>` : '';
+    return `<div class=\"olliTtEntries\">${regularHtml}${waitHtml}${makeupHtml}${memoHtml}</div>`;
+"""
+          new = """    const memoHtml = (Array.isArray(memoItems) ? memoItems : []).map((memoItem) => {
+      const memo = clean(memoItem && memoItem.note);
+      if (!memo) return '';
+      return `<button type=\"button\" class=\"olliTtCellMemoCard\" data-tt-memo-card=\"1\" data-memo-id=\"${esc(memoItem.id)}\" data-division=\"${esc(division)}\" data-date=\"${dateKey(date)}\" data-time=\"${Number(time)}\" data-class-group=\"${esc(classGroupOf(memoItem))}\" aria-label=\"시간표 메모 관리\"><span aria-hidden=\"true\">📝</span><strong>${esc(memo)}</strong></button>`;
+    }).join('');
+    return `<div class=\"olliTtEntries\">${regularHtml}${waitHtml}${makeupHtml}${memoHtml}</div>`;
+"""
+          js = replace_once(js, old, new, 'memo card rendering')
+
+          old = """    const memo = cellMemoText(division, date, time);
+    if (!isClassSplit(division, date.getDay(), time)) {
+      const teacherLabel = classTeacherLabel(division, date.getDay(), time, 'A');
+      const mergedLabel = teacherLabel || (division === 'kinder' ? 'A반' : '');
+      const mergedClassHead = mergedLabel
+        ? `<div class=\"olliTtClassLaneHead olliTtMergedClassHead\"><strong>${esc(mergedLabel)}</strong></div>`
+        : '';
+      return `<div class=\"olliTtCell${division === 'kinder' ? ' kinder merged' : ''}${holiday ? ' holiday' : ''}\" ${attrs}>${mergedClassHead}${cellContentsHtml(division, date, time, '', memo)}</div>`;
+    }
+    const memoGroup = cellMemoClassGroup(division, date, time);
+    return `<div class=\"olliTtCell ${division} split${holiday ? ' holiday' : ''}\" ${attrs}><div class=\"olliTtClassLanes ${division}\">${['A', 'B'].map((group) => {
+      const teacherLabel = classTeacherLabel(division, date.getDay(), time, group);
+      const laneLabel = teacherLabel || (division === 'kinder' ? `${group}반` : '');
+      const laneHead = laneLabel ? `<div class=\"olliTtClassLaneHead\"><strong>${esc(laneLabel)}</strong></div>` : '';
+      return `<div class=\"olliTtClassLane ${division}\" ${attrs} data-class-group=\"${group}\">${laneHead}${cellContentsHtml(division, date, time, group, memo && group === memoGroup ? memo : '')}</div>`;
+    }).join('')}</div></div>`;
+"""
+          new = """    const memos = cellMemoItems(division, date, time);
+    if (!isClassSplit(division, date.getDay(), time)) {
+      const teacherLabel = classTeacherLabel(division, date.getDay(), time, 'A');
+      const mergedLabel = teacherLabel || (division === 'kinder' ? 'A반' : '');
+      const mergedClassHead = mergedLabel
+        ? `<div class=\"olliTtClassLaneHead olliTtMergedClassHead\"><strong>${esc(mergedLabel)}</strong></div>`
+        : '';
+      return `<div class=\"olliTtCell${division === 'kinder' ? ' kinder merged' : ''}${holiday ? ' holiday' : ''}\" ${attrs}>${mergedClassHead}${cellContentsHtml(division, date, time, '', memos)}</div>`;
+    }
+    return `<div class=\"olliTtCell ${division} split${holiday ? ' holiday' : ''}\" ${attrs}><div class=\"olliTtClassLanes ${division}\">${['A', 'B'].map((group) => {
+      const teacherLabel = classTeacherLabel(division, date.getDay(), time, group);
+      const laneLabel = teacherLabel || (division === 'kinder' ? `${group}반` : '');
+      const laneHead = laneLabel ? `<div class=\"olliTtClassLaneHead\"><strong>${esc(laneLabel)}</strong></div>` : '';
+      return `<div class=\"olliTtClassLane ${division}\" ${attrs} data-class-group=\"${group}\">${laneHead}${cellContentsHtml(division, date, time, group, cellMemoItems(division, date, time, group))}</div>`;
+    }).join('')}</div></div>`;
+"""
+          js = replace_once(js, old, new, 'cell memo grouping')
+
+          old = """      const storedTime = storedTimeForCell('elementary', date, displayTime);
+      const hasMemo = !!cellMemoText('elementary', date, storedTime);
+      let contentRows = 0;
+"""
+          new = """      const storedTime = storedTimeForCell('elementary', date, displayTime);
+      const memoItems = cellMemoItems('elementary', date, storedTime);
+      let contentRows = 0;
+"""
+          js = replace_once(js, old, new, 'adaptive memo lookup')
+          old = """      const memoHeight = hasMemo ? 41 : 0;
+      required = Math.max(required, 18 + headerHeight + (contentRows * 27) + memoHeight);
+"""
+          new = """      const memoHeight = memoItems.reduce((total, item, index) => {
+        const lineCount = Math.max(1, String(item && item.note || '').replace(/\\r\\n?/g, '\\n').split('\\n').length);
+        return total + Math.max(24, 8 + (lineCount * 14)) + (index > 0 ? 3 : 0);
+      }, 0);
+      required = Math.max(required, 18 + headerHeight + (contentRows * 27) + memoHeight);
+"""
+          js = replace_once(js, old, new, 'adaptive memo height')
+
+          old = """  function openAdd(dataset) {
+    const targetDate = clean(dataset.date);
+    const division = clean(dataset.division);
+    const time = Number(dataset.time);
+    const targetClassGroup = classGroupOf({ class_group: dataset.classGroup });
+    const existingMemo = cellMemoText(division, targetDate, time);
+    const existingMemoGroup = existingMemo ? cellMemoClassGroup(division, targetDate, time) : '';
+    const teacher = classTeacherFor(division, Number(dataset.weekday), time, targetClassGroup);
+    const teacherMemberId = clean(teacher && teacher.teacher_member_id);
+    state.dialog = {
+      kind: 'add', division, date: targetDate,
+      weekday: Number(dataset.weekday), time, studentId: '',
+      query: '', guestName: '', note: existingMemo, originalNote: existingMemo, originalMemoGroup: existingMemoGroup, addType: 'wait', targetClassGroup,
+      teacherMemberId, originalTeacherMemberId: teacherMemberId,
+      pendingKinderMerge: false, pendingKinderSplit: false
+    };
+    openOverlay();
+  }
+
+  function openMemoManage(dataset) {
+    const division = clean(dataset && dataset.division);
+    const date = clean(dataset && dataset.date);
+    const time = Number(dataset && dataset.time);
+    const memo = cellMemoText(division, date, time);
+    if (!division || !date || !time || !memo) return;
+    state.dialog = { kind: 'memoManage', division, date, time, classGroup: classGroupOf({ class_group: dataset.classGroup }), memo, originalMemo: memo };
+    openOverlay();
+  }
+"""
+          new = """  function openAdd(dataset) {
+    const targetDate = clean(dataset.date);
+    const division = clean(dataset.division);
+    const time = Number(dataset.time);
+    const targetClassGroup = classGroupOf({ class_group: dataset.classGroup });
+    const teacher = classTeacherFor(division, Number(dataset.weekday), time, targetClassGroup);
+    const teacherMemberId = clean(teacher && teacher.teacher_member_id);
+    state.dialog = {
+      kind: 'add', division, date: targetDate,
+      weekday: Number(dataset.weekday), time, studentId: '',
+      query: '', guestName: '', note: '', addType: 'wait', targetClassGroup,
+      teacherMemberId, originalTeacherMemberId: teacherMemberId,
+      pendingKinderMerge: false, pendingKinderSplit: false
+    };
+    openOverlay();
+  }
+
+  function openMemoManage(dataset) {
+    const memoItem = cellMemoById(dataset && dataset.memoId);
+    if (!memoItem) return;
+    const memo = clean(memoItem.note);
+    if (!memo) return;
+    state.dialog = {
+      kind: 'memoManage', memoId: clean(memoItem.id), division: clean(memoItem.division),
+      date: clean(memoItem.session_date), time: Number(memoItem.time_slot), classGroup: classGroupOf(memoItem),
+      memo, originalMemo: memo
+    };
+    openOverlay();
+  }
+"""
+          js = replace_once(js, old, new, 'open add/manage memo')
+
+          old = """    const note = clean(dialog.note);
+    const hadMemo = Boolean(clean(dialog.originalNote));
+    const teacherChanged = clean(dialog.teacherMemberId) !== clean(dialog.originalTeacherMemberId);
+    const canRegister = Boolean(hasRegistrationTarget || note || hadMemo || dialog.pendingKinderMerge || dialog.pendingKinderSplit || teacherChanged);
+    const primaryLabel = (dialog.pendingKinderMerge || dialog.pendingKinderSplit)
+      ? '등록'
+      : (hasRegistrationTarget ? '등록' : (note ? '메모 저장' : (hadMemo ? '메모 삭제' : (teacherChanged ? '담임 저장' : '등록'))));
+"""
+          new = """    const note = clean(dialog.note);
+    const teacherChanged = clean(dialog.teacherMemberId) !== clean(dialog.originalTeacherMemberId);
+    const canRegister = Boolean(hasRegistrationTarget || note || dialog.pendingKinderMerge || dialog.pendingKinderSplit || teacherChanged);
+    const primaryLabel = (dialog.pendingKinderMerge || dialog.pendingKinderSplit)
+      ? '등록'
+      : (hasRegistrationTarget ? '등록' : (note ? '메모 저장' : (teacherChanged ? '담임 저장' : '등록')));
+"""
+          js = replace_once(js, old, new, 'add dialog memo state')
+
+          old = """        const canSave = hasAddRegistrationTarget(state.dialog)
+          || Boolean(clean(state.dialog.note))
+          || Boolean(clean(state.dialog.originalNote))
+          || Boolean(state.dialog.pendingKinderMerge)
+"""
+          new = """        const canSave = hasAddRegistrationTarget(state.dialog)
+          || Boolean(clean(state.dialog.note))
+          || Boolean(state.dialog.pendingKinderMerge)
+"""
+          js = replace_once(js, old, new, 'guest save availability')
+
+          old = """        const hasSelectedStudent = hasAddRegistrationTarget(state.dialog);
+        const hasNote = Boolean(clean(state.dialog.note));
+        const hadMemo = Boolean(clean(state.dialog.originalNote));
+        const pendingKinderMerge = Boolean(state.dialog.pendingKinderMerge);
+        const pendingKinderSplit = Boolean(state.dialog.pendingKinderSplit);
+        const teacherChanged = clean(state.dialog.teacherMemberId) !== clean(state.dialog.originalTeacherMemberId);
+        saveButton.disabled = !(hasSelectedStudent || hasNote || hadMemo || pendingKinderMerge || pendingKinderSplit || teacherChanged);
+        saveButton.textContent = (pendingKinderMerge || pendingKinderSplit) ? '등록' : (hasSelectedStudent ? '등록' : (hasNote ? '메모 저장' : (hadMemo ? '메모 삭제' : (teacherChanged ? '담임 저장' : '등록'))));
+"""
+          new = """        const hasSelectedStudent = hasAddRegistrationTarget(state.dialog);
+        const hasNote = Boolean(clean(state.dialog.note));
+        const pendingKinderMerge = Boolean(state.dialog.pendingKinderMerge);
+        const pendingKinderSplit = Boolean(state.dialog.pendingKinderSplit);
+        const teacherChanged = clean(state.dialog.teacherMemberId) !== clean(state.dialog.originalTeacherMemberId);
+        saveButton.disabled = !(hasSelectedStudent || hasNote || pendingKinderMerge || pendingKinderSplit || teacherChanged);
+        saveButton.textContent = (pendingKinderMerge || pendingKinderSplit) ? '등록' : (hasSelectedStudent ? '등록' : (hasNote ? '메모 저장' : (teacherChanged ? '담임 저장' : '등록')));
+"""
+          js = replace_once(js, old, new, 'memo input save state')
+
+          old = """  async function persistDialogCellMemo(dialog) {
+    if (!dialog || dialog.kind !== 'add') return null;
+    const unchanged = clean(dialog.note) === clean(dialog.originalNote);
+    const classGroup = unchanged && clean(dialog.originalMemoGroup)
+      ? dialog.originalMemoGroup
+      : dialog.targetClassGroup;
+    return saveCellMemoText(dialog.division, dialog.date, dialog.time, dialog.note, classGroup);
+  }
+
+  async function saveManagedMemo() {
+"""
+          new = """  async function persistDialogCellMemo(dialog) {
+    if (!dialog || dialog.kind !== 'add' || !clean(dialog.note)) return null;
+    return addCellMemoText(dialog.division, dialog.date, dialog.time, dialog.note, dialog.targetClassGroup);
+  }
+
+  async function saveManagedMemo() {
+"""
+          js = replace_once(js, old, new, 'persist new memo')
+
+          js = replace_once(js,
+              "    const result = await withSaving(() => saveCellMemoText(dialog.division, dialog.date, dialog.time, dialog.memo, dialog.classGroup));",
+              "    const result = await withSaving(() => updateCellMemoText(dialog.memoId, dialog.memo));",
+              'managed memo update')
+          js = replace_once(js,
+              "    const result = await withSaving(() => saveCellMemoText(dialog.division, dialog.date, dialog.time, '', dialog.classGroup));",
+              "    const result = await withSaving(() => deleteCellMemoById(dialog.memoId));",
+              'managed memo delete')
+
+          old = """    const note = clean(dialog.note);
+    const hadMemo = Boolean(clean(dialog.originalNote));
+    const pendingKinderMerge = Boolean(dialog.pendingKinderMerge && dialog.division === 'kinder');
+"""
+          new = """    const note = clean(dialog.note);
+    const pendingKinderMerge = Boolean(dialog.pendingKinderMerge && dialog.division === 'kinder');
+"""
+          js = replace_once(js, old, new, 'saveAdd old memo flag')
+          js = replace_once(js,
+              "    if (!hasRegistrationTarget && !note && !hadMemo && !pendingKinderMerge && !pendingKinderSplit && !teacherChanged) return;",
+              "    if (!hasRegistrationTarget && !note && !pendingKinderMerge && !pendingKinderSplit && !teacherChanged) return;",
+              'saveAdd guard')
+          js = replace_once(js,
+              "        if (note || hadMemo) await persistDialogCellMemo(dialog);",
+              "        if (note) await persistDialogCellMemo(dialog);",
+              'saveAdd memo persist')
+          js = replace_once(js,
+              "        return { merged: pendingKinderMerge, split: pendingKinderSplit, memoChanged: note || hadMemo, teacherChanged };",
+              "        return { merged: pendingKinderMerge, split: pendingKinderSplit, memoChanged: Boolean(note), teacherChanged };",
+              'saveAdd memo result')
+          js = replace_once(js,
+              "        else notify(note ? '시간표 메모를 저장했어요.' : '시간표 메모를 삭제했어요.');",
+              "        else if (note) notify('시간표 메모를 저장했어요.');",
+              'saveAdd memo notification')
+
+          js_path.write_text(js, encoding='utf-8')
+
+          service_path = Path('pc-timetable-service.js')
+          service = service_path.read_text(encoding='utf-8')
+          old = """  async function saveCellMemo(division, sessionDate, timeSlot, note, classGroup) {
+    return rpc('olli_schedule_save_cell_memo_v2', contextPayload({
+      p_division: clean(division),
+      p_session_date: clean(sessionDate),
+      p_time_slot: Number(timeSlot),
+      p_note: note || '',
+      p_class_group: clean(classGroup || 'A').toUpperCase() === 'B' ? 'B' : 'A'
+    }));
+  }
+
+"""
+          new = old + """  async function addCellMemo(division, sessionDate, timeSlot, note, classGroup) {
+    return rpc('olli_schedule_add_cell_memo_v3', contextPayload({
+      p_division: clean(division),
+      p_session_date: clean(sessionDate),
+      p_time_slot: Number(timeSlot),
+      p_note: note || '',
+      p_class_group: clean(classGroup || 'A').toUpperCase() === 'B' ? 'B' : 'A'
+    }));
+  }
+
+  async function updateCellMemo(memoId, note) {
+    return rpc('olli_schedule_update_cell_memo_v3', contextPayload({
+      p_memo_id: clean(memoId),
+      p_note: note || ''
+    }));
+  }
+
+  async function deleteCellMemo(memoId) {
+    return rpc('olli_schedule_delete_cell_memo_v3', contextPayload({
+      p_memo_id: clean(memoId)
+    }));
+  }
+
+"""
+          service = replace_once(service, old, new, 'service memo methods')
+          service = replace_once(service,
+              "    setClassTeacher,\n    saveCellMemo\n",
+              "    setClassTeacher,\n    saveCellMemo,\n    addCellMemo,\n    updateCellMemo,\n    deleteCellMemo\n",
+              'service exports')
+          service_path.write_text(service, encoding='utf-8')
+
+          css_path = Path('pc-timetable.css')
+          css = css_path.read_text(encoding='utf-8')
+          start = css.find('#recordRoomScreen .olliTtCellMemoCard {')
+          end = css.find('#recordRoomScreen .olliTtStudent {', start)
+          if start < 0 or end < 0:
+              raise SystemExit('memo card css region not found')
+          memo_css = """#recordRoomScreen .olliTtCellMemoCard {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  padding: 3px 5px;
+  border: 1px solid #fff3a6;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  color: #544918;
+  background: #fff3a6;
+  box-sizing: border-box;
+  text-align: left;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer;
+  box-shadow: none;
+}
+#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #ffed85; background: #ffed85; box-shadow: none; }
+#recordRoomScreen .olliTtCellMemoCard > span {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  font-size: calc(11px * var(--olli-text-scale));
+  line-height: 1;
+}
+#recordRoomScreen .olliTtCellMemoCard > strong {
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 760;
+  line-height: 1.2;
+}
+"""
+          css = css[:start] + memo_css + css[end:]
+
+          marker = '/* 잘린 시간표 메모는 hover 시 body 레이어에서 전체 내용을 표시 */'
+          hover_start = css.find(marker)
+          if hover_start < 0:
+              raise SystemExit('memo hover css marker not found')
+          hover_css = """/* 잘린 시간표 메모는 hover 시 body 레이어에서 전체 내용을 표시 */
+.olliTtMemoHoverPreview {
+  position: fixed;
+  z-index: 100000;
+  min-height: 24px;
+  max-height: none;
+  padding: 5px 7px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  box-sizing: border-box;
+  border: 1px solid #ffed85;
+  border-radius: 9px;
+  background: #fff3a6;
+  color: #544918;
+  box-shadow: 0 8px 24px rgba(20,24,30,.18);
+  pointer-events: none;
+  overflow: visible;
+  white-space: normal;
+}
+.olliTtMemoHoverPreview > span { flex: 0 0 auto; margin-top: 1px; line-height: 1.25; }
+.olliTtMemoHoverPreview > strong {
+  min-width: 0;
+  font: 760 calc(12px * var(--olli-text-scale, 1)) 'Pretendard', sans-serif;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+"""
+          css = css[:hover_start] + hover_css
+          css_path.write_text(css, encoding='utf-8')
+          PY
+      - name: Verify source changes
+        shell: bash
+        run: |
+          node --check pc-timetable.js
+          node --check pc-timetable-service.js
+          grep -q "function addCellMemo" pc-timetable-service.js
+          grep -q "data-memo-id" pc-timetable.js
+          grep -q "cellMemoItems" pc-timetable.js
+          if grep -q "renderTimetableMemoLines" pc-timetable.js; then exit 1; fi
+          if grep -q "originalNote" pc-timetable.js; then exit 1; fi
+          if grep -q "olliTtMemoLineIcon" pc-timetable.css; then exit 1; fi
+          git diff --check
+      - name: Commit source changes and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/tmp-multiple-timetable-memos.yml
+          git add pc-timetable.js pc-timetable-service.js pc-timetable.css
+          git commit -m "feat: support multiple timetable memo cards"
+          git push origin HEAD:fix/pc-multiple-timetable-memos-20260914
