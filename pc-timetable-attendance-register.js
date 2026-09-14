@@ -125,7 +125,6 @@
       && state.attendanceMonth === month
       && (!realtimeContext || realtimeContext.isCurrent());
 
-    // 1. 네트워크를 기다리지 않고 로컬 출석/휴일 캐시를 먼저 화면 상태에 넣습니다.
     if (state.attendanceRowsMonth !== month && typeof service.getCachedAttendanceMonth === 'function') {
       const cachedRows = service.getCachedAttendanceMonth(month);
       if (Array.isArray(cachedRows)) {
@@ -149,8 +148,6 @@
 
     const beforeRows = state.attendanceRowsMonth === month ? attendanceRowsFingerprint(state.attendanceRows) : '';
     const beforeCalendar = state.attendanceCalendarMonth === month ? attendanceCalendarFingerprint(state.attendanceCalendarDays) : '';
-
-    // 로컬 상태를 즉시 한 번만 그립니다. 별도 로딩 화면은 사용하지 않습니다.
     renderAttendanceRegister();
 
     const token = ++state.attendanceLoadToken;
@@ -174,7 +171,6 @@
       state.attendanceCalendarMonth = month;
       writeAttendanceCalendarCache(month, freshCalendar);
 
-      // 서버 내용이 로컬과 실제로 달라진 경우에만 표를 다시 만듭니다.
       if (rowsChanged || calendarChanged) renderAttendanceRegister();
       return true;
     } catch (error) {
@@ -252,48 +248,78 @@
     return clean(row && row.register_status).toLowerCase() === 'makeup' ? 'makeup' : 'regular';
   }
 
-  function attendanceRegisterSessionStatus(records, sessionDate, sessionKind) {
+  function attendanceSessionKey(row, fallbackKind) {
+    const timeSlot = Number(row && row.time_slot || 0);
+    const classGroup = clean(row && row.class_group || 'A').toUpperCase() === 'B' ? 'B' : 'A';
+    const kind = fallbackKind || attendanceRegisterOverrideKind(row);
+    return `${kind}|${timeSlot}|${classGroup}`;
+  }
+
+  function attendanceRegisterSessions(records, sessionKind) {
+    const rows = Array.isArray(records) ? records : [];
+    const kind = sessionKind === 'makeup' ? 'makeup' : 'regular';
+    const allowedKinds = kind === 'makeup' ? ['makeup', 'makeup_expected'] : ['regular', 'regular_expected'];
+    const sessions = new Map();
+    rows.forEach((row) => {
+      const rowKind = clean(row && row.session_kind);
+      const overrideKind = rowKind === 'register_override' ? attendanceRegisterOverrideKind(row) : '';
+      if (!allowedKinds.includes(rowKind) && !(rowKind === 'register_override' && overrideKind === kind)) return;
+      const timeSlot = Number(row && row.time_slot || 0);
+      if (timeSlot < 1) return;
+      const classGroup = clean(row && row.class_group || 'A').toUpperCase() === 'B' ? 'B' : 'A';
+      const key = `${kind}|${timeSlot}|${classGroup}`;
+      if (!sessions.has(key)) sessions.set(key, { kind, timeSlot, classGroup });
+    });
+    return Array.from(sessions.values()).sort((a, b) => a.timeSlot - b.timeSlot || a.classGroup.localeCompare(b.classGroup));
+  }
+
+  function attendanceRegisterSessionStatus(records, sessionDate, sessionKind, timeSlot, classGroup, allowCoarseOverride) {
     const rows = Array.isArray(records) ? records : [];
     const kind = sessionKind === 'makeup' ? 'makeup' : 'regular';
     const allowed = kind === 'makeup' ? MAKEUP_ATTENDANCE_STATUS_ORDER : REGULAR_ATTENDANCE_STATUS_ORDER;
+    const slot = Number(timeSlot || 0);
+    const group = clean(classGroup || 'A').toUpperCase() === 'B' ? 'B' : 'A';
     const timeOf = (row) => {
       const time = Date.parse(clean(row && row.marked_at));
       return Number.isFinite(time) ? time : 0;
     };
-    const override = rows
+    const specificOverride = rows
       .filter((row) =>
         clean(row && row.session_kind) === 'register_override'
         && attendanceRegisterOverrideKind(row) === kind
+        && Number(row && row.time_slot || 0) === slot
+        && (clean(row && row.class_group || 'A').toUpperCase() === group)
         && allowed.includes(clean(row && row.register_status))
       )
       .sort((a, b) => timeOf(b) - timeOf(a))[0] || null;
+    const coarseOverride = allowCoarseOverride ? rows
+      .filter((row) =>
+        clean(row && row.session_kind) === 'register_override'
+        && attendanceRegisterOverrideKind(row) === kind
+        && Number(row && row.time_slot || 0) === 0
+        && allowed.includes(clean(row && row.register_status))
+      )
+      .sort((a, b) => timeOf(b) - timeOf(a))[0] || null : null;
+    const override = specificOverride || coarseOverride;
     const actual = rows
-      .filter((row) => clean(row && row.session_kind) === kind && row.attended !== false)
+      .filter((row) =>
+        clean(row && row.session_kind) === kind
+        && Number(row && row.time_slot || 0) === slot
+        && (clean(row && row.class_group || 'A').toUpperCase() === group)
+        && row.attended !== false
+      )
       .sort((a, b) => timeOf(b) - timeOf(a))[0] || null;
 
-    // 출석부 수동값과 시간표 체크가 모두 있을 때는 가장 나중에 저장된 조작을 표시합니다.
-    // 따라서 출석부에서 사후 수정한 값은 유지되고, 그 뒤 시간표에서 다시 체크하면
-    // 최신 시간표 출석이 즉시 출석부에 반영됩니다.
-    if (override && (!actual || timeOf(override) >= timeOf(actual))) {
-      return clean(override.register_status);
-    }
+    if (override && (!actual || timeOf(override) >= timeOf(actual))) return clean(override.register_status);
     if (actual) return kind === 'makeup' ? 'makeup' : 'present';
-
     if (kind === 'makeup') return 'blank';
-    const expected = rows.some((row) => clean(row && row.session_kind) === 'regular_expected');
+    const expected = rows.some((row) =>
+      clean(row && row.session_kind) === 'regular_expected'
+      && Number(row && row.time_slot || 0) === slot
+      && (clean(row && row.class_group || 'A').toUpperCase() === group)
+    );
     if (expected && clean(sessionDate) < todayKey()) return 'absent';
     return 'blank';
-  }
-
-  function attendanceRegisterHasSession(records, sessionKind) {
-    const rows = Array.isArray(records) ? records : [];
-    const kind = sessionKind === 'makeup' ? 'makeup' : 'regular';
-    if (kind === 'makeup') {
-      return rows.some((row) => ['makeup', 'makeup_expected'].includes(clean(row && row.session_kind)))
-        || rows.some((row) => clean(row && row.session_kind) === 'register_override' && attendanceRegisterOverrideKind(row) === 'makeup');
-    }
-    return rows.some((row) => ['regular', 'regular_expected'].includes(clean(row && row.session_kind)))
-      || rows.some((row) => clean(row && row.session_kind) === 'register_override' && attendanceRegisterOverrideKind(row) === 'regular');
   }
 
   function nextAttendanceRegisterStatus(status, sessionKind) {
@@ -317,43 +343,46 @@
     style.textContent = `
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell{position:relative;padding:0!important;overflow:hidden}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterCellInner{position:absolute;inset:0;display:flex;align-items:stretch;justify-content:stretch}
-#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment{min-width:0;min-height:0;margin:0;padding:0;border:0;outline:0;display:flex;flex:1 1 50%;align-items:center;justify-content:center;color:inherit;background:transparent;font:inherit;font-weight:900;cursor:default!important;box-sizing:border-box}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment{min-width:0;min-height:0;margin:0;padding:0;border:0;outline:0;display:flex;flex:1 1 0;align-items:center;justify-content:center;color:inherit;background:transparent;font:inherit;font-weight:900;cursor:default!important;box-sizing:border-box}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment+.attendanceRegisterSegment{border-left:1px solid rgba(50,57,66,.16)}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceLinkedMark{color:#fff;background:#43d878!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceAbsentMark{color:#fff;background:#e5484d!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceMakeupMark{color:#111;background:#ffd84d!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment span{display:block;font-size:10px;line-height:1}
-#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell.isSplit .attendanceRegisterSegment{flex-basis:50%}
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell:not(.isSplit) .attendanceRegisterSegment{flex-basis:100%}
 `;
     document.head.appendChild(style);
   }
 
-  function renderAttendanceRegisterSegment(student, meta, sessionKind, status) {
-    const kind = sessionKind === 'makeup' ? 'makeup' : 'regular';
+  function renderAttendanceRegisterSegment(student, meta, session, status) {
+    const kind = session.kind === 'makeup' ? 'makeup' : 'regular';
     const statusMeta = attendanceRegisterStatusMeta(status);
     const cycleTitle = kind === 'makeup' ? '클릭: 보강 ↔ 빈칸' : '클릭: 출석 → 결석 → 빈칸';
     const kindLabel = kind === 'makeup' ? '보강' : '정규수업';
-    return `<button type="button" class="attendanceRegisterSegment ${kind}${statusMeta.className ? ` ${statusMeta.className}` : ''}" data-tt-attendance-register-cell="1" data-student-id="${esc(student.id)}" data-session-date="${meta.key}" data-session-kind="${kind}" data-status="${status}" title="${cycleTitle}" aria-label="${esc(student.name)} ${meta.day}일 ${kindLabel} ${statusMeta.label}">${statusMeta.mark}</button>`;
+    const timeLabel = session.timeSlot ? `${session.timeSlot}시 ` : '';
+    return `<button type="button" class="attendanceRegisterSegment ${kind}${statusMeta.className ? ` ${statusMeta.className}` : ''}" data-tt-attendance-register-cell="1" data-student-id="${esc(student.id)}" data-session-date="${meta.key}" data-session-kind="${kind}" data-time-slot="${session.timeSlot || 0}" data-class-group="${session.classGroup || 'A'}" data-status="${status}" title="${timeLabel}${cycleTitle}" aria-label="${esc(student.name)} ${meta.day}일 ${timeLabel}${kindLabel} ${statusMeta.label}">${statusMeta.mark}</button>`;
   }
 
-  async function setAttendanceSessionStatus(studentId, sessionDate, sessionKind, status) {
-    if (typeof service.setAttendanceSessionStatus === 'function') {
-      return service.setAttendanceSessionStatus(studentId, sessionDate, sessionKind, status);
-    }
+  async function setAttendanceSessionStatus(studentId, sessionDate, sessionKind, timeSlot, classGroup, status) {
     if (typeof global.supabase !== 'function') throw new Error('출석 서버 연결을 찾지 못했습니다.');
     const academyId = currentAcademyId();
     const sessionToken = clean(localStorage.getItem('olli_account_session_token_v1'));
     if (!academyId) throw new Error('현재 학원 정보를 찾지 못했습니다. 다시 로그인해 주세요.');
     if (!sessionToken) throw new Error('로그인 세션이 만료되었습니다. 다시 로그인해 주세요.');
-    const result = await global.supabase('POST', 'rpc/olli_schedule_set_attendance_session_status', {
+    const rpcName = Number(timeSlot || 0) > 0 ? 'olli_schedule_set_attendance_session_status_v2' : 'olli_schedule_set_attendance_session_status';
+    const payload = {
       p_session_token: sessionToken,
       p_academy_id: academyId,
       p_student_id: studentId,
       p_session_date: sessionDate,
       p_session_kind: sessionKind,
       p_status: status
-    });
+    };
+    if (rpcName.endsWith('_v2')) {
+      payload.p_time_slot = Number(timeSlot);
+      payload.p_class_group = clean(classGroup || 'A').toUpperCase() === 'B' ? 'B' : 'A';
+    }
+    const result = await global.supabase('POST', `rpc/${rpcName}`, payload);
     const data = Array.isArray(result) && result.length === 1 ? result[0] : result;
     if (data && data.ok === false) throw new Error(data.message || '출석부 상태를 저장하지 못했습니다.');
     try {
@@ -378,7 +407,6 @@
       rowsByStudentDate.set(key, list);
     });
 
-    // 날짜별 휴일 정보를 한 번만 계산합니다. 기존에는 모든 학생의 모든 날짜 셀마다 배열 .find()를 반복했습니다.
     const calendarMap = new Map();
     (Array.isArray(state.attendanceCalendarDays) ? state.attendanceCalendarDays : []).forEach((item) => {
       const key = clean(item && item.session_date).slice(0, 10);
@@ -405,18 +433,23 @@
       const dateCells = dayMeta.map((meta) => {
         if (meta.closed) return `<td class="dateCol attendanceHolidayCell ${meta.sunday ? 'attendanceSundayCell' : 'attendancePublicHolidayCell'}" aria-disabled="true"></td>`;
         const records = rowsByStudentDate.get(`${clean(student.id)}|${meta.key}`) || [];
-        const hasRegular = attendanceRegisterHasSession(records, 'regular');
-        const hasMakeup = attendanceRegisterHasSession(records, 'makeup');
-        if (!hasRegular && !hasMakeup) return '<td class="dateCol"></td>';
+        const regularSessions = attendanceRegisterSessions(records, 'regular');
+        const makeupSessions = attendanceRegisterSessions(records, 'makeup');
+        const sessions = [...regularSessions, ...makeupSessions];
+        if (!sessions.length) return '<td class="dateCol"></td>';
 
-        const regularStatus = hasRegular ? attendanceRegisterSessionStatus(records, meta.key, 'regular') : 'blank';
-        const makeupStatus = hasMakeup ? attendanceRegisterSessionStatus(records, meta.key, 'makeup') : 'blank';
-        const split = hasRegular && hasMakeup;
-        const segments = [
-          hasRegular ? renderAttendanceRegisterSegment(student, meta, 'regular', regularStatus) : '',
-          hasMakeup ? renderAttendanceRegisterSegment(student, meta, 'makeup', makeupStatus) : ''
-        ].join('');
-        return `<td class="dateCol attendanceRegisterEditable attendanceRegisterSessionCell${split ? ' isSplit' : ''}"><div class="attendanceRegisterCellInner">${segments}</div></td>`;
+        const segments = sessions.map((session, sessionIndex) => {
+          const status = attendanceRegisterSessionStatus(
+            records,
+            meta.key,
+            session.kind,
+            session.timeSlot,
+            session.classGroup,
+            sessionIndex === 0
+          );
+          return renderAttendanceRegisterSegment(student, meta, session, status);
+        }).join('');
+        return `<td class="dateCol attendanceRegisterEditable attendanceRegisterSessionCell${sessions.length > 1 ? ' isSplit' : ''}"><div class="attendanceRegisterCellInner">${segments}</div></td>`;
       }).join('');
       return `<tr><td class="noCol">${index + 1}</td><td class="nameCol">${esc(student.name)}</td><td class="schoolGradeCol">${esc(attendanceRosterMeta(student))}</td><td class="personalityCol">${esc(student.personality)}</td>${dateCells}</tr>`;
     }).join('');
@@ -438,6 +471,8 @@
     const studentId = clean(cell.dataset.studentId);
     const sessionDate = clean(cell.dataset.sessionDate);
     const sessionKind = clean(cell.dataset.sessionKind) === 'makeup' ? 'makeup' : 'regular';
+    const timeSlot = Number(cell.dataset.timeSlot || 0);
+    const classGroup = clean(cell.dataset.classGroup || 'A').toUpperCase() === 'B' ? 'B' : 'A';
     const currentStatus = clean(cell.dataset.status) || 'blank';
     const nextStatus = nextAttendanceRegisterStatus(currentStatus, sessionKind);
     if (!studentId || !sessionDate) return;
@@ -445,18 +480,20 @@
     cell.dataset.attendanceSaving = '1';
     state.attendanceSavingCount = Number(state.attendanceSavingCount || 0) + 1;
     try {
-      await setAttendanceSessionStatus(studentId, sessionDate, sessionKind, nextStatus);
+      await setAttendanceSessionStatus(studentId, sessionDate, sessionKind, timeSlot, classGroup, nextStatus);
       const rows = (Array.isArray(state.attendanceRows) ? state.attendanceRows : []).filter((row) => !(
         clean(row && row.student_id) === studentId
         && clean(row && row.session_date).slice(0, 10) === sessionDate
         && clean(row && row.session_kind) === 'register_override'
         && attendanceRegisterOverrideKind(row) === sessionKind
+        && Number(row && row.time_slot || 0) === timeSlot
+        && (clean(row && row.class_group || 'A').toUpperCase() === classGroup)
       ));
       rows.push({
         student_id: studentId,
         session_date: sessionDate,
-        time_slot: 0,
-        class_group: 'A',
+        time_slot: timeSlot,
+        class_group: classGroup,
         session_kind: 'register_override',
         register_session_kind: sessionKind,
         attended: nextStatus === 'present' || nextStatus === 'makeup',
@@ -475,7 +512,8 @@
       const kindLabel = sessionKind === 'makeup' ? '보강' : '정규수업';
       const student = service.activeStudents().find((item) => clean(item && item.id) === studentId);
       const dayNumber = Number(sessionDate.slice(-2));
-      cell.setAttribute('aria-label', `${clean(student && student.name)} ${dayNumber}일 ${kindLabel} ${statusMeta.label}`.trim());
+      const timeLabel = timeSlot ? `${timeSlot}시 ` : '';
+      cell.setAttribute('aria-label', `${clean(student && student.name)} ${dayNumber}일 ${timeLabel}${kindLabel} ${statusMeta.label}`.trim());
       lastAttendanceRenderSignature = attendanceRenderSignature();
     } catch (error) {
       notify(error && (error.message || error) || '출석부 상태를 저장하지 못했습니다.');
@@ -523,9 +561,11 @@
     const activeStudentId = activeCell ? clean(activeCell.dataset.studentId) : '';
     const activeSessionDate = activeCell ? clean(activeCell.dataset.sessionDate) : '';
     const activeSessionKind = activeCell ? clean(activeCell.dataset.sessionKind) : '';
+    const activeTimeSlot = activeCell ? Number(activeCell.dataset.timeSlot || 0) : 0;
+    const activeClassGroup = activeCell ? clean(activeCell.dataset.classGroup || 'A') : '';
 
     const html = linkedAttendanceRegisterHtml();
-    ui.root.innerHTML = `<section class="olliTtAttendanceRegister"><div class="olliTtAttendanceRegisterHead"><div><strong>${esc(monthLabel(state.attendanceMonth))} 출석부</strong><span>정규수업과 보강 출석이 각각 기록되며, 같은 날 두 수업이 있으면 날짜 칸이 좌우로 나뉩니다.</span></div></div><div class="olliTtAttendanceRegisterScroll">${html}</div></section>`;
+    ui.root.innerHTML = `<section class="olliTtAttendanceRegister"><div class="olliTtAttendanceRegisterHead"><div><strong>${esc(monthLabel(state.attendanceMonth))} 출석부</strong><span>같은 날 수업이 두 번 이상이면 각 수업 시간별로 나누어 출결을 기록합니다.</span></div></div><div class="olliTtAttendanceRegisterScroll">${html}</div></section>`;
     lastAttendanceRenderSignature = signature;
     bindAttendanceRegisterEditing(ui.root);
 
@@ -539,13 +579,14 @@
         clean(item.dataset.studentId) === activeStudentId
         && clean(item.dataset.sessionDate) === activeSessionDate
         && (!activeSessionKind || clean(item.dataset.sessionKind) === activeSessionKind)
+        && (!activeTimeSlot || Number(item.dataset.timeSlot || 0) === activeTimeSlot)
+        && (!activeClassGroup || clean(item.dataset.classGroup || 'A') === activeClassGroup)
       );
       if (nextCell) {
         try { nextCell.focus({ preventScroll: true }); } catch (_) { nextCell.focus(); }
       }
     }
 
-    // 글자 맞춤은 큰 표 DOM 생성 직후 강제로 실행하지 않고 다음 프레임으로 미뤄 첫 화면 표시를 막지 않습니다.
     scheduleAttendanceFitText(ui.root);
   }
 
