@@ -40,7 +40,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm .github/workflows/tmp-fix-timetable-multi-memos.yml .github/tmp/fix_multi_timetable_memos.py
+          git rm .github/workflows/tmp-fix-timetable-multi-memos.yml
+          git rm -f .github/tmp/fix_multi_timetable_memos.py
           git add pc-timetable.js pc-timetable-service.js pc-timetable.css supabase/migrations/20260914092601_timetable_multi_cell_memos.sql
           git commit -m "feat: allow multiple timetable memo cards"
           git push origin HEAD:fix/pc-timetable-multi-memos-20260914-v3
