@@ -343,7 +343,7 @@
     style.textContent = `
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell{position:relative;padding:0!important;overflow:hidden}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterCellInner{position:absolute;inset:4px 5px;display:flex;align-items:stretch;justify-content:stretch;gap:4px;box-sizing:border-box}
-#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment{min-width:0;min-height:0;margin:0;padding:0;border:0;outline:0;border-radius:7px;display:flex;flex:1 1 0;align-items:center;justify-content:center;color:inherit;background:transparent;font:inherit;font-weight:900;cursor:default!important;box-sizing:border-box;overflow:hidden}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment{min-width:0;min-height:0;margin:0;padding:0;border:0;outline:0;border-radius:5px;display:flex;flex:1 1 0;align-items:center;justify-content:center;color:inherit;background:transparent;font:inherit;font-weight:900;cursor:default!important;box-sizing:border-box;overflow:hidden}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment+.attendanceRegisterSegment{border-left:0}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceBlankMark{color:#666d76;background:#f0f2f4!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceLinkedMark{color:#249e58;background:#dcf4e5!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -446,7 +446,7 @@
         const regularSessions = attendanceRegisterSessions(records, 'regular');
         const makeupSessions = attendanceRegisterSessions(records, 'makeup');
         const sessions = [...regularSessions, ...makeupSessions];
-        if (!sessions.length) return '<td class="dateCol attendanceEmptyCell"><span aria-hidden="true">-</span></td>';
+        if (!sessions.length) return '<td class="dateCol attendanceEmptyCell attendanceRegisterSessionCell"><div class="attendanceRegisterCellInner"><span class="attendanceRegisterSegment attendanceBlankMark attendanceRegisterPlaceholder"><span aria-hidden="true">-</span></span></div></td>';
 
         const segments = sessions.map((session, sessionIndex) => {
           const status = attendanceRegisterSessionStatus(
@@ -465,7 +465,7 @@
     }).join('');
     const blankRows = Array.from({ length: Math.max(0, 40 - students.length) }, () => {
       const dateCells = dayMeta.map((meta) => {
-        if (!meta.closed) return '<td class="dateCol"></td>';
+        if (!meta.closed) return '<td class="dateCol attendanceEmptyCell attendanceRegisterSessionCell"><div class="attendanceRegisterCellInner"><span class="attendanceRegisterSegment attendanceBlankMark attendanceRegisterPlaceholder"><span aria-hidden="true">-</span></span></div></td>';
         const holidayText = meta.sunday ? '' : '<span class="attendanceHolidayMark">휴</span>';
         return `<td class="dateCol attendanceHolidayCell ${meta.sunday ? 'attendanceSundayCell' : 'attendancePublicHolidayCell'}" aria-disabled="true">${holidayText}</td>`;
       }).join('');
