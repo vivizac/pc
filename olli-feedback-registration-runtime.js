@@ -58,6 +58,16 @@
     });
   }
 
+  function parseKcfTypedStudentInput(text){
+    var normalized = String(text || '').replace(/\r\n?/g, '\n');
+    var firstBreak = normalized.indexOf('\n');
+    if (firstBreak < 0) return null;
+    var studentName = String(normalized.slice(0, firstBreak) || '').trim();
+    var body = String(normalized.slice(firstBreak + 1) || '').trim();
+    if (!studentName) return null;
+    return { studentName: studentName, body: body };
+  }
+
   function getKcfSelectedStudent(){
     var selectedId = '';
     try {
@@ -288,14 +298,45 @@
       setKinderChatFeedbackWarning('수업기록을 적어주세요.');
       return;
     }
+
+    var autoSubmitContext = window.KcfAutoMode && typeof window.KcfAutoMode.captureSubmitContext === 'function'
+      ? window.KcfAutoMode.captureSubmitContext()
+      : null;
     var selectedStudent = getKcfSelectedStudent();
+
+    if (!selectedStudent && !(autoSubmitContext && autoSubmitContext.enabled)) {
+      var typedInput = parseKcfTypedStudentInput(text);
+      if (typedInput) {
+        var typedCandidates = findKcfStudentsByName(typedInput.studentName);
+        if (typedCandidates.length === 1) {
+          selectedStudent = typedCandidates[0];
+          setKcfSelectedStudent(selectedStudent);
+          text = typedInput.body;
+          if (!text) {
+            setKinderChatFeedbackWarning('학생 이름 다음 줄에 수업기록을 적어주세요.');
+            return;
+          }
+          input.value = text;
+          if (typeof autoResizeKinderChatFeedbackInput === 'function') autoResizeKinderChatFeedbackInput(input);
+          if (typeof saveKinderChatFeedbackDraft === 'function') saveKinderChatFeedbackDraft();
+        } else if (typedCandidates.length > 1) {
+          if (!typedInput.body) {
+            setKinderChatFeedbackWarning('학생 이름 다음 줄에 수업기록을 적어주세요.');
+            return;
+          }
+          if (typeof window.openKinderChatFeedbackSaveStudentPicker === 'function') {
+            window.openKinderChatFeedbackSaveStudentPicker('', typedCandidates, 'submit', { body:typedInput.body });
+            setKinderChatFeedbackWarning('');
+            return;
+          }
+        }
+      }
+    }
+
     if (!selectedStudent) {
       setKinderChatFeedbackWarning("학생을 먼저 선택해 주세요. 입력창에 '학생'을 입력해 선택할 수 있어요.");
       return;
     }
-    var autoSubmitContext = window.KcfAutoMode && typeof window.KcfAutoMode.captureSubmitContext === 'function'
-      ? window.KcfAutoMode.captureSubmitContext()
-      : null;
     setKinderChatFeedbackWarning('');
     await continueKinderChatFeedbackSubmit(text, selectedStudent, autoSubmitContext);
   };
