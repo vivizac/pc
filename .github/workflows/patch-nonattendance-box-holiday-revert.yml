@@ -28,6 +28,7 @@ jobs:
           assert 'td.attendanceEmptyCell {\n  background: #fff !important;' in css
           assert 'attendanceRegisterHolidayPlaceholder' not in js
           assert js.count("const holidayText = meta.sunday ? '' : '<span class=\"attendanceHolidayMark\">휴</span>';" ) == 2
+          assert 'attendanceHolidayCell attendanceRegisterSessionCell' not in js
           assert 'attendanceEmptyCell attendanceRegisterSessionCell"><div class="attendanceRegisterCellInner"><span class="attendanceRegisterSegment attendanceBlankMark attendanceRegisterPlaceholder"' in js
           PY
       - name: Clean temporary patch files and commit
