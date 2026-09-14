@@ -333,7 +333,7 @@
     if (status === 'present') return { className: 'attendanceLinkedMark', mark: '<span aria-label="출석">✓</span>', label: '출석' };
     if (status === 'absent') return { className: 'attendanceAbsentMark', mark: '<span aria-label="결석">결</span>', label: '결석' };
     if (status === 'makeup') return { className: 'attendanceMakeupMark', mark: '<span aria-label="보강">보</span>', label: '보강' };
-    return { className: '', mark: '', label: '빈칸' };
+    return { className: 'attendanceBlankMark', mark: '<span aria-label="빈칸">-</span>', label: '빈칸' };
   }
 
   function ensureAttendanceSessionSplitStyles() {
@@ -344,11 +344,13 @@
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell{position:relative;padding:0!important;overflow:hidden}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterCellInner{position:absolute;inset:0;display:flex;align-items:stretch;justify-content:stretch}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment{min-width:0;min-height:0;margin:0;padding:0;border:0;outline:0;display:flex;flex:1 1 0;align-items:center;justify-content:center;color:inherit;background:transparent;font:inherit;font-weight:900;cursor:default!important;box-sizing:border-box}
-#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment+.attendanceRegisterSegment{border-left:1px solid rgba(50,57,66,.16)}
-#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceLinkedMark{color:#fff;background:#43d878!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceAbsentMark{color:#fff;background:#e5484d!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceMakeupMark{color:#111;background:#ffd84d!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment span{display:block;font-size:10px;line-height:1}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment+.attendanceRegisterSegment{border-left:1px solid #dfe4e9}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceBlankMark{color:#666d76;background:#f0f2f4!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceLinkedMark{color:#249e58;background:#e7f7ed!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceAbsentMark{color:#d9464d;background:#fdebed!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceMakeupMark{color:#b98700;background:#fff6cf!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment span{display:block;font-size:12px;font-weight:900;line-height:1}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceLinkedMark span{font-size:16px}
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell:not(.isSplit) .attendanceRegisterSegment{flex-basis:100%}
 `;
     document.head.appendChild(style);
@@ -419,24 +421,31 @@
       const info = calendarMap.get(key) || null;
       const sunday = date.getDay() === 0;
       const holiday = !!(info && info.is_holiday === true);
-      return { day, key, sunday, holiday, closed: sunday || holiday, title: sunday ? '일요일' : clean(info && info.name) };
+      const weekday = ['일', '월', '화', '수', '목', '금', '토'][date.getDay()];
+      return { day, key, weekday, sunday, holiday, closed: sunday || holiday, title: sunday ? '일요일' : clean(info && info.name) };
     });
 
-    const staticWidth = 20 + 42 + 51 + 20;
+    const staticWidth = 64 + 51 + 20;
     const tableStyle = ` style="--attendance-static-col-width:${staticWidth}px;--attendance-date-col-count:${days};--attendance-date-col-width:calc((100% - ${staticWidth}px) / ${days});"`;
-    const colGroup = '<colgroup><col class="noCol"><col class="nameCol"><col class="schoolGradeCol"><col class="personalityCol">'
+    const colGroup = '<colgroup><col class="nameCol"><col class="schoolGradeCol"><col class="personalityCol">'
       + Array.from({ length: days }, () => '<col class="dateCol">').join('') + '</colgroup>';
-    const dayHeaders = dayMeta.map((meta) => `<th class="dateCol${meta.closed ? ' attendanceHolidayHead' : ''}"${meta.title ? ` title="${esc(meta.title)}"` : ''}>${meta.day}</th>`).join('');
+    const dayHeaders = dayMeta.map((meta) => {
+      const holidayClass = meta.sunday ? ' attendanceSundayHead' : (meta.holiday ? ' attendancePublicHolidayHead' : '');
+      return `<th class="dateCol${holidayClass}"${meta.title ? ` title="${esc(meta.title)}"` : ''}><span class="attendanceDateNumber">${meta.day}</span><span class="attendanceDateWeek">${meta.weekday}</span></th>`;
+    }).join('');
     const schoolHeader = state.attendanceDivision === 'combined' ? '소속' : (state.attendanceDivision === 'kinder' ? '유치원/나이' : '학교/학년');
-    const header = `<thead><tr><th class="noCol"></th><th class="nameCol">이름</th><th class="schoolGradeCol">${schoolHeader}</th><th class="personalityCol">성향</th>${dayHeaders}</tr></thead>`;
-    const rowHtml = students.map((student, index) => {
+    const header = `<thead><tr><th class="nameCol">이름</th><th class="schoolGradeCol">${schoolHeader}</th><th class="personalityCol">성향</th>${dayHeaders}</tr></thead>`;
+    const rowHtml = students.map((student) => {
       const dateCells = dayMeta.map((meta) => {
-        if (meta.closed) return `<td class="dateCol attendanceHolidayCell ${meta.sunday ? 'attendanceSundayCell' : 'attendancePublicHolidayCell'}" aria-disabled="true"></td>`;
+        if (meta.closed) {
+          const holidayText = meta.sunday ? '' : '<span class="attendanceHolidayMark">휴</span>';
+          return `<td class="dateCol attendanceHolidayCell ${meta.sunday ? 'attendanceSundayCell' : 'attendancePublicHolidayCell'}" aria-disabled="true">${holidayText}</td>`;
+        }
         const records = rowsByStudentDate.get(`${clean(student.id)}|${meta.key}`) || [];
         const regularSessions = attendanceRegisterSessions(records, 'regular');
         const makeupSessions = attendanceRegisterSessions(records, 'makeup');
         const sessions = [...regularSessions, ...makeupSessions];
-        if (!sessions.length) return '<td class="dateCol"></td>';
+        if (!sessions.length) return '<td class="dateCol attendanceEmptyCell"><span aria-hidden="true">-</span></td>';
 
         const segments = sessions.map((session, sessionIndex) => {
           const status = attendanceRegisterSessionStatus(
@@ -451,19 +460,17 @@
         }).join('');
         return `<td class="dateCol attendanceRegisterEditable attendanceRegisterSessionCell${sessions.length > 1 ? ' isSplit' : ''}"><div class="attendanceRegisterCellInner">${segments}</div></td>`;
       }).join('');
-      return `<tr><td class="noCol">${index + 1}</td><td class="nameCol">${esc(student.name)}</td><td class="schoolGradeCol">${esc(attendanceRosterMeta(student))}</td><td class="personalityCol">${esc(student.personality)}</td>${dateCells}</tr>`;
+      return `<tr><td class="nameCol">${esc(student.name)}</td><td class="schoolGradeCol">${esc(attendanceRosterMeta(student))}</td><td class="personalityCol">${esc(student.personality)}</td>${dateCells}</tr>`;
     }).join('');
-    const blankRows = Array.from({ length: Math.max(0, 40 - students.length) }, (_, index) => {
-      const dateCells = dayMeta.map((meta) => meta.closed
-        ? `<td class="dateCol attendanceHolidayCell ${meta.sunday ? 'attendanceSundayCell' : 'attendancePublicHolidayCell'}" aria-disabled="true"></td>`
-        : '<td class="dateCol"></td>').join('');
-      return `<tr class="attendanceBlankRow"><td class="noCol">${students.length + index + 1}</td><td class="nameCol"></td><td class="schoolGradeCol"></td><td class="personalityCol"></td>${dateCells}</tr>`;
+    const blankRows = Array.from({ length: Math.max(0, 40 - students.length) }, () => {
+      const dateCells = dayMeta.map((meta) => {
+        if (!meta.closed) return '<td class="dateCol"></td>';
+        const holidayText = meta.sunday ? '' : '<span class="attendanceHolidayMark">휴</span>';
+        return `<td class="dateCol attendanceHolidayCell ${meta.sunday ? 'attendanceSundayCell' : 'attendancePublicHolidayCell'}" aria-disabled="true">${holidayText}</td>`;
+      }).join('');
+      return `<tr class="attendanceBlankRow"><td class="nameCol"></td><td class="schoolGradeCol"></td><td class="personalityCol"></td>${dateCells}</tr>`;
     }).join('');
-    const academyName = typeof global.getOlliCurrentAcademyName === 'function'
-      ? clean(global.getOlliCurrentAcademyName())
-      : clean(localStorage.getItem('olli_current_academy_name'));
-    const registerDivision = state.attendanceDivision === 'combined' ? '유치부/초등부' : divisionLabel(state.attendanceDivision);
-    return `<div><div class="attendancePrintPage"><div class="attendancePrintHeader"><div class="attendancePrintAcademy">${esc(academyName || '비비작 아이성향 미술학원')} (${registerDivision})</div><div class="attendancePrintMonth">${year}년 ${month}월</div></div><table class="settingsAttendancePreviewTable"${tableStyle}>${colGroup}${header}<tbody>${rowHtml}${blankRows}</tbody></table></div></div>`;
+    return `<div class="olliTtAttendanceSheet"><table class="settingsAttendancePreviewTable olliTtAttendanceTable"${tableStyle}>${colGroup}${header}<tbody>${rowHtml}${blankRows}</tbody></table></div>`;
   }
 
   async function cycleAttendanceRegisterCell(cell) {
@@ -506,7 +513,7 @@
       const statusMeta = attendanceRegisterStatusMeta(nextStatus);
       cell.dataset.status = nextStatus;
       cell.dataset.attendanceSaving = '';
-      cell.classList.remove('attendanceLinkedMark', 'attendanceAbsentMark', 'attendanceMakeupMark');
+      cell.classList.remove('attendanceBlankMark', 'attendanceLinkedMark', 'attendanceAbsentMark', 'attendanceMakeupMark');
       if (statusMeta.className) cell.classList.add(statusMeta.className);
       cell.innerHTML = statusMeta.mark;
       const kindLabel = sessionKind === 'makeup' ? '보강' : '정규수업';
@@ -565,7 +572,7 @@
     const activeClassGroup = activeCell ? clean(activeCell.dataset.classGroup || 'A') : '';
 
     const html = linkedAttendanceRegisterHtml();
-    ui.root.innerHTML = `<section class="olliTtAttendanceRegister"><div class="olliTtAttendanceRegisterHead"><div><strong>${esc(monthLabel(state.attendanceMonth))} 출석부</strong><span>같은 날 수업이 두 번 이상이면 각 수업 시간별로 나누어 출결을 기록합니다.</span></div></div><div class="olliTtAttendanceRegisterScroll">${html}</div></section>`;
+    ui.root.innerHTML = `<section class="olliTtAttendanceRegister"><div class="olliTtAttendanceRegisterHead"><strong>${esc(monthLabel(state.attendanceMonth))} 출석부</strong></div><div class="olliTtAttendanceRegisterScroll">${html}</div></section>`;
     lastAttendanceRenderSignature = signature;
     bindAttendanceRegisterEditing(ui.root);
 

@@ -530,11 +530,7 @@
   user-select: none;
   -webkit-user-select: none;
 }
-#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceHolidayCell.attendanceSundayCell {
-  background: #eceff1 !important;
-  -webkit-print-color-adjust: exact;
-  print-color-adjust: exact;
-}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceHolidayCell.attendanceSundayCell,
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceHolidayCell.attendancePublicHolidayCell {
   background: #fff0f4 !important;
   -webkit-print-color-adjust: exact;
@@ -611,3 +607,102 @@
 }
 .olliTtMemoHoverPreview > span { flex: 0 0 auto; margin-top: 1px; line-height: 1; }
 .olliTtMemoHoverPreview > strong { min-width: 0; font: 760 calc(12px * var(--olli-text-scale, 1)) 'Pretendard', sans-serif; line-height: 1.2; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+
+
+/* 화면 출석부 전용 디자인 - 출력/PDF와 분리 */
+#recordRoomScreen .olliTtAttendanceRegisterHead {
+  min-height: 42px;
+  padding: 2px 2px 10px;
+  display: flex;
+  align-items: center;
+}
+#recordRoomScreen .olliTtAttendanceRegisterHead > strong {
+  color: #242a32;
+  font-size: calc(24px * var(--olli-text-scale));
+  font-weight: 900;
+  letter-spacing: -.045em;
+  line-height: 1.15;
+}
+#recordRoomScreen .olliTtAttendanceRegisterScroll {
+  border: 1px solid #e4e7eb;
+  border-radius: 21px;
+  overflow: auto;
+  background: #fff;
+  box-shadow: 0 7px 20px rgba(27,39,58,.045);
+}
+#recordRoomScreen .olliTtAttendanceSheet { min-width: 100%; width: 100%; }
+#recordRoomScreen .olliTtAttendanceTable {
+  width: 100%;
+  min-width: 0;
+  border: 0 !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  table-layout: fixed;
+  background: #fff;
+}
+#recordRoomScreen .olliTtAttendanceTable th,
+#recordRoomScreen .olliTtAttendanceTable td {
+  border: 0 !important;
+  border-right: 1px solid #e8ebef !important;
+  border-bottom: 1px solid #e8ebef !important;
+  box-sizing: border-box;
+  text-align: center;
+  vertical-align: middle;
+}
+#recordRoomScreen .olliTtAttendanceTable tr > *:last-child { border-right: 0 !important; }
+#recordRoomScreen .olliTtAttendanceTable tbody tr:last-child > * { border-bottom: 0 !important; }
+#recordRoomScreen .olliTtAttendanceTable thead th {
+  height: 52px !important;
+  padding: 5px 2px !important;
+  color: #626b77 !important;
+  background: #f8f9fb !important;
+  font-weight: 820 !important;
+}
+#recordRoomScreen .olliTtAttendanceTable thead th.attendanceSundayHead,
+#recordRoomScreen .olliTtAttendanceTable thead th.attendancePublicHolidayHead {
+  background: #fff0f4 !important;
+  color: #a95767 !important;
+}
+#recordRoomScreen .olliTtAttendanceTable .attendanceDateNumber,
+#recordRoomScreen .olliTtAttendanceTable .attendanceDateWeek {
+  display: block;
+  line-height: 1.05;
+}
+#recordRoomScreen .olliTtAttendanceTable .attendanceDateNumber {
+  font-size: calc(11px * var(--olli-text-scale));
+  font-weight: 850;
+}
+#recordRoomScreen .olliTtAttendanceTable .attendanceDateWeek {
+  margin-top: 5px;
+  font-size: calc(9px * var(--olli-text-scale));
+  font-weight: 720;
+}
+#recordRoomScreen .olliTtAttendanceTable .nameCol { width: 64px !important; }
+#recordRoomScreen .olliTtAttendanceTable .schoolGradeCol { width: 51px !important; }
+#recordRoomScreen .olliTtAttendanceTable .personalityCol { width: 20px !important; }
+#recordRoomScreen .olliTtAttendanceTable tbody td.nameCol {
+  background: #fafbfc !important;
+  color: #424a56;
+  font-weight: 800;
+}
+#recordRoomScreen .olliTtAttendanceTable tbody td.attendanceEmptyCell {
+  background: #f0f2f4 !important;
+  color: #666d76 !important;
+}
+#recordRoomScreen .olliTtAttendanceTable tbody td.attendanceEmptyCell > span {
+  display: inline-block;
+  color: #666d76;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 900;
+  line-height: 1;
+}
+#recordRoomScreen .olliTtAttendanceTable .attendanceHolidayMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #bd5b6d;
+  font-size: calc(9px * var(--olli-text-scale));
+  font-weight: 850;
+  line-height: 1;
+}
+#recordRoomScreen .olliTtAttendanceTable tbody td.attendanceHolidayCell { color: #bd5b6d; }
