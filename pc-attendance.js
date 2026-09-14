@@ -217,6 +217,13 @@
     return Number.isFinite(grade) && grade > 0 ? grade : 999;
   }
 
+  function getStudentAgeNumber(student) {
+    const raw = String(student?.age || student?.student_age || student?.studentAge || '').trim();
+    const match = raw.match(/\d+/);
+    const age = match ? Number(match[0]) : NaN;
+    return Number.isFinite(age) && age > 0 ? age : 999;
+  }
+
   function getLessonTimeText(student) {
     return String(student?.lesson_time || student?.class_time || student?.lessonTime || student?.classTime || '').trim();
   }
@@ -330,14 +337,17 @@
       );
     }
 
+    const useAge = division === 'kinder';
     return renderGroupedRows(
       students,
       division,
       (student) => {
-        const grade = getStudentGradeNumber(student);
-        return grade === 999 ? '미지정' : String(grade);
+        const value = useAge ? getStudentAgeNumber(student) : getStudentGradeNumber(student);
+        return value === 999 ? '미지정' : String(value);
       },
-      (key) => key === '미지정' ? '학년 미지정' : `${key}학년`,
+      (key) => key === '미지정'
+        ? (useAge ? '나이 미지정' : '학년 미지정')
+        : (useAge ? `${key}세` : `${key}학년`),
       (a, b) => {
         if (a === '미지정') return 1;
         if (b === '미지정') return -1;
@@ -354,7 +364,7 @@
     const sortButtons = [
       [PC_SORT_MODES.DAY, '요일별'],
       [PC_SORT_MODES.GROUP, '그룹별'],
-      [PC_SORT_MODES.GRADE, '학년별'],
+      [PC_SORT_MODES.GRADE, '학년별 • 나이별'],
       [PC_SORT_MODES.PAUSED, '휴원별'],
       [PC_SORT_MODES.WITHDRAWN, '퇴원별']
     ].map(([mode, label]) =>
