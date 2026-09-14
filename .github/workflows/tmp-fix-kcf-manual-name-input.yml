@@ -1,0 +1,113 @@
+name: Fix KCF manual name input
+on:
+  push:
+    branches:
+      - fix/kcf-manual-name-input-20260914
+permissions:
+  contents: write
+jobs:
+  patch-and-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/kcf-manual-name-input-20260914
+      - name: Patch original common runtime and tests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          runtime_path = Path('olli-feedback-registration-runtime.js')
+          runtime = runtime_path.read_text()
+
+          anchor = """  function findKcfStudentsByName(studentName){\n    var name = String(studentName || '').trim();\n    if (!name) return [];\n    return getKcfAllActiveStudents().filter(function(student){\n      return String(student.name || '').trim() === name;\n    });\n  }\n"""
+          helpers = anchor + """\n  function parseKcfManualFeedbackInput(text){\n    var lines = String(text || '').split(/\\r?\\n/).map(function(line){ return line.trim(); }).filter(Boolean);\n    return {\n      studentName: lines.length ? lines[0] : '',\n      body: lines.slice(1).join('\\n').trim()\n    };\n  }\n\n  function isKcfAutoModeEnabled(){\n    try {\n      var button = document.getElementById('kcfAutoBtn');\n      return !!button && String(button.getAttribute('aria-pressed') || '').toLowerCase() === 'true';\n    } catch (err) {\n      return false;\n    }\n  }\n"""
+          if 'function parseKcfManualFeedbackInput' not in runtime:
+              if anchor not in runtime:
+                  raise SystemExit('manual-input helper anchor not found')
+              runtime = runtime.replace(anchor, helpers, 1)
+
+          old_submit = """    var selectedStudent = getKcfSelectedStudent();\n    if (!selectedStudent) {\n      setKinderChatFeedbackWarning(\"학생을 먼저 선택해 주세요. 입력창에 '학생'을 입력해 선택할 수 있어요.\");\n      return;\n    }\n    var autoSubmitContext = window.KcfAutoMode && typeof window.KcfAutoMode.captureSubmitContext === 'function'\n      ? window.KcfAutoMode.captureSubmitContext()\n      : null;\n    setKinderChatFeedbackWarning('');\n    await continueKinderChatFeedbackSubmit(text, selectedStudent, autoSubmitContext);\n"""
+          new_submit = """    var selectedStudent = getKcfSelectedStudent();\n    var submitBody = text;\n    if (!selectedStudent) {\n      if (isKcfAutoModeEnabled()) {\n        setKinderChatFeedbackWarning('AUTO에서 학생을 먼저 선택해 주세요.');\n        return;\n      }\n      var manualInput = parseKcfManualFeedbackInput(text);\n      if (!manualInput.studentName) {\n        setKinderChatFeedbackWarning('첫 줄에 학생 이름을 입력해 주세요.');\n        return;\n      }\n      if (!manualInput.body) {\n        setKinderChatFeedbackWarning('둘째 줄부터 수업기록을 적어주세요.');\n        return;\n      }\n      var candidates = findKcfStudentsByName(manualInput.studentName);\n      if (!candidates.length) {\n        setKinderChatFeedbackWarning('첫 줄의 학생 이름을 등록된 학생 이름으로 확인해 주세요.');\n        return;\n      }\n      if (candidates.length > 1) {\n        setKinderChatFeedbackWarning('');\n        window.openKinderChatFeedbackSaveStudentPicker('', candidates, 'submit', { body:manualInput.body, studentName:manualInput.studentName });\n        return;\n      }\n      selectedStudent = candidates[0];\n      setKcfSelectedStudent(selectedStudent);\n      submitBody = manualInput.body;\n    }\n    var autoSubmitContext = window.KcfAutoMode && typeof window.KcfAutoMode.captureSubmitContext === 'function'\n      ? window.KcfAutoMode.captureSubmitContext()\n      : null;\n    setKinderChatFeedbackWarning('');\n    await continueKinderChatFeedbackSubmit(submitBody, selectedStudent, autoSubmitContext);\n"""
+          if old_submit in runtime:
+              runtime = runtime.replace(old_submit, new_submit, 1)
+          elif new_submit not in runtime:
+              raise SystemExit('submit block not found')
+
+          runtime_path.write_text(runtime)
+
+          test_path = Path('tests/one-minute-feedback-common.test.cjs')
+          test_path.write_text(r'''const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+
+const runtime = fs.readFileSync('olli-feedback-runtime.js', 'utf8');
+const registration = fs.readFileSync('olli-feedback-registration-runtime.js', 'utf8');
+
+test('common feedback runtime owns queue/API behavior without wrapper replacement', () => {
+  assert.doesNotMatch(runtime, /function wrapFunction\(name, validator\)/);
+  assert.doesNotMatch(runtime, /installFeedbackInputGuards/);
+  assert.match(runtime, /KcfAutoMode\.filterFeedbackItems/);
+  assert.match(runtime, /KcfAutoMode\.shouldDiscardFeedbackJob/);
+  assert.match(runtime, /getMemoFeedbackArchiveEditFeature/);
+  assert.match(runtime, /options\.student_id/);
+  assert.match(runtime, /function buildTodayFeedbackRequestContent/);
+  assert.match(runtime, /fetch\('\/api\/chat'/);
+});
+
+test('common registration keeps selected identity and supports manual first-line name fallback', () => {
+  assert.match(registration, /function getKcfSelectedStudent\(\)/);
+  assert.match(registration, /getKinderChatFeedbackManualSelection/);
+  assert.match(registration, /KcfAutoMode\.getSelection/);
+  assert.match(registration, /function parseKcfManualFeedbackInput\(text\)/);
+  assert.match(registration, /studentName: lines\.length \? lines\[0\] : ''/);
+  assert.match(registration, /body: lines\.slice\(1\)\.join\('\\n'\)\.trim\(\)/);
+  assert.match(registration, /function isKcfAutoModeEnabled\(\)/);
+
+  const submitStart = registration.indexOf('window.submitKinderChatFeedback = async function');
+  const submitEnd = registration.indexOf('window.openKinderChatFeedbackSaveStudentPicker', submitStart);
+  const submit = registration.slice(submitStart, submitEnd);
+  assert.ok(submitStart >= 0 && submitEnd > submitStart);
+  assert.match(submit, /compactCommand === '가이드'/);
+  assert.match(submit, /compactCommand === '가이드삭제'/);
+  assert.match(submit, /compactCommand === '가이드숨김'/);
+  assert.match(submit, /KcfAutoMode\.isEditing/);
+  assert.match(submit, /var selectedStudent = getKcfSelectedStudent\(\);/);
+  assert.match(submit, /if \(isKcfAutoModeEnabled\(\)\)/);
+  assert.match(submit, /var manualInput = parseKcfManualFeedbackInput\(text\);/);
+  assert.match(submit, /findKcfStudentsByName\(manualInput\.studentName\)/);
+  assert.match(submit, /첫 줄에 학생 이름을 입력해 주세요/);
+  assert.match(submit, /둘째 줄부터 수업기록을 적어주세요/);
+  assert.match(submit, /openKinderChatFeedbackSaveStudentPicker\('', candidates, 'submit'/);
+  assert.match(submit, /continueKinderChatFeedbackSubmit\(submitBody, selectedStudent, autoSubmitContext\)/);
+  assert.doesNotMatch(submit, /학생을 먼저 선택해 주세요\. 입력창에 '학생'을 입력해 선택할 수 있어요/);
+  assert.match(registration, /userText: text/);
+});
+''')
+
+          index_path = Path('index.html')
+          index = index_path.read_text()
+          old_tag = '<script id="olliElementaryOneMinuteStudentValidationPatch" src="olli-feedback-registration-runtime.js"></script>'
+          new_tag = '<script id="olliElementaryOneMinuteStudentValidationPatch" src="olli-feedback-registration-runtime.js?v=20260914-manual-name-1"></script>'
+          if old_tag in index:
+              index = index.replace(old_tag, new_tag, 1)
+          elif new_tag not in index:
+              raise SystemExit('PC registration runtime script tag not found')
+          index_path.write_text(index)
+          PY
+      - name: Syntax and regression tests
+        run: |
+          node --check olli-feedback-registration-runtime.js
+          node --check olli-feedback-runtime.js
+          node --test tests/one-minute-feedback-common.test.cjs
+      - name: Commit verified original-source fix
+        run: |
+          rm -f .github/workflows/tmp-fix-kcf-manual-name-input.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add olli-feedback-registration-runtime.js tests/one-minute-feedback-common.test.cjs index.html .github/workflows/tmp-fix-kcf-manual-name-input.yml
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m "fix: support manual name-first 1-minute feedback input"
+          git push origin HEAD:fix/kcf-manual-name-input-20260914
