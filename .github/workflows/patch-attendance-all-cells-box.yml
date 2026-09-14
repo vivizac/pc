@@ -1,0 +1,37 @@
+name: Patch attendance all cells box
+
+on:
+  push:
+    branches:
+      - fix/attendance-all-cells-box-20260915
+    paths:
+      - '.github/workflows/patch-attendance-all-cells-box.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply focused UI patch
+        run: python3 .github/tmp/patch_attendance_all_cells_box.py
+      - name: Validate JavaScript
+        run: node --check pc-timetable-attendance-register.js
+      - name: Verify all date cells use inner status boxes
+        run: |
+          grep -F 'attendanceRegisterCellInner>.attendanceRegisterPlaceholder{background:#f0f2f4!important' pc-timetable-attendance-register.js
+          grep -F 'attendanceRegisterCellInner>.attendanceRegisterHolidayPlaceholder{background:#f0f2f4!important' pc-timetable-attendance-register.js
+          grep -F 'attendanceHolidayCell attendanceRegisterSessionCell' pc-timetable-attendance-register.js
+          grep -F 'attendanceEmptyCell attendanceRegisterSessionCell' pc-timetable-attendance-register.js
+      - name: Clean temporary patch files and commit
+        run: |
+          rm -f .github/tmp/patch_attendance_all_cells_box.py
+          rm -f .github/workflows/patch-attendance-all-cells-box.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "fix: show inset status box in every attendance date cell"
+          git push origin HEAD:${GITHUB_REF_NAME}
