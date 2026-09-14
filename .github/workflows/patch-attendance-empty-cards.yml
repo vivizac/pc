@@ -1,0 +1,37 @@
+name: Patch attendance empty cards
+
+on:
+  push:
+    branches:
+      - fix/attendance-empty-cards-20260915
+    paths:
+      - '.github/workflows/patch-attendance-empty-cards.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply focused UI patch
+        run: python3 .github/tmp/patch_attendance_empty_cards.py
+      - name: Validate JavaScript
+        run: node --check pc-timetable-attendance-register.js
+      - name: Verify attendance cards
+        run: |
+          grep -F 'outline:0;border-radius:5px;display:flex' pc-timetable-attendance-register.js
+          test "$(grep -F -c 'attendanceRegisterPlaceholder' pc-timetable-attendance-register.js)" -eq 2
+          grep -F 'attendanceEmptyCell attendanceRegisterSessionCell' pc-timetable-attendance-register.js
+          ! grep -F 'border-radius:7px;display:flex' pc-timetable-attendance-register.js
+      - name: Clean temporary patch files and commit
+        run: |
+          rm -f .github/tmp/patch_attendance_empty_cards.py
+          rm -f .github/workflows/patch-attendance-empty-cards.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "fix: show inset cards in empty attendance cells"
+          git push origin HEAD:${GITHUB_REF_NAME}
