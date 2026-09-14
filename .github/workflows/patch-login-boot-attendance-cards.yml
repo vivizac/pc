@@ -1,0 +1,42 @@
+name: Patch login boot and attendance cards
+
+on:
+  push:
+    branches:
+      - chore/login-boot-attendance-cards-20260915
+    paths:
+      - '.github/workflows/patch-login-boot-attendance-cards.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply focused UI patch
+        run: python3 .github/tmp/patch_login_boot_and_attendance_cards.py
+      - name: Validate JavaScript
+        run: node --check pc-timetable-attendance-register.js
+      - name: Verify login boot first-frame centering
+        run: grep -F 'id="olliBootScreen" style="position:fixed;inset:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#fff;z-index:2147483000;"' index.html
+      - name: Verify attendance inset cards
+        run: |
+          grep -F 'attendanceRegisterCellInner{position:absolute;inset:4px 5px;display:flex;align-items:stretch;justify-content:stretch;gap:4px;box-sizing:border-box}' pc-timetable-attendance-register.js
+          grep -F 'outline:0;border-radius:7px;display:flex' pc-timetable-attendance-register.js
+          grep -F 'attendanceRegisterSegment+.attendanceRegisterSegment{border-left:0}' pc-timetable-attendance-register.js
+          grep -F 'attendanceBlankMark{color:#666d76;background:#f0f2f4!important' pc-timetable-attendance-register.js
+          grep -F 'attendanceLinkedMark{color:#249e58;background:#dcf4e5!important' pc-timetable-attendance-register.js
+          grep -F 'attendanceAbsentMark{color:#d9464d;background:#fbe0e4!important' pc-timetable-attendance-register.js
+          grep -F 'attendanceMakeupMark{color:#8b5e00;background:#ffefb8!important' pc-timetable-attendance-register.js
+      - name: Clean temporary patch files and commit
+        run: |
+          rm -f .github/tmp/patch_login_boot_and_attendance_cards.py
+          rm -f .github/workflows/patch-login-boot-attendance-cards.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "fix: center boot logo and inset attendance status cards"
+          git push origin HEAD:${GITHUB_REF_NAME}
