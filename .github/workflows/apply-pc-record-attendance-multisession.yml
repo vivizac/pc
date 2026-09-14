@@ -1,0 +1,48 @@
+name: Apply PC record and multi-session attendance patch
+
+on:
+  push:
+    branches:
+      - feat/pc-record-attendance-multisession-20260914
+    paths:
+      - '.github/workflows/apply-pc-record-attendance-multisession.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply source changes
+        run: python3 .github/tmp/apply_pc_record_attendance_multisession.py
+      - name: Validate JavaScript
+        run: |
+          node --check pc-attendance.js
+          node --check pc-timetable-attendance-register.js
+          node --check olli-data-attendance-feedback.js
+      - name: Verify intended behavior
+        run: |
+          grep -F "학년별 • 나이별" pc-attendance.js
+          grep -F "const useAge = division === 'kinder';" pc-attendance.js
+          grep -F "top:50%;right:8px" pc-attendance.css
+          grep -F "position:absolute;top:16px;right:58px" pc-attendance.css
+          grep -F "function attendanceRegisterSessions(records)" pc-timetable-attendance-register.js
+          grep -F "rpc/olli_schedule_set_attendance_session_slot_status" pc-timetable-attendance-register.js
+          grep -F "sessions.length > 1" pc-timetable-attendance-register.js
+      - name: Remove one-shot patch helpers
+        run: |
+          rm -f .github/tmp/apply_pc_record_attendance_multisession.py
+          rm -f .github/workflows/apply-pc-record-attendance-multisession.yml
+      - name: Commit source changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "feat: refine personality records and split multi-session attendance"
+          git push
