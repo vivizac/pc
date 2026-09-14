@@ -37,9 +37,9 @@ body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout #recordList::
 .pcAttendanceRosterHead>span.pcAttendanceRosterDivision.kinder{background:#ffe8f0;color:#e85b8d;}
 body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .recordStatusSection{margin-top:12px;}
 
-/* PC 학생명단 정렬 구분: 외부 margin이 아닌 divider 자체 padding으로 그룹 사이 40px을 확실히 확보 */
+/* PC 학생명단 정렬 구분: 외부 margin이 아닌 divider 자체 padding으로 그룹 사이 30px을 확실히 확보 */
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider{
-  display:flex;align-items:center;gap:10px;width:100%;margin:0 0 10px;padding-top:40px;color:#555b63;font-size:11px;font-weight:820;line-height:1;letter-spacing:-.02em;box-sizing:border-box;
+  display:flex;align-items:center;gap:10px;width:100%;margin:0 0 10px;padding-top:30px;color:#555b63;font-size:11px;font-weight:820;line-height:1;letter-spacing:-.02em;box-sizing:border-box;
 }
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::before,
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::after{
