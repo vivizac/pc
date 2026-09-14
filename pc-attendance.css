@@ -92,9 +92,7 @@ body.olliPcApp #recordRoomScreen #pcAttendanceCombinedBody > .attendanceFeedback
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCardTopRow{display:flex;align-items:center;min-height:40px;min-width:0;padding-right:150px;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCardTitleWrap{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0;padding-top:0;}
 .pcAttendanceDetailPanel .attendanceFeedbackSummaryBadge{display:inline-flex;align-items:center;justify-content:center;align-self:center;min-height:21px;padding:0 8px;border-radius:999px;background:#eaf4ff;color:#1687ff;font-size:9.5px;font-weight:820;line-height:1;letter-spacing:-.025em;white-space:nowrap;box-sizing:border-box;}
-.pcAttendanceDetailPanel .attendanceFeedbackSheetCardTopActions{position:absolute;top:7px;right:8px;z-index:3;display:inline-flex;align-items:center;justify-content:flex-end;gap:3px;margin:0;pointer-events:none;}
-.pcAttendanceDetailPanel .attendanceFeedbackSheetCard:not(.open) .attendanceFeedbackSheetCardTopActions{top:50%;transform:translateY(-50%);}
-.pcAttendanceDetailPanel .attendanceFeedbackSheetCard.open .attendanceFeedbackSheetCardTopActions{top:7px;transform:none;}
+.pcAttendanceDetailPanel .attendanceFeedbackSheetCardTopActions{position:absolute;top:14px;right:8px;z-index:3;display:inline-flex;align-items:center;justify-content:flex-end;gap:3px;margin:0;pointer-events:none;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCardTopActions>button{pointer-events:auto;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCopyIconBtn{width:40px;height:40px;min-width:40px;border:0;border-radius:0;background:transparent;color:#8b929b;padding:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:none;-webkit-tap-highlight-color:transparent;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCopyIconBtn:hover{background:transparent;color:#1687ff;}
