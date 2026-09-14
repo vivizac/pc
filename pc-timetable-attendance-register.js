@@ -346,6 +346,8 @@
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment{min-width:0;min-height:0;margin:0;padding:0;border:0;outline:0;border-radius:5px;display:flex;flex:1 1 0;align-items:center;justify-content:center;color:inherit;background:transparent;font:inherit;font-weight:900;cursor:default!important;box-sizing:border-box;overflow:hidden}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment+.attendanceRegisterSegment{border-left:0}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceBlankMark{color:#666d76;background:#f0f2f4!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterCellInner>.attendanceRegisterPlaceholder{background:#f0f2f4!important;color:#666d76!important;border-radius:5px!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterCellInner>.attendanceRegisterHolidayPlaceholder{background:#f0f2f4!important;color:#c6535b!important;border-radius:5px!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceLinkedMark{color:#249e58;background:#dcf4e5!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceAbsentMark{color:#d9464d;background:#fbe0e4!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceMakeupMark{color:#8b5e00;background:#ffefb8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -439,8 +441,11 @@
     const rowHtml = students.map((student) => {
       const dateCells = dayMeta.map((meta) => {
         if (meta.closed) {
-          const holidayText = meta.sunday ? '' : '<span class="attendanceHolidayMark">휴</span>';
-          return `<td class="dateCol attendanceHolidayCell ${meta.sunday ? 'attendanceSundayCell' : 'attendancePublicHolidayCell'}" aria-disabled="true">${holidayText}</td>`;
+          const closedMark = meta.sunday
+            ? '<span aria-hidden="true">-</span>'
+            : '<span class="attendanceHolidayMark">휴</span>';
+          const closedClass = meta.sunday ? 'attendanceRegisterPlaceholder attendanceBlankMark' : 'attendanceRegisterHolidayPlaceholder';
+          return `<td class="dateCol attendanceHolidayCell attendanceRegisterSessionCell ${meta.sunday ? 'attendanceSundayCell' : 'attendancePublicHolidayCell'}" aria-disabled="true"><div class="attendanceRegisterCellInner"><span class="attendanceRegisterSegment ${closedClass}">${closedMark}</span></div></td>`;
         }
         const records = rowsByStudentDate.get(`${clean(student.id)}|${meta.key}`) || [];
         const regularSessions = attendanceRegisterSessions(records, 'regular');
@@ -466,8 +471,11 @@
     const blankRows = Array.from({ length: Math.max(0, 40 - students.length) }, () => {
       const dateCells = dayMeta.map((meta) => {
         if (!meta.closed) return '<td class="dateCol attendanceEmptyCell attendanceRegisterSessionCell"><div class="attendanceRegisterCellInner"><span class="attendanceRegisterSegment attendanceBlankMark attendanceRegisterPlaceholder"><span aria-hidden="true">-</span></span></div></td>';
-        const holidayText = meta.sunday ? '' : '<span class="attendanceHolidayMark">휴</span>';
-        return `<td class="dateCol attendanceHolidayCell ${meta.sunday ? 'attendanceSundayCell' : 'attendancePublicHolidayCell'}" aria-disabled="true">${holidayText}</td>`;
+        const closedMark = meta.sunday
+          ? '<span aria-hidden="true">-</span>'
+          : '<span class="attendanceHolidayMark">휴</span>';
+        const closedClass = meta.sunday ? 'attendanceRegisterPlaceholder attendanceBlankMark' : 'attendanceRegisterHolidayPlaceholder';
+        return `<td class="dateCol attendanceHolidayCell attendanceRegisterSessionCell ${meta.sunday ? 'attendanceSundayCell' : 'attendancePublicHolidayCell'}" aria-disabled="true"><div class="attendanceRegisterCellInner"><span class="attendanceRegisterSegment ${closedClass}">${closedMark}</span></div></td>`;
       }).join('');
       return `<tr class="attendanceBlankRow"><td class="nameCol"></td><td class="schoolGradeCol"></td><td class="personalityCol"></td>${dateCells}</tr>`;
     }).join('');
