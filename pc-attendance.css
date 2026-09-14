@@ -89,9 +89,9 @@ body.olliPcApp #recordRoomScreen #pcAttendanceCombinedBody > .attendanceFeedback
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCard:hover{border-color:#d5e4f5;background:#fcfdff;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCardTitle{font-size:13px;}
 .pcAttendanceDetailPanel .pcAttendanceRecordSectionUnified{flex:1;padding-top:13px;}
-.pcAttendanceDetailPanel .attendanceFeedbackSheetCardTopRow{display:block;min-width:0;padding-right:150px;}
-.pcAttendanceDetailPanel .attendanceFeedbackSheetCardTitleWrap{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0;padding-top:3px;}
-.pcAttendanceDetailPanel .attendanceFeedbackSummaryBadge{display:inline-flex;align-items:center;justify-content:center;min-height:21px;padding:0 8px;border-radius:999px;background:#eaf4ff;color:#1687ff;font-size:9.5px;font-weight:820;line-height:1;letter-spacing:-.025em;white-space:nowrap;box-sizing:border-box;}
+.pcAttendanceDetailPanel .attendanceFeedbackSheetCardTopRow{display:flex;align-items:center;min-height:40px;min-width:0;padding-right:150px;}
+.pcAttendanceDetailPanel .attendanceFeedbackSheetCardTitleWrap{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0;padding-top:0;}
+.pcAttendanceDetailPanel .attendanceFeedbackSummaryBadge{display:inline-flex;align-items:center;justify-content:center;align-self:center;min-height:21px;padding:0 8px;border-radius:999px;background:#eaf4ff;color:#1687ff;font-size:9.5px;font-weight:820;line-height:1;letter-spacing:-.025em;white-space:nowrap;box-sizing:border-box;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCardTopActions{position:absolute;top:7px;right:8px;z-index:3;display:inline-flex;align-items:center;justify-content:flex-end;gap:3px;margin:0;pointer-events:none;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCard:not(.open) .attendanceFeedbackSheetCardTopActions{top:50%;transform:translateY(-50%);}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCard.open .attendanceFeedbackSheetCardTopActions{top:7px;transform:none;}
@@ -103,7 +103,7 @@ body.olliPcApp #recordRoomScreen #pcAttendanceCombinedBody > .attendanceFeedback
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCopyIconBtn.copyFailed{color:#d94d4d;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCopyIconBtn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 .pcAttendanceDetailPanel .attendanceSummaryRegenerateBtn{position:static;top:auto;right:auto;flex:0 0 auto;}
-.pcAttendanceDetailPanel .attendanceFeedbackSheetCardDate{position:absolute;top:17px;right:58px;margin:0;font-size:10.5px;line-height:1.2;white-space:nowrap;}
+.pcAttendanceDetailPanel .attendanceFeedbackSheetCardDate{position:absolute;top:34px;right:58px;width:57px;margin:0;overflow:hidden;text-overflow:clip;font-size:10.5px;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap;transform:translateY(-50%);}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetFullText{font-size:13px;line-height:1.72;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetCard.open .attendanceFeedbackSheetFullText{margin-top:14px;}
 .pcAttendanceDetailPanel .attendanceFeedbackSheetActionBtn{height:34px;min-width:60px;font-size:11.5px;}
