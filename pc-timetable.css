@@ -732,7 +732,7 @@
   font-weight: 800;
 }
 #recordRoomScreen .olliTtAttendanceTable tbody td.attendanceEmptyCell {
-  background: #f0f2f4 !important;
+  background: #fff !important;
   color: #666d76 !important;
 }
 #recordRoomScreen .olliTtAttendanceTable tbody td.attendanceEmptyCell > span {
