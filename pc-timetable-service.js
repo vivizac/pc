@@ -266,13 +266,14 @@
     }));
   }
 
-  async function saveCellMemo(division, sessionDate, timeSlot, note, classGroup) {
-    return rpc('olli_schedule_save_cell_memo_v2', contextPayload({
+  async function saveCellMemo(division, sessionDate, timeSlot, note, classGroup, memoId) {
+    return rpc('olli_schedule_save_cell_memo_v3', contextPayload({
       p_division: clean(division),
       p_session_date: clean(sessionDate),
       p_time_slot: Number(timeSlot),
       p_note: note || '',
-      p_class_group: clean(classGroup || 'A').toUpperCase() === 'B' ? 'B' : 'A'
+      p_class_group: clean(classGroup || 'A').toUpperCase() === 'B' ? 'B' : 'A',
+      p_memo_id: clean(memoId) || null
     }));
   }
 

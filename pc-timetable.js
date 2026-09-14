@@ -92,16 +92,6 @@
     return clean(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
-  function escMemoLine(value) {
-    return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-  function renderTimetableMemoLines(value) {
-    return String(value == null ? '' : value).replace(/\r\n?/g, '\n').split('\n').map((line) => {
-      if (!line.trim()) return '<span class="olliTtMemoLine olliTtMemoLineBlank" aria-hidden="true"></span>';
-      return `<span class="olliTtMemoLine"><span class="olliTtMemoLineIcon" aria-hidden="true">📝</span><strong>${escMemoLine(line)}</strong></span>`;
-    }).join('');
-  }
   function pad(value) { return String(value).padStart(2, '0'); }
   function dateKey(date) { return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`; }
   function parseDate(value) {
@@ -164,13 +154,13 @@
     const hostRect = host.getBoundingClientRect();
     const isClipped = cardRect.bottom > hostRect.bottom + 1 || cardRect.top < hostRect.top - 1;
     if (!isClipped) return;
-    const memoLines = card.querySelector('.olliTtMemoLines');
-    if (!memoLines || !clean(memoLines.textContent)) return;
+    const text = clean(card.querySelector('strong')?.textContent);
+    if (!text) return;
 
     hideTimetableMemoHoverPreview();
     const preview = document.createElement('div');
     preview.className = 'olliTtMemoHoverPreview';
-    preview.innerHTML = `<span class="olliTtMemoLines">${memoLines.innerHTML}</span>`;
+    preview.innerHTML = `<span aria-hidden="true">📝</span><strong>${esc(text)}</strong>`;
     document.body.appendChild(preview);
     timetableMemoHoverPreview = preview;
 
@@ -555,10 +545,10 @@
     return raw === 'B' ? 'B' : 'A';
   }
 
-  async function saveCellMemoText(division, date, time, note, classGroup) {
+  async function saveCellMemoText(division, date, time, note, classGroup, memoId) {
     if (typeof service.saveCellMemo !== 'function') throw new Error('시간표 메모 서버 연결을 찾지 못했습니다.');
     const keyDate = date instanceof Date ? dateKey(date) : clean(date);
-    return service.saveCellMemo(clean(division), keyDate, Number(time), clean(note), classGroupOf({ class_group: classGroup }));
+    return service.saveCellMemo(clean(division), keyDate, Number(time), clean(note), classGroupOf({ class_group: classGroup }), clean(memoId) || null);
   }
 
   function slotEntryCount(division, date, time, classGroup) {
@@ -691,8 +681,12 @@
       const attended = isToday(date) && attendanceMarked(item.student_id, date, attendanceTime, entryClassGroup, 'makeup');
       return `<div class="olliTtStudent makeup${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">보강</button></div>`;
     }).join('');
-    const memo = clean(memoText);
-    const memoHtml = memo ? `<button type="button" class="olliTtCellMemoCard" data-tt-memo-card="1" data-division="${esc(division)}" data-date="${dateKey(date)}" data-time="${Number(time)}" data-class-group="${esc(classGroupOf({ class_group: classGroup }))}" aria-label="시간표 메모 관리"><span class="olliTtMemoLines">${renderTimetableMemoLines(memo)}</span></button>` : '';
+    const memoGroup = classGroup ? classGroupOf({ class_group: classGroup }) : '';
+    const memoHtml = cellMemos().filter((item) => clean(item.division) === clean(division)
+      && clean(item.session_date) === dateKey(date)
+      && Number(item.time_slot) === Number(time)
+      && (!memoGroup || classGroupOf(item) === memoGroup))
+      .map((item) => `<button type="button" class="olliTtCellMemoCard" data-tt-memo-card="1" data-memo-id="${esc(item.id)}" data-division="${esc(division)}" data-date="${dateKey(date)}" data-time="${Number(time)}" data-class-group="${esc(classGroupOf(item))}" aria-label="시간표 메모 관리"><span aria-hidden="true">📝</span><strong>${esc(item.note)}</strong></button>`).join('');
     return `<div class="olliTtEntries">${regularHtml}${waitHtml}${makeupHtml}${memoHtml}</div>`;
   }
 
@@ -742,7 +736,9 @@
     dates.forEach((date) => {
       if (date.getDay() === 6 && Number(displayTime) > 3) return;
       const storedTime = storedTimeForCell('elementary', date, displayTime);
-      const hasMemo = !!cellMemoText('elementary', date, storedTime);
+      const memoItems = cellMemos().filter((item) => clean(item.division) === 'elementary'
+        && clean(item.session_date) === dateKey(date)
+        && Number(item.time_slot) === Number(storedTime));
       let contentRows = 0;
       let headerHeight = 0;
 
@@ -756,7 +752,10 @@
         if (classTeacherLabel('elementary', date.getDay(), storedTime, 'A')) headerHeight += 14;
       }
 
-      const memoHeight = hasMemo ? 41 : 0;
+      const memoHeight = memoItems.reduce((sum, item) => {
+        const lines = Math.max(1, String(item.note || '').replace(/\r\n?/g, '\n').split('\n').length);
+        return sum + Math.max(27, 8 + (lines * 15));
+      }, 0);
       required = Math.max(required, 18 + headerHeight + (contentRows * 27) + memoHeight);
     });
     return Math.max(64, Math.min(220, Math.ceil(required)));
@@ -1075,14 +1074,12 @@
     const division = clean(dataset.division);
     const time = Number(dataset.time);
     const targetClassGroup = classGroupOf({ class_group: dataset.classGroup });
-    const existingMemo = cellMemoText(division, targetDate, time);
-    const existingMemoGroup = existingMemo ? cellMemoClassGroup(division, targetDate, time) : '';
     const teacher = classTeacherFor(division, Number(dataset.weekday), time, targetClassGroup);
     const teacherMemberId = clean(teacher && teacher.teacher_member_id);
     state.dialog = {
       kind: 'add', division, date: targetDate,
       weekday: Number(dataset.weekday), time, studentId: '',
-      query: '', guestName: '', note: existingMemo, originalNote: existingMemo, originalMemoGroup: existingMemoGroup, addType: 'wait', targetClassGroup,
+      query: '', guestName: '', note: '', originalNote: '', originalMemoGroup: '', addType: 'wait', targetClassGroup,
       teacherMemberId, originalTeacherMemberId: teacherMemberId,
       pendingKinderMerge: false, pendingKinderSplit: false
     };
@@ -1090,12 +1087,15 @@
   }
 
   function openMemoManage(dataset) {
-    const division = clean(dataset && dataset.division);
-    const date = clean(dataset && dataset.date);
-    const time = Number(dataset && dataset.time);
-    const memo = cellMemoText(division, date, time);
+    const memoId = clean(dataset && dataset.memoId);
+    const item = cellMemos().find((row) => clean(row.id) === memoId);
+    if (!item) return;
+    const division = clean(item.division);
+    const date = clean(item.session_date);
+    const time = Number(item.time_slot);
+    const memo = clean(item.note);
     if (!division || !date || !time || !memo) return;
-    state.dialog = { kind: 'memoManage', division, date, time, classGroup: classGroupOf({ class_group: dataset.classGroup }), memo, originalMemo: memo };
+    state.dialog = { kind: 'memoManage', memoId, division, date, time, classGroup: classGroupOf(item), memo, originalMemo: memo };
     openOverlay();
   }
 
@@ -1821,11 +1821,9 @@
 
   async function persistDialogCellMemo(dialog) {
     if (!dialog || dialog.kind !== 'add') return null;
-    const unchanged = clean(dialog.note) === clean(dialog.originalNote);
-    const classGroup = unchanged && clean(dialog.originalMemoGroup)
-      ? dialog.originalMemoGroup
-      : dialog.targetClassGroup;
-    return saveCellMemoText(dialog.division, dialog.date, dialog.time, dialog.note, classGroup);
+    const note = clean(dialog.note);
+    if (!note) return null;
+    return saveCellMemoText(dialog.division, dialog.date, dialog.time, note, dialog.targetClassGroup, null);
   }
 
   async function saveManagedMemo() {
@@ -1836,14 +1834,14 @@
       alert('메모 내용을 입력해 주세요. 삭제하려면 메모 삭제 버튼을 이용해 주세요.');
       return;
     }
-    const result = await withSaving(() => saveCellMemoText(dialog.division, dialog.date, dialog.time, dialog.memo, dialog.classGroup));
+    const result = await withSaving(() => saveCellMemoText(dialog.division, dialog.date, dialog.time, dialog.memo, dialog.classGroup, dialog.memoId));
     if (result) notify(memo === clean(dialog.originalMemo) ? '메모를 저장했어요.' : '메모 수정 내용을 저장했어요.');
   }
 
   async function deleteCellMemo() {
     const dialog = state.dialog;
     if (!dialog || dialog.kind !== 'memoManage') return;
-    const result = await withSaving(() => saveCellMemoText(dialog.division, dialog.date, dialog.time, '', dialog.classGroup));
+    const result = await withSaving(() => saveCellMemoText(dialog.division, dialog.date, dialog.time, '', dialog.classGroup, dialog.memoId));
     if (result) notify('시간표 메모를 삭제했어요.');
   }
 
