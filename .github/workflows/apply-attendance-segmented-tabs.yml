@@ -1,0 +1,26 @@
+name: Apply attendance segmented tabs
+
+on:
+  push:
+    branches:
+      - style/attendance-segmented-tabs-20260914
+    paths:
+      - .github/workflows/apply-attendance-segmented-tabs.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply source patch
+        run: python .github/tmp/apply_attendance_segmented_tabs.py
+      - name: Commit source-only change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "style: update attendance division tabs"
+          git push
