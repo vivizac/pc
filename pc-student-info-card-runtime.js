@@ -75,10 +75,6 @@
     return (await loadAuthoritativeStudentContext(studentId)).enrollments;
   }
 
-  async function loadAuthoritativeTeacherAssignments() {
-    const result = await scheduleRpc('olli_schedule_class_teacher_context');
-    return Array.isArray(result.assignments) ? result.assignments : [];
-  }
 
   function primaryEnrollmentForTeacher(rows) {
     return (Array.isArray(rows) ? rows : []).slice().sort((a, b) => {
@@ -658,10 +654,7 @@
         student = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;
       }
       const context = await loadAuthoritativeStudentContext(id);
-      let teacherAssignments = [];
-      if (context.enrollments.length && !resolveTimetableTeacherName(student.type === 'kinder' ? 'kinder' : 'elementary', context.enrollments, [])) {
-        teacherAssignments = await loadAuthoritativeTeacherAssignments();
-      }
+      const teacherAssignments = [];
       student = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;
       if (cardState.studentId !== id) return;
       await renderStudentInfoCard(student, context.enrollments, teacherAssignments, context.pickups);
@@ -827,11 +820,7 @@
       if (!latest) return true;
       const context = await loadAuthoritativeStudentContext(id);
       if (!isCurrent() || cardState.dirty || cardState.saveInFlight) return false;
-      let teacherAssignments = [];
-      const division = latest.type === 'kinder' ? 'kinder' : 'elementary';
-      if (context.enrollments.length && !resolveTimetableTeacherName(division, context.enrollments, [])) {
-        teacherAssignments = await loadAuthoritativeTeacherAssignments();
-      }
+      const teacherAssignments = [];
       if (!isCurrent() || cardState.dirty || cardState.saveInFlight) return false;
       await renderStudentInfoCard(latest, context.enrollments, teacherAssignments, context.pickups);
       return true;
