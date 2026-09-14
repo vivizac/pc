@@ -92,6 +92,16 @@
     return clean(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
+  function escMemoLine(value) {
+    return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function renderTimetableMemoLines(value) {
+    return String(value == null ? '' : value).replace(/\r\n?/g, '\n').split('\n').map((line) => {
+      if (!line.trim()) return '<span class="olliTtMemoLine olliTtMemoLineBlank" aria-hidden="true"></span>';
+      return `<span class="olliTtMemoLine"><span class="olliTtMemoLineIcon" aria-hidden="true">📝</span><strong>${escMemoLine(line)}</strong></span>`;
+    }).join('');
+  }
   function pad(value) { return String(value).padStart(2, '0'); }
   function dateKey(date) { return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`; }
   function parseDate(value) {
@@ -154,13 +164,13 @@
     const hostRect = host.getBoundingClientRect();
     const isClipped = cardRect.bottom > hostRect.bottom + 1 || cardRect.top < hostRect.top - 1;
     if (!isClipped) return;
-    const text = clean(card.querySelector('strong')?.textContent);
-    if (!text) return;
+    const memoLines = card.querySelector('.olliTtMemoLines');
+    if (!memoLines || !clean(memoLines.textContent)) return;
 
     hideTimetableMemoHoverPreview();
     const preview = document.createElement('div');
     preview.className = 'olliTtMemoHoverPreview';
-    preview.innerHTML = `<span aria-hidden="true">📝</span><strong>${esc(text)}</strong>`;
+    preview.innerHTML = `<span class="olliTtMemoLines">${memoLines.innerHTML}</span>`;
     document.body.appendChild(preview);
     timetableMemoHoverPreview = preview;
 
@@ -682,7 +692,7 @@
       return `<div class="olliTtStudent makeup${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="makeup" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="makeup" data-makeup-id="${esc(item.id)}">보강</button></div>`;
     }).join('');
     const memo = clean(memoText);
-    const memoHtml = memo ? `<button type="button" class="olliTtCellMemoCard" data-tt-memo-card="1" data-division="${esc(division)}" data-date="${dateKey(date)}" data-time="${Number(time)}" data-class-group="${esc(classGroupOf({ class_group: classGroup }))}" aria-label="시간표 메모 관리"><span aria-hidden="true">📝</span><strong>${esc(memo)}</strong></button>` : '';
+    const memoHtml = memo ? `<button type="button" class="olliTtCellMemoCard" data-tt-memo-card="1" data-division="${esc(division)}" data-date="${dateKey(date)}" data-time="${Number(time)}" data-class-group="${esc(classGroupOf({ class_group: classGroup }))}" aria-label="시간표 메모 관리"><span class="olliTtMemoLines">${renderTimetableMemoLines(memo)}</span></button>` : '';
     return `<div class="olliTtEntries">${regularHtml}${waitHtml}${makeupHtml}${memoHtml}</div>`;
   }
 
