@@ -1,0 +1,42 @@
+name: Patch non-attendance cell box and holiday revert
+
+on:
+  push:
+    branches:
+      - fix/nonattendance-cell-box-holiday-revert-20260915
+    paths:
+      - '.github/workflows/patch-nonattendance-box-holiday-revert.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply focused attendance UI fix
+        run: python3 .github/tmp/patch_nonattendance_box_holiday_revert.py
+      - name: Validate JavaScript syntax
+        run: node --check pc-timetable-attendance-register.js
+      - name: Validate intended attendance UI changes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          css = Path('pc-timetable.css').read_text(encoding='utf-8')
+          js = Path('pc-timetable-attendance-register.js').read_text(encoding='utf-8')
+          assert 'td.attendanceEmptyCell {\n  background: #fff !important;' in css
+          assert 'attendanceRegisterHolidayPlaceholder' not in js
+          assert js.count("const holidayText = meta.sunday ? '' : '<span class=\"attendanceHolidayMark\">휴</span>';" ) == 2
+          assert 'attendanceEmptyCell attendanceRegisterSessionCell"><div class="attendanceRegisterCellInner"><span class="attendanceRegisterSegment attendanceBlankMark attendanceRegisterPlaceholder"' in js
+          PY
+      - name: Clean temporary patch files and commit
+        run: |
+          rm -f .github/tmp/patch_nonattendance_box_holiday_revert.py
+          rm -f .github/workflows/patch-nonattendance-box-holiday-revert.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "fix: show gray box on non-attendance dates and restore holidays"
+          git push origin HEAD:${GITHUB_REF_NAME}
