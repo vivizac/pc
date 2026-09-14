@@ -630,7 +630,7 @@
   background: #fff;
   box-shadow: 0 7px 20px rgba(27,39,58,.045);
 }
-#recordRoomScreen .olliTtAttendanceSheet { min-width: 100%; width: max-content; }
+#recordRoomScreen .olliTtAttendanceSheet { min-width: 100%; width: 100%; }
 #recordRoomScreen .olliTtAttendanceTable {
   width: 100%;
   min-width: 0;
