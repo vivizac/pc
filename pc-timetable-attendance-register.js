@@ -572,7 +572,7 @@
     const activeClassGroup = activeCell ? clean(activeCell.dataset.classGroup || 'A') : '';
 
     const html = linkedAttendanceRegisterHtml();
-    ui.root.innerHTML = `<section class="olliTtAttendanceRegister"><div class="olliTtAttendanceRegisterHead"><strong>${esc(monthLabel(state.attendanceMonth))} 출석부</strong></div><div class="olliTtAttendanceRegisterScroll">${html}</div></section>`;
+    ui.root.innerHTML = `<section class="olliTtAttendanceRegister"><div class="olliTtAttendanceRegisterScroll">${html}</div></section>`;
     lastAttendanceRenderSignature = signature;
     bindAttendanceRegisterEditing(ui.root);
 
