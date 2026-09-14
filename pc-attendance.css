@@ -37,9 +37,9 @@ body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout #recordList::
 .pcAttendanceRosterHead>span.pcAttendanceRosterDivision.kinder{background:#ffe8f0;color:#e85b8d;}
 body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .recordStatusSection{margin-top:12px;}
 
-/* PC 학생명단 정렬 구분: 첫 그룹 위치는 유지하고 다음 그룹부터 간격을 크게 넓힘 */
+/* PC 학생명단 정렬 구분: legacy groupBreak 대신 divider 자체가 그룹 간격을 소유 */
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider{
-  display:flex;align-items:center;gap:10px;width:100%;margin:40px 0 10px;color:#555b63;font-size:11px;font-weight:820;line-height:1;letter-spacing:-.02em;box-sizing:border-box;
+  display:flex;align-items:center;gap:10px;width:100%;margin:0 0 10px;padding-top:40px;color:#555b63;font-size:11px;font-weight:820;line-height:1;letter-spacing:-.02em;box-sizing:border-box;
 }
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::before,
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::after{
@@ -48,7 +48,7 @@ body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider::after{
 body.olliPcApp #recordRoomScreen .pcAttendanceSortDivider span{
   flex:0 0 auto;white-space:nowrap;padding:0 2px;background:transparent;color:inherit;
 }
-body.olliPcApp #recordRoomScreen .pcAttendanceRosterHead + .pcAttendanceSortDivider{margin-top:2px;}
+body.olliPcApp #recordRoomScreen .pcAttendanceRosterHead + .pcAttendanceSortDivider{padding-top:2px;}
 body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .elementaryStudentRow.groupBreak,
 body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .kinderStudentRow.groupBreak{
   margin-top:0!important;padding-top:0!important;border-top-color:transparent!important;
