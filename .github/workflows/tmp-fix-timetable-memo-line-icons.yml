@@ -1,0 +1,76 @@
+name: Temporary timetable memo line icon source fix
+
+on:
+  push:
+    branches:
+      - fix/pc-timetable-memo-line-icons-20260914
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/pc-timetable-memo-line-icons-20260914
+      - name: Patch original timetable sources
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          js_path = Path('pc-timetable.js')
+          js = js_path.read_text(encoding='utf-8')
+
+          old = """  function esc(value) {\n    return clean(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')\n      .replace(/\\\"/g, '&quot;').replace(/'/g, '&#39;');\n  }\n"""
+          new = """  function esc(value) {\n    return clean(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')\n      .replace(/\\\"/g, '&quot;').replace(/'/g, '&#39;');\n  }\n  function escMemoLine(value) {\n    return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')\n      .replace(/\\\"/g, '&quot;').replace(/'/g, '&#39;');\n  }\n  function renderTimetableMemoLines(value) {\n    return String(value == null ? '' : value).replace(/\\r\\n?/g, '\\n').split('\\n').map((line) => {\n      if (!line.trim()) return '<span class=\"olliTtMemoLine olliTtMemoLineBlank\" aria-hidden=\"true\"></span>';\n      return `<span class=\"olliTtMemoLine\"><span class=\"olliTtMemoLineIcon\" aria-hidden=\"true\">📝</span><strong>${escMemoLine(line)}</strong></span>`;\n    }).join('');\n  }\n"""
+          if old not in js:
+              raise SystemExit('esc block not found')
+          js = js.replace(old, new, 1)
+
+          old = """    const text = clean(card.querySelector('strong')?.textContent);\n    if (!text) return;\n\n    hideTimetableMemoHoverPreview();\n    const preview = document.createElement('div');\n    preview.className = 'olliTtMemoHoverPreview';\n    preview.innerHTML = `<span aria-hidden=\"true\">📝</span><strong>${esc(text)}</strong>`;\n"""
+          new = """    const memoLines = card.querySelector('.olliTtMemoLines');\n    if (!memoLines || !clean(memoLines.textContent)) return;\n\n    hideTimetableMemoHoverPreview();\n    const preview = document.createElement('div');\n    preview.className = 'olliTtMemoHoverPreview';\n    preview.innerHTML = `<span class=\"olliTtMemoLines\">${memoLines.innerHTML}</span>`;\n"""
+          if old not in js:
+              raise SystemExit('hover preview block not found')
+          js = js.replace(old, new, 1)
+
+          old = """    const memo = clean(memoText);\n    const memoHtml = memo ? `<button type=\"button\" class=\"olliTtCellMemoCard\" data-tt-memo-card=\"1\" data-division=\"${esc(division)}\" data-date=\"${dateKey(date)}\" data-time=\"${Number(time)}\" data-class-group=\"${esc(classGroupOf({ class_group: classGroup }))}\" aria-label=\"시간표 메모 관리\"><span aria-hidden=\"true\">📝</span><strong>${esc(memo)}</strong></button>` : '';\n"""
+          new = """    const memo = clean(memoText);\n    const memoHtml = memo ? `<button type=\"button\" class=\"olliTtCellMemoCard\" data-tt-memo-card=\"1\" data-division=\"${esc(division)}\" data-date=\"${dateKey(date)}\" data-time=\"${Number(time)}\" data-class-group=\"${esc(classGroupOf({ class_group: classGroup }))}\" aria-label=\"시간표 메모 관리\"><span class=\"olliTtMemoLines\">${renderTimetableMemoLines(memo)}</span></button>` : '';\n"""
+          if old not in js:
+              raise SystemExit('memo card block not found')
+          js = js.replace(old, new, 1)
+          js_path.write_text(js, encoding='utf-8')
+
+          css_path = Path('pc-timetable.css')
+          css = css_path.read_text(encoding='utf-8')
+          old = """#recordRoomScreen .olliTtCellMemoCard {\n  grid-column: 1 / -1;\n  width: 100%;\n  min-width: 0;\n  min-height: 38px;\n  padding: 3px 5px;\n  border: 1px solid #fff3a6;\n  border-radius: 8px;\n  display: flex;\n  align-items: center;\n  gap: 5px;\n  color: #544918;\n  background: #fff3a6;\n  box-sizing: border-box;\n  text-align: left;\n  font-family: 'Pretendard', sans-serif;\n  cursor: pointer;\n  box-shadow: none;\n}\n#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #ffed85; background: #ffed85; box-shadow: none; }\n#recordRoomScreen .olliTtCellMemoCard span { flex: 0 0 auto; margin-top: 0; font-size: calc(11px * var(--olli-text-scale)); line-height: 1; }\n#recordRoomScreen .olliTtCellMemoCard strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(12px * var(--olli-text-scale)); font-weight: 760; line-height: 1.2; }\n"""
+          new = """#recordRoomScreen .olliTtCellMemoCard {\n  grid-column: 1 / -1;\n  width: 100%;\n  min-width: 0;\n  min-height: 38px;\n  padding: 5px;\n  border: 1px solid #fff3a6;\n  border-radius: 8px;\n  display: block;\n  color: #544918;\n  background: #fff3a6;\n  box-sizing: border-box;\n  text-align: left;\n  font-family: 'Pretendard', sans-serif;\n  cursor: pointer;\n  box-shadow: none;\n}\n#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #ffed85; background: #ffed85; box-shadow: none; }\n#recordRoomScreen .olliTtCellMemoCard .olliTtMemoLines,\n.olliTtMemoHoverPreview .olliTtMemoLines {\n  width: 100%;\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n}\n#recordRoomScreen .olliTtCellMemoCard .olliTtMemoLine,\n.olliTtMemoHoverPreview .olliTtMemoLine {\n  min-width: 0;\n  min-height: 14px;\n  display: flex;\n  align-items: flex-start;\n  gap: 5px;\n}\n#recordRoomScreen .olliTtCellMemoCard .olliTtMemoLineIcon,\n.olliTtMemoHoverPreview .olliTtMemoLineIcon {\n  flex: 0 0 auto;\n  margin-top: 1px;\n  font-size: calc(11px * var(--olli-text-scale, 1));\n  line-height: 1;\n}\n#recordRoomScreen .olliTtCellMemoCard .olliTtMemoLine strong,\n.olliTtMemoHoverPreview .olliTtMemoLine strong {\n  min-width: 0;\n  overflow: visible;\n  text-overflow: clip;\n  white-space: pre-wrap;\n  overflow-wrap: anywhere;\n  word-break: break-word;\n  font-size: calc(12px * var(--olli-text-scale, 1));\n  font-weight: 760;\n  line-height: 1.2;\n}\n"""
+          if old not in css:
+              raise SystemExit('memo card css block not found')
+          css = css.replace(old, new, 1)
+
+          old = """.olliTtMemoHoverPreview {\n  position: fixed;\n  z-index: 100000;\n  min-height: 38px;\n  max-height: none;\n  padding: 7px 9px;\n  display: flex;\n  align-items: flex-start;\n  gap: 6px;\n  box-sizing: border-box;\n  border: 1px solid #ffed85;\n  border-radius: 9px;\n  background: #fff3a6;\n  color: #544918;\n  box-shadow: 0 8px 24px rgba(20,24,30,.18);\n  pointer-events: none;\n  overflow: visible;\n  white-space: normal;\n}\n.olliTtMemoHoverPreview > span { flex: 0 0 auto; line-height: 1.25; }\n.olliTtMemoHoverPreview > strong {\n  min-width: 0;\n  font: 760 calc(12px * var(--olli-text-scale, 1)) 'Pretendard', sans-serif;\n  line-height: 1.35;\n  white-space: pre-wrap;\n  overflow-wrap: anywhere;\n  word-break: break-word;\n}\n"""
+          new = """.olliTtMemoHoverPreview {\n  position: fixed;\n  z-index: 100000;\n  min-height: 38px;\n  max-height: none;\n  padding: 7px 9px;\n  display: block;\n  box-sizing: border-box;\n  border: 1px solid #ffed85;\n  border-radius: 9px;\n  background: #fff3a6;\n  color: #544918;\n  box-shadow: 0 8px 24px rgba(20,24,30,.18);\n  pointer-events: none;\n  overflow: visible;\n  white-space: normal;\n}\n"""
+          if old not in css:
+              raise SystemExit('memo hover css block not found')
+          css = css.replace(old, new, 1)
+          css_path.write_text(css, encoding='utf-8')
+          PY
+      - name: Verify source change
+        shell: bash
+        run: |
+          grep -q "renderTimetableMemoLines" pc-timetable.js
+          grep -q "olliTtMemoLineIcon" pc-timetable.css
+          git diff --check
+      - name: Commit source-only change and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/tmp-fix-timetable-memo-line-icons.yml
+          git add pc-timetable.js pc-timetable.css
+          git commit -m "fix: repeat timetable memo icon for each line"
+          git push origin HEAD:fix/pc-timetable-memo-line-icons-20260914
