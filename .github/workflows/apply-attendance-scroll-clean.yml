@@ -1,0 +1,26 @@
+name: Apply clean attendance scroll fix
+
+on:
+  push:
+    branches:
+      - fix/pc-attendance-scroll-clean-20260914
+    paths:
+      - .github/workflows/apply-attendance-scroll-clean.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply source patch
+        run: python .github/tmp/apply_attendance_scroll_clean.py
+      - name: Commit source-only change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "style: keep attendance table full width with outer scroll"
+          git push
