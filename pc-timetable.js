@@ -888,8 +888,8 @@
     const title = document.getElementById('olliPcTopbarTitle');
     if (!title) return;
     title.classList.add('olliTtTopbarSchedule');
-    title.innerHTML = '<div class="olliTtDivisionTabs" role="tablist" aria-label="출석부 부서 선택">'
-      + ['elementary', 'kinder', 'combined'].map((division) => `<button type="button" class="olliTtDivisionTab ${state.attendanceDivision === division ? 'active' : ''}" data-tt-attendance-division="${division}">${division === 'elementary' ? '초등부' : (division === 'kinder' ? '유치부' : '통합')}</button>`).join('') + '</div>'
+    title.innerHTML = '<div class="olliTtDivisionTabs olliTtAttendanceDivisionTabs" role="tablist" aria-label="출석부 부서 선택">'
+      + ['combined', 'elementary', 'kinder'].map((division) => `<button type="button" class="olliTtDivisionTab ${state.attendanceDivision === division ? 'active' : ''}" data-tt-attendance-division="${division}">${division === 'combined' ? '전체' : (division === 'elementary' ? '초등부' : '유치부')}</button>`).join('') + '</div>'
       + '<div class="olliTtWeekNav"><button type="button" class="olliTtWeekBtn icon" data-tt-attendance-month="prev" aria-label="이전 달">‹</button>'
       + `<button type="button" class="olliTtWeekBtn range">${esc(monthLabel(state.attendanceMonth))}</button>`
       + '<button type="button" class="olliTtWeekBtn icon" data-tt-attendance-month="next" aria-label="다음 달">›</button><button type="button" class="olliTtWeekBtn today" data-tt-attendance-month="today">이번 달</button></div>';
