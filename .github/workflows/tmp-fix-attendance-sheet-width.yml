@@ -1,0 +1,33 @@
+name: Temporary attendance sheet width fix
+
+on:
+  push:
+    branches:
+      - fix/pc-attendance-screen-redesign-20260914
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/pc-attendance-screen-redesign-20260914
+      - name: Patch original source
+        run: python .github/tmp/fix_attendance_sheet_width.py
+      - name: Verify
+        run: |
+          grep -q "#recordRoomScreen .olliTtAttendanceSheet { min-width: 100%; width: 100%; }" pc-timetable.css
+          node --check pc-timetable-attendance-register.js
+          git diff --check
+      - name: Commit source change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -f .github/workflows/tmp-fix-attendance-sheet-width.yml .github/tmp/fix_attendance_sheet_width.py
+          git add pc-timetable.css
+          git commit -m "fix: stabilize attendance sheet width"
+          git push origin HEAD:fix/pc-attendance-screen-redesign-20260914
