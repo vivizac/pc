@@ -346,11 +346,12 @@
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment{min-width:0;min-height:0;margin:0;padding:0;border:0;outline:0;display:flex;flex:1 1 0;align-items:center;justify-content:center;color:inherit;background:transparent;font:inherit;font-weight:900;cursor:default!important;box-sizing:border-box}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment+.attendanceRegisterSegment{border-left:1px solid #dfe4e9}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceBlankMark{color:#666d76;background:#f0f2f4!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceLinkedMark{color:#249e58;background:#e7f7ed!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceAbsentMark{color:#d9464d;background:#fdebed!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceMakeupMark{color:#b98700;background:#fff6cf!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceLinkedMark{color:#249e58;background:#dcf4e5!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceAbsentMark{color:#d9464d;background:#fbe0e4!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceMakeupMark{color:#8b5e00;background:#ffefb8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment span{display:block;font-size:12px;font-weight:900;line-height:1}
-#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceLinkedMark span{font-size:16px}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceLinkedMark span{font-size:16px;font-weight:700}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceBlankMark span{font-weight:650}
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell:not(.isSplit) .attendanceRegisterSegment{flex-basis:100%}
 `;
     document.head.appendChild(style);
