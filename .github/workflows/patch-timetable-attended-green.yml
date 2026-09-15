@@ -1,0 +1,37 @@
+name: Patch timetable attended green
+
+on:
+  push:
+    branches:
+      - tweak/timetable-attended-green-20260915
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tweak/timetable-attended-green-20260915
+          fetch-depth: 0
+      - name: Apply focused timetable attended color patch
+        run: python .github/tmp/patch_timetable_attended_green.py
+      - name: Validate intended color change
+        run: |
+          grep -F "background: #6fdf96" pc-timetable.css
+          if grep -F "background: #43d878" pc-timetable.css; then
+            echo "old attended color remains" >&2
+            exit 1
+          fi
+          git diff --check
+      - name: Clean temporary files and commit
+        run: |
+          rm -f .github/tmp/patch_timetable_attended_green.py
+          rm -f .github/workflows/patch-timetable-attended-green.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pc-timetable.css .github/tmp/patch_timetable_attended_green.py .github/workflows/patch-timetable-attended-green.yml
+          git commit -m "style: lighten timetable attended student card green"
+          git push origin HEAD:tweak/timetable-attended-green-20260915
