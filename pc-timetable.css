@@ -790,6 +790,13 @@
 #recordRoomScreen .olliTtAttendanceTable {
   margin: 0 !important;
 }
+#recordRoomScreen .olliTtAttendanceTable tbody tr.attendanceTableFooterRow > td {
+  height: 24px !important;
+  padding: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  background: #f8f9fb !important;
+}
 
 /* iPad 출석부: 고정 학생정보 3열 + 날짜 가로 스크롤 */
 @media (min-width:700px) and (max-width:1400px) and (hover:none) and (pointer:coarse) {
@@ -803,14 +810,14 @@
     width: 1600px !important;
     min-width: 1600px !important;
     max-width: none !important;
-    overflow: visible;
+    overflow: hidden;
   }
   #recordRoomScreen .olliTtAttendanceTable {
     width: 1600px !important;
     min-width: 1600px !important;
     max-width: none !important;
     table-layout: fixed !important;
-    border-collapse: collapse !important;
+    border-collapse: separate !important;
     border-spacing: 0 !important;
   }
   #recordRoomScreen .olliTtAttendanceTable col.nameCol { width: 88px !important; }

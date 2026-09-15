@@ -475,7 +475,8 @@
       }).join('');
       return `<tr class="attendanceBlankRow"><td class="nameCol"></td><td class="schoolGradeCol"></td><td class="personalityCol"></td>${dateCells}</tr>`;
     }).join('');
-    return `<div class="olliTtAttendanceSheet"><table class="settingsAttendancePreviewTable olliTtAttendanceTable"${tableStyle}>${colGroup}${header}<tbody>${rowHtml}${blankRows}</tbody></table></div>`;
+    const footerRow = `<tr class="attendanceTableFooterRow" aria-hidden="true"><td colspan="${days + 3}"></td></tr>`;
+    return `<div class="olliTtAttendanceSheet"><table class="settingsAttendancePreviewTable olliTtAttendanceTable"${tableStyle}>${colGroup}${header}<tbody>${rowHtml}${blankRows}${footerRow}</tbody></table></div>`;
   }
 
   async function cycleAttendanceRegisterCell(cell) {
