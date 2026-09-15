@@ -790,6 +790,9 @@
 #recordRoomScreen .olliTtAttendanceTable {
   margin: 0 !important;
 }
+#recordRoomScreen .olliTtAttendanceTable tbody tr:not(.attendanceTableFooterRow) > td {
+  height: 32px !important;
+}
 #recordRoomScreen .olliTtAttendanceTable tbody tr.attendanceTableFooterRow > td {
   height: 24px !important;
   padding: 0 !important;
