@@ -739,12 +739,12 @@
 #recordRoomScreen .olliTtAttendanceTable tbody td.nameCol {
   background: #fafbfc !important;
   color: #111318;
-  font-weight: 500;
+  font-weight: 600;
 }
 #recordRoomScreen .olliTtAttendanceTable tbody td.schoolGradeCol,
 #recordRoomScreen .olliTtAttendanceTable tbody td.personalityCol {
   color: #7b8490;
-  font-weight: 300;
+  font-weight: 400;
 }
 #recordRoomScreen .olliTtAttendanceTable tbody td.attendanceEmptyCell {
   background: #fff !important;
