@@ -871,7 +871,7 @@
     const title = document.getElementById('olliPcTopbarTitle');
     if (!title) return;
     title.classList.add('olliTtTopbarSchedule');
-    title.innerHTML = '<div class="olliTtDivisionTabs" role="tablist" aria-label="시간표 반 선택">'
+    title.innerHTML = '<div class="olliTtDivisionTabs olliTtAttendanceDivisionTabs" role="tablist" aria-label="시간표 반 선택">'
       + `<button type="button" class="olliTtDivisionTab ${state.scheduleDivision === 'elementary' ? 'active' : ''}" data-tt-division="elementary" role="tab" aria-selected="${state.scheduleDivision === 'elementary'}">초등부</button>`
       + `<button type="button" class="olliTtDivisionTab ${state.scheduleDivision === 'kinder' ? 'active' : ''}" data-tt-division="kinder" role="tab" aria-selected="${state.scheduleDivision === 'kinder'}">유치부</button></div>`
       + '<div class="olliTtWeekNav"><button type="button" class="olliTtWeekBtn icon" data-tt-week="prev" aria-label="이전 주">‹</button>'
