@@ -345,6 +345,9 @@
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterCellInner{position:absolute;inset:4px 5px;display:flex;align-items:stretch;justify-content:stretch;gap:4px;box-sizing:border-box}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment{min-width:0;min-height:0;margin:0;padding:0;border:0;outline:0;border-radius:5px;display:flex;flex:1 1 0;align-items:center;justify-content:center;color:inherit;background:transparent;font:inherit;font-weight:900;cursor:default!important;box-sizing:border-box;overflow:hidden}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment+.attendanceRegisterSegment{border-left:0}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell.isSplit .attendanceRegisterCellInner{gap:0;border-radius:5px;overflow:hidden;background:#f0f2f4}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell.isSplit .attendanceRegisterSegment{border-radius:0!important}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell.isSplit .attendanceRegisterSegment+.attendanceRegisterSegment{border-left:1px solid rgba(255,255,255,.82)}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceBlankMark{color:#666d76;background:#f0f2f4!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterCellInner>.attendanceRegisterPlaceholder{background:#f0f2f4!important;color:#666d76!important;border-radius:5px!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceLinkedMark{color:#249e58;background:#dcf4e5!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
