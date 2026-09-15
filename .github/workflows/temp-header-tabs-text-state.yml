@@ -1,0 +1,38 @@
+name: Temp header tabs text state
+
+on:
+  push:
+    branches: [style/header-tabs-text-state-20260915]
+    paths:
+      - '.github/workflows/temp-header-tabs-text-state.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply header tab text state style
+        run: python3 .github/tmp/apply_header_text_state_style.py
+      - name: Verify intended styles
+        run: |
+          grep -F 'color:#a1a6ae;' pc-timetable.css
+          grep -F 'color:#171a20;' pc-timetable.css
+          grep -F 'background:#fff;' pc-timetable.css
+          if grep -Fq 'background:#74aaf6;' pc-timetable.css; then
+            echo 'old active blue background still present'
+            exit 1
+          fi
+      - name: Commit target change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pc-timetable.css
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "style: 시간표·출석부 탭 선택 상태를 텍스트 색으로 통일"
+          git push
