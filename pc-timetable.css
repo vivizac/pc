@@ -739,20 +739,20 @@
 #recordRoomScreen .olliTtAttendanceTable tbody td.nameCol {
   background: #fafbfc !important;
   color: #111318;
-  font-weight: 700;
+  font-weight: 500;
 }
 #recordRoomScreen .olliTtAttendanceTable tbody td.schoolGradeCol,
 #recordRoomScreen .olliTtAttendanceTable tbody td.personalityCol {
   color: #7b8490;
-  font-weight: 500;
+  font-weight: 300;
 }
 #recordRoomScreen .olliTtAttendanceTable tbody td.attendanceEmptyCell {
   background: #fff !important;
-  color: #666d76 !important;
+  color: #a5acb5 !important;
 }
 #recordRoomScreen .olliTtAttendanceTable tbody td.attendanceEmptyCell > span {
   display: inline-block;
-  color: #666d76;
+  color: #a5acb5;
   font-size: calc(12px * var(--olli-text-scale));
   font-weight: 900;
   line-height: 1;
