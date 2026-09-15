@@ -345,11 +345,11 @@
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterCellInner{position:absolute;inset:4px 5px;display:flex;align-items:stretch;justify-content:stretch;gap:4px;box-sizing:border-box}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment{min-width:0;min-height:0;margin:0;padding:0;border:0;outline:0;border-radius:5px;display:flex;flex:1 1 0;align-items:center;justify-content:center;color:inherit;background:transparent;font:inherit;font-weight:900;cursor:default!important;box-sizing:border-box;overflow:hidden}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment+.attendanceRegisterSegment{border-left:0}
-#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell.isSplit .attendanceRegisterCellInner{gap:0;border-radius:5px;overflow:hidden;background:#f0f2f4}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell.isSplit .attendanceRegisterCellInner{gap:0;border-radius:5px;overflow:hidden;background:#f4f5f7}
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell.isSplit .attendanceRegisterSegment{border-radius:0!important}
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell.isSplit .attendanceRegisterSegment+.attendanceRegisterSegment{border-left:1px solid rgba(255,255,255,.82)}
-#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceBlankMark{color:#666d76;background:#f0f2f4!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterCellInner>.attendanceRegisterPlaceholder{background:#f0f2f4!important;color:#666d76!important;border-radius:5px!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceBlankMark{color:#666d76;background:#f4f5f7!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterCellInner>.attendanceRegisterPlaceholder{background:#f4f5f7!important;color:#666d76!important;border-radius:5px!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceLinkedMark{color:#249e58;background:#c9f0d8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceAbsentMark{color:#d9464d;background:#fbe0e4!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceMakeupMark{color:#8b5e00;background:#ffefb8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -439,7 +439,7 @@
       return `<th class="dateCol${holidayClass}"${meta.title ? ` title="${esc(meta.title)}"` : ''}><span class="attendanceDateNumber">${meta.day}</span><span class="attendanceDateWeek">${meta.weekday}</span></th>`;
     }).join('');
     const schoolHeader = state.attendanceDivision === 'combined' ? '소속' : (state.attendanceDivision === 'kinder' ? '유치원<br>나이' : '학교<br>학년');
-    const header = `<thead><tr><th class="nameCol">이름</th><th class="schoolGradeCol">${schoolHeader}</th><th class="personalityCol">성</th>${dayHeaders}</tr></thead>`;
+    const header = `<thead><tr><th class="nameCol">이름</th><th class="schoolGradeCol">${schoolHeader}</th><th class="personalityCol">성<br>향</th>${dayHeaders}</tr></thead>`;
     const rowHtml = students.map((student) => {
       const dateCells = dayMeta.map((meta) => {
         if (meta.closed) {
