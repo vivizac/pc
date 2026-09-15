@@ -35,7 +35,7 @@
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  color:#303742;
+  color:#a1a6ae;
   background:#fff;
   font:800 calc(14px * var(--olli-text-scale)) 'Pretendard',sans-serif;
   letter-spacing:-.035em;
@@ -44,15 +44,15 @@
 }
 #olliPcTopbar .olliTtAttendanceDivisionTabs .olliTtDivisionTab:last-child{border-right:0;}
 #olliPcTopbar .olliTtAttendanceDivisionTabs .olliTtDivisionTab:hover:not(.active){
-  color:#1f2732;
-  background:#f7faff;
+  color:#7f8792;
+  background:#fff;
 }
 #olliPcTopbar .olliTtAttendanceDivisionTabs .olliTtDivisionTab.active{
   position:relative;
   z-index:1;
-  color:#fff;
-  border-right-color:#74aaf6;
-  background:#74aaf6;
+  color:#171a20;
+  border-right-color:#dbe5ef;
+  background:#fff;
   box-shadow:none;
 }
 #olliPcTopbar .olliTtAttendanceDivisionTabs .olliTtDivisionTab:focus-visible{
