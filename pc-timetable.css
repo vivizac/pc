@@ -48,8 +48,12 @@
   background:#f7faff;
 }
 #olliPcTopbar .olliTtAttendanceDivisionTabs .olliTtDivisionTab.active{
+  position:relative;
+  z-index:1;
   color:#fff;
+  border-right-color:#74aaf6;
   background:#74aaf6;
+  box-shadow:0 0 0 1px #74aaf6;
 }
 #olliPcTopbar .olliTtAttendanceDivisionTabs .olliTtDivisionTab:focus-visible{
   position:relative;
@@ -710,7 +714,7 @@
 #recordRoomScreen .olliTtAttendanceTable thead th.attendanceSundayHead,
 #recordRoomScreen .olliTtAttendanceTable thead th.attendancePublicHolidayHead {
   background: #fff0f4 !important;
-  color: #a95767 !important;
+  color: #e56d8a !important;
 }
 #recordRoomScreen .olliTtAttendanceTable .attendanceDateNumber,
 #recordRoomScreen .olliTtAttendanceTable .attendanceDateWeek {
@@ -757,12 +761,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #bd5b6d;
+  color: #e56d8a;
   font-size: calc(9px * var(--olli-text-scale));
   font-weight: 850;
   line-height: 1;
 }
-#recordRoomScreen .olliTtAttendanceTable tbody td.attendanceHolidayCell { color: #bd5b6d; }
+#recordRoomScreen .olliTtAttendanceTable tbody td.attendanceHolidayCell { color: #e56d8a; }
 
 /* 출석부 표 꽉채움 + 스크롤바 바깥 배치 */
 #recordRoomScreen .olliTtAttendanceRegister {
