@@ -601,6 +601,19 @@ function buildTodayFeedbackRequestContent(userText, studentName, feedbackMonth) 
 function startTodayFeedbackRequest(options = {}) {
   const feedbackMonth = String(options.feedbackMonth || getFeedbackMonthLabel()).trim();
   const feedbackMonthNumber = Number(options.feedbackMonthNumber || getFeedbackMonthNumber());
+  const canUseKinderChatLive =
+    options.sourcePage === 'kinderChatFeedback' &&
+    typeof window.getKinderChatFeedbackTopMode === 'function' &&
+    window.getKinderChatFeedbackTopMode() === 'live' &&
+    typeof window.startKinderChatFeedbackLiveRequest === 'function';
+  if (canUseKinderChatLive) {
+    return window.startKinderChatFeedbackLiveRequest({
+      ...options,
+      feedbackMonth,
+      feedbackMonthNumber,
+      requestContent: buildTodayFeedbackRequestContent(options.userText || '', options.studentName || '', feedbackMonth)
+    });
+  }
   const item = createTodayFeedbackItem({
     id: options.id,
     status:'generating',
