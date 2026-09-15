@@ -247,7 +247,7 @@
 #recordRoomScreen .olliTtStudent.makeup { border-color: #73b9a5; color: #267763; background: #e5f6f0; }
 #recordRoomScreen .olliTtStudent.trial { border-color: #e6b56e; color: #9a5a10; background: #fff1dc; }
 #recordRoomScreen .olliTtStudent.regular.attended,
-#recordRoomScreen .olliTtStudent.makeup.attended { border-color: transparent; background: #43d878; box-shadow: none; }
+#recordRoomScreen .olliTtStudent.makeup.attended { border-color: transparent; background: #6fdf96; box-shadow: none; }
 #recordRoomScreen .olliTtStudent:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(26, 38, 58, .09); }
 #recordRoomScreen .olliTtStudentTag { float: right; margin-left: 3px; padding: 1px 3px; border: 0; border-radius: 999px; color: #fff; font: 800 calc(7px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 #recordRoomScreen button.olliTtStudentTag { flex: 0 0 auto; margin: 3px 2px 3px 3px; }
