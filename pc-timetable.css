@@ -729,10 +729,18 @@
 #recordRoomScreen .olliTtAttendanceTable .nameCol { width: 64px !important; }
 #recordRoomScreen .olliTtAttendanceTable .schoolGradeCol { width: 51px !important; }
 #recordRoomScreen .olliTtAttendanceTable .personalityCol { width: 20px !important; }
+#recordRoomScreen .olliTtAttendanceTable thead th.schoolGradeCol {
+  line-height: 1.15;
+}
 #recordRoomScreen .olliTtAttendanceTable tbody td.nameCol {
   background: #fafbfc !important;
-  color: #424a56;
+  color: #111318;
   font-weight: 800;
+}
+#recordRoomScreen .olliTtAttendanceTable tbody td.schoolGradeCol,
+#recordRoomScreen .olliTtAttendanceTable tbody td.personalityCol {
+  color: #7b8490;
+  font-weight: 600;
 }
 #recordRoomScreen .olliTtAttendanceTable tbody td.attendanceEmptyCell {
   background: #fff !important;
