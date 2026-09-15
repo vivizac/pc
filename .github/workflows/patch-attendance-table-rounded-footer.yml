@@ -1,0 +1,34 @@
+name: Patch attendance table rounded footer
+on:
+  push:
+    branches:
+      - fix/attendance-table-rounded-footer-20260915
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/attendance-table-rounded-footer-20260915
+      - name: Apply focused attendance table patch
+        run: python .github/scripts/patch-attendance-table-rounded-footer.py
+      - name: Validate JavaScript syntax
+        run: node --check pc-timetable-attendance-register.js
+      - name: Validate intended table styles and footer row
+        run: |
+          grep -q 'attendanceTableFooterRow' pc-timetable.css
+          grep -q 'attendanceTableFooterRow' pc-timetable-attendance-register.js
+          grep -q 'border-collapse: separate !important' pc-timetable.css
+          grep -q 'overflow: hidden;' pc-timetable.css
+          git diff --check
+      - name: Clean temporary patch files and commit
+        run: |
+          rm .github/scripts/patch-attendance-table-rounded-footer.py
+          rm .github/workflows/patch-attendance-table-rounded-footer.yml
+          git config user.name vivizac
+          git config user.email ipro721@gmail.com
+          git add pc-timetable.css pc-timetable-attendance-register.js .github/scripts/patch-attendance-table-rounded-footer.py .github/workflows/patch-attendance-table-rounded-footer.yml
+          git commit -m 'fix: restore attendance table corners and add footer row'
+          git push origin HEAD:fix/attendance-table-rounded-footer-20260915
