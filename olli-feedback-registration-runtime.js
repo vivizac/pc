@@ -223,7 +223,13 @@
     }
 
     if (typeof addKinderChatDocumentMessage === 'function') addKinderChatDocumentMessage(studentName, getKcfStudentFeedbackLabel(student, 'class'), text, 'minute', photoSnapshot);
-    if (typeof addKinderChatMessage === 'function') addKinderChatMessage('bot', '관찰 내용을 부모님께 잘 전달될 수 있도록 정리해둘게요.\n다음 학생 기록을 이어서 작성해 주세요.');
+    var canUseKinderChatLive =
+      typeof window.getKinderChatFeedbackTopMode === 'function' &&
+      window.getKinderChatFeedbackTopMode() === 'live' &&
+      typeof window.startKinderChatFeedbackLiveRequest === 'function';
+    if (!canUseKinderChatLive && typeof addKinderChatMessage === 'function') {
+      addKinderChatMessage('bot', '관찰 내용을 부모님께 잘 전달될 수 있도록 정리해둘게요.\n다음 학생 기록을 이어서 작성해 주세요.');
+    }
     var requestOptions = {
       id: feedbackJobId,
       promptType: getKcfStudentPromptType(student, 'class'),
