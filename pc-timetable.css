@@ -13,7 +13,6 @@
 
 /* 출석부 전용 세그먼트 부서 버튼 */
 #olliPcTopbar .olliTtAttendanceDivisionTabs{
-  position:relative;
   height:40px;
   box-sizing:border-box;
   display:inline-flex;
@@ -24,16 +23,6 @@
   border-radius:16px;
   background:#fff;
   box-shadow:0 1px 2px rgba(24,39,75,.03);
-}
-#olliPcTopbar .olliTtAttendanceDivisionTabs::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  z-index:3;
-  pointer-events:none;
-  box-sizing:border-box;
-  border:1px solid #dbe5ef;
-  border-radius:16px;
 }
 #olliPcTopbar .olliTtAttendanceDivisionTabs .olliTtDivisionTab{
   min-width:94px;
@@ -61,9 +50,6 @@
 #olliPcTopbar .olliTtAttendanceDivisionTabs .olliTtDivisionTab.active{
   position:relative;
   z-index:1;
-  height:calc(100% + 2px);
-  margin-top:-1px;
-  margin-bottom:-1px;
   color:#fff;
   border-right-color:#74aaf6;
   background:#74aaf6;
