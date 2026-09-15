@@ -1,0 +1,42 @@
+name: Patch attendance UI refine
+
+on:
+  push:
+    branches:
+      - tweak/attendance-ui-refine-20260915
+    paths:
+      - '.github/workflows/patch-attendance-ui-refine.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tweak/attendance-ui-refine-20260915
+          fetch-depth: 0
+      - name: Apply focused attendance UI patch
+        run: python .github/tmp/patch_attendance_ui_refine.py
+      - name: Validate JavaScript syntax
+        run: node --check pc-timetable-attendance-register.js
+      - name: Validate intended UI changes
+        shell: bash
+        run: |
+          grep -F 'box-shadow:0 0 0 1px #74aaf6' pc-timetable.css
+          grep -F 'color: #e56d8a !important;' pc-timetable.css
+          grep -F 'attendanceHolidayCell { color: #e56d8a; }' pc-timetable.css
+          grep -F '<th class="personalityCol">성<br>향</th>' pc-timetable-attendance-register.js
+          grep -F 'background:#f4f5f7' pc-timetable-attendance-register.js
+          git diff --check
+      - name: Clean temporary files and commit
+        shell: bash
+        run: |
+          rm -f .github/tmp/patch_attendance_ui_refine.py .github/workflows/patch-attendance-ui-refine.yml
+          git config user.name vivizac
+          git config user.email ipro721@gmail.com
+          git add pc-timetable.css pc-timetable-attendance-register.js .github/tmp/patch_attendance_ui_refine.py .github/workflows/patch-attendance-ui-refine.yml
+          git commit -m 'style: refine attendance tabs and holiday colors'
+          git push origin HEAD:tweak/attendance-ui-refine-20260915
