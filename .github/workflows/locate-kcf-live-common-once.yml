@@ -1,0 +1,28 @@
+name: Locate KCF LIVE common once
+
+on:
+  push:
+    branches:
+      - feature/kcf-live-streaming-common-20260915
+    paths:
+      - .github/workflows/locate-kcf-live-common-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  locate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/kcf-live-streaming-common-20260915
+          fetch-depth: 0
+      - name: Locate KCF common submit
+        run: |
+          echo '=== submitKinderChatFeedback ==='
+          grep -Rni --include='*.js' --include='*.html' 'submitKinderChatFeedback' . || true
+          echo '=== onFeedbackRequestStarted ==='
+          grep -Rni --include='*.js' --include='*.html' 'onFeedbackRequestStarted' . || true
+          echo '=== startTodayFeedbackRequest ==='
+          grep -Rni --include='*.js' --include='*.html' 'startTodayFeedbackRequest' . || true
