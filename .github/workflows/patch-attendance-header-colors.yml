@@ -1,0 +1,40 @@
+name: Patch attendance header colors
+
+on:
+  push:
+    branches:
+      - tweak/attendance-header-colors-20260915
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tweak/attendance-header-colors-20260915
+      - name: Apply focused attendance UI patch
+        run: python .github/tmp/patch_attendance_header_colors.py
+      - name: Validate JavaScript syntax
+        run: node --check pc-timetable-attendance-register.js
+      - name: Validate intended UI changes
+        run: |
+          grep -F 'background:#c9f0d8!important' pc-timetable-attendance-register.js
+          grep -F "'유치원<br>나이'" pc-timetable-attendance-register.js
+          grep -F "'학교<br>학년'" pc-timetable-attendance-register.js
+          grep -F '<th class="personalityCol">성</th>' pc-timetable-attendance-register.js
+          grep -F 'color: #111318;' pc-timetable.css
+          grep -F 'color: #7b8490;' pc-timetable.css
+          grep -F 'font-weight: 600;' pc-timetable.css
+          git diff --check
+      - name: Clean temporary files and commit
+        run: |
+          rm -f .github/tmp/patch_attendance_header_colors.py
+          rm -f .github/workflows/patch-attendance-header-colors.yml
+          git config user.name 'vivizac'
+          git config user.email 'ipro721@gmail.com'
+          git add pc-timetable-attendance-register.js pc-timetable.css .github/tmp/patch_attendance_header_colors.py .github/workflows/patch-attendance-header-colors.yml
+          git commit -m 'style: refine attendance colors and headers'
+          git push origin HEAD:tweak/attendance-header-colors-20260915
