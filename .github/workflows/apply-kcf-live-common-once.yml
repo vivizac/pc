@@ -1,0 +1,84 @@
+name: Apply KCF LIVE common hook once
+
+on:
+  push:
+    branches:
+      - feature/kcf-live-streaming-common-20260915
+    paths:
+      - .github/workflows/apply-kcf-live-common-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/kcf-live-streaming-common-20260915
+          fetch-depth: 0
+
+      - name: Modify shared original sources
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          runtime_path = Path('olli-feedback-runtime.js')
+          runtime = runtime_path.read_text()
+          needle = "function startTodayFeedbackRequest(options = {}) {\n  const feedbackMonth = String(options.feedbackMonth || getFeedbackMonthLabel()).trim();\n  const feedbackMonthNumber = Number(options.feedbackMonthNumber || getFeedbackMonthNumber());\n  const item = createTodayFeedbackItem({"
+          replacement = "function startTodayFeedbackRequest(options = {}) {\n  const feedbackMonth = String(options.feedbackMonth || getFeedbackMonthLabel()).trim();\n  const feedbackMonthNumber = Number(options.feedbackMonthNumber || getFeedbackMonthNumber());\n  const canUseKinderChatLive =\n    options.sourcePage === 'kinderChatFeedback' &&\n    typeof window.getKinderChatFeedbackTopMode === 'function' &&\n    window.getKinderChatFeedbackTopMode() === 'live' &&\n    typeof window.startKinderChatFeedbackLiveRequest === 'function';\n  if (canUseKinderChatLive) {\n    return window.startKinderChatFeedbackLiveRequest({\n      ...options,\n      feedbackMonth,\n      feedbackMonthNumber,\n      requestContent: buildTodayFeedbackRequestContent(options.userText || '', options.studentName || '', feedbackMonth)\n    });\n  }\n  const item = createTodayFeedbackItem({"
+          if runtime.count(needle) != 1:
+              raise SystemExit(f'Expected one startTodayFeedbackRequest insertion point, found {runtime.count(needle)}')
+          runtime_path.write_text(runtime.replace(needle, replacement, 1))
+
+          registration_path = Path('olli-feedback-registration-runtime.js')
+          registration = registration_path.read_text()
+          old = "    if (typeof addKinderChatDocumentMessage === 'function') addKinderChatDocumentMessage(studentName, getKcfStudentFeedbackLabel(student, 'class'), text, 'minute', photoSnapshot);\n    if (typeof addKinderChatMessage === 'function') addKinderChatMessage('bot', '관찰 내용을 부모님께 잘 전달될 수 있도록 정리해둘게요.\\n다음 학생 기록을 이어서 작성해 주세요.');\n    var requestOptions = {"
+          new = "    if (typeof addKinderChatDocumentMessage === 'function') addKinderChatDocumentMessage(studentName, getKcfStudentFeedbackLabel(student, 'class'), text, 'minute', photoSnapshot);\n    var canUseKinderChatLive =\n      typeof window.getKinderChatFeedbackTopMode === 'function' &&\n      window.getKinderChatFeedbackTopMode() === 'live' &&\n      typeof window.startKinderChatFeedbackLiveRequest === 'function';\n    if (!canUseKinderChatLive && typeof addKinderChatMessage === 'function') {\n      addKinderChatMessage('bot', '관찰 내용을 부모님께 잘 전달될 수 있도록 정리해둘게요.\\n다음 학생 기록을 이어서 작성해 주세요.');\n    }\n    var requestOptions = {"
+          if registration.count(old) != 1:
+              raise SystemExit(f'Expected one KCF placeholder block, found {registration.count(old)}')
+          registration_path.write_text(registration.replace(old, new, 1))
+
+          test_path = Path('tests/kcf-live-common-hook.test.cjs')
+          test_path.write_text("""const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+
+const runtime = fs.readFileSync('olli-feedback-runtime.js', 'utf8');
+const registration = fs.readFileSync('olli-feedback-registration-runtime.js', 'utf8');
+
+test('shared feedback runtime delegates only phone LIVE KCF requests before inbox queue creation', () => {
+  const fnStart = runtime.indexOf('function startTodayFeedbackRequest(options = {})');
+  const liveHook = runtime.indexOf("typeof window.startKinderChatFeedbackLiveRequest === 'function'", fnStart);
+  const queueCreate = runtime.indexOf('const item = createTodayFeedbackItem({', fnStart);
+  assert.ok(fnStart >= 0 && liveHook > fnStart && queueCreate > liveHook);
+  assert.match(runtime, /options\.sourcePage === 'kinderChatFeedback'/);
+  assert.match(runtime, /window\.getKinderChatFeedbackTopMode\(\) === 'live'/);
+  assert.match(runtime, /requestContent: buildTodayFeedbackRequestContent/);
+});
+
+test('shared registration keeps old acknowledgement outside LIVE and suppresses it in LIVE', () => {
+  assert.match(registration, /var canUseKinderChatLive =[\s\S]*getKinderChatFeedbackTopMode\(\) === 'live'[\s\S]*startKinderChatFeedbackLiveRequest/);
+  assert.match(registration, /if \(!canUseKinderChatLive && typeof addKinderChatMessage === 'function'\)/);
+  assert.match(registration, /startTodayFeedbackRequest\(requestOptions\)/);
+});
+""")
+          PY
+
+      - name: Validate shared LIVE hook
+        run: |
+          node --check olli-feedback-runtime.js
+          node --check olli-feedback-registration-runtime.js
+          node --test tests/kcf-live-common-hook.test.cjs
+          git diff --check
+
+      - name: Commit source changes and remove temporary workflows
+        run: |
+          rm -f .github/workflows/locate-kcf-live-common-once.yml
+          rm -f .github/workflows/apply-kcf-live-common-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'feat: add shared KCF LIVE request hook'
+          git push origin HEAD:feature/kcf-live-streaming-common-20260915
