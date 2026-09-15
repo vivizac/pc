@@ -810,7 +810,7 @@
     width: 1600px !important;
     min-width: 1600px !important;
     max-width: none !important;
-    overflow: hidden;
+    overflow: visible;
   }
   #recordRoomScreen .olliTtAttendanceTable {
     width: 1600px !important;
@@ -823,6 +823,9 @@
   #recordRoomScreen .olliTtAttendanceTable col.nameCol { width: 88px !important; }
   #recordRoomScreen .olliTtAttendanceTable col.schoolGradeCol { width: 96px !important; }
   #recordRoomScreen .olliTtAttendanceTable col.personalityCol { width: 56px !important; }
+  #recordRoomScreen .olliTtAttendanceTable thead tr:first-child > th:first-child { border-top-left-radius: 20px; }
+  #recordRoomScreen .olliTtAttendanceTable thead tr:first-child > th:last-child { border-top-right-radius: 20px; }
+  #recordRoomScreen .olliTtAttendanceTable tbody tr.attendanceTableFooterRow > td { border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
 
   /* 학생정보 3열은 왼쪽에 고정하고 날짜 열만 가로로 이동 */
   #recordRoomScreen .olliTtAttendanceTable th.nameCol,
