@@ -348,8 +348,8 @@
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell.isSplit .attendanceRegisterCellInner{gap:0;border-radius:5px;overflow:hidden;background:#f4f5f7}
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell.isSplit .attendanceRegisterSegment{border-radius:0!important}
 #recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterSessionCell.isSplit .attendanceRegisterSegment+.attendanceRegisterSegment{border-left:1px solid rgba(255,255,255,.82)}
-#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceBlankMark{color:#666d76;background:#f4f5f7!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterCellInner>.attendanceRegisterPlaceholder{background:#f4f5f7!important;color:#666d76!important;border-radius:5px!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceBlankMark{color:#a5acb5;background:#f4f5f7!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterCellInner>.attendanceRegisterPlaceholder{background:#f4f5f7!important;color:#a5acb5!important;border-radius:5px!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceLinkedMark{color:#249e58;background:#c9f0d8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceAbsentMark{color:#d9464d;background:#fbe0e4!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 #recordRoomScreen .olliTtAttendanceRegisterScroll .attendanceRegisterSegment.attendanceMakeupMark{color:#8b5e00;background:#ffefb8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
