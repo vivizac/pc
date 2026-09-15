@@ -13,6 +13,8 @@
 
 /* 출석부 전용 세그먼트 부서 버튼 */
 #olliPcTopbar .olliTtAttendanceDivisionTabs{
+  height:40px;
+  box-sizing:border-box;
   display:inline-flex;
   align-items:stretch;
   gap:0;
@@ -24,7 +26,8 @@
 }
 #olliPcTopbar .olliTtAttendanceDivisionTabs .olliTtDivisionTab{
   min-width:94px;
-  height:40px;
+  height:100%;
+  box-sizing:border-box;
   padding:0 22px;
   border:0;
   border-right:1px solid #dbe5ef;
@@ -797,14 +800,14 @@
     overscroll-behavior-x: contain;
   }
   #recordRoomScreen .olliTtAttendanceSheet {
-    width: 1500px !important;
-    min-width: 1500px !important;
+    width: 1600px !important;
+    min-width: 1600px !important;
     max-width: none !important;
     overflow: visible;
   }
   #recordRoomScreen .olliTtAttendanceTable {
-    width: 1500px !important;
-    min-width: 1500px !important;
+    width: 1600px !important;
+    min-width: 1600px !important;
     max-width: none !important;
     table-layout: fixed !important;
   }
@@ -815,28 +818,28 @@
     position: sticky !important;
     left: 0;
     z-index: 5;
-    width: 64px !important;
-    min-width: 64px !important;
-    max-width: 64px !important;
+    width: 88px !important;
+    min-width: 88px !important;
+    max-width: 88px !important;
   }
   #recordRoomScreen .olliTtAttendanceTable th.schoolGradeCol,
   #recordRoomScreen .olliTtAttendanceTable td.schoolGradeCol {
     position: sticky !important;
-    left: 64px;
+    left: 88px;
     z-index: 5;
-    width: 51px !important;
-    min-width: 51px !important;
-    max-width: 51px !important;
+    width: 96px !important;
+    min-width: 96px !important;
+    max-width: 96px !important;
     background: #fff !important;
   }
   #recordRoomScreen .olliTtAttendanceTable th.personalityCol,
   #recordRoomScreen .olliTtAttendanceTable td.personalityCol {
     position: sticky !important;
-    left: 115px;
+    left: 184px;
     z-index: 5;
-    width: 20px !important;
-    min-width: 20px !important;
-    max-width: 20px !important;
+    width: 56px !important;
+    min-width: 56px !important;
+    max-width: 56px !important;
     background: #fff !important;
     box-shadow: 5px 0 8px rgba(27,39,58,.055);
   }
