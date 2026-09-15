@@ -1,4 +1,5 @@
 name: Patch iPad attendance horizontal scroll
+# retry after EOF formatting fix
 
 on:
   push:
