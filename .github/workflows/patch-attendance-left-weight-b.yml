@@ -1,0 +1,36 @@
+name: Patch attendance left weight b
+
+on:
+  push:
+    branches:
+      - tweak/attendance-left-weight-20260915-b
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tweak/attendance-left-weight-20260915-b
+          fetch-depth: 0
+      - name: Apply focused attendance text weight patch
+        run: python .github/tmp/patch_attendance_left_weight_b.py
+      - name: Validate intended changes
+        run: |
+          grep -F "#recordRoomScreen .olliTtAttendanceTable tbody td.nameCol {" pc-timetable.css
+          grep -F "  font-weight: 600;" pc-timetable.css
+          grep -F "  font-weight: 400;" pc-timetable.css
+          git diff --check
+      - name: Clean temporary files and commit
+        run: |
+          rm .github/tmp/patch_attendance_left_weight_b.py
+          rm .github/workflows/patch-attendance-left-weight-b.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pc-timetable.css .github/tmp/patch_attendance_left_weight_b.py .github/workflows/patch-attendance-left-weight-b.yml
+          git commit -m "style: 출석부 왼쪽 3열 글자 굵기 조정"
+          git push origin HEAD:tweak/attendance-left-weight-20260915-b
