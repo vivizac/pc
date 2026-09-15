@@ -72,4 +72,4 @@ addition = r'''
 }
 '''
 
-path.write_text(text.rstrip() + addition + '\n', encoding='utf-8')
+path.write_text(text.rstrip() + addition, encoding='utf-8')
