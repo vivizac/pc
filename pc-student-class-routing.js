@@ -23,7 +23,7 @@
   function clean(value) { return String(value == null ? '' : value).trim(); }
   function esc(value) {
     if (typeof global.escapeHtml === 'function') return global.escapeHtml(clean(value));
-    return clean(value).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+    return clean(value).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
   function academyId() {
     try { if (typeof global.getOlliCurrentAcademyId === 'function') return clean(global.getOlliCurrentAcademyId()); } catch (_) {}
