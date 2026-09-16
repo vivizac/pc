@@ -9,6 +9,8 @@
   --pc-sub:#969aa2;
   --pc-blue:#1687ff;
   --pc-blue-soft:#eaf4ff;
+  --pc-scroll-thumb:#d7dade;
+  --pc-scroll-thumb-hover:#c9cdd2;
 }
 html{box-sizing:border-box;}
 *,*::before,*::after{box-sizing:inherit;}
@@ -16,6 +18,19 @@ html,body.olliPcApp{width:100%;height:100%;min-width:0;overflow:hidden;backgroun
 body.olliPcApp{margin:0;color:var(--pc-text);--olli-text-scale:1.00;}
 body.olliPcApp[data-olli-text-size="medium"],html[data-olli-text-size="medium"] body.olliPcApp{--olli-text-scale:1.08;}
 body.olliPcApp[data-olli-text-size="large"],html[data-olli-text-size="large"] body.olliPcApp{--olli-text-scale:1.16;}
+
+/* PC 공통 스크롤바: 보이는 스크롤만 연회색으로 통일하고 기존 숨김 설정은 유지 */
+body.olliPcApp,
+body.olliPcApp *{scrollbar-color:var(--pc-scroll-thumb) transparent;}
+body.olliPcApp::-webkit-scrollbar-track,
+body.olliPcApp *::-webkit-scrollbar-track{background:transparent;}
+body.olliPcApp::-webkit-scrollbar-thumb,
+body.olliPcApp *::-webkit-scrollbar-thumb{background:var(--pc-scroll-thumb);border-radius:999px;}
+body.olliPcApp::-webkit-scrollbar-thumb:hover,
+body.olliPcApp *::-webkit-scrollbar-thumb:hover{background:var(--pc-scroll-thumb-hover);}
+
+/* Vercel이 외부 주입하는 개발용 Toolbar UI만 숨김 */
+vercel-live-feedback{display:none!important;}
 
 .olliPcShell{display:none;position:fixed;inset:0 auto 0 0;width:var(--pc-sidebar-w);z-index:86000;background:#fff;border-right:1px solid var(--pc-line);box-sizing:border-box;}
 .olliPcShell.visible{display:flex;flex-direction:column;}
