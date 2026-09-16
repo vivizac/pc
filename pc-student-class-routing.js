@@ -23,7 +23,7 @@
   function clean(value) { return String(value == null ? '' : value).trim(); }
   function esc(value) {
     if (typeof global.escapeHtml === 'function') return global.escapeHtml(clean(value));
-    return clean(value).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    return clean(value).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
   }
   function academyId() {
     try { if (typeof global.getOlliCurrentAcademyId === 'function') return clean(global.getOlliCurrentAcademyId()); } catch (_) {}
@@ -227,7 +227,7 @@
     host.classList.toggle('collapsed', !registration.expanded);
     const selectedKeys = new Set(registration.selected.map(classKey));
     const selectedCount = registration.selected.length;
-    const header = `<button type="button" class="pcStudentRegistrationClassHead" data-registration-class-toggle="1" aria-expanded="${registration.expanded ? 'true' : 'false'}"><div><strong>수업 클래스</strong><span>시간표에 설정된 클래스만 선택할 수 있습니다.</span></div><span class="pcStudentRegistrationClassHeadRight"><b>${selectedCount} / 2</b><svg class="pcStudentRegistrationClassChevron" aria-hidden="true" viewBox="0 0 24 24"><path d="M7 9.5l5 5 5-5"></path></svg></span></button>`;
+    const header = `<button type="button" class="pcStudentRegistrationClassHead" data-registration-class-toggle="1" aria-expanded="${registration.expanded ? 'true' : 'false'}"><div><strong>수업 클래스 선택</strong></div><span class="pcStudentRegistrationClassHeadRight"><b>${selectedCount} / 2</b><svg class="pcStudentRegistrationClassChevron" aria-hidden="true" viewBox="0 0 24 24"><path d="M7 9.5l5 5 5-5"></path></svg></span></button>`;
     if (!registration.expanded) {
       host.innerHTML = header;
       return;
@@ -531,12 +531,13 @@
     const style = document.createElement('style');
     style.id = 'olliPcStudentClassRoutingStyle';
     style.textContent = `
+      #studentModal .modalCard{scrollbar-width:none;-ms-overflow-style:none;}
+      #studentModal .modalCard::-webkit-scrollbar{width:0;height:0;display:none;}
       #studentModal .pcStudentRegistrationClassPicker{margin:13px 0 14px;padding:14px;border:1px solid #eceef1;border-radius:18px;background:#fafbfc;}
       #studentModal .pcStudentRegistrationClassHead{width:100%;padding:0;border:0;background:transparent;font:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;}
       #studentModal .pcStudentRegistrationClassPicker.expanded .pcStudentRegistrationClassHead{margin-bottom:11px;}
-      #studentModal .pcStudentRegistrationClassHead>div{min-width:0;display:grid;gap:3px;}
-      #studentModal .pcStudentRegistrationClassHead strong{font-size:12px;font-weight:800;color:#31353a;}
-      #studentModal .pcStudentRegistrationClassHead>div>span{font-size:10.5px;font-weight:600;color:#9aa0a8;}
+      #studentModal .pcStudentRegistrationClassHead>div{min-width:0;display:flex;align-items:center;}
+      #studentModal .pcStudentRegistrationClassHead strong{font-size:15px;font-weight:800;color:#31353a;}
       #studentModal .pcStudentRegistrationClassHeadRight{flex:0 0 auto;display:flex;align-items:center;gap:8px;}
       #studentModal .pcStudentRegistrationClassHeadRight b{min-width:42px;height:24px;padding:0 8px;border-radius:999px;background:#eef1f4;color:#5f6670;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-sizing:border-box;}
       #studentModal .pcStudentRegistrationClassChevron{width:18px;height:18px;fill:none;stroke:#8f959d;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s ease;}
