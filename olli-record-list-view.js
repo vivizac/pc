@@ -33,7 +33,7 @@ function renderRecordStatusSection(view, status, label, rowsHtml, emptyText) {
 
 function renderRecordAttendanceLeadIcon() {
   return `<span class="recordStudentArchiveLeadIcon" aria-hidden="true" style="width:36px;height:36px;min-width:36px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 36px;pointer-events:none;">
-    <img src="record-student-archive-icon.png" alt="" draggable="false" style="width:38px;height:38px;display:block;object-fit:contain;pointer-events:none;user-select:none;"/>
+    <img src="record-student-archive-icon.png" alt="" draggable="false" style="width:42px;height:42px;display:block;object-fit:contain;pointer-events:none;user-select:none;"/>
   </span>`;
 }
 
@@ -137,7 +137,6 @@ function renderElementaryRecords(name) {
     + renderRecordStatusSection('elementary', 'paused', '휴원', pausedHtml, '휴원생이 없습니다.')
     + renderRecordStatusSection('elementary', 'withdrawn', '퇴원', withdrawnHtml, '최근 한 달 내 퇴원생이 없습니다.');
 }
-
 function renderKinderRecords(name) {
   const list = document.getElementById('recordList');
   let students = getStudentsByType('kinder');
@@ -368,4 +367,3 @@ async function confirmDeleteRecordBoardSelected() {
   if (!ok) return;
   await deleteRecordBoardStudentByKey(key);
 }
-
