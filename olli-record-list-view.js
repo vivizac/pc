@@ -137,6 +137,7 @@ function renderElementaryRecords(name) {
     + renderRecordStatusSection('elementary', 'paused', '휴원', pausedHtml, '휴원생이 없습니다.')
     + renderRecordStatusSection('elementary', 'withdrawn', '퇴원', withdrawnHtml, '최근 한 달 내 퇴원생이 없습니다.');
 }
+
 function renderKinderRecords(name) {
   const list = document.getElementById('recordList');
   let students = getStudentsByType('kinder');
@@ -367,3 +368,4 @@ async function confirmDeleteRecordBoardSelected() {
   if (!ok) return;
   await deleteRecordBoardStudentByKey(key);
 }
+
