@@ -11,6 +11,7 @@
     division: 'elementary',
     selected: [],
     options: [],
+    expanded: false,
     loading: false,
     loadToken: 0,
     saving: false,
@@ -113,6 +114,14 @@
     return service.loadWeek(monday);
   }
 
+  function cachedWeekForRegistration(effectiveDate) {
+    const service = global.OlliTimetableService;
+    const monday = mondayKey(effectiveDate);
+    if (!service || !monday || typeof service.getCachedWeek !== 'function') return null;
+    try { return service.getCachedWeek(monday); }
+    catch (_) { return null; }
+  }
+
   function buildRegistrationOptions(data, division, effectiveDate) {
     const enrollments = Array.isArray(data && data.enrollments) ? data.enrollments : [];
     const assignments = Array.isArray(data && data.class_teachers) ? data.class_teachers : [];
@@ -167,6 +176,12 @@
     return options;
   }
 
+  function applyRegistrationOptions(data, effectiveDate) {
+    registration.options = buildRegistrationOptions(data, registration.division, effectiveDate);
+    const validKeys = new Set(registration.options.map(classKey));
+    registration.selected = registration.selected.filter((row) => validKeys.has(classKey(row)));
+  }
+
   function ensureRegistrationPickerHost() {
     const modal = document.getElementById('studentModal');
     const card = modal && modal.querySelector('.modalCard');
@@ -208,9 +223,15 @@
   function renderRegistrationPicker() {
     const host = ensureRegistrationPickerHost();
     if (!host) return;
+    host.classList.toggle('expanded', registration.expanded);
+    host.classList.toggle('collapsed', !registration.expanded);
     const selectedKeys = new Set(registration.selected.map(classKey));
     const selectedCount = registration.selected.length;
-    const header = `<div class="pcStudentRegistrationClassHead"><div><strong>수업 클래스</strong><span>시간표에 설정된 클래스만 선택할 수 있습니다.</span></div><b>${selectedCount} / 2</b></div>`;
+    const header = `<button type="button" class="pcStudentRegistrationClassHead" data-registration-class-toggle="1" aria-expanded="${registration.expanded ? 'true' : 'false'}"><div><strong>수업 클래스</strong><span>시간표에 설정된 클래스만 선택할 수 있습니다.</span></div><span class="pcStudentRegistrationClassHeadRight"><b>${selectedCount} / 2</b><svg class="pcStudentRegistrationClassChevron" aria-hidden="true" viewBox="0 0 24 24"><path d="M7 9.5l5 5 5-5"></path></svg></span></button>`;
+    if (!registration.expanded) {
+      host.innerHTML = header;
+      return;
+    }
     if (registration.loading) {
       host.innerHTML = header + '<div class="pcStudentRegistrationClassState">시간표의 클래스와 정원을 확인하고 있어요.</div>';
       return;
@@ -256,17 +277,25 @@
       renderRegistrationPicker();
       return;
     }
-    registration.loading = true;
-    renderRegistrationPicker();
+
+    const cached = cachedWeekForRegistration(effectiveDate);
+    if (cached) {
+      applyRegistrationOptions(cached, effectiveDate);
+      registration.loading = false;
+      renderRegistrationPicker();
+    } else {
+      registration.options = [];
+      registration.loading = true;
+      renderRegistrationPicker();
+    }
+
     try {
       const data = await loadWeekForRegistration(effectiveDate);
       if (token !== registration.loadToken) return;
-      registration.options = buildRegistrationOptions(data, registration.division, effectiveDate);
-      const validKeys = new Set(registration.options.map(classKey));
-      registration.selected = registration.selected.filter((row) => validKeys.has(classKey(row)));
+      applyRegistrationOptions(data, effectiveDate);
     } catch (error) {
       if (token !== registration.loadToken) return;
-      registration.options = [];
+      if (!cached) registration.options = [];
       console.warn('학생 등록 클래스 조회 실패:', error && (error.message || error));
     } finally {
       if (token === registration.loadToken) {
@@ -277,6 +306,12 @@
   }
 
   function onRegistrationClassClick(event) {
+    const toggle = event.target.closest('[data-registration-class-toggle]');
+    if (toggle) {
+      registration.expanded = !registration.expanded;
+      renderRegistrationPicker();
+      return;
+    }
     const button = event.target.closest('[data-registration-class]');
     if (!button || button.disabled) return;
     const option = registration.options.find((row) => classKey(row) === clean(button.dataset.registrationClass));
@@ -349,7 +384,9 @@
       registration.division = type === 'kinder' ? 'kinder' : 'elementary';
       registration.selected = [];
       registration.options = [];
+      registration.expanded = false;
       hideLegacyRegistrationScheduleFields();
+      renderRegistrationPicker();
       setTimeout(refreshRegistrationOptions, 0);
     };
 
@@ -495,11 +532,16 @@
     style.id = 'olliPcStudentClassRoutingStyle';
     style.textContent = `
       #studentModal .pcStudentRegistrationClassPicker{margin:13px 0 14px;padding:14px;border:1px solid #eceef1;border-radius:18px;background:#fafbfc;}
-      #studentModal .pcStudentRegistrationClassHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:11px;}
-      #studentModal .pcStudentRegistrationClassHead>div{display:grid;gap:3px;}
+      #studentModal .pcStudentRegistrationClassHead{width:100%;padding:0;border:0;background:transparent;font:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;}
+      #studentModal .pcStudentRegistrationClassPicker.expanded .pcStudentRegistrationClassHead{margin-bottom:11px;}
+      #studentModal .pcStudentRegistrationClassHead>div{min-width:0;display:grid;gap:3px;}
       #studentModal .pcStudentRegistrationClassHead strong{font-size:12px;font-weight:800;color:#31353a;}
-      #studentModal .pcStudentRegistrationClassHead span{font-size:10.5px;font-weight:600;color:#9aa0a8;}
-      #studentModal .pcStudentRegistrationClassHead b{min-width:42px;height:24px;padding:0 8px;border-radius:999px;background:#eef1f4;color:#5f6670;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-sizing:border-box;}
+      #studentModal .pcStudentRegistrationClassHead>div>span{font-size:10.5px;font-weight:600;color:#9aa0a8;}
+      #studentModal .pcStudentRegistrationClassHeadRight{flex:0 0 auto;display:flex;align-items:center;gap:8px;}
+      #studentModal .pcStudentRegistrationClassHeadRight b{min-width:42px;height:24px;padding:0 8px;border-radius:999px;background:#eef1f4;color:#5f6670;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;box-sizing:border-box;}
+      #studentModal .pcStudentRegistrationClassChevron{width:18px;height:18px;fill:none;stroke:#8f959d;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s ease;}
+      #studentModal .pcStudentRegistrationClassPicker.expanded .pcStudentRegistrationClassChevron{transform:rotate(180deg);}
+      #studentModal .pcStudentRegistrationClassHead:focus-visible{outline:2px solid rgba(22,135,255,.24);outline-offset:5px;border-radius:8px;}
       #studentModal .pcStudentRegistrationClassState{min-height:62px;border-radius:13px;background:#f2f4f6;color:#9298a0;font-size:11px;line-height:1.55;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px;box-sizing:border-box;}
       #studentModal .pcStudentRegistrationSlot{padding:11px 0;border-top:1px solid #eef0f2;}
       #studentModal .pcStudentRegistrationSlot:first-of-type{border-top:0;padding-top:2px;}
