@@ -67,7 +67,9 @@
     });
     return {
       enrollments: Array.isArray(result.enrollments) ? result.enrollments : [],
-      pickups: Array.isArray(result.pickups) ? result.pickups : []
+      pickups: Array.isArray(result.pickups) ? result.pickups : [],
+      feedbackTeacherMemberId: clean(result.feedback_teacher_member_id),
+      feedbackTeacherName: clean(result.feedback_teacher_name)
     };
   }
 
@@ -76,7 +78,7 @@
   }
 
 
-  function primaryEnrollmentForTeacher(rows) {
+  function primaryEnrollmentForFeedbackTeacher(rows) {
     return (Array.isArray(rows) ? rows : []).slice().sort((a, b) => {
       const aOrder = Number(a && a.session_order);
       const bOrder = Number(b && b.session_order);
@@ -90,10 +92,10 @@
     })[0] || null;
   }
 
-  function resolveTimetableTeacherName(division, enrollments, assignments) {
-    const first = primaryEnrollmentForTeacher(enrollments);
+  function resolveFeedbackTeacherName(division, enrollments, assignments) {
+    const first = primaryEnrollmentForFeedbackTeacher(enrollments);
     if (!first) return '';
-    const directTeacher = clean(first.teacher_name);
+    const directTeacher = clean(first.class_teacher_name || first.teacher_name);
     if (directTeacher) return directTeacher;
     const group = clean(first.class_group || 'A').toUpperCase() || 'A';
     const matched = (Array.isArray(assignments) ? assignments : []).find((item) =>
@@ -102,7 +104,7 @@
       && Number(item && item.time_slot) === Number(first.time_slot)
       && (clean(item && item.class_group).toUpperCase() || 'A') === group
     );
-    return clean(matched && matched.teacher_name);
+    return clean(matched && (matched.class_teacher_name || matched.teacher_name));
   }
 
   async function setAuthoritativeSchedule(studentId, pairs) {
@@ -485,7 +487,7 @@
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><div class="modalLabel">이름</div><input class="modalInput" id="elementaryInfoNameInput"></div>
           <div class="pcStudentInfoField"><div class="modalLabel">성향</div><div id="elementaryPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">담임 · 시간표 1회차 기준</div><div class="pcStudentInfoTeacherReadonly ${clean(student.__olli_timetable_teacher) ? '' : 'isEmpty'}">${esc(student.__olli_timetable_teacher || '미지정')}</div></div>
+          <div class="pcStudentInfoField"><div class="modalLabel">피드백 담임 · 1회차 수업 기준</div><div class="pcStudentInfoTeacherReadonly ${clean(student.__olli_feedback_teacher || student.__olli_timetable_teacher) ? '' : 'isEmpty'}">${esc(student.__olli_feedback_teacher || student.__olli_timetable_teacher || '미지정')}</div></div>
         </div>
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><div class="modalLabel">학교</div><input class="modalInput" id="elementarySchoolInput"></div>
@@ -528,7 +530,7 @@
         <div class="pcStudentInfoGrid3">
           <div class="pcStudentInfoField"><div class="modalLabel">이름</div><input class="modalInput" id="kinderInfoNameInput"></div>
           <div class="pcStudentInfoField"><div class="modalLabel">성향</div><div id="kinderPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>
-          <div class="pcStudentInfoField"><div class="modalLabel">담임 · 시간표 1회차 기준</div><div class="pcStudentInfoTeacherReadonly ${clean(student.__olli_timetable_teacher) ? '' : 'isEmpty'}">${esc(student.__olli_timetable_teacher || '미지정')}</div></div>
+          <div class="pcStudentInfoField"><div class="modalLabel">피드백 담임 · 1회차 수업 기준</div><div class="pcStudentInfoTeacherReadonly ${clean(student.__olli_feedback_teacher || student.__olli_timetable_teacher) ? '' : 'isEmpty'}">${esc(student.__olli_feedback_teacher || student.__olli_timetable_teacher || '미지정')}</div></div>
         </div>
         <div class="pcStudentInfoGrid2">
           <div class="pcStudentInfoField"><div class="modalLabel">유치원</div><input class="modalInput" id="kinderKindergartenInput"></div>
@@ -570,15 +572,16 @@
     return { year: y, month: String(m), day: String(d), enrolled_at: `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` };
   }
 
-  async function renderStudentInfoCard(student, enrollments, teacherAssignments, pickups = []) {
+  async function renderStudentInfoCard(student, enrollments, teacherAssignments, pickups = [], feedbackTeacherName = '') {
     const panel = document.getElementById('pcAttendanceDetailPanel');
     if (!panel) throw new Error('학생정보를 표시할 관찰기록 카드를 찾지 못했습니다.');
     const division = student.type === 'kinder' ? 'kinder' : 'elementary';
     const fields = lessonFieldsFromEnrollments(enrollments);
-    const timetableTeacher = resolveTimetableTeacherName(division, enrollments, teacherAssignments);
+    const feedbackTeacher = clean(feedbackTeacherName) || resolveFeedbackTeacherName(division, enrollments, teacherAssignments);
     const authoritativeStudent = Object.assign({}, student, fields, {
       class_time: fields.lesson_time,
-      __olli_timetable_teacher: timetableTeacher,
+      __olli_feedback_teacher: feedbackTeacher,
+      __olli_timetable_teacher: feedbackTeacher, // legacy derived alias
       __olli_authoritative_enrollments: enrollments,
       __olli_authoritative_pickups: pickups
     });
@@ -657,7 +660,7 @@
       const teacherAssignments = [];
       student = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;
       if (cardState.studentId !== id) return;
-      await renderStudentInfoCard(student, context.enrollments, teacherAssignments, context.pickups);
+      await renderStudentInfoCard(student, context.enrollments, teacherAssignments, context.pickups, context.feedbackTeacherName);
     } catch (error) {
       if (cardState.studentId !== id) return;
       panel.innerHTML = infoHeadHtml('info') + `<div class="pcStudentInfoLoading">${esc(error.message || '학생정보를 불러오지 못했습니다.')}</div>`;
@@ -699,7 +702,8 @@
       if (!dateInfo) throw new Error('등록 날짜를 올바르게 입력해 주세요.');
 
       const profileBase = Object.assign({}, target);
-      // 담임은 학생정보 저장 대상이 아닙니다. 시간표의 반 담당 정보만 원본으로 사용합니다.
+      // 피드백 담임은 학생정보 저장 대상이 아닙니다. 1회차 클래스 담임에서 계산합니다.
+      delete profileBase.__olli_feedback_teacher;
       delete profileBase.__olli_timetable_teacher;
       delete profileBase.__olli_authoritative_enrollments;
 
@@ -822,7 +826,7 @@
       if (!isCurrent() || cardState.dirty || cardState.saveInFlight) return false;
       const teacherAssignments = [];
       if (!isCurrent() || cardState.dirty || cardState.saveInFlight) return false;
-      await renderStudentInfoCard(latest, context.enrollments, teacherAssignments, context.pickups);
+      await renderStudentInfoCard(latest, context.enrollments, teacherAssignments, context.pickups, context.feedbackTeacherName);
       return true;
     } catch (error) {
       console.warn('학생정보 Realtime 최신본 확인 실패:', error && (error.message || error));

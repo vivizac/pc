@@ -15,7 +15,7 @@
     return raw.replace(/[^a-zA-Z0-9_-]/g, (char) => `\\${char}`);
   }
 
-  function selectedTeacherLabel(grid) {
+  function selectedClassTeacherLabel(grid) {
     const active = grid && grid.querySelector('[data-tt-class-teacher].active');
     return clean(active && active.textContent) || '미지정';
   }
@@ -31,7 +31,7 @@
       toggle.type = 'button';
       toggle.className = 'olliTtTeacherPickerToggle';
       toggle.setAttribute('aria-expanded', 'false');
-      toggle.innerHTML = `<span>담임 선택</span><strong>${selectedTeacherLabel(grid)}</strong><span class="olliTtTeacherPickerArrow" aria-hidden="true">⌄</span>`;
+      toggle.innerHTML = `<span>클래스 담임 선택</span><strong>${selectedClassTeacherLabel(grid)}</strong><span class="olliTtTeacherPickerArrow" aria-hidden="true">⌄</span>`;
 
       grid.parentNode.insertBefore(picker, grid);
       picker.appendChild(toggle);
@@ -47,7 +47,7 @@
     });
   }
 
-  function teacherLabelFromEnrollment(enrollmentId) {
+  function classTeacherLabelFromEnrollment(enrollmentId) {
     const id = clean(enrollmentId);
     if (!id) return '';
     const entry = document.querySelector(`#olliTtRoot .olliTtStudentMore[data-enrollment-id="${cssEscape(id)}"]`);
@@ -65,7 +65,7 @@
       label = clean(head && head.textContent);
     }
 
-    // 반 이름(A반/B반)은 담임명이 아니므로 제외합니다.
+    // 반 이름(A반/B반)은 클래스 담임명이 아니므로 제외합니다.
     return /T$/i.test(label) ? label : '';
   }
 
@@ -73,7 +73,7 @@
     if (!dialog.querySelector('.olliTtModeCards')) return;
     dialog.querySelectorAll('.olliTtField').forEach((field) => {
       const title = clean(field.querySelector('.olliTtFieldHead > span') && field.querySelector('.olliTtFieldHead > span').textContent);
-      if (title === '담임' && !field.closest('.olliTtModeCard')) field.remove();
+      if ((title === '담임' || title === '클래스 담임') && !field.closest('.olliTtModeCard')) field.remove();
     });
   }
 
@@ -86,9 +86,9 @@
       const enrollmentId = clean(source && source.dataset.ttSource);
       if (!strong || !enrollmentId || strong.dataset.olliTeacherInline === '1') return;
 
-      const teacher = teacherLabelFromEnrollment(enrollmentId);
-      if (teacher && !clean(strong.textContent).includes(teacher)) {
-        strong.textContent = `${clean(strong.textContent)} · ${teacher}`;
+      const classTeacher = classTeacherLabelFromEnrollment(enrollmentId);
+      if (classTeacher && !clean(strong.textContent).includes(classTeacher)) {
+        strong.textContent = `${clean(strong.textContent)} · 클래스 담임 ${classTeacher}`;
       }
       strong.dataset.olliTeacherInline = '1';
     });
