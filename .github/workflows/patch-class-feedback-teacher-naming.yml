@@ -1,0 +1,113 @@
+name: Patch class and feedback teacher naming
+
+on:
+  push:
+    branches:
+      - fix/class-feedback-teacher-naming
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/class-feedback-teacher-naming
+          fetch-depth: 0
+
+      - name: Patch original PC source files
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path, old, new, count=None):
+              p = Path(path)
+              text = p.read_text(encoding='utf-8')
+              found = text.count(old)
+              if found == 0:
+                  raise SystemExit(f'{path}: expected text not found: {old[:140]!r}')
+              if count is not None and found != count:
+                  raise SystemExit(f'{path}: expected {count} matches, found {found}: {old[:140]!r}')
+              p.write_text(text.replace(old, new), encoding='utf-8')
+
+          path = 'pc-student-info-card-runtime.js'
+
+          replace_exact(path,
+          """    return {\n      enrollments: Array.isArray(result.enrollments) ? result.enrollments : [],\n      pickups: Array.isArray(result.pickups) ? result.pickups : []\n    };""",
+          """    return {\n      enrollments: Array.isArray(result.enrollments) ? result.enrollments : [],\n      pickups: Array.isArray(result.pickups) ? result.pickups : [],\n      feedbackTeacherMemberId: clean(result.feedback_teacher_member_id),\n      feedbackTeacherName: clean(result.feedback_teacher_name)\n    };""", 1)
+
+          replace_exact(path, 'function primaryEnrollmentForTeacher(rows) {', 'function primaryEnrollmentForFeedbackTeacher(rows) {', 1)
+          replace_exact(path, 'function resolveTimetableTeacherName(division, enrollments, assignments) {', 'function resolveFeedbackTeacherName(division, enrollments, assignments) {', 1)
+          replace_exact(path, 'const first = primaryEnrollmentForTeacher(enrollments);', 'const first = primaryEnrollmentForFeedbackTeacher(enrollments);', 1)
+          replace_exact(path, 'const directTeacher = clean(first.teacher_name);', 'const directTeacher = clean(first.class_teacher_name || first.teacher_name);', 1)
+          replace_exact(path, 'return clean(matched && matched.teacher_name);', 'return clean(matched && (matched.class_teacher_name || matched.teacher_name));', 1)
+
+          replace_exact(path, '담임 · 시간표 1회차 기준', '피드백 담임 · 1회차 수업 기준', 2)
+          replace_exact(path, "clean(student.__olli_timetable_teacher) ? '' : 'isEmpty'", "clean(student.__olli_feedback_teacher || student.__olli_timetable_teacher) ? '' : 'isEmpty'", 2)
+          replace_exact(path, "esc(student.__olli_timetable_teacher || '미지정')", "esc(student.__olli_feedback_teacher || student.__olli_timetable_teacher || '미지정')", 2)
+
+          replace_exact(path,
+          'async function renderStudentInfoCard(student, enrollments, teacherAssignments, pickups = []) {',
+          "async function renderStudentInfoCard(student, enrollments, teacherAssignments, pickups = [], feedbackTeacherName = '') {", 1)
+          replace_exact(path,
+          """    const fields = lessonFieldsFromEnrollments(enrollments);\n    const timetableTeacher = resolveTimetableTeacherName(division, enrollments, teacherAssignments);\n    const authoritativeStudent = Object.assign({}, student, fields, {\n      class_time: fields.lesson_time,\n      __olli_timetable_teacher: timetableTeacher,""",
+          """    const fields = lessonFieldsFromEnrollments(enrollments);\n    const feedbackTeacher = clean(feedbackTeacherName) || resolveFeedbackTeacherName(division, enrollments, teacherAssignments);\n    const authoritativeStudent = Object.assign({}, student, fields, {\n      class_time: fields.lesson_time,\n      __olli_feedback_teacher: feedbackTeacher,\n      __olli_timetable_teacher: feedbackTeacher, // legacy derived alias""", 1)
+
+          replace_exact(path,
+                        'await renderStudentInfoCard(student, context.enrollments, teacherAssignments, context.pickups);',
+                        'await renderStudentInfoCard(student, context.enrollments, teacherAssignments, context.pickups, context.feedbackTeacherName);', 1)
+          replace_exact(path,
+                        'await renderStudentInfoCard(latest, context.enrollments, teacherAssignments, context.pickups);',
+                        'await renderStudentInfoCard(latest, context.enrollments, teacherAssignments, context.pickups, context.feedbackTeacherName);', 1)
+
+          replace_exact(path,
+                        '// 담임은 학생정보 저장 대상이 아닙니다. 시간표의 반 담당 정보만 원본으로 사용합니다.\n      delete profileBase.__olli_timetable_teacher;',
+                        '// 피드백 담임은 학생정보 저장 대상이 아닙니다. 1회차 클래스 담임에서 계산합니다.\n      delete profileBase.__olli_feedback_teacher;\n      delete profileBase.__olli_timetable_teacher;', 1)
+
+          # 시간표의 반 담당 UI는 클래스 담임이라고 명시합니다.
+          path = 'pc-timetable-teacher-ui.js'
+          replace_exact(path, 'function selectedTeacherLabel(grid) {', 'function selectedClassTeacherLabel(grid) {', 1)
+          replace_exact(path, '${selectedTeacherLabel(grid)}', '${selectedClassTeacherLabel(grid)}', 1)
+          replace_exact(path, '<span>담임 선택</span>', '<span>클래스 담임 선택</span>', 1)
+          replace_exact(path, 'function teacherLabelFromEnrollment(enrollmentId) {', 'function classTeacherLabelFromEnrollment(enrollmentId) {', 1)
+          replace_exact(path, 'const teacher = teacherLabelFromEnrollment(enrollmentId);', 'const classTeacher = classTeacherLabelFromEnrollment(enrollmentId);', 1)
+          replace_exact(path,
+                        "if (teacher && !clean(strong.textContent).includes(teacher)) {\n        strong.textContent = `${clean(strong.textContent)} · ${teacher}`;\n      }",
+                        "if (classTeacher && !clean(strong.textContent).includes(classTeacher)) {\n        strong.textContent = `${clean(strong.textContent)} · 클래스 담임 ${classTeacher}`;\n      }", 1)
+          replace_exact(path, '// 반 이름(A반/B반)은 담임명이 아니므로 제외합니다.', '// 반 이름(A반/B반)은 클래스 담임명이 아니므로 제외합니다.', 1)
+          replace_exact(path,
+                        "if (title === '담임' && !field.closest('.olliTtModeCard')) field.remove();",
+                        "if ((title === '담임' || title === '클래스 담임') && !field.closest('.olliTtModeCard')) field.remove();", 1)
+
+          # 회귀 테스트를 역할 이름에 맞게 강화합니다.
+          test_path = Path('tests/student-info-teacher-single-source.test.cjs')
+          test = test_path.read_text(encoding='utf-8')
+          test = test.replace("test('PC student info reads teacher only from student enrollment response', () => {",
+                              "test('PC student info derives feedback teacher only from the student schedule response', () => {")
+          test = test.replace("  assert.ok(!source.includes(\"scheduleRpc('olli_schedule_class_teacher_context'\"));\n});",
+          "  assert.ok(!source.includes(\"scheduleRpc('olli_schedule_class_teacher_context'\"));\n  assert.ok(source.includes('feedbackTeacherName: clean(result.feedback_teacher_name)'));\n  assert.ok(source.includes('피드백 담임 · 1회차 수업 기준'));\n  assert.ok(source.includes('__olli_feedback_teacher: feedbackTeacher'));\n});")
+          test += """\n\ntest('teacher-role migration keeps one class-teacher source and derives feedback teacher', () => {\n  const sql = fs.readFileSync('supabase/migrations/20260917190000_clarify_class_and_feedback_teacher_roles.sql', 'utf8');\n  assert.ok(sql.includes('class_teacher_member_id'));\n  assert.ok(sql.includes('class_teacher_name'));\n  assert.ok(sql.includes('feedback_teacher_member_id'));\n  assert.ok(sql.includes('feedback_teacher_name'));\n  assert.ok(sql.includes('from public.olli_schedule_class_teachers ct'));\n  assert.ok(!sql.includes('create table public.olli_schedule_feedback'));\n});\n\ntest('timetable teacher picker is explicitly a class teacher picker', () => {\n  const source = fs.readFileSync('pc-timetable-teacher-ui.js', 'utf8');\n  assert.ok(source.includes('클래스 담임 선택'));\n  assert.ok(source.includes('function selectedClassTeacherLabel'));\n  assert.ok(source.includes('function classTeacherLabelFromEnrollment'));\n});\n"""
+          test_path.write_text(test, encoding='utf-8')
+          PY
+
+      - name: Syntax check
+        run: |
+          node --check pc-student-info-card-runtime.js
+          node --check pc-timetable-teacher-ui.js
+
+      - name: Regression tests
+        run: node --test tests/*.test.cjs
+
+      - name: Commit tested PC source changes once
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/patch-class-feedback-teacher-naming.yml
+          git add pc-student-info-card-runtime.js pc-timetable-teacher-ui.js tests/student-info-teacher-single-source.test.cjs
+          git commit -m "refactor: distinguish class and feedback teachers"
+          git push origin HEAD:fix/class-feedback-teacher-naming
