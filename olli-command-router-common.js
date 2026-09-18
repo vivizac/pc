@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-18-write-commands-3';
+  const VERSION = '2026-09-18-write-commands-4';
   let pendingWriteCommand = null;
 
   function cleanText(value) {
@@ -30,10 +30,10 @@
   }
 
   function detectPurpose(compact) {
-    if (/체험/.test(compact)) return 'trial';
-    if (/보강/.test(compact)) return 'makeup';
-    if (/수업(?:이동|변경)|옮길|옮기는|옮겨|이동가능|변경가능/.test(compact)) return 'schedule_move';
-    if (/신규|신입|새학생|새원생|신규등록/.test(compact)) return 'new_enrollment';
+    if (/(?:체험|체험수업|체험클래스)/.test(compact)) return 'trial';
+    if (/(?:보강|보충수업|보충)/.test(compact)) return 'makeup';
+    if (/(?:수업|시간표)?(?:이동|변경)|옮길|옮기는|옮겨|바꿀|바꾸는|이동가능|변경가능/.test(compact)) return 'schedule_move';
+    if (/신규|신입|새학생|새원생|신규등록|처음등록/.test(compact)) return 'new_enrollment';
     return 'unknown';
   }
 
@@ -42,6 +42,76 @@
       .replace(/(?:초등부|초등|유치부|유치원|유치|유아)/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  function hasMakeupWord(value) {
+    return /(?:보강|보충(?:수업)?)/.test(compactText(value));
+  }
+
+  function hasWaitlistWord(value) {
+    return /(?:대기|웨이팅)/.test(compactText(value));
+  }
+
+  function hasTrialWord(value) {
+    return /(?:체험(?:수업)?|체험클래스)/.test(compactText(value));
+  }
+
+  function hasAddAction(value) {
+    return /(?:넣|등록|추가|잡|예약|배정|신청)/.test(compactText(value));
+  }
+
+  function hasRemoveAction(value) {
+    return /(?:취소|삭제|지워|지우|제거|빼|해제)/.test(compactText(value));
+  }
+
+  function hasMoveAction(value) {
+    return /(?:변경|옮|이동|바꿔|바꾸)/.test(compactText(value));
+  }
+
+  function firstTimeSlot(value) {
+    const match = cleanText(value).match(/(\d{1,2})\s*시/);
+    return Number(match && match[1] || 0);
+  }
+
+  function firstClassGroup(value) {
+    const match = cleanText(value).match(/([AaBb])\s*반/i);
+    return cleanText(match && match[1]).toUpperCase();
+  }
+
+  function weekdayTimeMentions(value) {
+    return Array.from(cleanText(value).matchAll(/([월화수목금토])요일(?:\s*(\d{1,2})\s*시)?/g)).map(match => ({
+      weekday:WEEKDAY_MAP[match[1]] || 0,
+      timeSlot:Number(match[2] || 0)
+    }));
+  }
+
+  function stripCommonCommandParts(value) {
+    return removeDivisionWords(value)
+      .replace(/[.!?,]/g, ' ')
+      .replace(/(?:오늘|내일|(?:(?:이번\s*주|다음\s*주)\s*)?[월화수목금토]요일)/g, ' ')
+      .replace(/\d{1,2}\s*시(?:에|로|으로)?/g, ' ')
+      .replace(/[AaBb]\s*반/g, ' ')
+      .replace(/(?:잡혀\s*있는|잡혀있는|잡혀\s*있던|등록되어\s*있는|등록되어있는|등록된|예약되어\s*있는|예약되어있는|예약된|예정된)/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function cleanupStudentName(value) {
+    return cleanText(value)
+      .replace(/^(?:학생|원생)\s*/, '')
+      .replace(/\s*(?:학생|원생)$/, '')
+      .replace(/(?:의|꺼|것)$/, '')
+      .replace(/^(?:의|꺼|것)\s*/, '')
+      .replace(/(?:^|\s)(?:에서|으로|로|을|를|에|에게|한테)(?=\s|$)/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function extractStudentName(value, domainPattern, actionPattern) {
+    let stripped = stripCommonCommandParts(value);
+    if (domainPattern) stripped = stripped.replace(domainPattern, ' ');
+    if (actionPattern) stripped = stripped.replace(actionPattern, ' ');
+    return cleanupStudentName(stripped);
   }
 
   const WEEKDAY_MAP = Object.freeze({ 월:1, 화:2, 수:3, 목:4, 금:5, 토:6 });
@@ -106,45 +176,48 @@
   function parseScheduleMoveMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !/(?:변경|옮겨|옮길|이동시켜|이동해|바꿔)/.test(compact)) return null;
+    if (!raw || !hasMoveAction(compact) || hasRemoveAction(compact)) return null;
 
-    const match = raw.match(/^\s*(.*?)\s*([월화수목금토])요일(?:\s*(\d{1,2})시)?\s*수업(?:을|에서)?\s*([월화수목금토])요일\s*(\d{1,2})시(?:\s*([AaBb])반)?(?:로)?\s*(?:변경|옮겨(?:줘)?|이동(?:시켜|해)?|바꿔(?:줘)?)\s*[.!?]?\s*$/);
-    if (!match) return null;
+    const mentions = weekdayTimeMentions(raw);
+    if (mentions.length < 2) return null;
 
-    const studentName = cleanText(match[1]);
-    const sourceWeekday = WEEKDAY_MAP[match[2]] || 0;
-    const sourceTimeSlot = Number(match[3] || 0);
-    const targetWeekday = WEEKDAY_MAP[match[4]] || 0;
-    const targetTimeSlot = Number(match[5] || 0);
-    const classGroup = cleanText(match[6]).toUpperCase();
-    if (!sourceWeekday || !targetWeekday || !targetTimeSlot) return null;
+    const source = mentions[0];
+    const target = mentions[1];
+    if (!source.weekday || !target.weekday || !target.timeSlot) return null;
+
+    const studentName = extractStudentName(
+      raw,
+      /(?:정규\s*)?수업(?:시간)?|시간표/g,
+      /(?:변경|옮겨(?:줘|주세요|줄래)?|옮기(?:고|기|자)?|이동(?:시켜|해|해줘|해주세요|할래)?|바꿔(?:줘|주세요)?|바꾸(?:어|고|자|기)?)(?:줘|주세요|해줘|해주세요)?/g
+    );
+    if (!studentName) return null;
 
     return {
-      type: 'mutation',
-      intent: 'move_class',
+      type:'mutation',
+      intent:'move_class',
       studentName,
-      sourceWeekday,
-      sourceTimeSlot,
-      targetWeekday,
-      targetTimeSlot,
-      classGroup,
-      originalText: raw
+      sourceWeekday:source.weekday,
+      sourceTimeSlot:source.timeSlot,
+      targetWeekday:target.weekday,
+      targetTimeSlot:target.timeSlot,
+      classGroup:firstClassGroup(raw),
+      originalText:raw
     };
   }
 
   function parseMakeupMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !/보강/.test(compact) || !/(?:넣어|등록|잡아|추가)/.test(compact)) return null;
+    if (!raw || !hasMakeupWord(compact) || hasRemoveAction(compact) || !hasAddAction(compact)) return null;
 
-    const match = raw.match(/^\s*(.*?)\s*(오늘|내일|(?:(?:이번\s*주|다음\s*주)\s*)?[월화수목금토]요일)\s*(\d{1,2})시(?:에)?(?:\s*([AaBb])반)?\s*보강(?:으로)?\s*(?:넣어(?:줘)?|등록(?:해줘|해|해줘요)?|잡아(?:줘)?|추가(?:해줘|해)?)\s*[.!?]?\s*$/);
-    if (!match) return null;
-
-    const studentName = cleanText(match[1]);
-    const dateSpec = parseDateExpression(compactText(match[2]));
-    const timeSlot = Number(match[3] || 0);
-    const classGroup = cleanText(match[4]).toUpperCase();
-    if (!dateSpec || !timeSlot) return null;
+    const dateSpec = parseDateExpression(compact);
+    const timeSlot = firstTimeSlot(raw);
+    const studentName = extractStudentName(
+      raw,
+      /(?:보강|보충(?:수업)?)(?:수업)?(?:으로|에|을|를)?/g,
+      /(?:넣어?|등록|추가|잡아?|예약|배정|신청)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
+    );
+    if (!studentName || !dateSpec || !timeSlot) return null;
 
     return {
       type:'mutation',
@@ -153,7 +226,7 @@
       dateSpec,
       dateLabel:dateSpec.label,
       timeSlot,
-      classGroup,
+      classGroup:firstClassGroup(raw),
       originalText:raw
     };
   }
@@ -161,28 +234,26 @@
   function parseWaitlistMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !/대기/.test(compact) || /취소/.test(compact) || !/(?:넣어|등록|추가|잡아)/.test(compact)) return null;
+    if (!raw || !hasWaitlistWord(compact) || hasRemoveAction(compact) || !hasAddAction(compact)) return null;
 
-    const division = detectDivision(compact);
-    const normalized = removeDivisionWords(raw);
-    const match = normalized.match(/^\s*(.*?)\s*(오늘|내일|(?:(?:이번\s*주|다음\s*주)\s*)?[월화수목금토]요일)\s*(\d{1,2})시(?:에)?(?:\s*([AaBb])반)?\s*(?:대기(?:에|로)?|대기자(?:로)?)\s*(?:넣어(?:줘)?|등록(?:해줘|해|해줘요)?|추가(?:해줘|해)?|잡아(?:줘)?)\s*[.!?]?\s*$/);
-    if (!match) return null;
-
-    const studentName = cleanText(match[1]);
-    const dateSpec = parseDateExpression(compactText(match[2]));
-    const timeSlot = Number(match[3] || 0);
-    const classGroup = cleanText(match[4]).toUpperCase();
-    if (!dateSpec || !timeSlot) return null;
+    const dateSpec = parseDateExpression(compact);
+    const timeSlot = firstTimeSlot(raw);
+    const studentName = extractStudentName(
+      raw,
+      /(?:대기(?:자)?|웨이팅)(?:에|로|을|를)?/g,
+      /(?:넣어?|등록|추가|잡아?|예약|배정|신청)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
+    );
+    if (!studentName || !dateSpec || !timeSlot) return null;
 
     return {
       type:'mutation',
       intent:'add_waitlist',
       studentName,
-      division,
+      division:detectDivision(compact),
       dateSpec,
       dateLabel:dateSpec.label,
       timeSlot,
-      classGroup,
+      classGroup:firstClassGroup(raw),
       originalText:raw
     };
   }
@@ -190,28 +261,26 @@
   function parseTrialMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !/체험/.test(compact) || /취소/.test(compact) || !/(?:넣어|등록|추가|잡아)/.test(compact)) return null;
+    if (!raw || !hasTrialWord(compact) || hasRemoveAction(compact) || !hasAddAction(compact)) return null;
 
-    const division = detectDivision(compact);
-    const normalized = removeDivisionWords(raw);
-    const match = normalized.match(/^\s*(.*?)\s*(오늘|내일|(?:(?:이번\s*주|다음\s*주)\s*)?[월화수목금토]요일)\s*(\d{1,2})시(?:에)?(?:\s*([AaBb])반)?\s*체험(?:수업)?(?:으로)?\s*(?:넣어(?:줘)?|등록(?:해줘|해|해줘요)?|추가(?:해줘|해)?|잡아(?:줘)?)\s*[.!?]?\s*$/);
-    if (!match) return null;
-
-    const guestName = cleanText(match[1]);
-    const dateSpec = parseDateExpression(compactText(match[2]));
-    const timeSlot = Number(match[3] || 0);
-    const classGroup = cleanText(match[4]).toUpperCase();
+    const dateSpec = parseDateExpression(compact);
+    const timeSlot = firstTimeSlot(raw);
+    const guestName = extractStudentName(
+      raw,
+      /(?:체험(?:수업)?|체험클래스)(?:으로|에|을|를)?/g,
+      /(?:넣어?|등록|추가|잡아?|예약|배정|신청)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
+    );
     if (!guestName || !dateSpec || !timeSlot) return null;
 
     return {
       type:'mutation',
       intent:'add_trial',
       guestName,
-      division,
+      division:detectDivision(compact),
       dateSpec,
       dateLabel:dateSpec.label,
       timeSlot,
-      classGroup,
+      classGroup:firstClassGroup(raw),
       originalText:raw
     };
   }
@@ -219,29 +288,14 @@
   function parseMakeupCancelMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !/보강/.test(compact) || !/(?:취소|삭제|지워|제거|빼)/.test(compact)) return null;
+    if (!raw || !hasMakeupWord(compact) || !hasRemoveAction(compact)) return null;
 
     const dateSpec = parseDateExpression(compact);
-    const timeMatch = raw.match(/(\d{1,2})시/);
-    const groupMatch = raw.match(/([AaBb])반/i);
-
-    let studentName = raw
-      .replace(/[.!?]/g, ' ')
-      .replace(/(?:오늘|내일|(?:(?:이번\s*주|다음\s*주)\s*)?[월화수목금토]요일)/g, ' ')
-      .replace(/\d{1,2}시(?:에)?/g, ' ')
-      .replace(/[AaBb]반/gi, ' ')
-      .replace(/(?:잡혀\s*있는|잡혀있는|잡혀\s*있던|등록되어\s*있는|등록되어있는|등록된|예약되어\s*있는|예약되어있는)/g, ' ')
-      .replace(/보강(?:수업)?(?:을|를)?/g, ' ')
-      .replace(/(?:취소|삭제|지워|제거|빼)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘)?/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    studentName = studentName
-      .replace(/^(?:학생\s*)/, '')
-      .replace(/(?:\s*학생)$/, '')
-      .replace(/의$/, '')
-      .trim();
-
+    const studentName = extractStudentName(
+      raw,
+      /(?:보강|보충(?:수업)?)(?:수업)?(?:을|를)?/g,
+      /(?:취소|삭제|지워|지우|제거|빼|해제)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
+    );
     if (!studentName) return null;
 
     return {
@@ -250,8 +304,8 @@
       studentName,
       dateSpec,
       dateLabel:dateSpec ? dateSpec.label : '',
-      timeSlot:Number(timeMatch && timeMatch[1] || 0),
-      classGroup:cleanText(groupMatch && groupMatch[1]).toUpperCase(),
+      timeSlot:firstTimeSlot(raw),
+      classGroup:firstClassGroup(raw),
       originalText:raw
     };
   }
@@ -259,38 +313,33 @@
   function parseMoveCancelMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !/(?:수업|시간표)?(?:이동|변경)/.test(compact) || !/취소/.test(compact)) return null;
+    if (!raw || !hasMoveAction(compact) || !hasRemoveAction(compact)) return null;
 
-    let match = raw.match(/^\s*(.*?)\s*([월화수목금토])요일(?:\s*(\d{1,2})시)?\s*(?:수업|시간표)?\s*(?:이동|변경)(?:\s*예약)?(?:을)?\s*취소(?:해줘|해|해줘요|할래|해줄래)?\s*[.!?]?\s*$/);
-    if (match) {
-      return {
-        type:'mutation',
-        intent:'cancel_move',
-        studentName:cleanText(match[1]),
-        sourceWeekday:WEEKDAY_MAP[match[2]] || 0,
-        sourceTimeSlot:Number(match[3] || 0),
-        originalText:raw
-      };
-    }
+    const mentions = weekdayTimeMentions(raw);
+    const source = mentions[0] || { weekday:0, timeSlot:0 };
+    const studentName = extractStudentName(
+      raw,
+      /(?:정규\s*)?수업(?:시간)?|시간표|(?:이동|변경)(?:\s*예약)?/g,
+      /(?:취소|삭제|지워|지우|제거|빼|해제)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
+    );
+    if (!studentName) return null;
 
-    match = raw.match(/^\s*(.*?)\s*(?:수업|시간표)?\s*(?:이동|변경)(?:\s*예약)?(?:을)?\s*취소(?:해줘|해|해줘요|할래|해줄래)?\s*[.!?]?\s*$/);
-    if (!match) return null;
     return {
       type:'mutation',
       intent:'cancel_move',
-      studentName:cleanText(match[1]),
-      sourceWeekday:0,
-      sourceTimeSlot:0,
+      studentName,
+      sourceWeekday:source.weekday,
+      sourceTimeSlot:source.timeSlot,
       originalText:raw
     };
   }
 
   function isConfirmCommand(text) {
-    return /^(확인|진행|등록|변경|실행|해줘|진행해줘)$/i.test(compactText(text));
+    return /^(확인|확인해|확인해줘|진행|진행해|진행해줘|실행|실행해|실행해줘)$/i.test(compactText(text));
   }
 
   function isCancelCommand(text) {
-    return /^(취소|취소해|취소해줘|아니|아니야)$/i.test(compactText(text));
+    return /^(취소|취소해|취소해줘|취소할게|중단|중단해|안할래|하지마|아니|아니야)$/i.test(compactText(text));
   }
 
   function parseAvailableSlotsIntent(text) {
@@ -301,34 +350,33 @@
     if (!dateSpec) return null;
 
     const hasAvailabilityMeaning =
-      /빈자리/.test(compact)
-      || /자리.{0,8}(?:남|있|여유)/.test(compact)
-      || /(?:남는|남아있는|여유있는)클래스/.test(compact)
-      || /가능한?(?:시간|자리|클래스|수업)/.test(compact)
-      || /할수있는(?:시간|자리|클래스|수업)/.test(compact)
+      /빈자리|빈곳|여석/.test(compact)
+      || /자리.{0,10}(?:남|있|여유|가능|몇)/.test(compact)
+      || /(?:남는|남아있는|여유있는|비어있는)클래스/.test(compact)
+      || /가능한?(?:시간|자리|클래스|수업|반)/.test(compact)
+      || /할수있는(?:시간|자리|클래스|수업|반)/.test(compact)
       || /들어갈수있는(?:반|시간|자리|클래스|수업)/.test(compact)
-      || /받을수있는(?:반|시간|자리|클래스|수업)/.test(compact);
+      || /받을수있는(?:반|시간|자리|클래스|수업)/.test(compact)
+      || /몇자리/.test(compact);
 
     const asksForLookup =
-      /알려/.test(compact)
-      || /찾아/.test(compact)
-      || /보여/.test(compact)
+      /알려|찾아|보여|확인|체크|봐줘|봐|조회/.test(compact)
       || /있어|있나|있나요|있니|있을까|있습니까/.test(compact)
-      || /가능해|가능한/.test(compact)
-      || /남는|남아/.test(compact)
-      || /여유/.test(compact);
+      || /가능해|가능한|가능할까/.test(compact)
+      || /남는|남아|남았/.test(compact)
+      || /여유|비어|몇자리/.test(compact);
 
     if (!hasAvailabilityMeaning || !asksForLookup) return null;
 
     return {
-      type: 'query',
-      intent: 'find_available_slots',
-      date: dateSpec.mode,
+      type:'query',
+      intent:'find_available_slots',
+      date:dateSpec.mode,
       dateSpec,
-      dateLabel: dateSpec.label,
-      division: detectDivision(compact),
-      purpose: detectPurpose(compact),
-      originalText: raw
+      dateLabel:dateSpec.label,
+      division:detectDivision(compact),
+      purpose:detectPurpose(compact),
+      originalText:raw
     };
   }
 
