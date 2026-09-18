@@ -452,6 +452,11 @@
     if (!studentId || !division) return { ok:false, message:'학생의 수업 구분을 확인하지 못했어요.' };
     if (!sessionDate || !timeSlot) return { ok:false, message:'보강 날짜와 시간을 확인해 주세요.' };
 
+    const weekData = await loadFreshWeek(sessionDate);
+    if (duplicateMakeup(weekData, studentId, sessionDate, timeSlot)) {
+      return { ok:false, message:clean(student.name) + ' 학생은 이미 ' + fallbackDateLabel(sessionDate) + ' ' + timeSlot + '시 보강이 등록되어 있어요.' };
+    }
+
     const availability = await findAvailableSlots({
       date: sessionDate,
       dateLabel: clean(opts.dateLabel),
@@ -464,11 +469,6 @@
 
     const target = chooseOpenSlot(availability, timeSlot, opts.classGroup, '');
     if (!target.ok) return target;
-
-    const weekData = await loadFreshWeek(sessionDate);
-    if (duplicateMakeup(weekData, studentId, sessionDate, timeSlot)) {
-      return { ok:false, message:clean(student.name) + ' 학생은 이미 ' + fallbackDateLabel(sessionDate) + ' ' + timeSlot + '시 보강이 등록되어 있어요.' };
-    }
 
     const slot = target.slot;
     const groupText = slot.grouped ? ' ' + classGroup(slot.classGroup) + '반' : '';
@@ -577,6 +577,7 @@
         targetWeekday,
         targetTimeSlot,
         targetClassGroup:classGroup(slot.classGroup),
+        targetCheckDate:targetDate,
         effectiveDate
       },
       message:
@@ -617,6 +618,22 @@
         throw new Error('시간표 저장 기능을 아직 불러오지 못했습니다.');
       }
     } else if (intent === 'move_class') {
+      const recheck = await findAvailableSlots({
+        date:item.targetCheckDate || nextOccurrenceKey(item.effectiveDate, item.targetWeekday),
+        dateLabel:weekdayLabel(item.targetWeekday),
+        division:item.division,
+        purpose:'schedule_move'
+      });
+      const recheckedTarget = chooseOpenSlot(
+        recheck,
+        item.targetTimeSlot,
+        item.targetClassGroup,
+        item.targetClassGroup
+      );
+      if (!recheckedTarget.ok) {
+        throw new Error('확인하는 동안 목적지 수업의 자리가 변경되었어요. 다시 조회해 주세요.');
+      }
+
       if (pc && typeof pc.changeSchedule === 'function') {
         result = await pc.changeSchedule({
           studentId:item.studentId,
