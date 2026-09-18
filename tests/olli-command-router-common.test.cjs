@@ -285,16 +285,31 @@ test('scheduled move cancellation wording parses optional source day and time', 
   assert.equal(short.sourceWeekday, 0);
 });
 
-test('new write commands all enter the same confirmation pipeline', async () => {
+test('new write commands enter confirmation, while absence and cancellations require a reason first', async () => {
   const preparedIntents = [];
   const router = loadRouter({
     async prepareWriteCommand(intent, options) {
       preparedIntents.push({ intent, options });
+      const name = options.studentName || options.guestName || '학생';
       return {
         ok:true,
-        command:{ intent, marker:intent },
+        command:{
+          intent,
+          studentName:name,
+          guestName:options.guestName || '',
+          marker:intent,
+          reason:options.reason || '',
+          sessionDate:'2026-09-18',
+          timeSlot:4
+        },
         message:'실행할까요?'
       };
+    },
+    writeReasonPrompt(command) {
+      return command.intent + ' 사유를 알려주세요.';
+    },
+    writeConfirmationMessage(command) {
+      return command.intent + ' / ' + command.reason + ' / 진행할까요?';
     },
     async executePreparedWrite(command) {
       return { ok:true, marker:command.marker };
@@ -304,31 +319,46 @@ test('new write commands all enter the same confirmation pipeline', async () => 
     }
   });
 
-  const cases = [
+  const immediateCases = [
     ['최민기 월요일 4시 대기 넣어줘', 'add_waitlist'],
     ['유치부 박하늘 내일 4시 체험 등록해줘', 'add_trial'],
-    ['김태리 오늘 4시 보강 취소해줘', 'cancel_makeup'],
     ['최민기 수업이동 취소해줘', 'cancel_move']
   ];
-
-  for (const [text, intent] of cases) {
+  for (const [text, intent] of immediateCases) {
     const result = await router.route(text, { source:'one_minute_feedback' });
-    assert.equal(result.handled, true);
     assert.equal(result.kind, 'command_confirmation');
     assert.equal(result.intent, intent);
+    await router.route('취소', { source:'one_minute_feedback' });
+  }
 
-    const cancelled = await router.route('취소', { source:'one_minute_feedback' });
-    assert.equal(cancelled.kind, 'command_result');
+  const reasonCases = [
+    ['김태리 오늘 결석해줘', 'mark_absent'],
+    ['김태리 오늘 4시 보강 취소해줘', 'cancel_makeup'],
+    ['박하늘 오늘 4시 체험 취소해줘', 'cancel_trial']
+  ];
+  for (const [text, intent] of reasonCases) {
+    const first = await router.route(text, { source:'one_minute_feedback' });
+    assert.equal(first.kind, 'command_result');
+    assert.equal(first.intent, intent);
+    assert.match(first.message, /사유/);
+    assert.equal(router.getPendingReasonCommand().intent, intent);
+
+    const second = await router.route('감기', { source:'one_minute_feedback' });
+    assert.equal(second.kind, 'command_confirmation');
+    assert.equal(second.intent, intent);
+    assert.match(second.message, /감기/);
+    await router.route('취소', { source:'one_minute_feedback' });
   }
 
   assert.deepEqual(preparedIntents.map(item => item.intent), [
     'add_waitlist',
     'add_trial',
+    'cancel_move',
+    'mark_absent',
     'cancel_makeup',
-    'cancel_move'
+    'cancel_trial'
   ]);
 });
-
 
 test('makeup cancellation accepts natural word order, possessive, scheduled filler, and delete synonyms', () => {
   const router = loadRouter();
@@ -354,17 +384,27 @@ test('makeup cancellation accepts natural word order, possessive, scheduled fill
   assert.equal(short.dateSpec, null);
 });
 
-test('natural makeup delete sentence enters confirmation pipeline', async () => {
+test('natural makeup delete sentence asks for a reason before confirmation', async () => {
   let prepared = null;
   const router = loadRouter({
     async prepareWriteCommand(intent, options) {
       prepared = { intent, options };
       return {
         ok:true,
-        command:{ intent, studentId:'student-test2', oneTimeSessionId:'makeup-test2' },
+        command:{
+          intent,
+          studentId:'student-test2',
+          studentName:options.studentName,
+          oneTimeSessionId:'makeup-test2',
+          sessionDate:'2026-09-23',
+          timeSlot:5,
+          reason:options.reason || ''
+        },
         message:'이 보강을 취소할까요?'
       };
-    }
+    },
+    writeReasonPrompt() { return '보강 취소 사유를 알려주세요.'; },
+    writeConfirmationMessage(command) { return '사유: ' + command.reason + '\n이 보강을 취소할까요?'; }
   });
 
   const result = await router.route('다음주 수요일 5시에 잡혀있는 테스트2의 보강을 삭제해줘', {
@@ -372,8 +412,9 @@ test('natural makeup delete sentence enters confirmation pipeline', async () => 
   });
 
   assert.equal(result.handled, true);
-  assert.equal(result.kind, 'command_confirmation');
+  assert.equal(result.kind, 'command_result');
   assert.equal(result.intent, 'cancel_makeup');
+  assert.match(result.message, /사유/);
   assert.equal(prepared.intent, 'cancel_makeup');
   assert.equal(prepared.options.studentName, '테스트2');
   assert.equal(prepared.options.timeSlot, 5);
@@ -381,8 +422,11 @@ test('natural makeup delete sentence enters confirmation pipeline', async () => 
   assert.equal(prepared.options.date.getFullYear(), 2026);
   assert.equal(prepared.options.date.getMonth(), 8);
   assert.equal(prepared.options.date.getDate(), 23);
-});
 
+  const withReason = await router.route('가족 여행', { source:'one_minute_feedback' });
+  assert.equal(withReason.kind, 'command_confirmation');
+  assert.match(withReason.message, /가족 여행/);
+});
 
 test('command language normalization accepts common synonyms and different word order across current read/write features', () => {
   const router = loadRouter();
@@ -553,4 +597,53 @@ test('expanded add-action vocabulary is shared by waitlist and trial commands', 
     assert.equal(parsed.intent, 'add_trial', text);
     assert.equal(parsed.guestName, '박하늘', text);
   });
+});
+
+
+test('absence and trial cancellation parsers preserve explicit reasons', () => {
+  const router = loadRouter();
+
+  const absence = router.parseAbsenceMutationIntent('김태리 오늘 결석 사유 감기');
+  assert.equal(absence.intent, 'mark_absent');
+  assert.equal(absence.studentName, '김태리');
+  assert.equal(absence.dateSpec.mode, 'today');
+  assert.equal(absence.reason, '감기');
+
+  const trial = router.parseTrialCancelMutationIntent('박하늘 내일 4시 체험 취소 이유 일정 변경');
+  assert.equal(trial.intent, 'cancel_trial');
+  assert.equal(trial.guestName, '박하늘');
+  assert.equal(trial.dateSpec.mode, 'tomorrow');
+  assert.equal(trial.timeSlot, 4);
+  assert.equal(trial.reason, '일정 변경');
+
+  const makeup = router.parseMakeupCancelMutationIntent('김태리 오늘 4시 보강 취소 사유 가족 여행');
+  assert.equal(makeup.reason, '가족 여행');
+});
+
+test('a reason supplied in the first command goes directly to confirmation', async () => {
+  const router = loadRouter({
+    async prepareWriteCommand(intent, options) {
+      return {
+        ok:true,
+        command:{
+          intent,
+          studentName:options.studentName,
+          reason:options.reason,
+          sessionDate:'2026-09-18',
+          timeSlot:4
+        },
+        message:'기본 확인'
+      };
+    },
+    writeConfirmationMessage(command) {
+      return command.reason + ' / 확인할까요?';
+    }
+  });
+
+  const result = await router.route('김태리 오늘 결석 사유 감기', { source:'one_minute_feedback' });
+  assert.equal(result.kind, 'command_confirmation');
+  assert.equal(result.intent, 'mark_absent');
+  assert.match(result.message, /감기/);
+  assert.equal(router.getPendingReasonCommand(), null);
+  assert.equal(router.getPendingWriteCommand().reason, '감기');
 });

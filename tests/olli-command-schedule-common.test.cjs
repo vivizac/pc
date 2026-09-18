@@ -34,6 +34,14 @@ function loadSchedule(weekData, calendarDays = [], options = {}) {
       calls.cancelChange = id;
       return options.cancelChangeResult || { ok:true, result:'cancelled' };
     },
+    async setAttendanceSessionStatus(payload) {
+      calls.setAttendanceSessionStatus = payload;
+      return options.setAttendanceSessionStatusResult || { ok:true, result:'saved' };
+    },
+    async saveCellMemo(division, sessionDate, timeSlot, note, classGroup, memoId) {
+      calls.saveCellMemo = { division, sessionDate, timeSlot, note, classGroup, memoId };
+      return options.saveCellMemoResult || { ok:true, result:'saved' };
+    },
     async activeStudents() { return []; }
   };
   const sandbox = {
@@ -434,13 +442,16 @@ test('makeup cancellation resolves the one-time session id before execution', as
   const prepared = await schedule.prepareWriteCommand('cancel_makeup', {
     studentName:'김태리',
     date:'2026-09-18',
-    timeSlot:4
+    timeSlot:4,
+    reason:'감기'
   });
 
   assert.equal(prepared.ok, true);
   assert.equal(prepared.command.oneTimeSessionId, 'makeup-1');
+  assert.equal(prepared.command.reason, '감기');
   await schedule.executePreparedWrite(prepared.command);
   assert.equal(calls.cancelMakeup, 'makeup-1');
+  assert.equal(calls.saveCellMemo.note, '[김태리][취소] : 감기');
 });
 
 test('ambiguous makeup cancellation requires a date and time instead of cancelling automatically', async () => {
@@ -555,9 +566,12 @@ test('new phone write commands use the existing schedule RPCs', async () => {
     intent:'cancel_makeup',
     studentId:'student-1',
     studentName:'김태리',
+    division:'elementary',
     oneTimeSessionId:'makeup-1',
     sessionDate:'2026-09-18',
-    timeSlot:4
+    timeSlot:4,
+    classGroup:'A',
+    reason:'감기'
   });
   await schedule.executePreparedWrite({
     intent:'cancel_move',
@@ -572,6 +586,101 @@ test('new phone write commands use the existing schedule RPCs', async () => {
   assert.equal(calls[1].payload.p_entry_type, 'trial');
   assert.equal(calls[2].payload.p_action, 'cancel_one_time');
   assert.equal(calls[2].payload.p_params.one_time_session_id, 'makeup-1');
-  assert.equal(calls[3].payload.p_action, 'cancel_change');
-  assert.equal(calls[3].payload.p_params.change_id, 'change-1');
+  assert.equal(calls[3].name, 'olli_schedule_save_cell_memo_v3');
+  assert.equal(calls[3].payload.p_note, '[김태리][취소] : 감기');
+  assert.equal(calls[4].payload.p_action, 'cancel_change');
+  assert.equal(calls[4].payload.p_params.change_id, 'change-1');
+});
+
+
+test('absence command marks the regular session absent and stores the reason memo', async () => {
+  const calls = {};
+  const student = { id:'student-1', name:'김태리', division:'elementary' };
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[
+      { id:'e1', student_id:'student-1', student_name:'김태리', division:'elementary', weekday:5, time_slot:4, class_group:'A', effective_from:'2026-01-01' }
+    ],
+    one_time_sessions:[]
+  };
+  const { schedule } = loadSchedule(week, [], { calls, students:[student] });
+  const prepared = await schedule.prepareWriteCommand('mark_absent', {
+    studentName:'김태리',
+    date:'2026-09-18',
+    reason:'감기'
+  });
+
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.command.timeSlot, 4);
+  assert.equal(prepared.command.reason, '감기');
+
+  await schedule.executePreparedWrite(prepared.command);
+  assert.deepEqual(calls.setAttendanceSessionStatus, {
+    studentId:'student-1',
+    sessionDate:'2026-09-18',
+    sessionKind:'regular',
+    timeSlot:4,
+    classGroup:'A',
+    status:'absent'
+  });
+  assert.equal(calls.saveCellMemo.note, '[김태리][결석] : 감기');
+});
+
+test('trial cancellation resolves the guest trial and stores a tagged cancellation memo', async () => {
+  const calls = {};
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[],
+    one_time_sessions:[
+      {
+        id:'trial-1', student_id:null, student_name:'박하늘', is_guest:true,
+        division:'kinder', session_date:'2026-09-19', time_slot:4,
+        class_group:'A', session_type:'trial', status:'scheduled'
+      }
+    ]
+  };
+  const { schedule } = loadSchedule(week, [], { calls });
+  const prepared = await schedule.prepareWriteCommand('cancel_trial', {
+    guestName:'박하늘',
+    date:'2026-09-19',
+    timeSlot:4,
+    reason:'일정 변경'
+  });
+
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.command.oneTimeSessionId, 'trial-1');
+  await schedule.executePreparedWrite(prepared.command);
+  assert.equal(calls.cancelMakeup, 'trial-1');
+  assert.equal(calls.saveCellMemo.note, '[박하늘][취소] : 일정 변경');
+});
+
+test('absence and cancellation writes reject execution when the reason is missing', async () => {
+  const { schedule } = loadSchedule({});
+  await assert.rejects(
+    schedule.executePreparedWrite({
+      intent:'mark_absent',
+      studentId:'student-1',
+      studentName:'김태리',
+      division:'elementary',
+      sessionDate:'2026-09-18',
+      timeSlot:4,
+      classGroup:'A'
+    }),
+    /결석 사유/
+  );
+  await assert.rejects(
+    schedule.executePreparedWrite({
+      intent:'cancel_makeup',
+      studentId:'student-1',
+      studentName:'김태리',
+      division:'elementary',
+      oneTimeSessionId:'makeup-1',
+      sessionDate:'2026-09-18',
+      timeSlot:4,
+      classGroup:'A'
+    }),
+    /보강 취소 사유/
+  );
 });

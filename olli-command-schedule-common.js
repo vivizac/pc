@@ -3,7 +3,7 @@
 
   if (global.OlliCommandSchedule) return;
 
-  const VERSION = '2026-09-18-write-commands-2';
+  const VERSION = '2026-09-18-write-commands-3';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -474,6 +474,41 @@
     return fallbackDateLabel(clean(row && row.session_date).slice(0, 10));
   }
 
+  function commandRequiresReason(command) {
+    const intent = clean(command && command.intent);
+    return intent === 'mark_absent' || intent === 'cancel_makeup' || intent === 'cancel_trial';
+  }
+
+  function writeReasonPrompt(command) {
+    const item = command || {};
+    const name = clean(item.studentName || item.guestName) || '학생';
+    if (item.intent === 'mark_absent') return name + ' 학생의 결석 사유를 알려주세요.';
+    if (item.intent === 'cancel_makeup') return name + ' 학생의 보강 취소 사유를 알려주세요.';
+    if (item.intent === 'cancel_trial') return name + ' 학생의 체험 취소 사유를 알려주세요.';
+    return '사유를 알려주세요.';
+  }
+
+  function writeConfirmationMessage(command) {
+    const item = command || {};
+    const reason = clean(item.reason);
+    if (item.intent === 'mark_absent') {
+      return clean(item.studentName) + ' · ' + fallbackDateLabel(item.sessionDate) + ' ' + Number(item.timeSlot) + '시'
+        + '\n결석 사유: ' + reason
+        + '\n결석 처리할까요?';
+    }
+    if (item.intent === 'cancel_makeup') {
+      return clean(item.studentName) + ' · ' + fallbackDateLabel(item.sessionDate) + ' ' + Number(item.timeSlot) + '시'
+        + '\n보강 취소 사유: ' + reason
+        + '\n이 보강을 취소할까요?';
+    }
+    if (item.intent === 'cancel_trial') {
+      return clean(item.guestName || item.studentName) + ' · ' + fallbackDateLabel(item.sessionDate) + ' ' + Number(item.timeSlot) + '시'
+        + '\n체험 취소 사유: ' + reason
+        + '\n이 체험수업을 취소할까요?';
+    }
+    return '';
+  }
+
   function changeSourceEnrollment(weekData, change) {
     return arrays(weekData, 'enrollments').find(row =>
       clean(row && row.id) === clean(change && change.source_enrollment_id)
@@ -786,6 +821,61 @@
     };
   }
 
+  async function prepareAbsenceCommand(options) {
+    const opts = options || {};
+    const resolved = resolveCommandStudent(opts.studentName, opts.selectedStudent);
+    if (!resolved.ok) return resolved;
+
+    const student = resolved.student;
+    const studentId = clean(student && student.id);
+    const division = normalizeStudentDivision(student);
+    const sessionDate = localDateKey(opts.date || opts.effectiveDate || new Date());
+    const weekday = isoWeekday(sessionDate);
+    const timeSlot = Number(opts.timeSlot || 0);
+    const wantedGroup = requestedGroup(opts.classGroup);
+
+    if (!studentId || !division) return { ok:false, message:'학생의 수업 구분을 확인하지 못했어요.' };
+    if (!sessionDate || !weekday || weekday > 6) return { ok:false, message:'결석 처리할 수업 날짜를 확인해 주세요.' };
+
+    const weekData = await loadFreshWeek(sessionDate);
+    let rows = activeStudentEnrollments(weekData, studentId, sessionDate)
+      .filter(row => Number(row && row.weekday) === weekday);
+
+    if (timeSlot) rows = rows.filter(row => Number(row && row.time_slot) === timeSlot);
+    if (wantedGroup) rows = rows.filter(row => classGroup(row && row.class_group) === wantedGroup);
+    rows.sort((a,b) => Number(a && a.time_slot) - Number(b && b.time_slot));
+
+    if (!rows.length) {
+      const detail = fallbackDateLabel(sessionDate) + (timeSlot ? ' ' + timeSlot + '시' : '');
+      return { ok:false, message:clean(student.name) + ' 학생의 ' + detail + ' 정규수업을 찾지 못했어요.' };
+    }
+    if (rows.length > 1) {
+      const choices = rows.map(row => Number(row.time_slot) + '시'
+        + (wantedGroup ? ' ' + classGroup(row.class_group) + '반' : '')).join(' · ');
+      return {
+        ok:false,
+        message:clean(student.name) + ' 학생은 ' + fallbackDateLabel(sessionDate) + ' 수업이 여러 개 있어요: ' + choices
+          + '\n결석 처리할 시간을 함께 적어 주세요.'
+      };
+    }
+
+    const item = rows[0];
+    return {
+      ok:true,
+      command:{
+        intent:'mark_absent',
+        studentId,
+        studentName:clean(student.name),
+        division,
+        sessionDate,
+        timeSlot:Number(item.time_slot),
+        classGroup:classGroup(item.class_group),
+        reason:clean(opts.reason)
+      },
+      message:clean(student.name) + ' · ' + fallbackDateLabel(sessionDate) + ' ' + Number(item.time_slot) + '시'
+    };
+  }
+
   async function prepareCancelMakeupCommand(options) {
     const opts = options || {};
     const resolved = resolveCommandStudent(opts.studentName, opts.selectedStudent);
@@ -838,14 +928,78 @@
         intent:'cancel_makeup',
         studentId,
         studentName:clean(student.name),
+        division:normalizeDivision(item.division) || normalizeStudentDivision(student),
         oneTimeSessionId:clean(item.id),
         sessionDate:clean(item.session_date).slice(0, 10),
         timeSlot:Number(item.time_slot),
-        classGroup:classGroup(item.class_group)
+        classGroup:classGroup(item.class_group),
+        reason:clean(opts.reason)
       },
       message:
         clean(student.name) + ' · ' + rowDateLabel(item) + ' ' + Number(item.time_slot) + '시'
         + '\n이 보강을 취소할까요?'
+    };
+  }
+
+  async function prepareCancelTrialCommand(options) {
+    const opts = options || {};
+    const guestName = clean(opts.guestName || opts.studentName);
+    if (!guestName) return { ok:false, message:'취소할 체험 학생 이름을 입력해 주세요.' };
+
+    const baseDate = localDateKey(opts.date || opts.effectiveDate || new Date());
+    const explicitDate = !!opts.date;
+    const timeSlot = Number(opts.timeSlot || 0);
+    const wantedGroup = requestedGroup(opts.classGroup);
+    const weekData = await loadFreshWeek(baseDate);
+
+    let rows = arrays(weekData, 'one_time_sessions').filter(row =>
+      row && row.is_guest === true
+      && clean(row.student_name) === guestName
+      && clean(row.session_type).toLowerCase() === 'trial'
+      && clean(row.status).toLowerCase() !== 'cancelled'
+    );
+
+    if (explicitDate) rows = rows.filter(row => clean(row.session_date).slice(0, 10) === baseDate);
+    else rows = rows.filter(row => clean(row.session_date).slice(0, 10) >= baseDate);
+    if (timeSlot) rows = rows.filter(row => Number(row.time_slot) === timeSlot);
+    if (wantedGroup) rows = rows.filter(row => classGroup(row.class_group) === wantedGroup);
+
+    rows.sort((a,b) =>
+      clean(a && a.session_date).localeCompare(clean(b && b.session_date))
+      || Number(a && a.time_slot) - Number(b && b.time_slot)
+    );
+
+    if (!rows.length) {
+      const detail = explicitDate ? fallbackDateLabel(baseDate) + (timeSlot ? ' ' + timeSlot + '시' : '') : '이번 주 남은 일정';
+      return { ok:false, message:guestName + ' 학생의 ' + detail + ' 체험수업을 찾지 못했어요.' };
+    }
+    if (rows.length > 1) {
+      const choices = rows.slice(0, 6).map(row =>
+        rowDateLabel(row) + ' ' + Number(row.time_slot) + '시'
+        + (requestedGroup(row.class_group) ? ' ' + classGroup(row.class_group) + '반' : '')
+      ).join(' · ');
+      return {
+        ok:false,
+        message:guestName + ' 학생의 취소 가능한 체험수업이 여러 개 있어요: ' + choices
+          + '\n취소할 날짜와 시간을 함께 적어 주세요.'
+      };
+    }
+
+    const item = rows[0];
+    return {
+      ok:true,
+      command:{
+        intent:'cancel_trial',
+        guestName,
+        studentName:guestName,
+        division:normalizeDivision(item.division),
+        oneTimeSessionId:clean(item.id),
+        sessionDate:clean(item.session_date).slice(0, 10),
+        timeSlot:Number(item.time_slot),
+        classGroup:classGroup(item.class_group),
+        reason:clean(opts.reason)
+      },
+      message:guestName + ' · ' + rowDateLabel(item) + ' ' + Number(item.time_slot) + '시'
     };
   }
 
@@ -921,11 +1075,13 @@
   }
 
   async function prepareWriteCommand(intent, options) {
+    if (intent === 'mark_absent') return prepareAbsenceCommand(options);
     if (intent === 'add_makeup') return prepareMakeupCommand(options);
     if (intent === 'move_class') return prepareMoveCommand(options);
     if (intent === 'add_waitlist') return prepareWaitlistCommand(options);
     if (intent === 'add_trial') return prepareTrialCommand(options);
     if (intent === 'cancel_makeup') return prepareCancelMakeupCommand(options);
+    if (intent === 'cancel_trial') return prepareCancelTrialCommand(options);
     if (intent === 'cancel_move') return prepareCancelMoveCommand(options);
     return { ok:false, message:'아직 지원하지 않는 쓰기 명령이에요.' };
   }
@@ -934,11 +1090,65 @@
     const item = command || {};
     const intent = clean(item.intent);
     let result;
+    let memoError = null;
 
     const pc = global.OlliTimetableService;
     const phone = global.OlliPhoneStudentScheduleService;
 
-    if (intent === 'add_makeup') {
+    if (commandRequiresReason(item) && !clean(item.reason)) {
+      throw new Error(writeReasonPrompt(item));
+    }
+
+    async function saveStatusMemo(tag) {
+      const note = '[' + clean(item.studentName || item.guestName) + '][' + tag + '] : ' + clean(item.reason);
+      if (pc && typeof pc.saveCellMemo === 'function') {
+        return pc.saveCellMemo(
+          normalizeDivision(item.division),
+          item.sessionDate,
+          Number(item.timeSlot),
+          note,
+          item.classGroup || 'A',
+          null
+        );
+      }
+      if (phone && typeof phone.request === 'function') {
+        return phone.request('olli_schedule_save_cell_memo_v3', {
+          p_division:normalizeDivision(item.division),
+          p_session_date:item.sessionDate,
+          p_time_slot:Number(item.timeSlot),
+          p_note:note,
+          p_class_group:item.classGroup || 'A',
+          p_memo_id:null
+        });
+      }
+      throw new Error('사유 메모 저장 기능을 아직 불러오지 못했습니다.');
+    }
+
+    if (intent === 'mark_absent') {
+      if (pc && typeof pc.setAttendanceSessionStatus === 'function') {
+        result = await pc.setAttendanceSessionStatus({
+          studentId:item.studentId,
+          sessionDate:item.sessionDate,
+          sessionKind:'regular',
+          timeSlot:Number(item.timeSlot),
+          classGroup:item.classGroup || 'A',
+          status:'absent'
+        });
+      } else if (phone && typeof phone.request === 'function') {
+        result = await phone.request('olli_schedule_set_attendance_session_status_v2', {
+          p_student_id:item.studentId,
+          p_session_date:item.sessionDate,
+          p_session_kind:'regular',
+          p_time_slot:Number(item.timeSlot),
+          p_class_group:item.classGroup || 'A',
+          p_status:'absent'
+        });
+      } else {
+        throw new Error('결석 저장 기능을 아직 불러오지 못했습니다.');
+      }
+      try { await saveStatusMemo('결석'); }
+      catch (error) { memoError = error; }
+    } else if (intent === 'add_makeup') {
       if (pc && typeof pc.addMakeup === 'function') {
         result = await pc.addMakeup(item.studentId, item.sessionDate, item.timeSlot, '', item.classGroup || 'A');
       } else if (phone && typeof phone.request === 'function') {
@@ -1083,7 +1293,7 @@
       } else {
         throw new Error('시간표 저장 기능을 아직 불러오지 못했습니다.');
       }
-    } else if (intent === 'cancel_makeup') {
+    } else if (intent === 'cancel_makeup' || intent === 'cancel_trial') {
       if (pc && typeof pc.cancelMakeup === 'function') {
         result = await pc.cancelMakeup(item.oneTimeSessionId);
       } else if (phone && typeof phone.request === 'function') {
@@ -1094,6 +1304,8 @@
       } else {
         throw new Error('시간표 저장 기능을 아직 불러오지 못했습니다.');
       }
+      try { await saveStatusMemo('취소'); }
+      catch (error) { memoError = error; }
     } else if (intent === 'cancel_move') {
       if (pc && typeof pc.cancelChange === 'function') {
         result = await pc.cancelChange(item.changeId);
@@ -1129,11 +1341,22 @@
       console.warn('명령 실행 후 PC 시간표 갱신 실패:', error);
     }
 
+    if (memoError) {
+      const actionLabel = intent === 'mark_absent' ? '결석 처리는' : '취소는';
+      const error = new Error(actionLabel + ' 완료됐지만 사유 메모를 저장하지 못했어요. ' + clean(memoError && (memoError.message || memoError)));
+      error.primaryCompleted = true;
+      throw error;
+    }
+
     return result || {};
   }
 
   function writeSuccessMessage(command, result) {
     const item = command || {};
+    if (item.intent === 'mark_absent') {
+      return clean(item.studentName) + ' 학생의 ' + fallbackDateLabel(item.sessionDate) + ' '
+        + Number(item.timeSlot) + '시 수업을 결석 처리했고 사유를 메모에 남겼어요.';
+    }
     if (item.intent === 'add_makeup') {
       if (result && result.unchanged) {
         return clean(item.studentName) + ' 학생의 보강은 이미 등록되어 있었어요.';
@@ -1155,7 +1378,11 @@
     }
     if (item.intent === 'cancel_makeup') {
       return clean(item.studentName) + ' 학생의 ' + fallbackDateLabel(item.sessionDate) + ' '
-        + Number(item.timeSlot) + '시 보강을 취소했어요.';
+        + Number(item.timeSlot) + '시 보강을 취소했고 사유를 메모에 남겼어요.';
+    }
+    if (item.intent === 'cancel_trial') {
+      return clean(item.guestName || item.studentName) + ' 학생의 ' + fallbackDateLabel(item.sessionDate) + ' '
+        + Number(item.timeSlot) + '시 체험수업을 취소했고 사유를 메모에 남겼어요.';
     }
     if (item.intent === 'cancel_move') {
       return clean(item.studentName) + ' 학생의 예약된 수업 이동을 취소했어요.';
@@ -1169,6 +1396,8 @@
     describeAvailableSlots,
     prepareWriteCommand,
     executePreparedWrite,
+    writeReasonPrompt,
+    writeConfirmationMessage,
     writeSuccessMessage
   });
 })(window);

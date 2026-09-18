@@ -3,8 +3,9 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-18-write-commands-5';
+  const VERSION = '2026-09-18-write-commands-6';
   let pendingWriteCommand = null;
+  let pendingReasonCommand = null;
 
   function cleanText(value) {
     return String(value == null ? '' : value).replace(/\r\n?/g, '\n').trim();
@@ -54,6 +55,41 @@
 
   function hasTrialWord(value) {
     return /(?:체험클래스|체험수업|체험)/.test(compactText(value));
+  }
+
+  function hasAbsenceWord(value) {
+    return /(?:결석)/.test(compactText(value));
+  }
+
+  function normalizeReasonReply(value) {
+    return cleanText(value)
+      .replace(/^(?:사유|이유)\s*(?:는|은)?\s*[:：-]?\s*/i, '')
+      .replace(/[.!?]+$/g, '')
+      .trim();
+  }
+
+  function extractExplicitReason(value) {
+    const raw = cleanText(value);
+    if (!raw) return { commandText:'', reason:'' };
+
+    const explicit = raw.match(/(?:사유|이유)\s*(?:는|은)?\s*[:：-]?\s*(.+)$/i);
+    if (explicit && cleanText(explicit[1])) {
+      return {
+        commandText:cleanText(raw.slice(0, explicit.index)),
+        reason:normalizeReasonReply(explicit[1])
+      };
+    }
+
+    const separated = raw.match(/(?:결석(?:\s*처리)?|(?:보강|보충(?:수업)?)\s*(?:취소|삭제)|(?:체험(?:\s*수업|\s*클래스)?)\s*(?:취소|삭제))\s*[,：:-]\s*(.+)$/i);
+    if (separated && cleanText(separated[1])) {
+      const reasonStart = raw.lastIndexOf(separated[1]);
+      return {
+        commandText:cleanText(raw.slice(0, reasonStart).replace(/[,：:-]\s*$/, '')),
+        reason:normalizeReasonReply(separated[1])
+      };
+    }
+
+    return { commandText:raw, reason:'' };
   }
 
   function hasAddAction(value) {
@@ -293,7 +329,8 @@
   }
 
   function parseMakeupCancelMutationIntent(text) {
-    const raw = cleanText(text);
+    const reasonInfo = extractExplicitReason(text);
+    const raw = reasonInfo.commandText;
     const compact = compactText(raw);
     if (!raw || !hasMakeupWord(compact) || !hasRemoveAction(compact)) return null;
 
@@ -313,7 +350,62 @@
       dateLabel:dateSpec ? dateSpec.label : '',
       timeSlot:firstTimeSlot(raw),
       classGroup:firstClassGroup(raw),
-      originalText:raw
+      reason:reasonInfo.reason,
+      originalText:cleanText(text)
+    };
+  }
+
+  function parseTrialCancelMutationIntent(text) {
+    const reasonInfo = extractExplicitReason(text);
+    const raw = reasonInfo.commandText;
+    const compact = compactText(raw);
+    if (!raw || !hasTrialWord(compact) || !hasRemoveAction(compact)) return null;
+
+    const dateSpec = parseDateExpression(compact);
+    const guestName = extractStudentName(
+      raw,
+      /(?:체험\s*클래스|체험\s*수업|체험)(?:을|를)?/g,
+      /(?:취소|삭제|지워|지우|제거|빼|해제|없애)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
+    );
+    if (!guestName) return null;
+
+    return {
+      type:'mutation',
+      intent:'cancel_trial',
+      guestName,
+      studentName:guestName,
+      dateSpec,
+      dateLabel:dateSpec ? dateSpec.label : '',
+      timeSlot:firstTimeSlot(raw),
+      classGroup:firstClassGroup(raw),
+      reason:reasonInfo.reason,
+      originalText:cleanText(text)
+    };
+  }
+
+  function parseAbsenceMutationIntent(text) {
+    const reasonInfo = extractExplicitReason(text);
+    const raw = reasonInfo.commandText;
+    const compact = compactText(raw);
+    if (!raw || !hasAbsenceWord(compact)) return null;
+
+    const dateSpec = parseDateExpression(compact);
+    const studentName = extractStudentName(
+      raw,
+      /(?:결석)(?:\s*처리)?/g,
+      /(?:처리(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?|해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)/g
+    );
+
+    return {
+      type:'mutation',
+      intent:'mark_absent',
+      studentName,
+      dateSpec,
+      dateLabel:dateSpec ? dateSpec.label : '오늘',
+      timeSlot:firstTimeSlot(raw),
+      classGroup:firstClassGroup(raw),
+      reason:reasonInfo.reason,
+      originalText:cleanText(text)
     };
   }
 
@@ -347,6 +439,26 @@
 
   function isCancelCommand(text) {
     return /^(취소|취소해|취소해줘|취소할게|중단|중단해|안할래|하지마|아니|아니야)$/i.test(compactText(text));
+  }
+
+  function commandRequiresReason(command) {
+    const intent = cleanText(command && command.intent);
+    return intent === 'mark_absent' || intent === 'cancel_makeup' || intent === 'cancel_trial';
+  }
+
+  function reasonPrompt(command, schedule) {
+    if (schedule && typeof schedule.writeReasonPrompt === 'function') {
+      return schedule.writeReasonPrompt(command);
+    }
+    return '사유를 알려주세요.';
+  }
+
+  function confirmationMessage(command, schedule, fallback) {
+    if (schedule && typeof schedule.writeConfirmationMessage === 'function') {
+      const message = cleanText(schedule.writeConfirmationMessage(command));
+      if (message) return message;
+    }
+    return cleanText(fallback) || '이 작업을 진행할까요?';
   }
 
   function parseAvailableSlotsIntent(text) {
@@ -409,7 +521,10 @@
     const schedule = global.OlliCommandSchedule;
 
     if (isCancelCommand(normalizedText)) {
-      if (!pendingWriteCommand) {
+      const cancelled = pendingReasonCommand || pendingWriteCommand;
+      pendingReasonCommand = null;
+      pendingWriteCommand = null;
+      if (!cancelled) {
         return {
           handled:true,
           kind:'command_result',
@@ -420,8 +535,6 @@
           payload:null
         };
       }
-      const cancelled = pendingWriteCommand;
-      pendingWriteCommand = null;
       return {
         handled:true,
         kind:'command_result',
@@ -430,6 +543,46 @@
         message:'시간표 작업을 취소했어요.',
         clearInput:true,
         payload:cancelled
+      };
+    }
+
+    if (pendingReasonCommand) {
+      if (isConfirmCommand(normalizedText)) {
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:pendingReasonCommand.intent,
+          text:normalizedText,
+          message:reasonPrompt(pendingReasonCommand, schedule),
+          clearInput:true,
+          payload:pendingReasonCommand
+        };
+      }
+
+      const reason = normalizeReasonReply(normalizedText);
+      if (!reason) {
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:pendingReasonCommand.intent,
+          text:normalizedText,
+          message:reasonPrompt(pendingReasonCommand, schedule),
+          clearInput:true,
+          payload:pendingReasonCommand
+        };
+      }
+
+      const command = Object.assign({}, pendingReasonCommand, { reason });
+      pendingReasonCommand = null;
+      pendingWriteCommand = command;
+      return {
+        handled:true,
+        kind:'command_confirmation',
+        intent:command.intent,
+        text:normalizedText,
+        message:confirmationMessage(command, schedule, ''),
+        clearInput:true,
+        payload:command
       };
     }
 
@@ -490,13 +643,15 @@
 
     if (pendingWriteCommand) pendingWriteCommand = null;
 
+    const absenceWrite = parseAbsenceMutationIntent(normalizedText);
+    const trialCancel = parseTrialCancelMutationIntent(normalizedText);
     const makeupCancel = parseMakeupCancelMutationIntent(normalizedText);
     const moveCancel = parseMoveCancelMutationIntent(normalizedText);
     const waitlistWrite = parseWaitlistMutationIntent(normalizedText);
     const trialWrite = parseTrialMutationIntent(normalizedText);
     const scheduleMove = parseScheduleMoveMutationIntent(normalizedText);
     const makeupWrite = parseMakeupMutationIntent(normalizedText);
-    const writeIntent = makeupCancel || moveCancel || waitlistWrite || trialWrite || scheduleMove || makeupWrite;
+    const writeIntent = absenceWrite || trialCancel || makeupCancel || moveCancel || waitlistWrite || trialWrite || scheduleMove || makeupWrite;
     if (writeIntent) {
       if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
         return {
@@ -532,13 +687,28 @@
           };
         }
 
+        if (commandRequiresReason(prepared.command) && !cleanText(prepared.command.reason)) {
+          pendingReasonCommand = prepared.command;
+          pendingWriteCommand = null;
+          return {
+            handled:true,
+            kind:'command_result',
+            intent:writeIntent.intent,
+            text:normalizedText,
+            message:reasonPrompt(prepared.command, schedule),
+            clearInput:true,
+            payload:prepared.command
+          };
+        }
+
+        pendingReasonCommand = null;
         pendingWriteCommand = prepared.command;
         return {
           handled:true,
           kind:'command_confirmation',
           intent:writeIntent.intent,
           text:normalizedText,
-          message:String(prepared.message || '이 작업을 진행할까요?'),
+          message:confirmationMessage(prepared.command, schedule, prepared.message),
           clearInput:true,
           payload:prepared.command
         };
@@ -627,10 +797,13 @@
     parseMakeupMutationIntent,
     parseWaitlistMutationIntent,
     parseTrialMutationIntent,
+    parseAbsenceMutationIntent,
     parseMakeupCancelMutationIntent,
+    parseTrialCancelMutationIntent,
     parseMoveCancelMutationIntent,
     parseDateExpression,
     resolveDateExpression,
-    getPendingWriteCommand() { return pendingWriteCommand ? Object.assign({}, pendingWriteCommand) : null; }
+    getPendingWriteCommand() { return pendingWriteCommand ? Object.assign({}, pendingWriteCommand) : null; },
+    getPendingReasonCommand() { return pendingReasonCommand ? Object.assign({}, pendingReasonCommand) : null; }
   });
 })(window);
