@@ -3,7 +3,8 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-18-date-range-1';
+  const VERSION = '2026-09-18-write-commands-1';
+  let pendingWriteCommand = null;
 
   function cleanText(value) {
     return String(value == null ? '' : value).replace(/\r\n?/g, '\n').trim();
@@ -100,25 +101,62 @@
     const compact = compactText(raw);
     if (!raw || !/(?:변경|옮겨|옮길|이동시켜|이동해|바꿔)/.test(compact)) return null;
 
-    const match = raw.match(/^\s*(.*?)\s*([월화수목금토])요일\s*수업(?:을|에서)?\s*([월화수목금토])요일\s*(\d{1,2})시(?:로)?\s*(?:변경|옮겨(?:줘)?|이동(?:시켜|해)?|바꿔(?:줘)?)\s*[.!?]?\s*$/);
+    const match = raw.match(/^\s*(.*?)\s*([월화수목금토])요일(?:\s*(\d{1,2})시)?\s*수업(?:을|에서)?\s*([월화수목금토])요일\s*(\d{1,2})시(?:\s*([AaBb])반)?(?:로)?\s*(?:변경|옮겨(?:줘)?|이동(?:시켜|해)?|바꿔(?:줘)?)\s*[.!?]?\s*$/);
     if (!match) return null;
 
     const studentName = cleanText(match[1]);
     const sourceWeekday = WEEKDAY_MAP[match[2]] || 0;
-    const targetWeekday = WEEKDAY_MAP[match[3]] || 0;
-    const targetTimeSlot = Number(match[4] || 0);
-    if (!studentName || !sourceWeekday || !targetWeekday || !targetTimeSlot) return null;
+    const sourceTimeSlot = Number(match[3] || 0);
+    const targetWeekday = WEEKDAY_MAP[match[4]] || 0;
+    const targetTimeSlot = Number(match[5] || 0);
+    const classGroup = cleanText(match[6]).toUpperCase();
+    if (!sourceWeekday || !targetWeekday || !targetTimeSlot) return null;
 
     return {
       type: 'mutation',
       intent: 'move_class',
-      status: 'reserved',
       studentName,
       sourceWeekday,
+      sourceTimeSlot,
       targetWeekday,
       targetTimeSlot,
+      classGroup,
       originalText: raw
     };
+  }
+
+  function parseMakeupMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !/보강/.test(compact) || !/(?:넣어|등록|잡아|추가)/.test(compact)) return null;
+
+    const match = raw.match(/^\s*(.*?)\s*(오늘|내일|(?:(?:이번\s*주|다음\s*주)\s*)?[월화수목금토]요일)\s*(\d{1,2})시(?:에)?(?:\s*([AaBb])반)?\s*보강(?:으로)?\s*(?:넣어(?:줘)?|등록(?:해줘|해|해줘요)?|잡아(?:줘)?|추가(?:해줘|해)?)\s*[.!?]?\s*$/);
+    if (!match) return null;
+
+    const studentName = cleanText(match[1]);
+    const dateSpec = parseDateExpression(compactText(match[2]));
+    const timeSlot = Number(match[3] || 0);
+    const classGroup = cleanText(match[4]).toUpperCase();
+    if (!dateSpec || !timeSlot) return null;
+
+    return {
+      type:'mutation',
+      intent:'add_makeup',
+      studentName,
+      dateSpec,
+      dateLabel:dateSpec.label,
+      timeSlot,
+      classGroup,
+      originalText:raw
+    };
+  }
+
+  function isConfirmCommand(text) {
+    return /^(확인|진행|등록|변경|실행|해줘|진행해줘)$/i.test(compactText(text));
+  }
+
+  function isCancelCommand(text) {
+    return /^(취소|취소해|취소해줘|아니|아니야)$/i.test(compactText(text));
   }
 
   function parseAvailableSlotsIntent(text) {
@@ -174,25 +212,156 @@
 
   async function route(text, context) {
     const normalizedText = cleanText(text);
-    normalizeContext(context);
+    const routeContext = normalizeContext(context);
+    const schedule = global.OlliCommandSchedule;
+
+    if (isCancelCommand(normalizedText)) {
+      if (!pendingWriteCommand) {
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'cancel',
+          text:normalizedText,
+          message:'취소할 시간표 작업이 없어요.',
+          clearInput:true,
+          payload:null
+        };
+      }
+      const cancelled = pendingWriteCommand;
+      pendingWriteCommand = null;
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:'cancel',
+        text:normalizedText,
+        message:'시간표 작업을 취소했어요.',
+        clearInput:true,
+        payload:cancelled
+      };
+    }
+
+    if (isConfirmCommand(normalizedText)) {
+      if (!pendingWriteCommand) {
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'confirm',
+          text:normalizedText,
+          message:'확인할 시간표 작업이 없어요.',
+          clearInput:true,
+          payload:null
+        };
+      }
+      if (!schedule || typeof schedule.executePreparedWrite !== 'function') {
+        pendingWriteCommand = null;
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'confirm',
+          text:normalizedText,
+          message:'시간표 저장 기능을 아직 불러오지 못했어요. 다시 명령해 주세요.',
+          clearInput:true,
+          payload:null
+        };
+      }
+
+      const command = pendingWriteCommand;
+      pendingWriteCommand = null;
+      try {
+        const result = await schedule.executePreparedWrite(command);
+        const message = typeof schedule.writeSuccessMessage === 'function'
+          ? schedule.writeSuccessMessage(command, result)
+          : '시간표 작업을 완료했어요.';
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:command.intent,
+          text:normalizedText,
+          message,
+          clearInput:true,
+          payload:{ command, result }
+        };
+      } catch (error) {
+        console.warn('올리 쓰기 명령 실행 실패:', error);
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:command.intent,
+          text:normalizedText,
+          message:String(error && (error.message || error) || '시간표 작업을 저장하지 못했어요.'),
+          clearInput:true,
+          payload:{ command, error:true }
+        };
+      }
+    }
+
+    if (pendingWriteCommand) pendingWriteCommand = null;
 
     const scheduleMove = parseScheduleMoveMutationIntent(normalizedText);
-    if (scheduleMove) {
-      return {
-        handled: true,
-        kind: 'command_reserved',
-        intent: scheduleMove.intent,
-        text: normalizedText,
-        message: '수업 이동 명령으로 이해했어요. 실제 시간표 변경은 쓰기 명령 단계에서 연결할게요.',
-        clearInput: true,
-        payload: scheduleMove
-      };
+    const makeupWrite = parseMakeupMutationIntent(normalizedText);
+    const writeIntent = scheduleMove || makeupWrite;
+    if (writeIntent) {
+      if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:writeIntent.intent,
+          text:normalizedText,
+          message:'시간표 쓰기 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:writeIntent
+        };
+      }
+
+      try {
+        const options = Object.assign({}, writeIntent, {
+          selectedStudent:routeContext.selectedStudent || null,
+          effectiveDate:new Date()
+        });
+        if (writeIntent.dateSpec) {
+          options.date = resolveDateExpression(writeIntent.dateSpec, new Date());
+          if (!options.date) throw new Error('보강 날짜를 해석하지 못했습니다.');
+        }
+        const prepared = await schedule.prepareWriteCommand(writeIntent.intent, options);
+        if (!prepared || prepared.ok !== true) {
+          return {
+            handled:true,
+            kind:'command_result',
+            intent:writeIntent.intent,
+            text:normalizedText,
+            message:String(prepared && prepared.message || '시간표 작업을 준비하지 못했어요.'),
+            clearInput:true,
+            payload:writeIntent
+          };
+        }
+
+        pendingWriteCommand = prepared.command;
+        return {
+          handled:true,
+          kind:'command_confirmation',
+          intent:writeIntent.intent,
+          text:normalizedText,
+          message:String(prepared.message || '이 작업을 진행할까요?'),
+          clearInput:true,
+          payload:prepared.command
+        };
+      } catch (error) {
+        console.warn('올리 쓰기 명령 준비 실패:', error);
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:writeIntent.intent,
+          text:normalizedText,
+          message:String(error && (error.message || error) || '시간표 작업을 준비하지 못했어요.'),
+          clearInput:true,
+          payload:writeIntent
+        };
+      }
     }
 
     const availableSlots = parseAvailableSlotsIntent(normalizedText);
     if (!availableSlots) return passThrough(normalizedText);
 
-    const schedule = global.OlliCommandSchedule;
     if (!schedule || typeof schedule.findAvailableSlots !== 'function') {
       return {
         handled: true,
@@ -245,7 +414,9 @@
     route,
     parseAvailableSlotsIntent,
     parseScheduleMoveMutationIntent,
+    parseMakeupMutationIntent,
     parseDateExpression,
-    resolveDateExpression
+    resolveDateExpression,
+    getPendingWriteCommand() { return pendingWriteCommand ? Object.assign({}, pendingWriteCommand) : null; }
   });
 })(window);
