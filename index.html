@@ -1071,7 +1071,6 @@
   --olli-student-sheet-top: calc(env(safe-area-inset-top, 0px) + 182px);
 }
 
-#studentModal,
 #elementaryInfoModal,
 #kinderInfoModal {
   align-items: flex-end;
@@ -1082,7 +1081,6 @@
   -webkit-backdrop-filter: blur(8px) saturate(1.04);
 }
 
-#studentModal .modalCard,
 #elementaryInfoModal .modalCard,
 #kinderInfoModal .modalCard {
   width: 100%;
@@ -1100,7 +1098,6 @@
   overscroll-behavior: contain;
 }
 
-#studentModal .modalCard::before,
 #elementaryInfoModal .modalCard::before,
 #kinderInfoModal .modalCard::before {
   content: '';
@@ -1112,7 +1109,6 @@
   margin: 0 auto 16px;
 }
 
-#studentModal[style*="flex"] .modalCard,
 #elementaryInfoModal[style*="flex"] .modalCard,
 #kinderInfoModal[style*="flex"] .modalCard {
   animation: olliStudentBottomSheetIn .24s cubic-bezier(.22,.61,.36,1) both;
@@ -1123,13 +1119,11 @@
   to { transform: translateY(0); opacity: 1; }
 }
 
-#studentModal .modalTitle,
 #elementaryInfoModal .modalTitle,
 #kinderInfoModal .modalTitle {
   margin-bottom: 18px;
 }
 
-#studentModal .modalActions,
 #elementaryInfoModal .modalActions,
 #kinderInfoModal .modalActions {
   position: sticky;
@@ -1365,7 +1359,6 @@
 }
 
 @media (max-width: 380px) {
-  #studentModal .modalCard,
   #elementaryInfoModal .modalCard,
   #kinderInfoModal .modalCard {
     height: calc(100vh - var(--olli-student-sheet-top));
@@ -1377,7 +1370,6 @@
     padding-right: 16px;
   }
 
-  #studentModal .modalActions,
   #elementaryInfoModal .modalActions,
   #kinderInfoModal .modalActions {
     margin-left: -16px;
