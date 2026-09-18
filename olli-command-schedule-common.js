@@ -531,34 +531,82 @@
     );
   }
 
+  function slotKey(slot) {
+    return [slot && slot.division,slot && slot.weekday,slot && slot.timeSlot,slot && slot.classGroup].join('|');
+  }
+
+  function recurringBookingState(data, slot, startDate, endDate) {
+    let date = nextWeekdayKey(startDate, slot && slot.weekday);
+    while (date && date <= endDate) {
+      const calendar = calendarDayFor(data, date);
+      if (!(calendar && calendar.is_holiday === true)) {
+        const snapshot = slotSnapshot(
+          data,
+          slot.division,
+          date,
+          slot.weekday,
+          slot.timeSlot,
+          slot.classGroup,
+          slot.grouped
+        );
+        if (Number(snapshot.remaining || 0) > 0) {
+          return { available:true, firstDate:date };
+        }
+      }
+      date = addDaysKey(date, 7);
+    }
+    return { available:false, firstDate:'' };
+  }
+
   async function findRecurringAvailability(options) {
     const opts = options || {};
     const start = localDateKey(opts.date || new Date());
     const end = addDaysKey(start, 365);
     const data = await loadAvailabilityHorizon(start, end);
     const candidates = candidateRecurringSlots(data, opts);
-    const allBaselineSlots = candidates.map(candidate => recurringBaselineSlot(data, candidate, start));
-    const slots = allBaselineSlots.filter(slot => Number(slot.remaining) > 0);
+    const baselineSlots = candidates.map(candidate => recurringBaselineSlot(data, candidate, start));
     const regularChanges = [];
-    allBaselineSlots.forEach(slot => {
+    baselineSlots.forEach(slot => {
       regularChanges.push.apply(regularChanges, regularChangePoints(data, slot, start, end));
     });
 
+    const allBaselineSlots = baselineSlots.map(slot => {
+      const key = slotKey(slot);
+      const changes = regularChanges.filter(item => slotKey(item) === key);
+      const safeRegularRemaining = changes.reduce(
+        (minimum, item) => Math.min(minimum, Number(item.remaining || 0)),
+        Number(slot.remaining || 0)
+      );
+      const booking = recurringBookingState(data, slot, start, end);
+      return Object.assign({}, slot, {
+        safeRegularRemaining,
+        regularAdmissionAvailable:safeRegularRemaining > 0,
+        bookingAvailable:booking.available,
+        firstBookingDate:booking.firstDate
+      });
+    });
+
+    const purpose = clean(opts.purpose) || 'unknown';
+    const availabilitySlots = allBaselineSlots.filter(slot => {
+      if (purpose === 'makeup' || purpose === 'trial') return slot.bookingAvailable === true;
+      return slot.regularAdmissionAvailable === true;
+    });
+
     const oneTimeExceptions = oneTimeExceptionSlots(data, candidates, start, end);
-    const displaySlots = filterDisplaySlots(allBaselineSlots, slots, opts);
+    const displaySlots = filterDisplaySlots(allBaselineSlots, availabilitySlots, opts);
 
     return {
       scope:'recurring',
       startDate:start,
       endDate:end,
-      purpose:clean(opts.purpose) || 'unknown',
+      purpose,
       division:normalizeDivision(opts.division),
       viewMode:clean(opts.viewMode) || 'availability',
       weekday:Number(opts.weekday || 0),
       timeSlot:Number(opts.timeSlot || 0),
       classGroup:requestedGroup(opts.classGroup),
       allSlots:allBaselineSlots,
-      slots,
+      slots:availabilitySlots,
       displaySlots,
       regularChanges,
       oneTimeExceptions
@@ -608,6 +656,24 @@
       + ' · ' + status;
   }
 
+  function compactAvailabilitySlotLabel(slot) {
+    const group = slot && slot.grouped ? ' ' + classGroup(slot.classGroup) + '반' : '';
+    const parts = [
+      String(Number(slot && slot.timeSlot || 0)) + '시' + group,
+      '정규 ' + Number(slot && slot.regularCount || 0) + '명'
+    ];
+    if (Number(slot && slot.makeupCount || 0) > 0) {
+      parts.push(Number(slot.makeupCount) + '보강');
+    }
+    if (Number(slot && slot.trialCount || 0) > 0) {
+      parts.push(Number(slot.trialCount) + '체험');
+    }
+    const status = Number(slot && slot.remaining || 0) > 0
+      ? Number(slot.remaining) + '자리'
+      : '마감';
+    return parts.join(' · ') + ' (' + status + ')';
+  }
+
   function recurringSlotLabel(slot) {
     const group = slot && slot.grouped ? ' ' + classGroup(slot.classGroup) + '반' : '';
     const status = Number(slot && slot.remaining || 0) > 0
@@ -620,31 +686,54 @@
 
   function describeAvailableSlots(result) {
     const data = result || {};
-    const purpose = purposeLabel(data.purpose);
+    const purpose = clean(data.purpose) || 'unknown';
+    const purposeText = purposeLabel(purpose);
     const dateLabel = resultDateLabel(data);
     if (data.closedDay) {
       return dateLabel + '은 ' + (data.closedReason || '휴원일') + '이라 정상 수업이 없어요.';
     }
 
     const slots = Array.isArray(data.displaySlots) ? data.displaySlots : (Array.isArray(data.slots) ? data.slots : []);
-    if (!slots.length) {
-      const prefix = data.division ? divisionLabel(data.division) + ' ' : '';
-      const operating = Array.isArray(data.allSlots) ? data.allSlots : [];
-      if (operating.length && clean(data.viewMode) !== 'schedule') {
-        return dateLabel + ' ' + prefix + purpose + ' 빈자리가 없어요.';
-      }
-      return dateLabel + ' ' + prefix + purpose + ' 운영 클래스가 없어요.';
+    const operating = Array.isArray(data.allSlots) ? data.allSlots : [];
+    const isSchedule = clean(data.viewMode) === 'schedule';
+    const hasOpenSeat = slots.some(slot => Number(slot && slot.remaining || 0) > 0);
+
+    if (isSchedule) {
+      if (!slots.length) return dateLabel + ' 확인할 수업이 없어요.';
+      const divisions = data.division ? [data.division] : ['elementary', 'kinder'];
+      const lines = divisions.map(division => {
+        const rows = slots.filter(slot => slot.division === division);
+        if (!rows.length) return '';
+        return divisionLabel(division) + ': ' + rows.map(slotLabel).join(' · ');
+      }).filter(Boolean);
+      return [dateLabel + ' 시간표예요.'].concat(lines).join('\n');
     }
 
-    const intro = data.purpose === 'unknown'
-      ? dateLabel + ' 자리가 남은 클래스예요.'
-      : dateLabel + ' ' + purpose + ' 클래스예요.';
+    let intro = '';
+    if (purpose === 'makeup') {
+      intro = dateLabel + (hasOpenSeat ? ' 보강 가능합니다.' : ' 보강 자리가 없습니다.');
+    } else if (purpose === 'trial') {
+      intro = dateLabel + (hasOpenSeat ? ' 체험 예약 가능합니다.' : ' 체험 자리가 없습니다.');
+    } else if (purpose === 'new_enrollment') {
+      intro = dateLabel + (hasOpenSeat ? ' 신규등록 가능합니다.' : ' 신규등록 자리가 없습니다.');
+    } else if (purpose === 'schedule_move') {
+      intro = dateLabel + (hasOpenSeat ? ' 수업 이동 가능합니다.' : ' 수업 이동 가능한 자리가 없습니다.');
+    } else {
+      intro = dateLabel + (hasOpenSeat ? ' 자리 있습니다.' : ' 빈자리가 없습니다.');
+    }
+
+    if (!slots.length) {
+      if (!operating.length && purpose === 'unknown') {
+        return dateLabel + ' 운영 수업이 없어요.';
+      }
+      return intro;
+    }
 
     const divisions = data.division ? [data.division] : ['elementary', 'kinder'];
     const lines = divisions.map(division => {
       const rows = slots.filter(slot => slot.division === division);
       if (!rows.length) return '';
-      return divisionLabel(division) + ': ' + rows.map(slotLabel).join(' · ');
+      return divisionLabel(division) + ': ' + rows.map(compactAvailabilitySlotLabel).join(' · ');
     }).filter(Boolean);
 
     return [intro].concat(lines).join('\n');
@@ -689,14 +778,9 @@
     const display = Array.isArray(data.displaySlots) ? data.displaySlots : [];
     const allSlots = Array.isArray(data.allSlots) ? data.allSlots : [];
     const lines = [];
-    const relevantKeys = new Set(allSlots.map(slot =>
-      [slot.division,slot.weekday,slot.timeSlot,slot.classGroup].join('|')
-    ));
+    const relevantKeys = new Set(allSlots.map(slot => slotKey(slot)));
     const singleSlot = allSlots.length === 1;
-    const baselineByKey = new Map(allSlots.map(slot => [
-      [slot.division,slot.weekday,slot.timeSlot,slot.classGroup].join('|'),
-      slot
-    ]));
+    const baselineByKey = new Map(allSlots.map(slot => [slotKey(slot), slot]));
 
     function className(slot, includeDivision) {
       const group = slot && slot.grouped ? ' ' + classGroup(slot.classGroup) + '반' : '';
@@ -704,10 +788,15 @@
       return prefix + weekdayLabel(slot && slot.weekday) + ' ' + Number(slot && slot.timeSlot || 0) + '시' + group;
     }
 
-    function seatText(slot) {
-      return Number(slot && slot.remaining || 0) > 0
+    function currentDetail(slot) {
+      const group = slot && slot.grouped ? ' ' + classGroup(slot.classGroup) + '반' : '';
+      const status = Number(slot && slot.remaining || 0) > 0
         ? Number(slot.remaining) + '자리'
         : '마감';
+      return divisionLabel(slot && slot.division) + ': '
+        + Number(slot && slot.timeSlot || 0) + '시' + group
+        + ' · 정규 ' + Number(slot && slot.regularCount || 0) + '명'
+        + ' (' + status + ')';
     }
 
     function shortDateLabel(value) {
@@ -716,93 +805,93 @@
       return (date.getMonth() + 1) + '월 ' + date.getDate() + '일';
     }
 
-    function topicSuffix(slot) {
-      return slot && slot.grouped ? '은' : '는';
-    }
-
-    function oneTimeReasonText(slot) {
-      const parts = [];
-      if (Number(slot && slot.makeupCount || 0) > 0) parts.push('보강 ' + Number(slot.makeupCount) + '명');
-      if (Number(slot && slot.trialCount || 0) > 0) parts.push('체험 ' + Number(slot.trialCount) + '명');
-      return parts.join(', ');
+    function oneTimeReservationText(slot) {
+      const makeup = Number(slot && slot.makeupCount || 0);
+      const trial = Number(slot && slot.trialCount || 0);
+      if (makeup > 0 && trial > 0) return '보강 ' + makeup + '명과 체험 ' + trial + '명';
+      if (makeup > 0) return '보강 ' + makeup + '명';
+      if (trial > 0) return '체험 ' + trial + '명';
+      return '';
     }
 
     const regularChanges = (Array.isArray(data.regularChanges) ? data.regularChanges : [])
-      .filter(item => relevantKeys.has([item.division,item.weekday,item.timeSlot,item.classGroup].join('|')));
+      .filter(item => relevantKeys.has(slotKey(item)));
+    const exceptions = (Array.isArray(data.oneTimeExceptions) ? data.oneTimeExceptions : [])
+      .filter(item => relevantKeys.has(slotKey(item)));
 
-    if (!display.length) {
-      lines.push(clean(data.viewMode) === 'schedule'
-        ? '현재 정규수업 기준으로 확인할 클래스가 없어요.'
-        : '현재 정규수업 기준으로 빈자리가 없어요.');
+    if (!display.length && !allSlots.length) {
+      lines.push('확인할 정규수업이 없어요.');
     } else {
-      display.forEach((slot, index) => {
-        const includeDivision = !data.division && (
-          display.some(other => other !== slot && other.weekday === slot.weekday && other.timeSlot === slot.timeSlot)
-          || display.length > 1
-        );
+      const rows = display.length ? display : allSlots.filter(slot => {
+        if (data.timeSlot || data.classGroup || data.weekday) return true;
+        return false;
+      });
+
+      if (!rows.length && clean(data.purpose) !== 'makeup' && clean(data.purpose) !== 'trial') {
+        lines.push('정규수업 기준 빈자리가 없습니다.');
+      }
+
+      rows.forEach((slot, index) => {
+        const includeDivision = !data.division && rows.length > 1;
         const label = className(slot, includeDivision);
-        const remaining = Number(slot && slot.remaining || 0);
-        const slotKey = [slot.division,slot.weekday,slot.timeSlot,slot.classGroup].join('|');
-        const hasFutureRegularChange = regularChanges.some(item =>
-          [item.division,item.weekday,item.timeSlot,item.classGroup].join('|') === slotKey
+        const safeRemaining = Number(
+          slot && slot.safeRegularRemaining != null
+            ? slot.safeRegularRemaining
+            : slot && slot.remaining || 0
         );
+
         if (index > 0 && lines.length) lines.push('');
-        if (remaining > 0) {
-          lines.push(
-            hasFutureRegularChange
-              ? label + topicSuffix(slot) + ' 현재 정규수업 기준 ' + remaining + '자리 있어요.'
-              : label + topicSuffix(slot) + ' 정규 기준 ' + remaining + '자리 있습니다.'
-          );
+        if (safeRemaining > 0) {
+          lines.push(label + '는 정규수업 기준 ' + safeRemaining + '자리 있습니다.');
         } else {
-          lines.push(label + topicSuffix(slot) + ' 현재 정규수업 기준 마감입니다.');
+          lines.push(label + '는 정규수업 기준 마감되었습니다.');
         }
-        lines.push(label + ' · 정규 ' + Number(slot && slot.regularCount || 0) + '명 / ' + seatText(slot));
+        lines.push(currentDetail(slot));
+
+        const key = slotKey(slot);
+        regularChanges
+          .filter(item => slotKey(item) === key)
+          .slice(0, 12)
+          .forEach(item => {
+            const status = Number(item.remaining || 0) > 0
+              ? Number(item.remaining) + '자리'
+              : '마감';
+            lines.push(
+              shortDateLabel(item.date) + '부터 정규 '
+              + Number(item.regularCount || 0) + '명 / ' + status
+            );
+          });
+
+        exceptions
+          .filter(item => slotKey(item) === key)
+          .slice(0, 12)
+          .forEach(item => {
+            const reservation = oneTimeReservationText(item);
+            if (!reservation) return;
+            if (Number(item.remaining || 0) > 0) {
+              lines.push(
+                shortDateLabel(item.date) + '은 ' + reservation
+                + '이 예약되어 있어 ' + Number(item.remaining) + '자리 있습니다.'
+              );
+            } else {
+              lines.push(
+                shortDateLabel(item.date) + '은 ' + reservation
+                + '이 예약되어 있어 해당 날짜도 마감입니다.'
+              );
+            }
+          });
       });
     }
 
-    regularChanges.slice(0, 12).forEach(item => {
-      const key = [item.division,item.weekday,item.timeSlot,item.classGroup].join('|');
-      const baseline = baselineByKey.get(key) || {};
-      const increased = Number(item.regularCount || 0) > Number(baseline.regularCount || 0);
-      const label = singleSlot ? '' : className(item, true) + topicSuffix(item) + ' ';
-      if (Number(item.remaining || 0) > 0) {
-        lines.push(
-          shortDateLabel(item.date) + '부터는 ' + label
-          + (increased ? '정규학생 등록 예정으로 ' : '정규학생 변동으로 ')
-          + Number(item.remaining) + '자리 있습니다.'
-        );
+    const purpose = clean(data.purpose) || 'unknown';
+    if (purpose === 'makeup' || purpose === 'trial') {
+      const relevant = (display.length ? display : allSlots);
+      const canBook = relevant.some(slot => slot && slot.bookingAvailable === true);
+      if (purpose === 'makeup') {
+        lines.push(canBook ? '보강 예약 가능합니다.' : '보강 자리가 없습니다.');
       } else {
-        lines.push(
-          shortDateLabel(item.date) + '부터는 ' + label
-          + (increased ? '정규학생 등록 예정으로 마감됩니다.' : '정규학생 변동으로 마감됩니다.')
-        );
+        lines.push(canBook ? '체험 예약 가능합니다.' : '체험 자리가 없습니다.');
       }
-    });
-    if (regularChanges.length > 12) {
-      lines.push('정규 인원 변경 일정이 ' + (regularChanges.length - 12) + '건 더 있어요.');
-    }
-
-    const exceptions = (Array.isArray(data.oneTimeExceptions) ? data.oneTimeExceptions : [])
-      .filter(item => relevantKeys.has([item.division,item.weekday,item.timeSlot,item.classGroup].join('|')));
-    exceptions.slice(0, 12).forEach((item, index) => {
-      const label = singleSlot ? '' : className(item, true) + '에 ';
-      const reason = oneTimeReasonText(item);
-      if (!reason) return;
-      const connector = index === 0 && regularChanges.length ? '또한 ' : '';
-      if (Number(item.remaining || 0) > 0) {
-        lines.push(
-          connector + shortDateLabel(item.date) + '에는 ' + label + reason
-          + '이 있어 ' + Number(item.remaining) + '자리 있습니다.'
-        );
-      } else {
-        lines.push(
-          connector + shortDateLabel(item.date) + '은 ' + label + reason
-          + '이 있어 해당 날짜만 마감이에요.'
-        );
-      }
-    });
-    if (exceptions.length > 12) {
-      lines.push('보강·체험 예약이 ' + (exceptions.length - 12) + '건 더 있어요.');
     }
 
     return lines.filter((line, index, arr) => line !== '' || (index > 0 && arr[index - 1] !== '')).join('\n');
