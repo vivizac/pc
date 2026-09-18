@@ -310,6 +310,30 @@
       : null;
     var selectedStudent = getKcfSelectedStudent();
 
+    if (window.OlliCommandRouter && typeof window.OlliCommandRouter.route === 'function') {
+      try {
+        var commandRoute = await window.OlliCommandRouter.route(text, {
+          source: 'one_minute_feedback',
+          selectedStudent: selectedStudent || null,
+          autoSubmitContext: autoSubmitContext || null
+        });
+        if (commandRoute && commandRoute.handled === true) {
+          if (commandRoute.message && typeof addKinderChatMessage === 'function') {
+            addKinderChatMessage('bot', String(commandRoute.message));
+          }
+          if (commandRoute.clearInput !== false) {
+            input.value = '';
+            if (typeof clearKinderChatFeedbackDraft === 'function') clearKinderChatFeedbackDraft();
+            if (typeof autoResizeKinderChatFeedbackInput === 'function') autoResizeKinderChatFeedbackInput(input);
+          }
+          if (typeof setKinderChatFeedbackWarning === 'function') setKinderChatFeedbackWarning('');
+          return;
+        }
+      } catch (err) {
+        console.warn('올리 명령 라우터 처리 실패, 기존 피드백 흐름을 계속합니다:', err);
+      }
+    }
+
     if (!selectedStudent && !(autoSubmitContext && autoSubmitContext.enabled)) {
       var typedInput = parseKcfTypedStudentInput(text);
       if (typedInput) {
