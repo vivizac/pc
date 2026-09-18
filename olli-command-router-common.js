@@ -82,8 +82,9 @@
 
     const separated = raw.match(/(?:결석(?:\s*처리)?|(?:보강|보충(?:수업)?)\s*(?:취소|삭제)|(?:체험(?:\s*수업|\s*클래스)?)\s*(?:취소|삭제))\s*[,：:-]\s*(.+)$/i);
     if (separated && cleanText(separated[1])) {
+      const reasonStart = raw.lastIndexOf(separated[1]);
       return {
-        commandText:cleanText(raw.slice(0, separated.index) + raw.slice(separated.index, separated.index + separated[0].length - separated[1].length).replace(/[,：:-]\s*$/, '')),
+        commandText:cleanText(raw.slice(0, reasonStart).replace(/[,：:-]\s*$/, '')),
         reason:normalizeReasonReply(separated[1])
       };
     }
@@ -392,7 +393,7 @@
     const studentName = extractStudentName(
       raw,
       /(?:결석)(?:\s*처리)?/g,
-      /(?:처리)?(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
+      /(?:처리(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?|해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)/g
     );
 
     return {
@@ -796,7 +797,9 @@
     parseMakeupMutationIntent,
     parseWaitlistMutationIntent,
     parseTrialMutationIntent,
+    parseAbsenceMutationIntent,
     parseMakeupCancelMutationIntent,
+    parseTrialCancelMutationIntent,
     parseMoveCancelMutationIntent,
     parseDateExpression,
     resolveDateExpression,
