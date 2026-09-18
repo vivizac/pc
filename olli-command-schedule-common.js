@@ -710,12 +710,25 @@
         : '마감';
     }
 
+    function shortDateLabel(value) {
+      const date = parseLocalDate(value);
+      if (!date) return '해당 날짜';
+      return (date.getMonth() + 1) + '월 ' + date.getDate() + '일';
+    }
+
+    function topicSuffix(slot) {
+      return slot && slot.grouped ? '은' : '는';
+    }
+
     function oneTimeReasonText(slot) {
       const parts = [];
       if (Number(slot && slot.makeupCount || 0) > 0) parts.push('보강 ' + Number(slot.makeupCount) + '명');
       if (Number(slot && slot.trialCount || 0) > 0) parts.push('체험 ' + Number(slot.trialCount) + '명');
       return parts.join(', ');
     }
+
+    const regularChanges = (Array.isArray(data.regularChanges) ? data.regularChanges : [])
+      .filter(item => relevantKeys.has([item.division,item.weekday,item.timeSlot,item.classGroup].join('|')));
 
     if (!display.length) {
       lines.push(clean(data.viewMode) === 'schedule'
@@ -729,18 +742,24 @@
         );
         const label = className(slot, includeDivision);
         const remaining = Number(slot && slot.remaining || 0);
+        const slotKey = [slot.division,slot.weekday,slot.timeSlot,slot.classGroup].join('|');
+        const hasFutureRegularChange = regularChanges.some(item =>
+          [item.division,item.weekday,item.timeSlot,item.classGroup].join('|') === slotKey
+        );
         if (index > 0 && lines.length) lines.push('');
         if (remaining > 0) {
-          lines.push(label + '는 정규 기준 ' + remaining + '자리 있습니다.');
+          lines.push(
+            hasFutureRegularChange
+              ? label + topicSuffix(slot) + ' 현재 정규수업 기준 ' + remaining + '자리 있어요.'
+              : label + topicSuffix(slot) + ' 정규 기준 ' + remaining + '자리 있습니다.'
+          );
         } else {
-          lines.push(label + '는 현재 정규수업 기준 마감입니다.');
+          lines.push(label + topicSuffix(slot) + ' 현재 정규수업 기준 마감입니다.');
         }
         lines.push(label + ' · 정규 ' + Number(slot && slot.regularCount || 0) + '명 / ' + seatText(slot));
       });
     }
 
-    const regularChanges = (Array.isArray(data.regularChanges) ? data.regularChanges : [])
-      .filter(item => relevantKeys.has([item.division,item.weekday,item.timeSlot,item.classGroup].join('|')));
     regularChanges.slice(0, 12).forEach(item => {
       const key = [item.division,item.weekday,item.timeSlot,item.classGroup].join('|');
       const baseline = baselineByKey.get(key) || {};
@@ -748,13 +767,13 @@
       const label = singleSlot ? '' : className(item, true) + '는 ';
       if (Number(item.remaining || 0) > 0) {
         lines.push(
-          fallbackDateLabel(item.date) + '부터는 ' + label
+          shortDateLabel(item.date) + '부터는 ' + label
           + (increased ? '정규학생 등록 예정으로 ' : '정규학생 변동으로 ')
           + Number(item.remaining) + '자리 있습니다.'
         );
       } else {
         lines.push(
-          fallbackDateLabel(item.date) + '부터는 ' + label
+          shortDateLabel(item.date) + '부터는 ' + label
           + (increased ? '정규학생 등록 예정으로 마감됩니다.' : '정규학생 변동으로 마감됩니다.')
         );
       }
@@ -765,18 +784,19 @@
 
     const exceptions = (Array.isArray(data.oneTimeExceptions) ? data.oneTimeExceptions : [])
       .filter(item => relevantKeys.has([item.division,item.weekday,item.timeSlot,item.classGroup].join('|')));
-    exceptions.slice(0, 12).forEach(item => {
+    exceptions.slice(0, 12).forEach((item, index) => {
       const label = singleSlot ? '' : className(item, true) + '에 ';
       const reason = oneTimeReasonText(item);
       if (!reason) return;
+      const connector = index === 0 && regularChanges.length ? '또한 ' : '';
       if (Number(item.remaining || 0) > 0) {
         lines.push(
-          fallbackDateLabel(item.date) + '에는 ' + label + reason
+          connector + shortDateLabel(item.date) + '에는 ' + label + reason
           + '이 있어 ' + Number(item.remaining) + '자리 있습니다.'
         );
       } else {
         lines.push(
-          fallbackDateLabel(item.date) + '에는 ' + label + reason
+          connector + shortDateLabel(item.date) + '은 ' + label + reason
           + '이 있어 해당 날짜만 마감이에요.'
         );
       }
