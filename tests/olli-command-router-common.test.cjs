@@ -98,3 +98,31 @@ test('PC loads command schedule and router before shared feedback registration',
   assert.ok(routerIndex > scheduleIndex);
   assert.ok(registrationIndex > routerIndex);
 });
+
+
+test('schedule-move availability is a read query purpose', () => {
+  const router = loadRouter();
+  const parsed = router.parseAvailableSlotsIntent('오늘 수업 이동 가능한 시간 알려줘');
+  assert.equal(parsed.intent, 'find_available_slots');
+  assert.equal(parsed.purpose, 'schedule_move');
+});
+
+test('specific class move wording is reserved as a future write command', async () => {
+  const router = loadRouter();
+  const parsed = router.parseScheduleMoveMutationIntent('최민기 월요일 수업을 수요일 4시로 변경');
+  assert.equal(parsed.intent, 'move_class');
+  assert.equal(parsed.type, 'mutation');
+  assert.equal(parsed.status, 'reserved');
+  assert.equal(parsed.studentName, '최민기');
+  assert.equal(parsed.sourceWeekday, 1);
+  assert.equal(parsed.targetWeekday, 3);
+  assert.equal(parsed.targetTimeSlot, 4);
+
+  const routed = await router.route('최민기 월요일 수업을 수요일 4시로 변경', {
+    source:'one_minute_feedback'
+  });
+  assert.equal(routed.handled, true);
+  assert.equal(routed.kind, 'command_reserved');
+  assert.equal(routed.intent, 'move_class');
+  assert.match(routed.message, /쓰기 명령 단계/);
+});
