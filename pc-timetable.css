@@ -382,7 +382,7 @@
 .olliTtAddMemo > span { margin: 0 0 7px; color: #0877df; font-size: calc(12px * var(--olli-text-scale)); font-weight: 820; }
 .olliTtAddMemo textarea { width: 100%; min-height: 52px; flex: 1; padding: 0; border: 0; outline: 0; resize: none; box-sizing: border-box; color: #303946; background: transparent; font: 680 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; line-height: 1.5; }
 .olliTtAddMemo textarea::placeholder { color: #a5adb7; }
-.olliTtAbsenceRow { display:grid; grid-template-columns:minmax(0,1fr) 86px; gap:10px; align-items:stretch; }
+.olliTtAbsenceRow { margin-top:21px; display:grid; grid-template-columns:minmax(0,1fr) 86px; gap:10px; align-items:stretch; }
 .olliTtMoveMemo { min-height:86px; height:86px; padding:10px 13px; }
 .olliTtMoveMemo > span { margin-bottom:5px; }
 .olliTtMoveMemo textarea { min-height:39px; height:39px; max-height:39px; overflow-y:auto; }
