@@ -454,7 +454,8 @@
 
   function confirmationMessage(command, schedule, fallback) {
     if (schedule && typeof schedule.writeConfirmationMessage === 'function') {
-      return schedule.writeConfirmationMessage(command);
+      const message = cleanText(schedule.writeConfirmationMessage(command));
+      if (message) return message;
     }
     return cleanText(fallback) || '이 작업을 진행할까요?';
   }
