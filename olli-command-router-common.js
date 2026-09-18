@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-18-available-slots-1';
+  const VERSION = '2026-09-18-schedule-move-1';
 
   function cleanText(value) {
     return String(value == null ? '' : value).replace(/\r\n?/g, '\n').trim();
@@ -31,8 +31,37 @@
   function detectPurpose(compact) {
     if (/체험/.test(compact)) return 'trial';
     if (/보강/.test(compact)) return 'makeup';
+    if (/수업(?:이동|변경)|옮길|옮기는|옮겨|이동가능|변경가능/.test(compact)) return 'schedule_move';
     if (/신규|신입|새학생|새원생|신규등록/.test(compact)) return 'new_enrollment';
     return 'unknown';
+  }
+
+  const WEEKDAY_MAP = Object.freeze({ 월:1, 화:2, 수:3, 목:4, 금:5, 토:6 });
+
+  function parseScheduleMoveMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !/(?:변경|옮겨|옮길|이동시켜|이동해|바꿔)/.test(compact)) return null;
+
+    const match = raw.match(/^\s*(.*?)\s*([월화수목금토])요일\s*수업(?:을|에서)?\s*([월화수목금토])요일\s*(\d{1,2})시(?:로)?\s*(?:변경|옮겨(?:줘)?|이동(?:시켜|해)?|바꿔(?:줘)?)\s*[.!?]?\s*$/);
+    if (!match) return null;
+
+    const studentName = cleanText(match[1]);
+    const sourceWeekday = WEEKDAY_MAP[match[2]] || 0;
+    const targetWeekday = WEEKDAY_MAP[match[3]] || 0;
+    const targetTimeSlot = Number(match[4] || 0);
+    if (!studentName || !sourceWeekday || !targetWeekday || !targetTimeSlot) return null;
+
+    return {
+      type: 'mutation',
+      intent: 'move_class',
+      status: 'reserved',
+      studentName,
+      sourceWeekday,
+      targetWeekday,
+      targetTimeSlot,
+      originalText: raw
+    };
   }
 
   function parseAvailableSlotsIntent(text) {
@@ -86,6 +115,19 @@
     const normalizedText = cleanText(text);
     normalizeContext(context);
 
+    const scheduleMove = parseScheduleMoveMutationIntent(normalizedText);
+    if (scheduleMove) {
+      return {
+        handled: true,
+        kind: 'command_reserved',
+        intent: scheduleMove.intent,
+        text: normalizedText,
+        message: '수업 이동 명령으로 이해했어요. 실제 시간표 변경은 쓰기 명령 단계에서 연결할게요.',
+        clearInput: true,
+        payload: scheduleMove
+      };
+    }
+
     const availableSlots = parseAvailableSlotsIntent(normalizedText);
     if (!availableSlots) return passThrough(normalizedText);
 
@@ -137,6 +179,7 @@
   global.OlliCommandRouter = Object.freeze({
     VERSION,
     route,
-    parseAvailableSlotsIntent
+    parseAvailableSlotsIntent,
+    parseScheduleMoveMutationIntent
   });
 })(window);
