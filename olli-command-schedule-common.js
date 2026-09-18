@@ -3,7 +3,7 @@
 
   if (global.OlliCommandSchedule) return;
 
-  const VERSION = '2026-09-18-write-commands-3';
+  const VERSION = '2026-09-18-availability-baseline-1';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -105,14 +105,49 @@
     ).length;
   }
 
+  function oneTimeBreakdown(data, division, dateKey, timeSlot, group) {
+    let makeupCount = 0;
+    let trialCount = 0;
+    arrays(data, 'one_time_sessions').forEach(row => {
+      if (clean(row && row.division) !== division) return;
+      if (clean(row && row.session_date).slice(0, 10) !== dateKey) return;
+      if (Number(row && row.time_slot) !== Number(timeSlot)) return;
+      if (classGroup(row && row.class_group) !== group) return;
+      if (clean(row && row.status).toLowerCase() === 'cancelled') return;
+      if (clean(row && row.session_type).toLowerCase() === 'trial') trialCount += 1;
+      else makeupCount += 1;
+    });
+    return {
+      makeupCount,
+      trialCount,
+      oneTimeCount:makeupCount + trialCount
+    };
+  }
+
   function oneTimeCount(data, division, dateKey, timeSlot, group) {
-    return arrays(data, 'one_time_sessions').filter(row =>
-      clean(row && row.division) === division
-      && clean(row && row.session_date).slice(0, 10) === dateKey
-      && Number(row && row.time_slot) === Number(timeSlot)
-      && classGroup(row && row.class_group) === group
-      && clean(row && row.status).toLowerCase() !== 'cancelled'
-    ).length;
+    return oneTimeBreakdown(data, division, dateKey, timeSlot, group).oneTimeCount;
+  }
+
+  function slotSnapshot(data, division, dateKey, weekday, timeSlot, group, grouped) {
+    const capacity = capacityFor(data, division);
+    const regular = regularCount(data, division, dateKey, weekday, timeSlot, group);
+    const oneTime = oneTimeBreakdown(data, division, dateKey, timeSlot, group);
+    const occupancy = regular + oneTime.oneTimeCount;
+    return {
+      division,
+      date:dateKey,
+      weekday,
+      timeSlot:Number(timeSlot),
+      classGroup:classGroup(group),
+      grouped:!!grouped,
+      regularCount:regular,
+      makeupCount:oneTime.makeupCount,
+      trialCount:oneTime.trialCount,
+      oneTimeCount:oneTime.oneTimeCount,
+      occupancy,
+      capacity,
+      remaining:Math.max(0, capacity - occupancy)
+    };
   }
 
   function hasTeacher(data, division, weekday, timeSlot, group) {
@@ -176,74 +211,357 @@
     return null;
   }
 
+  function calendarDayFor(data, dateKey) {
+    return arrays(data, 'calendar_days').find(row =>
+      clean(row && row.session_date).slice(0, 10) === clean(dateKey)
+    ) || null;
+  }
+
+  function filterDisplaySlots(allSlots, availableSlots, options) {
+    const opts = options || {};
+    const timeSlot = Number(opts.timeSlot || 0);
+    const wantedGroup = requestedGroup(opts.classGroup);
+    const useAll = clean(opts.viewMode) === 'schedule' || !!timeSlot || !!wantedGroup;
+    return (useAll ? allSlots : availableSlots).filter(slot => {
+      if (timeSlot && Number(slot && slot.timeSlot) !== timeSlot) return false;
+      if (wantedGroup && classGroup(slot && slot.classGroup) !== wantedGroup) return false;
+      return true;
+    });
+  }
+
+  function buildDateAvailabilityFromData(data, dateKey, options) {
+    const opts = options || {};
+    const weekday = isoWeekday(dateKey);
+    const requestedDivision = normalizeDivision(opts.division);
+
+    if (weekday === 7) {
+      return {
+        date:dateKey,
+        purpose:clean(opts.purpose) || 'unknown',
+        division:requestedDivision,
+        dateLabel:clean(opts.dateLabel),
+        viewMode:clean(opts.viewMode) || 'availability',
+        closedDay:true,
+        closedReason:'일요일',
+        allSlots:[],
+        slots:[],
+        displaySlots:[]
+      };
+    }
+
+    const calendar = calendarDayFor(data, dateKey);
+    if (calendar && calendar.is_holiday === true) {
+      return {
+        date:dateKey,
+        purpose:clean(opts.purpose) || 'unknown',
+        division:requestedDivision,
+        dateLabel:clean(opts.dateLabel),
+        viewMode:clean(opts.viewMode) || 'availability',
+        closedDay:true,
+        closedReason:clean(calendar.name) || '휴원일',
+        allSlots:[],
+        slots:[],
+        displaySlots:[]
+      };
+    }
+
+    const divisions = requestedDivision ? [requestedDivision] : ['elementary', 'kinder'];
+    const allSlots = [];
+
+    divisions.forEach(division => {
+      validTimes(division, weekday).forEach(timeSlot => {
+        const groups = classGroups(data, division, weekday, timeSlot);
+        groups.forEach(group => {
+          if (!classIsOperating(data, division, dateKey, weekday, timeSlot, group)) return;
+          allSlots.push(slotSnapshot(data, division, dateKey, weekday, timeSlot, group, groups.length > 1));
+        });
+      });
+    });
+
+    const slots = allSlots.filter(slot => Number(slot.remaining) > 0);
+    return {
+      date:dateKey,
+      purpose:clean(opts.purpose) || 'unknown',
+      division:requestedDivision,
+      dateLabel:clean(opts.dateLabel),
+      viewMode:clean(opts.viewMode) || 'availability',
+      closedDay:false,
+      closedReason:'',
+      allSlots,
+      slots,
+      displaySlots:filterDisplaySlots(allSlots, slots, opts)
+    };
+  }
+
   async function findAvailableSlots(options) {
     const opts = options || {};
     const dateKey = localDateKey(opts.date || new Date());
     if (!dateKey) throw new Error('조회 날짜를 확인해 주세요.');
 
-    const weekday = isoWeekday(dateKey);
-    if (weekday === 7) {
-      return {
-        date: dateKey,
-        purpose: clean(opts.purpose) || 'unknown',
-        division: normalizeDivision(opts.division),
-        dateLabel: clean(opts.dateLabel),
-        closedDay: true,
-        closedReason: '일요일',
-        slots: []
-      };
+    if (isoWeekday(dateKey) === 7) {
+      return buildDateAvailabilityFromData({}, dateKey, opts);
     }
 
     const weekData = await loadFreshWeek(dateKey);
     const calendar = await loadCalendarDay(dateKey, weekData);
-    if (calendar && calendar.is_holiday === true) {
-      return {
-        date: dateKey,
-        purpose: clean(opts.purpose) || 'unknown',
-        division: normalizeDivision(opts.division),
-        dateLabel: clean(opts.dateLabel),
-        closedDay: true,
-        closedReason: clean(calendar.name) || '휴원일',
-        slots: []
-      };
+    if (calendar) {
+      weekData.calendar_days = arrays(weekData, 'calendar_days').filter(row =>
+        clean(row && row.session_date).slice(0, 10) !== dateKey
+      ).concat([calendar]);
+    }
+    return buildDateAvailabilityFromData(weekData, dateKey, opts);
+  }
+
+  async function loadAvailabilityHorizon(startDate, endDate) {
+    const start = localDateKey(startDate);
+    const end = localDateKey(endDate);
+    if (!start || !end) throw new Error('시간표 조회 기간을 확인해 주세요.');
+
+    const pc = global.OlliTimetableService;
+    const phone = global.OlliPhoneStudentScheduleService;
+
+    let dataPromise;
+    let calendarPromise;
+
+    if (pc && typeof pc.loadAvailabilityHorizon === 'function') {
+      dataPromise = pc.loadAvailabilityHorizon(start, end);
+      calendarPromise = typeof pc.loadCalendarRange === 'function'
+        ? pc.loadCalendarRange(start, end)
+        : Promise.resolve([]);
+    } else if (phone && typeof phone.request === 'function') {
+      dataPromise = phone.request('olli_schedule_availability_horizon', {
+        p_start_date:start,
+        p_end_date:end
+      });
+      calendarPromise = phone.request('olli_schedule_calendar_range', {
+        p_start_date:start,
+        p_end_date:end
+      }).then(result => Array.isArray(result && result.days) ? result.days : []);
+    } else {
+      throw new Error('시간표 조회 기능을 아직 불러오지 못했습니다.');
     }
 
-    const requestedDivision = normalizeDivision(opts.division);
-    const divisions = requestedDivision ? [requestedDivision] : ['elementary', 'kinder'];
-    const slots = [];
+    const values = await Promise.all([dataPromise, calendarPromise]);
+    const data = values[0] || {};
+    data.calendar_days = Array.isArray(values[1]) ? values[1] : [];
+    return data;
+  }
 
-    divisions.forEach(division => {
-      const capacity = capacityFor(weekData, division);
-      validTimes(division, weekday).forEach(timeSlot => {
-        const groups = classGroups(weekData, division, weekday, timeSlot);
-        groups.forEach(group => {
-          if (!classIsOperating(weekData, division, dateKey, weekday, timeSlot, group)) return;
-          const occupancy = classOccupancy(weekData, division, dateKey, weekday, timeSlot, group);
-          const remaining = Math.max(0, capacity - occupancy);
-          if (remaining < 1) return;
-          slots.push({
-            division,
-            date: dateKey,
-            weekday,
-            timeSlot,
-            classGroup: group,
-            grouped: groups.length > 1,
-            occupancy,
-            capacity,
-            remaining
-          });
-        });
-      });
-    });
+  function weekStartKey(value, offsetWeeks) {
+    const date = parseLocalDate(localDateKey(value));
+    if (!date) return '';
+    const weekday = date.getDay() || 7;
+    date.setDate(date.getDate() - (weekday - 1) + (Number(offsetWeeks || 0) * 7));
+    return localDateKey(date);
+  }
+
+  async function findWeekAvailability(options) {
+    const opts = options || {};
+    const start = weekStartKey(opts.date || new Date(), opts.weekOffset || 0);
+    const end = addDaysKey(start, 5);
+    const data = await loadAvailabilityHorizon(start, end);
+    const days = [];
+
+    for (let i = 0; i < 6; i += 1) {
+      const dateKey = addDaysKey(start, i);
+      days.push(buildDateAvailabilityFromData(data, dateKey, Object.assign({}, opts, {
+        dateLabel:fallbackDateLabel(dateKey)
+      })));
+    }
 
     return {
-      date: dateKey,
-      purpose: clean(opts.purpose) || 'unknown',
-      division: requestedDivision,
-      dateLabel: clean(opts.dateLabel),
-      closedDay: false,
-      closedReason: '',
-      slots
+      scope:'week',
+      startDate:start,
+      endDate:end,
+      label:clean(opts.dateLabel) || (Number(opts.weekOffset || 0) ? '다음 주' : '이번 주'),
+      purpose:clean(opts.purpose) || 'unknown',
+      division:normalizeDivision(opts.division),
+      viewMode:clean(opts.viewMode) || 'availability',
+      timeSlot:Number(opts.timeSlot || 0),
+      classGroup:requestedGroup(opts.classGroup),
+      days
+    };
+  }
+
+  function candidateRecurringSlots(data, options) {
+    const opts = options || {};
+    const requestedDivision = normalizeDivision(opts.division);
+    const requestedWeekday = Number(opts.weekday || 0);
+    const requestedTime = Number(opts.timeSlot || 0);
+    const requestedClassGroup = requestedGroup(opts.classGroup);
+    const map = new Map();
+
+    function add(division, weekday, timeSlot, group) {
+      const d = normalizeDivision(division);
+      const w = Number(weekday || 0);
+      const t = Number(timeSlot || 0);
+      const g = classGroup(group);
+      if (!d || !w || !t) return;
+      if (requestedDivision && d !== requestedDivision) return;
+      if (requestedWeekday && w !== requestedWeekday) return;
+      if (requestedTime && t !== requestedTime) return;
+      if (requestedClassGroup && g !== requestedClassGroup) return;
+      const key = [d,w,t,g].join('|');
+      if (!map.has(key)) map.set(key, { division:d, weekday:w, timeSlot:t, classGroup:g });
+    }
+
+    arrays(data, 'class_teachers').forEach(row =>
+      add(row && row.division, row && row.weekday, row && row.time_slot, row && row.class_group)
+    );
+    arrays(data, 'enrollments').forEach(row =>
+      add(row && row.division, row && row.weekday, row && row.time_slot, row && row.class_group)
+    );
+
+    return Array.from(map.values()).sort((a,b) =>
+      a.weekday - b.weekday
+      || a.timeSlot - b.timeSlot
+      || a.division.localeCompare(b.division)
+      || a.classGroup.localeCompare(b.classGroup)
+    );
+  }
+
+  function nextWeekdayKey(startDate, weekday) {
+    const start = parseLocalDate(startDate);
+    if (!start) return '';
+    const current = isoWeekday(startDate);
+    const target = Number(weekday || 0);
+    if (!current || target < 1 || target > 6) return '';
+    start.setDate(start.getDate() + ((target - current + 7) % 7));
+    return localDateKey(start);
+  }
+
+  function recurringBaselineSlot(data, candidate, startDate) {
+    const date = nextWeekdayKey(startDate, candidate.weekday);
+    const groups = classGroups(data, candidate.division, candidate.weekday, candidate.timeSlot);
+    const grouped = groups.length > 1;
+    const capacity = capacityFor(data, candidate.division);
+    const regular = regularCount(
+      data,
+      candidate.division,
+      date,
+      candidate.weekday,
+      candidate.timeSlot,
+      candidate.classGroup
+    );
+    return {
+      division:candidate.division,
+      date,
+      weekday:candidate.weekday,
+      timeSlot:candidate.timeSlot,
+      classGroup:candidate.classGroup,
+      grouped,
+      regularCount:regular,
+      makeupCount:0,
+      trialCount:0,
+      oneTimeCount:0,
+      occupancy:regular,
+      capacity,
+      remaining:Math.max(0, capacity - regular)
+    };
+  }
+
+  function regularChangePoints(data, baseline, startDate, endDate) {
+    const changes = [];
+    let date = nextWeekdayKey(startDate, baseline.weekday);
+    let previousCount = Number(baseline.regularCount || 0);
+
+    while (date && date <= endDate) {
+      const count = regularCount(
+        data,
+        baseline.division,
+        date,
+        baseline.weekday,
+        baseline.timeSlot,
+        baseline.classGroup
+      );
+      if (count !== previousCount) {
+        changes.push({
+          division:baseline.division,
+          date,
+          weekday:baseline.weekday,
+          timeSlot:baseline.timeSlot,
+          classGroup:baseline.classGroup,
+          grouped:baseline.grouped,
+          regularCount:count,
+          capacity:baseline.capacity,
+          remaining:Math.max(0, baseline.capacity - count)
+        });
+        previousCount = count;
+      }
+      date = addDaysKey(date, 7);
+    }
+    return changes;
+  }
+
+  function oneTimeExceptionSlots(data, candidates, startDate, endDate) {
+    const candidateKeys = new Set(candidates.map(item =>
+      [item.division,item.weekday,item.timeSlot,item.classGroup].join('|')
+    ));
+    const grouped = new Map();
+
+    arrays(data, 'one_time_sessions').forEach(row => {
+      const date = clean(row && row.session_date).slice(0, 10);
+      if (!date || date < startDate || date > endDate) return;
+      if (clean(row && row.status).toLowerCase() === 'cancelled') return;
+      const division = normalizeDivision(row && row.division);
+      const weekday = isoWeekday(date);
+      const timeSlot = Number(row && row.time_slot || 0);
+      const group = classGroup(row && row.class_group);
+      const candidateKey = [division,weekday,timeSlot,group].join('|');
+      if (!candidateKeys.has(candidateKey)) return;
+      grouped.set([date,candidateKey].join('|'), { date, division, weekday, timeSlot, classGroup:group });
+    });
+
+    return Array.from(grouped.values()).map(item => {
+      const groups = classGroups(data, item.division, item.weekday, item.timeSlot);
+      return slotSnapshot(
+        data,
+        item.division,
+        item.date,
+        item.weekday,
+        item.timeSlot,
+        item.classGroup,
+        groups.length > 1
+      );
+    }).sort((a,b) =>
+      a.date.localeCompare(b.date)
+      || a.timeSlot - b.timeSlot
+      || a.division.localeCompare(b.division)
+      || a.classGroup.localeCompare(b.classGroup)
+    );
+  }
+
+  async function findRecurringAvailability(options) {
+    const opts = options || {};
+    const start = localDateKey(opts.date || new Date());
+    const end = addDaysKey(start, 365);
+    const data = await loadAvailabilityHorizon(start, end);
+    const candidates = candidateRecurringSlots(data, opts);
+    const allBaselineSlots = candidates.map(candidate => recurringBaselineSlot(data, candidate, start));
+    const slots = allBaselineSlots.filter(slot => Number(slot.remaining) > 0);
+    const regularChanges = [];
+    allBaselineSlots.forEach(slot => {
+      regularChanges.push.apply(regularChanges, regularChangePoints(data, slot, start, end));
+    });
+
+    const oneTimeExceptions = oneTimeExceptionSlots(data, candidates, start, end);
+    const displaySlots = filterDisplaySlots(allBaselineSlots, slots, opts);
+
+    return {
+      scope:'recurring',
+      startDate:start,
+      endDate:end,
+      purpose:clean(opts.purpose) || 'unknown',
+      division:normalizeDivision(opts.division),
+      viewMode:clean(opts.viewMode) || 'availability',
+      weekday:Number(opts.weekday || 0),
+      timeSlot:Number(opts.timeSlot || 0),
+      classGroup:requestedGroup(opts.classGroup),
+      allSlots:allBaselineSlots,
+      slots,
+      displaySlots,
+      regularChanges,
+      oneTimeExceptions
     };
   }
 
@@ -271,9 +589,33 @@
     return '자리가 남은';
   }
 
+  function slotCountText(slot) {
+    const parts = ['정규 ' + Number(slot && slot.regularCount || 0) + '명'];
+    if (Number(slot && slot.makeupCount || 0) > 0) parts.push('보강 ' + Number(slot.makeupCount) + '명');
+    if (Number(slot && slot.trialCount || 0) > 0) parts.push('체험 ' + Number(slot.trialCount) + '명');
+    return parts.join(' + ');
+  }
+
   function slotLabel(slot) {
     const group = slot && slot.grouped ? ' ' + classGroup(slot.classGroup) + '반' : '';
-    return String(Number(slot && slot.timeSlot || 0)) + '시' + group + ' ' + Number(slot && slot.remaining || 0) + '자리';
+    const status = Number(slot && slot.remaining || 0) > 0
+      ? Number(slot.remaining) + '자리'
+      : '마감';
+    return String(Number(slot && slot.timeSlot || 0)) + '시' + group
+      + ' · ' + slotCountText(slot)
+      + ' · 총 ' + Number(slot && slot.occupancy || slot && slot.regularCount || 0)
+      + '/' + Number(slot && slot.capacity || 0)
+      + ' · ' + status;
+  }
+
+  function recurringSlotLabel(slot) {
+    const group = slot && slot.grouped ? ' ' + classGroup(slot.classGroup) + '반' : '';
+    const status = Number(slot && slot.remaining || 0) > 0
+      ? Number(slot.remaining) + '자리'
+      : '마감';
+    return weekdayLabel(slot && slot.weekday) + ' ' + Number(slot && slot.timeSlot || 0) + '시' + group
+      + ' · 정규 ' + Number(slot && slot.regularCount || 0) + '명'
+      + ' · ' + status;
   }
 
   function describeAvailableSlots(result) {
@@ -284,9 +626,13 @@
       return dateLabel + '은 ' + (data.closedReason || '휴원일') + '이라 정상 수업이 없어요.';
     }
 
-    const slots = Array.isArray(data.slots) ? data.slots : [];
+    const slots = Array.isArray(data.displaySlots) ? data.displaySlots : (Array.isArray(data.slots) ? data.slots : []);
     if (!slots.length) {
       const prefix = data.division ? divisionLabel(data.division) + ' ' : '';
+      const operating = Array.isArray(data.allSlots) ? data.allSlots : [];
+      if (operating.length && clean(data.viewMode) !== 'schedule') {
+        return dateLabel + ' ' + prefix + purpose + ' 빈자리가 없어요.';
+      }
       return dateLabel + ' ' + prefix + purpose + ' 운영 클래스가 없어요.';
     }
 
@@ -302,6 +648,89 @@
     }).filter(Boolean);
 
     return [intro].concat(lines).join('\n');
+  }
+
+  function describeWeekAvailability(result) {
+    const data = result || {};
+    const lines = [];
+    (Array.isArray(data.days) ? data.days : []).forEach(day => {
+      const dateLabel = fallbackDateLabel(day && day.date);
+      if (day && day.closedDay) {
+        if (clean(data.viewMode) === 'schedule') {
+          lines.push(dateLabel + ' · ' + (day.closedReason || '휴원일'));
+        }
+        return;
+      }
+      const rows = Array.isArray(day && day.displaySlots) ? day.displaySlots : [];
+      if (!rows.length) return;
+      const byDivision = data.division ? [data.division] : ['elementary', 'kinder'];
+      byDivision.forEach(division => {
+        const items = rows.filter(slot => slot.division === division);
+        if (!items.length) return;
+        lines.push(dateLabel + ' ' + divisionLabel(division) + ': ' + items.map(slotLabel).join(' · '));
+      });
+    });
+
+    if (!lines.length) {
+      return (data.label || '이번 주') + (clean(data.viewMode) === 'schedule'
+        ? ' 확인할 수업이 없어요.'
+        : ' 정규·보강·체험을 포함해 빈자리가 없어요.');
+    }
+
+    const intro = (data.label || '이번 주')
+      + (clean(data.viewMode) === 'schedule'
+        ? ' 시간표예요. 정규·보강·체험 인원을 따로 표시했어요.'
+        : ' 빈자리예요. 정규·보강·체험 인원을 따로 계산했어요.');
+    return [intro].concat(lines).join('\n');
+  }
+
+  function describeRecurringAvailability(result) {
+    const data = result || {};
+    const display = Array.isArray(data.displaySlots) ? data.displaySlots : [];
+    const lines = [];
+    const byDivision = data.division ? [data.division] : ['elementary', 'kinder'];
+
+    byDivision.forEach(division => {
+      const rows = display.filter(slot => slot.division === division);
+      if (!rows.length) return;
+      lines.push(divisionLabel(division) + ': ' + rows.map(recurringSlotLabel).join(' · '));
+    });
+
+    const header = clean(data.viewMode) === 'schedule'
+      ? '정규수업 기준 시간표예요. 향후 1년의 정규 변경과 보강·체험 예약은 아래에 따로 표시했어요.'
+      : '정규수업 기준 빈자리예요. 향후 1년의 정규 변경과 보강·체험 예약은 아래에 따로 표시했어요.';
+
+    if (!lines.length) {
+      lines.push(clean(data.viewMode) === 'schedule'
+        ? '현재 정규수업 기준으로 확인할 클래스가 없어요.'
+        : '현재 정규수업 기준으로 빈자리가 없어요.');
+    }
+
+    const relevantKeys = new Set((Array.isArray(data.allSlots) ? data.allSlots : []).map(slot =>
+      [slot.division,slot.weekday,slot.timeSlot,slot.classGroup].join('|')
+    ));
+
+    const regularChanges = (Array.isArray(data.regularChanges) ? data.regularChanges : [])
+      .filter(item => relevantKeys.has([item.division,item.weekday,item.timeSlot,item.classGroup].join('|')));
+    if (regularChanges.length) {
+      const changeLines = regularChanges.slice(0, 12).map(item =>
+        fallbackDateLabel(item.date) + '부터 ' + recurringSlotLabel(item)
+      );
+      lines.push('정규 인원 변경 예정: ' + changeLines.join(' / ')
+        + (regularChanges.length > 12 ? ' / 외 ' + (regularChanges.length - 12) + '건' : ''));
+    }
+
+    const exceptions = (Array.isArray(data.oneTimeExceptions) ? data.oneTimeExceptions : [])
+      .filter(item => relevantKeys.has([item.division,item.weekday,item.timeSlot,item.classGroup].join('|')));
+    if (exceptions.length) {
+      const exceptionLines = exceptions.slice(0, 12).map(item =>
+        fallbackDateLabel(item.date) + ' ' + divisionLabel(item.division) + ' ' + slotLabel(item)
+      );
+      lines.push('보강·체험 예약: ' + exceptionLines.join(' / ')
+        + (exceptions.length > 12 ? ' / 외 ' + (exceptions.length - 12) + '건' : ''));
+    }
+
+    return [header].concat(lines).join('\n');
   }
 
 
@@ -1393,7 +1822,11 @@
   global.OlliCommandSchedule = Object.freeze({
     VERSION,
     findAvailableSlots,
+    findWeekAvailability,
+    findRecurringAvailability,
     describeAvailableSlots,
+    describeWeekAvailability,
+    describeRecurringAvailability,
     prepareWriteCommand,
     executePreparedWrite,
     writeReasonPrompt,

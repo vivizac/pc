@@ -198,6 +198,13 @@
     }));
   }
 
+  async function loadAvailabilityHorizon(startDate, endDate) {
+    return rpc('olli_schedule_availability_horizon', contextPayload({
+      p_start_date: clean(startDate),
+      p_end_date: clean(endDate)
+    }));
+  }
+
   async function loadWeek(weekStart) {
     const requestedAcademyId = currentAcademyId();
     const requestedSession = currentSessionToken();
@@ -506,6 +513,7 @@
     loadWeek,
     loadCalendarRange,
     setNormalClassDay,
+    loadAvailabilityHorizon,
     syncLegacyStudents,
     changeSchedule,
     resolveWaitlist,
