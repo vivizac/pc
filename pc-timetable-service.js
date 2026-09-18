@@ -215,12 +215,13 @@
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + 5);
     const end = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
-    const [data, kinderLayout, calendarDays, teacherContext, memoContext] = await Promise.all([
+    const [data, kinderLayout, calendarDays, teacherContext, memoContext, attendanceOverrides] = await Promise.all([
       rpc('olli_schedule_week', contextPayload({ p_week_start: weekStart })),
       rpc('olli_schedule_kinder_class_layouts', contextPayload()),
       loadCalendarRange(start, end),
       rpc('olli_schedule_class_teacher_context', contextPayload()),
-      rpc('olli_schedule_cell_memos_week_v2', contextPayload({ p_week_start: start }))
+      rpc('olli_schedule_cell_memos_week_v2', contextPayload({ p_week_start: start })),
+      loadAttendanceOverridesRange(start, end)
     ]);
     assertCurrentContext();
     data.kinder_class_merges = Array.isArray(kinderLayout && kinderLayout.merged_slots)
@@ -230,6 +231,7 @@
     data.class_teachers = Array.isArray(teacherContext && teacherContext.assignments) ? teacherContext.assignments : [];
     data.teacher_members = Array.isArray(teacherContext && teacherContext.teachers) ? teacherContext.teachers : [];
     data.cell_memos = Array.isArray(memoContext && memoContext.memos) ? memoContext.memos : (Array.isArray(data.cell_memos) ? data.cell_memos : []);
+    data.attendance_overrides = Array.isArray(attendanceOverrides) ? attendanceOverrides : [];
     cacheWeek(weekStart, data);
     return data;
   }
@@ -411,12 +413,40 @@
     return result;
   }
 
+  async function setAttendanceSessionStatus(options) {
+    const result = await rpc('olli_schedule_set_attendance_session_status_v2', contextPayload({
+      p_student_id: options.studentId,
+      p_session_date: clean(options.sessionDate),
+      p_session_kind: options.sessionKind === 'makeup' ? 'makeup' : 'regular',
+      p_time_slot: Number(options.timeSlot),
+      p_class_group: clean(options.classGroup || 'A').toUpperCase() === 'B' ? 'B' : 'A',
+      p_status: clean(options.status)
+    }));
+    invalidateAttendanceMonth(options.sessionDate);
+    return result;
+  }
+
+  async function loadAttendanceOverridesRange(startDate, endDate) {
+    const data = await rpc('olli_schedule_attendance_session_overrides_range', contextPayload({
+      p_start_date: clean(startDate),
+      p_end_date: clean(endDate || startDate)
+    }));
+    return Array.isArray(data && data.overrides) ? data.overrides : [];
+  }
+
   async function loadAttendanceMonth(yearMonth) {
-    const shared = global.OlliAttendanceData;
-    if (shared && typeof shared.loadMonth === 'function') return shared.loadMonth(yearMonth);
     const value = /^\d{4}-\d{2}$/.test(clean(yearMonth)) ? `${clean(yearMonth)}-01` : new Date().toISOString().slice(0, 8) + '01';
-    const data = await rpc('olli_schedule_attendance_month', contextPayload({ p_month: value }));
-    const rows = Array.isArray(data.attendance) ? data.attendance : [];
+    const monthDate = new Date(`${value}T00:00:00`);
+    const endDate = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+    const end = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+    const shared = global.OlliAttendanceData;
+    const [baseRows, overrides] = await Promise.all([
+      shared && typeof shared.loadMonth === 'function'
+        ? shared.loadMonth(yearMonth)
+        : rpc('olli_schedule_attendance_month', contextPayload({ p_month: value })).then((data) => Array.isArray(data.attendance) ? data.attendance : []),
+      loadAttendanceOverridesRange(value, end)
+    ]);
+    const rows = (Array.isArray(baseRows) ? baseRows : []).concat(Array.isArray(overrides) ? overrides : []);
     cacheAttendanceMonth(value.slice(0, 7), rows);
     return rows;
   }
@@ -487,6 +517,7 @@
     toggleAttendance,
     setAttendance,
     setAttendanceRegisterStatus,
+    setAttendanceSessionStatus,
     loadAttendanceMonth,
     savePickup,
     updatePickup,
