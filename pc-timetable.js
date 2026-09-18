@@ -697,14 +697,14 @@
       const attendanceTime = Number(item.time_slot);
       const entryClassGroup = classGroup ? classGroupOf({ class_group: classGroup }) : classGroupOf(item);
       const attendanceStatus = timetableAttendanceSessionStatus(item.student_id, date, attendanceTime, entryClassGroup, 'regular');
-      const absent = isToday(date) && attendanceStatus === 'absent';
+      const absent = dateKey(date) >= todayKey() && attendanceStatus === 'absent';
       const attended = isToday(date) && attendanceStatus === 'present';
       const secondSessionMark = isSecondWeeklySession(item, date) ? '<strong class="olliTtSecondSessionMark" aria-label="주 2회차">▲</strong>' : '';
       return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}${absent ? ' absent' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(item.student_name)}${secondSessionMark}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" data-session-date="${dateKey(date)}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
     }).join('');
     const waitHtml = waits.map((item) => {
       const displayName = `${item.student_name}${item.is_guest === true ? ' (비)' : ''}`;
-      return `<div class="olliTtStudent wait"><button type="button" class="olliTtAttendanceBtn" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}">대기</button></div>`;
+      return `<div class="olliTtStudent wait"><button type="button" class="olliTtAttendanceBtn" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}" data-session-date="${dateKey(date)}">${esc(displayName)}</button><button type="button" class="olliTtStudentTag" data-tt-entry="wait" data-waitlist-id="${esc(item.id)}" data-session-date="${dateKey(date)}">대기</button></div>`;
     }).join('');
     const makeupHtml = makeups.map((item) => {
       const trial = clean(item.session_type) === 'trial';
@@ -961,7 +961,7 @@
     if (entry) {
       event.stopPropagation();
       if (entry.dataset.ttEntry === 'regular') openMove(entry.dataset.studentId, entry.dataset.enrollmentId, entry.dataset.sessionDate);
-      else if (entry.dataset.ttEntry === 'wait') openWait(entry.dataset.waitlistId);
+      else if (entry.dataset.ttEntry === 'wait') openWait(entry.dataset.waitlistId, entry.dataset.sessionDate);
       else if (entry.dataset.ttEntry === 'makeup') openMakeup(entry.dataset.makeupId);
       return;
     }
@@ -1164,10 +1164,11 @@
     openOverlay();
   }
 
-  function openWait(waitlistId) {
+  function openWait(waitlistId, clickedDate) {
     const item = waitlist().find((row) => clean(row.id) === clean(waitlistId));
     if (!item) return;
-    state.dialog = { kind: 'wait', waitlistId: clean(waitlistId), effectiveDate: todayKey() };
+    const selectedDate = /^\d{4}-\d{2}-\d{2}$/.test(clean(clickedDate)) ? clean(clickedDate) : todayKey();
+    state.dialog = { kind: 'wait', waitlistId: clean(waitlistId), effectiveDate: todayKey(), cancelDate: selectedDate, cancelNote: '' };
     openOverlay();
   }
 
@@ -1379,12 +1380,14 @@
       return dialogHead('⌛', `${displayName} 대기 관리`, `${weekdayLabel(item.target_weekday)}요일 · ${timeLabel(item.target_time_slot)}${classGroupLabel(clean(item.division), item.target_class_group) ? ` · ${classGroupLabel(clean(item.division), item.target_class_group)}` : ''}`)
         + '<div class="olliTtDialogBody">'
         + '<div class="olliTtCurrentBox"><strong>비재원 학생 대기입니다.</strong>현재 학생명단에는 등록하지 않고 대기 이름만 시간표에 보관합니다.</div>'
+        + `<label class="olliTtAddMemo olliTtCancelMemo"><span>취소 사유</span><textarea data-tt-cancel-note maxlength="500" placeholder="취소 사유를 입력하세요">${esc(dialog.cancelNote || '')}</textarea></label>`
         + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-wait>대기 취소</button></div></div>';
     }
     return dialogHead('⌛', `${item.student_name} 대기 관리`, `${weekdayLabel(item.target_weekday)}요일 · ${timeLabel(item.target_time_slot)}${classGroupLabel(clean(item.division), item.target_class_group) ? ` · ${classGroupLabel(clean(item.division), item.target_class_group)}` : ''}`)
       + '<div class="olliTtDialogBody">'
       + `<div class="olliTtCurrentBox"><strong>${canEnter ? '입장 가능한 자리가 있습니다.' : '아직 정원이 가득 찼습니다.'}</strong>${item.request_type === 'move' ? '기존 수업을 옮기기 위한 대기' : '주간 수업을 추가하기 위한 대기'} · 현재 ${occupied}/${capacity || '∞'}</div>`
       + `<div class="olliTtField"><div class="olliTtFieldHead"><span>입장 적용 날짜</span><small>자리가 있는 날짜를 선택하세요</small></div><input type="date" class="olliTtDateInput" data-tt-wait-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></div>`
+      + `<label class="olliTtAddMemo olliTtCancelMemo"><span>취소 사유</span><textarea data-tt-cancel-note maxlength="500" placeholder="취소 사유를 입력하세요">${esc(dialog.cancelNote || '')}</textarea></label>`
       + '<div class="olliTtStatusNotice">입장시키기 직전에 정원을 다시 확인합니다. 대기를 취소해도 기존 수업은 그대로 유지됩니다.</div>'
       + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-cancel-wait>대기 취소</button><button type="button" class="olliTtDialogPrimary" data-tt-accept-wait ${canEnter ? '' : 'disabled'}>입장시키기</button></div></div>`;
   }
@@ -1727,7 +1730,7 @@
     if (cancelWait) cancelWait.addEventListener('click', () => resolveWait('cancel'));
     const cancelNote = dialog.querySelector('[data-tt-cancel-note]');
     if (cancelNote) cancelNote.addEventListener('input', () => {
-      if (state.dialog && state.dialog.kind === 'makeup') state.dialog.cancelNote = cancelNote.value;
+      if (state.dialog && (state.dialog.kind === 'makeup' || state.dialog.kind === 'wait')) state.dialog.cancelNote = cancelNote.value;
     });
     const cancelMakeup = dialog.querySelector('[data-tt-cancel-makeup]');
     if (cancelMakeup) cancelMakeup.addEventListener('click', cancelMakeupSession);
@@ -1844,8 +1847,11 @@
     const source = moveSourceEnrollment(dialog);
     const rawNote = dialog.actionType === 'move' ? clean(dialog.note) : '';
     const studentName = clean(student && student.name);
+    const statusPrefix = studentName && dialog.absenceSelected ? `[${studentName}][결석] : ` : '';
     const note = rawNote
-      ? (studentName && !rawNote.startsWith(studentName) ? `${studentName} ${rawNote}` : rawNote)
+      ? (statusPrefix
+        ? (rawNote.startsWith(statusPrefix) ? rawNote : `${statusPrefix}${rawNote}`)
+        : (studentName && !rawNote.startsWith(studentName) ? `${studentName} ${rawNote}` : rawNote))
       : '';
     const absenceChanged = dialog.actionType === 'move'
       && Boolean(dialog.absenceSelected) !== Boolean(dialog.originalAbsenceSelected);
@@ -2202,8 +2208,27 @@ ${combined.memoError}`);
     const dialog = state.dialog;
     if (!dialog || dialog.kind !== 'wait') return;
     const item = waitlist().find((row) => clean(row.id) === clean(dialog.waitlistId));
-    const result = await withSaving(() => service.resolveWaitlist(dialog.waitlistId, action, dialog.effectiveDate));
-    if (result) notify(action === 'accept' ? `${item.student_name} 학생을 수업에 입장시켰어요.` : `${item.student_name} 학생의 대기를 취소했어요.`);
+    if (!item) return;
+    const cancelNote = action === 'cancel' ? clean(dialog.cancelNote) : '';
+    const combined = await withSaving(async () => {
+      const actionResult = await service.resolveWaitlist(dialog.waitlistId, action, dialog.effectiveDate);
+      let memoError = '';
+      if (action === 'cancel' && cancelNote) {
+        try {
+          const memoText = `[${clean(item.student_name)}][취소] : ${cancelNote}`;
+          await saveCellMemoText(clean(item.division), clean(dialog.cancelDate) || todayKey(), Number(item.target_time_slot), memoText, classGroupOf(item, 'target_class_group'), null);
+        } catch (error) {
+          memoError = clean(error && (error.message || error)) || '취소 사유 메모 저장 실패';
+        }
+      }
+      return { actionResult, memoError };
+    });
+    if (!combined || !combined.actionResult) return;
+    notify(action === 'accept' ? `${item.student_name} 학생을 수업에 입장시켰어요.` : `${item.student_name} 학생의 대기를 취소했어요.`);
+    if (combined.memoError) {
+      alert(`대기 취소는 완료됐지만 취소 사유 메모는 저장하지 못했습니다.
+${combined.memoError}`);
+    }
   }
 
   async function cancelMakeupSession() {
@@ -2217,7 +2242,8 @@ ${combined.memoError}`);
       let memoError = '';
       if (cancelNote) {
         try {
-          await saveCellMemoText(item.division, item.session_date, item.time_slot, cancelNote, classGroupOf(item), null);
+          const memoText = `[${clean(item.student_name)}][취소] : ${cancelNote}`;
+          await saveCellMemoText(item.division, item.session_date, item.time_slot, memoText, classGroupOf(item), null);
         } catch (error) {
           memoError = clean(error && (error.message || error)) || '취소 사유 메모 저장 실패';
         }
