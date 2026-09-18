@@ -248,8 +248,10 @@
 #recordRoomScreen .olliTtStudent.trial { border-color: #e6b56e; color: #9a5a10; background: #fff1dc; }
 #recordRoomScreen .olliTtStudent.regular.attended,
 #recordRoomScreen .olliTtStudent.makeup.attended { border-color: transparent; background: #6fdf96; box-shadow: none; }
-#recordRoomScreen .olliTtStudent.regular.absent { border-color:#e25a62; color:#9f2931; background:#f7cfd3; box-shadow:none; }
-#recordRoomScreen .olliTtStudent.regular.absent .olliTtStudentMore { color:#b93d45; }
+#recordRoomScreen .olliTtStudent.regular.absent { border-color:#e5484d; color:#fff; background:#e5484d; box-shadow:none; }
+#recordRoomScreen .olliTtStudent.regular.absent .olliTtStudentMore { color:rgba(255,255,255,.9); }
+#recordRoomScreen .olliTtStudent.regular.absent .olliTtSecondSessionMark,
+#recordRoomScreen .olliTtStudent.regular.absent .olliTtReservation { color:#fff; }
 #recordRoomScreen .olliTtStudent:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(26, 38, 58, .09); }
 #recordRoomScreen .olliTtStudentTag { float: right; margin-left: 3px; padding: 1px 3px; border: 0; border-radius: 999px; color: #fff; font: 800 calc(7px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 #recordRoomScreen button.olliTtStudentTag { flex: 0 0 auto; margin: 3px 2px 3px 3px; }
@@ -380,25 +382,29 @@
 .olliTtAddMemo > span { margin: 0 0 7px; color: #0877df; font-size: calc(12px * var(--olli-text-scale)); font-weight: 820; }
 .olliTtAddMemo textarea { width: 100%; min-height: 52px; flex: 1; padding: 0; border: 0; outline: 0; resize: none; box-sizing: border-box; color: #303946; background: transparent; font: 680 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; line-height: 1.5; }
 .olliTtAddMemo textarea::placeholder { color: #a5adb7; }
-.olliTtAbsenceMemo { min-height: 176px; }
-.olliTtAbsenceMemo textarea { min-height: 58px; }
+.olliTtAbsenceRow { display:grid; grid-template-columns:minmax(0,1fr) 86px; gap:10px; align-items:stretch; }
+.olliTtMoveMemo { min-height:86px; height:86px; padding:10px 13px; }
+.olliTtMoveMemo > span { margin-bottom:5px; }
+.olliTtMoveMemo textarea { min-height:39px; height:39px; max-height:39px; overflow-y:auto; }
 .olliTtAbsenceBtn {
-  width: 100%;
-  min-height: 54px;
-  margin-top: 12px;
-  padding: 0 18px;
-  border: 1px solid #dc3f48;
-  border-radius: 15px;
-  box-sizing: border-box;
-  background: #e84b54;
-  color: #fff;
-  font: 850 calc(16px * var(--olli-text-scale)) 'Pretendard', sans-serif;
-  letter-spacing: -.02em;
-  cursor: pointer;
-  box-shadow: 0 6px 16px rgba(201, 47, 56, .16);
-  transition: background .14s ease, box-shadow .14s ease, transform .08s ease;
+  width:86px;
+  min-width:86px;
+  height:86px;
+  min-height:86px;
+  margin:0;
+  padding:0;
+  border:1px solid #e5484d;
+  border-radius:17px;
+  box-sizing:border-box;
+  background:#e5484d;
+  color:#fff;
+  font:850 calc(17px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  letter-spacing:-.02em;
+  cursor:pointer;
+  box-shadow:0 6px 16px rgba(201,47,56,.16);
+  transition:background .14s ease, box-shadow .14s ease, transform .08s ease;
 }
-.olliTtAbsenceBtn:hover { background:#dc3f48; }
+.olliTtAbsenceBtn:hover { background:#dc3f48; border-color:#dc3f48; }
 .olliTtAbsenceBtn:active { transform:translateY(1px); }
 .olliTtAbsenceBtn.active {
   background:#bd2731;
