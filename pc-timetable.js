@@ -697,8 +697,8 @@
       const attendanceTime = Number(item.time_slot);
       const entryClassGroup = classGroup ? classGroupOf({ class_group: classGroup }) : classGroupOf(item);
       const attendanceStatus = timetableAttendanceSessionStatus(item.student_id, date, attendanceTime, entryClassGroup, 'regular');
-      const absent = attendanceStatus === 'absent';
-      const attended = !absent && isToday(date) && attendanceStatus === 'present';
+      const absent = isToday(date) && attendanceStatus === 'absent';
+      const attended = isToday(date) && attendanceStatus === 'present';
       const secondSessionMark = isSecondWeeklySession(item, date) ? '<strong class="olliTtSecondSessionMark" aria-label="주 2회차">▲</strong>' : '';
       return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}${absent ? ' absent' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(item.student_name)}${secondSessionMark}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" data-session-date="${dateKey(date)}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
     }).join('');
@@ -1277,7 +1277,7 @@
     const isMakeup = dialog.actionType === 'makeup';
     const showAbsenceMemo = dialog.actionType === 'move' && Boolean(clean(dialog.sourceEnrollmentId));
     const absenceMemoHtml = showAbsenceMemo
-      ? `<div class="olliTtAddMemo olliTtAbsenceMemo"><span>메모</span><textarea data-tt-move-note maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.note || '')}</textarea><button type="button" class="olliTtAbsenceBtn${dialog.absenceSelected ? ' active' : ''}" data-tt-absence-toggle aria-pressed="${dialog.absenceSelected ? 'true' : 'false'}">결석</button></div>`
+      ? `<div class="olliTtAbsenceRow"><label class="olliTtAddMemo olliTtMoveMemo"><span>메모</span><textarea data-tt-move-note maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.note || '')}</textarea></label><button type="button" class="olliTtAbsenceBtn${dialog.absenceSelected ? ' active' : ''}" data-tt-absence-toggle aria-pressed="${dialog.absenceSelected ? 'true' : 'false'}">결석</button></div>`
       : '';
     const headerGuide = `${divisionLabel(division)} · 현재 수업 ${studentScheduleText(student.id) || '없음'}`;
     const modeCards = '<div class="olliTtModeCards">'
