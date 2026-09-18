@@ -395,23 +395,24 @@
   min-height:86px;
   margin:0;
   padding:0;
-  border:1px solid #e5484d;
-  border-radius:17px;
+  border:1px solid #f0c9cc;
+  border-radius:14px;
   box-sizing:border-box;
-  background:#e5484d;
-  color:#fff;
-  font:850 calc(17px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  background:#fff7f7;
+  color:#cf454d;
+  font:800 calc(14px * var(--olli-text-scale)) 'Pretendard', sans-serif;
   letter-spacing:-.02em;
   cursor:pointer;
-  box-shadow:0 6px 16px rgba(201,47,56,.16);
-  transition:background .14s ease, box-shadow .14s ease, transform .08s ease;
+  box-shadow:none;
+  transition:background .14s ease, border-color .14s ease, color .14s ease, transform .08s ease;
 }
-.olliTtAbsenceBtn:hover { background:#dc3f48; border-color:#dc3f48; }
+.olliTtAbsenceBtn:hover { background:#fff0f1; border-color:#e9aeb3; }
 .olliTtAbsenceBtn:active { transform:translateY(1px); }
 .olliTtAbsenceBtn.active {
-  background:#bd2731;
-  border-color:#bd2731;
-  box-shadow:0 0 0 3px rgba(189,39,49,.15), 0 7px 18px rgba(189,39,49,.18);
+  background:#e5484d;
+  border-color:#e5484d;
+  color:#fff;
+  box-shadow:none;
 }
 .olliTtField { margin-top: 20px; }
 .olliTtFieldHead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 2px 8px; }
