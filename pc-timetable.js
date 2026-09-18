@@ -1109,7 +1109,7 @@
   function openMakeup(makeupId) {
     const item = oneTimeSessions().find((row) => clean(row.id) === clean(makeupId));
     if (!item) return;
-    state.dialog = { kind: 'makeup', makeupId: clean(makeupId) };
+    state.dialog = { kind: 'makeup', makeupId: clean(makeupId), cancelNote: '' };
     openOverlay();
   }
 
@@ -1328,6 +1328,7 @@
     const typeLabel = trial ? '체험' : '보강';
     return dialogHead(trial ? '★' : '✓', `${displayName} ${typeLabel}`, `${koreanDate(date)} ${DAYS[date.getDay() - 1]}요일 · ${timeLabel(item.time_slot)}`)
       + `<div class="olliTtDialogBody"><div class="olliTtCurrentBox"><strong>이 날짜에만 등록된 ${trial ? '체험수업' : '보강 수업'}입니다.</strong>${trial ? '비재원 학생의 체험 일정입니다.' : '정규 수업 시간은 변경되지 않습니다.'}</div>`
+      + `<label class="olliTtAddMemo"><span>취소 사유</span><textarea data-tt-cancel-note maxlength="500" placeholder="취소 사유를 입력하세요">${esc(dialog.cancelNote || '')}</textarea></label>`
       + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>${typeLabel} 취소</button></div></div>`;
   }
 
@@ -1638,6 +1639,10 @@
     if (acceptWait) acceptWait.addEventListener('click', () => resolveWait('accept'));
     const cancelWait = dialog.querySelector('[data-tt-cancel-wait]');
     if (cancelWait) cancelWait.addEventListener('click', () => resolveWait('cancel'));
+    const cancelNote = dialog.querySelector('[data-tt-cancel-note]');
+    if (cancelNote) cancelNote.addEventListener('input', () => {
+      if (state.dialog && state.dialog.kind === 'makeup') state.dialog.cancelNote = cancelNote.value;
+    });
     const cancelMakeup = dialog.querySelector('[data-tt-cancel-makeup]');
     if (cancelMakeup) cancelMakeup.addEventListener('click', cancelMakeupSession);
     dialog.querySelectorAll('[data-tt-history-refresh]').forEach((button) => button.addEventListener('click', loadHistoryIntoDialog));
@@ -2014,8 +2019,26 @@ ${combined.memoError}`);
     const dialog = state.dialog;
     if (!dialog || dialog.kind !== 'makeup') return;
     const item = oneTimeSessions().find((row) => clean(row.id) === clean(dialog.makeupId));
-    const result = await withSaving(() => service.cancelMakeup(dialog.makeupId));
-    if (result) notify(`${item.student_name}${item.is_guest === true ? ' (비)' : ''} 학생의 ${clean(item.session_type) === 'trial' ? '체험수업' : '보강'}을 취소했어요.`);
+    if (!item) return;
+    const cancelNote = clean(dialog.cancelNote);
+    const combined = await withSaving(async () => {
+      const actionResult = await service.cancelMakeup(dialog.makeupId);
+      let memoError = '';
+      if (cancelNote) {
+        try {
+          await saveCellMemoText(item.division, item.session_date, item.time_slot, cancelNote, classGroupOf(item), null);
+        } catch (error) {
+          memoError = clean(error && (error.message || error)) || '취소 사유 메모 저장 실패';
+        }
+      }
+      return { actionResult, memoError };
+    });
+    if (!combined || !combined.actionResult) return;
+    notify(`${item.student_name}${item.is_guest === true ? ' (비)' : ''} 학생의 ${clean(item.session_type) === 'trial' ? '체험수업' : '보강'}을 취소했어요.`);
+    if (combined.memoError) {
+      alert(`수업 취소는 완료됐지만 취소 사유 메모는 저장하지 못했습니다.
+${combined.memoError}`);
+    }
   }
 
   async function cancelScheduledChange(changeId) {
