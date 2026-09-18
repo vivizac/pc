@@ -1071,7 +1071,14 @@
   --olli-student-sheet-top: calc(env(safe-area-inset-top, 0px) + 182px);
 }
 
-#studentModal,
+#studentModal {
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(17,24,39,.24);
+  backdrop-filter: blur(8px) saturate(1.02);
+  -webkit-backdrop-filter: blur(8px) saturate(1.02);
+}
 #elementaryInfoModal,
 #kinderInfoModal {
   align-items: flex-end;
@@ -1082,7 +1089,22 @@
   -webkit-backdrop-filter: blur(8px) saturate(1.04);
 }
 
-#studentModal .modalCard,
+#studentModal .modalCard {
+  position: relative;
+  width: min(760px, calc(100vw - 48px));
+  max-width: 760px;
+  height: auto;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #e1e6eb;
+  border-radius: 20px;
+  padding: 24px 26px 0;
+  background: #fff;
+  box-shadow: 0 24px 68px rgba(22,34,51,.18), 0 6px 18px rgba(22,34,51,.06);
+  margin: 0;
+  overscroll-behavior: contain;
+}
 #elementaryInfoModal .modalCard,
 #kinderInfoModal .modalCard {
   width: 100%;
@@ -1100,7 +1122,6 @@
   overscroll-behavior: contain;
 }
 
-#studentModal .modalCard::before,
 #elementaryInfoModal .modalCard::before,
 #kinderInfoModal .modalCard::before {
   content: '';
@@ -1112,10 +1133,16 @@
   margin: 0 auto 16px;
 }
 
-#studentModal[style*="flex"] .modalCard,
+#studentModal[style*="flex"] .modalCard {
+  animation: olliStudentPcModalIn .18s cubic-bezier(.2,.8,.2,1) both;
+}
 #elementaryInfoModal[style*="flex"] .modalCard,
 #kinderInfoModal[style*="flex"] .modalCard {
   animation: olliStudentBottomSheetIn .24s cubic-bezier(.22,.61,.36,1) both;
+}
+@keyframes olliStudentPcModalIn {
+  from { transform: translateY(10px) scale(.985); opacity: 0; }
+  to { transform: none; opacity: 1; }
 }
 
 @keyframes olliStudentBottomSheetIn {
@@ -1128,8 +1155,77 @@
 #kinderInfoModal .modalTitle {
   margin-bottom: 18px;
 }
+#studentModal .modalTitle {
+  position: relative;
+  min-height: 46px;
+  margin: 0 46px 20px 0;
+  padding: 1px 0 0 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: #171b21;
+  font-size: calc(20px * var(--olli-text-scale));
+  font-weight: 820;
+  letter-spacing: -.045em;
+}
+#studentModal .modalTitle::before {
+  content: '+';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0A84FF;
+  background: #edf6ff;
+  font-size: 24px;
+  font-weight: 500;
+}
+#studentModal .modalTitle::after {
+  content: '새로운 학생의 기본 정보를 등록합니다.';
+  margin-top: 4px;
+  color: #949ba5;
+  font-size: calc(11px * var(--olli-text-scale));
+  font-weight: 620;
+  letter-spacing: -.02em;
+}
+#studentModal .pcStudentModalClose {
+  position: absolute;
+  z-index: 4;
+  top: 22px;
+  right: 24px;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #eceff2;
+  border-radius: 12px;
+  color: #737b86;
+  background: #f6f7f8;
+  font: 500 19px/1 'Pretendard', sans-serif;
+  cursor: pointer;
+}
+#studentModal .pcStudentModalClose:hover { color:#343a43; background:#eef1f4; }
+#studentModal .modalInput { height:44px; border-color:#dfe4e9; border-radius:12px; background:#fff; text-align:left; }
+#studentModal .modalInput:focus { border-color:#80c2fb; box-shadow:0 0 0 3px rgba(10,132,255,.09); }
+#studentModal .modalBtnCancel,
+#studentModal .modalBtnConfirm { height:48px; padding:0 14px; border-radius:12px; font-size:calc(13px * var(--olli-text-scale)); font-weight:760; }
+#studentModal .modalBtnCancel { border:0; color:#5f6772; background:#f0f2f4; }
+#studentModal .modalBtnConfirm { border:0; color:#fff; background:#0A84FF; }
+#studentModal .modalBtnConfirm:hover { background:#0879eb; }
 
-#studentModal .modalActions,
+
+#studentModal .modalActions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: 22px -26px 0;
+  padding: 16px 26px 20px;
+  border-top: 1px solid #eceff2;
+  background: rgba(255,255,255,.98);
+  box-shadow: 0 -10px 22px rgba(255,255,255,.94);
+}
 #elementaryInfoModal .modalActions,
 #kinderInfoModal .modalActions {
   position: sticky;
@@ -1766,6 +1862,7 @@
 </div>
 <div class="modalOverlay" id="studentModal">
 <div class="modalCard">
+<button class="pcStudentModalClose" data-modal-close="studentModal" type="button" aria-label="닫기">×</button>
 <div class="modalTitle" id="studentModalTitle">학생 등록</div>
 <div class="modalLabel">이름 *</div>
 <input class="modalInput" id="studentNameInput" onkeydown="if(event.key==='Enter')confirmStudent()" placeholder="예: 김민준" style="margin-bottom:14px;"/>
