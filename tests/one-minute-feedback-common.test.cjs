@@ -48,3 +48,9 @@ test('legacy first-line submit picker path is removed', () => {
   assert.doesNotMatch(registration, /submitPayload/);
   assert.match(registration, /기록실 저장/);
 });
+
+
+test('shared registration no longer owns phone keyboard dismissal', () => {
+  assert.doesNotMatch(registration, /function completeKcfInlineSubmit/);
+  assert.doesNotMatch(registration, /onKinderChatFeedbackInlineSubmitComplete/);
+});
