@@ -595,6 +595,40 @@
       && classGroupOf(item) === classGroupOf({ class_group: classGroup })
       && clean(item.session_kind) === clean(sessionKind));
   }
+
+  function attendanceOverrideMarks() {
+    return Array.isArray(state.data && state.data.attendance_overrides) ? state.data.attendance_overrides : [];
+  }
+
+  function attendanceMarkTime(item) {
+    const value = Date.parse(clean(item && (item.marked_at || item.updated_at)));
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  function timetableAttendanceSessionStatus(studentId, date, time, classGroup, sessionKind) {
+    const key = dateKey(date);
+    const group = classGroupOf({ class_group: classGroup });
+    const kind = clean(sessionKind) === 'makeup' ? 'makeup' : 'regular';
+    const actual = attendanceMarks()
+      .filter((item) => clean(item.student_id) === clean(studentId)
+        && clean(item.session_date) === key
+        && Number(item.time_slot) === Number(time)
+        && classGroupOf(item) === group
+        && clean(item.session_kind) === kind)
+      .sort((a, b) => attendanceMarkTime(b) - attendanceMarkTime(a))[0] || null;
+    const override = attendanceOverrideMarks()
+      .filter((item) => clean(item.student_id) === clean(studentId)
+        && clean(item.session_date) === key
+        && Number(item.time_slot) === Number(time)
+        && classGroupOf(item) === group
+        && clean(item.register_session_kind || item.session_kind) === kind)
+      .sort((a, b) => attendanceMarkTime(b) - attendanceMarkTime(a))[0] || null;
+    if (override && (!actual || attendanceMarkTime(override) >= attendanceMarkTime(actual))) {
+      return clean(override.register_status || override.status);
+    }
+    if (actual) return kind === 'makeup' ? 'makeup' : 'present';
+    return '';
+  }
   function pickupActiveOn(item, date) {
     const key = dateKey(date);
     return Number(item.weekday) === date.getDay()
@@ -662,9 +696,11 @@
       const scheduleText = scheduled ? `<span class="olliTtReservation">◷ ${shortDate(scheduled.effective_date)} ${scheduled.change_type === 'remove' ? '삭제' : '이동'} 예정</span>` : '';
       const attendanceTime = Number(item.time_slot);
       const entryClassGroup = classGroup ? classGroupOf({ class_group: classGroup }) : classGroupOf(item);
-      const attended = isToday(date) && attendanceMarked(item.student_id, date, attendanceTime, entryClassGroup, 'regular');
+      const attendanceStatus = timetableAttendanceSessionStatus(item.student_id, date, attendanceTime, entryClassGroup, 'regular');
+      const absent = attendanceStatus === 'absent';
+      const attended = !absent && isToday(date) && attendanceStatus === 'present';
       const secondSessionMark = isSecondWeeklySession(item, date) ? '<strong class="olliTtSecondSessionMark" aria-label="주 2회차">▲</strong>' : '';
-      return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(item.student_name)}${secondSessionMark}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
+      return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}${absent ? ' absent' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${dateKey(date)}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(item.student_name)}${secondSessionMark}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" data-session-date="${dateKey(date)}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
     }).join('');
     const waitHtml = waits.map((item) => {
       const displayName = `${item.student_name}${item.is_guest === true ? ' (비)' : ''}`;
@@ -924,7 +960,7 @@
     const entry = event.target.closest('[data-tt-entry]');
     if (entry) {
       event.stopPropagation();
-      if (entry.dataset.ttEntry === 'regular') openMove(entry.dataset.studentId, entry.dataset.enrollmentId);
+      if (entry.dataset.ttEntry === 'regular') openMove(entry.dataset.studentId, entry.dataset.enrollmentId, entry.dataset.sessionDate);
       else if (entry.dataset.ttEntry === 'wait') openWait(entry.dataset.waitlistId);
       else if (entry.dataset.ttEntry === 'makeup') openMakeup(entry.dataset.makeupId);
       return;
@@ -1050,7 +1086,30 @@
     return studentEnrollments(studentId).filter((item) => !clean(item.effective_to) || clean(item.effective_to) >= today);
   }
 
-  function openMove(studentId, enrollmentId) {
+  function moveSourceEnrollment(dialog) {
+    if (!dialog || dialog.kind !== 'move') return null;
+    return enrollments().find((item) => clean(item.id) === clean(dialog.sourceEnrollmentId)) || null;
+  }
+
+  function syncMoveAbsenceState(dialog) {
+    const source = moveSourceEnrollment(dialog);
+    if (!source || !clean(dialog.effectiveDate)) {
+      dialog.absenceSelected = false;
+      dialog.originalAbsenceSelected = false;
+      return;
+    }
+    const status = timetableAttendanceSessionStatus(
+      dialog.studentId,
+      parseDate(dialog.effectiveDate),
+      Number(source.time_slot),
+      classGroupOf(source),
+      'regular'
+    );
+    dialog.absenceSelected = status === 'absent';
+    dialog.originalAbsenceSelected = status === 'absent';
+  }
+
+  function openMove(studentId, enrollmentId, clickedDate) {
     const student = studentById(studentId);
     if (!student) return;
     const rows = currentStudentEnrollments(studentId);
@@ -1058,14 +1117,20 @@
     const targetWeekday = source ? Number(source.weekday) : 1;
     const timeOptions = timeOptionsFor(divisionOf(student), targetWeekday);
     const sourceTime = source ? Number(source.time_slot) : null;
+    const requestedDate = clean(clickedDate);
+    const effectiveDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) ? requestedDate : todayKey();
     state.dialog = {
       kind: 'move', studentId: clean(studentId), actionType: 'move',
       sourceEnrollmentId: source ? clean(source.id) : '',
       targetWeekday,
       targetTime: timeOptions.includes(sourceTime) ? sourceTime : timeOptions[0],
       targetClassGroup: source ? classGroupOf(source) : 'A',
-      effectiveDate: todayKey()
+      effectiveDate,
+      note: '',
+      absenceSelected: false,
+      originalAbsenceSelected: false
     };
+    syncMoveAbsenceState(state.dialog);
     openOverlay();
   }
 
@@ -1210,6 +1275,10 @@
       return `<button type="button" class="olliTtEnrollmentChoice" data-tt-cancel-change="${esc(item.id)}"><strong>${shortDate(item.effective_date)}부터 · ${esc(targetText)}</strong><span>예약 취소</span></button>`;
     }).join('')}</div></div>` : '';
     const isMakeup = dialog.actionType === 'makeup';
+    const showAbsenceMemo = dialog.actionType === 'move' && Boolean(clean(dialog.sourceEnrollmentId));
+    const absenceMemoHtml = showAbsenceMemo
+      ? `<div class="olliTtAddMemo olliTtAbsenceMemo"><span>메모</span><textarea data-tt-move-note maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.note || '')}</textarea><button type="button" class="olliTtAbsenceBtn${dialog.absenceSelected ? ' active' : ''}" data-tt-absence-toggle aria-pressed="${dialog.absenceSelected ? 'true' : 'false'}">결석</button></div>`
+      : '';
     const headerGuide = `${divisionLabel(division)} · 현재 수업 ${studentScheduleText(student.id) || '없음'}`;
     const modeCards = '<div class="olliTtModeCards">'
       + `<section class="olliTtModeCard move ${dialog.actionType === 'move' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="move">수업이동</button><div class="olliTtModeCardBody"><span>현재 정규수업</span><div class="olliTtEnrollmentList">${sourceHtml}</div></div></section>`
@@ -1225,6 +1294,7 @@
       + `<div class="olliTtField"><div class="olliTtFieldHead"><span>${isMakeup ? '보강 시간' : '새 시간'}</span></div><div class="olliTtChoiceGrid times">${timeHtml}</div></div>`
       + classGroupChoiceHtml(division, dialog.targetClassGroup, dialog.targetWeekday, dialog.targetTime, true)
       + (isMakeup ? '' : `<div class="olliTtField"><div class="olliTtFieldHead"><span>적용 날짜</span></div><input type="date" class="olliTtDateInput" data-tt-effective-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></div>`)
+      + absenceMemoHtml
       + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-move>${isMakeup ? '보강 등록' : '저장'}</button></div></div>`;
   }
 
@@ -1461,6 +1531,8 @@
         state.dialog.targetWeekday = Number(source.weekday);
         state.dialog.targetTime = Number(source.time_slot);
         state.dialog.targetClassGroup = classGroupOf(source);
+        state.dialog.note = '';
+        syncMoveAbsenceState(state.dialog);
       }
       renderDialog();
     }));
@@ -1528,6 +1600,7 @@
         if (!options.includes(state.dialog.targetTime)) state.dialog.targetTime = options[0];
       }
       state.dialog.effectiveDate = dateKey(selectedDate);
+      if (state.dialog.kind === 'move' && state.dialog.actionType === 'move') syncMoveAbsenceState(state.dialog);
       renderDialog();
     });
     bindImeSafeSearch(
@@ -1609,6 +1682,17 @@
     if (pickupEffectiveDate) pickupEffectiveDate.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.effectiveDate = pickupEffectiveDate.value || dateKey(addDays(new Date(), 1)); });
     const waitDate = dialog.querySelector('[data-tt-wait-date]');
     if (waitDate) waitDate.addEventListener('change', () => { state.dialog.effectiveDate = waitDate.value || todayKey(); renderDialog(); });
+    const moveNote = dialog.querySelector('[data-tt-move-note]');
+    if (moveNote) moveNote.addEventListener('input', () => {
+      if (state.dialog && state.dialog.kind === 'move') state.dialog.note = moveNote.value;
+    });
+    const absenceToggle = dialog.querySelector('[data-tt-absence-toggle]');
+    if (absenceToggle) absenceToggle.addEventListener('click', () => {
+      if (!state.dialog || state.dialog.kind !== 'move' || state.dialog.actionType !== 'move') return;
+      state.dialog.absenceSelected = !state.dialog.absenceSelected;
+      absenceToggle.classList.toggle('active', state.dialog.absenceSelected);
+      absenceToggle.setAttribute('aria-pressed', state.dialog.absenceSelected ? 'true' : 'false');
+    });
     const saveMoveButton = dialog.querySelector('[data-tt-save-move]');
     if (saveMoveButton) saveMoveButton.addEventListener('click', saveMove);
     const memoEdit = dialog.querySelector('[data-tt-memo-edit]');
@@ -1734,30 +1818,112 @@
       alert('이동할 기존 수업을 선택해 주세요.');
       return;
     }
-    const result = await withSaving(async () => {
-      const actionResult = dialog.actionType === 'makeup'
-        ? await service.addMakeup(dialog.studentId, dialog.effectiveDate, dialog.targetTime, '', dialog.targetClassGroup)
-        : await service.changeSchedule({
-          studentId: dialog.studentId,
-          sourceEnrollmentId: dialog.actionType === 'move' ? dialog.sourceEnrollmentId : null,
-          targetWeekday: dialog.targetWeekday,
-          targetTimeSlot: dialog.targetTime,
-          targetClassGroup: dialog.targetClassGroup,
-          effectiveDate: dialog.effectiveDate,
-          changeType: dialog.actionType,
-          allowWait: true
-        });
-      if (dialog.actionType !== 'makeup' && actionResult && actionResult.result !== 'scheduled' && actionResult.result !== 'waitlisted') {
-        await refreshStudentsFromServer();
-      }
-      return actionResult;
-    });
-    if (!result) return;
+
     const student = studentById(dialog.studentId);
-    if (dialog.actionType === 'makeup') notify(`${student.name} 학생의 보강을 등록했어요.`);
-    else if (result.result === 'waitlisted') notify(`${student.name} 학생을 대기로 등록했어요.`);
-    else if (result.result === 'scheduled') notify(`${student.name} 학생의 시간표 변경을 예약했어요.`);
-    else notify(`${student.name} 학생의 시간표를 변경했어요.`);
+    const source = moveSourceEnrollment(dialog);
+    const note = dialog.actionType === 'move' ? clean(dialog.note) : '';
+    const absenceChanged = dialog.actionType === 'move'
+      && Boolean(dialog.absenceSelected) !== Boolean(dialog.originalAbsenceSelected);
+    const hasAttendanceMemoWork = Boolean(note || absenceChanged);
+    const moveTargetChanged = dialog.actionType === 'move' && source
+      && (Number(source.weekday) !== Number(dialog.targetWeekday)
+        || Number(source.time_slot) !== Number(dialog.targetTime)
+        || classGroupOf(source) !== classGroupOf({ class_group: dialog.targetClassGroup }));
+
+    if (hasAttendanceMemoWork && moveTargetChanged) {
+      alert('결석 또는 메모 저장과 수업이동은 한 번에 처리할 수 없습니다. 결석·메모를 먼저 저장한 뒤 수업이동을 진행해 주세요.');
+      return;
+    }
+
+    if (hasAttendanceMemoWork) {
+      if (!source) {
+        alert('메모 또는 결석 처리할 기존 수업을 찾지 못했습니다.');
+        return;
+      }
+      const sessionDate = parseDate(dialog.effectiveDate);
+      if (Number(source.weekday) !== Number(sessionDate.getDay()) || !enrollmentEffectiveOn(source, sessionDate)) {
+        alert('적용 날짜를 선택한 정규수업이 있는 날짜로 선택해 주세요.');
+        return;
+      }
+      if (absenceChanged && typeof service.setAttendanceSessionStatus !== 'function') {
+        alert('결석 저장 모듈을 찾지 못했습니다. 페이지를 새로고침해 주세요.');
+        return;
+      }
+    }
+
+    const shouldRunScheduleAction = dialog.actionType !== 'move' || moveTargetChanged || !hasAttendanceMemoWork;
+    const combined = await withSaving(async () => {
+      let actionResult = null;
+      let memoSaved = false;
+      let absenceSaved = false;
+      const errors = [];
+
+      if (shouldRunScheduleAction) {
+        actionResult = dialog.actionType === 'makeup'
+          ? await service.addMakeup(dialog.studentId, dialog.effectiveDate, dialog.targetTime, '', dialog.targetClassGroup)
+          : await service.changeSchedule({
+            studentId: dialog.studentId,
+            sourceEnrollmentId: dialog.actionType === 'move' ? dialog.sourceEnrollmentId : null,
+            targetWeekday: dialog.targetWeekday,
+            targetTimeSlot: dialog.targetTime,
+            targetClassGroup: dialog.targetClassGroup,
+            effectiveDate: dialog.effectiveDate,
+            changeType: dialog.actionType,
+            allowWait: true
+          });
+        if (dialog.actionType !== 'makeup' && actionResult && actionResult.result !== 'scheduled' && actionResult.result !== 'waitlisted') {
+          await refreshStudentsFromServer();
+        }
+      }
+
+      if (note && source) {
+        try {
+          await saveCellMemoText(divisionOf(student), dialog.effectiveDate, Number(source.time_slot), note, classGroupOf(source), null);
+          memoSaved = true;
+        } catch (error) {
+          errors.push(clean(error && (error.message || error)) || '시간표 메모 저장 실패');
+        }
+      }
+
+      if (absenceChanged && source) {
+        try {
+          await service.setAttendanceSessionStatus({
+            studentId: dialog.studentId,
+            sessionDate: dialog.effectiveDate,
+            sessionKind: 'regular',
+            timeSlot: Number(source.time_slot),
+            classGroup: classGroupOf(source),
+            status: dialog.absenceSelected ? 'absent' : 'blank'
+          });
+          absenceSaved = true;
+        } catch (error) {
+          errors.push(clean(error && (error.message || error)) || '결석 상태 저장 실패');
+        }
+      }
+
+      return { actionResult, memoSaved, absenceSaved, errors };
+    });
+
+    if (!combined) return;
+
+    if (combined.actionResult) {
+      if (dialog.actionType === 'makeup') notify(`${student.name} 학생의 보강을 등록했어요.`);
+      else if (combined.actionResult.result === 'waitlisted') notify(`${student.name} 학생을 대기로 등록했어요.`);
+      else if (combined.actionResult.result === 'scheduled') notify(`${student.name} 학생의 시간표 변경을 예약했어요.`);
+      else notify(`${student.name} 학생의 시간표를 변경했어요.`);
+    } else if (combined.absenceSaved && dialog.absenceSelected && combined.memoSaved) {
+      notify(`${student.name} 학생의 결석과 메모를 저장했어요.`);
+    } else if (combined.absenceSaved && dialog.absenceSelected) {
+      notify(`${student.name} 학생을 결석 처리했어요.`);
+    } else if (combined.absenceSaved && !dialog.absenceSelected) {
+      notify(`${student.name} 학생의 결석 처리를 해제했어요.`);
+    } else if (combined.memoSaved) {
+      notify('시간표 메모를 저장했어요.');
+    }
+
+    if (combined.errors && combined.errors.length) {
+      alert(`일부 내용은 저장됐지만 다음 항목은 저장하지 못했습니다.\n${combined.errors.join('\n')}`);
+    }
   }
 
   async function withOpenDialogSaving(task) {
