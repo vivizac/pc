@@ -77,18 +77,19 @@ test('ordinary feedback text still passes through unchanged', async () => {
   assert.equal(result.clearInput, false);
 });
 
-test('one-minute submit checks command router before legacy name parsing', () => {
+test('one-minute submit routes commands first and no longer requires legacy first-line names', () => {
   const submitStart = registration.indexOf('window.submitKinderChatFeedback = async function');
   const submitEnd = registration.indexOf('window.openKinderChatFeedbackSaveStudentPicker', submitStart);
   const submit = registration.slice(submitStart, submitEnd);
   const routeIndex = submit.indexOf('OlliCommandRouter.route');
-  const legacyParserIndex = submit.indexOf('parseKcfTypedStudentInput(text)');
 
   assert.ok(routeIndex >= 0);
-  assert.ok(legacyParserIndex > routeIndex);
   assert.match(submit, /commandRoute\.handled === true/);
-  assert.match(submit, /addKinderChatMessage\('user'/);
-  assert.match(submit, /기존 피드백 흐름을 계속합니다/);
+  assert.doesNotMatch(submit, /parseKcfTypedStudentInput/);
+  assert.doesNotMatch(submit, /학생을 먼저 선택해 주세요/);
+  assert.match(submit, /아직 이 문장은 실행 가능한 명령으로 연결되지 않았어요/);
+  assert.match(registration, /renderKinderChatFeedbackCommandConfirmation/);
+  assert.match(registration, /submitKinderChatFeedbackCommandChoice/);
 });
 
 test('PC loads command schedule and router before shared feedback registration', () => {
