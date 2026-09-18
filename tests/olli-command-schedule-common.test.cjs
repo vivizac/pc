@@ -771,7 +771,7 @@ test('recurring availability keeps regular vacancy even when one future date is 
   assert.match(message, /화요일 4시/);
   assert.match(message, /정규 4명/);
   assert.match(message, /1자리/);
-  assert.match(message, /9월 22일 화요일/);
+  assert.match(message, /9월 22일/);
   assert.match(message, /보강 1명/);
   assert.match(message, /마감/);
 });
@@ -807,7 +807,7 @@ test('recurring availability reports future regular enrollment changes separatel
   assert.equal(result.regularChanges[0].date, '2026-10-06');
   assert.equal(result.regularChanges[0].regularCount, 5);
   assert.equal(result.regularChanges[0].remaining, 0);
-  assert.match(schedule.describeRecurringAvailability(result), /10월 6일 화요일부터/);
+  assert.match(schedule.describeRecurringAvailability(result), /10월 6일부터/);
 });
 
 test('week schedule uses each actual date and separates one-time counts', async () => {
@@ -842,4 +842,85 @@ test('week schedule uses each actual date and separates one-time counts', async 
   assert.equal(slot.regularCount, 1);
   assert.equal(slot.trialCount, 1);
   assert.match(schedule.describeWeekAvailability(result), /정규 1명 \+ 체험 1명/);
+});
+
+
+test('recurring availability copy follows the natural single-slot format', async () => {
+  const horizon = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[
+      { student_id:'r1', division:'elementary', weekday:5, time_slot:5, class_group:'A', effective_from:'2026-01-01' },
+      { student_id:'r2', division:'elementary', weekday:5, time_slot:5, class_group:'A', effective_from:'2026-01-01' }
+    ],
+    one_time_sessions:[
+      {
+        id:'m1', division:'elementary', session_date:'2026-09-18',
+        time_slot:5, class_group:'A', session_type:'makeup', status:'scheduled'
+      }
+    ],
+    class_teachers:[
+      { division:'elementary', weekday:5, time_slot:5, class_group:'A', teacher_name:'담임' }
+    ],
+    class_splits:[],
+    kinder_class_merges:[]
+  };
+  const { schedule } = loadSchedule(horizon, [], { horizonData:horizon });
+  const result = await schedule.findRecurringAvailability({
+    date:'2026-09-18',
+    weekday:5,
+    timeSlot:5,
+    division:'elementary'
+  });
+
+  assert.equal(
+    schedule.describeRecurringAvailability(result),
+    [
+      '금요일 5시는 정규 기준 3자리 있습니다.',
+      '금요일 5시 · 정규 2명 / 3자리',
+      '9월 18일에는 보강 1명이 있어 2자리 있습니다.'
+    ].join('\n')
+  );
+});
+
+test('recurring availability copy explains future regular closure before dated makeup closure', async () => {
+  const horizon = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[
+      { student_id:'r1', division:'elementary', weekday:2, time_slot:4, class_group:'A', effective_from:'2026-01-01' },
+      { student_id:'r2', division:'elementary', weekday:2, time_slot:4, class_group:'A', effective_from:'2026-01-01' },
+      { student_id:'r3', division:'elementary', weekday:2, time_slot:4, class_group:'A', effective_from:'2026-01-01' },
+      { student_id:'r4', division:'elementary', weekday:2, time_slot:4, class_group:'A', effective_from:'2026-01-01' },
+      { student_id:'r5', division:'elementary', weekday:2, time_slot:4, class_group:'A', effective_from:'2026-10-06' }
+    ],
+    one_time_sessions:[
+      {
+        id:'m1', division:'elementary', session_date:'2026-09-22',
+        time_slot:4, class_group:'A', session_type:'makeup', status:'scheduled'
+      }
+    ],
+    class_teachers:[
+      { division:'elementary', weekday:2, time_slot:4, class_group:'A', teacher_name:'담임' }
+    ],
+    class_splits:[],
+    kinder_class_merges:[]
+  };
+  const { schedule } = loadSchedule(horizon, [], { horizonData:horizon });
+  const result = await schedule.findRecurringAvailability({
+    date:'2026-09-18',
+    weekday:2,
+    timeSlot:4,
+    division:'elementary'
+  });
+
+  assert.equal(
+    schedule.describeRecurringAvailability(result),
+    [
+      '화요일 4시는 현재 정규수업 기준 1자리 있어요.',
+      '화요일 4시 · 정규 4명 / 1자리',
+      '10월 6일부터는 정규학생 등록 예정으로 마감됩니다.',
+      '또한 9월 22일은 보강 1명이 있어 해당 날짜만 마감이에요.'
+    ].join('\n')
+  );
 });
