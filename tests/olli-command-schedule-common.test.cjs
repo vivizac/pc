@@ -514,6 +514,9 @@ test('new phone write commands use the existing schedule RPCs', async () => {
             one_time_sessions:[],
             class_teachers:[
               { division:'kinder', weekday:6, time_slot:4, class_group:'A', teacher_name:'담임' }
+            ],
+            calendar_days:[
+              { session_date:'2026-09-19', is_holiday:false }
             ]
           };
         },
