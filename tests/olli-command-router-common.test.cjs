@@ -504,3 +504,53 @@ test('direct availability wording keeps requested time and class group', async (
   assert.equal(described.slots[0].timeSlot, 4);
   assert.equal(described.slots[0].classGroup, 'A');
 });
+
+
+test('shared add-action vocabulary accepts common scheduling verbs and conversational variants', () => {
+  const router = loadRouter();
+  const actions = [
+    '추가해줘', '넣어줘', '입력해줘', '등록해줘', '잡아줘',
+    '예약해줘', '신청해줘', '배정해줘', '올려줘', '만들어줘',
+    '생성해줘', '기록해줘', '적어줘', '반영해줘', '저장해줘',
+    '기입해줘', '기재해줘',
+    '추가해놔줘', '넣어놔줘', '입력해둘래', '등록해놔줘',
+    '잡아둘래', '예약해놔줘', '추가 좀 해줘'
+  ];
+
+  actions.forEach((action) => {
+    const parsed = router.parseMakeupMutationIntent(
+      '김태리 다음주 수요일 5시 보강 ' + action
+    );
+    assert.ok(parsed, action);
+    assert.equal(parsed.intent, 'add_makeup', action);
+    assert.equal(parsed.studentName, '김태리', action);
+    assert.equal(parsed.timeSlot, 5, action);
+  });
+});
+
+test('expanded add-action vocabulary is shared by waitlist and trial commands', () => {
+  const router = loadRouter();
+
+  const waitCases = [
+    '최민기 월요일 4시 대기 입력해줘',
+    '유치부 박하늘 화요일 5시 대기명단에 저장해줘',
+    '월요일 4시 최민기 웨이팅 추가해놔줘'
+  ];
+  waitCases.forEach((text) => {
+    const parsed = router.parseWaitlistMutationIntent(text);
+    assert.ok(parsed, text);
+    assert.equal(parsed.intent, 'add_waitlist', text);
+  });
+
+  const trialCases = [
+    '박하늘 유치부 내일 4시 체험수업 입력해줘',
+    '내일 4시 박하늘 유치부 체험클래스 만들어줘',
+    '박하늘 유치부 내일 4시 체험 반영해줘'
+  ];
+  trialCases.forEach((text) => {
+    const parsed = router.parseTrialMutationIntent(text);
+    assert.ok(parsed, text);
+    assert.equal(parsed.intent, 'add_trial', text);
+    assert.equal(parsed.guestName, '박하늘', text);
+  });
+});
