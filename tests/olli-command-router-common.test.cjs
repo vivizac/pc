@@ -108,24 +108,89 @@ test('schedule-move availability is a read query purpose', () => {
   assert.equal(parsed.purpose, 'schedule_move');
 });
 
-test('specific class move wording is reserved as a future write command', async () => {
+test('specific class move wording parses as a write command', () => {
   const router = loadRouter();
   const parsed = router.parseScheduleMoveMutationIntent('최민기 월요일 수업을 수요일 4시로 변경');
   assert.equal(parsed.intent, 'move_class');
   assert.equal(parsed.type, 'mutation');
-  assert.equal(parsed.status, 'reserved');
   assert.equal(parsed.studentName, '최민기');
   assert.equal(parsed.sourceWeekday, 1);
+  assert.equal(parsed.sourceTimeSlot, 0);
   assert.equal(parsed.targetWeekday, 3);
   assert.equal(parsed.targetTimeSlot, 4);
+});
 
-  const routed = await router.route('최민기 월요일 수업을 수요일 4시로 변경', {
+test('makeup write wording parses date, time, and optional class group', () => {
+  const router = loadRouter();
+  const parsed = router.parseMakeupMutationIntent('김태리 다음 주 월요일 4시 B반 보강 넣어줘');
+  assert.equal(parsed.intent, 'add_makeup');
+  assert.equal(parsed.studentName, '김태리');
+  assert.equal(parsed.dateSpec.mode, 'next_weekday');
+  assert.equal(parsed.dateSpec.weekday, 1);
+  assert.equal(parsed.timeSlot, 4);
+  assert.equal(parsed.classGroup, 'B');
+});
+
+test('write command requires confirmation before execution', async () => {
+  let prepared = null;
+  let executed = null;
+  const router = loadRouter({
+    async prepareWriteCommand(intent, options) {
+      prepared = { intent, options };
+      return {
+        ok:true,
+        command:{ intent, studentId:'student-1', studentName:'최민기', marker:'prepared' },
+        message:'이 작업을 진행할까요?'
+      };
+    },
+    async executePreparedWrite(command) {
+      executed = command;
+      return { ok:true, result:'applied' };
+    },
+    writeSuccessMessage() {
+      return '시간표를 변경했어요.';
+    }
+  });
+
+  const first = await router.route('최민기 월요일 수업을 수요일 4시로 변경', {
     source:'one_minute_feedback'
   });
-  assert.equal(routed.handled, true);
-  assert.equal(routed.kind, 'command_reserved');
-  assert.equal(routed.intent, 'move_class');
-  assert.match(routed.message, /쓰기 명령 단계/);
+  assert.equal(first.handled, true);
+  assert.equal(first.kind, 'command_confirmation');
+  assert.equal(first.intent, 'move_class');
+  assert.equal(prepared.intent, 'move_class');
+  assert.equal(executed, null);
+  assert.equal(router.getPendingWriteCommand().marker, 'prepared');
+
+  const second = await router.route('확인', { source:'one_minute_feedback' });
+  assert.equal(second.handled, true);
+  assert.equal(second.kind, 'command_result');
+  assert.equal(second.message, '시간표를 변경했어요.');
+  assert.equal(executed.marker, 'prepared');
+  assert.equal(router.getPendingWriteCommand(), null);
+});
+
+test('write command can be cancelled without execution', async () => {
+  let executed = false;
+  const router = loadRouter({
+    async prepareWriteCommand(intent) {
+      return { ok:true, command:{ intent, studentId:'student-1' }, message:'진행할까요?' };
+    },
+    async executePreparedWrite() {
+      executed = true;
+      return {};
+    }
+  });
+
+  const first = await router.route('김태리 금요일 4시 보강 넣어줘', {
+    source:'one_minute_feedback'
+  });
+  assert.equal(first.kind, 'command_confirmation');
+  const cancelled = await router.route('취소', { source:'one_minute_feedback' });
+  assert.equal(cancelled.kind, 'command_result');
+  assert.match(cancelled.message, /취소/);
+  assert.equal(executed, false);
+  assert.equal(router.getPendingWriteCommand(), null);
 });
 
 
