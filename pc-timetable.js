@@ -1758,6 +1758,11 @@
     }
     const card = button.closest('.olliTtStudent');
     const wasAttended = !!(card && card.classList.contains('attended'));
+    if (wasAttended) {
+      const student = studentById(button.dataset.studentId);
+      const studentName = clean(student && student.name) || clean(button.textContent) || '학생';
+      if (!global.confirm(`${studentName} 학생의 출석 체크를 해제할까요?\n\n확인을 누르면 출석 표시가 취소됩니다.`)) return;
+    }
     if (card) card.classList.toggle('attended', !wasAttended);
     button.disabled = true;
     try {
