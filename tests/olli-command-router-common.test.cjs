@@ -136,8 +136,8 @@ test('date expressions resolve today, tomorrow, this week, next week, and upcomi
   const cases = [
     ['오늘 초등부 자리 있어?', 'today', '오늘', '2026-09-18'],
     ['내일 초등부 자리 있어?', 'tomorrow', '내일', '2026-09-19'],
-    ['이번 주 수요일 초등부 자리 있어?', 'this_weekday', '이번주수요일', '2026-09-16'],
-    ['다음 주 월요일 보강 가능한 시간 있어?', 'next_weekday', '다음주월요일', '2026-09-21'],
+    ['이번 주 수요일 초등부 자리 있어?', 'this_weekday', '이번 주 수요일', '2026-09-16'],
+    ['다음 주 월요일 보강 가능한 시간 있어?', 'next_weekday', '다음 주 월요일', '2026-09-21'],
     ['월요일 체험 가능한 자리 있어?', 'upcoming_weekday', '월요일', '2026-09-21'],
     ['금요일 수업 이동 가능한 시간 알려줘', 'upcoming_weekday', '금요일', '2026-09-18']
   ];
