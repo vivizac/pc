@@ -1783,9 +1783,28 @@
         marked_at: result.marked_at || new Date().toISOString()
       });
       state.data.attendance = next;
-      if (card) card.classList.toggle('attended', !!result.attended);
+      if (card) {
+        const resolvedStatus = timetableAttendanceSessionStatus(
+          button.dataset.studentId,
+          parseDate(sessionDate),
+          Number(button.dataset.time),
+          button.dataset.classGroup,
+          button.dataset.ttAttendance
+        );
+        card.classList.toggle('attended', resolvedStatus === 'present' || resolvedStatus === 'makeup');
+        card.classList.toggle('absent', resolvedStatus === 'absent');
+      }
     } catch (error) {
-      if (card) card.classList.toggle('attended', wasAttended);
+      if (card) {
+        card.classList.toggle('attended', wasAttended);
+        card.classList.toggle('absent', timetableAttendanceSessionStatus(
+          button.dataset.studentId,
+          parseDate(sessionDate),
+          Number(button.dataset.time),
+          button.dataset.classGroup,
+          button.dataset.ttAttendance
+        ) === 'absent');
+      }
       alert(error && (error.message || error) || '출석 체크를 저장하지 못했습니다.');
     } finally {
       button.disabled = false;
