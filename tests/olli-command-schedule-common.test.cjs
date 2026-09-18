@@ -18,6 +18,22 @@ function loadSchedule(weekData, calendarDays = [], options = {}) {
       calls.changeSchedule = payload;
       return options.changeScheduleResult || { ok:true, result:'applied' };
     },
+    async addWaitlist(payload) {
+      calls.addWaitlist = payload;
+      return options.addWaitlistResult || { ok:true, result:'scheduled' };
+    },
+    async addGuestEntry(payload) {
+      calls.addGuestEntry = payload;
+      return options.addGuestEntryResult || { ok:true, result:'scheduled' };
+    },
+    async cancelMakeup(id) {
+      calls.cancelMakeup = id;
+      return options.cancelMakeupResult || { ok:true, result:'cancelled' };
+    },
+    async cancelChange(id) {
+      calls.cancelChange = id;
+      return options.cancelChangeResult || { ok:true, result:'cancelled' };
+    },
     async activeStudents() { return []; }
   };
   const sandbox = {
@@ -286,4 +302,273 @@ test('phone write path uses the same schedule RPC actions', async () => {
   assert.equal(calls[0].payload.p_action, 'add_one_time');
   assert.equal(calls[0].payload.p_params.student_id, 'student-1');
   assert.equal(calls[0].payload.p_params.time_slot, 4);
+});
+
+
+test('enrolled student waitlist prepares and executes through existing addWaitlist service', async () => {
+  const calls = {};
+  const student = { id:'student-1', name:'최민기', division:'elementary' };
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[
+      { id:'e1', student_id:'other-1', division:'elementary', weekday:1, time_slot:4, class_group:'A', effective_from:'2026-01-01' }
+    ],
+    waitlist:[],
+    one_time_sessions:[],
+    class_teachers:[
+      { division:'elementary', weekday:1, time_slot:4, class_group:'A', teacher_name:'담임' }
+    ]
+  };
+  const { schedule } = loadSchedule(week, [], { calls, students:[student] });
+  const prepared = await schedule.prepareWriteCommand('add_waitlist', {
+    studentName:'최민기',
+    date:'2026-09-21',
+    dateLabel:'월요일',
+    timeSlot:4
+  });
+
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.command.intent, 'add_waitlist');
+  assert.equal(prepared.command.isGuest, false);
+  assert.equal(prepared.command.targetWeekday, 1);
+  assert.equal(prepared.command.targetTimeSlot, 4);
+
+  await schedule.executePreparedWrite(prepared.command);
+  assert.equal(calls.addWaitlist.studentId, 'student-1');
+  assert.equal(calls.addWaitlist.targetWeekday, 1);
+  assert.equal(calls.addWaitlist.targetTimeSlot, 4);
+  assert.equal(calls.addWaitlist.effectiveDate, '2026-09-21');
+});
+
+test('unknown waitlist name becomes guest wait only when division is explicit', async () => {
+  const calls = {};
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[
+      { id:'e1', student_id:'other-1', division:'kinder', weekday:1, time_slot:4, class_group:'A', effective_from:'2026-01-01' }
+    ],
+    waitlist:[],
+    one_time_sessions:[],
+    class_teachers:[
+      { division:'kinder', weekday:1, time_slot:4, class_group:'A', teacher_name:'담임' }
+    ]
+  };
+  const { schedule } = loadSchedule(week, [], { calls, students:[] });
+
+  const missingDivision = await schedule.prepareWriteCommand('add_waitlist', {
+    studentName:'박하늘',
+    date:'2026-09-21',
+    timeSlot:4
+  });
+  assert.equal(missingDivision.ok, false);
+  assert.match(missingDivision.message, /유치부인지 초등부인지/);
+
+  const prepared = await schedule.prepareWriteCommand('add_waitlist', {
+    studentName:'박하늘',
+    division:'kinder',
+    date:'2026-09-21',
+    timeSlot:4
+  });
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.command.isGuest, true);
+  assert.equal(prepared.command.guestName, '박하늘');
+
+  await schedule.executePreparedWrite(prepared.command);
+  assert.equal(calls.addGuestEntry.guestName, '박하늘');
+  assert.equal(calls.addGuestEntry.entryType, 'wait');
+  assert.equal(calls.addGuestEntry.division, 'kinder');
+});
+
+test('trial prepares an open slot and executes through existing guest-entry service', async () => {
+  const calls = {};
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[
+      { id:'e1', student_id:'other-1', division:'kinder', weekday:6, time_slot:4, class_group:'A', effective_from:'2026-01-01' }
+    ],
+    one_time_sessions:[],
+    class_teachers:[
+      { division:'kinder', weekday:6, time_slot:4, class_group:'A', teacher_name:'담임' }
+    ]
+  };
+  const { schedule } = loadSchedule(week, [], { calls });
+  const prepared = await schedule.prepareWriteCommand('add_trial', {
+    guestName:'박하늘',
+    division:'kinder',
+    date:'2026-09-19',
+    dateLabel:'내일',
+    timeSlot:4
+  });
+
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.command.intent, 'add_trial');
+  assert.equal(prepared.command.guestName, '박하늘');
+  assert.equal(prepared.command.classGroup, 'A');
+
+  await schedule.executePreparedWrite(prepared.command);
+  assert.equal(calls.addGuestEntry.guestName, '박하늘');
+  assert.equal(calls.addGuestEntry.entryType, 'trial');
+  assert.equal(calls.addGuestEntry.sessionDate, '2026-09-19');
+  assert.equal(calls.addGuestEntry.timeSlot, 4);
+});
+
+test('makeup cancellation resolves the one-time session id before execution', async () => {
+  const calls = {};
+  const student = { id:'student-1', name:'김태리', division:'elementary' };
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[],
+    one_time_sessions:[
+      {
+        id:'makeup-1', student_id:'student-1', student_name:'김태리',
+        division:'elementary', session_date:'2026-09-18', time_slot:4,
+        class_group:'A', session_type:'makeup', status:'scheduled'
+      }
+    ]
+  };
+  const { schedule } = loadSchedule(week, [], { calls, students:[student] });
+  const prepared = await schedule.prepareWriteCommand('cancel_makeup', {
+    studentName:'김태리',
+    date:'2026-09-18',
+    timeSlot:4
+  });
+
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.command.oneTimeSessionId, 'makeup-1');
+  await schedule.executePreparedWrite(prepared.command);
+  assert.equal(calls.cancelMakeup, 'makeup-1');
+});
+
+test('ambiguous makeup cancellation requires a date and time instead of cancelling automatically', async () => {
+  const student = { id:'student-1', name:'김태리', division:'elementary' };
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[],
+    one_time_sessions:[
+      { id:'m1', student_id:'student-1', session_date:'2026-09-18', time_slot:4, class_group:'A', session_type:'makeup', status:'scheduled' },
+      { id:'m2', student_id:'student-1', session_date:'2026-09-19', time_slot:10, class_group:'A', session_type:'makeup', status:'scheduled' }
+    ]
+  };
+  const { schedule } = loadSchedule(week, [], { students:[student] });
+  const prepared = await schedule.prepareWriteCommand('cancel_makeup', {
+    studentName:'김태리',
+    effectiveDate:'2026-09-18'
+  });
+
+  assert.equal(prepared.ok, false);
+  assert.match(prepared.message, /여러 개/);
+  assert.match(prepared.message, /날짜와 시간을 함께/);
+});
+
+test('scheduled move cancellation resolves change id and uses existing cancelChange service', async () => {
+  const calls = {};
+  const student = { id:'student-1', name:'최민기', division:'elementary' };
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[
+      { id:'source-1', student_id:'student-1', division:'elementary', weekday:1, time_slot:4, class_group:'A', effective_from:'2026-01-01' },
+      { id:'target-1', student_id:'student-1', division:'elementary', weekday:3, time_slot:4, class_group:'A', effective_from:'2026-09-23' }
+    ],
+    changes:[
+      {
+        id:'change-1', student_id:'student-1', student_name:'최민기',
+        source_enrollment_id:'source-1', target_enrollment_id:'target-1',
+        effective_date:'2026-09-23', change_type:'move', status:'scheduled'
+      }
+    ]
+  };
+  const { schedule } = loadSchedule(week, [], { calls, students:[student] });
+  const prepared = await schedule.prepareWriteCommand('cancel_move', {
+    studentName:'최민기',
+    sourceWeekday:1,
+    sourceTimeSlot:4,
+    effectiveDate:'2026-09-18'
+  });
+
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.command.changeId, 'change-1');
+  await schedule.executePreparedWrite(prepared.command);
+  assert.equal(calls.cancelChange, 'change-1');
+});
+
+test('new phone write commands use the existing schedule RPCs', async () => {
+  const calls = [];
+  const sandbox = {
+    window: {
+      OlliPhoneStudentScheduleService: {
+        async request(name, payload) {
+          calls.push({ name, payload });
+          return { ok:true, result:'scheduled' };
+        },
+        async loadWeek() {
+          return {
+            elementary_capacity:5,
+            kinder_capacity:5,
+            enrollments:[],
+            one_time_sessions:[],
+            class_teachers:[
+              { division:'kinder', weekday:6, time_slot:4, class_group:'A', teacher_name:'담임' }
+            ]
+          };
+        },
+        clearWeekCache() {}
+      },
+      dispatchEvent() {}
+    },
+    CustomEvent: function CustomEvent(type, init) { this.type = type; this.detail = init && init.detail; },
+    Date,
+    console
+  };
+  vm.runInNewContext(source, sandbox);
+  const schedule = sandbox.window.OlliCommandSchedule;
+
+  await schedule.executePreparedWrite({
+    intent:'add_waitlist',
+    studentId:'student-1',
+    studentName:'최민기',
+    isGuest:false,
+    division:'elementary',
+    effectiveDate:'2026-09-21',
+    targetWeekday:1,
+    targetTimeSlot:4,
+    targetClassGroup:'A'
+  });
+  await schedule.executePreparedWrite({
+    intent:'add_trial',
+    guestName:'박하늘',
+    studentName:'박하늘',
+    division:'kinder',
+    sessionDate:'2026-09-19',
+    timeSlot:4,
+    classGroup:'A'
+  });
+  await schedule.executePreparedWrite({
+    intent:'cancel_makeup',
+    studentId:'student-1',
+    studentName:'김태리',
+    oneTimeSessionId:'makeup-1',
+    sessionDate:'2026-09-18',
+    timeSlot:4
+  });
+  await schedule.executePreparedWrite({
+    intent:'cancel_move',
+    studentId:'student-1',
+    studentName:'최민기',
+    changeId:'change-1'
+  });
+
+  assert.equal(calls[0].name, 'olli_schedule_execute');
+  assert.equal(calls[0].payload.p_action, 'add_waitlist');
+  assert.equal(calls[1].name, 'olli_schedule_add_guest_entry');
+  assert.equal(calls[1].payload.p_entry_type, 'trial');
+  assert.equal(calls[2].payload.p_action, 'cancel_one_time');
+  assert.equal(calls[2].payload.p_params.one_time_session_id, 'makeup-1');
+  assert.equal(calls[3].payload.p_action, 'cancel_change');
+  assert.equal(calls[3].payload.p_params.change_id, 'change-1');
 });
