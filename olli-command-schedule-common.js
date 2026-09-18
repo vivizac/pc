@@ -827,6 +827,10 @@
         return false;
       });
 
+      if (!rows.length && clean(data.purpose) !== 'makeup' && clean(data.purpose) !== 'trial') {
+        lines.push('정규수업 기준 빈자리가 없습니다.');
+      }
+
       rows.forEach((slot, index) => {
         const includeDivision = !data.division && rows.length > 1;
         const label = className(slot, includeDivision);
