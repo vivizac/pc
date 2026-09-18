@@ -1520,6 +1520,8 @@
         const student = studentById(state.dialog.studentId);
         const options = student ? timeOptionsFor(divisionOf(student), state.dialog.targetWeekday) : [];
         if (!options.includes(state.dialog.targetTime)) state.dialog.targetTime = options[0];
+      } else if (state.dialog.kind === 'move' && state.dialog.actionType === 'move') {
+        syncMoveAbsenceState(state.dialog);
       }
       renderDialog();
     }));
