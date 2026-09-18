@@ -68,3 +68,16 @@ test('absence UI is square beside a two-line memo and uses white text on red tod
   assert.match(css, /\.olliTtStudent\.regular\.absent \{ border-color:#e5484d; color:#fff; background:#e5484d/);
   assert.match(css, /\.olliTtStudent\.regular\.absent \.olliTtSecondSessionMark/);
 });
+
+
+test('class-setting memo prefixes the student name without duplication', () => {
+  const code = source('pc-timetable.js');
+  assert.match(code, /const rawNote = dialog\.actionType === 'move' \? clean\(dialog\.note\) : ''/);
+  assert.match(code, /!rawNote\.startsWith\(studentName\)/);
+  assert.match(code, /\$\{studentName\} \$\{rawNote\}/);
+});
+
+test('class-setting memo row keeps the same vertical spacing as other fields', () => {
+  const css = source('pc-timetable.css');
+  assert.match(css, /\.olliTtAbsenceRow \{ margin-top:21px;/);
+});
