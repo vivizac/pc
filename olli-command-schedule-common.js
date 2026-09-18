@@ -3,7 +3,7 @@
 
   if (global.OlliCommandSchedule) return;
 
-  const VERSION = '2026-09-18-available-slots-1';
+  const VERSION = '2026-09-18-schedule-move-1';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -252,6 +252,7 @@
     if (value === 'makeup') return '보강 가능한';
     if (value === 'trial') return '체험수업 가능한';
     if (value === 'new_enrollment') return '신규등록 가능한';
+    if (value === 'schedule_move') return '수업 이동 가능한';
     return '자리가 남은';
   }
 
