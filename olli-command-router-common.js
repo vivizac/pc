@@ -49,19 +49,19 @@
   }
 
   function hasWaitlistWord(value) {
-    return /(?:대기|웨이팅)/.test(compactText(value));
+    return /(?:대기(?:자|명단|리스트)?|웨이팅(?:리스트)?)/.test(compactText(value));
   }
 
   function hasTrialWord(value) {
-    return /(?:체험(?:수업)?|체험클래스)/.test(compactText(value));
+    return /(?:체험클래스|체험수업|체험)/.test(compactText(value));
   }
 
   function hasAddAction(value) {
-    return /(?:넣|등록|추가|잡|예약|배정|신청)/.test(compactText(value));
+    return /(?:넣|등록|추가|잡|예약|배정|신청|걸어)/.test(compactText(value));
   }
 
   function hasRemoveAction(value) {
-    return /(?:취소|삭제|지워|지우|제거|빼|해제)/.test(compactText(value));
+    return /(?:취소|삭제|지워|지우|제거|빼|해제|없애)/.test(compactText(value));
   }
 
   function hasMoveAction(value) {
@@ -88,9 +88,10 @@
   function stripCommonCommandParts(value) {
     return removeDivisionWords(value)
       .replace(/[.!?,]/g, ' ')
-      .replace(/(?:오늘|내일|(?:(?:이번\s*주|다음\s*주)\s*)?[월화수목금토]요일)/g, ' ')
-      .replace(/\d{1,2}\s*시(?:에|로|으로)?/g, ' ')
+      .replace(/(?:오늘|금일|내일|(?:(?:이번\s*주|금주|다음\s*주|차주)\s*)?[월화수목금토]요일)/g, ' ')
+      .replace(/\d{1,2}\s*시(?:에|에서|로|으로)?/g, ' ')
       .replace(/[AaBb]\s*반/g, ' ')
+      .replace(/(?:타임|시간대)/g, ' ')
       .replace(/(?:잡혀\s*있는|잡혀있는|잡혀\s*있던|등록되어\s*있는|등록되어있는|등록된|예약되어\s*있는|예약되어있는|예약된|예정된)/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
@@ -102,7 +103,7 @@
       .replace(/\s*(?:학생|원생)$/, '')
       .replace(/(?:의|꺼|것)$/, '')
       .replace(/^(?:의|꺼|것)\s*/, '')
-      .replace(/(?:^|\s)(?:에서|으로|로|을|를|에|에게|한테)(?=\s|$)/g, ' ')
+      .replace(/(?:^|\s)(?:에서|으로|로|을|를|에|에게|한테|좀|한번)(?=\s|$)/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
   }
@@ -130,22 +131,24 @@
   }
 
   function parseDateExpression(compact) {
-    if (/오늘/.test(compact)) return { mode:'today', label:'오늘' };
+    if (/(?:오늘|금일)/.test(compact)) return { mode:'today', label:'오늘' };
     if (/내일/.test(compact)) return { mode:'tomorrow', label:'내일' };
 
-    const weekdayMatch = compact.match(/(이번주|이번주간|다음주)?([월화수목금토])요일/);
+    const weekdayMatch = compact.match(/(이번주|이번주간|금주|다음주|차주)?([월화수목금토])요일/);
     if (!weekdayMatch) return null;
 
     const scope = weekdayMatch[1] || '';
     const weekday = WEEKDAY_MAP[weekdayMatch[2]] || 0;
     if (!weekday) return null;
 
-    const label = scope === '다음주'
+    const nextScope = scope === '다음주' || scope === '차주';
+    const thisScope = scope === '이번주' || scope === '이번주간' || scope === '금주';
+    const label = nextScope
       ? '다음 주 ' + weekdayMatch[2] + '요일'
-      : (scope ? '이번 주 ' + weekdayMatch[2] + '요일' : weekdayMatch[2] + '요일');
+      : (thisScope ? '이번 주 ' + weekdayMatch[2] + '요일' : weekdayMatch[2] + '요일');
 
     return {
-      mode: scope === '다음주' ? 'next_weekday' : (scope ? 'this_weekday' : 'upcoming_weekday'),
+      mode: nextScope ? 'next_weekday' : (thisScope ? 'this_weekday' : 'upcoming_weekday'),
       weekday,
       label
     };
@@ -240,8 +243,8 @@
     const timeSlot = firstTimeSlot(raw);
     const studentName = extractStudentName(
       raw,
-      /(?:대기(?:자)?|웨이팅)(?:에|로|을|를)?/g,
-      /(?:넣어?|등록|추가|잡아?|예약|배정|신청)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
+      /(?:대기(?:자|명단|리스트)?|웨이팅(?:리스트)?)(?:에|로|을|를)?/g,
+      /(?:넣어?|등록|추가|잡아?|예약|배정|신청|걸어)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
     );
     if (!studentName || !dateSpec || !timeSlot) return null;
 
@@ -267,7 +270,7 @@
     const timeSlot = firstTimeSlot(raw);
     const guestName = extractStudentName(
       raw,
-      /(?:체험(?:수업)?|체험클래스)(?:으로|에|을|를)?/g,
+      /(?:체험\s*클래스|체험수업|체험)(?:으로|에|을|를)?/g,
       /(?:넣어?|등록|추가|잡아?|예약|배정|신청)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
     );
     if (!guestName || !dateSpec || !timeSlot) return null;
@@ -294,7 +297,7 @@
     const studentName = extractStudentName(
       raw,
       /(?:보강|보충(?:수업)?)(?:수업)?(?:을|를)?/g,
-      /(?:취소|삭제|지워|지우|제거|빼|해제)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
+      /(?:취소|삭제|지워|지우|제거|빼|해제|없애)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
     );
     if (!studentName) return null;
 
@@ -320,7 +323,7 @@
     const studentName = extractStudentName(
       raw,
       /(?:정규\s*)?수업(?:시간)?|시간표|(?:이동|변경)(?:\s*예약)?/g,
-      /(?:취소|삭제|지워|지우|제거|빼|해제)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
+      /(?:취소|삭제|지워|지우|제거|빼|해제|없애)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
     );
     if (!studentName) return null;
 
@@ -353,7 +356,8 @@
       /빈자리|빈곳|여석/.test(compact)
       || /자리.{0,10}(?:남|있|여유|가능|몇)/.test(compact)
       || /(?:남는|남아있는|여유있는|비어있는)클래스/.test(compact)
-      || /가능한?(?:시간|자리|클래스|수업|반)/.test(compact)
+      || /(?:여유|비어)(?:있는)?(?:시간|자리|클래스|수업|반)/.test(compact)
+      || /가능(?:한)?(?:시간|자리|클래스|수업|반)/.test(compact)
       || /할수있는(?:시간|자리|클래스|수업|반)/.test(compact)
       || /들어갈수있는(?:반|시간|자리|클래스|수업)/.test(compact)
       || /받을수있는(?:반|시간|자리|클래스|수업)/.test(compact)
@@ -364,7 +368,7 @@
       || /있어|있나|있나요|있니|있을까|있습니까/.test(compact)
       || /가능해|가능한|가능할까/.test(compact)
       || /남는|남아|남았/.test(compact)
-      || /여유|비어|몇자리/.test(compact);
+      || /여유|비어|몇자리|몇명/.test(compact);
 
     if (!hasAvailabilityMeaning || !asksForLookup) return null;
 
