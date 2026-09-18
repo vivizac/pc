@@ -383,7 +383,9 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
     const studentCard = document.querySelector('#studentModal .modalCard');
     if (studentCard && studentCard.dataset.orderedStudentFields !== '1') {
       studentCard.dataset.orderedStudentFields = '1';
-      studentCard.innerHTML = '<div class="modalTitle" id="studentModalTitle">학생 등록</div>'
+      studentCard.innerHTML = '<button type="button" class="pcStudentModalClose" aria-label="닫기" onclick="closeStudentModal()">×</button>'
+        + '<div class="modalTitle" id="studentModalTitle">학생 등록</div>'
+        + '<div class="pcStudentModalSectionTitle">기본 정보</div>'
         + '<div class="studentPopupNameTeacherRow">'
         + '<div class="kinderInfoModalField studentPopupNameField"><div class="modalLabel">이름 *</div><input id="studentNameInput" placeholder="예: 김민준" class="modalInput" onkeydown="if(event.key===\'Enter\')confirmStudent()"></div>'
         + '<div id="elementaryStudentPersonalityField" class="kinderInfoModalField studentPopupPersonalityField"><div id="elementaryStudentPersonalityToggleRow" class="infoTeacherToggleRow infoPersonalityToggleRow"></div></div>'
@@ -409,7 +411,7 @@ window.__olliTeacherDropdownOpen = window.__olliTeacherDropdownOpen || {};
         + '<div id="studentLessonTimeField" class="kinderInfoModalField studentScheduleTimeField"><div class="modalLabel">시간</div><div id="studentLessonTimeToggleRow" class="infoTimeToggleRow"></div><input type="hidden" id="studentLessonTimeToggleRowInput"></div>'
         
         + '</div>'
-        + '<div class="modalActions"><button class="modalBtnCancel" data-modal-close="studentModal" type="button">취소</button><button onclick="confirmStudent()" class="modalBtnConfirm">추가</button></div>';
+        + '<div class="modalActions"><button class="modalBtnCancel" data-modal-close="studentModal" type="button">취소</button><button onclick="confirmStudent()" class="modalBtnConfirm">학생 추가</button></div>';
     }
 
     const elementaryInfoCard = document.querySelector('#elementaryInfoModal .modalCard');
