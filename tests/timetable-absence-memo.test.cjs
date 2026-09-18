@@ -101,3 +101,12 @@ test('memo text size matches timetable student card text size', () => {
   assert.match(css, /\.olliTtCellMemoCard > strong \{[^\n]*font-size: calc\(10px \* var\(--olli-text-scale\)\)/);
   assert.match(css, /\.olliTtAddMemo textarea \{[^\n]*font: 680 calc\(10px \* var\(--olli-text-scale\)\)/);
 });
+
+
+test('attendance removal requires confirmation only after attendance is marked', () => {
+  const code = source('pc-timetable.js');
+  assert.match(code, /if \(wasAttended\) \{/);
+  assert.match(code, /global\.confirm\(/);
+  assert.match(code, /출석 체크를 해제할까요/);
+  assert.match(code, /if \(!global\.confirm\([\s\S]*\)\) return;/);
+});
