@@ -89,7 +89,7 @@
     return removeDivisionWords(value)
       .replace(/[.!?,]/g, ' ')
       .replace(/(?:오늘|금일|내일|(?:(?:이번\s*주|금주|다음\s*주|차주)\s*)?[월화수목금토]요일)/g, ' ')
-      .replace(/\d{1,2}\s*시(?:에|에서|로|으로)?/g, ' ')
+      .replace(/\d{1,2}\s*시(?:에서|으로|에|로)?/g, ' ')
       .replace(/[AaBb]\s*반/g, ' ')
       .replace(/(?:타임|시간대)/g, ' ')
       .replace(/(?:잡혀\s*있는|잡혀있는|잡혀\s*있던|등록되어\s*있는|등록되어있는|등록된|예약되어\s*있는|예약되어있는|예약된|예정된)/g, ' ')
@@ -270,7 +270,7 @@
     const timeSlot = firstTimeSlot(raw);
     const guestName = extractStudentName(
       raw,
-      /(?:체험\s*클래스|체험수업|체험)(?:으로|에|을|를)?/g,
+      /(?:체험\s*클래스|체험\s*수업|체험)(?:으로|에|을|를)?/g,
       /(?:넣어?|등록|추가|잡아?|예약|배정|신청)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
     );
     if (!guestName || !dateSpec || !timeSlot) return null;
