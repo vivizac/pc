@@ -14,7 +14,7 @@ test('timetable absence memo source files compile', () => {
 test('regular timetable card carries clicked date and renders explicit absence state', () => {
   const code = source('pc-timetable.js');
   assert.match(code, /data-session-date="\$\{dateKey\(date\)\}"/);
-  assert.match(code, /const absent = isToday\(date\) && attendanceStatus === 'absent'/);
+  assert.match(code, /const absent = dateKey\(date\) >= todayKey\(\) && attendanceStatus === 'absent'/);
   assert.match(code, /absent \? ' absent' : ''/);
 });
 
@@ -80,4 +80,24 @@ test('class-setting memo prefixes the student name without duplication', () => {
 test('class-setting memo row keeps the same vertical spacing as other fields', () => {
   const css = source('pc-timetable.css');
   assert.match(css, /\.olliTtAbsenceRow \{ margin-top:21px;/);
+});
+
+
+test('absence memo uses tagged student format', () => {
+  const code = source('pc-timetable.js');
+  assert.match(code, /\[\$\{studentName\}\]\[결석\] : /);
+});
+
+test('makeup trial and wait cancellation memos use tagged cancel format', () => {
+  const code = source('pc-timetable.js');
+  assert.match(code, /\[\$\{clean\(item\.student_name\)\}\]\[취소\] : \$\{cancelNote\}/);
+  assert.match(code, /data-tt-entry="wait"[\s\S]*data-session-date="\$\{dateKey\(date\)\}"/);
+  assert.match(code, /state\.dialog = \{ kind: 'wait'[\s\S]*cancelDate: selectedDate, cancelNote: '' \}/);
+  assert.match(code, /saveCellMemoText\(clean\(item\.division\), clean\(dialog\.cancelDate\) \|\| todayKey\(\)/);
+});
+
+test('memo text size matches timetable student card text size', () => {
+  const css = source('pc-timetable.css');
+  assert.match(css, /\.olliTtCellMemoCard > strong \{[^\n]*font-size: calc\(10px \* var\(--olli-text-scale\)\)/);
+  assert.match(css, /\.olliTtAddMemo textarea \{[^\n]*font: 680 calc\(10px \* var\(--olli-text-scale\)\)/);
 });
