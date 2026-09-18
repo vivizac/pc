@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-18-write-commands-4';
+  const VERSION = '2026-09-18-write-commands-5';
   let pendingWriteCommand = null;
 
   function cleanText(value) {
@@ -57,7 +57,11 @@
   }
 
   function hasAddAction(value) {
-    return /(?:넣|등록|추가|잡|예약|배정|신청|걸어)/.test(compactText(value));
+    return /(?:추가|넣|입력|기입|기재|등록|잡|예약|신청|배정|올려|만들|생성|기록|적|반영|저장|걸어)/.test(compactText(value));
+  }
+
+  function addActionPattern() {
+    return /(?:(?:추가|입력|기입|기재|등록|예약|신청|배정|생성|기록|반영|저장)(?:\s*(?:좀|한번))?\s*(?:해)?(?:놔|놓아|둬|두어|둘래|둘)?(?:줘요|주세요|줘|줄래|해줘요|해주세요|해줘|해줄래|할래|해|요)?|(?:넣|잡|적|만들)(?:어|아)?(?:\s*(?:좀|한번))?\s*(?:놔|놓아|둬|두어|둘래|둘)?(?:줘요|주세요|줘|줄래|해줘요|해주세요|해줘|해줄래|할래|해|요)?|(?:올려|걸어)(?:\s*(?:좀|한번))?\s*(?:놔|놓아|둬|두어|둘래|둘)?(?:줘요|주세요|줘|줄래|해줘요|해주세요|해줘|해줄래|할래|해|요)?)/g;
   }
 
   function hasRemoveAction(value) {
@@ -218,7 +222,7 @@
     const studentName = extractStudentName(
       raw,
       /(?:보강|보충(?:수업)?)(?:수업)?(?:으로|에|을|를)?/g,
-      /(?:넣어?|등록|추가|잡아?|예약|배정|신청)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
+      addActionPattern()
     );
     if (!studentName || !dateSpec || !timeSlot) return null;
 
@@ -244,7 +248,7 @@
     const studentName = extractStudentName(
       raw,
       /(?:대기(?:자|명단|리스트)?|웨이팅(?:리스트)?)(?:에|로|을|를)?/g,
-      /(?:넣어?|등록|추가|잡아?|예약|배정|신청|걸어)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
+      addActionPattern()
     );
     if (!studentName || !dateSpec || !timeSlot) return null;
 
@@ -271,7 +275,7 @@
     const guestName = extractStudentName(
       raw,
       /(?:체험\s*클래스|체험\s*수업|체험)(?:으로|에|을|를)?/g,
-      /(?:넣어?|등록|추가|잡아?|예약|배정|신청)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
+      addActionPattern()
     );
     if (!guestName || !dateSpec || !timeSlot) return null;
 
