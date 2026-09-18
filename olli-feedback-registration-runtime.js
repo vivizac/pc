@@ -318,8 +318,9 @@
           autoSubmitContext: autoSubmitContext || null
         });
         if (commandRoute && commandRoute.handled === true) {
-          if (commandRoute.message && typeof addKinderChatMessage === 'function') {
-            addKinderChatMessage('bot', String(commandRoute.message));
+          if (typeof addKinderChatMessage === 'function') {
+            addKinderChatMessage('user', String(commandRoute.text || text));
+            if (commandRoute.message) addKinderChatMessage('bot', String(commandRoute.message));
           }
           if (commandRoute.clearInput !== false) {
             input.value = '';
