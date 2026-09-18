@@ -1281,12 +1281,12 @@
       ? `<div class="olliTtAbsenceRow"><label class="olliTtAddMemo olliTtMoveMemo"><span>메모</span><textarea data-tt-move-note maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.note || '')}</textarea></label><button type="button" class="olliTtAbsenceBtn${dialog.absenceSelected ? ' active' : ''}" data-tt-absence-toggle aria-pressed="${dialog.absenceSelected ? 'true' : 'false'}">결석</button></div>`
       : '';
     const headerGuide = `${divisionLabel(division)} · 현재 수업 ${studentScheduleText(student.id) || '없음'}`;
-    const modeCards = '<div class="olliTtModeCards">'
-      + `<section class="olliTtModeCard move ${dialog.actionType === 'move' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="move">수업이동</button><div class="olliTtModeCardBody"><span>현재 정규수업</span><div class="olliTtEnrollmentList">${sourceHtml}</div></div></section>`
-      + '<div class="olliTtModeCardStack">'
-      + `<section class="olliTtModeCard simple ${dialog.actionType === 'add' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="add">수업추가</button></section>`
-      + `<section class="olliTtModeCard simple ${dialog.actionType === 'makeup' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="makeup">보강</button></section>`
-      + '</div></div>';
+    const modeCards = '<div class="olliTtModeTabs" role="tablist" aria-label="수업 설정 방식">'
+      + `<button type="button" class="olliTtModeTab ${dialog.actionType === 'move' ? 'active' : ''}" data-tt-action-type="move">수업 이동</button>`
+      + `<button type="button" class="olliTtModeTab ${dialog.actionType === 'add' ? 'active' : ''}" data-tt-action-type="add">수업 추가</button>`
+      + `<button type="button" class="olliTtModeTab ${dialog.actionType === 'makeup' ? 'active' : ''}" data-tt-action-type="makeup">보강</button>`
+      + '</div>'
+      + (dialog.actionType === 'move' ? `<div class="olliTtCurrentLessons"><div class="olliTtCurrentLessonsHead"><span>현재 정규수업</span><small>이동할 수업을 선택하세요</small></div><div class="olliTtEnrollmentList">${sourceHtml}</div></div>` : '');
     return dialogHead('↗', `${student.name} 수업 설정`, headerGuide)
       + '<div class="olliTtDialogBody">'
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>설정 방식</span></div>' + modeCards + '</div>'
@@ -1343,7 +1343,7 @@
         + `<input type="search" class="olliTtStudentSearch" data-tt-add-search value="${esc(dialog.query)}" placeholder="학생 검색"><div class="olliTtPickerList" data-tt-add-picker>`
         + addPickerHtml(dialog)
         + '</div></div>';
-    return dialogHead('+', '이 시간에 학생 추가', '')
+    return dialogHead('+', '이 시간에 학생 추가', `${koreanDate(parseDate(dialog.date), true)} ${weekdayLabel(dialog.weekday)}요일 · ${timeLabel(dialog.time)}`)
       + '<div class="olliTtDialogBody">'
       + `<label class="olliTtAddMemo"><span>메모</span><textarea data-tt-add-note maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.note)}</textarea></label>`
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>추가 유형</span></div><div class="olliTtTypeGrid">'
@@ -1487,6 +1487,7 @@
     dialog.classList.toggle('olliTtMoveOrAddMode', state.dialog.kind === 'move' && (state.dialog.actionType === 'move' || state.dialog.actionType === 'add'));
     dialog.classList.toggle('olliTtMakeupMode', state.dialog.kind === 'move' && state.dialog.actionType === 'makeup');
     dialog.classList.toggle('olliTtMemoManageDialog', state.dialog.kind === 'memoManage');
+    dialog.classList.toggle('olliTtAddDialog', state.dialog.kind === 'add');
     if (state.dialog.kind === 'move') dialog.innerHTML = moveDialogHtml(state.dialog);
     else if (state.dialog.kind === 'add') dialog.innerHTML = addDialogHtml(state.dialog);
     else if (state.dialog.kind === 'memoManage') dialog.innerHTML = memoManageDialogHtml(state.dialog);
