@@ -14,13 +14,14 @@ test('timetable absence memo source files compile', () => {
 test('regular timetable card carries clicked date and renders explicit absence state', () => {
   const code = source('pc-timetable.js');
   assert.match(code, /data-session-date="\$\{dateKey\(date\)\}"/);
-  assert.match(code, /attendanceStatus === 'absent'/);
+  assert.match(code, /const absent = isToday\(date\) && attendanceStatus === 'absent'/);
   assert.match(code, /absent \? ' absent' : ''/);
 });
 
 test('class settings reuse timetable memo and save session-specific absence', () => {
   const code = source('pc-timetable.js');
-  assert.match(code, /olliTtAddMemo olliTtAbsenceMemo/);
+  assert.match(code, /olliTtAbsenceRow/);
+  assert.match(code, /olliTtAddMemo olliTtMoveMemo/);
   assert.match(code, /data-tt-absence-toggle/);
   assert.match(code, /setAttendanceSessionStatus\(\{/);
   assert.match(code, /status: dialog\.absenceSelected \? 'absent' : 'blank'/);
@@ -47,4 +48,23 @@ test('existing makeup and trial cancellation memo flow remains wired', () => {
   assert.match(code, /data-tt-cancel-note/);
   assert.match(code, /async function cancelMakeupSession\(\)/);
   assert.match(code, /취소 사유 메모/);
+});
+
+
+test('existing timetable cell memos stay independent from absence override loading', () => {
+  const code = source('pc-timetable.js');
+  const service = source('pc-timetable-service.js');
+  assert.match(code, /cellMemos\(\)\.filter/);
+  assert.match(code, /olliTtCellMemoCard/);
+  assert.match(service, /olli_schedule_cell_memos_week_v2/);
+  assert.match(service, /loadAttendanceOverridesRange\(start, end\)\.catch/);
+});
+
+test('absence UI is square beside a two-line memo and uses white text on red today card', () => {
+  const css = source('pc-timetable.css');
+  assert.match(css, /grid-template-columns:minmax\(0,1fr\) 86px/);
+  assert.match(css, /\.olliTtMoveMemo \{ min-height:86px; height:86px/);
+  assert.match(css, /\.olliTtAbsenceBtn \{[\s\S]*width:86px;[\s\S]*height:86px;/);
+  assert.match(css, /\.olliTtStudent\.regular\.absent \{ border-color:#e5484d; color:#fff; background:#e5484d/);
+  assert.match(css, /\.olliTtStudent\.regular\.absent \.olliTtSecondSessionMark/);
 });
