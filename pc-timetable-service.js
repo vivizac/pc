@@ -215,13 +215,16 @@
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + 5);
     const end = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
-    const [data, kinderLayout, calendarDays, teacherContext, memoContext, attendanceOverrides] = await Promise.all([
+    const attendanceOverridesPromise = loadAttendanceOverridesRange(start, end).catch((error) => {
+      console.warn('시간표 결석 상태 조회 실패:', error);
+      return [];
+    });
+    const [data, kinderLayout, calendarDays, teacherContext, memoContext] = await Promise.all([
       rpc('olli_schedule_week', contextPayload({ p_week_start: weekStart })),
       rpc('olli_schedule_kinder_class_layouts', contextPayload()),
       loadCalendarRange(start, end),
       rpc('olli_schedule_class_teacher_context', contextPayload()),
-      rpc('olli_schedule_cell_memos_week_v2', contextPayload({ p_week_start: start })),
-      loadAttendanceOverridesRange(start, end)
+      rpc('olli_schedule_cell_memos_week_v2', contextPayload({ p_week_start: start }))
     ]);
     assertCurrentContext();
     data.kinder_class_merges = Array.isArray(kinderLayout && kinderLayout.merged_slots)
@@ -231,6 +234,8 @@
     data.class_teachers = Array.isArray(teacherContext && teacherContext.assignments) ? teacherContext.assignments : [];
     data.teacher_members = Array.isArray(teacherContext && teacherContext.teachers) ? teacherContext.teachers : [];
     data.cell_memos = Array.isArray(memoContext && memoContext.memos) ? memoContext.memos : (Array.isArray(data.cell_memos) ? data.cell_memos : []);
+    const attendanceOverrides = await attendanceOverridesPromise;
+    assertCurrentContext();
     data.attendance_overrides = Array.isArray(attendanceOverrides) ? attendanceOverrides : [];
     cacheWeek(weekStart, data);
     return data;
