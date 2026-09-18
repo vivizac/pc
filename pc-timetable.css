@@ -208,7 +208,7 @@
 }
 #recordRoomScreen .olliTtCellMemoCard:hover { border-color: #ffed85; background: #ffed85; box-shadow: none; }
 #recordRoomScreen .olliTtCellMemoCard > span { flex: 0 0 auto; margin-top: 1px; font-size: calc(11px * var(--olli-text-scale)); line-height: 1; }
-#recordRoomScreen .olliTtCellMemoCard > strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(12px * var(--olli-text-scale)); font-weight: 760; line-height: 1.2; }
+#recordRoomScreen .olliTtCellMemoCard > strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(10px * var(--olli-text-scale)); font-weight: 760; line-height: 1.2; }
 #recordRoomScreen .olliTtStudent {
   width: 100%;
   min-height: 24px;
@@ -380,8 +380,9 @@
 .olliTtCurrentBox strong { display: block; margin-bottom: 4px; color: #0A73DC; font-size: calc(15px * var(--olli-text-scale)); font-weight: 830; }
 .olliTtAddMemo { min-height: 96px; padding: 12px 14px; border: 1px solid #d9eafa; border-radius: 17px; display: flex; flex-direction: column; box-sizing: border-box; background: #f7fbff; }
 .olliTtAddMemo > span { margin: 0 0 7px; color: #0877df; font-size: calc(12px * var(--olli-text-scale)); font-weight: 820; }
-.olliTtAddMemo textarea { width: 100%; min-height: 52px; flex: 1; padding: 0; border: 0; outline: 0; resize: none; box-sizing: border-box; color: #303946; background: transparent; font: 680 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; line-height: 1.5; }
+.olliTtAddMemo textarea { width: 100%; min-height: 52px; flex: 1; padding: 0; border: 0; outline: 0; resize: none; box-sizing: border-box; color: #303946; background: transparent; font: 680 calc(10px * var(--olli-text-scale)) 'Pretendard', sans-serif; line-height: 1.5; }
 .olliTtAddMemo textarea::placeholder { color: #a5adb7; }
+.olliTtCancelMemo { margin-top:21px; }
 .olliTtAbsenceRow { margin-top:21px; display:grid; grid-template-columns:minmax(0,1fr) 86px; gap:10px; align-items:stretch; }
 .olliTtMoveMemo { min-height:86px; height:86px; padding:10px 13px; }
 .olliTtMoveMemo > span { margin-bottom:5px; }
