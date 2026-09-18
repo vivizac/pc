@@ -3,10 +3,14 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-18-skeleton-1';
+  const VERSION = '2026-09-18-available-slots-1';
 
   function cleanText(value) {
     return String(value == null ? '' : value).replace(/\r\n?/g, '\n').trim();
+  }
+
+  function compactText(value) {
+    return cleanText(value).replace(/\s+/g, '');
   }
 
   function normalizeContext(context) {
@@ -18,25 +22,121 @@
     };
   }
 
-  async function route(text, context) {
-    const normalizedText = cleanText(text);
-    normalizeContext(context);
+  function detectDivision(compact) {
+    if (/초등부|초등/.test(compact)) return 'elementary';
+    if (/유치부|유치원|유치|유아/.test(compact)) return 'kinder';
+    return '';
+  }
 
-    // Stage 1 is intentionally pass-through only.
-    // Command recognition/execution will be added behind this stable entry point.
+  function detectPurpose(compact) {
+    if (/체험/.test(compact)) return 'trial';
+    if (/보강/.test(compact)) return 'makeup';
+    if (/신규|신입|새학생|새원생|신규등록/.test(compact)) return 'new_enrollment';
+    return 'unknown';
+  }
+
+  function parseAvailableSlotsIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !/오늘/.test(compact)) return null;
+
+    const hasAvailabilityMeaning =
+      /빈자리/.test(compact)
+      || /자리.{0,8}(?:남|있|여유)/.test(compact)
+      || /(?:남는|남아있는|여유있는)클래스/.test(compact)
+      || /가능한?(?:시간|자리|클래스|수업)/.test(compact)
+      || /할수있는(?:시간|자리|클래스|수업)/.test(compact)
+      || /들어갈수있는(?:반|시간|자리|클래스|수업)/.test(compact)
+      || /받을수있는(?:반|시간|자리|클래스|수업)/.test(compact);
+
+    const asksForLookup =
+      /알려/.test(compact)
+      || /찾아/.test(compact)
+      || /보여/.test(compact)
+      || /있어|있나|있나요|있니|있을까|있습니까/.test(compact)
+      || /가능해|가능한/.test(compact)
+      || /남는|남아/.test(compact)
+      || /여유/.test(compact);
+
+    if (!hasAvailabilityMeaning || !asksForLookup) return null;
+
+    return {
+      type: 'query',
+      intent: 'find_available_slots',
+      date: 'today',
+      division: detectDivision(compact),
+      purpose: detectPurpose(compact),
+      originalText: raw
+    };
+  }
+
+  function passThrough(text) {
     return {
       handled: false,
       kind: 'feedback',
       intent: '',
-      text: normalizedText,
+      text: cleanText(text),
       message: '',
       clearInput: false,
       payload: null
     };
   }
 
+  async function route(text, context) {
+    const normalizedText = cleanText(text);
+    normalizeContext(context);
+
+    const availableSlots = parseAvailableSlotsIntent(normalizedText);
+    if (!availableSlots) return passThrough(normalizedText);
+
+    const schedule = global.OlliCommandSchedule;
+    if (!schedule || typeof schedule.findAvailableSlots !== 'function') {
+      return {
+        handled: true,
+        kind: 'command_result',
+        intent: availableSlots.intent,
+        text: normalizedText,
+        message: '시간표 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+        clearInput: true,
+        payload: availableSlots
+      };
+    }
+
+    try {
+      const result = await schedule.findAvailableSlots({
+        date: new Date(),
+        division: availableSlots.division,
+        purpose: availableSlots.purpose
+      });
+      const message = typeof schedule.describeAvailableSlots === 'function'
+        ? schedule.describeAvailableSlots(result)
+        : '시간표 빈자리를 확인했어요.';
+      return {
+        handled: true,
+        kind: 'command_result',
+        intent: availableSlots.intent,
+        text: normalizedText,
+        message,
+        clearInput: true,
+        payload: Object.assign({}, availableSlots, { result })
+      };
+    } catch (error) {
+      console.warn('올리 빈자리 조회 실패:', error);
+      return {
+        handled: true,
+        kind: 'command_result',
+        intent: availableSlots.intent,
+        text: normalizedText,
+        message: '시간표 빈자리를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+        clearInput: true,
+        payload: availableSlots
+      };
+    }
+  }
+
   global.OlliCommandRouter = Object.freeze({
     VERSION,
-    route
+    route,
+    parseAvailableSlotsIntent
   });
 })(window);
