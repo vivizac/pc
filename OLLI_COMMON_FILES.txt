@@ -12,3 +12,5 @@ scene-card-kinder-feedback-common.js
 scene-card-model-common.js
 scene-card-ui-common.js
 scene-feedback-text-common.js
+olli-command-schedule-common.js
+olli-command-router-common.js
