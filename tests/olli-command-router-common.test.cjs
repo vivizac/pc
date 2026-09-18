@@ -467,3 +467,40 @@ test('pending write confirmation accepts explicit natural confirmation and cance
   assert.equal(cancelled.kind, 'command_result');
   assert.equal(executeCount, 1);
 });
+
+
+test('direct availability wording keeps requested time and class group', async () => {
+  let described = null;
+  const router = loadRouter({
+    async findAvailableSlots() {
+      return {
+        date:'2026-09-21',
+        dateLabel:'월요일',
+        division:'elementary',
+        purpose:'unknown',
+        slots:[
+          { division:'elementary', timeSlot:4, classGroup:'A', remaining:2 },
+          { division:'elementary', timeSlot:4, classGroup:'B', remaining:1 },
+          { division:'elementary', timeSlot:5, classGroup:'A', remaining:3 }
+        ]
+      };
+    },
+    describeAvailableSlots(result) {
+      described = result;
+      return '조회 완료';
+    }
+  });
+
+  const parsed = router.parseAvailableSlotsIntent('월요일 4시 A반 자리 확인해줘');
+  assert.equal(parsed.timeSlot, 4);
+  assert.equal(parsed.classGroup, 'A');
+
+  const result = await router.route('월요일 4시 A반 자리 확인해줘', {
+    source:'one_minute_feedback'
+  });
+  assert.equal(result.handled, true);
+  assert.equal(result.intent, 'find_available_slots');
+  assert.equal(described.slots.length, 1);
+  assert.equal(described.slots[0].timeSlot, 4);
+  assert.equal(described.slots[0].classGroup, 'A');
+});
