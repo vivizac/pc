@@ -259,9 +259,13 @@
       tabs.setAttribute('aria-label', '학생 추가 부서 선택');
       tabs.innerHTML = '<button type="button" data-pc-student-add-division="elementary" role="tab">초등부 학생 추가</button>'
         + '<button type="button" data-pc-student-add-division="kinder" role="tab">유치부 학생 추가</button>';
-      const title = card.querySelector('#studentModalTitle');
-      if (title) title.insertAdjacentElement('afterend', tabs);
-      else card.insertBefore(tabs, card.firstChild);
+      const header = card.querySelector('.olliPcStudentAddHeader');
+      if (header) header.insertAdjacentElement('afterend', tabs);
+      else {
+        const title = card.querySelector('#studentModalTitle');
+        if (title) title.insertAdjacentElement('afterend', tabs);
+        else card.insertBefore(tabs, card.firstChild);
+      }
       tabs.addEventListener('click', (event) => {
         const button = event.target.closest('[data-pc-student-add-division]');
         if (button) setStudentAddDivision(button.dataset.pcStudentAddDivision);
