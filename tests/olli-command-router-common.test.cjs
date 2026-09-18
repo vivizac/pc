@@ -328,3 +328,57 @@ test('new write commands all enter the same confirmation pipeline', async () => 
     'cancel_move'
   ]);
 });
+
+
+test('makeup cancellation accepts natural word order, possessive, scheduled filler, and delete synonyms', () => {
+  const router = loadRouter();
+  const cases = [
+    '다음주 수요일 5시에 잡혀있는 테스트2의 보강을 삭제해줘',
+    '테스트2의 다음주 수요일 5시 보강을 삭제해줘',
+    '다음주 수요일 5시에 잡혀있는 테스트2의 보강을 취소해줘',
+    '테스트2 다음주 수요일 5시 보강 취소해줘'
+  ];
+
+  cases.forEach((text) => {
+    const parsed = router.parseMakeupCancelMutationIntent(text);
+    assert.equal(parsed.intent, 'cancel_makeup');
+    assert.equal(parsed.studentName, '테스트2');
+    assert.equal(parsed.dateSpec.mode, 'next_weekday');
+    assert.equal(parsed.dateSpec.weekday, 3);
+    assert.equal(parsed.timeSlot, 5);
+  });
+
+  const short = router.parseMakeupCancelMutationIntent('테스트2의 보강을 지워줘');
+  assert.equal(short.intent, 'cancel_makeup');
+  assert.equal(short.studentName, '테스트2');
+  assert.equal(short.dateSpec, null);
+});
+
+test('natural makeup delete sentence enters confirmation pipeline', async () => {
+  let prepared = null;
+  const router = loadRouter({
+    async prepareWriteCommand(intent, options) {
+      prepared = { intent, options };
+      return {
+        ok:true,
+        command:{ intent, studentId:'student-test2', oneTimeSessionId:'makeup-test2' },
+        message:'이 보강을 취소할까요?'
+      };
+    }
+  });
+
+  const result = await router.route('다음주 수요일 5시에 잡혀있는 테스트2의 보강을 삭제해줘', {
+    source:'one_minute_feedback'
+  });
+
+  assert.equal(result.handled, true);
+  assert.equal(result.kind, 'command_confirmation');
+  assert.equal(result.intent, 'cancel_makeup');
+  assert.equal(prepared.intent, 'cancel_makeup');
+  assert.equal(prepared.options.studentName, '테스트2');
+  assert.equal(prepared.options.timeSlot, 5);
+  assert.ok(prepared.options.date instanceof Date);
+  assert.equal(prepared.options.date.getFullYear(), 2026);
+  assert.equal(prepared.options.date.getMonth(), 8);
+  assert.equal(prepared.options.date.getDate(), 23);
+});
