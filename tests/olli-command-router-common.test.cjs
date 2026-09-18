@@ -382,3 +382,88 @@ test('natural makeup delete sentence enters confirmation pipeline', async () => 
   assert.equal(prepared.options.date.getMonth(), 8);
   assert.equal(prepared.options.date.getDate(), 23);
 });
+
+
+test('command language normalization accepts common synonyms and different word order across current read/write features', () => {
+  const router = loadRouter();
+
+  const cases = [
+    ['parseMakeupMutationIntent', '다음주 수요일 5시에 김태리 보강 잡아줘', 'add_makeup', '김태리'],
+    ['parseMakeupMutationIntent', '김태리 차주 수요일 5시 보충수업 예약해줘', 'add_makeup', '김태리'],
+    ['parseMakeupMutationIntent', '금주 수요일 5시 김태리 보강 배정해줘', 'add_makeup', '김태리'],
+
+    ['parseWaitlistMutationIntent', '월요일 4시에 최민기 웨이팅 걸어줘', 'add_waitlist', '최민기'],
+    ['parseWaitlistMutationIntent', '유치부 박하늘 화요일 5시 대기명단에 추가해줘', 'add_waitlist', '박하늘'],
+    ['parseWaitlistMutationIntent', '박하늘 유치부 화요일 5시 대기 예약해줘', 'add_waitlist', '박하늘'],
+
+    ['parseTrialMutationIntent', '내일 4시에 유치부 박하늘 체험수업 잡아줘', 'add_trial', '박하늘'],
+    ['parseTrialMutationIntent', '박하늘 유치부 내일 4시 체험클래스 예약해줘', 'add_trial', '박하늘'],
+    ['parseTrialMutationIntent', '내일 4시 박하늘 유치부 체험 수업 신청해줘', 'add_trial', '박하늘'],
+
+    ['parseScheduleMoveMutationIntent', '월요일 수업 최민기 수요일 4시로 옮겨주세요', 'move_class', '최민기'],
+    ['parseScheduleMoveMutationIntent', '최민기 월요일 4시에서 수요일 5시로 바꿔줘', 'move_class', '최민기'],
+
+    ['parseMakeupCancelMutationIntent', '다음주 수요일 5시 테스트2 보충수업 빼줘', 'cancel_makeup', '테스트2'],
+    ['parseMakeupCancelMutationIntent', '테스트2 금주 수요일 5시 보강 없애줘', 'cancel_makeup', '테스트2'],
+
+    ['parseMoveCancelMutationIntent', '월요일 4시 최민기 시간표 변경 예약 삭제해줘', 'cancel_move', '최민기'],
+    ['parseMoveCancelMutationIntent', '최민기 수업이동 없애줘', 'cancel_move', '최민기']
+  ];
+
+  cases.forEach(([fn, text, intent, name]) => {
+    const parsed = router[fn](text);
+    assert.ok(parsed, text);
+    assert.equal(parsed.intent, intent, text);
+    assert.equal(parsed.studentName || parsed.guestName, name, text);
+  });
+});
+
+test('availability read commands accept natural lookup synonyms', () => {
+  const router = loadRouter();
+  const cases = [
+    ['월요일 보강 여유 있는 시간 체크해줘', 'makeup', 'upcoming_weekday'],
+    ['내일 유치부 자리 몇 개 남았어?', 'unknown', 'tomorrow'],
+    ['금일 초등 빈곳 조회해줘', 'unknown', 'today'],
+    ['차주 금요일 체험 가능한 반 봐줘', 'trial', 'next_weekday'],
+    ['다음주 수요일 초등부 자리 남아 있어?', 'unknown', 'next_weekday']
+  ];
+
+  cases.forEach(([text, purpose, mode]) => {
+    const parsed = router.parseAvailableSlotsIntent(text);
+    assert.ok(parsed, text);
+    assert.equal(parsed.intent, 'find_available_slots', text);
+    assert.equal(parsed.purpose, purpose, text);
+    assert.equal(parsed.dateSpec.mode, mode, text);
+  });
+});
+
+test('date language normalization treats 금일·금주·차주 as canonical dates', () => {
+  const router = loadRouter();
+  assert.equal(router.parseAvailableSlotsIntent('금일 초등 빈자리 알려줘').dateSpec.mode, 'today');
+  assert.equal(router.parseAvailableSlotsIntent('금주 수요일 초등 자리 있어?').dateSpec.mode, 'this_weekday');
+  assert.equal(router.parseAvailableSlotsIntent('차주 금요일 초등 자리 있어?').dateSpec.mode, 'next_weekday');
+});
+
+test('pending write confirmation accepts explicit natural confirmation and cancellation variants', async () => {
+  let executeCount = 0;
+  const router = loadRouter({
+    async prepareWriteCommand(intent) {
+      return { ok:true, command:{ intent, marker:'pending' }, message:'진행할까요?' };
+    },
+    async executePreparedWrite(command) {
+      executeCount += 1;
+      return { ok:true, marker:command.marker };
+    },
+    writeSuccessMessage() { return '완료'; }
+  });
+
+  await router.route('김태리 내일 4시 보강 추가해줘', { source:'one_minute_feedback' });
+  const confirmed = await router.route('확인해줘', { source:'one_minute_feedback' });
+  assert.equal(confirmed.kind, 'command_result');
+  assert.equal(executeCount, 1);
+
+  await router.route('김태리 내일 4시 보강 추가해줘', { source:'one_minute_feedback' });
+  const cancelled = await router.route('안할래', { source:'one_minute_feedback' });
+  assert.equal(cancelled.kind, 'command_result');
+  assert.equal(executeCount, 1);
+});
