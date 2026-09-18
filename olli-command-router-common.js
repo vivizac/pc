@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-18-availability-baseline-1';
+  const VERSION = '2026-09-19-language-nextnextweek-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -128,7 +128,7 @@
   function stripCommonCommandParts(value) {
     return removeDivisionWords(value)
       .replace(/[.!?,]/g, ' ')
-      .replace(/(?:오늘|금일|내일|(?:(?:이번\s*주|금주|다음\s*주|차주)\s*)?[월화수목금토]요일)/g, ' ')
+      .replace(/(?:오늘|금일|내일|(?:(?:이번\s*주|금주|다다음\s*주|다음\s*주|차주)\s*)?[월화수목금토]요일)/g, ' ')
       .replace(/\d{1,2}\s*시(?:에서|으로|에|로)?/g, ' ')
       .replace(/[AaBb]\s*반/g, ' ')
       .replace(/(?:타임|시간대)/g, ' ')
@@ -193,21 +193,26 @@
       };
     }
 
-    const weekdayMatch = compact.match(/(이번주|이번주간|금주|다음주|차주)?([월화수목금토])요일/);
+    const weekdayMatch = compact.match(/(다다음주|이번주|이번주간|금주|다음주|차주)?([월화수목금토])요일/);
     if (!weekdayMatch) return null;
 
     const scope = weekdayMatch[1] || '';
     const weekday = WEEKDAY_MAP[weekdayMatch[2]] || 0;
     if (!weekday) return null;
 
+    const afterNextScope = scope === '다다음주';
     const nextScope = scope === '다음주' || scope === '차주';
     const thisScope = scope === '이번주' || scope === '이번주간' || scope === '금주';
-    const label = nextScope
-      ? '다음 주 ' + weekdayMatch[2] + '요일'
-      : (thisScope ? '이번 주 ' + weekdayMatch[2] + '요일' : weekdayMatch[2] + '요일');
+    const label = afterNextScope
+      ? '다다음 주 ' + weekdayMatch[2] + '요일'
+      : (nextScope
+        ? '다음 주 ' + weekdayMatch[2] + '요일'
+        : (thisScope ? '이번 주 ' + weekdayMatch[2] + '요일' : weekdayMatch[2] + '요일'));
 
     return {
-      mode: nextScope ? 'next_weekday' : (thisScope ? 'this_weekday' : 'upcoming_weekday'),
+      mode: afterNextScope
+        ? 'week_after_next_weekday'
+        : (nextScope ? 'next_weekday' : (thisScope ? 'this_weekday' : 'upcoming_weekday')),
       weekday,
       label
     };
@@ -256,7 +261,10 @@
 
     const monday = addDays(base, -(currentWeekday - 1));
     if (!monday) return null;
-    return addDays(monday, (spec.mode === 'next_weekday' ? 7 : 0) + targetWeekday - 1);
+    const weekOffset = spec.mode === 'week_after_next_weekday'
+      ? 14
+      : (spec.mode === 'next_weekday' ? 7 : 0);
+    return addDays(monday, weekOffset + targetWeekday - 1);
   }
 
   function parseScheduleMoveMutationIntent(text) {
@@ -515,6 +523,11 @@
       || /몇시/.test(compact)
       || /시간(?:을|은|이)?(?:알려|보여|확인|체크|봐|조회)/.test(compact);
 
+    const purposeForAvailability = detectPurpose(compact);
+    const hasDirectPossibleQuestion =
+      purposeForAvailability !== 'unknown'
+      && /(?:가능해|가능한가|가능한지|가능할까|가능할까요|가능하니|가능한)/.test(compact);
+
     const hasAvailabilityMeaning =
       /빈자리|빈곳|빈시간|여석/.test(compact)
       || /자리/.test(compact)
@@ -525,12 +538,13 @@
       || /할수있는(?:시간|자리|클래스|수업|반)/.test(compact)
       || /들어갈수있는(?:반|시간|자리|클래스|수업)/.test(compact)
       || /받을수있는(?:반|시간|자리|클래스|수업)/.test(compact)
-      || /몇자리/.test(compact);
+      || /몇자리/.test(compact)
+      || hasDirectPossibleQuestion;
 
     const asksForLookup =
       /알려|찾아|보여|확인|체크|봐줘|봐|조회/.test(compact)
       || /있어|있나|있나요|있니|있을까|있습니까/.test(compact)
-      || /가능해|가능한|가능할까/.test(compact)
+      || /가능해|가능한|가능한가|가능한지|가능할까|가능할까요|가능하니/.test(compact)
       || /남는|남아|남았/.test(compact)
       || /여유|비어|몇자리|몇명|몇시/.test(compact);
 
@@ -538,14 +552,15 @@
 
     const viewMode = hasScheduleMeaning && !hasAvailabilityMeaning ? 'schedule' : 'availability';
     const division = detectDivision(compact);
-    const purpose = detectPurpose(compact);
+    const purpose = purposeForAvailability;
     const timeSlot = firstTimeSlot(raw);
     const classGroup = firstClassGroup(raw);
 
     const isThisWeek = /(?:이번주|이번주간|금주)/.test(compact);
-    const isNextWeek = /(?:다음주|차주)/.test(compact);
+    const isWeekAfterNext = /(?:다다음주)/.test(compact);
+    const isNextWeek = !isWeekAfterNext && /(?:다음주|차주)/.test(compact);
     const weekdayMatch = compact.match(/([월화수목금토])요일/);
-    const hasScopedWeekday = !!weekdayMatch && (isThisWeek || isNextWeek);
+    const hasScopedWeekday = !!weekdayMatch && (isThisWeek || isNextWeek || isWeekAfterNext);
     const hasTodayOrTomorrow = /(?:오늘|금일|내일)/.test(compact);
     const hasNumericDate = /(\d{1,2})월(\d{1,2})일/.test(compact) || /(?:^|[^\d월])(\d{1,2})일(?!요일)/.test(compact);
 
@@ -560,10 +575,10 @@
       dateSpec = parseDateExpression(compact);
       if (!dateSpec) return null;
       dateLabel = dateSpec.label;
-    } else if ((isThisWeek || isNextWeek) && !weekdayMatch) {
+    } else if ((isThisWeek || isNextWeek || isWeekAfterNext) && !weekdayMatch) {
       scope = 'week';
-      weekOffset = isNextWeek ? 1 : 0;
-      dateLabel = isNextWeek ? '다음 주' : '이번 주';
+      weekOffset = isWeekAfterNext ? 2 : (isNextWeek ? 1 : 0);
+      dateLabel = isWeekAfterNext ? '다다음 주' : (isNextWeek ? '다음 주' : '이번 주');
     } else if (weekdayMatch) {
       scope = 'recurring';
       dateLabel = weekdayMatch[1] + '요일';
