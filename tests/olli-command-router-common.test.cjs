@@ -212,6 +212,7 @@ test('availability date expressions distinguish concrete dates from recurring we
     ['내일 초등부 자리 있어?', 'tomorrow', '2026-09-19'],
     ['이번 주 수요일 초등부 자리 있어?', 'this_weekday', '2026-09-16'],
     ['다음 주 월요일 보강 가능한 시간 있어?', 'next_weekday', '2026-09-21'],
+    ['다다음 주 월요일 보강 가능한 시간 있어?', 'week_after_next_weekday', '2026-09-28'],
     ['10월 13일 시간표 알려줘', 'month_day', '2026-10-13'],
     ['13일 시간표 알려줘', 'day_of_month', '2026-10-13']
   ];
@@ -475,6 +476,8 @@ test('availability read commands accept natural lookup synonyms and scopes', () 
     ['금일 초등 빈곳 조회해줘', 'unknown', 'date', 'today'],
     ['차주 금요일 체험 가능한 반 봐줘', 'trial', 'date', 'next_weekday'],
     ['다음주 수요일 초등부 자리 남아 있어?', 'unknown', 'date', 'next_weekday'],
+    ['다음주 월요일 보강 가능해?', 'makeup', 'date', 'next_weekday'],
+    ['다다음주 화요일 체험 가능해?', 'trial', 'date', 'week_after_next_weekday'],
     ['이번주 시간표 알려줘', 'unknown', 'week', null],
     ['화요일 4시 시간표 알려줘', 'unknown', 'recurring', null]
   ];
@@ -489,11 +492,12 @@ test('availability read commands accept natural lookup synonyms and scopes', () 
   });
 });
 
-test('date language normalization treats 금일·금주·차주 as canonical dates', () => {
+test('date language normalization treats 금일·금주·차주 and 다다음주 as canonical dates', () => {
   const router = loadRouter();
   assert.equal(router.parseAvailableSlotsIntent('금일 초등 빈자리 알려줘').dateSpec.mode, 'today');
   assert.equal(router.parseAvailableSlotsIntent('금주 수요일 초등 자리 있어?').dateSpec.mode, 'this_weekday');
   assert.equal(router.parseAvailableSlotsIntent('차주 금요일 초등 자리 있어?').dateSpec.mode, 'next_weekday');
+  assert.equal(router.parseAvailableSlotsIntent('다다음주 금요일 초등 자리 있어?').dateSpec.mode, 'week_after_next_weekday');
 });
 
 test('pending write confirmation accepts explicit natural confirmation and cancellation variants', async () => {
@@ -694,4 +698,48 @@ test('schedule wording uses schedule view while vacancy wording uses availabilit
   assert.equal(router.parseAvailableSlotsIntent('오늘 시간표 알려줘').viewMode, 'schedule');
   assert.equal(router.parseAvailableSlotsIntent('오늘 자리 남았어?').viewMode, 'availability');
   assert.equal(router.parseAvailableSlotsIntent('이번주 시간표 보여줘').scope, 'week');
+});
+
+
+test('가능해 wording is recognized for schedule purposes without requiring 자리 keyword', () => {
+  const router = loadRouter();
+
+  const makeup = router.parseAvailableSlotsIntent('다음주 월요일 보강 가능해?');
+  assert.ok(makeup);
+  assert.equal(makeup.purpose, 'makeup');
+  assert.equal(makeup.scope, 'date');
+  assert.equal(makeup.dateSpec.mode, 'next_weekday');
+
+  const trial = router.parseAvailableSlotsIntent('다다음주 화요일 체험 가능해?');
+  assert.ok(trial);
+  assert.equal(trial.purpose, 'trial');
+  assert.equal(trial.scope, 'date');
+  assert.equal(trial.dateSpec.mode, 'week_after_next_weekday');
+});
+
+test('다음주 means one week ahead and 다다음주 means two weeks ahead', () => {
+  const router = loadRouter();
+  const base = new Date(2026, 8, 19, 12, 0, 0);
+
+  function key(date) {
+    return [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0')
+    ].join('-');
+  }
+
+  const next = router.parseAvailableSlotsIntent('다음주 월요일 보강 가능해?');
+  const afterNext = router.parseAvailableSlotsIntent('다다음주 월요일 보강 가능해?');
+
+  assert.equal(key(router.resolveDateExpression(next.dateSpec, base)), '2026-09-21');
+  assert.equal(key(router.resolveDateExpression(afterNext.dateSpec, base)), '2026-09-28');
+
+  const nextWeek = router.parseAvailableSlotsIntent('다음주 보강 가능해?');
+  const afterNextWeek = router.parseAvailableSlotsIntent('다다음주 보강 가능해?');
+  assert.equal(nextWeek.scope, 'week');
+  assert.equal(nextWeek.weekOffset, 1);
+  assert.equal(afterNextWeek.scope, 'week');
+  assert.equal(afterNextWeek.weekOffset, 2);
+  assert.equal(afterNextWeek.dateLabel, '다다음 주');
 });
