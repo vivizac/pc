@@ -1207,6 +1207,14 @@
   cursor: pointer;
 }
 #studentModal .pcStudentModalClose:hover { color:#343a43; background:#eef1f4; }
+#studentModal .pcStudentModalSectionTitle {
+  margin: 0 0 11px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #eef1f4;
+  color: #2d333b;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 800;
+}
 #studentModal .modalInput { height:44px; border-color:#dfe4e9; border-radius:12px; background:#fff; text-align:left; }
 #studentModal .modalInput:focus { border-color:#80c2fb; box-shadow:0 0 0 3px rgba(10,132,255,.09); }
 #studentModal .modalBtnCancel,
@@ -1532,10 +1540,6 @@
 
 
 /* 학생등록/학생정보 세부 입력줄 기준: 기존 보정 블록 흡수 */
-#studentModal .studentPopupGradeField > .modalLabel,
-#studentModal .studentPopupClassField > .modalLabel,
-#studentModal .studentPopupMonthField > .modalLabel,
-#studentModal .studentPopupDayField > .modalLabel,
 #elementaryInfoModal .studentPopupGradeField > .modalLabel,
 #elementaryInfoModal .studentPopupClassField > .modalLabel,
 #elementaryInfoModal .studentPopupMonthField > .modalLabel,
