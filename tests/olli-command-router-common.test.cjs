@@ -26,6 +26,7 @@ test('different Korean phrasings normalize to the same available-slot intent', (
     const parsed = router.parseAvailableSlotsIntent(text);
     assert.equal(parsed.intent, 'find_available_slots');
     assert.equal(parsed.date, 'today');
+    assert.equal(parsed.dateLabel, '오늘');
     assert.equal(parsed.purpose, purpose);
   });
 });
@@ -125,4 +126,34 @@ test('specific class move wording is reserved as a future write command', async 
   assert.equal(routed.kind, 'command_reserved');
   assert.equal(routed.intent, 'move_class');
   assert.match(routed.message, /쓰기 명령 단계/);
+});
+
+
+test('date expressions resolve today, tomorrow, this week, next week, and upcoming weekdays', () => {
+  const router = loadRouter();
+  const base = new Date(2026, 8, 18, 12, 0, 0); // Friday
+
+  const cases = [
+    ['오늘 초등부 자리 있어?', 'today', '오늘', '2026-09-18'],
+    ['내일 초등부 자리 있어?', 'tomorrow', '내일', '2026-09-19'],
+    ['이번 주 수요일 초등부 자리 있어?', 'this_weekday', '이번주수요일', '2026-09-16'],
+    ['다음 주 월요일 보강 가능한 시간 있어?', 'next_weekday', '다음주월요일', '2026-09-21'],
+    ['월요일 체험 가능한 자리 있어?', 'upcoming_weekday', '월요일', '2026-09-21'],
+    ['금요일 수업 이동 가능한 시간 알려줘', 'upcoming_weekday', '금요일', '2026-09-18']
+  ];
+
+  function key(date) {
+    return [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0')
+    ].join('-');
+  }
+
+  cases.forEach(([text, mode, label, expected]) => {
+    const parsed = router.parseAvailableSlotsIntent(text);
+    assert.equal(parsed.dateSpec.mode, mode);
+    assert.equal(parsed.dateLabel, label);
+    assert.equal(key(router.resolveDateExpression(parsed.dateSpec, base)), expected);
+  });
 });
