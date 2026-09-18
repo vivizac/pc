@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-18-schedule-move-1';
+  const VERSION = '2026-09-18-date-range-1';
 
   function cleanText(value) {
     return String(value == null ? '' : value).replace(/\r\n?/g, '\n').trim();
@@ -38,6 +38,59 @@
 
   const WEEKDAY_MAP = Object.freeze({ 월:1, 화:2, 수:3, 목:4, 금:5, 토:6 });
 
+  function addDays(baseDate, amount) {
+    const date = baseDate instanceof Date ? new Date(baseDate.getTime()) : new Date(baseDate || Date.now());
+    if (Number.isNaN(date.getTime())) return null;
+    date.setHours(12, 0, 0, 0);
+    date.setDate(date.getDate() + Number(amount || 0));
+    return date;
+  }
+
+  function isoWeekdayOf(date) {
+    const day = date.getDay();
+    return day === 0 ? 7 : day;
+  }
+
+  function parseDateExpression(compact) {
+    if (/오늘/.test(compact)) return { mode:'today', label:'오늘' };
+    if (/내일/.test(compact)) return { mode:'tomorrow', label:'내일' };
+
+    const weekdayMatch = compact.match(/(이번주|이번주간|다음주)?([월화수목금토])요일/);
+    if (!weekdayMatch) return null;
+
+    const scope = weekdayMatch[1] || '';
+    const weekday = WEEKDAY_MAP[weekdayMatch[2]] || 0;
+    if (!weekday) return null;
+
+    return {
+      mode: scope === '다음주' ? 'next_weekday' : (scope ? 'this_weekday' : 'upcoming_weekday'),
+      weekday,
+      label: (scope || '') + weekdayMatch[2] + '요일'
+    };
+  }
+
+  function resolveDateExpression(spec, baseDate) {
+    if (!spec) return null;
+    const base = baseDate instanceof Date ? new Date(baseDate.getTime()) : new Date(baseDate || Date.now());
+    if (Number.isNaN(base.getTime())) return null;
+    base.setHours(12, 0, 0, 0);
+
+    if (spec.mode === 'today') return base;
+    if (spec.mode === 'tomorrow') return addDays(base, 1);
+
+    const targetWeekday = Number(spec.weekday || 0);
+    if (!targetWeekday) return null;
+
+    const currentWeekday = isoWeekdayOf(base);
+    if (spec.mode === 'upcoming_weekday') {
+      return addDays(base, (targetWeekday - currentWeekday + 7) % 7);
+    }
+
+    const monday = addDays(base, -(currentWeekday - 1));
+    if (!monday) return null;
+    return addDays(monday, (spec.mode === 'next_weekday' ? 7 : 0) + targetWeekday - 1);
+  }
+
   function parseScheduleMoveMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
@@ -67,7 +120,9 @@
   function parseAvailableSlotsIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !/오늘/.test(compact)) return null;
+    if (!raw) return null;
+    const dateSpec = parseDateExpression(compact);
+    if (!dateSpec) return null;
 
     const hasAvailabilityMeaning =
       /빈자리/.test(compact)
@@ -92,7 +147,9 @@
     return {
       type: 'query',
       intent: 'find_available_slots',
-      date: 'today',
+      date: dateSpec.mode,
+      dateSpec,
+      dateLabel: dateSpec.label,
       division: detectDivision(compact),
       purpose: detectPurpose(compact),
       originalText: raw
@@ -145,8 +202,11 @@
     }
 
     try {
+      const targetDate = resolveDateExpression(availableSlots.dateSpec, new Date());
+      if (!targetDate) throw new Error('조회 날짜를 해석하지 못했습니다.');
       const result = await schedule.findAvailableSlots({
-        date: new Date(),
+        date: targetDate,
+        dateLabel: availableSlots.dateLabel,
         division: availableSlots.division,
         purpose: availableSlots.purpose
       });
@@ -180,6 +240,8 @@
     VERSION,
     route,
     parseAvailableSlotsIntent,
-    parseScheduleMoveMutationIntent
+    parseScheduleMoveMutationIntent,
+    parseDateExpression,
+    resolveDateExpression
   });
 })(window);
