@@ -3,7 +3,7 @@
 
   if (global.OlliCommandSchedule) return;
 
-  const VERSION = '2026-09-18-schedule-move-1';
+  const VERSION = '2026-09-18-date-range-1';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -187,6 +187,7 @@
         date: dateKey,
         purpose: clean(opts.purpose) || 'unknown',
         division: normalizeDivision(opts.division),
+        dateLabel: clean(opts.dateLabel),
         closedDay: true,
         closedReason: '일요일',
         slots: []
@@ -200,6 +201,7 @@
         date: dateKey,
         purpose: clean(opts.purpose) || 'unknown',
         division: normalizeDivision(opts.division),
+        dateLabel: clean(opts.dateLabel),
         closedDay: true,
         closedReason: clean(calendar.name) || '휴원일',
         slots: []
@@ -238,6 +240,7 @@
       date: dateKey,
       purpose: clean(opts.purpose) || 'unknown',
       division: requestedDivision,
+      dateLabel: clean(opts.dateLabel),
       closedDay: false,
       closedReason: '',
       slots
@@ -246,6 +249,18 @@
 
   function divisionLabel(value) {
     return value === 'kinder' ? '유치부' : '초등부';
+  }
+
+  const DAY_LABELS = Object.freeze(['일','월','화','수','목','금','토']);
+
+  function fallbackDateLabel(value) {
+    const date = parseLocalDate(value);
+    if (!date) return '해당 날짜';
+    return (date.getMonth() + 1) + '월 ' + date.getDate() + '일 ' + DAY_LABELS[date.getDay()] + '요일';
+  }
+
+  function resultDateLabel(data) {
+    return clean(data && data.dateLabel) || fallbackDateLabel(data && data.date);
   }
 
   function purposeLabel(value) {
@@ -264,19 +279,20 @@
   function describeAvailableSlots(result) {
     const data = result || {};
     const purpose = purposeLabel(data.purpose);
+    const dateLabel = resultDateLabel(data);
     if (data.closedDay) {
-      return '오늘은 ' + (data.closedReason || '휴원일') + '이라 정상 수업이 없어요.';
+      return dateLabel + '은 ' + (data.closedReason || '휴원일') + '이라 정상 수업이 없어요.';
     }
 
     const slots = Array.isArray(data.slots) ? data.slots : [];
     if (!slots.length) {
       const prefix = data.division ? divisionLabel(data.division) + ' ' : '';
-      return '오늘 ' + prefix + purpose + ' 운영 클래스가 없어요.';
+      return dateLabel + ' ' + prefix + purpose + ' 운영 클래스가 없어요.';
     }
 
     const intro = data.purpose === 'unknown'
-      ? '오늘 자리가 남은 클래스예요.'
-      : '오늘 ' + purpose + ' 클래스예요.';
+      ? dateLabel + ' 자리가 남은 클래스예요.'
+      : dateLabel + ' ' + purpose + ' 클래스예요.';
 
     const divisions = data.division ? [data.division] : ['elementary', 'kinder'];
     const lines = divisions.map(division => {
