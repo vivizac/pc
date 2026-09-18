@@ -146,14 +146,96 @@ body.olliPcApp #settingsDetailScreen{left:0;top:0;width:100%;height:100%;}
 }
 
 
-/* PC 학생 추가 팝업: 초등부/유치부 탭 전환 */
+/* PC 학생 추가 팝업: PC 본체와 같은 모달 디자인 */
+body.olliPcApp #studentModal{
+  position:fixed;
+  inset:0;
+  z-index:99990;
+  align-items:center;
+  justify-content:center;
+  padding:32px;
+  background:rgba(23,31,44,.24);
+  -webkit-backdrop-filter:blur(6px);
+  backdrop-filter:blur(6px);
+}
+body.olliPcApp #studentModal .modalCard{
+  width:min(720px,calc(100vw - 64px));
+  max-width:720px;
+  height:auto;
+  max-height:calc(100vh - 64px);
+  margin:0;
+  padding:26px 30px 0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  border:1px solid #e2e6eb;
+  border-radius:22px;
+  background:#fff;
+  box-shadow:0 24px 70px rgba(18,29,46,.18),0 6px 18px rgba(18,29,46,.07);
+  scrollbar-width:thin;
+  animation:olliPcStudentModalIn .16s cubic-bezier(.2,.8,.2,1) both;
+}
+body.olliPcApp #studentModal .modalCard::before{display:none;}
+@keyframes olliPcStudentModalIn{
+  from{opacity:0;transform:translateY(7px) scale(.99);}
+  to{opacity:1;transform:none;}
+}
+body.olliPcApp #studentModal .olliPcStudentAddHeader{
+  display:grid;
+  grid-template-columns:48px minmax(0,1fr) 40px;
+  gap:14px;
+  align-items:center;
+  margin-bottom:18px;
+}
+body.olliPcApp #studentModal .olliPcStudentAddHeaderIcon{
+  width:48px;
+  height:48px;
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+  color:var(--pc-blue);
+  background:var(--pc-blue-soft);
+  font-size:25px;
+  font-weight:450;
+}
+body.olliPcApp #studentModal .olliPcStudentAddHeaderText{min-width:0;}
+body.olliPcApp #studentModal .modalTitle{
+  margin:0;
+  color:#15191f;
+  font-size:calc(21px * var(--olli-text-scale));
+  font-weight:850;
+  line-height:1.2;
+  letter-spacing:-.05em;
+}
+body.olliPcApp #studentModal .olliPcStudentAddSubtitle{
+  margin-top:5px;
+  color:#9298a1;
+  font-size:calc(11.5px * var(--olli-text-scale));
+  font-weight:620;
+  line-height:1.35;
+}
+body.olliPcApp #studentModal .olliPcStudentAddClose{
+  width:40px;
+  height:40px;
+  padding:0;
+  border:0;
+  border-radius:12px;
+  display:grid;
+  place-items:center;
+  color:#747b85;
+  background:#f1f3f5;
+  font-family:inherit;
+  font-size:20px;
+  line-height:1;
+  cursor:pointer;
+}
+body.olliPcApp #studentModal .olliPcStudentAddClose:hover{background:#e9ecef;color:#3e444c;}
 body.olliPcApp #studentModal .olliPcStudentAddTabs{
   display:flex;
   align-items:center;
-  gap:18px;
-  margin:-2px 0 18px;
-  padding:0 1px 10px;
-  border-bottom:1px solid #eceef1;
+  gap:22px;
+  margin:0 0 21px;
+  padding:0 1px 11px;
+  border-bottom:1px solid #eceff2;
 }
 body.olliPcApp #studentModal .olliPcStudentAddTabs button{
   position:relative;
@@ -161,25 +243,158 @@ body.olliPcApp #studentModal .olliPcStudentAddTabs button{
   border:0;
   color:#a0a5ad;
   background:transparent;
-  font:820 calc(15px * var(--olli-text-scale)) 'Pretendard',sans-serif;
+  font:800 calc(14px * var(--olli-text-scale)) 'Pretendard',sans-serif;
   letter-spacing:-.035em;
   cursor:pointer;
 }
-body.olliPcApp #studentModal .olliPcStudentAddTabs button.active{
-  color:#1687ff;
-}
+body.olliPcApp #studentModal .olliPcStudentAddTabs button.active{color:var(--pc-blue);}
 body.olliPcApp #studentModal .olliPcStudentAddTabs button.active::after{
   content:"";
   position:absolute;
   left:0;
   right:0;
-  bottom:-11px;
+  bottom:-12px;
   height:2px;
   border-radius:999px;
-  background:#1687ff;
+  background:var(--pc-blue);
 }
-body.olliPcApp #studentModal .olliPcStudentAddTabs button:focus-visible{
+body.olliPcApp #studentModal .olliPcStudentAddTabs button:focus-visible,
+body.olliPcApp #studentModal .olliPcStudentAddClose:focus-visible{
   outline:2px solid rgba(22,135,255,.28);
-  outline-offset:4px;
-  border-radius:4px;
+  outline-offset:3px;
+}
+body.olliPcApp #studentModal .olliPcStudentSectionTitle{
+  margin:0 0 10px;
+  padding-bottom:9px;
+  border-bottom:1px solid #eef0f2;
+  color:#252a31;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:820;
+}
+body.olliPcApp #studentModal .studentPopupNameTeacherRow{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:10px;
+  margin-bottom:12px;
+}
+body.olliPcApp #studentModal .studentPopupSchoolRow,
+body.olliPcApp #studentModal .studentPopupKinderBasicRow,
+body.olliPcApp #studentModal .studentPopupDateOnlyRow{
+  gap:10px;
+  margin-bottom:12px;
+}
+body.olliPcApp #studentModal .studentPopupSchoolRow{
+  grid-template-columns:minmax(0,1.5fr) minmax(90px,.72fr) minmax(90px,.72fr);
+}
+body.olliPcApp #studentModal .studentPopupKinderBasicRow{
+  grid-template-columns:minmax(0,1.5fr) minmax(100px,.8fr) minmax(0,.01fr);
+}
+body.olliPcApp #studentModal .studentPopupDateOnlyRow{
+  grid-template-columns:1.2fr .7fr .7fr;
+  padding-top:3px;
+}
+body.olliPcApp #studentModal .modalLabel{
+  margin:0 2px 7px;
+  color:#555d67;
+  font-size:calc(11px * var(--olli-text-scale));
+  font-weight:730;
+}
+body.olliPcApp #studentModal .modalInput{
+  height:44px;
+  padding:0 13px;
+  border:1px solid #dfe3e8;
+  border-radius:12px;
+  color:#303640;
+  background:#fff;
+  text-align:left;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:620;
+}
+body.olliPcApp #studentModal .modalInput::placeholder{color:#adb2b9;font-weight:500;}
+body.olliPcApp #studentModal .modalInput:focus{
+  border-color:#80c2fb;
+  box-shadow:0 0 0 3px rgba(22,135,255,.08);
+}
+body.olliPcApp #studentModal .studentPopupGradeField .modalInput,
+body.olliPcApp #studentModal .studentPopupClassField .modalInput,
+body.olliPcApp #studentModal .studentPopupAgeField .modalInput,
+body.olliPcApp #studentModal .studentPopupYearField .modalInput,
+body.olliPcApp #studentModal .studentPopupMonthField .modalInput,
+body.olliPcApp #studentModal .studentPopupDayField .modalInput{text-align:center;}
+body.olliPcApp #studentModal .pcStudentRegistrationClassPicker{
+  margin:18px 0 15px;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+}
+body.olliPcApp #studentModal .pcStudentRegistrationClassHead{
+  min-height:48px;
+  padding:0 14px;
+  border:1px solid #dfe4e9;
+  border-radius:12px;
+  background:#fff;
+}
+body.olliPcApp #studentModal .pcStudentRegistrationClassPicker.expanded .pcStudentRegistrationClassHead{margin-bottom:9px;}
+body.olliPcApp #studentModal .pcStudentRegistrationClassHead strong{font-size:calc(12px * var(--olli-text-scale));font-weight:780;color:#343b44;}
+body.olliPcApp #studentModal .pcStudentRegistrationClassHeadRight b{background:#f1f3f5;color:#737b85;}
+body.olliPcApp #studentModal .pcStudentRegistrationClassState{border:1px solid #edf0f3;background:#fafbfc;}
+body.olliPcApp #studentModal #elementaryStudentGroupField{margin-top:17px;}
+body.olliPcApp #studentModal #elementaryStudentGroupField>.modalLabel{
+  margin:0 0 9px;
+  padding-bottom:8px;
+  border-bottom:1px solid #eef0f2;
+  color:#252a31;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:820;
+}
+body.olliPcApp #studentModal #elementaryStudentGroupToggleRow{gap:8px;}
+body.olliPcApp #studentModal #elementaryStudentGroupToggleRow .groupIconChoiceBtn{
+  height:40px;
+  border:1px solid transparent;
+  border-radius:11px;
+  color:#555d67;
+  background:#f3f4f6;
+  box-shadow:none;
+}
+body.olliPcApp #studentModal #elementaryStudentGroupToggleRow .groupIconChoiceBtn.active{
+  border-color:#9dcefb;
+  color:#0877df;
+  background:#eaf4ff;
+}
+body.olliPcApp #studentModal .modalActions{
+  position:static;
+  display:grid;
+  grid-template-columns:1fr 1.2fr;
+  gap:10px;
+  margin:24px -30px 0;
+  padding:16px 30px 20px;
+  border-top:1px solid #eceff2;
+  background:#fafbfc;
+  box-shadow:none;
+}
+body.olliPcApp #studentModal .modalActions button{
+  height:48px;
+  padding:0 16px;
+  border-radius:12px;
+  font-family:inherit;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:780;
+}
+body.olliPcApp #studentModal .modalBtnCancel{
+  border:0;
+  color:#626a74;
+  background:#e9edf1;
+}
+body.olliPcApp #studentModal .modalBtnConfirm{
+  border:0;
+  color:#fff;
+  background:var(--pc-blue);
+  box-shadow:0 6px 15px rgba(22,135,255,.16);
+}
+body.olliPcApp #studentModal .modalBtnCancel:hover{background:#e2e6ea;}
+body.olliPcApp #studentModal .modalBtnConfirm:hover{background:#0b7df2;}
+@media(max-width:760px){
+  body.olliPcApp #studentModal{padding:18px;}
+  body.olliPcApp #studentModal .modalCard{width:calc(100vw - 36px);max-height:calc(100vh - 36px);padding:22px 22px 0;}
+  body.olliPcApp #studentModal .modalActions{margin-left:-22px;margin-right:-22px;padding-left:22px;padding-right:22px;}
 }
