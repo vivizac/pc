@@ -185,19 +185,30 @@ test('prepare move write finds one source enrollment and keeps its class group w
   assert.match(prepared.message, /수요일 4시 B반/);
 });
 
-test('move write does not silently waitlist and uses existing timetable change service', async () => {
+test('move write rechecks the target and does not silently waitlist', async () => {
   const calls = {};
-  const { schedule } = loadSchedule({}, [], { calls });
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[],
+    one_time_sessions:[],
+    class_teachers:[
+      { division:'elementary', weekday:3, time_slot:4, class_group:'A', teacher_name:'담임' }
+    ]
+  };
+  const { schedule } = loadSchedule(week, [], { calls });
   const result = await schedule.executePreparedWrite({
     intent:'move_class',
     studentId:'student-1',
     studentName:'최민기',
+    division:'elementary',
     sourceEnrollmentId:'source-1',
     sourceWeekday:1,
     sourceTimeSlot:4,
     targetWeekday:3,
     targetTimeSlot:4,
     targetClassGroup:'A',
+    targetCheckDate:'2026-09-23',
     effectiveDate:'2026-09-18'
   });
 
@@ -238,4 +249,41 @@ test('ambiguous duplicate student name is blocked before any write command is pr
 
   assert.equal(prepared.ok, false);
   assert.match(prepared.message, /여러 명/);
+});
+
+
+test('phone write path uses the same schedule RPC actions', async () => {
+  const calls = [];
+  const sandbox = {
+    window: {
+      OlliPhoneStudentScheduleService: {
+        async request(name, payload) {
+          calls.push({ name, payload });
+          return { ok:true, result:'scheduled' };
+        },
+        clearWeekCache() {}
+      },
+      dispatchEvent() {}
+    },
+    CustomEvent: function CustomEvent(type, init) { this.type = type; this.detail = init && init.detail; },
+    Date,
+    console
+  };
+  vm.runInNewContext(source, sandbox);
+  const schedule = sandbox.window.OlliCommandSchedule;
+
+  await schedule.executePreparedWrite({
+    intent:'add_makeup',
+    studentId:'student-1',
+    studentName:'김태리',
+    sessionDate:'2026-09-18',
+    timeSlot:4,
+    classGroup:'A'
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].name, 'olli_schedule_execute');
+  assert.equal(calls[0].payload.p_action, 'add_one_time');
+  assert.equal(calls[0].payload.p_params.student_id, 'student-1');
+  assert.equal(calls[0].payload.p_params.time_slot, 4);
 });
