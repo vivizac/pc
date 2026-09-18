@@ -687,50 +687,105 @@
   function describeRecurringAvailability(result) {
     const data = result || {};
     const display = Array.isArray(data.displaySlots) ? data.displaySlots : [];
+    const allSlots = Array.isArray(data.allSlots) ? data.allSlots : [];
     const lines = [];
-    const byDivision = data.division ? [data.division] : ['elementary', 'kinder'];
+    const relevantKeys = new Set(allSlots.map(slot =>
+      [slot.division,slot.weekday,slot.timeSlot,slot.classGroup].join('|')
+    ));
+    const singleSlot = allSlots.length === 1;
+    const baselineByKey = new Map(allSlots.map(slot => [
+      [slot.division,slot.weekday,slot.timeSlot,slot.classGroup].join('|'),
+      slot
+    ]));
 
-    byDivision.forEach(division => {
-      const rows = display.filter(slot => slot.division === division);
-      if (!rows.length) return;
-      lines.push(divisionLabel(division) + ': ' + rows.map(recurringSlotLabel).join(' · '));
-    });
+    function className(slot, includeDivision) {
+      const group = slot && slot.grouped ? ' ' + classGroup(slot.classGroup) + '반' : '';
+      const prefix = includeDivision ? divisionLabel(slot && slot.division) + ' ' : '';
+      return prefix + weekdayLabel(slot && slot.weekday) + ' ' + Number(slot && slot.timeSlot || 0) + '시' + group;
+    }
 
-    const header = clean(data.viewMode) === 'schedule'
-      ? '정규수업 기준 시간표예요. 향후 1년의 정규 변경과 보강·체험 예약은 아래에 따로 표시했어요.'
-      : '정규수업 기준 빈자리예요. 향후 1년의 정규 변경과 보강·체험 예약은 아래에 따로 표시했어요.';
+    function seatText(slot) {
+      return Number(slot && slot.remaining || 0) > 0
+        ? Number(slot.remaining) + '자리'
+        : '마감';
+    }
 
-    if (!lines.length) {
+    function oneTimeReasonText(slot) {
+      const parts = [];
+      if (Number(slot && slot.makeupCount || 0) > 0) parts.push('보강 ' + Number(slot.makeupCount) + '명');
+      if (Number(slot && slot.trialCount || 0) > 0) parts.push('체험 ' + Number(slot.trialCount) + '명');
+      return parts.join(', ');
+    }
+
+    if (!display.length) {
       lines.push(clean(data.viewMode) === 'schedule'
         ? '현재 정규수업 기준으로 확인할 클래스가 없어요.'
         : '현재 정규수업 기준으로 빈자리가 없어요.');
+    } else {
+      display.forEach((slot, index) => {
+        const includeDivision = !data.division && (
+          display.some(other => other !== slot && other.weekday === slot.weekday && other.timeSlot === slot.timeSlot)
+          || display.length > 1
+        );
+        const label = className(slot, includeDivision);
+        const remaining = Number(slot && slot.remaining || 0);
+        if (index > 0 && lines.length) lines.push('');
+        if (remaining > 0) {
+          lines.push(label + '는 정규 기준 ' + remaining + '자리 있습니다.');
+        } else {
+          lines.push(label + '는 현재 정규수업 기준 마감입니다.');
+        }
+        lines.push(label + ' · 정규 ' + Number(slot && slot.regularCount || 0) + '명 / ' + seatText(slot));
+      });
     }
-
-    const relevantKeys = new Set((Array.isArray(data.allSlots) ? data.allSlots : []).map(slot =>
-      [slot.division,slot.weekday,slot.timeSlot,slot.classGroup].join('|')
-    ));
 
     const regularChanges = (Array.isArray(data.regularChanges) ? data.regularChanges : [])
       .filter(item => relevantKeys.has([item.division,item.weekday,item.timeSlot,item.classGroup].join('|')));
-    if (regularChanges.length) {
-      const changeLines = regularChanges.slice(0, 12).map(item =>
-        fallbackDateLabel(item.date) + '부터 ' + recurringSlotLabel(item)
-      );
-      lines.push('정규 인원 변경 예정: ' + changeLines.join(' / ')
-        + (regularChanges.length > 12 ? ' / 외 ' + (regularChanges.length - 12) + '건' : ''));
+    regularChanges.slice(0, 12).forEach(item => {
+      const key = [item.division,item.weekday,item.timeSlot,item.classGroup].join('|');
+      const baseline = baselineByKey.get(key) || {};
+      const increased = Number(item.regularCount || 0) > Number(baseline.regularCount || 0);
+      const label = singleSlot ? '' : className(item, true) + '는 ';
+      if (Number(item.remaining || 0) > 0) {
+        lines.push(
+          fallbackDateLabel(item.date) + '부터는 ' + label
+          + (increased ? '정규학생 등록 예정으로 ' : '정규학생 변동으로 ')
+          + Number(item.remaining) + '자리 있습니다.'
+        );
+      } else {
+        lines.push(
+          fallbackDateLabel(item.date) + '부터는 ' + label
+          + (increased ? '정규학생 등록 예정으로 마감됩니다.' : '정규학생 변동으로 마감됩니다.')
+        );
+      }
+    });
+    if (regularChanges.length > 12) {
+      lines.push('정규 인원 변경 일정이 ' + (regularChanges.length - 12) + '건 더 있어요.');
     }
 
     const exceptions = (Array.isArray(data.oneTimeExceptions) ? data.oneTimeExceptions : [])
       .filter(item => relevantKeys.has([item.division,item.weekday,item.timeSlot,item.classGroup].join('|')));
-    if (exceptions.length) {
-      const exceptionLines = exceptions.slice(0, 12).map(item =>
-        fallbackDateLabel(item.date) + ' ' + divisionLabel(item.division) + ' ' + slotLabel(item)
-      );
-      lines.push('보강·체험 예약: ' + exceptionLines.join(' / ')
-        + (exceptions.length > 12 ? ' / 외 ' + (exceptions.length - 12) + '건' : ''));
+    exceptions.slice(0, 12).forEach(item => {
+      const label = singleSlot ? '' : className(item, true) + '에 ';
+      const reason = oneTimeReasonText(item);
+      if (!reason) return;
+      if (Number(item.remaining || 0) > 0) {
+        lines.push(
+          fallbackDateLabel(item.date) + '에는 ' + label + reason
+          + '이 있어 ' + Number(item.remaining) + '자리 있습니다.'
+        );
+      } else {
+        lines.push(
+          fallbackDateLabel(item.date) + '에는 ' + label + reason
+          + '이 있어 해당 날짜만 마감이에요.'
+        );
+      }
+    });
+    if (exceptions.length > 12) {
+      lines.push('보강·체험 예약이 ' + (exceptions.length - 12) + '건 더 있어요.');
     }
 
-    return [header].concat(lines).join('\n');
+    return lines.filter((line, index, arr) => line !== '' || (index > 0 && arr[index - 1] !== '')).join('\n');
   }
 
 
