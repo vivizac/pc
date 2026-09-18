@@ -384,23 +384,23 @@
 .olliTtAddMemo textarea { width: 100%; min-height: 52px; flex: 1; padding: 0; border: 0; outline: 0; resize: none; box-sizing: border-box; color: #303946; background: transparent; font: 680 calc(10px * var(--olli-text-scale)) 'Pretendard', sans-serif; line-height: 1.5; }
 .olliTtAddMemo textarea::placeholder { color: #a5adb7; }
 .olliTtCancelMemo { margin-top:21px; }
-.olliTtAbsenceRow { margin-top:21px; display:grid; grid-template-columns:minmax(0,1fr) 86px; gap:10px; align-items:stretch; }
-.olliTtMoveMemo { min-height:86px; height:86px; padding:10px 13px; }
+.olliTtAbsenceRow { margin-top:18px; display:grid; grid-template-columns:minmax(0,1fr) 108px; gap:10px; align-items:end; }
+.olliTtMoveMemo { min-height:80px; height:80px; padding:10px 13px; }
 .olliTtMoveMemo > span { margin-bottom:5px; }
 .olliTtMoveMemo textarea { min-height:39px; height:39px; max-height:39px; overflow-y:auto; }
 .olliTtAbsenceBtn {
-  width:86px;
-  min-width:86px;
-  height:86px;
-  min-height:86px;
+  width:108px;
+  min-width:108px;
+  height:44px;
+  min-height:44px;
   margin:0;
   padding:0;
   border:1px solid #f0c9cc;
-  border-radius:14px;
+  border-radius:12px;
   box-sizing:border-box;
   background:#fff7f7;
   color:#cf454d;
-  font:800 calc(14px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  font:800 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif;
   letter-spacing:-.02em;
   cursor:pointer;
   box-shadow:none;
@@ -542,16 +542,16 @@
 .olliTtDialogPrimary:disabled { box-shadow: none; opacity: .45; cursor: default; }
 
 /* 수업 이동은 어떤 설정 방식을 선택해도 카드·창·하단 버튼 위치를 유지한다. */
-#olliTtDialog.olliTtMoveDialog { height: min(780px, calc(100vh - 20px)); display: flex; flex-direction: column; overflow: hidden; }
+#olliTtDialog.olliTtMoveDialog { height: auto; max-height: calc(100vh - 48px); display: flex; flex-direction: column; overflow: hidden; }
 #olliTtDialog.olliTtMoveDialog .olliTtDialogHead { flex: 0 0 auto; }
 #olliTtDialog.olliTtMoveDialog .olliTtDialogBody { min-height: 0; flex: 1; overflow-y: auto; }
-#olliTtDialog.olliTtMoveDialog .olliTtDialogActions { position: sticky; z-index: 2; bottom: -28px; }
+#olliTtDialog.olliTtMoveDialog .olliTtDialogActions { position: sticky; z-index: 2; bottom: 0; }
 /* 수업이동·수업추가는 PC 화면에서 내부 스크롤 없이 한 화면에 맞춘다. */
-#olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode { height: min(850px, calc(100vh - 20px)); max-height: calc(100vh - 20px); }
-#olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtDialogBody { overflow-y: hidden; }
+#olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode { height: auto; max-height: calc(100vh - 48px); }
+#olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtDialogBody { overflow-y: auto; }
 #olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtField { margin-top: 16px; }
 #olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtDialogBody > .olliTtField:first-child { margin-top: 8px; }
-#olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtDialogActions { position: static; margin-top: 18px; }
+#olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtDialogActions { position: sticky; bottom: 0; margin-top: 18px; }
 
 .olliTtMemoDeletePreview { margin-top: 8px; padding: 16px; border: 1px solid #dfe4e9; border-radius: 16px; background: #fff; color: #3f4752; }
 .olliTtMemoDeletePreview > span { display: block; margin-bottom: 8px; color: #8d949d; font-size: calc(11px * var(--olli-text-scale)); font-weight: 780; }
