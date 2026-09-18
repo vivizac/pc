@@ -79,3 +79,26 @@ test('closed calendar day returns no available classes', async () => {
   assert.equal(result.slots.length, 0);
   assert.match(schedule.describeAvailableSlots(result), /정상 수업이 없어요/);
 });
+
+
+test('availability response uses the requested date label instead of always saying today', async () => {
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[
+      { division:'elementary', weekday:1, time_slot:4, class_group:'A', effective_from:'2026-01-01' }
+    ],
+    one_time_sessions:[],
+    class_teachers:[]
+  };
+  const schedule = loadSchedule(week);
+  const result = await schedule.findAvailableSlots({
+    date:'2026-09-21',
+    dateLabel:'다음주월요일',
+    division:'elementary',
+    purpose:'makeup'
+  });
+  const message = schedule.describeAvailableSlots(result);
+  assert.match(message, /^다음주월요일 보강 가능한 클래스예요\./);
+  assert.doesNotMatch(message, /^오늘/);
+});
