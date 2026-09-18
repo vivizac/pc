@@ -1842,7 +1842,11 @@
 
     const student = studentById(dialog.studentId);
     const source = moveSourceEnrollment(dialog);
-    const note = dialog.actionType === 'move' ? clean(dialog.note) : '';
+    const rawNote = dialog.actionType === 'move' ? clean(dialog.note) : '';
+    const studentName = clean(student && student.name);
+    const note = rawNote
+      ? (studentName && !rawNote.startsWith(studentName) ? `${studentName} ${rawNote}` : rawNote)
+      : '';
     const absenceChanged = dialog.actionType === 'move'
       && Boolean(dialog.absenceSelected) !== Boolean(dialog.originalAbsenceSelected);
     const hasAttendanceMemoWork = Boolean(note || absenceChanged);
