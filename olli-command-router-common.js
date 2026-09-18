@@ -62,10 +62,14 @@
     const weekday = WEEKDAY_MAP[weekdayMatch[2]] || 0;
     if (!weekday) return null;
 
+    const label = scope === '다음주'
+      ? '다음 주 ' + weekdayMatch[2] + '요일'
+      : (scope ? '이번 주 ' + weekdayMatch[2] + '요일' : weekdayMatch[2] + '요일');
+
     return {
       mode: scope === '다음주' ? 'next_weekday' : (scope ? 'this_weekday' : 'upcoming_weekday'),
       weekday,
-      label: (scope || '') + weekdayMatch[2] + '요일'
+      label
     };
   }
 
