@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-18-write-commands-2';
+  const VERSION = '2026-09-18-write-commands-3';
   let pendingWriteCommand = null;
 
   function cleanText(value) {
@@ -219,20 +219,39 @@
   function parseMakeupCancelMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !/보강/.test(compact) || !/취소/.test(compact)) return null;
+    if (!raw || !/보강/.test(compact) || !/(?:취소|삭제|지워|제거|빼)/.test(compact)) return null;
 
-    const match = raw.match(/^\s*(.*?)\s*(?:(오늘|내일|(?:(?:이번\s*주|다음\s*주)\s*)?[월화수목금토]요일)\s*)?(?:(\d{1,2})시(?:에)?\s*)?(?:([AaBb])반\s*)?보강(?:수업)?(?:을)?\s*취소(?:해줘|해|해줘요|할래|해줄래)?\s*[.!?]?\s*$/);
-    if (!match) return null;
+    const dateSpec = parseDateExpression(compact);
+    const timeMatch = raw.match(/(\d{1,2})시/);
+    const groupMatch = raw.match(/([AaBb])반/i);
 
-    const dateSpec = match[2] ? parseDateExpression(compactText(match[2])) : null;
+    let studentName = raw
+      .replace(/[.!?]/g, ' ')
+      .replace(/(?:오늘|내일|(?:(?:이번\s*주|다음\s*주)\s*)?[월화수목금토]요일)/g, ' ')
+      .replace(/\d{1,2}시(?:에)?/g, ' ')
+      .replace(/[AaBb]반/gi, ' ')
+      .replace(/(?:잡혀\s*있는|잡혀있는|잡혀\s*있던|등록되어\s*있는|등록되어있는|등록된|예약되어\s*있는|예약되어있는)/g, ' ')
+      .replace(/보강(?:수업)?(?:을|를)?/g, ' ')
+      .replace(/(?:취소|삭제|지워|제거|빼)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘)?/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    studentName = studentName
+      .replace(/^(?:학생\s*)/, '')
+      .replace(/(?:\s*학생)$/, '')
+      .replace(/의$/, '')
+      .trim();
+
+    if (!studentName) return null;
+
     return {
       type:'mutation',
       intent:'cancel_makeup',
-      studentName:cleanText(match[1]),
+      studentName,
       dateSpec,
       dateLabel:dateSpec ? dateSpec.label : '',
-      timeSlot:Number(match[3] || 0),
-      classGroup:cleanText(match[4]).toUpperCase(),
+      timeSlot:Number(timeMatch && timeMatch[1] || 0),
+      classGroup:cleanText(groupMatch && groupMatch[1]).toUpperCase(),
       originalText:raw
     };
   }
