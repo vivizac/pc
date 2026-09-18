@@ -58,16 +58,6 @@
     });
   }
 
-  function parseKcfTypedStudentInput(text){
-    var normalized = String(text || '').replace(/\r\n?/g, '\n');
-    var firstBreak = normalized.indexOf('\n');
-    if (firstBreak < 0) return null;
-    var studentName = String(normalized.slice(0, firstBreak) || '').trim();
-    var body = String(normalized.slice(firstBreak + 1) || '').trim();
-    if (!studentName) return null;
-    return { studentName: studentName, body: body };
-  }
-
   function getKcfSelectedStudent(){
     var selectedId = '';
     try {
@@ -202,6 +192,42 @@
     if (typeof closeKinderChatFeedbackStudentManagePopup === 'function') closeKinderChatFeedbackStudentManagePopup();
   };
 
+  function completeKcfInlineSubmit(){
+    if (typeof window.onKinderChatFeedbackInlineSubmitComplete === 'function') {
+      try { window.onKinderChatFeedbackInlineSubmitComplete(); } catch (err) {}
+    }
+  }
+
+  function renderKcfCommandRoute(commandRoute, fallbackText){
+    if (!commandRoute) return;
+    if (typeof addKinderChatMessage === 'function') {
+      addKinderChatMessage('user', String(commandRoute.text || fallbackText || ''));
+      var rawMessage = String(commandRoute.message || '');
+      if (rawMessage) {
+        if (
+          commandRoute.kind === 'command_confirmation'
+          && typeof window.renderKinderChatFeedbackCommandConfirmation === 'function'
+        ) {
+          var displayMessage = rawMessage
+            .replace(/\n?['‘’"]?확인['‘’"]?\s*또는\s*['‘’"]?취소['‘’"]?라고\s*입력해\s*주세요\.?/g, '')
+            .trim();
+          addKinderChatMessage('bot', displayMessage || '이 작업을 진행할까요?');
+          try { window.renderKinderChatFeedbackCommandConfirmation(commandRoute); } catch (err) {}
+        } else {
+          addKinderChatMessage('bot', rawMessage);
+        }
+      }
+    }
+  }
+
+  function clearKcfInlineInput(input){
+    if (!input) return;
+    input.value = '';
+    if (typeof clearKinderChatFeedbackDraft === 'function') clearKinderChatFeedbackDraft();
+    if (typeof autoResizeKinderChatFeedbackInput === 'function') autoResizeKinderChatFeedbackInput(input);
+    try { input.dispatchEvent(new Event('input', { bubbles:true })); } catch (err) {}
+  }
+
   async function continueKinderChatFeedbackSubmit(body, student, autoSubmitContext){
     var input = document.getElementById('kcfInput');
     var text = String(body || (input ? input.value || '' : '')).trim();
@@ -267,6 +293,7 @@
     if (typeof clearKinderChatFeedbackDraft === 'function') clearKinderChatFeedbackDraft();
     if (typeof clearKinderChatFeedbackKeyword === 'function') clearKinderChatFeedbackKeyword();
     if (typeof updateKinderChatFeedbackBadge === 'function') updateKinderChatFeedbackBadge();
+    completeKcfInlineSubmit();
   }
 
   window.submitKinderChatFeedback = async function(){
@@ -281,11 +308,9 @@
       if (typeof window.setKinderChatFeedbackGuideVisibility === 'function') {
         try { window.setKinderChatFeedbackGuideVisibility(guideCommand === 'show'); } catch (err) {}
       }
-      input.value = '';
-      if (typeof clearKinderChatFeedbackDraft === 'function') clearKinderChatFeedbackDraft();
-      if (typeof autoResizeKinderChatFeedbackInput === 'function') autoResizeKinderChatFeedbackInput(input);
+      clearKcfInlineInput(input);
       if (typeof setKinderChatFeedbackWarning === 'function') setKinderChatFeedbackWarning('');
-      try { input.dispatchEvent(new Event('input', { bubbles:true })); } catch (err) {}
+      completeKcfInlineSubmit();
       return;
     }
     if (window.KcfAutoMode && typeof window.KcfAutoMode.isEditing === 'function' && window.KcfAutoMode.isEditing()) {
@@ -293,11 +318,10 @@
       return;
     }
     if (text === '학생') {
-      input.value = '';
-      if (typeof clearKinderChatFeedbackDraft === 'function') clearKinderChatFeedbackDraft();
-      if (typeof autoResizeKinderChatFeedbackInput === 'function') autoResizeKinderChatFeedbackInput(input);
+      clearKcfInlineInput(input);
       if (typeof setKinderChatFeedbackWarning === 'function') setKinderChatFeedbackWarning('');
       if (typeof openKinderChatFeedbackStudentManagePopup === 'function') openKinderChatFeedbackStudentManagePopup();
+      completeKcfInlineSubmit();
       return;
     }
     if (!text) {
@@ -318,16 +342,10 @@
           autoSubmitContext: autoSubmitContext || null
         });
         if (commandRoute && commandRoute.handled === true) {
-          if (typeof addKinderChatMessage === 'function') {
-            addKinderChatMessage('user', String(commandRoute.text || text));
-            if (commandRoute.message) addKinderChatMessage('bot', String(commandRoute.message));
-          }
-          if (commandRoute.clearInput !== false) {
-            input.value = '';
-            if (typeof clearKinderChatFeedbackDraft === 'function') clearKinderChatFeedbackDraft();
-            if (typeof autoResizeKinderChatFeedbackInput === 'function') autoResizeKinderChatFeedbackInput(input);
-          }
+          renderKcfCommandRoute(commandRoute, text);
+          if (commandRoute.clearInput !== false) clearKcfInlineInput(input);
           if (typeof setKinderChatFeedbackWarning === 'function') setKinderChatFeedbackWarning('');
+          completeKcfInlineSubmit();
           return;
         }
       } catch (err) {
@@ -335,41 +353,29 @@
       }
     }
 
-    if (!selectedStudent && !(autoSubmitContext && autoSubmitContext.enabled)) {
-      var typedInput = parseKcfTypedStudentInput(text);
-      if (typedInput) {
-        var typedCandidates = findKcfStudentsByName(typedInput.studentName);
-        if (typedCandidates.length === 1) {
-          selectedStudent = typedCandidates[0];
-          setKcfSelectedStudent(selectedStudent);
-          text = typedInput.body;
-          if (!text) {
-            setKinderChatFeedbackWarning('학생 이름 다음 줄에 수업기록을 적어주세요.');
-            return;
-          }
-          input.value = text;
-          if (typeof autoResizeKinderChatFeedbackInput === 'function') autoResizeKinderChatFeedbackInput(input);
-          if (typeof saveKinderChatFeedbackDraft === 'function') saveKinderChatFeedbackDraft();
-        } else if (typedCandidates.length > 1) {
-          if (!typedInput.body) {
-            setKinderChatFeedbackWarning('학생 이름 다음 줄에 수업기록을 적어주세요.');
-            return;
-          }
-          if (typeof window.openKinderChatFeedbackSaveStudentPicker === 'function') {
-            window.openKinderChatFeedbackSaveStudentPicker('', typedCandidates, 'submit', { body:typedInput.body });
-            setKinderChatFeedbackWarning('');
-            return;
-          }
-        }
-      }
-    }
-
     if (!selectedStudent) {
-      setKinderChatFeedbackWarning("학생을 먼저 선택해 주세요. 입력창에 '학생'을 입력해 선택할 수 있어요.");
+      if (typeof addKinderChatMessage === 'function') {
+        addKinderChatMessage('user', text);
+        addKinderChatMessage('bot', '아직 이 문장은 실행 가능한 명령으로 연결되지 않았어요.');
+      }
+      clearKcfInlineInput(input);
+      if (typeof setKinderChatFeedbackWarning === 'function') setKinderChatFeedbackWarning('');
+      completeKcfInlineSubmit();
       return;
     }
     setKinderChatFeedbackWarning('');
     await continueKinderChatFeedbackSubmit(text, selectedStudent, autoSubmitContext);
+  };
+
+  window.submitKinderChatFeedbackCommandChoice = async function(choice){
+    var input = document.getElementById('kcfInput');
+    if (!input || typeof window.submitKinderChatFeedback !== 'function') return false;
+    var normalized = String(choice || '').trim().toLowerCase();
+    var commandText = normalized === 'confirm' ? '확인' : '취소';
+    input.value = commandText;
+    try { input.dispatchEvent(new Event('input', { bubbles:true })); } catch (err) {}
+    await window.submitKinderChatFeedback();
+    return true;
   };
 
   window.openKinderChatFeedbackSaveStudentPicker = function(itemId, candidates, mode, submitPayload){
