@@ -223,3 +223,108 @@ test('date expressions resolve today, tomorrow, this week, next week, and upcomi
     assert.equal(key(router.resolveDateExpression(parsed.dateSpec, base)), expected);
   });
 });
+
+
+test('waitlist add wording parses enrolled or guest wait intent', () => {
+  const router = loadRouter();
+
+  const enrolled = router.parseWaitlistMutationIntent('최민기 월요일 4시 대기 넣어줘');
+  assert.equal(enrolled.intent, 'add_waitlist');
+  assert.equal(enrolled.studentName, '최민기');
+  assert.equal(enrolled.dateSpec.weekday, 1);
+  assert.equal(enrolled.timeSlot, 4);
+
+  const guest = router.parseWaitlistMutationIntent('유치부 박하늘 화요일 5시 대기 추가해줘');
+  assert.equal(guest.intent, 'add_waitlist');
+  assert.equal(guest.studentName, '박하늘');
+  assert.equal(guest.division, 'kinder');
+  assert.equal(guest.dateSpec.weekday, 2);
+  assert.equal(guest.timeSlot, 5);
+});
+
+test('trial add wording parses guest name, division, date, time, and class group', () => {
+  const router = loadRouter();
+  const parsed = router.parseTrialMutationIntent('유치부 박하늘 내일 4시 B반 체험수업 등록해줘');
+
+  assert.equal(parsed.intent, 'add_trial');
+  assert.equal(parsed.guestName, '박하늘');
+  assert.equal(parsed.division, 'kinder');
+  assert.equal(parsed.dateSpec.mode, 'tomorrow');
+  assert.equal(parsed.timeSlot, 4);
+  assert.equal(parsed.classGroup, 'B');
+});
+
+test('makeup cancellation wording parses optional date and time', () => {
+  const router = loadRouter();
+
+  const detailed = router.parseMakeupCancelMutationIntent('김태리 오늘 4시 보강 취소해줘');
+  assert.equal(detailed.intent, 'cancel_makeup');
+  assert.equal(detailed.studentName, '김태리');
+  assert.equal(detailed.dateSpec.mode, 'today');
+  assert.equal(detailed.timeSlot, 4);
+
+  const short = router.parseMakeupCancelMutationIntent('김태리 보강 취소해줘');
+  assert.equal(short.intent, 'cancel_makeup');
+  assert.equal(short.studentName, '김태리');
+  assert.equal(short.dateSpec, null);
+  assert.equal(short.timeSlot, 0);
+});
+
+test('scheduled move cancellation wording parses optional source day and time', () => {
+  const router = loadRouter();
+
+  const detailed = router.parseMoveCancelMutationIntent('최민기 월요일 4시 수업이동 취소해줘');
+  assert.equal(detailed.intent, 'cancel_move');
+  assert.equal(detailed.studentName, '최민기');
+  assert.equal(detailed.sourceWeekday, 1);
+  assert.equal(detailed.sourceTimeSlot, 4);
+
+  const short = router.parseMoveCancelMutationIntent('최민기 수업이동 취소해줘');
+  assert.equal(short.intent, 'cancel_move');
+  assert.equal(short.studentName, '최민기');
+  assert.equal(short.sourceWeekday, 0);
+});
+
+test('new write commands all enter the same confirmation pipeline', async () => {
+  const preparedIntents = [];
+  const router = loadRouter({
+    async prepareWriteCommand(intent, options) {
+      preparedIntents.push({ intent, options });
+      return {
+        ok:true,
+        command:{ intent, marker:intent },
+        message:'실행할까요?'
+      };
+    },
+    async executePreparedWrite(command) {
+      return { ok:true, marker:command.marker };
+    },
+    writeSuccessMessage(command) {
+      return command.intent + ' 완료';
+    }
+  });
+
+  const cases = [
+    ['최민기 월요일 4시 대기 넣어줘', 'add_waitlist'],
+    ['유치부 박하늘 내일 4시 체험 등록해줘', 'add_trial'],
+    ['김태리 오늘 4시 보강 취소해줘', 'cancel_makeup'],
+    ['최민기 수업이동 취소해줘', 'cancel_move']
+  ];
+
+  for (const [text, intent] of cases) {
+    const result = await router.route(text, { source:'one_minute_feedback' });
+    assert.equal(result.handled, true);
+    assert.equal(result.kind, 'command_confirmation');
+    assert.equal(result.intent, intent);
+
+    const cancelled = await router.route('취소', { source:'one_minute_feedback' });
+    assert.equal(cancelled.kind, 'command_result');
+  }
+
+  assert.deepEqual(preparedIntents.map(item => item.intent), [
+    'add_waitlist',
+    'add_trial',
+    'cancel_makeup',
+    'cancel_move'
+  ]);
+});
