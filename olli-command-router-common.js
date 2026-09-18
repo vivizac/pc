@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-18-write-commands-1';
+  const VERSION = '2026-09-18-write-commands-2';
   let pendingWriteCommand = null;
 
   function cleanText(value) {
@@ -35,6 +35,13 @@
     if (/수업(?:이동|변경)|옮길|옮기는|옮겨|이동가능|변경가능/.test(compact)) return 'schedule_move';
     if (/신규|신입|새학생|새원생|신규등록/.test(compact)) return 'new_enrollment';
     return 'unknown';
+  }
+
+  function removeDivisionWords(value) {
+    return cleanText(value)
+      .replace(/(?:초등부|초등|유치부|유치원|유치|유아)/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   const WEEKDAY_MAP = Object.freeze({ 월:1, 화:2, 수:3, 목:4, 금:5, 토:6 });
@@ -147,6 +154,114 @@
       dateLabel:dateSpec.label,
       timeSlot,
       classGroup,
+      originalText:raw
+    };
+  }
+
+  function parseWaitlistMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !/대기/.test(compact) || /취소/.test(compact) || !/(?:넣어|등록|추가|잡아)/.test(compact)) return null;
+
+    const division = detectDivision(compact);
+    const normalized = removeDivisionWords(raw);
+    const match = normalized.match(/^\s*(.*?)\s*(오늘|내일|(?:(?:이번\s*주|다음\s*주)\s*)?[월화수목금토]요일)\s*(\d{1,2})시(?:에)?(?:\s*([AaBb])반)?\s*(?:대기(?:에|로)?|대기자(?:로)?)\s*(?:넣어(?:줘)?|등록(?:해줘|해|해줘요)?|추가(?:해줘|해)?|잡아(?:줘)?)\s*[.!?]?\s*$/);
+    if (!match) return null;
+
+    const studentName = cleanText(match[1]);
+    const dateSpec = parseDateExpression(compactText(match[2]));
+    const timeSlot = Number(match[3] || 0);
+    const classGroup = cleanText(match[4]).toUpperCase();
+    if (!dateSpec || !timeSlot) return null;
+
+    return {
+      type:'mutation',
+      intent:'add_waitlist',
+      studentName,
+      division,
+      dateSpec,
+      dateLabel:dateSpec.label,
+      timeSlot,
+      classGroup,
+      originalText:raw
+    };
+  }
+
+  function parseTrialMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !/체험/.test(compact) || /취소/.test(compact) || !/(?:넣어|등록|추가|잡아)/.test(compact)) return null;
+
+    const division = detectDivision(compact);
+    const normalized = removeDivisionWords(raw);
+    const match = normalized.match(/^\s*(.*?)\s*(오늘|내일|(?:(?:이번\s*주|다음\s*주)\s*)?[월화수목금토]요일)\s*(\d{1,2})시(?:에)?(?:\s*([AaBb])반)?\s*체험(?:수업)?(?:으로)?\s*(?:넣어(?:줘)?|등록(?:해줘|해|해줘요)?|추가(?:해줘|해)?|잡아(?:줘)?)\s*[.!?]?\s*$/);
+    if (!match) return null;
+
+    const guestName = cleanText(match[1]);
+    const dateSpec = parseDateExpression(compactText(match[2]));
+    const timeSlot = Number(match[3] || 0);
+    const classGroup = cleanText(match[4]).toUpperCase();
+    if (!guestName || !dateSpec || !timeSlot) return null;
+
+    return {
+      type:'mutation',
+      intent:'add_trial',
+      guestName,
+      division,
+      dateSpec,
+      dateLabel:dateSpec.label,
+      timeSlot,
+      classGroup,
+      originalText:raw
+    };
+  }
+
+  function parseMakeupCancelMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !/보강/.test(compact) || !/취소/.test(compact)) return null;
+
+    const match = raw.match(/^\s*(.*?)\s*(?:(오늘|내일|(?:(?:이번\s*주|다음\s*주)\s*)?[월화수목금토]요일)\s*)?(?:(\d{1,2})시(?:에)?\s*)?(?:([AaBb])반\s*)?보강(?:수업)?(?:을)?\s*취소(?:해줘|해|해줘요|할래|해줄래)?\s*[.!?]?\s*$/);
+    if (!match) return null;
+
+    const dateSpec = match[2] ? parseDateExpression(compactText(match[2])) : null;
+    return {
+      type:'mutation',
+      intent:'cancel_makeup',
+      studentName:cleanText(match[1]),
+      dateSpec,
+      dateLabel:dateSpec ? dateSpec.label : '',
+      timeSlot:Number(match[3] || 0),
+      classGroup:cleanText(match[4]).toUpperCase(),
+      originalText:raw
+    };
+  }
+
+  function parseMoveCancelMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !/(?:수업|시간표)?(?:이동|변경)/.test(compact) || !/취소/.test(compact)) return null;
+
+    let match = raw.match(/^\s*(.*?)\s*([월화수목금토])요일(?:\s*(\d{1,2})시)?\s*(?:수업|시간표)?\s*(?:이동|변경)(?:\s*예약)?(?:을)?\s*취소(?:해줘|해|해줘요|할래|해줄래)?\s*[.!?]?\s*$/);
+    if (match) {
+      return {
+        type:'mutation',
+        intent:'cancel_move',
+        studentName:cleanText(match[1]),
+        sourceWeekday:WEEKDAY_MAP[match[2]] || 0,
+        sourceTimeSlot:Number(match[3] || 0),
+        originalText:raw
+      };
+    }
+
+    match = raw.match(/^\s*(.*?)\s*(?:수업|시간표)?\s*(?:이동|변경)(?:\s*예약)?(?:을)?\s*취소(?:해줘|해|해줘요|할래|해줄래)?\s*[.!?]?\s*$/);
+    if (!match) return null;
+    return {
+      type:'mutation',
+      intent:'cancel_move',
+      studentName:cleanText(match[1]),
+      sourceWeekday:0,
+      sourceTimeSlot:0,
       originalText:raw
     };
   }
@@ -297,9 +412,13 @@
 
     if (pendingWriteCommand) pendingWriteCommand = null;
 
+    const makeupCancel = parseMakeupCancelMutationIntent(normalizedText);
+    const moveCancel = parseMoveCancelMutationIntent(normalizedText);
+    const waitlistWrite = parseWaitlistMutationIntent(normalizedText);
+    const trialWrite = parseTrialMutationIntent(normalizedText);
     const scheduleMove = parseScheduleMoveMutationIntent(normalizedText);
     const makeupWrite = parseMakeupMutationIntent(normalizedText);
-    const writeIntent = scheduleMove || makeupWrite;
+    const writeIntent = makeupCancel || moveCancel || waitlistWrite || trialWrite || scheduleMove || makeupWrite;
     if (writeIntent) {
       if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
         return {
@@ -320,7 +439,7 @@
         });
         if (writeIntent.dateSpec) {
           options.date = resolveDateExpression(writeIntent.dateSpec, new Date());
-          if (!options.date) throw new Error('보강 날짜를 해석하지 못했습니다.');
+          if (!options.date) throw new Error('날짜를 해석하지 못했습니다.');
         }
         const prepared = await schedule.prepareWriteCommand(writeIntent.intent, options);
         if (!prepared || prepared.ok !== true) {
@@ -415,6 +534,10 @@
     parseAvailableSlotsIntent,
     parseScheduleMoveMutationIntent,
     parseMakeupMutationIntent,
+    parseWaitlistMutationIntent,
+    parseTrialMutationIntent,
+    parseMakeupCancelMutationIntent,
+    parseMoveCancelMutationIntent,
     parseDateExpression,
     resolveDateExpression,
     getPendingWriteCommand() { return pendingWriteCommand ? Object.assign({}, pendingWriteCommand) : null; }
