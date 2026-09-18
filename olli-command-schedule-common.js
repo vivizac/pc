@@ -764,7 +764,7 @@
       const key = [item.division,item.weekday,item.timeSlot,item.classGroup].join('|');
       const baseline = baselineByKey.get(key) || {};
       const increased = Number(item.regularCount || 0) > Number(baseline.regularCount || 0);
-      const label = singleSlot ? '' : className(item, true) + '는 ';
+      const label = singleSlot ? '' : className(item, true) + topicSuffix(item) + ' ';
       if (Number(item.remaining || 0) > 0) {
         lines.push(
           shortDateLabel(item.date) + '부터는 ' + label
