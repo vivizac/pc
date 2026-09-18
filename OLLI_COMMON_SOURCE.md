@@ -22,11 +22,11 @@ Phone에서 사용하는 실제 공통 파일 목록은 [Phone OLLI_COMMON_FILES
 
 ## 2026-09-18 올리 명령 라우터 기반
 
-- 공통 명령 진입점은 `olli-command-router-common.js`이며 PC `main`이 단일 원본이다.
+- 공통 명령 진입점은 `olli-command-router-common.js`이며, 시간표 조회 공통 계층은 `olli-command-schedule-common.js`다. 둘 다 PC `main`이 단일 원본이다.
 - 1분 피드백 입력은 기존 피드백 처리 전에 이 라우터를 먼저 확인한다.
-- 1단계 라우터는 모든 입력을 그대로 피드백 흐름으로 통과시키는 안전한 pass-through 상태다.
+- 1단계 pass-through 검증을 마쳤고, 현재 첫 실제 명령으로 `오늘`의 빈자리 조회(`find_available_slots`)를 지원한다. 보강·체험·신규등록은 조회 목적만 구분하며 정원 계산은 서버와 동일하게 정규수업 + 보강 + 체험을 합산한다.
 - Phone은 로컬 복사본을 두지 않고 기존 공통 파일과 동일하게 PC 원본 rewrite를 사용한다.
-- 명령 기능을 추가하더라도 시간표·출석·학생 데이터 저장 로직을 라우터 안에 새로 만들지 말고 기존 서비스/RPC를 호출한다.
+- 명령 기능을 추가하더라도 시간표·출석·학생 데이터 저장 로직을 라우터 안에 새로 만들지 말고 기존 서비스/RPC를 호출한다. 빈자리 조회는 PC `OlliTimetableService` 또는 Phone `OlliPhoneStudentScheduleService`가 읽은 서버 최신 주간 데이터를 사용한다.
 - 라우터 오류 시 기존 1분 피드백 흐름으로 계속 진행하도록 fallback을 유지한다.
 
 ## Realtime 단계별 진행
