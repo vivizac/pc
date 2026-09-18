@@ -195,18 +195,9 @@ test('write command can be cancelled without execution', async () => {
 });
 
 
-test('date expressions resolve today, tomorrow, this week, next week, and upcoming weekdays', () => {
+test('availability date expressions distinguish concrete dates from recurring weekdays', () => {
   const router = loadRouter();
   const base = new Date(2026, 8, 18, 12, 0, 0); // Friday
-
-  const cases = [
-    ['오늘 초등부 자리 있어?', 'today', '오늘', '2026-09-18'],
-    ['내일 초등부 자리 있어?', 'tomorrow', '내일', '2026-09-19'],
-    ['이번 주 수요일 초등부 자리 있어?', 'this_weekday', '이번 주 수요일', '2026-09-16'],
-    ['다음 주 월요일 보강 가능한 시간 있어?', 'next_weekday', '다음 주 월요일', '2026-09-21'],
-    ['월요일 체험 가능한 자리 있어?', 'upcoming_weekday', '월요일', '2026-09-21'],
-    ['금요일 수업 이동 가능한 시간 알려줘', 'upcoming_weekday', '금요일', '2026-09-18']
-  ];
 
   function key(date) {
     return [
@@ -216,12 +207,26 @@ test('date expressions resolve today, tomorrow, this week, next week, and upcomi
     ].join('-');
   }
 
-  cases.forEach(([text, mode, label, expected]) => {
+  const concrete = [
+    ['오늘 초등부 자리 있어?', 'today', '2026-09-18'],
+    ['내일 초등부 자리 있어?', 'tomorrow', '2026-09-19'],
+    ['이번 주 수요일 초등부 자리 있어?', 'this_weekday', '2026-09-16'],
+    ['다음 주 월요일 보강 가능한 시간 있어?', 'next_weekday', '2026-09-21'],
+    ['10월 13일 시간표 알려줘', 'month_day', '2026-10-13'],
+    ['13일 시간표 알려줘', 'day_of_month', '2026-10-13']
+  ];
+
+  concrete.forEach(([text, mode, expected]) => {
     const parsed = router.parseAvailableSlotsIntent(text);
-    assert.equal(parsed.dateSpec.mode, mode);
-    assert.equal(parsed.dateLabel, label);
-    assert.equal(key(router.resolveDateExpression(parsed.dateSpec, base)), expected);
+    assert.equal(parsed.scope, 'date', text);
+    assert.equal(parsed.dateSpec.mode, mode, text);
+    assert.equal(key(router.resolveDateExpression(parsed.dateSpec, base)), expected, text);
   });
+
+  const recurring = router.parseAvailableSlotsIntent('월요일 체험 가능한 자리 있어?');
+  assert.equal(recurring.scope, 'recurring');
+  assert.equal(recurring.weekday, 1);
+  assert.equal(recurring.dateSpec, null);
 });
 
 
@@ -462,22 +467,25 @@ test('command language normalization accepts common synonyms and different word 
   });
 });
 
-test('availability read commands accept natural lookup synonyms', () => {
+test('availability read commands accept natural lookup synonyms and scopes', () => {
   const router = loadRouter();
   const cases = [
-    ['월요일 보강 여유 있는 시간 체크해줘', 'makeup', 'upcoming_weekday'],
-    ['내일 유치부 자리 몇 개 남았어?', 'unknown', 'tomorrow'],
-    ['금일 초등 빈곳 조회해줘', 'unknown', 'today'],
-    ['차주 금요일 체험 가능한 반 봐줘', 'trial', 'next_weekday'],
-    ['다음주 수요일 초등부 자리 남아 있어?', 'unknown', 'next_weekday']
+    ['월요일 보강 여유 있는 시간 체크해줘', 'makeup', 'recurring', null],
+    ['내일 유치부 자리 몇 개 남았어?', 'unknown', 'date', 'tomorrow'],
+    ['금일 초등 빈곳 조회해줘', 'unknown', 'date', 'today'],
+    ['차주 금요일 체험 가능한 반 봐줘', 'trial', 'date', 'next_weekday'],
+    ['다음주 수요일 초등부 자리 남아 있어?', 'unknown', 'date', 'next_weekday'],
+    ['이번주 시간표 알려줘', 'unknown', 'week', null],
+    ['화요일 4시 시간표 알려줘', 'unknown', 'recurring', null]
   ];
 
-  cases.forEach(([text, purpose, mode]) => {
+  cases.forEach(([text, purpose, scope, mode]) => {
     const parsed = router.parseAvailableSlotsIntent(text);
     assert.ok(parsed, text);
     assert.equal(parsed.intent, 'find_available_slots', text);
     assert.equal(parsed.purpose, purpose, text);
-    assert.equal(parsed.dateSpec.mode, mode, text);
+    assert.equal(parsed.scope, scope, text);
+    assert.equal(parsed.dateSpec ? parsed.dateSpec.mode : null, mode, text);
   });
 });
 
@@ -513,29 +521,28 @@ test('pending write confirmation accepts explicit natural confirmation and cance
 });
 
 
-test('direct availability wording keeps requested time and class group', async () => {
+test('direct recurring availability keeps requested weekday time and class group', async () => {
+  let received = null;
   let described = null;
   const router = loadRouter({
-    async findAvailableSlots() {
+    async findRecurringAvailability(options) {
+      received = options;
       return {
-        date:'2026-09-21',
-        dateLabel:'월요일',
-        division:'elementary',
-        purpose:'unknown',
-        slots:[
-          { division:'elementary', timeSlot:4, classGroup:'A', remaining:2 },
-          { division:'elementary', timeSlot:4, classGroup:'B', remaining:1 },
-          { division:'elementary', timeSlot:5, classGroup:'A', remaining:3 }
+        scope:'recurring',
+        displaySlots:[
+          { division:'elementary', weekday:1, timeSlot:4, classGroup:'A', remaining:2 }
         ]
       };
     },
-    describeAvailableSlots(result) {
+    describeRecurringAvailability(result) {
       described = result;
       return '조회 완료';
     }
   });
 
   const parsed = router.parseAvailableSlotsIntent('월요일 4시 A반 자리 확인해줘');
+  assert.equal(parsed.scope, 'recurring');
+  assert.equal(parsed.weekday, 1);
   assert.equal(parsed.timeSlot, 4);
   assert.equal(parsed.classGroup, 'A');
 
@@ -544,9 +551,10 @@ test('direct availability wording keeps requested time and class group', async (
   });
   assert.equal(result.handled, true);
   assert.equal(result.intent, 'find_available_slots');
-  assert.equal(described.slots.length, 1);
-  assert.equal(described.slots[0].timeSlot, 4);
-  assert.equal(described.slots[0].classGroup, 'A');
+  assert.equal(received.weekday, 1);
+  assert.equal(received.timeSlot, 4);
+  assert.equal(received.classGroup, 'A');
+  assert.equal(described.displaySlots[0].remaining, 2);
 });
 
 
@@ -646,4 +654,44 @@ test('a reason supplied in the first command goes directly to confirmation', asy
   assert.match(result.message, /감기/);
   assert.equal(router.getPendingReasonCommand(), null);
   assert.equal(router.getPendingWriteCommand().reason, '감기');
+});
+
+
+test('availability route selects date week and recurring calculators by query scope', async () => {
+  const calls = [];
+  const router = loadRouter({
+    async findAvailableSlots(options) {
+      calls.push(['date', options]);
+      return { displaySlots:[] };
+    },
+    async findWeekAvailability(options) {
+      calls.push(['week', options]);
+      return { days:[] };
+    },
+    async findRecurringAvailability(options) {
+      calls.push(['recurring', options]);
+      return { displaySlots:[] };
+    },
+    describeAvailableSlots() { return 'date'; },
+    describeWeekAvailability() { return 'week'; },
+    describeRecurringAvailability() { return 'recurring'; }
+  });
+
+  const dated = await router.route('오늘 시간표 알려줘', { source:'one_minute_feedback' });
+  const weekly = await router.route('이번주 시간표 알려줘', { source:'one_minute_feedback' });
+  const recurring = await router.route('화요일 4시 자리 있어?', { source:'one_minute_feedback' });
+
+  assert.equal(dated.message, 'date');
+  assert.equal(weekly.message, 'week');
+  assert.equal(recurring.message, 'recurring');
+  assert.deepEqual(calls.map(row => row[0]), ['date','week','recurring']);
+  assert.equal(calls[2][1].weekday, 2);
+  assert.equal(calls[2][1].timeSlot, 4);
+});
+
+test('schedule wording uses schedule view while vacancy wording uses availability view', () => {
+  const router = loadRouter();
+  assert.equal(router.parseAvailableSlotsIntent('오늘 시간표 알려줘').viewMode, 'schedule');
+  assert.equal(router.parseAvailableSlotsIntent('오늘 자리 남았어?').viewMode, 'availability');
+  assert.equal(router.parseAvailableSlotsIntent('이번주 시간표 보여줘').scope, 'week');
 });
