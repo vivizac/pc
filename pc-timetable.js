@@ -1281,12 +1281,12 @@
       ? `<div class="olliTtAbsenceRow"><label class="olliTtAddMemo olliTtMoveMemo"><span>메모</span><textarea data-tt-move-note maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.note || '')}</textarea></label><button type="button" class="olliTtAbsenceBtn${dialog.absenceSelected ? ' active' : ''}" data-tt-absence-toggle aria-pressed="${dialog.absenceSelected ? 'true' : 'false'}">결석</button></div>`
       : '';
     const headerGuide = `${divisionLabel(division)} · 현재 수업 ${studentScheduleText(student.id) || '없음'}`;
-    const modeCards = '<div class="olliTtModeCards">'
-      + `<section class="olliTtModeCard move ${dialog.actionType === 'move' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="move">수업이동</button><div class="olliTtModeCardBody"><span>현재 정규수업</span><div class="olliTtEnrollmentList">${sourceHtml}</div></div></section>`
-      + '<div class="olliTtModeCardStack">'
-      + `<section class="olliTtModeCard simple ${dialog.actionType === 'add' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="add">수업추가</button></section>`
-      + `<section class="olliTtModeCard simple ${dialog.actionType === 'makeup' ? 'active' : ''}"><button type="button" class="olliTtModeCardButton" data-tt-action-type="makeup">보강</button></section>`
-      + '</div></div>';
+    const modeCards = '<div class="olliTtModeTabs" role="group" aria-label="설정 방식">'
+      + `<button type="button" class="olliTtModeTab ${dialog.actionType === 'move' ? 'active' : ''}" data-tt-action-type="move">수업이동</button>`
+      + `<button type="button" class="olliTtModeTab ${dialog.actionType === 'add' ? 'active' : ''}" data-tt-action-type="add">수업추가</button>`
+      + `<button type="button" class="olliTtModeTab ${dialog.actionType === 'makeup' ? 'active' : ''}" data-tt-action-type="makeup">보강</button>`
+      + '</div>'
+      + '<div class="olliTtCurrentLessons"><span>현재 정규수업</span><div class="olliTtEnrollmentList">' + sourceHtml + '</div></div>';
     return dialogHead('↗', `${student.name} 수업 설정`, headerGuide)
       + '<div class="olliTtDialogBody">'
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>설정 방식</span></div>' + modeCards + '</div>'
@@ -1343,10 +1343,10 @@
         + `<input type="search" class="olliTtStudentSearch" data-tt-add-search value="${esc(dialog.query)}" placeholder="학생 검색"><div class="olliTtPickerList" data-tt-add-picker>`
         + addPickerHtml(dialog)
         + '</div></div>';
-    return dialogHead('+', '이 시간에 학생 추가', '')
+    const headerGuide = `${divisionLabel(division)} · ${weekdayLabel(dialog.weekday)}요일 · ${timeLabel(dialog.time)}`;
+    return dialogHead('+', '이 시간에 학생 추가', headerGuide)
       + '<div class="olliTtDialogBody">'
-      + `<label class="olliTtAddMemo"><span>메모</span><textarea data-tt-add-note maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.note)}</textarea></label>`
-      + '<div class="olliTtField"><div class="olliTtFieldHead"><span>추가 유형</span></div><div class="olliTtTypeGrid">'
+      + '<div class="olliTtField olliTtFirstField"><div class="olliTtFieldHead"><span>추가 유형</span></div><div class="olliTtTypeGrid">'
       + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'wait' ? 'active' : ''}" data-tt-add-type="wait">대기 등록</button>`
       + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'makeup' ? 'active' : ''}" data-tt-add-type="makeup">보강 등록</button>`
       + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'guest_wait' ? 'active' : ''}" data-tt-add-type="guest_wait">대기등록(비재원)</button>`
@@ -1355,6 +1355,7 @@
       + (division === 'elementary' ? `<div class="olliTtField olliTtSplitClassField"><div class="olliTtFieldHead"><span>클래스 운영</span><small>${isClassSplit(division, dialog.weekday, dialog.time) ? '분리된 A반·B반을 하나의 칸으로 통합합니다.' : '현재 칸을 위·아래 A반·B반으로 나눕니다.'}</small></div><button type="button" class="olliTtSplitClassBtn" ${isClassSplit(division, dialog.weekday, dialog.time) ? 'data-tt-merge-class' : 'data-tt-split-class'}>${isClassSplit(division, dialog.weekday, dialog.time) ? '클래스 통합' : '클래스 분리'}</button></div>` : '')
       + classGroupChoiceHtml(division, dialog.targetClassGroup, dialog.weekday, dialog.time, false, true)
       + teacherChoiceHtml(dialog)
+      + `<label class="olliTtAddMemo olliTtAddStudentMemo"><span>메모</span><textarea data-tt-add-note maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.note)}</textarea></label>`
       + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-add ${canRegister ? '' : 'disabled'}>${primaryLabel}</button></div></div>`;
   }
 
