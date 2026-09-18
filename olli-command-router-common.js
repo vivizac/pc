@@ -353,7 +353,8 @@
     if (!dateSpec) return null;
 
     const hasAvailabilityMeaning =
-      /빈자리|빈곳|여석/.test(compact)
+      /빈자리|빈곳|빈시간|여석/.test(compact)
+      || /자리/.test(compact)
       || /자리.{0,10}(?:남|있|여유|가능|몇)/.test(compact)
       || /(?:남는|남아있는|여유있는|비어있는)클래스/.test(compact)
       || /(?:여유|비어)(?:있는)?(?:시간|자리|클래스|수업|반)/.test(compact)
@@ -380,6 +381,8 @@
       dateLabel:dateSpec.label,
       division:detectDivision(compact),
       purpose:detectPurpose(compact),
+      timeSlot:firstTimeSlot(raw),
+      classGroup:firstClassGroup(raw),
       originalText:raw
     };
   }
@@ -567,12 +570,25 @@
     try {
       const targetDate = resolveDateExpression(availableSlots.dateSpec, new Date());
       if (!targetDate) throw new Error('조회 날짜를 해석하지 못했습니다.');
-      const result = await schedule.findAvailableSlots({
+      let result = await schedule.findAvailableSlots({
         date: targetDate,
         dateLabel: availableSlots.dateLabel,
         division: availableSlots.division,
         purpose: availableSlots.purpose
       });
+
+      if (availableSlots.timeSlot || availableSlots.classGroup) {
+        const wantedTime = Number(availableSlots.timeSlot || 0);
+        const wantedGroup = cleanText(availableSlots.classGroup).toUpperCase();
+        result = Object.assign({}, result, {
+          slots:(Array.isArray(result && result.slots) ? result.slots : []).filter(slot => {
+            if (wantedTime && Number(slot && slot.timeSlot) !== wantedTime) return false;
+            if (wantedGroup && cleanText(slot && slot.classGroup).toUpperCase() !== wantedGroup) return false;
+            return true;
+          })
+        });
+      }
+
       const message = typeof schedule.describeAvailableSlots === 'function'
         ? schedule.describeAvailableSlots(result)
         : '시간표 빈자리를 확인했어요.';
