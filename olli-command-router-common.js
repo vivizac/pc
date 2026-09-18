@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-18-write-commands-6';
+  const VERSION = '2026-09-18-availability-baseline-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -174,6 +174,25 @@
     if (/(?:오늘|금일)/.test(compact)) return { mode:'today', label:'오늘' };
     if (/내일/.test(compact)) return { mode:'tomorrow', label:'내일' };
 
+    const monthDay = compact.match(/(\d{1,2})월(\d{1,2})일/);
+    if (monthDay) {
+      return {
+        mode:'month_day',
+        month:Number(monthDay[1]),
+        day:Number(monthDay[2]),
+        label:Number(monthDay[1]) + '월 ' + Number(monthDay[2]) + '일'
+      };
+    }
+
+    const dayOnly = compact.match(/(?:^|[^\d월])(\d{1,2})일(?!요일)/);
+    if (dayOnly) {
+      return {
+        mode:'day_of_month',
+        day:Number(dayOnly[1]),
+        label:Number(dayOnly[1]) + '일'
+      };
+    }
+
     const weekdayMatch = compact.match(/(이번주|이번주간|금주|다음주|차주)?([월화수목금토])요일/);
     if (!weekdayMatch) return null;
 
@@ -202,6 +221,30 @@
 
     if (spec.mode === 'today') return base;
     if (spec.mode === 'tomorrow') return addDays(base, 1);
+
+    if (spec.mode === 'month_day') {
+      const year = base.getFullYear();
+      const month = Number(spec.month || 0);
+      const day = Number(spec.day || 0);
+      if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+      const exact = new Date(year, month - 1, day, 12, 0, 0, 0);
+      if (exact.getMonth() !== month - 1 || exact.getDate() !== day) return null;
+      if (exact.getTime() < base.getTime()) {
+        const nextYear = new Date(year + 1, month - 1, day, 12, 0, 0, 0);
+        return nextYear.getMonth() === month - 1 && nextYear.getDate() === day ? nextYear : null;
+      }
+      return exact;
+    }
+
+    if (spec.mode === 'day_of_month') {
+      const day = Number(spec.day || 0);
+      if (day < 1 || day > 31) return null;
+      let exact = new Date(base.getFullYear(), base.getMonth(), day, 12, 0, 0, 0);
+      if (exact.getMonth() !== base.getMonth() || exact.getDate() !== day || exact.getTime() < base.getTime()) {
+        exact = new Date(base.getFullYear(), base.getMonth() + 1, day, 12, 0, 0, 0);
+      }
+      return exact.getDate() === day ? exact : null;
+    }
 
     const targetWeekday = Number(spec.weekday || 0);
     if (!targetWeekday) return null;
@@ -465,8 +508,12 @@
     const raw = cleanText(text);
     const compact = compactText(raw);
     if (!raw) return null;
-    const dateSpec = parseDateExpression(compact);
-    if (!dateSpec) return null;
+
+    const hasScheduleMeaning =
+      /시간표/.test(compact)
+      || /수업시간/.test(compact)
+      || /몇시/.test(compact)
+      || /시간(?:을|은|이)?(?:알려|보여|확인|체크|봐|조회)/.test(compact);
 
     const hasAvailabilityMeaning =
       /빈자리|빈곳|빈시간|여석/.test(compact)
@@ -485,20 +532,57 @@
       || /있어|있나|있나요|있니|있을까|있습니까/.test(compact)
       || /가능해|가능한|가능할까/.test(compact)
       || /남는|남아|남았/.test(compact)
-      || /여유|비어|몇자리|몇명/.test(compact);
+      || /여유|비어|몇자리|몇명|몇시/.test(compact);
 
-    if (!hasAvailabilityMeaning || !asksForLookup) return null;
+    if ((!hasAvailabilityMeaning && !hasScheduleMeaning) || !asksForLookup) return null;
+
+    const viewMode = hasScheduleMeaning && !hasAvailabilityMeaning ? 'schedule' : 'availability';
+    const division = detectDivision(compact);
+    const purpose = detectPurpose(compact);
+    const timeSlot = firstTimeSlot(raw);
+    const classGroup = firstClassGroup(raw);
+
+    const isThisWeek = /(?:이번주|이번주간|금주)/.test(compact);
+    const isNextWeek = /(?:다음주|차주)/.test(compact);
+    const weekdayMatch = compact.match(/([월화수목금토])요일/);
+    const hasScopedWeekday = !!weekdayMatch && (isThisWeek || isNextWeek);
+    const hasTodayOrTomorrow = /(?:오늘|금일|내일)/.test(compact);
+    const hasNumericDate = /(\d{1,2})월(\d{1,2})일/.test(compact) || /(?:^|[^\d월])(\d{1,2})일(?!요일)/.test(compact);
+
+    let scope = 'recurring';
+    let dateSpec = null;
+    let weekOffset = 0;
+    let weekday = weekdayMatch ? WEEKDAY_MAP[weekdayMatch[1]] || 0 : 0;
+    let dateLabel = '';
+
+    if (hasTodayOrTomorrow || hasNumericDate || hasScopedWeekday) {
+      scope = 'date';
+      dateSpec = parseDateExpression(compact);
+      if (!dateSpec) return null;
+      dateLabel = dateSpec.label;
+    } else if ((isThisWeek || isNextWeek) && !weekdayMatch) {
+      scope = 'week';
+      weekOffset = isNextWeek ? 1 : 0;
+      dateLabel = isNextWeek ? '다음 주' : '이번 주';
+    } else if (weekdayMatch) {
+      scope = 'recurring';
+      dateLabel = weekdayMatch[1] + '요일';
+    }
 
     return {
       type:'query',
       intent:'find_available_slots',
-      date:dateSpec.mode,
+      scope,
+      viewMode,
+      date:dateSpec ? dateSpec.mode : '',
       dateSpec,
-      dateLabel:dateSpec.label,
-      division:detectDivision(compact),
-      purpose:detectPurpose(compact),
-      timeSlot:firstTimeSlot(raw),
-      classGroup:firstClassGroup(raw),
+      dateLabel,
+      weekOffset,
+      weekday,
+      division,
+      purpose,
+      timeSlot,
+      classGroup,
       originalText:raw
     };
   }
@@ -742,38 +826,67 @@
     }
 
     try {
-      const targetDate = resolveDateExpression(availableSlots.dateSpec, new Date());
-      if (!targetDate) throw new Error('조회 날짜를 해석하지 못했습니다.');
-      let result = await schedule.findAvailableSlots({
-        date: targetDate,
-        dateLabel: availableSlots.dateLabel,
-        division: availableSlots.division,
-        purpose: availableSlots.purpose
-      });
+      let result;
+      let message;
 
-      if (availableSlots.timeSlot || availableSlots.classGroup) {
-        const wantedTime = Number(availableSlots.timeSlot || 0);
-        const wantedGroup = cleanText(availableSlots.classGroup).toUpperCase();
-        result = Object.assign({}, result, {
-          slots:(Array.isArray(result && result.slots) ? result.slots : []).filter(slot => {
-            if (wantedTime && Number(slot && slot.timeSlot) !== wantedTime) return false;
-            if (wantedGroup && cleanText(slot && slot.classGroup).toUpperCase() !== wantedGroup) return false;
-            return true;
-          })
+      if (availableSlots.scope === 'week') {
+        if (typeof schedule.findWeekAvailability !== 'function') {
+          throw new Error('주간 시간표 조회 기능을 아직 불러오지 못했어요.');
+        }
+        result = await schedule.findWeekAvailability({
+          date:new Date(),
+          weekOffset:availableSlots.weekOffset,
+          dateLabel:availableSlots.dateLabel,
+          division:availableSlots.division,
+          purpose:availableSlots.purpose,
+          viewMode:availableSlots.viewMode,
+          timeSlot:availableSlots.timeSlot,
+          classGroup:availableSlots.classGroup
         });
+        message = typeof schedule.describeWeekAvailability === 'function'
+          ? schedule.describeWeekAvailability(result)
+          : '주간 시간표를 확인했어요.';
+      } else if (availableSlots.scope === 'recurring') {
+        if (typeof schedule.findRecurringAvailability !== 'function') {
+          throw new Error('정규수업 기준 빈자리 조회 기능을 아직 불러오지 못했어요.');
+        }
+        result = await schedule.findRecurringAvailability({
+          date:new Date(),
+          weekday:availableSlots.weekday,
+          division:availableSlots.division,
+          purpose:availableSlots.purpose,
+          viewMode:availableSlots.viewMode,
+          timeSlot:availableSlots.timeSlot,
+          classGroup:availableSlots.classGroup
+        });
+        message = typeof schedule.describeRecurringAvailability === 'function'
+          ? schedule.describeRecurringAvailability(result)
+          : '정규수업 기준 빈자리를 확인했어요.';
+      } else {
+        const targetDate = resolveDateExpression(availableSlots.dateSpec, new Date());
+        if (!targetDate) throw new Error('조회 날짜를 해석하지 못했습니다.');
+        result = await schedule.findAvailableSlots({
+          date:targetDate,
+          dateLabel:availableSlots.dateLabel,
+          division:availableSlots.division,
+          purpose:availableSlots.purpose,
+          viewMode:availableSlots.viewMode,
+          timeSlot:availableSlots.timeSlot,
+          classGroup:availableSlots.classGroup
+        });
+        message = typeof schedule.describeAvailableSlots === 'function'
+          ? schedule.describeAvailableSlots(result)
+          : '시간표 빈자리를 확인했어요.';
       }
 
-      const message = typeof schedule.describeAvailableSlots === 'function'
-        ? schedule.describeAvailableSlots(result)
-        : '시간표 빈자리를 확인했어요.';
       return {
-        handled: true,
-        kind: 'command_result',
-        intent: availableSlots.intent,
-        text: normalizedText,
+        handled:true,
+        kind:'command_result',
+        intent:availableSlots.intent,
+        text:normalizedText,
         message,
-        clearInput: true,
-        payload: Object.assign({}, availableSlots, { result })
+        clearInput:true,
+        payload:Object.assign({}, availableSlots, { result })
       };
     } catch (error) {
       console.warn('올리 빈자리 조회 실패:', error);
