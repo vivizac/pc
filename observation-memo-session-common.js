@@ -28,22 +28,25 @@
     return {
       student,
       type,
-      noteType: type === 'elementary' ? 'elementary_observation' : getSupabaseNoteDraftType(student),
-      localEntry: type === 'elementary' ? getObservationMemoLocalSnapshot(student) : null,
+      // Keep the existing server note_type so current elementary drafts stay compatible.
+      // Student ID already isolates drafts, so kinder can safely share this internal key.
+      noteType: getSupabaseNoteDraftType(student) || 'elementary_observation',
+      localEntry: getObservationMemoLocalSnapshot(student),
       analysisDisplay: type === 'elementary'
         ? getPrimaryElementaryAnalysisDisplay(student)
-        : null
+        : { data: {}, createdAt: '' }
     };
   }
 
   function prepareObservationMemoInitialView(session) {
-    if (!session || session.type !== 'elementary' || !session.student) return null;
+    if (!session || !session.student || !['elementary', 'kinder'].includes(session.type)) return null;
 
     const localEntry = session.localEntry || { content: '' };
     const analysisDisplay = session.analysisDisplay || { data: {}, createdAt: '' };
 
     return {
       student: session.student,
+      type: session.type,
       noteType: session.noteType || 'elementary_observation',
       memoText: localEntry.content || '',
       revision: memoRevision(localEntry.revision),
@@ -57,7 +60,7 @@
   function isCurrentObservationMemoDirty(student) {
     try {
       if (!currentMemoStudent || String(currentMemoStudent.id || '') !== String(student?.id || '')) return false;
-      if (currentMemoType !== 'elementary') return false;
+      if (!['elementary', 'kinder'].includes(currentMemoType)) return false;
       if (typeof hasObservationMemoDirtyChanges === 'function') return !!hasObservationMemoDirtyChanges();
     } catch (_) {}
     return false;
