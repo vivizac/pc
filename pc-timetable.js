@@ -1254,9 +1254,10 @@
     const selectedLabel = clean(options && options.selectedLabel) || '선택';
     const menuClass = clean(options && options.menuClass);
     const items = Array.isArray(options && options.items) ? options.items : [];
-    return `<details class="olliTtTeacherToggle ${esc(menuClass)}"><summary><span><small>${esc(label)}</small><strong>${esc(selectedLabel)}</strong></span><i aria-hidden="true">⌃</i></summary><div class="olliTtTeacherToggleMenu">`
+    const compactLabel = sub ? `${label} · ${sub}` : label;
+    return `<details class="olliTtTeacherToggle ${esc(menuClass)}"><summary><span><small>${esc(compactLabel)}</small><strong>${esc(selectedLabel)}</strong></span><i aria-hidden="true">⌃</i></summary><div class="olliTtTeacherToggleMenu">`
       + items.join('')
-      + `</div>${sub ? `<span class="olliTtTeacherToggleHint">${esc(sub)}</span>` : ''}</details>`;
+      + '</div></details>';
   }
 
   function teacherChoiceHtml(dialog) {
