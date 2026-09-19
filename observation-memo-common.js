@@ -284,7 +284,7 @@ function forceObservationMemoControlsVisible(options = {}) {
   const showInlineFlex = [
     '#memoRecordRoomBtn',
     '#memoStudentListBtn',
-    '#memoBottomAnalysisBtn',
+    ...(currentMemoType === 'elementary' ? ['#memoBottomAnalysisBtn'] : []),
     '#memoFeedbackBtn',
     ...extraInlineFlex
   ];
