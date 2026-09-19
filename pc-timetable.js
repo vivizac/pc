@@ -1248,18 +1248,38 @@
       + '</div></div>';
   }
 
+  function teacherToggleHtml(options) {
+    const label = clean(options && options.label);
+    const sub = clean(options && options.sub);
+    const selectedLabel = clean(options && options.selectedLabel) || '선택';
+    const menuClass = clean(options && options.menuClass);
+    const items = Array.isArray(options && options.items) ? options.items : [];
+    return `<details class="olliTtTeacherToggle ${esc(menuClass)}"><summary><span><small>${esc(label)}</small><strong>${esc(selectedLabel)}</strong></span><i aria-hidden="true">⌃</i></summary><div class="olliTtTeacherToggleMenu">`
+      + items.join('')
+      + `</div>${sub ? `<span class="olliTtTeacherToggleHint">${esc(sub)}</span>` : ''}</details>`;
+  }
+
   function teacherChoiceHtml(dialog) {
     const selected = clean(dialog.teacherMemberId);
     const teachers = teacherMembers();
     const group = classGroupOf({ class_group: dialog.targetClassGroup });
     const groupLabel = isClassSplit(dialog.division, dialog.weekday, dialog.time) || dialog.division === 'kinder' ? `${group}반` : '이 수업';
     if (!teachers.length) {
-      return '<div class="olliTtField"><div class="olliTtFieldHead"><span>담임</span><small>설정에 등록된 선생님이 없습니다.</small></div></div>';
+      return '<div class="olliTtTeacherToggleEmpty"><span>클래스 담임</span><small>설정에 등록된 선생님이 없습니다.</small></div>';
     }
-    return `<div class="olliTtField"><div class="olliTtFieldHead"><span>담임</span><small>${esc(groupLabel)} 담당 선생님</small></div><div class="olliTtClassChoiceGrid olliTtTeacherChoiceGrid">`
-      + `<button type="button" class="olliTtChoice ${selected ? '' : 'active'}" data-tt-class-teacher="">미지정</button>`
-      + teachers.map((teacher) => `<button type="button" class="olliTtChoice ${selected === clean(teacher.id) ? 'active' : ''}" data-tt-class-teacher="${esc(teacher.id)}">${esc(teacherDisplayName(teacher.display_name))}</button>`).join('')
-      + '</div></div>';
+    const selectedTeacher = teacherMemberById(selected);
+    const selectedLabel = selectedTeacher ? teacherDisplayName(selectedTeacher.display_name) : '미지정';
+    const items = [
+      `<button type="button" class="olliTtChoice ${selected ? '' : 'active'}" data-tt-class-teacher="">미지정</button>`,
+      ...teachers.map((teacher) => `<button type="button" class="olliTtChoice ${selected === clean(teacher.id) ? 'active' : ''}" data-tt-class-teacher="${esc(teacher.id)}">${esc(teacherDisplayName(teacher.display_name))}</button>`)
+    ];
+    return teacherToggleHtml({
+      label: '클래스 담임',
+      sub: `${groupLabel} 담당`,
+      selectedLabel,
+      menuClass: 'regular',
+      items
+    });
   }
 
   function dailyTeacherChoiceHtml(dialog) {
@@ -1267,10 +1287,23 @@
     const regularId = clean(dialog.teacherMemberId);
     const teachers = teacherMembers().filter((teacher) => clean(teacher && teacher.id) !== regularId);
     const dateLabel = koreanDate(parseDate(dialog.date), true);
-    return `<div class="olliTtField olliTtDailyTeacherField"><div class="olliTtFieldHead"><span>당일 담당</span><small>${esc(dateLabel)} 하루만 적용 · 정규 담임은 유지됩니다.</small></div><div class="olliTtClassChoiceGrid olliTtDailyTeacherChoiceGrid">`
-      + `<button type="button" class="olliTtChoice ${selected ? '' : 'active'}" data-tt-daily-teacher="">정규 담임</button>`
-      + teachers.map((teacher) => `<button type="button" class="olliTtChoice ${selected === clean(teacher.id) ? 'active' : ''}" data-tt-daily-teacher="${esc(teacher.id)}">${esc(teacherDisplayName(teacher.display_name))}</button>`).join('')
-      + '</div></div>';
+    const selectedTeacher = teacherMemberById(selected);
+    const selectedLabel = selectedTeacher ? teacherDisplayName(selectedTeacher.display_name) : '정규 담임';
+    const items = [
+      `<button type="button" class="olliTtChoice ${selected ? '' : 'active'}" data-tt-daily-teacher="">정규 담임</button>`,
+      ...teachers.map((teacher) => `<button type="button" class="olliTtChoice ${selected === clean(teacher.id) ? 'active' : ''}" data-tt-daily-teacher="${esc(teacher.id)}">${esc(teacherDisplayName(teacher.display_name))}</button>`)
+    ];
+    return teacherToggleHtml({
+      label: '당일 담당',
+      sub: `${dateLabel} 하루만`,
+      selectedLabel,
+      menuClass: 'daily',
+      items
+    });
+  }
+
+  function teacherControlsHtml(dialog) {
+    return `<div class="olliTtTeacherToggleRow">${teacherChoiceHtml(dialog)}${dailyTeacherChoiceHtml(dialog)}</div>`;
   }
 
   function moveDialogHtml(dialog) {
@@ -1424,8 +1457,7 @@
       + `<div data-tt-add-student-field>${studentField}</div>`
       + (division === 'elementary' ? `<div class="olliTtField olliTtSplitClassField"><div class="olliTtFieldHead"><span>클래스 운영</span><small>${isClassSplit(division, dialog.weekday, dialog.time) ? '분리된 A반·B반을 하나의 칸으로 통합합니다.' : '현재 칸을 위·아래 A반·B반으로 나눕니다.'}</small></div><button type="button" class="olliTtSplitClassBtn" ${isClassSplit(division, dialog.weekday, dialog.time) ? 'data-tt-merge-class' : 'data-tt-split-class'}>${isClassSplit(division, dialog.weekday, dialog.time) ? '클래스 통합' : '클래스 분리'}</button></div>` : '')
       + classGroupChoiceHtml(division, dialog.targetClassGroup, dialog.weekday, dialog.time, false, true)
-      + teacherChoiceHtml(dialog)
-      + dailyTeacherChoiceHtml(dialog)
+      + teacherControlsHtml(dialog)
       + `<label class="olliTtAddMemo"><span>메모</span><textarea data-tt-add-note maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.note)}</textarea></label>`
       + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-add ${canRegister ? '' : 'disabled'}>${primaryLabel}</button></div></div>`;
   }
