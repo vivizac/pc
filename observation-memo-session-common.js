@@ -8,8 +8,8 @@
     return Number.isFinite(revision) && revision >= 0 ? Math.floor(revision) : 0;
   }
 
-  function getObservationMemoLocalSnapshot(student) {
-    return getMemoEntryByStudent(student);
+  function getObservationMemoLocalSnapshot(student, noteType = 'elementary_observation') {
+    return getMemoEntryByStudent(student, noteType);
   }
 
   function beginObservationMemoSession(studentId) {
@@ -28,8 +28,8 @@
     return {
       student,
       type,
-      noteType: type === 'elementary' ? 'elementary_observation' : getSupabaseNoteDraftType(student),
-      localEntry: type === 'elementary' ? getObservationMemoLocalSnapshot(student) : null,
+      noteType: 'elementary_observation',
+      localEntry: getObservationMemoLocalSnapshot(student, 'elementary_observation'),
       analysisDisplay: type === 'elementary'
         ? getPrimaryElementaryAnalysisDisplay(student)
         : null
@@ -37,7 +37,7 @@
   }
 
   function prepareObservationMemoInitialView(session) {
-    if (!session || session.type !== 'elementary' || !session.student) return null;
+    if (!session || !['elementary', 'kinder'].includes(session.type) || !session.student) return null;
 
     const localEntry = session.localEntry || { content: '' };
     const analysisDisplay = session.analysisDisplay || { data: {}, createdAt: '' };
@@ -57,7 +57,7 @@
   function isCurrentObservationMemoDirty(student) {
     try {
       if (!currentMemoStudent || String(currentMemoStudent.id || '') !== String(student?.id || '')) return false;
-      if (currentMemoType !== 'elementary') return false;
+      if (!['elementary', 'kinder'].includes(currentMemoType)) return false;
       if (typeof hasObservationMemoDirtyChanges === 'function') return !!hasObservationMemoDirtyChanges();
     } catch (_) {}
     return false;
@@ -76,7 +76,7 @@
     };
   }
 
-  function markLocalProtectedConflict(student, row, latestLocalEntry, reason, lineage = null) {
+  function markLocalProtectedConflict(student, row, latestLocalEntry, reason, lineage = null, noteType = 'elementary_observation') {
     const localText = String(latestLocalEntry?.content || '');
     const localRevision = memoRevision(latestLocalEntry?.revision);
     const localMutationId = String(latestLocalEntry?.mutationId || '');
@@ -89,7 +89,7 @@
       revision: localRevision,
       mutationId: localMutationId,
       conflict
-    });
+    }, noteType);
 
     try {
       if (typeof setMemoSaveStatus === 'function') setMemoSaveStatus('다른 기기 기록 확인 필요');
@@ -108,7 +108,7 @@
       adoptedRemote: false,
       conflictDetected: true,
       source: reason,
-      localEntry: getMemoEntryByStudent(student),
+      localEntry: getMemoEntryByStudent(student, noteType),
       remoteRow: row,
       content: localText,
       updatedAt: latestLocalEntry?.updatedAt || '',
@@ -117,7 +117,7 @@
     };
   }
 
-  function adoptRemoteSnapshot(student, row, source = 'remote') {
+  function adoptRemoteSnapshot(student, row, source = 'remote', noteType = 'elementary_observation') {
     const remoteText = String(row?.content || '');
     const remoteUpdatedAt = String(row?.updated_at || '');
     const remoteRevision = memoRevision(row?.revision);
@@ -130,12 +130,12 @@
       revision: remoteRevision,
       mutationId: '',
       conflict: null
-    });
+    }, noteType);
 
     return {
       adoptedRemote: true,
       source,
-      localEntry: getMemoEntryByStudent(student),
+      localEntry: getMemoEntryByStudent(student, noteType),
       remoteRow: row,
       content: remoteText,
       updatedAt: syncedAt,
@@ -232,7 +232,7 @@
 
   async function reconcileObservationMemoDraft(student, noteType = '') {
     const resolvedType = noteType || getSupabaseNoteDraftType(student);
-    const localEntry = getMemoEntryByStudent(student);
+    const localEntry = getMemoEntryByStudent(student, resolvedType);
     if (!student?.id || !resolvedType) {
       return {
         adoptedRemote: false,
@@ -250,7 +250,7 @@
       return {
         adoptedRemote: false,
         source: 'local',
-        localEntry: getMemoEntryByStudent(student),
+        localEntry: getMemoEntryByStudent(student, resolvedType),
         remoteRow: null,
         content: localEntry.content || '',
         updatedAt: localEntry.updatedAt || '',
@@ -262,7 +262,7 @@
     const remoteUpdatedAt = String(row.updated_at || '');
     const remoteRevision = memoRevision(row.revision);
     const remoteMutationId = String(row.last_mutation_id || '');
-    const latestLocalEntry = getMemoEntryByStudent(student);
+    const latestLocalEntry = getMemoEntryByStudent(student, resolvedType);
     const localText = String(latestLocalEntry.content || '');
     const localUpdatedAt = String(latestLocalEntry.updatedAt || '');
     const localRevision = memoRevision(latestLocalEntry.revision);
@@ -289,14 +289,14 @@
         revision: remoteRevision,
         mutationId: '',
         conflict: null
-      });
+      }, resolvedType);
       return {
         adoptedRemote: false,
         recoveredPending: protectedLocal || isReconcileConflict,
         source: remoteMutationId && localMutationId && remoteMutationId === localMutationId
           ? 'remote-confirmed-local'
           : 'remote-equivalent-local',
-        localEntry: getMemoEntryByStudent(student),
+        localEntry: getMemoEntryByStudent(student, resolvedType),
         remoteRow: row,
         content: remoteText,
         updatedAt: syncedAt,
@@ -313,7 +313,7 @@
       isExplicitRecoveryPromotionMutation(remoteMutationId) &&
       remoteRevision > localRevision
     ) {
-      return adoptRemoteSnapshot(student, row, 'remote-explicit-recovery-promotion');
+      return adoptRemoteSnapshot(student, row, 'remote-explicit-recovery-promotion', resolvedType);
     }
 
     // Feedback completion is an intentional lifecycle clear, not an accidental return
@@ -324,7 +324,7 @@
       !protectedLocal &&
       remoteRevision > localRevision
     ) {
-      return adoptRemoteSnapshot(student, row, 'remote-feedback-clear');
+      return adoptRemoteSnapshot(student, row, 'remote-feedback-clear', resolvedType);
     }
 
     // If the user is actively editing or a write is pending/blocked, never replace
@@ -335,14 +335,16 @@
         student,
         row,
         latestLocalEntry,
-        'active-local-conflict'
+        'active-local-conflict',
+        null,
+        resolvedType
       );
     }
 
     // A truly empty device with no meaningful local snapshot can safely accept the
     // server copy. This is the new-device / cleared-browser case.
     if (!localHasMeaningfulSnapshot(latestLocalEntry)) {
-      return adoptRemoteSnapshot(student, row, 'remote-new-device');
+      return adoptRemoteSnapshot(student, row, 'remote-new-device', resolvedType);
     }
 
     // Revision numbers created before the no-op fix cannot be trusted by themselves.
@@ -359,7 +361,9 @@
         student,
         row,
         latestLocalEntry,
-        'lineage-unavailable'
+        'lineage-unavailable',
+        null,
+        resolvedType
       );
     }
 
@@ -381,7 +385,8 @@
         row,
         latestLocalEntry,
         'historical-reversion-conflict',
-        lineage
+        lineage,
+        resolvedType
       );
     }
 
@@ -394,7 +399,8 @@
         row,
         latestLocalEntry,
         'unverified-local-conflict',
-        lineage
+        lineage,
+        resolvedType
       );
     }
 
@@ -403,7 +409,7 @@
     // older text reintroduced after it.
     if (remoteRevision > lineage.localSeenRevision) {
       if (lineage.remotePriorRevision === 0 || lineage.remotePriorRevision >= lineage.localSeenRevision) {
-        return adoptRemoteSnapshot(student, row, 'remote-lineage-verified');
+        return adoptRemoteSnapshot(student, row, 'remote-lineage-verified', resolvedType);
       }
     }
 
@@ -414,7 +420,8 @@
       row,
       latestLocalEntry,
       'ambiguous-lineage-conflict',
-      lineage
+      lineage,
+      resolvedType
     );
   }
 

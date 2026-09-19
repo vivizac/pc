@@ -52,15 +52,15 @@
     } catch (_) {}
     return `note_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
-  function localEntry(student) {
+  function localEntry(student, noteType = '') {
     try {
-      if (typeof global.getMemoEntryByStudent === 'function') return global.getMemoEntryByStudent(student) || {};
+      if (typeof global.getMemoEntryByStudent === 'function') return global.getMemoEntryByStudent(student, noteType) || {};
     } catch (_) {}
     return {};
   }
   function writePending(request, expectedRevision) {
     if (!request || typeof global.setMemoByStudent !== 'function') return;
-    const current = localEntry(request.student);
+    const current = localEntry(request.student, request.noteType);
     global.setMemoByStudent(request.student, request.content, {
       updatedAt: request.updatedAt,
       lastSyncedAt: current.lastSyncedAt || '',
@@ -68,7 +68,7 @@
       revision: revision(expectedRevision),
       mutationId: request.mutationId,
       conflict: null
-    });
+    }, request.noteType);
   }
   function isSuccessfulResult(result) {
     return result && (result.state === 'synced' || result.state === 'cleared') && Number.isFinite(Number(result.revision));
@@ -101,7 +101,7 @@
     const key = requestKey(student, noteType);
     if (!key) return basePersist(student, content, options);
 
-    const before = localEntry(student);
+    const before = localEntry(student, noteType);
     const explicitExpected = Object.prototype.hasOwnProperty.call(options, 'expectedRevision');
     const request = {
       sequence: ++sequence,
@@ -169,7 +169,7 @@
     const type = noteTypeFor(student, noteType);
     const key = requestKey(student, type);
     if (!key) return false;
-    const before = localEntry(student);
+    const before = localEntry(student, type);
     const request = {
       sequence: ++sequence,
       student: { ...student },

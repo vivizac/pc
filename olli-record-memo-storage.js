@@ -27,8 +27,9 @@ function purgeOldLocalMemos() {
 /* PC observation memo storage adapter.
    PC keeps elementary observation + kinder risk draft behavior. */
 installObservationMemoStorage({
-  getMemoKey(student) {
+  getMemoKey(student, noteType = '') {
     if (!student?.id) return '';
+    if (String(noteType || '') === 'elementary_observation') return ELEMENTARY_MEMO_PREFIX + student.id;
     return (student.type === 'kinder' ? KINDER_MEMO_PREFIX : ELEMENTARY_MEMO_PREFIX) + student.id;
   },
   getDraftType(student) {
