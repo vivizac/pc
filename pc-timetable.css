@@ -424,6 +424,104 @@
 .olliTtClassChoiceGrid.kinderLayout { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .olliTtTeacherChoiceGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .olliTtTeacherChoiceGrid .olliTtChoice { min-width:0; white-space:normal; word-break:keep-all; line-height:1.25; }
+
+/* 클래스 담임 / 당일 담당은 공간을 차지하는 버튼 그리드 대신 위로 열리는 compact toggle을 사용한다. */
+.olliTtTeacherToggleRow {
+  position: relative;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+.olliTtTeacherToggle {
+  position: relative;
+  min-width: 0;
+}
+.olliTtTeacherToggle[open] { z-index: 40; }
+.olliTtTeacherToggle > summary {
+  height: 48px;
+  padding: 0 13px;
+  border: 1px solid #dfe4e9;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #343b45;
+  background: #fff;
+  cursor: pointer;
+  list-style: none;
+  box-sizing: border-box;
+}
+.olliTtTeacherToggle > summary::-webkit-details-marker { display: none; }
+.olliTtTeacherToggle > summary:hover { border-color: #c7def3; background: #f8fbff; }
+.olliTtTeacherToggle[open] > summary { border-color: #80c2fb; box-shadow: 0 0 0 3px rgba(10,132,255,.08); }
+.olliTtTeacherToggle > summary > span { min-width: 0; display: grid; gap: 2px; }
+.olliTtTeacherToggle > summary small {
+  overflow: hidden;
+  color: #8e96a0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(9px * var(--olli-text-scale));
+  font-weight: 680;
+}
+.olliTtTeacherToggle > summary strong {
+  overflow: hidden;
+  color: #343b45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 800;
+}
+.olliTtTeacherToggle > summary i {
+  flex: 0 0 auto;
+  color: #8c949e;
+  font-size: 13px;
+  font-style: normal;
+  transition: transform .14s ease;
+}
+.olliTtTeacherToggle:not([open]) > summary i { transform: rotate(180deg); }
+.olliTtTeacherToggleMenu {
+  position: absolute;
+  z-index: 50;
+  left: 0;
+  bottom: calc(100% + 8px);
+  width: max(100%, 210px);
+  max-height: 220px;
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid #dfe5eb;
+  border-radius: 14px;
+  display: grid;
+  gap: 5px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(23,31,44,.16);
+  box-sizing: border-box;
+}
+.olliTtTeacherToggle.daily .olliTtTeacherToggleMenu { left: auto; right: 0; }
+.olliTtTeacherToggleMenu .olliTtChoice {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 11px;
+  border-radius: 10px;
+  text-align: left;
+}
+.olliTtTeacherToggleEmpty {
+  height: 48px;
+  padding: 0 13px;
+  border: 1px solid #e5e8eb;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #7a828c;
+  background: #f8f9fa;
+  box-sizing: border-box;
+}
+.olliTtTeacherToggleEmpty span { font-size: calc(11px * var(--olli-text-scale)); font-weight: 760; }
+.olliTtTeacherToggleEmpty small { color: #a0a6ae; font-size: calc(9px * var(--olli-text-scale)); font-weight: 620; }
 .olliTtKinderMergeChoice { color: #3f4854; background: #f1f3f5; }
 .olliTtKinderMergeChoice:hover { border-color: #cbd2d9; color: #111820; background: #e9ecef; }
 .olliTtSplitClassBtn { width: 100%; min-height: 46px; border: 1px solid #dfe4e9; border-radius: 12px; color: #4f5965; background: #fff; font: 760 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
