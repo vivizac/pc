@@ -41,7 +41,7 @@
 
   function getKcfStudentPromptType(student, feedbackType){
     if (String(feedbackType || 'class') === 'fail') return 'fail';
-    return normalizeKcfStudentType(student) === 'elementary' ? 'elementary' : 'class';
+    return 'class';
   }
 
   function getKcfStudentFeedbackLabel(student, feedbackType){
@@ -82,8 +82,10 @@
   function setKcfSelectedStudent(student){
     var id = String(student && student.id || '').trim();
     var name = String(student && student.name || '').trim();
+    var division = normalizeKcfStudentType(student);
     window.__kcfSelectedStudentId = id;
     window.__kcfSelectedStudentName = name;
+    window.__kcfSelectedStudentDivision = division;
     if (typeof window.setKinderChatFeedbackManualSelection === 'function') {
       try { window.setKinderChatFeedbackManualSelection(student); } catch (err) {}
     }
@@ -92,6 +94,7 @@
   function clearKcfSelectedStudent(){
     window.__kcfSelectedStudentId = '';
     window.__kcfSelectedStudentName = '';
+    window.__kcfSelectedStudentDivision = '';
     if (typeof window.clearKinderChatFeedbackManualSelection === 'function') {
       try { window.clearKinderChatFeedbackManualSelection(); } catch (err) {}
     }

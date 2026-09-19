@@ -54,3 +54,19 @@ test('shared registration no longer owns phone keyboard dismissal', () => {
   assert.doesNotMatch(registration, /function completeKcfInlineSubmit/);
   assert.doesNotMatch(registration, /onKinderChatFeedbackInlineSubmitComplete/);
 });
+
+
+test('one-minute feedback prompt is selected by purpose, not student division', () => {
+  const fn = registration.match(/function getKcfStudentPromptType\(student, feedbackType\)\{[\s\S]*?\n  \}/)?.[0] || '';
+  assert.match(fn, /feedbackType \|\| 'class'/);
+  assert.match(fn, /return 'fail';/);
+  assert.match(fn, /return 'class';/);
+  assert.doesNotMatch(fn, /elementary/);
+});
+
+test('shared selected student context keeps id name and division together', () => {
+  assert.match(registration, /window\.__kcfSelectedStudentId = id;/);
+  assert.match(registration, /window\.__kcfSelectedStudentName = name;/);
+  assert.match(registration, /window\.__kcfSelectedStudentDivision = division;/);
+  assert.match(registration, /window\.__kcfSelectedStudentDivision = '';/);
+});

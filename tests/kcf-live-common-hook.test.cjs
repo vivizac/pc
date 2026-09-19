@@ -20,3 +20,13 @@ test('shared registration keeps old acknowledgement outside LIVE and suppresses 
   assert.match(registration, /if \(!canUseKinderChatLive && typeof addKinderChatMessage === 'function'\)/);
   assert.match(registration, /startTodayFeedbackRequest\(requestOptions\)/);
 });
+
+
+test('shared feedback runtime includes division context in AI request text without student id', () => {
+  assert.match(runtime, /function buildTodayFeedbackRequestContent\(userText, studentName, feedbackMonth, studentDivision\)/);
+  assert.match(runtime, /학생 부서: \$\{division\}/);
+  assert.match(runtime, /requestContent: buildTodayFeedbackRequestContent\(options\.userText \|\| '', options\.studentName \|\| '', feedbackMonth, options\.studentDivision\)/);
+  assert.match(runtime, /studentDivision: item\.studentDivision/);
+  const requestBody = runtime.match(/fetch\('\/api\/chat',[\s\S]*?\n  \}\)\n  \.then/)?.[0] || '';
+  assert.doesNotMatch(requestBody, /studentId:/);
+});

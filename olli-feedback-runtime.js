@@ -588,12 +588,14 @@ function getFeedbackMonthNumber(dateValue) {
 function getFeedbackMonthLabel(dateValue) {
   return `${getFeedbackMonthNumber(dateValue)}월`;
 }
-function buildTodayFeedbackRequestContent(userText, studentName, feedbackMonth) {
+function buildTodayFeedbackRequestContent(userText, studentName, feedbackMonth, studentDivision) {
   const name = normalizeTodayFeedbackStudentName(studentName);
   const monthLabel = String(feedbackMonth || getFeedbackMonthLabel()).trim();
+  const division = studentDivision === 'kinder' ? '유치부' : (studentDivision === 'elementary' ? '초등부' : '');
   const body = String(userText || '').trim();
   const lines = [];
   if (name && !/아이\s*이름\s*:|학생\s*이름\s*:/.test(body)) lines.push(`아이 이름: ${name}`);
+  if (division && !/(학생\s*부서|부서)\s*[:：]/.test(body)) lines.push(`학생 부서: ${division}`);
   if (monthLabel && !/(피드백\s*기준\s*월|성장노트\s*월|월\s*정보)\s*[:：]/.test(body)) lines.push(`피드백 기준 월: ${monthLabel}`);
   if (body) lines.push(body);
   return lines.join('\n');
@@ -611,7 +613,7 @@ function startTodayFeedbackRequest(options = {}) {
       ...options,
       feedbackMonth,
       feedbackMonthNumber,
-      requestContent: buildTodayFeedbackRequestContent(options.userText || '', options.studentName || '', feedbackMonth)
+      requestContent: buildTodayFeedbackRequestContent(options.userText || '', options.studentName || '', feedbackMonth, options.studentDivision)
     });
   }
   const item = createTodayFeedbackItem({
@@ -638,9 +640,10 @@ function startTodayFeedbackRequest(options = {}) {
     body: JSON.stringify({
       promptType: options.promptType || 'class',
       studentName: item.studentName,
+      studentDivision: item.studentDivision,
       feedbackMonth,
       feedbackMonthNumber,
-      messages:[{ role:'user', content: buildTodayFeedbackRequestContent(options.userText || '', item.studentName, feedbackMonth) }]
+      messages:[{ role:'user', content: buildTodayFeedbackRequestContent(options.userText || '', item.studentName, feedbackMonth, item.studentDivision) }]
     })
   })
   .then(async res => {
