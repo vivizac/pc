@@ -113,7 +113,7 @@ async function saveCurrentMemo(options = {}) {
     return result;
   }
   if (result?.state === 'pending' && result.error) {
-    console.warn('초등부 관찰노트 Supabase 저장 실패:', result.error.message || result.error);
+    console.warn('관찰노트 Supabase 저장 실패:', result.error.message || result.error);
   }
   if (result?.state === 'conflict') {
     if (options.status) setMemoSaveStatus('다른 기기에서 수정됨');

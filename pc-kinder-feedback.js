@@ -67,7 +67,8 @@ function isKinderChatFeedbackQueueItem(item) {
   return !!item && (
     item.sourcePage === 'kinderChatFeedback' ||
     item.label === '유치부 1분 피드백' ||
-    item.label === '유치부 성장 피드백'
+    item.label === '유치부 성장 피드백' ||
+    item.label === '유치부 실패-성장 피드백'
   );
 }
 
@@ -1336,7 +1337,7 @@ function submitElementaryGrowthFeedbackSheet() {
     const userText = buildElementaryGrowthFeedbackUserText();
     const hasMeaningful = userText.replace('[초등부 성장피드백 설문 정리]', '').replace(/추가메모:\s*없음/g, '').trim();
     if (!hasMeaningful) {
-      showPushToast('성장피드백 내용을 먼저 선택하거나 입력해 주세요.');
+      showPushToast('실패-성장 피드백 내용을 먼저 선택하거나 입력해 주세요.');
       return;
     }
     const name = document.getElementById('ecfgA1')?.value.trim() || currentMemoStudent?.name || '';
@@ -1353,7 +1354,7 @@ function submitElementaryGrowthFeedbackSheet() {
     });
   } catch (error) {
     console.error('submitElementaryGrowthFeedbackSheet failed', error);
-    showPushToast('성장피드백 생성 중 오류가 생겼어요.');
+    showPushToast('실패-성장 피드백 생성 중 오류가 생겼어요.');
   }
 }
 
@@ -1493,7 +1494,7 @@ function submitKinderChatFeedbackGrowthSheet() {
     const userText = buildKinderChatFeedbackGrowthUserText();
     const hasMeaningful = userText.replace('[실패·성장 설문 정리]', '').replace(/추가메모:\s*없음/g, '').trim();
     if (!hasMeaningful) {
-      setKinderChatFeedbackWarning('성장 피드백 내용을 먼저 선택하거나 입력해 주세요.');
+      setKinderChatFeedbackWarning('실패-성장 피드백 내용을 먼저 선택하거나 입력해 주세요.');
       return;
     }
     const name = document.getElementById('kcfgA1')?.value.trim() || '';
@@ -1502,15 +1503,15 @@ function submitKinderChatFeedbackGrowthSheet() {
     return;
   }
     closeKinderChatFeedbackGrowthSheet();
-    addKinderChatDocumentMessage(name, '성장 피드백', '성장 피드백 설문', 'growth');
-    addKinderChatMessage('bot', '성장 피드백 내용을 부모님께 잘 전달될 수 있도록 정리해둘게요.');
+    addKinderChatDocumentMessage(name, '실패-성장 피드백', '실패-성장 피드백 설문', 'growth');
+    addKinderChatMessage('bot', '실패-성장 피드백 내용을 부모님께 잘 전달될 수 있도록 정리해둘게요.');
     startTodayFeedbackRequest({
       promptType:'fail',
       userText,
       studentName: normalizeTodayFeedbackStudentName(name),
       studentDivision:'kinder',
       feedbackType:'fail',
-      label:'유치부 성장 피드백',
+      label:'유치부 실패-성장 피드백',
       sourcePage:'kinderChatFeedback',
       silent:true
     });
@@ -1518,8 +1519,8 @@ function submitKinderChatFeedbackGrowthSheet() {
     updateKinderChatFeedbackBadge();
   } catch (error) {
     console.error('submitKinderChatFeedbackGrowthSheet failed', error);
-    setKinderChatFeedbackWarning('성장 피드백 생성 중 오류가 생겼어요. 다시 확인해 주세요.');
-    try { showPushToast('성장 피드백 생성 중 오류가 생겼어요.'); } catch(e) {}
+    setKinderChatFeedbackWarning('실패-성장 피드백 생성 중 오류가 생겼어요. 다시 확인해 주세요.');
+    try { showPushToast('실패-성장 피드백 생성 중 오류가 생겼어요.'); } catch(e) {}
   }
 }
 document.addEventListener('DOMContentLoaded', () => {

@@ -27,6 +27,16 @@ function getAttendanceFeedbackTitleDate(item) {
   return { month, day };
 }
 
+function getAttendanceFeedbackPurpose(item) {
+  const row = item?.row || item || {};
+  const sourceTable = String(item?.sourceTable || row.source_table || '').trim().toLowerCase();
+  const rawType = String(item?.feedbackType || row.feedback_type || '').trim().toLowerCase();
+  if (sourceTable === 'fail_feedbacks' || rawType === 'fail') return 'fail';
+  if (rawType === 'growth') return 'growth';
+  if (rawType === 'class') return 'class';
+  return 'legacy';
+}
+
 function getAttendanceFeedbackItemTitle(item, student, kind = 'feedback') {
   const isKinder = student?.type === 'kinder';
   const { month, day } = getAttendanceFeedbackTitleDate(item);
@@ -37,6 +47,23 @@ function getAttendanceFeedbackItemTitle(item, student, kind = 'feedback') {
     const months = monthsMatch ? Number(monthsMatch[1]) : '';
     return months ? `${months}개월 성장 기록` : '종합 성장 기록';
   }
+
+  const purpose = getAttendanceFeedbackPurpose(item);
+  const purposeLabel = purpose === 'class'
+    ? '수업 피드백'
+    : purpose === 'growth'
+      ? '성장 피드백'
+      : purpose === 'fail'
+        ? '실패-성장 피드백'
+        : '';
+
+  if (purposeLabel) {
+    if (month && day) return `${month}월 ${day}일 ${purposeLabel}`;
+    if (month) return `${month}월 ${purposeLabel}`;
+    return purposeLabel;
+  }
+
+  // feedback_type이 없던 과거 데이터는 기존 제목 규칙을 유지합니다.
   if (isKinder) {
     if (month && day) return `${month}월 ${day}일 관찰 기록`;
     if (month) return `${month}월 관찰 기록`;
@@ -579,7 +606,7 @@ function renderAttendanceStudentFeedbackSheet(student, data, statusText = '') {
   const feedbacks = attendanceStudentFeedbackSheetState.data.feedbacks;
   const summaries = attendanceStudentFeedbackSheetState.data.summaries;
   body.innerHTML = `<section class="attendanceFeedbackSheetSection">
-    <div class="attendanceFeedbackSheetSectionTitle">수업 기록</div>
+    <div class="attendanceFeedbackSheetSectionTitle">피드백 기록</div>
     <div class="attendanceFeedbackSheetScroll">${renderAttendanceFeedbackSheetCards(feedbacks, '저장된 피드백이 없습니다.', student, { kind: 'feedback', hidePreview: true })}</div>
   </section>
   <section class="attendanceFeedbackSheetSection">

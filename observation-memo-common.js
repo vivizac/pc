@@ -320,16 +320,16 @@ function renderMemoModeMenu() {
         <span class="memoModeOptionGuide">${guide}</span>
       </span>
     </button>`;
+  const division = currentMemoType === 'kinder' ? 'kinder' : 'elementary';
   menu.innerHTML = `
-    ${option(false, '1분 피드백(유치부)', '일상 관찰을 빠르게 정리', "closeMemoModeMenu(); openKinderChatFeedbackPage();")}
-    ${option(false, '성장 피드백(유치부)', '막힘·전환 장면을 깊게 정리', "closeMemoModeMenu(); openKinderChatFeedbackGrowthSheet();")}
-    ${option(true, '관찰 노트(초등부)', '초등부 관찰노트로 이동', "closeMemoModeMenu(); openMemoObservationMode(event);")}
+    ${option(false, '1분 피드백', '수업기록을 빠르게 수업 피드백으로 정리', `closeMemoModeMenu(); openKinderChatFeedbackPage({ division: '${division}' });`)}
+    ${option(false, '실패-성장 피드백', '막힘·전환 장면을 깊게 정리', "openMemoFailGrowthMode(event);")}
+    ${option(true, '관찰 노트', '관찰메모로 성장 피드백 작성', "closeMemoModeMenu(); openMemoObservationMode(event);")}
   `;
 }
 function closeMemoModeMenu() { const menu = document.getElementById('memoModeDropup'); if (menu) menu.classList.remove('show'); }
 function toggleMemoModeMenu(event) {
   if (event) event.stopPropagation();
-  if (currentMemoType === 'kinder') return;
   renderMemoModeMenu();
   const menu = document.getElementById('memoModeDropup');
   if (menu) menu.classList.toggle('show');
@@ -338,11 +338,15 @@ function openMemoObservationMode(event) { if (event) event.stopPropagation(); cl
 function openMemoFailGrowthMode(event) {
   if (event) event.stopPropagation();
   closeMemoModeMenu();
-  if (typeof openElementaryGrowthFeedbackSheet === 'function') {
+  if (currentMemoType === 'kinder' && typeof openKinderChatFeedbackGrowthSheet === 'function') {
+    openKinderChatFeedbackGrowthSheet();
+    return;
+  }
+  if (currentMemoType === 'elementary' && typeof openElementaryGrowthFeedbackSheet === 'function') {
     openElementaryGrowthFeedbackSheet();
     return;
   }
-  alert('초등부 성장피드백을 열 수 없습니다.');
+  alert('실패-성장 피드백을 열 수 없습니다.');
 }
 document.addEventListener('click', (event) => { const wrap = document.getElementById('memoModeWrap'); if (wrap && !wrap.contains(event.target)) closeMemoModeMenu(); });
 
