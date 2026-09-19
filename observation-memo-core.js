@@ -56,10 +56,6 @@ function openStudentMemoPageById(studentId) {
   const session = beginObservationMemoSession(studentId);
   if (!session) return;
   const { student } = session;
-  if (session.type === 'kinder') {
-    if (typeof openKinderChatFeedbackPage === 'function') openKinderChatFeedbackPage();
-    return;
-  }
   closeMemoModeMenu();
   closeMemoStudentSelectPopup();
 
@@ -78,11 +74,7 @@ function closeMemoPage() {
 }
 
 async function saveCurrentMemo(options = {}) {
-  if (!currentMemoStudent) return;
-  if (currentMemoType === 'kinder') {
-    if (typeof saveKinderChatFeedbackDraft === 'function') saveKinderChatFeedbackDraft();
-    return;
-  }
+  if (!currentMemoStudent || !['elementary', 'kinder'].includes(currentMemoType)) return;
 
   // Navigation, focus changes and merely opening a student are not edits.
   // Some legacy callers still invoke saveCurrentMemo during student switching, so
@@ -94,7 +86,7 @@ async function saveCurrentMemo(options = {}) {
     !hasObservationMemoDirtyChanges()
   ) {
     const entry = typeof getMemoEntryByStudent === 'function'
-      ? (getMemoEntryByStudent(currentMemoStudent) || {})
+      ? (getMemoEntryByStudent(currentMemoStudent, 'elementary_observation') || {})
       : {};
     return {
       state: 'unchanged',
@@ -168,20 +160,45 @@ window.addEventListener('focus', () => {
 setTimeout(() => {
 }, 700);
 
-async function requestElementaryFeedback() {
-  if (!currentMemoStudent || currentMemoType !== 'elementary') return;
-  const text = document.getElementById('memoEditor').value.trim();
-  const analysisData = getElementaryAnalysisByStudent(currentMemoStudent);
-  const hasAnalysisContent = (typeof elementaryAnalysisHasContent === 'function') ? elementaryAnalysisHasContent(analysisData) : false;
+async function requestGrowthFeedback() {
+  if (!currentMemoStudent || !['elementary', 'kinder'].includes(currentMemoType)) return;
+  const editor = document.getElementById('memoEditor');
+  const text = String(editor?.value || '').trim();
+  const studentDivision = currentMemoType === 'kinder' ? 'kinder' : 'elementary';
+  const isElementary = studentDivision === 'elementary';
+  const analysisData = isElementary ? getElementaryAnalysisByStudent(currentMemoStudent) : null;
+  const hasAnalysisContent = isElementary && (typeof elementaryAnalysisHasContent === 'function')
+    ? elementaryAnalysisHasContent(analysisData)
+    : false;
   const analysisPromptText = hasAnalysisContent ? buildElementaryAnalysisMemoText(analysisData, { forPrompt: true }) : '';
 
   if (!text && !hasAnalysisContent) {
     alert('수업 내용이 부족합니다.');
     return;
   }
-  if (text) setMemoByStudent(currentMemoStudent, text);
+  if (text) {
+    const entry = typeof getMemoEntryByStudent === 'function'
+      ? (getMemoEntryByStudent(currentMemoStudent, 'elementary_observation') || {})
+      : {};
+    setMemoByStudent(currentMemoStudent, text, {
+      updatedAt: entry.updatedAt || new Date().toISOString(),
+      lastSyncedAt: entry.lastSyncedAt || '',
+      syncStatus: entry.syncStatus || 'local',
+      revision: entry.revision || 0,
+      mutationId: entry.mutationId || '',
+      conflict: entry.conflict || null
+    }, 'elementary_observation');
+  }
   showMemoSaveCheck();
-  await requestSceneCardFeedbackFromElementary(currentMemoStudent.name, text, analysisPromptText);
+  await requestSceneCardFeedbackFromElementary(currentMemoStudent.name, text, analysisPromptText, {
+    studentDivision,
+    promptType: 'elementary',
+    feedbackType: 'growth'
+  });
+}
+
+async function requestElementaryFeedback() {
+  return requestGrowthFeedback();
 }
 
 /* Feedback completion is a semantic clear, not a historical reversion. The shared

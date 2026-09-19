@@ -76,21 +76,26 @@ function hideFeedbackLoading() {
 }
 
 function resetElementaryMemoAfterFeedbackSave() {
-  if (!currentMemoStudent || currentMemoType !== 'elementary') return;
+  if (!currentMemoStudent || !['elementary', 'kinder'].includes(currentMemoType)) return;
+  const studentDivision = currentMemoType === 'kinder' ? 'kinder' : 'elementary';
   clearStudentNoteDraftFromSupabase(currentMemoStudent, 'elementary_observation').catch(err => console.warn('노트 초안 삭제 실패:', err.message || err));
-  clearMemoByStudent(currentMemoStudent);
+  clearMemoByStudent(currentMemoStudent, 'elementary_observation');
   currentMemoStudent = { ...currentMemoStudent, memoUpdatedAt: '' };
   updateMemoStudentMetaDisplay(currentMemoStudent, '');
-  clearElementaryAnalysisByStudent(currentMemoStudent);
-  elementaryAnalysisDraft = getEmptyElementaryAnalysisState();
-  selectedElementaryAnalysisHistoryId = '';
+  if (studentDivision === 'elementary') {
+    clearElementaryAnalysisByStudent(currentMemoStudent);
+    elementaryAnalysisDraft = getEmptyElementaryAnalysisState();
+    selectedElementaryAnalysisHistoryId = '';
+  }
   const memo = document.getElementById('memoEditor');
   if (memo) {
     memo.readOnly = false;
     memo.value = '';
   }
-  renderElementaryAnalysisSummaryCard(getEmptyElementaryAnalysisState(), { title: '분석 결과', createdAt: '' });
-  renderElementaryAnalysisHistoryCards(currentMemoStudent);
+  if (studentDivision === 'elementary') {
+    renderElementaryAnalysisSummaryCard(getEmptyElementaryAnalysisState(), { title: '분석 결과', createdAt: '' });
+    renderElementaryAnalysisHistoryCards(currentMemoStudent);
+  }
   setMemoSaveStatus('자동 저장');
   if (typeof refreshMemoStudentSelectPopupIfOpen === 'function') refreshMemoStudentSelectPopupIfOpen();
 }
@@ -186,9 +191,10 @@ async function saveElementaryFeedbackDirectly(text, options = {}) {
   if (!content) throw new Error('저장할 피드백 내용이 비어 있습니다.');
   const studentName = normalizeTodayFeedbackStudentName(options.studentName || currentMemoStudent?.name || '');
   if (!studentName) throw new Error('아이 이름을 찾지 못했습니다.');
+  const studentDivision = options.studentDivision === 'kinder' || currentMemoStudent?.type === 'kinder' ? 'kinder' : 'elementary';
   const selectedStudentId = options.studentId || currentMemoStudent?.id || '';
-  const savedStudent = await getOrCreateStudentForSupabaseSave(studentName, 'elementary', selectedStudentId);
-  const rawType = options.feedbackType || 'class';
+  const savedStudent = await getOrCreateStudentForSupabaseSave(studentName, studentDivision, selectedStudentId);
+  const rawType = options.feedbackType || 'growth';
   const tableName = getFeedbackTableNameByType(rawType);
   const feedbackType = tableName === 'fail_feedbacks' ? 'fail' : String(rawType || 'class').toLowerCase();
   const now = new Date();
@@ -199,8 +205,8 @@ async function saveElementaryFeedbackDirectly(text, options = {}) {
     feedback_type: feedbackType,
     year: now.getFullYear(),
     date: now.toLocaleDateString('ko-KR')
-  }, tableName === 'fail_feedbacks' ? '초등부 성장 피드백 저장' : '초등부 피드백 저장');
-  const savedRow = await saveFeedbackRowVerified(tableName, payload, tableName === 'fail_feedbacks' ? '초등부 성장 피드백 저장' : '초등부 피드백 저장');
+  }, tableName === 'fail_feedbacks' ? '실패-성장 피드백 저장' : '성장 피드백 저장');
+  const savedRow = await saveFeedbackRowVerified(tableName, payload, tableName === 'fail_feedbacks' ? '실패-성장 피드백 저장' : '성장 피드백 저장');
   await refreshRecordsAfterFeedbackSave();
   if (tableName === 'feedbacks' && currentMemoStudent && String(currentMemoStudent.id || '') === String(savedStudent.id || '')) resetElementaryMemoAfterFeedbackSave();
   if (tableName === 'fail_feedbacks' && typeof resetGrowthFeedbackAfterSuccessfulSave === 'function') resetGrowthFeedbackAfterSuccessfulSave('elementary');
@@ -210,15 +216,19 @@ async function saveElementaryFeedbackDirectly(text, options = {}) {
 async function requestSceneCardFeedbackFromElementary(studentName, text, analysisPromptText, options = {}) {
   if (loading) return;
 
+  const studentDivision = options.studentDivision === 'kinder' || currentMemoStudent?.type === 'kinder' ? 'kinder' : 'elementary';
+  const divisionLabel = studentDivision === 'kinder' ? '유치부' : '초등부';
   const feedbackMonth = String(options.feedbackMonth || getFeedbackMonthLabel()).trim();
   const feedbackMonthNumber = Number(options.feedbackMonthNumber || getFeedbackMonthNumber());
-  const combined = `${studentName} 초등부 피드백 기록
+  const normalizedText = String(text || '').trim();
+  const normalizedAnalysisPromptText = studentDivision === 'elementary' ? String(analysisPromptText || '').trim() : '';
+  const combined = `${studentName} ${divisionLabel} 성장 피드백 기록
 피드백 기준 월: ${feedbackMonth}
 
-${text}${analysisPromptText ? `
+${normalizedText}${normalizedAnalysisPromptText ? `
 
 [초등부 분석 데이터]
-${analysisPromptText}` : ''}`;
+${normalizedAnalysisPromptText}` : ''}`;
   const userText = buildSceneCardUserText(combined);
 
   const btn = document.getElementById('memoFeedbackBtn');
@@ -236,9 +246,10 @@ ${analysisPromptText}` : ''}`;
       body: JSON.stringify({
         promptType: options.promptType || 'elementary',
         studentName: normalizeTodayFeedbackStudentName(studentName),
+        studentDivision,
         feedbackMonth,
         feedbackMonthNumber,
-        messages:[{ role:'user', content: buildTodayFeedbackRequestContent(userText, studentName, feedbackMonth) }]
+        messages:[{ role:'user', content: buildTodayFeedbackRequestContent(userText, studentName, feedbackMonth, studentDivision) }]
       })
     });
     const rawText = await res.text();
@@ -254,16 +265,17 @@ ${analysisPromptText}` : ''}`;
     await saveElementaryFeedbackDirectly(cleanText, {
       studentName: normalizeTodayFeedbackStudentName(studentName),
       studentId: currentMemoStudent?.id || '',
-      feedbackType: options.feedbackType || 'class',
+      studentDivision,
+      feedbackType: options.feedbackType || 'growth',
       feedbackMonth,
       feedbackMonthNumber,
       futureDirection
     });
-    showPushToast(`${studentName} 피드백을 기록실에 저장했어요.`);
+    showPushToast(`${studentName} 성장 피드백을 기록실에 저장했어요.`);
   } catch (err) {
     hideFeedbackLoading();
-    console.error('초등부 피드백 생성/저장 오류:', err);
-    alert(`초등부 피드백 생성 또는 저장 중 오류가 발생했어요.\n\n${err.message || '알 수 없는 오류입니다.'}`);
+    console.error('성장 피드백 생성/저장 오류:', err);
+    alert(`성장 피드백 생성 또는 저장 중 오류가 발생했어요.\n\n${err.message || '알 수 없는 오류입니다.'}`);
   } finally {
     loading = false;
 

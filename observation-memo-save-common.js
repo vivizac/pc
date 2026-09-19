@@ -15,8 +15,8 @@
     return { content: '', updatedAt: '', lastSyncedAt: '', syncStatus: status, revision: 0, mutationId: '', conflict: null };
   }
 
-  function getMemoEntrySafe(student) {
-    const key = typeof global.getMemoKey === 'function' ? global.getMemoKey(student) : '';
+  function getMemoEntrySafe(student, noteType = '') {
+    const key = typeof global.getMemoKey === 'function' ? global.getMemoKey(student, noteType) : '';
     if (!key) return emptyMemoEntry('unknown');
     const raw = localStorage.getItem(key);
     if (!raw) return emptyMemoEntry('empty');
@@ -35,16 +35,16 @@
       }
     } catch (_) {}
     if (typeof legacyGetMemoEntry === 'function') {
-      const legacy = legacyGetMemoEntry(student) || {};
+      const legacy = legacyGetMemoEntry(student, noteType) || {};
       return { ...emptyMemoEntry('local'), ...legacy, revision: 0, mutationId: '', conflict: null };
     }
     return { ...emptyMemoEntry('local'), content: raw || '' };
   }
 
-  function setMemoSafe(student, content, options = {}) {
-    const key = typeof global.getMemoKey === 'function' ? global.getMemoKey(student) : '';
+  function setMemoSafe(student, content, options = {}, noteType = '') {
+    const key = typeof global.getMemoKey === 'function' ? global.getMemoKey(student, noteType) : '';
     if (!key) return;
-    const previous = getMemoEntrySafe(student);
+    const previous = getMemoEntrySafe(student, noteType);
     const has = keyName => Object.prototype.hasOwnProperty.call(options, keyName);
     localStorage.setItem(key, JSON.stringify({
       content: content || '',
@@ -57,8 +57,8 @@
     }));
   }
 
-  function setMemoSyncStateSafe(student, syncState = {}) {
-    const entry = getMemoEntrySafe(student);
+  function setMemoSyncStateSafe(student, syncState = {}, noteType = '') {
+    const entry = getMemoEntrySafe(student, noteType);
     setMemoSafe(student, entry.content || '', {
       updatedAt: Object.prototype.hasOwnProperty.call(syncState, 'updatedAt') ? syncState.updatedAt : entry.updatedAt,
       lastSyncedAt: Object.prototype.hasOwnProperty.call(syncState, 'lastSyncedAt') ? syncState.lastSyncedAt : entry.lastSyncedAt,
@@ -66,7 +66,7 @@
       revision: Object.prototype.hasOwnProperty.call(syncState, 'revision') ? syncState.revision : entry.revision,
       mutationId: Object.prototype.hasOwnProperty.call(syncState, 'mutationId') ? syncState.mutationId : entry.mutationId,
       conflict: Object.prototype.hasOwnProperty.call(syncState, 'conflict') ? syncState.conflict : entry.conflict
-    });
+    }, noteType);
   }
 
   global.getMemoEntryByStudent = getMemoEntrySafe;
@@ -169,8 +169,8 @@
     };
   }
 
-  function markConflict(student, result, mutationId = '') {
-    const entry = getMemoEntrySafe(student);
+  function markConflict(student, result, mutationId = '', noteType = '') {
+    const entry = getMemoEntrySafe(student, noteType);
     const conflict = conflictFromResult(result || {});
     setMemoSafe(student, entry.content || '', {
       updatedAt: entry.updatedAt,
@@ -179,7 +179,7 @@
       revision: entry.revision,
       mutationId: mutationId || entry.mutationId,
       conflict
-    });
+    }, noteType);
     try { if (typeof global.setMemoSaveStatus === 'function') global.setMemoSaveStatus('다른 기기에서 수정됨'); } catch (_) {}
     try { global.dispatchEvent(new CustomEvent('olli:observation-memo-conflict', { detail: { studentId: String(student?.id || ''), ...conflict } })); } catch (_) {}
     return conflict;
@@ -232,7 +232,7 @@
     let stableStudent = { ...student, academy_id: student?.academy_id || academyId };
     if (!stableStudent.id) stableStudent = await global.ensureStudentSavedToSupabase(student);
 
-    const entry = getMemoEntrySafe(stableStudent);
+    const entry = getMemoEntrySafe(stableStudent, type);
     const expectedRevision = Object.prototype.hasOwnProperty.call(options, 'expectedRevision') ? memoRevision(options.expectedRevision) : memoRevision(entry.revision);
     let mutationId = String(options.mutationId || entry.mutationId || createMutationId());
     const currentDevice = String(options.deviceId || deviceId());
@@ -258,10 +258,10 @@
     } catch (err) {
       if (err?.code === 'REVISION_CONFLICT') {
         const server = err.serverResult || {};
-        markConflict(stableStudent, server, mutationId);
+        markConflict(stableStudent, server, mutationId, type);
         upsertQueue({ academyId, studentId: stableStudent.id, noteType: type, content: text, expectedRevision, mutationId, deviceId: currentDevice, status: 'conflict', serverRevision: server.server_revision, serverContent: server.server_content, serverUpdatedAt: server.server_updated_at, errorCode: err.code, errorMessage: err.message });
       } else if (['PERMISSION_DENIED','SESSION_REQUIRED','INVALID_INPUT','STUDENT_NOT_FOUND'].includes(String(err?.code || ''))) {
-        setMemoSyncStateSafe(stableStudent, { syncStatus: 'blocked', mutationId });
+        setMemoSyncStateSafe(stableStudent, { syncStatus: 'blocked', mutationId }, type);
       } else {
         upsertQueue({ academyId, studentId: stableStudent.id, noteType: type, content: text, expectedRevision, mutationId, deviceId: currentDevice, status: 'pending', errorCode: err?.code || 'SERVER_WRITE_FAILED', errorMessage: err?.message || String(err || '') });
       }
@@ -288,15 +288,15 @@
           response = await casRpc({ academyId, studentId: item.studentId, noteType: item.noteType, content: item.content, expectedRevision: response.revision, mutationId: createMutationId(), device: item.deviceId });
         }
         removeQueueForNote(academyId, item.studentId, item.noteType, false);
-        const local = getMemoEntrySafe(student);
+        const local = getMemoEntrySafe(student, item.noteType);
         if (String(local.content || '') === String(item.content || '')) {
           const syncedAt = String(response.updated_at || new Date().toISOString());
-          setMemoSafe(student, item.content || '', { updatedAt: syncedAt, lastSyncedAt: syncedAt, syncStatus: 'synced', revision: response.revision, mutationId: '', conflict: null });
+          setMemoSafe(student, item.content || '', { updatedAt: syncedAt, lastSyncedAt: syncedAt, syncStatus: 'synced', revision: response.revision, mutationId: '', conflict: null }, item.noteType);
         }
       } catch (err) {
         if (err?.code === 'REVISION_CONFLICT') {
           const server = err.serverResult || {};
-          markConflict(student, server, item.mutationId);
+          markConflict(student, server, item.mutationId, item.noteType);
           upsertQueue({ ...item, status: 'conflict', lastAttemptAt: attemptAt, retryCount: Number(item.retryCount || 0) + 1, serverRevision: server.server_revision, serverContent: server.server_content, serverUpdatedAt: server.server_updated_at, errorCode: err.code, errorMessage: err.message });
         } else {
           upsertQueue({ ...item, status: ['PERMISSION_DENIED','SESSION_REQUIRED','INVALID_INPUT','STUDENT_NOT_FOUND'].includes(String(err?.code || '')) ? 'blocked' : 'pending', lastAttemptAt: attemptAt, retryCount: Number(item.retryCount || 0) + 1, errorCode: err?.code || 'RETRY_FAILED', errorMessage: err?.message || String(err || '') });
@@ -332,7 +332,7 @@
     if (!student) return { state: 'skipped', student: null, error: null };
     const noteType = options.noteType || global.getSupabaseNoteDraftType(student);
     const text = String(content || '');
-    const before = getMemoEntrySafe(student);
+    const before = getMemoEntrySafe(student, noteType);
 
     if (before.syncStatus === 'conflict' && options.resolveConflict !== true) {
       const error = new Error('다른 기기에서 더 최신 관찰노트가 저장되어 자동 저장을 중단했습니다.');
@@ -345,7 +345,7 @@
     const localUpdatedAt = options.updatedAt || new Date().toISOString();
     const studentToSave = { ...student, memoUpdatedAt: text.trim() ? localUpdatedAt : '' };
 
-    setMemoSafe(studentToSave, text, { updatedAt: localUpdatedAt, syncStatus: 'pending', revision: expectedRevision, mutationId, conflict: null });
+    setMemoSafe(studentToSave, text, { updatedAt: localUpdatedAt, syncStatus: 'pending', revision: expectedRevision, mutationId, conflict: null }, noteType);
 
     try {
       const rows = await safeSaveNote(studentToSave, text, noteType, { expectedRevision, mutationId });
@@ -353,12 +353,12 @@
       const serverUpdatedAt = String(row?.updated_at || new Date().toISOString());
       const finalStudent = { ...studentToSave, id: row?.student_id || studentToSave.id, academy_id: row?.academy_id || studentToSave.academy_id, memoUpdatedAt: text.trim() ? serverUpdatedAt : '' };
       await global.saveStudent(finalStudent, { skipRemote: true });
-      setMemoSafe(finalStudent, text, { updatedAt: serverUpdatedAt, lastSyncedAt: serverUpdatedAt, syncStatus: 'synced', revision: row?.revision, mutationId: '', conflict: null });
+      setMemoSafe(finalStudent, text, { updatedAt: serverUpdatedAt, lastSyncedAt: serverUpdatedAt, syncStatus: 'synced', revision: row?.revision, mutationId: '', conflict: null }, noteType);
       return { state: text.trim() ? 'synced' : 'cleared', student: finalStudent, error: null, syncedAt: serverUpdatedAt, revision: memoRevision(row?.revision) };
     } catch (err) {
-      if (err?.code === 'REVISION_CONFLICT') return { state: 'conflict', student: studentToSave, error: err, conflict: getMemoEntrySafe(studentToSave).conflict || err.serverResult || null };
+      if (err?.code === 'REVISION_CONFLICT') return { state: 'conflict', student: studentToSave, error: err, conflict: getMemoEntrySafe(studentToSave, noteType).conflict || err.serverResult || null };
       const blocked = ['PERMISSION_DENIED','SESSION_REQUIRED','INVALID_INPUT','STUDENT_NOT_FOUND'].includes(String(err?.code || ''));
-      setMemoSyncStateSafe(studentToSave, { syncStatus: blocked ? 'blocked' : 'pending', revision: expectedRevision, mutationId });
+      setMemoSyncStateSafe(studentToSave, { syncStatus: blocked ? 'blocked' : 'pending', revision: expectedRevision, mutationId }, noteType);
       return { state: blocked ? 'blocked' : 'pending', student: studentToSave, error: err };
     }
   }

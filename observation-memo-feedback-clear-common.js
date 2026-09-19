@@ -87,7 +87,7 @@
     if (!academyId || !token) throw new Error('관찰노트 초기화에 필요한 로그인 정보를 확인하지 못했습니다.');
 
     const entry = typeof global.getMemoEntryByStudent === 'function'
-      ? (global.getMemoEntryByStudent(student) || {})
+      ? (global.getMemoEntryByStudent(student, 'elementary_observation') || {})
       : {};
     const expectedRevision = memoRevision(entry.revision);
     const mutationId = createFeedbackClearMutationId();
@@ -168,11 +168,11 @@
     const options = resetArgs?.[2] || {};
     let previousMemo = '';
     try {
-      if (typeof global.getMemoByStudent === 'function') previousMemo = global.getMemoByStudent(student) || '';
+      if (typeof global.getMemoByStudent === 'function') previousMemo = global.getMemoByStudent(student, 'elementary_observation') || '';
     } catch (_) {}
 
     try {
-      if (String(previousMemo || '').trim() && typeof global.archiveCurrentElementaryMemoRecord === 'function') {
+      if (student?.type !== 'kinder' && String(previousMemo || '').trim() && typeof global.archiveCurrentElementaryMemoRecord === 'function') {
         const analysis = typeof global.getElementaryAnalysisByStudent === 'function'
           ? global.getElementaryAnalysisByStudent(student)
           : null;
@@ -184,8 +184,12 @@
         global.addMemoFeedbackArchiveItem(student, feedbackText);
       }
     } catch (_) {}
-    try { if (typeof global.clearMemoByStudent === 'function') global.clearMemoByStudent(student); } catch (_) {}
-    try { if (typeof global.clearElementaryAnalysisByStudent === 'function') global.clearElementaryAnalysisByStudent(student); } catch (_) {}
+    try { if (typeof global.clearMemoByStudent === 'function') global.clearMemoByStudent(student, 'elementary_observation'); } catch (_) {}
+    try {
+      if (student?.type !== 'kinder' && typeof global.clearElementaryAnalysisByStudent === 'function') {
+        global.clearElementaryAnalysisByStudent(student);
+      }
+    } catch (_) {}
   }
 
   function installResetSafety() {
@@ -196,19 +200,20 @@
     async function safeResetElementaryMemoAfterFeedbackSave(...args) {
       const student = currentMemoStudentSafe();
       const memoType = currentMemoTypeSafe();
-      if (!student?.id || memoType !== 'elementary') {
+      if (!student?.id || !['elementary', 'kinder'].includes(memoType)) {
         return originalReset.apply(this, args);
       }
 
       const studentSnapshot = { ...student };
       const studentId = String(studentSnapshot.id || '');
-      if (clearInFlight.has(studentId)) return clearInFlight.get(studentId);
+      const clearKey = `${studentId}:elementary_observation`;
+      if (clearInFlight.has(clearKey)) return clearInFlight.get(clearKey);
 
       const task = (async () => {
         try {
           const serverRow = await clearObservationMemoAfterFeedbackOnServer(studentSnapshot);
           const active = currentMemoStudentSafe();
-          const stillCurrent = active && String(active.id || '') === studentId && currentMemoTypeSafe() === 'elementary';
+          const stillCurrent = active && String(active.id || '') === studentId && currentMemoTypeSafe() === memoType;
 
           if (stillCurrent) {
             runOriginalResetWithoutSecondServerClear(originalReset, this, args, serverRow);
@@ -230,11 +235,11 @@
           notifyClearFailure(error);
           return { state: 'clear_failed', student: studentSnapshot, error };
         } finally {
-          clearInFlight.delete(studentId);
+          clearInFlight.delete(clearKey);
         }
       })();
 
-      clearInFlight.set(studentId, task);
+      clearInFlight.set(clearKey, task);
       return task;
     }
 
@@ -297,8 +302,9 @@
     if (originalReconcile.__olliFeedbackClearReconcile === true) return true;
 
     async function reconcileWithFeedbackClear(student, noteType = '') {
+      const resolvedType = String(noteType || (typeof global.getSupabaseNoteDraftType === 'function' ? global.getSupabaseNoteDraftType(student) : '') || '');
       const before = typeof global.getMemoEntryByStudent === 'function'
-        ? (global.getMemoEntryByStudent(student) || {})
+        ? (global.getMemoEntryByStudent(student, resolvedType) || {})
         : {};
       const beforeStatus = String(before.syncStatus || 'local');
       const beforeConflict = before.conflict && typeof before.conflict === 'object' ? before.conflict : null;
@@ -312,7 +318,7 @@
         (beforeStatus === 'conflict' && beforeConflict?.origin !== 'reconcile-lineage');
       const beforeRevision = memoRevision(before.revision);
 
-      const result = await originalReconcile.call(this, student, noteType);
+      const result = await originalReconcile.call(this, student, resolvedType);
       const row = result?.remoteRow;
       const remoteMutationId = String(row?.last_mutation_id || '');
       const remoteRevision = memoRevision(row?.revision);
@@ -330,14 +336,14 @@
             revision: remoteRevision,
             mutationId: '',
             conflict: null
-          });
+          }, resolvedType);
         }
         return {
           ...result,
           adoptedRemote: true,
           conflictDetected: false,
           source: 'remote-feedback-clear',
-          localEntry: typeof global.getMemoEntryByStudent === 'function' ? global.getMemoEntryByStudent(student) : null,
+          localEntry: typeof global.getMemoEntryByStudent === 'function' ? global.getMemoEntryByStudent(student, resolvedType) : null,
           content: '',
           updatedAt: syncedAt,
           revision: remoteRevision

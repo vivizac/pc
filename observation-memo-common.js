@@ -30,7 +30,7 @@ function beginObservationMemoEditSession(student, noteType = '', initialText = '
 function isObservationMemoEditStateCurrent(student = currentMemoStudent) {
   const state = getObservationMemoEditState();
   if (!state || !student) return false;
-  return String(state.studentId || '') === String(student.id || '') && currentMemoType === 'elementary';
+  return String(state.studentId || '') === String(student.id || '') && ['elementary', 'kinder'].includes(currentMemoType);
 }
 
 function markObservationMemoEditorDirty(target) {
@@ -56,8 +56,8 @@ function hasObservationMemoDirtyChanges() {
 const OLLI_MEMO_SERVER_AUTOSAVE_DELAY = 1500;
 
 function getMemoInputTypeFromTarget(target) {
-  if (!target || !target.id) return '';
-  return target.id === 'memoEditor' ? 'elementary' : '';
+  if (!target || target.id !== 'memoEditor') return '';
+  return ['elementary', 'kinder'].includes(currentMemoType) ? currentMemoType : '';
 }
 
 function persistObservationMemoInputLocally(target) {
@@ -89,7 +89,7 @@ function persistObservationMemoInputLocally(target) {
 
   try {
     const previous = typeof getMemoEntryByStudent === 'function'
-      ? (getMemoEntryByStudent(currentMemoStudent) || {})
+      ? (getMemoEntryByStudent(currentMemoStudent, noteType) || {})
       : {};
     if (typeof setMemoByStudent === 'function') {
       setMemoByStudent(currentMemoStudent, content, {
@@ -99,7 +99,7 @@ function persistObservationMemoInputLocally(target) {
         revision: previous.revision || 0,
         mutationId: previous.mutationId || '',
         conflict: previous.conflict || null
-      });
+      }, noteType);
       return true;
     }
   } catch (error) {
@@ -109,8 +109,9 @@ function persistObservationMemoInputLocally(target) {
 }
 
 function getObservationMemoUnchangedResult() {
+  const noteType = String(getObservationMemoEditState()?.noteType || 'elementary_observation');
   const entry = currentMemoStudent && typeof getMemoEntryByStudent === 'function'
-    ? (getMemoEntryByStudent(currentMemoStudent) || {})
+    ? (getMemoEntryByStudent(currentMemoStudent, noteType) || {})
     : {};
   return {
     state: 'unchanged',
@@ -122,7 +123,7 @@ function getObservationMemoUnchangedResult() {
 }
 
 async function saveObservationMemoServerSnapshot(options = {}) {
-  if (!currentMemoStudent || currentMemoType !== 'elementary') return null;
+  if (!currentMemoStudent || !['elementary', 'kinder'].includes(currentMemoType)) return null;
   const editor = document.getElementById('memoEditor');
   if (!editor) return null;
 
@@ -258,7 +259,8 @@ function updateMemoStudentMetaDisplay(student, updatedAt = '') {
   const dateEl = document.getElementById('memoStudentUpdatedDate');
   if (nameEl) nameEl.textContent = student?.name || '학생 이름';
   if (dateEl) {
-    const localEntry = getMemoEntryByStudent(student);
+    const activeNoteType = String(getObservationMemoEditState()?.noteType || 'elementary_observation');
+    const localEntry = getMemoEntryByStudent(student, activeNoteType);
     const hasMemoContent = String(localEntry.content || '').trim().length > 0;
     const dateSource = updatedAt || (hasMemoContent ? localEntry.updatedAt : '');
     const dateText = formatMemoUpdatedDate(dateSource || '');
@@ -375,7 +377,7 @@ function applyReconciledObservationMemoDraft(student, memoEditor, result) {
   const isSameMemoPage =
     currentMemoStudent &&
     String(currentMemoStudent.id || '') === String(student.id || '') &&
-    currentMemoType === 'elementary';
+    ['elementary', 'kinder'].includes(currentMemoType);
 
   if (!isSameMemoPage) {
     return { applied: false, reason: 'stale-session' };
@@ -423,7 +425,7 @@ function isObservationMemoScreenActive() {
     screen &&
     screen.style.display !== 'none' &&
     currentMemoStudent &&
-    currentMemoType === 'elementary'
+    ['elementary', 'kinder'].includes(currentMemoType)
   );
 }
 
@@ -485,7 +487,7 @@ if (!window.__olliObservationMemoCrossDeviceRefreshBound) {
 }
 
 function openObservationMemoScreenShell(session) {
-  if (!session || session.type !== 'elementary') return false;
+  if (!session || !['elementary', 'kinder'].includes(session.type)) return false;
 
   const recordRoomScreen = document.getElementById('recordRoomScreen');
   const studentMemoScreenEl = document.getElementById('studentMemoScreen');
@@ -496,14 +498,14 @@ function openObservationMemoScreenShell(session) {
     studentMemoScreenEl.style.animation = '';
     studentMemoScreenEl.style.transform = '';
     studentMemoScreenEl.style.display = 'flex';
-    studentMemoScreenEl.setAttribute('data-current-memo-type', 'elementary');
+    studentMemoScreenEl.setAttribute('data-current-memo-type', session.type);
   }
 
   return !!studentMemoScreenEl;
 }
 
 function renderObservationMemoScreenChrome(session) {
-  if (!session || session.type !== 'elementary' || !session.student) return false;
+  if (!session || !['elementary', 'kinder'].includes(session.type) || !session.student) return false;
   const student = session.student;
 
   if (typeof forceStudentMemoControlsVisible === 'function') {
@@ -532,9 +534,9 @@ function renderObservationMemoScreenChrome(session) {
 
   if (feedbackBtn) {
     feedbackBtn.style.display = 'inline-flex';
-    feedbackBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>피드백 생성';
+    feedbackBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>성장 피드백 생성';
   }
-  if (analysisBtn) analysisBtn.style.display = 'inline-flex';
+  if (analysisBtn) analysisBtn.style.display = session.type === 'elementary' ? 'inline-flex' : 'none';
   if (elementaryWrap) elementaryWrap.style.display = 'block';
 
   if (typeof forceStudentMemoControlsVisible === 'function') {
@@ -564,11 +566,13 @@ function renderObservationMemoInitialView(session) {
       });
   }
 
-  renderElementaryAnalysisSummaryCard(view.analysis.data || {}, {
-    title: '분석 결과',
-    createdAt: view.analysis.createdAt || ''
-  });
-  renderElementaryAnalysisHistoryCards(view.student);
+  if (session.type === 'elementary') {
+    renderElementaryAnalysisSummaryCard(view.analysis.data || {}, {
+      title: '분석 결과',
+      createdAt: view.analysis.createdAt || ''
+    });
+    renderElementaryAnalysisHistoryCards(view.student);
+  }
   setMemoSaveStatus('자동 저장');
 
   return view;
@@ -585,7 +589,8 @@ function showMemoSaveCheck() {
 }
 
 function handleMemoHeaderAction() {
-  requestElementaryFeedback();
+  if (typeof requestGrowthFeedback === 'function') requestGrowthFeedback();
+  else requestElementaryFeedback();
 }
 
 function showPushToast(message) {

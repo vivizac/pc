@@ -7,12 +7,12 @@
     const resolveMemoKey = typeof config.getMemoKey === 'function' ? config.getMemoKey : (() => '');
     const resolveDraftType = typeof config.getDraftType === 'function' ? config.getDraftType : (() => '');
 
-    function getMemoKey(student) {
-      return String(resolveMemoKey(student) || '');
+    function getMemoKey(student, noteType = '') {
+      return String(resolveMemoKey(student, noteType) || '');
     }
 
-    function getMemoByStudent(student) {
-      const key = getMemoKey(student);
+    function getMemoByStudent(student, noteType = '') {
+      const key = getMemoKey(student, noteType);
       if (!key) return '';
       const raw = localStorage.getItem(key);
       if (!raw) return '';
@@ -23,8 +23,8 @@
       return raw;
     }
 
-    function getMemoEntryByStudent(student) {
-      const key = getMemoKey(student);
+    function getMemoEntryByStudent(student, noteType = '') {
+      const key = getMemoKey(student, noteType);
       if (!key) return { content: '', updatedAt: '', lastSyncedAt: '', syncStatus: 'unknown' };
       const raw = localStorage.getItem(key);
       if (!raw) return { content: '', updatedAt: '', lastSyncedAt: '', syncStatus: 'empty' };
@@ -42,10 +42,10 @@
       return { content: raw || '', updatedAt: '', lastSyncedAt: '', syncStatus: 'local' };
     }
 
-    function setMemoByStudent(student, content, options = {}) {
-      const key = getMemoKey(student);
+    function setMemoByStudent(student, content, options = {}, noteType = '') {
+      const key = getMemoKey(student, noteType);
       if (!key) return;
-      const previous = getMemoEntryByStudent(student);
+      const previous = getMemoEntryByStudent(student, noteType);
       const updatedAt = options.updatedAt || new Date().toISOString();
       localStorage.setItem(key, JSON.stringify({
         content: content || '',
@@ -55,19 +55,19 @@
       }));
     }
 
-    function clearMemoByStudent(student) {
-      const key = getMemoKey(student);
+    function clearMemoByStudent(student, noteType = '') {
+      const key = getMemoKey(student, noteType);
       if (!key) return;
       localStorage.removeItem(key);
     }
 
-    function setMemoSyncStateByStudent(student, syncState = {}) {
-      const entry = getMemoEntryByStudent(student);
+    function setMemoSyncStateByStudent(student, syncState = {}, noteType = '') {
+      const entry = getMemoEntryByStudent(student, noteType);
       setMemoByStudent(student, entry.content || '', {
         updatedAt: entry.updatedAt || new Date().toISOString(),
         lastSyncedAt: syncState.lastSyncedAt || entry.lastSyncedAt || '',
         syncStatus: syncState.syncStatus || entry.syncStatus || 'local'
-      });
+      }, noteType);
     }
 
     function isRemoteMemoNewerThanLocal(remoteUpdatedAt, localUpdatedAt) {
