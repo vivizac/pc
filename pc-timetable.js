@@ -450,6 +450,7 @@
   function kinderClassMerges() { return Array.isArray(state.data && state.data.kinder_class_merges) ? state.data.kinder_class_merges : []; }
   function cellMemos() { return Array.isArray(state.data && state.data.cell_memos) ? state.data.cell_memos : []; }
   function classTeachers() { return Array.isArray(state.data && state.data.class_teachers) ? state.data.class_teachers : []; }
+  function teacherOverrides() { return Array.isArray(state.data && state.data.teacher_overrides) ? state.data.teacher_overrides : []; }
   function teacherMembers() { return Array.isArray(state.data && state.data.teacher_members) ? state.data.teacher_members : []; }
   function teacherDisplayName(value) {
     const name = clean(value);
@@ -470,6 +471,20 @@
   function classTeacherLabel(division, weekday, time, classGroup) {
     const item = classTeacherFor(division, weekday, time, classGroup);
     return item ? teacherDisplayName(item.teacher_name) : '';
+  }
+  function teacherOverrideFor(division, sessionDate, time, classGroup) {
+    const keyDate = sessionDate instanceof Date ? dateKey(sessionDate) : clean(sessionDate).slice(0, 10);
+    const group = classGroupOf({ class_group: classGroup });
+    return teacherOverrides().find((item) => clean(item && item.division) === clean(division)
+      && clean(item && item.session_date).slice(0, 10) === keyDate
+      && Number(item && item.time_slot) === Number(time)
+      && classGroupOf(item) === group) || null;
+  }
+  function effectiveClassTeacherLabel(division, sessionDate, time, classGroup) {
+    const override = teacherOverrideFor(division, sessionDate, time, classGroup);
+    if (override && clean(override.teacher_name)) return `${teacherDisplayName(override.teacher_name)} · 대체`;
+    const date = sessionDate instanceof Date ? sessionDate : parseDate(sessionDate);
+    return classTeacherLabel(division, date.getDay(), time, classGroup);
   }
   function isClassSplit(division, weekday, time) {
     if (division === 'kinder') {
@@ -735,7 +750,7 @@
     const attrs = `data-tt-cell="1" data-division="${division}" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-time="${time}"${holiday ? ' data-holiday="1" aria-disabled="true"' : ''}`;
     const memo = cellMemoText(division, date, time);
     if (!isClassSplit(division, date.getDay(), time)) {
-      const teacherLabel = classTeacherLabel(division, date.getDay(), time, 'A');
+      const teacherLabel = effectiveClassTeacherLabel(division, date, time, 'A');
       const mergedLabel = teacherLabel || (division === 'kinder' ? 'A반' : '');
       const mergedClassHead = mergedLabel
         ? `<div class="olliTtClassLaneHead olliTtMergedClassHead"><strong>${esc(mergedLabel)}</strong></div>`
@@ -744,7 +759,7 @@
     }
     const memoGroup = cellMemoClassGroup(division, date, time);
     return `<div class="olliTtCell ${division} split${holiday ? ' holiday' : ''}" ${attrs}><div class="olliTtClassLanes ${division}">${['A', 'B'].map((group) => {
-      const teacherLabel = classTeacherLabel(division, date.getDay(), time, group);
+      const teacherLabel = effectiveClassTeacherLabel(division, date, time, group);
       const laneLabel = teacherLabel || (division === 'kinder' ? `${group}반` : '');
       const laneHead = laneLabel ? `<div class="olliTtClassLaneHead"><strong>${esc(laneLabel)}</strong></div>` : '';
       return `<div class="olliTtClassLane ${division}" ${attrs} data-class-group="${group}">${laneHead}${cellContentsHtml(division, date, time, group, memo && group === memoGroup ? memo : '')}</div>`;
@@ -781,11 +796,11 @@
       if (isClassSplit('elementary', date.getDay(), storedTime)) {
         contentRows = Math.ceil(slotEntryCount('elementary', date, storedTime, 'A') / 2)
           + Math.ceil(slotEntryCount('elementary', date, storedTime, 'B') / 2);
-        if (classTeacherLabel('elementary', date.getDay(), storedTime, 'A')) headerHeight += 14;
-        if (classTeacherLabel('elementary', date.getDay(), storedTime, 'B')) headerHeight += 14;
+        if (effectiveClassTeacherLabel('elementary', date, storedTime, 'A')) headerHeight += 14;
+        if (effectiveClassTeacherLabel('elementary', date, storedTime, 'B')) headerHeight += 14;
       } else {
         contentRows = Math.ceil(slotEntryCount('elementary', date, storedTime, '') / 2);
-        if (classTeacherLabel('elementary', date.getDay(), storedTime, 'A')) headerHeight += 14;
+        if (effectiveClassTeacherLabel('elementary', date, storedTime, 'A')) headerHeight += 14;
       }
 
       const memoHeight = memoItems.reduce((sum, item) => {
@@ -1141,11 +1156,14 @@
     const targetClassGroup = classGroupOf({ class_group: dataset.classGroup });
     const teacher = classTeacherFor(division, Number(dataset.weekday), time, targetClassGroup);
     const teacherMemberId = clean(teacher && teacher.teacher_member_id);
+    const dayOverride = teacherOverrideFor(division, targetDate, time, targetClassGroup);
+    const overrideTeacherMemberId = clean(dayOverride && dayOverride.teacher_member_id);
     state.dialog = {
       kind: 'add', division, date: targetDate,
       weekday: Number(dataset.weekday), time, studentId: '',
       query: '', guestName: '', note: '', originalNote: '', originalMemoGroup: '', addType: 'wait', targetClassGroup,
       teacherMemberId, originalTeacherMemberId: teacherMemberId,
+      overrideTeacherMemberId, originalOverrideTeacherMemberId: overrideTeacherMemberId,
       pendingKinderMerge: false, pendingKinderSplit: false
     };
     openOverlay();
@@ -1244,6 +1262,17 @@
       + '</div></div>';
   }
 
+  function dailyTeacherChoiceHtml(dialog) {
+    const selected = clean(dialog.overrideTeacherMemberId);
+    const regularId = clean(dialog.teacherMemberId);
+    const teachers = teacherMembers().filter((teacher) => clean(teacher && teacher.id) !== regularId);
+    const dateLabel = koreanDate(parseDate(dialog.date), true);
+    return `<div class="olliTtField olliTtDailyTeacherField"><div class="olliTtFieldHead"><span>당일 담당</span><small>${esc(dateLabel)} 하루만 적용 · 정규 담임은 유지됩니다.</small></div><div class="olliTtClassChoiceGrid olliTtDailyTeacherChoiceGrid">`
+      + `<button type="button" class="olliTtChoice ${selected ? '' : 'active'}" data-tt-daily-teacher="">정규 담임</button>`
+      + teachers.map((teacher) => `<button type="button" class="olliTtChoice ${selected === clean(teacher.id) ? 'active' : ''}" data-tt-daily-teacher="${esc(teacher.id)}">${esc(teacherDisplayName(teacher.display_name))}</button>`).join('')
+      + '</div></div>';
+  }
+
   function moveDialogHtml(dialog) {
     const student = studentById(dialog.studentId);
     const rows = currentStudentEnrollments(dialog.studentId).sort((a, b) => Number(a.weekday) - Number(b.weekday) || Number(a.time_slot) - Number(b.time_slot));
@@ -1333,10 +1362,11 @@
     const pendingKinderMerge = Boolean(state.dialog.pendingKinderMerge);
     const pendingKinderSplit = Boolean(state.dialog.pendingKinderSplit);
     const teacherChanged = clean(state.dialog.teacherMemberId) !== clean(state.dialog.originalTeacherMemberId);
-    saveButton.disabled = !(hasSelectedStudent || hasNote || hadMemo || pendingKinderMerge || pendingKinderSplit || teacherChanged);
+    const overrideChanged = clean(state.dialog.overrideTeacherMemberId) !== clean(state.dialog.originalOverrideTeacherMemberId);
+    saveButton.disabled = !(hasSelectedStudent || hasNote || hadMemo || pendingKinderMerge || pendingKinderSplit || teacherChanged || overrideChanged);
     saveButton.textContent = (pendingKinderMerge || pendingKinderSplit)
       ? '등록'
-      : (hasSelectedStudent ? '등록' : (hasNote ? '메모 저장' : (hadMemo ? '메모 삭제' : (teacherChanged ? '담임 저장' : '등록'))));
+      : (hasSelectedStudent ? '등록' : (hasNote ? '메모 저장' : (hadMemo ? '메모 삭제' : (teacherChanged ? '담임 저장' : (overrideChanged ? '당일 담당 저장' : '등록')))));
   }
 
   function renderAddPickerResults(dialogElement) {
@@ -1378,10 +1408,11 @@
     const note = clean(dialog.note);
     const hadMemo = Boolean(clean(dialog.originalNote));
     const teacherChanged = clean(dialog.teacherMemberId) !== clean(dialog.originalTeacherMemberId);
-    const canRegister = Boolean(hasRegistrationTarget || note || hadMemo || dialog.pendingKinderMerge || dialog.pendingKinderSplit || teacherChanged);
+    const overrideChanged = clean(dialog.overrideTeacherMemberId) !== clean(dialog.originalOverrideTeacherMemberId);
+    const canRegister = Boolean(hasRegistrationTarget || note || hadMemo || dialog.pendingKinderMerge || dialog.pendingKinderSplit || teacherChanged || overrideChanged);
     const primaryLabel = (dialog.pendingKinderMerge || dialog.pendingKinderSplit)
       ? '등록'
-      : (hasRegistrationTarget ? '등록' : (note ? '메모 저장' : (hadMemo ? '메모 삭제' : (teacherChanged ? '담임 저장' : '등록'))));
+      : (hasRegistrationTarget ? '등록' : (note ? '메모 저장' : (hadMemo ? '메모 삭제' : (teacherChanged ? '담임 저장' : (overrideChanged ? '당일 담당 저장' : '등록')))));
     const studentField = addStudentFieldHtml(dialog);
     return dialogHead('+', '이 시간에 학생 추가', `${koreanDate(parseDate(dialog.date), true)} ${weekdayLabel(dialog.weekday)}요일 · ${timeLabel(dialog.time)}`)
       + '<div class="olliTtDialogBody">'
@@ -1394,6 +1425,7 @@
       + (division === 'elementary' ? `<div class="olliTtField olliTtSplitClassField"><div class="olliTtFieldHead"><span>클래스 운영</span><small>${isClassSplit(division, dialog.weekday, dialog.time) ? '분리된 A반·B반을 하나의 칸으로 통합합니다.' : '현재 칸을 위·아래 A반·B반으로 나눕니다.'}</small></div><button type="button" class="olliTtSplitClassBtn" ${isClassSplit(division, dialog.weekday, dialog.time) ? 'data-tt-merge-class' : 'data-tt-split-class'}>${isClassSplit(division, dialog.weekday, dialog.time) ? '클래스 통합' : '클래스 분리'}</button></div>` : '')
       + classGroupChoiceHtml(division, dialog.targetClassGroup, dialog.weekday, dialog.time, false, true)
       + teacherChoiceHtml(dialog)
+      + dailyTeacherChoiceHtml(dialog)
       + `<label class="olliTtAddMemo"><span>메모</span><textarea data-tt-add-note maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.note)}</textarea></label>`
       + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-add ${canRegister ? '' : 'disabled'}>${primaryLabel}</button></div></div>`;
   }
@@ -1627,12 +1659,22 @@
         const teacherMemberId = clean(teacher && teacher.teacher_member_id);
         state.dialog.teacherMemberId = teacherMemberId;
         state.dialog.originalTeacherMemberId = teacherMemberId;
+        const dayOverride = teacherOverrideFor(state.dialog.division, state.dialog.date, state.dialog.time, state.dialog.targetClassGroup);
+        const overrideTeacherMemberId = clean(dayOverride && dayOverride.teacher_member_id);
+        state.dialog.overrideTeacherMemberId = overrideTeacherMemberId;
+        state.dialog.originalOverrideTeacherMemberId = overrideTeacherMemberId;
       }
       renderDialog();
     }));
     dialog.querySelectorAll('[data-tt-class-teacher]').forEach((button) => button.addEventListener('click', () => {
       if (!state.dialog || state.dialog.kind !== 'add') return;
       state.dialog.teacherMemberId = clean(button.dataset.ttClassTeacher);
+      if (clean(state.dialog.overrideTeacherMemberId) === clean(state.dialog.teacherMemberId)) state.dialog.overrideTeacherMemberId = '';
+      renderDialog();
+    }));
+    dialog.querySelectorAll('[data-tt-daily-teacher]').forEach((button) => button.addEventListener('click', () => {
+      if (!state.dialog || state.dialog.kind !== 'add') return;
+      state.dialog.overrideTeacherMemberId = clean(button.dataset.ttDailyTeacher);
       renderDialog();
     }));
     const effective = dialog.querySelector('[data-tt-effective-date]');
@@ -2084,16 +2126,18 @@
     const pendingKinderMerge = Boolean(dialog.pendingKinderMerge && dialog.division === 'kinder');
     const pendingKinderSplit = Boolean(dialog.pendingKinderSplit && dialog.division === 'kinder');
     const teacherChanged = clean(dialog.teacherMemberId) !== clean(dialog.originalTeacherMemberId);
-    if (!hasRegistrationTarget && !note && !hadMemo && !pendingKinderMerge && !pendingKinderSplit && !teacherChanged) return;
+    const overrideChanged = clean(dialog.overrideTeacherMemberId) !== clean(dialog.originalOverrideTeacherMemberId);
+    if (!hasRegistrationTarget && !note && !hadMemo && !pendingKinderMerge && !pendingKinderSplit && !teacherChanged && !overrideChanged) return;
 
     if (!hasRegistrationTarget) {
       const result = await withSaving(async () => {
         if (pendingKinderMerge) await service.mergeKinderClass(dialog.weekday, dialog.time);
         if (pendingKinderSplit) await service.splitKinderClass(dialog.weekday, dialog.time);
         if (teacherChanged) await service.setClassTeacher(dialog.division, dialog.weekday, dialog.time, dialog.targetClassGroup, dialog.teacherMemberId);
+        if (overrideChanged) await service.setTeacherOverride(dialog.date, dialog.division, dialog.time, dialog.targetClassGroup, dialog.overrideTeacherMemberId, 'teacher_absence');
         if (note || hadMemo) await persistDialogCellMemo(dialog);
         if (teacherChanged) await refreshStudentsFromServer();
-        return { merged: pendingKinderMerge, split: pendingKinderSplit, memoChanged: note || hadMemo, teacherChanged };
+        return { merged: pendingKinderMerge, split: pendingKinderSplit, memoChanged: note || hadMemo, teacherChanged, overrideChanged };
       });
       if (result) {
         if (pendingKinderMerge) notify(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 유치부 수업을 합반했어요.`);
@@ -2101,6 +2145,10 @@
         else if (teacherChanged) {
           const teacher = teacherMemberById(dialog.teacherMemberId);
           notify(teacher ? `${teacherDisplayName(teacher.display_name)} 담임으로 설정했어요.` : '담임 지정을 해제했어요.');
+        }
+        else if (overrideChanged) {
+          const teacher = teacherMemberById(dialog.overrideTeacherMemberId);
+          notify(teacher ? `${teacherDisplayName(teacher.display_name)} 선생님으로 당일 담당을 변경했어요.` : '당일 담당 변경을 해제했어요.');
         }
         else notify(note ? '시간표 메모를 저장했어요.' : '시간표 메모를 삭제했어요.');
       }
@@ -2116,6 +2164,7 @@
       if (pendingKinderMerge) await service.mergeKinderClass(dialog.weekday, dialog.time);
       if (pendingKinderSplit) await service.splitKinderClass(dialog.weekday, dialog.time);
       if (teacherChanged) await service.setClassTeacher(dialog.division, dialog.weekday, dialog.time, dialog.targetClassGroup, dialog.teacherMemberId);
+      if (overrideChanged) await service.setTeacherOverride(dialog.date, dialog.division, dialog.time, dialog.targetClassGroup, dialog.overrideTeacherMemberId, 'teacher_absence');
       let actionResult;
       if (guestMode) {
         actionResult = await service.addGuestEntry({
