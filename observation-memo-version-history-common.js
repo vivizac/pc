@@ -32,7 +32,7 @@
   }
   function activeStudent() {
     const student = global.currentMemoStudent;
-    if (!student || global.currentMemoType !== 'elementary') return null;
+    if (!student || !['elementary', 'kinder'].includes(String(global.currentMemoType || ''))) return null;
     return student;
   }
   function academyId() {

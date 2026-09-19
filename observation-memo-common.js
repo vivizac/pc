@@ -30,7 +30,7 @@ function beginObservationMemoEditSession(student, noteType = '', initialText = '
 function isObservationMemoEditStateCurrent(student = currentMemoStudent) {
   const state = getObservationMemoEditState();
   if (!state || !student) return false;
-  return String(state.studentId || '') === String(student.id || '') && currentMemoType === 'elementary';
+  return String(state.studentId || '') === String(student.id || '') && ['elementary', 'kinder'].includes(String(currentMemoType || ''));
 }
 
 function markObservationMemoEditorDirty(target) {
@@ -57,7 +57,8 @@ const OLLI_MEMO_SERVER_AUTOSAVE_DELAY = 1500;
 
 function getMemoInputTypeFromTarget(target) {
   if (!target || !target.id) return '';
-  return target.id === 'memoEditor' ? 'elementary' : '';
+  if (target.id !== 'memoEditor') return '';
+  return ['elementary', 'kinder'].includes(String(currentMemoType || '')) ? currentMemoType : '';
 }
 
 function persistObservationMemoInputLocally(target) {
@@ -122,7 +123,7 @@ function getObservationMemoUnchangedResult() {
 }
 
 async function saveObservationMemoServerSnapshot(options = {}) {
-  if (!currentMemoStudent || currentMemoType !== 'elementary') return null;
+  if (!currentMemoStudent || !['elementary', 'kinder'].includes(String(currentMemoType || ''))) return null;
   const editor = document.getElementById('memoEditor');
   if (!editor) return null;
 
@@ -279,11 +280,12 @@ function forceObservationMemoControlsVisible(options = {}) {
   if (screen.style.display === 'none') return false;
 
   const extraInlineFlex = Array.isArray(options.extraInlineFlex) ? options.extraInlineFlex : [];
+  const isElementary = String(currentMemoType || '') === 'elementary';
   const showInlineFlex = [
     '#memoRecordRoomBtn',
     '#memoStudentListBtn',
-    '#memoBottomAnalysisBtn',
     '#memoFeedbackBtn',
+    ...(isElementary ? ['#memoBottomAnalysisBtn'] : []),
     ...extraInlineFlex
   ];
   const showFlex = ['#studentMemoScreen .memoBottomBar'];
@@ -304,6 +306,11 @@ function forceObservationMemoControlsVisible(options = {}) {
   [...new Set(showInlineFlex)].forEach(selector => reveal(selector, 'inline-flex'));
   showFlex.forEach(selector => reveal(selector, 'flex'));
   showBlock.forEach(selector => reveal(selector, ''));
+
+  if (!isElementary) {
+    const analysisBtn = document.getElementById('memoBottomAnalysisBtn') || document.getElementById('memoAnalysisBtn');
+    if (analysisBtn) analysisBtn.style.display = 'none';
+  }
   return true;
 }
 function renderMemoModeMenu() {
@@ -375,7 +382,7 @@ function applyReconciledObservationMemoDraft(student, memoEditor, result) {
   const isSameMemoPage =
     currentMemoStudent &&
     String(currentMemoStudent.id || '') === String(student.id || '') &&
-    currentMemoType === 'elementary';
+    ['elementary', 'kinder'].includes(String(currentMemoType || ''));
 
   if (!isSameMemoPage) {
     return { applied: false, reason: 'stale-session' };
@@ -423,7 +430,7 @@ function isObservationMemoScreenActive() {
     screen &&
     screen.style.display !== 'none' &&
     currentMemoStudent &&
-    currentMemoType === 'elementary'
+    ['elementary', 'kinder'].includes(String(currentMemoType || ''))
   );
 }
 
@@ -485,7 +492,7 @@ if (!window.__olliObservationMemoCrossDeviceRefreshBound) {
 }
 
 function openObservationMemoScreenShell(session) {
-  if (!session || session.type !== 'elementary') return false;
+  if (!session || !session.student || !['elementary', 'kinder'].includes(String(session.type || ''))) return false;
 
   const recordRoomScreen = document.getElementById('recordRoomScreen');
   const studentMemoScreenEl = document.getElementById('studentMemoScreen');
@@ -496,15 +503,16 @@ function openObservationMemoScreenShell(session) {
     studentMemoScreenEl.style.animation = '';
     studentMemoScreenEl.style.transform = '';
     studentMemoScreenEl.style.display = 'flex';
-    studentMemoScreenEl.setAttribute('data-current-memo-type', 'elementary');
+    studentMemoScreenEl.setAttribute('data-current-memo-type', session.type === 'kinder' ? 'kinder' : 'elementary');
   }
 
   return !!studentMemoScreenEl;
 }
 
 function renderObservationMemoScreenChrome(session) {
-  if (!session || session.type !== 'elementary' || !session.student) return false;
+  if (!session || !session.student || !['elementary', 'kinder'].includes(String(session.type || ''))) return false;
   const student = session.student;
+  const isElementary = session.type === 'elementary';
 
   if (typeof forceStudentMemoControlsVisible === 'function') {
     forceStudentMemoControlsVisible();
@@ -534,8 +542,12 @@ function renderObservationMemoScreenChrome(session) {
     feedbackBtn.style.display = 'inline-flex';
     feedbackBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>피드백 생성';
   }
-  if (analysisBtn) analysisBtn.style.display = 'inline-flex';
+  if (analysisBtn) analysisBtn.style.display = isElementary ? 'inline-flex' : 'none';
   if (elementaryWrap) elementaryWrap.style.display = 'block';
+  const analysisBlock = document.getElementById('elementaryAnalysisBlock');
+  if (analysisBlock) analysisBlock.style.display = isElementary ? '' : 'none';
+  const analysisHistory = document.getElementById('elementaryAnalysisHistoryWrap');
+  if (analysisHistory && !isElementary) analysisHistory.style.display = 'none';
 
   if (typeof forceStudentMemoControlsVisible === 'function') {
     forceStudentMemoControlsVisible();
@@ -564,11 +576,13 @@ function renderObservationMemoInitialView(session) {
       });
   }
 
-  renderElementaryAnalysisSummaryCard(view.analysis.data || {}, {
-    title: '분석 결과',
-    createdAt: view.analysis.createdAt || ''
-  });
-  renderElementaryAnalysisHistoryCards(view.student);
+  if (view.type === 'elementary') {
+    renderElementaryAnalysisSummaryCard(view.analysis.data || {}, {
+      title: '분석 결과',
+      createdAt: view.analysis.createdAt || ''
+    });
+    renderElementaryAnalysisHistoryCards(view.student);
+  }
   setMemoSaveStatus('자동 저장');
 
   return view;
