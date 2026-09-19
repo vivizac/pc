@@ -245,27 +245,35 @@
       host.innerHTML = header + '<div class="pcStudentRegistrationClassState">선택 가능한 수업이 없습니다.</div>';
       return;
     }
-    const grouped = new Map();
+    const groupedByDay = new Map();
     registration.options.forEach((option) => {
-      const key = pairTimeKey(option);
-      if (!grouped.has(key)) grouped.set(key, []);
-      grouped.get(key).push(option);
+      const weekday = Number(option.weekday);
+      if (!groupedByDay.has(weekday)) groupedByDay.set(weekday, new Map());
+      const timeMap = groupedByDay.get(weekday);
+      const timeKey = Number(option.time_slot);
+      if (!timeMap.has(timeKey)) timeMap.set(timeKey, []);
+      timeMap.get(timeKey).push(option);
     });
-    const body = Array.from(grouped.values()).map((rows) => {
-      const first = rows[0];
-      const day = NUM_DAY[first.weekday] || '';
-      const classCount = rows.length;
-      const buttons = rows.map((option) => {
-        const key = classKey(option);
-        const selected = selectedKeys.has(key);
-        const disabled = !option.selectable && !selected;
-        const stateText = option.full ? '정원 마감' : `${option.count}/${option.capacity} · ${option.remaining}자리`;
-        return `<button type="button" class="pcStudentRegistrationClassBtn ${selected ? 'active' : ''} ${disabled ? 'disabled' : ''}" data-registration-class="${esc(key)}" ${disabled ? 'disabled' : ''}>`
-          + `<span><strong>${esc(optionLabel(option))}</strong><em>${esc(option.teacher_name || '담임 미지정')}</em></span><small>${esc(stateText)}</small></button>`;
+    const body = Array.from(groupedByDay.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([weekday, timeMap]) => {
+        const dayLabel = `${NUM_DAY[weekday] || ''}요일`;
+        const slots = Array.from(timeMap.entries())
+          .sort((a, b) => a[0] - b[0])
+          .map(([timeSlot, rows]) => {
+            const buttons = rows.map((option) => {
+              const key = classKey(option);
+              const selected = selectedKeys.has(key);
+              const disabled = !option.selectable && !selected;
+              const stateText = option.full ? '정원 마감' : `${option.count}/${option.capacity} · ${option.remaining}자리`;
+              return `<button type="button" class="pcStudentRegistrationClassBtn ${selected ? 'active' : ''} ${disabled ? 'disabled' : ''}" data-registration-class="${esc(key)}" ${disabled ? 'disabled' : ''}>`
+                + `<span><strong>${esc(optionLabel(option))}</strong><em>${esc(option.teacher_name || '담임 미지정')}</em></span><small>${esc(stateText)}</small></button>`;
+            }).join('');
+            return `<div class="pcStudentRegistrationTimeRow"><div class="pcStudentRegistrationTimeLabel">${timeSlot}시</div><div class="pcStudentRegistrationClassGrid ${rows.length === 1 ? 'single' : ''}">${buttons}</div></div>`;
+          }).join('');
+        return `<section class="pcStudentRegistrationDay"><div class="pcStudentRegistrationDayHead"><strong>${esc(dayLabel)}</strong></div><div class="pcStudentRegistrationDaySlots">${slots}</div></section>`;
       }).join('');
-      return `<section class="pcStudentRegistrationSlot"><div class="pcStudentRegistrationSlotHead"><strong>${esc(day)}요일 ${first.time_slot}시</strong><span>${classCount}개 클래스</span></div><div class="pcStudentRegistrationClassGrid">${buttons}</div></section>`;
-    }).join('');
-    host.innerHTML = header + body + '<div class="pcStudentRegistrationClassGuide">수업을 아직 정하지 않았다면 선택하지 않고 학생 정보만 등록할 수 있습니다.</div>';
+    host.innerHTML = header + '<div class="pcStudentRegistrationDays">' + body + '</div><div class="pcStudentRegistrationClassGuide">수업을 아직 정하지 않았다면 선택하지 않고 학생 정보만 등록할 수 있습니다.</div>';
   }
 
   async function refreshRegistrationOptions() {
@@ -544,12 +552,16 @@
       #studentModal .pcStudentRegistrationClassPicker.expanded .pcStudentRegistrationClassChevron{transform:rotate(180deg);}
       #studentModal .pcStudentRegistrationClassHead:focus-visible{outline:2px solid rgba(22,135,255,.24);outline-offset:5px;border-radius:8px;}
       #studentModal .pcStudentRegistrationClassState{min-height:62px;border-radius:13px;background:#f2f4f6;color:#9298a0;font-size:11px;line-height:1.55;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px;box-sizing:border-box;}
-      #studentModal .pcStudentRegistrationSlot{padding:11px 0;border-top:1px solid #eef0f2;}
-      #studentModal .pcStudentRegistrationSlot:first-of-type{border-top:0;padding-top:2px;}
-      #studentModal .pcStudentRegistrationSlotHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px;}
-      #studentModal .pcStudentRegistrationSlotHead strong{font-size:11.5px;font-weight:780;color:#4b5158;}
-      #studentModal .pcStudentRegistrationSlotHead span{font-size:10px;font-weight:650;color:#a0a5ad;}
+      #studentModal .pcStudentRegistrationDays{display:grid;gap:18px;}
+      #studentModal .pcStudentRegistrationDay{padding-top:2px;}
+      #studentModal .pcStudentRegistrationDay + .pcStudentRegistrationDay{padding-top:16px;border-top:1px solid #e5e8ec;}
+      #studentModal .pcStudentRegistrationDayHead{margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+      #studentModal .pcStudentRegistrationDayHead strong{color:#262b31;font-size:13px;font-weight:850;letter-spacing:-.02em;}
+      #studentModal .pcStudentRegistrationDaySlots{display:grid;gap:7px;}
+      #studentModal .pcStudentRegistrationTimeRow{display:grid;grid-template-columns:48px minmax(0,1fr);gap:9px;align-items:stretch;}
+      #studentModal .pcStudentRegistrationTimeLabel{min-height:52px;border-radius:11px;background:#f2f4f6;color:#656d77;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
       #studentModal .pcStudentRegistrationClassGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+      #studentModal .pcStudentRegistrationClassGrid.single{grid-template-columns:minmax(0,1fr);}
       #studentModal .pcStudentRegistrationClassBtn{min-height:52px;border:1px solid #e4e7ea;border-radius:13px;background:#fff;padding:8px 10px;color:#4d535b;font:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;}
       #studentModal .pcStudentRegistrationClassBtn>span{min-width:0;display:grid;gap:3px;}
       #studentModal .pcStudentRegistrationClassBtn strong{font-size:11px;font-weight:800;color:inherit;}
