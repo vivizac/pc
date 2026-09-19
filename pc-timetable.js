@@ -1313,6 +1313,32 @@
     return students.length ? students.map((student) => `<button type="button" class="olliTtPickerStudent ${clean(student.id) === dialog.studentId ? 'active' : ''}" data-tt-add-student="${esc(student.id)}"><strong>${esc(student.name)}</strong><span>${esc(studentScheduleText(student.id)) || '수업 없음'}</span></button>`).join('') : '<div class="olliTtQuickEmpty">학생을 찾지 못했습니다.</div>';
   }
 
+  function addStudentFieldHtml(dialog) {
+    if (isGuestAddType(dialog.addType)) {
+      return '<div class="olliTtField"><div class="olliTtFieldHead"><span>학생 이름</span><small>학생명단에 등록되지 않은 학생 이름을 직접 입력하세요.</small></div>'
+        + `<input type="text" class="olliTtStudentSearch" data-tt-add-guest-name maxlength="60" value="${esc(dialog.guestName)}" placeholder="학생 이름 입력"></div>`;
+    }
+    return '<div class="olliTtField"><div class="olliTtFieldHead"><span>학생 선택</span></div>'
+      + `<input type="search" class="olliTtStudentSearch" data-tt-add-search value="${esc(dialog.query)}" placeholder="학생 검색"><div class="olliTtPickerList" data-tt-add-picker>`
+      + addPickerHtml(dialog)
+      + '</div></div>';
+  }
+
+  function syncAddSaveButton(dialogElement) {
+    const saveButton = dialogElement && dialogElement.querySelector('[data-tt-save-add]');
+    if (!saveButton || !state.dialog || state.dialog.kind !== 'add') return;
+    const hasSelectedStudent = hasAddRegistrationTarget(state.dialog);
+    const hasNote = Boolean(clean(state.dialog.note));
+    const hadMemo = Boolean(clean(state.dialog.originalNote));
+    const pendingKinderMerge = Boolean(state.dialog.pendingKinderMerge);
+    const pendingKinderSplit = Boolean(state.dialog.pendingKinderSplit);
+    const teacherChanged = clean(state.dialog.teacherMemberId) !== clean(state.dialog.originalTeacherMemberId);
+    saveButton.disabled = !(hasSelectedStudent || hasNote || hadMemo || pendingKinderMerge || pendingKinderSplit || teacherChanged);
+    saveButton.textContent = (pendingKinderMerge || pendingKinderSplit)
+      ? '등록'
+      : (hasSelectedStudent ? '등록' : (hasNote ? '메모 저장' : (hadMemo ? '메모 삭제' : (teacherChanged ? '담임 저장' : '등록'))));
+  }
+
   function renderAddPickerResults(dialogElement) {
     const picker = dialogElement && dialogElement.querySelector('[data-tt-add-picker]');
     if (!picker || !state.dialog || state.dialog.kind !== 'add') return;
@@ -1321,6 +1347,26 @@
       state.dialog.studentId = button.dataset.ttAddStudent;
       renderDialog();
     }));
+  }
+
+  function bindAddStudentField(dialogElement) {
+    if (!dialogElement || !state.dialog || state.dialog.kind !== 'add') return;
+    bindImeSafeSearch(
+      dialogElement.querySelector('[data-tt-add-search]'),
+      (value) => { if (state.dialog && state.dialog.kind === 'add') state.dialog.query = value; },
+      () => renderAddPickerResults(dialogElement),
+      null
+    );
+    dialogElement.querySelectorAll('[data-tt-add-student]').forEach((button) => button.addEventListener('click', () => {
+      state.dialog.studentId = button.dataset.ttAddStudent;
+      renderDialog();
+    }));
+    const guestNameInput = dialogElement.querySelector('[data-tt-add-guest-name]');
+    if (guestNameInput) guestNameInput.addEventListener('input', () => {
+      if (!state.dialog || state.dialog.kind !== 'add') return;
+      state.dialog.guestName = guestNameInput.value;
+      syncAddSaveButton(dialogElement);
+    });
   }
 
   function addDialogHtml(dialog) {
@@ -1336,13 +1382,7 @@
     const primaryLabel = (dialog.pendingKinderMerge || dialog.pendingKinderSplit)
       ? '등록'
       : (hasRegistrationTarget ? '등록' : (note ? '메모 저장' : (hadMemo ? '메모 삭제' : (teacherChanged ? '담임 저장' : '등록'))));
-    const studentField = guestMode
-      ? '<div class="olliTtField"><div class="olliTtFieldHead"><span>학생 이름</span><small>학생명단에 등록되지 않은 학생 이름을 직접 입력하세요.</small></div>'
-        + `<input type="text" class="olliTtStudentSearch" data-tt-add-guest-name maxlength="60" value="${esc(dialog.guestName)}" placeholder="학생 이름 입력"></div>`
-      : '<div class="olliTtField"><div class="olliTtFieldHead"><span>학생 선택</span></div>'
-        + `<input type="search" class="olliTtStudentSearch" data-tt-add-search value="${esc(dialog.query)}" placeholder="학생 검색"><div class="olliTtPickerList" data-tt-add-picker>`
-        + addPickerHtml(dialog)
-        + '</div></div>';
+    const studentField = addStudentFieldHtml(dialog);
     return dialogHead('+', '이 시간에 학생 추가', `${koreanDate(parseDate(dialog.date), true)} ${weekdayLabel(dialog.weekday)}요일 · ${timeLabel(dialog.time)}`)
       + '<div class="olliTtDialogBody">'
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>추가 유형</span></div><div class="olliTtTypeGrid">'
@@ -1350,7 +1390,7 @@
       + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'makeup' ? 'active' : ''}" data-tt-add-type="makeup">보강 등록</button>`
       + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'guest_wait' ? 'active' : ''}" data-tt-add-type="guest_wait">대기등록(비재원)</button>`
       + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'trial' ? 'active' : ''}" data-tt-add-type="trial">체험수업</button></div></div>`
-      + studentField
+      + `<div data-tt-add-student-field>${studentField}</div>`
       + (division === 'elementary' ? `<div class="olliTtField olliTtSplitClassField"><div class="olliTtFieldHead"><span>클래스 운영</span><small>${isClassSplit(division, dialog.weekday, dialog.time) ? '분리된 A반·B반을 하나의 칸으로 통합합니다.' : '현재 칸을 위·아래 A반·B반으로 나눕니다.'}</small></div><button type="button" class="olliTtSplitClassBtn" ${isClassSplit(division, dialog.weekday, dialog.time) ? 'data-tt-merge-class' : 'data-tt-split-class'}>${isClassSplit(division, dialog.weekday, dialog.time) ? '클래스 통합' : '클래스 분리'}</button></div>` : '')
       + classGroupChoiceHtml(division, dialog.targetClassGroup, dialog.weekday, dialog.time, false, true)
       + teacherChoiceHtml(dialog)
@@ -1609,18 +1649,13 @@
       if (state.dialog.kind === 'move' && state.dialog.actionType === 'move') syncMoveAbsenceState(state.dialog);
       renderDialog();
     });
-    bindImeSafeSearch(
-      dialog.querySelector('[data-tt-add-search]'),
-      (value) => { if (state.dialog && state.dialog.kind === 'add') state.dialog.query = value; },
-      () => renderAddPickerResults(dialog),
-      null
-    );
-    dialog.querySelectorAll('[data-tt-add-student]').forEach((button) => button.addEventListener('click', () => { state.dialog.studentId = button.dataset.ttAddStudent; renderDialog(); }));
+    bindAddStudentField(dialog);
     dialog.querySelectorAll('[data-tt-add-type]').forEach((button) => button.addEventListener('click', () => {
       if (!state.dialog || state.dialog.kind !== 'add') return;
       const previousGuestMode = isGuestAddType(state.dialog.addType);
       const nextType = button.dataset.ttAddType;
       const nextGuestMode = isGuestAddType(nextType);
+      if (nextType === state.dialog.addType) return;
       state.dialog.addType = nextType;
       if (nextGuestMode && !previousGuestMode) {
         state.dialog.studentId = '';
@@ -1628,39 +1663,23 @@
       } else if (!nextGuestMode && previousGuestMode) {
         state.dialog.guestName = '';
       }
-      renderDialog();
-    }));
-    const guestNameInput = dialog.querySelector('[data-tt-add-guest-name]');
-    if (guestNameInput) guestNameInput.addEventListener('input', () => {
-      if (!state.dialog || state.dialog.kind !== 'add') return;
-      state.dialog.guestName = guestNameInput.value;
-      const saveButton = dialog.querySelector('[data-tt-save-add]');
-      if (saveButton) {
-        const canSave = hasAddRegistrationTarget(state.dialog)
-          || Boolean(clean(state.dialog.note))
-          || Boolean(clean(state.dialog.originalNote))
-          || Boolean(state.dialog.pendingKinderMerge)
-          || Boolean(state.dialog.pendingKinderSplit)
-          || clean(state.dialog.teacherMemberId) !== clean(state.dialog.originalTeacherMemberId);
-        saveButton.disabled = !canSave;
-        if (hasAddRegistrationTarget(state.dialog)) saveButton.textContent = '등록';
+      dialog.querySelectorAll('[data-tt-add-type]').forEach((typeButton) => {
+        typeButton.classList.toggle('active', typeButton.dataset.ttAddType === nextType);
+      });
+      if (nextGuestMode !== previousGuestMode) {
+        const fieldHost = dialog.querySelector('[data-tt-add-student-field]');
+        if (fieldHost) {
+          fieldHost.innerHTML = addStudentFieldHtml(state.dialog);
+          bindAddStudentField(dialog);
+        }
       }
-    });
+      syncAddSaveButton(dialog);
+    }));
     const addNote = dialog.querySelector('[data-tt-add-note]');
     if (addNote) addNote.addEventListener('input', () => {
       if (!state.dialog || state.dialog.kind !== 'add') return;
       state.dialog.note = addNote.value;
-      const saveButton = dialog.querySelector('[data-tt-save-add]');
-      if (saveButton) {
-        const hasSelectedStudent = hasAddRegistrationTarget(state.dialog);
-        const hasNote = Boolean(clean(state.dialog.note));
-        const hadMemo = Boolean(clean(state.dialog.originalNote));
-        const pendingKinderMerge = Boolean(state.dialog.pendingKinderMerge);
-        const pendingKinderSplit = Boolean(state.dialog.pendingKinderSplit);
-        const teacherChanged = clean(state.dialog.teacherMemberId) !== clean(state.dialog.originalTeacherMemberId);
-        saveButton.disabled = !(hasSelectedStudent || hasNote || hadMemo || pendingKinderMerge || pendingKinderSplit || teacherChanged);
-        saveButton.textContent = (pendingKinderMerge || pendingKinderSplit) ? '등록' : (hasSelectedStudent ? '등록' : (hasNote ? '메모 저장' : (hadMemo ? '메모 삭제' : (teacherChanged ? '담임 저장' : '등록'))));
-      }
+      syncAddSaveButton(dialog);
     });
     bindImeSafeSearch(
       dialog.querySelector('[data-tt-pickup-search]'),
