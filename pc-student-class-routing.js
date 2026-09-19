@@ -269,7 +269,7 @@
               return `<button type="button" class="pcStudentRegistrationClassBtn ${selected ? 'active' : ''} ${disabled ? 'disabled' : ''}" data-registration-class="${esc(key)}" ${disabled ? 'disabled' : ''}>`
                 + `<span><strong>${esc(optionLabel(option))}</strong><em>${esc(option.teacher_name || '담임 미지정')}</em></span><small>${esc(stateText)}</small></button>`;
             }).join('');
-            return `<div class="pcStudentRegistrationTimeRow"><div class="pcStudentRegistrationTimeLabel">${timeSlot}시</div><div class="pcStudentRegistrationClassGrid ${rows.length === 1 ? 'single' : ''}">${buttons}</div></div>`;
+            return `<div class="pcStudentRegistrationTimeRow"><div class="pcStudentRegistrationTimeLabel">${timeSlot}시</div><div class="pcStudentRegistrationClassGrid">${buttons}</div></div>`;
           }).join('');
         return `<section class="pcStudentRegistrationDay"><div class="pcStudentRegistrationDayHead"><strong>${esc(dayLabel)}</strong></div><div class="pcStudentRegistrationDaySlots">${slots}</div></section>`;
       }).join('');
@@ -561,7 +561,6 @@
       #studentModal .pcStudentRegistrationTimeRow{display:grid;grid-template-columns:48px minmax(0,1fr);gap:9px;align-items:stretch;}
       #studentModal .pcStudentRegistrationTimeLabel{min-height:52px;border-radius:11px;background:#f2f4f6;color:#656d77;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
       #studentModal .pcStudentRegistrationClassGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
-      #studentModal .pcStudentRegistrationClassGrid.single{grid-template-columns:minmax(0,1fr);}
       #studentModal .pcStudentRegistrationClassBtn{min-height:52px;border:1px solid #e4e7ea;border-radius:13px;background:#fff;padding:8px 10px;color:#4d535b;font:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;}
       #studentModal .pcStudentRegistrationClassBtn>span{min-width:0;display:grid;gap:3px;}
       #studentModal .pcStudentRegistrationClassBtn strong{font-size:11px;font-weight:800;color:inherit;}
