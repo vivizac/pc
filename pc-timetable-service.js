@@ -226,12 +226,13 @@
       console.warn('시간표 결석 상태 조회 실패:', error);
       return [];
     });
-    const [data, kinderLayout, calendarDays, teacherContext, memoContext] = await Promise.all([
+    const [data, kinderLayout, calendarDays, teacherContext, memoContext, teacherOverrideContext] = await Promise.all([
       rpc('olli_schedule_week', contextPayload({ p_week_start: weekStart })),
       rpc('olli_schedule_kinder_class_layouts', contextPayload()),
       loadCalendarRange(start, end),
       rpc('olli_schedule_class_teacher_context', contextPayload()),
-      rpc('olli_schedule_cell_memos_week_v2', contextPayload({ p_week_start: start }))
+      rpc('olli_schedule_cell_memos_week_v2', contextPayload({ p_week_start: start })),
+      loadTeacherOverridesRange(start, end)
     ]);
     assertCurrentContext();
     data.kinder_class_merges = Array.isArray(kinderLayout && kinderLayout.merged_slots)
@@ -240,6 +241,7 @@
     data.calendar_days = calendarDays;
     data.class_teachers = Array.isArray(teacherContext && teacherContext.assignments) ? teacherContext.assignments : [];
     data.teacher_members = Array.isArray(teacherContext && teacherContext.teachers) ? teacherContext.teachers : [];
+    data.teacher_overrides = Array.isArray(teacherOverrideContext && teacherOverrideContext.overrides) ? teacherOverrideContext.overrides : [];
     data.cell_memos = Array.isArray(memoContext && memoContext.memos) ? memoContext.memos : (Array.isArray(data.cell_memos) ? data.cell_memos : []);
     const attendanceOverrides = await attendanceOverridesPromise;
     assertCurrentContext();
@@ -277,6 +279,24 @@
       p_time_slot: Number(timeSlot),
       p_class_group: clean(classGroup || 'A').toUpperCase(),
       p_teacher_member_id: clean(teacherMemberId) || null
+    }));
+  }
+
+  async function loadTeacherOverridesRange(startDate, endDate) {
+    return rpc('olli_schedule_teacher_overrides_range', contextPayload({
+      p_start_date: clean(startDate),
+      p_end_date: clean(endDate || startDate)
+    }));
+  }
+
+  async function setTeacherOverride(sessionDate, division, timeSlot, classGroup, teacherMemberId, reason) {
+    return rpc('olli_schedule_set_teacher_override', contextPayload({
+      p_session_date: clean(sessionDate),
+      p_division: clean(division),
+      p_time_slot: Number(timeSlot),
+      p_class_group: clean(classGroup || 'A').toUpperCase(),
+      p_teacher_member_id: clean(teacherMemberId) || null,
+      p_reason: clean(reason) || 'teacher_absence'
     }));
   }
 
@@ -539,6 +559,8 @@
     restoreHistory,
     setSessionOrder,
     setClassTeacher,
+    loadTeacherOverridesRange,
+    setTeacherOverride,
     saveCellMemo
   });
 })(window);
