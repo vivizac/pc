@@ -28,8 +28,8 @@
     return {
       student,
       type,
-      noteType: type === 'elementary' ? 'elementary_observation' : getSupabaseNoteDraftType(student),
-      localEntry: type === 'elementary' ? getObservationMemoLocalSnapshot(student) : null,
+      noteType: getSupabaseNoteDraftType(student) || 'elementary_observation',
+      localEntry: getObservationMemoLocalSnapshot(student),
       analysisDisplay: type === 'elementary'
         ? getPrimaryElementaryAnalysisDisplay(student)
         : null
@@ -37,7 +37,7 @@
   }
 
   function prepareObservationMemoInitialView(session) {
-    if (!session || session.type !== 'elementary' || !session.student) return null;
+    if (!session || !['elementary', 'kinder'].includes(session.type) || !session.student) return null;
 
     const localEntry = session.localEntry || { content: '' };
     const analysisDisplay = session.analysisDisplay || { data: {}, createdAt: '' };
@@ -57,7 +57,7 @@
   function isCurrentObservationMemoDirty(student) {
     try {
       if (!currentMemoStudent || String(currentMemoStudent.id || '') !== String(student?.id || '')) return false;
-      if (currentMemoType !== 'elementary') return false;
+      if (!['elementary', 'kinder'].includes(currentMemoType)) return false;
       if (typeof hasObservationMemoDirtyChanges === 'function') return !!hasObservationMemoDirtyChanges();
     } catch (_) {}
     return false;
