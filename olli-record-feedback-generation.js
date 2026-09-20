@@ -217,6 +217,8 @@ async function requestSceneCardFeedbackFromElementary(studentName, text, analysi
   if (loading) return;
 
   const studentDivision = options.studentDivision === 'kinder' || currentMemoStudent?.type === 'kinder' ? 'kinder' : 'elementary';
+  const requestStudentId = String(options.studentId || currentMemoStudent?.id || '').trim();
+  const requestStudentName = normalizeTodayFeedbackStudentName(studentName);
   const divisionLabel = studentDivision === 'kinder' ? '유치부' : '초등부';
   const feedbackMonth = String(options.feedbackMonth || getFeedbackMonthLabel()).trim();
   const feedbackMonthNumber = Number(options.feedbackMonthNumber || getFeedbackMonthNumber());
@@ -245,7 +247,7 @@ ${normalizedAnalysisPromptText}` : ''}`;
       headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify({
         promptType: options.promptType || 'elementary',
-        studentName: normalizeTodayFeedbackStudentName(studentName),
+        studentName: requestStudentName,
         studentDivision,
         feedbackMonth,
         feedbackMonthNumber,
@@ -260,11 +262,14 @@ ${normalizedAnalysisPromptText}` : ''}`;
     if (!rawReply) throw new Error('응답 본문이 비어 있습니다.');
     const parsed = parseReplyType(rawReply);
     const cleanText = parsed.cleanText || rawReply;
+    const restoredText = typeof restoreFeedbackStudentAliases === 'function'
+      ? restoreFeedbackStudentAliases(cleanText, requestStudentName)
+      : cleanText;
     hideFeedbackLoading();
-    const futureDirection = getFutureDirectionFromApiData(data, cleanText);
-    await saveElementaryFeedbackDirectly(cleanText, {
-      studentName: normalizeTodayFeedbackStudentName(studentName),
-      studentId: currentMemoStudent?.id || '',
+    const futureDirection = getFutureDirectionFromApiData(data, restoredText);
+    await saveElementaryFeedbackDirectly(restoredText, {
+      studentName: requestStudentName,
+      studentId: requestStudentId,
       studentDivision,
       feedbackType: options.feedbackType || 'growth',
       feedbackMonth,
