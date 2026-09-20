@@ -3,13 +3,13 @@
 
   if (global.OlliRealtime && global.OlliRealtime.version) return;
 
-  const VERSION = '1.1.1';
+  const VERSION = '1.2.0';
   const SDK_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/+esm';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
   const CONTEXT_CHECK_INTERVAL_MS = 5000;
   const RETRY_DELAY_MS = 10000;
   const SUBSCRIBE_TIMEOUT_MS = 8000;
-  const VALID_DOMAINS = new Set(['observation', 'schedule']);
+  const VALID_DOMAINS = new Set(['observation', 'schedule', 'chat']);
 
   const state = {
     client: null,
