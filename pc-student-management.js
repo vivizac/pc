@@ -3,6 +3,10 @@
 
   const consultationStatusCache = new Map();
   const consultationStatusInFlight = new Map();
+  let serverTodoItems = [];
+  let serverTodoAcademyId = '';
+  let serverTodoLoadPromise = null;
+  let serverTodoRealtimeWatcher = null;
 
   function core() { return global.OlliPcCore; }
   function escape(value) {
@@ -21,11 +25,82 @@
     try { return typeof getThisMonthConsultationDueStudents === 'function' ? getThisMonthConsultationDueStudents(list) : []; }
     catch (_) { return []; }
   }
-  function todos() {
+  function legacyTodos() {
     try {
       const progress = typeof getOlliConsultationProgress === 'function' ? getOlliConsultationProgress() : {};
       return Array.isArray(progress?.todos) ? progress.todos : [];
     } catch (_) { return []; }
+  }
+
+  function todoServerContext() {
+    let academyId = '';
+    try {
+      academyId = String(global.OlliStorageCore?.AcademyContext?.getCurrent?.()?.academyId || '').trim();
+    } catch (_) {}
+    if (!academyId) {
+      try { academyId = String(localStorage.getItem('olli_current_academy_id') || '').trim(); } catch (_) {}
+    }
+    let sessionToken = '';
+    try { sessionToken = String(localStorage.getItem('olli_account_session_token_v1') || '').trim(); } catch (_) {}
+    return { academyId, sessionToken };
+  }
+
+  async function callTodoRpc(name, params) {
+    if (typeof global.supabase !== 'function' && typeof supabase !== 'function') {
+      throw new Error('Supabase 연결 함수를 찾지 못했습니다.');
+    }
+    const call = typeof global.supabase === 'function' ? global.supabase : supabase;
+    return call('POST', 'rpc/' + name, params);
+  }
+
+  function serverTodosForCurrentAcademy() {
+    const academyId = todoServerContext().academyId;
+    if (!academyId || academyId !== serverTodoAcademyId) return [];
+    return serverTodoItems;
+  }
+
+  function todos() {
+    const serverItems = serverTodosForCurrentAcademy().map((item) => ({ ...item, _source: 'server' }));
+    const legacyItems = legacyTodos().map((item) => ({ ...item, _source: 'legacy' }));
+    return [...serverItems, ...legacyItems];
+  }
+
+  async function loadServerTodos(options = {}) {
+    const opts = { render: true, ...options };
+    const context = todoServerContext();
+    if (!context.academyId || !context.sessionToken) {
+      serverTodoItems = [];
+      serverTodoAcademyId = '';
+      if (opts.render && core()?.state?.section === 'academy') renderTodoCard();
+      return false;
+    }
+
+    if (serverTodoLoadPromise && serverTodoAcademyId === context.academyId) return serverTodoLoadPromise;
+
+    const requestedAcademyId = context.academyId;
+    serverTodoLoadPromise = (async () => {
+      const payload = await callTodoRpc('olli_academy_tasks_list', {
+        p_session_token: context.sessionToken,
+        p_academy_id: requestedAcademyId,
+        p_limit: 200
+      });
+      if (!payload || payload.ok !== true) throw new Error(payload?.message || '할 일 목록을 불러오지 못했습니다.');
+
+      const current = todoServerContext();
+      if (current.academyId !== requestedAcademyId || current.sessionToken !== context.sessionToken) return false;
+
+      serverTodoAcademyId = requestedAcademyId;
+      serverTodoItems = Array.isArray(payload.tasks) ? payload.tasks : [];
+      if (opts.render && core()?.state?.section === 'academy') renderTodoCard();
+      return true;
+    })().catch((error) => {
+      console.warn('PC 공유 할 일 조회 실패:', error?.message || error);
+      return false;
+    }).finally(() => {
+      serverTodoLoadPromise = null;
+    });
+
+    return serverTodoLoadPromise;
   }
 
   function dueLabelsForStudent(student) {
@@ -165,6 +240,7 @@
       + buildStatCard('올해 퇴원', thisYearWithdrawn.length, '휴원 '+paused.length+'명 · 퇴원 '+thisYearWithdrawn.length+'명')
       + '</div><section class="recordAcademyConsultSection pcAcademyTodoSection" id="pcAcademyTodoSection"></section>';
     renderTodoCard();
+    loadServerTodos({ render:true }).catch(() => {});
     renderConsultationPanel(due);
     filter(core().state.academyFilter);
     handleSearch(core().state.searchValues.academy);
@@ -187,9 +263,12 @@
     const remaining = items.filter((item) => !item.completed).length;
     const rows = items.length ? items.map((item) => {
       const id = escape(item.id);
-      return '<div class="pcAcademyTodoItem'+(item.completed ? ' completed' : '')+'">'
+      const origin = item._source === 'server' && item.origin === 'chat'
+        ? '<span class="pcAcademyTodoOrigin">올리톡</span>'
+        : '';
+      return '<div class="pcAcademyTodoItem'+(item.completed ? ' completed' : '')+'" data-todo-source="'+escape(item._source || 'legacy')+'">'
         + '<button type="button" class="pcAcademyTodoCheck" aria-label="'+(item.completed ? '완료 취소' : '완료')+'" aria-pressed="'+(item.completed ? 'true' : 'false')+'" onclick="pcToggleAcademyTodo(\''+id+'\')"><span></span></button>'
-        + '<div class="pcAcademyTodoText">'+escape(item.text)+'</div>'
+        + '<div class="pcAcademyTodoTextWrap"><div class="pcAcademyTodoText">'+escape(item.text)+'</div>'+origin+'</div>'
         + '<button type="button" class="pcAcademyTodoDelete" aria-label="할 일 삭제" title="삭제" onclick="pcDeleteAcademyTodo(\''+id+'\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>'
         + '</div>';
     }).join('') : '<div class="pcAcademyTodoEmpty"><span>오늘 처리할 일을 적어보세요.</span><small>추가한 할 일은 학원 구성원에게 함께 표시됩니다.</small></div>';
@@ -236,27 +315,95 @@
     const progress = getOlliConsultationProgress();
     await saveOlliConsultationProgressShared({ ...progress, todos: nextTodos });
   }
-  function addTodo(event) {
+
+  async function addTodo(event) {
     event?.preventDefault();
     const input = document.getElementById('pcAcademyTodoInput');
     const text = String(input?.value || '').trim();
     if (!text) { input?.focus(); return; }
-    const now = new Date().toISOString();
-    const next = [{ id: 'todo_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2, 7), text, completed: false, created_at: now, completed_at: '' }, ...todos()];
-    if (input) input.value = '';
-    persistTodos(next);
-    renderTodoCard();
-    setTimeout(() => document.getElementById('pcAcademyTodoInput')?.focus(), 0);
+
+    const context = todoServerContext();
+    if (!context.academyId || !context.sessionToken) {
+      const now = new Date().toISOString();
+      const next = [{ id: 'todo_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2, 7), text, completed: false, created_at: now, completed_at: '' }, ...legacyTodos()];
+      if (input) input.value = '';
+      await persistTodos(next);
+      renderTodoCard();
+      setTimeout(() => document.getElementById('pcAcademyTodoInput')?.focus(), 0);
+      return;
+    }
+
+    try {
+      if (input) input.disabled = true;
+      await callTodoRpc('olli_academy_task_create', {
+        p_session_token: context.sessionToken,
+        p_academy_id: context.academyId,
+        p_text: text,
+        p_assigned_to_member_id: null
+      });
+      if (input) input.value = '';
+      await loadServerTodos({ render:true });
+    } catch (error) {
+      console.warn('PC 공유 할 일 추가 실패:', error);
+      if (typeof global.showPushToast === 'function') global.showPushToast('할 일을 추가하지 못했습니다.');
+      else alert('할 일을 추가하지 못했습니다.\n' + (error?.message || error));
+    } finally {
+      if (input) input.disabled = false;
+      setTimeout(() => document.getElementById('pcAcademyTodoInput')?.focus(), 0);
+    }
   }
-  function toggleTodo(id) {
+
+  async function toggleTodo(id) {
+    const item = todos().find((entry) => String(entry.id) === String(id));
+    if (!item) return;
+
+    if (item._source === 'server') {
+      const context = todoServerContext();
+      if (!context.academyId || !context.sessionToken) return;
+      try {
+        await callTodoRpc('olli_academy_task_set_completed', {
+          p_session_token: context.sessionToken,
+          p_academy_id: context.academyId,
+          p_task_id: String(item.id),
+          p_completed: !item.completed
+        });
+        await loadServerTodos({ render:true });
+      } catch (error) {
+        console.warn('PC 공유 할 일 완료 변경 실패:', error);
+      }
+      return;
+    }
+
     const now = new Date().toISOString();
-    const next = todos().map((item) => String(item.id) === String(id) ? { ...item, completed: !item.completed, completed_at: item.completed ? '' : now } : item);
-    persistTodos(next);
+    const next = legacyTodos().map((entry) => String(entry.id) === String(id)
+      ? { ...entry, completed: !entry.completed, completed_at: entry.completed ? '' : now }
+      : entry);
+    await persistTodos(next);
     renderTodoCard();
   }
-  function deleteTodo(id) {
-    const next = todos().filter((item) => String(item.id) !== String(id));
-    persistTodos(next);
+
+  async function deleteTodo(id) {
+    const item = todos().find((entry) => String(entry.id) === String(id));
+    if (!item) return;
+
+    if (item._source === 'server') {
+      const context = todoServerContext();
+      if (!context.academyId || !context.sessionToken) return;
+      try {
+        await callTodoRpc('olli_academy_task_delete', {
+          p_session_token: context.sessionToken,
+          p_academy_id: context.academyId,
+          p_task_id: String(item.id)
+        });
+        await loadServerTodos({ render:true });
+      } catch (error) {
+        console.warn('PC 공유 할 일 삭제 실패:', error);
+      }
+      return;
+    }
+
+    const next = legacyTodos().filter((entry) => String(entry.id) !== String(id));
+    await persistTodos(next);
     renderTodoCard();
   }
 
@@ -265,6 +412,7 @@
     app.showRecordRoomImmediately('academy');
     app.updateRecordLayout();
     renderDashboard();
+    loadServerTodos({ render:true }).catch(() => {});
     if (typeof loadRecords === 'function') Promise.resolve(loadRecords('')).catch((error) => console.warn('학생관리 백그라운드 동기화 실패:', error));
     setTimeout(bindRows, 50);
   }
@@ -315,9 +463,19 @@
     handleSearch(app.state.searchValues.academy);
   }
 
+  function bindTodoRealtime() {
+    if (serverTodoRealtimeWatcher || typeof global.OlliRealtime?.watchDomain !== 'function') return;
+    serverTodoRealtimeWatcher = global.OlliRealtime.watchDomain('chat', async (context) => {
+      if (!context?.isCurrent?.()) return false;
+      return loadServerTodos({ render: core()?.state?.section === 'academy' });
+    });
+  }
+
   function start() {
     const dashboard = document.getElementById('recordAcademyDashboard');
-    if (!dashboard || dashboard.__olliPcStudentManagementObserver) return;
+    if (!dashboard) return;
+    bindTodoRealtime();
+    if (dashboard.__olliPcStudentManagementObserver) return;
     dashboard.__olliPcStudentManagementObserver = new MutationObserver(() => {
       if (core().state.section === 'academy') setTimeout(bindRows, 0);
     });
@@ -325,7 +483,7 @@
     if (typeof currentRecordView !== 'undefined' && currentRecordView === 'academy') renderDashboard();
   }
 
-  global.OlliPcStudentManagement = { renderContext, renderDashboard, renderTodoCard, renderConsultationPanel, open, filter, handleSearch, resolveStudent, refreshConsultationCompletionState, bindRows, start };
+  global.OlliPcStudentManagement = { renderContext, renderDashboard, renderTodoCard, renderConsultationPanel, loadServerTodos, open, filter, handleSearch, resolveStudent, refreshConsultationCompletionState, bindRows, start };
   global.pcAddAcademyTodo = addTodo;
   global.pcToggleAcademyTodo = toggleTodo;
   global.pcDeleteAcademyTodo = deleteTodo;
