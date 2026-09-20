@@ -78,3 +78,30 @@ body.olliPcApp #recordAcademyDashboard .recordAcademyConsultSection{
   .pcAcademyConsultationList{max-height:420px;}
 }
 
+
+
+.pcAcademyTodoTextWrap{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.pcAcademyTodoTextWrap .pcAcademyTodoText{
+  min-width:0;
+  flex:1;
+}
+.pcAcademyTodoOrigin{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:20px;
+  padding:0 7px;
+  border-radius:999px;
+  background:#eef8f5;
+  color:#5a8d83;
+  font-size:9.5px;
+  line-height:1;
+  font-weight:800;
+  white-space:nowrap;
+}
