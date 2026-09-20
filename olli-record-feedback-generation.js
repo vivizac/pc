@@ -247,6 +247,7 @@ ${normalizedAnalysisPromptText}` : ''}`;
       headers:{ 'Content-Type':'application/json' },
       body: JSON.stringify({
         promptType: options.promptType || 'elementary',
+        studentId: requestStudentId,
         studentName: requestStudentName,
         studentDivision,
         feedbackMonth,
