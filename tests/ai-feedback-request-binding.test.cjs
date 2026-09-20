@@ -34,7 +34,16 @@ test('consultation AI distinguishes class growth and fail records', () => {
   assert.match(consultation, /return '수업 피드백'/);
 });
 
-test('consultation request keeps division and restores subject alias after AI response', () => {
-  assert.match(consultation, /body: JSON\.stringify\(\{ promptType, studentDivision, messages \}\)/);
+test('consultation request keeps request-bound identity and restores subject alias after AI response', () => {
+  assert.match(consultation, /body: JSON\.stringify\(\{ promptType, studentId, studentName, studentDivision, messages \}\)/);
+  assert.match(consultation, /studentId: student\?\.id \|\| ''/);
+  assert.match(consultation, /studentName: student\?\.name \|\| ''/);
   assert.match(consultation, /restoreFeedbackStudentAliases\(cleanText, student\?\.name \|\| ''\)/);
+});
+
+test('class and growth requests send request-bound student identity to Olli AI server', () => {
+  assert.match(runtime, /jobId: item\.id,/);
+  assert.match(runtime, /studentId: item\.studentId,/);
+  assert.match(generation, /studentId: requestStudentId,/);
+  assert.match(generation, /studentName: requestStudentName,/);
 });
