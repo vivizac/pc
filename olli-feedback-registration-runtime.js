@@ -328,7 +328,11 @@
       : null;
     var selectedStudent = getKcfSelectedStudent();
 
-    if (window.OlliCommandRouter && typeof window.OlliCommandRouter.route === 'function') {
+    if (
+      window.__olliCommandsMovedToTalk !== true &&
+      window.OlliCommandRouter &&
+      typeof window.OlliCommandRouter.route === 'function'
+    ) {
       try {
         var commandRoute = await window.OlliCommandRouter.route(text, {
           source: 'one_minute_feedback',
