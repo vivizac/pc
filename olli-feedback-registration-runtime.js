@@ -195,28 +195,6 @@
     if (typeof closeKinderChatFeedbackStudentManagePopup === 'function') closeKinderChatFeedbackStudentManagePopup();
   };
 
-  function renderKcfCommandRoute(commandRoute, fallbackText){
-    if (!commandRoute) return;
-    if (typeof addKinderChatMessage === 'function') {
-      addKinderChatMessage('user', String(commandRoute.text || fallbackText || ''));
-      var rawMessage = String(commandRoute.message || '');
-      if (rawMessage) {
-        if (
-          commandRoute.kind === 'command_confirmation'
-          && typeof window.renderKinderChatFeedbackCommandConfirmation === 'function'
-        ) {
-          var displayMessage = rawMessage
-            .replace(/\n?['‘’"]?확인['‘’"]?\s*또는\s*['‘’"]?취소['‘’"]?라고\s*입력해\s*주세요\.?/g, '')
-            .trim();
-          addKinderChatMessage('bot', displayMessage || '이 작업을 진행할까요?');
-          try { window.renderKinderChatFeedbackCommandConfirmation(commandRoute); } catch (err) {}
-        } else {
-          addKinderChatMessage('bot', rawMessage);
-        }
-      }
-    }
-  }
-
   function clearKcfInlineInput(input){
     if (!input) return;
     input.value = '';
@@ -328,28 +306,10 @@
       : null;
     var selectedStudent = getKcfSelectedStudent();
 
-    if (window.OlliCommandRouter && typeof window.OlliCommandRouter.route === 'function') {
-      try {
-        var commandRoute = await window.OlliCommandRouter.route(text, {
-          source: 'one_minute_feedback',
-          selectedStudent: selectedStudent || null,
-          autoSubmitContext: autoSubmitContext || null
-        });
-        if (commandRoute && commandRoute.handled === true) {
-          renderKcfCommandRoute(commandRoute, text);
-          if (commandRoute.clearInput !== false) clearKcfInlineInput(input);
-          if (typeof setKinderChatFeedbackWarning === 'function') setKinderChatFeedbackWarning('');
-                return;
-        }
-      } catch (err) {
-        console.warn('올리 명령 라우터 처리 실패, 기존 피드백 흐름을 계속합니다:', err);
-      }
-    }
-
     if (!selectedStudent) {
       if (typeof addKinderChatMessage === 'function') {
         addKinderChatMessage('user', text);
-        addKinderChatMessage('bot', '아직 이 문장은 실행 가능한 명령으로 연결되지 않았어요.');
+        addKinderChatMessage('bot', '수업 피드백을 작성할 학생을 먼저 선택해 주세요.');
       }
       clearKcfInlineInput(input);
       if (typeof setKinderChatFeedbackWarning === 'function') setKinderChatFeedbackWarning('');
@@ -357,17 +317,6 @@
     }
     setKinderChatFeedbackWarning('');
     await continueKinderChatFeedbackSubmit(text, selectedStudent, autoSubmitContext);
-  };
-
-  window.submitKinderChatFeedbackCommandChoice = async function(choice){
-    var input = document.getElementById('kcfInput');
-    if (!input || typeof window.submitKinderChatFeedback !== 'function') return false;
-    var normalized = String(choice || '').trim().toLowerCase();
-    var commandText = normalized === 'confirm' ? '확인' : '취소';
-    input.value = commandText;
-    try { input.dispatchEvent(new Event('input', { bubbles:true })); } catch (err) {}
-    await window.submitKinderChatFeedback();
-    return true;
   };
 
   window.openKinderChatFeedbackSaveStudentPicker = function(itemId, candidates){
