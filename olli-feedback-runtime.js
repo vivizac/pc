@@ -671,10 +671,11 @@ function startTodayFeedbackRequest(options = {}) {
     const rawReply = String(data.reply || '').trim();
     if (!rawReply) throw new Error('응답 본문이 비어 있습니다.');
     const parsed = parseReplyType(rawReply);
-    const suspiciousSegments = getSuspiciousFeedbackSegments(parsed.cleanText);
+    const restoredText = restoreFeedbackStudentAliases(parsed.cleanText, item.studentName);
+    const suspiciousSegments = getSuspiciousFeedbackSegments(restoredText);
     updateTodayFeedbackItem(item.id, {
       status: suspiciousSegments.length ? 'review' : 'done',
-      resultText: parsed.cleanText,
+      resultText: restoredText,
       suspiciousSegments,
       errorMessage:''
     });
