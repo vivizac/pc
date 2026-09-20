@@ -301,6 +301,22 @@ function getConsultationFeedbackPromptType(student, months) {
   return 'summary';
 }
 
+function getConsultationFeedbackRecordPurpose(row = {}) {
+  const sourceTable = String(row.source_table || row.sourceTable || '').trim().toLowerCase();
+  const rawType = String(row.feedback_type || row.feedbackType || '').trim().toLowerCase();
+  if (sourceTable === 'fail_feedbacks' || rawType === 'fail') return 'fail';
+  if (rawType === 'growth') return 'growth';
+  if (rawType === 'class') return 'class';
+  return 'legacy';
+}
+
+function getConsultationFeedbackRecordTypeLabel(row = {}) {
+  const purpose = getConsultationFeedbackRecordPurpose(row);
+  if (purpose === 'fail') return '실패·성장 피드백';
+  if (purpose === 'growth') return '성장 피드백';
+  return '수업 피드백';
+}
+
 function buildConsultationSummaryFeedbackUserText(student, months, rows, labels = []) {
   const studentTypeLabel = student?.type === 'kinder' ? '유치부' : '초등부';
   const enrolledAt = getEnrolledAtFromStudent(student) || '등록일 미확인';
@@ -309,7 +325,7 @@ function buildConsultationSummaryFeedbackUserText(student, months, rows, labels 
     const date = row._summaryDate
       ? `${row._summaryDate.getFullYear()}.${String(row._summaryDate.getMonth()+1).padStart(2,'0')}.${String(row._summaryDate.getDate()).padStart(2,'0')}`
       : String(row.date || row.created_at || '날짜 미확인');
-    const typeLabel = row.source_table === 'fail_feedbacks' ? '실패·성장 피드백' : '수업 피드백';
+    const typeLabel = getConsultationFeedbackRecordTypeLabel(row);
     return `${index + 1}. [${date} / ${typeLabel}]\n${String(row.content || '').trim()}`;
   }).join('\n\n');
 
@@ -324,11 +340,12 @@ function buildConsultationFeedbackMessages(student, months, userText) {
   return [{ role: 'user', content: userText }];
 }
 
-async function fetchConsultationFeedbackByPromptType(promptType, messages) {
+async function fetchConsultationFeedbackByPromptType(promptType, messages, options = {}) {
+  const studentDivision = options.studentDivision === 'kinder' ? 'kinder' : (options.studentDivision === 'elementary' ? 'elementary' : '');
   const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ promptType, messages })
+    body: JSON.stringify({ promptType, studentDivision, messages })
   });
 
   const rawText = await res.text();
@@ -344,13 +361,18 @@ async function createSummaryFeedbackFromRows(student, months, rows, labels = [])
   const promptType = getConsultationFeedbackPromptType(student, months);
   const userText = buildConsultationSummaryFeedbackUserText(student, months, rows, labels);
   const messages = buildConsultationFeedbackMessages(student, months, userText);
-  const { res, data } = await fetchConsultationFeedbackByPromptType(promptType, messages);
+  const { res, data } = await fetchConsultationFeedbackByPromptType(promptType, messages, {
+    studentDivision: student?.type === 'kinder' ? 'kinder' : 'elementary'
+  });
 
   if (!res.ok) throw new Error(getApiErrorMessage(res.status, data));
 
   const rawReply = String(data.reply || '').trim();
   if (!rawReply) throw new Error('응답 본문이 비어 있습니다.');
-  return parseReplyType(rawReply).cleanText;
+  const cleanText = parseReplyType(rawReply).cleanText;
+  return typeof restoreFeedbackStudentAliases === 'function'
+    ? restoreFeedbackStudentAliases(cleanText, student?.name || '')
+    : cleanText;
 }
 
 const academyConsultationSummaryState = {

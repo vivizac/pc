@@ -70,3 +70,13 @@ test('shared selected student context keeps id name and division together', () =
   assert.match(registration, /window\.__kcfSelectedStudentDivision = division;/);
   assert.match(registration, /window\.__kcfSelectedStudentDivision = '';/);
 });
+
+
+test('AI response aliases are restored from request-bound student identity before queue save', () => {
+  assert.match(runtime, /function getFeedbackDisplayStudentName\(name\)/);
+  assert.match(runtime, /function restoreFeedbackStudentAliases\(text, studentName\)/);
+  assert.match(runtime, /output = output\.replace\(\/학생\\s\*A\/g, displayName\)/);
+  assert.match(runtime, /output = output\.replace\(\/학생\\s\*\[B-Z\]\/g, '다른 친구'\)/);
+  assert.match(runtime, /const restoredText = restoreFeedbackStudentAliases\(parsed\.cleanText, item\.studentName\)/);
+  assert.match(runtime, /resultText: restoredText/);
+});

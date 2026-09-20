@@ -340,6 +340,24 @@ function normalizeTodayFeedbackStudentName(name, fallback) {
   return bad.has(value) ? '' : value;
 }
 
+const OLLI_COMPOUND_KOREAN_SURNAMES = new Set(['남궁','황보','제갈','선우','독고','동방','사공','서문']);
+function getFeedbackDisplayStudentName(name) {
+  const original = normalizeTodayFeedbackStudentName(name);
+  const compact = String(original || '').replace(/\s+/g, '');
+  if (!compact || !/^[가-힣]+$/.test(compact)) return original;
+  if (compact.length === 3) return compact.slice(1);
+  if (compact.length === 4 && OLLI_COMPOUND_KOREAN_SURNAMES.has(compact.slice(0, 2))) return compact.slice(2);
+  return compact;
+}
+function restoreFeedbackStudentAliases(text, studentName) {
+  let output = String(text || '');
+  if (!output) return '';
+  const displayName = getFeedbackDisplayStudentName(studentName);
+  if (displayName) output = output.replace(/학생\s*A/g, displayName);
+  output = output.replace(/학생\s*[B-Z]/g, '다른 친구');
+  return output;
+}
+
 function getSuspiciousFeedbackSegments(text) {
   const source = String(text || '');
   if (!source) return [];
@@ -653,10 +671,11 @@ function startTodayFeedbackRequest(options = {}) {
     const rawReply = String(data.reply || '').trim();
     if (!rawReply) throw new Error('응답 본문이 비어 있습니다.');
     const parsed = parseReplyType(rawReply);
-    const suspiciousSegments = getSuspiciousFeedbackSegments(parsed.cleanText);
+    const restoredText = restoreFeedbackStudentAliases(parsed.cleanText, item.studentName);
+    const suspiciousSegments = getSuspiciousFeedbackSegments(restoredText);
     updateTodayFeedbackItem(item.id, {
       status: suspiciousSegments.length ? 'review' : 'done',
-      resultText: parsed.cleanText,
+      resultText: restoredText,
       suspiciousSegments,
       errorMessage:''
     });
