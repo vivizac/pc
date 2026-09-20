@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const runtime = fs.readFileSync('olli-feedback-runtime.js', 'utf8');
 const generation = fs.readFileSync('olli-record-feedback-generation.js', 'utf8');
 const consultation = fs.readFileSync('olli-data-consultation-summary.js', 'utf8');
+const kinder = fs.readFileSync('pc-kinder-feedback.js', 'utf8');
 
 test('AI feedback alias restoration is owned by shared runtime', () => {
   assert.match(runtime, /function getFeedbackDisplayStudentName\(name\)/);
@@ -46,4 +47,9 @@ test('class and growth requests send request-bound student identity to Olli AI s
   assert.match(runtime, /studentId: item\.studentId,/);
   assert.match(generation, /studentId: requestStudentId,/);
   assert.match(generation, /studentName: requestStudentName,/);
+});
+
+
+test('kinder fail feedback forwards the selected student id to the privacy server', () => {
+  assert.match(kinder, /promptType:'fail',[\s\S]{0,220}studentId: String\(window\.__kcfSelectedStudentId \|\| ''\)/);
 });
