@@ -30,6 +30,13 @@ function sandbox() {
 function realtime() { const env=sandbox();env.run('olli-realtime-common.js');return env; }
 const signal = env => env.emit('olli:realtime-change',{domain:'schedule',academyId:'academy-a',revision:999});
 
+test('accepts chat as a realtime domain without changing schedule behavior',async()=>{
+  const env=realtime();let calls=0;
+  env.win.OlliRealtime.watchDomain('chat',()=>{calls++;return true;});
+  env.emit('olli:realtime-change',{domain:'chat',academyId:'academy-a',revision:123});
+  await env.tick(150);
+  assert.equal(calls,1);
+});
 test('coalesces bursts and ignores observation/other-academy signals',async()=>{
   const env=realtime();let calls=0;env.win.OlliRealtime.watchDomain('schedule',()=>{calls++;return true;});
   env.emit('olli:realtime-change',{domain:'observation',academyId:'academy-a'});
