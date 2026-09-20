@@ -37,8 +37,11 @@ test('common registration allows name-free natural language and keeps student se
   assert.match(submit, /captureSubmitContext/);
   assert.match(submit, /getKcfSelectedStudent\(\)/);
   assert.match(submit, /if \(!selectedStudent\)/);
-  assert.match(submit, /아직 이 문장은 실행 가능한 명령으로 연결되지 않았어요/);
-  assert.match(registration, /window\.submitKinderChatFeedbackCommandChoice = async function/);
+  assert.match(submit, /수업 피드백을 작성할 학생을 먼저 선택해 주세요/);
+  assert.doesNotMatch(submit, /OlliCommandRouter/);
+  assert.doesNotMatch(submit, /source: 'one_minute_feedback'/);
+  assert.doesNotMatch(registration, /window\.submitKinderChatFeedbackCommandChoice = async function/);
+  assert.doesNotMatch(registration, /function renderKcfCommandRoute/);
   assert.match(registration, /userText: text/);
 });
 
