@@ -36,6 +36,7 @@ test('common registration allows name-free natural language and keeps student se
   assert.match(submit, /KcfAutoMode\.isEditing/);
   assert.match(submit, /captureSubmitContext/);
   assert.match(submit, /getKcfSelectedStudent\(\)/);
+  assert.match(submit, /window\.__olliCommandsMovedToTalk !== true/);
   assert.match(submit, /if \(!selectedStudent\)/);
   assert.match(submit, /아직 이 문장은 실행 가능한 명령으로 연결되지 않았어요/);
   assert.match(registration, /window\.submitKinderChatFeedbackCommandChoice = async function/);
