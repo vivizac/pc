@@ -657,6 +657,8 @@ function startTodayFeedbackRequest(options = {}) {
     headers:{ 'Content-Type':'application/json' },
     body: JSON.stringify({
       promptType: options.promptType || 'class',
+      jobId: item.id,
+      studentId: item.studentId,
       studentName: item.studentName,
       studentDivision: item.studentDivision,
       feedbackMonth,

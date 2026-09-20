@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const runtime = fs.readFileSync('olli-feedback-runtime.js', 'utf8');
 const generation = fs.readFileSync('olli-record-feedback-generation.js', 'utf8');
 const consultation = fs.readFileSync('olli-data-consultation-summary.js', 'utf8');
+const kinder = fs.readFileSync('pc-kinder-feedback.js', 'utf8');
 
 test('AI feedback alias restoration is owned by shared runtime', () => {
   assert.match(runtime, /function getFeedbackDisplayStudentName\(name\)/);
@@ -34,7 +35,21 @@ test('consultation AI distinguishes class growth and fail records', () => {
   assert.match(consultation, /return '수업 피드백'/);
 });
 
-test('consultation request keeps division and restores subject alias after AI response', () => {
-  assert.match(consultation, /body: JSON\.stringify\(\{ promptType, studentDivision, messages \}\)/);
+test('consultation request keeps request-bound identity and restores subject alias after AI response', () => {
+  assert.match(consultation, /body: JSON\.stringify\(\{ promptType, studentId, studentName, studentDivision, messages \}\)/);
+  assert.match(consultation, /studentId: student\?\.id \|\| ''/);
+  assert.match(consultation, /studentName: student\?\.name \|\| ''/);
   assert.match(consultation, /restoreFeedbackStudentAliases\(cleanText, student\?\.name \|\| ''\)/);
+});
+
+test('class and growth requests send request-bound student identity to Olli AI server', () => {
+  assert.match(runtime, /jobId: item\.id,/);
+  assert.match(runtime, /studentId: item\.studentId,/);
+  assert.match(generation, /studentId: requestStudentId,/);
+  assert.match(generation, /studentName: requestStudentName,/);
+});
+
+
+test('kinder fail feedback forwards the selected student id to the privacy server', () => {
+  assert.match(kinder, /promptType:'fail',[\s\S]{0,220}studentId: String\(window\.__kcfSelectedStudentId \|\| ''\)/);
 });

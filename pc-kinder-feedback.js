@@ -1509,6 +1509,7 @@ function submitKinderChatFeedbackGrowthSheet() {
       promptType:'fail',
       userText,
       studentName: normalizeTodayFeedbackStudentName(name),
+      studentId: String(window.__kcfSelectedStudentId || ''),
       studentDivision:'kinder',
       feedbackType:'fail',
       label:'유치부 실패-성장 피드백',

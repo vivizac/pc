@@ -342,10 +342,12 @@ function buildConsultationFeedbackMessages(student, months, userText) {
 
 async function fetchConsultationFeedbackByPromptType(promptType, messages, options = {}) {
   const studentDivision = options.studentDivision === 'kinder' ? 'kinder' : (options.studentDivision === 'elementary' ? 'elementary' : '');
+  const studentId = String(options.studentId || '').trim();
+  const studentName = String(options.studentName || '').trim();
   const res = await fetch('/api/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ promptType, studentDivision, messages })
+    body: JSON.stringify({ promptType, studentId, studentName, studentDivision, messages })
   });
 
   const rawText = await res.text();
@@ -362,6 +364,8 @@ async function createSummaryFeedbackFromRows(student, months, rows, labels = [])
   const userText = buildConsultationSummaryFeedbackUserText(student, months, rows, labels);
   const messages = buildConsultationFeedbackMessages(student, months, userText);
   const { res, data } = await fetchConsultationFeedbackByPromptType(promptType, messages, {
+    studentId: student?.id || '',
+    studentName: student?.name || '',
     studentDivision: student?.type === 'kinder' ? 'kinder' : 'elementary'
   });
 
