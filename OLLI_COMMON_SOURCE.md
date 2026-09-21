@@ -30,6 +30,16 @@ Phone에서 사용하는 실제 공통 파일 목록은 [Phone OLLI_COMMON_FILES
 - 명령 기능을 추가하더라도 시간표·출석·학생 데이터 저장 로직을 라우터 안에 새로 만들지 말고 기존 서비스/RPC를 호출한다. 빈자리 조회는 PC `OlliTimetableService` 또는 Phone `OlliPhoneStudentScheduleService`가 읽은 서버 최신 주간 데이터를 사용한다.
 - 라우터 오류 시 기존 1분 피드백 흐름으로 계속 진행하도록 fallback을 유지한다.
 
+
+## 2026-09-21 팀톡 액션카드 1단계 — 판별·준비만
+
+- 팀톡의 향후 액션카드용 진입점은 `OlliCommandRouter.prepareAction(text, context)`이다.
+- 이 함수는 등록·삭제·변경 요청을 해석하고 학생/날짜/시간/정원 등 기존 시간표 규칙으로 검증한 뒤 `action_pending` 또는 `action_needs_reason`을 반환한다.
+- **1단계에서는 실제 저장 함수를 호출하지 않는다.** 버튼 UI, 액션 상태 DB, 실행/취소 처리는 후속 단계에서 연결한다.
+- `classifyRequest(text)`는 요청을 `mutation` / `query` / `other`로 구분한다.
+- 날짜가 명시된 일반 문장(예: “김민서 10월 5일 초등부 5시 수업 등록해줘”)은 `add_class_once`로 준비한다. 이 의도는 1회 수업 등록을 뜻하며 정규 주간 등록과 구분한다.
+- 기존 1분 피드백의 `route()` 확인/실행 흐름은 이번 단계에서 변경하지 않는다. 팀톡 액션카드가 준비되기 전 기존 동작을 깨지 않기 위한 분리다.
+
 ## Realtime 단계별 진행
 
 `olli-realtime-common.js` 한 파일이 연결과 변경 신호 전달을 담당한다. `watchDomain`은 신호 보류·합치기·재시도·재연결 확인을 공통 처리한다. PC·Phone adapter는 기존 서버 조회와 해당 화면 반영만 담당한다.
