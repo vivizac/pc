@@ -6,13 +6,15 @@
     ACADEMY: 'academy',
     PERSONALITY_RECORDS: 'attendance',
     CONSULTATION: 'consultation',
-    SCHEDULE: 'schedule'
+    SCHEDULE: 'schedule',
+    TEAM_TALK: 'talk'
   });
   const sectionTitles = {
     academy: '학생관리',
     attendance: '성향기록부',
     consultation: '상담기록',
-    schedule: '시간표 • 출석부'
+    schedule: '시간표 • 출석부',
+    talk: '팀톡'
   };
   const state = {
     section: 'academy',
@@ -92,6 +94,11 @@
     const title = document.getElementById('olliPcContextTitle');
     const body = document.getElementById('olliPcContextBody');
     if (!title || !body) return;
+    if (state.section === SECTION.TEAM_TALK) {
+      title.textContent = '';
+      body.innerHTML = '';
+      return;
+    }
     title.textContent = state.section === 'consultation' ? '상담 명단' : '빠른 보기';
     body.innerHTML = '';
   }
@@ -140,6 +147,7 @@
 
     if (section === SECTION.ACADEMY) return feature('OlliPcStudentManagement')?.open();
     if (section === SECTION.PERSONALITY_RECORDS) return personalityRecordsFeature()?.open();
+    if (section === SECTION.TEAM_TALK) return feature('OlliPcTeamTalk')?.open();
     if (section === SECTION.SCHEDULE) {
       try { if (typeof global.closeAttendanceStudentFeedbackSheet === 'function') global.closeAttendanceStudentFeedbackSheet(); } catch (_) {}
       const targetView = typeof currentObservationView !== 'undefined' && currentObservationView === 'kinder' ? 'kinder' : 'elementary';
