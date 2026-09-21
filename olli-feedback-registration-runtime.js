@@ -436,7 +436,20 @@
     if (!selectedStudent && window.__olliPhoneInlineStudentFeedbackEnabled === true) {
       var inlineTarget = resolveKcfInlineFeedbackTarget(text);
       if (inlineTarget.matched && inlineTarget.ambiguous) {
-        setKinderChatFeedbackWarning('동명이인 학생이 있어요. Teacher에서 학생을 선택한 뒤 보내주세요.');
+        if (!inlineTarget.body) {
+          setKinderChatFeedbackWarning('학생 이름 다음에 수업기록을 적어주세요.');
+          return;
+        }
+        if (typeof window.openKinderChatFeedbackSaveStudentPicker === 'function') {
+          window.openKinderChatFeedbackSaveStudentPicker('', inlineTarget.candidates, {
+            mode:'submit',
+            submitText:inlineTarget.body,
+            autoSubmitContext:autoSubmitContext || null
+          });
+          setKinderChatFeedbackWarning('');
+          return;
+        }
+        setKinderChatFeedbackWarning('학생 선택창을 열지 못했어요. 다시 전송해 주세요.');
         return;
       }
       if (inlineTarget.student) {
@@ -483,30 +496,40 @@
     return true;
   };
 
-  window.openKinderChatFeedbackSaveStudentPicker = function(itemId, candidates){
+  window.openKinderChatFeedbackSaveStudentPicker = function(itemId, candidates, options){
     var overlay = document.getElementById('kcfSaveStudentPickerOverlay');
     var list = document.getElementById('kcfSaveStudentPickerList');
-    if (!overlay || !list || !Array.isArray(candidates) || !candidates.length) return;
+    if (!overlay || !list || !Array.isArray(candidates) || !candidates.length) return false;
+    var opts = options || {};
+    var mode = opts.mode === 'submit' ? 'submit' : 'save';
     window.kcfPendingSaveStudentPicker = {
+      mode: mode,
       itemId: String(itemId || ''),
-      selectedStudentId: String(candidates[0].id || '')
+      selectedStudentId: String(candidates[0].id || ''),
+      submitText: mode === 'submit' ? String(opts.submitText || '').trim() : '',
+      autoSubmitContext: mode === 'submit' ? (opts.autoSubmitContext || null) : null
     };
     var titleEl = overlay.querySelector('.kcfSaveStudentPickerTitle');
     var guideEl = overlay.querySelector('.kcfSaveStudentPickerGuide');
     var saveBtn = overlay.querySelector('.kcfSaveStudentSaveBtn');
     if (titleEl) titleEl.textContent = '학생을 선택해 주세요';
-    if (guideEl) guideEl.textContent = '같은 이름의 학생이 있어요. 기록실에 저장할 학생을 선택해 주세요.';
-    if (saveBtn) saveBtn.textContent = '기록실 저장';
+    if (guideEl) {
+      guideEl.textContent = mode === 'submit'
+        ? '같은 이름의 학생이 있어요. 피드백을 보낼 학생을 선택해 주세요.'
+        : '같은 이름의 학생이 있어요. 기록실에 저장할 학생을 선택해 주세요.';
+    }
+    if (saveBtn) saveBtn.textContent = mode === 'submit' ? '피드백 전송' : '기록실 저장';
     list.innerHTML = candidates.map(function(student, index){
       var id = String(student.id || '');
       var active = index === 0 ? ' active' : '';
       return '<button type="button" class="kcfSaveStudentOption' + active + '" data-student-id="' + escapeHtml(id) + '" onclick="selectKinderChatFeedbackSaveStudent(\'' + escapeHtml(id) + '\')"><span class="kcfSaveStudentCheck" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"></path></svg></span><span><span class="kcfSaveStudentName">' + escapeHtml(getKcfStudentPickerName(student)) + '</span><span class="kcfSaveStudentMeta">' + escapeHtml(window.getKinderChatFeedbackStudentMetaLine(student)) + '</span></span></button>';
     }).join('');
     overlay.classList.add('show');
+    return true;
   };
 
   window.selectKinderChatFeedbackSaveStudent = function(studentId){
-    if (!window.kcfPendingSaveStudentPicker) window.kcfPendingSaveStudentPicker = { itemId:'', selectedStudentId:'' };
+    if (!window.kcfPendingSaveStudentPicker) window.kcfPendingSaveStudentPicker = { mode:'save', itemId:'', selectedStudentId:'', submitText:'', autoSubmitContext:null };
     window.kcfPendingSaveStudentPicker.selectedStudentId = String(studentId || '');
     document.querySelectorAll('#kcfSaveStudentPickerOverlay .kcfSaveStudentOption').forEach(function(btn){
       btn.classList.toggle('active', String(btn.dataset.studentId || '') === String(studentId || ''));
@@ -519,11 +542,35 @@
     if (overlay) overlay.classList.remove('show');
   };
 
-  window.confirmKinderChatFeedbackSaveStudentPicker = function(){
-    var pending = window.kcfPendingSaveStudentPicker || { itemId:'', selectedStudentId:'' };
+  window.confirmKinderChatFeedbackSaveStudentPicker = async function(){
+    var pending = window.kcfPendingSaveStudentPicker || { mode:'save', itemId:'', selectedStudentId:'', submitText:'', autoSubmitContext:null };
     var selectedId = String(pending.selectedStudentId || '');
-    window.closeKinderChatFeedbackSaveStudentPicker();
     if (!selectedId) return;
+
+    if (pending.mode === 'submit') {
+      var student = typeof findStudentById === 'function' ? findStudentById(selectedId) : null;
+      var submitText = String(pending.submitText || '').trim();
+      if (!student || !submitText) {
+        if (typeof setKinderChatFeedbackWarning === 'function') setKinderChatFeedbackWarning('선택한 학생 정보를 확인하지 못했어요. 다시 전송해 주세요.');
+        return;
+      }
+      window.closeKinderChatFeedbackSaveStudentPicker();
+      if (typeof setKinderChatFeedbackWarning === 'function') setKinderChatFeedbackWarning('');
+      try {
+        await continueKinderChatFeedbackSubmit(submitText, student, pending.autoSubmitContext || null);
+      } catch (err) {
+        console.error('동명이인 선택 후 1분 피드백 AI 요청 시작 실패:', err);
+        if (typeof setKinderChatFeedbackWarning === 'function') {
+          setKinderChatFeedbackWarning('AI 연결에 실패했어요. 수업기록은 그대로 두었으니 다시 전송해 주세요.');
+        }
+        try {
+          if (typeof showPushToast === 'function') showPushToast('1분 피드백 AI 연결을 확인해 주세요.');
+        } catch (_) {}
+      }
+      return;
+    }
+
+    window.closeKinderChatFeedbackSaveStudentPicker();
     if (pending.itemId && typeof saveTodayFeedbackItem === 'function') saveTodayFeedbackItem(pending.itemId, null, selectedId);
   };
 })();

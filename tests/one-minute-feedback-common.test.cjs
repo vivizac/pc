@@ -57,16 +57,19 @@ test('phone inline student-name feedback is opt-in and reuses the existing AI su
   assert.match(submit, /resolveKcfInlineFeedbackTarget\(text\)/);
   assert.match(submit, /feedbackText = inlineTarget\.body/);
   assert.match(submit, /continueKinderChatFeedbackSubmit\(feedbackText, selectedStudent, autoSubmitContext\)/);
-  assert.match(submit, /동명이인 학생이 있어요/);
+  assert.match(submit, /openKinderChatFeedbackSaveStudentPicker\('', inlineTarget\.candidates/);
   assert.match(submit, /학생 이름 다음에 수업기록을 적어주세요/);
 });
 
 
-test('legacy first-line submit picker path is removed', () => {
-  assert.doesNotMatch(registration, /mode === 'submit'/);
-  assert.doesNotMatch(registration, /pending\.mode === 'submit'/);
-  assert.doesNotMatch(registration, /submitPayload/);
-  assert.match(registration, /기록실 저장/);
+test('existing same-name picker supports inline feedback submit mode without duplicating UI', () => {
+  assert.match(registration, /window\.openKinderChatFeedbackSaveStudentPicker = function\(itemId, candidates, options\)/);
+  assert.match(registration, /var mode = opts\.mode === 'submit' \? 'submit' : 'save';/);
+  assert.match(registration, /피드백을 보낼 학생을 선택해 주세요/);
+  assert.match(registration, /mode === 'submit' \? '피드백 전송' : '기록실 저장'/);
+  assert.match(registration, /pending\.mode === 'submit'/);
+  assert.match(registration, /await continueKinderChatFeedbackSubmit\(submitText, student, pending\.autoSubmitContext \|\| null\)/);
+  assert.doesNotMatch(registration, /Teacher에서 학생을 선택한 뒤 보내주세요/);
 });
 
 
