@@ -1163,9 +1163,9 @@
       operation: 'post',
       createIfMissing: false,
       identityColumns: ['academy_id', 'student_id'],
-      valueColumns: ['student_name', 'content', 'feedback_type', 'future_direction', 'year', 'date', 'lesson_date', 'member_id'],
+      valueColumns: ['student_name', 'content', 'feedback_type', 'future_direction', 'year', 'date'],
       requiredColumns: ['academy_id', 'student_id', 'student_name', 'content'],
-      selectColumns: ['id', 'academy_id', 'student_id', 'student_name', 'content', 'feedback_type', 'future_direction', 'year', 'date', 'lesson_date', 'member_id', 'created_at', 'updated_at', 'client_mutation_id']
+      selectColumns: ['id', 'academy_id', 'student_id', 'student_name', 'content', 'feedback_type', 'future_direction', 'year', 'date', 'created_at', 'updated_at', 'client_mutation_id']
     },
     verification: { mode: 'custom_returned_row', compareFields: ['academy_id', 'student_id', 'content'] },
     conflict: { policy: 'append_only', protectPendingLocal: true },
@@ -1219,9 +1219,9 @@
       operation: 'post',
       createIfMissing: false,
       identityColumns: ['academy_id', 'student_id'],
-      valueColumns: ['student_name', 'content', 'feedback_type', 'date', 'period_months', 'source_feedback_ids', 'created_by', 'year', 'summary_months'],
+      valueColumns: ['student_name', 'content', 'summary_months', 'year', 'date'],
       requiredColumns: ['academy_id', 'student_id', 'student_name', 'content'],
-      selectColumns: ['id', 'academy_id', 'student_id', 'student_name', 'content', 'feedback_type', 'date', 'period_months', 'source_feedback_ids', 'created_by', 'year', 'summary_months', 'created_at', 'updated_at', 'client_mutation_id']
+      selectColumns: ['id', 'academy_id', 'student_id', 'student_name', 'content', 'summary_months', 'year', 'date', 'created_at', 'updated_at', 'client_mutation_id']
     },
     verification: { mode: 'custom_returned_row', compareFields: ['academy_id', 'student_id', 'content'] },
     conflict: { policy: 'append_only', protectPendingLocal: true },
