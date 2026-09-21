@@ -41,7 +41,7 @@ test('natural read phrases include 자리 있는지 and 픽업 등록된 학생'
   assert.match(router, /있는지\|있는가/);
   assert.match(router, /function parsePickupQueryIntent/);
   assert.match(router, /explicitMutation/);
-  assert.ok(router.includes('.replace(/\\d{1,2}\\\\s*월\\\\s*\\d{1,2}\\\\s*일/g'));
+  assert.ok(router.includes('.replace(/\\d{1,2}\\s*월\\s*\\d{1,2}\\s*일/g'));
 });
 
 test('PC renders persisted action state below Olli messages', () => {
