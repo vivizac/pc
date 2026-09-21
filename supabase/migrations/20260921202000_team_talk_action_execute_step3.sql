@@ -186,9 +186,13 @@ begin
   if nullif(v_payload->>'studentId','') is not null then
     select coalesce(nullif(btrim(s.name),''),v_name) into v_name
     from public.students s
-    where s.id=(v_payload->>'studentId')::uuid and s.academy_id=p_academy_id
+    where s.id::text=(v_payload->>'studentId') and s.academy_id=p_academy_id
     limit 1;
     v_name := coalesce(v_name,'학생');
+  end if;
+
+  if v_type in ('cancel_makeup','cancel_trial') and v_reason='' then
+    raise exception '취소 사유를 먼저 입력해 주세요.';
   end if;
 
   begin
@@ -266,9 +270,6 @@ begin
       raise exception '%',coalesce(nullif(v_result->>'message',''),'작업을 처리하지 못했습니다.');
     end if;
 
-    if v_type in ('cancel_makeup','cancel_trial') and v_reason='' then
-      raise exception '취소 사유를 먼저 입력해 주세요.';
-    end if;
 
     if v_reason<>'' and v_type in ('mark_absent','cancel_makeup','cancel_trial') then
       v_memo_result := public.olli_schedule_save_cell_memo_v3(
