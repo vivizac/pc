@@ -138,7 +138,7 @@
   cursor:pointer;
 }
 .olliMatItemCard:hover{border-color:#d9dde1;box-shadow:0 5px 14px rgba(27,32,41,.04)}
-.olliMatItemCard.selected{border-color:#dbc600;box-shadow:0 0 0 1px rgba(254,229,0,.52)}
+.olliMatItemCard.selected{border-color:#bfc4ca;background:#fff;box-shadow:0 3px 10px rgba(20,24,30,.06)}
 .olliMatItemIcon{
   width:44px;height:44px;flex:0 0 44px;display:grid;place-items:center;
   border-radius:12px;background:#f2f3f5;color:#9aa0a7
