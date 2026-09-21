@@ -1,6 +1,16 @@
 const ELEMENTARY_GROUP_FEEDBACK_MONTHS_KEY = 'olli_elementary_group_feedback_months_v1';
 const ELEMENTARY_GROUP_MONTH_VALUES = [1,2,3,4,5,6,7,8,9,10,11,12];
 
+
+function getFeedbackTableNameByType(feedbackType) {
+  const type = String(feedbackType || '').trim().toLowerCase();
+  if (type === 'summary') return 'summary_feedbacks';
+  if (['fail', 'fail_growth', 'failgrowth', 'elementary_fail', 'kinder_fail'].includes(type)) {
+    return 'fail_feedbacks';
+  }
+  return 'feedbacks';
+}
+
 function normalizeElementaryGroupMonths(value) {
   let raw = value;
   if (raw === null || raw === undefined) return [];
@@ -156,7 +166,7 @@ function compareElementaryGroupFeedbackOrder(a, b) {
     fail_feedbacks: {
       rpc: 'olli_growth_feedback_insert_idempotent',
       feature: 'growth_feedback',
-      label: '성장 피드백'
+      label: '실패-성장 피드백'
     },
     summary_feedbacks: {
       rpc: 'olli_summary_feedback_insert_idempotent',
