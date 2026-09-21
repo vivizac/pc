@@ -79,3 +79,10 @@ test('selected material request card uses neutral border and shadow instead of y
   assert.match(materialCss,/\.olliMatItemCard\.selected\{border-color:#bfc4ca;background:#fff;box-shadow:0 3px 10px rgba\(20,24,30,.06\)\}/);
   assert.doesNotMatch(materialCss,/\.olliMatItemCard\.selected\{[^\n]*(#dbc600|254,229,0)/);
 });
+
+
+test('Team Talk labels use 업무요청 sidebar, 업무 page title, and 팀톡 chat title', () => {
+  assert.match(html, /data-pc-nav="talk"[\s\S]*?<span>업무요청<\/span>/);
+  assert.match(html, /data-page-key="pc-team-talk" data-page-name="업무"/);
+  assert.match(html, /class="olliPcTeamTalkTitle">팀톡<\/div>/);
+});
