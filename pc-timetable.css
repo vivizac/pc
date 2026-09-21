@@ -589,7 +589,7 @@
 .olliTtPickupForm label span { margin: 0 2px 7px; display: block; color: #525c68; font-size: calc(11px * var(--olli-text-scale)); font-weight: 780; }
 .olliTtPickupForm input { width: 100%; height: 46px; padding: 0 13px; border: 1px solid #dfe4e9; border-radius: 14px; outline: none; color: #323944; background: #fff; font: 660 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; }
 .olliTtPickupForm input:focus { border-color: #80c2fb; box-shadow: 0 0 0 3px rgba(10,132,255,.09); }
-.olliTtPickupDropoffBtn { width:76px; height:46px; border:1px solid #dfe4e9; border-radius:14px; background:#fff; color:#646d78; font:800 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
+.olliTtPickupDropoffBtn { grid-column:1; justify-self:start; width:76px; height:46px; margin-left:0; border:1px solid #dfe4e9; border-radius:14px; background:#fff; color:#646d78; font:800 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
 .olliTtPickupDropoffBtn:hover { border-color:#c8b9ee; background:#faf8ff; color:#7355b5; }
 .olliTtPickupDropoffBtn.active { border-color:#8061c7; background:#8061c7; color:#fff; }
 .olliTtClockOnlyTime { cursor:pointer; caret-color:transparent; user-select:none; -webkit-user-select:none; }

@@ -26,6 +26,10 @@ test('all timetable popup student searches support arrow-key highlight and Enter
   assert.match(ui, /\['ArrowDown', 'ArrowUp', 'Enter'\]/);
   assert.match(ui, /button\.classList\.toggle\('keyboardActive', active\)/);
   assert.match(ui, /buttons\[index\]\.click\(\)/);
+  assert.match(ui, /function commitDialogStudentSelection\(button\)/);
+  assert.match(ui, /state\.dialog\.query = clean\(student\.name\)/);
+  assert.match(ui, /nextInput\.value = clean\(student\.name\)/);
+  assert.match(ui, /nextInput\.blur\(\)/);
   assert.match(css, /\.olliTtField:has\(> \.olliTtStudentSearch\[type="search"\]\) \{ position: relative; z-index: 120; \}/);
   assert.match(css, /\.olliTtStudentSearch\[type="search"\] \+ \.olliTtPickerList \{[\s\S]*z-index: 200;/);
 });
@@ -38,4 +42,9 @@ test('dropoff persistence uses a dedicated boolean and survives scheduled pickup
   assert.match(service, /rpc\('olli_schedule_save_pickup_v2'/);
   assert.match(service, /rpc\('olli_schedule_pickup_dropoff_flags'/);
   assert.match(service, /is_dropoff: pickupDropoffMap\.get/);
+});
+
+
+test('dropoff button is explicitly anchored at the far-left of the pickup row', () => {
+  assert.match(css,/\.olliTtPickupDropoffBtn \{ grid-column:1; justify-self:start; width:76px; height:46px; margin-left:0;/);
 });

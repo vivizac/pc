@@ -88,6 +88,38 @@
       applyValue();
     });
   }
+  function commitDialogStudentSelection(button) {
+    if (!button || !state.dialog) return false;
+
+    let studentId = '';
+    let searchSelector = '';
+    if (button.matches('[data-tt-add-student]') && state.dialog.kind === 'add') {
+      studentId = clean(button.dataset.ttAddStudent);
+      searchSelector = '[data-tt-add-search]';
+    } else if (button.matches('[data-tt-pickup-student]') && state.dialog.kind === 'pickupAdd') {
+      studentId = clean(button.dataset.ttPickupStudent);
+      searchSelector = '[data-tt-pickup-search]';
+    } else {
+      return false;
+    }
+
+    const student = studentById(studentId);
+    if (!student) return false;
+
+    state.dialog.studentId = studentId;
+    state.dialog.query = clean(student.name);
+    renderDialog();
+
+    requestAnimationFrame(() => {
+      const nextDialog = document.getElementById('olliTtDialog');
+      const nextInput = nextDialog && nextDialog.querySelector(searchSelector);
+      if (!nextInput) return;
+      nextInput.value = clean(student.name);
+      nextInput.blur();
+    });
+    return true;
+  }
+
   function handleDialogStudentSearchKeydown(event) {
     const input = event && event.target;
     if (!input || !input.matches || !input.matches('.olliTtStudentSearch[type="search"]')) return;
@@ -104,6 +136,7 @@
     if (event.key === 'Enter') {
       if (index < 0) return;
       event.preventDefault();
+      event.stopPropagation();
       buttons[index].click();
       return;
     }
@@ -1496,8 +1529,7 @@
     if (!picker || !state.dialog || state.dialog.kind !== 'add') return;
     picker.innerHTML = addPickerHtml(state.dialog);
     picker.querySelectorAll('[data-tt-add-student]').forEach((button) => button.addEventListener('click', () => {
-      state.dialog.studentId = button.dataset.ttAddStudent;
-      renderDialog();
+      commitDialogStudentSelection(button);
     }));
   }
 
@@ -1510,8 +1542,7 @@
       null
     );
     dialogElement.querySelectorAll('[data-tt-add-student]').forEach((button) => button.addEventListener('click', () => {
-      state.dialog.studentId = button.dataset.ttAddStudent;
-      renderDialog();
+      commitDialogStudentSelection(button);
     }));
     const guestNameInput = dialogElement.querySelector('[data-tt-add-guest-name]');
     if (guestNameInput) guestNameInput.addEventListener('input', () => {
@@ -1613,8 +1644,7 @@
     if (!picker || !state.dialog || state.dialog.kind !== 'pickupAdd') return;
     picker.innerHTML = pickupPickerHtml(state.dialog);
     picker.querySelectorAll('[data-tt-pickup-student]').forEach((button) => button.addEventListener('click', () => {
-      state.dialog.studentId = button.dataset.ttPickupStudent;
-      renderDialog();
+      commitDialogStudentSelection(button);
     }));
   }
 
@@ -1864,7 +1894,7 @@
         state.dialog.studentId = clean(button.dataset.ttPickupStudent);
       }, true);
     }
-    dialog.querySelectorAll('[data-tt-pickup-student]').forEach((button) => button.addEventListener('click', () => { state.dialog.studentId = button.dataset.ttPickupStudent; renderDialog(); }));
+    dialog.querySelectorAll('[data-tt-pickup-student]').forEach((button) => button.addEventListener('click', () => { commitDialogStudentSelection(button); }));
     const pickupDropoff = dialog.querySelector('[data-tt-pickup-dropoff]');
     if (pickupDropoff) pickupDropoff.addEventListener('click', () => {
       if (!state.dialog || state.dialog.kind !== 'pickupAdd') return;
