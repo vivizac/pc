@@ -743,3 +743,47 @@ test('다음주 means one week ahead and 다다음주 means two weeks ahead', ()
   assert.equal(afterNextWeek.weekOffset, 2);
   assert.equal(afterNextWeek.dateLabel, '다다음 주');
 });
+
+
+test('pickup write parser recognizes regular and dropoff pickup registration', () => {
+  const router = loadRouter();
+
+  const dropoff = router.parsePickupMutationIntent(
+    '김민서 월요일 4시 수업 리슈빌 3시 30분 하원 픽업 등록해줘'
+  );
+  assert.ok(dropoff);
+  assert.equal(dropoff.intent, 'add_pickup');
+  assert.equal(dropoff.studentName, '김민서');
+  assert.equal(dropoff.weekday, 1);
+  assert.equal(dropoff.classTime, 4);
+  assert.equal(dropoff.pickupLabel, '리슈빌');
+  assert.equal(dropoff.pickupTime, '15:30');
+  assert.equal(dropoff.isDropoff, true);
+
+  const regular = router.parsePickupMutationIntent(
+    '김민서 화요일 5시 수업 센트럴 4시 10분 픽업 추가해줘'
+  );
+  assert.ok(regular);
+  assert.equal(regular.intent, 'add_pickup');
+  assert.equal(regular.weekday, 2);
+  assert.equal(regular.classTime, 5);
+  assert.equal(regular.pickupLabel, '센트럴');
+  assert.equal(regular.pickupTime, '16:10');
+  assert.equal(regular.isDropoff, false);
+});
+
+test('incomplete dropoff pickup request is still recognized as a write command', async () => {
+  let preparedIntent = '';
+  const router = loadRouter({
+    async prepareWriteCommand(intent) {
+      preparedIntent = intent;
+      return { ok:false, message:'픽업 정보를 더 입력해 주세요.' };
+    }
+  });
+
+  const result = await router.route('하원 픽업 등록해줘', { source:'olli_talk' });
+  assert.equal(result.handled, true);
+  assert.equal(result.intent, 'add_pickup');
+  assert.equal(preparedIntent, 'add_pickup');
+  assert.match(result.message, /픽업/);
+});
