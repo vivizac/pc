@@ -1697,7 +1697,8 @@
 <link rel="stylesheet" href="pc-student-management.css">
 <link rel="stylesheet" href="pc-trash.css">
 <link rel="stylesheet" href="consultation-survey.css">
-<link rel="stylesheet" href="pc-team-talk.css?v=20260921-team-talk-theme-settings-1">
+<link rel="stylesheet" href="pc-team-talk.css?v=20260921-material-orders-1">
+<link rel="stylesheet" href="pc-team-talk-material-orders.css?v=20260921-1">
 <link rel="stylesheet" href="olli-settings-team-talk-common.css?v=20260921-1">
 </head>
 <body class="olliPcApp">
@@ -1793,15 +1794,7 @@
         <button class="olliPcTeamTalkWorkspaceTab" data-team-talk-workspace-tab="archive" role="tab" aria-selected="false" type="button">자료실</button>
       </div>
       <div class="olliPcTeamTalkMaterials olliPcTeamTalkWorkspacePanel" data-team-talk-workspace-panel="materials">
-        <div class="olliPcTeamTalkMaterialsBody">
-          <div class="olliPcTeamTalkMaterialsEmpty">
-            <div class="olliPcTeamTalkMaterialsIcon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M5 7.5h14v11H5z"></path><path d="M8 7.5V5h8v2.5M9 12h6M12 9v6"></path></svg>
-            </div>
-            <div class="olliPcTeamTalkMaterialsEmptyTitle">재료주문</div>
-            <div class="olliPcTeamTalkMaterialsEmptyText">재료 주문 기능을 이 영역에 연결할 수 있도록 준비했습니다.</div>
-          </div>
-        </div>
+        <div class="olliPcTeamTalkMaterialsBody" data-olli-team-material-orders></div>
       </div>
       <div class="olliPcTeamTalkArchive olliPcTeamTalkWorkspacePanel" data-team-talk-workspace-panel="archive" hidden>
         <div class="olliPcTeamTalkArchiveTabs" role="tablist" aria-label="자료실 분류">
@@ -4692,7 +4685,8 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 });
 </script>
-<script src="pc-team-talk.js?v=20260921-split-workspace-1"></script>
+<script src="pc-team-talk.js?v=20260921-material-orders-1"></script>
+<script src="pc-team-talk-material-orders.js?v=20260921-1"></script>
 <script src="pc-shell.js"></script>
 <script src="pc-student-management.js"></script>
 <script src="pc-kinder-feedback.js"></script>
