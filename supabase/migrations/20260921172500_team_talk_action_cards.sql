@@ -38,6 +38,15 @@ create table if not exists public.olli_team_chat_actions (
 create index if not exists olli_team_chat_actions_academy_status_idx
   on public.olli_team_chat_actions(academy_id, status, created_at desc);
 
+create index if not exists olli_team_chat_actions_requested_member_idx
+  on public.olli_team_chat_actions(requested_by_member_id);
+create index if not exists olli_team_chat_actions_resolved_member_idx
+  on public.olli_team_chat_actions(resolved_by_member_id)
+  where resolved_by_member_id is not null;
+create index if not exists olli_team_chat_actions_result_message_idx
+  on public.olli_team_chat_actions(academy_id, result_message_id)
+  where result_message_id is not null;
+
 alter table public.olli_team_chat_actions enable row level security;
 revoke all on table public.olli_team_chat_actions from anon, authenticated, public;
 
