@@ -121,3 +121,16 @@ test('one-minute feedback keeps the typed record when AI request startup fails',
   assert.match(submit, /try \{\s*await continueKinderChatFeedbackSubmit/);
   assert.match(submit, /AI 연결에 실패했어요\. 수업기록은 그대로 두었으니 다시 전송해 주세요\./);
 });
+
+
+test('one-minute completion waits for AI result instead of request start', () => {
+  const submitStart = registration.indexOf('function continueKinderChatFeedbackSubmit');
+  const submitEnd = registration.indexOf('window.submitKinderChatFeedback = async function', submitStart);
+  const submitFlow = registration.slice(submitStart, submitEnd);
+  assert.doesNotMatch(submitFlow, /markKcfStudentFeedbackSent/);
+
+  assert.match(runtime, /function notifyKcfFeedbackRequestResult\(item, status, errorMessage = ''\)/);
+  assert.match(runtime, /notifyKcfFeedbackRequestResult\(item, completedStatus\)/);
+  assert.match(runtime, /notifyKcfFeedbackRequestResult\(item, 'error', errorMessage\)/);
+  assert.match(runtime, /onFeedbackRequestResult/);
+});
