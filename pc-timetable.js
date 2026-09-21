@@ -1225,11 +1225,11 @@
   function openPickupManage(pickupId, clickedDate) {
     const item = pickups().find((row) => clean(row.id) === clean(pickupId));
     if (!item) return;
-    const tomorrowKey = dateKey(addDays(new Date(), 1));
+    const currentDayKey = todayKey();
     const requestedDate = clean(clickedDate);
-    const initialEffectiveDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate > todayKey()
+    const initialEffectiveDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate >= currentDayKey
       ? requestedDate
-      : tomorrowKey;
+      : currentDayKey;
     state.dialog = { kind: 'pickupManage', pickupId: clean(pickupId), pickupTime: pickupTimeInputValue(item.pickup_time), effectiveDate: initialEffectiveDate };
     openOverlay();
   }
@@ -1574,7 +1574,7 @@
       + `<div class="olliTtCurrentBox"><strong>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</strong>현재 적용 중인 픽업 일정입니다.</div>`
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>픽업시간 수정</span><small>잘못 입력한 현재 시간을 바로 고칩니다.</small></div>'
       + `<input type="time" class="olliTtDateInput" data-tt-pickup-edit-time value="${esc(dialog.pickupTime)}"></div>`
-      + `<div class="olliTtField"><div class="olliTtFieldHead"><span>변경 예약 적용일</span><small>선택한 날짜부터 위 시간이 적용됩니다.</small></div><input type="date" class="olliTtDateInput" data-tt-pickup-effective-date min="${dateKey(addDays(new Date(), 1))}" value="${esc(dialog.effectiveDate)}"></div>`
+      + `<div class="olliTtField"><div class="olliTtFieldHead"><span>변경·삭제 적용일</span><small>변경 예약은 내일부터, 픽업 삭제는 오늘부터 적용할 수 있습니다.</small></div><input type="date" class="olliTtDateInput" data-tt-pickup-effective-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></div>`
       + '<div class="olliTtPickupManageActions"><button type="button" class="olliTtDialogPrimary secondary" data-tt-update-pickup>현재 시간 수정</button><button type="button" class="olliTtDialogPrimary" data-tt-schedule-pickup>변경 예약</button></div>'
       + '<div class="olliTtDialogActions olliTtPickupDeleteActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-remove-pickup>픽업 삭제</button></div></div>';
   }
@@ -1802,7 +1802,7 @@
     const pickupEditTime = dialog.querySelector('[data-tt-pickup-edit-time]');
     if (pickupEditTime) pickupEditTime.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.pickupTime = pickupEditTime.value; });
     const pickupEffectiveDate = dialog.querySelector('[data-tt-pickup-effective-date]');
-    if (pickupEffectiveDate) pickupEffectiveDate.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.effectiveDate = pickupEffectiveDate.value || dateKey(addDays(new Date(), 1)); });
+    if (pickupEffectiveDate) pickupEffectiveDate.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.effectiveDate = pickupEffectiveDate.value || todayKey(); });
     const waitDate = dialog.querySelector('[data-tt-wait-date]');
     if (waitDate) waitDate.addEventListener('change', () => { state.dialog.effectiveDate = waitDate.value || todayKey(); renderDialog(); });
     const moveNote = dialog.querySelector('[data-tt-move-note]');
@@ -2329,8 +2329,13 @@ ${combined.memoError}`);
     if (!dialog || dialog.kind !== 'pickupManage') return;
     const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
     if (!item) return;
-    if (!global.confirm(`${item.student_name} 학생의 픽업 일정을 ${koreanDate(dialog.effectiveDate, true)}부터 삭제할까요?`)) return;
-    const result = await withSaving(() => service.removePickup(dialog.pickupId, dialog.effectiveDate));
+    const effectiveDate = clean(dialog.effectiveDate) || todayKey();
+    if (effectiveDate < todayKey()) {
+      alert('픽업 삭제는 오늘부터 설정할 수 있습니다.');
+      return;
+    }
+    if (!global.confirm(`${item.student_name} 학생의 픽업 일정을 ${koreanDate(effectiveDate, true)}부터 삭제할까요?`)) return;
+    const result = await withSaving(() => service.removePickup(dialog.pickupId, effectiveDate));
     if (result) notify(`${item.student_name} 학생의 픽업 일정을 삭제했어요.`);
   }
 

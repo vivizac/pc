@@ -138,3 +138,14 @@ test('makeup capacity migration excludes same-day absent regular students', () =
   assert.match(sql, /a\.status = 'absent'/);
   assert.match(sql, /not exists \(/);
 });
+
+
+test('pickup management allows today for immediate deletion while scheduled changes stay future-only', () => {
+  const code = source('pc-timetable.js');
+  assert.match(code, /const currentDayKey = todayKey\(\);[\s\S]*requestedDate >= currentDayKey/);
+  assert.match(code, /data-tt-pickup-effective-date min="\$\{todayKey\(\)\}"/);
+  assert.match(code, /state\.dialog\.effectiveDate = pickupEffectiveDate\.value \|\| todayKey\(\)/);
+  assert.match(code, /if \(!clean\(dialog\.effectiveDate\) \|\| dialog\.effectiveDate <= todayKey\(\)\) \{ alert\('변경 예약은 내일부터 설정할 수 있습니다\.'/);
+  assert.match(code, /const effectiveDate = clean\(dialog\.effectiveDate\) \|\| todayKey\(\)/);
+  assert.match(code, /service\.removePickup\(dialog\.pickupId, effectiveDate\)/);
+});

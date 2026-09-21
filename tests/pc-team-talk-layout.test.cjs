@@ -73,3 +73,9 @@ test('material request action lives in the workspace toolbar and hides on archiv
 test('mention popup is narrower and aligned to the right side of composer', () => {
   assert.match(css,/\.olliPcTeamTalkMentionMenu\{[^\n]*right:58px;left:auto[^\n]*width:min\(220px,calc\(100% - 96px\)\)/);
 });
+
+
+test('selected material request card uses neutral border and shadow instead of yellow accent', () => {
+  assert.match(materialCss,/\.olliMatItemCard\.selected\{border-color:#bfc4ca;background:#fff;box-shadow:0 3px 10px rgba\(20,24,30,.06\)\}/);
+  assert.doesNotMatch(materialCss,/\.olliMatItemCard\.selected\{[^\n]*(#dbc600|254,229,0)/);
+});
