@@ -45,6 +45,10 @@ function loadSchedule(weekData, calendarDays = [], options = {}) {
       calls.saveCellMemo = { division, sessionDate, timeSlot, note, classGroup, memoId };
       return options.saveCellMemoResult || { ok:true, result:'saved' };
     },
+    async savePickup(payload) {
+      calls.savePickup = payload;
+      return options.savePickupResult || { ok:true, result:'saved', is_dropoff:payload.isDropoff === true };
+    },
     async activeStudents() { return []; }
   };
   const sandbox = {
@@ -1134,4 +1138,130 @@ test('recurring trial question reports no seat when every future occurrence is f
     purpose:'trial'
   });
   assert.match(schedule.describeRecurringAvailability(result), /체험 자리가 없습니다\.$/);
+});
+
+
+test('prepare dropoff pickup write resolves a kinder student and preserves the dropoff flag', async () => {
+  const student = { id:'student-k1', name:'김민서', division:'kinder' };
+  const { schedule } = loadSchedule({}, [], { students:[student] });
+  const prepared = await schedule.prepareWriteCommand('add_pickup', {
+    studentName:'김민서',
+    weekday:1,
+    classTime:4,
+    pickupLabel:'리슈빌',
+    pickupTime:'15:30',
+    isDropoff:true,
+    effectiveDate:new Date(2026, 8, 21, 12, 0, 0)
+  });
+
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.command.intent, 'add_pickup');
+  assert.equal(prepared.command.studentId, 'student-k1');
+  assert.equal(prepared.command.weekday, 1);
+  assert.equal(prepared.command.classTime, 4);
+  assert.equal(prepared.command.pickupLabel, '리슈빌');
+  assert.equal(prepared.command.pickupTime, '15:30');
+  assert.equal(prepared.command.isDropoff, true);
+  assert.equal(prepared.command.effectiveDate, '2026-09-21');
+  assert.match(prepared.message, /하원 픽업/);
+});
+
+test('pickup write rejects incomplete details and elementary students before saving', async () => {
+  const incomplete = loadSchedule({}, [], { students:[] });
+  const missing = await incomplete.schedule.prepareWriteCommand('add_pickup', {
+    isDropoff:true
+  });
+  assert.equal(missing.ok, false);
+  assert.match(missing.message, /학생 이름/);
+  assert.match(missing.message, /픽업 장소/);
+  assert.match(missing.message, /픽업 시간/);
+
+  const student = { id:'student-e1', name:'최민기', division:'elementary' };
+  const elementary = loadSchedule({}, [], { students:[student] });
+  const rejected = await elementary.schedule.prepareWriteCommand('add_pickup', {
+    studentName:'최민기',
+    weekday:1,
+    classTime:4,
+    pickupLabel:'리슈빌',
+    pickupTime:'15:30',
+    isDropoff:true,
+    effectiveDate:new Date(2026, 8, 21, 12, 0, 0)
+  });
+  assert.equal(rejected.ok, false);
+  assert.match(rejected.message, /유치부 학생만/);
+});
+
+test('dropoff pickup execution reuses the existing timetable savePickup service', async () => {
+  const calls = {};
+  const { schedule } = loadSchedule({}, [], { calls });
+  const result = await schedule.executePreparedWrite({
+    intent:'add_pickup',
+    studentId:'student-k1',
+    studentName:'김민서',
+    division:'kinder',
+    weekday:1,
+    classTime:4,
+    pickupLabel:'리슈빌',
+    pickupTime:'15:30',
+    effectiveDate:'2026-09-21',
+    isDropoff:true
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(calls.savePickup.studentId, 'student-k1');
+  assert.equal(calls.savePickup.weekday, 1);
+  assert.equal(calls.savePickup.classTime, 4);
+  assert.equal(calls.savePickup.pickupLabel, '리슈빌');
+  assert.equal(calls.savePickup.pickupTime, '15:30');
+  assert.equal(calls.savePickup.isDropoff, true);
+  assert.match(schedule.writeSuccessMessage({
+    intent:'add_pickup',
+    studentName:'김민서',
+    weekday:1,
+    classTime:4,
+    isDropoff:true
+  }), /하원 픽업/);
+});
+
+test('phone dropoff pickup execution calls the same v2 pickup RPC with is_dropoff', async () => {
+  const calls = [];
+  const sandbox = {
+    window: {
+      OlliPhoneStudentScheduleService: {
+        async request(name, payload) {
+          calls.push({ name, payload });
+          return { ok:true, result:'saved', is_dropoff:payload.p_is_dropoff === true };
+        },
+        clearWeekCache() {}
+      },
+      dispatchEvent() {}
+    },
+    CustomEvent: function CustomEvent(type, init) { this.type = type; this.detail = init && init.detail; },
+    Date,
+    console
+  };
+  vm.runInNewContext(source, sandbox);
+  const schedule = sandbox.window.OlliCommandSchedule;
+
+  await schedule.executePreparedWrite({
+    intent:'add_pickup',
+    studentId:'student-k1',
+    studentName:'김민서',
+    division:'kinder',
+    weekday:1,
+    classTime:4,
+    pickupLabel:'리슈빌',
+    pickupTime:'15:30',
+    effectiveDate:'2026-09-21',
+    isDropoff:true
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].name, 'olli_schedule_save_pickup_v2');
+  assert.equal(calls[0].payload.p_student_id, 'student-k1');
+  assert.equal(calls[0].payload.p_weekday, 1);
+  assert.equal(calls[0].payload.p_class_time, 4);
+  assert.equal(calls[0].payload.p_pickup_label, '리슈빌');
+  assert.equal(calls[0].payload.p_pickup_time, '15:30');
+  assert.equal(calls[0].payload.p_is_dropoff, true);
 });

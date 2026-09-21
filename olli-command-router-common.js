@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-21-action-step1-1';
+  const VERSION = '2026-09-21-pickup-write-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -123,6 +123,64 @@
       weekday:WEEKDAY_MAP[match[1]] || 0,
       timeSlot:Number(match[2] || 0)
     }));
+  }
+
+  function pickupClockMentions(value) {
+    const raw = cleanText(value);
+    const pattern = /(오전|오후)?\s*(\d{1,2})\s*(?::\s*(\d{1,2})|시(?:\s*(\d{1,2})\s*분)?)/g;
+    return Array.from(raw.matchAll(pattern)).map(match => ({
+      period:cleanText(match[1]),
+      hour:Number(match[2] || 0),
+      minute:Number(match[3] || match[4] || 0),
+      index:Number(match.index || 0),
+      end:Number(match.index || 0) + String(match[0] || '').length,
+      text:String(match[0] || '')
+    }));
+  }
+
+  function normalizePickupClock(mention) {
+    if (!mention) return '';
+    let hour = Number(mention.hour || 0);
+    const minute = Number(mention.minute || 0);
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return '';
+
+    const period = cleanText(mention.period);
+    if (period === '오후' && hour < 12) hour += 12;
+    else if (period === '오전' && hour === 12) hour = 0;
+    else if (!period && hour >= 1 && hour <= 7) hour += 12;
+
+    return String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
+  }
+
+  function pickupStudentName(value) {
+    const raw = removeDivisionWords(value);
+    const match = raw.match(/^([가-힣A-Za-z0-9]{2,20})(?:\s*(?:학생|원생))?(?=\s|$)/);
+    const name = cleanText(match && match[1]);
+    if (!name) return '';
+    if (/^(?:하원|픽업|등록|추가|입력|예약|저장|월요일|화요일|수요일|목요일|금요일|토요일|오늘|내일|금일)$/.test(name)) return '';
+    return cleanupStudentName(name);
+  }
+
+  function pickupLabelFromText(value, studentName) {
+    let stripped = removeDivisionWords(value);
+    const name = cleanText(studentName);
+    if (name && stripped.indexOf(name) === 0) stripped = stripped.slice(name.length);
+
+    stripped = stripped
+      .replace(/(?:오늘|금일|내일|매주|이번\s*주|다음\s*주|차주|다다음\s*주)?\s*[월화수목금토]\s*요일/g, ' ')
+      .replace(/(오전|오후)?\s*\d{1,2}\s*(?::\s*\d{1,2}|시(?:\s*\d{1,2}\s*분)?)/g, ' ')
+      .replace(/(?:하원\s*)?픽업(?:\s*(?:시간|장소))?/g, ' ')
+      .replace(/(?:하원|수업|클래스|학생|원생|장소|시간)/g, ' ')
+      .replace(addActionPattern(), ' ')
+      .replace(/[,:;.!?()\-–—\/]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    stripped = stripped
+      .replace(/^(?:에서|으로|로|에)\s*/g, '')
+      .replace(/\s*(?:에서|으로|로|에)$/g, '')
+      .trim();
+    return stripped;
   }
 
   function stripCommonCommandParts(value) {
@@ -487,6 +545,43 @@
   }
 
 
+  function parsePickupMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !/픽업/.test(compact) || hasRemoveAction(compact) || !hasAddAction(compact)) return null;
+
+    const weekdayMatch = compact.match(/([월화수목금토])요일/);
+    const weekday = weekdayMatch ? (WEEKDAY_MAP[weekdayMatch[1]] || 0) : 0;
+    const clocks = pickupClockMentions(raw);
+
+    const explicitClass = raw.match(/(\d{1,2})\s*시\s*(?:수업|클래스)/);
+    const weekdayClass = raw.match(/[월화수목금토]\s*요일\s*(\d{1,2})\s*시/);
+    const classMatch = explicitClass || weekdayClass;
+    const classTime = Number(classMatch && classMatch[1] || 0);
+
+    let classClock = null;
+    if (classTime) {
+      classClock = clocks.find(item => Number(item.hour) === classTime) || null;
+    }
+    const pickupClock = clocks.filter(item => item !== classClock).slice(-1)[0] || null;
+
+    const studentName = pickupStudentName(raw);
+    const pickupLabel = pickupLabelFromText(raw, studentName);
+
+    return {
+      type:'mutation',
+      intent:'add_pickup',
+      studentName,
+      weekday,
+      classTime,
+      pickupLabel,
+      pickupTime:normalizePickupClock(pickupClock),
+      isDropoff:/하원/.test(compact),
+      originalText:raw
+    };
+  }
+
+
   function parseClassMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
@@ -523,6 +618,7 @@
       || parseTrialCancelMutationIntent(normalizedText)
       || parseMakeupCancelMutationIntent(normalizedText)
       || parseMoveCancelMutationIntent(normalizedText)
+      || parsePickupMutationIntent(normalizedText)
       || parseWaitlistMutationIntent(normalizedText)
       || parseTrialMutationIntent(normalizedText)
       || parseScheduleMoveMutationIntent(normalizedText)
@@ -913,11 +1009,12 @@
     const trialCancel = parseTrialCancelMutationIntent(normalizedText);
     const makeupCancel = parseMakeupCancelMutationIntent(normalizedText);
     const moveCancel = parseMoveCancelMutationIntent(normalizedText);
+    const pickupWrite = parsePickupMutationIntent(normalizedText);
     const waitlistWrite = parseWaitlistMutationIntent(normalizedText);
     const trialWrite = parseTrialMutationIntent(normalizedText);
     const scheduleMove = parseScheduleMoveMutationIntent(normalizedText);
     const makeupWrite = parseMakeupMutationIntent(normalizedText);
-    const writeIntent = absenceWrite || trialCancel || makeupCancel || moveCancel || waitlistWrite || trialWrite || scheduleMove || makeupWrite;
+    const writeIntent = absenceWrite || trialCancel || makeupCancel || moveCancel || pickupWrite || waitlistWrite || trialWrite || scheduleMove || makeupWrite;
     if (writeIntent) {
       if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
         return {
@@ -1099,6 +1196,7 @@
     parseMakeupCancelMutationIntent,
     parseTrialCancelMutationIntent,
     parseMoveCancelMutationIntent,
+    parsePickupMutationIntent,
     parseClassMutationIntent,
     parseDateExpression,
     resolveDateExpression,
