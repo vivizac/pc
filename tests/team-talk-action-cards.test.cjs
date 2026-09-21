@@ -58,7 +58,7 @@ test('action records are private and execution is session-aware and idempotent b
   assert.match(migration, /for update/);
   assert.match(migration, /if v_action\.status <> 'pending'/);
   assert.match(migration, /public\.olli_schedule_execute/);
-  assert.match(migration, /'message_type','?system'?/i);
+  assert.match(migration, /message_type,body,client_message_id[\\s\\S]{0,180}'system'/);
 });
 
 test('normal PC mention behavior is still isolated from Olli requests', () => {
