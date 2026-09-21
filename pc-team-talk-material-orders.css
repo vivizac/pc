@@ -1,0 +1,305 @@
+/* Team Talk material order module.
+   Prepared independently from the in-progress Team Talk layout so it can be mounted after layout work finishes. */
+
+.olliMatRoot{
+  --olli-mat-line:#eceef1;
+  --olli-mat-text:#1b1d20;
+  --olli-mat-sub:#8f959d;
+  --olli-mat-yellow:#FEE500;
+  --olli-mat-blue:#eaf2ff;
+  --olli-mat-blue-text:#3970c8;
+  --olli-mat-green:#eaf7ef;
+  --olli-mat-green-text:#2f8b5a;
+  --olli-mat-gray:#f1f2f4;
+  width:100%;
+  height:100%;
+  min-width:0;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  background:#fff;
+  color:var(--olli-mat-text);
+  font-family:'Pretendard',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+
+.olliMatHeader{
+  min-height:78px;
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  padding:15px 22px 13px;
+  border-bottom:1px solid var(--olli-mat-line);
+  background:#fff;
+}
+.olliMatHeaderCopy{min-width:0}
+.olliMatTitle{font-size:18px;font-weight:800;letter-spacing:-.04em;color:#181a1d}
+.olliMatSubtitle{margin-top:5px;font-size:11.5px;font-weight:500;letter-spacing:-.02em;color:#999ea5}
+.olliMatCreateBtn{
+  height:40px;
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:0 15px;
+  border:0;
+  border-radius:12px;
+  background:var(--olli-mat-yellow);
+  color:#1c1d1f;
+  font:750 12px 'Pretendard',sans-serif;
+  cursor:pointer;
+}
+.olliMatCreateBtn span:first-child{font-size:20px;font-weight:400;line-height:1;margin-top:-1px}
+.olliMatCreateBtn:hover{filter:brightness(.985)}
+
+.olliMatSummary{
+  flex:0 0 auto;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,160px));
+  gap:10px;
+  padding:14px 22px 12px;
+  border-bottom:1px solid #f1f2f4;
+  background:#fff;
+}
+.olliMatSummaryCard{
+  min-width:0;
+  height:48px;
+  display:grid;
+  grid-template-columns:26px minmax(0,1fr) auto;
+  align-items:center;
+  gap:7px;
+  padding:0 13px;
+  border:1px solid transparent;
+  border-radius:13px;
+  color:#5f656d;
+  background:#f7f8f9;
+  font-family:inherit;
+  cursor:pointer;
+}
+.olliMatSummaryCard.requested{background:#fff9da}
+.olliMatSummaryCard.ordered{background:#f2f6fc}
+.olliMatSummaryCard.arrived{background:#eff8f2}
+.olliMatSummaryCard.active{border-color:rgba(32,35,39,.18);box-shadow:0 2px 9px rgba(20,24,30,.045)}
+.olliMatSummaryIcon{
+  width:26px;height:26px;display:grid;place-items:center;border-radius:9px;
+  background:rgba(255,255,255,.72);font-size:14px;font-weight:800;color:#7b8189
+}
+.olliMatSummaryCard.requested .olliMatSummaryIcon{color:#9a7f00}
+.olliMatSummaryCard.ordered .olliMatSummaryIcon{color:#547fc4}
+.olliMatSummaryCard.arrived .olliMatSummaryIcon{color:#4f9870}
+.olliMatSummaryLabel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:700;letter-spacing:-.025em}
+.olliMatSummaryCard strong{font-size:18px;font-weight:800;color:#22262a;font-variant-numeric:tabular-nums}
+
+.olliMatWorkspace{
+  min-height:0;
+  flex:1 1 auto;
+  display:grid;
+  grid-template-columns:minmax(390px,1.25fr) minmax(300px,.75fr);
+  background:#fff;
+}
+.olliMatListPane,.olliMatDetailPane{
+  min-width:0;min-height:0;display:flex;flex-direction:column;background:#fff
+}
+.olliMatListPane{border-right:1px solid var(--olli-mat-line)}
+.olliMatDetailPane{background:#fcfcfd}
+
+.olliMatListHead{
+  flex:0 0 auto;
+  min-height:63px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:11px 16px 10px 20px;
+  border-bottom:1px solid #f1f2f4;
+}
+.olliMatPaneTitle{font-size:14px;font-weight:800;letter-spacing:-.035em;color:#2a2d31;white-space:nowrap}
+.olliMatListTools{min-width:0;display:flex;align-items:center;gap:8px}
+.olliMatSearch{
+  width:min(255px,32vw);
+  min-width:150px;
+  height:36px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:0 10px;
+  border:1px solid #e8eaed;
+  border-radius:11px;
+  background:#f7f8f9;
+}
+.olliMatSearch svg{width:15px;height:15px;flex:0 0 15px;fill:none;stroke:#9aa0a7;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.olliMatSearch input{
+  min-width:0;flex:1;border:0;outline:0;background:transparent;
+  color:#272a2e;font:500 11.5px 'Pretendard',sans-serif
+}
+.olliMatSearch input::placeholder{color:#abb0b6}
+.olliMatFilterSelect{
+  height:36px;min-width:88px;border:1px solid #e6e8eb;border-radius:11px;background:#fff;
+  padding:0 28px 0 11px;color:#555b63;font:650 11.5px 'Pretendard',sans-serif;outline:0;cursor:pointer
+}
+
+.olliMatList{
+  min-height:0;
+  flex:1 1 auto;
+  overflow:auto;
+  padding:10px 12px 16px 14px;
+  overscroll-behavior:contain;
+}
+.olliMatItemCard{
+  width:100%;
+  min-width:0;
+  min-height:72px;
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr) auto 18px;
+  align-items:center;
+  gap:10px;
+  margin:0 0 8px;
+  padding:9px 10px;
+  border:1px solid #e7e9ec;
+  border-radius:14px;
+  background:#fff;
+  color:#24272b;
+  text-align:left;
+  font-family:inherit;
+  cursor:pointer;
+}
+.olliMatItemCard:hover{border-color:#d9dde1;box-shadow:0 5px 14px rgba(27,32,41,.04)}
+.olliMatItemCard.selected{border-color:#dbc600;box-shadow:0 0 0 1px rgba(254,229,0,.52)}
+.olliMatItemIcon{
+  width:44px;height:44px;flex:0 0 44px;display:grid;place-items:center;
+  border-radius:12px;background:#f2f3f5;color:#9aa0a7
+}
+.olliMatItemIcon svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.olliMatItemCopy{min-width:0;display:flex;flex-direction:column;gap:7px}
+.olliMatItemName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px;font-weight:760;letter-spacing:-.025em}
+.olliMatItemMeta{min-width:0;display:flex;align-items:center;gap:0;overflow:hidden;color:#959ba3;font-size:10.5px;font-weight:530;white-space:nowrap}
+.olliMatItemMeta span{overflow:hidden;text-overflow:ellipsis}
+.olliMatItemMeta span+span::before{content:"";display:inline-block;width:1px;height:10px;margin:0 8px -1px;background:#e2e4e7}
+.olliMatChevron{color:#a9aeb5;font-size:21px;font-weight:300}
+
+.olliMatStatusTag{
+  height:25px;display:inline-flex;align-items:center;justify-content:center;
+  padding:0 9px;border-radius:999px;font-size:10px;font-weight:760;white-space:nowrap
+}
+.olliMatStatusTag.requested{background:#fff6c8;color:#8c7300}
+.olliMatStatusTag.hold{background:#f0f1f3;color:#777d85}
+.olliMatStatusTag.ordered{background:var(--olli-mat-blue);color:var(--olli-mat-blue-text)}
+.olliMatStatusTag.arrived{background:var(--olli-mat-green);color:var(--olli-mat-green-text)}
+
+.olliMatDetailHead{
+  min-height:63px;flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:11px 17px 10px;border-bottom:1px solid #eff0f2;background:#fff
+}
+.olliMatDetailBody{
+  min-height:0;flex:1 1 auto;overflow:auto;padding:16px 18px 18px;overscroll-behavior:contain
+}
+.olliMatDetailHero{display:flex;align-items:center;gap:12px;padding-bottom:15px;border-bottom:1px solid #eceef1}
+.olliMatDetailHero .olliMatItemIcon{width:50px;height:50px;flex-basis:50px}
+.olliMatDetailHeroCopy{min-width:0;display:flex;flex-direction:column;gap:5px}
+.olliMatDetailHeroCopy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;font-weight:800;letter-spacing:-.035em}
+.olliMatDetailHeroCopy span{color:#989ea6;font-size:11px;font-weight:520}
+
+.olliMatDetailGrid{margin:12px 0 0}
+.olliMatDetailRow{
+  min-height:38px;display:grid;grid-template-columns:82px minmax(0,1fr);align-items:center;
+  gap:8px;border-bottom:1px solid #f0f1f3
+}
+.olliMatDetailRow dt{color:#8f959d;font-size:10.8px;font-weight:650}
+.olliMatDetailRow dd{min-width:0;margin:0;color:#41464d;font-size:11.5px;font-weight:580;overflow-wrap:anywhere}
+.olliMatPurchaseLink{color:#3970c8;text-decoration:none}
+.olliMatPurchaseLink:hover{text-decoration:underline}
+.olliMatMemo,.olliMatHoldReason{
+  margin-top:14px;padding:12px 13px;border-radius:13px;background:#f4f5f6
+}
+.olliMatMemoLabel,.olliMatHoldReason strong{display:block;margin-bottom:6px;color:#777d85;font-size:10.5px;font-weight:760}
+.olliMatMemoText,.olliMatHoldReason span{color:#676d75;font-size:11px;font-weight:520;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.olliMatHoldReason{background:#faf7e9}
+.olliMatAudit{min-height:17px;margin-top:10px;color:#a6abb2;font-size:9.8px;text-align:right}
+.olliMatActions{
+  display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:16px
+}
+.olliMatSecondaryBtn,.olliMatDarkBtn,.olliMatPrimaryBtn{
+  min-width:90px;height:39px;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:11px;padding:0 14px;font:730 11.5px 'Pretendard',sans-serif;cursor:pointer
+}
+.olliMatSecondaryBtn{border:1px solid #e2e5e8;background:#fff;color:#5d636b}
+.olliMatDarkBtn{border:1px solid #50555c;background:#50555c;color:#fff}
+.olliMatPrimaryBtn{border:1px solid var(--olli-mat-yellow);background:var(--olli-mat-yellow);color:#202225}
+.olliMatSecondaryBtn:disabled,.olliMatDarkBtn:disabled,.olliMatPrimaryBtn:disabled{opacity:.55;cursor:default}
+.olliMatReadOnlyNote,.olliMatDoneNote{
+  width:100%;padding:11px 12px;border-radius:12px;background:#f3f4f5;color:#8b9199;
+  font-size:10.8px;font-weight:560;text-align:center
+}
+.olliMatDoneNote{background:#eef7f1;color:#638372}
+
+.olliMatEmpty,.olliMatDetailEmpty{
+  min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:7px;padding:22px;text-align:center
+}
+.olliMatEmpty strong,.olliMatDetailEmpty strong{color:#777d85;font-size:12.5px;font-weight:720}
+.olliMatEmpty span,.olliMatDetailEmpty span{max-width:260px;color:#a1a6ad;font-size:10.8px;font-weight:510;line-height:1.55}
+
+.olliMatToast{
+  position:absolute;left:50%;bottom:18px;z-index:35;transform:translateX(-50%);
+  max-width:min(420px,calc(100% - 32px));padding:10px 14px;border-radius:999px;
+  background:#202327;color:#fff;box-shadow:0 12px 30px rgba(19,23,30,.18);
+  font-size:11px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.olliMatToast.error{background:#8d3f3f}
+.olliMatToast[hidden]{display:none}
+
+.olliMatRoot{position:relative}
+.olliMatModalBackdrop{
+  position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;
+  padding:22px;background:rgba(22,25,29,.20);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)
+}
+.olliMatModalBackdrop[hidden]{display:none}
+.olliMatModal{
+  width:min(560px,100%);max-height:calc(100% - 18px);overflow:auto;
+  border:1px solid rgba(0,0,0,.055);border-radius:20px;background:#fff;
+  box-shadow:0 24px 60px rgba(20,24,31,.18)
+}
+.olliMatModalHead{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+  padding:18px 20px 14px;border-bottom:1px solid #eef0f2
+}
+.olliMatModalTitle{font-size:16px;font-weight:800;letter-spacing:-.035em}
+.olliMatModalSub{margin-top:5px;color:#999ea5;font-size:10.8px;font-weight:520}
+.olliMatIconBtn{
+  width:32px;height:32px;display:grid;place-items:center;border:0;border-radius:50%;
+  background:#f3f4f5;color:#777d84;font-size:22px;font-weight:300;cursor:pointer
+}
+.olliMatForm{
+  display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 20px 20px
+}
+.olliMatField{display:flex;flex-direction:column;gap:6px}
+.olliMatFieldWide{grid-column:1/-1}
+.olliMatField>span{color:#6f757d;font-size:10.8px;font-weight:700}
+.olliMatField>span b{color:#b89400;font-weight:800}
+.olliMatField input,.olliMatField textarea{
+  width:100%;box-sizing:border-box;border:1px solid #e0e3e6;border-radius:11px;background:#fff;
+  color:#292c30;font:520 12px 'Pretendard',sans-serif;outline:0
+}
+.olliMatField input{height:40px;padding:0 11px}
+.olliMatField textarea{min-height:92px;padding:10px 11px;resize:vertical;line-height:1.5}
+.olliMatField input:focus,.olliMatField textarea:focus{border-color:#c8cbd0;box-shadow:0 0 0 3px rgba(34,39,45,.035)}
+.olliMatFormActions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px;padding-top:4px}
+
+@media(max-width:1220px){
+  .olliMatWorkspace{grid-template-columns:minmax(340px,1.15fr) minmax(280px,.85fr)}
+  .olliMatSummary{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .olliMatSearch{width:190px}
+  .olliMatItemCard{grid-template-columns:40px minmax(0,1fr) auto 14px}
+  .olliMatItemIcon{width:40px;height:40px;flex-basis:40px}
+  .olliMatItemMeta span:nth-child(2){display:none}
+}
+@media(max-width:980px){
+  .olliMatHeader{padding-left:16px;padding-right:16px}
+  .olliMatSummary{padding-left:16px;padding-right:16px}
+  .olliMatWorkspace{grid-template-columns:minmax(0,1fr)}
+  .olliMatDetailPane{display:none}
+  .olliMatListPane{border-right:0}
+  .olliMatSearch{width:min(260px,45vw)}
+}
