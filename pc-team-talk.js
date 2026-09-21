@@ -473,6 +473,11 @@
       panel.hidden = panel.dataset.teamTalkWorkspacePanel !== next;
     });
     if (next === 'archive' && !state.archivePayload) loadArchive({ showLoading:true });
+    if (next === 'materials' && global.OlliTeamTalkMaterialOrders?.activate) {
+      global.OlliTeamTalkMaterialOrders.activate().catch((error) => {
+        console.warn('PC 팀톡 재료주문 새로고침 실패:', error?.message || error);
+      });
+    }
   }
 
   function archiveSection(label) {
@@ -920,12 +925,18 @@
     }
     if (refresh && !refresh.dataset.bound) {
       refresh.dataset.bound = '1';
-      refresh.addEventListener('click', () => Promise.all([
-        loadMembers(),
-        loadMessages({ showLoading: false, followBottom: false }),
-        loadArchive({ showLoading: false }),
-        refreshBadge()
-      ]));
+      refresh.addEventListener('click', () => {
+        const jobs = [
+          loadMembers(),
+          loadMessages({ showLoading: false, followBottom: false }),
+          loadArchive({ showLoading: false }),
+          refreshBadge()
+        ];
+        if (global.OlliTeamTalkMaterialOrders?.refresh) {
+          jobs.push(global.OlliTeamTalkMaterialOrders.refresh({ showLoading: false }));
+        }
+        return Promise.all(jobs);
+      });
     }
 
     document.querySelectorAll('#olliPcTeamTalkScreen [data-team-talk-workspace-tab]').forEach((button) => {
