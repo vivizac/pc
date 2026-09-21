@@ -225,6 +225,47 @@
     try { input.dispatchEvent(new Event('input', { bubbles:true })); } catch (err) {}
   }
 
+  function buildKcfDirectLiveRequestContent(body, studentName, studentDivision){
+    var lines = [];
+    var name = String(studentName || '').trim();
+    var text = String(body || '').trim();
+    if (name) lines.push('아이 이름: ' + name);
+    lines.push('학생 부서: ' + (studentDivision === 'kinder' ? '유치부' : '초등부'));
+    if (text) lines.push(text);
+    return lines.join('\n');
+  }
+
+  function startKcfFeedbackRequestGuaranteed(requestOptions, canUseKinderChatLive){
+    var primaryError = null;
+
+    if (typeof window.startTodayFeedbackRequest === 'function') {
+      try {
+        var feedbackItem = window.startTodayFeedbackRequest(requestOptions);
+        if (feedbackItem) return feedbackItem;
+      } catch (err) {
+        primaryError = err;
+        console.warn('1분 피드백 공통 AI 요청 시작 실패, LIVE 직접 연결로 재시도합니다:', err);
+      }
+    }
+
+    if (canUseKinderChatLive && typeof window.startKinderChatFeedbackLiveRequest === 'function') {
+      try {
+        return window.startKinderChatFeedbackLiveRequest(Object.assign({}, requestOptions, {
+          requestContent: buildKcfDirectLiveRequestContent(
+            requestOptions && requestOptions.userText,
+            requestOptions && requestOptions.studentName,
+            requestOptions && requestOptions.studentDivision
+          )
+        }));
+      } catch (err) {
+        primaryError = primaryError || err;
+        console.warn('1분 피드백 LIVE AI 직접 연결 실패:', err);
+      }
+    }
+
+    throw primaryError || new Error('1분 피드백 AI 연결 함수를 불러오지 못했습니다.');
+  }
+
   async function continueKinderChatFeedbackSubmit(body, student, autoSubmitContext){
     var input = document.getElementById('kcfInput');
     var text = String(body || (input ? input.value || '' : '')).trim();
@@ -266,8 +307,8 @@
       silent: true,
       attachments: photoSnapshot ? [photoSnapshot] : []
     };
-    var feedbackItem = null;
-    if (typeof startTodayFeedbackRequest === 'function') feedbackItem = startTodayFeedbackRequest(requestOptions);
+    var feedbackItem = startKcfFeedbackRequestGuaranteed(requestOptions, canUseKinderChatLive);
+    if (!feedbackItem) throw new Error('1분 피드백 AI 요청을 시작하지 못했습니다.');
     if (window.KcfAutoMode && typeof window.KcfAutoMode.onFeedbackRequestStarted === 'function') {
       try { window.KcfAutoMode.onFeedbackRequestStarted(requestOptions, feedbackItem); } catch (err) {}
     }
@@ -360,7 +401,17 @@
         return;
     }
     setKinderChatFeedbackWarning('');
-    await continueKinderChatFeedbackSubmit(text, selectedStudent, autoSubmitContext);
+    try {
+      await continueKinderChatFeedbackSubmit(text, selectedStudent, autoSubmitContext);
+    } catch (err) {
+      console.error('1분 피드백 AI 요청 시작 실패:', err);
+      if (typeof setKinderChatFeedbackWarning === 'function') {
+        setKinderChatFeedbackWarning('AI 연결에 실패했어요. 수업기록은 그대로 두었으니 다시 전송해 주세요.');
+      }
+      try {
+        if (typeof showPushToast === 'function') showPushToast('1분 피드백 AI 연결을 확인해 주세요.');
+      } catch (_) {}
+    }
   };
 
   window.submitKinderChatFeedbackCommandChoice = async function(choice){
