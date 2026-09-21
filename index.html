@@ -1761,7 +1761,7 @@
     <section class="olliPcTeamTalkChat" aria-label="팀톡 채팅">
       <div class="olliPcTeamTalkChatHead">
         <div class="olliPcTeamTalkTitleWrap">
-          <div class="olliPcTeamTalkTitle">비비작 팀톡</div>
+          <div class="olliPcTeamTalkTitle">채팅창</div>
           <div class="olliPcTeamTalkMemberCount" id="olliPcTeamTalkMemberCount"></div>
         </div>
         <button class="olliPcTeamTalkRefresh" id="olliPcTeamTalkRefresh" type="button" aria-label="팀톡 새로고침" title="새로고침">
@@ -1786,30 +1786,35 @@
         <input id="olliPcTeamTalkComposerFile" type="file" hidden accept="image/*,video/*,.pdf,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip">
       </div>
     </section>
-    <section class="olliPcTeamTalkMaterials" aria-label="재료등록">
-      <div class="olliPcTeamTalkPanelHead"><div class="olliPcTeamTalkPanelTitle">재료등록</div></div>
-      <div class="olliPcTeamTalkMaterialsBody">
-        <div class="olliPcTeamTalkMaterialsEmpty">
-          <div class="olliPcTeamTalkMaterialsIcon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M5 7.5h14v11H5z"></path><path d="M8 7.5V5h8v2.5M9 12h6M12 9v6"></path></svg>
+    <section class="olliPcTeamTalkSide" aria-label="재료주문 및 자료실">
+      <div class="olliPcTeamTalkSideHead" role="tablist" aria-label="재료주문 자료실 전환">
+        <button class="olliPcTeamTalkWorkspaceTab active" data-team-talk-workspace-tab="materials" role="tab" aria-selected="true" type="button">재료주문</button>
+        <span class="olliPcTeamTalkWorkspaceSlash" aria-hidden="true">/</span>
+        <button class="olliPcTeamTalkWorkspaceTab" data-team-talk-workspace-tab="archive" role="tab" aria-selected="false" type="button">자료실</button>
+      </div>
+      <div class="olliPcTeamTalkMaterials olliPcTeamTalkWorkspacePanel" data-team-talk-workspace-panel="materials">
+        <div class="olliPcTeamTalkMaterialsBody">
+          <div class="olliPcTeamTalkMaterialsEmpty">
+            <div class="olliPcTeamTalkMaterialsIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M5 7.5h14v11H5z"></path><path d="M8 7.5V5h8v2.5M9 12h6M12 9v6"></path></svg>
+            </div>
+            <div class="olliPcTeamTalkMaterialsEmptyTitle">재료주문</div>
+            <div class="olliPcTeamTalkMaterialsEmptyText">재료 주문 기능을 이 영역에 연결할 수 있도록 준비했습니다.</div>
           </div>
-          <div class="olliPcTeamTalkMaterialsEmptyTitle">재료등록</div>
-          <div class="olliPcTeamTalkMaterialsEmptyText">재료 등록 기능을 이 영역에 연결할 수 있도록 준비했습니다.</div>
         </div>
       </div>
-    </section>
-    <aside class="olliPcTeamTalkArchive" aria-label="팀톡 자료실">
-      <div class="olliPcTeamTalkArchiveHead"><div class="olliPcTeamTalkArchiveTitle">자료실</div></div>
-      <div class="olliPcTeamTalkArchiveTabs" role="tablist" aria-label="자료실 분류">
-        <button class="olliPcTeamTalkArchiveTab active" data-team-talk-archive-tab="media" role="tab" aria-selected="true" type="button">사진/동영상</button>
-        <button class="olliPcTeamTalkArchiveTab" data-team-talk-archive-tab="files" role="tab" aria-selected="false" type="button">수업파일</button>
-        <button class="olliPcTeamTalkArchiveTab" data-team-talk-archive-tab="links" role="tab" aria-selected="false" type="button">링크</button>
+      <div class="olliPcTeamTalkArchive olliPcTeamTalkWorkspacePanel" data-team-talk-workspace-panel="archive" hidden>
+        <div class="olliPcTeamTalkArchiveTabs" role="tablist" aria-label="자료실 분류">
+          <button class="olliPcTeamTalkArchiveTab active" data-team-talk-archive-tab="files" role="tab" aria-selected="true" type="button">수업파일</button>
+          <button class="olliPcTeamTalkArchiveTab" data-team-talk-archive-tab="media" role="tab" aria-selected="false" type="button">사진/동영상</button>
+          <button class="olliPcTeamTalkArchiveTab" data-team-talk-archive-tab="links" role="tab" aria-selected="false" type="button">링크</button>
+        </div>
+        <div class="olliPcTeamTalkArchiveMeta" id="olliPcTeamTalkArchiveMeta"></div>
+        <div class="olliPcTeamTalkArchiveBody" id="olliPcTeamTalkArchiveBody"></div>
+        <button class="olliPcTeamTalkArchiveUpload" id="olliPcTeamTalkArchiveUpload" type="button">파일 올리기</button>
+        <input id="olliPcTeamTalkArchiveFile" type="file" hidden accept=".pdf,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip">
       </div>
-      <div class="olliPcTeamTalkArchiveMeta" id="olliPcTeamTalkArchiveMeta"></div>
-      <div class="olliPcTeamTalkArchiveBody" id="olliPcTeamTalkArchiveBody"></div>
-      <button class="olliPcTeamTalkArchiveUpload" id="olliPcTeamTalkArchiveUpload" type="button" hidden>파일 올리기</button>
-      <input id="olliPcTeamTalkArchiveFile" type="file" hidden accept=".pdf,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip">
-    </aside>
+    </section>
   </div>
 </div>
 <!-- PAGE: 출석부 페이지 -->
@@ -4687,7 +4692,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 });
 </script>
-<script src="pc-team-talk.js?v=20260921-three-column-1"></script>
+<script src="pc-team-talk.js?v=20260921-split-workspace-1"></script>
 <script src="pc-shell.js"></script>
 <script src="pc-student-management.js"></script>
 <script src="pc-kinder-feedback.js"></script>
