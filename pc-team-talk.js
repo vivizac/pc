@@ -3,7 +3,7 @@
 
   if (global.OlliPcTeamTalk?.version) return;
 
-  const VERSION = '1.0.2';
+  const VERSION = '1.1.0';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
   const state = {
     archiveTab: 'files',
@@ -17,6 +17,8 @@
     olliModeActive: false,
     assistantReplyPending: false,
     aiConversationMessages: [],
+    pendingActionReason: null,
+    actionBusy: new Set(),
     uploadBusy: false,
     realtimeWatcher: null,
     blobUrls: new Map(),
@@ -321,6 +323,109 @@
     return bubble;
   }
 
+  function normalizeActionPrompt(value) {
+    return clean(value)
+      .replace(/\n?['‘’\"]?확인['‘’\"]?\s*또는\s*['‘’\"]?취소['‘’\"]?라고\s*입력해\s*주세요\.?/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  function actionPrimaryLabel(actionType) {
+    const type = clean(actionType);
+    if (type === 'move_class') return '변경';
+    if (type === 'mark_absent') return '결석 처리';
+    if (/^cancel_/.test(type)) return '취소 실행';
+    return '등록';
+  }
+
+  function actionStatusLabel(status) {
+    const value = clean(status);
+    if (value === 'completed') return '처리 완료';
+    if (value === 'cancelled') return '취소됨';
+    if (value === 'failed') return '처리 실패';
+    return '';
+  }
+
+  async function handleActionCard(action, operation) {
+    const actionId = clean(action?.id);
+    if (!actionId || state.actionBusy.has(actionId)) return;
+
+    const current = context();
+    if (!current.sessionToken || !current.academyId) {
+      alert('팀톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    state.actionBusy.add(actionId);
+    try {
+      const rpcName = operation === 'execute'
+        ? 'olli_team_chat_action_execute'
+        : 'olli_team_chat_action_cancel';
+      const payload = await rpc(rpcName, {
+        p_session_token: current.sessionToken,
+        p_academy_id: current.academyId,
+        p_action_id: actionId
+      });
+
+      if (!payload?.action) {
+        throw new Error(payload?.message || '작업 상태를 확인하지 못했습니다.');
+      }
+
+      if (operation === 'execute' && clean(payload.action.status) === 'completed') {
+        try {
+          global.dispatchEvent(new CustomEvent('olli:schedule-changed', {
+            detail:{ source:'team_talk_action', actionId, intent:clean(action?.action_type) }
+          }));
+        } catch (_) {}
+        try {
+          if (typeof global.olliTtRefreshSchedule === 'function') await global.olliTtRefreshSchedule();
+        } catch (error) {
+          console.warn('팀톡 액션 실행 후 시간표 갱신 실패:', error?.message || error);
+        }
+      }
+
+      await loadMessages({ showLoading:false, followBottom:true });
+      if (payload?.ok === false && clean(payload?.action?.status) !== 'failed') {
+        alert(payload?.message || '작업을 처리하지 못했습니다.');
+      }
+    } catch (error) {
+      console.warn('PC 팀톡 액션 처리 실패:', error?.message || error);
+      alert(error?.message || '작업을 처리하지 못했습니다.');
+      await loadMessages({ showLoading:false, followBottom:true });
+    } finally {
+      state.actionBusy.delete(actionId);
+    }
+  }
+
+  function makeActionCard(action) {
+    const card = create('div', 'olliPcTeamTalkActionCard');
+    const status = clean(action?.status) || 'pending';
+    card.dataset.actionId = clean(action?.id);
+    card.dataset.actionStatus = status;
+
+    if (status !== 'pending') {
+      const label = create('span', 'olliPcTeamTalkActionStatus', actionStatusLabel(status));
+      if (status === 'failed') label.classList.add('failed');
+      card.appendChild(label);
+      return card;
+    }
+
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'olliPcTeamTalkActionButton secondary';
+    cancel.textContent = '취소';
+    cancel.addEventListener('click', () => handleActionCard(action, 'cancel'));
+
+    const execute = document.createElement('button');
+    execute.type = 'button';
+    execute.className = 'olliPcTeamTalkActionButton primary';
+    execute.textContent = actionPrimaryLabel(action?.action_type);
+    execute.addEventListener('click', () => handleActionCard(action, 'execute'));
+
+    card.append(cancel, execute);
+    return card;
+  }
+
   function getMessageGroupKey(item, currentMemberId) {
     const type = clean(item?.message_type) || 'text';
     if (type === 'system') return '';
@@ -381,6 +486,7 @@
     meta.appendChild(create('span', 'olliPcTeamTalkMessageTime', formatTime(item?.created_at)));
     bubbleRow.appendChild(meta);
     content.appendChild(bubbleRow);
+    if (item?.action) content.appendChild(makeActionCard(item.action));
     row.appendChild(content);
     return row;
   }
@@ -868,6 +974,7 @@
 
   function handleAiModeChanged() {
     state.aiConversationMessages = [];
+    state.pendingActionReason = null;
     syncAssistantUi();
   }
 
@@ -902,6 +1009,104 @@
       throw new Error(payload?.message || '올리 응답을 저장하지 못했습니다.');
     }
     return payload.message;
+  }
+
+  async function saveAssistantAction(current, body, command, replyToMessageId) {
+    const actionType = clean(command?.intent);
+    if (!actionType) throw new Error('작업 종류를 확인하지 못했습니다.');
+
+    const payload = await rpc('olli_team_chat_send_action', {
+      p_session_token: current.sessionToken,
+      p_academy_id: current.academyId,
+      p_body: normalizeActionPrompt(body),
+      p_action_type: actionType,
+      p_action_payload: command,
+      p_client_message_id: clientMessageId(),
+      p_reply_to_message_id: Number(replyToMessageId || 0) || null
+    });
+    if (!payload?.ok || !payload?.message?.action) {
+      throw new Error(payload?.message || '작업 카드를 저장하지 못했습니다.');
+    }
+    return payload.message;
+  }
+
+  function isPendingReasonCancel(text) {
+    return /^(취소|취소해|취소해줘|그만|중단|하지마|아니|아니야)$/i.test(clean(text));
+  }
+
+  async function resolveAiTurn(commandText, current, replyToMessageId) {
+    const router = global.OlliCommandRouter;
+    const schedule = global.OlliCommandSchedule;
+
+    if (state.pendingActionReason) {
+      if (isPendingReasonCancel(commandText)) {
+        state.pendingActionReason = null;
+        const message = '작업 준비를 취소했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current, message, replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+
+      const command = Object.assign({}, state.pendingActionReason, { reason:clean(commandText) });
+      state.pendingActionReason = null;
+      const confirmation = clean(schedule?.writeConfirmationMessage?.(command)) || '이 작업을 진행할까요?';
+      return {
+        assistantMessage:await saveAssistantAction(current, confirmation, command, replyToMessageId),
+        replyText:confirmation,
+        recordAi:false
+      };
+    }
+
+    if (router && typeof router.prepareAction === 'function') {
+      const prepared = await router.prepareAction(commandText, {
+        source:'olli_talk_ai',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+
+      if (prepared?.handled === true) {
+        if (prepared.kind === 'action_pending' && prepared.payload) {
+          return {
+            assistantMessage:await saveAssistantAction(
+              current,
+              prepared.message || '이 작업을 진행할까요?',
+              prepared.payload,
+              replyToMessageId
+            ),
+            replyText:prepared.message || '',
+            recordAi:false
+          };
+        }
+
+        if (prepared.kind === 'action_needs_reason' && prepared.payload) {
+          state.pendingActionReason = Object.assign({}, prepared.payload);
+          const reasonMessage = clean(prepared.message) || '사유를 알려주세요.';
+          return {
+            assistantMessage:await saveAssistantReply(current, reasonMessage, replyToMessageId),
+            replyText:reasonMessage,
+            recordAi:false
+          };
+        }
+
+        if (prepared.kind === 'action_rejected') {
+          const rejectedMessage = clean(prepared.message) || '작업을 준비하지 못했어요.';
+          return {
+            assistantMessage:await saveAssistantReply(current, rejectedMessage, replyToMessageId),
+            replyText:rejectedMessage,
+            recordAi:false
+          };
+        }
+      }
+    }
+
+    const resolved = await resolveAiReply(commandText, current);
+    return {
+      assistantMessage:await saveAssistantReply(current, resolved.message, replyToMessageId),
+      replyText:resolved.message,
+      recordAi:true
+    };
   }
 
   function updateComposerState() {
@@ -1029,15 +1234,14 @@
       if (olliRequested) {
         const usingAi = isAiEnabled();
         try {
-          const resolved = usingAi
-            ? await resolveAiReply(commandText, current)
-            : await resolveBotReply(commandText);
-          const assistantMessage = await saveAssistantReply(current, resolved.message, Number(payload.message.id));
           if (usingAi) {
+            const turn = await resolveAiTurn(commandText, current, Number(payload.message.id));
             state.assistantReplyPending = false;
-            replaceAssistantTypingWithMessage(assistantMessage, current.memberId);
-            recordAiConversationTurn(commandText, resolved.message);
+            replaceAssistantTypingWithMessage(turn.assistantMessage, current.memberId);
+            if (turn.recordAi) recordAiConversationTurn(commandText, turn.replyText);
           } else {
+            const resolved = await resolveBotReply(commandText);
+            const assistantMessage = await saveAssistantReply(current, resolved.message, Number(payload.message.id));
             appendPersistedMessage(assistantMessage, current.memberId);
           }
         } catch (error) {
