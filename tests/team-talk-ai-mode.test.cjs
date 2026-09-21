@@ -41,3 +41,13 @@ test('shared Team Talk automatic alerts include pickup add and cancel and remain
   assert.match(settings, /<span>픽업 취소<\/span>/);
   assert.match(settings, /AI 사용 여부와 관계없이 등록과 취소가 생기면 팀톡에 자동으로 알려줍니다/);
 });
+
+
+test('PC bot or AI mode stays active until the user presses the assistant button again', () => {
+  const sendStart = talk.indexOf('async function sendMessage');
+  const sendEnd = talk.indexOf('async function callFileApi', sendStart);
+  const sendSource = talk.slice(sendStart, sendEnd);
+
+  assert.match(talk, /return setOlliMode\(!state\.olliModeActive\)/);
+  assert.doesNotMatch(sendSource, /setOlliMode\(/);
+});

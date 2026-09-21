@@ -894,10 +894,8 @@
             ? await resolveAiReply(commandText, current)
             : await resolveBotReply(commandText);
           await saveAssistantReply(current, resolved.message, Number(payload.message.id));
-          setOlliMode(usingAi ? false : hasPendingOlliCommand(), { focus:false });
         } catch (error) {
           console.warn(usingAi ? 'PC 올리톡 AI 응답 실패:' : 'PC 올리톡 올리봇 응답 실패:', error?.message || error);
-          setOlliMode(false, { focus:false });
           alert((usingAi ? 'AI' : '올리봇') + ' 응답을 받지 못했습니다.\n' + (error?.message || error));
         }
       }
