@@ -22,7 +22,7 @@
 #olliPcTeamTalkScreen,#olliPcTeamTalkScreen *{box-sizing:border-box}
 .olliPcTeamTalkPage{
   width:100%;height:100%;min-width:0;min-height:0;display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;
+  grid-template-columns:minmax(300px,1fr) minmax(0,2fr);gap:14px;
 }
 .olliPcTeamTalkChat,.olliPcTeamTalkSide{
   min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden;
@@ -128,7 +128,8 @@
 .olliPcTeamTalkWorkspacePanel{min-width:0;min-height:0;flex:1}
 .olliPcTeamTalkWorkspacePanel[hidden]{display:none}
 .olliPcTeamTalkMaterials{display:flex;flex-direction:column;background:#fff}
-.olliPcTeamTalkMaterialsBody{min-height:0;flex:1;display:flex;align-items:center;justify-content:center;padding:24px}
+.olliPcTeamTalkMaterialsBody{min-width:0;min-height:0;flex:1;display:block;padding:0;overflow:hidden}
+.olliPcTeamTalkMaterialsBody[data-olli-team-material-orders]{width:100%;height:100%}
 .olliPcTeamTalkMaterialsEmpty{max-width:260px;display:flex;flex-direction:column;align-items:center;text-align:center;color:#9da2aa}
 .olliPcTeamTalkMaterialsIcon{width:50px;height:50px;display:grid;place-items:center;margin-bottom:12px;border-radius:15px;background:#f4f5f7;color:#a3a8b0}
 .olliPcTeamTalkMaterialsIcon svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
@@ -171,7 +172,7 @@
 
 @media(max-width:1100px){
   #olliPcTeamTalkScreen{padding:12px 14px 16px}
-  .olliPcTeamTalkPage{grid-template-columns:minmax(0,1.06fr) minmax(360px,.94fr);gap:10px}
+  .olliPcTeamTalkPage{grid-template-columns:minmax(280px,1fr) minmax(0,2fr);gap:10px}
   .olliPcTeamTalkChatHead,.olliPcTeamTalkSideHead{padding-left:14px;padding-right:14px}
   .olliPcTeamTalkMessages{padding-left:12px;padding-right:12px}
   .olliPcTeamTalkMessageContent{max-width:88%}
