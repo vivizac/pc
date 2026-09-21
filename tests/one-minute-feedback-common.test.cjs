@@ -16,7 +16,7 @@ test('common feedback runtime owns queue/API behavior without wrapper replacemen
   assert.match(runtime, /fetch\('\/api\/chat'/);
 });
 
-test('common registration allows name-free natural language and keeps student selection only for feedback context', () => {
+test('common registration keeps selected-student flow while phone may opt into inline student-name feedback', () => {
   assert.match(registration, /function getKcfSelectedStudent\(\)/);
   assert.match(registration, /getKinderChatFeedbackManualSelection/);
   assert.match(registration, /KcfAutoMode\.getSelection/);
@@ -42,6 +42,25 @@ test('common registration allows name-free natural language and keeps student se
   assert.match(registration, /window\.submitKinderChatFeedbackCommandChoice = async function/);
   assert.match(registration, /userText: text/);
 });
+
+test('phone inline student-name feedback is opt-in and reuses the existing AI submit path', () => {
+  assert.match(registration, /function resolveKcfInlineFeedbackTarget\(text\)/);
+  assert.match(registration, /names\.sort\(function\(a, b\)\{ return b\.length - a\.length; \}\)/);
+  assert.match(registration, /var candidates = findKcfStudentsByName\(matchedName\);/);
+  assert.match(registration, /ambiguous:candidates\.length > 1/);
+
+  const submitStart = registration.indexOf('window.submitKinderChatFeedback = async function');
+  const submitEnd = registration.indexOf('window.submitKinderChatFeedbackCommandChoice', submitStart);
+  const submit = registration.slice(submitStart, submitEnd);
+  assert.match(submit, /window\.__olliPhoneInlineStudentFeedbackEnabled === true/);
+  assert.match(submit, /var feedbackText = text;/);
+  assert.match(submit, /resolveKcfInlineFeedbackTarget\(text\)/);
+  assert.match(submit, /feedbackText = inlineTarget\.body/);
+  assert.match(submit, /continueKinderChatFeedbackSubmit\(feedbackText, selectedStudent, autoSubmitContext\)/);
+  assert.match(submit, /동명이인 학생이 있어요/);
+  assert.match(submit, /학생 이름 다음에 수업기록을 적어주세요/);
+});
+
 
 test('legacy first-line submit picker path is removed', () => {
   assert.doesNotMatch(registration, /mode === 'submit'/);
