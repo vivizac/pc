@@ -88,10 +88,10 @@ test('Team Talk labels use 업무요청 sidebar, 업무 page title, and TEAM 톡
 });
 
 
-test('chat scrollbar is lighter and assistant toggle uses yellow with white text only while active', () => {
+test('chat scrollbar is lighter and assistant toggle uses black with white text only while active', () => {
   assert.match(css,/\.olliPcTeamTalkMessages\{scrollbar-width:thin;scrollbar-color:rgba\(132,138,147,.20\) transparent\}/);
   assert.match(css,/\.olliPcTeamTalkMessages::-webkit-scrollbar-thumb\{background:rgba\(132,138,147,.20\);border-radius:999px\}/);
-  assert.match(css,/#olliPcTeamTalkOlli\.active\{background:#FEE500;color:#fff\}/);
+  assert.match(css,/#olliPcTeamTalkOlli\.active\{background:#111;color:#fff\}/);
   assert.match(js,/button\.classList\.toggle\('active', state\.olliModeActive\)/);
   assert.match(js,/return setOlliMode\(!state\.olliModeActive\)/);
 });
