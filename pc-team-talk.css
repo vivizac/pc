@@ -101,10 +101,10 @@
   content:"";position:absolute;right:-7px;top:9px;width:9px;height:11px;background:var(--olli-pc-talk-bubble-bg);clip-path:polygon(0 0,0 100%,100% 0);pointer-events:none
 }
 .olliPcTeamTalkMessageConnected .olliPcTeamTalkBubble::before,.olliPcTeamTalkMessageConnected .olliPcTeamTalkBubble::after{content:none}
-.olliPcTeamTalkTypingBubble{min-width:48px;min-height:36px;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:9px 13px}
-.olliPcTeamTalkTypingDot{width:6px;height:6px;display:block;border-radius:50%;background:#8f949b;opacity:.38;animation:olliPcTeamTalkTypingDot 1.05s ease-in-out infinite}
+.olliPcTeamTalkTypingBubble{min-width:32px;min-height:26px;display:inline-flex;align-items:center;justify-content:center;gap:3px;padding:6px 8px}
+.olliPcTeamTalkTypingDot{width:3px;height:3px;display:block;border-radius:50%;background:#8f949b;opacity:.38;animation:olliPcTeamTalkTypingDot 1.05s ease-in-out infinite}
 .olliPcTeamTalkTypingDot:nth-child(2){animation-delay:.14s}.olliPcTeamTalkTypingDot:nth-child(3){animation-delay:.28s}
-@keyframes olliPcTeamTalkTypingDot{0%,60%,100%{transform:translateY(0);opacity:.38}30%{transform:translateY(-3px);opacity:1}}
+@keyframes olliPcTeamTalkTypingDot{0%,60%,100%{transform:translateY(0);opacity:.38}30%{transform:translateY(-2px);opacity:1}}
 @media (prefers-reduced-motion:reduce){.olliPcTeamTalkTypingDot{animation:none;opacity:.65}}
 .olliPcTeamTalkMessageMeta{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:2px;padding-bottom:1px}
 .olliPcTeamTalkMessage.outgoing .olliPcTeamTalkMessageMeta{align-items:flex-start}

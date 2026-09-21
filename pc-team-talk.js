@@ -429,6 +429,23 @@
     });
   }
 
+  function replaceAssistantTypingWithMessage(item, currentMemberId) {
+    const body = byId('olliPcTeamTalkMessages');
+    if (!body || !item) return false;
+    const typing = body.querySelector('[data-olli-assistant-typing]');
+    const next = makeMessage(item, currentMemberId, { connectedToPrevious:false });
+    if (typing) typing.replaceWith(next);
+    else appendPersistedMessage(item, currentMemberId);
+    const messageId = clean(item?.id);
+    if (!state.messages.some((message) => clean(message?.id) === messageId)) {
+      state.messages = [...state.messages, item];
+    }
+    requestAnimationFrame(() => {
+      if (body.isConnected) body.scrollTop = body.scrollHeight;
+    });
+    return true;
+  }
+
   function appendPersistedMessage(item, currentMemberId) {
     const body = byId('olliPcTeamTalkMessages');
     if (!body || !item) return false;
@@ -525,7 +542,8 @@
       });
       if (sequence !== state.messageLoadSequence) return false;
       if (!payload?.ok) throw new Error(payload?.message || '대화를 불러오지 못했습니다.');
-      renderMessages(payload, { followBottom: options.followBottom });
+      if (options.render === false) state.messages = Array.isArray(payload.messages) ? payload.messages : [];
+      else renderMessages(payload, { followBottom: options.followBottom });
       const latest = Array.isArray(payload.messages) && payload.messages.length
         ? Number(payload.messages[payload.messages.length - 1]?.id || 0)
         : 0;
@@ -1014,19 +1032,27 @@
           const resolved = usingAi
             ? await resolveAiReply(commandText, current)
             : await resolveBotReply(commandText);
-          await saveAssistantReply(current, resolved.message, Number(payload.message.id));
-          if (usingAi) recordAiConversationTurn(commandText, resolved.message);
+          const assistantMessage = await saveAssistantReply(current, resolved.message, Number(payload.message.id));
+          if (usingAi) {
+            state.assistantReplyPending = false;
+            replaceAssistantTypingWithMessage(assistantMessage, current.memberId);
+            recordAiConversationTurn(commandText, resolved.message);
+          } else {
+            appendPersistedMessage(assistantMessage, current.memberId);
+          }
         } catch (error) {
           console.warn(usingAi ? 'PC 올리톡 AI 응답 실패:' : 'PC 올리톡 올리봇 응답 실패:', error?.message || error);
           alert((usingAi ? 'AI' : '올리봇') + ' 응답을 받지 못했습니다.\n' + (error?.message || error));
         } finally {
-          state.assistantReplyPending = false;
-          syncAssistantTypingIndicator();
+          if (state.assistantReplyPending) {
+            state.assistantReplyPending = false;
+            syncAssistantTypingIndicator();
+          }
         }
       }
 
       await Promise.all([
-        loadMessages({ showLoading: false, followBottom: true }),
+        loadMessages({ showLoading: false, followBottom: true, render:false }),
         loadArchive({ showLoading: false })
       ]);
       input.focus();
