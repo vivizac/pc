@@ -3,9 +3,10 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-19-language-nextnextweek-1';
+  const VERSION = '2026-09-21-team-talk-actions-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
+  let teamTalkPendingReasonCommand = null;
 
   function cleanText(value) {
     return String(value == null ? '' : value).replace(/\r\n?/g, '\n').trim();
@@ -484,6 +485,79 @@
     };
   }
 
+
+  function parseClassMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !hasAddAction(compact) || hasRemoveAction(compact)) return null;
+    if (!/(?:수업|클래스)/.test(compact)) return null;
+    if (hasMakeupWord(compact) || hasWaitlistWord(compact) || hasTrialWord(compact) || hasAbsenceWord(compact) || hasMoveAction(compact)) return null;
+
+    const dateSpec = parseDateExpression(compact);
+    const timeSlot = firstTimeSlot(raw);
+    const studentName = extractStudentName(
+      raw,
+      /(?:정규\s*)?(?:수업|클래스)(?:으로|에|을|를)?/g,
+      addActionPattern()
+    );
+    if (!studentName || !dateSpec || !timeSlot) return null;
+
+    return {
+      type:'mutation',
+      intent:'add_class',
+      studentName,
+      division:detectDivision(compact),
+      dateSpec,
+      dateLabel:dateSpec.label,
+      timeSlot,
+      classGroup:firstClassGroup(raw),
+      originalText:raw
+    };
+  }
+
+  function parseClassCancelMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !hasRemoveAction(compact)) return null;
+    if (!/(?:수업|클래스)/.test(compact)) return null;
+    if (hasMakeupWord(compact) || hasWaitlistWord(compact) || hasTrialWord(compact) || hasMoveAction(compact)) return null;
+
+    const dateSpec = parseDateExpression(compact);
+    const timeSlot = firstTimeSlot(raw);
+    const studentName = extractStudentName(
+      raw,
+      /(?:정규\s*)?(?:수업|클래스)(?:을|를)?/g,
+      /(?:취소|삭제|지워|지우|제거|빼|해제|없애)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
+    );
+    if (!studentName) return null;
+
+    return {
+      type:'mutation',
+      intent:'cancel_class',
+      studentName,
+      division:detectDivision(compact),
+      dateSpec,
+      dateLabel:dateSpec ? dateSpec.label : '',
+      timeSlot,
+      classGroup:firstClassGroup(raw),
+      originalText:raw
+    };
+  }
+
+  function parseWriteIntent(text) {
+    const normalizedText = cleanText(text);
+    return parseAbsenceMutationIntent(normalizedText)
+      || parseTrialCancelMutationIntent(normalizedText)
+      || parseMakeupCancelMutationIntent(normalizedText)
+      || parseMoveCancelMutationIntent(normalizedText)
+      || parseClassCancelMutationIntent(normalizedText)
+      || parseWaitlistMutationIntent(normalizedText)
+      || parseTrialMutationIntent(normalizedText)
+      || parseScheduleMoveMutationIntent(normalizedText)
+      || parseMakeupMutationIntent(normalizedText)
+      || parseClassMutationIntent(normalizedText);
+  }
+
   function isConfirmCommand(text) {
     return /^(확인|확인해|확인해줘|진행|진행해|진행해줘|실행|실행해|실행해줘)$/i.test(compactText(text));
   }
@@ -602,6 +676,31 @@
     };
   }
 
+
+  function parsePickupQueryIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !/픽업/.test(compact)) return null;
+    if (hasAddAction(compact) || hasRemoveAction(compact) || hasMoveAction(compact)) return null;
+
+    const asksForLookup =
+      /알려|찾아|보여|확인|체크|봐줘|봐|조회/.test(compact)
+      || /있어|있나|있나요|있니|있을까|있습니까/.test(compact)
+      || /누구|누가|몇명|명단|학생/.test(compact);
+    if (!asksForLookup) return null;
+
+    const dateSpec = parseDateExpression(compact) || { mode:'today', label:'오늘' };
+    const classTimeMatch = raw.match(/(?:수업|클래스)\s*(\d{1,2})\s*시/);
+    return {
+      type:'query',
+      intent:'find_pickups',
+      dateSpec,
+      dateLabel:dateSpec.label || '오늘',
+      timeSlot:Number(classTimeMatch && classTimeMatch[1] || 0),
+      originalText:raw
+    };
+  }
+
   function passThrough(text) {
     return {
       handled: false,
@@ -612,6 +711,251 @@
       clearInput: false,
       payload: null
     };
+  }
+
+
+  async function prepareTeamTalkAction(text, context) {
+    const normalizedText = cleanText(text);
+    const routeContext = normalizeContext(context);
+    const schedule = global.OlliCommandSchedule;
+
+    if (isCancelCommand(normalizedText) && teamTalkPendingReasonCommand) {
+      const cancelled = teamTalkPendingReasonCommand;
+      teamTalkPendingReasonCommand = null;
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:'cancel',
+        text:normalizedText,
+        message:'작업 준비를 취소했어요.',
+        clearInput:true,
+        payload:cancelled
+      };
+    }
+
+    if (teamTalkPendingReasonCommand) {
+      const reason = normalizeReasonReply(normalizedText);
+      if (!reason) {
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:teamTalkPendingReasonCommand.intent,
+          text:normalizedText,
+          message:reasonPrompt(teamTalkPendingReasonCommand, schedule),
+          clearInput:true,
+          payload:teamTalkPendingReasonCommand
+        };
+      }
+      const command = Object.assign({}, teamTalkPendingReasonCommand, { reason });
+      teamTalkPendingReasonCommand = null;
+      return {
+        handled:true,
+        kind:'command_confirmation',
+        intent:command.intent,
+        text:normalizedText,
+        message:confirmationMessage(command, schedule, ''),
+        clearInput:true,
+        payload:command
+      };
+    }
+
+    const writeIntent = parseWriteIntent(normalizedText);
+    if (!writeIntent) return { handled:false, kind:'pass_through', text:normalizedText, message:'', payload:null };
+
+    if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:writeIntent.intent,
+        text:normalizedText,
+        message:'시간표 쓰기 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+        clearInput:true,
+        payload:writeIntent
+      };
+    }
+
+    try {
+      const options = Object.assign({}, writeIntent, {
+        selectedStudent:routeContext.selectedStudent || null,
+        effectiveDate:new Date()
+      });
+      if (writeIntent.dateSpec) {
+        options.date = resolveDateExpression(writeIntent.dateSpec, new Date());
+        if (!options.date) throw new Error('날짜를 해석하지 못했습니다.');
+      }
+      const prepared = await schedule.prepareWriteCommand(writeIntent.intent, options);
+      if (!prepared || prepared.ok !== true) {
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:writeIntent.intent,
+          text:normalizedText,
+          message:String(prepared && prepared.message || '시간표 작업을 준비하지 못했어요.'),
+          clearInput:true,
+          payload:writeIntent
+        };
+      }
+
+      if (commandRequiresReason(prepared.command) && !cleanText(prepared.command.reason)) {
+        teamTalkPendingReasonCommand = prepared.command;
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:writeIntent.intent,
+          text:normalizedText,
+          message:reasonPrompt(prepared.command, schedule),
+          clearInput:true,
+          payload:prepared.command
+        };
+      }
+
+      return {
+        handled:true,
+        kind:'command_confirmation',
+        intent:writeIntent.intent,
+        text:normalizedText,
+        message:confirmationMessage(prepared.command, schedule, prepared.message),
+        clearInput:true,
+        payload:prepared.command
+      };
+    } catch (error) {
+      console.warn('올리 팀톡 쓰기 명령 준비 실패:', error);
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:writeIntent.intent,
+        text:normalizedText,
+        message:String(error && (error.message || error) || '시간표 작업을 준비하지 못했어요.'),
+        clearInput:true,
+        payload:writeIntent
+      };
+    }
+  }
+
+  async function queryTeamTalk(text, context) {
+    const normalizedText = cleanText(text);
+    const schedule = global.OlliCommandSchedule;
+    const pickup = parsePickupQueryIntent(normalizedText);
+
+    if (pickup) {
+      if (!schedule || typeof schedule.findPickups !== 'function') {
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:pickup.intent,
+          text:normalizedText,
+          message:'픽업 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:pickup
+        };
+      }
+      try {
+        const targetDate = resolveDateExpression(pickup.dateSpec, new Date());
+        if (!targetDate) throw new Error('픽업 조회 날짜를 해석하지 못했습니다.');
+        const result = await schedule.findPickups({
+          date:targetDate,
+          dateLabel:pickup.dateLabel,
+          timeSlot:pickup.timeSlot
+        });
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:pickup.intent,
+          text:normalizedText,
+          message:typeof schedule.describePickups === 'function' ? schedule.describePickups(result) : '픽업 일정을 확인했어요.',
+          clearInput:true,
+          payload:Object.assign({}, pickup, { result })
+        };
+      } catch (error) {
+        console.warn('올리 픽업 조회 실패:', error);
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:pickup.intent,
+          text:normalizedText,
+          message:'픽업 일정을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:pickup
+        };
+      }
+    }
+
+    const availableSlots = parseAvailableSlotsIntent(normalizedText);
+    if (!availableSlots) return { handled:false, kind:'pass_through', text:normalizedText, message:'', payload:null };
+
+    if (!schedule || typeof schedule.findAvailableSlots !== 'function') {
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:availableSlots.intent,
+        text:normalizedText,
+        message:'시간표 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+        clearInput:true,
+        payload:availableSlots
+      };
+    }
+
+    try {
+      let result;
+      let message;
+      if (availableSlots.scope === 'week') {
+        result = await schedule.findWeekAvailability({
+          date:new Date(),
+          weekOffset:availableSlots.weekOffset,
+          dateLabel:availableSlots.dateLabel,
+          division:availableSlots.division,
+          purpose:availableSlots.purpose,
+          viewMode:availableSlots.viewMode,
+          timeSlot:availableSlots.timeSlot,
+          classGroup:availableSlots.classGroup
+        });
+        message = schedule.describeWeekAvailability(result);
+      } else if (availableSlots.scope === 'recurring') {
+        result = await schedule.findRecurringAvailability({
+          date:new Date(),
+          weekday:availableSlots.weekday,
+          division:availableSlots.division,
+          purpose:availableSlots.purpose,
+          viewMode:availableSlots.viewMode,
+          timeSlot:availableSlots.timeSlot,
+          classGroup:availableSlots.classGroup
+        });
+        message = schedule.describeRecurringAvailability(result);
+      } else {
+        const targetDate = resolveDateExpression(availableSlots.dateSpec, new Date());
+        if (!targetDate) throw new Error('조회 날짜를 해석하지 못했습니다.');
+        result = await schedule.findAvailableSlots({
+          date:targetDate,
+          dateLabel:availableSlots.dateLabel,
+          division:availableSlots.division,
+          purpose:availableSlots.purpose,
+          viewMode:availableSlots.viewMode,
+          timeSlot:availableSlots.timeSlot,
+          classGroup:availableSlots.classGroup
+        });
+        message = schedule.describeAvailableSlots(result);
+      }
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:availableSlots.intent,
+        text:normalizedText,
+        message:cleanText(message) || '시간표를 확인했어요.',
+        clearInput:true,
+        payload:Object.assign({}, availableSlots, { result })
+      };
+    } catch (error) {
+      console.warn('올리 팀톡 시간표 조회 실패:', error);
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:availableSlots.intent,
+        text:normalizedText,
+        message:'시간표 빈자리를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+        clearInput:true,
+        payload:availableSlots
+      };
+    }
   }
 
   async function route(text, context) {
@@ -742,15 +1086,7 @@
 
     if (pendingWriteCommand) pendingWriteCommand = null;
 
-    const absenceWrite = parseAbsenceMutationIntent(normalizedText);
-    const trialCancel = parseTrialCancelMutationIntent(normalizedText);
-    const makeupCancel = parseMakeupCancelMutationIntent(normalizedText);
-    const moveCancel = parseMoveCancelMutationIntent(normalizedText);
-    const waitlistWrite = parseWaitlistMutationIntent(normalizedText);
-    const trialWrite = parseTrialMutationIntent(normalizedText);
-    const scheduleMove = parseScheduleMoveMutationIntent(normalizedText);
-    const makeupWrite = parseMakeupMutationIntent(normalizedText);
-    const writeIntent = absenceWrite || trialCancel || makeupCancel || moveCancel || waitlistWrite || trialWrite || scheduleMove || makeupWrite;
+    const writeIntent = parseWriteIntent(normalizedText);
     if (writeIntent) {
       if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
         return {
@@ -920,7 +1256,12 @@
   global.OlliCommandRouter = Object.freeze({
     VERSION,
     route,
+    prepareTeamTalkAction,
+    queryTeamTalk,
     parseAvailableSlotsIntent,
+    parsePickupQueryIntent,
+    parseClassMutationIntent,
+    parseClassCancelMutationIntent,
     parseScheduleMoveMutationIntent,
     parseMakeupMutationIntent,
     parseWaitlistMutationIntent,
