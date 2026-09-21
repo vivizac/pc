@@ -62,6 +62,11 @@
 .olliPcTeamTalkRefresh svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
 .olliPcTeamTalkMessages{min-height:0;flex:1 1 auto;overflow:auto;padding:16px 18px 14px;background:transparent;overscroll-behavior:contain}
+.olliPcTeamTalkMessages{scrollbar-width:thin;scrollbar-color:rgba(132,138,147,.20) transparent}
+.olliPcTeamTalkMessages::-webkit-scrollbar{width:6px}
+.olliPcTeamTalkMessages::-webkit-scrollbar-track{background:transparent}
+.olliPcTeamTalkMessages::-webkit-scrollbar-thumb{background:rgba(132,138,147,.20);border-radius:999px}
+.olliPcTeamTalkMessages::-webkit-scrollbar-thumb:hover{background:rgba(132,138,147,.28)}
 .olliPcTeamTalkMessageList{width:100%;min-height:100%;display:flex;flex-direction:column;justify-content:flex-end;padding:8px 0 10px}
 .olliPcTeamTalkDateDivider{display:flex;align-items:center;justify-content:center;margin:14px 0 18px}
 .olliPcTeamTalkDateDivider span{padding:6px 10px;border-radius:999px;background:var(--olli-pc-talk-system-pill-bg);color:var(--olli-pc-talk-system-pill-text);font-size:calc(11px * var(--olli-text-scale));font-weight:500;line-height:1}
@@ -126,6 +131,8 @@
 .olliPcTeamTalkComposerBtn{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border:0;border-radius:50%;background:transparent;color:#6d737c;font-family:inherit;font-size:17px;font-weight:500;cursor:pointer}
 .olliPcTeamTalkComposerBtn:hover{background:#eceef1;color:#23262a}
 .olliPcTeamTalkComposerBtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#olliPcTeamTalkOlli.active{background:#FEE500;color:#fff}
+#olliPcTeamTalkOlli.active:hover{background:#FEE500;color:#fff}
 .olliPcTeamTalkSend{background:#1c1e21;color:#fff}.olliPcTeamTalkSend:hover{background:#0f1012;color:#fff}.olliPcTeamTalkSend:disabled{background:#e2e4e7;color:#aeb2b8;cursor:default}
 .olliPcTeamTalkMentionMenu{position:absolute;right:58px;left:auto;bottom:calc(100% - 5px);z-index:6;width:min(220px,calc(100% - 96px));max-height:280px;overflow:auto;padding:7px;border:1px solid #e3e5e8;border-radius:16px;background:#fff;box-shadow:0 16px 42px rgba(28,34,45,.14)}
 .olliPcTeamTalkMentionMenu[hidden]{display:none}
