@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-19-language-nextnextweek-1';
+  const VERSION = '2026-09-21-action-step1-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -129,6 +129,8 @@
     return removeDivisionWords(value)
       .replace(/[.!?,]/g, ' ')
       .replace(/(?:오늘|금일|내일|(?:(?:이번\s*주|금주|다다음\s*주|다음\s*주|차주)\s*)?[월화수목금토]요일)/g, ' ')
+      .replace(/\d{1,2}\s*월\s*\d{1,2}\s*일/g, ' ')
+      .replace(/(?:^|\s)\d{1,2}\s*일(?=\s|$)/g, ' ')
       .replace(/\d{1,2}\s*시(?:에서|으로|에|로)?/g, ' ')
       .replace(/[AaBb]\s*반/g, ' ')
       .replace(/(?:타임|시간대)/g, ' ')
@@ -484,6 +486,50 @@
     };
   }
 
+
+  function parseClassMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !hasAddAction(compact) || hasRemoveAction(compact)) return null;
+    if (!/(?:수업|클래스)/.test(compact)) return null;
+    if (/(?:신규|신입|새학생|새원생|신규등록|처음등록)/.test(compact)) return null;
+    if (hasMakeupWord(compact) || hasWaitlistWord(compact) || hasTrialWord(compact) || hasAbsenceWord(compact) || hasMoveAction(compact)) return null;
+
+    const dateSpec = parseDateExpression(compact);
+    const timeSlot = firstTimeSlot(raw);
+    const studentName = extractStudentName(
+      raw,
+      /(?:정규\s*)?(?:수업|클래스)(?:으로|에|을|를)?/g,
+      addActionPattern()
+    );
+    if (!studentName || !dateSpec || !timeSlot) return null;
+
+    return {
+      type:'mutation',
+      intent:'add_class_once',
+      studentName,
+      division:detectDivision(compact),
+      dateSpec,
+      dateLabel:dateSpec.label,
+      timeSlot,
+      classGroup:firstClassGroup(raw),
+      originalText:raw
+    };
+  }
+
+  function parseWriteIntent(text) {
+    const normalizedText = cleanText(text);
+    return parseAbsenceMutationIntent(normalizedText)
+      || parseTrialCancelMutationIntent(normalizedText)
+      || parseMakeupCancelMutationIntent(normalizedText)
+      || parseMoveCancelMutationIntent(normalizedText)
+      || parseWaitlistMutationIntent(normalizedText)
+      || parseTrialMutationIntent(normalizedText)
+      || parseScheduleMoveMutationIntent(normalizedText)
+      || parseMakeupMutationIntent(normalizedText)
+      || parseClassMutationIntent(normalizedText);
+  }
+
   function isConfirmCommand(text) {
     return /^(확인|확인해|확인해줘|진행|진행해|진행해줘|실행|실행해|실행해줘)$/i.test(compactText(text));
   }
@@ -602,6 +648,34 @@
     };
   }
 
+
+  function classifyRequest(text) {
+    const normalizedText = cleanText(text);
+    const writeIntent = parseWriteIntent(normalizedText);
+    if (writeIntent) {
+      return {
+        type:'mutation',
+        intent:writeIntent.intent,
+        parsed:writeIntent
+      };
+    }
+
+    const queryIntent = parseAvailableSlotsIntent(normalizedText);
+    if (queryIntent) {
+      return {
+        type:'query',
+        intent:queryIntent.intent,
+        parsed:queryIntent
+      };
+    }
+
+    return {
+      type:'other',
+      intent:'',
+      parsed:null
+    };
+  }
+
   function passThrough(text) {
     return {
       handled: false,
@@ -612,6 +686,99 @@
       clearInput: false,
       payload: null
     };
+  }
+
+
+  async function prepareAction(text, context) {
+    const normalizedText = cleanText(text);
+    const routeContext = normalizeContext(context);
+    const schedule = global.OlliCommandSchedule;
+    const writeIntent = parseWriteIntent(normalizedText);
+
+    if (!writeIntent) {
+      return {
+        handled:false,
+        kind:'pass_through',
+        intent:'',
+        text:normalizedText,
+        message:'',
+        clearInput:false,
+        payload:null,
+        action:null
+      };
+    }
+
+    if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
+      return {
+        handled:true,
+        kind:'action_rejected',
+        intent:writeIntent.intent,
+        text:normalizedText,
+        message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+        clearInput:true,
+        payload:writeIntent,
+        action:null
+      };
+    }
+
+    try {
+      const options = Object.assign({}, writeIntent, {
+        selectedStudent:routeContext.selectedStudent || null,
+        effectiveDate:new Date()
+      });
+      if (writeIntent.dateSpec) {
+        options.date = resolveDateExpression(writeIntent.dateSpec, new Date());
+        if (!options.date) throw new Error('날짜를 해석하지 못했습니다.');
+      }
+
+      const prepared = await schedule.prepareWriteCommand(writeIntent.intent, options);
+      if (!prepared || prepared.ok !== true || !prepared.command) {
+        return {
+          handled:true,
+          kind:'action_rejected',
+          intent:writeIntent.intent,
+          text:normalizedText,
+          message:String(prepared && prepared.message || '작업을 준비하지 못했어요.'),
+          clearInput:true,
+          payload:writeIntent,
+          action:null
+        };
+      }
+
+      const command = prepared.command;
+      const requiresReason = commandRequiresReason(command) && !cleanText(command.reason);
+      const message = requiresReason
+        ? reasonPrompt(command, schedule)
+        : confirmationMessage(command, schedule, prepared.message);
+
+      return {
+        handled:true,
+        kind:requiresReason ? 'action_needs_reason' : 'action_pending',
+        intent:command.intent || writeIntent.intent,
+        text:normalizedText,
+        message,
+        clearInput:true,
+        payload:command,
+        action:{
+          status:'pending',
+          intent:command.intent || writeIntent.intent,
+          command:Object.assign({}, command),
+          requiresReason
+        }
+      };
+    } catch (error) {
+      console.warn('올리 액션 준비 실패:', error);
+      return {
+        handled:true,
+        kind:'action_rejected',
+        intent:writeIntent.intent,
+        text:normalizedText,
+        message:String(error && (error.message || error) || '작업을 준비하지 못했어요.'),
+        clearInput:true,
+        payload:writeIntent,
+        action:null
+      };
+    }
   }
 
   async function route(text, context) {
@@ -920,6 +1087,9 @@
   global.OlliCommandRouter = Object.freeze({
     VERSION,
     route,
+    classifyRequest,
+    prepareAction,
+    parseWriteIntent,
     parseAvailableSlotsIntent,
     parseScheduleMoveMutationIntent,
     parseMakeupMutationIntent,
@@ -929,6 +1099,7 @@
     parseMakeupCancelMutationIntent,
     parseTrialCancelMutationIntent,
     parseMoveCancelMutationIntent,
+    parseClassMutationIntent,
     parseDateExpression,
     resolveDateExpression,
     getPendingWriteCommand() { return pendingWriteCommand ? Object.assign({}, pendingWriteCommand) : null; },
