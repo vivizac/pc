@@ -746,6 +746,7 @@
       body:JSON.stringify({
         promptType:'talk',
         academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
         messages:[{ role:'user', content:clean(commandText) }],
         stream:false
       })
