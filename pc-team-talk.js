@@ -989,7 +989,7 @@
       resizeComposer();
       updateComposerState();
       appendPersistedMessage(payload.message, current.memberId);
-      if (olliRequested) {
+      if (olliRequested && isAiEnabled()) {
         state.assistantReplyPending = true;
         syncAssistantTypingIndicator();
       }
