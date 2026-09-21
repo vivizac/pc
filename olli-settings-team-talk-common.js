@@ -360,6 +360,55 @@ function registerSettingsDetail(){
   }
 }
 
+function getTeamTalkDetailBackButton(){
+  const detail = document.getElementById('settingsDetailScreen');
+  return detail?.querySelector('.settingsHeaderLeft .settingsRoundBtn') || null;
+}
+
+function bindTeamTalkDetailBackButton(){
+  const back = getTeamTalkDetailBackButton();
+  if (!back) return;
+  back.setAttribute('onclick', 'closeOlliTeamTalkSettings()');
+}
+
+function restoreSettingsDetailBackButton(){
+  const back = getTeamTalkDetailBackButton();
+  if (!back) return;
+  if (back.getAttribute('onclick') === 'closeOlliTeamTalkSettings()') {
+    back.setAttribute('onclick', 'closeSettingsDetail()');
+  }
+}
+
+function closeDetailFallback(){
+  const detail = document.getElementById('settingsDetailScreen');
+  const settings = document.getElementById('settingsPageScreen');
+
+  if (detail) {
+    detail.style.display = 'none';
+    detail.style.transform = '';
+    detail.style.opacity = '';
+    detail.style.pointerEvents = '';
+    detail.style.position = '';
+    detail.style.inset = '';
+    detail.style.zIndex = '';
+  }
+  if (settings) settings.style.display = 'flex';
+
+  restoreSettingsDetailBackButton();
+
+  if (typeof global.olliPcSettingsLayoutAfterCloseDetail === 'function') {
+    try { global.olliPcSettingsLayoutAfterCloseDetail(); } catch (_) {}
+  }
+  return true;
+}
+
+function closeDetail(){
+  try {
+    if (typeof global.closeSettingsDetail === 'function') global.closeSettingsDetail();
+  } catch (_) {}
+  return closeDetailFallback();
+}
+
 function openDetailFallback(){
   const detail = document.getElementById('settingsDetailScreen');
   const settings = document.getElementById('settingsPageScreen');
@@ -378,6 +427,7 @@ function openDetailFallback(){
   detail.style.opacity = '1';
   detail.style.pointerEvents = 'auto';
   detail.style.zIndex = '91000';
+  bindTeamTalkDetailBackButton();
 
   Promise.resolve(loadRemote(true))
     .then(function(){
@@ -398,7 +448,10 @@ function openDetail(){
     try {
       global.openSettingsDetail('teamTalk');
       const detail = document.getElementById('settingsDetailScreen');
-      if (detail && detail.style.display === 'flex') return true;
+      if (detail && detail.style.display === 'flex') {
+        bindTeamTalkDetailBackButton();
+        return true;
+      }
     } catch (_) {}
   }
 
@@ -434,6 +487,7 @@ function init(){
 }
 
 global.openOlliTeamTalkSettings = openDetail;
+global.closeOlliTeamTalkSettings = closeDetail;
 global.olliTeamTalkSelectBackground = selectBackground;
 global.olliTeamTalkToggleBotNotifications = toggleBot;
 global.olliTeamTalkToggleAi = toggleAi;
