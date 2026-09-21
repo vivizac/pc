@@ -145,7 +145,7 @@ function updateSettingsRowValue(){
   if (value) value.textContent = settingsSummary();
 }
 function rowHtml(){
-  return '<div class="settingsRow" data-owner-manager-only="true" id="settingsTeamTalkRow" onclick="openOlliTeamTalkSettings()" role="button">'
+  return '<div class="settingsRow" data-owner-manager-only="true" id="settingsTeamTalkRow" onclick="openSettingsDetail(\'teamTalk\')" role="button">'
     + '<div class="settingsRowLeft">'
     + '<span class="settingsRowIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-7l-4.2 3v-3H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z"></path><circle cx="9" cy="11" r=".8"></circle><circle cx="12" cy="11" r=".8"></circle><circle cx="15" cy="11" r=".8"></circle></svg></span>'
     + '<span class="settingsRowTitle">팀톡 설정</span>'
@@ -194,12 +194,9 @@ function themeOption(mode, label, detail){
     + '<span class="olliTeamTalkThemeCheck" aria-hidden="true">' + (selected ? '✓' : '') + '</span>'
     + '</button>';
 }
-function renderDetail(){
-  const body = document.getElementById('settingsDetailBody');
-  if (!body) return;
+function detailHtml(){
   const disabled = canEdit() ? '' : ' disabled';
-  body.innerHTML =
-    '<div class="olliTeamTalkSettingsPage">'
+  return '<div class="olliTeamTalkSettingsPage">'
     + '<div class="settingsDetailIntro"><div class="settingsDetailTitle">팀톡 화면과<br>올리봇 알림을 설정합니다.</div></div>'
     + '<section class="olliTeamTalkSettingsCard">'
     + '<div class="olliTeamTalkSettingsHead"><div><strong>채팅 배경</strong><small>배경에 맞춰 날짜·시간·시스템 글자색도 자동으로 바뀝니다.</small></div></div>'
@@ -219,6 +216,12 @@ function renderDetail(){
     + (!canEdit() ? '<div class="olliTeamTalkSettingsNotice">팀톡 설정 변경은 원장 또는 관리자만 할 수 있습니다.</div>' : '')
     + statusHtml()
     + '</div>';
+}
+
+function renderDetail(){
+  const body = document.getElementById('settingsDetailBody');
+  if (!body) return;
+  body.innerHTML = detailHtml();
 }
 
 async function loadRemote(force){
@@ -302,33 +305,27 @@ function toggleBot(){
   queueSave();
 }
 
+function registerSettingsDetail(){
+  try {
+    if (typeof settingsDetailData === 'undefined' || !settingsDetailData) return false;
+    settingsDetailData.teamTalk = {
+      title:'팀톡 설정',
+      html:detailHtml,
+      instantRender:true,
+      beforeOpen:async function(){ await loadRemote(true); }
+    };
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 function openDetail(){
   installSettingsRow();
-  const detail = document.getElementById('settingsDetailScreen');
-  const settings = document.getElementById('settingsPageScreen');
-  const title = document.getElementById('settingsDetailTitlePill');
-  const body = document.getElementById('settingsDetailBody');
-  if (!detail || !body) return;
-
-  if (typeof global.olliPcSettingsLayoutBeforeOpenDetail === 'function') {
-    try { global.olliPcSettingsLayoutBeforeOpenDetail('teamTalk'); } catch (_) {}
+  registerSettingsDetail();
+  if (typeof global.openSettingsDetail === 'function') {
+    global.openSettingsDetail('teamTalk');
   }
-  if (settings) settings.style.display = 'flex';
-  if (title) title.textContent = '팀톡 설정';
-  renderDetail();
-
-  detail.style.display = 'flex';
-  detail.style.position = 'fixed';
-  detail.style.inset = '0';
-  detail.style.transform = 'translateX(0)';
-  detail.style.opacity = '1';
-  detail.style.pointerEvents = 'auto';
-  detail.style.zIndex = '91000';
-
-  if (typeof global.olliPcSettingsLayoutAfterOpenDetail === 'function') {
-    try { global.olliPcSettingsLayoutAfterOpenDetail('teamTalk'); } catch (_) {}
-  }
-  loadRemote(true);
 }
 
 function refreshForAcademy(){
@@ -346,6 +343,7 @@ function refreshForAcademy(){
 }
 
 function init(){
+  registerSettingsDetail();
   installSettingsRow();
   const id = academyId();
   if (id) {
