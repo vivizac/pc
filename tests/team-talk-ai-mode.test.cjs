@@ -28,3 +28,9 @@ test('normal PC messages still keep the existing mention path', () => {
   assert.match(talk, /const mentionIds = olliRequested \? \[\] : resolveMentionIds\(body\)/);
   assert.match(talk, /olli_team_chat_set_mentions/);
 });
+
+
+test('shared Team Talk settings row routes through the module opener before opening detail', () => {
+  assert.match(settings, /id="settingsTeamTalkRow" onclick="openOlliTeamTalkSettings\(\)"/);
+  assert.match(settings, /function openDetail\(\)[\s\S]*registerSettingsDetail\(\);[\s\S]*global\.openSettingsDetail\('teamTalk'\)/);
+});
