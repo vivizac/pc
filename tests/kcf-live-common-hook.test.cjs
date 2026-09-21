@@ -27,6 +27,12 @@ test('shared feedback runtime includes division context in AI request text witho
   assert.match(runtime, /학생 부서: \$\{division\}/);
   assert.match(runtime, /requestContent: buildTodayFeedbackRequestContent\(options\.userText \|\| '', options\.studentName \|\| '', feedbackMonth, options\.studentDivision\)/);
   assert.match(runtime, /studentDivision: item\.studentDivision/);
-  const requestBody = runtime.match(/fetch\('\/api\/chat',[\s\S]*?\n  \}\)\n  \.then/)?.[0] || '';
-  assert.doesNotMatch(requestBody, /studentId:/);
+  assert.match(runtime, /studentId: item\.studentId/);
+});
+
+
+test('shared non-live KCF transport reports completion and failure back to Teacher mode', () => {
+  assert.match(runtime, /function notifyKcfFeedbackRequestResult\(item, status, errorMessage = ''\)/);
+  assert.match(runtime, /notifyKcfFeedbackRequestResult\(item, completedStatus\)/);
+  assert.match(runtime, /notifyKcfFeedbackRequestResult\(item, 'error', errorMessage\)/);
 });

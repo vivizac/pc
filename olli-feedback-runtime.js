@@ -618,6 +618,24 @@ function buildTodayFeedbackRequestContent(userText, studentName, feedbackMonth, 
   if (body) lines.push(body);
   return lines.join('\n');
 }
+function notifyKcfFeedbackRequestResult(item, status, errorMessage = '') {
+  if (!item || item.sourcePage !== 'kinderChatFeedback') return;
+  const teacherMode = window.KcfAutoMode;
+  if (!teacherMode || typeof teacherMode.onFeedbackRequestResult !== 'function') return;
+  try {
+    teacherMode.onFeedbackRequestResult({
+      id: item.id,
+      studentId: item.studentId,
+      studentName: item.studentName,
+      studentDivision: item.studentDivision,
+      status: String(status || ''),
+      errorMessage: String(errorMessage || '')
+    });
+  } catch (err) {
+    console.warn('1분 피드백 완료 상태 반영 실패:', err?.message || err);
+  }
+}
+
 function startTodayFeedbackRequest(options = {}) {
   const feedbackMonth = String(options.feedbackMonth || getFeedbackMonthLabel()).trim();
   const feedbackMonthNumber = Number(options.feedbackMonthNumber || getFeedbackMonthNumber());
@@ -675,19 +693,23 @@ function startTodayFeedbackRequest(options = {}) {
     const parsed = parseReplyType(rawReply);
     const restoredText = restoreFeedbackStudentAliases(parsed.cleanText, item.studentName);
     const suspiciousSegments = getSuspiciousFeedbackSegments(restoredText);
+    const completedStatus = suspiciousSegments.length ? 'review' : 'done';
     updateTodayFeedbackItem(item.id, {
-      status: suspiciousSegments.length ? 'review' : 'done',
+      status: completedStatus,
       resultText: restoredText,
       suspiciousSegments,
       errorMessage:''
     });
+    notifyKcfFeedbackRequestResult(item, completedStatus);
     if (!options.silent) {
       showPushToast(suspiciousSegments.length ? `${item.studentName} 피드백 확인이 필요해요.` : `${item.studentName} 피드백이 완성됐어요.`);
       try { showBrowserNotification(`${item.studentName} 피드백이 완성됐어요.`); } catch(e) {}
     }
   })
   .catch(err => {
-    updateTodayFeedbackItem(item.id, { status:'error', errorMessage: err.message || '알 수 없는 오류입니다.' });
+    const errorMessage = err.message || '알 수 없는 오류입니다.';
+    updateTodayFeedbackItem(item.id, { status:'error', errorMessage });
+    notifyKcfFeedbackRequestResult(item, 'error', errorMessage);
     if (!options.silent) showPushToast(`${item.studentName} 피드백 확인이 필요해요.`);
   });
 

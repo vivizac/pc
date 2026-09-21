@@ -353,9 +353,6 @@
     if (window.KcfAutoMode && typeof window.KcfAutoMode.onFeedbackRequestStarted === 'function') {
       try { window.KcfAutoMode.onFeedbackRequestStarted(requestOptions, feedbackItem); } catch (err) {}
     }
-    if (typeof markKcfStudentFeedbackSent === 'function') {
-      try { markKcfStudentFeedbackSent(String(student.id || '')); } catch (err) {}
-    }
     if (window.KcfAutoMode && typeof window.KcfAutoMode.completeSuccessfulSubmit === 'function') {
       try { window.KcfAutoMode.completeSuccessfulSubmit(autoSubmitContext || null); } catch (err) {}
     }
