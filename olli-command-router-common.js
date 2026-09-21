@@ -130,6 +130,8 @@
     return removeDivisionWords(value)
       .replace(/[.!?,]/g, ' ')
       .replace(/(?:오늘|금일|내일|(?:(?:이번\s*주|금주|다다음\s*주|다음\s*주|차주)\s*)?[월화수목금토]요일)/g, ' ')
+      .replace(/\d{1,2}\s*월\s*\d{1,2}\s*일/g, ' ')
+      .replace(/(?:^|\s)\d{1,2}\s*일(?=\s|$)/g, ' ')
       .replace(/\d{1,2}\s*시(?:에서|으로|에|로)?/g, ' ')
       .replace(/[AaBb]\s*반/g, ' ')
       .replace(/(?:타임|시간대)/g, ' ')
@@ -617,7 +619,7 @@
 
     const asksForLookup =
       /알려|찾아|보여|확인|체크|봐줘|봐|조회/.test(compact)
-      || /있어|있나|있나요|있니|있을까|있습니까/.test(compact)
+      || /있어|있나|있나요|있니|있는지|있는가|있을까|있습니까/.test(compact)
       || /가능해|가능한|가능한가|가능한지|가능할까|가능할까요|가능하니/.test(compact)
       || /남는|남아|남았/.test(compact)
       || /여유|비어|몇자리|몇명|몇시/.test(compact);
@@ -681,11 +683,13 @@
     const raw = cleanText(text);
     const compact = compactText(raw);
     if (!raw || !/픽업/.test(compact)) return null;
-    if (hasAddAction(compact) || hasRemoveAction(compact) || hasMoveAction(compact)) return null;
+    const explicitMutation =
+      /(?:픽업.{0,12}(?:등록|추가|저장|변경|수정|취소|삭제)(?:해줘|해주세요|해줄래|해|줘|할래|하자)|(?:등록|추가|저장|변경|수정|취소|삭제).{0,12}픽업(?:해줘|해주세요|해줄래|해|줘|할래|하자))/.test(compact);
+    if (explicitMutation) return null;
 
     const asksForLookup =
       /알려|찾아|보여|확인|체크|봐줘|봐|조회/.test(compact)
-      || /있어|있나|있나요|있니|있을까|있습니까/.test(compact)
+      || /있어|있나|있나요|있니|있는지|있는가|있을까|있습니까/.test(compact)
       || /누구|누가|몇명|명단|학생/.test(compact);
     if (!asksForLookup) return null;
 
