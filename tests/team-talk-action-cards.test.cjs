@@ -65,3 +65,9 @@ test('normal PC mention behavior is still isolated from Olli requests', () => {
   assert.match(talk, /const mentionIds = olliRequested \? \[\] : resolveMentionIds\(body\)/);
   assert.match(talk, /olli_team_chat_set_mentions/);
 });
+
+test('internal academy read results never enter the OpenAI conversation history', () => {
+  assert.match(talk, /let usedOpenAi = false/);
+  assert.match(talk, /usedOpenAi = usingAi/);
+  assert.match(talk, /if \(usedOpenAi && responseText\) recordAiConversationTurn/);
+});
