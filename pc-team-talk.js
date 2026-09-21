@@ -321,6 +321,91 @@
     return bubble;
   }
 
+
+  function actionPrimaryLabel(actionType) {
+    const type = clean(actionType);
+    if (type === 'move_class') return '변경';
+    if (type === 'mark_absent') return '결석 처리';
+    if (type.startsWith('cancel_')) return '취소';
+    return '등록';
+  }
+
+  function actionSecondaryLabel(actionType) {
+    return clean(actionType).startsWith('cancel_') ? '유지' : '취소';
+  }
+
+  function actionStatusLabel(status) {
+    if (status === 'completed') return '처리 완료';
+    if (status === 'cancelled') return '취소됨';
+    if (status === 'failed') return '처리 실패';
+    return '';
+  }
+
+  async function runActionCard(item, decision, card) {
+    const action = item?.action || null;
+    const actionId = clean(action?.id);
+    if (!actionId || clean(action?.status) !== 'pending') return false;
+    const current = context();
+    if (!current.sessionToken || !current.academyId) {
+      alert('팀톡을 사용하려면 계정 로그인이 필요합니다.');
+      return false;
+    }
+
+    card?.querySelectorAll('button').forEach((button) => { button.disabled = true; });
+    try {
+      const rpcName = decision === 'execute'
+        ? 'olli_team_chat_action_execute'
+        : 'olli_team_chat_action_cancel';
+      const payload = await rpc(rpcName, {
+        p_session_token:current.sessionToken,
+        p_academy_id:current.academyId,
+        p_action_id:actionId
+      });
+      if (!payload?.ok && clean(payload?.action?.status) !== 'failed') {
+        throw new Error(payload?.message || '작업을 처리하지 못했습니다.');
+      }
+      await loadMessages({ showLoading:false, followBottom:true });
+      return payload?.ok === true;
+    } catch (error) {
+      card?.querySelectorAll('button').forEach((button) => { button.disabled = false; });
+      alert(error?.message || '작업을 처리하지 못했습니다.');
+      return false;
+    }
+  }
+
+  function makeActionCard(item) {
+    const action = item?.action || null;
+    if (!action?.id) return null;
+
+    const status = clean(action.status) || 'pending';
+    const card = create('div', 'olliPcTeamTalkActionCard');
+    card.dataset.actionId = clean(action.id);
+    card.dataset.actionStatus = status;
+
+    if (status !== 'pending') {
+      const statusText = actionStatusLabel(status);
+      if (statusText) card.appendChild(create('span', 'olliPcTeamTalkActionStatus', statusText));
+      return card;
+    }
+
+    const controls = create('div', 'olliPcTeamTalkActionControls');
+    const secondary = document.createElement('button');
+    secondary.type = 'button';
+    secondary.className = 'olliPcTeamTalkActionBtn secondary';
+    secondary.textContent = actionSecondaryLabel(action.action_type);
+    secondary.addEventListener('click', () => runActionCard(item, 'cancel', card));
+
+    const primary = document.createElement('button');
+    primary.type = 'button';
+    primary.className = 'olliPcTeamTalkActionBtn primary';
+    primary.textContent = actionPrimaryLabel(action.action_type);
+    primary.addEventListener('click', () => runActionCard(item, 'execute', card));
+
+    controls.append(secondary, primary);
+    card.appendChild(controls);
+    return card;
+  }
+
   function getMessageGroupKey(item, currentMemberId) {
     const type = clean(item?.message_type) || 'text';
     if (type === 'system') return '';
@@ -381,6 +466,10 @@
     meta.appendChild(create('span', 'olliPcTeamTalkMessageTime', formatTime(item?.created_at)));
     bubbleRow.appendChild(meta);
     content.appendChild(bubbleRow);
+    if (isAi && item?.action) {
+      const actionCard = makeActionCard(item);
+      if (actionCard) content.appendChild(actionCard);
+    }
     row.appendChild(content);
     return row;
   }
@@ -886,6 +975,25 @@
     return payload.message;
   }
 
+
+  async function saveActionReply(current, body, command, replyToMessageId) {
+    const actionType = clean(command?.intent);
+    if (!actionType) throw new Error('작업 종류를 확인하지 못했습니다.');
+    const payload = await rpc('olli_team_chat_send_action', {
+      p_session_token:current.sessionToken,
+      p_academy_id:current.academyId,
+      p_body:clean(body),
+      p_action_type:actionType,
+      p_action_payload:command,
+      p_client_message_id:clientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if (!payload?.ok || !payload?.message) {
+      throw new Error(payload?.message || '확인 작업을 저장하지 못했습니다.');
+    }
+    return payload.message;
+  }
+
   function updateComposerState() {
     const input = byId('olliPcTeamTalkInput');
     const send = byId('olliPcTeamTalkSend');
@@ -1011,11 +1119,41 @@
       if (olliRequested) {
         const usingAi = isAiEnabled();
         try {
-          const resolved = usingAi
-            ? await resolveAiReply(commandText, current)
-            : await resolveBotReply(commandText);
-          await saveAssistantReply(current, resolved.message, Number(payload.message.id));
-          if (usingAi) recordAiConversationTurn(commandText, resolved.message);
+          let responseText = '';
+          let handled = false;
+          const router = global.OlliCommandRouter;
+
+          if (router && typeof router.prepareTeamTalkAction === 'function') {
+            const actionRoute = await router.prepareTeamTalkAction(commandText, { source:'olli_talk' });
+            if (actionRoute?.handled === true) {
+              responseText = clean(actionRoute.message) || '요청을 확인했어요.';
+              if (actionRoute.kind === 'command_confirmation' && actionRoute.payload?.intent) {
+                await saveActionReply(current, responseText, actionRoute.payload, Number(payload.message.id));
+              } else {
+                await saveAssistantReply(current, responseText, Number(payload.message.id));
+              }
+              handled = true;
+            }
+          }
+
+          if (!handled && router && typeof router.queryTeamTalk === 'function') {
+            const queryRoute = await router.queryTeamTalk(commandText, { source:'olli_talk' });
+            if (queryRoute?.handled === true) {
+              responseText = clean(queryRoute.message) || '확인했어요.';
+              await saveAssistantReply(current, responseText, Number(payload.message.id));
+              handled = true;
+            }
+          }
+
+          if (!handled) {
+            const resolved = usingAi
+              ? await resolveAiReply(commandText, current)
+              : await resolveBotReply(commandText);
+            responseText = clean(resolved.message);
+            await saveAssistantReply(current, responseText, Number(payload.message.id));
+          }
+
+          if (usingAi && responseText) recordAiConversationTurn(commandText, responseText);
         } catch (error) {
           console.warn(usingAi ? 'PC 올리톡 AI 응답 실패:' : 'PC 올리톡 올리봇 응답 실패:', error?.message || error);
           alert((usingAi ? 'AI' : '올리봇') + ' 응답을 받지 못했습니다.\n' + (error?.message || error));
