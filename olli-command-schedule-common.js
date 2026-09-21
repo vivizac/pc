@@ -3,7 +3,7 @@
 
   if (global.OlliCommandSchedule) return;
 
-  const VERSION = '2026-09-18-availability-baseline-1';
+  const VERSION = '2026-09-21-team-talk-actions-1';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -1229,6 +1229,60 @@
     };
   }
 
+
+  async function prepareClassCommand(options) {
+    const opts = options || {};
+    const resolved = resolveCommandStudent(opts.studentName, opts.selectedStudent);
+    if (!resolved.ok) return resolved;
+
+    const student = resolved.student;
+    const studentId = clean(student && student.id);
+    const division = normalizeStudentDivision(student);
+    const requestedDivision = normalizeDivision(opts.division);
+    const sessionDate = localDateKey(opts.date);
+    const timeSlot = Number(opts.timeSlot || 0);
+
+    if (!studentId || !division) return { ok:false, message:'학생의 수업 구분을 확인하지 못했어요.' };
+    if (requestedDivision && requestedDivision !== division) {
+      return { ok:false, message:clean(student.name) + ' 학생의 소속과 요청한 수업 구분이 달라요.' };
+    }
+    if (!sessionDate || !timeSlot) return { ok:false, message:'등록할 수업 날짜와 시간을 확인해 주세요.' };
+
+    const weekData = await loadFreshWeek(sessionDate);
+    if (duplicateMakeup(weekData, studentId, sessionDate, timeSlot)) {
+      return { ok:false, message:clean(student.name) + ' 학생은 이미 ' + fallbackDateLabel(sessionDate) + ' ' + timeSlot + '시에 1회 수업이 등록되어 있어요.' };
+    }
+
+    const availability = await findAvailableSlots({
+      date:sessionDate,
+      dateLabel:clean(opts.dateLabel),
+      division,
+      purpose:'makeup'
+    });
+    if (availability.closedDay) return { ok:false, message:describeAvailableSlots(availability) };
+
+    const target = chooseOpenSlot(availability, timeSlot, opts.classGroup, '');
+    if (!target.ok) return target;
+
+    const slot = target.slot;
+    const groupText = slot.grouped ? ' ' + classGroup(slot.classGroup) + '반' : '';
+    return {
+      ok:true,
+      command:{
+        intent:'add_class',
+        studentId,
+        studentName:clean(student.name),
+        division,
+        sessionDate,
+        timeSlot,
+        classGroup:classGroup(slot.classGroup)
+      },
+      message:
+        clean(student.name) + ' · ' + fallbackDateLabel(sessionDate) + ' ' + timeSlot + '시' + groupText
+        + '\n이 수업에 등록할까요?'
+    };
+  }
+
   async function prepareMoveCommand(options) {
     const opts = options || {};
     const resolved = resolveCommandStudent(opts.studentName, opts.selectedStudent);
@@ -1581,6 +1635,27 @@
     };
   }
 
+
+  async function prepareCancelClassCommand(options) {
+    const prepared = await prepareCancelMakeupCommand(options);
+    if (!prepared || prepared.ok !== true) {
+      return Object.assign({}, prepared || { ok:false }, {
+        message:String(prepared && prepared.message || '취소할 1회 수업을 찾지 못했어요.').replace(/보강/g, '1회 수업')
+      });
+    }
+    const command = Object.assign({}, prepared.command, {
+      intent:'cancel_class',
+      reason:''
+    });
+    return {
+      ok:true,
+      command,
+      message:
+        clean(command.studentName) + ' · ' + fallbackDateLabel(command.sessionDate) + ' ' + Number(command.timeSlot) + '시'
+        + '\n이 수업 등록을 취소할까요?'
+    };
+  }
+
   async function prepareCancelTrialCommand(options) {
     const opts = options || {};
     const guestName = clean(opts.guestName || opts.studentName);
@@ -1714,12 +1789,77 @@
     };
   }
 
+
+  function pickupTimeLabel(value) {
+    const raw = clean(value);
+    if (!raw) return '';
+    const match = raw.match(/^(\d{1,2}):(\d{2})/);
+    if (!match) return raw;
+    const hour = Number(match[1]);
+    const minute = match[2];
+    return String(hour) + ':' + minute;
+  }
+
+  async function findPickups(options) {
+    const opts = options || {};
+    const dateKey = localDateKey(opts.date || new Date());
+    if (!dateKey) throw new Error('픽업 조회 날짜를 확인해 주세요.');
+    const weekday = isoWeekday(dateKey);
+    if (!weekday || weekday > 6) {
+      return { date:dateKey, dateLabel:clean(opts.dateLabel), pickups:[] };
+    }
+
+    const weekData = await loadFreshWeek(dateKey);
+    const timeSlot = Number(opts.timeSlot || 0);
+    const rows = arrays(weekData, 'pickups')
+      .filter(row => {
+        if (Number(row && row.weekday) !== weekday) return false;
+        if (!rowEffectiveOn(row, dateKey)) return false;
+        if (timeSlot && Number(row && row.class_time) !== timeSlot) return false;
+        return true;
+      })
+      .sort((a,b) =>
+        Number(a && a.class_time) - Number(b && b.class_time)
+        || clean(a && a.pickup_time).localeCompare(clean(b && b.pickup_time))
+        || clean(a && a.student_name).localeCompare(clean(b && b.student_name))
+      );
+
+    return {
+      date:dateKey,
+      dateLabel:clean(opts.dateLabel),
+      pickups:rows.map(row => ({
+        id:clean(row && row.id),
+        studentName:clean(row && row.student_name),
+        classTime:Number(row && row.class_time || 0),
+        pickupLabel:clean(row && row.pickup_label),
+        pickupTime:pickupTimeLabel(row && row.pickup_time)
+      }))
+    };
+  }
+
+  function describePickups(result) {
+    const item = result || {};
+    const label = clean(item.dateLabel) || fallbackDateLabel(item.date);
+    const rows = Array.isArray(item.pickups) ? item.pickups : [];
+    if (!rows.length) return label + ' 픽업 등록된 학생은 없어요.';
+
+    const details = rows.map(row => {
+      const pickup = [clean(row.pickupLabel), clean(row.pickupTime)].filter(Boolean).join(' ');
+      const classText = Number(row.classTime || 0) ? Number(row.classTime) + '시 수업' : '';
+      return [clean(row.studentName), classText, pickup].filter(Boolean).join(' · ');
+    }).join('\n');
+
+    return label + ' 픽업 등록 ' + rows.length + '명입니다.\n' + details;
+  }
+
   async function prepareWriteCommand(intent, options) {
     if (intent === 'mark_absent') return prepareAbsenceCommand(options);
+    if (intent === 'add_class') return prepareClassCommand(options);
     if (intent === 'add_makeup') return prepareMakeupCommand(options);
     if (intent === 'move_class') return prepareMoveCommand(options);
     if (intent === 'add_waitlist') return prepareWaitlistCommand(options);
     if (intent === 'add_trial') return prepareTrialCommand(options);
+    if (intent === 'cancel_class') return prepareCancelClassCommand(options);
     if (intent === 'cancel_makeup') return prepareCancelMakeupCommand(options);
     if (intent === 'cancel_trial') return prepareCancelTrialCommand(options);
     if (intent === 'cancel_move') return prepareCancelMoveCommand(options);
@@ -1788,7 +1928,7 @@
       }
       try { await saveStatusMemo('결석'); }
       catch (error) { memoError = error; }
-    } else if (intent === 'add_makeup') {
+    } else if (intent === 'add_makeup' || intent === 'add_class') {
       if (pc && typeof pc.addMakeup === 'function') {
         result = await pc.addMakeup(item.studentId, item.sessionDate, item.timeSlot, '', item.classGroup || 'A');
       } else if (phone && typeof phone.request === 'function') {
@@ -1933,7 +2073,7 @@
       } else {
         throw new Error('시간표 저장 기능을 아직 불러오지 못했습니다.');
       }
-    } else if (intent === 'cancel_makeup' || intent === 'cancel_trial') {
+    } else if (intent === 'cancel_makeup' || intent === 'cancel_class' || intent === 'cancel_trial') {
       if (pc && typeof pc.cancelMakeup === 'function') {
         result = await pc.cancelMakeup(item.oneTimeSessionId);
       } else if (phone && typeof phone.request === 'function') {
@@ -1944,8 +2084,10 @@
       } else {
         throw new Error('시간표 저장 기능을 아직 불러오지 못했습니다.');
       }
-      try { await saveStatusMemo('취소'); }
-      catch (error) { memoError = error; }
+      if (intent !== 'cancel_class') {
+        try { await saveStatusMemo('취소'); }
+        catch (error) { memoError = error; }
+      }
     } else if (intent === 'cancel_move') {
       if (pc && typeof pc.cancelChange === 'function') {
         result = await pc.cancelChange(item.changeId);
@@ -1997,6 +2139,12 @@
       return clean(item.studentName) + ' 학생의 ' + fallbackDateLabel(item.sessionDate) + ' '
         + Number(item.timeSlot) + '시 수업을 결석 처리했고 사유를 메모에 남겼어요.';
     }
+    if (item.intent === 'add_class') {
+      if (result && result.unchanged) {
+        return clean(item.studentName) + ' 학생의 수업은 이미 등록되어 있었어요.';
+      }
+      return clean(item.studentName) + ' 학생의 ' + fallbackDateLabel(item.sessionDate) + ' ' + Number(item.timeSlot) + '시 수업을 등록했어요.';
+    }
     if (item.intent === 'add_makeup') {
       if (result && result.unchanged) {
         return clean(item.studentName) + ' 학생의 보강은 이미 등록되어 있었어요.';
@@ -2015,6 +2163,10 @@
     if (item.intent === 'add_trial') {
       return clean(item.guestName) + ' 학생의 ' + fallbackDateLabel(item.sessionDate) + ' '
         + Number(item.timeSlot) + '시 체험수업을 등록했어요.';
+    }
+    if (item.intent === 'cancel_class') {
+      return clean(item.studentName) + ' 학생의 ' + fallbackDateLabel(item.sessionDate) + ' '
+        + Number(item.timeSlot) + '시 수업 등록을 취소했어요.';
     }
     if (item.intent === 'cancel_makeup') {
       return clean(item.studentName) + ' 학생의 ' + fallbackDateLabel(item.sessionDate) + ' '
@@ -2035,9 +2187,11 @@
     findAvailableSlots,
     findWeekAvailability,
     findRecurringAvailability,
+    findPickups,
     describeAvailableSlots,
     describeWeekAvailability,
     describeRecurringAvailability,
+    describePickups,
     prepareWriteCommand,
     executePreparedWrite,
     writeReasonPrompt,
