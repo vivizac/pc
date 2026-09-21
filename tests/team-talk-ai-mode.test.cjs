@@ -37,6 +37,13 @@ test('shared Team Talk settings row routes through the module opener before open
   assert.match(settings, /function openDetail\(\)[\s\S]*registerSettingsDetail\(\)[\s\S]*global\.openSettingsDetail\('teamTalk'\)/);
 });
 
+test('shared Team Talk settings back button closes the detail screen and restores normal Settings navigation', () => {
+  assert.match(settings, /function bindTeamTalkDetailBackButton\(\)[\s\S]*setAttribute\('onclick', 'closeOlliTeamTalkSettings\(\)'\)/);
+  assert.match(settings, /function closeDetailFallback\(\)[\s\S]*detail\.style\.display = 'none'[\s\S]*settings\.style\.display = 'flex'/);
+  assert.match(settings, /restoreSettingsDetailBackButton\(\)/);
+  assert.match(settings, /global\.closeOlliTeamTalkSettings = closeDetail/);
+});
+
 test('shared Team Talk settings opener falls back to the existing detail screen when standard navigation does not open it', () => {
   assert.match(settings, /function openDetailFallback\(\)/);
   assert.match(settings, /document\.getElementById\('settingsDetailScreen'\)/);
