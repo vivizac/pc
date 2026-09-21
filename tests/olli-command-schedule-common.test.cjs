@@ -153,6 +153,41 @@ test('dated regular absence frees the same-day seat for makeup availability', as
   assert.match(schedule.describeAvailableSlots(result), /1자리/);
 });
 
+test('same-day absence does not open a permanent regular-registration seat', async () => {
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[
+      { student_id:'r1', division:'elementary', weekday:3, time_slot:2, class_group:'A', effective_from:'2026-01-01' },
+      { student_id:'r2', division:'elementary', weekday:3, time_slot:2, class_group:'A', effective_from:'2026-01-01' },
+      { student_id:'r3', division:'elementary', weekday:3, time_slot:2, class_group:'A', effective_from:'2026-01-01' },
+      { student_id:'r4', division:'elementary', weekday:3, time_slot:2, class_group:'A', effective_from:'2026-01-01' },
+      { student_id:'r5', division:'elementary', weekday:3, time_slot:2, class_group:'A', effective_from:'2026-01-01' }
+    ],
+    one_time_sessions:[],
+    attendance_overrides:[
+      {
+        student_id:'r3', session_date:'2026-09-23', time_slot:2, class_group:'A',
+        register_session_kind:'regular', register_status:'absent'
+      }
+    ],
+    class_teachers:[
+      { division:'elementary', weekday:3, time_slot:2, class_group:'A', teacher_name:'담임' }
+    ]
+  };
+  const { schedule } = loadSchedule(week);
+  const result = await schedule.findAvailableSlots({
+    date:'2026-09-23',
+    division:'elementary',
+    purpose:'new_enrollment',
+    timeSlot:2
+  });
+  assert.equal(result.displaySlots.length, 1);
+  assert.equal(result.displaySlots[0].absentCount, 0);
+  assert.equal(result.displaySlots[0].occupancy, 5);
+  assert.equal(result.displaySlots[0].remaining, 0);
+});
+
 test('closed calendar day returns no available classes', async () => {
   const { schedule } = loadSchedule({ elementary_capacity:5, kinder_capacity:5 }, [
     { session_date:'2026-09-18', is_holiday:true, name:'휴원' }

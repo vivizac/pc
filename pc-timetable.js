@@ -664,7 +664,7 @@
     if (!match) return '';
     return `${pad(Number(match[1]))}:${match[2]}`;
   }
-  function countAt(division, weekday, time, targetDate, classGroup) {
+  function countAt(division, weekday, time, targetDate, classGroup, includeAbsenceVacancy) {
     const date = parseDate(targetDate || todayKey());
     const wantedDay = Number(weekday);
     if (date.getDay() !== wantedDay) {
@@ -672,15 +672,17 @@
       date.setDate(date.getDate() + delta);
     }
     const regular = slotRegulars(division, date, time, classGroup);
-    const absentRegularCount = regular.filter((item) =>
-      timetableAttendanceSessionStatus(
-        item.student_id,
-        date,
-        Number(item.time_slot),
-        classGroup ? classGroupOf({ class_group: classGroup }) : classGroupOf(item),
-        'regular'
-      ) === 'absent'
-    ).length;
+    const absentRegularCount = includeAbsenceVacancy
+      ? regular.filter((item) =>
+        timetableAttendanceSessionStatus(
+          item.student_id,
+          date,
+          Number(item.time_slot),
+          classGroup ? classGroupOf({ class_group: classGroup }) : classGroupOf(item),
+          'regular'
+        ) === 'absent'
+      ).length
+      : 0;
     return Math.max(0, regular.length - absentRegularCount)
       + slotMakeups(division, date, time, classGroup).length;
   }
@@ -1337,7 +1339,14 @@
     }).join('') : '<div class="olliTtStatusNotice">현재 등록된 정규 수업이 없습니다.</div>';
     const dayHtml = DAYS.map((day, index) => `<button type="button" class="olliTtChoice ${dialog.targetWeekday === index + 1 ? 'active' : ''}" data-tt-target-day="${index + 1}">${day}</button>`).join('');
     const timeHtml = timeOptions.map((time) => {
-      const count = countAt(division, dialog.targetWeekday, time, dialog.effectiveDate, dialog.targetClassGroup);
+      const count = countAt(
+        division,
+        dialog.targetWeekday,
+        time,
+        dialog.effectiveDate,
+        dialog.targetClassGroup,
+        dialog.actionType === 'makeup'
+      );
       const full = capacity && count >= capacity;
       return `<button type="button" class="olliTtChoice ${dialog.targetTime === time ? 'active' : ''} ${full ? 'full' : ''}" data-tt-target-time="${time}">${time}시${capacity ? `<small>${count}/${capacity}${full ? ' · 대기' : ''}</small>` : ''}</button>`;
     }).join('');

@@ -156,10 +156,12 @@
     return oneTimeBreakdown(data, division, dateKey, timeSlot, group).oneTimeCount;
   }
 
-  function slotSnapshot(data, division, dateKey, weekday, timeSlot, group, grouped) {
+  function slotSnapshot(data, division, dateKey, weekday, timeSlot, group, grouped, includeAbsenceVacancy) {
     const capacity = capacityFor(data, division);
     const regular = regularCount(data, division, dateKey, weekday, timeSlot, group);
-    const absent = regularAbsenceCount(data, division, dateKey, weekday, timeSlot, group);
+    const absent = includeAbsenceVacancy
+      ? regularAbsenceCount(data, division, dateKey, weekday, timeSlot, group)
+      : 0;
     const oneTime = oneTimeBreakdown(data, division, dateKey, timeSlot, group);
     const effectiveRegular = Math.max(0, regular - absent);
     const occupancy = effectiveRegular + oneTime.oneTimeCount;
@@ -192,9 +194,7 @@
   }
 
   function classOccupancy(data, division, dateKey, weekday, timeSlot, group) {
-    const regular = regularCount(data, division, dateKey, weekday, timeSlot, group);
-    const absent = regularAbsenceCount(data, division, dateKey, weekday, timeSlot, group);
-    return Math.max(0, regular - absent)
+    return regularCount(data, division, dateKey, weekday, timeSlot, group)
       + oneTimeCount(data, division, dateKey, timeSlot, group);
   }
 
@@ -307,7 +307,16 @@
         const groups = classGroups(data, division, weekday, timeSlot);
         groups.forEach(group => {
           if (!classIsOperating(data, division, dateKey, weekday, timeSlot, group)) return;
-          allSlots.push(slotSnapshot(data, division, dateKey, weekday, timeSlot, group, groups.length > 1));
+          allSlots.push(slotSnapshot(
+            data,
+            division,
+            dateKey,
+            weekday,
+            timeSlot,
+            group,
+            groups.length > 1,
+            clean(opts.purpose) === 'makeup'
+          ));
         });
       });
     });
