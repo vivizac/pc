@@ -1149,7 +1149,7 @@ test('prepare dropoff pickup write resolves a kinder student and preserves the d
     weekday:1,
     classTime:4,
     pickupLabel:'리슈빌',
-    pickupTime:'15:30',
+    pickupTime:'',
     isDropoff:true,
     effectiveDate:new Date(2026, 8, 21, 12, 0, 0)
   });
@@ -1160,7 +1160,7 @@ test('prepare dropoff pickup write resolves a kinder student and preserves the d
   assert.equal(prepared.command.weekday, 1);
   assert.equal(prepared.command.classTime, 4);
   assert.equal(prepared.command.pickupLabel, '리슈빌');
-  assert.equal(prepared.command.pickupTime, '15:30');
+  assert.equal(prepared.command.pickupTime, '');
   assert.equal(prepared.command.isDropoff, true);
   assert.equal(prepared.command.effectiveDate, '2026-09-21');
   assert.match(prepared.message, /하원 픽업/);
@@ -1174,7 +1174,7 @@ test('pickup write rejects incomplete details and elementary students before sav
   assert.equal(missing.ok, false);
   assert.match(missing.message, /학생 이름/);
   assert.match(missing.message, /픽업 장소/);
-  assert.match(missing.message, /픽업 시간/);
+  assert.doesNotMatch(missing.message, /픽업 시간/);
 
   const student = { id:'student-e1', name:'최민기', division:'elementary' };
   const elementary = loadSchedule({}, [], { students:[student] });
@@ -1212,7 +1212,7 @@ test('dropoff pickup execution reuses the existing timetable savePickup service'
   assert.equal(calls.savePickup.weekday, 1);
   assert.equal(calls.savePickup.classTime, 4);
   assert.equal(calls.savePickup.pickupLabel, '리슈빌');
-  assert.equal(calls.savePickup.pickupTime, '15:30');
+  assert.equal(calls.savePickup.pickupTime, '');
   assert.equal(calls.savePickup.isDropoff, true);
   assert.match(schedule.writeSuccessMessage({
     intent:'add_pickup',
@@ -1262,6 +1262,34 @@ test('phone dropoff pickup execution calls the same v2 pickup RPC with is_dropof
   assert.equal(calls[0].payload.p_weekday, 1);
   assert.equal(calls[0].payload.p_class_time, 4);
   assert.equal(calls[0].payload.p_pickup_label, '리슈빌');
-  assert.equal(calls[0].payload.p_pickup_time, '15:30');
+  assert.equal(calls[0].payload.p_pickup_time, null);
   assert.equal(calls[0].payload.p_is_dropoff, true);
+});
+
+
+test('regular pickup still requires a pickup time while dropoff does not', async () => {
+  const student = { id:'student-k1', name:'김민서', division:'kinder' };
+  const { schedule } = loadSchedule({}, [], { students:[student] });
+  const dropoff = await schedule.prepareWriteCommand('add_pickup', {
+    studentName:'김민서',
+    weekday:1,
+    classTime:4,
+    pickupLabel:'리슈빌',
+    pickupTime:'',
+    isDropoff:true,
+    effectiveDate:new Date(2026, 8, 21, 12, 0, 0)
+  });
+  const regular = await schedule.prepareWriteCommand('add_pickup', {
+    studentName:'김민서',
+    weekday:1,
+    classTime:4,
+    pickupLabel:'리슈빌',
+    pickupTime:'',
+    isDropoff:false,
+    effectiveDate:new Date(2026, 8, 21, 12, 0, 0)
+  });
+  assert.equal(dropoff.ok, true);
+  assert.equal(dropoff.command.pickupTime, '');
+  assert.equal(regular.ok, false);
+  assert.match(regular.message, /픽업 시간/);
 });

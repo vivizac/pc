@@ -73,3 +73,14 @@ test('custom clock picker has a footer complete button and sits above timetable 
   assert.match(css,/\.olliTtClockPickerFooter \{/);
   assert.match(css,/\.olliTtClockPickerDone \{[^}]*background:#111;/);
 });
+
+
+test('dropoff mode disables the pickup time field and allows saving without time', () => {
+  assert.match(ui,/dialog\.isDropoff \? '하원은 시간 없음' : '시간 선택'/);
+  assert.match(ui,/dialog\.isDropoff \? 'disabled' : ''/);
+  assert.match(ui,/pickupTime\.disabled = true/);
+  assert.match(ui,/state\.dialog\.pickupTime = ''/);
+  assert.match(ui,/dialog\.isDropoff !== true && !dialog\.pickupTime/);
+  assert.match(css,/\.olliTtPickupForm \.olliTtClockOnlyTime:disabled \{[^}]*background:#eef0f2;[^}]*cursor:not-allowed/);
+  assert.match(service,/p_pickup_time: options\.isDropoff === true \? null : options\.pickupTime/);
+});

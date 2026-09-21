@@ -501,7 +501,7 @@
       p_weekday: Number(options.weekday),
       p_class_time: Number(options.classTime),
       p_pickup_label: options.pickupLabel,
-      p_pickup_time: options.pickupTime,
+      p_pickup_time: options.isDropoff === true ? null : options.pickupTime,
       p_effective_date: options.effectiveDate,
       p_is_dropoff: options.isDropoff === true
     }));

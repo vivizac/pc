@@ -3,7 +3,7 @@
 
   if (global.OlliCommandSchedule) return;
 
-  const VERSION = '2026-09-21-pickup-write-1';
+  const VERSION = '2026-09-21-dropoff-no-time-1';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -1193,10 +1193,13 @@
     const weekday = Number(opts.weekday || 0);
     const classTime = Number(opts.classTime || 0);
     const pickupLabel = clean(opts.pickupLabel);
-    const pickupTime = clean(opts.pickupTime);
-    const pickupGuide = '픽업 등록은 학생 이름, 수업 요일·시간, 픽업 장소, 픽업 시간을 함께 적어 주세요.\n예: 김민서 월요일 4시 수업 리슈빌 3시 30분 하원 픽업 등록해줘';
+    const isDropoff = opts.isDropoff === true;
+    const pickupTime = isDropoff ? '' : clean(opts.pickupTime);
+    const pickupGuide = isDropoff
+      ? '하원 픽업 등록은 학생 이름, 수업 요일·시간, 픽업 장소를 함께 적어 주세요.\n예: 김민서 월요일 4시 수업 리슈빌 하원 픽업 등록해줘'
+      : '픽업 등록은 학생 이름, 수업 요일·시간, 픽업 장소, 픽업 시간을 함께 적어 주세요.\n예: 김민서 월요일 4시 수업 리슈빌 3시 30분 픽업 등록해줘';
 
-    if (!clean(opts.studentName) || weekday < 1 || weekday > 6 || ![4, 5].includes(classTime) || !pickupLabel || !/^\d{2}:\d{2}$/.test(pickupTime)) {
+    if (!clean(opts.studentName) || weekday < 1 || weekday > 6 || ![4, 5].includes(classTime) || !pickupLabel || (!isDropoff && !/^\d{2}:\d{2}$/.test(pickupTime))) {
       return { ok:false, message:pickupGuide };
     }
 
@@ -1212,7 +1215,7 @@
     const effectiveDate = nextOccurrenceKey(opts.effectiveDate || new Date(), weekday);
     if (!effectiveDate) return { ok:false, message:'픽업 적용 요일을 확인하지 못했어요.' };
 
-    const dropoffText = opts.isDropoff === true ? '하원 픽업' : '픽업';
+    const dropoffText = isDropoff ? '하원 픽업' : '픽업';
     return {
       ok:true,
       command:{
@@ -1225,11 +1228,13 @@
         pickupLabel,
         pickupTime,
         effectiveDate,
-        isDropoff:opts.isDropoff === true
+        isDropoff
       },
       message:
         clean(student.name) + ' · ' + weekdayLabel(weekday) + ' ' + classTime + '시 수업'
-        + '\n' + pickupLabel + ' · ' + pickupTimeDisplay(pickupTime) + ' · ' + dropoffText
+        + '\n' + (isDropoff
+          ? pickupLabel + ' · ' + dropoffText
+          : pickupLabel + ' · ' + pickupTimeDisplay(pickupTime) + ' · ' + dropoffText)
         + '\n등록할까요?\n\'확인\' 또는 \'취소\'라고 입력해 주세요.'
     };
   }
@@ -1897,7 +1902,7 @@
           p_weekday:Number(item.weekday),
           p_class_time:Number(item.classTime),
           p_pickup_label:item.pickupLabel,
-          p_pickup_time:item.pickupTime,
+          p_pickup_time:item.isDropoff === true ? null : item.pickupTime,
           p_effective_date:item.effectiveDate,
           p_is_dropoff:item.isDropoff === true
         });

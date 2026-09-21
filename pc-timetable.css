@@ -593,6 +593,8 @@
 .olliTtPickupDropoffBtn:hover { border-color:#c8b9ee; background:#faf8ff; color:#7355b5; }
 .olliTtPickupDropoffBtn.active { border-color:#8061c7; background:#8061c7; color:#fff; }
 .olliTtClockOnlyTime { cursor:pointer; caret-color:transparent; user-select:none; -webkit-user-select:none; }
+.olliTtPickupForm .olliTtClockOnlyTime:disabled { border-color:#e1e4e8; color:#9aa1aa; background:#eef0f2; box-shadow:none; cursor:not-allowed; opacity:1; }
+.olliTtPickupForm .olliTtClockOnlyTime:disabled::placeholder { color:#a1a7ae; }
 .olliTtClockPicker { position:fixed; z-index:100200; width:252px; overflow:hidden; border:1px solid #dfe4e9; border-radius:16px; background:#fff; box-shadow:0 18px 46px rgba(23,31,44,.18),0 4px 12px rgba(23,31,44,.08); }
 .olliTtClockPickerColumns { display:grid; grid-template-columns:1fr 1fr; gap:0; }
 .olliTtClockPickerColumn + .olliTtClockPickerColumn { border-left:1px solid #edf0f3; }

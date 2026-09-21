@@ -787,3 +787,16 @@ test('incomplete dropoff pickup request is still recognized as a write command',
   assert.equal(preparedIntent, 'add_pickup');
   assert.match(result.message, /픽업/);
 });
+
+
+test('dropoff pickup parser does not require a pickup clock', () => {
+  const router = loadRouter();
+  const dropoff = router.parsePickupMutationIntent(
+    '김민서 월요일 4시 수업 리슈빌 하원 픽업 등록해줘'
+  );
+  assert.ok(dropoff);
+  assert.equal(dropoff.intent, 'add_pickup');
+  assert.equal(dropoff.pickupLabel, '리슈빌');
+  assert.equal(dropoff.pickupTime, '');
+  assert.equal(dropoff.isDropoff, true);
+});
