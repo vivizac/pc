@@ -9,6 +9,7 @@ const CACHE_PREFIX = 'olli_team_talk_settings_v1_';
 const state = {
   background: 'dark',
   botNotificationsEnabled: false,
+  aiEnabled: false,
   loadedAcademyId: '',
   loading: false,
   saving: false,
@@ -59,6 +60,7 @@ function writeCache(id){
     localStorage.setItem(cacheKey(id), JSON.stringify({
       background: state.background,
       bot_notifications_enabled: !!state.botNotificationsEnabled,
+      ai_enabled: !!state.aiEnabled,
       updated_at: new Date().toISOString()
     }));
   } catch (_) {}
@@ -68,6 +70,9 @@ function readCachedIntoState(id){
   if (cached.background) state.background = normalizeBackground(cached.background);
   if (Object.prototype.hasOwnProperty.call(cached,'bot_notifications_enabled')) {
     state.botNotificationsEnabled = !!cached.bot_notifications_enabled;
+  }
+  if (Object.prototype.hasOwnProperty.call(cached,'ai_enabled')) {
+    state.aiEnabled = !!cached.ai_enabled;
   }
 }
 
@@ -94,6 +99,7 @@ function applyBackground(mode){
 
   document.documentElement.dataset.olliTalkTheme = normalized;
   updateSettingsRowValue();
+  syncAssistantButtons();
   return normalized;
 }
 
@@ -136,9 +142,26 @@ async function rpc(name, payload){
   return data;
 }
 
+function assistantLabel(){ return state.aiEnabled ? 'AI' : '봇'; }
+function syncAssistantButtons(){
+  const label = assistantLabel();
+  const targets = [
+    document.getElementById('olliTalkOlliTriggerBtn'),
+    document.getElementById('olliPcTeamTalkOlli')
+  ].filter(Boolean);
+  targets.forEach(button => {
+    button.textContent = label;
+    button.setAttribute('aria-label', state.aiEnabled ? '올리 AI 호출' : '올리봇 호출');
+  });
+  try {
+    global.dispatchEvent(new CustomEvent('olli-team-talk-ai-mode-changed', {
+      detail:{ enabled:!!state.aiEnabled, label }
+    }));
+  } catch (_) {}
+}
 function settingsSummary(){
   const bg = state.background === 'light' ? '밝은 회색' : '어두운 회색';
-  return bg + ' · 올리봇 ' + (state.botNotificationsEnabled ? '켬' : '끔');
+  return bg + ' · AI ' + (state.aiEnabled ? '켬' : '끔') + ' · 올리봇 알림 ' + (state.botNotificationsEnabled ? '켬' : '끔');
 }
 function updateSettingsRowValue(){
   const value = document.getElementById('settingsTeamTalkValue');
@@ -207,6 +230,12 @@ function detailHtml(){
     + '</section>'
     + '<section class="olliTeamTalkSettingsCard">'
     + '<div class="olliTeamTalkSettingsSwitchRow">'
+    + '<div><strong>올리 AI</strong><small>켜면 채팅의 봇 버튼이 AI로 바뀌고 OpenAI 응답을 사용합니다. 끄면 기존 올리봇을 사용합니다.</small></div>'
+    + '<button class="olliTeamTalkSwitch ' + (state.aiEnabled ? 'on' : '') + '" type="button" aria-pressed="' + (state.aiEnabled ? 'true' : 'false') + '" onclick="olliTeamTalkToggleAi()"' + disabled + '><span></span></button>'
+    + '</div>'
+    + '</section>'
+    + '<section class="olliTeamTalkSettingsCard">'
+    + '<div class="olliTeamTalkSettingsSwitchRow">'
     + '<div><strong>올리봇 알림</strong><small>등록과 취소가 생기면 팀톡에 자동으로 알려줍니다.</small></div>'
     + '<button class="olliTeamTalkSwitch ' + (state.botNotificationsEnabled ? 'on' : '') + '" type="button" aria-pressed="' + (state.botNotificationsEnabled ? 'true' : 'false') + '" onclick="olliTeamTalkToggleBotNotifications()"' + disabled + '><span></span></button>'
     + '</div>'
@@ -240,6 +269,7 @@ async function loadRemote(force){
     if (result?.ok) {
       state.background = normalizeBackground(result.background);
       state.botNotificationsEnabled = !!result.bot_notifications_enabled;
+      state.aiEnabled = !!result.ai_enabled;
       state.loadedAcademyId = id;
       writeCache(id);
       applyBackground(state.background);
@@ -271,11 +301,13 @@ function queueSave(){
       p_session_token: sessionToken(),
       p_academy_id: id,
       p_background: state.background,
-      p_bot_notifications_enabled: !!state.botNotificationsEnabled
+      p_bot_notifications_enabled: !!state.botNotificationsEnabled,
+      p_ai_enabled: !!state.aiEnabled
     });
     if (!result?.ok) throw new Error(clean(result?.message) || '팀톡 설정을 저장하지 못했습니다.');
     state.background = normalizeBackground(result.background);
     state.botNotificationsEnabled = !!result.bot_notifications_enabled;
+    state.aiEnabled = !!result.ai_enabled;
     state.loadedAcademyId = id;
     writeCache(id);
     applyBackground(state.background);
@@ -301,6 +333,14 @@ function toggleBot(){
   if (!canEdit()) return;
   state.botNotificationsEnabled = !state.botNotificationsEnabled;
   writeCache(academyId());
+  renderDetail();
+  queueSave();
+}
+function toggleAi(){
+  if (!canEdit()) return;
+  state.aiEnabled = !state.aiEnabled;
+  writeCache(academyId());
+  syncAssistantButtons();
   renderDetail();
   queueSave();
 }
@@ -335,6 +375,7 @@ function refreshForAcademy(){
     state.loadedAcademyId = '';
     state.background = 'dark';
     state.botNotificationsEnabled = false;
+    state.aiEnabled = false;
   }
   readCachedIntoState(id);
   applyBackground(state.background);
@@ -358,8 +399,11 @@ function init(){
 global.openOlliTeamTalkSettings = openDetail;
 global.olliTeamTalkSelectBackground = selectBackground;
 global.olliTeamTalkToggleBotNotifications = toggleBot;
+global.olliTeamTalkToggleAi = toggleAi;
 global.OlliTeamTalkSettings = {
   state,
+  isAiEnabled: function(){ return !!state.aiEnabled; },
+  syncAssistantButtons,
   lightColor: LIGHT_BG,
   darkColor: DARK_BG,
   load: loadRemote,

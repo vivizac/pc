@@ -1779,6 +1779,7 @@
             <svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
           </button>
           <textarea class="olliPcTeamTalkInput" id="olliPcTeamTalkInput" rows="1" placeholder="메시지를 입력하세요" aria-label="팀톡 메시지 입력"></textarea>
+          <button class="olliPcTeamTalkComposerBtn" id="olliPcTeamTalkOlli" type="button" aria-label="올리봇 호출" aria-pressed="false" title="올리 호출">봇</button>
           <button class="olliPcTeamTalkComposerBtn" id="olliPcTeamTalkMention" type="button" aria-label="선생님 멘션" title="선생님 멘션">@</button>
           <button class="olliPcTeamTalkComposerBtn olliPcTeamTalkSend" id="olliPcTeamTalkSend" type="button" aria-label="메시지 전송" disabled>
             <svg viewBox="0 0 24 24"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>
@@ -2830,7 +2831,7 @@
 <script src="olli-settings-access.js"></script>
 <script src="olli-settings-attendance-export.js"></script>
 <script src="olli-settings-detail.js"></script>
-<script src="olli-settings-team-talk-common.js?v=20260921-1"></script>
+<script src="olli-settings-team-talk-common.js?v=20260921-ai-toggle-1"></script>
 <script id="olliRecordAttendanceGuideButtonPatch">
 /* 2026-09-13: 출결 가이드 상태/버튼만 관리합니다. 학생 행 렌더링은 olli-record-list-view.js가 소유합니다. */
 (function(){
@@ -4685,7 +4686,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 });
 </script>
-<script src="pc-team-talk.js?v=20260921-material-orders-1"></script>
+<script src="pc-team-talk.js?v=20260921-ai-toggle-1"></script>
 <script src="pc-team-talk-material-orders.js?v=20260921-1"></script>
 <script src="pc-shell.js"></script>
 <script src="pc-student-management.js"></script>

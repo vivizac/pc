@@ -14,6 +14,7 @@
     messageLoadSequence: 0,
     archiveLoadSequence: 0,
     sendBusy: false,
+    olliModeActive: false,
     uploadBusy: false,
     realtimeWatcher: null,
     blobUrls: new Map(),
@@ -662,6 +663,115 @@
     input.style.height = `${Math.min(input.scrollHeight, 118)}px`;
   }
 
+  function isAiEnabled() {
+    try { return global.OlliTeamTalkSettings?.state?.aiEnabled === true; }
+    catch (_) { return false; }
+  }
+
+  function syncAssistantUi() {
+    const button = byId('olliPcTeamTalkOlli');
+    const input = byId('olliPcTeamTalkInput');
+    const aiEnabled = isAiEnabled();
+    if (button) {
+      button.textContent = aiEnabled ? 'AI' : '봇';
+      button.classList.toggle('active', state.olliModeActive);
+      button.setAttribute('aria-pressed', state.olliModeActive ? 'true' : 'false');
+      button.setAttribute('aria-label', state.olliModeActive
+        ? (aiEnabled ? '올리 AI 호출 해제' : '올리봇 호출 해제')
+        : (aiEnabled ? '올리 AI 호출' : '올리봇 호출'));
+    }
+    if (input) {
+      input.placeholder = state.olliModeActive
+        ? (aiEnabled ? 'AI에게 물어보세요' : '올리에게 요청하세요')
+        : '메시지를 입력하세요';
+    }
+  }
+
+  function setOlliMode(active, options = {}) {
+    state.olliModeActive = !!active;
+    syncAssistantUi();
+    const input = byId('olliPcTeamTalkInput');
+    if (input && options.focus !== false) input.focus();
+    return state.olliModeActive;
+  }
+
+  function toggleOlliMode(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    const menu = byId('olliPcTeamTalkMentionMenu');
+    if (menu) menu.hidden = true;
+    return setOlliMode(!state.olliModeActive);
+  }
+
+  function hasPendingOlliCommand() {
+    const router = global.OlliCommandRouter;
+    if (!router) return false;
+    try {
+      return !!(
+        (typeof router.getPendingWriteCommand === 'function' && router.getPendingWriteCommand())
+        || (typeof router.getPendingReasonCommand === 'function' && router.getPendingReasonCommand())
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  async function resolveBotReply(commandText) {
+    const router = global.OlliCommandRouter;
+    if (!router || typeof router.route !== 'function') {
+      return { message:'올리 업무 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' };
+    }
+    try {
+      const route = await router.route(commandText, {
+        source:'olli_talk',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if (!route || route.handled !== true) {
+        return {
+          message:'아직 이 요청은 올리 업무 기능에 연결되지 않았어요. 자리 확인, 보강·체험·대기 등록/취소, 수업 이동, 결석 처리를 요청할 수 있어요.'
+        };
+      }
+      return { message:clean(route.message) || '요청을 확인했어요.' };
+    } catch (error) {
+      console.warn('PC 올리톡 올리봇 처리 실패:', error?.message || error);
+      return { message:clean(error?.message || error) || '요청을 처리하지 못했어요.' };
+    }
+  }
+
+  async function resolveAiReply(commandText, current) {
+    const response = await fetch('/api/chat', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        promptType:'talk',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        messages:[{ role:'user', content:clean(commandText) }],
+        stream:false
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data?.error || data?.message || '올리 AI 응답을 받지 못했습니다.');
+    const message = clean(data?.reply);
+    if (!message) throw new Error('올리 AI 응답이 비어 있습니다.');
+    return { message };
+  }
+
+  async function saveAssistantReply(current, body, replyToMessageId) {
+    const payload = await rpc('olli_team_chat_send_ai', {
+      p_session_token: current.sessionToken,
+      p_academy_id: current.academyId,
+      p_body: clean(body),
+      p_client_message_id: clientMessageId(),
+      p_reply_to_message_id: Number(replyToMessageId || 0) || null
+    });
+    if (!payload?.ok || !payload?.message) {
+      throw new Error(payload?.message || '올리 응답을 저장하지 못했습니다.');
+    }
+    return payload.message;
+  }
+
   function updateComposerState() {
     const input = byId('olliPcTeamTalkInput');
     const send = byId('olliPcTeamTalkSend');
@@ -730,8 +840,13 @@
     if (state.sendBusy) return;
     const input = byId('olliPcTeamTalkInput');
     const send = byId('olliPcTeamTalkSend');
-    const body = clean(input?.value);
-    if (!input || !body) {
+    const rawBody = clean(input?.value);
+    const olliRequested = state.olliModeActive || /^\s*@올리(?:\s|$)/.test(rawBody);
+    const commandText = olliRequested
+      ? rawBody.replace(/^\s*@올리(?:\s+|$)/, '').trim()
+      : '';
+    const body = olliRequested ? ('@올리 ' + commandText).trim() : rawBody;
+    if (!input || !rawBody || (olliRequested && !commandText)) {
       updateComposerState();
       return;
     }
@@ -756,7 +871,7 @@
       });
       if (!payload?.ok || !payload?.message) throw new Error(payload?.message || '메시지를 저장하지 못했습니다.');
 
-      const mentionIds = resolveMentionIds(body);
+      const mentionIds = olliRequested ? [] : resolveMentionIds(body);
       if (mentionIds.length) {
         try {
           await rpc('olli_team_chat_set_mentions', {
@@ -767,6 +882,21 @@
           });
         } catch (error) {
           console.warn('PC 팀톡 멘션 저장 실패:', error?.message || error);
+        }
+      }
+
+      if (olliRequested) {
+        const usingAi = isAiEnabled();
+        try {
+          const resolved = usingAi
+            ? await resolveAiReply(commandText, current)
+            : await resolveBotReply(commandText);
+          await saveAssistantReply(current, resolved.message, Number(payload.message.id));
+          setOlliMode(usingAi ? false : hasPendingOlliCommand(), { focus:false });
+        } catch (error) {
+          console.warn(usingAi ? 'PC 올리톡 AI 응답 실패:' : 'PC 올리톡 올리봇 응답 실패:', error?.message || error);
+          setOlliMode(false, { focus:false });
+          alert((usingAi ? 'AI' : '올리봇') + ' 응답을 받지 못했습니다.\n' + (error?.message || error));
         }
       }
 
@@ -872,6 +1002,7 @@
     const input = byId('olliPcTeamTalkInput');
     const send = byId('olliPcTeamTalkSend');
     const mention = byId('olliPcTeamTalkMention');
+    const olli = byId('olliPcTeamTalkOlli');
     const addFile = byId('olliPcTeamTalkAddFile');
     const composerFile = byId('olliPcTeamTalkComposerFile');
     const archiveUpload = byId('olliPcTeamTalkArchiveUpload');
@@ -898,6 +1029,10 @@
     if (mention && !mention.dataset.bound) {
       mention.dataset.bound = '1';
       mention.addEventListener('click', toggleMentionMenu);
+    }
+    if (olli && !olli.dataset.bound) {
+      olli.dataset.bound = '1';
+      olli.addEventListener('click', toggleOlliMode);
     }
     if (addFile && !addFile.dataset.bound) {
       addFile.dataset.bound = '1';
@@ -991,6 +1126,7 @@
     screen.setAttribute('aria-hidden', 'false');
     bindEvents();
     bindRealtime();
+    syncAssistantUi();
     resizeComposer();
     updateComposerState();
     setWorkspaceTab(state.workspaceTab);
@@ -1008,6 +1144,8 @@
     state.started = true;
     bindEvents();
     bindRealtime();
+    syncAssistantUi();
+    global.addEventListener('olli-team-talk-ai-mode-changed', syncAssistantUi);
     refreshBadge();
     global.addEventListener('storage', (event) => {
       if (!event || event.key === ACCOUNT_SESSION_TOKEN_KEY || event.key === 'olli_current_academy_id') refreshBadge();
