@@ -81,3 +81,21 @@ test('AI response aliases are restored from request-bound student identity befor
   assert.match(runtime, /const restoredText = restoreFeedbackStudentAliases\(parsed\.cleanText, item\.studentName\)/);
   assert.match(runtime, /resultText: restoredText/);
 });
+
+
+test('one-minute feedback guarantees an AI request and falls back to the phone LIVE transport', () => {
+  assert.match(registration, /function startKcfFeedbackRequestGuaranteed\(requestOptions, canUseKinderChatLive\)/);
+  assert.match(registration, /typeof window\.startTodayFeedbackRequest === 'function'/);
+  assert.match(registration, /typeof window\.startKinderChatFeedbackLiveRequest === 'function'/);
+  assert.match(registration, /requestContent: buildKcfDirectLiveRequestContent/);
+  assert.match(registration, /var feedbackItem = startKcfFeedbackRequestGuaranteed\(requestOptions, canUseKinderChatLive\)/);
+  assert.match(registration, /if \(!feedbackItem\) throw new Error\('1분 피드백 AI 요청을 시작하지 못했습니다\.'\)/);
+});
+
+test('one-minute feedback keeps the typed record when AI request startup fails', () => {
+  const submitStart = registration.indexOf('window.submitKinderChatFeedback = async function');
+  const submitEnd = registration.indexOf('window.submitKinderChatFeedbackCommandChoice', submitStart);
+  const submit = registration.slice(submitStart, submitEnd);
+  assert.match(submit, /try \{\s*await continueKinderChatFeedbackSubmit/);
+  assert.match(submit, /AI 연결에 실패했어요\. 수업기록은 그대로 두었으니 다시 전송해 주세요\./);
+});
