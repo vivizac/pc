@@ -70,3 +70,11 @@ test('PC shows the saved user bubble immediately and only AI gets the animated t
   assert.match(talk, /finally \{[\s\S]{0,140}state\.assistantReplyPending = false;[\s\S]{0,140}syncAssistantTypingIndicator\(\)/);
   assert.match(talk, /'olliPcTeamTalkTypingDot'/);
 });
+
+
+test('PC swaps the AI typing row directly into the saved AI bubble without rebuilding the chat list', () => {
+  assert.match(talk, /const assistantMessage = await saveAssistantReply/);
+  assert.match(talk, /replaceAssistantTypingWithMessage\(assistantMessage, current\.memberId\)/);
+  assert.match(talk, /loadMessages\(\{ showLoading: false, followBottom: true, render:false \}\)/);
+  assert.match(talk, /if \(options\.render === false\) state\.messages/);
+});
