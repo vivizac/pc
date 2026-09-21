@@ -41,7 +41,7 @@ test('natural read phrases include 자리 있는지 and 픽업 등록된 학생'
   assert.match(router, /있는지\|있는가/);
   assert.match(router, /function parsePickupQueryIntent/);
   assert.match(router, /explicitMutation/);
-  assert.match(router, /\d\{1,2\}\\s\*월\\s\*\\d\{1,2\}\\s\*일/);
+  assert.ok(router.includes('.replace(/\\d{1,2}\\\\s*월\\\\s*\\d{1,2}\\\\s*일/g'));
 });
 
 test('PC renders persisted action state below Olli messages', () => {
@@ -58,7 +58,7 @@ test('action records are private and execution is session-aware and idempotent b
   assert.match(migration, /for update/);
   assert.match(migration, /if v_action\.status <> 'pending'/);
   assert.match(migration, /public\.olli_schedule_execute/);
-  assert.match(migration, /message_type,body,client_message_id[\\s\\S]{0,180}'system'/);
+  assert.match(migration, /values\(p_academy_id,null,'올리','system'/);
 });
 
 test('normal PC mention behavior is still isolated from Olli requests', () => {
