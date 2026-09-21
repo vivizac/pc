@@ -58,6 +58,47 @@
     });
   }
 
+  function resolveKcfInlineFeedbackTarget(text){
+    var raw = String(text || '').trim();
+    if (!raw) return { matched:false, ambiguous:false, student:null, body:'', name:'' };
+
+    var names = [];
+    getKcfAllActiveStudents().forEach(function(student){
+      var name = String(student && student.name || '').trim();
+      if (name && names.indexOf(name) === -1) names.push(name);
+    });
+    names.sort(function(a, b){ return b.length - a.length; });
+
+    var matchedName = '';
+    for (var i = 0; i < names.length; i += 1) {
+      var name = names[i];
+      if (raw === name) {
+        matchedName = name;
+        break;
+      }
+      if (raw.indexOf(name) !== 0) continue;
+      var next = raw.charAt(name.length);
+      if (!next || /\s/.test(next) || /[,:;.!?()\-–—\/]/.test(next)) {
+        matchedName = name;
+        break;
+      }
+    }
+
+    if (!matchedName) return { matched:false, ambiguous:false, student:null, body:raw, name:'' };
+
+    var body = raw.slice(matchedName.length).trim();
+    body = body.replace(/^[,:;.!?()\-–—\/]+/, '').trim();
+    var candidates = findKcfStudentsByName(matchedName);
+    return {
+      matched:true,
+      ambiguous:candidates.length > 1,
+      student:candidates.length === 1 ? candidates[0] : null,
+      body:body,
+      name:matchedName,
+      candidates:candidates
+    };
+  }
+
   function getKcfSelectedStudent(){
     var selectedId = '';
     try {
@@ -368,6 +409,7 @@
       ? window.KcfAutoMode.captureSubmitContext()
       : null;
     var selectedStudent = getKcfSelectedStudent();
+    var feedbackText = text;
 
     if (
       window.__olliCommandsMovedToTalk !== true &&
@@ -391,6 +433,22 @@
       }
     }
 
+    if (!selectedStudent && window.__olliPhoneInlineStudentFeedbackEnabled === true) {
+      var inlineTarget = resolveKcfInlineFeedbackTarget(text);
+      if (inlineTarget.matched && inlineTarget.ambiguous) {
+        setKinderChatFeedbackWarning('동명이인 학생이 있어요. Teacher에서 학생을 선택한 뒤 보내주세요.');
+        return;
+      }
+      if (inlineTarget.student) {
+        if (!inlineTarget.body) {
+          setKinderChatFeedbackWarning('학생 이름 다음에 수업기록을 적어주세요.');
+          return;
+        }
+        selectedStudent = inlineTarget.student;
+        feedbackText = inlineTarget.body;
+      }
+    }
+
     if (!selectedStudent) {
       if (typeof addKinderChatMessage === 'function') {
         addKinderChatMessage('user', text);
@@ -402,7 +460,7 @@
     }
     setKinderChatFeedbackWarning('');
     try {
-      await continueKinderChatFeedbackSubmit(text, selectedStudent, autoSubmitContext);
+      await continueKinderChatFeedbackSubmit(feedbackText, selectedStudent, autoSubmitContext);
     } catch (err) {
       console.error('1분 피드백 AI 요청 시작 실패:', err);
       if (typeof setKinderChatFeedbackWarning === 'function') {
