@@ -61,3 +61,15 @@ test('Team Talk keeps one-third chat and two-thirds work area', () => {
   assert.match(html,/pc-team-talk-material-orders\.css/);
   assert.match(html,/pc-team-talk-material-orders\.js/);
 });
+
+
+test('material request action lives in the workspace toolbar and hides on archive tab', () => {
+  assert.match(html,/id="olliPcTeamTalkMaterialCreate"[^>]*>[\s\S]*?요청 등록/);
+  assert.doesNotMatch(materialJs,/class="olliMatHeader"/);
+  assert.match(js,/materialCreate\.hidden = next !== 'materials'/);
+  assert.match(materialJs,/openCreate,/);
+});
+
+test('mention popup is narrower and aligned to the right side of composer', () => {
+  assert.match(css,/\.olliPcTeamTalkMentionMenu\{[^\n]*right:58px;left:auto[^\n]*width:min\(220px,calc\(100% - 96px\)\)/);
+});
