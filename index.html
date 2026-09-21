@@ -1697,6 +1697,7 @@
 <link rel="stylesheet" href="pc-student-management.css">
 <link rel="stylesheet" href="pc-trash.css">
 <link rel="stylesheet" href="consultation-survey.css">
+<link rel="stylesheet" href="pc-team-talk.css?v=20260921-pc-team-talk-1">
 </head>
 <body class="olliPcApp">
 <div aria-hidden="true" class="olliBootScreen" id="olliBootScreen">
@@ -1719,6 +1720,13 @@
     </button>
     <button class="olliPcNavBtn" data-pc-nav="schedule" type="button" onclick="pcOpenSection('schedule')">
       <svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14" rx="2.5"></rect><path d="M8 3.5v4M16 3.5v4M4 9.5h16M8 13h3M13 13h3M8 16.5h3"></path></svg><span>시간표 • 출석부</span>
+    </button>
+    <button class="olliPcNavBtn olliPcTeamTalkNavBtn" data-pc-nav="talk" type="button" onclick="pcOpenSection('talk')">
+      <svg class="olliPcTeamTalkNavIcon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6.47 4.5h12c2.06 0 3.75 1.69 3.75 3.75v7.03c0 2.06-1.69 3.75-3.75 3.75H9.19l-3.94 3.1 1.13-3.1c-2.11-.28-3.66-1.92-3.66-4.03V8.25c0-2.06 1.69-3.75 3.75-3.75Z"></path>
+        <circle cx="9.66" cy="12.19" r=".75"></circle><circle cx="12.47" cy="12.19" r=".75"></circle><circle cx="15.28" cy="12.19" r=".75"></circle>
+      </svg>
+      <span>팀톡</span><span class="olliPcTeamTalkBadge" id="olliPcTeamTalkBadge" hidden></span>
     </button>
   </nav>
   <div class="olliPcContext">
@@ -1744,6 +1752,51 @@
   <div class="olliPcTopbarTitle" id="olliPcTopbarTitle">학생관리</div>
   <div class="olliPcTopbarRight">
     <input class="olliPcSearch" id="olliPcSearch" type="search" placeholder="학생 검색" oninput="pcHandleTopSearch(this.value)">
+  </div>
+</div>
+<!-- PAGE: PC 팀톡 -->
+<div aria-hidden="true" class="pageScreen" data-page-key="pc-team-talk" data-page-name="팀톡" id="olliPcTeamTalkScreen">
+  <div class="olliPcTeamTalkPage">
+    <section class="olliPcTeamTalkChat" aria-label="팀톡 채팅">
+      <div class="olliPcTeamTalkChatHead">
+        <div class="olliPcTeamTalkTitleWrap">
+          <div class="olliPcTeamTalkTitle">비비작 팀톡</div>
+          <div class="olliPcTeamTalkMemberCount" id="olliPcTeamTalkMemberCount"></div>
+        </div>
+        <button class="olliPcTeamTalkRefresh" id="olliPcTeamTalkRefresh" type="button" aria-label="팀톡 새로고침" title="새로고침">
+          <svg viewBox="0 0 24 24"><path d="M20 7v5h-5"></path><path d="M18.2 16.4A8 8 0 1 1 19.5 9"></path></svg>
+        </button>
+      </div>
+      <div class="olliPcTeamTalkMessages" id="olliPcTeamTalkMessages" aria-live="polite">
+        <div class="olliPcTeamTalkEmpty"><div class="olliPcTeamTalkEmptyTitle">팀톡을 준비하고 있어요.</div></div>
+      </div>
+      <div class="olliPcTeamTalkComposerWrap">
+        <div class="olliPcTeamTalkMentionMenu" id="olliPcTeamTalkMentionMenu" hidden aria-label="선생님 멘션 선택"></div>
+        <div class="olliPcTeamTalkComposer">
+          <button class="olliPcTeamTalkComposerBtn" id="olliPcTeamTalkAddFile" type="button" aria-label="파일 추가" title="파일 추가">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+          </button>
+          <textarea class="olliPcTeamTalkInput" id="olliPcTeamTalkInput" rows="1" placeholder="메시지를 입력하세요" aria-label="팀톡 메시지 입력"></textarea>
+          <button class="olliPcTeamTalkComposerBtn" id="olliPcTeamTalkMention" type="button" aria-label="선생님 멘션" title="선생님 멘션">@</button>
+          <button class="olliPcTeamTalkComposerBtn olliPcTeamTalkSend" id="olliPcTeamTalkSend" type="button" aria-label="메시지 전송" disabled>
+            <svg viewBox="0 0 24 24"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>
+          </button>
+        </div>
+        <input id="olliPcTeamTalkComposerFile" type="file" hidden accept="image/*,video/*,.pdf,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip">
+      </div>
+    </section>
+    <aside class="olliPcTeamTalkArchive" aria-label="팀톡 자료실">
+      <div class="olliPcTeamTalkArchiveHead"><div class="olliPcTeamTalkArchiveTitle">자료실</div></div>
+      <div class="olliPcTeamTalkArchiveTabs" role="tablist" aria-label="자료실 분류">
+        <button class="olliPcTeamTalkArchiveTab active" data-team-talk-archive-tab="media" role="tab" aria-selected="true" type="button">사진/동영상</button>
+        <button class="olliPcTeamTalkArchiveTab" data-team-talk-archive-tab="files" role="tab" aria-selected="false" type="button">수업파일</button>
+        <button class="olliPcTeamTalkArchiveTab" data-team-talk-archive-tab="links" role="tab" aria-selected="false" type="button">링크</button>
+      </div>
+      <div class="olliPcTeamTalkArchiveMeta" id="olliPcTeamTalkArchiveMeta"></div>
+      <div class="olliPcTeamTalkArchiveBody" id="olliPcTeamTalkArchiveBody"></div>
+      <button class="olliPcTeamTalkArchiveUpload" id="olliPcTeamTalkArchiveUpload" type="button" hidden>파일 올리기</button>
+      <input id="olliPcTeamTalkArchiveFile" type="file" hidden accept=".pdf,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip">
+    </aside>
   </div>
 </div>
 <!-- PAGE: 출석부 페이지 -->
@@ -4620,6 +4673,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 });
 </script>
+<script src="pc-team-talk.js?v=20260921-pc-team-talk-1"></script>
 <script src="pc-shell.js"></script>
 <script src="pc-student-management.js"></script>
 <script src="pc-kinder-feedback.js"></script>
