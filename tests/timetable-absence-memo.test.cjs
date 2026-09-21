@@ -75,7 +75,7 @@ test('absence UI is square beside a two-line memo and uses white text on red tod
 test('future absence colors stay lighter than today and kinder is redder than its base pink', () => {
   const css = source('pc-timetable.css');
   assert.match(css, /\.olliTtStudent\.regular\.elementary\.absenceUpcoming \{ border-color:#f2b8b6; color:#9a4448; background:#fde8e7/);
-  assert.match(css, /\.olliTtStudent\.regular\.kinder\.absenceUpcoming \{ border-color:#eca5ab; color:#8d3f46; background:#f8cdd1/);
+  assert.match(css, /\.olliTtStudent\.regular\.kinder\.absenceUpcoming \{ border-color:#e28e98; color:#843b43; background:#f2b8bf/);
   assert.match(css, /\.olliTtStudent\.regular\.kinder \{ border-color: #f5c7d4; background: #ffe4eb; \}/);
   assert.match(css, /\.olliTtStudent\.regular\.absent \{ border-color:#e5484d; color:#fff; background:#e5484d/);
 });

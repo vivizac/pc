@@ -251,7 +251,7 @@
 /* 미리 등록한 결석은 당일까지 시선을 덜 끌도록 연하게 표시합니다.
    유치부는 기본 연핑크 카드와 구분되도록 초등부보다 한 단계 더 붉게 표시합니다. */
 #recordRoomScreen .olliTtStudent.regular.elementary.absenceUpcoming { border-color:#f2b8b6; color:#9a4448; background:#fde8e7; box-shadow:none; }
-#recordRoomScreen .olliTtStudent.regular.kinder.absenceUpcoming { border-color:#eca5ab; color:#8d3f46; background:#f8cdd1; box-shadow:none; }
+#recordRoomScreen .olliTtStudent.regular.kinder.absenceUpcoming { border-color:#e28e98; color:#843b43; background:#f2b8bf; box-shadow:none; }
 #recordRoomScreen .olliTtStudent.regular.absenceUpcoming .olliTtStudentMore { color:#b46a6f; }
 #recordRoomScreen .olliTtStudent.regular.absenceUpcoming .olliTtSecondSessionMark,
 #recordRoomScreen .olliTtStudent.regular.absenceUpcoming .olliTtReservation { color:inherit; }
