@@ -14,3 +14,5 @@ scene-card-ui-common.js
 scene-feedback-text-common.js
 olli-command-schedule-common.js
 olli-command-router-common.js
+olli-settings-team-talk-common.js
+olli-settings-team-talk-common.css
