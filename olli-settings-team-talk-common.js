@@ -360,12 +360,49 @@ function registerSettingsDetail(){
   }
 }
 
+function openDetailFallback(){
+  const detail = document.getElementById('settingsDetailScreen');
+  const settings = document.getElementById('settingsPageScreen');
+  const titlePill = document.getElementById('settingsDetailTitlePill');
+  const body = document.getElementById('settingsDetailBody');
+  if (!detail || !body) return false;
+
+  if (settings) settings.style.display = 'flex';
+  if (titlePill) titlePill.textContent = '팀톡 설정';
+  body.innerHTML = detailHtml();
+
+  detail.style.display = 'flex';
+  detail.style.position = 'fixed';
+  detail.style.inset = '0';
+  detail.style.transform = 'translateX(0)';
+  detail.style.opacity = '1';
+  detail.style.pointerEvents = 'auto';
+  detail.style.zIndex = '91000';
+
+  Promise.resolve(loadRemote(true))
+    .then(function(){
+      if (detail.style.display !== 'none') renderDetail();
+    })
+    .catch(function(error){
+      state.lastError = clean(error?.message || error);
+      if (detail.style.display !== 'none') renderDetail();
+    });
+  return true;
+}
+
 function openDetail(){
   installSettingsRow();
-  registerSettingsDetail();
-  if (typeof global.openSettingsDetail === 'function') {
-    global.openSettingsDetail('teamTalk');
+  const registered = registerSettingsDetail();
+
+  if (registered && typeof global.openSettingsDetail === 'function') {
+    try {
+      global.openSettingsDetail('teamTalk');
+      const detail = document.getElementById('settingsDetailScreen');
+      if (detail && detail.style.display === 'flex') return true;
+    } catch (_) {}
   }
+
+  return openDetailFallback();
 }
 
 function refreshForAcademy(){
