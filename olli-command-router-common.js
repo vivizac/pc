@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-21-pickup-write-1';
+  const VERSION = '2026-09-21-query-tools-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -550,6 +550,11 @@
     const compact = compactText(raw);
     if (!raw || !/픽업/.test(compact) || hasRemoveAction(compact) || !hasAddAction(compact)) return null;
 
+    const passiveRegistrationQuery =
+      /(?:등록된|등록되어있는|등록되어있|등록돼있는|등록돼있)/.test(compact)
+      && /(?:누구|학생|명단|몇명|있어|있나|있나요|알려|보여|확인|조회)/.test(compact);
+    if (passiveRegistrationQuery) return null;
+
     const weekdayMatch = compact.match(/([월화수목금토])요일/);
     const weekday = weekdayMatch ? (WEEKDAY_MAP[weekdayMatch[1]] || 0) : 0;
     const clocks = pickupClockMentions(raw);
@@ -745,6 +750,44 @@
   }
 
 
+  function parsePickupQueryIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !/(?:픽업|하원)/.test(compact)) return null;
+
+    const explicitMutation =
+      /(?:픽업|하원).{0,18}(?:등록|추가|넣|예약)(?:해|해줘|해주세요|해줄래|할래|줘|주세요|하자|해요)/.test(compact)
+      || /(?:등록|추가|넣|예약).{0,18}(?:픽업|하원)(?:해|해줘|해주세요|해줄래|할래|줘|주세요|하자|해요)/.test(compact);
+    if (explicitMutation) return null;
+
+    const asksForLookup =
+      /(?:누구|학생|명단|몇명|몇명이|있어|있나|있나요|있니|있을까|알려|찾아|보여|확인|체크|조회|어디|시간)/.test(compact);
+    if (!asksForLookup) return null;
+
+    const dateSpec = parseDateExpression(compact) || { mode:'today', label:'오늘' };
+    const classTimeMatch = raw.match(/(\d{1,2})\s*시\s*(?:수업|클래스)/);
+    const classTime = Number(classTimeMatch && classTimeMatch[1] || 0);
+    const kind = /하원/.test(compact)
+      ? 'dropoff'
+      : (/(?:등원|픽업만)/.test(compact) ? 'pickup' : 'all');
+
+    return {
+      type:'query',
+      intent:'find_pickups',
+      dateSpec,
+      dateLabel:dateSpec.label,
+      classTime,
+      kind,
+      originalText:raw
+    };
+  }
+
+  function parseQueryIntent(text) {
+    const normalizedText = cleanText(text);
+    return parsePickupQueryIntent(normalizedText)
+      || parseAvailableSlotsIntent(normalizedText);
+  }
+
   function classifyRequest(text) {
     const normalizedText = cleanText(text);
     const writeIntent = parseWriteIntent(normalizedText);
@@ -756,7 +799,7 @@
       };
     }
 
-    const queryIntent = parseAvailableSlotsIntent(normalizedText);
+    const queryIntent = parseQueryIntent(normalizedText);
     if (queryIntent) {
       return {
         type:'query',
@@ -784,6 +827,173 @@
     };
   }
 
+
+  async function runQuery(text, context) {
+    const normalizedText = cleanText(text);
+    const schedule = global.OlliCommandSchedule;
+    const queryIntent = parseQueryIntent(normalizedText);
+
+    if (!queryIntent) {
+      return {
+        handled:false,
+        kind:'pass_through',
+        intent:'',
+        text:normalizedText,
+        message:'',
+        clearInput:false,
+        payload:null
+      };
+    }
+
+    if (!schedule) {
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:queryIntent.intent,
+        text:normalizedText,
+        message:'학원 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+        clearInput:true,
+        payload:queryIntent
+      };
+    }
+
+    if (queryIntent.intent === 'find_pickups') {
+      if (typeof schedule.findPickups !== 'function') {
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:queryIntent.intent,
+          text:normalizedText,
+          message:'픽업 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:queryIntent
+        };
+      }
+
+      try {
+        const targetDate = resolveDateExpression(queryIntent.dateSpec, new Date());
+        if (!targetDate) throw new Error('조회 날짜를 해석하지 못했습니다.');
+        const result = await schedule.findPickups({
+          date:targetDate,
+          dateLabel:queryIntent.dateLabel,
+          classTime:queryIntent.classTime,
+          kind:queryIntent.kind
+        });
+        const message = typeof schedule.describePickups === 'function'
+          ? schedule.describePickups(result)
+          : '픽업 일정을 확인했어요.';
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:queryIntent.intent,
+          text:normalizedText,
+          message,
+          clearInput:true,
+          payload:Object.assign({}, queryIntent, { result })
+        };
+      } catch (error) {
+        console.warn('올리 픽업 조회 실패:', error);
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:queryIntent.intent,
+          text:normalizedText,
+          message:'픽업 일정을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:queryIntent
+        };
+      }
+    }
+
+    const availableSlots = queryIntent;
+    if (typeof schedule.findAvailableSlots !== 'function') {
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:availableSlots.intent,
+        text:normalizedText,
+        message:'시간표 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+        clearInput:true,
+        payload:availableSlots
+      };
+    }
+
+    try {
+      let result;
+      let message;
+
+      if (availableSlots.scope === 'week') {
+        if (typeof schedule.findWeekAvailability !== 'function') {
+          throw new Error('주간 시간표 조회 기능을 아직 불러오지 못했어요.');
+        }
+        result = await schedule.findWeekAvailability({
+          date:new Date(),
+          weekOffset:availableSlots.weekOffset,
+          dateLabel:availableSlots.dateLabel,
+          division:availableSlots.division,
+          purpose:availableSlots.purpose,
+          viewMode:availableSlots.viewMode,
+          timeSlot:availableSlots.timeSlot,
+          classGroup:availableSlots.classGroup
+        });
+        message = typeof schedule.describeWeekAvailability === 'function'
+          ? schedule.describeWeekAvailability(result)
+          : '주간 시간표를 확인했어요.';
+      } else if (availableSlots.scope === 'recurring') {
+        if (typeof schedule.findRecurringAvailability !== 'function') {
+          throw new Error('정규수업 기준 빈자리 조회 기능을 아직 불러오지 못했어요.');
+        }
+        result = await schedule.findRecurringAvailability({
+          date:new Date(),
+          weekday:availableSlots.weekday,
+          division:availableSlots.division,
+          purpose:availableSlots.purpose,
+          viewMode:availableSlots.viewMode,
+          timeSlot:availableSlots.timeSlot,
+          classGroup:availableSlots.classGroup
+        });
+        message = typeof schedule.describeRecurringAvailability === 'function'
+          ? schedule.describeRecurringAvailability(result)
+          : '정규수업 기준 빈자리를 확인했어요.';
+      } else {
+        const targetDate = resolveDateExpression(availableSlots.dateSpec, new Date());
+        if (!targetDate) throw new Error('조회 날짜를 해석하지 못했습니다.');
+        result = await schedule.findAvailableSlots({
+          date:targetDate,
+          dateLabel:availableSlots.dateLabel,
+          division:availableSlots.division,
+          purpose:availableSlots.purpose,
+          viewMode:availableSlots.viewMode,
+          timeSlot:availableSlots.timeSlot,
+          classGroup:availableSlots.classGroup
+        });
+        message = typeof schedule.describeAvailableSlots === 'function'
+          ? schedule.describeAvailableSlots(result)
+          : '시간표 빈자리를 확인했어요.';
+      }
+
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:availableSlots.intent,
+        text:normalizedText,
+        message,
+        clearInput:true,
+        payload:Object.assign({}, availableSlots, { result })
+      };
+    } catch (error) {
+      console.warn('올리 시간표 조회 실패:', error);
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:availableSlots.intent,
+        text:normalizedText,
+        message:'시간표 빈자리를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+        clearInput:true,
+        payload:availableSlots
+      };
+    }
+  }
 
   async function prepareAction(text, context) {
     const normalizedText = cleanText(text);
@@ -1089,105 +1299,19 @@
       }
     }
 
-    const availableSlots = parseAvailableSlotsIntent(normalizedText);
-    if (!availableSlots) return passThrough(normalizedText);
-
-    if (!schedule || typeof schedule.findAvailableSlots !== 'function') {
-      return {
-        handled: true,
-        kind: 'command_result',
-        intent: availableSlots.intent,
-        text: normalizedText,
-        message: '시간표 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
-        clearInput: true,
-        payload: availableSlots
-      };
-    }
-
-    try {
-      let result;
-      let message;
-
-      if (availableSlots.scope === 'week') {
-        if (typeof schedule.findWeekAvailability !== 'function') {
-          throw new Error('주간 시간표 조회 기능을 아직 불러오지 못했어요.');
-        }
-        result = await schedule.findWeekAvailability({
-          date:new Date(),
-          weekOffset:availableSlots.weekOffset,
-          dateLabel:availableSlots.dateLabel,
-          division:availableSlots.division,
-          purpose:availableSlots.purpose,
-          viewMode:availableSlots.viewMode,
-          timeSlot:availableSlots.timeSlot,
-          classGroup:availableSlots.classGroup
-        });
-        message = typeof schedule.describeWeekAvailability === 'function'
-          ? schedule.describeWeekAvailability(result)
-          : '주간 시간표를 확인했어요.';
-      } else if (availableSlots.scope === 'recurring') {
-        if (typeof schedule.findRecurringAvailability !== 'function') {
-          throw new Error('정규수업 기준 빈자리 조회 기능을 아직 불러오지 못했어요.');
-        }
-        result = await schedule.findRecurringAvailability({
-          date:new Date(),
-          weekday:availableSlots.weekday,
-          division:availableSlots.division,
-          purpose:availableSlots.purpose,
-          viewMode:availableSlots.viewMode,
-          timeSlot:availableSlots.timeSlot,
-          classGroup:availableSlots.classGroup
-        });
-        message = typeof schedule.describeRecurringAvailability === 'function'
-          ? schedule.describeRecurringAvailability(result)
-          : '정규수업 기준 빈자리를 확인했어요.';
-      } else {
-        const targetDate = resolveDateExpression(availableSlots.dateSpec, new Date());
-        if (!targetDate) throw new Error('조회 날짜를 해석하지 못했습니다.');
-        result = await schedule.findAvailableSlots({
-          date:targetDate,
-          dateLabel:availableSlots.dateLabel,
-          division:availableSlots.division,
-          purpose:availableSlots.purpose,
-          viewMode:availableSlots.viewMode,
-          timeSlot:availableSlots.timeSlot,
-          classGroup:availableSlots.classGroup
-        });
-        message = typeof schedule.describeAvailableSlots === 'function'
-          ? schedule.describeAvailableSlots(result)
-          : '시간표 빈자리를 확인했어요.';
-      }
-
-      return {
-        handled:true,
-        kind:'command_result',
-        intent:availableSlots.intent,
-        text:normalizedText,
-        message,
-        clearInput:true,
-        payload:Object.assign({}, availableSlots, { result })
-      };
-    } catch (error) {
-      console.warn('올리 빈자리 조회 실패:', error);
-      return {
-        handled: true,
-        kind: 'command_result',
-        intent: availableSlots.intent,
-        text: normalizedText,
-        message: '시간표 빈자리를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
-        clearInput: true,
-        payload: availableSlots
-      };
-    }
+    return runQuery(normalizedText, routeContext);
   }
 
   global.OlliCommandRouter = Object.freeze({
     VERSION,
     route,
     classifyRequest,
+    runQuery,
     prepareAction,
     parseWriteIntent,
+    parseQueryIntent,
     parseAvailableSlotsIntent,
+    parsePickupQueryIntent,
     parseScheduleMoveMutationIntent,
     parseMakeupMutationIntent,
     parseWaitlistMutationIntent,
