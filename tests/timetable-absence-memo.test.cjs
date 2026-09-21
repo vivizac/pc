@@ -11,11 +11,14 @@ test('timetable absence memo source files compile', () => {
   assert.doesNotThrow(() => new vm.Script(source('pc-timetable-service.js'), { filename: 'pc-timetable-service.js' }));
 });
 
-test('regular timetable card carries clicked date and renders explicit absence state', () => {
+test('regular timetable card separates today absence from pre-registered future absence', () => {
   const code = source('pc-timetable.js');
-  assert.match(code, /data-session-date="\$\{dateKey\(date\)\}"/);
-  assert.match(code, /const absent = dateKey\(date\) >= todayKey\(\) && attendanceStatus === 'absent'/);
-  assert.match(code, /absent \? ' absent' : ''/);
+  assert.match(code, /const sessionKey = dateKey\(date\)/);
+  assert.match(code, /const currentDayKey = todayKey\(\)/);
+  assert.match(code, /const absent = sessionKey === currentDayKey && attendanceStatus === 'absent'/);
+  assert.match(code, /const upcomingAbsence = sessionKey > currentDayKey && attendanceStatus === 'absent'/);
+  assert.match(code, /upcomingAbsence \? ' absenceUpcoming' : ''/);
+  assert.match(code, /data-session-date="\$\{sessionKey\}"/);
 });
 
 test('class settings reuse timetable memo and save session-specific absence', () => {
@@ -67,6 +70,14 @@ test('absence UI is square beside a two-line memo and uses white text on red tod
   assert.match(css, /\.olliTtAbsenceBtn \{[\s\S]*width:86px;[\s\S]*height:86px;/);
   assert.match(css, /\.olliTtStudent\.regular\.absent \{ border-color:#e5484d; color:#fff; background:#e5484d/);
   assert.match(css, /\.olliTtStudent\.regular\.absent \.olliTtSecondSessionMark/);
+});
+
+test('future absence colors stay lighter than today and kinder is redder than its base pink', () => {
+  const css = source('pc-timetable.css');
+  assert.match(css, /\.olliTtStudent\.regular\.elementary\.absenceUpcoming \{ border-color:#f2b8b6; color:#9a4448; background:#fde8e7/);
+  assert.match(css, /\.olliTtStudent\.regular\.kinder\.absenceUpcoming \{ border-color:#eca5ab; color:#8d3f46; background:#f8cdd1/);
+  assert.match(css, /\.olliTtStudent\.regular\.kinder \{ border-color: #f5c7d4; background: #ffe4eb; \}/);
+  assert.match(css, /\.olliTtStudent\.regular\.absent \{ border-color:#e5484d; color:#fff; background:#e5484d/);
 });
 
 
