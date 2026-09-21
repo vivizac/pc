@@ -40,6 +40,17 @@ Phone에서 사용하는 실제 공통 파일 목록은 [Phone OLLI_COMMON_FILES
 - 날짜가 명시된 일반 문장(예: “김민서 10월 5일 초등부 5시 수업 등록해줘”)은 `add_class_once`로 준비한다. 이 의도는 1회 수업 등록을 뜻하며 정규 주간 등록과 구분한다.
 - 기존 1분 피드백의 `route()` 확인/실행 흐름은 이번 단계에서 변경하지 않는다. 팀톡 액션카드가 준비되기 전 기존 동작을 깨지 않기 위한 분리다.
 
+
+## 2026-09-21 팀톡 액션카드 2단계 — 저장·상태만
+
+- Supabase `public.olli_team_chat_actions`가 액션카드 서버 원본이다. 상태는 `pending / completed / cancelled / failed`이며 `revision`으로 상태 변경을 구분한다.
+- 액션카드는 팀톡 메시지 1개와 1:1로 연결된다. `olli_team_chat_send_action`은 확인용 AI 메시지와 pending 액션을 한 트랜잭션에서 저장하고, 같은 `client_message_id` 재시도는 같은 작업으로 취급한다.
+- 브라우저에는 `action_payload`를 다시 내려주지 않는다. `olli_team_chat_list`는 카드 ID, 종류, 상태, revision, 완료시각/오류 등 표시용 메타데이터만 반환한다.
+- 테이블 직접 접근은 `anon/authenticated` 모두 막고, 세션 토큰과 academy membership을 검사하는 RPC만 사용한다.
+- 취소는 `olli_team_chat_action_cancel`이 row lock 후 `pending → cancelled`만 허용한다. 이미 cancelled면 멱등 성공으로 처리한다.
+- **2단계에는 실제 시간표 등록·삭제 실행 RPC가 없다.** 과거 중간 시도에서 존재했던 `olli_team_chat_action_execute`는 제거했다.
+- 실제 실행은 후속 단계에서 버튼 클릭과 연결할 때 추가하며, 클라이언트가 payload를 다시 보내지 않고 `action_id`만 보내 서버에 저장된 payload를 사용하도록 한다.
+
 ## Realtime 단계별 진행
 
 `olli-realtime-common.js` 한 파일이 연결과 변경 신호 전달을 담당한다. `watchDomain`은 신호 보류·합치기·재시도·재연결 확인을 공통 처리한다. PC·Phone adapter는 기존 서버 조회와 해당 화면 반영만 담당한다.
