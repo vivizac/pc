@@ -11,8 +11,7 @@ test('feedback storage registry does not reference removed general-feedback mont
   assert.ok(start >= 0 && end > start);
   assert.doesNotMatch(block, /feedback_month/);
   assert.doesNotMatch(block, /feedback_month_number/);
-  assert.match(block, /lesson_date/);
-  assert.match(block, /member_id/);
+  assert.match(block, /future_direction/);
   assert.match(block, /updated_at/);
 });
 
@@ -30,21 +29,14 @@ test('growth feedback create/edit registry matches current fail_feedbacks timest
   assert.match(editBlock, /valueColumns: \['content', 'updated_at'\]/);
 });
 
-test('summary feedback registry preserves current Supabase summary fields', () => {
+test('summary feedback registry stays limited to active save fields and current timestamps', () => {
   const start = storage.indexOf("feature: 'summary_feedback'");
   const end = storage.indexOf("feature: 'general_feedback_edit'", start);
   const block = storage.slice(start, end);
-  for (const field of [
-    'feedback_type',
-    'period_months',
-    'source_feedback_ids',
-    'created_by',
-    'summary_months',
-    'updated_at',
-    'client_mutation_id'
-  ]) {
+  for (const field of ['summary_months', 'year', 'date', 'updated_at', 'client_mutation_id']) {
     assert.match(block, new RegExp(field));
   }
+  assert.doesNotMatch(block, /source_feedback_ids/);
 });
 
 test('all three feedback edit features use content plus updated_at', () => {
