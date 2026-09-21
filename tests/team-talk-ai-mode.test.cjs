@@ -34,7 +34,17 @@ test('normal PC messages still keep the existing mention path', () => {
 
 test('shared Team Talk settings row routes through the module opener before opening detail', () => {
   assert.match(settings, /id="settingsTeamTalkRow" onclick="openOlliTeamTalkSettings\(\)"/);
-  assert.match(settings, /function openDetail\(\)[\s\S]*registerSettingsDetail\(\);[\s\S]*global\.openSettingsDetail\('teamTalk'\)/);
+  assert.match(settings, /function openDetail\(\)[\s\S]*registerSettingsDetail\(\)[\s\S]*global\.openSettingsDetail\('teamTalk'\)/);
+});
+
+test('shared Team Talk settings opener falls back to the existing detail screen when standard navigation does not open it', () => {
+  assert.match(settings, /function openDetailFallback\(\)/);
+  assert.match(settings, /document\.getElementById\('settingsDetailScreen'\)/);
+  assert.match(settings, /titlePill\.textContent = '팀톡 설정'/);
+  assert.match(settings, /body\.innerHTML = detailHtml\(\)/);
+  assert.match(settings, /detail\.style\.display = 'flex'/);
+  assert.match(settings, /if \(detail && detail\.style\.display === 'flex'\) return true/);
+  assert.match(settings, /return openDetailFallback\(\)/);
 });
 
 
