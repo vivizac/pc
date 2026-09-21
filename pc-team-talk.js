@@ -15,6 +15,7 @@
     archiveLoadSequence: 0,
     sendBusy: false,
     olliModeActive: false,
+    assistantReplyPending: false,
     aiConversationMessages: [],
     uploadBusy: false,
     realtimeWatcher: null,
@@ -343,7 +344,11 @@
 
   function makeMessage(item, currentMemberId, options = {}) {
     const type = clean(item?.message_type) || 'text';
-    if (type === 'system') return create('div', 'olliPcTeamTalkSystemMessage', String(item?.body || ''));
+    if (type === 'system') {
+      const system = create('div', 'olliPcTeamTalkSystemMessage', String(item?.body || ''));
+      system.dataset.dateKey = dateKey(item?.created_at);
+      return system;
+    }
 
     const isAi = type === 'ai';
     const own = !isAi && clean(item?.sender_member_id) === clean(currentMemberId);
@@ -351,6 +356,7 @@
     const row = create('div', `olliPcTeamTalkMessage ${isAi ? 'ai' : (own ? 'outgoing' : 'incoming')}`);
     row.classList.add(connectedToPrevious ? 'olliPcTeamTalkMessageConnected' : 'olliPcTeamTalkMessageGroupStart');
     row.dataset.messageId = clean(item?.id);
+    row.dataset.dateKey = dateKey(item?.created_at);
 
     const content = create('div', 'olliPcTeamTalkMessageContent');
     if (!own) {
@@ -377,6 +383,86 @@
     content.appendChild(bubbleRow);
     row.appendChild(content);
     return row;
+  }
+
+  function makeAssistantTypingMessage() {
+    const row = create('div', 'olliPcTeamTalkMessage ai olliPcTeamTalkMessageGroupStart olliPcTeamTalkTypingMessage');
+    row.dataset.olliAssistantTyping = '1';
+
+    const avatar = create('span', 'olliPcTeamTalkAvatar ai', 'Olli');
+    row.appendChild(avatar);
+
+    const content = create('div', 'olliPcTeamTalkMessageContent');
+    const sender = create('div', 'olliPcTeamTalkSender');
+    sender.appendChild(create('span', 'olliPcTeamTalkSenderName', '올리'));
+    content.appendChild(sender);
+
+    const bubbleRow = create('div', 'olliPcTeamTalkBubbleRow');
+    const bubble = create('div', 'olliPcTeamTalkBubble olliPcTeamTalkTypingBubble');
+    bubble.setAttribute('role', 'status');
+    bubble.setAttribute('aria-label', '올리가 답변을 작성하는 중');
+    for (let index = 0; index < 3; index += 1) {
+      const dot = create('span', 'olliPcTeamTalkTypingDot');
+      dot.setAttribute('aria-hidden', 'true');
+      bubble.appendChild(dot);
+    }
+    bubbleRow.appendChild(bubble);
+    content.appendChild(bubbleRow);
+    row.appendChild(content);
+    return row;
+  }
+
+  function syncAssistantTypingIndicator() {
+    const body = byId('olliPcTeamTalkMessages');
+    if (!body) return;
+    body.querySelectorAll('[data-olli-assistant-typing]').forEach((node) => node.remove());
+    if (!state.assistantReplyPending) return;
+
+    let list = body.querySelector('.olliPcTeamTalkMessageList');
+    if (!list) {
+      list = create('div', 'olliPcTeamTalkMessageList');
+      body.replaceChildren(list);
+    }
+    list.appendChild(makeAssistantTypingMessage());
+    requestAnimationFrame(() => {
+      if (body.isConnected) body.scrollTop = body.scrollHeight;
+    });
+  }
+
+  function appendPersistedMessage(item, currentMemberId) {
+    const body = byId('olliPcTeamTalkMessages');
+    if (!body || !item) return false;
+    const messageId = clean(item?.id);
+    if (messageId) {
+      const duplicate = Array.from(body.querySelectorAll('[data-message-id]'))
+        .some((node) => clean(node.dataset.messageId) === messageId);
+      if (duplicate) return true;
+    }
+
+    let list = body.querySelector('.olliPcTeamTalkMessageList');
+    if (!list) {
+      list = create('div', 'olliPcTeamTalkMessageList');
+      body.replaceChildren(list);
+    }
+
+    const itemDateKey = dateKey(item?.created_at);
+    const renderedMessages = Array.from(list.querySelectorAll('[data-message-id]'));
+    const lastRendered = renderedMessages[renderedMessages.length - 1] || null;
+    const lastDateKey = clean(lastRendered?.dataset?.dateKey);
+    if (itemDateKey && itemDateKey !== lastDateKey) {
+      const divider = create('div', 'olliPcTeamTalkDateDivider');
+      divider.appendChild(create('span', '', formatDate(item?.created_at)));
+      list.appendChild(divider);
+    }
+
+    list.appendChild(makeMessage(item, currentMemberId, { connectedToPrevious:false }));
+    if (!state.messages.some((message) => clean(message?.id) === messageId)) {
+      state.messages = [...state.messages, item];
+    }
+    requestAnimationFrame(() => {
+      if (body.isConnected) body.scrollTop = body.scrollHeight;
+    });
+    return true;
   }
 
   function renderMessages(payload, options = {}) {
@@ -412,6 +498,7 @@
     const wasNearBottom = body.scrollHeight - body.clientHeight - body.scrollTop < 110;
     const previousTop = body.scrollTop;
     body.replaceChildren(list);
+    if (state.assistantReplyPending) syncAssistantTypingIndicator();
     requestAnimationFrame(() => {
       if (!body.isConnected) return;
       if (options.followBottom !== false || wasNearBottom) body.scrollTop = body.scrollHeight;
@@ -898,6 +985,15 @@
       });
       if (!payload?.ok || !payload?.message) throw new Error(payload?.message || '메시지를 저장하지 못했습니다.');
 
+      input.value = '';
+      resizeComposer();
+      updateComposerState();
+      appendPersistedMessage(payload.message, current.memberId);
+      if (olliRequested) {
+        state.assistantReplyPending = true;
+        syncAssistantTypingIndicator();
+      }
+
       const mentionIds = olliRequested ? [] : resolveMentionIds(body);
       if (mentionIds.length) {
         try {
@@ -923,17 +1019,20 @@
         } catch (error) {
           console.warn(usingAi ? 'PC 올리톡 AI 응답 실패:' : 'PC 올리톡 올리봇 응답 실패:', error?.message || error);
           alert((usingAi ? 'AI' : '올리봇') + ' 응답을 받지 못했습니다.\n' + (error?.message || error));
+        } finally {
+          state.assistantReplyPending = false;
+          syncAssistantTypingIndicator();
         }
       }
 
-      input.value = '';
-      resizeComposer();
       await Promise.all([
         loadMessages({ showLoading: false, followBottom: true }),
         loadArchive({ showLoading: false })
       ]);
       input.focus();
     } catch (error) {
+      state.assistantReplyPending = false;
+      syncAssistantTypingIndicator();
       alert(`메시지를 보내지 못했습니다.\n${error?.message || error}`);
     } finally {
       state.sendBusy = false;

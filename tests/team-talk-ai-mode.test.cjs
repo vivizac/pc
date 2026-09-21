@@ -61,3 +61,11 @@ test('PC AI context starts with button activation, grows turn by turn, and reset
   assert.match(talk, /if \(usingAi\) recordAiConversationTurn\(commandText, resolved\.message\)/);
   assert.match(talk, /function handleAiModeChanged\(\) \{[\s\S]*state\.aiConversationMessages = \[\];[\s\S]*syncAssistantUi\(\)/);
 });
+
+
+test('PC shows the saved user bubble immediately and an animated Olli typing indicator while waiting', () => {
+  assert.match(talk, /appendPersistedMessage\(payload\.message, current\.memberId\)/);
+  assert.match(talk, /state\.assistantReplyPending = true;[\s\S]{0,140}syncAssistantTypingIndicator\(\)/);
+  assert.match(talk, /finally \{[\s\S]{0,140}state\.assistantReplyPending = false;[\s\S]{0,140}syncAssistantTypingIndicator\(\)/);
+  assert.match(talk, /'olliPcTeamTalkTypingDot'/);
+});
