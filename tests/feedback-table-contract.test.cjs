@@ -49,3 +49,10 @@ test('legacy growth storage feature is labeled as fail-growth to avoid purpose c
   assert.match(getFeatureBlock('growth_feedback'), /label: '실패-성장 피드백'/);
   assert.match(getFeatureBlock('growth_feedbacks_by_student_delete'), /label: '실패-성장 피드백 학생별 삭제'/);
 });
+
+
+test('feedback table routing has one shared source of truth', () => {
+  assert.match(policy, /function getFeedbackTableNameByType\(feedbackType\)/);
+  assert.doesNotMatch(dataFeedback, /function getFeedbackTableNameByType\(feedbackType\)/);
+  assert.match(dataFeedback, /getFeedbackTableNameByType\(rawType\)/);
+});
