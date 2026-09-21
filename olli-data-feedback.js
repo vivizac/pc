@@ -108,14 +108,6 @@ async function refreshRecordsAfterFeedbackSave() {
   
 }
 
-function getFeedbackTableNameByType(feedbackType) {
-  const type = String(feedbackType || '').toLowerCase();
-  if (type === 'summary') return 'summary_feedbacks';
-  if (['fail', 'fail_growth', 'failgrowth', 'elementary_fail', 'kinder_fail'].includes(type)) return 'fail_feedbacks';
-  return 'feedbacks';
-}
-
-
 function resetGrowthFeedbackAfterSuccessfulSave(studentDivision) {
   try {
     if (studentDivision === 'kinder' && typeof resetKinderChatFeedbackGrowthSheet === 'function') {
