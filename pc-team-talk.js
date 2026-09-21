@@ -6,7 +6,8 @@
   const VERSION = '1.0.0';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
   const state = {
-    archiveTab: 'media',
+    archiveTab: 'files',
+    workspaceTab: 'materials',
     messages: [],
     members: [],
     archivePayload: null,
@@ -293,6 +294,8 @@
       return bubble;
     }
 
+    bubble.classList.add('olliPcTeamTalkLinkBubble');
+
     const lead = text.replace(url, '').trim();
     if (lead) bubble.appendChild(create('div', 'olliPcTeamTalkLinkLead', lead));
 
@@ -349,11 +352,16 @@
 
     const content = create('div', 'olliPcTeamTalkMessageContent');
     if (!own) {
-      const sender = create('div', 'olliPcTeamTalkSender');
       const senderName = isAi ? '올리' : (clean(item?.sender_name) || '선생님');
-      const avatar = create('span', `olliPcTeamTalkAvatar${isAi ? ' ai' : ''}`, isAi ? 'Olli' : senderName.slice(0, 1));
-      sender.append(avatar, create('span', 'olliPcTeamTalkSenderName', senderName));
-      content.appendChild(sender);
+      if (!connectedToPrevious) {
+        const avatar = create('span', `olliPcTeamTalkAvatar${isAi ? ' ai' : ''}`, isAi ? 'Olli' : senderName.slice(0, 1));
+        row.appendChild(avatar);
+        const sender = create('div', 'olliPcTeamTalkSender');
+        sender.appendChild(create('span', 'olliPcTeamTalkSenderName', senderName));
+        content.appendChild(sender);
+      } else {
+        row.appendChild(create('span', 'olliPcTeamTalkAvatarSpacer'));
+      }
     }
 
     const bubbleRow = create('div', 'olliPcTeamTalkBubbleRow');
@@ -451,6 +459,20 @@
     if (!['media', 'files', 'links'].includes(tab)) return;
     state.archiveTab = tab;
     renderArchive();
+  }
+
+  function setWorkspaceTab(tab) {
+    const next = tab === 'archive' ? 'archive' : 'materials';
+    state.workspaceTab = next;
+    document.querySelectorAll('#olliPcTeamTalkScreen [data-team-talk-workspace-tab]').forEach((button) => {
+      const active = button.dataset.teamTalkWorkspaceTab === next;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    document.querySelectorAll('#olliPcTeamTalkScreen [data-team-talk-workspace-panel]').forEach((panel) => {
+      panel.hidden = panel.dataset.teamTalkWorkspacePanel !== next;
+    });
+    if (next === 'archive' && !state.archivePayload) loadArchive({ showLoading:true });
   }
 
   function archiveSection(label) {
@@ -906,6 +928,12 @@
       ]));
     }
 
+    document.querySelectorAll('#olliPcTeamTalkScreen [data-team-talk-workspace-tab]').forEach((button) => {
+      if (button.dataset.bound) return;
+      button.dataset.bound = '1';
+      button.addEventListener('click', () => setWorkspaceTab(button.dataset.teamTalkWorkspaceTab));
+    });
+
     document.querySelectorAll('#olliPcTeamTalkScreen [data-team-talk-archive-tab]').forEach((button) => {
       if (button.dataset.bound) return;
       button.dataset.bound = '1';
@@ -954,6 +982,7 @@
     bindRealtime();
     resizeComposer();
     updateComposerState();
+    setWorkspaceTab(state.workspaceTab);
 
     await Promise.all([
       loadMembers(),

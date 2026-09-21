@@ -110,3 +110,20 @@ test('attendance removal requires confirmation only after attendance is marked',
   assert.match(code, /출석 체크를 해제할까요/);
   assert.match(code, /if \(!global\.confirm\([\s\S]*\)\) return;/);
 });
+
+
+test('same-day absence reduces timetable capacity count for makeup registration', () => {
+  const code = source('pc-timetable.js');
+  assert.match(code, /const absentRegularCount = regular\.filter/);
+  assert.match(code, /timetableAttendanceSessionStatus\([\s\S]*'regular'[\s\S]*\) === 'absent'/);
+  assert.match(code, /Math\.max\(0, regular\.length - absentRegularCount\)/);
+});
+
+
+test('makeup capacity migration excludes same-day absent regular students', () => {
+  const sql = source('supabase/migrations/20260921055325_allow_makeup_in_absence_vacancy.sql');
+  assert.match(sql, /private\.olli_schedule_attendance_session_overrides/);
+  assert.match(sql, /a\.session_kind = 'regular'/);
+  assert.match(sql, /a\.status = 'absent'/);
+  assert.match(sql, /not exists \(/);
+});
