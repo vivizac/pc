@@ -34,3 +34,10 @@ test('shared Team Talk settings row routes through the module opener before open
   assert.match(settings, /id="settingsTeamTalkRow" onclick="openOlliTeamTalkSettings\(\)"/);
   assert.match(settings, /function openDetail\(\)[\s\S]*registerSettingsDetail\(\);[\s\S]*global\.openSettingsDetail\('teamTalk'\)/);
 });
+
+
+test('shared Team Talk automatic alerts include pickup add and cancel and remain independent of AI mode', () => {
+  assert.match(settings, /<span>픽업 등록<\/span>/);
+  assert.match(settings, /<span>픽업 취소<\/span>/);
+  assert.match(settings, /AI 사용 여부와 관계없이 등록과 취소가 생기면 팀톡에 자동으로 알려줍니다/);
+});
