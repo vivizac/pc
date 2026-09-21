@@ -72,11 +72,12 @@ test('absence UI is square beside a two-line memo and uses white text on red tod
   assert.match(css, /\.olliTtStudent\.regular\.absent \.olliTtSecondSessionMark/);
 });
 
-test('future absence colors stay lighter than today and kinder is redder than its base pink', () => {
+test('future absence cards use the same gray treatment as holiday student cards for both divisions', () => {
   const css = source('pc-timetable.css');
-  assert.match(css, /\.olliTtStudent\.regular\.elementary\.absenceUpcoming \{ border-color:#f2b8b6; color:#9a4448; background:#fde8e7/);
-  assert.match(css, /\.olliTtStudent\.regular\.kinder\.absenceUpcoming \{ border-color:#d97884; color:#713039; background:#eaa3aa/);
-  assert.match(css, /\.olliTtStudent\.regular\.kinder \{ border-color: #f5c7d4; background: #ffe4eb; \}/);
+  assert.match(css, /\.olliTtStudent\.regular\.absenceUpcoming \{ color:#858b93; border-color:#d4d8dd; background:#dfe2e5; box-shadow:none; transform:none; \}/);
+  assert.match(css, /\.olliTtCell\.holiday \.olliTtStudent[^\n]*\{ color:#858b93; border-color:#d4d8dd; background:#dfe2e5; box-shadow:none; transform:none; \}/);
+  assert.doesNotMatch(css, /\.olliTtStudent\.regular\.elementary\.absenceUpcoming/);
+  assert.doesNotMatch(css, /\.olliTtStudent\.regular\.kinder\.absenceUpcoming/);
   assert.match(css, /\.olliTtStudent\.regular\.absent \{ border-color:#e5484d; color:#fff; background:#e5484d/);
 });
 
