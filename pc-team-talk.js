@@ -330,12 +330,8 @@
       .trim();
   }
 
-  function actionPrimaryLabel(actionType) {
-    const type = clean(actionType);
-    if (type === 'move_class') return '변경';
-    if (type === 'mark_absent') return '결석 처리';
-    if (/^cancel_/.test(type)) return '취소 실행';
-    return '등록';
+  function actionPrimaryLabel() {
+    return '확인';
   }
 
   function actionStatusLabel(status) {
@@ -932,26 +928,86 @@
     }
   }
 
-  async function resolveBotReply(commandText) {
+  async function resolveBotTurn(commandText, current, replyToMessageId) {
     const router = global.OlliCommandRouter;
-    if (!router || typeof router.route !== 'function') {
-      return { message:'올리 업무 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' };
-    }
+    const schedule = global.OlliCommandSchedule;
+
+    const saveReply = async (message) => {
+      const text = clean(message) || '요청을 확인했어요.';
+      return {
+        assistantMessage:await saveAssistantReply(current, text, replyToMessageId),
+        replyText:text
+      };
+    };
+
     try {
-      const route = await router.route(commandText, {
-        source:'olli_talk',
+      if (state.pendingActionReason) {
+        if (isPendingReasonCancel(commandText)) {
+          state.pendingActionReason = null;
+          return saveReply('작업 준비를 취소했어요.');
+        }
+
+        const command = Object.assign({}, state.pendingActionReason, { reason:clean(commandText) });
+        state.pendingActionReason = null;
+        const confirmation = clean(schedule?.writeConfirmationMessage?.(command)) || '이 작업을 진행할까요?';
+        return {
+          assistantMessage:await saveAssistantAction(current, confirmation, command, replyToMessageId),
+          replyText:confirmation
+        };
+      }
+
+      if (!router || typeof router.prepareAction !== 'function') {
+        return saveReply('올리 업무 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
+      }
+
+      const prepared = await router.prepareAction(commandText, {
+        source:'olli_talk_bot',
         selectedStudent:null,
         autoSubmitContext:null
       });
-      if (!route || route.handled !== true) {
-        return {
-          message:'아직 이 요청은 올리 업무 기능에 연결되지 않았어요. 자리 확인, 보강·체험·대기 등록/취소, 픽업·하원 픽업 등록, 수업 이동, 결석 처리를 요청할 수 있어요.'
-        };
+
+      if (prepared?.handled === true) {
+        if (prepared.kind === 'action_pending' && prepared.payload) {
+          return {
+            assistantMessage:await saveAssistantAction(
+              current,
+              prepared.message || '이 작업을 진행할까요?',
+              prepared.payload,
+              replyToMessageId
+            ),
+            replyText:prepared.message || ''
+          };
+        }
+
+        if (prepared.kind === 'action_needs_reason' && prepared.payload) {
+          state.pendingActionReason = Object.assign({}, prepared.payload);
+          return saveReply(clean(prepared.message) || '사유를 알려주세요.');
+        }
+
+        if (prepared.kind === 'action_rejected') {
+          return saveReply(clean(prepared.message) || '작업을 준비하지 못했어요.');
+        }
       }
-      return { message:clean(route.message) || '요청을 확인했어요.' };
+
+      if (typeof router.runQuery === 'function') {
+        const queried = await router.runQuery(commandText, {
+          source:'olli_talk_bot',
+          selectedStudent:null,
+          autoSubmitContext:null
+        });
+        if (queried?.handled === true) {
+          return saveReply(clean(queried.message) || '조회 결과를 확인했어요.');
+        }
+      }
+
+      if (/^(확인|확인해|확인해줘|취소|취소해|취소해줘)$/i.test(clean(commandText))) {
+        return saveReply('변경 작업은 말풍선 아래 [취소] [확인] 버튼을 눌러주세요.');
+      }
+
+      return saveReply('아직 이 요청은 올리 업무 기능에 연결되지 않았어요. 자리 확인, 보강·체험·대기 등록/취소, 픽업·하원 픽업 등록, 수업 이동, 결석 처리를 요청할 수 있어요.');
     } catch (error) {
       console.warn('PC 올리톡 올리봇 처리 실패:', error?.message || error);
-      return { message:clean(error?.message || error) || '요청을 처리하지 못했어요.' };
+      return saveReply(clean(error?.message || error) || '요청을 처리하지 못했어요.');
     }
   }
 
@@ -1257,9 +1313,8 @@
             replaceAssistantTypingWithMessage(turn.assistantMessage, current.memberId);
             if (turn.recordAi) recordAiConversationTurn(commandText, turn.replyText);
           } else {
-            const resolved = await resolveBotReply(commandText);
-            const assistantMessage = await saveAssistantReply(current, resolved.message, Number(payload.message.id));
-            appendPersistedMessage(assistantMessage, current.memberId);
+            const turn = await resolveBotTurn(commandText, current, Number(payload.message.id));
+            appendPersistedMessage(turn.assistantMessage, current.memberId);
           }
         } catch (error) {
           console.warn(usingAi ? 'PC 올리톡 AI 응답 실패:' : 'PC 올리톡 올리봇 응답 실패:', error?.message || error);
