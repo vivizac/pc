@@ -1163,7 +1163,7 @@
       operation: 'post',
       createIfMissing: false,
       identityColumns: ['academy_id', 'student_id'],
-      valueColumns: ['student_name', 'content', 'feedback_type', 'future_direction', 'year', 'date', 'feedback_month', 'feedback_month_number'],
+      valueColumns: ['student_name', 'content', 'feedback_type', 'future_direction', 'year', 'date'],
       requiredColumns: ['academy_id', 'student_id', 'student_name', 'content'],
       selectColumns: ['id', 'academy_id', 'student_id', 'student_name', 'content', 'feedback_type', 'future_direction', 'year', 'date', 'created_at']
     },
