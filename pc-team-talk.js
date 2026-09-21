@@ -315,13 +315,36 @@
     return bubble;
   }
 
-  function makeMessage(item, currentMemberId) {
+  function getMessageGroupKey(item, currentMemberId) {
+    const type = clean(item?.message_type) || 'text';
+    if (type === 'system') return '';
+    if (type === 'ai') return 'ai:olli';
+    const senderId = clean(item?.sender_member_id);
+    if (senderId && senderId === clean(currentMemberId)) return 'outgoing:' + senderId;
+    return 'incoming:' + (senderId || clean(item?.sender_name) || 'unknown');
+  }
+
+  function isConnectedMessage(previousItem, item, currentMemberId) {
+    if (!previousItem || !item) return false;
+    const previousKey = getMessageGroupKey(previousItem, currentMemberId);
+    const currentKey = getMessageGroupKey(item, currentMemberId);
+    if (!previousKey || previousKey !== currentKey) return false;
+    const previousTime = new Date(previousItem?.created_at || 0).getTime();
+    const currentTime = new Date(item?.created_at || 0).getTime();
+    if (!Number.isFinite(previousTime) || !Number.isFinite(currentTime)) return false;
+    const diff = currentTime - previousTime;
+    return diff >= 0 && diff < 60 * 1000;
+  }
+
+  function makeMessage(item, currentMemberId, options = {}) {
     const type = clean(item?.message_type) || 'text';
     if (type === 'system') return create('div', 'olliPcTeamTalkSystemMessage', String(item?.body || ''));
 
     const isAi = type === 'ai';
     const own = !isAi && clean(item?.sender_member_id) === clean(currentMemberId);
+    const connectedToPrevious = options.connectedToPrevious === true;
     const row = create('div', `olliPcTeamTalkMessage ${isAi ? 'ai' : (own ? 'outgoing' : 'incoming')}`);
+    row.classList.add(connectedToPrevious ? 'olliPcTeamTalkMessageConnected' : 'olliPcTeamTalkMessageGroupStart');
     row.dataset.messageId = clean(item?.id);
 
     const content = create('div', 'olliPcTeamTalkMessageContent');
@@ -360,6 +383,7 @@
 
     const list = create('div', 'olliPcTeamTalkMessageList');
     let lastKey = '';
+    let groupStartItem = null;
     messages.forEach((item) => {
       const key = dateKey(item?.created_at);
       if (key && key !== lastKey) {
@@ -367,8 +391,12 @@
         divider.appendChild(create('span', '', formatDate(item?.created_at)));
         list.appendChild(divider);
         lastKey = key;
+        groupStartItem = null;
       }
-      list.appendChild(makeMessage(item, currentMemberId));
+      const connectedToPrevious = isConnectedMessage(groupStartItem, item, currentMemberId);
+      list.appendChild(makeMessage(item, currentMemberId, { connectedToPrevious }));
+      if ((clean(item?.message_type) || 'text') === 'system') groupStartItem = null;
+      else if (!connectedToPrevious) groupStartItem = item;
     });
 
     const wasNearBottom = body.scrollHeight - body.clientHeight - body.scrollTop < 110;
