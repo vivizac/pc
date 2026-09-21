@@ -14,7 +14,7 @@
     attendance: '성향기록부',
     consultation: '상담기록',
     schedule: '시간표 • 출석부',
-    talk: '팀톡'
+    talk: '업무'
   };
   const state = {
     section: 'academy',
