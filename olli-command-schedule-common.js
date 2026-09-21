@@ -1892,7 +1892,7 @@
           weekday:Number(item.weekday),
           classTime:Number(item.classTime),
           pickupLabel:item.pickupLabel,
-          pickupTime:item.pickupTime,
+          pickupTime:item.isDropoff === true ? '' : item.pickupTime,
           effectiveDate:item.effectiveDate,
           isDropoff:item.isDropoff === true
         });
