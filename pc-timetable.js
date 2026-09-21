@@ -167,6 +167,20 @@
     if (!input) return;
     input.setAttribute('inputmode', 'none');
     input.setAttribute('autocomplete', 'off');
+
+    let closeTimer = 0;
+    const commitValue = (shouldClose) => {
+      const value = clean(input.value);
+      if (!value) return;
+      onChange(value);
+      if (!shouldClose || !/^\d{2}:\d{2}(?::\d{2})?$/.test(value)) return;
+      if (closeTimer) global.clearTimeout(closeTimer);
+      closeTimer = global.setTimeout(() => {
+        input.blur();
+        closeTimer = 0;
+      }, 0);
+    };
+
     input.addEventListener('click', () => openClockPicker(input));
     input.addEventListener('keydown', (event) => {
       if (event.key === 'Tab' || event.key === 'Escape') return;
@@ -175,10 +189,8 @@
     });
     input.addEventListener('paste', (event) => event.preventDefault());
     input.addEventListener('drop', (event) => event.preventDefault());
-    input.addEventListener('change', () => {
-      onChange(input.value);
-      requestAnimationFrame(() => input.blur());
-    });
+    input.addEventListener('input', () => commitValue(true));
+    input.addEventListener('change', () => commitValue(true));
   }
 
   function esc(value) {
