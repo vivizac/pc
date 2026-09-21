@@ -168,7 +168,7 @@ function updateSettingsRowValue(){
   if (value) value.textContent = settingsSummary();
 }
 function rowHtml(){
-  return '<div class="settingsRow" data-owner-manager-only="true" id="settingsTeamTalkRow" onclick="openSettingsDetail(\'teamTalk\')" role="button">'
+  return '<div class="settingsRow" data-owner-manager-only="true" id="settingsTeamTalkRow" onclick="openOlliTeamTalkSettings()" role="button">'
     + '<div class="settingsRowLeft">'
     + '<span class="settingsRowIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-7l-4.2 3v-3H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z"></path><circle cx="9" cy="11" r=".8"></circle><circle cx="12" cy="11" r=".8"></circle><circle cx="15" cy="11" r=".8"></circle></svg></span>'
     + '<span class="settingsRowTitle">팀톡 설정</span>'
