@@ -85,7 +85,7 @@
 .olliPcTeamTalkMessage.outgoing .olliPcTeamTalkBubbleRow{flex-direction:row-reverse}
 .olliPcTeamTalkBubble{
   --olli-pc-talk-bubble-bg:#fff;position:relative;max-width:100%;
-  padding:8px 13px;border-radius:18px;background:var(--olli-pc-talk-bubble-bg);
+  padding:8px 13px;border-radius:15px;background:var(--olli-pc-talk-bubble-bg);
   color:#201818;font-size:calc(15px * var(--olli-text-scale));font-weight:380;
   line-height:1.48;letter-spacing:-.012em;white-space:pre-wrap;overflow:visible;
   overflow-wrap:anywhere;word-break:keep-all
