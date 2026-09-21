@@ -3,7 +3,7 @@
 
   if (global.OlliTeamTalkMaterialOrders?.version) return;
 
-  const VERSION = '0.9.0-prelayout';
+  const VERSION = '0.9.1-prelayout';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
 
   const state = {
@@ -575,11 +575,7 @@
     const current = context();
     if (!current.sessionToken || !current.academyId) return;
 
-    let holdReason = null;
-    if (nextStatus === 'on_hold') {
-      const reason = global.prompt?.('보류 사유가 있다면 적어 주세요.\n비워 두어도 보류할 수 있습니다.', '') ?? '';
-      holdReason = clean(reason) || null;
-    }
+    const holdReason = null;
 
     state.processing = true;
     renderDetail();
