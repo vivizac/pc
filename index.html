@@ -1697,8 +1697,8 @@
 <link rel="stylesheet" href="pc-student-management.css">
 <link rel="stylesheet" href="pc-trash.css">
 <link rel="stylesheet" href="consultation-survey.css">
-<link rel="stylesheet" href="pc-team-talk.css?v=20260921-material-orders-1">
-<link rel="stylesheet" href="pc-team-talk-material-orders.css?v=20260921-1">
+<link rel="stylesheet" href="pc-team-talk.css?v=20260921-toolbar-mention-1">
+<link rel="stylesheet" href="pc-team-talk-material-orders.css?v=20260921-toolbar-1">
 <link rel="stylesheet" href="olli-settings-team-talk-common.css?v=20260921-1">
 </head>
 <body class="olliPcApp">
@@ -1789,10 +1789,15 @@
       </div>
     </section>
     <section class="olliPcTeamTalkSide" aria-label="재료주문 및 자료실">
-      <div class="olliPcTeamTalkSideHead" role="tablist" aria-label="재료주문 자료실 전환">
-        <button class="olliPcTeamTalkWorkspaceTab active" data-team-talk-workspace-tab="materials" role="tab" aria-selected="true" type="button">재료주문</button>
-        <span class="olliPcTeamTalkWorkspaceSlash" aria-hidden="true">/</span>
-        <button class="olliPcTeamTalkWorkspaceTab" data-team-talk-workspace-tab="archive" role="tab" aria-selected="false" type="button">자료실</button>
+      <div class="olliPcTeamTalkSideHead">
+        <div class="olliPcTeamTalkSideTabs" role="tablist" aria-label="재료주문 자료실 전환">
+          <button class="olliPcTeamTalkWorkspaceTab active" data-team-talk-workspace-tab="materials" role="tab" aria-selected="true" type="button">재료주문</button>
+          <span class="olliPcTeamTalkWorkspaceSlash" aria-hidden="true">/</span>
+          <button class="olliPcTeamTalkWorkspaceTab" data-team-talk-workspace-tab="archive" role="tab" aria-selected="false" type="button">자료실</button>
+        </div>
+        <button class="olliPcTeamTalkMaterialCreate" id="olliPcTeamTalkMaterialCreate" type="button" aria-label="재료 요청 등록">
+          <span aria-hidden="true">＋</span><span>요청 등록</span>
+        </button>
       </div>
       <div class="olliPcTeamTalkMaterials olliPcTeamTalkWorkspacePanel" data-team-talk-workspace-panel="materials">
         <div class="olliPcTeamTalkMaterialsBody" data-olli-team-material-orders></div>
@@ -4687,7 +4692,7 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 </script>
 <script src="pc-team-talk.js?v=20260921-ai-toggle-1"></script>
-<script src="pc-team-talk-material-orders.js?v=20260921-1"></script>
+<script src="pc-team-talk-material-orders.js?v=20260921-toolbar-1"></script>
 <script src="pc-shell.js"></script>
 <script src="pc-student-management.js"></script>
 <script src="pc-kinder-feedback.js"></script>

@@ -3,7 +3,7 @@
 
   if (global.OlliTeamTalkMaterialOrders?.version) return;
 
-  const VERSION = '1.0.0';
+  const VERSION = '1.0.1';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
 
   const state = {
@@ -99,16 +99,6 @@
   function shellHtml() {
     return `
       <section class="olliMatRoot" aria-label="팀톡 재료주문">
-        <header class="olliMatHeader">
-          <div class="olliMatHeaderCopy">
-            <div class="olliMatTitle">재료주문</div>
-            <div class="olliMatSubtitle">수업에 필요한 재료를 요청하고 주문 상태를 함께 확인합니다.</div>
-          </div>
-          <button class="olliMatCreateBtn" type="button" data-material-action="open-create">
-            <span aria-hidden="true">＋</span><span>요청 등록</span>
-          </button>
-        </header>
-
         <div class="olliMatSummary" aria-label="재료 주문 현황">
           <button class="olliMatSummaryCard requested" type="button" data-material-filter="requested">
             <span class="olliMatSummaryIcon" aria-hidden="true">＋</span>
@@ -726,6 +716,7 @@
     mount,
     activate,
     refresh,
+    openCreate,
     destroy
   });
 

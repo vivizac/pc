@@ -34,7 +34,8 @@
   min-height:68px;display:flex;align-items:center;padding:0 20px;flex:0 0 auto
 }
 .olliPcTeamTalkChatHead{justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.10);background:var(--olli-pc-talk-bg)}
-.olliPcTeamTalkSideHead{justify-content:flex-start;gap:7px;border-bottom:1px solid #eff0f2;background:#fff}
+.olliPcTeamTalkSideHead{justify-content:space-between;gap:14px;border-bottom:1px solid #eff0f2;background:#fff}
+.olliPcTeamTalkSideTabs{min-width:0;display:flex;align-items:center;gap:7px}
 .olliPcTeamTalkTitleWrap{min-width:0;display:flex;align-items:baseline;gap:10px}
 .olliPcTeamTalkTitle{
   color:var(--olli-pc-talk-title);font:500 calc(17px * var(--olli-text-scale)) 'Pretendard',sans-serif;
@@ -48,6 +49,14 @@
 }
 .olliPcTeamTalkWorkspaceTab.active{color:#202226;font-weight:550}
 .olliPcTeamTalkWorkspaceSlash{color:#c6c9ce;font-size:14px;font-weight:300}
+.olliPcTeamTalkMaterialCreate{
+  height:38px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:0 14px;border:0;border-radius:12px;background:#FEE500;color:#1c1d1f;
+  font:700 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif;letter-spacing:-.025em;cursor:pointer
+}
+.olliPcTeamTalkMaterialCreate:hover{filter:brightness(.985)}
+.olliPcTeamTalkMaterialCreate span:first-child{font-size:18px;font-weight:450;line-height:1}
+.olliPcTeamTalkMaterialCreate[hidden]{display:none}
 .olliPcTeamTalkRefresh{width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;border:0;border-radius:50%;background:var(--olli-pc-talk-refresh-bg);color:var(--olli-pc-talk-title);cursor:pointer}
 .olliPcTeamTalkRefresh:hover{background:var(--olli-pc-talk-refresh-hover)}
 .olliPcTeamTalkRefresh svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -118,7 +127,7 @@
 .olliPcTeamTalkComposerBtn:hover{background:#eceef1;color:#23262a}
 .olliPcTeamTalkComposerBtn svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .olliPcTeamTalkSend{background:#1c1e21;color:#fff}.olliPcTeamTalkSend:hover{background:#0f1012;color:#fff}.olliPcTeamTalkSend:disabled{background:#e2e4e7;color:#aeb2b8;cursor:default}
-.olliPcTeamTalkMentionMenu{position:absolute;left:18px;bottom:calc(100% - 5px);z-index:6;width:min(300px,calc(100% - 36px));max-height:280px;overflow:auto;padding:7px;border:1px solid #e3e5e8;border-radius:16px;background:#fff;box-shadow:0 16px 42px rgba(28,34,45,.14)}
+.olliPcTeamTalkMentionMenu{position:absolute;right:58px;left:auto;bottom:calc(100% - 5px);z-index:6;width:min(220px,calc(100% - 96px));max-height:280px;overflow:auto;padding:7px;border:1px solid #e3e5e8;border-radius:16px;background:#fff;box-shadow:0 16px 42px rgba(28,34,45,.14)}
 .olliPcTeamTalkMentionMenu[hidden]{display:none}
 .olliPcTeamTalkMentionOption{width:100%;min-height:44px;display:flex;align-items:center;gap:10px;border:0;border-radius:11px;background:transparent;padding:5px 8px;color:#272a2e;font:600 calc(13px * var(--olli-text-scale)) 'Pretendard',sans-serif;text-align:left;cursor:pointer}
 .olliPcTeamTalkMentionOption:hover{background:#f4f5f7}
