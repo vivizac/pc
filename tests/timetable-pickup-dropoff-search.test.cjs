@@ -12,7 +12,10 @@ test('pickup add dialog supports dropoff marker and clock-only pickup time', () 
   assert.match(ui, /data-tt-pickup-dropoff/);
   assert.match(ui, /class="olliTtClockOnlyTime" data-tt-pickup-time/);
   assert.match(ui, /input\.showPicker/);
-  assert.match(ui, /requestAnimationFrame\(\(\) => input\.blur\(\)\)/);
+  assert.match(ui, /input\.addEventListener\('input', \(\) => commitValue\(true\)\)/);
+  assert.match(ui, /input\.addEventListener\('change', \(\) => commitValue\(true\)\)/);
+  assert.match(ui, /\^\\d\{2\}:\\d\{2\}\(\?:\:\\d\{2\}\)\?\$/);
+  assert.match(ui, /global\.setTimeout\(\(\) => \{[\s\S]*input\.blur\(\)/);
   assert.match(ui, /isDropoff: dialog\.isDropoff === true/);
 });
 
@@ -47,4 +50,15 @@ test('dropoff persistence uses a dedicated boolean and survives scheduled pickup
 
 test('dropoff button is explicitly anchored at the far-left of the pickup row', () => {
   assert.match(css,/\.olliTtPickupDropoffBtn \{ grid-column:1; justify-self:start; width:76px; height:46px; margin-left:0;/);
+});
+
+
+test('clock picker closes as soon as a complete hour and minute value is emitted', () => {
+  const bindingStart = ui.indexOf('function bindClockOnlyTimeInput');
+  const bindingEnd = ui.indexOf('function esc', bindingStart);
+  const binding = ui.slice(bindingStart, bindingEnd);
+  assert.match(binding, /input\.addEventListener\('input'/);
+  assert.match(binding, /commitValue\(true\)/);
+  assert.match(binding, /input\.blur\(\)/);
+  assert.ok(binding.indexOf("input.addEventListener('input'") < binding.indexOf("input.addEventListener('change'"));
 });
