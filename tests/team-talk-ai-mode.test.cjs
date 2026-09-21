@@ -18,9 +18,11 @@ test('PC composer exposes the same bot or AI trigger contract', () => {
   assert.match(talk, /usingAi[\s\S]{0,220}resolveAiReply[\s\S]{0,160}resolveBotReply/);
 });
 
-test('PC AI requests are authenticated and do not send Team Talk history', () => {
+test('PC AI requests carry the active AI conversation context but never the full Team Talk history', () => {
   assert.match(talk, /sessionToken:current\?\.sessionToken \|\| ''/);
-  assert.match(talk, /messages:\[\{ role:'user', content:clean\(commandText\) \}\]/);
+  assert.match(talk, /aiConversationMessages:\s*\[\]/);
+  assert.match(talk, /messages:buildAiConversationMessages\(commandText\)/);
+  assert.match(talk, /return state\.aiConversationMessages\.concat\(currentMessage\)/);
   assert.doesNotMatch(talk, /messages:\s*state\.messages/);
 });
 
@@ -50,4 +52,12 @@ test('PC bot or AI mode stays active until the user presses the assistant button
 
   assert.match(talk, /return setOlliMode\(!state\.olliModeActive\)/);
   assert.doesNotMatch(sendSource, /setOlliMode\(/);
+});
+
+
+test('PC AI context starts with button activation, grows turn by turn, and resets only on mode boundary or AI setting change', () => {
+  assert.match(talk, /if \(nextActive !== state\.olliModeActive\) state\.aiConversationMessages = \[\]/);
+  assert.match(talk, /state\.aiConversationMessages\.push\([\s\S]*role:'user'[\s\S]*role:'assistant'/);
+  assert.match(talk, /if \(usingAi\) recordAiConversationTurn\(commandText, resolved\.message\)/);
+  assert.match(talk, /function handleAiModeChanged\(\) \{[\s\S]*state\.aiConversationMessages = \[\];[\s\S]*syncAssistantUi\(\)/);
 });
