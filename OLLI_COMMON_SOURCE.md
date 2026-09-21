@@ -42,3 +42,16 @@ Phone에서 사용하는 실제 공통 파일 목록은 [Phone OLLI_COMMON_FILES
 - Phone은 로컬 복사본을 두지 않고 기존 공통 파일과 동일하게 Vercel rewrite로 PC 원본을 읽는다.
 - 기존 설정 화면 안의 `팀톡 설정` 행과 상세 UI, 팀톡 배경(밝은 회색 `#F3F3F3` / 어두운 회색 `#666D77`) 적용, 올리봇 알림 설정 조회/저장을 이 공통 모듈이 담당한다.
 - 플랫폼별 채팅 레이아웃 자체는 기존 Phone/PC 전용 CSS를 유지하고, 공통 설정은 각각의 팀톡 화면에 theme 값만 전달한다.
+
+## 2026-09-21 팀톡 AI 조회 + 시스템 액션 카드
+
+- 팀톡/올리톡의 AI 모드와 봇 모드는 같은 입력 버튼을 사용한다. 다만 학원 데이터 조회와 실제 데이터 변경은 채팅 생성과 분리한다.
+- 시간표 빈자리와 픽업 조회처럼 올리 내부 데이터로 답할 수 있는 질문은 OlliCommandRouter.queryTeamTalk()이 기존 OlliCommandSchedule/시간표 서비스의 서버 원본을 조회한다. 조회 결과를 먼저 확정한 뒤 올리 말풍선으로 보여주며, 해당 데이터를 OpenAI가 임의 추측하도록 하지 않는다.
+- 등록·취소·이동·결석처럼 서버 데이터를 변경하는 문장은 OlliCommandRouter.prepareTeamTalkAction()에서 준비만 한다. 이 단계에서는 시간표 저장 RPC를 실행하지 않는다.
+- 준비가 성공하면 olli_team_chat_actions에 pending 액션을 저장하고, 올리 말풍선 아래에 취소/등록(또는 변경·결석 처리) 버튼을 표시한다. PC와 Phone은 같은 액션 상태를 서버에서 읽으므로 기기가 달라도 pending/completed/cancelled/failed 상태가 동일하다.
+- 사용자가 버튼을 눌렀을 때만 olli_team_chat_action_execute가 실행된다. 이 RPC는 기존 시간표 저장 함수/RPC를 재사용하고, 기존 권한·정원·중복·휴원일 검사를 그대로 거친다. AI 응답 텍스트가 직접 DB를 변경하지 않는다.
+- 실행 성공은 시스템 메시지로 남기고 액션을 completed로 바꾼다. 실패 시 해당 실행 블록은 롤백하고 failed 상태와 시스템 오류 메시지를 남긴다. 이미 pending이 아닌 액션은 다시 실행하지 않는다.
+- 액션의 실제 payload는 olli_team_chat_actions에 저장하지만 일반 채팅 목록 응답에서는 노출하지 않는다. 목록에는 UI에 필요한 액션 ID/종류/상태만 반환한다. 액션 테이블의 직접 anon/authenticated 접근은 차단한다.
+- 새 쓰기 명령을 팀톡에 추가할 때 AI가 바로 저장하도록 연결하지 않는다. 반드시 준비 → 액션 카드 → 사용자 버튼 승인 → 기존 저장 계층 실행 순서를 유지한다.
+- olli-command-router-common.js와 olli-command-schedule-common.js는 계속 PC main이 단일 원본이며 Phone은 Vercel rewrite로 사용한다. 플랫폼별 채팅 UI만 pc-team-talk.js / Phone olli-talk-beta.js에서 액션 카드를 렌더링한다.
+
