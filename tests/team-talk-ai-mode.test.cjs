@@ -63,9 +63,10 @@ test('PC AI context starts with button activation, grows turn by turn, and reset
 });
 
 
-test('PC shows the saved user bubble immediately and an animated Olli typing indicator while waiting', () => {
+test('PC shows the saved user bubble immediately and only AI gets the animated typing indicator', () => {
   assert.match(talk, /appendPersistedMessage\(payload\.message, current\.memberId\)/);
-  assert.match(talk, /state\.assistantReplyPending = true;[\s\S]{0,140}syncAssistantTypingIndicator\(\)/);
+  assert.match(talk, /if \(olliRequested && isAiEnabled\(\)\) \{[\s\S]{0,140}state\.assistantReplyPending = true;[\s\S]{0,140}syncAssistantTypingIndicator\(\)/);
+  assert.doesNotMatch(talk, /if \(olliRequested\) \{\s*state\.assistantReplyPending = true/);
   assert.match(talk, /finally \{[\s\S]{0,140}state\.assistantReplyPending = false;[\s\S]{0,140}syncAssistantTypingIndicator\(\)/);
   assert.match(talk, /'olliPcTeamTalkTypingDot'/);
 });
