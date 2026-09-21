@@ -110,6 +110,14 @@
 .olliPcTeamTalkMessage.outgoing .olliPcTeamTalkMessageMeta{align-items:flex-start}
 .olliPcTeamTalkMessageTime{color:var(--olli-pc-talk-system-muted);font-size:calc(10px * var(--olli-text-scale));font-weight:500;white-space:nowrap}
 .olliPcTeamTalkUnreadCount{color:#FEE500;font-size:calc(10px * var(--olli-text-scale));font-weight:700}
+.olliPcTeamTalkActionCard{display:flex;align-items:center;margin:7px 0 0 1px;min-height:32px}
+.olliPcTeamTalkActionControls{display:flex;align-items:center;gap:7px}
+.olliPcTeamTalkActionBtn{height:34px;min-width:66px;padding:0 14px;border:1px solid rgba(255,255,255,.42);border-radius:12px;background:rgba(255,255,255,.88);color:#4c5056;font:600 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif;letter-spacing:-.02em;cursor:pointer;box-shadow:0 2px 8px rgba(20,24,30,.055)}
+.olliPcTeamTalkActionBtn:hover{background:#fff}
+.olliPcTeamTalkActionBtn.primary{border-color:#FEE500;background:#FEE500;color:#242424}
+.olliPcTeamTalkActionBtn.primary:hover{filter:brightness(.985)}
+.olliPcTeamTalkActionBtn:disabled{opacity:.52;cursor:default}
+.olliPcTeamTalkActionStatus{display:inline-flex;align-items:center;min-height:28px;padding:0 10px;border-radius:999px;background:var(--olli-pc-talk-system-pill-bg);color:var(--olli-pc-talk-system-pill-text);font-size:calc(10.5px * var(--olli-text-scale));font-weight:600}
 .olliPcTeamTalkSystemMessage{align-self:center;margin:4px auto 18px;padding:7px 11px;border-radius:999px;background:var(--olli-pc-talk-system-pill-bg);color:var(--olli-pc-talk-system-pill-text);font-size:calc(11px * var(--olli-text-scale));font-weight:500}
 
 .olliPcTeamTalkLinkLead{margin-bottom:8px}
