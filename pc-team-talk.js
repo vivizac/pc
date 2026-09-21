@@ -1121,6 +1121,7 @@
         try {
           let responseText = '';
           let handled = false;
+          let usedOpenAi = false;
           const router = global.OlliCommandRouter;
 
           if (router && typeof router.prepareTeamTalkAction === 'function') {
@@ -1149,11 +1150,12 @@
             const resolved = usingAi
               ? await resolveAiReply(commandText, current)
               : await resolveBotReply(commandText);
+            usedOpenAi = usingAi;
             responseText = clean(resolved.message);
             await saveAssistantReply(current, responseText, Number(payload.message.id));
           }
 
-          if (usingAi && responseText) recordAiConversationTurn(commandText, responseText);
+          if (usedOpenAi && responseText) recordAiConversationTurn(commandText, responseText);
         } catch (error) {
           console.warn(usingAi ? 'PC 올리톡 AI 응답 실패:' : 'PC 올리톡 올리봇 응답 실패:', error?.message || error);
           alert((usingAi ? 'AI' : '올리봇') + ' 응답을 받지 못했습니다.\n' + (error?.message || error));
