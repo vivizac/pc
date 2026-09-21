@@ -153,44 +153,150 @@
     buttons[index].scrollIntoView({ block:'nearest' });
   }
 
-  function openClockPicker(input) {
+  let activeClockPicker = null;
+
+  function clockOptionButtons(type, count, selectedValue) {
+    return Array.from({ length: count }, (_, index) => {
+      const value = pad(index);
+      const selected = value === selectedValue;
+      const suffix = type === 'hour' ? '시' : '분';
+      return `<button type="button" class="olliTtClockOption${selected ? ' selected' : ''}" data-tt-clock-${type}="${value}" aria-pressed="${selected ? 'true' : 'false'}">${value}<span>${suffix}</span></button>`;
+    }).join('');
+  }
+
+  function positionClockPicker(popup, input) {
+    if (!popup || !input || !popup.isConnected) return;
+    const rect = input.getBoundingClientRect();
+    const gap = 7;
+    const viewportWidth = global.innerWidth || document.documentElement.clientWidth;
+    const viewportHeight = global.innerHeight || document.documentElement.clientHeight;
+    const width = popup.offsetWidth;
+    const height = popup.offsetHeight;
+    const left = Math.max(12, Math.min(rect.left, viewportWidth - width - 12));
+    const belowTop = rect.bottom + gap;
+    const aboveTop = rect.top - height - gap;
+    const top = belowTop + height <= viewportHeight - 12 || aboveTop < 12
+      ? Math.min(belowTop, viewportHeight - height - 12)
+      : aboveTop;
+    popup.style.left = `${Math.round(left)}px`;
+    popup.style.top = `${Math.max(12, Math.round(top))}px`;
+  }
+
+  function closeClockPicker() {
+    const current = activeClockPicker;
+    if (!current) return;
+    activeClockPicker = null;
+    document.removeEventListener('pointerdown', current.handleOutside, true);
+    document.removeEventListener('keydown', current.handleKeydown, true);
+    document.removeEventListener('scroll', current.handleViewportChange, true);
+    global.removeEventListener('resize', current.handleViewportChange);
+    if (current.input) current.input.setAttribute('aria-expanded', 'false');
+    if (current.popup && current.popup.isConnected) current.popup.remove();
+  }
+
+  function openClockPicker(input, onChange) {
     if (!input) return;
-    try {
-      if (typeof input.showPicker === 'function') input.showPicker();
-      else input.focus();
-    } catch (_) {
-      input.focus();
-    }
+    if (activeClockPicker && activeClockPicker.input === input) return;
+    closeClockPicker();
+
+    const match = clean(input.value).match(/^(\d{2}):(\d{2})/);
+    const draft = {
+      hour: match ? match[1] : '',
+      minute: match ? match[2] : ''
+    };
+    const popup = document.createElement('div');
+    popup.className = 'olliTtClockPicker';
+    popup.setAttribute('role', 'dialog');
+    popup.setAttribute('aria-label', '픽업 시간 선택');
+    popup.innerHTML = '<div class="olliTtClockPickerColumns">'
+      + '<div class="olliTtClockPickerColumn"><div class="olliTtClockPickerLabel">시</div><div class="olliTtClockPickerList" data-tt-clock-hour-list>'
+      + clockOptionButtons('hour', 24, draft.hour)
+      + '</div></div>'
+      + '<div class="olliTtClockPickerColumn"><div class="olliTtClockPickerLabel">분</div><div class="olliTtClockPickerList" data-tt-clock-minute-list>'
+      + clockOptionButtons('minute', 60, draft.minute)
+      + '</div></div></div>'
+      + '<div class="olliTtClockPickerFooter"><button type="button" class="olliTtClockPickerDone" data-tt-clock-done disabled>완료</button></div>';
+    document.body.appendChild(popup);
+    input.setAttribute('aria-expanded', 'true');
+
+    const doneButton = popup.querySelector('[data-tt-clock-done]');
+    const syncDraft = () => {
+      popup.querySelectorAll('[data-tt-clock-hour]').forEach((button) => {
+        const selected = button.dataset.ttClockHour === draft.hour;
+        button.classList.toggle('selected', selected);
+        button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      });
+      popup.querySelectorAll('[data-tt-clock-minute]').forEach((button) => {
+        const selected = button.dataset.ttClockMinute === draft.minute;
+        button.classList.toggle('selected', selected);
+        button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      });
+      doneButton.disabled = !(draft.hour && draft.minute);
+    };
+
+    popup.querySelectorAll('[data-tt-clock-hour]').forEach((button) => button.addEventListener('click', () => {
+      draft.hour = clean(button.dataset.ttClockHour);
+      syncDraft();
+    }));
+    popup.querySelectorAll('[data-tt-clock-minute]').forEach((button) => button.addEventListener('click', () => {
+      draft.minute = clean(button.dataset.ttClockMinute);
+      syncDraft();
+    }));
+    doneButton.addEventListener('click', () => {
+      if (!(draft.hour && draft.minute)) return;
+      const value = `${draft.hour}:${draft.minute}`;
+      input.value = value;
+      onChange(value);
+      closeClockPicker();
+      input.blur();
+    });
+
+    const handleOutside = (event) => {
+      if (popup.contains(event.target) || event.target === input) return;
+      closeClockPicker();
+    };
+    const handleKeydown = (event) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      closeClockPicker();
+      input.blur();
+    };
+    const handleViewportChange = () => positionClockPicker(popup, input);
+    activeClockPicker = { input, popup, handleOutside, handleKeydown, handleViewportChange };
+    document.addEventListener('keydown', handleKeydown, true);
+    document.addEventListener('scroll', handleViewportChange, true);
+    global.addEventListener('resize', handleViewportChange);
+    global.setTimeout(() => document.addEventListener('pointerdown', handleOutside, true), 0);
+    global.requestAnimationFrame(() => {
+      positionClockPicker(popup, input);
+      popup.querySelector('.olliTtClockOption.selected')?.scrollIntoView({ block:'center' });
+      syncDraft();
+    });
   }
 
   function bindClockOnlyTimeInput(input, onChange) {
     if (!input) return;
+    input.readOnly = true;
     input.setAttribute('inputmode', 'none');
     input.setAttribute('autocomplete', 'off');
-
-    let closeTimer = 0;
-    const commitValue = (shouldClose) => {
-      const value = clean(input.value);
-      if (!value) return;
-      onChange(value);
-      if (!shouldClose || !/^\d{2}:\d{2}(?::\d{2})?$/.test(value)) return;
-      if (closeTimer) global.clearTimeout(closeTimer);
-      closeTimer = global.setTimeout(() => {
-        input.blur();
-        closeTimer = 0;
-      }, 0);
-    };
-
-    input.addEventListener('click', () => openClockPicker(input));
-    input.addEventListener('keydown', (event) => {
-      if (event.key === 'Tab' || event.key === 'Escape') return;
+    input.setAttribute('aria-haspopup', 'dialog');
+    input.setAttribute('aria-expanded', 'false');
+    input.addEventListener('click', (event) => {
       event.preventDefault();
-      if (event.key === 'Enter' || event.key === ' ') openClockPicker(input);
+      openClockPicker(input, onChange);
+    });
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Tab') return;
+      if (event.key === 'Escape') {
+        closeClockPicker();
+        input.blur();
+        return;
+      }
+      event.preventDefault();
+      if (event.key === 'Enter' || event.key === ' ') openClockPicker(input, onChange);
     });
     input.addEventListener('paste', (event) => event.preventDefault());
     input.addEventListener('drop', (event) => event.preventDefault());
-    input.addEventListener('input', () => commitValue(true));
-    input.addEventListener('change', () => commitValue(true));
   }
 
   function esc(value) {
@@ -1669,7 +1775,7 @@
       + '<div class="olliTtPickupForm">'
       + `<button type="button" class="olliTtPickupDropoffBtn ${dialog.isDropoff ? 'active' : ''}" data-tt-pickup-dropoff aria-pressed="${dialog.isDropoff ? 'true' : 'false'}">하원</button>`
       + `<label><span>픽업 장소</span><input type="text" maxlength="80" data-tt-pickup-label value="${esc(dialog.pickupLabel)}" placeholder="예: 리슈빌"></label>`
-      + `<label><span>픽업 시간</span><input type="time" class="olliTtClockOnlyTime" data-tt-pickup-time value="${esc(dialog.pickupTime)}" aria-label="픽업 시간 선택"></label></div>`
+      + `<label><span>픽업 시간</span><input type="text" class="olliTtClockOnlyTime" data-tt-pickup-time value="${esc(dialog.pickupTime)}" placeholder="시간 선택" readonly aria-label="픽업 시간 선택"></label></div>`
       + (selected ? `<div class="olliTtStatusNotice">${esc(selected.name)} 학생의 픽업 정보를 매주 ${weekdayLabel(dialog.weekday)}요일 ${dialog.classTime}시 수업에 등록합니다.</div>` : '')
       + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-pickup>픽업 등록</button></div></div>';
   }
@@ -1681,7 +1787,7 @@
       + '<div class="olliTtDialogBody">'
       + `<div class="olliTtCurrentBox"><strong>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</strong>현재 적용 중인 픽업 일정입니다.</div>`
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>픽업시간 수정</span><small>잘못 입력한 현재 시간을 바로 고칩니다.</small></div>'
-      + `<input type="time" class="olliTtDateInput olliTtClockOnlyTime" data-tt-pickup-edit-time value="${esc(dialog.pickupTime)}" aria-label="픽업 시간 선택"></div>`
+      + `<input type="text" class="olliTtDateInput olliTtClockOnlyTime" data-tt-pickup-edit-time value="${esc(dialog.pickupTime)}" placeholder="시간 선택" readonly aria-label="픽업 시간 선택"></div>`
       + `<div class="olliTtField"><div class="olliTtFieldHead"><span>변경·삭제 적용일</span><small>변경 예약은 내일부터, 픽업 삭제는 오늘부터 적용할 수 있습니다.</small></div><input type="date" class="olliTtDateInput" data-tt-pickup-effective-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></div>`
       + '<div class="olliTtPickupManageActions"><button type="button" class="olliTtDialogPrimary secondary" data-tt-update-pickup>현재 시간 수정</button><button type="button" class="olliTtDialogPrimary" data-tt-schedule-pickup>변경 예약</button></div>'
       + '<div class="olliTtDialogActions olliTtPickupDeleteActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-remove-pickup>픽업 삭제</button></div></div>';
