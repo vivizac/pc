@@ -95,3 +95,8 @@ test('chat scrollbar is lighter and assistant toggle uses black with white text 
   assert.match(js,/button\.classList\.toggle\('active', state\.olliModeActive\)/);
   assert.match(js,/return setOlliMode\(!state\.olliModeActive\)/);
 });
+
+
+test('chat bubbles use a slightly smaller corner radius', () => {
+  assert.match(css,/\.olliPcTeamTalkBubble\{[\s\S]*padding:8px 13px;border-radius:15px;background:var\(--olli-pc-talk-bubble-bg\)/);
+});
