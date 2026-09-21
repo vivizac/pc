@@ -1131,11 +1131,6 @@
   function writeConfirmationMessage(command) {
     const item = command || {};
     const reason = clean(item.reason);
-    if (item.intent === 'add_pickup') {
-      const typeLabel = item.isDropoff === true ? '하원 픽업' : '픽업';
-      return clean(item.studentName) + ' 학생의 ' + weekdayLabel(item.weekday) + ' '
-        + Number(item.classTime) + '시 수업 ' + typeLabel + '을 등록했어요.';
-    }
     if (item.intent === 'mark_absent') {
       return clean(item.studentName) + ' · ' + fallbackDateLabel(item.sessionDate) + ' ' + Number(item.timeSlot) + '시'
         + '\n결석 사유: ' + reason
@@ -2138,6 +2133,11 @@
 
   function writeSuccessMessage(command, result) {
     const item = command || {};
+    if (item.intent === 'add_pickup') {
+      const typeLabel = item.isDropoff === true ? '하원 픽업' : '픽업';
+      return clean(item.studentName) + ' 학생의 ' + weekdayLabel(item.weekday) + ' '
+        + Number(item.classTime) + '시 수업 ' + typeLabel + '을 등록했어요.';
+    }
     if (item.intent === 'mark_absent') {
       return clean(item.studentName) + ' 학생의 ' + fallbackDateLabel(item.sessionDate) + ' '
         + Number(item.timeSlot) + '시 수업을 결석 처리했고 사유를 메모에 남겼어요.';
