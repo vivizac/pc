@@ -58,7 +58,7 @@ test('PC bot or AI mode stays active until the user presses the assistant button
 test('PC AI context starts with button activation, grows turn by turn, and resets only on mode boundary or AI setting change', () => {
   assert.match(talk, /if \(nextActive !== state\.olliModeActive\) state\.aiConversationMessages = \[\]/);
   assert.match(talk, /state\.aiConversationMessages\.push\([\s\S]*role:'user'[\s\S]*role:'assistant'/);
-  assert.match(talk, /if \(usingAi && responseText\) recordAiConversationTurn\(commandText, responseText\)/);
+  assert.match(talk, /if \(usedOpenAi && responseText\) recordAiConversationTurn\(commandText, responseText\)/);
   assert.match(talk, /function handleAiModeChanged\(\) \{[\s\S]*state\.aiConversationMessages = \[\];[\s\S]*syncAssistantUi\(\)/);
 });
 
