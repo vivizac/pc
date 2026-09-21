@@ -88,6 +88,66 @@
       applyValue();
     });
   }
+  function handleDialogStudentSearchKeydown(event) {
+    const input = event && event.target;
+    if (!input || !input.matches || !input.matches('.olliTtStudentSearch[type="search"]')) return;
+    if (event.isComposing || !clean(input.value)) return;
+    if (!['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
+
+    const field = input.closest('.olliTtField');
+    const picker = field && field.querySelector('.olliTtPickerList');
+    if (!picker) return;
+    const buttons = Array.from(picker.querySelectorAll('.olliTtPickerStudent'));
+    if (!buttons.length) return;
+
+    let index = buttons.findIndex((button) => button.classList.contains('keyboardActive'));
+    if (event.key === 'Enter') {
+      if (index < 0) return;
+      event.preventDefault();
+      buttons[index].click();
+      return;
+    }
+
+    event.preventDefault();
+    if (event.key === 'ArrowDown') index = index < 0 ? 0 : Math.min(index + 1, buttons.length - 1);
+    else index = index < 0 ? buttons.length - 1 : Math.max(index - 1, 0);
+
+    buttons.forEach((button, buttonIndex) => {
+      const active = buttonIndex === index;
+      button.classList.toggle('keyboardActive', active);
+      button.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    buttons[index].scrollIntoView({ block:'nearest' });
+  }
+
+  function openClockPicker(input) {
+    if (!input) return;
+    try {
+      if (typeof input.showPicker === 'function') input.showPicker();
+      else input.focus();
+    } catch (_) {
+      input.focus();
+    }
+  }
+
+  function bindClockOnlyTimeInput(input, onChange) {
+    if (!input) return;
+    input.setAttribute('inputmode', 'none');
+    input.setAttribute('autocomplete', 'off');
+    input.addEventListener('click', () => openClockPicker(input));
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Tab' || event.key === 'Escape') return;
+      event.preventDefault();
+      if (event.key === 'Enter' || event.key === ' ') openClockPicker(input);
+    });
+    input.addEventListener('paste', (event) => event.preventDefault());
+    input.addEventListener('drop', (event) => event.preventDefault());
+    input.addEventListener('change', () => {
+      onChange(input.value);
+      requestAnimationFrame(() => input.blur());
+    });
+  }
+
   function esc(value) {
     return clean(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -785,7 +845,12 @@
   function pickupCellHtml(date, classTime) {
     const rows = slotPickups(date, classTime);
     const holiday = isHolidayDate(date);
-    const cards = rows.map((item) => `<div class="olliTtPickupCard" data-tt-pickup-manage="${esc(item.id)}" data-tt-pickup-date="${dateKey(date)}"><strong>${esc(item.student_name)}</strong><span>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</span></div>`).join('');
+    const cards = rows.map((item) => {
+      const dropoffMark = item.is_dropoff === true
+        ? '<span class="olliTtPickupDropoffMark" aria-label="하원">하</span>'
+        : '';
+      return `<div class="olliTtPickupCard" data-tt-pickup-manage="${esc(item.id)}" data-tt-pickup-date="${dateKey(date)}"><strong class="olliTtPickupStudentName"><span>${esc(item.student_name)}</span>${dropoffMark}</strong><span>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</span></div>`;
+    }).join('');
     return `<div class="olliTtPickupCell${holiday ? ' holiday' : ''}" data-tt-pickup-cell="1" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-class-time="${classTime}"${holiday ? ' data-holiday="1" aria-disabled="true"' : ''}><div class="olliTtPickupEntries">${cards}</div></div>`;
   }
 
@@ -1217,7 +1282,7 @@
     const date = clean(dataset.date);
     state.dialog = {
       kind: 'pickupAdd', date, weekday: Number(dataset.weekday), classTime: Number(dataset.classTime),
-      studentId: '', query: '', pickupLabel: '', pickupTime: ''
+      studentId: '', query: '', pickupLabel: '', pickupTime: '', isDropoff: false
     };
     openOverlay();
   }
@@ -1560,8 +1625,9 @@
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>학생 선택</span><small>유치부 학생을 검색하세요</small></div>'
       + `<input type="search" class="olliTtStudentSearch" data-tt-pickup-search value="${esc(dialog.query)}" placeholder="학생 검색"><div class="olliTtPickerList" data-tt-pickup-picker>${pickupPickerHtml(dialog)}</div></div>`
       + '<div class="olliTtPickupForm">'
+      + `<button type="button" class="olliTtPickupDropoffBtn ${dialog.isDropoff ? 'active' : ''}" data-tt-pickup-dropoff aria-pressed="${dialog.isDropoff ? 'true' : 'false'}">하원</button>`
       + `<label><span>픽업 장소</span><input type="text" maxlength="80" data-tt-pickup-label value="${esc(dialog.pickupLabel)}" placeholder="예: 리슈빌"></label>`
-      + `<label><span>픽업 시간</span><input type="time" data-tt-pickup-time value="${esc(dialog.pickupTime)}"></label></div>`
+      + `<label><span>픽업 시간</span><input type="time" class="olliTtClockOnlyTime" data-tt-pickup-time value="${esc(dialog.pickupTime)}" aria-label="픽업 시간 선택"></label></div>`
       + (selected ? `<div class="olliTtStatusNotice">${esc(selected.name)} 학생의 픽업 정보를 매주 ${weekdayLabel(dialog.weekday)}요일 ${dialog.classTime}시 수업에 등록합니다.</div>` : '')
       + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-pickup>픽업 등록</button></div></div>';
   }
@@ -1573,7 +1639,7 @@
       + '<div class="olliTtDialogBody">'
       + `<div class="olliTtCurrentBox"><strong>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</strong>현재 적용 중인 픽업 일정입니다.</div>`
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>픽업시간 수정</span><small>잘못 입력한 현재 시간을 바로 고칩니다.</small></div>'
-      + `<input type="time" class="olliTtDateInput" data-tt-pickup-edit-time value="${esc(dialog.pickupTime)}"></div>`
+      + `<input type="time" class="olliTtDateInput olliTtClockOnlyTime" data-tt-pickup-edit-time value="${esc(dialog.pickupTime)}" aria-label="픽업 시간 선택"></div>`
       + `<div class="olliTtField"><div class="olliTtFieldHead"><span>변경·삭제 적용일</span><small>변경 예약은 내일부터, 픽업 삭제는 오늘부터 적용할 수 있습니다.</small></div><input type="date" class="olliTtDateInput" data-tt-pickup-effective-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></div>`
       + '<div class="olliTtPickupManageActions"><button type="button" class="olliTtDialogPrimary secondary" data-tt-update-pickup>현재 시간 수정</button><button type="button" class="olliTtDialogPrimary" data-tt-schedule-pickup>변경 예약</button></div>'
       + '<div class="olliTtDialogActions olliTtPickupDeleteActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-remove-pickup>픽업 삭제</button></div></div>';
@@ -1632,6 +1698,10 @@
     const dialog = document.getElementById('olliTtDialog');
     if (!dialog || !state.dialog) return;
     dialog.querySelectorAll('[data-tt-dialog-close]').forEach((button) => button.addEventListener('click', closeDialog));
+    if (!dialog.__olliStudentSearchKeyboardBound) {
+      dialog.__olliStudentSearchKeyboardBound = true;
+      dialog.addEventListener('keydown', handleDialogStudentSearchKeydown);
+    }
     dialog.querySelectorAll('[data-tt-action-type]').forEach((button) => button.addEventListener('click', () => {
       const nextAction = button.dataset.ttActionType;
       state.dialog.actionType = nextAction;
@@ -1795,12 +1865,23 @@
       }, true);
     }
     dialog.querySelectorAll('[data-tt-pickup-student]').forEach((button) => button.addEventListener('click', () => { state.dialog.studentId = button.dataset.ttPickupStudent; renderDialog(); }));
+    const pickupDropoff = dialog.querySelector('[data-tt-pickup-dropoff]');
+    if (pickupDropoff) pickupDropoff.addEventListener('click', () => {
+      if (!state.dialog || state.dialog.kind !== 'pickupAdd') return;
+      state.dialog.isDropoff = !state.dialog.isDropoff;
+      pickupDropoff.classList.toggle('active', state.dialog.isDropoff);
+      pickupDropoff.setAttribute('aria-pressed', state.dialog.isDropoff ? 'true' : 'false');
+    });
     const pickupLabel = dialog.querySelector('[data-tt-pickup-label]');
     if (pickupLabel) pickupLabel.addEventListener('input', () => { if (state.dialog && state.dialog.kind === 'pickupAdd') state.dialog.pickupLabel = pickupLabel.value; });
     const pickupTime = dialog.querySelector('[data-tt-pickup-time]');
-    if (pickupTime) pickupTime.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupAdd') state.dialog.pickupTime = pickupTime.value; });
+    bindClockOnlyTimeInput(pickupTime, (value) => {
+      if (state.dialog && state.dialog.kind === 'pickupAdd') state.dialog.pickupTime = value;
+    });
     const pickupEditTime = dialog.querySelector('[data-tt-pickup-edit-time]');
-    if (pickupEditTime) pickupEditTime.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.pickupTime = pickupEditTime.value; });
+    bindClockOnlyTimeInput(pickupEditTime, (value) => {
+      if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.pickupTime = value;
+    });
     const pickupEffectiveDate = dialog.querySelector('[data-tt-pickup-effective-date]');
     if (pickupEffectiveDate) pickupEffectiveDate.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.effectiveDate = pickupEffectiveDate.value || todayKey(); });
     const waitDate = dialog.querySelector('[data-tt-wait-date]');
@@ -2298,6 +2379,7 @@ ${combined.memoError}`);
       classTime: dialog.classTime,
       pickupLabel: dialog.pickupLabel,
       pickupTime: dialog.pickupTime,
+      isDropoff: dialog.isDropoff === true,
       effectiveDate: dialog.date
     }));
     if (result) notify(`${student.name} 학생의 픽업을 등록했어요.`);

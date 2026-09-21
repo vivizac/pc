@@ -284,6 +284,9 @@
 #recordRoomScreen .olliTtPickupCard span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #recordRoomScreen .olliTtPickupCard strong { font-size: calc(10px * var(--olli-text-scale)); font-weight: 820; }
 #recordRoomScreen .olliTtPickupCard span { color: #708792; font-size: calc(8px * var(--olli-text-scale)); font-weight: 680; text-align: right; }
+#recordRoomScreen .olliTtPickupStudentName { display:flex; align-items:center; gap:4px; overflow:visible; }
+#recordRoomScreen .olliTtPickupStudentName > span:first-child { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:inherit; font:inherit; text-align:left; }
+#recordRoomScreen .olliTtPickupStudentName .olliTtPickupDropoffMark { width:16px; height:16px; flex:0 0 16px; display:inline-flex; align-items:center; justify-content:center; overflow:visible; border-radius:50%; background:#8061c7; color:#fff; font-size:9px; font-weight:850; line-height:1; text-align:center; }
 #recordRoomScreen .olliTtLoading,
 #recordRoomScreen .olliTtError { min-height: 260px; display: flex; align-items: center; justify-content: center; border: 1px solid #e3e7eb; border-radius: 20px; color: #8b929d; background: #fff; text-align: center; font-size: calc(13px * var(--olli-text-scale)); font-weight: 680; }
 #recordRoomScreen .olliTtError { color: #b34a50; }
@@ -563,10 +566,10 @@
 .olliTtDateInput { width: 100%; height: 48px; padding: 0 13px; border: 1px solid #dfe4e9; border-radius: 14px; color: #3e4651; background: #fff; font: 680 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; }
 .olliTtStudentSearch { width: 100%; height: 46px; padding: 0 14px; border: 1px solid #dfe4e9; border-radius: 14px; outline: none; color: #323944; background: #fff; font: 660 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; }
 .olliTtStudentSearch:focus { border-color: #80c2fb; box-shadow: 0 0 0 3px rgba(10,132,255,.09); }
-.olliTtField:has(> .olliTtStudentSearch[data-tt-add-search]) { position: relative; z-index: 6; }
-.olliTtStudentSearch[data-tt-add-search] + .olliTtPickerList {
+.olliTtField:has(> .olliTtStudentSearch[type="search"]) { position: relative; z-index: 120; }
+.olliTtStudentSearch[type="search"] + .olliTtPickerList {
   position: absolute;
-  z-index: 20;
+  z-index: 200;
   top: 100%;
   left: 0;
   right: 0;
@@ -583,18 +586,24 @@
   box-shadow: 0 12px 30px rgba(23,31,44,.14);
   box-sizing: border-box;
 }
-.olliTtField:focus-within > .olliTtStudentSearch[data-tt-add-search]:not(:placeholder-shown) + .olliTtPickerList { display: block; }
-.olliTtPickupForm { margin-top: 18px; display: grid; grid-template-columns: 1fr 150px; gap: 10px; }
+.olliTtField:focus-within > .olliTtStudentSearch[type="search"]:not(:placeholder-shown) + .olliTtPickerList { display: block; }
+.olliTtPickupForm { margin-top: 18px; display: grid; grid-template-columns: 76px minmax(0, 1fr) 150px; gap: 10px; align-items: end; }
 .olliTtPickupForm label span { margin: 0 2px 7px; display: block; color: #525c68; font-size: calc(11px * var(--olli-text-scale)); font-weight: 780; }
 .olliTtPickupForm input { width: 100%; height: 46px; padding: 0 13px; border: 1px solid #dfe4e9; border-radius: 14px; outline: none; color: #323944; background: #fff; font: 660 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; }
 .olliTtPickupForm input:focus { border-color: #80c2fb; box-shadow: 0 0 0 3px rgba(10,132,255,.09); }
+.olliTtPickupDropoffBtn { width:76px; height:46px; border:1px solid #dfe4e9; border-radius:14px; background:#fff; color:#646d78; font:800 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
+.olliTtPickupDropoffBtn:hover { border-color:#c8b9ee; background:#faf8ff; color:#7355b5; }
+.olliTtPickupDropoffBtn.active { border-color:#8061c7; background:#8061c7; color:#fff; }
+.olliTtClockOnlyTime { cursor:pointer; caret-color:transparent; user-select:none; -webkit-user-select:none; }
 .olliTtPickupManageActions { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:18px; }
 .olliTtPickupManageActions button { height:48px; border:0; border-radius:14px; font:780 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
 .olliTtPickupDeleteActions { margin-top:14px; }
 .olliTtPickerList { height: 144px; max-height: 144px; overflow-y: auto; overflow-x: hidden; margin-top: 8px; }
 .olliTtPickerStudent { width: 100%; min-height: 48px; padding: 0 12px; border: 0; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #343b45; background: transparent; text-align: left; font: 750 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 .olliTtPickerStudent:hover,
-.olliTtPickerStudent.active { color: #0877df; background: #edf6ff; }
+.olliTtPickerStudent.active,
+.olliTtPickerStudent.keyboardActive { color: #0877df; background: #edf6ff; }
+.olliTtPickerStudent.keyboardActive { box-shadow: inset 0 0 0 1px #9bcdf8; }
 .olliTtPickerStudent span { color: #9aa1aa; font-size: calc(10px * var(--olli-text-scale)); font-weight: 620; }
 .olliTtTypeGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 0; }
 .olliTtTypeBtn { min-height: 46px; padding: 7px 10px; border: 1px solid #e0e5ea; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #59616c; background: #fff; text-align: center; font: 760 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
@@ -752,7 +761,8 @@
   .olliTtEnrollmentRow.hasSessionOrder .olliTtSessionOrder { grid-column: 1 / 2; grid-row: 2; height: 40px; }
   .olliTtEnrollmentRow.hasSessionOrder .olliTtEnrollmentDelete { grid-column: 2; grid-row: 1 / span 2; height: 100%; }
   .olliTtSessionOrder button { min-width: 0; padding: 0 6px; }
-  .olliTtPickupForm { grid-template-columns: 1fr; }
+  .olliTtPickupForm { grid-template-columns: 76px minmax(0,1fr); }
+  .olliTtPickupForm label:last-child { grid-column: 1 / -1; }
   .olliTtDialogActions { margin: 22px -20px -20px; padding: 16px 20px 19px; }
   #olliTtDialog.olliTtMoveDialog .olliTtDialogActions { bottom: -20px; }
   #olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode { height: calc(100vh - 32px); max-height: calc(100vh - 32px); }

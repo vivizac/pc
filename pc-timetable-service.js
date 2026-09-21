@@ -226,13 +226,17 @@
       console.warn('시간표 결석 상태 조회 실패:', error);
       return [];
     });
-    const [data, kinderLayout, calendarDays, teacherContext, memoContext, teacherOverrideContext] = await Promise.all([
+    const [data, kinderLayout, calendarDays, teacherContext, memoContext, teacherOverrideContext, pickupDropoffContext] = await Promise.all([
       rpc('olli_schedule_week', contextPayload({ p_week_start: weekStart })),
       rpc('olli_schedule_kinder_class_layouts', contextPayload()),
       loadCalendarRange(start, end),
       rpc('olli_schedule_class_teacher_context', contextPayload()),
       rpc('olli_schedule_cell_memos_week_v2', contextPayload({ p_week_start: start })),
-      loadTeacherOverridesRange(start, end)
+      loadTeacherOverridesRange(start, end),
+      rpc('olli_schedule_pickup_dropoff_flags', contextPayload({ p_start_date: start, p_end_date: end })).catch((error) => {
+        console.warn('픽업 하원 표시 조회 실패:', error);
+        return { flags: [] };
+      })
     ]);
     assertCurrentContext();
     data.kinder_class_merges = Array.isArray(kinderLayout && kinderLayout.merged_slots)
@@ -243,6 +247,14 @@
     data.teacher_members = Array.isArray(teacherContext && teacherContext.teachers) ? teacherContext.teachers : [];
     data.teacher_overrides = Array.isArray(teacherOverrideContext && teacherOverrideContext.overrides) ? teacherOverrideContext.overrides : [];
     data.cell_memos = Array.isArray(memoContext && memoContext.memos) ? memoContext.memos : (Array.isArray(data.cell_memos) ? data.cell_memos : []);
+    const pickupDropoffMap = new Map(
+      (Array.isArray(pickupDropoffContext && pickupDropoffContext.flags) ? pickupDropoffContext.flags : [])
+        .map((item) => [clean(item && item.id), item && item.is_dropoff === true])
+    );
+    data.pickups = (Array.isArray(data.pickups) ? data.pickups : []).map((item) => ({
+      ...item,
+      is_dropoff: pickupDropoffMap.get(clean(item && item.id)) === true
+    }));
     const attendanceOverrides = await attendanceOverridesPromise;
     assertCurrentContext();
     data.attendance_overrides = Array.isArray(attendanceOverrides) ? attendanceOverrides : [];
@@ -484,14 +496,15 @@
   }
 
   async function savePickup(options) {
-    return executeScheduleAction('save_pickup', {
-      student_id: options.studentId,
-      weekday: Number(options.weekday),
-      class_time: Number(options.classTime),
-      pickup_label: options.pickupLabel,
-      pickup_time: options.pickupTime,
-      effective_date: options.effectiveDate
-    });
+    return rpc('olli_schedule_save_pickup_v2', contextPayload({
+      p_student_id: options.studentId,
+      p_weekday: Number(options.weekday),
+      p_class_time: Number(options.classTime),
+      p_pickup_label: options.pickupLabel,
+      p_pickup_time: options.pickupTime,
+      p_effective_date: options.effectiveDate,
+      p_is_dropoff: options.isDropoff === true
+    }));
   }
 
   async function updatePickup(pickupId, pickupTime, effectiveDate, mode) {
