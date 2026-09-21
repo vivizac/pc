@@ -7,15 +7,17 @@ const css = fs.readFileSync('pc-timetable.css', 'utf8');
 const service = fs.readFileSync('pc-timetable-service.js', 'utf8');
 const sql = fs.readFileSync('supabase/migrations/20260921180000_timetable_pickup_dropoff.sql', 'utf8');
 
-test('pickup add dialog supports dropoff marker and clock-only pickup time', () => {
+test('pickup add dialog uses a custom clock picker with an explicit done button', () => {
   assert.match(ui, /isDropoff: false/);
   assert.match(ui, /data-tt-pickup-dropoff/);
-  assert.match(ui, /class="olliTtClockOnlyTime" data-tt-pickup-time/);
-  assert.match(ui, /input\.showPicker/);
-  assert.match(ui, /input\.addEventListener\('input', \(\) => commitValue\(true\)\)/);
-  assert.match(ui, /input\.addEventListener\('change', \(\) => commitValue\(true\)\)/);
-  assert.match(ui, /\^\\d\{2\}:\\d\{2\}\(\?:\:\\d\{2\}\)\?\$/);
-  assert.match(ui, /global\.setTimeout\(\(\) => \{[\s\S]*input\.blur\(\)/);
+  assert.match(ui, /type="text" class="olliTtClockOnlyTime" data-tt-pickup-time/);
+  assert.match(ui, /function openClockPicker\(input, onChange\)/);
+  assert.match(ui, /data-tt-clock-hour/);
+  assert.match(ui, /data-tt-clock-minute/);
+  assert.match(ui, /data-tt-clock-done disabled>완료<\/button>/);
+  assert.match(ui, /doneButton\.addEventListener\('click'/);
+  assert.match(ui, /onChange\(value\)/);
+  assert.match(ui, /closeClockPicker\(\)/);
   assert.match(ui, /isDropoff: dialog\.isDropoff === true/);
 });
 
@@ -53,12 +55,21 @@ test('dropoff button is explicitly anchored at the far-left of the pickup row', 
 });
 
 
-test('clock picker closes as soon as a complete hour and minute value is emitted', () => {
-  const bindingStart = ui.indexOf('function bindClockOnlyTimeInput');
-  const bindingEnd = ui.indexOf('function esc', bindingStart);
-  const binding = ui.slice(bindingStart, bindingEnd);
-  assert.match(binding, /input\.addEventListener\('input'/);
-  assert.match(binding, /commitValue\(true\)/);
-  assert.match(binding, /input\.blur\(\)/);
-  assert.ok(binding.indexOf("input.addEventListener('input'") < binding.indexOf("input.addEventListener('change'"));
+test('clock picker stays open while choosing hour and minute and closes only with 완료 or escape/outside', () => {
+  const openStart = ui.indexOf('function openClockPicker');
+  const bindStart = ui.indexOf('function bindClockOnlyTimeInput', openStart);
+  const openBlock = ui.slice(openStart, bindStart);
+  assert.doesNotMatch(openBlock, /input\.addEventListener\('input'/);
+  assert.match(openBlock, /draft\.hour = clean\(button\.dataset\.ttClockHour\)/);
+  assert.match(openBlock, /draft\.minute = clean\(button\.dataset\.ttClockMinute\)/);
+  assert.match(openBlock, /doneButton\.addEventListener\('click'[\s\S]*closeClockPicker\(\)/);
+  assert.match(openBlock, /handleOutside/);
+  assert.match(openBlock, /event\.key !== 'Escape'/);
+});
+
+
+test('custom clock picker has a footer complete button and sits above timetable dialogs', () => {
+  assert.match(css,/\.olliTtClockPicker \{ position:fixed; z-index:100200;/);
+  assert.match(css,/\.olliTtClockPickerFooter \{/);
+  assert.match(css,/\.olliTtClockPickerDone \{[^}]*background:#111;/);
 });

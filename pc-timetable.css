@@ -593,6 +593,19 @@
 .olliTtPickupDropoffBtn:hover { border-color:#c8b9ee; background:#faf8ff; color:#7355b5; }
 .olliTtPickupDropoffBtn.active { border-color:#8061c7; background:#8061c7; color:#fff; }
 .olliTtClockOnlyTime { cursor:pointer; caret-color:transparent; user-select:none; -webkit-user-select:none; }
+.olliTtClockPicker { position:fixed; z-index:100200; width:252px; overflow:hidden; border:1px solid #dfe4e9; border-radius:16px; background:#fff; box-shadow:0 18px 46px rgba(23,31,44,.18),0 4px 12px rgba(23,31,44,.08); }
+.olliTtClockPickerColumns { display:grid; grid-template-columns:1fr 1fr; gap:0; }
+.olliTtClockPickerColumn + .olliTtClockPickerColumn { border-left:1px solid #edf0f3; }
+.olliTtClockPickerLabel { height:34px; display:flex; align-items:center; justify-content:center; border-bottom:1px solid #edf0f3; color:#7d858f; background:#fafbfc; font:760 calc(10px * var(--olli-text-scale)) 'Pretendard',sans-serif; }
+.olliTtClockPickerList { height:228px; padding:6px; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:#d6dbe0 transparent; }
+.olliTtClockOption { width:100%; height:34px; padding:0 10px; border:0; border-radius:9px; display:flex; align-items:center; justify-content:space-between; color:#343b45; background:transparent; font:760 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
+.olliTtClockOption span { color:#9aa1aa; font-size:calc(9px * var(--olli-text-scale)); font-weight:650; }
+.olliTtClockOption:hover { background:#f5f7f9; }
+.olliTtClockOption.selected { color:#0877df; background:#edf6ff; }
+.olliTtClockOption.selected span { color:#5a9bd8; }
+.olliTtClockPickerFooter { padding:10px; border-top:1px solid #edf0f3; background:#fff; }
+.olliTtClockPickerDone { width:100%; height:40px; border:0; border-radius:11px; color:#fff; background:#111; font:800 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
+.olliTtClockPickerDone:disabled { color:#a1a7ae; background:#eef0f2; cursor:default; }
 .olliTtPickupManageActions { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:18px; }
 .olliTtPickupManageActions button { height:48px; border:0; border-radius:14px; font:780 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
 .olliTtPickupDeleteActions { margin-top:14px; }
