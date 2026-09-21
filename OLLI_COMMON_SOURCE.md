@@ -51,6 +51,17 @@ Phone에서 사용하는 실제 공통 파일 목록은 [Phone OLLI_COMMON_FILES
 - **2단계에는 실제 시간표 등록·삭제 실행 RPC가 없다.** 과거 중간 시도에서 존재했던 `olli_team_chat_action_execute`는 제거했다.
 - 실제 실행은 후속 단계에서 버튼 클릭과 연결할 때 추가하며, 클라이언트가 payload를 다시 보내지 않고 `action_id`만 보내 서버에 저장된 payload를 사용하도록 한다.
 
+
+## 2026-09-21 팀톡 액션카드 3단계 — PC 확인·실행
+
+- PC 팀톡 AI 모드에서 변경 명령은 OpenAI 응답 전에 `OlliCommandRouter.prepareAction()`으로 분리한다. 일반 대화만 기존 OpenAI 경로로 간다.
+- 준비가 끝난 작업은 `olli_team_chat_send_action`으로 AI 확인 메시지 + pending 액션을 저장하고, AI 말풍선 아래 작은 확인 카드로 렌더링한다.
+- pending 카드의 보조 버튼은 작업 취소, 주 버튼은 작업 종류에 따라 `등록 / 변경 / 결석 처리 / 취소 실행`으로 표시한다.
+- 주 버튼 클릭은 `action_id`만 `olli_team_chat_action_execute`에 전송한다. 클라이언트가 학생/날짜/시간 payload를 다시 보내 실행 내용을 바꿀 수 없게 한다.
+- 실행 RPC는 action row를 `FOR UPDATE`로 잠근 뒤 pending 상태만 처리하고, 기존 시간표 RPC를 호출해 권한/정원/중복을 다시 검증한다. 완료 후 `completed`, 실패 후 `failed`로 상태를 바꾸고 팀톡 system 메시지를 생성한다.
+- 결석·보강취소·체험취소처럼 사유가 필요한 작업은 PC 메모리에 준비 상태를 잠시 보관하고, 사용자가 사유를 입력한 뒤에만 액션카드를 만든다. 서버에서도 사유 누락을 실제 변경 전에 다시 차단한다.
+- 이번 단계 UI는 PC만 적용한다. Phone은 4단계에서 같은 DB action 상태와 RPC를 사용해 표시/실행한다.
+
 ## Realtime 단계별 진행
 
 `olli-realtime-common.js` 한 파일이 연결과 변경 신호 전달을 담당한다. `watchDomain`은 신호 보류·합치기·재시도·재연결 확인을 공통 처리한다. PC·Phone adapter는 기존 서버 조회와 해당 화면 반영만 담당한다.
