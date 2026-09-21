@@ -236,10 +236,10 @@ function detailHtml(){
     + '</section>'
     + '<section class="olliTeamTalkSettingsCard">'
     + '<div class="olliTeamTalkSettingsSwitchRow">'
-    + '<div><strong>올리봇 알림</strong><small>등록과 취소가 생기면 팀톡에 자동으로 알려줍니다.</small></div>'
+    + '<div><strong>올리봇 알림</strong><small>AI 사용 여부와 관계없이 등록과 취소가 생기면 팀톡에 자동으로 알려줍니다.</small></div>'
     + '<button class="olliTeamTalkSwitch ' + (state.botNotificationsEnabled ? 'on' : '') + '" type="button" aria-pressed="' + (state.botNotificationsEnabled ? 'true' : 'false') + '" onclick="olliTeamTalkToggleBotNotifications()"' + disabled + '><span></span></button>'
     + '</div>'
-    + '<div class="olliTeamTalkEventChips"><span>신규 등록</span><span>체험 등록</span><span>대기 등록</span><span>등록 취소</span><span>체험 취소</span><span>대기 취소</span></div>'
+    + '<div class="olliTeamTalkEventChips"><span>신규 등록</span><span>체험 등록</span><span>대기 등록</span><span>픽업 등록</span><span>등록 취소</span><span>체험 취소</span><span>대기 취소</span><span>픽업 취소</span></div>'
     + '<div class="olliTeamTalkSettingsNotice"><strong>팀톡 메시지는 모두 볼 수 있습니다.</strong><br>휴대폰 알림은 해당 날짜의 클래스 담당 선생님에게만 전송됩니다. 당일 대체 담임이 지정된 경우 대체 담임을 우선합니다. 담당 선생님이 지정되지 않은 클래스는 팀톡 메시지만 남습니다.</div>'
     + '</section>'
     + (!canEdit() ? '<div class="olliTeamTalkSettingsNotice">팀톡 설정 변경은 원장 또는 관리자만 할 수 있습니다.</div>' : '')
