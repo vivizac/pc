@@ -114,6 +114,45 @@ test('available slots count regular, makeup, and trial sessions against the same
   assert.equal(byKey.get('kinder|5|A').remaining, 3);
 });
 
+test('dated regular absence frees the same-day seat for makeup availability', async () => {
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[
+      { student_id:'r1', division:'elementary', weekday:3, time_slot:2, class_group:'A', effective_from:'2026-01-01' },
+      { student_id:'r2', division:'elementary', weekday:3, time_slot:2, class_group:'A', effective_from:'2026-01-01' },
+      { student_id:'r3', division:'elementary', weekday:3, time_slot:2, class_group:'A', effective_from:'2026-01-01' },
+      { student_id:'r4', division:'elementary', weekday:3, time_slot:2, class_group:'A', effective_from:'2026-01-01' },
+      { student_id:'r5', division:'elementary', weekday:3, time_slot:2, class_group:'A', effective_from:'2026-01-01' }
+    ],
+    one_time_sessions:[],
+    attendance_overrides:[
+      {
+        student_id:'r3', session_date:'2026-09-23', time_slot:2, class_group:'A',
+        register_session_kind:'regular', register_status:'absent'
+      }
+    ],
+    class_teachers:[
+      { division:'elementary', weekday:3, time_slot:2, class_group:'A', teacher_name:'담임' }
+    ]
+  };
+  const { schedule } = loadSchedule(week);
+  const result = await schedule.findAvailableSlots({
+    date:'2026-09-23',
+    division:'elementary',
+    purpose:'makeup',
+    timeSlot:2
+  });
+  assert.equal(result.displaySlots.length, 1);
+  const slot = result.displaySlots[0];
+  assert.equal(slot.regularCount, 5);
+  assert.equal(slot.absentCount, 1);
+  assert.equal(slot.occupancy, 4);
+  assert.equal(slot.remaining, 1);
+  assert.match(schedule.describeAvailableSlots(result), /1결석/);
+  assert.match(schedule.describeAvailableSlots(result), /1자리/);
+});
+
 test('closed calendar day returns no available classes', async () => {
   const { schedule } = loadSchedule({ elementary_capacity:5, kinder_capacity:5 }, [
     { session_date:'2026-09-18', is_holiday:true, name:'휴원' }

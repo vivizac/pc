@@ -105,6 +105,34 @@
     ).length;
   }
 
+  function regularAbsenceCount(data, division, dateKey, weekday, timeSlot, group) {
+    const regularStudentIds = new Set(
+      arrays(data, 'enrollments')
+        .filter(row =>
+          clean(row && row.division) === division
+          && Number(row && row.weekday) === Number(weekday)
+          && Number(row && row.time_slot) === Number(timeSlot)
+          && classGroup(row && row.class_group) === group
+          && rowEffectiveOn(row, dateKey)
+          && clean(row && row.student_id)
+        )
+        .map(row => clean(row && row.student_id))
+    );
+    if (!regularStudentIds.size) return 0;
+    const absentStudentIds = new Set();
+    arrays(data, 'attendance_overrides').forEach(row => {
+      const studentId = clean(row && row.student_id);
+      if (!studentId || !regularStudentIds.has(studentId)) return;
+      if (clean(row && row.session_date).slice(0, 10) !== dateKey) return;
+      if (Number(row && row.time_slot) !== Number(timeSlot)) return;
+      if (classGroup(row && row.class_group) !== group) return;
+      if (clean(row && (row.register_session_kind || row.session_kind)).toLowerCase() !== 'regular') return;
+      if (clean(row && row.register_status).toLowerCase() !== 'absent') return;
+      absentStudentIds.add(studentId);
+    });
+    return absentStudentIds.size;
+  }
+
   function oneTimeBreakdown(data, division, dateKey, timeSlot, group) {
     let makeupCount = 0;
     let trialCount = 0;
@@ -131,8 +159,10 @@
   function slotSnapshot(data, division, dateKey, weekday, timeSlot, group, grouped) {
     const capacity = capacityFor(data, division);
     const regular = regularCount(data, division, dateKey, weekday, timeSlot, group);
+    const absent = regularAbsenceCount(data, division, dateKey, weekday, timeSlot, group);
     const oneTime = oneTimeBreakdown(data, division, dateKey, timeSlot, group);
-    const occupancy = regular + oneTime.oneTimeCount;
+    const effectiveRegular = Math.max(0, regular - absent);
+    const occupancy = effectiveRegular + oneTime.oneTimeCount;
     return {
       division,
       date:dateKey,
@@ -141,6 +171,8 @@
       classGroup:classGroup(group),
       grouped:!!grouped,
       regularCount:regular,
+      absentCount:absent,
+      effectiveRegularCount:effectiveRegular,
       makeupCount:oneTime.makeupCount,
       trialCount:oneTime.trialCount,
       oneTimeCount:oneTime.oneTimeCount,
@@ -160,7 +192,9 @@
   }
 
   function classOccupancy(data, division, dateKey, weekday, timeSlot, group) {
-    return regularCount(data, division, dateKey, weekday, timeSlot, group)
+    const regular = regularCount(data, division, dateKey, weekday, timeSlot, group);
+    const absent = regularAbsenceCount(data, division, dateKey, weekday, timeSlot, group);
+    return Math.max(0, regular - absent)
       + oneTimeCount(data, division, dateKey, timeSlot, group);
   }
 
@@ -639,6 +673,7 @@
 
   function slotCountText(slot) {
     const parts = ['정규 ' + Number(slot && slot.regularCount || 0) + '명'];
+    if (Number(slot && slot.absentCount || 0) > 0) parts.push('결석 ' + Number(slot.absentCount) + '명');
     if (Number(slot && slot.makeupCount || 0) > 0) parts.push('보강 ' + Number(slot.makeupCount) + '명');
     if (Number(slot && slot.trialCount || 0) > 0) parts.push('체험 ' + Number(slot.trialCount) + '명');
     return parts.join(' + ');
@@ -662,6 +697,9 @@
       String(Number(slot && slot.timeSlot || 0)) + '시' + group,
       '정규 ' + Number(slot && slot.regularCount || 0) + '명'
     ];
+    if (Number(slot && slot.absentCount || 0) > 0) {
+      parts.push(Number(slot.absentCount) + '결석');
+    }
     if (Number(slot && slot.makeupCount || 0) > 0) {
       parts.push(Number(slot.makeupCount) + '보강');
     }

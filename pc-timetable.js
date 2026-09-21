@@ -671,7 +671,18 @@
       const delta = (wantedDay - date.getDay() + 7) % 7;
       date.setDate(date.getDate() + delta);
     }
-    return slotRegulars(division, date, time, classGroup).length + slotMakeups(division, date, time, classGroup).length;
+    const regular = slotRegulars(division, date, time, classGroup);
+    const absentRegularCount = regular.filter((item) =>
+      timetableAttendanceSessionStatus(
+        item.student_id,
+        date,
+        Number(item.time_slot),
+        classGroup ? classGroupOf({ class_group: classGroup }) : classGroupOf(item),
+        'regular'
+      ) === 'absent'
+    ).length;
+    return Math.max(0, regular.length - absentRegularCount)
+      + slotMakeups(division, date, time, classGroup).length;
   }
 
   function weekRangeText() {
