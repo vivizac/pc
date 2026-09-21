@@ -3,7 +3,7 @@
 
   if (global.OlliCommandSchedule) return;
 
-  const VERSION = '2026-09-21-pickup-write-1';
+  const VERSION = '2026-09-21-query-tools-1';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -1179,13 +1179,109 @@
   }
 
   function pickupTimeDisplay(value) {
-    const match = clean(value).match(/^(\d{2}):(\d{2})$/);
+    const match = clean(value).match(/^(\d{1,2}):(\d{2})/);
     if (!match) return clean(value);
     const hour = Number(match[1]);
     const minute = Number(match[2]);
     const period = hour < 12 ? '오전' : '오후';
     const displayHour = hour % 12 || 12;
     return period + ' ' + displayHour + ':' + String(minute).padStart(2, '0');
+  }
+
+
+  async function findPickups(options) {
+    const opts = options || {};
+    const dateKey = localDateKey(opts.date || new Date());
+    if (!dateKey) throw new Error('픽업 조회 날짜를 확인해 주세요.');
+
+    const weekday = isoWeekday(dateKey);
+    if (weekday < 1 || weekday > 6) {
+      return {
+        date:dateKey,
+        dateLabel:clean(opts.dateLabel) || fallbackDateLabel(dateKey),
+        classTime:Number(opts.classTime || 0),
+        kind:clean(opts.kind) || 'all',
+        items:[]
+      };
+    }
+
+    const data = await loadFreshWeek(dateKey);
+    let pickups = arrays(data, 'pickups').slice();
+
+    // PC loadWeek already attaches is_dropoff. Phone week data keeps the base
+    // pickup rows, so enrich only when that marker is absent.
+    if (
+      pickups.some(row => typeof (row && row.is_dropoff) !== 'boolean')
+      && global.OlliPhoneStudentScheduleService
+      && typeof global.OlliPhoneStudentScheduleService.request === 'function'
+    ) {
+      try {
+        const flagsResult = await global.OlliPhoneStudentScheduleService.request(
+          'olli_schedule_pickup_dropoff_flags',
+          { p_start_date:dateKey, p_end_date:dateKey }
+        );
+        const flagMap = new Map(
+          (Array.isArray(flagsResult && flagsResult.flags) ? flagsResult.flags : [])
+            .map(row => [clean(row && row.id), row && row.is_dropoff === true])
+        );
+        pickups = pickups.map(row => Object.assign({}, row, {
+          is_dropoff:flagMap.get(clean(row && row.id)) === true
+        }));
+      } catch (error) {
+        console.warn('폰 픽업 하원 구분 조회 실패:', error);
+      }
+    }
+
+    const classTime = Number(opts.classTime || 0);
+    const kind = ['pickup','dropoff'].includes(clean(opts.kind)) ? clean(opts.kind) : 'all';
+    const items = pickups.filter(row => {
+      if (Number(row && row.weekday) !== weekday) return false;
+      if (!rowEffectiveOn(row, dateKey)) return false;
+      if (classTime && Number(row && row.class_time) !== classTime) return false;
+      if (kind === 'dropoff' && row && row.is_dropoff !== true) return false;
+      if (kind === 'pickup' && row && row.is_dropoff === true) return false;
+      return true;
+    }).sort((a,b) =>
+      Number(a && a.class_time) - Number(b && b.class_time)
+      || clean(a && a.pickup_time).localeCompare(clean(b && b.pickup_time))
+      || clean(a && a.student_name).localeCompare(clean(b && b.student_name))
+    );
+
+    return {
+      date:dateKey,
+      dateLabel:clean(opts.dateLabel) || fallbackDateLabel(dateKey),
+      classTime,
+      kind,
+      items
+    };
+  }
+
+  function describePickups(result) {
+    const data = result || {};
+    const items = Array.isArray(data.items) ? data.items : [];
+    const label = clean(data.dateLabel) || fallbackDateLabel(data.date);
+    const classText = Number(data.classTime || 0) ? ' ' + Number(data.classTime) + '시 수업' : '';
+    const kind = clean(data.kind);
+    const kindText = kind === 'dropoff' ? '하원 픽업' : (kind === 'pickup' ? '픽업' : '픽업');
+
+    if (!items.length) {
+      return label + classText + '에는 등록된 ' + kindText + ' 학생이 없어요.';
+    }
+
+    const lines = [
+      label + classText + ' ' + kindText + ' 등록은 ' + items.length + '명이에요.'
+    ];
+    items.forEach(row => {
+      const details = [
+        clean(row && row.student_name),
+        Number(row && row.class_time) ? Number(row.class_time) + '시 수업' : '',
+        clean(row && row.pickup_label),
+        pickupTimeDisplay(row && row.pickup_time),
+        row && row.is_dropoff === true ? '하원' : '픽업'
+      ].filter(Boolean);
+      lines.push('• ' + details.join(' · '));
+    });
+    return lines.join('\n');
   }
 
   async function preparePickupCommand(options) {
@@ -2180,9 +2276,11 @@
     findAvailableSlots,
     findWeekAvailability,
     findRecurringAvailability,
+    findPickups,
     describeAvailableSlots,
     describeWeekAvailability,
     describeRecurringAvailability,
+    describePickups,
     prepareWriteCommand,
     executePreparedWrite,
     writeReasonPrompt,
