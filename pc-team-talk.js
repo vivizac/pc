@@ -3,7 +3,7 @@
 
   if (global.OlliPcTeamTalk?.version) return;
 
-  const VERSION = '1.0.0';
+  const VERSION = '1.0.1';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
   const state = {
     archiveTab: 'files',
@@ -473,6 +473,8 @@
     document.querySelectorAll('#olliPcTeamTalkScreen [data-team-talk-workspace-panel]').forEach((panel) => {
       panel.hidden = panel.dataset.teamTalkWorkspacePanel !== next;
     });
+    const materialCreate = byId('olliPcTeamTalkMaterialCreate');
+    if (materialCreate) materialCreate.hidden = next !== 'materials';
     if (next === 'archive' && !state.archivePayload) loadArchive({ showLoading:true });
     if (next === 'materials' && global.OlliTeamTalkMaterialOrders?.activate) {
       global.OlliTeamTalkMaterialOrders.activate().catch((error) => {
@@ -1008,6 +1010,7 @@
     const archiveUpload = byId('olliPcTeamTalkArchiveUpload');
     const archiveFile = byId('olliPcTeamTalkArchiveFile');
     const refresh = byId('olliPcTeamTalkRefresh');
+    const materialCreate = byId('olliPcTeamTalkMaterialCreate');
 
     if (input && !input.dataset.bound) {
       input.dataset.bound = '1';
@@ -1056,6 +1059,13 @@
         const file = archiveFile.files?.[0] || null;
         archiveFile.value = '';
         if (file) await uploadFile(file);
+      });
+    }
+    if (materialCreate && !materialCreate.dataset.bound) {
+      materialCreate.dataset.bound = '1';
+      materialCreate.addEventListener('click', () => {
+        if (state.workspaceTab !== 'materials') return;
+        global.OlliTeamTalkMaterialOrders?.openCreate?.();
       });
     }
     if (refresh && !refresh.dataset.bound) {
