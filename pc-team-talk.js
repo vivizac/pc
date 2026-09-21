@@ -1101,6 +1101,23 @@
       }
     }
 
+    if (router && typeof router.runQuery === 'function') {
+      const queried = await router.runQuery(commandText, {
+        source:'olli_talk_ai',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+
+      if (queried?.handled === true) {
+        const queryMessage = clean(queried.message) || '조회 결과를 확인했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current, queryMessage, replyToMessageId),
+          replyText:queryMessage,
+          recordAi:false
+        };
+      }
+    }
+
     const resolved = await resolveAiReply(commandText, current);
     return {
       assistantMessage:await saveAssistantReply(current, resolved.message, replyToMessageId),
