@@ -270,13 +270,13 @@ async function loadConsultationSummaryFeedbackRows(student, months, options = {}
 
   if (encodedStudentId) {
     requestedTables.forEach(table => {
-      requests.push({ table, path: `${table}?select=*&academy_id=eq.${encodedAcademyId}&student_id=eq.${encodedStudentId}&order=id.desc&limit=300` });
+      requests.push({ table, path: `${table}?select=*&academy_id=eq.${encodedAcademyId}&student_id=eq.${encodedStudentId}&order=created_at.desc&limit=300` });
     });
   } else if (encodedName) {
     // 학생코드가 없는 과거 기록만 이름으로 보조 조회합니다.
     // 학생코드가 있는 학생은 동명이인 혼선을 막기 위해 student_id로만 조회합니다.
     requestedTables.forEach(table => {
-      requests.push({ table, path: `${table}?select=*&academy_id=eq.${encodedAcademyId}&student_name=eq.${encodedName}&order=id.desc&limit=300` });
+      requests.push({ table, path: `${table}?select=*&academy_id=eq.${encodedAcademyId}&student_name=eq.${encodedName}&order=created_at.desc&limit=300` });
     });
   }
 
@@ -468,10 +468,10 @@ async function findSavedConsultationSummaryFeedback(student, months) {
   const paths = [];
 
   if (encodedStudentId) {
-    paths.push(`summary_feedbacks?select=*&academy_id=eq.${encodedAcademyId}&student_id=eq.${encodedStudentId}&summary_months=eq.${safeMonths}&year=eq.${year}&order=id.desc&limit=50`);
+    paths.push(`summary_feedbacks?select=*&academy_id=eq.${encodedAcademyId}&student_id=eq.${encodedStudentId}&summary_months=eq.${safeMonths}&year=eq.${year}&order=created_at.desc&limit=50`);
   } else if (encodedName) {
     // 학생코드가 없는 과거 저장본만 이름으로 보조 조회합니다.
-    paths.push(`summary_feedbacks?select=*&academy_id=eq.${encodedAcademyId}&student_name=eq.${encodedName}&summary_months=eq.${safeMonths}&year=eq.${year}&order=id.desc&limit=50`);
+    paths.push(`summary_feedbacks?select=*&academy_id=eq.${encodedAcademyId}&student_name=eq.${encodedName}&summary_months=eq.${safeMonths}&year=eq.${year}&order=created_at.desc&limit=50`);
   }
 
   const settled = await Promise.all(paths.map(async path => {
