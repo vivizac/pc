@@ -90,7 +90,7 @@ function getFeedbackCommonStorageFeature(tableName, payload = {}) {
     return { feature: 'general_feedback', label: '일반 피드백', recordPrefix: 'feedback' };
   }
   if (table === 'fail_feedbacks') {
-    return { feature: 'growth_feedback', label: '성장 피드백', recordPrefix: 'growth_feedback' };
+    return { feature: 'growth_feedback', label: '실패-성장 피드백', recordPrefix: 'growth_feedback' };
   }
   if (table === 'summary_feedbacks') {
     return { feature: 'summary_feedback', label: '종합 피드백', recordPrefix: 'summary_feedback' };
@@ -147,7 +147,7 @@ function writeGeneralFeedbackCommonLocal(payload = {}, recordId = '', syncStatus
   writeFeedbackCommonLocal({ feature: 'general_feedback', label: '일반 피드백', recordPrefix: 'feedback' }, payload, recordId, syncStatus, row);
 }
 function writeGrowthFeedbackCommonLocal(payload = {}, recordId = '', syncStatus = 'pending', row = null) {
-  writeFeedbackCommonLocal({ feature: 'growth_feedback', label: '성장 피드백', recordPrefix: 'growth_feedback' }, payload, recordId, syncStatus, row);
+  writeFeedbackCommonLocal({ feature: 'growth_feedback', label: '실패-성장 피드백', recordPrefix: 'growth_feedback' }, payload, recordId, syncStatus, row);
 }
 function writeSummaryFeedbackCommonLocal(payload = {}, recordId = '', syncStatus = 'pending', row = null) {
   writeFeedbackCommonLocal({ feature: 'summary_feedback', label: '종합 피드백', recordPrefix: 'summary_feedback' }, payload, recordId, syncStatus, row);
@@ -177,7 +177,7 @@ function enqueueGeneralFeedbackCommonSave(payload = {}, recordId = '', error = n
   enqueueFeedbackCommonSave({ feature: 'general_feedback', label: '일반 피드백', recordPrefix: 'feedback' }, payload, recordId, error);
 }
 function enqueueGrowthFeedbackCommonSave(payload = {}, recordId = '', error = null) {
-  enqueueFeedbackCommonSave({ feature: 'growth_feedback', label: '성장 피드백', recordPrefix: 'growth_feedback' }, payload, recordId, error);
+  enqueueFeedbackCommonSave({ feature: 'growth_feedback', label: '실패-성장 피드백', recordPrefix: 'growth_feedback' }, payload, recordId, error);
 }
 function enqueueSummaryFeedbackCommonSave(payload = {}, recordId = '', error = null) {
   enqueueFeedbackCommonSave({ feature: 'summary_feedback', label: '종합 피드백', recordPrefix: 'summary_feedback' }, payload, recordId, error);
@@ -260,7 +260,7 @@ async function saveGrowthFeedbackViaCommonStorage(tableName, payload = {}, label
     recordOlliStorageIssue({ feature: 'growth_feedback', resource: 'fail_feedbacks', operation: 'save', message: error.message, student_id: payload.student_id || '' });
     throw error;
   }
-  const commonFeature = { feature: 'growth_feedback', label: '성장 피드백', recordPrefix: 'growth_feedback' };
+  const commonFeature = { feature: 'growth_feedback', label: '실패-성장 피드백', recordPrefix: 'growth_feedback' };
   const commonRecordId = createGrowthFeedbackRecordId(payload);
   const academyId = String(payload.academy_id || '').trim();
   const studentId = String(payload.student_id || '').trim();
