@@ -2060,29 +2060,6 @@
       }, true);
     }
     dialog.querySelectorAll('[data-tt-pickup-student]').forEach((button) => button.addEventListener('click', () => { commitDialogStudentSelection(button); }));
-    const pickupDropoff = dialog.querySelector('[data-tt-pickup-dropoff]');
-    if (pickupDropoff) pickupDropoff.addEventListener('click', () => {
-      if (!state.dialog || state.dialog.kind !== 'pickupAdd') return;
-      state.dialog.isDropoff = !state.dialog.isDropoff;
-      pickupDropoff.classList.toggle('active', state.dialog.isDropoff);
-      pickupDropoff.setAttribute('aria-pressed', state.dialog.isDropoff ? 'true' : 'false');
-
-      const timeInput = dialog.querySelector('[data-tt-pickup-time]');
-      if (state.dialog.isDropoff) {
-        state.dialog.pickupTime = '';
-        closeClockPicker();
-        if (timeInput) {
-          timeInput.value = '';
-          timeInput.disabled = true;
-          timeInput.setAttribute('aria-disabled', 'true');
-          timeInput.placeholder = '하원은 시간 설정 없음';
-        }
-      } else if (timeInput) {
-        timeInput.disabled = false;
-        timeInput.removeAttribute('aria-disabled');
-        timeInput.placeholder = '시간 선택';
-      }
-    });
     const pickupLabel = dialog.querySelector('[data-tt-pickup-label]');
     if (pickupLabel) pickupLabel.addEventListener('input', () => { if (state.dialog && state.dialog.kind === 'pickupAdd') state.dialog.pickupLabel = pickupLabel.value; });
     const pickupTime = dialog.querySelector('[data-tt-pickup-time]');
@@ -2091,7 +2068,12 @@
     });
     const pickupDropoffLabel = dialog.querySelector('[data-tt-pickup-dropoff-label]');
     if (pickupDropoffLabel) pickupDropoffLabel.addEventListener('input', () => {
-      if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.dropoffLabel = pickupDropoffLabel.value;
+      if (!state.dialog) return;
+      if (state.dialog.kind === 'pickupManage' || state.dialog.kind === 'pickupAdd') state.dialog.dropoffLabel = pickupDropoffLabel.value;
+    });
+    const pickupArrivalLabel = dialog.querySelector('[data-tt-pickup-arrival-label]');
+    if (pickupArrivalLabel) pickupArrivalLabel.addEventListener('input', () => {
+      if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.pickupLabel = pickupArrivalLabel.value;
     });
     const pickupEditTime = dialog.querySelector('[data-tt-pickup-edit-time]');
     bindClockOnlyTimeInput(pickupEditTime, (value) => {
@@ -2132,6 +2114,8 @@
     if (mergeKinderClassButton) mergeKinderClassButton.addEventListener('click', mergeKinderClass);
     const savePickupButton = dialog.querySelector('[data-tt-save-pickup]');
     if (savePickupButton) savePickupButton.addEventListener('click', savePickup);
+    const saveArrivalButton = dialog.querySelector('[data-tt-save-arrival]');
+    if (saveArrivalButton) saveArrivalButton.addEventListener('click', savePickupArrival);
     const registerDropoffButton = dialog.querySelector('[data-tt-register-dropoff]');
     if (registerDropoffButton) registerDropoffButton.addEventListener('click', registerPickupDropoff);
     const removeDropoffButton = dialog.querySelector('[data-tt-remove-dropoff]');
@@ -2573,10 +2557,12 @@ ${combined.memoError}`);
     const dialog = state.dialog;
     if (!dialog || dialog.kind !== 'pickupAdd') return;
     const root = document.getElementById('olliTtDialog');
-    dialog.pickupLabel = clean(root && root.querySelector('[data-tt-pickup-label]')?.value || dialog.pickupLabel);
-    dialog.pickupTime = dialog.isDropoff
-      ? ''
-      : clean(root && root.querySelector('[data-tt-pickup-time]')?.value || dialog.pickupTime);
+    const pickupLabelInput = root && root.querySelector('[data-tt-pickup-label]');
+    const pickupTimeInput = root && root.querySelector('[data-tt-pickup-time]');
+    const dropoffLabelInput = root && root.querySelector('[data-tt-pickup-dropoff-label]');
+    dialog.pickupLabel = clean(pickupLabelInput ? pickupLabelInput.value : dialog.pickupLabel);
+    dialog.pickupTime = clean(pickupTimeInput ? pickupTimeInput.value : dialog.pickupTime);
+    dialog.dropoffLabel = clean(dropoffLabelInput ? dropoffLabelInput.value : dialog.dropoffLabel);
     if (!clean(dialog.studentId)) {
       const activeButton = root && root.querySelector('[data-tt-pickup-student].active');
       if (activeButton) dialog.studentId = clean(activeButton.dataset.ttPickupStudent);
@@ -2591,19 +2577,36 @@ ${combined.memoError}`);
       if (exactMatches.length === 1) dialog.studentId = clean(exactMatches[0].id);
     }
     if (!clean(dialog.studentId)) { alert('픽업할 학생을 선택해 주세요.'); return; }
-    if (!dialog.pickupLabel) { alert('픽업 장소를 입력해 주세요.'); return; }
-    if (!dialog.isDropoff && !dialog.pickupTime) { alert('픽업 시간을 입력해 주세요.'); return; }
+    const hasArrivalInput = Boolean(dialog.pickupLabel || dialog.pickupTime);
+    const hasDropoff = Boolean(dialog.dropoffLabel);
+    if (hasArrivalInput && (!dialog.pickupLabel || !dialog.pickupTime)) { alert('등원 픽업은 장소와 시간을 모두 입력해 주세요.'); return; }
+    if (!hasArrivalInput && !hasDropoff) { alert('등원 또는 하원 중 하나 이상을 입력해 주세요.'); return; }
     const student = studentById(dialog.studentId);
     const result = await withSaving(() => service.savePickup({
       studentId: dialog.studentId,
       weekday: dialog.weekday,
       classTime: dialog.classTime,
-      pickupLabel: dialog.pickupLabel,
-      pickupTime: dialog.isDropoff ? null : dialog.pickupTime,
-      isDropoff: dialog.isDropoff === true,
+      pickupLabel: hasArrivalInput ? dialog.pickupLabel : '',
+      pickupTime: hasArrivalInput ? dialog.pickupTime : null,
+      dropoffLabel: hasDropoff ? dialog.dropoffLabel : '',
       effectiveDate: dialog.date
     }));
-    if (result) notify(`${student.name} 학생의 픽업을 등록했어요.`);
+    if (result) notify(`${student.name} 학생의 픽업 정보를 등록했어요.`);
+  }
+
+  async function savePickupArrival() {
+    const dialog = state.dialog;
+    if (!dialog || dialog.kind !== 'pickupManage') return;
+    const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
+    if (!item) return;
+    const root = document.getElementById('olliTtDialog');
+    const location = clean(root && root.querySelector('[data-tt-pickup-arrival-label]')?.value || dialog.pickupLabel);
+    const time = clean(root && root.querySelector('[data-tt-pickup-edit-time]')?.value || dialog.pickupTime);
+    if (!location || !time) { alert('등원 장소와 시간을 모두 입력해 주세요.'); return; }
+    dialog.pickupLabel = location;
+    dialog.pickupTime = time;
+    const result = await withSaving(() => service.savePickupArrival(dialog.pickupId, location, time));
+    if (result) notify(`${item.student_name} 학생의 등원 픽업을 저장했어요.`);
   }
 
   async function registerPickupDropoff() {
@@ -2623,8 +2626,12 @@ ${combined.memoError}`);
     const dialog = state.dialog;
     if (!dialog || dialog.kind !== 'pickupManage') return;
     const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
-    if (!item || item.is_dropoff === true || !clean(item.dropoff_label)) return;
-    if (!global.confirm(`${item.student_name} 학생의 하원 설정만 삭제할까요?\n기존 등원 픽업은 그대로 유지됩니다.`)) return;
+    const hasDropoff = item && (item.is_dropoff === true || Boolean(clean(item.dropoff_label)));
+    if (!item || !hasDropoff) return;
+    const guide = item.is_dropoff === true
+      ? '하원 설정을 삭제하면 이 픽업카드는 사라집니다.'
+      : '기존 등원 픽업은 그대로 유지됩니다.';
+    if (!global.confirm(`${item.student_name} 학생의 하원 설정을 삭제할까요?\n${guide}`)) return;
     const result = await withSaving(() => service.removePickupDropoff(dialog.pickupId));
     if (result) notify(`${item.student_name} 학생의 하원 설정을 삭제했어요.`);
   }
