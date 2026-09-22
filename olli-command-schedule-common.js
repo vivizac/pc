@@ -3,7 +3,7 @@
 
   if (global.OlliCommandSchedule) return;
 
-  const VERSION = '2026-09-21-query-tools-1';
+  const VERSION = '2026-09-23-short-schedule-query-1';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -828,6 +828,7 @@
     const relevantKeys = new Set(allSlots.map(slot => slotKey(slot)));
     const singleSlot = allSlots.length === 1;
     const baselineByKey = new Map(allSlots.map(slot => [slotKey(slot), slot]));
+    const isScheduleView = clean(data.viewMode) === 'schedule';
 
     function className(slot, includeDivision) {
       const group = slot && slot.grouped ? ' ' + classGroup(slot.classGroup) + '반' : '';
@@ -867,7 +868,17 @@
       .filter(item => relevantKeys.has(slotKey(item)));
 
     if (!display.length && !allSlots.length) {
-      lines.push('확인할 정규수업이 없어요.');
+      if (isScheduleView && Number(data.weekday || 0) && Number(data.timeSlot || 0)) {
+        const divisions = data.division ? [data.division] : ['elementary', 'kinder'];
+        divisions.forEach(division => {
+          lines.push(
+            divisionLabel(division) + ' ' + weekdayLabel(data.weekday) + ' '
+            + Number(data.timeSlot) + '시는 운영 수업이 없어요.'
+          );
+        });
+      } else {
+        lines.push('확인할 정규수업이 없어요.');
+      }
     } else {
       const rows = display.length ? display : allSlots.filter(slot => {
         if (data.timeSlot || data.classGroup || data.weekday) return true;
@@ -879,7 +890,7 @@
       }
 
       rows.forEach((slot, index) => {
-        const includeDivision = !data.division && rows.length > 1;
+        const includeDivision = !data.division;
         const label = className(slot, includeDivision);
         const safeRemaining = Number(
           slot && slot.safeRegularRemaining != null
@@ -888,25 +899,40 @@
         );
 
         if (index > 0 && lines.length) lines.push('');
-        if (safeRemaining > 0) {
-          lines.push(label + '는 정규수업 기준 ' + safeRemaining + '자리 있습니다.');
+        const reportedRemaining = isScheduleView
+          ? Number(slot && slot.remaining || 0)
+          : safeRemaining;
+        if (reportedRemaining > 0) {
+          lines.push(
+            label + (isScheduleView ? '는 현재 정규수업 기준 ' : '는 정규수업 기준 ')
+            + reportedRemaining + '자리 있습니다.'
+          );
         } else {
-          lines.push(label + '는 정규수업 기준 마감되었습니다.');
+          lines.push(
+            label + (isScheduleView ? '는 현재 정규수업 기준 마감되었습니다.' : '는 정규수업 기준 마감되었습니다.')
+          );
         }
         lines.push(currentDetail(slot));
 
         const key = slotKey(slot);
+        let previousRegularCount = Number(slot && slot.regularCount || 0);
         regularChanges
           .filter(item => slotKey(item) === key)
           .slice(0, 12)
           .forEach(item => {
+            const nextRegularCount = Number(item.regularCount || 0);
+            const delta = nextRegularCount - previousRegularCount;
             const status = Number(item.remaining || 0) > 0
               ? Number(item.remaining) + '자리'
               : '마감';
+            let changeText = '';
+            if (delta > 0) changeText = '정규 등록 +' + delta + '명 예정 · ';
+            else if (delta < 0) changeText = '정규 인원 ' + Math.abs(delta) + '명 감소 예정 · ';
             lines.push(
-              shortDateLabel(item.date) + '부터 정규 '
-              + Number(item.regularCount || 0) + '명 / ' + status
+              shortDateLabel(item.date) + '부터 ' + changeText + '정규 '
+              + nextRegularCount + '명 / ' + status
             );
+            previousRegularCount = nextRegularCount;
           });
 
         exceptions
@@ -928,6 +954,18 @@
             }
           });
       });
+
+      if (isScheduleView && !data.division && Number(data.weekday || 0) && Number(data.timeSlot || 0)) {
+        const presentDivisions = new Set(rows.map(slot => clean(slot && slot.division)).filter(Boolean));
+        ['elementary', 'kinder'].forEach(division => {
+          if (presentDivisions.has(division)) return;
+          if (lines.length && lines[lines.length - 1] !== '') lines.push('');
+          lines.push(
+            divisionLabel(division) + ' ' + weekdayLabel(data.weekday) + ' '
+            + Number(data.timeSlot) + '시는 운영 수업이 없어요.'
+          );
+        });
+      }
     }
 
     const purpose = clean(data.purpose) || 'unknown';
