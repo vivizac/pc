@@ -56,6 +56,14 @@ test('pickup timetable card renders purple 하 marker beside the student name', 
   assert.match(css, /\.olliTtPickupStudentName \.olliTtPickupDropoffMark \{[^}]*background:#8061c7;[^}]*color:#fff/);
 });
 
+test('student-add search box stays behind nested popup while result list stacking stays unchanged', () => {
+  assert.match(css, /#olliTtDialog\.olliTtAddDialog \.olliTtField:has\(> \.olliTtStudentSearch\[type="search"\]\) \{\s*z-index:auto;\s*\}/);
+  assert.match(css, /\.olliTtStudentSearch\[type="search"\] \+ \.olliTtPickerList \{[\s\S]*?z-index: 200;[\s\S]*?max-height: 144px;/);
+  assert.match(css, /\.olliTtField:focus-within > \.olliTtStudentSearch\[type="search"\]:not\(:placeholder-shown\) \+ \.olliTtPickerList \{ display: block; \}/);
+  assert.match(css, /\.olliTtTeacherToggleRow \{[\s\S]*?z-index: 8;/);
+  assert.match(css, /\.olliTtTeacherToggle\[open\] \{ z-index: 40; \}/);
+});
+
 test('all timetable popup student searches support arrow-key highlight and Enter selection', () => {
   assert.match(ui, /\.olliTtStudentSearch\[type="search"\]/);
   assert.match(ui, /\['ArrowDown', 'ArrowUp', 'Enter'\]/);
