@@ -127,3 +127,117 @@ test('PC AI uses Olli read query before calling OpenAI and keeps query result ou
   assert.match(block, /saveAssistantReply\(current, queryMessage, replyToMessageId\)/);
   assert.match(block, /recordAi:false/);
 });
+
+
+test('short weekday/time text is treated as a recurring schedule lookup', () => {
+  const router = loadRouter();
+
+  const elementary = router.parseAvailableSlotsIntent('초등 화요일 4시');
+  assert.ok(elementary);
+  assert.equal(elementary.scope, 'recurring');
+  assert.equal(elementary.viewMode, 'schedule');
+  assert.equal(elementary.division, 'elementary');
+  assert.equal(elementary.weekday, 2);
+  assert.equal(elementary.timeSlot, 4);
+
+  const both = router.parseAvailableSlotsIntent('화요일 4시');
+  assert.ok(both);
+  assert.equal(both.scope, 'recurring');
+  assert.equal(both.viewMode, 'schedule');
+  assert.equal(both.division, '');
+  assert.equal(both.weekday, 2);
+  assert.equal(both.timeSlot, 4);
+
+  const kinder = router.parseAvailableSlotsIntent('유치부 화요일 4시?');
+  assert.ok(kinder);
+  assert.equal(kinder.division, 'kinder');
+});
+
+test('short schedule lookup does not swallow unrelated weekday/time sentences', () => {
+  const router = loadRouter();
+  assert.equal(router.parseAvailableSlotsIntent('화요일 4시에 회의 있어'), null);
+});
+
+test('schedule lookup describes current seats and future changes for both divisions', () => {
+  const schedule = loadSchedule({});
+  const elementary = {
+    division:'elementary',
+    weekday:2,
+    timeSlot:4,
+    classGroup:'A',
+    grouped:false,
+    regularCount:3,
+    capacity:5,
+    remaining:2,
+    safeRegularRemaining:1
+  };
+  const kinder = {
+    division:'kinder',
+    weekday:2,
+    timeSlot:4,
+    classGroup:'A',
+    grouped:false,
+    regularCount:4,
+    capacity:5,
+    remaining:1,
+    safeRegularRemaining:1
+  };
+
+  const message = schedule.describeRecurringAvailability({
+    scope:'recurring',
+    viewMode:'schedule',
+    division:'',
+    weekday:2,
+    timeSlot:4,
+    allSlots:[elementary, kinder],
+    displaySlots:[elementary, kinder],
+    regularChanges:[{
+      ...elementary,
+      date:'2026-10-06',
+      regularCount:4,
+      remaining:1
+    }],
+    oneTimeExceptions:[{
+      ...elementary,
+      date:'2026-09-29',
+      makeupCount:1,
+      trialCount:0,
+      remaining:1
+    }]
+  });
+
+  assert.match(message, /초등부 화요일 4시는 현재 정규수업 기준 2자리 있습니다/);
+  assert.match(message, /10월 6일부터 정규 등록 \+1명 예정/);
+  assert.match(message, /9월 29일은 보강 1명이 예약되어 있어 1자리 있습니다/);
+  assert.match(message, /유치부 화요일 4시는 현재 정규수업 기준 1자리 있습니다/);
+});
+
+test('combined short schedule lookup explicitly reports a missing division', () => {
+  const schedule = loadSchedule({});
+  const elementary = {
+    division:'elementary',
+    weekday:2,
+    timeSlot:4,
+    classGroup:'A',
+    grouped:false,
+    regularCount:3,
+    capacity:5,
+    remaining:2,
+    safeRegularRemaining:2
+  };
+
+  const message = schedule.describeRecurringAvailability({
+    scope:'recurring',
+    viewMode:'schedule',
+    division:'',
+    weekday:2,
+    timeSlot:4,
+    allSlots:[elementary],
+    displaySlots:[elementary],
+    regularChanges:[],
+    oneTimeExceptions:[]
+  });
+
+  assert.match(message, /초등부 화요일 4시는 현재 정규수업 기준 2자리 있습니다/);
+  assert.match(message, /유치부 화요일 4시는 운영 수업이 없어요/);
+});

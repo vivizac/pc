@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-21-query-tools-1';
+  const VERSION = '2026-09-23-short-schedule-query-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -664,6 +664,9 @@
     const compact = compactText(raw);
     if (!raw) return null;
 
+    const hasDirectScheduleShorthand =
+      /^(?:(?:초등부?|유치부?|유치원|유치|유아)\s*)?[월화수목금토]요일\s*\d{1,2}\s*시(?:\s*[AaBb]\s*반)?(?:\s*[?!.。])?$/.test(raw);
+
     const hasScheduleMeaning =
       /시간표/.test(compact)
       || /수업시간/.test(compact)
@@ -695,9 +698,14 @@
       || /남는|남아|남았/.test(compact)
       || /여유|비어|몇자리|몇명|몇시/.test(compact);
 
-    if ((!hasAvailabilityMeaning && !hasScheduleMeaning) || !asksForLookup) return null;
+    if (
+      (!hasAvailabilityMeaning && !hasScheduleMeaning && !hasDirectScheduleShorthand)
+      || (!asksForLookup && !hasDirectScheduleShorthand)
+    ) return null;
 
-    const viewMode = hasScheduleMeaning && !hasAvailabilityMeaning ? 'schedule' : 'availability';
+    const viewMode = (hasDirectScheduleShorthand || (hasScheduleMeaning && !hasAvailabilityMeaning))
+      ? 'schedule'
+      : 'availability';
     const division = detectDivision(compact);
     const purpose = purposeForAvailability;
     const timeSlot = firstTimeSlot(raw);
