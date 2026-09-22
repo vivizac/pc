@@ -134,3 +134,11 @@ test('one-minute completion waits for AI result instead of request start', () =>
   assert.match(runtime, /notifyKcfFeedbackRequestResult\(item, 'error', errorMessage\)/);
   assert.match(runtime, /onFeedbackRequestResult/);
 });
+
+
+test('suspicious feedback detector includes malformed Unicode replacement characters', () => {
+  assert.match(runtime, /function getSuspiciousFeedbackPattern\(\)/);
+  assert.match(runtime, /\\uFFFD\+/);
+  assert.match(runtime, /\\uD800-\\uDFFF/);
+  assert.match(runtime, /const pattern = getSuspiciousFeedbackPattern\(\)/);
+});
