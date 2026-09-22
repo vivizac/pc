@@ -358,10 +358,13 @@ function restoreFeedbackStudentAliases(text, studentName) {
   return output;
 }
 
+function getSuspiciousFeedbackPattern() {
+  return /[\u0900-\u097F]+|[\u3040-\u30FF]+|[\u3400-\u4DBF\u4E00-\u9FFF]+|[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+|[\u0E00-\u0E7F]+|[\u0400-\u04FF]+|[\u0590-\u05FF]+|[\u0370-\u03FF]+|\uFFFD+|[\uD800-\uDFFF]+/gu;
+}
 function getSuspiciousFeedbackSegments(text) {
   const source = String(text || '');
   if (!source) return [];
-  const pattern = /[\u0900-\u097F]+|[\u3040-\u30FF]+|[\u3400-\u4DBF\u4E00-\u9FFF]+|[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+|[\u0E00-\u0E7F]+|[\u0400-\u04FF]+|[\u0590-\u05FF]+|[\u0370-\u03FF]+/gu;
+  const pattern = getSuspiciousFeedbackPattern();
   const found = source.match(pattern) || [];
   return Array.from(new Set(found.map(v => String(v || '').trim()).filter(Boolean))).slice(0, 20);
 }
@@ -371,7 +374,7 @@ function hasSuspiciousFeedbackText(text) {
 function renderSuspiciousFeedbackText(text) {
   const source = String(text || '');
   if (!source) return '';
-  const pattern = /[\u0900-\u097F]+|[\u3040-\u30FF]+|[\u3400-\u4DBF\u4E00-\u9FFF]+|[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+|[\u0E00-\u0E7F]+|[\u0400-\u04FF]+|[\u0590-\u05FF]+|[\u0370-\u03FF]+/gu;
+  const pattern = getSuspiciousFeedbackPattern();
   let html = '';
   let lastIndex = 0;
   source.replace(pattern, (match, offset) => {
@@ -386,7 +389,7 @@ function renderSuspiciousFeedbackText(text) {
 function buildTodayFeedbackIssueHtml(segments) {
   const list = Array.isArray(segments) ? segments.filter(Boolean) : [];
   if (!list.length) return '';
-  return `<div class="todayFeedbackIssueBox">외국어 문자로 보이는 내용이 포함되어 있어요. 수정 후 복사/저장할 수 있습니다.<div class="todayFeedbackIssueChars">${list.map(v => `<span class="todayFeedbackIssueChar">${escapeHtml(v)}</span>`).join('')}</div></div>`;
+  return `<div class="todayFeedbackIssueBox">확인이 필요한 문자가 포함되어 있어요. 수정 후 복사/저장할 수 있습니다.<div class="todayFeedbackIssueChars">${list.map(v => `<span class="todayFeedbackIssueChar">${escapeHtml(v)}</span>`).join('')}</div></div>`;
 }
 function isTodayFeedbackLoadFailItem(item) {
   const text = [item?.label, item?.sourceText, item?.resultText, item?.errorMessage].map(value => String(value || '').toLowerCase()).join(' ');
@@ -397,7 +400,7 @@ function getTodayFeedbackExportBlockReason(item) {
   const segments = getSuspiciousFeedbackSegments(item?.resultText || '');
   if (!segments.length) return '';
   try { updateTodayFeedbackItem(item.id, { status:'review', suspiciousSegments:segments }); } catch(e) {}
-  return `외국어 문자(${segments.join(', ')})가 남아 있어요. 수정 후 다시 시도해 주세요.`;
+  return `확인이 필요한 문자(${segments.join(', ')})가 남아 있어요. 수정 후 다시 시도해 주세요.`;
 }
 function showFeedbackQueueNotice(title, message) {
   const old = document.getElementById('feedbackQueueNotice');
