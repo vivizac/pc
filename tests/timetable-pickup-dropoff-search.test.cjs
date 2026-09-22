@@ -41,7 +41,7 @@ test('pickup manage popup groups arrival and dropoff settings and keeps the head
   assert.match(ui, /olliTtPickupManageSection effective/);
   assert.match(ui, />변경·삭제 적용일</);
   assert.match(ui, /olliTtPickupManageHead/);
-  assert.doesNotMatch(ui, /dialogHead\('↳'/);
+  assert.match(ui, /return '<div class="olliTtPickupManageHead">'/);
   assert.match(css, /\.olliTtPickupManageSection\.arrival/);
   assert.match(css, /\.olliTtPickupManageSection\.dropoff/);
 });
