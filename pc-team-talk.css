@@ -19,6 +19,26 @@
   --olli-pc-talk-refresh-bg:#fff;
   --olli-pc-talk-refresh-hover:#f7f7f5;
 }
+#olliPcTeamTalkScreen[data-olli-talk-theme="light-blue"]{
+  --olli-pc-talk-bg:#F2F6FC;
+  --olli-pc-talk-title:#1F2D3D;
+  --olli-pc-talk-system-text:#607086;
+  --olli-pc-talk-system-muted:#7C8A9D;
+  --olli-pc-talk-system-pill-bg:#E4EBF5;
+  --olli-pc-talk-system-pill-text:#5B6C82;
+  --olli-pc-talk-refresh-bg:#fff;
+  --olli-pc-talk-refresh-hover:#EAF0F8;
+}
+#olliPcTeamTalkScreen[data-olli-talk-theme="dark-blue"]{
+  --olli-pc-talk-bg:#394D6A;
+  --olli-pc-talk-title:#fff;
+  --olli-pc-talk-system-text:rgba(255,255,255,.76);
+  --olli-pc-talk-system-muted:rgba(255,255,255,.60);
+  --olli-pc-talk-system-pill-bg:rgba(255,255,255,.14);
+  --olli-pc-talk-system-pill-text:rgba(255,255,255,.86);
+  --olli-pc-talk-refresh-bg:rgba(255,255,255,.12);
+  --olli-pc-talk-refresh-hover:rgba(255,255,255,.20);
+}
 #olliPcTeamTalkScreen,#olliPcTeamTalkScreen *{box-sizing:border-box}
 .olliPcTeamTalkPage{
   width:100%;height:100%;min-width:0;min-height:0;display:grid;
