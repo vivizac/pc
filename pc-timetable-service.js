@@ -503,14 +503,22 @@
   }
 
   async function savePickup(options) {
-    return rpc('olli_schedule_save_pickup_v2', contextPayload({
+    return rpc('olli_schedule_save_pickup_v3', contextPayload({
       p_student_id: options.studentId,
       p_weekday: Number(options.weekday),
       p_class_time: Number(options.classTime),
-      p_pickup_label: options.pickupLabel,
-      p_pickup_time: options.pickupTime,
-      p_effective_date: options.effectiveDate,
-      p_is_dropoff: options.isDropoff === true
+      p_arrival_label: options.pickupLabel || null,
+      p_pickup_time: options.pickupTime || null,
+      p_dropoff_label: options.dropoffLabel || null,
+      p_effective_date: options.effectiveDate
+    }));
+  }
+
+  async function savePickupArrival(pickupId, pickupLabel, pickupTime) {
+    return rpc('olli_schedule_save_pickup_arrival', contextPayload({
+      p_pickup_id: pickupId,
+      p_pickup_label: pickupLabel,
+      p_pickup_time: pickupTime
     }));
   }
 
@@ -586,6 +594,7 @@
     setAttendanceSessionStatus,
     loadAttendanceMonth,
     savePickup,
+    savePickupArrival,
     registerPickupDropoff,
     removePickupDropoff,
     updatePickup,
