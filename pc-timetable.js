@@ -1780,7 +1780,7 @@
     return '<div class="olliTtPickupManageHead"><div><div class="olliTtDialogTitle" id="olliTtDialogTitle">픽업 학생 추가</div>'
       + `<div class="olliTtDialogSub">${koreanDate(dialog.date)} ${weekdayLabel(dialog.weekday)}요일 · ${dialog.classTime}시 수업</div></div>`
       + '<button type="button" class="olliTtDialogClose" data-tt-dialog-close aria-label="닫기">×</button></div>'
-      + '<div class="olliTtDialogBody">'
+      + '<div class="olliTtDialogBody olliTtPickupAddBody">'
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>학생 선택</span><small>유치부 학생을 검색하세요</small></div>'
       + `<input type="search" class="olliTtStudentSearch" data-tt-pickup-search value="${esc(dialog.query)}" placeholder="학생 검색"><div class="olliTtPickerList" data-tt-pickup-picker>${pickupPickerHtml(dialog)}</div></div>`
       + '<section class="olliTtPickupAddSection arrival">'

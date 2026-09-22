@@ -626,12 +626,19 @@
 .olliTtPickupManageFieldRow label > span, .olliTtPickupManageArrivalGrid label > span, .olliTtPickupManageDropoffGrid label > span { margin:0 2px 7px; display:block; color:#4c5663; font-size:calc(11px * var(--olli-text-scale)); font-weight:780; }
 .olliTtPickupManageFieldRow input, .olliTtPickupManageArrivalGrid input, .olliTtPickupManageDropoffGrid input { width:100%; height:48px; padding:0 12px; border:1px solid #dfe4e9; border-radius:12px; outline:none; color:#323944; background:#fff; font:660 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; box-sizing:border-box; }
 .olliTtPickupManageFieldRow input:focus, .olliTtPickupManageArrivalGrid input:focus, .olliTtPickupManageDropoffGrid input:focus { border-color:#80c2fb; box-shadow:0 0 0 3px rgba(10,132,255,.08); }
-.olliTtPickupManageArrivalGrid { margin-top:12px; display:grid; grid-template-columns:minmax(0,1fr) 150px 126px; gap:10px; align-items:end; }
-.olliTtPickupManageDropoffGrid { display:grid; grid-template-columns:minmax(0,1fr) 126px 104px; gap:10px; align-items:end; }
-.olliTtPickupInlineAction, .olliTtPickupManageFieldRow > button { height:48px; border:0; border-radius:12px; font:760 calc(13px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
+.olliTtPickupManageArrivalGrid { margin-top:12px; display:grid; grid-template-columns:minmax(0,1fr) 150px 112px; gap:10px; align-items:end; }
+.olliTtPickupManageDropoffGrid { display:grid; grid-template-columns:minmax(0,1fr) 112px 112px; gap:10px; align-items:end; }
+.olliTtPickupManageDropoffGrid > label { grid-column:1; }
+.olliTtPickupManageDropoffGrid > [data-tt-remove-dropoff] { grid-column:2; }
+.olliTtPickupManageDropoffGrid > [data-tt-register-dropoff] { grid-column:3; }
+.olliTtPickupInlineAction, .olliTtPickupManageFieldRow > button { width:112px; height:48px; justify-self:end; border:0; border-radius:12px; font:760 calc(13px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
 .olliTtPickupCurrentLine.empty strong { color:#9aa2ac; }
-.olliTtPickupManageSection.effective .olliTtPickupManageFieldRow { margin-top:0; }
+.olliTtPickupManageSection.effective .olliTtPickupManageFieldRow { margin-top:0; grid-template-columns:minmax(0,1fr) 112px; }
 .olliTtPickupDeleteActions { margin-top:16px; padding-top:14px; border-top:1px solid #eceff2; }
+.olliTtPickupAddBody > .olliTtDialogActions,
+.olliTtPickupManageBody > .olliTtDialogActions { display:flex; grid-template-columns:none; justify-content:flex-end; align-items:center; }
+.olliTtPickupAddBody > .olliTtDialogActions button,
+.olliTtPickupManageBody > .olliTtDialogActions button { width:auto; min-width:76px; padding:0 18px; }
 .olliTtPickerList { height: 144px; max-height: 144px; overflow-y: auto; overflow-x: hidden; margin-top: 8px; }
 .olliTtPickerStudent { width: 100%; min-height: 48px; padding: 0 12px; border: 0; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #343b45; background: transparent; text-align: left; font: 750 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 .olliTtPickerStudent:hover,

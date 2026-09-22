@@ -159,3 +159,18 @@ test('pickup action buttons reuse standard dialog button classes', () => {
   assert.doesNotMatch(css, /\.olliTtDropoffRegisterBtn/);
   assert.doesNotMatch(css, /\.olliTtDropoffDeleteBtn/);
 });
+
+
+test('pickup popup footer actions size to their text instead of filling the footer', () => {
+  assert.match(ui, /olliTtDialogBody olliTtPickupAddBody/);
+  assert.match(css, /\.olliTtPickupAddBody > \.olliTtDialogActions,[\s\S]*?\.olliTtPickupManageBody > \.olliTtDialogActions \{[^}]*display:flex;[^}]*justify-content:flex-end;/);
+  assert.match(css, /\.olliTtPickupAddBody > \.olliTtDialogActions button,[\s\S]*?\.olliTtPickupManageBody > \.olliTtDialogActions button \{[^}]*width:auto;[^}]*min-width:76px;[^}]*padding:0 18px;/);
+});
+
+test('arrival dropoff and schedule primary actions share one width and align to the right edge', () => {
+  assert.match(css, /\.olliTtPickupManageArrivalGrid \{[^}]*grid-template-columns:minmax\(0,1fr\) 150px 112px;/);
+  assert.match(css, /\.olliTtPickupManageDropoffGrid \{[^}]*grid-template-columns:minmax\(0,1fr\) 112px 112px;/);
+  assert.match(css, /\[data-tt-register-dropoff\] \{ grid-column:3; \}/);
+  assert.match(css, /\.olliTtPickupInlineAction, \.olliTtPickupManageFieldRow > button \{[^}]*width:112px;[^}]*justify-self:end;/);
+  assert.match(css, /\.olliTtPickupManageSection\.effective \.olliTtPickupManageFieldRow \{[^}]*grid-template-columns:minmax\(0,1fr\) 112px;/);
+});
