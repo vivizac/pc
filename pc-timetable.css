@@ -661,6 +661,11 @@
 #olliTtDialog.olliTtAddDialog .olliTtAddMemo { margin-top:16px; }
 #olliTtDialog.olliTtAddDialog .olliTtStudentSearch,
 #olliTtDialog.olliTtAddDialog .olliTtDateInput { height:44px; border-radius:12px; }
+/* 학생추가 내부 팝업(담임/당일 담당)이 검색창과 입력 텍스트보다 항상 위에 오도록 한다.
+   검색 결과 학생명 목록(.olliTtPickerList)의 기존 z-index/표시 로직은 그대로 유지한다. */
+#olliTtDialog.olliTtAddDialog .olliTtField:has(> .olliTtStudentSearch[type="search"]) {
+  z-index:auto;
+}
 #olliTtDialog.olliTtAddDialog .olliTtDialogActions { position:sticky; z-index:2; bottom:0; margin:18px -26px 0; }
 
 .olliTtStatusNotice { margin-top: 16px; padding: 11px 13px; border-radius: 13px; color: #6d5ab0; background: #f1edff; font-size: calc(11px * var(--olli-text-scale)); font-weight: 680; line-height: 1.5; }
