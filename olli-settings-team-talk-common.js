@@ -4,6 +4,20 @@
 
 const LIGHT_BG = '#F3F3F3';
 const DARK_BG = '#666D77';
+const LIGHT_BLUE_BG = '#F2F6FC';
+const DARK_BLUE_BG = '#394D6A';
+const BACKGROUND_COLORS = Object.freeze({
+  light: LIGHT_BG,
+  dark: DARK_BG,
+  'light-blue': LIGHT_BLUE_BG,
+  'dark-blue': DARK_BLUE_BG
+});
+const BACKGROUND_LABELS = Object.freeze({
+  light: '밝은 회색',
+  dark: '어두운 회색',
+  'light-blue': '밝은 파랑',
+  'dark-blue': '어두운 파랑'
+});
 const CACHE_PREFIX = 'olli_team_talk_settings_v1_';
 
 const state = {
@@ -44,9 +58,10 @@ function canEdit(){
   return role === 'owner' || role === 'manager' || role === 'super_admin';
 }
 function normalizeBackground(value){
-  return clean(value).toLowerCase() === 'light' ? 'light' : 'dark';
+  const mode = clean(value).toLowerCase();
+  return Object.prototype.hasOwnProperty.call(BACKGROUND_COLORS, mode) ? mode : 'dark';
 }
-function backgroundColor(mode){ return normalizeBackground(mode) === 'light' ? LIGHT_BG : DARK_BG; }
+function backgroundColor(mode){ return BACKGROUND_COLORS[normalizeBackground(mode)] || DARK_BG; }
 function cacheKey(id){ return CACHE_PREFIX + (clean(id) || 'unscoped'); }
 function readCache(id){
   try {
@@ -160,7 +175,7 @@ function syncAssistantButtons(){
   } catch (_) {}
 }
 function settingsSummary(){
-  const bg = state.background === 'light' ? '밝은 회색' : '어두운 회색';
+  const bg = BACKGROUND_LABELS[normalizeBackground(state.background)] || BACKGROUND_LABELS.dark;
   return bg + ' · AI ' + (state.aiEnabled ? '켬' : '끔') + ' · 올리봇 알림 ' + (state.botNotificationsEnabled ? '켬' : '끔');
 }
 function updateSettingsRowValue(){
@@ -226,6 +241,8 @@ function detailHtml(){
     + '<div class="olliTeamTalkThemeGrid">'
     + themeOption('light','밝은 회색',LIGHT_BG)
     + themeOption('dark','어두운 회색',DARK_BG)
+    + themeOption('light-blue','밝은 파랑',LIGHT_BLUE_BG)
+    + themeOption('dark-blue','어두운 파랑',DARK_BLUE_BG)
     + '</div>'
     + '</section>'
     + '<section class="olliTeamTalkSettingsCard">'
@@ -497,6 +514,8 @@ global.OlliTeamTalkSettings = {
   syncAssistantButtons,
   lightColor: LIGHT_BG,
   darkColor: DARK_BG,
+  lightBlueColor: LIGHT_BLUE_BG,
+  darkBlueColor: DARK_BLUE_BG,
   load: loadRemote,
   applyBackground,
   refreshForAcademy,
