@@ -3,6 +3,8 @@
 .olliTeamTalkSettingsHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
 .olliTeamTalkSettingsHead strong,.olliTeamTalkSettingsSwitchRow strong{display:block;color:#17191c;font-size:calc(15px * var(--olli-text-scale,1));font-weight:750;letter-spacing:-.03em}
 .olliTeamTalkSettingsHead small,.olliTeamTalkSettingsSwitchRow small{display:block;margin-top:5px;color:#92969c;font-size:calc(11.5px * var(--olli-text-scale,1));font-weight:500;line-height:1.5}
+.olliTeamTalkThemeGroupLabel{margin:2px 2px 9px;color:#777c83;font-size:calc(11px * var(--olli-text-scale,1));font-weight:700;letter-spacing:-.02em}
+.olliTeamTalkThemeGroupLabel.olli{margin-top:17px}
 .olliTeamTalkThemeGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .olliTeamTalkThemeOption{min-width:0;border:1px solid #e6e8eb;border-radius:18px;background:#fafafa;padding:10px;text-align:left;cursor:pointer;font-family:inherit;position:relative}
 .olliTeamTalkThemeOption.active{border-color:#24272b;background:#fff}

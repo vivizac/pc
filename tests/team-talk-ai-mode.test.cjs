@@ -47,7 +47,7 @@ test('shared Team Talk settings back button closes the detail screen and restore
 test('shared Team Talk settings opener falls back to the existing detail screen when standard navigation does not open it', () => {
   assert.match(settings, /function openDetailFallback\(\)/);
   assert.match(settings, /document\.getElementById\('settingsDetailScreen'\)/);
-  assert.match(settings, /titlePill\.textContent = '팀톡 설정'/);
+  assert.match(settings, /titlePill\.textContent = '팀톡 배경설정'/);
   assert.match(settings, /body\.innerHTML = detailHtml\(\)/);
   assert.match(settings, /detail\.style\.display = 'flex'/);
   assert.match(settings, /if \(detail && detail\.style\.display === 'flex'\) return true/);
