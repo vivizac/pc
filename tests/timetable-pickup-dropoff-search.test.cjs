@@ -8,32 +8,32 @@ const service = fs.readFileSync('pc-timetable-service.js', 'utf8');
 const sql = fs.readFileSync('supabase/migrations/20260921180000_timetable_pickup_dropoff.sql', 'utf8');
 const dropoffManageSql = fs.readFileSync('supabase/migrations/20260922165500_pickup_manage_dropoff_registration.sql', 'utf8');
 
-test('pickup add dialog uses a custom clock picker with an explicit done button', () => {
-  assert.match(ui, /isDropoff: false/);
-  assert.match(ui, /data-tt-pickup-dropoff/);
-  assert.match(ui, /type="text" class="olliTtClockOnlyTime" data-tt-pickup-time/);
+test('pickup add dialog groups arrival and dropoff and keeps the custom clock picker', () => {
+  assert.match(ui, /olliTtPickupAddSection arrival/);
+  assert.match(ui, /olliTtPickupAddSection dropoff/);
+  assert.match(ui, /data-tt-pickup-label/);
+  assert.match(ui, /data-tt-pickup-time/);
+  assert.match(ui, /data-tt-pickup-dropoff-label/);
+  assert.doesNotMatch(ui, /data-tt-pickup-dropoff aria-pressed/);
   assert.match(ui, /function openClockPicker\(input, onChange\)/);
   assert.match(ui, /data-tt-clock-hour/);
   assert.match(ui, /data-tt-clock-minute/);
   assert.match(ui, /data-tt-clock-done disabled>완료<\/button>/);
-  assert.match(ui, /doneButton\.addEventListener\('click'/);
-  assert.match(ui, /onChange\(value\)/);
-  assert.match(ui, /closeClockPicker\(\)/);
-  assert.match(ui, /isDropoff: dialog\.isDropoff === true/);
 });
 
-test('dropoff mode disables pickup time and saves without a time value', () => {
-  assert.match(ui, /dialog\.isDropoff \? ' disabled aria-disabled="true"' : ''/);
-  assert.match(ui, /state\.dialog\.isDropoff = !state\.dialog\.isDropoff/);
-  assert.match(ui, /timeInput\.disabled = true/);
-  assert.match(ui, /state\.dialog\.pickupTime = ''/);
-  assert.match(ui, /if \(!dialog\.isDropoff && !dialog\.pickupTime\)/);
-  assert.match(ui, /pickupTime: dialog\.isDropoff \? null : dialog\.pickupTime/);
-  assert.match(css, /\.olliTtPickupForm input:disabled \{[^}]*background:#eef0f2;[^}]*cursor:not-allowed;/);
+test('pickup add allows arrival only, dropoff only, or both', () => {
+  assert.match(ui, /const hasArrivalInput = Boolean\(dialog\.pickupLabel \|\| dialog\.pickupTime\)/);
+  assert.match(ui, /const hasDropoff = Boolean\(dialog\.dropoffLabel\)/);
+  assert.match(ui, /if \(hasArrivalInput && \(!dialog\.pickupLabel \|\| !dialog\.pickupTime\)\)/);
+  assert.match(ui, /if \(!hasArrivalInput && !hasDropoff\)/);
+  assert.match(ui, /dropoffLabel: hasDropoff \? dialog\.dropoffLabel : ''/);
+  assert.match(service, /rpc\('olli_schedule_save_pickup_v3'/);
 });
 
 test('pickup manage popup groups arrival and dropoff settings and keeps the header icon-free', () => {
   assert.match(ui, /olliTtPickupManageSection arrival/);
+  assert.match(ui, /const hasArrival = !isDropoffOnly/);
+  assert.doesNotMatch(ui, /const arrivalSection = isDropoffOnly \? ''/);
   assert.match(ui, />등원 설정</);
   assert.match(ui, /현재 등원 픽업/);
   assert.match(ui, /olliTtPickupManageSection dropoff/);
@@ -96,20 +96,28 @@ test('all timetable popup student searches support arrow-key highlight and Enter
   assert.match(css, /\.olliTtStudentSearch\[type="search"\] \+ \.olliTtPickerList \{[\s\S]*z-index: 200;/);
 });
 
-test('dropoff persistence uses a dedicated boolean and survives scheduled pickup time changes', () => {
-  assert.match(sql, /add column if not exists is_dropoff boolean not null default false/);
-  assert.match(sql, /create or replace function public\.olli_schedule_save_pickup_v2/);
-  assert.match(sql, /p_is_dropoff boolean default false/);
-  assert.match(sql, /v_pickup\.pickup_label, p_pickup_time, v_pickup\.is_dropoff/);
-  assert.match(service, /rpc\('olli_schedule_save_pickup_v2'/);
+test('unified pickup save keeps dropoff separately and supports dropoff-only rows', () => {
+  const unifiedSql = fs.readFileSync('supabase/migrations/20260922182000_unified_pickup_arrival_dropoff.sql', 'utf8');
+  assert.match(unifiedSql, /create or replace function public\.olli_schedule_save_pickup_v3/);
+  assert.match(unifiedSql, /v_has_arrival := \(v_arrival_label <> '' or p_pickup_time is not null\)/);
+  assert.match(unifiedSql, /v_has_dropoff := \(v_dropoff_label <> ''\)/);
+  assert.match(unifiedSql, /case when v_has_arrival then v_arrival_label else v_dropoff_label end/);
+  assert.match(unifiedSql, /not v_has_arrival/);
+  assert.match(unifiedSql, /case when v_has_dropoff then v_dropoff_label else null end/);
+  assert.match(service, /rpc\('olli_schedule_save_pickup_v3'/);
   assert.match(service, /rpc\('olli_schedule_pickup_dropoff_flags'/);
-  assert.match(service, /is_dropoff:dropoff\.isDropoff === true/);
   assert.match(service, /dropoff_label:clean\(dropoff\.dropoffLabel\)/);
 });
 
-
-test('dropoff button is explicitly anchored at the far-left of the pickup row', () => {
-  assert.match(css,/\.olliTtPickupDropoffBtn \{ grid-column:1; justify-self:start; width:76px; height:46px; margin-left:0;/);
+test('dropoff-only pickup can later receive arrival settings without losing dropoff', () => {
+  const unifiedSql = fs.readFileSync('supabase/migrations/20260922182000_unified_pickup_arrival_dropoff.sql', 'utf8');
+  assert.match(ui, /data-tt-save-arrival/);
+  assert.match(ui, /async function savePickupArrival\(\)/);
+  assert.match(service, /async function savePickupArrival\(pickupId, pickupLabel, pickupTime\)/);
+  assert.match(service, /rpc\('olli_schedule_save_pickup_arrival'/);
+  assert.match(unifiedSql, /if v_pickup\.is_dropoff = true and v_dropoff_label is null then/);
+  assert.match(unifiedSql, /v_dropoff_label := v_pickup\.pickup_label/);
+  assert.match(unifiedSql, /is_dropoff = false/);
 });
 
 
@@ -133,12 +141,21 @@ test('custom clock picker has a footer complete button and sits above timetable 
 });
 
 
-test('dropoff delete RPC clears only dropoff_label and preserves the arrival pickup', () => {
-  const deleteSql = fs.readFileSync('supabase/migrations/20260922174500_pickup_dropoff_delete.sql', 'utf8');
-  assert.match(deleteSql, /create or replace function public\.olli_schedule_remove_pickup_dropoff/);
-  assert.match(deleteSql, /set dropoff_label = null/);
-  assert.match(deleteSql, /'pickup_label', v_pickup\.pickup_label/);
-  assert.match(deleteSql, /'pickup_time', v_pickup\.pickup_time/);
-  assert.doesNotMatch(deleteSql, /set pickup_label = null/);
-  assert.doesNotMatch(deleteSql, /set pickup_time = null/);
+test('dropoff delete removes only dropoff from combined rows and removes dropoff-only cards', () => {
+  const unifiedSql = fs.readFileSync('supabase/migrations/20260922182000_unified_pickup_arrival_dropoff.sql', 'utf8');
+  assert.match(unifiedSql, /create or replace function public\.olli_schedule_remove_pickup_dropoff/);
+  assert.match(unifiedSql, /if v_pickup\.is_dropoff = true then[\s\S]*set status = 'cancelled'/);
+  assert.match(unifiedSql, /else[\s\S]*set dropoff_label = null/);
+  assert.match(ui, /하원 설정을 삭제하면 이 픽업카드는 사라집니다/);
+  assert.match(ui, /기존 등원 픽업은 그대로 유지됩니다/);
+});
+
+
+test('pickup action buttons reuse standard dialog button classes', () => {
+  assert.match(ui, /class="olliTtDialogPrimary olliTtPickupInlineAction" data-tt-save-arrival/);
+  assert.match(ui, /class="olliTtDialogPrimary olliTtPickupInlineAction" data-tt-register-dropoff/);
+  assert.match(ui, /class="olliTtDialogPrimary danger olliTtPickupInlineAction" data-tt-remove-dropoff/);
+  assert.match(css, /\.olliTtPickupInlineAction[^}]*height:48px[^}]*border-radius:12px/);
+  assert.doesNotMatch(css, /\.olliTtDropoffRegisterBtn/);
+  assert.doesNotMatch(css, /\.olliTtDropoffDeleteBtn/);
 });
