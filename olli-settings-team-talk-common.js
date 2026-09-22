@@ -5,7 +5,7 @@
 const LIGHT_BG = '#F3F3F3';
 const DARK_BG = '#666D77';
 const LIGHT_BLUE_BG = '#F2F6FC';
-const DARK_BLUE_BG = '#394D6A';
+const DARK_BLUE_BG = '#46576E';
 const BACKGROUND_COLORS = Object.freeze({
   light: LIGHT_BG,
   dark: DARK_BG,
