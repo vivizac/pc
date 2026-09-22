@@ -21,6 +21,16 @@ test('pickup add dialog uses a custom clock picker with an explicit done button'
   assert.match(ui, /isDropoff: dialog\.isDropoff === true/);
 });
 
+test('dropoff mode disables pickup time and saves without a time value', () => {
+  assert.match(ui, /dialog\.isDropoff \? ' disabled aria-disabled="true"' : ''/);
+  assert.match(ui, /state\.dialog\.isDropoff = !state\.dialog\.isDropoff/);
+  assert.match(ui, /timeInput\.disabled = true/);
+  assert.match(ui, /state\.dialog\.pickupTime = ''/);
+  assert.match(ui, /if \(!dialog\.isDropoff && !dialog\.pickupTime\)/);
+  assert.match(ui, /pickupTime: dialog\.isDropoff \? null : dialog\.pickupTime/);
+  assert.match(css, /\.olliTtPickupForm input:disabled \{[^}]*background:#eef0f2;[^}]*cursor:not-allowed;/);
+});
+
 test('pickup timetable card renders purple 하 marker beside the student name', () => {
   assert.match(ui, /olliTtPickupDropoffMark[^]*aria-label="하원">하<\/span>/);
   assert.match(css, /\.olliTtPickupStudentName \.olliTtPickupDropoffMark \{[^}]*background:#8061c7;[^}]*color:#fff/);
