@@ -43,12 +43,20 @@ test('pickup card manage popup can convert an existing pickup into dropoff with 
   assert.match(css, /\.olliTtDropoffRegisterRow \{[^}]*grid-template-columns:minmax\(0,1fr\) 96px/);
 });
 
-test('dropoff conversion RPC saves location, clears time, and marks the existing pickup row', () => {
-  assert.match(dropoffManageSql, /create or replace function public\.olli_schedule_register_pickup_dropoff/);
-  assert.match(dropoffManageSql, /pickup_label = v_label/);
-  assert.match(dropoffManageSql, /pickup_time = null/);
-  assert.match(dropoffManageSql, /is_dropoff = true/);
-  assert.match(dropoffManageSql, /p\.status = 'active'/);
+test('dropoff registration preserves an existing arrival pickup and stores dropoff separately', () => {
+  const preserveSql = fs.readFileSync('supabase/migrations/20260922171000_preserve_pickup_when_adding_dropoff.sql', 'utf8');
+  assert.match(preserveSql, /add column if not exists dropoff_label text/);
+  assert.match(preserveSql, /set dropoff_label = v_label/);
+  assert.match(preserveSql, /if v_pickup\.is_dropoff = true then/);
+  assert.match(preserveSql, /else[\s\S]*set dropoff_label = v_label/);
+  assert.doesNotMatch(preserveSql, /pickup_time = null/);
+});
+
+test('normal arrival pickup keeps its label/time and gains 하 from dropoff_label', () => {
+  assert.match(ui, /item\.is_dropoff === true \|\| Boolean\(clean\(item\.dropoff_label\)\)/);
+  assert.match(ui, /\$\{esc\(item\.pickup_label\)\} \$\{esc\(pickupTimeLabel\(item\.pickup_time\)\)\}/);
+  assert.match(service, /dropoff_label:clean\(dropoff\.dropoffLabel\)/);
+  assert.match(ui, /기존 등원 픽업은 그대로 두고 하원 장소만 추가합니다/);
 });
 
 test('pickup timetable card renders purple 하 marker beside the student name', () => {

@@ -249,12 +249,19 @@
     data.cell_memos = Array.isArray(memoContext && memoContext.memos) ? memoContext.memos : (Array.isArray(data.cell_memos) ? data.cell_memos : []);
     const pickupDropoffMap = new Map(
       (Array.isArray(pickupDropoffContext && pickupDropoffContext.flags) ? pickupDropoffContext.flags : [])
-        .map((item) => [clean(item && item.id), item && item.is_dropoff === true])
+        .map((item) => [clean(item && item.id), {
+          isDropoff:item && item.is_dropoff === true,
+          dropoffLabel:clean(item && item.dropoff_label)
+        }])
     );
-    data.pickups = (Array.isArray(data.pickups) ? data.pickups : []).map((item) => ({
-      ...item,
-      is_dropoff: pickupDropoffMap.get(clean(item && item.id)) === true
-    }));
+    data.pickups = (Array.isArray(data.pickups) ? data.pickups : []).map((item) => {
+      const dropoff = pickupDropoffMap.get(clean(item && item.id)) || {};
+      return {
+        ...item,
+        is_dropoff:dropoff.isDropoff === true,
+        dropoff_label:clean(dropoff.dropoffLabel)
+      };
+    });
     const attendanceOverrides = await attendanceOverridesPromise;
     assertCurrentContext();
     data.attendance_overrides = Array.isArray(attendanceOverrides) ? attendanceOverrides : [];
