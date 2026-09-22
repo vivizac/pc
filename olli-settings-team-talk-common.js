@@ -70,6 +70,12 @@ function normalizeBackground(value){
 function backgroundColor(mode){ return BACKGROUND_COLORS[normalizeBackground(mode)] || DARK_BG; }
 function isOlliTheme(mode){ return normalizeBackground(mode) === 'olli-light' || normalizeBackground(mode) === 'olli-dark'; }
 function outgoingBubbleColor(mode){ return isOlliTheme(mode) ? OLLI_BLUE : '#FEE500'; }
+function legacySettingsBackground(mode){
+  const normalized = normalizeBackground(mode);
+  if (normalized === 'olli-light') return 'light';
+  if (normalized === 'olli-dark') return 'dark-blue';
+  return normalized;
+}
 function currentPlatform(){
   if (document.getElementById('olliTalkBetaScreen')) return 'phone';
   if (document.getElementById('olliPcTeamTalkScreen')) return 'pc';
@@ -388,7 +394,7 @@ function queueGeneralSave(){
     const result = await rpc('olli_team_talk_settings_update', {
       p_session_token: sessionToken(),
       p_academy_id: id,
-      p_background: state.background,
+      p_background: legacySettingsBackground(state.background),
       p_bot_notifications_enabled: !!state.botNotificationsEnabled,
       p_ai_enabled: !!state.aiEnabled
     });

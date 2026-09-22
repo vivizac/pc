@@ -19,13 +19,10 @@ alter table public.academy_settings
   alter column team_talk_background_phone set not null;
 
 alter table public.academy_settings
-  drop constraint if exists academy_settings_team_talk_background_check,
   drop constraint if exists academy_settings_team_talk_background_pc_check,
   drop constraint if exists academy_settings_team_talk_background_phone_check;
 
 alter table public.academy_settings
-  add constraint academy_settings_team_talk_background_check
-    check (team_talk_background in ('light','dark','light-blue','dark-blue','olli-light','olli-dark')),
   add constraint academy_settings_team_talk_background_pc_check
     check (team_talk_background_pc in ('light','dark','light-blue','dark-blue','olli-light','olli-dark')),
   add constraint academy_settings_team_talk_background_phone_check
