@@ -32,15 +32,18 @@ test('dropoff mode disables pickup time and saves without a time value', () => {
   assert.match(css, /\.olliTtPickupForm input:disabled \{[^}]*background:#eef0f2;[^}]*cursor:not-allowed;/);
 });
 
-test('pickup card manage popup can convert an existing pickup into dropoff with a place', () => {
-  assert.match(ui, /data-tt-pickup-dropoff-label/);
-  assert.match(ui, /data-tt-register-dropoff>하원등록<\/button>/);
-  assert.match(ui, /async function registerPickupDropoff\(\)/);
-  assert.match(ui, /service\.registerPickupDropoff\(dialog\.pickupId, location\)/);
-  assert.match(ui, /하원 장소를 입력해 주세요/);
-  assert.match(service, /async function registerPickupDropoff\(pickupId, dropoffLabel\)/);
-  assert.match(service, /rpc\('olli_schedule_register_pickup_dropoff'/);
-  assert.match(css, /\.olliTtDropoffRegisterRow \{[^}]*grid-template-columns:minmax\(0,1fr\) 96px/);
+test('pickup manage popup groups arrival and dropoff settings and keeps the header icon-free', () => {
+  assert.match(ui, /olliTtPickupManageSection arrival/);
+  assert.match(ui, />등원 설정</);
+  assert.match(ui, /현재 등원 픽업/);
+  assert.match(ui, /olliTtPickupManageSection dropoff/);
+  assert.match(ui, />하원 설정</);
+  assert.match(ui, /olliTtPickupManageSection effective/);
+  assert.match(ui, />변경·삭제 적용일</);
+  assert.match(ui, /olliTtPickupManageHead/);
+  assert.doesNotMatch(ui, /dialogHead\('↳'/);
+  assert.match(css, /\.olliTtPickupManageSection\.arrival/);
+  assert.match(css, /\.olliTtPickupManageSection\.dropoff/);
 });
 
 test('dropoff registration preserves an existing arrival pickup and stores dropoff separately', () => {
@@ -57,6 +60,14 @@ test('normal arrival pickup keeps its label/time and gains 하 from dropoff_labe
   assert.match(ui, /\$\{esc\(item\.pickup_label\)\} \$\{esc\(pickupTimeLabel\(item\.pickup_time\)\)\}/);
   assert.match(service, /dropoff_label:clean\(dropoff\.dropoffLabel\)/);
   assert.match(ui, /기존 등원 픽업은 그대로 두고 하원 장소만 추가합니다/);
+});
+
+test('pickup manage popup can delete only the supplemental dropoff setting', () => {
+  assert.match(ui, /data-tt-remove-dropoff>하원삭제<\/button>/);
+  assert.match(ui, /async function removePickupDropoff\(\)/);
+  assert.match(ui, /service\.removePickupDropoff\(dialog\.pickupId\)/);
+  assert.match(service, /async function removePickupDropoff\(pickupId\)/);
+  assert.match(service, /rpc\('olli_schedule_remove_pickup_dropoff'/);
 });
 
 test('pickup timetable card renders purple 하 marker beside the student name', () => {
@@ -92,7 +103,8 @@ test('dropoff persistence uses a dedicated boolean and survives scheduled pickup
   assert.match(sql, /v_pickup\.pickup_label, p_pickup_time, v_pickup\.is_dropoff/);
   assert.match(service, /rpc\('olli_schedule_save_pickup_v2'/);
   assert.match(service, /rpc\('olli_schedule_pickup_dropoff_flags'/);
-  assert.match(service, /is_dropoff: pickupDropoffMap\.get/);
+  assert.match(service, /is_dropoff:dropoff\.isDropoff === true/);
+  assert.match(service, /dropoff_label:clean\(dropoff\.dropoffLabel\)/);
 });
 
 
@@ -118,4 +130,15 @@ test('custom clock picker has a footer complete button and sits above timetable 
   assert.match(css,/\.olliTtClockPicker \{ position:fixed; z-index:100200;/);
   assert.match(css,/\.olliTtClockPickerFooter \{/);
   assert.match(css,/\.olliTtClockPickerDone \{[^}]*background:#111;/);
+});
+
+
+test('dropoff delete RPC clears only dropoff_label and preserves the arrival pickup', () => {
+  const deleteSql = fs.readFileSync('supabase/migrations/20260922174500_pickup_dropoff_delete.sql', 'utf8');
+  assert.match(deleteSql, /create or replace function public\.olli_schedule_remove_pickup_dropoff/);
+  assert.match(deleteSql, /set dropoff_label = null/);
+  assert.match(deleteSql, /'pickup_label', v_pickup\.pickup_label/);
+  assert.match(deleteSql, /'pickup_time', v_pickup\.pickup_time/);
+  assert.doesNotMatch(deleteSql, /set pickup_label = null/);
+  assert.doesNotMatch(deleteSql, /set pickup_time = null/);
 });
