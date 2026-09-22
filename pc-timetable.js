@@ -1777,7 +1777,9 @@
 
   function pickupAddDialogHtml(dialog) {
     const selected = studentById(dialog.studentId);
-    return dialogHead('↳', '픽업 학생 추가', `${koreanDate(dialog.date)} ${weekdayLabel(dialog.weekday)}요일 · ${dialog.classTime}시 수업`)
+    return '<div class="olliTtPickupManageHead"><div><div class="olliTtDialogTitle" id="olliTtDialogTitle">픽업 학생 추가</div>'
+      + `<div class="olliTtDialogSub">${koreanDate(dialog.date)} ${weekdayLabel(dialog.weekday)}요일 · ${dialog.classTime}시 수업</div></div>`
+      + '<button type="button" class="olliTtDialogClose" data-tt-dialog-close aria-label="닫기">×</button></div>'
       + '<div class="olliTtDialogBody">'
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>학생 선택</span><small>유치부 학생을 검색하세요</small></div>'
       + `<input type="search" class="olliTtStudentSearch" data-tt-pickup-search value="${esc(dialog.query)}" placeholder="학생 검색"><div class="olliTtPickerList" data-tt-pickup-picker>${pickupPickerHtml(dialog)}</div></div>`
@@ -2619,7 +2621,7 @@ ${combined.memoError}`);
     if (!location) { alert('하원 장소를 입력해 주세요.'); return; }
     dialog.dropoffLabel = location;
     const result = await withSaving(() => service.registerPickupDropoff(dialog.pickupId, location));
-    if (result) notify(`${item.student_name} 학생의 기존 픽업에 하원을 추가했어요.`);
+    if (result) notify(`${item.student_name} 학생의 하원 설정을 저장했어요.`);
   }
 
   async function removePickupDropoff() {
