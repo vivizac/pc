@@ -141,7 +141,7 @@
 .olliPcTeamTalkMessage.incoming .olliPcTeamTalkBubble,.olliPcTeamTalkMessage.ai .olliPcTeamTalkBubble{--olli-pc-talk-bubble-bg:var(--olli-pc-talk-incoming-bg);color:var(--olli-pc-talk-incoming-text)}
 .olliPcTeamTalkMessage.outgoing .olliPcTeamTalkBubble{--olli-pc-talk-bubble-bg:var(--olli-pc-talk-outgoing-bg);color:var(--olli-pc-talk-outgoing-text)}
 .olliPcTeamTalkMessage .olliPcTeamTalkBubble.olliPcTeamTalkLinkBubble,
-.olliPcTeamTalkMessage.outgoing .olliPcTeamTalkBubble.olliPcTeamTalkLinkBubble{--olli-pc-talk-bubble-bg:#fff}
+.olliPcTeamTalkMessage.outgoing .olliPcTeamTalkBubble.olliPcTeamTalkLinkBubble{--olli-pc-talk-bubble-bg:#fff;color:#201818}
 .olliPcTeamTalkMessageGroupStart.incoming .olliPcTeamTalkBubble::before,.olliPcTeamTalkMessageGroupStart.ai .olliPcTeamTalkBubble::before{
   content:"";
   position:absolute;
