@@ -1791,19 +1791,47 @@
   function pickupManageDialogHtml(dialog) {
     const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
     if (!item) return '';
-    const currentDetail = item.is_dropoff === true
-      ? `${esc(item.pickup_label)} · 하원`
-      : `${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}`;
-    return dialogHead('↳', `${item.student_name} 픽업`, `${weekdayLabel(item.weekday)}요일 · ${item.class_time}시 수업`)
-      + '<div class="olliTtDialogBody">'
-      + `<div class="olliTtCurrentBox"><strong>${currentDetail}</strong>현재 적용 중인 픽업 일정입니다.</div>`
-      + '<div class="olliTtField olliTtDropoffRegisterField"><div class="olliTtFieldHead"><span>하원 장소</span><small>기존 등원 픽업은 그대로 두고 하원 장소만 추가합니다.</small></div>'
-      + `<div class="olliTtDropoffRegisterRow"><input type="text" maxlength="80" data-tt-pickup-dropoff-label value="${esc(dialog.dropoffLabel)}" placeholder="예: 집 앞, 리슈빌 정문"><button type="button" class="olliTtDropoffRegisterBtn" data-tt-register-dropoff>하원등록</button></div></div>`
-      + '<div class="olliTtField"><div class="olliTtFieldHead"><span>픽업시간 수정</span><small>잘못 입력한 현재 시간을 바로 고칩니다.</small></div>'
-      + `<input type="text" class="olliTtDateInput olliTtClockOnlyTime" data-tt-pickup-edit-time value="${esc(dialog.pickupTime)}" placeholder="시간 선택" readonly aria-label="픽업 시간 선택"></div>`
-      + `<div class="olliTtField"><div class="olliTtFieldHead"><span>변경·삭제 적용일</span><small>변경 예약은 내일부터, 픽업 삭제는 오늘부터 적용할 수 있습니다.</small></div><input type="date" class="olliTtDateInput" data-tt-pickup-effective-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></div>`
-      + '<div class="olliTtPickupManageActions"><button type="button" class="olliTtDialogPrimary secondary" data-tt-update-pickup>현재 시간 수정</button><button type="button" class="olliTtDialogPrimary" data-tt-schedule-pickup>변경 예약</button></div>'
-      + '<div class="olliTtDialogActions olliTtPickupDeleteActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-remove-pickup>픽업 삭제</button></div></div>';
+    const isDropoffOnly = item.is_dropoff === true;
+    const hasDropoff = Boolean(clean(item.dropoff_label)) || isDropoffOnly;
+    const dropoffValue = clean(dialog.dropoffLabel);
+    const arrivalSection = isDropoffOnly ? '' :
+      '<section class="olliTtPickupManageSection arrival">'
+      + '<div class="olliTtPickupManageSectionHead"><strong>등원 설정</strong><span>현재 등록된 등원 픽업 정보를 확인하고 시간을 수정할 수 있습니다.</span></div>'
+      + `<div class="olliTtPickupCurrentLine"><span>현재 등원 픽업</span><strong>${esc(item.pickup_label)} ${esc(pickupTimeLabel(item.pickup_time))}</strong></div>`
+      + '<div class="olliTtPickupManageFieldRow">'
+      + '<label><span>픽업시간 수정</span>'
+      + `<input type="text" class="olliTtDateInput olliTtClockOnlyTime" data-tt-pickup-edit-time value="${esc(dialog.pickupTime)}" placeholder="시간 선택" readonly aria-label="픽업 시간 선택"></label>`
+      + '<button type="button" class="olliTtDialogPrimary secondary" data-tt-update-pickup>현재 시간 수정</button>'
+      + '</div></section>';
+
+    const dropoffActionLabel = hasDropoff ? '하원 수정' : '하원등록';
+    const dropoffDelete = !isDropoffOnly && hasDropoff
+      ? '<button type="button" class="olliTtDropoffDeleteBtn" data-tt-remove-dropoff>하원삭제</button>'
+      : '';
+
+    return '<div class="olliTtPickupManageHead">'
+      + '<div><div class="olliTtDialogTitle" id="olliTtDialogTitle">' + esc(item.student_name) + ' 픽업</div>'
+      + '<div class="olliTtDialogSub">' + esc(weekdayLabel(item.weekday)) + '요일 · ' + esc(item.class_time) + '시 수업</div></div>'
+      + '<button type="button" class="olliTtDialogClose" data-tt-dialog-close aria-label="닫기">×</button></div>'
+      + '<div class="olliTtDialogBody olliTtPickupManageBody">'
+      + arrivalSection
+      + '<section class="olliTtPickupManageSection dropoff">'
+      + '<div class="olliTtPickupManageSectionHead"><strong>하원 설정</strong><span>' + (isDropoffOnly ? '하원 장소를 확인하고 수정합니다.' : '기존 등원 픽업은 그대로 두고 하원 장소만 추가합니다.') + '</span></div>'
+      + '<div class="olliTtPickupManageFieldRow dropoffRow">'
+      + '<label><span>하원 장소</span>'
+      + `<input type="text" maxlength="80" data-tt-pickup-dropoff-label value="${esc(dropoffValue)}" placeholder="예: 집 앞, 리슈빌 정문"></label>`
+      + `<button type="button" class="olliTtDropoffRegisterBtn" data-tt-register-dropoff>${dropoffActionLabel}</button>`
+      + '</div>'
+      + dropoffDelete
+      + '</section>'
+      + '<section class="olliTtPickupManageSection effective">'
+      + '<div class="olliTtPickupManageSectionHead"><strong>변경·삭제 적용일</strong><span>변경 예약은 내일부터, 픽업 삭제는 오늘부터 적용할 수 있습니다.</span></div>'
+      + '<div class="olliTtPickupManageFieldRow effectiveRow">'
+      + `<label><span>적용일</span><input type="date" class="olliTtDateInput" data-tt-pickup-effective-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></label>`
+      + '<button type="button" class="olliTtDialogPrimary" data-tt-schedule-pickup' + (isDropoffOnly ? ' disabled' : '') + '>변경 예약</button>'
+      + '</div></section>'
+      + '<div class="olliTtDialogActions olliTtPickupDeleteActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-remove-pickup>픽업 삭제</button></div>'
+      + '</div>';
   }
 
   let timetableHistoryRuntime = null;
@@ -2100,6 +2128,8 @@
     if (savePickupButton) savePickupButton.addEventListener('click', savePickup);
     const registerDropoffButton = dialog.querySelector('[data-tt-register-dropoff]');
     if (registerDropoffButton) registerDropoffButton.addEventListener('click', registerPickupDropoff);
+    const removeDropoffButton = dialog.querySelector('[data-tt-remove-dropoff]');
+    if (removeDropoffButton) removeDropoffButton.addEventListener('click', removePickupDropoff);
     const updatePickupButton = dialog.querySelector('[data-tt-update-pickup]');
     if (updatePickupButton) updatePickupButton.addEventListener('click', updatePickupNow);
     const schedulePickupButton = dialog.querySelector('[data-tt-schedule-pickup]');
@@ -2581,6 +2611,16 @@ ${combined.memoError}`);
     dialog.dropoffLabel = location;
     const result = await withSaving(() => service.registerPickupDropoff(dialog.pickupId, location));
     if (result) notify(`${item.student_name} 학생의 기존 픽업에 하원을 추가했어요.`);
+  }
+
+  async function removePickupDropoff() {
+    const dialog = state.dialog;
+    if (!dialog || dialog.kind !== 'pickupManage') return;
+    const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
+    if (!item || item.is_dropoff === true || !clean(item.dropoff_label)) return;
+    if (!global.confirm(`${item.student_name} 학생의 하원 설정만 삭제할까요?\n기존 등원 픽업은 그대로 유지됩니다.`)) return;
+    const result = await withSaving(() => service.removePickupDropoff(dialog.pickupId));
+    if (result) notify(`${item.student_name} 학생의 하원 설정을 삭제했어요.`);
   }
 
   async function updatePickupNow() {
