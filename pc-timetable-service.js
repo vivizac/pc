@@ -507,6 +507,13 @@
     }));
   }
 
+  async function registerPickupDropoff(pickupId, dropoffLabel) {
+    return rpc('olli_schedule_register_pickup_dropoff', contextPayload({
+      p_pickup_id: pickupId,
+      p_dropoff_label: dropoffLabel
+    }));
+  }
+
   async function updatePickup(pickupId, pickupTime, effectiveDate, mode) {
     return executeScheduleAction('update_pickup', {
       pickup_id: pickupId,
@@ -566,6 +573,7 @@
     setAttendanceSessionStatus,
     loadAttendanceMonth,
     savePickup,
+    registerPickupDropoff,
     updatePickup,
     removePickup,
     loadHistory,

@@ -608,6 +608,12 @@
 .olliTtClockPickerFooter { padding:10px; border-top:1px solid #edf0f3; background:#fff; }
 .olliTtClockPickerDone { width:100%; height:40px; border:0; border-radius:11px; color:#fff; background:#111; font:800 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
 .olliTtClockPickerDone:disabled { color:#a1a7ae; background:#eef0f2; cursor:default; }
+.olliTtDropoffRegisterField { margin-top:18px; padding:14px; border:1px solid #e3e7eb; border-radius:16px; background:#f8fafc; }
+.olliTtDropoffRegisterRow { display:grid; grid-template-columns:minmax(0,1fr) 96px; gap:9px; align-items:center; }
+.olliTtDropoffRegisterRow input { width:100%; height:44px; padding:0 12px; border:1px solid #dfe4e9; border-radius:12px; outline:none; color:#323944; background:#fff; font:660 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; box-sizing:border-box; }
+.olliTtDropoffRegisterRow input:focus { border-color:#9d88d5; box-shadow:0 0 0 3px rgba(128,97,199,.10); }
+.olliTtDropoffRegisterBtn { height:44px; border:0; border-radius:12px; color:#fff; background:#8061c7; font:800 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
+.olliTtDropoffRegisterBtn:hover { background:#7355b5; }
 .olliTtPickupManageActions { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:18px; }
 .olliTtPickupManageActions button { height:48px; border:0; border-radius:14px; font:780 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
 .olliTtPickupDeleteActions { margin-top:14px; }
