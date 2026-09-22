@@ -6,6 +6,7 @@ const ui = fs.readFileSync('pc-timetable.js', 'utf8');
 const css = fs.readFileSync('pc-timetable.css', 'utf8');
 const service = fs.readFileSync('pc-timetable-service.js', 'utf8');
 const sql = fs.readFileSync('supabase/migrations/20260921180000_timetable_pickup_dropoff.sql', 'utf8');
+const dropoffManageSql = fs.readFileSync('supabase/migrations/20260922165500_pickup_manage_dropoff_registration.sql', 'utf8');
 
 test('pickup add dialog uses a custom clock picker with an explicit done button', () => {
   assert.match(ui, /isDropoff: false/);
@@ -29,6 +30,25 @@ test('dropoff mode disables pickup time and saves without a time value', () => {
   assert.match(ui, /if \(!dialog\.isDropoff && !dialog\.pickupTime\)/);
   assert.match(ui, /pickupTime: dialog\.isDropoff \? null : dialog\.pickupTime/);
   assert.match(css, /\.olliTtPickupForm input:disabled \{[^}]*background:#eef0f2;[^}]*cursor:not-allowed;/);
+});
+
+test('pickup card manage popup can convert an existing pickup into dropoff with a place', () => {
+  assert.match(ui, /data-tt-pickup-dropoff-label/);
+  assert.match(ui, /data-tt-register-dropoff>하원등록<\/button>/);
+  assert.match(ui, /async function registerPickupDropoff\(\)/);
+  assert.match(ui, /service\.registerPickupDropoff\(dialog\.pickupId, location\)/);
+  assert.match(ui, /하원 장소를 입력해 주세요/);
+  assert.match(service, /async function registerPickupDropoff\(pickupId, dropoffLabel\)/);
+  assert.match(service, /rpc\('olli_schedule_register_pickup_dropoff'/);
+  assert.match(css, /\.olliTtDropoffRegisterRow \{[^}]*grid-template-columns:minmax\(0,1fr\) 96px/);
+});
+
+test('dropoff conversion RPC saves location, clears time, and marks the existing pickup row', () => {
+  assert.match(dropoffManageSql, /create or replace function public\.olli_schedule_register_pickup_dropoff/);
+  assert.match(dropoffManageSql, /pickup_label = v_label/);
+  assert.match(dropoffManageSql, /pickup_time = null/);
+  assert.match(dropoffManageSql, /is_dropoff = true/);
+  assert.match(dropoffManageSql, /p\.status = 'active'/);
 });
 
 test('pickup timetable card renders purple 하 marker beside the student name', () => {
