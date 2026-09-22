@@ -608,15 +608,31 @@
 .olliTtClockPickerFooter { padding:10px; border-top:1px solid #edf0f3; background:#fff; }
 .olliTtClockPickerDone { width:100%; height:40px; border:0; border-radius:11px; color:#fff; background:#111; font:800 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
 .olliTtClockPickerDone:disabled { color:#a1a7ae; background:#eef0f2; cursor:default; }
-.olliTtDropoffRegisterField { margin-top:18px; padding:14px; border:1px solid #e3e7eb; border-radius:16px; background:#f8fafc; }
-.olliTtDropoffRegisterRow { display:grid; grid-template-columns:minmax(0,1fr) 96px; gap:9px; align-items:center; }
-.olliTtDropoffRegisterRow input { width:100%; height:44px; padding:0 12px; border:1px solid #dfe4e9; border-radius:12px; outline:none; color:#323944; background:#fff; font:660 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; box-sizing:border-box; }
-.olliTtDropoffRegisterRow input:focus { border-color:#9d88d5; box-shadow:0 0 0 3px rgba(128,97,199,.10); }
-.olliTtDropoffRegisterBtn { height:44px; border:0; border-radius:12px; color:#fff; background:#8061c7; font:800 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
+.olliTtPickupManageHead { padding:24px 26px 18px; display:flex; align-items:flex-start; justify-content:space-between; gap:18px; }
+.olliTtPickupManageBody { padding-top:0; }
+.olliTtPickupManageSection { margin-top:14px; padding:17px; border:1px solid #e2e7ec; border-radius:17px; background:#f8fafc; }
+.olliTtPickupManageSection:first-child { margin-top:0; }
+.olliTtPickupManageSection.arrival { border-color:#d8eafa; background:#f5faff; }
+.olliTtPickupManageSection.dropoff { border-color:#e6def7; background:#fbf9ff; }
+.olliTtPickupManageSection.effective { background:#fafbfc; }
+.olliTtPickupManageSectionHead { margin-bottom:14px; display:flex; align-items:baseline; justify-content:space-between; gap:16px; }
+.olliTtPickupManageSectionHead strong { flex:0 0 auto; color:#20262e; font-size:calc(14px * var(--olli-text-scale)); font-weight:830; }
+.olliTtPickupManageSectionHead span { min-width:0; color:#929aa5; text-align:right; font-size:calc(10px * var(--olli-text-scale)); font-weight:620; line-height:1.4; }
+.olliTtPickupCurrentLine { min-height:48px; padding:0 13px; border-radius:13px; display:flex; align-items:center; gap:14px; background:#eaf4fd; box-sizing:border-box; }
+.olliTtPickupCurrentLine span { color:#6c7886; font-size:calc(11px * var(--olli-text-scale)); font-weight:700; }
+.olliTtPickupCurrentLine strong { color:#0a73dc; font-size:calc(14px * var(--olli-text-scale)); font-weight:830; }
+.olliTtPickupManageFieldRow { margin-top:12px; display:grid; grid-template-columns:minmax(0,1fr) 150px; gap:10px; align-items:end; }
+.olliTtPickupManageFieldRow label { min-width:0; display:block; }
+.olliTtPickupManageFieldRow label > span { margin:0 2px 7px; display:block; color:#4c5663; font-size:calc(11px * var(--olli-text-scale)); font-weight:780; }
+.olliTtPickupManageFieldRow input { width:100%; height:44px; padding:0 12px; border:1px solid #dfe4e9; border-radius:12px; outline:none; color:#323944; background:#fff; font:660 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; box-sizing:border-box; }
+.olliTtPickupManageFieldRow input:focus { border-color:#80c2fb; box-shadow:0 0 0 3px rgba(10,132,255,.08); }
+.olliTtPickupManageFieldRow button { height:44px; border-radius:12px; }
+.olliTtDropoffRegisterBtn { border:0; color:#fff; background:#8061c7; font:800 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
 .olliTtDropoffRegisterBtn:hover { background:#7355b5; }
-.olliTtPickupManageActions { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:18px; }
-.olliTtPickupManageActions button { height:48px; border:0; border-radius:14px; font:780 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
-.olliTtPickupDeleteActions { margin-top:14px; }
+.olliTtDropoffDeleteBtn { min-width:86px; height:34px; margin:10px 0 0 auto; padding:0 13px; border:1px solid #efcfd2; border-radius:10px; display:block; color:#c84b55; background:#fff; font:760 calc(10px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
+.olliTtDropoffDeleteBtn:hover { border-color:#e9b7bc; background:#fff7f8; }
+.olliTtPickupManageSection.effective .olliTtPickupManageFieldRow { margin-top:0; }
+.olliTtPickupDeleteActions { margin-top:16px; padding-top:14px; border-top:1px solid #eceff2; }
 .olliTtPickerList { height: 144px; max-height: 144px; overflow-y: auto; overflow-x: hidden; margin-top: 8px; }
 .olliTtPickerStudent { width: 100%; min-height: 48px; padding: 0 12px; border: 0; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #343b45; background: transparent; text-align: left; font: 750 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 .olliTtPickerStudent:hover,
