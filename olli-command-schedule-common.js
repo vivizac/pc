@@ -1694,8 +1694,11 @@
     }
 
     const referenceDate = localDateKey(opts.effectiveDate || new Date());
-    const weekData = await loadFreshWeek(referenceDate);
-    let rows = activePickupRows(weekData, studentId, referenceDate);
+    const lookupDate = Number(opts.weekday || 0)
+      ? nextOccurrenceKey(referenceDate, Number(opts.weekday))
+      : referenceDate;
+    const weekData = await loadFreshWeek(lookupDate);
+    let rows = activePickupRows(weekData, studentId, lookupDate);
     if (Number(opts.weekday || 0)) rows = rows.filter(row => Number(row && row.weekday) === Number(opts.weekday));
     if (Number(opts.classTime || 0)) rows = rows.filter(row => Number(row && row.class_time) === Number(opts.classTime));
 
@@ -1755,8 +1758,11 @@
     const student = resolved.student;
     const studentId = clean(student && student.id);
     const referenceDate = localDateKey(opts.effectiveDate || new Date());
-    const weekData = await loadFreshWeek(referenceDate);
-    let rows = activePickupRows(weekData, studentId, referenceDate);
+    const lookupDate = Number(opts.weekday || 0)
+      ? nextOccurrenceKey(referenceDate, Number(opts.weekday))
+      : referenceDate;
+    const weekData = await loadFreshWeek(lookupDate);
+    let rows = activePickupRows(weekData, studentId, lookupDate);
     if (Number(opts.weekday || 0)) rows = rows.filter(row => Number(row && row.weekday) === Number(opts.weekday));
     if (Number(opts.classTime || 0)) rows = rows.filter(row => Number(row && row.class_time) === Number(opts.classTime));
     if (clean(opts.pickupKind) === 'dropoff') {
@@ -2514,11 +2520,28 @@
         preparedMessages.push(clean(prepared.message));
       }
       if (commands.length < 2) return { ok:false, message:'묶음 쓰기 작업은 2개 이상이어야 해요.' };
+      const labels = commands.map(command => {
+        const action = clean(command && command.intent);
+        if (action === 'cancel_waitlist') return clean(command.studentName) + ' · 대기 취소';
+        if (action === 'add_makeup') return clean(command.studentName) + ' · 보강 등록';
+        if (action === 'cancel_makeup') return clean(command.studentName) + ' · 보강 취소';
+        if (action === 'add_trial') return clean(command.guestName || command.studentName) + ' · 체험 등록';
+        if (action === 'cancel_trial') return clean(command.guestName || command.studentName) + ' · 체험 취소';
+        if (action === 'move_class') return clean(command.studentName) + ' · 수업 이동';
+        if (action === 'cancel_move') return clean(command.studentName) + ' · 수업 이동 취소';
+        if (action === 'add_waitlist') return clean(command.studentName) + ' · 대기 등록';
+        if (action === 'add_pickup') return clean(command.studentName) + ' · ' + (command.isDropoff ? '하원 픽업 등록' : '등원 픽업 등록');
+        if (action === 'update_pickup_arrival') return clean(command.studentName) + ' · 등원 픽업 수정';
+        if (action === 'update_pickup_dropoff') return clean(command.studentName) + ' · 하원 픽업 수정';
+        if (action === 'cancel_pickup_dropoff') return clean(command.studentName) + ' · 하원 픽업 삭제';
+        if (action === 'cancel_pickup') return clean(command.studentName) + ' · 픽업 삭제';
+        return preparedMessages[commands.indexOf(command)].split('\n')[0];
+      });
       return {
         ok:true,
         command:{ intent:'batch_write', commands },
         message:'다음 ' + commands.length + '개 작업을 함께 진행할까요?\n'
-          + preparedMessages.map((message, index) => (index + 1) + '. ' + message.split('\n')[0]).join('\n')
+          + labels.map((label, index) => (index + 1) + '. ' + label).join('\n')
       };
     }
     if (intent === 'mark_absent') return prepareAbsenceCommand(options);
