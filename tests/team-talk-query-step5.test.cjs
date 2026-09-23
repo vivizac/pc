@@ -243,15 +243,43 @@ test('combined short schedule lookup explicitly reports a missing division', () 
 });
 
 
-test('Olli reply suggestion requires at least two temporal signal types', () => {
+test('Olli reply suggestion accepts either two temporal signals or one temporal signal with a schedule inquiry', () => {
   const router = loadRouter();
   assert.equal(router.isOlliReplyCandidate('10월 4일 5시 자리 어때?'), true);
   assert.equal(router.isOlliReplyCandidate('화요일 4시 자리 어때?'), true);
   assert.equal(router.isOlliReplyCandidate('10월 4일 화요일 괜찮아?'), true);
   assert.equal(router.isOlliReplyCandidate('다음주 화요일 가능해?'), true);
+
+  assert.equal(router.isOlliReplyCandidate('4시 자리 있어?'), true);
+  assert.equal(router.isOlliReplyCandidate('월요일 자리 있어?'), true);
+  assert.equal(router.isOlliReplyCandidate('10월 4일 자리 있어?'), true);
+  assert.equal(router.isOlliReplyCandidate('4시 대기 가능해?'), true);
+  assert.equal(router.isOlliReplyCandidate('화요일 체험 가능해?'), true);
+  assert.equal(router.isOlliReplyCandidate('10월 4일 보강 가능해?'), true);
+
   assert.equal(router.isOlliReplyCandidate('화요일 수업 어때?'), false);
-  assert.equal(router.isOlliReplyCandidate('4시 자리 어때?'), false);
-  assert.equal(router.isOlliReplyCandidate('10월 4일 자리 어때?'), false);
+  assert.equal(router.isOlliReplyCandidate('4시 회의 있어?'), false);
+  assert.equal(router.isOlliReplyCandidate('월요일 보강 등록해줘'), false);
+});
+
+test('Olli reply suggestion routes a one-signal seat question when the response button is pressed', async () => {
+  let recurringCalls = 0;
+  const router = loadRouter({
+    async findRecurringAvailability(options) {
+      recurringCalls += 1;
+      assert.equal(options.weekday, 0);
+      assert.equal(options.timeSlot, 4);
+      return { displaySlots:[], allSlots:[] };
+    },
+    describeRecurringAvailability() {
+      return '4시 빈자리를 확인했어요.';
+    }
+  });
+
+  const result = await router.runSuggestedQuery('4시 자리 있어?', { source:'olli_talk_reply_button' });
+  assert.equal(result.handled, true);
+  assert.equal(recurringCalls, 1);
+  assert.match(result.message, /4시/);
 });
 
 test('Olli reply suggestion can turn temporal shorthand into a read query only when explicitly requested', async () => {
