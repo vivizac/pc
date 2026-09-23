@@ -1927,6 +1927,7 @@
     dialog.classList.toggle('olliTtMakeupMode', state.dialog.kind === 'move' && state.dialog.actionType === 'makeup');
     dialog.classList.toggle('olliTtMemoManageDialog', state.dialog.kind === 'memoManage');
     dialog.classList.toggle('olliTtAddDialog', state.dialog.kind === 'add');
+    dialog.classList.toggle('olliTtPickupDialog', state.dialog.kind === 'pickupAdd' || state.dialog.kind === 'pickupManage');
     if (state.dialog.kind === 'move') dialog.innerHTML = moveDialogHtml(state.dialog);
     else if (state.dialog.kind === 'add') dialog.innerHTML = addDialogHtml(state.dialog);
     else if (state.dialog.kind === 'memoManage') dialog.innerHTML = memoManageDialogHtml(state.dialog);
