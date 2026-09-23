@@ -1254,10 +1254,7 @@
   function studentScheduleText(studentId) {
     const referenceDate = currentWeekEndDate();
     const rows = enrollments().filter((item) => clean(item.student_id) === clean(studentId) && enrollmentEffectiveOn(item, referenceDate));
-    if (!rows.length) {
-      const student = studentById(studentId);
-      return service.legacyPairs(student).map((pair) => `${weekdayLabel(pair.weekday)} ${timeLabel(pair.time_slot)}`).join(' · ');
-    }
+    if (!rows.length) return '';
     const student = studentById(studentId);
     return rows.sort((a, b) => Number(a.weekday) - Number(b.weekday) || Number(a.time_slot) - Number(b.time_slot))
       .map((item) => `${weekdayLabel(item.weekday)} ${timeLabel(item.time_slot)}${classGroupLabel(divisionOf(student), item.class_group) ? ` ${classGroupLabel(divisionOf(student), item.class_group)}` : ''}`).join(' · ');
@@ -1581,7 +1578,8 @@
     const rows = currentStudentEnrollments(dialog.studentId).sort((a, b) => Number(a.weekday) - Number(b.weekday) || Number(a.time_slot) - Number(b.time_slot));
     const scheduledRows = changes().filter((item) => clean(item.student_id) === clean(dialog.studentId) && item.status === 'scheduled');
     const moveRows = scheduledRows.filter((item) => clean(item.change_type) === 'move');
-    const legacyDeleteRows = scheduledRows.filter((item) => clean(item.change_type) === 'remove');
+    const legacyDeleteRows = scheduledRows.filter((item) => clean(item.change_type) === 'remove'
+      && rows.some((row) => clean(row.id) === clean(item.source_enrollment_id)));
     const division = divisionOf(student);
     const timeOptions = timeOptionsFor(division, dialog.targetWeekday);
     const capacity = capacityFor(division);
@@ -2886,7 +2884,8 @@ ${combined.memoError}`);
       && isReservedMoveDate(item.effective_date));
     const legacyDeletes = changes().filter((item) => clean(item.student_id) === clean(student.id)
       && item.status === 'scheduled'
-      && clean(item.change_type) === 'remove');
+      && clean(item.change_type) === 'remove'
+      && studentEnrollments(student.id).some((row) => clean(row.id) === clean(item.source_enrollment_id)));
     const regularText = rows.length ? rows.map((item) => `${weekdayLabel(item.weekday)}요일 ${timeLabel(item.time_slot)}`).join(' · ') : '등록된 수업 없음';
     const statusRows = [
       `<div><strong>정규 수업</strong>　${esc(regularText)}</div>`,
