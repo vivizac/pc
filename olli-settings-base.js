@@ -1243,7 +1243,7 @@ function openSettingsPage() {
   settings.style.transform = 'translateX(0)';
   settings.style.opacity = '1';
   settings.style.pointerEvents = 'auto';
-  settings.style.zIndex = '90000';
+  settings.style.zIndex = '130000';
 
   if (record) record.style.display = 'flex';
 
