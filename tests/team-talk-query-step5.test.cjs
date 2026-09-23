@@ -40,6 +40,36 @@ test('passive pickup lookup is not mistaken for pickup registration', () => {
   assert.equal(query.kind, 'all');
 });
 
+test('pickup query accepts natural today and class-time questions plus short lookup forms', () => {
+  const router = loadRouter();
+
+  const today = router.parsePickupQueryIntent('오늘 픽업 누구 있어?');
+  assert.ok(today);
+  assert.equal(today.dateSpec.mode, 'today');
+  assert.equal(today.classTime, 0);
+  assert.equal(today.kind, 'all');
+
+  for (const text of [
+    '오늘 4시 픽업',
+    '오늘 4시 픽업 누구 있어?',
+    '오늘 4시 픽업 몇 명이야?'
+  ]) {
+    const query = router.parsePickupQueryIntent(text);
+    assert.ok(query, text);
+    assert.equal(query.dateSpec.mode, 'today', text);
+    assert.equal(query.classTime, 4, text);
+    assert.equal(query.kind, 'all', text);
+  }
+
+  const reversed = router.parsePickupQueryIntent('픽업 5시');
+  assert.ok(reversed);
+  assert.equal(reversed.dateSpec.mode, 'today');
+  assert.equal(reversed.classTime, 5);
+
+  assert.equal(router.parsePickupQueryIntent('오늘 4시 픽업 등록해줘'), null);
+  assert.equal(router.isOlliReplyCandidate('오늘 픽업 누구 있어?'), true);
+});
+
 test('pickup query understands dropoff and class-time filters', () => {
   const router = loadRouter();
   const query = router.parsePickupQueryIntent('다음주 화요일 5시 수업 하원 픽업 학생 보여줘');
@@ -108,6 +138,27 @@ test('pickup read filters by date, class time and dropoff state', async () => {
   assert.match(message, /1명이에요/);
   assert.match(message, /최서윤/);
   assert.match(message, /하원/);
+});
+
+test('pickup description counts unique students and shows pickup/dropoff details', () => {
+  const schedule = loadSchedule({ pickups:[] });
+  const message = schedule.describePickups({
+    date:'2026-09-23',
+    dateLabel:'오늘',
+    classTime:4,
+    kind:'all',
+    items:[
+      { student_id:'s1', student_name:'김민서', class_time:4, pickup_label:'리슈빌', pickup_time:'15:30:00', is_dropoff:false },
+      { student_id:'s1', student_name:'김민서', class_time:4, pickup_label:'정문', pickup_time:'17:10:00', is_dropoff:true },
+      { student_id:'s2', student_name:'최서윤', class_time:4, pickup_label:'센트럴', pickup_time:'15:40:00', is_dropoff:false }
+    ]
+  });
+
+  assert.match(message, /픽업 관리 학생은 2명이에요/);
+  assert.match(message, /김민서/);
+  assert.match(message, /최서윤/);
+  assert.match(message, /등원 픽업/);
+  assert.match(message, /하원 픽업/);
 });
 
 test('existing availability lookup remains a read query', () => {
