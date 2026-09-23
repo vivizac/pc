@@ -204,9 +204,9 @@
   text-align: left;
   font-family: 'Pretendard', sans-serif;
   cursor: pointer;
-  box-shadow: inset 3px 0 0 #f1d36b;
+  box-shadow: none;
 }
-#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #d3d9df; background: #f7f8fa; box-shadow: inset 3px 0 0 #f1d36b; }
+#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #d3d9df; background: #f7f8fa; box-shadow: none; }
 #recordRoomScreen .olliTtCellMemoCard > span { flex: 0 0 auto; margin-top: 1px; font-size: calc(11px * var(--olli-text-scale)); line-height: 1; }
 #recordRoomScreen .olliTtCellMemoCard > strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(10px * var(--olli-text-scale)); font-weight: 760; line-height: 1.2; }
 #recordRoomScreen .olliTtStudent {
@@ -241,8 +241,8 @@
 #recordRoomScreen .olliTtStudentMore { width: 23px; min-width: 23px; padding: 0 3px 1px 0; border: 0; color: #b4bac2; background: transparent; font: 500 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 #recordRoomScreen .olliTtStudentMore:hover { color: #7f8792; }
 #recordRoomScreen .olliTtStudent.scheduled { grid-column: 1 / -1; }
-#recordRoomScreen .olliTtStudent.regular.elementary,
-#recordRoomScreen .olliTtStudent.regular.kinder { border-color: #d9dee4; background: #f7f8fa; }
+#recordRoomScreen .olliTtStudent.regular.elementary { border-color: #bfdcf3; background: #eaf5ff; }
+#recordRoomScreen .olliTtStudent.regular.kinder { border-color: #f5c7d4; background: #ffe4eb; }
 #recordRoomScreen .olliTtStudent.wait { border: 1px dashed #c8bceb; color: #8373ac; background: #f8f6ff; }
 #recordRoomScreen .olliTtStudent.makeup { border-color: #73b9a5; color: #267763; background: #e5f6f0; }
 #recordRoomScreen .olliTtStudent.trial { border-color: #e6b56e; color: #9a5a10; background: #fff1dc; }
@@ -253,11 +253,10 @@
 #recordRoomScreen .olliTtStudent.regular.absenceUpcoming .olliTtStudentMore { color:#858b93; }
 #recordRoomScreen .olliTtStudent.regular.absenceUpcoming .olliTtSecondSessionMark,
 #recordRoomScreen .olliTtStudent.regular.absenceUpcoming .olliTtReservation { color:inherit; }
-#recordRoomScreen .olliTtStudent.regular.absent { border-color:#e5484d; color:#17191d; background:#e5484d; box-shadow:none; }
-#recordRoomScreen .olliTtStudent.regular.absent .olliTtStudentMore { color:#8f252c; }
-#recordRoomScreen .olliTtStudent.regular.absent .olliTtStudentMore:hover { color:#6f171d; }
+#recordRoomScreen .olliTtStudent.regular.absent { border-color:#e5484d; color:#fff; background:#e5484d; box-shadow:none; }
+#recordRoomScreen .olliTtStudent.regular.absent .olliTtStudentMore { color:rgba(255,255,255,.9); }
 #recordRoomScreen .olliTtStudent.regular.absent .olliTtSecondSessionMark,
-#recordRoomScreen .olliTtStudent.regular.absent .olliTtReservation { color:#17191d; }
+#recordRoomScreen .olliTtStudent.regular.absent .olliTtReservation { color:#fff; }
 #recordRoomScreen .olliTtStudent:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(26, 38, 58, .09); }
 #recordRoomScreen .olliTtStudentTag { float: right; margin-left: 3px; padding: 1px 3px; border: 0; border-radius: 999px; color: #fff; font: 800 calc(7px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 #recordRoomScreen button.olliTtStudentTag { flex: 0 0 auto; margin: 3px 2px 3px 3px; }
