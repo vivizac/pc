@@ -657,7 +657,7 @@
 .olliTtPickerStudent.keyboardActive { color: #0877df; background: #edf6ff; }
 .olliTtPickerStudent.keyboardActive { box-shadow: inset 0 0 0 1px #9bcdf8; }
 .olliTtPickerStudent span { color: #9aa1aa; font-size: calc(10px * var(--olli-text-scale)); font-weight: 620; }
-.olliTtTypeGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 0; }
+.olliTtTypeGrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 0; }
 .olliTtTypeBtn { min-height: 46px; padding: 7px 10px; border: 1px solid #e0e5ea; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #59616c; background: #fff; text-align: center; font: 760 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 .olliTtTypeBtn:hover { border-color: #c7def3; color: #0877df; background: #f7fbff; }
 .olliTtTypeBtn.active { border-color: #0A84FF; color: #0877df; background: #edf6ff; box-shadow: inset 0 0 0 1px rgba(10,132,255,.04); }
