@@ -2239,6 +2239,18 @@
     }
   }
 
+  async function refreshWeekAfterMutation() {
+    const loaded = await loadWeek();
+    if (loaded || state.data) return;
+    const requestedWeek = dateKey(mondayOf(new Date()));
+    const requestedAcademyId = typeof service.currentAcademyId === 'function' ? service.currentAcademyId() : '';
+    const data = await service.loadWeek(requestedWeek);
+    state.data = data;
+    state.dataWeek = requestedWeek;
+    state.dataAcademyId = requestedAcademyId;
+    refreshOpenStudentInfoPanel();
+  }
+
   async function withSaving(task) {
     if (state.saving) return;
     state.saving = true;
@@ -2250,7 +2262,7 @@
       state.saving = false;
       closeDialog();
       state.data = null;
-      await loadWeek();
+      await refreshWeekAfterMutation();
       return result;
     } catch (error) {
       state.saving = false;
