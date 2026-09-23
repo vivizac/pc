@@ -368,13 +368,16 @@
 }
 #olliTtOverlay.show { display: flex; }
 #olliTtDialog {
-  width: min(504px, calc(100vw - 48px));
+  width: min(576px, calc(100vw - 48px));
   max-height: calc(100vh - 48px);
   overflow: auto;
   border: 1px solid #e1e6eb;
   border-radius: 20px;
   background: #fff;
   box-shadow: 0 24px 68px rgba(22, 34, 51, .18), 0 6px 18px rgba(22, 34, 51, .06);
+}
+@media (min-width: 581px) {
+  #olliTtDialog.olliTtPickupDialog { width: min(504px, calc(100vw - 48px)); }
 }
 #olliTtOverlay.show #olliTtDialog { animation: olliTtDialogIn .18s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes olliTtDialogIn { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
