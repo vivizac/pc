@@ -2009,12 +2009,16 @@
     }));
     dialog.querySelectorAll('[data-tt-target-day]').forEach((button) => button.addEventListener('click', () => {
       state.dialog.targetWeekday = Number(button.dataset.ttTargetDay);
+      if (state.dialog.kind === 'move' && state.dialog.actionType === 'move') {
+        state.dialog.effectiveDate = upcomingDateForWeekday(state.dialog.targetWeekday);
+      }
       const student = studentById(state.dialog.studentId);
       if (student) {
         const timeOptions = timeOptionsFor(divisionOf(student), state.dialog.targetWeekday);
         if (!timeOptions.includes(state.dialog.targetTime)) state.dialog.targetTime = timeOptions[0];
         if (!isClassSplit(divisionOf(student), state.dialog.targetWeekday, state.dialog.targetTime)) state.dialog.targetClassGroup = 'A';
       }
+      if (state.dialog.kind === 'move' && state.dialog.actionType === 'move') syncMoveAbsenceState(state.dialog);
       renderDialog();
     }));
     dialog.querySelectorAll('[data-tt-target-time]').forEach((button) => button.addEventListener('click', () => {
@@ -2059,6 +2063,8 @@
         const student = studentById(state.dialog.studentId);
         const options = student ? timeOptionsFor(divisionOf(student), state.dialog.targetWeekday) : [];
         if (!options.includes(state.dialog.targetTime)) state.dialog.targetTime = options[0];
+      } else if (state.dialog.kind === 'move' && state.dialog.actionType === 'move') {
+        selectedDate = alignDateToWeekdayOnOrAfter(selectedDate, state.dialog.targetWeekday);
       }
       state.dialog.effectiveDate = dateKey(selectedDate);
       if (state.dialog.kind === 'move' && state.dialog.actionType === 'move') syncMoveAbsenceState(state.dialog);
@@ -2417,11 +2423,13 @@
     if (combined.actionResult) {
       if (dialog.actionType === 'makeup') notify(`${student.name} 학생의 보강을 등록했어요.`);
       else if (combined.actionResult.result === 'waitlisted') notify(`${student.name} 학생을 대기로 등록했어요.`);
-      else if (combined.actionResult.result === 'scheduled') {
-        const actionLabel = dialog.actionType === 'move' ? '수업 이동' : '시간표 변경';
-        notify(`${student.name} 학생의 ${actionLabel}을 ${shortDate(dialog.effectiveDate)}부터 예약했어요.`);
-      } else if (dialog.actionType === 'move') notify(`${student.name} 학생의 수업을 지금 바로 이동했어요.`);
-      else notify(`${student.name} 학생의 시간표를 변경했어요.`);
+      else if (dialog.actionType === 'move' && combined.actionResult.result === 'scheduled' && isReservedMoveDate(dialog.effectiveDate)) {
+        notify(`${student.name} 학생의 수업 이동을 ${shortDate(dialog.effectiveDate)}부터 예약했어요.`);
+      } else if (dialog.actionType === 'move') {
+        notify(`${student.name} 학생의 이번 주 수업을 이동했어요.`);
+      } else if (combined.actionResult.result === 'scheduled') {
+        notify(`${student.name} 학생의 시간표 변경을 ${shortDate(dialog.effectiveDate)}부터 예약했어요.`);
+      } else notify(`${student.name} 학생의 시간표를 변경했어요.`);
     } else if (combined.absenceSaved && dialog.absenceSelected && combined.memoSaved) {
       notify(`${student.name} 학생의 결석과 메모를 저장했어요.`);
     } else if (combined.absenceSaved && dialog.absenceSelected) {
