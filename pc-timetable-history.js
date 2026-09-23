@@ -46,6 +46,7 @@
       wait_cancel: '대기 취소',
       makeup_add: '보강 등록',
       makeup_date_change: '보강 날짜 변경',
+      trial_date_change: '체험 날짜 변경',
       makeup_cancel: '보강 취소',
       scheduled_cancel: '변경 예약 취소',
       restore: '이전 변경 복구'
@@ -56,7 +57,12 @@
     const status = clean(data && data.status);
     if (!status) return '';
     if (tableName === 'olli_schedule_waitlist') return ({ waiting: '대기', offered: '입장 안내', accepted: '입장 완료', cancelled: '대기 취소' })[status] || status;
-    if (tableName === 'olli_schedule_one_time_sessions') return ({ scheduled: '보강', attended: '출석 완료', cancelled: '보강 취소' })[status] || status;
+    if (tableName === 'olli_schedule_one_time_sessions') {
+      const trial = clean(data && data.session_type) === 'trial';
+      return trial
+        ? ({ scheduled: '체험', attended: '출석 완료', cancelled: '체험 취소' })[status] || status
+        : ({ scheduled: '보강', attended: '출석 완료', cancelled: '보강 취소' })[status] || status;
+    }
     if (tableName === 'olli_schedule_changes') return ({ scheduled: '변경 예약', applied: '적용', cancelled: '예약 취소' })[status] || status;
     return status === 'cancelled' ? '삭제' : '';
   }
