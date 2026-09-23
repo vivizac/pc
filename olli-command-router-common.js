@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-23-roster-read-query-1';
+  const VERSION = '2026-09-23-multi-read-query-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -69,7 +69,7 @@
   }
 
   function isOlliReplyCandidate(value) {
-    if (parseRosterQueryIntent(value)) return true;
+    if (parseMultiQueryIntent(value) || parseRosterQueryIntent(value)) return true;
     const signals = olliReplyTemporalSignals(value);
     const temporalCount = [signals.date, signals.weekday, signals.time].filter(Boolean).length;
     if (temporalCount >= 2) return true;
@@ -720,6 +720,93 @@
     return cleanText(fallback) || '이 작업을 진행할까요?';
   }
 
+  function multiWeekdayTimeMentions(value) {
+    const raw = cleanText(value);
+    const pattern = /(?:(다다음\s*주|다음\s*주|차주|이번\s*주|금주)\s*)?([월화수목금토])요일\s*(\d{1,2})\s*시(?:\s*([AaBb])\s*반)?/g;
+    return Array.from(raw.matchAll(pattern)).map(match => ({
+      scope:cleanText(match[1]).replace(/\s+/g, ''),
+      weekdayText:match[2] + '요일',
+      weekday:WEEKDAY_MAP[match[2]] || 0,
+      timeSlot:Number(match[3] || 0),
+      classGroup:cleanText(match[4]).toUpperCase(),
+      index:Number(match.index || 0),
+      text:String(match[0] || '')
+    })).filter(item => item.weekday && item.timeSlot);
+  }
+
+  function parseMultiQueryIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw) return null;
+
+    const mentions = multiWeekdayTimeMentions(raw);
+    if (mentions.length < 2 || mentions.length > 3) return null;
+
+    const explicitWriteCommand =
+      /(?:등록|추가|넣|예약|신청|배정|저장|취소|삭제|지워|지우|제거|빼|해제|없애|변경|이동|옮겨|바꿔|바꾸)(?:해줘|해주세요|해줄래|할래|줘|주세요|하자|해요|해)[.!。]?$/i.test(compact);
+    if (explicitWriteCommand) return null;
+
+    const division = detectDivision(compact);
+    const inheritedScope = mentions.find(item => item.scope)?.scope || '';
+    const asksForRoster =
+      /(?:누구|누가|학생|원생|명단|목록|리스트|몇명|몇명이|인원|예약자|대기자)/.test(compact);
+    const hasPickup = /(?:등원|하원)?픽업/.test(compact);
+    const hasAbsence = /결석/.test(compact);
+    const hasMakeup = /(?:보강|보충(?:수업)?)/.test(compact);
+    const hasTrial = /(?:체험(?:수업|클래스)?)/.test(compact);
+    const hasWaitlist = /(?:대기(?:자|명단|리스트)?|웨이팅(?:리스트)?)/.test(compact);
+    const hasMove = /(?:수업이동예약|수업이동|이동예약|변경예약)/.test(compact);
+    const hasSeatMeaning = /(?:자리|빈자리|여석|빈곳|빈시간|몇자리)/.test(compact);
+    const hasAvailabilityQuestion =
+      /(?:가능|남는|남아|남았|있어|있나|있나요|있니|있을까|여유|비어|몇자리)/.test(compact);
+
+    let sharedSuffix = '';
+    if (hasPickup) {
+      sharedSuffix = /하원/.test(compact)
+        ? '하원 픽업 누구 있어?'
+        : (/(?:등원|픽업만)/.test(compact) ? '등원 픽업 누구 있어?' : '픽업 누구 있어?');
+    } else if (hasMove && asksForRoster && !hasAvailabilityQuestion) {
+      sharedSuffix = '수업 이동 예약 학생 누구야?';
+    } else if (hasAbsence && asksForRoster) {
+      sharedSuffix = '결석 학생 누구야?';
+    } else if (hasMakeup && asksForRoster && !hasAvailabilityQuestion) {
+      sharedSuffix = '보강 학생 누구야?';
+    } else if (hasTrial && asksForRoster && !hasAvailabilityQuestion) {
+      sharedSuffix = '체험 학생 누구야?';
+    } else if (hasWaitlist && asksForRoster && !hasAvailabilityQuestion) {
+      sharedSuffix = '대기 학생 누구야?';
+    } else if (hasSeatMeaning || hasAvailabilityQuestion || hasMakeup || hasTrial || hasWaitlist || hasMove) {
+      if (hasMakeup) sharedSuffix = '보강 가능해?';
+      else if (hasTrial) sharedSuffix = '체험 가능해?';
+      else if (hasWaitlist) sharedSuffix = '대기 가능해?';
+      else if (hasMove) sharedSuffix = '수업 이동 가능해?';
+      else sharedSuffix = '자리 있어?';
+    } else {
+      return null;
+    }
+
+    const divisionText = division === 'elementary' ? '초등부 ' : (division === 'kinder' ? '유치부 ' : '');
+    const queries = mentions.map(item => {
+      const scopeText = item.scope || inheritedScope;
+      const scopedWeekday = (scopeText ? scopeText + ' ' : '') + item.weekdayText;
+      const groupText = item.classGroup ? ' ' + item.classGroup + '반' : '';
+      const queryText = divisionText + scopedWeekday + ' ' + item.timeSlot + '시' + groupText + ' ' + sharedSuffix;
+      return parseRosterQueryIntent(queryText)
+        || parsePickupQueryIntent(queryText)
+        || parseAvailableSlotsIntent(queryText);
+    }).filter(Boolean);
+
+    if (queries.length !== mentions.length) return null;
+
+    return {
+      type:'query',
+      intent:'multi_read_query',
+      queries,
+      originalText:raw
+    };
+  }
+
+
   function parseAvailableSlotsIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
@@ -932,7 +1019,8 @@
 
   function parseQueryIntent(text) {
     const normalizedText = cleanText(text);
-    return parseRosterQueryIntent(normalizedText)
+    return parseMultiQueryIntent(normalizedText)
+      || parseRosterQueryIntent(normalizedText)
       || parsePickupQueryIntent(normalizedText)
       || parseAvailableSlotsIntent(normalizedText);
   }
@@ -1003,6 +1091,37 @@
         message:'학원 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
         clearInput:true,
         payload:queryIntent
+      };
+    }
+
+    if (queryIntent.intent === 'multi_read_query') {
+      const results = [];
+      for (const subQuery of queryIntent.queries) {
+        const subResult = await runQuery(subQuery.originalText, context);
+        if (!subResult || subResult.handled !== true) continue;
+        results.push(subResult);
+      }
+
+      if (!results.length) {
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:queryIntent.intent,
+          text:normalizedText,
+          message:'요청한 항목들을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:queryIntent
+        };
+      }
+
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:queryIntent.intent,
+        text:normalizedText,
+        message:results.map(item => cleanText(item.message)).filter(Boolean).join('\n\n'),
+        clearInput:true,
+        payload:Object.assign({}, queryIntent, { results })
       };
     }
 
@@ -1205,7 +1324,7 @@
   async function runSuggestedQuery(text, context) {
     const normalizedText = cleanText(text);
     if (!isOlliReplyCandidate(normalizedText)) return passThrough(normalizedText);
-    if (parseRosterQueryIntent(normalizedText) || parsePickupQueryIntent(normalizedText)) {
+    if (parseMultiQueryIntent(normalizedText) || parseRosterQueryIntent(normalizedText) || parsePickupQueryIntent(normalizedText)) {
       return runQuery(normalizedText, context);
     }
     return runQuery(normalizedText + ' 시간표 보여줘', context);
@@ -1527,6 +1646,7 @@
     prepareAction,
     parseWriteIntent,
     parseQueryIntent,
+    parseMultiQueryIntent,
     parseAvailableSlotsIntent,
     parseRosterQueryIntent,
     parsePickupQueryIntent,
