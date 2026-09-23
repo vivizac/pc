@@ -392,7 +392,7 @@
 .olliTtCurrentBox strong { display: block; margin-bottom: 4px; color: #0A73DC; font-size: calc(15px * var(--olli-text-scale)); font-weight: 830; }
 .olliTtAddMemo { min-height: 92px; padding: 12px 14px; border: 1px solid #e0e5ea; border-radius: 14px; display: flex; flex-direction: column; box-sizing: border-box; background: #fafbfc; }
 .olliTtAddMemo > span { margin: 0 0 7px; color: #343a43; font-size: calc(12px * var(--olli-text-scale)); font-weight: 780; }
-.olliTtAddMemo textarea { width: 100%; min-height: 52px; flex: 1; padding: 0; border: 0; outline: 0; resize: none; box-sizing: border-box; color: #303946; background: transparent; font: 680 calc(10px * var(--olli-text-scale)) 'Pretendard', sans-serif; line-height: 1.5; }
+.olliTtAddMemo textarea { width: 100%; min-height: 52px; flex: 1; padding: 0; border: 0; outline: 0; resize: none; box-sizing: border-box; color: #303946; background: transparent; font: 680 calc(15px * var(--olli-text-scale)) 'Pretendard', sans-serif; line-height: 1.5; }
 .olliTtAddMemo textarea::placeholder { color: #a5adb7; }
 .olliTtCancelMemo { margin-top:21px; }
 .olliTtAbsenceRow { margin-top:16px; display:grid; grid-template-columns:minmax(0,1fr) 108px; gap:10px; align-items:stretch; }
