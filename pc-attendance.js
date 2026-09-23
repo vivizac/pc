@@ -672,7 +672,7 @@ function recordWorkspaceHtml(student, recordContent) {
 
     let pointerScroll = null;
     const rosterRowFromEvent = (event) => {
-      if (!isPcAttendance() || event.target.closest('.recordAttendanceLeadBtn')) return null;
+      if (!isPcAttendance()) return null;
       const row = event.target.closest('.elementaryStudentRow,.kinderStudentRow');
       return row && list.contains(row) ? row : null;
     };
