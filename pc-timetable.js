@@ -1758,7 +1758,7 @@
     const dateChangeHtml = trial ? '' : `<div class="olliTtField"><div class="olliTtFieldHead"><span>보강 날짜 변경</span><small>현재 보강 시간 ${timeLabel(item.time_slot)}은 그대로 유지됩니다.</small></div><input type="date" class="olliTtDateInput" data-tt-makeup-date min="${todayKey()}" value="${esc(dialog.makeupDate || item.session_date)}"></div>`;
     const actionsHtml = trial
       ? `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>${typeLabel} 취소</button></div>`
-      : '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary" data-tt-change-makeup-date>날짜 변경</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>보강 취소</button></div>';
+      : '<div class="olliTtDialogActions olliTtMakeupManageActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary" data-tt-change-makeup-date>날짜 변경</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>보강 취소</button></div>';
     return dialogHead(trial ? '★' : '✓', `${displayName} ${typeLabel}`, `${koreanDate(date)} ${DAYS[date.getDay() - 1]}요일 · ${timeLabel(item.time_slot)}`)
       + `<div class="olliTtDialogBody"><div class="olliTtCurrentBox"><strong>이 날짜에만 등록된 ${trial ? '체험수업' : '보강 수업'}입니다.</strong>${trial ? '비재원 학생의 체험 일정입니다.' : '정규 수업 시간은 변경되지 않습니다.'}</div>`
       + dateChangeHtml
