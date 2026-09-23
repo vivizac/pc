@@ -1427,7 +1427,12 @@
   function openMakeup(makeupId) {
     const item = oneTimeSessions().find((row) => clean(row.id) === clean(makeupId));
     if (!item) return;
-    state.dialog = { kind: 'makeup', makeupId: clean(makeupId), cancelNote: '' };
+    state.dialog = {
+      kind: 'makeup',
+      makeupId: clean(makeupId),
+      makeupDate: clean(item.session_date),
+      cancelNote: ''
+    };
     openOverlay();
   }
 
@@ -1750,10 +1755,15 @@
     const trial = clean(item.session_type) === 'trial';
     const displayName = `${item.student_name}${item.is_guest === true ? ' (비)' : ''}`;
     const typeLabel = trial ? '체험' : '보강';
+    const dateChangeHtml = trial ? '' : `<div class="olliTtField"><div class="olliTtFieldHead"><span>보강 날짜 변경</span><small>현재 보강 시간 ${timeLabel(item.time_slot)}은 그대로 유지됩니다.</small></div><input type="date" class="olliTtDateInput" data-tt-makeup-date min="${todayKey()}" value="${esc(dialog.makeupDate || item.session_date)}"></div>`;
+    const actionsHtml = trial
+      ? `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>${typeLabel} 취소</button></div>`
+      : '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary" data-tt-change-makeup-date>날짜 변경</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>보강 취소</button></div>';
     return dialogHead(trial ? '★' : '✓', `${displayName} ${typeLabel}`, `${koreanDate(date)} ${DAYS[date.getDay() - 1]}요일 · ${timeLabel(item.time_slot)}`)
       + `<div class="olliTtDialogBody"><div class="olliTtCurrentBox"><strong>이 날짜에만 등록된 ${trial ? '체험수업' : '보강 수업'}입니다.</strong>${trial ? '비재원 학생의 체험 일정입니다.' : '정규 수업 시간은 변경되지 않습니다.'}</div>`
+      + dateChangeHtml
       + `<label class="olliTtAddMemo"><span>취소 사유</span><textarea data-tt-cancel-note maxlength="500" placeholder="취소 사유를 입력하세요">${esc(dialog.cancelNote || '')}</textarea></label>`
-      + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>${typeLabel} 취소</button></div></div>`;
+      + actionsHtml + '</div>';
   }
 
   function pickupPickerHtml(dialog) {
@@ -2136,6 +2146,12 @@
     if (cancelNote) cancelNote.addEventListener('input', () => {
       if (state.dialog && (state.dialog.kind === 'makeup' || state.dialog.kind === 'wait')) state.dialog.cancelNote = cancelNote.value;
     });
+    const makeupDate = dialog.querySelector('[data-tt-makeup-date]');
+    if (makeupDate) makeupDate.addEventListener('change', () => {
+      if (state.dialog && state.dialog.kind === 'makeup') state.dialog.makeupDate = makeupDate.value || '';
+    });
+    const changeMakeupDateButton = dialog.querySelector('[data-tt-change-makeup-date]');
+    if (changeMakeupDateButton) changeMakeupDateButton.addEventListener('click', changeMakeupSessionDate);
     const cancelMakeup = dialog.querySelector('[data-tt-cancel-makeup]');
     if (cancelMakeup) cancelMakeup.addEventListener('click', cancelMakeupSession);
     dialog.querySelectorAll('[data-tt-history-refresh]').forEach((button) => button.addEventListener('click', loadHistoryIntoDialog));
@@ -2699,6 +2715,27 @@ ${combined.memoError}`);
       alert(`대기 취소는 완료됐지만 취소 사유 메모는 저장하지 못했습니다.
 ${combined.memoError}`);
     }
+  }
+
+  async function changeMakeupSessionDate() {
+    const dialog = state.dialog;
+    if (!dialog || dialog.kind !== 'makeup') return;
+    const item = oneTimeSessions().find((row) => clean(row.id) === clean(dialog.makeupId));
+    if (!item || clean(item.session_type) === 'trial') return;
+    const root = document.getElementById('olliTtDialog');
+    const dateInput = root && root.querySelector('[data-tt-makeup-date]');
+    const nextDate = clean(dateInput ? dateInput.value : dialog.makeupDate);
+    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(nextDate) || nextDate < todayKey()) {
+      alert('변경할 보강 날짜를 확인해 주세요.');
+      return;
+    }
+    if (nextDate === clean(item.session_date)) {
+      notify('현재 보강 날짜와 같은 날짜예요.');
+      return;
+    }
+    const studentName = clean(item.student_name) || '학생';
+    const result = await withSaving(() => service.changeMakeupDate(dialog.makeupId, nextDate));
+    if (result) notify(`${studentName} 학생의 보강 날짜를 ${shortDate(nextDate)}로 변경했어요.`);
   }
 
   async function cancelMakeupSession() {
