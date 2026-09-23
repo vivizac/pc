@@ -1800,7 +1800,6 @@
     }
     return dialogHead('⌛', `${item.student_name} 대기 관리`, `${weekdayLabel(item.target_weekday)}요일 · ${timeLabel(item.target_time_slot)}${classGroupLabel(clean(item.division), item.target_class_group) ? ` · ${classGroupLabel(clean(item.division), item.target_class_group)}` : ''}`)
       + '<div class="olliTtDialogBody">'
-      + `<div class="olliTtCurrentBox"><strong>${canEnter ? '입장 가능한 자리가 있습니다.' : '아직 정원이 가득 찼습니다.'}</strong>${item.request_type === 'move' ? '기존 수업을 옮기기 위한 대기' : '주간 수업을 추가하기 위한 대기'} · 현재 ${occupied}/${capacity || '∞'}</div>`
       + `<div class="olliTtField"><div class="olliTtFieldHead"><span>입장 적용 날짜</span><small>자리가 있는 날짜를 선택하세요</small></div><input type="date" class="olliTtDateInput" data-tt-wait-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></div>`
       + `<label class="olliTtAddMemo olliTtCancelMemo"><span>취소 사유</span><textarea data-tt-cancel-note maxlength="500" placeholder="취소 사유를 입력하세요">${esc(dialog.cancelNote || '')}</textarea></label>`
       + '<div class="olliTtStatusNotice">입장시키기 직전에 정원을 다시 확인합니다. 대기를 취소해도 기존 수업은 그대로 유지됩니다.</div>'
@@ -1818,10 +1817,13 @@
     const actionsHtml = trial
       ? `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>${typeLabel} 취소</button></div>`
       : '<div class="olliTtDialogActions olliTtMakeupManageActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary" data-tt-change-makeup-date>날짜 변경</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>보강 취소</button></div>';
+    const infoBoxHtml = trial
+      ? '<div class="olliTtCurrentBox"><strong>이 날짜에만 등록된 체험수업입니다.</strong>비재원 학생의 체험 일정입니다.</div>'
+      : '';
     return dialogHead(trial ? '★' : '✓', `${displayName} ${typeLabel}`, `${koreanDate(date)} ${DAYS[date.getDay() - 1]}요일 · ${timeLabel(item.time_slot)}`)
-      + `<div class="olliTtDialogBody"><div class="olliTtCurrentBox"><strong>이 날짜에만 등록된 ${trial ? '체험수업' : '보강 수업'}입니다.</strong>${trial ? '비재원 학생의 체험 일정입니다.' : '정규 수업 시간은 변경되지 않습니다.'}</div>`
+      + `<div class="olliTtDialogBody">${infoBoxHtml}`
       + dateChangeHtml
-      + `<label class="olliTtAddMemo"><span>취소 사유</span><textarea data-tt-cancel-note maxlength="500" placeholder="취소 사유를 입력하세요">${esc(dialog.cancelNote || '')}</textarea></label>`
+      + `<label class="olliTtAddMemo olliTtCancelMemo"><span>취소 사유</span><textarea data-tt-cancel-note maxlength="500" placeholder="취소 사유를 입력하세요">${esc(dialog.cancelNote || '')}</textarea></label>`
       + actionsHtml + '</div>';
   }
 
