@@ -327,6 +327,22 @@
     return `${date.getMonth() + 1}/${date.getDate()}`;
   }
   function todayKey() { return dateKey(new Date()); }
+  function nextWeekStartKey() { return dateKey(addDays(mondayOf(new Date()), 7)); }
+  function currentWeekEndDate() { return addDays(mondayOf(new Date()), 5); }
+  function isReservedMoveDate(value) { return clean(value) >= nextWeekStartKey(); }
+  function upcomingDateForWeekday(weekday) {
+    const today = parseDate(todayKey());
+    let delta = Number(weekday) - today.getDay();
+    if (delta < 0) delta += 7;
+    return dateKey(addDays(today, delta));
+  }
+  function alignDateToWeekdayOnOrAfter(value, weekday) {
+    const date = parseDate(value || todayKey());
+    const wanted = Number(weekday);
+    let delta = wanted - date.getDay();
+    if (delta < 0) delta += 7;
+    return addDays(date, delta);
+  }
   function isToday(value) { return dateKey(value instanceof Date ? value : parseDate(value)) === todayKey(); }
   function notify(message) {
     if (typeof global.showPushToast === 'function') global.showPushToast(message);
@@ -811,6 +827,8 @@
     if (sessionKey && sessionKey < todayKey()) return null;
     return changes().find((item) => clean(item.source_enrollment_id) === clean(enrollmentId)
       && item.status === 'scheduled'
+      && clean(item.change_type) === 'move'
+      && isReservedMoveDate(item.effective_date)
       && (!sessionKey || clean(item.effective_date) > sessionKey));
   }
   function capacityFor(division) {
@@ -1234,7 +1252,8 @@
   }
 
   function studentScheduleText(studentId) {
-    const rows = enrollments().filter((item) => clean(item.student_id) === clean(studentId) && enrollmentEffectiveOn(item, new Date()));
+    const referenceDate = currentWeekEndDate();
+    const rows = enrollments().filter((item) => clean(item.student_id) === clean(studentId) && enrollmentEffectiveOn(item, referenceDate));
     if (!rows.length) {
       const student = studentById(studentId);
       return service.legacyPairs(student).map((pair) => `${weekdayLabel(pair.weekday)} ${timeLabel(pair.time_slot)}`).join(' · ');
