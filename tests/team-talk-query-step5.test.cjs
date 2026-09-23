@@ -91,6 +91,9 @@ test('multi read query also works for roster and pickup requests', () => {
 test('multi read query aggregates each sub-query answer into one response', async () => {
   let calls = 0;
   const router = loadRouter({
+    async findAvailableSlots() {
+      return { displaySlots:[], allSlots:[] };
+    },
     async findRecurringAvailability(options) {
       calls += 1;
       return {
