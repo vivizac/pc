@@ -31,12 +31,6 @@ function renderRecordStatusSection(view, status, label, rowsHtml, emptyText) {
   </div>`;
 }
 
-function renderRecordAttendanceLeadIcon() {
-  return `<span class="recordStudentArchiveLeadIcon" aria-hidden="true" style="width:36px;height:36px;min-width:36px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 36px;pointer-events:none;">
-    <img src="record-student-archive-icon.png" alt="" draggable="false" style="width:50px;height:50px;display:block;object-fit:contain;pointer-events:none;user-select:none;"/>
-  </span>`;
-}
-
 function renderRecordAttendanceSummary() {
   // 초등부/유치부 옆 출석부 요약 탭과 월별 출석부 내용은 삭제되었습니다.
   const list = document.getElementById('recordList');
@@ -79,10 +73,11 @@ function renderElementaryStudentRows(students) {
     previousSectionKey = sectionKey;
     const status = getStudentStatus(student);
     const statusClass = status === 'paused' ? ' studentStatusPaused' : (status === 'withdrawn' ? ' studentStatusWithdrawn' : '');
+    const leadIcon = renderElementaryLeadIcon(student);
     return `
     <button class="elementaryStudentRow${groupBreakClass}${statusClass}" onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')" onpointerdown="startStudentLongPress(event,'${escapeTemplateLiteral(student.id)}')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">
-      <div class="elementaryRowInner">
-        ${renderElementaryLeadIcon(student)}
+      <div class="elementaryRowInner${leadIcon ? ' hasLeadIcon' : ''}">
+        ${leadIcon}
         <span class="studentTextWrap">
           <span>${escapeHtml(student.name)}</span>
           ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
@@ -106,10 +101,11 @@ function renderKinderStudentRows(students) {
     previousSectionKey = sectionKey;
     const status = getStudentStatus(student);
     const statusClass = status === 'paused' ? ' studentStatusPaused' : (status === 'withdrawn' ? ' studentStatusWithdrawn' : '');
+    const leadIcon = renderKinderLeadIcon(student);
     return `
     <button class="kinderStudentRow${groupBreakClass}${statusClass}" onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')" onpointerdown="startStudentLongPress(event,'${escapeTemplateLiteral(student.id)}')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">
-      <div class="kinderRowInner">
-        ${renderKinderLeadIcon(student)}
+      <div class="kinderRowInner${leadIcon ? ' hasLeadIcon' : ''}">
+        ${leadIcon}
         <span class="studentTextWrap">
           <span>${escapeHtml(student.name)}</span>
           ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
