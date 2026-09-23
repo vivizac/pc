@@ -595,6 +595,64 @@ test('student info lookup parser extracts an exact student name without treating
   assert.equal(router.parseStudentInfoLookupIntent('학생 정보'), null);
 });
 
+test('Olli reply accepts one temporal signal plus any short schedule target word', () => {
+  const router = loadRouter();
+  const temporal = ['10월 4일', '월요일', '4시'];
+  const targets = ['보강', '대기', '체험', '자리', '빈자리', '여석'];
+
+  temporal.forEach(time => {
+    targets.forEach(target => {
+      const text = time + ' ' + target;
+      assert.equal(router.isOlliReplyCandidate(text), true, text);
+      const query = router.parseAvailableSlotsIntent(text);
+      assert.ok(query, text);
+      assert.equal(query.intent, 'find_available_slots', text);
+      assert.equal(query.viewMode, 'availability', text);
+    });
+  });
+
+  assert.equal(router.isOlliReplyCandidate('월요일 체함'), true);
+  assert.equal(router.parseAvailableSlotsIntent('월요일 체함').purpose, 'trial');
+
+  assert.equal(router.isOlliReplyCandidate('월요일 보강 등록해줘'), false);
+  assert.equal(router.parseAvailableSlotsIntent('월요일 보강 등록해줘'), null);
+  assert.equal(router.isOlliReplyCandidate('월요일 회의'), false);
+  assert.equal(router.isOlliReplyCandidate('보강'), false);
+});
+
+test('Olli reply button runs terse one-signal schedule combinations directly', async () => {
+  let calls = 0;
+  const router = loadRouter({
+    async findAvailableSlots() {
+      return { displaySlots:[], allSlots:[] };
+    },
+    async findRecurringAvailability(options) {
+      calls += 1;
+      assert.equal(options.weekday, 1);
+      assert.equal(options.timeSlot, 0);
+      assert.equal(options.purpose, 'makeup');
+      assert.equal(options.viewMode, 'availability');
+      return {
+        scope:'recurring',
+        viewMode:'availability',
+        purpose:'makeup',
+        weekday:1,
+        timeSlot:0,
+        displaySlots:[],
+        allSlots:[]
+      };
+    },
+    describeRecurringAvailability() {
+      return '월요일 보강 가능 시간을 확인했어요.';
+    }
+  });
+
+  const result = await router.runSuggestedQuery('월요일 보강', { source:'olli_talk_reply_button' });
+  assert.equal(result.handled, true);
+  assert.equal(calls, 1);
+  assert.match(result.message, /월요일 보강/);
+});
+
 test('Olli reply suggestion accepts either two temporal signals or one temporal signal with a schedule inquiry', () => {
   const router = loadRouter();
   assert.equal(router.isOlliReplyCandidate('10월 4일 5시 자리 어때?'), true);

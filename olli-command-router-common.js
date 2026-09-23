@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-23-write-actions-2';
+  const VERSION = '2026-09-24-short-response-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -49,23 +49,29 @@
     };
   }
 
+  function hasShortScheduleTarget(value) {
+    return /(?:보강|대기|체험|체함|빈자리|여석|자리)/.test(compactText(value));
+  }
+
+  function isExplicitWriteCommand(value) {
+    return /(?:등록|추가|넣|예약|신청|배정|저장|취소|삭제|지워|지우|제거|빼|해제|없애|옮겨|변경|이동|바꿔|바꾸)(?:해줘|해주세요|해줄래|할래|줘|주세요|하자|해요|해)[.!。]?$/i.test(compactText(value));
+  }
+
   function isOlliReplyScheduleInquiry(value) {
     const raw = cleanText(value);
     const compact = compactText(raw);
-    if (!raw) return false;
+    if (!raw || isExplicitWriteCommand(compact)) return false;
 
     const hasScheduleTarget =
-      /(?:자리|빈자리|여석|대기(?:자|명단|리스트)?|웨이팅(?:리스트)?|체험(?:수업|클래스)?|보강|보충(?:수업)?|(?:등원|하원)?픽업)/.test(compact);
+      /(?:자리|빈자리|여석|대기(?:자|명단|리스트)?|웨이팅(?:리스트)?|체험|체함|체험(?:수업|클래스)?|보강|보충(?:수업)?|(?:등원|하원)?픽업)/.test(compact);
     if (!hasScheduleTarget) return false;
 
-    const asksForLookup =
-      /[?？]/.test(raw)
-      || /(?:있어|있나|있나요|있니|있을까|있습니까|가능|몇(?:자리|명)?|남는|남아|남았|비어|여유|어때|되나|되니|되나요|돼|될까|할수|받을수|확인|알려|보여|봐)/.test(compact);
-    if (!asksForLookup) return false;
+    const signals = olliReplyTemporalSignals(raw);
+    const temporalCount = [signals.date, signals.weekday, signals.time].filter(Boolean).length;
+    if (temporalCount >= 1 && hasShortScheduleTarget(compact)) return true;
 
-    const explicitWriteCommand =
-      /(?:등록|추가|넣|예약|신청|배정|저장|취소|삭제|지워|지우|제거|빼|해제|없애|옮겨|변경|이동|바꿔|바꾸)(?:해줘|해주세요|해줄래|할래|줘|주세요|하자|해요|해)[.!。]?$/i.test(compact);
-    return !explicitWriteCommand;
+    return /[?？]/.test(raw)
+      || /(?:있어|있나|있나요|있니|있을까|있습니까|가능|몇(?:자리|명)?|남는|남아|남았|비어|여유|어때|되나|되니|되나요|돼|될까|할수|받을수|확인|알려|보여|봐)/.test(compact);
   }
 
   function isOlliReplyCandidate(value) {
@@ -92,7 +98,7 @@
   }
 
   function detectPurpose(compact) {
-    if (/(?:체험|체험수업|체험클래스)/.test(compact)) return 'trial';
+    if (/(?:체험|체함|체험수업|체험클래스)/.test(compact)) return 'trial';
     if (/(?:보강|보충수업|보충)/.test(compact)) return 'makeup';
     if (/(?:수업|시간표)?(?:이동|변경)|옮길|옮기는|옮겨|바꿀|바꾸는|이동가능|변경가능/.test(compact)) return 'schedule_move';
     if (/신규|신입|새학생|새원생|신규등록|처음등록/.test(compact)) return 'new_enrollment';
@@ -900,7 +906,11 @@
   function parseAvailableSlotsIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw) return null;
+    if (!raw || isExplicitWriteCommand(compact)) return null;
+
+    const signals = olliReplyTemporalSignals(raw);
+    const temporalCount = [signals.date, signals.weekday, signals.time].filter(Boolean).length;
+    const hasShortAvailabilityCombination = temporalCount >= 1 && hasShortScheduleTarget(compact);
 
     const hasDirectScheduleShorthand =
       /^(?:(?:초등부?|유치부?|유치원|유치|유아)\s*)?[월화수목금토]요일\s*\d{1,2}\s*시(?:\s*[AaBb]\s*반)?(?:\s*[?!.。])?$/.test(raw);
@@ -927,7 +937,8 @@
       || /들어갈수있는(?:반|시간|자리|클래스|수업)/.test(compact)
       || /받을수있는(?:반|시간|자리|클래스|수업)/.test(compact)
       || /몇자리/.test(compact)
-      || hasDirectPossibleQuestion;
+      || hasDirectPossibleQuestion
+      || hasShortAvailabilityCombination;
 
     const asksForLookup =
       /알려|찾아|보여|확인|체크|봐줘|봐|조회/.test(compact)
@@ -938,7 +949,7 @@
 
     if (
       (!hasAvailabilityMeaning && !hasScheduleMeaning && !hasDirectScheduleShorthand)
-      || (!asksForLookup && !hasDirectScheduleShorthand)
+      || (!asksForLookup && !hasDirectScheduleShorthand && !hasShortAvailabilityCombination)
     ) return null;
 
     const viewMode = (hasDirectScheduleShorthand || (hasScheduleMeaning && !hasAvailabilityMeaning))
@@ -1414,7 +1425,7 @@
   async function runSuggestedQuery(text, context) {
     const normalizedText = cleanText(text);
     if (!isOlliReplyCandidate(normalizedText)) return passThrough(normalizedText);
-    if (parseMultiQueryIntent(normalizedText) || parseRosterQueryIntent(normalizedText) || parsePickupQueryIntent(normalizedText)) {
+    if (parseQueryIntent(normalizedText)) {
       return runQuery(normalizedText, context);
     }
     return runQuery(normalizedText + ' 시간표 보여줘', context);
