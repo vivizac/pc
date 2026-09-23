@@ -764,8 +764,7 @@
       || parseWaitlistMutationIntent(normalizedText)
       || parseTrialMutationIntent(normalizedText)
       || parseScheduleMoveMutationIntent(normalizedText)
-      || parseMakeupMutationIntent(normalizedText)
-      || parseClassMutationIntent(normalizedText);
+      || parseMakeupMutationIntent(normalizedText);
   }
 
   function parseMultiWriteIntent(text) {
