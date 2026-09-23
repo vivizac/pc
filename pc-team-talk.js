@@ -19,6 +19,7 @@
     aiConversationMessages: [],
     pendingActionReason: null,
     actionBusy: new Set(),
+    olliReplyBusy: new Set(),
     uploadBusy: false,
     realtimeWatcher: null,
     blobUrls: new Map(),
@@ -422,6 +423,86 @@
     return card;
   }
 
+  function olliReplyTargetIds(messages) {
+    return new Set((Array.isArray(messages) ? messages : [])
+      .filter((item) => clean(item?.message_type) === 'ai' && Number(item?.reply_to_message_id || 0) > 0)
+      .map((item) => String(Number(item.reply_to_message_id))));
+  }
+
+  function shouldOfferOlliReply(item, own, replyTargets) {
+    const messageId = String(Number(item?.id || 0) || '');
+    const body = clean(item?.body);
+    const router = global.OlliCommandRouter;
+    if (!own || clean(item?.message_type || 'text') !== 'text' || item?.attachment) return false;
+    if (!messageId || !body || /^\s*@올리(?:\s|$)/.test(body)) return false;
+    if (replyTargets?.has?.(messageId)) return false;
+    return !!router && typeof router.isOlliReplyCandidate === 'function' && router.isOlliReplyCandidate(body);
+  }
+
+  function removeOlliReplySuggestion(messageId) {
+    const id = clean(messageId);
+    if (!id) return;
+    const row = Array.from(document.querySelectorAll('#olliPcTeamTalkMessages [data-message-id]'))
+      .find((node) => clean(node.dataset.messageId) === id);
+    row?.querySelector?.('.olliPcTeamTalkReplySuggestion')?.remove();
+  }
+
+  async function handleOlliReplySuggestion(item, button) {
+    const messageId = String(Number(item?.id || 0) || '');
+    const commandText = clean(item?.body);
+    if (!messageId || !commandText || state.olliReplyBusy.has(messageId)) return;
+
+    const current = context();
+    if (!current.sessionToken || !current.academyId) {
+      alert('팀톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    const usingAi = isAiEnabled();
+    state.olliReplyBusy.add(messageId);
+    button.disabled = true;
+    button.textContent = '응답 중';
+
+    try {
+      if (usingAi) {
+        state.assistantReplyPending = true;
+        syncAssistantTypingIndicator();
+        const turn = await resolveAiTurn(commandText, current, Number(messageId), { allowSuggestedQuery:true });
+        state.assistantReplyPending = false;
+        replaceAssistantTypingWithMessage(turn.assistantMessage, current.memberId);
+        if (turn.recordAi) recordAiConversationTurn(commandText, turn.replyText);
+      } else {
+        const turn = await resolveBotTurn(commandText, current, Number(messageId), { allowSuggestedQuery:true });
+        appendPersistedMessage(turn.assistantMessage, current.memberId);
+      }
+      removeOlliReplySuggestion(messageId);
+      await loadMessages({ showLoading:false, followBottom:true, render:false });
+    } catch (error) {
+      console.warn(usingAi ? 'PC 올리 응답 버튼 AI 처리 실패:' : 'PC 올리 응답 버튼 봇 처리 실패:', error?.message || error);
+      alert('올리 응답을 받지 못했습니다.\n' + (error?.message || error));
+      button.disabled = false;
+      button.textContent = '올리 응답';
+    } finally {
+      if (state.assistantReplyPending) {
+        state.assistantReplyPending = false;
+        syncAssistantTypingIndicator();
+      }
+      state.olliReplyBusy.delete(messageId);
+    }
+  }
+
+  function makeOlliReplySuggestion(item) {
+    const wrap = create('div', 'olliPcTeamTalkReplySuggestion');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'olliPcTeamTalkReplySuggestionButton';
+    button.textContent = '올리 응답';
+    button.setAttribute('aria-label', '이 메시지에 올리 응답 받기');
+    button.addEventListener('click', () => handleOlliReplySuggestion(item, button));
+    wrap.appendChild(button);
+    return wrap;
+  }
+
   function getMessageGroupKey(item, currentMemberId) {
     const type = clean(item?.message_type) || 'text';
     if (type === 'system') return '';
@@ -484,6 +565,9 @@
     content.appendChild(bubbleRow);
     if (item?.action) content.appendChild(makeActionCard(item.action));
     row.appendChild(content);
+    if (shouldOfferOlliReply(item, own, options.olliReplyTargetIds)) {
+      row.appendChild(makeOlliReplySuggestion(item));
+    }
     return row;
   }
 
@@ -575,6 +659,9 @@
     }
 
     list.appendChild(makeMessage(item, currentMemberId, { connectedToPrevious:false }));
+    if (clean(item?.message_type) === 'ai' && Number(item?.reply_to_message_id || 0) > 0) {
+      removeOlliReplySuggestion(String(Number(item.reply_to_message_id)));
+    }
     if (!state.messages.some((message) => clean(message?.id) === messageId)) {
       state.messages = [...state.messages, item];
     }
@@ -597,6 +684,7 @@
     }
 
     const list = create('div', 'olliPcTeamTalkMessageList');
+    const replyTargets = olliReplyTargetIds(messages);
     let lastKey = '';
     let groupStartItem = null;
     messages.forEach((item) => {
@@ -609,7 +697,7 @@
         groupStartItem = null;
       }
       const connectedToPrevious = isConnectedMessage(groupStartItem, item, currentMemberId);
-      list.appendChild(makeMessage(item, currentMemberId, { connectedToPrevious }));
+      list.appendChild(makeMessage(item, currentMemberId, { connectedToPrevious, olliReplyTargetIds:replyTargets }));
       if ((clean(item?.message_type) || 'text') === 'system') groupStartItem = null;
       else if (!connectedToPrevious) groupStartItem = item;
     });
@@ -928,7 +1016,7 @@
     }
   }
 
-  async function resolveBotTurn(commandText, current, replyToMessageId) {
+  async function resolveBotTurn(commandText, current, replyToMessageId, options = {}) {
     const router = global.OlliCommandRouter;
     const schedule = global.OlliCommandSchedule;
 
@@ -997,6 +1085,17 @@
         });
         if (queried?.handled === true) {
           return saveReply(clean(queried.message) || '조회 결과를 확인했어요.');
+        }
+      }
+
+      if (options.allowSuggestedQuery && typeof router.runSuggestedQuery === 'function') {
+        const suggested = await router.runSuggestedQuery(commandText, {
+          source:'olli_talk_reply_button',
+          selectedStudent:null,
+          autoSubmitContext:null
+        });
+        if (suggested?.handled === true) {
+          return saveReply(clean(suggested.message) || '조회 결과를 확인했어요.');
         }
       }
 
@@ -1090,7 +1189,7 @@
     return /^(취소|취소해|취소해줘|그만|중단|하지마|아니|아니야)$/i.test(clean(text));
   }
 
-  async function resolveAiTurn(commandText, current, replyToMessageId) {
+  async function resolveAiTurn(commandText, current, replyToMessageId, options = {}) {
     const router = global.OlliCommandRouter;
     const schedule = global.OlliCommandSchedule;
 
@@ -1169,6 +1268,22 @@
         return {
           assistantMessage:await saveAssistantReply(current, queryMessage, replyToMessageId),
           replyText:queryMessage,
+          recordAi:false
+        };
+      }
+    }
+
+    if (options.allowSuggestedQuery && router && typeof router.runSuggestedQuery === 'function') {
+      const suggested = await router.runSuggestedQuery(commandText, {
+        source:'olli_talk_reply_button',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if (suggested?.handled === true) {
+        const suggestedMessage = clean(suggested.message) || '조회 결과를 확인했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current, suggestedMessage, replyToMessageId),
+          replyText:suggestedMessage,
           recordAi:false
         };
       }
