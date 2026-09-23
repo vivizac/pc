@@ -1415,7 +1415,7 @@
     state.dialog = {
       kind: 'add', division, date: targetDate,
       weekday: Number(dataset.weekday), time, studentId: '',
-      query: '', guestName: '', note: '', originalNote: '', originalMemoGroup: '', addType: 'wait', targetClassGroup,
+      query: '', guestName: '', note: '', originalNote: '', originalMemoGroup: '', addType: 'regular', targetClassGroup,
       teacherMemberId, originalTeacherMemberId: teacherMemberId,
       overrideTeacherMemberId, originalOverrideTeacherMemberId: overrideTeacherMemberId,
       pendingKinderMerge: false, pendingKinderSplit: false
@@ -1760,6 +1760,7 @@
     return dialogHead('+', '이 시간에 학생 추가', `${koreanDate(parseDate(dialog.date), true)} ${weekdayLabel(dialog.weekday)}요일 · ${timeLabel(dialog.time)}`)
       + '<div class="olliTtDialogBody">'
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>추가 유형</span></div><div class="olliTtTypeGrid">'
+      + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'regular' ? 'active' : ''}" data-tt-add-type="regular">시간표 등록</button>`
       + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'wait' ? 'active' : ''}" data-tt-add-type="wait">대기 등록</button>`
       + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'makeup' ? 'active' : ''}" data-tt-add-type="makeup">보강 등록</button>`
       + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'guest_wait' ? 'active' : ''}" data-tt-add-type="guest_wait">대기등록(비재원)</button>`
@@ -2607,6 +2608,22 @@
       return;
     }
 
+    if (dialog.addType === 'regular') {
+      const capacity = capacityFor(dialog.division);
+      const occupied = countAt(
+        dialog.division,
+        dialog.weekday,
+        dialog.time,
+        dialog.date,
+        dialog.targetClassGroup,
+        false
+      );
+      if (capacity && occupied >= capacity) {
+        alert('이 수업은 정원이 가득 찼습니다. 대기 등록을 선택해 주세요.');
+        return;
+      }
+    }
+
     const combined = await withSaving(async () => {
       if (pendingKinderMerge) await service.mergeKinderClass(dialog.weekday, dialog.time);
       if (pendingKinderSplit) await service.splitKinderClass(dialog.weekday, dialog.time);
@@ -2624,6 +2641,18 @@
         });
       } else if (dialog.addType === 'makeup') {
         actionResult = await service.addMakeup(dialog.studentId, dialog.date, dialog.time, note, dialog.targetClassGroup);
+      } else if (dialog.addType === 'regular') {
+        actionResult = await service.changeSchedule({
+          studentId: dialog.studentId,
+          sourceEnrollmentId: null,
+          targetWeekday: dialog.weekday,
+          targetTimeSlot: dialog.time,
+          targetClassGroup: dialog.targetClassGroup,
+          effectiveDate: dialog.date,
+          changeType: 'add',
+          allowWait: false
+        });
+        if (actionResult && actionResult.result !== 'scheduled') await refreshStudentsFromServer();
       } else {
         actionResult = await service.addWaitlist({
           studentId: dialog.studentId,
@@ -2652,6 +2681,7 @@
     } else {
       const student = studentById(dialog.studentId);
       if (dialog.addType === 'makeup') notify(`${student.name} 학생의 보강을 등록했어요.`);
+      else if (dialog.addType === 'regular') notify(`${student.name} 학생을 정규 시간표에 등록했어요.`);
       else notify(`${student.name} 학생을 대기로 등록했어요.`);
     }
     if (combined.memoError) {
