@@ -3,7 +3,7 @@
 
   if (global.OlliCommandSchedule) return;
 
-  const VERSION = '2026-09-23-pickup-query-2';
+  const VERSION = '2026-09-23-roster-read-query-1';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -1227,6 +1227,340 @@
   }
 
 
+  function rosterStudentName(data, row) {
+    const direct = clean(row && (row.student_name || row.studentName || row.guest_name || row.guestName));
+    if (direct) return direct;
+
+    const studentId = clean(row && row.student_id);
+    if (!studentId) return '';
+
+    const enrollment = arrays(data, 'enrollments').find(item =>
+      clean(item && item.student_id) === studentId && clean(item && item.student_name)
+    );
+    if (enrollment) return clean(enrollment.student_name);
+
+    try {
+      if (typeof global.getAllStudents === 'function') {
+        const student = (global.getAllStudents() || []).find(item => clean(item && item.id) === studentId);
+        if (student) return clean(student.name);
+      }
+    } catch (_) {}
+
+    try {
+      const pc = global.OlliTimetableService;
+      if (pc && typeof pc.activeStudents === 'function') {
+        const student = (pc.activeStudents() || []).find(item => clean(item && item.id) === studentId);
+        if (student) return clean(student.name);
+      }
+    } catch (_) {}
+
+    return '';
+  }
+
+  function rosterKindLabel(kind) {
+    if (kind === 'absence') return '결석 학생';
+    if (kind === 'makeup') return '보강 학생';
+    if (kind === 'trial') return '체험 학생';
+    if (kind === 'waitlist') return '대기 학생';
+    if (kind === 'move') return '수업 이동 예약 학생';
+    return '수업 학생';
+  }
+
+  function rosterUniqueStudentCount(items) {
+    const keys = new Set();
+    (Array.isArray(items) ? items : []).forEach((item, index) => {
+      const id = clean(item && item.studentId);
+      const name = clean(item && item.studentName);
+      keys.add(id || name || ('row-' + index));
+    });
+    return keys.size;
+  }
+
+  async function findRosterEntries(options) {
+    const opts = options || {};
+    const kind = clean(opts.kind) || 'class_roster';
+    const scope = ['date','week','all'].includes(clean(opts.scope)) ? clean(opts.scope) : 'date';
+    const referenceDate = localDateKey(opts.date || new Date());
+    if (!referenceDate) throw new Error('학생 명단 조회 날짜를 확인해 주세요.');
+
+    const data = await loadFreshWeek(referenceDate);
+    const requestedDivision = normalizeDivision(opts.division);
+    const requestedTime = Number(opts.timeSlot || 0);
+    const requestedClassGroup = requestedGroup(opts.classGroup);
+    const requestedWeekday = Number(opts.weekday || 0);
+
+    let startDate = referenceDate;
+    let endDate = referenceDate;
+    if (scope === 'week') {
+      startDate = mondayKey(referenceDate);
+      endDate = addDaysKey(startDate, 5);
+    }
+
+    function inDateScope(value) {
+      const date = clean(value).slice(0, 10);
+      if (scope === 'all') return true;
+      if (!date) return false;
+      return date >= startDate && date <= endDate;
+    }
+
+    function matchesCommon(item) {
+      if (requestedDivision && normalizeDivision(item && item.division) !== requestedDivision) return false;
+      if (requestedTime && Number(item && item.timeSlot) !== requestedTime) return false;
+      if (requestedClassGroup && classGroup(item && item.classGroup) !== requestedClassGroup) return false;
+      return true;
+    }
+
+    function regularDate(row) {
+      const weekday = Number(row && row.weekday || 0);
+      if (!weekday) return '';
+      if (scope === 'date') {
+        return isoWeekday(referenceDate) === weekday ? referenceDate : '';
+      }
+      if (scope === 'week') return addDaysKey(startDate, weekday - 1);
+      return '';
+    }
+
+    function isAbsentRegular(row, sessionDate) {
+      const studentId = clean(row && row.student_id);
+      return arrays(data, 'attendance_overrides').some(status => {
+        if (clean(status && status.student_id) !== studentId) return false;
+        if (clean(status && status.session_date).slice(0, 10) !== sessionDate) return false;
+        if (Number(status && status.time_slot) !== Number(row && row.time_slot)) return false;
+        if (classGroup(status && status.class_group) !== classGroup(row && row.class_group)) return false;
+        if (clean(status && (status.register_session_kind || status.session_kind)).toLowerCase() !== 'regular') return false;
+        return clean(status && status.register_status).toLowerCase() === 'absent';
+      });
+    }
+
+    const items = [];
+
+    if (kind === 'class_roster') {
+      arrays(data, 'enrollments').forEach(row => {
+        const sessionDate = regularDate(row);
+        if (!sessionDate || !rowEffectiveOn(row, sessionDate)) return;
+        const item = {
+          studentId:clean(row && row.student_id),
+          studentName:rosterStudentName(data, row),
+          division:normalizeDivision(row && row.division),
+          date:sessionDate,
+          weekday:Number(row && row.weekday || 0),
+          timeSlot:Number(row && row.time_slot || 0),
+          classGroup:classGroup(row && row.class_group),
+          entryKind:'regular',
+          absent:isAbsentRegular(row, sessionDate),
+          isGuest:false
+        };
+        if (matchesCommon(item)) items.push(item);
+      });
+
+      arrays(data, 'one_time_sessions').forEach(row => {
+        const sessionDate = clean(row && row.session_date).slice(0, 10);
+        if (!inDateScope(sessionDate)) return;
+        if (clean(row && row.status).toLowerCase() === 'cancelled') return;
+        const isTrial = clean(row && row.session_type).toLowerCase() === 'trial';
+        const item = {
+          studentId:clean(row && row.student_id),
+          studentName:rosterStudentName(data, row),
+          division:normalizeDivision(row && row.division),
+          date:sessionDate,
+          weekday:isoWeekday(sessionDate),
+          timeSlot:Number(row && row.time_slot || 0),
+          classGroup:classGroup(row && row.class_group),
+          entryKind:isTrial ? 'trial' : 'makeup',
+          absent:false,
+          isGuest:row && row.is_guest === true
+        };
+        if (matchesCommon(item)) items.push(item);
+      });
+    } else if (kind === 'absence') {
+      arrays(data, 'attendance_overrides').forEach(row => {
+        const sessionDate = clean(row && row.session_date).slice(0, 10);
+        if (!inDateScope(sessionDate)) return;
+        if (clean(row && (row.register_session_kind || row.session_kind)).toLowerCase() !== 'regular') return;
+        if (clean(row && row.register_status).toLowerCase() !== 'absent') return;
+
+        const studentId = clean(row && row.student_id);
+        const enrollment = arrays(data, 'enrollments').find(item =>
+          clean(item && item.student_id) === studentId
+          && Number(item && item.weekday) === isoWeekday(sessionDate)
+          && Number(item && item.time_slot) === Number(row && row.time_slot)
+          && classGroup(item && item.class_group) === classGroup(row && row.class_group)
+          && rowEffectiveOn(item, sessionDate)
+        ) || null;
+        const item = {
+          studentId,
+          studentName:rosterStudentName(data, enrollment || row),
+          division:normalizeDivision(enrollment && enrollment.division || row && row.division),
+          date:sessionDate,
+          weekday:isoWeekday(sessionDate),
+          timeSlot:Number(row && row.time_slot || enrollment && enrollment.time_slot || 0),
+          classGroup:classGroup(row && row.class_group || enrollment && enrollment.class_group),
+          entryKind:'absence',
+          absent:true,
+          isGuest:false
+        };
+        if (matchesCommon(item)) items.push(item);
+      });
+    } else if (kind === 'makeup' || kind === 'trial') {
+      arrays(data, 'one_time_sessions').forEach(row => {
+        const sessionDate = clean(row && row.session_date).slice(0, 10);
+        if (!inDateScope(sessionDate)) return;
+        if (clean(row && row.status).toLowerCase() === 'cancelled') return;
+        const isTrial = clean(row && row.session_type).toLowerCase() === 'trial';
+        if (kind === 'trial' && !isTrial) return;
+        if (kind === 'makeup' && isTrial) return;
+        const item = {
+          studentId:clean(row && row.student_id),
+          studentName:rosterStudentName(data, row),
+          division:normalizeDivision(row && row.division),
+          date:sessionDate,
+          weekday:isoWeekday(sessionDate),
+          timeSlot:Number(row && row.time_slot || 0),
+          classGroup:classGroup(row && row.class_group),
+          entryKind:kind,
+          absent:false,
+          isGuest:row && row.is_guest === true
+        };
+        if (matchesCommon(item)) items.push(item);
+      });
+    } else if (kind === 'waitlist') {
+      arrays(data, 'waitlist').forEach(row => {
+        if (clean(row && row.status).toLowerCase() === 'cancelled') return;
+        const weekday = Number(row && row.target_weekday || 0);
+        if (scope === 'date' && weekday !== isoWeekday(referenceDate)) return;
+        if (requestedWeekday && weekday !== requestedWeekday) return;
+
+        const effectiveDate = clean(row && row.effective_date).slice(0, 10);
+        if (scope === 'date' && effectiveDate && effectiveDate > referenceDate) return;
+        if (scope === 'week' && effectiveDate && effectiveDate > endDate) return;
+
+        const item = {
+          studentId:clean(row && row.student_id),
+          studentName:rosterStudentName(data, row),
+          division:normalizeDivision(row && row.division),
+          date:scope === 'date' ? referenceDate : '',
+          weekday,
+          timeSlot:Number(row && row.target_time_slot || 0),
+          classGroup:classGroup(row && row.target_class_group),
+          entryKind:'waitlist',
+          absent:false,
+          isGuest:row && row.is_guest === true
+        };
+        if (matchesCommon(item)) items.push(item);
+      });
+    } else if (kind === 'move') {
+      arrays(data, 'changes').forEach(row => {
+        if (clean(row && row.status).toLowerCase() !== 'scheduled') return;
+        if (clean(row && row.change_type).toLowerCase() !== 'move') return;
+        const effectiveDate = clean(row && row.effective_date).slice(0, 10);
+        if (scope !== 'all' && !inDateScope(effectiveDate)) return;
+
+        const source = changeSourceEnrollment(data, row);
+        const target = changeTargetEnrollment(data, row);
+        const division = normalizeDivision(target && target.division || source && source.division || row && row.division);
+        const sourceTime = Number(source && source.time_slot || 0);
+        const targetTime = Number(target && target.time_slot || 0);
+        const sourceGroup = classGroup(source && source.class_group);
+        const targetGroup = classGroup(target && target.class_group);
+        if (requestedDivision && division !== requestedDivision) return;
+        if (requestedTime && sourceTime !== requestedTime && targetTime !== requestedTime) return;
+        if (requestedClassGroup && sourceGroup !== requestedClassGroup && targetGroup !== requestedClassGroup) return;
+        if (requestedWeekday) {
+          const sourceWeekday = Number(source && source.weekday || 0);
+          const targetWeekday = Number(target && target.weekday || 0);
+          if (sourceWeekday !== requestedWeekday && targetWeekday !== requestedWeekday) return;
+        }
+
+        items.push({
+          studentId:clean(row && row.student_id),
+          studentName:rosterStudentName(data, row),
+          division,
+          date:effectiveDate,
+          weekday:Number(target && target.weekday || 0),
+          timeSlot:targetTime,
+          classGroup:targetGroup,
+          entryKind:'move',
+          absent:false,
+          isGuest:false,
+          sourceWeekday:Number(source && source.weekday || 0),
+          sourceTimeSlot:sourceTime,
+          sourceClassGroup:sourceGroup,
+          targetWeekday:Number(target && target.weekday || 0),
+          targetTimeSlot:targetTime,
+          targetClassGroup:targetGroup
+        });
+      });
+    }
+
+    items.sort((a,b) =>
+      clean(a && a.date).localeCompare(clean(b && b.date))
+      || Number(a && a.weekday) - Number(b && b.weekday)
+      || Number(a && a.timeSlot) - Number(b && b.timeSlot)
+      || clean(a && a.division).localeCompare(clean(b && b.division))
+      || clean(a && a.classGroup).localeCompare(clean(b && b.classGroup))
+      || clean(a && a.studentName).localeCompare(clean(b && b.studentName))
+    );
+
+    return {
+      kind,
+      scope,
+      date:referenceDate,
+      dateLabel:clean(opts.dateLabel),
+      division:requestedDivision,
+      timeSlot:requestedTime,
+      classGroup:requestedClassGroup,
+      weekday:requestedWeekday,
+      items
+    };
+  }
+
+  function describeRosterEntries(result) {
+    const data = result || {};
+    const items = Array.isArray(data.items) ? data.items : [];
+    const kind = clean(data.kind) || 'class_roster';
+    const typeText = rosterKindLabel(kind);
+    const scope = clean(data.scope);
+    const dateText = scope === 'all'
+      ? '현재'
+      : (clean(data.dateLabel) || (scope === 'week' ? '이번 주' : fallbackDateLabel(data.date)));
+    const timeText = Number(data.timeSlot || 0) ? ' ' + Number(data.timeSlot) + '시' : '';
+    const prefix = dateText + timeText;
+
+    if (!items.length) {
+      return prefix + ' ' + typeText + '이 없어요.';
+    }
+
+    const lines = [
+      prefix + ' ' + typeText + '은 ' + rosterUniqueStudentCount(items) + '명이에요.'
+    ];
+
+    items.forEach(item => {
+      const details = [];
+      if (scope === 'week' && item.date) details.push(fallbackDateLabel(item.date));
+      if (scope === 'all' && kind === 'move' && item.date) details.push(fallbackDateLabel(item.date));
+      if (scope === 'all' && kind === 'waitlist' && item.weekday) details.push(weekdayLabel(item.weekday));
+      if (!Number(data.timeSlot || 0) && Number(item.timeSlot || 0)) details.push(Number(item.timeSlot) + '시');
+      if (item.division) details.push(divisionLabel(item.division));
+      if (item.classGroup) details.push(item.classGroup + '반');
+
+      if (kind === 'class_roster') {
+        const entryText = item.entryKind === 'trial' ? '체험' : (item.entryKind === 'makeup' ? '보강' : '정규');
+        details.push(entryText + (item.absent ? ' · 결석' : ''));
+      } else if (kind === 'move') {
+        const sourceText = weekdayLabel(item.sourceWeekday) + ' ' + Number(item.sourceTimeSlot || 0) + '시';
+        const targetText = weekdayLabel(item.targetWeekday) + ' ' + Number(item.targetTimeSlot || 0) + '시';
+        details.push(sourceText + ' → ' + targetText);
+      } else if (kind === 'waitlist' && item.isGuest) {
+        details.push('비재원');
+      }
+
+      lines.push('• ' + (clean(item.studentName) || '이름 없음') + (details.length ? ' · ' + details.join(' · ') : ''));
+    });
+
+    return lines.join('\n');
+  }
+
+
   async function findPickups(options) {
     const opts = options || {};
     const dateKey = localDateKey(opts.date || new Date());
@@ -2328,10 +2662,12 @@
     findAvailableSlots,
     findWeekAvailability,
     findRecurringAvailability,
+    findRosterEntries,
     findPickups,
     describeAvailableSlots,
     describeWeekAvailability,
     describeRecurringAvailability,
+    describeRosterEntries,
     describePickups,
     prepareWriteCommand,
     executePreparedWrite,
