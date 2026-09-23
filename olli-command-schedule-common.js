@@ -3,7 +3,7 @@
 
   if (global.OlliCommandSchedule) return;
 
-  const VERSION = '2026-09-23-short-schedule-query-1';
+  const VERSION = '2026-09-23-pickup-query-2';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -1298,26 +1298,40 @@
     const data = result || {};
     const items = Array.isArray(data.items) ? data.items : [];
     const label = clean(data.dateLabel) || fallbackDateLabel(data.date);
-    const classText = Number(data.classTime || 0) ? ' ' + Number(data.classTime) + '시 수업' : '';
+    const classTime = Number(data.classTime || 0);
+    const classText = classTime ? ' ' + classTime + '시 수업' : '';
     const kind = clean(data.kind);
-    const kindText = kind === 'dropoff' ? '하원 픽업' : (kind === 'pickup' ? '픽업' : '픽업');
+    const kindText = kind === 'dropoff'
+      ? '하원 픽업 학생'
+      : (kind === 'pickup' ? '등원 픽업 학생' : '픽업 관리 학생');
 
     if (!items.length) {
-      return label + classText + '에는 등록된 ' + kindText + ' 학생이 없어요.';
+      return label + classText + '에는 등록된 ' + kindText + '이 없어요.';
     }
 
+    const grouped = new Map();
+    items.forEach((row, index) => {
+      const studentName = clean(row && row.student_name) || '이름 없음';
+      const studentKey = clean(row && row.student_id) || studentName || ('row-' + index);
+      if (!grouped.has(studentKey)) grouped.set(studentKey, { name:studentName, rows:[] });
+      grouped.get(studentKey).rows.push(row);
+    });
+
     const lines = [
-      label + classText + ' ' + kindText + ' 등록은 ' + items.length + '명이에요.'
+      label + classText + ' ' + kindText + '은 ' + grouped.size + '명이에요.'
     ];
-    items.forEach(row => {
-      const details = [
-        clean(row && row.student_name),
-        Number(row && row.class_time) ? Number(row.class_time) + '시 수업' : '',
-        clean(row && row.pickup_label),
-        pickupTimeDisplay(row && row.pickup_time),
-        row && row.is_dropoff === true ? '하원' : '픽업'
-      ].filter(Boolean);
-      lines.push('• ' + details.join(' · '));
+
+    grouped.forEach(group => {
+      const details = group.rows.map(row => {
+        const rowDetails = [
+          !classTime && Number(row && row.class_time) ? Number(row.class_time) + '시 수업' : '',
+          row && row.is_dropoff === true ? '하원 픽업' : '등원 픽업',
+          clean(row && row.pickup_label),
+          pickupTimeDisplay(row && row.pickup_time)
+        ].filter(Boolean);
+        return rowDetails.join(' · ');
+      }).filter(Boolean);
+      lines.push('• ' + group.name + (details.length ? ' · ' + details.join(' / ') : ''));
     });
     return lines.join('\n');
   }
