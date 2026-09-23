@@ -937,7 +937,7 @@
     const makeups = slotMakeups(division, date, time, classGroup);
     const regularHtml = regular.map((item) => {
       const scheduled = scheduledChangeForSource(item.id, date);
-      const scheduleText = scheduled ? `<span class="olliTtReservation">◷ ${shortDate(scheduled.effective_date)} ${scheduled.change_type === 'remove' ? '삭제' : '이동'} 예정</span>` : '';
+      const scheduleText = scheduled ? `<span class="olliTtReservation">◷ ${shortDate(scheduled.effective_date)} 예약 ${scheduled.change_type === 'remove' ? '삭제' : '이동'}</span>` : '';
       const attendanceTime = Number(item.time_slot);
       const entryClassGroup = classGroup ? classGroupOf({ class_group: classGroup }) : classGroupOf(item);
       const attendanceStatus = timetableAttendanceSessionStatus(item.student_id, date, attendanceTime, entryClassGroup, 'regular');
@@ -1595,8 +1595,8 @@
       const scheduledSource = rows.find((row) => clean(row.id) === clean(item.source_enrollment_id));
       const target = rows.find((row) => clean(row.id) === clean(item.target_enrollment_id));
       const targetText = item.change_type === 'remove' && scheduledSource
-        ? `${weekdayLabel(scheduledSource.weekday)}요일 ${timeLabel(scheduledSource.time_slot)} 삭제`
-        : target ? `${weekdayLabel(target.weekday)}요일 ${timeLabel(target.time_slot)}` : '예약된 수업';
+        ? `예약 삭제 · ${weekdayLabel(scheduledSource.weekday)}요일 ${timeLabel(scheduledSource.time_slot)}`
+        : target ? `예약 이동 · ${weekdayLabel(target.weekday)}요일 ${timeLabel(target.time_slot)}` : '예약된 수업';
       return `<button type="button" class="olliTtEnrollmentChoice" data-tt-cancel-change="${esc(item.id)}"><strong>${shortDate(item.effective_date)}부터 · ${esc(targetText)}</strong><span>예약 취소</span></button>`;
     }).join('')}</div></div>` : '';
     const isMakeup = dialog.actionType === 'makeup';
@@ -2849,7 +2849,7 @@ ${combined.memoError}`);
     const statusRows = [
       `<div><strong>정규 수업</strong>　${esc(regularText)}</div>`,
       waits.length ? `<div><strong>대기</strong>　${waits.map((item) => `${weekdayLabel(item.target_weekday)} ${timeLabel(item.target_time_slot)}`).join(' · ')}</div>` : '',
-      scheduled.length ? `<div><strong>변경 예약</strong>　${scheduled.map((item) => `${shortDate(item.effective_date)} ${item.change_type === 'remove' ? '삭제' : '적용'}`).join(' · ')}</div>` : ''
+      scheduled.length ? `<div><strong>변경 예약</strong>　${scheduled.map((item) => `${shortDate(item.effective_date)} ${item.change_type === 'remove' ? '예약 삭제' : '예약 이동'}`).join(' · ')}</div>` : ''
     ].filter(Boolean).join('');
     return `<div class="olliTtStudentInfoPanel" data-tt-info-student="${esc(student.id)}"><div class="olliTtStudentInfoPanelHead"><div class="olliTtStudentInfoPanelTitle">수업 시간표</div><button type="button" class="olliTtStudentInfoManage">수업·대기 설정</button></div><div class="olliTtStudentInfoRows">${statusRows}</div></div>`;
   }
