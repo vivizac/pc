@@ -28,6 +28,144 @@ function loadSchedule(week, flags = []) {
   return sandbox.window.OlliCommandSchedule;
 }
 
+test('roster parser recognizes class, absence, makeup, trial, waitlist and move list questions', () => {
+  const router = loadRouter();
+  const cases = [
+    ['오늘 4시 누구 수업이야?', 'class_roster', 'date', 4],
+    ['오늘 결석 누구 있어?', 'absence', 'date', 0],
+    ['이번주 보강 학생 보여줘', 'makeup', 'week', 0],
+    ['오늘 5시 체험 누구 있어?', 'trial', 'date', 5],
+    ['대기 몇 명이야?', 'waitlist', 'all', 0],
+    ['수업 이동 예약된 학생 누구야?', 'move', 'all', 0]
+  ];
+  cases.forEach(([text, kind, scope, timeSlot]) => {
+    const query = router.parseRosterQueryIntent(text);
+    assert.ok(query, text);
+    assert.equal(query.intent, 'find_roster_entries', text);
+    assert.equal(query.rosterKind, kind, text);
+    assert.equal(query.scope, scope, text);
+    assert.equal(query.timeSlot, timeSlot, text);
+  });
+
+  assert.equal(router.parseRosterQueryIntent('오늘 4시 자리 있어?'), null);
+  assert.equal(router.parseRosterQueryIntent('화요일 4시 보강 가능해?'), null);
+  assert.equal(router.parseRosterQueryIntent('오늘 체험 학생 등록해줘'), null);
+  assert.equal(router.isOlliReplyCandidate('오늘 결석 누구 있어?'), true);
+  assert.equal(router.isOlliReplyCandidate('대기 몇 명이야?'), true);
+});
+
+test('runQuery routes roster reads without entering the write path', async () => {
+  let readCalls = 0;
+  let writeCalls = 0;
+  const router = loadRouter({
+    async findRosterEntries(options) {
+      readCalls += 1;
+      assert.equal(options.kind, 'absence');
+      assert.equal(options.timeSlot, 4);
+      return {
+        kind:'absence',
+        scope:'date',
+        date:'2026-09-23',
+        dateLabel:'오늘',
+        timeSlot:4,
+        items:[{ studentId:'s1', studentName:'김민서' }]
+      };
+    },
+    describeRosterEntries(result) {
+      return result.items[0].studentName + ' 학생이 결석이에요.';
+    },
+    async prepareWriteCommand() { writeCalls += 1; throw new Error('write path must not run'); },
+    async executePreparedWrite() { writeCalls += 1; throw new Error('write path must not run'); }
+  });
+
+  const result = await router.runQuery('오늘 4시 결석 학생 누구야?', { source:'olli_talk_ai' });
+  assert.equal(result.handled, true);
+  assert.equal(result.intent, 'find_roster_entries');
+  assert.equal(readCalls, 1);
+  assert.equal(writeCalls, 0);
+  assert.match(result.message, /김민서/);
+});
+
+test('roster reads return each stored list from the existing weekly schedule payload', async () => {
+  const week = {
+    enrollments:[
+      { id:'e1', student_id:'s1', student_name:'김민서', division:'elementary', weekday:3, time_slot:4, class_group:'A', effective_from:'2026-09-01', effective_to:null },
+      { id:'e2', student_id:'s2', student_name:'최서윤', division:'elementary', weekday:3, time_slot:4, class_group:'A', effective_from:'2026-09-01', effective_to:null },
+      { id:'e3', student_id:'s1', student_name:'김민서', division:'elementary', weekday:4, time_slot:5, class_group:'A', effective_from:'2026-09-01', effective_to:null }
+    ],
+    attendance_overrides:[
+      { student_id:'s2', session_date:'2026-09-23', time_slot:4, class_group:'A', register_session_kind:'regular', register_status:'absent' }
+    ],
+    one_time_sessions:[
+      { id:'m1', student_id:'s3', student_name:'박보강', division:'elementary', session_date:'2026-09-23', time_slot:4, class_group:'A', session_type:'makeup', status:'scheduled', is_guest:false },
+      { id:'t1', student_name:'이체험', division:'elementary', session_date:'2026-09-23', time_slot:4, class_group:'A', session_type:'trial', status:'scheduled', is_guest:true }
+    ],
+    waitlist:[
+      { id:'w1', student_id:'s4', student_name:'정대기', division:'elementary', target_weekday:3, target_time_slot:4, target_class_group:'A', effective_date:'2026-09-01', status:'waiting', is_guest:false }
+    ],
+    changes:[
+      { id:'c1', student_id:'s1', change_type:'move', status:'scheduled', effective_date:'2026-09-23', source_enrollment_id:'e1', target_enrollment_id:'e3' }
+    ]
+  };
+  const schedule = loadSchedule(week);
+
+  const classRoster = await schedule.findRosterEntries({
+    kind:'class_roster', scope:'date', date:'2026-09-23', dateLabel:'오늘', timeSlot:4
+  });
+  assert.equal(classRoster.items.length, 4);
+  assert.equal(classRoster.items.find(item => item.studentName === '최서윤').absent, true);
+
+  const absence = await schedule.findRosterEntries({
+    kind:'absence', scope:'date', date:'2026-09-23', dateLabel:'오늘', timeSlot:4
+  });
+  assert.equal(absence.items.map(item => item.studentName).join(','), '최서윤');
+
+  const makeup = await schedule.findRosterEntries({
+    kind:'makeup', scope:'date', date:'2026-09-23', dateLabel:'오늘', timeSlot:4
+  });
+  assert.equal(makeup.items.map(item => item.studentName).join(','), '박보강');
+
+  const trial = await schedule.findRosterEntries({
+    kind:'trial', scope:'date', date:'2026-09-23', dateLabel:'오늘', timeSlot:4
+  });
+  assert.equal(trial.items.map(item => item.studentName).join(','), '이체험');
+
+  const waitlist = await schedule.findRosterEntries({
+    kind:'waitlist', scope:'date', date:'2026-09-23', dateLabel:'오늘', timeSlot:4
+  });
+  assert.equal(waitlist.items.map(item => item.studentName).join(','), '정대기');
+
+  const move = await schedule.findRosterEntries({
+    kind:'move', scope:'date', date:'2026-09-23', dateLabel:'오늘'
+  });
+  assert.equal(move.items.length, 1);
+  assert.equal(move.items[0].studentName, '김민서');
+  assert.equal(move.items[0].sourceTimeSlot, 4);
+  assert.equal(move.items[0].targetTimeSlot, 5);
+});
+
+test('roster descriptions show counts, names and useful status labels', async () => {
+  const schedule = loadSchedule({});
+  const message = schedule.describeRosterEntries({
+    kind:'class_roster',
+    scope:'date',
+    date:'2026-09-23',
+    dateLabel:'오늘',
+    timeSlot:4,
+    items:[
+      { studentId:'s1', studentName:'김민서', division:'elementary', timeSlot:4, classGroup:'A', entryKind:'regular', absent:false },
+      { studentId:'s2', studentName:'최서윤', division:'elementary', timeSlot:4, classGroup:'A', entryKind:'regular', absent:true },
+      { studentId:'s3', studentName:'박보강', division:'elementary', timeSlot:4, classGroup:'A', entryKind:'makeup', absent:false }
+    ]
+  });
+  assert.match(message, /수업 학생은 3명이에요/);
+  assert.match(message, /김민서/);
+  assert.match(message, /최서윤/);
+  assert.match(message, /결석/);
+  assert.match(message, /박보강/);
+  assert.match(message, /보강/);
+});
+
 test('passive pickup lookup is not mistaken for pickup registration', () => {
   const router = loadRouter();
   assert.equal(router.parsePickupMutationIntent('오늘 픽업 등록된 학생 있어?'), null);

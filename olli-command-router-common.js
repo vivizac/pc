@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-23-pickup-query-2';
+  const VERSION = '2026-09-23-roster-read-query-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -69,6 +69,7 @@
   }
 
   function isOlliReplyCandidate(value) {
+    if (parseRosterQueryIntent(value)) return true;
     const signals = olliReplyTemporalSignals(value);
     const temporalCount = [signals.date, signals.weekday, signals.time].filter(Boolean).length;
     if (temporalCount >= 2) return true;
@@ -818,6 +819,73 @@
   }
 
 
+  function parseRosterQueryIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw) return null;
+
+    const explicitWriteCommand =
+      /(?:등록|추가|넣|예약|신청|배정|저장|취소|삭제|지워|지우|제거|빼|해제|없애|변경|이동|옮겨|바꿔|바꾸)(?:해줘|해주세요|해줄래|할래|줘|주세요|하자|해요|해)[.!。]?$/i.test(compact);
+    if (explicitWriteCommand) return null;
+
+    let rosterKind = '';
+    if (/(?:수업이동예약|수업이동|이동예약|변경예약)/.test(compact)) rosterKind = 'move';
+    else if (/결석/.test(compact)) rosterKind = 'absence';
+    else if (/(?:보강|보충(?:수업)?)/.test(compact)) rosterKind = 'makeup';
+    else if (/(?:체험(?:수업|클래스)?)/.test(compact)) rosterKind = 'trial';
+    else if (/(?:대기(?:자|명단|리스트)?|웨이팅(?:리스트)?)/.test(compact)) rosterKind = 'waitlist';
+    else if (/(?:수업|클래스)/.test(compact)) rosterKind = 'class_roster';
+    if (!rosterKind) return null;
+
+    const asksForRoster =
+      /(?:누구|누가|학생|원생|명단|목록|리스트|몇명|몇명이|인원|예약자|대기자)/.test(compact);
+    if (!asksForRoster) return null;
+
+    if (
+      rosterKind === 'class_roster'
+      && /(?:자리|빈자리|여석|가능|남는|남아|비어|여유)/.test(compact)
+    ) return null;
+
+    const explicitDateSpec = parseDateExpression(compact);
+    const isThisWeek = /(?:이번주|이번주간|금주)/.test(compact);
+    const isWeekAfterNext = /다다음주/.test(compact);
+    const isNextWeek = !isWeekAfterNext && /(?:다음주|차주)/.test(compact);
+    const weekdayMatch = compact.match(/([월화수목금토])요일/);
+
+    let scope = 'date';
+    let dateSpec = explicitDateSpec;
+    let dateLabel = explicitDateSpec ? explicitDateSpec.label : '';
+    let weekOffset = 0;
+
+    if (!explicitDateSpec && (isThisWeek || isNextWeek || isWeekAfterNext)) {
+      scope = 'week';
+      weekOffset = isWeekAfterNext ? 2 : (isNextWeek ? 1 : 0);
+      dateLabel = isWeekAfterNext ? '다다음 주' : (isNextWeek ? '다음 주' : '이번 주');
+    } else if (!explicitDateSpec && (rosterKind === 'waitlist' || rosterKind === 'move')) {
+      scope = 'all';
+      dateLabel = '현재';
+    } else if (!explicitDateSpec) {
+      dateSpec = { mode:'today', label:'오늘' };
+      dateLabel = '오늘';
+    }
+
+    return {
+      type:'query',
+      intent:'find_roster_entries',
+      rosterKind,
+      scope,
+      dateSpec,
+      dateLabel,
+      weekOffset,
+      weekday:weekdayMatch ? WEEKDAY_MAP[weekdayMatch[1]] || 0 : 0,
+      division:detectDivision(compact),
+      timeSlot:firstTimeSlot(raw),
+      classGroup:firstClassGroup(raw),
+      originalText:raw
+    };
+  }
+
+
   function parsePickupQueryIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
@@ -864,7 +932,8 @@
 
   function parseQueryIntent(text) {
     const normalizedText = cleanText(text);
-    return parsePickupQueryIntent(normalizedText)
+    return parseRosterQueryIntent(normalizedText)
+      || parsePickupQueryIntent(normalizedText)
       || parseAvailableSlotsIntent(normalizedText);
   }
 
@@ -935,6 +1004,64 @@
         clearInput:true,
         payload:queryIntent
       };
+    }
+
+    if (queryIntent.intent === 'find_roster_entries') {
+      if (typeof schedule.findRosterEntries !== 'function') {
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:queryIntent.intent,
+          text:normalizedText,
+          message:'학생 명단 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:queryIntent
+        };
+      }
+
+      try {
+        let referenceDate = new Date();
+        if (queryIntent.scope === 'date') {
+          referenceDate = resolveDateExpression(queryIntent.dateSpec, new Date());
+          if (!referenceDate) throw new Error('조회 날짜를 해석하지 못했습니다.');
+        } else if (queryIntent.scope === 'week') {
+          referenceDate = addDays(new Date(), Number(queryIntent.weekOffset || 0) * 7);
+        }
+
+        const result = await schedule.findRosterEntries({
+          kind:queryIntent.rosterKind,
+          scope:queryIntent.scope,
+          date:referenceDate,
+          dateLabel:queryIntent.dateLabel,
+          division:queryIntent.division,
+          timeSlot:queryIntent.timeSlot,
+          classGroup:queryIntent.classGroup,
+          weekday:queryIntent.weekday
+        });
+        const message = typeof schedule.describeRosterEntries === 'function'
+          ? schedule.describeRosterEntries(result)
+          : '학생 명단을 확인했어요.';
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:queryIntent.intent,
+          text:normalizedText,
+          message,
+          clearInput:true,
+          payload:Object.assign({}, queryIntent, { result })
+        };
+      } catch (error) {
+        console.warn('올리 학생 명단 조회 실패:', error);
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:queryIntent.intent,
+          text:normalizedText,
+          message:'학생 명단을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:queryIntent
+        };
+      }
     }
 
     if (queryIntent.intent === 'find_pickups') {
@@ -1078,6 +1205,9 @@
   async function runSuggestedQuery(text, context) {
     const normalizedText = cleanText(text);
     if (!isOlliReplyCandidate(normalizedText)) return passThrough(normalizedText);
+    if (parseRosterQueryIntent(normalizedText) || parsePickupQueryIntent(normalizedText)) {
+      return runQuery(normalizedText, context);
+    }
     return runQuery(normalizedText + ' 시간표 보여줘', context);
   }
 
@@ -1398,6 +1528,7 @@
     parseWriteIntent,
     parseQueryIntent,
     parseAvailableSlotsIntent,
+    parseRosterQueryIntent,
     parsePickupQueryIntent,
     parseStudentInfoLookupIntent,
     olliReplyTemporalSignals,
