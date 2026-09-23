@@ -34,7 +34,7 @@ async function openSettingsDetail(type){
   detail.style.transform = 'translateX(0)';
   detail.style.opacity = '1';
   detail.style.pointerEvents = 'auto';
-  detail.style.zIndex = '91000';
+  detail.style.zIndex = '130100';
   if (typeof window.olliPcSettingsLayoutAfterOpenDetail === 'function') {
     try { window.olliPcSettingsLayoutAfterOpenDetail(type); } catch (_) {}
   }
