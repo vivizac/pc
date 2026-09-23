@@ -1473,12 +1473,18 @@
     const initialEffectiveDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && requestedDate >= currentDayKey
       ? requestedDate
       : currentDayKey;
+    const initialPickupLabel = item.is_dropoff === true ? '' : clean(item.pickup_label);
+    const initialPickupTime = item.is_dropoff === true ? '' : pickupTimeInputValue(item.pickup_time);
+    const initialDropoffLabel = clean(item.dropoff_label) || (item.is_dropoff === true ? clean(item.pickup_label) : '');
     state.dialog = {
       kind: 'pickupManage',
       pickupId: clean(pickupId),
-      pickupLabel: item.is_dropoff === true ? '' : clean(item.pickup_label),
-      pickupTime: item.is_dropoff === true ? '' : pickupTimeInputValue(item.pickup_time),
-      dropoffLabel: clean(item.dropoff_label) || (item.is_dropoff === true ? clean(item.pickup_label) : ''),
+      pickupLabel: initialPickupLabel,
+      pickupTime: initialPickupTime,
+      dropoffLabel: initialDropoffLabel,
+      originalPickupLabel: initialPickupLabel,
+      originalPickupTime: initialPickupTime,
+      originalDropoffLabel: initialDropoffLabel,
       effectiveDate: initialEffectiveDate
     };
     openOverlay();
@@ -1813,15 +1819,10 @@
     const trial = clean(item.session_type) === 'trial';
     const displayName = `${item.student_name}${item.is_guest === true ? ' (비)' : ''}`;
     const typeLabel = trial ? '체험' : '보강';
-    const dateChangeHtml = trial ? '' : `<div class="olliTtField"><div class="olliTtFieldHead"><span>보강 날짜 변경</span><small>현재 보강 시간 ${timeLabel(item.time_slot)}은 그대로 유지됩니다.</small></div><input type="date" class="olliTtDateInput" data-tt-makeup-date min="${todayKey()}" value="${esc(dialog.makeupDate || item.session_date)}"></div>`;
-    const actionsHtml = trial
-      ? `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>${typeLabel} 취소</button></div>`
-      : '<div class="olliTtDialogActions olliTtMakeupManageActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary" data-tt-change-makeup-date>날짜 변경</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>보강 취소</button></div>';
-    const infoBoxHtml = trial
-      ? '<div class="olliTtCurrentBox"><strong>이 날짜에만 등록된 체험수업입니다.</strong>비재원 학생의 체험 일정입니다.</div>'
-      : '';
+    const dateChangeHtml = `<div class="olliTtField"><div class="olliTtFieldHead"><span>${typeLabel} 날짜 변경</span><small>현재 ${typeLabel} 시간 ${timeLabel(item.time_slot)}은 그대로 유지됩니다.</small></div><input type="date" class="olliTtDateInput" data-tt-makeup-date min="${todayKey()}" value="${esc(dialog.makeupDate || item.session_date)}"></div>`;
+    const actionsHtml = `<div class="olliTtDialogActions olliTtMakeupManageActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary" data-tt-change-makeup-date>날짜 변경</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>${typeLabel} 취소</button></div>`;
     return dialogHead(trial ? '★' : '✓', `${displayName} ${typeLabel}`, `${koreanDate(date)} ${DAYS[date.getDay() - 1]}요일 · ${timeLabel(item.time_slot)}`)
-      + `<div class="olliTtDialogBody">${infoBoxHtml}`
+      + '<div class="olliTtDialogBody">'
       + dateChangeHtml
       + `<label class="olliTtAddMemo olliTtCancelMemo"><span>취소 사유</span><textarea data-tt-cancel-note maxlength="500" placeholder="취소 사유를 입력하세요">${esc(dialog.cancelNote || '')}</textarea></label>`
       + actionsHtml + '</div>';
@@ -1868,12 +1869,36 @@
       + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-pickup>픽업 등록</button></div></div>';
   }
 
+  function pickupManageDirtyState(dialog) {
+    const arrivalLabel = clean(dialog && dialog.pickupLabel);
+    const arrivalTime = clean(dialog && dialog.pickupTime);
+    const dropoffLabel = clean(dialog && dialog.dropoffLabel);
+    return {
+      arrivalChanged: Boolean(arrivalLabel && arrivalTime)
+        && (arrivalLabel !== clean(dialog && dialog.originalPickupLabel)
+          || arrivalTime !== clean(dialog && dialog.originalPickupTime)),
+      dropoffChanged: Boolean(dropoffLabel)
+        && dropoffLabel !== clean(dialog && dialog.originalDropoffLabel)
+    };
+  }
+
+  function refreshPickupManageActionState(root) {
+    const dialog = state.dialog;
+    if (!root || !dialog || dialog.kind !== 'pickupManage') return;
+    const dirty = pickupManageDirtyState(dialog);
+    const arrivalButton = root.querySelector('[data-tt-save-arrival]');
+    const dropoffButton = root.querySelector('[data-tt-register-dropoff]');
+    if (arrivalButton) arrivalButton.disabled = !dirty.arrivalChanged;
+    if (dropoffButton) dropoffButton.disabled = !dirty.dropoffChanged;
+  }
+
   function pickupManageDialogHtml(dialog) {
     const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
     if (!item) return '';
     const isDropoffOnly = item.is_dropoff === true;
     const hasArrival = !isDropoffOnly && Boolean(clean(item.pickup_label)) && Boolean(item.pickup_time);
     const hasDropoff = Boolean(clean(item.dropoff_label)) || isDropoffOnly;
+    const dirty = pickupManageDirtyState(dialog);
     const arrivalActionLabel = hasArrival ? '등원 수정' : '등원등록';
     const dropoffActionLabel = hasDropoff ? '하원 수정' : '하원등록';
     const arrivalStatus = hasArrival
@@ -1894,17 +1919,18 @@
       + '<div class="olliTtPickupManageArrivalGrid">'
       + `<label><span>등원 장소</span><input type="text" maxlength="80" data-tt-pickup-arrival-label value="${esc(dialog.pickupLabel)}" placeholder="예: 리슈빌"></label>`
       + `<label><span>등원 시간</span><input type="text" class="olliTtDateInput olliTtClockOnlyTime" data-tt-pickup-edit-time value="${esc(dialog.pickupTime)}" placeholder="시간 선택" readonly aria-label="등원 픽업 시간 선택"></label>`
-      + `<button type="button" class="olliTtDialogPrimary olliTtPickupInlineAction" data-tt-save-arrival>${arrivalActionLabel}</button>`
+      + `<button type="button" class="olliTtDialogPrimary olliTtPickupInlineAction" data-tt-save-arrival ${dirty.arrivalChanged ? '' : 'disabled'}>${arrivalActionLabel}</button>`
       + '</div></section>'
       + '<section class="olliTtPickupManageSection dropoff">'
       + '<div class="olliTtPickupManageSectionHead"><strong>하원 설정</strong><span>등원 픽업과 별도로 하원 장소를 등록하거나 수정합니다.</span></div>'
       + '<div class="olliTtPickupManageDropoffGrid">'
       + `<label><span>하원 장소</span><input type="text" maxlength="80" data-tt-pickup-dropoff-label value="${esc(dialog.dropoffLabel)}" placeholder="예: 집 앞, 리슈빌 정문"></label>`
-      + `<button type="button" class="olliTtDialogPrimary olliTtPickupInlineAction" data-tt-register-dropoff>${dropoffActionLabel}</button>`
       + dropoffDelete
+      + `<button type="button" class="olliTtDialogPrimary olliTtPickupInlineAction" data-tt-register-dropoff ${dirty.dropoffChanged ? '' : 'disabled'}>${dropoffActionLabel}</button>`
       + '</div></section>'
       + '<section class="olliTtPickupManageSection effective">'
-      + '<div class="olliTtPickupManageSectionHead"><strong>변경·삭제 적용일</strong><span>등원 시간 변경 예약은 내일부터, 전체 픽업 삭제는 오늘부터 적용할 수 있습니다.</span></div>'
+      + '<div class="olliTtPickupManageSectionHead"><strong>변경·삭제 적용일</strong></div>'
+      + '<div class="olliTtPickupEffectiveGuide">등원 시간 변경 예약은 내일부터, 전체 픽업 삭제는 오늘부터 적용할 수 있습니다.</div>'
       + '<div class="olliTtPickupManageFieldRow effectiveRow">'
       + `<label><span>적용일</span><input type="date" class="olliTtDateInput" data-tt-pickup-effective-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></label>`
       + '<button type="button" class="olliTtDialogPrimary" data-tt-schedule-pickup' + (hasArrival ? '' : ' disabled') + '>변경 예약</button>'
@@ -2157,14 +2183,21 @@
     if (pickupDropoffLabel) pickupDropoffLabel.addEventListener('input', () => {
       if (!state.dialog) return;
       if (state.dialog.kind === 'pickupManage' || state.dialog.kind === 'pickupAdd') state.dialog.dropoffLabel = pickupDropoffLabel.value;
+      if (state.dialog.kind === 'pickupManage') refreshPickupManageActionState(dialog);
     });
     const pickupArrivalLabel = dialog.querySelector('[data-tt-pickup-arrival-label]');
     if (pickupArrivalLabel) pickupArrivalLabel.addEventListener('input', () => {
-      if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.pickupLabel = pickupArrivalLabel.value;
+      if (state.dialog && state.dialog.kind === 'pickupManage') {
+        state.dialog.pickupLabel = pickupArrivalLabel.value;
+        refreshPickupManageActionState(dialog);
+      }
     });
     const pickupEditTime = dialog.querySelector('[data-tt-pickup-edit-time]');
     bindClockOnlyTimeInput(pickupEditTime, (value) => {
-      if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.pickupTime = value;
+      if (state.dialog && state.dialog.kind === 'pickupManage') {
+        state.dialog.pickupTime = value;
+        refreshPickupManageActionState(dialog);
+      }
     });
     const pickupEffectiveDate = dialog.querySelector('[data-tt-pickup-effective-date]');
     if (pickupEffectiveDate) pickupEffectiveDate.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.effectiveDate = pickupEffectiveDate.value || todayKey(); });
@@ -2842,21 +2875,23 @@ ${combined.memoError}`);
     const dialog = state.dialog;
     if (!dialog || dialog.kind !== 'makeup') return;
     const item = oneTimeSessions().find((row) => clean(row.id) === clean(dialog.makeupId));
-    if (!item || clean(item.session_type) === 'trial') return;
+    if (!item) return;
+    const trial = clean(item.session_type) === 'trial';
+    const typeLabel = trial ? '체험' : '보강';
     const root = document.getElementById('olliTtDialog');
     const dateInput = root && root.querySelector('[data-tt-makeup-date]');
     const nextDate = clean(dateInput ? dateInput.value : dialog.makeupDate);
     if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(nextDate) || nextDate < todayKey()) {
-      alert('변경할 보강 날짜를 확인해 주세요.');
+      alert(`변경할 ${typeLabel} 날짜를 확인해 주세요.`);
       return;
     }
     if (nextDate === clean(item.session_date)) {
-      notify('현재 보강 날짜와 같은 날짜예요.');
+      notify(`현재 ${typeLabel} 날짜와 같은 날짜예요.`);
       return;
     }
     const studentName = clean(item.student_name) || '학생';
     const result = await withSaving(() => service.changeMakeupDate(dialog.makeupId, nextDate));
-    if (result) notify(`${studentName} 학생의 보강 날짜를 ${shortDate(nextDate)}로 변경했어요.`);
+    if (result) notify(`${studentName}${item.is_guest === true ? ' (비)' : ''} 학생의 ${typeLabel} 날짜를 ${shortDate(nextDate)}로 변경했어요.`);
   }
 
   async function cancelMakeupSession() {
