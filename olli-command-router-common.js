@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-23-olli-reply-button-2';
+  const VERSION = '2026-09-23-student-info-query-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -14,6 +14,24 @@
   function compactText(value) {
     return cleanText(value).replace(/\s+/g, '');
   }
+
+  function parseStudentInfoLookupIntent(value) {
+    const raw = cleanText(value);
+    if (!raw) return null;
+
+    const match = raw.match(/^([가-힣A-Za-z0-9·ㆍ]{1,30})\s*학생\s*정보(?:\s*(?:열어줘|열어|보여줘|보여|확인해줘|확인|조회해줘|조회))?\s*[?!.。！？]*$/i);
+    if (!match) return null;
+
+    const studentName = cleanText(match[1]);
+    if (!studentName) return null;
+    return {
+      type:'ui_query',
+      intent:'open_student_info',
+      studentName,
+      originalText:raw
+    };
+  }
+
 
   function olliReplyTemporalSignals(value) {
     const compact = compactText(value);
@@ -1369,6 +1387,7 @@
     parseQueryIntent,
     parseAvailableSlotsIntent,
     parsePickupQueryIntent,
+    parseStudentInfoLookupIntent,
     olliReplyTemporalSignals,
     isOlliReplyCandidate,
     parseScheduleMoveMutationIntent,
