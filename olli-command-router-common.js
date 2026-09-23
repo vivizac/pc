@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-23-short-schedule-query-1';
+  const VERSION = '2026-09-23-olli-reply-button-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -13,6 +13,27 @@
 
   function compactText(value) {
     return cleanText(value).replace(/\s+/g, '');
+  }
+
+  function olliReplyTemporalSignals(value) {
+    const compact = compactText(value);
+    const hasWeekday = /[월화수목금토]요일/.test(compact);
+    const hasTime = /(?:오전|오후)?\d{1,2}시(?:\d{1,2}분)?/.test(compact);
+    const hasExplicitDate =
+      /(?:오늘|금일|내일)/.test(compact)
+      || /\d{1,2}월\d{1,2}일/.test(compact)
+      || /(?:^|[^\d월])\d{1,2}일(?!요일)/.test(compact);
+    const hasScopedWeekDate = hasWeekday && /(?:이번주|이번주간|금주|다음주|차주|다다음주)/.test(compact);
+    return {
+      date:hasExplicitDate || hasScopedWeekDate,
+      weekday:hasWeekday,
+      time:hasTime
+    };
+  }
+
+  function isOlliReplyCandidate(value) {
+    const signals = olliReplyTemporalSignals(value);
+    return [signals.date, signals.weekday, signals.time].filter(Boolean).length >= 2;
   }
 
   function normalizeContext(context) {
@@ -1003,6 +1024,12 @@
     }
   }
 
+  async function runSuggestedQuery(text, context) {
+    const normalizedText = cleanText(text);
+    if (!isOlliReplyCandidate(normalizedText)) return passThrough(normalizedText);
+    return runQuery(normalizedText + ' 시간표 보여줘', context);
+  }
+
   async function prepareAction(text, context) {
     const normalizedText = cleanText(text);
     const routeContext = normalizeContext(context);
@@ -1315,11 +1342,14 @@
     route,
     classifyRequest,
     runQuery,
+    runSuggestedQuery,
     prepareAction,
     parseWriteIntent,
     parseQueryIntent,
     parseAvailableSlotsIntent,
     parsePickupQueryIntent,
+    olliReplyTemporalSignals,
+    isOlliReplyCandidate,
     parseScheduleMoveMutationIntent,
     parseMakeupMutationIntent,
     parseWaitlistMutationIntent,

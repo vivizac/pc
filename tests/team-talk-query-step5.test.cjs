@@ -241,3 +241,43 @@ test('combined short schedule lookup explicitly reports a missing division', () 
   assert.match(message, /초등부 화요일 4시는 현재 정규수업 기준 2자리 있습니다/);
   assert.match(message, /유치부 화요일 4시는 운영 수업이 없어요/);
 });
+
+
+test('Olli reply suggestion requires at least two temporal signal types', () => {
+  const router = loadRouter();
+  assert.equal(router.isOlliReplyCandidate('10월 4일 5시 자리 어때?'), true);
+  assert.equal(router.isOlliReplyCandidate('화요일 4시 자리 어때?'), true);
+  assert.equal(router.isOlliReplyCandidate('10월 4일 화요일 괜찮아?'), true);
+  assert.equal(router.isOlliReplyCandidate('다음주 화요일 가능해?'), true);
+  assert.equal(router.isOlliReplyCandidate('화요일 수업 어때?'), false);
+  assert.equal(router.isOlliReplyCandidate('4시 자리 어때?'), false);
+  assert.equal(router.isOlliReplyCandidate('10월 4일 자리 어때?'), false);
+});
+
+test('Olli reply suggestion can turn temporal shorthand into a read query only when explicitly requested', async () => {
+  let recurringCalls = 0;
+  const router = loadRouter({
+    async findRecurringAvailability(options) {
+      recurringCalls += 1;
+      assert.equal(options.weekday, 2);
+      assert.equal(options.timeSlot, 4);
+      return { displaySlots:[], allSlots:[] };
+    },
+    describeRecurringAvailability() {
+      return '화요일 4시 시간표예요.';
+    }
+  });
+  const result = await router.runSuggestedQuery('화요일 4시 확인', { source:'olli_talk_reply_button' });
+  assert.equal(result.handled, true);
+  assert.equal(recurringCalls, 1);
+  assert.match(result.message, /화요일 4시/);
+});
+
+test('PC renders a small Olli reply button only on eligible own messages and reuses reply_to_message_id', () => {
+  assert.match(pcTalkSource, /shouldOfferOlliReply\(item, own, options\.olliReplyTargetIds\)/);
+  assert.match(pcTalkSource, /router\.isOlliReplyCandidate\(body\)/);
+  assert.match(pcTalkSource, /olliPcTeamTalkReplySuggestionButton/);
+  assert.match(pcTalkSource, /allowSuggestedQuery:true/);
+  assert.match(pcTalkSource, /reply_to_message_id/);
+  assert.match(pcTalkSource, /removeOlliReplySuggestion/);
+});
