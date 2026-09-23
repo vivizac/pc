@@ -1421,7 +1421,14 @@
   }
 
   function resolveWriteIntentOptions(writeIntent, routeContext) {
-    const options = resolveWriteIntentOptions(writeIntent, routeContext);
+    const options = Object.assign({}, writeIntent, {
+      selectedStudent:routeContext.selectedStudent || null,
+      effectiveDate:new Date()
+    });
+    if (writeIntent.dateSpec) {
+      options.date = resolveDateExpression(writeIntent.dateSpec, new Date());
+      if (!options.date) throw new Error('날짜를 해석하지 못했습니다.');
+    }
     if (writeIntent.intent === 'batch_write') {
       options.commands = (writeIntent.commands || []).map(item => resolveWriteIntentOptions(item, routeContext));
     }
