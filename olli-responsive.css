@@ -231,12 +231,9 @@
 }
 
 #recordRoomScreen .elementaryStudentRow .elementaryEmptyCircle,
-#recordRoomScreen .elementaryStudentRow 
 #recordRoomScreen .elementaryStudentRow .selectionCircle,
-#recordRoomScreen .elementaryStudentRow .elementaryGroupIcon,
-#recordRoomScreen .elementaryStudentRow .elementaryDefaultNoGroupIcon,
-#recordRoomScreen .elementaryStudentRow .kinderLeadIcon,
-#recordRoomScreen .kinderStudentRow .kinderLeadIcon {
+#recordRoomScreen .kinderStudentRow .kinderSignalCircle,
+#recordRoomScreen .kinderStudentRow .selectionCircle {
   grid-column: 1;
   justify-self: start;
   margin-left: 0;
@@ -255,58 +252,6 @@
   grid-template-columns: 30px minmax(0, 1fr);
   column-gap: 10px;
   align-items: center;
-}
-
-#recordRoomScreen .elementaryGroupIcon {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  justify-self: start;
-  margin: 0;
-  padding: 0;
-  transform: none;
-  overflow: visible;
-  background: transparent;
-  line-height: 1;
-}
-
-#recordRoomScreen .elementaryGroupIcon img {
-  width: 40px;
-  height: 40px;
-  display: block;
-  object-fit: contain;
-  margin: 0;
-  padding: 0;
-  background: transparent;
-}
-
-#recordRoomScreen .elementaryDefaultNoGroupIcon {
-  width: 36px ;
-  height: 36px ;
-  min-width: 36px ;
-  display: inline-flex ;
-  align-items: center ;
-  justify-content: flex-start ;
-  justify-self: start;
-  margin: 0;
-  padding: 0 ;
-  transform: none ;
-  overflow: visible ;
-  background: transparent ;
-  line-height: 1 ;
-}
-#recordRoomScreen .elementaryDefaultNoGroupIcon svg {
-  width: 36px ;
-  height: 35px ;
-  display: block ;
-  overflow: visible ;
-  margin: 0 ;
-  padding: 0 ;
-  background: transparent ;
-  transform: none ;
 }
 
 #recordRoomScreen .elementaryStudentRow .studentTextWrap {
@@ -1292,9 +1237,6 @@
   gap: 10px;
   min-width: 0;
 }
-.savedFeedbackStudentLeft .elementaryGroupIcon,
-.savedFeedbackStudentLeft .elementaryDefaultNoGroupIcon,
-.savedFeedbackStudentLeft .kinderLeadIcon,
 .savedFeedbackStudentLeft .elementaryEmptyCircle,
 .savedFeedbackStudentLeft .recordBoardLeadIcon {
   margin-left: -10px;
@@ -2828,22 +2770,6 @@ body.olli-login-open {
   column-gap:10px;
 }
 
-#recordRoomScreen .elementaryStudentRow .elementaryGroupIcon,
-#recordRoomScreen .elementaryStudentRow .elementaryDefaultNoGroupIcon,
-#recordRoomScreen .kinderStudentRow .kinderLeadIcon{
-  width:36px;
-  min-width:36px;
-  height:36px;
-  justify-content:center;
-  justify-self:start;
-  margin-left:0;
-}
-
-#recordRoomScreen .elementaryStudentRow .elementaryGroupIcon img{
-  width:36px;
-  height:36px;
-}
-
 /* integrated cleanup: olliRecordSortPatchStyle */
 /* 2026-04-29 patch 정리: 하단바/검색창 배치 기준은 olliRecordSearchFinalSingle에서만 관리합니다.
    이 블록에는 정렬 팝업, 학생 정보 모달, 유치부 아이콘 보정만 남깁니다. */
@@ -2887,7 +2813,7 @@ body.olli-login-open {
 .recordSortMonthChip.active{background:#fff;color:#111;}
 
 /* 유치부 이름 앞 신호색 테두리 삭제 */
-.kinderSignalCircle,.memoSignalCircle,.kinderLeadIcon .kinderSignalCircle{
+.kinderSignalCircle,.memoSignalCircle{
   border:none;
   box-shadow:none;
 }
@@ -2895,42 +2821,4 @@ body.olli-login-open {
 .kinderSignalCircle.level-2,.memoSignalCircle.level-2{border:none;}
 .kinderSignalCircle.level-3,.memoSignalCircle.level-3{border:none;}
 
-/* 2026-04-30 유치부 이름 앞 아이콘: 초등부 미그룹 아이콘과 동일 구조 */
-#recordRoomScreen .kinderStudentRow .kinderLeadIcon{
-  width:36px;
-  height:36px;
-  min-width:36px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  justify-self:start;
-  margin:0;
-  padding:0;
-  transform:none;
-  overflow:visible;
-  background:transparent;
-  line-height:1;
-}
-#recordRoomScreen .kinderStudentRow .kinderLeadHexSvg{
-  width:36px;
-  height:35px;
-  display:block;
-  overflow:visible;
-}
 
-#recordRoomScreen .kinderLeadSignalDot,
-#recordRoomScreen .kinderLeadHexFill{
-  fill:transparent;
-}
-#recordRoomScreen .kinderLeadSignalDot.level-1,
-#recordRoomScreen .kinderLeadHexFill.level-1{
-  fill:#FFD88A;
-}
-#recordRoomScreen .kinderLeadSignalDot.level-2,
-#recordRoomScreen .kinderLeadHexFill.level-2{
-  fill:#FFCDB8;
-}
-#recordRoomScreen .kinderLeadSignalDot.level-3,
-#recordRoomScreen .kinderLeadHexFill.level-3{
-  fill:#FFB8B8;
-}
