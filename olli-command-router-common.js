@@ -636,9 +636,11 @@
 
   function pickupEditLabel(value, studentName) {
     return pickupLabelFromText(value, studentName)
-      .replace(/(?:수정|변경|바꿔|바꾸어|바꿔줘|바꿔주세요|고쳐|고쳐줘|고쳐주세요)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g, ' ')
+      .replace(/(?:수정|변경|바꿔|바꾸어|고쳐)(?:\s*(?:해줘요|해주세요|해줘|해줄래|할래|줘|주세요|해))?/g, ' ')
+      .replace(/(?:해줘요|해주세요|해줘|해줄래|할래|줘|주세요)/g, ' ')
       .replace(/^(?:을|를|은|는)\s*/g, '')
-      .replace(/\s*(?:으로|로)$/g, '')
+      .replace(/(?:으로|로)(?=\s|$)/g, ' ')
+      .replace(/^\s*(?:으로|로)\s*$/g, '')
       .replace(/\s+/g, ' ')
       .trim();
   }
@@ -769,7 +771,7 @@
   function parseMultiWriteIntent(text) {
     const raw = cleanText(text);
     if (!raw) return null;
-    const parts = raw.split(/\s*(?:;|그리고|그다음|그 다음|\n)\s*/g).map(cleanText).filter(Boolean);
+    const parts = raw.split(/\s*(?:;|그리고|그다음|그 다음|하고|\n)\s*/g).map(cleanText).filter(Boolean);
     if (parts.length < 2 || parts.length > 3) return null;
     const commands = parts.map(parseSingleWriteIntent);
     if (commands.some(item => !item)) return null;
