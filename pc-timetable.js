@@ -1568,7 +1568,7 @@
       const schedule = `${weekdayLabel(item.weekday)}요일 · ${timeLabel(item.time_slot)}${classGroupLabel(division, item.class_group) ? ` · ${classGroupLabel(division, item.class_group)}` : ''}`;
       const order = hasTwoCurrentSessions && current ? (isSecondWeeklySession(item, new Date()) ? 2 : 1) : 0;
       const orderHtml = order ? `<div class="olliTtSessionOrder" role="group" aria-label="${esc(schedule)} 회차 설정"><button type="button" class="${order === 1 ? 'active' : ''}" data-tt-session-order="1" data-enrollment-id="${esc(item.id)}">1회차</button><button type="button" class="${order === 2 ? 'active' : ''}" data-tt-session-order="2" data-enrollment-id="${esc(item.id)}">2회차</button></div>` : '';
-      return `<div class="olliTtEnrollmentRow${order ? ' hasSessionOrder' : ''}"><button type="button" class="olliTtEnrollmentChoice ${selected ? 'active' : ''}" data-tt-source="${esc(item.id)}"><strong>${schedule}</strong></button>${orderHtml}<button type="button" class="olliTtEnrollmentDelete" data-tt-remove-enrollment="${esc(item.id)}" ${current ? '' : 'disabled'} aria-label="${esc(schedule)} 삭제">삭제</button></div>`;
+      return `<div class="olliTtEnrollmentRow${order ? ' hasSessionOrder' : ''}"><button type="button" class="olliTtEnrollmentChoice ${selected ? 'active' : ''}" data-tt-source="${esc(item.id)}"><strong>${schedule}</strong></button>${orderHtml}<button type="button" class="olliTtEnrollmentDelete" data-tt-remove-enrollment="${esc(item.id)}" aria-label="${esc(schedule)} 삭제">삭제</button></div>`;
     }).join('') : '<div class="olliTtStatusNotice">현재 등록된 정규 수업이 없습니다.</div>';
     const dayHtml = DAYS.map((day, index) => `<button type="button" class="olliTtChoice ${dialog.targetWeekday === index + 1 ? 'active' : ''}" data-tt-target-day="${index + 1}">${day}</button>`).join('');
     const timeHtml = timeOptions.map((time) => {
@@ -2779,29 +2779,40 @@ ${combined.memoError}`);
     if (!selectedEnrollmentId) return;
     const student = studentById(dialog.studentId);
     const source = studentEnrollments(dialog.studentId).find((item) => clean(item.id) === selectedEnrollmentId);
-    if (!student || !source || !enrollmentEffectiveOn(source, new Date())) {
-      alert('현재 이용 중인 수업을 선택해 주세요.');
+    const today = todayKey();
+    const sourceStart = clean(source && source.effective_from);
+    const sourceEnd = clean(source && source.effective_to);
+    const isCurrent = Boolean(source && enrollmentEffectiveOn(source, new Date()));
+    const isFuture = Boolean(source && sourceStart && sourceStart > today && (!sourceEnd || sourceEnd >= sourceStart));
+    if (!student || !source || (!isCurrent && !isFuture)) {
+      alert('삭제할 현재 또는 예정 수업을 선택해 주세요.');
       return;
     }
     const schedule = `${weekdayLabel(source.weekday)}요일 ${timeLabel(source.time_slot)}`;
-    const dateText = koreanDate(dialog.effectiveDate, true);
-    if (!global.confirm(`${student.name} 학생의 ${schedule} 수업을 ${dateText}부터 삭제할까요?\n주간 수업 횟수가 1회 줄어듭니다.`)) return;
+    const removalDate = isFuture ? sourceStart : (clean(dialog.effectiveDate) || today);
+    const dateText = koreanDate(removalDate, true);
+    const confirmText = isFuture
+      ? `${student.name} 학생의 ${dateText}부터 시작 예정인 ${schedule} 수업을 삭제할까요?\n예정 수업이 시간표에서 제거됩니다.`
+      : `${student.name} 학생의 ${schedule} 수업을 ${dateText}부터 삭제할까요?\n주간 수업 횟수가 1회 줄어듭니다.`;
+    if (!global.confirm(confirmText)) return;
     const result = await withSaving(() => service.removeEnrollment(
       dialog.studentId,
       selectedEnrollmentId,
-      dialog.effectiveDate
+      removalDate
     ));
     if (!result) return;
-    notify(result.result === 'scheduled'
-      ? `${student.name} 학생의 ${schedule} 수업 삭제를 예약했어요.`
-      : `${student.name} 학생의 ${schedule} 수업을 삭제했어요.`);
+    notify(isFuture
+      ? `${student.name} 학생의 예정 ${schedule} 수업을 삭제했어요.`
+      : (result.result === 'scheduled'
+        ? `${student.name} 학생의 ${schedule} 수업 삭제를 예약했어요.`
+        : `${student.name} 학생의 ${schedule} 수업을 삭제했어요.`));
   }
 
   function studentInfoPanelHtml(student) {
     const rows = studentEnrollments(student.id).filter((item) => enrollmentEffectiveOn(item, new Date()));
     const waits = waitlist().filter((item) => clean(item.student_id) === clean(student.id));
     const scheduled = changes().filter((item) => clean(item.student_id) === clean(student.id) && item.status === 'scheduled');
-    const regularText = rows.length ? rows.map((item) => `${weekdayLabel(item.weekday)}요일 ${timeLabel(item.time_slot)}`).join(' · ') : studentScheduleText(student.id) || '등록된 수업 없음';
+    const regularText = rows.length ? rows.map((item) => `${weekdayLabel(item.weekday)}요일 ${timeLabel(item.time_slot)}`).join(' · ') : '등록된 수업 없음';
     const statusRows = [
       `<div><strong>정규 수업</strong>　${esc(regularText)}</div>`,
       waits.length ? `<div><strong>대기</strong>　${waits.map((item) => `${weekdayLabel(item.target_weekday)} ${timeLabel(item.target_time_slot)}`).join(' · ')}</div>` : '',
