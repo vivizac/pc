@@ -676,60 +676,6 @@
 </style>
 <style id="olli-record-attendance-tab-style">
 /* 2026-06-30: 출석부 안 출석 체크/월별 출석부 */
-.recordAttendanceLeadBtn {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  grid-column: 1;
-  justify-self: start;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  line-height: 1;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-.recordAttendanceLeadBtn:focus,
-.recordAttendanceLeadBtn:focus-visible,
-.recordAttendanceLeadBtn:active {
-  outline: none;
-  background: transparent;
-  box-shadow: none;
-}
-.recordAttendanceLeadSvg {
-  width: 36px;
-  height: 35px;
-  display: block;
-  overflow: visible;
-}
-.recordAttendanceLeadFill {
-  fill: transparent;
-  transition: fill .14s ease, stroke .14s ease;
-}
-.recordAttendanceLeadBtn.attended .recordAttendanceLeadFill {
-  fill: #0A84FF;
-  stroke: #0A84FF;
-}
-.recordAttendanceLeadBtn.makeup .recordAttendanceLeadFill {
-  fill: #FFD88A;
-  stroke: #FFD88A;
-}
-.recordAttendanceLeadBtn.attended .recordAttendanceLeadLine,
-.recordAttendanceLeadBtn.makeup .recordAttendanceLeadLine {
-  stroke: rgba(255,255,255,.86);
-}
-.recordAttendanceLeadBtn.missingEnrollment:not(.attended):not(.makeup) .recordAttendanceLeadFill {
-  fill: #FF4D4F;
-  stroke: #FF4D4F;
-}
-.recordAttendanceLeadBtn.missingEnrollment:not(.attended):not(.makeup) .recordAttendanceLeadLine {
-  stroke: rgba(255,255,255,.88);
-}
 .recordAttendanceSummaryWrap {
   padding: 2px 10px 36px;
 }
@@ -3351,11 +3297,6 @@ setupKinderDirectorAccordion();
   ['olli_disabled_member_ids_v1','olli_member_role_overrides_v1','olli_member_device_status_overrides_v1'].forEach(function(key){
     try { localStorage.removeItem(key); } catch (error) {}
   });
-  if (typeof GROUP_ICON_IMAGES === 'object' && GROUP_ICON_IMAGES) {
-    Object.keys(GROUP_ICON_IMAGES).forEach(function(key){
-      GROUP_ICON_IMAGES[key] = String(GROUP_ICON_IMAGES[key] || '').replace(/#CFCFD4/g, '%23CFCFD4');
-    });
-  }
 })();
 </script>
 <script>
