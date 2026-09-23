@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-23-olli-reply-button-1';
+  const VERSION = '2026-09-23-olli-reply-button-2';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -31,9 +31,30 @@
     };
   }
 
+  function isOlliReplyScheduleInquiry(value) {
+    const raw = cleanText(value);
+    const compact = compactText(raw);
+    if (!raw) return false;
+
+    const hasScheduleTarget =
+      /(?:자리|빈자리|여석|대기(?:자|명단|리스트)?|웨이팅(?:리스트)?|체험(?:수업|클래스)?|보강|보충(?:수업)?)/.test(compact);
+    if (!hasScheduleTarget) return false;
+
+    const asksForLookup =
+      /[?？]/.test(raw)
+      || /(?:있어|있나|있나요|있니|있을까|있습니까|가능|몇(?:자리|명)?|남는|남아|남았|비어|여유|어때|되나|되니|되나요|돼|될까|할수|받을수|확인|알려|보여|봐)/.test(compact);
+    if (!asksForLookup) return false;
+
+    const explicitWriteCommand =
+      /(?:등록|추가|넣|예약|신청|배정|저장|취소|삭제|지워|지우|제거|빼|해제|없애|옮겨|변경|이동|바꿔|바꾸)(?:해줘|해주세요|해줄래|할래|줘|주세요|하자|해요|해)[.!。]?$/i.test(compact);
+    return !explicitWriteCommand;
+  }
+
   function isOlliReplyCandidate(value) {
     const signals = olliReplyTemporalSignals(value);
-    return [signals.date, signals.weekday, signals.time].filter(Boolean).length >= 2;
+    const temporalCount = [signals.date, signals.weekday, signals.time].filter(Boolean).length;
+    if (temporalCount >= 2) return true;
+    return temporalCount >= 1 && isOlliReplyScheduleInquiry(value);
   }
 
   function normalizeContext(context) {
