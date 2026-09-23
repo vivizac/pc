@@ -368,7 +368,7 @@
 }
 #olliTtOverlay.show { display: flex; }
 #olliTtDialog {
-  width: min(720px, calc(100vw - 48px));
+  width: min(504px, calc(100vw - 48px));
   max-height: calc(100vh - 48px);
   overflow: auto;
   border: 1px solid #e1e6eb;
@@ -677,7 +677,6 @@
 .olliTtCurrentLessonsHead span { color:#343a43; font-size:calc(12px * var(--olli-text-scale)); font-weight:780; }
 .olliTtCurrentLessonsHead small { color:#9ba2ab; font-size:calc(9px * var(--olli-text-scale)); font-weight:600; }
 #olliTtDialog.olliTtAddDialog {
-  width:min(720px,calc(100vw - 48px));
   height:min(720px,calc(100vh - 48px));
   max-height:calc(100vh - 48px);
   display:flex;
@@ -740,10 +739,8 @@
 .olliTtMemoDeletePreview { margin-top: 8px; padding: 16px; border: 1px solid #dfe4e9; border-radius: 16px; background: #fff; color: #3f4752; }
 .olliTtMemoDeletePreview > span { display: block; margin-bottom: 8px; color: #8d949d; font-size: calc(11px * var(--olli-text-scale)); font-weight: 780; }
 .olliTtMemoDeletePreview > div { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(15px * var(--olli-text-scale)); font-weight: 700; line-height: 1.55; }
-#olliTtDialog.olliTtMemoManageDialog { width: min(520px, calc(100vw - 52px)); }
-
 /* 시간표 변경 이력과 안전 복구 */
-#olliTtDialog.olliTtHistoryDialog { width: min(820px, calc(100vw - 52px)); overflow: hidden; }
+#olliTtDialog.olliTtHistoryDialog { overflow: hidden; }
 .olliTtHistoryBody { display: flex; min-height: 0; max-height: calc(100vh - 174px); flex-direction: column; }
 .olliTtHistorySafety { flex: 0 0 auto; padding: 13px 16px; border: 1px solid #d9eafa; border-radius: 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; color: #667486; background: #f4f9ff; font-size: calc(11px * var(--olli-text-scale)); font-weight: 650; }
 .olliTtHistorySafety strong { color: #0877df; font-size: calc(12px * var(--olli-text-scale)); font-weight: 820; }
