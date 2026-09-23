@@ -243,6 +243,26 @@ test('combined short schedule lookup explicitly reports a missing division', () 
 });
 
 
+test('student info lookup parser extracts an exact student name without treating it as a schedule query', () => {
+  const router = loadRouter();
+
+  const spaced = router.parseStudentInfoLookupIntent('금오주 학생 정보');
+  assert.ok(spaced);
+  assert.equal(spaced.intent, 'open_student_info');
+  assert.equal(spaced.studentName, '금오주');
+
+  const compact = router.parseStudentInfoLookupIntent('금오주 학생정보');
+  assert.ok(compact);
+  assert.equal(compact.studentName, '금오주');
+
+  const request = router.parseStudentInfoLookupIntent('금오주 학생 정보 열어줘');
+  assert.ok(request);
+  assert.equal(request.studentName, '금오주');
+
+  assert.equal(router.parseStudentInfoLookupIntent('금오주 4시 자리 있어?'), null);
+  assert.equal(router.parseStudentInfoLookupIntent('학생 정보'), null);
+});
+
 test('Olli reply suggestion accepts either two temporal signals or one temporal signal with a schedule inquiry', () => {
   const router = loadRouter();
   assert.equal(router.isOlliReplyCandidate('10월 4일 5시 자리 어때?'), true);
