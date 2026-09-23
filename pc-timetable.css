@@ -704,6 +704,7 @@
 .olliTtEnrollmentDelete:disabled { color: #b6a7a9; border-color: #ece4e5; background: #f4f1f1; cursor: default; }
 .olliTtDialogActions { display: grid; grid-template-columns: 1fr 1.35fr; gap: 10px; margin: 24px -26px -26px; padding: 16px 26px 20px; border-top: 1px solid #eceff2; background: #fff; }
 .olliTtDialogActions button { height: 48px; border: 0; border-radius: 12px; font: 760 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+.olliTtDialogActions.olliTtMakeupManageActions { grid-template-columns: .82fr 1.08fr 1.08fr; }
 .olliTtDialogCancel { color: #5f6772; background: #f0f2f4; }
 .olliTtDialogCancel:hover { background: #e8ebee; }
 .olliTtDialogPrimary { color: #fff; background: #0A84FF; box-shadow: none; }
