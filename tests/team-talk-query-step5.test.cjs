@@ -118,22 +118,22 @@ test('roster reads return each stored list from the existing weekly schedule pay
   const absence = await schedule.findRosterEntries({
     kind:'absence', scope:'date', date:'2026-09-23', dateLabel:'오늘', timeSlot:4
   });
-  assert.deepEqual(absence.items.map(item => item.studentName), ['최서윤']);
+  assert.equal(absence.items.map(item => item.studentName).join(','), '최서윤');
 
   const makeup = await schedule.findRosterEntries({
     kind:'makeup', scope:'date', date:'2026-09-23', dateLabel:'오늘', timeSlot:4
   });
-  assert.deepEqual(makeup.items.map(item => item.studentName), ['박보강']);
+  assert.equal(makeup.items.map(item => item.studentName).join(','), '박보강');
 
   const trial = await schedule.findRosterEntries({
     kind:'trial', scope:'date', date:'2026-09-23', dateLabel:'오늘', timeSlot:4
   });
-  assert.deepEqual(trial.items.map(item => item.studentName), ['이체험']);
+  assert.equal(trial.items.map(item => item.studentName).join(','), '이체험');
 
   const waitlist = await schedule.findRosterEntries({
     kind:'waitlist', scope:'date', date:'2026-09-23', dateLabel:'오늘', timeSlot:4
   });
-  assert.deepEqual(waitlist.items.map(item => item.studentName), ['정대기']);
+  assert.equal(waitlist.items.map(item => item.studentName).join(','), '정대기');
 
   const move = await schedule.findRosterEntries({
     kind:'move', scope:'date', date:'2026-09-23', dateLabel:'오늘'
