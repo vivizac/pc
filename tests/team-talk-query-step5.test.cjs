@@ -28,6 +28,99 @@ function loadSchedule(week, flags = []) {
   return sandbox.window.OlliCommandSchedule;
 }
 
+test('multi read query parses two or three weekday/time seat lookups with a shared request', () => {
+  const router = loadRouter();
+
+  for (const text of [
+    '월요일 4시, 화요일 4시 자리 있어?',
+    '월요일 4시, 화요일 4시 자리',
+    '월요일 4시, 화요일 4시, 수요일 5시 자리 있어?'
+  ]) {
+    const query = router.parseMultiQueryIntent(text);
+    assert.ok(query, text);
+    assert.equal(query.intent, 'multi_read_query', text);
+    assert.equal(query.queries.length, text.includes('수요일') ? 3 : 2, text);
+    query.queries.forEach(item => assert.equal(item.intent, 'find_available_slots', text));
+  }
+
+  const two = router.parseMultiQueryIntent('월요일 4시, 화요일 4시 자리');
+  assert.equal(two.queries[0].weekday, 1);
+  assert.equal(two.queries[0].timeSlot, 4);
+  assert.equal(two.queries[1].weekday, 2);
+  assert.equal(two.queries[1].timeSlot, 4);
+});
+
+test('multi read query keeps shared division, purpose and week scope across items', () => {
+  const router = loadRouter();
+
+  const division = router.parseMultiQueryIntent('초등부 월요일 4시, 화요일 5시 자리 있어?');
+  assert.ok(division);
+  assert.equal(division.queries[0].division, 'elementary');
+  assert.equal(division.queries[1].division, 'elementary');
+
+  const purpose = router.parseMultiQueryIntent('월요일 4시, 화요일 5시 보강 가능해?');
+  assert.ok(purpose);
+  assert.equal(purpose.queries[0].purpose, 'makeup');
+  assert.equal(purpose.queries[1].purpose, 'makeup');
+
+  const nextWeek = router.parseMultiQueryIntent('다음주 월요일 4시, 화요일 5시 자리 있어?');
+  assert.ok(nextWeek);
+  assert.equal(nextWeek.queries[0].scope, 'date');
+  assert.equal(nextWeek.queries[0].dateSpec.mode, 'next_weekday');
+  assert.equal(nextWeek.queries[1].scope, 'date');
+  assert.equal(nextWeek.queries[1].dateSpec.mode, 'next_weekday');
+});
+
+test('multi read query also works for roster and pickup requests', () => {
+  const router = loadRouter();
+
+  const absence = router.parseMultiQueryIntent('월요일 4시, 화요일 4시 결석 학생 누구야?');
+  assert.ok(absence);
+  assert.equal(absence.queries.length, 2);
+  absence.queries.forEach(item => {
+    assert.equal(item.intent, 'find_roster_entries');
+    assert.equal(item.rosterKind, 'absence');
+  });
+
+  const pickup = router.parseMultiQueryIntent('월요일 4시, 화요일 5시 픽업 누구 있어?');
+  assert.ok(pickup);
+  assert.equal(pickup.queries.length, 2);
+  pickup.queries.forEach(item => assert.equal(item.intent, 'find_pickups'));
+});
+
+test('multi read query aggregates each sub-query answer into one response', async () => {
+  let calls = 0;
+  const router = loadRouter({
+    async findAvailableSlots() {
+      return { displaySlots:[], allSlots:[] };
+    },
+    async findRecurringAvailability(options) {
+      calls += 1;
+      return {
+        scope:'recurring',
+        viewMode:'availability',
+        division:'',
+        weekday:options.weekday,
+        timeSlot:options.timeSlot,
+        allSlots:[],
+        displaySlots:[],
+        regularChanges:[],
+        oneTimeExceptions:[]
+      };
+    },
+    describeRecurringAvailability(result) {
+      return (result.weekday === 1 ? '월요일' : '화요일') + ' ' + result.timeSlot + '시 결과';
+    }
+  });
+
+  const result = await router.runQuery('월요일 4시, 화요일 4시 자리 있어?', { source:'olli_talk_ai' });
+  assert.equal(result.handled, true);
+  assert.equal(result.intent, 'multi_read_query');
+  assert.equal(calls, 2);
+  assert.match(result.message, /월요일 4시 결과/);
+  assert.match(result.message, /화요일 4시 결과/);
+});
+
 test('roster parser recognizes class, absence, makeup, trial, waitlist and move list questions', () => {
   const router = loadRouter();
   const cases = [
