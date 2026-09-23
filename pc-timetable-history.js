@@ -45,6 +45,7 @@
       wait_accept: '대기 학생 입장',
       wait_cancel: '대기 취소',
       makeup_add: '보강 등록',
+      makeup_date_change: '보강 날짜 변경',
       makeup_cancel: '보강 취소',
       scheduled_cancel: '변경 예약 취소',
       restore: '이전 변경 복구'

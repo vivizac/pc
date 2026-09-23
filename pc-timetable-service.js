@@ -382,6 +382,13 @@
     }));
   }
 
+  async function changeMakeupDate(oneTimeSessionId, sessionDate) {
+    return rpc('olli_schedule_update_one_time_date', contextPayload({
+      p_one_time_session_id: oneTimeSessionId,
+      p_session_date: clean(sessionDate)
+    }));
+  }
+
   async function cancelMakeup(oneTimeSessionId) {
     return executeScheduleAction('cancel_one_time', { one_time_session_id: oneTimeSessionId });
   }
@@ -581,6 +588,7 @@
     addMakeup,
     addWaitlist,
     addGuestEntry,
+    changeMakeupDate,
     cancelMakeup,
     cancelChange,
     removeEnrollment,
