@@ -121,6 +121,56 @@ test('multi read query aggregates each sub-query answer into one response', asyn
   assert.match(result.message, /화요일 4시 결과/);
 });
 
+test('remaining write parsers cover waitlist cancel and pickup cancel/update', () => {
+  const router = loadRouter();
+
+  const waitCancel = router.parseWaitlistCancelMutationIntent('김민서 월요일 4시 대기 취소해줘');
+  assert.ok(waitCancel);
+  assert.equal(waitCancel.intent, 'cancel_waitlist');
+  assert.equal(waitCancel.studentName, '김민서');
+  assert.equal(waitCancel.timeSlot, 4);
+
+  const pickupCancel = router.parsePickupCancelMutationIntent('김민서 월요일 4시 픽업 삭제해줘');
+  assert.ok(pickupCancel);
+  assert.equal(pickupCancel.intent, 'cancel_pickup');
+  assert.equal(pickupCancel.pickupKind, 'all');
+
+  const dropoffCancel = router.parsePickupCancelMutationIntent('김민서 월요일 4시 하원 픽업 삭제해줘');
+  assert.ok(dropoffCancel);
+  assert.equal(dropoffCancel.pickupKind, 'dropoff');
+
+  const pickupUpdate = router.parsePickupUpdateMutationIntent('김민서 월요일 4시 픽업 시간을 3시 40분으로 수정해줘');
+  assert.ok(pickupUpdate);
+  assert.equal(pickupUpdate.intent, 'update_pickup');
+  assert.equal(pickupUpdate.pickupKind, 'arrival');
+  assert.equal(pickupUpdate.pickupTime, '15:40');
+
+  const dropoffUpdate = router.parsePickupUpdateMutationIntent('김민서 월요일 4시 하원 픽업 장소 정문으로 수정해줘');
+  assert.ok(dropoffUpdate);
+  assert.equal(dropoffUpdate.pickupKind, 'dropoff');
+  assert.match(dropoffUpdate.pickupLabel, /정문/);
+});
+
+test('dropoff pickup registration does not require pickup time', () => {
+  const router = loadRouter();
+  const command = router.parsePickupMutationIntent('김민서 월요일 4시 수업 정문 하원 픽업 등록해줘');
+  assert.ok(command);
+  assert.equal(command.intent, 'add_pickup');
+  assert.equal(command.isDropoff, true);
+  assert.equal(command.pickupTime, '');
+  assert.match(command.pickupLabel, /정문/);
+});
+
+test('multi write parser accepts two or three independent write commands', () => {
+  const router = loadRouter();
+  const batch = router.parseMultiWriteIntent('김민서 월요일 4시 대기 취소해줘; 최서윤 화요일 5시 보강 등록해줘');
+  assert.ok(batch);
+  assert.equal(batch.intent, 'batch_write');
+  assert.equal(batch.commands.length, 2);
+  assert.equal(batch.commands[0].intent, 'cancel_waitlist');
+  assert.equal(batch.commands[1].intent, 'add_makeup');
+});
+
 test('roster parser recognizes class, absence, makeup, trial, waitlist and move list questions', () => {
   const router = loadRouter();
   const cases = [
