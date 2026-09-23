@@ -3,7 +3,7 @@
 
   if (global.OlliCommandSchedule) return;
 
-  const VERSION = '2026-09-23-roster-read-query-1';
+  const VERSION = '2026-09-23-write-actions-2';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -1670,21 +1670,195 @@
     return lines.join('\n');
   }
 
+  function activePickupRows(data, studentId, effectiveDate) {
+    const dateKey = localDateKey(effectiveDate || new Date());
+    return arrays(data, 'pickups').filter(row =>
+      clean(row && row.student_id) === clean(studentId)
+      && rowEffectiveOn(row, dateKey)
+    );
+  }
+
+  function pickupDropoffLabel(row) {
+    if (!row) return '';
+    return clean(row.dropoff_label) || (row.is_dropoff === true ? clean(row.pickup_label) : '');
+  }
+
+  async function preparePickupUpdateCommand(options) {
+    const opts = options || {};
+    const resolved = resolveCommandStudent(opts.studentName, opts.selectedStudent);
+    if (!resolved.ok) return resolved;
+    const student = resolved.student;
+    const studentId = clean(student && student.id);
+    if (normalizeStudentDivision(student) !== 'kinder') {
+      return { ok:false, message:'픽업 수정은 유치부 학생만 지원해요.' };
+    }
+
+    const referenceDate = localDateKey(opts.effectiveDate || new Date());
+    const lookupDate = Number(opts.weekday || 0)
+      ? nextOccurrenceKey(referenceDate, Number(opts.weekday))
+      : referenceDate;
+    const weekData = await loadFreshWeek(lookupDate);
+    let rows = activePickupRows(weekData, studentId, lookupDate);
+    if (Number(opts.weekday || 0)) rows = rows.filter(row => Number(row && row.weekday) === Number(opts.weekday));
+    if (Number(opts.classTime || 0)) rows = rows.filter(row => Number(row && row.class_time) === Number(opts.classTime));
+
+    if (!rows.length) return { ok:false, message:clean(student.name) + ' 학생의 수정할 픽업 일정을 찾지 못했어요.' };
+    if (rows.length > 1) {
+      const choices = rows.map(row => weekdayLabel(row.weekday) + ' ' + Number(row.class_time) + '시').join(' · ');
+      return { ok:false, message:clean(student.name) + ' 학생의 픽업 일정이 여러 개 있어요: ' + choices + '\n수업 요일과 시간을 함께 적어 주세요.' };
+    }
+
+    const item = rows[0];
+    if (clean(opts.pickupKind) === 'dropoff') {
+      const label = clean(opts.pickupLabel) || pickupDropoffLabel(item);
+      if (!label) return { ok:false, message:'수정할 하원 장소를 함께 적어 주세요.' };
+      return {
+        ok:true,
+        command:{
+          intent:'update_pickup_dropoff',
+          studentId,
+          studentName:clean(student.name),
+          pickupId:clean(item.id),
+          weekday:Number(item.weekday),
+          classTime:Number(item.class_time),
+          dropoffLabel:label
+        },
+        message:clean(student.name) + ' · ' + weekdayLabel(item.weekday) + ' ' + Number(item.class_time) + '시\n하원 장소를 ' + label + '(으)로 수정할까요?'
+      };
+    }
+
+    const existingArrivalLabel = item && item.is_dropoff === true ? '' : clean(item && item.pickup_label);
+    const existingArrivalTime = item && item.is_dropoff === true ? '' : clean(item && item.pickup_time);
+    const label = clean(opts.pickupLabel) || existingArrivalLabel;
+    const time = clean(opts.pickupTime) || existingArrivalTime;
+    if (!label || !time) {
+      return { ok:false, message:'등원 픽업 수정은 장소와 시간을 확인해 주세요. 기존 하원 전용 일정에 등원을 추가할 때는 등원 장소도 함께 적어 주세요.' };
+    }
+
+    return {
+      ok:true,
+      command:{
+        intent:'update_pickup_arrival',
+        studentId,
+        studentName:clean(student.name),
+        pickupId:clean(item.id),
+        weekday:Number(item.weekday),
+        classTime:Number(item.class_time),
+        pickupLabel:label,
+        pickupTime:time
+      },
+      message:clean(student.name) + ' · ' + weekdayLabel(item.weekday) + ' ' + Number(item.class_time) + '시\n등원 픽업을 ' + label + ' · ' + pickupTimeDisplay(time) + '(으)로 수정할까요?'
+    };
+  }
+
+  async function preparePickupCancelCommand(options) {
+    const opts = options || {};
+    const resolved = resolveCommandStudent(opts.studentName, opts.selectedStudent);
+    if (!resolved.ok) return resolved;
+    const student = resolved.student;
+    const studentId = clean(student && student.id);
+    const referenceDate = localDateKey(opts.effectiveDate || new Date());
+    const lookupDate = Number(opts.weekday || 0)
+      ? nextOccurrenceKey(referenceDate, Number(opts.weekday))
+      : referenceDate;
+    const weekData = await loadFreshWeek(lookupDate);
+    let rows = activePickupRows(weekData, studentId, lookupDate);
+    if (Number(opts.weekday || 0)) rows = rows.filter(row => Number(row && row.weekday) === Number(opts.weekday));
+    if (Number(opts.classTime || 0)) rows = rows.filter(row => Number(row && row.class_time) === Number(opts.classTime));
+    if (clean(opts.pickupKind) === 'dropoff') {
+      rows = rows.filter(row => row && (row.is_dropoff === true || !!pickupDropoffLabel(row)));
+    }
+
+    if (!rows.length) return { ok:false, message:clean(student.name) + ' 학생의 삭제할 픽업 일정을 찾지 못했어요.' };
+    if (rows.length > 1) {
+      const choices = rows.map(row => weekdayLabel(row.weekday) + ' ' + Number(row.class_time) + '시').join(' · ');
+      return { ok:false, message:clean(student.name) + ' 학생의 픽업 일정이 여러 개 있어요: ' + choices + '\n삭제할 수업 요일과 시간을 함께 적어 주세요.' };
+    }
+
+    const item = rows[0];
+    const dropoffOnly = clean(opts.pickupKind) === 'dropoff';
+    return {
+      ok:true,
+      command:{
+        intent:dropoffOnly ? 'cancel_pickup_dropoff' : 'cancel_pickup',
+        studentId,
+        studentName:clean(student.name),
+        pickupId:clean(item.id),
+        weekday:Number(item.weekday),
+        classTime:Number(item.class_time),
+        effectiveDate:referenceDate
+      },
+      message:clean(student.name) + ' · ' + weekdayLabel(item.weekday) + ' ' + Number(item.class_time) + '시\n'
+        + (dropoffOnly ? '하원 픽업만 삭제할까요?' : '픽업 일정을 삭제할까요?')
+    };
+  }
+
+  async function prepareCancelWaitlistCommand(options) {
+    const opts = options || {};
+    const studentName = clean(opts.studentName);
+    if (!studentName) return { ok:false, message:'대기를 취소할 학생 이름을 입력해 주세요.' };
+
+    const referenceDate = localDateKey(opts.date || opts.effectiveDate || new Date());
+    const weekData = await loadFreshWeek(referenceDate);
+    let rows = arrays(weekData, 'waitlist').filter(row =>
+      clean(row && row.student_name) === studentName
+      && clean(row && row.status).toLowerCase() !== 'cancelled'
+    );
+
+    const wantedWeekday = opts.date ? isoWeekday(referenceDate) : 0;
+    if (wantedWeekday) rows = rows.filter(row => Number(row && row.target_weekday) === wantedWeekday);
+    if (Number(opts.timeSlot || 0)) rows = rows.filter(row => Number(row && row.target_time_slot) === Number(opts.timeSlot));
+    if (requestedGroup(opts.classGroup)) rows = rows.filter(row => classGroup(row && row.target_class_group) === requestedGroup(opts.classGroup));
+
+    if (!rows.length) return { ok:false, message:studentName + ' 학생의 취소 가능한 대기를 찾지 못했어요.' };
+    if (rows.length > 1) {
+      const choices = rows.map(row => weekdayLabel(row.target_weekday) + ' ' + Number(row.target_time_slot) + '시').join(' · ');
+      return { ok:false, message:studentName + ' 학생의 대기가 여러 개 있어요: ' + choices + '\n취소할 요일과 시간을 함께 적어 주세요.' };
+    }
+
+    const item = rows[0];
+    return {
+      ok:true,
+      command:{
+        intent:'cancel_waitlist',
+        studentId:clean(item.student_id),
+        studentName,
+        division:normalizeDivision(item.division),
+        waitlistId:clean(item.id),
+        targetWeekday:Number(item.target_weekday),
+        targetTimeSlot:Number(item.target_time_slot),
+        targetClassGroup:classGroup(item.target_class_group),
+        effectiveDate:referenceDate,
+        isGuest:item && item.is_guest === true
+      },
+      message:studentName + ' · ' + weekdayLabel(item.target_weekday) + ' ' + Number(item.target_time_slot) + '시\n대기를 취소할까요?'
+    };
+  }
+
+
   async function preparePickupCommand(options) {
     const opts = options || {};
     const weekday = Number(opts.weekday || 0);
     const classTime = Number(opts.classTime || 0);
     const pickupLabel = clean(opts.pickupLabel);
     const pickupTime = clean(opts.pickupTime);
-    const pickupGuide = '픽업 등록은 학생 이름, 수업 요일·시간, 픽업 장소, 픽업 시간을 함께 적어 주세요.\n예: 김민서 월요일 4시 수업 리슈빌 3시 30분 하원 픽업 등록해줘';
+    const isDropoff = opts.isDropoff === true;
+    const pickupGuide = isDropoff
+      ? '하원 픽업 등록은 학생 이름, 수업 요일·시간, 하원 장소를 함께 적어 주세요.\n예: 김민서 월요일 4시 수업 정문 하원 픽업 등록해줘'
+      : '등원 픽업 등록은 학생 이름, 수업 요일·시간, 픽업 장소, 픽업 시간을 함께 적어 주세요.\n예: 김민서 월요일 4시 수업 리슈빌 3시 30분 픽업 등록해줘';
 
-    if (!clean(opts.studentName) || weekday < 1 || weekday > 6 || ![4, 5].includes(classTime) || !pickupLabel || !/^\d{2}:\d{2}$/.test(pickupTime)) {
+    if (
+      !clean(opts.studentName)
+      || weekday < 1 || weekday > 6
+      || ![4, 5].includes(classTime)
+      || !pickupLabel
+      || (!isDropoff && !/^\d{2}:\d{2}$/.test(pickupTime))
+    ) {
       return { ok:false, message:pickupGuide };
     }
 
     const resolved = resolveCommandStudent(opts.studentName, opts.selectedStudent);
     if (!resolved.ok) return resolved;
-
     const student = resolved.student;
     const studentId = clean(student && student.id);
     const division = normalizeStudentDivision(student);
@@ -1694,28 +1868,48 @@
     const effectiveDate = nextOccurrenceKey(opts.effectiveDate || new Date(), weekday);
     if (!effectiveDate) return { ok:false, message:'픽업 적용 요일을 확인하지 못했어요.' };
 
-    const dropoffText = opts.isDropoff === true ? '하원 픽업' : '픽업';
+    const weekData = await loadFreshWeek(effectiveDate);
+    const existing = activePickupRows(weekData, studentId, effectiveDate).find(row =>
+      Number(row && row.weekday) === weekday && Number(row && row.class_time) === classTime
+    );
+
+    if (existing) {
+      if (isDropoff) {
+        return {
+          ok:true,
+          command:{
+            intent:'update_pickup_dropoff', studentId, studentName:clean(student.name),
+            pickupId:clean(existing.id), weekday, classTime, dropoffLabel:pickupLabel
+          },
+          message:clean(student.name) + ' 학생은 이미 이 수업의 픽업 카드가 있어요.\n하원 장소 ' + pickupLabel + '을 추가할까요?'
+        };
+      }
+      return {
+        ok:true,
+        command:{
+          intent:'update_pickup_arrival', studentId, studentName:clean(student.name),
+          pickupId:clean(existing.id), weekday, classTime, pickupLabel, pickupTime
+        },
+        message:clean(student.name) + ' 학생은 이미 이 수업의 픽업 카드가 있어요.\n등원 픽업 ' + pickupLabel + ' · ' + pickupTimeDisplay(pickupTime) + '을 저장할까요?'
+      };
+    }
+
     return {
       ok:true,
       command:{
-        intent:'add_pickup',
-        studentId,
-        studentName:clean(student.name),
-        division:'kinder',
-        weekday,
-        classTime,
-        pickupLabel,
-        pickupTime,
-        effectiveDate,
-        isDropoff:opts.isDropoff === true
+        intent:'add_pickup', studentId, studentName:clean(student.name), division:'kinder',
+        weekday, classTime,
+        pickupLabel:isDropoff ? '' : pickupLabel,
+        pickupTime:isDropoff ? '' : pickupTime,
+        dropoffLabel:isDropoff ? pickupLabel : '',
+        effectiveDate, isDropoff
       },
-      message:
-        clean(student.name) + ' · ' + weekdayLabel(weekday) + ' ' + classTime + '시 수업'
-        + '\n' + pickupLabel + ' · ' + pickupTimeDisplay(pickupTime) + ' · ' + dropoffText
+      message:clean(student.name) + ' · ' + weekdayLabel(weekday) + ' ' + classTime + '시 수업'
+        + '\n' + pickupLabel
+        + (isDropoff ? ' · 하원 픽업' : ' · ' + pickupTimeDisplay(pickupTime) + ' · 등원 픽업')
         + '\n등록할까요?\n\'확인\' 또는 \'취소\'라고 입력해 주세요.'
     };
   }
-
 
   async function prepareMakeupCommand(options) {
     const opts = options || {};
@@ -2311,9 +2505,51 @@
   }
 
   async function prepareWriteCommand(intent, options) {
+    if (intent === 'batch_write') {
+      const commands = [];
+      const preparedMessages = [];
+      for (const item of (Array.isArray(options && options.commands) ? options.commands : [])) {
+        const prepared = await prepareWriteCommand(item.intent, item);
+        if (!prepared || prepared.ok !== true || !prepared.command) {
+          return { ok:false, message:String(prepared && prepared.message || '묶음 작업 중 준비하지 못한 항목이 있어요.') };
+        }
+        if (commandRequiresReason(prepared.command) && !clean(prepared.command.reason)) {
+          return { ok:false, message:'여러 쓰기 작업을 한 번에 처리할 때는 결석·보강취소·체험취소 사유를 각 명령에 함께 적어 주세요.' };
+        }
+        commands.push(prepared.command);
+        preparedMessages.push(clean(prepared.message));
+      }
+      if (commands.length < 2) return { ok:false, message:'묶음 쓰기 작업은 2개 이상이어야 해요.' };
+      const labels = commands.map(command => {
+        const action = clean(command && command.intent);
+        if (action === 'cancel_waitlist') return clean(command.studentName) + ' · 대기 취소';
+        if (action === 'add_makeup') return clean(command.studentName) + ' · 보강 등록';
+        if (action === 'cancel_makeup') return clean(command.studentName) + ' · 보강 취소';
+        if (action === 'add_trial') return clean(command.guestName || command.studentName) + ' · 체험 등록';
+        if (action === 'cancel_trial') return clean(command.guestName || command.studentName) + ' · 체험 취소';
+        if (action === 'move_class') return clean(command.studentName) + ' · 수업 이동';
+        if (action === 'cancel_move') return clean(command.studentName) + ' · 수업 이동 취소';
+        if (action === 'add_waitlist') return clean(command.studentName) + ' · 대기 등록';
+        if (action === 'add_pickup') return clean(command.studentName) + ' · ' + (command.isDropoff ? '하원 픽업 등록' : '등원 픽업 등록');
+        if (action === 'update_pickup_arrival') return clean(command.studentName) + ' · 등원 픽업 수정';
+        if (action === 'update_pickup_dropoff') return clean(command.studentName) + ' · 하원 픽업 수정';
+        if (action === 'cancel_pickup_dropoff') return clean(command.studentName) + ' · 하원 픽업 삭제';
+        if (action === 'cancel_pickup') return clean(command.studentName) + ' · 픽업 삭제';
+        return preparedMessages[commands.indexOf(command)].split('\n')[0];
+      });
+      return {
+        ok:true,
+        command:{ intent:'batch_write', commands },
+        message:'다음 ' + commands.length + '개 작업을 함께 진행할까요?\n'
+          + labels.map((label, index) => (index + 1) + '. ' + label).join('\n')
+      };
+    }
     if (intent === 'mark_absent') return prepareAbsenceCommand(options);
     if (intent === 'add_class_once') return prepareClassOnceCommand(options);
     if (intent === 'add_pickup') return preparePickupCommand(options);
+    if (intent === 'update_pickup') return preparePickupUpdateCommand(options);
+    if (intent === 'cancel_pickup') return preparePickupCancelCommand(options);
+    if (intent === 'cancel_waitlist') return prepareCancelWaitlistCommand(options);
     if (intent === 'add_makeup') return prepareMakeupCommand(options);
     if (intent === 'move_class') return prepareMoveCommand(options);
     if (intent === 'add_waitlist') return prepareWaitlistCommand(options);
@@ -2329,6 +2565,22 @@
     const intent = clean(item.intent);
     let result;
     let memoError = null;
+
+    if (intent === 'batch_write') {
+      const results = [];
+      const commands = Array.isArray(item.commands) ? item.commands : [];
+      for (let index = 0; index < commands.length; index += 1) {
+        try {
+          results.push(await executePreparedWrite(commands[index]));
+        } catch (error) {
+          const wrapped = new Error((index > 0 ? index + '개 작업은 완료됐지만 ' : '') + (error && (error.message || error) || '묶음 작업을 저장하지 못했어요.'));
+          wrapped.partialCompleted = index;
+          wrapped.results = results;
+          throw wrapped;
+        }
+      }
+      return { ok:true, batch:true, results };
+    }
 
     const pc = global.OlliTimetableService;
     const phone = global.OlliPhoneStudentScheduleService;
@@ -2368,24 +2620,64 @@
           studentId:item.studentId,
           weekday:Number(item.weekday),
           classTime:Number(item.classTime),
-          pickupLabel:item.pickupLabel,
-          pickupTime:item.pickupTime,
-          effectiveDate:item.effectiveDate,
-          isDropoff:item.isDropoff === true
+          pickupLabel:item.pickupLabel || '',
+          pickupTime:item.pickupTime || null,
+          dropoffLabel:item.dropoffLabel || '',
+          effectiveDate:item.effectiveDate
         });
       } else if (phone && typeof phone.request === 'function') {
-        result = await phone.request('olli_schedule_save_pickup_v2', {
+        result = await phone.request('olli_schedule_save_pickup_v3', {
           p_student_id:item.studentId,
           p_weekday:Number(item.weekday),
           p_class_time:Number(item.classTime),
-          p_pickup_label:item.pickupLabel,
-          p_pickup_time:item.pickupTime,
-          p_effective_date:item.effectiveDate,
-          p_is_dropoff:item.isDropoff === true
+          p_arrival_label:item.pickupLabel || null,
+          p_pickup_time:item.pickupTime || null,
+          p_dropoff_label:item.dropoffLabel || null,
+          p_effective_date:item.effectiveDate
         });
       } else {
         throw new Error('픽업 저장 기능을 아직 불러오지 못했습니다.');
       }
+    } else if (intent === 'update_pickup_arrival') {
+      if (pc && typeof pc.savePickupArrival === 'function') {
+        result = await pc.savePickupArrival(item.pickupId, item.pickupLabel, item.pickupTime);
+      } else if (phone && typeof phone.request === 'function') {
+        result = await phone.request('olli_schedule_save_pickup_arrival', {
+          p_pickup_id:item.pickupId, p_pickup_label:item.pickupLabel, p_pickup_time:item.pickupTime
+        });
+      } else throw new Error('등원 픽업 수정 기능을 아직 불러오지 못했습니다.');
+    } else if (intent === 'update_pickup_dropoff') {
+      if (pc && typeof pc.registerPickupDropoff === 'function') {
+        result = await pc.registerPickupDropoff(item.pickupId, item.dropoffLabel);
+      } else if (phone && typeof phone.request === 'function') {
+        result = await phone.request('olli_schedule_register_pickup_dropoff', {
+          p_pickup_id:item.pickupId, p_dropoff_label:item.dropoffLabel
+        });
+      } else throw new Error('하원 픽업 수정 기능을 아직 불러오지 못했습니다.');
+    } else if (intent === 'cancel_pickup_dropoff') {
+      if (pc && typeof pc.removePickupDropoff === 'function') {
+        result = await pc.removePickupDropoff(item.pickupId);
+      } else if (phone && typeof phone.request === 'function') {
+        result = await phone.request('olli_schedule_remove_pickup_dropoff', { p_pickup_id:item.pickupId });
+      } else throw new Error('하원 픽업 삭제 기능을 아직 불러오지 못했습니다.');
+    } else if (intent === 'cancel_pickup') {
+      if (pc && typeof pc.removePickup === 'function') {
+        result = await pc.removePickup(item.pickupId, item.effectiveDate);
+      } else if (phone && typeof phone.request === 'function') {
+        result = await phone.request('olli_schedule_execute', {
+          p_action:'remove_pickup',
+          p_params:{ pickup_id:item.pickupId, effective_date:item.effectiveDate }
+        });
+      } else throw new Error('픽업 삭제 기능을 아직 불러오지 못했습니다.');
+    } else if (intent === 'cancel_waitlist') {
+      if (pc && typeof pc.resolveWaitlist === 'function') {
+        result = await pc.resolveWaitlist(item.waitlistId, 'cancel', item.effectiveDate);
+      } else if (phone && typeof phone.request === 'function') {
+        result = await phone.request('olli_schedule_execute', {
+          p_action:'resolve_waitlist',
+          p_params:{ waitlist_id:item.waitlistId, action:'cancel', effective_date:item.effectiveDate }
+        });
+      } else throw new Error('대기 취소 기능을 아직 불러오지 못했습니다.');
     } else if (intent === 'mark_absent') {
       if (pc && typeof pc.setAttendanceSessionStatus === 'function') {
         result = await pc.setAttendanceSessionStatus({
@@ -2615,6 +2907,26 @@
 
   function writeSuccessMessage(command, result) {
     const item = command || {};
+    if (item.intent === 'batch_write') {
+      const commands = Array.isArray(item.commands) ? item.commands : [];
+      const results = result && Array.isArray(result.results) ? result.results : [];
+      return commands.map((child, index) => writeSuccessMessage(child, results[index] || {})).join('\n');
+    }
+    if (item.intent === 'update_pickup_arrival') {
+      return clean(item.studentName) + ' 학생의 ' + weekdayLabel(item.weekday) + ' ' + Number(item.classTime) + '시 등원 픽업을 수정했어요.';
+    }
+    if (item.intent === 'update_pickup_dropoff') {
+      return clean(item.studentName) + ' 학생의 ' + weekdayLabel(item.weekday) + ' ' + Number(item.classTime) + '시 하원 픽업을 수정했어요.';
+    }
+    if (item.intent === 'cancel_pickup_dropoff') {
+      return clean(item.studentName) + ' 학생의 ' + weekdayLabel(item.weekday) + ' ' + Number(item.classTime) + '시 하원 픽업을 삭제했어요.';
+    }
+    if (item.intent === 'cancel_pickup') {
+      return clean(item.studentName) + ' 학생의 ' + weekdayLabel(item.weekday) + ' ' + Number(item.classTime) + '시 픽업 일정을 삭제했어요.';
+    }
+    if (item.intent === 'cancel_waitlist') {
+      return clean(item.studentName) + ' 학생의 ' + weekdayLabel(item.targetWeekday) + ' ' + Number(item.targetTimeSlot) + '시 대기를 취소했어요.';
+    }
     if (item.intent === 'add_pickup') {
       const typeLabel = item.isDropoff === true ? '하원 픽업' : '픽업';
       return clean(item.studentName) + ' 학생의 ' + weekdayLabel(item.weekday) + ' '

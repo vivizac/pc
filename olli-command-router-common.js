@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-23-multi-read-query-1';
+  const VERSION = '2026-09-23-write-actions-2';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -606,6 +606,83 @@
   }
 
 
+  function parseWaitlistCancelMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !hasWaitlistWord(compact) || !hasRemoveAction(compact)) return null;
+    const studentName = extractStudentName(
+      raw,
+      /(?:대기(?:자|명단|리스트)?|웨이팅(?:리스트)?)(?:을|를|에서)?/g,
+      /(?:취소|삭제|지워|지우|제거|빼|해제|없애)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요)?/g
+    );
+    if (!studentName) return null;
+    const dateSpec = parseDateExpression(compact);
+    return {
+      type:'mutation', intent:'cancel_waitlist', studentName,
+      dateSpec, dateLabel:dateSpec ? dateSpec.label : '',
+      timeSlot:firstTimeSlot(raw), classGroup:firstClassGroup(raw), originalText:raw
+    };
+  }
+
+  function pickupClassTarget(value) {
+    const raw = cleanText(value);
+    const compact = compactText(raw);
+    const weekdayMatch = compact.match(/([월화수목금토])요일/);
+    const weekday = weekdayMatch ? (WEEKDAY_MAP[weekdayMatch[1]] || 0) : 0;
+    const explicitClass = raw.match(/(\d{1,2})\s*시\s*(?:수업|클래스)/);
+    const weekdayClass = raw.match(/[월화수목금토]\s*요일\s*(\d{1,2})\s*시/);
+    return { weekday, classTime:Number((explicitClass || weekdayClass)?.[1] || 0) };
+  }
+
+  function pickupEditLabel(value, studentName) {
+    return pickupLabelFromText(value, studentName)
+      .replace(/(?:수정|변경|바꿔|바꾸어|고쳐)(?:\s*(?:해줘요|해주세요|해줘|해줄래|할래|줘|주세요|해))?/g, ' ')
+      .replace(/(?:해줘요|해주세요|해줘|해줄래|할래|줘|주세요)/g, ' ')
+      .replace(/^(?:을|를|은|는)\s*/g, '')
+      .replace(/(?:으로|로)(?=\s|$)/g, ' ')
+      .replace(/^\s*(?:으로|로)\s*$/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function parsePickupCancelMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !/픽업/.test(compact) || !hasRemoveAction(compact)) return null;
+    const studentName = pickupStudentName(raw);
+    if (!studentName) return null;
+    const target = pickupClassTarget(raw);
+    return {
+      type:'mutation', intent:'cancel_pickup', studentName,
+      weekday:target.weekday, classTime:target.classTime,
+      pickupKind:/하원/.test(compact) ? 'dropoff' : 'all',
+      originalText:raw
+    };
+  }
+
+  function parsePickupUpdateMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !/픽업/.test(compact) || hasRemoveAction(compact)) return null;
+    if (!/(?:수정|변경|바꿔|바꾸|고쳐)/.test(compact)) return null;
+    const studentName = pickupStudentName(raw);
+    if (!studentName) return null;
+    const target = pickupClassTarget(raw);
+    const clocks = pickupClockMentions(raw);
+    let classClock = null;
+    if (target.classTime) classClock = clocks.find(item => Number(item.hour) === target.classTime) || null;
+    const pickupClock = clocks.filter(item => item !== classClock).slice(-1)[0] || null;
+    return {
+      type:'mutation', intent:'update_pickup', studentName,
+      weekday:target.weekday, classTime:target.classTime,
+      pickupKind:/하원/.test(compact) ? 'dropoff' : 'arrival',
+      pickupLabel:pickupEditLabel(raw, studentName),
+      pickupTime:normalizePickupClock(pickupClock),
+      originalText:raw
+    };
+  }
+
+
   function parsePickupMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
@@ -616,14 +693,10 @@
       && /(?:누구|학생|명단|몇명|있어|있나|있나요|알려|보여|확인|조회)/.test(compact);
     if (passiveRegistrationQuery) return null;
 
-    const weekdayMatch = compact.match(/([월화수목금토])요일/);
-    const weekday = weekdayMatch ? (WEEKDAY_MAP[weekdayMatch[1]] || 0) : 0;
+    const target = pickupClassTarget(raw);
+    const weekday = target.weekday;
+    const classTime = target.classTime;
     const clocks = pickupClockMentions(raw);
-
-    const explicitClass = raw.match(/(\d{1,2})\s*시\s*(?:수업|클래스)/);
-    const weekdayClass = raw.match(/[월화수목금토]\s*요일\s*(\d{1,2})\s*시/);
-    const classMatch = explicitClass || weekdayClass;
-    const classTime = Number(classMatch && classMatch[1] || 0);
 
     let classClock = null;
     if (classTime) {
@@ -678,18 +751,35 @@
     };
   }
 
-  function parseWriteIntent(text) {
+  function parseSingleWriteIntent(text) {
     const normalizedText = cleanText(text);
     return parseAbsenceMutationIntent(normalizedText)
       || parseTrialCancelMutationIntent(normalizedText)
       || parseMakeupCancelMutationIntent(normalizedText)
       || parseMoveCancelMutationIntent(normalizedText)
+      || parseWaitlistCancelMutationIntent(normalizedText)
+      || parsePickupCancelMutationIntent(normalizedText)
+      || parsePickupUpdateMutationIntent(normalizedText)
       || parsePickupMutationIntent(normalizedText)
       || parseWaitlistMutationIntent(normalizedText)
       || parseTrialMutationIntent(normalizedText)
       || parseScheduleMoveMutationIntent(normalizedText)
-      || parseMakeupMutationIntent(normalizedText)
-      || parseClassMutationIntent(normalizedText);
+      || parseMakeupMutationIntent(normalizedText);
+  }
+
+  function parseMultiWriteIntent(text) {
+    const raw = cleanText(text);
+    if (!raw) return null;
+    const parts = raw.split(/\s*(?:;|그리고|그다음|그 다음|하고|\n)\s*/g).map(cleanText).filter(Boolean);
+    if (parts.length < 2 || parts.length > 3) return null;
+    const commands = parts.map(parseSingleWriteIntent);
+    if (commands.some(item => !item)) return null;
+    return { type:'mutation', intent:'batch_write', commands, originalText:raw };
+  }
+
+  function parseWriteIntent(text) {
+    const normalizedText = cleanText(text);
+    return parseMultiWriteIntent(normalizedText) || parseSingleWriteIntent(normalizedText);
   }
 
   function isConfirmCommand(text) {
@@ -1330,6 +1420,22 @@
     return runQuery(normalizedText + ' 시간표 보여줘', context);
   }
 
+  function resolveWriteIntentOptions(writeIntent, routeContext) {
+    const options = Object.assign({}, writeIntent, {
+      selectedStudent:routeContext.selectedStudent || null,
+      effectiveDate:new Date()
+    });
+    if (writeIntent.dateSpec) {
+      options.date = resolveDateExpression(writeIntent.dateSpec, new Date());
+      if (!options.date) throw new Error('날짜를 해석하지 못했습니다.');
+    }
+    if (writeIntent.intent === 'batch_write') {
+      options.commands = (writeIntent.commands || []).map(item => resolveWriteIntentOptions(item, routeContext));
+    }
+    return options;
+  }
+
+
   async function prepareAction(text, context) {
     const normalizedText = cleanText(text);
     const routeContext = normalizeContext(context);
@@ -1363,14 +1469,7 @@
     }
 
     try {
-      const options = Object.assign({}, writeIntent, {
-        selectedStudent:routeContext.selectedStudent || null,
-        effectiveDate:new Date()
-      });
-      if (writeIntent.dateSpec) {
-        options.date = resolveDateExpression(writeIntent.dateSpec, new Date());
-        if (!options.date) throw new Error('날짜를 해석하지 못했습니다.');
-      }
+      const options = resolveWriteIntentOptions(writeIntent, routeContext);
 
       const prepared = await schedule.prepareWriteCommand(writeIntent.intent, options);
       if (!prepared || prepared.ok !== true || !prepared.command) {
@@ -1550,16 +1649,7 @@
 
     if (pendingWriteCommand) pendingWriteCommand = null;
 
-    const absenceWrite = parseAbsenceMutationIntent(normalizedText);
-    const trialCancel = parseTrialCancelMutationIntent(normalizedText);
-    const makeupCancel = parseMakeupCancelMutationIntent(normalizedText);
-    const moveCancel = parseMoveCancelMutationIntent(normalizedText);
-    const pickupWrite = parsePickupMutationIntent(normalizedText);
-    const waitlistWrite = parseWaitlistMutationIntent(normalizedText);
-    const trialWrite = parseTrialMutationIntent(normalizedText);
-    const scheduleMove = parseScheduleMoveMutationIntent(normalizedText);
-    const makeupWrite = parseMakeupMutationIntent(normalizedText);
-    const writeIntent = absenceWrite || trialCancel || makeupCancel || moveCancel || pickupWrite || waitlistWrite || trialWrite || scheduleMove || makeupWrite;
+    const writeIntent = parseWriteIntent(normalizedText);
     if (writeIntent) {
       if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
         return {
@@ -1574,14 +1664,7 @@
       }
 
       try {
-        const options = Object.assign({}, writeIntent, {
-          selectedStudent:routeContext.selectedStudent || null,
-          effectiveDate:new Date()
-        });
-        if (writeIntent.dateSpec) {
-          options.date = resolveDateExpression(writeIntent.dateSpec, new Date());
-          if (!options.date) throw new Error('날짜를 해석하지 못했습니다.');
-        }
+        const options = resolveWriteIntentOptions(writeIntent, routeContext);
         const prepared = await schedule.prepareWriteCommand(writeIntent.intent, options);
         if (!prepared || prepared.ok !== true) {
           return {
@@ -1661,7 +1744,11 @@
     parseMakeupCancelMutationIntent,
     parseTrialCancelMutationIntent,
     parseMoveCancelMutationIntent,
+    parseWaitlistCancelMutationIntent,
+    parsePickupCancelMutationIntent,
+    parsePickupUpdateMutationIntent,
     parsePickupMutationIntent,
+    parseMultiWriteIntent,
     parseClassMutationIntent,
     parseDateExpression,
     resolveDateExpression,
