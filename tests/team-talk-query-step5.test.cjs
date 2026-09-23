@@ -623,6 +623,9 @@ test('Olli reply accepts one temporal signal plus any short schedule target word
 test('Olli reply button runs terse one-signal schedule combinations directly', async () => {
   let calls = 0;
   const router = loadRouter({
+    async findAvailableSlots() {
+      return { displaySlots:[], allSlots:[] };
+    },
     async findRecurringAvailability(options) {
       calls += 1;
       assert.equal(options.weekday, 1);
