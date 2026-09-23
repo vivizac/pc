@@ -354,10 +354,7 @@
   transform: none;
 }
 
-.elementaryGroupIcon,
-.elementaryDefaultNoGroupIcon,
 .elementaryEmptyCircle,
-.kinderLeadIcon,
 .kinderSignalCircle,
 .selectionCircle {
   grid-column: 1;
