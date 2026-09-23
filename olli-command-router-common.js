@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-23-student-info-query-1';
+  const VERSION = '2026-09-23-pickup-query-2';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -55,7 +55,7 @@
     if (!raw) return false;
 
     const hasScheduleTarget =
-      /(?:자리|빈자리|여석|대기(?:자|명단|리스트)?|웨이팅(?:리스트)?|체험(?:수업|클래스)?|보강|보충(?:수업)?)/.test(compact);
+      /(?:자리|빈자리|여석|대기(?:자|명단|리스트)?|웨이팅(?:리스트)?|체험(?:수업|클래스)?|보강|보충(?:수업)?|(?:등원|하원)?픽업)/.test(compact);
     if (!hasScheduleTarget) return false;
 
     const asksForLookup =
@@ -828,13 +828,25 @@
       || /(?:등록|추가|넣|예약).{0,18}(?:픽업|하원)(?:해|해줘|해주세요|해줄래|할래|줘|주세요|하자|해요)/.test(compact);
     if (explicitMutation) return null;
 
+    const explicitDateSpec = parseDateExpression(compact);
+    const explicitClassTimeMatch = raw.match(/(\d{1,2})\s*시\s*(?:수업|클래스)/);
+    const shorthandTimeBeforePickup = raw.match(/(\d{1,2})\s*시(?!\s*\d+\s*분)\s*(?=(?:등원\s*|하원\s*)?픽업)/);
+    const shorthandTimeAfterPickup = raw.match(/(?:등원\s*|하원\s*)?픽업\s*(\d{1,2})\s*시(?!\s*\d+\s*분)/);
+    const classTime = Number(
+      explicitClassTimeMatch && explicitClassTimeMatch[1]
+      || shorthandTimeBeforePickup && shorthandTimeBeforePickup[1]
+      || shorthandTimeAfterPickup && shorthandTimeAfterPickup[1]
+      || 0
+    );
+
     const asksForLookup =
       /(?:누구|학생|명단|몇명|몇명이|있어|있나|있나요|있니|있을까|알려|찾아|보여|확인|체크|조회|어디|시간)/.test(compact);
-    if (!asksForLookup) return null;
+    const shorthandLookup =
+      /픽업/.test(compact)
+      && (!!explicitDateSpec || classTime > 0);
+    if (!asksForLookup && !shorthandLookup) return null;
 
-    const dateSpec = parseDateExpression(compact) || { mode:'today', label:'오늘' };
-    const classTimeMatch = raw.match(/(\d{1,2})\s*시\s*(?:수업|클래스)/);
-    const classTime = Number(classTimeMatch && classTimeMatch[1] || 0);
+    const dateSpec = explicitDateSpec || { mode:'today', label:'오늘' };
     const kind = /하원/.test(compact)
       ? 'dropoff'
       : (/(?:등원|픽업만)/.test(compact) ? 'pickup' : 'all');
