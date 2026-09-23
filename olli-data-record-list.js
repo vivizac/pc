@@ -209,27 +209,9 @@ function getElementaryGroupLetter(group) {
   return map[String(group || '').trim()] || '';
 }
 
-/* elementary group icons: uploaded SVG set v6 */
-const GROUP_ICON_IMAGES = {
-  '1': `data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22108%22%20height%3D%22108%22%20viewBox%3D%220%200%20108%20108%22%20fill%3D%22none%22%3E%0A%20%20%3Cpolygon%20points%3D%2254.00%2C20.00%2083.44%2C37.00%2083.44%2C71.00%2054.00%2C88.00%2024.56%2C71.00%2024.56%2C37.00%22%20fill%3D%22none%22%20stroke%3D%22%23CFCFD4%22%20stroke-width%3D%224%22%20stroke-linejoin%3D%22round%22%2F%3E%0A%20%20%3Cpolygon%20points%3D%2254.00%2C39.00%2058.40%2C43.38%2064.61%2C43.39%2064.62%2C49.60%2069.00%2C54.00%2064.62%2C58.40%2064.61%2C64.61%2058.40%2C64.62%2054.00%2C69.00%2049.60%2C64.62%2043.39%2C64.61%2043.38%2C58.40%2039.00%2C54.00%2043.38%2C49.60%2043.39%2C43.39%2049.60%2C43.38%22%20fill%3D%22black%22%20stroke%3D%22black%22%20stroke-width%3D%228%22%20stroke-linejoin%3D%22round%22%2F%3E%0A%20%20%3Cpolygon%20points%3D%2254.00%2C46.00%2056.34%2C49.01%2060.00%2C48.00%2058.99%2C51.66%2062.00%2C54.00%2058.99%2C56.34%2060.00%2C60.00%2056.34%2C58.99%2054.00%2C62.00%2051.66%2C58.99%2048.00%2C60.00%2049.01%2C56.34%2046.00%2C54.00%2049.01%2C51.66%2048.00%2C48.00%2051.66%2C49.01%22%20fill%3D%22white%22%20stroke%3D%22white%22%20stroke-width%3D%223%22%20stroke-linejoin%3D%22round%22%2F%3E%0A%3C%2Fsvg%3E`,
-  '2': `data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22108%22%20height%3D%22108%22%20viewBox%3D%220%200%20108%20108%22%20fill%3D%22none%22%3E%3Cpolygon%20points%3D%2254.00,20.00%2083.44,37.00%2083.44,71.00%2054.00,88.00%2024.56,71.00%2024.56,37.00%22%20fill%3D%22none%22%20stroke%3D%22%23CFCFD4%22%20stroke-width%3D%224%22%20stroke-linejoin%3D%22round%22%2F%3E%3Crect%20x%3D%2238%22%20y%3D%2234%22%20width%3D%228%22%20height%3D%2240%22%20rx%3D%224%22%20fill%3D%22black%22%2F%3E%3Crect%20x%3D%2250%22%20y%3D%2234%22%20width%3D%228%22%20height%3D%2240%22%20rx%3D%224%22%20fill%3D%22black%22%2F%3E%3Crect%20x%3D%2262%22%20y%3D%2234%22%20width%3D%228%22%20height%3D%2240%22%20rx%3D%224%22%20fill%3D%22black%22%2F%3E%3C%2Fsvg%3E`,
-  '3': `data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22108%22%20height%3D%22108%22%20viewBox%3D%220%200%20108%20108%22%20fill%3D%22none%22%3E%3Cpolygon%20points%3D%2254.00,20.00%2083.44,37.00%2083.44,71.00%2054.00,88.00%2024.56,71.00%2024.56,37.00%22%20fill%3D%22none%22%20stroke%3D%22%23CFCFD4%22%20stroke-width%3D%224%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%2245%22%20cy%3D%2245%22%20r%3D%229%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2263%22%20cy%3D%2245%22%20r%3D%229%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2245%22%20cy%3D%2263%22%20r%3D%229%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2263%22%20cy%3D%2263%22%20r%3D%229%22%20fill%3D%22black%22%2F%3E%3Crect%20x%3D%2245%22%20y%3D%2236%22%20width%3D%2218%22%20height%3D%2236%22%20rx%3D%229%22%20transform%3D%22rotate(45%2054%2054)%22%20fill%3D%22black%22%2F%3E%3Crect%20x%3D%2245%22%20y%3D%2236%22%20width%3D%2218%22%20height%3D%2236%22%20rx%3D%229%22%20transform%3D%22rotate(-45%2054%2054)%22%20fill%3D%22black%22%2F%3E%3C%2Fsvg%3E`,
-  '4': `data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22108%22%20height%3D%22108%22%20viewBox%3D%220%200%20108%20108%22%20fill%3D%22none%22%3E%3Cpolygon%20points%3D%2254.00,20.00%2083.44,37.00%2083.44,71.00%2054.00,88.00%2024.56,71.00%2024.56,37.00%22%20fill%3D%22none%22%20stroke%3D%22%23CFCFD4%22%20stroke-width%3D%224%22%20stroke-linejoin%3D%22round%22%2F%3E%3Crect%20x%3D%2238%22%20y%3D%2238%22%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%224%22%20fill%3D%22black%22%2F%3E%3Crect%20x%3D%2246%22%20y%3D%2246%22%20width%3D%2216%22%20height%3D%2216%22%20rx%3D%222%22%20fill%3D%22white%22%2F%3E%3C%2Fsvg%3E`,
-  '5': `data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22108%22%20height%3D%22108%22%20viewBox%3D%220%200%20108%20108%22%20fill%3D%22none%22%3E%3Cpolygon%20points%3D%2254.00,20.00%2083.44,37.00%2083.44,71.00%2054.00,88.00%2024.56,71.00%2024.56,37.00%22%20fill%3D%22none%22%20stroke%3D%22%23CFCFD4%22%20stroke-width%3D%224%22%20stroke-linejoin%3D%22round%22%2F%3E%3Ccircle%20cx%3D%2244%22%20cy%3D%2244%22%20r%3D%228.5%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2244%22%20r%3D%228.5%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2244%22%20cy%3D%2264%22%20r%3D%228.5%22%20fill%3D%22black%22%2F%3E%3Ccircle%20cx%3D%2264%22%20cy%3D%2264%22%20r%3D%228.5%22%20fill%3D%22black%22%2F%3E%3C%2Fsvg%3E`,
-  '6': `data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22108%22%20height%3D%22108%22%20viewBox%3D%220%200%20108%20108%22%20fill%3D%22none%22%3E%3Cpolygon%20points%3D%2254.00,20.00%2083.44,37.00%2083.44,71.00%2054.00,88.00%2024.56,71.00%2024.56,37.00%22%20fill%3D%22none%22%20stroke%3D%22%23CFCFD4%22%20stroke-width%3D%224%22%20stroke-linejoin%3D%22round%22%2F%3E%3Crect%20x%3D%2238%22%20y%3D%2238%22%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%224%22%20fill%3D%22black%22%20transform%3D%22rotate(45%2054%2054)%22%2F%3E%3C%2Fsvg%3E`
-};
-
-const KINDER_LEAD_HEXAGON_ICON = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none'%3E%3Cpath d='M32 4 56 18v28L32 60 8 46V18L32 4Z' stroke='%23C5C5CB' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M18 46l14-9 14 9' stroke='%23C5C5CB' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E`;
-
-function getElementaryGroupImageSrc(group) {
-  return GROUP_ICON_IMAGES[String(group || '').trim()] || '';
-}
-
 function renderKinderLeadIcon(student) {
-  if (studentSelectionMode) {
-    return `<span class="${getSelectionCircleClass(student, 'kinderSignalCircle')}"></span>`;
-  }
-  return renderRecordAttendanceLeadIcon(student);
+  if (!studentSelectionMode) return '';
+  return `<span class="${getSelectionCircleClass(student, 'kinderSignalCircle')}"></span>`;
 }
 
 function renderRecordBoardLeadIcon() {
@@ -247,32 +229,9 @@ function renderRecordBoardLeadIcon() {
   </span>`;
 }
 
-function renderElementaryDefaultNoGroupIcon() {
-  return `<span class="elementaryDefaultNoGroupIcon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="36" height="35" viewBox="0 0 36 35" role="img" aria-label="hexagon with center dot">
-  <polygon points="20.5,5.5 31,11.7 31,23.8 20.5,30.5 10,23.8 10,11.7" fill="#ffffff" stroke="#d9d9d9" stroke-width="2" stroke-linejoin="round"/>
-  <circle cx="20.5" cy="17.8" r="6" fill="#000000"/>
-</svg></span>`;
-}
-
-function renderGroupIconImage(group, className = 'elementaryGroupIcon') {
-  const groupKey = String(group || '').trim();
-  const src = getElementaryGroupImageSrc(groupKey);
-  if (!src) return '';
-  return `<span class="${className} group-${escapeHtml(groupKey)}" title="${escapeHtml(groupKey)}그룹"><img src="${src}" alt="그룹 아이콘"></span>`;
-}
-
-function initGroupChoiceIcons() {
-  document.querySelectorAll('#elementaryGroupToggleRow .groupIconChoiceBtn').forEach(btn => {
-    const group = btn.dataset.group;
-    btn.textContent = getElementaryGroupLetter(group) || String(group || '').trim();
-  });
-}
-
 function renderElementaryLeadIcon(student) {
-  if (studentSelectionMode) {
-    return `<span class="${getSelectionCircleClass(student, 'elementaryEmptyCircle')}"></span>`;
-  }
-  return renderKinderLeadIcon(student);
+  if (!studentSelectionMode) return '';
+  return `<span class="${getSelectionCircleClass(student, 'elementaryEmptyCircle')}"></span>`;
 }
 
 function getSelectionCircleClass(student, baseClass) {
