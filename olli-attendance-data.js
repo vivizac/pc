@@ -4,6 +4,7 @@
   const DAYS = ['월', '화', '수', '목', '금', '토'];
   const SESSION_KEY = 'olli_account_session_token_v1';
   const MONTH_CACHE_PREFIX = 'olli_attendance_month_cache_v1';
+  const WEEK_CACHE_PREFIX = 'olli_attendance_week_cache_v1';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -168,11 +169,55 @@
     return dateKey(date);
   }
 
+  function weekCacheKey(value) {
+    const weekStart = weekStartOf(value);
+    if (!weekStart) return '';
+    return `${WEEK_CACHE_PREFIX}_${currentAcademyId() || 'unknown'}_${weekStart}`;
+  }
+
+  function getCachedWeek(value) {
+    const key = weekCacheKey(value);
+    if (!key) return null;
+    try {
+      const cached = JSON.parse(localStorage.getItem(key) || 'null');
+      if (!cached || cached.academy_id !== currentAcademyId()) return null;
+      if (cached.week_start !== weekStartOf(value)) return null;
+      return cached.week && typeof cached.week === 'object' ? cached.week : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function cacheWeek(value, week) {
+    const key = weekCacheKey(value);
+    const weekStart = weekStartOf(value);
+    if (!key || !weekStart || !week || typeof week !== 'object') return false;
+    try {
+      localStorage.setItem(key, JSON.stringify({
+        academy_id: currentAcademyId(),
+        week_start: weekStart,
+        cached_at: new Date().toISOString(),
+        week
+      }));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function invalidateWeek(value) {
+    const key = weekCacheKey(value);
+    if (!key) return;
+    try { localStorage.removeItem(key); } catch (_) {}
+  }
+
   async function loadWeek(value) {
     const weekStart = weekStartOf(value);
     if (!weekStart) throw new Error('출석 날짜를 확인해 주세요.');
     try { await rpc('olli_schedule_apply_due', contextPayload()); } catch (_) {}
-    return rpc('olli_schedule_week', contextPayload({ p_week_start: weekStart }));
+    const week = await rpc('olli_schedule_week', contextPayload({ p_week_start: weekStart }));
+    cacheWeek(weekStart, week);
+    return week;
   }
 
   function activeOnDate(enrollment, value) {
@@ -261,6 +306,7 @@
       session_kind: options.sessionKind || 'regular'
     });
     invalidateMonth(options.sessionDate);
+    invalidateWeek(options.sessionDate);
     return result;
   }
 
@@ -274,6 +320,7 @@
       attended: !!options.present
     });
     invalidateMonth(options.sessionDate);
+    invalidateWeek(options.sessionDate);
     return result;
   }
 
@@ -293,6 +340,7 @@
         class_group: target.classGroup || 'A',
         note: '폰 출석 체크에서 자동 등록'
       });
+      invalidateWeek(key);
       target = await resolveTarget(student, key, kind, null);
     }
 
@@ -327,9 +375,11 @@
     getCachedMonth,
     invalidateMonth,
     loadMonth,
+    getCachedWeek,
+    invalidateWeek,
+    loadWeek,
     legacyPairs,
     bootstrapLegacy,
-    loadWeek,
     toggleAttendance,
     setAttendance,
     setAttendancePresent,
