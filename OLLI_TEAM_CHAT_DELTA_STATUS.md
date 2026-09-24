@@ -301,3 +301,26 @@ PC common 파일이 main에 먼저 들어간 뒤 Phone을 main에 병합할 때 
 `https://raw.githubusercontent.com/vivizac/pc/main/olli-team-chat-delta-common.js`
 
 feature branch raw URL을 Production에 남기지 않는다.
+
+
+## 5단계 검증 중 baseline 경합 수정
+
+5단계 Materials 설계 중 full snapshot과 checkpoint 사이의 race condition을 재검토하면서
+4단계 Team Chat baseline 순서도 수정했다.
+
+이전:
+`full snapshot → 최신 baseline head 조회 → checkpoint 저장`
+
+문제:
+snapshot 직후 baseline 조회 직전에 새 변경이 생기면,
+snapshot에는 없는데 checkpoint만 그 변경 이후로 이동할 수 있다.
+
+수정:
+`baseline head 선캡처 → full snapshot 조회/적용 → 적용 성공 후 선캡처 head 저장`
+
+Phone은 full snapshot을 local cache에 저장한 뒤에만 선캡처 checkpoint를 저장한다.
+
+따라서 baseline 이후 snapshot 도중 발생한 변경은 다음 delta에서 다시 전달되며,
+message id/change id merge가 중복을 안전하게 제거한다.
+
+관련 회귀 테스트도 PC/Phone 양쪽에 추가했다.
