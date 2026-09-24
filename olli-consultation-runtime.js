@@ -388,6 +388,10 @@ async function toggleAcademyConsultationCompleted(studentRef, event){
 window.toggleAcademyConsultationCompleted = toggleAcademyConsultationCompleted;
 
 function updateOlliConsultationSettingUI(){
+  const settingsScreen = document.getElementById('settingsPageScreen');
+  if (settingsScreen && (settingsScreen.style.display === 'flex' || settingsScreen.style.display === 'block')) {
+    window.OlliConsultationSync?.syncSettings?.({ reason:'settings_ui' }).catch(()=>{});
+  }
   const value = document.getElementById('settingsConsultationMonthsValue');
   if (value) value.textContent = getOlliConsultationRulesLabel() || '미설정';
   ['elementary','kinder'].forEach(type => {
