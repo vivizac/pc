@@ -85,7 +85,7 @@ function ensureScreen(){
     <div class="consultationManagerHead">
       <div><div class="consultationManagerTitle">상담 설문</div><div class="consultationManagerDesc">학부모가 설문을 제출하면 이곳에 학생 명단이 표시됩니다.</div></div>
       <div class="consultationManagerActions">
-        <button class="consultationRefreshBtn" type="button" onclick="refreshConsultationSurveyManager()"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"></path><path d="M20 5v6h-6"></path></svg><span>새로고침</span></button>
+        <button class="consultationRefreshBtn" type="button" onclick="refreshConsultationSurveyManager({force:true})"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"></path><path d="M20 5v6h-6"></path></svg><span>새로고침</span></button>
         <button class="consultationLinkCopyBtn" type="button" onclick="copyConsultationSurveyLink()"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="10" height="10" rx="2"></rect><path d="M15 9V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"></path></svg><span>설문지 페이지 링크 복사</span></button>
       </div>
     </div>
