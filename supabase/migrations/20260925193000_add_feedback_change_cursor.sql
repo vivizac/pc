@@ -6,6 +6,8 @@ create table if not exists private.olli_feedback_change_events (
   academy_id uuid not null references public.academies(id) on delete cascade,
   student_id uuid,
   student_name text,
+  previous_student_id uuid,
+  previous_student_name text,
   source_table text not null check (source_table in ('feedbacks','fail_feedbacks','summary_feedbacks')),
   record_id text not null,
   change_type text not null check (change_type in ('inserted','updated','deleted','restored')),
@@ -92,6 +94,8 @@ declare
   v_academy_id uuid;
   v_student_id uuid;
   v_student_name text;
+  v_previous_student_id uuid;
+  v_previous_student_name text;
   v_record_id text;
   v_source_table text := tg_table_name;
   v_change_type text;
@@ -117,8 +121,10 @@ begin
     end if;
 
     v_academy_id := coalesce(new.academy_id, old.academy_id);
-    v_student_id := coalesce(new.student_id, old.student_id);
-    v_student_name := nullif(btrim(coalesce(new.student_name, old.student_name, '')), '');
+    v_student_id := new.student_id;
+    v_student_name := nullif(btrim(coalesce(new.student_name, '')), '');
+    v_previous_student_id := old.student_id;
+    v_previous_student_name := nullif(btrim(coalesce(old.student_name, '')), '');
     v_record_id := coalesce(new.id, old.id)::text;
     v_old_deleted := coalesce(old.is_deleted, false);
     v_new_deleted := coalesce(new.is_deleted, false);
@@ -143,6 +149,8 @@ begin
     academy_id,
     student_id,
     student_name,
+    previous_student_id,
+    previous_student_name,
     source_table,
     record_id,
     change_type
@@ -151,6 +159,8 @@ begin
     v_academy_id,
     v_student_id,
     v_student_name,
+    v_previous_student_id,
+    v_previous_student_name,
     v_source_table,
     v_record_id,
     v_change_type
@@ -256,11 +266,13 @@ begin
       and e.id > v_cursor
       and e.id <= v_window_head
       and (
-        (p_student_id is not null and e.student_id = p_student_id)
+        (p_student_id is not null and (e.student_id = p_student_id or e.previous_student_id = p_student_id))
         or (
-          e.student_id is null
-          and v_student_name is not null
-          and e.student_name = v_student_name
+          v_student_name is not null
+          and (
+            (e.student_id is null and e.student_name = v_student_name)
+            or (e.previous_student_id is null and e.previous_student_name = v_student_name)
+          )
         )
       )
     order by e.id asc
@@ -283,21 +295,36 @@ begin
     select 'feedbacks'::text as source_table, f.id::text as record_id, to_jsonb(f) as row_data
     from public.feedbacks f
     join changed_keys k on k.source_table='feedbacks' and k.record_id=f.id::text
-    where f.academy_id=p_academy_id and coalesce(f.is_deleted,false)=false
+    where f.academy_id=p_academy_id
+      and coalesce(f.is_deleted,false)=false
+      and (
+        (p_student_id is not null and f.student_id=p_student_id)
+        or (f.student_id is null and v_student_name is not null and f.student_name=v_student_name)
+      )
 
     union all
 
     select 'fail_feedbacks', f.id::text, to_jsonb(f)
     from public.fail_feedbacks f
     join changed_keys k on k.source_table='fail_feedbacks' and k.record_id=f.id::text
-    where f.academy_id=p_academy_id and coalesce(f.is_deleted,false)=false
+    where f.academy_id=p_academy_id
+      and coalesce(f.is_deleted,false)=false
+      and (
+        (p_student_id is not null and f.student_id=p_student_id)
+        or (f.student_id is null and v_student_name is not null and f.student_name=v_student_name)
+      )
 
     union all
 
     select 'summary_feedbacks', f.id::text, to_jsonb(f)
     from public.summary_feedbacks f
     join changed_keys k on k.source_table='summary_feedbacks' and k.record_id=f.id::text
-    where f.academy_id=p_academy_id and coalesce(f.is_deleted,false)=false
+    where f.academy_id=p_academy_id
+      and coalesce(f.is_deleted,false)=false
+      and (
+        (p_student_id is not null and f.student_id=p_student_id)
+        or (f.student_id is null and v_student_name is not null and f.student_name=v_student_name)
+      )
   )
   select coalesce(
     jsonb_agg(
@@ -328,6 +355,10 @@ begin
         where f.academy_id=p_academy_id
           and f.id::text=k.record_id
           and coalesce(f.is_deleted,false)=false
+          and (
+            (p_student_id is not null and f.student_id=p_student_id)
+            or (f.student_id is null and v_student_name is not null and f.student_name=v_student_name)
+          )
       ))
       or
       (k.source_table='fail_feedbacks' and not exists (
@@ -335,6 +366,10 @@ begin
         where f.academy_id=p_academy_id
           and f.id::text=k.record_id
           and coalesce(f.is_deleted,false)=false
+          and (
+            (p_student_id is not null and f.student_id=p_student_id)
+            or (f.student_id is null and v_student_name is not null and f.student_name=v_student_name)
+          )
       ))
       or
       (k.source_table='summary_feedbacks' and not exists (
@@ -342,6 +377,10 @@ begin
         where f.academy_id=p_academy_id
           and f.id::text=k.record_id
           and coalesce(f.is_deleted,false)=false
+          and (
+            (p_student_id is not null and f.student_id=p_student_id)
+            or (f.student_id is null and v_student_name is not null and f.student_name=v_student_name)
+          )
       ))
   )
   select coalesce(
