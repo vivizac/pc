@@ -18,10 +18,13 @@ function bodyBetween(startMarker,endMarker='$function$;'){
   return sql.slice(bodyStart+13,end);
 }
 
-test('materials becomes a valid realtime domain',()=>{
+test('materials becomes a valid realtime domain with rolling-deploy compatibility alias',()=>{
   const body=bodyBetween('create or replace function private.olli_realtime_send_signal');
   assert.match(body,/materials/i);
   assert.match(body,/v_domain not in/i);
+  assert.match(body,/compatibility_alias/i);
+  assert.match(body,/'domain', 'chat'/i);
+  assert.match(body,/'compatibility_alias', 'materials'/i);
 });
 
 test('request table trigger owns durable event emission',()=>{
