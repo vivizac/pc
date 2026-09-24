@@ -84,3 +84,11 @@ test('baseline advances to current event head without replay',()=>{
 test('event cursor has academy plus id index',()=>{
   assert.match(sql,/olli_team_material_request_events_academy_id_desc_idx[\s\S]*\(academy_id, id desc\)/i);
 });
+
+
+test('manifest advertises material row event cursor coverage',()=>{
+  const body=bodyBetween('create or replace function public.olli_sync_manifest');
+  assert.match(body,/'materials'/i);
+  assert.match(body,/'kind', 'event_id'/i);
+  assert.match(body,/'coverage', 'material_row_event_cursor'/i);
+});
