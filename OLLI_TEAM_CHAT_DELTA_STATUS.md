@@ -261,3 +261,43 @@ Team Chat 4단계에서 재료주문 domain은 아직 분리하지 않았다.
 
 4단계 chat change log와 material request event log를 합치지 않는다.
 두 데이터의 변경 의미와 cursor는 독립적으로 유지한다.
+
+
+## 4단계 중 Mobile main 동시 변경 처리
+
+4단계 작업 중 Phone `main`이 별도 작업으로 다음 정상 Production commit까지 진행되었다.
+
+- `8fa2deb19d5abba366a5afb947f3e11460d30035`
+- 팀챗 사진 저장·삭제 기능 추가
+- 사진 액션시트, 서버 우선 삭제, 원본/썸네일 정리, 삭제파일 접근 차단, tombstone 동기화 포함
+
+기존 Local-first 작업 브랜치는 이전 `ac4342...` 기준에서 시작했으므로 그대로 사용하면 위 Production 기능을 나중에 되돌릴 위험이 있었다.
+
+따라서 Phone 4단계 작업은 기존 Phone 브랜치를 계속 밀어붙이지 않고, 최신 정상 Production SHA에서 새 브랜치를 만들었다.
+
+현재 Phone 4단계 브랜치:
+`feat/local-first-sync-step4-20260925`
+
+이 브랜치는 `8fa2deb...`에서 직접 시작하며, 최신 main 대비 변경은 다음 4개뿐이다.
+
+- `index.html`
+- `vercel.json`
+- `olli-talk-beta.js`
+- `tests/phone-teamchat-delta-step4.test.cjs`
+
+사진 저장·삭제 관련 나머지 파일은 최신 Production과 동일하다.
+겹치는 `olli-talk-beta.js`도 Production의 기존 `deleted_message_ids` tombstone 병합을 유지하고 delta cursor 코드만 추가했다.
+
+기존 Phone 브랜치 `feat/local-first-sync-step2-20260925`는 4단계 최종 Phone 기준으로 사용하지 않는다.
+
+PC 작업은 계속 `feat/local-first-sync-step2-20260925` 브랜치에서 유지한다.
+
+### 최종 병합 전 필수
+
+Phone Preview의 `/olli-team-chat-delta-common.js` rewrite는 현재 테스트를 위해 PC 작업 브랜치 raw URL을 가리킨다.
+
+PC common 파일이 main에 먼저 들어간 뒤 Phone을 main에 병합할 때 destination을 반드시 다음으로 바꾼다.
+
+`https://raw.githubusercontent.com/vivizac/pc/main/olli-team-chat-delta-common.js`
+
+feature branch raw URL을 Production에 남기지 않는다.
