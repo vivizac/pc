@@ -20,7 +20,7 @@ const QUESTIONS=[
 let rows=[];
 let rowsAcademyId='';
 let selectedId='';
-let pollTimer=null;
+let consultationRealtimeWatcher=null;
 let analysisLoadPromise=null;
 const detailTabById=new Map();
 const consultationScriptBase=(document.currentScript&&document.currentScript.src)?document.currentScript.src:location.href;
@@ -159,7 +159,48 @@ function renderDetail(id){
   window.syncConsultationDetailTabs();
 }
 window.openConsultationSurveyDetail=function(id){selectedId=String(id||'');render();};
-window.refreshConsultationSurveyManager=async function(){const activeAcademyId=academyId();const loaded=await loadRows();if(!Array.isArray(loaded))return rows.slice();loaded.sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));const changed=rowsAcademyId!==activeAcademyId||rowsSignature(rows)!==rowsSignature(loaded);rows=loaded;rowsAcademyId=activeAcademyId;writeRowsCache(rows);window.__olliConsultationRows=rows.slice();if(changed)render();else renderContext();return rows;};
+window.refreshConsultationSurveyManager=async function(options={}){
+  const activeAcademyId=academyId();
+  const token=sessionToken();
+  const accountId=String(localStorage.getItem('olli_account_id_v1')||'').trim();
+  const applySnapshot=async()=>{
+    const loaded=await loadRows();
+    if(!Array.isArray(loaded))return{success:false,changed:false};
+    loaded.sort((a,b)=>Date.parse(b.created_at||0)-Date.parse(a.created_at||0));
+    const changed=rowsAcademyId!==activeAcademyId||rowsSignature(rows)!==rowsSignature(loaded);
+    rows=loaded;
+    rowsAcademyId=activeAcademyId;
+    writeRowsCache(rows);
+    window.__olliConsultationRows=rows.slice();
+    if(changed)render();else renderContext();
+    try{window.dispatchEvent(new CustomEvent('olli:consultation-reconciled',{detail:{resource:'surveys',changed}}));}catch(_){}
+    return{success:true,changed};
+  };
+
+  if(!window.OlliSnapshotRevision?.syncSnapshot||!activeAcademyId||!token){
+    await applySnapshot();
+    return rows.slice();
+  }
+
+  const expectedAcademyId=activeAcademyId;
+  try{
+    await window.OlliSnapshotRevision.syncSnapshot({
+      snapshotKey:'consultation_surveys',
+      markerName:'consultation',
+      academyId:activeAcademyId,
+      accountId:accountId||'account',
+      sessionToken:token,
+      rpc,
+      force:options?.force===true,
+      isCurrent:()=>academyId()===expectedAcademyId&&sessionToken()===token,
+      loadSnapshot:applySnapshot
+    });
+  }catch(error){
+    console.warn('상담 설문 revision 확인 실패, 기존 전체 조회로 복구:',error?.message||error);
+    await applySnapshot();
+  }
+  return rows.slice();
+};
 window.getConsultationSurveyRows=function(){return rows.slice();};
 window.copyConsultationSurveyLink=async function(){
   const aid=academyId();if(!aid){alert('현재 학원 ID를 찾지 못했습니다. 로그인 상태를 확인해주세요.');return;}
@@ -192,7 +233,16 @@ function installPcHook(){
   };
   wrapped.__consultationHook=true;window.pcOpenSection=wrapped;
 }
-function startPolling(){clearInterval(pollTimer);pollTimer=setInterval(()=>{const screen=document.getElementById('consultationSurveyScreen');if(screen&&getComputedStyle(screen).display!=='none')window.refreshConsultationSurveyManager();},20000);}
-function init(){ensureScreen();installPcHook();startPolling();loadAnalysisEngine().catch(()=>{});}
+function bindConsultationRealtime(){
+  if(consultationRealtimeWatcher||!window.OlliRealtime?.watchDomain)return;
+  consultationRealtimeWatcher=window.OlliRealtime.watchDomain('consultation',async context=>{
+    const screen=document.getElementById('consultationSurveyScreen');
+    if(!screen||getComputedStyle(screen).display==='none')return true;
+    await window.refreshConsultationSurveyManager({force:context?.trigger==='change'});
+    return context?.isCurrent?.()!==false;
+  });
+  window.OlliRealtime.ensureConnected?.({reason:'consultation_surveys'}).catch(()=>{});
+}
+function init(){ensureScreen();installPcHook();bindConsultationRealtime();loadAnalysisEngine().catch(()=>{});}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
