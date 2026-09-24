@@ -23,6 +23,9 @@
     uploadBusy: false,
     realtimeWatcher: null,
     blobUrls: new Map(),
+    deltaUnavailable: false,
+    deltaCheckpoint: null,
+    deltaAcademyId: '',
     started: false
   };
 
@@ -39,17 +42,20 @@
     let academyId = '';
     let memberId = '';
     let memberName = '';
+    let accountId = '';
     try {
       sessionToken = clean(localStorage.getItem(ACCOUNT_SESSION_TOKEN_KEY));
       academyId = clean(localStorage.getItem('olli_current_academy_id'));
       memberId = clean(localStorage.getItem('olli_current_member_id'));
       memberName = clean(localStorage.getItem('olli_current_member_name'));
+      accountId = clean(localStorage.getItem('olli_account_id_v1'));
     } catch (_) {}
 
     return {
       academyId: clean(academyContext?.academyId || academyContext?.academy_id || academyId),
       memberId: clean(academyContext?.memberId || academyContext?.member_id || memberId),
       memberName: clean(academyContext?.memberName || academyContext?.member_name || memberName),
+      accountId,
       sessionToken
     };
   }
@@ -67,6 +73,109 @@
       : (typeof supabase === 'function' ? supabase : null);
     if (!call) throw new Error('Supabase 연결이 준비되지 않았습니다.');
     return call('POST', `rpc/${name}`, params);
+  }
+
+  function captureDeltaContext(current) {
+    const academyContext = global.OlliStorageCore?.AcademyContext;
+    const token = academyContext?.captureToken?.() || null;
+    return () => {
+      const latest = context();
+      if (latest.academyId !== current.academyId || latest.sessionToken !== current.sessionToken) return false;
+      if (token && academyContext?.isTokenCurrent) {
+        try { return !!academyContext.isTokenCurrent(token); } catch (_) { return false; }
+      }
+      return true;
+    };
+  }
+
+  function deltaStorageContext(current) {
+    return { academyId:current.academyId, accountId:current.accountId || 'account' };
+  }
+
+  async function baselineTeamTalkDelta(current) {
+    const api = global.OlliTeamChatDelta;
+    if (!api || state.deltaUnavailable || !current?.sessionToken || !current?.academyId) return false;
+    const isCurrent = captureDeltaContext(current);
+    try {
+      const checkpoint = await api.createBaseline({
+        rpc,
+        academyId:current.academyId,
+        sessionToken:current.sessionToken,
+        isCurrent
+      });
+      if (!isCurrent()) return false;
+      state.deltaCheckpoint = checkpoint;
+      state.deltaAcademyId = current.academyId;
+      api.writeCheckpoint(deltaStorageContext(current), checkpoint);
+      return true;
+    } catch (error) {
+      if (api.isUnavailableError?.(error)) state.deltaUnavailable = true;
+      else console.warn('PC Team Chat delta baseline 준비 실패:', error?.message || error);
+      return false;
+    }
+  }
+
+  async function syncTeamTalkDelta(options = {}) {
+    const api = global.OlliTeamChatDelta;
+    const current = context();
+    if (!api || state.deltaUnavailable || !current.sessionToken || !current.academyId) {
+      return loadMessages({ showLoading:false, followBottom:options.followBottom !== false });
+    }
+
+    if (state.deltaAcademyId !== current.academyId) {
+      state.deltaCheckpoint = api.readCheckpoint(deltaStorageContext(current));
+      state.deltaAcademyId = current.academyId;
+    }
+    if (!state.deltaCheckpoint) {
+      return loadMessages({ showLoading:false, followBottom:options.followBottom !== false });
+    }
+
+    const isCurrent = captureDeltaContext(current);
+    try {
+      const delta = await api.pull({
+        rpc,
+        academyId:current.academyId,
+        sessionToken:current.sessionToken,
+        checkpoint:state.deltaCheckpoint,
+        isCurrent
+      });
+      if (!isCurrent()) return false;
+
+      const basePayload = {
+        ok:true,
+        academy_id:current.academyId,
+        current_member_id:current.memberId,
+        current_member_name:current.memberName,
+        messages:Array.isArray(state.messages) ? state.messages : []
+      };
+      const nextPayload = api.applyToPayload(basePayload, delta, { maxMessages:100 });
+      const changed = JSON.stringify(basePayload.messages) !== JSON.stringify(nextPayload.messages);
+      if (changed && isVisible()) renderMessages(nextPayload, { followBottom:options.followBottom });
+      else state.messages = nextPayload.messages;
+
+      if (state.archivePayload) {
+        const nextArchive = api.applyToArchive(state.archivePayload, delta, { maxMessages:1000 });
+        if (nextArchive) {
+          const archiveChanged = JSON.stringify(state.archivePayload.messages || []) !== JSON.stringify(nextArchive.messages || []);
+          state.archivePayload = nextArchive;
+          if (archiveChanged && state.workspaceTab === 'archive') renderArchive();
+        }
+      }
+
+      // Cursor advances only after the in-memory payload has been applied.
+      state.deltaCheckpoint = delta.checkpoint;
+      state.deltaAcademyId = current.academyId;
+      api.writeCheckpoint(deltaStorageContext(current), delta.checkpoint);
+
+      const latest = api.maxMessageId(state.messages);
+      if (isVisible()) await markRead(latest || null);
+      else await refreshBadge();
+      return delta.complete === true;
+    } catch (error) {
+      if (api.isUnavailableError?.(error)) state.deltaUnavailable = true;
+      else console.warn('PC Team Chat delta 동기화 실패, 전체 조회로 복구:', error?.message || error);
+      return loadMessages({ showLoading:false, followBottom:options.followBottom !== false });
+    }
   }
 
   function create(tag, className, text) {
@@ -734,6 +843,7 @@
       if (!payload?.ok) throw new Error(payload?.message || '대화를 불러오지 못했습니다.');
       if (options.render === false) state.messages = Array.isArray(payload.messages) ? payload.messages : [];
       else renderMessages(payload, { followBottom: options.followBottom });
+      await baselineTeamTalkDelta(current);
       const latest = Array.isArray(payload.messages) && payload.messages.length
         ? Number(payload.messages[payload.messages.length - 1]?.id || 0)
         : 0;
@@ -1651,8 +1761,7 @@
   async function refreshFromRealtime() {
     const jobs = [refreshBadge()];
     if (isVisible()) {
-      jobs.push(loadMessages({ showLoading: false, followBottom: false }));
-      jobs.push(loadArchive({ showLoading: false }));
+      jobs.push(syncTeamTalkDelta({ followBottom:false }));
     }
     const result = await Promise.allSettled(jobs);
     return result.some((entry) => entry.status === 'fulfilled' && entry.value === true);
