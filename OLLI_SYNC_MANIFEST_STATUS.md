@@ -169,3 +169,39 @@ Supabase Production에는 아직 적용하지 않았다.
 - 새 메시지 insert는 `after_message_id` delta
 - mutable change는 별도 durable change sequence가 필요한지 판단
 하는 순서로 진행한다.
+
+## 7단계 현재 상태 추가 — 2026-09-25
+
+3단계의 `students/consultation = pending` 기록은 당시 상태를 보존한 역사 기록이다.
+7단계 작업 브랜치에서는 현재 다음 marker가 추가되었다.
+
+### students
+- 별도 student revision 테이블을 만들지 않는다.
+- 기존 `public.olli_schedule_sync_revisions.version`을 학생 snapshot의 durable marker로 재사용한다.
+- Manifest coverage: `students_snapshot_via_schedule_revision`.
+- `students` 테이블 변경은 기존 schedule revision을 계속 올리며, 같은 revision 값으로 `students` Realtime wake-up 신호를 추가한다.
+- schedule-only 변경은 다음 reconnect/focus 시 학생 snapshot marker mismatch를 만들 수 있다. 이는 revision 중복 도입을 피하기 위한 보수적 재확인이다.
+
+### consultation
+- `private.olli_consultation_sync_revisions` academy별 revision을 추가한다.
+- coverage: `consultation_surveys`, `consultation_observations`, `consultation_final_analyses`, `academy_settings.consultation_rules`, `consultation_progress`, `elementary_group_feedback_months`.
+- Manifest coverage: `consultation_snapshot_revision`.
+- 설문 명단과 상담 설정은 같은 remote revision을 보되 local checkpoint는 `consultation_surveys`, `consultation_settings`로 분리한다.
+
+### checkpoint 안전 규칙
+- server marker를 먼저 읽고 snapshot을 적용한다.
+- snapshot 적용 성공 뒤에만 marker를 local checkpoint로 저장한다.
+- snapshot 도중 서버 revision이 더 올라가면 선캡처 marker만 저장되어 다음 reconcile에서 다시 감지된다.
+- Manifest RPC가 아직 배포되지 않은 rolling deploy 구간에는 기존 full snapshot 조회로 fallback하되 가짜 checkpoint는 만들지 않는다.
+- 학원/세션 context가 바뀐 응답은 checkpoint를 전진시키지 않는다.
+
+### polling 제거
+- PC 학생 목록 기존 30초 전체조회 polling 제거.
+- PC 상담 설문 기존 20초 전체조회 polling 제거.
+- 상담 기준/진행상태 기존 30초 및 focus/online 강제 전체조회 제거.
+- Realtime은 wake-up 용도이며 authoritative snapshot은 revision mismatch일 때만 읽는다.
+
+### Production 상태
+- 7단계 migration은 작업 브랜치에만 있다.
+- Production DB에는 적용하지 않았다.
+- SQL compile 및 trigger 기능 검증은 transaction 안에서 수행 후 rollback 완료했다.
