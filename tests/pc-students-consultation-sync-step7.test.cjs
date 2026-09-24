@@ -82,3 +82,11 @@ test('consultation settings use separate checkpoint and no 30 second polling',()
   assert.match(runtime,/loadOlliConsultationRulesFromServer/);
   assert.match(runtime,/loadOlliConsultationProgressFromServer/);
 });
+
+test('PC student info card separates schedule refresh from student profile refresh',()=>{
+  const src=read('pc-student-info-card-runtime.js');
+  assert.match(src,/OlliStudentSync\?\.sync/);
+  assert.match(src,/watchDomain\('schedule',[\s\S]*refreshStudent:false/);
+  assert.match(src,/watchDomain\('students',[\s\S]*refreshStudent:true/);
+  assert.match(src,/if \(options\.refreshStudent === true\)/);
+});
