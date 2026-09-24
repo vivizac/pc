@@ -53,3 +53,10 @@ test('PC material delta checkpoint advances only after payload apply',()=>{
   assert.ok(renderIndex>applyIndex);
   assert.ok(cursorIndex>renderIndex);
 });
+
+
+test('New realtime client ignores legacy chat compatibility alias for materials',()=>{
+  const src=read('olli-realtime-common.js');
+  assert.match(src,/compatibility_alias/);
+  assert.match(src,/domain === 'chat' && compatibilityAlias === 'materials'/);
+});
