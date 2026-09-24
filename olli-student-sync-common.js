@@ -137,4 +137,8 @@
     stop,
     context
   });
+
+  const startWhenReady=()=>{try{start()}catch(error){console.warn('학생 Realtime 시작 실패:',error?.message||error)}};
+  if(global.document?.readyState==='loading')global.document.addEventListener('DOMContentLoaded',startWhenReady,{once:true});
+  else global.setTimeout(startWhenReady,0);
 })(window);
