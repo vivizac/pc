@@ -28,6 +28,14 @@ create index if not exists olli_feedback_change_events_academy_student_name_idx
   on private.olli_feedback_change_events (academy_id, student_name, id)
   where student_id is null and student_name is not null;
 
+create index if not exists olli_feedback_change_events_academy_previous_student_id_idx
+  on private.olli_feedback_change_events (academy_id, previous_student_id, id)
+  where previous_student_id is not null;
+
+create index if not exists olli_feedback_change_events_academy_previous_student_name_idx
+  on private.olli_feedback_change_events (academy_id, previous_student_name, id)
+  where previous_student_id is null and previous_student_name is not null;
+
 -- Extend the shared realtime sender while retaining Step 5 rolling-deploy compatibility.
 create or replace function private.olli_realtime_send_signal(
   p_academy_id uuid,
@@ -413,11 +421,13 @@ begin
         and e.id > v_next_event_id
         and e.id <= v_window_head
         and (
-          (p_student_id is not null and e.student_id=p_student_id)
+          (p_student_id is not null and (e.student_id=p_student_id or e.previous_student_id=p_student_id))
           or (
-            e.student_id is null
-            and v_student_name is not null
-            and e.student_name=v_student_name
+            v_student_name is not null
+            and (
+              (e.student_id is null and e.student_name=v_student_name)
+              or (e.previous_student_id is null and e.previous_student_name=v_student_name)
+            )
           )
         )
     )
