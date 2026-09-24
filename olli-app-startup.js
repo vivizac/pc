@@ -59,8 +59,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     migrateStudentStorageIfNeeded();
     initGroupChoiceIcons();
     purgeOldLocalMemos();
-    await loadStudentsFromSupabase();
-    startOlliStudentBackgroundSync();
+    if (window.OlliStudentSync?.sync) {
+      await window.OlliStudentSync.sync({ reason:'pc_startup' });
+      window.OlliStudentSync.start?.();
+    } else {
+      await loadStudentsFromSupabase();
+      startOlliStudentBackgroundSync();
+    }
     updateRecordHeaderUI();
     updateModeUI();
     renderSceneInput();
