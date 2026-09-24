@@ -92,9 +92,9 @@
     return { academyId:current.academyId, accountId:current.accountId || 'account' };
   }
 
-  async function baselineTeamTalkDelta(current) {
+  async function captureTeamTalkDeltaBaseline(current) {
     const api = global.OlliTeamChatDelta;
-    if (!api || state.deltaUnavailable || !current?.sessionToken || !current?.academyId) return false;
+    if (!api || state.deltaUnavailable || !current?.sessionToken || !current?.academyId) return null;
     const isCurrent = captureDeltaContext(current);
     try {
       const checkpoint = await api.createBaseline({
@@ -103,16 +103,20 @@
         sessionToken:current.sessionToken,
         isCurrent
       });
-      if (!isCurrent()) return false;
-      state.deltaCheckpoint = checkpoint;
-      state.deltaAcademyId = current.academyId;
-      api.writeCheckpoint(deltaStorageContext(current), checkpoint);
-      return true;
+      return isCurrent() ? checkpoint : null;
     } catch (error) {
       if (api.isUnavailableError?.(error)) state.deltaUnavailable = true;
       else console.warn('PC Team Chat delta baseline 준비 실패:', error?.message || error);
-      return false;
+      return null;
     }
+  }
+
+  function commitTeamTalkDeltaBaseline(current, checkpoint) {
+    const api = global.OlliTeamChatDelta;
+    if (!api || !checkpoint) return false;
+    state.deltaCheckpoint = checkpoint;
+    state.deltaAcademyId = current.academyId;
+    return api.writeCheckpoint(deltaStorageContext(current), checkpoint);
   }
 
   async function syncTeamTalkDelta(options = {}) {
@@ -833,6 +837,8 @@
     if (body && options.showLoading !== false) body.replaceChildren(emptyState('대화를 불러오는 중이에요', '잠시만 기다려 주세요.'));
 
     try {
+      // Capture the head before the full snapshot so a concurrent write cannot be skipped.
+      const baselineCheckpoint = await captureTeamTalkDeltaBaseline(current);
       const payload = await rpc('olli_team_chat_list', {
         p_session_token: current.sessionToken,
         p_academy_id: current.academyId,
@@ -843,7 +849,7 @@
       if (!payload?.ok) throw new Error(payload?.message || '대화를 불러오지 못했습니다.');
       if (options.render === false) state.messages = Array.isArray(payload.messages) ? payload.messages : [];
       else renderMessages(payload, { followBottom: options.followBottom });
-      await baselineTeamTalkDelta(current);
+      commitTeamTalkDeltaBaseline(current, baselineCheckpoint);
       const latest = Array.isArray(payload.messages) && payload.messages.length
         ? Number(payload.messages[payload.messages.length - 1]?.id || 0)
         : 0;
