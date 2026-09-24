@@ -580,11 +580,13 @@ async function loadRecords(name) {
   if (currentRecordView === 'academy') {
     renderRecordAcademyManagementDashboard();
     const academyLoadToken = ++academyManagementLoadToken;
-    const settingsPromise = Promise.all([
-      (typeof loadOlliSharedSettingsFromServer === 'function') ? loadOlliSharedSettingsFromServer() : Promise.resolve(false),
-      (typeof loadOlliConsultationRulesFromServer === 'function') ? loadOlliConsultationRulesFromServer({ force: true }) : Promise.resolve(false),
-      (typeof loadOlliConsultationProgressFromServer === 'function') ? loadOlliConsultationProgressFromServer({ force: true }) : Promise.resolve(false)
-    ]).then(results => results.some(result => result === true || result?.changed === true)).catch(() => false);
+    const settingsPromise = window.OlliConsultationSync?.syncSettings
+      ? window.OlliConsultationSync.syncSettings({ reason:'academy_management' }).then(result => !!result?.changed).catch(() => false)
+      : Promise.all([
+          (typeof loadOlliSharedSettingsFromServer === 'function') ? loadOlliSharedSettingsFromServer() : Promise.resolve(false),
+          (typeof loadOlliConsultationRulesFromServer === 'function') ? loadOlliConsultationRulesFromServer() : Promise.resolve(false),
+          (typeof loadOlliConsultationProgressFromServer === 'function') ? loadOlliConsultationProgressFromServer() : Promise.resolve(false)
+        ]).then(results => results.some(result => result === true || result?.changed === true)).catch(() => false);
     const studentsPromise = syncStudentsForRecordView('academy_management').then(result => !!result?.changed).catch(err => {
       console.warn('학원관리 학생 동기화 실패:', err);
       return false;
