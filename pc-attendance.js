@@ -16,6 +16,7 @@
     editorStudentId: '',
     editorDivision: '',
     recordCache: new Map(),
+    feedbackWatcher: null,
     sortMode: PC_SORT_MODES.DAY
   };
 
@@ -576,6 +577,46 @@ function recordWorkspaceHtml(student, recordContent) {
   await selectStudent(studentId);
 }
 
+  function persistPcFeedbackSyncData(student, data) {
+    if (!student?.id) return false;
+    rememberRecordCache(student, data);
+    return true;
+  }
+
+  async function syncSelectedFeedbackFromRealtime() {
+    if (!isPcAttendance()) return true;
+    const studentId = String(state.selectedStudentId || '');
+    if (!studentId) return true;
+    const student = typeof findStudentById === 'function' ? findStudentById(studentId) : null;
+    if (!student || typeof loadAttendanceStudentFeedbackSheetItems !== 'function') return true;
+
+    const baseData = readRecordCache(student) || { feedbacks: [], summaries: [] };
+    try {
+      const data = await loadAttendanceStudentFeedbackSheetItems(student, {
+        baseData,
+        persistData:fresh => persistPcFeedbackSyncData(student, fresh)
+      });
+      if (!isPcAttendance() || String(state.selectedStudentId || '') !== studentId) return true;
+      renderCombinedRecords(student, data);
+      const body = document.getElementById('pcAttendanceCombinedBody');
+      if (body) body.dataset.recordStudentId = studentId;
+      return true;
+    } catch (error) {
+      console.warn('PC 성향기록부 피드백 Realtime 동기화 실패:', error?.message || error);
+      return false;
+    }
+  }
+
+  function bindFeedbackRealtime() {
+    if (state.feedbackWatcher || !global.OlliRealtime?.watchDomain) return;
+    try {
+      state.feedbackWatcher = global.OlliRealtime.watchDomain('feedback', syncSelectedFeedbackFromRealtime);
+      global.OlliRealtime.ensureConnected?.({ reason:'pc_personality_feedback' }).catch(()=>{});
+    } catch (error) {
+      console.warn('PC 성향기록부 피드백 Realtime 연결 실패:', error?.message || error);
+    }
+  }
+
   function renderDetailError(student, error) {
     const body = document.getElementById('pcAttendanceCombinedBody');
     if (!body) return;
@@ -613,7 +654,10 @@ function recordWorkspaceHtml(student, recordContent) {
     const token = ++state.loadToken;
     try {
       const data = typeof loadAttendanceStudentFeedbackSheetItems === 'function'
-        ? await loadAttendanceStudentFeedbackSheetItems(student)
+        ? await loadAttendanceStudentFeedbackSheetItems(student, {
+            baseData:cached || null,
+            persistData:fresh => persistPcFeedbackSyncData(student, fresh)
+          })
         : { feedbacks: [], summaries: [] };
       if (token !== state.loadToken || !isPcAttendance()) return;
 
@@ -738,6 +782,7 @@ function recordWorkspaceHtml(student, recordContent) {
   }
 
   function open() {
+    bindFeedbackRealtime();
     removeLegacyPcSortControl();
     const app = core();
     const targetView = typeof currentObservationView !== 'undefined' && currentObservationView === 'kinder' ? 'kinder' : 'elementary';
