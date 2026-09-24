@@ -24,9 +24,15 @@ test('PC realtime uses delta and no longer reloads archive on every chat signal'
   assert.doesNotMatch(block,/loadArchive/);
 });
 
-test('PC baselines cursor after full snapshot and applies archive delta in memory',()=>{
+test('PC captures delta head before full snapshot and commits it after apply',()=>{
   const src=read('pc-team-talk.js');
-  assert.match(src,/await baselineTeamTalkDelta\(current\)/);
+  const block=src.match(/async function loadMessages\(options = \{\}\)[\s\S]*?\n  \}/)?.[0]||'';
+  const captureIndex=block.indexOf('captureTeamTalkDeltaBaseline(current)');
+  const listIndex=block.indexOf("rpc('olli_team_chat_list'");
+  const commitIndex=block.indexOf('commitTeamTalkDeltaBaseline(current, baselineCheckpoint)');
+  assert.ok(captureIndex>=0);
+  assert.ok(listIndex>captureIndex);
+  assert.ok(commitIndex>listIndex);
   assert.match(src,/applyToArchive\(state\.archivePayload, delta/);
   assert.match(src,/state\.deltaCheckpoint = delta\.checkpoint/);
 });
