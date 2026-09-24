@@ -594,6 +594,19 @@ async function toggleRecordAcademyManagementMode(){
   
 }
 
+async function syncStudentsForRecordView(reason, options = {}) {
+  if (window.OlliStudentSync?.sync) {
+    return window.OlliStudentSync.sync({
+      reason: reason || 'record_view',
+      force: options.force === true,
+      skipLifecycleSync: options.skipLifecycleSync === true
+    });
+  }
+  return loadStudentsFromSupabase({
+    skipLifecycleSync: options.skipLifecycleSync === true
+  });
+}
+
 async function loadRecords(name) {
   const list = document.getElementById('recordList');
   // 학생 목록 화면에서는 Supabase 로딩 문구를 띄우지 않습니다.
@@ -616,7 +629,7 @@ async function loadRecords(name) {
       (typeof loadOlliConsultationRulesFromServer === 'function') ? loadOlliConsultationRulesFromServer({ force: true }) : Promise.resolve(false),
       (typeof loadOlliConsultationProgressFromServer === 'function') ? loadOlliConsultationProgressFromServer({ force: true }) : Promise.resolve(false)
     ]).then(results => results.some(result => result === true || result?.changed === true)).catch(() => false);
-    const studentsPromise = loadStudentsFromSupabase().then(result => !!result?.changed).catch(err => {
+    const studentsPromise = syncStudentsForRecordView('academy_management').then(result => !!result?.changed).catch(err => {
       console.warn('학원관리 학생 동기화 실패:', err);
       return false;
     });
@@ -634,7 +647,7 @@ async function loadRecords(name) {
   if (currentRecordView === 'elementary') {
     const requestedView = currentRecordView;
     renderCurrentStudentRecords(name);
-    loadStudentsFromSupabase().then(result => {
+    syncStudentsForRecordView('record_elementary').then(result => {
       if (currentRecordView !== requestedView || result?.changed !== true) return;
       renderCurrentStudentRecords(name);
     }).catch(err => console.warn('초등부 학생 백그라운드 동기화 실패:', err));
@@ -644,7 +657,7 @@ async function loadRecords(name) {
   if (currentRecordView === 'kinder') {
     const requestedView = currentRecordView;
     renderCurrentStudentRecords(name);
-    loadStudentsFromSupabase().then(result => {
+    syncStudentsForRecordView('record_kinder').then(result => {
       if (currentRecordView !== requestedView || result?.changed !== true) return;
       renderCurrentStudentRecords(name);
     }).catch(err => console.warn('유치부 학생 백그라운드 동기화 실패:', err));
