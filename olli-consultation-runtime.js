@@ -310,67 +310,23 @@ function bindOlliConsultationSyncOnce(){
     if (core && core.FeatureFlags) {
       core.FeatureFlags.set('consultation_rules', 'common');
       core.FeatureFlags.set(OLLI_CONSULTATION_PROGRESS_FEATURE, 'common');
+      core.FeatureFlags.set('elementary_group_feedback_months', 'common');
     }
   } catch(e) {
     console.warn('상담 공통 저장 모드 설정 실패:', e);
   }
 
-  const refresh = () => Promise.all([
-    loadOlliConsultationRulesFromServer({ force: true }),
-    loadOlliConsultationProgressFromServer({ force: true })
-  ]);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') refresh();
-  });
-  window.addEventListener('focus', refresh);
-  window.addEventListener('online', refresh);
-
-  clearInterval(olliConsultationAutoSyncTimer);
-  olliConsultationAutoSyncTimer = setInterval(() => {
-    const settingsVisible = document.getElementById('settingsPageScreen')?.style.display === 'flex';
-    const academyVisible = typeof currentRecordView !== 'undefined' && currentRecordView === 'academy';
-    if (settingsVisible || academyVisible) {
-      loadOlliConsultationRulesFromServer();
-      loadOlliConsultationProgressFromServer();
-    }
-  }, 30000);
-
-  loadOlliConsultationRulesFromServer({ force: true });
-  loadOlliConsultationProgressFromServer({ force: true });
+  // Focus/online/30초 polling은 OlliRealtime + consultation revision이 대신합니다.
+  window.OlliConsultationSync?.start?.();
+  if (window.OlliConsultationSync?.relevantScreenVisible?.()) {
+    window.OlliConsultationSync.syncSettings({ reason:'consultation_init' }).catch(()=>{});
+  }
 }
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', bindOlliConsultationSyncOnce, { once: true });
 } else {
   setTimeout(bindOlliConsultationSyncOnce, 0);
-}
-
-function bindOlliGroupFeedbackMonthsSyncOnce(){
-  if (window.__olliGroupFeedbackMonthsSyncBound) return;
-  window.__olliGroupFeedbackMonthsSyncBound = true;
-
-  try {
-    const core = window.OlliStorageCore;
-    if (core && core.FeatureFlags) core.FeatureFlags.set('elementary_group_feedback_months', 'common');
-  } catch(e) {
-    console.warn('그룹별 피드백 발송월 공통 저장 모드 설정 실패:', e);
-  }
-
-  const refresh = () => {
-    if (typeof loadOlliSharedSettingsFromServer === 'function') loadOlliSharedSettingsFromServer();
-  };
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') refresh();
-  });
-  window.addEventListener('focus', refresh);
-  window.addEventListener('online', refresh);
-  setTimeout(refresh, 0);
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', bindOlliGroupFeedbackMonthsSyncOnce, { once: true });
-} else {
-  setTimeout(bindOlliGroupFeedbackMonthsSyncOnce, 0);
 }
 
 async function toggleAcademyConsultationCompleted(studentRef, event){
