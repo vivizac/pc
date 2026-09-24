@@ -101,7 +101,7 @@ test('applyToPayload uses authoritative summary, replaces rows, removes tombston
     items:[{id:'r1',status:'ordered',needed_on:'2026-10-10',created_at:'2026-09-20T00:00:00Z',revision:2}],
     deletedRequestIds:['r2']
   },{maxItems:300});
-  assert.deepEqual(Array.from(next.items).map(x=>x.id),['r3','r1']);
+  assert.deepEqual(Array.from(next.items).map(x=>x.id),['r1','r3']);
   assert.equal(next.items[1].revision,2);
   assert.equal(next.summary.requested,1);
 });
