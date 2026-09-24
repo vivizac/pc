@@ -121,6 +121,8 @@
     if (!payload || typeof payload !== 'object') return null;
     if (Number(payload.protocol || 0) !== 1) return null;
     const domain = clean(payload.domain).toLowerCase();
+    const compatibilityAlias = clean(payload.compatibility_alias).toLowerCase();
+    if (domain === 'chat' && compatibilityAlias === 'materials') return null;
     if (!VALID_DOMAINS.has(domain)) return null;
     return {
       domain,
