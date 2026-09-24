@@ -50,6 +50,23 @@ begin
     v_topic,
     false
   );
+
+  -- Rolling-deploy compatibility:
+  -- old clients only know the chat domain and their material watcher is attached there.
+  -- New clients ignore this tagged alias, so Team Chat itself is not refreshed.
+  if v_domain = 'materials' then
+    perform realtime.send(
+      pg_catalog.jsonb_build_object(
+        'protocol', 1,
+        'domain', 'chat',
+        'revision', p_revision,
+        'compatibility_alias', 'materials'
+      ),
+      'changed',
+      v_topic,
+      false
+    );
+  end if;
 exception
   when others then
     raise warning 'OLLI realtime signal skipped: %', sqlerrm;
