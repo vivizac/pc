@@ -136,6 +136,18 @@ adapter가 false를 반환하거나 예외가 발생해도 자동 무한 재시�
 
 ## 다음 단계 전제
 
-다음 단계에서도 한 영역씩 연결한다.
+원래 확정한 1~9 단계 순서를 유지한다.
 
-처음 연결 시 안정화된 schedule/observation 내부 코드를 재작성하지 않는다. 기존 조회/검증 함수를 adapter에서 호출하는 방식으로 연결 가능성을 먼저 검증하고, 회귀 테스트를 통과한 뒤 다음 영역으로 이동한다.
+3단계는 실제 화면/domain 연결보다 먼저 **서버 Sync Manifest**를 검토하는 단계다. 학원별 최신 상태를 한 번에 작게 확인할 수 있도록 각 도메인의 기존 marker를 모으되, 하나의 전역 revision으로 합치지 않는다.
+
+검토 후보:
+
+- schedule: 기존 academy schedule revision
+- chat: 최신 message id 또는 향후 chat change marker
+- materials: 기존 event id / row revision
+- feedback: 아직 durable cursor가 없으므로 3단계에서 marker 정의 가능 여부만 검토
+- students / consultation: 현재 구조를 확인한 뒤 별도 revision 필요성 판단
+
+3단계에서도 기존 저장/불러오기 로직을 바로 교체하지 않는다. DB/RPC 변경이 필요하면 migration과 운영 DB를 일치시키고, manifest가 기존 동작에 영향을 주지 않는 독립 read-only 계층인지 먼저 검증한다.
+
+실제 schedule/observation adapter 연결은 그 이후 단계에서 진행하며, 안정화된 내부 코드를 재작성하지 않고 기존 조회/검증 함수를 adapter에서 호출하는 방식으로만 연결 가능성을 확인한다.
