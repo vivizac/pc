@@ -99,8 +99,137 @@ function buildAttendanceStudentFeedbackPath(table, student, limit = 80) {
   return appendOlliAcademyFilter(path);
 }
 
-async function loadAttendanceStudentFeedbackSheetItems(student) {
+
+const OLLI_FEEDBACK_SYNC_SESSION_KEY = 'olli_account_session_token_v1';
+let attendanceFeedbackDeltaUnavailable = false;
+
+function getAttendanceFeedbackSyncContext(student) {
+  let academyContext = null;
+  try { academyContext = window.OlliStorageCore?.AcademyContext?.getCurrent?.() || null; } catch (_) {}
+  let academyId = '';
+  let accountId = '';
+  let sessionToken = '';
+  try {
+    academyId = String(localStorage.getItem('olli_current_academy_id') || '').trim();
+    accountId = String(localStorage.getItem('olli_account_id_v1') || '').trim();
+    sessionToken = String(localStorage.getItem(OLLI_FEEDBACK_SYNC_SESSION_KEY) || '').trim();
+  } catch (_) {}
+  return {
+    academyId: String(academyContext?.academyId || academyContext?.academy_id || academyId || '').trim(),
+    accountId,
+    sessionToken,
+    studentId: String(student?.id || '').trim(),
+    studentName: String(student?.name || '').trim()
+  };
+}
+
+function captureAttendanceFeedbackSyncContext(current) {
+  const academyContext = window.OlliStorageCore?.AcademyContext;
+  const token = academyContext?.captureToken?.() || null;
+  return () => {
+    const latest = getAttendanceFeedbackSyncContext(attendanceStudentFeedbackSheetState?.student || {
+      id: current.studentId,
+      name: current.studentName
+    });
+    if (latest.academyId !== current.academyId || latest.sessionToken !== current.sessionToken) return false;
+    if (attendanceStudentFeedbackSheetState?.student) {
+      const activeStudentId = String(attendanceStudentFeedbackSheetState.student?.id || '').trim();
+      if (current.studentId && activeStudentId && activeStudentId !== current.studentId) return false;
+    }
+    if (token && academyContext?.isTokenCurrent) {
+      try { return !!academyContext.isTokenCurrent(token); } catch (_) { return false; }
+    }
+    return true;
+  };
+}
+
+async function callAttendanceFeedbackSyncRpc(name, params) {
+  if (typeof supabase !== 'function') throw new Error('Supabase 연결이 준비되지 않았습니다.');
+  return supabase('POST', `rpc/${name}`, params);
+}
+
+function persistAttendanceFeedbackSyncData(student, data, options = {}) {
+  if (typeof options.persistData === 'function') {
+    try { return options.persistData(data) !== false; } catch (_) { return false; }
+  }
+  if (typeof writeAttendanceFeedbackLocalFirstCache === 'function') {
+    return writeAttendanceFeedbackLocalFirstCache(student, data);
+  }
+  return false;
+}
+
+async function captureAttendanceFeedbackBaseline(student) {
+  const api = window.OlliFeedbackSync;
+  const current = getAttendanceFeedbackSyncContext(student);
+  if (!api || attendanceFeedbackDeltaUnavailable || !current.academyId || !current.sessionToken || (!current.studentId && !current.studentName)) return null;
+  const isCurrent = captureAttendanceFeedbackSyncContext(current);
+  try {
+    const checkpoint = await api.createBaseline({
+      rpc: callAttendanceFeedbackSyncRpc,
+      academyId: current.academyId,
+      accountId: current.accountId,
+      sessionToken: current.sessionToken,
+      studentId: current.studentId,
+      studentName: current.studentName,
+      isCurrent
+    });
+    return isCurrent() ? { current, checkpoint } : null;
+  } catch (error) {
+    if (api.isUnavailableError?.(error)) attendanceFeedbackDeltaUnavailable = true;
+    else console.warn('피드백 delta baseline 준비 실패:', error?.message || error);
+    return null;
+  }
+}
+
+async function tryAttendanceFeedbackDelta(student, baseData, options = {}) {
+  const api = window.OlliFeedbackSync;
+  const current = getAttendanceFeedbackSyncContext(student);
+  if (!api || attendanceFeedbackDeltaUnavailable || !baseData || !current.academyId || !current.sessionToken) return null;
+  const checkpoint = api.readCheckpoint(current);
+  if (!checkpoint) return null;
+  const isCurrent = captureAttendanceFeedbackSyncContext(current);
+
+  try {
+    const delta = await api.pull({
+      rpc: callAttendanceFeedbackSyncRpc,
+      academyId: current.academyId,
+      accountId: current.accountId,
+      sessionToken: current.sessionToken,
+      studentId: current.studentId,
+      studentName: current.studentName,
+      checkpoint,
+      isCurrent
+    });
+    if (!isCurrent()) return null;
+
+    const nextData = api.applyToData(baseData, delta, {
+      maxFeedbacks: 160,
+      maxSummaries: 50
+    });
+    const persisted = persistAttendanceFeedbackSyncData(student, nextData, options);
+    if (persisted) api.writeCheckpoint(current, delta.checkpoint);
+    return nextData;
+  } catch (error) {
+    if (api.isUnavailableError?.(error)) attendanceFeedbackDeltaUnavailable = true;
+    else console.warn('피드백 delta 동기화 실패, 전체 조회로 복구:', error?.message || error);
+    return null;
+  }
+}
+
+
+async function loadAttendanceStudentFeedbackSheetItems(student, options = {}) {
   if (!student || !isSupabaseConfigured()) return { feedbacks: [], summaries: [] };
+
+  const baseData = options.baseData || null;
+  if (baseData) {
+    const deltaData = await tryAttendanceFeedbackDelta(student, baseData, options);
+    if (deltaData) return deltaData;
+  }
+
+  // Capture the event head before the three-table snapshot.
+  // Changes that happen during the snapshot will be replayed by the next delta.
+  const baseline = await captureAttendanceFeedbackBaseline(student);
+
   const requests = [
     { table: 'feedbacks', type: 'feedbacks', promise: supabase('GET', buildAttendanceStudentFeedbackPath('feedbacks', student, 80)) },
     { table: 'fail_feedbacks', type: 'feedbacks', promise: supabase('GET', buildAttendanceStudentFeedbackPath('fail_feedbacks', student, 80)) },
@@ -120,10 +249,16 @@ async function loadAttendanceStudentFeedbackSheetItems(student) {
     else feedbacks.push(...rows);
   });
   const sortByDateDesc = (a, b) => (new Date(b.createdAt || '').getTime() || 0) - (new Date(a.createdAt || '').getTime() || 0);
-  return {
+  const data = {
     feedbacks: feedbacks.sort(sortByDateDesc),
     summaries: summaries.sort(sortByDateDesc)
   };
+
+  const persisted = persistAttendanceFeedbackSyncData(student, data, options);
+  if (persisted && baseline?.checkpoint && baseline?.current && window.OlliFeedbackSync) {
+    window.OlliFeedbackSync.writeCheckpoint(baseline.current, baseline.checkpoint);
+  }
+  return data;
 }
 
 const attendanceStudentFeedbackSheetState = {
