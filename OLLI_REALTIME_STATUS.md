@@ -67,3 +67,25 @@
 - 공통 `olli-realtime-common.js`의 허용 도메인에 `chat`을 추가했다. 공통 파일 원본은 계속 PC `main` 한 곳이며 Phone은 rewrite로 같은 파일을 읽는다.
 - 채팅 변경 신호는 화면 데이터를 싣지 않는다. DB 저장 완료 후 `chat` 신호만 보내고, Phone 올리톡은 기존 session-aware RPC로 메시지 원본을 다시 조회한다.
 - 기존 `observation`, `schedule` 도메인의 연결·보류·재시도 동작은 변경하지 않는다.
+
+## 2026-09-25 7단계 — students / consultation
+
+작업 브랜치 기준으로 공통 Realtime 허용 도메인에 `students`, `consultation`을 추가했다.
+
+### students
+- 기존 `students` 테이블의 schedule revision trigger를 유지한다.
+- 학생 변경 시 schedule revision을 올린 뒤 같은 revision 값으로 `students` wake-up 신호를 추가한다.
+- 별도 student revision은 만들지 않는다.
+- PC 학생정보 상세카드는 `schedule` 신호에서는 현재 학생의 시간표/픽업 context만 재조회하고, `students` 신호에서만 학생 snapshot revision 확인 후 프로필을 갱신한다.
+- 기존 PC 학생 목록 30초 polling은 제거했다.
+
+### consultation
+- academy별 consultation revision을 추가하고 `consultation` wake-up 신호를 사용한다.
+- PC 상담 설문 20초 polling을 제거했다.
+- 상담 설정/진행상태 30초 polling과 focus/online 강제 전체조회도 제거했다.
+- 설문 상세의 관찰/최종분석 캐시는 상담 snapshot reconcile 후 무효화한다.
+- 사용자가 누르는 상담 설문 수동 새로고침은 `force:true` 전체조회 경로를 유지한다.
+
+### 공통 원칙
+Realtime payload 자체를 화면 데이터로 사용하지 않는다.
+Realtime은 “바뀌었을 수 있음”만 알리고, durable revision/checkpoint가 실제 snapshot 재조회 여부를 결정한다.
