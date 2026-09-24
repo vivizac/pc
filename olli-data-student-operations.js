@@ -950,8 +950,8 @@ async function loadStudentsFromSupabase(options = {}) {
 }
 
 
-let olliStudentSyncInFlight = false;
-let olliStudentSyncTimer = null;
+let olliStudentSyncStarted = false;
+let olliStudentSyncRenderBound = false;
 
 function isOlliRecordRoomVisible() {
   const screen = document.getElementById('recordRoomScreen');
@@ -960,34 +960,34 @@ function isOlliRecordRoomVisible() {
   return screen.style.display !== 'none' && (!style || style.display !== 'none');
 }
 
-async function syncVisibleStudentListSilently() {
-  if (olliStudentSyncInFlight || document.hidden || !isOlliRecordRoomVisible()) return;
+function refreshVisibleStudentListAfterSync(event) {
+  if (event?.detail?.changed !== true || document.hidden || !isOlliRecordRoomVisible()) return;
   if (!['elementary', 'kinder', 'academy'].includes(currentRecordView)) return;
-  olliStudentSyncInFlight = true;
-  try {
-    // 백그라운드 목록 새로고침은 서버 원본을 읽기만 하고 학생 프로필을 자동 저장하지 않습니다.
+  const searchValue = document.getElementById('searchName')?.value.trim() || '';
+  if (currentRecordView === 'elementary' || currentRecordView === 'kinder') renderCurrentStudentRecords(searchValue);
+  else if (currentRecordView === 'academy') renderRecordAcademyManagementDashboard();
+}
+
+async function syncVisibleStudentListSilently() {
+  if (!window.OlliStudentSync?.sync) {
     const result = await loadStudentsFromSupabase({ skipLifecycleSync: true });
-    if (result && result.changed === false) return;
-    const searchValue = document.getElementById('searchName')?.value.trim() || '';
-    if (currentRecordView === 'elementary' || currentRecordView === 'kinder') renderCurrentStudentRecords(searchValue);
-    else if (currentRecordView === 'academy') renderRecordAcademyManagementDashboard();
-    } catch (err) {
-    console.warn('학생 목록 백그라운드 동기화 보류:', err?.message || err);
-  } finally {
-    olliStudentSyncInFlight = false;
+    if (result?.changed === true) {
+      refreshVisibleStudentListAfterSync({ detail:{ changed:true } });
+    }
+    return result;
   }
+  return window.OlliStudentSync.sync({
+    reason:'visible_student_list',
+    skipLifecycleSync:true
+  });
 }
 
 function startOlliStudentBackgroundSync() {
-  if (olliStudentSyncTimer) return;
-  olliStudentSyncTimer = window.setInterval(syncVisibleStudentListSilently, 30000);
+  if (!olliStudentSyncRenderBound) {
+    window.addEventListener('olli:students-synced', refreshVisibleStudentListAfterSync);
+    olliStudentSyncRenderBound = true;
+  }
+  if (olliStudentSyncStarted) return;
+  olliStudentSyncStarted = window.OlliStudentSync?.start?.() === true;
 }
-
-window.addEventListener('focus', () => {
-  setTimeout(syncVisibleStudentListSilently, 0);
-});
-
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) setTimeout(syncVisibleStudentListSilently, 0);
-});
 
