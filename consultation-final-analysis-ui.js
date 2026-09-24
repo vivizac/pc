@@ -146,6 +146,11 @@ if(originalRefresh)window.refreshConsultationSurveyManager=async function(){
   if((section&&active&&section.contains(active))||saving.size)return rows();
   const result=await originalRefresh.apply(this,arguments);queueMicrotask(ensureSection);return result;
 };
+window.addEventListener('olli:consultation-reconciled',event=>{
+  if(event?.detail?.resource!=='surveys'||!currentId||saving.has(String(currentId)))return;
+  cache.delete(String(currentId));
+  queueMicrotask(ensureSection);
+});
 const observer=new MutationObserver(()=>ensureSection());
 const detail=document.getElementById('consultationSurveyDetailCard');if(detail)observer.observe(detail,{childList:true,subtree:false});
 currentId=selectedFromDom();ensureSection();
