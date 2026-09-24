@@ -20,6 +20,9 @@
     filter: 'all',
     search: '',
     realtimeWatcher: null,
+    deltaUnavailable: false,
+    deltaCheckpoint: null,
+    deltaAcademyId: '',
     started: false
   };
 
@@ -30,15 +33,18 @@
     try { academyContext = global.OlliStorageCore?.AcademyContext?.getCurrent?.() || null; } catch (_) {}
     let academyId = '';
     let memberId = '';
+    let accountId = '';
     let sessionToken = '';
     try {
       academyId = clean(localStorage.getItem('olli_current_academy_id'));
       memberId = clean(localStorage.getItem('olli_current_member_id'));
+      accountId = clean(localStorage.getItem('olli_account_id_v1'));
       sessionToken = clean(localStorage.getItem(ACCOUNT_SESSION_TOKEN_KEY));
     } catch (_) {}
     return {
       academyId: clean(academyContext?.academyId || academyContext?.academy_id || academyId),
       memberId: clean(academyContext?.memberId || academyContext?.member_id || memberId),
+      accountId,
       sessionToken
     };
   }
@@ -49,6 +55,114 @@
       : (typeof supabase === 'function' ? supabase : null);
     if (!call) throw new Error('Supabase 연결이 준비되지 않았습니다.');
     return call('POST', `rpc/${name}`, params);
+  }
+
+  function captureMaterialsContext(current) {
+    const academyContext=global.OlliStorageCore?.AcademyContext;
+    const token=academyContext?.captureToken?.()||null;
+    return()=>{
+      const latest=context();
+      if(latest.academyId!==current.academyId||latest.sessionToken!==current.sessionToken)return false;
+      if(token&&academyContext?.isTokenCurrent){
+        try{return !!academyContext.isTokenCurrent(token)}catch(_){return false}
+      }
+      return true;
+    };
+  }
+
+  function materialsStorageContext(current){
+    return{academyId:current.academyId,accountId:current.accountId||'account'};
+  }
+
+  function currentPayload(){
+    return{
+      ok:true,
+      academy_id:state.deltaAcademyId||context().academyId,
+      current_member_id:context().memberId,
+      current_role:state.currentRole,
+      can_process:state.canProcess,
+      summary:state.summary,
+      items:state.items
+    };
+  }
+
+  function payloadSignature(payload){
+    try{
+      return JSON.stringify({
+        items:Array.isArray(payload?.items)?payload.items:[],
+        summary:payload?.summary||{},
+        current_role:clean(payload?.current_role),
+        can_process:payload?.can_process===true
+      });
+    }catch(_){return ''}
+  }
+
+  async function captureMaterialsBaseline(current){
+    const api=global.OlliMaterialsSync;
+    if(!api||state.deltaUnavailable||!current?.sessionToken||!current?.academyId)return null;
+    const isCurrent=captureMaterialsContext(current);
+    try{
+      const checkpoint=await api.createBaseline({
+        rpc,
+        academyId:current.academyId,
+        sessionToken:current.sessionToken,
+        isCurrent
+      });
+      return isCurrent()?checkpoint:null;
+    }catch(error){
+      if(api.isUnavailableError?.(error))state.deltaUnavailable=true;
+      else console.warn('PC 재료주문 delta baseline 준비 실패:',error?.message||error);
+      return null;
+    }
+  }
+
+  function commitMaterialsBaseline(current,checkpoint){
+    const api=global.OlliMaterialsSync;
+    if(!api||!checkpoint)return false;
+    state.deltaCheckpoint=checkpoint;
+    state.deltaAcademyId=current.academyId;
+    return api.writeCheckpoint(materialsStorageContext(current),checkpoint);
+  }
+
+  async function syncMaterialsDelta(options={}){
+    if(!state.root?.isConnected)return true;
+    const api=global.OlliMaterialsSync;
+    const current=context();
+    if(!api||state.deltaUnavailable||!current.sessionToken||!current.academyId){
+      return refresh({showLoading:false});
+    }
+
+    if(state.deltaAcademyId!==current.academyId){
+      state.deltaCheckpoint=api.readCheckpoint(materialsStorageContext(current));
+      state.deltaAcademyId=current.academyId;
+    }
+    if(!state.deltaCheckpoint)return refresh({showLoading:false});
+
+    const isCurrent=captureMaterialsContext(current);
+    try{
+      const delta=await api.pull({
+        rpc,
+        academyId:current.academyId,
+        sessionToken:current.sessionToken,
+        checkpoint:state.deltaCheckpoint,
+        isCurrent
+      });
+      if(!isCurrent())return false;
+
+      const before=currentPayload();
+      const next=api.applyToPayload(before,delta,{maxItems:300});
+      if(payloadSignature(before)!==payloadSignature(next))renderPayload(next);
+
+      // Persist only after the in-memory payload accepted the delta.
+      state.deltaCheckpoint=delta.checkpoint;
+      state.deltaAcademyId=current.academyId;
+      api.writeCheckpoint(materialsStorageContext(current),delta.checkpoint);
+      return delta.complete===true;
+    }catch(error){
+      if(api.isUnavailableError?.(error))state.deltaUnavailable=true;
+      else console.warn('PC 재료주문 delta 동기화 실패, 전체 조회로 복구:',error?.message||error);
+      return refresh({showLoading:false});
+    }
   }
 
   function create(tag, className, text) {
@@ -469,6 +583,8 @@
     }
 
     try {
+      // Capture event head before the full snapshot so concurrent writes replay safely.
+      const baselineCheckpoint=await captureMaterialsBaseline(current);
       const payload = await rpc('olli_team_material_requests_list', {
         p_session_token: current.sessionToken,
         p_academy_id: current.academyId,
@@ -477,6 +593,7 @@
       if (sequence !== state.sequence) return true;
       if (!payload?.ok) throw new Error(payload?.message || '재료 요청을 불러오지 못했습니다.');
       renderPayload(payload);
+      commitMaterialsBaseline(current,baselineCheckpoint);
       return true;
     } catch (error) {
       if (sequence !== state.sequence) return true;
@@ -647,9 +764,9 @@
   function bindRealtime() {
     if (state.realtimeWatcher || !global.OlliRealtime?.watchDomain) return;
     try {
-      state.realtimeWatcher = global.OlliRealtime.watchDomain('chat', async () => {
+      state.realtimeWatcher = global.OlliRealtime.watchDomain('materials', async () => {
         if (!state.root?.isConnected) return true;
-        return refresh({ showLoading: false });
+        return syncMaterialsDelta({ showLoading:false });
       });
       global.OlliRealtime.ensureConnected?.({ reason: 'team_material_orders_start' }).catch(() => {});
     } catch (error) {
