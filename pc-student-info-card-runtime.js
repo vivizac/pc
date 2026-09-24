@@ -649,7 +649,10 @@
     cardState.dirty = false;
     panel.innerHTML = infoHeadHtml('info') + '<div class="pcStudentInfoLoading">학생정보와 시간표를 불러오고 있습니다.</div>';
     try {
-      if (typeof global.loadStudentsFromSupabase === 'function') {
+      if (global.OlliStudentSync?.sync) {
+        await global.OlliStudentSync.sync({ reason:'student_info_open', skipLifecycleSync:true });
+        student = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;
+      } else if (typeof global.loadStudentsFromSupabase === 'function') {
         await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
         student = typeof global.findStudentById === 'function' ? (global.findStudentById(id) || student) : student;
       }
@@ -754,7 +757,11 @@
         await setAuthoritativeSchedule(savedStudent.id, pairs);
       }
       saveStage = 'reload';
-      if (typeof global.loadStudentsFromSupabase === 'function') await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
+      if (global.OlliStudentSync?.sync) {
+        await global.OlliStudentSync.sync({ reason:'student_info_saved', skipLifecycleSync:true });
+      } else if (typeof global.loadStudentsFromSupabase === 'function') {
+        await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
+      }
       if (typeof global.showPushToast === 'function') {
         global.showPushToast(scheduleChanged ? '학생정보와 시간표를 저장했어요.' : '학생정보를 저장했어요.');
       }
@@ -801,7 +808,7 @@
     }, true));
   }
 
-  async function refreshOpenStudentInfoFromRealtime(realtimeContext) {
+  async function refreshOpenStudentInfoFromRealtime(realtimeContext, options = {}) {
     const id = clean(cardState.studentId);
     if (!id) return true;
     if (cardState.loading || cardState.saveInFlight || cardState.dirty) return false;
@@ -812,8 +819,17 @@
       && sessionToken === currentSessionToken()
       && (!realtimeContext || realtimeContext.isCurrent());
     try {
-      if (typeof global.loadStudentsFromSupabase === 'function') {
-        await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
+      if (options.refreshStudent === true) {
+        if (global.OlliStudentSync?.sync) {
+          await global.OlliStudentSync.sync({
+            reason:'student_info_realtime',
+            force:realtimeContext?.trigger === 'change',
+            skipLifecycleSync:true,
+            isCurrent
+          });
+        } else if (typeof global.loadStudentsFromSupabase === 'function') {
+          await global.loadStudentsFromSupabase({ skipLifecycleSync: true });
+        }
       }
       if (!isCurrent() || cardState.dirty || cardState.saveInFlight) return false;
       const latest = typeof global.findStudentById === 'function' ? global.findStudentById(id) : null;
@@ -834,7 +850,8 @@
     if (global.__OLLI_PC_STUDENT_INFO_REALTIME_V1__) return true;
     if (typeof global.OlliRealtime?.watchDomain !== 'function') return false;
     global.__OLLI_PC_STUDENT_INFO_REALTIME_V1__ = true;
-    global.OlliRealtime.watchDomain('schedule', (context) => refreshOpenStudentInfoFromRealtime(context));
+    global.OlliRealtime.watchDomain('schedule', (context) => refreshOpenStudentInfoFromRealtime(context, { refreshStudent:false }));
+    global.OlliRealtime.watchDomain('students', (context) => refreshOpenStudentInfoFromRealtime(context, { refreshStudent:true }));
     return true;
   }
 
