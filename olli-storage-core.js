@@ -163,6 +163,15 @@
         localStorage.setItem('olli_current_member_name', current.memberName);
         localStorage.setItem('olli_current_member_role', current.role);
       }
+      try {
+        global.dispatchEvent?.(new global.CustomEvent('olli:academy-context-changed', {
+          detail: {
+            academyId: current.academyId,
+            contextVersion: current.contextVersion,
+            switchedAt: current.switchedAt
+          }
+        }));
+      } catch (_) {}
       return getCurrent();
     }
 
