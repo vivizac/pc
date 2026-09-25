@@ -51,11 +51,11 @@ test('retains a signal while editing and retries without another signal',async()
   signal(env);await env.tick(150);assert.equal(calls,1);busy=false;await env.tick(1000);assert.equal(calls,2);
   await env.tick(5000);assert.equal(calls,2);
 });
-test('non-change catch-up checks never enter the 1s retry loop when not applied',async()=>{
+test('central reconcile catch-up checks never enter the 1s retry loop when not applied',async()=>{
   const env=realtime();let calls=0,trigger='';
   env.win.OlliRealtime.watchDomain('schedule',ctx=>{calls++;trigger=ctx.trigger;return false;});
-  env.emit('olli:realtime-status',{status:'SUBSCRIBED',academyId:'academy-a'});
-  await env.tick(150);assert.equal(calls,1);assert.equal(trigger,'subscribed');
+  env.emit('olli:reconcile',{academyId:'academy-a',reason:'realtime_subscribed'});
+  await env.tick(150);assert.equal(calls,1);assert.equal(trigger,'realtime_subscribed');
   await env.tick(5000);assert.equal(calls,1);
 });
 test('actual change signals keep retrying and expose change trigger',async()=>{
@@ -75,14 +75,29 @@ test('failed reads retry and a completed read clears pending work',async()=>{
   env.win.OlliRealtime.watchDomain('schedule',()=>{if(++calls===1)throw Error('offline');return true;});
   signal(env);await env.tick(150);await env.tick(1000);assert.equal(calls,1);await env.tick(4000);assert.equal(calls,2);
 });
-test('hidden/offline tabs catch up on visible, online, focus and subscribed events',async()=>{
-  const env=realtime();let calls=0;env.win.OlliRealtime.watchDomain('schedule',()=>{calls++;return true;});
+test('hidden/offline changes catch up through one central reconcile event',async()=>{
+  const env=realtime();let calls=0,triggers=[];
+  env.win.OlliRealtime.watchDomain('schedule',ctx=>{calls++;triggers.push(ctx.trigger);return true;});
   env.dom.hidden=true;signal(env);await env.tick(5000);assert.equal(calls,0);
-  env.dom.hidden=false;env.emit('visibilitychange');await env.tick(150);assert.equal(calls,1);
+
+  env.dom.hidden=false;
+  env.emit('olli:reconcile',{academyId:'academy-a',reason:'visible'});
+  await env.tick(150);
+  assert.equal(calls,1);
+  assert.equal(triggers[0],'change');
+
   env.win.navigator.onLine=false;signal(env);await env.tick(150);assert.equal(calls,1);
-  env.win.navigator.onLine=true;env.emit('online');await env.tick(150);assert.equal(calls,2);
-  env.emit('focus');await env.tick(150);assert.equal(calls,3);
-  env.emit('olli:realtime-status',{status:'SUBSCRIBED',academyId:'academy-a'});await env.tick(150);assert.equal(calls,4);
+  env.win.navigator.onLine=true;
+  env.emit('olli:reconcile',{academyId:'academy-a',reason:'online'});
+  await env.tick(150);
+  assert.equal(calls,2);
+  assert.equal(triggers[1],'change');
+
+  env.emit('focus');
+  env.emit('online');
+  env.emit('visibilitychange');
+  await env.tick(500);
+  assert.equal(calls,2);
 });
 test('in-flight academy/session responses become invalid and new context catches up',async()=>{
   const env=realtime(),d=deferred();let captured,calls=0;
@@ -91,9 +106,13 @@ test('in-flight academy/session responses become invalid and new context catches
   env.values.set('olli_current_academy_id','academy-b');env.values.set('olli_account_session_token_v1','session-b');
   assert.equal(captured.isCurrent(),false);d.resolve(true);await settle();await env.tick(1000);assert.equal(captured.academyId,'academy-b');assert.equal(calls,2);
 });
-test('dispose removes listeners and scheduled refreshes',async()=>{
+test('dispose removes realtime-change and central reconcile listeners',async()=>{
   const env=realtime();let calls=0;const watcher=env.win.OlliRealtime.watchDomain('schedule',()=>{calls++;return true;});
-  signal(env);watcher.dispose();await env.tick(10000);signal(env);env.emit('focus');await env.tick(150);assert.equal(calls,0);
+  signal(env);watcher.dispose();await env.tick(10000);
+  signal(env);
+  env.emit('olli:reconcile',{academyId:'academy-a',reason:'focus'});
+  await env.tick(150);
+  assert.equal(calls,0);
 });
 
 function pc() {
