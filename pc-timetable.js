@@ -579,12 +579,8 @@
 
   if (!global.__OLLI_TIMETABLE_LIVE_SYNC_V1__) {
     global.__OLLI_TIMETABLE_LIVE_SYNC_V1__ = true;
-    // 시간표와 출석부 모두 Supabase Realtime을 사용합니다.
-    // 포커스/화면 복귀 때만 revision을 한 번 확인해 연결 공백을 보완합니다.
-    global.addEventListener('focus', () => { checkLiveScheduleSync(true); });
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) checkLiveScheduleSync(true);
-    });
+    // focus/visible/online catch-up은 Step 9 중앙 reconciliation이
+    // OlliRealtime watcher에 한 번씩 전달합니다.
   }
 
   if (typeof global.OlliRealtime?.watchDomain === 'function') {
