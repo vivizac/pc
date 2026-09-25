@@ -3,10 +3,9 @@
 
   if (global.OlliRealtime && global.OlliRealtime.version) return;
 
-  const VERSION = '1.5.0-step7';
+  const VERSION = '1.6.0-step9';
   const SDK_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/+esm';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
-  const CONTEXT_CHECK_INTERVAL_MS = 5000;
   const RETRY_DELAY_MS = 10000;
   const SUBSCRIBE_TIMEOUT_MS = 8000;
   const VALID_DOMAINS = new Set(['observation', 'schedule', 'chat', 'materials', 'feedback', 'students', 'consultation']);
@@ -318,22 +317,16 @@
       const detail = event?.detail;
       if (detail?.domain === domain && clean(detail.academyId) === currentAcademyId()) request('change', true);
     }
-    function onStatus(event) {
+    function onReconcile(event) {
       const detail = event?.detail;
-      if (detail?.status === 'SUBSCRIBED' && clean(detail.academyId) === currentAcademyId()) request('subscribed', false);
-    }
-    function onVisible() { if (!document.hidden) request('visible', false); }
-    function onOnline() { request('online', false); }
-    function onFocus() { request('focus', false); }
-    function onStorage(event) {
-      if (!event || event.key === null || [ACCOUNT_SESSION_TOKEN_KEY, 'olli_current_academy_id'].includes(event.key)) request('storage', false);
+      if (!detail || clean(detail.academyId) !== currentAcademyId()) return;
+      const reason = clean(detail.reason) || 'reconcile';
+      request(reason, false);
     }
     global.addEventListener('olli:realtime-change', onChange);
-    global.addEventListener('olli:realtime-status', onStatus);
-    global.addEventListener('online', onOnline);
-    global.addEventListener('focus', onFocus);
-    global.addEventListener('storage', onStorage);
-    document.addEventListener('visibilitychange', onVisible);
+    global.addEventListener('olli:reconcile', onReconcile);
+
+    // A watcher created after the central boot pass still needs one initial catch-up.
     if (state.status === 'SUBSCRIBED') request('already_subscribed', false);
 
     return Object.freeze({
@@ -345,11 +338,7 @@
         pendingTrigger = '';
         if (timer !== null) global.clearTimeout(timer);
         global.removeEventListener('olli:realtime-change', onChange);
-        global.removeEventListener('olli:realtime-status', onStatus);
-        global.removeEventListener('online', onOnline);
-        global.removeEventListener('focus', onFocus);
-        global.removeEventListener('storage', onStorage);
-        document.removeEventListener('visibilitychange', onVisible);
+        global.removeEventListener('olli:reconcile', onReconcile);
       }
     });
   }
@@ -362,27 +351,37 @@
     getStatus
   });
 
-  const scheduleEnsure = (force, reason) => {
-    setTimeout(() => { ensureConnected({ force: !!force, reason }).catch(() => {}); }, 0);
-  };
+  function installLegacyLifecycleFallback() {
+    if (global.OlliReconciliation?.version || global.__olliRealtimeLegacyLifecycleFallback) return false;
+    global.__olliRealtimeLegacyLifecycleFallback = true;
 
-  global.addEventListener('online', () => scheduleEnsure(true, 'online'));
-  global.addEventListener('focus', () => scheduleEnsure(true, 'focus'));
-  global.addEventListener('storage', event => {
-    if (!event || [ACCOUNT_SESSION_TOKEN_KEY, 'olli_current_academy_id'].includes(event.key)) {
-      scheduleEnsure(true, 'storage');
-    }
-  });
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) scheduleEnsure(true, 'visible');
-  });
+    const scheduleEnsure = (force, reason) => {
+      global.setTimeout(() => { ensureConnected({ force: !!force, reason }).catch(() => {}); }, 0);
+    };
+    const onOnline = () => scheduleEnsure(true, 'legacy_online');
+    const onFocus = () => scheduleEnsure(true, 'legacy_focus');
+    const onStorage = event => {
+      if (!event || event.key === null || [ACCOUNT_SESSION_TOKEN_KEY, 'olli_current_academy_id'].includes(event.key)) {
+        scheduleEnsure(true, 'legacy_storage');
+      }
+    };
+    const onVisible = () => {
+      if (!document.hidden) scheduleEnsure(true, 'legacy_visible');
+    };
 
-  if (!global.__olliRealtimeContextTimer) {
-    global.__olliRealtimeContextTimer = setInterval(() => {
-      if (document.hidden) return;
-      ensureConnected({ force: false, reason: 'context_check' }).catch(() => {});
-    }, CONTEXT_CHECK_INTERVAL_MS);
+    global.addEventListener('online', onOnline);
+    global.addEventListener('focus', onFocus);
+    global.addEventListener('storage', onStorage);
+    document.addEventListener('visibilitychange', onVisible);
+    scheduleEnsure(false, 'legacy_boot');
+    return true;
   }
 
-  scheduleEnsure(false, 'boot');
+  // Normal Step 9 builds load OlliReconciliation before DOMContentLoaded.
+  // Only install the old lifecycle path if that coordinator is genuinely absent.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', installLegacyLifecycleFallback, { once:true });
+  } else {
+    global.setTimeout(installLegacyLifecycleFallback, 0);
+  }
 })(window);
