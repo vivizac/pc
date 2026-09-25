@@ -59,8 +59,12 @@ function sandbox(){
 
   const managerCalls=[];
   win.OlliSyncManager={
+    requestRegistered:(reason,options)=>{
+      managerCalls.push({method:'requestRegistered',reason,options});
+      return Promise.resolve([]);
+    },
     resumePending:(reason,options)=>{
-      managerCalls.push({reason,options});
+      managerCalls.push({method:'resumePending',reason,options});
       return Promise.resolve([]);
     }
   };
@@ -262,12 +266,13 @@ test('pageshow only reconciles restored bfcache pages',async()=>{
   assert.equal(events[0].reason,'pageshow');
 });
 
-test('coordinator owns lifecycle; it never calls manager.startLifecycle or creates intervals',async()=>{
+test('coordinator owns lifecycle and uses manager requestRegistered without manager lifecycle',async()=>{
   const env=sandbox();
   let starts=0;
   env.win.OlliSyncManager.startLifecycle=()=>{starts+=1};
   env.emit('DOMContentLoaded');
   await env.tick(0);
   assert.equal(starts,0);
-  assert.equal([...env.timers.values()].some(timer=>Number(timer.delay||0)>0),false);
+  assert.equal(env.managerCalls[0]?.method,'requestRegistered');
+  assert.doesNotMatch(source,/setInterval\s*\(/);
 });
