@@ -821,10 +821,8 @@
     state.started = true;
     const auto = document.querySelector('[data-olli-team-material-orders]');
     if (auto) mount(auto).catch(error => console.warn('팀톡 재료주문 시작 실패:', error));
-    global.addEventListener('storage', event => {
-      if (!event || [ACCOUNT_SESSION_TOKEN_KEY, 'olli_current_academy_id'].includes(event.key)) {
-        if (state.root?.isConnected) refresh({ showLoading: false });
-      }
+    global.addEventListener('olli:reconcile', () => {
+      if (state.root?.isConnected && !state.realtimeWatcher) refresh({ showLoading: false });
     });
   }
 
