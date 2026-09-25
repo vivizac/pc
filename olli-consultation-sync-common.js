@@ -131,7 +131,6 @@
       });
       return result?.applied===true||result?.skipped===true;
     });
-    global.OlliRealtime.ensureConnected?.({reason:'consultation_settings'}).catch(()=>{});
     return true;
   }
 
