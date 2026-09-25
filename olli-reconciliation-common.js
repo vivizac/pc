@@ -233,6 +233,9 @@
     if(state.ensureInFlight)return;
     request('realtime_subscribed',{immediate:true});
   }
+  function onSessionRestored(){
+    request('session_restored',{forceRealtime:true,immediate:true});
+  }
   function onPageShow(event){
     if(event?.persisted===true)request('pageshow',{forceRealtime:true});
   }
@@ -246,6 +249,7 @@
     global.addEventListener?.('pageshow',onPageShow);
     global.addEventListener?.('olli:academy-context-changed',onAcademyContext);
     global.addEventListener?.('olli:realtime-status',onRealtimeStatus);
+    global.addEventListener?.('olli:phone-memo-session-restored',onSessionRestored);
     global.document?.addEventListener?.('visibilitychange',onVisible);
     request('boot',{immediate:true});
     return true;
@@ -264,6 +268,7 @@
     global.removeEventListener?.('pageshow',onPageShow);
     global.removeEventListener?.('olli:academy-context-changed',onAcademyContext);
     global.removeEventListener?.('olli:realtime-status',onRealtimeStatus);
+    global.removeEventListener?.('olli:phone-memo-session-restored',onSessionRestored);
     global.document?.removeEventListener?.('visibilitychange',onVisible);
     return true;
   }
