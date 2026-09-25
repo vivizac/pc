@@ -177,7 +177,12 @@
       // Step 2 manager remains the execution/coalescing engine for adapters that
       // explicitly register with it. Lifecycle ownership stays here, not in manager.startLifecycle().
       try{
-        global.OlliSyncManager?.resumePending?.('reconcile:'+reason,{priority:'reconcile'})?.catch?.(()=>{});
+        const manager=global.OlliSyncManager;
+        if(manager?.requestRegistered){
+          manager.requestRegistered('reconcile:'+reason,{priority:'reconcile'})?.catch?.(()=>{});
+        }else{
+          manager?.resumePending?.('reconcile:'+reason,{priority:'reconcile'})?.catch?.(()=>{});
+        }
       }catch(_){}
 
       state.lastRunAt=Date.now();
