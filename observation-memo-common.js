@@ -473,14 +473,19 @@ function requestObservationMemoCrossDeviceRefresh() {
 
 if (!window.__olliObservationMemoCrossDeviceRefreshBound) {
   window.__olliObservationMemoCrossDeviceRefreshBound = true;
-  window.addEventListener('focus', requestObservationMemoCrossDeviceRefresh);
-  window.addEventListener('online', requestObservationMemoCrossDeviceRefresh);
+  window.addEventListener('olli:reconcile', event => {
+    const academyId = String(event?.detail?.academyId || '').trim();
+    const currentAcademyId = String(
+      window.OlliStorageCore?.AcademyContext?.getCurrent?.()?.academyId
+      || localStorage.getItem('olli_current_academy_id')
+      || ''
+    ).trim();
+    if (academyId && currentAcademyId && academyId !== currentAcademyId) return;
+    requestObservationMemoCrossDeviceRefresh();
+  });
   window.addEventListener('olli:realtime-change', event => {
     if (event?.detail?.domain !== 'observation') return;
     requestObservationMemoCrossDeviceRefresh();
-  });
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) requestObservationMemoCrossDeviceRefresh();
   });
   document.addEventListener('focusin', event => {
     if (event.target?.id !== 'memoEditor') return;
