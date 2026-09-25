@@ -1812,8 +1812,8 @@
     syncAssistantUi();
     global.addEventListener('olli-team-talk-ai-mode-changed', handleAiModeChanged);
     refreshBadge();
-    global.addEventListener('storage', (event) => {
-      if (!event || event.key === ACCOUNT_SESSION_TOKEN_KEY || event.key === 'olli_current_academy_id') refreshBadge();
+    global.addEventListener('olli:reconcile', () => {
+      refreshBadge();
     });
   }
 
