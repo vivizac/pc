@@ -100,6 +100,104 @@
   }, true);
 })(window);
 
+function applyReconciledObservationMemoDraft(student, memoEditor, result) {
+  if (!student || !memoEditor || !result) {
+    return { applied: false, reason: 'no-remote-update' };
+  }
+
+  const isSameMemoPage =
+    currentMemoStudent &&
+    String(currentMemoStudent.id || '') === String(student.id || '') &&
+    ['elementary', 'kinder'].includes(currentMemoType);
+
+  if (!isSameMemoPage) {
+    return { applied: false, reason: 'stale-session' };
+  }
+
+  const state = getObservationMemoEditState();
+  if (state && isObservationMemoEditStateCurrent(student) && state.dirty) {
+    return { applied: false, reason: 'user-edited-during-sync' };
+  }
+
+  if (!result.adoptedRemote) {
+    const metadataOnly =
+      result.conflictDetected !== true &&
+      !!result.remoteRow &&
+      ['remote-confirmed-local', 'remote-equivalent-local'].includes(String(result.source || ''));
+    if (metadataOnly) {
+      if (state && isObservationMemoEditStateCurrent(student)) {
+        state.baselineText = String(result.content ?? memoEditor.value ?? '');
+        state.dirty = false;
+      }
+      if (typeof updateMemoStudentMetaDisplay === 'function') {
+        updateMemoStudentMetaDisplay(student, result.updatedAt || '');
+      }
+      return { applied: false, metadataUpdated: true, reason: 'remote-metadata-normalized' };
+    }
+    return { applied: false, reason: 'no-remote-update' };
+  }
+
+  memoEditor.value = String(result.content || '');
+  autoResizeTextarea(memoEditor);
+  if (state && isObservationMemoEditStateCurrent(student)) {
+    state.baselineText = String(result.content || '');
+    state.dirty = false;
+  }
+  if (typeof updateMemoStudentMetaDisplay === 'function') {
+    updateMemoStudentMetaDisplay(student, result.updatedAt || '');
+  }
+
+  return { applied: true, reason: 'remote-applied' };
+}
+
+function isObservationMemoScreenActive() {
+  const screen = document.getElementById('studentMemoScreen');
+  return !!(
+    screen &&
+    screen.style.display !== 'none' &&
+    currentMemoStudent &&
+    ['elementary', 'kinder'].includes(currentMemoType)
+  );
+}
+
+async function refreshCurrentObservationMemoFromServer() {
+  if (!isObservationMemoScreenActive()) return null;
+  if (hasObservationMemoDirtyChanges()) return null;
+  if (isObservationMemoAutoSaveBlocked()) return null;
+
+  const student = currentMemoStudent ? { ...currentMemoStudent } : null;
+  const editor = document.getElementById('memoEditor');
+  if (!student?.id || !editor) return null;
+
+  try {
+    const state = getObservationMemoEditState();
+    const noteType = String(state?.noteType || 'elementary_observation');
+    if (typeof window.getObservationMemoRequestGuardState === 'function') {
+      const guard = window.getObservationMemoRequestGuardState(student, noteType);
+      if (guard?.inFlight) return null;
+    }
+    const result = await reconcileObservationMemoDraft(student, noteType);
+    applyReconciledObservationMemoDraft(student, editor, result);
+    return result;
+  } catch (error) {
+    console.warn('관찰노트 서버 최신본 확인 실패:', error?.message || error);
+    return null;
+  }
+}
+
+
+function requestObservationMemoCrossDeviceRefresh() {
+  if (window.__olliObservationMemoRemoteRefreshPending) return;
+  window.__olliObservationMemoRemoteRefreshPending = true;
+  setTimeout(async () => {
+    try {
+      await refreshCurrentObservationMemoFromServer();
+    } finally {
+      window.__olliObservationMemoRemoteRefreshPending = false;
+    }
+  }, 0);
+}
+
 function forceStudentMemoControlsVisible() {
   return forceObservationMemoControlsVisible();
 }
