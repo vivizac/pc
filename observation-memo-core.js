@@ -56,7 +56,6 @@ function openStudentMemoPageById(studentId) {
   const session = beginObservationMemoSession(studentId);
   if (!session) return;
   const { student } = session;
-  closeMemoModeMenu();
   closeMemoStudentSelectPopup();
 
   openObservationMemoScreenShell(session);
