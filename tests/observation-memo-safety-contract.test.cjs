@@ -280,6 +280,25 @@ test('observation screen UI is platform-owned instead of shared common', () => {
   });
 });
 
+test('PC autosave lifecycle binds input compositionend and blur without duplicating save logic', () => {
+  const pcCore = read(files.pcCore);
+  const common = read(files.common);
+
+  assert.match(pcCore, /__olliObservationMemoPcAutosaveLifecycleBound/);
+  assert.match(pcCore, /document\.addEventListener\('input'/);
+  assert.match(pcCore, /event\.isComposing/);
+  assert.match(pcCore, /document\.addEventListener\('compositionend'/);
+  assert.match(pcCore, /document\.addEventListener\('blur'/);
+  assert.match(pcCore, /global\.handleMemoPauseAutoSaveInput/);
+  assert.match(pcCore, /global\.handleMemoPauseAutoSaveBlur/);
+
+  assert.doesNotMatch(pcCore, /function scheduleMemoAutoSave\(/);
+  assert.doesNotMatch(pcCore, /function persistObservationMemoInputLocally\(/);
+  assert.match(common, /function scheduleMemoAutoSave\(/);
+  assert.match(common, /function persistObservationMemoInputLocally\(/);
+  assert.match(common, /function flushMemoAutoSave\(/);
+});
+
 test('CAS save contract preserves revision, mutation and conflict states', () => {
   const source = read(files.save);
 
