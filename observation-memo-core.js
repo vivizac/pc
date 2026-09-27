@@ -185,6 +185,263 @@ function requestObservationMemoCrossDeviceRefresh() {
   }, 0);
 }
 
+function returnFromObservationMemoScreen(onReturned) {
+  const current = vivizacGetVisibleNotePage();
+  if (current && current.id === 'studentMemoScreen') {
+    vivizacSlideOutPageToRecord(current, () => {
+      if (typeof onReturned === 'function') onReturned();
+    });
+    return true;
+  }
+
+  const studentMemoScreen = document.getElementById('studentMemoScreen');
+  if (studentMemoScreen) studentMemoScreen.style.display = 'none';
+  const recordRoom = document.getElementById('recordRoomScreen');
+  if (recordRoom) recordRoom.style.display = 'flex';
+  if (typeof onReturned === 'function') onReturned();
+  return false;
+}
+
+function setMemoModePillLabel(label = '학생 이름', modeLabel = '관찰 모드') {
+  const el = document.getElementById('memoStudentName');
+  const sub = document.getElementById('memoModeSub');
+  if (el) el.textContent = '관찰 노트';
+  if (sub) sub.textContent = modeLabel || '관찰 모드';
+}
+function formatMemoUpdatedDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  return `${y}.${m}.${d} ${hh}:${mm}`;
+}
+function updateMemoStudentMetaDisplay(student, updatedAt = '') {
+  const nameEl = document.getElementById('memoPageStudentName');
+  const dateEl = document.getElementById('memoStudentUpdatedDate');
+  if (nameEl) nameEl.textContent = student?.name || '학생 이름';
+  if (dateEl) {
+    const activeNoteType = String(getObservationMemoEditState()?.noteType || 'elementary_observation');
+    const localEntry = getMemoEntryByStudent(student, activeNoteType);
+    const hasMemoContent = String(localEntry.content || '').trim().length > 0;
+    const dateSource = updatedAt || (hasMemoContent ? localEntry.updatedAt : '');
+    const dateText = formatMemoUpdatedDate(dateSource || '');
+    if (dateText) {
+      dateEl.hidden = false;
+      dateEl.style.display = 'flex';
+      dateEl.innerHTML = `<span>마지막 수정</span><span>${escapeHtml(dateText)}</span>`;
+    } else {
+      dateEl.hidden = true;
+      dateEl.style.display = 'none';
+      dateEl.innerHTML = '';
+    }
+  }
+}
+function forceObservationMemoControlsVisible(options = {}) {
+  const screen = document.getElementById('studentMemoScreen');
+  if (!screen) return false;
+  if (screen.style.display === 'none') return false;
+
+  const extraInlineFlex = Array.isArray(options.extraInlineFlex) ? options.extraInlineFlex : [];
+  const showInlineFlex = [
+    '#memoRecordRoomBtn',
+    '#memoStudentListBtn',
+    ...(currentMemoType === 'elementary' ? ['#memoBottomAnalysisBtn'] : []),
+    '#memoFeedbackBtn',
+    ...extraInlineFlex
+  ];
+  const showFlex = ['#studentMemoScreen .memoBottomBar'];
+  const showBlock = ['#memoStudentSelectWrap'];
+
+  const reveal = (selector, display) => {
+    const el = document.querySelector(selector);
+    if (!el) return;
+    el.hidden = false;
+    el.removeAttribute('hidden');
+    el.removeAttribute('aria-hidden');
+    el.style.visibility = 'visible';
+    el.style.opacity = '1';
+    el.style.pointerEvents = 'auto';
+    el.style.display = display;
+  };
+
+  [...new Set(showInlineFlex)].forEach(selector => reveal(selector, 'inline-flex'));
+  showFlex.forEach(selector => reveal(selector, 'flex'));
+  showBlock.forEach(selector => reveal(selector, ''));
+  return true;
+}
+function renderMemoModeMenu() {
+  const menu = document.getElementById('memoModeDropup');
+  if (!menu) return;
+  const checkSvg = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"></path></svg>';
+  const option = (active, title, guide, action) => `
+    <button type="button" class="memoRecordOption ${active ? 'active' : ''}" onclick="${action}">
+      <span class="memoModeCheck" aria-hidden="true">${active ? checkSvg : ''}</span>
+      <span class="memoModeOptionText">
+        <span class="memoModeOptionTitle">${title}</span>
+        <span class="memoModeOptionGuide">${guide}</span>
+      </span>
+    </button>`;
+  const division = currentMemoType === 'kinder' ? 'kinder' : 'elementary';
+  menu.innerHTML = `
+    ${option(false, '1분 피드백', '수업기록을 빠르게 수업 피드백으로 정리', `closeMemoModeMenu(); openKinderChatFeedbackPage({ division: '${division}' });`)}
+    ${option(false, '실패-성장 피드백', '막힘·전환 장면을 깊게 정리', "openMemoFailGrowthMode(event);")}
+    ${option(true, '관찰 노트', '관찰메모로 성장 피드백 작성', "closeMemoModeMenu(); openMemoObservationMode(event);")}
+  `;
+}
+function closeMemoModeMenu() { const menu = document.getElementById('memoModeDropup'); if (menu) menu.classList.remove('show'); }
+function toggleMemoModeMenu(event) {
+  if (event) event.stopPropagation();
+  renderMemoModeMenu();
+  const menu = document.getElementById('memoModeDropup');
+  if (menu) menu.classList.toggle('show');
+}
+function openMemoObservationMode(event) { if (event) event.stopPropagation(); closeMemoModeMenu(); const memo = document.getElementById('studentMemoScreen'); if (memo) memo.style.display = 'flex'; if (typeof forceStudentMemoControlsVisible === 'function') { forceStudentMemoControlsVisible(); requestAnimationFrame(forceStudentMemoControlsVisible); } }
+function openMemoFailGrowthMode(event) {
+  if (event) event.stopPropagation();
+  closeMemoModeMenu();
+  if (currentMemoType === 'kinder' && typeof openKinderChatFeedbackGrowthSheet === 'function') {
+    openKinderChatFeedbackGrowthSheet();
+    return;
+  }
+  if (currentMemoType === 'elementary' && typeof openElementaryGrowthFeedbackSheet === 'function') {
+    openElementaryGrowthFeedbackSheet();
+    return;
+  }
+  alert('실패-성장 피드백을 열 수 없습니다.');
+}
+document.addEventListener('click', (event) => { const wrap = document.getElementById('memoModeWrap'); if (wrap && !wrap.contains(event.target)) closeMemoModeMenu(); });
+
+function openObservationMemoScreenShell(session) {
+  if (!session || !['elementary', 'kinder'].includes(session.type)) return false;
+
+  const recordRoomScreen = document.getElementById('recordRoomScreen');
+  const studentMemoScreenEl = document.getElementById('studentMemoScreen');
+  if (recordRoomScreen) recordRoomScreen.style.display = 'none';
+
+  if (studentMemoScreenEl) {
+    studentMemoScreenEl.classList.remove('vivizac-slide-page', 'vivizac-slide-in', 'vivizac-slide-out');
+    studentMemoScreenEl.style.animation = '';
+    studentMemoScreenEl.style.transform = '';
+    studentMemoScreenEl.style.display = 'flex';
+    studentMemoScreenEl.setAttribute('data-current-memo-type', session.type);
+  }
+
+  return !!studentMemoScreenEl;
+}
+
+function renderObservationMemoScreenChrome(session) {
+  if (!session || !['elementary', 'kinder'].includes(session.type) || !session.student) return false;
+  const student = session.student;
+
+  if (typeof forceStudentMemoControlsVisible === 'function') {
+    forceStudentMemoControlsVisible();
+    requestAnimationFrame(forceStudentMemoControlsVisible);
+    setTimeout(forceStudentMemoControlsVisible, 120);
+  }
+
+  if (typeof setMemoModePillLabel === 'function') {
+    setMemoModePillLabel(student.name || '학생 이름');
+  }
+  if (typeof updateMemoStudentMetaDisplay === 'function') {
+    updateMemoStudentMetaDisplay(student);
+  }
+
+  const memoNameBtn = document.getElementById('memoStudentNameBtn');
+  if (memoNameBtn) {
+    if (typeof toggleMemoModeMenu === 'function') memoNameBtn.onclick = toggleMemoModeMenu;
+    memoNameBtn.title = '메모 유형 선택';
+    memoNameBtn.setAttribute('aria-label', '메모 유형 선택');
+  }
+
+  const feedbackBtn = document.getElementById('memoFeedbackBtn');
+  const analysisBtn = document.getElementById('memoBottomAnalysisBtn') || document.getElementById('memoAnalysisBtn');
+  const elementaryWrap = document.getElementById('elementaryMemoWrap');
+
+  if (feedbackBtn) {
+    feedbackBtn.style.display = 'inline-flex';
+    feedbackBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>성장 피드백 생성';
+  }
+  if (analysisBtn) analysisBtn.style.display = session.type === 'elementary' ? 'inline-flex' : 'none';
+  if (elementaryWrap) elementaryWrap.style.display = 'block';
+
+  if (typeof forceStudentMemoControlsVisible === 'function') {
+    forceStudentMemoControlsVisible();
+  }
+  return true;
+}
+
+function renderObservationMemoInitialView(session) {
+  const view = typeof prepareObservationMemoInitialView === 'function'
+    ? prepareObservationMemoInitialView(session)
+    : null;
+  if (!view) return null;
+
+  const memoEditor = document.getElementById('memoEditor');
+  if (memoEditor) {
+    memoEditor.readOnly = false;
+    beginObservationMemoEditSession(view.student, view.noteType, view.memoText || '');
+    memoEditor.value = view.memoText || '';
+
+    reconcileObservationMemoDraft(view.student, view.noteType)
+      .then(result => {
+        applyReconciledObservationMemoDraft(view.student, memoEditor, result);
+      })
+      .catch(err => {
+        console.warn('student_note_drafts 불러오기 실패:', err.message || err);
+      });
+  }
+
+  if (session.type === 'elementary') {
+    renderElementaryAnalysisSummaryCard(view.analysis.data || {}, {
+      title: '분석 결과',
+      createdAt: view.analysis.createdAt || ''
+    });
+    renderElementaryAnalysisHistoryCards(view.student);
+  }
+  setMemoSaveStatus('자동 저장');
+
+  return view;
+}
+
+function setMemoSaveStatus(text) {
+  const el = document.getElementById('memoSaveStatus');
+  if (!el) return;
+  el.textContent = '';
+}
+
+function showMemoSaveCheck() {
+  setMemoSaveStatus('');
+}
+
+function handleMemoHeaderAction() {
+  if (typeof requestGrowthFeedback === 'function') requestGrowthFeedback();
+  else requestElementaryFeedback();
+}
+
+function showPushToast(message) {
+  let toast = document.getElementById('pushToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'pushToast';
+    toast.className = 'pushToast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(window.__pushToastTimer);
+  window.__pushToastTimer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2200);
+}
+
+function openMoreMenuPlaceholder() {
+  showPushToast('준비 중입니다.');
+}
+
 function forceStudentMemoControlsVisible() {
   return forceObservationMemoControlsVisible();
 }
