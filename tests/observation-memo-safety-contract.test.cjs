@@ -9,6 +9,7 @@ const root = path.resolve(__dirname, '..');
 const files = {
   editStateCore: path.join(root, 'observation-memo-edit-state-core.js'),
   common: path.join(root, 'observation-memo-common.js'),
+  pcCore: path.join(root, 'observation-memo-core.js'),
   storage: path.join(root, 'observation-memo-storage-common.js'),
   save: path.join(root, 'observation-memo-save-common.js'),
   requestGuard: path.join(root, 'observation-memo-request-guard-common.js'),
@@ -98,6 +99,28 @@ test('edit state contract preserves baseline dirty and clean behavior for the ac
   editor.value = '다른 학생 기록';
   assert.equal(sandbox.markObservationMemoEditorDirty(editor), false);
   assert.equal(sandbox.hasObservationMemoDirtyChanges(), false);
+});
+
+test('shared observation common no longer owns platform refresh lifecycle', () => {
+  const common = read(files.common);
+  const pcCore = read(files.pcCore);
+
+  assert.match(common, /function requestObservationMemoCrossDeviceRefresh\(\)/);
+  assert.doesNotMatch(common, /__olliObservationMemoCrossDeviceRefreshBound/);
+  assert.doesNotMatch(common, /addEventListener\('focus', requestObservationMemoCrossDeviceRefresh/);
+  assert.doesNotMatch(common, /addEventListener\('online', requestObservationMemoCrossDeviceRefresh/);
+  assert.doesNotMatch(common, /addEventListener\('olli:realtime-change'/);
+  assert.doesNotMatch(common, /addEventListener\('visibilitychange'/);
+  assert.doesNotMatch(common, /addEventListener\('focusin'/);
+
+  assert.match(pcCore, /__olliObservationMemoPcRefreshLifecycleBound/);
+  assert.match(pcCore, /addEventListener\('focus', requestRefresh\)/);
+  assert.match(pcCore, /addEventListener\('online', requestRefresh\)/);
+  assert.match(pcCore, /addEventListener\('olli:realtime-change'/);
+  assert.match(pcCore, /addEventListener\('visibilitychange'/);
+  assert.match(pcCore, /addEventListener\('focusin'/);
+  assert.match(pcCore, /event\?\.detail\?\.domain !== 'observation'/);
+  assert.match(pcCore, /hasObservationMemoDirtyChanges/);
 });
 
 test('CAS save contract preserves revision, mutation and conflict states', () => {
