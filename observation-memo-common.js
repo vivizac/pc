@@ -488,25 +488,6 @@ function requestObservationMemoCrossDeviceRefresh() {
   }, 0);
 }
 
-if (!window.__olliObservationMemoCrossDeviceRefreshBound) {
-  window.__olliObservationMemoCrossDeviceRefreshBound = true;
-  window.addEventListener('focus', requestObservationMemoCrossDeviceRefresh);
-  window.addEventListener('online', requestObservationMemoCrossDeviceRefresh);
-  window.addEventListener('olli:realtime-change', event => {
-    if (event?.detail?.domain !== 'observation') return;
-    requestObservationMemoCrossDeviceRefresh();
-  });
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) requestObservationMemoCrossDeviceRefresh();
-  });
-  document.addEventListener('focusin', event => {
-    if (event.target?.id !== 'memoEditor') return;
-    if (hasObservationMemoDirtyChanges()) return;
-    requestObservationMemoCrossDeviceRefresh();
-  });
-
-}
-
 function openObservationMemoScreenShell(session) {
   if (!session || !['elementary', 'kinder'].includes(session.type)) return false;
 
