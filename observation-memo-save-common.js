@@ -4,75 +4,24 @@
   'use strict';
 
   const CAS_QUEUE_PREFIX = 'olli_observation_memo_cas_queue_v1';
-  const legacyGetMemoEntry = global.getMemoEntryByStudent;
 
   function memoRevision(value) {
     const revision = Number(value || 0);
     return Number.isFinite(revision) && revision >= 0 ? Math.floor(revision) : 0;
   }
 
-  function emptyMemoEntry(status = 'empty') {
-    return { content: '', updatedAt: '', lastSyncedAt: '', syncStatus: status, revision: 0, mutationId: '', conflict: null };
-  }
+  const getMemoEntrySafe = global.getMemoEntryByStudent;
+  const setMemoSafe = global.setMemoByStudent;
+  const setMemoSyncStateSafe = global.setMemoSyncStateByStudent;
 
-  function getMemoEntrySafe(student, noteType = '') {
-    const key = typeof global.getMemoKey === 'function' ? global.getMemoKey(student, noteType) : '';
-    if (!key) return emptyMemoEntry('unknown');
-    const raw = localStorage.getItem(key);
-    if (!raw) return emptyMemoEntry('empty');
-    try {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') {
-        return {
-          content: parsed.content || '',
-          updatedAt: parsed.updatedAt || '',
-          lastSyncedAt: parsed.lastSyncedAt || '',
-          syncStatus: parsed.syncStatus || 'local',
-          revision: memoRevision(parsed.revision),
-          mutationId: String(parsed.mutationId || ''),
-          conflict: parsed.conflict && typeof parsed.conflict === 'object' ? parsed.conflict : null
-        };
-      }
-    } catch (_) {}
-    if (typeof legacyGetMemoEntry === 'function') {
-      const legacy = legacyGetMemoEntry(student, noteType) || {};
-      return { ...emptyMemoEntry('local'), ...legacy, revision: 0, mutationId: '', conflict: null };
-    }
-    return { ...emptyMemoEntry('local'), content: raw || '' };
+  if (
+    typeof getMemoEntrySafe !== 'function' ||
+    typeof setMemoSafe !== 'function' ||
+    typeof setMemoSyncStateSafe !== 'function' ||
+    typeof global.isRemoteMemoRevisionNewerThanLocal !== 'function'
+  ) {
+    throw new Error('관찰노트 revision-aware storage가 준비되지 않았습니다.');
   }
-
-  function setMemoSafe(student, content, options = {}, noteType = '') {
-    const key = typeof global.getMemoKey === 'function' ? global.getMemoKey(student, noteType) : '';
-    if (!key) return;
-    const previous = getMemoEntrySafe(student, noteType);
-    const has = keyName => Object.prototype.hasOwnProperty.call(options, keyName);
-    localStorage.setItem(key, JSON.stringify({
-      content: content || '',
-      updatedAt: has('updatedAt') ? (options.updatedAt || '') : (previous.updatedAt || new Date().toISOString()),
-      lastSyncedAt: has('lastSyncedAt') ? (options.lastSyncedAt || '') : (previous.lastSyncedAt || ''),
-      syncStatus: options.syncStatus || previous.syncStatus || 'local',
-      revision: has('revision') ? memoRevision(options.revision) : memoRevision(previous.revision),
-      mutationId: has('mutationId') ? String(options.mutationId || '') : String(previous.mutationId || ''),
-      conflict: has('conflict') ? (options.conflict || null) : (previous.conflict || null)
-    }));
-  }
-
-  function setMemoSyncStateSafe(student, syncState = {}, noteType = '') {
-    const entry = getMemoEntrySafe(student, noteType);
-    setMemoSafe(student, entry.content || '', {
-      updatedAt: Object.prototype.hasOwnProperty.call(syncState, 'updatedAt') ? syncState.updatedAt : entry.updatedAt,
-      lastSyncedAt: Object.prototype.hasOwnProperty.call(syncState, 'lastSyncedAt') ? syncState.lastSyncedAt : entry.lastSyncedAt,
-      syncStatus: syncState.syncStatus || entry.syncStatus || 'local',
-      revision: Object.prototype.hasOwnProperty.call(syncState, 'revision') ? syncState.revision : entry.revision,
-      mutationId: Object.prototype.hasOwnProperty.call(syncState, 'mutationId') ? syncState.mutationId : entry.mutationId,
-      conflict: Object.prototype.hasOwnProperty.call(syncState, 'conflict') ? syncState.conflict : entry.conflict
-    }, noteType);
-  }
-
-  global.getMemoEntryByStudent = getMemoEntrySafe;
-  global.setMemoByStudent = setMemoSafe;
-  global.setMemoSyncStateByStudent = setMemoSyncStateSafe;
-  global.isRemoteMemoRevisionNewerThanLocal = (remoteRevision, localRevision) => memoRevision(remoteRevision) > memoRevision(localRevision);
 
   function currentAcademyId() {
     try { return String(typeof global.getOlliCurrentAcademyId === 'function' ? global.getOlliCurrentAcademyId() : '').trim(); }
