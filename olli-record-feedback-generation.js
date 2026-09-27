@@ -75,10 +75,76 @@ function hideFeedbackLoading() {
   document.querySelectorAll('#feedbackLoadingOverlay, .feedbackLoadingOverlay').forEach(overlay => overlay.remove());
 }
 
-function resetElementaryMemoAfterFeedbackSave() {
-  if (!currentMemoStudent || !['elementary', 'kinder'].includes(currentMemoType)) return;
-  const studentDivision = currentMemoType === 'kinder' ? 'kinder' : 'elementary';
-  clearStudentNoteDraftFromSupabase(currentMemoStudent, 'elementary_observation').catch(err => console.warn('노트 초안 삭제 실패:', err.message || err));
+function notifyObservationMemoFeedbackClearFailure(error) {
+  console.error('피드백 저장 후 관찰노트 초기화 실패:', error?.message || error);
+  try { if (typeof setMemoSaveStatus === 'function') setMemoSaveStatus('메모 유지 · 동기화 확인 필요'); } catch (_) {}
+  const message = error?.code === 'REVISION_CONFLICT'
+    ? '피드백은 저장됐지만 다른 기기에서 관찰노트가 변경되어 메모를 지우지 않았어요. 최신 내용을 확인해 주세요.'
+    : '피드백은 저장됐지만 관찰노트 초기화를 완료하지 못했어요. 수업 메모는 그대로 보존했습니다.';
+  try {
+    if (typeof showPushToast === 'function') showPushToast(message);
+    else alert(message);
+  } catch (_) {}
+}
+
+async function resetElementaryMemoAfterFeedbackSave(feedbackText = '', explicitDirection = '', options = {}) {
+  if (!currentMemoStudent || !['elementary', 'kinder'].includes(currentMemoType)) {
+    return { state: 'skipped', student: null, error: null };
+  }
+
+  const studentSnapshot = { ...currentMemoStudent };
+  const memoType = currentMemoType;
+  const studentDivision = memoType === 'kinder' ? 'kinder' : 'elementary';
+  let serverRow;
+
+  try {
+    const clearCore = window.ObservationMemoFeedbackClearCore;
+    if (!clearCore || typeof clearCore.clearAfterFeedback !== 'function') {
+      const error = new Error('관찰노트 서버 초기화 Core가 준비되지 않았습니다.');
+      error.code = 'SERVER_UNAVAILABLE';
+      throw error;
+    }
+    serverRow = await clearCore.clearAfterFeedback(studentSnapshot, 'elementary_observation');
+  } catch (error) {
+    notifyObservationMemoFeedbackClearFailure(error);
+    return { state: 'clear_failed', student: studentSnapshot, error };
+  }
+
+  const stillCurrent = currentMemoStudent &&
+    String(currentMemoStudent.id || '') === String(studentSnapshot.id || '') &&
+    currentMemoType === memoType;
+
+  if (!stillCurrent) {
+    let previousMemo = '';
+    try { previousMemo = getMemoByStudent(studentSnapshot, 'elementary_observation') || ''; } catch (_) {}
+    try {
+      if (studentDivision === 'elementary' && String(previousMemo).trim() && typeof archiveCurrentElementaryMemoRecord === 'function') {
+        const analysis = typeof getElementaryAnalysisByStudent === 'function'
+          ? getElementaryAnalysisByStudent(studentSnapshot)
+          : null;
+        archiveCurrentElementaryMemoRecord(studentSnapshot, previousMemo, analysis);
+      }
+    } catch (_) {}
+    try {
+      if (!options.skipArchive && typeof addMemoFeedbackArchiveItem === 'function') {
+        addMemoFeedbackArchiveItem(studentSnapshot, feedbackText);
+      }
+    } catch (_) {}
+    try { clearMemoByStudent(studentSnapshot, 'elementary_observation'); } catch (_) {}
+    try {
+      if (studentDivision === 'elementary' && typeof clearElementaryAnalysisByStudent === 'function') {
+        clearElementaryAnalysisByStudent(studentSnapshot);
+      }
+    } catch (_) {}
+    return {
+      state: 'cleared',
+      student: studentSnapshot,
+      revision: Number(serverRow?.revision || 0),
+      syncedAt: String(serverRow?.updated_at || ''),
+      intentionalClear: true
+    };
+  }
+
   clearMemoByStudent(currentMemoStudent, 'elementary_observation');
   currentMemoStudent = { ...currentMemoStudent, memoUpdatedAt: '' };
   updateMemoStudentMetaDisplay(currentMemoStudent, '');
@@ -97,7 +163,16 @@ function resetElementaryMemoAfterFeedbackSave() {
     renderElementaryAnalysisHistoryCards(currentMemoStudent);
   }
   setMemoSaveStatus('자동 저장');
+  if (typeof markObservationMemoEditorClean === 'function') markObservationMemoEditorClean();
   if (typeof refreshMemoStudentSelectPopupIfOpen === 'function') refreshMemoStudentSelectPopupIfOpen();
+
+  return {
+    state: 'cleared',
+    student: currentMemoStudent,
+    revision: Number(serverRow?.revision || 0),
+    syncedAt: String(serverRow?.updated_at || ''),
+    intentionalClear: true
+  };
 }
 
 function getCurrentMemoStudentName() {
