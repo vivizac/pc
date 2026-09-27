@@ -468,6 +468,7 @@ test('feedback-clear core owns only revision-protected server clear', () => {
   const core = read(files.feedbackClear);
 
   assert.match(core, /global\.ObservationMemoFeedbackClearCore = api/);
+  assert.match(core, /const clearInFlight = new Map\(\)/);
   assert.match(core, /rpc\/olli_note_draft_clear_after_feedback/);
   assert.match(core, /p_expected_revision:\s*expectedRevision/);
   assert.match(core, /p_mutation_id:\s*mutationId/);
@@ -478,6 +479,57 @@ test('feedback-clear core owns only revision-protected server clear', () => {
   assert.doesNotMatch(core, /reconcileObservationMemoDraft/);
   assert.doesNotMatch(core, /document\./);
   assert.doesNotMatch(core, /querySelector/);
+});
+
+test('feedback-clear core coalesces concurrent clears for the same memo', async () => {
+  const coreSource = read(files.feedbackClear);
+  const values = new Map([
+    ['olli_current_academy_id', 'academy-a'],
+    ['olli_account_session_token_v1', 'session-a'],
+    ['olli_device_id_v1', 'device-a']
+  ]);
+  let calls = 0;
+  let release;
+  const server = new Promise(resolve => {
+    release = () => resolve({
+      ok:true,
+      content:'',
+      revision:8,
+      updated_at:'2026-09-28T03:00:00Z',
+      mutation_id:'feedback_clear_server'
+    });
+  });
+  const win = {
+    window:null,
+    localStorage:{
+      getItem:key => values.get(key) || null,
+      setItem:(key, value) => values.set(key, String(value))
+    },
+    crypto:{ randomUUID:() => 'uuid-clear' },
+    getOlliCurrentAcademyId:() => 'academy-a',
+    getOlliLoginDeviceId:() => 'device-a',
+    getMemoEntryByStudent:() => ({ revision:7, content:'memo', syncStatus:'synced' }),
+    supabase:async () => {
+      calls += 1;
+      return server;
+    }
+  };
+  win.window = win;
+
+  vm.createContext(win);
+  vm.runInContext(coreSource, win, { filename:'observation-memo-feedback-clear-common.js' });
+
+  const student = { id:'student-1' };
+  const first = win.ObservationMemoFeedbackClearCore.clearAfterFeedback(student);
+  const second = win.ObservationMemoFeedbackClearCore.clearAfterFeedback(student);
+  await settle();
+  assert.equal(calls, 1);
+
+  release();
+  const [firstResult, secondResult] = await Promise.all([first, second]);
+  assert.equal(firstResult.revision, 8);
+  assert.equal(secondResult.revision, 8);
+  assert.equal(calls, 1);
 });
 
 test('PC feedback reset waits for confirmed server clear before local memo reset', () => {
