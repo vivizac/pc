@@ -219,13 +219,19 @@ test('feedback clear is server-first and revision guarded before local reset', (
   assert.ok(localReset > serverClear, 'local reset must happen only after server clear succeeds');
 });
 
-test('version restore contract saves active draft first and restores with expected revision', () => {
+test('version history UI delegates list and restore to the data core without changing CAS expectations', () => {
   const source = read(files.history);
 
+  assert.match(source, /global\.ObservationMemoVersionHistoryCore = versionHistoryCore/);
   assert.match(source, /await global\.saveCurrentMemo\(\{ silent: true, status: true \}\)/);
   assert.match(source, /await waitForRequestGuardIdle\(student\)/);
+  assert.match(source, /return versionHistoryCore\.list\(\{/);
+  assert.match(source, /response = await versionHistoryCore\.restore\(\{/);
+  assert.match(source, /expectedRevision:\s*state\.currentRevision/);
+
   assert.match(source, /rpc\('olli_note_draft_version_list'/);
   assert.match(source, /rpc\('olli_note_draft_version_restore'/);
-  assert.match(source, /p_expected_revision:\s*state\.currentRevision/);
-  assert.match(source, /response\?\.code === 'REVISION_CONFLICT'/);
+  assert.match(source, /p_expected_revision:\s*expected/);
+  assert.match(source, /error\.serverResult = response \|\| null/);
+  assert.match(source, /error\?\.code === 'REVISION_CONFLICT'/);
 });
