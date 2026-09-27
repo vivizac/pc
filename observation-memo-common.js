@@ -13,44 +13,61 @@ function isObservationMemoAutoSaveBlocked() {
     : false;
 }
 
+const observationMemoEditStateCore = window.ObservationMemoEditStateCore;
+if (
+  !observationMemoEditStateCore ||
+  typeof observationMemoEditStateCore.getState !== 'function' ||
+  typeof observationMemoEditStateCore.begin !== 'function' ||
+  typeof observationMemoEditStateCore.isCurrent !== 'function' ||
+  typeof observationMemoEditStateCore.markDirty !== 'function' ||
+  typeof observationMemoEditStateCore.markClean !== 'function' ||
+  typeof observationMemoEditStateCore.hasDirty !== 'function'
+) {
+  throw new Error('관찰노트 편집 상태 Core가 준비되지 않았습니다.');
+}
+
 function getObservationMemoEditState() {
-  return window.__olliObservationMemoEditState || null;
+  return observationMemoEditStateCore.getState();
 }
 
 function beginObservationMemoEditSession(student, noteType = '', initialText = '') {
-  window.__olliObservationMemoEditState = {
-    studentId: String(student?.id || ''),
-    noteType: String(noteType || ''),
-    baselineText: String(initialText || ''),
-    dirty: false
-  };
-  return window.__olliObservationMemoEditState;
+  return observationMemoEditStateCore.begin({
+    studentId: student?.id || '',
+    noteType,
+    baselineText: initialText
+  });
 }
 
 function isObservationMemoEditStateCurrent(student = currentMemoStudent) {
-  const state = getObservationMemoEditState();
-  if (!state || !student) return false;
-  return String(state.studentId || '') === String(student.id || '') && ['elementary', 'kinder'].includes(currentMemoType);
+  return observationMemoEditStateCore.isCurrent({
+    studentId: student?.id || '',
+    currentType: currentMemoType
+  });
 }
 
 function markObservationMemoEditorDirty(target) {
-  if (!target || target.id !== 'memoEditor' || !isObservationMemoEditStateCurrent()) return false;
-  const state = getObservationMemoEditState();
-  state.dirty = String(target.value || '') !== String(state.baselineText || '');
-  return state.dirty;
+  if (!target || target.id !== 'memoEditor') return false;
+  return observationMemoEditStateCore.markDirty({
+    studentId: currentMemoStudent?.id || '',
+    currentType: currentMemoType,
+    text: target.value || ''
+  });
 }
 
 function markObservationMemoEditorClean() {
-  const state = getObservationMemoEditState();
-  if (!state || !isObservationMemoEditStateCurrent()) return;
   const memoEditor = document.getElementById('memoEditor');
-  state.baselineText = String(memoEditor?.value || '');
-  state.dirty = false;
+  return observationMemoEditStateCore.markClean({
+    studentId: currentMemoStudent?.id || '',
+    currentType: currentMemoType,
+    text: memoEditor?.value || ''
+  });
 }
 
 function hasObservationMemoDirtyChanges() {
-  const state = getObservationMemoEditState();
-  return !!(state && isObservationMemoEditStateCurrent() && state.dirty);
+  return observationMemoEditStateCore.hasDirty({
+    studentId: currentMemoStudent?.id || '',
+    currentType: currentMemoType
+  });
 }
 
 const OLLI_MEMO_SERVER_AUTOSAVE_DELAY = 1500;
