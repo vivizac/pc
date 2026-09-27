@@ -5,6 +5,10 @@
   'use strict';
 
   if (global.__olliObservationMemoRequestGuardInstalled) return;
+  if (global.__olliObservationMemoRequestGuardIntegrated === true) {
+    global.__olliObservationMemoRequestGuardInstalled = true;
+    return;
+  }
   if (typeof global.persistObservationMemoDraft !== 'function') {
     console.warn('관찰노트 요청 순서 보호를 설치하지 못했습니다: 저장 함수가 준비되지 않았습니다.');
     return;
