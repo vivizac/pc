@@ -140,6 +140,73 @@ test('storage core is the single owner of revision-aware local memo entries', ()
   assert.match(save, /const setMemoSyncStateSafe = global\.setMemoSyncStateByStudent/);
 });
 
+test('revision-aware storage preserves metadata before and after save layer loads', () => {
+  const storageSource = read(files.storage);
+  const saveSource = read(files.save);
+  const values = new Map();
+  const localStorage = {
+    getItem(key) { return values.has(key) ? values.get(key) : null; },
+    setItem(key, value) { values.set(key, String(value)); },
+    removeItem(key) { values.delete(key); }
+  };
+  const document = { hidden:false, addEventListener(){} };
+  const sandbox = {
+    window:null,
+    document,
+    navigator:{ onLine:true },
+    localStorage,
+    console:{ warn(){} },
+    addEventListener(){},
+    dispatchEvent(){},
+    crypto:{ randomUUID(){ return 'uuid-1'; } },
+    getOlliCurrentAcademyId(){ return 'academy-a'; },
+    getOlliLoginDeviceId(){ return 'device-a'; },
+    isSupabaseConfigured(){ return true; },
+    requireOlliAcademyId(){ return 'academy-a'; },
+    async ensureStudentSavedToSupabase(student){ return student; },
+    async saveStudent(){},
+    async supabase(){ return { ok:true, revision:9, updated_at:'2026-09-28T00:00:00Z', content:'server' }; },
+    setMemoSaveStatus(){},
+    OlliStorageCore:{ SyncQueue:{ read(){ return []; }, update(){} } },
+    setTimeout(){ return 1; },
+    clearTimeout(){},
+    CustomEvent:class { constructor(type, options){ this.type=type; this.detail=options?.detail; } }
+  };
+  sandbox.window = sandbox;
+
+  vm.createContext(sandbox);
+  vm.runInContext(storageSource, sandbox, { filename:'observation-memo-storage-common.js' });
+  sandbox.installObservationMemoStorage({
+    getMemoKey(student, noteType='') { return student?.id ? `memo_${student.id}_${noteType}` : ''; },
+    getDraftType() { return 'elementary_observation'; }
+  });
+
+  const student = { id:'student-1', name:'학생1', type:'elementary' };
+  sandbox.setMemoByStudent(student, 'first', {
+    updatedAt:'2026-09-28T01:00:00Z',
+    lastSyncedAt:'2026-09-28T00:59:00Z',
+    syncStatus:'pending',
+    revision:7,
+    mutationId:'m1',
+    conflict:{ code:'REVISION_CONFLICT' }
+  }, 'elementary_observation');
+
+  sandbox.setMemoByStudent(student, 'second', {}, 'elementary_observation');
+  const beforeSaveLayer = sandbox.getMemoEntryByStudent(student, 'elementary_observation');
+  const getOwner = sandbox.getMemoEntryByStudent;
+  const setOwner = sandbox.setMemoByStudent;
+  const syncOwner = sandbox.setMemoSyncStateByStudent;
+
+  vm.runInContext(saveSource, sandbox, { filename:'observation-memo-save-common.js' });
+
+  assert.equal(sandbox.getMemoEntryByStudent, getOwner);
+  assert.equal(sandbox.setMemoByStudent, setOwner);
+  assert.equal(sandbox.setMemoSyncStateByStudent, syncOwner);
+  assert.equal(beforeSaveLayer.revision, 7);
+  assert.equal(beforeSaveLayer.mutationId, 'm1');
+  assert.equal(beforeSaveLayer.conflict.code, 'REVISION_CONFLICT');
+});
+
 test('CAS save contract preserves revision, mutation and conflict states', () => {
   const source = read(files.save);
 
