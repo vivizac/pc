@@ -14,6 +14,7 @@ const files = {
   save: path.join(root, 'observation-memo-save-common.js'),
   session: path.join(root, 'observation-memo-session-common.js'),
   feedbackClear: path.join(root, 'observation-memo-feedback-clear-common.js'),
+  feedbackGeneration: path.join(root, 'olli-record-feedback-generation.js'),
   historyCore: path.join(root, 'observation-memo-version-history-core.js'),
   history: path.join(root, 'observation-memo-version-history-common.js')
 };
@@ -463,21 +464,43 @@ test('reconcile contract keeps ambiguous local drafts protected and checks immut
   assert.match(source, /isIntentionalFeedbackClear\(row\)/);
 });
 
-test('feedback clear is server-first and revision guarded before local reset', () => {
-  const source = read(files.feedbackClear);
+test('feedback-clear core owns only revision-protected server clear', () => {
+  const core = read(files.feedbackClear);
 
-  assert.match(source, /rpc\/olli_note_draft_clear_after_feedback/);
-  assert.match(source, /p_expected_revision:\s*expectedRevision/);
-  assert.match(source, /p_mutation_id:\s*mutationId/);
+  assert.match(core, /global\.ObservationMemoFeedbackClearCore = api/);
+  assert.match(core, /rpc\/olli_note_draft_clear_after_feedback/);
+  assert.match(core, /p_expected_revision:\s*expectedRevision/);
+  assert.match(core, /p_mutation_id:\s*mutationId/);
+  assert.match(core, /String\(response\.content \|\| ''\) !== ''/);
 
-  const guardedResetStart = source.indexOf('async function safeResetElementaryMemoAfterFeedbackSave');
-  const guardedResetEnd = source.indexOf('safeResetElementaryMemoAfterFeedbackSave.__olliServerFirstFeedbackClear', guardedResetStart);
-  const guardedReset = source.slice(guardedResetStart, guardedResetEnd);
+  assert.doesNotMatch(core, /resetElementaryMemoAfterFeedbackSave/);
+  assert.doesNotMatch(core, /autoSaveMemoFeedback/);
+  assert.doesNotMatch(core, /reconcileObservationMemoDraft/);
+  assert.doesNotMatch(core, /document\./);
+  assert.doesNotMatch(core, /querySelector/);
+});
 
-  const serverClear = guardedReset.indexOf('await clearObservationMemoAfterFeedbackOnServer(studentSnapshot)');
-  const localReset = guardedReset.indexOf('runOriginalResetWithoutSecondServerClear');
+test('PC feedback reset waits for confirmed server clear before local memo reset', () => {
+  const source = read(files.feedbackGeneration);
+  const start = source.indexOf('async function resetElementaryMemoAfterFeedbackSave');
+  const end = source.indexOf('function getCurrentMemoStudentName()', start);
+  const reset = source.slice(start, end);
+
+  const serverClear = reset.indexOf("await clearCore.clearAfterFeedback(studentSnapshot, 'elementary_observation')");
+  const localClear = reset.indexOf("clearMemoByStudent(currentMemoStudent, 'elementary_observation')");
   assert.ok(serverClear >= 0, 'server clear call must exist');
-  assert.ok(localReset > serverClear, 'local reset must happen only after server clear succeeds');
+  assert.ok(localClear > serverClear, 'local clear must happen only after server clear succeeds');
+  assert.match(reset, /return \{ state: 'clear_failed', student: studentSnapshot, error \}/);
+  assert.doesNotMatch(reset, /clearStudentNoteDraftFromSupabase/);
+});
+
+test('session reconcile handles intentional feedback clear without a runtime wrapper', () => {
+  const session = read(files.session);
+  const clearCore = read(files.feedbackClear);
+
+  assert.match(session, /isIntentionalFeedbackClear\(row\)/);
+  assert.match(session, /'remote-feedback-clear'/);
+  assert.doesNotMatch(clearCore, /global\.reconcileObservationMemoDraft\s*=/);
 });
 
 test('version history data core owns RPC contracts and never owns platform DOM', () => {
