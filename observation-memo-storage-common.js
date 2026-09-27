@@ -132,97 +132,6 @@
       return `student_note_drafts?academy_id=eq.${encodeURIComponent(academyId)}&student_id=eq.${encodeURIComponent(studentId)}&note_type=eq.${encodeURIComponent(type)}`;
     }
 
-    async function clearStudentNoteDraftFromSupabase(student, noteType = '') {
-      if (!isSupabaseConfigured() || !student?.id) return;
-      const academyId = requireOlliAcademyId('노트 삭제');
-      const type = noteType || getSupabaseNoteDraftType(student);
-      if (!type) return;
-
-      const payload = {
-        academy_id: academyId,
-        student_id: student.id,
-        student_name: student.name || '',
-        note_type: type,
-        content: '',
-        updated_at: new Date().toISOString()
-      };
-
-      if (typeof saveOlliData !== 'function') {
-        const error = new Error('관찰노트 초안 삭제 공통 저장 함수가 준비되지 않았습니다.');
-        recordOlliStorageIssue({ feature: 'student_note_draft', resource: 'student_note_drafts', operation: 'clear', student_id: student.id, message: error.message });
-        throw error;
-      }
-
-      const result = await saveOlliData('student_note_draft', {
-        academyId,
-        studentId: student.id,
-        noteType: type,
-        data: payload,
-        forceCommon: true
-      });
-
-      if (result && result.serverSaved && result.verified) return result;
-      if (isOlliPendingCommonSaveResult(result)) return result;
-      const error = new Error('관찰노트 초안 삭제 상태를 서버에 확인하지 못했습니다.');
-      recordOlliStorageIssue({ feature: 'student_note_draft', resource: 'student_note_drafts', operation: 'clear', student_id: student.id, message: result?.error?.message || result?.errorCode || error.message });
-      throw error;
-    }
-
-    async function saveStudentNoteDraftToSupabase(student, content, noteType = '') {
-      if (!isSupabaseConfigured()) return null;
-      const academyId = requireOlliAcademyId('노트 저장');
-      const type = noteType || getSupabaseNoteDraftType(student);
-      const text = String(content || '');
-      if (!student?.name && !student?.id) throw new Error('노트 저장에 필요한 학생 정보가 없습니다.');
-      if (!type) return null;
-
-      const savedStudent = await ensureStudentSavedToSupabase(student);
-      const stableStudent = {
-        ...student,
-        ...savedStudent,
-        id: savedStudent.id,
-        name: savedStudent.name || student.name || '',
-        academy_id: savedStudent.academy_id || academyId
-      };
-
-      if (!text.trim()) {
-        await clearStudentNoteDraftFromSupabase(stableStudent, type);
-        return null;
-      }
-
-      const payload = {
-        academy_id: academyId,
-        student_id: stableStudent.id,
-        student_name: stableStudent.name || '',
-        note_type: type,
-        content: text,
-        updated_at: new Date().toISOString()
-      };
-
-      if (typeof saveOlliData !== 'function') {
-        const error = new Error('관찰노트 초안 공통 저장 함수가 준비되지 않았습니다.');
-        recordOlliStorageIssue({ feature: 'student_note_draft', resource: 'student_note_drafts', operation: 'save', student_id: stableStudent.id, message: error.message });
-        throw error;
-      }
-
-      const result = await saveOlliData('student_note_draft', {
-        academyId,
-        studentId: stableStudent.id,
-        noteType: type,
-        data: payload,
-        forceCommon: true
-      });
-      if (result && result.serverSaved && result.verified) {
-        if (Array.isArray(result.serverRows) && result.serverRows.length) return result.serverRows;
-        if (result.serverRow) return [result.serverRow];
-        return [payload];
-      }
-      if (isOlliPendingCommonSaveResult(result)) return [makeOlliPendingRow(payload, `${stableStudent.id}_${type}`)];
-      const error = new Error('관찰노트 초안 서버 저장을 확인하지 못했습니다.');
-      recordOlliStorageIssue({ feature: 'student_note_draft', resource: 'student_note_drafts', operation: 'save', student_id: stableStudent.id, message: result?.error?.message || result?.errorCode || error.message });
-      throw error;
-    }
-
     async function loadStudentNoteDraftFromSupabase(student, noteType = '') {
       if (!isSupabaseConfigured() || !student?.id) return null;
       const path = getStudentNoteDraftPath(student, noteType);
@@ -242,9 +151,7 @@
       isRemoteMemoRevisionNewerThanLocal,
       getSupabaseNoteDraftType,
       getStudentNoteDraftPath,
-      saveStudentNoteDraftToSupabase,
-      loadStudentNoteDraftFromSupabase,
-      clearStudentNoteDraftFromSupabase
+      loadStudentNoteDraftFromSupabase
     };
   }
 
