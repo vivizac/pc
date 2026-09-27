@@ -12,7 +12,6 @@ const files = {
   pcCore: path.join(root, 'observation-memo-core.js'),
   storage: path.join(root, 'observation-memo-storage-common.js'),
   save: path.join(root, 'observation-memo-save-common.js'),
-  requestGuard: path.join(root, 'observation-memo-request-guard-common.js'),
   session: path.join(root, 'observation-memo-session-common.js'),
   feedbackClear: path.join(root, 'observation-memo-feedback-clear-common.js'),
   historyCore: path.join(root, 'observation-memo-version-history-core.js'),
@@ -210,16 +209,14 @@ test('revision-aware storage preserves metadata before and after save layer load
 test('storage core no longer owns legacy server draft writes', () => {
   const storage = read(files.storage);
   const save = read(files.save);
-  const guard = read(files.requestGuard);
 
   assert.doesNotMatch(storage, /async function saveStudentNoteDraftToSupabase/);
   assert.doesNotMatch(storage, /async function clearStudentNoteDraftFromSupabase/);
   assert.doesNotMatch(storage, /saveOlliData\('student_note_draft'/);
 
   assert.match(save, /global\.saveStudentNoteDraftToSupabase = safeSaveNote/);
-  assert.match(save, /global\.clearStudentNoteDraftFromSupabase = \(student, noteType = '', options = \{\}\) => safeSaveNote/);
+  assert.match(save, /global\.clearStudentNoteDraftFromSupabase = clearObservationMemoDraftWithGuard/);
   assert.match(save, /rpc\/olli_note_draft_save_cas/);
-  assert.match(guard, /global\.clearStudentNoteDraftFromSupabase = async function clearObservationMemoDraftWithGuard/);
 });
 
 test('PC observation editor owns autosave input blur and composition-end events', () => {
@@ -279,7 +276,7 @@ test('CAS save contract preserves revision, mutation and conflict states', () =>
 
 test('save core is the final owner of same-device request ordering', () => {
   const save = read(files.save);
-  const guard = read(files.requestGuard);
+  const pcCore = read(files.pcCore);
 
   assert.match(save, /__olliObservationMemoRequestGuardIntegrated = true/);
   assert.match(save, /const requestChains = new Map\(\)/);
@@ -290,7 +287,7 @@ test('save core is the final owner of same-device request ordering', () => {
   assert.match(save, /global\.protectObservationMemoLocalDraft = protectObservationMemoLocalDraft/);
   assert.match(save, /global\.getObservationMemoRequestGuardState = getObservationMemoRequestGuardState/);
 
-  assert.match(guard, /if \(global\.__olliObservationMemoRequestGuardIntegrated === true\)/);
+  assert.doesNotMatch(pcCore, /observation-memo-request-guard-common\.js/);
 });
 
 function createIntegratedSaveGuardSandbox() {
@@ -452,154 +449,6 @@ test('integrated save guard advances the next request to the confirmed server re
   assert.equal(env.calls.length, 2);
   assert.equal(env.calls[1].body.p_content, 'second text');
   assert.equal(env.calls[1].body.p_expected_revision, 5);
-});
-
-test('request guard owns same-device ordering and routes direct clears through the guarded write path', () => {
-  const source = read(files.requestGuard);
-
-  assert.match(source, /const chains = new Map\(\)/);
-  assert.match(source, /const latestRequests = new Map\(\)/);
-  assert.match(source, /state:\s*'superseded'/);
-  assert.match(source, /global\.persistObservationMemoDraft = guardedPersistObservationMemoDraft/);
-  assert.match(source, /global\.clearStudentNoteDraftFromSupabase = async function clearObservationMemoDraftWithGuard/);
-  assert.match(source, /guardedPersistObservationMemoDraft\(student, '', \{ noteType \}\)/);
-});
-
-function createRequestGuardSandbox() {
-  const source = read(files.requestGuard);
-  const values = new Map([['olli_current_academy_id', 'academy-a']]);
-  const entries = new Map();
-  const calls = [];
-  let mutationSequence = 0;
-  let implementation = async (student, content, options) => {
-    calls.push({ student: { ...student }, content, options: { ...options } });
-    return {
-      state: content ? 'synced' : 'cleared',
-      student,
-      revision: Number(options.expectedRevision || 0) + 1
-    };
-  };
-
-  const keyFor = (student, noteType = '') => `${student?.id || ''}:${noteType || ''}`;
-
-  const win = {
-    window: null,
-    console: { warn() {} },
-    crypto: { randomUUID: () => `mutation-${++mutationSequence}` },
-    localStorage: {
-      getItem: key => values.get(key) || null,
-      setItem: (key, value) => values.set(key, String(value))
-    },
-    getOlliCurrentAcademyId: () => 'academy-a',
-    getSupabaseNoteDraftType: () => 'elementary_observation',
-    createObservationMemoMutationId: () => `note-${++mutationSequence}`,
-    getMemoEntryByStudent(student, noteType = '') {
-      return entries.get(keyFor(student, noteType)) || {
-        content: '',
-        updatedAt: '',
-        lastSyncedAt: '',
-        syncStatus: 'synced',
-        revision: 0,
-        mutationId: '',
-        conflict: null
-      };
-    },
-    setMemoByStudent(student, content, options = {}, noteType = '') {
-      const key = keyFor(student, noteType);
-      const previous = this.getMemoEntryByStudent(student, noteType);
-      entries.set(key, {
-        ...previous,
-        content: String(content || ''),
-        updatedAt: options.updatedAt ?? previous.updatedAt,
-        lastSyncedAt: options.lastSyncedAt ?? previous.lastSyncedAt,
-        syncStatus: options.syncStatus || previous.syncStatus,
-        revision: Object.prototype.hasOwnProperty.call(options, 'revision') ? Number(options.revision || 0) : previous.revision,
-        mutationId: Object.prototype.hasOwnProperty.call(options, 'mutationId') ? String(options.mutationId || '') : previous.mutationId,
-        conflict: Object.prototype.hasOwnProperty.call(options, 'conflict') ? (options.conflict || null) : previous.conflict
-      });
-    },
-    setMemoSaveStatus() {},
-    persistObservationMemoDraft(...args) {
-      return implementation(...args);
-    }
-  };
-  win.window = win;
-
-  vm.createContext(win);
-  vm.runInContext(source, win, { filename: 'observation-memo-request-guard-common.js' });
-
-  return {
-    win,
-    calls,
-    entries,
-    setImplementation(fn) { implementation = fn; }
-  };
-}
-
-test('request guard drops an obsolete queued write before it reaches the network', async () => {
-  const env = createRequestGuardSandbox();
-  const student = { id: 'student-1' };
-
-  const first = env.win.persistObservationMemoDraft(student, 'old text', { noteType: 'elementary_observation' });
-  const second = env.win.persistObservationMemoDraft(student, 'latest text', { noteType: 'elementary_observation' });
-
-  const [firstResult, secondResult] = await Promise.all([first, second]);
-
-  assert.equal(firstResult.state, 'superseded');
-  assert.equal(secondResult.state, 'synced');
-  assert.equal(env.calls.length, 1);
-  assert.equal(env.calls[0].content, 'latest text');
-});
-
-test('request guard keeps the newest local text while an older request is in flight and advances expected revision', async () => {
-  const env = createRequestGuardSandbox();
-  const student = { id: 'student-2' };
-  let releaseFirst;
-  let callCount = 0;
-
-  env.setImplementation((target, content, options) => {
-    env.calls.push({ student: { ...target }, content, options: { ...options } });
-    callCount += 1;
-    if (callCount === 1) {
-      return new Promise(resolve => {
-        releaseFirst = () => resolve({
-          state: 'synced',
-          student: target,
-          revision: 5
-        });
-      });
-    }
-    return Promise.resolve({
-      state: 'synced',
-      student: target,
-      revision: Number(options.expectedRevision || 0) + 1
-    });
-  });
-
-  const first = env.win.persistObservationMemoDraft(student, 'first text', {
-    noteType: 'elementary_observation',
-    expectedRevision: 4
-  });
-  await settle();
-  assert.equal(env.calls.length, 1);
-
-  const second = env.win.persistObservationMemoDraft(student, 'second text', {
-    noteType: 'elementary_observation',
-    expectedRevision: 4
-  });
-  await settle();
-
-  const pendingEntry = env.win.getMemoEntryByStudent(student, 'elementary_observation');
-  assert.equal(pendingEntry.content, 'second text');
-  assert.equal(pendingEntry.syncStatus, 'pending');
-
-  releaseFirst();
-  await first;
-  await second;
-
-  assert.equal(env.calls.length, 2);
-  assert.equal(env.calls[1].content, 'second text');
-  assert.equal(env.calls[1].options.expectedRevision, 5);
 });
 
 test('reconcile contract keeps ambiguous local drafts protected and checks immutable lineage', () => {
