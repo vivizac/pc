@@ -222,6 +222,24 @@ test('storage core no longer owns legacy server draft writes', () => {
   assert.match(guard, /global\.clearStudentNoteDraftFromSupabase = async function clearObservationMemoDraftWithGuard/);
 });
 
+test('PC observation editor owns autosave input blur and composition-end events', () => {
+  const common = read(files.common);
+  const pcCore = read(files.pcCore);
+
+  assert.match(pcCore, /__olliObservationMemoPcAutosaveLifecycleBound/);
+  assert.match(pcCore, /addEventListener\('input'/);
+  assert.match(pcCore, /event\.isComposing/);
+  assert.match(pcCore, /handleMemoPauseAutoSaveInput\(event\.target\)/);
+  assert.match(pcCore, /addEventListener\('compositionend'/);
+  assert.match(pcCore, /addEventListener\('blur'/);
+  assert.match(pcCore, /handleMemoPauseAutoSaveBlur\(event\.target\)/);
+
+  assert.match(common, /const OLLI_MEMO_SERVER_AUTOSAVE_DELAY = 1500/);
+  assert.match(common, /persistObservationMemoInputLocally\(target\)/);
+  assert.match(common, /syncStatus: 'pending'/);
+  assert.match(common, /saveObservationMemoServerSnapshot\(\{ status: true \}\)/);
+});
+
 test('CAS save contract preserves revision, mutation and conflict states', () => {
   const source = read(files.save);
 
