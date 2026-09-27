@@ -242,6 +242,24 @@ test('PC observation editor owns autosave input blur and composition-end events'
   assert.match(common, /saveObservationMemoServerSnapshot\(\{ status: true \}\)/);
 });
 
+test('observation view sync is platform-owned while shared common keeps only orchestration entry points', () => {
+  const common = read(files.common);
+  const pcCore = read(files.pcCore);
+
+  assert.doesNotMatch(common, /function applyReconciledObservationMemoDraft\(/);
+  assert.doesNotMatch(common, /function isObservationMemoScreenActive\(/);
+  assert.doesNotMatch(common, /function refreshCurrentObservationMemoFromServer\(/);
+  assert.doesNotMatch(common, /function requestObservationMemoCrossDeviceRefresh\(/);
+
+  assert.match(pcCore, /function applyReconciledObservationMemoDraft\(/);
+  assert.match(pcCore, /reason: 'user-edited-during-sync'/);
+  assert.match(pcCore, /function isObservationMemoScreenActive\(/);
+  assert.match(pcCore, /function refreshCurrentObservationMemoFromServer\(/);
+  assert.match(pcCore, /function requestObservationMemoCrossDeviceRefresh\(/);
+
+  assert.match(common, /applyReconciledObservationMemoDraft\(view\.student, memoEditor, result\)/);
+});
+
 test('CAS save contract preserves revision, mutation and conflict states', () => {
   const source = read(files.save);
 
