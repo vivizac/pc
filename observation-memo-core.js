@@ -48,6 +48,32 @@
   document.head.appendChild(script);
 })(window);
 
+(function bindObservationMemoPcRefreshLifecycle(global) {
+  if (global.__olliObservationMemoPcRefreshLifecycleBound) return;
+  global.__olliObservationMemoPcRefreshLifecycleBound = true;
+
+  function requestRefresh() {
+    if (typeof global.requestObservationMemoCrossDeviceRefresh === 'function') {
+      global.requestObservationMemoCrossDeviceRefresh();
+    }
+  }
+
+  global.addEventListener('focus', requestRefresh);
+  global.addEventListener('online', requestRefresh);
+  global.addEventListener('olli:realtime-change', event => {
+    if (event?.detail?.domain !== 'observation') return;
+    requestRefresh();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) requestRefresh();
+  });
+  document.addEventListener('focusin', event => {
+    if (event.target?.id !== 'memoEditor') return;
+    if (typeof global.hasObservationMemoDirtyChanges === 'function' && global.hasObservationMemoDirtyChanges()) return;
+    requestRefresh();
+  });
+})(window);
+
 function forceStudentMemoControlsVisible() {
   return forceObservationMemoControlsVisible();
 }
