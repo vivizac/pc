@@ -373,23 +373,6 @@ function handleMemoPauseAutoSaveBlur(target) {
   flushMemoAutoSave();
 }
 
-function setupMemoPauseAutoSaveBindings() {
-  if (window.__memoPauseAutoSaveDelegated === true) return;
-  window.__memoPauseAutoSaveDelegated = true;
-
-  document.addEventListener('input', event => {
-    handleMemoPauseAutoSaveInput(event.target);
-  });
-
-  document.addEventListener('blur', event => {
-    handleMemoPauseAutoSaveBlur(event.target);
-  }, true);
-}
-
-function bindPauseAutoSaveForMemoInput(el, options = {}) {
-  setupMemoPauseAutoSaveBindings();
-}
-
 function applyReconciledObservationMemoDraft(student, memoEditor, result) {
   if (!student || !memoEditor || !result) {
     return { applied: false, reason: 'no-remote-update' };
