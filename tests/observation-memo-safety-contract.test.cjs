@@ -235,6 +235,8 @@ test('PC observation editor owns autosave input blur and composition-end events'
   assert.match(pcCore, /handleMemoPauseAutoSaveBlur\(event\.target\)/);
 
   assert.match(common, /const OLLI_MEMO_SERVER_AUTOSAVE_DELAY = 1500/);
+  assert.doesNotMatch(common, /setupMemoPauseAutoSaveBindings/);
+  assert.doesNotMatch(common, /bindPauseAutoSaveForMemoInput/);
   assert.match(common, /persistObservationMemoInputLocally\(target\)/);
   assert.match(common, /syncStatus: 'pending'/);
   assert.match(common, /saveObservationMemoServerSnapshot\(\{ status: true \}\)/);
