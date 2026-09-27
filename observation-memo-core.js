@@ -74,6 +74,32 @@
   });
 })(window);
 
+(function bindObservationMemoPcAutosaveLifecycle(global) {
+  if (global.__olliObservationMemoPcAutosaveLifecycleBound) return;
+  global.__olliObservationMemoPcAutosaveLifecycleBound = true;
+
+  document.addEventListener('input', event => {
+    if (event.target?.id !== 'memoEditor' || event.isComposing) return;
+    if (typeof global.handleMemoPauseAutoSaveInput === 'function') {
+      global.handleMemoPauseAutoSaveInput(event.target);
+    }
+  });
+
+  document.addEventListener('compositionend', event => {
+    if (event.target?.id !== 'memoEditor') return;
+    if (typeof global.handleMemoPauseAutoSaveInput === 'function') {
+      global.handleMemoPauseAutoSaveInput(event.target);
+    }
+  }, true);
+
+  document.addEventListener('blur', event => {
+    if (event.target?.id !== 'memoEditor') return;
+    if (typeof global.handleMemoPauseAutoSaveBlur === 'function') {
+      global.handleMemoPauseAutoSaveBlur(event.target);
+    }
+  }, true);
+})(window);
+
 function forceStudentMemoControlsVisible() {
   return forceObservationMemoControlsVisible();
 }
