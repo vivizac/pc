@@ -74,6 +74,88 @@
     }
     return global.supabase('POST', `rpc/${name}`, body);
   }
+
+  async function listVersionHistory({ studentId, noteType = NOTE_TYPE, limit = 30 } = {}) {
+    const id = academyId();
+    const token = sessionToken();
+    const resolvedStudentId = clean(studentId);
+    const resolvedNoteType = clean(noteType) || NOTE_TYPE;
+    const resolvedLimit = Math.max(1, Math.min(100, Number(limit || 30)));
+
+    if (!id || !token) {
+      const error = new Error('로그인 정보를 확인해 주세요.');
+      error.code = 'SESSION_REQUIRED';
+      throw error;
+    }
+    if (!resolvedStudentId || !resolvedNoteType) {
+      const error = new Error('이전 기록을 불러올 학생 정보를 확인해 주세요.');
+      error.code = 'INVALID_INPUT';
+      throw error;
+    }
+
+    const response = await rpc('olli_note_draft_version_list', {
+      p_session_token: token,
+      p_academy_id: id,
+      p_student_id: resolvedStudentId,
+      p_note_type: resolvedNoteType,
+      p_limit: resolvedLimit
+    });
+    if (!response || response.ok === false) {
+      const error = new Error(response?.message || '이전 기록을 불러오지 못했습니다.');
+      error.code = response?.code || 'HISTORY_LIST_FAILED';
+      throw error;
+    }
+    return response;
+  }
+
+  async function restoreVersionHistory({
+    studentId,
+    noteType = NOTE_TYPE,
+    targetRevision,
+    expectedRevision
+  } = {}) {
+    const id = academyId();
+    const token = sessionToken();
+    const resolvedStudentId = clean(studentId);
+    const resolvedNoteType = clean(noteType) || NOTE_TYPE;
+    const target = revision(targetRevision);
+    const expected = revision(expectedRevision);
+
+    if (!id || !token) {
+      const error = new Error('로그인 정보를 확인해 주세요.');
+      error.code = 'SESSION_REQUIRED';
+      throw error;
+    }
+    if (!resolvedStudentId || !resolvedNoteType || target <= 0) {
+      const error = new Error('복구할 이전 기록 정보를 확인해 주세요.');
+      error.code = 'INVALID_INPUT';
+      throw error;
+    }
+
+    const response = await rpc('olli_note_draft_version_restore', {
+      p_session_token: token,
+      p_academy_id: id,
+      p_student_id: resolvedStudentId,
+      p_note_type: resolvedNoteType,
+      p_target_revision: target,
+      p_expected_revision: expected,
+      p_mutation_id: mutationId(),
+      p_device_id: deviceId()
+    });
+    if (!response || response.ok === false) {
+      const error = new Error(response?.message || '이전 기록 복구에 실패했습니다.');
+      error.code = response?.code || 'RESTORE_FAILED';
+      error.serverResult = response || null;
+      throw error;
+    }
+    return response;
+  }
+
+  const versionHistoryCore = Object.freeze({
+    list: listVersionHistory,
+    restore: restoreVersionHistory
+  });
+  global.ObservationMemoVersionHistoryCore = versionHistoryCore;
   function formatDate(value) {
     if (!value) return '';
     const date = new Date(value);
@@ -303,26 +385,11 @@
   }
 
   async function fetchHistory(student) {
-    const id = academyId();
-    const token = sessionToken();
-    if (!id || !token) {
-      const error = new Error('로그인 정보를 확인해 주세요.');
-      error.code = 'SESSION_REQUIRED';
-      throw error;
-    }
-    const response = await rpc('olli_note_draft_version_list', {
-      p_session_token: token,
-      p_academy_id: id,
-      p_student_id: student.id,
-      p_note_type: NOTE_TYPE,
-      p_limit: 30
+    return versionHistoryCore.list({
+      studentId: student?.id,
+      noteType: NOTE_TYPE,
+      limit: 30
     });
-    if (!response || response.ok === false) {
-      const error = new Error(response?.message || '이전 기록을 불러오지 못했습니다.');
-      error.code = response?.code || 'HISTORY_LIST_FAILED';
-      throw error;
-    }
-    return response;
   }
 
   async function openHistory() {
@@ -580,24 +647,21 @@
     setStatus('이전 기록 복구 중...');
 
     try {
-      const response = await rpc('olli_note_draft_version_restore', {
-        p_session_token: sessionToken(),
-        p_academy_id: academyId(),
-        p_student_id: state.student.id,
-        p_note_type: NOTE_TYPE,
-        p_target_revision: targetRevision,
-        p_expected_revision: state.currentRevision,
-        p_mutation_id: mutationId(),
-        p_device_id: deviceId()
-      });
-
-      if (!response || response.ok === false) {
-        if (response?.code === 'REVISION_CONFLICT') {
-          await refreshAfterConflict(response);
+      let response;
+      try {
+        response = await versionHistoryCore.restore({
+          studentId: state.student.id,
+          noteType: NOTE_TYPE,
+          targetRevision,
+          expectedRevision: state.currentRevision
+        });
+      } catch (error) {
+        if (error?.code === 'REVISION_CONFLICT') {
+          await refreshAfterConflict(error.serverResult || null);
           alertMessage('다른 기기에서 관찰노트가 변경되어 복구를 중단했습니다. 최신 내용을 불러왔습니다.');
           return;
         }
-        throw Object.assign(new Error(response?.message || '이전 기록 복구에 실패했습니다.'), { code: response?.code || 'RESTORE_FAILED' });
+        throw error;
       }
 
       state.currentRevision = revision(response.revision);
