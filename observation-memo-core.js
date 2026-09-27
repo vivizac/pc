@@ -32,20 +32,7 @@
     document.head.appendChild(historyScript);
   }
 
-  if (global.__olliObservationMemoRequestGuardLoaderAdded) {
-    loadObservationMemoVersionHistory();
-    return;
-  }
-  global.__olliObservationMemoRequestGuardLoaderAdded = true;
-  const script = document.createElement('script');
-  script.src = 'observation-memo-request-guard-common.js?v=20260908-order-1';
-  script.async = false;
-  script.onload = loadObservationMemoVersionHistory;
-  script.onerror = () => {
-    global.__olliObservationMemoRequestGuardLoaderAdded = false;
-    console.warn('관찰노트 요청 순서 보호 모듈을 불러오지 못했습니다.');
-  };
-  document.head.appendChild(script);
+  loadObservationMemoVersionHistory();
 })(window);
 
 (function bindObservationMemoPcRefreshLifecycle(global) {
