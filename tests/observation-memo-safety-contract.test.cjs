@@ -12,6 +12,7 @@ const files = {
   requestGuard: path.join(root, 'observation-memo-request-guard-common.js'),
   session: path.join(root, 'observation-memo-session-common.js'),
   feedbackClear: path.join(root, 'observation-memo-feedback-clear-common.js'),
+  historyCore: path.join(root, 'observation-memo-version-history-core.js'),
   history: path.join(root, 'observation-memo-version-history-common.js')
 };
 
@@ -219,19 +220,35 @@ test('feedback clear is server-first and revision guarded before local reset', (
   assert.ok(localReset > serverClear, 'local reset must happen only after server clear succeeds');
 });
 
-test('version history UI delegates list and restore to the data core without changing CAS expectations', () => {
+test('version history data core owns RPC contracts and never owns platform DOM', () => {
+  const core = read(files.historyCore);
+
+  assert.match(core, /global\.ObservationMemoVersionHistoryCore = Object\.freeze/);
+  assert.match(core, /rpc\('olli_note_draft_version_list'/);
+  assert.match(core, /rpc\('olli_note_draft_version_restore'/);
+  assert.match(core, /p_expected_revision:\s*expected/);
+  assert.match(core, /error\.serverResult = response \|\| null/);
+
+  assert.doesNotMatch(core, /document\./);
+  assert.doesNotMatch(core, /querySelector/);
+  assert.doesNotMatch(core, /createElement\(/);
+  assert.doesNotMatch(core, /innerHTML/);
+  assert.doesNotMatch(core, /\.style\./);
+});
+
+test('version history UI delegates list and restore to the data core without owning RPC payloads', () => {
   const source = read(files.history);
 
-  assert.match(source, /global\.ObservationMemoVersionHistoryCore = versionHistoryCore/);
+  assert.match(source, /const versionHistoryCore = global\.ObservationMemoVersionHistoryCore/);
   assert.match(source, /await global\.saveCurrentMemo\(\{ silent: true, status: true \}\)/);
   assert.match(source, /await waitForRequestGuardIdle\(student\)/);
   assert.match(source, /return versionHistoryCore\.list\(\{/);
   assert.match(source, /response = await versionHistoryCore\.restore\(\{/);
   assert.match(source, /expectedRevision:\s*state\.currentRevision/);
-
-  assert.match(source, /rpc\('olli_note_draft_version_list'/);
-  assert.match(source, /rpc\('olli_note_draft_version_restore'/);
-  assert.match(source, /p_expected_revision:\s*expected/);
-  assert.match(source, /error\.serverResult = response \|\| null/);
   assert.match(source, /error\?\.code === 'REVISION_CONFLICT'/);
+
+  assert.doesNotMatch(source, /rpc\/olli_note_draft_version_list/);
+  assert.doesNotMatch(source, /rpc\/olli_note_draft_version_restore/);
+  assert.doesNotMatch(source, /p_session_token:/);
+  assert.doesNotMatch(source, /p_expected_revision:/);
 });
