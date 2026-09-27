@@ -207,6 +207,21 @@ test('revision-aware storage preserves metadata before and after save layer load
   assert.equal(beforeSaveLayer.conflict.code, 'REVISION_CONFLICT');
 });
 
+test('storage core no longer owns legacy server draft writes', () => {
+  const storage = read(files.storage);
+  const save = read(files.save);
+  const guard = read(files.requestGuard);
+
+  assert.doesNotMatch(storage, /async function saveStudentNoteDraftToSupabase/);
+  assert.doesNotMatch(storage, /async function clearStudentNoteDraftFromSupabase/);
+  assert.doesNotMatch(storage, /saveOlliData\('student_note_draft'/);
+
+  assert.match(save, /global\.saveStudentNoteDraftToSupabase = safeSaveNote/);
+  assert.match(save, /global\.clearStudentNoteDraftFromSupabase = \(student, noteType = '', options = \{\}\) => safeSaveNote/);
+  assert.match(save, /rpc\/olli_note_draft_save_cas/);
+  assert.match(guard, /global\.clearStudentNoteDraftFromSupabase = async function clearObservationMemoDraftWithGuard/);
+});
+
 test('CAS save contract preserves revision, mutation and conflict states', () => {
   const source = read(files.save);
 
