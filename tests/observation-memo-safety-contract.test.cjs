@@ -7,6 +7,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const files = {
+  editStateCore: path.join(root, 'observation-memo-edit-state-core.js'),
   common: path.join(root, 'observation-memo-common.js'),
   storage: path.join(root, 'observation-memo-storage-common.js'),
   save: path.join(root, 'observation-memo-save-common.js'),
@@ -28,7 +29,18 @@ test('observation memo safety modules parse as JavaScript', () => {
   });
 });
 
+test('edit-state core owns no platform DOM and keeps the legacy state slot compatible', () => {
+  const core = read(files.editStateCore);
+  assert.match(core, /global\.ObservationMemoEditStateCore = Object\.freeze/);
+  assert.match(core, /global\.__olliObservationMemoEditState/);
+  assert.doesNotMatch(core, /document\./);
+  assert.doesNotMatch(core, /getElementById/);
+  assert.doesNotMatch(core, /querySelector/);
+  assert.doesNotMatch(core, /createElement\(/);
+});
+
 test('edit state contract preserves baseline dirty and clean behavior for the active memo only', () => {
+  const editStateCoreSource = read(files.editStateCore);
   const commonSource = read(files.common);
   const editor = {
     id: 'memoEditor',
@@ -60,6 +72,7 @@ test('edit state contract preserves baseline dirty and clean behavior for the ac
   sandbox.addEventListener = () => {};
 
   vm.createContext(sandbox);
+  vm.runInContext(editStateCoreSource, sandbox, { filename:'observation-memo-edit-state-core.js' });
   vm.runInContext(commonSource, sandbox, { filename:'observation-memo-common.js' });
 
   const state = sandbox.beginObservationMemoEditSession(
