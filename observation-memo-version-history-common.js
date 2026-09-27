@@ -624,6 +624,11 @@
   function updateButtonVisibility() {
     const button = makeButton();
     if (!button) return;
+
+    // Platform UI owns visibility when it explicitly marks the shared history button.
+    // The common module still owns history data/load/restore behavior.
+    if (button.getAttribute('data-olli-history-visibility-owner') === 'mobile') return;
+
     const screen = document.getElementById('studentMemoScreen');
     const active = !!activeStudent() && (!screen || screen.style.display !== 'none');
     button.style.display = active ? '' : 'none';
