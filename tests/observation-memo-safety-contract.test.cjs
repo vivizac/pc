@@ -258,6 +258,28 @@ test('observation view sync is platform-owned while shared common keeps only orc
   assert.match(common, /applyReconciledObservationMemoDraft\(view\.student, memoEditor, result\)/);
 });
 
+test('observation screen UI is platform-owned instead of shared common', () => {
+  const common = read(files.common);
+  const pcCore = read(files.pcCore);
+  const uiFunctions = [
+    'returnFromObservationMemoScreen',
+    'updateMemoStudentMetaDisplay',
+    'forceObservationMemoControlsVisible',
+    'renderMemoModeMenu',
+    'toggleMemoModeMenu',
+    'openObservationMemoScreenShell',
+    'renderObservationMemoScreenChrome',
+    'renderObservationMemoInitialView',
+    'setMemoSaveStatus',
+    'showPushToast'
+  ];
+
+  uiFunctions.forEach(name => {
+    assert.doesNotMatch(common, new RegExp('function ' + name + '\\\('));
+    assert.match(pcCore, new RegExp('function ' + name + '\\\('));
+  });
+});
+
 test('CAS save contract preserves revision, mutation and conflict states', () => {
   const source = read(files.save);
 
