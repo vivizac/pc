@@ -276,6 +276,184 @@ test('CAS save contract preserves revision, mutation and conflict states', () =>
   assert.match(source, /conflict:\s*has\('conflict'\)/);
 });
 
+
+test('save core is the final owner of same-device request ordering', () => {
+  const save = read(files.save);
+  const guard = read(files.requestGuard);
+
+  assert.match(save, /__olliObservationMemoRequestGuardIntegrated = true/);
+  assert.match(save, /const requestChains = new Map\(\)/);
+  assert.match(save, /const latestRequests = new Map\(\)/);
+  assert.match(save, /state: 'superseded'/);
+  assert.match(save, /global\.persistObservationMemoDraft = persistObservationMemoDraft/);
+  assert.match(save, /global\.clearStudentNoteDraftFromSupabase = clearObservationMemoDraftWithGuard/);
+  assert.match(save, /global\.protectObservationMemoLocalDraft = protectObservationMemoLocalDraft/);
+  assert.match(save, /global\.getObservationMemoRequestGuardState = getObservationMemoRequestGuardState/);
+
+  assert.match(guard, /if \(global\.__olliObservationMemoRequestGuardIntegrated === true\)/);
+});
+
+function createIntegratedSaveGuardSandbox() {
+  const source = read(files.save);
+  const values = new Map([
+    ['olli_current_academy_id', 'academy-a'],
+    ['olli_account_session_token_v1', 'session-a'],
+    ['olli_device_id_v1', 'device-a']
+  ]);
+  const entries = new Map();
+  const calls = [];
+  let uuid = 0;
+  let supabaseImpl = async (method, path, body) => {
+    calls.push({ method, path, body:{ ...body } });
+    return {
+      ok:true,
+      revision:Number(body.p_expected_revision || 0) + 1,
+      updated_at:'2026-09-28T00:00:00Z',
+      content:String(body.p_content || '')
+    };
+  };
+
+  const keyFor = (student, noteType='') => String(student?.id || '') + ':' + String(noteType || '');
+  const getMemoEntryByStudent = (student, noteType='') => entries.get(keyFor(student, noteType)) || {
+    content:'', updatedAt:'', lastSyncedAt:'', syncStatus:'synced', revision:0, mutationId:'', conflict:null
+  };
+  const setMemoByStudent = (student, content, options={}, noteType='') => {
+    const key = keyFor(student, noteType);
+    const previous = getMemoEntryByStudent(student, noteType);
+    entries.set(key, {
+      ...previous,
+      content:String(content ?? ''),
+      updatedAt:Object.prototype.hasOwnProperty.call(options, 'updatedAt') ? String(options.updatedAt || '') : previous.updatedAt,
+      lastSyncedAt:Object.prototype.hasOwnProperty.call(options, 'lastSyncedAt') ? String(options.lastSyncedAt || '') : previous.lastSyncedAt,
+      syncStatus:options.syncStatus || previous.syncStatus || 'local',
+      revision:Object.prototype.hasOwnProperty.call(options, 'revision') ? Number(options.revision || 0) : Number(previous.revision || 0),
+      mutationId:Object.prototype.hasOwnProperty.call(options, 'mutationId') ? String(options.mutationId || '') : String(previous.mutationId || ''),
+      conflict:Object.prototype.hasOwnProperty.call(options, 'conflict') ? (options.conflict || null) : (previous.conflict || null)
+    });
+  };
+  const setMemoSyncStateByStudent = (student, syncState={}, noteType='') => {
+    const previous = getMemoEntryByStudent(student, noteType);
+    setMemoByStudent(student, previous.content, {
+      updatedAt:Object.prototype.hasOwnProperty.call(syncState, 'updatedAt') ? syncState.updatedAt : previous.updatedAt,
+      lastSyncedAt:Object.prototype.hasOwnProperty.call(syncState, 'lastSyncedAt') ? syncState.lastSyncedAt : previous.lastSyncedAt,
+      syncStatus:syncState.syncStatus || previous.syncStatus,
+      revision:Object.prototype.hasOwnProperty.call(syncState, 'revision') ? syncState.revision : previous.revision,
+      mutationId:Object.prototype.hasOwnProperty.call(syncState, 'mutationId') ? syncState.mutationId : previous.mutationId,
+      conflict:Object.prototype.hasOwnProperty.call(syncState, 'conflict') ? syncState.conflict : previous.conflict
+    }, noteType);
+  };
+
+  const win = {
+    window:null,
+    document:{ hidden:false, addEventListener(){} },
+    navigator:{ onLine:true },
+    localStorage:{
+      getItem:key => values.get(key) || null,
+      setItem:(key, value) => values.set(key, String(value))
+    },
+    console:{ warn(){} },
+    crypto:{ randomUUID:() => 'uuid-' + (++uuid) },
+    getOlliCurrentAcademyId:() => 'academy-a',
+    getOlliLoginDeviceId:() => 'device-a',
+    getSupabaseNoteDraftType:() => 'elementary_observation',
+    getMemoEntryByStudent,
+    setMemoByStudent,
+    setMemoSyncStateByStudent,
+    isRemoteMemoRevisionNewerThanLocal:(remote, local) => Number(remote || 0) > Number(local || 0),
+    isSupabaseConfigured:() => true,
+    requireOlliAcademyId:() => 'academy-a',
+    ensureStudentSavedToSupabase:async student => student,
+    saveStudent:async () => {},
+    supabase(...args) { return supabaseImpl(...args); },
+    setMemoSaveStatus(){},
+    findStudentById(id) { return { id, type:'elementary', academy_id:'academy-a' }; },
+    OlliStorageCore:{ SyncQueue:{ read(){ return []; }, update(){} } },
+    addEventListener(){},
+    dispatchEvent(){},
+    CustomEvent:class { constructor(type, options){ this.type=type; this.detail=options?.detail; } },
+    setTimeout(){ return 1; },
+    clearTimeout(){}
+  };
+  win.window = win;
+
+  vm.createContext(win);
+  vm.runInContext(source, win, { filename:'observation-memo-save-common.js' });
+
+  return {
+    win,
+    calls,
+    setSupabase(fn) { supabaseImpl = fn; }
+  };
+}
+
+test('integrated save guard drops obsolete queued writes before network', async () => {
+  const env = createIntegratedSaveGuardSandbox();
+  const student = { id:'student-guard-1', name:'학생1', type:'elementary' };
+
+  const first = env.win.persistObservationMemoDraft(student, 'old text', { noteType:'elementary_observation' });
+  const second = env.win.persistObservationMemoDraft(student, 'latest text', { noteType:'elementary_observation' });
+  const [firstResult, secondResult] = await Promise.all([first, second]);
+
+  assert.equal(firstResult.state, 'superseded');
+  assert.equal(secondResult.state, 'synced');
+  assert.equal(env.calls.length, 1);
+  assert.equal(env.calls[0].body.p_content, 'latest text');
+});
+
+test('integrated save guard advances the next request to the confirmed server revision', async () => {
+  const env = createIntegratedSaveGuardSandbox();
+  let releaseFirst;
+  let callCount = 0;
+
+  env.setSupabase((method, path, body) => {
+    env.calls.push({ method, path, body:{ ...body } });
+    callCount += 1;
+    if (callCount === 1) {
+      return new Promise(resolve => {
+        releaseFirst = () => resolve({
+          ok:true,
+          revision:5,
+          updated_at:'2026-09-28T00:00:01Z',
+          content:String(body.p_content || '')
+        });
+      });
+    }
+    return Promise.resolve({
+      ok:true,
+      revision:Number(body.p_expected_revision || 0) + 1,
+      updated_at:'2026-09-28T00:00:02Z',
+      content:String(body.p_content || '')
+    });
+  });
+
+  const student = { id:'student-guard-2', name:'학생2', type:'elementary' };
+  env.win.setMemoByStudent(student, 'base', { syncStatus:'synced', revision:4 }, 'elementary_observation');
+
+  const first = env.win.persistObservationMemoDraft(student, 'first text', {
+    noteType:'elementary_observation',
+    expectedRevision:4
+  });
+  await settle();
+
+  const second = env.win.persistObservationMemoDraft(student, 'second text', {
+    noteType:'elementary_observation',
+    expectedRevision:4
+  });
+  await settle();
+
+  const pending = env.win.getMemoEntryByStudent(student, 'elementary_observation');
+  assert.equal(pending.content, 'second text');
+  assert.equal(pending.syncStatus, 'pending');
+
+  releaseFirst();
+  await first;
+  await second;
+
+  assert.equal(env.calls.length, 2);
+  assert.equal(env.calls[1].body.p_content, 'second text');
+  assert.equal(env.calls[1].body.p_expected_revision, 5);
+});
+
 test('request guard owns same-device ordering and routes direct clears through the guarded write path', () => {
   const source = read(files.requestGuard);
 
