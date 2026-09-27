@@ -219,7 +219,6 @@
   }
 
   global.saveStudentNoteDraftToSupabase = safeSaveNote;
-  global.clearStudentNoteDraftFromSupabase = (student, noteType = '', options = {}) => safeSaveNote(student, '', noteType, options);
 
   async function flushCasQueue() {
     if (!global.isSupabaseConfigured?.() || navigator?.onLine === false) return;
@@ -277,7 +276,7 @@
     setTimeout(retry, 800);
   }
 
-  async function persistObservationMemoDraft(student, content, options = {}) {
+  async function persistObservationMemoDraftBase(student, content, options = {}) {
     if (!student) return { state: 'skipped', student: null, error: null };
     const noteType = options.noteType || global.getSupabaseNoteDraftType(student);
     const text = String(content || '');
@@ -312,5 +311,200 @@
     }
   }
 
+  const requestChains = new Map();
+  const latestRequests = new Map();
+  const knownServerRevisions = new Map();
+  let requestSequence = 0;
+
+  function guardClean(value) {
+    return String(value == null ? '' : value).trim();
+  }
+
+  function guardNoteType(student, explicitType = '') {
+    const explicit = guardClean(explicitType);
+    if (explicit) return explicit;
+    try {
+      if (typeof global.getSupabaseNoteDraftType === 'function') {
+        const resolved = guardClean(global.getSupabaseNoteDraftType(student));
+        if (resolved) return resolved;
+      }
+    } catch (_) {}
+    return student?.type === 'kinder' ? 'kinder_risk' : 'elementary_observation';
+  }
+
+  function guardRequestKey(student, noteType) {
+    const academyId = guardClean(currentAcademyId());
+    const studentId = guardClean(student?.id);
+    const type = guardClean(noteType);
+    return academyId && studentId && type ? `${academyId}:${studentId}:${type}` : '';
+  }
+
+  function guardLocalEntry(student, noteType = '') {
+    try {
+      return getMemoEntrySafe(student, noteType) || {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function writeGuardPending(request, expectedRevision) {
+    if (!request) return;
+    const current = guardLocalEntry(request.student, request.noteType);
+    setMemoSafe(request.student, request.content, {
+      updatedAt: request.updatedAt,
+      lastSyncedAt: current.lastSyncedAt || '',
+      syncStatus: 'pending',
+      revision: memoRevision(expectedRevision),
+      mutationId: request.mutationId,
+      conflict: null
+    }, request.noteType);
+  }
+
+  function isGuardSuccessfulResult(result) {
+    return result &&
+      (result.state === 'synced' || result.state === 'cleared') &&
+      Number.isFinite(Number(result.revision));
+  }
+
+  function rememberGuardServerRevision(key, result) {
+    if (!key || !isGuardSuccessfulResult(result)) return;
+    const value = memoRevision(result.revision);
+    const previous = memoRevision(knownServerRevisions.get(key));
+    if (value >= previous) knownServerRevisions.set(key, value);
+  }
+
+  function restoreNewestGuardPending(key, completedSequence, completedResult) {
+    rememberGuardServerRevision(key, completedResult);
+    const newest = latestRequests.get(key);
+    if (!newest || newest.sequence === completedSequence) return false;
+
+    const knownRevision = memoRevision(knownServerRevisions.get(key));
+    if (isGuardSuccessfulResult(completedResult) && knownRevision > newest.expectedRevision) {
+      newest.expectedRevision = knownRevision;
+    }
+    writeGuardPending(newest, newest.expectedRevision);
+    try {
+      if (typeof global.setMemoSaveStatus === 'function') global.setMemoSaveStatus('작성 중...');
+    } catch (_) {}
+    return true;
+  }
+
+  async function persistObservationMemoDraft(student, content, options = {}) {
+    if (!student) return persistObservationMemoDraftBase(student, content, options);
+
+    const noteType = guardNoteType(student, options.noteType);
+    const key = guardRequestKey(student, noteType);
+    if (!key) return persistObservationMemoDraftBase(student, content, options);
+
+    const before = guardLocalEntry(student, noteType);
+    const explicitExpected = Object.prototype.hasOwnProperty.call(options, 'expectedRevision');
+    const request = {
+      sequence: ++requestSequence,
+      student: { ...student },
+      noteType,
+      content: String(content == null ? '' : content),
+      expectedRevision: explicitExpected ? memoRevision(options.expectedRevision) : memoRevision(before.revision),
+      mutationId: guardClean(options.mutationId) || createMutationId(),
+      updatedAt: options.updatedAt || new Date().toISOString(),
+      options: { ...options }
+    };
+
+    latestRequests.set(key, request);
+    writeGuardPending(request, request.expectedRevision);
+
+    const previous = requestChains.get(key) || Promise.resolve(null);
+    let task;
+    task = previous
+      .catch(() => null)
+      .then(async previousResult => {
+        rememberGuardServerRevision(key, previousResult);
+
+        if (latestRequests.get(key)?.sequence !== request.sequence) {
+          return {
+            state: 'superseded',
+            student: request.student,
+            error: null,
+            revision: memoRevision(knownServerRevisions.get(key) || request.expectedRevision),
+            superseded: true
+          };
+        }
+
+        const knownRevision = memoRevision(knownServerRevisions.get(key));
+        if (knownRevision > request.expectedRevision) request.expectedRevision = knownRevision;
+        writeGuardPending(request, request.expectedRevision);
+
+        return persistObservationMemoDraftBase(request.student, request.content, {
+          ...request.options,
+          noteType: request.noteType,
+          expectedRevision: request.expectedRevision,
+          mutationId: request.mutationId,
+          updatedAt: request.updatedAt
+        });
+      })
+      .then(result => {
+        const superseded = restoreNewestGuardPending(key, request.sequence, result);
+        if (superseded && result && typeof result === 'object') {
+          return { ...result, superseded: true };
+        }
+        return result;
+      })
+      .finally(() => {
+        if (requestChains.get(key) === task) requestChains.delete(key);
+        if (latestRequests.get(key)?.sequence === request.sequence) latestRequests.delete(key);
+      });
+
+    requestChains.set(key, task);
+    return task;
+  }
+
+  function protectObservationMemoLocalDraft(student, noteType = '', content = '', updatedAt = '') {
+    if (!student) return false;
+    const type = guardNoteType(student, noteType);
+    const key = guardRequestKey(student, type);
+    if (!key) return false;
+
+    const before = guardLocalEntry(student, type);
+    const request = {
+      sequence: ++requestSequence,
+      student: { ...student },
+      noteType: type,
+      content: String(content == null ? '' : content),
+      expectedRevision: memoRevision(before.revision),
+      mutationId: createMutationId(),
+      updatedAt: updatedAt || new Date().toISOString(),
+      options: { localOnly: true }
+    };
+    latestRequests.set(key, request);
+    writeGuardPending(request, request.expectedRevision);
+    return true;
+  }
+
+  async function clearObservationMemoDraftWithGuard(student, noteType = '') {
+    const result = await persistObservationMemoDraft(student, '', { noteType });
+    if (result?.state === 'conflict') return result;
+    if (result?.state === 'pending' || result?.state === 'blocked') {
+      throw result.error || new Error('관찰노트 비우기 서버 저장이 완료되지 않았습니다.');
+    }
+    return result;
+  }
+
+  function getObservationMemoRequestGuardState(student, noteType = '') {
+    const type = guardNoteType(student, noteType);
+    const key = guardRequestKey(student, type);
+    if (!key) return null;
+    const latest = latestRequests.get(key);
+    return {
+      inFlight: requestChains.has(key),
+      latestSequence: latest?.sequence || 0,
+      expectedRevision: latest?.expectedRevision ?? memoRevision(knownServerRevisions.get(key)),
+      knownServerRevision: memoRevision(knownServerRevisions.get(key))
+    };
+  }
+
+  global.__olliObservationMemoRequestGuardIntegrated = true;
+  global.__olliObservationMemoRequestGuardInstalled = true;
+  global.protectObservationMemoLocalDraft = protectObservationMemoLocalDraft;
   global.persistObservationMemoDraft = persistObservationMemoDraft;
+  global.clearStudentNoteDraftFromSupabase = clearObservationMemoDraftWithGuard;
+  global.getObservationMemoRequestGuardState = getObservationMemoRequestGuardState;
 })(window);
