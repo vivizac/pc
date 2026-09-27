@@ -1,12 +1,5 @@
 /* PC/Phone common observation memo helpers. Notification behavior intentionally excluded. */
 
-function autoResizeTextarea(el) {
-  if (!el) return;
-  const minHeight = Number(el.dataset.minHeight || 140);
-  el.style.height = 'auto';
-  el.style.height = Math.max(el.scrollHeight, minHeight) + 'px';
-}
-
 function isObservationMemoAutoSaveBlocked() {
   return typeof window.shouldBlockObservationMemoAutoSave === 'function'
     ? !!window.shouldBlockObservationMemoAutoSave()
@@ -51,15 +44,6 @@ function markObservationMemoEditorDirty(target) {
     studentId: currentMemoStudent?.id || '',
     currentType: currentMemoType,
     text: target.value || ''
-  });
-}
-
-function markObservationMemoEditorClean() {
-  const memoEditor = document.getElementById('memoEditor');
-  return observationMemoEditStateCore.markClean({
-    studentId: currentMemoStudent?.id || '',
-    currentType: currentMemoType,
-    text: memoEditor?.value || ''
   });
 }
 
@@ -137,58 +121,6 @@ function getObservationMemoUnchangedResult() {
     revision: Number(entry.revision || 0),
     syncedAt: entry.lastSyncedAt || entry.updatedAt || ''
   };
-}
-
-async function saveObservationMemoServerSnapshot(options = {}) {
-  if (!currentMemoStudent || !['elementary', 'kinder'].includes(currentMemoType)) return null;
-  const editor = document.getElementById('memoEditor');
-  if (!editor) return null;
-
-  // A read-only visit must never become a write. Only an actual input event marks
-  // the edit session dirty. Blur, Done and page close are flush triggers, not save
-  // triggers by themselves.
-  if (options.force !== true && !hasObservationMemoDirtyChanges()) {
-    return getObservationMemoUnchangedResult();
-  }
-
-  if (window.__olliObservationMemoServerSavePromise) {
-    return window.__olliObservationMemoServerSavePromise;
-  }
-
-  const studentId = String(currentMemoStudent.id || '');
-  const textAtStart = String(editor.value || '');
-  let savePromise;
-  savePromise = (async () => {
-    try {
-      const result = await saveCurrentMemo({
-        silent: true,
-        status: options.status === true
-      });
-      const stillSameDraft =
-        currentMemoStudent &&
-        String(currentMemoStudent.id || '') === studentId &&
-        String(document.getElementById('memoEditor')?.value || '') === textAtStart;
-      if (
-        stillSameDraft &&
-        result &&
-        (result.state === 'synced' || result.state === 'cleared' || result.state === 'unchanged') &&
-        result.superseded !== true
-      ) {
-        markObservationMemoEditorClean();
-      }
-      return result;
-    } catch (error) {
-      console.warn('관찰노트 서버 자동저장 실패:', error?.message || error);
-      return null;
-    } finally {
-      if (window.__olliObservationMemoServerSavePromise === savePromise) {
-        window.__olliObservationMemoServerSavePromise = null;
-      }
-    }
-  })();
-
-  window.__olliObservationMemoServerSavePromise = savePromise;
-  return savePromise;
 }
 
 function scheduleMemoAutoSave() {
