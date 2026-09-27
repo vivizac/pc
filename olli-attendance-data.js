@@ -250,21 +250,46 @@
     );
   }
 
-  async function resolveTarget(student, value, kind, students) {
+  function explicitSessionTarget(options) {
+    const timeSlot = Number(options && options.timeSlot);
+    if (!Number.isFinite(timeSlot) || timeSlot <= 0) return null;
+    return {
+      timeSlot,
+      classGroup: clean(options && options.classGroup) || 'A'
+    };
+  }
+
+  async function resolveTarget(student, value, kind, students, explicitTarget) {
     const key = dateKey(value);
     if (!student || !clean(student.id) || !key) throw new Error('학생과 출석 날짜를 확인해 주세요.');
     if (Array.isArray(students) && students.length) await bootstrapLegacy(students);
-    let week = await loadWeek(key);
+    const targetHint = explicitTarget && Number(explicitTarget.timeSlot) > 0
+      ? { timeSlot: Number(explicitTarget.timeSlot), classGroup: clean(explicitTarget.classGroup) || 'A' }
+      : null;
+    const week = await loadWeek(key);
     const attendance = Array.isArray(week.attendance) ? week.attendance : [];
-    const oneTime = (Array.isArray(week.one_time_sessions) ? week.one_time_sessions : []).find((row) =>
+    const oneTimeRows = Array.isArray(week.one_time_sessions) ? week.one_time_sessions : [];
+    const oneTime = oneTimeRows.find((row) =>
       clean(row && row.student_id) === clean(student.id)
       && clean(row && row.session_date).slice(0, 10) === key
       && clean(row && row.status) !== 'cancelled'
+      && (!targetHint || (
+        Number(row && row.time_slot) === targetHint.timeSlot
+        && (clean(row && row.class_group) || 'A') === targetHint.classGroup
+      ))
     );
 
     if (kind === 'regular') {
-      const enrollment = chooseEnrollment(week.enrollments, student, key);
-      if (!enrollment) throw new Error('해당 날짜의 정규 수업을 찾을 수 없습니다. 시간표를 확인해 주세요.');
+      const enrollment = targetHint
+        ? (Array.isArray(week.enrollments) ? week.enrollments : []).find((row) =>
+            clean(row && row.student_id) === clean(student.id)
+            && Number(row && row.weekday) === weekdayOf(key)
+            && activeOnDate(row, key)
+            && Number(row && row.time_slot) === targetHint.timeSlot
+            && (clean(row && row.class_group) || 'A') === targetHint.classGroup
+          )
+        : chooseEnrollment(week.enrollments, student, key);
+      if (!enrollment) throw new Error('선택한 정규 수업을 찾을 수 없습니다. 시간표를 확인해 주세요.');
       const timeSlot = Number(enrollment.time_slot);
       const classGroup = clean(enrollment.class_group) || 'A';
       return {
@@ -280,6 +305,16 @@
       return {
         kind: 'makeup', timeSlot, classGroup,
         present: attendanceMarked(attendance, student.id, key, timeSlot, classGroup, 'makeup')
+      };
+    }
+
+    if (targetHint) {
+      return {
+        kind: 'makeup',
+        timeSlot: targetHint.timeSlot,
+        classGroup: targetHint.classGroup,
+        present: false,
+        needsOneTime: true
       };
     }
 
@@ -329,7 +364,8 @@
     const key = dateKey(options && options.sessionDate);
     const kind = clean(options && options.sessionKind) === 'makeup' ? 'makeup' : 'regular';
     const desired = !!(options && options.present);
-    let target = await resolveTarget(student, key, kind, options && options.students);
+    const explicitTarget = explicitSessionTarget(options);
+    let target = await resolveTarget(student, key, kind, options && options.students, explicitTarget);
 
     if (kind === 'makeup' && target.needsOneTime) {
       if (!desired) return { ok: true, attended: false, unchanged: true };
@@ -341,7 +377,7 @@
         note: '폰 출석 체크에서 자동 등록'
       });
       invalidateWeek(key);
-      target = await resolveTarget(student, key, kind, null);
+      target = await resolveTarget(student, key, kind, null, explicitTarget);
     }
 
     const result = await setAttendance({
