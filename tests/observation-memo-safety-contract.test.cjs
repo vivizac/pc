@@ -123,6 +123,23 @@ test('shared observation common no longer owns platform refresh lifecycle', () =
   assert.match(pcCore, /hasObservationMemoDirtyChanges/);
 });
 
+test('storage core is the single owner of revision-aware local memo entries', () => {
+  const storage = read(files.storage);
+  const save = read(files.save);
+
+  assert.match(storage, /revision:/);
+  assert.match(storage, /mutationId:/);
+  assert.match(storage, /conflict:/);
+  assert.match(storage, /isRemoteMemoRevisionNewerThanLocal/);
+
+  assert.doesNotMatch(save, /global\.getMemoEntryByStudent\s*=/);
+  assert.doesNotMatch(save, /global\.setMemoByStudent\s*=/);
+  assert.doesNotMatch(save, /global\.setMemoSyncStateByStudent\s*=/);
+  assert.match(save, /const getMemoEntrySafe = global\.getMemoEntryByStudent/);
+  assert.match(save, /const setMemoSafe = global\.setMemoByStudent/);
+  assert.match(save, /const setMemoSyncStateSafe = global\.setMemoSyncStateByStudent/);
+});
+
 test('CAS save contract preserves revision, mutation and conflict states', () => {
   const source = read(files.save);
 
