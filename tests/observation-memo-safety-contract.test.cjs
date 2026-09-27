@@ -7,6 +7,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const files = {
+  common: path.join(root, 'observation-memo-common.js'),
   storage: path.join(root, 'observation-memo-storage-common.js'),
   save: path.join(root, 'observation-memo-save-common.js'),
   requestGuard: path.join(root, 'observation-memo-request-guard-common.js'),
@@ -25,6 +26,65 @@ test('observation memo safety modules parse as JavaScript', () => {
   Object.values(files).forEach(file => {
     execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
   });
+});
+
+test('edit state contract preserves baseline dirty and clean behavior for the active memo only', () => {
+  const commonSource = read(files.common);
+  const editor = {
+    id: 'memoEditor',
+    value: '처음 기록',
+    dataset: { minHeight: '140' },
+    style: {},
+    scrollHeight: 140
+  };
+  const document = {
+    hidden: false,
+    addEventListener() {},
+    getElementById(id) { return id === 'memoEditor' ? editor : null; },
+    querySelector() { return null; },
+    createElement() { return { classList:{ add(){}, remove(){} }, style:{}, appendChild(){} }; },
+    body: { appendChild(){}, classList:{ add(){}, remove(){} } }
+  };
+  const sandbox = {
+    window: null,
+    document,
+    console: { warn() {} },
+    currentMemoStudent: { id: 'student-1', type: 'elementary' },
+    currentMemoType: 'elementary',
+    setTimeout() { return 1; },
+    clearTimeout() {},
+    requestAnimationFrame() {},
+    alert() {}
+  };
+  sandbox.window = sandbox;
+  sandbox.addEventListener = () => {};
+
+  vm.createContext(sandbox);
+  vm.runInContext(commonSource, sandbox, { filename:'observation-memo-common.js' });
+
+  const state = sandbox.beginObservationMemoEditSession(
+    sandbox.currentMemoStudent,
+    'elementary_observation',
+    '처음 기록'
+  );
+  assert.equal(state.studentId, 'student-1');
+  assert.equal(state.noteType, 'elementary_observation');
+  assert.equal(state.baselineText, '처음 기록');
+  assert.equal(sandbox.hasObservationMemoDirtyChanges(), false);
+
+  assert.equal(sandbox.markObservationMemoEditorDirty(editor), false);
+  editor.value = '수정 기록';
+  assert.equal(sandbox.markObservationMemoEditorDirty(editor), true);
+  assert.equal(sandbox.hasObservationMemoDirtyChanges(), true);
+
+  sandbox.markObservationMemoEditorClean();
+  assert.equal(sandbox.getObservationMemoEditState().baselineText, '수정 기록');
+  assert.equal(sandbox.hasObservationMemoDirtyChanges(), false);
+
+  sandbox.currentMemoStudent = { id:'student-2', type:'elementary' };
+  editor.value = '다른 학생 기록';
+  assert.equal(sandbox.markObservationMemoEditorDirty(editor), false);
+  assert.equal(sandbox.hasObservationMemoDirtyChanges(), false);
 });
 
 test('CAS save contract preserves revision, mutation and conflict states', () => {
