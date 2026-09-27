@@ -237,12 +237,6 @@ function returnFromObservationMemoScreen(onReturned) {
   return false;
 }
 
-function setMemoModePillLabel(label = '학생 이름', modeLabel = '관찰 모드') {
-  const el = document.getElementById('memoStudentName');
-  const sub = document.getElementById('memoModeSub');
-  if (el) el.textContent = '관찰 노트';
-  if (sub) sub.textContent = modeLabel || '관찰 모드';
-}
 function formatMemoUpdatedDate(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -308,48 +302,6 @@ function forceObservationMemoControlsVisible(options = {}) {
   showBlock.forEach(selector => reveal(selector, ''));
   return true;
 }
-function renderMemoModeMenu() {
-  const menu = document.getElementById('memoModeDropup');
-  if (!menu) return;
-  const checkSvg = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"></path></svg>';
-  const option = (active, title, guide, action) => `
-    <button type="button" class="memoRecordOption ${active ? 'active' : ''}" onclick="${action}">
-      <span class="memoModeCheck" aria-hidden="true">${active ? checkSvg : ''}</span>
-      <span class="memoModeOptionText">
-        <span class="memoModeOptionTitle">${title}</span>
-        <span class="memoModeOptionGuide">${guide}</span>
-      </span>
-    </button>`;
-  const division = currentMemoType === 'kinder' ? 'kinder' : 'elementary';
-  menu.innerHTML = `
-    ${option(false, '1분 피드백', '수업기록을 빠르게 수업 피드백으로 정리', `closeMemoModeMenu(); openKinderChatFeedbackPage({ division: '${division}' });`)}
-    ${option(false, '실패-성장 피드백', '막힘·전환 장면을 깊게 정리', "openMemoFailGrowthMode(event);")}
-    ${option(true, '관찰 노트', '관찰메모로 성장 피드백 작성', "closeMemoModeMenu(); openMemoObservationMode(event);")}
-  `;
-}
-function closeMemoModeMenu() { const menu = document.getElementById('memoModeDropup'); if (menu) menu.classList.remove('show'); }
-function toggleMemoModeMenu(event) {
-  if (event) event.stopPropagation();
-  renderMemoModeMenu();
-  const menu = document.getElementById('memoModeDropup');
-  if (menu) menu.classList.toggle('show');
-}
-function openMemoObservationMode(event) { if (event) event.stopPropagation(); closeMemoModeMenu(); const memo = document.getElementById('studentMemoScreen'); if (memo) memo.style.display = 'flex'; if (typeof forceStudentMemoControlsVisible === 'function') { forceStudentMemoControlsVisible(); requestAnimationFrame(forceStudentMemoControlsVisible); } }
-function openMemoFailGrowthMode(event) {
-  if (event) event.stopPropagation();
-  closeMemoModeMenu();
-  if (currentMemoType === 'kinder' && typeof openKinderChatFeedbackGrowthSheet === 'function') {
-    openKinderChatFeedbackGrowthSheet();
-    return;
-  }
-  if (currentMemoType === 'elementary' && typeof openElementaryGrowthFeedbackSheet === 'function') {
-    openElementaryGrowthFeedbackSheet();
-    return;
-  }
-  alert('실패-성장 피드백을 열 수 없습니다.');
-}
-document.addEventListener('click', (event) => { const wrap = document.getElementById('memoModeWrap'); if (wrap && !wrap.contains(event.target)) closeMemoModeMenu(); });
-
 function handleMemoPauseAutoSaveBlur(target) {
   const inputType = getMemoInputTypeFromTarget(target);
   if (!inputType || currentMemoType !== inputType) return;
@@ -518,18 +470,8 @@ function renderObservationMemoScreenChrome(session) {
     setTimeout(forceStudentMemoControlsVisible, 120);
   }
 
-  if (typeof setMemoModePillLabel === 'function') {
-    setMemoModePillLabel(student.name || '학생 이름');
-  }
   if (typeof updateMemoStudentMetaDisplay === 'function') {
     updateMemoStudentMetaDisplay(student);
-  }
-
-  const memoNameBtn = document.getElementById('memoStudentNameBtn');
-  if (memoNameBtn) {
-    if (typeof toggleMemoModeMenu === 'function') memoNameBtn.onclick = toggleMemoModeMenu;
-    memoNameBtn.title = '메모 유형 선택';
-    memoNameBtn.setAttribute('aria-label', '메모 유형 선택');
   }
 
   const feedbackBtn = document.getElementById('memoFeedbackBtn');
