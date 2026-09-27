@@ -3,6 +3,11 @@
 (function initObservationMemoStorageCommon(global) {
   'use strict';
 
+  function memoRevision(value) {
+    const revision = Number(value || 0);
+    return Number.isFinite(revision) && revision >= 0 ? Math.floor(revision) : 0;
+  }
+
   function createObservationMemoStorage(config = {}) {
     const resolveMemoKey = typeof config.getMemoKey === 'function' ? config.getMemoKey : (() => '');
     const resolveDraftType = typeof config.getDraftType === 'function' ? config.getDraftType : (() => '');
@@ -25,9 +30,18 @@
 
     function getMemoEntryByStudent(student, noteType = '') {
       const key = getMemoKey(student, noteType);
-      if (!key) return { content: '', updatedAt: '', lastSyncedAt: '', syncStatus: 'unknown' };
+      const empty = status => ({
+        content: '',
+        updatedAt: '',
+        lastSyncedAt: '',
+        syncStatus: status,
+        revision: 0,
+        mutationId: '',
+        conflict: null
+      });
+      if (!key) return empty('unknown');
       const raw = localStorage.getItem(key);
-      if (!raw) return { content: '', updatedAt: '', lastSyncedAt: '', syncStatus: 'empty' };
+      if (!raw) return empty('empty');
       try {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === 'object') {
@@ -35,23 +49,33 @@
             content: parsed.content || '',
             updatedAt: parsed.updatedAt || '',
             lastSyncedAt: parsed.lastSyncedAt || '',
-            syncStatus: parsed.syncStatus || 'local'
+            syncStatus: parsed.syncStatus || 'local',
+            revision: memoRevision(parsed.revision),
+            mutationId: String(parsed.mutationId || ''),
+            conflict: parsed.conflict && typeof parsed.conflict === 'object' ? parsed.conflict : null
           };
         }
       } catch {}
-      return { content: raw || '', updatedAt: '', lastSyncedAt: '', syncStatus: 'local' };
+      return { ...empty('local'), content: raw || '' };
     }
 
     function setMemoByStudent(student, content, options = {}, noteType = '') {
       const key = getMemoKey(student, noteType);
       if (!key) return;
       const previous = getMemoEntryByStudent(student, noteType);
-      const updatedAt = options.updatedAt || new Date().toISOString();
+      const has = keyName => Object.prototype.hasOwnProperty.call(options, keyName);
       localStorage.setItem(key, JSON.stringify({
         content: content || '',
-        updatedAt,
-        lastSyncedAt: options.lastSyncedAt || previous.lastSyncedAt || '',
-        syncStatus: options.syncStatus || previous.syncStatus || 'local'
+        updatedAt: has('updatedAt')
+          ? (options.updatedAt || '')
+          : (previous.updatedAt || new Date().toISOString()),
+        lastSyncedAt: has('lastSyncedAt')
+          ? (options.lastSyncedAt || '')
+          : (previous.lastSyncedAt || ''),
+        syncStatus: options.syncStatus || previous.syncStatus || 'local',
+        revision: has('revision') ? memoRevision(options.revision) : memoRevision(previous.revision),
+        mutationId: has('mutationId') ? String(options.mutationId || '') : String(previous.mutationId || ''),
+        conflict: has('conflict') ? (options.conflict || null) : (previous.conflict || null)
       }));
     }
 
@@ -64,9 +88,22 @@
     function setMemoSyncStateByStudent(student, syncState = {}, noteType = '') {
       const entry = getMemoEntryByStudent(student, noteType);
       setMemoByStudent(student, entry.content || '', {
-        updatedAt: entry.updatedAt || new Date().toISOString(),
-        lastSyncedAt: syncState.lastSyncedAt || entry.lastSyncedAt || '',
-        syncStatus: syncState.syncStatus || entry.syncStatus || 'local'
+        updatedAt: Object.prototype.hasOwnProperty.call(syncState, 'updatedAt')
+          ? syncState.updatedAt
+          : entry.updatedAt,
+        lastSyncedAt: Object.prototype.hasOwnProperty.call(syncState, 'lastSyncedAt')
+          ? syncState.lastSyncedAt
+          : entry.lastSyncedAt,
+        syncStatus: syncState.syncStatus || entry.syncStatus || 'local',
+        revision: Object.prototype.hasOwnProperty.call(syncState, 'revision')
+          ? syncState.revision
+          : entry.revision,
+        mutationId: Object.prototype.hasOwnProperty.call(syncState, 'mutationId')
+          ? syncState.mutationId
+          : entry.mutationId,
+        conflict: Object.prototype.hasOwnProperty.call(syncState, 'conflict')
+          ? syncState.conflict
+          : entry.conflict
       }, noteType);
     }
 
@@ -77,6 +114,10 @@
       const localTime = new Date(localUpdatedAt).getTime();
       if (Number.isNaN(remoteTime) || Number.isNaN(localTime)) return false;
       return remoteTime > localTime;
+    }
+
+    function isRemoteMemoRevisionNewerThanLocal(remoteRevision, localRevision) {
+      return memoRevision(remoteRevision) > memoRevision(localRevision);
     }
 
     function getSupabaseNoteDraftType(student) {
@@ -198,6 +239,7 @@
       clearMemoByStudent,
       setMemoSyncStateByStudent,
       isRemoteMemoNewerThanLocal,
+      isRemoteMemoRevisionNewerThanLocal,
       getSupabaseNoteDraftType,
       getStudentNoteDraftPath,
       saveStudentNoteDraftToSupabase,
