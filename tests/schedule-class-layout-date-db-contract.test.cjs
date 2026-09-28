@@ -74,7 +74,7 @@ test('merge blockers are bounded by the merge effective date so historical B row
   const sql = migrationSql();
   assert.match(sql, /one_time_sessions[\s\S]*?session_date\s*>=\s*(v_effective|p_effective_date)/i);
   assert.match(sql, /enrollments[\s\S]*?effective_to\s+is\s+null[\s\S]*?effective_to\s*>=\s*(v_effective|p_effective_date)/i);
-  assert.match(sql, /schedule_changes[\s\S]*?effective_date\s*>=\s*(v_effective|p_effective_date)/i);
+  assert.match(sql, /schedule_changes[\s\S]*?first_(occurrence|weekday)_on_or_after\s*\(\s*c\.effective_date[\s\S]*?>=\s*p_effective_date/i);
 });
 
 test('regular schedule writes derive the first actual class date on or after effective_date', () => {
@@ -91,4 +91,21 @@ test('A/B split periods reject overlaps and normalize adjacent ranges', () => {
   assert.match(sql, /CLASS_LAYOUT_CONFLICT/i);
   assert.match(sql, /effective_to\s*=\s*p_effective_date\s*-\s*1/i);
   assert.match(sql, /v_previous_from/i);
+});
+
+
+test('the v2 database design has one canonical migration source', () => {
+  assert.equal(
+    fs.existsSync(path.join('supabase','rls-plans','date_effective_elementary_class_layout_v2.sql')),
+    false,
+    'duplicate A/B v2 SQL must not remain under rls-plans'
+  );
+  const appCopy = path.join('apps','pc','supabase','migrations',files.at(-1));
+  if (fs.existsSync(appCopy)) {
+    assert.equal(
+      fs.readFileSync(appCopy, 'utf8'),
+      migrationSql(),
+      'apps/pc migration copy must match the canonical root migration exactly'
+    );
+  }
 });
