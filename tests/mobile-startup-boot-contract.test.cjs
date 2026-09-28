@@ -82,7 +82,10 @@ test('local-first start-page routing settles page ownership before background re
     adapter.indexOf("if (normalized === 'kinder_attendance')")
   );
   assert.match(observationRoute, /if \(localFirst\)[\s\S]*?const recordOpen = showRecordRoom\(\{ localOnly: true \}\);[\s\S]*?openObservationNoteFromRecord\(\);[\s\S]*?return true;/);
-  assert.doesNotMatch(observationRoute, /if \(localFirst\)[\s\S]*?await showRecordRoom/);
+  const localFirstStart = observationRoute.indexOf('if (localFirst)');
+  const localFirstEnd = observationRoute.indexOf('return true;', localFirstStart);
+  const localFirstBlock = observationRoute.slice(localFirstStart, localFirstEnd + 'return true;'.length);
+  assert.doesNotMatch(localFirstBlock, /await showRecordRoom/);
 
   const recordResume = startup.slice(
     startup.indexOf("case 'recordRoomScreen':"),
