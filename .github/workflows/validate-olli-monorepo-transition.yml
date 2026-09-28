@@ -11,6 +11,8 @@ on:
       - 'MONOREPO_TRANSITION.md'
       - 'MONOREPO_OWNERSHIP_AUDIT.md'
       - 'tests/mobile-self-contained-build.test.cjs'
+      - 'tests/pc-self-contained-build.test.cjs'
+      - 'tests/pc-self-contained-build.test.cjs'
       - 'tests/mobile-entry-integrity.test.cjs'
       - 'tests/monorepo-structure-contract.test.cjs'
       - 'tests/vercel-monorepo-separation-contract.test.cjs'
@@ -41,8 +43,10 @@ jobs:
       - name: Validate monorepo structure and Mobile build contract
         run: |
           node --check apps/mobile/scripts/stage-common.cjs
+          node --check apps/pc/scripts/stage-common.cjs
           node --test \
             tests/mobile-self-contained-build.test.cjs \
+            tests/pc-self-contained-build.test.cjs \
             tests/mobile-entry-integrity.test.cjs \
             tests/monorepo-structure-contract.test.cjs \
             tests/vercel-monorepo-separation-contract.test.cjs
