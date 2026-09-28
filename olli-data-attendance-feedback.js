@@ -103,7 +103,7 @@ async function loadAttendanceFeedbackRowsSecure(table, student, limit = 80) {
     throw new Error('피드백 보호 조회 모듈이 준비되지 않았습니다.');
   }
   const spec = core.FeatureRegistry.require(feature);
-  return core.ServerAdapter.read(spec, { academyId, studentId, studentName }, { limit });
+  return core.ServerAdapter.read(spec, { academyId, studentId, student_name: studentName }, { limit });
 }
 
 async function loadAttendanceStudentFeedbackSheetItems(student) {
