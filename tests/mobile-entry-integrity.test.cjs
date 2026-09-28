@@ -125,6 +125,10 @@ test('Mobile entry script order preserves critical dependency contracts', () => 
 test('every local script referenced by Mobile index exists', () => {
   const scripts = localScriptList();
   assert.ok(scripts.length >= 100, 'unexpectedly small Mobile entry script set');
-  const missing = scripts.filter(src => !fs.existsSync(path.join(MOBILE, src)));
+  const manifest = new Set(JSON.parse(fs.readFileSync(path.join(COMMON, 'mobile-runtime-manifest.json'), 'utf8')).files);
+  const missing = scripts.filter(src =>
+    !fs.existsSync(path.join(MOBILE, src))
+    && !(manifest.has(src) && fs.existsSync(path.join(COMMON, src)))
+  );
   assert.deepEqual(missing, []);
 });
