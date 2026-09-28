@@ -14,7 +14,7 @@ test('Mobile startup does not call the removed memo autosave binding hook', () =
   assert.equal(startup.includes('setupMemoPauseAutoSaveBindings'), false);
   assert.match(startup, /document\.addEventListener\('DOMContentLoaded',\s*async\s*\(\)\s*=>\s*\{/);
   assert.match(startup, /showOlliBootScreen\(\);/);
-  assert.match(startup, /await hideOlliBootScreen\(\);/);
+  assert.match(startup, /const bootDismissPromise = hideOlliBootScreen\(\);/);
 });
 
 test('Mobile startup does not block first paint on legacy device account-session conversion', () => {
@@ -27,14 +27,17 @@ test('Mobile startup does not block first paint on legacy device account-session
 
 test('Mobile boot dismissal starts before any resume or start-page route await', () => {
   const startup = fs.readFileSync(path.join(MOBILE, 'olli-app-startup.js'), 'utf8');
-  const dismissIndex = startup.indexOf('const bootDismissPromise = hideOlliBootScreen();');
-  const resumeIndex = startup.indexOf('await restoreOlliPhoneResumeState();');
-  const enterIndex = startup.indexOf('await enterOlliAfterLoginOrSetup({ localFirst: true });');
+  const domStart = startup.indexOf("document.addEventListener('DOMContentLoaded', async () => {");
+  assert.ok(domStart >= 0);
+  const startupRoute = startup.slice(domStart);
+  const dismissIndex = startupRoute.indexOf('const bootDismissPromise = hideOlliBootScreen();');
+  const resumeIndex = startupRoute.indexOf('await restoreOlliPhoneResumeState();');
+  const enterIndex = startupRoute.indexOf('await enterOlliAfterLoginOrSetup({ localFirst: true });');
   assert.ok(dismissIndex >= 0);
   assert.ok(resumeIndex > dismissIndex);
   assert.ok(enterIndex > dismissIndex);
-  assert.equal((startup.match(/await hideOlliBootScreen\(\);/g) || []).length, 0);
-  assert.equal((startup.match(/await bootDismissPromise;/g) || []).length, 2);
+  assert.equal((startupRoute.match(/await hideOlliBootScreen\(\);/g) || []).length, 0);
+  assert.equal((startupRoute.match(/await bootDismissPromise;/g) || []).length, 2);
 });
 
 test('Mobile startup and auth entry assets are cache-busted and no-store', () => {
