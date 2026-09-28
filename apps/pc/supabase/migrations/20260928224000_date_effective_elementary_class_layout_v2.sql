@@ -412,10 +412,16 @@ begin
 
   select count(*) into v_regular
   from public.olli_schedule_enrollments e
+  cross join lateral (
+    select private.olli_schedule_first_occurrence_on_or_after(
+      greatest(e.effective_from,p_effective_date),p_weekday
+    ) as first_session_date
+  ) x
   where e.academy_id=p_academy_id and e.weekday=p_weekday and e.time_slot=p_time_slot
     and e.class_group='B' and e.status='active'
-    and (e.effective_to is null or e.effective_to>=p_effective_date)
-    and (v_next_split is null or e.effective_from<v_next_split);
+    and x.first_session_date is not null
+    and (e.effective_to is null or x.first_session_date<=e.effective_to)
+    and (v_next_split is null or x.first_session_date<v_next_split);
 
   select count(*) into v_one_time
   from public.olli_schedule_one_time_sessions o

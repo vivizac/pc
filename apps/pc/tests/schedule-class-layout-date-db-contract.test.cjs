@@ -92,3 +92,11 @@ test('A/B split periods reject overlaps and normalize adjacent ranges', () => {
   assert.match(sql, /effective_to\s*=\s*p_effective_date\s*-\s*1/i);
   assert.match(sql, /v_previous_from/i);
 });
+
+
+test('regular B merge blocker uses the first actual class occurrence before the next re-split', () => {
+  const sql = migrationSql();
+  assert.match(sql, /first_occurrence_on_or_after\([\s\S]*?greatest\(e\.effective_from\s*,\s*p_effective_date\)[\s\S]*?p_weekday/i);
+  assert.match(sql, /first_session_date\s*<\s*v_next_split/i);
+  assert.match(sql, /effective_to\s+is\s+null[\s\S]*?first_session_date\s*<=\s*e\.effective_to/i);
+});
