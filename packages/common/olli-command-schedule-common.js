@@ -68,7 +68,9 @@
     if (!dateKey) return false;
 
     const periods = arrays(data, 'class_split_periods');
-    if (periods.length) {
+    const hasCanonicalLayout = Number(data && data.class_layout_version || 0) >= 2
+      || Object.prototype.hasOwnProperty.call(data || {}, 'class_split_periods');
+    if (hasCanonicalLayout) {
       return periods.some(row =>
         Number(row && row.weekday) === Number(weekday)
         && Number(row && row.time_slot) === Number(timeSlot)
