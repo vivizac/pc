@@ -219,7 +219,7 @@ async function saveGeneralFeedbackViaCommonStorage(tableName, payload = {}, labe
     recordOlliStorageIssue({ feature: 'general_feedback', resource: 'feedbacks', operation: 'save', message: error.message, student_id: studentId });
     throw error;
   }
-  const data = { ...payload, client_record_id: commonRecordId };
+  const data = { ...payload, client_record_id: commonRecordId, client_mutation_id: commonRecordId };
   const result = await saveOlliData('general_feedback', {
     academyId,
     studentId,
@@ -269,7 +269,7 @@ async function saveGrowthFeedbackViaCommonStorage(tableName, payload = {}, label
     recordOlliStorageIssue({ feature: 'growth_feedback', resource: 'fail_feedbacks', operation: 'save', message: error.message, student_id: studentId });
     throw error;
   }
-  const data = { ...payload, client_record_id: commonRecordId };
+  const data = { ...payload, client_record_id: commonRecordId, client_mutation_id: commonRecordId };
   const result = await saveOlliData('growth_feedback', {
     academyId,
     studentId,
@@ -320,7 +320,7 @@ async function saveSummaryFeedbackViaCommonStorage(tableName, payload = {}, labe
     recordOlliStorageIssue({ feature: 'summary_feedback', resource: 'summary_feedbacks', operation: 'save', message: error.message, student_id: studentId });
     throw error;
   }
-  const data = { ...payload, client_record_id: commonRecordId };
+  const data = { ...payload, client_record_id: commonRecordId, client_mutation_id: commonRecordId };
   const result = await saveOlliData('summary_feedback', {
     academyId,
     studentId,

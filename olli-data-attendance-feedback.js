@@ -86,25 +86,32 @@ function normalizeAttendanceFeedbackRows(rows, sourceTable = '') {
     }));
 }
 
-function buildAttendanceStudentFeedbackPath(table, student, limit = 80) {
+function getAttendanceFeedbackReadFeature(table) {
+  if (table === 'feedbacks') return 'general_feedback_records_read';
+  if (table === 'fail_feedbacks') return 'growth_feedback_records_read';
+  if (table === 'summary_feedbacks') return 'summary_feedback_records_read';
+  return '';
+}
+
+async function loadAttendanceFeedbackRowsSecure(table, student, limit = 80) {
+  const feature = getAttendanceFeedbackReadFeature(table);
+  const academyId = String(typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '').trim();
   const studentId = String(student?.id || '').trim();
   const studentName = String(student?.name || '').trim();
-  let path = `${table}?select=*&order=created_at.desc&limit=${limit}`;
-  if (studentId) {
-    path += `&student_id=eq.${encodeURIComponent(studentId)}`;
-  } else if (studentName) {
-    // 학생코드가 없는 과거 기록만 이름으로 보조 조회합니다.
-    path += `&student_name=eq.${encodeURIComponent(studentName)}`;
+  const core = window.OlliStorageCore;
+  if (!feature || !academyId || !core?.FeatureRegistry || !core?.ServerAdapter) {
+    throw new Error('피드백 보호 조회 모듈이 준비되지 않았습니다.');
   }
-  return appendOlliAcademyFilter(path);
+  const spec = core.FeatureRegistry.require(feature);
+  return core.ServerAdapter.read(spec, { academyId, studentId, studentName }, { limit });
 }
 
 async function loadAttendanceStudentFeedbackSheetItems(student) {
   if (!student || !isSupabaseConfigured()) return { feedbacks: [], summaries: [] };
   const requests = [
-    { table: 'feedbacks', type: 'feedbacks', promise: supabase('GET', buildAttendanceStudentFeedbackPath('feedbacks', student, 80)) },
-    { table: 'fail_feedbacks', type: 'feedbacks', promise: supabase('GET', buildAttendanceStudentFeedbackPath('fail_feedbacks', student, 80)) },
-    { table: 'summary_feedbacks', type: 'summaries', promise: supabase('GET', buildAttendanceStudentFeedbackPath('summary_feedbacks', student, 50)) }
+    { table: 'feedbacks', type: 'feedbacks', promise: loadAttendanceFeedbackRowsSecure('feedbacks', student, 80) },
+    { table: 'fail_feedbacks', type: 'feedbacks', promise: loadAttendanceFeedbackRowsSecure('fail_feedbacks', student, 80) },
+    { table: 'summary_feedbacks', type: 'summaries', promise: loadAttendanceFeedbackRowsSecure('summary_feedbacks', student, 50) }
   ];
   const settled = await Promise.allSettled(requests.map(item => item.promise));
   const feedbacks = [];

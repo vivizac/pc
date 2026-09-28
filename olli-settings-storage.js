@@ -1,3 +1,12 @@
+async function loadSettingsBackupFeedbackRowsSecure(feature, academyId, limit = 5000) {
+  const core = window.OlliStorageCore;
+  if (!core?.FeatureRegistry || !core?.ServerAdapter) {
+    throw new Error('피드백 백업 보호 서버 모듈이 준비되지 않았습니다.');
+  }
+  const spec = core.FeatureRegistry.require(feature);
+  return core.ServerAdapter.read(spec, { academyId }, { limit });
+}
+
 async function loadSettingsBackupStudentsSecure(academyId) {
   const core = window.OlliStorageCore;
   if (!core?.FeatureRegistry || !core?.ServerAdapter) {
@@ -14,8 +23,8 @@ async function downloadSettingsBackup() {
 
     const [students, feedbacks, summaries, members] = await Promise.all([
       loadSettingsBackupStudentsSecure(academyId),
-      supabase('GET', `feedbacks?select=*&academy_id=eq.${encodeURIComponent(academyId)}`),
-      supabase('GET', `summary_feedbacks?select=*&academy_id=eq.${encodeURIComponent(academyId)}`),
+      loadSettingsBackupFeedbackRowsSecure('general_feedback_records_read', academyId),
+      loadSettingsBackupFeedbackRowsSecure('summary_feedback_records_read', academyId),
       supabase('GET', `academy_members?select=*&academy_id=eq.${encodeURIComponent(academyId)}`)
     ]);
 

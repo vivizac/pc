@@ -159,17 +159,17 @@ function compareElementaryGroupFeedbackOrder(a, b) {
 
   const TARGETS = Object.freeze({
     feedbacks: {
-      rpc: 'olli_feedback_insert_idempotent',
+      rpc: 'olli_general_feedback_data_access',
       feature: 'general_feedback',
       label: '일반 피드백'
     },
     fail_feedbacks: {
-      rpc: 'olli_growth_feedback_insert_idempotent',
+      rpc: 'olli_growth_feedback_data_access',
       feature: 'growth_feedback',
       label: '실패-성장 피드백'
     },
     summary_feedbacks: {
-      rpc: 'olli_summary_feedback_insert_idempotent',
+      rpc: 'olli_summary_feedback_data_access',
       feature: 'summary_feedback',
       label: '종합 피드백'
     }
@@ -469,6 +469,37 @@ function compareElementaryGroupFeedbackOrder(a, b) {
     } catch (_) {}
   }
 
+  function getFeedbackAccountSessionToken() {
+    const token = clean(localStorage.getItem('olli_account_session_token_v1'));
+    if (!token) {
+      const error = new Error('계정 세션이 없어 피드백을 저장할 수 없습니다.');
+      error.code = 'NO_ACCOUNT_SESSION';
+      throw error;
+    }
+    return token;
+  }
+
+  async function callSecureFeedbackDataRpc(spec, academyId, studentId, payload) {
+    const response = await global.supabase('POST', `rpc/${spec.rpc}`, {
+      p_session_token: getFeedbackAccountSessionToken(),
+      p_academy_id: academyId,
+      p_action: 'write',
+      p_operation: 'post',
+      p_identity: { academy_id: academyId, student_id: studentId },
+      p_payload: payload,
+      p_limit: 1
+    });
+    const data = Array.isArray(response) && response.length === 1 ? response[0] : response;
+    if (!data || data.ok === false) {
+      const error = new Error(data?.message || '피드백 서버 저장이 거부되었습니다.');
+      error.code = data?.code || 'SERVER_RPC_REJECTED';
+      error.data = data || null;
+      throw error;
+    }
+    const rows = Array.isArray(data.rows) ? data.rows : [];
+    return rows[0] || null;
+  }
+
   async function saveIdempotentFeedback(tableName, payload = {}, label = '') {
     const spec = TARGETS[tableName];
     if (!spec) return null;
@@ -499,8 +530,7 @@ function compareElementaryGroupFeedbackOrder(a, b) {
       updatePending(entry, { attempts: Number(entry.attempts || 0) + attempt + 1, status: 'pending' });
 
       try {
-        const rows = await global.supabase('POST', `rpc/${spec.rpc}`, { p_payload: serverPayload });
-        const row = Array.isArray(rows) ? rows[0] : rows;
+        const row = await callSecureFeedbackDataRpc(spec, academyId, studentId, serverPayload);
         const verified = verifyReturnedRow(tableName, row, serverPayload, entry.mutationId, safeLabel);
         clearPending(entry);
         writeFeedbackLocal(tableName, serverPayload, entry.mutationId, 'synced', verified);
@@ -557,8 +587,7 @@ function compareElementaryGroupFeedbackOrder(a, b) {
     for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
       if (retryDelays[attempt]) await delay(retryDelays[attempt]);
       try {
-        const rows = await global.supabase('POST', `rpc/${spec.rpc}`, { p_payload: payload });
-        const row = Array.isArray(rows) ? rows[0] : rows;
+        const row = await callSecureFeedbackDataRpc(spec, academyId, clean(payload.student_id), payload);
         const verified = verifyReturnedRow(tableName, row, payload, mutationId, entry.label);
         clearPending(entry);
         writeFeedbackLocal(tableName, payload, mutationId, 'synced', verified);

@@ -1239,6 +1239,81 @@
 
 
   FeatureRegistry.register({
+    feature: 'general_feedback_records_read',
+    label: '일반 피드백 조회',
+    version: 1,
+    scope: 'academy',
+    identity: { requiresAcademyId: true },
+    persistence: 'server_source',
+    local: { enabled: false, defaultValue: [], legacyKeys: [], migrationPolicy: 'manual' },
+    server: {
+      kind: 'table_rows',
+      table: 'feedbacks',
+      transport: 'session_rpc',
+      rpc: 'olli_general_feedback_data_access',
+      operation: 'read',
+      identityColumns: ['academy_id', 'student_id', 'student_name'],
+      valueColumns: [],
+      requiredColumns: ['academy_id'],
+      selectColumns: []
+    },
+    verification: { mode: 'none', compareFields: [] },
+    conflict: { policy: 'server_source', protectPendingLocal: true },
+    permissions: { read: ['teacher', 'manager', 'owner'], write: [] },
+    diagnostics: { serverRequired: true, adminVisible: true }
+  });
+
+  FeatureRegistry.register({
+    feature: 'growth_feedback_records_read',
+    label: '성장 피드백 조회',
+    version: 1,
+    scope: 'academy',
+    identity: { requiresAcademyId: true },
+    persistence: 'server_source',
+    local: { enabled: false, defaultValue: [], legacyKeys: [], migrationPolicy: 'manual' },
+    server: {
+      kind: 'table_rows',
+      table: 'fail_feedbacks',
+      transport: 'session_rpc',
+      rpc: 'olli_growth_feedback_data_access',
+      operation: 'read',
+      identityColumns: ['academy_id', 'student_id', 'student_name'],
+      valueColumns: [],
+      requiredColumns: ['academy_id'],
+      selectColumns: []
+    },
+    verification: { mode: 'none', compareFields: [] },
+    conflict: { policy: 'server_source', protectPendingLocal: true },
+    permissions: { read: ['teacher', 'manager', 'owner'], write: [] },
+    diagnostics: { serverRequired: true, adminVisible: true }
+  });
+
+  FeatureRegistry.register({
+    feature: 'summary_feedback_records_read',
+    label: '종합 피드백 조회',
+    version: 1,
+    scope: 'academy',
+    identity: { requiresAcademyId: true },
+    persistence: 'server_source',
+    local: { enabled: false, defaultValue: [], legacyKeys: [], migrationPolicy: 'manual' },
+    server: {
+      kind: 'table_rows',
+      table: 'summary_feedbacks',
+      transport: 'session_rpc',
+      rpc: 'olli_summary_feedback_data_access',
+      operation: 'read',
+      identityColumns: ['academy_id', 'student_id', 'student_name'],
+      valueColumns: [],
+      requiredColumns: ['academy_id'],
+      selectColumns: []
+    },
+    verification: { mode: 'none', compareFields: [] },
+    conflict: { policy: 'server_source', protectPendingLocal: true },
+    permissions: { read: ['teacher', 'manager', 'owner'], write: [] },
+    diagnostics: { serverRequired: true, adminVisible: true }
+  });
+
+  FeatureRegistry.register({
     feature: 'general_feedback',
     label: '일반 피드백',
     version: 1,
@@ -1253,10 +1328,12 @@
     server: {
       kind: 'table_row',
       table: 'feedbacks',
+      transport: 'session_rpc',
+      rpc: 'olli_general_feedback_data_access',
       operation: 'post',
       createIfMissing: false,
       identityColumns: ['academy_id', 'student_id'],
-      valueColumns: ['student_name', 'content', 'feedback_type', 'future_direction', 'year', 'date'],
+      valueColumns: ['student_name', 'content', 'feedback_type', 'future_direction', 'year', 'date', 'lesson_date', 'member_id', 'client_mutation_id'],
       requiredColumns: ['academy_id', 'student_id', 'student_name', 'content'],
       selectColumns: ['id', 'academy_id', 'student_id', 'student_name', 'content', 'feedback_type', 'future_direction', 'year', 'date', 'created_at']
     },
@@ -1281,10 +1358,12 @@
     server: {
       kind: 'table_row',
       table: 'fail_feedbacks',
+      transport: 'session_rpc',
+      rpc: 'olli_growth_feedback_data_access',
       operation: 'post',
       createIfMissing: false,
       identityColumns: ['academy_id', 'student_id'],
-      valueColumns: ['student_name', 'content', 'feedback_type', 'year', 'date'],
+      valueColumns: ['student_name', 'content', 'feedback_type', 'year', 'date', 'client_mutation_id'],
       requiredColumns: ['academy_id', 'student_id', 'student_name', 'content'],
       selectColumns: ['id', 'academy_id', 'student_id', 'student_name', 'content', 'feedback_type', 'year', 'date', 'created_at']
     },
@@ -1309,10 +1388,12 @@
     server: {
       kind: 'table_row',
       table: 'summary_feedbacks',
+      transport: 'session_rpc',
+      rpc: 'olli_summary_feedback_data_access',
       operation: 'post',
       createIfMissing: false,
       identityColumns: ['academy_id', 'student_id'],
-      valueColumns: ['student_name', 'content', 'summary_months', 'year', 'date'],
+      valueColumns: ['student_name', 'content', 'feedback_type', 'summary_months', 'period_months', 'source_feedback_ids', 'created_by', 'year', 'date', 'client_mutation_id'],
       requiredColumns: ['academy_id', 'student_id', 'student_name', 'content'],
       selectColumns: ['id', 'academy_id', 'student_id', 'student_name', 'content', 'summary_months', 'year', 'date', 'created_at']
     },
@@ -1333,6 +1414,8 @@
     server: {
       kind: 'table_row',
       table: 'feedbacks',
+      transport: 'session_rpc',
+      rpc: 'olli_general_feedback_data_access',
       operation: 'patch',
       createIfMissing: false,
       identityColumns: ['academy_id', 'id'],
@@ -1357,6 +1440,8 @@
     server: {
       kind: 'table_row',
       table: 'fail_feedbacks',
+      transport: 'session_rpc',
+      rpc: 'olli_growth_feedback_data_access',
       operation: 'patch',
       createIfMissing: false,
       identityColumns: ['academy_id', 'id'],
@@ -1381,6 +1466,8 @@
     server: {
       kind: 'table_row',
       table: 'summary_feedbacks',
+      transport: 'session_rpc',
+      rpc: 'olli_summary_feedback_data_access',
       operation: 'patch',
       createIfMissing: false,
       identityColumns: ['academy_id', 'id'],
@@ -1406,6 +1493,8 @@
     server: {
       kind: 'table_row',
       table: 'summary_feedbacks',
+      transport: 'session_rpc',
+      rpc: 'olli_summary_feedback_data_access',
       operation: 'soft_delete',
       createIfMissing: false,
       identityColumns: ['academy_id', 'id'],
@@ -1550,6 +1639,8 @@
     server: {
       kind: 'table_rows',
       table: 'feedbacks',
+      transport: 'session_rpc',
+      rpc: 'olli_general_feedback_data_access',
       operation: 'soft_delete',
       createIfMissing: false,
       identityColumns: ['academy_id', 'student_id'],
@@ -1574,6 +1665,8 @@
     server: {
       kind: 'table_rows',
       table: 'fail_feedbacks',
+      transport: 'session_rpc',
+      rpc: 'olli_growth_feedback_data_access',
       operation: 'soft_delete',
       createIfMissing: false,
       identityColumns: ['academy_id', 'student_id'],
@@ -1598,6 +1691,8 @@
     server: {
       kind: 'table_rows',
       table: 'summary_feedbacks',
+      transport: 'session_rpc',
+      rpc: 'olli_summary_feedback_data_access',
       operation: 'soft_delete',
       createIfMissing: false,
       identityColumns: ['academy_id', 'student_id'],
