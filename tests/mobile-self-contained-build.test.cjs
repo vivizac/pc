@@ -34,7 +34,7 @@ test('monorepo Mobile Vercel config has no external PC raw runtime rewrites', ()
   const serialized = JSON.stringify(config);
   assert.equal(serialized.includes('raw.githubusercontent.com/vivizac/pc/'), false);
   assert.equal(Array.isArray(config.headers), true);
-  assert.equal(config.headers.length, 66);
+  assert.equal(config.headers.length, 68);
 });
 
 test('staging copies exactly the canonical common bytes and never needs a tracked duplicate', () => {
