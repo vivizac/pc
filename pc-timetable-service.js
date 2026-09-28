@@ -226,9 +226,8 @@
       console.warn('시간표 결석 상태 조회 실패:', error);
       return [];
     });
-    const [data, classLayoutContext, kinderLayout, calendarDays, teacherContext, memoContext, teacherOverrideContext, pickupDropoffContext] = await Promise.all([
+    const [data, kinderLayout, calendarDays, teacherContext, memoContext, teacherOverrideContext, pickupDropoffContext] = await Promise.all([
       rpc('olli_schedule_week', contextPayload({ p_week_start: weekStart })),
-      rpc('olli_schedule_class_splits_range', contextPayload({ p_start_date: start, p_end_date: end })),
       rpc('olli_schedule_kinder_class_layouts', contextPayload()),
       loadCalendarRange(start, end),
       rpc('olli_schedule_class_teacher_context', contextPayload()),
@@ -240,9 +239,6 @@
       })
     ]);
     assertCurrentContext();
-    data.class_splits = Array.isArray(classLayoutContext && classLayoutContext.splits)
-      ? classLayoutContext.splits
-      : (Array.isArray(data.class_splits) ? data.class_splits : []);
     data.kinder_class_merges = Array.isArray(kinderLayout && kinderLayout.merged_slots)
       ? kinderLayout.merged_slots
       : [];
@@ -409,20 +405,15 @@
     });
   }
 
-  async function splitClass(weekday, timeSlot, effectiveDate) {
-    return rpc('olli_schedule_split_class', contextPayload({
-      p_weekday: Number(weekday),
-      p_time_slot: Number(timeSlot),
-      p_effective_date: clean(effectiveDate)
-    }));
+  async function splitClass(weekday, timeSlot) {
+    return executeScheduleAction('split_class', {
+      weekday: Number(weekday),
+      time_slot: Number(timeSlot)
+    });
   }
 
-  async function mergeClass(weekday, timeSlot, effectiveDate) {
-    return rpc('olli_schedule_merge_class', contextPayload({
-      p_weekday: Number(weekday),
-      p_time_slot: Number(timeSlot),
-      p_effective_date: clean(effectiveDate)
-    }));
+  async function mergeClass(weekday, timeSlot) {
+    return executeScheduleAction('merge_class', { weekday: Number(weekday), time_slot: Number(timeSlot) });
   }
 
   async function splitKinderClass(weekday, timeSlot) {
