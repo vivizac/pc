@@ -1,0 +1,4956 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>올리</title>
+<meta content="transparent" name="theme-color"/>
+<meta content="올리" name="application-name"/>
+<link href="icon.png" rel="icon" type="image/png"/>
+<link href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="olli-base.css">
+<link rel="stylesheet" href="elementary-analysis-ui.css">
+<link rel="stylesheet" href="olli-common-components.css">
+<link rel="stylesheet" href="observation-editor.css">
+<link rel="stylesheet" href="olli-responsive.css">
+<!-- v40_63: v40_56 기준, 성장페이지 팝업 버튼 기능 안정화 / alert 없음 -->
+
+<style>
+.olliStartPageChoiceGrid{display:flex;flex-direction:column;gap:10px;margin-top:8px;}
+.olliStartPageChoiceBtn{width:100%;min-height:54px;border:none;border-radius:18px;background:#f3f3f3;color:#111;font-family:inherit;font-size:calc(15px * var(--olli-text-scale));font-weight:700;letter-spacing:-.03em;display:flex;align-items:center;justify-content:space-between;padding:0 16px;cursor:pointer;}
+.olliStartPageChoiceBtn::after{content:'→';font-weight:700;color:#999;}
+.olliStartPageChoiceBtn.active{background:#111;color:#fff;}
+.olliStartPageChoiceBtn.active::after{color:#fff;}
+.olliStartPageGuide{margin-top:14px;font-size:calc(12px * var(--olli-text-scale));line-height:1.5;color:#999;text-align:center;letter-spacing:-.02em;}
+.settingsStartPageOption{width:100%;min-height:50px;border:none;border-radius:16px;background:#f3f3f3;color:#111;font-family:inherit;font-size:calc(14px * var(--olli-text-scale));font-weight:700;letter-spacing:-.03em;display:flex;align-items:center;justify-content:space-between;padding:0 14px;margin-bottom:8px;cursor:pointer;}
+.settingsStartPageOption.active{background:#111;color:#fff;}
+.settingsStartPageOption .check{font-size:calc(14px * var(--olli-text-scale));color:#fff;}
+</style>
+<style id="olliBootLoadingStyle">
+.olliBootScreen {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 0.72s ease, visibility 0s linear 0s;
+  -webkit-font-smoothing: antialiased;
+}
+.olliBootScreen.hide {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.72s ease, visibility 0s linear 0.72s;
+}
+.olliBootLogo {
+  font-family: 'Montserrat', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: calc(17px * var(--olli-text-scale));
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  color: #111111;
+  line-height: 1;
+  opacity: 0;
+  transform: translateY(2px);
+  animation: olliBootLogoFadeIn 0.9s ease forwards;
+  will-change: opacity, transform;
+}
+@keyframes olliBootLogoFadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>
+<style id="olliAcademyManagementConsultationStyle">
+/* 학원 관리 대시보드 + 상담 개월 설정 */
+#recordRoomScreen.record-academy-management-mode .recordModeLabelRow,
+#recordRoomScreen.record-academy-management-mode .recordRoomScreenFloatingBar {
+  display: none;
+}
+#recordAcademyManageBtn.active,
+#recordAttendanceDashboardBtn.active {
+  background: #111;
+  color: #fff;
+}
+.recordAcademyDashboard {
+  display: none;
+  padding: 6px 10px 120px;
+}
+.recordAcademyDashboard.show {
+  display: block;
+}
+.recordAcademyDashboardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 2px 0 14px;
+}
+.recordAcademyDashboardTitle {
+  font-size: calc(22px * var(--olli-text-scale));
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #111;
+  line-height: 1.1;
+}
+.recordAcademyStatGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0 14px;
+}
+.recordAcademyStatCard {
+  min-height: 106px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 22px;
+  padding: 15px 14px;
+  display: block;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.045);
+}
+.recordAcademyStatLabel {
+  font-size: calc(12px * var(--olli-text-scale));
+  color: #8f8f8f;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  transform: translateX(4px);
+}
+.recordAcademyStatBody {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+.recordAcademyStatValue {
+  font-size: calc(42px * var(--olli-text-scale));
+  font-weight: 400;
+  line-height: 0.95;
+  color: #111;
+  letter-spacing: -0.055em;
+  flex: 0 0 auto;
+  transform: translateX(4px);
+}
+.recordAcademyStatSub {
+  margin-top: 0;
+  margin-left: auto;
+  width: 72px;
+  flex: 0 0 72px;
+  font-size: calc(11px * var(--olli-text-scale));
+  color: #9b9b9b;
+  line-height: 1.32;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  text-align: left;
+}
+.recordAcademyStatRight {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 60px;
+  justify-content: flex-end;
+}
+.recordAcademyStatRight.split {
+  align-items: center;
+  gap: 7px;
+}
+.recordAcademyDelta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 800;
+  line-height: 1;
+  color: #5a63f0;
+}
+.recordAcademyDelta.up { color: #ff5c65; }
+.recordAcademyDelta.flat { color: #b0b0b0; }
+.recordAcademyMiniBars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 34px;
+}
+.recordAcademyMiniBar {
+  width: 11px;
+  border-radius: 8px;
+  background: #e5e5e5;
+  display: block;
+}
+.recordAcademyMiniBar.emphasis {
+  background: #5a63f0;
+}
+.recordAcademyDelta.up + .recordAcademyMiniBars .recordAcademyMiniBar.emphasis {
+  background: #ff6b74;
+}
+.recordAcademySplitLegend {
+  display: grid;
+  gap: 4px;
+  font-size: calc(10px * var(--olli-text-scale));
+  font-weight: 800;
+  color: #8f8f8f;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-align: right;
+}
+.recordAcademyPanel {
+  border-radius: 24px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  padding: 16px 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.04);
+}
+.recordAcademyConsultSection {
+  margin-bottom: 12px;
+}
+.recordAcademyPanelTitle {
+  font-size: calc(15px * var(--olli-text-scale));
+  font-weight: 750;
+  color: #111;
+  letter-spacing: -0.04em;
+  margin-bottom: 10px;
+}
+.recordAcademyList {
+  display: grid;
+  gap: 7px;
+}
+.recordAcademyListItem {
+  min-height: 38px;
+  border-radius: 14px;
+  background: #f8f8f8;
+  padding: 9px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.recordAcademyListName {
+  min-width: 0;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 400;
+  color: #111;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recordAcademyListMeta {
+  flex: 0 0 auto;
+  font-size: calc(11px * var(--olli-text-scale));
+  font-weight: 500;
+  color: #909090;
+  white-space: nowrap;
+}
+.recordAcademyChipRow {
+  flex: 0 1 auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.recordAcademyInfoChip {
+  min-height: 23px;
+  border-radius: 999px;
+  background: #f2f2f2;
+  color: #777;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10.5px * var(--olli-text-scale));
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+.recordAcademyInfoChip.recordAcademyRuleChip {
+  background: #fff;
+  color: #8e8e93;
+  font-weight: 400;
+}
+.recordAcademyConsultListItem {
+  align-items: center;
+}
+.recordAcademyConsultStudentMain {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+}
+.recordAcademyConsultStudentMain .recordAcademyChipRow {
+  justify-content: flex-start;
+}
+.recordAcademyConsultFeedbackBtn {
+  flex: 0 0 auto;
+  height: 27px;
+  border: 1px solid rgba(10,132,255,0.18);
+  border-radius: 999px;
+  background: #fff;
+  color: #0A84FF;
+  padding: 0 9px;
+  font-size: calc(10.5px * var(--olli-text-scale));
+  font-weight: 800;
+  font-family: inherit;
+  letter-spacing: -0.04em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.recordAcademyConsultFeedbackBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.recordAcademyConsultStatusChip {
+  flex: 0 0 auto;
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10.5px * var(--olli-text-scale));
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+  border: 1px solid rgba(0,0,0,0.06);
+  background: #f7f7f7;
+  color: #777;
+}
+.recordAcademyConsultStatusChip.ready {
+  border-color: #0A84FF;
+  border-width: 1.5px;
+  background: #fff;
+  color: #0A84FF;
+}
+.recordAcademyConsultStatusChip.generating,
+.recordAcademyConsultStatusChip.checking {
+  border-color: rgba(210,176,90,0.22);
+  background: #fffdf6;
+  color: #b58a19;
+}
+.recordAcademyConsultStatusChip.insufficient {
+  border-color: rgba(142,142,147,0.18);
+  background: #fafafa;
+  color: #8e8e93;
+}
+.recordAcademyConsultStatusChip.error {
+  border-color: rgba(255,59,48,0.16);
+  background: #fff8f7;
+  color: #d6483a;
+}
+.recordAcademyConsultActions {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.recordAcademyConsultCompleteBtn {
+  flex: 0 0 auto;
+  min-height: 24px;
+  border: 1px solid rgba(142,142,147,0.18);
+  border-radius: 999px;
+  background: #fafafa;
+  color: #8e8e93;
+  padding: 0 9px;
+  font-family: inherit;
+  font-size: calc(10.5px * var(--olli-text-scale));
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.recordAcademyConsultCompleteBtn.active {
+  border-color: #111;
+  background: #111;
+  color: #fff;
+}
+.recordAcademyConsultCompleteBtn:focus,
+.recordAcademyConsultCompleteBtn:focus-visible {
+  outline: none;
+}
+.recordAcademyConsultListItem {
+  cursor: pointer;
+}
+.recordAcademyConsultPreview {
+  margin: -2px 0 6px;
+  padding: 12px 13px;
+  border-radius: 14px;
+  background: #fafafa;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+.recordAcademyConsultPreviewTitle {
+  margin-bottom: 7px;
+  color: #333;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+.recordAcademyConsultPreviewText {
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: #555;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.65;
+  letter-spacing: -0.035em;
+}
+.recordAcademyConsultPreviewText.muted {
+  color: #9a9a9a;
+  font-weight: 700;
+}
+.recordAcademyMiniBar.elementary {
+  background: #0A84FF;
+}
+.recordAcademyMiniBar.kinder {
+  background: #ff6b74;
+}
+.recordAcademyRatioBar {
+  width: 100%;
+  height: 7px;
+  margin-top: 9px;
+  border-radius: 999px;
+  background: #eeeeee;
+  overflow: hidden;
+  display: flex;
+}
+.recordAcademyRatioSegment {
+  height: 100%;
+  display: block;
+}
+.recordAcademyRatioSegment.elementary {
+  background: #0A84FF;
+}
+.recordAcademyRatioSegment.kinder {
+  background: #ff6b74;
+}
+.recordAcademyConsultGroups {
+  display: grid;
+  gap: 10px;
+}
+.recordAcademyConsultGroup {
+  display: grid;
+  gap: 7px;
+}
+.recordAcademyConsultGroup + .recordAcademyConsultGroup {
+  padding-top: 10px;
+}
+.recordAcademyConsultGroupTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px 2px 1px;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 400;
+  color: #777;
+  letter-spacing: -0.03em;
+}
+.recordAcademyConsultGroupCount {
+  flex: 0 0 auto;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f1f1f1;
+  color: #777;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10.5px * var(--olli-text-scale));
+  font-weight: 800;
+}
+.recordAcademyConsultGroupEmpty {
+  min-height: 36px;
+  border-radius: 14px;
+  background: #fafafa;
+  color: #aaa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(11px * var(--olli-text-scale));
+  font-weight: 700;
+}
+.settingsMonthGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+.settingsMonthOption {
+  min-height: 42px;
+  border: 0;
+  border-radius: 14px;
+  background: #f1f1f1;
+  color: #555;
+  font-family: inherit;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 800;
+  cursor: pointer;
+}
+.settingsMonthOption.active {
+  background: #111;
+  color: #fff;
+}
+.settingsGroupFeedbackBlock {
+  display: grid;
+  gap: 10px;
+  padding: 14px 0 16px;
+}
+.settingsGroupFeedbackBlock + .settingsGroupFeedbackBlock {
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+.settingsGroupFeedbackHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.settingsGroupFeedbackTabs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.settingsGroupFeedbackTab {
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-radius: 14px;
+  background: #f1f1f1;
+  color: #555;
+  font-family: inherit;
+  font-size: calc(15px * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.settingsGroupFeedbackTab.active {
+  background: #111;
+  color: #fff;
+}
+.settingsGroupFeedbackTitle {
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 800;
+  color: #111;
+  letter-spacing: -0.03em;
+}
+.settingsGroupFeedbackMonths {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+.settingsGroupFeedbackMonth {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border: 0;
+  border-radius: 14px;
+  background: #f1f1f1;
+  color: #555;
+  font-family: inherit;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.settingsGroupFeedbackMonth.active {
+  background: #111;
+  color: #fff;
+}
+
+/* integrated cleanup: olliAcademyManagementFinalTweakStyle */
+#recordRoomScreen.record-academy-management-mode .recordRoomScreenFloatingBar {
+  display: none;
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style id="olliTeacherInviteApprovalMergeStyle">
+.settingsInviteActionGridOutside {
+  margin: 10px 0 14px;
+}
+.settingsTeacherInviteApprovalMount,
+.settingsTeacherInviteApprovalWrap {
+  display: grid;
+  gap: 10px;
+}
+.settingsTeacherInviteSectionTitle,
+.settingsTeacherInviteApprovalTitle {
+  font-size: calc(17px * var(--olli-text-scale));
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.045em;
+  margin-bottom: 9px;
+}
+.settingsTeacherInviteApprovalTitle {
+  padding: 0;
+}
+.settingsActionGrid.single {
+  grid-template-columns: 1fr;
+}
+</style>
+<script id="olliPwaManifestScript">
+(function(){
+  try {
+    if (document.querySelector('link[rel="manifest"]')) return;
+    var cleanPath = String(window.location.pathname || '/');
+    var scopePath = cleanPath.replace(/[^\/]*$/, '');
+    if (!scopePath) scopePath = '/';
+    var manifest = {
+      name: '올리',
+      short_name: '올리',
+      start_url: cleanPath,
+      scope: scopePath,
+      display: 'standalone',
+      orientation: 'portrait',
+      background_color: '#ffffff',
+      theme_color: '#ffffff',
+      icons: [
+        { src: 'icon.png', sizes: '192x192', type: 'image/png' },
+        { src: 'icon.png', sizes: '512x512', type: 'image/png' }
+      ]
+    };
+    var link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifest));
+    document.head.appendChild(link);
+  } catch (err) {
+    console.warn('PWA manifest setup skipped:', err);
+  }
+})();
+</script>
+<style id="olliBackIconAndConsultStatusTweakStyle">
+/* 2026-06-26: 학원관리 상담 상태 캡슐 크기 통일 */
+.recordAcademyConsultStatusChip {
+  min-height: 24px;
+  border: none;
+  padding: 0 9px;
+  font-size: calc(10.5px * var(--olli-text-scale));
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+</style>
+
+<style id="olliStudentPickerTextMatchModePopupStyle">
+/* 2026-06-27: 관찰노트 모드 선택 팝업의 제목/가이드 텍스트 기준을 학생목록에 적용 */
+#memoStudentSelectPopup .memoStudentSelectName,
+#kcfStudentManagePopup .memoStudentSelectName {
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 400;
+  line-height: 1.16;
+  letter-spacing: -0.03em;
+}
+#memoStudentSelectPopup .memoStudentSelectMeta,
+#kcfStudentManagePopup .memoStudentSelectMeta {
+  font-size: calc(12.5px * var(--olli-text-scale));
+  font-weight: 350;
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+}
+</style>
+
+<link rel="stylesheet" href="olli-login.css">
+<style id="olliLookupResultListPatch">
+.olliLookupResultList{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
+.olliLookupResultBtn{width:100%;border:0;border-radius:18px;background:#f4f4f2;padding:14px 16px;text-align:left;display:flex;flex-direction:column;gap:4px;font:inherit;color:#111;}
+.olliLookupResultName{font-weight:650;font-size:15px;line-height:1.35;}
+.olliLookupResultCode{font-size:12.5px;color:#666;line-height:1.35;}
+</style>
+<style id="olli-record-attendance-tab-style">
+/* 2026-06-30: 출석부 안 출석 체크/월별 출석부 */
+.recordAttendanceSummaryWrap {
+  padding: 2px 10px 36px;
+}
+.recordAttendanceSummaryHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+.recordAttendanceSummaryTitle {
+  font-size: calc(22px * var(--olli-text-scale));
+  font-weight: 780;
+  letter-spacing: -0.055em;
+  color: #111;
+  line-height: 1.15;
+}
+.recordAttendanceSummarySub {
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 600;
+  color: #9a9a9a;
+  line-height: 1.35;
+  text-align: right;
+  white-space: nowrap;
+}
+.recordAttendanceGuideCard {
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.05);
+  padding: 12px 13px;
+  font-size: calc(12px * var(--olli-text-scale));
+  color: #777;
+  line-height: 1.5;
+  letter-spacing: -0.025em;
+  margin-bottom: 10px;
+}
+.recordAttendanceColorDot {
+  width: 9px;
+  height: 9px;
+  min-width: 9px;
+  border-radius: 999px;
+  display: inline-flex;
+  margin: 0 4px 0 8px;
+  vertical-align: 0;
+}
+.recordAttendanceColorDot:first-child { margin-left: 0; }
+.recordAttendanceColorDot.blue { background: #0A84FF; }
+.recordAttendanceColorDot.yellow { background: #FFD88A; }
+.recordAttendanceSummaryTableWrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(0,0,0,.045), 0 2px 8px rgba(0,0,0,.02);
+}
+.recordAttendanceSummaryTable {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+.recordAttendanceSummaryTable th,
+.recordAttendanceSummaryTable td {
+  border-bottom: 1px solid #f0f0ee;
+  padding: 11px 10px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.45;
+  color: #111;
+  text-align: left;
+  vertical-align: top;
+  word-break: keep-all;
+}
+.recordAttendanceSummaryTable th {
+  background: #fafaf8;
+  color: #777;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 780;
+  white-space: nowrap;
+}
+.recordAttendanceSummaryTable tr:last-child td { border-bottom: none; }
+.recordAttendanceSummaryTable .nameCol { width: 92px; font-weight: 760; }
+.recordAttendanceSummaryTable .dateCol { width: 190px; color: #333; }
+.recordAttendanceSummaryTable .remainCol { width: 78px; text-align: center; font-weight: 780; color: #0A84FF; }
+.recordAttendanceSummaryEmpty {
+  padding: 46px 12px;
+  text-align: center;
+  color: #999;
+  font-size: calc(14px * var(--olli-text-scale));
+  line-height: 1.55;
+}
+@media (max-width: 430px) {
+  .recordAttendanceSummaryWrap { padding-left: 6px; padding-right: 6px; }
+  .recordAttendanceSummaryHead { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .recordAttendanceSummarySub { text-align: left; }
+}
+
+/* integrated cleanup: olliRecordAttendanceTabRemovedStyle */
+/* 2026-07-03: 출석부 페이지의 초등부/유치부 옆 월별 출석부 요약 탭 삭제 */
+#recordAttendanceToggle { display: none; }
+.recordAttendanceSummaryWrap { display: none; }
+</style>
+<style id="olliStudentScheduleTimePatchStyle">
+.infoTimeToggleRow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;width:100%;margin-top:6px;}
+.infoTimeBtn{width:100%;min-width:0;height:38px;border:none;border-radius:999px;background:#f3f3f3;color:#444;padding:0;font-family:inherit;font-size:calc(13px * var(--olli-text-scale));font-weight:600;cursor:pointer;}
+.infoTimeBtn.active{background:#0A84FF;color:#fff;}
+.studentScheduleTimeField{margin-bottom:13px;}
+.studentBulkImportGuide{font-size:calc(12px * var(--olli-text-scale));line-height:1.45;color:#8d8d8d;background:#f7f7f5;border-radius:16px;padding:10px 11px;margin:8px 0 10px;letter-spacing:-.025em;}
+@media(max-width:430px){.infoTimeToggleRow{grid-template-columns:repeat(3,minmax(0,1fr));}}
+</style>
+<style id="olliStudentBulkApplyLoadingStyle">
+/* 학생정보 일괄 수정 반영 중 안내 팝업 */
+.studentBulkApplyOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 180000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: rgba(0,0,0,.10);
+  backdrop-filter: blur(10px) saturate(1.04);
+  -webkit-backdrop-filter: blur(10px) saturate(1.04);
+  pointer-events: auto;
+}
+.studentBulkApplyOverlay.show {
+  display: flex;
+}
+.studentBulkApplyCard {
+  width: min(320px, calc(100vw - 48px));
+  border-radius: 28px;
+  background: rgba(255,255,255,.94);
+  border: 1px solid rgba(255,255,255,.96);
+  box-shadow: 0 24px 68px rgba(0,0,0,.16), 0 8px 20px rgba(0,0,0,.06);
+  padding: 24px 20px 21px;
+  text-align: center;
+}
+.studentBulkApplyIcon {
+  width: 46px;
+  height: 46px;
+  border-radius: 18px;
+  background: #eff6ff;
+  color: #0A84FF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 13px;
+}
+.studentBulkApplyIcon svg {
+  width: 25px;
+  height: 25px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.studentBulkApplyTitle {
+  font-size: calc(17px * var(--olli-text-scale));
+  font-weight: 760;
+  color: #111;
+  letter-spacing: -0.045em;
+  line-height: 1.35;
+}
+.studentBulkApplyText {
+  margin-top: 7px;
+  font-size: calc(13px * var(--olli-text-scale));
+  color: #777;
+  line-height: 1.48;
+  letter-spacing: -0.03em;
+}
+.studentBulkApplyDots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+  vertical-align: 1px;
+}
+.studentBulkApplyDots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #111;
+  opacity: .22;
+  animation: studentBulkApplyDotPulse 1.05s infinite ease-in-out;
+}
+.studentBulkApplyDots span:nth-child(2) { animation-delay: .16s; }
+.studentBulkApplyDots span:nth-child(3) { animation-delay: .32s; }
+@keyframes studentBulkApplyDotPulse {
+  0%, 100% { opacity: .22; transform: translateY(0); }
+  50% { opacity: .78; transform: translateY(-3px); }
+}
+</style>
+<style id="olliRecordAttendanceGuideButtonStyle">
+/* 2026-07-03: 초등부/유치부 전환줄 오른쪽 출결 가이드 버튼 */
+#recordRoomScreen .recordModeLabelRow {
+  align-items: center;
+}
+.recordAttendanceGuideBtn {
+  flex: 0 0 auto;
+  min-width: 58px;
+  height: 34px;
+  border: none;
+  border-radius: 999px;
+  background: #f1f1f1;
+  color: #777;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.recordAttendanceGuideBtn.active {
+  background: #111;
+  color: #fff;
+}
+.recordAttendanceGuideBtn:focus,
+.recordAttendanceGuideBtn:focus-visible,
+.recordAttendanceGuideBtn:active {
+  outline: none;
+}
+.recordAttendanceGuideMeta {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recordAttendanceGuideLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+.recordAttendanceMetric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  min-width: 0;
+  color: #8f8f8f;
+  white-space: nowrap;
+  font-size: calc(12.5px * var(--olli-text-scale));
+  line-height: 1.15;
+}
+.recordAttendanceMetric b {
+  color: #111;
+  font-weight: 800;
+}
+@media (max-width: 430px) {
+  .recordAttendanceGuideBtn {
+    min-width: 52px;
+    height: 32px;
+    padding: 0 12px;
+    font-size: calc(12.5px * var(--olli-text-scale));
+  }
+  .recordAttendanceGuideLine {
+    gap: 5px;
+  }
+  .recordAttendanceMetric {
+    font-size: calc(12px * var(--olli-text-scale));
+  }
+}
+
+/* integrated cleanup: olliAttendanceGuideButtonLiveFix */
+/* 2026-07-03 실제 화면 적용 보정: 출결 버튼 위치/색상/연도 텍스트 */
+#recordRoomScreen .recordModeLabelRow {
+  padding-right: 0;
+}
+#recordAttendanceGuideToggle.recordAttendanceGuideBtn {
+  margin-left: auto;
+  margin-right: 0;
+  background: #f7f7f7;
+  color: #111;
+  box-shadow: none;
+}
+#recordAttendanceGuideToggle.recordAttendanceGuideBtn.active {
+  background: #0A84FF;
+  color: #fff;
+}
+#recordAttendanceGuideToggle.recordAttendanceGuideBtn:active,
+#recordAttendanceGuideToggle.recordAttendanceGuideBtn.pillPressed {
+  background: #eeeeee;
+}
+#recordAttendanceGuideToggle.recordAttendanceGuideBtn.active:active,
+#recordAttendanceGuideToggle.recordAttendanceGuideBtn.active.pillPressed {
+  background: #0A84FF;
+}
+.recordAttendanceYearMetric,
+.recordAttendanceYearMetric b {
+  color: #8f8f8f;
+}
+.recordAttendanceYearMetric b {
+  font-weight: 700;
+}
+
+/* integrated cleanup: olliAttendanceGuideButtonDynamicPositionFix */
+/* 2026-07-04: 출결 버튼을 1분 피드백 버튼의 실제 오른쪽 끝선에 동적 정렬 */
+#recordRoomScreen .recordModeLabelRow {
+  position: relative;
+  padding-right: 0;
+}
+#recordAttendanceGuideToggle.recordAttendanceGuideBtn {
+  position: absolute;
+  top: 50%;
+  right: auto;
+  margin: 0;
+  transform: translateY(-50%);
+  background: #f7f7f7;
+  color: #111;
+  box-shadow: none;
+  font-weight: 500;
+}
+#recordAttendanceGuideToggle.recordAttendanceGuideBtn.active {
+  background: #0A84FF;
+  color: #fff;
+  font-weight: 700;
+}
+#recordAttendanceGuideToggle.recordAttendanceGuideBtn:active,
+#recordAttendanceGuideToggle.recordAttendanceGuideBtn.pillPressed {
+  background: #eeeeee;
+}
+#recordAttendanceGuideToggle.recordAttendanceGuideBtn.active:active,
+#recordAttendanceGuideToggle.recordAttendanceGuideBtn.active.pillPressed {
+  background: #0A84FF;
+}
+</style>
+<style id="olliStudentPopupInlineRowsFinalStyle">
+/* 2026-07-05: 학생등록/학생정보 입력줄 + 바텀시트 구조 정리 */
+:root {
+  --olli-student-sheet-top: calc(env(safe-area-inset-top, 0px) + 182px);
+}
+
+#studentModal {
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(17,24,39,.24);
+  backdrop-filter: blur(8px) saturate(1.02);
+  -webkit-backdrop-filter: blur(8px) saturate(1.02);
+}
+#elementaryInfoModal,
+#kinderInfoModal {
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background: rgba(0,0,0,.20);
+  backdrop-filter: blur(8px) saturate(1.04);
+  -webkit-backdrop-filter: blur(8px) saturate(1.04);
+}
+
+#studentModal .modalCard {
+  position: relative;
+  width: min(760px, calc(100vw - 48px));
+  max-width: 760px;
+  height: auto;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #e1e6eb;
+  border-radius: 20px;
+  padding: 24px 26px 0;
+  background: #fff;
+  box-shadow: 0 24px 68px rgba(22,34,51,.18), 0 6px 18px rgba(22,34,51,.06);
+  margin: 0;
+  overscroll-behavior: contain;
+}
+#elementaryInfoModal .modalCard,
+#kinderInfoModal .modalCard {
+  width: 100%;
+  max-width: 860px;
+  height: calc(100vh - var(--olli-student-sheet-top));
+  height: calc(100dvh - var(--olli-student-sheet-top));
+  max-height: calc(100vh - var(--olli-student-sheet-top));
+  max-height: calc(100dvh - var(--olli-student-sheet-top));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 28px 28px 0 0;
+  padding: 14px 18px calc(20px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -18px 44px rgba(0,0,0,.13), 0 -4px 14px rgba(0,0,0,.06);
+  margin: 0;
+  overscroll-behavior: contain;
+}
+
+#elementaryInfoModal .modalCard::before,
+#kinderInfoModal .modalCard::before {
+  content: '';
+  display: block;
+  width: 42px;
+  height: 5px;
+  border-radius: 999px;
+  background: #e5e5e5;
+  margin: 0 auto 16px;
+}
+
+#studentModal[style*="flex"] .modalCard {
+  animation: olliStudentPcModalIn .18s cubic-bezier(.2,.8,.2,1) both;
+}
+#elementaryInfoModal[style*="flex"] .modalCard,
+#kinderInfoModal[style*="flex"] .modalCard {
+  animation: olliStudentBottomSheetIn .24s cubic-bezier(.22,.61,.36,1) both;
+}
+@keyframes olliStudentPcModalIn {
+  from { transform: translateY(10px) scale(.985); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes olliStudentBottomSheetIn {
+  from { transform: translateY(100%); opacity: .98; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+#studentModal .modalTitle,
+#elementaryInfoModal .modalTitle,
+#kinderInfoModal .modalTitle {
+  margin-bottom: 18px;
+}
+#studentModal .modalTitle {
+  position: relative;
+  min-height: 46px;
+  margin: 0 46px 20px 0;
+  padding: 1px 0 0 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: #171b21;
+  font-size: calc(20px * var(--olli-text-scale));
+  font-weight: 820;
+  letter-spacing: -.045em;
+}
+#studentModal .modalTitle::before {
+  content: '+';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0A84FF;
+  background: #edf6ff;
+  font-size: 24px;
+  font-weight: 500;
+}
+#studentModal .modalTitle::after {
+  content: '새로운 학생의 기본 정보를 등록합니다.';
+  margin-top: 4px;
+  color: #949ba5;
+  font-size: calc(11px * var(--olli-text-scale));
+  font-weight: 620;
+  letter-spacing: -.02em;
+}
+#studentModal .pcStudentModalClose {
+  position: absolute;
+  z-index: 4;
+  top: 22px;
+  right: 24px;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #eceff2;
+  border-radius: 12px;
+  color: #737b86;
+  background: #f6f7f8;
+  font: 500 19px/1 'Pretendard', sans-serif;
+  cursor: pointer;
+}
+#studentModal .pcStudentModalClose:hover { color:#343a43; background:#eef1f4; }
+#studentModal .pcStudentModalSectionTitle {
+  margin: 0 0 11px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #eef1f4;
+  color: #2d333b;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 800;
+}
+#studentModal .modalInput { height:44px; border-color:#dfe4e9; border-radius:12px; background:#fff; text-align:left; }
+#studentModal .modalInput:focus { border-color:#80c2fb; box-shadow:0 0 0 3px rgba(10,132,255,.09); }
+#studentModal .modalBtnCancel,
+#studentModal .modalBtnConfirm { height:48px; padding:0 14px; border-radius:12px; font-size:calc(13px * var(--olli-text-scale)); font-weight:760; }
+#studentModal .modalBtnCancel { border:0; color:#5f6772; background:#f0f2f4; }
+#studentModal .modalBtnConfirm { border:0; color:#fff; background:#0A84FF; }
+#studentModal .modalBtnConfirm:hover { background:#0879eb; }
+
+
+#studentModal .modalActions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: 22px -26px 0;
+  padding: 16px 26px 20px;
+  border-top: 1px solid #eceff2;
+  background: rgba(255,255,255,.98);
+  box-shadow: 0 -10px 22px rgba(255,255,255,.94);
+}
+#elementaryInfoModal .modalActions,
+#kinderInfoModal .modalActions {
+  position: sticky;
+  bottom: calc(-20px - env(safe-area-inset-bottom, 0px));
+  z-index: 2;
+  margin: 18px -18px calc(-20px - env(safe-area-inset-bottom, 0px));
+  padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: rgba(255,255,255,.98);
+  box-shadow: 0 -14px 22px rgba(255,255,255,.94);
+}
+
+#studentModal .kinderInfoModalField,
+#elementaryInfoModal .kinderInfoModalField,
+#kinderInfoModal .kinderInfoModalField {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+#studentModal .modalLabel,
+#elementaryInfoModal .modalLabel,
+#kinderInfoModal .modalLabel {
+  margin-left: 2px;
+  white-space: nowrap;
+}
+
+#studentModal .modalInput,
+#elementaryInfoModal .modalInput,
+#kinderInfoModal .modalInput {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding-left: 10px;
+  padding-right: 10px;
+  text-align: center;
+}
+
+.studentPopupTopRow,
+.studentPopupDateTeacherRow,
+.studentPopupNameTeacherRow,
+.studentPopupSchoolRow,
+.studentPopupKinderBasicRow,
+.studentPopupDateOnlyRow {
+  display: grid;
+  gap: 6px;
+  align-items: end;
+  width: 100%;
+  margin-bottom: 13px;
+}
+
+.studentPopupAddTopRow,
+.studentPopupElementaryInfoTopRow {
+  grid-template-columns: minmax(76px, 1.08fr) minmax(0, 2.72fr);
+}
+
+.studentPopupKinderInfoTopRow {
+  grid-template-columns: minmax(78px, 1.02fr) minmax(0, 1.18fr) minmax(66px, .86fr);
+}
+
+.studentPopupInlineGroup {
+  display: grid;
+  gap: 6px;
+  align-items: end;
+  min-width: 0;
+}
+
+.studentPopupElementaryInfoGroup {
+  grid-template-columns: minmax(70px, 1.42fr) minmax(46px, .72fr) minmax(46px, .72fr);
+}
+
+.studentPopupKinderInfoGroup {
+  grid-template-columns: minmax(0, 1.15fr) minmax(66px, .9fr);
+}
+
+.studentPopupDateTeacherRow {
+  grid-template-columns: minmax(60px, .82fr) minmax(46px, .58fr) minmax(46px, .58fr) minmax(96px, 1.26fr);
+}
+
+.studentPopupNameTeacherRow {
+  grid-template-columns: minmax(76px, 1.15fr) minmax(62px, .95fr) minmax(62px, .95fr);
+}
+.studentPopupPersonalityField .infoTeacherToggleRow,
+.studentPopupTeacherField .infoTeacherToggleRow {
+  margin-top: 0;
+}
+#studentModal #studentKinderBasicField {
+  margin-top: 0;
+}
+
+.studentPopupSchoolRow,
+.studentPopupKinderBasicRow,
+.studentPopupDateOnlyRow {
+  grid-template-columns: minmax(76px, 1.15fr) minmax(62px, .95fr) minmax(62px, .95fr);
+}
+
+.kinderTransferBanner {
+  width: calc(100% - 20px);
+  margin: 2px 10px 12px;
+  border: none;
+  border-radius: 18px;
+  background: #f2f7ff;
+  color: #111;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.kinderTransferBannerText { min-width:0; }
+.kinderTransferBannerTitle { font-size: calc(14px * var(--olli-text-scale)); font-weight: 700; letter-spacing: -0.03em; }
+.kinderTransferBannerSub { margin-top:3px; font-size: calc(11px * var(--olli-text-scale)); color:#7c8795; }
+.kinderTransferBannerCount {
+  min-width: 38px; height: 30px; padding: 0 10px; border-radius:999px; background:#fff;
+  display:inline-flex; align-items:center; justify-content:center; font-size:calc(12px * var(--olli-text-scale)); font-weight:700; color:#0A84FF;
+}
+.kinderTransferList { display:flex; flex-direction:column; gap:8px; max-height:55vh; overflow-y:auto; }
+.kinderTransferRow { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 2px; border-bottom:1px solid #f0f0f0; }
+.kinderTransferName { font-size:calc(15px * var(--olli-text-scale)); font-weight:650; color:#111; }
+.kinderTransferMeta { margin-top:3px; font-size:calc(11px * var(--olli-text-scale)); color:#999; }
+.kinderTransferMoveBtn { border:none; background:#111; color:#fff; height:36px; padding:0 13px; border-radius:999px; font-family:inherit; font-size:calc(12px * var(--olli-text-scale)); font-weight:650; cursor:pointer; white-space:nowrap; }
+
+.studentPopupDateTeacherRow .infoTeacherToggleRow,
+.studentPopupNameTeacherRow .infoTeacherToggleRow,
+.studentPopupNameTeacherRow .infoToggleRow {
+  margin-top: 0;
+}
+
+.studentPopupDateTeacherRow .infoTeacherSelectBox,
+.studentPopupNameTeacherRow .infoTeacherSelectBox,
+.studentPopupNameTeacherRow .infoToggleBtn {
+  height: 42px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.studentPopupNameTeacherRow .infoToggleRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.studentPopupEmptyCell {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.studentPopupYearField .modalInput,
+.studentPopupMonthField .modalInput,
+.studentPopupDayField .modalInput,
+.studentPopupGradeField .modalInput,
+.studentPopupClassField .modalInput,
+.studentPopupAgeField .modalInput {
+  text-align: center;
+}
+
+#studentModal .infoDayToggleRow,
+#elementaryInfoModal .infoDayToggleRow,
+#kinderInfoModal .infoDayToggleRow {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  margin-top: 6px;
+  margin-bottom: 8px;
+}
+
+#studentModal .infoDayBtn,
+#elementaryInfoModal .infoDayBtn,
+#kinderInfoModal .infoDayBtn {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  border: none;
+  border-radius: 15px;
+  background: #f3f3f3;
+  color: #444;
+  padding: 0;
+  font-family: inherit;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+#studentModal .infoDayBtn.active,
+#elementaryInfoModal .infoDayBtn.active,
+#kinderInfoModal .infoDayBtn.active {
+  background: #111;
+  color: #fff;
+}
+
+#elementaryStudentLessonTimeToggleRow,
+#elementaryLessonTimeToggleRow {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+#studentLessonTimeToggleRow,
+#kinderLessonTimeToggleRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+#studentModal .infoTimeBtn,
+#elementaryInfoModal .infoTimeBtn,
+#kinderInfoModal .infoTimeBtn {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  border-radius: 15px;
+  padding: 0;
+  font-size: calc(13px * var(--olli-text-scale));
+  white-space: nowrap;
+}
+
+#studentModal .studentScheduleTimeField,
+#elementaryInfoModal .studentScheduleTimeField,
+#kinderInfoModal .studentScheduleTimeField {
+  margin-top: 10px;
+  margin-bottom: 13px;
+}
+
+#studentModal #studentElementaryFields,
+#studentModal #kinderExtraFields {
+  margin-top: 0;
+}
+
+@media (max-width: 380px) {
+  #studentModal .modalCard,
+  #elementaryInfoModal .modalCard,
+  #kinderInfoModal .modalCard {
+    height: calc(100vh - var(--olli-student-sheet-top));
+    height: calc(100dvh - var(--olli-student-sheet-top));
+    max-height: calc(100vh - var(--olli-student-sheet-top));
+    max-height: calc(100dvh - var(--olli-student-sheet-top));
+    border-radius: 26px 26px 0 0;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  #studentModal .modalActions,
+  #elementaryInfoModal .modalActions,
+  #kinderInfoModal .modalActions {
+    margin-left: -16px;
+    margin-right: -16px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .studentPopupTopRow,
+  .studentPopupDateTeacherRow,
+  .studentPopupInlineGroup,
+  .studentPopupNameTeacherRow,
+  .studentPopupSchoolRow,
+  .studentPopupKinderBasicRow,
+  .studentPopupDateOnlyRow {
+    gap: 4px;
+  }
+
+  #studentModal .modalInput,
+  #elementaryInfoModal .modalInput,
+  #kinderInfoModal .modalInput,
+  .studentPopupDateTeacherRow .infoTeacherSelectBox,
+  .studentPopupNameTeacherRow .infoTeacherSelectBox,
+  .studentPopupNameTeacherRow .infoToggleBtn {
+    height: 40px;
+    padding-left: 8px;
+    padding-right: 8px;
+    font-size: calc(12.5px * var(--olli-text-scale));
+  }
+
+  #studentModal .modalLabel,
+  #elementaryInfoModal .modalLabel,
+  #kinderInfoModal .modalLabel {
+    font-size: calc(10.5px * var(--olli-text-scale));
+  }
+
+  #studentModal .infoDayToggleRow,
+  #elementaryInfoModal .infoDayToggleRow,
+  #kinderInfoModal .infoDayToggleRow,
+  #elementaryStudentLessonTimeToggleRow,
+  #elementaryLessonTimeToggleRow {
+    gap: 3px;
+  }
+
+  #studentModal .infoDayBtn,
+  #elementaryInfoModal .infoDayBtn,
+  #kinderInfoModal .infoDayBtn,
+  #studentModal .infoTimeBtn,
+  #elementaryInfoModal .infoTimeBtn,
+  #kinderInfoModal .infoTimeBtn {
+    height: 38px;
+    border-radius: 15px;
+    font-size: calc(12px * var(--olli-text-scale));
+  }
+}
+
+
+/* 학생등록/학생정보 세부 입력줄 기준: 기존 보정 블록 흡수 */
+#elementaryInfoModal .studentPopupGradeField > .modalLabel,
+#elementaryInfoModal .studentPopupClassField > .modalLabel,
+#elementaryInfoModal .studentPopupMonthField > .modalLabel,
+#elementaryInfoModal .studentPopupDayField > .modalLabel,
+#kinderInfoModal .studentPopupMonthField > .modalLabel,
+#kinderInfoModal .studentPopupDayField > .modalLabel {
+  display: none;
+}
+
+#studentModal .studentPopupKindergartenField .modalInput,
+#kinderInfoModal .studentPopupKindergartenField .modalInput {
+  padding-left: 9px;
+  padding-right: 9px;
+}
+
+#studentModal .studentPopupAgeField .modalInput,
+#kinderInfoModal .studentPopupAgeField .modalInput {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.infoGrid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.infoTeacherToggleRow {
+  position: relative;
+  margin-top: 6px;
+  z-index: 1;
+}
+.infoTeacherToggleRow:has(.infoTeacherSelect.open) { z-index: 80; }
+.infoMonthEmpty {
+  font-size: calc(12px * var(--olli-text-scale));
+  color: #999;
+  line-height: 1.35;
+  padding: 4px 2px;
+}
+#elementaryInfoModal #elementaryGroupToggleRow,
+#studentModal #elementaryStudentGroupToggleRow {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 7px;
+  width: 100%;
+}
+#elementaryInfoModal #elementaryPersonalityToggleRow,
+#kinderInfoModal #kinderPersonalityToggleRow,
+#studentModal #studentKinderPersonalityToggleRow,
+#studentModal #elementaryStudentPersonalityToggleRow {
+  display: block;
+  width: 100%;
+}
+#elementaryInfoModal #elementaryGroupToggleRow .groupIconChoiceBtn,
+#studentModal #elementaryStudentGroupToggleRow .groupIconChoiceBtn {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  border-radius: 15px;
+  padding: 0;
+}
+.infoTeacherSelect { position: relative; width: 100%; }
+.infoTeacherSelect.open { z-index: 90; }
+.infoTeacherSelectBox {
+  width: 100%;
+  height: 44px;
+  border: 1px solid #dedede;
+  border-radius: 14px;
+  background: #fff;
+  color: #111;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 17px;
+  align-items: center;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 400;
+  line-height: 1;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.infoTeacherSelectBox span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
+  text-align: center;
+}
+.infoTeacherSelectBox.placeholder { color: #aaa; font-weight: 400; }
+.infoTeacherArrow {
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid #222;
+  border-bottom: 2px solid #222;
+  transform: rotate(45deg);
+  justify-self: end;
+  margin-top: -4px;
+}
+.infoTeacherSelect.open .infoTeacherArrow { transform: rotate(-135deg); margin-top: 4px; }
+.infoTeacherDropdown {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 100;
+  border: 1px solid #e5e5e5;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 12px 24px rgba(0,0,0,.12);
+  overflow: hidden;
+  max-height: 168px;
+  overflow-y: auto;
+}
+.infoTeacherSelect.open .infoTeacherDropdown { display: block; }
+.infoTeacherOption {
+  width: 100%;
+  height: 42px;
+  border: 0;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fff;
+  color: #222;
+  text-align: left;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 400;
+  cursor: pointer;
+}
+.infoTeacherOption:last-child { border-bottom: 0; }
+.infoTeacherOption.active { background: #111; color: #fff; }
+.infoTeacherEmpty {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  color: #aaa;
+  font-size: calc(12px * var(--olli-text-scale));
+  box-sizing: border-box;
+}
+
+@media (max-width: 380px) {
+  #kinderInfoModal .studentPopupKinderInfoTopRow {
+    grid-template-columns: minmax(66px, .94fr) minmax(0, 1.08fr) minmax(64px, .9fr);
+  }
+  #studentModal .studentPopupKinderInfoGroup {
+    grid-template-columns: minmax(0, 1.05fr) minmax(64px, .92fr);
+  }
+}
+</style>
+<link rel="stylesheet" href="pc-shell.css">
+<link rel="stylesheet" href="pc-attendance.css">
+<link rel="stylesheet" href="pc-record-editor.css">
+<link rel="stylesheet" href="pc-student-management.css">
+<link rel="stylesheet" href="pc-trash.css">
+<link rel="stylesheet" href="consultation-survey.css">
+<link rel="stylesheet" href="pc-team-talk.css?v=20260923-olli-reply-button-1">
+<link rel="stylesheet" href="pc-team-talk-material-orders.css?v=20260921-neutral-selection-1">
+<link rel="stylesheet" href="olli-settings-team-talk-common.css?v=20260921-1">
+</head>
+<body class="olliPcApp">
+<div aria-hidden="true" class="olliBootScreen" id="olliBootScreen">
+<div class="olliBootLogo">OLLI</div>
+</div>
+<div class="olliPcShell" id="olliPcShell" aria-label="PC 사이드바">
+  <div class="olliPcBrand">
+    <div class="olliPcBrandLogo">olli</div>
+    <div class="olliPcBrandSub">비비작아이성향미술학원</div>
+  </div>
+  <nav class="olliPcNav">
+    <button class="olliPcNavBtn" data-pc-nav="academy" type="button" onclick="pcOpenSection('academy')">
+      <svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"></path><path d="M6.5 10v10h11V10"></path><path d="M10 20v-6h4v6"></path></svg><span>학생관리</span>
+    </button>
+    <button class="olliPcNavBtn" data-pc-nav="attendance" type="button" onclick="pcOpenSection('attendance')">
+      <svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2.5"></rect><path d="M8.5 12l2 2 4.5-5"></path></svg><span>성향기록부</span>
+    </button>
+    <button class="olliPcNavBtn" data-pc-nav="consultation" type="button" onclick="pcOpenSection('consultation')">
+      <svg viewBox="0 0 24 24"><path d="M6 4.5h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-4.5 3v-3H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"></path><path d="M8 9h8M8 13h5"></path></svg><span>상담기록</span>
+    </button>
+    <button class="olliPcNavBtn" data-pc-nav="schedule" type="button" onclick="pcOpenSection('schedule')">
+      <svg viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14" rx="2.5"></rect><path d="M8 3.5v4M16 3.5v4M4 9.5h16M8 13h3M13 13h3M8 16.5h3"></path></svg><span>시간표 • 출석부</span>
+    </button>
+    <button class="olliPcNavBtn olliPcTeamTalkNavBtn" data-pc-nav="talk" type="button" onclick="pcOpenSection('talk')">
+      <svg class="olliPcTeamTalkNavIcon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6.47 4.5h12c2.06 0 3.75 1.69 3.75 3.75v7.03c0 2.06-1.69 3.75-3.75 3.75H9.19l-3.94 3.1 1.13-3.1c-2.11-.28-3.66-1.92-3.66-4.03V8.25c0-2.06 1.69-3.75 3.75-3.75Z"></path>
+        <circle cx="9.66" cy="12.19" r=".75"></circle><circle cx="12.47" cy="12.19" r=".75"></circle><circle cx="15.28" cy="12.19" r=".75"></circle>
+      </svg>
+      <span>Work</span><span class="olliPcTeamTalkBadge" id="olliPcTeamTalkBadge" hidden></span>
+    </button>
+  </nav>
+  <div class="olliPcContext">
+    <div class="olliPcContextTitle" id="olliPcContextTitle"></div>
+    <div class="olliPcContextBody" id="olliPcContextBody"></div>
+  </div>
+  <div class="olliPcSidebarBottom">
+    <button class="olliPcRoundBtn" id="olliPcAddStudentBtn" type="button" onclick="openStudentModal()" aria-label="학생 추가" title="학생 추가">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>
+    </button>
+    <button class="olliPcRoundBtn" id="olliPcSortBtn" type="button" onclick="pcOpenSidebarSort(event)" aria-label="정렬" title="정렬">
+      <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"></path><circle cx="16" cy="7" r="2"></circle><circle cx="8" cy="17" r="2"></circle></svg>
+    </button>
+    <button class="olliPcRoundBtn" id="olliPcTrashBtn" type="button" onclick="pcOpenRecordTrash()" aria-label="휴지통" title="휴지통">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M9 3.5h6l1 3.5H8l1-3.5zM7 7l1 13h8l1-13M10 11v5M14 11v5"></path></svg>
+    </button>
+    <button class="olliPcRoundBtn" id="olliPcSettingsBtn" type="button" onclick="openSettingsPage()" aria-label="설정" title="설정">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.09a2 2 0 0 1 1 1.74v.5a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+    </button>
+  </div>
+</div>
+<div class="olliPcTopbar" id="olliPcTopbar">
+  <div class="olliPcTopbarTitle" id="olliPcTopbarTitle">학생관리</div>
+  <div class="olliPcTopbarRight">
+    <input class="olliPcSearch" id="olliPcSearch" type="search" placeholder="학생 검색" oninput="pcHandleTopSearch(this.value)">
+  </div>
+</div>
+<!-- PAGE: PC 팀톡 -->
+<div aria-hidden="true" class="pageScreen" data-page-key="pc-team-talk" data-page-name="업무" id="olliPcTeamTalkScreen">
+  <div class="olliPcTeamTalkPage">
+    <section class="olliPcTeamTalkChat" aria-label="팀톡 채팅">
+      <div class="olliPcTeamTalkChatHead">
+        <div class="olliPcTeamTalkTitleWrap">
+          <div class="olliPcTeamTalkTitle">Team Chat</div>
+          <div class="olliPcTeamTalkMemberCount" id="olliPcTeamTalkMemberCount"></div>
+        </div>
+        <button class="olliPcTeamTalkRefresh" id="olliPcTeamTalkRefresh" type="button" aria-label="팀톡 새로고침" title="새로고침">
+          <svg viewBox="0 0 24 24"><path d="M20 7v5h-5"></path><path d="M18.2 16.4A8 8 0 1 1 19.5 9"></path></svg>
+        </button>
+      </div>
+      <div class="olliPcTeamTalkMessages" id="olliPcTeamTalkMessages" aria-live="polite">
+        <div class="olliPcTeamTalkEmpty"><div class="olliPcTeamTalkEmptyTitle">팀톡을 준비하고 있어요.</div></div>
+      </div>
+      <div class="olliPcTeamTalkComposerWrap">
+        <div class="olliPcTeamTalkMentionMenu" id="olliPcTeamTalkMentionMenu" hidden aria-label="선생님 멘션 선택"></div>
+        <div class="olliPcTeamTalkComposer">
+          <button class="olliPcTeamTalkComposerBtn" id="olliPcTeamTalkAddFile" type="button" aria-label="파일 추가" title="파일 추가">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+          </button>
+          <textarea class="olliPcTeamTalkInput" id="olliPcTeamTalkInput" rows="1" placeholder="메시지를 입력하세요" aria-label="팀톡 메시지 입력"></textarea>
+          <button class="olliPcTeamTalkComposerBtn" id="olliPcTeamTalkOlli" type="button" aria-label="올리봇 호출" aria-pressed="false" title="올리 호출">봇</button>
+          <button class="olliPcTeamTalkComposerBtn" id="olliPcTeamTalkMention" type="button" aria-label="선생님 멘션" title="선생님 멘션">@</button>
+          <button class="olliPcTeamTalkComposerBtn olliPcTeamTalkSend" id="olliPcTeamTalkSend" type="button" aria-label="메시지 전송" disabled>
+            <svg viewBox="0 0 24 24"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>
+          </button>
+        </div>
+        <input id="olliPcTeamTalkComposerFile" type="file" hidden accept="image/*,video/*,.pdf,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip">
+      </div>
+    </section>
+    <section class="olliPcTeamTalkSide" aria-label="재료주문 및 자료실">
+      <div class="olliPcTeamTalkSideHead">
+        <div class="olliPcTeamTalkSideTabs" role="tablist" aria-label="재료주문 자료실 전환">
+          <button class="olliPcTeamTalkWorkspaceTab active" data-team-talk-workspace-tab="materials" role="tab" aria-selected="true" type="button">재료주문</button>
+          <span class="olliPcTeamTalkWorkspaceSlash" aria-hidden="true">/</span>
+          <button class="olliPcTeamTalkWorkspaceTab" data-team-talk-workspace-tab="archive" role="tab" aria-selected="false" type="button">자료실</button>
+        </div>
+        <button class="olliPcTeamTalkMaterialCreate" id="olliPcTeamTalkMaterialCreate" type="button" aria-label="재료 요청 등록">
+          <span aria-hidden="true">＋</span><span>요청 등록</span>
+        </button>
+      </div>
+      <div class="olliPcTeamTalkMaterials olliPcTeamTalkWorkspacePanel" data-team-talk-workspace-panel="materials">
+        <div class="olliPcTeamTalkMaterialsBody" data-olli-team-material-orders></div>
+      </div>
+      <div class="olliPcTeamTalkArchive olliPcTeamTalkWorkspacePanel" data-team-talk-workspace-panel="archive" hidden>
+        <div class="olliPcTeamTalkArchiveTabs" role="tablist" aria-label="자료실 분류">
+          <button class="olliPcTeamTalkArchiveTab active" data-team-talk-archive-tab="files" role="tab" aria-selected="true" type="button">수업파일</button>
+          <button class="olliPcTeamTalkArchiveTab" data-team-talk-archive-tab="media" role="tab" aria-selected="false" type="button">사진/동영상</button>
+          <button class="olliPcTeamTalkArchiveTab" data-team-talk-archive-tab="links" role="tab" aria-selected="false" type="button">링크</button>
+        </div>
+        <div class="olliPcTeamTalkArchiveMeta" id="olliPcTeamTalkArchiveMeta"></div>
+        <div class="olliPcTeamTalkArchiveBody" id="olliPcTeamTalkArchiveBody"></div>
+        <button class="olliPcTeamTalkArchiveUpload" id="olliPcTeamTalkArchiveUpload" type="button">파일 올리기</button>
+        <input id="olliPcTeamTalkArchiveFile" type="file" hidden accept=".pdf,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip">
+      </div>
+    </section>
+  </div>
+</div>
+<!-- PAGE: 출석부 페이지 -->
+<div class="pageScreen" data-page-key="record-room" data-page-name="출석부 페이지" id="recordRoomScreen">
+<div class="recordPageInner" id="recordPageInner">
+<div class="recordStickyArea">
+<div class="recordHeaderRow">
+<div class="recordTitleWrap">
+<div class="recordPageTitle">OLLI</div>
+</div>
+<div aria-label="설정과 알림" class="recordRightActionGroup">
+<button aria-label="설정" class="recordStandaloneSettingsBtn" id="recordSettingsBtn" onclick="openSettingsPage()" title="설정" type="button">
+<span aria-hidden="true" class="recordAcademyMiniIcon" id="recordAcademyMiniIcon"></span>
+</button>
+
+</div>
+</div>
+<div class="recordUtilityRow">
+<div class="recordUtilityBtn" data-academy-management="true">
+<button aria-label="학원 관리" class="recordUtilityCircle" id="recordAcademyManageBtn" onclick="toggleRecordAcademyManagementMode()" title="학원 관리" type="button">
+<svg aria-hidden="true" fill="none" viewbox="0 0 24 24">
+<path d="M4.8 19.2V8.3L12 4.2l7.2 4.1v10.9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M8.2 19.2v-5.1h7.6v5.1" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M9 10.2h6" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>
+</svg>
+</button>
+<div class="recordUtilityLabel">학원 관리</div>
+</div>
+<div class="recordUtilityBtn">
+<button aria-label="출석부" class="recordUtilityCircle" id="recordAttendanceDashboardBtn" onclick="openRecordAttendanceDashboard()" title="출석부" type="button">
+<svg aria-hidden="true" fill="none" viewbox="0 0 24 24">
+<rect height="14.8" rx="2.8" stroke="currentColor" stroke-width="2" width="16" x="4" y="4.8"></rect>
+<path d="M8.2 12.4l2.7 2.8 5.4-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"></path>
+</svg>
+</button>
+<div class="recordUtilityLabel">출석부</div>
+</div>
+
+<div class="recordUtilityBtn">
+<button class="recordUtilityCircle" id="recordStorageToggleBtn" onclick="openKinderChatFeedbackPage()" type="button">
+<svg fill="none" viewbox="0 0 24 24">
+<circle cx="7" cy="7" fill="currentColor" r="2.2"></circle>
+<circle cx="17" cy="7" fill="currentColor" r="2.2"></circle>
+<circle cx="7" cy="17" fill="currentColor" r="2.2"></circle>
+<circle cx="17" cy="17" fill="currentColor" r="2.2"></circle>
+</svg>
+</button>
+<div class="recordUtilityLabel">1분 피드백</div>
+</div>
+</div>
+<div class="recordDivider"></div>
+<div class="recordModeLabelRow">
+<div aria-label="학생부 전환" class="recordLabelGroup" id="recordDivisionToggle">
+<button class="recordModeLabel active" id="recordElementaryToggle" onclick="handleRecordViewToggleClick(event,'elementary')" onpointerdown="handleRecordViewTogglePress(event,'elementary')" type="button">초등부</button>
+<button class="recordModeLabel" id="recordKinderToggle" onclick="handleRecordViewToggleClick(event,'kinder')" onpointerdown="handleRecordViewTogglePress(event,'kinder')" type="button">유치부</button>
+</div>
+</div>
+</div>
+<div class="recordBodyNew" id="recordBodyNew">
+<div aria-label="학원 관리" class="recordAcademyDashboard" id="recordAcademyDashboard"></div>
+<div id="recordList"></div>
+<aside class="pcAcademyDetailPanel" id="pcAcademyDetailPanel">
+  <div class="pcAcademyDetailName">상담예정 학생</div>
+  <div class="pcAcademyDetailSub">이번 달 상담이 필요한 학생</div>
+</aside>
+</div>
+</div>
+<div class="recordRoomScreenFloatingBar">
+<button aria-expanded="false" aria-label="추가 메뉴" class="recordAddBtn" id="studentAddBtn" title="추가 메뉴" type="button">
+<svg viewbox="0 0 24 24">
+<line x1="12" x2="12" y1="5" y2="19"></line>
+<line x1="5" x2="19" y1="12" y2="12"></line>
+</svg>
+</button>
+<div aria-hidden="true" class="recordAddMenu" id="recordAddMenu">
+<button class="recordAddMenuBtn" onclick="openStudentAddFromRecordMenu(event)" type="button">학생 추가</button>
+<button class="recordAddMenuBtn" onclick="openKinderChatFeedbackFromRecordMenu(event)" type="button">1분 피드백 작성</button>
+</div>
+<div class="recordSearchGroup recordSearchOnlyGroup" id="recordSearchGroup">
+<button aria-label="검색" class="recordSearchPill recordPillBtn" id="recordSearchPill" onclick="handleSearchPillClick(event)" title="검색">
+<div class="recordSearchIcon">
+<svg fill="none" viewbox="0 0 24 24">
+<circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2.2"></circle>
+<path d="M16 16L21 21" stroke="currentColor" stroke-linecap="round" stroke-width="2.2"></path>
+</svg>
+</div>
+<input autocapitalize="off" autocomplete="off" autocorrect="off" class="recordSearchInputInline" enterkeyhint="done" id="searchName" inputmode="search" onclick="event.stopPropagation()" placeholder="검색" spellcheck="false"/>
+</button>
+</div>
+<button aria-label="검색 닫기" class="recordSearchClose" onclick="closeSearch(event)" title="검색 닫기">✕</button>
+<div class="recordSelectionControls" id="recordSelectionControls">
+<button class="recordSelectionControlBtn" onclick="exitStudentSelectionMode()">취소</button>
+<button class="recordSelectionControlBtn danger" onclick="deleteSelectedStudents()">삭제</button>
+</div>
+<div class="recordSortWrap">
+<button aria-label="정렬" id="recordSortBtn" title="정렬" type="button">
+<svg aria-hidden="true" viewbox="0 0 28 28">
+<path d="M9.9 4.7h8.1c3.2 0 5 1.8 5 5v8.6c0 3.2-1.8 5-5 5H9.9c-3.2 0-5-1.8-5-5V9.7c0-3.2 1.8-5 5-5Z"></path>
+<circle cx="9.5" cy="10.2" fill="currentColor" r="1.92" stroke="none"></circle>
+<circle cx="9.5" cy="17.7" r="1.58"></circle>
+<path d="M13.9 10.2h5.0"></path>
+<path d="M13.9 17.7h5.0"></path>
+</svg>
+</button>
+<div aria-label="정렬 팝업" id="recordSortPopup"></div>
+</div>
+</div>
+</div>
+<script src="observation-editor-ui.js" data-olli-observation-ui="analysis-modal"></script>
+<div class="modalOverlay" id="saveModal">
+<div class="modalCard">
+<div class="modalTitle">피드백 저장</div>
+<div class="modalLabel">아이 이름 *</div>
+<input class="modalInput" id="studentName" placeholder="예: 김민준" style="margin-bottom:20px;"/>
+<div class="modalActions">
+<button class="modalBtnCancel" data-modal-close="saveModal" type="button">취소</button>
+<button class="modalBtnConfirm" onclick="confirmSave()">저장</button>
+</div>
+</div>
+</div>
+<div class="modalOverlay" id="studentModal">
+<div class="modalCard">
+<button class="pcStudentModalClose" data-modal-close="studentModal" type="button" aria-label="닫기">×</button>
+<div class="modalTitle" id="studentModalTitle">학생 등록</div>
+<div class="modalLabel">이름 *</div>
+<input class="modalInput" id="studentNameInput" onkeydown="if(event.key==='Enter')confirmStudent()" placeholder="예: 김민준" style="margin-bottom:14px;"/>
+<div class="modalLabel">등록 날짜 *</div>
+<div class="modalDateRow" style="margin-bottom:20px;">
+<input class="modalInput modalYearBadge" id="studentYearBadge" inputmode="numeric" max="2100" min="1900" placeholder="년" type="number"/>
+<input class="modalInput" id="studentMonthInput" max="12" min="1" placeholder="월" style="width:90px;" type="number"/>
+<input class="modalInput" id="studentDayInput" max="31" min="1" placeholder="일" style="width:90px;" type="number"/>
+</div>
+<div id="kinderExtraFields" style="display:none; margin-top:-6px; margin-bottom:8px;">
+<div class="modalLabel">유치원</div>
+<input class="modalInput" id="studentKindergartenInput" placeholder="예: OO유치원" style="margin-bottom:12px;"/>
+<div class="modalLabel">나이</div>
+<input class="modalInput" id="studentAgeInput" max="8" min="1" placeholder="예: 5" style="margin-bottom:12px;" type="number"/>
+<div class="modalLabel">수업 요일</div>
+<input class="modalInput" id="studentLessonDayInput" placeholder="예: 월요일 · 수요일"/>
+</div>
+<div class="modalActions">
+<button class="modalBtnCancel" data-modal-close="studentModal" type="button">취소</button>
+<button class="modalBtnConfirm" onclick="confirmStudent()">추가</button>
+</div>
+</div>
+</div>
+<div class="modalOverlay" id="elementaryInfoModal">
+<div class="modalCard">
+<div class="modalTitle">초등 학생 정보</div>
+<div class="kinderInfoModalField">
+<div class="modalLabel">이름</div>
+<input class="modalInput" id="elementaryInfoNameInput" placeholder="예: 김민준"/>
+</div>
+<div class="kinderInfoModalField studentInfoDateField">
+<div class="modalLabel">등록 날짜</div>
+<div class="studentInfoDateRow">
+<input class="modalInput" id="elementaryInfoYearInput" inputmode="numeric" max="2100" min="1900" placeholder="년" type="number"/>
+<input class="modalInput" id="elementaryInfoMonthInput" inputmode="numeric" max="12" min="1" placeholder="월" type="number"/>
+<input class="modalInput" id="elementaryInfoDayInput" inputmode="numeric" max="31" min="1" placeholder="일" type="number"/>
+</div>
+</div>
+<div class="modalLabel">그룹</div>
+<div class="infoToggleRow" id="elementaryGroupToggleRow">
+<button class="infoToggleBtn groupIconChoiceBtn" data-group="1" onclick="selectElementaryGroup('1')" type="button">A</button>
+<button class="infoToggleBtn groupIconChoiceBtn" data-group="2" onclick="selectElementaryGroup('2')" type="button">B</button>
+<button class="infoToggleBtn groupIconChoiceBtn" data-group="3" onclick="selectElementaryGroup('3')" type="button">C</button>
+<button class="infoToggleBtn groupIconChoiceBtn" data-group="4" onclick="selectElementaryGroup('4')" type="button">D</button>
+<button class="infoToggleBtn groupIconChoiceBtn" data-group="5" onclick="selectElementaryGroup('5')" type="button">E</button>
+<button class="infoToggleBtn groupIconChoiceBtn" data-group="6" onclick="selectElementaryGroup('6')" type="button">F</button>
+</div>
+<div class="infoTeacherToggleRow infoPersonalityToggleRow" id="elementaryPersonalityToggleRow"></div>
+<div class="kinderInfoModalField">
+<div class="modalLabel">학교 / 학년 / 나이</div>
+<div class="infoGrid3">
+<input class="modalInput" id="elementarySchoolInput" placeholder="학교"/>
+<input class="modalInput" id="elementaryGradeInput" placeholder="학년" type="text" inputmode="numeric" onfocus="focusElementaryGradeInput(this)" oninput="syncElementaryInfoAgeFromGrade()" onblur="blurElementaryInfoGradeInput()"/>
+<input class="modalInput" id="elementaryAgeInput" placeholder="나이" type="text" inputmode="numeric" readonly/>
+</div>
+</div>
+<div class="modalActions">
+<button class="modalBtnCancel" data-modal-close="elementaryInfoModal" type="button">취소</button>
+<button class="modalBtnConfirm" onclick="saveElementaryInfo()">저장</button>
+</div>
+</div>
+</div>
+<div class="modalOverlay" id="kinderInfoModal">
+<div class="modalCard">
+<div class="modalTitle">유치부 학생 정보</div>
+<div class="kinderInfoModalField">
+<div class="modalLabel">이름</div>
+<input class="modalInput" id="kinderInfoNameInput" placeholder="예: 김민준"/>
+</div>
+<div class="kinderInfoModalField studentInfoDateField">
+<div class="modalLabel">등록 날짜</div>
+<div class="studentInfoDateRow">
+<input class="modalInput" id="kinderInfoYearInput" inputmode="numeric" max="2100" min="1900" placeholder="년" type="number"/>
+<input class="modalInput" id="kinderInfoMonthInput" inputmode="numeric" max="12" min="1" placeholder="월" type="number"/>
+<input class="modalInput" id="kinderInfoDayInput" inputmode="numeric" max="31" min="1" placeholder="일" type="number"/>
+</div>
+</div>
+<div class="kinderInfoModalField">
+<div class="modalLabel">유치원</div>
+<input class="modalInput" id="kinderKindergartenInput" placeholder="예: OO유치원"/>
+</div>
+<div class="kinderInfoModalField">
+<div class="modalLabel">유치원 나이</div>
+<input class="modalInput" id="kinderAgeInput" max="8" min="1" placeholder="예: 5" type="number"/>
+</div>
+<div class="kinderInfoModalField">
+<div class="modalLabel">수업 요일</div>
+<input class="modalInput" id="kinderLessonDayInput" placeholder="예: 월요일 · 수요일"/>
+</div>
+
+<div class="modalActions">
+<button class="modalBtnCancel" data-modal-close="kinderInfoModal" type="button">취소</button>
+<button class="modalBtnConfirm" onclick="saveKinderInfo()">저장</button>
+</div>
+</div>
+</div>
+<div class="modalOverlay" id="kinderTransferModal">
+<div class="modalCard">
+<div class="modalTitle">초등부 이관 대상</div>
+<div id="kinderTransferList" class="kinderTransferList"></div>
+<div class="modalActions">
+<button class="modalBtnCancel" type="button" onclick="closeKinderTransferModal()">닫기</button>
+</div>
+</div>
+</div>
+<div class="studentActionOverlay" id="studentActionOverlay" onclick="closeStudentActionMenu()">
+<div class="studentActionCard" onclick="event.stopPropagation()">
+<div class="studentActionTitle" id="studentActionTitle">학생 선택</div>
+<button class="studentActionBtn" onclick="enterStudentSelectionMode()">
+<svg aria-hidden="true" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="8"></circle>
+<path d="M8.5 12.2l2.2 2.2 4.8-5"></path>
+</svg>
+<span>선택</span>
+</button>
+<button class="studentActionBtn" onclick="openSelectedStudentInfoFromActionMenu()">
+<svg aria-hidden="true" viewbox="0 0 24 24">
+<circle cx="12" cy="7.5" r="3.2"></circle>
+<path d="M5.5 19c.9-3.4 3.3-5.2 6.5-5.2s5.6 1.8 6.5 5.2"></path>
+<path d="M17.5 7.5h3"></path>
+<path d="M19 6v3"></path>
+</svg>
+<span>학생정보</span>
+</button>
+<button class="studentActionBtn" onclick="setSelectedStudentStatus('paused')">
+<svg aria-hidden="true" viewbox="0 0 24 24">
+<path d="M10 5v14"></path>
+<path d="M14 5v14"></path>
+</svg>
+<span>휴원</span>
+</button>
+<button class="studentActionBtn" onclick="setSelectedStudentStatus('active')">
+<svg aria-hidden="true" viewbox="0 0 24 24">
+<path d="M6 12h12"></path>
+<path d="M12 6v12"></path>
+</svg>
+<span>재등록</span>
+</button>
+<button class="studentActionBtn" onclick="setSelectedStudentStatus('withdrawn')">
+<svg aria-hidden="true" viewbox="0 0 24 24">
+<path d="M9 6l6 6-6 6"></path>
+<path d="M4 12h10"></path>
+<path d="M16 5h3a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-3"></path>
+</svg>
+<span>퇴원</span>
+</button>
+<button class="studentActionBtn danger" onclick="confirmDeleteSelectedStudent()">
+<svg aria-hidden="true" viewbox="0 0 24 24">
+<polyline points="3 6 5 6 21 6"></polyline>
+<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+<path d="M10 11v6"></path>
+<path d="M14 11v6"></path>
+<path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+</svg>
+<span>삭제</span>
+</button>
+<button class="studentActionCancelBtn" onclick="closeStudentActionMenu()">취소</button>
+</div>
+</div>
+<div class="studentActionOverlay" id="recordBoardActionOverlay" onclick="closeRecordBoardActionMenu()">
+<div class="studentActionCard" onclick="event.stopPropagation()">
+<div class="studentActionTitle" id="recordBoardActionTitle">기록보드 학생 선택</div>
+<button class="studentActionBtn danger" onclick="confirmDeleteRecordBoardSelected()">
+<svg aria-hidden="true" viewbox="0 0 24 24">
+<polyline points="3 6 5 6 21 6"></polyline>
+<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+<path d="M10 11v6"></path>
+<path d="M14 11v6"></path>
+<path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+</svg>
+<span>삭제</span>
+</button>
+<button class="studentActionCancelBtn" onclick="closeRecordBoardActionMenu()">취소</button>
+</div>
+</div>
+<div class="modalOverlay sceneCardModalOverlay" id="sceneCardModalOverlay" onclick="handleSceneCardModalOverlayClick(event)">
+<div class="modalCard sceneCardModalCard" onclick="event.stopPropagation()">
+<div class="sceneCardModalHeader">
+<div class="sceneCardModalHeaderText">
+<div class="sceneCardModalTitle">수업 장면</div>
+<div class="sceneCardModalCount" id="sceneCardModalCount">0 / 9 선택</div>
+</div>
+<div class="sceneCardModalHeaderActions">
+<button class="sceneCardModalGhostBtn" id="sceneCardModalResetBtn" onclick="clearSceneSelections()" type="button">초기화</button>
+<button aria-label="닫기" class="sceneCardModalCloseBtn" onclick="closeSceneCardModal()" type="button">×</button>
+</div>
+</div>
+<div class="sceneCardModalBody" id="sceneCardModalBody"></div>
+<div class="sceneCardModalFooter">
+<button class="sceneCardModalFooterBtn secondary" onclick="closeSceneCardModal()" type="button">닫기</button>
+<button class="sceneCardModalFooterBtn primary" onclick="closeSceneCardModal()" type="button">적용 완료</button>
+</div>
+</div>
+</div>
+<script src="observation-editor-ui.js" data-olli-observation-ui="analysis-detail"></script>
+<div aria-label="학생 피드백 보기" class="attendanceFeedbackSheetOverlay" id="attendanceStudentFeedbackSheet" onclick="closeAttendanceStudentFeedbackSheet()">
+<div class="attendanceFeedbackSheetPanel" onclick="event.stopPropagation()">
+<div class="attendanceFeedbackSheetHandle"></div>
+<div class="attendanceFeedbackSheetHead">
+<div class="attendanceFeedbackSheetTitleWrap">
+<div class="attendanceFeedbackSheetTitle" id="attendanceFeedbackSheetTitle">피드백</div>
+<div class="attendanceFeedbackSheetSubtitle" id="attendanceFeedbackSheetSubtitle"></div>
+</div>
+<button aria-label="닫기" class="attendanceFeedbackSheetClose" onclick="event.stopPropagation(); closeAttendanceStudentFeedbackSheet();" type="button">×</button>
+</div>
+<div class="attendanceFeedbackSheetBody" id="attendanceFeedbackSheetBody">
+<div class="attendanceFeedbackSheetEmpty">피드백을 불러오고 있어요.</div>
+</div>
+</div>
+</div>
+<script src="olli-data-foundation.js"></script>
+<script src="olli-realtime-common.js?v=20260911-2"></script>
+<script src="olli-data-feedback.js"></script>
+<script src="olli-data-consultation-summary.js"></script>
+<script src="olli-operations-feedback-policy.js"></script>
+<script src="olli-data-students.js"></script>
+<script src="olli-data-record-list.js"></script>
+<script src="olli-data-attendance-feedback.js"></script>
+<script src="olli-data-student-operations.js"></script>
+<script src="olli-data-ui-utils.js"></script>
+<script src="elementary-analysis.js"></script>
+<script src="olli-record-student-picker.js"></script>
+<script src="record-feedback-mode-common.js"></script>
+<script src="scene-card-model-common.js"></script>
+<script src="scene-card-ui-common.js"></script>
+<script src="scene-card-kinder-feedback-common.js"></script>
+<script src="olli-record-scene-tools.js"></script>
+<script src="scene-feedback-text-common.js"></script>
+<script src="olli-record-search-controls.js"></script>
+<script src="olli-record-feedback-generation.js"></script>
+<script src="olli-record-room-navigation.js"></script>
+<script src="observation-memo-storage-common.js"></script>
+<script src="olli-record-memo-storage.js"></script>
+<script src="observation-memo-session-common.js"></script>
+<script src="observation-memo-save-common.js"></script>
+<script src="observation-memo-feedback-clear-common.js"></script>
+<script src="observation-memo-edit-state-core.js"></script>
+<script src="observation-memo-common.js"></script>
+<script src="observation-memo-version-history-core.js"></script>
+<script src="observation-memo-core.js"></script>
+<script src="olli-record-list-view.js"></script>
+<script src="olli-operations-consultation-policy.js"></script>
+<script src="olli-consultation-runtime.js"></script>
+<script src="olli-student-info-runtime.js"></script>
+<script src="olli-app-startup.js"></script>
+<script src="olli-feedback-runtime.js"></script>
+
+<style>
+#settingsAcademySwitchRow {
+  display: none;
+}
+.olliAcademySwitchIntro {
+  margin: 0 0 14px;
+  padding: 0 2px;
+  color: #6f716d;
+  font-size: calc(14px * var(--olli-text-scale));
+  line-height: 1.55;
+}
+.olliAcademyOptionList {
+  display: grid;
+  gap: 10px;
+}
+.olliAcademyOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  min-height: 82px;
+  padding: 15px 16px;
+  border: 1px solid rgba(28, 36, 31, .08);
+  border-radius: 22px;
+  background: #fff;
+  text-align: left;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .035);
+}
+.olliAcademyOption.current {
+  border: 0;
+  background: #7096c7;
+}
+.olliAcademyOptionMain {
+  min-width: 0;
+}
+.olliAcademyOptionName {
+  overflow: hidden;
+  color: #202421;
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 760;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.olliAcademyOption.current .olliAcademyOptionName {
+  color: #fff;
+}
+.olliAcademyOptionMeta {
+  margin-top: 5px;
+  color: #7b7e79;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.35;
+}
+.olliAcademyOption.current .olliAcademyOptionMeta {
+  color: rgba(255, 255, 255, .82);
+}
+.olliAcademyOptionAction {
+  flex: 0 0 auto;
+  min-width: 66px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: #0A84FF;
+  color: #fff;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 720;
+}
+.olliAcademyOption.current .olliAcademyOptionAction {
+  background: rgba(255, 255, 255, .22);
+  color: #fff;
+}
+.olliAcademyRefreshBtn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 13px 14px;
+  border: 0;
+  border-radius: 18px;
+  background: #eceeea;
+  color: #50544f;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 700;
+}
+#olliAcademySwitchOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: #fff;
+  color: #202421;
+  text-align: center;
+}
+#olliAcademySwitchOverlay.show {
+  display: flex;
+}
+.olliAcademySwitchOverlayInner {
+  width: min(320px, 100%);
+}
+.olliAcademySwitchSpinner {
+  width: 34px;
+  height: 34px;
+  margin: 0 auto 18px;
+  border: 3px solid #e5e8e4;
+  border-top-color: #315f43;
+  border-radius: 50%;
+  animation: olliAcademySwitchSpin .8s linear infinite;
+}
+.olliAcademySwitchOverlayTitle {
+  font-size: calc(20px * var(--olli-text-scale));
+  font-weight: 800;
+  letter-spacing: -.035em;
+}
+.olliAcademySwitchOverlayDesc {
+  margin-top: 8px;
+  color: #797d78;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+}
+@keyframes olliAcademySwitchSpin {
+  to { transform: rotate(360deg); }
+}
+
+
+/* 2026-06-30: 설정 > 출석부 출력 */
+.settingsAttendanceControlCard {
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(0,0,0,.045), 0 2px 8px rgba(0,0,0,.02);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.settingsAttendanceFieldLabel {
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 780;
+  color: #777;
+  margin: 0 0 8px 2px;
+  letter-spacing: -.025em;
+}
+.settingsAttendanceSegment {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.settingsAttendanceSegment.divisionSegment {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.settingsAttendanceSegmentBtn {
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: #f2f2f0;
+  color: #333;
+  font-family: inherit;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 780;
+  cursor: pointer;
+}
+.settingsAttendanceSegmentBtn.active {
+  background: #111;
+  color: #fff;
+}
+.settingsAttendanceMonthInput {
+  width: 100%;
+  height: 48px;
+  border: none;
+  border-radius: 18px;
+  background: #f5f5f3;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: calc(15px * var(--olli-text-scale));
+  color: #111;
+  margin-bottom: 14px;
+}
+.settingsAttendanceGuide {
+  margin-top: 2px;
+  color: #888;
+  font-size: calc(12.5px * var(--olli-text-scale));
+  line-height: 1.5;
+  letter-spacing: -.025em;
+}
+.settingsAttendanceActionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.settingsAttendanceActionBtn {
+  min-height: 50px;
+  border: none;
+  border-radius: 999px;
+  background: #f0f0ee;
+  color: #111;
+  font-family: inherit;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 820;
+  cursor: pointer;
+}
+.settingsAttendanceActionBtn.primary {
+  background: #111;
+  color: #fff;
+}
+.settingsAttendanceActionBtn:disabled {
+  opacity: .45;
+  cursor: default;
+}
+.settingsAttendancePreviewCard {
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(0,0,0,.045), 0 2px 8px rgba(0,0,0,.02);
+  overflow: hidden;
+  margin-top: 12px;
+}
+.settingsAttendancePreviewHead {
+  padding: 16px 16px 10px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.settingsAttendancePreviewTitle {
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 850;
+  letter-spacing: -.045em;
+  color: #111;
+  line-height: 1.28;
+}
+.settingsAttendancePreviewMeta {
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 720;
+  color: #8d8d8d;
+  white-space: nowrap;
+}
+.settingsAttendancePreviewScroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 12px 14px;
+}
+.settingsAttendancePreviewTable {
+  border-collapse: collapse;
+  min-width: 980px;
+  width: 100%;
+  table-layout: fixed;
+  font-size: 12.5px;
+  color: #111;
+}
+.settingsAttendancePreviewTable th,
+.settingsAttendancePreviewTable td {
+  border: 0.5px solid #b4b4b4;
+  height: 26px;
+  padding: 2px 4px;
+  text-align: center;
+  white-space: nowrap;
+}
+.settingsAttendancePreviewTable .noCol { width: 30px; padding-left: 0; padding-right: 0; }
+.settingsAttendancePreviewTable .nameCol { width: 58px; padding-left: 0; padding-right: 0; }
+.settingsAttendancePreviewTable .schoolGradeCol { width: 72px; padding-left: 0; padding-right: 0; }
+.settingsAttendancePreviewTable .personalityCol { width: 28px; padding-left: 0; padding-right: 0; }
+.settingsAttendancePreviewTable tbody td.nameCol,
+.settingsAttendancePreviewTable tbody td.schoolGradeCol,
+.settingsAttendancePreviewTable tbody td.personalityCol {
+  font-size: 14px;
+  line-height: 1.05;
+}
+.settingsAttendancePreviewTable tbody td.nameCol { font-weight: 780; }
+.settingsAttendancePreviewTable tbody td.schoolGradeCol { font-weight: 680; }
+.settingsAttendancePreviewTable tbody td.personalityCol { font-weight: 680; }
+.settingsAttendancePreviewTable .dateCol,
+.settingsAttendancePreviewTable col.dateCol { width: var(--attendance-date-col-width, 22px); padding-left: 0; padding-right: 0; }
+.settingsAttendancePreviewTable,
+.settingsAttendancePreviewTable *,
+.attendancePrintSheet,
+.attendancePrintSheet *,
+.attendancePrintTable,
+.attendancePrintTable * {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  color-adjust: exact;
+}
+.settingsAttendancePreviewTable th {
+  background: #2f6f9f;
+  background-color: #2f6f9f;
+  color: #fff;
+  font-weight: 750;
+}
+.settingsAttendancePreviewTable .nameCol,
+.settingsAttendancePreviewTable .schoolCol,
+.settingsAttendancePreviewTable .schoolGradeCol {
+  text-align: center;
+}
+.settingsAttendancePreviewTable th.daySat,
+.settingsAttendancePreviewTable td.daySat { background: #fff7c8; background-color: #fff7c8; color: #111; }
+.settingsAttendancePreviewTable th.daySun,
+.settingsAttendancePreviewTable td.daySun { background: #ffd9df; background-color: #ffd9df; color: #111; }
+.settingsAttendanceEmpty {
+  padding: 22px 16px 24px;
+  color: #999;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+  text-align: center;
+}
+.attendancePrintSheet {
+  width: 100%;
+  background: #fff;
+  color: #111;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.attendancePrintPage {
+  width: 100%;
+  page-break-after: always;
+  break-after: page;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+.attendancePrintPage:last-child {
+  page-break-after: auto;
+  break-after: auto;
+}
+.attendancePrintHeader {
+  margin-bottom: 5px;
+  padding-top: 10px;
+}
+.attendancePrintAcademy {
+  font-size: 15px;
+  line-height: 1.05;
+  font-weight: 760;
+  color: #1f4776;
+  letter-spacing: -.035em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.attendancePrintMonth {
+  margin-top: 1px;
+  font-size: 31px;
+  line-height: 0.98;
+  font-weight: 900;
+  color: #1f4776;
+  letter-spacing: -.055em;
+}
+.attendancePrintTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: #111;
+}
+.attendancePrintTable th,
+.attendancePrintTable td {
+  border: 0.5px solid #777777;
+  height: 23px;
+  padding: 0.5px 1.5px;
+  text-align: center;
+  vertical-align: middle;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+}
+.attendancePrintTable th {
+  background: #2f6f9f;
+  background-color: #2f6f9f;
+  color: #fff;
+  font-size: 8.8px;
+  font-weight: 760;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  color-adjust: exact;
+}
+.attendancePrintTable tbody td {
+  font-size: 10.6px;
+  font-weight: 560;
+}
+.attendancePrintTable .noCol { width: 20px; padding-left: 0; padding-right: 0; }
+.attendancePrintTable .divisionCol { width: 25px; }
+.attendancePrintTable .nameCol { width: 43px; padding-left: 0; padding-right: 0; text-align: center; font-weight: 780; }
+.attendancePrintTable .schoolGradeCol { width: 52px; padding-left: 0; padding-right: 0; text-align: center; font-weight: 660; }
+.attendancePrintTable .personalityCol { width: 20px; padding-left: 0; padding-right: 0; }
+.attendancePrintTable tbody td.nameCol,
+.attendancePrintTable tbody td.schoolGradeCol,
+.attendancePrintTable tbody td.personalityCol {
+  line-height: 1.05;
+}
+.attendancePrintTable tbody td.nameCol { font-size: 12px; font-weight: 700; }
+.attendancePrintTable tbody td.schoolGradeCol { font-size: 11.6px; font-weight: 600; }
+.attendancePrintTable tbody td.personalityCol { font-size: 11.4px; font-weight: 600; }
+.attendancePrintTable .dateCol,
+.attendancePrintTable col.dateCol { width: var(--attendance-date-col-width, 14px); padding-left: 0; padding-right: 0; }
+.attendancePrintTable th.daySat,
+.attendancePrintTable td.daySat { background: #fff7c8; background-color: #fff7c8; color: #111; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
+.attendancePrintTable th.daySun,
+.attendancePrintTable td.daySun { background: #ffd9df; background-color: #ffd9df; color: #111; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
+.attendancePrintLegend {
+  margin-top: 7px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 7px;
+  color: #666;
+}
+.attendancePrintPageNo {
+  text-align: center;
+  font-size: 7px;
+  color: #555;
+  margin-top: 8px;
+}
+@media print {
+  @page { size: A4 portrait; margin: 8mm 6mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
+  body { background: #fff; }
+}
+
+/* 출석부 출력값은 위 기본 .attendancePrint* 선언에서 단일 관리합니다. */
+.attendancePrintTable th {
+  font-size: 8.4px;
+}
+.attendancePrintTable tbody td {
+  font-size: 10.7px;
+}
+.attendancePrintTable tbody td.nameCol { font-size: 11.8px; }
+.attendancePrintTable tbody td.schoolGradeCol { font-size: 11.4px; }
+.attendancePrintTable tbody td.personalityCol { font-size: 11.2px; }
+@media print {
+  @page { size: A4 portrait; margin: 4mm 5mm; }
+}
+@media(max-width:430px){
+  .settingsAttendanceActionGrid { grid-template-columns: 1fr; }
+}
+
+</style>
+<!-- PAGE: 설정 -->
+<div class="pageScreen" data-page-key="settings-page" data-page-name="설정" id="settingsPageScreen">
+<div class="settingsPageInner">
+<div class="settingsHeader">
+<div class="settingsHeaderLeft">
+<button aria-label="기록실로 돌아가기" class="settingsRoundBtn" onclick="closeSettingsPage()" type="button">
+<svg viewbox="0 0 24 24"><path d="M15.5 5l-7 7 7 7"></path></svg>
+</button>
+<button class="settingsTitlePill" type="button">설정</button>
+</div>
+</div>
+<div class="settingsBody">
+<div class="settingsProfileCard" onclick="openSettingsSheet('profile')" role="button">
+<div class="settingsProfileImage">V</div>
+<div class="settingsProfileInfo">
+<div class="settingsProfileName">비비작아이성향미술학원</div>
+<div class="settingsProfileEdit">프로필 편집</div>
+</div>
+</div>
+<section class="settingsSection" data-owner-manager-only="true"><div class="settingsCard"><div class="settingsRow" data-owner-manager-only="true" onclick="openSettingsDetail('teacherInvite')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M4 12v7a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-7"></path><path d="M12 3v12"></path><path d="M7.5 7.5L12 3l4.5 4.5"></path><path d="M5 12h14"></path></svg></span>
+<span class="settingsRowTitle">선생님 초대</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div></div></section>
+<section class="settingsSection"><div class="settingsCard"><div class="settingsRow" onclick="toggleSettingsNotification()" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M18 9a6 6 0 1 0-12 0c0 7-2.5 7-2.5 8.5h17C20.5 16 18 16 18 9"></path><path d="M10 20a2.3 2.3 0 0 0 4 0"></path></svg></span>
+<span class="settingsRowTitle">알림</span>
+</div>
+<span class="settingsToggle on" id="settingsNotificationToggle"></span>
+</div>
+<div class="settingsRow" onclick="openSettingsSheet('startPage')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M4 5h16v14H4z"></path><path d="M8 9h8"></path><path d="M8 13h5"></path></svg></span>
+<span class="settingsRowTitle">시작 페이지</span>
+</div>
+<span class="settingsRowValue" id="settingsStartPageValue">관찰노트</span>
+</div>
+<div class="settingsRow" onclick="openSettingsSheet('textSize')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M5.5 6.5h13"></path><path d="M12 6.5v12"></path><path d="M9 18.5h6"></path></svg></span>
+<span class="settingsRowTitle">텍스트 크기</span>
+</div>
+<span class="settingsRowValue" id="settingsTextSizeValue">기본</span>
+</div></div></section>
+<section class="settingsSection"><div class="settingsCard"><div class="settingsRow" data-academy-management="true" id="settingsAttendancePolicyRow" onclick="openSettingsSheet('attendancePolicy')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M5 4.5h14v15H5z"></path><path d="M8 3v4"></path><path d="M16 3v4"></path><path d="M8 11h8"></path><path d="M8 15h5"></path><path d="M16.5 14.5l2 2 3.5-4"></path></svg></span>
+<span class="settingsRowTitle">출결 설정</span>
+</div>
+<span class="settingsRowValue" id="settingsAttendancePolicyValue"></span>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" onclick="openSettingsSheet('consultationMonths')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M7 4.8h10a2.2 2.2 0 0 1 2.2 2.2v10a2.2 2.2 0 0 1-2.2 2.2H7A2.2 2.2 0 0 1 4.8 17V7A2.2 2.2 0 0 1 7 4.8z"></path><path d="M8 3.5v3"></path><path d="M16 3.5v3"></path><path d="M8 11h8"></path><path d="M8 15h5"></path></svg></span>
+<span class="settingsRowTitle">상담 기준</span>
+</div>
+<span class="settingsRowValue" id="settingsConsultationMonthsValue">1개월 후, 3개월 후, 6개월마다, 12개월마다</span>
+</div>
+<div class="settingsRow" onclick="openSettingsSheet('groupFeedbackMonths')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M4.5 6.5h15"></path><path d="M7 4v4"></path><path d="M17 4v4"></path><path d="M6 11h3"></path><path d="M10.5 11h3"></path><path d="M15 11h3"></path><path d="M6 15h3"></path><path d="M10.5 15h3"></path></svg></span>
+<span class="settingsRowTitle">그룹별 피드백 발송월</span>
+</div>
+<span class="settingsRowValue" id="settingsGroupFeedbackMonthsValue">설정</span>
+</div></div></section>
+<section class="settingsSection"><div class="settingsCard"><div class="settingsRow" data-academy-management="true" id="settingsStudentBulkEditRow" onclick="openSettingsDetail('attendancePhotoImport')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M7 6.5h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"></path><path d="M9 4.5h6"></path><path d="M9 11h6"></path><path d="M9 14h4"></path></svg></span>
+<span class="settingsRowTitle">학생정보 일괄 수정</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" data-academy-management="true" onclick="openSettingsDetail('attendancePrint')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M5 4.5h14v15H5z"></path><path d="M8 3v4"></path><path d="M16 3v4"></path><path d="M5 8h14"></path><path d="M8 12h2"></path><path d="M12 12h2"></path><path d="M16 12h.01"></path><path d="M8 16h2"></path><path d="M12 16h2"></path></svg></span>
+<span class="settingsRowTitle">출석부 출력</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div></div></section>
+<section class="settingsSection"><div class="settingsCard"><div class="settingsRow" data-owner-only="true" id="settingsAcademySwitchRow" onclick="openSettingsDetail('academySwitch')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M4 20V7l8-4 8 4v13"></path><path d="M8 20v-5h8v5"></path><path d="M8 9h.01"></path><path d="M12 9h.01"></path><path d="M16 9h.01"></path></svg></span>
+<span class="settingsRowTitle">학원 관리</span>
+</div>
+<span class="settingsRowValue" id="settingsAcademySwitchValue"></span>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" data-owner-only="true" id="settingsOwnerOtherAcademyFindRow" onclick="openSettingsDetail('ownerOtherAcademyFind')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><circle cx="10.5" cy="10.5" r="5.5"></circle><path d="M15 15l5 5"></path><path d="M7.5 10.5h6"></path></svg></span>
+<span class="settingsRowTitle">다른 학원 찾기</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" data-teacher-only="true" onclick="openSettingsDetail('teacherMyAcademies')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M4 20V7l8-4 8 4v13"></path><path d="M8 20v-5h8v5"></path><path d="M8 9h.01"></path><path d="M12 9h.01"></path><path d="M16 9h.01"></path></svg></span>
+<span class="settingsRowTitle">내가 속한 학원</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" data-teacher-only="true" onclick="openSettingsDetail('teacherAcademyFind')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><circle cx="10.5" cy="10.5" r="5.5"></circle><path d="M15 15l5 5"></path><path d="M7.5 10.5h6"></path></svg></span>
+<span class="settingsRowTitle">다른 학원 찾기</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div></div></section>
+<section class="settingsSection" data-owner-only="true">
+<div class="settingsCard">
+<div class="settingsRow" onclick="openSettingsDetail('backup')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M5 21h14"></path></svg></span>
+<span class="settingsRowTitle">백업 / 내보내기</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+</div>
+</section><section class="settingsSection" data-owner-only="true">
+<div class="settingsCard">
+<div class="settingsRow" onclick="openSettingsDetail('roles')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M12 3l7 4v5c0 4.2-2.7 7.3-7 9-4.3-1.7-7-4.8-7-9V7l7-4z"></path></svg></span>
+<span class="settingsRowTitle">권한 설정</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" onclick="openSettingsDetail('teachers')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M8 10a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path><path d="M16 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path><path d="M3.8 20c.3-2.7 2-4.2 4.8-4.2"></path><path d="M11.2 20c.6-4 3-6 6.5-6"></path></svg></span>
+<span class="settingsRowTitle">선생님 관리</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+</div>
+</section><section class="settingsSection">
+<div class="settingsCard">
+<div class="settingsRow" onclick="openSettingsSheet('ai')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M12 3l1.6 5.2L19 10l-5.4 1.8L12 17l-1.6-5.2L5 10l5.4-1.8L12 3z"></path></svg></span>
+<span class="settingsRowTitle">AI 사용 안내</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" onclick="openSettingsDetail('privacy')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M7 11V8a5 5 0 0 1 10 0v3"></path><rect height="10" rx="3" width="14" x="5" y="11"></rect></svg></span>
+<span class="settingsRowTitle">개인정보 처리방침</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" onclick="openSettingsSheet('logout')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path><path d="M13 4h5a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-5"></path></svg></span>
+<span class="settingsRowTitle">계정 로그아웃</span>
+</div>
+</div>
+</div>
+</section><section class="settingsSection settingsDevSection" data-owner-only="true">
+<div class="settingsCard">
+<div class="settingsRow" onclick="openSettingsDetail('storageDiagnostics')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M4.5 5.5h15"></path><path d="M4.5 12h15"></path><path d="M4.5 18.5h15"></path><path d="M8 5.5v13"></path><path d="M16 5.5v13"></path></svg></span>
+<span class="settingsRowTitle">저장 진단</span>
+</div>
+<span class="settingsRowValue" id="settingsStorageDiagnosticsValue">점검</span>
+</div>
+</div>
+</section>
+</div>
+</div>
+</div>
+<div class="pageScreen" data-page-key="settings-detail" data-page-name="설정 상세" id="settingsDetailScreen">
+<div class="settingsPageInner">
+<div class="settingsHeader">
+<div class="settingsHeaderLeft">
+<button aria-label="설정으로 돌아가기" class="settingsRoundBtn" onclick="closeSettingsDetail()" type="button">
+<svg viewbox="0 0 24 24"><path d="M15.5 5l-7 7 7 7"></path></svg>
+</button>
+<button class="settingsTitlePill" id="settingsDetailTitlePill" type="button">상세</button>
+</div>
+</div>
+<div class="settingsBody" id="settingsDetailBody"></div>
+</div>
+</div>
+<div aria-busy="true" aria-live="polite" id="olliAcademySwitchOverlay">
+<div class="olliAcademySwitchOverlayInner">
+<div class="olliAcademySwitchSpinner"></div>
+<div class="olliAcademySwitchOverlayTitle" id="olliAcademySwitchOverlayTitle">학원을 전환하고 있습니다</div>
+<div class="olliAcademySwitchOverlayDesc" id="olliAcademySwitchOverlayDesc">이전 학원의 화면을 정리하고 새 학원 데이터를 불러옵니다.</div>
+</div>
+</div>
+<input accept="image/*" id="settingsProfileImageInput" onchange="handleSettingsProfileImageChange(event)" style="display:none" type="file"/>
+<input accept="image/*" id="attendancePhotoImportInput" multiple="" onchange="handleAttendancePhotoImportChange(event)" style="display:none" type="file"/>
+<input accept=".txt,.md,.csv,.json,.doc,.docx,.pdf,text/plain,text/markdown,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" id="existingFeedbackImportInput" onchange="handleExistingFeedbackImportChange(event)" style="display:none" type="file"/>
+<input accept=".txt,.md,.csv,.docx,text/plain,text/markdown,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document" id="studentBulkImportFileInput" onchange="handleStudentBulkImportFileChange(event)" style="display:none" type="file"/>
+<div class="settingsSheetOverlay" id="settingsSheetOverlay" onclick="closeSettingsSheet(event)">
+<div class="settingsSheet" onclick="event.stopPropagation()">
+<div class="settingsSheetTitle" id="settingsSheetTitle">설정</div>
+<div class="settingsSheetDesc" id="settingsSheetDesc">내용</div>
+<div id="settingsSheetContent"></div>
+<div class="settingsSheetActions">
+<button class="settingsSheetBtn" onclick="closeSettingsSheet()" type="button">취소</button>
+<button class="settingsSheetBtn primary" onclick="saveSettingsSheet()" type="button">저장</button>
+</div>
+</div>
+</div>
+<script src="olli-settings-common-core.js?v=20260924-settings-core-1"></script>
+<script src="olli-settings-pc-ui.js?v=20260924-settings-pc-ui-1"></script>
+<script src="olli-settings-members.js"></script>
+<script src="olli-settings-storage.js"></script>
+<script src="olli-settings-imports-base.js"></script>
+<script src="olli-settings-student-bulk-import.js"></script>
+<script src="olli-settings-existing-feedback-import.js"></script>
+<script src="olli-settings-attendance-photo-import.js"></script>
+<script src="olli-settings-teacher-invite.js"></script>
+<script src="olli-settings-access.js"></script>
+<script src="olli-settings-attendance-export.js"></script>
+<script src="olli-settings-detail.js"></script>
+<script src="olli-settings-team-talk-common.js?v=20260928-reset-all-olli1-1"></script>
+<script id="olliRecordAttendanceGuideButtonPatch">
+/* 2026-09-13: 출결 가이드 상태/버튼만 관리합니다. 학생 행 렌더링은 olli-record-list-view.js가 소유합니다. */
+(function(){
+  var attendanceGuideMode = false;
+
+  function refreshCurrentStudentRows(){
+    var searchValue = document.getElementById('searchName')?.value.trim() || '';
+    try {
+      if ((currentRecordView === 'kinder' || currentRecordView === 'elementary') && typeof window.renderCurrentStudentRecords === 'function') window.renderCurrentStudentRecords(searchValue);
+      else if (typeof window.loadRecords === 'function') window.loadRecords(searchValue);
+    } catch(e) {}
+  }
+  function updateGuideButton(){
+    var btn = document.getElementById('recordAttendanceGuideToggle');
+    if (!btn) return;
+    btn.classList.toggle('active', attendanceGuideMode);
+    btn.setAttribute('aria-pressed', attendanceGuideMode ? 'true' : 'false');
+    btn.title = attendanceGuideMode ? '출결 가이드 끄기' : '출결 가이드 보기';
+  }
+  function installGuideButton(){
+    var row = document.querySelector('#recordRoomScreen .recordModeLabelRow');
+    if (!row || document.getElementById('recordAttendanceGuideToggle')) {
+      updateGuideButton();
+      return;
+    }
+    var btn = document.createElement('button');
+    btn.id = 'recordAttendanceGuideToggle';
+    btn.className = 'recordAttendanceGuideBtn';
+    btn.type = 'button';
+    btn.textContent = '출결';
+    btn.setAttribute('aria-label', '출결 가이드 보기');
+    btn.onclick = window.toggleRecordAttendanceGuideMode;
+    row.appendChild(btn);
+    updateGuideButton();
+  }
+
+  window.isRecordAttendanceGuideModeActive = function(){ return attendanceGuideMode; };
+  window.olliEnsureRecordAttendanceGuideButton = installGuideButton;
+  window.toggleRecordAttendanceGuideMode = function(event){
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    attendanceGuideMode = !attendanceGuideMode;
+    updateGuideButton();
+    refreshCurrentStudentRows();
+    if (typeof window.scheduleRecordAttendanceGuideButtonAlign === 'function') window.scheduleRecordAttendanceGuideButtonAlign();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', installGuideButton);
+  } else {
+    installGuideButton();
+  }
+})();
+</script>
+<script src="olli-login-ui.js"></script>
+<script src="olli-auth-entry-ui.js"></script>
+<script src="olli-auth-account-session.js"></script>
+<script src="olli-auth-academy-switch.js"></script>
+<script src="olli-auth-owner-onboarding.js"></script>
+<script src="olli-auth-teacher-membership.js"></script>
+<script src="olli-auth-academy-access.js"></script>
+<script src="olli-auth-member-validation.js"></script>
+<script>
+/* v40-fix-12: 앱 첫 화면 로그인 표시 */
+function shouldShowOlliLoginOnStart() {
+  const academyId = localStorage.getItem('olli_current_academy_id');
+  const academyCode = localStorage.getItem('olli_current_academy_code');
+  const ownerLoggedIn = localStorage.getItem('olli_owner_logged_in') === 'true';
+  const teacherLoggedIn = localStorage.getItem('olli_teacher_logged_in') === 'true';
+
+  // 원장/선생님 로그인 상태 또는 학원 정보가 있으면 기존 앱으로 진입.
+  return !(ownerLoggedIn || teacherLoggedIn || academyId || academyCode);
+}
+
+// 시작 화면 표시는 메인 시작 라우터에서 한 번만 처리합니다.
+</script>
+
+
+
+
+
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', setupKinderDirectorAccordion);
+window.addEventListener('load', setupKinderDirectorAccordion);
+setupKinderDirectorAccordion();
+</script>
+
+
+
+
+
+
+
+<script id="v9-growth-survey-decorate">
+(function(){
+  var growthHelpMap = {
+    'A1. 아이 이름':'피드백을 작성할 아이 이름을 확인해 주세요.',
+    'A2. 활동':'오늘 아이가 참여한 활동을 선택해 주세요.',
+    'A2-1. 하위상황':'조금 더 구체적인 상황을 선택해 주세요.',
+    'A3. 실패유형':'오늘의 막힘이나 실패 장면을 골라 주세요.',
+    'A4. 첫반응 - 몸':'몸으로 먼저 보인 반응을 선택해 주세요.',
+    'A5. 첫반응 - 말':'말로 표현한 첫 반응을 선택해 주세요.',
+    'A6. 첫반응 - 시선':'눈빛과 시선의 반응을 선택해 주세요.',
+    'A7. 실패원인':'막힘이 생긴 이유를 추정해 주세요.',
+    'A8. 교사개입':'선생님이 어떤 방식으로 도왔는지 선택해 주세요.',
+    'A9. 회복전환':'어떤 계기로 다시 해보게 되었는지 선택해 주세요.',
+    'A10. 회복결과':'회복 후 보인 결과를 선택해 주세요.',
+    'A11. 다음목표':'다음 수업의 성장 목표를 정리해 주세요.',
+    'A12. 위험태그':'특별히 더 살펴볼 신호가 있으면 선택해 주세요.',
+    'A13. 수업후상태':'수업이 끝난 뒤 아이 상태를 선택해 주세요.',
+    'A14. 추가메모':'추가로 남기고 싶은 장면이 있으면 적어 주세요.'
+  };
+
+  function buildIntro(count){
+    var wrap = document.createElement('div');
+    wrap.className = 'growthSurveyIntro';
+    wrap.innerHTML = ''
+      + '<div class="growthSurveyIntroTitle">성장 피드백 설문</div>'
+      + '<div class="growthSurveyIntroText">아이의 실패·막힘 장면을<br>짧게 선택하면 피드백 문장으로 정리돼요.</div>'
+      + '<div class="growthSurveyProgress"><strong>진행 1 / ' + count + '</strong><div class="growthSurveyDots"><span class="active"></span><span></span><span></span><span></span></div></div>';
+    return wrap;
+  }
+
+  function decorateGrowthSurveyBox(box){
+    if (!box) return;
+    if (!box.querySelector('.growthSurveyIntro')) {
+      var count = box.querySelectorAll('.failSurveySection').length || 1;
+      box.insertBefore(buildIntro(count), box.firstChild);
+    }
+    box.querySelectorAll('.failSurveySection').forEach(function(section){
+      var title = section.querySelector('.failSurveySectionTitle');
+      if (!title) return;
+      var key = title.textContent.trim();
+      if (!section.querySelector('.failSurveySectionHelp') && growthHelpMap[key]) {
+        var help = document.createElement('div');
+        help.className = 'failSurveySectionHelp';
+        help.textContent = growthHelpMap[key];
+        title.insertAdjacentElement('afterend', help);
+      }
+    });
+  }
+
+  function initGrowthSurveyRefresh(){
+    decorateGrowthSurveyBox(document.getElementById('failGrowthInputArea'));
+    decorateGrowthSurveyBox(document.getElementById('elementaryFailGrowthInputArea'));
+  }
+
+  document.addEventListener('DOMContentLoaded', initGrowthSurveyRefresh);
+  window.addEventListener('load', initGrowthSurveyRefresh);
+})();
+</script>
+<script src="olli-settings-account-runtime.js"></script>
+<script id="olliRecordSortPatchScript" src="olli-record-sort-student-ui.js"></script>
+<!-- olliRecordSortPositionFinalFix removed: 하단바/검색창/정렬 버튼 위치는 olliRecordSearchFinalSingle에서 단일 관리 -->
+<!-- 2026-04-30 patch: 초등/유치 정렬 기준 분리 + 초등 정렬 미작동 원인 보정 -->
+<script id="olliRecordSortSeparatedElementaryKinderFix">
+(function(){
+  const DAYS = ['월','화','수','목','금','토','일'];
+  const DAY_NAMES = {0:'일',1:'월',2:'화',3:'수',4:'목',5:'금',6:'토'};
+  const SORT_KEY = 'olli_record_sort_settings_by_view_v3';
+  function getActiveRecordView(){
+    try {
+      if (typeof currentRecordView !== 'undefined' && (currentRecordView === 'kinder' || currentRecordView === 'elementary')) return currentRecordView;
+    } catch(e){}
+    try {
+      if (window.currentRecordView === 'kinder' || window.currentRecordView === 'elementary') return window.currentRecordView;
+    } catch(e){}
+    const kinderToggle = document.getElementById('recordKinderToggle');
+    const elementaryToggle = document.getElementById('recordElementaryToggle');
+    if (kinderToggle && kinderToggle.classList.contains('active')) return 'kinder';
+    if (elementaryToggle && elementaryToggle.classList.contains('active')) return 'elementary';
+    const label = document.getElementById('recordModeLabel')?.textContent || '';
+    return label.includes('유치') ? 'kinder' : 'elementary';
+  }
+  function readSortState(){
+    const fallback = { elementary: { criteria: 'initial' }, kinder: { criteria: 'initial' } };
+    try {
+      const parsed = JSON.parse(localStorage.getItem(SORT_KEY) || '{}');
+      return { elementary: Object.assign({}, fallback.elementary, parsed.elementary || {}), kinder: Object.assign({}, fallback.kinder, parsed.kinder || {}) };
+    } catch(e) { return fallback; }
+  }
+  function writeSortState(view, criteria){
+    const state = readSortState();
+    state[view] = Object.assign({}, state[view] || {}, { criteria });
+    localStorage.setItem(SORT_KEY, JSON.stringify(state));
+  }
+  function getCriteria(view){ const state = readSortState(); const criteria = (state[view] && state[view].criteria) || 'initial'; if (criteria === 'lessonDayTeacher') return 'lessonDay'; return criteria; }
+  function cleanText(value){ return String(value || '').trim(); }
+  function safeNum(value){ const match = cleanText(value).match(/\d+/); const n = match ? Number(match[0]) : Number(value); return Number.isFinite(n) && n > 0 ? n : 999; }
+  function normalizeTeacherName(value){ return cleanText(value).replace(/T$/i, '').trim(); }
+  function getTeacherValue(student){ return normalizeTeacherName(student?.homeroom_teacher || student?.teacher || student?.teacher_name || student?.teacherName || ''); }
+  function getTendencyValue(student){ return cleanText(student?.tendency || student?.personality || student?.personalityType || student?.personality_type || student?.tendencyType || student?.tendency_type || student?.group_tendency || student?.type_label || student?.character || ''); }
+  function getSchoolValue(student){ return cleanText(student?.school || student?.elementary_school || student?.schoolName || ''); }
+  function getGradeValue(student){ return cleanText(student?.grade || student?.school_grade || student?.class_grade || ''); }
+  function getKindergartenValue(student){ return cleanText(student?.kindergarten || student?.school || ''); }
+  function normalizeDayText(value){ return cleanText(value).replace(/요일/g,'').replace(/[·,\/]/g,' '); }
+  function parseDays(student){ const raw = normalizeDayText(student?.lesson_day || student?.lessonDay || student?.days || student?.day || ''); return DAYS.filter(day => raw.includes(day)); }
+  function todayKo(){ return DAY_NAMES[(new Date()).getDay()] || '월'; }
+  function todayDayIndex(){ const idx = DAYS.indexOf(todayKo()); return idx < 0 ? 0 : idx; }
+  function daySortDistance(day){
+    const idx = DAYS.indexOf(day);
+    if (idx < 0) return 999;
+    return (idx - todayDayIndex() + DAYS.length) % DAYS.length;
+  }
+  function dayRank(student){
+    const selected = parseDays(student); if (!selected.length) return 999;
+    return Math.min(...selected.map(daySortDistance));
+  }
+  function primaryDayLabel(student){
+    const selected = parseDays(student);
+    if (!selected.length) return '요일없음';
+    return selected.slice().sort((a,b) => daySortDistance(a) - daySortDistance(b))[0] || selected[0];
+  }
+  function firstHangul(value){
+    const text = cleanText(value); if (!text) return '힣';
+    const code = text.charCodeAt(0);
+    if (code >= 0xAC00 && code <= 0xD7A3) { const choseong = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ']; return choseong[Math.floor((code - 0xAC00) / 588)] || text[0]; }
+    return text[0] || '힣';
+  }
+  function statusRank(student){ try { if (typeof getStudentStatusRank === 'function') return getStudentStatusRank(student); } catch(e){} return student && student.status === 'inactive' ? 1 : 0; }
+  function nameCompare(a,b){ return cleanText(a?.name).localeCompare(cleanText(b?.name), 'ko'); }
+  function stringCompare(a,b){ const av = cleanText(a); const bv = cleanText(b); if (!av && bv) return 1; if (av && !bv) return -1; return av.localeCompare(bv, 'ko'); }
+  function compareElementaryByCriteria(a,b){
+    const criterion = getCriteria('elementary'); let result = 0;
+    if (criterion === 'tendency') {
+      result = (getTendencyValue(a) ? 0 : 1) - (getTendencyValue(b) ? 0 : 1);
+      if (result !== 0) return result;
+      result = stringCompare(getTendencyValue(a), getTendencyValue(b));
+    }
+    else if (criterion === 'group') result = compareElementaryGroupFeedbackOrder(a,b);
+    else if (criterion === 'grade') result = safeNum(getGradeValue(a)) - safeNum(getGradeValue(b));
+    else if (criterion === 'school') result = stringCompare(getSchoolValue(a), getSchoolValue(b));
+    else if (criterion === 'lessonDay') result = dayRank(a) - dayRank(b);
+    else if (criterion === 'teacher') result = stringCompare(getTeacherValue(a), getTeacherValue(b));
+    else result = firstHangul(a?.name).localeCompare(firstHangul(b?.name), 'ko');
+    if (result !== 0) return result;
+    if (criterion !== 'teacher') {
+      const teacherResult = stringCompare(getTeacherValue(a), getTeacherValue(b));
+      if (teacherResult !== 0) return teacherResult;
+    }
+    if (criterion !== 'group') { const groupResult = compareElementaryGroupFeedbackOrder(a,b); if (groupResult !== 0) return groupResult; }
+    if (criterion !== 'grade') { const gradeResult = safeNum(getGradeValue(a)) - safeNum(getGradeValue(b)); if (gradeResult !== 0) return gradeResult; }
+    return nameCompare(a,b);
+  }
+  function getElementarySortSectionKey(student){
+    try { if (typeof getStudentStatus === 'function' && getStudentStatus(student) !== 'active') return 'status:' + getStudentStatus(student); } catch(e) {}
+    const criterion = getCriteria('elementary');
+    if (criterion === 'group') return 'group:' + (getElementaryCurrentFeedbackGroupRank(student) === 0 ? '이번달' : '일반') + ':' + (cleanText(student?.group) || '그룹없음');
+    if (criterion === 'lessonDay') return 'day:' + primaryDayLabel(student);
+    if (criterion === 'teacher') return 'teacher:' + (getTeacherValue(student) || '담임없음');
+    if (criterion === 'tendency') return 'tendency:' + (getTendencyValue(student) || '성향없음');
+    if (criterion === 'grade') return 'grade:' + (getGradeValue(student) || '학년없음');
+    if (criterion === 'school') return 'school:' + (getSchoolValue(student) || '학교없음');
+    return 'initial:' + firstHangul(student?.name);
+  }
+  function compareKinderByCriteria(a,b){
+    const criterion = getCriteria('kinder'); let result = 0;
+    if (criterion === 'age') result = safeNum(a?.age) - safeNum(b?.age);
+    else if (criterion === 'lessonDay') result = dayRank(a) - dayRank(b);
+    else if (criterion === 'kindergarten') result = stringCompare(getKindergartenValue(a), getKindergartenValue(b));
+    else if (criterion === 'teacher') result = stringCompare(getTeacherValue(a), getTeacherValue(b));
+    else if (criterion === 'tendency') result = stringCompare(getTendencyValue(a), getTendencyValue(b));
+    else result = firstHangul(a?.name).localeCompare(firstHangul(b?.name), 'ko');
+    if (result !== 0) return result;
+    if (criterion !== 'teacher') {
+      const teacherResult = stringCompare(getTeacherValue(a), getTeacherValue(b));
+      if (teacherResult !== 0) return teacherResult;
+    }
+    return nameCompare(a,b);
+  }
+  const elementaryOptions = [['group','그룹'], ['teacher','담임'], ['tendency','성향'], ['grade','학년'], ['school','학교'], ['initial','자음'], ['lessonDay','요일']];
+  const kinderOptions = [['age','나이'], ['teacher','담임'], ['tendency','성향'], ['initial','자음'], ['lessonDay','요일'], ['kindergarten','유치원']];
+  let recordSortFeedbackMonthGroup = '';
+  function renderRecordSortGroupLabel(label){
+    return '<span class="recordSortGroupLabel">'+label+'</span>';
+  }
+  function renderRecordSortFeedbackMonths(){
+    const groups = [['1','A'], ['2','B'], ['3','C'], ['4','D'], ['5','E'], ['6','F']];
+    const groupButtons = groups.map(([group,label]) => '<button type="button" class="recordSortGroupIconBtn '+(recordSortFeedbackMonthGroup===group?'active':'')+'" data-record-sort-feedback-group="'+group+'" title="'+label+'그룹">'+renderRecordSortGroupLabel(label)+'</button>').join('');
+    const monthValues = (typeof ELEMENTARY_GROUP_MONTH_VALUES !== 'undefined') ? ELEMENTARY_GROUP_MONTH_VALUES : [1,2,3,4,5,6,7,8,9,10,11,12];
+    const selectedMonths = recordSortFeedbackMonthGroup && typeof getElementaryGroupFeedbackMonths === 'function' ? new Set(getElementaryGroupFeedbackMonths(recordSortFeedbackMonthGroup)) : new Set();
+    const monthGrid = recordSortFeedbackMonthGroup
+      ? '<div class="recordSortMonthGrid">'+monthValues.map(month => '<button type="button" class="recordSortMonthChip '+(selectedMonths.has(month)?'active':'')+'" data-record-sort-feedback-month="'+month+'">'+month+'월</button>').join('')+'</div>'
+      : '<div class="recordSortMonthHint">그룹을 누르면 발송월을 설정할 수 있어요.</div>';
+    return '<div class="recordSortDivider"></div><div class="recordSortFeedbackTitle">그룹별 피드백 발송월</div><div class="recordSortGroupIconGrid">'+groupButtons+'</div>'+monthGrid;
+  }
+  function renderSeparatedSortPopup(viewOverride){
+    const view = (viewOverride === 'kinder' || viewOverride === 'elementary') ? viewOverride : getActiveRecordView();
+    const selected = getCriteria(view);
+    const options = view === 'kinder' ? kinderOptions : elementaryOptions;
+    const chips = options.map(([key,label]) => '<button type="button" class="recordSortChip '+(selected===key?'active':'')+'" data-olli-sort-view="'+view+'" data-olli-sort-criteria="'+key+'">'+label+'</button>').join('');
+    return '<div class="recordSortCriteriaTitle">'+(view === 'kinder' ? '유치부 정렬 기준' : '초등부 정렬 기준')+'</div><div class="recordSortCriteriaGrid">'+chips+'</div>';
+  }
+  function refreshRecordSortPopup(viewOverride){ const popup = document.getElementById('recordSortPopup'); if (popup) popup.innerHTML = renderSeparatedSortPopup(viewOverride); }
+  window.refreshRecordSortPopup = refreshRecordSortPopup;
+  function reloadRecordList(){ try { const input = document.getElementById('searchName'); if (typeof loadRecords === 'function') loadRecords(input ? input.value.trim() : ''); } catch(e) {} }
+  document.addEventListener('click', function(event){
+    const btn = event.target.closest('#recordSortBtn');
+    if (btn) { setTimeout(refreshRecordSortPopup, 0); return; }
+    const groupBtn = event.target.closest('[data-record-sort-feedback-group]');
+    if (groupBtn) {
+      event.preventDefault(); event.stopPropagation();
+      const group = String(groupBtn.dataset.recordSortFeedbackGroup || '');
+      recordSortFeedbackMonthGroup = recordSortFeedbackMonthGroup === group ? '' : group;
+      refreshRecordSortPopup();
+      return;
+    }
+    const monthBtn = event.target.closest('[data-record-sort-feedback-month]');
+    if (monthBtn) {
+      event.preventDefault(); event.stopPropagation();
+      if (recordSortFeedbackMonthGroup && typeof toggleElementaryGroupFeedbackMonth === 'function') {
+        toggleElementaryGroupFeedbackMonth(recordSortFeedbackMonthGroup, Number(monthBtn.dataset.recordSortFeedbackMonth));
+      }
+      refreshRecordSortPopup(); reloadRecordList();
+      return;
+    }
+    const chip = event.target.closest('[data-olli-sort-criteria]');
+    if (!chip) return;
+    event.preventDefault(); event.stopPropagation();
+    const sortView = chip.dataset.olliSortView || getActiveRecordView();
+    writeSortState(sortView, chip.dataset.olliSortCriteria);
+    refreshRecordSortPopup(sortView);
+    reloadRecordList();
+    if (typeof window.pcRefreshSidebarRoster === 'function') window.pcRefreshSidebarRoster();
+  }, true);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refreshRecordSortPopup); else setTimeout(refreshRecordSortPopup, 0);
+})();
+</script>
+<!-- 2026-04-30 patch: 초등 정렬 요일→담임 2칸 버튼 + 유치부 그룹 구분선 -->
+<!-- 2026-04-30 patch v2: 선생님 비활성화 되돌아감 방지 + 그룹 SVG 데이터 URL # 보정 -->
+<style id="olliTeacherManageRoleToggleStyle">
+/* 선생님 관리 버튼/권한 UI */
+.settingsRoleSelectBtn{
+  min-height:30px;
+  border:none;
+  border-radius:999px;
+  background:#f1f1ef;
+  color:#111;
+  padding:0 11px;
+  font-family:inherit;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:760;
+  cursor:pointer;
+}
+.settingsOwnerRoleBadge{
+  min-height:24px;
+  border-radius:999px;
+  padding:0 11px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:#111;
+  color:#fff;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:800;
+  line-height:1;
+}
+.settingsActionBtn.memberDisableBtn{
+  background:#111;
+  color:#fff;
+}
+.settingsRoleToggleOverlay{
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,.18);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  z-index:160000;
+  padding:18px;
+}
+.settingsRoleToggleOverlay.show{display:flex;}
+.settingsRoleToggleCard{
+  width:min(360px,100%);
+  border-radius:28px;
+  background:#fff;
+  padding:20px 16px 16px;
+  box-shadow:0 24px 60px rgba(0,0,0,.2),0 8px 18px rgba(0,0,0,.08);
+}
+.settingsRoleToggleTitle{
+  font-size:calc(19px * var(--olli-text-scale));
+  font-weight:850;
+  letter-spacing:-.055em;
+  margin-bottom:6px;
+}
+.settingsRoleToggleDesc{
+  font-size:calc(13px * var(--olli-text-scale));
+  color:#777;
+  line-height:1.45;
+  margin-bottom:14px;
+}
+.settingsRoleToggleGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.settingsRoleToggleOption{
+  height:48px;
+  border:none;
+  border-radius:999px;
+  background:#f1f1ef;
+  color:#111;
+  font-family:inherit;
+  font-size:calc(16px * var(--olli-text-scale));
+  font-weight:800;
+}
+.settingsRoleToggleOption.active{
+  background:#111;
+  color:#fff;
+}
+.settingsRoleToggleActions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:14px;
+}
+.settingsRoleToggleBtn{
+  height:44px;
+  border:none;
+  border-radius:999px;
+  background:#f1f1ef;
+  color:#333;
+  font-family:inherit;
+  font-size:calc(14px * var(--olli-text-scale));
+  font-weight:780;
+}
+.settingsRoleToggleBtn.primary{
+  background:#111;
+  color:#fff;
+}
+.settingsCrossAcademyManagerBtn{
+  grid-column:1 / -1;
+  background:#f1f1ef;
+  color:#111;
+}
+.settingsCrossAcademyManagerCard{
+  max-height:min(620px,calc(100vh - 36px));
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.settingsCrossAcademyManagerList{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  overflow-y:auto;
+  min-height:72px;
+  max-height:330px;
+  padding:2px 0;
+}
+.settingsCrossAcademyManagerOption{
+  width:100%;
+  min-height:62px;
+  border:none;
+  border-radius:18px;
+  background:#f4f4f2;
+  color:#111;
+  padding:12px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  text-align:left;
+  font-family:inherit;
+}
+.settingsCrossAcademyManagerOption strong{
+  display:block;
+  font-size:calc(15px * var(--olli-text-scale));
+  font-weight:820;
+  letter-spacing:-.035em;
+}
+.settingsCrossAcademyManagerOption small{
+  display:block;
+  margin-top:4px;
+  color:#888;
+  font-size:calc(11px * var(--olli-text-scale));
+  font-weight:600;
+}
+.settingsCrossAcademyManagerOption.active{
+  background:#111;
+  color:#fff;
+}
+.settingsCrossAcademyManagerOption.active small{
+  color:rgba(255,255,255,.7);
+}
+.settingsCrossAcademyManagerCheck{
+  width:26px;
+  height:26px;
+  border-radius:999px;
+  background:#fff;
+  color:#111;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  font-size:calc(14px * var(--olli-text-scale));
+  font-weight:900;
+}
+.settingsCrossAcademyManagerOption:not(.active) .settingsCrossAcademyManagerCheck{
+  background:#dededb;
+}
+</style>
+<script id="olliTeacherManagementLegacyCleanup">
+(function(){
+  ['olli_disabled_member_ids_v1','olli_member_role_overrides_v1','olli_member_device_status_overrides_v1'].forEach(function(key){
+    try { localStorage.removeItem(key); } catch (error) {}
+  });
+})();
+</script>
+<script>
+/* 시작 페이지 설정 UI 보강 */
+(function(){
+  const prevApply = window.settingsApplyStateToUI;
+  window.settingsApplyStateToUI = function(){
+    if (typeof prevApply === 'function') prevApply();
+    if (typeof updateOlliStartPageSettingUI === 'function') updateOlliStartPageSettingUI();
+  };
+})();
+</script>
+<style id="olliRecordSearchFinalSingle">
+/* 기록실 검색창 최종 단일 기준
+   닫힘: [+][캡슐형 검색바 기본 길이][정렬]
+   열림: [캡슐형 검색바가 왼쪽으로만 확장][X]
+   예전 원형 검색 버튼 / flex-basis 확장 / right-width 확장 코드는 제거하고 이 기준만 사용합니다. */
+:root{ --record-keyboard-offset:0px; }
+
+#recordRoomScreen .recordRoomScreenFloatingBar{
+  position:fixed ;
+  left:50% ;
+  right:auto ;
+  bottom:calc(32px + var(--record-keyboard-offset, 0px)) ;
+  transform:translateX(-50%) ;
+  width:calc(100% - 32px) ;
+  max-width:828px ;
+  height:47px ;
+  display:flex;
+  align-items:center ;
+  justify-content:flex-start ;
+  gap:10px ;
+  pointer-events:none ;
+  z-index:140 ;
+  transition:bottom .22s cubic-bezier(.22,.61,.36,1);
+}
+#recordRoomScreen .recordRoomScreenFloatingBar > *{
+  pointer-events:auto ;
+}
+
+#recordRoomScreen #studentAddBtn.recordAddBtn{
+  display:inline-flex ;
+  order:1 ;
+  position:static ;
+  width:47px ;
+  min-width:47px ;
+  height:47px ;
+  min-height:47px ;
+  flex:0 0 47px ;
+  border-radius:50% ;
+  background:#fff;
+  color:#111;
+  box-shadow:0 10px 28px rgba(0,0,0,0.18), 0 3px 10px rgba(0,0,0,0.12);
+  align-items:center ;
+  justify-content:center ;
+  padding:0 ;
+  line-height:1;
+}
+
+#recordRoomScreen #studentAddBtn.recordAddBtn svg{
+  width:21px ;
+  height:21px ;
+  display:block ;
+  stroke:currentColor ;
+  fill:none ;
+  stroke-width:2.35 ;
+  stroke-linecap:round ;
+  stroke-linejoin:round ;
+  transform:none ;
+  pointer-events:none ;
+}
+
+#recordRoomScreen #studentAddBtn.recordAddBtn line,
+#recordRoomScreen #studentAddBtn.recordAddBtn path{
+  stroke:currentColor ;
+  fill:none ;
+}
+
+#recordRoomScreen .recordAddMenu{
+  display:none;
+  position:absolute;
+  left:0;
+  bottom:57px;
+  min-width:154px;
+  background:#fff;
+  border-radius:18px;
+  padding:7px;
+  box-shadow:0 14px 36px rgba(0,0,0,0.16), 0 3px 10px rgba(0,0,0,0.08);
+  z-index:160;
+}
+#recordRoomScreen .recordAddMenu.show{
+  display:block;
+}
+#recordRoomScreen .recordAddMenuBtn{
+  width:100%;
+  min-height:40px;
+  border:none;
+  border-radius:13px;
+  background:transparent;
+  color:#111;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  padding:0 12px;
+  font-family:inherit;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:500;
+  letter-spacing:-0.02em;
+  cursor:pointer;
+  white-space:nowrap;
+}
+#recordRoomScreen .recordAddMenuBtn:active{
+  background:#f1f1f1;
+}
+@media (hover:hover){
+  #recordRoomScreen .recordAddMenuBtn:hover{ background:#f6f6f6; }
+}
+
+#recordRoomScreen #recordSearchGroup.recordSearchGroup,
+#recordRoomScreen #recordSearchGroup.recordSearchOnlyGroup{
+  order:2 ;
+  position:static ;
+  top:auto ;
+  right:auto ;
+  bottom:auto ;
+  left:auto ;
+  width:auto ;
+  min-width:0 ;
+  max-width:none ;
+  height:47px ;
+  min-height:47px ;
+  flex:1 1 0 ;
+  display:flex ;
+  align-items:center ;
+  justify-content:flex-start ;
+  border-radius:999px ;
+  background:#fff;
+  overflow:hidden ;
+  box-shadow:0 8px 24px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08);
+  z-index:2 ;
+}
+
+#recordRoomScreen #recordSearchPill.recordSearchPill{
+  position:static ;
+  width:100% ;
+  min-width:0 ;
+  max-width:none ;
+  height:47px ;
+  min-height:47px ;
+  flex:1 1 0 ;
+  display:flex ;
+  align-items:center ;
+  justify-content:flex-start ;
+  gap:8px ;
+  border:none ;
+  border-radius:999px ;
+  background:transparent;
+  box-shadow:none;
+  padding:0 14px ;
+  color:#111;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+
+#recordRoomScreen #recordSearchPill .recordSearchIcon{
+  width:23px ;
+  height:23px ;
+  min-width:23px ;
+  display:flex ;
+  align-items:center ;
+  justify-content:center ;
+  color:#111;
+  pointer-events:none ;
+}
+#recordRoomScreen #recordSearchPill .recordSearchIcon svg{
+  width:23px ;
+  height:23px ;
+  stroke:currentColor ;
+  fill:none ;
+  stroke-width:1.85 ;
+  stroke-linecap:round ;
+  stroke-linejoin:round ;
+}
+
+#recordRoomScreen #recordSearchPill .recordSearchInputInline{
+  display:block ;
+  visibility:visible ;
+  opacity:1 ;
+  width:auto ;
+  min-width:0 ;
+  flex:1 1 0 ;
+  height:100% ;
+  border:none ;
+  outline:none ;
+  background:transparent;
+  color:#111;
+  font-size:calc(15px * var(--olli-text-scale));
+  font-weight:500;
+  line-height:1.15;
+  letter-spacing:-0.03em;
+  font-family:inherit;
+  padding:0 ;
+}
+#recordRoomScreen:not(.record-search-open) #recordSearchPill .recordSearchInputInline{
+  pointer-events:none ;
+}
+#recordRoomScreen.record-search-open #recordSearchPill .recordSearchInputInline{
+  pointer-events:auto ;
+}
+#recordRoomScreen #recordSearchPill .recordSearchInputInline::placeholder{
+  color:#7f7f7f;
+  opacity:1 ;
+  font-size:calc(15px * var(--olli-text-scale));
+  font-weight:500;
+}
+
+#recordRoomScreen .recordSearchClose{
+  display:inline-flex ;
+  position:absolute ;
+  right:0 ;
+  bottom:0 ;
+  top:auto ;
+  left:auto ;
+  width:47px ;
+  min-width:47px ;
+  height:47px ;
+  min-height:47px ;
+  flex:0 0 47px ;
+  align-items:center ;
+  justify-content:center ;
+  padding:0 ;
+  margin:0 ;
+  border:none ;
+  border-radius:50% ;
+  background:#fff;
+  color:#111;
+  font-size:calc(21px * var(--olli-text-scale));
+  font-weight:400;
+  line-height:1;
+  opacity:0 ;
+  visibility:hidden ;
+  transform:scale(.96) ;
+  pointer-events:none ;
+  cursor:pointer;
+  box-shadow:0 10px 28px rgba(0,0,0,0.18), 0 3px 10px rgba(0,0,0,0.12);
+  z-index:145 ;
+  transition:opacity .14s ease, transform .14s ease, visibility 0s linear .14s;
+  -webkit-tap-highlight-color:transparent;
+}
+
+#recordRoomScreen .recordSortWrap{
+  order:3 ;
+  position:relative ;
+  flex:0 0 47px ;
+  width:47px ;
+  min-width:47px ;
+  height:47px ;
+  margin:0 ;
+}
+#recordRoomScreen #recordSortBtn{
+  width:47px ;
+  min-width:47px ;
+  height:47px ;
+  min-height:47px ;
+  border:none ;
+  border-radius:50% ;
+  background:#fff;
+  color:#111;
+  display:inline-flex ;
+  align-items:center ;
+  justify-content:center ;
+  padding:0 ;
+  margin:0 ;
+  cursor:pointer;
+  box-shadow:0 10px 28px rgba(0,0,0,0.18), 0 3px 10px rgba(0,0,0,0.12);
+}
+
+#recordRoomScreen #recordSortBtn svg{
+  width:35px ;
+  height:35px ;
+  display:block ;
+  margin:0 auto ;
+  position:static ;
+  transform:none ;
+  stroke:#111 ;
+  fill:none ;
+  stroke-width:1.7 ;
+  stroke-linecap:round ;
+  stroke-linejoin:round ;
+}
+
+#recordRoomScreen.record-search-open .recordRoomScreenFloatingBar{
+  justify-content:flex-start ;
+  gap:0 ;
+}
+#recordRoomScreen.record-search-open #studentAddBtn,
+#recordRoomScreen.record-search-open #recordSelectionControls,
+#recordRoomScreen.record-search-open .recordSortWrap{
+  opacity:0 ;
+  visibility:hidden ;
+  pointer-events:none ;
+}
+#recordRoomScreen.record-search-open #recordSearchGroup{
+  position:absolute ;
+  left:0 ;
+  right:57px ;
+  bottom:0 ;
+  top:auto ;
+  width:auto ;
+  max-width:none ;
+  min-width:0 ;
+  flex:none ;
+  margin:0 ;
+  z-index:144 ;
+}
+#recordRoomScreen.record-search-open .recordSearchClose{
+  opacity:1 ;
+  visibility:visible ;
+  transform:scale(1) ;
+  pointer-events:auto ;
+  transition:opacity .14s ease, transform .14s ease, visibility 0s linear 0s;
+}
+#recordRoomScreen.record-search-open .recordSearchClose:active{
+  background:#eeeeee;
+}
+
+#recordRoomScreen.record-search-open .recordUtilityRow{
+  opacity:0 ;
+  max-height:0 ;
+  height:0 ;
+  margin-top:0 ;
+  margin-bottom:0 ;
+  padding-top:0 ;
+  padding-bottom:0 ;
+  overflow:hidden ;
+}
+#recordRoomScreen.record-search-open .recordDivider{
+  margin-bottom:0 ;
+}
+#recordRoomScreen.record-search-open .recordModeLabelRow{
+  margin-top:8px ;
+}
+
+#recordRoomScreen.record-search-open:not(.record-search-has-query) #recordList{
+  display:none ;
+}
+#recordRoomScreen.record-search-open.record-search-has-query #recordList{
+  display:block ;
+}
+</style>
+<script id="olli-common-storage-foundation-v1" src="olli-storage-core.js"></script>
+<style id="vivizac-ipad-student-memo-controls-fix">
+/* 화면 텍스트 크기 설정: 기본 1.12 / 중간 1.20 / 크게 1.30 */
+:root,
+body {
+  --olli-text-scale: 1.12;
+}
+body {
+  font-size: calc(16px * var(--olli-text-scale));
+}
+:root[data-olli-text-size="medium"],
+body[data-olli-text-size="medium"] {
+  --olli-text-scale: 1.20;
+}
+:root[data-olli-text-size="large"],
+body[data-olli-text-size="large"] {
+  --olli-text-scale: 1.30;
+}
+.settingsTextSizeGuide {
+  display:block;
+  margin-top:2px;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:500;
+  color:#888;
+  line-height:1.2;
+}
+.settingsStartPageOption.active .settingsTextSizeGuide {
+  color:rgba(255,255,255,.72);
+}
+body[data-olli-text-size="medium"] .settingsTextSizeGuide,
+body[data-olli-text-size="large"] .settingsTextSizeGuide {
+  display:block;
+  margin-top:2px;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:500;
+  color:rgba(255,255,255,.72);
+  line-height:1.2;
+}
+body[data-olli-text-size="medium"] .settingsStartPageOption:not(.active) .settingsTextSizeGuide,
+body[data-olli-text-size="large"] .settingsStartPageOption:not(.active) .settingsTextSizeGuide {
+  color:#888;
+}
+body[data-olli-text-size="large"] .settingsRow {
+  min-height: calc(58px * var(--olli-text-scale));
+  padding-top:16px;
+  padding-bottom:16px;
+}
+body[data-olli-text-size="large"] .settingsRowTitle {
+  font-size: calc(15px * var(--olli-text-scale));
+  line-height:1.32;
+}
+body[data-olli-text-size="large"] .settingsRowValue {
+  font-size: calc(13px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .settingsProfileName,
+body[data-olli-text-size="large"] .settingsDetailTitle {
+  font-size: calc(20px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .settingsProfileEdit,
+body[data-olli-text-size="large"] .settingsMiniText,
+body[data-olli-text-size="large"] .settingsSheetDesc,
+body[data-olli-text-size="large"] .settingsInputLabel {
+  font-size: calc(12.5px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .settingsInput,
+body[data-olli-text-size="large"] .settingsSheetBtn,
+body[data-olli-text-size="large"] .settingsStartPageOption,
+body[data-olli-text-size="large"] .settingsActionBtn,
+body[data-olli-text-size="large"] .settingsExportBtn {
+  font-size: calc(14px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .settingsStartPageOption {
+  min-height: calc(50px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .settingsInfoHead,
+body[data-olli-text-size="large"] .settingsRoleName,
+body[data-olli-text-size="large"] .settingsRequestName,
+body[data-olli-text-size="large"] .settingsTeacherName {
+  font-size: calc(17px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .settingsInfoItem,
+body[data-olli-text-size="large"] .settingsRoleItem,
+body[data-olli-text-size="large"] .settingsRequestMeta div,
+body[data-olli-text-size="large"] .settingsTeacherMeta div {
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height:1.5;
+}
+body[data-olli-text-size="large"] .recordModeLabel,
+body[data-olli-text-size="large"] .recordAcademyStatLabel,
+body[data-olli-text-size="large"] .recordAcademyPanelTitle,
+body[data-olli-text-size="large"] .recordAcademyConsultGroupTitle,
+body[data-olli-text-size="large"] .recordAcademyListName {
+  font-size: calc(16px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .recordUtilityLabel,
+body[data-olli-text-size="large"] .recordAcademyListMeta,
+body[data-olli-text-size="large"] .recordAcademyInfoChip,
+body[data-olli-text-size="large"] .recordAcademyConsultStatusChip,
+body[data-olli-text-size="large"] .recordAcademyStatSub,
+body[data-olli-text-size="large"] .recordAcademyConsultPreviewText,
+body[data-olli-text-size="large"] .recordAcademyConsultGroupEmpty {
+  font-size: calc(12px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .recordAcademyStatValue {
+  font-size: calc(42px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .elementaryStudentRow,
+body[data-olli-text-size="large"] .kinderStudentRow {
+  padding-top:11px;
+  padding-bottom:11px;
+}
+body[data-olli-text-size="large"] .studentTextWrap > span:first-child,
+body[data-olli-text-size="large"] .studentMetaText,
+body[data-olli-text-size="large"] .recordText {
+  font-size: calc(16px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"]:not(.olliPcApp) .memoStudentName,
+body[data-olli-text-size="large"] .memoBottomBtn,
+body[data-olli-text-size="large"] .memoFeedbackBtn,
+body[data-olli-text-size="large"] .memoAnalysisBtn,
+body[data-olli-text-size="large"] .modalInput,
+body[data-olli-text-size="large"] .modalBtnCancel,
+body[data-olli-text-size="large"] .modalBtnConfirm {
+  font-size: calc(14px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .memoSubLabel,
+body[data-olli-text-size="large"] .memoSaveStatus,
+body[data-olli-text-size="large"] .modalLabel {
+  font-size: calc(12px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .memoEditor {
+  font-size: calc(15px * var(--olli-text-scale));
+  line-height:1.9;
+}
+body[data-olli-text-size="large"] .attendanceFeedbackSheetTitle,
+body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxTitle,
+body[data-olli-text-size="large"] .modalTitle {
+  font-size: calc(20px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfPhotoMetaText,
+body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfInputWarning,
+body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxSub,
+body[data-olli-text-size="large"] .attendanceFeedbackSheetCardDate {
+  font-size: calc(12px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"]:not(.olliPcApp) #kinderChatFeedbackScreen .kcfBubble,
+body[data-olli-text-size="large"]:not(.olliPcApp) #kinderChatFeedbackScreen .kcfInput,
+body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfQuestionList li,
+body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxText,
+body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxFullText {
+  font-size: calc(14px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfKeywordBtn {
+  height: calc(32px * var(--olli-text-scale));
+  font-size: calc(13px * var(--olli-text-scale));
+  padding-left:14px;
+  padding-right:14px;
+}
+body[data-olli-text-size="large"] .msgBubble.assistant,
+body[data-olli-text-size="large"] .msgBubble.user,
+body[data-olli-text-size="large"] .typing,
+body[data-olli-text-size="large"] .inputBox {
+  font-size: calc(16px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .modeToggleLine1 {
+  font-size: calc(13px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .modeToggleLine2 {
+  font-size: calc(11px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .analysisSheetTitle {
+  font-size: calc(16px * 1.20 * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .analysisResultSheetTitle {
+  font-size: calc(16px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .elementaryAnalysisSectionTitle {
+  font-size: calc(14px * 1.20 * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxSectionTitle {
+  font-size: calc(14px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .elementaryAnalysisTextarea {
+  font-size: calc(13px * 1.20 * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .analysisResultSheetSectionTitle,
+body[data-olli-text-size="large"] .analysisResultSheetItem,
+body[data-olli-text-size="large"] #studentMemoScreen .elementaryAnalysisSummaryTitle,
+body[data-olli-text-size="large"] #studentMemoScreen .elementaryAnalysisHistoryLine,
+body[data-olli-text-size="large"] #studentMemoScreen .elementaryAnalysisHistoryCycleBtn .elementaryAnalysisHistoryLine {
+  font-size: calc(13px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .elementaryAnalysisIntro,
+body[data-olli-text-size="large"] .elementaryAnalysisHelp,
+body[data-olli-text-size="large"] .elementaryChip,
+body[data-olli-text-size="large"] .elementaryTendencyGroupBtn,
+body[data-olli-text-size="large"] .elementaryTendencyGroupTitle {
+  font-size: calc(12px * 1.20 * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .recordSortSwitchLabel,
+body[data-olli-text-size="large"] .recordSortChip,
+body[data-olli-text-size="large"] .recordSortGroupIconBtn,
+body[data-olli-text-size="large"] .recordSortMonthChip,
+body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxActionBtn {
+  font-size: calc(12px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .recordSortCriteriaTitle,
+body[data-olli-text-size="large"] .recordSortFeedbackTitle,
+body[data-olli-text-size="large"] .recordSortMonthHint {
+  font-size: calc(11px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .sceneMemoHeader,
+body[data-olli-text-size="large"] .failGrowthMemoHeader {
+  font-size: calc(14px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .sceneMemoInput,
+body[data-olli-text-size="large"] .sceneMemoPlaceholder,
+body[data-olli-text-size="large"] .failGrowthMemoInput,
+body[data-olli-text-size="large"] .feedbackResultText {
+  font-size: calc(15px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .feedbackResultLabel {
+  font-size: calc(12px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .modeToggleBtn,
+body[data-olli-text-size="large"] .memoFeedbackBtn,
+body[data-olli-text-size="large"] .memoBottomBtn,
+body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfSendBtn {
+  min-height: calc(40px * var(--olli-text-scale));
+}
+</style>
+<script id="olli-page-scroll-reset-patch">
+/* 2026-06-22: 페이지 전환 시 이전 화면 스크롤 위치가 남지 않도록 공통 리셋 */
+(function(){
+  if (window.__olliPageScrollResetPatchV1) return;
+  window.__olliPageScrollResetPatchV1 = true;
+
+  const SCROLL_CONTAINER_SELECTOR = [
+    '.pageInner', '.recordPageInner', '.memoPageInner', '.settingsPageInner',
+    '.settingsBody', '.settingsDetailBody', '.settingsPageBody',
+    '.chatArea', '.kcfInner', '.kcfBody', '.kcfChatArea', '.kcfInboxList',
+    '.attendanceFeedbackSheetPanel',
+    '.analysisSheetPanel', '.analysisResultSheetPanel',
+    '#recordPageInner', '#recordList', '#memoEditor'
+  ].join(',');
+
+  function isVisibleElement(el) {
+    if (!el) return false;
+    const style = window.getComputedStyle ? getComputedStyle(el) : null;
+    return !style || (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0');
+  }
+
+  function resetScrollElement(el) {
+    if (!el) return;
+    try {
+      if ('scrollTop' in el) el.scrollTop = 0;
+      if ('scrollLeft' in el) el.scrollLeft = 0;
+    } catch (e) {}
+  }
+
+  function resetPageScroll(root) {
+    if (!root) return;
+    resetScrollElement(root);
+    try { root.querySelectorAll(SCROLL_CONTAINER_SELECTOR).forEach(resetScrollElement); } catch (e) {}
+    try { window.scrollTo(0, 0); } catch (e) {}
+  }
+
+  function resetVisiblePageScroll() {
+    try {
+      document.querySelectorAll('.pageScreen').forEach(function(screen){
+        if (isVisibleElement(screen)) resetPageScroll(screen);
+      });
+    } catch (e) {}
+  }
+
+  function scheduleReset(target) {
+    if (target) resetPageScroll(target);
+    requestAnimationFrame(function(){
+      if (target) resetPageScroll(target);
+      else resetVisiblePageScroll();
+    });
+    setTimeout(function(){
+      if (target) resetPageScroll(target);
+      else resetVisiblePageScroll();
+    }, 320);
+  }
+
+  function bindPageObservers() {
+    const observer = new MutationObserver(function(mutations){
+      mutations.forEach(function(mutation){
+        const el = mutation.target;
+        if (el && el.classList && el.classList.contains('pageScreen') && isVisibleElement(el)) {
+          scheduleReset(el);
+        }
+      });
+    });
+    document.querySelectorAll('.pageScreen').forEach(function(screen){
+      observer.observe(screen, { attributes: true, attributeFilter: ['style', 'class'] });
+    });
+    resetVisiblePageScroll();
+  }
+
+  function wrapPageFunction(name) {
+    const original = window[name];
+    if (typeof original !== 'function' || original.__olliScrollResetWrapped) return;
+    const wrapped = function(){
+      const result = original.apply(this, arguments);
+      Promise.resolve(result).finally(function(){ scheduleReset(); });
+      return result;
+    };
+    wrapped.__olliScrollResetWrapped = true;
+    window[name] = wrapped;
+  }
+
+  function bindFunctionWrappers() {
+    [
+      'vivizacSlideInPage',
+      'showRecordRoom',
+      'hideRecordRoom',
+      'openRecordAttendanceDashboard',
+      'openStudentMemoPageById',
+      'openKinderChatFeedbackPage',
+      'closeKinderChatFeedbackPage',
+      'openSettingsPage',
+      'openSettingsDetail',
+      'hideSettingsPage',
+      'showOlliLoginScreenById',
+      'showOlliStartPageSetup'
+    ].forEach(wrapPageFunction);
+  }
+
+  window.olliResetPageScroll = resetVisiblePageScroll;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function(){
+      bindPageObservers();
+      bindFunctionWrappers();
+    });
+  } else {
+    bindPageObservers();
+    bindFunctionWrappers();
+  }
+})();
+</script>
+<script src="olli-command-schedule-common.js?v=20260923-write-actions-2"></script>
+<script src="olli-command-router-common.js?v=20260924-short-response-1"></script>
+<script id="olliElementaryOneMinuteStudentValidationPatch" src="olli-feedback-registration-runtime.js?v=20260918-keyboard-hook-rollback-1"></script>
+<style id="olliStudentListButtonAndModalFinalFixStyle">/* 2026-06-27: 관찰노트/1분 피드백 원생목록 정렬 버튼 최종 기준 */
+#memoStudentSelectPopup .memoStudentDaySortChip,
+#kcfStudentManagePopup .memoStudentDaySortChip {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  max-width: 36px;
+  max-height: 36px;
+  border-radius: 50%;
+  padding: 0;
+  font-size: calc(12px * 1.02 * var(--olli-text-scale));
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  white-space: nowrap;
+}
+#memoStudentSelectPopup .memoStudentSortDayRow,
+#kcfStudentManagePopup .kcfRosterSortRow {
+  grid-template-columns: 52px repeat(7, minmax(0, 1fr));
+  align-items: center;
+}
+#memoStudentSelectPopup .memoStudentGroupSortChip,
+#kcfStudentManagePopup .kcfRosterTeacherChip {
+  width: 52px;
+  min-width: 52px;
+  max-width: 52px;
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: hidden;
+  font-size: calc(12px * 1.02 * var(--olli-text-scale));
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+#memoStudentSelectPopup .memoStudentAddChip,
+#kcfStudentManagePopup .memoStudentAddChip {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  max-width: 38px;
+  max-height: 38px;
+  border-radius: 50%;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-size: 0;
+  line-height: 1;
+}
+#memoStudentSelectPopup .memoStudentAddChip::before,
+#kcfStudentManagePopup .memoStudentAddChip::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 15px;
+  height: 15px;
+  transform: translate(-50%, -50%);
+  background:
+    linear-gradient(currentColor, currentColor) center / 15px 2px no-repeat,
+    linear-gradient(currentColor, currentColor) center / 2px 15px no-repeat;
+}
+.recordAcademyConsultStatusChip.ready {
+  border-color: #0A84FF;
+  border-width: 2px;
+}
+</style>
+<script id="olliStudentModalAndKcfAddFinalFixScript">
+(function(){
+  if (window.__olliStudentModalAndKcfAddFinalFixApplied) return;
+  window.__olliStudentModalAndKcfAddFinalFixApplied = true;
+
+  function getFieldContainer(el) {
+    if (!el || !el.closest) return null;
+    return el.closest('.kinderInfoModalField') || el.closest('.studentInfoDateField') || null;
+  }
+
+  function removeNearbyLabelForId(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var field = getFieldContainer(el);
+    if (field) {
+      var label = field.querySelector(':scope > .modalLabel');
+      if (label) label.remove();
+      return;
+    }
+    var prev = el.previousElementSibling;
+    if (prev && prev.classList && prev.classList.contains('modalLabel')) prev.remove();
+  }
+
+  function removeLabelForToggleRow(id) {
+    var row = document.getElementById(id);
+    if (!row) return;
+    var field = getFieldContainer(row);
+    if (field) {
+      var label = field.querySelector(':scope > .modalLabel');
+      if (label) label.remove();
+      return;
+    }
+    var prev = row.previousElementSibling;
+    if (prev && prev.classList && prev.classList.contains('modalLabel')) prev.remove();
+  }
+
+  function tuneStudentModalGuideText() {
+    [
+      'studentNameInput', 'studentYearBadge', 'studentKindergartenInput', 'studentAgeInput', 'studentSchoolInput', 'studentElementaryAgeInput',
+      'kinderInfoNameInput', 'kinderInfoYearInput', 'kinderKindergartenInput', 'kinderAgeInput',
+      'elementaryInfoNameInput', 'elementaryInfoYearInput', 'elementarySchoolInput', 'elementaryAgeInput'
+    ].forEach(removeNearbyLabelForId);
+
+    [
+      'studentTeacherToggleRow', 'elementaryStudentTeacherToggleRow',
+      'kinderTeacherToggleRow', 'elementaryTeacherToggleRow'
+    ].forEach(removeLabelForToggleRow);
+
+    var agePlaceholders = ['studentAgeInput', 'kinderAgeInput'];
+    agePlaceholders.forEach(function(id){
+      var input = document.getElementById(id);
+      if (input) input.setAttribute('placeholder', '예: 5(나이)');
+    });
+  }
+
+  window.olliTuneStudentModalGuideText = tuneStudentModalGuideText;
+
+  window.openKinderChatFeedbackStudentAddFromManage = function(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    var targetView = window.__kcfStudentManageDivision === 'kinder' ? 'kinder' : 'elementary';
+    try { currentRecordView = targetView; } catch (_) {}
+    try { currentObservationView = targetView; } catch (_) {}
+    if (typeof window.openStudentModal === 'function') window.openStudentModal();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tuneStudentModalGuideText);
+  } else {
+    tuneStudentModalGuideText();
+  }
+})();
+</script>
+
+<script>
+/* 2026-06-29: 계정 입력값 리셋 + 계정 소프트 삭제 */
+(function(){
+  async function doOlliAccountSoftDelete() {
+    const first = confirm('현재 개인계정을 삭제할까요?\n\nSupabase 데이터는 즉시 지우지 않고 soft delete 상태로 변경됩니다. 연결된 학원 데이터와 학생 기록은 삭제하지 않습니다.');
+    if (!first) return;
+    const second = confirm('정말 삭제할까요?\n삭제 후 이 계정으로는 다시 로그인할 수 없습니다.');
+    if (!second) return;
+
+    const btn = document.querySelector('[data-account-delete-btn]');
+    try {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '삭제 처리 중...';
+      }
+      const sessionToken = String(localStorage.getItem('olli_account_session_token_v1') || '').trim();
+      if (!sessionToken) throw new Error('계정 세션이 없습니다. 다시 로그인 후 삭제해 주세요.');
+      const result = await callOlliRpc('olli_soft_delete_account', {
+        p_session_token: sessionToken,
+        p_reason: 'user_requested_account_delete'
+      });
+      if (result && result.ok === false) throw new Error(result.message || '계정 삭제 처리에 실패했습니다.');
+      if (typeof clearOlliAccountLogoutLocalState === 'function') clearOlliAccountLogoutLocalState();
+      else {
+        ['olli_owner_logged_in','olli_teacher_logged_in','olli_current_member_role','olli_current_member_name','olli_current_member_id','olli_current_academy_id','olli_current_academy_code','olli_current_academy_name','olli_account_session_token_v1','olli_account_login_id_v1','olli_account_id_v1','olli_account_name_v1','olli_account_academies_v1','olli_account_device_id_v1'].forEach(k => localStorage.removeItem(k));
+      }
+      closeSettingsSheet();
+      alert('계정이 삭제 처리되었습니다.');
+      showOlliLoginEntry();
+    } catch (err) {
+      alert('계정 삭제 실패\n' + (err && (err.message || err) || '알 수 없는 오류'));
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '계정 삭제';
+      }
+    }
+  }
+
+  window.doOlliAccountSoftDelete = doOlliAccountSoftDelete;
+
+  function patchOlliLogoutSheetForDelete() {
+    if (typeof settingsSheetData === 'undefined' || !settingsSheetData.logout) return;
+    settingsSheetData.logout.title = '계정 로그아웃';
+    settingsSheetData.logout.desc = '현재 기기에서 개인계정 세션을 해제하거나 계정을 삭제합니다.';
+    settingsSheetData.logout.html = '<div class="settingsInfoItem">계정 로그아웃을 하면 이 기기의 자동 로그인이 해제됩니다. 학원 데이터와 선생님 승인 정보는 삭제되지 않습니다.</div>'
+      + '<div class="settingsLogoutDangerBox">'
+      + '<button class="settingsDangerFullBtn" data-account-logout-btn type="button" onclick="doOlliAccountLogout()">계정 로그아웃</button>'
+      + '<button class="settingsDangerFullBtn red" data-account-delete-btn type="button" onclick="doOlliAccountSoftDelete()">계정 삭제</button>'
+      + '<button class="settingsDangerFullBtn light" type="button" onclick="closeSettingsSheet()">취소</button>'
+      + '</div>';
+    settingsSheetData.logout.onSave = null;
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    patchOlliLogoutSheetForDelete();
+  });
+  patchOlliLogoutSheetForDelete();
+})();
+</script>
+<script>
+/* 2026-06-29 OLLI: 학원 삭제는 학생 삭제와 같은 soft delete 원칙으로 처리 */
+(function(){
+  function getOlliActiveAcademyIdForDelete(){
+    const candidates = [];
+    try { if (typeof getOlliCurrentAcademyId === 'function') candidates.push(getOlliCurrentAcademyId()); } catch (_) {}
+    try { if (typeof settingsGetAcademyId === 'function') candidates.push(settingsGetAcademyId()); } catch (_) {}
+    try { candidates.push(window.OlliStorageCore?.AcademyContext?.getCurrent?.()?.academyId); } catch (_) {}
+    try { candidates.push(olliSettingsState?.academy?.id, olliSettingsState?.academy?.academy_id); } catch (_) {}
+    candidates.push(localStorage.getItem('olli_current_academy_id'));
+    for (const candidate of candidates) {
+      const value = String(candidate || '').trim();
+      if (value) return value;
+    }
+    return '';
+  }
+
+  function getOlliActiveAcademyNameForDelete(){
+    const candidates = [];
+    try { candidates.push(window.OlliStorageCore?.AcademyContext?.getCurrent?.()?.academyName); } catch (_) {}
+    try { candidates.push(olliSettingsState?.academy?.academy_name, olliSettingsState?.academy?.name); } catch (_) {}
+    candidates.push(localStorage.getItem('olli_current_academy_name'));
+    for (const candidate of candidates) {
+      const value = String(candidate || '').trim();
+      if (value) return value;
+    }
+    return '현재 학원';
+  }
+
+  function getOlliActiveRoleForDelete(){
+    try {
+      if (typeof getOlliCurrentRole === 'function') {
+        const value = String(getOlliCurrentRole() || '').trim();
+        if (value) return value;
+      }
+    } catch (_) {}
+    return String(localStorage.getItem('olli_current_member_role') || '').trim();
+  }
+
+
+  function showOlliAcademyMoveAfterDeleteOverlay(academyName){
+    const overlay = document.getElementById('olliAcademySwitchOverlay');
+    const title = document.getElementById('olliAcademySwitchOverlayTitle');
+    const desc = document.getElementById('olliAcademySwitchOverlayDesc');
+    if (!overlay) return;
+    const name = String(academyName || localStorage.getItem('olli_current_academy_name') || '다른 학원').trim();
+    if (title) title.textContent = name + '으로 이동합니다.';
+    if (desc) desc.textContent = '설정해둔 시작 페이지로 이동합니다.';
+    overlay.classList.add('show');
+    overlay.setAttribute('aria-busy','true');
+  }
+
+  function hideOlliAcademyMoveAfterDeleteOverlay(){
+    const overlay = document.getElementById('olliAcademySwitchOverlay');
+    if (!overlay) return;
+    overlay.classList.remove('show');
+    overlay.setAttribute('aria-busy','false');
+  }
+
+  function waitOlliAcademyMoveAfterDelete(ms){
+    return new Promise(resolve => setTimeout(resolve, ms || 900));
+  }
+
+  async function doOlliAcademySoftDelete(){
+    const academyId = getOlliActiveAcademyIdForDelete();
+    let academyCode = String(localStorage.getItem('olli_current_academy_code') || '').trim();
+    if (!academyCode) {
+      try { academyCode = String(window.OlliStorageCore?.AcademyContext?.getCurrent?.()?.academyCode || '').trim(); } catch (_) {}
+    }
+    if (!academyCode) {
+      try { academyCode = String(olliSettingsState?.academy?.academy_code || '').trim(); } catch (_) {}
+    }
+    const academyName = getOlliActiveAcademyNameForDelete();
+    const role = getOlliActiveRoleForDelete();
+    if (!academyId) {
+      alert('삭제할 학원 정보를 확인하지 못했습니다. 다시 로그인 후 시도해 주세요.');
+      return;
+    }
+    if (!['owner', 'super_admin'].includes(role)) {
+      alert('학원 삭제는 원장 계정만 실행할 수 있습니다.');
+      return;
+    }
+    const first = confirm(`${academyName}을(를) 삭제 처리할까요?\n\n학생 삭제와 같은 방식으로 Supabase에서는 실제 삭제하지 않고 soft delete 상태로 변경합니다.\n학생, 피드백, 사진 데이터는 서버에서 지우지 않습니다.`);
+    if (!first) return;
+    const second = confirm('정말 학원을 삭제 처리할까요?\n삭제 후 이 학원은 계정의 학원 목록과 로그인 진입에서 보이지 않습니다.');
+    if (!second) return;
+
+    const btn = document.querySelector('[data-academy-delete-btn]');
+    try {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '학원 삭제 처리 중...';
+      }
+      const sessionToken = String(localStorage.getItem('olli_account_session_token_v1') || '').trim();
+      if (!sessionToken) throw new Error('개인계정 세션이 없습니다. 다시 로그인 후 삭제해 주세요.');
+      const rpc = (typeof callOlliRpc === 'function') ? callOlliRpc : callOlliTestRpc;
+      const result = await rpc('olli_soft_delete_academy', {
+        p_session_token: sessionToken,
+        p_academy_id: academyId,
+        p_reason: 'academy_deleted_by_owner'
+      });
+      if (result && result.ok === false) throw new Error(result.message || '학원 삭제 처리에 실패했습니다.');
+
+      if (typeof purgeOlliAcademyFromLocalState === 'function') {
+        purgeOlliAcademyFromLocalState(academyId, academyCode);
+      }
+      let restored = null;
+      if (typeof restoreOlliAccountSession === 'function') {
+        restored = await restoreOlliAccountSession({ silent: true });
+      }
+      if (typeof updateOlliAcademySwitchUI === 'function') updateOlliAcademySwitchUI();
+      if (typeof closeSettingsSheet === 'function') closeSettingsSheet();
+      alert(`${academyName}이(가) 삭제 처리되었습니다.`);
+
+      if (restored && restored.restored) {
+        const nextAcademyName = String(restored.selected?.academy_name || restored.selected?.academyName || localStorage.getItem('olli_current_academy_name') || '다른 학원').trim();
+        showOlliAcademyMoveAfterDeleteOverlay(nextAcademyName);
+        await waitOlliAcademyMoveAfterDelete(900);
+        if (typeof enterOlliAfterLoginOrSetup === 'function') await enterOlliAfterLoginOrSetup();
+        hideOlliAcademyMoveAfterDeleteOverlay();
+      } else if (typeof showOlliLoginEntry === 'function') {
+        showOlliLoginEntry();
+      }
+    } catch (err) {
+      alert('학원 삭제 실패\n' + String(err && (err.message || err) || '알 수 없는 오류'));
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '학원 삭제';
+      }
+    }
+  }
+
+  window.doOlliAcademySoftDelete = doOlliAcademySoftDelete;
+
+  function patchOlliLogoutSheetForAcademyDelete(){
+    if (typeof settingsSheetData === 'undefined' || !settingsSheetData.logout) return;
+    settingsSheetData.logout.title = '계정 로그아웃';
+    settingsSheetData.logout.desc = '현재 기기의 계정 세션을 해제하거나 현재 학원을 삭제 처리합니다.';
+    settingsSheetData.logout.html = '<div class="settingsInfoItem">계정 로그아웃은 이 기기의 자동 로그인만 해제합니다. 학원 삭제는 현재 선택된 학원을 Supabase에서 soft delete 상태로 변경합니다.</div>'
+      + '<div class="settingsLogoutDangerBox">'
+      + '<button class="settingsDangerFullBtn" data-account-logout-btn type="button" onclick="doOlliAccountLogout()">계정 로그아웃</button>'
+      + '<button class="settingsDangerFullBtn red" data-academy-delete-btn type="button" onclick="doOlliAcademySoftDelete()">학원 삭제</button>'
+      + '<button class="settingsDangerFullBtn light" type="button" onclick="closeSettingsSheet()">취소</button>'
+      + '</div>';
+    settingsSheetData.logout.onSave = null;
+  }
+
+  window.patchOlliLogoutSheetForAcademyDelete = patchOlliLogoutSheetForAcademyDelete;
+  patchOlliLogoutSheetForAcademyDelete();
+  document.addEventListener('DOMContentLoaded', patchOlliLogoutSheetForAcademyDelete);
+})();
+</script>
+<script id="olliStudentDocImportPatch">
+(function(){
+  window.openStudentBulkImportFilePicker = function(){
+    const input = document.getElementById('studentBulkImportFileInput');
+    if (input) input.click();
+  };
+
+  window.handleStudentBulkImportFileChange = async function(event){
+    const file = event && event.target && event.target.files ? event.target.files[0] : null;
+    if (!file) return;
+    try {
+      let text = '';
+      if (typeof isExistingFeedbackDocxFile === 'function' && isExistingFeedbackDocxFile(file)) {
+        text = await extractDocxTextForExistingFeedback(file);
+      } else if (typeof readFileAsTextForExistingFeedback === 'function') {
+        text = await readFileAsTextForExistingFeedback(file);
+      } else {
+        text = await file.text();
+      }
+      if (!text || !String(text).trim()) throw new Error('파일에서 읽을 수 있는 텍스트가 없습니다.');
+      if (typeof updateStudentBulkImportText === 'function') updateStudentBulkImportText(text);
+      const textarea = document.getElementById('studentBulkImportText');
+      if (textarea) textarea.value = text;
+      if (typeof parseStudentBulkImportText === 'function') parseStudentBulkImportText();
+      if (typeof showPushToast === 'function') showPushToast('파일 내용을 읽어 등록 후보를 만들었어요.');
+    } catch(err) {
+      if (typeof studentBulkImportState !== 'undefined') studentBulkImportState.errorMessage = err.message || String(err);
+      if (typeof refreshSettingsAttendancePhotoImportDetail === 'function') refreshSettingsAttendancePhotoImportDetail();
+      else alert('파일 읽기 실패\n' + (err.message || err));
+    } finally {
+      if (event && event.target) event.target.value = '';
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    try { if (typeof window.olliPatchStudentModalMarkup === 'function') window.olliPatchStudentModalMarkup(); } catch(e) {}
+  });
+})();
+</script>
+<script src="olli-student-bulk-edit-parser.js"></script>
+<script id="olliStudentInfoManualEmptyAndDayTimePatch" src="olli-student-schedule-runtime.js"></script>
+<script id="olliAttendanceStudentGuideDayOnlyPatch">
+/* 2026-07-03: 출석부 학생 가이드 정보는 요일만 표시하고 시간은 숨김 */
+(function(){
+  function toText(value){
+    return String(value == null ? '' : value).trim();
+  }
+  function normalizeDayOnly(value){
+    var raw = toText(value);
+    if (!raw) return '';
+    var days = [];
+    raw
+      .replace(/월요일/g, '월')
+      .replace(/화요일/g, '화')
+      .replace(/수요일/g, '수')
+      .replace(/목요일/g, '목')
+      .replace(/금요일/g, '금')
+      .replace(/토요일/g, '토')
+      .replace(/일요일/g, '일')
+      .replace(/\d{1,2}\s*시/g, ' ')
+      .replace(/\d{1,2}:\d{2}/g, ' ')
+      .split(/[^월화수목금토일]+/)
+      .forEach(function(part){
+        String(part || '').split('').forEach(function(ch){
+          if ('월화수목금토일'.indexOf(ch) >= 0 && days.indexOf(ch) < 0) days.push(ch);
+        });
+      });
+    var order = ['월','화','수','목','금','토','일'];
+    days.sort(function(a,b){ return order.indexOf(a) - order.indexOf(b); });
+    return days.join('·');
+  }
+  function getLessonDayOnly(student){
+    var rawDay = toText(student && (student.lesson_day || student.lessonDay || student.class_day || student.classDay || student.weekdays || student.days || ''));
+    var dayOnly = normalizeDayOnly(rawDay);
+    if (dayOnly) return dayOnly;
+    var rawTime = toText(student && (student.lesson_time || student.lessonTime || student.class_time || student.classTime || ''));
+    return normalizeDayOnly(rawTime);
+  }
+  function safeCall(fnName, fallback){
+    try {
+      var fn = window[fnName];
+      if (typeof fn === 'function') return fn.apply(null, Array.prototype.slice.call(arguments, 2));
+    } catch (e) {}
+    return fallback || '';
+  }
+  window.getElementaryMetaText = function(student){
+    var personality = safeCall('formatElementaryPersonalityDisplay', '', student);
+    var school = safeCall('formatElementarySchoolGuideDisplay', '', student);
+    var gradeClass = safeCall('formatElementaryGradeClassDisplay', '', student);
+    var teacherName = safeCall('getStudentTeacherDisplay', '', student);
+    var lessonDay = getLessonDayOnly(student);
+    var feedbackMonth = safeCall('getElementaryGroupFeedbackMonthDisplay', '', student && student.group, student);
+    return [personality, school, gradeClass, teacherName, lessonDay, feedbackMonth].filter(Boolean).join(' / ');
+  };
+  window.getKinderMetaText = function(student){
+    var personality = safeCall('formatElementaryPersonalityDisplay', '', student);
+    var kindergarten = '';
+    var age = '';
+    if (typeof window.normalizeRecordInfoValue === 'function') {
+      kindergarten = window.normalizeRecordInfoValue(student && student.kindergarten, student && student.kindergarten_name, student && student.kindergartenName);
+      age = window.normalizeRecordInfoValue(student && student.age, student && student.student_age, student && student.studentAge);
+    } else {
+      kindergarten = toText(student && student.kindergarten);
+      age = toText(student && student.age);
+    }
+    var teacherName = safeCall('getStudentTeacherDisplay', '', student);
+    var lessonDay = getLessonDayOnly(student);
+    return [personality, kindergarten, age ? age + '세' : '', teacherName, lessonDay].filter(Boolean).join(' / ');
+  };
+  try { getElementaryMetaText = window.getElementaryMetaText; } catch (e) {}
+  try { getKinderMetaText = window.getKinderMetaText; } catch (e) {}
+})();
+</script>
+<script id="olliAttendanceCountTodayExcludeLiveFix">
+/* 2026-07-03 실제 화면 적용 보정: 결석은 오늘이 지나야 카운트 */
+(function(){
+  function countOnlyPastDate(dateValue) {
+    var d = dateValue instanceof Date ? dateValue : new Date(dateValue);
+    if (Number.isNaN(d.getTime())) return false;
+    var today = new Date();
+    var formatter = (typeof window.formatRecordAttendanceDateKey === 'function')
+      ? window.formatRecordAttendanceDateKey
+      : function(v) {
+          var x = v instanceof Date ? v : new Date(v);
+          return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+        };
+    var dKey = Number(formatter(d).replace(/-/g, ''));
+    var todayKey = Number(formatter(today).replace(/-/g, ''));
+    return dKey < todayKey;
+  }
+  window.shouldCountRecordAttendanceDate = countOnlyPastDate;
+  try { shouldCountRecordAttendanceDate = countOnlyPastDate; } catch(e) {}
+})();
+</script>
+<script id="olliAttendanceGuideButtonDynamicPositionScript">
+/* 2026-07-04: 부모 박스가 다른 출결 버튼을 1분 피드백 버튼 좌표에 맞춰 보정 */
+(function(){
+  var alignTimer = null;
+
+  function getRect(el) {
+    try { return el && el.getBoundingClientRect ? el.getBoundingClientRect() : null; }
+    catch (_) { return null; }
+  }
+
+  function alignRecordAttendanceGuideButton() {
+    var row = document.querySelector('#recordRoomScreen .recordModeLabelRow');
+    var btn = document.getElementById('recordAttendanceGuideToggle');
+    var anchor = document.getElementById('recordStorageToggleBtn');
+    if (!row || !btn || !anchor) return;
+    if (!row.contains(btn)) return;
+
+    var rowRect = getRect(row);
+    var anchorRect = getRect(anchor);
+    var btnRect = getRect(btn);
+    if (!rowRect || !anchorRect || !btnRect) return;
+
+    var btnWidth = btn.offsetWidth || btnRect.width || 58;
+    var targetLeft = Math.round(anchorRect.right - rowRect.left - btnWidth);
+    var maxLeft = Math.max(0, row.clientWidth - btnWidth);
+    targetLeft = Math.max(0, Math.min(maxLeft, targetLeft));
+
+    var nextLeft = targetLeft + 'px';
+    if (btn.style.left !== nextLeft) btn.style.left = nextLeft;
+    if (btn.style.right !== 'auto') btn.style.right = 'auto';
+  }
+
+  function scheduleAlign() {
+    if (alignTimer) clearTimeout(alignTimer);
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(alignRecordAttendanceGuideButton);
+    } else {
+      setTimeout(alignRecordAttendanceGuideButton, 0);
+    }
+    alignTimer = setTimeout(alignRecordAttendanceGuideButton, 90);
+  }
+
+  window.alignRecordAttendanceGuideButton = alignRecordAttendanceGuideButton;
+  window.scheduleRecordAttendanceGuideButtonAlign = scheduleAlign;
+
+  if (typeof ResizeObserver !== 'undefined') {
+    try {
+      var ro = new ResizeObserver(scheduleAlign);
+      var observeTargets = function(){
+        var row = document.querySelector('#recordRoomScreen .recordModeLabelRow');
+        var btn = document.getElementById('recordAttendanceGuideToggle');
+        var anchor = document.getElementById('recordStorageToggleBtn');
+        if (row) ro.observe(row);
+        if (btn) ro.observe(btn);
+        if (anchor) ro.observe(anchor);
+      };
+      setTimeout(observeTargets, 0);
+      setTimeout(observeTargets, 300);
+    } catch (_) {}
+  }
+
+  try {
+    var mo = new MutationObserver(scheduleAlign);
+    var target = document.getElementById('recordRoomScreen') || document.body;
+    if (target) mo.observe(target, { childList: true, subtree: true });
+  } catch (_) {}
+
+  window.addEventListener('resize', scheduleAlign);
+  window.addEventListener('orientationchange', function(){ setTimeout(scheduleAlign, 240); });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', scheduleAlign);
+  } else {
+    scheduleAlign();
+  }
+  setTimeout(scheduleAlign, 250);
+  setTimeout(scheduleAlign, 700);
+})();
+</script>
+<style id="olliAttendancePolicySettingsStyle">
+/* 2026-07-04: 설정 > 출결 설정 / 보강 유효 기간 / 출결 계산 시작일 */
+.settingsAttendancePolicyGrid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin-top:8px;
+}
+.settingsAttendancePolicyOption{
+  min-height:42px;
+  border:0;
+  border-radius:14px;
+  background:#f1f1ef;
+  color:#555;
+  font-family:inherit;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:700;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.settingsAttendancePolicyOption.active{
+  background:#111;
+  color:#fff;
+}
+.settingsAttendanceStartDateGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:8px;
+  margin-top:8px;
+}
+.settingsAttendanceStartDateGrid .settingsInput{
+  text-align:center;
+  padding-left:8px;
+  padding-right:8px;
+}
+@media(max-width:430px){
+  .settingsAttendancePolicyGrid{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+</style>
+<script id="olliAttendancePolicySettingsPatch" src="olli-attendance-policy-runtime.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  try {
+    const current = getAllStudents();
+    let changed = false;
+    const next = current.map(function(student){
+      const result = applyOlliStudentLifecycle(student, new Date());
+      if (result.changed) changed = true;
+      return result.student;
+    });
+    if (changed) setAllStudents(next);
+  } catch (err) {
+    console.warn('학생 연도 자동 갱신 초기화 보류:', err?.message || err);
+  }
+});
+</script>
+<script src="pc-team-talk.js?v=20260923-olli-reply-button-1"></script>
+<script src="pc-team-talk-material-orders.js?v=20260921-toolbar-1"></script>
+<script src="pc-shell.js?v=20260921-work-labels-1"></script>
+<script src="pc-student-management.js"></script>
+<script src="olli-feedback-photo-storage-common.js"></script>\n<script src="pc-kinder-feedback.js"></script>
+<script src="pc-record-editor.js"></script>
+<script src="pc-attendance.js"></script>
+<script src="pc-trash.js"></script>
+<link rel="stylesheet" href="pc-timetable.css?v=20260921-custom-time-picker-1">
+<script>window.__OLLI_MODULAR_TIMETABLE__ = true;</script>
+<style id="olliPcAttendanceTimetableStyle" media="not all">
+/* PC 사이드바 출석부: 명단 / 시간표 */
+#recordRoomScreen .olliPcAttendanceTabs {
+  display: none;
+  align-items: center;
+  gap: 3px;
+  padding: 4px;
+  margin: 2px 0 18px;
+  border: 1px solid rgba(0,0,0,.055);
+  border-radius: 15px;
+  background: #f4f4f2;
+}
+#olliPcShell[data-pc-section="attendance"] ~ #recordRoomScreen .olliPcAttendanceTabs { display: inline-flex; }
+#recordRoomScreen .olliPcAttendanceTab {
+  height: 34px;
+  min-width: 68px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #8c8c8c;
+  font: 700 calc(13px * var(--olli-text-scale)) 'Pretendard',sans-serif;
+  letter-spacing: -.035em;
+  cursor: pointer;
+}
+#recordRoomScreen .olliPcAttendanceTab.active {
+  background: #fff;
+  color: #111;
+  box-shadow: 0 2px 8px rgba(0,0,0,.07);
+}
+#recordRoomScreen .olliPcTimetable {
+  display: none;
+  padding: 0 0 34px;
+}
+#olliPcShell[data-pc-section="attendance"] ~ #recordRoomScreen .olliPcTimetable.show { display: block; }
+#olliPcShell[data-pc-section="attendance"] ~ #recordRoomScreen.olliPcAttendanceScheduleView #recordList { display: none; }
+#recordRoomScreen .olliPcTimetableIntro {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 16px;
+}
+#recordRoomScreen .olliPcTimetableIntroTitle {
+  font-size: calc(18px * var(--olli-text-scale));
+  font-weight: 780;
+  color: #111;
+  letter-spacing: -.055em;
+}
+#recordRoomScreen .olliPcTimetableIntroText {
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 600;
+  color: #999;
+  letter-spacing: -.025em;
+}
+#recordRoomScreen .olliPcTimetableSection {
+  overflow: hidden;
+  margin: 0 0 18px;
+  border: 1px solid rgba(0,0,0,.065);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(0,0,0,.04);
+}
+#recordRoomScreen .olliPcTimetableSectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 14px;
+}
+#recordRoomScreen .olliPcTimetableSectionTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: calc(15px * var(--olli-text-scale));
+  font-weight: 800;
+  color: #171717;
+  letter-spacing: -.045em;
+}
+#recordRoomScreen .olliPcTimetableSectionDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+#recordRoomScreen .olliPcTimetableSection.elementary .olliPcTimetableSectionDot { background: #edbd22; }
+#recordRoomScreen .olliPcTimetableSection.kinder .olliPcTimetableSectionDot { background: #ec9ab4; }
+#recordRoomScreen .olliPcTimetableSectionCount {
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 700;
+  color: #999;
+}
+#recordRoomScreen .olliPcTimetableScroll {
+  overflow-x: auto;
+  border-top: 1px solid rgba(0,0,0,.055);
+  -webkit-overflow-scrolling: touch;
+}
+#recordRoomScreen .olliPcTimetableGrid {
+  display: grid;
+  grid-template-columns: 62px repeat(6, minmax(128px, 1fr));
+  min-width: 830px;
+}
+#recordRoomScreen .olliPcTimetableCorner,
+#recordRoomScreen .olliPcTimetableDay {
+  min-height: 43px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid rgba(0,0,0,.055);
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 800;
+  color: #666;
+  letter-spacing: -.03em;
+}
+#recordRoomScreen .olliPcTimetableSection.elementary .olliPcTimetableCorner,
+#recordRoomScreen .olliPcTimetableSection.elementary .olliPcTimetableDay { background: #fff9e9; }
+#recordRoomScreen .olliPcTimetableSection.kinder .olliPcTimetableCorner,
+#recordRoomScreen .olliPcTimetableSection.kinder .olliPcTimetableDay { background: #fff3f6; }
+#recordRoomScreen .olliPcTimetableTime {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 15px;
+  border-right: 1px solid rgba(0,0,0,.055);
+  border-bottom: 1px solid rgba(0,0,0,.055);
+  background: #fafaf9;
+  color: #777;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 750;
+}
+#recordRoomScreen .olliPcTimetableCell {
+  min-height: 88px;
+  padding: 8px;
+  border-right: 1px solid rgba(0,0,0,.055);
+  border-bottom: 1px solid rgba(0,0,0,.055);
+  background: #fff;
+}
+#recordRoomScreen .olliPcTimetableGrid > :nth-child(7n) { border-right: 0; }
+#recordRoomScreen .olliPcTimetableGrid > :nth-last-child(-n+7) { border-bottom: 0; }
+#recordRoomScreen .olliPcTimetableCell:hover { background: #fcfcfb; }
+#recordRoomScreen .olliPcScheduleStudent {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 31px;
+  margin: 0 0 5px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  text-align: left;
+  font: 720 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif;
+  letter-spacing: -.035em;
+  color: #303030;
+  cursor: pointer;
+  transition: transform .14s ease, box-shadow .14s ease;
+}
+#recordRoomScreen .olliPcScheduleStudent:last-child { margin-bottom: 0; }
+#recordRoomScreen .olliPcTimetableSection.elementary .olliPcScheduleStudent { background: #fff4c9; border-color: #f8e6a2; }
+#recordRoomScreen .olliPcTimetableSection.kinder .olliPcScheduleStudent { background: #ffe2ea; border-color: #f9cad8; }
+#recordRoomScreen .olliPcScheduleStudent:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(0,0,0,.08); }
+#recordRoomScreen .olliPcScheduleEmpty { color: #d0d0cd; font-size: calc(12px * var(--olli-text-scale)); }
+#olliPcScheduleMoveOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: rgba(24,31,43,.38);
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+}
+#olliPcScheduleMoveOverlay.show { display: flex; }
+#olliPcScheduleMoveDialog {
+  width: min(640px, calc(100vw - 56px));
+  max-height: calc(100vh - 56px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid rgba(18,32,53,.08);
+  border-radius: 32px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(20,31,48,.24), 0 8px 24px rgba(20,31,48,.10);
+  padding: 0;
+  outline: none;
+}
+#olliPcScheduleMoveOverlay.show #olliPcScheduleMoveDialog { animation: olliPcScheduleDialogIn .2s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes olliPcScheduleDialogIn {
+  from { opacity: 0; transform: translateY(12px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.olliPcScheduleMoveHead {
+  display: grid;
+  grid-template-columns: 58px minmax(0,1fr) 42px;
+  align-items: center;
+  gap: 16px;
+  padding: 28px 30px 22px;
+}
+.olliPcScheduleMoveIcon {
+  width: 58px;
+  height: 58px;
+  border-radius: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0A84FF;
+  background: #EAF4FF;
+}
+.olliPcScheduleMoveIcon svg { width: 29px; height: 29px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.olliPcScheduleMoveHeading { min-width: 0; }
+#olliPcScheduleMoveTitle { overflow: hidden; color: #14171b; font-size: calc(24px * var(--olli-text-scale)); font-weight: 820; line-height: 1.25; letter-spacing: -.055em; text-overflow: ellipsis; white-space: nowrap; }
+#olliPcScheduleMoveSub { margin-top: 6px; color: #8A9099; font-size: calc(14px * var(--olli-text-scale)); font-weight: 600; line-height: 1.45; letter-spacing: -.025em; }
+#olliPcScheduleMoveClose {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #757B84;
+  background: #F2F4F7;
+  cursor: pointer;
+}
+#olliPcScheduleMoveClose:hover { color: #1E232A; background: #E9EDF2; }
+#olliPcScheduleMoveClose svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.olliPcScheduleMoveBody { padding: 0 30px 30px; }
+.olliPcScheduleMoveCurrent {
+  min-height: 58px;
+  padding: 0 17px;
+  border: 1px solid #DDEBFA;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: #4E5968;
+  background: #F4F9FF;
+}
+.olliPcScheduleMoveCurrentLabel { font-size: calc(13px * var(--olli-text-scale)); font-weight: 750; }
+.olliPcScheduleMoveCurrentValue { color: #0A73DC; font-size: calc(16px * var(--olli-text-scale)); font-weight: 820; letter-spacing: -.035em; }
+.olliPcScheduleMoveSection { margin-top: 24px; }
+.olliPcScheduleMoveLabel { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 2px 11px; }
+.olliPcScheduleMoveLabel span { color: #252A31; font-size: calc(15px * var(--olli-text-scale)); font-weight: 820; letter-spacing: -.035em; }
+.olliPcScheduleMoveLabel small { color: #A0A5AD; font-size: calc(12px * var(--olli-text-scale)); font-weight: 600; }
+.olliPcScheduleMoveChoices { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 9px; }
+.olliPcScheduleMoveChoices.time { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.olliPcScheduleMoveChoice {
+  height: 52px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  color: #555D68;
+  background: #F3F5F7;
+  font: 750 calc(15px * var(--olli-text-scale)) 'Pretendard',sans-serif;
+  cursor: pointer;
+  transition: color .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.olliPcScheduleMoveChoice:hover { border-color: #CFE5FC; color: #0A73DC; background: #F1F8FF; transform: translateY(-1px); }
+.olliPcScheduleMoveChoice.active { border-color: #0A84FF; color: #fff; background: #0A84FF; box-shadow: 0 7px 18px rgba(10,132,255,.22); }
+.olliPcScheduleMoveActions {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 10px;
+  margin: 30px -30px -30px;
+  padding: 20px 30px 24px;
+  border-top: 1px solid #EDF0F3;
+  background: #FAFBFC;
+}
+.olliPcScheduleMoveActions button { height: 56px; border: 0; border-radius: 17px; font: 780 calc(16px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor: pointer; }
+#olliPcScheduleMoveCancel { color: #666E78; background: #ECEFF3; }
+#olliPcScheduleMoveCancel:hover { background: #E3E7EC; }
+#olliPcScheduleMoveSave { color: #fff; background: #0A84FF; box-shadow: 0 8px 20px rgba(10,132,255,.2); }
+#olliPcScheduleMoveSave:hover { background: #0075E8; }
+#olliPcScheduleMoveSave:disabled { box-shadow: none; opacity: .45; cursor: default; }
+@media (max-width: 560px) {
+  #olliPcScheduleMoveOverlay { padding: 18px; }
+  #olliPcScheduleMoveDialog { width: min(100%, 460px); border-radius: 25px; }
+  .olliPcScheduleMoveHead { grid-template-columns: 48px minmax(0,1fr) 40px; gap: 12px; padding: 22px 22px 18px; }
+  .olliPcScheduleMoveIcon { width: 48px; height: 48px; border-radius: 16px; }
+  .olliPcScheduleMoveIcon svg { width: 25px; height: 25px; }
+  #olliPcScheduleMoveTitle { font-size: calc(20px * var(--olli-text-scale)); }
+  #olliPcScheduleMoveSub { font-size: calc(13px * var(--olli-text-scale)); }
+  #olliPcScheduleMoveClose { width: 40px; height: 40px; }
+  .olliPcScheduleMoveBody { padding: 0 22px 22px; }
+  .olliPcScheduleMoveCurrent { min-height: 52px; padding: 0 14px; }
+  .olliPcScheduleMoveCurrentValue { font-size: calc(14px * var(--olli-text-scale)); }
+  .olliPcScheduleMoveSection { margin-top: 21px; }
+  .olliPcScheduleMoveLabel small { display: none; }
+  .olliPcScheduleMoveChoices { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 7px; }
+  .olliPcScheduleMoveChoices.time { grid-template-columns: repeat(4, minmax(0,1fr)); }
+  .olliPcScheduleMoveChoice { height: 46px; font-size: calc(13px * var(--olli-text-scale)); }
+  .olliPcScheduleMoveActions { margin: 24px -22px -22px; padding: 17px 22px 20px; }
+  .olliPcScheduleMoveActions button { height: 50px; font-size: calc(14px * var(--olli-text-scale)); }
+}
+@media (max-width: 760px) {
+  #recordRoomScreen .olliPcTimetableIntro { align-items: flex-start; flex-direction: column; gap: 4px; }
+  #recordRoomScreen .olliPcTimetableGrid { min-width: 720px; grid-template-columns: 52px repeat(6, minmax(110px,1fr)); }
+  #recordRoomScreen .olliPcTimetableCell { min-height: 76px; padding: 6px; }
+}
+</style>
+<script id="olliPcAttendanceTimetableScript" src="olli-attendance-timetable-bridge.js"></script>
+<script src="olli-attendance-data.js"></script>
+<script src="pc-timetable-service.js?v=20260921-pickup-dropoff-1"></script>
+<script src="pc-timetable-attendance-register.js"></script>
+<script src="pc-timetable-history.js"></script>
+<script src="pc-timetable.js?v=20260921-custom-time-picker-1"></script>
+<script src="consultation-survey.js"></script>
+<script src="pc-start-page.js"></script>
+</body></html>

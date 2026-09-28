@@ -1,0 +1,369 @@
+
+
+let feedbackLoadingTimer = null;
+let feedbackLoadingTypingTimer = null;
+let feedbackLoadingStep = 0;
+function getFeedbackLoadingSteps(type) {
+  return [
+    ['선생님의 관찰 기록을 바탕으로', '아이의 수업 상황을 시뮬레이션 중입니다.'],
+    ['선생님의 관찰 기록을 바탕으로', '아이의 실패 / 막힘 / 감정변화를 성장의 흐름으로 정리하고 있습니다.'],
+    ['선생님의 관찰 기록이', '부모님께 잘 전달 될수 있도록 키워드 요소를 분석 중입니다.']
+  ];
+}
+function typeFeedbackLoadingText(el, text, done) {
+  if (!el) { if (done) done(); return; }
+  if (feedbackLoadingTypingTimer) {
+    clearInterval(feedbackLoadingTypingTimer);
+    feedbackLoadingTypingTimer = null;
+  }
+  let i = 0;
+  el.innerHTML = '<span class="feedbackLoadingCursor"></span>';
+  feedbackLoadingTypingTimer = setInterval(() => {
+    i += 1;
+    el.innerHTML = escapeHtml(text.slice(0, i)) + '<span class="feedbackLoadingCursor"></span>';
+    if (i >= text.length) {
+      clearInterval(feedbackLoadingTypingTimer);
+      feedbackLoadingTypingTimer = null;
+      if (done) done();
+    }
+  }, 42);
+}
+function renderFeedbackLoadingStep(steps) {
+  const title = document.getElementById('feedbackLoadingTitle');
+  const body = document.getElementById('feedbackLoadingText');
+  const step = steps[feedbackLoadingStep];
+  if (!step) return;
+  typeFeedbackLoadingText(title, step[0], () => {
+    typeFeedbackLoadingText(body, step[1]);
+  });
+}
+function showFeedbackLoading(type='class') {
+  hideFeedbackLoading();
+  const steps = getFeedbackLoadingSteps(type);
+  feedbackLoadingStep = 0;
+  const overlay = document.createElement('div');
+  overlay.id = 'feedbackLoadingOverlay';
+  overlay.className = 'feedbackLoadingOverlay';
+  overlay.innerHTML = `<div class="feedbackLoadingCard">
+    <div class="feedbackLoadingKicker">피드백 문장 정리 중</div>
+    <div class="feedbackLoadingTitle" id="feedbackLoadingTitle"></div>
+    <div class="feedbackLoadingText" id="feedbackLoadingText"></div>
+    <div class="feedbackLoadingDots"><span></span><span></span><span></span></div>
+  </div>`;
+  document.body.appendChild(overlay);
+  renderFeedbackLoadingStep(steps);
+  feedbackLoadingTimer = setInterval(() => {
+    const nextStep = feedbackLoadingStep + 1;
+    if (nextStep >= steps.length) {
+      clearInterval(feedbackLoadingTimer);
+      feedbackLoadingTimer = null;
+      return;
+    }
+    feedbackLoadingStep = nextStep;
+    renderFeedbackLoadingStep(steps);
+  }, 9750);
+}
+function hideFeedbackLoading() {
+  if (feedbackLoadingTimer) {
+    clearInterval(feedbackLoadingTimer);
+    feedbackLoadingTimer = null;
+  }
+  if (feedbackLoadingTypingTimer) {
+    clearInterval(feedbackLoadingTypingTimer);
+    feedbackLoadingTypingTimer = null;
+  }
+  document.querySelectorAll('#feedbackLoadingOverlay, .feedbackLoadingOverlay').forEach(overlay => overlay.remove());
+}
+
+function notifyObservationMemoFeedbackClearFailure(error) {
+  console.error('피드백 저장 후 관찰노트 초기화 실패:', error?.message || error);
+  try { if (typeof setMemoSaveStatus === 'function') setMemoSaveStatus('메모 유지 · 동기화 확인 필요'); } catch (_) {}
+  const message = error?.code === 'REVISION_CONFLICT'
+    ? '피드백은 저장됐지만 다른 기기에서 관찰노트가 변경되어 메모를 지우지 않았어요. 최신 내용을 확인해 주세요.'
+    : '피드백은 저장됐지만 관찰노트 초기화를 완료하지 못했어요. 수업 메모는 그대로 보존했습니다.';
+  try {
+    if (typeof showPushToast === 'function') showPushToast(message);
+    else alert(message);
+  } catch (_) {}
+}
+
+async function resetElementaryMemoAfterFeedbackSave(feedbackText = '', explicitDirection = '', options = {}) {
+  if (!currentMemoStudent || !['elementary', 'kinder'].includes(currentMemoType)) {
+    return { state: 'skipped', student: null, error: null };
+  }
+
+  const studentSnapshot = { ...currentMemoStudent };
+  const memoType = currentMemoType;
+  const studentDivision = memoType === 'kinder' ? 'kinder' : 'elementary';
+  let serverRow;
+
+  try {
+    const clearCore = window.ObservationMemoFeedbackClearCore;
+    if (!clearCore || typeof clearCore.clearAfterFeedback !== 'function') {
+      const error = new Error('관찰노트 서버 초기화 Core가 준비되지 않았습니다.');
+      error.code = 'SERVER_UNAVAILABLE';
+      throw error;
+    }
+    serverRow = await clearCore.clearAfterFeedback(studentSnapshot, 'elementary_observation');
+  } catch (error) {
+    notifyObservationMemoFeedbackClearFailure(error);
+    return { state: 'clear_failed', student: studentSnapshot, error };
+  }
+
+  const stillCurrent = currentMemoStudent &&
+    String(currentMemoStudent.id || '') === String(studentSnapshot.id || '') &&
+    currentMemoType === memoType;
+
+  if (!stillCurrent) {
+    let previousMemo = '';
+    try { previousMemo = getMemoByStudent(studentSnapshot, 'elementary_observation') || ''; } catch (_) {}
+    try {
+      if (studentDivision === 'elementary' && String(previousMemo).trim() && typeof archiveCurrentElementaryMemoRecord === 'function') {
+        const analysis = typeof getElementaryAnalysisByStudent === 'function'
+          ? getElementaryAnalysisByStudent(studentSnapshot)
+          : null;
+        archiveCurrentElementaryMemoRecord(studentSnapshot, previousMemo, analysis);
+      }
+    } catch (_) {}
+    try {
+      if (!options.skipArchive && typeof addMemoFeedbackArchiveItem === 'function') {
+        addMemoFeedbackArchiveItem(studentSnapshot, feedbackText);
+      }
+    } catch (_) {}
+    try { clearMemoByStudent(studentSnapshot, 'elementary_observation'); } catch (_) {}
+    try {
+      if (studentDivision === 'elementary' && typeof clearElementaryAnalysisByStudent === 'function') {
+        clearElementaryAnalysisByStudent(studentSnapshot);
+      }
+    } catch (_) {}
+    return {
+      state: 'cleared',
+      student: studentSnapshot,
+      revision: Number(serverRow?.revision || 0),
+      syncedAt: String(serverRow?.updated_at || ''),
+      intentionalClear: true
+    };
+  }
+
+  clearMemoByStudent(currentMemoStudent, 'elementary_observation');
+  currentMemoStudent = { ...currentMemoStudent, memoUpdatedAt: '' };
+  updateMemoStudentMetaDisplay(currentMemoStudent, '');
+  if (studentDivision === 'elementary') {
+    clearElementaryAnalysisByStudent(currentMemoStudent);
+    elementaryAnalysisDraft = getEmptyElementaryAnalysisState();
+    selectedElementaryAnalysisHistoryId = '';
+  }
+  const memo = document.getElementById('memoEditor');
+  if (memo) {
+    memo.readOnly = false;
+    memo.value = '';
+  }
+  if (studentDivision === 'elementary') {
+    renderElementaryAnalysisSummaryCard(getEmptyElementaryAnalysisState(), { title: '분석 결과', createdAt: '' });
+    renderElementaryAnalysisHistoryCards(currentMemoStudent);
+  }
+  setMemoSaveStatus('자동 저장');
+  if (typeof markObservationMemoEditorClean === 'function') markObservationMemoEditorClean();
+  if (typeof refreshMemoStudentSelectPopupIfOpen === 'function') refreshMemoStudentSelectPopupIfOpen();
+
+  return {
+    state: 'cleared',
+    student: currentMemoStudent,
+    revision: Number(serverRow?.revision || 0),
+    syncedAt: String(serverRow?.updated_at || ''),
+    intentionalClear: true
+  };
+}
+
+function getCurrentMemoStudentName() {
+  return currentMemoStudent?.name || document.getElementById('memoStudentName')?.textContent?.trim() || '';
+}
+async function autoSaveMemoFeedback(text, futureDirection = '') {
+  const name = getCurrentMemoStudentName();
+  const content = String(text || '').trim();
+  if (!name) { alert('학생 이름을 찾지 못했어요.'); return; }
+  if (!content) { alert('저장할 피드백 내용이 비어 있어요.'); return; }
+
+  let targetStudent = currentMemoStudent && currentMemoStudent.id && currentMemoStudent.type === 'elementary' ? currentMemoStudent : null;
+  if (!targetStudent) {
+    const matches = getAllStudents().filter(student =>
+      (student.type || 'elementary') === 'elementary' &&
+      String(student.name || '').trim() === String(name || '').trim()
+    );
+    if (matches.length === 1) targetStudent = matches[0];
+    else if (matches.length > 1) {
+      alert('같은 이름의 학생이 여러 명 있습니다. 학생 목록에서 해당 학생을 다시 선택해 주세요.');
+      return;
+    }
+  }
+  if (!targetStudent) {
+    alert('피드백을 저장할 학생 정보를 찾지 못했어요.');
+    return;
+  }
+
+  const year = new Date().getFullYear();
+  const date = new Date().toLocaleDateString('ko-KR');
+  try {
+    const payload = addOlliAcademyToPayload({
+      student_id: targetStudent.id,
+      student_name: targetStudent.name || name,
+      content,
+      feedback_type: 'class',
+      future_direction: futureDirection || null,
+      year,
+      date
+    }, '초등부 관찰 피드백 저장');
+    await saveFeedbackRowVerified('feedbacks', payload, '초등부 관찰 피드백 저장');
+    if (typeof refreshRecordsAfterFeedbackSave === 'function') await refreshRecordsAfterFeedbackSave();
+    else if (typeof loadRecords === 'function') await loadRecords('');
+    if (currentMemoStudent && String(currentMemoStudent.id || '') === String(targetStudent.id || '')) resetElementaryMemoAfterFeedbackSave();
+    closeMemoFeedbackPopup();
+    showPushToast('피드백을 기록실에 저장했어요.');
+  } catch (err) {
+    console.error('초등부 관찰 피드백 저장 오류:', err);
+    closeMemoFeedbackPopup();
+    alert(`피드백 저장 중 오류가 발생했어요.
+
+${err.message || '알 수 없는 오류입니다.'}`);
+  }
+}
+
+function closeMemoFeedbackPopup() {
+  const overlay = document.getElementById('memoFeedbackPopupOverlay');
+  if (overlay) overlay.remove();
+}
+function enterMemoFeedbackEdit(btn) {
+  const card = btn.closest('.memoFeedbackPopupCard');
+  if (!card) return;
+  const textEl = card.querySelector('.memoFeedbackPopupText');
+  const current = textEl ? textEl.textContent : '';
+  card.classList.add('open');
+  card.classList.add('editing');
+  if (textEl) {
+    textEl.outerHTML = `<textarea class="memoFeedbackEditBox">${escapeHtml(current)}</textarea>`;
+    const box = card.querySelector('.memoFeedbackEditBox');
+    if (box) {
+      box.focus();
+      box.selectionStart = box.selectionEnd = box.value.length;
+    }
+  }
+}
+function finishMemoFeedbackEdit(btn) {
+  const card = btn.closest('.memoFeedbackPopupCard');
+  if (!card) return;
+  const box = card.querySelector('.memoFeedbackEditBox');
+  const edited = box ? box.value.trim() : '';
+  if (!edited) { alert('피드백 내용이 비어 있어요.'); return; }
+  card._feedbackText = edited;
+  card._futureDirection = extractFutureDirectionFromFeedback(edited, card._futureDirection || '');
+  if (box) {
+    box.outerHTML = `<div class="memoFeedbackPopupText">${escapeHtml(edited)}</div>`;
+  }
+  card.classList.remove('editing');
+}
+async function saveElementaryFeedbackDirectly(text, options = {}) {
+  const content = String(text || '').trim();
+  if (!content) throw new Error('저장할 피드백 내용이 비어 있습니다.');
+  const studentName = normalizeTodayFeedbackStudentName(options.studentName || currentMemoStudent?.name || '');
+  if (!studentName) throw new Error('아이 이름을 찾지 못했습니다.');
+  const studentDivision = options.studentDivision === 'kinder' || currentMemoStudent?.type === 'kinder' ? 'kinder' : 'elementary';
+  const selectedStudentId = options.studentId || currentMemoStudent?.id || '';
+  const savedStudent = await getOrCreateStudentForSupabaseSave(studentName, studentDivision, selectedStudentId);
+  const rawType = options.feedbackType || 'growth';
+  const tableName = getFeedbackTableNameByType(rawType);
+  const feedbackType = tableName === 'fail_feedbacks' ? 'fail' : String(rawType || 'class').toLowerCase();
+  const now = new Date();
+  const payload = addOlliAcademyToPayload({
+    student_id: savedStudent.id,
+    student_name: savedStudent.name || studentName,
+    content,
+    feedback_type: feedbackType,
+    year: now.getFullYear(),
+    date: now.toLocaleDateString('ko-KR')
+  }, tableName === 'fail_feedbacks' ? '실패-성장 피드백 저장' : '성장 피드백 저장');
+  const savedRow = await saveFeedbackRowVerified(tableName, payload, tableName === 'fail_feedbacks' ? '실패-성장 피드백 저장' : '성장 피드백 저장');
+  await refreshRecordsAfterFeedbackSave();
+  if (tableName === 'feedbacks' && currentMemoStudent && String(currentMemoStudent.id || '') === String(savedStudent.id || '')) resetElementaryMemoAfterFeedbackSave();
+  if (tableName === 'fail_feedbacks' && typeof resetGrowthFeedbackAfterSuccessfulSave === 'function') resetGrowthFeedbackAfterSuccessfulSave('elementary');
+  return { student: savedStudent, row: savedRow, tableName };
+}
+
+async function requestSceneCardFeedbackFromElementary(studentName, text, analysisPromptText, options = {}) {
+  if (loading) return;
+
+  const studentDivision = options.studentDivision === 'kinder' || currentMemoStudent?.type === 'kinder' ? 'kinder' : 'elementary';
+  const requestStudentId = String(options.studentId || currentMemoStudent?.id || '').trim();
+  const requestStudentName = normalizeTodayFeedbackStudentName(studentName);
+  const divisionLabel = studentDivision === 'kinder' ? '유치부' : '초등부';
+  const feedbackMonth = String(options.feedbackMonth || getFeedbackMonthLabel()).trim();
+  const feedbackMonthNumber = Number(options.feedbackMonthNumber || getFeedbackMonthNumber());
+  const normalizedText = String(text || '').trim();
+  const normalizedAnalysisPromptText = studentDivision === 'elementary' ? String(analysisPromptText || '').trim() : '';
+  const combined = `${studentName} ${divisionLabel} 성장 피드백 기록
+피드백 기준 월: ${feedbackMonth}
+
+${normalizedText}${normalizedAnalysisPromptText ? `
+
+[초등부 분석 데이터]
+${normalizedAnalysisPromptText}` : ''}`;
+  const userText = buildSceneCardUserText(combined);
+
+  const btn = document.getElementById('memoFeedbackBtn');
+  loading = true;
+  showFeedbackLoading('elementary');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '작성 중...';
+  }
+
+  try {
+    const res = await fetch('/api/chat', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        promptType: options.promptType || 'elementary',
+        studentId: requestStudentId,
+        studentName: requestStudentName,
+        studentDivision,
+        feedbackMonth,
+        feedbackMonthNumber,
+        messages:[{ role:'user', content: buildTodayFeedbackRequestContent(userText, studentName, feedbackMonth, studentDivision) }]
+      })
+    });
+    const rawText = await res.text();
+    let data;
+    try { data = rawText ? JSON.parse(rawText) : {}; } catch { data = { raw: rawText }; }
+    if (!res.ok) throw new Error(getApiErrorMessage(res.status, data));
+    const rawReply = String(data.reply || '').trim();
+    if (!rawReply) throw new Error('응답 본문이 비어 있습니다.');
+    const parsed = parseReplyType(rawReply);
+    const cleanText = parsed.cleanText || rawReply;
+    const restoredText = typeof restoreFeedbackStudentAliases === 'function'
+      ? restoreFeedbackStudentAliases(cleanText, requestStudentName)
+      : cleanText;
+    hideFeedbackLoading();
+    const futureDirection = getFutureDirectionFromApiData(data, restoredText);
+    await saveElementaryFeedbackDirectly(restoredText, {
+      studentName: requestStudentName,
+      studentId: requestStudentId,
+      studentDivision,
+      feedbackType: options.feedbackType || 'growth',
+      feedbackMonth,
+      feedbackMonthNumber,
+      futureDirection
+    });
+    showPushToast(`${studentName} 성장 피드백을 기록실에 저장했어요.`);
+  } catch (err) {
+    hideFeedbackLoading();
+    console.error('성장 피드백 생성/저장 오류:', err);
+    alert(`성장 피드백 생성 또는 저장 중 오류가 발생했어요.\n\n${err.message || '알 수 없는 오류입니다.'}`);
+  } finally {
+    loading = false;
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="memoFeedbackBottomText">피드백 생성</span><span class="memoFeedbackArrowCircle" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg></span>';
+    }
+  }
+}
+

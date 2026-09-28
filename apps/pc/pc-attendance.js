@@ -1,0 +1,839 @@
+(function pcAttendanceModule(global) {
+  'use strict';
+
+  const PC_SORT_MODES = Object.freeze({ DAY: 'day', GROUP: 'group', GRADE: 'grade', PAUSED: 'paused', WITHDRAWN: 'withdrawn' });
+  const PC_SORT_TIME_ORDER = ['1시', '2시', '3시', '4시', '5시', '6시', '7시'];
+  const PC_GROUP_LABELS = { '1': 'A그룹', '2': 'B그룹', '3': 'C그룹', '4': 'D그룹', '5': 'E그룹', '6': 'F그룹' };
+  const PC_DAY_NAMES = { 0: '일', 1: '월', 2: '화', 3: '수', 4: '목', 5: '금', 6: '토' };
+
+  const state = {
+    selectedStudentId: '',
+    loadToken: 0,
+    legacyOpenFeedback: null,
+    actionsWrapped: false,
+    editorScreen: null,
+    editorAnchor: null,
+    editorStudentId: '',
+    editorDivision: '',
+    recordCache: new Map(),
+    sortMode: PC_SORT_MODES.DAY
+  };
+
+  function core() { return global.OlliPcCore; }
+  function escape(value) {
+    if (typeof global.escapeHtml === 'function') return global.escapeHtml(String(value ?? ''));
+    return String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+  }
+  function isPcAttendance() {
+    const sectionKey = core()?.SECTION?.PERSONALITY_RECORDS || 'attendance';
+    return core()?.state?.section === sectionKey;
+  }
+
+  function todayPcAttendanceDay() {
+    return PC_DAY_NAMES[new Date().getDay()] || '월';
+  }
+
+  function normalizeSortMode(mode) {
+    return Object.values(PC_SORT_MODES).includes(mode) ? mode : PC_SORT_MODES.DAY;
+  }
+
+  function statusForSortMode(mode) {
+    if (mode === PC_SORT_MODES.PAUSED) return 'paused';
+    if (mode === PC_SORT_MODES.WITHDRAWN) return 'withdrawn';
+    return '';
+  }
+
+  function studentsForSortMode(app, type) {
+    const status = statusForSortMode(normalizeSortMode(state.sortMode));
+    if (!status) return app.activeStudents(type);
+    const all = typeof global.getStudentsByType === 'function' ? global.getStudentsByType(type) : [];
+    return all.filter((student) => {
+      try {
+        const current = typeof global.getStudentStatus === 'function' ? global.getStudentStatus(student) : String(student?.status || 'active');
+        return current === status;
+      } catch (_) {
+        return false;
+      }
+    });
+  }
+
+  function removeLegacyPcSortControl() {
+    document.getElementById('olliPcSortBtn')?.remove();
+    try { delete global.pcOpenSidebarSort; } catch (_) { global.pcOpenSidebarSort = undefined; }
+  }
+
+  const PC_RECORD_CACHE_PREFIX = 'olli_pc_feedback_record_cache_v1';
+  const PC_RECORD_CACHE_MAX_STUDENTS = 12;
+
+  function getRecordCacheScope() {
+    try {
+      const academyId = typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '';
+      return String(academyId || 'unscoped');
+    } catch (_) {
+      return 'unscoped';
+    }
+  }
+
+  function getRecordCacheStorageKey(studentId) {
+    return `${PC_RECORD_CACHE_PREFIX}_${getRecordCacheScope()}_${String(studentId || '')}`;
+  }
+
+  function getRecordCacheIndexKey() {
+    return `${PC_RECORD_CACHE_PREFIX}_index_${getRecordCacheScope()}`;
+  }
+
+  function normalizeRecordData(data) {
+    return {
+      feedbacks: Array.isArray(data?.feedbacks) ? data.feedbacks : [],
+      summaries: Array.isArray(data?.summaries) ? data.summaries : []
+    };
+  }
+
+  function recordDataFingerprint(data) {
+    const normalized = normalizeRecordData(data);
+    const compact = (kind, items) => items.map((item) => [
+      kind,
+      String(item?.sourceTable || item?.row?.source_table || ''),
+      String(item?.rowId || item?.row?.id || item?.id || ''),
+      String(item?.createdAt || item?.row?.created_at || item?.row?.date || ''),
+      String(item?.content || '')
+    ]);
+    return JSON.stringify([
+      ...compact('feedback', normalized.feedbacks),
+      ...compact('summary', normalized.summaries)
+    ]);
+  }
+
+  function readRecordCache(student) {
+    const studentId = String(student?.id || '');
+    if (!studentId) return null;
+    const memory = state.recordCache.get(studentId);
+    if (memory?.data) return memory.data;
+    try {
+      const raw = localStorage.getItem(getRecordCacheStorageKey(studentId));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      const data = normalizeRecordData(parsed?.data);
+      const entry = { data, fingerprint: parsed?.fingerprint || recordDataFingerprint(data), savedAt: parsed?.savedAt || 0 };
+      state.recordCache.set(studentId, entry);
+      return data;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function rememberRecordCache(student, data) {
+    const studentId = String(student?.id || '');
+    if (!studentId) return;
+    const normalized = normalizeRecordData(data);
+    const entry = { data: normalized, fingerprint: recordDataFingerprint(normalized), savedAt: Date.now() };
+    state.recordCache.set(studentId, entry);
+    try {
+      localStorage.setItem(getRecordCacheStorageKey(studentId), JSON.stringify(entry));
+      const indexKey = getRecordCacheIndexKey();
+      let ids = [];
+      try { ids = JSON.parse(localStorage.getItem(indexKey) || '[]'); } catch (_) {}
+      ids = [studentId, ...ids.filter((id) => String(id) !== studentId)];
+      const evicted = ids.slice(PC_RECORD_CACHE_MAX_STUDENTS);
+      ids = ids.slice(0, PC_RECORD_CACHE_MAX_STUDENTS);
+      localStorage.setItem(indexKey, JSON.stringify(ids));
+      evicted.forEach((id) => {
+        state.recordCache.delete(String(id));
+        localStorage.removeItem(getRecordCacheStorageKey(id));
+      });
+    } catch (_) {}
+  }
+
+  function dropRecordCache(studentId) {
+    const id = String(studentId || '');
+    if (!id) return;
+    state.recordCache.delete(id);
+    try {
+      localStorage.removeItem(getRecordCacheStorageKey(id));
+      const indexKey = getRecordCacheIndexKey();
+      let ids = [];
+      try { ids = JSON.parse(localStorage.getItem(indexKey) || '[]'); } catch (_) {}
+      localStorage.setItem(indexKey, JSON.stringify(ids.filter((item) => String(item) !== id)));
+    } catch (_) {}
+  }
+
+  function studentMatchesDay(student, day) {
+    if (!day) return true;
+    try {
+      if (typeof parseRecordSortDays === 'function') return parseRecordSortDays(student).includes(day);
+    } catch (_) {}
+    const raw = String(student.lesson_day || student.lessonDay || student.days || student.day || '').replace(/요일/g, '');
+    return raw.includes(day);
+  }
+
+  function normalizePcAttendanceSearchText(value) {
+    const CHO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+    const JUNG = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
+    const JONG = ['', 'ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+    const text = String(value || '').trim().normalize('NFC').toLowerCase();
+    let out = '';
+    for (const ch of text) {
+      const code = ch.charCodeAt(0);
+      if (code >= 0xAC00 && code <= 0xD7A3) {
+        const index = code - 0xAC00;
+        const cho = Math.floor(index / 588);
+        const jung = Math.floor((index % 588) / 28);
+        const jong = index % 28;
+        out += (CHO[cho] || '') + (JUNG[jung] || '') + (JONG[jong] || '');
+      } else if (code >= 0x1100 && code <= 0x1112) {
+        out += CHO[code - 0x1100] || ch;
+      } else if (code >= 0x1161 && code <= 0x1175) {
+        out += JUNG[code - 0x1161] || ch;
+      } else if (code >= 0x11A8 && code <= 0x11C2) {
+        out += JONG[code - 0x11A7] || ch;
+      } else {
+        out += ch;
+      }
+    }
+    return out.replace(/\s+/g, '');
+  }
+
+  function studentMatchesPcAttendanceSearch(student, query) {
+    const q = String(query || '').trim();
+    if (!q) return true;
+    const name = String(student?.name || '').trim();
+    if (!name) return false;
+    if (name.toLowerCase().includes(q.toLowerCase())) return true;
+    const normalizedName = normalizePcAttendanceSearchText(name);
+    const normalizedQuery = normalizePcAttendanceSearchText(q);
+    return !!normalizedQuery && normalizedName.includes(normalizedQuery);
+  }
+
+  function getStudentGroupKey(student) {
+    const raw = String(student?.group || student?.group_no || '').trim();
+    const match = raw.match(/[1-6]/);
+    return match ? match[0] : '';
+  }
+
+  function getStudentGradeNumber(student) {
+    const raw = String(student?.grade || student?.school_grade || student?.studentGrade || student?.class_grade || '').trim();
+    const match = raw.match(/\d+/);
+    const grade = match ? Number(match[0]) : NaN;
+    return Number.isFinite(grade) && grade > 0 ? grade : 999;
+  }
+
+  function getStudentAgeNumber(student) {
+    const raw = String(student?.age || student?.student_age || student?.studentAge || '').trim();
+    const match = raw.match(/\d+/);
+    const age = match ? Number(match[0]) : NaN;
+    return Number.isFinite(age) && age > 0 ? age : 999;
+  }
+
+  function getLessonTimeText(student) {
+    return String(student?.lesson_time || student?.class_time || student?.lessonTime || student?.classTime || '').trim();
+  }
+
+  function extractTimeLabels(value) {
+    const text = String(value || '');
+    const found = [];
+    text.replace(/(?:오후\s*)?([1-7])\s*(?:시|:00)?/g, (_, hour) => {
+      const label = `${Number(hour)}시`;
+      if (!found.includes(label)) found.push(label);
+      return '';
+    });
+    return found.sort((a, b) => PC_SORT_TIME_ORDER.indexOf(a) - PC_SORT_TIME_ORDER.indexOf(b));
+  }
+
+  function getStudentTimesForDay(student, day) {
+    const raw = getLessonTimeText(student);
+    if (!raw) return [];
+    const segments = raw.split(/[·,\/|\n]+/).map((value) => value.trim()).filter(Boolean);
+    const daySpecific = [];
+    let hasDaySpecificData = false;
+    segments.forEach((segment) => {
+      const dayMatch = segment.match(/([월화수목금토일])(?:요일)?/);
+      if (!dayMatch) return;
+      hasDaySpecificData = true;
+      if (dayMatch[1] !== day) return;
+      extractTimeLabels(segment).forEach((time) => {
+        if (!daySpecific.includes(time)) daySpecific.push(time);
+      });
+    });
+    if (hasDaySpecificData) return daySpecific;
+    const days = (() => {
+      try { return typeof parseRecordSortDays === 'function' ? parseRecordSortDays(student) : []; }
+      catch (_) { return []; }
+    })();
+    if (days.length === 1 && days[0] === day) return extractTimeLabels(raw);
+    return extractTimeLabels(raw);
+  }
+
+  function getStudentPrimaryTimeForDay(student, day) {
+    return getStudentTimesForDay(student, day)[0] || '';
+  }
+
+  function compareStudentsByName(a, b) {
+    return String(a?.name || '').localeCompare(String(b?.name || ''), 'ko');
+  }
+
+  function renderPcSortDivider(label) {
+    return '<div class="pcAttendanceSortDivider"><span>'+escape(label)+'</span></div>';
+  }
+
+  function renderPlainRows(students, division) {
+    try {
+      const renderer = division === 'kinder' ? global.renderKinderStudentRows || renderKinderStudentRows : global.renderElementaryStudentRows || renderElementaryStudentRows;
+      const html = typeof renderer === 'function' ? renderer(students) : '';
+      return String(html || '').replace(/\s+groupBreak(?=[\s"])/g, '');
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function renderGroupedRows(students, division, keyGetter, labelGetter, keySorter) {
+    const groups = new Map();
+    students.forEach((student) => {
+      const key = keyGetter(student);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(student);
+    });
+    const keys = Array.from(groups.keys()).sort(keySorter);
+    return keys.map((key) => {
+      const members = groups.get(key).slice().sort(compareStudentsByName);
+      return renderPcSortDivider(labelGetter(key)) + renderPlainRows(members, division);
+    }).join('');
+  }
+
+  function renderStudentsForSortMode(students, division) {
+    const mode = normalizeSortMode(state.sortMode);
+    if (!students.length) return '';
+
+    if (mode === PC_SORT_MODES.PAUSED || mode === PC_SORT_MODES.WITHDRAWN) {
+      return renderPlainRows(students.slice().sort(compareStudentsByName), division);
+    }
+
+    if (mode === PC_SORT_MODES.DAY) {
+      const today = todayPcAttendanceDay();
+      const todayStudents = students.filter((student) => studentMatchesDay(student, today));
+      return renderGroupedRows(
+        todayStudents,
+        division,
+        (student) => getStudentPrimaryTimeForDay(student, today) || '미지정',
+        (key) => key === '미지정' ? '시간 미지정' : key,
+        (a, b) => {
+          if (a === '미지정') return 1;
+          if (b === '미지정') return -1;
+          return PC_SORT_TIME_ORDER.indexOf(a) - PC_SORT_TIME_ORDER.indexOf(b);
+        }
+      );
+    }
+
+    if (mode === PC_SORT_MODES.GROUP) {
+      return renderGroupedRows(
+        students,
+        division,
+        (student) => getStudentGroupKey(student) || '미지정',
+        (key) => key === '미지정' ? '그룹 미지정' : (PC_GROUP_LABELS[key] || `${key}그룹`),
+        (a, b) => {
+          if (a === '미지정') return 1;
+          if (b === '미지정') return -1;
+          return Number(a) - Number(b);
+        }
+      );
+    }
+
+    const isKinder = division === 'kinder';
+    return renderGroupedRows(
+      students,
+      division,
+      (student) => {
+        const value = isKinder ? getStudentAgeNumber(student) : getStudentGradeNumber(student);
+        return value === 999 ? '미지정' : String(value);
+      },
+      (key) => key === '미지정' ? (isKinder ? '나이 미지정' : '학년 미지정') : (isKinder ? `${key}세` : `${key}학년`),
+      (a, b) => {
+        if (a === '미지정') return 1;
+        if (b === '미지정') return -1;
+        return Number(a) - Number(b);
+      }
+    );
+  }
+
+  function renderContext(elementary, kinder) {
+    const app = core();
+    const title = document.getElementById('olliPcContextTitle');
+    const body = document.getElementById('olliPcContextBody');
+    if (!title || !body) return;
+    const sortButtons = [
+      [PC_SORT_MODES.DAY, '요일별'],
+      [PC_SORT_MODES.GROUP, '그룹별'],
+      [PC_SORT_MODES.GRADE, '학년별 · 나이별'],
+      [PC_SORT_MODES.PAUSED, '휴원별'],
+      [PC_SORT_MODES.WITHDRAWN, '퇴원별']
+    ].map(([mode, label]) =>
+      '<button class="olliPcQuickBtn '+(state.sortMode === mode ? 'active' : '')+'" onclick="pcSetAttendanceSortMode(\''+mode+'\')"><span>'+label+'</span><span></span></button>'
+    ).join('');
+    title.textContent = '빠른 보기';
+    body.innerHTML =
+      '<button class="olliPcQuickBtn '+(app.state.attendanceDivision === 'elementary' ? 'active' : '')+'" onclick="pcFilterAttendanceDivision(\'elementary\')"><span>초등부</span><span>'+elementary.length+'</span></button>'+
+      '<button class="olliPcQuickBtn '+(app.state.attendanceDivision === 'kinder' ? 'active' : '')+'" onclick="pcFilterAttendanceDivision(\'kinder\')"><span>유치부</span><span>'+kinder.length+'</span></button>'+
+      '<div class="olliPcContextSectionLabel">정렬</div>'+sortButtons;
+  }
+
+  function ensureDetailPanel() {
+    let panel = document.getElementById('pcAttendanceDetailPanel');
+    if (panel) return panel;
+    const host = document.getElementById('recordBodyNew');
+    if (!host) return null;
+    panel = document.createElement('aside');
+    panel.id = 'pcAttendanceDetailPanel';
+    panel.className = 'pcAttendanceDetailPanel';
+    panel.setAttribute('aria-label', '선택 학생 관찰기록');
+    const academyPanel = document.getElementById('pcAcademyDetailPanel');
+    host.insertBefore(panel, academyPanel || null);
+    panel.addEventListener('click', (event) => {
+      if (event.target.closest('.attendanceFeedbackSheetCardActions, .attendanceSummaryRegenerateBtn, .attendanceFeedbackSheetCopyIconBtn')) return;
+      const card = event.target.closest('.attendanceFeedbackSheetCard');
+      if (!card || !panel.contains(card)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      card.classList.toggle('open');
+    }, true);
+    renderEmptyDetail();
+    return panel;
+  }
+
+  function unmountRecordEditor() {
+  const editor = global.OlliPcRecordEditor;
+  if (!editor || typeof editor.unmount !== 'function') return;
+  Promise.resolve(editor.unmount({ save: true })).catch((error) => {
+    console.warn('PC 기록 에디터 정리 실패:', error && (error.message || error));
+  });
+}
+
+function mountRecordEditor(student) {
+  const host = document.getElementById('pcAttendanceSharedEditorHost');
+  const editor = global.OlliPcRecordEditor;
+  if (!host || !student) return;
+  if (!editor || typeof editor.mount !== 'function') {
+    host.innerHTML = '<div class="pcAttendanceEditorUnavailable">PC 기록 에디터를 불러오지 못했습니다.</div>';
+    return;
+  }
+  Promise.resolve(editor.mount(host, student)).catch((error) => {
+    console.warn('PC 기록 에디터 연결 실패:', error && (error.message || error));
+    host.innerHTML = '<div class="pcAttendanceEditorUnavailable">기록 화면을 불러오지 못했습니다.</div>';
+  });
+}
+
+function recordWorkspaceHtml(student, recordContent) {
+    return '<div class="pcAttendanceDetailBody">'
+      + '<section class="pcAttendanceEditorCard" aria-label="수업 기록 작성">'
+      + '<div class="pcAttendanceSharedEditorHost" id="pcAttendanceSharedEditorHost"></div>'
+      + '</section>'
+      + '<section class="pcAttendanceCombinedCard" aria-label="종합 성장 기록">'
+      + '<div class="pcAttendanceCombinedBody" id="pcAttendanceCombinedBody">'+recordContent+'</div>'
+      + '</section>'
+      + '</div>';
+  }
+
+  function recordLoadingHtml() {
+    return '<div class="pcAttendanceRecordLoading"><span></span><span></span><span></span></div>';
+  }
+
+  function recordQuietLoadingHtml() {
+    return '<div class="attendanceFeedbackSheetEmpty">기록을 불러오고 있습니다.</div>';
+  }
+
+  function ensureRecordWorkspace(student) {
+    const panel = ensureDetailPanel();
+    if (!panel) return null;
+    let host = document.getElementById('pcAttendanceSharedEditorHost');
+    let body = document.getElementById('pcAttendanceCombinedBody');
+    if (!host || !body || !panel.contains(host) || !panel.contains(body)) {
+      unmountRecordEditor();
+      panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">관찰기록</div></div>'
+        + recordWorkspaceHtml(student, recordQuietLoadingHtml());
+      host = document.getElementById('pcAttendanceSharedEditorHost');
+      body = document.getElementById('pcAttendanceCombinedBody');
+    }
+    mountRecordEditor(student);
+    return body;
+  }
+
+  function renderEmptyDetail() {
+    const panel = ensureDetailPanel();
+    if (!panel) return;
+    unmountRecordEditor();
+    panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">관찰기록</div></div>'
+      + '<div class="pcAttendanceDetailEmpty"><span class="pcAttendanceDetailEmptyIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="3"></rect><path d="M8 9h8M8 13h5"></path></svg></span><strong>학생을 선택해 주세요.</strong><span>왼쪽 명단에서 학생 이름을 누르면<br>관찰기록이 이곳에 표시됩니다.</span></div>';
+  }
+
+
+  function inactiveStudentStatus(student) {
+    try {
+      const status = typeof global.getStudentStatus === 'function'
+        ? String(global.getStudentStatus(student) || '')
+        : String(student?.status || 'active');
+      return status === 'paused' || status === 'withdrawn' ? status : '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function renderInactiveDetail(student, status) {
+    const panel = ensureDetailPanel();
+    if (!panel) return;
+    unmountRecordEditor();
+    const statusLabel = status === 'paused' ? '휴원' : '퇴원';
+    const studentName = escape(student?.name || '해당');
+    panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">관찰기록</div></div>'
+      + '<div class="pcAttendanceDetailEmpty pcAttendanceDetailInactive">'
+      + '<button type="button" class="pcAttendanceDetailEmptyIcon pcAttendanceReenrollIcon" aria-label="'+studentName+' 학생 재등록" onclick="pcReenrollAttendanceStudent(\''+escape(student?.id || '')+'\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 7.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"></path><path d="M5.5 18.5c.8-3 2.8-4.5 5.5-4.5 1.2 0 2.3.3 3.2.8"></path><path d="M17 12.5h3v3"></path><path d="M20 15.5a4.5 4.5 0 0 1-7.3 3.5"></path><path d="M14 20h-3v-3"></path></svg></button>'
+      + '<strong>재등록 후 관찰기록을 이용할 수 있어요.</strong>'
+      + '<span>'+studentName+' 학생은 현재 '+statusLabel+' 상태입니다.</span>'
+      + '</div>';
+  }
+
+  async function reenrollInactiveStudent(studentOrId) {
+    const student = typeof studentOrId === 'object'
+      ? studentOrId
+      : (typeof findStudentById === 'function' ? findStudentById(studentOrId) : null);
+    if (!student || !inactiveStudentStatus(student)) return;
+    if (!global.confirm('재등록 하시겠습니까?')) return;
+    if (typeof global.reactivateStudentById !== 'function') {
+      alert('재등록 기능을 불러오지 못했습니다. 학생관리에서 다시 시도해 주세요.');
+      return;
+    }
+    try {
+      await global.reactivateStudentById(student.id);
+      state.selectedStudentId = '';
+      state.loadToken += 1;
+      renderList();
+      renderEmptyDetail();
+      if (typeof global.showPushToast === 'function') global.showPushToast(`${student.name} 학생을 재등록했어요.`);
+    } catch (error) {
+      alert(`재등록에 실패했어요.\n\n${error?.message || error}`);
+    }
+  }
+
+  function renderLoadingDetail(student) {
+    const body = ensureRecordWorkspace(student);
+    if (body) body.innerHTML = recordQuietLoadingHtml();
+  }
+
+  function getPcAttendanceRecordTimestamp(item) {
+    const raw = item?.createdAt || item?.row?.date || item?.row?.created_at || item?.row?.updated_at || '';
+    const time = new Date(raw).getTime();
+    return Number.isFinite(time) ? time : 0;
+  }
+
+  function renderUnifiedRecordCards(student, feedbacks, summaries) {
+    const combined = [
+      ...feedbacks.map((item, index) => ({ item, kind: 'feedback', index })),
+      ...summaries.map((item, index) => ({ item, kind: 'summary', index: feedbacks.length + index }))
+    ].sort((a, b) => {
+      const dateDelta = getPcAttendanceRecordTimestamp(b.item) - getPcAttendanceRecordTimestamp(a.item);
+      return dateDelta || (a.index - b.index);
+    });
+
+    if (!combined.length) return '<div class="attendanceFeedbackSheetEmpty">저장된 기록이 없습니다.</div>';
+
+    const cards = combined.map(({ item, kind }) => {
+      try {
+        return typeof renderAttendanceFeedbackSheetCards === 'function'
+          ? renderAttendanceFeedbackSheetCards([item], '', student, {
+              kind,
+              hidePreview: true,
+              iconCopy: true,
+              showSummaryBadge: true
+            })
+          : '';
+      } catch (_) {
+        return '';
+      }
+    }).join('');
+
+    return cards || '<div class="attendanceFeedbackSheetEmpty">저장된 기록이 없습니다.</div>';
+  }
+
+  function renderCombinedRecords(student, data) {
+    const feedbacks = Array.isArray(data?.feedbacks) ? data.feedbacks : [];
+    const summaries = Array.isArray(data?.summaries) ? data.summaries : [];
+
+    // 기존 공통 시트 상태는 그대로 유지해 복사·삭제·종합기록 재생성 로직을 변경하지 않습니다.
+    try {
+      if (typeof renderAttendanceStudentFeedbackSheet === 'function') {
+        renderAttendanceStudentFeedbackSheet(student, { feedbacks, summaries });
+      }
+    } catch (_) {}
+
+    const body = document.getElementById('pcAttendanceCombinedBody');
+    if (!body) return;
+    body.innerHTML = '<section class="attendanceFeedbackSheetSection pcAttendanceRecordSection pcAttendanceRecordSectionUnified" aria-label="관찰 및 성장 기록"><div class="attendanceFeedbackSheetScroll">'
+      + renderUnifiedRecordCards(student, feedbacks, summaries)
+      + '</div></section>';
+  }
+
+  async function refreshSelectedRecord() {
+  const studentId = String(state.selectedStudentId || '');
+  if (!studentId) return;
+  dropRecordCache(studentId);
+  await selectStudent(studentId);
+}
+
+  function renderDetailError(student, error) {
+    const body = document.getElementById('pcAttendanceCombinedBody');
+    if (!body) return;
+    body.innerHTML = '<div class="pcAttendanceRecordError"><strong>기록을 불러오지 못했어요.</strong><span>'+escape(error?.message || '잠시 후 다시 선택해 주세요.')+'</span><button type="button" onclick="pcSelectAttendanceStudent(\''+escape(student?.id || '')+'\')">다시 불러오기</button></div>';
+  }
+
+  async function selectStudent(studentOrId) {
+    const student = typeof studentOrId === 'object' ? studentOrId : (typeof findStudentById === 'function' ? findStudentById(studentOrId) : null);
+    if (!student) return;
+    const nextStudentId = String(student.id || '');
+    const wasSelected = state.selectedStudentId === nextStudentId;
+    state.selectedStudentId = nextStudentId;
+    decorateRows();
+
+    const inactiveStatus = inactiveStudentStatus(student);
+    if (inactiveStatus) {
+      state.loadToken += 1;
+      renderInactiveDetail(student, inactiveStatus);
+      return;
+    }
+
+    const body = ensureRecordWorkspace(student);
+    const cached = readRecordCache(student);
+    if (cached) {
+      if (!wasSelected || !body?.dataset?.recordStudentId || body.dataset.recordStudentId !== nextStudentId) {
+        renderCombinedRecords(student, cached);
+      }
+      const currentBody = document.getElementById('pcAttendanceCombinedBody');
+      if (currentBody) currentBody.dataset.recordStudentId = nextStudentId;
+    } else if (body) {
+      body.dataset.recordStudentId = nextStudentId;
+      body.innerHTML = recordQuietLoadingHtml();
+    }
+
+    const token = ++state.loadToken;
+    try {
+      const data = typeof loadAttendanceStudentFeedbackSheetItems === 'function'
+        ? await loadAttendanceStudentFeedbackSheetItems(student)
+        : { feedbacks: [], summaries: [] };
+      if (token !== state.loadToken || !isPcAttendance()) return;
+
+      const fresh = normalizeRecordData(data);
+      const cachedFingerprint = cached ? recordDataFingerprint(cached) : '';
+      const freshFingerprint = recordDataFingerprint(fresh);
+      rememberRecordCache(student, fresh);
+
+      if (!cached || cachedFingerprint !== freshFingerprint) {
+        renderCombinedRecords(student, fresh);
+        const currentBody = document.getElementById('pcAttendanceCombinedBody');
+        if (currentBody) currentBody.dataset.recordStudentId = nextStudentId;
+      }
+    } catch (error) {
+      if (token !== state.loadToken || !isPcAttendance()) return;
+      if (!cached) renderDetailError(student, error);
+      else console.warn('성향기록부 피드백 최신 확인 실패:', error);
+    }
+  }
+
+  function extractRowStudentId(row) {
+    const existing = String(row?.dataset?.pcAttendanceStudentId || '');
+    if (existing) return existing;
+    const onclick = String(row?.getAttribute('onclick') || '');
+    const match = onclick.match(/handleStudentRowClick\(event,'([^']+)'\)/);
+    return match ? match[1] : '';
+  }
+
+  function decorateRows() {
+    const list = document.getElementById('recordList');
+    if (!list) return;
+    list.querySelectorAll('.elementaryStudentRow,.kinderStudentRow').forEach((row) => {
+      const id = extractRowStudentId(row);
+      if (id) row.dataset.pcAttendanceStudentId = id;
+      row.classList.toggle('pcAttendanceSelected', !!id && id === state.selectedStudentId);
+      row.setAttribute('aria-pressed', !!id && id === state.selectedStudentId ? 'true' : 'false');
+    });
+  }
+
+  function ensureRosterHeader() {
+    const list = document.getElementById('recordList');
+    const app = core();
+    if (!list || !app) return;
+    const division = app.state.attendanceDivision === 'kinder' ? 'kinder' : 'elementary';
+    const label = division === 'kinder' ? '유치부' : '초등부';
+    const header = document.createElement('div');
+    header.className = 'pcAttendanceRosterHead';
+    header.innerHTML = '<div class="pcAttendanceRosterTitle">학생 명단</div><span class="pcAttendanceRosterDivision '+division+'">'+label+'</span>';
+    list.insertBefore(header, list.firstChild);
+  }
+
+  function bindRosterClicks() {
+    const list = document.getElementById('recordList');
+    if (!list || list.__olliPcAttendanceClickBound) return;
+    list.__olliPcAttendanceClickBound = true;
+
+    let pointerScroll = null;
+    const rosterRowFromEvent = (event) => {
+      if (!isPcAttendance()) return null;
+      const row = event.target.closest('.elementaryStudentRow,.kinderStudentRow');
+      return row && list.contains(row) ? row : null;
+    };
+    const restoreRosterScroll = (saved) => {
+      if (!saved || !list.isConnected) return;
+      if (list.scrollTop !== saved.top) list.scrollTop = saved.top;
+      if (list.scrollLeft !== saved.left) list.scrollLeft = saved.left;
+    };
+
+    // Capture before focus can move. On desktop, cancelling mousedown's default
+    // keeps the roster button from receiving focus and scrolling itself into view.
+    list.addEventListener('pointerdown', (event) => {
+      const row = rosterRowFromEvent(event);
+      if (!row) return;
+      pointerScroll = { top: list.scrollTop, left: list.scrollLeft };
+    }, true);
+    list.addEventListener('mousedown', (event) => {
+      if (rosterRowFromEvent(event)) event.preventDefault();
+    }, true);
+
+    list.addEventListener('click', (event) => {
+      const row = rosterRowFromEvent(event);
+      if (!row) return;
+      const studentId = extractRowStudentId(row);
+      if (!studentId) return;
+      const saved = pointerScroll || { top: list.scrollTop, left: list.scrollLeft };
+      pointerScroll = null;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      const selection = selectStudent(studentId);
+      restoreRosterScroll(saved);
+      Promise.resolve(selection).then(
+        () => restoreRosterScroll(saved),
+        () => restoreRosterScroll(saved)
+      );
+    }, true);
+  }
+
+  function installLegacyBridge() {
+    if (!state.legacyOpenFeedback && typeof global.openAttendanceStudentFeedbackSheet === 'function') {
+      state.legacyOpenFeedback = global.openAttendanceStudentFeedbackSheet;
+      global.openAttendanceStudentFeedbackSheet = function pcAwareAttendanceFeedback(studentOrId) {
+        if (isPcAttendance()) return selectStudent(studentOrId);
+        return state.legacyOpenFeedback.apply(this, arguments);
+      };
+    }
+    if (state.actionsWrapped) return;
+    state.actionsWrapped = true;
+    ['confirmAttendanceRecordDelete', 'regenerateAttendanceSummaryFeedback'].forEach((name) => {
+      const original = global[name];
+      if (typeof original !== 'function') return;
+      global[name] = async function pcAttendanceActionRefresh() {
+        const result = await original.apply(this, arguments);
+        if (isPcAttendance() && state.selectedStudentId) {
+          dropRecordCache(state.selectedStudentId);
+          selectStudent(state.selectedStudentId);
+        }
+        return result;
+      };
+    });
+  }
+
+  function open() {
+    removeLegacyPcSortControl();
+    const app = core();
+    const targetView = typeof currentObservationView !== 'undefined' && currentObservationView === 'kinder' ? 'kinder' : 'elementary';
+    app.showRecordRoomImmediately(targetView);
+    ensureDetailPanel();
+    bindRosterClicks();
+    installLegacyBridge();
+    state.selectedStudentId = '';
+    state.loadToken += 1;
+    state.sortMode = PC_SORT_MODES.DAY;
+    renderEmptyDetail();
+    app.state.attendanceDivision = 'elementary';
+    app.state.attendanceDay = '';
+    app.updateRecordLayout();
+    app.renderContext();
+    renderList();
+    if (typeof loadStudentsFromSupabase === 'function') {
+      Promise.resolve(loadStudentsFromSupabase()).then((result) => {
+        if (!isPcAttendance() || result?.changed !== true) return;
+        renderList();
+      }).catch((error) => console.warn('성향기록부 학생 백그라운드 동기화 실패:', error));
+    }
+  }
+
+  function renderList(searchValue) {
+    const app = core();
+    if (app.state.section !== 'attendance') return;
+    const list = document.getElementById('recordList');
+    const dashboard = document.getElementById('recordAcademyDashboard');
+    if (!list) return;
+    ensureDetailPanel();
+    bindRosterClicks();
+    installLegacyBridge();
+    removeLegacyPcSortControl();
+    if (dashboard) dashboard.classList.remove('show');
+    list.style.display = '';
+    const previousScrollTop = list.scrollTop;
+
+    const query = String(searchValue ?? app.state.searchValues.attendance ?? '').trim();
+    const studentsForDisplay = (type) => {
+      if (!query) return studentsForSortMode(app, type);
+      const all = typeof global.getStudentsByType === 'function' ? global.getStudentsByType(type) : [];
+      return all.filter((student) => {
+        try {
+          const status = typeof global.getStudentStatus === 'function'
+            ? global.getStudentStatus(student)
+            : String(student?.status || 'active');
+          return status === 'active' || status === 'paused' || status === 'withdrawn';
+        } catch (_) {
+          return false;
+        }
+      });
+    };
+    const elementary = studentsForDisplay('elementary').filter((student) => studentMatchesPcAttendanceSearch(student, query));
+    const kinder = studentsForDisplay('kinder').filter((student) => studentMatchesPcAttendanceSearch(student, query));
+    let html = '';
+    if (app.state.attendanceDivision === 'all' || app.state.attendanceDivision === 'elementary') {
+      html += query
+        ? renderPlainRows(elementary.slice().sort(compareStudentsByName), 'elementary')
+        : renderStudentsForSortMode(elementary, 'elementary');
+    }
+    if (app.state.attendanceDivision === 'all' || app.state.attendanceDivision === 'kinder') {
+      html += query
+        ? renderPlainRows(kinder.slice().sort(compareStudentsByName), 'kinder')
+        : renderStudentsForSortMode(kinder, 'kinder');
+    }
+    list.innerHTML = html || '<div class="recordEmpty">조건에 맞는 학생이 없습니다.</div>';
+    ensureRosterHeader();
+    decorateRows();
+    list.scrollTop = previousScrollTop;
+    app.renderContext();
+  }
+
+  function filterDivision(division) {
+    core().state.attendanceDivision = division === 'kinder' ? 'kinder' : 'elementary';
+    renderList();
+  }
+
+  function filterDay(day) {
+    if (!day) return;
+    state.sortMode = PC_SORT_MODES.DAY;
+    renderList();
+  }
+
+  function setSortMode(mode) {
+    state.sortMode = normalizeSortMode(mode);
+    renderList();
+  }
+
+  const api = { studentMatchesDay, renderContext, ensureDetailPanel, open, renderList, filterDivision, filterDay, setSortMode, selectStudent, refreshSelected: refreshSelectedRecord, decorateRows, unmountEditor: unmountRecordEditor };
+  global.OlliPcPersonalityRecords = api;
+  global.OlliPcAttendance = api;
+  global.pcSelectAttendanceStudent = selectStudent;
+  global.pcReenrollAttendanceStudent = reenrollInactiveStudent;
+  global.pcSetAttendanceSortMode = setSortMode;
+
+  removeLegacyPcSortControl();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', removeLegacyPcSortControl, { once: true });
+})(window);

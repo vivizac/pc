@@ -1,0 +1,36 @@
+name: Validate schedule Realtime
+on:
+  pull_request:
+    paths:
+      - 'olli-realtime-common.js'
+      - 'pc-timetable.js'
+      - 'pc-timetable-service.js'
+      - 'tests/schedule-realtime.test.cjs'
+      - '.github/workflows/validate-schedule-realtime.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'olli-realtime-common.js'
+      - 'pc-timetable.js'
+      - 'pc-timetable-service.js'
+      - 'tests/schedule-realtime.test.cjs'
+      - '.github/workflows/validate-schedule-realtime.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check JavaScript syntax
+        run: |
+          node --check olli-realtime-common.js
+          node --check pc-timetable.js
+          node --check pc-timetable-service.js
+      - name: Test schedule Realtime behavior
+        run: node --test tests/schedule-realtime.test.cjs
+

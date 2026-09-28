@@ -1,0 +1,250 @@
+# OLLI PC 모듈 안내
+
+PC 화면을 수정할 때는 먼저 아래 표에서 담당 파일만 확인한다. `index.html`은 공통 DOM 조립과 아직 분리되지 않은 레거시 연결만 유지하고, 로그인·설정·공통 저장·학생/기록 데이터·PC 기능·관찰/피드백 기능의 실제 동작은 각 모듈이 담당한다.
+
+| 수정 대상 | JavaScript | CSS |
+|---|---|---|
+| 사이드바·상단 헤더·화면 전환 | `pc-shell.js` | `pc-shell.css` |
+| 학생관리·할 일·상담예정 학생 영역 | `pc-student-management.js` | `pc-student-management.css` |
+| 성향기록부·학생 명단·관찰기록 패널 | `pc-attendance.js` | `pc-attendance.css` |
+| PC 전용 초등 관찰노트·유치부 1분 피드백 작성 UI | `pc-record-editor.js` | `pc-record-editor.css` |
+| 초등 분석 설문·분석 상세 공용 DOM | `observation-editor-ui.js` | `observation-editor.css` |
+| 초등 관찰기록 저장·자동저장·피드백 연결 | `observation-memo-core.js` | `observation-editor.css` |
+| 초등 오늘의 분석·분석 이력·상세보기 | `elementary-analysis.js` | `elementary-analysis-ui.css` |
+| 로그인 진입 화면·계정/학원 연결 화면 전환 | `olli-auth-entry-ui.js` | `olli-login.css` |
+| 계정 로그인 상태·세션 복구·접근 학원 캐시 | `olli-auth-account-session.js` | 현재 공통 스타일 |
+| 여러 학원 전환·전환 전 저장·전환 후 재로딩 | `olli-auth-academy-switch.js` | 현재 공통 스타일 |
+| 원장 로그인·새 학원 생성·초기 원장 연결 | `olli-auth-owner-onboarding.js` | 현재 공통 스타일 |
+| 승인된 선생님 멤버십 확인·선생님 입장 | `olli-auth-teacher-membership.js` | 현재 공통 스타일 |
+| 기존 학원 찾기·학원 접근 요청·승인 상태 확인 | `olli-auth-academy-access.js` | 현재 공통 스타일 |
+| 기기 식별·현재 멤버 접근 권한 재검증 | `olli-auth-member-validation.js` | 현재 공통 스타일 |
+| 설정 기본 상태·학원 전환·설정 화면·환경설정 | `olli-settings-base.js` | 현재 공통 스타일, `pc-settings-layout.css` |
+| 선생님·관리자·권한·승인 관리 | `olli-settings-members.js` | 현재 공통 스타일 |
+| 백업·저장 진단·재전송 | `olli-settings-storage.js` | 현재 공통 스타일 |
+| 설정 가져오기 공통 상태·탭 전환 | `olli-settings-imports-base.js` | 현재 공통 스타일 |
+| 학생 요일·시간 일괄등록 | `olli-settings-student-bulk-import.js` | 현재 공통 스타일 |
+| 기존 피드백 파일 가져오기 | `olli-settings-existing-feedback-import.js` | 현재 공통 스타일 |
+| 출석부 사진 분석·학생 등록 | `olli-settings-attendance-photo-import.js` | 현재 공통 스타일 |
+| 가져오기/학생등록 개발용 테스트 초기화 | `olli-settings-import-test-tools.js` | 현재 공통 스타일 |
+| 선생님 초대·승인 링크 | `olli-settings-teacher-invite.js` | 현재 공통 스타일 |
+| 체험기간·학원 접근상태·올리 관리자용 학원 상태·선생님 학원 찾기 | `olli-settings-access.js` | 현재 공통 스타일 |
+| 출석부 출력·PDF 내보내기 | `olli-settings-attendance-export.js` | 현재 공통 스타일 |
+| 설정 상세 화면 라우팅 | `olli-settings-detail.js` | 현재 공통 스타일 |
+| 공통 저장 컨텍스트·FeatureRegistry·로컬/서버 동기화 기반 | `olli-storage-core.js` | - |
+| Supabase REST·공통 피드백 저장 기반·저장 오류 기록 | `olli-data-foundation.js` | - |
+| 일반/성장/종합 피드백 저장·자동저장 연결 | `olli-data-feedback.js` | - |
+| 상담용 종합 피드백 생성·자동확인·대시보드 상태 | `olli-data-consultation-summary.js` | - |
+| 학생 로컬 모델·그룹 피드백 월·학년/나이 생명주기 | `olli-data-students.js` | - |
+| 기록 목록 정렬·그룹 아이콘·학생 선택/롱프레스 | `olli-data-record-list.js` | - |
+| 성향기록부 학생 피드백 시트·복사·삭제·재생성 | `olli-data-attendance-feedback.js` | - |
+| 학생 이관·상태/삭제·Supabase 학생 저장·백그라운드 동기화 | `olli-data-student-operations.js` | - |
+| 등록일/메타 표시·복사/공유·저장 모달·API 응답 유틸 | `olli-data-ui-utils.js` | - |
+| 기록 학생 선택·요일/그룹 정렬·학생 선택 팝업 | `olli-record-student-picker.js` | 현재 공통 스타일 |
+| 기록 모드 전환·장면카드·공용 모달 전환 | `olli-record-scene-tools.js` | 현재 공통 스타일 |
+| 기록 검색·검색 키보드 처리·추가 메뉴 | `olli-record-search-controls.js` | 현재 공통 스타일 |
+| 초등 장면카드 피드백 생성·저장·편집 | `olli-record-feedback-generation.js` | 현재 공통 스타일 |
+| 기록실 화면 전환·공유·초등/유치 보기 전환 | `olli-record-room-navigation.js` | 현재 공통 스타일 |
+| 관찰 메모 로컬/Supabase 초안 저장·학생등록 모달 | `olli-record-memo-storage.js` | 현재 공통 스타일 |
+| 성향기록부 학생 목록·당일 출석 상태·기록 삭제 | `olli-record-list-view.js` | 현재 공통 스타일 |
+| 상담 기준·상담 시점 계산·초등 그룹별 피드백 발송월 공통 운영 정책 | `olli-operations-consultation-policy.js`, `olli-operations-feedback-policy.js` | - |
+| 상담 진행 상태·학생관리 대시보드·기록 목록 로드 | `olli-consultation-runtime.js` | 현재 공통 스타일 |
+| 초등/유치 학생 정보 모달 열기·저장 | `olli-student-info-runtime.js` | 현재 공통 스타일 |
+| 앱 부팅·초기화·공용 함수 전역 연결 | `olli-app-startup.js` | 현재 공통 스타일 |
+| 장면카드 피드백·입력 방어·내부 피드백 작업 큐 | `olli-feedback-runtime.js` | 현재 공통 스타일 |
+| 시간표 화면·팝업·수업 이동 | `pc-timetable.js` | `pc-timetable.css` |
+| 월간 출석부 렌더링·월 이동·출석 동기화 | `pc-timetable-attendance-register.js` | `pc-timetable.css` |
+| 시간표 변경 이력·복구 | `pc-timetable-history.js` | `pc-timetable.css` |
+| 시간표 데이터 호출·변경 이력·복구 | `pc-timetable-service.js` | - |
+| 상담설문 | `consultation-survey.js`, `consultation-survey-core.js` | `consultation-survey.css` |
+
+## 로그인·계정 모듈 경계
+
+- `olli-auth-entry-ui.js`: 로그인/계정생성/학원연결/선생님 요청 화면 전환과 진입 폼 연결.
+- `olli-auth-account-session.js`: 계정 세션 토큰, 접근 가능한 학원 캐시, 학원 존재 확인, 로그인 상태 저장과 세션 복구.
+- `olli-auth-academy-switch.js`: 다학원 상태, 학원 전환 오버레이, 전환 전 미저장 데이터 보존과 전환 후 데이터 재로딩.
+- `olli-auth-owner-onboarding.js`: 원장 계정 로그인, 새 학원 생성, 레거시 학원 생성 후 원장 멤버 연결과 최초 진입.
+- `olli-auth-teacher-membership.js`: 승인된 선생님 멤버십 탐색과 선생님 계정 입장.
+- `olli-auth-academy-access.js`: 기존 학원 검색, 계정의 학원 접근 요청, 승인 여부 확인과 요청 상태 UI.
+- `olli-auth-member-validation.js`: 기기 이름/기기 ID와 현재 멤버 접근 권한 재검증.
+
+이 7개 파일은 기존 `olli-auth-core.js`의 실행 순서를 그대로 보존한 classic script 분리다. 로그인 화면 바로 뒤에서 표기된 순서대로 동기 로드하며 임의로 `defer` 처리하지 않는다.
+
+## `index.html` 대형 인라인 코드 분리
+
+`index.html`에는 화면 조립에 필요한 DOM은 남기되, 큰 CSS/JavaScript 구현은 외부 파일이 담당한다. 아래 파일은 기존 인라인 블록의 내용과 실행 위치를 그대로 보존해 이동한 것이므로 로드 위치를 임의로 바꾸지 않는다.
+
+- `olli-base.css`: 공통 초기화와 기본 화면 스타일.
+- `olli-common-components.css`: 모달·버튼·공통 컴포넌트 스타일.
+- `olli-responsive.css`: 좁은 PC 창/터치 환경까지 포함하는 반응형 보정. 모바일 전용 코드로 간주해 삭제하지 않는다.
+- `olli-settings-account-runtime.js`: 설정 프로필·선생님 역할·계정 로그아웃 연결.
+- `olli-record-sort-student-ui.js`: 기록 정렬과 학생/담임 선택 UI 보정.
+- `olli-feedback-registration-runtime.js`: 1분 피드백의 등록 학생 검증과 동명이인 선택 연결.
+- `olli-student-bulk-edit-runtime.js`: 학생정보 일괄 수정 문서 파싱/적용.
+- `olli-student-schedule-runtime.js`: 학생정보 수동 저장과 요일별 시간 편집.
+- `olli-attendance-policy-runtime.js`: 출결/보강 정책과 계산 시작일 처리.
+- `olli-attendance-timetable-bridge.js`: 출석부 명단/시간표 전환과 시간표 이동 연결.
+
+## 공통 연결 원칙
+
+- `pc-shell.js`는 현재 메뉴와 공통 검색값을 보관하고 각 기능 모듈의 `open`, `renderContext`를 호출한다.
+- 메뉴를 열 때 로컬 캐시를 먼저 그려 화면을 즉시 전환하고, Supabase 확인은 백그라운드에서 실행한다. 서버 내용이 실제로 달라졌을 때만 현재 화면을 다시 그린다.
+- PC 화면의 관찰기록 입력은 별도 `관찰노트` 메뉴를 사용하지 않고 `성향기록부` 안에서 처리한다.
+- 기존 `observation`, `feedback` PC route 호출은 `pc-shell.js`에서 `attendance`(성향기록부)로 흡수한다. 별도 초등 관찰노트 진입 버튼은 제거한다. 유치부 기록은 1분 피드백을 사용한다.
+- PC 성향기록부의 작성 화면은 `pc-record-editor.js`가 PC 전용 DOM으로 렌더링한다. 초등 `studentMemoScreen`과 유치부 `kinderChatFeedbackScreen` 같은 Phone 화면 DOM은 PC 카드에 이동하거나 재사용하지 않는다.
+- PC 저장소에서는 과거 Phone 전용 `kinder-feedback-ui.js`, `kinder-feedback.js`, `kinder-feedback.css`를 보관하지 않는다. 유치부 작성 화면은 `pc-record-editor.js`가 담당한다.
+- 초안 저장·Supabase 동기화·학생 데이터·AI 피드백 생성처럼 화면과 무관한 데이터 로직만 기존 공통 함수를 재사용한다.
+- `observation-editor-ui.js`는 이제 초등 분석 설문·분석 상세 오버레이만 주입한다. `studentMemoScreen` Phone 작성 화면은 PC 저장소에서 제거했다.
+- PC 유치부 작성 화면은 `pc-record-editor.js`가 직접 렌더링하며 Phone용 `kinderChatFeedbackScreen`과 관련 UI 번들은 PC 저장소에 두지 않는다.
+- 초등 분석의 선택값·이력·상세보기 함수는 `elementary-analysis.js`, 관찰 메모 저장/자동저장/피드백 연결은 `observation-memo-core.js`가 담당한다.
+- 로그인 계층은 `olli-auth-entry-ui.js`, `olli-auth-account-session.js`, `olli-auth-academy-switch.js`, `olli-auth-owner-onboarding.js`, `olli-auth-teacher-membership.js`, `olli-auth-academy-access.js`, `olli-auth-member-validation.js`로 나뉜다. 설정 공통 상태와 화면은 `olli-settings-base.js`, 선생님/권한은 `olli-settings-members.js`, 백업/진단은 `olli-settings-storage.js`, 공통 저장 기반은 `olli-storage-core.js`에서 수정한다.
+- 설정의 데이터 가져오기는 공통 상태/탭은 `olli-settings-imports-base.js`, 학생 일괄등록은 `olli-settings-student-bulk-import.js`, 기존 피드백은 `olli-settings-existing-feedback-import.js`, 출석부 사진은 `olli-settings-attendance-photo-import.js`, 개발용 초기화는 `olli-settings-import-test-tools.js`가 담당한다. 서로 다른 가져오기 기능을 한 파일에 다시 합치지 않는다.
+- 데이터 공통 흐름은 역할에 따라 `olli-data-foundation.js`, `olli-data-feedback.js`, `olli-data-consultation-summary.js`, `olli-data-students.js`, `olli-data-record-list.js`, `olli-data-attendance-feedback.js`, `olli-data-student-operations.js`, `olli-data-ui-utils.js`로 나뉜다. 기록 에디터 공용 동작은 `olli-record-student-picker.js`, `olli-record-scene-tools.js`, `olli-record-search-controls.js`, `olli-record-feedback-generation.js`, `olli-record-room-navigation.js`, `olli-record-memo-storage.js`로 나뉘며, 기록실 런타임은 `olli-record-list-view.js`, `olli-consultation-runtime.js`, `olli-student-info-runtime.js`, `olli-app-startup.js`, `olli-feedback-runtime.js`에서 수정한다. 이 코드를 다시 `index.html`로 복사하지 않는다.
+- `academy_id`, 학생 원본 데이터, Supabase 공통 저장 함수처럼 여러 기능이 함께 사용하는 값은 담당 공통 모듈을 통해 공유한다.
+- 기능을 수정할 때 다른 모듈 코드를 복사하지 않는다. 공통 연결이 필요하면 기존 공개 함수나 `OlliPcCore`의 공개 함수만 사용한다.
+- 외부 UI/공통 모듈은 현재 삽입 위치가 실행 순서를 보장하므로 임의로 `defer` 처리하거나 문서 맨 아래로 옮기지 않는다.
+- 시간표와 상담설문은 독립 모듈 상태를 유지하며 PC 셸의 메뉴 전환 함수만 연결한다.
+- 시간표 UI는 `pc-timetable.js`가 화면/대화상자 조립을 담당하고, 월간 출석부는 `pc-timetable-attendance-register.js`, 변경 이력/복구는 `pc-timetable-history.js`가 담당한다. 두 보조 모듈은 `pc-timetable.js`보다 먼저 동기 로드한다.
+
+## 데이터 모듈 경계
+
+- `olli-data-foundation.js`: Supabase REST 호출, 공통 피드백 저장 브리지, 저장 오류 기록과 데이터 계층의 공통 기반.
+- `olli-data-feedback.js`: 일반·성장·종합 피드백 저장, 저장 대상 학생 확인/생성, 피드백 저장 후 화면 갱신.
+- `olli-data-consultation-summary.js`: 상담 자료 범위 계산, 종합 피드백 생성, 상담 예정 학생 자동 확인과 대시보드 상태.
+- `olli-data-students.js`: 학생 로컬 저장/마이그레이션, 초등 그룹 피드백 월, 학년·나이 자동 갱신과 학생 생명주기.
+- `olli-data-record-list.js`: 성향기록부/기록 목록 정렬, 그룹 아이콘, 학생 선택과 롱프레스 동작.
+- `olli-data-attendance-feedback.js`: 학생별 피드백 시트 조회·렌더링·복사·삭제·종합 피드백 재생성.
+- `olli-data-student-operations.js`: 유치→초등 이관, 학생 상태/삭제, 학원 범위 헬퍼, 학생 Supabase 저장·상태 동기화·백그라운드 동기화.
+- `olli-data-ui-utils.js`: 등록일/학생 메타 표시, 복사·공유·저장 모달, API 응답/오류 유틸과 실패 설문 상수.
+
+이 8개 파일은 이전 데이터 통합 파일의 실행 순서를 그대로 보존해 기능 경계별로 분리한 것이다. 같은 전역 함수/상태를 순차적으로 공유하므로 ES module처럼 독립 로딩하거나 순서를 바꾸지 않는다.
+
+## 기록 에디터 모듈 경계
+
+- `olli-record-student-picker.js`: 초등 관찰기록의 학생 선택 팝업, 요일/그룹 정렬, 학생 관리 진입과 선택 제스처.
+- `olli-record-scene-tools.js`: 기록 모드 메뉴, 장면카드 선택/메모 UI, 공용 모달 닫기와 화면 전환 보조.
+- `olli-record-search-controls.js`: 기록 검색 화면, 키보드/포커스 복구, 기록실 추가 메뉴와 학생/유치부 피드백 진입.
+- `olli-record-feedback-generation.js`: 장면카드 기반 초등 피드백 요청, 로딩, 저장, 편집과 다음 지도 방향 처리.
+- `olli-record-room-navigation.js`: 기록 공유, 헤더/보기 전환, 기록실 열기·닫기와 초등/유치 전환.
+- `olli-record-memo-storage.js`: 관찰 메모 로컬 캐시, Supabase `student_note_drafts` 동기화, 학생 등록 모달 흐름.
+
+이 6개 파일은 기존 `olli-record-editor-core.js`의 원본 실행 순서를 그대로 유지한 classic script 분리다. `index.html`에서 적힌 순서를 바꾸거나 임의로 `defer` 처리하지 않는다.
+
+## 기록실 런타임 모듈 경계
+
+- `olli-record-list-view.js`: 성향기록부의 초등/유치 학생 목록 렌더링, 당일 출석/보강 표시, 기록 목록 선택과 삭제 흐름.
+- `olli-consultation-runtime.js`: 상담 기준, 공통 설정 동기화, 상담 진행 상태, 상담예정 계산, 학생관리 대시보드와 `loadRecords` 흐름.
+- `olli-student-info-runtime.js`: 초등/유치 학생 정보 모달의 열기, 입력 동기화, 저장과 목록 갱신.
+- `olli-app-startup.js`: 부팅 화면, 로그인/학원 접근 확인, 초기 학생 동기화, DOMContentLoaded 초기화와 공용 함수의 `window` 연결.
+- `olli-feedback-runtime.js`: 장면카드 선택/메모 상호작용, 1분 피드백 초기화, 입력값 방어, 내부 피드백 작업 큐와 AI 요청 연결.
+
+이 5개 파일은 이전 기록실 통합 파일의 기능 경계를 따라 분리했다. 특히 `olli-app-startup.js`는 DOMContentLoaded에서 뒤쪽 런타임 함수를 연결하므로 현재 로드 위치와 순서를 유지하고 `defer`로 바꾸지 않는다. `olli-feedback-runtime.js` 안의 장면카드 입력 방어와 작업 큐는 같은 파일에 유지해 기존 함수 호이스팅 동작을 보존한다.
+
+## 초등부 PC 보관함 정책
+
+- PC 초등부 관찰기록에서는 별도 피드백 보관함과 과거 관찰노트 보관 기능을 사용하지 않는다. 생성된 피드백은 서버 기록실/성향기록부에서 확인한다.
+- `student_note_archives` 저장 기능과 초등 보관함 버튼·드롭업·편집 UI는 PC 런타임에서 제거했다.
+- 유치부 1분 피드백의 `임시 보관함`은 현재 작성 흐름에 필요한 별도 기능이므로 유지한다.
+- PC 1분 피드백의 별도 상단바·뒤로가기·모드 토글 UI는 제거했다. 카드 오른쪽 상단에는 검토용 `장면카드`와 작성 흐름에 필요한 `임시 보관함` 두 도구만 유지한다. 장면카드 유지 여부가 확정될 때까지 관련 장면카드 엔진은 삭제하지 않는다.
+
+## 관찰기록·피드백 모듈 경계
+
+### 초등 관찰기록
+
+- `observation-editor-ui.js`: 학생 메모 화면, 분석 설문 모달, 분석 상세보기 모달의 DOM 템플릿.
+- `observation-editor.css`: 초등 관찰기록 상단바, 하단 버튼, 학생 선택 등 에디터 UI 스타일.
+- `observation-memo-core.js`: 학생 전환, 메모 자동저장, Supabase 동기화, 피드백 생성 연결.
+- `elementary-analysis.js`: 분석 선택값, 분석 이력, 요약 카드, 상세보기 로직.
+- `elementary-analysis-ui.css`: 분석 바텀시트와 요약 카드 스타일.
+- `olli-record-editor-core.js`: 학생 선택기, 정렬, 기록 편집에 필요한 공용 기록 동작. 초등 관찰기록에서 호출되더라도 기능을 중복 구현하지 않는다.
+
+### 유치부 1분 피드백
+
+- `kinder-feedback-ui.js`: `kinderChatFeedbackScreen`, 임시 보관함, 학생 선택, 성장 피드백 설문 오버레이 DOM.
+- `kinder-feedback.js`: 초안, 키워드 질문, 사진, 저장, 피드백 생성, 성장 피드백 동작.
+- `kinder-feedback.css`: 1분 피드백 전용 스타일.
+
+### 삭제 금지 원칙
+
+- 사이드바에서 `관찰노트` 메뉴를 제거했다고 해서 관찰기록 엔진을 삭제하면 안 된다.
+- 성향기록부가 초등 `studentMemoScreen`과 유치부 `kinderChatFeedbackScreen`을 공용 에디터로 계속 사용한다.
+- 레거시 화면을 없애고 싶다면 먼저 호출 경로를 검색해 공용 모듈을 사용하는 모든 화면이 정상 동작하는지 확인한 뒤 래퍼만 삭제한다.
+
+## 시간표 변경 이력과 복구
+
+- PC 시간표 상단의 `변경 이력`에서 최근 30일의 수정자, 수정 시각, 변경 전·후 내용을 확인한다.
+- 시간표를 바꾸는 화면 호출은 `pc-timetable-service.js`의 `olli_schedule_execute` 경로를 사용해 수정자와 작업 종류를 함께 기록한다.
+- 복구는 원장·관리자만 가능하며, 대상 변경을 한 번 더 비교하고 확인 체크를 해야 실행된다. 교사는 이력만 조회할 수 있다.
+- 복구 작업도 새 이력으로 남는다. 대상 항목이 이후 다시 수정된 경우 서버가 복구를 거절하므로 최근 변경부터 확인한다.
+- 서버 구조는 `supabase/migrations/20260903021908_olli_schedule_history.sql`에서 관리한다. 이력 테이블은 앱에서 직접 읽거나 쓰지 않고 권한을 확인하는 RPC만 사용한다.
+- 대기는 `requested_at`의 한국 날짜가 포함된 주부터만 보인다. 과거 주를 열어도 이후에 만든 대기가 섞여 보이면 안 된다.
+- 유치부 4시·5시 칸은 각각 A반과 B반으로 나뉜다. `class_group`(정규·보강), `target_class_group`(대기·변경 이력)은 현재 `A` 또는 `B`를 저장하며, 기존 데이터는 안전하게 A반으로 유지한다.
+- 유치부 A반·B반은 정규 수업과 보강을 합쳐 각 칸 최대 6명이다. 반 영역의 외곽선은 표시하지 않는다.
+- 학생 카드 본문은 날짜별 출석을 전환하며, 출석 시 글자색이 아닌 카드 배경만 밝은 초록색으로 바뀐다. 오른쪽의 연한 회색 버거 버튼만 수업·보강 설정을 연다.
+- 초등부 시간표는 모든 행이 화면 높이에 맞게 균등하게 표시된다.
+- 초등부의 `클래스 분리`는 학원·요일·시간 단위로 저장한다. 분리된 칸은 별도 박스나 A·B 텍스트 없이 가로선 하나로 위(A)·아래(B)를 나누며, 기존 학생은 A반에 유지한다. 같은 팝업의 `클래스 통합`으로 B반이 비어 있을 때 다시 한 칸으로 되돌릴 수 있다.
+- 같은 요일·시간 안에서 A반과 B반 사이를 이동할 때는 이동 전 원본 수업을 중복 검사와 정원 계산에서 제외한다.
+- 유치부 시간표 아래의 픽업 시간표는 요일별 4시·5시 수업에 각각 최대 6명을 등록하며 학생 이름, 픽업 장소, 실제 픽업 시간을 저장한다.
+
+## 로드 순서
+
+공통 코어는 `index.html`에서 원래 실행되던 위치를 그대로 유지한다. 데이터 모듈 묶음, `olli-record-editor-core.js`, 기록실 런타임 모듈 묶음, 설정 모듈 묶음, `olli-auth-core.js`, `olli-storage-core.js`를 임의로 문서 맨 아래로 이동하거나 `defer` 처리하지 않는다.
+
+데이터 모듈은 다음 순서를 유지한다.
+
+1. `olli-data-foundation.js`
+2. `olli-data-feedback.js`
+3. `olli-data-consultation-summary.js`
+4. `olli-data-students.js`
+5. `olli-data-record-list.js`
+6. `olli-data-attendance-feedback.js`
+7. `olli-data-student-operations.js`
+8. `olli-data-ui-utils.js`
+
+이 순서 뒤에 `elementary-analysis.js`, `olli-record-editor-core.js`, `observation-memo-core.js`, `olli-record-list-view.js`, `olli-consultation-runtime.js`, `olli-student-info-runtime.js`, `olli-app-startup.js`, `olli-feedback-runtime.js`가 이어진다. 데이터 모듈과 기록실 런타임 모듈은 기존 실행 순서를 보존한 것이므로 중간 순서를 바꾸지 않는다.
+
+설정 모듈은 다음 순서를 유지한다.
+
+1. `olli-settings-base.js`
+2. `olli-settings-members.js`
+3. `olli-settings-storage.js`
+4. `olli-settings-imports-base.js`
+5. `olli-settings-student-bulk-import.js`
+6. `olli-settings-existing-feedback-import.js`
+7. `olli-settings-attendance-photo-import.js`
+8. `olli-settings-import-test-tools.js`
+9. `olli-settings-teacher-invite.js`
+10. `olli-settings-access.js`
+11. `olli-settings-attendance-export.js`
+12. `olli-settings-detail.js`
+
+이 12개 파일은 기존 설정 코드를 기능 경계에 맞춰 나눈 것이므로 중간 순서를 임의로 바꾸지 않는다. 특히 가져오기 공통 상태 파일은 세 가지 가져오기 기능보다 먼저 로드한다.
+
+PC 전용 모듈의 기본 순서는 다음과 같다.
+
+1. `pc-shell.js`
+2. `pc-student-management.js`
+3. `pc-attendance.js`
+4. 시간표·상담설문 모듈
+
+관찰기록/피드백 공용 모듈도 `index.html`에서 원래 기능이 있던 위치를 유지한다. 특히 UI 템플릿 파일은 대응 기능 JS보다 먼저 실행되어 DOM을 준비해야 한다.
+
+## 수정 전 확인
+
+- 화면 이름과 담당 모듈을 이 문서에서 먼저 확인한다.
+- 데이터 구조 변경이 없는 UI 수정은 담당 JavaScript와 CSS만 연다.
+- 초등 관찰기록 UI를 수정할 때는 우선 `observation-editor-ui.js`, `observation-editor.css`, `elementary-analysis-ui.css`를 확인한다.
+- 초등 관찰기록 저장/분석 동작을 수정할 때는 `observation-memo-core.js`, `elementary-analysis.js`, 필요 시 `olli-record-editor-core.js`를 확인한다.
+- 유치부 1분 피드백은 `kinder-feedback-ui.js`, `kinder-feedback.js`, `kinder-feedback.css`에서 수정한다.
+- 로그인/계정은 `olli-auth-core.js`, 설정 기본 화면은 `olli-settings-base.js`, 선생님/권한은 `olli-settings-members.js`, 백업/진단은 `olli-settings-storage.js`, 학생 일괄등록은 `olli-settings-student-bulk-import.js`, 기존 피드백 가져오기는 `olli-settings-existing-feedback-import.js`, 출석부 사진 가져오기는 `olli-settings-attendance-photo-import.js`, 개발용 초기화는 `olli-settings-import-test-tools.js`, 초대는 `olli-settings-teacher-invite.js`, 학원 접근/체험은 `olli-settings-access.js`, 출석부 출력은 `olli-settings-attendance-export.js`, 설정 상세 라우팅은 `olli-settings-detail.js`에서 먼저 확인한다.
+- 데이터 수정은 공통 Supabase/저장 기반=`olli-data-foundation.js`, 피드백 저장=`olli-data-feedback.js`, 상담 종합분석=`olli-data-consultation-summary.js`, 학생 모델/생명주기=`olli-data-students.js`, 기록 목록=`olli-data-record-list.js`, 학생 피드백 시트=`olli-data-attendance-feedback.js`, 학생 저장/상태/동기화=`olli-data-student-operations.js`, 공통 표시/복사 유틸=`olli-data-ui-utils.js`부터 확인한다.
+- 기록실은 학생 목록/출석/삭제=`olli-record-list-view.js`, 상담 기준/진행/목록 로드=`olli-consultation-runtime.js`, 학생 정보 모달=`olli-student-info-runtime.js`, 앱 초기화=`olli-app-startup.js`, 장면카드/피드백 큐=`olli-feedback-runtime.js`에서 먼저 확인한다. 기록 편집/학생 선택 공용 동작은 `olli-record-editor-core.js`에서 확인한다.
+- `index.html`은 새 기능의 구현 파일로 사용하지 않는다. 정말 문서 조립이나 아직 미분리된 레거시 연결이 필요한 경우에만 수정한다.
+- `index.html`에 같은 기능을 다시 복사해 넣지 않는다. 새 UI/기능은 기존 모듈을 확장한다.
+- 한 기능씩 수정·검증·배포해 다른 화면의 회귀 범위를 줄인다.
+### 로그인 공통 UI
+- `olli-login-ui.js`: PC·폰 공통 로그인 화면 DOM. PC 기준 로그인 화면을 공통 컴포넌트로 사용한다.
+- `olli-login.css`: PC·폰 공통 로그인 화면 스타일. 두 플랫폼에서 동일 파일을 유지한다.
+- `olli-auth-entry-ui.js` 및 인증 계층은 폰과 공통 기준을 유지하고, 로그인 이후 시작 페이지/쉘 전환은 플랫폼 어댑터가 담당한다.
+
+
+- PC·폰 공통 관찰노트 메모 헬퍼: `observation-memo-common.js` (일반 알림은 공통화 보류)

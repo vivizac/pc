@@ -1,0 +1,38 @@
+name: Fix optional teacher capacity and timetable UI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-optional-teacher-capacity-and-ui.yml'
+      - '.github/tmp/fix_optional_teacher_capacity_and_ui.py'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply timetable and roster fixes
+        run: python3 .github/tmp/fix_optional_teacher_capacity_and_ui.py
+      - name: Validate JavaScript syntax
+        run: node --check pc-student-class-routing.js
+      - name: Verify requested changes
+        run: |
+          grep -F "selectable: count < capacity" pc-student-class-routing.js
+          ! grep -F "담임이 지정되지 않았습니다" pc-student-class-routing.js
+          grep -F "#d64a4a" pc-timetable.css
+          grep -F "background:#666b72" pc-attendance.css
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pc-student-class-routing.js pc-timetable.css pc-attendance.css
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "fix: 담임 미지정 수업 등록과 정원 UI 보정"
+          git push

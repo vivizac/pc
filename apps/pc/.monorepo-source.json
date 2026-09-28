@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "source_repository": "vivizac/pc",
+  "source_commit": "f5667c269fbde0033d2c96dee4104b355aa3444a",
+  "note": "Transitional snapshot. Root PC runtime remains authoritative until monorepo deployment cutover."
+}

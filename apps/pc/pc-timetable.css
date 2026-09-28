@@ -1,0 +1,1148 @@
+/* OLLI PC 사이드바 > 주간 시간표 모듈 */
+#recordRoomScreen .olliTtRoot { display: none; min-height: 0; padding: 0; }
+#olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen .olliTtRoot.show { display: flex; min-height: 0; flex: 1; flex-direction: column; }
+#olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen.olliPcAttendanceScheduleView #recordList { display: none; }
+#olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen .recordPageInner { min-width: 0; }
+#olliPcShell[data-pc-section="schedule"] ~ #recordRoomScreen .recordBodyNew { width: 100%; min-width: 0; height: 100%; min-height: 0; padding-top: 14px; padding-bottom: 18px; display: flex; flex-direction: column; }
+
+#olliPcTopbar .olliPcTopbarTitle.olliTtTopbarSchedule { min-width: 0; display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 24px; }
+#olliPcTopbar .olliTtDivisionTabs { display: flex; align-items: center; gap: 22px; }
+#olliPcTopbar .olliTtDivisionTab { padding: 0; border: 0; color: #a1a6ae; background: transparent; font: 850 calc(21px * var(--olli-text-scale)) 'Pretendard', sans-serif; letter-spacing: -.055em; cursor: pointer; }
+#olliPcTopbar .olliTtDivisionTab.active { color: #171a20; }
+#olliPcTopbar .olliTtDivisionTab:focus-visible { outline: 2px solid rgba(10,132,255,.28); outline-offset: 5px; border-radius: 3px; }
+
+/* 출석부 전용 세그먼트 부서 버튼 */
+#olliPcTopbar .olliTtAttendanceDivisionTabs{
+  height:40px;
+  box-sizing:border-box;
+  display:inline-flex;
+  align-items:stretch;
+  gap:0;
+  overflow:hidden;
+  border:1px solid #dbe5ef;
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 1px 2px rgba(24,39,75,.03);
+}
+#olliPcTopbar .olliTtAttendanceDivisionTabs .olliTtDivisionTab{
+  min-width:94px;
+  height:100%;
+  box-sizing:border-box;
+  padding:0 22px;
+  border:0;
+  border-right:1px solid #dbe5ef;
+  border-radius:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:#303742;
+  background:#fff;
+  font:800 calc(14px * var(--olli-text-scale)) 'Pretendard',sans-serif;
+  letter-spacing:-.035em;
+  box-shadow:none;
+  cursor:pointer;
+}
+#olliPcTopbar .olliTtAttendanceDivisionTabs .olliTtDivisionTab:last-child{border-right:0;}
+#olliPcTopbar .olliTtAttendanceDivisionTabs .olliTtDivisionTab:hover:not(.active){
+  color:#1f2732;
+  background:#f7faff;
+}
+#olliPcTopbar .olliTtAttendanceDivisionTabs .olliTtDivisionTab.active{
+  position:relative;
+  z-index:1;
+  color:#fff;
+  border-right-color:#74aaf6;
+  background:#74aaf6;
+  box-shadow:none;
+}
+#olliPcTopbar .olliTtAttendanceDivisionTabs .olliTtDivisionTab:focus-visible{
+  position:relative;
+  z-index:1;
+  outline:2px solid rgba(10,132,255,.28);
+  outline-offset:-2px;
+  border-radius:0;
+}
+
+#olliPcTopbar .olliTtWeekNav { display: flex; align-items: center; gap: 7px; }
+#olliPcTopbar .olliTtWeekBtn {
+  height: 40px;
+  padding: 0 13px;
+  border: 1px solid #e2e6eb;
+  border-radius: 12px;
+  color: #5f6875;
+  background: #fff;
+  font: 720 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  cursor: pointer;
+}
+#olliPcTopbar .olliTtWeekBtn.icon { width: 40px; padding: 0; font-size: 20px; }
+#olliPcTopbar .olliTtWeekBtn.range { min-width: 174px; color: #232830; font-weight: 800; }
+#olliPcTopbar .olliTtWeekBtn.today { color: #0A84FF; border-color: #cde5fc; background: #f5faff; }
+#olliPcTopbar .olliTtWeekBtn:hover { border-color: #badbfb; color: #0A73DC; }
+#olliPcTopbar .olliTtHistoryBtn {
+  height: 40px;
+  margin-left: 5px;
+  padding: 0 14px;
+  border: 1px solid #d8e2ec;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #4b5d70;
+  background: #f8fafc;
+  font: 790 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  cursor: pointer;
+}
+#olliPcTopbar .olliTtHistoryBtn span { color: #0A84FF; font-size: 18px; line-height: 1; }
+#olliPcTopbar .olliTtHistoryBtn:hover { border-color: #acd5fb; color: #0877df; background: #f2f8ff; }
+
+#recordRoomScreen .olliTtSection {
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  border: 1px solid #e4e7eb;
+  border-radius: 21px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 7px 20px rgba(27, 39, 58, .045);
+}
+#recordRoomScreen .olliTtScroll { min-width: 0; min-height: 0; display: flex; flex: 1; flex-direction: column; overflow: auto; }
+#recordRoomScreen .olliTtGrid { width: 100%; height: 100%; min-width: 0; box-sizing: border-box; display: grid; grid-template-columns: 56px repeat(6, minmax(0, 1fr)); grid-template-rows: 52px repeat(var(--olli-tt-rows), minmax(108px, 1fr)); }
+#recordRoomScreen .olliTtSection.elementary .olliTtGrid { min-height: 100%; }
+#recordRoomScreen .olliTtSection.kinder .olliTtScroll { overflow-y: auto; }
+#recordRoomScreen .olliTtSection.kinder .olliTtGrid {
+  height: auto;
+  min-height: 444px;
+  flex: 1 1 444px;
+  grid-template-rows: 52px repeat(2, minmax(230px, 1fr));
+}
+#recordRoomScreen .olliTtGrid > * { border-right: 1px solid #e8ebef; border-bottom: 1px solid #e8ebef; }
+#recordRoomScreen .olliTtGrid > :nth-child(7n) { border-right: 0; }
+#recordRoomScreen .olliTtGrid > :nth-last-child(-n+7) { border-bottom: 0; }
+#recordRoomScreen .olliTtCorner,
+#recordRoomScreen .olliTtDay {
+  min-height: 0;
+  padding: 10px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fb;
+}
+#recordRoomScreen .olliTtDay strong { color: #424a56; font-size: calc(13px * var(--olli-text-scale)); font-weight: 820; }
+#recordRoomScreen .olliTtDay span { margin-top: 4px; color: #9aa1aa; font-size: calc(10px * var(--olli-text-scale)); font-weight: 650; }
+#recordRoomScreen .olliTtDay.today { background: #edf6ff; }
+#recordRoomScreen .olliTtDay.today strong,
+#recordRoomScreen .olliTtDay.today span { color: #0A73DC; }
+#recordRoomScreen .olliTtDay { position: relative; }
+#recordRoomScreen .olliTtDay.holiday { background: #e5484d; }
+#recordRoomScreen .olliTtDay.holiday strong, #recordRoomScreen .olliTtDay.holiday span { color: #fff; }
+#recordRoomScreen .olliTtNormalClassBtn { position:absolute; right:4px; top:50%; transform:translateY(-50%); height:24px; padding:0 7px; border:1px solid rgba(255,255,255,.7); border-radius:8px; color:#fff; background:rgba(120,0,0,.18); font:700 calc(8px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
+#recordRoomScreen .olliTtNormalClassBtn.active { color:#c53d45; border-color:#efc4c7; background:#fff; }
+#recordRoomScreen .olliTtNormalClassBtn:disabled { opacity:.5; cursor:default; }
+#recordRoomScreen .olliTtTime {
+  min-height: 0;
+  padding-top: 13px;
+  color: #7b838e;
+  background: #fafbfc;
+  text-align: center;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 820;
+}
+#recordRoomScreen .olliTtCell {
+  min-width: 0;
+  min-height: 0;
+  padding: 6px;
+  background: #fff;
+  cursor: pointer;
+  transition: background .15s ease, box-shadow .15s ease;
+}
+#recordRoomScreen .olliTtCell:hover { background: #f5faff; box-shadow: inset 0 0 0 2px #c4e2ff; }
+#recordRoomScreen .olliTtCell.holiday, #recordRoomScreen .olliTtCell.holiday:hover { background:#fff; box-shadow:none; cursor:not-allowed; }
+#recordRoomScreen .olliTtCell.holiday .olliTtClassLane, #recordRoomScreen .olliTtCell.holiday .olliTtClassLane:hover { background:transparent; cursor:not-allowed; }
+#recordRoomScreen .olliTtCell.holiday .olliTtStudent, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.regular.elementary, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.regular.kinder, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.makeup, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.trial, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.wait, #recordRoomScreen .olliTtCell.holiday .olliTtStudent.attended { color:#858b93; border-color:#d4d8dd; background:#dfe2e5; box-shadow:none; transform:none; }
+#recordRoomScreen .olliTtCell.holiday .olliTtAttendanceBtn, #recordRoomScreen .olliTtCell.holiday .olliTtStudentMore, #recordRoomScreen .olliTtCell.holiday .olliTtStudentTag { color:#858b93; pointer-events:none; }
+#recordRoomScreen .olliTtCell.holiday .olliTtCellMemoCard { color:#858b93; border-color:#dfe4e9; background:#fff; box-shadow:none; }
+#recordRoomScreen .olliTtCell.saturdayUnavailable { cursor: default; background: #fafbfc; }
+#recordRoomScreen .olliTtCell.saturdayUnavailable:hover { box-shadow: none; }
+#recordRoomScreen .olliTtCell.split { padding: 4px; cursor: default; }
+#recordRoomScreen .olliTtClassLanes { height: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+#recordRoomScreen .olliTtClassLane { min-width: 0; padding: 4px; border: 1px solid transparent; border-radius: 9px; overflow-y: auto; cursor: pointer; transition: background .15s ease; }
+#recordRoomScreen .olliTtClassLane:hover { background: #f5faff; }
+#recordRoomScreen .olliTtClassLanes.elementary { grid-template-columns: 1fr; grid-template-rows: repeat(2, minmax(32px, max-content)); gap: 0; }
+#recordRoomScreen .olliTtClassLanes.kinder { display: flex; flex-direction: column; gap: 0; }
+#recordRoomScreen .olliTtClassLane.kinder { flex: 1 1 0; min-height: 0; }
+#recordRoomScreen .olliTtClassLane.kinder { border-radius: 0; }
+#recordRoomScreen .olliTtClassLane.kinder + .olliTtClassLane.kinder { border-left: 0; border-top: 1px solid #dfe4e9; }
+#recordRoomScreen .olliTtClassLane.elementary { min-height: 0; padding: 4px 2px; border: 0; border-radius: 0; overflow: visible; }
+#recordRoomScreen .olliTtClassLane.elementary + .olliTtClassLane.elementary { border-top: 1px solid #dfe4e9; }
+#recordRoomScreen .olliTtClassLane.elementary .olliTtEntries { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#recordRoomScreen .olliTtClassLane.kinder .olliTtEntries { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#recordRoomScreen .olliTtClassLaneHead { margin: 0 1px 4px; display: flex; align-items: center; justify-content: space-between; gap: 4px; color: #9ba2ac; font-size: calc(8px * var(--olli-text-scale)); font-weight: 720; }
+#recordRoomScreen .olliTtClassLaneHead strong { color: #697383; font-size: calc(9px * var(--olli-text-scale)); font-weight: 850; }
+#recordRoomScreen .olliTtMergedClassHead { margin-bottom: 5px; padding-bottom: 0; border-bottom: 0; }
+#recordRoomScreen .olliTtMergedClassHead strong { font-size: calc(9px * var(--olli-text-scale)); font-weight: 850; }
+#recordRoomScreen .olliTtClassLane .olliTtEntries { grid-template-columns: 1fr; }
+#recordRoomScreen .olliTtEntries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; }
+#recordRoomScreen .olliTtCellMemoCard {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+  min-height: 24px;
+  margin: 0;
+  padding: 3px 5px;
+  border: 1px solid #dfe4e9;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  color: #4f5863;
+  background: #fff;
+  box-sizing: border-box;
+  text-align: left;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer;
+  box-shadow: none;
+}
+#recordRoomScreen .olliTtCellMemoCard:hover { border-color: #d3d9df; background: #f7f8fa; box-shadow: none; }
+#recordRoomScreen .olliTtCellMemoCard > span { flex: 0 0 auto; margin-top: 1px; font-size: calc(11px * var(--olli-text-scale)); line-height: 1; }
+#recordRoomScreen .olliTtCellMemoCard > strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(10px * var(--olli-text-scale)); font-weight: 760; line-height: 1.2; }
+#recordRoomScreen .olliTtStudent {
+  width: 100%;
+  min-height: 24px;
+  margin: 0;
+  padding: 3px 5px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  color: #2b3038;
+  text-align: left;
+  white-space: normal;
+  word-break: break-all;
+  line-height: 1.15;
+  font: 780 calc(10px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  cursor: pointer;
+}
+#recordRoomScreen button.olliTtStudent.wait { display: block; }
+#recordRoomScreen .olliTtAttendanceBtn { min-width: 0; padding: 3px 2px 3px 5px; border: 0; display: block; flex: 1; overflow: hidden; color: inherit; background: transparent; text-align: left; text-overflow: ellipsis; white-space: nowrap; font: inherit; cursor: pointer; }
+#recordRoomScreen .olliTtSecondSessionMark {
+  margin-left: 3px;
+  display: inline-block;
+  color: #000;
+  font-size: calc(7px * var(--olli-text-scale));
+  font-weight: 900;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+#recordRoomScreen .olliTtStudentMore { width: 23px; min-width: 23px; padding: 0 3px 1px 0; border: 0; color: #b4bac2; background: transparent; font: 500 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+#recordRoomScreen .olliTtStudentMore:hover { color: #7f8792; }
+#recordRoomScreen .olliTtStudent.scheduled { grid-column: 1 / -1; }
+#recordRoomScreen .olliTtStudent.regular.elementary { border-color: #bfdcf3; background: #eaf5ff; }
+#recordRoomScreen .olliTtStudent.regular.kinder { border-color: #f5c7d4; background: #ffe4eb; }
+#recordRoomScreen .olliTtStudent.wait { border: 1px dashed #c8bceb; color: #8373ac; background: #f8f6ff; }
+#recordRoomScreen .olliTtStudent.makeup { border-color: #73b9a5; color: #267763; background: #e5f6f0; }
+#recordRoomScreen .olliTtStudent.trial { border-color: #e6b56e; color: #9a5a10; background: #fff1dc; }
+#recordRoomScreen .olliTtStudent.regular.attended,
+#recordRoomScreen .olliTtStudent.makeup.attended { border-color: transparent; background: #6fdf96; box-shadow: none; }
+/* 미리 등록한 결석은 초등부·유치부 모두 공휴일 이름카드와 같은 회색으로 표시합니다. */
+#recordRoomScreen .olliTtStudent.regular.absenceUpcoming { color:#858b93; border-color:#d4d8dd; background:#dfe2e5; box-shadow:none; transform:none; }
+#recordRoomScreen .olliTtStudent.regular.absenceUpcoming .olliTtStudentMore { color:#858b93; }
+#recordRoomScreen .olliTtStudent.regular.absenceUpcoming .olliTtSecondSessionMark,
+#recordRoomScreen .olliTtStudent.regular.absenceUpcoming .olliTtReservation { color:inherit; }
+#recordRoomScreen .olliTtStudent.regular.absent { border-color:#ea666b; color:#fff; background:#ea666b; box-shadow:none; }
+#recordRoomScreen .olliTtStudent.regular.absent .olliTtStudentMore { color:rgba(255,255,255,.9); }
+#recordRoomScreen .olliTtStudent.regular.absent .olliTtSecondSessionMark,
+#recordRoomScreen .olliTtStudent.regular.absent .olliTtReservation { color:#fff; }
+#recordRoomScreen .olliTtStudent:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(26, 38, 58, .09); }
+#recordRoomScreen .olliTtStudentTag { float: right; margin-left: 3px; padding: 1px 3px; border: 0; border-radius: 999px; color: #fff; font: 800 calc(7px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+#recordRoomScreen button.olliTtStudentTag { flex: 0 0 auto; margin: 3px 2px 3px 3px; }
+#recordRoomScreen .olliTtStudent.wait .olliTtStudentTag { background: #b7a8df; }
+#recordRoomScreen .olliTtStudent.makeup .olliTtStudentTag { background: #338d74; }
+#recordRoomScreen .olliTtStudent.trial .olliTtStudentTag { background: #d98b28; }
+#recordRoomScreen .olliTtReservation { display: block; margin-top: 3px; color: #0A73DC; font-size: calc(8px * var(--olli-text-scale)); font-weight: 780; }
+#recordRoomScreen .olliTtPickupGrid { width: 100%; flex: 0 0 258px; display: grid; grid-template-columns: 56px repeat(6, minmax(0, 1fr)); grid-template-rows: 34px repeat(2, 112px); background: #fff; }
+#recordRoomScreen .olliTtPickupGrid > * { border-right: 1px solid #e8ebef; border-bottom: 1px solid #e8ebef; }
+#recordRoomScreen .olliTtPickupGrid > :nth-child(8),
+#recordRoomScreen .olliTtPickupGrid > :nth-child(15) { border-right: 0; }
+#recordRoomScreen .olliTtPickupGrid > :nth-last-child(-n+7) { border-bottom: 0; }
+#recordRoomScreen .olliTtPickupTitle { grid-column: 1 / -1; padding: 0 15px; display: flex; align-items: center; color: #536171; background: #f5f8fa; font-size: calc(12px * var(--olli-text-scale)); font-weight: 850; }
+#recordRoomScreen .olliTtPickupTime { padding-top: 13px; color: #7b838e; background: #fafbfc; text-align: center; font-size: calc(11px * var(--olli-text-scale)); font-weight: 820; }
+#recordRoomScreen .olliTtPickupCell { min-height: 0; padding: 5px; background: #fff; cursor: pointer; transition: background .15s ease, box-shadow .15s ease; }
+#recordRoomScreen .olliTtPickupCell:hover { background: #f5faff; box-shadow: inset 0 0 0 2px #c4e2ff; }
+#recordRoomScreen .olliTtPickupCell.holiday, #recordRoomScreen .olliTtPickupCell.holiday:hover { background:#eceff1; box-shadow:none; cursor:not-allowed; }
+#recordRoomScreen .olliTtPickupCell.holiday .olliTtPickupCard { color:#858b93; border-color:#d4d8dd; background:#dfe2e5; pointer-events:none; }
+#recordRoomScreen .olliTtPickupCell.holiday .olliTtPickupCard span { color:#8f959d; }
+#recordRoomScreen .olliTtPickupEntries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+#recordRoomScreen .olliTtPickupCard { min-width: 0; min-height: 28px; padding: 4px 7px; border: 1px solid #cfe0e8; border-radius: 9px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px; color: #3d5360; background: #eef6f8; }
+#recordRoomScreen .olliTtPickupCard strong,
+#recordRoomScreen .olliTtPickupCard span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#recordRoomScreen .olliTtPickupCard strong { font-size: calc(10px * var(--olli-text-scale)); font-weight: 820; }
+#recordRoomScreen .olliTtPickupCard span { color: #708792; font-size: calc(8px * var(--olli-text-scale)); font-weight: 680; text-align: right; }
+#recordRoomScreen .olliTtPickupStudentName { display:flex; align-items:center; gap:4px; overflow:visible; }
+#recordRoomScreen .olliTtPickupStudentName > span:first-child { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:inherit; font:inherit; text-align:left; }
+#recordRoomScreen .olliTtPickupStudentName .olliTtPickupDropoffMark { width:16px; height:16px; flex:0 0 16px; display:inline-flex; align-items:center; justify-content:center; overflow:visible; border-radius:50%; background:#8061c7; color:#fff; font-size:9px; font-weight:850; line-height:1; text-align:center; }
+#recordRoomScreen .olliTtLoading,
+#recordRoomScreen .olliTtError { min-height: 260px; display: flex; align-items: center; justify-content: center; border: 1px solid #e3e7eb; border-radius: 20px; color: #8b929d; background: #fff; text-align: center; font-size: calc(13px * var(--olli-text-scale)); font-weight: 680; }
+#recordRoomScreen .olliTtError { color: #b34a50; }
+
+/* 시간표 탭 사이드바 빠른 보기 */
+#olliPcShell .olliTtQuickFilter { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 1px 0 10px; }
+#olliPcShell .olliTtQuickFilter.olliTtPaneTabs { grid-template-columns: repeat(2, 1fr); }
+#olliPcShell .olliTtQuickFilterBtn {
+  height: 34px;
+  border: 1px solid #e5e8ec;
+  border-radius: 10px;
+  color: #777f8a;
+  background: #fff;
+  font: 730 calc(11px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  cursor: pointer;
+}
+#olliPcShell .olliTtQuickFilterBtn.active { border-color: #abd5fc; color: #0877df; background: #eaf4ff; }
+#olliPcShell .olliTtQuickSearch {
+  width: 100%;
+  height: 38px;
+  margin-bottom: 9px;
+  padding: 0 11px;
+  border: 1px solid #e3e7ec;
+  border-radius: 11px;
+  outline: none;
+  color: #343a43;
+  background: #fff;
+  font: 650 calc(11px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+}
+#olliPcShell .olliTtQuickSearch:focus { border-color: #79bdf9; box-shadow: 0 0 0 3px rgba(10, 132, 255, .09); }
+#olliPcShell .olliTtQuickGroup { margin-top: 12px; }
+#olliPcShell .olliTtQuickGroupTitle { padding: 0 7px 5px; color: #a0a6af; font-size: calc(10px * var(--olli-text-scale)); font-weight: 800; }
+#olliPcShell .olliTtQuickStudent {
+  width: 100%;
+  min-height: 43px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  color: #303640;
+  background: transparent;
+  text-align: left;
+  font: 750 calc(11px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  cursor: pointer;
+}
+#olliPcShell .olliTtQuickStudent:hover { color: #0877df; background: #edf6ff; }
+#olliPcShell .olliTtQuickStudentSchedule { max-width: 94px; overflow: hidden; color: #9aa1aa; text-overflow: ellipsis; white-space: nowrap; font-size: calc(9px * var(--olli-text-scale)); font-weight: 650; }
+#olliPcShell .olliTtQuickEmpty { padding: 25px 8px; color: #a3a8b0; text-align: center; font-size: calc(11px * var(--olli-text-scale)); }
+
+/* 시간표와 같은 출석 데이터를 쓰는 월간 출석부 */
+#recordRoomScreen .olliTtAttendanceRegister{min-height:0;border:1px solid #e4e7eb;border-radius:21px;display:flex;flex:1;flex-direction:column;overflow:hidden;background:#fff;box-shadow:0 7px 20px rgba(27,39,58,.045)}
+#recordRoomScreen .olliTtAttendanceRegisterHead{min-height:62px;padding:12px 18px;border-bottom:1px solid #e9ecf0;display:flex;align-items:center;justify-content:space-between;gap:16px;background:#fbfcfd;box-sizing:border-box}
+#recordRoomScreen .olliTtAttendanceRegisterHead strong,#recordRoomScreen .olliTtAttendanceRegisterHead span{display:block}.olliTtAttendanceRegisterHead strong{color:#232830;font-size:calc(15px * var(--olli-text-scale));font-weight:840}.olliTtAttendanceRegisterHead span{margin-top:3px;color:#969da7;font-size:calc(10px * var(--olli-text-scale));font-weight:630}.olliTtAttendanceRegisterHead em{color:#0a73dc;font-size:calc(10px * var(--olli-text-scale));font-style:normal;font-weight:740}
+#recordRoomScreen .olliTtAttendanceRegisterScroll{min-height:0;padding:14px;flex:1;overflow:auto}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .settingsAttendancePreviewTable{min-width:900px}
+#recordRoomScreen .olliTtAttendanceRegisterScroll .attendancePrintPage{margin:0 0 16px}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceLinkedMark{color:#12652f;background:#43d878!important;font-weight:900;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceLinkedMark span{display:block;font-size:11px;line-height:1}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceMakeupMark{color:#111;background:#ffd84d!important;font-weight:900;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceAbsentMark{color:#fff;background:#e5484d!important;font-weight:900;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll th.attendanceHolidayHead{color:#fff!important;background:#e5484d!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceHolidayCell{background:#eceff1!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceMakeupMark span,
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceAbsentMark span{display:block;font-size:11px;line-height:1}
+
+/* 공통 시간표 팝업 */
+#olliTtOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(17, 24, 39, .24);
+  -webkit-backdrop-filter: blur(8px) saturate(1.02);
+  backdrop-filter: blur(8px) saturate(1.02);
+}
+#olliTtOverlay.show { display: flex; }
+#olliTtDialog {
+  width: min(576px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 1px solid #e1e6eb;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 24px 68px rgba(22, 34, 51, .18), 0 6px 18px rgba(22, 34, 51, .06);
+}
+@media (min-width: 581px) {
+  #olliTtDialog.olliTtPickupDialog { width: min(504px, calc(100vw - 48px)); }
+}
+#olliTtOverlay.show #olliTtDialog { animation: olliTtDialogIn .18s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes olliTtDialogIn { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+.olliTtDialogHead { display: grid; grid-template-columns: 44px minmax(0, 1fr) 38px; gap: 13px; align-items: center; padding: 24px 26px 18px; border-bottom: 1px solid #eef1f4; }
+.olliTtDialogIcon { width: 44px; height: 44px; border-radius: 13px; display: flex; align-items: center; justify-content: center; color: #0A84FF; background: #edf6ff; font-size: 21px; font-weight: 650; }
+.olliTtDialogTitle { overflow: hidden; color: #171b21; text-overflow: ellipsis; white-space: nowrap; font-size: calc(20px * var(--olli-text-scale)); font-weight: 820; letter-spacing: -.045em; }
+.olliTtDialogSub { margin-top: 4px; color: #949ba5; font-size: calc(11px * var(--olli-text-scale)); font-weight: 620; }
+.olliTtDialogClose { width: 38px; height: 38px; border: 1px solid #eceff2; border-radius: 12px; color: #737b86; background: #f6f7f8; font-size: 19px; cursor: pointer; }
+.olliTtDialogClose:hover { color: #343a43; background: #eef1f4; }
+.olliTtDialogBody { padding: 4px 26px 26px; }
+.olliTtCurrentBox { min-height: 60px; padding: 12px 16px; border: 1px solid #d9eafa; border-radius: 17px; color: #596475; background: #f3f9ff; font-size: calc(12px * var(--olli-text-scale)); font-weight: 680; }
+.olliTtCurrentBox strong { display: block; margin-bottom: 4px; color: #0A73DC; font-size: calc(15px * var(--olli-text-scale)); font-weight: 830; }
+.olliTtAddMemo { min-height: 92px; padding: 12px 14px; border: 1px solid #e0e5ea; border-radius: 14px; display: flex; flex-direction: column; box-sizing: border-box; background: #fafbfc; }
+.olliTtAddMemo > span { margin: 0 0 7px; color: #343a43; font-size: calc(12px * var(--olli-text-scale)); font-weight: 780; }
+.olliTtAddMemo textarea { width: 100%; min-height: 52px; flex: 1; padding: 0; border: 0; outline: 0; resize: none; box-sizing: border-box; color: #303946; background: transparent; font: 680 calc(15px * var(--olli-text-scale)) 'Pretendard', sans-serif; line-height: 1.5; }
+.olliTtAddMemo textarea::placeholder { color: #a5adb7; }
+.olliTtCancelMemo { margin-top:21px; }
+.olliTtAbsenceRow { margin-top:16px; display:grid; grid-template-columns:minmax(0,1fr) 108px; gap:10px; align-items:stretch; }
+.olliTtMoveMemo { min-height:68px; height:68px; padding:9px 12px; }
+.olliTtMoveMemo > span { margin-bottom:4px; }
+.olliTtMoveMemo textarea { min-height:28px; height:28px; max-height:28px; overflow-y:auto; }
+.olliTtAbsenceBtn {
+  width:108px;
+  min-width:108px;
+  height:68px;
+  min-height:68px;
+  margin:0;
+  padding:0;
+  border:1px solid #f0c9cc;
+  border-radius:12px;
+  box-sizing:border-box;
+  background:#fff7f7;
+  color:#cf454d;
+  font:800 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  letter-spacing:-.02em;
+  cursor:pointer;
+  box-shadow:none;
+  transition:background .14s ease, border-color .14s ease, color .14s ease, transform .08s ease;
+}
+.olliTtAbsenceBtn:hover { background:#fff0f1; border-color:#e9aeb3; }
+.olliTtAbsenceBtn:active { transform:translateY(1px); }
+.olliTtAbsenceBtn.active {
+  background:#e5484d;
+  border-color:#e5484d;
+  color:#fff;
+  box-shadow:none;
+}
+.olliTtField { margin-top: 20px; }
+.olliTtFieldHead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 2px 8px; }
+.olliTtFieldHead span { color: #2c323a; font-size: calc(13px * var(--olli-text-scale)); font-weight: 800; }
+.olliTtFieldHead small { color: #9ba2ab; font-size: calc(10px * var(--olli-text-scale)); font-weight: 600; }
+.olliTtChoiceGrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.olliTtChoiceGrid.times { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.olliTtChoiceGrid.times.kinderTimeGroups { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.olliTtKinderTimeClassChoice { min-height: 54px; padding: 6px 8px; line-height: 1.18; }
+.olliTtClassChoiceGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.olliTtClassChoiceGrid.kinderLayout { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.olliTtTeacherChoiceGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.olliTtTeacherChoiceGrid .olliTtChoice { min-width:0; white-space:normal; word-break:keep-all; line-height:1.25; }
+
+/* 클래스 담임 / 당일 담당은 공간을 차지하는 버튼 그리드 대신 위로 열리는 compact toggle을 사용한다. */
+.olliTtTeacherToggleRow {
+  position: relative;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+.olliTtTeacherToggle {
+  position: relative;
+  min-width: 0;
+}
+.olliTtTeacherToggle[open] { z-index: 40; }
+.olliTtTeacherToggle > summary {
+  height: 48px;
+  padding: 0 13px;
+  border: 1px solid #dfe4e9;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #343b45;
+  background: #fff;
+  cursor: pointer;
+  list-style: none;
+  box-sizing: border-box;
+}
+.olliTtTeacherToggle > summary::-webkit-details-marker { display: none; }
+.olliTtTeacherToggle > summary:hover { border-color: #c7def3; background: #f8fbff; }
+.olliTtTeacherToggle[open] > summary { border-color: #80c2fb; box-shadow: 0 0 0 3px rgba(10,132,255,.08); }
+.olliTtTeacherToggle > summary > span { min-width: 0; display: grid; gap: 2px; }
+.olliTtTeacherToggle > summary small {
+  overflow: hidden;
+  color: #8e96a0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(9px * var(--olli-text-scale));
+  font-weight: 680;
+}
+.olliTtTeacherToggle > summary strong {
+  overflow: hidden;
+  color: #343b45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 800;
+}
+.olliTtTeacherToggle > summary i {
+  flex: 0 0 auto;
+  color: #8c949e;
+  font-size: 13px;
+  font-style: normal;
+  transition: transform .14s ease;
+}
+.olliTtTeacherToggle:not([open]) > summary i { transform: rotate(180deg); }
+.olliTtTeacherToggleMenu {
+  position: absolute;
+  z-index: 50;
+  left: 0;
+  bottom: calc(100% + 8px);
+  width: max(100%, 210px);
+  max-height: 220px;
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid #dfe5eb;
+  border-radius: 14px;
+  display: grid;
+  gap: 5px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(23,31,44,.16);
+  box-sizing: border-box;
+}
+.olliTtTeacherToggle.daily .olliTtTeacherToggleMenu { left: auto; right: 0; }
+.olliTtTeacherToggleMenu .olliTtChoice {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 11px;
+  border-radius: 10px;
+  text-align: left;
+}
+.olliTtTeacherToggleEmpty {
+  height: 48px;
+  padding: 0 13px;
+  border: 1px solid #e5e8eb;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #7a828c;
+  background: #f8f9fa;
+  box-sizing: border-box;
+}
+.olliTtTeacherToggleEmpty span { font-size: calc(11px * var(--olli-text-scale)); font-weight: 760; }
+.olliTtTeacherToggleEmpty small { color: #a0a6ae; font-size: calc(9px * var(--olli-text-scale)); font-weight: 620; }
+.olliTtKinderMergeChoice { color: #3f4854; background: #f1f3f5; }
+.olliTtKinderMergeChoice:hover { border-color: #cbd2d9; color: #111820; background: #e9ecef; }
+.olliTtSplitClassBtn { width: 100%; min-height: 46px; border: 1px solid #dfe4e9; border-radius: 12px; color: #4f5965; background: #fff; font: 760 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+.olliTtSplitClassBtn:hover { border-color: #b9d9f6; color: #0877df; background: #f6fbff; }
+.olliTtSplitClassBtn.active { border-color: #0A84FF; color: #0877df; background: #edf6ff; }
+.olliTtChoice {
+  min-height: 44px;
+  border: 1px solid #edf0f2;
+  border-radius: 12px;
+  color: #59616c;
+  background: #f6f7f8;
+  font: 730 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  cursor: pointer;
+}
+.olliTtChoice:hover { border-color: #c7def3; color: #0877df; background: #f5faff; }
+.olliTtChoice.active { border-color: #0A84FF; color: #fff; background: #0A84FF; box-shadow: none; }
+#olliTtDialog .olliTtChoice.full,
+#olliTtDialog .olliTtChoice.full.active,
+#olliTtDialog .olliTtChoice.full:hover {
+  color: #d64a4a !important;
+  background: #fff0f0 !important;
+  border-color: #f1c7c7 !important;
+  box-shadow: none !important;
+}
+#olliTtDialog .olliTtChoice.full small { color: inherit !important; }
+.olliTtChoice small { display: block; margin-top: 2px; font-size: calc(8px * var(--olli-text-scale)); font-weight: 700; }
+.olliTtEnrollmentList { display: grid; gap: 7px; }
+.olliTtEnrollmentChoice { min-height: 50px; padding: 0 14px; border: 1px solid #e1e5e9; border-radius: 14px; display: flex; align-items: center; justify-content: space-between; color: #4f5864; background: #fff; font: 720 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+.olliTtEnrollmentChoice.active { border-color: #0A84FF; color: #0877df; background: #edf6ff; }
+.olliTtEnrollmentChoice span { color: #9aa1aa; font-size: calc(10px * var(--olli-text-scale)); }
+.olliTtDateMode { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.olliTtDateInput { width: 100%; height: 48px; padding: 0 13px; border: 1px solid #dfe4e9; border-radius: 14px; color: #3e4651; background: #fff; font: 680 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; }
+.olliTtStudentSearch { width: 100%; height: 46px; padding: 0 14px; border: 1px solid #dfe4e9; border-radius: 14px; outline: none; color: #323944; background: #fff; font: 660 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; }
+.olliTtStudentSearch:focus { border-color: #80c2fb; box-shadow: 0 0 0 3px rgba(10,132,255,.09); }
+.olliTtField:has(> .olliTtStudentSearch[type="search"]) { position: relative; z-index: 120; }
+.olliTtStudentSearch[type="search"] + .olliTtPickerList {
+  position: absolute;
+  z-index: 200;
+  top: 100%;
+  left: 0;
+  right: 0;
+  display: none;
+  height: auto;
+  max-height: 144px;
+  margin-top: 8px;
+  padding: 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid #e1e6ec;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(23,31,44,.14);
+  box-sizing: border-box;
+}
+.olliTtField:focus-within > .olliTtStudentSearch[type="search"]:not(:placeholder-shown) + .olliTtPickerList { display: block; }
+.olliTtPickupAddSection { margin-top:16px; padding:16px; border:1px solid #e2e7ec; border-radius:17px; background:#f8fafc; }
+.olliTtPickupAddSection.arrival { border-color:#d8eafa; background:#f5faff; }
+.olliTtPickupAddSection.dropoff { border-color:#e6def7; background:#fbf9ff; }
+.olliTtPickupAddArrivalGrid { display:grid; grid-template-columns:minmax(0,1fr) 150px; gap:10px; align-items:end; }
+.olliTtPickupAddArrivalGrid label, .olliTtPickupAddDropoffField { min-width:0; display:block; }
+.olliTtPickupAddArrivalGrid label > span, .olliTtPickupAddDropoffField > span { margin:0 2px 7px; display:block; color:#4c5663; font-size:calc(11px * var(--olli-text-scale)); font-weight:780; }
+.olliTtPickupAddArrivalGrid input, .olliTtPickupAddDropoffField input { width:100%; height:46px; padding:0 13px; border:1px solid #dfe4e9; border-radius:12px; outline:none; color:#323944; background:#fff; font:660 calc(13px * var(--olli-text-scale)) 'Pretendard',sans-serif; box-sizing:border-box; }
+.olliTtPickupAddArrivalGrid input:focus, .olliTtPickupAddDropoffField input:focus { border-color:#80c2fb; box-shadow:0 0 0 3px rgba(10,132,255,.09); }
+.olliTtClockOnlyTime { cursor:pointer; caret-color:transparent; user-select:none; -webkit-user-select:none; }
+.olliTtClockOnlyTime:disabled { cursor:not-allowed; }
+.olliTtClockPicker { position:fixed; z-index:100200; width:252px; overflow:hidden; border:1px solid #dfe4e9; border-radius:16px; background:#fff; box-shadow:0 18px 46px rgba(23,31,44,.18),0 4px 12px rgba(23,31,44,.08); }
+.olliTtClockPickerColumns { display:grid; grid-template-columns:1fr 1fr; gap:0; }
+.olliTtClockPickerColumn + .olliTtClockPickerColumn { border-left:1px solid #edf0f3; }
+.olliTtClockPickerLabel { height:34px; display:flex; align-items:center; justify-content:center; border-bottom:1px solid #edf0f3; color:#7d858f; background:#fafbfc; font:760 calc(10px * var(--olli-text-scale)) 'Pretendard',sans-serif; }
+.olliTtClockPickerList { height:228px; padding:6px; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:#d6dbe0 transparent; }
+.olliTtClockOption { width:100%; height:34px; padding:0 10px; border:0; border-radius:9px; display:flex; align-items:center; justify-content:space-between; color:#343b45; background:transparent; font:760 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
+.olliTtClockOption span { color:#9aa1aa; font-size:calc(9px * var(--olli-text-scale)); font-weight:650; }
+.olliTtClockOption:hover { background:#f5f7f9; }
+.olliTtClockOption.selected { color:#0877df; background:#edf6ff; }
+.olliTtClockOption.selected span { color:#5a9bd8; }
+.olliTtClockPickerFooter { padding:10px; border-top:1px solid #edf0f3; background:#fff; }
+.olliTtClockPickerDone { width:100%; height:40px; border:0; border-radius:11px; color:#fff; background:#111; font:800 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
+.olliTtClockPickerDone:disabled { color:#a1a7ae; background:#eef0f2; cursor:default; }
+.olliTtPickupManageHead { padding:24px 26px 18px; display:flex; align-items:flex-start; justify-content:space-between; gap:18px; }
+.olliTtPickupManageBody { padding-top:0; }
+.olliTtPickupManageSection { margin-top:14px; padding:17px; border:1px solid #e2e7ec; border-radius:17px; background:#f8fafc; }
+.olliTtPickupManageSection:first-child { margin-top:0; }
+.olliTtPickupManageSection.arrival { border-color:#d8eafa; background:#f5faff; }
+.olliTtPickupManageSection.dropoff { border-color:#e6def7; background:#fbf9ff; }
+.olliTtPickupManageSection.effective { background:#fafbfc; }
+.olliTtPickupManageSectionHead { margin-bottom:14px; display:flex; align-items:baseline; justify-content:flex-start; gap:16px; }
+.olliTtPickupManageSectionHead strong { flex:0 0 auto; color:#20262e; font-size:calc(14px * var(--olli-text-scale)); font-weight:830; }
+.olliTtPickupManageSectionHead span { min-width:0; color:#929aa5; text-align:left; font-size:calc(10px * var(--olli-text-scale)); font-weight:620; line-height:1.4; }
+.olliTtPickupEffectiveGuide { margin:-6px 0 12px; color:#929aa5; text-align:left; font-size:calc(10px * var(--olli-text-scale)); font-weight:620; line-height:1.45; }
+.olliTtPickupCurrentLine { min-height:48px; padding:0 13px; border-radius:13px; display:flex; align-items:center; gap:14px; background:#eaf4fd; box-sizing:border-box; }
+.olliTtPickupCurrentLine span { color:#6c7886; font-size:calc(11px * var(--olli-text-scale)); font-weight:700; }
+.olliTtPickupCurrentLine strong { color:#0a73dc; font-size:calc(14px * var(--olli-text-scale)); font-weight:830; }
+.olliTtPickupManageFieldRow { margin-top:12px; display:grid; grid-template-columns:minmax(0,1fr) 150px; gap:10px; align-items:end; }
+.olliTtPickupManageFieldRow label, .olliTtPickupManageArrivalGrid label, .olliTtPickupManageDropoffGrid label { min-width:0; display:block; }
+.olliTtPickupManageFieldRow label > span, .olliTtPickupManageArrivalGrid label > span, .olliTtPickupManageDropoffGrid label > span { margin:0 2px 7px; display:block; color:#4c5663; font-size:calc(11px * var(--olli-text-scale)); font-weight:780; }
+.olliTtPickupManageFieldRow input, .olliTtPickupManageArrivalGrid input, .olliTtPickupManageDropoffGrid input { width:100%; height:48px; padding:0 12px; border:1px solid #dfe4e9; border-radius:12px; outline:none; color:#323944; background:#fff; font:660 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; box-sizing:border-box; }
+.olliTtPickupManageFieldRow input:focus, .olliTtPickupManageArrivalGrid input:focus, .olliTtPickupManageDropoffGrid input:focus { border-color:#80c2fb; box-shadow:0 0 0 3px rgba(10,132,255,.08); }
+.olliTtPickupManageArrivalGrid { margin-top:12px; display:grid; grid-template-columns:minmax(0,1fr) 150px 112px; gap:10px; align-items:end; }
+.olliTtPickupManageDropoffGrid { display:grid; grid-template-columns:minmax(0,1fr) 112px 112px; grid-template-areas:"field remove save"; gap:10px; align-items:end; }
+.olliTtPickupManageDropoffGrid > label { grid-area:field; }
+.olliTtPickupManageDropoffGrid > [data-tt-remove-dropoff] { grid-area:remove; }
+.olliTtPickupManageDropoffGrid > [data-tt-register-dropoff] { grid-area:save; }
+.olliTtPickupInlineAction, .olliTtPickupManageFieldRow > button { width:112px; height:48px; justify-self:end; border:0; border-radius:12px; font:760 calc(13px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
+.olliTtPickupManageBody [data-tt-save-arrival]:disabled,
+.olliTtPickupManageBody [data-tt-register-dropoff]:disabled,
+.olliTtPickupManageBody [data-tt-schedule-pickup] { color:#5f6772; background:#f0f2f4; box-shadow:none; opacity:1; }
+.olliTtPickupManageBody [data-tt-save-arrival]:not(:disabled),
+.olliTtPickupManageBody [data-tt-register-dropoff]:not(:disabled) { color:#fff; background:#0A84FF; box-shadow:none; }
+.olliTtPickupManageBody [data-tt-save-arrival]:hover:not(:disabled),
+.olliTtPickupManageBody [data-tt-register-dropoff]:hover:not(:disabled) { background:#0878e8; }
+.olliTtPickupManageBody [data-tt-schedule-pickup]:hover:not(:disabled) { background:#e8ebee; }
+.olliTtPickupCurrentLine.empty strong { color:#9aa2ac; }
+.olliTtPickupManageSection.effective .olliTtPickupManageFieldRow { margin-top:0; grid-template-columns:minmax(0,1fr) 112px; }
+.olliTtPickupDeleteActions { margin-top:16px; padding-top:14px; border-top:1px solid #eceff2; }
+.olliTtPickupAddBody > .olliTtDialogActions,
+.olliTtPickupManageBody > .olliTtDialogActions { display:flex; grid-template-columns:none; justify-content:flex-end; align-items:center; }
+.olliTtPickupAddBody > .olliTtDialogActions button,
+.olliTtPickupManageBody > .olliTtDialogActions button { width:auto; min-width:76px; padding:0 18px; }
+.olliTtPickerList { height: 144px; max-height: 144px; overflow-y: auto; overflow-x: hidden; margin-top: 8px; }
+.olliTtPickerStudent { width: 100%; min-height: 48px; padding: 0 12px; border: 0; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #343b45; background: transparent; text-align: left; font: 750 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+.olliTtPickerStudent:hover,
+.olliTtPickerStudent.active,
+.olliTtPickerStudent.keyboardActive { color: #0877df; background: #edf6ff; }
+.olliTtPickerStudent.keyboardActive { box-shadow: inset 0 0 0 1px #9bcdf8; }
+.olliTtPickerStudent span { color: #9aa1aa; font-size: calc(10px * var(--olli-text-scale)); font-weight: 620; }
+.olliTtTypeGrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 0; }
+.olliTtTypeBtn { min-height: 46px; padding: 7px 10px; border: 1px solid #e0e5ea; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #59616c; background: #fff; text-align: center; font: 760 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+.olliTtTypeBtn:hover { border-color: #c7def3; color: #0877df; background: #f7fbff; }
+.olliTtTypeBtn.active { border-color: #0A84FF; color: #0877df; background: #edf6ff; box-shadow: inset 0 0 0 1px rgba(10,132,255,.04); }
+.olliTtModeCards { display: grid; grid-template-columns: minmax(0, 2.15fr) minmax(132px, .95fr); gap: 8px; align-items: stretch; }
+.olliTtModeCardStack { min-width: 0; height: 196px; display: grid; grid-template-rows: 1fr 1fr; gap: 8px; }
+.olliTtModeCard { height: 196px; min-width: 0; border: 1px solid #dfe4e9; border-radius: 15px; display: flex; flex-direction: column; overflow: hidden; box-sizing: border-box; background: #fff; }
+.olliTtModeCardStack .olliTtModeCard { height: auto; min-height: 0; }
+.olliTtModeCard.active { border-color: #0A84FF; background: #f7fbff; box-shadow: 0 0 0 2px rgba(10,132,255,.06); }
+.olliTtModeCardButton { width: 100%; min-height: 52px; padding: 0 14px; border: 0; color: #4d5662; background: transparent; text-align: left; font: 800 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+.olliTtModeCard.move > .olliTtModeCardButton { flex: 0 0 52px; }
+.olliTtModeCard.simple > .olliTtModeCardButton { min-height: 0; flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; }
+.olliTtModeCard.active > .olliTtModeCardButton { color: #0877df; }
+.olliTtModeCardBody { min-height: 0; padding: 0 10px 10px; display: flex; flex: 1; flex-direction: column; }
+.olliTtModeCardBody > span { margin: 0 4px 8px; display: block; color: #555f6b; font-size: calc(11px * var(--olli-text-scale)); font-weight: 780; }
+.olliTtModeCardBody .olliTtEnrollmentList { min-height: 0; overflow-y: auto; }
+.olliTtModeTabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.olliTtModeTab { min-height:46px; border:1px solid #e0e5ea; border-radius:12px; color:#59616c; background:#fff; font:760 calc(12px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
+.olliTtModeTab:hover { border-color:#c7def3; color:#0877df; background:#f7fbff; }
+.olliTtModeTab.active { border-color:#0A84FF; color:#0877df; background:#edf6ff; }
+.olliTtCurrentLessons { margin-top:12px; padding:13px; border:1px solid #e6eaee; border-radius:14px; background:#fafbfc; }
+.olliTtCurrentLessonsHead { margin:0 2px 9px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.olliTtCurrentLessonsHead span { color:#343a43; font-size:calc(12px * var(--olli-text-scale)); font-weight:780; }
+.olliTtCurrentLessonsHead small { color:#9ba2ab; font-size:calc(9px * var(--olli-text-scale)); font-weight:600; }
+#olliTtDialog.olliTtAddDialog {
+  height:min(720px,calc(100vh - 48px));
+  max-height:calc(100vh - 48px);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+#olliTtDialog.olliTtAddDialog .olliTtDialogHead { flex:0 0 auto; }
+#olliTtDialog.olliTtAddDialog .olliTtDialogBody { min-height:0; padding-bottom:0; flex:1; overflow-y:auto; }
+#olliTtDialog.olliTtAddDialog .olliTtAddMemo { margin-top:16px; }
+#olliTtDialog.olliTtAddDialog .olliTtStudentSearch,
+#olliTtDialog.olliTtAddDialog .olliTtDateInput { height:44px; border-radius:12px; }
+/* 학생추가 내부 팝업(담임/당일 담당)이 검색창과 입력 텍스트보다 항상 위에 오도록 한다.
+   검색 결과 학생명 목록(.olliTtPickerList)의 기존 z-index/표시 로직은 그대로 유지한다. */
+#olliTtDialog.olliTtAddDialog .olliTtField:has(> .olliTtStudentSearch[type="search"]) {
+  z-index:auto;
+}
+#olliTtDialog.olliTtAddDialog .olliTtDialogActions { position:sticky; z-index:2; bottom:0; margin:18px -26px 0; }
+
+.olliTtStatusNotice { margin-top: 16px; padding: 11px 13px; border-radius: 13px; color: #6d5ab0; background: #f1edff; font-size: calc(11px * var(--olli-text-scale)); font-weight: 680; line-height: 1.5; }
+.olliTtEnrollmentRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; align-items: stretch; }
+.olliTtEnrollmentRow.hasSessionOrder { grid-template-columns: minmax(0, 1fr) auto auto; }
+.olliTtEnrollmentRow .olliTtEnrollmentChoice { min-width: 0; }
+.olliTtSessionOrder { height: 50px; padding: 3px; border: 1px solid #d9e2ec; border-radius: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; align-items: stretch; background: #f2f5f8; box-sizing: border-box; }
+.olliTtSessionOrder button { min-width: 48px; padding: 0 8px; border: 0; border-radius: 10px; color: #7c8591; background: transparent; font: 780 calc(10px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; white-space: nowrap; }
+.olliTtSessionOrder button.active { color: #fff; background: #0A84FF; box-shadow: 0 3px 9px rgba(10,132,255,.18); }
+.olliTtSessionOrder button:focus-visible { outline: 2px solid rgba(10,132,255,.24); outline-offset: 1px; }
+.olliTtEnrollmentDelete { min-width: 58px; height: 50px; padding: 0 11px; border: 1px solid #f0d5d8; border-radius: 14px; color: #c34f58; background: #fff8f8; font: 780 calc(12px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; transition: color .16s ease, background .16s ease, border-color .16s ease; }
+.olliTtEnrollmentDelete:hover:not(:disabled) { color: #fff; border-color: #df5d67; background: #df5d67; }
+.olliTtEnrollmentDelete:focus-visible { outline: 3px solid rgba(10,132,255,.2); outline-offset: 2px; }
+.olliTtEnrollmentDelete:disabled { color: #b6a7a9; border-color: #ece4e5; background: #f4f1f1; cursor: default; }
+.olliTtDialogActions { display: grid; grid-template-columns: 1fr 1.35fr; gap: 10px; margin: 24px -26px -26px; padding: 16px 26px 20px; border-top: 1px solid #eceff2; background: #fff; }
+.olliTtDialogActions button { height: 48px; border: 0; border-radius: 12px; font: 760 calc(13px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+.olliTtDialogActions.olliTtMakeupManageActions { grid-template-columns: .82fr 1.08fr 1.08fr; }
+.olliTtDialogCancel { color: #5f6772; background: #f0f2f4; }
+.olliTtDialogCancel:hover { background: #e8ebee; }
+.olliTtDialogPrimary { color: #fff; background: #0A84FF; box-shadow: none; }
+.olliTtDialogPrimary.secondary { color: #0877df; background: #eaf4ff; box-shadow: none; }
+.olliTtDialogPrimary.danger { background: #e15e67; box-shadow: 0 8px 19px rgba(225,94,103,.17); }
+.olliTtDialogPrimary:disabled { box-shadow: none; opacity: .45; cursor: default; }
+
+/* 수업 이동은 어떤 설정 방식을 선택해도 카드·창·하단 버튼 위치를 유지한다. */
+#olliTtDialog.olliTtMoveDialog {
+  height:min(760px,calc(100vh - 48px));
+  max-height:calc(100vh - 48px);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+#olliTtDialog.olliTtMoveDialog .olliTtDialogHead { flex:0 0 auto; }
+#olliTtDialog.olliTtMoveDialog .olliTtDialogBody { min-height:0; padding-bottom:0; flex:1; overflow-y:auto; }
+#olliTtDialog.olliTtMoveDialog .olliTtDialogActions { position:sticky; z-index:2; bottom:0; margin:18px -26px 0; }
+/* 수업 이동·수업 추가·보강 전환 시에도 팝업 외곽 크기는 동일하게 유지한다. */
+#olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode,
+#olliTtDialog.olliTtMoveDialog.olliTtMakeupMode { height:min(760px,calc(100vh - 48px)); max-height:calc(100vh - 48px); }
+#olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtDialogBody,
+#olliTtDialog.olliTtMoveDialog.olliTtMakeupMode .olliTtDialogBody { overflow-y:auto; }
+#olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtField { margin-top:16px; }
+#olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtDialogBody > .olliTtField:first-child { margin-top:8px; }
+
+.olliTtMemoDeletePreview { margin-top: 8px; padding: 16px; border: 1px solid #dfe4e9; border-radius: 16px; background: #fff; color: #3f4752; }
+.olliTtMemoDeletePreview > span { display: block; margin-bottom: 8px; color: #8d949d; font-size: calc(11px * var(--olli-text-scale)); font-weight: 780; }
+.olliTtMemoDeletePreview > div { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(15px * var(--olli-text-scale)); font-weight: 700; line-height: 1.55; }
+/* 시간표 변경 이력과 안전 복구 */
+#olliTtDialog.olliTtHistoryDialog { overflow: hidden; }
+.olliTtHistoryBody { display: flex; min-height: 0; max-height: calc(100vh - 174px); flex-direction: column; }
+.olliTtHistorySafety { flex: 0 0 auto; padding: 13px 16px; border: 1px solid #d9eafa; border-radius: 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; color: #667486; background: #f4f9ff; font-size: calc(11px * var(--olli-text-scale)); font-weight: 650; }
+.olliTtHistorySafety strong { color: #0877df; font-size: calc(12px * var(--olli-text-scale)); font-weight: 820; }
+.olliTtHistoryList { min-height: 0; margin: 12px -4px 0 0; padding-right: 4px; display: grid; gap: 9px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #d8dde3 transparent; }
+.olliTtHistoryItem { position: relative; padding: 15px 16px; border: 1px solid #e3e7eb; border-radius: 17px; background: #fff; }
+.olliTtHistoryItem.restored { background: #f8f9fa; }
+.olliTtHistoryItem.restoreRecord { border-color: #d9eafa; background: #f7fbff; }
+.olliTtHistoryItemTop { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.olliTtHistoryItemTop > div { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.olliTtHistoryAction { flex: 0 0 auto; padding: 4px 7px; border-radius: 8px; color: #0877df; background: #eaf4ff; font-size: calc(9px * var(--olli-text-scale)); font-weight: 820; }
+.olliTtHistoryItemTop strong { overflow: hidden; color: #252b33; text-overflow: ellipsis; white-space: nowrap; font-size: calc(14px * var(--olli-text-scale)); font-weight: 830; }
+.olliTtHistoryItemTop time { flex: 0 0 auto; color: #9aa1aa; font-size: calc(10px * var(--olli-text-scale)); font-weight: 680; }
+.olliTtHistoryCompare { margin-top: 11px; padding: 10px 12px; border-radius: 12px; display: grid; grid-template-columns: minmax(0,1fr) 24px minmax(0,1fr); align-items: center; color: #5d6672; background: #f5f6f8; font-size: calc(11px * var(--olli-text-scale)); font-weight: 730; }
+.olliTtHistoryCompare span:last-child { color: #303943; }
+.olliTtHistoryCompare i { color: #0A84FF; text-align: center; font-style: normal; }
+.olliTtHistoryMeta { min-height: 31px; margin-top: 9px; display: flex; align-items: center; gap: 8px; color: #969da6; font-size: calc(10px * var(--olli-text-scale)); font-weight: 650; }
+.olliTtHistoryMeta b { padding: 3px 6px; border-radius: 7px; color: #7c8490; background: #eceff2; font-size: inherit; }
+.olliTtHistoryRestoreBtn { position: absolute; right: 15px; bottom: 12px; height: 32px; padding: 0 11px; border: 1px solid #f0cfd2; border-radius: 10px; color: #bd4e56; background: #fff8f8; font: 780 calc(10px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+.olliTtHistoryRestoreBtn:hover { color: #fff; border-color: #dc616a; background: #dc616a; }
+.olliTtHistoryLoading { min-height: 220px; display: grid; place-items: center; color: #9299a3; font-size: calc(12px * var(--olli-text-scale)); font-weight: 700; }
+.olliTtHistoryEmpty { min-height: 220px; display: flex; align-items: center; justify-content: center; flex-direction: column; color: #9aa1aa; text-align: center; }
+.olliTtHistoryEmpty strong { color: #555e69; font-size: calc(14px * var(--olli-text-scale)); }
+.olliTtHistoryEmpty span { margin-top: 7px; font-size: calc(11px * var(--olli-text-scale)); }
+.olliTtHistoryEmpty button { height: 36px; margin-top: 14px; padding: 0 14px; border: 0; border-radius: 11px; color: #fff; background: #0A84FF; font: 760 calc(11px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+.olliTtHistoryBody > .olliTtDialogActions { flex: 0 0 auto; margin-top: 16px; }
+
+.olliTtRestoreTarget { padding: 17px; border: 1px solid #dce4ec; border-radius: 17px; background: #f8fafc; }
+.olliTtRestoreTarget > span { display: inline-block; padding: 4px 7px; border-radius: 8px; color: #0877df; background: #eaf4ff; font-size: calc(9px * var(--olli-text-scale)); font-weight: 820; }
+.olliTtRestoreTarget > strong { display: block; margin-top: 8px; color: #252b33; font-size: calc(17px * var(--olli-text-scale)); font-weight: 850; }
+.olliTtRestoreTarget > div { margin-top: 14px; display: grid; grid-template-columns: minmax(0,1fr) 30px minmax(0,1fr); align-items: center; color: #4e5966; font-size: calc(12px * var(--olli-text-scale)); }
+.olliTtRestoreTarget i { color: #e15e67; text-align: center; font-style: normal; }
+.olliTtRestoreTarget b:last-child { color: #bd4e56; }
+.olliTtRestoreWarning { margin-top: 14px; padding: 14px 16px; border-radius: 15px; color: #786568; background: #fff4f4; }
+.olliTtRestoreWarning strong { display: block; color: #b84e56; font-size: calc(12px * var(--olli-text-scale)); font-weight: 820; }
+.olliTtRestoreWarning span { display: block; margin-top: 5px; font-size: calc(10px * var(--olli-text-scale)); font-weight: 650; line-height: 1.55; }
+.olliTtRestoreCheck { margin-top: 15px; padding: 13px 15px; border: 1px solid #e1e5e9; border-radius: 14px; display: flex; align-items: center; gap: 10px; color: #4e5865; background: #fff; font-size: calc(11px * var(--olli-text-scale)); font-weight: 730; cursor: pointer; }
+.olliTtRestoreCheck input { width: 18px; height: 18px; accent-color: #0A84FF; }
+
+/* 학생정보창 시간표 연결 */
+#elementaryInfoModal .olliTtStudentInfoPanel,
+#kinderInfoModal .olliTtStudentInfoPanel { margin: 2px 0 16px; padding: 15px; border: 1px solid #dce8f4; border-radius: 17px; background: #f6faff; }
+.olliTtStudentInfoPanelHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 9px; }
+.olliTtStudentInfoPanelTitle { color: #303742; font-size: calc(13px * var(--olli-text-scale)); font-weight: 820; }
+.olliTtStudentInfoManage { border: 0; color: #0877df; background: transparent; font: 760 calc(11px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
+.olliTtStudentInfoRows { color: #687383; font-size: calc(11px * var(--olli-text-scale)); font-weight: 650; line-height: 1.65; }
+.olliTtStudentInfoRows strong { color: #3d4652; }
+
+@media (max-width: 820px) {
+  #olliPcTopbar .olliPcTopbarTitle.olliTtTopbarSchedule { gap: 12px; }
+  #olliPcTopbar .olliTtDivisionTabs { gap: 12px; }
+  #olliPcTopbar .olliTtWeekBtn.range { min-width: 138px; }
+  #olliPcTopbar .olliTtHistoryBtn { width: 40px; padding: 0; justify-content: center; font-size: 0; }
+  #olliPcTopbar .olliTtHistoryBtn span { font-size: 18px; }
+  #recordRoomScreen .olliTtGrid { grid-template-columns: 50px repeat(6, minmax(0, 1fr)); }
+}
+@media (max-width: 580px) {
+  #olliTtOverlay { padding: 16px; }
+  #olliTtDialog { width: min(100%, 470px); max-height: calc(100vh - 32px); border-radius: 24px; }
+  .olliTtDialogHead { grid-template-columns: 46px minmax(0,1fr) 38px; gap: 11px; padding: 21px 20px 16px; }
+  .olliTtDialogIcon { width: 46px; height: 46px; border-radius: 15px; }
+  .olliTtDialogTitle { font-size: calc(19px * var(--olli-text-scale)); }
+  .olliTtDialogClose { width: 38px; height: 38px; }
+  .olliTtDialogBody { padding: 0 20px 20px; }
+  .olliTtChoiceGrid { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .olliTtChoiceGrid.times { grid-template-columns: repeat(4, minmax(0,1fr)); }
+  .olliTtModeCards { grid-template-columns: minmax(0, 2fr) minmax(112px, .9fr); }
+  .olliTtEnrollmentRow.hasSessionOrder { grid-template-columns: minmax(0,1fr) auto; }
+  .olliTtEnrollmentRow.hasSessionOrder .olliTtSessionOrder { grid-column: 1 / 2; grid-row: 2; height: 40px; }
+  .olliTtEnrollmentRow.hasSessionOrder .olliTtEnrollmentDelete { grid-column: 2; grid-row: 1 / span 2; height: 100%; }
+  .olliTtSessionOrder button { min-width: 0; padding: 0 6px; }
+  .olliTtPickupForm { grid-template-columns: 76px minmax(0,1fr); }
+  .olliTtPickupForm label:last-child { grid-column: 1 / -1; }
+  .olliTtDialogActions { margin: 22px -20px -20px; padding: 16px 20px 19px; }
+  #olliTtDialog.olliTtMoveDialog .olliTtDialogActions { bottom: -20px; }
+  #olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode { height: calc(100vh - 32px); max-height: calc(100vh - 32px); }
+  #olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtDialogBody { overflow-y: auto; }
+  #olliTtDialog.olliTtMoveDialog.olliTtMoveOrAddMode .olliTtDialogActions { position: sticky; bottom: -20px; }
+}
+
+/* 초등부 1시·6시: 학생 카드 수에 맞춰 줄고, 남는 높이는 2~5시가 나눠 사용 */
+#recordRoomScreen .olliTtSection.elementary .olliTtGrid.olliTtAdaptiveEdgeRows {
+  grid-template-rows:
+    52px
+    min(var(--olli-tt-edge-row-1, 108px), calc(16.6667% - 8.6667px))
+    repeat(4, minmax(108px, 1fr))
+    min(var(--olli-tt-edge-row-6, 108px), calc(16.6667% - 8.6667px));
+}
+
+
+
+/* 출석부 스크롤·휴일 색상·분반 hover 보정 */
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterEditable,
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceRegisterEditable * {
+  cursor: default !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceHolidayCell.attendanceSundayCell,
+#recordRoomScreen .olliTtAttendanceRegisterScroll td.attendanceHolidayCell.attendancePublicHolidayCell {
+  background: #fff0f4 !important;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+#recordRoomScreen .olliTtCell.split {
+  padding: 0;
+  overflow: hidden;
+}
+#recordRoomScreen .olliTtCell.split:hover {
+  background: #fff;
+  box-shadow: none;
+}
+#recordRoomScreen .olliTtCell.split .olliTtClassLanes {
+  width: 100%;
+  height: 100%;
+}
+#recordRoomScreen .olliTtCell.split .olliTtClassLane {
+  box-sizing: border-box;
+  padding: 6px;
+}
+#recordRoomScreen .olliTtCell.split .olliTtClassLane:hover {
+  background: #f5faff;
+  box-shadow: inset 0 0 0 2px #c4e2ff;
+}
+
+
+/* 분반 박스 부모칸 50:50 꽉채움 */
+#recordRoomScreen .olliTtCell.split .olliTtClassLanes.elementary,
+#recordRoomScreen .olliTtCell.split .olliTtClassLanes.kinder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 0;
+}
+#recordRoomScreen .olliTtCell.split .olliTtClassLane.elementary,
+#recordRoomScreen .olliTtCell.split .olliTtClassLane.kinder {
+  min-height: 0;
+  height: auto;
+  align-self: stretch;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+#recordRoomScreen .olliTtCell.split .olliTtClassLane.kinder + .olliTtClassLane.kinder {
+  border-left: 0;
+  border-top: 1px solid #dfe4e9;
+}
+
+
+/* 잘린 시간표 메모는 hover 시 body 레이어에서 전체 내용을 표시 */
+.olliTtMemoHoverPreview {
+  position: fixed;
+  z-index: 100000;
+  min-height: 24px;
+  max-height: none;
+  padding: 5px 7px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  box-sizing: border-box;
+  border: 1px solid #ffed85;
+  border-radius: 9px;
+  background: #fff3a6;
+  color: #544918;
+  box-shadow: 0 8px 24px rgba(20,24,30,.18);
+  pointer-events: none;
+  overflow: visible;
+  white-space: normal;
+}
+.olliTtMemoHoverPreview > span { flex: 0 0 auto; margin-top: 1px; line-height: 1; }
+.olliTtMemoHoverPreview > strong { min-width: 0; font: 760 calc(12px * var(--olli-text-scale, 1)) 'Pretendard', sans-serif; line-height: 1.2; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+
+
+/* 화면 출석부 전용 디자인 - 출력/PDF와 분리 */
+#recordRoomScreen .olliTtAttendanceRegisterHead {
+  min-height: 42px;
+  padding: 2px 2px 10px;
+  display: flex;
+  align-items: center;
+}
+#recordRoomScreen .olliTtAttendanceRegisterHead > strong {
+  color: #242a32;
+  font-size: calc(24px * var(--olli-text-scale));
+  font-weight: 900;
+  letter-spacing: -.045em;
+  line-height: 1.15;
+}
+#recordRoomScreen .olliTtAttendanceRegisterScroll {
+  border: 1px solid #e4e7eb;
+  border-radius: 21px;
+  overflow: auto;
+  background: #fff;
+  box-shadow: 0 7px 20px rgba(27,39,58,.045);
+}
+#recordRoomScreen .olliTtAttendanceSheet { min-width: 100%; width: 100%; }
+#recordRoomScreen .olliTtAttendanceTable {
+  width: 100%;
+  min-width: 0;
+  border: 0 !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  table-layout: fixed;
+  background: #fff;
+}
+#recordRoomScreen .olliTtAttendanceTable th,
+#recordRoomScreen .olliTtAttendanceTable td {
+  border: 0 !important;
+  border-right: 1px solid #e8ebef !important;
+  border-bottom: 1px solid #e8ebef !important;
+  box-sizing: border-box;
+  text-align: center;
+  vertical-align: middle;
+}
+#recordRoomScreen .olliTtAttendanceTable tr > *:last-child { border-right: 0 !important; }
+#recordRoomScreen .olliTtAttendanceTable tbody tr:last-child > * { border-bottom: 0 !important; }
+#recordRoomScreen .olliTtAttendanceTable thead th {
+  height: 52px !important;
+  padding: 5px 2px !important;
+  color: #626b77 !important;
+  background: #f8f9fb !important;
+  font-weight: 820 !important;
+}
+#recordRoomScreen .olliTtAttendanceTable thead th.attendanceSundayHead,
+#recordRoomScreen .olliTtAttendanceTable thead th.attendancePublicHolidayHead {
+  background: #fff0f4 !important;
+  color: #e56d8a !important;
+}
+#recordRoomScreen .olliTtAttendanceTable .attendanceDateNumber,
+#recordRoomScreen .olliTtAttendanceTable .attendanceDateWeek {
+  display: block;
+  line-height: 1.05;
+}
+#recordRoomScreen .olliTtAttendanceTable .attendanceDateNumber {
+  font-size: calc(11px * var(--olli-text-scale));
+  font-weight: 850;
+}
+#recordRoomScreen .olliTtAttendanceTable .attendanceDateWeek {
+  margin-top: 5px;
+  font-size: calc(9px * var(--olli-text-scale));
+  font-weight: 720;
+}
+#recordRoomScreen .olliTtAttendanceTable .nameCol { width: 64px !important; }
+#recordRoomScreen .olliTtAttendanceTable .schoolGradeCol { width: 51px !important; }
+#recordRoomScreen .olliTtAttendanceTable .personalityCol { width: 20px !important; }
+#recordRoomScreen .olliTtAttendanceTable thead th.schoolGradeCol {
+  line-height: 1.15;
+}
+#recordRoomScreen .olliTtAttendanceTable tbody td.nameCol {
+  background: #fafbfc !important;
+  color: #111318;
+  font-weight: 600;
+}
+#recordRoomScreen .olliTtAttendanceTable tbody td.schoolGradeCol,
+#recordRoomScreen .olliTtAttendanceTable tbody td.personalityCol {
+  color: #7b8490;
+  font-weight: 400;
+}
+#recordRoomScreen .olliTtAttendanceTable tbody td.attendanceEmptyCell {
+  background: #fff !important;
+  color: #a5acb5 !important;
+}
+#recordRoomScreen .olliTtAttendanceTable tbody td.attendanceEmptyCell > span {
+  display: inline-block;
+  color: #a5acb5;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 900;
+  line-height: 1;
+}
+#recordRoomScreen .olliTtAttendanceTable .attendanceHolidayMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #e56d8a;
+  font-size: calc(9px * var(--olli-text-scale));
+  font-weight: 850;
+  line-height: 1;
+}
+#recordRoomScreen .olliTtAttendanceTable tbody td.attendanceHolidayCell { color: #e56d8a; }
+
+/* 출석부 표 꽉채움 + 스크롤바 바깥 배치 */
+#recordRoomScreen .olliTtAttendanceRegister {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+#recordRoomScreen .olliTtAttendanceRegisterScroll {
+  min-width: 0;
+  min-height: 0;
+  padding: 0 !important;
+  flex: 1;
+  overflow: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  scrollbar-gutter: stable;
+}
+#recordRoomScreen .olliTtAttendanceSheet {
+  width: 100%;
+  min-width: 900px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #e4e7eb;
+  border-radius: 21px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 7px 20px rgba(27,39,58,.045);
+  box-sizing: border-box;
+}
+#recordRoomScreen .olliTtAttendanceTable {
+  margin: 0 !important;
+}
+#recordRoomScreen .olliTtAttendanceTable tbody tr:not(.attendanceTableFooterRow) > td {
+  height: 32px !important;
+}
+#recordRoomScreen .olliTtAttendanceTable tbody tr.attendanceTableFooterRow > td {
+  height: 24px !important;
+  padding: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  background: #f8f9fb !important;
+}
+
+/* iPad 출석부: 고정 학생정보 3열 + 날짜 가로 스크롤 */
+@media (min-width:700px) and (max-width:1400px) and (hover:none) and (pointer:coarse) {
+  #recordRoomScreen .olliTtAttendanceRegisterScroll {
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  #recordRoomScreen .olliTtAttendanceSheet {
+    width: 1600px !important;
+    min-width: 1600px !important;
+    max-width: none !important;
+    overflow: visible;
+  }
+  #recordRoomScreen .olliTtAttendanceTable {
+    width: 1600px !important;
+    min-width: 1600px !important;
+    max-width: none !important;
+    table-layout: fixed !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+  }
+  #recordRoomScreen .olliTtAttendanceTable col.nameCol { width: 88px !important; }
+  #recordRoomScreen .olliTtAttendanceTable col.schoolGradeCol { width: 96px !important; }
+  #recordRoomScreen .olliTtAttendanceTable col.personalityCol { width: 56px !important; }
+  #recordRoomScreen .olliTtAttendanceTable thead tr:first-child > th:first-child { border-top-left-radius: 20px; }
+  #recordRoomScreen .olliTtAttendanceTable thead tr:first-child > th:last-child { border-top-right-radius: 20px; }
+  #recordRoomScreen .olliTtAttendanceTable tbody tr.attendanceTableFooterRow > td { border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
+
+  /* 학생정보 3열은 왼쪽에 고정하고 날짜 열만 가로로 이동 */
+  #recordRoomScreen .olliTtAttendanceTable th.nameCol,
+  #recordRoomScreen .olliTtAttendanceTable td.nameCol {
+    position: sticky !important;
+    left: 0;
+    z-index: 5;
+    width: 88px !important;
+    min-width: 88px !important;
+    max-width: 88px !important;
+  }
+  #recordRoomScreen .olliTtAttendanceTable th.schoolGradeCol,
+  #recordRoomScreen .olliTtAttendanceTable td.schoolGradeCol {
+    position: sticky !important;
+    left: 88px;
+    z-index: 5;
+    width: 96px !important;
+    min-width: 96px !important;
+    max-width: 96px !important;
+    background: #fff !important;
+  }
+  #recordRoomScreen .olliTtAttendanceTable th.personalityCol,
+  #recordRoomScreen .olliTtAttendanceTable td.personalityCol {
+    position: sticky !important;
+    left: 184px;
+    z-index: 5;
+    width: 56px !important;
+    min-width: 56px !important;
+    max-width: 56px !important;
+    background: #fff !important;
+    box-shadow: 5px 0 8px rgba(27,39,58,.055);
+  }
+  #recordRoomScreen .olliTtAttendanceTable tbody td.nameCol {
+    background: #fafbfc !important;
+  }
+  #recordRoomScreen .olliTtAttendanceTable thead th.nameCol,
+  #recordRoomScreen .olliTtAttendanceTable thead th.schoolGradeCol,
+  #recordRoomScreen .olliTtAttendanceTable thead th.personalityCol {
+    z-index: 7;
+    background: #f8f9fb !important;
+  }
+}

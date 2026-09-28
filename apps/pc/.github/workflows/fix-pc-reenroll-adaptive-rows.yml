@@ -1,0 +1,35 @@
+name: Fix PC reenroll and adaptive timetable rows
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-pc-reenroll-adaptive-rows.yml'
+      - '.github/tmp/fix_pc_reenroll_and_adaptive_rows.py'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply PC reenroll and timetable layout patch
+        run: python3 .github/tmp/fix_pc_reenroll_and_adaptive_rows.py
+      - name: Validate JavaScript syntax
+        run: |
+          node --check pc-attendance.js
+          node --check olli-data-student-operations.js
+          node --check pc-timetable.js
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pc-attendance.js olli-data-student-operations.js pc-timetable.js pc-timetable.css pc-record-editor.css
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "fix: 성향기록부 재등록 및 초등 시간표 높이 반응형 개선"
+          git push
