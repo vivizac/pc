@@ -1576,10 +1576,11 @@ function setObservationMemoEditorMode() {
     studentListBtn.style.pointerEvents = 'auto';
   }
   if (analysisBtn) {
-    const showAnalysis = currentMemoType === 'elementary';
-    analysisBtn.hidden = !showAnalysis;
-    analysisBtn.style.display = showAnalysis ? 'inline-flex' : 'none';
-    analysisBtn.style.visibility = showAnalysis ? 'visible' : 'hidden';
+    analysisBtn.hidden = false;
+    analysisBtn.style.display = 'inline-flex';
+    analysisBtn.style.visibility = 'visible';
+    analysisBtn.style.opacity = '1';
+    analysisBtn.style.pointerEvents = 'auto';
   }
   if (feedbackBtn) {
     feedbackBtn.hidden = false;
