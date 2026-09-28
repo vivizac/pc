@@ -6,6 +6,8 @@ const vm = require('node:vm');
 const settings = fs.readFileSync('olli-settings-team-talk-common.js', 'utf8');
 const css = fs.readFileSync('pc-team-talk.css', 'utf8');
 const migration = fs.readFileSync('supabase/migrations/20260922162000_team_talk_platform_backgrounds_olli_styles.sql', 'utf8');
+const defaultMigration = fs.readFileSync('supabase/migrations/20260928151000_team_talk_default_olli_light.sql', 'utf8');
+const html = fs.readFileSync('index.html', 'utf8');
 
 test('shared Team Talk settings runtime compiles with six background modes', () => {
   assert.doesNotThrow(() => new vm.Script(settings, { filename:'olli-settings-team-talk-common.js' }));
@@ -40,4 +42,25 @@ test('platform background migration preserves old value then separates PC and Ph
   assert.match(migration, /olli_team_talk_background_get/);
   assert.match(migration, /olli_team_talk_background_update/);
   assert.match(migration, /'olli-light','olli-dark'/);
+});
+
+
+test('PC Team Chat defaults to Olli style 1 and lists Olli styles before Kakao styles', () => {
+  assert.match(settings, /const DEFAULT_BACKGROUND = 'olli-light'/);
+  assert.match(settings, /background: DEFAULT_BACKGROUND/);
+  assert.match(settings, /\? mode : DEFAULT_BACKGROUND/);
+  assert.match(settings, /state\.background = normalizeBackground\(cached\.background \|\| DEFAULT_BACKGROUND\)/);
+  const olli = settings.indexOf('<div class="olliTeamTalkThemeGroupLabel olli">올리 스타일</div>');
+  const kakao = settings.indexOf('<div class="olliTeamTalkThemeGroupLabel">카톡 스타일</div>');
+  assert.ok(olli >= 0 && kakao > olli);
+  assert.match(html, /olli-settings-team-talk-common\.js\?v=20260928-default-olli1-1/);
+});
+
+test('database defaults both platform backgrounds to Olli style 1 without rewriting saved values', () => {
+  assert.match(defaultMigration, /team_talk_background_pc set default 'olli-light'/);
+  assert.match(defaultMigration, /team_talk_background_phone set default 'olli-light'/);
+  assert.match(defaultMigration, /coalesce\(v_background, 'olli-light'\)/);
+  assert.match(defaultMigration, /coalesce\(p_background, 'olli-light'\)/);
+  const ddlPrefix = defaultMigration.slice(0, defaultMigration.indexOf('create or replace function'));
+  assert.doesNotMatch(ddlPrefix, /update public\.academy_settings/);
 });
