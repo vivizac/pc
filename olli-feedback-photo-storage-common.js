@@ -21,7 +21,8 @@
   }
 
   function getSupabaseBaseUrl() {
-    const url = clean(global.SUPABASE_URL || '');
+    const lexicalUrl = typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : '';
+    const url = clean(lexicalUrl || global.SUPABASE_URL || '');
     if (!url) {
       const error = new Error('Supabase 연결 주소가 없습니다.');
       error.code = 'SUPABASE_URL_MISSING';
@@ -31,7 +32,8 @@
   }
 
   function getPublishableKey() {
-    return clean(global.SUPABASE_KEY || '');
+    const lexicalKey = typeof SUPABASE_KEY !== 'undefined' ? SUPABASE_KEY : '';
+    return clean(lexicalKey || global.SUPABASE_KEY || '');
   }
 
   async function callSigningService(action, payload = {}) {
