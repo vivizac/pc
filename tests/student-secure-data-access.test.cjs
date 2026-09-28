@@ -35,3 +35,12 @@ test('obsolete direct student status PATCH helper is removed', () => {
   assert.doesNotMatch(students, /function patchStudentStatusReturning/);
   assert.doesNotMatch(students, /async function patchStudentStatusReturning/);
 });
+
+
+test('settings backup no longer reads students through direct REST', () => {
+  const settingsStorage = fs.readFileSync(path.join(root, 'olli-settings-storage.js'), 'utf8');
+  assert.match(settingsStorage, /async function loadSettingsBackupStudentsSecure\(academyId\)/);
+  assert.match(settingsStorage, /core\.ServerAdapter\.read\(spec, \{ academyId \}, \{ limit: 5000 \}\)/);
+  assert.match(settingsStorage, /loadSettingsBackupStudentsSecure\(academyId\)/);
+  assert.doesNotMatch(settingsStorage, /supabase\('GET', `students\?select=\*&academy_id=/);
+});

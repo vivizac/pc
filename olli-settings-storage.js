@@ -1,10 +1,19 @@
+async function loadSettingsBackupStudentsSecure(academyId) {
+  const core = window.OlliStorageCore;
+  if (!core?.FeatureRegistry || !core?.ServerAdapter) {
+    throw new Error('학생 백업 보호 서버 모듈이 준비되지 않았습니다.');
+  }
+  const spec = core.FeatureRegistry.require('students_list');
+  return core.ServerAdapter.read(spec, { academyId }, { limit: 5000 });
+}
+
 async function downloadSettingsBackup() {
   try {
     const academyId = settingsGetAcademyId();
     if (!academyId) throw new Error('academy_id가 없습니다.');
 
     const [students, feedbacks, summaries, members] = await Promise.all([
-      supabase('GET', `students?select=*&academy_id=eq.${encodeURIComponent(academyId)}`),
+      loadSettingsBackupStudentsSecure(academyId),
       supabase('GET', `feedbacks?select=*&academy_id=eq.${encodeURIComponent(academyId)}`),
       supabase('GET', `summary_feedbacks?select=*&academy_id=eq.${encodeURIComponent(academyId)}`),
       supabase('GET', `academy_members?select=*&academy_id=eq.${encodeURIComponent(academyId)}`)
