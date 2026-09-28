@@ -1012,121 +1012,83 @@ async function settingsLoadAcademy() {
 
 async function settingsLoadMembers() {
   const academyId = settingsGetAcademyId();
-  const code = localStorage.getItem('olli_current_academy_code') || (olliSettingsState.academy && olliSettingsState.academy.academy_code) || '';
   const requestAcademyId = academyId;
-  const requestAcademyCode = code;
-  const merged = [];
-  const seen = new Set();
+  const requestAcademyCode = localStorage.getItem('olli_current_academy_code') || '';
+  const sessionToken = String(localStorage.getItem('olli_account_session_token_v1') || '').trim();
 
-  function addRows(rows) {
-    (Array.isArray(rows) ? rows : []).forEach(row => {
-      if (!row) return;
-      const key = String(row.id || row.member_id || row.teacher_name || row.display_name || JSON.stringify(row));
-      if (seen.has(key)) return;
-      seen.add(key);
-      merged.push(row);
+  if (!academyId) {
+    olliSettingsState.members = [];
+    olliSettingsState.lastError = '현재 학원 ID를 찾지 못했습니다.';
+    return [];
+  }
+  if (!sessionToken) {
+    olliSettingsState.members = [];
+    olliSettingsState.lastError = '계정 세션이 없습니다. 다시 로그인해 주세요.';
+    return [];
+  }
+
+  try {
+    const rows = await callOlliRpc('olli_list_academy_members', {
+      p_session_token: sessionToken,
+      p_academy_id: academyId
     });
+    if (!isOlliAcademyRequestCurrent(requestAcademyId, requestAcademyCode)) return [];
+    olliSettingsState.members = Array.isArray(rows) ? rows : [];
+    olliSettingsState.lastError = '';
+    if (typeof window.cacheTeacherOptions === 'function') window.cacheTeacherOptions();
+    if (typeof window.refreshAllTeacherDropdowns === 'function') window.refreshAllTeacherDropdowns();
+    return olliSettingsState.members;
+  } catch (err) {
+    if (!isOlliAcademyRequestCurrent(requestAcademyId, requestAcademyCode)) return [];
+    console.warn('secure academy members rpc failed:', err);
+    olliSettingsState.members = [];
+    olliSettingsState.lastError = err.message || String(err);
+    return [];
   }
-
-  if (isSupabaseConfigured()) {
-    if (academyId) {
-      try {
-        const rowsById = await supabase('GET', `academy_members?select=*&academy_id=eq.${encodeURIComponent(academyId)}&order=created_at.asc`);
-        addRows(rowsById);
-      } catch (err) {
-        console.warn('academy_members academy_id query failed:', err);
-      }
-    }
-
-    if (code) {
-      try {
-        const rowsByCode = await supabase('GET', `academy_members?select=*&academy_code=eq.${encodeURIComponent(code)}&order=created_at.asc`);
-        addRows(rowsByCode);
-      } catch (err) {
-        console.warn('academy_members academy_code query failed:', err);
-      }
-    }
-  }
-
-  if (!merged.length && code) {
-    try {
-      const rows = await callOlliRpc('test_list_academy_members', { p_academy_code: code });
-      addRows(rows);
-    } catch (err) {
-      console.warn('test members rpc failed:', err);
-      if (!academyId && !code) olliSettingsState.lastError = '현재 학원 ID를 찾지 못했습니다.';
-      else olliSettingsState.lastError = err.message || String(err);
-    }
-  }
-
-  if (!isOlliAcademyRequestCurrent(requestAcademyId, requestAcademyCode)) return [];
-  olliSettingsState.members = merged;
-  if (merged.length) olliSettingsState.lastError = '';
-  if (!academyId && !code) olliSettingsState.lastError = '현재 학원 ID를 찾지 못했습니다.';
-  if (typeof window.cacheTeacherOptions === 'function') window.cacheTeacherOptions();
-  if (typeof window.refreshAllTeacherDropdowns === 'function') window.refreshAllTeacherDropdowns();
-  return olliSettingsState.members;
 }
 
 async function settingsLoadApprovalRequests() {
   const requestAcademyId = settingsGetAcademyId();
-  const code =
-    localStorage.getItem('olli_current_academy_code') ||
-    olliSettingsState.academy?.academy_code ||
-    OLLI_TEST_ACADEMY_CODE;
-  const requestAcademyCode = code;
+  const requestAcademyCode = localStorage.getItem('olli_current_academy_code') || '';
+  const sessionToken = String(localStorage.getItem('olli_account_session_token_v1') || '').trim();
 
-  olliSettingsState.lastApprovalQueryCode = code;
+  olliSettingsState.lastApprovalQueryCode = requestAcademyCode;
 
-  if (!code) {
+  if (!requestAcademyId) {
     olliSettingsState.approvalRequests = [];
     olliSettingsState.lastError = '현재 학원 ID를 찾지 못했습니다.';
     return [];
   }
 
-  // 1순위: 테스트/개발용 RPC로 학원 ID 기준 pending 요청 조회
-  // 이 함수는 Supabase SQL의 stage4 test rpc가 실행되어 있어야 작동합니다.
-  try {
-    const rows = await callOlliRpc('test_list_teacher_approval_requests', {
-      p_academy_code: code
-    });
+  const currentRole = String(localStorage.getItem('olli_current_member_role') || '').trim();
+  if (currentRole !== 'owner' && currentRole !== 'super_admin') {
+    olliSettingsState.approvalRequests = [];
+    return [];
+  }
 
+  if (!sessionToken) {
+    olliSettingsState.approvalRequests = [];
+    olliSettingsState.lastError = '계정 세션이 없습니다. 다시 로그인해 주세요.';
+    return [];
+  }
+
+  try {
+    const rows = await callOlliRpc('olli_list_teacher_approval_requests', {
+      p_session_token: sessionToken,
+      p_academy_id: requestAcademyId
+    });
     if (!isOlliAcademyRequestCurrent(requestAcademyId, requestAcademyCode)) return [];
     olliSettingsState.approvalRequests = Array.isArray(rows) ? rows : [];
     olliSettingsState.lastError = '';
     return olliSettingsState.approvalRequests;
   } catch (err) {
     if (!isOlliAcademyRequestCurrent(requestAcademyId, requestAcademyCode)) return [];
-    console.warn('test approval rpc failed:', err);
-    olliSettingsState.lastError =
-      '승인 요청 조회 실패: test_list_teacher_approval_requests RPC가 없거나 실행되지 않았습니다. ' +
-      (err.message || err);
-  }
-
-  // 2순위: 직접 테이블 조회
-  // 로그인/RLS 연결 전에는 막힐 수 있음.
-  try {
-    const academyId = requestAcademyId;
-    if (!academyId) return [];
-
-    const rows = await supabase(
-      'GET',
-      `teacher_approval_requests?select=*&academy_id=eq.${encodeURIComponent(academyId)}&status=eq.pending&order=created_at.desc`
-    );
-
-    if (!isOlliAcademyRequestCurrent(requestAcademyId, requestAcademyCode)) return [];
-    olliSettingsState.approvalRequests = Array.isArray(rows) ? rows : [];
-    return olliSettingsState.approvalRequests;
-  } catch (err) {
-    if (!isOlliAcademyRequestCurrent(requestAcademyId, requestAcademyCode)) return [];
-    console.warn('direct approval query failed:', err);
+    console.warn('secure approval requests rpc failed:', err);
     olliSettingsState.approvalRequests = [];
-    olliSettingsState.lastError =
-      '승인 요청 직접 조회도 실패했습니다. 현재 학원 ID: ' + code + ' / ' + (err.message || err);
+    olliSettingsState.lastError = err.message || String(err);
     return [];
   }
 }
-
 
 async function settingsRefreshAll() {
   const requestAcademyId = settingsGetAcademyId();
