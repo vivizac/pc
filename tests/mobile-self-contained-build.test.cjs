@@ -35,7 +35,7 @@ test('monorepo Mobile Vercel config has no external PC raw runtime rewrites', ()
   const serialized = JSON.stringify(config);
   assert.equal(serialized.includes('raw.githubusercontent.com/vivizac/pc/'), false);
   assert.equal(Array.isArray(config.headers), true);
-  assert.equal(config.headers.length, 68);
+  assert.equal(config.headers.length, 69);
 });
 
 test('staging copies exactly the canonical common bytes and never needs a tracked duplicate', () => {
@@ -101,4 +101,12 @@ test('common observation memo session does not require optional PC-only helpers'
   assert.equal(session.student.id, 'student-1');
   assert.equal(session.type, 'elementary');
   assert.equal(session.localEntry.content, '메모');
+});
+
+
+test('observation runtime is delivered no-store', () => {
+  const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+  const runtimeHeader = (config.headers || []).find(item => item.source === '/olli-observation-runtime.js');
+  assert.ok(runtimeHeader);
+  assert.ok((runtimeHeader.headers || []).some(item => item.key === 'Cache-Control' && item.value === 'no-store, max-age=0'));
 });
