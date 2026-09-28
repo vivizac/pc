@@ -7,13 +7,23 @@ on:
     paths:
       - 'apps/mobile/**'
       - 'packages/common/**'
+      - 'deploy/vercel-projects.json'
+      - 'MONOREPO_TRANSITION.md'
+      - 'MONOREPO_OWNERSHIP_AUDIT.md'
       - 'tests/mobile-self-contained-build.test.cjs'
+      - 'tests/monorepo-structure-contract.test.cjs'
+      - 'tests/vercel-monorepo-separation-contract.test.cjs'
       - '.github/workflows/validate-olli-monorepo-transition.yml'
   pull_request:
     paths:
       - 'apps/mobile/**'
       - 'packages/common/**'
+      - 'deploy/vercel-projects.json'
+      - 'MONOREPO_TRANSITION.md'
+      - 'MONOREPO_OWNERSHIP_AUDIT.md'
       - 'tests/mobile-self-contained-build.test.cjs'
+      - 'tests/monorepo-structure-contract.test.cjs'
+      - 'tests/vercel-monorepo-separation-contract.test.cjs'
       - '.github/workflows/validate-olli-monorepo-transition.yml'
 
 permissions:
@@ -26,8 +36,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: false
-      - name: Validate self-contained Mobile build contract
-        run: node --test tests/mobile-self-contained-build.test.cjs
+      - name: Validate monorepo structure and Mobile build contract
+        run: |
+          node --check apps/mobile/scripts/stage-common.cjs
+          node --test \
+            tests/mobile-self-contained-build.test.cjs \
+            tests/monorepo-structure-contract.test.cjs \
+            tests/vercel-monorepo-separation-contract.test.cjs
       - name: Validate PC schedule Realtime
         run: node --test tests/schedule-realtime.test.cjs
       - name: Validate Mobile schedule and security contracts

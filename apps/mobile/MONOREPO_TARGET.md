@@ -1,15 +1,19 @@
 # Olli Monorepo Target
 
-This repository remains the authoritative Mobile deployment source during the transition.
+The existing `vivizac/mobile` repository remains the authoritative Mobile **Production** deployment source until the monorepo Preview and Production cutover are verified.
 
-Monorepo target:
+Current monorepo work target:
 - Repository: `vivizac/pc`
-- Branch: `work/olli-ab-date-layout-contract-20260928`
-- Scaffold commit: `a665692dd4adb98212d069e3466d93f694402b1d`
-- Mobile source commit represented by the monorepo gitlink: `a0bfe39d16c4ed98caa13a2a8e8698c43b80a957`
+- Branch: `work/olli-mobile-self-contained-20260929`
+- PC Production baseline: `0b56edcf5493d1a5224874eb30f0c2d1c68eadc6`
+- Mobile Production baseline: `0e74868fbdd3b73b3e84f57fcd31e46b64df6484`
+- Mobile Production baseline tree: `8f56ad46a9ec014506e5a4bc0512737b483ab666`
+- `apps/mobile` is a materialized self-contained source snapshot on the work branch; it is no longer a gitlink there.
 
 Rules:
-1. Do not disconnect the current Mobile Vercel project yet.
-2. Do not delete this repository or its history.
-3. Production cutover happens only after the monorepo Mobile preview is verified.
-4. Raw GitHub bridges are removed only after Production stabilization.
+1. Do not disconnect the current Mobile Production Vercel deployment yet.
+2. Do not delete the existing `vivizac/mobile` repository or its history.
+3. The monorepo Mobile build stages runtime-shared files from `packages/common`; it must not fetch PC raw GitHub at runtime.
+4. When Vercel Root Directory is `apps/mobile`, outside-root source access must allow the build to read `packages/common`.
+5. Production cutover happens only after monorepo Preview verification.
+6. The legacy Production raw bridge is removed only after Production stabilization.
