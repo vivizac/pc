@@ -23,7 +23,27 @@ test('Mobile startup does not block first paint on legacy device account-session
   assert.equal(/await\s+bootstrapOlliPhoneAccountSession\s*\(/.test(startup), false);
   assert.match(startup, /Promise\.resolve\(\)\s*\.then\(\(\)\s*=>\s*bootstrapOlliPhoneAccountSession\(\)\)/);
   assert.match(startup, /startOlliLegacyAccountSessionBootstrapInBackground\(initialAcademyId\);/);
-  assert.match(startup, /await hideOlliBootScreen\(\);/);
+});
+
+test('Mobile boot dismissal starts before any resume or start-page route await', () => {
+  const startup = fs.readFileSync(path.join(MOBILE, 'olli-app-startup.js'), 'utf8');
+  const dismissIndex = startup.indexOf('const bootDismissPromise = hideOlliBootScreen();');
+  const resumeIndex = startup.indexOf('await restoreOlliPhoneResumeState();');
+  const enterIndex = startup.indexOf('await enterOlliAfterLoginOrSetup({ localFirst: true });');
+  assert.ok(dismissIndex >= 0);
+  assert.ok(resumeIndex > dismissIndex);
+  assert.ok(enterIndex > dismissIndex);
+  assert.equal((startup.match(/await hideOlliBootScreen\(\);/g) || []).length, 0);
+  assert.equal((startup.match(/await bootDismissPromise;/g) || []).length, 2);
+});
+
+test('Mobile startup and auth entry assets are cache-busted and no-store', () => {
+  const indexHtml = fs.readFileSync(path.join(MOBILE, 'index.html'), 'utf8');
+  const vercelConfig = fs.readFileSync(path.join(MOBILE, 'vercel.json'), 'utf8');
+  assert.match(indexHtml, /olli-app-startup\.js\?v=20260929-boot-session-cache-1/);
+  assert.match(indexHtml, /olli-auth-entry-phone-adapter\.js\?v=20260929-boot-session-cache-1/);
+  assert.match(vercelConfig, /"source": "\/olli-app-startup\.js"[\s\S]*?"Cache-Control"[\s\S]*?"no-store, max-age=0"/);
+  assert.match(vercelConfig, /"source": "\/olli-auth-entry-phone-adapter\.js"[\s\S]*?"Cache-Control"[\s\S]*?"no-store, max-age=0"/);
 });
 
 test('Phone autosave adapter owns memo input lifecycle directly', () => {
