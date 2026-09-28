@@ -42,11 +42,13 @@ test('Mobile boot dismissal starts before any resume or start-page route await',
 
 test('Mobile startup and auth entry assets are cache-busted and no-store', () => {
   const indexHtml = fs.readFileSync(path.join(MOBILE, 'index.html'), 'utf8');
-  const vercelConfig = fs.readFileSync(path.join(MOBILE, 'vercel.json'), 'utf8');
+  const vercelConfig = JSON.parse(fs.readFileSync(path.join(MOBILE, 'vercel.json'), 'utf8'));
   assert.match(indexHtml, /olli-app-startup\.js\?v=20260929-local-route-owner-1/);
   assert.match(indexHtml, /olli-auth-entry-phone-adapter\.js\?v=20260929-local-route-owner-1/);
-  assert.match(vercelConfig, /"source": "\/olli-app-startup\.js"[\s\S]*?"Cache-Control"[\s\S]*?"no-store, max-age=0"/);
-  assert.match(vercelConfig, /"source": "\/olli-auth-entry-phone-adapter\.js"[\s\S]*?"Cache-Control"[\s\S]*?"no-store, max-age=0"/);
+  const findHeader = source => (vercelConfig.headers || []).find(item => item.source === source);
+  const hasNoStore = source => (findHeader(source)?.headers || []).some(item => item.key === 'Cache-Control' && item.value === 'no-store, max-age=0');
+  assert.equal(hasNoStore('/olli-app-startup.js'), true);
+  assert.equal(hasNoStore('/olli-auth-entry-phone-adapter.js'), true);
 });
 
 test('Phone autosave adapter owns memo input lifecycle directly', () => {
