@@ -17,6 +17,15 @@ test('Mobile startup does not call the removed memo autosave binding hook', () =
   assert.match(startup, /await hideOlliBootScreen\(\);/);
 });
 
+test('Mobile startup does not block first paint on legacy device account-session conversion', () => {
+  const startup = fs.readFileSync(path.join(MOBILE, 'olli-app-startup.js'), 'utf8');
+  assert.match(startup, /function startOlliLegacyAccountSessionBootstrapInBackground\(/);
+  assert.equal(/await\s+bootstrapOlliPhoneAccountSession\s*\(/.test(startup), false);
+  assert.match(startup, /Promise\.resolve\(\)\s*\.then\(\(\)\s*=>\s*bootstrapOlliPhoneAccountSession\(\)\)/);
+  assert.match(startup, /startOlliLegacyAccountSessionBootstrapInBackground\(initialAcademyId\);/);
+  assert.match(startup, /await hideOlliBootScreen\(\);/);
+});
+
 test('Phone autosave adapter owns memo input lifecycle directly', () => {
   const adapter = fs.readFileSync(path.join(MOBILE, 'olli-observation-autosave-phone-adapter.js'), 'utf8');
   assert.match(adapter, /__olliObservationMemoPhoneAutosaveLifecycleBound/);

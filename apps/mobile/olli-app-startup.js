@@ -325,6 +325,39 @@ async function startOlliReconnectValidationInBackground(initialAcademyId = '') {
     return false;
   }
 }
+
+function startOlliLegacyAccountSessionBootstrapInBackground(initialAcademyId = '') {
+  if (hasOlliPersistentPhoneSession() || typeof bootstrapOlliPhoneAccountSession !== 'function') return false;
+
+  Promise.resolve()
+    .then(() => bootstrapOlliPhoneAccountSession())
+    .then(async (restored) => {
+      if (restored !== true || !isOlliLoggedInForStartPage()) return false;
+
+      try {
+        if (typeof clearOlliTeacherInviteParamsFromUrl === 'function') clearOlliTeacherInviteParamsFromUrl();
+        await enterOlliAfterLoginOrSetup({ localFirst: true });
+
+        const restoredAcademyId = String(
+          (typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '')
+          || localStorage.getItem('olli_current_academy_id')
+          || ''
+        ).trim();
+        void startOlliReconnectValidationInBackground(restoredAcademyId || initialAcademyId);
+        return true;
+      } catch (error) {
+        console.warn('기존 승인기기 계정 세션 전환 후 로컬 진입 실패:', error?.message || error);
+        return false;
+      }
+    })
+    .catch((error) => {
+      console.warn('기존 승인기기 계정 세션 백그라운드 전환 실패:', error?.message || error);
+      return false;
+    });
+
+  return true;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   showOlliBootScreen();
   bindOlliPhoneResumeStatePersistence();
@@ -367,13 +400,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (typeof scheduleNotificationSync === 'function') scheduleNotificationSync();
     window.addEventListener('beforeunload', flushMemoAutoSave);
 
-    if (!hasOlliPersistentPhoneSession() && typeof bootstrapOlliPhoneAccountSession === 'function') {
-      try {
-        await bootstrapOlliPhoneAccountSession();
-      } catch (error) {
-        console.warn('기존 승인기기 계정 세션 1회 전환 복구 실패:', error?.message || error);
-      }
-    }
+    startOlliLegacyAccountSessionBootstrapInBackground(initialAcademyId);
 
     if (isOlliLoggedInForStartPage()) {
       if (typeof clearOlliTeacherInviteParamsFromUrl === 'function') clearOlliTeacherInviteParamsFromUrl();
