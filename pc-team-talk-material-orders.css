@@ -295,3 +295,22 @@
   .olliMatDetailPane{display:none}
   .olliMatListPane{border-right:0}
 }
+
+
+/* 요청등록 재료명 자주 사용하는 단어 */
+.olliMatQuickInputWrap{position:relative}
+.olliMatQuickWords{
+  position:absolute;left:0;right:0;top:46px;z-index:12;
+  padding:10px;border:1px solid #e1e4e8;border-radius:12px;background:#fff;
+  box-shadow:0 12px 30px rgba(20,24,31,.12)
+}
+.olliMatQuickWords[hidden]{display:none}
+.olliMatQuickWordsLabel{
+  margin:0 2px 8px;color:#989ea6;font-size:10px;font-weight:700
+}
+.olliMatQuickWordsGrid{display:flex;flex-wrap:wrap;gap:6px}
+.olliMatQuickWordsGrid button{
+  min-height:30px;padding:0 10px;border:1px solid #e5e7ea;border-radius:999px;
+  background:#f7f8f9;color:#555b63;font:650 10.8px 'Pretendard',sans-serif;cursor:pointer
+}
+.olliMatQuickWordsGrid button:hover{border-color:#cfd3d8;background:#fff;color:#24272b}

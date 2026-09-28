@@ -3,7 +3,7 @@
 
   if (global.OlliTeamTalkMaterialOrders?.version) return;
 
-  const VERSION = '1.2.0';
+  const VERSION = '1.3.0';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
 
   const state = {
@@ -41,7 +41,19 @@
     '바닐라라떼', '바닐라 라떼', '카푸치노', '모카', '마키아토',
     '에스프레소', '콜드브루', '콜드 브루', '프라푸치노',
     '쥬스', '주스', '스무디', '아이스티', '아이스 티', '밀크티', '밀크 티',
-    '에이드'
+    '에이드', '당이 떨어 졌어요.', '당이 떨어졌어요.'
+  ]);
+
+  const MATERIAL_QUICK_WORDS = Object.freeze([
+    'A3도화지',
+    'A3용지',
+    'A4용지',
+    'A4도화지',
+    '아크릴물감',
+    '크라프트지',
+    '물',
+    '커피',
+    '당이 떨어 졌어요.'
   ]);
 
   function context() {
@@ -178,9 +190,17 @@
               <button class="olliMatIconBtn" type="button" data-material-action="close-create" aria-label="닫기">×</button>
             </div>
             <form class="olliMatForm" data-material-form>
-              <label class="olliMatField olliMatFieldWide">
+              <label class="olliMatField olliMatFieldWide olliMatItemNameField">
                 <span>재료명 <b>*</b></span>
-                <input name="item_name" maxlength="120" required placeholder="예: 아크릴 물감 12색">
+                <div class="olliMatQuickInputWrap">
+                  <input name="item_name" maxlength="120" required placeholder="예: 아크릴 물감 12색" autocomplete="off" data-material-item-name>
+                  <div class="olliMatQuickWords" data-material-quick-words hidden>
+                    <div class="olliMatQuickWordsLabel">자주 사용하는 단어</div>
+                    <div class="olliMatQuickWordsGrid">
+                      ${MATERIAL_QUICK_WORDS.map(word => `<button type="button" data-material-quick-word="${word}">${word}</button>`).join('')}
+                    </div>
+                  </div>
+                </div>
               </label>
               <label class="olliMatField">
                 <span>수량 <b>*</b></span>
@@ -546,8 +566,14 @@
     requestAnimationFrame(() => form.elements.item_name?.focus());
   }
 
+  function setQuickWordsVisible(visible) {
+    const panel = rootQuery('[data-material-quick-words]');
+    if (panel) panel.hidden = !visible;
+  }
+
   function closeCreate() {
     const modal = rootQuery('[data-material-modal]');
+    setQuickWordsVisible(false);
     if (modal) modal.hidden = true;
   }
 
@@ -651,6 +677,25 @@
         return;
       }
 
+      const quickWord = event.target.closest('[data-material-quick-word]');
+      if (quickWord) {
+        const input = rootQuery('[data-material-item-name]');
+        if (input) {
+          input.value = clean(quickWord.dataset.materialQuickWord);
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.focus();
+        }
+        setQuickWordsVisible(false);
+        return;
+      }
+
+      if (event.target.closest('[data-material-item-name]')) {
+        setQuickWordsVisible(true);
+        return;
+      }
+
+      if (!event.target.closest('.olliMatItemNameField')) setQuickWordsVisible(false);
+
       const filterButton = event.target.closest('[data-material-filter]');
       if (filterButton) {
         const next = clean(filterButton.dataset.materialFilter);
@@ -671,6 +716,10 @@
 
     state.root.addEventListener('input', event => {
       if (event.target.matches('[data-material-search]')) setSearch(event.target.value);
+    });
+
+    state.root.addEventListener('focusin', event => {
+      if (event.target.matches('[data-material-item-name]')) setQuickWordsVisible(true);
     });
 
     state.root.addEventListener('change', event => {
