@@ -134,10 +134,32 @@
 
     async function loadStudentNoteDraftFromSupabase(student, noteType = '') {
       if (!isSupabaseConfigured() || !student?.id) return null;
-      const path = getStudentNoteDraftPath(student, noteType);
-      if (!path) return null;
-      const rows = await supabase('GET', `${path}&select=*&limit=1`);
-      return Array.isArray(rows) && rows.length ? rows[0] : null;
+      const academyId = String(getOlliCurrentAcademyId() || '').trim();
+      const studentId = String(student.id || '').trim();
+      const type = String(noteType || getSupabaseNoteDraftType(student) || '').trim();
+      const sessionToken = String(localStorage.getItem('olli_account_session_token_v1') || '').trim();
+      if (!academyId || !studentId || !type) return null;
+      if (!sessionToken) {
+        const error = new Error('계정 세션이 없어 관찰노트 서버 초안을 읽을 수 없습니다.');
+        error.code = 'NO_ACCOUNT_SESSION';
+        throw error;
+      }
+
+      const result = await supabase('POST', 'rpc/olli_note_draft_read', {
+        p_session_token: sessionToken,
+        p_academy_id: academyId,
+        p_student_id: studentId,
+        p_note_type: type
+      });
+      if (result && typeof result === 'object' && !Array.isArray(result) && result.ok === false) {
+        const error = new Error(result.message || '관찰노트 서버 초안을 읽지 못했습니다.');
+        error.code = String(result.code || 'NOTE_DRAFT_READ_FAILED');
+        throw error;
+      }
+      const rows = Array.isArray(result)
+        ? result
+        : (Array.isArray(result?.rows) ? result.rows : []);
+      return rows.length ? rows[0] : null;
     }
 
     return {

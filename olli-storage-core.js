@@ -1726,6 +1726,8 @@
     server: {
       kind: 'storage_object_with_table_row',
       table: 'feedback_photos',
+      transport: 'session_rpc',
+      rpc: 'olli_feedback_photo_data_access',
       operation: 'post',
       createIfMissing: false,
       identityColumns: ['academy_id', 'id'],
@@ -1756,6 +1758,8 @@
     server: {
       kind: 'table_row',
       table: 'feedback_photos',
+      transport: 'session_rpc',
+      rpc: 'olli_feedback_photo_data_access',
       operation: 'patch',
       createIfMissing: false,
       identityColumns: ['academy_id', 'id'],
@@ -1834,6 +1838,8 @@
     server: {
       kind: 'table_row',
       table: 'student_note_archives',
+      transport: 'session_rpc',
+      rpc: 'olli_note_archive_data_access',
       operation: 'upsert',
       createIfMissing: false,
       identityColumns: ['academy_id', 'student_id', 'local_record_id'],
