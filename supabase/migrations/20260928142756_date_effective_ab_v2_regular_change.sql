@@ -1,2 +1,1 @@
--- Remote migration history marker; canonical implementation is already applied.
-select 1;
+do $$ begin perform 1; end $$;
