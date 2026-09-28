@@ -34,13 +34,12 @@ begin
 
   if not exists (
     select 1
-    from public.academy_members owner_member
-    where owner_member.academy_id = p_academy_id
-      and owner_member.account_id = v_account_id
-      and owner_member.role = 'owner'
-      and owner_member.status = 'active'
+    from public.academy_members current_member
+    where current_member.academy_id = p_academy_id
+      and current_member.account_id = v_account_id
+      and current_member.status = 'active'
   ) then
-    raise exception '현재 계정에는 이 학원의 원장 권한이 없습니다.';
+    raise exception '현재 계정에는 이 학원 접근 권한이 없습니다.';
   end if;
 
   return query
