@@ -32,10 +32,25 @@
     try {
       const cached = JSON.parse(localStorage.getItem(weekCacheKey(weekStart)) || 'null');
       if (!cached || cached.academy_id !== currentAcademyId() || cached.week_start !== clean(weekStart)) return null;
-      return cached.data && typeof cached.data === 'object' ? cached.data : null;
+      return cached.data && typeof cached.data === 'object' ? normalizeClassLayoutData(cached.data) : null;
     } catch (_) {
       return null;
     }
+  }
+
+  function normalizeClassLayoutData(data) {
+    if (!data || typeof data !== 'object') return data || {};
+    if (!Array.isArray(data.class_split_periods)) {
+      const legacy = Array.isArray(data.class_splits) ? data.class_splits : [];
+      data.class_split_periods = legacy.map((row) => ({
+        weekday:Number(row && row.weekday),
+        time_slot:Number(row && row.time_slot),
+        effective_from:'0001-01-01',
+        effective_to:null
+      }));
+      data.class_layout_version = Number(data.class_layout_version || 1);
+    }
+    return data;
   }
 
   function cacheWeek(weekStart, data) {
@@ -199,10 +214,11 @@
   }
 
   async function loadAvailabilityHorizon(startDate, endDate) {
-    return rpc('olli_schedule_availability_horizon', contextPayload({
+    const data = await rpc('olli_schedule_availability_horizon', contextPayload({
       p_start_date: clean(startDate),
       p_end_date: clean(endDate)
     }));
+    return normalizeClassLayoutData(data);
   }
 
   async function loadWeek(weekStart) {
@@ -239,6 +255,7 @@
       })
     ]);
     assertCurrentContext();
+    normalizeClassLayoutData(data);
     data.kinder_class_merges = Array.isArray(kinderLayout && kinderLayout.merged_slots)
       ? kinderLayout.merged_slots
       : [];
@@ -405,15 +422,20 @@
     });
   }
 
-  async function splitClass(weekday, timeSlot) {
+  async function splitClass(weekday, timeSlot, effectiveDate) {
     return executeScheduleAction('split_class', {
       weekday: Number(weekday),
-      time_slot: Number(timeSlot)
+      time_slot: Number(timeSlot),
+      effective_date: clean(effectiveDate)
     });
   }
 
-  async function mergeClass(weekday, timeSlot) {
-    return executeScheduleAction('merge_class', { weekday: Number(weekday), time_slot: Number(timeSlot) });
+  async function mergeClass(weekday, timeSlot, effectiveDate) {
+    return executeScheduleAction('merge_class', {
+      weekday: Number(weekday),
+      time_slot: Number(timeSlot),
+      effective_date: clean(effectiveDate)
+    });
   }
 
   async function splitKinderClass(weekday, timeSlot) {

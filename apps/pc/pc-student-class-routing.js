@@ -88,9 +88,23 @@
     if (status && status !== 'active') return false;
     return (!from || from <= effectiveDate) && (!to || to >= effectiveDate);
   }
-  function isElementarySplit(data, weekday, timeSlot) {
-    return (Array.isArray(data && data.class_splits) ? data.class_splits : []).some((row) =>
-      Number(row && row.weekday) === Number(weekday) && Number(row && row.time_slot) === Number(timeSlot));
+  function firstOccurrenceOnOrAfter(effectiveDate, weekday) {
+    const date = parseDateKey(effectiveDate);
+    const target = Number(weekday || 0);
+    if (!date || target < 1 || target > 6) return '';
+    const current = date.getDay() || 7;
+    date.setDate(date.getDate() + ((target - current + 7) % 7));
+    return dateKey(date);
+  }
+  function isElementarySplit(data, weekday, timeSlot, effectiveDate) {
+    const targetDate = firstOccurrenceOnOrAfter(effectiveDate, weekday);
+    if (!targetDate) return false;
+    return (Array.isArray(data && data.class_split_periods) ? data.class_split_periods : []).some((row) => {
+      if (Number(row && row.weekday) !== Number(weekday) || Number(row && row.time_slot) !== Number(timeSlot)) return false;
+      const from = clean(row && row.effective_from).slice(0, 10);
+      const to = clean(row && row.effective_to).slice(0, 10);
+      return (!from || from <= targetDate) && (!to || to >= targetDate);
+    });
   }
   function isKinderMerged(data, weekday, timeSlot) {
     return (Array.isArray(data && data.kinder_class_merges) ? data.kinder_class_merges : []).some((row) =>
@@ -134,7 +148,6 @@
     assignments.filter((row) => clean(row && row.division) === division).forEach((row) => addSlot(row.weekday, row.time_slot));
     enrollments.filter((row) => clean(row && row.division) === division && enrollmentEffectiveOn(row, effectiveDate)).forEach((row) => addSlot(row.weekday, row.time_slot));
     if (division === 'elementary') {
-      (Array.isArray(data && data.class_splits) ? data.class_splits : []).forEach((row) => addSlot(row.weekday, row.time_slot));
       // 담임/기존 학생이 없어도 시간표의 기본 수업칸은 학생 등록에서 선택할 수 있습니다.
       for (let weekday = 1; weekday <= 5; weekday += 1) {
         for (let timeSlot = 1; timeSlot <= 6; timeSlot += 1) addSlot(weekday, timeSlot);
@@ -150,7 +163,7 @@
     const capacity = capacityFor(data, division);
     const options = [];
     Array.from(slotMap.values()).sort((a,b) => a.weekday-b.weekday || a.time_slot-b.time_slot).forEach((slot) => {
-      const split = division === 'kinder' ? !isKinderMerged(data, slot.weekday, slot.time_slot) : isElementarySplit(data, slot.weekday, slot.time_slot);
+      const split = division === 'kinder' ? !isKinderMerged(data, slot.weekday, slot.time_slot) : isElementarySplit(data, slot.weekday, slot.time_slot, effectiveDate);
       const merged = division === 'kinder' && !split;
       const groups = split ? ['A','B'] : ['A'];
       groups.forEach((group) => {
