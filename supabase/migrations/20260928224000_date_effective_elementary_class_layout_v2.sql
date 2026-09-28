@@ -575,7 +575,7 @@ begin
     'cell_memos', v_cell_memos
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_availability_horizon(p_session_token text, p_academy_id uuid, p_start_date date, p_end_date date)
@@ -721,7 +721,7 @@ begin
     'class_teachers', v_class_teachers
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_add_guest_entry(p_session_token text, p_academy_id uuid, p_guest_name text, p_division text, p_entry_type text, p_session_date date, p_time_slot integer, p_class_group text DEFAULT 'A'::text)
@@ -876,7 +876,7 @@ begin
 
   return jsonb_build_object('ok', true, 'result', 'scheduled', 'one_time_session_id', v_id, 'guest', true, 'session_type', 'trial');
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_add_one_time(p_session_token text, p_academy_id uuid, p_student_id uuid, p_session_date date, p_time_slot integer, p_note text, p_class_group text)
@@ -1016,7 +1016,7 @@ begin
 
   return jsonb_build_object('ok', true, 'result', 'scheduled', 'one_time_session_id', v_id, 'unchanged', false);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_add_waitlist(p_session_token text, p_academy_id uuid, p_student_id uuid, p_target_weekday integer, p_target_time_slot integer, p_effective_date date, p_target_class_group text DEFAULT 'A'::text)
@@ -1102,7 +1102,7 @@ begin
   ) returning id into v_waitlist_id;
   return jsonb_build_object('ok', true, 'result', 'waitlisted', 'waitlist_id', v_waitlist_id);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_change(p_session_token text, p_academy_id uuid, p_student_id uuid, p_source_enrollment_id uuid, p_target_weekday integer, p_target_time_slot integer, p_effective_date date, p_change_type text, p_allow_wait boolean, p_target_class_group text)
@@ -1301,7 +1301,7 @@ begin
     'target_enrollment_id',v_target_id
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_resolve_waitlist(p_session_token text, p_academy_id uuid, p_waitlist_id uuid, p_action text, p_effective_date date DEFAULT CURRENT_DATE)
@@ -1423,7 +1423,7 @@ begin
   if v_effective<=current_date then perform private.olli_schedule_sync_student(v_wait.student_id,current_date); end if;
   return jsonb_build_object('ok',true,'result','accepted','change_id',v_change_id);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_set_attendance(p_session_token text, p_academy_id uuid, p_student_id uuid, p_session_date date, p_time_slot integer, p_class_group text DEFAULT 'A'::text, p_session_kind text DEFAULT 'regular'::text, p_attended boolean DEFAULT true)
@@ -1509,7 +1509,7 @@ begin
     v_account_id
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_toggle_attendance(p_session_token text, p_academy_id uuid, p_student_id uuid, p_session_date date, p_time_slot integer, p_class_group text, p_session_kind text)
@@ -1587,7 +1587,7 @@ begin
   ) returning marked_at into v_marked_at;
   return jsonb_build_object('ok', true, 'attended', true, 'marked_at', v_marked_at);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_set_student_weekly_schedule(p_session_token text, p_academy_id uuid, p_student_id uuid, p_pairs jsonb, p_effective_date date DEFAULT CURRENT_DATE)
@@ -1838,7 +1838,7 @@ begin
     'enrollments', v_rows
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_update_one_time_date(p_session_token text, p_academy_id uuid, p_one_time_session_id uuid, p_session_date date)
@@ -2065,7 +2065,7 @@ exception
   when unique_violation then
     return jsonb_build_object('ok', false, 'message', '같은 날짜와 시간에 이미 등록된 수업이 있습니다.');
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_execute(p_session_token text, p_academy_id uuid, p_action text, p_params jsonb DEFAULT '{}'::jsonb)
@@ -2228,7 +2228,7 @@ exception
   when invalid_text_representation or invalid_datetime_format or numeric_value_out_of_range then
     return jsonb_build_object('ok',false,'message','시간표 변경 값을 확인해 주세요.');
 end;
-$function$
+$function$;
 
 
 revoke all on function public.olli_schedule_split_class(text, uuid, integer, integer, date) from public, anon, authenticated;
