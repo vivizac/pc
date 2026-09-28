@@ -39,13 +39,29 @@ test('all Mobile runtime JS parses successfully', () => {
   assert.ok(jsFiles.length >= 70, 'unexpectedly small Mobile runtime JS set');
   const failures = [];
   for (const file of jsFiles) {
-    const r = cp.spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
+    const rel = path.relative(ROOT, file).replace(/\\\\/g, '/');
+    const source = fs.readFileSync(file, 'utf8');
+    const isEsmApi = rel.startsWith('apps/mobile/api/') && /\\bexport\\s+default\\b|\\bimport\\s+/.test(source);
+    const r = isEsmApi
+      ? cp.spawnSync(process.execPath, ['--input-type=module', '--check'], { encoding: 'utf8', input: source })
+      : cp.spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
     if (r.status !== 0) failures.push({
       file: path.relative(ROOT, file),
       stderr: String(r.stderr || r.stdout || '').trim().slice(0, 1200)
     });
   }
   assert.deepEqual(failures, []);
+});
+
+
+test('link preview API module parses and keeps GET-only handler contract', () => {
+  const file = path.join(MOBILE, 'api', 'link-preview.js');
+  const source = fs.readFileSync(file, 'utf8');
+  const parsed = cp.spawnSync(process.execPath, ['--input-type=module', '--check'], { encoding: 'utf8', input: source });
+  assert.equal(parsed.status, 0, String(parsed.stderr || parsed.stdout || ''));
+  assert.match(source, /export default async function handler\(req, res\)/);
+  assert.match(source, /req\.method !== 'GET'/);
+  assert.match(source, /fetch\('\/api\/link-preview\?url='/);
 });
 
 test('all Common JS parses successfully', () => {

@@ -82,7 +82,7 @@ function decodeHtml(value) {
 }
 
 function getAttribute(tag, name) {
-  const match = String(tag || '').match(new RegExp('\\b' + name + '\\s*=\\s*(?:"([^"]*)"|\\'([^\\']*)\\'|([^\\s>]+))', 'i'));
+  const match = String(tag || '').match(new RegExp("\\b" + name + "\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s>]+))", 'i'));
   return decodeHtml(match ? (match[1] ?? match[2] ?? match[3] ?? '') : '');
 }
 
