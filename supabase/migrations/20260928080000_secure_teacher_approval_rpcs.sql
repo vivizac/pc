@@ -236,7 +236,6 @@ begin
   update public.teacher_approval_requests
   set
     status = 'approved',
-    approved_by = v_owner_member_id,
     approved_member_id = v_member_id,
     approved_at = now()
   where id = p_request_id
