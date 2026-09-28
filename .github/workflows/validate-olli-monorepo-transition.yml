@@ -13,8 +13,10 @@ on:
       - 'tests/mobile-self-contained-build.test.cjs'
       - 'tests/pc-self-contained-build.test.cjs'
       - 'tests/pc-build-closure.test.cjs'
+      - 'tests/app-root-deploy-boundary.test.cjs'
       - 'tests/pc-self-contained-build.test.cjs'
       - 'tests/pc-build-closure.test.cjs'
+      - 'tests/app-root-deploy-boundary.test.cjs'
       - 'tests/mobile-entry-integrity.test.cjs'
       - 'tests/monorepo-structure-contract.test.cjs'
       - 'tests/vercel-monorepo-separation-contract.test.cjs'
@@ -50,6 +52,7 @@ jobs:
             tests/mobile-self-contained-build.test.cjs \
             tests/pc-self-contained-build.test.cjs \
             tests/pc-build-closure.test.cjs \
+            tests/app-root-deploy-boundary.test.cjs \
             tests/mobile-entry-integrity.test.cjs \
             tests/monorepo-structure-contract.test.cjs \
             tests/vercel-monorepo-separation-contract.test.cjs

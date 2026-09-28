@@ -1,0 +1,5 @@
+# Repository-only files. Keep app runtime, api/, assets/, and scripts/stage-common.cjs deployable.
+.github/
+tests/
+supabase/
+.deploy-check-*.txt
