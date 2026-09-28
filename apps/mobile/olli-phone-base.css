@@ -1213,15 +1213,6 @@ background: #FEFEFE ;
   align-items: center;
   min-height: 16px;
 }
-.memoBottomBar {
-  position: fixed;
-  left: 16px;
-  bottom: 32px;
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  z-index: 45;
-}
 .memoBottomBtn {
   height: 46px;
   border: none;
@@ -2194,7 +2185,6 @@ background: #FEFEFE ;
 .memoHeader { gap: 8px; }
   .memoHeaderActions { gap: 6px; }
   .memoAnalysisBtn, .memoFeedbackBtn { min-width: 58px; padding: 0 12px; }
-  .memoBottomBar { left: 16px; bottom: 32px; }
 
 
 
@@ -2837,28 +2827,6 @@ display: none ;
   border: none ;
   box-shadow: none ;
 }
-#studentMemoScreen .memoBottomBar {
-  position: fixed;
-  left: calc(var(--olli-phone-guide-x) + 4px);
-  right: calc(var(--olli-phone-guide-x) + 55px);
-  bottom: var(--olli-phone-guide-bottom);
-  top: auto;
-  width: auto;
-  max-width: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  visibility: visible;
-  opacity: 1;
-  pointer-events: none;
-  z-index: 119990;
-  background: transparent;
-  overflow: visible;
-}
-#studentMemoScreen .memoBottomBar > * {
-  pointer-events: auto;
-}
-
 /* 초등부 메모 입력부 간격 */
 #studentMemoScreen .memoEditor {
 background: #FEFEFE;
@@ -6143,10 +6111,6 @@ body.olli-login-open {
   display: flex;
   gap: 8px;
   align-items: center;
-}
-
-#studentMemoScreen .memoBottomBar button {
-  pointer-events: auto;
 }
 
 #studentMemoScreen .memoModePill {
