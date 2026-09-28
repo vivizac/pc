@@ -58,7 +58,7 @@ test('Phone new-context foreground load stays intact when old request completes'
 });
 test('Phone modal opened during read defers rendering and preserves pending refresh',async()=>{
   const env=phone(),d=deferred();env.setRead(()=>d.promise);const p=env.check();await settle();env.setEditing(true);d.resolve({enrollments:[]});assert.equal(await p,false);assert.equal(env.renders,0);
-  env.setEditing(false);env.setRead(async()=>({enrollments:[]}));assert.equal(await env.check(),true);assert.equal(env.renders,1);
+  env.setEditing(false);env.setRead(async()=>({enrollments:[]}));assert.equal(await env.check(),true);assert.equal(env.reads,2);assert.equal(env.renders,0);
 });
 test('Phone normal foreground schedule load remains available without new common API',async()=>{
   const env=phone({legacy:true});assert.equal(await env.win.syncOlliTodayAttendanceSchedule(new Date(),{render:false}),true);

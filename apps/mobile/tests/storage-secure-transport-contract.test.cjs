@@ -22,7 +22,7 @@ test('storage core supports session_rpc without changing existing table transpor
 test('session_rpc is opt-in and table transport remains the current path', () => {
   assert.match(source, /if \(usesSessionRpc\(spec\)\) \{\s*return callSessionRpc\(spec, 'read'/);
   assert.match(source, /if \(usesSessionRpc\(spec\)\) \{\s*return callSessionRpc\(spec, 'write'/);
-  assert.match(source, /return global\.supabase\('GET',/);
+  assert.match(source, /const rows = await global\.supabase\('GET',/);
   assert.match(source, /return global\.supabase\('DELETE',/);
 });
 
