@@ -95,3 +95,29 @@ Do **not** merge/cut over yet. Remaining gate:
 3. only then merge/cut over,
 4. Production smoke,
 5. only after stable Production remove legacy root/raw bridges.
+
+
+## 2026-09-29 authenticated Mobile Preview smoke
+
+The protected Mobile Preview was tested on the user's real device after the startup/session fixes.
+
+- Final standalone Mobile Preview head: `60718652973f9b85e3785d290a796b6fc365ed85`
+- Vercel Preview deployment: `dpl_54RGx6toQQqRBcbMYTMtbTdVA3rv`
+- Deployment state: `READY`
+- OLLI splash now dismisses correctly on entry and re-entry.
+- The startup/auth critical asset URLs were cache-busted and explicit no-store headers were added.
+- No Mobile Production, PC Production, or Supabase change was made for this validation.
+- The app-root deployment contracts were re-checked:
+  - `apps/mobile/scripts/stage-common.cjs` resolves `../../packages/common` and stages the 45-file Mobile manifest.
+  - `apps/pc/scripts/stage-common.cjs` resolves `../../packages/common` and stages the 48-file PC manifest.
+  - both app-root `.vercelignore` files preserve the staging scripts.
+
+### Remaining cutover gate
+
+Before merging/cutover, verify the live Vercel project settings:
+- PC project Root Directory: `apps/pc`
+- Mobile project repository: `vivizac/pc`
+- Mobile project Root Directory: `apps/mobile`
+- outside-root source access enabled so `packages/common` is available during the Mobile build
+
+Keep PR #145 Draft until that live project-setting gate is verified.
