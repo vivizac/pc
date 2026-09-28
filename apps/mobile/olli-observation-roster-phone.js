@@ -1563,18 +1563,11 @@ function setObservationMemoEditorMode() {
   const result = document.getElementById('memoFeedbackResultArea');
   const analysisBtn = document.getElementById('memoBottomAnalysisBtn');
   const feedbackBtn = document.getElementById('memoFeedbackBtn');
-  const bottomBar = document.querySelector('#studentMemoScreen .memoBottomBar');
   const studentListBtn = document.getElementById('memoStudentListBtn');
   const screen = getObservationMemoScreen();
 
   if (editor) editor.style.display = 'block';
   if (result) result.style.display = '';
-  if (bottomBar) {
-    bottomBar.hidden = false;
-    bottomBar.style.display = 'flex';
-    bottomBar.style.visibility = 'visible';
-    bottomBar.style.opacity = '1';
-  }
   if (studentListBtn) {
     studentListBtn.hidden = false;
     studentListBtn.style.display = 'inline-flex';
@@ -1598,11 +1591,6 @@ function setObservationMemoEditorMode() {
 
   applyObservationMemoNavigationIcons();
   ensureObservationMemoEditingActions();
-  if (typeof window.mountObservationMemoEditorTools === 'function') {
-    window.mountObservationMemoEditorTools();
-    requestAnimationFrame(window.mountObservationMemoEditorTools);
-    setTimeout(window.mountObservationMemoEditorTools, 60);
-  }
 }
 
 function setObservationMemoRosterMode(enabled) {
