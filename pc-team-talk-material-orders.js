@@ -597,12 +597,13 @@
       actions.appendChild(create('div', 'olliMatReadOnlyNote', '주문 상태는 원장 또는 관리자가 변경합니다.'));
     } else if (item.status === 'requested') {
       actions.append(
-        actionButton('보류', 'on_hold', 'olliMatSecondaryBtn'),
         deleteButton(),
+        actionButton('보류', 'on_hold', 'olliMatSecondaryBtn'),
         actionButton('주문완료', 'ordered', 'olliMatDarkBtn')
       );
     } else if (item.status === 'on_hold') {
       actions.append(
+        deleteButton(),
         actionButton('요청으로', 'requested', 'olliMatSecondaryBtn'),
         actionButton('주문완료', 'ordered', 'olliMatDarkBtn')
       );

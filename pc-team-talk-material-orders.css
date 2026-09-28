@@ -318,8 +318,8 @@
 
 .olliMatDeleteBtn{
   min-width:90px;height:39px;display:inline-flex;align-items:center;justify-content:center;
-  border:1px solid #f0caca;border-radius:11px;padding:0 14px;
-  background:#fff6f6;color:#c34f4f;font:730 11.5px 'Pretendard',sans-serif;cursor:pointer
+  border:1px solid #e2e5e8;border-radius:11px;padding:0 14px;
+  background:#fff;color:#5d636b;font:730 11.5px 'Pretendard',sans-serif;cursor:pointer
 }
-.olliMatDeleteBtn:hover{background:#fff0f0;border-color:#e9b8b8}
+.olliMatDeleteBtn:hover{background:#fff;border-color:#d7dbe0}
 .olliMatDeleteBtn:disabled{opacity:.55;cursor:default}
