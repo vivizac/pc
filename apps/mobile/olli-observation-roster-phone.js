@@ -1736,22 +1736,39 @@ function openObservationMemoStudentFromRoster(studentId) {
   const memoScreen = getObservationMemoScreen();
   const page = getObservationMemoPage();
   if (page) page.scrollTop = 0;
-  if (memoScreen) memoScreen.style.visibility = 'hidden';
 
   enforceObservationMemoPageOwnership();
-  if (typeof openStudentMemoPageById === 'function') openStudentMemoPageById(studentId);
+
+  if (typeof openStudentMemoPageById !== 'function') {
+    console.error('관찰노트 메모 진입 함수가 준비되지 않았습니다.');
+    return false;
+  }
+
+  let opened = false;
+  try {
+    opened = openStudentMemoPageById(studentId) !== false;
+  } catch (error) {
+    console.error('관찰노트 학생 메모 열기 실패:', error?.message || error);
+    return false;
+  }
+  if (!opened) return false;
+
   enforceObservationMemoPageOwnership();
   requestAnimationFrame(enforceObservationMemoPageOwnership);
   setTimeout(enforceObservationMemoPageOwnership, 80);
-  setObservationMemoEditorMode();
 
-  const editor = getObservationMemoEditor();
-  resetObservationMemoHistory();
-  resizeObservationMemoEditorToContent();
+  try { setObservationMemoEditorMode(); }
+  catch (error) { console.warn('관찰노트 편집 화면 모드 초기화 실패:', error?.message || error); }
+
+  try { resetObservationMemoHistory(); } catch (_) {}
+  try { resizeObservationMemoEditorToContent(); } catch (_) {}
+
   if (rosterScreen) rosterScreen.style.display = 'flex';
   if (memoScreen) {
     memoScreen.style.display = 'flex';
     memoScreen.style.visibility = '';
+    memoScreen.removeAttribute('aria-hidden');
+    memoScreen.removeAttribute('inert');
   }
 
   runObservationMemoPageSlide('observation-editor-slide-enter', () => {
@@ -1760,6 +1777,7 @@ function openObservationMemoStudentFromRoster(studentId) {
     if (page) page.scrollTop = 0;
     scheduleObservationMemoEditorResize();
   });
+  return true;
 }
 
 /* 관찰노트 진입점: 기존처럼 마지막 학생을 자동 선택하지 않고 오늘 학생 목록을 먼저 보여준다. */
