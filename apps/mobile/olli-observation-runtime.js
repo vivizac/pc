@@ -1551,20 +1551,41 @@ function forceStudentMemoControlsVisible() {
 
 function openStudentMemoPageById(studentId) {
   if (window.OlliOneMinuteFeedbackLifecycle && typeof window.OlliOneMinuteFeedbackLifecycle.beforeLeave === 'function') {
-    window.OlliOneMinuteFeedbackLifecycle.beforeLeave();
+    try { window.OlliOneMinuteFeedbackLifecycle.beforeLeave(); }
+    catch (error) { console.warn('관찰노트 진입 전 피드백 정리 실패:', error?.message || error); }
   }
-  const session = beginObservationMemoSession(studentId);
-  if (!session) return;
-  const { student } = session;
 
-  closeMemoModeMenu();
-  closeMemoStudentSelectPopup();
+  let session = null;
+  try {
+    session = beginObservationMemoSession(studentId);
+  } catch (error) {
+    console.error('관찰노트 메모 세션 생성 실패:', error?.message || error);
+    return false;
+  }
+  if (!session) return false;
+
+  try { closeMemoModeMenu(); } catch (_) {}
+  try { closeMemoStudentSelectPopup(); } catch (_) {}
   viewingArchivedElementaryRecord = false;
 
-  openObservationMemoScreenShell(session);
+  // 화면 소유권은 메모/분석 초기화보다 먼저 확정한다.
+  // 부가 데이터 하나가 실패해도 학생 메모 화면 자체가 열리지 않는 상태를 만들지 않는다.
+  const shellOpened = openObservationMemoScreenShell(session);
+  if (!shellOpened) return false;
 
-  renderObservationMemoScreenChrome(session);
-  renderObservationMemoInitialView(session);
+  try {
+    renderObservationMemoScreenChrome(session);
+  } catch (error) {
+    console.warn('관찰노트 메모 화면 UI 초기화 실패:', error?.message || error);
+  }
+
+  try {
+    renderObservationMemoInitialView(session);
+  } catch (error) {
+    console.warn('관찰노트 메모 초기 데이터 표시 실패:', error?.message || error);
+  }
+
+  return true;
 }
 
 
