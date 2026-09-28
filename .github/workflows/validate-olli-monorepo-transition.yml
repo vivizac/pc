@@ -12,7 +12,9 @@ on:
       - 'MONOREPO_OWNERSHIP_AUDIT.md'
       - 'tests/mobile-self-contained-build.test.cjs'
       - 'tests/pc-self-contained-build.test.cjs'
+      - 'tests/pc-build-closure.test.cjs'
       - 'tests/pc-self-contained-build.test.cjs'
+      - 'tests/pc-build-closure.test.cjs'
       - 'tests/mobile-entry-integrity.test.cjs'
       - 'tests/monorepo-structure-contract.test.cjs'
       - 'tests/vercel-monorepo-separation-contract.test.cjs'
@@ -47,6 +49,7 @@ jobs:
           node --test \
             tests/mobile-self-contained-build.test.cjs \
             tests/pc-self-contained-build.test.cjs \
+            tests/pc-build-closure.test.cjs \
             tests/mobile-entry-integrity.test.cjs \
             tests/monorepo-structure-contract.test.cjs \
             tests/vercel-monorepo-separation-contract.test.cjs
