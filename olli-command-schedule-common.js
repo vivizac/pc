@@ -3,7 +3,7 @@
 
   if (global.OlliCommandSchedule) return;
 
-  const VERSION = '2026-09-23-write-actions-2';
+  const VERSION = '2026-09-28-date-layout-v2-1';
 
   function clean(value) {
     return String(value == null ? '' : value).trim();
@@ -63,7 +63,21 @@
     return Array.isArray(data && data[key]) ? data[key] : [];
   }
 
-  function isElementarySplit(data, weekday, timeSlot) {
+  function isElementarySplit(data, weekday, timeSlot, targetDate) {
+    const dateKey = localDateKey(targetDate);
+    if (!dateKey) return false;
+
+    const periods = arrays(data, 'class_split_periods');
+    if (periods.length) {
+      return periods.some(row =>
+        Number(row && row.weekday) === Number(weekday)
+        && Number(row && row.time_slot) === Number(timeSlot)
+        && rowEffectiveOn(row, dateKey)
+      );
+    }
+
+    // Temporary compatibility only. Once all Production clients use layout v2,
+    // legacy class_splits is removed together with the raw bridge.
     return arrays(data, 'class_splits').some(row =>
       Number(row && row.weekday) === Number(weekday)
       && Number(row && row.time_slot) === Number(timeSlot)
@@ -77,9 +91,9 @@
     );
   }
 
-  function classGroups(data, division, weekday, timeSlot) {
+  function classGroups(data, division, weekday, timeSlot, targetDate) {
     if (division === 'kinder') return isKinderMerged(data, weekday, timeSlot) ? ['A'] : ['A', 'B'];
-    return isElementarySplit(data, weekday, timeSlot) ? ['A', 'B'] : ['A'];
+    return isElementarySplit(data, weekday, timeSlot, targetDate) ? ['A', 'B'] : ['A'];
   }
 
   function validTimes(division, weekday) {
@@ -304,7 +318,7 @@
 
     divisions.forEach(division => {
       validTimes(division, weekday).forEach(timeSlot => {
-        const groups = classGroups(data, division, weekday, timeSlot);
+        const groups = classGroups(data, division, weekday, timeSlot, dateKey);
         groups.forEach(group => {
           if (!classIsOperating(data, division, dateKey, weekday, timeSlot, group)) return;
           allSlots.push(slotSnapshot(
@@ -475,7 +489,7 @@
 
   function recurringBaselineSlot(data, candidate, startDate) {
     const date = nextWeekdayKey(startDate, candidate.weekday);
-    const groups = classGroups(data, candidate.division, candidate.weekday, candidate.timeSlot);
+    const groups = classGroups(data, candidate.division, candidate.weekday, candidate.timeSlot, date);
     const grouped = groups.length > 1;
     const capacity = capacityFor(data, candidate.division);
     const regular = regularCount(
@@ -556,7 +570,7 @@
     });
 
     return Array.from(grouped.values()).map(item => {
-      const groups = classGroups(data, item.division, item.weekday, item.timeSlot);
+      const groups = classGroups(data, item.division, item.weekday, item.timeSlot, item.date);
       return slotSnapshot(
         data,
         item.division,
@@ -1102,7 +1116,7 @@
   function operatingGroupsForTarget(weekData, division, dateKey, timeSlot) {
     const weekday = isoWeekday(dateKey);
     if (!weekday || weekday > 6) return [];
-    return classGroups(weekData, division, weekday, timeSlot).filter(group =>
+    return classGroups(weekData, division, weekday, timeSlot, dateKey).filter(group =>
       classIsOperating(weekData, division, dateKey, weekday, timeSlot, group)
     );
   }
