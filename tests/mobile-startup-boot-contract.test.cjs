@@ -121,3 +121,15 @@ test('memo navigation opens the screen shell before optional initialization', ()
   assert.match(html, /olli-observation-runtime\.js\?v=20260929-memo-page-owner-1/);
   assert.match(html, /olli-observation-roster-phone\.js\?v=20260929-memo-page-owner-1/);
 });
+
+
+test('memo utility portal keeps its page-state helpers', () => {
+  const utility = fs.readFileSync(path.join(MOBILE, 'olli-record-utility-touch.js'), 'utf8');
+  const html = fs.readFileSync(path.join(MOBILE, 'index.html'), 'utf8');
+
+  assert.match(utility, /function screen\(\)\s*\{[\s\S]*?document\.getElementById\('studentMemoScreen'\)/);
+  assert.match(utility, /function isEditor\(\)\s*\{[\s\S]*?data-memo-body-view[\s\S]*?'editor'/);
+  assert.match(utility, /window\.mountObservationMemoEditorTools = mountEditorTools/);
+  assert.match(utility, /\[archive, voice, history, survey\]\.forEach/);
+  assert.match(html, /olli-record-utility-touch\.js\?v=20260929-memo-utility-helpers-1/);
+});
