@@ -75,15 +75,18 @@ function normalizeMemoFeedbackArchiveRows(rows, sourceTable = '') {
 async function loadMemoFeedbackArchiveItemsFromSupabase(student) {
   if (!student?.id || !isSupabaseConfigured()) return [];
   const existingItems = getMemoFeedbackArchiveItems(student);
-  const feedbacksPath = appendOlliAcademyFilter(
-    `feedbacks?select=*&student_id=eq.${encodeURIComponent(student.id)}&order=created_at.desc`
-  );
-  const failFeedbacksPath = appendOlliAcademyFilter(
-    `fail_feedbacks?select=*&student_id=eq.${encodeURIComponent(student.id)}&order=created_at.desc`
-  );
+  const secureReader = typeof window.loadOlliFeedbackRowsSecure === 'function'
+    ? window.loadOlliFeedbackRowsSecure
+    : null;
+
+  if (!secureReader) {
+    console.warn('피드백 보관함 보호 조회 모듈이 준비되지 않아 기존 로컬 보관함을 유지합니다.');
+    return existingItems;
+  }
+
   const results = await Promise.allSettled([
-    supabase('GET', feedbacksPath),
-    supabase('GET', failFeedbacksPath)
+    secureReader('feedbacks', student, 120),
+    secureReader('fail_feedbacks', student, 120)
   ]);
 
   if (results.every(result => result.status === 'rejected')) {
