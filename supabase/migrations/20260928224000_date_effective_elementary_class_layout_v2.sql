@@ -51,16 +51,64 @@ create or replace function private.olli_schedule_group_is_enabled(
   p_academy_id uuid, p_division text, p_weekday integer, p_time_slot integer
 )
 returns boolean language sql stable security definer set search_path = ''
-as $$
+as $
   select private.olli_schedule_group_is_enabled(p_academy_id,p_division,p_weekday,p_time_slot,current_date);
-$$;
+$;
+
+
+create or replace function private.olli_schedule_validate_class_split_period()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if tg_op = 'UPDATE' then
+    if exists (
+      select 1
+      from public.olli_schedule_class_splits s
+      where s.academy_id = new.academy_id
+        and s.weekday = new.weekday
+        and s.time_slot = new.time_slot
+        and s.effective_from <= coalesce(new.effective_to, date '9999-12-31')
+        and coalesce(s.effective_to, date '9999-12-31') >= new.effective_from
+        and not (
+          s.academy_id = old.academy_id
+          and s.weekday = old.weekday
+          and s.time_slot = old.time_slot
+          and s.effective_from = old.effective_from
+        )
+    ) then
+      raise exception using errcode='23514', message='CLASS_LAYOUT_CONFLICT';
+    end if;
+  else
+    if exists (
+      select 1
+      from public.olli_schedule_class_splits s
+      where s.academy_id = new.academy_id
+        and s.weekday = new.weekday
+        and s.time_slot = new.time_slot
+        and s.effective_from <= coalesce(new.effective_to, date '9999-12-31')
+        and coalesce(s.effective_to, date '9999-12-31') >= new.effective_from
+    ) then
+      raise exception using errcode='23514', message='CLASS_LAYOUT_CONFLICT';
+    end if;
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists olli_schedule_class_split_period_guard on public.olli_schedule_class_splits;
+create trigger olli_schedule_class_split_period_guard
+before insert or update on public.olli_schedule_class_splits
+for each row execute function private.olli_schedule_validate_class_split_period();
 
 
 create or replace function public.olli_schedule_split_class(
  p_session_token text,p_academy_id uuid,p_weekday integer,p_time_slot integer,p_effective_date date
 ) returns jsonb language plpgsql security definer set search_path = ''
 as $$
-declare v_account_id uuid; v_next_split date;
+declare v_account_id uuid; v_next_split date; v_previous_from date;
 begin
  if not private.olli_schedule_can_access(p_session_token,p_academy_id) then return jsonb_build_object('ok',false,'message','클래스를 분리할 권한이 없습니다.'); end if;
  if p_effective_date is null then return jsonb_build_object('ok',false,'code','TARGET_DATE_REQUIRED','message','분반 적용일을 확인해 주세요.'); end if;
@@ -71,11 +119,25 @@ begin
  if private.olli_schedule_class_split_at(p_academy_id,p_weekday,p_time_slot,p_effective_date) then return jsonb_build_object('ok',true,'result','unchanged','effective_date',p_effective_date); end if;
  select min(s.effective_from) into v_next_split from public.olli_schedule_class_splits s
  where s.academy_id=p_academy_id and s.weekday=p_weekday and s.time_slot=p_time_slot and s.effective_from>p_effective_date;
- v_account_id:=public.olli_account_id_from_session(p_session_token);
- insert into public.olli_schedule_class_splits(academy_id,weekday,time_slot,effective_from,effective_to,created_by_account_id)
- values(p_academy_id,p_weekday,p_time_slot,p_effective_date,case when v_next_split is null then null else v_next_split-1 end,v_account_id);
+
+ select s.effective_from into v_previous_from
+ from public.olli_schedule_class_splits s
+ where s.academy_id=p_academy_id and s.weekday=p_weekday and s.time_slot=p_time_slot
+   and s.effective_to=p_effective_date-1
+ order by s.effective_from desc limit 1 for update;
+
+ if v_previous_from is not null then
+   update public.olli_schedule_class_splits
+      set effective_to=case when v_next_split is null then null else v_next_split-1 end
+    where academy_id=p_academy_id and weekday=p_weekday and time_slot=p_time_slot
+      and effective_from=v_previous_from;
+ else
+   v_account_id:=public.olli_account_id_from_session(p_session_token);
+   insert into public.olli_schedule_class_splits(academy_id,weekday,time_slot,effective_from,effective_to,created_by_account_id)
+   values(p_academy_id,p_weekday,p_time_slot,p_effective_date,case when v_next_split is null then null else v_next_split-1 end,v_account_id);
+ end if;
  return jsonb_build_object('ok',true,'result','split','weekday',p_weekday,'time_slot',p_time_slot,'effective_date',p_effective_date);
-exception when unique_violation then
+exception when unique_violation or check_violation then
  return jsonb_build_object('ok',false,'code','CLASS_LAYOUT_CONFLICT','message','반 구성 변경이 충돌했습니다. 다시 시도해 주세요.');
 end; $$;
 
