@@ -596,13 +596,78 @@ async function createOlliAcademyForCurrentAccount(name, region) {
   return academy;
 }
 
+function isOlliTemporaryAccountSessionRestoreError(error) {
+  const status = Number(error?.httpStatus || 0);
+  const message = String(error?.message || error || '');
+  try {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+  } catch (_) {}
+  if ([408, 425, 429].includes(status) || status >= 500) return true;
+  if (!status && /failed to fetch|networkerror|network request failed|load failed|timeout|timed out|internet connection/i.test(message)) return true;
+  return false;
+}
+
+function isOlliAuthoritativeAccountSessionFailure(error) {
+  const code = String(error?.code || '').trim();
+  const message = String(error?.message || error || '');
+  if (code === 'NO_ACCESSIBLE_ACADEMY') return true;
+  return /로그인 세션이 만료되었거나 올바르지 않습니다|계정 세션이 만료되었거나 올바르지 않습니다|현재 계정에서 사용할 수 있는 학원이 없습니다/.test(message);
+}
+
+function clearOlliInvalidAccountSessionAccessState(reason = '') {
+  [
+    OLLI_ACCOUNT_SESSION_TOKEN_KEY,
+    'olli_owner_logged_in',
+    'olli_teacher_logged_in',
+    'olli_current_member_role',
+    'olli_current_member_name',
+    'olli_current_member_id',
+    'olli_owner_login_at',
+    'olli_teacher_login_at',
+    'olli_current_academy_id',
+    'olli_current_academy_code',
+    'olli_current_academy_name',
+    'olli_current_academy_region',
+    'olli_current_academy_plan_type',
+    'olli_current_academy_access_status',
+    'olli_current_academy_trial_started_at',
+    'olli_current_academy_trial_expires_at'
+  ].forEach(key => {
+    try { localStorage.removeItem(key); } catch (_) {}
+  });
+
+  try {
+    const core = window.OlliStorageCore;
+    if (core?.AcademyContext?.clearRuntime) core.AcademyContext.clearRuntime(reason || 'account_session_invalid');
+  } catch (_) {}
+
+  try {
+    window.dispatchEvent(new CustomEvent('olli:account-session-invalidated', {
+      detail: { reason: reason || 'account_session_invalid' }
+    }));
+  } catch (_) {}
+}
+
+function recoverOlliCachedAccountSessionContext(reason) {
+  const academies = applyOlliAccessibleAcademies(readOlliCachedAccountAcademies());
+  const recovered = recoverOlliCurrentAcademyFromCachedList(reason || 'temporary_restore_failure');
+  return {
+    restored: !!recovered,
+    authoritative: false,
+    degraded: !!recovered,
+    reason: reason || 'TEMPORARY_RESTORE_FAILURE',
+    academies,
+    selected: recovered
+  };
+}
+
 async function establishOlliTeacherAccountSession(context) {
   const sessionToken = String(localStorage.getItem(OLLI_ACCOUNT_SESSION_TOKEN_KEY) || '').trim();
   if (!sessionToken) {
     throw new Error('개인계정 세션이 없습니다. 계정으로 다시 로그인해 주세요.');
   }
   const restored = await restoreOlliAccountSession({ silent: true });
-  if (restored && restored.restored) return restored.selected || restored;
+  if (restored && restored.restored && (restored.authoritative === true || restored.degraded === true)) return restored.selected || restored;
   throw new Error('개인계정에 연결된 학원을 확인하지 못했습니다. 승인 요청 상태를 다시 확인해 주세요.');
 }
 
@@ -611,12 +676,38 @@ async function refreshOlliTeacherAcademyAccessAfterValidation(result) {
 }
 
 async function restoreOlliAccountSession(options) {
-  const opts = Object.assign({ silent: false }, options || {});
+  const opts = Object.assign({ silent: false, allowCachedFallback: true }, options || {});
   const sessionToken = String(localStorage.getItem(OLLI_ACCOUNT_SESSION_TOKEN_KEY) || '').trim();
-  if (!sessionToken || !isSupabaseConfigured()) {
-    const academies = applyOlliAccessibleAcademies(readOlliCachedAccountAcademies());
-    const recovered = recoverOlliCurrentAcademyFromCachedList('no_account_session');
-    return { restored: !!recovered, reason: 'NO_ACCOUNT_SESSION', academies, selected: recovered };
+
+  if (!sessionToken) {
+    const offline = (() => {
+      try { return typeof navigator !== 'undefined' && navigator.onLine === false; } catch (_) { return false; }
+    })();
+    if (opts.allowCachedFallback && offline) {
+      return recoverOlliCachedAccountSessionContext('NO_ACCOUNT_SESSION_OFFLINE');
+    }
+    return {
+      restored: false,
+      authoritative: false,
+      degraded: false,
+      reason: 'NO_ACCOUNT_SESSION',
+      academies: readOlliCachedAccountAcademies(),
+      selected: null
+    };
+  }
+
+  if (!isSupabaseConfigured()) {
+    if (opts.allowCachedFallback) {
+      return recoverOlliCachedAccountSessionContext('SUPABASE_UNAVAILABLE');
+    }
+    return {
+      restored: false,
+      authoritative: false,
+      degraded: false,
+      reason: 'SUPABASE_UNAVAILABLE',
+      academies: readOlliCachedAccountAcademies(),
+      selected: null
+    };
   }
 
   try {
@@ -625,20 +716,60 @@ async function restoreOlliAccountSession(options) {
     });
     const existingAcademies = await filterOlliExistingAcademies(result?.academies || []);
     const academies = applyOlliAccessibleAcademies(existingAcademies);
-    if (!academies.length) throw new Error('현재 계정에서 사용할 수 있는 학원이 없습니다.');
+    if (!academies.length) {
+      const noAcademyError = new Error('현재 계정에서 사용할 수 있는 학원이 없습니다.');
+      noAcademyError.code = 'NO_ACCESSIBLE_ACADEMY';
+      throw noAcademyError;
+    }
 
     localStorage.setItem(OLLI_ACCOUNT_ID_KEY, String(result?.account_id || '').trim());
     localStorage.setItem(OLLI_ACCOUNT_NAME_KEY, String(result?.account_name || '').trim());
     const selected = chooseOlliCurrentAcademy(academies, '');
     saveOlliAcademyLoginState(selected, { accountLogin: true });
     if (typeof updateOlliAcademySwitchUI === 'function') updateOlliAcademySwitchUI();
-    return { restored: true, academies, selected };
+    return {
+      restored: true,
+      authoritative: true,
+      degraded: false,
+      reason: 'SERVER_RESTORED',
+      academies,
+      selected
+    };
   } catch (error) {
+    if (isOlliAuthoritativeAccountSessionFailure(error)) {
+      clearOlliInvalidAccountSessionAccessState(error?.code || 'SESSION_INVALID');
+      if (!opts.silent) throw error;
+      return {
+        restored: false,
+        authoritative: false,
+        degraded: false,
+        blocked: true,
+        reason: error?.code || 'SESSION_INVALID',
+        error,
+        academies: readOlliCachedAccountAcademies(),
+        selected: null
+      };
+    }
+
+    if (opts.allowCachedFallback && isOlliTemporaryAccountSessionRestoreError(error)) {
+      console.warn('계정 세션 서버 확인 일시 실패. 캐시 컨텍스트로 제한 복구합니다:', error);
+      return {
+        ...recoverOlliCachedAccountSessionContext('TEMPORARY_RESTORE_FAILURE'),
+        error
+      };
+    }
+
     if (!opts.silent) throw error;
-    console.warn('다학원 계정 세션 복구 실패:', error);
-    const academies = applyOlliAccessibleAcademies(readOlliCachedAccountAcademies());
-    const recovered = recoverOlliCurrentAcademyFromCachedList('session_restore_failed');
-    return { restored: !!recovered, reason: 'SESSION_RESTORE_FAILED', error, academies, selected: recovered };
+    console.warn('계정 세션 복구 실패:', error);
+    return {
+      restored: false,
+      authoritative: false,
+      degraded: false,
+      reason: 'SESSION_RESTORE_FAILED',
+      error,
+      academies: readOlliCachedAccountAcademies(),
+      selected: null
+    };
   }
 }
 
