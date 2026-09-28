@@ -327,7 +327,6 @@ async function startOlliReconnectValidationInBackground(initialAcademyId = '') {
 }
 document.addEventListener('DOMContentLoaded', async () => {
   showOlliBootScreen();
-  setupMemoPauseAutoSaveBindings();
   bindOlliPhoneResumeStatePersistence();
   let initialAcademyId = '';
   try {
@@ -366,8 +365,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     if (typeof setupPillPressFeedback === 'function') setupPillPressFeedback();
     if (typeof scheduleNotificationSync === 'function') scheduleNotificationSync();
-
-    setupMemoPauseAutoSaveBindings();
     window.addEventListener('beforeunload', flushMemoAutoSave);
 
     if (!hasOlliPersistentPhoneSession() && typeof bootstrapOlliPhoneAccountSession === 'function') {
