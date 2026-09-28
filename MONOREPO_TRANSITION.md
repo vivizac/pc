@@ -54,3 +54,44 @@ Preview-only validation was created without changing Mobile Production:
 - The existing Mobile Production repository/raw bridge has not been removed.
 
 Do not merge the repository-layout cutover to Production or remove legacy bridges until the logged-in Preview/Production smoke gate is completed.
+
+
+## 2026-09-29 PC/Common single-source gate
+
+PC has now reached the same structural staging model as Mobile on the work branch.
+
+- `packages/common/pc-runtime-manifest.json` defines 48 shared PC runtime files.
+- All 48 were verified byte-identical between the previous `apps/pc` parity copies and `packages/common` before removal.
+- A temporary build-closure test removed all 48 copies, staged them from `packages/common`, then verified every local PC entry asset and JavaScript syntax.
+- After that proof, the 48 tracked duplicates were removed from `apps/pc` on the work branch.
+- `apps/pc/vercel.json` now declares `node scripts/stage-common.cjs` as the future app-root build command.
+- `apps/pc/.vercelignore` and `apps/mobile/.vercelignore` exclude repository-only test/Supabase/GitHub files from future app-root deployments while preserving runtime/API/assets/common staging.
+- CI passed after the duplicate removal and again after the deployment-boundary change.
+
+### Production isolation re-check
+
+A full `main...work/olli-mobile-self-contained-20260929` diff check found:
+
+- branch is ahead of main and not behind,
+- no Production-root runtime JavaScript/CSS/HTML changes,
+- no Supabase changes,
+- the only root transition removal is the obsolete `.gitmodules` file,
+- app/materialization/common/test/docs/deploy-contract changes are isolated under their intended paths.
+
+### Known pre-existing Mobile defect found during integrity scan
+
+The expanded syntax gate found that Production Mobile's `api/link-preview.js` contains invalid/double-escaped regular expressions. Team Chat uses this endpoint for URL preview cards. A direct Production request returned HTTP 500 `FUNCTION_INVOCATION_FAILED`.
+
+- The fix exists only on the monorepo work branch and the temporary Mobile Preview branch.
+- The fixed parser has syntax and behavior tests for meta extraction, attribute parsing, and private IPv4 checks.
+- The temporary Preview deployment built successfully after the fix.
+- Mobile Production `main` is intentionally still unchanged.
+
+### Merge blocker remains
+
+Do **not** merge/cut over yet. Remaining gate:
+1. authenticated Preview UI smoke,
+2. verify Vercel Root Directory + outside-root source access for both `apps/pc` and `apps/mobile`,
+3. only then merge/cut over,
+4. Production smoke,
+5. only after stable Production remove legacy root/raw bridges.
