@@ -160,3 +160,28 @@ test('memo utility controls are fixed markup and never dynamically mounted', () 
   assert.match(html, /olli-observation-roster-phone\.css\?v=20260929-memo-fixed-group-1/);
   assert.match(html, /olli-record-utility-touch\.js\?v=20260929-memo-fixed-group-1/);
 });
+
+
+test('memo archive uses secure feedback reads and fixed survey visibility', () => {
+  const attendanceFeedback = fs.readFileSync(path.join(MOBILE, 'olli-data-attendance-feedback.js'), 'utf8');
+  const analysisAdapter = fs.readFileSync(path.join(MOBILE, 'elementary-analysis-phone-adapter.js'), 'utf8');
+  const roster = fs.readFileSync(path.join(MOBILE, 'olli-observation-roster-phone.js'), 'utf8');
+  const html = fs.readFileSync(path.join(MOBILE, 'index.html'), 'utf8');
+
+  assert.match(attendanceFeedback, /window\.loadOlliFeedbackRowsSecure = loadAttendanceFeedbackRowsSecure/);
+  assert.match(analysisAdapter, /const secureReader = typeof window\.loadOlliFeedbackRowsSecure === 'function'/);
+  assert.match(analysisAdapter, /secureReader\('feedbacks', student, 120\)/);
+  assert.match(analysisAdapter, /secureReader\('fail_feedbacks', student, 120\)/);
+  assert.doesNotMatch(analysisAdapter, /feedbacks\?select=\*&student_id=/);
+  assert.doesNotMatch(analysisAdapter, /fail_feedbacks\?select=\*&student_id=/);
+  assert.doesNotMatch(analysisAdapter, /supabase\('GET'/);
+
+  assert.match(roster, /analysisBtn\.hidden = false/);
+  assert.match(roster, /analysisBtn\.style\.display = 'inline-flex'/);
+  assert.match(roster, /analysisBtn\.style\.visibility = 'visible'/);
+  assert.doesNotMatch(roster, /const showAnalysis = currentMemoType === 'elementary'/);
+
+  assert.match(html, /olli-data-attendance-feedback\.js\?v=20260929-secure-archive-read-1/);
+  assert.match(html, /elementary-analysis-phone-adapter\.js\?v=20260929-secure-archive-read-1/);
+  assert.match(html, /olli-observation-roster-phone\.js\?v=20260929-fixed-survey-visible-1/);
+});
