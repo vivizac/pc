@@ -291,6 +291,16 @@
   const ARCHIVE_ID = 'memoRecordsBtn';
   const VOICE_ID = 'memoEditorVoiceBtn';
   const HISTORY_ID = 'olliMemoVersionHistoryBtn';
+
+  function screen() {
+    return document.getElementById('studentMemoScreen');
+  }
+
+  function isEditor() {
+    const root = screen();
+    return !!root && root.getAttribute('data-memo-body-view') === 'editor';
+  }
+
   async function loadHistory() {
     if (typeof window.openObservationMemoVersionHistory === 'function') return true;
     if (typeof window.ensureOlliObservationMemoHistoryReady !== 'function') {
