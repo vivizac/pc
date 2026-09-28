@@ -392,10 +392,22 @@ function isOlliLoggedInForStartPage(){
     || !!localStorage.getItem('olli_current_academy_code');
 }
 function hideOlliAppScreensForRoute(){
-  ['studentMemoScreen','mainPageScreen','','','settingsPageScreen','settingsDetailScreen'].forEach(id => {
+  [
+    'studentMemoScreen',
+    'observationRosterScreen',
+    'kinderChatFeedbackScreen',
+    'recordRoomScreen',
+    'mainPageScreen',
+    'olliTalkBetaScreen',
+    'olliTalkArchiveScreen',
+    'settingsPageScreen',
+    'settingsDetailScreen'
+  ].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
+  try { if (typeof window.setObservationPersistentNavVisible === 'function') window.setObservationPersistentNavVisible(false); } catch (_) {}
+  try { if (typeof window.setKinderChatFeedbackPersistentTopVisible === 'function') window.setKinderChatFeedbackPersistentTopVisible(false); } catch (_) {}
 }
 async function enterOlliByStartPage(page, options = {}){
   const localFirst = options?.localFirst === true;
@@ -414,7 +426,21 @@ async function enterOlliByStartPage(page, options = {}){
     currentObservationView = 'elementary';
     currentRecordView = 'elementary';
     setObservationButtonSide('elementary', false);
-    await showRecordRoom({ localOnly: localFirst });
+    if (localFirst) {
+      try {
+        const recordOpen = showRecordRoom({ localOnly: true });
+        if (recordOpen && typeof recordOpen.catch === 'function') {
+          recordOpen.catch(error => console.warn('관찰노트 로컬 시작 화면 갱신 실패:', error?.message || error));
+        }
+      } catch (error) {
+        console.warn('관찰노트 로컬 시작 화면 열기 실패:', error?.message || error);
+      }
+      if (typeof openObservationNoteFromRecord === 'function') {
+        openObservationNoteFromRecord();
+      }
+      return true;
+    }
+    await showRecordRoom({ localOnly: false });
     if (typeof openObservationNoteFromRecord === 'function') {
       openObservationNoteFromRecord();
     }
@@ -436,7 +462,22 @@ async function enterOlliByStartPage(page, options = {}){
     currentRecordView = 'academy';
     setObservationButtonSide('elementary', false);
     if (typeof syncRecordAcademyPageState === 'function') syncRecordAcademyPageState();
-    await showRecordRoom({ localOnly: localFirst });
+    if (localFirst) {
+      try {
+        const recordOpen = showRecordRoom({ localOnly: true });
+        if (recordOpen && typeof recordOpen.catch === 'function') {
+          recordOpen.catch(error => console.warn('학원관리 로컬 시작 화면 갱신 실패:', error?.message || error));
+        }
+      } catch (error) {
+        console.warn('학원관리 로컬 시작 화면 열기 실패:', error?.message || error);
+      }
+      if (typeof syncRecordAcademyPageState === 'function') syncRecordAcademyPageState();
+      requestAnimationFrame(() => {
+        if (typeof syncRecordAcademyPageState === 'function') syncRecordAcademyPageState();
+      });
+      return true;
+    }
+    await showRecordRoom({ localOnly: false });
     if (typeof syncRecordAcademyPageState === 'function') syncRecordAcademyPageState();
     requestAnimationFrame(() => {
       if (typeof syncRecordAcademyPageState === 'function') syncRecordAcademyPageState();
@@ -446,7 +487,18 @@ async function enterOlliByStartPage(page, options = {}){
   currentObservationView = 'elementary';
   currentRecordView = 'elementary';
   setObservationButtonSide('elementary', false);
-  await showRecordRoom({ localOnly: localFirst });
+  if (localFirst) {
+    try {
+      const recordOpen = showRecordRoom({ localOnly: true });
+      if (recordOpen && typeof recordOpen.catch === 'function') {
+        recordOpen.catch(error => console.warn('출석부 로컬 시작 화면 갱신 실패:', error?.message || error));
+      }
+    } catch (error) {
+      console.warn('출석부 로컬 시작 화면 열기 실패:', error?.message || error);
+    }
+    return true;
+  }
+  await showRecordRoom({ localOnly: false });
   return true;
 }
 function renderOlliStartPageSetupOptions(){
