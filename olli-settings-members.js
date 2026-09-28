@@ -564,21 +564,14 @@ async function refreshSettingsApprovalRequests() {
 async function approveSettingsRequest(requestId) {
   try {
     await ensureSettingsRequestBelongsToCurrentAcademy(requestId);
-    // 실제 로그인/RLS 연결 전에는 RPC가 권한 체크에서 막힐 수 있습니다.
-    // 우선 RPC를 시도하고, 실패 시 사용자에게 원인을 보여줍니다.
-    await fetch(`${SUPABASE_URL}/rest/v1/rpc/test_approve_teacher_request`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${getOlliAuthAccessToken ? (getOlliAuthAccessToken() || SUPABASE_KEY) : SUPABASE_KEY}`
-      },
-      body: JSON.stringify({ p_request_id: requestId, p_academy_id: settingsGetAcademyId() })
-    }).then(async res => {
-      const text = await res.text();
-      if (!res.ok) throw new Error(text || '승인 실패');
-      return text ? JSON.parse(text) : null;
+    const academyId = settingsGetAcademyId();
+    const sessionToken = await ensureOlliTeacherAdminSessionToken(false);
+    const result = await callOlliRpc('olli_approve_teacher_request', {
+      p_session_token: sessionToken,
+      p_academy_id: academyId,
+      p_request_id: String(requestId || '').trim()
     });
+    if (result && result.ok === false) throw new Error(result.message || '승인 실패');
 
     await settingsLoadApprovalRequests();
     await settingsLoadMembers();
@@ -586,36 +579,30 @@ async function approveSettingsRequest(requestId) {
     if (body) body.innerHTML = renderSettingsApprovalRequests();
     settingsApplyStateToUI();
   } catch (err) {
-    alert('승인 처리 중 오류가 발생했습니다.\nStage 4 테스트 RPC SQL이 실행되었는지 확인해 주세요.\n\n현재 오류:\n' + (err.message || err));
+    alert('승인 처리 중 오류가 발생했습니다.\n' + (err.message || err));
   }
 }
 
 async function rejectSettingsRequest(requestId) {
   try {
     await ensureSettingsRequestBelongsToCurrentAcademy(requestId);
-    await fetch(`${SUPABASE_URL}/rest/v1/rpc/test_reject_teacher_request`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${getOlliAuthAccessToken ? (getOlliAuthAccessToken() || SUPABASE_KEY) : SUPABASE_KEY}`
-      },
-      body: JSON.stringify({ p_request_id: requestId, p_academy_id: settingsGetAcademyId() })
-    }).then(async res => {
-      const text = await res.text();
-      if (!res.ok) throw new Error(text || '거절 실패');
-      return text ? JSON.parse(text) : null;
+    const academyId = settingsGetAcademyId();
+    const sessionToken = await ensureOlliTeacherAdminSessionToken(false);
+    const result = await callOlliRpc('olli_reject_teacher_request', {
+      p_session_token: sessionToken,
+      p_academy_id: academyId,
+      p_request_id: String(requestId || '').trim()
     });
+    if (result && result.ok === false) throw new Error(result.message || '거절 실패');
 
     await settingsLoadApprovalRequests();
     const body = document.getElementById('settingsDetailBody');
     if (body) body.innerHTML = renderSettingsApprovalRequests();
     settingsApplyStateToUI();
   } catch (err) {
-    alert('거절 처리 중 오류가 발생했습니다.\nStage 4 테스트 RPC SQL이 실행되었는지 확인해 주세요.\n\n현재 오류:\n' + (err.message || err));
+    alert('거절 처리 중 오류가 발생했습니다.\n' + (err.message || err));
   }
 }
-
 
 function getOlliTestApprovalAcademyTargets() {
   const targets = [];
@@ -685,9 +672,7 @@ async function loadOlliTestApprovalManagerRequests() {
   }
 
   const rpcNames = [
-    'olli_admin_list_all_teacher_approval_requests',
-    'olli_list_all_teacher_approval_requests',
-    'test_list_all_teacher_approval_requests'
+    'olli_admin_list_all_teacher_approval_requests'
   ];
   const errors = [];
   for (const rpcName of rpcNames) {
@@ -804,19 +789,7 @@ async function approveOlliTestApprovalRequest(requestId) {
         name: 'olli_admin_approve_teacher_approval_request',
         payload: { p_session_token: sessionToken, p_request_id: String(requestId || '').trim() }
       },
-      {
-        name: 'olli_approve_any_teacher_approval_request',
-        payload: { p_session_token: sessionToken, p_request_id: String(requestId || '').trim() }
-      },
-      {
-        name: 'test_admin_approve_teacher_request',
-        payload: { p_session_token: sessionToken, p_request_id: String(requestId || '').trim() }
-      },
-      {
-        name: 'test_approve_teacher_request',
-        mode: 'test',
-        payload: { p_request_id: String(requestId || '').trim(), p_academy_id: academyId }
-      }
+
     ]);
     await refreshOlliTestApprovalManager();
   } catch (err) {
@@ -843,19 +816,7 @@ async function rejectOlliTestApprovalRequest(requestId) {
         name: 'olli_admin_reject_teacher_approval_request',
         payload: { p_session_token: sessionToken, p_request_id: String(requestId || '').trim() }
       },
-      {
-        name: 'olli_reject_any_teacher_approval_request',
-        payload: { p_session_token: sessionToken, p_request_id: String(requestId || '').trim() }
-      },
-      {
-        name: 'test_admin_reject_teacher_request',
-        payload: { p_session_token: sessionToken, p_request_id: String(requestId || '').trim() }
-      },
-      {
-        name: 'test_reject_teacher_request',
-        mode: 'test',
-        payload: { p_request_id: String(requestId || '').trim(), p_academy_id: academyId }
-      }
+
     ]);
     await refreshOlliTestApprovalManager();
   } catch (err) {
