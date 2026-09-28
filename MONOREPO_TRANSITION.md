@@ -30,3 +30,27 @@ Target structure:
 - Next structural step is CI verification followed by a Mobile Vercel Preview using `apps/mobile` as Root Directory with outside-root source access enabled.
 
 This stage is structural preparation only. It does not change Production runtime paths.
+
+
+## 2026-09-29 self-contained Mobile Preview verification
+
+Preview-only validation was created without changing Mobile Production:
+
+- Mobile Preview branch: `preview/self-contained-common-20260929`
+- Preview branch head: `8be363e242ec061c6e05088f2c8f8991167d1a9d`
+- Vercel Preview deployment: `dpl_2h2kCTG6dq9DKtACWCWrJbsqAZ6y`
+- Preview URL host: `vivizac-feedback-99jwbupdl-ipro721-5437s-projects.vercel.app`
+- Deployment target: Preview (`target: null`), state: `READY`
+- Mobile Production remains `main@0e74868fbdd3b73b3e84f57fcd31e46b64df6484`.
+- The Preview branch contains the 45 shared runtime files locally and has no PC raw GitHub runtime rewrites.
+- All 45 Preview runtime blob SHAs match `packages/common` exactly.
+- The pinned Production source `observation-memo-version-history-core.js` was separately checked and is byte-identical to the package source.
+- Monorepo CI at `6ca893fecd6aa0669c3d5eee4a71e2b28b444611` passed structure/build, static dependency closure, PC schedule Realtime, and Mobile schedule/security/storage contracts.
+
+### Not yet completed
+
+- Logged-in visual/UI smoke on the protected Preview deployment is not marked complete. The connected server fetch is redirected by Vercel SSO and the current environment does not expose a persistent browser session.
+- The final Vercel Root Directory cutover to `apps/mobile` has not been performed.
+- The existing Mobile Production repository/raw bridge has not been removed.
+
+Do not merge the repository-layout cutover to Production or remove legacy bridges until the logged-in Preview/Production smoke gate is completed.
