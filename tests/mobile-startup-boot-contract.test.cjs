@@ -123,13 +123,40 @@ test('memo navigation opens the screen shell before optional initialization', ()
 });
 
 
-test('memo utility portal keeps its page-state helpers', () => {
+test('memo utility controls are fixed markup and never dynamically mounted', () => {
   const utility = fs.readFileSync(path.join(MOBILE, 'olli-record-utility-touch.js'), 'utf8');
+  const roster = fs.readFileSync(path.join(MOBILE, 'olli-observation-roster-phone.js'), 'utf8');
+  const rosterCss = fs.readFileSync(path.join(MOBILE, 'olli-observation-roster-phone.css'), 'utf8');
+  const baseCss = fs.readFileSync(path.join(MOBILE, 'olli-phone-base.css'), 'utf8');
   const html = fs.readFileSync(path.join(MOBILE, 'index.html'), 'utf8');
 
-  assert.match(utility, /function screen\(\)\s*\{[\s\S]*?document\.getElementById\('studentMemoScreen'\)/);
-  assert.match(utility, /function isEditor\(\)\s*\{[\s\S]*?data-memo-body-view[\s\S]*?'editor'/);
-  assert.match(utility, /window\.mountObservationMemoEditorTools = mountEditorTools/);
-  assert.match(utility, /\[archive, voice, history, survey\]\.forEach/);
-  assert.match(html, /olli-record-utility-touch\.js\?v=20260929-memo-utility-helpers-1/);
+  const groupIndex = html.indexOf('id="memoEditorUtilityGroup"');
+  const archiveIndex = html.indexOf('id="memoRecordsBtn"', groupIndex);
+  const voiceIndex = html.indexOf('id="memoEditorVoiceBtn"', groupIndex);
+  const historyIndex = html.indexOf('id="olliMemoVersionHistoryBtn"', groupIndex);
+  const surveyIndex = html.indexOf('id="memoBottomAnalysisBtn"', groupIndex);
+
+  assert.ok(groupIndex >= 0);
+  assert.ok(archiveIndex > groupIndex);
+  assert.ok(voiceIndex > archiveIndex);
+  assert.ok(historyIndex > voiceIndex);
+  assert.ok(surveyIndex > historyIndex);
+
+  assert.match(utility, /function bindFixedEditorTools\(\)/);
+  assert.match(utility, /document\.getElementById\('memoEditorUtilityGroup'\)/);
+  assert.doesNotMatch(utility, /ensureGroup\(/);
+  assert.doesNotMatch(utility, /ensureArchiveButton\(/);
+  assert.doesNotMatch(utility, /ensureVoiceButton\(/);
+  assert.doesNotMatch(utility, /ensureHistoryButton\(/);
+  assert.doesNotMatch(utility, /mountObservationMemoEditorTools/);
+  assert.doesNotMatch(utility, /appendChild\(btn\)/);
+  assert.doesNotMatch(roster, /mountObservationMemoEditorTools/);
+  assert.doesNotMatch(roster, /memoBottomBar/);
+  assert.doesNotMatch(html, /memoBottomBar/);
+  assert.doesNotMatch(rosterCss, /memoBottomBar/);
+  assert.doesNotMatch(baseCss, /memoBottomBar/);
+
+  assert.match(html, /olli-phone-base\.css\?v=20260929-memo-fixed-group-1/);
+  assert.match(html, /olli-observation-roster-phone\.css\?v=20260929-memo-fixed-group-1/);
+  assert.match(html, /olli-record-utility-touch\.js\?v=20260929-memo-fixed-group-1/);
 });
