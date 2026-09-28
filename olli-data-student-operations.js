@@ -723,31 +723,6 @@ function clearPendingStudentStatus(studentId) {
   localStorage.setItem(getPendingStudentStatusStorageKey(), JSON.stringify(map));
 }
 
-async function patchStudentStatusReturning(path, payload) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${getOlliAuthAccessToken ? (getOlliAuthAccessToken() || SUPABASE_KEY) : SUPABASE_KEY}`,
-      'Prefer': 'return=representation'
-    },
-    body: JSON.stringify(payload)
-  });
-
-  const text = await res.text();
-  let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-  if (!res.ok) {
-    const detail =
-      (data && typeof data === 'object' && (data.message || data.details || data.hint || data.code))
-        ? [data.message, data.details, data.hint, data.code].filter(Boolean).join(' / ')
-        : (typeof data === 'string' ? data : '');
-    throw new Error(`Supabase 요청 실패 (${res.status})${detail ? '\n' + detail : ''}`);
-  }
-  return Array.isArray(data) ? data : [];
-}
-
 async function updateStudentStatusInSupabase(student) {
   if (!isSupabaseConfigured()) return false;
   const academyId = requireOlliAcademyId('학생 상태 저장');
@@ -874,6 +849,15 @@ async function ensureStudentSavedToSupabase(student) {
   return savedStudent;
 }
 
+async function loadStudentRowsFromSecureServer(academyId) {
+  const core = window.OlliStorageCore;
+  if (!core?.FeatureRegistry || !core?.ServerAdapter) {
+    throw new Error('학생 목록 보호 서버 모듈이 준비되지 않았습니다.');
+  }
+  const spec = core.FeatureRegistry.require('students_list');
+  return core.ServerAdapter.read(spec, { academyId }, { limit: 5000 });
+}
+
 async function loadStudentsFromSupabase(options = {}) {
   if (!isSupabaseConfigured()) return { changed: false, skipped: true };
   const academyId = getOlliCurrentAcademyId();
@@ -887,7 +871,7 @@ async function loadStudentsFromSupabase(options = {}) {
   try {
     await flushPendingStudentStatuses();
     if (!requestIsCurrent()) return { changed: false, stale: true };
-    const rows = await supabase('GET', `students?select=*&academy_id=eq.${encodeURIComponent(academyId)}&order=name.asc`);
+    const rows = await loadStudentRowsFromSecureServer(academyId);
     const pendingStatusMap = getPendingStudentStatusMap();
     const localById = new Map(getAllStudents().map(s => [String(s.id || ''), s]));
     const byId = new Map();

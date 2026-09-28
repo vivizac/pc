@@ -1420,6 +1420,32 @@
   });
 
   FeatureRegistry.register({
+    feature: 'students_list',
+    label: '학생 목록',
+    version: 1,
+    scope: 'academy',
+    identity: { requiresAcademyId: true },
+    persistence: 'server_source',
+    local: { enabled: false, defaultValue: [], legacyKeys: [], migrationPolicy: 'manual' },
+    server: {
+      kind: 'table_rows',
+      table: 'students',
+      transport: 'session_rpc',
+      rpc: 'olli_student_data_access',
+      operation: 'read',
+      createIfMissing: false,
+      identityColumns: ['academy_id'],
+      valueColumns: [],
+      requiredColumns: ['academy_id'],
+      selectColumns: []
+    },
+    verification: { mode: 'none', compareFields: [] },
+    conflict: { policy: 'server_source', protectPendingLocal: true },
+    permissions: { read: ['teacher', 'manager', 'owner'], write: [] },
+    diagnostics: { serverRequired: true, adminVisible: true }
+  });
+
+  FeatureRegistry.register({
     feature: 'student_profile',
     label: '학생정보',
     version: 1,
@@ -1435,6 +1461,8 @@
     server: {
       kind: 'table_row',
       table: 'students',
+      transport: 'session_rpc',
+      rpc: 'olli_student_data_access',
       operation: 'upsert',
       createIfMissing: true,
       identityColumns: ['id'],
@@ -1465,6 +1493,8 @@
     server: {
       kind: 'table_row',
       table: 'students',
+      transport: 'session_rpc',
+      rpc: 'olli_student_data_access',
       operation: 'patch',
       createIfMissing: false,
       identityColumns: ['academy_id', 'id'],
@@ -1494,7 +1524,9 @@
     server: {
       kind: 'table_row',
       table: 'students',
-      operation: 'patch',
+      transport: 'session_rpc',
+      rpc: 'olli_student_data_access',
+      operation: 'soft_delete',
       createIfMissing: false,
       identityColumns: ['academy_id', 'id'],
       valueColumns: ['is_deleted', 'deleted_at', 'deleted_by', 'delete_reason'],
