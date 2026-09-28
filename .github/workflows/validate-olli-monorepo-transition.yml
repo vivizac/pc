@@ -46,10 +46,11 @@ jobs:
       - name: Validate PC schedule Realtime
         run: node --test tests/schedule-realtime.test.cjs
       - name: Validate Mobile schedule and security contracts
+        working-directory: apps/mobile
         run: |
           node --test \
-            apps/mobile/tests/schedule-realtime.test.cjs \
-            apps/mobile/tests/phone-schedule-class-layout-date-contract.test.cjs \
-            apps/mobile/tests/mobile-secure-auth-source-contract.test.cjs \
-            apps/mobile/tests/photo-private-storage-contract.test.cjs \
-            apps/mobile/tests/storage-secure-transport-contract.test.cjs
+            tests/schedule-realtime.test.cjs \
+            tests/phone-schedule-class-layout-date-contract.test.cjs \
+            tests/mobile-secure-auth-source-contract.test.cjs \
+            tests/photo-private-storage-contract.test.cjs \
+            tests/storage-secure-transport-contract.test.cjs
