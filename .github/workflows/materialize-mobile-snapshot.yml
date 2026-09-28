@@ -1,0 +1,63 @@
+name: Materialize Mobile Production Snapshot
+
+on:
+  push:
+    branches:
+      - work/olli-mobile-self-contained-20260929
+    paths:
+      - '.github/workflows/materialize-mobile-snapshot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout monorepo branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      - name: Materialize exact Mobile Production commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          target='apps/mobile'
+          source_repo='https://github.com/vivizac/mobile.git'
+          source_commit='0e74868fbdd3b73b3e84f57fcd31e46b64df6484'
+
+          # Replace only the transitional gitlink. Do not touch PC root or packages/common.
+          if git ls-files --stage "$target" | grep -q '^160000 '; then
+            git rm -f "$target"
+          else
+            echo "apps/mobile is already materialized; nothing to replace."
+            exit 0
+          fi
+
+          tmp="$(mktemp -d)"
+          git clone --quiet --no-checkout "$source_repo" "$tmp/mobile"
+          git -C "$tmp/mobile" checkout --quiet "$source_commit"
+
+          mkdir -p "$target"
+          cp -a "$tmp/mobile/." "$target/"
+          rm -rf "$target/.git"
+
+          if [ -f .gitmodules ]; then
+            git rm -f .gitmodules
+          fi
+
+          printf '%s\n' "$source_commit" > "$target/.olli-source-commit"
+          git add "$target"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --cached --quiet; then
+            echo "No materialization changes."
+            exit 0
+          fi
+
+          git commit -m "chore: materialize mobile production snapshot [skip ci]"
+          git push origin HEAD:work/olli-mobile-self-contained-20260929
