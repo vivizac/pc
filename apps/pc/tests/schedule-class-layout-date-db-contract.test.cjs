@@ -83,3 +83,12 @@ test('regular schedule writes derive the first actual class date on or after eff
   assert.match(sql, /olli_schedule_set_student_weekly_schedule/i);
   assert.match(sql, /olli_schedule_change/i);
 });
+
+
+test('A/B split periods reject overlaps and normalize adjacent ranges', () => {
+  const sql = migrationSql();
+  assert.match(sql, /olli_schedule_class_split_period_guard/i);
+  assert.match(sql, /CLASS_LAYOUT_CONFLICT/i);
+  assert.match(sql, /effective_to\s*=\s*p_effective_date\s*-\s*1/i);
+  assert.match(sql, /v_previous_from/i);
+});
