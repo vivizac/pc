@@ -144,8 +144,8 @@
   border-radius:12px;background:#f2f3f5;color:#9aa0a7
 }
 .olliMatItemIcon svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
-.olliMatItemIcon.has-image{overflow:hidden;background:#fff}
-.olliMatItemIcon img{width:100%;height:100%;display:block;object-fit:cover}
+.olliMatItemIcon.coffee-image{overflow:hidden;background:#fff}
+.olliMatItemIcon.coffee-image img{width:100%;height:100%;display:block;object-fit:cover}
 .olliMatItemCopy{min-width:0;display:flex;flex-direction:column;gap:7px}
 .olliMatItemName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px;font-weight:760;letter-spacing:-.025em}
 .olliMatItemMeta{min-width:0;display:flex;align-items:center;gap:0;overflow:hidden;color:#959ba3;font-size:10.5px;font-weight:530;white-space:nowrap}

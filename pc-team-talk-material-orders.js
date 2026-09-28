@@ -3,7 +3,7 @@
 
   if (global.OlliTeamTalkMaterialOrders?.version) return;
 
-  const VERSION = '1.1.0';
+  const VERSION = '1.2.0';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
 
   const state = {
@@ -25,10 +25,23 @@
 
   const clean = value => String(value == null ? '' : value).trim();
 
-  const MATERIAL_ICON_RULES = Object.freeze([
-    { keywords: ['아크릴'], src: '/assets/material-icons/acrylic.webp' },
-    { keywords: ['도화지'], src: '/assets/material-icons/drawing-paper.webp' },
-    { keywords: ['크레프트지', '크래프트지', '크라프트지'], src: '/assets/material-icons/kraft-paper.webp' }
+  const OLLI_COFFEE_THUMBS = Object.freeze([
+    '/assets/olli-coffee/coffee-1.webp',
+    '/assets/olli-coffee/coffee-2.webp',
+    '/assets/olli-coffee/coffee-3.webp',
+    '/assets/olli-coffee/coffee-4.webp',
+    '/assets/olli-coffee/coffee-5.webp',
+    '/assets/olli-coffee/coffee-6.webp',
+    '/assets/olli-coffee/coffee-7.webp'
+  ]);
+
+  const COFFEE_ITEM_KEYWORDS = Object.freeze([
+    '커피', '아메리카노', '아이스아메리카노', '아이스 아메리카노',
+    '라떼', '카페라떼', '카페 라떼', '카라멜라떼', '카라멜 라떼',
+    '바닐라라떼', '바닐라 라떼', '카푸치노', '모카', '마키아토',
+    '에스프레소', '콜드브루', '콜드 브루', '프라푸치노',
+    '쥬스', '주스', '스무디', '아이스티', '아이스 티', '밀크티', '밀크 티',
+    '에이드'
   ]);
 
   function context() {
@@ -251,20 +264,31 @@
     }
   }
 
-  function materialIcon(itemName) {
-    const wrap = create('span', 'olliMatItemIcon');
-    const name = clean(itemName);
-    const rule = MATERIAL_ICON_RULES.find(({ keywords }) =>
-      keywords.some(keyword => name.includes(keyword))
-    );
+  function isCoffeeItem(itemName) {
+    const name = clean(itemName).toLowerCase().replace(/\s+/g, ' ');
+    return !!name && COFFEE_ITEM_KEYWORDS.some(keyword => name.includes(keyword));
+  }
 
-    if (rule) {
+  function coffeeThumbIndex(value) {
+    const text = String(value || '');
+    let hash = 2166136261;
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0) % OLLI_COFFEE_THUMBS.length;
+  }
+
+  function materialIcon(item) {
+    const wrap = create('span', 'olliMatItemIcon');
+    if (isCoffeeItem(item?.item_name)) {
+      const stableSeed = clean(item?.id) || [item?.created_at, item?.item_name, item?.requested_by_name].filter(Boolean).join('|');
       const image = document.createElement('img');
-      image.src = rule.src;
+      image.src = OLLI_COFFEE_THUMBS[coffeeThumbIndex(stableSeed)];
       image.alt = '';
       image.loading = 'lazy';
       image.decoding = 'async';
-      wrap.classList.add('has-image');
+      wrap.classList.add('coffee-image');
       wrap.appendChild(image);
       return wrap;
     }
@@ -307,7 +331,7 @@
       button.dataset.materialId = clean(item?.id);
       button.classList.toggle('selected', clean(item?.id) === state.selectedId);
 
-      const icon = materialIcon(item?.item_name);
+      const icon = materialIcon(item);
       const copy = create('span', 'olliMatItemCopy');
       copy.appendChild(create('strong', 'olliMatItemName', clean(item?.item_name) || '재료'));
 
@@ -375,7 +399,7 @@
     body.replaceChildren();
 
     const hero = create('div', 'olliMatDetailHero');
-    hero.append(materialIcon(item.item_name), create('div', 'olliMatDetailHeroCopy'));
+    hero.append(materialIcon(item), create('div', 'olliMatDetailHeroCopy'));
     const heroCopy = hero.lastElementChild;
     heroCopy.append(
       create('strong', '', clean(item.item_name) || '재료'),
