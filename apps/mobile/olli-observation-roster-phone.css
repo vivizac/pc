@@ -186,11 +186,6 @@
   justify-content:center;
 }
 
-/* roster 상태는 JS도 동일하게 none으로 제어한다. */
-#observationRosterScreen .memoBottomBar {
-  display:none;
-}
-
 /* 학생목록 하단 검색/정렬 도구 */
 #observationRosterScreen .memoRosterUtilityBar {
   position:relative;
@@ -481,12 +476,6 @@
   height:44px;
   min-height:44px;
   border-radius:999px;
-}
-
-#studentMemoScreen[data-memo-body-view="editor"] .memoBottomBar {
-  left:var(--olli-phone-guide-x);
-  right:auto;
-  bottom:var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom)));
 }
 
 /* 전송 버튼은 글래스/그림자 없이 완전한 원형으로 유지한다. */
