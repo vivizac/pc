@@ -32,11 +32,21 @@ async function hideOlliBootScreen() {
 document.addEventListener('DOMContentLoaded', async () => {
   showOlliBootScreen();
   setupMemoPauseAutoSaveBindings();
+  let olliStartupAuthReady = false;
   try {
     hideOlliAppScreensForRoute();
 
+    let accountRestore = null;
     if (typeof restoreOlliAccountSession === 'function') {
-      await restoreOlliAccountSession({ silent: true });
+      accountRestore = await restoreOlliAccountSession({ silent: true, allowCachedFallback: true });
+    }
+
+    if (!accountRestore || accountRestore.restored !== true) {
+      if (!(typeof applyOlliTeacherInviteFromUrl === 'function' && applyOlliTeacherInviteFromUrl())) {
+        if (typeof showOlliLoginEntry === 'function') showOlliLoginEntry();
+      }
+      await hideOlliBootScreen();
+      return;
     }
 
     if (typeof validateOlliCurrentAcademyStillExists === 'function') {
@@ -55,6 +65,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
     }
+
+    olliStartupAuthReady = true;
 
     migrateStudentStorageIfNeeded();
     initGroupChoiceIcons();
@@ -88,7 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await hideOlliBootScreen();
   } catch (err) {
     console.error('startup init error:', err);
-    if (isOlliLoggedInForStartPage()) {
+    if (olliStartupAuthReady && isOlliLoggedInForStartPage()) {
       await enterOlliByStartPage(getOlliDefaultStartPage() || 'attendance');
     } else if (!(typeof applyOlliTeacherInviteFromUrl === 'function' && applyOlliTeacherInviteFromUrl())) {
       showOlliLoginEntry();
