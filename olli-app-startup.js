@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       accountRestore = await restoreOlliAccountSession({ silent: true, allowCachedFallback: true });
     }
 
-    if (!accountRestore || accountRestore.restored !== true) {
+    if (!accountRestore || accountRestore.restored !== true || accountRestore.authoritative !== true) {
       if (!(typeof applyOlliTeacherInviteFromUrl === 'function' && applyOlliTeacherInviteFromUrl())) {
         if (typeof showOlliLoginEntry === 'function') showOlliLoginEntry();
       }
@@ -49,18 +49,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    if (typeof validateOlliCurrentAcademyStillExists === 'function') {
-      const academyCheck = await validateOlliCurrentAcademyStillExists({ silent: true });
-      if (academyCheck && academyCheck.blocked) {
-        await hideOlliBootScreen();
-        return;
-      }
-    }
-
     if (typeof validateOlliCurrentMemberAccess === 'function') {
-      const access = await validateOlliCurrentMemberAccess({ silent: true });
-      if (access && access.blocked) {
-        if (typeof showOlliTeacherRequest === 'function') showOlliTeacherRequest();
+      const access = await validateOlliCurrentMemberAccess({
+        silent: true,
+        sessionRestore: accountRestore,
+        refresh: false
+      });
+      if (!access || access.valid !== true) {
+        if (access?.blocked === true && typeof showOlliLoginEntry === 'function') showOlliLoginEntry();
         await hideOlliBootScreen();
         return;
       }
