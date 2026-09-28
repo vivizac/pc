@@ -281,23 +281,14 @@
   }
 })();
 
-/* 2026-09-10: 수업기록 하단 유틸리티는 헤더 안에서 CSS로 이동시키지 않고
-   studentMemoScreen 직속 포털로 실제 버튼 DOM을 옮겨 터치/클릭 레이어를 보장한다. */
+/* 관찰노트 하단 4버튼은 index.html이 고정 소유한다.
+   이 파일은 DOM 생성/이동 없이 보관함·마이크·이전기록 기능만 연결한다. */
 (function () {
-  if (window.__olliMemoEditorUtilityPortalV1) return;
-  window.__olliMemoEditorUtilityPortalV1 = true;
+  if (window.__olliMemoEditorUtilityBindingsV1) return;
+  window.__olliMemoEditorUtilityBindingsV1 = true;
 
-  const GROUP_ID = 'memoEditorUtilityGroup';
-  const ARCHIVE_ID = 'memoRecordsBtn';
-  const VOICE_ID = 'memoEditorVoiceBtn';
-  const HISTORY_ID = 'olliMemoVersionHistoryBtn';
-
-  function screen() {
-    return document.getElementById('studentMemoScreen');
-  }
-
-  function isEditor() {
-    const root = screen();
+  function isMemoEditorActive() {
+    const root = document.getElementById('studentMemoScreen');
     return !!root && root.getAttribute('data-memo-body-view') === 'editor';
   }
 
@@ -462,149 +453,74 @@
     }
   }
 
-  function ensureArchiveButton(parent) {
-    let btn = document.getElementById(ARCHIVE_ID);
-    if (btn) return btn;
-    if (!parent) return null;
+  function bindFixedEditorTools() {
+    const group = document.getElementById('memoEditorUtilityGroup');
+    const archive = document.getElementById('memoRecordsBtn');
+    const voiceBtn = document.getElementById('memoEditorVoiceBtn');
+    const history = document.getElementById('olliMemoVersionHistoryBtn');
+    if (!group) return;
 
-    btn = document.createElement('button');
-    btn.type = 'button';
-    btn.id = ARCHIVE_ID;
-    btn.className = 'memoRecordRoomBtn memoRecordBtn';
-    btn.setAttribute('aria-label', '피드백 보관함');
-    btn.title = '피드백 보관함';
-    btn.innerHTML = '<svg aria-hidden="true" focusable="false" class="memoRecordIcon" width="23" height="23" viewBox="24 21 80 80" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M31 52V40C31 33.4 36.4 28 43 28H51.5C54.6 28 57.4 29.1 59.8 31L64.8 35H85C91.6 35 97 40.4 97 47V82C97 88.6 91.6 94 85 94H43C36.4 94 31 88.6 31 82V52Z" stroke="#111111" stroke-width="5.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M31 53H97" stroke="#111111" stroke-width="5.6" stroke-linecap="round"/></svg>';
-    btn.addEventListener('click', function(event) {
-      event.preventDefault();
-      event.stopPropagation();
-      if (!isEditor()) return;
-      if (typeof window.toggleElementaryRecordsMenu === 'function') {
-        window.toggleElementaryRecordsMenu(event);
-      }
-    });
-    parent.appendChild(btn);
-    return btn;
-  }
-
-  function ensureVoiceButton(parent) {
-    let btn = document.getElementById(VOICE_ID);
-    if (btn) return btn;
-    if (!parent) return null;
-
-    btn = document.createElement('button');
-    btn.type = 'button';
-    btn.id = VOICE_ID;
-    btn.className = 'memoEditorVoiceBtn';
-    btn.setAttribute('aria-label', '음성 입력');
-    btn.setAttribute('aria-pressed', 'false');
-    btn.title = '음성 입력';
-    const sharedMic = document.querySelector('#kcfVoiceBtn svg');
-    btn.innerHTML = sharedMic
-      ? sharedMic.outerHTML
-      : '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><rect x="8" y="3" width="8" height="13" rx="4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></rect><path d="M5 12.5C5 16.09 8.13 19 12 19C15.87 19 19 16.09 19 12.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path><path d="M12 19V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path></svg>';
-    btn.addEventListener('click', async function (event) {
-      event.preventDefault();
-      event.stopPropagation();
-      const editor = document.getElementById('memoEditor');
-      const voice = window.KcfVoiceTranscription;
-      if (!editor || !isEditor()) return;
-      if (!voice || typeof voice.toggleForTarget !== 'function') {
-        try {
-          if (typeof window.showPushToast === 'function') window.showPushToast('음성 입력을 준비하지 못했어요.');
-        } catch (_) {}
-        return;
-      }
-      await voice.toggleForTarget(editor, btn, {
-        finalizeTranscript: organizeMemoVoiceTranscript,
-        showPanel:true,
-        panelHost:parent,
-        deferTranscriptUntilFinalized:true
-      });
-    });
-    parent.appendChild(btn);
-    return btn;
-  }
-
-  function ensureHistoryButton(parent) {
-    let btn = document.getElementById(HISTORY_ID);
-    if (btn) {
-      btn.setAttribute('data-olli-history-visibility-owner', 'mobile');
-      return btn;
-    }
-    if (!parent) return null;
-
-    btn = document.createElement('button');
-    btn.type = 'button';
-    btn.id = HISTORY_ID;
-    btn.className = 'memoRecordRoomBtn memoRecordBtn';
-    btn.setAttribute('data-olli-history-visibility-owner', 'mobile');
-    btn.setAttribute('aria-label', '관찰노트 이전 기록');
-    btn.title = '이전 기록';
-    btn.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5.2 8.1A7.6 7.6 0 1 1 4.6 14"></path><path d="M5.2 4.8v4.5h4.5"></path><path d="M12 7.7v4.5l3 1.8"></path></svg>';
-    btn.addEventListener('click', async function (event) {
-      event.preventDefault();
-      event.stopPropagation();
-      const student = window.currentMemoStudent;
-      if (!student || !student.id || window.currentMemoType !== 'elementary') {
-        try { window.alert('학생을 선택한 뒤 이전 기록을 확인해 주세요.'); } catch (_) {}
-        return;
-      }
-      try {
-        await loadHistory();
-        if (typeof window.openObservationMemoVersionHistory === 'function') {
-          window.openObservationMemoVersionHistory();
+    if (archive && archive.dataset.olliFixedUtilityBound !== '1') {
+      archive.dataset.olliFixedUtilityBound = '1';
+      archive.addEventListener('click', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!isMemoEditorActive()) return;
+        if (typeof window.toggleElementaryRecordsMenu === 'function') {
+          window.toggleElementaryRecordsMenu(event);
         }
-      } catch (error) {
-        console.warn('관찰노트 이전 기록 열기 실패:', error && error.message ? error.message : error);
-      }
-    });
-    parent.appendChild(btn);
-    return btn;
-  }
-
-  function ensureGroup() {
-    const root = screen();
-    if (!root) return null;
-    let group = document.getElementById(GROUP_ID);
-    if (!group) {
-      group = document.createElement('div');
-      group.id = GROUP_ID;
-      group.setAttribute('aria-label', '수업기록 도구');
-      root.appendChild(group);
+      });
     }
-    return group;
+
+    if (voiceBtn && voiceBtn.dataset.olliFixedUtilityBound !== '1') {
+      voiceBtn.dataset.olliFixedUtilityBound = '1';
+      voiceBtn.addEventListener('click', async function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        const editor = document.getElementById('memoEditor');
+        const voice = window.KcfVoiceTranscription;
+        if (!editor || !isMemoEditorActive()) return;
+        if (!voice || typeof voice.toggleForTarget !== 'function') {
+          try {
+            if (typeof window.showPushToast === 'function') window.showPushToast('음성 입력을 준비하지 못했어요.');
+          } catch (_) {}
+          return;
+        }
+        await voice.toggleForTarget(editor, voiceBtn, {
+          finalizeTranscript: organizeMemoVoiceTranscript,
+          showPanel:true,
+          panelHost:group,
+          deferTranscriptUntilFinalized:true
+        });
+      });
+    }
+
+    if (history && history.dataset.olliFixedUtilityBound !== '1') {
+      history.dataset.olliFixedUtilityBound = '1';
+      history.addEventListener('click', async function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!isMemoEditorActive()) return;
+        const student = window.currentMemoStudent;
+        if (!student || !student.id || window.currentMemoType !== 'elementary') {
+          try { window.alert('학생을 선택한 뒤 이전 기록을 확인해 주세요.'); } catch (_) {}
+          return;
+        }
+        try {
+          await loadHistory();
+          if (typeof window.openObservationMemoVersionHistory === 'function') {
+            window.openObservationMemoVersionHistory();
+          }
+        } catch (error) {
+          console.warn('관찰노트 이전 기록 열기 실패:', error && error.message ? error.message : error);
+        }
+      });
+    }
   }
 
-  function mountEditorTools() {
-    const root = screen();
-    const group = ensureGroup();
-    if (!root || !group) return;
-
-    const survey = document.getElementById('memoBottomAnalysisBtn');
-    const archive = ensureArchiveButton(group);
-    const voice = ensureVoiceButton(group);
-    const history = ensureHistoryButton(group);
-    [archive, voice, history, survey].forEach(function (btn) {
-      if (!btn) return;
-      group.appendChild(btn);
-      btn.hidden = false;
-      btn.removeAttribute('hidden');
-      btn.style.removeProperty('display');
-      btn.style.removeProperty('visibility');
-      btn.style.removeProperty('opacity');
-      btn.style.removeProperty('pointer-events');
-    });
-
-    group.hidden = !isEditor();
-    group.setAttribute('aria-hidden', isEditor() ? 'false' : 'true');
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindFixedEditorTools, { once:true });
+  } else {
+    bindFixedEditorTools();
   }
-
-  window.mountObservationMemoEditorTools = mountEditorTools;
-
-  document.addEventListener('DOMContentLoaded', function () {
-    mountEditorTools();
-    setTimeout(mountEditorTools, 80);
-  }, { once: true });
-  requestAnimationFrame(mountEditorTools);
-  setTimeout(mountEditorTools, 120);
 })();
