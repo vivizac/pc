@@ -119,7 +119,7 @@ test('memo navigation opens the screen shell before optional initialization', ()
 
   assert.match(html, /observation-memo-session-common\.js\?v=20260929-memo-page-owner-1/);
   assert.match(html, /olli-observation-runtime\.js\?v=20260929-memo-page-owner-1/);
-  assert.match(html, /olli-observation-roster-phone\.js\?v=20260929-memo-page-owner-1/);
+  assert.match(html, /olli-observation-roster-phone\.js\?v=20260929-fixed-survey-visible-1/);
 });
 
 
