@@ -51,3 +51,30 @@ test('staging copies exactly the canonical common bytes and never needs a tracke
     fs.rmSync(temp, { recursive: true, force: true });
   }
 });
+
+
+test('staged Mobile index has a closed set of local static dependencies', () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'olli-mobile-build-'));
+  const tempMobile = path.join(tempRoot, 'mobile');
+  try {
+    fs.cpSync(MOBILE, tempMobile, { recursive: true });
+    stageCommon({ mobileDir: tempMobile, commonDir: COMMON, manifestPath: MANIFEST_PATH });
+
+    const html = fs.readFileSync(path.join(tempMobile, 'index.html'), 'utf8');
+    const refs = [];
+    const attrPattern = /\b(?:src|href)=["']([^"'<>]+)["']/gi;
+    let match;
+    while ((match = attrPattern.exec(html))) {
+      const raw = String(match[1] || '').trim();
+      if (!raw || /^(?:https?:|data:|blob:|javascript:|#|mailto:|tel:)/i.test(raw)) continue;
+      const clean = raw.split('#')[0].split('?')[0].replace(/^\/+/, '');
+      if (clean) refs.push(clean);
+    }
+
+    assert.ok(refs.length > 0, 'index.html should contain local static references');
+    const missing = [...new Set(refs)].filter(file => !fs.existsSync(path.join(tempMobile, file)));
+    assert.deepEqual(missing, [], 'missing staged Mobile assets: ' + missing.join(', '));
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
+});
