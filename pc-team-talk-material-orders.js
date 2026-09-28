@@ -3,7 +3,7 @@
 
   if (global.OlliTeamTalkMaterialOrders?.version) return;
 
-  const VERSION = '1.0.1';
+  const VERSION = '1.5.0';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
 
   const state = {
@@ -24,6 +24,37 @@
   };
 
   const clean = value => String(value == null ? '' : value).trim();
+
+  const OLLI_COFFEE_THUMBS = Object.freeze([
+    '/assets/olli-coffee/coffee-1.webp',
+    '/assets/olli-coffee/coffee-2.webp',
+    '/assets/olli-coffee/coffee-3.webp',
+    '/assets/olli-coffee/coffee-4.webp',
+    '/assets/olli-coffee/coffee-5.webp',
+    '/assets/olli-coffee/coffee-6.webp',
+    '/assets/olli-coffee/coffee-7.webp'
+  ]);
+
+  const COFFEE_ITEM_KEYWORDS = Object.freeze([
+    '커피', '아메리카노', '아이스아메리카노', '아이스 아메리카노',
+    '라떼', '카페라떼', '카페 라떼', '카라멜라떼', '카라멜 라떼',
+    '바닐라라떼', '바닐라 라떼', '카푸치노', '모카', '마키아토',
+    '에스프레소', '콜드브루', '콜드 브루', '프라푸치노',
+    '쥬스', '주스', '스무디', '아이스티', '아이스 티', '밀크티', '밀크 티',
+    '에이드', '당이 떨어 졌어요.', '당이 떨어졌어요.'
+  ]);
+
+  const MATERIAL_QUICK_WORDS = Object.freeze([
+    'A3도화지',
+    'A3용지',
+    'A4용지',
+    'A4도화지',
+    '아크릴물감',
+    '크라프트지',
+    '물',
+    '커피',
+    '당이 떨어 졌어요.'
+  ]);
 
   function context() {
     let academyContext = null;
@@ -85,6 +116,120 @@
     const hh = String(date.getHours()).padStart(2, '0');
     const mm = String(date.getMinutes()).padStart(2, '0');
     return `${y}.${m}.${d} ${hh}:${mm}`;
+  }
+
+  function localDateKey(date = new Date()) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function mondayKey(date = new Date()) {
+    const day = date.getDay();
+    const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    monday.setDate(monday.getDate() - (day === 0 ? 6 : day - 1));
+    return localDateKey(monday);
+  }
+
+  function isCoffeeQuickWord(value) {
+    const name = clean(value).replace(/\s+/g, ' ');
+    return name === '커피' || name === '당이 떨어 졌어요.' || name === '당이 떨어졌어요.';
+  }
+
+  async function todayTeachingTeacherCount() {
+    const current = context();
+    if (!current.sessionToken || !current.academyId) throw new Error('로그인 정보를 찾지 못했습니다.');
+
+    const now = new Date();
+    const weekday = now.getDay();
+    if (weekday === 0) return 0;
+
+    const today = localDateKey(now);
+    const weekStart = mondayKey(now);
+    const common = {
+      p_session_token: current.sessionToken,
+      p_academy_id: current.academyId
+    };
+
+    const [week, teacherContext, overrideContext] = await Promise.all([
+      rpc('olli_schedule_week', { ...common, p_week_start: weekStart }),
+      rpc('olli_schedule_class_teacher_context', common),
+      rpc('olli_schedule_teacher_overrides_range', { ...common, p_start_date: today, p_end_date: today })
+    ]);
+
+    if (week?.ok === false) throw new Error(week.message || '오늘 시간표를 불러오지 못했습니다.');
+    if (teacherContext?.ok === false) throw new Error(teacherContext.message || '담임 정보를 불러오지 못했습니다.');
+    if (overrideContext?.ok === false) throw new Error(overrideContext.message || '당일 담당 정보를 불러오지 못했습니다.');
+
+    const activeSlots = new Set();
+    (Array.isArray(week?.enrollments) ? week.enrollments : []).forEach(item => {
+      const from = clean(item?.effective_from);
+      const to = clean(item?.effective_to);
+      if (Number(item?.weekday) !== weekday) return;
+      if (from && from > today) return;
+      if (to && to < today) return;
+      activeSlots.add([
+        clean(item?.division),
+        Number(item?.time_slot),
+        clean(item?.class_group || 'A').toUpperCase()
+      ].join('|'));
+    });
+    (Array.isArray(week?.one_time_sessions) ? week.one_time_sessions : []).forEach(item => {
+      if (clean(item?.session_date) !== today || clean(item?.status) === 'cancelled') return;
+      activeSlots.add([
+        clean(item?.division),
+        Number(item?.time_slot),
+        clean(item?.class_group || 'A').toUpperCase()
+      ].join('|'));
+    });
+
+    const assignments = Array.isArray(teacherContext?.assignments) ? teacherContext.assignments : [];
+    const overrides = Array.isArray(overrideContext?.overrides) ? overrideContext.overrides : [];
+    const teachers = new Set();
+
+    activeSlots.forEach(slot => {
+      const [division, timeText, group] = slot.split('|');
+      const time = Number(timeText);
+      const override = overrides.find(item =>
+        clean(item?.session_date) === today
+        && clean(item?.division) === division
+        && Number(item?.time_slot) === time
+        && clean(item?.class_group || 'A').toUpperCase() === group
+      );
+      const regular = assignments.find(item =>
+        clean(item?.division) === division
+        && Number(item?.weekday) === weekday
+        && Number(item?.time_slot) === time
+        && clean(item?.class_group || 'A').toUpperCase() === group
+      );
+      const teacherId = clean(override?.teacher_member_id || regular?.teacher_member_id);
+      const teacherName = clean(override?.teacher_name || regular?.teacher_name);
+      const key = teacherId || (teacherName ? `name:${teacherName}` : '');
+      if (key) teachers.add(key);
+    });
+
+    return teachers.size;
+  }
+
+  async function autofillCoffeeRequest(form, selectedWord) {
+    if (!form || !isCoffeeQuickWord(selectedWord)) return;
+    const quantity = form.elements.quantity_text;
+    const neededOn = form.elements.needed_on;
+    const useContext = form.elements.use_context;
+
+    const today = localDateKey(new Date());
+    if (neededOn) neededOn.value = today;
+    if (useContext) useContext.value = '초등부 유치부';
+
+    const quantitySnapshot = quantity ? quantity.value : '';
+    try {
+      const count = await todayTeachingTeacherCount();
+      if (quantity && quantity.value === quantitySnapshot) quantity.value = String(count);
+    } catch (error) {
+      console.warn('커피 요청 자동 수량 계산 실패:', error?.message || error);
+      showToast('오늘 수업 선생님 수를 자동으로 불러오지 못했습니다. 수량은 직접 입력해 주세요.', 'error');
+    }
   }
 
   function clientMutationId() {
@@ -159,9 +304,17 @@
               <button class="olliMatIconBtn" type="button" data-material-action="close-create" aria-label="닫기">×</button>
             </div>
             <form class="olliMatForm" data-material-form>
-              <label class="olliMatField olliMatFieldWide">
+              <label class="olliMatField olliMatFieldWide olliMatItemNameField">
                 <span>재료명 <b>*</b></span>
-                <input name="item_name" maxlength="120" required placeholder="예: 아크릴 물감 12색">
+                <div class="olliMatQuickInputWrap">
+                  <input name="item_name" maxlength="120" required placeholder="예: 아크릴 물감 12색" autocomplete="off" data-material-item-name>
+                  <div class="olliMatQuickWords" data-material-quick-words hidden>
+                    <div class="olliMatQuickWordsLabel">자주 사용하는 단어</div>
+                    <div class="olliMatQuickWordsGrid">
+                      ${MATERIAL_QUICK_WORDS.map(word => `<button type="button" data-material-quick-word="${word}">${word}</button>`).join('')}
+                    </div>
+                  </div>
+                </div>
               </label>
               <label class="olliMatField">
                 <span>수량 <b>*</b></span>
@@ -245,8 +398,35 @@
     }
   }
 
-  function materialIcon() {
+  function isCoffeeItem(itemName) {
+    const name = clean(itemName).toLowerCase().replace(/\s+/g, ' ');
+    return !!name && COFFEE_ITEM_KEYWORDS.some(keyword => name.includes(keyword));
+  }
+
+  function coffeeThumbIndex(value) {
+    const text = String(value || '');
+    let hash = 2166136261;
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0) % OLLI_COFFEE_THUMBS.length;
+  }
+
+  function materialIcon(item) {
     const wrap = create('span', 'olliMatItemIcon');
+    if (isCoffeeItem(item?.item_name)) {
+      const stableSeed = clean(item?.id) || [item?.created_at, item?.item_name, item?.requested_by_name].filter(Boolean).join('|');
+      const image = document.createElement('img');
+      image.src = OLLI_COFFEE_THUMBS[coffeeThumbIndex(stableSeed)];
+      image.alt = '';
+      image.loading = 'lazy';
+      image.decoding = 'async';
+      wrap.classList.add('coffee-image');
+      wrap.appendChild(image);
+      return wrap;
+    }
+
     wrap.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14v11H5z"></path><path d="M8 8V5h8v3M9 13h6"></path></svg>';
     return wrap;
   }
@@ -285,7 +465,7 @@
       button.dataset.materialId = clean(item?.id);
       button.classList.toggle('selected', clean(item?.id) === state.selectedId);
 
-      const icon = materialIcon();
+      const icon = materialIcon(item);
       const copy = create('span', 'olliMatItemCopy');
       copy.appendChild(create('strong', 'olliMatItemName', clean(item?.item_name) || '재료'));
 
@@ -331,6 +511,16 @@
     return button;
   }
 
+  function deleteButton() {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'olliMatDeleteBtn';
+    button.dataset.materialDelete = '1';
+    button.textContent = '삭제';
+    button.disabled = state.processing;
+    return button;
+  }
+
   function renderDetail() {
     const body = rootQuery('[data-material-detail]');
     const statusNode = rootQuery('[data-material-detail-status]');
@@ -353,7 +543,7 @@
     body.replaceChildren();
 
     const hero = create('div', 'olliMatDetailHero');
-    hero.append(materialIcon(), create('div', 'olliMatDetailHeroCopy'));
+    hero.append(materialIcon(item), create('div', 'olliMatDetailHeroCopy'));
     const heroCopy = hero.lastElementChild;
     heroCopy.append(
       create('strong', '', clean(item.item_name) || '재료'),
@@ -408,6 +598,7 @@
     } else if (item.status === 'requested') {
       actions.append(
         actionButton('보류', 'on_hold', 'olliMatSecondaryBtn'),
+        deleteButton(),
         actionButton('주문완료', 'ordered', 'olliMatDarkBtn')
       );
     } else if (item.status === 'on_hold') {
@@ -500,8 +691,14 @@
     requestAnimationFrame(() => form.elements.item_name?.focus());
   }
 
+  function setQuickWordsVisible(visible) {
+    const panel = rootQuery('[data-material-quick-words]');
+    if (panel) panel.hidden = !visible;
+  }
+
   function closeCreate() {
     const modal = rootQuery('[data-material-modal]');
+    setQuickWordsVisible(false);
     if (modal) modal.hidden = true;
   }
 
@@ -590,6 +787,37 @@
     }
   }
 
+  async function deleteRequest() {
+    if (state.processing || !state.canProcess) return;
+    const item = selectedItem();
+    if (!item) return;
+    if (!global.confirm(`${clean(item.item_name) || '이 요청'}을 삭제할까요?\n삭제한 요청은 주문 목록에서 사라집니다.`)) return;
+
+    const current = context();
+    if (!current.sessionToken || !current.academyId) return;
+
+    state.processing = true;
+    renderDetail();
+    try {
+      const payload = await rpc('olli_team_material_request_delete', {
+        p_session_token: current.sessionToken,
+        p_academy_id: current.academyId,
+        p_request_id: item.id,
+        p_expected_revision: Number(item.revision || 0)
+      });
+      if (!payload?.ok) throw new Error(payload?.message || '재료 요청을 삭제하지 못했습니다.');
+      state.selectedId = '';
+      await refresh({ showLoading: false });
+      showToast('재료 요청을 삭제했습니다.', 'ok');
+    } catch (error) {
+      await refresh({ showLoading: false });
+      showToast(error?.message || '재료 요청을 삭제하지 못했습니다.', 'error');
+    } finally {
+      state.processing = false;
+      renderDetail();
+    }
+  }
+
   function bindEvents() {
     if (!state.root || state.root.dataset.olliMaterialBound) return;
     state.root.dataset.olliMaterialBound = '1';
@@ -605,6 +833,28 @@
         return;
       }
 
+      const quickWord = event.target.closest('[data-material-quick-word]');
+      if (quickWord) {
+        const input = rootQuery('[data-material-item-name]');
+        const selectedWord = clean(quickWord.dataset.materialQuickWord);
+        if (input) {
+          input.value = selectedWord;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.focus();
+        }
+        setQuickWordsVisible(false);
+        const form = rootQuery('[data-material-form]');
+        if (form && isCoffeeQuickWord(selectedWord)) autofillCoffeeRequest(form, selectedWord);
+        return;
+      }
+
+      if (event.target.closest('[data-material-item-name]')) {
+        setQuickWordsVisible(true);
+        return;
+      }
+
+      if (!event.target.closest('.olliMatItemNameField')) setQuickWordsVisible(false);
+
       const filterButton = event.target.closest('[data-material-filter]');
       if (filterButton) {
         const next = clean(filterButton.dataset.materialFilter);
@@ -619,12 +869,22 @@
         return;
       }
 
+      const deleteRequestButton = event.target.closest('[data-material-delete]');
+      if (deleteRequestButton) {
+        deleteRequest();
+        return;
+      }
+
       const statusButton = event.target.closest('[data-material-set-status]');
       if (statusButton) setStatus(clean(statusButton.dataset.materialSetStatus));
     });
 
     state.root.addEventListener('input', event => {
       if (event.target.matches('[data-material-search]')) setSearch(event.target.value);
+    });
+
+    state.root.addEventListener('focusin', event => {
+      if (event.target.matches('[data-material-item-name]')) setQuickWordsVisible(true);
     });
 
     state.root.addEventListener('change', event => {

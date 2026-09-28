@@ -7,6 +7,8 @@ const DARK_BG = '#666D77';
 const LIGHT_BLUE_BG = '#F2F6FC';
 const DARK_BLUE_BG = '#46576E';
 const OLLI_BLUE = '#0A84FF';
+const DEFAULT_BACKGROUND = 'olli-light';
+const BACKGROUND_RESET_VERSION = '20260928-olli1';
 const BACKGROUND_COLORS = Object.freeze({
   light: LIGHT_BG,
   dark: DARK_BG,
@@ -27,7 +29,7 @@ const LEGACY_CACHE_PREFIX = 'olli_team_talk_settings_v1_';
 const CACHE_PREFIX = 'olli_team_talk_settings_v2_';
 
 const state = {
-  background: 'dark',
+  background: DEFAULT_BACKGROUND,
   botNotificationsEnabled: false,
   aiEnabled: false,
   loadedAcademyId: '',
@@ -65,9 +67,9 @@ function canEdit(){
 }
 function normalizeBackground(value){
   const mode = clean(value).toLowerCase();
-  return Object.prototype.hasOwnProperty.call(BACKGROUND_COLORS, mode) ? mode : 'dark';
+  return Object.prototype.hasOwnProperty.call(BACKGROUND_COLORS, mode) ? mode : DEFAULT_BACKGROUND;
 }
-function backgroundColor(mode){ return BACKGROUND_COLORS[normalizeBackground(mode)] || DARK_BG; }
+function backgroundColor(mode){ return BACKGROUND_COLORS[normalizeBackground(mode)] || LIGHT_BG; }
 function isOlliTheme(mode){ return normalizeBackground(mode) === 'olli-light' || normalizeBackground(mode) === 'olli-dark'; }
 function outgoingBubbleColor(mode){ return isOlliTheme(mode) ? OLLI_BLUE : '#FEE500'; }
 function legacySettingsBackground(mode){
@@ -96,6 +98,7 @@ function writeCache(id){
   try {
     localStorage.setItem(cacheKey(id), JSON.stringify({
       background: state.background,
+      background_reset_version: BACKGROUND_RESET_VERSION,
       bot_notifications_enabled: !!state.botNotificationsEnabled,
       ai_enabled: !!state.aiEnabled,
       updated_at: new Date().toISOString()
@@ -104,7 +107,9 @@ function writeCache(id){
 }
 function readCachedIntoState(id){
   const cached = readCache(id);
-  if (cached.background) state.background = normalizeBackground(cached.background);
+  state.background = cached.background_reset_version === BACKGROUND_RESET_VERSION
+    ? normalizeBackground(cached.background || DEFAULT_BACKGROUND)
+    : DEFAULT_BACKGROUND;
   if (Object.prototype.hasOwnProperty.call(cached,'bot_notifications_enabled')) {
     state.botNotificationsEnabled = !!cached.bot_notifications_enabled;
   }
@@ -201,7 +206,7 @@ function syncAssistantButtons(){
   } catch (_) {}
 }
 function settingsSummary(){
-  const bg = BACKGROUND_LABELS[normalizeBackground(state.background)] || BACKGROUND_LABELS.dark;
+  const bg = BACKGROUND_LABELS[normalizeBackground(state.background)] || BACKGROUND_LABELS[DEFAULT_BACKGROUND];
   return platformLabel() + ' · ' + bg + ' · AI ' + (state.aiEnabled ? '켬' : '끔') + ' · 올리봇 알림 ' + (state.botNotificationsEnabled ? '켬' : '끔');
 }
 function updateSettingsRowValue(){
@@ -265,17 +270,17 @@ function detailHtml(){
     + '<div class="settingsDetailIntro"><div class="settingsDetailTitle">팀톡 배경을<br>이 기기에서 설정합니다.</div></div>'
     + '<section class="olliTeamTalkSettingsCard">'
     + '<div class="olliTeamTalkSettingsHead"><div><strong>배경 스타일</strong><small>PC와 핸드폰은 서로 연동하지 않고 각각 따로 저장됩니다. 배경에 맞춰 날짜·시간·시스템 글자색도 자동으로 바뀝니다.</small></div></div>'
+    + '<div class="olliTeamTalkThemeGroupLabel olli">올리 스타일</div>'
+    + '<div class="olliTeamTalkThemeGrid">'
+    + themeOption('olli-light','올리 스타일 1','연회색 · 파랑 말풍선')
+    + themeOption('olli-dark','올리 스타일 2','어두운 파랑 · 파랑 말풍선')
+    + '</div>'
     + '<div class="olliTeamTalkThemeGroupLabel">카톡 스타일</div>'
     + '<div class="olliTeamTalkThemeGrid">'
     + themeOption('light','밝은 회색',LIGHT_BG)
     + themeOption('dark','어두운 회색',DARK_BG)
     + themeOption('light-blue','밝은 파랑',LIGHT_BLUE_BG)
     + themeOption('dark-blue','어두운 파랑',DARK_BLUE_BG)
-    + '</div>'
-    + '<div class="olliTeamTalkThemeGroupLabel olli">올리 스타일</div>'
-    + '<div class="olliTeamTalkThemeGrid">'
-    + themeOption('olli-light','올리 스타일 1','연회색 · 파랑 말풍선')
-    + themeOption('olli-dark','올리 스타일 2','어두운 파랑 · 파랑 말풍선')
     + '</div>'
     + '</section>'
     + '<section class="olliTeamTalkSettingsCard">'
@@ -556,7 +561,7 @@ function refreshForAcademy(){
   if (!id) return;
   if (state.loadedAcademyId && state.loadedAcademyId !== id) {
     state.loadedAcademyId = '';
-    state.background = 'dark';
+    state.background = DEFAULT_BACKGROUND;
     state.botNotificationsEnabled = false;
     state.aiEnabled = false;
   }
@@ -575,7 +580,7 @@ function init(){
     applyBackground(state.background);
     loadRemote(false);
   } else {
-    applyBackground('dark');
+    applyBackground(DEFAULT_BACKGROUND);
   }
 }
 
