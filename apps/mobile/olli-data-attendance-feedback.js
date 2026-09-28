@@ -106,6 +106,8 @@ async function loadAttendanceFeedbackRowsSecure(table, student, limit = 80) {
   return core.ServerAdapter.read(spec, { academyId, studentId, student_name: studentName }, { limit });
 }
 
+window.loadOlliFeedbackRowsSecure = loadAttendanceFeedbackRowsSecure;
+
 async function loadAttendanceStudentFeedbackSheetItems(student) {
   if (!student || !isSupabaseConfigured()) return { feedbacks: [], summaries: [] };
   const requests = [
