@@ -32,7 +32,15 @@ function saveOlliAcademyAccessLocal(patch = {}, academyId = '') {
 function getOlliCurrentAcademyAccessState(academy = null) {
   const academyId = String(academy?.id || academy?.academy_id || (typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '') || '').trim();
   const local = readOlliAcademyAccessLocal(academyId);
-  const source = { ...(academy || {}), ...local };
+  const server = academy && typeof academy === 'object' ? academy : {};
+  const hasAuthoritativeServerAccess = !!(academy && (
+    Object.prototype.hasOwnProperty.call(server, 'plan_type')
+    || Object.prototype.hasOwnProperty.call(server, 'access_status')
+    || Object.prototype.hasOwnProperty.call(server, 'trial_started_at')
+    || Object.prototype.hasOwnProperty.call(server, 'trial_expires_at')
+  ));
+  // 이용권한은 서버가 권위값입니다. 서버 값이 있으면 오래된 로컬 캐시가 덮어쓰지 못하게 합니다.
+  const source = hasAuthoritativeServerAccess ? { ...local, ...server } : { ...server, ...local };
   const planType = String(source.plan_type || source.planType || '').trim() || 'active';
   let accessStatus = String(source.access_status || source.accessStatus || '').trim() || 'active';
   const trialStartedAt = normalizeOlliIsoDate(source.trial_started_at || source.trialStartedAt || '');
@@ -70,9 +78,36 @@ function updateOlliAcademyAccessSettingUI() {
     ? `${getOlliAcademyAccessLabel(state)} · ${Math.max(0, daysLeft)}일`
     : getOlliAcademyAccessLabel(state);
 }
+function getOlliAcademyAccessSessionToken() {
+  return String(localStorage.getItem('olli_account_session_token_v1') || '').trim();
+}
+
+function applyOlliAcademyAccessServerState(academy, academyId = '') {
+  if (!academy || typeof academy !== 'object') return null;
+  const id = String(academy.academy_id || academy.id || academyId || '').trim();
+  const normalized = {
+    plan_type: String(academy.plan_type || 'active').trim() || 'active',
+    access_status: String(academy.access_status || 'active').trim() || 'active',
+    trial_started_at: normalizeOlliIsoDate(academy.trial_started_at || ''),
+    trial_expires_at: normalizeOlliIsoDate(academy.trial_expires_at || '')
+  };
+  saveOlliAcademyAccessLocal(normalized, id);
+  if (olliSettingsState?.academy) Object.assign(olliSettingsState.academy, academy, normalized);
+  localStorage.setItem('olli_current_academy_plan_type', normalized.plan_type);
+  localStorage.setItem('olli_current_academy_access_status', normalized.access_status);
+  localStorage.setItem('olli_current_academy_trial_started_at', normalized.trial_started_at);
+  localStorage.setItem('olli_current_academy_trial_expires_at', normalized.trial_expires_at);
+  updateOlliAcademyAccessSettingUI();
+  return normalized;
+}
+
 async function persistOlliAcademyAccessState(patch = {}) {
   const academyId = settingsGetAcademyId ? settingsGetAcademyId() : (typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '');
   if (!academyId) throw new Error('현재 학원 ID가 없습니다.');
+  const sessionToken = getOlliAcademyAccessSessionToken();
+  if (!sessionToken) throw new Error('계정 세션이 없어 학원 사용 상태를 변경할 수 없습니다.');
+  if (typeof callOlliRpc !== 'function') throw new Error('학원 이용상태 보호 저장 모듈이 준비되지 않았습니다.');
+
   const normalized = {};
   if (Object.prototype.hasOwnProperty.call(patch, 'plan_type') || Object.prototype.hasOwnProperty.call(patch, 'planType')) {
     normalized.plan_type = String(patch.plan_type ?? patch.planType ?? '').trim();
@@ -86,29 +121,41 @@ async function persistOlliAcademyAccessState(patch = {}) {
   if (Object.prototype.hasOwnProperty.call(patch, 'trial_expires_at') || Object.prototype.hasOwnProperty.call(patch, 'trialExpiresAt')) {
     normalized.trial_expires_at = normalizeOlliIsoDate(patch.trial_expires_at ?? patch.trialExpiresAt ?? '') || '';
   }
-  saveOlliAcademyAccessLocal(normalized, academyId);
-  if (olliSettingsState?.academy) Object.assign(olliSettingsState.academy, normalized);
-  const mergedState = getOlliCurrentAcademyAccessState(olliSettingsState?.academy || normalized);
-  localStorage.setItem('olli_current_academy_plan_type', mergedState.planType || '');
-  localStorage.setItem('olli_current_academy_access_status', mergedState.accessStatus || 'active');
-  localStorage.setItem('olli_current_academy_trial_started_at', mergedState.trialStartedAt || '');
-  localStorage.setItem('olli_current_academy_trial_expires_at', mergedState.trialExpiresAt || '');
 
-  const remotePayload = { ...normalized };
-  if (Object.prototype.hasOwnProperty.call(remotePayload, 'trial_started_at') && !remotePayload.trial_started_at) remotePayload.trial_started_at = null;
-  if (Object.prototype.hasOwnProperty.call(remotePayload, 'trial_expires_at') && !remotePayload.trial_expires_at) remotePayload.trial_expires_at = null;
+  const result = await callOlliRpc('olli_admin_set_academy_access', {
+    p_session_token: sessionToken,
+    p_academy_id: academyId,
+    p_plan_type: Object.prototype.hasOwnProperty.call(normalized, 'plan_type') ? (normalized.plan_type || null) : null,
+    p_access_status: Object.prototype.hasOwnProperty.call(normalized, 'access_status') ? (normalized.access_status || null) : null,
+    p_trial_started_at: Object.prototype.hasOwnProperty.call(normalized, 'trial_started_at') ? (normalized.trial_started_at || null) : null,
+    p_trial_expires_at: Object.prototype.hasOwnProperty.call(normalized, 'trial_expires_at') ? (normalized.trial_expires_at || null) : null
+  });
 
-  if (isSupabaseConfigured() && Object.keys(remotePayload).length) {
-    try {
-      await supabase('PATCH', `academies?id=eq.${encodeURIComponent(academyId)}`, remotePayload);
-    } catch (err) {
-      console.warn('학원 사용 상태 서버 저장 실패. 로컬에는 저장되었습니다:', err);
-      alert('앱에는 반영했지만 서버 저장은 실패했습니다. Supabase academies 테이블에 plan_type, access_status, trial_started_at, trial_expires_at 컬럼이 있는지 확인해 주세요.\n\n' + (err.message || err));
-    }
+  if (!result || result.ok !== true || !result.academy) {
+    const error = new Error(result?.message || '학원 사용 상태 서버 저장에 실패했습니다.');
+    error.code = result?.code || 'ACADEMY_ACCESS_WRITE_FAILED';
+    throw error;
   }
-  updateOlliAcademyAccessSettingUI();
-  return normalized;
+
+  applyOlliAcademyAccessServerState(result.academy, academyId);
+  return result.academy;
 }
+
+async function markOlliAcademyTrialExpiredIfDue() {
+  const academyId = settingsGetAcademyId ? settingsGetAcademyId() : (typeof getOlliCurrentAcademyId === 'function' ? getOlliCurrentAcademyId() : '');
+  const sessionToken = getOlliAcademyAccessSessionToken();
+  if (!academyId || !sessionToken || typeof callOlliRpc !== 'function') return { ok: false, skipped: true };
+
+  const result = await callOlliRpc('olli_mark_academy_trial_expired_if_due', {
+    p_session_token: sessionToken,
+    p_academy_id: academyId
+  });
+  if (result?.ok === true && result.academy) {
+    applyOlliAcademyAccessServerState(result.academy, academyId);
+  }
+  return result;
+}
+
 function renderOlliAcademyAccessSettings() {
   const academy = olliSettingsState?.academy || {};
   const state = getOlliCurrentAcademyAccessState(academy);
@@ -199,7 +246,7 @@ async function ensureOlliCurrentAcademyAccessAllowed(options = {}) {
   }
   const state = getOlliCurrentAcademyAccessState(olliSettingsState?.academy || null);
   if (state.autoExpired && opts.autoPersistExpired) {
-    try { await persistOlliAcademyAccessState({ access_status: 'expired' }); } catch (err) { console.warn('체험 자동 종료 상태 저장 실패:', err); }
+    try { await markOlliAcademyTrialExpiredIfDue(); } catch (err) { console.warn('체험 자동 종료 상태 저장 실패:', err); }
   }
   if (state.blocked) {
     showOlliAcademyAccessBlocked(state);
