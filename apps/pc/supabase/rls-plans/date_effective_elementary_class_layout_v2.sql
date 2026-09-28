@@ -504,7 +504,7 @@ CREATE OR REPLACE FUNCTION public.olli_schedule_add_guest_entry(p_session_token 
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 declare
   v_account_id uuid;
   v_name text := left(btrim(coalesce(p_guest_name, '')), 60);
@@ -659,7 +659,7 @@ CREATE OR REPLACE FUNCTION public.olli_schedule_add_one_time(p_session_token tex
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 declare
   v_division text;
   v_class_group text := upper(coalesce(nullif(btrim(p_class_group), ''), 'A'));
@@ -799,7 +799,7 @@ CREATE OR REPLACE FUNCTION public.olli_schedule_add_waitlist(p_session_token tex
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 declare
   v_effective_date date := coalesce(p_effective_date, current_date);
   v_division text;
@@ -880,7 +880,7 @@ CREATE OR REPLACE FUNCTION public.olli_schedule_change(p_session_token text, p_a
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 declare
   v_effective date := coalesce(p_effective_date, current_date);
   v_division text;
@@ -1074,7 +1074,7 @@ CREATE OR REPLACE FUNCTION public.olli_schedule_resolve_waitlist(p_session_token
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 declare
   v_wait public.olli_schedule_waitlist%rowtype;
   v_source public.olli_schedule_enrollments%rowtype;
@@ -1193,7 +1193,7 @@ CREATE OR REPLACE FUNCTION public.olli_schedule_set_attendance(p_session_token t
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 declare
   v_account_id uuid;
   v_division text;
@@ -1279,7 +1279,7 @@ CREATE OR REPLACE FUNCTION public.olli_schedule_toggle_attendance(p_session_toke
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 declare
   v_account_id uuid;
   v_division text;
@@ -1357,7 +1357,7 @@ CREATE OR REPLACE FUNCTION public.olli_schedule_set_student_weekly_schedule(p_se
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 declare
   v_date date := coalesce(p_effective_date, current_date);
   v_division text;
@@ -1598,7 +1598,7 @@ CREATE OR REPLACE FUNCTION public.olli_schedule_update_one_time_date(p_session_t
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 declare
   v_item public.olli_schedule_one_time_sessions%rowtype;
   v_division text;
@@ -1825,7 +1825,7 @@ CREATE OR REPLACE FUNCTION public.olli_schedule_execute(p_session_token text, p_
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$;
+AS $function$
 declare
   v_account_id uuid;
   v_result jsonb;
