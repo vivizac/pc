@@ -3,7 +3,7 @@
 
   if (global.OlliTeamTalkMaterialOrders?.version) return;
 
-  const VERSION = '1.4.0';
+  const VERSION = '1.5.0';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
 
   const state = {
@@ -511,6 +511,16 @@
     return button;
   }
 
+  function deleteButton() {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'olliMatDeleteBtn';
+    button.dataset.materialDelete = '1';
+    button.textContent = '삭제';
+    button.disabled = state.processing;
+    return button;
+  }
+
   function renderDetail() {
     const body = rootQuery('[data-material-detail]');
     const statusNode = rootQuery('[data-material-detail-status]');
@@ -588,6 +598,7 @@
     } else if (item.status === 'requested') {
       actions.append(
         actionButton('보류', 'on_hold', 'olliMatSecondaryBtn'),
+        deleteButton(),
         actionButton('주문완료', 'ordered', 'olliMatDarkBtn')
       );
     } else if (item.status === 'on_hold') {
@@ -776,6 +787,37 @@
     }
   }
 
+  async function deleteRequest() {
+    if (state.processing || !state.canProcess) return;
+    const item = selectedItem();
+    if (!item) return;
+    if (!global.confirm(`${clean(item.item_name) || '이 요청'}을 삭제할까요?\n삭제한 요청은 주문 목록에서 사라집니다.`)) return;
+
+    const current = context();
+    if (!current.sessionToken || !current.academyId) return;
+
+    state.processing = true;
+    renderDetail();
+    try {
+      const payload = await rpc('olli_team_material_request_delete', {
+        p_session_token: current.sessionToken,
+        p_academy_id: current.academyId,
+        p_request_id: item.id,
+        p_expected_revision: Number(item.revision || 0)
+      });
+      if (!payload?.ok) throw new Error(payload?.message || '재료 요청을 삭제하지 못했습니다.');
+      state.selectedId = '';
+      await refresh({ showLoading: false });
+      showToast('재료 요청을 삭제했습니다.', 'ok');
+    } catch (error) {
+      await refresh({ showLoading: false });
+      showToast(error?.message || '재료 요청을 삭제하지 못했습니다.', 'error');
+    } finally {
+      state.processing = false;
+      renderDetail();
+    }
+  }
+
   function bindEvents() {
     if (!state.root || state.root.dataset.olliMaterialBound) return;
     state.root.dataset.olliMaterialBound = '1';
@@ -824,6 +866,12 @@
       if (itemButton) {
         state.selectedId = clean(itemButton.dataset.materialId);
         renderList();
+        return;
+      }
+
+      const deleteRequestButton = event.target.closest('[data-material-delete]');
+      if (deleteRequestButton) {
+        deleteRequest();
         return;
       }
 

@@ -314,3 +314,12 @@
   background:#f7f8f9;color:#555b63;font:650 10.8px 'Pretendard',sans-serif;cursor:pointer
 }
 .olliMatQuickWordsGrid button:hover{border-color:#cfd3d8;background:#fff;color:#24272b}
+
+
+.olliMatDeleteBtn{
+  min-width:90px;height:39px;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid #f0caca;border-radius:11px;padding:0 14px;
+  background:#fff6f6;color:#c34f4f;font:730 11.5px 'Pretendard',sans-serif;cursor:pointer
+}
+.olliMatDeleteBtn:hover{background:#fff0f0;border-color:#e9b8b8}
+.olliMatDeleteBtn:disabled{opacity:.55;cursor:default}
