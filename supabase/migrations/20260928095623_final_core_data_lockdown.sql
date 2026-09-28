@@ -1,8 +1,9 @@
 -- Olli core-data RLS final lockdown plan
--- STATUS: APPLIED TO PRODUCTION 2026-09-28.
--- PC/Mobile main integration and Production deployment were verified before activation.
+-- STATUS: PREPARED ONLY. DO NOT APPLY TO PRODUCTION BEFORE PC/MOBILE WORK BRANCHES
+-- ARE MERGED TO MAIN AND BOTH PRODUCTION DEPLOYMENTS ARE VERIFIED.
 --
--- The former direct Data API paths have been replaced by explicit account-session RPC contracts.
+-- Reason: current production main still performs direct Data API access to several
+-- tables below. Applying this file early will intentionally break those old clients.
 --
 -- Final architecture after activation:
 -- browser -> explicit account-session RPC -> SECURITY DEFINER implementation -> table
