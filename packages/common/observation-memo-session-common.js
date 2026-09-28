@@ -21,8 +21,12 @@
     currentMemoType = type;
 
     if (type === 'elementary') {
-      setLastElementaryMemoStudent(student);
-      selectedElementaryAnalysisHistoryId = '';
+      if (typeof setLastElementaryMemoStudent === 'function') {
+        setLastElementaryMemoStudent(student);
+      }
+      if (typeof selectedElementaryAnalysisHistoryId !== 'undefined') {
+        selectedElementaryAnalysisHistoryId = '';
+      }
     }
 
     return {
@@ -30,7 +34,7 @@
       type,
       noteType: 'elementary_observation',
       localEntry: getObservationMemoLocalSnapshot(student, 'elementary_observation'),
-      analysisDisplay: type === 'elementary'
+      analysisDisplay: type === 'elementary' && typeof getPrimaryElementaryAnalysisDisplay === 'function'
         ? getPrimaryElementaryAnalysisDisplay(student)
         : null
     };
