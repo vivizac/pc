@@ -5,7 +5,7 @@
 - PC Production main: `0b56edcf5493d1a5224874eb30f0c2d1c68eadc6`
 - Mobile Production main: `0e74868fbdd3b73b3e84f57fcd31e46b64df6484`
 - 작업 브랜치: `work/olli-mobile-self-contained-20260929`
-- Common inventory 정렬 커밋: `afdb02f5c50bdab2daaff86dbb23619f2c81f2d7`
+- Common inventory 정렬 커밋: `afdb02f5c50bdab2daaff86dbb23619f2c81f2d7`\n- Mobile exact materialize 기준 커밋: `77b9eff0cdad0947e4a757c5f7864c065be23ecc`\n- Mobile Production baseline tree: `8f56ad46a9ec014506e5a4bc0512737b483ab666` (246 blobs, exact match)
 
 이 문서는 코드 동작을 변경하지 않는다. self-contained 전환 전에 현재 공유 코드의 소유권과 위험도를 고정한다.
 
@@ -18,7 +18,7 @@
 - PC raw rewrite: 45개
 - 그중 PC `main` 직접 참조: 44개
 - 고정 commit 참조: `observation-memo-version-history-core.js` 1개
-- `apps/mobile`: 아직 실제 디렉터리가 아니라 Mobile 저장소를 가리키는 gitlink
+- Work branch `apps/mobile`: Mobile Production baseline을 바이트 동일하게 materialize한 실제 디렉터리\n- Production Mobile: 기존 `vivizac/mobile` 저장소가 계속 authoritative하며 아직 monorepo로 cutover하지 않음
 - `packages/common`: 현재 Production bridge와 전환용 shared 파일을 반영한 48개 snapshot
 - 기존 PC root / 기존 Mobile 저장소 / Production raw rewrite는 아직 유지
 
@@ -175,7 +175,7 @@ GREEN도 self-contained 복사 시 원본 SHA/바이트를 보존하고 누락 �
 4. Mobile 테스트 + Common 테스트 + PC 영향 테스트를 실행한다.
 5. Preview 배포에서 script/css 404, 로딩 순서, 로그인, 관찰노트, 시간표, 출석, Team Chat을 검증한다.
 6. Preview 안정화 후 Mobile Vercel Root Directory를 새 구조로 전환한다.
-7. Production smoke 이후에만 raw rewrite와 gitlink/legacy bridge를 제거한다.
+7. Production smoke 이후에만 기존 Mobile Production 저장소의 raw rewrite/legacy bridge를 제거한다.
 8. 마지막으로 UI-coupled shared runtime의 소유권 분리는 별도 안정화 작업으로 진행한다.
 
 ## 회귀 게이트

@@ -1,0 +1,40 @@
+name: Validate Olli Monorepo Transition
+
+on:
+  push:
+    branches:
+      - work/olli-mobile-self-contained-20260929
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/common/**'
+      - 'tests/mobile-self-contained-build.test.cjs'
+      - '.github/workflows/validate-olli-monorepo-transition.yml'
+  pull_request:
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/common/**'
+      - 'tests/mobile-self-contained-build.test.cjs'
+      - '.github/workflows/validate-olli-monorepo-transition.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Validate self-contained Mobile build contract
+        run: node --test tests/mobile-self-contained-build.test.cjs
+      - name: Validate PC schedule Realtime
+        run: node --test tests/schedule-realtime.test.cjs
+      - name: Validate Mobile schedule and security contracts
+        run: |
+          node --test \
+            apps/mobile/tests/schedule-realtime.test.cjs \
+            apps/mobile/tests/phone-schedule-class-layout-date-contract.test.cjs \
+            apps/mobile/tests/mobile-secure-auth-source-contract.test.cjs \
+            apps/mobile/tests/photo-private-storage-contract.test.cjs \
+            apps/mobile/tests/storage-secure-transport-contract.test.cjs

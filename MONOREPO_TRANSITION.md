@@ -3,7 +3,7 @@
 Target structure:
 
 - `apps/pc` — PC application
-- `apps/mobile` — Mobile application (currently a gitlink transition bridge)
+- `apps/mobile` — Mobile application (self-contained snapshot on the work branch; Production cutover not yet active)
 - `packages/common` — shared runtime source
 
 ## Safety rules
@@ -23,8 +23,10 @@ Target structure:
 ## Current transition state
 
 - `packages/common` has been refreshed to include the shared files currently required by the Mobile Production bridge.
-- `apps/mobile` is still a gitlink and is **not** yet a self-contained Vercel Root Directory.
-- Existing raw rewrites and the separate Mobile repository remain active.
-- Next structural step is to materialize `apps/mobile` from the Mobile Production baseline and make its build consume `packages/common` locally, without changing Production routes yet.
+- Work branch `apps/mobile` was materialized from Mobile Production commit `0e74868f...`; its baseline tree was verified byte-for-byte as `8f56ad46...` with 246 blobs.
+- The gitlink and `.gitmodules` were removed on the work branch only.
+- Work branch Mobile build now stages the exact 45 runtime bridge files from `packages/common`; its `vercel.json` no longer points to PC raw GitHub.
+- **Production Mobile remains unchanged** in the separate `vivizac/mobile` repository and continues using the existing raw bridge until Preview/cutover validation passes.
+- Next structural step is CI verification followed by a Mobile Vercel Preview using `apps/mobile` as Root Directory with outside-root source access enabled.
 
 This stage is structural preparation only. It does not change Production runtime paths.

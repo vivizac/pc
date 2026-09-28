@@ -1,1 +1,960 @@
-{"$schema":"https://openapi.vercel.sh/vercel.json","rewrites":[{"source":"/observation-memo-edit-state-core.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/observation-memo-edit-state-core.js"},{"source":"/observation-memo-common.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/observation-memo-common.js"},{"source":"/observation-memo-save-common.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/observation-memo-save-common.js"},{"source":"/observation-memo-session-common.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/observation-memo-session-common.js"},{"source":"/observation-memo-storage-common.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/observation-memo-storage-common.js"},{"source":"/observation-memo-version-history-core.js","destination":"https://raw.githubusercontent.com/vivizac/pc/98ac01ce7b90128dc0d6d21940640ffdf62cb469/observation-memo-version-history-core.js"},{"source":"/observation-memo-version-history-common.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/observation-memo-version-history-common.js"},{"source":"/observation-memo-feedback-clear-common.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/observation-memo-feedback-clear-common.js"},{"source":"/olli-record-scene-tools.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-record-scene-tools.js"},{"source":"/record-feedback-mode-common.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/record-feedback-mode-common.js"},{"source":"/scene-card-kinder-feedback-common.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/scene-card-kinder-feedback-common.js"},{"source":"/scene-card-model-common.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/scene-card-model-common.js"},{"source":"/scene-card-ui-common.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/scene-card-ui-common.js"},{"source":"/scene-feedback-text-common.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/scene-feedback-text-common.js"},{"source":"/olli-auth-academy-access.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-auth-academy-access.js"},{"source":"/olli-auth-account-session.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-auth-account-session.js"},{"source":"/olli-auth-entry-ui.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-auth-entry-ui.js"},{"source":"/olli-auth-member-validation.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-auth-member-validation.js"},{"source":"/olli-auth-owner-onboarding.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-auth-owner-onboarding.js"},{"source":"/olli-auth-teacher-membership.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-auth-teacher-membership.js"},{"source":"/olli-login-ui.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-login-ui.js"},{"source":"/olli-attendance-data.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-attendance-data.js"},{"source":"/olli-operations-consultation-policy.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-operations-consultation-policy.js"},{"source":"/olli-operations-feedback-policy.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-operations-feedback-policy.js"},{"source":"/olli-settings-access.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-settings-access.js"},{"source":"/olli-settings-common-core.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-settings-common-core.js"},{"source":"/olli-settings-members.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-settings-members.js"},{"source":"/olli-settings-student-bulk-import.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-settings-student-bulk-import.js"},{"source":"/olli-settings-teacher-invite.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-settings-teacher-invite.js"},{"source":"/olli-login.css","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-login.css"},{"source":"/olli-settings-imports-base.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-settings-imports-base.js"},{"source":"/olli-settings-existing-feedback-import.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-settings-existing-feedback-import.js"},{"source":"/olli-settings-storage.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-settings-storage.js"},{"source":"/olli-data-students.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-data-students.js"},{"source":"/olli-realtime-common.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-realtime-common.js"},{"source":"/elementary-analysis.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/elementary-analysis.js"},{"source":"/olli-data-ui-utils.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-data-ui-utils.js"},{"source":"/olli-feedback-runtime.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-feedback-runtime.js"},{"source":"/olli-command-schedule-common.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-command-schedule-common.js"},{"source":"/olli-command-router-common.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-command-router-common.js"},{"source":"/olli-feedback-registration-runtime.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-feedback-registration-runtime.js"},{"source":"/olli-record-student-picker.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-record-student-picker.js"},{"source":"/olli-student-bulk-edit-parser.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-student-bulk-edit-parser.js"},{"source":"/olli-data-record-list.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-data-record-list.js"},{"source":"/olli-feedback-photo-storage-common.js","destination":"https://raw.githubusercontent.com/vivizac/pc/main/olli-feedback-photo-storage-common.js"}],"headers":[{"source":"/observation-memo-edit-state-core.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/observation-memo-common.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/observation-memo-save-common.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/observation-memo-session-common.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/observation-memo-storage-common.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/observation-memo-version-history-core.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/observation-memo-version-history-common.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/observation-memo-feedback-clear-common.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-record-scene-tools.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/record-feedback-mode-common.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/scene-card-kinder-feedback-common.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/scene-card-model-common.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/scene-card-ui-common.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/scene-feedback-text-common.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-auth-academy-access.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-auth-account-session.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-auth-entry-ui.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-auth-member-validation.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-auth-owner-onboarding.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-auth-teacher-membership.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-login-ui.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-attendance-data.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-operations-consultation-policy.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-operations-feedback-policy.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-settings-access.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-settings-members.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-settings-student-bulk-import.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-settings-teacher-invite.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-login.css","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"text/css; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-settings-imports-base.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-settings-existing-feedback-import.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-settings-storage.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-data-students.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/index.html","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/olli-observation-roster-phone.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/olli-observation-roster-phone.css","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/olli-record-utility-touch.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/olli-record-search-keyboard.css","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/olli-attendance-phone-adapter.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/olli-attendance-past-date-runtime.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/olli-attendance-record.css","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/olli-record-sort-student-ui.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/olli-student-schedule-runtime.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/olli-phone-student-schedule-editor.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/olli-student-info-pc-source-bridge.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/olli-realtime-common.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/elementary-analysis.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-data-ui-utils.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-command-schedule-common.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-command-router-common.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-feedback-registration-runtime.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-record-student-picker.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-student-bulk-edit-parser.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-data-record-list.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-phone-base.css","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/olli-phone-final-overrides.css","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/kinder-feedback.css","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/kcf-auto-mode.css","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/kcf-auto-mode-runtime.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/kinder-feedback.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/kcf-roster-filter-runtime.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/kcf-roster-sort-persist-runtime.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/kcf-feedback-status-runtime.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"}]},{"source":"/olli-feedback-runtime.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-settings-common-core.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]},{"source":"/olli-feedback-photo-storage-common.js","headers":[{"key":"Cache-Control","value":"no-store, max-age=0"},{"key":"Content-Type","value":"application/javascript; charset=utf-8"},{"key":"x-vercel-enable-rewrite-caching","value":"0"}]}]}
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "node scripts/stage-common.cjs",
+  "headers": [
+    {
+      "source": "/observation-memo-edit-state-core.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/observation-memo-common.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/observation-memo-save-common.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/observation-memo-session-common.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/observation-memo-storage-common.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/observation-memo-version-history-core.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/observation-memo-version-history-common.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/observation-memo-feedback-clear-common.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-record-scene-tools.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/record-feedback-mode-common.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/scene-card-kinder-feedback-common.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/scene-card-model-common.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/scene-card-ui-common.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/scene-feedback-text-common.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-auth-academy-access.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-auth-account-session.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-auth-entry-ui.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-auth-member-validation.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-auth-owner-onboarding.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-auth-teacher-membership.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-login-ui.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-attendance-data.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-operations-consultation-policy.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-operations-feedback-policy.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-settings-access.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-settings-members.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-settings-student-bulk-import.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-settings-teacher-invite.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-login.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "text/css; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-settings-imports-base.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-settings-existing-feedback-import.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-settings-storage.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-data-students.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-observation-roster-phone.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-observation-roster-phone.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-record-utility-touch.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-record-search-keyboard.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-attendance-phone-adapter.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-attendance-past-date-runtime.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-attendance-record.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-record-sort-student-ui.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-student-schedule-runtime.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-phone-student-schedule-editor.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-student-info-pc-source-bridge.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-realtime-common.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/elementary-analysis.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-data-ui-utils.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-command-schedule-common.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-command-router-common.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-feedback-registration-runtime.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-record-student-picker.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-student-bulk-edit-parser.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-data-record-list.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-phone-base.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-phone-final-overrides.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/kinder-feedback.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/kcf-auto-mode.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/kcf-auto-mode-runtime.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/kinder-feedback.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/kcf-roster-filter-runtime.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/kcf-roster-sort-persist-runtime.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/kcf-feedback-status-runtime.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-feedback-runtime.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-settings-common-core.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "source": "/olli-feedback-photo-storage-common.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "x-vercel-enable-rewrite-caching",
+          "value": "0"
+        }
+      ]
+    }
+  ]
+}\n
