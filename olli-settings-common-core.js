@@ -965,6 +965,55 @@ async function callOlliRpc(functionName, payload) {
   return data ?? [];
 }
 
+function getOlliSettingsSessionToken() {
+  return String(localStorage.getItem('olli_account_session_token_v1') || '').trim();
+}
+
+async function loadOlliAcademySettingsSecure(academyId) {
+  const id = String(academyId || '').trim();
+  const sessionToken = getOlliSettingsSessionToken();
+  if (!id) throw new Error('학원 설정 조회에 필요한 academy_id가 없습니다.');
+  if (!sessionToken) throw new Error('계정 세션이 없어 학원 설정을 불러올 수 없습니다.');
+  if (typeof callOlliRpc !== 'function') throw new Error('학원 설정 보호 조회 모듈이 준비되지 않았습니다.');
+
+  const result = await callOlliRpc('olli_academy_settings_get', {
+    p_session_token: sessionToken,
+    p_academy_id: id
+  });
+  if (!result || result.ok !== true || !result.academy) {
+    const error = new Error(result?.message || '학원 설정을 불러오지 못했습니다.');
+    error.code = result?.code || 'ACADEMY_SETTINGS_READ_FAILED';
+    throw error;
+  }
+  return result.academy;
+}
+
+async function saveOlliAcademySettingsSecure(academyId, patch) {
+  const id = String(academyId || '').trim();
+  const sessionToken = getOlliSettingsSessionToken();
+  if (!id) throw new Error('학원 설정 저장에 필요한 academy_id가 없습니다.');
+  if (!sessionToken) throw new Error('계정 세션이 없어 학원 설정을 저장할 수 없습니다.');
+  if (typeof callOlliRpc !== 'function') throw new Error('학원 설정 보호 저장 모듈이 준비되지 않았습니다.');
+
+  const result = await callOlliRpc('olli_academy_settings_update', {
+    p_session_token: sessionToken,
+    p_academy_id: id,
+    p_patch: patch && typeof patch === 'object' ? patch : {}
+  });
+  if (!result || result.ok !== true || !result.academy) {
+    const error = new Error(result?.message || '학원 설정을 저장하지 못했습니다.');
+    error.code = result?.code || 'ACADEMY_SETTINGS_WRITE_FAILED';
+    throw error;
+  }
+
+  olliSettingsState.academy = result.academy;
+  settingsSetCachedAcademy(result.academy);
+  if (result.academy.academy_name) {
+    localStorage.setItem('olli_current_academy_name', String(result.academy.academy_name));
+  }
+  return result.academy;
+}
+
 async function settingsLoadAcademy() {
   const savedId = localStorage.getItem('olli_current_academy_id') || '';
   const savedCode = localStorage.getItem('olli_current_academy_code') || '';
@@ -982,33 +1031,36 @@ async function settingsLoadAcademy() {
     return cachedAcademy;
   }
 
-  // 실제 학원 코드가 없을 때 TEST-0001로 자동 전환되면 다른 학원 데이터가 보일 수 있어 기본값을 쓰지 않는다.
-  const code = savedCode || (olliSettingsState.academy && olliSettingsState.academy.academy_code) || '';
+  const cachedAccessible = typeof readOlliCachedAccountAcademies === 'function'
+    ? readOlliCachedAccountAcademies()
+    : [];
+  const matchedCached = cachedAccessible.find(item => savedId && String(item?.academy_id || item?.id || '').trim() === savedId)
+    || cachedAccessible.find(item => savedCode && String(item?.academy_code || '').trim().toUpperCase() === savedCode.toUpperCase())
+    || null;
+  const academyId = savedId || String(matchedCached?.academy_id || matchedCached?.id || '').trim();
 
-  if (code) {
+  if (academyId) {
     try {
-      const rows = await supabase('GET', `academies?select=*&academy_code=eq.${encodeURIComponent(code)}&limit=1`);
-      if (Array.isArray(rows) && rows.length) {
-        if (!isOlliAcademyRequestCurrent(requestAcademyId, requestAcademyCode)) return null;
-        olliSettingsState.academy = rows[0];
-        settingsSetCachedAcademy(rows[0]);
-        return rows[0];
-      }
+      const academy = await loadOlliAcademySettingsSecure(academyId);
+      if (!isOlliAcademyRequestCurrent(requestAcademyId, requestAcademyCode)) return null;
+      olliSettingsState.academy = academy;
+      settingsSetCachedAcademy(academy);
+      return academy;
     } catch (err) {
-      console.warn('academy direct load skipped:', err.message || err);
+      console.warn('academy secure load skipped:', err.message || err);
     }
   }
 
   const fallbackAcademy = {
-    id: savedId,
-    academy_code: code,
+    id: academyId || savedId,
+    academy_code: savedCode,
     academy_name: savedName || '현재 학원'
   };
   if (!isOlliAcademyRequestCurrent(requestAcademyId, requestAcademyCode)) return null;
   olliSettingsState.academy = fallbackAcademy;
+  settingsSetCachedAcademy(fallbackAcademy);
   return fallbackAcademy;
 }
-
 
 async function settingsLoadMembers() {
   const academyId = settingsGetAcademyId();
