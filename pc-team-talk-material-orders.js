@@ -3,7 +3,7 @@
 
   if (global.OlliTeamTalkMaterialOrders?.version) return;
 
-  const VERSION = '1.3.0';
+  const VERSION = '1.4.0';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
 
   const state = {
@@ -116,6 +116,120 @@
     const hh = String(date.getHours()).padStart(2, '0');
     const mm = String(date.getMinutes()).padStart(2, '0');
     return `${y}.${m}.${d} ${hh}:${mm}`;
+  }
+
+  function localDateKey(date = new Date()) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function mondayKey(date = new Date()) {
+    const day = date.getDay();
+    const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    monday.setDate(monday.getDate() - (day === 0 ? 6 : day - 1));
+    return localDateKey(monday);
+  }
+
+  function isCoffeeQuickWord(value) {
+    const name = clean(value).replace(/\s+/g, ' ');
+    return name === '커피' || name === '당이 떨어 졌어요.' || name === '당이 떨어졌어요.';
+  }
+
+  async function todayTeachingTeacherCount() {
+    const current = context();
+    if (!current.sessionToken || !current.academyId) throw new Error('로그인 정보를 찾지 못했습니다.');
+
+    const now = new Date();
+    const weekday = now.getDay();
+    if (weekday === 0) return 0;
+
+    const today = localDateKey(now);
+    const weekStart = mondayKey(now);
+    const common = {
+      p_session_token: current.sessionToken,
+      p_academy_id: current.academyId
+    };
+
+    const [week, teacherContext, overrideContext] = await Promise.all([
+      rpc('olli_schedule_week', { ...common, p_week_start: weekStart }),
+      rpc('olli_schedule_class_teacher_context', common),
+      rpc('olli_schedule_teacher_overrides_range', { ...common, p_start_date: today, p_end_date: today })
+    ]);
+
+    if (week?.ok === false) throw new Error(week.message || '오늘 시간표를 불러오지 못했습니다.');
+    if (teacherContext?.ok === false) throw new Error(teacherContext.message || '담임 정보를 불러오지 못했습니다.');
+    if (overrideContext?.ok === false) throw new Error(overrideContext.message || '당일 담당 정보를 불러오지 못했습니다.');
+
+    const activeSlots = new Set();
+    (Array.isArray(week?.enrollments) ? week.enrollments : []).forEach(item => {
+      const from = clean(item?.effective_from);
+      const to = clean(item?.effective_to);
+      if (Number(item?.weekday) !== weekday) return;
+      if (from && from > today) return;
+      if (to && to < today) return;
+      activeSlots.add([
+        clean(item?.division),
+        Number(item?.time_slot),
+        clean(item?.class_group || 'A').toUpperCase()
+      ].join('|'));
+    });
+    (Array.isArray(week?.one_time_sessions) ? week.one_time_sessions : []).forEach(item => {
+      if (clean(item?.session_date) !== today || clean(item?.status) === 'cancelled') return;
+      activeSlots.add([
+        clean(item?.division),
+        Number(item?.time_slot),
+        clean(item?.class_group || 'A').toUpperCase()
+      ].join('|'));
+    });
+
+    const assignments = Array.isArray(teacherContext?.assignments) ? teacherContext.assignments : [];
+    const overrides = Array.isArray(overrideContext?.overrides) ? overrideContext.overrides : [];
+    const teachers = new Set();
+
+    activeSlots.forEach(slot => {
+      const [division, timeText, group] = slot.split('|');
+      const time = Number(timeText);
+      const override = overrides.find(item =>
+        clean(item?.session_date) === today
+        && clean(item?.division) === division
+        && Number(item?.time_slot) === time
+        && clean(item?.class_group || 'A').toUpperCase() === group
+      );
+      const regular = assignments.find(item =>
+        clean(item?.division) === division
+        && Number(item?.weekday) === weekday
+        && Number(item?.time_slot) === time
+        && clean(item?.class_group || 'A').toUpperCase() === group
+      );
+      const teacherId = clean(override?.teacher_member_id || regular?.teacher_member_id);
+      const teacherName = clean(override?.teacher_name || regular?.teacher_name);
+      const key = teacherId || (teacherName ? `name:${teacherName}` : '');
+      if (key) teachers.add(key);
+    });
+
+    return teachers.size;
+  }
+
+  async function autofillCoffeeRequest(form, selectedWord) {
+    if (!form || !isCoffeeQuickWord(selectedWord)) return;
+    const quantity = form.elements.quantity_text;
+    const neededOn = form.elements.needed_on;
+    const useContext = form.elements.use_context;
+
+    const today = localDateKey(new Date());
+    if (neededOn) neededOn.value = today;
+    if (useContext) useContext.value = '초등부 유치부';
+
+    const quantitySnapshot = quantity ? quantity.value : '';
+    try {
+      const count = await todayTeachingTeacherCount();
+      if (quantity && quantity.value === quantitySnapshot) quantity.value = String(count);
+    } catch (error) {
+      console.warn('커피 요청 자동 수량 계산 실패:', error?.message || error);
+      showToast('오늘 수업 선생님 수를 자동으로 불러오지 못했습니다. 수량은 직접 입력해 주세요.', 'error');
+    }
   }
 
   function clientMutationId() {
@@ -680,12 +794,15 @@
       const quickWord = event.target.closest('[data-material-quick-word]');
       if (quickWord) {
         const input = rootQuery('[data-material-item-name]');
+        const selectedWord = clean(quickWord.dataset.materialQuickWord);
         if (input) {
-          input.value = clean(quickWord.dataset.materialQuickWord);
+          input.value = selectedWord;
           input.dispatchEvent(new Event('input', { bubbles: true }));
           input.focus();
         }
         setQuickWordsVisible(false);
+        const form = rootQuery('[data-material-form]');
+        if (form && isCoffeeQuickWord(selectedWord)) autofillCoffeeRequest(form, selectedWord);
         return;
       }
 
