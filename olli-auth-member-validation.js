@@ -91,14 +91,25 @@ async function validateOlliCurrentMemberAccess(options) {
     }
 
     const membershipStatus = String(
-      matched.membership_status || matched.member_status || matched.status || 'active'
+      matched.membership_status || matched.member_status || matched.status || ''
     ).trim().toLowerCase();
     if (membershipStatus !== 'active') {
       return { valid: false, blocked: true, reason: 'MEMBERSHIP_INACTIVE' };
     }
 
+    const academyId = String(matched.academy_id || matched.academyId || '').trim();
     const memberId = String(matched.member_id || matched.memberId || '').trim();
     const role = String(matched.role || matched.member_role || '').trim();
+
+    if (!academyId) {
+      return { valid: false, blocked: true, reason: 'ACADEMY_ID_MISSING' };
+    }
+    if (!memberId) {
+      return { valid: false, blocked: true, reason: 'MEMBERSHIP_ID_MISSING' };
+    }
+    if (!['owner', 'manager', 'teacher', 'super_admin'].includes(role)) {
+      return { valid: false, blocked: true, reason: 'MEMBER_ROLE_INVALID' };
+    }
 
     if (typeof saveOlliAcademyLoginState === 'function') {
       try { saveOlliAcademyLoginState(matched, { accountLogin: true }); } catch (_) {}
@@ -110,7 +121,7 @@ async function validateOlliCurrentMemberAccess(options) {
       valid: true,
       blocked: false,
       authoritative: true,
-      academyId: String(matched.academy_id || matched.academyId || '').trim(),
+      academyId,
       memberId,
       role
     };

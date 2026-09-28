@@ -218,8 +218,8 @@
   function canAccessOlliStartPageAcademyManagement(){ return true; }
 
   function isOlliLoggedInForStartPage(){
-    const accountSessionToken = lsGet('olli_account_session_token_v1');
-    if (!accountSessionToken) return false;
+    if (typeof global.hasOlliAuthoritativeAccountSession !== 'function'
+      || global.hasOlliAuthoritativeAccountSession() !== true) return false;
     return lsGet('olli_owner_logged_in') === 'true'
       || lsGet('olli_teacher_logged_in') === 'true'
       || !!lsGet('olli_current_academy_id')

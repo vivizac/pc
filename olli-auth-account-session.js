@@ -5,6 +5,23 @@ const OLLI_ACCOUNT_NAME_KEY = 'olli_account_name_v1';
 const OLLI_ACCOUNT_ACADEMIES_KEY = 'olli_account_academies_v1';
 const OLLI_ACCOUNT_DEVICE_ID_KEY = 'olli_account_device_id_v1';
 
+let olliAuthoritativeAccountSessionReady = false;
+
+function setOlliAuthoritativeAccountSessionReady(ready) {
+  const sessionToken = String(localStorage.getItem(OLLI_ACCOUNT_SESSION_TOKEN_KEY) || '').trim();
+  olliAuthoritativeAccountSessionReady = ready === true && !!sessionToken;
+  return olliAuthoritativeAccountSessionReady;
+}
+
+function hasOlliAuthoritativeAccountSession() {
+  const sessionToken = String(localStorage.getItem(OLLI_ACCOUNT_SESSION_TOKEN_KEY) || '').trim();
+  return olliAuthoritativeAccountSessionReady === true && !!sessionToken;
+}
+
+if (typeof window !== 'undefined') {
+  window.hasOlliAuthoritativeAccountSession = hasOlliAuthoritativeAccountSession;
+}
+
 function getOlliFirstTextValue(source, keys) {
   if (!source || typeof source !== 'object') return '';
   for (const key of keys || []) {
@@ -429,7 +446,9 @@ function saveOlliAccountLoginState(result, preferredAcademyCode) {
 
   const selected = chooseOlliCurrentAcademy(academies, preferredAcademyCode);
   if (!selected) throw new Error('사용 가능한 학원을 선택하지 못했습니다.');
-  return saveOlliAcademyLoginState(selected, { accountLogin: true });
+  const savedAcademy = saveOlliAcademyLoginState(selected, { accountLogin: true });
+  setOlliAuthoritativeAccountSessionReady(true);
+  return savedAcademy;
 }
 
 async function loginOlliAccount(loginId, password) {
@@ -459,6 +478,7 @@ function saveOlliAccountOnlyLoginState(result, preferredLoginId) {
   localStorage.setItem(OLLI_ACCOUNT_NAME_KEY, accountName || accountLoginId || '계정');
   localStorage.setItem(OLLI_ACCOUNT_DEVICE_ID_KEY, deviceId);
   applyOlliAccessibleAcademies(result?.academies || []);
+  setOlliAuthoritativeAccountSessionReady(true);
   return { sessionToken, accountId, accountName, accountLoginId };
 }
 
@@ -615,6 +635,7 @@ function isOlliAuthoritativeAccountSessionFailure(error) {
 }
 
 function clearOlliInvalidAccountSessionAccessState(reason = '') {
+  setOlliAuthoritativeAccountSessionReady(false);
   [
     OLLI_ACCOUNT_SESSION_TOKEN_KEY,
     'olli_owner_logged_in',
@@ -649,6 +670,7 @@ function clearOlliInvalidAccountSessionAccessState(reason = '') {
 }
 
 function recoverOlliCachedAccountSessionContext(reason) {
+  setOlliAuthoritativeAccountSessionReady(false);
   const academies = applyOlliAccessibleAcademies(readOlliCachedAccountAcademies());
   const recovered = recoverOlliCurrentAcademyFromCachedList(reason || 'temporary_restore_failure');
   return {
@@ -666,13 +688,13 @@ async function establishOlliTeacherAccountSession(context) {
   if (!sessionToken) {
     throw new Error('개인계정 세션이 없습니다. 계정으로 다시 로그인해 주세요.');
   }
-  const restored = await restoreOlliAccountSession({ silent: true });
-  if (restored && restored.restored && (restored.authoritative === true || restored.degraded === true)) return restored.selected || restored;
+  const restored = await restoreOlliAccountSession({ silent: true, allowCachedFallback: false });
+  if (restored && restored.restored && restored.authoritative === true) return restored.selected || restored;
   throw new Error('개인계정에 연결된 학원을 확인하지 못했습니다. 승인 요청 상태를 다시 확인해 주세요.');
 }
 
 async function refreshOlliTeacherAcademyAccessAfterValidation(result) {
-  return restoreOlliAccountSession({ silent: true });
+  return restoreOlliAccountSession({ silent: true, allowCachedFallback: false });
 }
 
 async function restoreOlliAccountSession(options) {
@@ -680,6 +702,7 @@ async function restoreOlliAccountSession(options) {
   const sessionToken = String(localStorage.getItem(OLLI_ACCOUNT_SESSION_TOKEN_KEY) || '').trim();
 
   if (!sessionToken) {
+    setOlliAuthoritativeAccountSessionReady(false);
     const offline = (() => {
       try { return typeof navigator !== 'undefined' && navigator.onLine === false; } catch (_) { return false; }
     })();
@@ -697,6 +720,7 @@ async function restoreOlliAccountSession(options) {
   }
 
   if (!isSupabaseConfigured()) {
+    setOlliAuthoritativeAccountSessionReady(false);
     if (opts.allowCachedFallback) {
       return recoverOlliCachedAccountSessionContext('SUPABASE_UNAVAILABLE');
     }
@@ -726,6 +750,7 @@ async function restoreOlliAccountSession(options) {
     localStorage.setItem(OLLI_ACCOUNT_NAME_KEY, String(result?.account_name || '').trim());
     const selected = chooseOlliCurrentAcademy(academies, '');
     saveOlliAcademyLoginState(selected, { accountLogin: true });
+    setOlliAuthoritativeAccountSessionReady(true);
     if (typeof updateOlliAcademySwitchUI === 'function') updateOlliAcademySwitchUI();
     return {
       restored: true,
@@ -736,6 +761,7 @@ async function restoreOlliAccountSession(options) {
       selected
     };
   } catch (error) {
+    setOlliAuthoritativeAccountSessionReady(false);
     if (isOlliAuthoritativeAccountSessionFailure(error)) {
       clearOlliInvalidAccountSessionAccessState(error?.code || 'SESSION_INVALID');
       if (!opts.silent) throw error;

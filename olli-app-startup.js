@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let accountRestore = null;
     if (typeof restoreOlliAccountSession === 'function') {
-      accountRestore = await restoreOlliAccountSession({ silent: true, allowCachedFallback: true });
+      accountRestore = await restoreOlliAccountSession({ silent: true, allowCachedFallback: false });
     }
 
     if (!accountRestore || accountRestore.restored !== true || accountRestore.authoritative !== true) {
@@ -49,17 +49,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    if (typeof validateOlliCurrentMemberAccess === 'function') {
-      const access = await validateOlliCurrentMemberAccess({
-        silent: true,
-        sessionRestore: accountRestore,
-        refresh: false
-      });
-      if (!access || access.valid !== true) {
-        if (access?.blocked === true && typeof showOlliLoginEntry === 'function') showOlliLoginEntry();
-        await hideOlliBootScreen();
-        return;
-      }
+    if (typeof validateOlliCurrentMemberAccess !== 'function') {
+      console.warn('PC 멤버십 검증 모듈을 찾지 못해 앱 진입을 차단합니다.');
+      if (typeof showOlliLoginEntry === 'function') showOlliLoginEntry();
+      await hideOlliBootScreen();
+      return;
+    }
+
+    const access = await validateOlliCurrentMemberAccess({
+      silent: true,
+      sessionRestore: accountRestore,
+      refresh: false
+    });
+    if (!access || access.valid !== true || access.authoritative !== true) {
+      if (typeof showOlliLoginEntry === 'function') showOlliLoginEntry();
+      await hideOlliBootScreen();
+      return;
     }
 
     olliStartupAuthReady = true;
