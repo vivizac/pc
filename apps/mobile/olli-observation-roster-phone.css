@@ -862,7 +862,11 @@
   overscroll-behavior:none;
 }
 
-/* 수업기록 하단 4버튼 유틸리티 그룹의 최종 스타일. */
+/* 수업기록 하단 4버튼은 studentMemoScreen 원본 마크업이 고정 소유한다. */
+#studentMemoScreen #memoEditorUtilityGroup {
+  display:none;
+}
+
 #studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup {
   position:fixed;
   left:var(--olli-phone-guide-center-x);
@@ -949,7 +953,7 @@
   flex:0 0 auto;
   margin:auto;
 }
-/* The moved archive/voice/history/survey controls have one visual owner here. */
+/* 고정 보관함/마이크/이전기록/설문 버튼의 단일 스타일 소유자. */
 #studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoEditorVoiceBtn svg {
   width:22px;
   height:22px;
@@ -1006,7 +1010,6 @@
 }
 
 /* iOS lifts viewport-fixed bottom controls with the keyboard; keep bottom actions hidden while typing and show only centered Undo/Redo above. */
-#studentMemoScreen[data-memo-body-view="editor"].observation-editor-keyboard-open .memoBottomBar,
 #studentMemoScreen[data-memo-body-view="editor"].observation-editor-keyboard-open #memoFeedbackBtn,
 #studentMemoScreen[data-memo-body-view="editor"].observation-editor-keyboard-open #memoEditorUtilityGroup:not(.kcfVoiceCaptureMode) {
   visibility:hidden !important;
