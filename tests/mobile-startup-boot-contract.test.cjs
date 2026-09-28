@@ -94,3 +94,28 @@ test('local-first start-page routing settles page ownership before background re
   assert.match(recordResume, /const recordOpen = showRecordRoom\(\{ localOnly: true \}\);/);
   assert.doesNotMatch(recordResume, /await showRecordRoom\(\{ localOnly: true \}\)/);
 });
+
+
+test('memo navigation opens the screen shell before optional initialization', () => {
+  const runtime = fs.readFileSync(path.join(MOBILE, 'olli-observation-runtime.js'), 'utf8');
+  const roster = fs.readFileSync(path.join(MOBILE, 'olli-observation-roster-phone.js'), 'utf8');
+  const html = fs.readFileSync(path.join(MOBILE, 'index.html'), 'utf8');
+
+  const openStart = runtime.indexOf('function openStudentMemoPageById(studentId)');
+  const openEnd = runtime.indexOf('\n}', openStart);
+  const openBlock = runtime.slice(openStart, openEnd + 2);
+  assert.ok(openStart >= 0);
+  assert.ok(openBlock.indexOf('openObservationMemoScreenShell(session)') >= 0);
+  assert.ok(openBlock.indexOf('openObservationMemoScreenShell(session)') < openBlock.indexOf('renderObservationMemoScreenChrome(session)'));
+  assert.ok(openBlock.indexOf('openObservationMemoScreenShell(session)') < openBlock.indexOf('renderObservationMemoInitialView(session)'));
+  assert.match(openBlock, /return true;/);
+
+  assert.doesNotMatch(roster, /memoScreen\.style\.visibility = 'hidden'/);
+  assert.match(roster, /opened = openStudentMemoPageById\(studentId\) !== false/);
+  assert.match(roster, /memoScreen\.removeAttribute\('aria-hidden'\)/);
+  assert.match(roster, /memoScreen\.removeAttribute\('inert'\)/);
+
+  assert.match(html, /observation-memo-session-common\.js\?v=20260929-memo-page-owner-1/);
+  assert.match(html, /olli-observation-runtime\.js\?v=20260929-memo-page-owner-1/);
+  assert.match(html, /olli-observation-roster-phone\.js\?v=20260929-memo-page-owner-1/);
+});
