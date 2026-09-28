@@ -3,7 +3,7 @@
 
   if (global.OlliTeamTalkMaterialOrders?.version) return;
 
-  const VERSION = '1.0.1';
+  const VERSION = '1.1.0';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
 
   const state = {
@@ -24,6 +24,12 @@
   };
 
   const clean = value => String(value == null ? '' : value).trim();
+
+  const MATERIAL_ICON_RULES = Object.freeze([
+    { keywords: ['아크릴'], src: '/assets/material-icons/acrylic.webp' },
+    { keywords: ['도화지'], src: '/assets/material-icons/drawing-paper.webp' },
+    { keywords: ['크레프트지', '크래프트지', '크라프트지'], src: '/assets/material-icons/kraft-paper.webp' }
+  ]);
 
   function context() {
     let academyContext = null;
@@ -245,8 +251,24 @@
     }
   }
 
-  function materialIcon() {
+  function materialIcon(itemName) {
     const wrap = create('span', 'olliMatItemIcon');
+    const name = clean(itemName);
+    const rule = MATERIAL_ICON_RULES.find(({ keywords }) =>
+      keywords.some(keyword => name.includes(keyword))
+    );
+
+    if (rule) {
+      const image = document.createElement('img');
+      image.src = rule.src;
+      image.alt = '';
+      image.loading = 'lazy';
+      image.decoding = 'async';
+      wrap.classList.add('has-image');
+      wrap.appendChild(image);
+      return wrap;
+    }
+
     wrap.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14v11H5z"></path><path d="M8 8V5h8v3M9 13h6"></path></svg>';
     return wrap;
   }
@@ -285,7 +307,7 @@
       button.dataset.materialId = clean(item?.id);
       button.classList.toggle('selected', clean(item?.id) === state.selectedId);
 
-      const icon = materialIcon();
+      const icon = materialIcon(item?.item_name);
       const copy = create('span', 'olliMatItemCopy');
       copy.appendChild(create('strong', 'olliMatItemName', clean(item?.item_name) || '재료'));
 
@@ -353,7 +375,7 @@
     body.replaceChildren();
 
     const hero = create('div', 'olliMatDetailHero');
-    hero.append(materialIcon(), create('div', 'olliMatDetailHeroCopy'));
+    hero.append(materialIcon(item.item_name), create('div', 'olliMatDetailHeroCopy'));
     const heroCopy = hero.lastElementChild;
     heroCopy.append(
       create('strong', '', clean(item.item_name) || '재료'),
