@@ -457,35 +457,43 @@ function isSummaryFeedbackRowForMonth(row, monthKey) {
   return !!d && getAcademyConsultationMonthKey(d) === monthKey;
 }
 
-async function findSavedConsultationSummaryFeedback(student, months) {
+async function loadConsultationSummaryFeedbackRowsSecure(student, limit = 50) {
   const academyId = requireOlliAcademyId('상담용 종합 피드백 확인');
+  const studentId = String(student?.id || '').trim();
+  const studentName = String(student?.name || '').trim();
+  if (!studentId && !studentName) return [];
+
+  const core = window.OlliStorageCore;
+  if (!core?.FeatureRegistry || !core?.ServerAdapter) {
+    throw new Error('상담용 종합 피드백 보호 조회 모듈이 준비되지 않았습니다.');
+  }
+
+  const spec = core.FeatureRegistry.require('summary_feedback_records_read');
+  return core.ServerAdapter.read(spec, {
+    academyId,
+    studentId,
+    student_name: studentName
+  }, { limit });
+}
+
+async function findSavedConsultationSummaryFeedback(student, months) {
   const safeMonths = Number(months) || 1;
   const year = new Date().getFullYear();
   const monthKey = getAcademyConsultationMonthKey();
-  const encodedAcademyId = encodeURIComponent(academyId);
-  const encodedStudentId = student?.id ? encodeURIComponent(student.id) : '';
-  const encodedName = encodeURIComponent(String(student?.name || '').trim());
-  const paths = [];
+  let sourceRows = [];
 
-  if (encodedStudentId) {
-    paths.push(`summary_feedbacks?select=*&academy_id=eq.${encodedAcademyId}&student_id=eq.${encodedStudentId}&summary_months=eq.${safeMonths}&year=eq.${year}&order=id.desc&limit=50`);
-  } else if (encodedName) {
-    // 학생코드가 없는 과거 저장본만 이름으로 보조 조회합니다.
-    paths.push(`summary_feedbacks?select=*&academy_id=eq.${encodedAcademyId}&student_name=eq.${encodedName}&summary_months=eq.${safeMonths}&year=eq.${year}&order=id.desc&limit=50`);
+  try {
+    sourceRows = await loadConsultationSummaryFeedbackRowsSecure(student, 50);
+  } catch (err) {
+    console.warn('상담용 종합 피드백 저장본 확인 실패:', err.message || err);
+    sourceRows = [];
   }
 
-  const settled = await Promise.all(paths.map(async path => {
-    try {
-      return await supabase('GET', path);
-    } catch (err) {
-      console.warn('상담용 종합 피드백 저장본 확인 실패:', err.message || err);
-      return [];
-    }
-  }));
-
   const seen = new Set();
-  const rows = filterOlliActiveRows(settled.flat())
+  const rows = filterOlliActiveRows(sourceRows)
     .filter(row => row && String(row.content || '').trim())
+    .filter(row => Number(row.summary_months || 0) === safeMonths)
+    .filter(row => Number(row.year || 0) === year)
     .filter(row => isSummaryFeedbackRowForMonth(row, monthKey))
     .filter(row => {
       const key = row.id || `${row.student_id || ''}:${row.student_name || ''}:${row.date || row.created_at || ''}`;

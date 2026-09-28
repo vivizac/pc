@@ -72,3 +72,13 @@ test('secure RPC authorization failures are not retried',()=>{
   assert.match(policy,/'STUDENT_NOT_FOUND'/);
   assert.match(policy,/nonRetryableCodes\.has\(code\)/);
 });
+
+
+test('consultation summary lookup uses protected feedback RPC',()=> {
+  const consultation = fs.readFileSync(path.join(root,'olli-data-consultation-summary.js'),'utf8');
+  assert.match(consultation,/loadConsultationSummaryFeedbackRowsSecure/);
+  assert.match(consultation,/summary_feedback_records_read/);
+  assert.match(consultation,/core\.ServerAdapter\.read\(spec/);
+  assert.doesNotMatch(consultation,/summary_feedbacks\?select=\*/);
+  assert.doesNotMatch(consultation,/supabase\('GET', path\)/);
+});
