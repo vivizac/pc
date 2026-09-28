@@ -68,3 +68,18 @@ test('all date-bearing schedule writes call a date-aware group predicate', () =>
   }
   assert.match(sql, /olli_schedule_group_is_enabled\s*\([^;]*?(session_date|effective_date|target_date|v_date)/is);
 });
+
+
+test('merge blockers are bounded by the merge effective date so historical B rows do not block today', () => {
+  const sql = migrationSql();
+  assert.match(sql, /one_time_sessions[\s\S]*?session_date\s*>=\s*(v_effective|p_effective_date)/i);
+  assert.match(sql, /enrollments[\s\S]*?effective_to\s+is\s+null[\s\S]*?effective_to\s*>=\s*(v_effective|p_effective_date)/i);
+  assert.match(sql, /schedule_changes[\s\S]*?effective_date\s*>=\s*(v_effective|p_effective_date)/i);
+});
+
+test('regular schedule writes derive the first actual class date on or after effective_date', () => {
+  const sql = migrationSql();
+  assert.match(sql, /first_(occurrence|weekday)|weekday_on_or_after/i);
+  assert.match(sql, /olli_schedule_set_student_weekly_schedule/i);
+  assert.match(sql, /olli_schedule_change/i);
+});

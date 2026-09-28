@@ -29,3 +29,9 @@ test('PC registration resolves elementary split state with the registration effe
   assert.match(registration, /class_split_periods/);
   assert.match(registration, /isElementarySplit\([^)]*effectiveDate/);
 });
+
+
+test('PC UI does not directly interpret legacy class_splits after the v2 contract lands', () => {
+  assert.doesNotMatch(timetable, /data\s*&&\s*data\.class_splits|state\.data\s*&&\s*state\.data\.class_splits/);
+  assert.doesNotMatch(registration, /data\s*&&\s*data\.class_splits/);
+});

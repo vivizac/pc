@@ -91,3 +91,19 @@ test('week availability evaluates A/B layout separately for each actual date', a
   assert.ok(tuesday);
   assert.deepEqual(groups(tuesday), ['A','B']);
 });
+
+
+test('canonical class_split_periods wins over the temporary legacy class_splits snapshot', async () => {
+  const data = fixture();
+  data.class_splits = [{ weekday:2, time_slot:2 }];
+  data.class_split_periods = [
+    { weekday:2, time_slot:2, effective_from:'2026-09-01', effective_to:'2026-09-21' }
+  ];
+  const schedule = loadSchedule(data);
+  const mergedDate = await schedule.findAvailableSlots({
+    date:'2026-09-29',
+    division:'elementary',
+    timeSlot:2
+  });
+  assert.deepEqual(groups(mergedDate), ['A']);
+});
