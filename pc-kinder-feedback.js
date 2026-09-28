@@ -257,20 +257,14 @@ function enqueueFeedbackPhotoCommonSync(payload, operation, err) {
   }
 }
 async function uploadOlliStorageFile(bucket, objectPath, file) {
-  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${objectPath}`, {
-    method: 'POST',
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${getOlliAuthAccessToken ? (getOlliAuthAccessToken() || SUPABASE_KEY) : SUPABASE_KEY}`,
-      'Content-Type': file.type || 'image/jpeg',
-      'Cache-Control': '3600',
-      'x-upsert': 'true'
-    },
-    body: file
-  });
-  const responseText = await res.text();
-  if (!res.ok) throw new Error(responseText || `Storage 업로드 실패 (${res.status})`);
-  return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${objectPath}`;
+  const storage = window.OlliFeedbackPhotoStorage;
+  if (!storage || typeof storage.uploadSignedFile !== 'function') {
+    const error = new Error('수업사진 보안 업로드 모듈이 준비되지 않았습니다.');
+    error.code = 'PHOTO_SECURE_STORAGE_NOT_READY';
+    throw error;
+  }
+  const academyId = requireOlliAcademyId('수업사진 업로드');
+  return storage.uploadSignedFile({ academyId, bucket, objectPath, file });
 }
 
 async function saveFeedbackPhotoMetadataViaCommonStorage(payload, label = '수업사진 메타데이터 저장') {
@@ -371,22 +365,43 @@ async function uploadKinderChatFeedbackPhotoToSupabase(photo, feedbackJobId, stu
   };
   writeFeedbackPhotoCommonLocal(pendingPayload, 'pending', 'uploading');
   try {
-    const [imageUrl, thumbnailUrl] = await Promise.all([
+    await Promise.all([
       uploadOlliStorageFile(KCF_PHOTO_BUCKET, `${basePath}/image.jpg`, photo.imageFile),
       uploadOlliStorageFile(KCF_PHOTO_BUCKET, `${basePath}/thumb.jpg`, photo.thumbnailFile)
     ]);
     const payload = Object.assign({}, pendingPayload, {
-      image_url: imageUrl,
-      thumbnail_url: thumbnailUrl,
+      image_url: null,
+      thumbnail_url: null,
       updated_at: new Date().toISOString()
     });
     const row = await saveFeedbackPhotoMetadataViaCommonStorage(payload, '수업사진 메타데이터 저장');
     writeFeedbackPhotoCommonLocal(Object.assign({}, payload, row || {}), 'synced', 'metadata_saved');
+
+    let signedUrls = null;
+    try {
+      signedUrls = await window.OlliFeedbackPhotoStorage.getSignedPhotoUrls({
+        academyId,
+        photoId,
+        force: true
+      });
+    } catch (signError) {
+      recordOlliStorageIssue({
+        feature: KCF_PHOTO_COMMON_FEATURE,
+        resource: 'feedback_photos',
+        operation: 'sign_read',
+        message: signError?.message || signError,
+        student_id: payload?.student_id || ''
+      });
+    }
+
     return {
       photo_id: photoId,
       originalName: photo.originalName || '작품사진',
-      previewUrl: imageUrl,
-      thumbnailUrl,
+      previewUrl: signedUrls?.imageUrl || photo.previewUrl || '',
+      thumbnailUrl: signedUrls?.thumbnailUrl || photo.thumbnailUrl || '',
+      imagePath: payload.image_path,
+      thumbnailPath: payload.thumbnail_path,
+      signedUrlExpiresAt: signedUrls?.expiresAt || '',
       imageWidth: payload.image_width,
       imageHeight: payload.image_height,
       fileSize: payload.file_size,
