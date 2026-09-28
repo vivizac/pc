@@ -8,6 +8,7 @@ const LIGHT_BLUE_BG = '#F2F6FC';
 const DARK_BLUE_BG = '#46576E';
 const OLLI_BLUE = '#0A84FF';
 const DEFAULT_BACKGROUND = 'olli-light';
+const BACKGROUND_RESET_VERSION = '20260928-olli1';
 const BACKGROUND_COLORS = Object.freeze({
   light: LIGHT_BG,
   dark: DARK_BG,
@@ -97,6 +98,7 @@ function writeCache(id){
   try {
     localStorage.setItem(cacheKey(id), JSON.stringify({
       background: state.background,
+      background_reset_version: BACKGROUND_RESET_VERSION,
       bot_notifications_enabled: !!state.botNotificationsEnabled,
       ai_enabled: !!state.aiEnabled,
       updated_at: new Date().toISOString()
@@ -105,7 +107,9 @@ function writeCache(id){
 }
 function readCachedIntoState(id){
   const cached = readCache(id);
-  state.background = normalizeBackground(cached.background || DEFAULT_BACKGROUND);
+  state.background = cached.background_reset_version === BACKGROUND_RESET_VERSION
+    ? normalizeBackground(cached.background || DEFAULT_BACKGROUND)
+    : DEFAULT_BACKGROUND;
   if (Object.prototype.hasOwnProperty.call(cached,'bot_notifications_enabled')) {
     state.botNotificationsEnabled = !!cached.bot_notifications_enabled;
   }
@@ -557,7 +561,7 @@ function refreshForAcademy(){
   if (!id) return;
   if (state.loadedAcademyId && state.loadedAcademyId !== id) {
     state.loadedAcademyId = '';
-    state.background = 'dark';
+    state.background = DEFAULT_BACKGROUND;
     state.botNotificationsEnabled = false;
     state.aiEnabled = false;
   }
@@ -576,7 +580,7 @@ function init(){
     applyBackground(state.background);
     loadRemote(false);
   } else {
-    applyBackground('dark');
+    applyBackground(DEFAULT_BACKGROUND);
   }
 }
 
