@@ -36,41 +36,24 @@ function normalizeOlliApprovedTeacherResult(row, academy = null, fallbackCode = 
 }
 
 async function findOlliApprovedTeacherMembership(academyCode, teacherName) {
-  const code = String(academyCode || '').trim();
+  const code = String(academyCode || '').trim().toUpperCase();
   const name = String(teacherName || '').trim();
   const normalizedName = normalizeOlliTeacherNameForMatch(name);
   if (!code || !name || !normalizedName) return null;
 
-
-  let academy = null;
-  try {
-    const academyRows = await supabase('GET', `academies?select=*&academy_code=eq.${encodeURIComponent(code)}&limit=1`);
-    academy = Array.isArray(academyRows) ? academyRows[0] : academyRows;
-  } catch (err) {
-    console.warn('학원 ID 직접 조회 실패:', err && (err.message || err));
+  const sessionToken = String(localStorage.getItem(OLLI_ACCOUNT_SESSION_TOKEN_KEY) || '').trim();
+  if (!sessionToken) {
+    throw new Error('개인계정 로그인 후 승인된 선생님 정보를 확인할 수 있습니다.');
   }
 
-  const memberRows = [];
-  const seen = new Set();
-  async function addMemberRows(path) {
-    try {
-      const rows = await supabase('GET', path);
-      (Array.isArray(rows) ? rows : []).forEach(row => {
-        const key = String(row?.id || row?.member_id || JSON.stringify(row));
-        if (seen.has(key)) return;
-        seen.add(key);
-        memberRows.push(row);
-      });
-    } catch (err) {
-      console.warn('선생님 멤버십 조회 실패:', err && (err.message || err));
-    }
-  }
+  const result = await callOlliTestRpc('olli_get_my_academies', {
+    p_session_token: sessionToken
+  });
+  const memberships = Array.isArray(result?.academies) ? result.academies : [];
 
-  const academyId = String(academy?.id || academy?.academy_id || '').trim();
-  if (academyId) await addMemberRows(`academy_members?select=*&academy_id=eq.${encodeURIComponent(academyId)}&limit=500`);
-  await addMemberRows(`academy_members?select=*&academy_code=eq.${encodeURIComponent(code)}&limit=500`);
-
-  const matched = memberRows.filter(row => {
+  const matched = memberships.filter(row => {
+    const rowCode = String(row?.academy_code || '').trim().toUpperCase();
+    if (rowCode !== code) return false;
     if (!isOlliApprovedTeacherMemberRow(row)) return false;
     const rowName = normalizeOlliTeacherNameForMatch(row.member_name || row.display_name || row.teacher_name || row.name || '');
     return rowName && rowName === normalizedName;
@@ -79,10 +62,10 @@ async function findOlliApprovedTeacherMembership(academyCode, teacherName) {
   if (!matched.length) return null;
   if (matched.length > 1) {
     const exact = matched.filter(row => String(row.member_name || row.display_name || row.teacher_name || row.name || '').trim() === name);
-    if (exact.length === 1) return normalizeOlliApprovedTeacherResult(exact[0], academy, code, name);
+    if (exact.length === 1) return normalizeOlliApprovedTeacherResult(exact[0], exact[0], code, name);
     throw new Error('같은 이름의 승인된 선생님이 여러 명 있습니다. 원장에게 선생님 이름을 구분해 달라고 요청해 주세요.');
   }
-  return normalizeOlliApprovedTeacherResult(matched[0], academy, code, name);
+  return normalizeOlliApprovedTeacherResult(matched[0], matched[0], code, name);
 }
 
 async function enterOlliApprovedTeacher(academyCode, teacherName, buttonId = '') {

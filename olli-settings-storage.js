@@ -16,6 +16,18 @@ async function loadSettingsBackupStudentsSecure(academyId) {
   return core.ServerAdapter.read(spec, { academyId }, { limit: 5000 });
 }
 
+async function loadSettingsBackupMembersSecure(academyId) {
+  const sessionToken = String(localStorage.getItem('olli_account_session_token_v1') || '').trim();
+  if (!sessionToken) throw new Error('계정 세션이 없어 구성원 백업을 만들 수 없습니다.');
+  if (typeof callOlliRpc !== 'function') throw new Error('구성원 보호 조회 모듈이 준비되지 않았습니다.');
+
+  const rows = await callOlliRpc('olli_list_academy_members', {
+    p_session_token: sessionToken,
+    p_academy_id: academyId
+  });
+  return Array.isArray(rows) ? rows : (Array.isArray(rows?.rows) ? rows.rows : []);
+}
+
 async function downloadSettingsBackup() {
   try {
     const academyId = settingsGetAcademyId();
@@ -25,7 +37,7 @@ async function downloadSettingsBackup() {
       loadSettingsBackupStudentsSecure(academyId),
       loadSettingsBackupFeedbackRowsSecure('general_feedback_records_read', academyId),
       loadSettingsBackupFeedbackRowsSecure('summary_feedback_records_read', academyId),
-      supabase('GET', `academy_members?select=*&academy_id=eq.${encodeURIComponent(academyId)}`)
+      loadSettingsBackupMembersSecure(academyId)
     ]);
 
     const backup = {

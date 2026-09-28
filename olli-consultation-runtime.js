@@ -594,6 +594,22 @@ async function toggleRecordAcademyManagementMode(){
   
 }
 
+function getConsultationRecordSecureReadFeature(sourceTable) {
+  if (sourceTable === 'feedbacks') return 'general_feedback_records_read';
+  if (sourceTable === 'fail_feedbacks') return 'growth_feedback_records_read';
+  if (sourceTable === 'summary_feedbacks') return 'summary_feedback_records_read';
+  throw new Error('지원하지 않는 기록 조회 테이블입니다: ' + sourceTable);
+}
+
+async function loadConsultationRecordRowsSecure(sourceTable, academyId, limit = 500) {
+  const core = window.OlliStorageCore;
+  if (!core?.FeatureRegistry || !core?.ServerAdapter) {
+    throw new Error('기록실 피드백 보호 조회 모듈이 준비되지 않았습니다.');
+  }
+  const spec = core.FeatureRegistry.require(getConsultationRecordSecureReadFeature(sourceTable));
+  return core.ServerAdapter.read(spec, { academyId }, { limit });
+}
+
 async function loadRecords(name) {
   const list = document.getElementById('recordList');
   // 학생 목록 화면에서는 Supabase 로딩 문구를 띄우지 않습니다.
@@ -652,29 +668,22 @@ async function loadRecords(name) {
   }
 
   const academyId = requireOlliAcademyId('기록 조회');
-  let feedbackPath = `feedbacks?academy_id=eq.${encodeURIComponent(academyId)}&order=id.desc&limit=500`;
-  let failFeedbackPath = `fail_feedbacks?academy_id=eq.${encodeURIComponent(academyId)}&order=id.desc&limit=500`;
-  let summaryPath = `summary_feedbacks?academy_id=eq.${encodeURIComponent(academyId)}&order=id.desc&limit=500`;
-  if (name) {
-    const encodedName = encodeURIComponent(name);
-    feedbackPath += `&student_name=ilike.*${encodedName}*`;
-    failFeedbackPath += `&student_name=ilike.*${encodedName}*`;
-    summaryPath += `&student_name=ilike.*${encodedName}*`;
-  }
 
   try {
     let rawData = [];
     let sourceTableName = 'feedbacks';
 
     if (currentRecordMode === 'summary') {
-      rawData = await supabase('GET', summaryPath);
       sourceTableName = 'summary_feedbacks';
     } else if (currentRecordMode === 'fail') {
-      rawData = await supabase('GET', failFeedbackPath);
       sourceTableName = 'fail_feedbacks';
-    } else {
-      rawData = await supabase('GET', feedbackPath);
-      sourceTableName = 'feedbacks';
+    }
+
+    rawData = await loadConsultationRecordRowsSecure(sourceTableName, academyId, 500);
+
+    if (name) {
+      const nameQuery = String(name || '').trim().toLowerCase();
+      rawData = rawData.filter(row => String(row?.student_name || '').toLowerCase().includes(nameQuery));
     }
 
     if (!Array.isArray(rawData)) { list.innerHTML = '<div class="recordEmpty">오류가 발생했습니다.</div>'; return; }

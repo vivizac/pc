@@ -227,24 +227,25 @@ function getOlliAcademyLookupRowsFromRpcResult(result) {
 async function findOlliAcademiesByQueryForAccountAccess(query) {
   const rawQuery = normalizeOlliAcademyLookupQuery(query);
   if (!rawQuery) throw new Error('학원 아이디 또는 학원명을 입력해 주세요.');
+
   const upperQuery = rawQuery.toUpperCase();
   const sessionToken = String(localStorage.getItem(OLLI_ACCOUNT_SESSION_TOKEN_KEY) || '').trim();
-  let lastError = null;
-  let results = [];
+  if (!sessionToken) {
+    throw new Error('개인계정 로그인 후 학원을 검색할 수 있습니다.');
+  }
 
-  // 1) RPC 검색. 학원 아이디 exact뿐 아니라 학원명 일부 검색 결과가 여러 개면 모두 받아옵니다.
+  let lastError = null;
   const rpcPayloads = [
-    { name: 'olli_find_academy_by_code', payload: { p_academy_code: rawQuery, p_session_token: sessionToken || null } },
-    { name: 'olli_lookup_academy_by_code', payload: { p_academy_code: rawQuery, p_session_token: sessionToken || null } }
+    { name: 'olli_lookup_academy_by_code', payload: { p_academy_code: rawQuery, p_session_token: sessionToken } },
+    { name: 'olli_find_academy_by_code', payload: { p_academy_code: rawQuery, p_session_token: sessionToken } }
   ];
 
   for (const item of rpcPayloads) {
     try {
       const result = await callOlliRpc(item.name, item.payload);
       const rpcRows = getOlliAcademyLookupRowsFromRpcResult(result);
-      const rpcAcademies = dedupeOlliAcademyLookupRows(rpcRows, upperQuery);
-      if (rpcAcademies.length) results = results.concat(rpcAcademies);
-      break;
+      const academies = dedupeOlliAcademyLookupRows(rpcRows, upperQuery);
+      if (academies.length) return academies;
     } catch (error) {
       lastError = error;
       const message = String(error?.message || error || '');
@@ -253,29 +254,7 @@ async function findOlliAcademiesByQueryForAccountAccess(query) {
     }
   }
 
-  // 2) REST 직접 조회. academies에는 academy_id 컬럼이 없고 id / academy_code가 기준입니다.
-  const selectColumns = 'id,academy_code,academy_name,status,region';
-  const directQueries = [
-    `academies?select=${selectColumns}&academy_code=eq.${encodeURIComponent(upperQuery)}&limit=30`,
-    `academies?select=${selectColumns}&academy_code=ilike.*${encodeURIComponent(upperQuery)}*&limit=30`,
-    `academies?select=${selectColumns}&academy_name=ilike.*${encodeURIComponent(rawQuery)}*&limit=30`
-  ];
-
-  for (const path of directQueries) {
-    try {
-      const rows = await supabase('GET', path);
-      results = results.concat(dedupeOlliAcademyLookupRows(rows, upperQuery));
-    } catch (error) {
-      lastError = error;
-      console.warn('학원 검색 직접 조회 실패:', error && (error.message || error));
-    }
-  }
-
-  results = dedupeOlliAcademyLookupRows(results, upperQuery);
-  if (!results.length) {
-    throw new Error('해당 학원 아이디 또는 학원명을 찾지 못했습니다.' + (lastError ? '\n' + (lastError.message || lastError) : ''));
-  }
-  return results;
+  throw new Error('해당 학원 아이디 또는 학원명을 찾지 못했습니다.' + (lastError ? '\n' + (lastError.message || lastError) : ''));
 }
 
 async function findOlliAcademyByCodeForAccountAccess(academyCode) {

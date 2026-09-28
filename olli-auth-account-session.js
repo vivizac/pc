@@ -141,43 +141,47 @@ function mergeOlliAcademyServerInfo(localAcademy = {}, serverAcademy = {}) {
 
 async function fetchOlliAcademyRowByIdentity(academy = {}) {
   const academyId = String(academy?.academy_id || academy?.academyId || academy?.id || '').trim();
-  const academyCode = String(academy?.academy_code || academy?.academyCode || '').trim();
+  const academyCode = String(academy?.academy_code || academy?.academyCode || '').trim().toUpperCase();
   if (!isSupabaseConfigured()) return { exists: true, unchecked: true, row: academy };
 
+  const sessionToken = String(localStorage.getItem(OLLI_ACCOUNT_SESSION_TOKEN_KEY) || '').trim();
+  if (!sessionToken) {
+    return { exists: true, unchecked: true, row: academy, reason: 'NO_ACCOUNT_SESSION' };
+  }
+
   try {
-    let rows = [];
-    if (academyId) {
-      rows = await supabase('GET', `academies?select=*&id=eq.${encodeURIComponent(academyId)}&limit=1`);
+    const result = await callOlliTestRpc('olli_get_my_academies', {
+      p_session_token: sessionToken
+    });
+    const rows = normalizeOlliAccountAcademies(result?.academies || []);
+    const row = rows.find(item => academyId && String(item.academy_id || item.academyId || '').trim() === academyId)
+      || rows.find(item => academyCode && String(item.academy_code || item.academyCode || '').trim().toUpperCase() === academyCode)
+      || null;
+
+    if (!row) {
+      return {
+        exists: false,
+        row: null,
+        authoritative: true,
+        reason: 'ACADEMY_NOT_ACCESSIBLE'
+      };
     }
-    if ((!Array.isArray(rows) || !rows.length) && academyCode) {
-      rows = await supabase('GET', `academies?select=*&academy_code=eq.${encodeURIComponent(academyCode)}&limit=1`);
+    if (isOlliAcademyDeletedLikeInfo(row)) {
+      return { exists: false, row, authoritative: true, deletedStatus: true };
     }
-    const row = Array.isArray(rows) && rows.length ? rows[0] : null;
-    // 주의: Supabase RLS/컬럼 차이/예전 학원 ID 로그인 결과 때문에
-    // academies 직접 조회가 빈 배열로 돌아오는 경우가 있습니다.
-    // 이 값을 곧바로 삭제된 학원으로 판단하면 정상 학원까지 모두 차단됩니다.
-    // 따라서 명시적인 deleted/inactive 상태가 확인된 경우만 차단하고,
-    // 조회 결과가 없을 때는 로그인/RPC 결과를 우선 신뢰합니다.
-    if (!row) return { exists: true, unchecked: true, row: academy, notFoundButTrusted: true };
-    if (isOlliAcademyDeletedLikeInfo(row)) return { exists: false, row, deletedStatus: true };
-    return { exists: true, row };
+    return { exists: true, row, authoritative: true };
   } catch (error) {
-    // 네트워크/RLS 문제만으로 정상 학원을 로그아웃시키지 않기 위해 조회 실패는 차단하지 않습니다.
-    console.warn('학원 존재 여부 확인 실패:', error);
+    console.warn('학원 접근 상태 확인 실패:', error);
     return { exists: true, unchecked: true, row: academy, error };
   }
 }
 
 async function filterOlliExistingAcademies(list) {
-  const normalized = normalizeOlliAccountAcademies(list).filter(item => !isOlliAcademyDeletedLikeInfo(item));
-  if (!isSupabaseConfigured()) return normalized;
-  const kept = [];
-  for (const item of normalized) {
-    const check = await fetchOlliAcademyRowByIdentity(item);
-    if (check.exists) kept.push(mergeOlliAcademyServerInfo(item, check.row || {}));
-  }
-  return kept;
+  // 로그인/세션 RPC가 이미 active membership + active academy만 반환하므로
+  // 다시 academies 테이블을 직접 조회하지 않습니다.
+  return normalizeOlliAccountAcademies(list).filter(item => !isOlliAcademyDeletedLikeInfo(item));
 }
+
 
 function purgeOlliAcademyFromLocalState(academyId, academyCode) {
   const targetId = String(academyId || '').trim();

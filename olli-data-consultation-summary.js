@@ -257,35 +257,39 @@ function dedupeConsultationSummaryFeedbackRows(rows) {
   return result;
 }
 
+function getConsultationSecureFeedbackReadFeature(table) {
+  if (table === 'feedbacks') return 'general_feedback_records_read';
+  if (table === 'fail_feedbacks') return 'growth_feedback_records_read';
+  if (table === 'summary_feedbacks') return 'summary_feedback_records_read';
+  throw new Error('지원하지 않는 상담용 피드백 테이블입니다: ' + table);
+}
+
 async function loadConsultationSummaryFeedbackRows(student, months, options = {}) {
   const academyId = requireOlliAcademyId('상담용 종합 피드백 생성');
   const safeMonths = Number(months) || 1;
-  const encodedAcademyId = encodeURIComponent(academyId);
-  const encodedStudentId = student?.id ? encodeURIComponent(student.id) : '';
-  const encodedName = encodeURIComponent(String(student?.name || '').trim());
+  const studentId = String(student?.id || '').trim();
+  const studentName = String(student?.name || '').trim();
   const requestedTables = Array.isArray(options.sourceTables) && options.sourceTables.length
     ? options.sourceTables
     : ['feedbacks', 'fail_feedbacks'];
-  const requests = [];
 
-  if (encodedStudentId) {
-    requestedTables.forEach(table => {
-      requests.push({ table, path: `${table}?select=*&academy_id=eq.${encodedAcademyId}&student_id=eq.${encodedStudentId}&order=id.desc&limit=300` });
-    });
-  } else if (encodedName) {
-    // 학생코드가 없는 과거 기록만 이름으로 보조 조회합니다.
-    // 학생코드가 있는 학생은 동명이인 혼선을 막기 위해 student_id로만 조회합니다.
-    requestedTables.forEach(table => {
-      requests.push({ table, path: `${table}?select=*&academy_id=eq.${encodedAcademyId}&student_name=eq.${encodedName}&order=id.desc&limit=300` });
-    });
+  const core = window.OlliStorageCore;
+  if (!core?.FeatureRegistry || !core?.ServerAdapter) {
+    throw new Error('상담용 피드백 보호 조회 모듈이 준비되지 않았습니다.');
   }
 
-  const settled = await Promise.all(requests.map(async request => {
+  const identity = { academyId };
+  if (studentId) identity.studentId = studentId;
+  else if (studentName) identity.student_name = studentName;
+
+  const settled = await Promise.all(requestedTables.map(async table => {
     try {
-      const rows = await supabase('GET', request.path);
-      return normalizeConsultationSummaryFeedbackRows(rows, request.table, safeMonths, options);
+      const feature = getConsultationSecureFeedbackReadFeature(table);
+      const spec = core.FeatureRegistry.require(feature);
+      const rows = await core.ServerAdapter.read(spec, identity, { limit: 300 });
+      return normalizeConsultationSummaryFeedbackRows(rows, table, safeMonths, options);
     } catch (err) {
-      console.warn('상담용 피드백 기록 조회 실패:', request.table, err.message || err);
+      console.warn('상담용 피드백 기록 조회 실패:', table, err.message || err);
       return [];
     }
   }));
