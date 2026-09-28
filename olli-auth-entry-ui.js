@@ -277,7 +277,11 @@ async function callOlliTestRpc(functionName, payload) {
     const message = data && typeof data === 'object'
       ? [data.message, data.details, data.hint, data.code].filter(Boolean).join('\n')
       : String(data || '요청 실패');
-    throw new Error(message);
+    const error = new Error(message);
+    error.httpStatus = Number(res.status || 0);
+    error.rpcName = String(functionName || '');
+    error.rpcCode = data && typeof data === 'object' ? String(data.code || '') : '';
+    throw error;
   }
 
   return data;
