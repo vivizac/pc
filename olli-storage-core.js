@@ -257,7 +257,21 @@
         requiresFileId: spec.scope === 'file'
       }, spec.identity || {});
       spec.local = Object.assign({ enabled: true, defaultValue: null, legacyKeys: [], migrationPolicy: 'manual' }, spec.local || {});
-      spec.server = Object.assign({ kind: null, table: null, operation: 'patch', identityColumns: [], valueColumns: [], requiredColumns: [], selectColumns: [] }, spec.server || {});
+      spec.server = Object.assign({
+        kind: null,
+        table: null,
+        transport: 'table',
+        rpc: null,
+        operation: 'patch',
+        identityColumns: [],
+        valueColumns: [],
+        requiredColumns: [],
+        selectColumns: []
+      }, spec.server || {});
+      spec.server.transport = normalizeString(spec.server.transport || 'table').toLowerCase();
+      if (!['table', 'session_rpc'].includes(spec.server.transport)) {
+        throw new Error(`지원하지 않는 서버 전송 방식입니다: ${spec.server.transport}`);
+      }
       spec.verification = Object.assign({ mode: 'read_after_write', compareFields: [] }, spec.verification || {});
       spec.conflict = Object.assign({ policy: 'latest_valid_update', protectPendingLocal: true }, spec.conflict || {});
       spec.permissions = Object.assign({ read: ['teacher', 'manager', 'owner'], write: ['teacher', 'manager', 'owner'] }, spec.permissions || {});
@@ -631,6 +645,72 @@
       }
     }
 
+    function getAccountSessionToken() {
+      const token = normalizeString(localStorage.getItem('olli_account_session_token_v1') || '');
+      if (!token) {
+        const error = new Error('계정 세션이 없어 보호된 서버 요청을 실행할 수 없습니다.');
+        error.code = 'NO_ACCOUNT_SESSION';
+        throw error;
+      }
+      return token;
+    }
+
+    function usesSessionRpc(spec) {
+      return normalizeString(spec && spec.server && spec.server.transport).toLowerCase() === 'session_rpc';
+    }
+
+    function resolveSessionRpcName(spec, action) {
+      const rpcConfig = spec && spec.server ? spec.server.rpc : null;
+      const rpcName = normalizeString(
+        typeof rpcConfig === 'string'
+          ? rpcConfig
+          : (rpcConfig && rpcConfig[action])
+      );
+      if (!rpcName) {
+        const error = new Error(`${spec.label} 보호 RPC가 설정되지 않았습니다: ${action}`);
+        error.code = 'SECURE_RPC_NOT_CONFIGURED';
+        throw error;
+      }
+      return rpcName;
+    }
+
+    function normalizeSessionRpcRows(result, spec, action) {
+      if (result && typeof result === 'object' && !Array.isArray(result) && result.ok === false) {
+        const error = new Error(result.message || `${spec.label} 보호 서버 요청이 거부되었습니다.`);
+        error.code = normalizeString(result.code || 'SERVER_RPC_REJECTED');
+        error.details = cloneValue(result);
+        throw error;
+      }
+      if (Array.isArray(result)) return result;
+      if (!result) return [];
+      if (Array.isArray(result.rows)) return result.rows;
+      if (result.row && typeof result.row === 'object') return [result.row];
+      if (Array.isArray(result.data)) return result.data;
+      if (result.data && typeof result.data === 'object') return [result.data];
+      if (result.ok === true) return [];
+      return [result];
+    }
+
+    async function callSessionRpc(spec, action, identity, payload, options) {
+      ensureAvailable();
+      const rpcName = resolveSessionRpcName(spec, action);
+      const sessionToken = getAccountSessionToken();
+      const opts = options || {};
+      const operation = normalizeString(opts.operation || (spec.server && spec.server.operation) || action).toLowerCase();
+      const limit = Math.max(1, Number(opts.limit || 1));
+      const body = {
+        p_session_token: sessionToken,
+        p_academy_id: identity.academyId || null,
+        p_action: action,
+        p_operation: operation,
+        p_identity: identityPayload(spec, identity),
+        p_payload: payload && typeof payload === 'object' ? cloneValue(payload) : {},
+        p_limit: limit
+      };
+      const result = await global.supabase('POST', `rpc/${rpcName}`, body);
+      return normalizeSessionRpcRows(result, spec, action);
+    }
+
     function resolveServerIdentityValue(column, spec, identity) {
       const camel = Object.keys(identity).find(key => normalizeServerFieldName(key) === column);
       if (camel) return identity[camel];
@@ -667,6 +747,9 @@
 
     async function read(spec, identity, options) {
       ensureAvailable();
+      if (usesSessionRpc(spec)) {
+        return callSessionRpc(spec, 'read', identity, {}, options);
+      }
       const select = (spec.server.selectColumns && spec.server.selectColumns.length)
         ? spec.server.selectColumns.join(',')
         : '*';
@@ -696,6 +779,10 @@
       const payload = Object.assign({}, identityData, valueData);
       if (spec.server.addUpdatedAt !== false && spec.server.requiredColumns.includes('updated_at')) payload.updated_at = nowIso();
       const operation = normalizeString((options && options.operation) || spec.server.operation || 'patch').toLowerCase();
+
+      if (usesSessionRpc(spec)) {
+        return callSessionRpc(spec, 'write', identity, payload, Object.assign({}, options || {}, { operation }));
+      }
 
       if (operation === 'post' || operation === 'insert') {
         return global.supabase('POST', spec.server.table, payload);
@@ -730,7 +817,7 @@
         error.code = 'HARD_DELETE_BLOCKED';
         throw error;
       }
-      const filter = buildIdentityFilter(spec, identity);
+      const filter = usesSessionRpc(spec) ? '' : buildIdentityFilter(spec, identity);
       if (operation === 'soft_delete') {
         const context = AcademyContext.getCurrent();
         const columns = spec.server.valueColumns || [];
@@ -744,7 +831,13 @@
           error.code = 'SERVER_WRITE_FAILED';
           throw error;
         }
+        if (usesSessionRpc(spec)) {
+          return callSessionRpc(spec, 'remove', identity, payload, Object.assign({}, options || {}, { operation }));
+        }
         return global.supabase('PATCH', `${spec.server.table}?${filter}`, payload);
+      }
+      if (usesSessionRpc(spec)) {
+        return callSessionRpc(spec, 'remove', identity, {}, Object.assign({}, options || {}, { operation }));
       }
       return global.supabase('DELETE', `${spec.server.table}?${filter}`);
     }
