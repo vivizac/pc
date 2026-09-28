@@ -118,6 +118,6 @@ Before merging/cutover, verify the live Vercel project settings:
 - PC project Root Directory: `apps/pc`
 - Mobile project repository: `vivizac/pc`
 - Mobile project Root Directory: `apps/mobile`
-- outside-root source access enabled so `packages/common` is available during the Mobile build
+- outside-root source access enabled for both PC and Mobile so `packages/common` is available during each app-root build
 
 Keep PR #145 Draft until that live project-setting gate is verified.
