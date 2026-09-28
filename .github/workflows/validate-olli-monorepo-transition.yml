@@ -11,6 +11,7 @@ on:
       - 'MONOREPO_TRANSITION.md'
       - 'MONOREPO_OWNERSHIP_AUDIT.md'
       - 'tests/mobile-self-contained-build.test.cjs'
+      - 'tests/mobile-entry-integrity.test.cjs'
       - 'tests/monorepo-structure-contract.test.cjs'
       - 'tests/vercel-monorepo-separation-contract.test.cjs'
       - '.github/workflows/validate-olli-monorepo-transition.yml'
@@ -22,6 +23,7 @@ on:
       - 'MONOREPO_TRANSITION.md'
       - 'MONOREPO_OWNERSHIP_AUDIT.md'
       - 'tests/mobile-self-contained-build.test.cjs'
+      - 'tests/mobile-entry-integrity.test.cjs'
       - 'tests/monorepo-structure-contract.test.cjs'
       - 'tests/vercel-monorepo-separation-contract.test.cjs'
       - '.github/workflows/validate-olli-monorepo-transition.yml'
@@ -41,6 +43,7 @@ jobs:
           node --check apps/mobile/scripts/stage-common.cjs
           node --test \
             tests/mobile-self-contained-build.test.cjs \
+            tests/mobile-entry-integrity.test.cjs \
             tests/monorepo-structure-contract.test.cjs \
             tests/vercel-monorepo-separation-contract.test.cjs
       - name: Validate PC schedule Realtime
