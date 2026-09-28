@@ -360,6 +360,9 @@ function startOlliLegacyAccountSessionBootstrapInBackground(initialAcademyId = '
 
 document.addEventListener('DOMContentLoaded', async () => {
   showOlliBootScreen();
+  // 부트 화면 닫힘은 화면 복원/세션 검증 Promise와 독립적으로 시작합니다.
+  // 어떤 로컬 복원 함수가 지연되어도 OLLI 시작화면이 영구 대기하지 않게 합니다.
+  const bootDismissPromise = hideOlliBootScreen();
   bindOlliPhoneResumeStatePersistence();
   let initialAcademyId = '';
   try {
@@ -419,7 +422,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // 부트 화면의 최소 노출 시간만 지키며, 네트워크 완료 여부와는 무관하게 첫 로컬 화면을 공개합니다.
-    await hideOlliBootScreen();
+    await bootDismissPromise;
   } catch (err) {
     console.error('startup init error:', err);
     if (isOlliLoggedInForStartPage()) {
@@ -432,7 +435,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else if (!(typeof applyOlliTeacherInviteFromUrl === 'function' && applyOlliTeacherInviteFromUrl())) {
       showOlliLoginEntry();
     }
-    await hideOlliBootScreen();
+    await bootDismissPromise;
   }
 
   window.showRecordRoom = showRecordRoom;
