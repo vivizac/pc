@@ -62,3 +62,13 @@ test('common feedback fallback carries stable client mutation id',()=>{
   const matches=foundation.match(/client_mutation_id: commonRecordId/g)||[];
   assert.ok(matches.length >= 3);
 });
+
+
+test('secure RPC authorization failures are not retried',()=>{
+  assert.match(policy,/nonRetryableCodes = new Set/);
+  assert.match(policy,/'SESSION_INVALID'/);
+  assert.match(policy,/'PERMISSION_DENIED'/);
+  assert.match(policy,/'ACADEMY_MISMATCH'/);
+  assert.match(policy,/'STUDENT_NOT_FOUND'/);
+  assert.match(policy,/nonRetryableCodes\.has\(code\)/);
+});

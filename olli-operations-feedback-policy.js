@@ -427,6 +427,26 @@ function compareElementaryGroupFeedbackOrder(a, b) {
   }
 
   function isRetryableError(error) {
+    const code = clean(error && error.code).toUpperCase();
+    const nonRetryableCodes = new Set([
+      'FEEDBACK_IDEMPOTENCY_MISMATCH',
+      'FEEDBACK_IDEMPOTENCY_INPUT_MISSING',
+      'SESSION_INVALID',
+      'NO_ACCOUNT_SESSION',
+      'PERMISSION_DENIED',
+      'ACADEMY_ID_MISSING',
+      'ACADEMY_MISMATCH',
+      'INVALID_ACADEMY_ID',
+      'INVALID_STUDENT_ID',
+      'STUDENT_ID_MISSING',
+      'STUDENT_NOT_FOUND',
+      'FEEDBACK_CONTENT_MISSING',
+      'INVALID_RECORD_ID',
+      'FEEDBACK_NOT_FOUND',
+      'ACTION_NOT_ALLOWED',
+      'OPERATION_NOT_ALLOWED'
+    ]);
+    if (nonRetryableCodes.has(code)) return false;
     const message = String(error && (error.message || error) || '');
     if (/FEEDBACK_IDEMPOTENCY_(?:MISMATCH|INPUT_MISSING)/.test(message)) return false;
     const status = statusFromError(error);
