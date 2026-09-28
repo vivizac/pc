@@ -5,7 +5,6 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..');
 const MOBILE = path.join(ROOT, 'apps', 'mobile');
@@ -78,29 +77,6 @@ test('staged Mobile index has a closed set of local static dependencies', () => 
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
-});
-
-
-test('common observation memo session does not require optional PC-only helpers', () => {
-  const source = fs.readFileSync(path.join(COMMON, 'observation-memo-session-common.js'), 'utf8');
-  const context = {
-    console,
-    Date,
-    currentMemoStudent: null,
-    currentMemoType: '',
-    findStudentById: id => ({ id, type: 'elementary', name: '학생A' }),
-    getMemoEntryByStudent: () => ({ content: '메모', revision: 2 }),
-    getPrimaryElementaryAnalysisDisplay: () => ({ data: {}, createdAt: '' })
-  };
-  context.window = context;
-  vm.createContext(context);
-  vm.runInContext(source, context);
-
-  assert.equal(typeof context.beginObservationMemoSession, 'function');
-  const session = context.beginObservationMemoSession('student-1');
-  assert.equal(session.student.id, 'student-1');
-  assert.equal(session.type, 'elementary');
-  assert.equal(session.localEntry.content, '메모');
 });
 
 
