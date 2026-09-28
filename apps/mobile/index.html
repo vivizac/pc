@@ -261,7 +261,16 @@
 <textarea class="memoEditor" id="memoEditor" placeholder="관찰 내용을 기록해 주세요."></textarea>
 </div>
 <div class="memoFeedbackResultArea" id="memoFeedbackResultArea"></div>
-<div class="memoBottomBar">
+<div aria-label="수업기록 도구" id="memoEditorUtilityGroup">
+<button aria-label="피드백 보관함" class="memoRecordRoomBtn memoRecordBtn" id="memoRecordsBtn" title="피드백 보관함" type="button">
+<svg aria-hidden="true" class="memoRecordIcon" fill="none" focusable="false" height="23" viewbox="24 21 80 80" width="23" xmlns="http://www.w3.org/2000/svg"><path d="M31 52V40C31 33.4 36.4 28 43 28H51.5C54.6 28 57.4 29.1 59.8 31L64.8 35H85C91.6 35 97 40.4 97 47V82C97 88.6 91.6 94 85 94H43C36.4 94 31 88.6 31 82V52Z" stroke="#111111" stroke-linecap="round" stroke-linejoin="round" stroke-width="5.6"></path><path d="M31 53H97" stroke="#111111" stroke-linecap="round" stroke-width="5.6"></path></svg>
+</button>
+<button aria-label="음성 입력" aria-pressed="false" class="memoEditorVoiceBtn" id="memoEditorVoiceBtn" title="음성 입력" type="button">
+<svg aria-hidden="true" fill="none" viewbox="0 0 24 24"><rect height="13" rx="4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" width="8" x="8" y="3"></rect><path d="M5 12.5C5 16.09 8.13 19 12 19C15.87 19 19 16.09 19 12.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9"></path><path d="M12 19V22" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9"></path></svg>
+</button>
+<button aria-label="관찰노트 이전 기록" class="memoRecordRoomBtn memoRecordBtn" data-olli-history-visibility-owner="mobile" id="olliMemoVersionHistoryBtn" title="이전 기록" type="button">
+<svg aria-hidden="true" viewbox="0 0 24 24"><path d="M5.2 8.1A7.6 7.6 0 1 1 4.6 14"></path><path d="M5.2 4.8v4.5h4.5"></path><path d="M12 7.7v4.5l3 1.8"></path></svg>
+</button>
 <button aria-label="오늘의 분석 설문" class="memoBottomIconBtn memoBottomAnalysisBtn" id="memoBottomAnalysisBtn" onclick="openElementaryAnalysisModal()" title="오늘의 분석 설문" type="button">
 <svg aria-hidden="true" viewbox="0 0 24 24"><rect height="14.8" rx="3" width="13.6" x="5.2" y="4.6"></rect><path d="M8.4 9h7.2"></path><path d="M8.4 12.4h7.2"></path><path d="M8.4 15.8h4.4"></path></svg>
 </button>
@@ -1167,8 +1176,8 @@
 <script src="olli-attendance-policy-runtime.js?v=20260924-settings-core-split-1"></script>
 <script src="olli-student-lifecycle-init.js"></script>
 
-<link rel="stylesheet" href="olli-observation-roster-phone.css?v=20260928-sort-prefix-gray-1">
+<link rel="stylesheet" href="olli-observation-roster-phone.css?v=20260929-memo-fixed-group-1">
 <link rel="stylesheet" href="olli-record-utility-touch.css?v=20260927-guide-names-1">
 <link rel="stylesheet" href="olli-phone-control-style.css?v=20260927-guide-names-2">
-<script src="olli-record-utility-touch.js?v=20260929-memo-utility-helpers-1"></script>
+<script src="olli-record-utility-touch.js?v=20260929-memo-fixed-group-1"></script>
 </body></html>
