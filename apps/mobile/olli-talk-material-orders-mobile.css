@@ -1,0 +1,118 @@
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost){--olli-mobile-mat-yellow:#FEE500;}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatRoot{
+  --olli-mobile-mat-yellow:#FEE500;
+  --olli-mobile-mat-blue:#f2f6fc;
+  --olli-mobile-mat-blue-text:#557ab7;
+  --olli-mobile-mat-green:#eff8f2;
+  --olli-mobile-mat-green-text:#4e8a66;
+  width:100%;min-height:100%;position:relative;padding:12px 0 36px;color:#22262a;font-family:'Pretendard',sans-serif
+}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatCreateBtn{position:fixed;right:var(--olli-phone-guide-x,16px);top:var(--olli-phone-guide-top);bottom:auto;z-index:80;width:44px;min-width:44px;height:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:999px;background:#fff;color:#111;box-shadow:inset 0 1px 0 rgba(255,255,255,.96),0 0 0 1px rgba(0,0,0,.025),0 8px 28px rgba(0,0,0,.055)}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatCreateBtn svg{width:21px;height:21px;display:block;stroke:currentColor;fill:none;stroke-width:2.35;stroke-linecap:round;stroke-linejoin:round;transform:none;pointer-events:none}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSummary{width:100%;height:48px;padding:0;box-sizing:border-box;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:center;gap:2px;border:0;border-radius:0;margin-bottom:10px;background:transparent;box-shadow:none}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSummaryCard{min-width:0;height:40px;box-sizing:border-box;border:1px solid transparent;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 8px;background:transparent;color:#9B9B9B;font-family:inherit}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSummaryCard.requested,
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSummaryCard.ordered,
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSummaryCard.arrived{background:transparent}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSummaryCard.active{background:#F8F6F1;color:#222;border-color:#F8F6F1;font-weight:450}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSummaryIcon{width:16px;height:16px;flex:0 0 16px;display:grid;place-items:center;background:transparent}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSummaryIcon svg{width:100%;height:100%;display:block;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSummaryIcon.coffee,
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSummaryIcon.receipt,
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSummaryIcon.delivery{color:inherit}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSummaryIcon.coffee svg{stroke-width:4.6}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSummaryLabel{font-size:12px;font-weight:450}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSummaryCard.active .olliMobileMatSummaryLabel{font-weight:750}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSummaryCard strong{font-size:17px;font-weight:600;color:inherit;font-variant-numeric:tabular-nums}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSummaryCard.active strong{font-weight:800}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatList{padding:0 0 76px}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatItemCard{width:100%;margin:0;border:0;border-bottom:1px solid #eceef1;border-radius:0;background:transparent;overflow:visible}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatItemCard.expanded{border-color:#e5e8eb;box-shadow:none}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatItemMain{width:100%;min-height:78px;display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:center;gap:10px;padding:12px 14px 12px 2px;border:0;background:transparent;color:#24272b;text-align:left;font-family:inherit}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatCoffeeThumb{width:48px;height:48px;display:block;border-radius:999px;overflow:hidden}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatCoffeeThumb img{width:100%;height:100%;display:block;object-fit:cover}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatItemCopy{min-width:0;display:flex;flex-direction:column;gap:6px}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatItemName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px;font-weight:760;letter-spacing:-.025em}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatItemMeta{display:flex;min-width:0;align-items:center;overflow:hidden;color:#969ba2;font-size:10.5px;font-weight:530;white-space:nowrap}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatItemMeta span{overflow:hidden;text-overflow:ellipsis}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatItemMeta span+span::before{content:"";display:inline-block;width:1px;height:10px;margin:0 7px -1px;background:#e2e4e7}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatStatusTag{height:21px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;padding:0 7px;border:0;border-radius:999px;font-size:9px;font-weight:760;white-space:nowrap}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatStatusTag.requested{background:#fff6c8;color:#8c7300}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatStatusTag.hold{background:#f0f1f3;color:#777d85}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatStatusTag.ordered{background:#eaf2ff;color:#6f7f99}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatStatusTag.arrived{background:#e7f7f1;color:#709589}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatExpandedDetail{border-top:1px solid #eceef1;padding:9px 14px 14px;background:#fafbfc;border-radius:0 0 14px 14px}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatDetailGrid{margin:6px 0 0}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatDetailRow{min-height:39px;display:grid;grid-template-columns:76px minmax(0,1fr);align-items:center;gap:8px;border-bottom:1px solid #f0f1f3}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatDetailRow dt{color:#8f959d;font-size:10.8px;font-weight:650}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatDetailRow dd{min-width:0;margin:0;color:#41464d;font-size:11.5px;font-weight:580;overflow-wrap:anywhere}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatPurchaseLink{color:#3970c8;text-decoration:none}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatMemo,:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatHoldReason{margin-top:13px;padding:12px 13px;border-radius:13px;background:#f4f5f6}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatMemoLabel,:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatHoldReason strong{display:block;margin-bottom:6px;color:#777d85;font-size:10.5px;font-weight:760}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatMemoText,:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatHoldReason span{color:#676d75;font-size:11px;font-weight:520;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatHoldReason{background:#faf7e9}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatAudit{min-height:16px;margin-top:9px;color:#a6abb2;font-size:9.8px;text-align:right}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatActions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:13px}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSecondaryBtn,:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatDarkBtn,:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatPrimaryBtn{min-width:86px;height:39px;display:inline-flex;align-items:center;justify-content:center;border-radius:11px;padding:0 13px;font:730 11.5px 'Pretendard',sans-serif}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSecondaryBtn{border:1px solid #e2e5e8;background:#fff;color:#5d636b}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatDarkBtn{border:1px solid #50555c;background:#50555c;color:#fff}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatPrimaryBtn{border:1px solid #FEE500;background:#FEE500;color:#111}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatSecondaryBtn:disabled,:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatDarkBtn:disabled,:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatPrimaryBtn:disabled{opacity:.55}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatReadOnlyNote,:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatDoneNote{width:100%;padding:11px 12px;border-radius:12px;background:#f3f4f5;color:#8b9199;font-size:10.8px;font-weight:560;text-align:center}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatDoneNote{background:#eef7f1;color:#638372}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatEmpty{min-height:210px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:24px;text-align:center}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatEmpty strong{color:#777d85;font-size:12.5px;font-weight:720}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatEmpty span{max-width:260px;color:#a1a6ad;font-size:10.8px;font-weight:510;line-height:1.55}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatToast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));z-index:7440;transform:translateX(-50%);max-width:calc(100% - 32px);padding:10px 14px;border-radius:999px;background:#202327;color:#fff;box-shadow:0 12px 30px rgba(19,23,30,.18);font-size:11px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatToast.error{background:#8d3f3f}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatToast[hidden]{display:none}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatModalBackdrop{position:fixed;inset:0;z-index:7450;display:flex;align-items:center;justify-content:center;padding:calc(18px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom));background:rgba(22,25,29,.20);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatModalBackdrop[hidden]{display:none}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatModal{width:min(560px,100%);max-height:100%;overflow:auto;border:1px solid rgba(0,0,0,.055);border-radius:20px;background:#fff;box-shadow:0 24px 60px rgba(20,24,31,.18)}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatModalHead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:18px 20px 14px;border-bottom:1px solid rgba(0,0,0,.06);background:var(--olli-mobile-mat-modal-head-bg,#FEE500)}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatModalTitle{font-size:16px;font-weight:800;letter-spacing:-.035em}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatModalSub{margin-top:5px;color:var(--olli-mobile-mat-modal-sub-color,#5e5600);font-size:10.8px;font-weight:520}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatIconBtn{width:32px;height:32px;display:grid;place-items:center;border:0;border-radius:50%;background:rgba(255,255,255,.72);color:#292600;font-size:22px;font-weight:300}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatForm{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 20px 20px}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatField{min-width:0;display:flex;flex-direction:column;gap:6px}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatFieldWide{grid-column:1/-1}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatField>span{color:#6f757d;font-size:10.8px;font-weight:700}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatField>span b{color:#b89400;font-weight:800}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatField input,:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatField textarea{min-width:0;max-width:100%;width:100%;box-sizing:border-box;border:1px solid #e0e3e6;border-radius:11px;background:#fff;color:#292c30;font:520 12px 'Pretendard',sans-serif;outline:0}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatField input{height:40px;padding:0 11px}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatField input[type="date"]{min-inline-size:0;max-inline-size:100%}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatField textarea{min-height:92px;padding:10px 11px;resize:vertical;line-height:1.5}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatField input:focus,:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatField textarea:focus{border-color:#c8cbd0;box-shadow:0 0 0 3px rgba(34,39,45,.035)}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatFormActions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px;padding-top:4px}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatFormActions .olliMobileMatSecondaryBtn,:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatFormActions .olliMobileMatPrimaryBtn{min-width:90px}
+
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatForm{grid-template-columns:1fr}
+  :is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatFieldWide{grid-column:auto}
+  :is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatFormActions{grid-column:auto}
+  :is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatItemMeta span:nth-child(2){display:none}
+
+
+
+.olliMobileMatQuickHost{
+  --olli-mobile-mat-modal-head-bg:#fff;
+  --olli-mobile-mat-modal-sub-color:#747980;
+  position:fixed;
+  inset:0;
+  z-index:7445;
+  pointer-events:none;
+}
+.olliMobileMatQuickHost .olliMobileMatModalBackdrop,
+.olliMobileMatQuickHost .olliMobileMatToast{
+  pointer-events:auto;
+}
+.olliMobileMatQuickHost[aria-hidden="true"]{
+  pointer-events:none;
+}
+
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatDeleteBtn{
+  min-width:86px;height:39px;display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid #e2e5e8;border-radius:11px;padding:0 13px;
+  background:#fff;color:#5d636b;font:730 11.5px 'Pretendard',sans-serif
+}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatDeleteBtn:active{background:#fff;border-color:#d7dbe0}
+:is(#olliTalkArchiveScreen,.olliMobileMatQuickHost) .olliMobileMatDeleteBtn:disabled{opacity:.55}

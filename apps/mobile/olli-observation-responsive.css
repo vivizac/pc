@@ -1,0 +1,243 @@
+/* 화면 텍스트 크기 설정: 기본 1.12 / 중간 1.20 / 크게 1.30 */
+:root,
+body {
+  --olli-text-scale: 1.12;
+}
+body {
+  font-size: calc(16px * var(--olli-text-scale));
+}
+:root[data-olli-text-size="medium"],
+body[data-olli-text-size="medium"] {
+  --olli-text-scale: 1.20;
+}
+:root[data-olli-text-size="large"],
+body[data-olli-text-size="large"] {
+  --olli-text-scale: 1.30;
+}
+.settingsTextSizeGuide {
+  display:block;
+  margin-top:2px;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:500;
+  color:#888;
+  line-height:1.2;
+}
+.settingsStartPageOption.active .settingsTextSizeGuide {
+  color:rgba(255,255,255,.72);
+}
+body[data-olli-text-size="medium"] .settingsTextSizeGuide,
+body[data-olli-text-size="large"] .settingsTextSizeGuide {
+  display:block;
+  margin-top:2px;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:500;
+  color:rgba(255,255,255,.72);
+  line-height:1.2;
+}
+body[data-olli-text-size="medium"] .settingsStartPageOption:not(.active) .settingsTextSizeGuide,
+body[data-olli-text-size="large"] .settingsStartPageOption:not(.active) .settingsTextSizeGuide {
+  color:#888;
+}
+body[data-olli-text-size="large"] .settingsRow {
+  min-height: calc(58px * var(--olli-text-scale));
+  padding-top:16px;
+  padding-bottom:16px;
+}
+body[data-olli-text-size="large"] .settingsRowTitle {
+  font-size: calc(15px * var(--olli-text-scale));
+  line-height:1.32;
+}
+body[data-olli-text-size="large"] .settingsRowValue {
+  font-size: calc(13px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .settingsProfileName,
+body[data-olli-text-size="large"] .settingsDetailTitle {
+  font-size: calc(20px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .settingsProfileEdit,
+body[data-olli-text-size="large"] .settingsMiniText,
+body[data-olli-text-size="large"] .settingsSheetDesc,
+body[data-olli-text-size="large"] .settingsInputLabel {
+  font-size: calc(12.5px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .settingsInput,
+body[data-olli-text-size="large"] .settingsSheetBtn,
+body[data-olli-text-size="large"] .settingsStartPageOption,
+body[data-olli-text-size="large"] .settingsActionBtn,
+body[data-olli-text-size="large"] .settingsExportBtn {
+  font-size: calc(14px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .settingsStartPageOption {
+  min-height: calc(50px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .settingsInfoHead,
+body[data-olli-text-size="large"] .settingsRoleName,
+body[data-olli-text-size="large"] .settingsRequestName,
+body[data-olli-text-size="large"] .settingsTeacherName {
+  font-size: calc(17px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .settingsInfoItem,
+body[data-olli-text-size="large"] .settingsRoleItem,
+body[data-olli-text-size="large"] .settingsRequestMeta div,
+body[data-olli-text-size="large"] .settingsTeacherMeta div {
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height:1.5;
+}
+body[data-olli-text-size="large"] .recordModeLabel,
+body[data-olli-text-size="large"] .recordAcademyStatLabel,
+body[data-olli-text-size="large"] .recordAcademyPanelTitle,
+body[data-olli-text-size="large"] .recordAcademyConsultGroupTitle,
+body[data-olli-text-size="large"] .recordAcademyListName {
+  font-size: calc(16px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .recordUtilityLabel,
+body[data-olli-text-size="large"] .recordAcademyListMeta,
+body[data-olli-text-size="large"] .recordAcademyInfoChip,
+body[data-olli-text-size="large"] .recordAcademyConsultStatusChip,
+body[data-olli-text-size="large"] .recordAcademyStatSub,
+body[data-olli-text-size="large"] .recordAcademyConsultPreviewText,
+body[data-olli-text-size="large"] .recordAcademyConsultGroupEmpty {
+  font-size: calc(12px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .recordAcademyStatValue {
+  font-size: calc(42px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .elementaryStudentRow,
+body[data-olli-text-size="large"] .kinderStudentRow {
+  padding-top:11px;
+  padding-bottom:11px;
+}
+body[data-olli-text-size="large"] .studentTextWrap > span:first-child,
+body[data-olli-text-size="large"] .studentMetaText,
+body[data-olli-text-size="large"] .recordText {
+  font-size: calc(16px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .memoStudentName,
+body[data-olli-text-size="large"] .memoBottomBtn,
+body[data-olli-text-size="large"] .memoFeedbackBtn,
+body[data-olli-text-size="large"] .memoAnalysisBtn,
+body[data-olli-text-size="large"] .memoFeedbackArchiveText,
+body[data-olli-text-size="large"] .memoFeedbackArchiveFullText,
+body[data-olli-text-size="large"] .memoFeedbackArchiveEditArea,
+body[data-olli-text-size="large"] .memoFeedbackArchiveActionBtn,
+body[data-olli-text-size="large"] .modalInput,
+body[data-olli-text-size="large"] .modalBtnCancel,
+body[data-olli-text-size="large"] .modalBtnConfirm {
+  font-size: calc(14px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .memoSubLabel,
+body[data-olli-text-size="large"] .memoSaveStatus,
+body[data-olli-text-size="large"] .memoFeedbackArchiveDate,
+body[data-olli-text-size="large"] .modalLabel {
+  font-size: calc(12px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .memoEditor {
+  font-size: calc(15px * var(--olli-text-scale));
+  line-height:1.9;
+}
+body[data-olli-text-size="large"] .memoFeedbackArchiveTitle,
+body[data-olli-text-size="large"] .attendanceFeedbackSheetTitle,
+body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxTitle,
+body[data-olli-text-size="large"] .modalTitle {
+  font-size: calc(20px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfModeTitle {
+  font-size: calc(20px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfModeSub,
+body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfModeOptionGuide,
+body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfPhotoMetaText,
+body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfInputWarning,
+body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxSub,
+body[data-olli-text-size="large"] .memoFeedbackArchiveSubtitle,
+body[data-olli-text-size="large"] .attendanceFeedbackSheetCardDate,
+body[data-olli-text-size="large"] .memoFeedbackArchiveDate {
+  font-size: calc(12px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfBubble,
+body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfInput,
+body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfQuestionList li,
+body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfModeOptionTitle,
+body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxText,
+body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxFullText {
+  font-size: calc(14px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfKeywordBtn {
+  height: calc(32px * var(--olli-text-scale));
+  font-size: calc(13px * var(--olli-text-scale));
+  padding-left:14px;
+  padding-right:14px;
+}
+body[data-olli-text-size="large"] .msgBubble.assistant,
+body[data-olli-text-size="large"] .msgBubble.user,
+body[data-olli-text-size="large"] .typing,
+body[data-olli-text-size="large"] .inputBox {
+  font-size: calc(16px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .modeToggleLine1 {
+  font-size: calc(13px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .modeToggleLine2 {
+  font-size: calc(11px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .analysisSheetTitle {
+  font-size: calc(16px * 1.20 * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .analysisResultSheetTitle {
+  font-size: calc(16px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .elementaryAnalysisSectionTitle {
+  font-size: calc(14px * 1.20 * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxSectionTitle {
+  font-size: calc(14px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .elementaryAnalysisTextarea {
+  font-size: calc(13px * 1.20 * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .analysisResultSheetSectionTitle,
+body[data-olli-text-size="large"] .analysisResultSheetItem,
+body[data-olli-text-size="large"] #studentMemoScreen .elementaryAnalysisSummaryTitle,
+body[data-olli-text-size="large"] #studentMemoScreen .elementaryAnalysisHistoryLine,
+body[data-olli-text-size="large"] #studentMemoScreen .elementaryAnalysisHistoryCycleBtn .elementaryAnalysisHistoryLine {
+  font-size: calc(13px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .elementaryAnalysisIntro,
+body[data-olli-text-size="large"] .elementaryAnalysisHelp,
+body[data-olli-text-size="large"] .elementaryChip,
+body[data-olli-text-size="large"] .elementaryTendencyGroupBtn,
+body[data-olli-text-size="large"] .elementaryTendencyGroupTitle {
+  font-size: calc(12px * 1.20 * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .recordSortSwitchLabel,
+body[data-olli-text-size="large"] .recordSortChip,
+body[data-olli-text-size="large"] .recordSortGroupIconBtn,
+body[data-olli-text-size="large"] .recordSortMonthChip,
+body[data-olli-text-size="large"] #kcfInboxOverlay .kcfInboxActionBtn,
+body[data-olli-text-size="large"] .memoFeedbackArchiveActionBtn {
+  font-size: calc(12px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .recordSortCriteriaTitle,
+body[data-olli-text-size="large"] .recordSortFeedbackTitle,
+body[data-olli-text-size="large"] .recordSortMonthHint {
+  font-size: calc(11px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .sceneMemoHeader,
+body[data-olli-text-size="large"] .failGrowthMemoHeader {
+  font-size: calc(14px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .sceneMemoInput,
+body[data-olli-text-size="large"] .sceneMemoPlaceholder,
+body[data-olli-text-size="large"] .failGrowthMemoInput,
+body[data-olli-text-size="large"] .feedbackResultText {
+  font-size: calc(15px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .feedbackResultLabel {
+  font-size: calc(12px * var(--olli-text-scale));
+}
+body[data-olli-text-size="large"] .modeToggleBtn,
+body[data-olli-text-size="large"] .memoFeedbackBtn,
+body[data-olli-text-size="large"] .memoBottomBtn,
+body[data-olli-text-size="large"] #kinderChatFeedbackScreen .kcfSendBtn {
+  min-height: calc(40px * var(--olli-text-scale));
+}

@@ -1,0 +1,173 @@
+
+/* 선생님 관리 버튼/권한 UI */
+.settingsRoleSelectBtn{
+  min-height:30px;
+  border:none;
+  border-radius:999px;
+  background:#f1f1ef;
+  color:#111;
+  padding:0 11px;
+  font-family:inherit;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:760;
+  cursor:pointer;
+}
+.settingsOwnerRoleBadge{
+  min-height:24px;
+  border-radius:999px;
+  padding:0 11px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:#111;
+  color:#fff;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:800;
+  line-height:1;
+}
+.settingsActionBtn.memberDisableBtn{
+  background:#111;
+  color:#fff;
+}
+.settingsRoleToggleOverlay{
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,.18);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  z-index:160000;
+  padding:18px;
+}
+.settingsRoleToggleOverlay.show{display:flex;}
+.settingsRoleToggleCard{
+  width:min(360px,100%);
+  border-radius:28px;
+  background:#fff;
+  padding:20px 16px 16px;
+  box-shadow:0 24px 60px rgba(0,0,0,.2),0 8px 18px rgba(0,0,0,.08);
+}
+.settingsRoleToggleTitle{
+  font-size:calc(19px * var(--olli-text-scale));
+  font-weight:850;
+  letter-spacing:-.055em;
+  margin-bottom:6px;
+}
+.settingsRoleToggleDesc{
+  font-size:calc(13px * var(--olli-text-scale));
+  color:#777;
+  line-height:1.45;
+  margin-bottom:14px;
+}
+.settingsRoleToggleGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.settingsRoleToggleOption{
+  height:48px;
+  border:none;
+  border-radius:999px;
+  background:#f1f1ef;
+  color:#111;
+  font-family:inherit;
+  font-size:calc(16px * var(--olli-text-scale));
+  font-weight:800;
+}
+.settingsRoleToggleOption.active{
+  background:#111;
+  color:#fff;
+}
+.settingsRoleToggleActions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:14px;
+}
+.settingsRoleToggleBtn{
+  height:44px;
+  border:none;
+  border-radius:999px;
+  background:#f1f1ef;
+  color:#333;
+  font-family:inherit;
+  font-size:calc(14px * var(--olli-text-scale));
+  font-weight:780;
+}
+.settingsRoleToggleBtn.primary{
+  background:#111;
+  color:#fff;
+}
+.settingsCrossAcademyManagerBtn{
+  grid-column:1 / -1;
+  background:#f1f1ef;
+  color:#111;
+}
+.settingsCrossAcademyManagerCard{
+  max-height:min(620px,calc(100vh - 36px));
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.settingsCrossAcademyManagerList{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  overflow-y:auto;
+  min-height:72px;
+  max-height:330px;
+  padding:2px 0;
+}
+.settingsCrossAcademyManagerOption{
+  width:100%;
+  min-height:62px;
+  border:none;
+  border-radius:18px;
+  background:#f4f4f2;
+  color:#111;
+  padding:12px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  text-align:left;
+  font-family:inherit;
+}
+.settingsCrossAcademyManagerOption strong{
+  display:block;
+  font-size:calc(15px * var(--olli-text-scale));
+  font-weight:820;
+  letter-spacing:-.035em;
+}
+.settingsCrossAcademyManagerOption small{
+  display:block;
+  margin-top:4px;
+  color:#888;
+  font-size:calc(11px * var(--olli-text-scale));
+  font-weight:600;
+}
+.settingsCrossAcademyManagerOption.active{
+  background:#111;
+  color:#fff;
+}
+.settingsCrossAcademyManagerOption.active small{
+  color:rgba(255,255,255,.7);
+}
+.settingsCrossAcademyManagerCheck{
+  width:26px;
+  height:26px;
+  border-radius:999px;
+  background:#fff;
+  color:#111;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  font-size:calc(14px * var(--olli-text-scale));
+  font-weight:900;
+}
+.settingsCrossAcademyManagerOption:not(.active) .settingsCrossAcademyManagerCheck{
+  background:#dededb;
+}

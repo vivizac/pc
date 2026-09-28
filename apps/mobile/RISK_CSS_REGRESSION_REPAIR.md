@@ -1,0 +1,117 @@
+# 위험신호 삭제 CSS 회귀 복구 보고서
+
+- 기준 직전 커밋: `30801d239c9982b228b977371b43510374a14d3c`
+- 위험신호 제거 커밋: `b2ea0ec5911ffee820894bf2c15e263aa72b79cd`
+- 자동 복구 선택자 수: **103**
+
+## 복구된 선택자
+
+- `.analysisSheetOverlay[style*="flex"] .analysisSheetPanel` — olli-phone-base.css / global / 복구 속성: animation
+- `.analysisResultSheetOverlay[style*="flex"] .analysisResultSheetPanel` — olli-phone-base.css / global / 복구 속성: animation
+- `.elementaryRowInner` — olli-phone-base.css / global / 복구 속성: gap
+- `.kinderSignalCircle` — olli-phone-base.css / global / 복구 속성: align-self, margin-top, transform
+- `.selectionCircle` — olli-phone-base.css / global / 복구 속성: align-self, margin-top, transform
+- `.elementaryDefaultNoGroupIcon` — olli-phone-base.css / global / 복구 속성: grid-column, justify-self
+- `.elementaryEmptyCircle` — olli-phone-base.css / global / 복구 속성: grid-column, justify-self
+- `.kinderSignalCircle` — olli-phone-base.css / global / 복구 속성: grid-column, justify-self
+- `.selectionCircle` — olli-phone-base.css / global / 복구 속성: grid-column, justify-self
+- `.kinderStudentRow .studentTextWrap` — olli-phone-base.css / global / 복구 속성: grid-column
+- `.memoStudentSelectTextBlock` — olli-phone-base.css / global / 복구 속성: flex, min-width, max-width, border, background, padding, margin, border-radius, font-family, text-align, display, align-items, gap, -webkit-tap-highlight-color, touch-action
+- `.memoStudentMonthDivider::after` — olli-phone-base.css / global / 복구 속성: content, height, flex, background
+- `.memoStudentManageChip` — olli-phone-base.css / global / 복구 속성: border, border-radius, height, min-height, min-width, padding, background, color, font-family, font-size, font-weight, cursor, -webkit-tap-highlight-color, touch-action
+- `.memoStudentManageChip.active` — olli-phone-base.css / global / 복구 속성: background, color
+- `.memoFeedbackArchiveCard .memoFeedbackArchiveCancelBtn` — olli-phone-base.css / global / 복구 속성: display
+- `.memoFeedbackArchiveCard.editing .memoFeedbackArchiveCopyBtn` — olli-phone-base.css / global / 복구 속성: display
+- `.memoFeedbackArchiveCard.editing .memoFeedbackArchiveCancelBtn` — olli-phone-base.css / global / 복구 속성: display, align-items, justify-content
+- `.elementaryTendencyGrid` — olli-phone-base.css / global / 복구 속성: display, flex-wrap, gap
+- `.elementaryTendencyGroupBtn` — olli-phone-base.css / global / 복구 속성: border, border-radius, background, color, min-height, padding, font-size, font-weight, font-family, cursor, line-height
+- `.memoSaveStatus` — olli-phone-base.css / global / 복구 속성: margin, line-height
+- `.recordStickyArea > .recordUtilityRow` — olli-phone-base.css / global / 복구 속성: position, z-index
+- `.recordStickyArea > .recordDivider` — olli-phone-base.css / global / 복구 속성: position, z-index
+- `.recordStickyArea > .recordModeLabelRow` — olli-phone-base.css / global / 복구 속성: position, z-index
+- `.kinderStudentRow:hover:not(.studentRowSelected)` — olli-phone-base.css / @media (hover:hover) / 복구 속성: background
+- `.kinderStudentRow.studentRowSelected` — olli-phone-base.css / global / 복구 속성: position, z-index, background, transform, box-shadow
+- `.kinderStudentRow:focus` — olli-phone-base.css / global / 복구 속성: outline, background
+- `.elementaryStudentRow:focus-visible` — olli-phone-base.css / global / 복구 속성: outline, background
+- `.kinderStudentRow:focus-visible` — olli-phone-base.css / global / 복구 속성: outline, background
+- `.kinderStudentRow:hover:not(.studentRowSelected)` — olli-phone-base.css / @media (hover:none) / 복구 속성: background
+- `.elementaryStudentRow:active:not(.studentRowSelected)` — olli-phone-base.css / @media (hover:none) / 복구 속성: background
+- `.kinderStudentRow:active:not(.studentRowSelected)` — olli-phone-base.css / @media (hover:none) / 복구 속성: background
+- `.modalInput` — olli-phone-base.css / global / 복구 속성: background
+- `#recordRoomScreen .recordPageInner` — olli-phone-base.css / global / 복구 속성: background
+- `#recordRoomScreen .recordStickyArea` — olli-phone-base.css / global / 복구 속성: background
+- `#recordRoomScreen .recordStickyArea::before` — olli-phone-base.css / global / 복구 속성: background
+- `#studentMemoScreen #memoEditor` — olli-phone-base.css / global / 복구 속성: background, background-color
+- `#studentMemoScreen .memoEditorWrap` — olli-phone-base.css / global / 복구 속성: background, background-color
+- `#studentMemoScreen .memoInput` — olli-phone-base.css / global / 복구 속성: background, background-color
+- `#studentMemoScreen textarea` — olli-phone-base.css / global / 복구 속성: background, background-color
+- `#studentMemoScreen .memoPageInner` — olli-phone-base.css / global / 복구 속성: background
+- `.memoFeedbackRightActions` — olli-phone-base.css / global / 복구 속성: display, gap, align-items
+- `#studentMemoScreen .memoBottomBar button` — olli-phone-base.css / global / 복구 속성: pointer-events
+- `#studentMemoScreen .memoModePill` — olli-phone-base.css / global / 복구 속성: width, min-width, max-width, height, min-height, padding, border-radius, color, font-size, font-weight, letter-spacing, background, border, box-shadow, backdrop-filter, -webkit-backdrop-filter, -webkit-tap-highlight-color, touch-action, display, align-items, justify-content, gap
+- `#studentMemoScreen #memoBottomAnalysisBtn` — olli-phone-base.css / global / 복구 속성: display, visibility, opacity, pointer-events
+- `#recordRoomScreen .elementaryStudentRow #recordRoomScreen .elementaryStudentRow .selectionCircle` — olli-phone-base.css / global / 복구 속성: grid-column, justify-self, margin-left, transform
+- `#recordRoomScreen .elementaryStudentRow .elementaryGroupIcon` — olli-phone-base.css / global / 복구 속성: grid-column, transform
+- `#recordRoomScreen .elementaryStudentRow .elementaryDefaultNoGroupIcon` — olli-phone-base.css / global / 복구 속성: grid-column, justify-self, margin-left, transform
+- `.sceneCardModalBody .sceneIconBox` — olli-phone-base.css / global / 복구 속성: pointer-events
+- `.sceneCardModalBody .sceneTitle` — olli-phone-base.css / global / 복구 속성: pointer-events
+- `.sceneCardModalBody .sceneBackMain` — olli-phone-base.css / global / 복구 속성: pointer-events
+- `.sceneCardModalBody .sceneBackSub` — olli-phone-base.css / global / 복구 속성: pointer-events
+- `.sceneCardModalBody .sceneBackKeywords` — olli-phone-base.css / global / 복구 속성: pointer-events
+- `.sceneCardModalBody .sceneCard.flipped .sceneNumber` — olli-phone-base.css / global / 복구 속성: display
+- `#studentMemoScreen .elementaryAnalysisHistoryGrid.elementaryAnalysisHistoryGridSingle` — olli-phone-base.css / global / 복구 속성: display, justify-content, align-items, flex-wrap, gap, width, grid-template-columns, background
+- `#studentMemoScreen .elementaryAnalysisHistoryCycleBtn` — olli-phone-base.css / global / 복구 속성: -webkit-appearance, appearance, width, max-width, min-width, flex, min-height, padding, display, align-items, justify-content, border, border-radius, background, box-shadow, box-sizing, text-align, cursor
+- `#studentMemoScreen .elementaryAnalysisHistoryCycleBtn .elementaryAnalysisHistoryLine` — olli-phone-base.css / global / 복구 속성: width, max-width, font-size, line-height, font-weight, color, white-space, overflow, text-overflow, text-align
+- `.pageScreen.vivizac-slide-out` — olli-phone-base.css / @media (prefers-reduced-motion: reduce) / 복구 속성: transition
+- `.analysisSheetPanel` — olli-phone-base.css / @media (prefers-reduced-motion: reduce) / 복구 속성: animation, transition
+- `.analysisResultSheetPanel` — olli-phone-base.css / @media (prefers-reduced-motion: reduce) / 복구 속성: animation, transition
+- `.memoFeedbackArchiveSheet` — olli-phone-base.css / @media (prefers-reduced-motion: reduce) / 복구 속성: animation
+- `#studentMemoScreen .elementaryAnalysisSummaryIcon:focus-visible` — olli-phone-base.css / global / 복구 속성: outline, box-shadow
+- `#studentMemoScreen .elementaryAnalysisSummaryIcon:active` — olli-phone-base.css / global / 복구 속성: outline, box-shadow
+- `.savedFeedbackStudentLeft .elementaryDefaultNoGroupIcon` — olli-phone-base.css / global / 복구 속성: margin-left
+- `.savedFeedbackStudentLeft .elementaryEmptyCircle` — olli-phone-base.css / global / 복구 속성: margin-left
+- `.savedFeedbackStudentLeft .recordBoardLeadIcon` — olli-phone-base.css / global / 복구 속성: margin-left
+- `#recordRoomScreen .savedFeedbackStudentBlock.open .savedFeedbackStudentHead::after` — olli-phone-base.css / global / 복구 속성: content, display
+- `.attendancePhotoCandidateSelect` — olli-phone-base.css / global / 복구 속성: width, height, border, border-radius, background, color, font-size, font-family, padding, outline
+- `.studentBulkCandidateSelect` — olli-phone-base.css / global / 복구 속성: width, height, border, border-radius, background, color, font-size, font-family, padding, outline
+- `.olliLoginTitlePill` — olli-phone-base.css / global / 복구 속성: height, border, border-radius, background, box-shadow, display, align-items, justify-content, font-family
+- `.olliInfoCard` — olli-phone-base.css / global / 복구 속성: border-radius, background, padding, margin-bottom, box-shadow
+- `#settingsDetailScreen` — olli-phone-base.css / global / 복구 속성: position, inset
+- `#settingsPageScreen .settingsBadge` — olli-phone-base.css / global / 복구 속성: font-weight
+- `#settingsPageScreen .settingsApprovalBadge` — olli-phone-base.css / global / 복구 속성: font-weight
+- `#settingsPageScreen .settingsStatusBadge` — olli-phone-base.css / global / 복구 속성: font-weight
+- `#settingsPageScreen .settingsActionBtn` — olli-phone-base.css / global / 복구 속성: font-weight
+- `#settingsPageScreen .settingsExportBtn` — olli-phone-base.css / global / 복구 속성: font-weight
+- `#settingsPageScreen .settingsInfoHead` — olli-phone-base.css / global / 복구 속성: font-weight
+- `#settingsPageScreen .settingsRoleName` — olli-phone-base.css / global / 복구 속성: font-weight
+- `#settingsPageScreen .settingsRequestName` — olli-phone-base.css / global / 복구 속성: font-weight
+- `#settingsPageScreen .settingsTeacherName` — olli-phone-base.css / global / 복구 속성: font-weight
+- `#settingsPageScreen .settingsInfoItem` — olli-phone-base.css / global / 복구 속성: font-weight
+- `#settingsPageScreen .settingsRoleItem` — olli-phone-base.css / global / 복구 속성: font-weight
+- `#settingsPageScreen .settingsRequestMeta div` — olli-phone-base.css / global / 복구 속성: font-weight
+- `#settingsPageScreen .settingsTeacherMeta div` — olli-phone-base.css / global / 복구 속성: font-weight
+- `#recordRoomScreen .recordAcademyMiniIcon .academySettingsIcon circle` — olli-phone-base.css / global / 복구 속성: fill, stroke, stroke-width, stroke-linecap, stroke-linejoin
+- `#olliLoginEntryScreen .olliEntrySimpleActions .olliSecondaryBtn` — olli-phone-base.css / global / 복구 속성: margin-top, font-size
+- `#recordRoomScreen .kinderStudentRow .studentTextWrap` — olli-phone-base.css / global / 복구 속성: display, flex-direction, align-items, justify-content, gap, overflow
+- `#recordRoomScreen .savedFeedbackStudentLeft .studentTextWrap` — olli-phone-base.css / global / 복구 속성: min-width, display, flex-direction, align-items, justify-content, gap, overflow
+- `#recordRoomScreen .kinderStudentRow .studentTextWrap > span:first-child` — olli-phone-base.css / global / 복구 속성: font-size, font-weight, line-height, letter-spacing
+- `#recordRoomScreen .savedFeedbackStudentLeft .recordStudentName` — olli-phone-base.css / global / 복구 속성: font-size, font-weight, line-height, letter-spacing
+- `#recordRoomScreen .kinderStudentRow .studentMetaText` — olli-phone-base.css / global / 복구 속성: display, max-width, font-size, font-weight, line-height, letter-spacing, color, white-space, overflow, text-overflow
+- `#recordRoomScreen .savedFeedbackStudentLeft .studentMetaText` — olli-phone-base.css / global / 복구 속성: display, max-width, font-size, font-weight, line-height, letter-spacing, color, white-space, overflow, text-overflow
+- `#recordRoomScreen .kinderStudentRow.studentStatusPaused .studentTextWrap > span:first-child` — olli-phone-base.css / global / 복구 속성: color
+- `#recordRoomScreen .elementaryStudentRow.studentStatusPaused .studentMetaText` — olli-phone-base.css / global / 복구 속성: color
+- `#recordRoomScreen .kinderStudentRow.studentStatusPaused .studentMetaText` — olli-phone-base.css / global / 복구 속성: color
+- `#recordRoomScreen .kinderStudentRow.studentStatusWithdrawn .studentTextWrap > span:first-child` — olli-phone-base.css / global / 복구 속성: color
+- `#recordRoomScreen .elementaryStudentRow.studentStatusWithdrawn .studentMetaText` — olli-phone-base.css / global / 복구 속성: color
+- `#recordRoomScreen .kinderStudentRow.studentStatusWithdrawn .studentMetaText` — olli-phone-base.css / global / 복구 속성: color
+- `#recordRoomScreen .elementaryStudentRow .elementaryDefaultNoGroupIcon` — olli-phone-base.css / global / 복구 속성: width, min-width, height, justify-content, justify-self, margin-left
+- `#kcfStudentManagePopup .memoStudentInfoDotsBtn` — olli-phone-final-overrides.css / global / 복구 속성: background, border-color, box-shadow, color
+- `#kcfStudentManagePopup .memoStudentInfoDotsBtn:active` — olli-phone-final-overrides.css / global / 복구 속성: background
+- `#kinderChatFeedbackScreen .kcfRecordBtn svg` — olli-phone-final-overrides.css / global / 복구 속성: transform
+- `#kinderChatFeedbackScreen .kcfRecordBtn svg` — olli-phone-final-overrides.css / global / 복구 속성: transform
+
+## 안전장치
+
+- 위험신호 페이지·알림함·위험신호 저장 기능 선택자는 복구 대상에서 제외했습니다.
+- 현재 HTML/JS에서 더 이상 사용되지 않는 선택자는 복구하지 않았습니다.
+- 현재 CSS에 해당 선택자의 속성이 명시되어 있으면 현재 값을 우선하고 덮어쓰지 않았습니다.

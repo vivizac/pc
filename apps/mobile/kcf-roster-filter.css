@@ -1,0 +1,61 @@
+
+/* 2026-06-26: 1분 피드백 입력창 2줄 구조 복구 + 원생목록 초등/유치 전환 + 담임 필터 */
+#kinderChatFeedbackScreen .kcfComposerWrap > #kcfKeywordScroller.kcfKeywordScroller {
+  display: flex;
+}
+#kinderChatFeedbackScreen .kcfComposer {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+#kinderChatFeedbackScreen .kcfInput {
+  display: block;
+  width: 100%;
+}
+#kinderChatFeedbackScreen .kcfComposerBottom {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+#kcfStudentManagePopup .kcfStudentDivisionTabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+#kcfStudentManagePopup .kcfStudentDivisionBtn {
+  min-height: 30px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255,255,255,.10);
+  color: rgba(255,255,255,.74);
+  font-family: inherit;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#kcfStudentManagePopup .kcfStudentDivisionBtn.active {
+  background: #fff;
+  color: #111;
+}
+#kcfStudentManagePopup .kcfRosterSortRow {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 5px;
+}
+#kcfStudentManagePopup .kcfRosterTeacherChip {
+  font-size: calc(12px * 1.02 * var(--olli-text-scale));
+  letter-spacing: -0.04em;
+}
+
+
+
+/* merged: 가이드 버튼/입력창 복구 */
+#kinderChatFeedbackScreen .kcfComposerWrap > #kcfKeywordScroller.kcfKeywordScroller {
+  margin-bottom: 8px;
+}
+#kinderChatFeedbackScreen .kcfInput {
+  min-height: 34px;
+}

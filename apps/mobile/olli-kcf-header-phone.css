@@ -1,0 +1,111 @@
+/* Phone-only 1-minute-feedback top actions.
+ * This is the source stylesheet for Phone header interaction and the temporary-inbox action.
+ * Edit these rules directly; do not add a later compensation/override layer for the same controls.
+ */
+
+/*
+ * LIVE / 보관함 / 임시보관함 버튼 반응.
+ * 누르는 동안 1.06배로 살짝 커졌다가 손을 떼면 원래 크기로 돌아온다.
+ * 회색 배경 탭 효과는 사용하지 않는다.
+ */
+#kcfPersistentTopLayer #kcfOlliBtn,
+#kcfPersistentTopLayer #kcfInboxModeBtn,
+#kcfPersistentTopLayer #kcfVivicotInboxBubble {
+  transition:transform .14s cubic-bezier(.2,.8,.2,1), box-shadow .10s ease, opacity .10s ease;
+  transform:scale(1);
+  transform-origin:center;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+#kcfPersistentTopLayer #kcfOlliBtn:active,
+#kcfPersistentTopLayer #kcfInboxModeBtn:active,
+#kcfPersistentTopLayer #kcfVivicotInboxBubble:active {
+  background:#fff;
+  transform:scale(1.06);
+  transition:transform .06s ease-out;
+}
+@media (hover:hover) and (pointer:fine) {
+  #kcfPersistentTopLayer #kcfOlliBtn:hover,
+  #kcfPersistentTopLayer #kcfInboxModeBtn:hover,
+  #kcfPersistentTopLayer #kcfVivicotInboxBubble:hover {
+    background:#fff;
+  }
+}
+
+/*
+ * 임시 보관함은 말풍선이 아니라 다른 상단 액션과 같은 44px 원형 버튼으로 표시한다.
+ * 새 피드백이 생겨 .show가 붙을 때 현재 LIVE/보관함 버튼 바로 왼쪽에 나타난다.
+ */
+#kcfPersistentTopLayer .kcfVivicotInboxBubble {
+  top:var(--olli-phone-guide-top) !important;
+  right:calc(var(--olli-phone-guide-x) + 54px) !important;
+  width:44px !important;
+  min-width:44px !important;
+  max-width:44px !important;
+  height:44px !important;
+  min-height:44px !important;
+  padding:0 !important;
+  border:1px solid rgba(255,255,255,.96) !important;
+  border-radius:999px !important;
+  background:#fff;
+  color:#111;
+  text-align:center;
+  white-space:normal;
+  box-sizing:border-box;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.92),
+    0 0 0 1px rgba(255,255,255,.92),
+    0 0 34px 10px rgba(0,0,0,.045),
+    0 0 78px 22px rgba(0,0,0,.035);
+  backdrop-filter:blur(20px) saturate(1.18);
+  -webkit-backdrop-filter:blur(20px) saturate(1.18);
+  z-index:5001;
+}
+#kcfPersistentTopLayer .kcfVivicotInboxBubble::before {
+  content:none !important;
+  display:none !important;
+}
+
+/* 기존 '임시 보관함' 텍스트 자리를 종이 문서 아이콘으로 사용한다. */
+#kcfPersistentTopLayer .kcfVivicotInboxBubbleText {
+  position:relative;
+  z-index:1;
+  display:block;
+  width:19px;
+  height:23px;
+  border:1.8px solid currentColor;
+  border-radius:2.5px;
+  box-sizing:border-box;
+  font-size:0 !important;
+  line-height:0;
+  color:#111;
+}
+#kcfPersistentTopLayer .kcfVivicotInboxBubbleText::before {
+  content:'';
+  position:absolute;
+  left:3.5px;
+  right:3.5px;
+  top:7px;
+  height:1.6px;
+  border-radius:999px;
+  background:currentColor;
+  box-shadow:0 4.2px 0 currentColor, 0 8.4px 0 currentColor;
+}
+
+/* 작은 원형 버튼에 맞춰 배지를 모서리에 붙인다. */
+#kcfPersistentTopLayer .kcfVivicotInboxBadge {
+  top:-6px;
+  right:-6px;
+  min-width:20px;
+  height:20px;
+  padding:0 5px;
+  font-size:calc(10px * var(--olli-text-scale));
+}
+
+#kcfPersistentTopLayer .kcfVivicotInboxBubble.show {
+  animation:kcfTempInboxRoundPop .18s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes kcfTempInboxRoundPop {
+  from { opacity:0; transform:scale(.88); }
+  to { opacity:1; transform:scale(1); }
+}

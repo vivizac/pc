@@ -1,0 +1,38 @@
+
+/* 2026-07-04: 설정 > 출결 설정 / 보강 유효 기간 / 출결 계산 시작일 */
+.settingsAttendancePolicyGrid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin-top:8px;
+}
+.settingsAttendancePolicyOption{
+  min-height:42px;
+  border:0;
+  border-radius:14px;
+  background:#f1f1ef;
+  color:#555;
+  font-family:inherit;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:700;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.settingsAttendancePolicyOption.active{
+  background:#111;
+  color:#fff;
+}
+.settingsAttendanceStartDateGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:8px;
+  margin-top:8px;
+}
+.settingsAttendanceStartDateGrid .settingsInput{
+  text-align:center;
+  padding-left:8px;
+  padding-right:8px;
+}
+
+.settingsAttendancePolicyGrid{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+

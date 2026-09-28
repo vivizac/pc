@@ -1,4 +1,0 @@
-[submodule "apps/mobile"]
-	path = apps/mobile
-	url = https://github.com/vivizac/mobile.git
-	branch = work/olli-ab-date-layout-contract-20260928

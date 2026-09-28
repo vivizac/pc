@@ -1,0 +1,32 @@
+const fs = require('fs');
+const assert = require('assert');
+const js = fs.readFileSync('kinder-feedback.js', 'utf8');
+const html = fs.readFileSync('index.html', 'utf8');
+
+assert(js.includes("const KCF_LIVE_SESSION_KEY_PREFIX = 'olli_kcf_live_session_v1';"));
+assert(js.includes('`${KCF_LIVE_SESSION_KEY_PREFIX}_${getKinderChatFeedbackLiveAcademyId()}`'));
+assert(js.includes('KCF_LIVE_SESSION_PERSIST_DELAY_MS = 350'));
+assert(js.includes('KCF_LIVE_SESSION_MAX_ITEMS = 50'));
+assert(js.includes('KCF_LIVE_SESSION_RETENTION_MS = 24 * 60 * 60 * 1000'));
+assert(js.includes("Date.parse(String(session?.updatedAt || session?.createdAt || ''))"));
+assert(!js.includes("String(session.dateKey || '') !== today"));
+assert(!js.includes('.filter(item => String(item.dateKey || dateKey) === dateKey)'));
+assert(js.includes('localStorage.removeItem(key);'));
+assert(!js.includes('localStorage.clear()'));
+assert(js.includes("item.status = 'interrupted';"));
+assert(js.includes("['streaming','interrupted','error'].includes(item.status)"));
+assert(js.includes('scheduleKinderChatFeedbackLiveSessionPersist();'));
+assert(js.includes('persistKinderChatFeedbackLiveSessionNow();'));
+assert(js.includes("window.addEventListener('pagehide'"));
+assert(js.includes("document.addEventListener('visibilitychange'"));
+assert(js.includes('restoreKinderChatFeedbackLiveSession();'));
+assert(js.includes('tagKinderChatFeedbackLiveUserRow(item);'));
+assert(js.includes('sanitizeKinderChatFeedbackLiveAttachments'));
+assert(js.includes("!/^data:/i.test(text)"));
+assert(html.includes('kinder-feedback.js?v=20260916-composer-sheet-1'));
+assert(html.includes('kinder-feedback.css?v=20260916-composer-sheet-1'));
+
+const sessionKeyIndex = js.indexOf('KCF_LIVE_SESSION_KEY_PREFIX');
+assert(sessionKeyIndex >= 0);
+assert(!js.slice(sessionKeyIndex, sessionKeyIndex + 10000).includes("olli_feedback_jobs_v2"));
+console.log('KCF LIVE local session regression checks passed');

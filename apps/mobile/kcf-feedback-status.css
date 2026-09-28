@@ -1,0 +1,27 @@
+
+/* 2026-06-27: 1분 피드백 원생목록 피드백 완료 점 + 목록 텍스트 크기 통일 */
+#kcfStudentManagePopup .memoStudentSelectNameBtn,
+#kcfStudentManagePopup .memoStudentSelectTextBlock {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+#kcfStudentManagePopup .memoStudentSelectName,
+#kcfStudentManagePopup .memoStudentSelectMeta {
+  line-height: 1.2;
+}
+#kcfStudentManagePopup .kcfRosterFeedbackDot,
+#memoStudentSelectPopup .memoStudentFeedbackDot {
+  flex: 0 0 auto;
+}
+
+#kcfStudentManagePopup .memoStudentInfoDotsBtn {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: rgba(255,255,255,.78);
+}
+
+#kcfStudentManagePopup .memoStudentInfoDotsBtn:active {
+  background: transparent;
+}

@@ -1,0 +1,423 @@
+
+#settingsAcademySwitchRow {
+  display: none;
+}
+.olliAcademySwitchIntro {
+  margin: 0 0 14px;
+  padding: 0 2px;
+  color: #6f716d;
+  font-size: calc(14px * var(--olli-text-scale));
+  line-height: 1.55;
+}
+.olliAcademyOptionList {
+  display: grid;
+  gap: 10px;
+}
+.olliAcademyOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  min-height: 82px;
+  padding: 15px 16px;
+  border: 1px solid rgba(28, 36, 31, .08);
+  border-radius: 22px;
+  background: #fff;
+  text-align: left;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .035);
+}
+.olliAcademyOption.current {
+  border: 0;
+  background: #7096c7;
+}
+.olliAcademyOptionMain {
+  min-width: 0;
+}
+.olliAcademyOptionName {
+  overflow: hidden;
+  color: #202421;
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 760;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.olliAcademyOption.current .olliAcademyOptionName {
+  color: #fff;
+}
+.olliAcademyOptionMeta {
+  margin-top: 5px;
+  color: #7b7e79;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.35;
+}
+.olliAcademyOption.current .olliAcademyOptionMeta {
+  color: rgba(255, 255, 255, .82);
+}
+.olliAcademyOptionAction {
+  flex: 0 0 auto;
+  min-width: 66px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: #0A84FF;
+  color: #fff;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 720;
+}
+.olliAcademyOption.current .olliAcademyOptionAction {
+  background: rgba(255, 255, 255, .22);
+  color: #fff;
+}
+.olliAcademyRefreshBtn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 13px 14px;
+  border: 0;
+  border-radius: 18px;
+  background: #eceeea;
+  color: #50544f;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 700;
+}
+#olliAcademySwitchOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: #fff;
+  color: #202421;
+  text-align: center;
+}
+#olliAcademySwitchOverlay.show {
+  display: flex;
+}
+.olliAcademySwitchOverlayInner {
+  width: min(320px, 100%);
+}
+.olliAcademySwitchSpinner {
+  width: 34px;
+  height: 34px;
+  margin: 0 auto 18px;
+  border: 3px solid #e5e8e4;
+  border-top-color: #315f43;
+  border-radius: 50%;
+  animation: olliAcademySwitchSpin .8s linear infinite;
+}
+.olliAcademySwitchOverlayTitle {
+  font-size: calc(20px * var(--olli-text-scale));
+  font-weight: 800;
+  letter-spacing: -.035em;
+}
+.olliAcademySwitchOverlayDesc {
+  margin-top: 8px;
+  color: #797d78;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+}
+@keyframes olliAcademySwitchSpin {
+  to { transform: rotate(360deg); }
+}
+
+
+/* 2026-06-30: 설정 > 출석부 출력 */
+.settingsAttendanceControlCard {
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(0,0,0,.045), 0 2px 8px rgba(0,0,0,.02);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.settingsAttendanceFieldLabel {
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 780;
+  color: #777;
+  margin: 0 0 8px 2px;
+  letter-spacing: -.025em;
+}
+.settingsAttendanceSegment {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.settingsAttendanceSegment.divisionSegment {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.settingsAttendanceSegmentBtn {
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: #f2f2f0;
+  color: #333;
+  font-family: inherit;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 780;
+  cursor: pointer;
+}
+.settingsAttendanceSegmentBtn.active {
+  background: #111;
+  color: #fff;
+}
+.settingsAttendanceMonthInput {
+  width: 100%;
+  height: 48px;
+  border: none;
+  border-radius: 18px;
+  background: #f5f5f3;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: calc(15px * var(--olli-text-scale));
+  color: #111;
+  margin-bottom: 14px;
+}
+.settingsAttendanceGuide {
+  margin-top: 2px;
+  color: #888;
+  font-size: calc(12.5px * var(--olli-text-scale));
+  line-height: 1.5;
+  letter-spacing: -.025em;
+}
+.settingsAttendanceActionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.settingsAttendanceActionBtn {
+  min-height: 50px;
+  border: none;
+  border-radius: 999px;
+  background: #f0f0ee;
+  color: #111;
+  font-family: inherit;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 820;
+  cursor: pointer;
+}
+.settingsAttendanceActionBtn.primary {
+  background: #111;
+  color: #fff;
+}
+.settingsAttendanceActionBtn:disabled {
+  opacity: .45;
+  cursor: default;
+}
+.settingsAttendancePreviewCard {
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(0,0,0,.045), 0 2px 8px rgba(0,0,0,.02);
+  overflow: hidden;
+  margin-top: 12px;
+}
+.settingsAttendancePreviewHead {
+  padding: 16px 16px 10px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.settingsAttendancePreviewTitle {
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 850;
+  letter-spacing: -.045em;
+  color: #111;
+  line-height: 1.28;
+}
+.settingsAttendancePreviewMeta {
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 720;
+  color: #8d8d8d;
+  white-space: nowrap;
+}
+.settingsAttendancePreviewScroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 12px 14px;
+}
+.settingsAttendancePreviewTable {
+  border-collapse: collapse;
+  min-width: 980px;
+  width: 100%;
+  table-layout: fixed;
+  font-size: 12.5px;
+  color: #111;
+}
+.settingsAttendancePreviewTable th,
+.settingsAttendancePreviewTable td {
+  border: 0.5px solid #b4b4b4;
+  height: 26px;
+  padding: 2px 4px;
+  text-align: center;
+  white-space: nowrap;
+}
+.settingsAttendancePreviewTable .noCol { width: 30px; padding-left: 0; padding-right: 0; }
+.settingsAttendancePreviewTable .nameCol { width: 58px; padding-left: 0; padding-right: 0; }
+.settingsAttendancePreviewTable .schoolGradeCol { width: 72px; padding-left: 0; padding-right: 0; }
+.settingsAttendancePreviewTable .personalityCol { width: 28px; padding-left: 0; padding-right: 0; }
+.settingsAttendancePreviewTable tbody td.nameCol,
+.settingsAttendancePreviewTable tbody td.schoolGradeCol,
+.settingsAttendancePreviewTable tbody td.personalityCol {
+  font-size: 14px;
+  line-height: 1.05;
+}
+.settingsAttendancePreviewTable tbody td.nameCol { font-weight: 780; }
+.settingsAttendancePreviewTable tbody td.schoolGradeCol { font-weight: 680; }
+.settingsAttendancePreviewTable tbody td.personalityCol { font-weight: 680; }
+.settingsAttendancePreviewTable .dateCol,
+.settingsAttendancePreviewTable col.dateCol { width: var(--attendance-date-col-width, 22px); padding-left: 0; padding-right: 0; }
+.settingsAttendancePreviewTable,
+.settingsAttendancePreviewTable *,
+.attendancePrintSheet,
+.attendancePrintSheet *,
+.attendancePrintTable,
+.attendancePrintTable * {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  color-adjust: exact;
+}
+.settingsAttendancePreviewTable th {
+  background: #2f6f9f;
+  background-color: #2f6f9f;
+  color: #fff;
+  font-weight: 750;
+}
+.settingsAttendancePreviewTable .nameCol,
+.settingsAttendancePreviewTable .schoolCol,
+.settingsAttendancePreviewTable .schoolGradeCol {
+  text-align: center;
+}
+.settingsAttendancePreviewTable th.daySat,
+.settingsAttendancePreviewTable td.daySat { background: #fff7c8; background-color: #fff7c8; color: #111; }
+.settingsAttendancePreviewTable th.daySun,
+.settingsAttendancePreviewTable td.daySun { background: #ffd9df; background-color: #ffd9df; color: #111; }
+.settingsAttendanceEmpty {
+  padding: 22px 16px 24px;
+  color: #999;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+  text-align: center;
+}
+.attendancePrintSheet {
+  width: 100%;
+  background: #fff;
+  color: #111;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.attendancePrintPage {
+  width: 100%;
+  page-break-after: always;
+  break-after: page;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+.attendancePrintPage:last-child {
+  page-break-after: auto;
+  break-after: auto;
+}
+.attendancePrintHeader {
+  margin-bottom: 5px;
+  padding-top: 10px;
+}
+.attendancePrintAcademy {
+  font-size: 15px;
+  line-height: 1.05;
+  font-weight: 760;
+  color: #1f4776;
+  letter-spacing: -.035em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.attendancePrintMonth {
+  margin-top: 1px;
+  font-size: 31px;
+  line-height: 0.98;
+  font-weight: 900;
+  color: #1f4776;
+  letter-spacing: -.055em;
+}
+.attendancePrintTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: #111;
+}
+.attendancePrintTable th,
+.attendancePrintTable td {
+  border: 0.5px solid #777777;
+  height: 23px;
+  padding: 0.5px 1.5px;
+  text-align: center;
+  vertical-align: middle;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+}
+.attendancePrintTable th {
+  background: #2f6f9f;
+  background-color: #2f6f9f;
+  color: #fff;
+  font-size: 8.8px;
+  font-weight: 760;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  color-adjust: exact;
+}
+.attendancePrintTable tbody td {
+  font-size: 10.6px;
+  font-weight: 560;
+}
+.attendancePrintTable .noCol { width: 20px; padding-left: 0; padding-right: 0; }
+.attendancePrintTable .divisionCol { width: 25px; }
+.attendancePrintTable .nameCol { width: 43px; padding-left: 0; padding-right: 0; text-align: center; font-weight: 780; }
+.attendancePrintTable .schoolGradeCol { width: 52px; padding-left: 0; padding-right: 0; text-align: center; font-weight: 660; }
+.attendancePrintTable .personalityCol { width: 20px; padding-left: 0; padding-right: 0; }
+.attendancePrintTable tbody td.nameCol,
+.attendancePrintTable tbody td.schoolGradeCol,
+.attendancePrintTable tbody td.personalityCol {
+  line-height: 1.05;
+}
+.attendancePrintTable tbody td.nameCol { font-size: 12px; font-weight: 700; }
+.attendancePrintTable tbody td.schoolGradeCol { font-size: 11.6px; font-weight: 600; }
+.attendancePrintTable tbody td.personalityCol { font-size: 11.4px; font-weight: 600; }
+.attendancePrintTable .dateCol,
+.attendancePrintTable col.dateCol { width: var(--attendance-date-col-width, 14px); padding-left: 0; padding-right: 0; }
+.attendancePrintTable th.daySat,
+.attendancePrintTable td.daySat { background: #fff7c8; background-color: #fff7c8; color: #111; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
+.attendancePrintTable th.daySun,
+.attendancePrintTable td.daySun { background: #ffd9df; background-color: #ffd9df; color: #111; -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
+.attendancePrintLegend {
+  margin-top: 7px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 7px;
+  color: #666;
+}
+.attendancePrintPageNo {
+  text-align: center;
+  font-size: 7px;
+  color: #555;
+  margin-top: 8px;
+}
+@media print {
+  @page { size: A4 portrait; margin: 8mm 6mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
+  body { background: #fff; }
+}
+
+/* 출석부 출력값은 위 기본 .attendancePrint* 선언에서 단일 관리합니다. */
+@media print {
+  @page { size: A4 portrait; margin: 4mm 5mm; }
+}
+
+.settingsAttendanceActionGrid { grid-template-columns: 1fr; }
+
+

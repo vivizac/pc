@@ -1,0 +1,23 @@
+
+.settingsInviteActionGridOutside {
+  margin: 10px 0 14px;
+}
+.settingsTeacherInviteApprovalMount,
+.settingsTeacherInviteApprovalWrap {
+  display: grid;
+  gap: 10px;
+}
+.settingsTeacherInviteSectionTitle,
+.settingsTeacherInviteApprovalTitle {
+  font-size: calc(17px * var(--olli-text-scale));
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.045em;
+  margin-bottom: 9px;
+}
+.settingsTeacherInviteApprovalTitle {
+  padding: 0;
+}
+.settingsActionGrid.single {
+  grid-template-columns: 1fr;
+}

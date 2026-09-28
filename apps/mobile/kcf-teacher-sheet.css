@@ -1,0 +1,250 @@
+/* Teacher mode large editor. Normal Olli command input remains inline. */
+html.kcfTeacherSheetOpen,
+body.kcfTeacherSheetOpen {
+  width:100%;
+  height:100%;
+  overflow:hidden !important;
+  overscroll-behavior:none;
+}
+
+/* Teacher가 열려 있는 동안 기존 1분 피드백 화면은 숨긴다.
+ * 닫히면 body 클래스가 제거되면서 자동으로 다시 나타난다. */
+body.kcfTeacherSheetOpen #kcfPersistentTopLayer,
+body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfInner,
+body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
+  visibility:hidden !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+}
+
+.kcfTeacherSheetOverlay {
+  position:fixed;
+  left:var(--kcf-teacher-vv-left, 0px);
+  top:var(--kcf-teacher-vv-top, 0px);
+  width:var(--kcf-teacher-vv-width, 100vw);
+  height:var(--kcf-teacher-vv-height, 100vh);
+  z-index:9900;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  visibility:hidden;
+  pointer-events:none;
+  background:#fff;
+}
+
+.kcfTeacherSheetOverlay.show {
+  visibility:visible;
+  pointer-events:auto;
+}
+
+.kcfTeacherSheet {
+  width:100%;
+  max-width:860px;
+  height:calc(100% - var(--olli-phone-guide-top, 64px));
+  min-height:220px;
+  display:flex;
+  flex-direction:column;
+  background:#fff;
+  border-radius:28px 28px 0 0;
+  overflow:hidden;
+  transform:translateY(100%);
+  transition:transform .24s cubic-bezier(.22,.61,.36,1);
+}
+
+.kcfTeacherSheetOverlay.show .kcfTeacherSheet {
+  transform:translateY(0);
+}
+
+.kcfTeacherSheetHandle {
+  width:40px;
+  height:5px;
+  border-radius:999px;
+  background:#e5e5e5;
+  margin:10px auto 4px;
+  flex:0 0 auto;
+}
+
+.kcfTeacherSheetBody {
+  min-height:0;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  padding:8px 16px 0;
+}
+
+.kcfTeacherSheetInput {
+  flex:1 1 auto;
+  width:100%;
+  min-height:0;
+  border:0;
+  outline:0;
+  resize:none;
+  overflow-y:auto;
+  background:#fff;
+  color:#111;
+  padding:16px 6px 12px;
+  font-family:inherit;
+  font-size:max(16px, calc(16px * var(--olli-text-scale)));
+  line-height:1.5;
+  -webkit-appearance:none;
+  appearance:none;
+  box-shadow:none;
+}
+
+.kcfTeacherSheetInput::placeholder {
+  color:#b8b8b8;
+}
+
+.kcfTeacherSheetWarning {
+  display:none;
+  flex:0 0 auto;
+  padding:0 6px 6px;
+  color:#d94444;
+  font-size:calc(12px * var(--olli-text-scale));
+  line-height:1.35;
+}
+
+.kcfTeacherSheetWarning.show {
+  display:block;
+}
+
+.kcfTeacherSheetBottom {
+  flex:0 0 40px;
+  height:40px;
+  min-height:40px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  width:100%;
+  position:relative;
+  margin:0;
+  padding:0;
+}
+
+.kcfTeacherSheetModeBtn {
+  width:auto;
+  height:32px;
+  min-width:52px;
+  border:0;
+  border-radius:999px;
+  padding:0 10px;
+  background:#111;
+  color:#fff;
+  font-family:inherit;
+  font-size:calc(11px * var(--olli-text-scale));
+  font-weight:650;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  z-index:3;
+}
+
+.kcfTeacherSheetRosterHost {
+  flex:1 1 auto;
+  min-width:0;
+  height:36px;
+  position:relative;
+}
+
+.kcfTeacherSheetRosterHost .kcfAutoStudentRoster {
+  position:relative !important;
+  inset:auto !important;
+  top:auto !important;
+  left:auto !important;
+  right:auto !important;
+  width:100% !important;
+  height:36px;
+  transform:none !important;
+  padding:0 !important;
+  overflow:hidden;
+}
+
+.kcfTeacherSheetRosterHost .kcfAutoStudentRosterScroller {
+  width:100%;
+  min-width:0;
+  height:36px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  padding:2px 0;
+  white-space:nowrap;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+  touch-action:pan-x;
+  scrollbar-width:none;
+  pointer-events:auto;
+}
+
+.kcfTeacherSheetRosterHost .kcfAutoStudentRosterScroller::-webkit-scrollbar {
+  display:none;
+}
+
+.kcfTeacherSheetRosterHost .kcfAutoStudentChip {
+  flex:0 0 auto;
+  height:30px;
+  min-height:30px;
+  padding:0 11px;
+  border:0;
+  border-radius:999px;
+  background:transparent;
+  color:#aaa;
+  font-family:inherit;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:700;
+  letter-spacing:-.03em;
+  line-height:1;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+}
+
+.kcfTeacherSheetRosterHost .kcfAutoStudentChip.selected {
+  background:#fff;
+  color:#1677ff;
+  border:1px solid #1677ff;
+  box-sizing:border-box;
+}
+
+.kcfTeacherSheetRosterHost .kcfAutoStudentChip:active {
+  transform:scale(.97);
+}
+
+.kcfTeacherSheetRosterHost .kcfAutoStudentRosterEmpty {
+  flex:0 0 auto;
+  color:#9aa3ad;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:550;
+  padding:6px 2px 7px;
+}
+
+.kcfTeacherSheetSendBtn {
+  width:40px;
+  height:40px;
+  min-width:40px;
+  border:0;
+  border-radius:999px;
+  padding:0;
+  background:#0A84FF;
+  color:#fff;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  z-index:3;
+}
+
+.kcfTeacherSheetSendBtn svg {
+  width:21px;
+  height:21px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:2.4;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.kcfTeacherSheetSendBtn:disabled {
+  background:#d8d8d8;
+}

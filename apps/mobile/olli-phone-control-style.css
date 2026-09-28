@@ -1,0 +1,90 @@
+/* Olli phone controls — canonical TeamTalk hamburger effect, forced last.
+ * Visual effect only lives here. Existing component files keep layout/size/icon rules.
+ */
+:root{
+  --olli-phone-glass-border:rgba(255,255,255,.88);
+  --olli-phone-glass-bg:
+    radial-gradient(120% 140% at 38% 28%,rgba(255,255,255,.22) 0%,rgba(255,255,255,.10) 46%,rgba(255,255,255,0) 78%),
+    linear-gradient(135deg,rgba(255,255,255,.66) 0%,rgba(255,255,255,.46) 46%,rgba(255,255,255,.30) 100%);
+  --olli-phone-glass-shadow:
+    inset 0 0 0 .75px rgba(255,255,255,.48),
+    0 2px 12px rgba(0,0,0,.10),
+    0 1px 4px rgba(0,0,0,.06);
+  --olli-phone-academy-button-shadow:
+    inset 0 0 0 .75px rgba(255,255,255,.72),
+    0 0 0 1px rgba(0,0,0,.025),
+    0 8px 28px rgba(0,0,0,.055);
+}
+
+/* Neutral controls and input shells keep the existing glass depth. */
+.btnMenu,
+.btnIcon,
+.btnImg,
+.inputWrapper,
+.headerActionPill,
+.cardRoundBtn,
+.cardHeaderPill,
+#recordRoomScreen .recordRightActionGroup,
+.settingsRoundBtn,
+.settingsTitlePill,
+#olliTalkArchiveScreen .olliTalkArchiveBackBtn{
+  border:.5px solid var(--olli-phone-glass-border) !important;
+  background:var(--olli-phone-glass-bg) !important;
+  box-shadow:var(--olli-phone-glass-shadow) !important;
+  backdrop-filter:blur(2px) !important;
+  -webkit-backdrop-filter:blur(2px) !important;
+}
+
+/* Observation, QuickNote, Memo and Team Chat buttons match Academy Management depth. */
+#kcfPersistentTopLayer .kcfRoundBtn,
+.olliWorkTabs,
+.olliTopWorkBtn,
+#observationRosterScreen .observationRosterRecordRoomBtn,
+#studentMemoScreen[data-memo-body-view="editor"] .observationMemoTopBackBtn,
+#olliTalkBetaScreen .olliTalkBetaBackBtn,
+#olliTalkPhotoViewerScreen .olliTalkPhotoViewerBackBtn,
+#olliTalkPhotoViewerScreen .olliTalkPhotoViewerArchiveBtn,
+#olliTalkPhotoViewerScreen .olliTalkPhotoViewerActionBtn,
+#olliTalkBetaScreen .olliTalkHeaderTools,
+#observationRosterScreen .memoRosterSearchPill,
+#kinderChatFeedbackScreen .kcfComposer,
+#olliTalkBetaScreen .olliTalkBetaComposer{
+  border:.5px solid var(--olli-phone-glass-border) !important;
+  background:var(--olli-phone-glass-bg) !important;
+  box-shadow:var(--olli-phone-academy-button-shadow) !important;
+  backdrop-filter:blur(2px) !important;
+  -webkit-backdrop-filter:blur(2px) !important;
+}
+
+/* Standalone bottom buttons only.
+ * Buttons that live inside another glass shell/composer are intentionally excluded. */
+#observationRosterScreen .memoRosterUtilityBar .memoRosterUtilityBtn,
+#studentMemoScreen[data-memo-body-view="editor"] .memoBottomBar #memoBottomAnalysisBtn{
+  border:.5px solid var(--olli-phone-glass-border) !important;
+  background:var(--olli-phone-glass-bg) !important;
+  box-shadow:var(--olli-phone-academy-button-shadow) !important;
+  backdrop-filter:blur(2px) !important;
+  -webkit-backdrop-filter:blur(2px) !important;
+}
+
+/* Remove every previous decorative pseudo layer so the pill has one edge only. */
+.olliWorkTabs::before,
+.olliWorkTabs::after,
+#olliTalkBetaScreen .olliTalkBetaBackBtn::before,
+#olliTalkBetaScreen .olliTalkBetaBackBtn::after,
+#olliTalkBetaScreen .olliTalkHeaderTools::before,
+#olliTalkBetaScreen .olliTalkHeaderTools::after,
+#olliTalkBetaScreen .olliTalkBetaComposer::before,
+#olliTalkBetaScreen .olliTalkBetaComposer::after{
+  content:none !important;
+  display:none !important;
+  background:none !important;
+  box-shadow:none !important;
+}
+
+
+
+/* Work Hub archive back uses the same shadow as the academy-management add button. */
+#olliTalkArchiveScreen .olliTalkArchiveBackBtn{
+  box-shadow:var(--olli-phone-academy-button-shadow) !important;
+}

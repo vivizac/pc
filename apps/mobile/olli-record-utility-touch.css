@@ -1,0 +1,75 @@
+/* 상단 4개 메뉴: 아이콘+글자 전체는 터치 영역, 시각적 눌림은 원형 버튼에만 적용 */
+#recordRoomScreen .recordUtilityBtn {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#recordRoomScreen .recordUtilityBtn .recordUtilityCircle {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transform: scale(1);
+  transform-origin: center;
+  transition: none;
+}
+
+/* 글자까지 터치 판정에는 포함되지만 글자 자체는 눌림 피드백 대상이 아닙니다. */
+#recordRoomScreen .recordUtilityBtn .recordUtilityLabel {
+  pointer-events: none;
+}
+
+/* 회색 색감과 살짝 눌리는 느낌은 유지하고, 터치 순간 즉시 반응하도록 지속시간만 제거 */
+#recordRoomScreen .recordUtilityBtn.utility-touch-pressed .recordUtilityCircle {
+  background: #e9e9e9;
+  transform: scale(.97);
+}
+
+/* 2026-09-07: 출석부 유치부 학생명 시작점을 초등부와 동일하게 맞춤 */
+#recordRoomScreen .kinderRowInner {
+  grid-template-columns: 36px minmax(0, 1fr);
+  column-gap: 10px;
+}
+
+/* 2026-09-10: 폰 바텀시트의 상단 시작선을 상단바 버튼 시작선과 동일하게 통일한다.
+   관찰노트 보관함을 기준으로 분석 설문/분석 결과/출석 피드백/이전기록/1분 피드백 시트까지 같은 높이를 사용한다. */
+:root {
+  --olli-phone-bottom-sheet-top: var(--olli-phone-guide-top, max(18px, calc(env(safe-area-inset-top) + 6px)));
+}
+
+
+.memoFeedbackArchiveSheet,
+  .attendanceFeedbackSheetPanel,
+  .analysisSheetPanel,
+  .analysisResultSheetPanel,
+  #olliMemoVersionHistoryOverlay .olliMemoHistorySheet,
+  #kcfInboxOverlay .kcfInboxSheet,
+  .kcfGrowthOverlay .kcfGrowthSheet {
+    height: calc(100vh - var(--olli-phone-bottom-sheet-top)) !important;
+    max-height: calc(100vh - var(--olli-phone-bottom-sheet-top)) !important;
+    box-sizing: border-box !important;
+  }
+
+  @supports (height: 100dvh) {
+    .memoFeedbackArchiveSheet,
+    .attendanceFeedbackSheetPanel,
+    .analysisSheetPanel,
+    .analysisResultSheetPanel,
+    #olliMemoVersionHistoryOverlay .olliMemoHistorySheet,
+    #kcfInboxOverlay .kcfInboxSheet,
+    .kcfGrowthOverlay .kcfGrowthSheet {
+      height: calc(100dvh - var(--olli-phone-bottom-sheet-top)) !important;
+      max-height: calc(100dvh - var(--olli-phone-bottom-sheet-top)) !important;
+    }
+  }
+
+
+/* 관찰노트 학생목록/하단 버튼 스타일은 olli-observation-roster-phone.css 한 곳에서만 관리한다. */
+
+/* 2026-09-10: 폰 출석부 등원 판정은 파랑을 최종 기준으로 사용한다. */
+#recordRoomScreen .recordAttendanceLeadBtn.attended .recordAttendanceLeadFill {
+  fill: #0A84FF !important;
+  stroke: #0A84FF !important;
+}

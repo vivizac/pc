@@ -1,0 +1,134 @@
+/* 2026-06-27: 관찰노트/1분 피드백 원생목록 정렬 버튼 최종 기준 */
+#memoStudentSelectPopup .memoStudentDaySortChip,
+#kcfStudentManagePopup .memoStudentDaySortChip {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  max-width: 36px;
+  max-height: 36px;
+  border-radius: 50%;
+  padding: 0;
+  font-size: calc(12px * 1.02 * var(--olli-text-scale));
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  white-space: nowrap;
+}
+#memoStudentSelectPopup .memoStudentSortDayRow,
+#kcfStudentManagePopup .kcfRosterSortRow {
+  grid-template-columns: 52px repeat(7, minmax(0, 1fr));
+  align-items: center;
+}
+#memoStudentSelectPopup .memoStudentGroupSortChip,
+#kcfStudentManagePopup .kcfRosterTeacherChip {
+  width: 52px;
+  min-width: 52px;
+  max-width: 52px;
+  height: 36px;
+  min-height: 36px;
+  max-height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: hidden;
+  font-size: calc(12px * 1.02 * var(--olli-text-scale));
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+#memoStudentSelectPopup .memoStudentAddChip,
+#kcfStudentManagePopup .memoStudentAddChip {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  max-width: 38px;
+  max-height: 38px;
+  border-radius: 50%;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-size: 0;
+  line-height: 1;
+}
+#memoStudentSelectPopup .memoStudentAddChip::before,
+#kcfStudentManagePopup .memoStudentAddChip::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 15px;
+  height: 15px;
+  transform: translate(-50%, -50%);
+  background:
+    linear-gradient(currentColor, currentColor) center / 15px 2px no-repeat,
+    linear-gradient(currentColor, currentColor) center / 2px 15px no-repeat;
+}
+.recordAcademyConsultStatusChip.ready {
+  border-color: #0A84FF;
+  border-width: 2px;
+}
+
+/* 2026-09-10: 출석부 정렬/시간 구분은 선 없이 텍스트만 표시하고 출석 아이콘 시작선보다 3px 오른쪽에 둔다. */
+#recordRoomScreen .recordSortSectionDivider,
+#recordRoomScreen .recordTodaySessionDivider {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  gap: 0 !important;
+  margin: 13px 0 8px !important;
+  padding: 0 10px 0 13px !important;
+  color: #8a8a8a !important;
+  font-size: calc(12px * var(--olli-text-scale)) !important;
+  font-weight: 700 !important;
+  letter-spacing: -.02em !important;
+  line-height: 1.2 !important;
+  text-align: left !important;
+}
+#recordRoomScreen .recordSortSectionDivider .recordSortSectionLine,
+#recordRoomScreen .recordTodaySessionDivider > span[aria-hidden="true"] {
+  display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  height: 0 !important;
+  flex: 0 0 0 !important;
+  background: transparent !important;
+}
+#recordRoomScreen .recordSortSectionDividerLabel,
+#recordRoomScreen .recordSortSectionLabel,
+#recordRoomScreen .recordTodaySessionDivider > span:not([aria-hidden="true"]) {
+  flex: 0 0 auto;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: inherit !important;
+  font: inherit !important;
+  letter-spacing: inherit !important;
+  line-height: inherit !important;
+  white-space: nowrap;
+}
+
+/* 정렬 팝업의 기존 '자음' 항목은 화면에서 '전체'로 표시한다. 실제 정렬 기준은 전체 학생 이름의 한글순이다. */
+#recordRoomScreen #recordSortPopup [data-olli-sort-criteria="initial"],
+#recordRoomScreen #recordSortPopup [data-sort-criteria="initial"] {
+  font-size: 0 !important;
+}
+#recordRoomScreen #recordSortPopup [data-olli-sort-criteria="initial"]::after,
+#recordRoomScreen #recordSortPopup [data-sort-criteria="initial"]::after {
+  content: '전체';
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 650;
+  line-height: 1;
+}

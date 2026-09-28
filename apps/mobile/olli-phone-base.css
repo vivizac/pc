@@ -1,0 +1,6521 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; background: #ffffff; }
+body {
+  font-family: 'Pretendard', sans-serif;
+  background: #ffffff;
+  min-height: 100vh;
+  color: #111;
+}
+
+html.olli-ipad-phone-shell body {
+  width: 393px;
+  max-width: 393px;
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+  transform: translateZ(0);
+}
+
+.pageScreen {
+  position: fixed; inset: 0; width: 100%; height: 100%; background: #ffffff;
+  display: none; flex-direction: column; align-items: center; overflow: hidden;
+  padding-top: env(safe-area-inset-top);
+}
+.pageInner {
+  width: 100%; max-width: 860px; height: 100%; display: flex; flex-direction: column; background: #ffffff;
+}
+
+@keyframes slideOutToRight { from { transform: translateX(0); } to { transform: translateX(100%); } }
+@keyframes slideInFromRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+.header {
+  width: 100%; height: 66px; min-height: 66px; padding: 0 20px; display: flex; align-items: center; justify-content: center;
+  position: relative; flex-shrink: 0; background: #ffffff; z-index: 10;
+}
+.headerLeft { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); }
+.headerRight { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); }
+.btnMenu {
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+}
+.btnMenu span { display: block; width: 16px; height: 1.5px; background: #111; border-radius: 2px; }
+.menuDot {
+  position: absolute; top: 9px; right: 9px; width: 9px; height: 9px; background: #5a9088;
+  border-radius: 50%; border: 2px solid #ffffff;
+}
+.btnIcon {
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+.btnIcon svg { width: 18px; height: 18px; }
+
+.welcomeScreen {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; width: 100%;
+  padding: 20px; background: #ffffff;
+}
+.welcomeText { font-size: calc(22px * var(--olli-text-scale)); font-weight: 500; color: #111; text-align: center; }
+
+.chatArea {
+  width: 100%; flex: 1; padding: 36px 20px 0; display: flex; flex-direction: column; gap: 18px;
+  overflow-y: auto; overflow-x: hidden; background: #ffffff; -webkit-overflow-scrolling: touch;
+  position: relative; z-index: 1;
+}
+.msgWrap { display: flex; flex-direction: column; width: 100%; min-width: 0; }
+.msgWrap.user { align-items: flex-end; }
+.msgWrap.assistant { align-items: stretch; }
+.msgBubble {
+  max-width: min(78%, calc(100% - 8px));
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.msgBubble p { margin: 0 0 8px; overflow-wrap: anywhere; word-break: break-word; }
+.msgBubble p:last-child { margin-bottom: 0; }
+.msgBubble.user p { margin: 0; line-height: 1.42; }
+.msgBubble.user p + p { margin-top: 1px; }
+.msgBubble.user p:last-child { margin-bottom: 0; }
+.msgBubble.user {
+  background: #f2f2f2; color: #111; border-radius: 18px; border-bottom-right-radius: 8px;
+  padding: 13px 17px; font-size: calc(16px * var(--olli-text-scale)); line-height: 1.42; display: block;
+}
+.msgBubble.assistant {
+  background: transparent; color: #111; border: none; padding: 0; max-width: 100%;
+  font-size: calc(16px * var(--olli-text-scale)); line-height: 1.58; letter-spacing: -0.01em;
+}
+.msgActions { display: flex; gap: 10px; margin-top: 12px; }
+.btnActionIcon {
+  width: 34px; height: 34px; border: none; background: transparent; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center; cursor: pointer; color: #7f7f7f; padding: 0;
+}
+.btnActionIcon:hover { background: #FEFEFE; }
+.btnActionIcon svg {
+  width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.9;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.imgPreviewMsg { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.imgPreviewMsg img { width: 90px; height: 90px; object-fit: cover; border-radius: 14px; }
+.typing { background: transparent; border: none; padding: 0; font-size: calc(16px * var(--olli-text-scale)); color: #9a9a9a; line-height: 1.5; }
+.modeRow { width: 100%; padding: 14px 20px 0; display: flex; gap: 6px; flex-shrink: 0; background: #ffffff; z-index: 2; }
+.modeToggleBtn {
+  background: #f1f1f1; color: #111; border: none; border-radius: 999px; padding: 0 16px; height: 46px;
+  min-width: 124px; display: inline-flex; align-items: center; justify-content: center; font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 600; line-height: 1; cursor: pointer; font-family: inherit; vertical-align: middle;
+  box-shadow: none; flex-direction: column; gap: 2px;
+}
+.modeToggleBtn.fail { background: #f1f1f1; color: #111; }
+.modeToggleLine1 { display:block; font-size:calc(13px * var(--olli-text-scale)); font-weight:600; line-height:1.05; color:#111; white-space:nowrap; }
+.modeToggleLine2 { display:block; font-size:calc(11px * var(--olli-text-scale)); font-weight:400; line-height:1.05; color:#888; white-space:nowrap; }
+.imgPreviews { width: 100%; padding: 8px 20px 0; display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; background: #ffffff; }
+.imgThumb { position: relative; }
+.imgThumb img { width: 60px; height: 60px; object-fit: cover; border-radius: 12px; border: 1px solid #ddd; }
+.imgRemove {
+  position: absolute; top: -5px; right: -5px; width: 17px; height: 17px; border-radius: 50%;
+  background: #555; border: none; color: #fff; font-size: calc(9px * var(--olli-text-scale)); cursor: pointer; display: flex;
+  align-items: center; justify-content: center;
+}
+.inputArea {
+  width: 100%; padding: 10px 20px 32px; display: flex; gap: 10px; align-items: center;
+  flex-shrink: 0; background: #ffffff; z-index: 2;
+}
+.btnImg {
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+.btnImg svg {
+  width: 21px; height: 21px; stroke: #4d4d4d; fill: none; stroke-width: 2.4; stroke-linecap: round;
+  transform: translateY(0.2px);
+}
+.inputWrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 26px;
+  min-height: 48px;
+  overflow: hidden;
+}
+.inputBox {
+  flex: 1; border-radius: 28px; border: none; padding: 13px 54px 13px 18px; font-size: calc(14px * var(--olli-text-scale));
+  font-family: inherit; resize: none; outline: none; background: transparent; color: #111; line-height: 1.5;
+}
+.inputBox::placeholder { color: #b8b8b8; }
+.btnSend {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: #111; border: none;
+  border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0;
+}
+.btnSend svg {
+  width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 3; stroke-linecap: round;
+  stroke-linejoin: round; transform: translateY(-0.2px);
+}
+.btnSend:disabled { background: #ddd; cursor: default; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.pulseIcon { display: inline-block; animation: pulse 1s infinite; }
+
+#recordRoomScreen { background: #fff; }
+#studentMemoScreen {
+background: #FEFEFE ;
+  isolation: isolate ;
+  padding-top: 0 ;
+}
+.recordPageInner, .memoPageInner {
+  position: relative; width: 100%; max-width: 860px; margin: 0 auto; height: 100%; overflow-y: auto;
+  -webkit-overflow-scrolling: touch; background: #fff; padding: 8px 16px 100px;
+}
+.recordHeaderRow {
+  display: flex; align-items: flex-start; justify-content: flex-start; margin-bottom: 10px; gap: 10px;
+  position: relative; min-height: 46px;
+}
+.recordTitleWrap { display: flex; flex-direction: column; flex-shrink: 0; }
+.recordPageTitle { font-family: 'Montserrat', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; font-size: calc(22px * var(--olli-text-scale)); font-weight: 500; letter-spacing: 0.22em; color: #111; line-height: 1.12; padding-top: 2px; }
+.recordUtilityRow {
+  display: flex; gap: 16px; margin-top: 14px; margin-bottom: 28px; align-items: flex-start;
+  max-height: 120px; overflow: hidden;
+}
+.recordUtilityBtn {
+  width: 78px; border: none; background: transparent; color: #111; display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-start; gap: 7px; cursor: default; font-family: inherit; padding: 0;
+}
+.recordUtilityCircle {
+  width: 60px; height: 60px; border-radius: 999px; background: #FEFEFE; display: flex; align-items: center;
+  justify-content: center; cursor: pointer; border: none;
+}
+.recordUtilityBtn svg { width: 29px; height: 29px; }
+.recordUtilityBtn svg, .recordUtilityBtn svg * { stroke:#111 ; color:#111 ; }
+.recordUtilityBtn svg [fill]:not([fill='none']) { fill:#111 ; }
+.recordUtilityLabel { font-family: 'Pretendard', sans-serif; font-size: calc(11px * var(--olli-text-scale)); font-weight: 500; line-height: 1; letter-spacing: -0.02em; cursor: default; }
+.recordDivider { height: 1px; background: #ececec; margin-bottom: 24px; }
+.recordModeLabelRow { margin-bottom: 16px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.recordModeLabel { border:none; background:transparent; padding:0; font-family:'Pretendard', sans-serif; font-size:calc(16px * var(--olli-text-scale)); font-weight:500; color:#9a9a9a; letter-spacing:-0.03em; line-height:1.2; position:relative; top:-1px; cursor:pointer; }
+.recordModeLabel.active { color:#111; font-weight:600; }
+.recordBodyNew { padding-bottom: 8px; }
+.recordEmpty { text-align: center; color: #b8b8b8; padding: 60px 12px 36px; font-size: calc(14px * var(--olli-text-scale)); }
+.recordStudentBlock {
+  margin-bottom: 2px; border-radius: 0; background: transparent; box-shadow: none; overflow: hidden;
+  transition: background .2s ease, box-shadow .2s ease;
+}
+.recordStudentBlock.savedFeedbackStudentBlock {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.recordStudentBlock.savedFeedbackStudentBlock.studentRowSelected {
+  position: relative;
+  z-index: 46;
+  background: #fff;
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.14), 0 3px 10px rgba(0,0,0,0.08) ;
+}
+.recordStudentHead {
+  padding: 9px 16px; font-size: calc(15px * var(--olli-text-scale)); font-weight: 600; color: #111; border-bottom: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; background: transparent;
+}
+.recordStudentBlock.open { background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04); }
+.recordStudentBlock.open .recordStudentHead { border-bottom: 1px solid #f1f1f1; }
+.recordStudentLeft { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.recordStudentName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recordStudentHead::after { content: '+'; font-size: calc(18px * var(--olli-text-scale)); font-weight: 400; color: #888; flex-shrink: 0; }
+.recordStudentBlock.open .recordStudentHead::after { content: '−'; }
+.recordStudentActions { display: none; gap: 6px; flex-shrink: 0; align-items: center; }
+.recordStudentBlock.open .recordStudentActions { display: flex; }
+.recordHeadIconBtn {
+  width: 28px; height: 28px; border: none; background: transparent; color: #7f7f7f; border-radius: 50%; display: inline-flex;
+  align-items: center; justify-content: center; cursor: pointer; padding: 0;
+}
+.recordHeadIconBtn svg {
+  width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round;
+}
+.recordSummaryBtn {
+  border: none; background: #f1f1f1; color: #444; border-radius: 999px; height: 24px; padding: 0 8px; min-width: 24px;
+  font-size: calc(12px * var(--olli-text-scale)); font-weight: 500; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  line-height: 1; white-space: nowrap;
+}
+.recordSummaryBtn:hover { background: #e7e7e7; }
+.recordStudentContent { display: none; }
+.recordStudentBlock.open .recordStudentContent { display: block; }
+.recordYearBlock { padding: 14px 16px 6px; }
+.recordYearLabel { font-size: calc(11px * var(--olli-text-scale)); color: #b2b2b2; margin-bottom: 10px; letter-spacing: 0.04em; }
+.recordItem { background: #f8f8f8; border-radius: 0; padding: 14px; margin-bottom: 10px; }
+.recordDate { font-size: calc(11px * var(--olli-text-scale)); color: #a5a5a5; margin-bottom: 8px; }
+.recordText { font-size: calc(14px * var(--olli-text-scale)); line-height: 1.7; color: #111; white-space: pre-wrap; word-break: keep-all; }
+.recordLabelGroup { display:flex; align-items:center; justify-content:flex-start; gap:14px; }
+
+.elementaryStudentRow,
+.kinderStudentRow {
+  width:100%; background:#fff; border:none; padding:8px 10px 8px 10px; font-size:calc(16px * var(--olli-text-scale)); font-weight:450; color:#111;
+  text-align:left; cursor:pointer; font-family:inherit; border-radius:0; margin-bottom:2px;
+  display:flex; align-items:center;
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+  touch-action:manipulation;
+  transition:transform .18s ease, box-shadow .18s ease, background .18s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.studentMetaText {
+  display:inline-flex;
+  align-items:center;
+  flex:1 1 auto;
+  min-width:0;
+  max-width:68vw;
+  font-size:calc(16px * var(--olli-text-scale));
+  line-height:1.2;
+  font-weight:400;
+  color:#8d8d8d;
+  margin-top:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.kinderRowInner,
+.elementaryRowInner {
+  width:100%;
+  display:grid;
+  grid-template-columns:30px minmax(0, 1fr);
+  column-gap:10px;
+  align-items:center;
+}
+.kinderEmptyCircle {
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  border:1.5px solid #5A96FF;
+  background:#5A96FF;
+  flex-shrink:0;
+}
+.elementaryEmptyCircle {
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  border:1.5px solid #5A96FF;
+  background:#5A96FF;
+  flex-shrink:0;
+}
+.elementaryGroupIcon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.elementaryGroupIcon img {
+  width: 40px;
+  height: 40px;
+  display: block;
+  object-fit: contain;
+}
+
+.elementaryDefaultNoGroupIcon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-shrink: 0;
+  line-height: 1;
+  background: transparent;
+  grid-column: 1;
+  justify-self: start;
+}
+.elementaryDefaultNoGroupIcon svg {
+  width: 36px;
+  height: 35px;
+  display: block;
+  overflow: visible;
+}
+.kinderLeadIcon {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.kinderLeadHex {
+  width: 30px;
+  height: 30px;
+  display: block;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.kinderLeadHexSvg {
+  width: 36px;
+  height: 35px;
+  display: block;
+  overflow: visible;
+}
+.kinderLeadHexImg {
+  width: 36px;
+  height: 35px;
+  display: block;
+  object-fit: contain;
+}
+
+.kinderLeadSignalDot {
+  fill: transparent;
+}
+.kinderLeadSignalDot.level-1 {
+  fill: #FFD88A;
+}
+.kinderLeadSignalDot.level-2 {
+  fill: #FFCDB8;
+}
+.kinderLeadSignalDot.level-3 {
+  fill: #FFB8B8;
+}
+.groupIconChoiceBtn {
+  width: 50px;
+  height: 40px;
+  min-width: 50px;
+  padding: 0;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.groupIconChoiceBtn img {
+  width: 46px;
+  height: 36px;
+  object-fit: contain;
+  display: block;
+}
+.groupIconChoiceBtn.active {
+  background: #f3f3f3;
+  color: #111;
+  box-shadow: inset 0 0 0 2px #111;
+}
+.studentTextWrap {
+  min-width:0;
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:flex-start;
+  gap:8px;
+  overflow:visible;
+}
+
+.kinderSignalCircle {
+  width:16px;
+  height:16px;
+  min-width:16px;
+  border-radius:50%;
+  border:none;
+  background:#000;
+  flex-shrink:0;
+  align-self: center;
+  margin-top: 0;
+  transform: none;
+  grid-column: 1;
+  justify-self: start;
+}
+.kinderSignalCircle.level-1 { background:#FFD88A; border-color:#FFD88A; }
+.kinderSignalCircle.level-2 { background:#FFCDB8; border-color:#FFCDB8; }
+.kinderSignalCircle.level-3 { background:#FFB8B8; border-color:#FFB8B8; }
+
+.memoHeaderLeftRow {
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.memoSignalCircle {
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  border:1.5px solid #5A96FF;
+  background:#5A96FF;
+  flex-shrink:0;
+}
+.memoSignalCircle.level-1 { background:#FFD88A; border-color:#FFD88A; }
+.memoSignalCircle.level-2 { background:#FFCDB8; border-color:#FFCDB8; }
+.memoSignalCircle.level-3 { background:#FFB8B8; border-color:#FFB8B8; }
+
+.kinderInfoModalField {
+  margin-bottom: 14px;
+}
+
+.memoPageInner { padding: 0 0 120px; }
+.memoHeader {
+  position: sticky; top: 0; z-index: 20; background: #fff; display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 16px 8px;
+}
+.memoHeaderActions { display:flex; align-items:center; gap:8px; }
+.memoFeedbackBtn {
+  background: #111; color: #fff; border: none; border-radius: 999px; min-width: 74px; height: 46px; padding: 0 16px; font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 600; cursor: pointer; font-family: inherit; display:inline-flex; align-items:center; justify-content:center;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+.memoStudentNameWrap {
+  display:flex;
+  align-items:center;
+  min-width:0;
+}
+.memoHeaderLeftRow {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+.memoNamePill {
+  background:#efefef; color:#111; border:none; border-radius:999px; height:46px; padding:0 16px;
+  display:inline-flex; align-items:center; justify-content:center; gap:10px; cursor:pointer;
+  font-family:inherit; box-shadow: none; min-width:0;
+}
+.memoStudentName {
+  font-size: calc(14px * var(--olli-text-scale)); font-weight: 600; color: #111; letter-spacing: -0.02em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;
+}
+.memoNameMore {
+  font-size: calc(16px * var(--olli-text-scale)); font-weight: 700; line-height: 1; letter-spacing: 1px; color:#111; transform: translateY(-1px);
+}
+.memoSubLabelRow {
+  display:flex;
+  position: sticky;
+  top: 72px;
+  z-index: 19;
+  background:#fff;
+  padding: 0 16px 12px;
+}
+.memoSubLabel {
+  font-size:calc(12px * var(--olli-text-scale));
+  color:#999;
+  line-height:1.35;
+}
+.memoEditorWrap { padding: 0 0 24px; background:#fff; overflow: visible ; }
+.memoEditor {
+  width: 100%; min-height: calc(100vh - 90px); border: none; outline: none; resize: none; background: #fff; color: #111;
+  font-size: calc(15px * var(--olli-text-scale)); line-height: 1.8; font-family: inherit; padding: 18px 16px 40px;
+}
+.memoBackFab {
+  position: fixed;
+  right: 16px;
+  bottom: 32px;
+  background: #efefef; color: #666; border: none; border-radius: 999px;
+  width: 46px; min-width: 46px; height: 46px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  z-index: 45; font-family: inherit; box-shadow: none; font-size: calc(14px * var(--olli-text-scale)); font-weight: 600;
+}
+.memoBackFab svg {
+  width: 26px;
+  height: 26px;
+  stroke: #111;
+  fill: none;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+.pushToast {
+  position: fixed;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%) translateY(12px);
+  max-width: calc(100% - 32px);
+  width: auto;
+  background: rgba(17,17,17,0.92);
+  color: #fff;
+  border-radius: 999px;
+  padding: 12px 16px;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 600;
+  line-height: 1.25;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .22s ease, transform .22s ease;
+  z-index: 260;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+  white-space: nowrap;
+}
+.pushToast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.modalOverlay {
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.4);
+  z-index:210;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+
+#studentModal {
+  z-index:120300;
+}
+
+.modalCard {
+  background:#fff;
+  border-radius:20px;
+  padding:28px;
+  width:100%;
+  max-width:380px;
+}
+.analysisSheetOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background: rgba(255,255,255,.18);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+#elementaryAnalysisModal[style*="flex"] .analysisSheetPanel {
+  animation: vivizacSheetInFromBottom .28s cubic-bezier(.22,.61,.36,1) both;
+}
+.analysisSheetPanel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: none;
+  max-height: min(82vh, 720px);
+  overflow-y: auto;
+  background: rgba(255,255,255,.98);
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -8px 34px rgba(0,0,0,.10), 0 -1px 8px rgba(0,0,0,.04);
+  border: 1px solid rgba(255,255,255,.96);
+  border-bottom: 0;
+  padding: 0 0 calc(env(safe-area-inset-bottom) + 92px);
+  box-sizing: border-box;
+  margin: 0;
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+}
+.analysisSheetHeader {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 28px 12px;
+  margin: 0;
+  background: rgba(255,255,255,.98);
+  border-radius: 28px 28px 0 0;
+}
+.analysisSheetTitle {
+  font-size: calc(16px * 1.20 * var(--olli-text-scale));
+  font-weight: 800;
+  color: #111;
+  letter-spacing: -0.02em;
+}
+.analysisSheetClose {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: #F4F4F4;
+  color: #6B6B6B;
+  font-size: calc(20px * var(--olli-text-scale));
+  line-height: 1;
+  cursor: pointer;
+}
+.analysisSheetActions {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 220;
+  background: rgba(255,255,255,.99);
+  display: flex;
+  gap: 8px;
+  padding: 12px 28px calc(env(safe-area-inset-bottom) + 8px);
+  margin: 0;
+  border-radius: 0;
+  box-shadow: 0 -18px 26px rgba(255,255,255,.96);
+  box-sizing: border-box;
+}
+.analysisSheetCancel {
+  flex: 1;
+  min-height: 42px;
+  border-radius: 14px;
+  border: 0;
+  font-family: inherit;
+  font-size: calc(14px * 1.20 * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+  background: #F4F4F4;
+  color: #6B6B6B;
+}
+.analysisSheetConfirm {
+  flex: 1;
+  min-height: 42px;
+  border-radius: 14px;
+  border: 0;
+  font-family: inherit;
+  font-size: calc(14px * 1.20 * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+  background: #111;
+  color: #fff;
+}
+.analysisResultSheetOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background: rgba(255,255,255,.18);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+#elementaryAnalysisDetailModal[style*="flex"] .analysisResultSheetPanel {
+  animation: vivizacSheetInFromBottom .28s cubic-bezier(.22,.61,.36,1) both;
+}
+.analysisResultSheetPanel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: none;
+  max-height: min(78vh, 680px);
+  overflow-y: auto;
+  background: rgba(255,255,255,.98);
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -8px 34px rgba(0,0,0,.10), 0 -1px 8px rgba(0,0,0,.04);
+  border: 1px solid rgba(255,255,255,.96);
+  border-bottom: 0;
+  padding: 0 0 calc(env(safe-area-inset-bottom) + 18px);
+  box-sizing: border-box;
+  margin: 0;
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+}
+.analysisResultSheetHeader {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 28px 12px;
+  margin: 0;
+  background: rgba(255,255,255,.98);
+  border-radius: 28px 28px 0 0;
+}
+.analysisResultSheetTitle {
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 800;
+  color: #111;
+  letter-spacing: -0.02em;
+}
+.analysisResultSheetClose {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: #F4F4F4;
+  color: #6B6B6B;
+  font-size: calc(20px * var(--olli-text-scale));
+  line-height: 1;
+  cursor: pointer;
+}
+.analysisResultSheetBody {
+  padding: 0 28px 4px;
+  overflow-y: visible;
+}
+.analysisResultSheetDate {
+  font-size: calc(12px * var(--olli-text-scale));
+  color: #8e8e93;
+  margin-bottom: 14px;
+}
+.analysisResultSheetSection {
+  margin-bottom: 14px;
+}
+.analysisResultSheetSectionTitle {
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 800;
+  color: #111;
+  margin-bottom: 6px;
+}
+.analysisResultSheetList {
+  display: grid;
+  gap: 4px;
+}
+.analysisResultSheetItem {
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.45;
+  color: #0A84FF;
+}
+
+
+.modalTitle {
+  font-size:calc(15px * var(--olli-text-scale));
+  font-weight:600;
+  color:#111;
+  margin-bottom:16px;
+}
+.modalLabel {
+  font-size:calc(12px * var(--olli-text-scale));
+  color:#999;
+  margin-bottom:6px;
+}
+.modalInput {
+  width:100%;
+  border-radius:12px;
+  border:1px solid #e0e0e0;
+  padding:10px 14px;
+  font-size:calc(14px * var(--olli-text-scale));
+  font-family:inherit;
+  outline:none;
+  box-sizing:border-box;
+  background: #FEFEFE;
+}
+.modalDateRow {
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.modalYearBadge {
+  width:90px;
+  min-width:90px;
+  height:42px;
+  border-radius:12px;
+  background:#FEFEFE;
+  color:#666;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:600;
+  text-align:center;
+  padding:0 10px;
+}
+.modalActions {
+  display:flex;
+  gap:8px;
+  margin-top:20px;
+}
+.modalBtnCancel {
+  flex:1;
+  background:#FEFEFE;
+  border:1px solid #e3e3e3;
+  border-radius:12px;
+  padding:10px;
+  font-size:calc(14px * var(--olli-text-scale));
+  color:#444;
+  cursor:pointer;
+}
+.modalBtnConfirm {
+  flex:1;
+  background:#111;
+  border:none;
+  border-radius:12px;
+  padding:10px;
+  font-size:calc(14px * var(--olli-text-scale));
+  color:#fff;
+  font-weight:600;
+  cursor:pointer;
+}
+
+
+/* 학생 길게 누르기 선택/삭제 */
+.studentActionOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.22);
+  z-index: 44;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 16px 104px;
+}
+.studentActionOverlay.show {
+  display: flex;
+}
+#recordRoomScreen > #studentActionOverlay {
+  z-index: 120300;
+}
+.studentActionCard {
+  width: 100%;
+  max-width: 520px;
+  background: rgba(255,255,255,0.96);
+  border-radius: 28px;
+  padding: 8px 0;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.16), 0 4px 14px rgba(0,0,0,0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  overflow: hidden;
+}
+.studentActionTitle {
+  padding: 12px 22px 4px;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 500;
+  color: #666;
+}
+.studentActionBtn {
+  width: 100%;
+  height: 56px;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 22px;
+  font-family: inherit;
+  font-size: calc(17px * var(--olli-text-scale));
+  font-weight: 500;
+  color: #111;
+  cursor: pointer;
+  text-align: left;
+}
+.studentActionBtn + .studentActionBtn {
+  border-top: 1px solid rgba(0,0,0,0.05);
+}
+.studentActionBtn.danger { color: #e04444; }
+.studentActionBtn svg {
+  width: 23px;
+  height: 23px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+.recordSelectionDeleteBtn {
+  display: none;
+  border: none;
+  background: #111;
+  color: #fff;
+  border-radius: 999px;
+  height: 30px;
+  padding: 0 12px;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.recordSelectionDeleteBtn.show { display: inline-flex; align-items: center; justify-content: center; }
+.recordSelectionControls {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+.recordSelectionControls.show { display: flex; }
+.recordSelectionControlBtn {
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: #f1f1f1;
+  color: #444;
+  padding: 0 16px;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+.recordSelectionControlBtn.danger {
+  background: #111;
+  color: #fff;
+}
+.selectionCircle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  border: 1.8px solid #bdbdbd;
+  background: #fff;
+}
+.selectionCircle.selected {
+  border-color: #0A84FF;
+  background: #0A84FF;
+}
+.selectionCircle.selected::after {
+  content: '';
+  width: 6px;
+  height: 10px;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(45deg) translate(-0.5px, -1px);
+}
+.studentActionCancelBtn {
+  width: 100%;
+  height: 50px;
+  border: none;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  background: transparent;
+  font-family: inherit;
+  font-size: calc(15px * var(--olli-text-scale));
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+}
+
+.infoToggleRow { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+.infoToggleBtn {
+  border:none; background:#f3f3f3; color:#444; border-radius:999px; min-width:42px; height:32px; padding:0 12px;
+  display:inline-flex; align-items:center; justify-content:center; font-size:calc(13px * var(--olli-text-scale)); font-weight:600; cursor:pointer; font-family:inherit;
+}
+.infoToggleBtn.active { background:#111; color:#fff; }
+.infoGrid3 { display:grid; grid-template-columns: 1fr 76px 76px; gap:8px; }
+
+
+.memoBackFab {
+    right: 16px;
+    bottom: 32px;
+  }
+
+
+
+/* ── 중간 안정화 정리: 상단 버튼/검색/알림/플립/기록 목록 ── */
+.selectionCircle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  border: 1.8px solid #bdbdbd;
+  background: #fff;
+  align-self: center;
+  margin-top: 0;
+  transform: none;
+  grid-column: 1;
+  justify-self: start;
+}
+.selectionCircle.selected {
+  border-color: #0A84FF;
+  background: #0A84FF;
+}
+
+.headerActionPill {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 46px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  overflow: hidden;
+  z-index: 6;
+}
+.headerActionPill { position: static; }
+
+.headerPillBtn, .recordMoreBtn {
+  width: 52px;
+  height: 46px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #111;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  font-family: inherit;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color .14s ease;
+}
+.headerPillBtn:active, .recordMoreBtn:active { background: #eeeeee; }
+@media (hover:hover) {
+  .headerPillBtn:hover { background: #f1f1f1; }
+}
+.headerPillBtn:focus-visible, .recordMoreBtn:focus-visible { outline: none; background: #eeeeee; }
+
+.headerPillBtn svg, .recordMoreBtn svg {
+  width: 27px;
+  height: 27px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.headerActionPill .headerPillBtn:first-child svg { width: 24px; height: 24px; }
+.headerActionPill .headerPillBtn:nth-child(2) svg { width: 27px; height: 27px; }
+
+.recordDoorDot { display: none; }
+.moreIcon {
+  font-size: calc(18px * var(--olli-text-scale));
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 1.5px;
+  transform: translateY(-1px);
+}
+
+
+/* 구조 안정화: 각 영역은 서로의 위치를 건드리지 않게 분리 */
+.recordTitleWrap { margin-left: 10px; }
+.recordModeLabelRow { padding-left: 10px; padding-right: 0; }
+.recordUtilityRow { padding-left: 0; gap: 16px; }
+
+.kinderRowInner {
+  align-items: center;
+  gap: 10px;
+}
+.studentTextWrap > span:first-child {
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.065em;
+  display: inline-flex;
+  align-items: center;
+}
+.elementaryEmptyCircle {
+  align-self: center;
+  margin-top: 0;
+  transform: none;
+  grid-column: 1;
+  justify-self: start;
+}
+
+.elementaryGroupIcon {
+  grid-column: 1;
+  justify-self: start;
+}
+
+.elementaryStudentRow .studentTextWrap {
+  grid-column: 2;
+}
+
+.btnMenu .recordDoorIcon { width: 34px; height: 34px; color: #111; }
+.btnMenu .recordDoorIcon path { stroke-width: 1.55; }
+.btnMenu .recordDoorDot { filter: none; }
+
+.flipBtn { position: relative; perspective: 900px; overflow: hidden; }
+.flipInner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform .46s cubic-bezier(.22,.61,.36,1);
+  transform-origin: center center;
+}
+.flipInner.noTransition { transition: none; }
+.flipIcon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flipIcon svg { width: 32px; height: 32px; }
+.flipIcon.front { transform: rotateY(0deg) translateZ(0.1px); }
+.flipIcon.back { transform: rotateY(180deg) translateZ(0.1px); }
+.flipBtn.flipped .flipInner { transform: rotateY(180deg); }
+
+
+.memoBackFab { right: 16px; bottom: 32px; }
+
+/* 실패 설문 팝업 */
+.failSurveyCard {
+  max-width: 520px;
+  max-height: 86vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 24px 22px 0;
+}
+.failSurveyIntro { font-size: calc(12px * var(--olli-text-scale)); color: #8d8d8d; line-height: 1.45; margin: -6px 0 16px; }
+.failSurveySection { margin-bottom: 18px; }
+.failSurveySectionTitle { font-size: calc(13px * var(--olli-text-scale)); font-weight: 700; color: #111; margin-bottom: 8px; letter-spacing: -0.02em; }
+.failSurveyGrid { display: flex; flex-wrap: wrap; gap: 7px; }
+.failChip { border: 1px solid #e3e3e3; background: #fff; color: #333; min-height: 34px; border-radius: 999px; padding: 0 12px; font-size: calc(12px * var(--olli-text-scale)); font-weight: 500; font-family: inherit; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+.failChip.active { background: #111; border-color: #111; color: #fff; }
+.failSurveyTextArea { width: 100%; min-height: 76px; border-radius: 14px; border: 1px solid #e0e0e0; padding: 12px 14px; font-size: calc(14px * var(--olli-text-scale)); line-height: 1.55; font-family: inherit; resize: vertical; outline: none; background: #fff; }
+.failSurveyTextArea::placeholder { color: #b8b8b8; }
+
+.failOtherInput {
+  display:none;
+  width:100%;
+  margin-top:8px;
+  border:none;
+  border-bottom:1px solid #dcdcdc;
+  padding:8px 2px 9px;
+  font-size:calc(14px * var(--olli-text-scale));
+  font-family:inherit;
+  outline:none;
+  background:#fff;
+  color:#111;
+}
+.failOtherInput.show { display:block; }
+.failOtherInput::placeholder { color:#b8b8b8; }
+
+
+/* 초등부 분석 설문지 */
+.memoAnalysisBtn {
+  background: #f1f1f1;
+  color: #111;
+  border: none;
+  border-radius: 999px;
+  min-width: 66px;
+  height: 46px;
+  padding: 0 15px;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: none;
+}
+.memoSaveStatus {
+  font-size: calc(11px * var(--olli-text-scale));
+  color: #aaa;
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 16px;
+}
+.memoBottomBar {
+  position: fixed;
+  left: 16px;
+  bottom: 32px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  z-index: 45;
+}
+.memoBottomBtn {
+  height: 46px;
+  border: none;
+  border-radius: 999px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: 'Pretendard', sans-serif;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 600;
+  box-shadow: none;
+  white-space: nowrap;
+}
+.memoBackBtn { background: #efefef; color: #111; width:46px; min-width:46px; padding:0; }
+.memoBackBtn svg { width:24px; height:24px; stroke:#111; fill:none; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
+/* Legacy memo record buttons only. The moved archive/history controls are owned by
+   olli-observation-roster-phone.css inside #memoEditorUtilityGroup. */
+.memoRecordBtn:not(#olliMemoVersionHistoryBtn) { background:#efefef; color:#111; font-weight:400; width:46px; min-width:46px; padding:0; }
+.memoRecordBtn:not(#olliMemoVersionHistoryBtn) svg {
+  width:28px;
+  height:28px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+#studentMemoScreen .memoBottomAnalysisBtn svg {
+  width:28px;
+  height:28px;
+  stroke-width:1.5;
+}
+.memoStudentSelectBtn { background: #fff; color: #111; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,.045), 0 1px 3px rgba(0,0,0,.028); }
+.memoStudentSelectWrap { position: relative; }
+.memoStudentSelectPopup {
+  display: none;
+  position: fixed;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  width: min(370px, calc(100vw - 24px));
+  height: min(560px, calc(100vh - 92px));
+  max-height: min(600px, calc(100vh - 72px));
+  overflow: hidden;
+  padding: 11px;
+  border-radius: 24px;
+  background: rgba(17,17,17,.92);
+  box-shadow: 0 18px 52px rgba(0,0,0,.22), 0 6px 18px rgba(0,0,0,.12);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  z-index: 80;
+  box-sizing: border-box;
+  flex-direction: column;
+}
+.memoStudentSelectPopup.show { display: flex; }
+.memoStudentSelectHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 7px 7px 11px;
+}
+.memoStudentSelectTitle {
+  font-size: calc(13px * 1.12 * var(--olli-text-scale));
+  font-weight: 700;
+  color: rgba(255,255,255,.48);
+}
+.memoStudentSettingsIconBtn {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255,255,255,.10);
+  color: rgba(255,255,255,.78);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.memoStudentSettingsIconBtn.active {
+  background: #fff;
+  color: #111;
+}
+.memoStudentSettingsIconBtn svg {
+  width: 17px;
+  height: 17px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.memoStudentSelectOption {
+  width: 100%;
+  min-height: 40px;
+  border: none;
+  background: transparent;
+  border-radius: 13px;
+  padding: 7px 7px 7px 11px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  font-family: inherit;
+  text-align: left;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+.memoStudentSelectOption.active { background: rgba(255,255,255,.11); }
+.memoStudentSelectOption.manageMode {
+  justify-content: space-between;
+}
+.memoStudentSelectNameBtn {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  border: none;
+  background: transparent;
+  padding: 3px 5px;
+  margin: -3px -5px;
+  border-radius: 9px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.memoStudentSelectTextBlock {
+  cursor: default;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  border: none;
+  background: transparent;
+  padding: 3px 5px;
+  margin: -3px -5px;
+  border-radius: 9px;
+  font-family: inherit;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.memoStudentSelectNameBtn:active { background: transparent; }
+.memoStudentInfoDotsBtn {
+  width: 30px;
+  height: 26px;
+  min-width: 30px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255,255,255,.10);
+  color: rgba(255,255,255,.86);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: calc(15px * 1.12 * var(--olli-text-scale));
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .6px;
+  cursor: pointer;
+  padding: 0 0 2px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.memoStudentInfoDotsBtn:active { background: rgba(255,255,255,.10); }
+.memoStudentSelectName {
+  display: inline-flex;
+  align-items: center;
+  color: #fff;
+  font-size: calc(15px * 1.12 * var(--olli-text-scale));
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.memoStudentSelectMeta {
+  min-width: 0;
+  flex: 1 1 auto;
+  color: rgba(255,255,255,.55);
+  font-size: calc(12px * 1.12 * var(--olli-text-scale));
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.memoStudentFeedbackDot {
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid rgba(255,255,255,.72);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.08);
+  display: inline-flex;
+}
+.memoStudentFeedbackDot.completed {
+  background: #5A96FF;
+  border-color: #5A96FF;
+}
+.memoStudentMonthDivider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px 6px;
+  color: rgba(255,255,255,.42);
+  font-size: calc(11px * 1.12 * var(--olli-text-scale));
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.memoStudentMonthDivider::before {
+  content: '';
+  height: 1px;
+  flex: 1 1 auto;
+  background: rgba(255,255,255,.13);
+}
+.memoStudentSelectEmpty {
+  padding: 14px 10px;
+  font-size: calc(12px * 1.12 * var(--olli-text-scale));
+  color: rgba(255,255,255,.48);
+  line-height: 1.45;
+}
+.memoStudentSelectList {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+  will-change: transform;
+}
+.memoStudentSortPanel {
+  flex: 0 0 auto;
+  border-top: 1px solid rgba(255,255,255,.10);
+  margin-top: 2px;
+  padding-top: 7px;
+  padding-bottom: 9px;
+}
+.memoStudentManagePanel {
+  padding-top: 5px;
+  padding-bottom: 6px;
+}
+.memoStudentSortTitle {
+  padding: 0 10px 7px;
+  font-size: calc(11px * 1.12 * var(--olli-text-scale));
+  font-weight: 700;
+  color: rgba(255,255,255,.42);
+}
+.memoStudentSortDayRow {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 5px;
+}
+.memoStudentSortManageRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+}
+.memoStudentSortChip {
+  border: none;
+  border-radius: 999px;
+  height: 30px;
+  min-height: 30px;
+  min-width: 0;
+  padding: 0 8px;
+  background: rgba(255,255,255,.10);
+  color: rgba(255,255,255,.74);
+  font-family: inherit;
+  font-size: calc(13px * 1.12 * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.memoStudentSortChip.active {
+  background: #fff;
+  color: #111;
+}
+.memoStudentAddChip {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  border-radius: 50%;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0;
+  line-height: 1;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.memoStudentAddChip::before {
+  content: '+';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+.memoRecordsDropup {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-height: none;
+  overflow: hidden;
+  background: rgba(0,0,0,.22);
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  z-index: 120300;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .22s ease, visibility .22s ease;
+}
+.memoRecordsDropup.show {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+.memoFeedbackArchiveSheet {
+  width: 100%;
+  max-width: 860px;
+  height: calc(100vh - 75px);
+  max-height: calc(100vh - 75px);
+  background: #fff;
+  border-radius: 28px 28px 0 0;
+  padding: 10px 16px calc(18px + env(safe-area-inset-bottom));
+  box-shadow: none;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  transform: translateY(100%);
+  transition: transform .26s cubic-bezier(.22,.61,.36,1);
+}
+.memoRecordsDropup.show .memoFeedbackArchiveSheet {
+  transform: translateY(0);
+  animation: vivizacSheetInFromBottom .26s cubic-bezier(.22,.61,.36,1) both;
+}
+.memoFeedbackArchiveHandle {
+  width: 42px;
+  height: 5px;
+  border-radius: 999px;
+  background: #e5e5e5;
+  margin: 0 auto 14px;
+}
+.memoFeedbackArchiveHead {
+  min-height: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px 14px;
+}
+.memoFeedbackArchiveTitleWrap {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.memoFeedbackArchiveHead .memoFeedbackArchiveTitle {
+  padding-bottom: 4px;
+}
+.memoFeedbackArchiveHead .memoFeedbackArchiveSubtitle {
+  padding-bottom: 0;
+}
+.memoFeedbackArchiveClose {
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 999px;
+  background: #f1f1f1;
+  color: #111;
+  font-size: calc(24px * var(--olli-text-scale));
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.memoFeedbackArchiveTitle {
+  font-family:'Montserrat','Pretendard',sans-serif;
+  font-size:calc(20px * var(--olli-text-scale));
+  font-weight:440;
+  color:#111;
+  letter-spacing:-0.02em;
+  padding: 0 2px 4px;
+}
+.memoFeedbackArchiveSubtitle {
+  font-family: 'Pretendard', sans-serif;
+  font-size: calc(12px * var(--olli-text-scale));
+  color: #888;
+  line-height: 1.45;
+  padding: 0 2px 14px;
+}
+.memoFeedbackArchiveMonthRow {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 0 2px 14px;
+}
+.memoFeedbackArchiveMonthRow::-webkit-scrollbar {
+  display: none;
+}
+.memoFeedbackArchiveMonthBtn {
+  flex: 0 0 auto;
+  min-width: 60px;
+  height: 42px;
+  padding: 0 15px;
+  border: 1px solid #fff;
+  border-radius: 999px;
+  background: #fff;
+  color: #8e8e93;
+  font-family: 'Pretendard', sans-serif;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.memoFeedbackArchiveMonthBtn.active {
+  border-color: #0A84FF;
+  background: #0A84FF;
+  color: #fff;
+}
+.memoFeedbackArchiveCard {
+  border: 1px solid rgba(0,0,0,.08);
+  background: rgba(255,255,255,.72);
+  border-radius: 18px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+.memoFeedbackArchiveCard.open {
+  padding: 14px 14px 15px;
+}
+.memoFeedbackArchiveDate {
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.3;
+  color: #999;
+  margin-bottom: 0;
+}
+.memoFeedbackArchiveText {
+  font-size: calc(14px * var(--olli-text-scale));
+  line-height: 1.45;
+  color: #111;
+  font-weight: 600;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: keep-all;
+}
+.memoFeedbackArchiveFullText {
+  display: none;
+  margin-top: 9px;
+  font-size: calc(14px * var(--olli-text-scale));
+  line-height: 1.68;
+  color: #111;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.memoFeedbackArchiveCard.open .memoFeedbackArchiveFullText {
+  display: block;
+}
+.memoFeedbackArchiveCard.open .memoFeedbackArchiveText {
+  display: block;
+}
+.memoFeedbackArchiveActions {
+  display: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.memoFeedbackArchiveCard.open .memoFeedbackArchiveActions { display: flex; }
+.memoFeedbackArchiveActionBtn {
+  height: calc(34px * var(--olli-text-scale));
+  border: none;
+  border-radius: 999px;
+  background: #f1f1f1;
+  color: #111;
+  padding: 0 13px;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+.memoFeedbackArchiveActionBtn.primary {
+  background: #111;
+  color: #fff;
+}
+.memoFeedbackArchiveActionBtn:disabled {
+  opacity: .45;
+  cursor: default;
+}
+.memoFeedbackArchiveEditArea {
+  display: none;
+  width: 100%;
+  min-height: 0;
+  margin-top: 9px;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  font-size: calc(14px * var(--olli-text-scale));
+  line-height: 1.68;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  color: #111;
+  background: transparent;
+  box-shadow: none;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.memoFeedbackArchiveCard.editing .memoFeedbackArchiveFullText { display: none; }
+.memoFeedbackArchiveCard.editing .memoFeedbackArchiveEditArea { display: block; }
+.memoFeedbackArchiveCard .memoFeedbackArchiveSaveBtn { display: none; }
+.memoFeedbackArchiveCard.editing .memoFeedbackArchiveEditBtn { display: none; }
+.memoFeedbackArchiveCard.editing .memoFeedbackArchiveSaveBtn { display: inline-flex; align-items: center; justify-content: center; }
+.memoFeedbackArchiveEmpty {
+  padding: 28px 8px 34px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+  color: #999;
+  text-align: center;
+}
+
+.attendanceFeedbackSheetOverlay {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-height: none;
+  overflow: hidden;
+  background: rgba(0,0,0,.22);
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  z-index: 8700;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .22s ease, visibility .22s ease;
+}
+.attendanceFeedbackSheetOverlay.show {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+.attendanceFeedbackSheetPanel {
+  width: 100%;
+  max-width: 860px;
+  height: calc(100vh - 76px);
+  max-height: calc(100vh - 76px);
+  background: #fff;
+  border-radius: 28px 28px 0 0;
+  padding: 10px 16px calc(18px + env(safe-area-inset-bottom));
+  box-shadow: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform .26s cubic-bezier(.22,.61,.36,1);
+}
+.attendanceFeedbackSheetOverlay.show .attendanceFeedbackSheetPanel {
+  transform: translateY(0);
+  animation: vivizacSheetInFromBottom .26s cubic-bezier(.22,.61,.36,1) both;
+}
+.attendanceFeedbackSheetHandle {
+  width: 42px;
+  height: 5px;
+  border-radius: 999px;
+  background: #e5e5e5;
+  margin: 0 auto 14px;
+}
+.attendanceFeedbackSheetHead {
+  min-height: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px 14px;
+}
+.attendanceFeedbackSheetTitleWrap {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.attendanceFeedbackSheetTitle {
+  font-family:'Montserrat','Pretendard',sans-serif;
+  font-size:calc(20px * var(--olli-text-scale));
+  font-weight:440;
+  color:#111;
+  letter-spacing:-0.02em;
+  padding: 0 2px 4px;
+}
+.attendanceFeedbackSheetSubtitle {
+  display: none;
+}
+.attendanceFeedbackSheetClose {
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 999px;
+  background: #f1f1f1;
+  color: #111;
+  font-size: calc(24px * var(--olli-text-scale));
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.attendanceFeedbackSheetBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow: hidden;
+  padding-top: 22px;
+}
+.attendanceFeedbackSheetSection {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding-top: 0;
+}
+.attendanceFeedbackSheetSection:first-child {
+  flex: 0 0 62%;
+  max-height: 62%;
+}
+.attendanceFeedbackSheetSection + .attendanceFeedbackSheetSection {
+  flex: 1 1 0;
+  min-height: 0;
+  margin-top: 0;
+  transform: none;
+}
+.attendanceFeedbackSheetSectionTitle {
+  flex: 0 0 auto;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 800;
+  color: #8d8d8d;
+  letter-spacing: -0.02em;
+  padding: 0 2px 9px;
+}
+.attendanceFeedbackSheetScroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 0 8px;
+}
+.attendanceFeedbackSheetCard {
+  position: relative;
+  border: 1px solid rgba(0,0,0,.08);
+  background: rgba(255,255,255,.72);
+  border-radius: 20px;
+  padding: 14px 14px 15px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+.attendanceSummaryRegenerateBtn {
+  display: none;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 999px;
+  background: #f3f3f3;
+  color: #111;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+.attendanceSummaryRegenerateBtn svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.attendanceFeedbackSheetCard.open .attendanceSummaryRegenerateBtn {
+  display: inline-flex;
+}
+.attendanceSummaryRegenerateBtn:disabled {
+  opacity: .45;
+  cursor: default;
+}
+.attendanceFeedbackSheetCardTitle {
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 700;
+  line-height: 1.35;
+  color: #111;
+  margin-bottom: 3px;
+  letter-spacing: -0.02em;
+}
+.attendanceFeedbackSheetCardDate {
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.3;
+  color: #999;
+  margin-bottom: 8px;
+}
+.attendanceFeedbackSheetPreview {
+  font-size: calc(14px * var(--olli-text-scale));
+  line-height: 1.68;
+  color: #444;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: keep-all;
+}
+.attendanceFeedbackSheetFullText {
+  display: none;
+  margin-top: 9px;
+  font-size: calc(14px * var(--olli-text-scale));
+  line-height: 1.68;
+  color: #111;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.attendanceFeedbackSheetCard.open .attendanceFeedbackSheetFullText {
+  display: block;
+}
+.attendanceFeedbackSheetCard.open .attendanceFeedbackSheetPreview {
+  display: none;
+}
+.attendanceFeedbackSheetCardActions {
+  display: none;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.attendanceFeedbackSheetCard.open .attendanceFeedbackSheetCardActions {
+  display: flex;
+}
+.attendanceFeedbackSheetActionBtn {
+  min-width: 58px;
+  height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: #f2f2f2;
+  color: #555;
+  font-family: inherit;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+}
+.attendanceFeedbackSheetActionBtn.delete {
+  background: #fff0f0;
+  color: #e64848;
+}
+.attendanceFeedbackSheetActionBtn:disabled {
+  opacity: .45;
+  cursor: default;
+}
+.attendanceRecordDeleteOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0,0,0,.28);
+}
+.attendanceRecordDeleteOverlay.show {
+  display: flex;
+}
+.attendanceRecordDeleteDialog {
+  width: min(360px, 100%);
+  border-radius: 24px;
+  background: #fff;
+  padding: 22px 20px 18px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.18);
+}
+.attendanceRecordDeleteTitle {
+  font-size: calc(17px * var(--olli-text-scale));
+  line-height: 1.35;
+  font-weight: 800;
+  color: #111;
+  letter-spacing: -0.04em;
+}
+.attendanceRecordDeleteDesc {
+  margin-top: 8px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+  color: #777;
+  letter-spacing: -0.025em;
+  word-break: keep-all;
+}
+.attendanceRecordDeleteActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 20px;
+}
+.attendanceRecordDeleteBtn {
+  height: 44px;
+  border: none;
+  border-radius: 14px;
+  font-family: inherit;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 750;
+  cursor: pointer;
+}
+.attendanceRecordDeleteBtn.cancel {
+  background: #f2f2f2;
+  color: #555;
+}
+.attendanceRecordDeleteBtn.confirm {
+  background: #111;
+  color: #fff;
+}
+.attendanceFeedbackSheetEmpty {
+  padding: 26px 8px 30px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+  color: #999;
+  text-align: center;
+}
+.memoRecordsTitle {
+  padding: 8px 10px 6px;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 700;
+  color: #999;
+}
+.memoRecordOption {
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 12px;
+  min-height: 38px;
+  padding: 9px 10px;
+  text-align: left;
+  font-family: inherit;
+  font-size: calc(13px * var(--olli-text-scale));
+  color: #111;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+@media (hover:hover) { .memoRecordOption:hover { background: #FEFEFE; } }
+.memoRecordOption.active { background: #111; color: #fff; }
+.memoRecordEmpty {
+  padding: 10px;
+  font-size: calc(12px * var(--olli-text-scale));
+  color: #aaa;
+  line-height: 1.4;
+}
+
+.elementaryAnalysisIntro {
+  font-size: calc(12px * 1.20 * var(--olli-text-scale));
+  color: #8e8e93;
+  line-height: 1.45;
+  padding: 0 28px;
+  margin: 0 0 12px;
+}
+.elementaryAnalysisSection {
+  border-top: 1px solid rgba(0,0,0,0.06);
+  padding: 18px 28px 0;
+  margin-top: 18px;
+}
+.elementaryAnalysisSection:first-of-type { border-top: none; padding-top: 0; }
+.elementaryAnalysisSectionTitle {
+  font-size: calc(14px * 1.20 * var(--olli-text-scale));
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 6px;
+  letter-spacing: -0.02em;
+}
+.elementaryAnalysisHelp {
+  font-size: calc(12px * 1.20 * var(--olli-text-scale));
+  color: #999;
+  line-height: 1.25;
+  margin-bottom: 10px;
+}
+.elementaryAnalysisGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.elementaryChip {
+  border: none;
+  border-radius: 999px;
+  background: #f3f3f3;
+  color: #444;
+  min-height: calc(32px * 1.20 * var(--olli-text-scale));
+  padding: 7px 12px;
+  font-size: calc(12px * 1.20 * var(--olli-text-scale));
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  line-height: 1.25;
+}
+.elementaryChip.active, .elementaryTendencyGroupBtn.active {
+  background: #0A84FF;
+  color: #fff;
+}
+.elementaryTendencyGroup {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #FEFEFE;
+}
+.elementaryTendencyGroupTitle {
+  font-size: calc(12px * 1.20 * var(--olli-text-scale));
+  font-weight: 700;
+  color: #777;
+  margin-bottom: 8px;
+}
+.elementaryAnalysisTextarea {
+  width: 100%;
+  min-height: 64px;
+  border-radius: 14px;
+  border: 1px solid #e3e3e3;
+  padding: 11px 13px;
+  font-size: calc(13px * 1.20 * var(--olli-text-scale));
+  line-height: 1.55;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  background: #fff;
+  margin-top: 10px;
+}
+.elementaryAnalysisTextarea::placeholder { color: #b8b8b8; }
+
+
+
+.memoHeader { gap: 8px; }
+  .memoHeaderActions { gap: 6px; }
+  .memoAnalysisBtn, .memoFeedbackBtn { min-width: 58px; padding: 0 12px; }
+  .memoBottomBar { left: 16px; bottom: 32px; }
+
+
+
+/* 2026-04-20 record/memo clean fixes - refined */
+.memoSubLabelRow {
+  display: flex;
+  position: sticky;
+  top: 72px;
+  z-index: 19;
+  background: #fff;
+  padding: 0 16px 12px;
+}
+.memoSubLabelGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 16px;
+  white-space: nowrap;
+}
+.memoSubLabel {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  min-height: 16px;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.35;
+}
+.memoSubLabel { color: #999; }
+.memoSaveStatus { color: #aaa; font-weight: 400;
+  margin: 0;
+  line-height: 1.35;
+}
+.memoBottomBtn:not(.memoStudentSelectBtn) {
+  box-shadow: none;
+  overflow-y: auto;
+}
+
+/* 기록실 고정 영역: 헤더 + 관찰기록 버튼 영역 + 구분선 + 부서 전환 텍스트까지 고정 */
+#recordPageInner.recordPageInner {
+  padding-top: 0;
+  background: #FEFEFE;
+}
+.recordStickyArea {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  background: #FEFEFE;
+  padding-top: 12px;
+  padding-bottom: 0;
+  overflow: visible;
+  isolation: isolate;
+}
+.recordStickyArea::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #FEFEFE;
+  z-index: -1;
+}
+.recordStickyArea::after {
+  content: none;
+}
+
+.recordStickyArea > .recordUtilityRow,
+.recordStickyArea > .recordDivider,
+.recordStickyArea > .recordModeLabelRow {
+  position:relative;
+  z-index:1;
+}
+.recordStickyArea > .recordHeaderRow {
+  position: relative;
+  z-index: 1;
+}
+.recordStickyArea .recordUtilityRow {
+  margin-top: 18px;
+  margin-bottom: 22px;
+}
+.recordStickyArea .recordDivider {
+  margin-bottom: 0;
+}
+.recordModeLabelRow {
+  position: relative;
+  z-index: 72;
+  background: transparent;
+  margin-top: 24px;
+  margin-bottom: 0;
+  padding-top: 8px;
+  padding-bottom: 14px;
+}
+.recordModeLabelRow .recordLabelGroup {
+  position: relative;
+  z-index: 1;
+}
+.recordBodyNew {
+  position: relative;
+  z-index: 1;
+}
+
+/* 학생 이름 버튼은 원래 상태로 복구하고, 길게 누른 선택 애니메이션만 유지 */
+@media (hover:hover) {
+  .elementaryStudentRow:hover:not(.studentRowSelected) { background: #FEFEFE; }
+}
+.elementaryStudentRow.studentRowSelected {
+  position: relative;
+  z-index: 46;
+  background: #fff;
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.14), 0 3px 10px rgba(0,0,0,0.08) ;
+}
+
+/* 모바일 터치 후 남는 연회색 잔상 제거 */
+.elementaryStudentRow:focus {
+  outline: none ;
+  background: #fff ;
+}
+@media (hover:none) {
+  .elementaryStudentRow:hover:not(.studentRowSelected) {
+    background: #fff ;
+  }
+}
+
+/* 초등부 그룹 구분선: 실제 그룹 이미지 박스의 시작점과 길이에 맞춤 */
+.elementaryStudentRow.groupBreak {
+  position: relative;
+  margin-top: 24px;
+}
+.elementaryStudentRow.groupBreak::before {
+  content: '';
+  position: absolute;
+  left:10px;
+  top: -14px;
+  width: 36px;
+  height: 3px;
+  border-radius: 999px;
+  background: #111;
+}
+
+
+/* ── 메인 페이지 ── */
+.cardFeedbackInner { width:100%; max-width:860px; height:100%; margin:0 auto; display:flex; flex-direction:column; background:#fff; overflow:hidden; }
+.cardFeedbackHeader { height:66px; min-height:66px; padding:0 16px; display:flex; align-items:center; justify-content:center; position:relative; background:#fff; z-index:30; flex-shrink:0; }
+.cardHeaderLeft { position:absolute; left:16px; top:50%; transform:translateY(-50%); }
+.cardHeaderRight { position:absolute; right:16px; top:50%; transform:translateY(-50%); display:flex; gap:8px; align-items:center; }
+.cardRoundBtn {
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  color:#111;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  padding:0;
+  font-family:inherit;
+}
+.cardRoundBtn svg { width:23px; height:23px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.cardHeaderPill {
+  height:44px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  overflow:hidden;
+}
+.cardPillBtn { width:48px; height:44px; border:none; border-radius:999px; background:transparent; color:#111; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; padding:0; font-family:inherit; -webkit-tap-highlight-color:transparent; }
+.cardPillBtn svg { width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.cardPillBtn:active { background:#eeeeee; }
+@media (hover:hover) { .cardPillBtn:hover { background:#f1f1f1; } }
+#sceneModeToggleBtn.active { background:#111; color:#fff; }
+#sceneModeToggleBtn svg { width:28px; height:28px; }/* 메인 피드백 페이지 배경/상단 버튼 톤 조정 */
+
+.cardPageTitle { display:none; }
+.sceneIntro { display:none; }
+.sceneQuestion { display:none; }
+
+.cardPageTitle { font-size:calc(18px * var(--olli-text-scale)); font-weight:600; letter-spacing:-.03em; color:#111; }
+.cardFeedbackBody { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:4px 0 136px; display:flex; flex-direction:column; background:#FEFEFE; }
+.sceneIntro { padding:8px 4px 10px; }
+.sceneIntroTitle { font-size:calc(22px * var(--olli-text-scale)); line-height:1.25; font-weight:650; letter-spacing:-.04em; color:#111; }
+.sceneIntroSub { display:none; }
+.sceneModeLabel { display:flex; align-items:center; justify-content:flex-start; padding:10px 16px 10px; flex-shrink:0; position:relative; z-index:3; }
+.cardFeedbackBody .sceneMemoPanel + .sceneModeLabel { padding:10px 16px 10px; position:relative; z-index:3; }
+.cardFeedbackBody .sceneTagWrap { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; padding:0 16px 18px; flex-shrink:0; position:relative; z-index:3; }
+.sceneModeLabel span:first-child { font-size:calc(14px * var(--olli-text-scale)); font-weight:600; color:#111; }
+.sceneModeLabel span:last-child { display:none; }
+.sceneGrid { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; padding:0 16px 18px; overflow:visible; flex-shrink:0; position:relative; z-index:3; }
+.sceneCardSlot { position:relative; min-height:122px; }
+.sceneCard { width:100%; min-height:122px; border:1px solid #eeeeee; border-radius:22px; background:#fff; padding:12px 10px; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; cursor:pointer; transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease; -webkit-tap-highlight-color:transparent; user-select:none; font-family:inherit; box-shadow:none; }
+.sceneCard.selected { transform:translateY(-8px); border-color:#eeeeee; box-shadow:0 12px 26px rgba(0,0,0,.14), 0 3px 8px rgba(0,0,0,.06); }
+.sceneCard.flipped { position:fixed; left:50%; top:118px; width:min(520px, calc(100vw - 32px)); min-height:224px; max-height:calc(100vh - 190px); overflow-y:auto; height:auto; z-index:3000; justify-content:flex-start; align-items:flex-start; text-align:left; padding:16px; transform:translateX(-50%); border-color:#eeeeee; box-shadow:0 18px 38px rgba(0,0,0,.18), 0 6px 14px rgba(0,0,0,.08); }
+
+.sceneBackCloseBtn {
+  position:absolute;
+  top:10px;
+  right:10px;
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  background:#f1f1ef;
+  color:#111;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:calc(20px * var(--olli-text-scale));
+  font-weight:600;
+  line-height:1;
+  z-index:5;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.sceneBackCloseBtn:active {
+  transform:scale(.96);
+}
+.sceneNumber { position:absolute; top:10px; left:10px; width:24px; height:24px; border-radius:50%; background:#f1f1f1; color:#777; font-size:calc(12px * var(--olli-text-scale)); font-weight:600; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:3; -webkit-tap-highlight-color:transparent; }
+.sceneCard.selected .sceneNumber { background:#0A84FF; color:#fff; }
+.sceneNumber:active { transform:scale(.96); }
+.sceneCheckIcon { width:14px; height:14px; stroke:#fff; fill:none; stroke-width:2.8; stroke-linecap:round; stroke-linejoin:round; }
+.sceneIconBox { width:96px; height:76px; margin-bottom:12px; display:flex; align-items:center; justify-content:center; opacity:1; }
+.sceneIconSvg { width:92px; height:72px; overflow:visible; }
+.sceneIconSvg .cardBack { fill:#f9f9f9; stroke:#d8d8d8; stroke-width:1.7; }
+.sceneIconSvg .cardFront { fill:#ffffff; stroke:#cfcfcf; stroke-width:1.7; }
+.sceneIconSvg .cardDiamond { fill:#f3f3f3; stroke:#bdbdbd; stroke-width:1.5; }
+.sceneTitle { font-size:calc(15px * var(--olli-text-scale)); font-weight:700; color:#111; line-height:1.15; margin-bottom:7px; }
+.sceneQuestion { font-size:calc(11px * var(--olli-text-scale)); color:#555; line-height:1.35; }
+.sceneBackMain { margin-top:30px; font-size:calc(13px * var(--olli-text-scale)); font-weight:700; line-height:1.45; color:#111; word-break:keep-all; }
+.sceneBackSub { margin-top:9px; font-size:calc(12px * var(--olli-text-scale)); line-height:1.5; color:#666; word-break:keep-all; }
+.sceneBackKeywords { margin-top:9px; display:flex; flex-wrap:wrap; gap:4px; }
+.sceneBackKeywords span { font-size:calc(10.5px * var(--olli-text-scale)); line-height:1; padding:6px 8px; border-radius:999px; background:#f3f3f3; color:#555; }
+.sceneTagWrap { display:flex; flex-wrap:wrap; gap:8px; padding:0 4px 18px; flex-shrink:0; }
+.sceneTagBtn { width:100%; min-height:42px; border:1.5px solid #d9d9d9; border-radius:999px; background:#fff; color:#111; padding:0 8px; font-size:calc(13px * var(--olli-text-scale)); font-weight:500; font-family:inherit; cursor:pointer; transition:background .16s ease, color .16s ease, border-color .16s ease; display:flex; align-items:center; justify-content:center; text-align:center; white-space:nowrap; }
+.sceneTagBtn.active { background:#0A84FF; border-color:#0A84FF; color:#fff; }
+.selectedSceneBar { margin:0 4px 14px; min-height:36px; border-radius:18px; background:#f7f7f7; color:#666; padding:10px 12px; font-size:calc(12px * var(--olli-text-scale)); line-height:1.4; }
+.sceneMemoPanel { margin:0; border-radius:0; background:#FEFEFE; border:none; box-shadow:none; overflow:hidden; flex:0 0 auto; min-height:360px; display:flex; flex-direction:column; position:relative; z-index:1; }
+.sceneMemoHeader { padding:16px 16px 6px; font-size:calc(14px * var(--olli-text-scale)); font-weight:700; color:#111; }
+.sceneMemoInput { width:100%; min-height:360px; flex:1 1 auto; border:none; outline:none; resize:none; padding:10px 16px 18px; font-size:calc(15px * var(--olli-text-scale)); line-height:1.72; font-family:inherit; color:#111; background:#FEFEFE; position:relative; z-index:1; }
+.sceneMemoInput::placeholder { color:transparent; opacity:0; }
+.sceneMemoPlaceholder { position:absolute; left:16px; right:16px; top:58px; z-index:2; pointer-events:none; color:#b8b8b8; font-size:calc(15px * var(--olli-text-scale)); line-height:1.72; white-space:pre-wrap; word-break:keep-all; }
+.sceneMemoPlaceholder.hide { display:none; }
+.feedbackTypeRow { display:flex; gap:8px; padding:0 4px 14px; flex-shrink:0; }
+.feedbackTypeBtn { flex:1; min-height:46px; border:none; border-radius:18px; background:#f4f4f4; color:#111; font-family:inherit; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; -webkit-tap-highlight-color:transparent; }
+.feedbackTypeBtn strong { font-size:calc(13.5px * var(--olli-text-scale)); font-weight:700; letter-spacing:-.02em; }
+.feedbackTypeBtn span { margin-top:4px; font-size:calc(11px * var(--olli-text-scale)); color:#777; font-weight:400; }
+.feedbackTypeBtn.active { background:#111; color:#fff; }
+.feedbackTypeBtn.active span { color:rgba(255,255,255,.72); }
+
+
+.failGrowthMemoHeader { padding:16px 16px 6px; font-size:calc(14px * var(--olli-text-scale)); font-weight:700; color:#111; }
+.failGrowthMemoInput { width:100%; min-height:220px; flex:1 1 auto; border:none; outline:none; resize:none; padding:10px 16px 18px; font-size:calc(15px * var(--olli-text-scale)); line-height:1.72; font-family:inherit; color:#111; background:#fff; }
+.failGrowthMemoInput::placeholder { color:#b8b8b8; }
+.sceneResultArea { padding:2px 4px 20px; display:flex; flex-direction:column; gap:12px; }
+.feedbackResultCard { background:#fff; border-radius:24px; box-shadow:0 2px 14px rgba(0,0,0,.08), 0 1px 4px rgba(0,0,0,.04); padding:18px 16px 14px; }
+.feedbackResultLabel { font-size:calc(12px * var(--olli-text-scale)); color:#999; margin-bottom:10px; }
+.feedbackResultText { font-size:calc(15px * var(--olli-text-scale)); line-height:1.72; color:#111; white-space:pre-wrap; word-break:keep-all; }
+.feedbackResultActions { display:flex; gap:8px; margin-top:14px; justify-content:flex-end; }
+.feedbackCardActionBtn { border:none; border-radius:999px; background:#f1f1f1; color:#111; height:36px; padding:0 14px; font-size:calc(13px * var(--olli-text-scale)); font-weight:600; font-family:inherit; cursor:pointer; }
+.feedbackCardActionBtn.primary { background:#111; color:#fff; }
+.cardBottomBar { position:fixed; left:50%; bottom:32px; transform:translateX(-50%); width:calc(100% - 32px); max-width:828px; display:flex; align-items:center; gap:10px; z-index:55; pointer-events:none; }
+.cardBottomStatus { flex:1; min-height:46px; border-radius:999px; background:rgba(255,255,255,.94); box-shadow:0 8px 22px rgba(0,0,0,.10); display:flex; align-items:center; padding:0 16px; font-size:calc(13px * var(--olli-text-scale)); color:#666; pointer-events:auto; }
+.cardGenerateBtn { min-width:126px; height:46px; border:none; border-radius:999px; background:#111; color:#fff; font-size:calc(14px * var(--olli-text-scale)); font-weight:700; font-family:'Pretendard', sans-serif; display:flex; align-items:center; justify-content:center; cursor:pointer; pointer-events:auto; box-shadow:0 10px 24px rgba(0,0,0,.18); }
+.cardGenerateBtn:disabled { background:#d8d8d8; cursor:default; box-shadow:none; }
+.cardGenerateBtn svg { width:17px; height:17px; margin-right:7px; stroke:currentColor; fill:none; stroke-width:2.2; }
+
+
+.sceneGrid { gap:8px; } .sceneCardSlot { min-height:112px; } .sceneCard { min-height:112px; border-radius:20px; padding:10px 8px; } .sceneCard.flipped { top:96px; width:calc(100vw - 24px); min-height:220px; padding:14px; } .sceneIconBox { width:84px; height:68px; margin-bottom:10px; } .sceneIconSvg { width:80px; height:62px; } .sceneTitle { font-size:calc(14px * var(--olli-text-scale)); } .sceneQuestion { font-size:calc(10.5px * var(--olli-text-scale)); }
+
+
+
+/* 선택 장면 개수/요약 표시 제거: 하단은 피드백 생성 버튼만 남김 */
+.selectedSceneBar { display: none ; }
+.cardBottomBar { justify-content: flex-end; }
+
+
+/* 메인 피드백 페이지 배경 안정화 */
+html, body {
+  background:#FEFEFE;
+}
+
+
+/* 피드백 페이지 상단 배경 고정 */
+body.feedbackPageActive {
+  background:#FEFEFE ;
+}/* ChatGPT 스타일 유리 버튼 - 그림자 연하게 */
+
+
+/* 안정 레이아웃 복구: 오버레이 없이 배경만 통일 */
+html {
+  background:#FEFEFE ;
+}
+
+/* 메모 입력 영역: 화면 배경을 메모처럼 사용하되 좌우 안전 여백 유지 */
+
+/* 키워드 영역은 메모 아래에서 잘 보이게 *//* 상단 유리 버튼 */
+
+/* 기록실 1분 피드백 / 기록보드 버튼 포함 */
+.recordTopAction {
+  background:#FEFEFE ;
+}
+
+/* 일반 버튼/태그 중 배경이 있는 요소도 메인 톤으로 맞춤 */
+.sceneTagBtn {
+  background:#FEFEFE ;
+}/* 피드백 페이지 상단 유리 버튼은 기존 느낌 유지 */
+
+
+/* 기록실 실제 클래스 기준 배경 수정 */
+
+/* 기록실 상단 고정 영역과 그 뒤에 깔린 가상 배경 */
+#recordRoomScreen {
+  background:#FEFEFE ;
+}
+
+/* 1분 피드백/기록보드 영역 뒤 배경 */
+#recordRoomScreen .recordModeWrap {
+  background:#FEFEFE ;
+}
+
+/* 1분 피드백 밑 라인 */
+#recordRoomScreen .recordDivider {
+  background:#DEDEDE ;
+  border-color:#DEDEDE ;
+}
+
+/* 초등부/유치부 텍스트가 있는 그룹 헤더 레이어 */
+#recordRoomScreen .studentGroupHeader {
+  background:#FEFEFE ;
+}
+
+/* 실제 학생 이름 버튼 */
+/* 학생 이름 버튼 내부/보조 정보 레이어 */
+#recordRoomScreen .studentInfoLine {
+  background:#FEFEFE ;
+}
+
+/* 1분 피드백 / 기록보드 둥근 버튼 */
+
+/* 1분 피드백 / 기록보드 바깥 버튼은 투명 */
+#recordRoomScreen .recordUtilityBtn {
+  background:transparent ;
+}
+
+/* 혹시 남아 있는 기록실 리스트 바닥 */
+#recordRoomScreen .recordListArea {
+  background:#FEFEFE ;
+}
+
+
+/* 기록실 둥근버튼/학생 메모장 배경 조정 */
+
+/* 1분 피드백 / 기록보드 둥근버튼 배경 살짝 연하게 */
+
+/* 1분 피드백 / 기록보드 아이콘 파랑 */
+#recordRoomScreen .recordUtilityCircle svg {
+  color:#0A84FF ;
+  stroke:#0A84FF ;
+}
+
+#recordRoomScreen .recordUtilityCircle svg [fill]:not([fill='none']) {
+  fill:#0A84FF ;
+}
+
+/* 학생 메모장 메모박스/입력영역 배경을 메인 배경색과 통일 */
+#studentMemoScreen .memoEditor {
+  background:#FEFEFE ;
+  background-color:#FEFEFE ;
+}
+
+/* 학생 메모장 페이지/본문 바닥도 같은 색으로 보정 */
+#studentMemoScreen {
+  background:#FEFEFE ;
+}
+
+
+/* 상단 버튼 그림자 중간 농도 조정 */
+.headerRightPill{
+  box-shadow:
+    0 16px 38px rgba(0,0,0,0.045),
+    0 5px 14px rgba(0,0,0,0.026) ;
+}
+
+
+/* 상단 버튼 그림자: 범위 더 넓게, 농도는 중간값 유지 */
+.headerRightPill{
+  box-shadow:
+    0 22px 54px rgba(0,0,0,0.045),
+    0 7px 20px rgba(0,0,0,0.026) ;
+}
+
+
+/* 피드백 생성 로딩 카드 */
+.feedbackLoadingOverlay {
+  position:fixed;
+  inset:0;
+  z-index:9000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  pointer-events:none;
+  background:transparent;
+}
+.feedbackLoadingCard {
+  width:min(320px, calc(100vw - 48px));
+  border-radius:26px;
+  background:rgba(255,255,255,0.88);
+  border:1px solid rgba(255,255,255,0.96);
+  box-shadow:0 18px 48px rgba(0,0,0,0.075), 0 6px 18px rgba(0,0,0,0.04);
+  backdrop-filter:blur(22px) saturate(1.18);
+  -webkit-backdrop-filter:blur(22px) saturate(1.18);
+  padding:22px 20px 18px;
+  text-align:left;
+}
+.feedbackLoadingKicker {
+  font-size:calc(12px * var(--olli-text-scale));
+  color:#999;
+  margin-bottom:10px;
+}
+.feedbackLoadingTitle {
+  font-size:calc(16px * var(--olli-text-scale));
+  font-weight:650;
+  color:#111;
+  line-height:1.45;
+  margin-bottom:8px;
+  min-height:23px;
+}
+.feedbackLoadingText {
+  font-size:calc(14px * var(--olli-text-scale));
+  color:#555;
+  line-height:1.55;
+  min-height:44px;
+  white-space:pre-wrap;
+}
+.feedbackLoadingCursor {
+  display:inline-block;
+  width:1px;
+  height:1em;
+  margin-left:1px;
+  background:#111;
+  vertical-align:-2px;
+  animation:feedbackCursorBlink .8s steps(1) infinite;
+}
+@keyframes feedbackCursorBlink {
+  0%, 45% { opacity:1; }
+  46%, 100% { opacity:0; }
+}
+.feedbackLoadingDots {
+  display:flex;
+  gap:5px;
+  margin-top:14px;
+}
+.feedbackLoadingDots span {
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:#111;
+  opacity:.22;
+  animation:feedbackDotPulse 1.2s infinite ease-in-out;
+}
+.feedbackLoadingDots span:nth-child(2) { animation-delay:.16s; }
+.feedbackLoadingDots span:nth-child(3) { animation-delay:.32s; }
+@keyframes feedbackDotPulse {
+  0%, 100% { opacity:.18; transform:translateY(0); }
+  50% { opacity:.75; transform:translateY(-3px); }
+}
+
+/* 초등부 피드백 팝업 카드 */
+.memoFeedbackPopupOverlay {
+  position:fixed;
+  inset:0;
+  z-index:8500;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px 18px;
+  background:rgba(0,0,0,0.04);
+  backdrop-filter:blur(3px);
+  -webkit-backdrop-filter:blur(3px);
+}
+.memoFeedbackPopupCard {
+  width:min(520px, calc(100vw - 36px));
+  max-height:min(72vh, 620px);
+  border-radius:28px;
+  background:#fff;
+  box-shadow:0 18px 52px rgba(0,0,0,0.12), 0 6px 18px rgba(0,0,0,0.05);
+  padding:18px 16px 14px;
+  display:flex;
+  flex-direction:column;
+}
+.memoFeedbackPopupLabel {
+  font-size:calc(12px * var(--olli-text-scale));
+  color:#999;
+  margin-bottom:10px;
+}
+.memoFeedbackPopupText {
+  font-size:calc(15px * var(--olli-text-scale));
+  line-height:1.72;
+  color:#111;
+  white-space:pre-wrap;
+  word-break:keep-all;
+  overflow-y:auto;
+  padding-right:2px;
+}
+.memoFeedbackEditBox {
+  width:100%;
+  min-height:260px;
+  border:none;
+  outline:none;
+  resize:none;
+  background:#FEFEFE;
+  border-radius:18px;
+  padding:14px;
+  font-size:calc(15px * var(--olli-text-scale));
+  line-height:1.72;
+  color:#111;
+  font-family:inherit;
+}
+.memoFeedbackPopupActions {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:14px;
+}
+.memoFeedbackLeftActions {
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+.memoFeedbackIconBtn {
+  border:none;
+  border-radius:999px;
+  background:#f1f1f1;
+  color:#111;
+  width:38px;
+  height:38px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  font-family:inherit;
+}
+.memoFeedbackIconBtn svg {
+  width:19px;
+  height:19px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.memoFeedbackActionBtn {
+  border:none;
+  border-radius:999px;
+  background:#f1f1f1;
+  color:#111;
+  padding:9px 13px;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-family:inherit;
+}
+.memoFeedbackActionBtn.primary {
+  background:#111;
+  color:#fff;
+}
+.memoFeedbackPopupCard.editing .memoFeedbackRightActions {
+  display:none;
+}
+.memoFeedbackPopupCard:not(.editing) .memoFeedbackEditSaveBtn {
+  display:none;
+}
+
+
+/* 2026-04-22 정리 수정: 중복 보정 제거 후 실제 구조 기준으로 재정렬 */
+:root {
+  --olli-phone-control-size: 44px;
+  --olli-phone-bottom-control-height: 47px;
+  --olli-phone-guide-x: max(16px, calc((100vw - 860px) / 2 + 16px));
+  --olli-phone-guide-top: max(18px, calc(env(safe-area-inset-top) + 6px + var(--vivizac-vv-offset-top, 0px)));
+  --olli-phone-guide-bottom: max(10px, env(safe-area-inset-bottom));
+  --olli-phone-guide-center-x: 50%;
+  --vivizac-header-h: 66px;
+  --vivizac-pill-w: 96px;
+  --vivizac-pill-cell-w: 48px;
+  --vivizac-page-bg: #FEFEFE;
+  --vivizac-soft-shadow: 0 30px 72px rgba(0,0,0,0.060), 0 10px 30px rgba(0,0,0,0.035);
+}
+
+.memoSubLabelRow { display: none ; }/* 공통 피드백 페이지 배경 *//* 메인/실패성장 상단 버튼: 메인 페이지 기준 44px */
+
+/* 두 칸 버튼은 실제 두 칸인 곳만 96px로 고정 */
+#recordRoomScreen .recordMoreBtn{
+  width: var(--vivizac-pill-cell-w);
+  min-width: var(--vivizac-pill-cell-w);
+  flex: 0 0 var(--vivizac-pill-cell-w);
+  height: var(--olli-phone-control-size);
+  min-height: var(--olli-phone-control-size);
+}
+
+/* 장면카드 선택 상태 */
+
+/* 기록실 1분 피드백/기록보드 원상복구: 상단 버튼 통일 대상 제외 */
+#recordRoomScreen .recordUtilityCircle {
+  width: 66px ;
+  min-width: 66px ;
+  height: 66px ;
+  min-height: 66px ;
+  border-radius: 999px ;
+  background: #EEEEEE ;
+}
+#recordRoomScreen .recordUtilityBtn svg {
+  width: 32px ;
+  height: 32px ;
+}
+
+/* 메인/실패성장 라인: 기록실 라인과 동일하게 1px 실제 선으로 정리 */
+
+
+
+/* 학생 메모장 상단: 오른쪽에 [기록실][학생정보] */
+
+#studentMemoScreen .memoStudentNameWrap { min-width: 0 ; }
+
+#studentMemoScreen .memoStudentName {
+max-width: 132px ;
+  overflow: hidden ;
+  text-overflow: ellipsis ;
+  white-space: nowrap ;
+  color: #111;
+  font-size: calc(20px * var(--olli-text-scale));
+  font-weight: 440;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  transform: translateY(-1px);
+}
+
+/* 학생 메모장 하단: 뒤로가기 삭제 후 피드백 생성 왼쪽 배치 */
+#studentMemoScreen .memoBackBtn {
+display: none ;
+}
+#studentMemoScreen .memoFeedbackBottomBtn:disabled {
+  opacity: .42 ;
+  background: transparent ;
+  color: #888 ;
+  border: none ;
+  box-shadow: none ;
+}
+#studentMemoScreen .memoBottomBar {
+  position: fixed;
+  left: calc(var(--olli-phone-guide-x) + 4px);
+  right: calc(var(--olli-phone-guide-x) + 55px);
+  bottom: var(--olli-phone-guide-bottom);
+  top: auto;
+  width: auto;
+  max-width: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: none;
+  z-index: 119990;
+  background: transparent;
+  overflow: visible;
+}
+#studentMemoScreen .memoBottomBar > * {
+  pointer-events: auto;
+}
+
+/* 초등부 메모 입력부 간격 */
+#studentMemoScreen .memoEditor {
+background: #FEFEFE;
+  background-color: #FEFEFE;
+  padding-top: 10px;
+  min-height: calc(100vh - 80px);
+  line-height: 1.62;
+}
+
+
+/* 2026-04-22 학생 메모장/초등 실패성장 상단 구조 정리 */
+#studentMemoScreen .memoHeader {
+  display: contents ;
+  position: static ;
+  top: auto ;
+  left: auto ;
+  right: auto ;
+  transform: none ;
+  z-index: auto ;
+  overflow: visible ;
+  isolation: auto ;
+  width: auto ;
+  max-width: none ;
+  height: 0 ;
+  min-height: 0 ;
+  margin: 0 ;
+  padding: 0 ;
+  background: transparent ;
+  border-bottom: none ;
+  backdrop-filter: none ;
+  -webkit-backdrop-filter: none ;
+}
+
+#studentMemoScreen .memoPageInner {
+  position: relative;
+  z-index: 1;
+  padding-top: calc(var(--vivizac-note-header-h) + max(18px, calc(env(safe-area-inset-top) + 6px)) + 12px);
+  overflow-x: visible;
+  background: #FEFEFE;
+}
+
+#studentMemoScreen::before {
+  content: none ;
+  display: none ;
+  background: transparent ;
+  backdrop-filter: none ;
+  -webkit-backdrop-filter: none ;
+}
+#studentMemoScreen .memoTopFadeLayer {
+  position: fixed;
+  left: 50%;
+  right: auto;
+  top: 0;
+  transform: translateX(-50%);
+  width: min(100vw, 860px);
+  max-width: 860px;
+  height: calc(max(116px, calc(env(safe-area-inset-top) + 102px)));
+  z-index: 100;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--vivizac-edge-fade-rgb),1) 0%,
+    rgba(var(--vivizac-edge-fade-rgb),.94) 24%,
+    rgba(var(--vivizac-edge-fade-rgb),.50) 54%,
+    rgba(var(--vivizac-edge-fade-rgb),0) 100%
+  );
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+#studentMemoScreen .memoHeaderLeftActions {
+  display: contents ;
+  position: static ;
+  overflow: visible ;
+  z-index: auto ;
+  min-width: 0 ;
+  max-width: none ;
+  flex: 0 0 auto ;
+}
+#studentMemoScreen .memoHeaderActions {
+  position: fixed;
+  right: var(--olli-phone-guide-x);
+  top: var(--olli-phone-guide-top);
+  left: auto;
+  bottom: auto;
+  transform: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--vivizac-note-gap);
+  overflow: visible;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 120000;
+  flex: 0 0 auto;
+  isolation: isolate;
+}
+#studentMemoScreen .memoNamePill {
+width: auto ;
+  min-width: 0 ;
+  max-width: none ;
+  height: 25px ;
+  min-height: 25px ;
+  padding: 0 ;
+  border-radius: 0 ;
+  color: #111;
+  font-size: calc(20px * var(--olli-text-scale));
+  font-weight: 440;
+  letter-spacing: -0.02em;
+  background: transparent ;
+  border: none ;
+  box-shadow: none ;
+  backdrop-filter: none ;
+  -webkit-backdrop-filter: none ;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  display: inline-flex ;
+  align-items: center ;
+  justify-content: center ;
+  gap: 6px ;
+}
+
+#studentMemoScreen .memoNameMore { display: none ; }
+#studentMemoScreen .memoRecordRoomBtn {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0;
+  color: #111;
+  background: #fff;
+  border: 1px solid rgba(255,255,255,0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.92),
+    0 0 0 1px rgba(255,255,255,0.92),
+    0 0 34px 10px rgba(0,0,0,0.045),
+    0 0 78px 22px rgba(0,0,0,0.035);
+  backdrop-filter: blur(20px) saturate(1.18);
+  -webkit-backdrop-filter: blur(20px) saturate(1.18);
+  font-family: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  overflow: visible;
+  position: relative;
+  top: auto;
+  transform: none;
+  z-index: 950;
+}
+
+#studentMemoScreen .memoRecordRoomBtn:not(.memoRecordBtn) {
+  position: fixed;
+  left: var(--olli-phone-guide-x);
+  top: var(--olli-phone-guide-top);
+  right: auto;
+  bottom: auto;
+  display: inline-flex;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 120000;
+  isolation: isolate;
+}
+#studentMemoScreen .memoRecordRoomBtn.memoRecordBtn:not(#olliMemoVersionHistoryBtn) {
+  position: relative;
+  top: auto;
+  right: auto;
+  transform: none;
+  z-index: 951;
+}
+
+#studentMemoScreen .memoRecordRoomBtn:not(.memoRecordBtn) svg {
+  width: 27px;
+  height: 27px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#studentMemoScreen .memoStudentInfoBtn .memoInfoDots {
+  font-size: calc(18px * var(--olli-text-scale));
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 1.5px;
+  transform: translateY(-1px);
+}
+#studentMemoScreen .memoModePill svg {
+  width:16px ;
+  height:16px ;
+  stroke:currentColor ;
+  fill:none ;
+  stroke-width:2.25 ;
+  stroke-linecap:round ;
+  stroke-linejoin:round ;
+}
+#studentMemoScreen .memoModeSub {
+  margin-top:2px;
+  margin-right:0;
+  align-self:center;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:400;
+  color:#999;
+  letter-spacing:-0.03em;
+  line-height:1;
+  text-align:center;
+}
+#studentMemoScreen .memoModeDropup {
+  display: none;
+  position: absolute ;
+  top: 50px ;
+  left: 50% ;
+  right: auto ;
+  bottom: auto ;
+  transform: translateX(-50%) ;
+  min-width: 250px ;
+  width: 250px ;
+  padding: 12px 0 ;
+  border-radius: 28px ;
+  background: rgba(255,255,255,.92) ;
+  box-shadow: 0 18px 46px rgba(0,0,0,.14), 0 4px 14px rgba(0,0,0,.07) ;
+  backdrop-filter: blur(18px) ;
+  -webkit-backdrop-filter: blur(18px) ;
+  z-index: 100 ;
+}
+#studentMemoScreen .memoModeDropup.show { display: block ; }
+#studentMemoScreen .memoModeDropup .memoRecordOption {
+  width: 100% ;
+  min-height: 64px ;
+  border: none ;
+  border-radius: 0 ;
+  background: transparent ;
+  color: #111 ;
+  font-family: inherit ;
+  cursor: pointer ;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  display: grid ;
+  grid-template-columns: 34px minmax(0,1fr) ;
+  align-items: center ;
+  gap: 8px ;
+  padding: 6px 18px 6px 14px ;
+  text-align: left ;
+}
+#studentMemoScreen .memoRecordOption.active::after {
+  content: none ;
+}
+.memoModeCheck {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  color: #111;
+}
+.memoModeCheck svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#studentMemoScreen .memoRecordOption.active .memoModeCheck { opacity: 1; }
+.memoModeOptionText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+.memoModeOptionTitle {
+  display: block;
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 400;
+  line-height: 1.16;
+  letter-spacing: -0.03em;
+  color: #111;
+  white-space: nowrap;
+}
+.memoModeOptionGuide {
+  display: block;
+  font-size: calc(12.5px * var(--olli-text-scale));
+  font-weight: 350;
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+  color: #888;
+  word-break: keep-all;
+}
+
+/* 학생 메모장 하단: 왼쪽 수업기록, 오른쪽 피드백 생성 */
+
+#studentMemoScreen .memoFeedbackBottomBtn {
+  position: fixed;
+  right: calc(var(--olli-phone-guide-x) + 4px);
+  bottom: var(--olli-phone-guide-bottom);
+  left: auto;
+  top: auto;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  background: #0A84FF;
+  background-image: none;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  filter: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  appearance: none;
+  -webkit-appearance: none;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  visibility: visible;
+  opacity: 1;
+  z-index: 120001;
+  font-size: 0;
+  pointer-events: auto;
+  line-height: 1;
+  overflow: hidden;
+}
+#studentMemoScreen .memoFeedbackBottomBtn svg {
+  width: 21px;
+  height: 21px;
+  margin: 0;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform: translateY(-0.5px);
+  display: block;
+}
+#studentMemoScreen .memoBottomBtn {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 999px;
+  color: #111;
+  background: #fff;
+  border: 1px solid rgba(255,255,255,0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.92),
+    0 0 0 1px rgba(255,255,255,0.92),
+    0 0 34px 10px rgba(0,0,0,0.045),
+    0 0 78px 22px rgba(0,0,0,0.035);
+  backdrop-filter: blur(20px) saturate(1.18);
+  -webkit-backdrop-filter: blur(20px) saturate(1.18);
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#studentMemoScreen .memoStudentSelectBtn {
+  color: #111;
+  background: #fff;
+  border: 1px solid rgba(255,255,255,0.96);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.92),
+    0 0 0 1px rgba(255,255,255,0.92),
+    0 0 34px 10px rgba(0,0,0,0.045),
+    0 0 78px 22px rgba(0,0,0,0.035);
+  backdrop-filter: blur(20px) saturate(1.18);
+  -webkit-backdrop-filter: blur(20px) saturate(1.18);
+}
+
+/* 메인/실패성장 상단: 기록실 버튼 옆 텍스트 버튼도 같은 상단 버튼 스타일 */
+
+/* 관찰메모 상단 버튼 아래 라인 삭제 */
+
+
+/* 2026-04-22 실제 원인 수정: 상단 기준 통일 + 분석 버튼 복구 + 선택 팝업 */
+.cardFeedbackHeader { padding-left:16px ; padding-right:16px ; }
+.cardHeaderLeft { left:16px ; }
+.cardHeaderRight { right:16px ; }
+.cardModeWrap{
+  position:relative ;
+  display:inline-flex ;
+  align-items:center ;
+  flex:0 0 auto ;
+}
+#studentMemoScreen .memoModeWrap {
+  position: fixed;
+  left: var(--olli-phone-guide-center-x);
+  top: calc(var(--olli-phone-guide-top) + 4px);
+  transform: translateX(-50%);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: none;
+  z-index: 120000;
+  pointer-events: auto;
+  isolation: isolate;
+  visibility: visible;
+  opacity: 1;
+}
+.cardModeDropup {
+  left:0 ;
+  right:auto ;
+  top:54px ;
+  bottom:auto ;
+  width:176px ;
+  z-index:140 ;
+}
+
+#studentMemoScreen .memoAnalysisBtn {
+  width: var(--olli-phone-control-size) ;
+  min-width: var(--olli-phone-control-size) ;
+  height: var(--olli-phone-control-size) ;
+  min-height: var(--olli-phone-control-size) ;
+  padding: 0 ;
+  display: inline-flex ;
+  align-items: center ;
+  justify-content: center ;
+  border: 1px solid rgba(255,255,255,0.96) ;
+  border-radius: 999px ;
+  color: #111 ;
+  background:#fff ;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.92),
+    0 0 0 1px rgba(255,255,255,0.92),
+    0 0 34px 10px rgba(0,0,0,0.045),
+    0 0 78px 22px rgba(0,0,0,0.035) ;
+  backdrop-filter: blur(20px) saturate(1.18) ;
+  -webkit-backdrop-filter: blur(20px) saturate(1.18) ;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 600;
+  line-height: 1;
+  font-family: inherit;
+  cursor: pointer ;
+  white-space: nowrap ;
+}
+#studentMemoScreen .memoStudentInfoBtn {
+  width:var(--olli-phone-control-size) ;
+  min-width:var(--olli-phone-control-size) ;
+}
+
+/* 2026-04-23 노트 명칭/버튼/레이아웃 실제 보정 */
+#mainCardModePill{
+  display: inline-flex ;
+  align-items: center ;
+  justify-content: center ;
+  gap: 6px ;
+  color: #111 ;
+}
+
+#mainCardModePill::after{
+  content: '' ;
+  width: 7px ;
+  height: 7px ;
+  border-right: 1.8px solid #0A84FF ;
+  border-bottom: 1.8px solid #0A84FF ;
+  transform: rotate(45deg) translateY(-2px) ;
+  flex: 0 0 auto ;
+}
+#studentMemoScreen .memoAnalysisBtn .memoAnalysisIcon {
+  width: 23px ;
+  height: 23px ;
+  stroke: currentColor ;
+  fill: none ;
+  stroke-width: 2.2 ;
+  stroke-linecap: round ;
+  stroke-linejoin: round ;
+}
+#studentMemoScreen .memoRecordBtn:not(#olliMemoVersionHistoryBtn) {
+  width: 44px ;
+  min-width: 44px ;
+  height: 44px ;
+  min-height: 44px ;
+  display: inline-flex ;
+  align-items: center ;
+  justify-content: center ;
+  gap: 0 ;
+  padding: 0 ;
+}
+#studentMemoScreen .memoRecordBtn span {
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 600;
+  line-height: 1;
+}
+
+
+/* 유치부 관찰노트 전용 페이지: 상단 버튼/이름/학생정보 아이콘 */
+
+
+#studentMemoScreen #memoStudentNameBtn{
+  padding-left: 0 ;
+  padding-right: 0 ;
+  min-width: 0 ;
+}
+
+
+/* 2026-04-23 root fix: 유치부 자동저장/상태표시/초등부 전환버튼/그룹아이콘 정리 */
+
+:root { --vivizac-header-start-x: 16px; }
+
+
+/* 2026-04-23 cleaned final: 유치부 1분 피드백 부모박스 정렬 단일 기준 */
+
+/* 2026-04-23 기록실 그룹아이콘 최종 기준 정리 */
+
+
+/* 2026-04-23 root-fix: 유치부 키워드/성장카드 부모박스 기준 재정렬 */
+:root {
+  --vivizac-header-start-x: 16px;
+  --vivizac-header-btn-size: 44px;
+}
+
+/* 2026-04-23 root-fix: 기록실 그룹아이콘 위치 단일 구조 */
+#recordRoomScreen .elementaryStudentRow {
+  padding-left: 10px;
+  padding-right: 16px;
+  border-radius: 0;
+}
+
+#recordRoomScreen .kinderStudentRow {
+  padding-left: 10px;
+  padding-right: 16px;
+  border-radius: 0;
+}
+
+#recordRoomScreen .kinderRowInner {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: center;
+}
+
+#recordRoomScreen .elementaryStudentRow .elementaryEmptyCircle {
+  grid-column: 1;
+  justify-self: start;
+  margin-left: 0;
+  transform: none;
+}
+
+#recordRoomScreen .kinderStudentRow .studentTextWrap {
+  grid-column: 2;
+  margin-left: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  overflow: visible;
+}
+
+#recordRoomScreen .elementaryRowInner {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: center;
+}
+
+#recordRoomScreen .elementaryGroupIcon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  justify-self: start;
+  margin: 0;
+  padding: 0;
+  transform: none;
+  overflow: visible;
+  background: transparent;
+  line-height: 1;
+}
+
+#recordRoomScreen .elementaryGroupIcon img {
+  width: 40px;
+  height: 40px;
+  display: block;
+  object-fit: contain;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+#recordRoomScreen .elementaryDefaultNoGroupIcon {
+  width: 36px ;
+  height: 36px ;
+  min-width: 36px ;
+  display: inline-flex ;
+  align-items: center ;
+  justify-content: flex-start ;
+  justify-self: start;
+  margin: 0;
+  padding: 0 ;
+  transform: none ;
+  overflow: visible ;
+  background: transparent ;
+  line-height: 1 ;
+}
+#recordRoomScreen .elementaryDefaultNoGroupIcon svg {
+  width: 36px ;
+  height: 35px ;
+  display: block ;
+  overflow: visible ;
+  margin: 0 ;
+  padding: 0 ;
+  background: transparent ;
+  transform: none ;
+}
+
+#recordRoomScreen .elementaryStudentRow .studentTextWrap {
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 출석부 / 기록보드 버튼 조금 더 연하게 */
+#recordRoomScreen .recordUtilityCircle {
+  background: #f7f7f7 ;
+}
+
+/* 출석부 상단 4개 메뉴 최종 원본 기준 */
+#recordRoomScreen .recordUtilityCircle,
+#recordRoomScreen .recordUtilityBtn .recordUtilityCircle {
+  width:66px;
+  min-width:66px;
+  height:66px;
+  min-height:66px;
+  border-radius:999px;
+  background:#f7f7f7;
+  color:#0A84FF !important;
+}
+#recordRoomScreen .recordUtilityBtn svg,
+#recordRoomScreen .recordUtilityCircle svg {
+  width:32px;
+  height:32px;
+}
+#recordRoomScreen .recordUtilityBtn svg,
+#recordRoomScreen .recordUtilityBtn svg *,
+#recordRoomScreen .recordUtilityCircle svg,
+#recordRoomScreen .recordUtilityCircle svg * {
+  color:#0A84FF !important;
+  stroke:#0A84FF !important;
+}
+#recordRoomScreen .recordUtilityCircle svg [fill]:not([fill='none']),
+#recordRoomScreen .recordUtilityBtn svg [fill]:not([fill='none']) {
+  fill:#0A84FF !important;
+}
+#recordAcademyManageBtn.active,
+#recordAttendanceDashboardBtn.active {
+  background:#111;
+  color:#0A84FF !important;
+}
+
+/* 페이드 위치 재설정: 상단 버튼이 아니라 라인/구분선 바로 아래 */
+:root {
+  --vivizac-page-rgb: 254, 254, 254;
+  --vivizac-edge-fade-rgb: 238, 240, 242;
+  --vivizac-fade-depth: 22px;
+}#studentMemoScreen .memoSubLabelRow {
+  position: sticky;
+  overflow: visible;
+  z-index: 24;
+}
+#studentMemoScreen .memoSubLabelRow::after {
+  content: '' ;
+  position: absolute ;
+  left: 0 ;
+  right: 0 ;
+  bottom: calc(-1 * var(--vivizac-fade-depth)) ;
+  height: var(--vivizac-fade-depth) ;
+  pointer-events: none ;
+  z-index: 2 ;
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--vivizac-edge-fade-rgb), 1) 0%,
+    rgba(var(--vivizac-edge-fade-rgb), .88) 42%,
+    rgba(var(--vivizac-edge-fade-rgb), .54) 74%,
+    rgba(var(--vivizac-edge-fade-rgb), 0) 100%
+  ) ;
+}
+
+
+
+/* 2026-04-23: 키워드 버튼 제거 / 장면카드 팝업화 */
+#sceneTagArea { display:none ; }
+
+.sceneCardModalOverlay {
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px 16px;
+  z-index:4000;
+  background:rgba(0,0,0,0.34);
+}
+.sceneCardModalOverlay.show { display:flex; }
+.sceneCardModalCard {
+  width:100%;
+  max-width:560px;
+  max-height:86vh;
+  padding:18px 16px 16px;
+  border-radius:24px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.sceneCardModalHeader {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+.sceneCardModalTitle {
+  font-size:calc(20px * var(--olli-text-scale));
+  font-weight:700;
+  color:#111;
+  letter-spacing:-0.02em;
+}
+.sceneCardModalCloseBtn {
+  width:38px;
+  height:38px;
+  border:none;
+  border-radius:999px;
+  background:#f3f3f3;
+  color:#666;
+  font-size:calc(24px * var(--olli-text-scale));
+  line-height:1;
+  cursor:pointer;
+}
+.sceneCardModalBody {
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:2px 2px 6px;
+}
+.sceneCardModalBody .sceneGrid {
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0,1fr));
+  gap:10px;
+  padding:0;
+}
+.sceneCardModalBody .sceneCardSlot {
+  position:relative;
+  min-height:122px;
+}
+.sceneCardModalBody .sceneCard {
+  width:100%;
+  min-height:122px;
+  height:100%;
+  border:1px solid #eeeeee;
+  border-radius:22px;
+  background:#fff;
+  padding:12px 10px;
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  cursor:pointer;
+  transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+  font-family:inherit;
+  box-shadow:none;
+}
+.sceneCardModalBody .sceneCard.selected {
+  transform:translateY(-8px);
+  box-shadow:0 12px 26px rgba(0,0,0,.14), 0 3px 8px rgba(0,0,0,.06);
+}
+.sceneCardModalBody .sceneCardSelectBtn {
+  position:absolute;
+  top:10px;
+  left:10px;
+  z-index:30;
+  width:32px;
+  height:32px;
+  border:none;
+  border-radius:999px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#f3f3f3;
+  color:#666;
+  cursor:pointer;
+  padding:0;
+}
+.sceneCardModalBody .sceneCardSelectBtn .sceneCheckIcon { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2.4; }
+.sceneCardModalBody .sceneCard.selected + .sceneCardSelectBtn { background:#0A84FF; color:#fff; }
+.sceneCardModalBody .sceneCard.flipped {
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  min-height:224px;
+  height:auto;
+  max-height:320px;
+  overflow-y:auto;
+  z-index:20;
+  justify-content:flex-start;
+  align-items:flex-start;
+  text-align:left;
+  padding:16px 14px;
+  transform:translateY(-8px);
+  box-shadow:0 18px 38px rgba(0,0,0,.18), 0 6px 14px rgba(0,0,0,.08);
+}
+.sceneCardModalBody .sceneCardSlot.hasFlipped {
+  z-index:22;
+}
+.sceneCardModalBody .sceneCheckIcon {
+  pointer-events:none;
+}
+
+.sceneCardModalCard { max-height:88vh; padding:16px 14px 14px; }
+  .sceneCardModalBody .sceneGrid { gap:8px; }
+  .sceneCardModalBody .sceneCardSlot { min-height:112px; }
+  .sceneCardModalBody .sceneCard.flipped { min-height:220px; }
+
+
+
+/* 2026-04-24 clean fix: 장면카드 선택 원/팝업 레이어 */
+.sceneCardModalOverlay { z-index: 5000 ; }
+.sceneCardModalBody .sceneCardSlot.hasFlipped { z-index: 60 ; }
+.sceneCardModalBody .sceneCard.flipped { z-index: 61 ; }
+.sceneCardModalBody .sceneCard.selected + .sceneCardSelectBtn {
+  transform: translateY(-8px) ;
+}
+.sceneCardModalBody .sceneCard.selected .sceneNumber {
+  display: none ;
+}
+
+
+/* 2026-04-24: 초등부 분석 자동저장 요약 카드 */
+#studentMemoScreen #elementaryMemoWrap {
+  padding-bottom: 8px;
+  overflow: visible;
+  display: block;
+}
+
+#studentMemoScreen .elementaryAnalysisBlock {
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+  background: transparent;
+  margin: -20px 0 0;
+  padding: 0;
+  height: auto;
+}
+#studentMemoScreen .memoAnalysisTitleRow {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 4px 0 0 22px;
+  background: transparent;
+  box-sizing: border-box;
+}
+#studentMemoScreen .memoStudentMetaBlock {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  z-index: 2;
+  max-width: calc(100% - 22px);
+  pointer-events: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+#studentMemoScreen .memoStudentNameLine {
+  display: flex;
+  align-items: flex-end;
+  gap: 9px;
+  width: 100%;
+  max-width: 100%;
+}
+
+#studentMemoScreen .memoPageStudentName {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #111;
+  font-size: calc(25px * var(--olli-text-scale));
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#studentMemoScreen .memoStudentUpdatedDate {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0 0 0 auto;
+  color: #B3B3B8;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 400;
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+  white-space: nowrap;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+#studentMemoScreen .memoEditorWrap {
+  position: relative;
+  z-index: 1;
+  padding-top: 0;
+  -webkit-mask-image: none;
+  mask-image: none;
+  background: #FEFEFE;
+  background-color: #FEFEFE;
+}
+
+#studentMemoScreen .elementaryAnalysisSummaryWrap {
+  display: none;
+  position: relative;
+  top: auto;
+  right: auto;
+  left: auto;
+  z-index: 3;
+  margin: 0;
+  background: transparent;
+  overflow: visible;
+  text-align: left;
+  flex: 0 0 auto;
+  min-width: 0;
+  pointer-events: auto;
+}
+
+#studentMemoScreen .elementaryAnalysisSummaryCard {
+  width: 27px;
+  max-width: 27px;
+  height: 27px;
+  min-height: 27px;
+  max-height: 27px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  box-sizing: border-box;
+  overflow: visible;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+}
+#studentMemoScreen .elementaryAnalysisSummaryCard.is-collapsed {
+  cursor: pointer;
+}
+
+#studentMemoScreen .elementaryAnalysisSummaryHeader {
+  display: grid;
+  grid-template-columns: 30px minmax(0, max-content);
+  align-items: center;
+  justify-content: center;
+  column-gap: 8px;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  max-height: 47px;
+  overflow: hidden;
+}
+
+#studentMemoScreen .elementaryAnalysisSummaryIcon {
+  width: 27px;
+  height: 27px;
+  min-width: 27px;
+  flex: 0 0 27px;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#studentMemoScreen .elementaryAnalysisSummaryIcon svg {
+  width: 27px;
+  height: 27px;
+  fill: none;
+  stroke: #0A84FF;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+#studentMemoScreen .elementaryAnalysisSummaryCard.has-analysis .elementaryAnalysisSummaryIcon svg rect {
+  fill: #0A84FF;
+  stroke: #0A84FF;
+}
+#studentMemoScreen .elementaryAnalysisSummaryCard.has-analysis .elementaryAnalysisSummaryIcon svg path {
+  stroke: #fff;
+}
+#studentMemoScreen .elementaryAnalysisSummaryTexts {
+  min-width: 0;
+  width: auto;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  overflow: hidden;
+}
+#studentMemoScreen .elementaryAnalysisSummaryTop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  height: 100%;
+  overflow: hidden;
+}
+#studentMemoScreen .elementaryAnalysisSummaryTopMain {
+  min-width: 0;
+  flex: 0 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  overflow: hidden;
+}
+#studentMemoScreen .elementaryAnalysisSummaryTitle {
+  display: block;
+  width: auto;
+  margin: 0;
+  color: #111;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1;
+  font-weight: 800;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#studentMemoScreen .elementaryAnalysisSummaryLabel {
+  display: none;
+}
+#studentMemoScreen .elementaryAnalysisSummaryPreview {
+  display: none;
+  width: 100%;
+  margin: 3px 0 0;
+  color: #7d7d7d;
+  font-size: calc(12.5px * var(--olli-text-scale));
+  line-height: 1.28;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#studentMemoScreen .elementaryAnalysisSummaryDate {
+  display: none;
+  width: 100%;
+  margin: 0;
+  color: #9a9a9a;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.35;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+/* 최근 분석 버튼: 텍스트 길이에 맞춰 자동 너비 + 왼쪽 시작 */
+#studentMemoScreen .elementaryAnalysisHistoryWrap {
+  display: none;
+  margin: 0 0 4px;
+  background: transparent;
+  overflow: visible;
+}
+#studentMemoScreen .elementaryAnalysisHistoryGrid {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  grid-template-columns: none;
+  background: transparent;
+}
+#studentMemoScreen .elementaryAnalysisHistoryBtn {
+  -webkit-appearance: none;
+  appearance: none;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 0 auto;
+  min-height: calc(36px * var(--olli-text-scale));
+  padding: 7px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  border: 1px solid #F0F0F0;
+  border-radius: 22px;
+  background: #FEFEFE;
+  box-shadow: 0 14px 28px rgba(0,0,0,0.08), 0 4px 10px rgba(0,0,0,0.035);
+  box-sizing: border-box;
+  text-align: left;
+  cursor: pointer;
+}
+#studentMemoScreen .elementaryAnalysisHistoryBtn.active {
+border-color: #F0F0F0;
+  box-shadow: 0 14px 28px rgba(0,0,0,0.08), 0 4px 10px rgba(0,0,0,0.035);
+}
+#studentMemoScreen .elementaryAnalysisHistoryLine {
+  width: auto;
+  max-width: 100%;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.35;
+  font-weight: 700;
+  color: #111;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  text-align: left;
+}
+
+
+/* 2026-04-25 fix: 텍스트 입력 시 모바일 기본 회색 터치/포커스 하이라이트 제거 */
+
+
+
+
+/* 2026-04-25: 상단 학생이름 버튼 터치/포커스 회색 효과 제거 */
+
+/* 2026-04-25 update: 초등부/유치부 학생정보 아이콘을 사람 실루엣 아이콘으로 통일 */
+#studentMemoScreen .memoStudentInfoBtn .memoStudentInfoIcon {
+  width: 24px ;
+  height: 24px ;
+  stroke: currentColor ;
+  fill: none ;
+  stroke-width: 1.9 ;
+  stroke-linecap: round ;
+  stroke-linejoin: round ;
+  display: block ;
+}
+#studentMemoScreen .memoStudentInfoBtn .memoInfoDots {
+  display: none ;
+}
+#studentMemoScreen .memoStudentInfoBtn {
+  -webkit-tap-highlight-color: transparent ;
+}
+#studentMemoScreen .memoStudentInfoBtn:focus {
+  outline: none ;
+}
+
+
+/* 2026-04-25 final merge: 유치부 1분 피드백 v13 유지 */
+/* 장면카드 팝업 새 스타일 */
+.sceneCardModalOverlay { background:rgba(17,17,17,0.28) ; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); padding:18px 14px ; z-index:6000 ; }
+.sceneCardModalCard { width:min(580px,100%) ; max-height:min(88vh,900px) ; border-radius:30px ; background:#f7f7f5 ; border:1px solid rgba(0,0,0,0.04); box-shadow:0 28px 60px rgba(0,0,0,0.18),0 8px 18px rgba(0,0,0,0.08) ; padding:14px 14px 12px ; }
+.sceneCardModalHeader { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px ; padding:2px 2px 0; }
+.sceneCardModalHeaderText { display:flex; flex-direction:column; gap:4px; }
+.sceneCardModalTitle { font-size:calc(21px * var(--olli-text-scale)) ; font-weight:780 ; letter-spacing:-0.055em ; color:#111 ; }
+.sceneCardModalCount { font-size:calc(12px * var(--olli-text-scale)); font-weight:650; color:#8f8f8f; }
+.sceneCardModalHeaderActions { display:flex; align-items:center; gap:8px; }
+.sceneCardModalGhostBtn,.sceneCardModalCloseBtn { height:38px; border:none; border-radius:999px; background:#fff; color:#444; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+.sceneCardModalGhostBtn { padding:0 14px; font-size:calc(13px * var(--olli-text-scale)); font-weight:700; }
+.sceneCardModalGhostBtn:disabled { opacity:.42; }
+.sceneCardModalCloseBtn { width:38px; font-size:calc(24px * var(--olli-text-scale)) ; line-height:1; }
+.sceneCardModalBody .sceneGrid { display:grid ; grid-template-columns:repeat(3,minmax(0,1fr)) ; gap:10px ; padding:0 ; }
+.sceneCardModalBody .sceneCardSlot { min-height:124px; }
+.sceneCardModalBody .sceneCard { min-height:124px; border-radius:24px ; border:1px solid #ececea ; background:#fff ; box-shadow:0 6px 16px rgba(0,0,0,0.035) ; padding:12px 10px ; }
+.sceneCardModalBody .sceneCard.selected:not(.flipped) { transform:translateY(-4px) ; background:#111 ; border-color:#111 ; box-shadow:0 16px 32px rgba(0,0,0,0.16),0 4px 10px rgba(0,0,0,0.08) ; }
+.sceneCardModalBody .sceneCard.selected:not(.flipped) * { color:#fff ; }
+.sceneCardModalBody .sceneCard.flipped { min-height:236px; max-height:330px; border-radius:26px ; background:#fff ; color:#111 ; border-color:#111 ; box-shadow:0 20px 40px rgba(0,0,0,0.18),0 8px 14px rgba(0,0,0,0.08) ; padding:16px 14px ; transform:translateY(-4px) ; }
+.sceneCardModalBody .sceneCard.flipped * { color:#111 ; }
+.sceneCardModalBody .sceneCardSelectBtn { top:10px; left:10px; width:32px; height:32px; border-radius:999px; background:#f1f1ef ; color:#5f5f5f ; box-shadow:none ; }
+.sceneCardModalBody .sceneCard.selected + .sceneCardSelectBtn,.sceneCardModalBody .sceneCard.flipped + .sceneCardSelectBtn { background:#111 ; color:#fff ; transform:translateY(-4px) ; }
+.sceneCardModalFooter { display:flex; gap:8px; padding-top:12px; }
+.sceneCardModalFooterBtn { flex:1; height:50px; border:none; border-radius:999px; font-size:calc(15px * var(--olli-text-scale)); font-weight:760; letter-spacing:-0.03em; }
+.sceneCardModalFooterBtn.secondary { background:#ececea; color:#444; }
+.sceneCardModalFooterBtn.primary { background:#111; color:#fff; box-shadow:0 10px 22px rgba(0,0,0,0.16); }
+
+.sceneCardModalBody .sceneGrid{gap:8px;} .sceneCardModalBody .sceneCard,.sceneCardModalBody .sceneCardSlot{min-height:112px;} .sceneCardModalTitle{font-size:calc(19px * var(--olli-text-scale));}
+
+
+
+/* 2026-04-25: 유치부 1분 피드백 간소화 */
+/* 하단 피드백 만들기 버튼 위치 조정 */
+
+
+/* 2026-04-25 v15: 1분 피드백 미리보기/실제화면 보정 */
+
+
+/* 2026-04-25 v19: 1분 피드백 안정화 */
+.sceneCardModalOverlay.show {
+  display: flex ;
+}
+
+
+/* 2026-04-25 v23 layout safety */
+
+
+/* 2026-04-25 v25: 초등부 상단바 복구 + 1분피드백 시작선 통일 */
+:root {
+  --vivizac-note-header-h: 66px;
+  --vivizac-note-x: 16px;
+  --vivizac-note-btn: 46px;
+  --vivizac-note-gap: 8px;
+  --vivizac-note-content-top: 24px;
+  --vivizac-note-max: 860px;
+}
+
+/* 초등부 상단바: 부모 박스는 화면 전체 폭을 사용하도록 복구 */
+#studentMemoScreen .memoTopBar {
+  width: 100% ;
+  max-width: none ;
+  left: 0 ;
+  right: 0 ;
+  margin-left: 0 ;
+  margin-right: 0 ;
+  height: var(--vivizac-note-header-h) ;
+  min-height: var(--vivizac-note-header-h) ;
+  padding-left: var(--vivizac-note-x) ;
+  padding-right: var(--vivizac-note-x) ;
+  box-sizing: border-box ;
+}
+
+/* 초등부 상단바 안쪽 좌우 그룹만 정렬 */
+#studentMemoScreen .memoTopLeft {
+  display: inline-flex ;
+  align-items: center ;
+  gap: var(--vivizac-note-gap) ;
+}
+#studentMemoScreen .memoTopRight {
+  display: inline-flex ;
+  align-items: center ;
+  gap: var(--vivizac-note-gap) ;
+}
+
+/* 초등부 첫 콘텐츠 시작선은 통일 대상에서 제외 */
+#studentMemoScreen .memoAnalysisArea {
+  margin-top: revert ;
+}
+
+/* 1분 피드백: 상단 장면카드 팝업 버튼은 계속 사용하지 않음 */
+
+/* 하단 버튼 위치 유지 */
+
+
+
+
+
+/* 2026-04-25 v28: 1분 피드백 배경 원래 톤으로 복구 */
+
+
+/* Work / QuickNote / Observation roster + memo full-screen surfaces follow the phone display corner. */
+:root {
+  --olli-phone-screen-corner-radius:clamp(46px, calc(env(safe-area-inset-top, 0px) + 2px), 56px);
+}
+#kinderChatFeedbackScreen,
+#observationRosterScreen,
+#studentMemoScreen,
+#olliTalkBetaScreen {
+  border-radius:var(--olli-phone-screen-corner-radius);
+  overflow:hidden;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,255,255,.55),
+    -18px 0 38px rgba(0,0,0,.10),
+    -4px 0 14px rgba(0,0,0,.055);
+}
+
+/* Main page / record-room subpage drawer. The main page stays visible as the right 25%. */
+.olliMainDrawerMainPage,
+.olliMainDrawerCompanion {
+  transition:
+    transform 320ms cubic-bezier(.22,.61,.36,1),
+    opacity 320ms cubic-bezier(.22,.61,.36,1);
+  will-change:transform,opacity;
+}
+.olliMainDrawerMainPage::after {
+  content:'';
+  position:absolute;
+  inset:3px;
+  border-radius:calc(var(--olli-phone-screen-corner-radius) - 3px);
+  background:rgba(255,255,255,.52);
+  opacity:0;
+  pointer-events:none;
+  z-index:2147483000;
+  transition:opacity 320ms cubic-bezier(.22,.61,.36,1);
+}
+.olliMainDrawerMainPage.is-olli-main-drawer-open {
+  transform:translate3d(75%,0,0) !important;
+  opacity:1 !important;
+}
+.olliMainDrawerMainPage.is-olli-main-drawer-open::after {
+  opacity:1;
+}
+.olliMainDrawerCompanion.is-olli-main-drawer-open {
+  transform:translate3d(75%,0,0) !important;
+  opacity:.48 !important;
+}
+.olliMainDrawerMainPage.is-olli-main-drawer-returning,
+.olliMainDrawerCompanion.is-olli-main-drawer-returning {
+  transition-duration:340ms;
+  transition-timing-function:cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.olliMainDrawerMainPage.is-olli-main-drawer-returning::after {
+  transition-duration:340ms;
+  transition-timing-function:cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.olliMainDrawerMainPage.is-olli-main-drawer-switch-exit,
+.olliMainDrawerCompanion.is-olli-main-drawer-switch-exit {
+  transform:translate3d(100%,0,0) !important;
+  transition-duration:280ms;
+  transition-timing-function:cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.olliMainDrawerMainPage.is-olli-main-drawer-switch-exit::after {
+  opacity:0;
+  transition-duration:280ms;
+}
+.olliMainDrawerMainPage.is-olli-main-drawer-switch-enter,
+.olliMainDrawerCompanion.is-olli-main-drawer-switch-enter {
+  animation:vivizacSlideInFromRight 340ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  will-change:transform,opacity;
+}
+#recordRoomScreen.olliMainDrawerSubpage {
+  display:flex !important;
+  clip-path:inset(0 25% 0 0);
+  -webkit-clip-path:inset(0 25% 0 0);
+}
+
+body.olli-main-subpage-drawer-search-active .olliMainDrawerMainPage.is-olli-main-drawer-open,
+body.olli-main-subpage-drawer-search-active .olliMainDrawerCompanion.is-olli-main-drawer-open {
+  transform:translate3d(100%,0,0) !important;
+}
+body.olli-main-subpage-drawer-search-active #recordRoomScreen.olliMainDrawerSubpage,
+body.olli-main-subpage-drawer-search-returning #recordRoomScreen.olliMainDrawerSubpage {
+  clip-path:inset(0 0 0 0);
+  -webkit-clip-path:inset(0 0 0 0);
+}
+body.olli-main-subpage-drawer-search-active .olliMainDrawerReturnHit,
+body.olli-main-subpage-drawer-search-returning .olliMainDrawerReturnHit {
+  pointer-events:none !important;
+}
+body.olli-main-subpage-drawer-modal-fade-active .olliMainDrawerMainPage.is-olli-main-drawer-open,
+body.olli-main-subpage-drawer-modal-fade-active .olliMainDrawerCompanion.is-olli-main-drawer-open {
+  opacity:0 !important;
+}
+body.olli-main-subpage-drawer-modal-fade-active .olliMainDrawerMainPage.is-olli-main-drawer-open::after {
+  opacity:0 !important;
+}
+body.olli-main-subpage-drawer-modal-fade-active .olliMainDrawerReturnHit {
+  pointer-events:none !important;
+}
+.olliMainDrawerReturnHit {
+  position:fixed;
+  top:0;
+  right:0;
+  bottom:0;
+  width:25vw;
+  min-width:25vw;
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  z-index:120700;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.olliMainDrawerReturnHit[hidden] {
+  display:none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .olliMainDrawerMainPage,
+  .olliMainDrawerCompanion,
+  .olliMainDrawerMainPage::after {
+    transition:none !important;
+    animation:none !important;
+  }
+}
+
+/* 2026-04-25 v31: 실제 페이지 전환 함수 기반 슬라이드 */
+.pageScreen.vivizac-slide-page {
+  will-change: transform, opacity;
+}
+.pageScreen.vivizac-slide-in {
+  animation: vivizacSlideInFromRight 340ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.pageScreen.vivizac-slide-out {
+  animation: vivizacSlideOutToRight 280ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.pageScreen.vivizac-slide-from-bottom.vivizac-slide-in {
+  animation: vivizacSlideInFromBottom 280ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.vivizac-slide-under-fade {
+  animation: vivizacSlideUnderFade 340ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  will-change:opacity;
+}
+@keyframes vivizacSlideInFromRight {
+  from { transform: translateX(100%); opacity: 0.98; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes vivizacSlideOutToRight {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0.98; }
+}
+@keyframes vivizacSlideUnderFade {
+  from { opacity:1; }
+  58% { opacity:.58; }
+  to { opacity:.18; }
+}
+@keyframes vivizacSlideInFromBottom {
+  from { transform: translateY(100%); opacity: 0.98; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes vivizacSheetInFromBottom {
+  from { transform: translateY(100%); opacity: 0.98; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes vivizacSheetOutToBottom {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(100%); opacity: 0.98; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pageScreen.vivizac-slide-in,
+  .vivizac-slide-under-fade {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+
+/* 2026-04-25 v32: 초등부 오늘의 분석 카드 기본값 복구 */
+#studentMemoScreen .elementaryAnalysisSummaryCardDefault {
+  display: none ;
+}
+
+#studentMemoScreen .elementaryAnalysisSummaryIcon:focus {
+  outline: none ;
+  box-shadow: none ;
+}
+
+
+/* 2026-04-25 v35: 1분 피드백 입력/복사/로딩 UX 수정 */
+.feedbackLoadingOverlay {
+  background: rgba(255,255,255,0.18);
+  backdrop-filter: blur(9px) saturate(1.08);
+  -webkit-backdrop-filter: blur(9px) saturate(1.08);
+  pointer-events: auto;
+}
+.feedbackCardActionBtn.copied {
+  min-width: 48px;
+  background: #111 ;
+  color: #fff ;
+}
+.feedbackCardActionBtn.copied svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+
+/* 2026-04-25 v37: 1분 피드백 결과를 초등부와 동일한 팝업창으로 표시 */
+.oneMinuteFeedbackPopupOverlay {
+  z-index: 120000 ;
+}
+.oneMinuteFeedbackPopupCard .memoFeedbackPopupLabel {
+  color: #999;
+}
+
+
+/* 2026-04-25 v38: 1분 피드백 직접 입력칸 한 줄 확장 */
+
+
+/* 2026-04-25 v39: 기록보드 저장 피드백 학생행/종합버튼/알림 온보딩 정리 */
+.savedFeedbackStudentHead {
+  min-height: 56px;
+  padding-left: 10px;
+  padding-right: 16px;
+}
+.savedFeedbackStudentLeft {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.savedFeedbackStudentLeft .elementaryGroupIcon {
+  margin-left: -10px;
+}
+#recordRoomScreen .savedFeedbackStudentHead::after {
+  content: "" ;
+  display: none ;
+}
+.recordBoardLeadIcon {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-shrink: 0;
+  line-height: 1;
+  background: transparent;
+}
+.recordBoardLeadIconSvg {
+  width: 36px;
+  height: 35px;
+  display: block;
+  overflow: visible;
+}
+.recordBoardLeadIcon .recordBoardIconMinus {
+  display: none;
+}
+.recordStudentBlock.open .recordBoardLeadIcon .recordBoardIconPlus {
+  display: none;
+}
+.recordStudentBlock.open .recordBoardLeadIcon .recordBoardIconMinus {
+  display: block;
+}
+.savedFeedbackStudentLeft .studentTextWrap {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 0;
+  overflow: visible;
+}
+.savedFeedbackStudentLeft .recordStudentName {
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 500;
+  letter-spacing: -0.05em;
+}
+.savedFeedbackStudentLeft .studentMetaText {
+  margin-top: 0;
+  font-size: calc(16px * var(--olli-text-scale));
+  line-height: 1.2;
+}
+.recordSummaryBtn {
+  min-width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 999px;
+  background: #f0f0ee;
+  color: #111;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.recordSummaryPopupOverlay {
+  z-index: 130000 ;
+}
+
+
+/* 2026-04-26 v40: 기록실 설정 버튼 + 설정 페이지 */
+.recordSettingsBtn { margin-left: 0; }
+.recordSettingsBtn svg { width: 23px; height: 23px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.recordSettingsBtn svg circle { stroke: currentColor; fill: none; }
+#settingsPageScreen,#settingsDetailScreen{background:#f7f7f5;z-index:130000}
+.settingsPageInner{width:100%;max-width:860px;height:100%;background:#f7f7f5;display:flex;flex-direction:column}
+.settingsHeader{height:66px;min-height:66px;padding:0 18px;display:flex;align-items:center;justify-content:space-between;background:rgba(247,247,245,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:20}
+.settingsHeaderLeft{display:flex;align-items:center;gap:8px}
+.settingsRoundBtn,.settingsTitlePill{
+  height:46px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-family:inherit;
+}
+.settingsRoundBtn{width:46px;color:#111}.settingsRoundBtn svg{width:25px;height:25px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.settingsTitlePill{padding:0 16px;color:#0A84FF;font-size:calc(14px * var(--olli-text-scale));font-weight:760;letter-spacing:-.035em}
+.settingsBody{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 18px 42px}
+.settingsProfileCard{min-height:112px;border-radius:30px;background:#fff;box-shadow:0 14px 34px rgba(0,0,0,.065),0 4px 10px rgba(0,0,0,.025);padding:18px;display:flex;align-items:center;gap:15px;margin-bottom:14px}
+.settingsProfileImage{width:70px;height:70px;border-radius:26px;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:calc(23px * var(--olli-text-scale));font-weight:850;letter-spacing:-.05em;flex-shrink:0;overflow:hidden}
+.settingsProfileInfo{min-width:0;flex:1}.settingsProfileName{font-size:calc(20px * var(--olli-text-scale));font-weight:850;letter-spacing:-.055em;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.settingsProfileEdit{margin-top:5px;font-size:calc(12.5px * var(--olli-text-scale));color:#999;font-weight:650;letter-spacing:-.03em}
+.settingsSection{margin-top:14px}.settingsSectionTitle{padding:0 4px 8px;font-size:calc(13px * var(--olli-text-scale));font-weight:780;color:#8a8a8a;letter-spacing:-.025em}
+.settingsCard{border-radius:28px;background:#fff;box-shadow:0 10px 26px rgba(0,0,0,.045),0 2px 8px rgba(0,0,0,.02);overflow:hidden}
+.settingsRow{width:100%;min-height:58px;padding:13px 15px;display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid #f0f0ee;background:#fff;text-align:left;cursor:pointer}
+.settingsRow:last-child{border-bottom:none}.settingsRowLeft{display:flex;align-items:center;gap:12px;min-width:0;flex:1}
+#settingsTeamTalkRow.settingsTeamTalkRowButton{-webkit-appearance:none;appearance:none;box-sizing:border-box;border:0;border-bottom:1px solid #f0f0ee;font:inherit;color:inherit}
+#settingsTeamTalkRow.settingsTeamTalkRowButton:last-child{border-bottom:none}
+.settingsRowIcon{width:38px;height:38px;border-radius:15px;background:#f2f2f0;color:#111;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}.settingsRowIcon svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.settingsRowTitle{font-size:calc(15px * var(--olli-text-scale));font-weight:760;letter-spacing:-.045em;line-height:1.35}.settingsRowValue{max-width:128px;font-size:calc(13px * var(--olli-text-scale));color:#777;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+.settingsChevron{width:18px;height:18px;stroke:#aaa;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.settingsBadge,.settingsApprovalBadge,.settingsStatusBadge{height:28px;border-radius:999px;padding:0 10px;display:inline-flex;align-items:center;font-size:calc(12px * var(--olli-text-scale));font-weight:760;white-space:nowrap}.settingsBadge{background:#eff6ff;color:#0A84FF}.settingsBadge.warn,.settingsApprovalBadge,.settingsStatusBadge.waiting{background:#fff4df;color:#d98200}.settingsStatusBadge{background:#eff6ff;color:#0A84FF}.settingsStatusBadge.disabled{background:#f0f0ee;color:#777}
+.settingsToggle{width:48px;height:30px;border-radius:999px;background:#dcdcdc;position:relative;flex-shrink:0}.settingsToggle::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.18);transition:.2s ease}.settingsToggle.on{background:#34C759}.settingsToggle.on::after{left:21px}
+.settingsRow.danger .settingsRowIcon{background:#fff0f0;color:#e64848}.settingsRow.danger .settingsRowTitle{color:#e64848}
+.settingsDetailIntro{border-radius:30px;background:#fff;padding:20px 18px;margin-bottom:14px;box-shadow:0 14px 34px rgba(0,0,0,.06),0 4px 10px rgba(0,0,0,.02)}.settingsDetailTitle{font-size:calc(21px * var(--olli-text-scale));font-weight:850;letter-spacing:-.055em;line-height:1.25}
+.settingsInfoCard,.settingsRoleCard,.settingsRequestCard,.settingsTeacherCard{border-radius:26px;background:#fff;padding:16px;margin-bottom:10px;box-shadow:0 10px 26px rgba(0,0,0,.045)}.settingsInfoHead,.settingsRoleName,.settingsRequestName,.settingsTeacherName{font-size:calc(17px * var(--olli-text-scale));font-weight:850;letter-spacing:-.045em;margin-bottom:9px}.settingsRoleTop,.settingsRequestTop,.settingsTeacherTop{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.settingsInfoList,.settingsRoleList,.settingsRequestMeta,.settingsTeacherMeta{display:grid;gap:8px}.settingsInfoItem,.settingsRoleItem,.settingsRequestMeta div,.settingsTeacherMeta div{font-size:calc(13px * var(--olli-text-scale));color:#333;background:#f7f7f5;border-radius:15px;padding:9px 10px;line-height:1.45}
+.settingsActionGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.settingsActionBtn{height:42px;border:none;border-radius:999px;background:#f0f0ee;color:#111;font-size:calc(13px * var(--olli-text-scale));font-weight:780;font-family:inherit}.settingsActionBtn.primary{background:#111;color:#fff}.settingsActionBtn.red{background:#fff0f0;color:#e64848}.settingsExportBtn{width:100%;height:54px;border:none;border-radius:20px;background:#111;color:#fff;font-size:calc(15px * var(--olli-text-scale));font-weight:850;margin-top:12px;font-family:inherit}.settingsNoteBox{border-radius:22px;background:#fff4df;color:#8a5a00;padding:14px;font-size:calc(13px * var(--olli-text-scale));line-height:1.55;margin-top:10px;letter-spacing:-.025em}.settingsInviteLinkBox{width:100%;min-height:48px;border:none;border-radius:18px;background:#f5f5f3;color:#555;padding:13px 14px;font-size:calc(13px * var(--olli-text-scale));line-height:1.35;word-break:break-all;letter-spacing:-.025em}.settingsTeacherInvitePlainList{display:grid;gap:8px}.settingsTeacherInvitePlainLine{font-size:calc(13px * var(--olli-text-scale));color:#333;line-height:1.45;letter-spacing:-.025em}.settingsTeacherInviteQrCard{display:flex;align-items:center;justify-content:center}.settingsInviteQrBox{display:flex;align-items:center;justify-content:center;border-radius:24px;background:#f7f7f5;padding:16px;margin-top:12px}.settingsInviteQrImage{width:178px;height:178px;border-radius:16px;background:#fff;display:block}.settingsInviteActionGrid{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
+.settingsSheetOverlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.18);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:130000;padding:max(18px,env(safe-area-inset-top)) 14px max(18px,env(safe-area-inset-bottom));box-sizing:border-box;overflow:hidden}.settingsSheetOverlay.show{display:flex}.settingsSheet{width:min(520px,100%);max-height:calc(100vh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom));max-height:calc(100dvh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box;border-radius:30px;background:#fff;box-shadow:0 28px 70px rgba(0,0,0,.22),0 8px 18px rgba(0,0,0,.08);padding:20px 16px 16px;animation:settingsSheetPop .22s cubic-bezier(.22,.61,.36,1) both}@keyframes settingsSheetPop{from{transform:scale(.96);opacity:.6}to{transform:scale(1);opacity:1}}.settingsSheetTitle{font-size:calc(20px * var(--olli-text-scale));font-weight:850;letter-spacing:-.055em;margin-bottom:6px}.settingsSheetDesc{font-size:calc(13.5px * var(--olli-text-scale));color:#777;line-height:1.55;letter-spacing:-.03em;margin-bottom:16px}.settingsInputGroup{margin-bottom:12px}.settingsInputLabel{font-size:calc(12px * var(--olli-text-scale));font-weight:780;color:#777;margin:0 0 6px 2px}.settingsInput{width:100%;height:50px;border:none;border-radius:18px;background:#f5f5f3;padding:0 14px;font-size:calc(15px * var(--olli-text-scale));color:#111;font-family:inherit}.settingsSheetActions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}.settingsSheetBtn{height:46px;border:none;border-radius:999px;background:#f0f0ee;color:#333;font-size:calc(14px * var(--olli-text-scale));font-weight:760;font-family:inherit;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1;padding:0}.settingsSheetBtn.primary{background:#111;color:#fff}.settingsLogoutDangerBox{display:grid;grid-template-columns:1fr;gap:8px;margin-top:14px}.settingsDangerFullBtn{width:100%;height:48px;border:none;border-radius:999px;background:#111;color:#fff;font-size:calc(14px * var(--olli-text-scale));font-weight:760;font-family:inherit;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1;padding:0}.settingsDangerFullBtn.red{background:#b91c1c;color:#fff}.settingsDangerFullBtn.light{background:#f0f0ee;color:#333}
+
+
+
+
+/* settings clean: remove small group headings and peach note boxes */
+#settingsPageScreen .settingsSectionTitle {
+  display: none;
+}
+#settingsPageScreen .settingsSection {
+  margin-top: 12px;
+}
+#settingsPageScreen .settingsSection:first-of-type {
+  margin-top: 0;
+}
+
+/* v40-fix-3: 설정 기능 동작 보강 */
+.settingsProfileImage.editable {
+  cursor: pointer;
+  position: relative;
+}
+.settingsProfileImage.editable::after {
+  content: "+";
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #111;
+  color: #fff;
+  border: 2px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 850;
+}
+.settingsProfileImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.settingsEmptyBox {
+  border-radius: 24px;
+  background: #fff;
+  padding: 18px;
+  font-size: calc(14px * var(--olli-text-scale));
+  color: #777;
+  line-height: 1.55;
+  box-shadow: 0 10px 26px rgba(0,0,0,.045);
+}
+.settingsMiniText {
+  margin-top: 8px;
+  font-size: calc(12px * var(--olli-text-scale));
+  color: #999;
+  line-height: 1.5;
+}
+
+.attendancePhotoUploadBox {
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 1 / 1;
+  border: 1px dashed #d8d8d4;
+  border-radius: 26px;
+  background: #fff;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 10px 26px rgba(0,0,0,.045);
+  margin: 0 auto;
+}
+.attendancePhotoImportTitle {
+  font-size: calc(17px * var(--olli-text-scale));
+  font-weight: 400;
+  letter-spacing: -0.045em;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.attendancePhotoUploadIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 18px;
+  background: #eff6ff;
+  color: #0A84FF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.attendancePhotoUploadIcon svg {
+  width: 25px;
+  height: 25px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.attendancePhotoUploadTitle {
+  color: #111;
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 820;
+  letter-spacing: -0.045em;
+  line-height: 1.35;
+}
+.attendancePhotoUploadDesc {
+  color: #888;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.45;
+  letter-spacing: -0.03em;
+}
+.attendancePhotoPreview {
+  width: 100%;
+  max-height: 58%;
+  border-radius: 20px;
+  object-fit: contain;
+  background: #f7f7f5;
+  margin-top: 8px;
+}
+.attendancePhotoPreviewGrid {
+  width: 100%;
+  max-height: 58%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+.attendancePhotoPreviewThumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 16px;
+  object-fit: cover;
+  background: #f7f7f5;
+}
+.attendancePhotoResultSummary {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #777;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.35;
+}
+.attendancePhotoResultCount {
+  color: #111;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.attendancePhotoCandidateList {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.attendancePhotoCandidateCard {
+  background: #fff;
+  border-radius: 22px;
+  padding: 13px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.045);
+}
+.attendancePhotoCandidateTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.attendancePhotoCandidateCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 800;
+  color: #111;
+}
+.attendancePhotoCandidateCheck input {
+  width: 18px;
+  height: 18px;
+  accent-color: #0A84FF;
+}
+.attendancePhotoCandidateBadge {
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #777;
+  background: #f4f4f2;
+  font-size: calc(11px * var(--olli-text-scale));
+  font-weight: 800;
+  white-space: nowrap;
+}
+.attendancePhotoCandidateBadge.warn {
+  color: #d28b00;
+  background: #fff4d9;
+}
+.attendancePhotoCandidateBadge.dup {
+  color: #e64848;
+  background: #fff0f0;
+}
+.attendancePhotoCandidateGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.attendancePhotoCandidateField {
+  min-width: 0;
+}
+.attendancePhotoCandidateField.full {
+  grid-column: 1 / -1;
+}
+.attendancePhotoCandidateLabel {
+  color: #999;
+  font-size: calc(11px * var(--olli-text-scale));
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+.attendancePhotoCandidateInput {
+  width: 100%;
+  height: 38px;
+  border: none;
+  border-radius: 14px;
+  background: #f6f6f4;
+  color: #111;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-family: inherit;
+  padding: 0 11px;
+  outline: none;
+}
+.attendancePhotoCandidateNote {
+  margin-top: 9px;
+  color: #999;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.45;
+}
+.attendancePhotoStatusBox {
+  margin-top: 12px;
+  border-radius: 18px;
+  background: #f7f7f5;
+  color: #777;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.55;
+  padding: 12px 13px;
+  white-space: pre-wrap;
+}
+.attendancePhotoStatusBox.error {
+  color: #e64848;
+  background: #fff0f0;
+}
+.attendancePhotoActionGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.attendancePhotoActionGrid.single {
+  grid-template-columns: 1fr;
+}
+
+
+/* 2026-06-25: 원생관리 - 원생 직접 등록(여러 명 한 번에) */
+.studentBulkImportPanel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.studentBulkImportModeRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.studentBulkImportModeBtn {
+  min-height: 42px;
+  border: none;
+  border-radius: 16px;
+  background: #f1f1ef;
+  color: #555;
+  font-family: inherit;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+}
+.studentBulkImportModeBtn.active {
+  background: #111;
+  color: #fff;
+}
+.studentBulkImportTextarea {
+  width: 100%;
+  min-height: 154px;
+  border: none;
+  border-radius: 22px;
+  background: #f6f6f4;
+  color: #111;
+  padding: 14px;
+  font-size: calc(14px * var(--olli-text-scale));
+  line-height: 1.55;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  white-space: pre-wrap;
+}
+.studentBulkImportTextarea::placeholder {
+  color: #aaa;
+}
+.studentBulkImportGuide {
+  border-radius: 18px;
+  background: #f7f7f5;
+  color: #777;
+  padding: 12px 13px;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.55;
+  letter-spacing: -0.025em;
+}
+.studentBulkImportSectionDivider {
+  height: 1px;
+  background: #eeeeec;
+  margin: 14px 0;
+}
+.studentManagementTabRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.studentManagementTabBtn {
+  min-height: 48px;
+  border: none;
+  border-radius: 18px;
+  background: #f1f1ef;
+  color: #555;
+  font-family: inherit;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  cursor: pointer;
+  padding: 0 8px;
+  word-break: keep-all;
+}
+.studentManagementTabBtn.active {
+  background: #111;
+  color: #fff;
+}
+.studentManagementTabGuide {
+  border-radius: 20px;
+  background: #fff;
+  color: #777;
+  padding: 13px 14px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+  letter-spacing: -0.03em;
+  margin-bottom: 12px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.04);
+}
+.studentBulkCandidateList {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.studentBulkCandidateCard {
+  background: #fff;
+  border-radius: 22px;
+  padding: 13px;
+  box-shadow: 0 10px 26px rgba(0,0,0,.045);
+}
+.studentBulkCandidateTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.studentBulkCandidateCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #111;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 800;
+}
+.studentBulkCandidateCheck input {
+  width: 18px;
+  height: 18px;
+  accent-color: #0A84FF;
+}
+
+.studentBulkCandidateTopRight {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.studentBulkCandidateDeleteBtn {
+  min-height: 26px;
+  border: none;
+  border-radius: 999px;
+  background: #f1f1ef;
+  color: #777;
+  padding: 0 9px;
+  font-family: inherit;
+  font-size: calc(11px * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.studentBulkCandidateDeleteBtn.danger {
+  background: #fff0f0;
+  color: #e64848;
+}
+.existingFeedbackImportBox {
+  width: 100%;
+  border: 1px dashed #d8d8d4;
+  border-radius: 24px;
+  background: #fff;
+  padding: 18px;
+  display: grid;
+  gap: 8px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(0,0,0,.045);
+}
+.existingFeedbackImportIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 18px;
+  background: #eff6ff;
+  color: #0A84FF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+}
+.existingFeedbackImportIcon svg {
+  width: 25px;
+  height: 25px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.existingFeedbackImportTitle {
+  color: #111;
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 820;
+  letter-spacing: -0.045em;
+  line-height: 1.35;
+  word-break: keep-all;
+}
+.existingFeedbackImportDesc {
+  color: #888;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.45;
+  letter-spacing: -0.03em;
+  word-break: keep-all;
+}
+.existingFeedbackPreviewBox {
+  margin-top: 12px;
+  border-radius: 18px;
+  background: #f7f7f5;
+  color: #555;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.55;
+  padding: 12px 13px;
+  white-space: pre-wrap;
+  max-height: 180px;
+  overflow-y: auto;
+  text-align: left;
+}
+.studentBulkCandidateGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.studentBulkCandidateField.full {
+  grid-column: 1 / -1;
+}
+.studentBulkCandidateLabel {
+  margin-bottom: 5px;
+  color: #999;
+  font-size: calc(11px * var(--olli-text-scale));
+  font-weight: 700;
+}
+.studentBulkCandidateInput {
+  width: 100%;
+  height: 38px;
+  border: none;
+  border-radius: 14px;
+  background: #f6f6f4;
+  color: #111;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-family: inherit;
+  padding: 0 11px;
+  outline: none;
+}
+.studentBulkCandidateEmpty {
+  border-radius: 20px;
+  background: #f7f7f5;
+  color: #999;
+  padding: 14px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+  text-align: center;
+}
+
+.existingFeedbackCandidateTextArea {
+  width: 100%;
+  min-height: 112px;
+  border: none;
+  border-radius: 14px;
+  background: #f6f6f4;
+  color: #111;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.55;
+  font-family: inherit;
+  padding: 11px;
+  outline: none;
+  resize: vertical;
+}
+.existingFeedbackCandidateStudentSelect {
+  width: 100%;
+  height: 38px;
+  border: none;
+  border-radius: 14px;
+  background: #f6f6f4;
+  color: #111;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-family: inherit;
+  padding: 0 11px;
+  outline: none;
+}
+
+
+/* v40-fix-5: 설정 페이지 Supabase 연결 표시 */
+.settingsLoadingText {
+  font-size: calc(13px * var(--olli-text-scale));
+  color: #999;
+  padding: 14px 4px;
+  line-height: 1.5;
+}
+.settingsErrorBox {
+  border-radius: 22px;
+  background: #fff0f0;
+  color: #d33;
+  padding: 14px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.55;
+  margin-bottom: 10px;
+}
+.settingsSuccessBox {
+  border-radius: 22px;
+  background: #effaf3;
+  color: #188a42;
+  padding: 14px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.55;
+  margin-bottom: 10px;
+}
+
+
+/* v40-fix-6: 원장/선생님 로그인 화면 */
+.olliLoginScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 160000;
+  background: #f7f7f5;
+  color: #111;
+  font-family: inherit;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.olliLoginInner {
+  width: 100%;
+  min-height: 100vh;
+  padding: 34px 18px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.olliLoginPageInner {
+  width: 100%;
+  min-height: 100vh;
+  background: #f7f7f5;
+  display: flex;
+  flex-direction: column;
+}
+.olliLoginHeader {
+  height: 66px;
+  min-height: 66px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(247,247,245,.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.olliLoginBackBtn {
+  height: 46px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255,255,255,.88);
+  box-shadow: 0 8px 22px rgba(0,0,0,.045);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+.olliLoginBackBtn {
+  width: 46px;
+}
+.olliLoginBackBtn svg {
+  width: 25px;
+  height: 25px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.olliLoginTitlePill {
+  padding: 0 16px;
+  color: #0A84FF;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 760;
+  letter-spacing: -.035em;
+  height: 46px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255,255,255,.88);
+  box-shadow: 0 8px 22px rgba(0,0,0,.045);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+.olliLoginBody {
+  flex: 1;
+  padding: 12px 18px 42px;
+}
+.olliLoginLogo {
+  width: 76px;
+  height: 76px;
+  border-radius: 28px;
+  background: #111;
+  color: #fff;
+  font-size: calc(25px * var(--olli-text-scale));
+  font-weight: 850;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.olliLoginTitle {
+  font-size: calc(28px * var(--olli-text-scale));
+  font-weight: 900;
+  letter-spacing: -.065em;
+  line-height: 1.22;
+  margin-bottom: 8px;
+}
+.olliLoginDesc {
+  font-size: calc(14px * var(--olli-text-scale));
+  color: #777;
+  line-height: 1.55;
+  letter-spacing: -.03em;
+  margin-bottom: 24px;
+}
+.olliLoginCard {
+  border-radius: 30px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(0,0,0,.065), 0 4px 10px rgba(0,0,0,.025);
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+.olliBigLoginBtn {
+  width: 100%;
+  min-height: 62px;
+  border: none;
+  border-radius: 22px;
+  background: #111;
+  color: #fff;
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 850;
+  text-align: left;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: inherit;
+}
+.olliBigLoginBtn.light {
+  background: #f1f1ef;
+  color: #111;
+}
+.olliIntroCard {
+  border-radius: 30px;
+  background: #fff;
+  padding: 20px 18px;
+  margin-bottom: 14px;
+  box-shadow: 0 14px 34px rgba(0,0,0,.06), 0 4px 10px rgba(0,0,0,.02);
+}
+.olliIntroTitle {
+  font-size: calc(21px * var(--olli-text-scale));
+  font-weight: 850;
+  letter-spacing: -.055em;
+  line-height: 1.25;
+}
+.olliSocialBtn {
+  width: 100%;
+  height: 54px;
+  border: none;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(0,0,0,.05);
+  font-size: calc(15px * var(--olli-text-scale));
+  font-weight: 800;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+.olliSocialBtn.google {
+  color: #111;
+}
+.olliSocialBtn.naver {
+  background: #03C75A;
+  color: #fff;
+}
+.olliInputCard {
+  border-radius: 30px;
+  background: #fff;
+  padding: 18px;
+  margin-bottom: 12px;
+  box-shadow: 0 14px 34px rgba(0,0,0,.065), 0 4px 10px rgba(0,0,0,.025);
+}
+.olliInputGroup {
+  margin-bottom: 12px;
+}
+.olliInputLabel {
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 780;
+  color: #777;
+  margin: 0 0 6px 2px;
+}
+.olliInput {
+  width: 100%;
+  height: 50px;
+  border: none;
+  border-radius: 18px;
+  background: #f5f5f3;
+  padding: 0 14px;
+  font-size: calc(15px * var(--olli-text-scale));
+  color: #111;
+  font-family: inherit;
+}
+.olliPrimaryBtn {
+  width: 100%;
+  height: 54px;
+  border: none;
+  border-radius: 20px;
+  background: #111;
+  color: #fff;
+  font-size: calc(15px * var(--olli-text-scale));
+  font-weight: 850;
+  margin-top: 8px;
+  font-family: inherit;
+}
+.olliPrimaryBtn:disabled {
+  opacity: .45;
+}
+.olliInfoHead {
+  font-size: calc(17px * var(--olli-text-scale));
+  font-weight: 850;
+  letter-spacing: -.045em;
+  margin-bottom: 9px;
+}
+.olliInfoItem {
+  font-size: calc(13px * var(--olli-text-scale));
+  color: #333;
+  background: #f7f7f5;
+  border-radius: 15px;
+  padding: 9px 10px;
+  line-height: 1.45;
+  margin-top: 8px;
+}
+.olliTextLinkBtn {
+  width: 100%;
+  height: 44px;
+  border: none;
+  background: transparent;
+  color: #999;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 760;
+  margin-top: 6px;
+  font-family: inherit;
+}
+.olliErrorBox {
+  border-radius: 20px;
+  background: #fff0f0;
+  color: #d33;
+  padding: 12px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+  margin-top: 10px;
+}
+.olliSuccessBox {
+  border-radius: 20px;
+  background: #effaf3;
+  color: #188a42;
+  padding: 12px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.5;
+  margin-top: 10px;
+}
+
+
+/* v40-fix-9: 설정 버튼 위치 최종 고정
+   설정 버튼 위치 고정. */
+.recordStandaloneSettingsBtn {
+  position: absolute;
+  top: 0;
+  right: 112px;
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  border: none;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+  color: #111;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  z-index: 7;
+  -webkit-tap-highlight-color: transparent;
+}
+.recordStandaloneSettingsBtn svg {
+  width: 23px;
+  height: 23px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: block;
+}
+.recordStandaloneSettingsBtn svg circle {
+  stroke: currentColor;
+  fill: none;
+}
+
+
+/* v40-fix-10: 설정 페이지가 기존 기록실 전환 함수에 의해 닫히는 문제 방지 */
+#settingsPageScreen {
+  position: fixed;
+  inset: 0;
+}
+#settingsPageScreen {
+  z-index: 130000;
+}
+#settingsDetailScreen {
+  z-index: 130100;
+  position: fixed;
+  inset: 0;
+}
+
+
+/* v40-fix-11: 로그인 화면이 잠깐 보였다가 사라지는 문제 수정 */
+.olliLoginScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 200000;
+  background: #f7f7f5;
+  pointer-events: auto;
+}
+.olliLoginScreen.olliLoginShow {
+  display: block;
+}
+body.olli-login-open {
+  overflow: hidden;
+}
+
+
+/* v40-fix-13: 앱 첫 진입 시 로그인 화면 즉시 표시 */
+#olliLoginEntryScreen.olliLoginShow {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 200000;
+}
+
+
+/* v40-fix-20: 선생님 입장 화면 승인 확인 버튼 */
+.olliSecondaryBtn {
+  width: 100%;
+  height: 54px;
+  border: none;
+  border-radius: 20px;
+  background: #f1f1ef;
+  color: #111;
+  font-size: calc(15px * var(--olli-text-scale));
+  font-weight: 850;
+  margin-top: 8px;
+  font-family: inherit;
+}
+.olliSecondaryBtn:disabled {
+  opacity: .45;
+}
+
+
+/* v40-fix-21: 권한별 설정 메뉴 제한 */
+[data-owner-only="true"] {
+  transition: opacity .15s ease;
+}
+
+
+/* v40-28: uploaded index(3).html 기준 최소 수정 */
+
+/* 초등부 관찰노트 텍스트 시작 위치만 조금 오른쪽 */
+#studentMemoScreen #memoEditor.memoEditor {
+  position: relative ;
+  z-index: 1 ;
+  padding-left: 22px ;
+  font-size: calc(18px * var(--olli-text-scale));
+  line-height: 1.68;
+}
+
+
+/* 2026-04-26 v41: 설정 프로필 영역을 업로드 참고 이미지처럼 중앙 정렬형으로 재디자인 */
+#settingsPageScreen .settingsBody{
+  padding-top:18px;
+}
+#settingsPageScreen .settingsProfileCard{
+  min-height:auto;
+  margin:0 0 18px;
+  padding:18px 0 10px;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  text-align:center;
+}
+#settingsPageScreen .settingsProfileImage{
+  width:118px;
+  height:118px;
+  border-radius:999px;
+  background:#fff;
+  color:#2f5d73;
+  border:1px solid #ececea;
+  box-shadow:none;
+  font-size:calc(58px * var(--olli-text-scale));
+  font-weight:850;
+  letter-spacing:-.04em;
+  overflow:hidden;
+}
+#settingsPageScreen .settingsProfileImage img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  border-radius:999px;
+}
+#settingsPageScreen .settingsProfileInfo{
+  width:100%;
+  flex:none;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-width:0;
+}
+#settingsPageScreen .settingsProfileName{
+  width:100%;
+  font-size:calc(27px * var(--olli-text-scale));
+  font-weight:850;
+  line-height:1.2;
+  letter-spacing:-.06em;
+  color:#111;
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  word-break:keep-all;
+}
+#settingsPageScreen .settingsProfileEdit{
+  margin-top:6px;
+  min-height:38px;
+  padding:0 20px;
+  border:1.5px solid #d7d7d7;
+  border-radius:999px;
+  background:#fff;
+  color:#333;
+  font-size:calc(15px * var(--olli-text-scale));
+  font-weight:700;
+  letter-spacing:-.04em;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:none;
+}
+#settingsPageScreen .settingsSection:first-of-type{
+  margin-top:10px;
+}
+
+#settingsPageScreen .settingsProfileImage{
+    width:104px;
+    height:104px;
+    font-size:calc(52px * var(--olli-text-scale));
+  }
+  #settingsPageScreen .settingsProfileName{
+    font-size:calc(24px * var(--olli-text-scale));
+  }
+  #settingsPageScreen .settingsProfileEdit{
+    min-height:36px;
+    font-size:calc(14px * var(--olli-text-scale));
+    padding:0 18px;
+  }
+
+
+/* 설정 하단 테스트 섹션 여백만 정리 */
+#settingsPageScreen .settingsDevSection {
+  margin-top: 28px;
+  padding-bottom: 8px;
+}
+
+.growthMemoPageInner {
+  width: 100%;
+  max-width: 860px;
+  height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: #FEFEFE;
+  overflow: hidden;
+}/* 과거 관찰노트 버튼 크기 보정 메모 제거: 현재 최종 컴포넌트 CSS를 사용합니다. */
+/* 과거 성장페이지 팝업/설문박스 patch 메모 제거: 현재 최종 컴포넌트 CSS를 사용합니다. */
+#settingsPageScreen .settingsBody{
+  padding-top:10px;
+}
+
+#settingsPageScreen .settingsProfileCard{
+  padding:14px 0 10px;
+  margin:0 0 16px;
+  gap:14px;
+  min-height:0;
+}
+
+#settingsPageScreen .settingsProfileName{
+  font-size:calc(23px * var(--olli-text-scale));
+  font-weight:520;
+  letter-spacing:-0.045em;
+  line-height:1.22;
+}
+
+#settingsPageScreen .settingsProfileEdit{
+  margin-top:8px;
+  min-height:38px;
+  padding:0 18px;
+  border-radius:999px;
+  background:#f7f7f5;
+  border:1px solid #d9d9d7;
+  color:#444;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:400;
+  letter-spacing:-0.03em;
+  box-shadow:none;
+}
+
+#settingsPageScreen .settingsSectionTitle{
+  font-weight:500;
+}
+
+#settingsPageScreen .settingsRowTitle {
+  font-weight:500;
+}
+
+#settingsPageScreen .settingsRowTitle{
+  letter-spacing:-0.035em;
+}
+
+#settingsPageScreen .settingsRowValue{
+  font-weight:400;
+}
+
+
+#settingsPageScreen .settingsProfileCard{
+    padding:8px 0 2px;
+    gap:7px;
+  }
+  #settingsPageScreen .settingsProfileName{
+    font-size:calc(22px * var(--olli-text-scale));
+    font-weight:520;
+  }
+  #settingsPageScreen .settingsProfileEdit{
+    min-height:29px;
+    padding:0 13px;
+    font-size:calc(12.5px * var(--olli-text-scale));
+    font-weight:400;
+  }
+
+
+
+/* 2026-04-27 기록실 상단: [검색][설정+알림] 재배치 + 설정 아이콘 학원 아이콘화 */
+#recordRoomScreen .recordHeaderRow{
+  position: relative;
+}
+
+#recordRoomScreen .recordRightActionGroup {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 104px;
+  min-width: 104px;
+  max-width: 104px;
+  height: 46px;
+  min-height: 46px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  overflow: hidden;
+  z-index: 7;
+}
+
+#recordRoomScreen .recordOlliTalkBtn {
+  width:46px;
+  min-width:46px;
+  height:46px;
+  min-height:46px;
+  border:none;
+  border-radius:999px;
+  background:transparent;
+  color:#111;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  position:relative;
+  flex-shrink:0;
+  font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+#recordRoomScreen .recordOlliTalkBtn:active { background:#eeeeee; }
+#recordRoomScreen .recordOlliTalkIcon {
+  width:28px;
+  height:28px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  pointer-events:none;
+  transform:translateX(-2px);
+}
+#recordRoomScreen .recordOlliTalkIcon img {
+  width:28px;
+  height:28px;
+  max-width:none;
+  object-fit:contain;
+  display:block;
+  pointer-events:none;
+}
+
+#recordRoomScreen .recordRightActionGroup .recordStandaloneSettingsBtn{
+  position: static;
+  top: auto;
+  right: auto;
+  width: 52px;
+  min-width: 52px;
+  max-width: 52px;
+  height: 46px;
+  min-height: 46px;
+  flex: 0 0 52px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: #111;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#recordRoomScreen .recordRightActionGroup .recordStandaloneSettingsBtn:active {
+  background: #eeeeee;
+}
+@media (hover:hover){
+  #recordRoomScreen .recordRightActionGroup .recordStandaloneSettingsBtn:hover{
+    background: #f1f1f1;
+  }
+}
+
+#recordRoomScreen .recordAcademyMiniIcon svg{
+  width: 24px;
+  height: 24px;
+  display: block;
+  transform: translateX(-2px);
+}
+#recordRoomScreen .recordAcademyMiniIcon .academySettingsIcon path,
+#recordRoomScreen .recordAcademyMiniIcon .academySettingsIcon circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+
+/* 기록실 하단 그라데이션 제거 */
+#recordRoomScreen::after{
+  content: none;
+  display: none;
+}
+
+
+/* 기록실 설정 아이콘 크기 보정 */
+/* 2026-06-29 계정 기반 로그인 3차: 첫 화면 이미지/애니메이션 제거 */
+#olliLoginEntryScreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  background: #f7f7f5;
+  overflow: hidden;
+  overscroll-behavior: none;
+  z-index: 200000;
+}
+#olliLoginEntryScreen .olliEntrySimpleInner {
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: max(28px, env(safe-area-inset-top, 0px) + 18px) 20px max(24px, env(safe-area-inset-bottom, 0px) + 18px);
+  background: #f7f7f5;
+}
+#olliLoginEntryScreen .olliEntrySimpleLogo {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+  color: #111;
+  font-family: 'Montserrat','Pretendard',sans-serif;
+  font-size: calc(30px * var(--olli-text-scale));
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  box-shadow: none;
+}
+#olliLoginEntryScreen .olliEntrySimpleTitle {
+  display: none;
+  margin: 0;
+}
+#olliLoginEntryScreen .olliEntrySimpleDesc {
+  display: none;
+}
+#olliLoginEntryScreen .olliEntrySimpleActions {
+  width: min(320px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+#olliLoginEntryScreen .olliEntrySimpleActions .olliPrimaryBtn {
+  margin-top: 0;
+  font-size: calc(13px * var(--olli-text-scale));
+}
+
+
+/* 2026-04-29 초등부 학생 정보 2줄 표시: 이름 / 학교 학년 | 요일 | 담임T */
+#recordRoomScreen .elementaryStudentRow .studentTextWrap {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  overflow: visible;
+}
+#recordRoomScreen .elementaryStudentRow .studentTextWrap > span:first-child {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1.2;
+  letter-spacing: normal;
+}
+#recordRoomScreen .elementaryStudentRow .studentMetaText {
+  display: block;
+  max-width: 72vw;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.04em;
+  color: #8f8f8f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#recordRoomScreen .elementaryStudentRow.studentStatusPaused .studentTextWrap > span:first-child {
+  color: #aaa ;
+}
+
+
+/* 출석부 휴원·퇴원 접이식 목록 */
+.recordStatusSection {
+  width: 100%;
+  margin-top: 14px;
+}
+.recordStatusSection + .recordStatusSection {
+  margin-top: 8px;
+}
+.recordStatusSectionToggle {
+  width: 100%;
+  min-height: 42px;
+  border: none;
+  background: transparent;
+  color: #777;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  font-family: inherit;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.recordStatusSectionTriangle {
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid #999;
+  transform: rotate(0deg);
+  transition: transform .18s ease;
+  flex: 0 0 auto;
+}
+.recordStatusSection.open .recordStatusSectionTriangle {
+  transform: rotate(90deg);
+}
+.recordStatusSectionBody {
+  display: none;
+  width: 100%;
+}
+.recordStatusSection.open .recordStatusSectionBody {
+  display: block;
+}
+.recordStatusSectionEmpty {
+  padding: 10px 12px 16px;
+  color: #aaa;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.45;
+}
+#recordRoomScreen .elementaryStudentRow.studentStatusWithdrawn .studentTextWrap > span:first-child {
+  color: #aaa;
+}
+
+
+/* ── 피드백 보관함 공용 확인 표시 ── */
+.todayFeedbackIssueBox { margin:10px 0 0; border-radius:16px; background:#fff5f5; color:#c73636; font-size:calc(12px * var(--olli-text-scale)); line-height:1.45; padding:10px 11px; border:1px solid #ffe1e1; }
+.todayFeedbackIssueChars { display:inline-flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+.todayFeedbackIssueChar { border-radius:999px; background:#ffe4e4; color:#b82121; padding:3px 7px; font-weight:700; }
+.todayFeedbackSuspiciousChar { display:inline; background:#ffe2e2; color:#b82121; border-radius:6px; padding:0 3px; font-weight:700; }
+.feedbackQueueNotice { position:fixed; inset:0; z-index:9100; display:flex; align-items:center; justify-content:center; pointer-events:none; background:transparent; opacity:0; transition:opacity .18s ease; }
+.feedbackQueueNotice.show { opacity:1; }
+.feedbackQueueNoticeCard { width:min(320px, calc(100vw - 48px)); border-radius:24px; background:rgba(255,255,255,.92); border:1px solid rgba(255,255,255,.96); box-shadow:0 18px 48px rgba(0,0,0,.08), 0 6px 18px rgba(0,0,0,.04); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); padding:18px 18px 16px; text-align:center; }
+.feedbackQueueNoticeTitle { font-size:calc(15px * var(--olli-text-scale)); font-weight:700; color:#111; line-height:1.45; margin-bottom:6px; }
+.feedbackQueueNoticeText { font-size:calc(13px * var(--olli-text-scale)); color:#777; line-height:1.45; }
+.notificationTodayBtn { width:100%; height:36px; border:none; border-radius:999px; background:#111; color:#fff; font-size:calc(12px * var(--olli-text-scale)); font-weight:700; font-family:inherit; cursor:pointer; }
+
+/* integrated cleanup: olliSortChipWideKinderGroupLineStyle */
+/* 정렬칩/유치부 그룹 구분선/출석부 아이콘 위치 보정 */
+#recordRoomScreen .recordSortCriteriaGrid .recordSortChipWide{
+  grid-column:auto;
+  width:auto;
+}
+
+#recordRoomScreen .kinderStudentRow.groupBreak{
+  position:relative;
+  margin-top:24px;
+}
+
+#recordRoomScreen .kinderStudentRow.groupBreak::before{
+  content:'';
+  position:absolute;
+  left:10px;
+  top:-14px;
+  width:36px;
+  height:3px;
+  border-radius:999px;
+  background:#111;
+}
+
+#recordRoomScreen .elementaryRowInner {
+  grid-template-columns:36px minmax(0, 1fr);
+  column-gap:10px;
+}
+
+#recordRoomScreen .elementaryStudentRow .elementaryGroupIcon {
+  width:36px;
+  min-width:36px;
+  height:36px;
+  justify-content:center;
+  justify-self:start;
+  margin-left:0;
+  grid-column: 1;
+  transform: none;
+}
+
+#recordRoomScreen .elementaryStudentRow .elementaryGroupIcon img{
+  width:36px;
+  height:36px;
+}
+
+/* integrated cleanup: olliRecordSortPatchStyle */
+/* 2026-04-29 patch 정리: 하단바/검색창 배치 기준은 olliRecordSearchFinalSingle에서만 관리합니다.
+   이 블록에는 정렬 팝업, 학생 정보 모달, 유치부 아이콘 보정만 남깁니다. */
+#recordSortPopup{
+  display:none;
+  position:absolute;
+  left:-57px;
+  right:auto;
+  bottom:60px;
+  width:min(252px, calc(100vw - 42px));
+  box-sizing:border-box;
+  border-radius:22px;
+  background:#fff;
+  color:#111;
+  padding:12px;
+  box-shadow:0 16px 42px rgba(0,0,0,.14), 0 3px 10px rgba(0,0,0,.06);
+  z-index:260;
+  max-height:min(calc(100dvh - 120px), 560px);
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+#recordSortPopup.show{ display:block; }
+#recordSortPopup::after{content:none;display:none;}
+.recordSortPopupTitle{display:none;}
+.recordSortSwitchRow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:14px;background:#f3f3f3;margin-bottom:10px;}
+.recordSortSwitchLabel{font-size:calc(12px * var(--olli-text-scale));font-weight:650;color:#333;}
+.recordSortSwitch{width:43px;height:25px;border:none;border-radius:999px;background:#d8d8d8;padding:3px;display:inline-flex;align-items:center;justify-content:flex-start;cursor:pointer;}
+.recordSortSwitch.on{justify-content:flex-end;background:#0A84FF;}
+.recordSortSwitchKnob{width:19px;height:19px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18);}
+.recordSortCriteriaTitle{font-size:calc(11px * var(--olli-text-scale));font-weight:600;color:#8a8a8a;padding:0 2px 8px;}
+.recordSortCriteriaGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.recordSortChip{height:calc(34px * var(--olli-text-scale));border:none;border-radius:999px;background:#f2f2f2;color:#333;font-family:inherit;font-size:calc(12px * var(--olli-text-scale));font-weight:650;cursor:pointer;}
+.recordSortChip.active{background:#111;color:#fff;}
+.recordSortDivider{height:1px;background:#e9e9e9;margin:13px 0 12px;}
+.recordSortFeedbackTitle{font-size:calc(11px * var(--olli-text-scale));font-weight:600;color:#8a8a8a;padding:0 2px 8px;}
+.recordSortGroupIconGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:8px;}
+.recordSortGroupIconBtn{height:calc(34px * var(--olli-text-scale));border:none;border-radius:999px;background:#f2f2f2;color:#444;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;font-family:inherit;font-size:calc(12px * var(--olli-text-scale));font-weight:800;}
+.recordSortGroupIconBtn.active{background:#111;color:#fff;}
+.recordSortGroupLabel{display:inline-flex;align-items:center;justify-content:center;line-height:1;}
+.recordSortMonthHint{font-size:calc(11px * var(--olli-text-scale));line-height:1.35;color:#999;padding:2px 2px 0;}
+.recordSortMonthGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;}
+.recordSortMonthChip{height:calc(32px * var(--olli-text-scale));border:none;border-radius:999px;background:#f2f2f2;color:#666;font-family:inherit;font-size:calc(12px * var(--olli-text-scale));font-weight:700;cursor:pointer;}
+.recordSortMonthChip.active{background:#111;color:#fff;}
+
+/* 유치부 이름 앞 신호색 테두리 삭제 */
+.kinderSignalCircle,.memoSignalCircle,.kinderLeadIcon .kinderSignalCircle{
+  border:none;
+  box-shadow:none;
+}
+.kinderSignalCircle.level-1,.memoSignalCircle.level-1{border:none;}
+.kinderSignalCircle.level-2,.memoSignalCircle.level-2{border:none;}
+.kinderSignalCircle.level-3,.memoSignalCircle.level-3{border:none;}
+
+/* 2026-04-30 유치부 이름 앞 아이콘: 초등부 미그룹 아이콘과 동일 구조 */
+#recordRoomScreen .kinderStudentRow .kinderLeadIcon{
+  width:36px;
+  height:36px;
+  min-width:36px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  justify-self:start;
+  margin:0;
+  padding:0;
+  transform:none;
+  overflow:visible;
+  background:transparent;
+  line-height:1;
+}
+#recordRoomScreen .kinderStudentRow .kinderLeadHexSvg{
+  width:36px;
+  height:35px;
+  display:block;
+  overflow:visible;
+}
+
+#recordRoomScreen .kinderLeadSignalDot {
+  fill:transparent;
+}
+#recordRoomScreen .kinderLeadSignalDot.level-1 {
+  fill:#FFD88A;
+}
+#recordRoomScreen .kinderLeadSignalDot.level-2 {
+  fill:#FFCDB8;
+}
+#recordRoomScreen .kinderLeadSignalDot.level-3 {
+  fill:#FFB8B8;
+}
+
+.analysisSheetOverlay[style*="flex"] .analysisSheetPanel {
+  animation: vivizacSheetInFromBottom .28s cubic-bezier(.22,.61,.36,1) both;
+}
+
+.analysisResultSheetOverlay[style*="flex"] .analysisResultSheetPanel {
+  animation: vivizacSheetInFromBottom .28s cubic-bezier(.22,.61,.36,1) both;
+}
+
+.kinderStudentRow .studentTextWrap {
+  grid-column: 2;
+}
+
+.memoStudentMonthDivider::after {
+  content: '';
+  height: 1px;
+  flex: 1 1 auto;
+  background: rgba(255,255,255,.13);
+}
+
+.memoStudentManageChip {
+  border: none;
+  border-radius: 999px;
+  height: 30px;
+  min-height: 30px;
+  min-width: 0;
+  padding: 0 8px;
+  background: rgba(255,255,255,.10);
+  color: rgba(255,255,255,.74);
+  font-family: inherit;
+  font-size: calc(13px * 1.12 * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.memoStudentManageChip.active {
+  background: #fff;
+  color: #111;
+}
+
+.memoFeedbackArchiveCard .memoFeedbackArchiveCancelBtn {
+  display: none;
+}
+
+.memoFeedbackArchiveCard.editing .memoFeedbackArchiveCopyBtn {
+  display: none;
+}
+
+.memoFeedbackArchiveCard.editing .memoFeedbackArchiveCancelBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.elementaryTendencyGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.elementaryTendencyGroupBtn {
+  border: none;
+  border-radius: 999px;
+  background: #f3f3f3;
+  color: #444;
+  min-height: calc(32px * 1.20 * var(--olli-text-scale));
+  padding: 7px 12px;
+  font-size: calc(12px * 1.20 * var(--olli-text-scale));
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  line-height: 1.25;
+}
+
+@media (hover:hover) {
+.kinderStudentRow:hover:not(.studentRowSelected) {
+  background: #FEFEFE;
+}
+}
+
+.kinderStudentRow.studentRowSelected {
+  position: relative;
+  z-index: 46;
+  background: #fff;
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.14), 0 3px 10px rgba(0,0,0,0.08);
+}
+
+.kinderStudentRow:focus {
+  outline: none;
+  background: #fff;
+}
+
+.elementaryStudentRow:focus-visible {
+  outline: none;
+  background: #fff;
+}
+
+.kinderStudentRow:focus-visible {
+  outline: none;
+  background: #fff;
+}
+
+@media (hover:none) {
+.kinderStudentRow:hover:not(.studentRowSelected) {
+  background: #fff;
+}
+}
+
+@media (hover:none) {
+.elementaryStudentRow:active:not(.studentRowSelected) {
+  background: #fff;
+}
+}
+
+@media (hover:none) {
+.kinderStudentRow:active:not(.studentRowSelected) {
+  background: #fff;
+}
+}
+
+#studentMemoScreen #memoEditor {
+  background: #FEFEFE;
+  background-color: #FEFEFE;
+}
+
+#studentMemoScreen .memoInput {
+  background: #FEFEFE;
+  background-color: #FEFEFE;
+}
+
+#studentMemoScreen textarea {
+  background: #FEFEFE;
+  background-color: #FEFEFE;
+}
+
+.memoFeedbackRightActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#studentMemoScreen .memoBottomBar button {
+  pointer-events: auto;
+}
+
+#studentMemoScreen .memoModePill {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  height: 25px;
+  min-height: 25px;
+  padding: 0;
+  border-radius: 0;
+  color: #111;
+  font-size: calc(20px * var(--olli-text-scale));
+  font-weight: 440;
+  letter-spacing: -0.02em;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+#studentMemoScreen #memoBottomAnalysisBtn {
+  display: inline-flex;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#recordRoomScreen .elementaryStudentRow .elementaryDefaultNoGroupIcon {
+  grid-column: 1;
+  justify-self: start;
+  margin-left: 0;
+  transform: none;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  justify-content: center;
+}
+
+.sceneCardModalBody .sceneIconBox {
+  pointer-events: none;
+}
+
+.sceneCardModalBody .sceneTitle {
+  pointer-events: none;
+}
+
+.sceneCardModalBody .sceneBackMain {
+  pointer-events: none;
+}
+
+.sceneCardModalBody .sceneBackSub {
+  pointer-events: none;
+}
+
+.sceneCardModalBody .sceneBackKeywords {
+  pointer-events: none;
+}
+
+.sceneCardModalBody .sceneCard.flipped .sceneNumber {
+  display: none;
+}
+
+#studentMemoScreen .elementaryAnalysisHistoryGrid.elementaryAnalysisHistoryGridSingle {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  grid-template-columns: none;
+  background: transparent;
+}
+
+#studentMemoScreen .elementaryAnalysisHistoryCycleBtn {
+  -webkit-appearance: none;
+  appearance: none;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 0 auto;
+  min-height: calc(36px * var(--olli-text-scale));
+  padding: 7px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  border: 1px solid #F0F0F0;
+  border-radius: 22px;
+  background: #FEFEFE;
+  box-shadow: 0 14px 28px rgba(0,0,0,0.08), 0 4px 10px rgba(0,0,0,0.035);
+  box-sizing: border-box;
+  text-align: left;
+  cursor: pointer;
+}
+
+#studentMemoScreen .elementaryAnalysisHistoryCycleBtn .elementaryAnalysisHistoryLine {
+  width: auto;
+  max-width: 100%;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.35;
+  font-weight: 700;
+  color: #111;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  text-align: left;
+}
+
+@media (prefers-reduced-motion: reduce) {
+.pageScreen.vivizac-slide-out {
+  transition: none !important;
+}
+}
+
+@media (prefers-reduced-motion: reduce) {
+.analysisSheetPanel {
+  animation: none !important;
+  transition: none !important;
+}
+}
+
+@media (prefers-reduced-motion: reduce) {
+.analysisResultSheetPanel {
+  animation: none !important;
+  transition: none !important;
+}
+}
+
+@media (prefers-reduced-motion: reduce) {
+.memoFeedbackArchiveSheet {
+  animation: none !important;
+}
+}
+
+#studentMemoScreen .elementaryAnalysisSummaryIcon:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+#studentMemoScreen .elementaryAnalysisSummaryIcon:active {
+  outline: none;
+  box-shadow: none;
+}
+
+.savedFeedbackStudentLeft .elementaryDefaultNoGroupIcon {
+  margin-left: -10px;
+}
+
+.savedFeedbackStudentLeft .elementaryEmptyCircle {
+  margin-left: -10px;
+}
+
+.savedFeedbackStudentLeft .recordBoardLeadIcon {
+  margin-left: -10px;
+}
+
+#recordRoomScreen .savedFeedbackStudentBlock.open .savedFeedbackStudentHead::after {
+  content: "";
+  display: none;
+}
+
+.attendancePhotoCandidateSelect {
+  width: 100%;
+  height: 38px;
+  border: none;
+  border-radius: 14px;
+  background: #f6f6f4;
+  color: #111;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-family: inherit;
+  padding: 0 11px;
+  outline: none;
+}
+
+.studentBulkCandidateSelect {
+  width: 100%;
+  height: 38px;
+  border: none;
+  border-radius: 14px;
+  background: #f6f6f4;
+  color: #111;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-family: inherit;
+  padding: 0 11px;
+  outline: none;
+}
+
+.olliInfoCard {
+  border-radius: 30px;
+  background: #fff;
+  padding: 18px;
+  margin-bottom: 12px;
+  box-shadow: 0 14px 34px rgba(0,0,0,.065), 0 4px 10px rgba(0,0,0,.025);
+}
+
+#settingsPageScreen .settingsBadge {
+  font-weight: 500;
+}
+
+#settingsPageScreen .settingsApprovalBadge {
+  font-weight: 500;
+}
+
+#settingsPageScreen .settingsStatusBadge {
+  font-weight: 500;
+}
+
+#settingsPageScreen .settingsActionBtn {
+  font-weight: 500;
+}
+
+#settingsPageScreen .settingsExportBtn {
+  font-weight: 500;
+}
+
+#settingsPageScreen .settingsInfoHead {
+  font-weight: 500;
+}
+
+#settingsPageScreen .settingsRoleName {
+  font-weight: 500;
+}
+
+#settingsPageScreen .settingsRequestName {
+  font-weight: 500;
+}
+
+#settingsPageScreen .settingsTeacherName {
+  font-weight: 500;
+}
+
+#settingsPageScreen .settingsInfoItem {
+  font-weight: 500;
+}
+
+#settingsPageScreen .settingsRoleItem {
+  font-weight: 500;
+}
+
+#settingsPageScreen .settingsRequestMeta div {
+  font-weight: 500;
+}
+
+#settingsPageScreen .settingsTeacherMeta div {
+  font-weight: 500;
+}
+
+#olliLoginEntryScreen .olliEntrySimpleActions .olliSecondaryBtn {
+  margin-top: 0;
+  font-size: calc(13px * var(--olli-text-scale));
+}
+
+#recordRoomScreen .savedFeedbackStudentLeft .studentTextWrap {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  overflow: visible;
+}
+
+#recordRoomScreen .kinderStudentRow .studentTextWrap > span:first-child {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1.2;
+  letter-spacing: normal;
+}
+
+#recordRoomScreen .savedFeedbackStudentLeft .recordStudentName {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1.2;
+  letter-spacing: normal;
+}
+
+#recordRoomScreen .kinderStudentRow .studentMetaText {
+  display: block;
+  max-width: 72vw;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.04em;
+  color: #8f8f8f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#recordRoomScreen .savedFeedbackStudentLeft .studentMetaText {
+  display: block;
+  max-width: 72vw;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.04em;
+  color: #8f8f8f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#recordRoomScreen .kinderStudentRow.studentStatusPaused .studentTextWrap > span:first-child {
+  color: #aaa;
+}
+
+#recordRoomScreen .elementaryStudentRow.studentStatusPaused .studentMetaText {
+  color: #aaa;
+}
+
+#recordRoomScreen .kinderStudentRow.studentStatusPaused .studentMetaText {
+  color: #aaa;
+}
+
+#recordRoomScreen .kinderStudentRow.studentStatusWithdrawn .studentTextWrap > span:first-child {
+  color: #aaa;
+}
+
+#recordRoomScreen .elementaryStudentRow.studentStatusWithdrawn .studentMetaText {
+  color: #aaa;
+}
+
+#recordRoomScreen .kinderStudentRow.studentStatusWithdrawn .studentMetaText {
+  color: #aaa;
+}
+
+#memoStudentSelectPopup .memoStudentMonthDivider {
+  display: none;
+}
+
+#memoStudentSelectPopup .memoStudentInfoDotsBtn {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: rgba(255,255,255,.78);
+}
+
+#memoStudentSelectPopup .memoStudentInfoDotsBtn:active {
+  background: transparent;
+}
+
+
+/* 공통 뒤로가기 아이콘: 관찰노트 메모장 memoRosterBackIcon을 학원관리/Work에서도 그대로 사용 */
+.memoRosterBackIcon{
+  position:relative;
+  display:block;
+  width:24px;
+  height:24px;
+  flex:0 0 24px;
+  color:#111;
+  pointer-events:none;
+}
+.memoRosterBackIcon::before,
+.memoRosterBackIcon::after{
+  content:"";
+  position:absolute;
+  left:4.5px;
+  top:10px;
+  width:15px;
+  height:2.25px;
+  border-radius:999px;
+  background:currentColor;
+  transform-origin:1px 1.125px;
+}
+.memoRosterBackIcon::before{ transform:rotate(-45deg); }
+.memoRosterBackIcon::after{ transform:rotate(45deg); }

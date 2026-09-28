@@ -1,0 +1,508 @@
+
+/* 학원 관리 대시보드 + 상담 개월 설정 */
+#recordRoomScreen.record-academy-management-mode .recordModeLabelRow,
+#recordRoomScreen.record-academy-management-mode .recordRoomScreenFloatingBar {
+  display: none;
+}
+#recordAcademyManageBtn.active,
+#recordAttendanceDashboardBtn.active {
+  background: #111;
+  color: #fff;
+}
+.recordAcademyDashboard {
+  display: none;
+  padding: 6px 10px 120px;
+}
+.recordAcademyDashboard.show {
+  display: block;
+}
+.recordAcademyDashboardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 2px 0 14px;
+}
+.recordAcademyDashboardTitle {
+  font-size: calc(22px * var(--olli-text-scale));
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #111;
+  line-height: 1.1;
+}
+.recordAcademyStatGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0 14px;
+}
+.recordAcademyStatCard {
+  min-height: 106px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 22px;
+  padding: 15px 14px;
+  display: block;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.045);
+}
+.recordAcademyStatLabel {
+  font-size: calc(12px * var(--olli-text-scale));
+  color: #8f8f8f;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  transform: translateX(4px);
+}
+.recordAcademyStatBody {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+.recordAcademyStatValue {
+  font-size: calc(42px * var(--olli-text-scale));
+  font-weight: 400;
+  line-height: 0.95;
+  color: #111;
+  letter-spacing: -0.055em;
+  flex: 0 0 auto;
+  transform: translateX(4px);
+}
+.recordAcademyStatSub {
+  margin-top: 0;
+  margin-left: auto;
+  width: 72px;
+  flex: 0 0 72px;
+  font-size: calc(11px * var(--olli-text-scale));
+  color: #9b9b9b;
+  line-height: 1.32;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  text-align: left;
+}
+.recordAcademyStatRight {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 60px;
+  justify-content: flex-end;
+}
+.recordAcademyStatRight.split {
+  align-items: center;
+  gap: 7px;
+}
+.recordAcademyDelta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 800;
+  line-height: 1;
+  color: #5a63f0;
+}
+.recordAcademyDelta.up { color: #ff5c65; }
+.recordAcademyDelta.flat { color: #b0b0b0; }
+.recordAcademyMiniBars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 34px;
+}
+.recordAcademyMiniBar {
+  width: 11px;
+  border-radius: 8px;
+  background: #e5e5e5;
+  display: block;
+}
+.recordAcademyMiniBar.emphasis {
+  background: #5a63f0;
+}
+.recordAcademyDelta.up + .recordAcademyMiniBars .recordAcademyMiniBar.emphasis {
+  background: #ff6b74;
+}
+.recordAcademySplitLegend {
+  display: grid;
+  gap: 4px;
+  font-size: calc(10px * var(--olli-text-scale));
+  font-weight: 800;
+  color: #8f8f8f;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-align: right;
+}
+.recordAcademyPanel {
+  border-radius: 24px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  padding: 16px 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.04);
+}
+.recordAcademyConsultSection {
+  margin-bottom: 12px;
+}
+.recordAcademyPanelTitle {
+  font-size: calc(15px * var(--olli-text-scale));
+  font-weight: 750;
+  color: #111;
+  letter-spacing: -0.04em;
+  margin-bottom: 10px;
+}
+.recordAcademyList {
+  display: grid;
+  gap: 7px;
+}
+.recordAcademyListItem {
+  min-height: 38px;
+  border-radius: 14px;
+  background: #f8f8f8;
+  padding: 9px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.recordAcademyListName {
+  min-width: 0;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 400;
+  color: #111;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recordAcademyListMeta {
+  flex: 0 0 auto;
+  font-size: calc(11px * var(--olli-text-scale));
+  font-weight: 500;
+  color: #909090;
+  white-space: nowrap;
+}
+.recordAcademyChipRow {
+  flex: 0 1 auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.recordAcademyInfoChip {
+  min-height: 23px;
+  border-radius: 999px;
+  background: #f2f2f2;
+  color: #777;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10.5px * var(--olli-text-scale));
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+.recordAcademyInfoChip.recordAcademyRuleChip {
+  background: #fff;
+  color: #8e8e93;
+  font-weight: 400;
+}
+.recordAcademyConsultListItem {
+  align-items: center;
+}
+.recordAcademyConsultStudentMain {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+}
+.recordAcademyConsultStudentMain .recordAcademyChipRow {
+  justify-content: flex-start;
+}
+.recordAcademyConsultFeedbackBtn {
+  flex: 0 0 auto;
+  height: 27px;
+  border: 1px solid rgba(10,132,255,0.18);
+  border-radius: 999px;
+  background: #fff;
+  color: #0A84FF;
+  padding: 0 9px;
+  font-size: calc(10.5px * var(--olli-text-scale));
+  font-weight: 800;
+  font-family: inherit;
+  letter-spacing: -0.04em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.recordAcademyConsultFeedbackBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.recordAcademyConsultStatusChip {
+  flex: 0 0 auto;
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10.5px * var(--olli-text-scale));
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+  border: none;
+  background: #f7f7f7;
+  color: #777;
+}
+.recordAcademyConsultStatusChip.ready {
+  background: #fff;
+  color: #0A84FF;
+}
+.recordAcademyConsultStatusChip.generating,
+.recordAcademyConsultStatusChip.checking {
+  background: #fffdf6;
+  color: #b58a19;
+}
+.recordAcademyConsultStatusChip.insufficient {
+  background: #fafafa;
+  color: #8e8e93;
+}
+.recordAcademyConsultStatusChip.error {
+  background: #fff8f7;
+  color: #d6483a;
+}
+.recordAcademyConsultActions {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.recordAcademyConsultCompleteBtn {
+  flex: 0 0 auto;
+  min-height: 24px;
+  border: 1px solid rgba(142,142,147,0.18);
+  border-radius: 999px;
+  background: #fafafa;
+  color: #8e8e93;
+  padding: 0 9px;
+  font-family: inherit;
+  font-size: calc(10.5px * var(--olli-text-scale));
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.recordAcademyConsultCompleteBtn.active {
+  border-color: #111;
+  background: #111;
+  color: #fff;
+}
+.recordAcademyConsultCompleteBtn:focus,
+.recordAcademyConsultCompleteBtn:focus-visible {
+  outline: none;
+}
+.recordAcademyConsultListItem {
+  cursor: pointer;
+}
+.recordAcademyConsultPreview {
+  margin: -2px 0 6px;
+  padding: 12px 13px;
+  border-radius: 14px;
+  background: #fafafa;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+.recordAcademyConsultPreviewTitle {
+  margin-bottom: 7px;
+  color: #333;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+.recordAcademyConsultPreviewText {
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: #555;
+  font-size: calc(12px * var(--olli-text-scale));
+  line-height: 1.65;
+  letter-spacing: -0.035em;
+}
+.recordAcademyConsultPreviewText.muted {
+  color: #9a9a9a;
+  font-weight: 700;
+}
+.recordAcademyMiniBar.elementary {
+  background: #0A84FF;
+}
+.recordAcademyMiniBar.kinder {
+  background: #ff6b74;
+}
+.recordAcademyRatioBar {
+  width: 100%;
+  height: 7px;
+  margin-top: 9px;
+  border-radius: 999px;
+  background: #eeeeee;
+  overflow: hidden;
+  display: flex;
+}
+.recordAcademyRatioSegment {
+  height: 100%;
+  display: block;
+}
+.recordAcademyRatioSegment.elementary {
+  background: #0A84FF;
+}
+.recordAcademyRatioSegment.kinder {
+  background: #ff6b74;
+}
+.recordAcademyConsultGroups {
+  display: grid;
+  gap: 10px;
+}
+.recordAcademyConsultGroup {
+  display: grid;
+  gap: 7px;
+}
+.recordAcademyConsultGroup + .recordAcademyConsultGroup {
+  padding-top: 10px;
+}
+.recordAcademyConsultGroupTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px 2px 1px;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 400;
+  color: #777;
+  letter-spacing: -0.03em;
+}
+.recordAcademyConsultGroupCount {
+  flex: 0 0 auto;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f1f1f1;
+  color: #777;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10.5px * var(--olli-text-scale));
+  font-weight: 800;
+}
+.recordAcademyConsultGroupEmpty {
+  min-height: 36px;
+  border-radius: 14px;
+  background: #fafafa;
+  color: #aaa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(11px * var(--olli-text-scale));
+  font-weight: 700;
+}
+.settingsMonthGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+.settingsMonthOption {
+  min-height: 42px;
+  border: 0;
+  border-radius: 14px;
+  background: #f1f1f1;
+  color: #555;
+  font-family: inherit;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 800;
+  cursor: pointer;
+}
+.settingsMonthOption.active {
+  background: #111;
+  color: #fff;
+}
+.settingsGroupFeedbackBlock {
+  display: grid;
+  gap: 10px;
+  padding: 14px 0 16px;
+}
+.settingsGroupFeedbackBlock + .settingsGroupFeedbackBlock {
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+.settingsGroupFeedbackHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.settingsGroupFeedbackTabs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.settingsGroupFeedbackTab {
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-radius: 14px;
+  background: #f1f1f1;
+  color: #555;
+  font-family: inherit;
+  font-size: calc(15px * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.settingsGroupFeedbackTab.active {
+  background: #111;
+  color: #fff;
+}
+.settingsGroupFeedbackTitle {
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 800;
+  color: #111;
+  letter-spacing: -0.03em;
+}
+.settingsGroupFeedbackMonths {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+.settingsGroupFeedbackMonth {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border: 0;
+  border-radius: 14px;
+  background: #f1f1f1;
+  color: #555;
+  font-family: inherit;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.settingsGroupFeedbackMonth.active {
+  background: #111;
+  color: #fff;
+}
+
+/* integrated cleanup: olliAcademyManagementFinalTweakStyle */
+#recordRoomScreen.record-academy-management-mode .recordRoomScreenFloatingBar {
+  display: none;
+}

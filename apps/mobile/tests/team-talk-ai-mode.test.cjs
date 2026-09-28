@@ -1,0 +1,79 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+
+const talk = fs.readFileSync('olli-talk-beta.js', 'utf8');
+const api = fs.readFileSync('api/chat.js', 'utf8');
+const html = fs.readFileSync('index.html', 'utf8');
+
+test('phone composer removes the Bot trigger while keeping explicit @올리 routing', () => {
+  assert.doesNotMatch(html, /id="olliTalkOlliTriggerBtn"/);
+  assert.doesNotMatch(talk, /toggleOlliTalkOlliMode/);
+  assert.ok(talk.includes("const olliRequested = /^\\s*@올리(?:\\s|$)/.test(rawBody);"));
+  assert.match(talk, /const usingAi = isOlliTalkAiEnabled\(\)|const usingAi=isOlliTalkAiEnabled\(\)/);
+  assert.match(talk, /resolveOlliTalkAiTurn/);
+  assert.match(talk, /resolveOlliTalkBotTurn/);
+});
+
+test('phone AI request keeps the session token but no longer depends on a button-selected conversation mode', () => {
+  assert.match(talk, /sessionToken:context\?\.sessionToken \|\| ''/);
+  assert.doesNotMatch(talk, /olliTalkAiConversationMessages/);
+  assert.match(talk, /messages:\[\{ role:'user', content:String\(commandText \|\| ''\)\.trim\(\) \}\]/);
+});
+
+test('AI server accepts talk prompt only after Team Talk AI setting check', () => {
+  assert.match(api, /'talk',\s*\]\);/);
+  assert.match(api, /if \(promptType === 'talk'\) \{\s*await assertTeamTalkAiEnabled\(body\);/);
+  assert.match(api, /data\?\.ai_enabled !== true/);
+});
+
+test('normal phone messages keep mention and task creation behavior', () => {
+  assert.match(talk, /if \(!olliRequested && mentionedIds\.length\)/);
+  assert.match(talk, /if \(!olliRequested\) \{[\s\S]{0,450}parseOlliTalkTaskItems/);
+});
+
+test('button-bound Olli mode code is removed and direct @올리 parsing remains', () => {
+  assert.doesNotMatch(talk, /setOlliTalkOlliMode/);
+  assert.doesNotMatch(talk, /olliTalkOlliModeActive/);
+  assert.doesNotMatch(talk, /window\.toggleOlliTalkOlliMode/);
+  assert.match(talk, /function stripOlliTalkOlliPrefix\(value\)/);
+});
+
+test('AI setting changes only clear pending assistant action state', () => {
+  assert.match(talk, /function handleOlliTalkAiModeChanged\(\)\{[\s\S]*olliTalkPendingActionReason = null;/);
+  assert.doesNotMatch(talk, /syncOlliTalkAssistantUi/);
+  assert.doesNotMatch(talk, /recordOlliTalkAiConversationTurn/);
+});
+
+test('phone shows the saved user bubble immediately and only AI gets the animated typing indicator', () => {
+  assert.match(talk, /appendOlliTalkPersistedMessage\(payload\.message, context\.memberId\)/);
+  assert.match(talk, /if \(olliRequested && isOlliTalkAiEnabled\(\)\) \{[\s\S]{0,140}olliTalkAssistantReplyPending = true;[\s\S]{0,140}syncOlliTalkAssistantTypingIndicator\(\)/);
+  assert.doesNotMatch(talk, /if \(olliRequested\) \{\s*olliTalkAssistantReplyPending = true/);
+  assert.match(talk, /finally \{[\s\S]{0,140}olliTalkAssistantReplyPending = false;[\s\S]{0,140}syncOlliTalkAssistantTypingIndicator\(\)/);
+  assert.match(talk, /className = 'olliTalkBetaTypingDot'/);
+});
+
+test('phone swaps the AI typing row directly into the saved AI bubble without rebuilding the chat list', () => {
+  assert.match(talk, /const assistantMessage = await saveOlliTalkOlliReply/);
+  assert.match(talk, /replaceOlliTalkAssistantTypingWithMessage\(assistantMessage, context\.memberId\)/);
+  assert.match(talk, /loadOlliTalkBetaMessages\(\{ showLoading:false, localFirst:false, scrollMode:'bottom', render:false \}\)/);
+  assert.match(talk, /if \(options\.render !== false\) \{\s*renderOlliTalkServerMessages/);
+});
+
+test('phone mention mode keeps @ active until a selected teacher has actual message text', () => {
+  assert.match(talk, /let olliTalkMentionModeActive = false/);
+  assert.match(talk, /const canSend = olliTalkMentionModeActive \? isOlliTalkMentionMessageReady\(\) : hasText/);
+  assert.match(talk, /hasOlliTalkSelectedMentionInInput\(input\.value\)[\s\S]{0,120}getOlliTalkMentionMessageText\(input\.value\)\.length > 0/);
+  assert.match(talk, /trigger\.classList\.toggle\('active', olliTalkMentionModeActive\)/);
+});
+
+test('pressing active @ before message text cancels mention, clears the mention draft and dismisses keyboard', () => {
+  assert.match(talk, /if \(olliTalkMentionModeActive && !isOlliTalkMentionMessageReady\(\)\) \{[\s\S]*clearOlliTalkMentionDraft\(\);[\s\S]*olliTalkMentionModeActive = false;[\s\S]*input\.blur\(\)/);
+  assert.match(talk, /olliTalkMentionSelections\.clear\(\)/);
+});
+
+test('phone bot exposes pickup write capability and refreshes shared command runtime versions', () => {
+  assert.match(talk, /픽업·하원 픽업 등록/);
+  assert.match(html, /olli-command-schedule-common\.js\?v=20260921-pickup-write-1/);
+  assert.match(html, /olli-command-router-common\.js\?v=20260921-pickup-write-1/);
+});
