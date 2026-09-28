@@ -63,3 +63,31 @@ test('Common observation memo core still owns flushMemoAutoSave', () => {
   const common = fs.readFileSync(path.join(COMMON, 'observation-memo-common.js'), 'utf8');
   assert.match(common, /function flushMemoAutoSave\(\)/);
 });
+
+
+test('local-first start-page routing settles page ownership before background record refresh', () => {
+  const adapter = fs.readFileSync(path.join(MOBILE, 'olli-auth-entry-phone-adapter.js'), 'utf8');
+  const startup = fs.readFileSync(path.join(MOBILE, 'olli-app-startup.js'), 'utf8');
+
+  assert.match(adapter, /'observationRosterScreen'/);
+  assert.match(adapter, /'kinderChatFeedbackScreen'/);
+  assert.match(adapter, /'recordRoomScreen'/);
+  assert.match(adapter, /'olliTalkBetaScreen'/);
+  assert.match(adapter, /'olliTalkArchiveScreen'/);
+  assert.match(adapter, /setObservationPersistentNavVisible\(false\)/);
+  assert.match(adapter, /setKinderChatFeedbackPersistentTopVisible\(false\)/);
+
+  const observationRoute = adapter.slice(
+    adapter.indexOf("if (normalized === 'observation_note')"),
+    adapter.indexOf("if (normalized === 'kinder_attendance')")
+  );
+  assert.match(observationRoute, /if \(localFirst\)[\s\S]*?const recordOpen = showRecordRoom\(\{ localOnly: true \}\);[\s\S]*?openObservationNoteFromRecord\(\);[\s\S]*?return true;/);
+  assert.doesNotMatch(observationRoute, /if \(localFirst\)[\s\S]*?await showRecordRoom/);
+
+  const recordResume = startup.slice(
+    startup.indexOf("case 'recordRoomScreen':"),
+    startup.indexOf('return false;', startup.indexOf("case 'recordRoomScreen':")) + 'return false;'.length
+  );
+  assert.match(recordResume, /const recordOpen = showRecordRoom\(\{ localOnly: true \}\);/);
+  assert.doesNotMatch(recordResume, /await showRecordRoom\(\{ localOnly: true \}\)/);
+});
