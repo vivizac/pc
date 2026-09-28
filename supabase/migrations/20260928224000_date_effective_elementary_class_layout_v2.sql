@@ -1,9 +1,6 @@
 begin;
 
 -- Date-effective elementary A/B class layout v2.
--- Transitional and backward-compatible: legacy class_splits remains in read responses,
--- while class_split_periods is the canonical date-aware contract.
-
 alter table public.olli_schedule_class_splits
   add column if not exists effective_from date,
   add column if not exists effective_to date;
@@ -12,372 +9,130 @@ update public.olli_schedule_class_splits
 set effective_from = (created_at at time zone 'Asia/Seoul')::date
 where effective_from is null;
 
+alter table public.olli_schedule_class_splits alter column effective_from set not null;
+alter table public.olli_schedule_class_splits drop constraint if exists olli_schedule_class_splits_pkey;
 alter table public.olli_schedule_class_splits
-  alter column effective_from set not null;
-
+  add constraint olli_schedule_class_splits_pkey primary key (academy_id, weekday, time_slot, effective_from);
+alter table public.olli_schedule_class_splits drop constraint if exists olli_schedule_class_splits_effective_range_check;
 alter table public.olli_schedule_class_splits
-  drop constraint if exists olli_schedule_class_splits_pkey;
-
-alter table public.olli_schedule_class_splits
-  add constraint olli_schedule_class_splits_pkey
-  primary key (academy_id, weekday, time_slot, effective_from);
-
-alter table public.olli_schedule_class_splits
-  drop constraint if exists olli_schedule_class_splits_effective_range_check;
-
-alter table public.olli_schedule_class_splits
-  add constraint olli_schedule_class_splits_effective_range_check
-  check (effective_to is null or effective_to >= effective_from);
-
+  add constraint olli_schedule_class_splits_effective_range_check check (effective_to is null or effective_to >= effective_from);
 create index if not exists olli_schedule_class_splits_lookup_idx
   on public.olli_schedule_class_splits (academy_id, weekday, time_slot, effective_from, effective_to);
 
-create or replace function private.olli_schedule_weekday_on_or_after(
-  p_effective_date date,
-  p_weekday integer
-)
-returns date
-language sql
-immutable
-security invoker
-set search_path = ''
+create or replace function private.olli_schedule_weekday_on_or_after(p_effective_date date, p_weekday integer)
+returns date language sql immutable security invoker set search_path = ''
 as $$
-  select case
-    when p_effective_date is null or p_weekday not between 1 and 7 then null
-    else p_effective_date + ((p_weekday - extract(isodow from p_effective_date)::integer + 7) % 7)
-  end;
+  select case when p_effective_date is null or p_weekday not between 1 and 7 then null
+  else p_effective_date + ((p_weekday - extract(isodow from p_effective_date)::integer + 7) % 7) end;
 $$;
 
 create or replace function private.olli_schedule_class_split_at(
-  p_academy_id uuid,
-  p_weekday integer,
-  p_time_slot integer,
-  p_session_date date
+  p_academy_id uuid, p_weekday integer, p_time_slot integer, p_session_date date
 )
-returns boolean
-language sql
-stable
-security definer
-set search_path = ''
+returns boolean language sql stable security definer set search_path = ''
 as $$
   select p_session_date is not null and exists (
-    select 1
-    from public.olli_schedule_class_splits s
-    where s.academy_id = p_academy_id
-      and s.weekday = p_weekday
-      and s.time_slot = p_time_slot
-      and s.effective_from <= p_session_date
-      and (s.effective_to is null or s.effective_to >= p_session_date)
+    select 1 from public.olli_schedule_class_splits s
+    where s.academy_id=p_academy_id and s.weekday=p_weekday and s.time_slot=p_time_slot
+      and s.effective_from<=p_session_date and (s.effective_to is null or s.effective_to>=p_session_date)
   );
 $$;
 
 create or replace function private.olli_schedule_group_is_enabled(
-  p_academy_id uuid,
-  p_division text,
-  p_weekday integer,
-  p_time_slot integer,
-  p_target_date date
+  p_academy_id uuid, p_division text, p_weekday integer, p_time_slot integer, p_target_date date
 )
-returns boolean
-language sql
-stable
-security definer
-set search_path = ''
+returns boolean language sql stable security definer set search_path = ''
 as $$
-  select case
-    when coalesce(p_division, 'elementary') = 'kinder' then true
-    when p_target_date is null then false
-    else private.olli_schedule_class_split_at(
-      p_academy_id, p_weekday, p_time_slot, p_target_date
-    )
-  end;
+  select coalesce(p_division,'elementary')='kinder'
+    or private.olli_schedule_class_split_at(p_academy_id,p_weekday,p_time_slot,p_target_date);
 $$;
 
--- Temporary compatibility overload. New server and clients must use the 5-argument contract.
 create or replace function private.olli_schedule_group_is_enabled(
-  p_academy_id uuid,
-  p_division text,
-  p_weekday integer,
-  p_time_slot integer
+  p_academy_id uuid, p_division text, p_weekday integer, p_time_slot integer
 )
-returns boolean
-language sql
-stable
-security definer
-set search_path = ''
+returns boolean language sql stable security definer set search_path = ''
 as $$
-  select private.olli_schedule_group_is_enabled(
-    p_academy_id, p_division, p_weekday, p_time_slot, current_date
-  );
+  select private.olli_schedule_group_is_enabled(p_academy_id,p_division,p_weekday,p_time_slot,current_date);
 $$;
-
-create or replace function private.olli_schedule_validate_class_split_period()
-returns trigger
-language plpgsql
-security definer
-set search_path = ''
-as $$
-begin
-  if exists (
-    select 1
-    from public.olli_schedule_class_splits s
-    where s.academy_id = new.academy_id
-      and s.weekday = new.weekday
-      and s.time_slot = new.time_slot
-      and s.effective_from <= coalesce(new.effective_to, date '9999-12-31')
-      and coalesce(s.effective_to, date '9999-12-31') >= new.effective_from
-      and (tg_op <> 'UPDATE' or s.ctid <> old.ctid)
-  ) then
-    raise exception using errcode = '23514', message = 'CLASS_LAYOUT_CONFLICT';
-  end if;
-  return new;
-end;
-$$;
-
-drop trigger if exists olli_schedule_class_split_period_guard on public.olli_schedule_class_splits;
-create trigger olli_schedule_class_split_period_guard
-before insert or update on public.olli_schedule_class_splits
-for each row execute function private.olli_schedule_validate_class_split_period();
 
 
 create or replace function public.olli_schedule_split_class(
-  p_session_token text,
-  p_academy_id uuid,
-  p_weekday integer,
-  p_time_slot integer,
-  p_effective_date date
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path = ''
+ p_session_token text,p_academy_id uuid,p_weekday integer,p_time_slot integer,p_effective_date date
+) returns jsonb language plpgsql security definer set search_path = ''
 as $$
-declare
-  v_account_id uuid;
-  v_next_split date;
-  v_previous_from date;
-  v_previous_to date;
+declare v_account_id uuid; v_next_split date;
 begin
-  if not private.olli_schedule_can_access(p_session_token, p_academy_id) then
-    return jsonb_build_object('ok', false, 'message', '클래스를 분리할 권한이 없습니다.');
-  end if;
-  if p_effective_date is null then
-    return jsonb_build_object('ok', false, 'code', 'TARGET_DATE_REQUIRED', 'message', '분반 적용일을 확인해 주세요.');
-  end if;
-  if p_weekday not between 1 and 6 or p_time_slot not between 1 and 6 then
-    return jsonb_build_object('ok', false, 'message', '분리할 요일과 시간을 확인해 주세요.');
-  end if;
-  if extract(isodow from p_effective_date)::integer <> p_weekday then
-    return jsonb_build_object('ok', false, 'code', 'DATE_WEEKDAY_MISMATCH', 'message', '분반 적용일과 요일이 일치하지 않습니다.');
-  end if;
-  if p_effective_date < current_date then
-    return jsonb_build_object('ok', false, 'message', '지난 날짜의 반 구성을 변경할 수 없습니다.');
-  end if;
-
-  perform pg_advisory_xact_lock(hashtextextended(
-    p_academy_id::text || ':class-layout:' || p_weekday::text || ':' || p_time_slot::text, 0
-  ));
-
-  if private.olli_schedule_class_split_at(p_academy_id, p_weekday, p_time_slot, p_effective_date) then
-    return jsonb_build_object('ok', true, 'result', 'unchanged', 'weekday', p_weekday, 'time_slot', p_time_slot, 'effective_date', p_effective_date);
-  end if;
-
-  select min(s.effective_from)
-    into v_next_split
-  from public.olli_schedule_class_splits s
-  where s.academy_id = p_academy_id
-    and s.weekday = p_weekday
-    and s.time_slot = p_time_slot
-    and s.effective_from > p_effective_date;
-
-  select s.effective_from, s.effective_to
-    into v_previous_from, v_previous_to
-  from public.olli_schedule_class_splits s
-  where s.academy_id = p_academy_id
-    and s.weekday = p_weekday
-    and s.time_slot = p_time_slot
-    and s.effective_to = p_effective_date - 1
-  order by s.effective_from desc
-  limit 1
-  for update;
-
-  if v_previous_from is not null then
-    update public.olli_schedule_class_splits
-       set effective_to = case when v_next_split is null then null else v_next_split - 1 end
-     where academy_id = p_academy_id
-       and weekday = p_weekday
-       and time_slot = p_time_slot
-       and effective_from = v_previous_from;
-  else
-    v_account_id := public.olli_account_id_from_session(p_session_token);
-    insert into public.olli_schedule_class_splits (
-      academy_id, weekday, time_slot, effective_from, effective_to, created_by_account_id
-    ) values (
-      p_academy_id, p_weekday, p_time_slot, p_effective_date,
-      case when v_next_split is null then null else v_next_split - 1 end,
-      v_account_id
-    );
-  end if;
-
-  return jsonb_build_object('ok', true, 'result', 'split', 'weekday', p_weekday, 'time_slot', p_time_slot, 'effective_date', p_effective_date);
-exception
-  when check_violation then
-    return jsonb_build_object('ok', false, 'code', 'CLASS_LAYOUT_CONFLICT', 'message', '반 구성 기간이 다른 변경과 충돌했습니다. 다시 시도해 주세요.');
-end;
-$$;
+ if not private.olli_schedule_can_access(p_session_token,p_academy_id) then return jsonb_build_object('ok',false,'message','클래스를 분리할 권한이 없습니다.'); end if;
+ if p_effective_date is null then return jsonb_build_object('ok',false,'code','TARGET_DATE_REQUIRED','message','분반 적용일을 확인해 주세요.'); end if;
+ if p_weekday not between 1 and 6 or p_time_slot not between 1 and 6 then return jsonb_build_object('ok',false,'message','분리할 요일과 시간을 확인해 주세요.'); end if;
+ if extract(isodow from p_effective_date)::integer<>p_weekday then return jsonb_build_object('ok',false,'code','DATE_WEEKDAY_MISMATCH','message','분반 적용일과 요일이 일치하지 않습니다.'); end if;
+ if p_effective_date<current_date then return jsonb_build_object('ok',false,'message','지난 날짜의 반 구성을 변경할 수 없습니다.'); end if;
+ perform pg_advisory_xact_lock(hashtextextended(p_academy_id::text||':class-layout:'||p_weekday::text||':'||p_time_slot::text,0));
+ if private.olli_schedule_class_split_at(p_academy_id,p_weekday,p_time_slot,p_effective_date) then return jsonb_build_object('ok',true,'result','unchanged','effective_date',p_effective_date); end if;
+ select min(s.effective_from) into v_next_split from public.olli_schedule_class_splits s
+ where s.academy_id=p_academy_id and s.weekday=p_weekday and s.time_slot=p_time_slot and s.effective_from>p_effective_date;
+ v_account_id:=public.olli_account_id_from_session(p_session_token);
+ insert into public.olli_schedule_class_splits(academy_id,weekday,time_slot,effective_from,effective_to,created_by_account_id)
+ values(p_academy_id,p_weekday,p_time_slot,p_effective_date,case when v_next_split is null then null else v_next_split-1 end,v_account_id);
+ return jsonb_build_object('ok',true,'result','split','weekday',p_weekday,'time_slot',p_time_slot,'effective_date',p_effective_date);
+exception when unique_violation then
+ return jsonb_build_object('ok',false,'code','CLASS_LAYOUT_CONFLICT','message','반 구성 변경이 충돌했습니다. 다시 시도해 주세요.');
+end; $$;
 
 create or replace function public.olli_schedule_merge_class(
-  p_session_token text,
-  p_academy_id uuid,
-  p_weekday integer,
-  p_time_slot integer,
-  p_effective_date date
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path = ''
+ p_session_token text,p_academy_id uuid,p_weekday integer,p_time_slot integer,p_effective_date date
+) returns jsonb language plpgsql security definer set search_path = ''
 as $$
-declare
-  v_period_from date;
-  v_period_to date;
-  v_regular integer := 0;
-  v_one_time integer := 0;
-  v_waitlist integer := 0;
-  v_changes integer := 0;
+declare v_from date; v_to date; v_regular integer:=0; v_one_time integer:=0; v_waitlist integer:=0; v_changes integer:=0;
 begin
-  if not private.olli_schedule_can_access(p_session_token, p_academy_id) then
-    return jsonb_build_object('ok', false, 'message', '클래스를 통합할 권한이 없습니다.');
-  end if;
-  if p_effective_date is null then
-    return jsonb_build_object('ok', false, 'code', 'TARGET_DATE_REQUIRED', 'message', '합반 적용일을 확인해 주세요.');
-  end if;
-  if p_weekday not between 1 and 6 or p_time_slot not between 1 and 6 then
-    return jsonb_build_object('ok', false, 'message', '통합할 요일과 시간을 확인해 주세요.');
-  end if;
-  if extract(isodow from p_effective_date)::integer <> p_weekday then
-    return jsonb_build_object('ok', false, 'code', 'DATE_WEEKDAY_MISMATCH', 'message', '합반 적용일과 요일이 일치하지 않습니다.');
-  end if;
-  if p_effective_date < current_date then
-    return jsonb_build_object('ok', false, 'message', '지난 날짜의 반 구성을 변경할 수 없습니다.');
-  end if;
+ if not private.olli_schedule_can_access(p_session_token,p_academy_id) then return jsonb_build_object('ok',false,'message','클래스를 통합할 권한이 없습니다.'); end if;
+ if p_effective_date is null then return jsonb_build_object('ok',false,'code','TARGET_DATE_REQUIRED','message','합반 적용일을 확인해 주세요.'); end if;
+ if p_weekday not between 1 and 6 or p_time_slot not between 1 and 6 then return jsonb_build_object('ok',false,'message','통합할 요일과 시간을 확인해 주세요.'); end if;
+ if extract(isodow from p_effective_date)::integer<>p_weekday then return jsonb_build_object('ok',false,'code','DATE_WEEKDAY_MISMATCH','message','합반 적용일과 요일이 일치하지 않습니다.'); end if;
+ if p_effective_date<current_date then return jsonb_build_object('ok',false,'message','지난 날짜의 반 구성을 변경할 수 없습니다.'); end if;
+ perform pg_advisory_xact_lock(hashtextextended(p_academy_id::text||':class-layout:'||p_weekday::text||':'||p_time_slot::text,0));
+ select s.effective_from,s.effective_to into v_from,v_to from public.olli_schedule_class_splits s
+ where s.academy_id=p_academy_id and s.weekday=p_weekday and s.time_slot=p_time_slot
+   and s.effective_from<=p_effective_date and (s.effective_to is null or s.effective_to>=p_effective_date)
+ order by s.effective_from desc limit 1 for update;
+ if v_from is null then return jsonb_build_object('ok',true,'result','unchanged','effective_date',p_effective_date); end if;
 
-  perform pg_advisory_xact_lock(hashtextextended(
-    p_academy_id::text || ':class-layout:' || p_weekday::text || ':' || p_time_slot::text, 0
-  ));
+ select count(*) into v_regular from public.olli_schedule_enrollments e
+ where e.academy_id=p_academy_id and e.weekday=p_weekday and e.time_slot=p_time_slot and e.class_group='B' and e.status='active'
+   and (e.effective_to is null or e.effective_to>=p_effective_date)
+   and private.olli_schedule_weekday_on_or_after(greatest(e.effective_from,p_effective_date),p_weekday)
+       <=least(coalesce(e.effective_to,date '9999-12-31'),coalesce(v_to,date '9999-12-31'));
+ select count(*) into v_one_time from public.olli_schedule_one_time_sessions o
+ where o.academy_id=p_academy_id and extract(isodow from o.session_date)::integer=p_weekday and o.time_slot=p_time_slot
+   and o.class_group='B' and o.status<>'cancelled' and o.session_date>=p_effective_date and (v_to is null or o.session_date<=v_to);
+ select count(*) into v_waitlist from public.olli_schedule_waitlist w
+ where w.academy_id=p_academy_id and w.target_weekday=p_weekday and w.target_time_slot=p_time_slot and w.target_class_group='B'
+   and w.status in('waiting','offered') and (w.desired_effective_date is null or
+      (w.desired_effective_date>=p_effective_date and (v_to is null or w.desired_effective_date<=v_to)));
+ select count(*) into v_changes from public.olli_schedule_changes c join public.olli_schedule_enrollments e on e.id=c.target_enrollment_id
+ where c.academy_id=p_academy_id and c.status='scheduled' and coalesce(c.target_class_group,e.class_group,'A')='B'
+   and e.weekday=p_weekday and e.time_slot=p_time_slot and c.effective_date>=p_effective_date
+   and (v_to is null or private.olli_schedule_weekday_on_or_after(c.effective_date,p_weekday)<=v_to);
 
-  select s.effective_from, s.effective_to
-    into v_period_from, v_period_to
-  from public.olli_schedule_class_splits s
-  where s.academy_id = p_academy_id
-    and s.weekday = p_weekday
-    and s.time_slot = p_time_slot
-    and s.effective_from <= p_effective_date
-    and (s.effective_to is null or s.effective_to >= p_effective_date)
-  order by s.effective_from desc
-  limit 1
-  for update;
+ if v_regular+v_one_time+v_waitlist+v_changes>0 then
+   return jsonb_build_object('ok',false,'code','MERGE_BLOCKED_B_USAGE','message','합반 적용일 이후 B반 일정이 있어 통합할 수 없습니다.',
+     'conflicts',jsonb_build_object('regular',v_regular,'one_time',v_one_time,'waitlist',v_waitlist,'scheduled_change',v_changes));
+ end if;
+ if p_effective_date=v_from then
+   delete from public.olli_schedule_class_splits where academy_id=p_academy_id and weekday=p_weekday and time_slot=p_time_slot and effective_from=v_from;
+ else
+   update public.olli_schedule_class_splits set effective_to=p_effective_date-1
+   where academy_id=p_academy_id and weekday=p_weekday and time_slot=p_time_slot and effective_from=v_from;
+ end if;
+ return jsonb_build_object('ok',true,'result','merged','weekday',p_weekday,'time_slot',p_time_slot,'effective_date',p_effective_date);
+end; $$;
 
-  if v_period_from is null then
-    return jsonb_build_object('ok', true, 'result', 'unchanged', 'weekday', p_weekday, 'time_slot', p_time_slot, 'effective_date', p_effective_date);
-  end if;
-
-  select count(*) into v_regular
-  from public.olli_schedule_enrollments e
-  where e.academy_id = p_academy_id
-    and e.weekday = p_weekday
-    and e.time_slot = p_time_slot
-    and e.class_group = 'B'
-    and e.status = 'active'
-    and (e.effective_to is null or e.effective_to >= p_effective_date)
-    and private.olli_schedule_weekday_on_or_after(greatest(e.effective_from, p_effective_date), p_weekday)
-        <= least(coalesce(e.effective_to, date '9999-12-31'), coalesce(v_period_to, date '9999-12-31'));
-
-  select count(*) into v_one_time
-  from public.olli_schedule_one_time_sessions o
-  where o.academy_id = p_academy_id
-    and extract(isodow from o.session_date)::integer = p_weekday
-    and o.time_slot = p_time_slot
-    and o.class_group = 'B'
-    and o.status <> 'cancelled'
-    and o.session_date >= p_effective_date
-    and (v_period_to is null or o.session_date <= v_period_to);
-
-  select count(*) into v_waitlist
-  from public.olli_schedule_waitlist w
-  where w.academy_id = p_academy_id
-    and w.target_weekday = p_weekday
-    and w.target_time_slot = p_time_slot
-    and w.target_class_group = 'B'
-    and w.status in ('waiting','offered')
-    and (
-      w.desired_effective_date is null
-      or (
-        w.desired_effective_date >= p_effective_date
-        and (v_period_to is null or w.desired_effective_date <= v_period_to)
-      )
-    );
-
-  select count(*) into v_changes
-  from public.olli_schedule_changes c
-  join public.olli_schedule_enrollments e on e.id = c.target_enrollment_id
-  where c.academy_id = p_academy_id
-    and c.status = 'scheduled'
-    and coalesce(c.target_class_group, e.class_group, 'A') = 'B'
-    and e.weekday = p_weekday
-    and e.time_slot = p_time_slot
-    and c.effective_date >= p_effective_date
-    and (v_period_to is null or private.olli_schedule_weekday_on_or_after(c.effective_date, p_weekday) <= v_period_to);
-
-  if v_regular + v_one_time + v_waitlist + v_changes > 0 then
-    return jsonb_build_object(
-      'ok', false,
-      'code', 'MERGE_BLOCKED_B_USAGE',
-      'message', '합반 적용일 이후 B반 일정이 있어 통합할 수 없습니다. 앞으로의 B반 일정을 먼저 정리해 주세요.',
-      'conflicts', jsonb_build_object(
-        'regular', v_regular,
-        'one_time', v_one_time,
-        'waitlist', v_waitlist,
-        'scheduled_change', v_changes
-      )
-    );
-  end if;
-
-  if p_effective_date = v_period_from then
-    delete from public.olli_schedule_class_splits
-    where academy_id = p_academy_id
-      and weekday = p_weekday
-      and time_slot = p_time_slot
-      and effective_from = v_period_from;
-  else
-    update public.olli_schedule_class_splits
-       set effective_to = p_effective_date - 1
-     where academy_id = p_academy_id
-       and weekday = p_weekday
-       and time_slot = p_time_slot
-       and effective_from = v_period_from;
-  end if;
-
-  return jsonb_build_object('ok', true, 'result', 'merged', 'weekday', p_weekday, 'time_slot', p_time_slot, 'effective_date', p_effective_date);
-end;
-$$;
-
--- Legacy overloads remain non-public during the transition.
-create or replace function public.olli_schedule_split_class(
-  p_session_token text, p_academy_id uuid, p_weekday integer, p_time_slot integer
-)
-returns jsonb language sql security definer set search_path = ''
-as $$
-  select public.olli_schedule_split_class(p_session_token, p_academy_id, p_weekday, p_time_slot, current_date);
-$$;
-
-create or replace function public.olli_schedule_merge_class(
-  p_session_token text, p_academy_id uuid, p_weekday integer, p_time_slot integer
-)
-returns jsonb language sql security definer set search_path = ''
-as $$
-  select public.olli_schedule_merge_class(p_session_token, p_academy_id, p_weekday, p_time_slot, current_date);
-$$;
+create or replace function public.olli_schedule_split_class(text,uuid,integer,integer)
+returns jsonb language sql security definer set search_path=''
+as $$ select public.olli_schedule_split_class($1,$2,$3,$4,current_date); $$;
+create or replace function public.olli_schedule_merge_class(text,uuid,integer,integer)
+returns jsonb language sql security definer set search_path=''
+as $$ select public.olli_schedule_merge_class($1,$2,$3,$4,current_date); $$;
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_week(p_session_token text, p_academy_id uuid, p_week_start date)
@@ -575,7 +330,7 @@ begin
     'cell_memos', v_cell_memos
   );
 end;
-$function$;
+$function$
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_availability_horizon(p_session_token text, p_academy_id uuid, p_start_date date, p_end_date date)
@@ -721,7 +476,7 @@ begin
     'class_teachers', v_class_teachers
   );
 end;
-$function$;
+$function$
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_add_guest_entry(p_session_token text, p_academy_id uuid, p_guest_name text, p_division text, p_entry_type text, p_session_date date, p_time_slot integer, p_class_group text DEFAULT 'A'::text)
@@ -876,7 +631,7 @@ begin
 
   return jsonb_build_object('ok', true, 'result', 'scheduled', 'one_time_session_id', v_id, 'guest', true, 'session_type', 'trial');
 end;
-$function$;
+$function$
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_add_one_time(p_session_token text, p_academy_id uuid, p_student_id uuid, p_session_date date, p_time_slot integer, p_note text, p_class_group text)
@@ -1016,7 +771,7 @@ begin
 
   return jsonb_build_object('ok', true, 'result', 'scheduled', 'one_time_session_id', v_id, 'unchanged', false);
 end;
-$function$;
+$function$
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_add_waitlist(p_session_token text, p_academy_id uuid, p_student_id uuid, p_target_weekday integer, p_target_time_slot integer, p_effective_date date, p_target_class_group text DEFAULT 'A'::text)
@@ -1102,7 +857,7 @@ begin
   ) returning id into v_waitlist_id;
   return jsonb_build_object('ok', true, 'result', 'waitlisted', 'waitlist_id', v_waitlist_id);
 end;
-$function$;
+$function$
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_change(p_session_token text, p_academy_id uuid, p_student_id uuid, p_source_enrollment_id uuid, p_target_weekday integer, p_target_time_slot integer, p_effective_date date, p_change_type text, p_allow_wait boolean, p_target_class_group text)
@@ -1253,8 +1008,8 @@ begin
       where e.academy_id = p_academy_id
         and e.student_id = p_student_id
         and e.status = 'active'
-        and e.effective_from <= v_effective
-        and (e.effective_to is null or e.effective_to >= v_effective)
+        and e.effective_from <= v_target_date
+        and (e.effective_to is null or e.effective_to >= v_target_date)
       limit 1;
       if v_existing_order is null or v_existing_order not in (1,2) then
         v_existing_order := 1;
@@ -1301,7 +1056,7 @@ begin
     'target_enrollment_id',v_target_id
   );
 end;
-$function$;
+$function$
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_resolve_waitlist(p_session_token text, p_academy_id uuid, p_waitlist_id uuid, p_action text, p_effective_date date DEFAULT CURRENT_DATE)
@@ -1423,7 +1178,7 @@ begin
   if v_effective<=current_date then perform private.olli_schedule_sync_student(v_wait.student_id,current_date); end if;
   return jsonb_build_object('ok',true,'result','accepted','change_id',v_change_id);
 end;
-$function$;
+$function$
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_set_attendance(p_session_token text, p_academy_id uuid, p_student_id uuid, p_session_date date, p_time_slot integer, p_class_group text DEFAULT 'A'::text, p_session_kind text DEFAULT 'regular'::text, p_attended boolean DEFAULT true)
@@ -1509,85 +1264,7 @@ begin
     v_account_id
   );
 end;
-$function$;
-
-
-CREATE OR REPLACE FUNCTION public.olli_schedule_toggle_attendance(p_session_token text, p_academy_id uuid, p_student_id uuid, p_session_date date, p_time_slot integer, p_class_group text, p_session_kind text)
- RETURNS jsonb
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-declare
-  v_account_id uuid;
-  v_division text;
-  v_weekday integer;
-  v_class_group text := upper(coalesce(nullif(btrim(p_class_group), ''), 'A'));
-  v_mark_id uuid;
-  v_marked_at timestamptz;
-begin
-  if not private.olli_schedule_can_access(p_session_token, p_academy_id) then
-    return jsonb_build_object('ok', false, 'message', '출석을 변경할 권한이 없습니다.');
-  end if;
-  if p_session_date is null or p_session_date > current_date or p_session_kind not in ('regular', 'makeup') then
-    return jsonb_build_object('ok', false, 'message', '출석 날짜와 수업 정보를 확인해 주세요.');
-  end if;
-  v_account_id := public.olli_account_id_from_session(p_session_token);
-  v_weekday := extract(isodow from p_session_date)::integer;
-  select s.division into v_division
-  from public.students s
-  where s.id = p_student_id and s.academy_id = p_academy_id and s.status = 'active';
-  if v_division is null then
-    return jsonb_build_object('ok', false, 'message', '학생을 찾을 수 없습니다.');
-  end if;
-  if (v_division = 'elementary' and v_weekday = 6 and p_time_slot not in (10, 11, 12))
-     or (v_division = 'elementary' and v_weekday <> 6 and p_time_slot not between 1 and 6)
-     or (v_division = 'kinder' and p_time_slot not in (4, 5)) then
-    return jsonb_build_object('ok', false, 'message', '출석 날짜와 수업 시간을 확인해 주세요.');
-  end if;
-  if not private.olli_schedule_group_is_enabled(p_academy_id, v_division, v_weekday, p_time_slot, p_session_date) then
-    v_class_group := 'A';
-  end if;
-  if v_class_group not in ('A', 'B') then
-    return jsonb_build_object('ok', false, 'message', '수업 반을 확인해 주세요.');
-  end if;
-  if p_session_kind = 'regular' and not exists (
-    select 1 from public.olli_schedule_enrollments e
-    where e.academy_id = p_academy_id and e.student_id = p_student_id
-      and e.weekday = v_weekday and e.time_slot = p_time_slot and e.class_group = v_class_group and e.status = 'active'
-      and e.effective_from <= p_session_date and (e.effective_to is null or e.effective_to >= p_session_date)
-  ) then
-    return jsonb_build_object('ok', false, 'message', '해당 날짜의 정규 수업을 찾을 수 없습니다.');
-  end if;
-  if p_session_kind = 'makeup' and not exists (
-    select 1 from public.olli_schedule_one_time_sessions o
-    where o.academy_id = p_academy_id and o.student_id = p_student_id
-      and o.session_date = p_session_date and o.time_slot = p_time_slot
-      and o.class_group = v_class_group and o.status <> 'cancelled'
-  ) then
-    return jsonb_build_object('ok', false, 'message', '해당 날짜의 보강 수업을 찾을 수 없습니다.');
-  end if;
-  perform pg_advisory_xact_lock(hashtextextended(
-    p_academy_id::text || ':attendance:' || p_student_id::text || ':' || p_session_date::text || ':' || p_time_slot::text || ':' || v_class_group || ':' || p_session_kind,
-    0
-  ));
-  select a.id into v_mark_id
-  from public.olli_schedule_attendance a
-  where a.academy_id = p_academy_id and a.student_id = p_student_id
-    and a.session_date = p_session_date and a.time_slot = p_time_slot
-    and a.class_group = v_class_group and a.session_kind = p_session_kind;
-  if v_mark_id is not null then
-    delete from public.olli_schedule_attendance where id = v_mark_id;
-    return jsonb_build_object('ok', true, 'attended', false);
-  end if;
-  insert into public.olli_schedule_attendance (
-    academy_id, student_id, session_date, time_slot, class_group, session_kind, marked_by_account_id
-  ) values (
-    p_academy_id, p_student_id, p_session_date, p_time_slot, v_class_group, p_session_kind, v_account_id
-  ) returning marked_at into v_marked_at;
-  return jsonb_build_object('ok', true, 'attended', true, 'marked_at', v_marked_at);
-end;
-$function$;
+$function$
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_set_student_weekly_schedule(p_session_token text, p_academy_id uuid, p_student_id uuid, p_pairs jsonb, p_effective_date date DEFAULT CURRENT_DATE)
@@ -1717,9 +1394,13 @@ begin
     loop
       v_requested_group := upper(coalesce(nullif(btrim(v_pair->>'class_group'), ''), ''));
       v_target_date := private.olli_schedule_weekday_on_or_after(v_date, (v_pair->>'weekday')::integer);
-      if v_requested_group = 'B' and not private.olli_schedule_group_is_enabled(
-        p_academy_id, v_division, (v_pair->>'weekday')::integer, (v_pair->>'time_slot')::integer, v_target_date
-      ) then
+      if v_requested_group = 'B'
+         and not private.olli_schedule_group_is_enabled(
+           p_academy_id, v_division,
+           (v_pair->>'weekday')::integer,
+           (v_pair->>'time_slot')::integer,
+           v_target_date
+         ) then
         v_requested_group := 'A';
       end if;
 
@@ -1838,7 +1519,85 @@ begin
     'enrollments', v_rows
   );
 end;
-$function$;
+$function$
+
+
+CREATE OR REPLACE FUNCTION public.olli_schedule_toggle_attendance(p_session_token text, p_academy_id uuid, p_student_id uuid, p_session_date date, p_time_slot integer, p_class_group text, p_session_kind text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_account_id uuid;
+  v_division text;
+  v_weekday integer;
+  v_class_group text := upper(coalesce(nullif(btrim(p_class_group), ''), 'A'));
+  v_mark_id uuid;
+  v_marked_at timestamptz;
+begin
+  if not private.olli_schedule_can_access(p_session_token, p_academy_id) then
+    return jsonb_build_object('ok', false, 'message', '출석을 변경할 권한이 없습니다.');
+  end if;
+  if p_session_date is null or p_session_date > current_date or p_session_kind not in ('regular', 'makeup') then
+    return jsonb_build_object('ok', false, 'message', '출석 날짜와 수업 정보를 확인해 주세요.');
+  end if;
+  v_account_id := public.olli_account_id_from_session(p_session_token);
+  v_weekday := extract(isodow from p_session_date)::integer;
+  select s.division into v_division
+  from public.students s
+  where s.id = p_student_id and s.academy_id = p_academy_id and s.status = 'active';
+  if v_division is null then
+    return jsonb_build_object('ok', false, 'message', '학생을 찾을 수 없습니다.');
+  end if;
+  if (v_division = 'elementary' and v_weekday = 6 and p_time_slot not in (10, 11, 12))
+     or (v_division = 'elementary' and v_weekday <> 6 and p_time_slot not between 1 and 6)
+     or (v_division = 'kinder' and p_time_slot not in (4, 5)) then
+    return jsonb_build_object('ok', false, 'message', '출석 날짜와 수업 시간을 확인해 주세요.');
+  end if;
+  if not private.olli_schedule_group_is_enabled(p_academy_id, v_division, v_weekday, p_time_slot, p_session_date) then
+    v_class_group := 'A';
+  end if;
+  if v_class_group not in ('A', 'B') then
+    return jsonb_build_object('ok', false, 'message', '수업 반을 확인해 주세요.');
+  end if;
+  if p_session_kind = 'regular' and not exists (
+    select 1 from public.olli_schedule_enrollments e
+    where e.academy_id = p_academy_id and e.student_id = p_student_id
+      and e.weekday = v_weekday and e.time_slot = p_time_slot and e.class_group = v_class_group and e.status = 'active'
+      and e.effective_from <= p_session_date and (e.effective_to is null or e.effective_to >= p_session_date)
+  ) then
+    return jsonb_build_object('ok', false, 'message', '해당 날짜의 정규 수업을 찾을 수 없습니다.');
+  end if;
+  if p_session_kind = 'makeup' and not exists (
+    select 1 from public.olli_schedule_one_time_sessions o
+    where o.academy_id = p_academy_id and o.student_id = p_student_id
+      and o.session_date = p_session_date and o.time_slot = p_time_slot
+      and o.class_group = v_class_group and o.status <> 'cancelled'
+  ) then
+    return jsonb_build_object('ok', false, 'message', '해당 날짜의 보강 수업을 찾을 수 없습니다.');
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended(
+    p_academy_id::text || ':attendance:' || p_student_id::text || ':' || p_session_date::text || ':' || p_time_slot::text || ':' || v_class_group || ':' || p_session_kind,
+    0
+  ));
+  select a.id into v_mark_id
+  from public.olli_schedule_attendance a
+  where a.academy_id = p_academy_id and a.student_id = p_student_id
+    and a.session_date = p_session_date and a.time_slot = p_time_slot
+    and a.class_group = v_class_group and a.session_kind = p_session_kind;
+  if v_mark_id is not null then
+    delete from public.olli_schedule_attendance where id = v_mark_id;
+    return jsonb_build_object('ok', true, 'attended', false);
+  end if;
+  insert into public.olli_schedule_attendance (
+    academy_id, student_id, session_date, time_slot, class_group, session_kind, marked_by_account_id
+  ) values (
+    p_academy_id, p_student_id, p_session_date, p_time_slot, v_class_group, p_session_kind, v_account_id
+  ) returning marked_at into v_marked_at;
+  return jsonb_build_object('ok', true, 'attended', true, 'marked_at', v_marked_at);
+end;
+$function$
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_update_one_time_date(p_session_token text, p_academy_id uuid, p_one_time_session_id uuid, p_session_date date)
@@ -2065,7 +1824,7 @@ exception
   when unique_violation then
     return jsonb_build_object('ok', false, 'message', '같은 날짜와 시간에 이미 등록된 수업이 있습니다.');
 end;
-$function$;
+$function$
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_execute(p_session_token text, p_academy_id uuid, p_action text, p_params jsonb DEFAULT '{}'::jsonb)
@@ -2228,11 +1987,11 @@ exception
   when invalid_text_representation or invalid_datetime_format or numeric_value_out_of_range then
     return jsonb_build_object('ok',false,'message','시간표 변경 값을 확인해 주세요.');
 end;
-$function$;
+$function$
 
 
-revoke all on function public.olli_schedule_split_class(text, uuid, integer, integer, date) from public, anon, authenticated;
-revoke all on function public.olli_schedule_merge_class(text, uuid, integer, integer, date) from public, anon, authenticated;
-revoke all on function public.olli_schedule_split_class(text, uuid, integer, integer) from public, anon, authenticated;
-revoke all on function public.olli_schedule_merge_class(text, uuid, integer, integer) from public, anon, authenticated;
+revoke all on function public.olli_schedule_split_class(text,uuid,integer,integer,date) from public,anon,authenticated;
+revoke all on function public.olli_schedule_merge_class(text,uuid,integer,integer,date) from public,anon,authenticated;
+revoke all on function public.olli_schedule_split_class(text,uuid,integer,integer) from public,anon,authenticated;
+revoke all on function public.olli_schedule_merge_class(text,uuid,integer,integer) from public,anon,authenticated;
 commit;
