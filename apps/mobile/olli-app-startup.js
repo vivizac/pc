@@ -176,7 +176,15 @@ async function restoreOlliPhoneResumeState() {
         try { if (typeof currentRecordView !== 'undefined') currentRecordView = division; } catch (_) {}
       }
       if (typeof showRecordRoom === 'function') {
-        await showRecordRoom({ localOnly: true });
+        try {
+          const recordOpen = showRecordRoom({ localOnly: true });
+          if (recordOpen && typeof recordOpen.catch === 'function') {
+            recordOpen.catch(error => console.warn('재접속 기록실 로컬 복원 갱신 실패:', error?.message || error));
+          }
+        } catch (error) {
+          console.warn('재접속 기록실 로컬 복원 실패:', error?.message || error);
+          return false;
+        }
         return true;
       }
       break;
