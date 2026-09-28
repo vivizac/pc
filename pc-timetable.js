@@ -714,11 +714,18 @@
     const date = sessionDate instanceof Date ? sessionDate : parseDate(sessionDate);
     return classTeacherLabel(division, date.getDay(), time, classGroup);
   }
-  function isClassSplit(division, weekday, time) {
+  function isClassSplit(division, weekday, time, targetDate) {
     if (division === 'kinder') {
       return !kinderClassMerges().some((item) => Number(item.weekday) === Number(weekday) && Number(item.time_slot) === Number(time));
     }
-    return classSplits().some((item) => Number(item.weekday) === Number(weekday) && Number(item.time_slot) === Number(time));
+    const keyDate = clean(targetDate);
+    return classSplits().some((item) => {
+      if (Number(item.weekday) !== Number(weekday) || Number(item.time_slot) !== Number(time)) return false;
+      const from = clean(item.effective_from);
+      const to = clean(item.effective_to);
+      if (!keyDate || !from) return true;
+      return from <= keyDate && (!to || to >= keyDate);
+    });
   }
   function enrollmentEffectiveOn(enrollment, date) {
     const key = dateKey(date);
@@ -999,7 +1006,7 @@
     const holiday = isHolidayDate(date);
     const attrs = `data-tt-cell="1" data-division="${division}" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-time="${time}"${holiday ? ' data-holiday="1" aria-disabled="true"' : ''}`;
     const memo = cellMemoText(division, date, time);
-    if (!isClassSplit(division, date.getDay(), time)) {
+    if (!isClassSplit(division, date.getDay(), time, dateKey(date))) {
       const teacherLabel = effectiveClassTeacherLabel(division, date, time, 'A');
       const mergedLabel = teacherLabel || (division === 'kinder' ? 'A반' : '');
       const mergedClassHead = mergedLabel
@@ -1495,8 +1502,8 @@
     return `<div class="olliTtDialogHead"><div class="olliTtDialogIcon" aria-hidden="true">${icon}</div><div><div class="olliTtDialogTitle" id="olliTtDialogTitle">${esc(title)}</div>${subHtml}</div><button type="button" class="olliTtDialogClose" data-tt-dialog-close aria-label="닫기">×</button></div>`;
   }
 
-  function classGroupChoiceHtml(division, selectedGroup, weekday, time, hideGuide, includeKinderLayoutControl) {
-    const split = isClassSplit(division, weekday, time);
+  function classGroupChoiceHtml(division, selectedGroup, weekday, time, hideGuide, includeKinderLayoutControl, targetDate) {
+    const split = isClassSplit(division, weekday, time, targetDate);
     const selected = classGroupOf({ class_group: selectedGroup });
     const pendingKinderMerge = Boolean(state.dialog && state.dialog.kind === 'add' && state.dialog.division === 'kinder' && state.dialog.pendingKinderMerge);
     const pendingKinderSplit = Boolean(state.dialog && state.dialog.kind === 'add' && state.dialog.division === 'kinder' && state.dialog.pendingKinderSplit);
@@ -1606,7 +1613,7 @@
     const dayHtml = DAYS.map((day, index) => `<button type="button" class="olliTtChoice ${dialog.targetWeekday === index + 1 ? 'active' : ''}" data-tt-target-day="${index + 1}">${day}</button>`).join('');
     const timeHtml = division === 'kinder'
       ? timeOptions.map((time) => {
-        const split = isClassSplit(division, dialog.targetWeekday, time);
+        const split = isClassSplit(division, dialog.targetWeekday, time, dialog.effectiveDate);
         const groups = split ? ['A', 'B'] : ['A'];
         return groups.map((group) => {
           const count = countAt(
@@ -1673,7 +1680,7 @@
       + scheduledHtml
       + (isMakeup ? `<div class="olliTtField"><div class="olliTtFieldHead"><span>보강 날짜</span></div><input type="date" class="olliTtDateInput" data-tt-effective-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></div>` : `<div class="olliTtField"><div class="olliTtFieldHead"><span>새 요일</span></div><div class="olliTtChoiceGrid">${dayHtml}</div></div>`)
       + `<div class="olliTtField"><div class="olliTtFieldHead"><span>${isMakeup ? '보강 시간' : '새 시간'}</span></div><div class="olliTtChoiceGrid times${division === 'kinder' ? ' kinderTimeGroups' : ''}">${timeHtml}</div></div>`
-      + (division === 'kinder' ? '' : classGroupChoiceHtml(division, dialog.targetClassGroup, dialog.targetWeekday, dialog.targetTime, true))
+      + (division === 'kinder' ? '' : classGroupChoiceHtml(division, dialog.targetClassGroup, dialog.targetWeekday, dialog.targetTime, true, false, dialog.effectiveDate))
       + (isMakeup ? '' : `<div class="olliTtField"><div class="olliTtFieldHead"><span>${effectiveDateLabel}</span>${effectiveDateGuide ? `<small>${effectiveDateGuide}</small>` : ''}</div><input type="date" class="olliTtDateInput" data-tt-effective-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></div>`)
       + absenceMemoHtml
       + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-move>${isMakeup ? '보강 등록' : moveSaveLabel}</button></div></div>`;
@@ -1772,8 +1779,8 @@
       + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'guest_wait' ? 'active' : ''}" data-tt-add-type="guest_wait">대기등록(비재원)</button>`
       + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'trial' ? 'active' : ''}" data-tt-add-type="trial">체험수업</button></div></div>`
       + `<div data-tt-add-student-field>${studentField}</div>`
-      + (division === 'elementary' ? `<div class="olliTtField olliTtSplitClassField"><div class="olliTtFieldHead"><span>클래스 운영</span><small>${isClassSplit(division, dialog.weekday, dialog.time) ? '분리된 A반·B반을 하나의 칸으로 통합합니다.' : '현재 칸을 위·아래 A반·B반으로 나눕니다.'}</small></div><button type="button" class="olliTtSplitClassBtn" ${isClassSplit(division, dialog.weekday, dialog.time) ? 'data-tt-merge-class' : 'data-tt-split-class'}>${isClassSplit(division, dialog.weekday, dialog.time) ? '클래스 통합' : '클래스 분리'}</button></div>` : '')
-      + classGroupChoiceHtml(division, dialog.targetClassGroup, dialog.weekday, dialog.time, false, true)
+      + (division === 'elementary' ? `<div class="olliTtField olliTtSplitClassField"><div class="olliTtFieldHead"><span>클래스 운영</span><small>${isClassSplit(division, dialog.weekday, dialog.time, dialog.date) ? '분리된 A반·B반을 하나의 칸으로 통합합니다.' : '현재 칸을 위·아래 A반·B반으로 나눕니다.'}</small></div><button type="button" class="olliTtSplitClassBtn" ${isClassSplit(division, dialog.weekday, dialog.time, dialog.date) ? 'data-tt-merge-class' : 'data-tt-split-class'}>${isClassSplit(division, dialog.weekday, dialog.time, dialog.date) ? '클래스 통합' : '클래스 분리'}</button></div>` : '')
+      + classGroupChoiceHtml(division, dialog.targetClassGroup, dialog.weekday, dialog.time, false, true, dialog.date)
       + teacherControlsHtml(dialog)
       + `<label class="olliTtAddMemo"><span>메모</span><textarea data-tt-add-note maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.note)}</textarea></label>`
       + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-add ${canRegister ? '' : 'disabled'}>${primaryLabel}</button></div></div>`;
@@ -2017,7 +2024,7 @@
         const student = studentById(state.dialog.studentId);
         const options = student ? timeOptionsFor(divisionOf(student), state.dialog.targetWeekday) : [];
         if (!options.includes(state.dialog.targetTime)) state.dialog.targetTime = options[0];
-        if (student && !isClassSplit(divisionOf(student), state.dialog.targetWeekday, state.dialog.targetTime)) state.dialog.targetClassGroup = 'A';
+        if (student && !isClassSplit(divisionOf(student), state.dialog.targetWeekday, state.dialog.targetTime, state.dialog.effectiveDate)) state.dialog.targetClassGroup = 'A';
       } else if (state.dialog.kind === 'move' && state.dialog.actionType === 'move') {
         syncMoveAbsenceState(state.dialog);
       }
@@ -2065,7 +2072,7 @@
       if (student) {
         const timeOptions = timeOptionsFor(divisionOf(student), state.dialog.targetWeekday);
         if (!timeOptions.includes(state.dialog.targetTime)) state.dialog.targetTime = timeOptions[0];
-        if (!isClassSplit(divisionOf(student), state.dialog.targetWeekday, state.dialog.targetTime)) state.dialog.targetClassGroup = 'A';
+        if (!isClassSplit(divisionOf(student), state.dialog.targetWeekday, state.dialog.targetTime, state.dialog.effectiveDate)) state.dialog.targetClassGroup = 'A';
       }
       if (state.dialog.kind === 'move' && state.dialog.actionType === 'move') syncMoveAbsenceState(state.dialog);
       renderDialog();
@@ -2073,7 +2080,7 @@
     dialog.querySelectorAll('[data-tt-target-time]').forEach((button) => button.addEventListener('click', () => {
       state.dialog.targetTime = Number(button.dataset.ttTargetTime);
       const student = studentById(state.dialog.studentId);
-      if (student && !isClassSplit(divisionOf(student), state.dialog.targetWeekday, state.dialog.targetTime)) state.dialog.targetClassGroup = 'A';
+      if (student && !isClassSplit(divisionOf(student), state.dialog.targetWeekday, state.dialog.targetTime, state.dialog.effectiveDate)) state.dialog.targetClassGroup = 'A';
       renderDialog();
     }));
     dialog.querySelectorAll('[data-tt-kinder-time-class]').forEach((button) => button.addEventListener('click', () => {
@@ -2541,7 +2548,7 @@
     const dialog = state.dialog;
     if (!dialog || dialog.kind !== 'add' || dialog.division !== 'elementary') return;
     if (!confirm(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 수업을 A반·B반으로 분리할까요?\n기존 학생은 A반에 그대로 유지됩니다.`)) return;
-    const result = await withSaving(() => service.splitClass(dialog.weekday, dialog.time));
+    const result = await withSaving(() => service.splitClass(dialog.weekday, dialog.time, dialog.date));
     if (result) notify(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 수업을 위·아래 두 반으로 분리했어요.`);
   }
 
@@ -2549,7 +2556,7 @@
     const dialog = state.dialog;
     if (!dialog || dialog.kind !== 'add' || dialog.division !== 'elementary') return;
     if (!confirm(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 수업을 하나의 칸으로 통합할까요?`)) return;
-    const result = await withSaving(() => service.mergeClass(dialog.weekday, dialog.time));
+    const result = await withSaving(() => service.mergeClass(dialog.weekday, dialog.time, dialog.date));
     if (result) notify(`${weekdayLabel(dialog.weekday)}요일 ${timeLabel(dialog.time)} 수업을 통합했어요.`);
   }
 
