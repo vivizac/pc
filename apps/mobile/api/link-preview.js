@@ -88,13 +88,13 @@ function getAttribute(tag, name) {
 
 function extractMeta(html) {
   const meta = new Map();
-  const tags = String(html || '').match(/<meta\\b[^>]*>/gi) || [];
+  const tags = String(html || '').match(/<meta\b[^>]*>/gi) || [];
   for (const tag of tags) {
     const key = (getAttribute(tag, 'property') || getAttribute(tag, 'name')).toLowerCase();
     const content = getAttribute(tag, 'content');
     if (key && content && !meta.has(key)) meta.set(key, content);
   }
-  const titleMatch = String(html || '').match(/<title[^>]*>([\\s\\S]*?)<\\/title>/i);
+  const titleMatch = String(html || '').match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   return {
     title: meta.get('og:title') || meta.get('twitter:title') || decodeHtml(titleMatch?.[1] || ''),
     description: meta.get('og:description') || meta.get('twitter:description') || meta.get('description') || '',

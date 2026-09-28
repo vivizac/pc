@@ -61,7 +61,31 @@ test('link preview API module parses and keeps GET-only handler contract', () =>
   assert.equal(parsed.status, 0, String(parsed.stderr || parsed.stdout || ''));
   assert.match(source, /export default async function handler\(req, res\)/);
   assert.match(source, /req\.method !== 'GET'/);
-  assert.match(source, /fetch\('\/api\/link-preview\?url='/);
+  const talk = fs.readFileSync(path.join(MOBILE, 'olli-talk-beta.js'), 'utf8');
+  assert.match(talk, /fetch\('\/api\/link-preview\?url='/);
+});
+
+test('link preview parser handles normal meta tags and private IPv4 checks', async () => {
+  const file = path.join(MOBILE, 'api', 'link-preview.js');
+  const source = fs.readFileSync(file, 'utf8')
+    .replace('export default async function handler', 'async function handler')
+    + '\nexport { handler, extractMeta, getAttribute, isPrivateIpv4 };\n';
+  const os = require('node:os');
+  const { pathToFileURL } = require('node:url');
+  const tmp = path.join(os.tmpdir(), 'olli-link-preview-' + process.pid + '-' + Date.now() + '.mjs');
+  fs.writeFileSync(tmp, source);
+  try {
+    const mod = await import(pathToFileURL(tmp).href + '?v=' + Date.now());
+    const meta = mod.extractMeta('<html><head><title>Fallback</title><meta property="og:title" content="Olli &amp; Test"><meta name="description" content="hello world"></head></html>');
+    assert.equal(meta.title, 'Olli & Test');
+    assert.equal(meta.description, 'hello world');
+    assert.equal(mod.getAttribute("<meta content='abc def'>", 'content'), 'abc def');
+    assert.equal(mod.isPrivateIpv4('127.0.0.1'), true);
+    assert.equal(mod.isPrivateIpv4('192.168.1.10'), true);
+    assert.equal(mod.isPrivateIpv4('8.8.8.8'), false);
+  } finally {
+    fs.rmSync(tmp, { force: true });
+  }
 });
 
 test('all Common JS parses successfully', () => {
