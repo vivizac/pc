@@ -287,9 +287,6 @@
           </button>
         </div>
         <div class="olliMobileMatList" data-material-list></div>
-        <button aria-label="요청 등록" class="olliMobileMatCreateBtn" type="button" data-material-action="open-create">
-          <svg aria-hidden="true" viewBox="0 0 24 24"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>
-        </button>
         <div class="olliMobileMatToast" data-material-toast hidden></div>
       </section>`;
   }
@@ -761,7 +758,6 @@
     state.root.dataset.olliMobileMaterialBound='1';
     state.root.addEventListener('click',event=>{
       const action=event.target.closest('[data-material-action]')?.dataset.materialAction;
-      if(action==='open-create'){openQuickOrder();return}
       if(action==='close-create'){closeCreate();return}
 
       const filter=event.target.closest('[data-material-filter]');
