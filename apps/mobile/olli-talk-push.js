@@ -86,7 +86,7 @@
     if (!supportsPush()) throw new Error('이 기기에서는 푸시 알림을 사용할 수 없습니다.');
     if (!registrationPromise) {
       registrationPromise = navigator.serviceWorker
-        .register('./olli-push-sw.js?v=20260924-app-badge-1', { scope: './' })
+        .register('./olli-push-sw.js?v=20260929-work-material-badge-1', { scope: './' })
         .then(() => navigator.serviceWorker.ready)
         .catch((error) => {
           registrationPromise = null;
