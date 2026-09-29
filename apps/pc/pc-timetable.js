@@ -3044,7 +3044,7 @@ ${combined.memoError}`);
       return;
     }
 
-    const schedule = `${weekdayLabel(source.weekday)}요일 ${timeLabel(source.time_slot)}`;
+    const schedule = `${weekdayLabel(source.weekday)}요일 ${scheduleSlotLabel(divisionOf(student), source.time_slot, source.class_group)}`;
     const linkedTargetChange = changes().find((item) => item.status === 'scheduled'
       && clean(item.target_enrollment_id) === selectedEnrollmentId);
     const linkedSourceChange = changes().find((item) => item.status === 'scheduled'
@@ -3080,10 +3080,10 @@ ${combined.memoError}`);
       && item.status === 'scheduled'
       && clean(item.change_type) === 'remove'
       && studentEnrollments(student.id).some((row) => clean(row.id) === clean(item.source_enrollment_id)));
-    const regularText = rows.length ? rows.map((item) => `${weekdayLabel(item.weekday)}요일 ${scheduleSlotLabel(clean(item.division), item.time_slot, item.class_group)}`).join(' · ') : '등록된 수업 없음';
+    const regularText = rows.length ? rows.map((item) => `${weekdayLabel(item.weekday)}요일 ${scheduleSlotLabel(divisionOf(student), item.time_slot, item.class_group)}`).join(' · ') : '등록된 수업 없음';
     const statusRows = [
       `<div><strong>정규 수업</strong>　${esc(regularText)}</div>`,
-      waits.length ? `<div><strong>대기</strong>　${waits.map((item) => `${weekdayLabel(item.target_weekday)} ${timeLabel(item.target_time_slot)}`).join(' · ')}</div>` : '',
+      waits.length ? `<div><strong>대기</strong>　${waits.map((item) => `${weekdayLabel(item.target_weekday)} ${scheduleSlotLabel(divisionOf(student), item.target_time_slot, item.target_class_group)}`).join(' · ')}</div>` : '',
       scheduledMoves.length ? `<div><strong>예약 이동</strong>　${scheduledMoves.map((item) => shortDate(item.effective_date)).join(' · ')}</div>` : '',
       legacyDeletes.length ? `<div><strong>기존 삭제 예약</strong>　${legacyDeletes.map((item) => shortDate(item.effective_date)).join(' · ')}</div>` : ''
     ].filter(Boolean).join('');
