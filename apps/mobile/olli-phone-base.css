@@ -4429,7 +4429,7 @@ body.olli-main-subpage-drawer-modal-fade-active .olliMainDrawerReturnHit {
 .settingsProfileInfo{min-width:0;flex:1}.settingsProfileName{font-size:calc(20px * var(--olli-text-scale));font-weight:850;letter-spacing:-.055em;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.settingsProfileEdit{margin-top:5px;font-size:calc(12.5px * var(--olli-text-scale));color:#999;font-weight:650;letter-spacing:-.03em}
 .settingsSection{margin-top:14px}.settingsSectionTitle{padding:0 4px 8px;font-size:calc(13px * var(--olli-text-scale));font-weight:780;color:#8a8a8a;letter-spacing:-.025em}
 .settingsCard{border-radius:28px;background:#fff;box-shadow:0 10px 26px rgba(0,0,0,.045),0 2px 8px rgba(0,0,0,.02);overflow:hidden}
-.settingsRow{width:100%;min-height:58px;padding:13px 15px;display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid #f0f0ee;background:#fff;text-align:left;cursor:pointer}
+.settingsRow{width:100%;min-height:52px;padding:10px 15px;display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid #f0f0ee;background:#fff;text-align:left;cursor:pointer}
 .settingsRow:last-child{border-bottom:none}.settingsRowLeft{display:flex;align-items:center;gap:12px;min-width:0;flex:1}
 #settingsTeamTalkRow.settingsTeamTalkRowButton{-webkit-appearance:none;appearance:none;box-sizing:border-box;border:0;border-bottom:1px solid #f0f0ee;font:inherit;color:inherit}
 #settingsTeamTalkRow.settingsTeamTalkRowButton:last-child{border-bottom:none}
@@ -4453,7 +4453,7 @@ body.olli-main-subpage-drawer-modal-fade-active .olliMainDrawerReturnHit {
   display: none;
 }
 #settingsPageScreen .settingsSection {
-  margin-top: 12px;
+  margin-top: 24px;
 }
 #settingsPageScreen .settingsSection:first-of-type {
   margin-top: 0;
