@@ -103,11 +103,11 @@
     return hit;
   }
 
-  async function prepareAttendanceState(){
+  async function prepareAttendanceState(options = {}){
     const openAttendance = window.openRecordAttendanceDashboard
       || (typeof openRecordAttendanceDashboard === 'function' ? openRecordAttendanceDashboard : null);
     if (typeof openAttendance === 'function') {
-      await openAttendance();
+      await openAttendance(options);
       return true;
     }
 
@@ -118,15 +118,32 @@
       if (typeof currentObservationView !== 'undefined') currentObservationView = targetView;
       if (typeof currentRecordView !== 'undefined') currentRecordView = targetView;
       if (typeof updateRecordHeaderUI === 'function') updateRecordHeaderUI();
-      if (typeof loadRecords === 'function') await loadRecords('');
+      if (typeof loadRecords === 'function') await loadRecords('', options);
       return true;
     } catch (_) {
       return false;
     }
   }
 
+  function refreshAttendanceAfterPaint(){
+    const refresh = () => {
+      if (typeof window.refreshRecordAttendanceDashboardFromServer === 'function') {
+        window.refreshRecordAttendanceDashboardFromServer('').catch(() => {});
+      } else {
+        prepareAttendanceState({ refreshOnly: true }).catch(() => {});
+      }
+    };
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(refresh));
+    } else {
+      window.setTimeout(refresh, 0);
+    }
+  }
+
   function refreshRecordRoomSubpage(){
-    prepareAttendanceState().catch(() => {});
+    prepareAttendanceState({ localOnly: true })
+      .then((ready) => { if (ready) refreshAttendanceAfterPaint(); })
+      .catch(() => {});
   }
 
   function getRecordUtilityItem(buttonId){
@@ -650,8 +667,9 @@
       const hit = document.getElementById('olliMainDrawerReturnHit');
       if (hit) hit.hidden = true;
 
-      await prepareAttendanceState();
-      return true;
+      const ready = await prepareAttendanceState({ localOnly: true });
+      if (ready) refreshAttendanceAfterPaint();
+      return ready;
     } finally {
       navigationInFlight = false;
     }
