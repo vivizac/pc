@@ -1,10 +1,17 @@
 {
-  "schema_version": 1,
-  "generated_for": "olli monorepo transition",
-  "source_repository": "vivizac/pc",
-  "source_commit": "0b56edcf5493d1a5224874eb30f0c2d1c68eadc6",
-  "mobile_repository": "vivizac/mobile",
-  "mobile_commit": "0e74868fbdd3b73b3e84f57fcd31e46b64df6484",
+  "schema_version": 2,
+  "purpose": "shared runtime source inventory for the active Olli monorepo",
+  "active_repository": "vivizac/pc",
+  "active_pc_root": "apps/pc",
+  "active_mobile_root": "apps/mobile",
+  "common_source": "packages/common",
+  "cutover_status": "completed",
+  "provenance": {
+    "pc_baseline_repository": "vivizac/pc",
+    "pc_baseline_commit": "0b56edcf5493d1a5224874eb30f0c2d1c68eadc6",
+    "mobile_history_repository": "vivizac/mobile",
+    "mobile_baseline_commit": "0e74868fbdd3b73b3e84f57fcd31e46b64df6484"
+  },
   "files": [
     "elementary-analysis.js",
     "observation-memo-common.js",
