@@ -2358,6 +2358,11 @@
       });
       if(!payload?.ok)return false;
       olliTalkLastUnreadMaterialCount=0;
+      document.querySelectorAll('.olliTalkBetaMaterialConfirmCard .olliTalkBetaActionButton').forEach(button=>{
+        button.disabled=true;
+        button.textContent='확인됨';
+        button.classList.add('confirmed');
+      });
       await refreshOlliTalkMentionBadge();
       return true;
     }catch(error){
