@@ -7,6 +7,7 @@
   let renderAttendanceStoreSnapshot = null;
   let renderAttendanceStoreDirty = false;
   let renderAttendanceStoreAutoScheduled = false;
+  let lastAppliedMonthSnapshotKey = '';
 
   function shared() { return global.OlliAttendanceData || null; }
   function endRecordListRender() {
@@ -33,15 +34,7 @@
     }
     return renderAttendanceStoreSnapshot;
   }
-  function beginRecordListRender() {
-    if (!renderAttendanceStoreSnapshot) {
-      renderAttendanceStoreSnapshot = typeof global.readRecordDailyAttendanceStore === 'function'
-        ? global.readRecordDailyAttendanceStore()
-        : {};
-      renderAttendanceStoreDirty = false;
-    }
-    return renderAttendanceStoreSnapshot;
-  }
+
   function afterNextPaint() {
     return new Promise(resolve => {
       if (typeof global.requestAnimationFrame === 'function') {
@@ -453,6 +446,7 @@
     const cached = data.getCachedMonth(yearMonth);
     if (!Array.isArray(cached)) return false;
     mergeServerMonth(cached, yearMonth);
+    lastAppliedMonthSnapshotKey = `${clean(typeof data.currentAcademyId === 'function' ? data.currentAcademyId() : '')}|${yearMonth}|${attendanceRowsSignature(cached)}`;
     if (options.render !== false) renderCurrentRecordList();
     return true;
   }
@@ -467,11 +461,16 @@
       if (options.skipLocal !== true && Array.isArray(cached)) mergeServerMonth(cached, yearMonth);
       const before = attendanceRowsSignature(cached);
       const rows = await data.loadMonth(yearMonth);
-      const changed = options.forceMerge === true || !Array.isArray(cached) || attendanceRowsSignature(rows) !== before;
-      if (changed) {
+      const nextSignature = attendanceRowsSignature(rows);
+      const snapshotKey = `${clean(typeof data.currentAcademyId === 'function' ? data.currentAcademyId() : '')}|${yearMonth}|${nextSignature}`;
+      const serverChanged = !Array.isArray(cached) || nextSignature !== before;
+      const shouldMerge = serverChanged || (options.forceMerge === true && snapshotKey !== lastAppliedMonthSnapshotKey);
+      if (shouldMerge) {
         mergeServerMonth(rows, yearMonth);
+        lastAppliedMonthSnapshotKey = snapshotKey;
         if (options.render !== false) renderCurrentRecordList();
       }
+      if (typeof options.onChanged === 'function') options.onChanged(shouldMerge);
       return true;
     } catch (error) {
       console.warn('출석 서버 동기화 보류:', error?.message || error);
@@ -595,6 +594,7 @@
         const nextSignature = currentTodayScheduleSignature();
         const changed = nextSignature !== beforeSignature;
         todayScheduleState.signature = nextSignature;
+        if (typeof options.onChanged === 'function') options.onChanged(changed);
         if (changed && options.render !== false) renderCurrentRecordList();
         return true;
       } catch (error) {
@@ -964,11 +964,13 @@
   function afterRecordListLoaded() {
     const view = getCurrentRecordView();
     if (view !== 'elementary' && view !== 'kinder') return false;
+    let attendanceChanged = false;
+    const markChanged = changed => { if (changed) attendanceChanged = true; };
     Promise.all([
-      syncCurrentMonth(new Date(), { render: false, skipLocal: true, forceMerge: true }),
-      syncTodaySchedule(new Date(), { render: false, skipLocal: true })
+      syncCurrentMonth(new Date(), { render: false, skipLocal: true, forceMerge: true, onChanged: markChanged }),
+      syncTodaySchedule(new Date(), { render: false, skipLocal: true, onChanged: markChanged })
     ]).then(() => {
-      if (getCurrentRecordView() === view) renderCurrentRecordList();
+      if (attendanceChanged && getCurrentRecordView() === view) renderCurrentRecordList();
     }).catch(error => console.warn('출석 백그라운드 최신화 실패:', error?.message || error));
     return true;
   }
@@ -1025,8 +1027,6 @@
     toggleTodayAttendance,
     hydrateLocalAttendanceSnapshot,
     hydrateLocalAttendanceNavigationSnapshot,
-    beginRecordListRender,
-    endRecordListRender,
     afterRecordListLoaded
   });
   global.syncRecordAttendanceCurrentMonthFromServer = syncCurrentMonth;
