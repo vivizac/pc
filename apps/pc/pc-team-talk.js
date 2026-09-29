@@ -69,19 +69,16 @@
     return call('POST', `rpc/${name}`, params);
   }
 
-  async function dispatchMentionPush(messageId, current = context()) {
+  const TEAM_TALK_PUSH_FUNCTION_URL = 'https://fvkxipjwgeyosgnfhdnx.supabase.co/functions/v1/olli-team-chat-push';
+
+  async function dispatchTeamTalkPush(messageId, current = context()) {
     const id = Number(messageId || 0);
-    const url = typeof SUPABASE_URL !== 'undefined' ? clean(SUPABASE_URL) : '';
-    const key = typeof SUPABASE_KEY !== 'undefined' ? clean(SUPABASE_KEY) : '';
-    if (!id || !url || !current?.sessionToken || !current?.academyId) return false;
+    if (!id || !current?.sessionToken || !current?.academyId) return false;
 
     try {
-      const response = await fetch(url + '/functions/v1/olli-team-chat-push', {
+      const response = await fetch(TEAM_TALK_PUSH_FUNCTION_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(key ? { apikey: key } : {})
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'dispatch',
           session_token: current.sessionToken,
@@ -1447,10 +1444,13 @@
             p_message_id: Number(payload.message.id),
             p_member_ids: mentionIds
           });
-          dispatchMentionPush(Number(payload.message.id), current);
         } catch (error) {
           console.warn('PC 팀톡 멘션 저장 실패:', error?.message || error);
         }
+      }
+
+      if (!olliRequested) {
+        await dispatchTeamTalkPush(Number(payload.message.id), current);
       }
 
       if (olliRequested) {
