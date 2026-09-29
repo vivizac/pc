@@ -136,6 +136,7 @@
     const cached=typeof settingsGetCachedState==='function'?settingsGetCachedState():{};
     return normalizePhoneTimetableMode(academy.kinder_timetable_mode||cached.kinderTimetableMode||'hourly');
   }
+  global.getOlliKinderTimetableMode=getPhoneTimetableMode;
 
   function getPhoneTimetableModeLabel(value){
     return normalizePhoneTimetableMode(value)==='half_hour'?'30분 단위':'정시 타임';

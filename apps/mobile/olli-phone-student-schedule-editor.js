@@ -59,6 +59,55 @@
   }
   function dayLabel(weekday) { return DAYS[Number(weekday)-1] || ''; }
   function groupValue(value) { return clean(value).toUpperCase() === 'B' ? 'B' : 'A'; }
+  const HALF_HOUR_SLOTS = Object.freeze({
+    elementary:Object.freeze([
+      Object.freeze({time:1,label:'1시'}),Object.freeze({time:7,label:'1시 30분'}),
+      Object.freeze({time:2,label:'2시'}),Object.freeze({time:8,label:'2시 30분'}),
+      Object.freeze({time:3,label:'3시'}),Object.freeze({time:9,label:'3시 30분'}),
+      Object.freeze({time:4,label:'4시'}),Object.freeze({time:10,label:'4시 30분'}),
+      Object.freeze({time:5,label:'5시'}),Object.freeze({time:11,label:'5시 30분'}),
+      Object.freeze({time:6,label:'6시'})
+    ]),
+    kinder:Object.freeze([
+      Object.freeze({time:7,label:'3시 30분'}),Object.freeze({time:4,label:'4시'}),
+      Object.freeze({time:8,label:'4시 30분'}),Object.freeze({time:5,label:'5시'}),
+      Object.freeze({time:9,label:'5시 30분'})
+    ])
+  });
+  function timetableMode(){
+    if(typeof global.getOlliKinderTimetableMode==='function'){
+      try{return global.getOlliKinderTimetableMode()==='half_hour'?'half_hour':'hourly';}catch(_){}
+    }
+    try{
+      const academyId=clean(localStorage.getItem('olli_current_academy_id'))||'unscoped';
+      const cached=JSON.parse(localStorage.getItem(`olli_settings_cache_v2_${academyId}`)||'{}');
+      return cached.kinderTimetableMode==='half_hour'?'half_hour':'hourly';
+    }catch(_){return 'hourly';}
+  }
+  function isHalfHourMode(){ return timetableMode()==='half_hour'; }
+  function slotAllowed(division,weekday,timeSlot){
+    const w=Number(weekday), t=Number(timeSlot);
+    if(w<1||w>6) return false;
+    if(division==='elementary'&&w===6) return [10,11,12].includes(t);
+    if(isHalfHourMode()) return (HALF_HOUR_SLOTS[division]||[]).some(slot=>slot.time===t);
+    return division==='kinder'?[4,5].includes(t):(t>=1&&t<=6);
+  }
+  function scheduleTimeLabel(division,timeSlot,weekday){
+    const t=Number(timeSlot);
+    if(isHalfHourMode()&&!(division==='elementary'&&Number(weekday)===6)){
+      const slot=(HALF_HOUR_SLOTS[division]||[]).find(item=>item.time===t);
+      if(slot) return slot.label;
+    }
+    return `${t}시`;
+  }
+  function slotOrder(division,weekday,timeSlot){
+    if(division==='elementary'&&Number(weekday)===6) return [10,11,12].indexOf(Number(timeSlot));
+    if(isHalfHourMode()){
+      const idx=(HALF_HOUR_SLOTS[division]||[]).findIndex(item=>item.time===Number(timeSlot));
+      return idx>=0?idx:999;
+    }
+    return Number(timeSlot);
+  }
   function classKey(item) { return `${Number(item.weekday)}|${Number(item.time_slot)}|${groupValue(item.class_group)}`; }
   function timeKey(item) { return `${Number(item.weekday)}|${Number(item.time_slot)}`; }
   function teacherLabel(value) {
@@ -247,6 +296,7 @@
     return Number.isFinite(raw) && raw > 0 ? raw : 5;
   }
   function optionClassLabel(option) {
+    if (option && option.half_hour) return '';
     if (option.division === 'kinder' && option.merged) return '합반';
     if (option.division === 'elementary' && !option.split) return '기본 클래스';
     return `${option.class_group}반`;
@@ -270,56 +320,69 @@
   function buildOptions(data, division, effectiveDate, currentRows) {
     const enrollments = Array.isArray(data && data.enrollments) ? data.enrollments : [];
     const assignments = Array.isArray(data && data.class_teachers) ? data.class_teachers : [];
+    const halfHour = isHalfHourMode();
     const slotMap = new Map();
     const addSlot = (weekday,timeSlot) => {
       const w = Number(weekday), t = Number(timeSlot);
-      if (!Number.isFinite(w) || w < 1 || w > 6 || !Number.isFinite(t) || t < 1 || t > 12) return;
+      if (!Number.isFinite(w) || !Number.isFinite(t) || !slotAllowed(division,w,t)) return;
       slotMap.set(`${w}|${t}`, { weekday:w, time_slot:t });
     };
     assignments.filter(row => clean(row && row.division) === division).forEach(row => addSlot(row.weekday,row.time_slot));
     enrollments.filter(row => clean(row && row.division) === division && enrollmentEffectiveOn(row,effectiveDate)).forEach(row => addSlot(row.weekday,row.time_slot));
     (Array.isArray(currentRows) ? currentRows : []).forEach(row => addSlot(row.weekday,row.time_slot));
 
-    if (division === 'elementary') {
+    if (halfHour) {
+      for (let weekday = 1; weekday <= 6; weekday += 1) {
+        if (division === 'elementary' && weekday === 6) [10,11,12].forEach(timeSlot => addSlot(weekday,timeSlot));
+        else (HALF_HOUR_SLOTS[division] || []).forEach(slot => addSlot(weekday,slot.time));
+      }
+    } else if (division === 'elementary') {
       for (let weekday = 1; weekday <= 5; weekday += 1) {
         for (let timeSlot = 1; timeSlot <= 6; timeSlot += 1) addSlot(weekday,timeSlot);
       }
       [10,11,12].forEach(timeSlot => addSlot(6,timeSlot));
     } else {
       (Array.isArray(data && data.kinder_class_merges) ? data.kinder_class_merges : []).forEach(row => addSlot(row.weekday,row.time_slot));
-      for (let weekday = 1; weekday <= 6; weekday += 1) {
-        [4,5].forEach(timeSlot => addSlot(weekday,timeSlot));
-      }
+      for (let weekday = 1; weekday <= 6; weekday += 1) [4,5].forEach(timeSlot => addSlot(weekday,timeSlot));
     }
 
     const capacity = capacityFor(data, division);
-    const currentKeys = new Set(normalizeSelected(currentRows).map(classKey));
+    const currentRowsNormalized = normalizeSelected(currentRows);
+    const currentKeys = new Set(currentRowsNormalized.map(classKey));
     const options = [];
-    Array.from(slotMap.values()).sort((a,b) => a.weekday-b.weekday || a.time_slot-b.time_slot).forEach(slot => {
-      const split = division === 'kinder' ? !isKinderMerged(data,slot.weekday,slot.time_slot) : isElementarySplit(data,slot.weekday,slot.time_slot,effectiveDate);
-      const merged = division === 'kinder' && !split;
-      const groups = split ? ['A','B'] : ['A'];
-      groups.forEach(group => {
-        const teacher = assignments.find(row => clean(row && row.division) === division
-          && Number(row.weekday) === slot.weekday
-          && Number(row.time_slot) === slot.time_slot
-          && groupValue(row.class_group) === group);
-        const teacherName = teacherLabel(teacher && teacher.teacher_name);
-        const count = enrollments.filter(row => clean(row && row.division) === division
-          && Number(row.weekday) === slot.weekday
-          && Number(row.time_slot) === slot.time_slot
-          && groupValue(row.class_group) === group
-          && enrollmentEffectiveOn(row,effectiveDate)).length;
-        const item = {
-          division, weekday:slot.weekday, time_slot:slot.time_slot, class_group:group,
-          split, merged, teacher_name:teacherName, count, capacity,
-          remaining:Math.max(capacity-count,0), full:count >= capacity
-        };
-        item.current = currentKeys.has(classKey(item));
-        item.selectable = item.current || !item.full;
-        options.push(item);
+    Array.from(slotMap.values())
+      .sort((a,b) => a.weekday-b.weekday || slotOrder(division,a.weekday,a.time_slot)-slotOrder(division,b.weekday,b.time_slot))
+      .forEach(slot => {
+        const split = halfHour ? false : (division === 'kinder'
+          ? !isKinderMerged(data,slot.weekday,slot.time_slot)
+          : isElementarySplit(data,slot.weekday,slot.time_slot,effectiveDate));
+        const merged = division === 'kinder' && !split;
+        const groups = split ? ['A','B'] : ['A'];
+        groups.forEach(group => {
+          const teacher = assignments.find(row => clean(row && row.division) === division
+            && Number(row.weekday) === slot.weekday
+            && Number(row.time_slot) === slot.time_slot
+            && (halfHour ? groupValue(row.class_group) === 'A' : groupValue(row.class_group) === group))
+            || (halfHour ? assignments.find(row => clean(row && row.division) === division
+              && Number(row.weekday) === slot.weekday
+              && Number(row.time_slot) === slot.time_slot) : null);
+          const teacherName = teacherLabel(teacher && teacher.teacher_name);
+          const count = enrollments.filter(row => clean(row && row.division) === division
+            && Number(row.weekday) === slot.weekday
+            && Number(row.time_slot) === slot.time_slot
+            && (halfHour || groupValue(row.class_group) === group)
+            && enrollmentEffectiveOn(row,effectiveDate)).length;
+          const item = {
+            division, weekday:slot.weekday, time_slot:slot.time_slot, class_group:'A',
+            split, merged, half_hour:halfHour, teacher_name:teacherName, count, capacity,
+            remaining:Math.max(capacity-count,0), full:count >= capacity
+          };
+          item.current = currentKeys.has(classKey(item))
+            || (halfHour && currentRowsNormalized.some(row => Number(row.weekday)===slot.weekday && Number(row.time_slot)===slot.time_slot));
+          item.selectable = item.current || !item.full;
+          options.push(item);
+        });
       });
-    });
     return options;
   }
 
@@ -344,6 +407,7 @@
     return teacherLabel(match && match.teacher_name);
   }
   function displayClassForPair(state,pair) {
+    if (isHalfHourMode()) return '';
     const option = optionFor(state,pair);
     if (option) return optionClassLabel(option);
     return `${groupValue(pair.class_group)}반`;
@@ -354,7 +418,8 @@
     if (!pairs.length) return '<div class="olliPhoneScheduleEmpty">등록된 수업이 없습니다.</div>';
     return '<div class="olliPhoneScheduleSummaryList">' + pairs.map((pair,index) => {
       const teacher = teacherForPair(state,pair) || '담임 미지정';
-      return `<div class="olliPhoneScheduleSummaryItem"><div class="olliPhoneScheduleOrder">${index+1}회차</div><div class="olliPhoneScheduleMain"><div class="olliPhoneScheduleWhen">${esc(dayLabel(pair.weekday))}요일 ${pair.time_slot}시</div><div class="olliPhoneScheduleTeacher">${esc(teacher)}</div></div><div class="olliPhoneScheduleClassBadge">${esc(displayClassForPair(state,pair))}</div></div>`;
+      const classLabel = displayClassForPair(state,pair);
+      return `<div class="olliPhoneScheduleSummaryItem"><div class="olliPhoneScheduleOrder">${index+1}회차</div><div class="olliPhoneScheduleMain"><div class="olliPhoneScheduleWhen">${esc(dayLabel(pair.weekday))}요일 ${esc(scheduleTimeLabel(state.division,pair.time_slot,pair.weekday))}</div><div class="olliPhoneScheduleTeacher">${esc(teacher)}</div></div>${classLabel ? `<div class="olliPhoneScheduleClassBadge">${esc(classLabel)}</div>` : ''}</div>`;
     }).join('') + '</div>';
   }
 
@@ -514,7 +579,8 @@
     if (!state.selected.length) return '<div class="olliPhoneScheduleEmpty">선택된 수업이 없습니다. 학생정보만 유지할 수 있어요.</div>';
     return state.selected.map((pair,index) => {
       const teacher = teacherForPair(state,pair) || '담임 미지정';
-      return `<div class="olliPhoneScheduleSelectedItem"><div class="olliPhoneScheduleOrder">${index+1}회차</div><div class="olliPhoneScheduleMain"><div class="olliPhoneScheduleWhen">${esc(dayLabel(pair.weekday))}요일 ${pair.time_slot}시 · ${esc(displayClassForPair(state,pair))}</div><div class="olliPhoneScheduleTeacher">${esc(teacher)}</div></div><button type="button" class="olliPhoneScheduleRemoveBtn" data-remove-key="${esc(classKey(pair))}" ${state.loading || state.loadError ? 'disabled' : ''} aria-label="수업 삭제">×</button></div>`;
+      const classLabel = displayClassForPair(state,pair);
+      return `<div class="olliPhoneScheduleSelectedItem"><div class="olliPhoneScheduleOrder">${index+1}회차</div><div class="olliPhoneScheduleMain"><div class="olliPhoneScheduleWhen">${esc(dayLabel(pair.weekday))}요일 ${esc(scheduleTimeLabel(state.division,pair.time_slot,pair.weekday))}${classLabel ? ` · ${esc(classLabel)}` : ''}</div><div class="olliPhoneScheduleTeacher">${esc(teacher)}</div></div><button type="button" class="olliPhoneScheduleRemoveBtn" data-remove-key="${esc(classKey(pair))}" ${state.loading || state.loadError ? 'disabled' : ''} aria-label="수업 삭제">×</button></div>`;
     }).join('');
   }
 
@@ -530,7 +596,8 @@
       const disabled = !selected && !option.selectable;
       const teacher = option.teacher_name || '담임 미지정';
       let stateText = selected ? '선택됨' : (fullForNew ? '정원 마감' : (option.teacher_name ? `${option.remaining}자리` : '담임 미지정'));
-      return `<button type="button" class="olliPhoneScheduleOption ${selected ? 'active' : ''}" data-class-key="${esc(key)}" ${disabled ? 'disabled' : ''}><div><div class="olliPhoneScheduleOptionWhen">${esc(dayLabel(option.weekday))}요일 ${option.time_slot}시 · ${esc(optionClassLabel(option))}</div><div class="olliPhoneScheduleOptionMeta">${esc(teacher)} · ${option.count}/${option.capacity}명</div></div><div class="olliPhoneScheduleOptionState ${fullForNew ? 'full' : ''}">${esc(stateText)}</div></button>`;
+      const classLabel = optionClassLabel(option);
+      return `<button type="button" class="olliPhoneScheduleOption ${selected ? 'active' : ''}" data-class-key="${esc(key)}" ${disabled ? 'disabled' : ''}><div><div class="olliPhoneScheduleOptionWhen">${esc(dayLabel(option.weekday))}요일 ${esc(scheduleTimeLabel(state.division,option.time_slot,option.weekday))}${classLabel ? ` · ${esc(classLabel)}` : ''}</div><div class="olliPhoneScheduleOptionMeta">${esc(teacher)} · ${option.count}/${option.capacity}명</div></div><div class="olliPhoneScheduleOptionState ${fullForNew ? 'full' : ''}">${esc(stateText)}</div></button>`;
     }).join('');
   }
 
