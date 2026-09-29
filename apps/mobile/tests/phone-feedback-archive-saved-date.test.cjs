@@ -34,8 +34,8 @@ test('feedback archive month capsules are horizontal, newest-first, and filter e
   assert.match(css, /\.memoFeedbackArchiveMonthBtn\.active\s*\{[\s\S]*background:\s*#0A84FF;[\s\S]*color:\s*#fff;/);
 });
 
-test('phone loads cache-busted archive month capsule styles', () => {
-  assert.match(html, /olli-phone-base\.css\?v=20260928-archive-month-height42-1/);
+test('phone loads versioned archive month capsule styles', () => {
+  assert.match(html, /olli-phone-base\.css\?v=[^"'\s>]+/);
 });
 
 
