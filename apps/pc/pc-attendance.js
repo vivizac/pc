@@ -16,7 +16,10 @@
     editorStudentId: '',
     editorDivision: '',
     recordCache: new Map(),
-    sortMode: PC_SORT_MODES.DAY
+    sortMode: PC_SORT_MODES.DAY,
+    recordMode: 'observation',
+    archiveMonthKey: '',
+    currentRecordData: { feedbacks: [], summaries: [] }
   };
 
   function core() { return global.OlliPcCore; }
@@ -370,6 +373,7 @@
     ).join('');
     title.textContent = '빠른 보기';
     body.innerHTML =
+      '<button class="olliPcQuickBtn '+(app.state.attendanceDivision === 'all' ? 'active' : '')+'" onclick="pcFilterAttendanceDivision(\'all\')"><span>전체</span><span>'+(elementary.length+kinder.length)+'</span></button>'+
       '<button class="olliPcQuickBtn '+(app.state.attendanceDivision === 'elementary' ? 'active' : '')+'" onclick="pcFilterAttendanceDivision(\'elementary\')"><span>초등부</span><span>'+elementary.length+'</span></button>'+
       '<button class="olliPcQuickBtn '+(app.state.attendanceDivision === 'kinder' ? 'active' : '')+'" onclick="pcFilterAttendanceDivision(\'kinder\')"><span>유치부</span><span>'+kinder.length+'</span></button>'+
       '<div class="olliPcContextSectionLabel">정렬</div>'+sortButtons;
@@ -387,7 +391,7 @@
     const academyPanel = document.getElementById('pcAcademyDetailPanel');
     host.insertBefore(panel, academyPanel || null);
     panel.addEventListener('click', (event) => {
-      if (event.target.closest('.attendanceFeedbackSheetCardActions, .attendanceSummaryRegenerateBtn, .attendanceFeedbackSheetCopyIconBtn')) return;
+      if (event.target.closest('.attendanceFeedbackSheetCardActions, .attendanceSummaryRegenerateBtn, .attendanceFeedbackSheetCopyIconBtn, .pcAttendanceArchiveMonthBtn, .pcAttendanceRecordModeTab')) return;
       const card = event.target.closest('.attendanceFeedbackSheetCard');
       if (!card || !panel.contains(card)) return;
       event.preventDefault();
@@ -414,21 +418,43 @@ function mountRecordEditor(student) {
     host.innerHTML = '<div class="pcAttendanceEditorUnavailable">PC 기록 에디터를 불러오지 못했습니다.</div>';
     return;
   }
-  Promise.resolve(editor.mount(host, student)).catch((error) => {
+  Promise.resolve(editor.mount(host, student, { mode: state.recordMode })).catch((error) => {
     console.warn('PC 기록 에디터 연결 실패:', error && (error.message || error));
     host.innerHTML = '<div class="pcAttendanceEditorUnavailable">기록 화면을 불러오지 못했습니다.</div>';
   });
 }
 
 function recordWorkspaceHtml(student, recordContent) {
+    const observationActive = state.recordMode === 'observation';
     return '<div class="pcAttendanceDetailBody">'
       + '<section class="pcAttendanceEditorCard" aria-label="수업 기록 작성">'
-      + '<div class="pcAttendanceSharedEditorHost" id="pcAttendanceSharedEditorHost"></div>'
-      + '</section>'
-      + '<section class="pcAttendanceCombinedCard" aria-label="종합 성장 기록">'
-      + '<div class="pcAttendanceCombinedBody" id="pcAttendanceCombinedBody">'+recordContent+'</div>'
-      + '</section>'
-      + '</div>';
+      + '<div class="pcAttendanceEditorHead"><div class="pcAttendanceRecordModeTabs" role="tablist" aria-label="관찰노트와 퀵노트 전환">'
+      + '<button type="button" class="pcAttendanceRecordModeTab '+(observationActive ? 'active' : '')+'" aria-selected="'+(observationActive ? 'true' : 'false')+'" onclick="pcSetPersonalityRecordMode(\'observation\')">관찰노트</button>'
+      + '<button type="button" class="pcAttendanceRecordModeTab '+(!observationActive ? 'active' : '')+'" aria-selected="'+(!observationActive ? 'true' : 'false')+'" onclick="pcSetPersonalityRecordMode(\'quick\')">퀵노트</button>'
+      + '</div></div><div class="pcAttendanceSharedEditorHost" id="pcAttendanceSharedEditorHost"></div></section>'
+      + '<section class="pcAttendanceCombinedCard" aria-label="피드백 보관함"><div class="pcAttendanceArchiveHead"><div class="pcAttendanceArchiveTitle">피드백 보관함</div><div class="pcAttendanceArchiveMonths" id="pcAttendanceArchiveMonths"></div></div>'
+      + '<div class="pcAttendanceCombinedBody" id="pcAttendanceCombinedBody">'+recordContent+'</div></section></div>';
+  }
+
+  function syncRecordModeTabs() {
+    const panel = document.getElementById('pcAttendanceDetailPanel');
+    if (!panel) return;
+    panel.querySelectorAll('.pcAttendanceRecordModeTab').forEach((button) => {
+      const quick = button.textContent.trim() === '퀵노트';
+      const active = quick ? state.recordMode === 'quick' : state.recordMode === 'observation';
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+  }
+
+  function setRecordMode(mode) {
+    const next = mode === 'quick' ? 'quick' : 'observation';
+    if (state.recordMode === next) return;
+    state.recordMode = next;
+    syncRecordModeTabs();
+    const editor = global.OlliPcRecordEditor;
+    if (editor && typeof editor.setMode === 'function') Promise.resolve(editor.setMode(next)).catch((error) => console.warn('PC 기록 모드 전환 실패:', error));
+    else if (state.selectedStudentId) selectStudent(state.selectedStudentId);
   }
 
   function recordLoadingHtml() {
@@ -446,7 +472,7 @@ function recordWorkspaceHtml(student, recordContent) {
     let body = document.getElementById('pcAttendanceCombinedBody');
     if (!host || !body || !panel.contains(host) || !panel.contains(body)) {
       unmountRecordEditor();
-      panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">관찰기록</div></div>'
+      panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">성향기록부</div></div>'
         + recordWorkspaceHtml(student, recordQuietLoadingHtml());
       host = document.getElementById('pcAttendanceSharedEditorHost');
       body = document.getElementById('pcAttendanceCombinedBody');
@@ -459,8 +485,8 @@ function recordWorkspaceHtml(student, recordContent) {
     const panel = ensureDetailPanel();
     if (!panel) return;
     unmountRecordEditor();
-    panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">관찰기록</div></div>'
-      + '<div class="pcAttendanceDetailEmpty"><span class="pcAttendanceDetailEmptyIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="3"></rect><path d="M8 9h8M8 13h5"></path></svg></span><strong>학생을 선택해 주세요.</strong><span>왼쪽 명단에서 학생 이름을 누르면<br>관찰기록이 이곳에 표시됩니다.</span></div>';
+    panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">성향기록부</div></div>'
+      + '<div class="pcAttendanceDetailEmpty"><span class="pcAttendanceDetailEmptyIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="3"></rect><path d="M8 9h8M8 13h5"></path></svg></span><strong>학생을 선택해 주세요.</strong><span>왼쪽 명단에서 학생 이름을 누르면<br>관찰노트와 퀵노트를 작성할 수 있습니다.</span></div>';
   }
 
 
@@ -481,7 +507,7 @@ function recordWorkspaceHtml(student, recordContent) {
     unmountRecordEditor();
     const statusLabel = status === 'paused' ? '휴원' : '퇴원';
     const studentName = escape(student?.name || '해당');
-    panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">관찰기록</div></div>'
+    panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">성향기록부</div></div>'
       + '<div class="pcAttendanceDetailEmpty pcAttendanceDetailInactive">'
       + '<button type="button" class="pcAttendanceDetailEmptyIcon pcAttendanceReenrollIcon" aria-label="'+studentName+' 학생 재등록" onclick="pcReenrollAttendanceStudent(\''+escape(student?.id || '')+'\')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 7.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"></path><path d="M5.5 18.5c.8-3 2.8-4.5 5.5-4.5 1.2 0 2.3.3 3.2.8"></path><path d="M17 12.5h3v3"></path><path d="M20 15.5a4.5 4.5 0 0 1-7.3 3.5"></path><path d="M14 20h-3v-3"></path></svg></button>'
       + '<strong>재등록 후 관찰기록을 이용할 수 있어요.</strong>'
@@ -551,22 +577,47 @@ function recordWorkspaceHtml(student, recordContent) {
     return cards || '<div class="attendanceFeedbackSheetEmpty">저장된 기록이 없습니다.</div>';
   }
 
+  function archiveMonthKey(item) {
+    const timestamp = getPcAttendanceRecordTimestamp(item);
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+  }
+  function archiveMonthLabel(key) {
+    const match = String(key || '').match(/^(\d{4})-(\d{2})$/);
+    return match ? Number(match[2]) + '월' : '';
+  }
+  function archiveMonths(feedbacks, summaries) {
+    return [...new Set([...(feedbacks || []), ...(summaries || [])].map(archiveMonthKey).filter(Boolean))].sort((a, b) => b.localeCompare(a));
+  }
+  function renderArchiveMonthButtons(feedbacks, summaries) {
+    const host = document.getElementById('pcAttendanceArchiveMonths');
+    if (!host) return;
+    const months = archiveMonths(feedbacks, summaries);
+    if (!months.length) { state.archiveMonthKey = ''; host.innerHTML = ''; return; }
+    if (!months.includes(state.archiveMonthKey)) state.archiveMonthKey = months[0];
+    host.innerHTML = months.map((key) => '<button type="button" class="pcAttendanceArchiveMonthBtn '+(key === state.archiveMonthKey ? 'active' : '')+'" title="'+escape(key)+'" onclick="pcSelectAttendanceArchiveMonth(\''+escape(key)+'\')">'+archiveMonthLabel(key)+'</button>').join('');
+  }
   function renderCombinedRecords(student, data) {
     const feedbacks = Array.isArray(data?.feedbacks) ? data.feedbacks : [];
     const summaries = Array.isArray(data?.summaries) ? data.summaries : [];
-
-    // 기존 공통 시트 상태는 그대로 유지해 복사·삭제·종합기록 재생성 로직을 변경하지 않습니다.
-    try {
-      if (typeof renderAttendanceStudentFeedbackSheet === 'function') {
-        renderAttendanceStudentFeedbackSheet(student, { feedbacks, summaries });
-      }
-    } catch (_) {}
-
+    state.currentRecordData = { feedbacks, summaries };
+    try { if (typeof renderAttendanceStudentFeedbackSheet === 'function') renderAttendanceStudentFeedbackSheet(student, { feedbacks, summaries }); } catch (_) {}
+    renderArchiveMonthButtons(feedbacks, summaries);
+    const selectedMonth = state.archiveMonthKey;
+    const monthFeedbacks = selectedMonth ? feedbacks.filter((item) => archiveMonthKey(item) === selectedMonth) : feedbacks;
+    const monthSummaries = selectedMonth ? summaries.filter((item) => archiveMonthKey(item) === selectedMonth) : summaries;
     const body = document.getElementById('pcAttendanceCombinedBody');
     if (!body) return;
-    body.innerHTML = '<section class="attendanceFeedbackSheetSection pcAttendanceRecordSection pcAttendanceRecordSectionUnified" aria-label="관찰 및 성장 기록"><div class="attendanceFeedbackSheetScroll">'
-      + renderUnifiedRecordCards(student, feedbacks, summaries)
-      + '</div></section>';
+    body.innerHTML = '<section class="attendanceFeedbackSheetSection pcAttendanceRecordSection pcAttendanceRecordSectionUnified" aria-label="날짜순 피드백 기록"><div class="attendanceFeedbackSheetScroll">' + renderUnifiedRecordCards(student, monthFeedbacks, monthSummaries) + '</div></section>';
+  }
+  function selectArchiveMonth(monthKey) {
+    const key = String(monthKey || '');
+    if (!state.selectedStudentId || state.archiveMonthKey === key) return;
+    state.archiveMonthKey = key;
+    const student = typeof findStudentById === 'function' ? findStudentById(state.selectedStudentId) : null;
+    if (student) renderCombinedRecords(student, state.currentRecordData);
   }
 
   async function refreshSelectedRecord() {
@@ -587,6 +638,7 @@ function recordWorkspaceHtml(student, recordContent) {
     if (!student) return;
     const nextStudentId = String(student.id || '');
     const wasSelected = state.selectedStudentId === nextStudentId;
+    if (!wasSelected) { state.archiveMonthKey = ''; state.currentRecordData = { feedbacks: [], summaries: [] }; }
     state.selectedStudentId = nextStudentId;
     decorateRows();
 
@@ -657,8 +709,8 @@ function recordWorkspaceHtml(student, recordContent) {
     const list = document.getElementById('recordList');
     const app = core();
     if (!list || !app) return;
-    const division = app.state.attendanceDivision === 'kinder' ? 'kinder' : 'elementary';
-    const label = division === 'kinder' ? '유치부' : '초등부';
+    const division = app.state.attendanceDivision === 'all' ? 'all' : (app.state.attendanceDivision === 'kinder' ? 'kinder' : 'elementary');
+    const label = division === 'all' ? '전체' : (division === 'kinder' ? '유치부' : '초등부');
     const header = document.createElement('div');
     header.className = 'pcAttendanceRosterHead';
     header.innerHTML = '<div class="pcAttendanceRosterTitle">학생 명단</div><span class="pcAttendanceRosterDivision '+division+'">'+label+'</span>';
@@ -749,7 +801,7 @@ function recordWorkspaceHtml(student, recordContent) {
     state.loadToken += 1;
     state.sortMode = PC_SORT_MODES.DAY;
     renderEmptyDetail();
-    app.state.attendanceDivision = 'elementary';
+    app.state.attendanceDivision = 'all';
     app.state.attendanceDay = '';
     app.updateRecordLayout();
     app.renderContext();
@@ -812,7 +864,7 @@ function recordWorkspaceHtml(student, recordContent) {
   }
 
   function filterDivision(division) {
-    core().state.attendanceDivision = division === 'kinder' ? 'kinder' : 'elementary';
+    core().state.attendanceDivision = division === 'all' ? 'all' : (division === 'kinder' ? 'kinder' : 'elementary');
     renderList();
   }
 
@@ -827,12 +879,14 @@ function recordWorkspaceHtml(student, recordContent) {
     renderList();
   }
 
-  const api = { studentMatchesDay, renderContext, ensureDetailPanel, open, renderList, filterDivision, filterDay, setSortMode, selectStudent, refreshSelected: refreshSelectedRecord, decorateRows, unmountEditor: unmountRecordEditor };
+  const api = { studentMatchesDay, renderContext, ensureDetailPanel, open, renderList, filterDivision, filterDay, setSortMode, selectStudent, setRecordMode, selectArchiveMonth, refreshSelected: refreshSelectedRecord, decorateRows, unmountEditor: unmountRecordEditor };
   global.OlliPcPersonalityRecords = api;
   global.OlliPcAttendance = api;
   global.pcSelectAttendanceStudent = selectStudent;
   global.pcReenrollAttendanceStudent = reenrollInactiveStudent;
   global.pcSetAttendanceSortMode = setSortMode;
+  global.pcSetPersonalityRecordMode = setRecordMode;
+  global.pcSelectAttendanceArchiveMonth = selectArchiveMonth;
 
   removeLegacyPcSortControl();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', removeLegacyPcSortControl, { once: true });

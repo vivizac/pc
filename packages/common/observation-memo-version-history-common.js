@@ -32,7 +32,7 @@
   }
   function activeStudent() {
     const student = global.currentMemoStudent;
-    if (!student || global.currentMemoType !== 'elementary') return null;
+    if (!student || !['elementary', 'kinder'].includes(global.currentMemoType)) return null;
     return student;
   }
   const versionHistoryCore = global.ObservationMemoVersionHistoryCore;
@@ -463,7 +463,8 @@
       try { if (typeof global.updateMemoStudentMetaDisplay === 'function') global.updateMemoStudentMetaDisplay(student, syncedAt); } catch (_) {}
       try {
         if (typeof global.beginObservationMemoEditSession === 'function') {
-          global.beginObservationMemoEditSession(student, 'elementary', text(content));
+          const memoType = global.currentMemoType === 'kinder' ? 'kinder' : 'elementary';
+          global.beginObservationMemoEditSession(student, memoType, text(content));
         }
         if (typeof global.markObservationMemoEditorClean === 'function') global.markObservationMemoEditorClean();
       } catch (_) {}
