@@ -13,6 +13,48 @@
     kinder: [4, 5]
   };
   const SATURDAY_ELEMENTARY_TIME_SLOTS = [10, 11, 12];
+  // 30분형은 기존 유치부 4A/4B/5A/5B 저장칸을 그대로 사용합니다.
+  // 저장 구조를 유지해 기존 학생·보강·대기·출결 데이터와 하위 호환됩니다.
+  const KINDER_HALF_HOUR_SLOTS = Object.freeze([
+    Object.freeze({ time: 4, classGroup: 'A', label: '4시 30분' }),
+    Object.freeze({ time: 4, classGroup: 'B', label: '5시' }),
+    Object.freeze({ time: 5, classGroup: 'A', label: '5시 30분' }),
+    Object.freeze({ time: 5, classGroup: 'B', label: '6시' })
+  ]);
+
+  function normalizeKinderTimetableMode(value) {
+    return clean(value) === 'half_hour' ? 'half_hour' : 'hourly';
+  }
+
+  function getKinderTimetableMode() {
+    if (typeof global.getOlliKinderTimetableMode === 'function') {
+      try { return normalizeKinderTimetableMode(global.getOlliKinderTimetableMode()); } catch (_) {}
+    }
+    try {
+      const academyId = clean(localStorage.getItem('olli_current_academy_id')) || 'unscoped';
+      const cached = JSON.parse(localStorage.getItem(`olli_settings_cache_v2_${academyId}`) || '{}');
+      return normalizeKinderTimetableMode(cached.kinderTimetableMode);
+    } catch (_) {
+      return 'hourly';
+    }
+  }
+
+  function isKinderHalfHourMode() {
+    return getKinderTimetableMode() === 'half_hour';
+  }
+
+  function kinderHalfHourSlot(time, classGroup) {
+    const group = classGroupOf({ class_group: classGroup });
+    return KINDER_HALF_HOUR_SLOTS.find((slot) => Number(slot.time) === Number(time) && slot.classGroup === group) || null;
+  }
+
+  function scheduleSlotLabel(division, time, classGroup) {
+    if (division === 'kinder' && isKinderHalfHourMode()) {
+      const slot = kinderHalfHourSlot(time, classGroup);
+      if (slot) return slot.label;
+    }
+    return timeLabel(time);
+  }
 
   function timeOptionsFor(division, weekday) {
     return division === 'elementary' && Number(weekday) === 6
@@ -364,7 +406,10 @@
     const value = clean(item && item[key || 'class_group']).toUpperCase();
     return value === 'B' ? 'B' : 'A';
   }
-  function classGroupLabel(division, group) { return division === 'kinder' ? `${classGroupOf({ class_group: group })}반` : ''; }
+  function classGroupLabel(division, group) {
+    if (division !== 'kinder' || isKinderHalfHourMode()) return '';
+    return `${classGroupOf({ class_group: group })}반`;
+  }
   function timeLabel(time) { return `${Number(time)}시`; }
   function weekdayLabel(weekday) { return DAYS[Number(weekday) - 1] || ''; }
 
@@ -576,6 +621,16 @@
     } catch (error) {
       console.warn('저장 전 시간표 최신 확인 실패:', error);
     }
+  }
+
+  if (!global.__OLLI_KINDER_TIMETABLE_MODE_SYNC_V1__) {
+    global.__OLLI_KINDER_TIMETABLE_MODE_SYNC_V1__ = true;
+    global.addEventListener('olli:kinder-timetable-mode-changed', () => {
+      if (!state.active || state.pane !== 'schedule') return;
+      closeDialog();
+      renderTimetable();
+      renderSidebar();
+    });
   }
 
   if (!global.__OLLI_TIMETABLE_LIVE_SYNC_V1__) {
@@ -1024,6 +1079,16 @@
     }).join('')}</div></div>`;
   }
 
+  function kinderHalfHourCellHtml(date, slot) {
+    const time = Number(slot.time);
+    const group = slot.classGroup;
+    const holiday = isHolidayDate(date);
+    const attrs = `data-tt-cell="1" data-division="kinder" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-time="${time}" data-class-group="${group}"${holiday ? ' data-holiday="1" aria-disabled="true"' : ''}`;
+    const teacherLabel = effectiveClassTeacherLabel('kinder', date, time, group);
+    const teacherHead = teacherLabel ? `<div class="olliTtClassLaneHead olliTtMergedClassHead"><strong>${esc(teacherLabel)}</strong></div>` : '';
+    return `<div class="olliTtCell kinder merged halfHour${holiday ? ' holiday' : ''}" ${attrs}>${teacherHead}${cellContentsHtml('kinder', date, time, group, '')}</div>`;
+  }
+
   function pickupCellHtml(date, classTime) {
     const rows = slotPickups(date, classTime);
     const holiday = isHolidayDate(date);
@@ -1077,13 +1142,14 @@
   }
 
   function sectionHtml(division) {
-    const times = TIME_SLOTS[division];
+    const halfHourKinder = division === 'kinder' && isKinderHalfHourMode();
+    const rows = halfHourKinder ? KINDER_HALF_HOUR_SLOTS : TIME_SLOTS[division];
     const dates = DAYS.map((_, index) => addDays(state.weekStart, index));
     const adaptiveClass = division === 'elementary' ? ' olliTtAdaptiveEdgeRows' : '';
     const adaptiveVars = division === 'elementary'
       ? `;--olli-tt-edge-row-1:${elementaryAdaptiveEdgeRowHeight(1, dates)}px;--olli-tt-edge-row-6:${elementaryAdaptiveEdgeRowHeight(6, dates)}px`
       : '';
-    let grid = `<div class="olliTtGrid${adaptiveClass}" style="--olli-tt-rows:${times.length}${adaptiveVars}"><div class="olliTtCorner"></div>`;
+    let grid = `<div class="olliTtGrid${adaptiveClass}${halfHourKinder ? ' olliTtKinderHalfHourGrid' : ''}" style="--olli-tt-rows:${rows.length}${adaptiveVars}"><div class="olliTtCorner"></div>`;
     dates.forEach((date, index) => {
       const info = calendarInfo(date);
       const holiday = !!(info && info.is_holiday === true);
@@ -1093,7 +1159,13 @@
         : '';
       grid += `<div class="olliTtDay ${isToday(date) ? 'today ' : ''}${holiday ? 'holiday' : ''}"${holidayName(date) ? ` title="${esc(holidayName(date))}"` : ''}><strong>${DAYS[index]}요일</strong><span>${date.getMonth() + 1}월 ${date.getDate()}일${isToday(date) ? ' · 오늘' : ''}</span>${toggle}</div>`;
     });
-    times.forEach((time) => {
+    rows.forEach((row) => {
+      if (halfHourKinder) {
+        grid += `<div class="olliTtTime">${row.label}</div>`;
+        dates.forEach((date) => { grid += kinderHalfHourCellHtml(date, row); });
+        return;
+      }
+      const time = Number(row);
       grid += `<div class="olliTtTime">${time}시</div>`;
       dates.forEach((date) => { grid += cellHtml(division, date, time); });
     });
@@ -1282,7 +1354,7 @@
     if (!rows.length) return '';
     const student = studentById(studentId);
     return rows.sort((a, b) => Number(a.weekday) - Number(b.weekday) || Number(a.time_slot) - Number(b.time_slot))
-      .map((item) => `${weekdayLabel(item.weekday)} ${timeLabel(item.time_slot)}${classGroupLabel(divisionOf(student), item.class_group) ? ` ${classGroupLabel(divisionOf(student), item.class_group)}` : ''}`).join(' · ');
+      .map((item) => `${weekdayLabel(item.weekday)} ${scheduleSlotLabel(divisionOf(student), item.time_slot, item.class_group)}${classGroupLabel(divisionOf(student), item.class_group) ? ` ${classGroupLabel(divisionOf(student), item.class_group)}` : ''}`).join(' · ');
   }
 
   function setPane(pane) {
@@ -1521,6 +1593,7 @@
   }
 
   function classGroupChoiceHtml(division, selectedGroup, weekday, time, targetDate, hideGuide, includeKinderLayoutControl) {
+    if (division === 'kinder' && isKinderHalfHourMode()) return '';
     const split = isClassSplit(division, weekday, time, targetDate);
     const selected = classGroupOf({ class_group: selectedGroup });
     const pendingKinderMerge = Boolean(state.dialog && state.dialog.kind === 'add' && state.dialog.division === 'kinder' && state.dialog.pendingKinderMerge);
@@ -1622,7 +1695,7 @@
     const sourceHtml = rows.length ? rows.map((item) => {
       const current = enrollmentEffectiveOn(item, weekReferenceDate);
       const selected = clean(item.id) === clean(dialog.sourceEnrollmentId);
-      const schedule = `${weekdayLabel(item.weekday)}요일 · ${timeLabel(item.time_slot)}${classGroupLabel(division, item.class_group) ? ` · ${classGroupLabel(division, item.class_group)}` : ''}`;
+      const schedule = `${weekdayLabel(item.weekday)}요일 · ${scheduleSlotLabel(division, item.time_slot, item.class_group)}${classGroupLabel(division, item.class_group) ? ` · ${classGroupLabel(division, item.class_group)}` : ''}`;
       const order = hasTwoCurrentSessions && current ? (isSecondWeeklySession(item, weekReferenceDate) ? 2 : 1) : 0;
       const orderHtml = order ? `<div class="olliTtSessionOrder" role="group" aria-label="${esc(schedule)} 회차 설정"><button type="button" class="${order === 1 ? 'active' : ''}" data-tt-session-order="1" data-enrollment-id="${esc(item.id)}">1회차</button><button type="button" class="${order === 2 ? 'active' : ''}" data-tt-session-order="2" data-enrollment-id="${esc(item.id)}">2회차</button></div>` : '';
       const deleteLabel = '삭제';
@@ -1630,25 +1703,26 @@
     }).join('') : '<div class="olliTtStatusNotice">현재 등록된 정규 수업이 없습니다.</div>';
     const dayHtml = DAYS.map((day, index) => `<button type="button" class="olliTtChoice ${dialog.targetWeekday === index + 1 ? 'active' : ''}" data-tt-target-day="${index + 1}">${day}</button>`).join('');
     const timeHtml = division === 'kinder'
-      ? timeOptions.map((time) => {
-        const split = isClassSplit(division, dialog.targetWeekday, time, dialog.effectiveDate);
-        const groups = split ? ['A', 'B'] : ['A'];
-        return groups.map((group) => {
-          const count = countAt(
-            division,
-            dialog.targetWeekday,
-            time,
-            dialog.effectiveDate,
-            group,
-            dialog.actionType === 'makeup'
-          );
+      ? (isKinderHalfHourMode()
+        ? KINDER_HALF_HOUR_SLOTS.map((slot) => {
+          const count = countAt(division, dialog.targetWeekday, slot.time, dialog.effectiveDate, slot.classGroup, dialog.actionType === 'makeup');
           const full = capacity && count >= capacity;
-          const active = Number(dialog.targetTime) === Number(time)
-            && classGroupOf({ class_group: dialog.targetClassGroup }) === group;
-          const label = split ? `${time}시 ${group}반` : `${time}시 합반`;
-          return `<button type="button" class="olliTtChoice olliTtKinderTimeClassChoice ${active ? 'active' : ''} ${full ? 'full' : ''}" data-tt-kinder-time-class data-time="${time}" data-class-group="${group}">${label}${capacity ? `<small>${count}/${capacity}${full ? ' · 대기' : ''}</small>` : ''}</button>`;
-        }).join('');
-      }).join('')
+          const active = Number(dialog.targetTime) === Number(slot.time)
+            && classGroupOf({ class_group: dialog.targetClassGroup }) === slot.classGroup;
+          return `<button type="button" class="olliTtChoice olliTtKinderTimeClassChoice ${active ? 'active' : ''} ${full ? 'full' : ''}" data-tt-kinder-time-class data-time="${slot.time}" data-class-group="${slot.classGroup}">${slot.label}${capacity ? `<small>${count}/${capacity}${full ? ' · 대기' : ''}</small>` : ''}</button>`;
+        }).join('')
+        : timeOptions.map((time) => {
+          const split = isClassSplit(division, dialog.targetWeekday, time, dialog.effectiveDate);
+          const groups = split ? ['A', 'B'] : ['A'];
+          return groups.map((group) => {
+            const count = countAt(division, dialog.targetWeekday, time, dialog.effectiveDate, group, dialog.actionType === 'makeup');
+            const full = capacity && count >= capacity;
+            const active = Number(dialog.targetTime) === Number(time)
+              && classGroupOf({ class_group: dialog.targetClassGroup }) === group;
+            const label = split ? `${time}시 ${group}반` : `${time}시 합반`;
+            return `<button type="button" class="olliTtChoice olliTtKinderTimeClassChoice ${active ? 'active' : ''} ${full ? 'full' : ''}" data-tt-kinder-time-class data-time="${time}" data-class-group="${group}">${label}${capacity ? `<small>${count}/${capacity}${full ? ' · 대기' : ''}</small>` : ''}</button>`;
+          }).join('');
+        }).join(''))
       : timeOptions.map((time) => {
         const count = countAt(
           division,
@@ -1664,12 +1738,12 @@
     const moveStatusHtml = moveRows.length ? `<div class="olliTtField"><div class="olliTtFieldHead"><span>수업 이동 상태</span></div><div class="olliTtEnrollmentList">${moveRows.map((item) => {
       const target = rows.find((row) => clean(row.id) === clean(item.target_enrollment_id));
       const reserved = isReservedMoveDate(item.effective_date);
-      const targetText = target ? `${weekdayLabel(target.weekday)}요일 ${timeLabel(target.time_slot)}` : '이동할 수업';
+      const targetText = target ? `${weekdayLabel(target.weekday)}요일 ${scheduleSlotLabel(division, target.time_slot, target.class_group)}` : '이동할 수업';
       return `<button type="button" class="olliTtEnrollmentChoice" data-tt-cancel-change="${esc(item.id)}"><strong>${shortDate(item.effective_date)} · ${reserved ? '예약 이동' : '이번 주 이동'} · ${esc(targetText)}</strong><span>${reserved ? '예약 취소' : '이동 취소'}</span></button>`;
     }).join('')}</div></div>` : '';
     const legacyDeleteHtml = legacyDeleteRows.length ? `<div class="olliTtField"><div class="olliTtFieldHead"><span>기존 삭제 예약</span><small>이전 방식으로 저장된 예약입니다. 새 삭제는 즉시 처리됩니다.</small></div><div class="olliTtEnrollmentList">${legacyDeleteRows.map((item) => {
       const scheduledSource = rows.find((row) => clean(row.id) === clean(item.source_enrollment_id));
-      const sourceText = scheduledSource ? `${weekdayLabel(scheduledSource.weekday)}요일 ${timeLabel(scheduledSource.time_slot)}` : '수업';
+      const sourceText = scheduledSource ? `${weekdayLabel(scheduledSource.weekday)}요일 ${scheduleSlotLabel(division, scheduledSource.time_slot, scheduledSource.class_group)}` : '수업';
       return `<button type="button" class="olliTtEnrollmentChoice" data-tt-cancel-change="${esc(item.id)}"><strong>${shortDate(item.effective_date)} · 기존 삭제 예약 · ${esc(sourceText)}</strong><span>예약 취소</span></button>`;
     }).join('')}</div></div>` : '';
     const scheduledHtml = moveStatusHtml + legacyDeleteHtml;
@@ -1788,7 +1862,7 @@
       ? '등록'
       : (hasRegistrationTarget ? '등록' : (note ? '메모 저장' : (hadMemo ? '메모 삭제' : (teacherChanged ? '담임 저장' : (overrideChanged ? '당일 담당 저장' : '등록')))));
     const studentField = addStudentFieldHtml(dialog);
-    return dialogHead('+', '이 시간에 학생 추가', `${koreanDate(parseDate(dialog.date), true)} ${weekdayLabel(dialog.weekday)}요일 · ${timeLabel(dialog.time)}`)
+    return dialogHead('+', '이 시간에 학생 추가', `${koreanDate(parseDate(dialog.date), true)} ${weekdayLabel(dialog.weekday)}요일 · ${scheduleSlotLabel(dialog.division, dialog.time, dialog.targetClassGroup)}`)
       + '<div class="olliTtDialogBody">'
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>추가 유형</span></div><div class="olliTtTypeGrid">'
       + `<button type="button" class="olliTtTypeBtn ${dialog.addType === 'regular' ? 'active' : ''}" data-tt-add-type="regular">시간표 등록</button>`
@@ -1807,7 +1881,7 @@
   function memoManageDialogHtml(dialog) {
     const date = parseDate(dialog.date);
     const day = weekdayLabel(date.getDay());
-    return dialogHead('📝', '메모 관리', `${koreanDate(date, true)} ${day}요일 · ${timeLabel(dialog.time)}`)
+    return dialogHead('📝', '메모 관리', `${koreanDate(date, true)} ${day}요일 · ${scheduleSlotLabel(dialog.division, dialog.time, dialog.classGroup)}`)
       + '<div class="olliTtDialogBody">'
       + `<label class="olliTtAddMemo"><span>메모</span><textarea data-tt-memo-edit maxlength="500" placeholder="메모를 입력하세요">${esc(dialog.memo)}</textarea></label>`
       + '<div class="olliTtStatusNotice">메모 내용을 수정한 뒤 저장하거나, 더 이상 필요하지 않으면 삭제할 수 있습니다.</div>'
@@ -1823,13 +1897,13 @@
     const occupied = countAt(clean(item.division), item.target_weekday, item.target_time_slot, dialog.effectiveDate, item.target_class_group);
     const canEnter = !guest && (!capacity || occupied < capacity);
     if (guest) {
-      return dialogHead('⌛', `${displayName} 대기 관리`, `${weekdayLabel(item.target_weekday)}요일 · ${timeLabel(item.target_time_slot)}${classGroupLabel(clean(item.division), item.target_class_group) ? ` · ${classGroupLabel(clean(item.division), item.target_class_group)}` : ''}`)
+      return dialogHead('⌛', `${displayName} 대기 관리`, `${weekdayLabel(item.target_weekday)}요일 · ${scheduleSlotLabel(clean(item.division), item.target_time_slot, item.target_class_group)}${classGroupLabel(clean(item.division), item.target_class_group) ? ` · ${classGroupLabel(clean(item.division), item.target_class_group)}` : ''}`)
         + '<div class="olliTtDialogBody">'
         + '<div class="olliTtCurrentBox"><strong>비재원 학생 대기입니다.</strong>현재 학생명단에는 등록하지 않고 대기 이름만 시간표에 보관합니다.</div>'
         + `<label class="olliTtAddMemo olliTtCancelMemo"><span>취소 사유</span><textarea data-tt-cancel-note maxlength="500" placeholder="취소 사유를 입력하세요">${esc(dialog.cancelNote || '')}</textarea></label>`
         + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-wait>대기 취소</button></div></div>';
     }
-    return dialogHead('⌛', `${item.student_name} 대기 관리`, `${weekdayLabel(item.target_weekday)}요일 · ${timeLabel(item.target_time_slot)}${classGroupLabel(clean(item.division), item.target_class_group) ? ` · ${classGroupLabel(clean(item.division), item.target_class_group)}` : ''}`)
+    return dialogHead('⌛', `${item.student_name} 대기 관리`, `${weekdayLabel(item.target_weekday)}요일 · ${scheduleSlotLabel(clean(item.division), item.target_time_slot, item.target_class_group)}${classGroupLabel(clean(item.division), item.target_class_group) ? ` · ${classGroupLabel(clean(item.division), item.target_class_group)}` : ''}`)
       + '<div class="olliTtDialogBody">'
       + `<div class="olliTtField"><div class="olliTtFieldHead"><span>입장 적용 날짜</span><small>자리가 있는 날짜를 선택하세요</small></div><input type="date" class="olliTtDateInput" data-tt-wait-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></div>`
       + `<label class="olliTtAddMemo olliTtCancelMemo"><span>취소 사유</span><textarea data-tt-cancel-note maxlength="500" placeholder="취소 사유를 입력하세요">${esc(dialog.cancelNote || '')}</textarea></label>`
@@ -1844,9 +1918,9 @@
     const trial = clean(item.session_type) === 'trial';
     const displayName = `${item.student_name}${item.is_guest === true ? ' (비)' : ''}`;
     const typeLabel = trial ? '체험' : '보강';
-    const dateChangeHtml = `<div class="olliTtField"><div class="olliTtFieldHead"><span>${typeLabel} 날짜 변경</span><small>현재 ${typeLabel} 시간 ${timeLabel(item.time_slot)}은 그대로 유지됩니다.</small></div><input type="date" class="olliTtDateInput" data-tt-makeup-date min="${todayKey()}" value="${esc(dialog.makeupDate || item.session_date)}"></div>`;
+    const dateChangeHtml = `<div class="olliTtField"><div class="olliTtFieldHead"><span>${typeLabel} 날짜 변경</span><small>현재 ${typeLabel} 시간 ${scheduleSlotLabel(clean(item.division), item.time_slot, item.class_group)}은 그대로 유지됩니다.</small></div><input type="date" class="olliTtDateInput" data-tt-makeup-date min="${todayKey()}" value="${esc(dialog.makeupDate || item.session_date)}"></div>`;
     const actionsHtml = `<div class="olliTtDialogActions olliTtMakeupManageActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary" data-tt-change-makeup-date>날짜 변경</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>${typeLabel} 취소</button></div>`;
-    return dialogHead(trial ? '★' : '✓', `${displayName} ${typeLabel}`, `${koreanDate(date)} ${DAYS[date.getDay() - 1]}요일 · ${timeLabel(item.time_slot)}`)
+    return dialogHead(trial ? '★' : '✓', `${displayName} ${typeLabel}`, `${koreanDate(date)} ${DAYS[date.getDay() - 1]}요일 · ${scheduleSlotLabel(clean(item.division), item.time_slot, item.class_group)}`)
       + '<div class="olliTtDialogBody">'
       + dateChangeHtml
       + `<label class="olliTtAddMemo olliTtCancelMemo"><span>취소 사유</span><textarea data-tt-cancel-note maxlength="500" placeholder="취소 사유를 입력하세요">${esc(dialog.cancelNote || '')}</textarea></label>`
@@ -3006,7 +3080,7 @@ ${combined.memoError}`);
       && item.status === 'scheduled'
       && clean(item.change_type) === 'remove'
       && studentEnrollments(student.id).some((row) => clean(row.id) === clean(item.source_enrollment_id)));
-    const regularText = rows.length ? rows.map((item) => `${weekdayLabel(item.weekday)}요일 ${timeLabel(item.time_slot)}`).join(' · ') : '등록된 수업 없음';
+    const regularText = rows.length ? rows.map((item) => `${weekdayLabel(item.weekday)}요일 ${scheduleSlotLabel(clean(item.division), item.time_slot, item.class_group)}`).join(' · ') : '등록된 수업 없음';
     const statusRows = [
       `<div><strong>정규 수업</strong>　${esc(regularText)}</div>`,
       waits.length ? `<div><strong>대기</strong>　${waits.map((item) => `${weekdayLabel(item.target_weekday)} ${timeLabel(item.target_time_slot)}`).join(' · ')}</div>` : '',
