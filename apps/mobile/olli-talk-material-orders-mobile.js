@@ -665,6 +665,16 @@
         p_client_mutation_id:clientMutationId()
       });
       if(!payload?.ok)throw new Error(payload?.message||(isCoffee?'커피 요청을 등록하지 못했습니다.':'재료 요청을 등록하지 못했습니다.'));
+      if(payload.created_new===true&&payload.request_id){
+        try{
+          const pushPromise=global.OlliTalkPush?.dispatchMaterial?.(payload.request_id);
+          if(pushPromise&&typeof pushPromise.catch==='function'){
+            pushPromise.catch(error=>console.warn('재료주문 푸시 요청 실패:',error));
+          }
+        }catch(error){
+          console.warn('재료주문 푸시 요청 실패:',error);
+        }
+      }
       state.expandedId=clean(payload.request_id);
       state.filter='requested';
       closeCreate();
