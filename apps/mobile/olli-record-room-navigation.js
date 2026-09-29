@@ -165,6 +165,26 @@ window.refreshRecordAcademyManagementFromServer = refreshRecordAcademyManagement
 let recordAttendanceRefreshPromise = null;
 let recordAttendanceRefreshContext = '';
 
+function getRecordAttendanceStudentSignature(view){
+  if (typeof getStudentsByType !== 'function') return '';
+  const rows = getStudentsByType(view).map(student => ({
+    id: String(student?.id || ''),
+    name: String(student?.name || ''),
+    type: String(student?.type || ''),
+    status: String(student?.status || ''),
+    lesson_day: String(student?.lesson_day || student?.lessonDay || ''),
+    lesson_time: String(student?.lesson_time || student?.lessonTime || student?.class_time || student?.classTime || ''),
+    group: String(student?.group || ''),
+    teacher: String(student?.homeroom_teacher || student?.teacher || student?.teacher_name || ''),
+    personality: String(student?.personality || student?.tendency || ''),
+    school: String(student?.school || student?.kindergarten || ''),
+    grade: String(student?.grade || ''),
+    age: String(student?.age || ''),
+    enrolled_at: String(student?.enrolled_at || '')
+  })).sort((a, b) => a.id.localeCompare(b.id));
+  return JSON.stringify(rows);
+}
+
 function refreshRecordAttendanceDashboardFromServer(name = ''){
   const view = currentRecordView === 'kinder' ? 'kinder' : (currentRecordView === 'elementary' ? 'elementary' : '');
   if (!view) return Promise.resolve(false);
@@ -224,9 +244,11 @@ async function loadRecords(name, options = {}) {
       renderElementaryRecords(name);
       if (localOnly) return true;
     }
+    const beforeStudentSignature = getRecordAttendanceStudentSignature('elementary');
     await loadStudentsFromSupabase();
     if (loadToken !== window.__olliRecordListLoadToken || currentRecordView !== 'elementary') return;
-    renderElementaryRecords(name);
+    const studentsChanged = beforeStudentSignature !== getRecordAttendanceStudentSignature('elementary');
+    if (!refreshOnly || studentsChanged) renderElementaryRecords(name);
     if (window.OlliPhoneAttendanceAdapter && typeof window.OlliPhoneAttendanceAdapter.afterRecordListLoaded === 'function') {
       window.OlliPhoneAttendanceAdapter.afterRecordListLoaded('elementary', name);
     }
@@ -239,9 +261,11 @@ async function loadRecords(name, options = {}) {
       renderKinderRecords(name);
       if (localOnly) return true;
     }
+    const beforeStudentSignature = getRecordAttendanceStudentSignature('kinder');
     await loadStudentsFromSupabase();
     if (loadToken !== window.__olliRecordListLoadToken || currentRecordView !== 'kinder') return;
-    renderKinderRecords(name);
+    const studentsChanged = beforeStudentSignature !== getRecordAttendanceStudentSignature('kinder');
+    if (!refreshOnly || studentsChanged) renderKinderRecords(name);
     if (window.OlliPhoneAttendanceAdapter && typeof window.OlliPhoneAttendanceAdapter.afterRecordListLoaded === 'function') {
       window.OlliPhoneAttendanceAdapter.afterRecordListLoaded('kinder', name);
     }
