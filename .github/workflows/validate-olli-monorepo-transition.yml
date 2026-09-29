@@ -19,11 +19,14 @@ on:
       - 'tests/app-root-deploy-boundary.test.cjs'
       - 'tests/mobile-entry-integrity.test.cjs'
       - 'tests/mobile-startup-boot-contract.test.cjs'
+      - 'tests/pc-startup-boot-contract.test.cjs'
       - 'tests/monorepo-structure-contract.test.cjs'
       - 'tests/vercel-monorepo-separation-contract.test.cjs'
       - '.github/workflows/validate-olli-monorepo-transition.yml'
   pull_request:
     paths:
+      - 'olli-app-startup.js'
+      - 'apps/pc/olli-app-startup.js'
       - 'apps/mobile/**'
       - 'packages/common/**'
       - 'deploy/vercel-projects.json'
@@ -57,6 +60,7 @@ jobs:
             tests/app-root-deploy-boundary.test.cjs \
             tests/mobile-entry-integrity.test.cjs \
             tests/mobile-startup-boot-contract.test.cjs \
+            tests/pc-startup-boot-contract.test.cjs \
             tests/monorepo-structure-contract.test.cjs \
             tests/vercel-monorepo-separation-contract.test.cjs
       - name: Validate PC schedule Realtime
