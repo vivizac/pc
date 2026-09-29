@@ -158,8 +158,8 @@
 }
 .olliWorkNotificationBadge{
   position:absolute;
-  top:-5px;
-  right:-5px;
+  top:-2px;
+  right:0;
   min-width:18px;
   height:18px;
   padding:0 5px;
