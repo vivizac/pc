@@ -4580,9 +4580,14 @@
 
   function isOlliTalkBetaVisible(){
     const screen = getScreen();
-    return !!screen
-      && screen.style.display !== 'none'
-      && screen.getAttribute('aria-hidden') !== 'true';
+    if (!screen || screen.hidden || screen.getAttribute('aria-hidden') === 'true') return false;
+
+    try {
+      const style = getComputedStyle(screen);
+      return style.display !== 'none' && style.visibility !== 'hidden';
+    } catch (_) {
+      return screen.style.display !== 'none';
+    }
   }
 
   function bindOlliTalkRealtime(){
