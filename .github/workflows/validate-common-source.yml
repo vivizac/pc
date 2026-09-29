@@ -1,25 +1,31 @@
 name: Validate OLLI common source
 
-'on':
+on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'packages/common/**'
+      - 'apps/pc/scripts/stage-common.cjs'
+      - 'apps/mobile/scripts/stage-common.cjs'
+      - 'apps/pc/index.html'
+      - 'apps/mobile/index.html'
+      - 'tests/pc-self-contained-build.test.cjs'
+      - 'tests/mobile-self-contained-build.test.cjs'
+      - 'tests/pc-build-closure.test.cjs'
+      - 'tests/mobile-entry-integrity.test.cjs'
+      - '.github/workflows/validate-common-source.yml'
   push:
     branches: [main]
     paths:
-      - 'OLLI_COMMON_FILES.txt'
-      - 'observation-memo-common.js'
-      - 'observation-memo-save-common.js'
-      - 'observation-memo-session-common.js'
-      - 'observation-memo-storage-common.js'
-      - 'observation-memo-request-guard-common.js'
-      - 'observation-memo-version-history-common.js'
-      - 'olli-record-scene-tools.js'
-      - 'record-feedback-mode-common.js'
-      - 'scene-card-kinder-feedback-common.js'
-      - 'scene-card-model-common.js'
-      - 'scene-card-ui-common.js'
-      - 'scene-feedback-text-common.js'
-      - 'index.html'
-      - 'observation-memo-core.js'
+      - 'packages/common/**'
+      - 'apps/pc/scripts/stage-common.cjs'
+      - 'apps/mobile/scripts/stage-common.cjs'
+      - 'apps/pc/index.html'
+      - 'apps/mobile/index.html'
+      - 'tests/pc-self-contained-build.test.cjs'
+      - 'tests/mobile-self-contained-build.test.cjs'
+      - 'tests/pc-build-closure.test.cjs'
+      - 'tests/mobile-entry-integrity.test.cjs'
       - '.github/workflows/validate-common-source.yml'
 
 permissions:
@@ -30,49 +36,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
 
-      - name: Validate common manifest and JavaScript
-        shell: bash
+      - name: Validate staging scripts
         run: |
-          set -euo pipefail
-          test -s OLLI_COMMON_FILES.txt
-          while IFS= read -r file || [ -n "$file" ]; do
-            [ -n "$file" ] || continue
-            test -f "$file"
-            case "$file" in
-              *.js) node --check "$file" ;;
-            esac
-          done < OLLI_COMMON_FILES.txt
+          node --check apps/pc/scripts/stage-common.cjs
+          node --check apps/mobile/scripts/stage-common.cjs
 
-      - name: Validate common scripts are loaded once
-        shell: bash
+      - name: Validate common package and app build closure
         run: |
-          set -euo pipefail
-          while IFS= read -r file || [ -n "$file" ]; do
-            [ -n "$file" ] || continue
-            case "$file" in
-              *.js)
-                static_count="$(grep -Foc "src=\"$file\"" index.html || true)"
-                dynamic_count=0
-                case "$file" in
-                  observation-memo-request-guard-common.js|observation-memo-version-history-common.js)
-                    dynamic_count="$(grep -Foc "$file" observation-memo-core.js 2>/dev/null || true)"
-                    ;;
-                esac
-                count=$((static_count + dynamic_count))
-                if [ "$count" -ne 1 ]; then
-                  echo "$file must be loaded exactly once (static: $static_count, dynamic: $dynamic_count)."
-                  exit 1
-                fi
-                ;;
-            esac
-          done < OLLI_COMMON_FILES.txt
+          node --test \
+            tests/pc-self-contained-build.test.cjs \
+            tests/mobile-self-contained-build.test.cjs \
+            tests/pc-build-closure.test.cjs \
+            tests/mobile-entry-integrity.test.cjs
 
-      - name: Reject platform adapters from common manifest
-        shell: bash
+      - name: Reject platform adapters from common runtime manifests
         run: |
-          set -euo pipefail
-          if grep -Eiq '(phone|pc)-adapter|attendance-export|risk|notification' OLLI_COMMON_FILES.txt; then
-            echo 'Protected/platform-specific file detected in common manifest.'
-            exit 1
-          fi
+          node - <<'NODE'
+          const fs = require('node:fs');
+          for (const name of ['pc-runtime-manifest.json','mobile-runtime-manifest.json']) {
+            const manifest = JSON.parse(fs.readFileSync('packages/common/' + name, 'utf8'));
+            if (!Array.isArray(manifest.files) || !manifest.files.length) throw new Error(name + ' is empty');
+            for (const file of manifest.files) {
+              if (/(phone|pc)-adapter|attendance-export|risk|notification/i.test(file)) {
+                throw new Error('platform-specific file in ' + name + ': ' + file);
+              }
+              if (!fs.existsSync('packages/common/' + file)) throw new Error('missing common source: ' + file);
+            }
+          }
+          NODE

@@ -1,13 +1,21 @@
 # Olli Common
 
-This directory is the transitional single source for code shared by PC and Mobile.
+`packages/common` is the active single source for runtime code shared by Olli PC and Mobile.
 
-- PC source baseline: `0b56edcf5493d1a5224874eb30f0c2d1c68eadc6`
-- Mobile production baseline: `0e74868fbdd3b73b3e84f57fcd31e46b64df6484`
-- Current package inventory is aligned with the shared runtime files used by the Production Mobile bridge, plus shared files already staged for the monorepo cutover.
-- Runtime cutover is **not active yet**.
-- Root PC files and Mobile raw rewrites remain in place until self-contained preview and production verification.
-- Do not delete the existing Mobile repository, raw rewrites, or platform adapters during this preparation stage.
+## Active Production structure
 
-Do not add PC-only DOM/UI behavior or Mobile-only DOM/UI behavior here.
-Platform-specific adapters remain under their app.
+- Repository: `vivizac/pc`
+- PC app: `apps/pc`
+- Mobile app: `apps/mobile`
+- Shared runtime source: `packages/common`
+- PC staging manifest: `pc-runtime-manifest.json`
+- Mobile staging manifest: `mobile-runtime-manifest.json`
+- Both Vercel projects use their app directory as Root Directory and require outside-root source access so the build can read `packages/common`.
+
+The previous Mobile repository `vivizac/mobile` is retained only as source history. It is not the current Production deployment source. Do not restore raw GitHub runtime rewrites or tracked common copies under either app.
+
+## Ownership rule
+
+Only code that is genuinely shared by PC and Mobile belongs here. PC-only DOM/UI behavior stays under `apps/pc`; Mobile-only DOM/UI, touch, keyboard, session-recovery and phone adapters stay under `apps/mobile`.
+
+When shared storage, revision/CAS, pending/blocked, conflict or authentication behavior changes, preserve the existing safety contracts and run both app build-closure tests before merging.

@@ -1,19 +1,15 @@
-name: Validate Olli Monorepo Transition
+name: Validate Olli Monorepo
 
 on:
   push:
     branches:
-      - work/olli-mobile-self-contained-20260929
+      - main
     paths:
       - 'apps/mobile/**'
       - 'packages/common/**'
       - 'deploy/vercel-projects.json'
       - 'MONOREPO_TRANSITION.md'
-      - 'MONOREPO_OWNERSHIP_AUDIT.md'
       - 'tests/mobile-self-contained-build.test.cjs'
-      - 'tests/pc-self-contained-build.test.cjs'
-      - 'tests/pc-build-closure.test.cjs'
-      - 'tests/app-root-deploy-boundary.test.cjs'
       - 'tests/pc-self-contained-build.test.cjs'
       - 'tests/pc-build-closure.test.cjs'
       - 'tests/app-root-deploy-boundary.test.cjs'
@@ -25,13 +21,11 @@ on:
       - '.github/workflows/validate-olli-monorepo-transition.yml'
   pull_request:
     paths:
-      - 'olli-app-startup.js'
       - 'apps/pc/olli-app-startup.js'
       - 'apps/mobile/**'
       - 'packages/common/**'
       - 'deploy/vercel-projects.json'
       - 'MONOREPO_TRANSITION.md'
-      - 'MONOREPO_OWNERSHIP_AUDIT.md'
       - 'tests/mobile-self-contained-build.test.cjs'
       - 'tests/mobile-entry-integrity.test.cjs'
       - 'tests/mobile-startup-boot-contract.test.cjs'
