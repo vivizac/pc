@@ -1788,13 +1788,6 @@ function openObservationNoteFromRecord(options = {}) {
   }
 
   setObservationRosterDivision(division);
-  const divisionStudents = getObservationRosterAllStudents()
-    .filter(student => isObservationRosterActiveStudent(student))
-    .filter(student => getObservationRosterStudentDivision(student) === observationRosterActiveDivision);
-  if (!divisionStudents.length) {
-    alert(`${observationRosterActiveDivision === 'kinder' ? '유치부' : '초등부'} 학생을 먼저 등록해 주세요.`);
-    return false;
-  }
   showObservationMemoRoster(null, { navigationManaged: options?.navigationManaged === true });
   return true;
 }
