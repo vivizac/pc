@@ -45,10 +45,15 @@ self.addEventListener('notificationclick', (event) => {
     for (const client of windows) {
       try {
         await client.focus();
-        client.postMessage({
-          type: 'OLLI_TALK_OPEN_FROM_NOTIFICATION',
-          messageId: data.messageId || null,
-        });
+        client.postMessage(data.type === 'olli-material-request'
+          ? {
+              type: 'OLLI_WORK_OPEN_MATERIALS',
+              requestId: data.requestId || null,
+            }
+          : {
+              type: 'OLLI_TALK_OPEN_FROM_NOTIFICATION',
+              messageId: data.messageId || null,
+            });
         return;
       } catch (_) {}
     }
