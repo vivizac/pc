@@ -68,10 +68,14 @@ jobs:
       - name: Validate Mobile schedule and security contracts
         working-directory: apps/mobile
         run: |
+          node --check olli-talk-beta.js
+          node --check olli-talk-attachment-cache-phone.js
           node --test \
             tests/schedule-realtime.test.cjs \
             tests/phone-schedule-class-layout-date-contract.test.cjs \
             tests/mobile-secure-auth-source-contract.test.cjs \
             tests/photo-private-storage-contract.test.cjs \
             tests/storage-secure-transport-contract.test.cjs \
-            tests/phone-feedback-archive-saved-date.test.cjs
+            tests/phone-feedback-archive-saved-date.test.cjs \
+            tests/phone-teamchat-local-first.test.cjs \
+            tests/team-chat-thumbnail-viewport.test.cjs
