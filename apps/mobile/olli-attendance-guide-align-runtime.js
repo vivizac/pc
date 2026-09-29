@@ -85,12 +85,6 @@
     } catch (_) {}
   }
 
-  try {
-    var mo = new MutationObserver(scheduleAlign);
-    var target = document.getElementById('recordRoomScreen') || document.body;
-    if (target) mo.observe(target, { childList: true, subtree: true });
-  } catch (_) {}
-
   window.addEventListener('resize', scheduleAlign);
   window.addEventListener('orientationchange', function(){ setTimeout(scheduleAlign, 240); });
   if (document.readyState === 'loading') {
@@ -102,8 +96,8 @@
   setTimeout(scheduleAlign, 700);
 })();
 
-/* 2026-09-10: PC에서 바뀐 출석을 폰 출석부에 자동 반영한다.
-   매 5초에는 가벼운 sync revision만 확인하고, 실제 변경이 있을 때만 월 출석 데이터를 다시 받는다. */
+/* Realtime이 연결되지 않은 경우에만 revision polling을 보조 경로로 사용한다.
+   Realtime 연결 중에는 별도 5초 RPC/포그라운드 강제 새로고침을 실행하지 않는다. */
 (function(){
   if (window.__olliPhoneCrossDeviceAttendanceSyncInstalled) return;
   window.__olliPhoneCrossDeviceAttendanceSyncInstalled = true;
@@ -145,6 +139,17 @@
     }
   }
 
+  function hasRealtimeConnection() {
+    try {
+      var status = window.OlliRealtime && typeof window.OlliRealtime.getStatus === 'function'
+        ? window.OlliRealtime.getStatus()
+        : null;
+      return !!status && status.connected === true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   function normalizeRpcResult(result) {
     return Array.isArray(result) && result.length === 1 ? result[0] : result;
   }
@@ -162,27 +167,30 @@
   }
 
   async function refreshAttendanceFromServer() {
-    if (refreshing || !isRecordRoomVisible()) return;
-    var syncMonth = window.syncRecordAttendanceCurrentMonthFromServer;
-    var syncToday = window.syncOlliTodayAttendanceSchedule;
-    if (typeof syncMonth !== 'function') return;
+    if (refreshing || !isRecordRoomVisible()) return false;
+    var refresh = window.refreshRecordAttendanceDashboardFromServer;
+    if (typeof refresh !== 'function') return false;
 
     refreshing = true;
     try {
-      if (typeof syncToday === 'function') await syncToday(new Date(), { render: false });
-      await syncMonth(new Date(), { render: true });
+      await refresh('');
+      return true;
     } catch (error) {
       console.warn('PC→폰 출석 동기화 보류:', error && (error.message || error));
+      return false;
     } finally {
       refreshing = false;
     }
   }
 
-  async function checkRevision(forceRefresh) {
-    if (checking || !isRecordRoomVisible()) return;
+  async function checkRevision(forceInitialRefresh, options) {
+    var allowWithRealtime = !!(options && options.allowWithRealtime);
+    if (!allowWithRealtime && hasRealtimeConnection()) return false;
+    if (checking || !isRecordRoomVisible()) return false;
+
     var academyId = currentAcademyId();
     var sessionToken = currentSessionToken();
-    if (!academyId || !sessionToken || typeof window.supabase !== 'function') return;
+    if (!academyId || !sessionToken || typeof window.supabase !== 'function') return false;
 
     if (academyId !== lastAcademyId) {
       lastAcademyId = academyId;
@@ -192,35 +200,39 @@
     checking = true;
     try {
       var revision = await fetchRevision(academyId, sessionToken);
-      if (revision == null) return;
+      if (revision == null) return false;
       var changed = lastRevision != null && revision !== lastRevision;
       var firstCheck = lastRevision == null;
       lastRevision = revision;
-      if (changed || (firstCheck && forceRefresh) || forceRefresh) {
-        await refreshAttendanceFromServer();
+      if (changed || (firstCheck && forceInitialRefresh)) {
+        return await refreshAttendanceFromServer();
       }
+      return true;
     } catch (error) {
       console.warn('출석 변경 확인 보류:', error && (error.message || error));
+      return false;
     } finally {
       checking = false;
     }
   }
 
-  function forceCheckSoon(delay) {
-    setTimeout(function(){ checkRevision(true); }, Number(delay) || 0);
+  function checkSoon(delay, forceInitialRefresh) {
+    setTimeout(function(){ checkRevision(!!forceInitialRefresh); }, Number(delay) || 0);
   }
 
-  window.syncPhoneAttendanceFromOtherDevices = function(){ return checkRevision(true); };
-  window.addEventListener('focus', function(){ forceCheckSoon(0); });
-  window.addEventListener('pageshow', function(){ forceCheckSoon(80); });
+  window.syncPhoneAttendanceFromOtherDevices = function(){
+    return checkRevision(true, { allowWithRealtime: true });
+  };
+  window.addEventListener('focus', function(){ checkSoon(0, true); });
+  window.addEventListener('pageshow', function(){ checkSoon(80, true); });
   document.addEventListener('visibilitychange', function(){
-    if (document.visibilityState === 'visible') forceCheckSoon(0);
+    if (document.visibilityState === 'visible') checkSoon(0, true);
   });
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function(){ forceCheckSoon(900); });
+    document.addEventListener('DOMContentLoaded', function(){ checkSoon(900, true); });
   } else {
-    forceCheckSoon(900);
+    checkSoon(900, true);
   }
 
   setInterval(function(){ checkRevision(false); }, REVISION_POLL_MS);
