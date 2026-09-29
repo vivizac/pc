@@ -1,0 +1,82 @@
+
+/* 학생정보 일괄 수정 반영 중 안내 팝업 */
+.studentBulkApplyOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 180000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: rgba(0,0,0,.10);
+  backdrop-filter: blur(10px) saturate(1.04);
+  -webkit-backdrop-filter: blur(10px) saturate(1.04);
+  pointer-events: auto;
+}
+.studentBulkApplyOverlay.show {
+  display: flex;
+}
+.studentBulkApplyCard {
+  width: min(320px, calc(100vw - 48px));
+  border-radius: 28px;
+  background: rgba(255,255,255,.94);
+  border: 1px solid rgba(255,255,255,.96);
+  box-shadow: 0 24px 68px rgba(0,0,0,.16), 0 8px 20px rgba(0,0,0,.06);
+  padding: 24px 20px 21px;
+  text-align: center;
+}
+.studentBulkApplyIcon {
+  width: 46px;
+  height: 46px;
+  border-radius: 18px;
+  background: #eff6ff;
+  color: #0A84FF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 13px;
+}
+.studentBulkApplyIcon svg {
+  width: 25px;
+  height: 25px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.studentBulkApplyTitle {
+  font-size: calc(17px * var(--olli-text-scale));
+  font-weight: 760;
+  color: #111;
+  letter-spacing: -0.045em;
+  line-height: 1.35;
+}
+.studentBulkApplyText {
+  margin-top: 7px;
+  font-size: calc(13px * var(--olli-text-scale));
+  color: #777;
+  line-height: 1.48;
+  letter-spacing: -0.03em;
+}
+.studentBulkApplyDots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+  vertical-align: 1px;
+}
+.studentBulkApplyDots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #111;
+  opacity: .22;
+  animation: studentBulkApplyDotPulse 1.05s infinite ease-in-out;
+}
+.studentBulkApplyDots span:nth-child(2) { animation-delay: .16s; }
+.studentBulkApplyDots span:nth-child(3) { animation-delay: .32s; }
+@keyframes studentBulkApplyDotPulse {
+  0%, 100% { opacity: .22; transform: translateY(0); }
+  50% { opacity: .78; transform: translateY(-3px); }
+}

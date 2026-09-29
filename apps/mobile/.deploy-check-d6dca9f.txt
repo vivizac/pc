@@ -1,0 +1,5 @@
+Deployment trigger for phone boot safety recovery after observation memo commonization.
+Application runtime code is unchanged by this file; current main includes the global autosave timer collision fix.
+Redeploy retry requested on 2026-09-08 after Vercel build-rate-limit blocked recent UI changes.
+Redeploy retry requested on 2026-09-09 after phone writable-session sync fix was merged to main.
+Redeploy retry requested on 2026-09-09 for server-validated phone session and read-only timestamp fix.

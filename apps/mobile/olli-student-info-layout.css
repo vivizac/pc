@@ -1,0 +1,670 @@
+
+/* 2026-07-05: 학생등록/학생정보 입력줄 + 바텀시트 구조 정리 */
+:root {
+  --olli-student-sheet-top: calc(env(safe-area-inset-top, 0px) + 182px);
+}
+
+#studentModal,
+#elementaryInfoModal,
+#kinderInfoModal {
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  background: rgba(0,0,0,.20);
+  backdrop-filter: blur(8px) saturate(1.04);
+  -webkit-backdrop-filter: blur(8px) saturate(1.04);
+}
+
+#studentModal .modalCard,
+#elementaryInfoModal .modalCard,
+#kinderInfoModal .modalCard {
+  width: 100%;
+  max-width: 860px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 28px 28px 0 0;
+  padding: 14px 18px calc(20px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -18px 44px rgba(0,0,0,.13), 0 -4px 14px rgba(0,0,0,.06);
+  margin: 0;
+  overscroll-behavior: contain;
+}
+
+#studentModal .modalCard {
+  height: calc(100vh - 75px);
+  max-height: calc(100vh - 75px);
+}
+
+#elementaryInfoModal .modalCard,
+#kinderInfoModal .modalCard {
+  height: calc(100vh - var(--olli-student-sheet-top));
+  height: calc(100dvh - var(--olli-student-sheet-top));
+  max-height: calc(100vh - var(--olli-student-sheet-top));
+  max-height: calc(100dvh - var(--olli-student-sheet-top));
+}
+
+#studentModal .modalCard::before,
+#elementaryInfoModal .modalCard::before,
+#kinderInfoModal .modalCard::before {
+  content: '';
+  display: block;
+  width: 42px;
+  height: 5px;
+  border-radius: 999px;
+  background: #e5e5e5;
+  margin: 0 auto 16px;
+}
+
+#studentModal[style*="flex"] .modalCard,
+#elementaryInfoModal[style*="flex"] .modalCard,
+#kinderInfoModal[style*="flex"] .modalCard {
+  animation: olliStudentBottomSheetIn .24s cubic-bezier(.22,.61,.36,1) both;
+}
+
+@keyframes olliStudentBottomSheetIn {
+  from { transform: translateY(100%); opacity: .98; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+#studentModal .modalTitle,
+#elementaryInfoModal .modalTitle,
+#kinderInfoModal .modalTitle {
+  margin-bottom: 18px;
+}
+
+#studentModal .modalActions,
+#elementaryInfoModal .modalActions,
+#kinderInfoModal .modalActions {
+  position: sticky;
+  bottom: calc(-20px - env(safe-area-inset-bottom, 0px));
+  z-index: 2;
+  margin: 18px -18px calc(-20px - env(safe-area-inset-bottom, 0px));
+  padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: rgba(255,255,255,.98);
+  box-shadow: 0 -14px 22px rgba(255,255,255,.94);
+}
+
+#studentModal .kinderInfoModalField,
+#elementaryInfoModal .kinderInfoModalField,
+#kinderInfoModal .kinderInfoModalField {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+#studentModal .modalLabel,
+#elementaryInfoModal .modalLabel,
+#kinderInfoModal .modalLabel {
+  margin-left: 2px;
+  white-space: nowrap;
+}
+
+#studentModal .modalInput,
+#elementaryInfoModal .modalInput,
+#kinderInfoModal .modalInput {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding-left: 10px;
+  padding-right: 10px;
+  text-align: center;
+}
+
+.studentPopupTopRow,
+.studentPopupDateTeacherRow,
+.studentPopupNameTeacherRow,
+.studentPopupSchoolRow,
+.studentPopupKinderBasicRow,
+.studentPopupDateOnlyRow {
+  display: grid;
+  gap: 6px;
+  align-items: end;
+  width: 100%;
+  margin-bottom: 13px;
+}
+
+.studentPopupAddTopRow,
+.studentPopupElementaryInfoTopRow {
+  grid-template-columns: minmax(76px, 1.08fr) minmax(0, 2.72fr);
+}
+
+.studentPopupKinderInfoTopRow {
+  grid-template-columns: minmax(78px, 1.02fr) minmax(0, 1.18fr) minmax(66px, .86fr);
+}
+
+.studentPopupInlineGroup {
+  display: grid;
+  gap: 6px;
+  align-items: end;
+  min-width: 0;
+}
+
+.studentPopupElementaryInfoGroup {
+  grid-template-columns: minmax(70px, 1.42fr) minmax(46px, .72fr) minmax(46px, .72fr);
+}
+
+.studentPopupKinderInfoGroup {
+  grid-template-columns: minmax(0, 1.15fr) minmax(66px, .9fr);
+}
+
+.studentPopupDateTeacherRow {
+  grid-template-columns: minmax(60px, .82fr) minmax(46px, .58fr) minmax(46px, .58fr) minmax(96px, 1.26fr);
+}
+
+.studentPopupNameTeacherRow {
+  grid-template-columns: minmax(76px, 1.15fr) minmax(62px, .95fr) minmax(62px, .95fr);
+}
+.studentPopupPersonalityField .infoTeacherToggleRow,
+.studentPopupTeacherField .infoTeacherToggleRow {
+  margin-top: 0;
+}
+#studentModal #studentKinderBasicField {
+  margin-top: 0;
+}
+
+.studentPopupSchoolRow,
+.studentPopupDateOnlyRow {
+  grid-template-columns: minmax(76px, 1.15fr) minmax(62px, .95fr) minmax(62px, .95fr);
+}
+
+.studentPopupKinderBasicRow {
+  grid-template-columns: minmax(0, 1.55fr) minmax(72px, .8fr);
+}
+
+.kinderTransferBanner {
+  width: calc(100% - 20px);
+  margin: 2px 10px 12px;
+  border: none;
+  border-radius: 18px;
+  background: #f2f7ff;
+  color: #111;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.kinderTransferBannerText { min-width:0; }
+.kinderTransferBannerTitle { font-size: calc(14px * var(--olli-text-scale)); font-weight: 700; letter-spacing: -0.03em; }
+.kinderTransferBannerSub { margin-top:3px; font-size: calc(11px * var(--olli-text-scale)); color:#7c8795; }
+.kinderTransferBannerCount {
+  min-width: 38px; height: 30px; padding: 0 10px; border-radius:999px; background:#fff;
+  display:inline-flex; align-items:center; justify-content:center; font-size:calc(12px * var(--olli-text-scale)); font-weight:700; color:#0A84FF;
+}
+.kinderTransferList { display:flex; flex-direction:column; gap:8px; max-height:55vh; overflow-y:auto; }
+.kinderTransferRow { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 2px; border-bottom:1px solid #f0f0f0; }
+.kinderTransferName { font-size:calc(15px * var(--olli-text-scale)); font-weight:650; color:#111; }
+.kinderTransferMeta { margin-top:3px; font-size:calc(11px * var(--olli-text-scale)); color:#999; }
+.kinderTransferMoveBtn { border:none; background:#111; color:#fff; height:36px; padding:0 13px; border-radius:999px; font-family:inherit; font-size:calc(12px * var(--olli-text-scale)); font-weight:650; cursor:pointer; white-space:nowrap; }
+
+.studentPopupDateTeacherRow .infoTeacherToggleRow,
+.studentPopupNameTeacherRow .infoTeacherToggleRow,
+.studentPopupNameTeacherRow .infoToggleRow {
+  margin-top: 0;
+}
+
+.studentPopupDateTeacherRow .infoTeacherSelectBox,
+.studentPopupNameTeacherRow .infoTeacherSelectBox,
+.studentPopupNameTeacherRow .infoToggleBtn {
+  height: 42px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.studentPopupNameTeacherRow .infoToggleRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.studentPopupEmptyCell {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.studentPopupYearField .modalInput,
+.studentPopupMonthField .modalInput,
+.studentPopupDayField .modalInput,
+.studentPopupGradeField .modalInput,
+.studentPopupClassField .modalInput,
+.studentPopupAgeField .modalInput {
+  text-align: center;
+}
+
+#studentModal .infoDayToggleRow,
+#elementaryInfoModal .infoDayToggleRow,
+#kinderInfoModal .infoDayToggleRow {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  margin-top: 6px;
+  margin-bottom: 8px;
+}
+
+#studentModal .infoDayBtn,
+#elementaryInfoModal .infoDayBtn,
+#kinderInfoModal .infoDayBtn {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  border: none;
+  border-radius: 15px;
+  background: #f3f3f3;
+  color: #444;
+  padding: 0;
+  font-family: inherit;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+#studentModal .infoDayBtn.active,
+#elementaryInfoModal .infoDayBtn.active,
+#kinderInfoModal .infoDayBtn.active {
+  background: #111;
+  color: #fff;
+}
+
+#elementaryLessonTimeToggleRow {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+#kinderLessonTimeToggleRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+#studentModal .infoTimeBtn,
+#elementaryInfoModal .infoTimeBtn,
+#kinderInfoModal .infoTimeBtn {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  border-radius: 15px;
+  padding: 0;
+  font-size: calc(13px * var(--olli-text-scale));
+  white-space: nowrap;
+}
+
+#elementaryInfoModal .studentScheduleTimeField,
+#kinderInfoModal .studentScheduleTimeField {
+  margin-top: 10px;
+  margin-bottom: 13px;
+}
+
+#studentModal #studentElementaryFields {
+  margin-top: 0;
+}
+
+#studentModal .studentAddTeacherReadonly {
+  width:100%;
+  height:42px;
+  border:1px solid #e4e6e9;
+  border-radius:12px;
+  background:#fafbfc;
+  color:#35393e;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-sizing:border-box;
+  padding:0 8px;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:760;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+#studentModal .studentAddTeacherReadonly.isEmpty {
+  color:#aaa;
+  font-weight:500;
+}
+#studentModal .studentAddScheduleBox {
+  margin:2px 0 13px;
+  padding:13px;
+  border-radius:16px;
+  background:#fafbfc;
+  border:1px solid #eef0f3;
+}
+#studentModal .studentAddScheduleHead {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:9px;
+}
+#studentModal .studentAddScheduleHead strong {
+  color:#686e76;
+  font-size:calc(11px * var(--olli-text-scale));
+  font-weight:760;
+  letter-spacing:-.03em;
+}
+#studentModal .studentAddScheduleChangeBtn {
+  height:32px;
+  padding:0 11px;
+  border:0;
+  border-radius:10px;
+  background:#24272b;
+  color:#fff;
+  font:inherit;
+  font-size:calc(11px * var(--olli-text-scale));
+  font-weight:780;
+  white-space:nowrap;
+}
+#studentModal .studentAddScheduleSummary {
+  display:grid;
+  gap:7px;
+}
+#studentModal .studentAddScheduleSummaryItem {
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:8px;
+  min-height:43px;
+  padding:8px 10px;
+  border-radius:12px;
+  background:#fff;
+  border:1px solid #e9ebee;
+  box-sizing:border-box;
+}
+#studentModal .studentAddScheduleOrder {
+  min-width:35px;
+  color:#8f959c;
+  font-size:calc(10px * var(--olli-text-scale));
+  font-weight:750;
+}
+#studentModal .studentAddScheduleWhen {
+  min-width:0;
+  color:#25292e;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:800;
+  letter-spacing:-.035em;
+}
+#studentModal .studentAddScheduleTeacher {
+  color:#8b9198;
+  font-size:calc(10.5px * var(--olli-text-scale));
+  font-weight:650;
+  white-space:nowrap;
+}
+#studentModal .studentAddScheduleEmpty {
+  min-height:48px;
+  border-radius:12px;
+  background:#fff;
+  border:1px dashed #dadde1;
+  color:#9aa0a7;
+  font-size:calc(11px * var(--olli-text-scale));
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:8px;
+  box-sizing:border-box;
+}
+#studentModal .studentAddScheduleOptions {
+  display:grid;
+  gap:7px;
+  margin-top:9px;
+  max-height:220px;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+#studentModal .studentAddScheduleOption {
+  width:100%;
+  min-height:52px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:8px;
+  border:1px solid #e6e8eb;
+  border-radius:13px;
+  background:#fff;
+  padding:8px 10px;
+  text-align:left;
+  font:inherit;
+  color:#25292e;
+  box-sizing:border-box;
+}
+#studentModal .studentAddScheduleOption.active {
+  border-color:#24272b;
+  background:#f7f8f9;
+  box-shadow:inset 0 0 0 1px #24272b;
+}
+#studentModal .studentAddScheduleOption:disabled {
+  opacity:.48;
+  background:#f5f5f5;
+}
+#studentModal .studentAddScheduleOption b {
+  display:block;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:800;
+  letter-spacing:-.035em;
+}
+#studentModal .studentAddScheduleOption small {
+  display:block;
+  margin-top:3px;
+  color:#8c9299;
+  font-size:calc(10.5px * var(--olli-text-scale));
+  line-height:1.35;
+}
+#studentModal .studentAddScheduleOption em {
+  font-style:normal;
+  font-size:calc(10px * var(--olli-text-scale));
+  font-weight:800;
+  color:#717780;
+  white-space:nowrap;
+}
+#studentModal .studentAddGroupLabel {
+  margin-bottom:6px;
+}
+
+
+
+
+
+/* 학생등록/학생정보 세부 입력줄 기준: 기존 보정 블록 흡수 */
+#studentModal .studentPopupGradeField > .modalLabel,
+#studentModal .studentPopupClassField > .modalLabel,
+#studentModal .studentPopupMonthField > .modalLabel,
+#studentModal .studentPopupDayField > .modalLabel,
+#elementaryInfoModal .studentPopupGradeField > .modalLabel,
+#elementaryInfoModal .studentPopupClassField > .modalLabel,
+#elementaryInfoModal .studentPopupMonthField > .modalLabel,
+#elementaryInfoModal .studentPopupDayField > .modalLabel,
+#kinderInfoModal .studentPopupMonthField > .modalLabel,
+#kinderInfoModal .studentPopupDayField > .modalLabel {
+  display: none;
+}
+
+#studentModal .studentPopupKindergartenField .modalInput,
+#kinderInfoModal .studentPopupKindergartenField .modalInput {
+  padding-left: 9px;
+  padding-right: 9px;
+}
+
+#studentModal .studentPopupAgeField .modalInput,
+#kinderInfoModal .studentPopupAgeField .modalInput {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.infoGrid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.infoTeacherToggleRow {
+  position: relative;
+  margin-top: 6px;
+  z-index: 1;
+}
+.infoTeacherToggleRow:has(.infoTeacherSelect.open) { z-index: 80; }
+.infoMonthEmpty {
+  font-size: calc(12px * var(--olli-text-scale));
+  color: #999;
+  line-height: 1.35;
+  padding: 4px 2px;
+}
+#elementaryInfoModal #elementaryGroupToggleRow,
+#studentModal #elementaryStudentGroupToggleRow {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 7px;
+  width: 100%;
+}
+#elementaryInfoModal #elementaryPersonalityToggleRow,
+#kinderInfoModal #kinderPersonalityToggleRow,
+#studentModal #studentKinderPersonalityToggleRow,
+#studentModal #elementaryStudentPersonalityToggleRow {
+  display: block;
+  width: 100%;
+}
+#elementaryInfoModal #elementaryGroupToggleRow .groupIconChoiceBtn,
+#studentModal #elementaryStudentGroupToggleRow .groupIconChoiceBtn {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  border-radius: 15px;
+  padding: 0;
+}
+.infoTeacherSelect { position: relative; width: 100%; }
+.infoTeacherSelect.open { z-index: 90; }
+.infoTeacherSelectBox {
+  width: 100%;
+  height: 44px;
+  border: 1px solid #dedede;
+  border-radius: 14px;
+  background: #fff;
+  color: #111;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 17px;
+  align-items: center;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 400;
+  line-height: 1;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.infoTeacherSelectBox span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
+  text-align: center;
+}
+.infoTeacherSelectBox.placeholder { color: #aaa; font-weight: 400; }
+.infoTeacherArrow {
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid #222;
+  border-bottom: 2px solid #222;
+  transform: rotate(45deg);
+  justify-self: end;
+  margin-top: -4px;
+}
+.infoTeacherSelect.open .infoTeacherArrow { transform: rotate(-135deg); margin-top: 4px; }
+.infoTeacherDropdown {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 100;
+  border: 1px solid #e5e5e5;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 12px 24px rgba(0,0,0,.12);
+  overflow: hidden;
+  max-height: 168px;
+  overflow-y: auto;
+}
+.infoTeacherSelect.open .infoTeacherDropdown { display: block; }
+.infoTeacherOption {
+  width: 100%;
+  height: 42px;
+  border: 0;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fff;
+  color: #222;
+  text-align: left;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 400;
+  cursor: pointer;
+}
+.infoTeacherOption:last-child { border-bottom: 0; }
+.infoTeacherOption.active { background: #111; color: #fff; }
+.infoTeacherEmpty {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  color: #aaa;
+  font-size: calc(12px * var(--olli-text-scale));
+  box-sizing: border-box;
+}
+
+
+
+
+
+/* phone timetable-derived homeroom: 시간표 목록을 읽기 전용으로 표시 */
+#elementaryInfoModal .phoneStudentInfoTeacherReadonly,
+#kinderInfoModal .phoneStudentInfoTeacherReadonly {
+  min-height: 40px;
+  box-sizing: border-box;
+  color: #4f555d;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 700;
+}
+#elementaryInfoModal .phoneStudentInfoTeacherChoices,
+#kinderInfoModal .phoneStudentInfoTeacherChoices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+#elementaryInfoModal .phoneStudentInfoTeacherChoice,
+#kinderInfoModal .phoneStudentInfoTeacherChoice {
+  min-width: 72px;
+  height: 38px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 15px;
+  background: #f3f3f3;
+  color: #666d75;
+  font: inherit;
+  font-size: calc(13px * var(--olli-text-scale));
+  font-weight: 650;
+  opacity: 1;
+}
+#elementaryInfoModal .phoneStudentInfoTeacherChoice.active,
+#kinderInfoModal .phoneStudentInfoTeacherChoice.active { background: #111; color: #fff; }
+#elementaryInfoModal .phoneStudentInfoTeacherState,
+#kinderInfoModal .phoneStudentInfoTeacherState {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+  color: #a2a6ac;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 600;
+}
+#elementaryInfoModal .phoneStudentInfoTeacherReadonly:not(.isEmpty) .phoneStudentInfoTeacherState,
+#kinderInfoModal .phoneStudentInfoTeacherReadonly:not(.isEmpty) .phoneStudentInfoTeacherState { display: none; }
+#elementaryInfoModal #elementaryTeacherToggleRow,
+#kinderInfoModal #kinderTeacherToggleRow { display: none !important; }
+#elementaryInfoModal #elementaryLessonTimeToggleRow { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+#kinderInfoModal #kinderLessonTimeToggleRow { grid-template-columns: repeat(2, minmax(0, 1fr)); }

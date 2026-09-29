@@ -10,7 +10,8 @@
       "target_repository": "vivizac/pc",
       "current_root": ".",
       "target_root": "apps/pc",
-      "deploy_independently": true
+      "deploy_independently": true,
+      "requires_outside_root_source_access": true
     },
     "mobile": {
       "vercel_project_id": "prj_q09zNQj9z0VlRaVt9GgRfD0M4HvC",
@@ -20,14 +21,15 @@
       "target_root": "apps/mobile",
       "deploy_independently": true,
       "source_history_repository": "vivizac/mobile",
-      "source_bridge": "apps/mobile gitlink during transition"
+      "source_bridge": "self-contained apps/mobile snapshot on the work branch; Production remains on vivizac/mobile until cutover",
+      "requires_outside_root_source_access": true
     }
   },
   "cutover_rules": [
     "Never reuse one Vercel project for both apps.",
     "Do not change Production root directories before both app previews pass.",
-    "Mobile gitlink is a history bridge, not the final Production root.",
-    "Keep current Mobile repository deployment active until apps/mobile is self-contained and verified.",
+    "Keep current Mobile repository deployment active until apps/mobile Preview passes and the Production cutover is explicitly verified.",
+    "When either Vercel project uses its apps/* Root Directory, outside-root source access must be enabled so packages/common is available during the build.",
     "Remove raw GitHub bridges only after both Production deployments are stable."
   ]
 }

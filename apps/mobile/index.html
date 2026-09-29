@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>올리</title>
+<meta content="transparent" name="theme-color"/>
+<meta content="yes" name="apple-mobile-web-app-capable"/>
+<meta content="yes" name="mobile-web-app-capable"/>
+<meta content="올리" name="application-name"/>
+<meta content="올리" name="apple-mobile-web-app-title"/>
+<meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
+<script>
+(function () {
+  var isIPad = /iPad/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (isIPad) document.documentElement.classList.add('olli-ipad-phone-shell');
+})();
+</script>
+<link href="icon.png" rel="apple-touch-icon"/>
+<link href="icon.png" rel="icon" type="image/png"/>
+<link href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="olli-phone-base.css?v=20260929-memo-fixed-group-1">
+<!-- v40_63: v40_56 기준, 성장페이지 팝업 버튼 기능 안정화 / alert 없음 -->
+
+<link rel="stylesheet" href="olli-start-page-phone.css">
+<link rel="stylesheet" href="olli-boot.css?v=20260924-boot-owner-cleanup-1">
+<link rel="stylesheet" href="olli-academy-dashboard.css?v=20260924-consult-style-cleanup-1">
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<link rel="stylesheet" href="olli-teacher-invite-approval.css">
+<script src="olli-pwa-manifest.js"></script>
+
+<link rel="stylesheet" href="olli-student-picker-text.css">
+
+<link rel="stylesheet" href="olli-login.css">
+<link rel="stylesheet" href="olli-settings-team-talk-phone.css?v=20260927-phone-only-1">
+<link rel="stylesheet" href="olli-auth-lookup.css">
+<link rel="stylesheet" href="olli-attendance-record.css?v=20260927-guide-names-2">
+<link rel="stylesheet" href="olli-student-time-options.css">
+<link rel="stylesheet" href="olli-student-bulk-apply.css">
+<link rel="stylesheet" href="olli-attendance-guide-button.css?v=20260923-guide-align-2">
+<link rel="stylesheet" href="olli-student-info-layout.css?v=20260923-student-add-schedule-1">
+</head>
+<body>
+<div aria-hidden="true" class="olliBootScreen" id="olliBootScreen">
+<div class="olliBootLogo">OLLI</div>
+</div>
+<!-- PAGE: 출석부 페이지 -->
+<div class="pageScreen" data-page-key="record-room" data-page-name="출석부 페이지" id="recordRoomScreen">
+<div class="recordPageInner" id="recordPageInner">
+<div class="recordStickyArea">
+<div class="recordHeaderRow">
+<div class="recordTitleWrap">
+<div class="recordPageTitle">OLLI</div>
+</div>
+</div>
+<button aria-label="NOTE · 퀵노트로 돌아가기" class="recordAcademyBackBtn" id="recordAcademyBackBtn" onclick="closeRecordAcademyManagementPage(event)" title="NOTE" type="button">
+<span class="recordAcademyBackLabel">NOTE</span>
+</button>
+<div class="recordUtilityRow">
+<div class="recordUtilityBtn" data-academy-management="true">
+<button aria-label="학원 관리" class="recordUtilityCircle" id="recordAcademyManageBtn" onclick="toggleRecordAcademyManagementMode()" title="학원 관리" type="button">
+<svg aria-hidden="true" fill="none" viewbox="0 0 24 24">
+<path d="M4.8 19.2V8.3L12 4.2l7.2 4.1v10.9" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M8.2 19.2v-5.1h7.6v5.1" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M9 10.2h6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<div class="recordUtilityLabel">학원 관리</div>
+</div>
+<div class="recordUtilityBtn recordAttendanceUtilityBtn">
+<button aria-label="출석부" class="recordUtilityCircle" id="recordAttendanceDashboardBtn" onclick="openRecordAttendanceDashboard()" title="출석부" type="button">
+<svg aria-hidden="true" fill="none" viewbox="0 0 24 24">
+<rect height="14.8" rx="2.8" stroke="currentColor" stroke-width="2" width="16" x="4" y="4.8"></rect>
+<path d="M8.2 12.4l2.7 2.8 5.4-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<div class="recordUtilityLabel">출석부</div>
+</div>
+<template id="recordDetachedNoteUtilityButtons">
+<div class="recordUtilityBtn">
+<button aria-label="관찰노트 열기" class="recordUtilityCircle" id="recordModeToggleBtn" onclick="openOlliObservationFromRecordShortcut(event)" type="button">
+<svg aria-hidden="true" fill="none" viewbox="0 0 24 24">
+<rect height="14.8" rx="2.8" stroke="currentColor" stroke-width="2" width="16" x="4" y="4.8"></rect>
+<path d="M8 9h8M8 13h5" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>
+</svg>
+</button>
+<div class="recordUtilityLabel">관찰노트</div>
+</div>
+<div class="recordUtilityBtn">
+<button class="recordUtilityCircle" id="recordStorageToggleBtn" onclick="openOlliQuickNoteFromRecordShortcut(event)" type="button">
+<svg fill="none" viewbox="0 0 24 24">
+<circle cx="7" cy="7" fill="currentColor" r="2.2"></circle>
+<circle cx="17" cy="7" fill="currentColor" r="2.2"></circle>
+<circle cx="7" cy="17" fill="currentColor" r="2.2"></circle>
+<circle cx="17" cy="17" fill="currentColor" r="2.2"></circle>
+</svg>
+</button>
+<div class="recordUtilityLabel">퀵노트</div>
+</div>
+</template>
+</div>
+<div class="recordDivider"></div>
+<div class="recordModeLabelRow">
+<div aria-label="학생부 전환" class="recordLabelGroup" id="recordDivisionToggle">
+<button class="recordModeLabel active" id="recordElementaryToggle" onclick="handleRecordViewToggleClick(event,'elementary')" onpointerdown="handleRecordViewTogglePress(event,'elementary')" type="button">초등부</button>
+<button class="recordModeLabel" id="recordKinderToggle" onclick="handleRecordViewToggleClick(event,'kinder')" onpointerdown="handleRecordViewTogglePress(event,'kinder')" type="button">유치부</button>
+</div>
+
+</div>
+</div>
+<div class="recordBodyNew">
+<div aria-label="학원 관리" class="recordAcademyDashboard" id="recordAcademyDashboard"></div>
+<div id="recordList"></div>
+</div>
+</div>
+<div class="recordRoomScreenFloatingBar">
+<button aria-expanded="false" aria-label="추가 메뉴" class="recordAddBtn" id="studentAddBtn" title="추가 메뉴" type="button">
+<svg viewbox="0 0 24 24">
+<line x1="12" x2="12" y1="5" y2="19"></line>
+<line x1="5" x2="19" y1="12" y2="12"></line>
+</svg>
+</button>
+<div aria-hidden="true" class="recordAddMenu" id="recordAddMenu">
+<button class="recordAddMenuBtn" onclick="openStudentAddFromRecordMenu(event)" type="button">학생 추가</button>
+<button class="recordAddMenuBtn" onclick="openKinderChatFeedbackFromRecordMenu(event)" type="button">퀵노트 작성</button>
+</div>
+<button aria-label="설정" class="recordStandaloneSettingsBtn recordModeSettingsBtn" id="recordSettingsBtn" onclick="openSettingsPage()" title="설정" type="button">
+<span aria-hidden="true" class="recordAcademyMiniIcon" id="recordAcademyMiniIcon"><svg class="academySettingsIcon" viewbox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.86 2.86-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.86-2.86.06-.06A1.7 1.7 0 0 0 4.2 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H2.4v-4h.1A1.7 1.7 0 0 0 4.2 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06L6.66 3.8l.06.06A1.7 1.7 0 0 0 8.6 4.2a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V2.4h4v.1A1.7 1.7 0 0 0 15 4.2a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.86 2.86-.06.06A1.7 1.7 0 0 0 19.4 8.6a1.7 1.7 0 0 0 .6 1 1.7 1.7 0 0 0 1.1.4h.1v4h-.1a1.7 1.7 0 0 0-1.7 1Z"></path></svg></span>
+</button>
+
+<div class="recordSearchGroup recordSearchOnlyGroup" id="recordSearchGroup">
+<button aria-label="검색" class="recordSearchPill recordPillBtn" id="recordSearchPill" onclick="handleSearchPillClick(event)" title="검색">
+<div class="recordSearchIcon">
+<svg fill="none" viewbox="0 0 24 24">
+<circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2.2"></circle>
+<path d="M16 16L21 21" stroke="currentColor" stroke-linecap="round" stroke-width="2.2"></path>
+</svg>
+</div>
+<input autocapitalize="off" autocomplete="off" autocorrect="off" class="recordSearchInputInline" enterkeyhint="done" id="searchName" inputmode="search" onclick="event.stopPropagation()" placeholder="검색" spellcheck="false"/>
+</button>
+</div>
+<button aria-label="검색 닫기" class="recordSearchClose" onclick="closeSearch(event)" title="검색 닫기">✕</button>
+<div class="recordSelectionControls" id="recordSelectionControls">
+<button class="recordSelectionControlBtn" onclick="exitStudentSelectionMode()">취소</button>
+<button class="recordSelectionControlBtn danger" onclick="deleteSelectedStudents()">삭제</button>
+</div>
+<div class="recordSortWrap">
+<button aria-label="정렬" id="recordSortBtn" title="정렬" type="button">
+<svg aria-hidden="true" viewbox="0 0 28 28">
+<path d="M9.9 4.7h8.1c3.2 0 5 1.8 5 5v8.6c0 3.2-1.8 5-5 5H9.9c-3.2 0-5-1.8-5-5V9.7c0-3.2 1.8-5 5-5Z"></path>
+<circle cx="9.5" cy="10.2" fill="currentColor" r="1.92" stroke="none"></circle>
+<circle cx="9.5" cy="17.7" r="1.58"></circle>
+<path d="M13.9 10.2h5.0"></path>
+<path d="M13.9 17.7h5.0"></path>
+</svg>
+</button>
+<div aria-label="정렬 팝업" id="recordSortPopup"></div>
+</div>
+</div>
+<div class="studentActionOverlay" id="studentActionOverlay" onclick="closeStudentActionMenu()">
+<div class="studentActionCard" onclick="event.stopPropagation()">
+<div class="studentActionTitle" id="studentActionTitle">학생 선택</div>
+<button class="studentActionBtn" onclick="enterStudentSelectionMode()">
+<svg aria-hidden="true" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="8"></circle>
+<path d="M8.5 12.2l2.2 2.2 4.8-5"></path>
+</svg>
+<span>선택</span>
+</button>
+<button class="studentActionBtn" onclick="openSelectedStudentInfoFromActionMenu()">
+<svg aria-hidden="true" viewbox="0 0 24 24">
+<circle cx="12" cy="7.5" r="3.2"></circle>
+<path d="M5.5 19c.9-3.4 3.3-5.2 6.5-5.2s5.6 1.8 6.5 5.2"></path>
+<path d="M17.5 7.5h3"></path>
+<path d="M19 6v3"></path>
+</svg>
+<span>학생정보</span>
+</button>
+<button class="studentActionBtn" onclick="setSelectedStudentStatus('paused')">
+<svg aria-hidden="true" viewbox="0 0 24 24">
+<path d="M10 5v14"></path>
+<path d="M14 5v14"></path>
+</svg>
+<span>휴원</span>
+</button>
+<button class="studentActionBtn" onclick="setSelectedStudentStatus('active')">
+<svg aria-hidden="true" viewbox="0 0 24 24">
+<path d="M6 12h12"></path>
+<path d="M12 6v12"></path>
+</svg>
+<span>재등록</span>
+</button>
+<button class="studentActionBtn" onclick="setSelectedStudentStatus('withdrawn')">
+<svg aria-hidden="true" viewbox="0 0 24 24">
+<path d="M9 6l6 6-6 6"></path>
+<path d="M4 12h10"></path>
+<path d="M16 5h3a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-3"></path>
+</svg>
+<span>퇴원</span>
+</button>
+<button class="studentActionBtn danger" onclick="confirmDeleteSelectedStudent()">
+<svg aria-hidden="true" viewbox="0 0 24 24">
+<polyline points="3 6 5 6 21 6"></polyline>
+<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+<path d="M10 11v6"></path>
+<path d="M14 11v6"></path>
+<path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+</svg>
+<span>삭제</span>
+</button>
+<button class="studentActionCancelBtn" onclick="closeStudentActionMenu()">취소</button>
+</div>
+</div>
+</div>
+<div aria-hidden="true" id="observationPersistentNavLayer">
+<button aria-label="Work 열기" class="olliTopWorkBtn observationTopWorkBtn olliWorkTabWithBadge" onclick="openOlliTalkBetaPage(event)" type="button">Work<span aria-hidden="true" class="olliWorkNotificationBadge" data-olli-work-badge hidden></span></button>
+</div>
+<!-- PAGE: 관찰노트 학생목록 -->
+<div class="pageScreen" data-page-key="observation-roster" data-page-name="관찰노트 학생목록" id="observationRosterScreen">
+<div aria-hidden="true" class="observationRosterTopFadeLayer"></div>
+<div aria-hidden="true" class="observationRosterBottomFadeLayer"></div>
+<button aria-label="메뉴" class="observationRosterRecordRoomBtn" id="observationRosterRecordRoomBtn" onclick="openOlliMainSubpageDrawer(event, 'observation')" title="메뉴" type="button">
+<svg aria-hidden="true" viewbox="0 0 24 24"><path d="M5 7h14"></path><path d="M5 12h14"></path><path d="M5 17h10"></path></svg>
+</button>
+<div aria-label="관찰노트와 퀵노트 전환" class="olliWorkTabs observationWorkTabs" role="tablist">
+<button aria-selected="true" class="olliWorkTab active" role="tab" type="button">관찰노트</button>
+<button aria-selected="false" class="olliWorkTab" onclick="openOlliQuickNoteFromRecordShortcut(event)" role="tab" type="button">퀵노트</button>
+</div>
+<div class="memoPageInner observationRosterPageInner">
+<div aria-label="오늘 등원 학생 목록" id="memoStudentRosterView"></div>
+</div>
+</div>
+<!-- PAGE: 초등부 노트 -->
+<div class="pageScreen" data-elementary-page-name="관찰 노트" data-page-key="student-memo" data-page-name="관찰 노트" id="studentMemoScreen">
+<button aria-label="학생 목록으로 돌아가기" class="observationMemoTopBackBtn" id="observationMemoTopBackBtn" onclick="showObservationMemoRoster(event)" title="학생 목록으로 돌아가기" type="button">
+<span aria-hidden="true" class="memoRosterBackIcon"></span>
+</button>
+<div class="memoPageInner">
+<div class="memoHeader">
+<div class="memoHeaderActions">
+</div>
+</div>
+<div aria-hidden="true" class="memoTopFadeLayer" id="memoTopFadeLayer"></div>
+<div aria-label="피드백 보관함" class="memoRecordsDropup" id="elementaryRecordsDropup"></div>
+<div class="memoEditorWrap" id="elementaryMemoWrap">
+<div class="elementaryAnalysisBlock" id="elementaryAnalysisBlock">
+<div class="memoAnalysisTitleRow">
+<div aria-label="학생 정보" class="memoStudentMetaBlock" id="memoStudentMetaBlock">
+<div class="memoStudentNameLine">
+<div class="memoPageStudentName" id="memoPageStudentName">학생 이름</div>
+<div class="elementaryAnalysisSummaryWrap" id="elementaryAnalysisSummaryWrap" style="display:none;"></div>
+<div class="memoStudentUpdatedDate" hidden="" id="memoStudentUpdatedDate"></div>
+</div>
+</div>
+</div>
+<div class="elementaryAnalysisHistoryWrap" id="elementaryAnalysisHistoryWrap" style="display:none;"></div>
+</div>
+<textarea class="memoEditor" id="memoEditor" placeholder="관찰 내용을 기록해 주세요."></textarea>
+</div>
+<div class="memoFeedbackResultArea" id="memoFeedbackResultArea"></div>
+<div aria-label="수업기록 도구" id="memoEditorUtilityGroup">
+<button aria-label="피드백 보관함" class="memoRecordRoomBtn memoRecordBtn" id="memoRecordsBtn" title="피드백 보관함" type="button">
+<svg aria-hidden="true" class="memoRecordIcon" fill="none" focusable="false" height="23" viewbox="24 21 80 80" width="23" xmlns="http://www.w3.org/2000/svg"><path d="M31 52V40C31 33.4 36.4 28 43 28H51.5C54.6 28 57.4 29.1 59.8 31L64.8 35H85C91.6 35 97 40.4 97 47V82C97 88.6 91.6 94 85 94H43C36.4 94 31 88.6 31 82V52Z" stroke="#111111" stroke-linecap="round" stroke-linejoin="round" stroke-width="5.6"></path><path d="M31 53H97" stroke="#111111" stroke-linecap="round" stroke-width="5.6"></path></svg>
+</button>
+<button aria-label="음성 입력" aria-pressed="false" class="memoEditorVoiceBtn" id="memoEditorVoiceBtn" title="음성 입력" type="button">
+<svg aria-hidden="true" fill="none" viewbox="0 0 24 24"><rect height="13" rx="4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9" width="8" x="8" y="3"></rect><path d="M5 12.5C5 16.09 8.13 19 12 19C15.87 19 19 16.09 19 12.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9"></path><path d="M12 19V22" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.9"></path></svg>
+</button>
+<button aria-label="관찰노트 이전 기록" class="memoRecordRoomBtn memoRecordBtn" data-olli-history-visibility-owner="mobile" id="olliMemoVersionHistoryBtn" title="이전 기록" type="button">
+<svg aria-hidden="true" viewbox="0 0 24 24"><path d="M5.2 8.1A7.6 7.6 0 1 1 4.6 14"></path><path d="M5.2 4.8v4.5h4.5"></path><path d="M12 7.7v4.5l3 1.8"></path></svg>
+</button>
+<button aria-label="오늘의 분석 설문" class="memoBottomIconBtn memoBottomAnalysisBtn" id="memoBottomAnalysisBtn" onclick="openElementaryAnalysisModal()" title="오늘의 분석 설문" type="button">
+<svg aria-hidden="true" viewbox="0 0 24 24"><rect height="14.8" rx="3" width="13.6" x="5.2" y="4.6"></rect><path d="M8.4 9h7.2"></path><path d="M8.4 12.4h7.2"></path><path d="M8.4 15.8h4.4"></path></svg>
+</button>
+</div>
+<button aria-label="피드백 생성" class="memoFeedbackBottomBtn" id="memoFeedbackBtn" onclick="handleMemoHeaderAction()" type="button">
+<svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>
+</button>
+</div>
+</div>
+<!-- PAGE: 실패 성장 페이지 -->
+<div class="analysisSheetOverlay" id="elementaryAnalysisModal" onclick="if(event.target===this) closeElementaryAnalysisModal();">
+<div class="analysisSheetPanel" onclick="event.stopPropagation()">
+<div class="analysisSheetHeader">
+<div class="analysisSheetTitle">초등부 분석 설문지</div>
+<button aria-label="닫기" class="analysisSheetClose" onclick="closeElementaryAnalysisModal()" type="button">×</button>
+</div>
+<div class="elementaryAnalysisIntro">선택한 내용은 학생 메모장에 정리되고, 분석 데이터는 학생별로 따로 저장됩니다. 모든 키워드는 중복 선택할 수 있습니다.</div>
+<div class="elementaryAnalysisSection">
+<div class="elementaryAnalysisSectionTitle">오늘 아이의 강점</div>
+<div class="elementaryAnalysisHelp">결과물보다 태도, 생각, 집중, 표현 방향을 중심으로 선택해 주세요.</div>
+<div class="elementaryAnalysisGrid" id="elementaryStrengthsGrid"></div>
+<textarea class="elementaryAnalysisTextarea" id="elementaryStrengthsEtc" placeholder="기타 강점이 있으면 적어주세요."></textarea>
+</div>
+<div class="elementaryAnalysisSection">
+<div class="elementaryAnalysisSectionTitle">오늘 가장 지도가 필요했던 부분</div>
+<div class="elementaryAnalysisHelp">아이의 문제가 아니라, 오늘 수업에서 도움이 필요했던 지점을 고릅니다.</div>
+<div class="elementaryAnalysisGrid" id="elementaryNeedsGrid"></div>
+<textarea class="elementaryAnalysisTextarea" id="elementaryNeedsEtc" placeholder="기타 지도 필요 부분이 있으면 적어주세요."></textarea>
+</div>
+<div class="elementaryAnalysisSection">
+<div class="elementaryAnalysisSectionTitle">막힘이 생긴 수업 단계</div>
+<div class="elementaryAnalysisHelp">어느 단계에서 어려움이 생겼는지 기록하면 피드백이 훨씬 구체적으로 나옵니다.</div>
+<div class="elementaryAnalysisGrid" id="elementaryBlockedStagesGrid"></div>
+</div>
+<div class="elementaryAnalysisSection">
+<div class="elementaryAnalysisSectionTitle">왜 망설였을까요?</div>
+<div class="elementaryAnalysisHelp">큰 성향을 먼저 누른 뒤, 오늘 보인 행동 단서를 선택해 주세요.</div>
+<div class="elementaryAnalysisGrid" id="elementaryTendencyGroupGrid"></div>
+<div id="elementaryTendencyOptionsWrap"></div>
+</div>
+<div class="elementaryAnalysisSection">
+<div class="elementaryAnalysisSectionTitle">핵심 지도 영역</div>
+<div class="elementaryAnalysisHelp">AI가 피드백의 소제목과 전문적 방향을 잡는 기준이 됩니다.</div>
+<div class="elementaryAnalysisGrid" id="elementaryGuideAreasGrid"></div>
+<textarea class="elementaryAnalysisTextarea" id="elementaryGuideAreasEtc" placeholder="기타 핵심 지도 영역이 있으면 적어주세요."></textarea>
+</div>
+<div class="elementaryAnalysisSection">
+<div class="elementaryAnalysisSectionTitle">오늘 적용한 지도 방식</div>
+<div class="elementaryAnalysisHelp">선생님이 어떤 순서와 기준으로 도왔는지 선택해 주세요.</div>
+<div class="elementaryAnalysisGrid" id="elementaryTeacherActionsGrid"></div>
+<textarea class="elementaryAnalysisTextarea" id="elementaryTeacherActionsEtc" placeholder="기타 지도 방식이 있으면 적어주세요."></textarea>
+</div>
+<div class="elementaryAnalysisSection">
+<div class="elementaryAnalysisSectionTitle">앞으로의 지도 방향</div>
+<div class="elementaryAnalysisHelp">선택하지 않으면 메모 내용을 바탕으로 AI가 지도 방향을 정리합니다.</div>
+<div class="elementaryAnalysisGrid" id="elementaryFutureDirectionsGrid"></div>
+<textarea class="elementaryAnalysisTextarea" id="elementaryFutureDirectionsEtc" placeholder="기타 앞으로의 지도 방향이 있으면 적어주세요."></textarea>
+</div>
+</div>
+<div class="analysisSheetActions">
+<button class="analysisSheetCancel" onclick="closeElementaryAnalysisModal()" type="button">닫기</button>
+<button class="analysisSheetConfirm" onclick="applyElementaryAnalysisToMemo()" type="button">메모장에 넣기</button>
+</div>
+</div>
+<div class="modalOverlay" id="saveModal">
+<div class="modalCard">
+<div class="modalTitle">피드백 저장</div>
+<div class="modalLabel">아이 이름 *</div>
+<input class="modalInput" id="studentName" placeholder="예: 김민준" style="margin-bottom:20px;"/>
+<div class="modalActions">
+<button class="modalBtnCancel" data-modal-close="saveModal" type="button">취소</button>
+<button class="modalBtnConfirm" onclick="confirmSave()">저장</button>
+</div>
+</div>
+</div>
+<div class="modalOverlay" id="studentModal">
+<div class="modalCard" data-ordered-student-fields="1">
+<div class="modalTitle" id="studentModalTitle">학생 등록</div>
+<div class="studentPopupNameTeacherRow">
+<div class="kinderInfoModalField studentPopupNameField"><input class="modalInput" id="studentNameInput" onkeydown="if(event.key==='Enter')confirmStudent()" placeholder="학생이름"/></div>
+<div class="kinderInfoModalField studentPopupPersonalityField" id="elementaryStudentPersonalityField"><div class="infoTeacherToggleRow infoPersonalityToggleRow" id="elementaryStudentPersonalityToggleRow"></div></div>
+<div class="kinderInfoModalField studentPopupPersonalityField" id="studentKinderPersonalityField" style="display:none;"><div class="infoTeacherToggleRow infoPersonalityToggleRow" id="studentKinderPersonalityToggleRow"></div></div>
+<div class="kinderInfoModalField studentPopupTeacherField"><div class="studentAddTeacherReadonly isEmpty" id="studentAddTeacherReadonly">담임</div></div>
+</div>
+<div class="studentPopupSchoolRow" id="elementaryStudentGradeClassField">
+<div class="kinderInfoModalField studentPopupSchoolField"><input class="modalInput" id="studentSchoolInput" placeholder="학교"/></div>
+<div class="kinderInfoModalField studentPopupGradeField"><input class="modalInput" id="studentGradeInput" inputmode="numeric" onblur="blurStudentElementaryGradeInput()" onfocus="focusElementaryGradeInput(this)" oninput="syncStudentElementaryAgeFromGrade()" placeholder="학년" type="text"/></div>
+<div class="kinderInfoModalField studentPopupClassField"><input class="modalInput" id="studentElementaryAgeInput" inputmode="numeric" placeholder="나이" readonly type="text"/></div>
+</div>
+<div class="studentPopupKinderBasicRow" id="studentKinderBasicField" style="display:none;">
+<div class="kinderInfoModalField studentPopupKindergartenField"><input class="modalInput" id="studentKindergartenInput" placeholder="유치원"/></div>
+<div class="kinderInfoModalField studentPopupAgeField"><input class="modalInput" id="studentAgeInput" max="8" min="1" placeholder="나이" type="number"/></div>
+</div>
+<div class="studentPopupDateOnlyRow">
+<div class="kinderInfoModalField studentPopupYearField"><input class="modalInput" id="studentYearBadge" inputmode="numeric" max="2100" min="1900" placeholder="등록년" type="number"/></div>
+<div class="kinderInfoModalField studentPopupMonthField"><input class="modalInput" id="studentMonthInput" max="12" min="1" placeholder="월" type="number"/></div>
+<div class="kinderInfoModalField studentPopupDayField"><input class="modalInput" id="studentDayInput" max="31" min="1" placeholder="일" type="number"/></div>
+</div>
+<div class="studentAddScheduleBox" id="studentAddScheduleBox"></div>
+<div id="studentElementaryFields"><div class="kinderInfoModalField" id="elementaryStudentGroupField"><div class="modalLabel studentAddGroupLabel">그룹</div><div class="infoToggleRow" id="elementaryStudentGroupToggleRow"></div></div></div>
+<div class="modalActions">
+<button class="modalBtnCancel" onclick="closeStudentModal()" type="button">취소</button>
+<button class="modalBtnConfirm" onclick="confirmStudent()" type="button">추가</button>
+</div>
+</div>
+</div>
+<div class="modalOverlay" id="elementaryInfoModal">
+<div class="modalCard">
+<div class="modalTitle">초등 학생 정보</div>
+<div class="kinderInfoModalField">
+<div class="modalLabel">이름</div>
+<input class="modalInput" id="elementaryInfoNameInput" placeholder="예: 김민준"/>
+</div>
+<div class="kinderInfoModalField studentInfoDateField">
+<div class="modalLabel">등록 날짜</div>
+<div class="studentInfoDateRow">
+<input class="modalInput" id="elementaryInfoYearInput" inputmode="numeric" max="2100" min="1900" placeholder="년" type="number"/>
+<input class="modalInput" id="elementaryInfoMonthInput" inputmode="numeric" max="12" min="1" placeholder="월" type="number"/>
+<input class="modalInput" id="elementaryInfoDayInput" inputmode="numeric" max="31" min="1" placeholder="일" type="number"/>
+</div>
+</div>
+<div class="modalLabel">그룹</div>
+<div class="infoToggleRow" id="elementaryGroupToggleRow">
+<button class="infoToggleBtn groupIconChoiceBtn" data-group="1" onclick="selectElementaryGroup('1')" type="button">A</button>
+<button class="infoToggleBtn groupIconChoiceBtn" data-group="2" onclick="selectElementaryGroup('2')" type="button">B</button>
+<button class="infoToggleBtn groupIconChoiceBtn" data-group="3" onclick="selectElementaryGroup('3')" type="button">C</button>
+<button class="infoToggleBtn groupIconChoiceBtn" data-group="4" onclick="selectElementaryGroup('4')" type="button">D</button>
+<button class="infoToggleBtn groupIconChoiceBtn" data-group="5" onclick="selectElementaryGroup('5')" type="button">E</button>
+<button class="infoToggleBtn groupIconChoiceBtn" data-group="6" onclick="selectElementaryGroup('6')" type="button">F</button>
+</div>
+<div class="infoTeacherToggleRow infoPersonalityToggleRow" id="elementaryPersonalityToggleRow"></div>
+<div class="kinderInfoModalField phoneStudentInfoTeacherField">
+<div class="modalLabel">담임 · 시간표 1회차 기준</div>
+<div class="phoneStudentInfoTeacherReadonly isEmpty" id="elementaryInfoTeacherReadonly">미지정</div>
+</div>
+<div class="kinderInfoModalField phoneStudentInfoScheduleField">
+<div class="modalLabel">요일/시간</div>
+<div class="infoDayToggleRow" id="elementaryLessonDayToggleRow"></div>
+</div>
+<div class="kinderInfoModalField studentScheduleTimeField phoneStudentInfoScheduleTimeField">
+<div class="modalLabel">시간</div>
+<div class="infoTimeToggleRow" id="elementaryLessonTimeToggleRow"></div>
+</div>
+<div class="kinderInfoModalField">
+<div class="modalLabel">학교 / 학년 / 나이</div>
+<div class="infoGrid3">
+<input class="modalInput" id="elementarySchoolInput" placeholder="학교"/>
+<input class="modalInput" id="elementaryGradeInput" placeholder="학년" type="text" inputmode="numeric" onfocus="focusElementaryGradeInput(this)" oninput="syncElementaryInfoAgeFromGrade()" onblur="blurElementaryInfoGradeInput()"/>
+<input class="modalInput" id="elementaryAgeInput" placeholder="나이" type="text" inputmode="numeric" readonly/>
+</div>
+</div>
+<div class="modalActions">
+<button class="modalBtnCancel" data-modal-close="elementaryInfoModal" type="button">취소</button>
+<button class="modalBtnConfirm" onclick="saveElementaryInfo()">저장</button>
+</div>
+</div>
+</div>
+<div class="modalOverlay" id="kinderInfoModal">
+<div class="modalCard">
+<div class="modalTitle">유치부 학생 정보</div>
+<div class="kinderInfoModalField">
+<div class="modalLabel">이름</div>
+<input class="modalInput" id="kinderInfoNameInput" placeholder="예: 김민준"/>
+</div>
+<div class="kinderInfoModalField studentInfoDateField">
+<div class="modalLabel">등록 날짜</div>
+<div class="studentInfoDateRow">
+<input class="modalInput" id="kinderInfoYearInput" inputmode="numeric" max="2100" min="1900" placeholder="년" type="number"/>
+<input class="modalInput" id="kinderInfoMonthInput" inputmode="numeric" max="12" min="1" placeholder="월" type="number"/>
+<input class="modalInput" id="kinderInfoDayInput" inputmode="numeric" max="31" min="1" placeholder="일" type="number"/>
+</div>
+</div>
+<div class="kinderInfoModalField">
+<div class="modalLabel">유치원</div>
+<input class="modalInput" id="kinderKindergartenInput" placeholder="예: OO유치원"/>
+</div>
+<div class="kinderInfoModalField">
+<div class="modalLabel">유치원 나이</div>
+<input class="modalInput" id="kinderAgeInput" max="8" min="1" placeholder="예: 5" type="number"/>
+</div>
+<div class="kinderInfoModalField phoneStudentInfoTeacherField">
+<div class="modalLabel">담임 · 시간표 1회차 기준</div>
+<div class="phoneStudentInfoTeacherReadonly isEmpty" id="kinderInfoTeacherReadonly">미지정</div>
+</div>
+<input id="kinderLessonDayInput" type="hidden"/>
+<div class="kinderInfoModalField phoneStudentInfoScheduleField">
+<div class="modalLabel">요일/시간</div>
+<div class="infoDayToggleRow" id="kinderLessonDayToggleRow"></div>
+</div>
+<div class="kinderInfoModalField studentScheduleTimeField phoneStudentInfoScheduleTimeField">
+<div class="modalLabel">시간</div>
+<div class="infoTimeToggleRow" id="kinderLessonTimeToggleRow"></div>
+</div>
+<div class="modalActions">
+<button class="modalBtnCancel" data-modal-close="kinderInfoModal" type="button">취소</button>
+<button class="modalBtnConfirm" onclick="saveKinderInfo()">저장</button>
+</div>
+</div>
+</div>
+<div class="modalOverlay" id="kinderTransferModal">
+<div class="modalCard">
+<div class="modalTitle">초등부 이관 대상</div>
+<div id="kinderTransferList" class="kinderTransferList"></div>
+<div class="modalActions">
+<button class="modalBtnCancel" type="button" onclick="closeKinderTransferModal()">닫기</button>
+</div>
+</div>
+</div>
+<div class="studentActionOverlay" id="recordBoardActionOverlay" onclick="closeRecordBoardActionMenu()">
+<div class="studentActionCard" onclick="event.stopPropagation()">
+<div class="studentActionTitle" id="recordBoardActionTitle">기록보드 학생 선택</div>
+<button class="studentActionBtn danger" onclick="confirmDeleteRecordBoardSelected()">
+<svg aria-hidden="true" viewbox="0 0 24 24">
+<polyline points="3 6 5 6 21 6"></polyline>
+<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+<path d="M10 11v6"></path>
+<path d="M14 11v6"></path>
+<path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
+</svg>
+<span>삭제</span>
+</button>
+<button class="studentActionCancelBtn" onclick="closeRecordBoardActionMenu()">취소</button>
+</div>
+</div>
+<div class="modalOverlay sceneCardModalOverlay" id="sceneCardModalOverlay" onclick="handleSceneCardModalOverlayClick(event)">
+<div class="modalCard sceneCardModalCard" onclick="event.stopPropagation()">
+<div class="sceneCardModalHeader">
+<div class="sceneCardModalHeaderText">
+<div class="sceneCardModalTitle">수업 장면</div>
+<div class="sceneCardModalCount" id="sceneCardModalCount">0 / 9 선택</div>
+</div>
+<div class="sceneCardModalHeaderActions">
+<button class="sceneCardModalGhostBtn" id="sceneCardModalResetBtn" onclick="clearSceneSelections()" type="button">초기화</button>
+<button aria-label="닫기" class="sceneCardModalCloseBtn" onclick="closeSceneCardModal()" type="button">×</button>
+</div>
+</div>
+<div class="sceneCardModalBody" id="sceneCardModalBody"></div>
+<div class="sceneCardModalFooter">
+<button class="sceneCardModalFooterBtn secondary" onclick="closeSceneCardModal()" type="button">닫기</button>
+<button class="sceneCardModalFooterBtn primary" onclick="closeSceneCardModal()" type="button">적용 완료</button>
+</div>
+</div>
+</div>
+<div aria-hidden="true" class="analysisResultSheetOverlay" id="elementaryAnalysisDetailModal" onclick="closeElementaryAnalysisDetailModal(event)">
+<div class="analysisResultSheetPanel" onclick="event.stopPropagation()">
+<div class="analysisResultSheetHeader">
+<div class="analysisResultSheetTitle" id="elementaryAnalysisDetailTitle">분석 상세</div>
+<button aria-label="닫기" class="analysisResultSheetClose" onclick="closeElementaryAnalysisDetailModal()" type="button">×</button>
+</div>
+<div class="analysisResultSheetBody" id="elementaryAnalysisDetailBody"></div>
+</div>
+</div>
+<div aria-label="학생 피드백 보기" class="attendanceFeedbackSheetOverlay" id="attendanceStudentFeedbackSheet" onclick="closeAttendanceStudentFeedbackSheet()">
+<div class="attendanceFeedbackSheetPanel" onclick="event.stopPropagation()">
+<div class="attendanceFeedbackSheetHandle"></div>
+<div class="attendanceFeedbackSheetHead">
+<div class="attendanceFeedbackSheetTitleWrap">
+<div class="attendanceFeedbackSheetTitle" id="attendanceFeedbackSheetTitle">피드백</div>
+<div class="attendanceFeedbackSheetSubtitle" id="attendanceFeedbackSheetSubtitle"></div>
+</div>
+<button aria-label="닫기" class="attendanceFeedbackSheetClose" onclick="event.stopPropagation(); closeAttendanceStudentFeedbackSheet();" type="button">×</button>
+</div>
+<div class="attendanceFeedbackSheetBody" id="attendanceFeedbackSheetBody">
+<div class="attendanceFeedbackSheetEmpty">피드백을 불러오고 있어요.</div>
+</div>
+</div>
+</div>
+
+<script src="olli-data-foundation.js"></script>
+<script src="olli-realtime-common.js?v=20260920-chat-1"></script>
+<script src="olli-student-core.js?v=20260924-consult-summary-local-first-1"></script>
+<script src="olli-operations-feedback-policy.js"></script>
+<script src="olli-data-students.js"></script>
+
+<script src="olli-data-record-list.js"></script>
+<script src="olli-data-attendance-feedback.js?v=20260929-secure-archive-read-1"></script>
+<script src="olli-data-student-operations.js?v=20260926-student-action-owner-1"></script>
+<script src="olli-observation-core.js"></script>
+<script src="olli-data-ui-utils.js"></script>
+<script src="elementary-analysis.js"></script>
+<script src="elementary-analysis-phone-adapter.js?v=20260929-secure-archive-read-1"></script>
+<script src="olli-record-student-picker.js"></script>
+<script src="olli-record-student-picker-phone-adapter.js?v=20260928-archive-shell-stable-1"></script>
+<script src="record-feedback-mode-common.js"></script>
+<script src="scene-card-model-common.js"></script>
+<script src="scene-card-ui-common.js"></script>
+<script src="scene-card-kinder-feedback-common.js"></script>
+<script src="olli-record-scene-tools.js"></script>
+<script src="scene-feedback-text-common.js"></script>
+<script src="olli-record-scene-tools-phone-adapter.js"></script>
+<script src="olli-record-search-controls.js?v=20260923-record-ui-10"></script>
+<script src="olli-attendance-data.js?v=20260924-week-local-first-1"></script>
+<script src="olli-observation-autosave-phone-adapter.js?v=20260920-growth-all-divisions-1"></script>
+<script src="observation-memo-edit-state-core.js?v=20260928-edit-state-core-1"></script>
+<script src="observation-memo-common.js?v=20260928-edit-state-core-1"></script>
+<script src="observation-memo-feedback-clear-common.js?v=20260928-feedback-clear-core-1"></script>
+<script src="observation-memo-storage-common.js?v=20260909-2143-1"></script>
+<script src="olli-observation-memo-storage-phone-adapter.js?v=20260920-growth-all-divisions-1"></script>
+<script src="observation-memo-session-common.js?v=20260929-memo-page-owner-1"></script>
+<script src="observation-memo-save-common.js?v=20260909-2143-1"></script>
+<script src="olli-observation-runtime.js?v=20260929-memo-page-owner-1"></script>
+<script src="olli-observation-roster-phone.js?v=20260929-fixed-survey-visible-1"></script>
+<script src="olli-record-list-view.js?v=20260926-attendance-longpress-1"></script>
+<script src="olli-record-board-actions-phone-adapter.js"></script>
+<script src="olli-operations-consultation-policy.js"></script>
+<script src="olli-settings-server-sync.js?v=20260924-academy-owner-cleanup-1"></script>
+<script src="olli-record-room-navigation.js?v=20260924-academy-owner-cleanup-1"></script>
+<script src="olli-attendance-phone-adapter.js?v=20260928-attendance-exact-session-1"></script>
+<script src="olli-student-info-runtime.js?v=20260908-student-info-3"></script>
+<script src="olli-app-startup.js?v=20260929-local-route-owner-1"></script>
+<script src="olli-main-subpage-drawer.js?v=20260923-academy-note-slide-1"></script>
+<script src="olli-feedback-runtime.js?v=20260922-unicode-mark-1"></script>
+<link rel="stylesheet" href="olli-academy-switch-phone.css">
+<!-- PAGE: 설정 -->
+<div class="pageScreen" data-page-key="settings-page" data-page-name="설정" id="settingsPageScreen">
+<div class="settingsPageInner">
+<div class="settingsHeader">
+<div class="settingsHeaderLeft">
+<button aria-label="기록실로 돌아가기" class="settingsRoundBtn" onclick="closePhoneSettingsPage()" type="button">
+<svg viewbox="0 0 24 24"><path d="M15.5 5l-7 7 7 7"></path></svg>
+</button>
+<button class="settingsTitlePill" type="button">설정</button>
+</div>
+</div>
+<div class="settingsBody">
+<div class="settingsProfileCard" onclick="openPhoneSettingsSheet('profile')" role="button">
+<div class="settingsProfileImage">V</div>
+<div class="settingsProfileInfo">
+<div class="settingsProfileName">비비작아이성향미술학원</div>
+<div class="settingsProfileEdit">프로필 편집</div>
+</div>
+</div>
+<section class="settingsSection" data-owner-manager-only="true"><div class="settingsCard"><div class="settingsRow" data-owner-manager-only="true" onclick="openPhoneSettingsDetail('teacherInvite')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M4 12v7a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-7"></path><path d="M12 3v12"></path><path d="M7.5 7.5L12 3l4.5 4.5"></path><path d="M5 12h14"></path></svg></span>
+<span class="settingsRowTitle">선생님 초대</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div></div></section>
+<section class="settingsSection"><div class="settingsCard"><div class="settingsRow" onclick="togglePhoneSettingsNotification()" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M18 9a6 6 0 1 0-12 0c0 7-2.5 7-2.5 8.5h17C20.5 16 18 16 18 9"></path><path d="M10 20a2.3 2.3 0 0 0 4 0"></path></svg></span>
+<span class="settingsRowTitle">알림</span>
+</div>
+<span class="settingsToggle on" id="settingsNotificationToggle"></span>
+</div>
+<div class="settingsRow" onclick="openPhoneSettingsSheet('startPage')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M4 5h16v14H4z"></path><path d="M8 9h8"></path><path d="M8 13h5"></path></svg></span>
+<span class="settingsRowTitle">시작 페이지</span>
+</div>
+<span class="settingsRowValue" id="settingsStartPageValue">관찰노트</span>
+</div>
+<div class="settingsRow" onclick="openPhoneSettingsSheet('textSize')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M5.5 6.5h13"></path><path d="M12 6.5v12"></path><path d="M9 18.5h6"></path></svg></span>
+<span class="settingsRowTitle">텍스트 크기</span>
+</div>
+<span class="settingsRowValue" id="settingsTextSizeValue">기본</span>
+</div>
+<button class="settingsRow settingsTeamTalkRowButton" data-owner-manager-only="true" id="settingsTeamTalkRow" onclick="openPhoneSettingsDetail('teamTalk')" type="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-7l-4.2 3v-3H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z"></path><circle cx="9" cy="11" r=".8"></circle><circle cx="12" cy="11" r=".8"></circle><circle cx="15" cy="11" r=".8"></circle></svg></span>
+<span class="settingsRowTitle">팀톡 배경설정</span>
+</div>
+<span class="settingsRowValue" id="settingsTeamTalkValue"></span>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</button></div></section>
+<section class="settingsSection"><div class="settingsCard"><div class="settingsRow" data-academy-management="true" id="settingsAttendancePolicyRow" onclick="openPhoneSettingsSheet('attendancePolicy')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M5 4.5h14v15H5z"></path><path d="M8 3v4"></path><path d="M16 3v4"></path><path d="M8 11h8"></path><path d="M8 15h5"></path><path d="M16.5 14.5l2 2 3.5-4"></path></svg></span>
+<span class="settingsRowTitle">출결 설정</span>
+</div>
+<span class="settingsRowValue" id="settingsAttendancePolicyValue"></span>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" onclick="openPhoneSettingsSheet('consultationMonths')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M7 4.8h10a2.2 2.2 0 0 1 2.2 2.2v10a2.2 2.2 0 0 1-2.2 2.2H7A2.2 2.2 0 0 1 4.8 17V7A2.2 2.2 0 0 1 7 4.8z"></path><path d="M8 3.5v3"></path><path d="M16 3.5v3"></path><path d="M8 11h8"></path><path d="M8 15h5"></path></svg></span>
+<span class="settingsRowTitle">상담 기준</span>
+</div>
+<span class="settingsRowValue" id="settingsConsultationMonthsValue">1개월 후, 3개월 후, 6개월마다, 12개월마다</span>
+</div>
+<div class="settingsRow" onclick="openPhoneSettingsSheet('groupFeedbackMonths')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M4.5 6.5h15"></path><path d="M7 4v4"></path><path d="M17 4v4"></path><path d="M6 11h3"></path><path d="M10.5 11h3"></path><path d="M15 11h3"></path><path d="M6 15h3"></path><path d="M10.5 15h3"></path></svg></span>
+<span class="settingsRowTitle">그룹별 피드백 발송월</span>
+</div>
+<span class="settingsRowValue" id="settingsGroupFeedbackMonthsValue">설정</span>
+</div></div></section>
+<section class="settingsSection"><div class="settingsCard"><div class="settingsRow" data-academy-management="true" id="settingsStudentBulkEditRow" onclick="openPhoneSettingsDetail('attendancePhotoImport')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M7 6.5h10a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"></path><path d="M9 4.5h6"></path><path d="M9 11h6"></path><path d="M9 14h4"></path></svg></span>
+<span class="settingsRowTitle">학생정보 일괄 수정</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" data-academy-management="true" onclick="openPhoneSettingsDetail('attendancePrint')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M5 4.5h14v15H5z"></path><path d="M8 3v4"></path><path d="M16 3v4"></path><path d="M5 8h14"></path><path d="M8 12h2"></path><path d="M12 12h2"></path><path d="M16 12h.01"></path><path d="M8 16h2"></path><path d="M12 16h2"></path></svg></span>
+<span class="settingsRowTitle">출석부 출력</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div></div></section>
+<section class="settingsSection"><div class="settingsCard"><div class="settingsRow" data-owner-only="true" id="settingsAcademySwitchRow" onclick="openPhoneSettingsDetail('academySwitch')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M4 20V7l8-4 8 4v13"></path><path d="M8 20v-5h8v5"></path><path d="M8 9h.01"></path><path d="M12 9h.01"></path><path d="M16 9h.01"></path></svg></span>
+<span class="settingsRowTitle">학원 관리</span>
+</div>
+<span class="settingsRowValue" id="settingsAcademySwitchValue"></span>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" data-owner-only="true" id="settingsOwnerOtherAcademyFindRow" onclick="openPhoneSettingsDetail('ownerOtherAcademyFind')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><circle cx="10.5" cy="10.5" r="5.5"></circle><path d="M15 15l5 5"></path><path d="M7.5 10.5h6"></path></svg></span>
+<span class="settingsRowTitle">다른 학원 찾기</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" data-teacher-only="true" onclick="openPhoneSettingsDetail('teacherMyAcademies')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M4 20V7l8-4 8 4v13"></path><path d="M8 20v-5h8v5"></path><path d="M8 9h.01"></path><path d="M12 9h.01"></path><path d="M16 9h.01"></path></svg></span>
+<span class="settingsRowTitle">내가 속한 학원</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" data-teacher-only="true" onclick="openPhoneSettingsDetail('teacherAcademyFind')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><circle cx="10.5" cy="10.5" r="5.5"></circle><path d="M15 15l5 5"></path><path d="M7.5 10.5h6"></path></svg></span>
+<span class="settingsRowTitle">다른 학원 찾기</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div></div></section>
+<section class="settingsSection" data-owner-only="true">
+<div class="settingsCard">
+<div class="settingsRow" onclick="openPhoneSettingsDetail('backup')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M5 21h14"></path></svg></span>
+<span class="settingsRowTitle">백업 / 내보내기</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+</div>
+</section><section class="settingsSection" data-owner-only="true">
+<div class="settingsCard">
+<div class="settingsRow" onclick="openPhoneSettingsDetail('roles')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M12 3l7 4v5c0 4.2-2.7 7.3-7 9-4.3-1.7-7-4.8-7-9V7l7-4z"></path></svg></span>
+<span class="settingsRowTitle">권한 설정</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" onclick="openPhoneSettingsDetail('teachers')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M8 10a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path><path d="M16 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path><path d="M3.8 20c.3-2.7 2-4.2 4.8-4.2"></path><path d="M11.2 20c.6-4 3-6 6.5-6"></path></svg></span>
+<span class="settingsRowTitle">선생님 관리</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+</div>
+</section><section class="settingsSection">
+<div class="settingsCard">
+<div class="settingsRow" onclick="openPhoneSettingsSheet('ai')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M12 3l1.6 5.2L19 10l-5.4 1.8L12 17l-1.6-5.2L5 10l5.4-1.8L12 3z"></path></svg></span>
+<span class="settingsRowTitle">AI 사용 안내</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" onclick="openPhoneSettingsDetail('privacy')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M7 11V8a5 5 0 0 1 10 0v3"></path><rect height="10" rx="3" width="14" x="5" y="11"></rect></svg></span>
+<span class="settingsRowTitle">개인정보 처리방침</span>
+</div>
+<svg class="settingsChevron" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div class="settingsRow" onclick="openPhoneSettingsSheet('logout')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M10 17l5-5-5-5"></path><path d="M15 12H3"></path><path d="M13 4h5a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3h-5"></path></svg></span>
+<span class="settingsRowTitle">계정 로그아웃</span>
+</div>
+</div>
+</div>
+</section><section class="settingsSection settingsDevSection" data-owner-only="true">
+<div class="settingsCard">
+<div class="settingsRow" onclick="openPhoneSettingsDetail('storageDiagnostics')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M4.5 5.5h15"></path><path d="M4.5 12h15"></path><path d="M4.5 18.5h15"></path><path d="M8 5.5v13"></path><path d="M16 5.5v13"></path></svg></span>
+<span class="settingsRowTitle">저장 진단</span>
+</div>
+<span class="settingsRowValue" id="settingsStorageDiagnosticsValue">점검</span>
+</div>
+</div>
+</section>
+</div>
+</div>
+</div>
+<div class="pageScreen" data-page-key="settings-detail" data-page-name="설정 상세" id="settingsDetailScreen">
+<div class="settingsPageInner">
+<div class="settingsHeader">
+<div class="settingsHeaderLeft">
+<button aria-label="설정으로 돌아가기" class="settingsRoundBtn" onclick="closePhoneSettingsDetail()" type="button">
+<svg viewbox="0 0 24 24"><path d="M15.5 5l-7 7 7 7"></path></svg>
+</button>
+<button class="settingsTitlePill" id="settingsDetailTitlePill" type="button">상세</button>
+</div>
+</div>
+<div class="settingsBody" id="settingsDetailBody"></div>
+</div>
+</div>
+<div aria-busy="true" aria-live="polite" id="olliAcademySwitchOverlay">
+<div class="olliAcademySwitchOverlayInner">
+<div class="olliAcademySwitchSpinner"></div>
+<div class="olliAcademySwitchOverlayTitle" id="olliAcademySwitchOverlayTitle">학원을 전환하고 있습니다</div>
+<div class="olliAcademySwitchOverlayDesc" id="olliAcademySwitchOverlayDesc">이전 학원의 화면을 정리하고 새 학원 데이터를 불러옵니다.</div>
+</div>
+</div>
+<input accept="image/*" id="settingsProfileImageInput" onchange="handleSettingsProfileImageChange(event)" style="display:none" type="file"/>
+<input accept="image/*" id="attendancePhotoImportInput" multiple="" onchange="handleAttendancePhotoImportChange(event)" style="display:none" type="file"/>
+<input accept=".txt,.md,.csv,.json,.doc,.docx,.pdf,text/plain,text/markdown,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" id="existingFeedbackImportInput" onchange="handleExistingFeedbackImportChange(event)" style="display:none" type="file"/>
+<input accept=".txt,.md,.csv,.docx,text/plain,text/markdown,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document" id="studentBulkImportFileInput" onchange="handleStudentBulkImportFileChange(event)" style="display:none" type="file"/>
+<div class="settingsSheetOverlay" id="settingsSheetOverlay" onclick="closeSettingsSheet(event)">
+<div class="settingsSheet" onclick="event.stopPropagation()">
+<div class="settingsSheetTitle" id="settingsSheetTitle">설정</div>
+<div class="settingsSheetDesc" id="settingsSheetDesc">내용</div>
+<div id="settingsSheetContent"></div>
+<div class="settingsSheetActions">
+<button class="settingsSheetBtn" onclick="closeSettingsSheet()" type="button">취소</button>
+<button class="settingsSheetBtn primary" onclick="saveSettingsSheet()" type="button">저장</button>
+</div>
+</div>
+</div>
+<script src="olli-settings-common-core.js?v=20260924-settings-core-1"></script>
+<script src="olli-settings-members.js"></script>
+
+<script src="olli-settings-storage.js"></script>
+
+<script src="olli-settings-imports-base.js"></script>
+
+<script src="olli-settings-attendance-photo-import-core.js"></script>
+
+<script src="olli-settings-student-bulk-import.js"></script>
+
+<script src="olli-settings-existing-feedback-import.js"></script>
+
+<script src="olli-settings-attendance-photo-import-runtime.js"></script>
+<script src="olli-settings-teacher-invite.js"></script>
+
+<script src="olli-settings-access.js"></script>
+
+<script src="olli-settings-attendance-export.js"></script>
+<script src="olli-settings-detail-data.js?v=20260927-dead-registry-clean-1"></script>
+<script src="olli-settings-detail-phone.js?v=20260927-team-talk-phone-only-1"></script>
+<script src="olli-settings-team-talk-phone.js?v=20260928-reset-all-olli1-1"></script>
+
+<script src="olli-attendance-record-summary-ui.js"></script>
+<script src="olli-login-ui.js"></script>
+
+<script src="olli-auth-entry-ui.js"></script>
+<script src="olli-auth-entry-phone-adapter.js?v=20260929-local-route-owner-1"></script>
+
+<script src="olli-auth-account-session.js"></script>
+<script src="olli-auth-academy-switch.js"></script>
+<script src="olli-auth-owner-onboarding.js"></script>
+
+<script src="olli-auth-teacher-membership.js"></script>
+
+<script src="olli-auth-academy-access.js"></script>
+
+<script src="olli-auth-member-validation.js"></script>
+
+<script src="olli-login-start-runtime.js"></script><script src="kinder-growth-survey-ui.js"></script>
+<script src="olli-settings-account-runtime.js?v=20260924-settings-core-split-1"></script>
+<script src="olli-settings-phone-ui.js?v=20260927-team-talk-phone-only-1"></script>
+<script src="olli-record-sort-student-ui.js?v=20260923-student-add-schedule-1"></script>
+<!-- olliRecordSortPositionFinalFix removed: 하단바/검색창/정렬 버튼 위치는 olliRecordSearchFinalSingle에서 단일 관리 -->
+<!-- 2026-04-30 patch: 초등/유치 정렬 기준 분리 + 초등 정렬 미작동 원인 보정 -->
+<script src="olli-record-sort-filter-ui.js"></script>
+<!-- 2026-04-30 patch: 초등 정렬 요일→담임 2칸 버튼 + 유치부 그룹 구분선 -->
+<!-- 2026-04-30 patch v2: 선생님 비활성화 되돌아감 방지 + 그룹 SVG 데이터 URL # 보정 -->
+<link rel="stylesheet" href="olli-settings-teacher-management.css">
+<script src="olli-teacher-management-legacy-cleanup.js"></script>
+<link rel="stylesheet" href="kinder-feedback.css?v=20260927-composer-parent-center-8">
+<link rel="stylesheet" href="olli-talk-beta.css?v=20260928-broken-thumb-fallback-1">
+<link rel="stylesheet" href="olli-talk-material-orders-mobile.css?v=20260928-status-colors-5">
+<!-- PAGE: 유치부 대화형 1분 피드백 -->
+<div aria-hidden="true" id="kcfPersistentTopLayer">
+<div class="kcfHeader">
+<button aria-label="메뉴" class="kcfRoundBtn kcfRecordBtn" onclick="openOlliMainSubpageDrawer(event, 'quicknote')" title="메뉴" type="button">
+<svg aria-hidden="true" viewbox="0 0 24 24"><path d="M5 7h14"></path><path d="M5 12h14"></path><path d="M5 17h10"></path></svg>
+</button>
+<button aria-label="임시 보관함 열기" class="kcfVivicotInboxBubble kcfTopInboxHidden" id="kcfVivicotInboxBubble" onclick="openKinderChatFeedbackInbox()" type="button">
+<span class="kcfVivicotInboxBubbleText">임시 보관함</span>
+<span aria-hidden="true" class="kcfVivicotInboxBadge" id="kcfVivicotInboxBadge"></span>
+</button>
+<div class="kcfHeaderCenter">
+<div aria-label="관찰노트와 퀵노트 전환" class="olliWorkTabs" role="tablist">
+<button aria-selected="false" class="olliWorkTab" onclick="openOlliObservationFromRecordShortcut(event)" role="tab" type="button">관찰노트</button>
+<button aria-selected="true" class="olliWorkTab active" role="tab" type="button">퀵노트</button>
+</div>
+</div>
+<button aria-label="Work 열기" class="olliTopWorkBtn kcfTopWorkBtn olliWorkTabWithBadge" onclick="openOlliTalkBetaPage(event)" type="button">Work<span aria-hidden="true" class="olliWorkNotificationBadge" data-olli-work-badge hidden></span></button>
+</div>
+</div>
+<div class="pageScreen" data-page-key="kinder-chat-feedback" data-page-name="퀵노트" id="kinderChatFeedbackScreen">
+<div class="kcfInner">
+<div aria-hidden="true" class="kcfTopFadeLayer" id="kcfTopFadeLayer"></div>
+<div aria-hidden="true" class="kcfBottomFadeLayer" id="kcfBottomFadeLayer"></div>
+<div class="kcfChatArea" id="kcfChatArea">
+</div>
+</div>
+<div class="kcfComposerLayer" id="kcfComposerLayer">
+<div class="kcfComposerWrap">
+<div class="kcfQuestionGuide" id="kcfQuestionGuide"></div>
+<div aria-label="관찰 키워드" class="kcfKeywordScroller" id="kcfKeywordScroller">
+<button class="kcfKeywordBtn" data-kcf-keyword="material" type="button">재료 탐색</button>
+<button class="kcfKeywordBtn" data-kcf-keyword="thought" type="button">생각 표현</button>
+<button class="kcfKeywordBtn" data-kcf-keyword="confidence" type="button">자신감</button>
+<button class="kcfKeywordBtn" data-kcf-keyword="help" type="button">도움 요청</button>
+<button class="kcfKeywordBtn" data-kcf-keyword="transition" type="button">망설임→전환</button>
+<button class="kcfKeywordBtn" data-kcf-keyword="joy" type="button">즐겁게 참여</button>
+<button class="kcfKeywordBtn" data-kcf-keyword="friend" type="button">친구와 협력</button>
+<button class="kcfKeywordBtn" data-kcf-keyword="focus" type="button">집중</button>
+</div>
+<div class="kcfComposer">
+<div aria-live="polite" class="kcfPhotoPreview" id="kcfPhotoPreview"></div>
+<div aria-label="음성 입력 중" class="kcfVoiceCapture" id="kcfVoiceCapture" hidden>
+<button aria-label="음성 입력 취소" class="kcfVoiceCaptureCircle kcfVoiceCaptureClose" id="kcfVoiceCaptureClose" type="button">
+<svg aria-hidden="true" viewbox="0 0 24 24"><path d="M6 6l12 12"></path><path d="M18 6L6 18"></path></svg>
+</button>
+<div aria-hidden="true" class="kcfVoiceWave" id="kcfVoiceWave"></div>
+<button aria-label="음성 입력 일시정지" class="kcfVoiceCaptureCircle kcfVoiceCaptureStop" id="kcfVoiceCaptureStop" title="일시정지" type="button">
+<span aria-hidden="true"></span>
+</button>
+<button aria-label="음성 입력 종료" class="kcfVoiceCaptureCircle kcfVoiceCaptureSend" id="kcfVoiceCaptureSend" title="녹음 종료" type="button">
+<span aria-hidden="true"></span>
+</button>
+</div>
+<div class="kcfComposerBottom">
+<div class="kcfStudentManageWrap" id="kcfStudentManageWrap">
+<div aria-label="원생 목록" class="memoStudentSelectPopup" id="kcfStudentManagePopup"></div>
+</div>
+<button aria-label="사진 추가" class="kcfAttachBtn" id="kcfAttachBtn" onclick="openKinderChatFeedbackPhotoPicker(event)" title="사진 추가" type="button">
+<svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+</button>
+<textarea class="kcfInput" id="kcfInput" placeholder="수업기록을 적어주세요" rows="1"></textarea>
+<button aria-label="Class 모드 열기" aria-pressed="false" class="kcfToolBtn kcfTeacherBtn" id="kcfTeacherBtn" onclick="toggleKinderChatFeedbackTeacherMode(event)" title="Class 모드 열기" type="button">Class</button>
+<button aria-label="음성 입력" class="kcfVoiceBtn" id="kcfVoiceBtn" title="음성 입력" type="button">
+<svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+<rect x="8" y="3" width="8" height="13" rx="4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></rect>
+<path d="M5 12.5C5 16.09 8.13 19 12 19C15.87 19 19 16.09 19 12.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+<path d="M12 19V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+<button aria-label="피드백 전송" class="kcfSendBtn" id="kcfSendBtn" onclick="submitKinderChatFeedback()" type="button">
+<svg viewbox="0 0 24 24"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>
+</button>
+</div>
+<div class="kcfInputWarning" id="kcfInputWarning"></div>
+<input accept="image/*" class="kcfPhotoInputHidden" id="kcfPhotoInput" onchange="handleKinderChatFeedbackPhotoChange(event)" type="file"/>
+</div>
+</div>
+</div>
+</div>
+<div aria-hidden="true" class="pageScreen" data-page-key="olli-talk-beta" data-page-name="비비작 팀톡" id="olliTalkBetaScreen">
+<div class="olliTalkBetaViewport">
+<div aria-hidden="true" class="olliTalkBetaEdgeBlur olliTalkBetaEdgeBlurTop"></div>
+<div class="olliTalkBetaHeader">
+<button aria-label="이전 페이지로 돌아가기" class="olliTalkBetaBackBtn" onclick="closeOlliTalkBetaPage(event)" title="뒤로가기" type="button">
+<span aria-hidden="true" class="memoRosterBackIcon"></span>
+</button>
+<div class="olliTalkBetaTitleWrap" aria-label="Team Chat">
+<div class="olliTalkBetaTitleRow"><span class="olliTalkBetaTitle">Team Chat</span><span class="olliTalkBetaMemberCount" id="olliTalkBetaMemberCount"></span></div>
+</div>
+<div class="olliTalkHeaderTools">
+<button aria-label="자료실" class="olliTalkHeaderToolBtn olliTalkArchiveBtn" id="olliTalkArchiveBtn" title="자료실" type="button">
+<svg aria-hidden="true" class="olliTalkArchiveIcon" viewbox="0 0 24 24">
+<path d="M12 3.5l2.63 5.33 5.88.85-4.25 4.14 1 5.85L12 16.9l-5.26 2.77 1-5.85-4.25-4.14 5.88-.85L12 3.5Z"></path>
+</svg>
+</button>
+</div>
+</div>
+<div class="olliTalkSearchBar" id="olliTalkSearchBar" hidden>
+<div class="olliTalkSearchField">
+<svg aria-hidden="true" class="olliTalkSearchFieldIcon" viewbox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5L21 21"></path></svg>
+<input aria-label="올리톡 대화 검색어" autocomplete="off" id="olliTalkSearchInput" placeholder="대화 검색" type="search"/>
+<span aria-live="polite" class="olliTalkSearchCount" id="olliTalkSearchCount"></span>
+<button aria-label="다음 검색 결과" class="olliTalkSearchNextBtn" id="olliTalkSearchNextBtn" type="button"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M7 10l5 5 5-5"></path></svg></button>
+<button aria-label="검색 닫기" class="olliTalkSearchCloseBtn" id="olliTalkSearchCloseBtn" type="button">×</button>
+</div></div>
+<div aria-label="올리톡 대화 내용" class="olliTalkBetaChatArea" id="olliTalkBetaChatArea">
+<div class="olliTalkBetaEmpty" id="olliTalkBetaEmpty"><div aria-hidden="true" class="olliTalkBetaEmptyIcon"><svg viewbox="0 0 48 48"><path d="M10 12.5h28a5 5 0 0 1 5 5v14a5 5 0 0 1-5 5H23l-8.5 6v-6H10a5 5 0 0 1-5-5v-14a5 5 0 0 1 5-5Z"></path><path d="M15 24h18"></path></svg></div><div class="olliTalkBetaEmptyTitle">비비작 선생님 대화방</div><div class="olliTalkBetaEmptyText">채팅 연결 전 화면을 먼저 준비하고 있어요.</div></div>
+</div>
+<div aria-hidden="true" class="olliTalkBetaEdgeBlur olliTalkBetaEdgeBlurBottom"></div>
+</div>
+<div class="olliTalkBetaComposerLayer" id="olliTalkBetaComposerLayer">
+<div class="olliTalkBetaComposerWrap">
+<div class="olliTalkBetaComposer">
+<div aria-label="선생님 멘션 선택" class="olliTalkMentionMenu" id="olliTalkMentionMenu" hidden></div>
+<button aria-label="파일 추가" class="olliTalkFileAddBtn" id="olliTalkFileAddBtn" title="파일 추가" type="button"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button>
+<textarea aria-label="메시지 입력" class="olliTalkBetaInput" id="olliTalkBetaInput" placeholder="메시지를 입력하세요" rows="1"></textarea>
+<button aria-label="재료 퀵주문" class="olliTalkQuickOrderBtn" id="olliTalkQuickOrderBtn" onclick="openOlliTalkQuickOrder(event)" title="퀵주문" type="button"><svg aria-hidden="true" viewBox="0 0 86 99" fill="none" xmlns="http://www.w3.org/2000/svg"><g fill="#000000"><path d="M10 6C10 2.686 12.686 0 16 0H70C73.314 0 76 2.686 76 6V9C76 9.552 75.552 10 75 10H11C10.448 10 10 9.552 10 9V6Z"></path><path d="M4 10C4 8.895 4.895 8 6 8H80C81.105 8 82 8.895 82 10V15C82 17.761 79.761 20 77 20H9C6.239 20 4 17.761 4 15V10Z"></path><path d="M12 20H74L66 96.5C65.86 97.82 64.74 98.82 63.42 98.82H22.58C21.26 98.82 20.14 97.82 20 96.5L12 20Z"></path></g><circle cx="43" cy="48" r="11.5" fill="#FFFFFF"></circle></svg></button>
+<button aria-label="선생님 멘션" class="olliTalkMentionTriggerBtn" id="olliTalkMentionTriggerBtn" type="button">@</button>
+<button aria-label="메시지 전송" class="olliTalkBetaSendBtn" disabled id="olliTalkBetaSendBtn" type="button"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg></button>
+</div>
+<input accept="image/*,video/*,.pdf,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip" hidden id="olliTalkComposerFileInput" multiple type="file"/>
+</div></div>
+</div>
+<div aria-hidden="true" class="pageScreen olliTalkPhotoViewerScreen" data-page-key="olli-talk-photo-viewer" data-page-name="사진 보기" id="olliTalkPhotoViewerScreen">
+<div class="olliTalkPhotoViewerPage">
+<div class="olliTalkPhotoViewerHeader">
+<button aria-label="사진 닫기" class="olliTalkPhotoViewerBackBtn" id="olliTalkPhotoViewerBackBtn" title="뒤로가기" type="button"><span aria-hidden="true" class="memoRosterBackIcon"></span></button>
+<div class="olliTalkPhotoViewerInfo">
+<div class="olliTalkPhotoViewerSender" id="olliTalkPhotoViewerSender">선생님</div>
+<div class="olliTalkPhotoViewerDate" id="olliTalkPhotoViewerDate"></div>
+</div>
+<button aria-label="포토리뷰로 이동" class="olliTalkPhotoViewerArchiveBtn" id="olliTalkPhotoViewerArchiveBtn" title="포토리뷰" type="button">
+<svg aria-hidden="true" viewbox="0 0 24 24"><rect x="4.6" y="4.6" width="5.6" height="5.6" rx="1.2"></rect><rect x="13.8" y="4.6" width="5.6" height="5.6" rx="1.2"></rect><rect x="4.6" y="13.8" width="5.6" height="5.6" rx="1.2"></rect><rect x="13.8" y="13.8" width="5.6" height="5.6" rx="1.2"></rect></svg>
+</button>
+</div>
+<div class="olliTalkPhotoViewerStage">
+<img alt="" aria-hidden="true" class="olliTalkPhotoViewerPreview" id="olliTalkPhotoViewerPreview" hidden>
+<div class="olliTalkTransferOverlay olliTalkPhotoViewerLoading" id="olliTalkPhotoViewerLoading">
+<button aria-label="원본 사진 불러오기 취소" class="olliTalkTransferCancel" id="olliTalkPhotoViewerLoadingCancel" type="button">
+<svg aria-hidden="true" class="olliTalkTransferRing" viewbox="0 0 72 72">
+<circle class="olliTalkTransferTrack" cx="36" cy="36" r="31"></circle>
+<circle class="olliTalkTransferProgress indeterminate" cx="36" cy="36" id="olliTalkPhotoViewerProgressCircle" r="31"></circle>
+<path class="olliTalkTransferX" d="M26 26l20 20M46 26L26 46"></path>
+</svg>
+</button>
+<div class="olliTalkTransferText" id="olliTalkPhotoViewerProgressText">불러오는 중…</div>
+</div>
+<img alt="원본 사진" class="olliTalkPhotoViewerImage" id="olliTalkPhotoViewerImage" hidden>
+</div>
+<div class="olliTalkPhotoViewerActions">
+<div class="olliTalkPhotoViewerActionItem">
+<button aria-label="사진 저장" class="olliTalkPhotoViewerActionBtn" id="olliTalkPhotoViewerSaveBtn" type="button">
+<svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 4v10"></path><path d="M8 10l4 4 4-4"></path><path d="M5 19h14"></path></svg>
+</button>
+</div>
+<div class="olliTalkPhotoViewerActionItem" id="olliTalkPhotoViewerDeleteItem">
+<button aria-label="사진 삭제" class="olliTalkPhotoViewerActionBtn delete" id="olliTalkPhotoViewerDeleteBtn" type="button">
+<svg aria-hidden="true" viewbox="0 0 94 94"><path d="M23.5 29.5H80.5"></path><path d="M42 29.5V21.5C42 19.3 43.8 17.5 46 17.5H58C60.2 17.5 62 19.3 62 21.5V29.5"></path><path d="M29.5 30V68C29.5 72.7 33.3 76.5 37 76.5H67C70.7 76.5 74.5 72.7 74.5 68V30"></path><path d="M44.5 43.5V62.5"></path><path d="M59.5 43.5V62.5"></path></svg>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div aria-hidden="true" class="pageScreen" data-page-key="olli-talk-archive" data-page-name="Work Hub" id="olliTalkArchiveScreen">
+<div class="olliTalkArchivePage">
+<div class="olliTalkArchiveHeader"><button aria-label="Work로 돌아가기" class="olliTalkArchiveBackBtn" id="olliTalkArchiveBackBtn" type="button"><span aria-hidden="true" class="olliTalkArchiveBackIcon"></span></button><div class="olliTalkArchiveTitle"><span>Work</span><svg aria-hidden="true" class="olliTalkArchiveTitleStar" viewBox="0 0 24 24"><path d="M12 3.5l2.63 5.33 5.88.85-4.25 4.14 1 5.85L12 16.9l-5.26 2.77 1-5.85-4.25-4.14 5.88-.85L12 3.5Z"></path></svg><span>Hub</span></div></div>
+<div class="olliTalkArchiveTabs" role="tablist">
+<button aria-selected="true" class="olliTalkArchiveTab active" data-archive-tab="materials" role="tab" type="button"><span class="olliTalkArchiveTabText">커피주문</span></button>
+<button aria-selected="false" class="olliTalkArchiveTab" data-archive-tab="files" role="tab" type="button"><span class="olliTalkArchiveTabText">커피 레시피</span></button>
+<button aria-selected="false" class="olliTalkArchiveTab" data-archive-tab="media" role="tab" type="button"><span class="olliTalkArchiveTabText">포토리뷰</span></button>
+</div>
+<div class="olliTalkArchiveDivider"></div>
+<div class="olliTalkArchiveMeta" id="olliTalkArchiveMeta"></div>
+<div class="olliTalkArchiveBody" id="olliTalkArchiveBody"></div>
+<button class="olliTalkArchiveUploadBtn" id="olliTalkArchiveUploadBtn" hidden type="button">레시피 파일 올리기</button>
+<input accept=".pdf,.hwp,.hwpx,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip" hidden id="olliTalkArchiveFileInput" type="file"/>
+<div class="olliTalkArchiveFileLoading" id="olliTalkArchiveFileLoading" hidden>
+<div class="olliTalkTransferOverlay">
+<button aria-label="커피 레시피 불러오기 취소" class="olliTalkTransferCancel" id="olliTalkArchiveFileLoadingCancel" type="button">
+<svg aria-hidden="true" class="olliTalkTransferRing" viewbox="0 0 72 72">
+<circle class="olliTalkTransferTrack" cx="36" cy="36" r="31"></circle>
+<circle class="olliTalkTransferProgress indeterminate" cx="36" cy="36" id="olliTalkArchiveFileProgressCircle" r="31"></circle>
+<path class="olliTalkTransferX" d="M26 26l20 20M46 26L26 46"></path>
+</svg>
+</button>
+<div class="olliTalkTransferText" id="olliTalkArchiveFileProgressText">불러오는 중…</div>
+</div>
+</div>
+</div></div>
+<div class="kcfInboxOverlay" id="kcfInboxOverlay" onclick="closeKinderChatFeedbackInbox(event)">
+<div class="kcfInboxSheet" onclick="event.stopPropagation()">
+<div class="kcfInboxHandle"></div>
+<div class="kcfInboxHead">
+<div class="kcfInboxTitleWrap">
+<div class="kcfInboxTitle">임시 보관함</div>
+<div class="kcfInboxSub">임시 저장된 피드백을 최신순으로 확인해요.</div>
+</div>
+<button aria-label="닫기" class="kcfInboxClose" onclick="closeKinderChatFeedbackInbox()" type="button">×</button>
+</div>
+<div class="kcfInboxBody" id="kcfInboxBody"></div>
+</div>
+</div>
+<div class="kcfSaveStudentPickerOverlay" id="kcfSaveStudentPickerOverlay" onclick="closeKinderChatFeedbackSaveStudentPicker(event)">
+<div class="kcfSaveStudentPickerCard" onclick="event.stopPropagation()">
+<div class="kcfSaveStudentPickerHead">
+<div class="kcfSaveStudentPickerTitle">학생을 선택해 주세요</div>
+<div class="kcfSaveStudentPickerGuide">같은 이름의 학생이 있어요. 기록실에 저장할 학생을 선택해 주세요.</div>
+</div>
+<div class="kcfSaveStudentPickerList" id="kcfSaveStudentPickerList"></div>
+<div class="kcfSaveStudentPickerActions">
+<button class="kcfSaveStudentSaveBtn" onclick="confirmKinderChatFeedbackSaveStudentPicker()" type="button">기록실 저장</button>
+</div>
+</div>
+</div>
+<div class="kcfGrowthOverlay" id="kcfGrowthOverlay" onclick="closeKinderChatFeedbackGrowthSheet(event)">
+<div class="kcfGrowthSheet" onclick="event.stopPropagation()">
+<div class="kcfGrowthHead">
+<div class="kcfGrowthTitleWrap">
+<div class="kcfGrowthTitle">실패-성장 피드백</div>
+<div class="kcfGrowthSub">실패 장면 설문 모드</div>
+</div>
+<button aria-label="닫기" class="kcfGrowthClose" onclick="closeKinderChatFeedbackGrowthSheet()" type="button">×</button>
+</div>
+<div class="kcfGrowthBody" id="kcfGrowthBody">
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A1. 아이 이름</div><input class="kcfGrowthInput" id="kcfgA1" placeholder="예: 김하윤"/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A2. 활동</div><div class="kcfGrowthGrid" id="kcfgA2Grid"></div><input class="kcfGrowthOtherInput" id="kcfgA2Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A2-1. 하위상황</div><div class="kcfGrowthGrid" id="kcfgA2SubGrid"></div><input class="kcfGrowthOtherInput" id="kcfgA2_1Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A3. 실패유형</div><div class="kcfGrowthGrid" id="kcfgA3Grid"></div><input class="kcfGrowthOtherInput" id="kcfgA3Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A4. 첫반응 - 몸</div><div class="kcfGrowthGrid" id="kcfgA4Grid"></div><input class="kcfGrowthOtherInput" id="kcfgA4Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A5. 첫반응 - 말</div><div class="kcfGrowthGrid" id="kcfgA5Grid"></div><input class="kcfGrowthOtherInput" id="kcfgA5Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A6. 첫반응 - 시선</div><div class="kcfGrowthGrid" id="kcfgA6Grid"></div><input class="kcfGrowthOtherInput" id="kcfgA6Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A7. 실패원인</div><div class="kcfGrowthGrid" id="kcfgA7Grid"></div><input class="kcfGrowthOtherInput" id="kcfgA7Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A8. 교사개입</div><div class="kcfGrowthGrid" id="kcfgA8Grid"></div><input class="kcfGrowthOtherInput" id="kcfgA8Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A9. 회복전환</div><div class="kcfGrowthGrid" id="kcfgA9Grid"></div><input class="kcfGrowthOtherInput" id="kcfgA9Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A10. 회복결과</div><div class="kcfGrowthGrid" id="kcfgA10Grid"></div><input class="kcfGrowthOtherInput" id="kcfgA10Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A11. 다음목표</div><div class="kcfGrowthGrid" id="kcfgA11Grid"></div><input class="kcfGrowthOtherInput" id="kcfgA11Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A12. 위험태그</div><div class="kcfGrowthGrid" id="kcfgA12Grid"></div><input class="kcfGrowthOtherInput" id="kcfgA12Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A13. 수업후상태</div><div class="kcfGrowthGrid" id="kcfgA13Grid"></div></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A14. 추가메모</div><textarea class="kcfGrowthTextarea" id="kcfgA14" placeholder="없으면 비워두셔도 됩니다."></textarea></div>
+</div>
+<div class="kcfGrowthGenerateWrap">
+<button aria-label="실패-성장 피드백 생성" class="kcfGrowthGenerateBtn" id="kcfGrowthGenerateBtn" onclick="submitKinderChatFeedbackGrowthSheet()" type="button">
+        실패-성장 피드백 생성
+      </button>
+</div>
+</div>
+</div>
+<div class="kcfGrowthOverlay" id="elementaryGrowthOverlay" onclick="closeElementaryGrowthFeedbackSheet(event)">
+<div class="kcfGrowthSheet" onclick="event.stopPropagation()">
+<div class="kcfGrowthHead">
+<div class="kcfGrowthTitleWrap">
+<div class="kcfGrowthTitle">실패-성장 피드백</div>
+<div class="kcfGrowthSub">실패 장면 설문 모드</div>
+</div>
+<button aria-label="닫기" class="kcfGrowthClose" onclick="closeElementaryGrowthFeedbackSheet()" type="button">×</button>
+</div>
+<div class="kcfGrowthBody" id="elementaryGrowthBody">
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A1. 아이 이름</div><input class="kcfGrowthInput" id="ecfgA1" placeholder="예: 김하윤"/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A2. 활동</div><div class="kcfGrowthGrid" id="ecfgA2Grid"></div><input class="kcfGrowthOtherInput" id="ecfgA2Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A2-1. 하위상황</div><div class="kcfGrowthGrid" id="ecfgA2SubGrid"></div><input class="kcfGrowthOtherInput" id="ecfgA2_1Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A3. 실패유형</div><div class="kcfGrowthGrid" id="ecfgA3Grid"></div><input class="kcfGrowthOtherInput" id="ecfgA3Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A4. 첫반응 - 몸</div><div class="kcfGrowthGrid" id="ecfgA4Grid"></div><input class="kcfGrowthOtherInput" id="ecfgA4Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A5. 첫반응 - 말</div><div class="kcfGrowthGrid" id="ecfgA5Grid"></div><input class="kcfGrowthOtherInput" id="ecfgA5Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A6. 첫반응 - 시선</div><div class="kcfGrowthGrid" id="ecfgA6Grid"></div><input class="kcfGrowthOtherInput" id="ecfgA6Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A7. 실패원인</div><div class="kcfGrowthGrid" id="ecfgA7Grid"></div><input class="kcfGrowthOtherInput" id="ecfgA7Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A8. 교사개입</div><div class="kcfGrowthGrid" id="ecfgA8Grid"></div><input class="kcfGrowthOtherInput" id="ecfgA8Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A9. 회복전환</div><div class="kcfGrowthGrid" id="ecfgA9Grid"></div><input class="kcfGrowthOtherInput" id="ecfgA9Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A10. 회복결과</div><div class="kcfGrowthGrid" id="ecfgA10Grid"></div><input class="kcfGrowthOtherInput" id="ecfgA10Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A11. 다음목표</div><div class="kcfGrowthGrid" id="ecfgA11Grid"></div><input class="kcfGrowthOtherInput" id="ecfgA11Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A12. 위험태그</div><div class="kcfGrowthGrid" id="ecfgA12Grid"></div><input class="kcfGrowthOtherInput" id="ecfgA12Other" placeholder="기타 내용을 입력해 주세요."/></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A13. 수업후상태</div><div class="kcfGrowthGrid" id="ecfgA13Grid"></div></div>
+<div class="kcfGrowthSection"><div class="kcfGrowthSectionTitle">A14. 추가메모</div><textarea class="kcfGrowthTextarea" id="ecfgA14" placeholder="관찰노트 내용이나 아이의 말, 교사의 개입을 추가로 적어 주세요."></textarea></div>
+</div>
+<div class="kcfGrowthGenerateWrap">
+<button aria-label="성장피드백 생성" class="kcfGrowthGenerateBtn" id="elementaryGrowthGenerateBtn" onclick="submitElementaryGrowthFeedbackSheet()" type="button">
+        성장피드백 생성
+      </button>
+</div>
+</div>
+</div>
+<script src="olli-feedback-photo-storage-common.js"></script>
+<script src="kinder-feedback.js?v=20260926-input-autogrow-1"></script>
+<script src="olli-talk-material-orders-mobile.js?v=20260928-coffee-label-2"></script>
+<script src="olli-talk-attachment-cache-phone.js?v=20260925-image-cache-delete-1"></script>
+<script src="olli-talk-image-thumbnail-phone.js?v=20260924-client-thumbnail-1"></script>
+<script src="olli-talk-beta.js?v=20260928-broken-thumb-fallback-1"></script>
+<script src="olli-talk-push.js?v=20260924-recipient-badges-1"></script>
+<script src="kcf-voice-text-normalizer.js?v=20260918-time-normalize-1"></script>
+<script src="kcf-voice-transcription.js?v=20260926-input-autogrow-1"></script>
+<script src="olli-command-schedule-common.js?v=20260923-write-actions-2"></script>
+<script src="olli-command-router-common.js?v=20260923-write-actions-2"></script>
+<script src="olli-feedback-registration-runtime.js?v=20260921-ai-guaranteed-1"></script>
+<link rel="stylesheet" href="olli-record-search-controls.css?v=20260927-guide-names-2">
+<script src="olli-storage-core.js?v=20260924-consult-summary-local-first-1"></script>
+<link rel="stylesheet" href="olli-observation-responsive.css">
+<script src="olli-memo-ipad-runtime.js"></script>
+<script src="olli-page-scroll-reset.js?v=20260918-teacher-sheet-cleanup-1"></script>
+<script src="olli-feedback-registration-phone-adapter.js?v=20260922-live-text-actions-1"></script>
+<link rel="stylesheet" href="kcf-roster-filter.css">
+<link rel="stylesheet" href="kcf-feedback-status.css">
+<link rel="stylesheet" href="kcf-auto-mode.css?v=20260927-guide-names-2">
+<link rel="stylesheet" href="kcf-teacher-sheet.css?v=20260927-guide-names-2">
+<script src="kcf-teacher-sheet.js?v=20260922-class-label-1"></script>
+<script src="kcf-auto-mode-runtime.js?v=20260922-class-label-1"></script>
+<link rel="stylesheet" href="olli-record-roster-sort.css">
+
+<script src="olli-account-soft-delete-phone.js"></script>
+<script src="olli-academy-soft-delete-phone.js"></script>
+<script src="olli-student-doc-import-runtime.js"></script>
+<script src="olli-student-bulk-edit-parser.js"></script>
+<script src="olli-student-schedule-runtime.js?v=20260923-student-info-labels-1"></script>
+<script src="olli-phone-student-schedule-editor.js?v=20260915-single-source-1"></script>
+<script src="olli-phone-kinder-student-info-card.js?v=20260923-student-info-labels-1"></script>
+<script src="olli-phone-elementary-student-info-card.js?v=20260923-student-info-labels-1"></script>
+<script src="olli-attendance-guide-align-runtime.js?v=20260923-guide-align-2"></script>
+<script src="olli-start-page-storage-phone.js?v=20260924-reconnect-local-first-1"></script>
+<link rel="stylesheet" href="olli-attendance-policy-phone.css">
+<script src="olli-attendance-policy-runtime.js?v=20260924-settings-core-split-1"></script>
+<script src="olli-student-lifecycle-init.js"></script>
+
+<link rel="stylesheet" href="olli-observation-roster-phone.css?v=20260929-memo-fixed-group-1">
+<link rel="stylesheet" href="olli-record-utility-touch.css?v=20260927-guide-names-1">
+<link rel="stylesheet" href="olli-phone-control-style.css?v=20260927-guide-names-2">
+<script src="olli-record-utility-touch.js?v=20260929-memo-fixed-group-1"></script>
+</body></html>

@@ -1,0 +1,16 @@
+
+/* 2026-06-27: 관찰노트 모드 선택 팝업의 제목/가이드 텍스트 기준을 학생목록에 적용 */
+#memoStudentSelectPopup .memoStudentSelectName,
+#kcfStudentManagePopup .memoStudentSelectName {
+  font-size: calc(16px * var(--olli-text-scale));
+  font-weight: 400;
+  line-height: 1.16;
+  letter-spacing: -0.03em;
+}
+#memoStudentSelectPopup .memoStudentSelectMeta,
+#kcfStudentManagePopup .memoStudentSelectMeta {
+  font-size: calc(12.5px * var(--olli-text-scale));
+  font-weight: 350;
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+}

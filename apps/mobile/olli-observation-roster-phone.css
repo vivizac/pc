@@ -1,0 +1,1036 @@
+/* Phone-only observation memo roster. This file is the single owner of roster layout and roster/editor controls. */
+
+@keyframes observationMemoEditorSlideInFromRight {
+  from { transform: translate3d(100vw, 0, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes observationMemoEditorSlideOutToRight {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(100vw, 0, 0); }
+}
+
+#observationRosterScreen .memoPageInner {
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  padding-bottom:0;
+}
+
+#observationRosterScreen .memoHeader {
+  flex:0 0 auto;
+}
+
+#observationRosterScreen #memoStudentRosterView {
+  display:none;
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden;
+  padding:0 18px;
+  color:#111;
+  flex-direction:column;
+}
+
+#observationRosterScreen .memoBodyRosterScroll {
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  margin-right:-18px;
+  padding:calc(var(--vivizac-note-header-h) + max(18px, calc(env(safe-area-inset-top) + 6px)) + 6px) 18px 94px 0;
+  background:transparent;
+  display:flex;
+  flex-direction:column;
+}
+
+#observationRosterScreen .memoBodyRosterHeader {
+  flex:0 0 auto;
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:12px;
+  margin:2px 2px 14px;
+}
+
+/* 부모/목록/하단도구의 폭은 건드리지 않고 제목 텍스트만 안쪽으로 10px 이동한다. */
+#observationRosterScreen .memoBodyRosterTitle {
+  color:#111;
+  font-size:calc(16px * var(--olli-text-scale));
+  font-weight:500;
+  letter-spacing:-0.03em;
+  transform:translateX(10px);
+}
+
+#observationRosterScreen .memoBodyRosterDay {
+  color:#0A84FF;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:500;
+  transform:translateX(-10px);
+}
+
+#observationRosterScreen .memoBodyRosterSortPrefix {
+  color:#8f8f8f;
+}
+
+#observationRosterScreen .memoBodyRosterSortValue {
+  color:#0A84FF;
+}
+
+/* 학생목록 제목/정렬 텍스트와 학생 카드는 위의 memoBodyRosterScroll 하나가 함께 스크롤한다.
+   목록 자체에는 별도 스크롤/테두리/여백 박스를 만들지 않는다. */
+#observationRosterScreen .memoBodyRosterList {
+  flex:1 0 auto;
+  min-height:0;
+  overflow:visible;
+  background:transparent;
+  border:0;
+  margin:0;
+  padding:0;
+}
+
+#observationRosterScreen .memoBodyRosterRow {
+  min-height:58px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:0 3.5px 0 10.7px;
+  background:#fff;
+}
+
+#observationRosterScreen .memoBodyRosterRow + .memoBodyRosterRow {
+  border-top:1px solid #eeeeee;
+}
+
+#observationRosterScreen .memoBodyRosterStudentBtn {
+  min-width:0;
+  flex:1;
+  min-height:58px;
+  display:flex;
+  align-items:center;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:#111;
+  text-align:left;
+  font:inherit;
+  cursor:pointer;
+}
+
+/* 관찰노트 학생목록에서는 출석/그룹/상태 선행 아이콘을 사용하지 않는다. */
+#observationRosterScreen .memoBodyRosterStudentBtn::before,
+#observationRosterScreen .memoBodyRosterText::before,
+#observationRosterScreen .memoBodyRosterName::before {
+  content:none;
+  display:none;
+}
+
+#observationRosterScreen .memoBodyRosterStudentBtn .memoStudentFeedbackDot,
+#observationRosterScreen .memoBodyRosterStudentBtn .kcfRosterFeedbackDot,
+#observationRosterScreen .memoBodyRosterStudentBtn .elementaryGroupIcon,
+#observationRosterScreen .memoBodyRosterStudentBtn .elementaryDefaultNoGroupIcon,
+#observationRosterScreen .memoBodyRosterStudentBtn .elementaryEmptyCircle,
+#observationRosterScreen .memoBodyRosterStudentBtn .recordBoardLeadIcon,
+#observationRosterScreen .memoBodyRosterStudentBtn svg,
+#observationRosterScreen .memoBodyRosterStudentBtn img {
+  display:none;
+}
+
+#observationRosterScreen .memoBodyRosterText {
+  min-width:0;
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  overflow:hidden;
+}
+
+#observationRosterScreen .memoBodyRosterName {
+  flex:0 0 auto;
+  color:#111;
+  font-size:calc(16px * var(--olli-text-scale));
+  font-weight:400;
+  line-height:1.2;
+  letter-spacing:normal;
+  white-space:nowrap;
+}
+
+#observationRosterScreen .memoBodyRosterMeta {
+  min-width:0;
+  color:#8f8f8f;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:500;
+  line-height:1.25;
+  letter-spacing:-0.04em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#observationRosterScreen .memoBodyRosterEmpty {
+  flex:1 1 auto;
+  min-height:100%;
+  margin-top:0;
+  padding:34px 36px 34px 18px;
+  border:0;
+  background:#fff;
+  color:#8b8b8b;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:500;
+  text-align:center;
+  line-height:1.45;
+  overflow:visible;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* 학생목록 하단 검색/정렬 도구 */
+#observationRosterScreen .memoRosterUtilityBar {
+  position:relative;
+  z-index:20;
+  flex:0 0 auto;
+  min-height:72px;
+  padding:8px 3px var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom)));
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) 48px;
+  align-items:center;
+  column-gap:12px;
+  background:transparent;
+}
+
+#observationRosterScreen .memoRosterUtilityBtn,
+#observationRosterScreen .memoRosterSearchPill {
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  font-family:inherit;
+}
+
+#observationRosterScreen .memoRosterUtilityBtn {
+  width:48px;
+  min-width:48px;
+  height:48px;
+  min-height:48px;
+  padding:0;
+  border-radius:999px;
+  color:#111;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+
+#observationRosterScreen .memoRosterUtilityBtn:active,
+#observationRosterScreen .memoRosterSearchPill:active {
+  transform:scale(.97);
+}
+
+#observationRosterScreen .memoRosterUtilityBtn svg {
+  width:25px;
+  height:25px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.5;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#observationRosterScreen .memoRosterSearchPill {
+  width:100%;
+  height:48px;
+  min-height:48px;
+  padding:0 14px;
+  border:0;
+  border-radius:999px;
+  background:#fff;
+  color:#111;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.96), 0 0 0 1px rgba(0,0,0,.025), 0 8px 28px rgba(0,0,0,.055);
+}
+
+#observationRosterScreen .memoRosterSearchIcon {
+  width:24px;
+  height:24px;
+  flex:0 0 24px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+
+#observationRosterScreen .memoRosterSearchIcon svg {
+  width:23px;
+  height:23px;
+}
+
+#observationRosterScreen .memoRosterSearchInput {
+  min-width:0;
+  width:100%;
+  height:40px;
+  border:0;
+  outline:0;
+  background:transparent;
+  color:#111;
+  font:inherit;
+  font-size:calc(15px * var(--olli-text-scale));
+  font-weight:500;
+  padding:0;
+}
+
+#observationRosterScreen .memoRosterSearchInput::placeholder {
+  color:#aaa;
+}
+
+#observationRosterScreen .memoRosterSortWrap {
+  position:relative;
+  display:flex;
+  justify-content:flex-end;
+}
+
+#observationRosterScreen .memoRosterSortBtn.active {
+  color:#111;
+}
+
+#observationRosterScreen .memoRosterSortPopup {
+  position:absolute;
+  right:0;
+  bottom:58px;
+  width:min(276px, calc(100vw - 36px));
+  padding:14px;
+  border-radius:22px;
+  background:rgba(255,255,255,.98);
+  box-shadow:0 16px 48px rgba(0,0,0,.14), 0 3px 12px rgba(0,0,0,.05);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+}
+
+#observationRosterScreen .memoRosterDivisionGrid {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:8px;
+}
+
+#observationRosterScreen .memoRosterDivisionChip {
+  min-width:0;
+  height:42px;
+  padding:0 10px;
+  border:0;
+  border-radius:14px;
+  background:#f2f2f2;
+  color:#333;
+  font:inherit;
+  font-size:calc(14px * var(--olli-text-scale));
+  font-weight:700;
+}
+
+#observationRosterScreen .memoRosterDivisionChip.active {
+  background:#111;
+  color:#fff;
+}
+
+#observationRosterScreen .memoRosterSortDivider {
+  height:1px;
+  margin:12px 2px 10px;
+  background:#e9e9e9;
+}
+
+#observationRosterScreen .memoRosterSortGrid {
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:7px;
+}
+
+#observationRosterScreen .memoRosterSortChip {
+  min-width:0;
+  height:38px;
+  padding:0 8px;
+  border:0;
+  border-radius:999px;
+  background:#f2f2f2;
+  color:#333;
+  font:inherit;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:650;
+}
+
+#observationRosterScreen .memoRosterSortChip.active {
+  background:#111;
+  color:#fff;
+}
+
+/* 학생 선택 후 관찰내용 작성 화면: 원래 sticky 상단바 흐름을 유지한다. */
+#studentMemoScreen[data-memo-body-view="editor"] .memoPageInner {
+  scroll-padding-top:84px;
+  scroll-padding-bottom:24px;
+}
+
+#studentMemoScreen[data-memo-body-view="editor"] .memoHeader {
+  position:sticky;
+  top:0;
+  left:auto;
+  right:auto;
+  transform:none;
+  width:100%;
+  max-width:none;
+  z-index:120020;
+  background:#fff;
+}
+
+#studentMemoScreen[data-memo-body-view="editor"] #memoModeWrap {
+  display:none;
+}
+
+#studentMemoScreen[data-memo-body-view="editor"] #elementaryMemoWrap {
+  padding-top:12px;
+}
+
+#studentMemoScreen[data-memo-body-view="editor"] .memoPageStudentName {
+  font-size:calc(22px * var(--olli-text-scale));
+}
+
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditor.memoEditor {
+  font-size:calc(17px * var(--olli-text-scale));
+  overflow-y:hidden;
+  resize:none;
+  height:auto;
+  field-sizing:content;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-appearance:none;
+  appearance:none;
+  box-shadow:none;
+  background:#fff;
+}
+
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditor.memoEditor:focus,
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditor.memoEditor:active {
+  outline:none;
+  box-shadow:none;
+  background:#fff;
+}
+
+#studentMemoScreen[data-memo-body-view="editor"] #elementaryMemoWrap {
+  position:relative;
+}
+#studentMemoScreen[data-memo-body-view="editor"] .memoVoiceAiLoading {
+  position:absolute;
+  z-index:8;
+  box-sizing:border-box;
+  margin:0;
+  border:0;
+  background:transparent;
+  color:transparent;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  pointer-events:none;
+}
+#studentMemoScreen[data-memo-body-view="editor"] .memoVoiceAiRawTranscript {
+  color:transparent;
+  background:rgba(10,132,255,.14);
+  border-radius:3px;
+  -webkit-box-decoration-break:clone;
+  box-decoration-break:clone;
+}
+#studentMemoScreen[data-memo-body-view="editor"] .memoVoiceAiLoadingDots {
+  display:inline-flex;
+  align-items:center;
+  gap:3px;
+  margin-left:5px;
+  vertical-align:middle;
+}
+#studentMemoScreen[data-memo-body-view="editor"] .memoVoiceAiLoadingDot {
+  display:block;
+  width:4px;
+  height:4px;
+  border-radius:50%;
+  background:#6f8fae;
+  opacity:.42;
+  transform:translateY(0);
+  animation:memoVoiceAiLoadingWave .9s ease-in-out infinite;
+}
+#studentMemoScreen[data-memo-body-view="editor"] .memoVoiceAiLoadingDot:nth-child(2) {
+  animation-delay:.14s;
+}
+#studentMemoScreen[data-memo-body-view="editor"] .memoVoiceAiLoadingDot:nth-child(3) {
+  animation-delay:.28s;
+}
+@keyframes memoVoiceAiLoadingWave {
+  0%, 62%, 100% { transform:translateY(0); opacity:.42; }
+  31% { transform:translateY(-3px); opacity:1; }
+}
+@media (prefers-reduced-motion:reduce) {
+  #studentMemoScreen[data-memo-body-view="editor"] .memoVoiceAiLoadingDot {
+    animation:none;
+    opacity:.7;
+  }
+}
+#studentMemoScreen[data-memo-body-view="editor"] .memoVoiceAiLoading[hidden] {
+  display:none;
+}
+
+/* 관찰내용 작성 화면 하단 버튼 */
+#studentMemoScreen[data-memo-body-view="editor"] #memoBottomAnalysisBtn {
+  width:47px;
+  min-width:47px;
+  height:44px;
+  min-height:44px;
+  border-radius:999px;
+}
+
+/* 전송 버튼은 글래스/그림자 없이 완전한 원형으로 유지한다. */
+#studentMemoScreen[data-memo-body-view="editor"] #memoFeedbackBtn {
+  right:var(--olli-phone-guide-x);
+  bottom:var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom)));
+  width:44px;
+  min-width:44px;
+  max-width:44px;
+  height:44px;
+  min-height:44px;
+  max-height:44px;
+  border-radius:50%;
+}
+
+#studentMemoScreen[data-memo-body-view="editor"] #memoBottomAnalysisBtn svg,
+#studentMemoScreen[data-memo-body-view="editor"] #memoFeedbackBtn svg {
+  width:27px;
+  height:27px;
+}
+
+/* 학생목록은 메모와 독립된 실제 pageScreen이다. 두 화면이 서로의 헤더/본문을 공유하지 않는다. */
+#observationRosterScreen {
+  background:#FEFEFE;
+  isolation:isolate;
+  padding-top:0;
+  z-index:119900;
+}
+
+#observationRosterScreen .observationRosterPageInner {
+  position:relative;
+  width:100%;
+  max-width:860px;
+  height:100%;
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  padding-top:0;
+  padding-bottom:0;
+  background:transparent;
+}
+
+#observationRosterScreen .observationRosterTopFadeLayer,
+#observationRosterScreen .observationRosterBottomFadeLayer {
+  position:fixed;
+  left:50%;
+  right:auto;
+  transform:translateX(-50%);
+  width:min(100vw, 860px);
+  max-width:860px;
+  z-index:100;
+  pointer-events:none;
+  backdrop-filter:blur(2px);
+  -webkit-backdrop-filter:blur(2px);
+}
+
+#observationRosterScreen .observationRosterTopFadeLayer {
+  top:0;
+  height:calc(max(116px, calc(env(safe-area-inset-top) + 102px)));
+  background:linear-gradient(
+    to bottom,
+    rgba(var(--vivizac-edge-fade-rgb),1) 0%,
+    rgba(var(--vivizac-edge-fade-rgb),.94) 24%,
+    rgba(var(--vivizac-edge-fade-rgb),.50) 54%,
+    rgba(var(--vivizac-edge-fade-rgb),0) 100%
+  );
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 58%,transparent 100%);
+  mask-image:linear-gradient(to bottom,#000 0%,#000 58%,transparent 100%);
+}
+
+#observationRosterScreen .observationRosterBottomFadeLayer {
+  bottom:0;
+  height:104px;
+  background:linear-gradient(
+    to top,
+    rgba(var(--vivizac-edge-fade-rgb),1) 0%,
+    rgba(var(--vivizac-edge-fade-rgb),.94) 24%,
+    rgba(var(--vivizac-edge-fade-rgb),.50) 54%,
+    rgba(var(--vivizac-edge-fade-rgb),0) 100%
+  );
+  -webkit-mask-image:linear-gradient(to top,#000 0%,#000 58%,transparent 100%);
+  mask-image:linear-gradient(to top,#000 0%,#000 58%,transparent 100%);
+}
+
+#observationRosterScreen #memoStudentRosterView {
+  display:flex;
+}
+
+#observationPersistentNavLayer {
+  position:fixed;
+  inset:0;
+  display:none;
+  pointer-events:none;
+  z-index:120100;
+}
+#observationPersistentNavLayer.show {
+  display:block;
+}
+#observationRosterScreen .observationRosterRecordRoomBtn {
+  position:fixed;
+  top:var(--olli-phone-guide-top);
+  z-index:120;
+  bottom:auto;
+  left:var(--olli-phone-guide-x);
+  right:auto;
+  width:44px;
+  min-width:44px;
+  height:44px;
+  min-height:44px;
+  padding:0;
+  border-radius:999px;
+  color:#111;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  pointer-events:auto;
+}
+#observationRosterScreen .observationRosterRecordRoomBtn svg {
+  width:27px;
+  height:27px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.7;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+#studentMemoScreen[data-memo-body-view="editor"] .observationMemoTopBackBtn {
+  position:fixed;
+  top:var(--olli-phone-guide-top);
+  left:var(--olli-phone-guide-x);
+  width:44px;
+  min-width:44px;
+  height:44px;
+  min-height:44px;
+  padding:0;
+  border-radius:999px;
+  color:#201818;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  z-index:120110;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  pointer-events:auto;
+}
+#studentMemoScreen[data-memo-body-view="editor"] .observationMemoTopBackBtn .memoRosterBackIcon {
+  position:relative;
+  display:block;
+  width:21px;
+  height:21px;
+  flex:0 0 21px;
+  color:currentColor;
+  pointer-events:none;
+}
+#studentMemoScreen[data-memo-body-view="editor"] .observationMemoTopBackBtn .memoRosterBackIcon::before,
+#studentMemoScreen[data-memo-body-view="editor"] .observationMemoTopBackBtn .memoRosterBackIcon::after {
+  content:"";
+  position:absolute;
+  left:4px;
+  top:9px;
+  width:13px;
+  height:2px;
+  border-radius:999px;
+  background:currentColor;
+  transform-origin:1px 1px;
+}
+#studentMemoScreen[data-memo-body-view="editor"] .observationMemoTopBackBtn .memoRosterBackIcon::before {
+  transform:rotate(-45deg);
+}
+#studentMemoScreen[data-memo-body-view="editor"] .observationMemoTopBackBtn .memoRosterBackIcon::after {
+  transform:rotate(45deg);
+}
+#observationRosterScreen .observationWorkTabs {
+  position:fixed;
+  left:var(--olli-phone-guide-center-x);
+  top:var(--olli-phone-guide-top);
+  transform:translateX(-50%);
+  z-index:120110;
+  pointer-events:auto;
+}
+
+/* 학생목록은 고정된 채 메모 pageScreen 전체만 같은 속도로 왕복한다. */
+#studentMemoScreen.observation-editor-slide-enter,
+#studentMemoScreen.observation-editor-slide-leave {
+  box-shadow:-18px 0 36px rgba(0,0,0,.14);
+}
+#studentMemoScreen.observation-editor-slide-enter {
+  z-index:120000;
+  animation:observationMemoEditorSlideInFromRight 360ms cubic-bezier(.4,0,.25,1) both;
+  will-change:transform;
+  pointer-events:none;
+}
+#studentMemoScreen.observation-editor-slide-leave {
+  z-index:120000;
+  animation:observationMemoEditorSlideOutToRight 360ms cubic-bezier(.4,0,.25,1) both;
+  will-change:transform;
+  pointer-events:none;
+}
+
+/* 키보드 편집 도구는 원래 헤더 액션 영역에서 직접 소유한다. */
+#studentMemoScreen[data-memo-body-view="editor"] .memoHeaderActions {
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  margin-left:auto;
+}
+
+#studentMemoScreen[data-memo-body-view="editor"].observation-editor-keyboard-open .memoHeaderActions {
+  left:50%;
+  right:auto;
+  transform:translateX(-50%);
+  justify-content:center;
+  margin-left:0;
+}
+
+#studentMemoScreen .observationMemoEditingActions {
+  display:none;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+}
+
+#studentMemoScreen[data-memo-body-view="editor"].observation-editor-keyboard-open .observationMemoEditingActions {
+  display:flex;
+}
+
+#studentMemoScreen .observationMemoEditAction {
+  width:42px;
+  min-width:42px;
+  height:42px;
+  min-height:42px;
+  padding:0;
+  border:0;
+  border-radius:999px;
+  background:#fff;
+  color:#111;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 2px 12px rgba(0,0,0,.10), 0 1px 4px rgba(0,0,0,.06);
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+
+#studentMemoScreen .observationMemoEditAction svg {
+  width:23px;
+  height:23px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#studentMemoScreen .observationMemoEditAction:disabled {
+  color:#b8b8b8;
+  opacity:.52;
+}
+
+
+#studentMemoScreen .observationMemoEditAction:not(:disabled):active {
+  transform:scale(.96);
+}
+
+/* 2026-09-12: migrated from record keyboard patch; observation screen owns these final-state rules. */
+/* 2026-09-10: 관찰노트 학생목록 안정화 */
+
+/* iOS 자동 확대 방지 */
+#observationRosterScreen #memoRosterSearchInput,
+#observationRosterScreen .memoRosterSearchInput {
+  font-size:16px !important;
+  -webkit-text-size-adjust:100%;
+}
+
+/* 검색/정렬 도구만 화면 하단에 고정한다.
+   마지막 학생이 버튼 아래에 가려지지 않도록 필요한 86px 여유는 memoBodyRosterScroll의 내부 하단 여백이 소유한다. */
+#observationRosterScreen .memoRosterUtilityBar {
+  position:fixed !important;
+  left:var(--olli-phone-guide-x) !important;
+  right:var(--olli-phone-guide-x) !important;
+  bottom:var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom))) !important;
+  width:auto !important;
+  height:var(--olli-phone-bottom-control-height, 47px) !important;
+  min-height:var(--olli-phone-bottom-control-height, 47px) !important;
+  padding:0 !important;
+  z-index:120 !important;
+  transform:translate3d(0, calc(-1 * var(--olli-observation-keyboard-offset, 0px)), 0) !important;
+  animation:none !important;
+  transition:none !important;
+}
+
+/* 출석부 검색바와 동일하게 키보드 위 4px 간격만 남긴다.
+   키보드가 열린 동안에는 iPhone safe-area 하단 패딩을 제거해 검색창이 불필요하게 위로 뜨지 않도록 한다. */
+#observationRosterScreen.observation-keyboard-open .memoRosterUtilityBar {
+  bottom:4px !important;
+  height:var(--olli-phone-bottom-control-height, 47px) !important;
+  min-height:var(--olli-phone-bottom-control-height, 47px) !important;
+  padding-top:0 !important;
+  padding-bottom:0 !important;
+}
+
+/* 하단 [검색][정렬] 도구 크기를 맞춘다. */
+#observationRosterScreen .memoRosterUtilityBar {
+  grid-template-columns:minmax(0, 1fr) 47px !important;
+  column-gap:10px !important;
+}
+#observationRosterScreen .memoRosterUtilityBtn,
+#observationRosterScreen .memoRosterSearchPill,
+#observationRosterScreen .memoRosterSortWrap {
+  height:var(--olli-phone-bottom-control-height, 47px) !important;
+  min-height:var(--olli-phone-bottom-control-height, 47px) !important;
+}
+#observationRosterScreen .memoRosterUtilityBtn {
+  width:47px !important;
+  min-width:47px !important;
+}
+#observationRosterScreen .memoRosterSearchIcon {
+  width:23px !important;
+  min-width:23px !important;
+  height:23px !important;
+  flex:0 0 23px !important;
+}
+#observationRosterScreen .memoRosterSearchIcon svg {
+  width:23px !important;
+  height:23px !important;
+  stroke-width:1.85 !important;
+}
+#observationRosterScreen #memoRosterSortBtn svg {
+  width:35px !important;
+  height:35px !important;
+  stroke-width:1.7 !important;
+}
+
+/* 관찰노트 검색 키보드가 열리면 오른쪽 정렬 버튼 대신 검색 종료 X를 표시한다. */
+#observationRosterScreen #memoRosterSearchClose {
+  display:none !important;
+  font-size:calc(21px * var(--olli-text-scale));
+  font-weight:400;
+  line-height:1;
+}
+#observationRosterScreen.observation-keyboard-open #memoRosterSortBtn,
+#observationRosterScreen.observation-keyboard-open .memoRosterSortPopup {
+  display:none !important;
+  visibility:hidden !important;
+  pointer-events:none !important;
+}
+#observationRosterScreen.observation-keyboard-open #memoRosterSearchClose {
+  display:inline-flex !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  pointer-events:auto !important;
+}
+#observationRosterScreen.observation-keyboard-open #memoRosterSearchClose:active {
+  background:#eeeeee !important;
+}
+
+/* 키보드 포커스 중에만 학생명단 자체의 이동·애니메이션을 막는다. */
+#observationRosterScreen.observation-keyboard-open,
+#observationRosterScreen.observation-keyboard-open .memoPageInner,
+#observationRosterScreen.observation-keyboard-open .memoHeader,
+#observationRosterScreen.observation-keyboard-open #memoStudentRosterView,
+#observationRosterScreen.observation-keyboard-open .memoBodyRosterScroll {
+  animation:none !important;
+  transition:none !important;
+}
+
+#observationRosterScreen .memoPageInner,
+#observationRosterScreen #memoStudentRosterView {
+  overscroll-behavior:none;
+}
+
+/* 수업기록 하단 4버튼은 studentMemoScreen 원본 마크업이 고정 소유한다. */
+#studentMemoScreen #memoEditorUtilityGroup {
+  display:none;
+}
+
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup {
+  position:fixed;
+  left:var(--olli-phone-guide-center-x);
+  right:auto;
+  top:auto;
+  bottom:var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom)));
+  width:226px;
+  min-width:226px;
+  max-width:226px;
+  height:47px;
+  min-height:47px;
+  padding:0 4px;
+  margin:0;
+  border:1px solid rgba(255,255,255,.96);
+  border-radius:999px;
+  background:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.92), 0 0 0 1px rgba(255,255,255,.92), 0 0 34px 10px rgba(0,0,0,.045), 0 0 78px 22px rgba(0,0,0,.035);
+  backdrop-filter:blur(20px) saturate(1.18);
+  -webkit-backdrop-filter:blur(20px) saturate(1.18);
+  transform:translateX(-50%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  z-index:120010;
+  visibility:visible;
+  opacity:1;
+  pointer-events:auto;
+  overflow:visible;
+}
+
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup.kcfVoiceCaptureMode {
+  left:var(--olli-phone-guide-x);
+  right:var(--olli-phone-guide-x);
+  width:auto;
+  min-width:0;
+  max-width:none;
+  height:53px;
+  min-height:53px;
+  max-height:53px;
+  padding:9px 11px 8px;
+  transform:none;
+  gap:0;
+  box-sizing:border-box;
+}
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup.kcfVoiceCaptureMode > button {
+  display:none !important;
+}
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup > button {
+  position:static;
+  left:auto;
+  right:auto;
+  top:auto;
+  bottom:auto;
+  width:47px;
+  min-width:47px;
+  max-width:47px;
+  height:47px;
+  min-height:47px;
+  max-height:47px;
+  flex:0 0 47px;
+  align-self:center;
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:999px;
+  background:transparent;
+  color:#111;
+  box-shadow:none;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  transform:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  visibility:visible;
+  opacity:1;
+  pointer-events:auto;
+  touch-action:manipulation;
+  z-index:auto;
+}
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup > button > svg {
+  display:block;
+  flex:0 0 auto;
+  margin:auto;
+}
+/* 고정 보관함/마이크/이전기록/설문 버튼의 단일 스타일 소유자. */
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoEditorVoiceBtn svg {
+  width:22px;
+  height:22px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoEditorVoiceBtn.active {
+  background:#0A84FF;
+  color:#fff;
+}
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoEditorVoiceBtn.connecting,
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoEditorVoiceBtn.processing {
+  opacity:.45;
+}
+
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoBottomAnalysisBtn svg,
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #olliMemoVersionHistoryBtn svg {
+  width:27px;
+  height:27px;
+}
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoRecordsBtn .memoRecordIcon {
+  width:23px;
+  height:23px;
+  display:block;
+  flex:0 0 auto;
+  margin:auto;
+  transform:translateY(-0.5px);
+}
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoBottomAnalysisBtn svg,
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #olliMemoVersionHistoryBtn svg {
+  stroke:currentColor;
+  fill:none;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoBottomAnalysisBtn svg,
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #memoBottomAnalysisBtn svg *,
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #olliMemoVersionHistoryBtn svg,
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup #olliMemoVersionHistoryBtn svg * {
+  stroke-width:1.5;
+}
+#studentMemoScreen[data-memo-body-view="editor"] #memoEditorUtilityGroup > button:active {
+  background:#eeeeee;
+}
+
+@media (prefers-reduced-motion:reduce) {
+  #studentMemoScreen.observation-editor-slide-enter,
+  #studentMemoScreen.observation-editor-slide-leave {
+    animation-duration:1ms;
+  }
+}
+
+/* iOS lifts viewport-fixed bottom controls with the keyboard; keep bottom actions hidden while typing and show only centered Undo/Redo above. */
+#studentMemoScreen[data-memo-body-view="editor"].observation-editor-keyboard-open #memoFeedbackBtn,
+#studentMemoScreen[data-memo-body-view="editor"].observation-editor-keyboard-open #memoEditorUtilityGroup:not(.kcfVoiceCaptureMode) {
+  visibility:hidden !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+}
+
+
+/* 2026-09-23: 관찰노트 상단 [메뉴] [관찰노트/퀵노트] [Work] */
+#observationPersistentNavLayer .observationTopWorkBtn{
+  position:fixed;
+  top:var(--olli-phone-guide-top);
+  right:var(--olli-phone-guide-x);
+  width:58px;
+  min-width:58px;
+  height:44px;
+  min-height:44px;
+  border:none;
+  border-radius:999px;
+  color:#111;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  font-family:'Pretendard','Montserrat',sans-serif;
+  font-size:calc(13px * var(--olli-text-scale, 1));
+  font-weight:450;
+  letter-spacing:-.02em;
+  pointer-events:auto;
+  z-index:120110;
+  -webkit-tap-highlight-color:transparent;
+}
+#observationPersistentNavLayer .observationTopWorkBtn:active{
+  transform:scale(.98);
+}

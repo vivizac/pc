@@ -1,0 +1,5 @@
+
+.olliLookupResultList{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
+.olliLookupResultBtn{width:100%;border:0;border-radius:18px;background:#f4f4f2;padding:14px 16px;text-align:left;display:flex;flex-direction:column;gap:4px;font:inherit;color:#111;}
+.olliLookupResultName{font-weight:650;font-size:15px;line-height:1.35;}
+.olliLookupResultCode{font-size:12.5px;color:#666;line-height:1.35;}

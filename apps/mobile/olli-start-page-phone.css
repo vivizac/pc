@@ -1,0 +1,10 @@
+
+.olliStartPageChoiceGrid{display:flex;flex-direction:column;gap:10px;margin-top:8px;}
+.olliStartPageChoiceBtn{width:100%;min-height:54px;border:none;border-radius:18px;background:#f3f3f3;color:#111;font-family:inherit;font-size:calc(15px * var(--olli-text-scale));font-weight:700;letter-spacing:-.03em;display:flex;align-items:center;justify-content:space-between;padding:0 16px;cursor:pointer;}
+.olliStartPageChoiceBtn::after{content:'→';font-weight:700;color:#999;}
+.olliStartPageChoiceBtn.active{background:#111;color:#fff;}
+.olliStartPageChoiceBtn.active::after{color:#fff;}
+.olliStartPageGuide{margin-top:14px;font-size:calc(12px * var(--olli-text-scale));line-height:1.5;color:#999;text-align:center;letter-spacing:-.02em;}
+.settingsStartPageOption{width:100%;min-height:50px;border:none;border-radius:16px;background:#f3f3f3;color:#111;font-family:inherit;font-size:calc(14px * var(--olli-text-scale));font-weight:700;letter-spacing:-.03em;display:flex;align-items:center;justify-content:space-between;padding:0 14px;margin-bottom:8px;cursor:pointer;}
+.settingsStartPageOption.active{background:#111;color:#fff;}
+.settingsStartPageOption .check{font-size:calc(14px * var(--olli-text-scale));color:#fff;}

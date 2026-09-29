@@ -1,0 +1,117 @@
+name: Validate OLLI single common source
+
+'on':
+  workflow_dispatch:
+  schedule:
+    - cron: '17 0 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'OLLI_COMMON_FILES.txt'
+      - 'OLLI_COMMON_SOURCE.md'
+      - 'vercel.json'
+      - 'index.html'
+      - 'olli-observation-autosave-phone-adapter.js'
+      - '.github/workflows/validate-single-source-common.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate single-source common modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest='OLLI_COMMON_FILES.txt'
+          source_base='https://raw.githubusercontent.com/vivizac/pc/main'
+          test -s "$manifest"
+
+          mapfile -t files < <(sed -e 's/[[:space:]]*#.*$//' -e '/^[[:space:]]*$/d' "$manifest")
+          test "${#files[@]}" -gt 0
+
+          staging="$(mktemp -d)"
+          for file in "${files[@]}"; do
+            case "$file" in
+              /*|*'..'*|*'\\'*)
+                echo "Unsafe common path: $file"
+                exit 1
+                ;;
+            esac
+
+            if [ -e "$file" ]; then
+              echo "Phone-local common copy must not exist: $file"
+              exit 1
+            fi
+
+            mkdir -p "$staging/$(dirname "$file")"
+            curl --retry 3 --fail --silent --show-error \
+              "$source_base/$file" \
+              -o "$staging/$file"
+            test -s "$staging/$file"
+            case "$file" in
+              *.js) node --check "$staging/$file" ;;
+              *.css) grep -q '[^[:space:]]' "$staging/$file" ;;
+              *) echo "Unsupported common asset type: $file"; exit 1 ;;
+            esac
+          done
+
+          if [ -e observation-memo-feedback-clear-common.js ]; then
+            echo 'Unused Phone duplicate must not exist: observation-memo-feedback-clear-common.js'
+            exit 1
+          fi
+
+          node <<'NODE'
+          const fs = require('fs');
+          const files = fs.readFileSync('OLLI_COMMON_FILES.txt', 'utf8')
+            .split(/\r?\n/)
+            .map(line => line.replace(/\s*#.*$/, '').trim())
+            .filter(Boolean);
+          const config = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
+          const rewrites = Array.isArray(config.rewrites) ? config.rewrites : [];
+          const headers = Array.isArray(config.headers) ? config.headers : [];
+
+          for (const file of files) {
+            const source = `/${file}`;
+            const destination = `https://raw.githubusercontent.com/vivizac/pc/main/${file}`;
+            const rewrite = rewrites.find(item => item?.source === source && item?.destination === destination);
+            if (!rewrite) throw new Error(`Missing single-source rewrite: ${file}`);
+
+            const headerRule = headers.find(item => item?.source === source);
+            const pairs = new Map((headerRule?.headers || []).map(item => [item.key, item.value]));
+            if (pairs.get('Cache-Control') !== 'no-store, max-age=0') {
+              throw new Error(`Missing no-store header: ${file}`);
+            }
+            const expectedType = file.endsWith('.css')
+              ? 'text/css; charset=utf-8'
+              : 'application/javascript; charset=utf-8';
+            if (pairs.get('Content-Type') !== expectedType) {
+              throw new Error(`Wrong content type for ${file}: expected ${expectedType}`);
+            }
+            if (String(pairs.get('x-vercel-enable-rewrite-caching')) !== '0') {
+              throw new Error(`Rewrite cache must be disabled: ${file}`);
+            }
+          }
+          NODE
+
+          for file in "${files[@]}"; do
+            case "$file" in
+              *.css) static_count="$(grep -Foc "href=\"$file" index.html || true)" ;;
+              *) static_count="$(grep -Foc "src=\"$file" index.html || true)" ;;
+            esac
+            dynamic_count=0
+            case "$file" in
+              observation-memo-request-guard-common.js|observation-memo-version-history-common.js)
+                dynamic_count="$(grep -Foc "$file" olli-observation-autosave-phone-adapter.js 2>/dev/null || true)"
+                ;;
+            esac
+            count=$((static_count + dynamic_count))
+            if [ "$count" -ne 1 ]; then
+              echo "$file must be referenced exactly once by Phone runtime (static: $static_count, dynamic: $dynamic_count)."
+              exit 1
+            fi
+          done

@@ -1,0 +1,2089 @@
+/* ── 유치부 대화형 1분 피드백 페이지: 정리본 ── */
+#kinderChatFeedbackScreen {
+  background:#fff;
+  padding-top:0;
+}
+#kcfPersistentTopLayer {
+  position:fixed;
+  inset:0;
+  display:none;
+  pointer-events:none;
+  z-index:5000;
+}
+#kcfPersistentTopLayer.show {
+  display:block;
+}
+#kcfPersistentTopLayer.kcfKeyboardHidden {
+  visibility:hidden;
+  opacity:0;
+  pointer-events:none;
+}
+#kinderChatFeedbackScreen .kcfInner {
+  position:relative;
+  width:100%;
+  max-width:860px;
+  height:100%;
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+  background:#fff;
+  overflow:hidden;
+}
+
+#kinderChatFeedbackScreen .kcfInner::before{
+  content:none;
+  display:none;
+  background:transparent;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  -webkit-mask-image:none;
+  mask-image:none;
+}
+#kinderChatFeedbackScreen .kcfTopFadeLayer{
+  position:fixed;
+  left:0;
+  right:0;
+  top:0;
+  width:100%;
+  height:calc(var(--olli-phone-guide-top) + 70px);
+  z-index:100;
+  pointer-events:none;
+  background:linear-gradient(
+    to bottom,
+    rgba(var(--vivizac-edge-fade-rgb),.60) 0%,
+    rgba(var(--vivizac-edge-fade-rgb),.30) 46%,
+    rgba(var(--vivizac-edge-fade-rgb),0) 100%
+  );
+  backdrop-filter:blur(2px);
+  -webkit-backdrop-filter:blur(2px);
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 58%,transparent 100%);
+  mask-image:linear-gradient(to bottom,#000 0%,#000 58%,transparent 100%);
+}
+#kinderChatFeedbackScreen .kcfBottomFadeLayer{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  width:100%;
+  height:104px;
+  z-index:10;
+  pointer-events:none;
+  background:linear-gradient(
+    to top,
+    rgba(var(--vivizac-edge-fade-rgb),.22) 0%,
+    rgba(var(--vivizac-edge-fade-rgb),.11) 50%,
+    rgba(var(--vivizac-edge-fade-rgb),0) 100%
+  );
+  backdrop-filter:blur(2px);
+  -webkit-backdrop-filter:blur(2px);
+  -webkit-mask-image:linear-gradient(to top,#000 0%,#000 54%,transparent 100%);
+  mask-image:linear-gradient(to top,#000 0%,#000 54%,transparent 100%);
+}
+/* 상단바 */
+#kcfPersistentTopLayer .kcfHeader{
+  display:contents;
+  position:static;
+  top:auto;
+  left:auto;
+  transform:none;
+  width:auto;
+  max-width:none;
+  height:0;
+  min-height:0;
+  padding:0;
+  background:transparent;
+  border-bottom:none;
+  flex-shrink:0;
+  z-index:auto;
+}
+#kcfPersistentTopLayer .kcfHeaderCenter{
+  position:fixed;
+  left:var(--olli-phone-guide-center-x);
+  top:var(--olli-phone-guide-top);
+  transform:translateX(-50%);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  z-index:5000;
+  pointer-events:auto;
+  isolation:isolate;
+}
+
+/* 퀵노트/Work 공통 상단 탭: Phone에서 두 페이지가 같은 원본 스타일을 공유한다. */
+.olliWorkTabs{
+  position:relative;
+  isolation:isolate;
+  width:min(160px, calc(100vw - 144px));
+  min-width:152px;
+  height:48px;
+  padding:3px;
+  box-sizing:border-box;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  align-items:center;
+  gap:2px;
+  border-radius:999px;
+  pointer-events:auto;
+  -webkit-tap-highlight-color:transparent;
+}
+.olliWorkTab{
+  position:relative;
+  z-index:2;
+  min-width:0;
+  height:40px;
+  padding:0 8px;
+  border:0;
+  border-radius:999px;
+  background:transparent;
+  color:#111;
+  font-family:'Pretendard','Montserrat',sans-serif;
+  font-size:calc(13px * var(--olli-text-scale, 1));
+  font-weight:350;
+  line-height:1;
+  letter-spacing:-.02em;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
+}
+.olliWorkTab.active{
+  background:rgba(242,242,242,.96);
+  font-weight:450;
+}
+.olliWorkTabWithBadge{
+  overflow:visible;
+}
+.olliWorkNotificationBadge{
+  position:absolute;
+  top:3px;
+  right:4px;
+  min-width:15px;
+  height:15px;
+  padding:0 4px;
+  border-radius:999px;
+  background:#0A84FF;
+  color:#fff;
+  font-size:10px;
+  font-weight:650;
+  line-height:15px;
+  letter-spacing:0;
+  text-align:center;
+  box-sizing:border-box;
+  box-shadow:0 0 0 2px rgba(255,255,255,.92);
+  pointer-events:none;
+}
+.olliWorkNotificationBadge[hidden]{
+  display:none !important;
+}
+.olliWorkTab:active{
+  transform:scale(.98);
+}
+#kcfPersistentTopLayer .kcfRoundBtn{
+  width:44px;
+  height:44px;
+  border-radius:999px;
+  color:#111;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  cursor:pointer;
+  position:fixed;
+  top:var(--olli-phone-guide-top);
+  z-index:5000;
+  pointer-events:auto;
+  -webkit-tap-highlight-color:transparent;
+}
+#kcfPersistentTopLayer .kcfRecordBtn{
+  left:var(--olli-phone-guide-x);
+}
+#kcfPersistentTopLayer #kcfOlliBtn,
+#kcfPersistentTopLayer #kcfInboxModeBtn{
+  right:var(--olli-phone-guide-x);
+  position:fixed;
+}
+#kcfPersistentTopLayer #kcfOlliBtn{
+  overflow:hidden;
+}
+#kcfPersistentTopLayer #kcfOlliTalkBtn{
+  right:var(--olli-phone-guide-x);
+  background:#fff;
+  color:#111;
+  border-color:rgba(255,255,255,0.96);
+}
+#kcfPersistentTopLayer #kcfOlliTalkBtn .kcfOlliTalkIcon{
+  width:28px;
+  height:28px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  pointer-events:none;
+}
+#kcfPersistentTopLayer #kcfOlliTalkBtn .kcfOlliTalkIcon img{
+  width:28px;
+  height:28px;
+  max-width:none;
+  object-fit:contain;
+  display:block;
+  visibility:visible;
+  opacity:1;
+  pointer-events:none;
+}
+#kcfPersistentTopLayer #kcfOlliBtn .kcfLiveText{
+  display:block;
+  color:#111;
+  font-family:"Arial Rounded MT Bold","Avenir Next Rounded","Trebuchet MS",sans-serif;
+  font-size:11px;
+  font-weight:800;
+  line-height:1;
+  letter-spacing:-0.035em;
+  transform:translateY(-.25px);
+  pointer-events:none;
+}
+#kcfPersistentTopLayer #kcfInboxModeBtn{
+  display:none;
+  overflow:hidden;
+}
+#kcfPersistentTopLayer #kcfInboxModeBtn img{
+  width:30px;
+  height:30px;
+  max-width:none;
+  object-fit:contain;
+  display:block;
+  pointer-events:none;
+}
+#kcfPersistentTopLayer.kcfTopModeInbox #kcfOlliBtn{
+  display:none;
+}
+#kcfPersistentTopLayer.kcfTopModeInbox #kcfInboxModeBtn{
+  display:inline-flex;
+}
+#kcfPersistentTopLayer .kcfVivicotInboxBubble {
+  display:none;
+  position:fixed;
+  top:calc(var(--olli-phone-guide-top) + 54px);
+  right:var(--olli-phone-guide-x);
+  max-width:calc(100vw - 32px);
+  min-height:40px;
+  padding:10px 14px;
+  border:none;
+  border-radius:17px;
+  background:#fff;
+  color:#111;
+  align-items:center;
+  justify-content:center;
+  font-family:inherit;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:500;
+  line-height:1.25;
+  letter-spacing:-0.03em;
+  text-align:left;
+  white-space:nowrap;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.96),
+    inset 1px 0 0 rgba(255,255,255,0.30),
+    0 0 0 1px rgba(255,255,255,0.92),
+    0 0 34px 10px rgba(0,0,0,0.045),
+    0 0 78px 22px rgba(0,0,0,0.035);
+  z-index:4999;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+#kcfPersistentTopLayer .kcfVivicotInboxBubble.show {
+  display:inline-flex;
+  visibility:visible;
+  opacity:1;
+  pointer-events:auto;
+  z-index:5001;
+  animation:kcfVivicotInboxBubblePop .22s cubic-bezier(.2,.8,.2,1);
+}
+#kcfPersistentTopLayer .kcfVivicotInboxBubble::before {
+  content:'';
+  position:absolute;
+  top:-6px;
+  right:17px;
+  width:11px;
+  height:11px;
+  background:#fff;
+  border-left:none;
+  border-top:none;
+  transform:rotate(45deg);
+  pointer-events:none;
+}
+#kcfPersistentTopLayer .kcfVivicotInboxBubbleText { position:relative; z-index:1; }
+#kcfPersistentTopLayer .kcfVivicotInboxBadge {
+  display:none;
+  position:absolute;
+  top:-9px;
+  right:-9px;
+  min-width:22px;
+  height:22px;
+  padding:0 6px;
+  border:2px solid #fff;
+  border-radius:999px;
+  background:#EB5757;
+  color:#fff;
+  box-sizing:border-box;
+  align-items:center;
+  justify-content:center;
+  font-size:calc(11px * var(--olli-text-scale));
+  font-weight:800;
+  line-height:1;
+  z-index:2;
+}
+#kcfPersistentTopLayer .kcfVivicotInboxBadge.show { display:flex; }
+@keyframes kcfVivicotInboxBubblePop {
+  from { opacity:0; transform:translateY(-4px) scale(.97); }
+  to { opacity:1; transform:translateY(0) scale(1); }
+}
+
+#kcfPersistentTopLayer .kcfRoundBtn svg {
+  stroke:currentColor;
+  fill:none;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+#kcfPersistentTopLayer .kcfRecordBtn svg {
+  width:27px !important;
+  height:27px !important;
+  stroke-width:1.7 !important;
+}
+#kcfPersistentTopLayer .kcfInboxBadge {
+  display:none;
+  position:absolute;
+  top:-2px;
+  right:-2px;
+  width:18px;
+  min-width:18px;
+  height:18px;
+  padding:0;
+  border-radius:50%;
+  background:#EB5757;
+  color:#fff;
+  font-size:calc(10px * var(--olli-text-scale));
+  font-weight:800;
+  line-height:1;
+  border:2px solid #fff;
+  text-align:center;
+  align-items:center;
+  justify-content:center;
+  box-sizing:content-box;
+}
+#kcfPersistentTopLayer .kcfInboxBadge.show { display:flex; }
+
+/* 상단 모드 토글 */
+#kcfPersistentTopLayer .kcfModeToggle {
+  height:25px;
+  border:none;
+  border-radius:0;
+  background:transparent;
+  color:#111;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:0;
+  font-family:inherit;
+  cursor:pointer;
+  box-shadow:none;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  -webkit-tap-highlight-color:transparent;
+}
+#kcfPersistentTopLayer .kcfModeTitle {
+  font-family:'Montserrat','Pretendard',sans-serif;
+  font-size:calc(20px * var(--olli-text-scale));
+  font-weight:440;
+  letter-spacing:-0.02em;
+  line-height:1;
+}
+#kcfPersistentTopLayer .kcfModeToggle svg {
+  width:16px;
+  height:16px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:2.25;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+#kcfPersistentTopLayer .kcfModeSub {
+  margin-top:2px;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:400;
+  color:#999;
+  letter-spacing:-0.03em;
+  line-height:1;
+}
+#kcfPersistentTopLayer .kcfModeMenu {
+  display:none;
+  position:absolute;
+  top:50px;
+  left:50%;
+  transform:translateX(-50%);
+  min-width:250px;
+  padding:12px 0;
+  border-radius:28px;
+  background:rgba(255,255,255,.92);
+  box-shadow:0 18px 46px rgba(0,0,0,.14),0 4px 14px rgba(0,0,0,.07);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  z-index:100;
+}
+#kcfPersistentTopLayer .kcfModeMenu.show { display:block; }
+#kcfPersistentTopLayer .kcfModeOption {
+  width:100%;
+  min-height:64px;
+  border:none;
+  border-radius:0;
+  background:transparent;
+  color:#111;
+  font-family:inherit;
+  cursor:pointer;
+  display:grid;
+  grid-template-columns:34px minmax(0,1fr);
+  align-items:center;
+  gap:8px;
+  padding:6px 18px 6px 14px;
+  text-align:left;
+  -webkit-tap-highlight-color:transparent;
+}
+#kcfPersistentTopLayer .kcfModeCheck {
+  width:24px;
+  height:24px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity:0;
+  color:#111;
+}
+#kcfPersistentTopLayer .kcfModeCheck svg {
+  width:20px;
+  height:20px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:1.7;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+#kcfPersistentTopLayer .kcfModeOption.active .kcfModeCheck { opacity:1; }
+#kcfPersistentTopLayer .kcfModeOptionText {
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  gap:3px;
+}
+#kcfPersistentTopLayer .kcfModeOptionTitle {
+  display:block;
+  font-size:calc(16px * var(--olli-text-scale));
+  font-weight:400;
+  line-height:1.16;
+  letter-spacing:-0.03em;
+  color:#111;
+  white-space:nowrap;
+}
+#kcfPersistentTopLayer .kcfModeOptionGuide {
+  display:block;
+  font-size:calc(12.5px * var(--olli-text-scale));
+  font-weight:350;
+  line-height:1.35;
+  letter-spacing:-0.03em;
+  color:#888;
+  word-break:keep-all;
+}
+
+/* 대화 영역 */
+#kinderChatFeedbackScreen .kcfChatArea{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+  touch-action:pan-y;
+  padding:112px 16px 176px;
+  position:relative;
+  z-index:1;
+  background:#fff;
+}
+/* 내용이 없어도 iOS가 제스처를 page/visualViewport로 넘기지 않도록
+   1px짜리 내부 scroll range를 항상 유지한다. */
+#kinderChatFeedbackScreen .kcfChatArea::after{
+  content:'';
+  display:block;
+  width:1px;
+  height:1px;
+  pointer-events:none;
+}
+#kinderChatFeedbackScreen .kcfCenterIntro {
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:100%;
+  max-width:860px;
+  padding:0 24px;
+  text-align:center;
+  color:#333;
+  font-size:calc(24px * var(--olli-text-scale));
+  font-weight:400;
+  letter-spacing:-0.04em;
+  line-height:1.35;
+  pointer-events:none;
+  transition:opacity .18s ease;
+  z-index:1;
+}
+#kinderChatFeedbackScreen .kcfCenterIntro.hidden { opacity:0; }
+#kinderChatFeedbackScreen .kcfMsgRow {
+  width:100%;
+  display:flex;
+  margin-bottom:14px;
+}
+#kinderChatFeedbackScreen .kcfMsgRow.user { justify-content:flex-end; }
+#kinderChatFeedbackScreen .kcfMsgRow.bot { justify-content:flex-start; }
+#kinderChatFeedbackScreen .kcfMsgRow.user + .kcfMsgRow.bot {
+  margin-top:12px;
+  margin-bottom:26px;
+}
+#kinderChatFeedbackScreen .kcfBubble {
+  max-width:82%;
+  border-radius:20px;
+  padding:10px 15px;
+  font-size:calc(15px * var(--olli-text-scale));
+  line-height:1.55;
+  letter-spacing:-0.02em;
+  white-space:pre-wrap;
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+#kinderChatFeedbackScreen .kcfMsgRow.user .kcfBubble {
+  background:#f2f2f2;
+  color:#111;
+  border-bottom-right-radius:7px;
+}
+#kinderChatFeedbackScreen .kcfMsgRow.bot .kcfBubble {
+  max-width:100%;
+  background:transparent;
+  color:#111;
+  border-radius:0;
+  padding:2px 2px;
+  line-height:1.58;
+}
+
+#kinderChatFeedbackScreen .kcfCommandConfirmActions {
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:8px;
+  margin:2px 0 24px 2px;
+}
+#kinderChatFeedbackScreen .kcfCommandConfirmBtn {
+  height:34px;
+  min-width:64px;
+  padding:0 15px;
+  border:0;
+  border-radius:999px;
+  font-family:inherit;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:600;
+  line-height:1;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+}
+#kinderChatFeedbackScreen .kcfCommandCancelBtn {
+  background:#f1f1f1;
+  color:#111;
+}
+#kinderChatFeedbackScreen .kcfCommandExecuteBtn {
+  background:#111;
+  color:#fff;
+}
+#kinderChatFeedbackScreen .kcfCommandConfirmBtn:disabled {
+  opacity:.45;
+}
+
+/* 입력 영역: 채팅/배경과 분리된 전용 고정 레이어 */
+#kinderChatFeedbackScreen .kcfComposerLayer {
+  --kcf-composer-vv-left:0px;
+  --kcf-composer-vv-top:0px;
+  --kcf-composer-vv-width:100vw;
+  --kcf-composer-vv-height:100vh;
+  position:fixed;
+  left:var(--kcf-composer-vv-left);
+  top:var(--kcf-composer-vv-top);
+  right:auto;
+  bottom:auto;
+  width:var(--kcf-composer-vv-width);
+  height:var(--kcf-composer-vv-height);
+  background:transparent;
+  overflow:visible;
+  pointer-events:none;
+  z-index:80;
+}
+#kinderChatFeedbackScreen .kcfComposerWrap {
+  position:absolute;
+  left:var(--olli-phone-guide-x, 16px);
+  right:var(--olli-phone-guide-x, 16px);
+  bottom:var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom)));
+  transform:none;
+  width:auto;
+  max-width:none;
+  background:transparent;
+  padding:0;
+  z-index:1;
+  pointer-events:auto;
+  transition:none;
+  -webkit-tap-highlight-color:transparent;
+}
+#kinderChatFeedbackScreen.kcfKeyboardOpen .kcfComposerWrap {
+  bottom:4px;
+  padding-bottom:0;
+}
+#kinderChatFeedbackScreen.kcfGuideHidden .kcfQuestionGuide,
+#kinderChatFeedbackScreen.kcfGuideHidden .kcfKeywordScroller {
+  display:none !important;
+}
+#kinderChatFeedbackScreen .kcfQuestionGuide {
+  display:none;
+  padding:0 4px 10px;
+  margin:0 0 16px;
+  background:transparent;
+  border:none;
+  box-shadow:none;
+}
+#kinderChatFeedbackScreen .kcfQuestionGuide.show { display:block; }
+#kinderChatFeedbackScreen .kcfQuestionList {
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+#kinderChatFeedbackScreen .kcfQuestionList li {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  font-size:calc(15px * var(--olli-text-scale));
+  color:#666;
+  line-height:1.55;
+  margin-top:9px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+#kinderChatFeedbackScreen .kcfQuestionIcon {
+  width:24px;
+  height:24px;
+  min-width:24px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:2.2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  opacity:.72;
+}
+#kinderChatFeedbackScreen .kcfQuestionText {
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+#kinderChatFeedbackScreen .kcfComposer {
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:5px;
+  height:var(--olli-phone-bottom-control-height, 47px);
+  min-height:var(--olli-phone-bottom-control-height, 47px);
+  max-height:var(--olli-phone-bottom-control-height, 47px);
+  box-sizing:border-box;
+  background:#fff;
+  border:1px solid rgba(255,255,255,0.96);
+  border-radius:24px;
+  padding:4px 11px 3px;
+  -webkit-tap-highlight-color:transparent;
+}
+#kinderChatFeedbackScreen.kcfKeyboardOpen .kcfComposer:not(.kcfVoiceCaptureMode),
+#kinderChatFeedbackScreen .kcfComposer:has(.kcfPhotoPreview.show) {
+  height:auto;
+  max-height:none;
+  justify-content:flex-start;
+}
+
+:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCapture[hidden] {
+  display:none !important;
+}
+:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCapture {
+  width:100%;
+  min-width:0;
+  height:34px;
+  min-height:34px;
+  max-height:34px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+#kinderChatFeedbackScreen .kcfComposer.kcfVoiceCaptureMode {
+  gap:0;
+  height:var(--olli-phone-bottom-control-height, 47px);
+  min-height:var(--olli-phone-bottom-control-height, 47px);
+  max-height:var(--olli-phone-bottom-control-height, 47px);
+  padding:6px 11px 5px;
+  border-radius:24px;
+  box-sizing:border-box;
+}
+#studentMemoScreen #memoEditorUtilityGroup.kcfVoiceCaptureMode {
+  gap:0;
+  height:53px;
+  min-height:53px;
+  max-height:53px;
+  padding:9px 11px 8px;
+  border-radius:24px;
+  box-sizing:border-box;
+}
+#kinderChatFeedbackScreen.kcfVoiceCaptureMode .kcfQuestionGuide,
+#kinderChatFeedbackScreen.kcfVoiceCaptureMode .kcfKeywordScroller {
+  display:none !important;
+}
+#kinderChatFeedbackScreen .kcfComposer.kcfVoiceCaptureMode > .kcfPhotoPreview,
+#kinderChatFeedbackScreen .kcfComposer.kcfVoiceCaptureMode > .kcfInput,
+#kinderChatFeedbackScreen .kcfComposer.kcfVoiceCaptureMode > .kcfComposerBottom {
+  display:none !important;
+}
+:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCaptureCircle {
+  width:33px;
+  height:33px;
+  min-width:33px;
+  border:none;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCaptureClose,
+:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCaptureStop {
+  background:#f1f1f1;
+  color:#111;
+}
+:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCaptureClose svg {
+  width:25px;
+  height:25px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:2;
+  stroke-linecap:round;
+}
+:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCaptureStop span {
+  width:14px;
+  height:16px;
+  border-radius:0;
+  background:linear-gradient(
+    to right,
+    currentColor 0 4px,
+    transparent 4px 10px,
+    currentColor 10px 14px
+  );
+}
+:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCaptureSend {
+  background:#0A84FF;
+  color:#fff;
+}
+:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCaptureSend span {
+  width:15px;
+  height:15px;
+  border-radius:3px;
+  background:currentColor;
+}
+:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCaptureCircle:disabled {
+  opacity:.36;
+  cursor:default;
+}
+:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceWave {
+  flex:1 1 auto;
+  min-width:0;
+  height:32px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  overflow:hidden;
+}
+:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceWaveBar {
+  width:3px;
+  min-width:3px;
+  height:3px;
+  border-radius:999px;
+  background:#606060;
+  opacity:.9;
+  transition:height 70ms linear, opacity .16s ease;
+}
+:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCapture.connecting .kcfVoiceWaveBar {
+  opacity:.38;
+}
+:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCapture.stopped .kcfVoiceWaveBar {
+  opacity:.48;
+}
+:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCapture.stopping .kcfVoiceWaveBar {
+  opacity:.6;
+}
+
+
+:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCapture.paused .kcfVoiceWaveBar {
+  opacity:.34;
+}
+
+#kinderChatFeedbackScreen .kcfInput {
+  flex:1 1 auto;
+  width:auto;
+  min-width:0;
+  height:34px;
+  min-height:34px;
+  max-height:34px;
+  border:none;
+  outline:none;
+  resize:none;
+  overflow-y:auto;
+  background:transparent;
+  color:#111;
+  font-family:inherit;
+  font-size:max(16px, calc(16px * var(--olli-text-scale))) !important;
+  -webkit-text-size-adjust:100%;
+  line-height:1.35;
+  padding:5px 2px 3px;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-appearance:none;
+  appearance:none;
+  box-shadow:none;
+}
+#kinderChatFeedbackScreen.kcfKeyboardOpen:not(.kcfTeacherRosterMode) .kcfInput {
+  height:auto;
+  min-height:34px;
+  max-height:110px;
+}
+#kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfInput {
+  height:34px;
+  min-height:34px;
+  max-height:34px;
+}
+#kinderChatFeedbackScreen .kcfInput::placeholder { color:#b8b8b8; }
+#kinderChatFeedbackScreen .kcfPhotoPreview {
+  display:none;
+  align-items:center;
+  gap:8px;
+  padding:0 0 8px;
+}
+#kinderChatFeedbackScreen .kcfPhotoPreview.show { display:flex; }
+#kinderChatFeedbackScreen .kcfPhotoThumbWrap {
+  position:relative;
+  width:54px;
+  height:54px;
+  border-radius:14px;
+  overflow:hidden;
+  background:#f2f2f2;
+  flex-shrink:0;
+}
+#kinderChatFeedbackScreen .kcfPhotoThumbWrap img {
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+#kinderChatFeedbackScreen .kcfPhotoRemoveBtn {
+  position:absolute;
+  top:4px;
+  right:4px;
+  width:18px;
+  height:18px;
+  border:none;
+  border-radius:999px;
+  background:rgba(0,0,0,.62);
+  color:#fff;
+  font-size:calc(13px * var(--olli-text-scale));
+  line-height:18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  cursor:pointer;
+  font-family:inherit;
+}
+#kinderChatFeedbackScreen .kcfPhotoMetaText {
+  min-width:0;
+  font-size:calc(12px * var(--olli-text-scale));
+  line-height:1.35;
+  color:#888;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+#kinderChatFeedbackScreen .kcfPhotoInputHidden { display:none; }
+#kinderChatFeedbackScreen .kcfComposerBottom {
+  display:flex;
+  align-items:center;
+  width:100%;
+  gap:4px;
+  min-width:0;
+  padding-left:0;
+}
+
+/* 기본 모드에서 키보드가 올라오면 '입력칸 / + Class 마이크 전송'의 기존 2단 레이아웃으로 전환한다.
+   Class 모드는 전용 흐름을 그대로 유지하므로 이 규칙에서 제외한다. */
+#kinderChatFeedbackScreen.kcfKeyboardOpen:not(.kcfTeacherRosterMode) .kcfComposerBottom {
+  display:grid;
+  grid-template-columns:33px minmax(0,1fr) 36px 33px 33px;
+  grid-template-rows:minmax(34px, auto) 38px;
+  align-items:center;
+  column-gap:12px;
+  row-gap:4px;
+}
+#kinderChatFeedbackScreen.kcfKeyboardOpen:not(.kcfTeacherRosterMode) .kcfInput {
+  grid-column:1 / -1;
+  grid-row:1;
+  width:100%;
+}
+#kinderChatFeedbackScreen.kcfKeyboardOpen:not(.kcfTeacherRosterMode) .kcfStudentManageWrap {
+  grid-column:1;
+  grid-row:2;
+  width:0;
+  height:0;
+  min-width:0;
+  overflow:visible;
+}
+#kinderChatFeedbackScreen.kcfKeyboardOpen:not(.kcfTeacherRosterMode) .kcfAttachBtn {
+  grid-column:1;
+  grid-row:2;
+}
+#kinderChatFeedbackScreen.kcfKeyboardOpen:not(.kcfTeacherRosterMode) .kcfTeacherBtn {
+  grid-column:3;
+  grid-row:2;
+  justify-self:end;
+  margin-left:0;
+  margin-right:0;
+}
+#kinderChatFeedbackScreen.kcfKeyboardOpen:not(.kcfTeacherRosterMode) .kcfVoiceBtn {
+  grid-column:4;
+  grid-row:2;
+  justify-self:end;
+  margin-right:0;
+}
+#kinderChatFeedbackScreen.kcfKeyboardOpen:not(.kcfTeacherRosterMode) .kcfSendBtn {
+  grid-column:5;
+  grid-row:2;
+  justify-self:end;
+}
+#kinderChatFeedbackScreen .kcfAttachBtn {
+  width:33px;
+  height:33px;
+  min-width:33px;
+  border:none;
+  border-radius:999px;
+  background:transparent;
+  color:#111;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  margin-left:-5px;
+  margin-right:0;
+  cursor:pointer;
+  flex:0 0 33px;
+  -webkit-tap-highlight-color:transparent;
+}
+#kinderChatFeedbackScreen .kcfAttachBtn svg {
+  width:24px;
+  height:24px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:1.7;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+#kinderChatFeedbackScreen .kcfToolBtn {
+  width:36px;
+  height:38px;
+  min-width:36px;
+  border:none;
+  border-radius:0;
+  background:transparent;
+  color:#111;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  cursor:pointer;
+  font-family:inherit;
+  box-shadow:none;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  -webkit-tap-highlight-color:transparent;
+}
+#kinderChatFeedbackScreen .kcfToolBtn svg {
+  width:29px;
+  height:29px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:1.5;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+#kinderChatFeedbackScreen .kcfTeacherBtn {
+  margin-left:8px;
+  margin-right:8px;
+  flex:0 0 36px;
+}
+#kinderChatFeedbackScreen .kcfAutoBtn {
+  order:1;
+}
+#kinderChatFeedbackScreen .kcfVoiceBtn,
+#kinderChatFeedbackScreen .kcfSendBtn {
+  order:initial;
+}
+#kinderChatFeedbackScreen .kcfKeywordScroller {
+  flex:1;
+  min-width:0;
+  display:flex;
+  gap:6px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  border-radius:10px;
+  -webkit-overflow-scrolling:touch;
+  padding:1px 0 2px;
+  scrollbar-width:none;
+}
+#kinderChatFeedbackScreen .kcfKeywordScroller::-webkit-scrollbar { display:none; }
+#kinderChatFeedbackScreen .kcfKeywordBtn {
+  flex:0 0 auto;
+  height:32px;
+  border:none;
+  border-radius:999px;
+  background:transparent;
+  color:#555;
+  padding:0 11px;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:500;
+  font-family:inherit;
+  cursor:pointer;
+  white-space:nowrap;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  line-height:1;
+}
+#kinderChatFeedbackScreen .kcfKeywordBtn.active {
+  background:transparent;
+  color:#555;
+}
+#kinderChatFeedbackScreen .kcfVoiceBtn {
+  width:33px;
+  height:33px;
+  min-width:33px;
+  border:none;
+  border-radius:999px;
+  background:transparent;
+  color:#111;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  margin-right:8px;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:background-color .16s ease, color .16s ease, transform .12s ease, opacity .16s ease;
+}
+#kinderChatFeedbackScreen .kcfVoiceBtn svg {
+  width:26px;
+  height:26px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+#kinderChatFeedbackScreen .kcfVoiceBtn:active {
+  transform:scale(0.94);
+}
+#kinderChatFeedbackScreen .kcfVoiceBtn.connecting {
+  opacity:.45;
+}
+#kinderChatFeedbackScreen .kcfVoiceBtn.active {
+  background:#0A84FF;
+  color:#fff;
+}
+
+#kinderChatFeedbackScreen .kcfSendBtn {
+  width:33px;
+  height:33px;
+  min-width:33px;
+  border:none;
+  border-radius:999px;
+  background:#0A84FF;
+  color:#fff;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  cursor:pointer;
+}
+#kinderChatFeedbackScreen .kcfSendBtn svg {
+  width:21px;
+  height:21px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:2.4;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+#kinderChatFeedbackScreen .kcfSendBtn:disabled {
+  background:#d8d8d8;
+  cursor:default;
+}
+#kinderChatFeedbackScreen .kcfInputWarning {
+  display:none;
+  font-size:calc(12px * var(--olli-text-scale));
+  color:#d94444;
+  line-height:1.35;
+  padding:8px 4px 0;
+}
+#kinderChatFeedbackScreen .kcfInputWarning.show { display:block; }
+
+/* 받은 피드백 보관함 */
+#kcfInboxOverlay {
+  display:flex;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.22);
+  z-index:9200;
+  align-items:flex-end;
+  justify-content:center;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity .22s ease, visibility .22s ease;
+}
+#kcfInboxOverlay.show {
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+}
+#kcfInboxOverlay .kcfInboxSheet {
+  width:100%;
+  max-width:860px;
+  height:calc(100vh - 75px);
+  max-height:calc(100vh - 75px);
+  background:#fff;
+  border-radius:28px 28px 0 0;
+  box-shadow:none;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  padding-top:10px;
+  transform:translateY(100%);
+  transition:transform .26s cubic-bezier(.22,.61,.36,1);
+}
+#kcfInboxOverlay.show .kcfInboxSheet {
+  transform:translateY(0);
+}
+#kcfInboxOverlay .kcfInboxHandle {
+  width:42px;
+  height:5px;
+  border-radius:999px;
+  background:#e5e5e5;
+  margin:0 auto 14px;
+  flex:0 0 auto;
+}
+#kcfInboxOverlay .kcfInboxHead {
+  min-height:0;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding:0 18px 12px;
+  border-bottom:none;
+}
+#kcfInboxOverlay .kcfInboxTitleWrap {
+  min-width:0;
+  flex:1 1 auto;
+}
+#kcfInboxOverlay .kcfInboxTitle {
+  font-family:'Montserrat','Pretendard',sans-serif;
+  font-size:calc(20px * var(--olli-text-scale));
+  font-weight:440;
+  color:#111;
+  letter-spacing:-0.02em;
+}
+#kcfInboxOverlay .kcfInboxSub {
+  font-family:'Pretendard',sans-serif;
+  font-size:calc(12px * var(--olli-text-scale));
+  color:#888;
+  line-height:1.45;
+  margin-top:4px;
+}
+#kcfInboxOverlay .kcfInboxClose {
+  width:38px;
+  height:38px;
+  border:none;
+  border-radius:999px;
+  background:#f1f1f1;
+  color:#111;
+  font-size:calc(24px * var(--olli-text-scale));
+  line-height:1;
+  cursor:pointer;
+}
+#kcfInboxOverlay .kcfInboxBody {
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:14px 16px calc(18px + env(safe-area-inset-bottom));
+}
+#kcfInboxOverlay .kcfInboxSectionTitle {
+  font-size:calc(14px * var(--olli-text-scale));
+  font-weight:400;
+  color:#999;
+  margin:12px 2px 8px;
+}
+#kcfInboxOverlay .kcfInboxCard {
+  background:#fff;
+  border:none;
+  border-bottom:none;
+  border-radius:0;
+  padding:12px 4px;
+  margin-bottom:0;
+  box-shadow:none;
+  cursor:pointer;
+}
+#kcfInboxOverlay .kcfInboxTop {
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:10px;
+  margin-bottom:0;
+}
+#kcfInboxOverlay .kcfInboxAvatar {
+  width:38px;
+  height:38px;
+  min-width:38px;
+  border-radius:50%;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:0;
+  font-weight:700;
+  color:#234;
+  letter-spacing:-0.04em;
+  align-self:center;
+}
+#kcfInboxOverlay .kcfInboxAvatar svg {
+  width:22px;
+  height:22px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.85;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+#kcfInboxOverlay .kcfInboxAvatar .artAvatarIcon {
+  width:22px;
+  height:22px;
+}
+#kcfInboxOverlay .kcfInboxAvatar .artAvatarPalette circle {
+  fill:currentColor;
+  stroke:none;
+}
+
+#kcfInboxOverlay .kcfInboxAvatar svg circle {
+  fill:currentColor;
+  stroke:none;
+}
+#kcfInboxOverlay .kcfInboxMain {
+  min-width:0;
+  flex:1;
+}
+#kcfInboxOverlay .kcfInboxMetaRow { display:block; }
+#kcfInboxOverlay .kcfInboxName {
+  display:block;
+  font-size:calc(14px * var(--olli-text-scale));
+  font-weight:700;
+  line-height:1.68;
+  margin-bottom:0;
+  color:#111;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+#kcfInboxOverlay .kcfInboxStatus { display:none; }
+#kcfInboxOverlay .kcfInboxText {
+  font-size:calc(14px * var(--olli-text-scale));
+  line-height:1.68;
+  color:#444;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  word-break:keep-all;
+  max-height:none;
+}
+#kcfInboxOverlay .kcfInboxFullText {
+  display:none;
+  margin-top:9px;
+  margin-left:0;
+  width:100%;
+  font-size:calc(14px * var(--olli-text-scale));
+  line-height:1.68;
+  color:#111;
+  white-space:pre-wrap;
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+#kcfInboxOverlay .kcfInboxCard.open .kcfInboxFullText { display:block; }
+#kcfInboxOverlay .kcfInboxEditArea {
+  display:none;
+  width:100%;
+  min-height:0;
+  margin-top:9px;
+  margin-left:0;
+  border:none;
+  border-radius:0;
+  background:transparent;
+  padding:0;
+  font-size:calc(14px * var(--olli-text-scale));
+  line-height:1.68;
+  font-family:inherit;
+  color:#111;
+  outline:none;
+  resize:none;
+  overflow:hidden;
+  white-space:pre-wrap;
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+#kcfInboxOverlay .kcfInboxCard.editing .kcfInboxEditArea { display:block; }
+#kcfInboxOverlay .kcfInboxCard.editing .kcfInboxFullText,
+#kcfInboxOverlay .kcfInboxCard.editing .kcfInboxText { display:none; }
+#kcfInboxOverlay .kcfInboxActions {
+  display:none;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-top:12px;
+  margin-left:0;
+  flex-wrap:nowrap;
+}
+#kcfInboxOverlay .kcfInboxCard.open .kcfInboxActions { display:flex; }
+#kcfInboxOverlay .kcfInboxCard.editing .kcfInboxActions {
+  display:flex;
+  justify-content:flex-end;
+}
+#kcfInboxOverlay .kcfInboxCard.editing .kcfInboxActionsLeft {
+  margin-right:auto;
+  justify-content:flex-start;
+}
+#kcfInboxOverlay .kcfInboxCard.editing .kcfInboxActionsRight {
+  display:flex;
+  justify-content:flex-end;
+  margin-left:auto;
+}
+#kcfInboxOverlay .kcfInboxActionsLeft {
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:7px;
+  margin-right:auto;
+}
+#kcfInboxOverlay .kcfInboxActionsRight {
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:7px;
+  margin-left:auto;
+}
+#kcfInboxOverlay .kcfInboxActionBtn {
+  height:calc(34px * var(--olli-text-scale));
+  border:none;
+  border-radius:999px;
+  background:#f1f1f1;
+  color:#111;
+  padding:0 13px;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:500;
+  font-family:inherit;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  line-height:1;
+}
+#kcfInboxOverlay .kcfInboxActionBtn.primary {
+  background:#f1f1f1;
+  color:#111;
+}
+#kcfInboxOverlay .kcfInboxActionBtn:disabled {
+  opacity:.45;
+  cursor:default;
+}
+#kcfInboxOverlay .kcfInboxEmpty {
+  padding:56px 16px;
+  text-align:center;
+  color:#aaa;
+  font-size:calc(14px * var(--olli-text-scale));
+  line-height:1.55;
+}
+#kcfInboxOverlay .kcfInboxCard.open .todayFeedbackIssueBox,
+#kcfInboxOverlay .kcfInboxCard.editing .todayFeedbackIssueBox { display:block; }
+#kcfInboxOverlay .kcfInboxCard:not(.open):not(.editing) .todayFeedbackIssueBox { display:none; }
+
+
+/* 성장 피드백 바텀시트 */
+.kcfGrowthOverlay {
+  display:flex;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.18);
+  z-index:9210;
+  align-items:flex-end;
+  justify-content:center;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity .22s ease, visibility .22s ease;
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+}
+.kcfGrowthOverlay.show {
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+}
+.kcfGrowthOverlay .kcfGrowthSheet {
+  position:relative;
+  width:100%;
+  max-width:860px;
+  max-height:86vh;
+  background:#fff;
+  border-radius:28px 28px 0 0;
+  box-shadow:0 -16px 42px rgba(0,0,0,.14),0 -3px 10px rgba(0,0,0,.06);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  transform:translateY(100%);
+  transition:transform .26s cubic-bezier(.22,.61,.36,1);
+}
+.kcfGrowthOverlay.show .kcfGrowthSheet {
+  transform:translateY(0);
+}
+.kcfGrowthOverlay .kcfGrowthHead {
+  height:72px;
+  min-height:72px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 22px;
+  border-bottom:none;
+  position:relative;
+}
+.kcfGrowthOverlay .kcfGrowthTitleWrap {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  min-width:0;
+}
+.kcfGrowthOverlay .kcfGrowthTitle {
+  font-size:calc(21px * var(--olli-text-scale));
+  font-weight:500;
+  color:#111;
+  letter-spacing:-0.04em;
+  line-height:1.12;
+}
+.kcfGrowthOverlay .kcfGrowthSub {
+  margin-top:5px;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:400;
+  line-height:1;
+  color:#666;
+  letter-spacing:-0.03em;
+}
+.kcfGrowthOverlay .kcfGrowthClose {
+  width:42px;
+  height:42px;
+  border:none;
+  border-radius:999px;
+  background:#f1f1f1;
+  color:#111;
+  font-size:calc(26px * var(--olli-text-scale));
+  line-height:1;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 0 3px;
+  position:absolute;
+  right:22px;
+  top:50%;
+  transform:translateY(-50%);
+}
+.kcfGrowthOverlay .kcfGrowthBody {
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:18px 22px 104px;
+}
+.kcfGrowthOverlay .kcfGrowthSection {
+  padding:20px 0 22px;
+  border-top:1px solid #eeeeee;
+}
+.kcfGrowthOverlay .kcfGrowthSection:first-child {
+  border-top:none;
+  padding-top:10px;
+}
+.kcfGrowthOverlay .kcfGrowthSectionTitle {
+font-size:calc(14px * var(--olli-text-scale));
+  font-weight:500;
+  color:#111;
+  margin-bottom:10px;
+  letter-spacing:-0.04em;
+}
+.kcfGrowthOverlay .kcfGrowthGrid {
+  display:flex;
+  flex-wrap:wrap;
+  gap:9px 8px;
+}
+.kcfGrowthOverlay .kcfGrowthChip {
+  border:none;
+  background:#f1f1f1;
+  color:#444;
+  min-height:33px;
+  border-radius:999px;
+  padding:0 11px;
+  font-size:calc(12.5px * var(--olli-text-scale));
+  font-weight:400;
+  font-family:inherit;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  line-height:1;
+}
+.kcfGrowthOverlay .kcfGrowthChip.active {
+  background:#0A84FF;
+  color:#fff;
+}
+.kcfGrowthOverlay .kcfGrowthInput {
+width:100%;
+  height:44px;
+  border:none;
+  border-radius:18px;
+  padding:0 14px;
+  font-size:calc(13.5px * var(--olli-text-scale));
+  line-height:1;
+  font-family:inherit;
+  outline:none;
+  background:#f8f8f8;
+  color:#111;
+}
+.kcfGrowthOverlay .kcfGrowthInput::placeholder {
+  color:#b7b7b7;
+}
+.kcfGrowthOverlay .kcfGrowthOtherInput {
+display:none;
+  width:100%;
+  height:38px;
+  margin-top:10px;
+  border:none;
+  border-radius:16px;
+  padding:0 12px;
+  font-size:calc(13px * var(--olli-text-scale));
+  line-height:1;
+  font-family:inherit;
+  outline:none;
+  background:#f8f8f8;
+  color:#111;
+}
+.kcfGrowthOverlay .kcfGrowthOtherInput.show {
+  display:block;
+}
+.kcfGrowthOverlay .kcfGrowthTextarea {
+width:100%;
+  min-height:74px;
+  border:none;
+  border-radius:18px;
+  padding:12px 14px;
+  font-size:calc(13.5px * var(--olli-text-scale));
+  line-height:1.55;
+  font-family:inherit;
+  outline:none;
+  background:#f8f8f8;
+  color:#111;
+  resize:vertical;
+}
+.kcfGrowthOverlay .kcfGrowthGenerateWrap {
+position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  padding:10px 22px calc(14px + env(safe-area-inset-bottom));
+  background:linear-gradient(to top,rgba(255,255,255,1),rgba(255,255,255,.96) 78%,rgba(255,255,255,0));
+}
+.kcfGrowthOverlay .kcfGrowthGenerateBtn {
+width:100%;
+  height:48px;
+  border:none;
+  border-radius:999px;
+  background:#111;
+  color:#fff;
+  font-size:calc(15px * var(--olli-text-scale));
+  font-weight:500;
+  font-family:inherit;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+.kcfGrowthOverlay .kcfGrowthGenerateBtn svg {
+  display:none;
+}
+#kinderChatFeedbackScreen .kcfDocumentCard {
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr);
+  column-gap:10px;
+  row-gap:7px;
+  align-items:center;
+  max-width:min(82%, 380px);
+  background:#f2f2f2;
+  border-radius:18px;
+  border-bottom-right-radius:7px;
+  padding:12px 14px;
+  color:#111;
+}
+#kinderChatFeedbackScreen .kcfDocumentCard.growth {
+  background:#E7F0FF;
+}
+#kinderChatFeedbackScreen .kcfDocumentIcon {
+  width:42px;
+  height:42px;
+  min-width:42px;
+  border-radius:10px;
+  background:#0A84FF;
+  color:#fff;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 1px 4px rgba(0,0,0,.06);
+  grid-column:1;
+  grid-row:1;
+  overflow:hidden;
+}
+#kinderChatFeedbackScreen .kcfDocumentIcon.hasPhoto {
+  background:#f2f2f2;
+  color:#fff;
+}
+#kinderChatFeedbackScreen .kcfDocumentPhotoThumb {
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+  border-radius:inherit;
+}
+#kinderChatFeedbackScreen .kcfDocumentIcon svg {
+  width:26px;
+  height:23px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+#kinderChatFeedbackScreen .kcfDocumentText {
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  text-align:left;
+  grid-column:2;
+  grid-row:1;
+}
+#kinderChatFeedbackScreen .kcfDocumentTitle {
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:600;
+  line-height:1.2;
+  letter-spacing:-0.03em;
+}
+#kinderChatFeedbackScreen .kcfDocumentSub {
+  font-size:calc(11.5px * var(--olli-text-scale));
+  font-weight:400;
+  color:#777;
+  line-height:1.25;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+#kinderChatFeedbackScreen .kcfDocumentBody {
+  display:none;
+  grid-column:1 / -1;
+  grid-row:2;
+  margin-top:4px;
+  padding-top:10px;
+  border-top:1px solid rgba(0,0,0,.06);
+  font-size:calc(14px * var(--olli-text-scale));
+  line-height:1.62;
+  color:#222;
+  white-space:pre-wrap;
+  word-break:keep-all;
+  overflow-wrap:anywhere;
+}
+#kinderChatFeedbackScreen .kcfDocumentCopyBtn {
+  display:none;
+  grid-column:1 / -1;
+  grid-row:3;
+  justify-self:flex-end;
+  height:34px;
+  border:none;
+  border-radius:999px;
+  background:#111;
+  color:#fff;
+  padding:0 13px;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:700;
+  font-family:inherit;
+  cursor:pointer;
+  align-items:center;
+  justify-content:center;
+  line-height:1;
+}
+#kinderChatFeedbackScreen .kcfDocumentCard.hasSourceText {
+  border:none;
+  cursor:pointer;
+  font-family:inherit;
+  text-align:left;
+  -webkit-tap-highlight-color:transparent;
+}
+#kinderChatFeedbackScreen .kcfDocumentCard.hasSourceText:active {
+  transform:scale(.992);
+}
+#kinderChatFeedbackScreen .kcfDocumentCard.hasSourceText.open {
+  max-width:min(94%, 560px);
+  align-items:flex-start;
+}
+#kinderChatFeedbackScreen .kcfDocumentCard.hasSourceText.open .kcfDocumentBody {
+  display:block;
+}
+#kinderChatFeedbackScreen .kcfDocumentCard.hasSourceText.open .kcfDocumentCopyBtn {
+  display:inline-flex;
+}
+
+#kcfSaveStudentPickerOverlay {
+  display:flex;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.18);
+  z-index:9300;
+  align-items:center;
+  justify-content:center;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity .2s ease, visibility .2s ease;
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  padding:20px;
+}
+#kcfSaveStudentPickerOverlay.show {
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+}
+#kcfSaveStudentPickerOverlay .kcfSaveStudentPickerCard {
+  width:100%;
+  max-width:390px;
+  background:rgba(255,255,255,.95);
+  border-radius:24px;
+  box-shadow:0 18px 46px rgba(0,0,0,.14),0 4px 14px rgba(0,0,0,.07);
+  overflow:hidden;
+}
+#kcfSaveStudentPickerOverlay .kcfSaveStudentPickerHead {
+  padding:18px 18px 10px;
+}
+#kcfSaveStudentPickerOverlay .kcfSaveStudentPickerTitle {
+  font-size:calc(17px * var(--olli-text-scale));
+  font-weight:430;
+  line-height:1.2;
+  color:#111;
+  letter-spacing:-0.03em;
+}
+#kcfSaveStudentPickerOverlay .kcfSaveStudentPickerGuide {
+  margin-top:6px;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:320;
+  color:#888;
+  line-height:1.35;
+}
+#kcfSaveStudentPickerOverlay .kcfSaveStudentPickerList {
+  max-height:300px;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:4px 0 8px;
+}
+#kcfSaveStudentPickerOverlay .kcfSaveStudentOption {
+  width:100%;
+  min-height:58px;
+  border:none;
+  background:transparent;
+  color:#111;
+  font-family:inherit;
+  cursor:pointer;
+  display:grid;
+  grid-template-columns:28px minmax(0,1fr);
+  align-items:center;
+  gap:6px;
+  padding:7px 18px 7px 12px;
+  text-align:left;
+  -webkit-tap-highlight-color:transparent;
+}
+#kcfSaveStudentPickerOverlay .kcfSaveStudentCheck {
+  width:20px;
+  height:20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity:0;
+  color:#111;
+}
+#kcfSaveStudentPickerOverlay .kcfSaveStudentCheck svg {
+  width:16px;
+  height:16px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:1.45;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+#kcfSaveStudentPickerOverlay .kcfSaveStudentOption.active .kcfSaveStudentCheck { opacity:1; }
+#kcfSaveStudentPickerOverlay .kcfSaveStudentName {
+  display:block;
+  font-size:calc(14.5px * var(--olli-text-scale));
+  font-weight:360;
+  line-height:1.16;
+  color:#111;
+}
+#kcfSaveStudentPickerOverlay .kcfSaveStudentMeta {
+  display:block;
+  margin-top:3px;
+  font-size:calc(11.5px * var(--olli-text-scale));
+  font-weight:320;
+  line-height:1.35;
+  color:#888;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+#kcfSaveStudentPickerOverlay .kcfSaveStudentPickerActions {
+  padding:10px 18px calc(16px + env(safe-area-inset-bottom));
+}
+#kcfSaveStudentPickerOverlay .kcfSaveStudentSaveBtn {
+  width:100%;
+  height:42px;
+  border:none;
+  border-radius:999px;
+  background:#111;
+  color:#fff;
+  font-size:calc(14px * var(--olli-text-scale));
+  font-weight:430;
+  font-family:inherit;
+  cursor:pointer;
+}
+#kinderChatFeedbackScreen .kcfComposerWrap > .kcfKeywordScroller {
+  width:100%;
+  margin:0 0 8px;
+  padding:1px 2px 2px;
+}
+#kinderChatFeedbackScreen .kcfComposerSpacer {
+  flex:1 1 auto;
+  min-width:0;
+}
+#kinderChatFeedbackScreen .kcfStudentManageWrap {
+  position:relative;
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+#kinderChatFeedbackScreen .kcfStudentManageBtn svg {
+  width:28px;
+  height:28px;
+}
+#kcfStudentManagePopup.memoStudentSelectPopup {
+  left:50%;
+  bottom:104px;
+  width:min(370px, calc(100vw - 24px));
+  height:min(560px, calc(100vh - 92px));
+  max-height:min(600px, calc(100vh - 72px));
+  z-index:140;
+}
+#kcfStudentManagePopup .memoStudentSortDayRow {
+  grid-template-columns:repeat(7, minmax(0, 1fr));
+}
+
+
+/* KCF LIVE response actions */
+#kinderChatFeedbackScreen .kcfMsgRow.user .kcfLiveUserStudentName {
+  display:block;
+  margin-bottom:3px;
+  color:#6f6f73;
+  font-size:calc(12.5px * var(--olli-text-scale));
+  font-weight:650;
+  line-height:1.25;
+  letter-spacing:-0.02em;
+}
+#kinderChatFeedbackScreen .kcfMsgRow.user .kcfLiveUserMessageText {
+  display:block;
+}
+#kinderChatFeedbackScreen .kcfLiveResponseRow {
+  flex-direction:column;
+  align-items:flex-start;
+}
+#kinderChatFeedbackScreen .kcfLiveStudentTitle {
+  margin:0 2px 8px;
+  color:#111;
+  font-size:calc(16px * var(--olli-text-scale));
+  font-weight:700;
+  line-height:1.35;
+  letter-spacing:-0.025em;
+}
+#kinderChatFeedbackScreen .kcfLiveEditArea {
+  display:none;
+  width:100%;
+  min-height:120px;
+  max-height:42vh;
+  resize:none;
+  overflow-y:auto;
+  box-sizing:border-box;
+  border:1px solid #e6e6e6;
+  border-radius:16px;
+  background:#fff;
+  color:#111;
+  padding:12px 13px;
+  font:inherit;
+  font-size:calc(15px * var(--olli-text-scale));
+  line-height:1.58;
+  letter-spacing:-0.02em;
+  outline:none;
+}
+#kinderChatFeedbackScreen .kcfLiveResponseRow.editing .kcfLiveBubble { display:none; }
+#kinderChatFeedbackScreen .kcfLiveResponseRow.editing .kcfLiveEditArea { display:block; }
+#kinderChatFeedbackScreen .kcfLiveActions {
+  display:none;
+  width:100%;
+  align-items:center;
+  justify-content:flex-start;
+  gap:12px;
+  flex-wrap:wrap;
+  margin:8px 0 0;
+  padding:0;
+}
+#kinderChatFeedbackScreen .kcfLiveResponseDone .kcfLiveActions { display:flex; }
+#kinderChatFeedbackScreen .kcfLiveActionBtn {
+  height:calc(34px * var(--olli-text-scale));
+  min-width:54px;
+  border:none;
+  border-radius:999px;
+  background:#f1f1f1;
+  color:#111;
+  padding:0 13px;
+  font:inherit;
+  font-size:calc(12.5px * var(--olli-text-scale));
+  font-weight:600;
+  line-height:1;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+#kinderChatFeedbackScreen .kcfLiveActionBtn.kcfLiveIconActionBtn {
+  width:34px;
+  min-width:34px;
+  height:34px;
+  padding:0;
+  border-radius:10px;
+  background:transparent;
+  color:#8e8e93;
+}
+#kinderChatFeedbackScreen .kcfLiveActionBtn.kcfLiveIconActionBtn svg {
+  width:20px;
+  height:20px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.55;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  pointer-events:none;
+}
+#kinderChatFeedbackScreen .kcfLiveActionBtn.kcfLiveIconActionBtn:active:not(:disabled) {
+  background:#f5f5f5;
+  color:#555;
+}
+#kinderChatFeedbackScreen .kcfLiveActionBtn.kcfLivePhoneTextActionBtn {
+  width:auto;
+  min-width:0;
+  height:calc(28px * var(--olli-text-scale));
+  padding:0;
+  border-radius:0;
+  background:transparent;
+  color:#8e8e93;
+  font-size:calc(11.5px * var(--olli-text-scale));
+  font-weight:600;
+  white-space:nowrap;
+}
+#kinderChatFeedbackScreen .kcfLiveActionBtn.kcfLivePhoneTextActionBtn:active:not(:disabled) {
+  background:transparent;
+  color:#6f6f73;
+}
+#kinderChatFeedbackScreen .kcfLiveActionBtn:disabled {
+  opacity:.45;
+  cursor:default;
+}
+#kinderChatFeedbackScreen .kcfLiveEditAction { display:none; }
+#kinderChatFeedbackScreen .kcfLiveResponseRow.editing .kcfLiveNormalAction { display:none; }
+#kinderChatFeedbackScreen .kcfLiveResponseRow.editing .kcfLiveEditAction { display:inline-flex; }
+#kinderChatFeedbackScreen .kcfLiveResponseRow.saved .kcfLiveSaveBtn {
+  min-width:34px;
+}
+
+
+/* 2026-09-23: 퀵노트 상단 [메뉴] [관찰노트/퀵노트] [Work] */
+#kcfPersistentTopLayer .kcfTopInboxHidden{
+  display:none !important;
+}
+#kcfPersistentTopLayer .kcfTopWorkBtn{
+  position:fixed;
+  top:var(--olli-phone-guide-top);
+  right:var(--olli-phone-guide-x);
+  width:58px;
+  min-width:58px;
+  height:44px;
+  min-height:44px;
+  border:none;
+  border-radius:999px;
+  color:#111;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  font-family:'Pretendard','Montserrat',sans-serif;
+  font-size:calc(13px * var(--olli-text-scale, 1));
+  font-weight:450;
+  letter-spacing:-.02em;
+  pointer-events:auto;
+  z-index:5000;
+  -webkit-tap-highlight-color:transparent;
+}
+#kcfPersistentTopLayer .kcfTopWorkBtn:active{
+  transform:scale(.98);
+}

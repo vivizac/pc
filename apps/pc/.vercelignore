@@ -1,0 +1,7 @@
+# Repository-only files. Keep app runtime and scripts/stage-common.cjs deployable.
+.github/
+tests/
+supabase/
+scripts/*.py
+.monorepo-source.json
+.vercel-redeploy-trigger

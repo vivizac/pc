@@ -1,0 +1,73 @@
+name: Validate Olli Monorepo Transition
+
+on:
+  push:
+    branches:
+      - work/olli-mobile-self-contained-20260929
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/common/**'
+      - 'deploy/vercel-projects.json'
+      - 'MONOREPO_TRANSITION.md'
+      - 'MONOREPO_OWNERSHIP_AUDIT.md'
+      - 'tests/mobile-self-contained-build.test.cjs'
+      - 'tests/pc-self-contained-build.test.cjs'
+      - 'tests/pc-build-closure.test.cjs'
+      - 'tests/app-root-deploy-boundary.test.cjs'
+      - 'tests/pc-self-contained-build.test.cjs'
+      - 'tests/pc-build-closure.test.cjs'
+      - 'tests/app-root-deploy-boundary.test.cjs'
+      - 'tests/mobile-entry-integrity.test.cjs'
+      - 'tests/mobile-startup-boot-contract.test.cjs'
+      - 'tests/monorepo-structure-contract.test.cjs'
+      - 'tests/vercel-monorepo-separation-contract.test.cjs'
+      - '.github/workflows/validate-olli-monorepo-transition.yml'
+  pull_request:
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/common/**'
+      - 'deploy/vercel-projects.json'
+      - 'MONOREPO_TRANSITION.md'
+      - 'MONOREPO_OWNERSHIP_AUDIT.md'
+      - 'tests/mobile-self-contained-build.test.cjs'
+      - 'tests/mobile-entry-integrity.test.cjs'
+      - 'tests/mobile-startup-boot-contract.test.cjs'
+      - 'tests/monorepo-structure-contract.test.cjs'
+      - 'tests/vercel-monorepo-separation-contract.test.cjs'
+      - '.github/workflows/validate-olli-monorepo-transition.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Validate monorepo structure and Mobile build contract
+        run: |
+          node --check apps/mobile/scripts/stage-common.cjs
+          node --check apps/pc/scripts/stage-common.cjs
+          node --test \
+            tests/mobile-self-contained-build.test.cjs \
+            tests/pc-self-contained-build.test.cjs \
+            tests/pc-build-closure.test.cjs \
+            tests/app-root-deploy-boundary.test.cjs \
+            tests/mobile-entry-integrity.test.cjs \
+            tests/mobile-startup-boot-contract.test.cjs \
+            tests/monorepo-structure-contract.test.cjs \
+            tests/vercel-monorepo-separation-contract.test.cjs
+      - name: Validate PC schedule Realtime
+        run: node --test tests/schedule-realtime.test.cjs
+      - name: Validate Mobile schedule and security contracts
+        working-directory: apps/mobile
+        run: |
+          node --test \
+            tests/schedule-realtime.test.cjs \
+            tests/phone-schedule-class-layout-date-contract.test.cjs \
+            tests/mobile-secure-auth-source-contract.test.cjs \
+            tests/photo-private-storage-contract.test.cjs \
+            tests/storage-secure-transport-contract.test.cjs \
+            tests/phone-feedback-archive-saved-date.test.cjs

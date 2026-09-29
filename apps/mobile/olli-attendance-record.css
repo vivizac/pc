@@ -1,0 +1,369 @@
+
+/* 2026-06-30: 출석부 안 출석 체크/월별 출석부 */
+.recordAttendanceLeadBtn {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  grid-column: 1;
+  justify-self: start;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.recordAttendanceLeadBtn:focus,
+.recordAttendanceLeadBtn:focus-visible,
+.recordAttendanceLeadBtn:active {
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+}
+.recordAttendanceLeadSvg {
+  width: 36px;
+  height: 35px;
+  display: block;
+  overflow: visible;
+}
+.recordAttendanceLeadFill {
+  fill: transparent;
+  transition: fill .14s ease, stroke .14s ease;
+}
+.recordAttendanceLeadBtn.attended .recordAttendanceLeadFill {
+  fill: #0A84FF;
+  stroke: #0A84FF;
+}
+.recordAttendanceLeadBtn.makeup .recordAttendanceLeadFill {
+  fill: #FFD88A;
+  stroke: #FFD88A;
+}
+.recordAttendanceLeadBtn.attended .recordAttendanceLeadLine,
+.recordAttendanceLeadBtn.makeup .recordAttendanceLeadLine {
+  stroke: rgba(255,255,255,.86);
+}
+.recordAttendanceLeadBtn.missingEnrollment:not(.attended):not(.makeup) .recordAttendanceLeadFill {
+  fill: #FF4D4F;
+  stroke: #FF4D4F;
+}
+.recordAttendanceLeadBtn.missingEnrollment:not(.attended):not(.makeup) .recordAttendanceLeadLine {
+  stroke: rgba(255,255,255,.88);
+}
+.recordAttendanceSummaryWrap {
+  padding: 2px 10px 36px;
+}
+.recordAttendanceSummaryHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+.recordAttendanceSummaryTitle {
+  font-size: calc(22px * var(--olli-text-scale));
+  font-weight: 780;
+  letter-spacing: -0.055em;
+  color: #111;
+  line-height: 1.15;
+}
+.recordAttendanceSummarySub {
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 600;
+  color: #9a9a9a;
+  line-height: 1.35;
+  text-align: right;
+  white-space: nowrap;
+}
+.recordAttendanceGuideCard {
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.05);
+  padding: 12px 13px;
+  font-size: calc(12px * var(--olli-text-scale));
+  color: #777;
+  line-height: 1.5;
+  letter-spacing: -0.025em;
+  margin-bottom: 10px;
+}
+.recordAttendanceColorDot {
+  width: 9px;
+  height: 9px;
+  min-width: 9px;
+  border-radius: 999px;
+  display: inline-flex;
+  margin: 0 4px 0 8px;
+  vertical-align: 0;
+}
+.recordAttendanceColorDot:first-child { margin-left: 0; }
+.recordAttendanceColorDot.blue { background: #0A84FF; }
+.recordAttendanceColorDot.yellow { background: #FFD88A; }
+.recordAttendanceSummaryTableWrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(0,0,0,.045), 0 2px 8px rgba(0,0,0,.02);
+}
+.recordAttendanceSummaryTable {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+.recordAttendanceSummaryTable th,
+.recordAttendanceSummaryTable td {
+  border-bottom: 1px solid #f0f0ee;
+  padding: 11px 10px;
+  font-size: calc(13px * var(--olli-text-scale));
+  line-height: 1.45;
+  color: #111;
+  text-align: left;
+  vertical-align: top;
+  word-break: keep-all;
+}
+.recordAttendanceSummaryTable th {
+  background: #fafaf8;
+  color: #777;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 780;
+  white-space: nowrap;
+}
+.recordAttendanceSummaryTable tr:last-child td { border-bottom: none; }
+.recordAttendanceSummaryTable .nameCol { width: 92px; font-weight: 760; }
+.recordAttendanceSummaryTable .dateCol { width: 190px; color: #333; }
+.recordAttendanceSummaryTable .remainCol { width: 78px; text-align: center; font-weight: 780; color: #0A84FF; }
+.recordAttendanceSummaryEmpty {
+  padding: 46px 12px;
+  text-align: center;
+  color: #999;
+  font-size: calc(14px * var(--olli-text-scale));
+  line-height: 1.55;
+}
+
+.recordAttendanceSummaryWrap { padding-left: 6px; padding-right: 6px; }
+  .recordAttendanceSummaryHead { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .recordAttendanceSummarySub { text-align: left; }
+
+
+/* integrated cleanup: olliRecordAttendanceTabRemovedStyle */
+/* 2026-07-03: 출석부 페이지의 초등부/유치부 옆 월별 출석부 요약 탭 삭제 */
+#recordAttendanceToggle { display: none; }
+.recordAttendanceSummaryWrap { display: none; }
+/* 2026-09-10: 폰 출석부 판정 상태 - 등원(초록) / 결석(빨강) / 보강(노랑) / 판정없음 */
+#recordRoomScreen .recordAttendanceLeadBtn.attended .recordAttendanceLeadFill {
+  fill: #22C55E !important;
+  stroke: #22C55E !important;
+}
+#recordRoomScreen .recordAttendanceLeadBtn.absent .recordAttendanceLeadFill {
+  fill: #FF3B30 !important;
+  stroke: #FF3B30 !important;
+}
+#recordRoomScreen .recordAttendanceLeadBtn.makeup .recordAttendanceLeadFill {
+  fill: #FFD45C !important;
+  stroke: #FFD45C !important;
+}
+#recordRoomScreen .recordAttendanceLeadBtn.attended .recordAttendanceLeadLine,
+#recordRoomScreen .recordAttendanceLeadBtn.absent .recordAttendanceLeadLine,
+#recordRoomScreen .recordAttendanceLeadBtn.makeup .recordAttendanceLeadLine {
+  stroke: rgba(255,255,255,.92) !important;
+}
+#recordRoomScreen .recordAttendanceLeadBtn.blank .recordAttendanceLeadFill {
+  fill: transparent !important;
+  stroke: #8f8f8f !important;
+}
+/* 같은 날 정규+보강이 함께 있어 다른 수업만 체크된 경우에도 미체크 아이콘은 완전한 회색 빈 아이콘으로 유지한다. */
+#recordRoomScreen .recordAttendanceLeadBtn.blank .recordAttendanceLeadLine {
+  stroke: #8f8f8f !important;
+}
+/* 기존 missingEnrollment 빨강보다 명시적인 판정없음 상태를 우선한다. */
+#recordRoomScreen .recordAttendanceLeadBtn.blank.missingEnrollment .recordAttendanceLeadFill {
+  fill: transparent !important;
+  stroke: #8f8f8f !important;
+}
+#recordRoomScreen .recordAttendanceLeadBtn.blank.missingEnrollment .recordAttendanceLeadLine {
+  stroke: #8f8f8f !important;
+}
+
+/* 요일 정렬: 오늘 등원생 + 아래쪽 오늘 보강 */
+.recordTodaySortGuide {
+  padding: 8px 14px 6px;
+  color: #8a8a8a;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+.recordTodayMakeupSection {
+  margin-top: 14px;
+  padding-top: 8px;
+  border-top: 1px solid #eeeeee;
+}
+.recordTodayMakeupTitle {
+  padding: 8px 14px 6px;
+  color: #8a8a8a;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+.recordTodayEmpty {
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+
+
+/* 2026-09-23: 출석부 UI 정리 - 학생 가이드 / 설정 정렬.
+   출석부 상단 메뉴는 기존 recordUtilityRow 원본을 유지한다. */
+#recordRoomScreen .recordDivider{
+  margin-bottom:0;
+}
+#recordRoomScreen .recordModeLabelRow{
+  position:relative;
+  min-height:47px;
+  margin-top:16px;
+  padding-top:0;
+  padding-bottom:10px;
+  padding-left:10px;
+  padding-right:0;
+  display:flex;
+  align-items:center;
+}
+#recordRoomScreen .recordModeSettingsBtn{
+  position:fixed !important;
+  top:auto !important;
+  right:var(--record-control-rail-right, 82px) !important;
+  bottom:var(--record-bottom-control-bottom, max(10px, env(safe-area-inset-bottom))) !important;
+  width:47px !important;
+  min-width:47px !important;
+  max-width:47px !important;
+  height:47px !important;
+  min-height:47px !important;
+  border:none !important;
+  border-radius:50% !important;
+  background:#fff !important;
+  color:#111 !important;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  padding:0 !important;
+  margin:0 !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.96),0 0 0 1px rgba(0,0,0,.025),0 8px 28px rgba(0,0,0,.055) !important;
+  z-index:145 !important;
+}
+#recordRoomScreen .recordModeSettingsBtn .recordAcademyMiniIcon{
+  width:24px;
+  height:24px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+#recordRoomScreen .recordModeSettingsBtn .recordAcademyMiniIcon svg{
+  width:24px;
+  height:24px;
+  transform:none;
+}
+#recordRoomScreen .recordModeSettingsBtn:active{
+  background:#f1f1f1 !important;
+}
+
+/* 학생 이름과 가이드 텍스트를 한 줄에 표시한다. */
+#recordRoomScreen .elementaryStudentRow .studentTextWrap,
+#recordRoomScreen .kinderStudentRow .studentTextWrap{
+  min-width:0;
+  display:flex;
+  flex-direction:row;
+  align-items:baseline;
+  justify-content:flex-start;
+  gap:8px;
+  overflow:hidden;
+}
+#recordRoomScreen .elementaryStudentRow .studentTextWrap > span:first-child,
+#recordRoomScreen .kinderStudentRow .studentTextWrap > span:first-child{
+  flex:0 0 auto;
+  white-space:nowrap;
+}
+#recordRoomScreen .elementaryStudentRow .studentMetaText,
+#recordRoomScreen .kinderStudentRow .studentMetaText{
+  display:block;
+  flex:1 1 auto;
+  min-width:0;
+  max-width:none;
+  margin:0;
+  font-size:calc(13px * var(--olli-text-scale));
+  font-weight:500;
+  line-height:1.2;
+  letter-spacing:-.035em;
+  color:#8f8f8f;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+
+/* 2026-09-23: 하단 설정 버튼은 floating bar의 실제 컨트롤로 유지한다. */
+#recordRoomScreen .recordModeSettingsBtn{
+  visibility:visible !important;
+  opacity:1 !important;
+  pointer-events:auto !important;
+}
+
+/* 학원관리 첫 화면의 오른쪽 NOTE 복귀 버튼. */
+#recordRoomScreen .recordAcademyBackBtn{
+  display:none;
+  position:fixed;
+  top:var(--olli-phone-guide-top, 22px);
+  right:0;
+  bottom:auto;
+  left:auto;
+  width:44px;
+  min-width:44px;
+  height:96px;
+  min-height:96px;
+  border:none;
+  border-radius:16px 0 0 16px;
+  background:#fff;
+  color:#111;
+  box-shadow:0 2px 12px rgba(0,0,0,.10),0 1px 4px rgba(0,0,0,.06);
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  margin:0;
+  z-index:146;
+  pointer-events:auto;
+  -webkit-tap-highlight-color:transparent;
+  overflow:hidden;
+}
+#recordRoomScreen .recordAcademyBackLabel{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  height:100%;
+  writing-mode:vertical-rl;
+  text-orientation:upright;
+  font-size:14px;
+  font-weight:400;
+  line-height:1;
+  letter-spacing:0;
+  color:#111;
+  user-select:none;
+  -webkit-user-select:none;
+}
+#recordRoomScreen .recordAcademyBackBtn:active{
+  background:#f1f1f1;
+}
+#recordRoomScreen.record-academy-view .recordAcademyBackBtn{
+  display:inline-flex;
+}
+#recordRoomScreen.record-academy-view #studentAddBtn,
+#recordRoomScreen.record-academy-view .recordSortWrap,
+#recordRoomScreen.record-academy-view #recordSearchGroup,
+#recordRoomScreen.record-academy-view .recordModeSettingsBtn{
+  display:none !important;
+}
+
