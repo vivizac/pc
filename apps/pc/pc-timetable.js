@@ -1099,7 +1099,9 @@
     });
     grid += '</div>';
     const pickupToggle = division === 'kinder'
-      ? `<button type="button" class="olliTtPickupToggle" data-tt-pickup-toggle aria-expanded="${state.pickupCollapsed ? 'false' : 'true'}" aria-label="${state.pickupCollapsed ? '픽업 시간표 펼치기' : '픽업 시간표 접기'}"><span aria-hidden="true">${state.pickupCollapsed ? '⌃' : '⌄'}</span><strong>${state.pickupCollapsed ? '픽업 펼치기' : '픽업 접기'}</strong></button>`
+      ? `<button type="button" class="olliTtPickupToggle" data-tt-pickup-toggle aria-expanded="${state.pickupCollapsed ? 'false' : 'true'}" aria-label="${state.pickupCollapsed ? '픽업 시간표 펼치기' : '픽업 시간표 접기'}">${state.pickupCollapsed
+        ? '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5 10 7.5l5 5" /></svg>'
+        : '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5" /></svg>'}<strong>${state.pickupCollapsed ? '픽업 펼치기' : '픽업 접기'}</strong></button>`
       : '';
     return `<section class="olliTtSection ${division}${division === 'kinder' && state.pickupCollapsed ? ' pickupCollapsed' : ''}"><div class="olliTtScroll">${grid}${division === 'kinder' ? pickupGridHtml(dates) : ''}</div>${pickupToggle}</section>`;
   }
@@ -1227,7 +1229,9 @@
       if (section) section.classList.toggle('pickupCollapsed', state.pickupCollapsed);
       pickupToggle.setAttribute('aria-expanded', state.pickupCollapsed ? 'false' : 'true');
       pickupToggle.setAttribute('aria-label', state.pickupCollapsed ? '픽업 시간표 펼치기' : '픽업 시간표 접기');
-      pickupToggle.innerHTML = `<span aria-hidden="true">${state.pickupCollapsed ? '⌃' : '⌄'}</span><strong>${state.pickupCollapsed ? '픽업 펼치기' : '픽업 접기'}</strong>`;
+      pickupToggle.innerHTML = `${state.pickupCollapsed
+        ? '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5 10 7.5l5 5" /></svg>'
+        : '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5" /></svg>'}<strong>${state.pickupCollapsed ? '픽업 펼치기' : '픽업 접기'}</strong>`;
       return;
     }
     const holidayTarget = event.target.closest('[data-holiday="1"]');
