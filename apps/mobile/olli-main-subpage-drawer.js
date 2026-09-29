@@ -127,11 +127,8 @@
 
   function refreshAttendanceAfterPaint(){
     const refresh = () => {
-      if (typeof window.refreshRecordAttendanceDashboardFromServer === 'function') {
-        window.refreshRecordAttendanceDashboardFromServer('').catch(() => {});
-      } else {
-        prepareAttendanceState({ refreshOnly: true }).catch(() => {});
-      }
+      if (typeof window.refreshRecordAttendanceDashboardFromServer !== 'function') return;
+      window.refreshRecordAttendanceDashboardFromServer('').catch(() => {});
     };
     if (typeof window.requestAnimationFrame === 'function') {
       window.requestAnimationFrame(() => window.requestAnimationFrame(refresh));

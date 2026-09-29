@@ -53,6 +53,6 @@ test('broken Team Chat thumbnails stay hidden until a real image load succeeds',
   assert.match(body,/image\.hidden=false;[\s\S]*fallback\.hidden=true/);
   assert.match(beta,/image\.alt='';[\s\S]*image\.setAttribute\('aria-hidden','true'\)/);
   assert.match(css,/\.olliTalkBetaAttachmentImage\[hidden\]\{display:none\}/);
-  assert.ok(html.includes('olli-talk-beta.js?v=20260929-material-summary-chat-1'));
+  assert.ok(html.includes('olli-talk-beta.js?v=20260929-team-chat-notification-root-1'));
   assert.match(html,/olli-talk-beta\.css\?v=20260928-broken-thumb-fallback-1/);
 });
