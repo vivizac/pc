@@ -171,6 +171,7 @@
 #recordRoomScreen .olliTtCell.holiday .olliTtCellMemoCard { color:#858b93; border-color:#dfe4e9; background:#fff; box-shadow:none; }
 #recordRoomScreen .olliTtCell.saturdayUnavailable { cursor: default; background: #fafbfc; }
 #recordRoomScreen .olliTtCell.saturdayUnavailable:hover { box-shadow: none; }
+#recordRoomScreen .olliTtSaturdayTimeLabel { margin:-1px 0 5px; color:#7b838e; font-size:calc(9px * var(--olli-text-scale)); font-weight:820; line-height:1; }
 #recordRoomScreen .olliTtCell.split { padding: 4px; cursor: default; }
 #recordRoomScreen .olliTtClassLanes { height: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
 #recordRoomScreen .olliTtClassLane { min-width: 0; padding: 4px; border: 1px solid transparent; border-radius: 9px; overflow-y: auto; cursor: pointer; transition: background .15s ease; }
