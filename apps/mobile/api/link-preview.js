@@ -1,6 +1,15 @@
 const MAX_HTML_BYTES = 700 * 1024;
+const MAX_IMAGE_BYTES = 1536 * 1024;
 const MAX_REDIRECTS = 3;
 const FETCH_TIMEOUT_MS = 4500;
+const ALLOWED_IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/avif',
+  'image/bmp'
+]);
 
 function isPrivateIpv4(address) {
   const parts = String(address || '').split('.').map(Number);
@@ -173,6 +182,96 @@ async function fetchHtml(initialUrl) {
   throw new Error('링크 정보를 불러오지 못했습니다.');
 }
 
+async function readBinaryWithLimit(response) {
+  const declared = Math.max(0, Number(response.headers.get('content-length') || 0));
+  if (declared > MAX_IMAGE_BYTES) {
+    const error = new Error('링크 썸네일 이미지가 너무 큽니다.');
+    error.statusCode = 413;
+    throw error;
+  }
+
+  if (!response.body?.getReader) {
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.byteLength > MAX_IMAGE_BYTES) {
+      const error = new Error('링크 썸네일 이미지가 너무 큽니다.');
+      error.statusCode = 413;
+      throw error;
+    }
+    return buffer;
+  }
+
+  const reader = response.body.getReader();
+  const chunks = [];
+  let received = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value?.byteLength) continue;
+    received += value.byteLength;
+    if (received > MAX_IMAGE_BYTES) {
+      try { await reader.cancel(); } catch (_) {}
+      const error = new Error('링크 썸네일 이미지가 너무 큽니다.');
+      error.statusCode = 413;
+      throw error;
+    }
+    chunks.push(Buffer.from(value));
+  }
+  return Buffer.concat(chunks, received);
+}
+
+async function fetchPreviewImage(initialUrl) {
+  let current = await assertPublicUrl(initialUrl);
+
+  for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    let response;
+    try {
+      response = await fetch(current.href, {
+        method:'GET',
+        redirect:'manual',
+        signal:controller.signal,
+        headers:{
+          'User-Agent':'Mozilla/5.0 (compatible; OlliLinkPreview/1.0)',
+          'Accept':'image/avif,image/webp,image/png,image/jpeg,image/gif,image/bmp;q=0.9,*/*;q=0.1',
+          'Accept-Language':'ko-KR,ko;q=0.9,en;q=0.6'
+        }
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if ([301,302,303,307,308].includes(response.status)) {
+      if (redirect >= MAX_REDIRECTS) throw new Error('이미지 이동 횟수가 너무 많습니다.');
+      const location = response.headers.get('location');
+      if (!location) throw new Error('이동할 이미지를 찾지 못했습니다.');
+      current = await assertPublicUrl(new URL(location, current).href);
+      continue;
+    }
+
+    if (!response.ok) {
+      const error = new Error('링크 썸네일 이미지를 불러오지 못했습니다.');
+      error.statusCode = response.status >= 400 && response.status < 500 ? 422 : 502;
+      throw error;
+    }
+
+    const contentType = String(response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    if (!ALLOWED_IMAGE_TYPES.has(contentType)) {
+      const error = new Error('지원하지 않는 링크 썸네일 형식입니다.');
+      error.statusCode = 415;
+      throw error;
+    }
+
+    return {
+      finalUrl:current.href,
+      contentType,
+      bytes:await readBinaryWithLimit(response)
+    };
+  }
+
+  throw new Error('링크 썸네일 이미지를 불러오지 못했습니다.');
+}
+
 function cleanText(value, maxLength) {
   return decodeHtml(String(value || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')).slice(0, maxLength);
 }
@@ -185,6 +284,7 @@ export default async function handler(req, res) {
 
   try {
     const rawUrl = Array.isArray(req.query?.url) ? req.query.url[0] : req.query?.url;
+    const asset = String(Array.isArray(req.query?.asset) ? req.query.asset[0] : (req.query?.asset || '')).trim().toLowerCase();
     const { finalUrl, html } = await fetchHtml(rawUrl);
     const final = new URL(finalUrl);
     const meta = extractMeta(html);
@@ -195,6 +295,19 @@ export default async function handler(req, res) {
         const resolved = new URL(meta.image, finalUrl);
         if (['http:', 'https:'].includes(resolved.protocol)) image = resolved.href;
       } catch (_) {}
+    }
+
+    if (asset === 'image') {
+      if (!image) {
+        const error = new Error('링크에 썸네일 이미지가 없습니다.');
+        error.statusCode = 404;
+        throw error;
+      }
+      const imageAsset = await fetchPreviewImage(image);
+      res.setHeader('Content-Type', imageAsset.contentType);
+      res.setHeader('Content-Length', String(imageAsset.bytes.byteLength));
+      res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800');
+      return res.status(200).send(imageAsset.bytes);
     }
 
     res.setHeader('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=3600');

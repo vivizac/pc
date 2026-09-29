@@ -53,7 +53,9 @@
   let olliTalkPendingActionReason = null;
   const olliTalkActionBusy = new Set();
   const olliTalkOlliReplyBusy = new Set();
+  const OLLI_TALK_LINK_PREVIEW_REFRESH_MS = 24 * 60 * 60 * 1000;
   const olliTalkLinkPreviewCache = new Map();
+  const olliTalkLinkPreviewResolvedBlobUrls = new Map();
 
   function getScreen(){
     return document.getElementById('olliTalkBetaScreen');
@@ -1038,54 +1040,174 @@
     return card;
   }
 
+  function getOlliTalkLinkPreviewCacheInput(url){
+    const context=getOlliTalkBetaContext();
+    return {
+      accountId:getOlliTalkLocalAccountId(),
+      academyId:resolveOlliTalkCachedAcademyId(context?.academyId),
+      url:String(url||'').trim()
+    };
+  }
+
+  async function readOlliTalkPersistentLinkPreview(url){
+    const persistentCache=window.OlliTalkAttachmentCachePhone;
+    if(typeof persistentCache?.getLinkPreview!=='function')return null;
+    const input=getOlliTalkLinkPreviewCacheInput(url);
+    if(!input.accountId||!input.academyId||!input.url)return null;
+    try{
+      return await persistentCache.getLinkPreview(input);
+    }catch(error){
+      console.warn('Team Chat 링크 프리뷰 로컬 캐시 조회 실패:',error);
+      return null;
+    }
+  }
+
+  function setOlliTalkLinkPreviewImage(card,src,options={}){
+    if(!card)return false;
+    const source=String(src||'').trim();
+    const existing=card.querySelector('.olliTalkBetaLinkPreviewImage');
+
+    if(!source){
+      if(existing)existing.remove();
+      card.classList.remove('hasImage');
+      return false;
+    }
+    if(existing?.dataset?.previewSrc===source){
+      if(existing.complete&&existing.naturalWidth>0){
+        existing.hidden=false;
+        card.classList.add('hasImage');
+      }
+      return true;
+    }
+    if(existing)existing.remove();
+
+    const image=document.createElement('img');
+    image.className='olliTalkBetaLinkPreviewImage';
+    image.alt='';
+    image.loading=options.local===true?'eager':'lazy';
+    image.decoding='async';
+    image.referrerPolicy='no-referrer';
+    image.hidden=true;
+    image.dataset.previewSrc=source;
+    image.addEventListener('load',()=>{
+      if(!image.isConnected)return;
+      image.hidden=false;
+      card.classList.add('hasImage');
+    },{once:true});
+    image.addEventListener('error',()=>{
+      if(image.isConnected)image.remove();
+      card.classList.remove('hasImage');
+    },{once:true});
+    image.src=source;
+    card.insertBefore(image,card.firstChild);
+    return true;
+  }
+
+  function applyOlliTalkLinkPreview(card,url,preview){
+    if(!preview||!card?.isConnected)return false;
+
+    const title=card.querySelector('.olliTalkBetaLinkPreviewTitle');
+    const description=card.querySelector('.olliTalkBetaLinkPreviewDescription');
+    const domain=card.querySelector('.olliTalkBetaLinkPreviewDomain');
+
+    if(title)title.textContent=String(preview.title||preview.site_name||preview.domain||getOlliTalkLinkDomain(url));
+    if(description){
+      const descriptionText=String(preview.description||'').trim();
+      description.textContent=descriptionText||'여기를 눌러 링크를 확인하세요.';
+      description.hidden=false;
+    }
+    if(domain)domain.textContent=String(preview.domain||getOlliTalkLinkDomain(url));
+
+    let imageSource='';
+    let localImage=false;
+    if(preview.image_blob instanceof Blob&&preview.image_blob.size>0){
+      const objectUrl=URL.createObjectURL(preview.image_blob);
+      imageSource=rememberOlliTalkResolvedBlobUrl(
+        olliTalkLinkPreviewResolvedBlobUrls,
+        'link:'+String(url||''),
+        objectUrl,
+        40
+      );
+      localImage=true;
+    }else{
+      imageSource=String(preview.image||'').trim();
+    }
+    setOlliTalkLinkPreviewImage(card,imageSource,{local:localImage});
+    return true;
+  }
+
   function loadOlliTalkLinkPreview(url){
-    const key = String(url || '').trim();
-    if (!key) return Promise.resolve(null);
-    if (olliTalkLinkPreviewCache.has(key)) return olliTalkLinkPreviewCache.get(key);
+    const key=String(url||'').trim();
+    if(!key)return Promise.resolve(null);
+    if(olliTalkLinkPreviewCache.has(key))return olliTalkLinkPreviewCache.get(key);
 
-    const request = fetch('/api/link-preview?url=' + encodeURIComponent(key), {
+    const request=fetch('/api/link-preview?url='+encodeURIComponent(key),{
       method:'GET',
-      headers:{ Accept:'application/json' }
+      headers:{Accept:'application/json'}
     })
-      .then(async (response) => {
-        if (!response.ok) throw new Error('링크 미리보기 요청 실패');
-        const payload = await response.json();
-        return payload?.ok ? payload : null;
+      .then(async response=>{
+        if(!response.ok)throw new Error('링크 미리보기 요청 실패');
+        const payload=await response.json();
+        return payload?.ok?payload:null;
       })
-      .catch(() => null);
+      .catch(()=>null);
 
-    olliTalkLinkPreviewCache.set(key, request);
+    olliTalkLinkPreviewCache.set(key,request);
     return request;
   }
 
-  async function hydrateOlliTalkLinkPreview(card, url){
-    const preview = await loadOlliTalkLinkPreview(url);
-    if (!preview || !card?.isConnected) return;
-
-    const title = card.querySelector('.olliTalkBetaLinkPreviewTitle');
-    const description = card.querySelector('.olliTalkBetaLinkPreviewDescription');
-    const domain = card.querySelector('.olliTalkBetaLinkPreviewDomain');
-
-    if (title) title.textContent = String(preview.title || preview.site_name || preview.domain || getOlliTalkLinkDomain(url));
-    if (description) {
-      const descriptionText = String(preview.description || '').trim();
-      description.textContent = descriptionText || '여기를 눌러 링크를 확인하세요.';
-      description.hidden = false;
+  async function fetchOlliTalkLinkPreviewImageBlob(url){
+    const key=String(url||'').trim();
+    if(!key)return null;
+    try{
+      const response=await fetch('/api/link-preview?asset=image&url='+encodeURIComponent(key),{
+        method:'GET',
+        headers:{Accept:'image/avif,image/webp,image/png,image/jpeg,image/gif,image/bmp'}
+      });
+      if(!response.ok)return null;
+      const blob=await response.blob();
+      return blob instanceof Blob&&blob.size>0?blob:null;
+    }catch(_){
+      return null;
     }
-    if (domain) domain.textContent = String(preview.domain || getOlliTalkLinkDomain(url));
+  }
 
-    const imageUrl = String(preview.image || '').trim();
-    if (imageUrl && !card.querySelector('.olliTalkBetaLinkPreviewImage')) {
-      const image = document.createElement('img');
-      image.className = 'olliTalkBetaLinkPreviewImage';
-      image.alt = '';
-      image.loading = 'lazy';
-      image.referrerPolicy = 'no-referrer';
-      image.src = imageUrl;
-      image.addEventListener('error', () => image.remove(), { once:true });
-      card.insertBefore(image, card.firstChild);
-      card.classList.add('hasImage');
+  async function persistOlliTalkLinkPreview(url,preview,options={}){
+    const persistentCache=window.OlliTalkAttachmentCachePhone;
+    if(typeof persistentCache?.putLinkPreview!=='function'||!preview)return false;
+    const input=getOlliTalkLinkPreviewCacheInput(url);
+    if(!input.accountId||!input.academyId||!input.url)return false;
+
+    try{
+      await persistentCache.putLinkPreview(input,preview,null);
+      if(!String(preview.image||'').trim())return true;
+      if(options.image===false)return true;
+      const imageBlob=await fetchOlliTalkLinkPreviewImageBlob(url);
+      if(imageBlob)await persistentCache.putLinkPreview(input,preview,imageBlob);
+      return true;
+    }catch(error){
+      console.warn('Team Chat 링크 프리뷰 로컬 캐시 저장 실패:',error);
+      return false;
     }
+  }
+
+  async function hydrateOlliTalkLinkPreview(card,url){
+    const localPreview=await readOlliTalkPersistentLinkPreview(url);
+    if(localPreview&&card?.isConnected)applyOlliTalkLinkPreview(card,url,localPreview);
+
+    const savedAt=Math.max(0,Number(localPreview?.saved_at||0));
+    const localFresh=savedAt>0&&(Date.now()-savedAt)<OLLI_TALK_LINK_PREVIEW_REFRESH_MS;
+    if(localFresh){
+      if(String(localPreview?.image||'').trim()&&!(localPreview?.image_blob instanceof Blob)){
+        persistOlliTalkLinkPreview(url,localPreview).catch(()=>{});
+      }
+      return;
+    }
+
+    const preview=await loadOlliTalkLinkPreview(url);
+    if(!preview)return;
+    if(card?.isConnected)applyOlliTalkLinkPreview(card,url,preview);
+    persistOlliTalkLinkPreview(url,preview).catch(()=>{});
   }
 
   function formatOlliTalkArchiveBytes(value){
