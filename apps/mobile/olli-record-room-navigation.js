@@ -169,11 +169,6 @@ async function loadRecords(name, options = {}) {
     return;
   }
 
-  if (currentRecordView === 'attendance') {
-    currentRecordView = currentObservationView === 'kinder' ? 'kinder' : 'elementary';
-    updateRecordHeaderUI();
-  }
-
   if (currentRecordView === 'academy') {
     // 화면의 유일한 첫 렌더는 로컬 데이터입니다. 서버 최신화는 한 주체에서만 뒤따릅니다.
     renderRecordAcademyManagementDashboard();
