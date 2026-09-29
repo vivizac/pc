@@ -88,6 +88,6 @@ test('server result only replaces the visible message list when the merged paylo
 });
 
 test('Team Chat bundle is cache-busted', () => {
-  assert.match(html, /olli-talk-attachment-cache-phone\\.js\\?v=20260929-link-preview-local-first-1/);
-  assert.match(html, /olli-talk-beta\\.js\\?v=20260929-link-preview-local-first-1/);
+  assert.ok(html.includes('olli-talk-attachment-cache-phone.js?v=20260929-link-preview-local-first-1'));
+  assert.ok(html.includes('olli-talk-beta.js?v=20260929-link-preview-local-first-1'));
 });
