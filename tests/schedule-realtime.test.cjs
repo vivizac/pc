@@ -3,7 +3,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const source = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
+const ROOT = path.join(__dirname, '..');
+const source = file => {
+  if (file === 'olli-realtime-common.js') return fs.readFileSync(path.join(ROOT, 'packages', 'common', file), 'utf8');
+  if (file === 'pc-timetable.js' || file === 'pc-timetable-service.js') return fs.readFileSync(path.join(ROOT, 'apps', 'pc', file), 'utf8');
+  return fs.readFileSync(path.join(ROOT, file), 'utf8');
+};
 const settle = async () => { for (let i = 0; i < 35; i++) await Promise.resolve(); };
 const deferred = () => { let resolve, reject; const promise = new Promise((a,b) => { resolve=a; reject=b; }); return {promise,resolve,reject}; };
 
