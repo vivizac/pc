@@ -69,4 +69,5 @@ jobs:
             tests/phone-schedule-class-layout-date-contract.test.cjs \
             tests/mobile-secure-auth-source-contract.test.cjs \
             tests/photo-private-storage-contract.test.cjs \
-            tests/storage-secure-transport-contract.test.cjs
+            tests/storage-secure-transport-contract.test.cjs \
+            tests/phone-feedback-archive-saved-date.test.cjs
