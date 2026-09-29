@@ -190,9 +190,11 @@ window.refreshRecordAttendanceDashboardFromServer = refreshRecordAttendanceDashb
 
 async function loadRecords(name, options = {}) {
   const list = document.getElementById('recordList');
-  const loadToken = (window.__olliRecordListLoadToken = (window.__olliRecordListLoadToken || 0) + 1);
   const localOnly = options?.localOnly === true;
   const refreshOnly = options?.refreshOnly === true;
+  const loadToken = localOnly
+    ? (window.__olliRecordListLoadToken || 0)
+    : (window.__olliRecordListLoadToken = (window.__olliRecordListLoadToken || 0) + 1);
   // 학생 목록 화면에서는 Supabase 로딩 문구를 띄우지 않습니다.
   // 먼저 각 기기의 로컬 캐시 학생 목록을 보여주고, Supabase 동기화가 끝나면 같은 자리에서 조용히 갱신합니다.
   if (!getOlliCurrentAcademyId()) {
