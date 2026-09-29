@@ -4,6 +4,8 @@ const fs = require('node:fs');
 
 const talk = fs.readFileSync('olli-talk-beta.js', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
+const mediaCache = fs.readFileSync('olli-talk-attachment-cache-phone.js', 'utf8');
+const linkPreviewApi = fs.readFileSync('api/link-preview.js', 'utf8');
 
 test('Team Chat keeps one academy-scoped message cache and validates account scope', () => {
   assert.match(talk, /function getOlliTalkMessageCacheKey\(academyId\)/);
@@ -46,6 +48,39 @@ test('image and link hydration are deferred past the first local paint', () => {
   assert.match(talk, /requestAnimationFrame\(\(\) => \{[\s\S]*?setTimeout\(\(\) => \{[\s\S]*?hydrateOlliTalkDeferredFirstPaintAssets\(\)/);
 });
 
+test('link preview hydration reads persistent local data before any metadata network refresh', () => {
+  const start = talk.indexOf('async function hydrateOlliTalkLinkPreview');
+  const end = talk.indexOf('function formatOlliTalkArchiveBytes', start);
+  const body = talk.slice(start, end);
+
+  const readLocal = body.indexOf('await readOlliTalkPersistentLinkPreview(url)');
+  const applyLocal = body.indexOf('applyOlliTalkLinkPreview(card,url,localPreview)', readLocal);
+  const network = body.indexOf('await loadOlliTalkLinkPreview(url)', applyLocal);
+
+  assert.ok(readLocal >= 0, 'persistent link preview cache must be read');
+  assert.ok(applyLocal > readLocal, 'cached link preview must be applied after local read');
+  assert.ok(network > applyLocal, 'server metadata refresh must happen after local preview is applied');
+  assert.match(body, /if\(localFresh\)[\s\S]*?return;[\s\S]*?const preview=await loadOlliTalkLinkPreview\(url\)/);
+});
+
+test('phone media cache upgrades in place and keeps attachment thumbnails while adding link previews', () => {
+  assert.match(mediaCache, /const DB_VERSION=3;/);
+  assert.match(mediaCache, /const LINK_STORE_NAME='link_previews';/);
+  assert.match(mediaCache, /if\(Number\(event\?\.oldVersion\|\|0\)<2\)[\s\S]*?store\.clear\(\)/);
+  assert.match(mediaCache, /async function getLinkPreview\(input\)/);
+  assert.match(mediaCache, /async function putLinkPreview\(input,preview,imageBlob=null\)/);
+  assert.match(mediaCache, /version:'3\.0\.0'/);
+});
+
+test('link preview image proxy is bounded and only accepts raster image content types', () => {
+  assert.match(linkPreviewApi, /const MAX_IMAGE_BYTES = 1536 \* 1024;/);
+  assert.match(linkPreviewApi, /async function fetchPreviewImage\(initialUrl\)/);
+  assert.match(linkPreviewApi, /asset === 'image'/);
+  assert.match(linkPreviewApi, /await assertPublicUrl\(initialUrl\)/);
+  assert.match(linkPreviewApi, /ALLOWED_IMAGE_TYPES\.has\(contentType\)/);
+  assert.doesNotMatch(linkPreviewApi, /image\/svg\+xml/);
+});
+
 test('server result only replaces the visible message list when the merged payload changed', () => {
   assert.match(talk, /const mergedPayload=basePayload\?mergeOlliTalkMessagePayloads\(basePayload,payload\):payload;/);
   assert.match(talk, /const changed=!basePayload\|\|!areOlliTalkMessagePayloadsEquivalent\(basePayload,mergedPayload\);/);
@@ -53,5 +88,6 @@ test('server result only replaces the visible message list when the merged paylo
 });
 
 test('Team Chat bundle is cache-busted', () => {
-  assert.match(html, /olli-talk-beta\\.js\\?v=20260925-image-actions-1/);
+  assert.match(html, /olli-talk-attachment-cache-phone\\.js\\?v=20260929-link-preview-local-first-1/);
+  assert.match(html, /olli-talk-beta\\.js\\?v=20260929-link-preview-local-first-1/);
 });
