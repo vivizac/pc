@@ -1105,10 +1105,12 @@
   function halfHourCellHtml(division, date, slot) {
     const time = Number(slot.time);
     if (division === 'elementary' && date.getDay() === 6) {
-      if (![1, 2, 3].includes(time)) {
+      const saturdayStoredTime = ({ 1: 10, 2: 11, 3: 12 })[time];
+      if (!saturdayStoredTime) {
         return '<div class="olliTtCell saturdayUnavailable" aria-hidden="true"></div>';
       }
-      return cellHtml('elementary', date, time);
+      const html = cellHtml('elementary', date, time);
+      return html.replace('>', `><div class="olliTtSaturdayTimeLabel">${saturdayStoredTime}시</div>`);
     }
     const holiday = isHolidayDate(date);
     const attrs = `data-tt-cell="1" data-division="${division}" data-date="${dateKey(date)}" data-weekday="${date.getDay()}" data-time="${time}"${holiday ? ' data-holiday="1" aria-disabled="true"' : ''}`;
@@ -3073,7 +3075,7 @@ ${combined.memoError}`);
       return;
     }
 
-    const schedule = `${weekdayLabel(source.weekday)}요일 ${scheduleSlotLabel(divisionOf(student), source.time_slot, source.class_group)}`;
+    const schedule = `${weekdayLabel(source.weekday)}요일 ${scheduleSlotLabel(divisionOf(student), source.time_slot, source.class_group, source.weekday)}`;
     const linkedTargetChange = changes().find((item) => item.status === 'scheduled'
       && clean(item.target_enrollment_id) === selectedEnrollmentId);
     const linkedSourceChange = changes().find((item) => item.status === 'scheduled'
