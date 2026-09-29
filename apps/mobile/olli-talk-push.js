@@ -3,6 +3,7 @@
 
   let registrationPromise = null;
   let publicKeyPromise = null;
+  let lastPassiveSubscriptionSyncAt = 0;
 
   function context(){
     let academyId = '';
@@ -86,7 +87,7 @@
     if (!supportsPush()) throw new Error('이 기기에서는 푸시 알림을 사용할 수 없습니다.');
     if (!registrationPromise) {
       registrationPromise = navigator.serviceWorker
-        .register('./olli-push-sw.js?v=20260929-work-material-badge-1', { scope: './' })
+        .register('./olli-push-sw.js?v=20260929-team-chat-notification-root-1', { scope: './' })
         .then(() => navigator.serviceWorker.ready)
         .catch((error) => {
           registrationPromise = null;
@@ -349,6 +350,26 @@
     setTimeout(()=>window.openOlliTalkArchivePage?.(null,{tab:'materials'}),220);
   }
 
+  function passiveSyncSubscription(){
+    if (document.hidden) return false;
+
+    let notificationEnabled = true;
+    try {
+      const cached = typeof window.settingsGetCachedState === 'function' ? window.settingsGetCachedState() : {};
+      notificationEnabled = cached?.notificationEnabled !== false;
+    } catch (_) {}
+    if (!notificationEnabled || Notification.permission !== 'granted') return false;
+
+    const now = Date.now();
+    if (now - lastPassiveSubscriptionSyncAt < 60 * 1000) return false;
+    lastPassiveSubscriptionSyncAt = now;
+
+    ensureSubscription({ interactive: false }).catch(() => {
+      lastPassiveSubscriptionSyncAt = 0;
+    });
+    return true;
+  }
+
   function bind(){
     const button = getButton();
     if (button && !button.__olliPushBound) {
@@ -359,6 +380,14 @@
         ensureSubscription({ interactive: true });
       });
     }
+
+    window.addEventListener('olli:realtime-status', (event) => {
+      if (event?.detail?.status === 'SUBSCRIBED') passiveSyncSubscription();
+    });
+    window.addEventListener('focus', passiveSyncSubscription);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) passiveSyncSubscription();
+    });
 
     navigator.serviceWorker?.addEventListener?.('message', (event) => {
       if (event?.data?.type === 'OLLI_TALK_OPEN_FROM_NOTIFICATION') {
