@@ -31,7 +31,6 @@ async function hideOlliBootScreen() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   showOlliBootScreen();
-  setupMemoPauseAutoSaveBindings();
   let olliStartupAuthReady = false;
   try {
     hideOlliAppScreensForRoute();
@@ -87,8 +86,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     setupPillPressFeedback();
     
-
-    setupMemoPauseAutoSaveBindings();
 
     window.addEventListener('beforeunload', flushMemoAutoSave);
 
