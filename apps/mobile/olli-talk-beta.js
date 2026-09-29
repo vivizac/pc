@@ -4621,9 +4621,12 @@
     if (olliTalkMentionBadgeWatcher || typeof window.OlliRealtime?.watchDomain !== 'function') return;
     olliTalkMentionBadgeWatcher = window.OlliRealtime.watchDomain('chat', async (context) => {
       if (!context?.isCurrent?.()) return false;
-      return refreshOlliTalkMentionBadge({
-        notifyMessageId: context?.trigger === 'change' ? Number(context?.revision || 0) : 0
-      });
+      const notifyMessageId = context?.trigger === 'change' ? Number(context?.revision || 0) : 0;
+      if (notifyMessageId) {
+        await new Promise(resolve => setTimeout(resolve, 140));
+        if (!context?.isCurrent?.()) return false;
+      }
+      return refreshOlliTalkMentionBadge({ notifyMessageId });
     });
   }
 
