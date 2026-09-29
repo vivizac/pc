@@ -190,7 +190,7 @@ const settingsSheetData = {
   },
   timetableMode: {
     title:'시간표 설정',
-    desc:'유치부 시간표의 클래스 운영 방식을 선택합니다. 초등부 시간표는 변경되지 않습니다.',
+    desc:'초등부와 유치부 시간표의 운영 방식을 함께 선택합니다.',
     html:function(){
       const current = getOlliKinderTimetableMode();
       const option = function(value, label, guide){
@@ -198,9 +198,9 @@ const settingsSheetData = {
         return '<button type="button" class="settingsStartPageOption ' + (active ? 'active' : '') + '" data-timetable-mode-option="' + value + '" onclick="selectSettingsTimetableModeOption(\'' + value + '\')"><span>' + label + '<span class="settingsTextSizeGuide">' + guide + '</span></span><span class="check">' + (active ? '✓' : '') + '</span></button>';
       };
       return '<div class="settingsInputGroup">'
-        + option('hourly', '정시 타임', '4시 A·B / 5시 A·B 클래스')
-        + option('half_hour', '30분 단위', '4:30 / 5:00 / 5:30 / 6:00 단일 클래스')
-        + '</div><div class="settingsMiniText">운영 방식을 바꿔도 기존 학생·보강·출석 데이터는 삭제되지 않습니다. 다시 정시 타임으로 바꾸면 기존 A·B 구조로 그대로 표시됩니다.</div>';
+        + option('hourly', '정시 타임', '기존 시간별 수업 · A/B 분반 가능')
+        + option('half_hour', '30분 단위', '초등 1:00~6:00 · 유치 3:30~5:30')
+        + '</div><div class="settingsMiniText">30분 단위는 한 시간대를 한 클래스로 사용합니다. 운영 방식을 바꿔도 기존 정각 학생·보강·출석 데이터는 삭제되지 않습니다.</div>';
     },
     onSave: async function(){
       const selected = normalizeSettingsKinderTimetableMode(document.querySelector('[data-timetable-mode-option].active')?.getAttribute('data-timetable-mode-option'));
