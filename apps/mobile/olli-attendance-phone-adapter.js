@@ -866,8 +866,6 @@
   async function toggleTodayAttendance(event, studentId, requestedKind, timeSlot, classGroup) {
     if (event) { event.preventDefault(); event.stopPropagation(); }
     if (isStudentSelectionMode() || typeof global.getAllStudents !== 'function') return;
-    const student = global.getAllStudents().find(item => String(item.id) === String(studentId));
-    if (!student) return;
 
     const today = new Date();
     const targetDateKey = dateKey(today);
@@ -875,56 +873,72 @@
     const pressedButton = event?.currentTarget?.classList?.contains('recordAttendanceLeadBtn')
       ? event.currentTarget
       : event?.target?.closest?.('.recordAttendanceLeadBtn');
+    const exactSlot = Number(timeSlot);
+    const hasExactTarget = (requested === 'regular' || requested === 'makeup')
+      && Number.isFinite(exactSlot) && exactSlot > 0;
 
-    // Normal rendered controls already carry their exact session target.
-    // Only hydrate the lightweight week snapshot when an old/undecorated control has no exact target.
-    if (!(Number.isFinite(Number(timeSlot)) && Number(timeSlot) > 0)) {
-      hydrateTodayScheduleFromLocal(today, { render: false });
-    }
-
-    const scheduleEntry = getTodayScheduleEntry(student.id);
-    const kind = requested === 'regular' || requested === 'makeup'
-      ? requested
-      : (scheduleEntry.regular ? 'regular' : (scheduleEntry.makeup ? 'makeup' : (isRegularScheduledToday(student, today) ? 'regular' : 'makeup')));
-    const target = resolveAttendanceSessionTarget(student, kind, timeSlot, classGroup);
-    if (!Number.isFinite(Number(target.timeSlot)) || Number(target.timeSlot) <= 0) {
-      const message = '출석 수업 시간을 확인할 수 없습니다. 시간표를 다시 불러와 주세요.';
-      if (typeof global.showPushToast === 'function') global.showPushToast(message);
-      else global.alert(message);
-      return;
-    }
-
-    const buttonStatus = pressedButton?.classList?.contains('attended')
+    let kind = hasExactTarget ? requested : '';
+    let target = hasExactTarget
+      ? { timeSlot: exactSlot, classGroup: clean(classGroup) || 'A' }
+      : null;
+    let currentStatus = pressedButton?.classList?.contains('attended')
       ? 'attended'
       : (pressedButton?.classList?.contains('absent')
         ? 'absent'
         : (pressedButton?.classList?.contains('makeup') ? 'makeup' : ''));
-    const currentStatus = pressedButton
-      ? buttonStatus
-      : getAttendanceSessionStatus(student.id, targetDateKey, kind, target.timeSlot, target.classGroup);
-
     let nextStatus = '';
-    if (kind === 'makeup') {
-      nextStatus = currentStatus === 'makeup' ? '' : 'makeup';
-    } else if (currentStatus === 'attended') {
-      nextStatus = 'absent';
-    } else if (currentStatus === 'absent') {
-      nextStatus = '';
-    } else {
-      nextStatus = 'attended';
+    let visualApplied = false;
+
+    const computeNextStatus = () => {
+      if (kind === 'makeup') return currentStatus === 'makeup' ? '' : 'makeup';
+      if (currentStatus === 'attended') return 'absent';
+      if (currentStatus === 'absent') return '';
+      return 'attended';
+    };
+    const applyButtonStatus = status => {
+      if (!pressedButton) return;
+      pressedButton.classList.remove('attended', 'absent', 'makeup', 'blank');
+      if (status === 'attended' || status === 'absent' || status === 'makeup') pressedButton.classList.add(status);
+      else pressedButton.classList.add('blank');
+    };
+
+    // Normal controls carry exact session metadata, so paint first without reading any LocalStorage.
+    if (pressedButton && hasExactTarget) {
+      nextStatus = computeNextStatus();
+      applyButtonStatus(nextStatus);
+      visualApplied = true;
+      await afterNextPaint();
     }
 
-    if (pressedButton) {
-      pressedButton.classList.remove('attended', 'absent', 'makeup', 'blank');
-      if (nextStatus === 'attended' || nextStatus === 'absent' || nextStatus === 'makeup') {
-        pressedButton.classList.add(nextStatus);
-      } else {
-        pressedButton.classList.add('blank');
+    const student = global.getAllStudents().find(item => String(item.id) === String(studentId));
+    if (!student) {
+      if (visualApplied) applyButtonStatus(currentStatus);
+      return;
+    }
+
+    if (!hasExactTarget) {
+      hydrateTodayScheduleFromLocal(today, { render: false });
+      const scheduleEntry = getTodayScheduleEntry(student.id);
+      kind = requested === 'regular' || requested === 'makeup'
+        ? requested
+        : (scheduleEntry.regular ? 'regular' : (scheduleEntry.makeup ? 'makeup' : (isRegularScheduledToday(student, today) ? 'regular' : 'makeup')));
+      target = resolveAttendanceSessionTarget(student, kind, timeSlot, classGroup);
+      if (!Number.isFinite(Number(target.timeSlot)) || Number(target.timeSlot) <= 0) {
+        const message = '출석 수업 시간을 확인할 수 없습니다. 시간표를 다시 불러와 주세요.';
+        if (typeof global.showPushToast === 'function') global.showPushToast(message);
+        else global.alert(message);
+        return;
+      }
+      currentStatus = pressedButton
+        ? currentStatus
+        : getAttendanceSessionStatus(student.id, targetDateKey, kind, target.timeSlot, target.classGroup);
+      nextStatus = computeNextStatus();
+      if (pressedButton) {
+        applyButtonStatus(nextStatus);
+        visualApplied = true;
+        await afterNextPaint();
       }
     }
-
-    // Yield before local merge/storage work so iOS can paint the pressed state first.
-    await afterNextPaint();
 
     const localStore = typeof global.readRecordDailyAttendanceStore === 'function'
       ? global.readRecordDailyAttendanceStore()
@@ -939,22 +953,11 @@
     try {
       await setAttendanceRegisterStatus(student, targetDateKey, kind, nextStatus, target.timeSlot, target.classGroup);
       writeLocalStatus(student, targetDateKey, kind, nextStatus, true, target.timeSlot, target.classGroup);
-
-      // The pressed control already reflects the authoritative result.
-      // Only the optional attendance-guide summary needs a full-row refresh here.
       if (global.OlliAttendanceGuideUI?.isActive?.()) renderCurrentRecordList();
     } catch (error) {
       restoreLocalSession(student, targetDateKey, kind, target.timeSlot, target.classGroup, beforeSession);
-      if (pressedButton) {
-        pressedButton.classList.remove('attended', 'absent', 'makeup', 'blank');
-        if (currentStatus === 'attended' || currentStatus === 'absent' || currentStatus === 'makeup') {
-          pressedButton.classList.add(currentStatus);
-        } else {
-          pressedButton.classList.add('blank');
-        }
-      } else {
-        renderCurrentRecordList();
-      }
+      if (visualApplied) applyButtonStatus(currentStatus);
+      else renderCurrentRecordList();
       const message = String(error?.message || error || '출석 저장에 실패했습니다.');
       if (typeof global.showPushToast === 'function') global.showPushToast(message);
       else global.alert(message);
