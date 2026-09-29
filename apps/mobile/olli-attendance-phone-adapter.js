@@ -844,8 +844,17 @@
       nextStatus = 'attended';
     }
 
+    const pressedButton = event?.currentTarget?.classList?.contains('recordAttendanceLeadBtn')
+      ? event.currentTarget
+      : event?.target?.closest?.('.recordAttendanceLeadBtn');
+    if (pressedButton) {
+      pressedButton.classList.remove('attended', 'absent', 'makeup', 'blank');
+      if (nextStatus === 'attended' || nextStatus === 'absent' || nextStatus === 'makeup') {
+        pressedButton.classList.add(nextStatus);
+      }
+    }
+
     writeLocalStatus(student, targetDateKey, kind, nextStatus, false, target.timeSlot, target.classGroup);
-    renderCurrentRecordList();
     try {
       await setAttendanceRegisterStatus(student, targetDateKey, kind, nextStatus, target.timeSlot, target.classGroup);
       writeLocalStatus(student, targetDateKey, kind, nextStatus, true, target.timeSlot, target.classGroup);
@@ -863,11 +872,13 @@
   function afterRecordListLoaded() {
     const view = getCurrentRecordView();
     if (view !== 'elementary' && view !== 'kinder') return false;
-    hydrateLocalAttendanceSnapshot(new Date(), { render: true });
+    hydrateLocalAttendanceSnapshot(new Date(), { render: false });
     Promise.all([
-      syncCurrentMonth(new Date(), { render: true, skipLocal: true }),
-      syncTodaySchedule(new Date(), { render: true, skipLocal: true })
-    ]).catch(error => console.warn('출석 백그라운드 최신화 실패:', error?.message || error));
+      syncCurrentMonth(new Date(), { render: false, skipLocal: true }),
+      syncTodaySchedule(new Date(), { render: false, skipLocal: true })
+    ]).then(() => {
+      if (getCurrentRecordView() === view) renderCurrentRecordList();
+    }).catch(error => console.warn('출석 백그라운드 최신화 실패:', error?.message || error));
     return true;
   }
 
