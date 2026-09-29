@@ -220,6 +220,53 @@
     }
   }
 
+  async function disableSubscription(options = {}){
+    const interactive = options.interactive === true;
+    if (!supportsPush()) {
+      setButtonState('unsupported');
+      setAppBadge(0);
+      return true;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.getRegistration();
+      const subscription = await registration?.pushManager?.getSubscription?.();
+      if (!subscription) {
+        setButtonState('idle');
+        setAppBadge(0);
+        return true;
+      }
+
+      const endpoint = String(subscription.endpoint || '').trim();
+      const current = context();
+      if (endpoint && current.academyId && current.sessionToken) {
+        try {
+          const call = typeof window.supabase === 'function'
+            ? window.supabase
+            : (typeof supabase === 'function' ? supabase : null);
+          if (call) {
+            await call('POST', 'rpc/olli_team_chat_push_unsubscribe', {
+              p_session_token: current.sessionToken,
+              p_academy_id: current.academyId,
+              p_endpoint: endpoint,
+            });
+          }
+        } catch (error) {
+          console.warn('올리톡 푸시 서버 구독 해제 실패:', error);
+        }
+      }
+
+      await subscription.unsubscribe();
+      setButtonState('idle');
+      setAppBadge(0);
+      return true;
+    } catch (error) {
+      console.warn('올리톡 푸시 구독 해제 실패:', error);
+      if (interactive) alert('알림을 끄지 못했습니다.\n' + (error?.message || error));
+      return false;
+    }
+  }
+
   async function dispatch(messageId){
     const current = context();
     const id = Number(messageId || 0);
@@ -259,13 +306,23 @@
 
   function setAppBadge(count){
     const value = Math.max(0, Number(count || 0));
+    if (isIos() && 'Notification' in window && Notification.permission !== 'granted') {
+      if (value > 0) console.info('올리 앱 아이콘 뱃지 대기: iOS 알림 권한이 필요합니다.');
+      return false;
+    }
     try {
       if (value > 0 && typeof navigator.setAppBadge === 'function') {
-        navigator.setAppBadge(value).catch(() => {});
-      } else if (value === 0 && typeof navigator.clearAppBadge === 'function') {
-        navigator.clearAppBadge().catch(() => {});
+        navigator.setAppBadge(value).catch((error) => console.warn('올리 앱 아이콘 뱃지 표시 실패:', error));
+        return true;
       }
-    } catch (_) {}
+      if (value === 0 && typeof navigator.clearAppBadge === 'function') {
+        navigator.clearAppBadge().catch((error) => console.warn('올리 앱 아이콘 뱃지 해제 실패:', error));
+        return true;
+      }
+    } catch (error) {
+      console.warn('올리 앱 아이콘 뱃지 처리 실패:', error);
+    }
+    return false;
   }
 
   function openFromNotification(messageId){
@@ -328,11 +385,17 @@
       try{history.replaceState(history.state,'',nextUrl)}catch(_){}
     }
 
-    ensureSubscription({ interactive: false }).catch(() => {});
+    let notificationEnabled = true;
+    try {
+      const cached = typeof window.settingsGetCachedState === 'function' ? window.settingsGetCachedState() : {};
+      notificationEnabled = cached?.notificationEnabled !== false;
+    } catch (_) {}
+    if (notificationEnabled) ensureSubscription({ interactive: false }).catch(() => {});
   }
 
   window.OlliTalkPush = Object.freeze({
     ensureSubscription,
+    disableSubscription,
     dispatch,
     dispatchMaterial,
     setAppBadge,
