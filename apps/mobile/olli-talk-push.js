@@ -351,7 +351,7 @@
   }
 
   function passiveSyncSubscription(){
-    if (document.hidden) return false;
+    if (document.hidden || !supportsPush()) return false;
 
     let notificationEnabled = true;
     try {
@@ -364,9 +364,13 @@
     if (now - lastPassiveSubscriptionSyncAt < 60 * 1000) return false;
     lastPassiveSubscriptionSyncAt = now;
 
-    ensureSubscription({ interactive: false }).catch(() => {
-      lastPassiveSubscriptionSyncAt = 0;
-    });
+    ensureSubscription({ interactive: false })
+      .then((synced) => {
+        if (synced !== true) lastPassiveSubscriptionSyncAt = 0;
+      })
+      .catch(() => {
+        lastPassiveSubscriptionSyncAt = 0;
+      });
     return true;
   }
 
