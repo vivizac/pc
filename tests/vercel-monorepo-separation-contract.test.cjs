@@ -33,3 +33,10 @@ test('Mobile monorepo build contract requires packages/common to be reachable ou
 test('raw bridge removal is gated by stable Production deployments', () => {
   assert.ok(contract.cutover_rules.some(rule => /Remove raw GitHub bridges only after both Production deployments are stable/i.test(rule)));
 });
+
+test('app-root static deployments publish from the app directory itself', () => {
+  const pc = JSON.parse(fs.readFileSync('apps/pc/vercel.json','utf8'));
+  const mobile = JSON.parse(fs.readFileSync('apps/mobile/vercel.json','utf8'));
+  assert.equal(pc.outputDirectory, '.');
+  assert.equal(mobile.outputDirectory, '.');
+});
