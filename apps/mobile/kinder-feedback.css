@@ -2087,3 +2087,37 @@ width:100%;
 #kcfPersistentTopLayer .kcfTopWorkBtn:active{
   transform:scale(.98);
 }
+
+
+/* App-wide foreground notification toast */
+.pushToast{
+  position:fixed;
+  left:50%;
+  bottom:max(96px, calc(env(safe-area-inset-bottom, 0px) + 78px));
+  width:max-content;
+  max-width:calc(100vw - 32px);
+  min-height:42px;
+  box-sizing:border-box;
+  padding:10px 14px;
+  border-radius:14px;
+  background:rgba(25,25,25,.94);
+  color:#fff;
+  font-family:'Pretendard',sans-serif;
+  font-size:calc(13px * var(--olli-text-scale, 1));
+  font-weight:500;
+  line-height:1.4;
+  letter-spacing:-.02em;
+  text-align:left;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  opacity:0;
+  transform:translate(-50%, 12px);
+  pointer-events:none;
+  z-index:12000;
+  transition:opacity .18s ease, transform .18s ease;
+  box-shadow:0 8px 24px rgba(0,0,0,.18);
+}
+.pushToast.show{
+  opacity:1;
+  transform:translate(-50%, 0);
+}
