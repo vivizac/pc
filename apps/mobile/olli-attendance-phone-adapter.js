@@ -6,20 +6,9 @@
   const todayScheduleState = { academyId: '', sessionToken: '', dateKey: '', loaded: false, loading: null, signature: '', regular: new Map(), regularSessions: new Map(), makeup: new Map() };
   let renderAttendanceStoreSnapshot = null;
   let renderAttendanceStoreDirty = false;
+  let renderAttendanceStoreAutoScheduled = false;
 
   function shared() { return global.OlliAttendanceData || null; }
-  function readAttendanceStore() {
-    if (renderAttendanceStoreSnapshot) return renderAttendanceStoreSnapshot;
-    if (typeof global.readRecordDailyAttendanceStore !== 'function') return {};
-    return global.readRecordDailyAttendanceStore();
-  }
-  function beginRecordListRender() {
-    renderAttendanceStoreSnapshot = typeof global.readRecordDailyAttendanceStore === 'function'
-      ? global.readRecordDailyAttendanceStore()
-      : {};
-    renderAttendanceStoreDirty = false;
-    return renderAttendanceStoreSnapshot;
-  }
   function endRecordListRender() {
     if (renderAttendanceStoreSnapshot && renderAttendanceStoreDirty
         && typeof global.writeRecordDailyAttendanceStore === 'function') {
@@ -27,6 +16,31 @@
     }
     renderAttendanceStoreSnapshot = null;
     renderAttendanceStoreDirty = false;
+    renderAttendanceStoreAutoScheduled = false;
+  }
+  function scheduleAttendanceStoreRelease() {
+    if (renderAttendanceStoreAutoScheduled) return;
+    renderAttendanceStoreAutoScheduled = true;
+    Promise.resolve().then(endRecordListRender);
+  }
+  function readAttendanceStore() {
+    if (!renderAttendanceStoreSnapshot) {
+      renderAttendanceStoreSnapshot = typeof global.readRecordDailyAttendanceStore === 'function'
+        ? global.readRecordDailyAttendanceStore()
+        : {};
+      renderAttendanceStoreDirty = false;
+      scheduleAttendanceStoreRelease();
+    }
+    return renderAttendanceStoreSnapshot;
+  }
+  function beginRecordListRender() {
+    if (!renderAttendanceStoreSnapshot) {
+      renderAttendanceStoreSnapshot = typeof global.readRecordDailyAttendanceStore === 'function'
+        ? global.readRecordDailyAttendanceStore()
+        : {};
+      renderAttendanceStoreDirty = false;
+    }
+    return renderAttendanceStoreSnapshot;
   }
   function afterNextPaint() {
     return new Promise(resolve => {
