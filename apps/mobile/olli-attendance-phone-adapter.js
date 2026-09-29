@@ -103,10 +103,14 @@
     return !!global.studentSelectionMode;
   }
   function renderCurrentRecordList() {
+    const screen = global.document.getElementById('recordRoomScreen');
+    if (!screen || (typeof screen.getClientRects === 'function' && !screen.getClientRects().length)) return false;
     const searchValue = global.document.getElementById('searchName')?.value?.trim() || '';
     const view = getCurrentRecordView();
     if (view === 'elementary' && typeof global.renderElementaryRecords === 'function') global.renderElementaryRecords(searchValue);
     else if (view === 'kinder' && typeof global.renderKinderRecords === 'function') global.renderKinderRecords(searchValue);
+    else return false;
+    return true;
   }
   function cloneValue(value) {
     if (value == null) return value;
