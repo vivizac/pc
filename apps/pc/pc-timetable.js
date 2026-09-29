@@ -1192,7 +1192,11 @@
     });
     rows.forEach((row) => {
       if (halfHour) {
-        grid += `<div class="olliTtTime">${row.label}</div>`;
+        const timeLabelParts = clean(row.label).match(/^(\d+)시(?:\s+(30분))?$/);
+        const timeLabelHtml = timeLabelParts
+          ? `<span>${timeLabelParts[1]}시</span>${timeLabelParts[2] ? `<small>${timeLabelParts[2]}</small>` : ''}`
+          : esc(row.label);
+        grid += `<div class="olliTtTime${timeLabelParts && timeLabelParts[2] ? ' halfHourLabel' : ''}">${timeLabelHtml}</div>`;
         dates.forEach((date) => { grid += halfHourCellHtml(division, date, row); });
         return;
       }
