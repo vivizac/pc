@@ -198,7 +198,7 @@
   display: flex;
   align-items: flex-start;
   gap: 5px;
-  color: #4f5863;
+  color: #2b3038;
   background: #fff;
   box-sizing: border-box;
   text-align: left;
@@ -208,7 +208,7 @@
 }
 #recordRoomScreen .olliTtCellMemoCard:hover { border-color: #d3d9df; background: #f7f8fa; box-shadow: none; }
 #recordRoomScreen .olliTtCellMemoCard > span { flex: 0 0 auto; margin-top: 1px; font-size: calc(11px * var(--olli-text-scale)); line-height: 1; }
-#recordRoomScreen .olliTtCellMemoCard > strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(10px * var(--olli-text-scale)); font-weight: 760; line-height: 1.2; }
+#recordRoomScreen .olliTtCellMemoCard > strong { min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; font-size: calc(10px * var(--olli-text-scale)); font-weight: 780; line-height: 1.15; }
 #recordRoomScreen .olliTtStudent {
   width: 100%;
   min-height: 24px;
