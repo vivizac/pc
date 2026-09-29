@@ -1254,8 +1254,8 @@
   pointer-events:none;
 }
 #olliTalkBetaScreen #olliTalkArchiveBtn .olliWorkNotificationBadge{
-  top:-5px;
-  right:-5px;
+  top:-2px;
+  right:0;
 }
 #olliTalkBetaScreen .olliTalkHeaderToolBtn:active{background:var(--olli-talk-control-header-pressed-bg)}
 @media (hover:hover){
