@@ -71,7 +71,7 @@ CREATE OR REPLACE FUNCTION public.olli_schedule_change(p_session_token text, p_a
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$
+AS $function$;
 declare
   v_effective date := coalesce(p_effective_date, current_date);
   v_division text;
@@ -257,7 +257,7 @@ begin
     'target_enrollment_id',v_target_id
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_set_student_weekly_schedule(p_session_token text, p_academy_id uuid, p_student_id uuid, p_pairs jsonb, p_effective_date date DEFAULT CURRENT_DATE)
@@ -265,7 +265,7 @@ CREATE OR REPLACE FUNCTION public.olli_schedule_set_student_weekly_schedule(p_se
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$
+AS $function$;
 declare
   v_date date := coalesce(p_effective_date, current_date);
   v_division text;
@@ -497,7 +497,7 @@ begin
     'enrollments', v_rows
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.olli_schedule_set_class_teacher(p_session_token text, p_academy_id uuid, p_division text, p_weekday integer, p_time_slot integer, p_class_group text, p_teacher_member_id uuid DEFAULT NULL::uuid)
@@ -505,7 +505,7 @@ CREATE OR REPLACE FUNCTION public.olli_schedule_set_class_teacher(p_session_toke
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO ''
-AS $function$
+AS $function$;
 declare
   v_division text := lower(trim(coalesce(p_division, '')));
   v_group text := upper(trim(coalesce(p_class_group, 'A')));
@@ -568,5 +568,5 @@ begin
     'teacher_name', coalesce(v_teacher_name, '')
   );
 end;
-$function$
+$function$;
 
