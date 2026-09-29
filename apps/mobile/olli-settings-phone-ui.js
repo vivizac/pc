@@ -127,6 +127,61 @@
     return normalized;
   }
 
+  function normalizePhoneTimetableMode(value){
+    return clean(value)==='half_hour'?'half_hour':'hourly';
+  }
+
+  function getPhoneTimetableMode(){
+    const academy=(typeof olliSettingsState!=='undefined'&&olliSettingsState?.academy)||{};
+    const cached=typeof settingsGetCachedState==='function'?settingsGetCachedState():{};
+    return normalizePhoneTimetableMode(academy.kinder_timetable_mode||cached.kinderTimetableMode||'hourly');
+  }
+
+  function getPhoneTimetableModeLabel(value){
+    return normalizePhoneTimetableMode(value)==='half_hour'?'30분 단위':'정시 타임';
+  }
+
+  function updatePhoneSettingsTimetableModeValue(){
+    const value=document.getElementById('settingsTimetableModeValue');
+    if(value)value.textContent=getPhoneTimetableModeLabel(getPhoneTimetableMode());
+  }
+
+  function renderPhoneTimetableModeSheet(){
+    const current=getPhoneTimetableMode();
+    const option=(value,label,guide)=>{
+      const active=current===value;
+      return '<button type="button" class="settingsStartPageOption '+(active?'active':'')+'" data-phone-timetable-mode="'+value+'" onclick="selectPhoneTimetableModeOption(\''+value+'\')"><span>'+label+'<span class="settingsTextSizeGuide">'+guide+'</span></span><span class="check">'+(active?'✓':'')+'</span></button>';
+    };
+    return '<div class="settingsInputGroup">'
+      +option('hourly','정시 타임','기존 시간별 수업 · A/B 분반 가능')
+      +option('half_hour','30분 단위','초등 1:00~6:00 · 유치 3:30~5:30')
+      +'</div><div class="settingsMiniText">학원 공통 설정입니다. 여기서 변경하면 PC와 다른 폰에서도 같은 설정을 사용합니다.</div>';
+  }
+
+  function selectPhoneTimetableModeOption(value){
+    const selected=normalizePhoneTimetableMode(value);
+    document.querySelectorAll('[data-phone-timetable-mode]').forEach(button=>{
+      const active=normalizePhoneTimetableMode(button.getAttribute('data-phone-timetable-mode'))===selected;
+      button.classList.toggle('active',active);
+      const check=button.querySelector('.check');
+      if(check)check.textContent=active?'✓':'';
+    });
+  }
+
+  async function savePhoneTimetableModeSheet(){
+    const selected=normalizePhoneTimetableMode(document.querySelector('[data-phone-timetable-mode].active')?.getAttribute('data-phone-timetable-mode'));
+    const academyId=typeof settingsGetAcademyId==='function'?settingsGetAcademyId():'';
+    if(!academyId)throw new Error('현재 학원 ID를 찾지 못했습니다.');
+    if(typeof saveOlliAcademySettingsSecure!=='function')throw new Error('학원 공통 설정 저장 기능을 찾지 못했습니다.');
+
+    const academy=await saveOlliAcademySettingsSecure(academyId,{kinder_timetable_mode:selected});
+    if(typeof settingsSaveCachePatch==='function')settingsSaveCachePatch({kinderTimetableMode:selected});
+    if(typeof olliSettingsState!=='undefined')olliSettingsState.academy=academy;
+    updatePhoneSettingsTimetableModeValue();
+    global.dispatchEvent(new CustomEvent('olli:kinder-timetable-mode-changed',{detail:{mode:selected}}));
+    return selected;
+  }
+
   function consultationOption(type,option,selected,editable){
     return '<button type="button" class="settingsMonthOption '+(selected.has(option.key)?'active':'')+'" data-phone-consultation-type="'+type+'" data-phone-consultation-rule="'+option.key+'" '+(editable?'onclick="phoneToggleConsultationRule(this)"':'disabled aria-disabled="true"')+'>'+esc(option.label)+'</button>';
   }
@@ -253,6 +308,7 @@
     ai:{title:'AI 사용 안내',desc:'AI가 생성한 문구는 자동 발송되지 않으며, 선생님 또는 원장이 검토한 뒤 사용합니다.',html:'<div class="settingsInfoItem">피드백 문구는 최종 검토 후 학부모에게 전달해야 합니다.</div>'},
     textSize:{title:'텍스트 크기',desc:'이 폰의 앱 화면 글자 크기를 조절합니다.',html:renderPhoneTextSizeSheet,onSave:savePhoneTextSizeSheet},
     startPage:{title:'시작 페이지',desc:'이 폰에서 앱을 열었을 때 처음 보여줄 화면을 선택합니다.',html:renderPhoneStartPageSheet,onSave:savePhoneStartPageSheet},
+    timetableMode:{title:'시간표 설정',desc:'초등부와 유치부 시간표의 운영 방식을 함께 선택합니다.',html:renderPhoneTimetableModeSheet,onSave:savePhoneTimetableModeSheet},
     consultationMonths:{title:'상담 기준',desc:'초등부와 유치부 상담 기준을 설정합니다.',html:renderPhoneConsultationSheet,onSave:savePhoneConsultationSheet},
     groupFeedbackMonths:{title:'그룹별 피드백 발송월',desc:'초등부 그룹별 피드백 발송월을 설정합니다.',html:renderPhoneGroupFeedbackSheet,onSave:savePhoneGroupFeedbackSheet},
     newAcademy:{title:'새 학원 만들기',desc:'현재 원장 계정에 새 학원을 추가합니다.',html:renderPhoneNewAcademySheet,onSave:async()=>{if(typeof createOlliAcademyFromSettings==='function')await createOlliAcademyFromSettings()}},
@@ -353,9 +409,17 @@
     if(record)record.style.display='flex';
 
     try{if(typeof settingsApplyStateToUI==='function')settingsApplyStateToUI()}catch(_){}
+    try{updatePhoneSettingsTimetableModeValue()}catch(_){}
     setTimeout(()=>{try{if(typeof applySettingsPermissionUI==='function')applySettingsPermissionUI()}catch(_){}},80);
     setTimeout(()=>{try{if(typeof applySettingsPermissionUI==='function')applySettingsPermissionUI()}catch(_){}},600);
-    try{if(typeof settingsRefreshAll==='function')settingsRefreshAll()}catch(_){}
+    try{
+      if(typeof settingsRefreshAll==='function'){
+        Promise.resolve(settingsRefreshAll()).then(()=>{
+          try{updatePhoneSettingsTimetableModeValue()}catch(_){}
+          if(phoneSettingsSheetType==='timetableMode')refreshPhoneSettingsSheetBody();
+        }).catch(()=>{});
+      }
+    }catch(_){}
     return true;
   }
 
@@ -409,6 +473,8 @@
 
   global.selectSettingsTextSizeOption=selectSettingsTextSizeOption;
   global.selectSettingsStartPageOption=selectSettingsStartPageOption;
+  global.selectPhoneTimetableModeOption=selectPhoneTimetableModeOption;
+  global.updatePhoneSettingsTimetableModeValue=updatePhoneSettingsTimetableModeValue;
   global.phoneToggleConsultationRule=phoneToggleConsultationRule;
   global.phoneSelectFeedbackGroup=phoneSelectFeedbackGroup;
   global.phoneToggleFeedbackMonth=phoneToggleFeedbackMonth;

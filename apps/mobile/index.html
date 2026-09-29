@@ -624,6 +624,13 @@
 </div>
 <span class="settingsRowValue" id="settingsStartPageValue">관찰노트</span>
 </div>
+<div class="settingsRow" data-academy-management="true" onclick="openPhoneSettingsSheet('timetableMode')" role="button">
+<div class="settingsRowLeft">
+<span class="settingsRowIcon"><svg viewbox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 7.5v5l3 2"></path></svg></span>
+<span class="settingsRowTitle">시간표 설정</span>
+</div>
+<span class="settingsRowValue" id="settingsTimetableModeValue">정시 타임</span>
+</div>
 <div class="settingsRow" onclick="openPhoneSettingsSheet('textSize')" role="button">
 <div class="settingsRowLeft">
 <span class="settingsRowIcon"><svg viewbox="0 0 24 24"><path d="M5.5 6.5h13"></path><path d="M12 6.5v12"></path><path d="M9 18.5h6"></path></svg></span>
@@ -844,7 +851,7 @@
 
 <script src="olli-login-start-runtime.js"></script><script src="kinder-growth-survey-ui.js"></script>
 <script src="olli-settings-account-runtime.js?v=20260924-settings-core-split-1"></script>
-<script src="olli-settings-phone-ui.js?v=20260929-push-notification-fix-1"></script>
+<script src="olli-settings-phone-ui.js?v=20260929-shared-timetable-setting-1"></script>
 <script src="olli-record-sort-student-ui.js?v=20260929-unassigned-teacher-1"></script>
 <!-- olliRecordSortPositionFinalFix removed: 하단바/검색창/정렬 버튼 위치는 olliRecordSearchFinalSingle에서 단일 관리 -->
 <!-- 2026-04-30 patch: 초등/유치 정렬 기준 분리 + 초등 정렬 미작동 원인 보정 -->
