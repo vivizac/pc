@@ -279,7 +279,18 @@
     assignments.filter(row => clean(row && row.division) === division).forEach(row => addSlot(row.weekday,row.time_slot));
     enrollments.filter(row => clean(row && row.division) === division && enrollmentEffectiveOn(row,effectiveDate)).forEach(row => addSlot(row.weekday,row.time_slot));
     (Array.isArray(currentRows) ? currentRows : []).forEach(row => addSlot(row.weekday,row.time_slot));
-    if (division === 'kinder') (Array.isArray(data && data.kinder_class_merges) ? data.kinder_class_merges : []).forEach(row => addSlot(row.weekday,row.time_slot));
+
+    if (division === 'elementary') {
+      for (let weekday = 1; weekday <= 5; weekday += 1) {
+        for (let timeSlot = 1; timeSlot <= 6; timeSlot += 1) addSlot(weekday,timeSlot);
+      }
+      [10,11,12].forEach(timeSlot => addSlot(6,timeSlot));
+    } else {
+      (Array.isArray(data && data.kinder_class_merges) ? data.kinder_class_merges : []).forEach(row => addSlot(row.weekday,row.time_slot));
+      for (let weekday = 1; weekday <= 6; weekday += 1) {
+        [4,5].forEach(timeSlot => addSlot(weekday,timeSlot));
+      }
+    }
 
     const capacity = capacityFor(data, division);
     const currentKeys = new Set(normalizeSelected(currentRows).map(classKey));
@@ -305,9 +316,8 @@
           remaining:Math.max(capacity-count,0), full:count >= capacity
         };
         item.current = currentKeys.has(classKey(item));
-        item.selectable = item.current || (!!teacherName && !item.full);
-        const configured = !!teacherName || count > 0 || item.current || split || merged;
-        if (configured) options.push(item);
+        item.selectable = item.current || !item.full;
+        options.push(item);
       });
     });
     return options;
@@ -511,7 +521,7 @@
   function optionsHtml(state) {
     if (state.loading) return '<div class="olliPhoneScheduleEmpty">저장된 수업을 먼저 표시했습니다.<br>최신 시간표를 확인하고 있어요.</div>';
     if (state.loadError) return '<div class="olliPhoneScheduleEmpty">최신 시간표를 불러오지 못했습니다.<br>저장된 수업을 표시하고 있어요.</div>';
-    if (!state.options.length) return '<div class="olliPhoneScheduleEmpty">선택 가능한 클래스가 없습니다.<br>PC 시간표 설정에서 클래스 담임을 먼저 지정해 주세요.</div>';
+    if (!state.options.length) return '<div class="olliPhoneScheduleEmpty">선택 가능한 클래스가 없습니다.</div>';
     const selectedKeys = new Set(state.selected.map(classKey));
     return state.options.map(option => {
       const key = classKey(option);
@@ -645,7 +655,7 @@
       return;
     }
     if (!option.selectable) {
-      notify(option.full ? '정원이 마감된 클래스입니다.' : '시간표 설정에서 담임을 먼저 지정해 주세요.');
+      notify('정원이 마감된 클래스입니다.');
       return;
     }
     const sameTime = state.selected.find(pair => timeKey(pair) === timeKey(option));
@@ -674,7 +684,6 @@
     for (const pair of state.selected) {
       const option = optionFor(state,pair);
       const wasCurrent = state.current.some(current => classKey(current) === classKey(pair));
-      if (!wasCurrent && (!option || !option.teacher_name)) { notify('담임이 지정된 클래스만 선택할 수 있습니다.'); return; }
       if (!wasCurrent && option && option.full) { notify('정원이 마감된 클래스는 선택할 수 없습니다.'); return; }
     }
     if (sameSchedule(state.selected,state.current) && effectiveDate === todayKey()) {
