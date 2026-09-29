@@ -377,19 +377,34 @@
     return true;
   }
 
-  function togglePhoneSettingsNotification(){
+  async function togglePhoneSettingsNotification(){
     const cached=typeof settingsGetCachedState==='function'?settingsGetCachedState():{};
-    const next=!(cached.notificationEnabled!==undefined?cached.notificationEnabled:true);
-    if(typeof settingsSaveCachePatch==='function')settingsSaveCachePatch({notificationEnabled:next});
-    if(typeof settingsApplyStateToUI==='function')settingsApplyStateToUI();
+    const currentEnabled=cached.notificationEnabled!==undefined?!!cached.notificationEnabled:true;
+    const next=!currentEnabled;
 
-    if(next&&'Notification'in global&&Notification.permission==='default'){
-      Notification.requestPermission().then(permission=>{
-        if(permission==='granted'){
-          try{new Notification('올리',{body:'알림 설정이 완료되었습니다.'})}catch(_){}
-        }
-      }).catch(()=>{});
+    if(next){
+      const enabled=await global.OlliTalkPush?.ensureSubscription?.({interactive:true});
+      if(enabled!==true){
+        if(typeof settingsSaveCachePatch==='function')settingsSaveCachePatch({notificationEnabled:false});
+        if(typeof settingsApplyStateToUI==='function')settingsApplyStateToUI();
+        return false;
+      }
+      if(typeof settingsSaveCachePatch==='function')settingsSaveCachePatch({notificationEnabled:true});
+      if(typeof settingsApplyStateToUI==='function')settingsApplyStateToUI();
+      try{await global.refreshOlliTalkMentionBadge?.()}catch(_){}
+      try{global.showPushToast?.('알림을 켰어요.')}catch(_){}
+      return true;
     }
+
+    const disabled=await global.OlliTalkPush?.disableSubscription?.({interactive:true});
+    if(disabled!==true){
+      if(typeof settingsApplyStateToUI==='function')settingsApplyStateToUI();
+      return false;
+    }
+    if(typeof settingsSaveCachePatch==='function')settingsSaveCachePatch({notificationEnabled:false});
+    if(typeof settingsApplyStateToUI==='function')settingsApplyStateToUI();
+    try{global.showPushToast?.('알림을 껐어요.')}catch(_){}
+    return true;
   }
 
   global.selectSettingsTextSizeOption=selectSettingsTextSizeOption;
