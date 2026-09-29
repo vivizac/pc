@@ -4,17 +4,17 @@ function syncRecordAcademyPageState(){
   screen.classList.toggle('record-academy-view', currentRecordView === 'academy');
 }
 
-function hydrateRecordAttendanceLocalSnapshot(){
+function hydrateRecordAttendanceLocalSnapshot(options = {}){
   const adapter = window.OlliPhoneAttendanceAdapter;
   if (!adapter || typeof adapter.hydrateLocalAttendanceSnapshot !== 'function') return false;
-  try { return adapter.hydrateLocalAttendanceSnapshot(new Date(), { render: true }); }
+  try { return adapter.hydrateLocalAttendanceSnapshot(new Date(), { render: options.render !== false }); }
   catch (error) {
     console.warn('출석 로컬 스냅샷 복원 실패:', error?.message || error);
     return false;
   }
 }
 
-async function openRecordAttendanceDashboard(){
+async function openRecordAttendanceDashboard(options = {}){
   studentSelectionMode = false;
   selectedStudentIds.clear();
   const targetView = (typeof window.getOlliLastRecordDivisionView === 'function')
@@ -29,7 +29,7 @@ async function openRecordAttendanceDashboard(){
     window.setOlliMainSubpageDrawerSearchActive(false);
   }
   if (typeof window.refreshRecordSortPopup === 'function') setTimeout(window.refreshRecordSortPopup, 0);
-  await loadRecords('');
+  await loadRecords('', options);
 }
 
 async function toggleRecordAcademyManagementMode(){
@@ -158,10 +158,43 @@ function refreshRecordAcademyManagementFromServer(options = {}){
 
 window.refreshRecordAcademyManagementFromServer = refreshRecordAcademyManagementFromServer;
 
+let recordAttendanceRefreshPromise = null;
+let recordAttendanceRefreshContext = '';
+
+function refreshRecordAttendanceDashboardFromServer(name = ''){
+  const view = currentRecordView === 'kinder' ? 'kinder' : (currentRecordView === 'elementary' ? 'elementary' : '');
+  if (!view) return Promise.resolve(false);
+  const context = `${getOlliCurrentAcademyId()}|${view}|${String(name || '')}`;
+  if (recordAttendanceRefreshPromise && recordAttendanceRefreshContext === context) {
+    return recordAttendanceRefreshPromise;
+  }
+
+  const task = Promise.resolve()
+    .then(() => loadRecords(name, { refreshOnly: true }))
+    .catch(error => {
+      console.warn('출석부 서버 최신화 실패:', error?.message || error);
+      return false;
+    })
+    .finally(() => {
+      if (recordAttendanceRefreshPromise === task) {
+        recordAttendanceRefreshPromise = null;
+        recordAttendanceRefreshContext = '';
+      }
+    });
+  recordAttendanceRefreshContext = context;
+  recordAttendanceRefreshPromise = task;
+  return task;
+}
+
+window.refreshRecordAttendanceDashboardFromServer = refreshRecordAttendanceDashboardFromServer;
+
 async function loadRecords(name, options = {}) {
   const list = document.getElementById('recordList');
-  const loadToken = (window.__olliRecordListLoadToken = (window.__olliRecordListLoadToken || 0) + 1);
   const localOnly = options?.localOnly === true;
+  const refreshOnly = options?.refreshOnly === true;
+  const loadToken = localOnly
+    ? (window.__olliRecordListLoadToken || 0)
+    : (window.__olliRecordListLoadToken = (window.__olliRecordListLoadToken || 0) + 1);
   // 학생 목록 화면에서는 Supabase 로딩 문구를 띄우지 않습니다.
   // 먼저 각 기기의 로컬 캐시 학생 목록을 보여주고, Supabase 동기화가 끝나면 같은 자리에서 조용히 갱신합니다.
   if (!getOlliCurrentAcademyId()) {
@@ -182,29 +215,33 @@ async function loadRecords(name, options = {}) {
 
 
   if (currentRecordView === 'elementary') {
-    renderElementaryRecords(name);
-    hydrateRecordAttendanceLocalSnapshot();
-    if (localOnly) return true;
+    if (!refreshOnly) {
+      hydrateRecordAttendanceLocalSnapshot({ render: false });
+      renderElementaryRecords(name);
+      if (localOnly) return true;
+    }
     await loadStudentsFromSupabase();
     if (loadToken !== window.__olliRecordListLoadToken || currentRecordView !== 'elementary') return;
     renderElementaryRecords(name);
     if (window.OlliPhoneAttendanceAdapter && typeof window.OlliPhoneAttendanceAdapter.afterRecordListLoaded === 'function') {
-      await window.OlliPhoneAttendanceAdapter.afterRecordListLoaded('elementary', name);
+      window.OlliPhoneAttendanceAdapter.afterRecordListLoaded('elementary', name);
     }
-    return;
+    return true;
   }
 
   if (currentRecordView === 'kinder') {
-    renderKinderRecords(name);
-    hydrateRecordAttendanceLocalSnapshot();
-    if (localOnly) return true;
+    if (!refreshOnly) {
+      hydrateRecordAttendanceLocalSnapshot({ render: false });
+      renderKinderRecords(name);
+      if (localOnly) return true;
+    }
     await loadStudentsFromSupabase();
     if (loadToken !== window.__olliRecordListLoadToken || currentRecordView !== 'kinder') return;
     renderKinderRecords(name);
     if (window.OlliPhoneAttendanceAdapter && typeof window.OlliPhoneAttendanceAdapter.afterRecordListLoaded === 'function') {
-      await window.OlliPhoneAttendanceAdapter.afterRecordListLoaded('kinder', name);
+      window.OlliPhoneAttendanceAdapter.afterRecordListLoaded('kinder', name);
     }
-    return;
+    return true;
   }
 
   const academyId = requireOlliAcademyId('기록 조회');
