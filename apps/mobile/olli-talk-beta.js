@@ -1091,8 +1091,15 @@
     image.dataset.previewSrc=source;
     image.addEventListener('load',()=>{
       if(!image.isConnected)return;
+      const chatArea=document.getElementById('olliTalkBetaChatArea');
+      const keepBottom=options.followBottom===true&&!!chatArea&&isOlliTalkChatNearBottom(chatArea,120);
       image.hidden=false;
       card.classList.add('hasImage');
+      if(keepBottom&&chatArea?.isConnected){
+        requestAnimationFrame(()=>{
+          if(chatArea.isConnected)chatArea.scrollTop=chatArea.scrollHeight;
+        });
+      }
     },{once:true});
     image.addEventListener('error',()=>{
       if(image.isConnected)image.remove();
@@ -1106,6 +1113,8 @@
   function applyOlliTalkLinkPreview(card,url,preview){
     if(!preview||!card?.isConnected)return false;
 
+    const chatArea=document.getElementById('olliTalkBetaChatArea');
+    const keepBottom=!!chatArea&&isOlliTalkChatNearBottom(chatArea,120);
     const title=card.querySelector('.olliTalkBetaLinkPreviewTitle');
     const description=card.querySelector('.olliTalkBetaLinkPreviewDescription');
     const domain=card.querySelector('.olliTalkBetaLinkPreviewDomain');
@@ -1132,7 +1141,12 @@
     }else{
       imageSource=String(preview.image||'').trim();
     }
-    setOlliTalkLinkPreviewImage(card,imageSource,{local:localImage});
+    setOlliTalkLinkPreviewImage(card,imageSource,{local:localImage,followBottom:keepBottom});
+    if(keepBottom&&chatArea?.isConnected){
+      requestAnimationFrame(()=>{
+        if(chatArea.isConnected)chatArea.scrollTop=chatArea.scrollHeight;
+      });
+    }
     return true;
   }
 
@@ -2287,7 +2301,7 @@
   }
 
   function renderOlliTalkArchive(options={}){
-    const screen=document.getElementById('olliTalkArchiveScreen'),body=document.getElementById('olliTalkArchiveBody'),meta=document.getElementById('olliTalkArchiveMeta'),upload=document.getElementById('olliTalkArchiveUploadBtn');
+    const screen=document.getElementById('olliTalkArchiveScreen'),body=document.getElementById('olliTalkArchiveBody'),meta=document.getElementById('olliTalkArchiveMeta'),upload=document.getElementById('olliTalkArchiveUploadBtn'),createButton=document.getElementById('olliTalkArchiveMaterialCreateBtn');
     if(!screen||!body||!meta||!upload)return;
     disconnectOlliTalkImageViewportObserver('archive');
 
@@ -2300,6 +2314,7 @@
     const materialMode=olliTalkArchiveTab==='materials';
     meta.hidden=materialMode;
     upload.hidden=olliTalkArchiveTab!=='files';
+    if(createButton)createButton.hidden=!materialMode;
 
     if(!materialMode){
       try{window.OlliMobileTeamTalkMaterialOrders?.destroy?.()}catch(_){}
@@ -4514,6 +4529,7 @@
     const searchCloseButton = document.getElementById('olliTalkSearchCloseBtn');
     const archiveButton = document.getElementById('olliTalkArchiveBtn');
     const archiveBackButton = document.getElementById('olliTalkArchiveBackBtn');
+    const archiveMaterialCreateButton = document.getElementById('olliTalkArchiveMaterialCreateBtn');
     const archiveUploadButton = document.getElementById('olliTalkArchiveUploadBtn');
     const archiveFileInput = document.getElementById('olliTalkArchiveFileInput');
     const composerFileAddButton = document.getElementById('olliTalkFileAddBtn');
@@ -4556,6 +4572,11 @@
 
     if(archiveButton)archiveButton.addEventListener('click',openOlliTalkArchivePage);
     if(archiveBackButton)archiveBackButton.addEventListener('click',closeOlliTalkArchivePage);
+    if(archiveMaterialCreateButton)archiveMaterialCreateButton.addEventListener('click',event=>{
+      event.preventDefault();
+      event.stopPropagation();
+      window.OlliMobileTeamTalkMaterialOrders?.openCreate?.();
+    });
     if(photoViewerBackButton)photoViewerBackButton.addEventListener('click',closeOlliTalkPhotoViewer);
     if(photoViewerArchiveButton)photoViewerArchiveButton.addEventListener('click',openOlliTalkPhotoReviewFromViewer);
     if(photoViewerSaveButton)photoViewerSaveButton.addEventListener('click',saveOlliTalkPhotoViewer);
