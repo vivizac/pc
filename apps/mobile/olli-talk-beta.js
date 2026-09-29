@@ -2358,6 +2358,11 @@
       });
       if(!payload?.ok)return false;
       olliTalkLastUnreadMaterialCount=0;
+      document.querySelectorAll('.olliTalkBetaMaterialConfirmCard .olliTalkBetaActionButton').forEach(button=>{
+        button.disabled=true;
+        button.textContent='확인됨';
+        button.classList.add('confirmed');
+      });
       await refreshOlliTalkMentionBadge();
       return true;
     }catch(error){
@@ -2917,6 +2922,60 @@
     }
   }
 
+  async function confirmOlliTalkMaterialMessage(item,button){
+    const eventId=Math.max(0,Number(item?.material_event_id||0));
+    if(!eventId||button?.disabled)return false;
+    const context=getOlliTalkBetaContext();
+    if(!context.sessionToken||!context.academyId)return false;
+
+    if(button){
+      button.disabled=true;
+      button.textContent='확인 중';
+    }
+    try{
+      const payload=await callOlliTalkRpc('olli_mobile_work_mark_material_read_to',{
+        p_session_token:context.sessionToken,
+        p_academy_id:context.academyId,
+        p_up_to_event_id:eventId
+      });
+      if(!payload?.ok)throw new Error(payload?.message||'재료주문 확인을 저장하지 못했습니다.');
+      item.material_confirmed=true;
+      if(button){
+        button.textContent='확인됨';
+        button.classList.add('confirmed');
+      }
+      await refreshOlliTalkMentionBadge();
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+      return true;
+    }catch(error){
+      console.warn('재료주문 말풍선 확인 실패:',error);
+      if(button){
+        button.disabled=false;
+        button.textContent='확인';
+      }
+      return false;
+    }
+  }
+
+  function createOlliTalkMaterialConfirmCard(item){
+    const card=document.createElement('div');
+    card.className='olliTalkBetaActionCard olliTalkBetaMaterialConfirmCard';
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='olliTalkBetaActionButton primary';
+    const confirmed=item?.material_confirmed===true;
+    button.textContent=confirmed?'확인됨':'확인';
+    button.disabled=confirmed;
+    if(confirmed)button.classList.add('confirmed');
+    button.addEventListener('click',()=>confirmOlliTalkMaterialMessage(item,button));
+    card.appendChild(button);
+    return card;
+  }
+
   function createOlliTalkActionCard(action){
     const card=document.createElement('div');
     const status=String(action?.status || 'pending').trim() || 'pending';
@@ -3116,9 +3175,15 @@
       if (incomingLayout) {
         incomingLayout.appendChild(bubbleRow);
         if (item?.action) incomingLayout.appendChild(createOlliTalkActionCard(item.action));
+        if (item?.material_request_id && item?.material_event_id) {
+          incomingLayout.appendChild(createOlliTalkMaterialConfirmCard(item));
+        }
       } else {
         message.appendChild(bubbleRow);
         if (item?.action) message.appendChild(createOlliTalkActionCard(item.action));
+        if (item?.material_request_id && item?.material_event_id) {
+          message.appendChild(createOlliTalkMaterialConfirmCard(item));
+        }
       }
     } else {
       message.appendChild(bubbleRow);
@@ -3535,17 +3600,6 @@
       const latestMaterialEventId = Math.max(0, Number(payload.latest_material_event_id || 0));
 
       if (
-        olliTalkMentionSummaryInitialized
-        && materialUnreadCount > olliTalkLastUnreadMaterialCount
-        && latestMaterialEventId
-        && latestMaterialEventId !== olliTalkLastMaterialEventId
-      ) {
-        const requester = String(payload.latest_material_requester || '선생님').trim() || '선생님';
-        const item = String(payload.latest_material_item || '재료주문').trim() || '재료주문';
-        if (typeof window.showPushToast === 'function') {
-          window.showPushToast('재료주문 · ' + requester + ': ' + item);
-        }
-      } else if (
         olliTalkMentionSummaryInitialized
         && mentionUnreadCount > olliTalkLastUnreadMentionCount
         && latestMessageId
