@@ -216,6 +216,9 @@ function settingsSetCachedAcademy(academy) {
   localStorage.setItem('olli_current_academy_name', academy.academy_name || '');
   const region = academy.region || academy.academy_region || '';
   if (region) localStorage.setItem('olli_current_academy_region', region);
+  if (academy.kinder_timetable_mode) {
+    settingsSaveCachePatch({ kinderTimetableMode: String(academy.kinder_timetable_mode) === 'half_hour' ? 'half_hour' : 'hourly' });
+  }
   if (academy.profile_image_url) {
     settingsSaveCachePatch({ profileImageUrl: academy.profile_image_url, profileImageDataUrl: '' });
   }
