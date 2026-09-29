@@ -27,13 +27,16 @@ function openSettingsPage() {
   if (record) record.style.display = 'flex';
 
   settingsApplyStateToUI();
+  if (typeof updateSettingsTimetableModeValue === 'function') updateSettingsTimetableModeValue();
   setTimeout(() => {
     try { if (typeof applySettingsPermissionUI === 'function') applySettingsPermissionUI(); } catch (_) {}
   }, 80);
   setTimeout(() => {
     try { if (typeof applySettingsPermissionUI === 'function') applySettingsPermissionUI(); } catch (_) {}
   }, 600);
-  settingsRefreshAll();
+  Promise.resolve(settingsRefreshAll()).finally(() => {
+    if (typeof updateSettingsTimetableModeValue === 'function') updateSettingsTimetableModeValue();
+  });
   if (typeof window.olliPcSettingsLayoutAfterOpenPage === 'function') {
     try { window.olliPcSettingsLayoutAfterOpenPage(); } catch (_) {}
   }
@@ -75,6 +78,30 @@ function toggleSettingsNotification() {
 
 
 let currentSettingsSheetType = null;
+
+function normalizeSettingsKinderTimetableMode(value) {
+  return String(value || '').trim() === 'half_hour' ? 'half_hour' : 'hourly';
+}
+function getOlliKinderTimetableMode() {
+  const academyMode = olliSettingsState?.academy?.kinder_timetable_mode || '';
+  if (academyMode) return normalizeSettingsKinderTimetableMode(academyMode);
+  return normalizeSettingsKinderTimetableMode(settingsGetCachedState().kinderTimetableMode);
+}
+window.getOlliKinderTimetableMode = getOlliKinderTimetableMode;
+
+function selectSettingsTimetableModeOption(mode) {
+  const selected = normalizeSettingsKinderTimetableMode(mode);
+  document.querySelectorAll('[data-timetable-mode-option]').forEach((button) => {
+    const active = button.getAttribute('data-timetable-mode-option') === selected;
+    button.classList.toggle('active', active);
+    const check = button.querySelector('.check');
+    if (check) check.textContent = active ? '✓' : '';
+  });
+}
+function updateSettingsTimetableModeValue() {
+  const value = document.getElementById('settingsTimetableModeValue');
+  if (value) value.textContent = getOlliKinderTimetableMode() === 'half_hour' ? '30분 단위' : '정시 타임';
+}
 
 const settingsSheetData = {
   profile: {
@@ -159,6 +186,31 @@ const settingsSheetData = {
     onSave: async function(){
       const selected = document.querySelector('.settingsStartPageOption.active')?.getAttribute('data-start-page-option') || getOlliAllowedStartPage(getOlliDefaultStartPage() || 'elementary_attendance');
       await saveOlliDefaultStartPage(selected);
+    }
+  },
+  timetableMode: {
+    title:'시간표 설정',
+    desc:'유치부 시간표의 클래스 운영 방식을 선택합니다. 초등부 시간표는 변경되지 않습니다.',
+    html:function(){
+      const current = getOlliKinderTimetableMode();
+      const option = function(value, label, guide){
+        const active = current === value;
+        return '<button type="button" class="settingsStartPageOption ' + (active ? 'active' : '') + '" data-timetable-mode-option="' + value + '" onclick="selectSettingsTimetableModeOption(\'' + value + '\')"><span>' + label + '<span class="settingsTextSizeGuide">' + guide + '</span></span><span class="check">' + (active ? '✓' : '') + '</span></button>';
+      };
+      return '<div class="settingsInputGroup">'
+        + option('hourly', '정시 타임', '4시 A·B / 5시 A·B 클래스')
+        + option('half_hour', '30분 단위', '4:30 / 5:00 / 5:30 / 6:00 단일 클래스')
+        + '</div><div class="settingsMiniText">운영 방식을 바꿔도 기존 학생·보강·출석 데이터는 삭제되지 않습니다. 다시 정시 타임으로 바꾸면 기존 A·B 구조로 그대로 표시됩니다.</div>';
+    },
+    onSave: async function(){
+      const selected = normalizeSettingsKinderTimetableMode(document.querySelector('[data-timetable-mode-option].active')?.getAttribute('data-timetable-mode-option'));
+      const academyId = settingsGetAcademyId();
+      if (!academyId) throw new Error('현재 학원 ID를 찾지 못했습니다.');
+      const academy = await saveOlliAcademySettingsSecure(academyId, { kinder_timetable_mode: selected });
+      if (olliSettingsState) olliSettingsState.academy = academy;
+      settingsSaveCachePatch({ kinderTimetableMode: selected });
+      updateSettingsTimetableModeValue();
+      window.dispatchEvent(new CustomEvent('olli:kinder-timetable-mode-changed', { detail: { mode: selected } }));
     }
   },
   consultationMonths: {
