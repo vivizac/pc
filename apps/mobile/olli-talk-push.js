@@ -86,7 +86,7 @@
     if (!supportsPush()) throw new Error('이 기기에서는 푸시 알림을 사용할 수 없습니다.');
     if (!registrationPromise) {
       registrationPromise = navigator.serviceWorker
-        .register('./olli-push-sw.js?v=20260924-app-badge-1', { scope: './' })
+        .register('./olli-push-sw.js?v=20260929-work-material-badge-1', { scope: './' })
         .then(() => navigator.serviceWorker.ready)
         .catch((error) => {
           registrationPromise = null;
@@ -239,6 +239,24 @@
     }
   }
 
+  async function dispatchMaterial(requestId){
+    const current=context();
+    const id=String(requestId||'').trim();
+    if(!current.academyId||!current.sessionToken||!id)return false;
+    try{
+      await callPushFunction({
+        action:'dispatch-material',
+        session_token:current.sessionToken,
+        academy_id:current.academyId,
+        request_id:id,
+      });
+      return true;
+    }catch(error){
+      console.warn('재료주문 대상 푸시 전송 실패:',error);
+      return false;
+    }
+  }
+
   function setAppBadge(count){
     const value = Math.max(0, Number(count || 0));
     try {
@@ -269,6 +287,11 @@
     setTimeout(scroll, 250);
   }
 
+  function openMaterialsFromNotification(){
+    if(typeof window.openOlliTalkBetaPage==='function')window.openOlliTalkBetaPage();
+    setTimeout(()=>window.openOlliTalkArchivePage?.(null,{tab:'materials'}),220);
+  }
+
   function bind(){
     const button = getButton();
     if (button && !button.__olliPushBound) {
@@ -283,6 +306,8 @@
     navigator.serviceWorker?.addEventListener?.('message', (event) => {
       if (event?.data?.type === 'OLLI_TALK_OPEN_FROM_NOTIFICATION') {
         openFromNotification(event.data.messageId);
+      } else if(event?.data?.type==='OLLI_WORK_OPEN_MATERIALS'){
+        openMaterialsFromNotification();
       }
     });
 
@@ -295,6 +320,12 @@
       const nextQuery = params.toString();
       const nextUrl = window.location.pathname + (nextQuery ? '?' + nextQuery : '') + window.location.hash;
       try { history.replaceState(history.state, '', nextUrl); } catch (_) {}
+    } else if(params.get('olliWork')==='materials'){
+      setTimeout(openMaterialsFromNotification,700);
+      params.delete('olliWork');
+      const nextQuery=params.toString();
+      const nextUrl=window.location.pathname+(nextQuery?'?'+nextQuery:'')+window.location.hash;
+      try{history.replaceState(history.state,'',nextUrl)}catch(_){}
     }
 
     ensureSubscription({ interactive: false }).catch(() => {});
@@ -303,6 +334,7 @@
   window.OlliTalkPush = Object.freeze({
     ensureSubscription,
     dispatch,
+    dispatchMaterial,
     setAppBadge,
     syncState: () => ensureSubscription({ interactive: false }),
   });

@@ -48,6 +48,8 @@
   let olliTalkMentionSummaryInitialized = false;
   let olliTalkLastUnreadMentionCount = 0;
   let olliTalkLastMentionMessageId = 0;
+  let olliTalkLastUnreadMaterialCount = 0;
+  let olliTalkLastMaterialEventId = 0;
   let olliTalkSearchMatches = [];
   let olliTalkSearchIndex = -1;
   let olliTalkPendingActionReason = null;
@@ -2346,10 +2348,32 @@
     body.scrollTop=0;
   }
 
+  async function markOlliTalkMaterialNotificationsRead(){
+    const context=getOlliTalkBetaContext();
+    if(!context.sessionToken||!context.academyId)return false;
+    try{
+      const payload=await callOlliTalkRpc('olli_mobile_work_mark_material_read',{
+        p_session_token:context.sessionToken,
+        p_academy_id:context.academyId
+      });
+      if(!payload?.ok)return false;
+      olliTalkLastUnreadMaterialCount=0;
+      await refreshOlliTalkMentionBadge();
+      return true;
+    }catch(error){
+      console.warn('재료주문 알림 읽음 처리 실패:',error);
+      return false;
+    }
+  }
+
   function setOlliTalkArchiveTab(tab){
     if(!['media','files','materials'].includes(tab))return;
     olliTalkArchiveTab=tab;
     renderOlliTalkArchive();
+    const archive=document.getElementById('olliTalkArchiveScreen');
+    if(tab==='materials'&&archive&&archive.style.display!=='none'){
+      markOlliTalkMaterialNotificationsRead().catch(()=>{});
+    }
   }
   async function loadOlliTalkArchive(options={}){
     const sequence=++olliTalkArchiveLoadSequence,context=getOlliTalkBetaContext(),body=document.getElementById('olliTalkArchiveBody'),meta=document.getElementById('olliTalkArchiveMeta');
@@ -2417,6 +2441,9 @@
     if(talk){talk.style.display='none';talk.setAttribute('aria-hidden','true')}
     disconnectOlliTalkImageViewportObserver('chat');
     archive.style.display='flex';archive.setAttribute('aria-hidden','false');
+    if(olliTalkArchiveTab==='materials'){
+      markOlliTalkMaterialNotificationsRead().catch(()=>{});
+    }
 
     requestAnimationFrame(()=>{
       setTimeout(()=>{
@@ -3496,17 +3523,31 @@
       return false;
     }
     try {
-      const payload = await callOlliTalkRpc('olli_team_chat_mention_summary', {
+      const payload = await callOlliTalkRpc('olli_mobile_work_notification_summary', {
         p_session_token: context.sessionToken,
         p_academy_id: context.academyId
       });
       if (!payload || payload.ok !== true) return false;
       const unreadCount = Math.max(0, Number(payload.unread_count || 0));
+      const mentionUnreadCount = Math.max(0, Number(payload.mention_unread_count || 0));
+      const materialUnreadCount = Math.max(0, Number(payload.material_unread_count || 0));
       const latestMessageId = Math.max(0, Number(payload.latest_message_id || 0));
+      const latestMaterialEventId = Math.max(0, Number(payload.latest_material_event_id || 0));
 
       if (
         olliTalkMentionSummaryInitialized
-        && unreadCount > olliTalkLastUnreadMentionCount
+        && materialUnreadCount > olliTalkLastUnreadMaterialCount
+        && latestMaterialEventId
+        && latestMaterialEventId !== olliTalkLastMaterialEventId
+      ) {
+        const requester = String(payload.latest_material_requester || '선생님').trim() || '선생님';
+        const item = String(payload.latest_material_item || '재료주문').trim() || '재료주문';
+        if (typeof window.showPushToast === 'function') {
+          window.showPushToast('재료주문 · ' + requester + ': ' + item);
+        }
+      } else if (
+        olliTalkMentionSummaryInitialized
+        && mentionUnreadCount > olliTalkLastUnreadMentionCount
         && latestMessageId
         && latestMessageId !== olliTalkLastMentionMessageId
         && !isOlliTalkBetaVisible()
@@ -3520,12 +3561,14 @@
       }
 
       setOlliTalkMentionBadge(unreadCount);
-      olliTalkLastUnreadMentionCount = unreadCount;
+      olliTalkLastUnreadMentionCount = mentionUnreadCount;
+      olliTalkLastUnreadMaterialCount = materialUnreadCount;
       olliTalkLastMentionMessageId = latestMessageId;
+      olliTalkLastMaterialEventId = latestMaterialEventId;
       olliTalkMentionSummaryInitialized = true;
       return true;
     } catch(error) {
-      console.warn('올리톡 멘션 배지 확인 실패:', error);
+      console.warn('Work 알림 배지 확인 실패:', error);
       return false;
     }
   }
@@ -3540,8 +3583,8 @@
         p_up_to_message_id: upToMessageId || null
       });
       if (!payload || payload.ok !== true) return false;
-      setOlliTalkMentionBadge(0);
       olliTalkLastUnreadMentionCount = 0;
+      await refreshOlliTalkMentionBadge();
       return true;
     } catch(error) {
       console.warn('올리톡 멘션 읽음 처리 실패:', error);
