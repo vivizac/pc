@@ -69,6 +69,39 @@
     return call('POST', `rpc/${name}`, params);
   }
 
+  async function dispatchMentionPush(messageId, current = context()) {
+    const id = Number(messageId || 0);
+    const url = typeof SUPABASE_URL !== 'undefined' ? clean(SUPABASE_URL) : '';
+    const key = typeof SUPABASE_KEY !== 'undefined' ? clean(SUPABASE_KEY) : '';
+    if (!id || !url || !current?.sessionToken || !current?.academyId) return false;
+
+    try {
+      const response = await fetch(url + '/functions/v1/olli-team-chat-push', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(key ? { apikey: key } : {})
+        },
+        body: JSON.stringify({
+          action: 'dispatch',
+          session_token: current.sessionToken,
+          academy_id: current.academyId,
+          message_id: id
+        })
+      });
+      const raw = await response.text();
+      let result = {};
+      try { result = raw ? JSON.parse(raw) : {}; } catch (_) { result = { error: raw }; }
+      if (!response.ok || result?.ok !== true) {
+        throw new Error(result?.error || `푸시 서버 요청 실패 (${response.status})`);
+      }
+      return true;
+    } catch (error) {
+      console.warn('PC 팀톡 푸시 요청 실패:', error?.message || error);
+      return false;
+    }
+  }
+
   function create(tag, className, text) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -1414,6 +1447,7 @@
             p_message_id: Number(payload.message.id),
             p_member_ids: mentionIds
           });
+          dispatchMentionPush(Number(payload.message.id), current);
         } catch (error) {
           console.warn('PC 팀톡 멘션 저장 실패:', error?.message || error);
         }

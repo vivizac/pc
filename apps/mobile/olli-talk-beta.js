@@ -3609,7 +3609,12 @@
         const sender = String(payload.latest_sender_name || '올리톡').trim() || '올리톡';
         const body = String(payload.latest_body || '').trim();
         const preview = body.length > 58 ? body.slice(0, 58) + '…' : body;
-        if (typeof window.showPushToast === 'function') {
+        let notificationEnabled = true;
+        try {
+          const cached = typeof window.settingsGetCachedState === 'function' ? window.settingsGetCachedState() : {};
+          notificationEnabled = cached?.notificationEnabled !== false;
+        } catch (_) {}
+        if (notificationEnabled && typeof window.showPushToast === 'function') {
           window.showPushToast(sender + (preview ? ': ' + preview : ' 새 메시지가 있어요.'));
         }
       }

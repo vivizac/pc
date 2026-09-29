@@ -2,6 +2,38 @@ const OLLI_BOOT_MIN_DURATION = 1500;
 const OLLI_BOOT_FADE_OUT_DURATION = 720;
 const OLLI_PHONE_RESUME_STATE_PREFIX = 'olli_phone_resume_state_v1';
 let olliBootStartedAt = Date.now();
+let olliPushToastTimer = null;
+
+function showPushToast(message, options = {}) {
+  const text = String(message || '').trim();
+  if (!text) return false;
+
+  let toast = document.getElementById('olliPushToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'olliPushToast';
+    toast.className = 'pushToast';
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    toast.setAttribute('aria-atomic', 'true');
+    (document.body || document.documentElement).appendChild(toast);
+  }
+
+  toast.textContent = text;
+  if (olliPushToastTimer) clearTimeout(olliPushToastTimer);
+  requestAnimationFrame(() => toast.classList.add('show'));
+
+  const requestedDuration = Number(options?.duration || 0);
+  const duration = Number.isFinite(requestedDuration) && requestedDuration > 0
+    ? Math.max(900, requestedDuration)
+    : 2200;
+  olliPushToastTimer = setTimeout(() => {
+    toast.classList.remove('show');
+    olliPushToastTimer = null;
+  }, duration);
+  return true;
+}
+window.showPushToast = showPushToast;
 
 function getOlliPersistentSessionToken() {
   try { return String(localStorage.getItem('olli_account_session_token_v1') || '').trim(); }
