@@ -2,15 +2,13 @@
 
 ## 현재 원본과 로딩 경로
 
-공통 런타임 원본은 `vivizac/pc`의 `main`이다. Phone `vivizac/-`는 공통 파일 복사본을 저장하지 않고 `vercel.json` rewrite로 PC main 원본을 읽는다. 공통 응답에는 no-store 캐시 정책이 적용된다.
+공통 런타임의 단일 원본은 `vivizac/pc/packages/common`이다. PC Production은 `apps/pc`, Mobile Production은 `apps/mobile`을 Root Directory로 사용한다. 두 앱은 빌드 시 각각 `pc-runtime-manifest.json`, `mobile-runtime-manifest.json`에 따라 `packages/common`의 파일을 앱 루트에 staging한다.
 
-Phone에서 사용하는 실제 공통 파일 목록은 [Phone OLLI_COMMON_FILES.txt](https://github.com/vivizac/-/blob/main/OLLI_COMMON_FILES.txt)를 기준으로 한다. PC의 동명 목록은 기존 PC 검증 workflow용 부분 목록이다. 두 목록을 같은 의미로 간주하지 않는다.
-
-이 문서의 과거 자동 복사 workflow 설명은 폐기했다. Phone용 공통 파일 복사·동기화 커밋을 다시 만들지 않는다.
+이전 Mobile 저장소 `vivizac/mobile`과 raw GitHub rewrite 방식은 더 이상 Production 경로가 아니다. 공통 파일의 tracked 복사본이나 raw rewrite를 다시 만들지 않는다.
 
 ## 수정 전 보호 규칙
 
-[Phone OLLI_COMMON_SOURCE.md](https://github.com/vivizac/-/blob/main/OLLI_COMMON_SOURCE.md)의 관찰노트·수업기록 보호 규칙을 함께 확인한다.
+`apps/mobile`의 관찰노트·수업기록 전용 adapter와 테스트를 함께 확인한다.
 
 - 공통 저장 코어의 revision/CAS 충돌 보호를 유지한다.
 - `olli-observation-autosave-phone-adapter.js`는 Phone 전용이다. 공통 목록 추가, 단순 병합, 삭제, PC 파일로 덮어쓰기를 금지한다.
@@ -22,11 +20,11 @@ Phone에서 사용하는 실제 공통 파일 목록은 [Phone OLLI_COMMON_FILES
 
 ## 2026-09-18 올리 명령 라우터 기반
 
-- 공통 명령 진입점은 `olli-command-router-common.js`이며, 시간표 조회 공통 계층은 `olli-command-schedule-common.js`다. 둘 다 PC `main`이 단일 원본이다.
+- 공통 명령 진입점은 `olli-command-router-common.js`이며, 시간표 조회 공통 계층은 `olli-command-schedule-common.js`다. 둘 다 `packages/common`이 단일 원본이다.
 - 1분 피드백 입력은 기존 피드백 처리 전에 이 라우터를 먼저 확인한다.
 - 1단계 pass-through 검증을 마쳤고, 현재 빈자리 조회(`find_available_slots`)는 `오늘`, `내일`, `이번 주 ○요일`, `다음 주 ○요일`, 단독 `○요일`을 지원한다. 단독 요일은 오늘을 포함한 가장 가까운 해당 요일로 해석한다. 보강·체험·신규등록·수업이동은 조회 목적을 구분하며 정원 계산은 서버와 동일하게 정규수업 + 보강 + 체험을 합산한다.
 - 쓰기 명령 1차로 `add_makeup`(보강 등록)과 `move_class`(정규수업 이동)를 지원한다. 실제 저장 전 학생·기존수업·목적지 정원을 검증하고 `확인`/`취소` 대화를 거친 뒤 기존 시간표 서비스/RPC를 호출한다. 수업이동은 자동 대기 전환을 막기 위해 `allowWait:false`로 실행하고, 확인 시 목적지 자리를 다시 조회한다.
-- Phone은 로컬 복사본을 두지 않고 기존 공통 파일과 동일하게 PC 원본 rewrite를 사용한다.
+- PC와 Mobile은 각 runtime manifest를 통해 `packages/common`의 동일 원본을 빌드 시 staging한다.
 - 명령 기능을 추가하더라도 시간표·출석·학생 데이터 저장 로직을 라우터 안에 새로 만들지 말고 기존 서비스/RPC를 호출한다. 빈자리 조회는 PC `OlliTimetableService` 또는 Phone `OlliPhoneStudentScheduleService`가 읽은 서버 최신 주간 데이터를 사용한다.
 - 라우터 오류 시 기존 1분 피드백 흐름으로 계속 진행하도록 fallback을 유지한다.
 
@@ -80,8 +78,8 @@ Phone에서 사용하는 실제 공통 파일 목록은 [Phone OLLI_COMMON_FILES
 
 ## 2026-09-21 팀톡 설정 공통화
 
-- `olli-settings-team-talk-common.js`와 `olli-settings-team-talk-common.css`는 PC `main`이 단일 원본이다.
-- Phone은 로컬 복사본을 두지 않고 기존 공통 파일과 동일하게 Vercel rewrite로 PC 원본을 읽는다.
+- `olli-settings-team-talk-common.js`와 `olli-settings-team-talk-common.css`는 `packages/common`이 단일 원본이다.
+- Mobile은 `mobile-runtime-manifest.json`을 통해 같은 공통 원본을 빌드 시 staging한다.
 - 기존 설정 화면 안의 `팀톡 설정` 행과 상세 UI, 팀톡 배경(밝은 회색 `#F3F3F3` / 어두운 회색 `#666D77`) 적용, 올리봇 알림 설정 조회/저장을 이 공통 모듈이 담당한다.
 - 플랫폼별 채팅 레이아웃 자체는 기존 Phone/PC 전용 CSS를 유지하고, 공통 설정은 각각의 팀톡 화면에 theme 값만 전달한다.
 
@@ -91,7 +89,7 @@ Phone에서 사용하는 실제 공통 파일 목록은 [Phone OLLI_COMMON_FILES
 - 팀톡/워크의 봇·AI 공통 조회에서 `초등 화요일 4시`, `유치부 화요일 4시`, `화요일 4시`처럼 별도 질문어가 없는 짧은 입력도 정규 시간표 조회로 해석한다.
 - 부서가 있으면 해당 부서만 조회하고, 부서가 없으면 같은 요일·시간의 초등부와 유치부를 함께 조회한다. 한쪽 부서에 운영 수업이 없으면 그 사실도 명시한다.
 - 짧은 시간표 조회는 현재 정규 인원과 잔여 자리, 향후 정규 인원 변경, 날짜별 보강·체험 예약을 기존 1년 조회 데이터에서 함께 보여준다. 미래 정규 인원 증가의 원인이 신규등록인지 수업이동인지 클라이언트가 단정할 수 없으므로 `정규 등록 +N명 예정`으로 표시한다.
-- DB/RPC/저장·동기화 로직은 변경하지 않는다. 공통 Source of Truth는 계속 PC `main`의 `olli-command-router-common.js`와 `olli-command-schedule-common.js`이며 Phone은 기존 rewrite로 같은 원본을 사용한다.
+- DB/RPC/저장·동기화 로직은 변경하지 않는다. 공통 Source of Truth는 `packages/common`의 `olli-command-router-common.js`와 `olli-command-schedule-common.js`이며 PC/Mobile은 manifest staging으로 같은 원본을 사용한다.
 
 
 ## 2026-09-23 일반 팀톡의 올리 응답 버튼

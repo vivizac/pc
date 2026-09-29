@@ -6,48 +6,50 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
+const PC = path.join(ROOT, 'apps', 'pc');
 const MOBILE = path.join(ROOT, 'apps', 'mobile');
 const COMMON = path.join(ROOT, 'packages', 'common');
 
-test('monorepo transition directories exist while legacy PC root stays intact', () => {
-  assert.equal(fs.existsSync(path.join(ROOT, 'index.html')), true);
-  assert.equal(fs.existsSync(path.join(ROOT, 'apps', 'pc', 'index.html')), true);
+test('active monorepo app roots and common package exist', () => {
+  assert.equal(fs.existsSync(path.join(PC, 'index.html')), true);
   assert.equal(fs.existsSync(path.join(MOBILE, 'index.html')), true);
   assert.equal(fs.existsSync(path.join(MOBILE, 'api')), true);
+  assert.equal(fs.existsSync(path.join(COMMON, 'pc-runtime-manifest.json')), true);
+  assert.equal(fs.existsSync(path.join(COMMON, 'mobile-runtime-manifest.json')), true);
   assert.equal(fs.existsSync(path.join(ROOT, '.gitmodules')), false);
 });
 
-test('transitional common package starts identical to the current PC source', () => {
+test('legacy root runtime entrypoints are removed', () => {
   for (const file of [
-    'olli-command-schedule-common.js',
+    'index.html',
+    'olli-app-startup.js',
+    'pc-timetable.js',
     'olli-command-router-common.js',
-    'olli-attendance-data.js',
     'olli-realtime-common.js'
   ]) {
-    assert.equal(
-      fs.readFileSync(path.join(COMMON, file), 'utf8'),
-      fs.readFileSync(path.join(ROOT, file), 'utf8'),
-      file + ' must match the current PC source during the parity stage'
-    );
+    assert.equal(fs.existsSync(path.join(ROOT, file)), false, 'legacy root runtime remains: ' + file);
   }
 });
 
-test('Mobile common runtime manifest is available from the monorepo package', () => {
-  const manifest = JSON.parse(fs.readFileSync(path.join(COMMON, 'mobile-runtime-manifest.json'), 'utf8'));
-  assert.equal(manifest.files.length, 45);
-  assert.equal(new Set(manifest.files).size, 45);
-  for (const file of manifest.files) {
-    assert.equal(fs.existsSync(path.join(COMMON, file)), true, 'missing common runtime source: ' + file);
+test('shared runtime source exists only in packages/common, not tracked under apps/pc', () => {
+  const pcManifest = JSON.parse(fs.readFileSync(path.join(COMMON, 'pc-runtime-manifest.json'), 'utf8'));
+  const mobileManifest = JSON.parse(fs.readFileSync(path.join(COMMON, 'mobile-runtime-manifest.json'), 'utf8'));
+  assert.equal(pcManifest.files.length, 48);
+  assert.equal(mobileManifest.files.length, 45);
+
+  for (const file of pcManifest.files) {
+    assert.equal(fs.existsSync(path.join(COMMON, file)), true, 'missing common source: ' + file);
+    assert.equal(fs.existsSync(path.join(PC, file)), false, 'tracked PC common duplicate remains: ' + file);
   }
 });
 
-test('transition metadata records the current self-contained stage without claiming Production cutover', () => {
-  const doc = fs.readFileSync(path.join(ROOT, 'MONOREPO_TRANSITION.md'), 'utf8');
+test('source manifest records the completed active monorepo topology', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(COMMON, 'source-manifest.json'), 'utf8'));
-  assert.match(doc, /self-contained snapshot/i);
-  assert.match(doc, /Production Mobile remains unchanged/i);
-  assert.match(doc, /Vercel projects stay separate/i);
-  assert.equal(manifest.source_repository, 'vivizac/pc');
-  assert.equal(manifest.mobile_repository, 'vivizac/mobile');
+  assert.equal(manifest.cutover_status, 'completed');
+  assert.equal(manifest.active_repository, 'vivizac/pc');
+  assert.equal(manifest.active_pc_root, 'apps/pc');
+  assert.equal(manifest.active_mobile_root, 'apps/mobile');
+  assert.equal(manifest.common_source, 'packages/common');
+  assert.equal(manifest.provenance.mobile_history_repository, 'vivizac/mobile');
   assert.ok(Array.isArray(manifest.files) && manifest.files.length >= 40);
 });

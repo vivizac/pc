@@ -1,35 +1,37 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "policy": "separate-vercel-projects",
   "monorepo_repository": "vivizac/pc",
   "production_branch": "main",
+  "cutover_status": "completed",
   "projects": {
     "pc": {
       "vercel_project_id": "prj_cyeKySBK73mqbJFXcv1EShy18oTB",
       "current_repository": "vivizac/pc",
-      "target_repository": "vivizac/pc",
-      "current_root": ".",
-      "target_root": "apps/pc",
+      "current_root": "apps/pc",
       "deploy_independently": true,
-      "requires_outside_root_source_access": true
+      "requires_outside_root_source_access": true,
+      "common_source": "packages/common",
+      "common_runtime_manifest": "packages/common/pc-runtime-manifest.json"
     },
     "mobile": {
       "vercel_project_id": "prj_q09zNQj9z0VlRaVt9GgRfD0M4HvC",
-      "current_repository": "vivizac/mobile",
-      "target_repository": "vivizac/pc",
-      "current_root": ".",
-      "target_root": "apps/mobile",
+      "current_repository": "vivizac/pc",
+      "current_root": "apps/mobile",
       "deploy_independently": true,
+      "requires_outside_root_source_access": true,
+      "common_source": "packages/common",
+      "common_runtime_manifest": "packages/common/mobile-runtime-manifest.json",
       "source_history_repository": "vivizac/mobile",
-      "source_bridge": "self-contained apps/mobile snapshot on the work branch; Production remains on vivizac/mobile until cutover",
-      "requires_outside_root_source_access": true
+      "source_history_role": "legacy history only; not a Production deployment source"
     }
   },
-  "cutover_rules": [
-    "Never reuse one Vercel project for both apps.",
-    "Do not change Production root directories before both app previews pass.",
-    "Keep current Mobile repository deployment active until apps/mobile Preview passes and the Production cutover is explicitly verified.",
-    "When either Vercel project uses its apps/* Root Directory, outside-root source access must be enabled so packages/common is available during the build.",
-    "Remove raw GitHub bridges only after both Production deployments are stable."
+  "operating_rules": [
+    "Keep PC and Mobile on separate Vercel projects.",
+    "PC Production Root Directory is apps/pc; Mobile Production Root Directory is apps/mobile.",
+    "Keep outside-root source access enabled for both projects so packages/common is available during builds.",
+    "Shared runtime source lives only in packages/common and is staged from the app-specific runtime manifests.",
+    "Do not restore raw GitHub runtime rewrites or a second tracked common copy under either app.",
+    "Treat vivizac/mobile as legacy source history only unless an explicit rollback plan says otherwise."
   ]
 }
