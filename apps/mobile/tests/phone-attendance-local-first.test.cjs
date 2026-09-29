@@ -5,19 +5,24 @@ const fs = require('node:fs');
 const adapter = fs.readFileSync('olli-attendance-phone-adapter.js', 'utf8');
 const navigation = fs.readFileSync('olli-record-room-navigation.js', 'utf8');
 const observationRuntime = fs.readFileSync('olli-observation-runtime.js', 'utf8');
+const guideRuntime = fs.readFileSync('olli-attendance-guide-align-runtime.js', 'utf8');
+const studentOperations = fs.readFileSync('olli-data-student-operations.js', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
 
-test('attendance local snapshot hydrates month and week caches before server work', () => {
-  assert.match(adapter, /function hydrateCurrentMonthFromLocal\(/);
-  assert.match(adapter, /function hydrateTodayScheduleFromLocal\(/);
-  assert.match(adapter, /function hydrateLocalAttendanceSnapshot\([\s\S]*?hydrateCurrentMonthFromLocal[\s\S]*?hydrateTodayScheduleFromLocal/);
-  assert.match(adapter, /typeof data\.getCachedWeek !== 'function'/);
-  assert.match(adapter, /data\.getCachedWeek\(targetDateKey\)/);
+test('attendance re-entry hydrates only the lightweight week snapshot before first paint', () => {
+  assert.match(adapter, /function hydrateLocalAttendanceNavigationSnapshot\([\s\S]*?hydrateTodayScheduleFromLocal/);
+  assert.match(navigation, /adapter\.hydrateLocalAttendanceNavigationSnapshot/);
+  const navHydrateStart = navigation.indexOf('function hydrateRecordAttendanceLocalSnapshot');
+  const navHydrateEnd = navigation.indexOf('function syncRecordAcademyPageState', navHydrateStart);
+  const navHydrate = navigation.slice(navHydrateStart, navHydrateEnd);
+  assert.doesNotMatch(navHydrate, /hydrateCurrentMonthFromLocal/);
 });
 
-test('record list restores attendance snapshot before awaiting student server refresh', () => {
-  assert.match(navigation, /renderElementaryRecords\(name\);\s*hydrateRecordAttendanceLocalSnapshot\(\);\s*if \(localOnly\) return true;\s*await loadStudentsFromSupabase\(\);/);
-  assert.match(navigation, /renderKinderRecords\(name\);\s*hydrateRecordAttendanceLocalSnapshot\(\);\s*if \(localOnly\) return true;\s*await loadStudentsFromSupabase\(\);/);
+test('record list paints local attendance before awaiting student server refresh', () => {
+  assert.match(navigation, /hydrateRecordAttendanceLocalSnapshot\(\{ render: false \}\);\s*renderElementaryRecords\(name\);\s*if \(localOnly\) return true;\s*}\s*const beforeStudentSignature[\s\S]*?await loadStudentsFromSupabase\(\);/);
+  assert.match(navigation, /hydrateRecordAttendanceLocalSnapshot\(\{ render: false \}\);\s*renderKinderRecords\(name\);\s*if \(localOnly\) return true;\s*}\s*const beforeStudentSignature[\s\S]*?await loadStudentsFromSupabase\(\);/);
+  assert.match(navigation, /if \(!refreshOnly \|\| studentsChanged\) renderElementaryRecords\(name\)/);
+  assert.match(navigation, /if \(!refreshOnly \|\| studentsChanged\) renderKinderRecords\(name\)/);
 });
 
 test('attendance local store separates same-kind sessions by time and class', () => {
@@ -48,15 +53,23 @@ test('legacy coarse attendance migrates once to the first exact session', () => 
   assert.match(adapter, /global\.writeRecordDailyAttendanceStore\(store\)/);
 });
 
-test('attendance tapping updates local status before any schedule network wait', () => {
+test('attendance tapping paints exact-session state before local storage or network work', () => {
   const start = adapter.indexOf('async function toggleTodayAttendance');
   const end = adapter.indexOf('function afterRecordListLoaded', start);
   const body = adapter.slice(start, end);
-  const localWrite = body.indexOf('writeLocalStatus(student, targetDateKey, kind, nextStatus, false, target.timeSlot, target.classGroup)');
+  const visual = body.indexOf('applyButtonStatus(nextStatus)');
+  const paint = body.indexOf('await afterNextPaint()');
+  const studentRead = body.indexOf('global.getAllStudents().find');
+  const localRead = body.indexOf('global.readRecordDailyAttendanceStore');
+  const localWrite = body.indexOf('writeLocalStatus(');
   const serverWrite = body.indexOf('await setAttendanceRegisterStatus');
-  assert.ok(localWrite >= 0, 'local attendance write must exist');
-  assert.ok(serverWrite > localWrite, 'server save must follow local attendance write');
-  assert.doesNotMatch(body.slice(0, localWrite), /await syncTodaySchedule/);
+  assert.ok(visual >= 0, 'visual attendance update must exist');
+  assert.ok(paint > visual, 'browser paint yield must follow the visual update');
+  assert.ok(studentRead > paint, 'student LocalStorage-backed lookup must happen after the first paint');
+  assert.ok(localRead > paint, 'attendance LocalStorage read must happen after the first paint');
+  assert.ok(localWrite > paint, 'attendance local write must happen after the first paint');
+  assert.ok(serverWrite > localWrite, 'server save must follow local persistence');
+  assert.doesNotMatch(body.slice(0, paint), /hydrateLocalAttendanceSnapshot/);
 });
 
 test('phone attendance writes exact session status through v2 RPC', () => {
@@ -83,8 +96,13 @@ test('attendance save failure restores only the selected exact session', () => {
   assert.doesNotMatch(body, /restoreLocalItem/);
 });
 
-test('attendance background refresh does not block the already rendered list', () => {
-  assert.match(adapter, /function afterRecordListLoaded\(\)[\s\S]*?hydrateLocalAttendanceSnapshot\(new Date\(\), \{ render: true \}\);[\s\S]*?Promise\.all\(/);
+test('attendance background refresh merges authoritative data without blocking first paint', () => {
+  const start = adapter.indexOf('function afterRecordListLoaded');
+  const end = adapter.indexOf('// Stage 2 refreshes today\'s schedule only.', start);
+  const body = adapter.slice(start, end);
+  assert.doesNotMatch(body, /hydrateLocalAttendanceSnapshot/);
+  assert.match(body, /syncCurrentMonth\(new Date\(\), \{ render: false, skipLocal: true, forceMerge: true, onChanged: markChanged \}\)/);
+  assert.match(body, /if \(attendanceChanged && getCurrentRecordView\(\) === view\) renderCurrentRecordList\(\)/);
   assert.doesNotMatch(adapter, /async function afterRecordListLoaded\(\)/);
 });
 
@@ -96,8 +114,8 @@ test('attendance server refresh only rerenders schedule when the visible snapsho
 
 test('phone loads cache-busted shared and adapter attendance scripts', () => {
   assert.match(html, /olli-attendance-data\.js\?v=20260924-week-local-first-1/);
-  assert.match(html, /olli-attendance-phone-adapter\\.js\\?v=20260928-attendance-exact-session-1/);
-  assert.match(html, /olli-record-room-navigation\.js\?v=20260924-attendance-local-first-1/);
+  assert.match(html, /olli-attendance-phone-adapter\.js\?v=20260930-attendance-runtime-cleanup-1/);
+  assert.match(html, /olli-record-room-navigation\.js\?v=20260930-attendance-runtime-cleanup-1/);
 });
 
 
@@ -113,8 +131,31 @@ test('attendance student cards restore the original long-press action menu wirin
   assert.match(html, /id="studentActionOverlay"[\s\S]*?>휴원<[\s\S]*?>퇴원<[\s\S]*?>삭제</);
 });
 
+test('attendance row rendering uses one exact-session status owner and a render-scoped local store', () => {
+  assert.match(observationRuntime, /const adapterOwnsStatus = !!\(adapter && typeof adapter\.decorateLeadIcon === 'function'\)/);
+  assert.match(observationRuntime, /const status = adapterOwnsStatus \? '' : getRecordAttendanceStatus/);
+  assert.match(adapter, /let renderAttendanceStoreSnapshot = null/);
+  assert.match(adapter, /function scheduleAttendanceStoreRelease\(\)/);
+  assert.match(adapter, /Promise\.resolve\(\)\.then\(endRecordListRender\)/);
+});
+
+test('attendance taps do not start the student-row long press timer', () => {
+  assert.match(studentOperations, /if \(e\?\.target\?\.closest\?\.\('\.recordAttendanceLeadBtn'\)\) return;/);
+});
+
+test('attendance guide alignment no longer observes the entire attendance DOM', () => {
+  assert.doesNotMatch(guideRuntime, /new MutationObserver\(scheduleAlign\)/);
+  assert.match(guideRuntime, /new ResizeObserver\(scheduleAlign\)/);
+});
+
+test('revision polling is only a fallback while realtime is disconnected', () => {
+  assert.match(guideRuntime, /function hasRealtimeConnection\(\)/);
+  assert.match(guideRuntime, /if \(!allowWithRealtime && hasRealtimeConnection\(\)\) return false;/);
+  assert.doesNotMatch(guideRuntime, /changed \|\| \(firstCheck && forceRefresh\) \|\| forceRefresh/);
+});
+
 test('attendance long-press assets are cache-busted', () => {
-  assert.match(html, /olli-data-student-operations\.js\?v=20260926-attendance-longpress-1/);
+  assert.match(html, /olli-data-student-operations\.js\?v=20260930-attendance-runtime-cleanup-1/);
   assert.match(html, /olli-record-list-view\.js\?v=20260926-attendance-longpress-1/);
 });
 
@@ -134,6 +175,6 @@ test('attendance student action overlay belongs to the attendance page only', ()
 });
 
 test('attendance student action ownership assets are cache-busted', () => {
-  assert.match(html, /olli-data-student-operations\.js\?v=20260926-student-action-owner-1/);
+  assert.match(html, /olli-data-student-operations\.js\?v=20260930-attendance-runtime-cleanup-1/);
   assert.match(html, /olli-phone-base\.css\?v=20260926-student-action-owner-1/);
 });
