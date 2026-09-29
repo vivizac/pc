@@ -253,7 +253,7 @@
 #recordRoomScreen .olliTtStudent.regular.absenceUpcoming .olliTtStudentMore { color:#858b93; }
 #recordRoomScreen .olliTtStudent.regular.absenceUpcoming .olliTtSecondSessionMark,
 #recordRoomScreen .olliTtStudent.regular.absenceUpcoming .olliTtReservation { color:inherit; }
-#recordRoomScreen .olliTtStudent.regular.absent { border-color:#f08f93; color:#fff; background:#f08f93; box-shadow:none; }
+#recordRoomScreen .olliTtStudent.regular.absent { border-color:#ed7e83; color:#fff; background:#ed7e83; box-shadow:none; }
 #recordRoomScreen .olliTtStudent.regular.absent .olliTtStudentMore { color:rgba(255,255,255,.9); }
 #recordRoomScreen .olliTtStudent.regular.absent .olliTtSecondSessionMark,
 #recordRoomScreen .olliTtStudent.regular.absent .olliTtReservation { color:#fff; }
