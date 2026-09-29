@@ -1895,9 +1895,11 @@ function renderPhoneElementaryAttendanceLeadIcon(student) {
   return renderPhoneRecordAttendanceLeadIcon(student);
 }
 function renderPhoneRecordAttendanceLeadIcon(student, requestedKind) {
-  const status = getRecordAttendanceStatus(student?.id);
+  const adapter = window.OlliPhoneAttendanceAdapter;
+  const adapterOwnsStatus = !!(adapter && typeof adapter.decorateLeadIcon === 'function');
+  const status = adapterOwnsStatus ? '' : getRecordAttendanceStatus(student?.id);
   const missingEnrollment = isRecordStudentEnrollmentDateMissing(student);
-  const stateClass = [getRecordAttendanceStatusClass(status), missingEnrollment ? 'missingEnrollment' : ''].filter(Boolean).join(' ');
+  const stateClass = [adapterOwnsStatus ? '' : getRecordAttendanceStatusClass(status), missingEnrollment ? 'missingEnrollment' : ''].filter(Boolean).join(' ');
   const baseTitle = getRecordAttendanceStatusTitle(status, student);
   const title = missingEnrollment ? `${baseTitle} · 등록일 미입력` : baseTitle;
   let html = `<span class="recordAttendanceLeadBtn ${escapeHtml(stateClass)}" role="button" tabindex="0" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}" onclick="toggleRecordTodayAttendance(event,'${escapeTemplateLiteral(student?.id || '')}')" onkeydown="handleRecordAttendanceLeadKeydown(event,'${escapeTemplateLiteral(student?.id || '')}')">
@@ -1907,8 +1909,7 @@ function renderPhoneRecordAttendanceLeadIcon(student, requestedKind) {
       <path class="recordAttendanceLeadLine" d="M20.5 17.8 L20.5 30.5" fill="none" stroke="#8f8f8f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
   </span>`;
-  const adapter = window.OlliPhoneAttendanceAdapter;
-  if (adapter && typeof adapter.decorateLeadIcon === 'function') html = adapter.decorateLeadIcon(html, student, requestedKind);
+  if (adapterOwnsStatus) html = adapter.decorateLeadIcon(html, student, requestedKind);
   return html;
 }
 function handleRecordAttendanceLeadKeydown(event, studentId, sessionKind, timeSlot, classGroup) {
