@@ -4,8 +4,39 @@
   const REGISTER_STATUS_TO_LOCAL = Object.freeze({ present: 'attended', absent: 'absent', makeup: 'makeup', blank: '' });
   const LOCAL_STATUS_TO_REGISTER = Object.freeze({ attended: 'present', absent: 'absent', makeup: 'makeup', '': 'blank' });
   const todayScheduleState = { academyId: '', sessionToken: '', dateKey: '', loaded: false, loading: null, signature: '', regular: new Map(), regularSessions: new Map(), makeup: new Map() };
+  let renderAttendanceStoreSnapshot = null;
+  let renderAttendanceStoreDirty = false;
 
   function shared() { return global.OlliAttendanceData || null; }
+  function readAttendanceStore() {
+    if (renderAttendanceStoreSnapshot) return renderAttendanceStoreSnapshot;
+    if (typeof global.readRecordDailyAttendanceStore !== 'function') return {};
+    return global.readRecordDailyAttendanceStore();
+  }
+  function beginRecordListRender() {
+    renderAttendanceStoreSnapshot = typeof global.readRecordDailyAttendanceStore === 'function'
+      ? global.readRecordDailyAttendanceStore()
+      : {};
+    renderAttendanceStoreDirty = false;
+    return renderAttendanceStoreSnapshot;
+  }
+  function endRecordListRender() {
+    if (renderAttendanceStoreSnapshot && renderAttendanceStoreDirty
+        && typeof global.writeRecordDailyAttendanceStore === 'function') {
+      global.writeRecordDailyAttendanceStore(renderAttendanceStoreSnapshot);
+    }
+    renderAttendanceStoreSnapshot = null;
+    renderAttendanceStoreDirty = false;
+  }
+  function afterNextPaint() {
+    return new Promise(resolve => {
+      if (typeof global.requestAnimationFrame === 'function') {
+        global.requestAnimationFrame(() => resolve());
+      } else {
+        global.setTimeout(resolve, 0);
+      }
+    });
+  }
   function clean(value) { return String(value == null ? '' : value).trim(); }
   function dateKey(value) {
     if (typeof global.formatRecordAttendanceDateKey === 'function') {
@@ -205,15 +236,15 @@
       if (!Object.keys(store[targetDateKey]).length) delete store[targetDateKey];
     }
   }
-  function writeLocalStatus(student, targetDateKey, kind, status, serverSynced, timeSlot, classGroup) {
-    if (!student?.id || !targetDateKey || typeof global.readRecordDailyAttendanceStore !== 'function' || typeof global.writeRecordDailyAttendanceStore !== 'function') return;
-    const store = global.readRecordDailyAttendanceStore();
+  function writeLocalStatus(student, targetDateKey, kind, status, serverSynced, timeSlot, classGroup, storeOverride = null) {
+    if (!student?.id || !targetDateKey || typeof global.writeRecordDailyAttendanceStore !== 'function') return;
+    const store = storeOverride || (typeof global.readRecordDailyAttendanceStore === 'function' ? global.readRecordDailyAttendanceStore() : {});
     setStoreSessionStatus(store, student, targetDateKey, kind, status, serverSynced, timeSlot, classGroup);
     global.writeRecordDailyAttendanceStore(store);
   }
-  function getLocalSessionSnapshot(studentId, targetDateKey, kind, timeSlot, classGroup) {
-    if (!studentId || !targetDateKey || typeof global.readRecordDailyAttendanceStore !== 'function') return null;
-    const store = global.readRecordDailyAttendanceStore();
+  function getLocalSessionSnapshot(studentId, targetDateKey, kind, timeSlot, classGroup, storeOverride = null) {
+    if (!studentId || !targetDateKey) return null;
+    const store = storeOverride || readAttendanceStore();
     const item = store?.[targetDateKey]?.[String(studentId)];
     if (!item || typeof item !== 'object') return null;
     const targetKind = normalizeSessionKind(kind);
@@ -283,9 +314,9 @@
     });
     if (!Object.keys(bucket).length) delete sessions[kind];
   }
-  function getAttendanceSessionStatus(studentId, targetDateKey, kind, timeSlot, classGroup) {
-    if (!studentId || !targetDateKey || typeof global.readRecordDailyAttendanceStore !== 'function') return '';
-    const store = global.readRecordDailyAttendanceStore();
+  function getAttendanceSessionStatus(studentId, targetDateKey, kind, timeSlot, classGroup, storeOverride = null) {
+    if (!studentId || !targetDateKey) return '';
+    const store = storeOverride || readAttendanceStore();
     const item = store?.[targetDateKey]?.[String(studentId)];
     if (!item || typeof item !== 'object') return '';
     const targetKind = normalizeSessionKind(kind);
@@ -300,7 +331,9 @@
     if (exactKey && (legacyBucket || legacyItem)) {
       ensureItemSessions(item, targetKind, timeSlot, classGroup);
       refreshAggregateStatus(item);
-      if (typeof global.writeRecordDailyAttendanceStore === 'function') {
+      if (store === renderAttendanceStoreSnapshot) {
+        renderAttendanceStoreDirty = true;
+      } else if (typeof global.writeRecordDailyAttendanceStore === 'function') {
         global.writeRecordDailyAttendanceStore(store);
       }
     }
@@ -416,7 +449,7 @@
       if (options.skipLocal !== true && Array.isArray(cached)) mergeServerMonth(cached, yearMonth);
       const before = attendanceRowsSignature(cached);
       const rows = await data.loadMonth(yearMonth);
-      const changed = !Array.isArray(cached) || attendanceRowsSignature(rows) !== before;
+      const changed = options.forceMerge === true || !Array.isArray(cached) || attendanceRowsSignature(rows) !== before;
       if (changed) {
         mergeServerMonth(rows, yearMonth);
         if (options.render !== false) renderCurrentRecordList();
@@ -503,6 +536,10 @@
     const weekHydrated = hydrateTodayScheduleFromLocal(baseDate, { render: false });
     if ((monthHydrated || weekHydrated) && options.render !== false) renderCurrentRecordList();
     return monthHydrated || weekHydrated;
+  }
+
+  function hydrateLocalAttendanceNavigationSnapshot(baseDate, options = {}) {
+    return hydrateTodayScheduleFromLocal(baseDate, { render: options.render });
   }
 
   async function syncTodaySchedule(baseDate, options = {}) {
@@ -813,11 +850,20 @@
     if (isStudentSelectionMode() || typeof global.getAllStudents !== 'function') return;
     const student = global.getAllStudents().find(item => String(item.id) === String(studentId));
     if (!student) return;
+
     const today = new Date();
     const targetDateKey = dateKey(today);
-    hydrateLocalAttendanceSnapshot(today, { render: false });
-
     const requested = clean(requestedKind).toLowerCase();
+    const pressedButton = event?.currentTarget?.classList?.contains('recordAttendanceLeadBtn')
+      ? event.currentTarget
+      : event?.target?.closest?.('.recordAttendanceLeadBtn');
+
+    // Normal rendered controls already carry their exact session target.
+    // Only hydrate the lightweight week snapshot when an old/undecorated control has no exact target.
+    if (!(Number.isFinite(Number(timeSlot)) && Number(timeSlot) > 0)) {
+      hydrateTodayScheduleFromLocal(today, { render: false });
+    }
+
     const scheduleEntry = getTodayScheduleEntry(student.id);
     const kind = requested === 'regular' || requested === 'makeup'
       ? requested
@@ -830,8 +876,14 @@
       return;
     }
 
-    const currentStatus = getAttendanceSessionStatus(student.id, targetDateKey, kind, target.timeSlot, target.classGroup);
-    const beforeSession = getLocalSessionSnapshot(student.id, targetDateKey, kind, target.timeSlot, target.classGroup);
+    const buttonStatus = pressedButton?.classList?.contains('attended')
+      ? 'attended'
+      : (pressedButton?.classList?.contains('absent')
+        ? 'absent'
+        : (pressedButton?.classList?.contains('makeup') ? 'makeup' : ''));
+    const currentStatus = pressedButton
+      ? buttonStatus
+      : getAttendanceSessionStatus(student.id, targetDateKey, kind, target.timeSlot, target.classGroup);
 
     let nextStatus = '';
     if (kind === 'makeup') {
@@ -844,25 +896,47 @@
       nextStatus = 'attended';
     }
 
-    const pressedButton = event?.currentTarget?.classList?.contains('recordAttendanceLeadBtn')
-      ? event.currentTarget
-      : event?.target?.closest?.('.recordAttendanceLeadBtn');
     if (pressedButton) {
       pressedButton.classList.remove('attended', 'absent', 'makeup', 'blank');
       if (nextStatus === 'attended' || nextStatus === 'absent' || nextStatus === 'makeup') {
         pressedButton.classList.add(nextStatus);
+      } else {
+        pressedButton.classList.add('blank');
       }
     }
 
-    writeLocalStatus(student, targetDateKey, kind, nextStatus, false, target.timeSlot, target.classGroup);
+    // Yield before local merge/storage work so iOS can paint the pressed state first.
+    await afterNextPaint();
+
+    const localStore = typeof global.readRecordDailyAttendanceStore === 'function'
+      ? global.readRecordDailyAttendanceStore()
+      : {};
+    const beforeSession = getLocalSessionSnapshot(
+      student.id, targetDateKey, kind, target.timeSlot, target.classGroup, localStore
+    );
+    writeLocalStatus(
+      student, targetDateKey, kind, nextStatus, false, target.timeSlot, target.classGroup, localStore
+    );
+
     try {
       await setAttendanceRegisterStatus(student, targetDateKey, kind, nextStatus, target.timeSlot, target.classGroup);
       writeLocalStatus(student, targetDateKey, kind, nextStatus, true, target.timeSlot, target.classGroup);
-      await Promise.all([syncCurrentMonth(today, { render: false }), syncTodaySchedule(today, { render: false })]);
-      renderCurrentRecordList();
+
+      // The pressed control already reflects the authoritative result.
+      // Only the optional attendance-guide summary needs a full-row refresh here.
+      if (global.OlliAttendanceGuideUI?.isActive?.()) renderCurrentRecordList();
     } catch (error) {
       restoreLocalSession(student, targetDateKey, kind, target.timeSlot, target.classGroup, beforeSession);
-      renderCurrentRecordList();
+      if (pressedButton) {
+        pressedButton.classList.remove('attended', 'absent', 'makeup', 'blank');
+        if (currentStatus === 'attended' || currentStatus === 'absent' || currentStatus === 'makeup') {
+          pressedButton.classList.add(currentStatus);
+        } else {
+          pressedButton.classList.add('blank');
+        }
+      } else {
+        renderCurrentRecordList();
+      }
       const message = String(error?.message || error || '출석 저장에 실패했습니다.');
       if (typeof global.showPushToast === 'function') global.showPushToast(message);
       else global.alert(message);
@@ -872,9 +946,8 @@
   function afterRecordListLoaded() {
     const view = getCurrentRecordView();
     if (view !== 'elementary' && view !== 'kinder') return false;
-    hydrateLocalAttendanceSnapshot(new Date(), { render: false });
     Promise.all([
-      syncCurrentMonth(new Date(), { render: false, skipLocal: true }),
+      syncCurrentMonth(new Date(), { render: false, skipLocal: true, forceMerge: true }),
       syncTodaySchedule(new Date(), { render: false, skipLocal: true })
     ]).then(() => {
       if (getCurrentRecordView() === view) renderCurrentRecordList();
@@ -933,6 +1006,9 @@
     decorateLeadIcon,
     toggleTodayAttendance,
     hydrateLocalAttendanceSnapshot,
+    hydrateLocalAttendanceNavigationSnapshot,
+    beginRecordListRender,
+    endRecordListRender,
     afterRecordListLoaded
   });
   global.syncRecordAttendanceCurrentMonthFromServer = syncCurrentMonth;
