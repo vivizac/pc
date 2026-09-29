@@ -40,6 +40,7 @@
     sidebarQuery: '',
     pane: 'schedule',
     scheduleDivision: 'elementary',
+    pickupCollapsed: false,
     attendanceDivision: 'elementary',
     attendanceSort: 'grade',
     attendanceMonth: dateKey(new Date()).slice(0, 7),
@@ -1097,7 +1098,10 @@
       dates.forEach((date) => { grid += cellHtml(division, date, time); });
     });
     grid += '</div>';
-    return `<section class="olliTtSection ${division}"><div class="olliTtScroll">${grid}${division === 'kinder' ? pickupGridHtml(dates) : ''}</div></section>`;
+    const pickupToggle = division === 'kinder'
+      ? `<button type="button" class="olliTtPickupToggle" data-tt-pickup-toggle aria-expanded="${state.pickupCollapsed ? 'false' : 'true'}" aria-label="${state.pickupCollapsed ? '픽업 시간표 펼치기' : '픽업 시간표 접기'}"><span aria-hidden="true">${state.pickupCollapsed ? '⌃' : '⌄'}</span><strong>${state.pickupCollapsed ? '픽업 펼치기' : '픽업 접기'}</strong></button>`
+      : '';
+    return `<section class="olliTtSection ${division}${division === 'kinder' && state.pickupCollapsed ? ' pickupCollapsed' : ''}"><div class="olliTtScroll">${grid}${division === 'kinder' ? pickupGridHtml(dates) : ''}</div>${pickupToggle}</section>`;
   }
 
   function renderTimetable() {
@@ -1216,6 +1220,16 @@
 
   function onTimetableClick(event) {
     if (handleScheduleControl(event)) return;
+    const pickupToggle = event.target.closest('[data-tt-pickup-toggle]');
+    if (pickupToggle) {
+      state.pickupCollapsed = !state.pickupCollapsed;
+      const section = pickupToggle.closest('.olliTtSection.kinder');
+      if (section) section.classList.toggle('pickupCollapsed', state.pickupCollapsed);
+      pickupToggle.setAttribute('aria-expanded', state.pickupCollapsed ? 'false' : 'true');
+      pickupToggle.setAttribute('aria-label', state.pickupCollapsed ? '픽업 시간표 펼치기' : '픽업 시간표 접기');
+      pickupToggle.innerHTML = `<span aria-hidden="true">${state.pickupCollapsed ? '⌃' : '⌄'}</span><strong>${state.pickupCollapsed ? '픽업 펼치기' : '픽업 접기'}</strong>`;
+      return;
+    }
     const holidayTarget = event.target.closest('[data-holiday="1"]');
     if (holidayTarget) {
       event.preventDefault();
