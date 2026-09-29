@@ -6,8 +6,12 @@ function syncRecordAcademyPageState(){
 
 function hydrateRecordAttendanceLocalSnapshot(options = {}){
   const adapter = window.OlliPhoneAttendanceAdapter;
-  if (!adapter || typeof adapter.hydrateLocalAttendanceSnapshot !== 'function') return false;
-  try { return adapter.hydrateLocalAttendanceSnapshot(new Date(), { render: options.render !== false }); }
+  if (!adapter) return false;
+  const hydrate = typeof adapter.hydrateLocalAttendanceNavigationSnapshot === 'function'
+    ? adapter.hydrateLocalAttendanceNavigationSnapshot
+    : adapter.hydrateLocalAttendanceSnapshot;
+  if (typeof hydrate !== 'function') return false;
+  try { return hydrate(new Date(), { render: options.render !== false }); }
   catch (error) {
     console.warn('출석 로컬 스냅샷 복원 실패:', error?.message || error);
     return false;
