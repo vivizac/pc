@@ -1218,7 +1218,7 @@
   align-items:center;
   justify-content:center;
   gap:0;
-  overflow:hidden;
+  overflow:visible;
   z-index:42;
   pointer-events:auto;
 }
@@ -1252,6 +1252,10 @@
   stroke-linecap:round;
   stroke-linejoin:round;
   pointer-events:none;
+}
+#olliTalkBetaScreen #olliTalkArchiveBtn .olliWorkNotificationBadge{
+  top:-5px;
+  right:-5px;
 }
 #olliTalkBetaScreen .olliTalkHeaderToolBtn:active{background:var(--olli-talk-control-header-pressed-bg)}
 @media (hover:hover){
