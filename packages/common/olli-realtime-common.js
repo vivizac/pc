@@ -255,18 +255,23 @@
     let timer = null;
     let retryPending = false;
     let pendingTrigger = '';
+    let pendingRevision = 0;
 
     function schedule(delay) {
       if (disposed || !pending || running || timer !== null || document.hidden) return;
       timer = global.setTimeout(() => { timer = null; flush(); }, delay);
     }
 
-    function request(reason = 'manual', retryUntilApplied = false) {
+    function request(reason = 'manual', retryUntilApplied = false, revision = 0) {
       if (disposed) return;
       sequence += 1;
       pending = true;
       if (retryUntilApplied) retryPending = true;
       const trigger = clean(reason) || 'manual';
+      if (trigger === 'change') {
+        const nextRevision = Math.max(0, Number(revision || 0));
+        if (nextRevision) pendingRevision = nextRevision;
+      }
       if (trigger === 'change' || pendingTrigger !== 'change') pendingTrigger = trigger;
       schedule(120);
     }
@@ -279,11 +284,13 @@
         pending = false;
         retryPending = false;
         pendingTrigger = '';
+        pendingRevision = 0;
         return;
       }
       if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
       const receivedSequence = sequence;
       const trigger = pendingTrigger || 'manual';
+      const revision = trigger === 'change' ? Math.max(0, Number(pendingRevision || 0)) : 0;
       const academyContext = global.OlliStorageCore?.AcademyContext;
       const contextToken = academyContext?.captureToken?.();
       const isCurrent = () => !disposed && academyId === currentAcademyId()
@@ -292,11 +299,12 @@
       running = true;
       let retryDelay = 1000;
       try {
-        const applied = await refresh({ academyId, isCurrent, trigger });
+        const applied = await refresh({ academyId, isCurrent, trigger, revision });
         if (applied === true && isCurrent() && sequence === receivedSequence) {
           pending = false;
           retryPending = false;
           pendingTrigger = '';
+          pendingRevision = 0;
         }
       } catch (error) {
         retryDelay = 5000;
@@ -308,13 +316,16 @@
         else {
           pending = false;
           pendingTrigger = '';
+          pendingRevision = 0;
         }
       }
     }
 
     function onChange(event) {
       const detail = event?.detail;
-      if (detail?.domain === domain && clean(detail.academyId) === currentAcademyId()) request('change', true);
+      if (detail?.domain === domain && clean(detail.academyId) === currentAcademyId()) {
+        request('change', true, Number(detail.revision || 0));
+      }
     }
     function onStatus(event) {
       const detail = event?.detail;
@@ -341,6 +352,7 @@
         pending = false;
         retryPending = false;
         pendingTrigger = '';
+        pendingRevision = 0;
         if (timer !== null) global.clearTimeout(timer);
         global.removeEventListener('olli:realtime-change', onChange);
         global.removeEventListener('olli:realtime-status', onStatus);
