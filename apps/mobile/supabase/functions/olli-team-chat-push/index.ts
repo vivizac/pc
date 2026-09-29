@@ -85,10 +85,20 @@ Deno.serve(async (req: Request) => {
     targets: any[];
     vapid: { publicKey: string; privateKey: string };
     notificationPayload: string;
-    messageId: number;
+    messageId?: number;
+    requestId?: string;
+    deliveryKind?: "chat" | "material";
     academyId: string;
   }) {
-    const { targets, vapid, notificationPayload, messageId, academyId } = options;
+    const {
+      targets,
+      vapid,
+      notificationPayload,
+      messageId = 0,
+      requestId = "",
+      deliveryKind = "chat",
+      academyId,
+    } = options;
     let notificationBase: any = null;
     try { notificationBase = JSON.parse(notificationPayload); } catch (_) {}
 
@@ -96,8 +106,13 @@ Deno.serve(async (req: Request) => {
       return { ok: true, attempted: 0, sent: 0, failed: 0 };
     }
 
+    const configuredVapidSubject = clean(Deno.env.get("OLLI_VAPID_SUBJECT"));
+    const vapidSubject = /^(https:\/\/|mailto:)/i.test(configuredVapidSubject)
+      ? configuredVapidSubject
+      : supabaseUrl;
+
     webpush.setVapidDetails(
-      new URL(req.url).origin,
+      vapidSubject,
       vapid.publicKey,
       vapid.privateKey,
     );
@@ -132,12 +147,21 @@ Deno.serve(async (req: Request) => {
         });
 
         sent += 1;
-        await admin.rpc("olli_team_chat_push_mark_delivered", {
-          p_academy_id: academyId,
-          p_message_id: messageId,
-          p_subscription_id: target.subscription_id,
-          p_member_id: target.member_id,
-        });
+        if (deliveryKind === "material") {
+          await admin.rpc("olli_team_material_push_mark_delivered", {
+            p_academy_id: academyId,
+            p_request_id: requestId,
+            p_subscription_id: target.subscription_id,
+            p_member_id: target.member_id,
+          });
+        } else {
+          await admin.rpc("olli_team_chat_push_mark_delivered", {
+            p_academy_id: academyId,
+            p_message_id: messageId,
+            p_subscription_id: target.subscription_id,
+            p_member_id: target.member_id,
+          });
+        }
       } catch (error: any) {
         failed += 1;
         const statusCode = Number(error?.statusCode || error?.status || 0);
@@ -221,6 +245,51 @@ Deno.serve(async (req: Request) => {
 
     if (action === "public-key") {
       return json({ ok: true, public_key: vapid.publicKey });
+    }
+
+    if (action === "dispatch-material") {
+      const requestId = clean(body.request_id);
+      if (!requestId) {
+        return json({ ok: false, error: "Material request id is required." }, 400);
+      }
+
+      const targetsResult = await admin.rpc("olli_team_material_push_targets", {
+        p_session_token: sessionToken,
+        p_academy_id: academyId,
+        p_request_id: requestId,
+      });
+
+      if (targetsResult.error || !targetsResult.data?.ok) {
+        return json({
+          ok: false,
+          error: targetsResult.error?.message || "Material push targets could not be resolved.",
+        }, 400);
+      }
+
+      const payload = targetsResult.data;
+      const targets = Array.isArray(payload.targets) ? payload.targets : [];
+      const requesterName = clean(payload.requester_name) || "선생님";
+      const itemName = clean(payload.item_name) || "재료주문";
+      const quantityText = clean(payload.quantity_text);
+      const notificationPayload = JSON.stringify({
+        title: "올리 Work · 재료주문",
+        body: preview(requesterName + ": " + itemName + (quantityText ? " · " + quantityText : ""), 180),
+        tag: "olli-material-" + requestId,
+        data: {
+          type: "olli-material-request",
+          requestId,
+          url: "./?olliWork=materials",
+        },
+      });
+
+      return json(await deliverTargets({
+        targets,
+        vapid,
+        notificationPayload,
+        requestId,
+        deliveryKind: "material",
+        academyId,
+      }));
     }
 
     if (action !== "dispatch") {

@@ -3581,7 +3581,7 @@
     try { window.OlliTalkPush?.setAppBadge?.(value); } catch (_) {}
   }
 
-  async function refreshOlliTalkMentionBadge(){
+  async function refreshOlliTalkMentionBadge(options = {}){
     const context = getOlliTalkBetaContext();
     if (!context.sessionToken || !context.academyId) {
       setOlliTalkMentionBadge(0);
@@ -3598,11 +3598,11 @@
       const materialUnreadCount = Math.max(0, Number(payload.material_unread_count || 0));
       const latestMessageId = Math.max(0, Number(payload.latest_message_id || 0));
       const latestMaterialEventId = Math.max(0, Number(payload.latest_material_event_id || 0));
+      const notifyMessageId = Math.max(0, Number(options?.notifyMessageId || 0));
 
       if (
-        olliTalkMentionSummaryInitialized
-        && mentionUnreadCount > olliTalkLastUnreadMentionCount
-        && latestMessageId
+        notifyMessageId
+        && latestMessageId === notifyMessageId
         && latestMessageId !== olliTalkLastMentionMessageId
         && !isOlliTalkBetaVisible()
       ) {
@@ -4621,7 +4621,12 @@
     if (olliTalkMentionBadgeWatcher || typeof window.OlliRealtime?.watchDomain !== 'function') return;
     olliTalkMentionBadgeWatcher = window.OlliRealtime.watchDomain('chat', async (context) => {
       if (!context?.isCurrent?.()) return false;
-      return refreshOlliTalkMentionBadge();
+      const notifyMessageId = context?.trigger === 'change' ? Number(context?.revision || 0) : 0;
+      if (notifyMessageId) {
+        await new Promise(resolve => setTimeout(resolve, 140));
+        if (!context?.isCurrent?.()) return false;
+      }
+      return refreshOlliTalkMentionBadge({ notifyMessageId });
     });
   }
 

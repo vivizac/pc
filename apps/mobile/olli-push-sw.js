@@ -7,10 +7,6 @@ self.addEventListener('push', (event) => {
       try { payload = { body: event.data ? event.data.text() : '' }; } catch (_) {}
     }
 
-    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    const hasVisibleWindow = windows.some((client) => client.visibilityState === 'visible');
-    if (hasVisibleWindow) return;
-
     const title = String(payload.title || '올리톡');
     const body = String(payload.body || '');
     const data = payload.data && typeof payload.data === 'object' ? payload.data : {};
