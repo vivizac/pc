@@ -194,7 +194,17 @@
     const raw = division === 'kinder' ? Number(weekData?.kinder_capacity) : Number(weekData?.elementary_capacity);
     return Number.isFinite(raw) && raw > 0 ? raw : 5;
   }
-  function studentAddIsElementarySplit(data, weekday, timeSlot){
+  function studentAddIsElementarySplit(data, weekday, timeSlot, effectiveDate){
+    const targetDate = studentAddClean(effectiveDate || studentAddTodayKey()).slice(0,10);
+    const periods = Array.isArray(data?.class_split_periods) ? data.class_split_periods : [];
+    if (periods.length) {
+      return periods.some(row => {
+        if (Number(row?.weekday) !== Number(weekday) || Number(row?.time_slot) !== Number(timeSlot)) return false;
+        const from = studentAddClean(row?.effective_from).slice(0,10);
+        const to = studentAddClean(row?.effective_to).slice(0,10);
+        return (!from || from <= targetDate) && (!to || to >= targetDate);
+      });
+    }
     return (Array.isArray(data?.class_splits) ? data.class_splits : []).some(row =>
       Number(row?.weekday) === Number(weekday) && Number(row?.time_slot) === Number(timeSlot)
     );
@@ -208,49 +218,76 @@
     const enrollments = Array.isArray(data?.enrollments) ? data.enrollments : [];
     const assignments = Array.isArray(data?.class_teachers) ? data.class_teachers : [];
     const capacity = studentAddCapacity(data, division);
-    const seen = new Set();
-    const options = [];
+    const effectiveDate = studentAddTodayKey();
+    const slotMap = new Map();
+    const addSlot = (weekday, timeSlot) => {
+      const w = Number(weekday);
+      const t = Number(timeSlot);
+      if (!Number.isFinite(w) || w < 1 || w > 6 || !Number.isFinite(t) || t < 1 || t > 12) return;
+      slotMap.set([w,t].join('|'), { weekday:w, time_slot:t });
+    };
 
     assignments
       .filter(row => studentAddClean(row?.division) === division)
-      .sort((a,b) => Number(a?.weekday)-Number(b?.weekday) || Number(a?.time_slot)-Number(b?.time_slot) || studentAddGroupValue(a?.class_group).localeCompare(studentAddGroupValue(b?.class_group)))
-      .forEach(row => {
-        const weekday = Number(row?.weekday);
-        const timeSlot = Number(row?.time_slot);
-        const classGroup = studentAddGroupValue(row?.class_group);
-        const teacherRaw = studentAddTeacherRaw(row?.teacher_name);
-        if (!weekday || !timeSlot || !teacherRaw) return;
-        const key = [weekday,timeSlot,classGroup].join('|');
-        if (seen.has(key)) return;
-        seen.add(key);
+      .forEach(row => addSlot(row?.weekday, row?.time_slot));
+    enrollments
+      .filter(row => studentAddClean(row?.division) === division && (!row?.status || studentAddClean(row.status).toLowerCase() === 'active'))
+      .forEach(row => addSlot(row?.weekday, row?.time_slot));
 
-        const count = enrollments.filter(item =>
-          studentAddClean(item?.division) === division &&
-          Number(item?.weekday) === weekday &&
-          Number(item?.time_slot) === timeSlot &&
-          studentAddGroupValue(item?.class_group) === classGroup &&
-          (!item?.status || studentAddClean(item.status).toLowerCase() === 'active')
-        ).length;
+    if (division === 'elementary') {
+      for (let weekday = 1; weekday <= 5; weekday += 1) {
+        for (let timeSlot = 1; timeSlot <= 6; timeSlot += 1) addSlot(weekday, timeSlot);
+      }
+      [10,11,12].forEach(timeSlot => addSlot(6, timeSlot));
+    } else {
+      (Array.isArray(data?.kinder_class_merges) ? data.kinder_class_merges : [])
+        .forEach(row => addSlot(row?.weekday, row?.time_slot));
+      for (let weekday = 1; weekday <= 6; weekday += 1) {
+        [4,5].forEach(timeSlot => addSlot(weekday, timeSlot));
+      }
+    }
 
+    const options = [];
+    Array.from(slotMap.values())
+      .sort((a,b) => a.weekday-b.weekday || a.time_slot-b.time_slot)
+      .forEach(slot => {
         const split = division === 'elementary'
-          ? studentAddIsElementarySplit(data, weekday, timeSlot)
-          : !studentAddIsKinderMerged(data, weekday, timeSlot);
+          ? studentAddIsElementarySplit(data, slot.weekday, slot.time_slot, effectiveDate)
+          : !studentAddIsKinderMerged(data, slot.weekday, slot.time_slot);
         const merged = division === 'kinder' && !split;
-        const classLabel = division === 'kinder'
-          ? (merged ? '합반' : `${classGroup}반`)
-          : (split ? `${classGroup}반` : '기본 클래스');
+        const groups = split ? ['A','B'] : ['A'];
 
-        options.push({
-          division,
-          weekday,
-          time_slot: timeSlot,
-          class_group: classGroup,
-          teacher_name: teacherRaw,
-          teacher_label: studentAddTeacherLabel(teacherRaw),
-          class_label: classLabel,
-          count,
-          capacity,
-          full: count >= capacity
+        groups.forEach(classGroup => {
+          const teacher = assignments.find(row =>
+            studentAddClean(row?.division) === division &&
+            Number(row?.weekday) === slot.weekday &&
+            Number(row?.time_slot) === slot.time_slot &&
+            studentAddGroupValue(row?.class_group) === classGroup
+          );
+          const teacherRaw = studentAddTeacherRaw(teacher?.teacher_name);
+          const count = enrollments.filter(item =>
+            studentAddClean(item?.division) === division &&
+            Number(item?.weekday) === slot.weekday &&
+            Number(item?.time_slot) === slot.time_slot &&
+            studentAddGroupValue(item?.class_group) === classGroup &&
+            (!item?.status || studentAddClean(item.status).toLowerCase() === 'active')
+          ).length;
+          const classLabel = division === 'kinder'
+            ? (merged ? '합반' : classGroup + '반')
+            : (split ? classGroup + '반' : '기본 클래스');
+
+          options.push({
+            division,
+            weekday: slot.weekday,
+            time_slot: slot.time_slot,
+            class_group: classGroup,
+            teacher_name: teacherRaw,
+            teacher_label: studentAddTeacherLabel(teacherRaw),
+            class_label: classLabel,
+            count,
+            capacity,
+            full: count >= capacity
+          });
         });
       });
 
@@ -261,7 +298,7 @@
     if (!el) return;
     const first = studentModalScheduleDraft[0] || null;
     const teacher = studentAddTeacherLabel(first?.teacher_name || '');
-    el.textContent = teacher || '담임';
+    el.textContent = teacher || '담임 미지정';
     el.classList.toggle('isEmpty', !teacher);
   }
   function studentAddScheduleSummaryHtml(){
@@ -289,7 +326,7 @@
                   const selected = selectedKeys.has(key);
                   const disabled = option.full && !selected;
                   const day = studentAddDayLabel(option.weekday);
-                  const meta = [studentAddTeacherLabel(option.teacher_name), option.class_label, option.count+'/'+option.capacity+'명'].filter(Boolean).join(' · ');
+                  const meta = [studentAddTeacherLabel(option.teacher_name) || '담임 미지정', option.class_label, option.count+'/'+option.capacity+'명'].filter(Boolean).join(' · ');
                   return '<button type="button" class="studentAddScheduleOption '+(selected?'active':'')+'" data-student-add-schedule-key="'+key+'" '+(disabled?'disabled':'')+'><span><b>'+day+'요일 '+option.time_slot+'시</b><small>'+escapeTeacherHtml(meta)+'</small></span><em>'+(selected?'선택됨':(disabled?'정원 마감':'선택'))+'</em></button>';
                 }).join('')
               : '<div class="studentAddScheduleEmpty">선택 가능한 수업시간이 없습니다.</div>')
