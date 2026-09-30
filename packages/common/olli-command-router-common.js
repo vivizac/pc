@@ -255,7 +255,7 @@
       .replace(/[.!?,]/g, ' ')
       .replace(/(?:오늘|금일|내일|(?:(?:이번\s*주|금주|다다음\s*주|다음\s*주|차주)\s*)?[월화수목금토]요일)/g, ' ')
       .replace(/\d{1,2}\s*월\s*\d{1,2}\s*일/g, ' ')
-      .replace(/\d{1,2}\s*\/\s*\d{1,2}\s*일?/g, ' ')
+      .replace(/\d{1,2}\s*\/\s*\d{1,2}\s*일/g, ' ')
       .replace(/(?:^|\s)\d{1,2}\s*일(?=\s|$)/g, ' ')
       .replace(/\d{1,2}\s*시(?:에서|으로|에|로)?/g, ' ')
       .replace(/[AaBb]\s*반/g, ' ')
@@ -312,7 +312,7 @@
       };
     }
 
-    const slashMonthDay = compact.match(/(?:^|[^\d])(\d{1,2})\/(\d{1,2})(?:일)?(?!\d)/);
+    const slashMonthDay = compact.match(/(?:^|[^\d])(\d{1,2})\/(\d{1,2})일(?!요일)/);
     if (slashMonthDay) {
       return {
         mode:'month_day',
