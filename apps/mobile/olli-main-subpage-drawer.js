@@ -125,6 +125,18 @@
     }
   }
 
+  function afterMainSubpagePaint(){
+    return new Promise(resolve => {
+      if (typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(resolve);
+        });
+      } else {
+        window.setTimeout(resolve, 0);
+      }
+    });
+  }
+
   function refreshAttendanceAfterPaint(){
     const refresh = () => {
       if (typeof window.refreshRecordAttendanceDashboardFromServer !== 'function') return;
@@ -138,7 +150,8 @@
   }
 
   function refreshRecordRoomSubpage(){
-    prepareAttendanceState({ localOnly: true })
+    afterMainSubpagePaint()
+      .then(() => prepareAttendanceState({ localOnly: true }))
       .then((ready) => { if (ready) refreshAttendanceAfterPaint(); })
       .catch(() => {});
   }
@@ -664,6 +677,7 @@
       const hit = document.getElementById('olliMainDrawerReturnHit');
       if (hit) hit.hidden = true;
 
+      await afterMainSubpagePaint();
       const ready = await prepareAttendanceState({ localOnly: true });
       if (ready) refreshAttendanceAfterPaint();
       return ready;
