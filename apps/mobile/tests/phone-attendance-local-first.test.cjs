@@ -42,7 +42,10 @@ test('attendance summary old implementation is fully deleted before the rebuild'
 });
 
 test('attendance summary button exists only for record search mode', () => {
-  assert.match(html, /id="recordAttendanceSummaryToggle"[^>]*disabled[^>]*onclick="toggleRecordAttendanceSummary\(event\)"/);
+  const summaryButtonTag = html.match(/<button[^>]*id="recordAttendanceSummaryToggle"[^>]*>/)?.[0] || '';
+  assert.ok(summaryButtonTag, 'search-only attendance summary button must exist');
+  assert.match(summaryButtonTag, /\bdisabled\b/);
+  assert.match(summaryButtonTag, /onclick="toggleRecordAttendanceSummary\(event\)"/);
   assert.match(html, /olli-record-attendance-summary\.js\?v=20260930-search-only-1/);
   assert.match(html, /olli-record-attendance-summary\.css\?v=20260930-search-only-1/);
   assert.match(attendanceSummaryCss, /#recordAttendanceSummaryToggle\.recordAttendanceSummaryBtn\{[\s\S]*?display:none;[\s\S]*?right:16px/);
