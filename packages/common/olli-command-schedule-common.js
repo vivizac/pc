@@ -2593,8 +2593,8 @@
     });
   }
 
-  function timetableMemoTargetSummary(target) {
-    return timetableMemoTimeLabel(target.division, '', target.timeSlot) + ' ' + target.classGroup + '반';
+  function timetableMemoTargetSummary(target, sessionDate) {
+    return timetableMemoTimeLabel(target.division, sessionDate, target.timeSlot) + ' ' + target.classGroup + '반';
   }
 
   async function resolveTimetableMemoTarget(options) {
@@ -2641,7 +2641,7 @@
         return {
           ok:false,
           message:clean(student.name) + ' 학생은 ' + fallbackDateLabel(sessionDate) + '에 '
-            + targets.map(timetableMemoTargetSummary).join(', ')
+            + targets.map(target => timetableMemoTargetSummary(target, sessionDate)).join(', ')
             + ' 수업이 있어요. 메모를 남길 시간을 함께 적어 주세요.'
         };
       }
@@ -2651,14 +2651,16 @@
       targetGroup = target.classGroup;
     }
 
-    const targetCheck = validateTimetableMemoTarget(division, sessionDate, timeSlot);
-    if (!targetCheck.ok) return targetCheck;
+    if (!student) {
+      const targetCheck = validateTimetableMemoTarget(division, sessionDate, timeSlot);
+      if (!targetCheck.ok) return targetCheck;
+    }
 
     const groups = classGroups(weekData, division, isoWeekday(sessionDate), timeSlot, sessionDate);
-    if (targetGroup && !groups.includes(classGroup(targetGroup))) {
+    if (!student && targetGroup && !groups.includes(classGroup(targetGroup))) {
       return { ok:false, message:'해당 시간표 칸에서 ' + targetGroup + '반을 사용할 수 없어요.' };
     }
-    if (!targetGroup && groups.length > 1) {
+    if (!student && !targetGroup && groups.length > 1) {
       return { ok:false, message:'이 시간은 A반과 B반이 나뉘어 있어요. 메모를 넣을 반을 함께 적어 주세요.' };
     }
 

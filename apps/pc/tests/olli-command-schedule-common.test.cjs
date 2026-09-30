@@ -589,6 +589,55 @@ test('timetable memo infers time division and split class from the named student
   });
 });
 
+test('timetable memo delete also infers the named student split class when time is omitted', async () => {
+  const calls = {};
+  const student = { id:'student-han', name:'한재림', division:'elementary' };
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[
+      {
+        id:'enrollment-han', student_id:'student-han', student_name:'한재림',
+        division:'elementary', weekday:5, time_slot:5, class_group:'B',
+        effective_from:'2026-01-01', effective_to:null
+      }
+    ],
+    cell_memos:[
+      {
+        id:'memo-han', division:'elementary', session_date:'2026-10-02',
+        time_slot:5, class_group:'B', note:'오늘 어머님이 픽업'
+      }
+    ],
+    class_layout_version:2,
+    class_split_periods:[
+      { weekday:5, time_slot:5, effective_from:'2026-01-01', effective_to:null }
+    ],
+    one_time_sessions:[]
+  };
+  const { schedule } = loadSchedule(week, [], { calls, students:[student] });
+
+  const prepared = await schedule.prepareWriteCommand('delete_timetable_memo', {
+    studentName:'한재림',
+    date:'2026-10-02',
+    memoNote:'오늘 어머님이 픽업'
+  });
+
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.command.timeSlot, 5);
+  assert.equal(prepared.command.classGroup, 'B');
+  assert.equal(prepared.command.memoId, 'memo-han');
+
+  await schedule.executePreparedWrite(prepared.command);
+  assert.deepEqual(calls.saveCellMemo, {
+    division:'elementary',
+    sessionDate:'2026-10-02',
+    timeSlot:5,
+    note:'',
+    classGroup:'B',
+    memoId:'memo-han'
+  });
+});
+
 test('timetable memo without time asks for a time only when the student has multiple classes that day', async () => {
   const student = { id:'student-han', name:'한재림', division:'elementary' };
   const week = {
