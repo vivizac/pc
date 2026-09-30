@@ -695,7 +695,8 @@ window.autoResizeKinderChatFeedbackInput = autoResizeKinderChatFeedbackInput;
 function focusKinderChatFeedbackInput() {
   const input = document.getElementById('kcfInput');
   if (!input) return;
-  input.focus();
+  try { input.focus({ preventScroll:true }); }
+  catch (_) { input.focus(); }
 }
 function openKinderChatFeedbackPhotoPicker(event) {
   if (event) event.stopPropagation();
@@ -1023,7 +1024,10 @@ async function handleKinderChatFeedbackPhotoChange(event) {
     };
     renderKinderChatFeedbackPhotoPreview();
     const textInput = document.getElementById('kcfInput');
-    if (textInput) textInput.focus();
+    if (textInput) {
+      try { textInput.focus({ preventScroll:true }); }
+      catch (_) { textInput.focus(); }
+    }
   } catch(err) {
     console.error('1분 피드백 사진 처리 오류:', err);
     setKinderChatFeedbackWarning(err.message || '사진을 추가하지 못했습니다.');
@@ -2941,7 +2945,8 @@ function selectKinderChatFeedbackStudentFromManage(studentId, event) {
     autoResizeKinderChatFeedbackInput(input);
     saveKinderChatFeedbackDraft();
     setKinderChatFeedbackWarning('');
-    input.focus();
+    try { input.focus({ preventScroll:true }); }
+    catch (_) { input.focus(); }
   }
   closeKinderChatFeedbackStudentManagePopup();
 }

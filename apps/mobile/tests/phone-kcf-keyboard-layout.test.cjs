@@ -232,3 +232,14 @@ test('QuickNote protects input focus and composer while the user owns chat scrol
   assert.match(js, /composer\.addEventListener\('touchmove',[\s\S]*?event\.preventDefault\(\)[\s\S]*?passive:false/);
   assert.match(js, /if \(kcfChatGestureActive\) return;[\s\S]*?updateKinderChatFeedbackKeyboardOffset\(\)/);
 });
+
+
+test('QuickNote programmatic refocus paths also use preventScroll', () => {
+  const helperStart = js.indexOf('function focusKinderChatFeedbackInput()');
+  const helperEnd = js.indexOf('function openKinderChatFeedbackPhotoPicker', helperStart);
+  const helper = js.slice(helperStart, helperEnd);
+  assert.match(helper,/focus\(\{ preventScroll:true \}\)/);
+  assert.doesNotMatch(js,/if \(textInput\) textInput\.focus\(\);/);
+  assert.match(js,/textInput\.focus\(\{ preventScroll:true \}\)/);
+  assert.match(js,/setKinderChatFeedbackWarning\(''\);[\s\S]{0,120}input\.focus\(\{ preventScroll:true \}\)/);
+});
