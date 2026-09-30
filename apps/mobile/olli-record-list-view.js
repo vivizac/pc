@@ -136,21 +136,13 @@ function getPhoneRecordStudentGuideText(student, view) {
   return [kindergarten, age].filter(Boolean).join(' ');
 }
 
-function getPhoneRecordStudentMetaHtml(student, normalText) {
-  const attendanceGuide = window.OlliAttendanceGuideUI;
-  if (attendanceGuide && typeof attendanceGuide.getMetaHtml === 'function') {
-    return attendanceGuide.getMetaHtml(student, normalText);
-  }
-  return escapeHtml(normalText || '');
-}
-
 function renderElementaryStudentRows(students, searchMode = false) {
   const cycleGroups = getElementaryCycleGroups(students);
   let previousVisualSectionKey = '';
   return students.map((student, index) => {
     const metaText = getPhoneRecordStudentGuideText(student, 'elementary');
-    const metaHtml = getPhoneRecordStudentMetaHtml(student, metaText);
-    const attendanceGuideOutput = metaHtml.includes('recordAttendanceGuideMeta');
+    const metaHtml = escapeHtml(metaText || '');
+    const attendanceGuideHtml = window.OlliAttendanceGuide?.renderHtml?.(student) || '';
     const sectionKey = searchMode
       ? 'search'
       : ((typeof getRecordSortSectionKey === 'function') ? getRecordSortSectionKey(student, 'elementary', cycleGroups) : getElementaryGroupSectionKey(student, cycleGroups));
@@ -168,12 +160,13 @@ function renderElementaryStudentRows(students, searchMode = false) {
     const status = getStudentStatus(student);
     const statusClass = status === 'paused' ? ' studentStatusPaused' : (status === 'withdrawn' ? ' studentStatusWithdrawn' : '');
     return `${dividerHtml}
-    <button class="elementaryStudentRow${groupBreakClass}${statusClass}" onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')" onpointerdown="startStudentLongPress(event,'${escapeTemplateLiteral(student.id)}')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">
+    <button class="elementaryStudentRow${groupBreakClass}${statusClass}" data-record-student-id="${escapeHtml(student.id)}" onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')" onpointerdown="startStudentLongPress(event,'${escapeTemplateLiteral(student.id)}')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">
       <div class="elementaryRowInner">
         ${renderPhoneElementaryAttendanceLeadIcon(student)}
-        <span class="studentTextWrap${attendanceGuideOutput ? ' recordAttendanceGuideTextWrap' : ''}">
+        <span class="studentTextWrap${attendanceGuideHtml ? ' recordAttendanceGuideHost' : ''}">
           <span>${escapeHtml(student.name)}</span>
-          ${metaHtml ? `<span class="studentMetaText${attendanceGuideOutput ? ' recordAttendanceGuideOutput' : ''}">${metaHtml}</span>` : ''}
+          ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
+          ${attendanceGuideHtml}
         </span>
       </div>
     </button>`;
@@ -184,8 +177,8 @@ function renderKinderStudentRows(students, searchMode = false) {
   let previousVisualSectionKey = '';
   return students.map((student, index) => {
     const metaText = getPhoneRecordStudentGuideText(student, 'kinder');
-    const metaHtml = getPhoneRecordStudentMetaHtml(student, metaText);
-    const attendanceGuideOutput = metaHtml.includes('recordAttendanceGuideMeta');
+    const metaHtml = escapeHtml(metaText || '');
+    const attendanceGuideHtml = window.OlliAttendanceGuide?.renderHtml?.(student) || '';
     const sectionKey = searchMode
       ? 'search'
       : ((typeof getRecordSortSectionKey === 'function') ? getRecordSortSectionKey(student, 'kinder') : `status:${getStudentStatus(student)}:${student.age || ''}`);
@@ -203,12 +196,13 @@ function renderKinderStudentRows(students, searchMode = false) {
     const status = getStudentStatus(student);
     const statusClass = status === 'paused' ? ' studentStatusPaused' : (status === 'withdrawn' ? ' studentStatusWithdrawn' : '');
     return `${dividerHtml}
-    <button class="kinderStudentRow${groupBreakClass}${statusClass}" onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')" onpointerdown="startStudentLongPress(event,'${escapeTemplateLiteral(student.id)}')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">
+    <button class="kinderStudentRow${groupBreakClass}${statusClass}" data-record-student-id="${escapeHtml(student.id)}" onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')" onpointerdown="startStudentLongPress(event,'${escapeTemplateLiteral(student.id)}')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">
       <div class="kinderRowInner">
         ${renderPhoneKinderAttendanceLeadIcon(student)}
-        <span class="studentTextWrap${attendanceGuideOutput ? ' recordAttendanceGuideTextWrap' : ''}">
+        <span class="studentTextWrap${attendanceGuideHtml ? ' recordAttendanceGuideHost' : ''}">
           <span>${escapeHtml(student.name)}</span>
-          ${metaHtml ? `<span class="studentMetaText${attendanceGuideOutput ? ' recordAttendanceGuideOutput' : ''}">${metaHtml}</span>` : ''}
+          ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
+          ${attendanceGuideHtml}
         </span>
       </div>
     </button>`;
