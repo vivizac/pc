@@ -955,7 +955,6 @@
     try {
       await setAttendanceRegisterStatus(student, targetDateKey, kind, nextStatus, target.timeSlot, target.classGroup);
       writeLocalStatus(student, targetDateKey, kind, nextStatus, true, target.timeSlot, target.classGroup);
-      if (global.OlliAttendanceGuide?.isActive?.()) global.OlliAttendanceGuide.refreshStudent?.(student.id);
     } catch (error) {
       restoreLocalSession(student, targetDateKey, kind, target.timeSlot, target.classGroup, beforeSession);
       if (visualApplied) applyButtonStatus(currentStatus);
