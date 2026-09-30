@@ -3,6 +3,8 @@
 
   let active = false;
   let renderGeneration = 0;
+  let cacheContext = '';
+  const summaryCache = new Map();
 
   function text(value){
     return String(value == null ? '' : value).trim();
@@ -25,6 +27,13 @@
     if (Number.isNaN(date.getTime())) return null;
     date.setHours(0, 0, 0, 0);
     return date;
+  }
+
+  function formatDateKey(date){
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
 
   function enrollmentDate(student){
@@ -72,19 +81,28 @@
     const policy = typeof global.getOlliAttendancePolicy === 'function'
       ? global.getOlliAttendancePolicy()
       : (global.OlliAttendancePolicy?.getPolicy?.() || { startDate: '', makeupExpire: '3m' });
-    return { studentMap, store, policy };
+    const academyId = typeof global.getOlliCurrentAcademyId === 'function'
+      ? text(global.getOlliCurrentAcademyId())
+      : '';
+    const context = [
+      academyId,
+      formatDateKey(new Date()),
+      text(policy?.startDate),
+      text(policy?.makeupExpire)
+    ].join('|');
+    return { studentMap, store, policy, context };
+  }
+
+  function ensureCacheContext(snapshot){
+    const next = text(snapshot?.context);
+    if (cacheContext === next) return;
+    cacheContext = next;
+    summaryCache.clear();
   }
 
   function statusFromStore(store, dateKey, studentId){
     const status = text(store?.[dateKey]?.[String(studentId)]?.status).toLowerCase();
     return status === 'attended' || status === 'absent' || status === 'makeup' ? status : '';
-  }
-
-  function formatDateKey(date){
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
   }
 
   function calculateCounts(student, snapshot){
@@ -124,13 +142,17 @@
     };
   }
 
-  function summaryHtml(counts){
-    return '<span class="recordAttendanceSummaryLine">'
-      + '<span class="recordAttendanceSummaryMetric recordAttendanceSummaryYear">' + escapeHtml(counts.year) + '년</span>'
-      + '<span class="recordAttendanceSummaryMetric">결석 <b>' + escapeHtml(counts.yearAbsence) + '회</b></span>'
-      + '<span class="recordAttendanceSummaryMetric">보강 <b>' + escapeHtml(counts.yearMakeup) + '회</b></span>'
-      + '<span class="recordAttendanceSummaryMetric">남은 보강 <b>' + escapeHtml(counts.remainingMakeup) + '회</b></span>'
-      + '</span>';
+  function summaryPayload(counts){
+    const key = [counts.year, counts.yearAbsence, counts.yearMakeup, counts.remainingMakeup].join('|');
+    return {
+      key,
+      html: '<span class="recordAttendanceSummaryLine" data-attendance-summary-key="' + escapeHtml(key) + '">'
+        + '<span class="recordAttendanceSummaryMetric recordAttendanceSummaryYear">' + escapeHtml(counts.year) + '년</span>'
+        + '<span class="recordAttendanceSummaryMetric">결석 <b>' + escapeHtml(counts.yearAbsence) + '회</b></span>'
+        + '<span class="recordAttendanceSummaryMetric">보강 <b>' + escapeHtml(counts.yearMakeup) + '회</b></span>'
+        + '<span class="recordAttendanceSummaryMetric">남은 보강 <b>' + escapeHtml(counts.remainingMakeup) + '회</b></span>'
+        + '</span>'
+    };
   }
 
   function clearRows(){
@@ -138,27 +160,46 @@
     global.document.querySelectorAll('#recordRoomScreen .recordAttendanceSummaryHost').forEach(node => node.classList.remove('recordAttendanceSummaryHost'));
   }
 
+  function applyPayload(row, payload){
+    if (!active || !row || !payload) return false;
+    const host = row.querySelector('.studentTextWrap');
+    if (!host) return false;
+    const existing = host.querySelector('.recordAttendanceSummaryLine');
+    host.classList.add('recordAttendanceSummaryHost');
+    if (existing?.getAttribute('data-attendance-summary-key') === payload.key) return true;
+    if (existing) existing.outerHTML = payload.html;
+    else host.insertAdjacentHTML('beforeend', payload.html);
+    return true;
+  }
+
   function renderRow(row, snapshot){
     if (!active || !row) return false;
     const studentId = row.getAttribute('data-record-student-id');
     const student = snapshot.studentMap.get(String(studentId || ''));
-    const host = row.querySelector('.studentTextWrap');
-    if (!student || !host) return false;
-    host.querySelector('.recordAttendanceSummaryLine')?.remove();
-    host.classList.add('recordAttendanceSummaryHost');
-    host.insertAdjacentHTML('beforeend', summaryHtml(calculateCounts(student, snapshot)));
-    return true;
+    if (!student) return false;
+    const payload = summaryPayload(calculateCounts(student, snapshot));
+    summaryCache.set(String(studentId), payload);
+    return applyPayload(row, payload);
   }
 
-  function scheduleRows(){
+  function restoreCachedRows(rows){
+    rows.forEach(row => {
+      const studentId = String(row.getAttribute('data-record-student-id') || '');
+      const payload = summaryCache.get(studentId);
+      if (payload) applyPayload(row, payload);
+    });
+  }
+
+  function scheduleRows(options = {}){
     const generation = ++renderGeneration;
-    clearRows();
     if (!active) return;
 
     const snapshot = readSnapshot();
+    ensureCacheContext(snapshot);
     const rows = Array.from(global.document.querySelectorAll('#recordRoomScreen [data-record-student-id]'));
-    let index = 0;
+    if (options.restoreCache !== false) restoreCachedRows(rows);
 
+    let index = 0;
     const runChunk = () => {
       if (!active || generation !== renderGeneration) return;
       const stop = Math.min(index + 4, rows.length);
@@ -191,16 +232,20 @@
     }
     active = !active;
     updateButton();
-    if (active) scheduleRows();
+    if (active) scheduleRows({ restoreCache: false });
     else {
       renderGeneration += 1;
       clearRows();
+      summaryCache.clear();
+      cacheContext = '';
     }
   }
 
   function refreshStudent(studentId){
     if (!active || !studentId) return false;
     const snapshot = readSnapshot();
+    ensureCacheContext(snapshot);
+    summaryCache.delete(String(studentId));
     const rows = Array.from(global.document.querySelectorAll('#recordRoomScreen [data-record-student-id]'))
       .filter(row => row.getAttribute('data-record-student-id') === String(studentId));
     rows.forEach(row => renderRow(row, snapshot));
@@ -208,7 +253,7 @@
   }
 
   global.addEventListener('olli:record-list-rendered', () => {
-    if (active) scheduleRows();
+    if (active) scheduleRows({ restoreCache: true });
   });
   global.addEventListener('olli:attendance-changed', event => {
     const studentId = event?.detail?.studentId;
@@ -218,7 +263,7 @@
   global.toggleRecordAttendanceSummary = toggle;
   global.OlliRecordAttendanceSummary = Object.freeze({
     isActive: () => active,
-    refresh: scheduleRows,
+    refresh: () => scheduleRows({ restoreCache: true }),
     refreshStudent
   });
 })(window);
