@@ -1724,6 +1724,42 @@
     return clean(row.dropoff_label) || (row.is_dropoff === true ? clean(row.pickup_label) : '');
   }
 
+  function pickupStoredClassTarget(data, referenceDate, options) {
+    const opts = options || {};
+    const requested = Number(opts.classTime || 0);
+    if (!requested) return { ok:true, classTime:0, timetableMode:timetableMode(data), label:'' };
+
+    const mode = timetableMode(data);
+    const weekday = isoWeekday(referenceDate);
+    const minuteSpecified = Object.prototype.hasOwnProperty.call(opts, 'classMinute')
+      && opts.classMinute !== null
+      && opts.classMinute !== '';
+    const minute = Number(opts.classMinute || 0);
+    const allowed = validTimes(data, 'kinder', weekday);
+
+    let stored = requested;
+    if (minuteSpecified) {
+      stored = timetableMemoTimeSlot(mode, 'kinder', referenceDate, requested, minute);
+    } else if (!allowed.includes(stored)) {
+      stored = timetableMemoTimeSlot(mode, 'kinder', referenceDate, requested, 0);
+    }
+
+    if (!allowed.includes(Number(stored))) {
+      return { ok:false, message:'현재 시간표 모드에서 사용할 수 있는 유치부 수업 시간을 확인해 주세요.' };
+    }
+
+    return {
+      ok:true,
+      classTime:Number(stored),
+      timetableMode:mode,
+      label:timetableMemoTimeLabel('kinder', referenceDate, stored, mode)
+    };
+  }
+
+  function pickupClassTimeLabel(data, referenceDate, classTime) {
+    return timetableMemoTimeLabel('kinder', referenceDate, classTime, timetableMode(data));
+  }
+
   async function preparePickupUpdateCommand(options) {
     const opts = options || {};
     const resolved = resolveCommandStudent(opts.studentName, opts.selectedStudent);
@@ -1739,17 +1775,23 @@
       ? nextOccurrenceKey(referenceDate, Number(opts.weekday))
       : referenceDate;
     const weekData = await loadFreshWeek(lookupDate);
+    const requestedTarget = pickupStoredClassTarget(weekData, lookupDate, opts);
+    if (!requestedTarget.ok) return requestedTarget;
+
     let rows = activePickupRows(weekData, studentId, lookupDate);
     if (Number(opts.weekday || 0)) rows = rows.filter(row => Number(row && row.weekday) === Number(opts.weekday));
-    if (Number(opts.classTime || 0)) rows = rows.filter(row => Number(row && row.class_time) === Number(opts.classTime));
+    if (requestedTarget.classTime) rows = rows.filter(row => Number(row && row.class_time) === requestedTarget.classTime);
 
     if (!rows.length) return { ok:false, message:clean(student.name) + ' 학생의 수정할 픽업 일정을 찾지 못했어요.' };
     if (rows.length > 1) {
-      const choices = rows.map(row => weekdayLabel(row.weekday) + ' ' + Number(row.class_time) + '시').join(' · ');
+      const choices = rows.map(row =>
+        weekdayLabel(row.weekday) + ' ' + pickupClassTimeLabel(weekData, lookupDate, row.class_time)
+      ).join(' · ');
       return { ok:false, message:clean(student.name) + ' 학생의 픽업 일정이 여러 개 있어요: ' + choices + '\n수업 요일과 시간을 함께 적어 주세요.' };
     }
 
     const item = rows[0];
+    const classTimeText = pickupClassTimeLabel(weekData, lookupDate, item.class_time);
     if (clean(opts.pickupKind) === 'dropoff') {
       const label = clean(opts.pickupLabel) || pickupDropoffLabel(item);
       if (!label) return { ok:false, message:'수정할 하원 장소를 함께 적어 주세요.' };
@@ -1764,7 +1806,7 @@
           classTime:Number(item.class_time),
           dropoffLabel:label
         },
-        message:clean(student.name) + ' · ' + weekdayLabel(item.weekday) + ' ' + Number(item.class_time) + '시\n하원 장소를 ' + label + '(으)로 수정할까요?'
+        message:clean(student.name) + ' · ' + weekdayLabel(item.weekday) + ' ' + classTimeText + '\n하원 장소를 ' + label + '(으)로 수정할까요?'
       };
     }
 
@@ -1788,7 +1830,7 @@
         pickupLabel:label,
         pickupTime:time
       },
-      message:clean(student.name) + ' · ' + weekdayLabel(item.weekday) + ' ' + Number(item.class_time) + '시\n등원 픽업을 ' + label + ' · ' + pickupTimeDisplay(time) + '(으)로 수정할까요?'
+      message:clean(student.name) + ' · ' + weekdayLabel(item.weekday) + ' ' + classTimeText + '\n등원 픽업을 ' + label + ' · ' + pickupTimeDisplay(time) + '(으)로 수정할까요?'
     };
   }
 
@@ -1803,16 +1845,21 @@
       ? nextOccurrenceKey(referenceDate, Number(opts.weekday))
       : referenceDate;
     const weekData = await loadFreshWeek(lookupDate);
+    const requestedTarget = pickupStoredClassTarget(weekData, lookupDate, opts);
+    if (!requestedTarget.ok) return requestedTarget;
+
     let rows = activePickupRows(weekData, studentId, lookupDate);
     if (Number(opts.weekday || 0)) rows = rows.filter(row => Number(row && row.weekday) === Number(opts.weekday));
-    if (Number(opts.classTime || 0)) rows = rows.filter(row => Number(row && row.class_time) === Number(opts.classTime));
+    if (requestedTarget.classTime) rows = rows.filter(row => Number(row && row.class_time) === requestedTarget.classTime);
     if (clean(opts.pickupKind) === 'dropoff') {
       rows = rows.filter(row => row && (row.is_dropoff === true || !!pickupDropoffLabel(row)));
     }
 
     if (!rows.length) return { ok:false, message:clean(student.name) + ' 학생의 삭제할 픽업 일정을 찾지 못했어요.' };
     if (rows.length > 1) {
-      const choices = rows.map(row => weekdayLabel(row.weekday) + ' ' + Number(row.class_time) + '시').join(' · ');
+      const choices = rows.map(row =>
+        weekdayLabel(row.weekday) + ' ' + pickupClassTimeLabel(weekData, lookupDate, row.class_time)
+      ).join(' · ');
       return { ok:false, message:clean(student.name) + ' 학생의 픽업 일정이 여러 개 있어요: ' + choices + '\n삭제할 수업 요일과 시간을 함께 적어 주세요.' };
     }
 
@@ -1829,7 +1876,7 @@
         classTime:Number(item.class_time),
         effectiveDate:referenceDate
       },
-      message:clean(student.name) + ' · ' + weekdayLabel(item.weekday) + ' ' + Number(item.class_time) + '시\n'
+      message:clean(student.name) + ' · ' + weekdayLabel(item.weekday) + ' ' + pickupClassTimeLabel(weekData, lookupDate, item.class_time) + '\n'
         + (dropoffOnly ? '하원 픽업만 삭제할까요?' : '픽업 일정을 삭제할까요?')
     };
   }
@@ -1880,7 +1927,7 @@
   async function preparePickupCommand(options) {
     const opts = options || {};
     const weekday = Number(opts.weekday || 0);
-    const classTime = Number(opts.classTime || 0);
+    const requestedClassTime = Number(opts.classTime || 0);
     const pickupLabel = clean(opts.pickupLabel);
     const pickupTime = clean(opts.pickupTime);
     const isDropoff = opts.isDropoff === true;
@@ -1891,7 +1938,7 @@
     if (
       !clean(opts.studentName)
       || weekday < 1 || weekday > 6
-      || ![4, 5].includes(classTime)
+      || !requestedClassTime
       || !pickupLabel
       || (!isDropoff && !/^\d{2}:\d{2}$/.test(pickupTime))
     ) {
@@ -1910,6 +1957,10 @@
     if (!effectiveDate) return { ok:false, message:'픽업 적용 요일을 확인하지 못했어요.' };
 
     const weekData = await loadFreshWeek(effectiveDate);
+    const requestedTarget = pickupStoredClassTarget(weekData, effectiveDate, opts);
+    if (!requestedTarget.ok) return requestedTarget;
+    const classTime = requestedTarget.classTime;
+
     const existing = activePickupRows(weekData, studentId, effectiveDate).find(row =>
       Number(row && row.weekday) === weekday && Number(row && row.class_time) === classTime
     );
@@ -1940,12 +1991,13 @@
       command:{
         intent:'add_pickup', studentId, studentName:clean(student.name), division:'kinder',
         weekday, classTime,
+        timetableMode:requestedTarget.timetableMode,
         pickupLabel:isDropoff ? '' : pickupLabel,
         pickupTime:isDropoff ? '' : pickupTime,
         dropoffLabel:isDropoff ? pickupLabel : '',
         effectiveDate, isDropoff
       },
-      message:clean(student.name) + ' · ' + weekdayLabel(weekday) + ' ' + classTime + '시 수업'
+      message:clean(student.name) + ' · ' + weekdayLabel(weekday) + ' ' + requestedTarget.label + ' 수업'
         + '\n' + pickupLabel
         + (isDropoff ? ' · 하원 픽업' : ' · ' + pickupTimeDisplay(pickupTime) + ' · 등원 픽업')
         + '\n등록할까요?\n\'확인\' 또는 \'취소\'라고 입력해 주세요.'
