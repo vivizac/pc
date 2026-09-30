@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
-const talk = fs.readFileSync('apps/pc/pc-team-talk.js', 'utf8');
+const talk = fs.readFileSync('pc-team-talk.js', 'utf8');
 
 test('PC AI pickup add is routed before the legacy action path', () => {
   const start = talk.indexOf('async function resolveAiTurn');
