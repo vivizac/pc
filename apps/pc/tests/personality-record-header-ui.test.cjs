@@ -31,8 +31,8 @@ test('observation student name uses a much lighter weight', () => {
 });
 
 
-test('active personality record tab is blue with white text', () => {
-  assert.match(attendanceCss, /\.pcAttendanceRecordModeTab\.active\{background:#0A84FF;color:#fff;box-shadow:none;\}/);
+test('active personality record tab is white with black text', () => {
+  assert.match(attendanceCss, /\.pcAttendanceRecordModeTab\.active\{background:#fff;color:#111;box-shadow:none;\}/);
 });
 
 test('observation send button is gray with black icon color', () => {
