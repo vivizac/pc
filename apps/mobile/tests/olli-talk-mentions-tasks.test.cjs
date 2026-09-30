@@ -133,42 +133,40 @@ test('Team Talk no longer hides the focused composer during keyboard motion', ()
 });
 
 
-test('Team Talk physically ends the chat scroller at the measured composer top', () => {
+test('Team Talk keeps the chat scroller full-height and measures composer reserve', () => {
   const start = source.indexOf('function syncOlliTalkChatToComposer');
   const end = source.indexOf('function scheduleOlliTalkChatToComposer', start);
   const body = source.slice(start, end);
   assert.match(body, /composerWrap\.getBoundingClientRect\(\)/);
   assert.match(body, /viewport\.getBoundingClientRect\(\)/);
-  assert.match(body, /--olli-talk-chat-bottom-gap/);
-  assert.doesNotMatch(body, /--olli-talk-chat-reserve/);
-  assert.doesNotMatch(body, /olliTalkKeyboardOpen/);
-  assert.doesNotMatch(body, /getOlliTalkKeyboardOffset/);
+  assert.match(body, /--olli-talk-chat-reserve/);
+  assert.match(body, /measuredReserve - keyboardOffset/);
+  assert.doesNotMatch(body, /--olli-talk-chat-bottom-gap/);
+  assert.doesNotMatch(body, /chatArea\.scrollTop\s*=/);
 });
 
-test('Team Talk header stays fixed while the message scroller ends above composer', () => {
-  const css = fs.readFileSync(path.join(root, 'olli-talk-beta.css'), 'utf8');
-  assert.match(css, /--olli-talk-chat-bottom-gap:74px/);
-  assert.match(css, /bottom:var\(--olli-talk-chat-bottom-gap, 74px\)/);
-  assert.doesNotMatch(css, /--olli-talk-chat-reserve/);
-  assert.match(css, /#olliTalkBetaScreen \.olliTalkBetaHeader\{[\s\S]*?transition:none/);
-});
-
-
-test('Team Talk message scroller is physically bounded above the composer', () => {
-  const css = fs.readFileSync(path.join(root, 'olli-talk-beta.css'), 'utf8');
+test('Team Talk keeps the chat area full-height while the composer overlays it', () => {
   const area = css.match(/#olliTalkBetaScreen \.olliTalkBetaChatArea\{([\s\S]*?)\}/)?.[1] || '';
-  assert.match(area, /position:absolute/);
-  assert.match(area, /top:0/);
-  assert.match(area, /bottom:var\(--olli-talk-chat-bottom-gap, 74px\)/);
-  assert.match(area, /padding:[\s\S]*?16px[\s\S]*?12px/);
-  assert.doesNotMatch(area, /--olli-talk-chat-reserve/);
+  assert.match(css, /--olli-talk-chat-reserve:74px/);
+  assert.match(area, /flex:1/);
+  assert.match(area, /var\(--olli-talk-chat-reserve, 74px\)/);
+  assert.doesNotMatch(area, /position:absolute/);
+  assert.doesNotMatch(area, /--olli-talk-chat-bottom-gap/);
   assert.match(area, /overflow-y:auto/);
   assert.match(area, /overscroll-behavior-y:contain/);
   assert.match(area, /touch-action:pan-y/);
 });
 
-
-
+test('Team Talk lifts only the message layer by the existing keyboard offset', () => {
+  const viewportStart = source.indexOf('function syncViewport');
+  const viewportEnd = source.indexOf('function bindViewport', viewportStart);
+  const body = source.slice(viewportStart, viewportEnd);
+  const list = css.match(/#olliTalkBetaScreen \.olliTalkBetaMessageList\{([\s\S]*?)\}/)?.[1] || '';
+  assert.match(body, /messageLift = keyboardTracking \? Math\.max\(0, keyboardOffset\) : 0/);
+  assert.match(body, /--olli-talk-message-lift/);
+  assert.doesNotMatch(body, /scrollTop\s*=/);
+  assert.match(list, /transform:translate3d\(0,calc\(-1 \* var\(--olli-talk-message-lift, 0px\)\),0\)/);
+});
 
 test('Team Talk locks composer viewport after the keyboard finishes opening', () => {
   const start = source.indexOf('function syncViewport');
@@ -594,4 +592,12 @@ test('messages without a teacher target register broadcast recipients while targ
   assert.match(source, /async function registerOlliTalkMessageRecipients\(messageId,memberIds/);
   assert.match(source, /registerOlliTalkMessageRecipients\(Number\(payload\.message\.id\),mentionedIds,context\)/);
   assert.match(source, /registerOlliTalkMessageRecipients\(messageId,\[\],context\)/);
+});
+
+test('Team Talk message lift does not weaken input or chat scroll protections', () => {
+  assert.match(source,/input\.focus\(\{ preventScroll:true \}\)/);
+  assert.match(source,/composer\.addEventListener\('touchmove',[\s\S]{0,900}event\.preventDefault\(\)[\s\S]{0,180}\{ passive:false \}/);
+  assert.match(source,/if \(olliTalkChatGestureActive && options\.force !== true\) return/);
+  assert.match(css,/overscroll-behavior-y:contain/);
+  assert.match(css,/touch-action:pan-y/);
 });

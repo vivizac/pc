@@ -155,19 +155,25 @@
       || !Number.isFinite(composerRect.top)
     ) return;
 
-    const bottomGap = Math.max(
+    const measuredReserve = Math.max(
       0,
       Math.min(
         Math.ceil(viewportRect.height),
         Math.ceil(viewportRect.bottom - composerRect.top)
       )
     );
+    const input = getOlliTalkBetaInput();
+    const keyboardTracking = (!!input && document.activeElement === input)
+      || screen.classList.contains('olliTalkKeyboardOpen')
+      || olliTalkKeyboardTransitionActive;
+    const keyboardOffset = keyboardTracking ? getOlliTalkKeyboardOffset() : 0;
+    const reserve = Math.max(0, measuredReserve - keyboardOffset);
 
-    // The message scroller physically ends at the composer's top edge.
-    // This replaces the old full-height scroller + bottom padding reserve.
-    screen.style.setProperty('--olli-talk-chat-bottom-gap', bottomGap + 'px');
+    // Keep the scroll area full-height. Reserve only the composer's own footprint;
+    // keyboard displacement is applied once, to the message layer below.
+    screen.style.setProperty('--olli-talk-chat-reserve', reserve + 'px');
 
-    // Keyboard/composer geometry may resize this scroller, but it never owns chat scrollTop.
+    // Keyboard/composer geometry never owns chatArea.scrollTop.
   }
 
   function scheduleOlliTalkChatToComposer(){
@@ -342,6 +348,9 @@
     }
 
     screen.classList.toggle('olliTalkKeyboardOpen', keyboardOpen);
+    const messageLift = keyboardTracking ? Math.max(0, keyboardOffset) : 0;
+    screen.style.setProperty('--olli-talk-message-lift', messageLift + 'px');
+    scheduleOlliTalkChatToComposer();
     if (!keyboardOpen && !inputFocused) {
       releaseOlliTalkComposerViewportLock();
       olliTalkKeyboardTransitionActive = false;
