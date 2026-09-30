@@ -18,16 +18,16 @@ export default async function handler(req, res) {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const mode = safeText(body.mode, 40);
 
-    if (!['probe', 'privacy_probe', 'schedule_probe', 'records_probe'].includes(mode)) {
+    if (!['probe', 'privacy_probe', 'schedule_probe', 'records_probe', 'availability_probe'].includes(mode)) {
       return res.status(400).json({
-        error: '현재 독립 Agent endpoint는 probe, privacy_probe, schedule_probe 또는 records_probe 모드만 지원합니다.',
+        error: '현재 독립 Agent endpoint는 probe, privacy_probe, schedule_probe, records_probe 또는 availability_probe 모드만 지원합니다.',
       });
     }
 
     const contextModule = await import('./_lib/olli-agent/request-context.cjs');
     const requestContext = await contextModule.loadOlliAgentRequestContext(body);
 
-    if (mode === 'privacy_probe' || mode === 'schedule_probe' || mode === 'records_probe') {
+    if (mode === 'privacy_probe' || mode === 'schedule_probe' || mode === 'records_probe' || mode === 'availability_probe') {
       const message = safeText(body.message, 5000);
       if (!message) {
         return res.status(400).json({
@@ -56,17 +56,26 @@ export default async function handler(req, res) {
 
       const runtimeModule = await import('./_lib/olli-agent/runtime.cjs');
       const agentContext = contextModule.toAgentRunContext(requestContext);
-      const probe = mode === 'schedule_probe'
-        ? await runtimeModule.runStudentScheduleProbe({
-            agentContext,
-            requestContext,
-            preparedPrivacy: prepared,
-          })
-        : await runtimeModule.runRecentRecordsProbe({
-            agentContext,
-            requestContext,
-            preparedPrivacy: prepared,
-          });
+      let probe;
+      if (mode === 'schedule_probe') {
+        probe = await runtimeModule.runStudentScheduleProbe({
+          agentContext,
+          requestContext,
+          preparedPrivacy: prepared,
+        });
+      } else if (mode === 'records_probe') {
+        probe = await runtimeModule.runRecentRecordsProbe({
+          agentContext,
+          requestContext,
+          preparedPrivacy: prepared,
+        });
+      } else {
+        probe = await runtimeModule.runScheduleAvailabilityProbe({
+          agentContext,
+          requestContext,
+          preparedPrivacy: prepared,
+        });
+      }
 
       return res.status(200).json({
         ok: true,

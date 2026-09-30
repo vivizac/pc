@@ -284,6 +284,163 @@ async function runRecentRecordsProbe({
   };
 }
 
+
+function resolveAvailabilityScope(preparedPrivacy) {
+  if (preparedPrivacy?.needsDisambiguation) {
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+
+  const subjectRefs = Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+  if (subjectRefs.length > 1) {
+    throw runtimeError(
+      '시간표 가용성 조회에서는 학생을 한 명만 지정해 주세요.',
+      400,
+      'OLLI_AGENT_AVAILABILITY_MULTI_STUDENT'
+    );
+  }
+
+  const safeText = String(preparedPrivacy?.safeText || '');
+  const elementaryExplicit = /(?:초등부|초등|elementary)/i.test(safeText);
+  const kinderExplicit = /(?:유치부|유치|유아|kinder)/i.test(safeText);
+
+  if (elementaryExplicit && kinderExplicit) {
+    throw runtimeError(
+      '초등부와 유치부 중 한 수업 구분만 지정해 주세요.',
+      400,
+      'OLLI_AGENT_AVAILABILITY_DIVISION_AMBIGUOUS'
+    );
+  }
+
+  const explicitDivision = elementaryExplicit
+    ? 'elementary'
+    : (kinderExplicit ? 'kinder' : '');
+
+  let subjectDivision = '';
+  if (subjectRefs.length === 1) {
+    const subject = preparedPrivacy?.subjectAccess?.resolve?.(subjectRefs[0].label);
+    const value = String(subject?.division || '').trim().toLowerCase();
+    if (value === 'elementary' || value === 'kinder') subjectDivision = value;
+  }
+
+  if (explicitDivision && subjectDivision && explicitDivision !== subjectDivision) {
+    throw runtimeError(
+      '지정한 학생의 수업 구분과 요청한 초등부·유치부가 서로 다릅니다.',
+      400,
+      'OLLI_AGENT_AVAILABILITY_DIVISION_MISMATCH'
+    );
+  }
+
+  const division = subjectDivision || explicitDivision;
+  if (!division) {
+    throw runtimeError(
+      '시간표 가용성 조회에는 초등부 또는 유치부를 함께 알려 주세요.',
+      400,
+      'OLLI_AGENT_AVAILABILITY_DIVISION_REQUIRED'
+    );
+  }
+
+  const purposes = [];
+  if (/보강/.test(safeText)) purposes.push('makeup');
+  if (/체험/.test(safeText)) purposes.push('trial');
+  if (/대기/.test(safeText)) purposes.push('wait');
+  if (/(?:정규수업|정규|신규\s*등록|신규등록|수업\s*이동)/.test(safeText)) purposes.push('regular');
+
+  const uniquePurposes = Array.from(new Set(purposes));
+  if (uniquePurposes.length > 1) {
+    throw runtimeError(
+      '보강·체험·대기·정규 중 한 가지 목적만 지정해 주세요.',
+      400,
+      'OLLI_AGENT_AVAILABILITY_PURPOSE_AMBIGUOUS'
+    );
+  }
+
+  return {
+    division,
+    purpose: uniquePurposes[0] || 'regular',
+    subjectLabel: subjectRefs.length === 1 ? subjectRefs[0].label : '',
+  };
+}
+
+async function runScheduleAvailabilityProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+}) {
+  assertOpenAiKey();
+
+  const scope = resolveAvailabilityScope(preparedPrivacy);
+  const { Agent, run, tool, z } = await loadAgentsSdk();
+  const { createGetScheduleAvailabilityTool } = require('./tools/availability-tools.cjs');
+  const { sanitizeAgentToolPayload } = require('./privacy.cjs');
+  const model = agentModel();
+  const today = todayInSeoul();
+
+  const getScheduleAvailability = createGetScheduleAvailabilityTool({
+    tool,
+    z,
+    requestContext,
+    division: scope.division,
+    purpose: scope.purpose,
+    sanitizePayload(payload) {
+      return sanitizeAgentToolPayload(payload, preparedPrivacy);
+    },
+  });
+
+  const subjectText = scope.subjectLabel
+    ? 'The anonymous student label for this run is ' + scope.subjectLabel + '.'
+    : 'This run is not tied to a specific student.';
+
+  const agent = new Agent({
+    name: 'Olli Schedule Availability Probe',
+    model,
+    instructions: [
+      'You are the Olli academy schedule-availability assistant.',
+      'The user message has already been privacy-sanitized.',
+      subjectText,
+      'The server has already fixed the division to ' + scope.division + ' and the purpose to ' + scope.purpose + '. Do not override them.',
+      'Today in Korea is ' + today + '.',
+      'Always use get_schedule_availability before answering.',
+      'The maximum tool date range is 14 days.',
+      'Use time_slot 0 when the user did not specify a time or when a half-hour label could be ambiguous. Use class_group ALL unless the user explicitly asks for A반 or B반.',
+      'For makeup availability, a dated regular absence can free a same-day seat. For regular or trial availability, an absence does not create a seat.',
+      'For wait queries, waitlist_open means the wait slot is unused. If remaining is greater than zero, explain that the class itself still has a seat rather than implying that waiting is necessary.',
+      'Use only the tool result. Do not invent classes or capacity.',
+      'Never ask for, infer, or reveal a real student name, UUID, member ID, session token, academy ID, or teacher ID.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools: [getScheduleAvailability],
+    modelSettings: {
+      toolChoice: 'get_schedule_availability',
+    },
+  });
+
+  const result = await run(agent, preparedPrivacy.safeText, {
+    context: agentContext,
+  });
+
+  const finalOutput = String(result?.finalOutput || '').trim();
+  if (!finalOutput) {
+    throw runtimeError(
+      '시간표 가용성 Agent 응답이 비어 있습니다.',
+      502,
+      'OLLI_AGENT_EMPTY_AVAILABILITY_RESPONSE'
+    );
+  }
+
+  return {
+    ready: true,
+    model,
+    output: finalOutput,
+    nodeVersion: process.versions.node,
+  };
+}
+
 module.exports = {
   MIN_NODE_MAJOR,
   assertSupportedNodeRuntime,
@@ -292,4 +449,6 @@ module.exports = {
   runFoundationProbe,
   runStudentScheduleProbe,
   runRecentRecordsProbe,
+  resolveAvailabilityScope,
+  runScheduleAvailabilityProbe,
 };
