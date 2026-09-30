@@ -640,6 +640,48 @@
     return { route:null, message };
   }
 
+  function isOlliTalkPickupAddAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parsePickupMutationIntent!=='function') return false;
+    try{
+      return String(router.parsePickupMutationIntent(commandText)?.intent || '').trim()==='add_pickup';
+    }catch(error){
+      console.warn('올리톡 픽업 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
+  async function resolveOlliTalkPickupAddAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('픽업 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'pickup_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '픽업 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='add_pickup'){
+      throw new Error('픽업 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return{
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
   async function saveOlliTalkOlliReply(context, body, replyToMessageId){
     const payload = await callOlliTalkRpc('olli_team_chat_send_ai', {
       p_session_token:context.sessionToken,
@@ -710,6 +752,10 @@
         replyText:message,
         recordAi:false
       };
+    }
+
+    if(isOlliTalkPickupAddAgentCandidate(commandText,router)){
+      return resolveOlliTalkPickupAddAgentTurn(commandText,context,replyToMessageId);
     }
 
     if(router && typeof router.prepareAction==='function'){
