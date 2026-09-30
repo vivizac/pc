@@ -7,6 +7,7 @@ on:
     paths:
       - 'apps/mobile/**'
       - 'supabase/migrations/*_schedule_availability_rules_and_read_rpc.sql'
+      - 'supabase/migrations/*_agent_student_pickups_range_read_rpc.sql'
       - 'packages/common/**'
       - 'deploy/vercel-projects.json'
       - 'MONOREPO_TRANSITION.md'
@@ -25,6 +26,7 @@ on:
       - 'apps/pc/olli-app-startup.js'
       - 'apps/mobile/**'
       - 'supabase/migrations/*_schedule_availability_rules_and_read_rpc.sql'
+      - 'supabase/migrations/*_agent_student_pickups_range_read_rpc.sql'
       - 'packages/common/**'
       - 'deploy/vercel-projects.json'
       - 'MONOREPO_TRANSITION.md'
@@ -75,6 +77,7 @@ jobs:
           node --check api/_lib/olli-agent/tools/record-tools.cjs
           node --check api/_lib/olli-agent/tools/availability-tools.cjs
           node --check api/_lib/olli-agent/tools/attendance-tools.cjs
+          node --check api/_lib/olli-agent/tools/pickup-tools.cjs
           node --test \
             tests/schedule-realtime.test.cjs \
             tests/phone-schedule-class-layout-date-contract.test.cjs \
@@ -90,4 +93,6 @@ jobs:
             tests/olli-agent-recent-records-tool.test.cjs \
             tests/olli-agent-schedule-availability-tool.test.cjs \
             tests/olli-agent-schedule-availability-db-contract.test.cjs \
-            tests/olli-agent-attendance-tool.test.cjs
+            tests/olli-agent-attendance-tool.test.cjs \
+            tests/olli-agent-pickups-tool.test.cjs \
+            tests/olli-agent-pickups-db-contract.test.cjs
