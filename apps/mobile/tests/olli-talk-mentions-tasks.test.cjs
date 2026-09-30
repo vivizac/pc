@@ -324,13 +324,21 @@ test('Team Talk composer action buttons use a very light gray background and thi
 });
 
 
-test('Team Talk keyboard settling never moves the current chat scroll position', () => {
-  const start = source.indexOf('function finishOlliTalkViewportTransition');
-  const end = source.indexOf('function scheduleOlliTalkViewportSettle', start);
-  const body = source.slice(start, end);
-  assert.match(body, /syncOlliTalkChatToComposer\(\)/);
-  assert.doesNotMatch(body, /chatArea\.scrollTop|startScrollTop|startTop|finalTop|followBottom|delta/);
-  assert.doesNotMatch(source, /olliTalkViewportTransitionComposerTop|olliTalkViewportTransitionChatScrollTop|olliTalkViewportTransitionUserTouchedChat|olliTalkFollowBottomAfterViewportSettle/);
+test('Team Talk moves message layer during keyboard motion and commits scroll only once at settle', () => {
+  assert.match(source,/let olliTalkKeyboardMessageMotion = null/);
+  assert.match(source,/function beginOlliTalkKeyboardMessageMotion\(\)/);
+  assert.match(source,/function updateOlliTalkKeyboardMessageMotion\(composerTop\)/);
+  assert.match(source,/function commitOlliTalkKeyboardMessageMotion\(\)/);
+  const syncStart=source.indexOf('function syncOlliTalkChatToComposer');
+  const syncEnd=source.indexOf('function scheduleOlliTalkChatToComposer',syncStart);
+  const syncBody=source.slice(syncStart,syncEnd);
+  assert.match(syncBody,/updateOlliTalkKeyboardMessageMotion\(composerRect\.top\)/);
+  assert.doesNotMatch(syncBody,/chatArea\.scrollTop\s*=/);
+  const settleStart=source.indexOf('function finishOlliTalkViewportTransition');
+  const settleEnd=source.indexOf('function scheduleOlliTalkViewportSettle',settleStart);
+  const settleBody=source.slice(settleStart,settleEnd);
+  assert.match(settleBody,/commitOlliTalkKeyboardMessageMotion\(\)/);
+  assert.match(source,/chatArea\.scrollTop = Math\.max\(0, Math\.min\(maxScroll, Number\(chatArea\.scrollTop \|\| 0\) - shiftY\)\)/);
 });
 
 test('Team Talk direct first touch focuses like mention without cancelling tap or caret placement', () => {
@@ -594,4 +602,13 @@ test('messages without a teacher target register broadcast recipients while targ
   assert.match(source, /async function registerOlliTalkMessageRecipients\(messageId,memberIds/);
   assert.match(source, /registerOlliTalkMessageRecipients\(Number\(payload\.message\.id\),mentionedIds,context\)/);
   assert.match(source, /registerOlliTalkMessageRecipients\(messageId,\[\],context\)/);
+});
+
+
+test('Team Talk message layer uses visual transform while viewport moves', () => {
+  const css=fs.readFileSync(path.join(root,'olli-talk-beta.css'),'utf8');
+  const list=css.match(/#olliTalkBetaScreen \.olliTalkBetaMessageList\{([\s\S]*?)\}/)?.[1]||'';
+  assert.match(list,/transform:translate3d\(0,var\(--olli-talk-message-shift-y, 0px\),0\)/);
+  assert.match(css,/#olliTalkBetaScreen\.olliTalkViewportMoving \.olliTalkBetaMessageList\{[\s\S]*?will-change:transform/);
+  assert.match(source,/beginOlliTalkChatGesture[\s\S]{0,400}commitOlliTalkKeyboardMessageMotion\(\);[\s\S]{0,120}olliTalkChatGestureActive = true/);
 });

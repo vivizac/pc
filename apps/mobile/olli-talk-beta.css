@@ -717,6 +717,11 @@
   flex-direction:column;
   justify-content:flex-end;
   padding:8px 0 10px;
+  transform:translate3d(0,var(--olli-talk-message-shift-y, 0px),0);
+  transition:none;
+}
+#olliTalkBetaScreen.olliTalkViewportMoving .olliTalkBetaMessageList{
+  will-change:transform;
 }
 
 #olliTalkBetaScreen .olliTalkBetaPreviewNote{
