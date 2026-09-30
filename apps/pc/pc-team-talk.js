@@ -3,10 +3,8 @@
 
   if (global.OlliPcTeamTalk?.version) return;
 
-  const VERSION = '1.2.0';
+  const VERSION = '1.1.0';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
-  // Shared Work notification summary. The RPC name is historical; the contract is used by both PC and mobile.
-  const TEAM_TALK_NOTIFICATION_SUMMARY_RPC = 'olli_mobile_work_notification_summary';
   const state = {
     archiveTab: 'files',
     workspaceTab: 'materials',
@@ -26,10 +24,6 @@
     uploadBusy: false,
     realtimeWatcher: null,
     blobUrls: new Map(),
-    desktopNotificationContextKey: '',
-    desktopNotificationLatestMessageId: 0,
-    desktopNotificationSyncBusy: false,
-    desktopNotificationSyncPending: false,
     started: false
   };
 
@@ -218,148 +212,6 @@
     } catch (error) {
       console.warn('PC 팀톡 읽음 처리 실패:', error?.message || error);
       return false;
-    }
-  }
-
-  function desktopNotificationContextKey(current = context()) {
-    const academyId = clean(current?.academyId);
-    const memberId = clean(current?.memberId);
-    return academyId && memberId ? `${academyId}:${memberId}` : '';
-  }
-
-  function pcSystemNotificationsEnabled() {
-    try {
-      const cached = typeof global.settingsGetCachedState === 'function'
-        ? global.settingsGetCachedState()
-        : null;
-      return cached?.notificationEnabled !== false;
-    } catch (_) {
-      return true;
-    }
-  }
-
-  async function fetchTeamTalkNotificationSummary(current = context()) {
-    if (!current?.sessionToken || !current?.academyId) return null;
-    const payload = await rpc(TEAM_TALK_NOTIFICATION_SUMMARY_RPC, {
-      p_session_token: current.sessionToken,
-      p_academy_id: current.academyId
-    });
-    if (!payload?.ok) return null;
-    return payload;
-  }
-
-  function isCurrentMemberMention(body, current = context()) {
-    const memberName = clean(current?.memberName);
-    return !!memberName && String(body || '').includes(`@${memberName}`);
-  }
-
-  function isTeamTalkActivelyViewed() {
-    return isVisible()
-      && document.visibilityState === 'visible'
-      && typeof document.hasFocus === 'function'
-      && document.hasFocus();
-  }
-
-  async function openDesktopNotificationMessage(messageId) {
-    try { global.focus?.(); } catch (_) {}
-    try {
-      await open();
-      const id = String(Number(messageId || 0) || '');
-      if (!id) return;
-      const row = document.querySelector(`#olliPcTeamTalkMessages [data-message-id="${id}"]`);
-      row?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
-    } catch (error) {
-      console.warn('PC Team Chat 알림 이동 실패:', error?.message || error);
-    }
-  }
-
-  function showDesktopTeamTalkNotification(summary, current = context()) {
-    if (!pcSystemNotificationsEnabled()) return false;
-    if (!('Notification' in global) || global.Notification.permission !== 'granted') return false;
-    if (isTeamTalkActivelyViewed()) return false;
-
-    const messageId = Number(summary?.latest_message_id || 0);
-    if (!messageId) return false;
-
-    const senderName = clean(summary?.latest_sender_name) || '선생님';
-    const rawBody = clean(summary?.latest_body);
-    const body = rawBody || '사진 또는 파일을 보냈습니다.';
-    const mentioned = isCurrentMemberMention(rawBody, current);
-    const title = mentioned ? 'Team Chat · 멘션' : 'Team Chat 새 메시지';
-
-    try {
-      const notification = new global.Notification(title, {
-        body: `${senderName}: ${body}`,
-        tag: `olli-pc-team-chat-${messageId}`,
-        silent: false
-      });
-      notification.onclick = () => {
-        try { notification.close(); } catch (_) {}
-        openDesktopNotificationMessage(messageId);
-      };
-      return true;
-    } catch (error) {
-      console.warn('PC Team Chat Windows 알림 표시 실패:', error?.message || error);
-      return false;
-    }
-  }
-
-  async function primeDesktopNotificationState() {
-    const current = context();
-    const key = desktopNotificationContextKey(current);
-    if (!key) return false;
-
-    try {
-      const summary = await fetchTeamTalkNotificationSummary(current);
-      if (!summary) return false;
-      state.desktopNotificationContextKey = key;
-      const latestMessageId = Number(summary.latest_message_id || 0);
-      state.desktopNotificationLatestMessageId = latestMessageId > 0 ? latestMessageId : 0;
-      return true;
-    } catch (error) {
-      console.warn('PC Team Chat Windows 알림 기준점 확인 실패:', error?.message || error);
-      return false;
-    }
-  }
-
-  async function refreshDesktopNotificationFromRealtime() {
-    const current = context();
-    const key = desktopNotificationContextKey(current);
-    if (!key) return false;
-
-    if (state.desktopNotificationContextKey !== key) {
-      return primeDesktopNotificationState();
-    }
-
-    if (state.desktopNotificationSyncBusy) {
-      state.desktopNotificationSyncPending = true;
-      return false;
-    }
-
-    state.desktopNotificationSyncBusy = true;
-    try {
-      const summary = await fetchTeamTalkNotificationSummary(current);
-      if (!summary) return false;
-
-      const latestMessageId = Number(summary.latest_message_id || 0);
-      if (!latestMessageId) return false;
-
-      const previousMessageId = Number(state.desktopNotificationLatestMessageId || 0);
-      if (latestMessageId <= previousMessageId) return false;
-
-      state.desktopNotificationLatestMessageId = latestMessageId;
-      if (Number(summary.chat_unread_count || 0) < 1) return false;
-
-      return showDesktopTeamTalkNotification(summary, current);
-    } catch (error) {
-      console.warn('PC Team Chat Windows 알림 동기화 실패:', error?.message || error);
-      return false;
-    } finally {
-      state.desktopNotificationSyncBusy = false;
-      if (state.desktopNotificationSyncPending) {
-        state.desktopNotificationSyncPending = false;
-        Promise.resolve().then(() => refreshDesktopNotificationFromRealtime());
-      }
     }
   }
 
@@ -1880,7 +1732,7 @@
   }
 
   async function refreshFromRealtime() {
-    const jobs = [refreshBadge(), refreshDesktopNotificationFromRealtime()];
+    const jobs = [refreshBadge()];
     if (isVisible()) {
       jobs.push(loadMessages({ showLoading: false, followBottom: false }));
       jobs.push(loadArchive({ showLoading: false }));
@@ -1928,17 +1780,8 @@
     syncAssistantUi();
     global.addEventListener('olli-team-talk-ai-mode-changed', handleAiModeChanged);
     refreshBadge();
-    primeDesktopNotificationState();
     global.addEventListener('storage', (event) => {
-      if (!event || event.key === ACCOUNT_SESSION_TOKEN_KEY || event.key === 'olli_current_academy_id') {
-        refreshBadge();
-        primeDesktopNotificationState();
-      }
-    });
-    global.addEventListener('olli:realtime-status', (event) => {
-      if (event?.detail?.status === 'SUBSCRIBED' && !state.desktopNotificationContextKey) {
-        primeDesktopNotificationState();
-      }
+      if (!event || event.key === ACCOUNT_SESSION_TOKEN_KEY || event.key === 'olli_current_academy_id') refreshBadge();
     });
   }
 
