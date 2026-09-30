@@ -849,26 +849,27 @@
   stroke-width:1.7 !important;
 }
 
-/* 관찰노트 검색 키보드가 열리면 오른쪽 정렬 버튼 대신 검색 종료 X를 표시한다. */
+/* 검색 모드 자체가 X/정렬 버튼 표시를 소유한다.
+   키보드/visualViewport 상태와 분리해 재터치에도 X가 유지되게 한다. */
 #observationRosterScreen #memoRosterSearchClose {
   display:none !important;
   font-size:calc(21px * var(--olli-text-scale));
   font-weight:400;
   line-height:1;
 }
-#observationRosterScreen.observation-keyboard-open #memoRosterSortBtn,
-#observationRosterScreen.observation-keyboard-open .memoRosterSortPopup {
+#observationRosterScreen.observation-search-active #memoRosterSortBtn,
+#observationRosterScreen.observation-search-active .memoRosterSortPopup {
   display:none !important;
   visibility:hidden !important;
   pointer-events:none !important;
 }
-#observationRosterScreen.observation-keyboard-open #memoRosterSearchClose {
+#observationRosterScreen.observation-search-active #memoRosterSearchClose {
   display:inline-flex !important;
   visibility:visible !important;
   opacity:1 !important;
   pointer-events:auto !important;
 }
-#observationRosterScreen.observation-keyboard-open #memoRosterSearchClose:active {
+#observationRosterScreen.observation-search-active #memoRosterSearchClose:active {
   background:#eeeeee !important;
 }
 

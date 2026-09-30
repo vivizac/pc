@@ -148,3 +148,17 @@ test('Observation roster contains iOS scroll chaining at its top and bottom boun
   assert.match(source,/atBottom && deltaY < 0/);
   assert.match(source,/event\.preventDefault\(\);[\s\S]{0,80}event\.stopPropagation\(\);/);
 });
+
+
+test('Observation roster keeps X button tied to search mode instead of keyboard state', () => {
+  assert.match(source,/function syncObservationRosterSearchActiveClass\(\)/);
+  assert.match(source,/classList\.toggle\('observation-search-active', !!observationRosterSearchFocused\)/);
+  assert.match(source,/input\.addEventListener\('focus',[\s\S]*?syncObservationRosterSearchActiveClass\(\)/);
+  assert.match(source,/input\.addEventListener\('input',[\s\S]*?syncObservationRosterSearchActiveClass\(\)/);
+  assert.match(source,/observationRosterSearchFocused = false;[\s\S]{0,120}syncObservationRosterSearchActiveClass\(\)/);
+
+  assert.match(css,/#observationRosterScreen\.observation-search-active #memoRosterSortBtn/);
+  assert.match(css,/#observationRosterScreen\.observation-search-active #memoRosterSearchClose/);
+  assert.doesNotMatch(css,/#observationRosterScreen\.observation-keyboard-open #memoRosterSortBtn/);
+  assert.doesNotMatch(css,/#observationRosterScreen\.observation-keyboard-open #memoRosterSearchClose/);
+});

@@ -719,6 +719,12 @@ function renderObservationRosterFooter() {
   </div>`;
 }
 
+function syncObservationRosterSearchActiveClass() {
+  const screen = getObservationRosterScreen();
+  if (!screen) return;
+  screen.classList.toggle('observation-search-active', !!observationRosterSearchFocused);
+}
+
 function closeObservationRosterSearch(event) {
   if (event) {
     event.preventDefault();
@@ -727,6 +733,7 @@ function closeObservationRosterSearch(event) {
   observationRosterSearchQuery = '';
   observationRosterSearchFocused = false;
   observationRosterSortPopupOpen = false;
+  syncObservationRosterSearchActiveClass();
   const input = document.getElementById('memoRosterSearchInput');
   if (input) {
     input.value = '';
@@ -748,14 +755,19 @@ function bindObservationRosterFooterEvents() {
   const input = getObservationRosterSearchInput();
   if (input) {
     input.addEventListener('focus', () => {
-      if (observationRosterSearchFocused) return;
-      observationRosterSearchFocused = true;
-      observationRosterSortPopupOpen = false;
-      renderObservationRosterList();
+      if (!observationRosterSearchFocused) {
+        observationRosterSearchFocused = true;
+        observationRosterSortPopupOpen = false;
+        syncObservationRosterSearchActiveClass();
+        renderObservationRosterList();
+      } else {
+        syncObservationRosterSearchActiveClass();
+      }
       scheduleObservationRosterScrollToUtility();
     });
     input.addEventListener('input', () => {
       observationRosterSearchFocused = true;
+      syncObservationRosterSearchActiveClass();
       observationRosterSearchQuery = String(input.value || '').trim();
       renderObservationRosterList();
     });
@@ -882,6 +894,7 @@ function renderObservationRosterUtility() {
   bindObservationRosterFooterEvents();
   bindObservationRosterUtilitySurface();
   bindObservationRosterUtilityTracking();
+  syncObservationRosterSearchActiveClass();
   scheduleObservationRosterScrollToUtility();
 }
 function renderObservationMemoRoster() {
@@ -980,7 +993,7 @@ function hideObservationRosterScreen() {
   observationRosterKeyboardBaselineBottom = 0;
   observationRosterKeyboardTransitionActive = false;
   observationRosterLastViewportSignature = '';
-  rosterScreen.classList.remove('observation-keyboard-open','observation-roster-viewport-moving','observation-roster-viewport-locked');
+  rosterScreen.classList.remove('observation-keyboard-open','observation-roster-viewport-moving','observation-roster-viewport-locked','observation-search-active');
   rosterScreen.style.display = 'none';
 }
 
