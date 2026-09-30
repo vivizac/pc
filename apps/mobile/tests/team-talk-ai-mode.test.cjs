@@ -23,13 +23,16 @@ test('phone mention picker offers Olli as a virtual AI target without registerin
   assert.match(talk, /if \(member\?\.is_olli_ai === true\) return/);
   assert.match(talk, /olliAiMentionRequested && !isOlliTalkAiEnabled\(\)/);
   assert.match(talk, /const usingAi = olliAiMentionRequested \|\| isOlliTalkAiEnabled\(\)/);
-  assert.match(html, /olli-talk-beta\.js\?v=20260930-olli-ai-mention-1/);
+  assert.match(html, /olli-talk-beta\.js\?v=20260930-mention-token-context-1/);
 });
 
-test('phone AI request keeps the session token but no longer depends on a button-selected conversation mode', () => {
-  assert.match(talk, /sessionToken:context\?\.sessionToken \|\| ''/);
-  assert.doesNotMatch(talk, /olliTalkAiConversationMessages/);
-  assert.match(talk, /messages:\[\{ role:'user', content:String\(commandText \|\| ''\)\.trim\(\) \}\]/);
+test('phone AI mention keeps bounded conversation context while the Olli mention remains active', () => {
+  assert.match(talk, /let olliTalkAiConversationMessages = \[\]/);
+  assert.match(talk, /function buildOlliTalkAiConversationMessages\(commandText\)/);
+  assert.match(talk, /return olliTalkAiConversationMessages\.concat\(current\)/);
+  assert.match(talk, /messages:buildOlliTalkAiConversationMessages\(commandText\)/);
+  assert.match(talk, /if \(olliTalkAiConversationMessages\.length > 12\)/);
+  assert.match(talk, /recordOlliTalkAiConversationTurn\(commandText, turn\.replyText\)/);
 });
 
 test('AI server accepts talk prompt only after Team Talk AI setting check', () => {
@@ -58,7 +61,7 @@ test('AI setting changes only clear pending assistant action state', () => {
 
 test('phone shows the saved user bubble immediately and only AI gets the animated typing indicator', () => {
   assert.match(talk, /appendOlliTalkPersistedMessage\(payload\.message, context\.memberId\)/);
-  assert.match(talk, /if \(olliRequested && isOlliTalkAiEnabled\(\)\) \{[\s\S]{0,140}olliTalkAssistantReplyPending = true;[\s\S]{0,140}syncOlliTalkAssistantTypingIndicator\(\)/);
+  assert.match(talk, /if \(olliRequested && \(olliAiMentionRequested \|\| isOlliTalkAiEnabled\(\)\)\) \{[\s\S]{0,140}olliTalkAssistantReplyPending = true;[\s\S]{0,140}syncOlliTalkAssistantTypingIndicator\(\)/);
   assert.doesNotMatch(talk, /if \(olliRequested\) \{\s*olliTalkAssistantReplyPending = true/);
   assert.match(talk, /finally \{[\s\S]{0,140}olliTalkAssistantReplyPending = false;[\s\S]{0,140}syncOlliTalkAssistantTypingIndicator\(\)/);
   assert.match(talk, /className = 'olliTalkBetaTypingDot'/);
@@ -71,10 +74,16 @@ test('phone swaps the AI typing row directly into the saved AI bubble without re
   assert.match(talk, /if \(options\.render !== false\) \{\s*renderOlliTalkServerMessages/);
 });
 
+test('phone selected mention becomes a dedicated prefix token while the textarea keeps the caret after it', () => {
+  assert.match(html, /id="olliTalkSelectedMentionPrefix"[^>]*hidden/);
+  assert.match(talk, /function syncOlliTalkSelectedMentionPrefix\(\)/);
+  assert.match(talk, /input\.setRangeText\('', info\.start, info\.end, 'end'\)/);
+});
+
 test('phone mention mode keeps @ active until a selected teacher has actual message text', () => {
   assert.match(talk, /let olliTalkMentionModeActive = false/);
   assert.match(talk, /const canSend = olliTalkMentionModeActive \? isOlliTalkMentionMessageReady\(\) : hasText/);
-  assert.match(talk, /hasOlliTalkSelectedMentionInInput\(input\.value\)[\s\S]{0,120}getOlliTalkMentionMessageText\(input\.value\)\.length > 0/);
+  assert.match(talk, /hasOlliTalkSelectedMentionInInput\(\)[\s\S]{0,120}getOlliTalkMentionMessageText\(input\.value\)\.length > 0/);
   assert.match(talk, /trigger\.classList\.toggle\('active', olliTalkMentionModeActive\)/);
 });
 
@@ -85,8 +94,9 @@ test('phone send button preserves composer focus so the keyboard does not close 
 
 test('phone mention mode stays active across sends until @ is pressed again', () => {
   assert.match(talk, /function getOlliTalkPersistentMentionPrefix\(value\)/);
-  assert.match(talk, /const persistentMentionPrefix = olliTalkMentionModeActive[\s\S]{0,120}getOlliTalkPersistentMentionPrefix\(rawBody\)/);
-  assert.match(talk, /input\.value = persistentMentionPrefix/);
+  assert.match(talk, /const persistentMentionPrefix = olliTalkMentionModeActive[\s\S]{0,120}getOlliTalkPersistentMentionPrefix\(\)/);
+  assert.match(talk, /input\.value = ''/);
+  assert.match(talk, /syncOlliTalkSelectedMentionPrefix\(\)/);
   assert.match(talk, /if \(!persistentMentionPrefix\) \{[\s\S]{0,120}olliTalkMentionModeActive = false/);
   assert.doesNotMatch(talk, /input\.value = '';[\s\S]{0,120}olliTalkMentionModeActive = false/);
 });

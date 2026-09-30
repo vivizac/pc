@@ -550,6 +550,29 @@
   align-items:flex-end;
 }
 
+#olliTalkBetaScreen .olliTalkSelectedMentionPrefix{
+  position:relative;
+  z-index:2;
+  flex:0 0 auto;
+  max-width:42%;
+  min-height:34px;
+  display:inline-flex;
+  align-items:center;
+  padding:5px 0 3px;
+  margin-right:.38em;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#1687F8;
+  font-family:inherit;
+  font-size:calc(16px * var(--olli-text-scale, 1));
+  font-weight:500;
+  line-height:1.45;
+}
+#olliTalkBetaScreen .olliTalkSelectedMentionPrefix[hidden]{
+  display:none;
+}
+
 #olliTalkBetaScreen .olliTalkBetaInput{
   position:relative;
   z-index:2;
