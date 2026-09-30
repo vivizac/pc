@@ -7,6 +7,8 @@ const navigation = fs.readFileSync('olli-record-room-navigation.js', 'utf8');
 const observationRuntime = fs.readFileSync('olli-observation-runtime.js', 'utf8');
 const guideRuntime = fs.readFileSync('olli-attendance-guide-align-runtime.js', 'utf8');
 const studentOperations = fs.readFileSync('olli-data-student-operations.js', 'utf8');
+const recordListView = fs.readFileSync('olli-record-list-view.js', 'utf8');
+const attendanceRecordCss = fs.readFileSync('olli-attendance-record.css', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
 
 test('attendance re-entry hydrates only the lightweight week snapshot before first paint', () => {
@@ -23,6 +25,19 @@ test('record list paints local attendance before awaiting student server refresh
   assert.match(navigation, /hydrateRecordAttendanceLocalSnapshot\(\{ render: false \}\);\s*renderKinderRecords\(name\);\s*if \(localOnly\) return true;\s*}\s*const beforeStudentSignature[\s\S]*?await loadStudentsFromSupabase\(\);/);
   assert.match(navigation, /if \(!refreshOnly \|\| studentsChanged\) renderElementaryRecords\(name\)/);
   assert.match(navigation, /if \(!refreshOnly \|\| studentsChanged\) renderKinderRecords\(name\)/);
+});
+
+test('attendance guide output is marked separately from the normal student meta line', () => {
+  assert.match(recordListView, /const attendanceGuideOutput = metaHtml\.includes\('recordAttendanceGuideMeta'\)/);
+  assert.match(recordListView, /recordAttendanceGuideTextWrap/);
+  assert.match(recordListView, /recordAttendanceGuideOutput/);
+});
+
+test('attendance guide output sits below the name without changing the name flow position', () => {
+  assert.match(attendanceRecordCss, /\.studentTextWrap\.recordAttendanceGuideTextWrap\{[\s\S]*?position:relative/);
+  assert.match(attendanceRecordCss, /\.studentMetaText\.recordAttendanceGuideOutput\{[\s\S]*?position:absolute;[\s\S]*?left:0;[\s\S]*?top:calc\(100% \+ 2px\)/);
+  assert.match(attendanceRecordCss, /body\.olli-main-subpage-drawer-open[\s\S]*?max-width:calc\(75vw - 72px\)/);
+  assert.doesNotMatch(attendanceRecordCss, /recordAttendanceGuideOutput[^}]*!important/);
 });
 
 test('attendance local store separates same-kind sessions by time and class', () => {
@@ -123,6 +138,8 @@ test('attendance server refresh only rerenders schedule when the visible snapsho
 test('phone loads cache-busted shared and adapter attendance scripts', () => {
   assert.match(html, /olli-attendance-data\.js\?v=20260924-week-local-first-1/);
   assert.match(html, /olli-attendance-phone-adapter\.js\?v=20260930-attendance-real-paint-1/);
+  assert.match(html, /olli-attendance-record\.css\?v=20260930-guide-under-name-1/);
+  assert.match(html, /olli-record-list-view\.js\?v=20260930-guide-under-name-1/);
   assert.match(html, /olli-record-room-navigation\.js\?v=20260930-attendance-runtime-cleanup-1/);
 });
 

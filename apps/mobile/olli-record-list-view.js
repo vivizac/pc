@@ -150,6 +150,7 @@ function renderElementaryStudentRows(students, searchMode = false) {
   return students.map((student, index) => {
     const metaText = getPhoneRecordStudentGuideText(student, 'elementary');
     const metaHtml = getPhoneRecordStudentMetaHtml(student, metaText);
+    const attendanceGuideOutput = metaHtml.includes('recordAttendanceGuideMeta');
     const sectionKey = searchMode
       ? 'search'
       : ((typeof getRecordSortSectionKey === 'function') ? getRecordSortSectionKey(student, 'elementary', cycleGroups) : getElementaryGroupSectionKey(student, cycleGroups));
@@ -170,9 +171,9 @@ function renderElementaryStudentRows(students, searchMode = false) {
     <button class="elementaryStudentRow${groupBreakClass}${statusClass}" onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')" onpointerdown="startStudentLongPress(event,'${escapeTemplateLiteral(student.id)}')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">
       <div class="elementaryRowInner">
         ${renderPhoneElementaryAttendanceLeadIcon(student)}
-        <span class="studentTextWrap">
+        <span class="studentTextWrap${attendanceGuideOutput ? ' recordAttendanceGuideTextWrap' : ''}">
           <span>${escapeHtml(student.name)}</span>
-          ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
+          ${metaHtml ? `<span class="studentMetaText${attendanceGuideOutput ? ' recordAttendanceGuideOutput' : ''}">${metaHtml}</span>` : ''}
         </span>
       </div>
     </button>`;
@@ -184,6 +185,7 @@ function renderKinderStudentRows(students, searchMode = false) {
   return students.map((student, index) => {
     const metaText = getPhoneRecordStudentGuideText(student, 'kinder');
     const metaHtml = getPhoneRecordStudentMetaHtml(student, metaText);
+    const attendanceGuideOutput = metaHtml.includes('recordAttendanceGuideMeta');
     const sectionKey = searchMode
       ? 'search'
       : ((typeof getRecordSortSectionKey === 'function') ? getRecordSortSectionKey(student, 'kinder') : `status:${getStudentStatus(student)}:${student.age || ''}`);
@@ -204,9 +206,9 @@ function renderKinderStudentRows(students, searchMode = false) {
     <button class="kinderStudentRow${groupBreakClass}${statusClass}" onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')" onpointerdown="startStudentLongPress(event,'${escapeTemplateLiteral(student.id)}')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">
       <div class="kinderRowInner">
         ${renderPhoneKinderAttendanceLeadIcon(student)}
-        <span class="studentTextWrap">
+        <span class="studentTextWrap${attendanceGuideOutput ? ' recordAttendanceGuideTextWrap' : ''}">
           <span>${escapeHtml(student.name)}</span>
-          ${metaHtml ? `<span class="studentMetaText">${metaHtml}</span>` : ''}
+          ${metaHtml ? `<span class="studentMetaText${attendanceGuideOutput ? ' recordAttendanceGuideOutput' : ''}">${metaHtml}</span>` : ''}
         </span>
       </div>
     </button>`;
