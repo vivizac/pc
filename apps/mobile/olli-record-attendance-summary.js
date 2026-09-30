@@ -2,9 +2,6 @@
   'use strict';
 
   let active = false;
-  let renderGeneration = 0;
-  let cacheContext = '';
-  const summaryCache = new Map();
 
   function text(value){
     return String(value == null ? '' : value).trim();
@@ -18,6 +15,26 @@
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  }
+
+  function getSearchScreen(){
+    return global.document.getElementById('recordRoomScreen');
+  }
+
+  function getSearchInput(){
+    return global.document.getElementById('searchName');
+  }
+
+  function isSearchOpen(){
+    return !!getSearchScreen()?.classList.contains('record-search-open');
+  }
+
+  function searchQuery(){
+    return text(getSearchInput()?.value);
+  }
+
+  function isSearchReady(){
+    return isSearchOpen() && !!searchQuery();
   }
 
   function parseDateKey(value){
@@ -81,23 +98,7 @@
     const policy = typeof global.getOlliAttendancePolicy === 'function'
       ? global.getOlliAttendancePolicy()
       : (global.OlliAttendancePolicy?.getPolicy?.() || { startDate: '', makeupExpire: '3m' });
-    const academyId = typeof global.getOlliCurrentAcademyId === 'function'
-      ? text(global.getOlliCurrentAcademyId())
-      : '';
-    const context = [
-      academyId,
-      formatDateKey(new Date()),
-      text(policy?.startDate),
-      text(policy?.makeupExpire)
-    ].join('|');
-    return { studentMap, store, policy, context };
-  }
-
-  function ensureCacheContext(snapshot){
-    const next = text(snapshot?.context);
-    if (cacheContext === next) return;
-    cacheContext = next;
-    summaryCache.clear();
+    return { studentMap, store, policy };
   }
 
   function statusFromStore(store, dateKey, studentId){
@@ -155,13 +156,20 @@
     };
   }
 
+  function visibleSearchRows(){
+    if (!isSearchReady()) return [];
+    return Array.from(global.document.querySelectorAll(
+      '#recordRoomScreen.record-search-open #recordList [data-record-search-student-id]'
+    ));
+  }
+
   function clearRows(){
     global.document.querySelectorAll('#recordRoomScreen .recordAttendanceSummaryLine').forEach(node => node.remove());
     global.document.querySelectorAll('#recordRoomScreen .recordAttendanceSummaryHost').forEach(node => node.classList.remove('recordAttendanceSummaryHost'));
   }
 
   function applyPayload(row, payload){
-    if (!active || !row || !payload) return false;
+    if (!row || !payload) return false;
     const host = row.querySelector('.studentTextWrap');
     if (!host) return false;
     const existing = host.querySelector('.recordAttendanceSummaryLine');
@@ -172,57 +180,44 @@
     return true;
   }
 
-  function renderRow(row, snapshot){
-    if (!active || !row) return false;
-    const studentId = row.getAttribute('data-record-student-id');
-    const student = snapshot.studentMap.get(String(studentId || ''));
-    if (!student) return false;
-    const payload = summaryPayload(calculateCounts(student, snapshot));
-    summaryCache.set(String(studentId), payload);
-    return applyPayload(row, payload);
-  }
-
-  function restoreCachedRows(rows){
-    rows.forEach(row => {
-      const studentId = String(row.getAttribute('data-record-student-id') || '');
-      const payload = summaryCache.get(studentId);
-      if (payload) applyPayload(row, payload);
-    });
-  }
-
-  function scheduleRows(options = {}){
-    const generation = ++renderGeneration;
-    if (!active) return;
-
+  function renderSearchResults(){
+    if (!active || !isSearchReady()) return false;
+    const rows = visibleSearchRows();
     const snapshot = readSnapshot();
-    ensureCacheContext(snapshot);
-    const rows = Array.from(global.document.querySelectorAll('#recordRoomScreen [data-record-student-id]'));
-    if (options.restoreCache !== false) restoreCachedRows(rows);
+    const payloads = new Map();
 
-    let index = 0;
-    const runChunk = () => {
-      if (!active || generation !== renderGeneration) return;
-      const stop = Math.min(index + 4, rows.length);
-      while (index < stop) {
-        renderRow(rows[index], snapshot);
-        index += 1;
+    rows.forEach(row => {
+      const studentId = String(row.getAttribute('data-record-search-student-id') || '');
+      const student = snapshot.studentMap.get(studentId);
+      if (!student) return;
+      let payload = payloads.get(studentId);
+      if (!payload) {
+        payload = summaryPayload(calculateCounts(student, snapshot));
+        payloads.set(studentId, payload);
       }
-      if (index < rows.length) global.setTimeout(runChunk, 0);
-    };
-
-    if (typeof global.requestAnimationFrame === 'function') {
-      global.requestAnimationFrame(() => global.requestAnimationFrame(runChunk));
-    } else {
-      global.setTimeout(runChunk, 0);
-    }
+      applyPayload(row, payload);
+    });
+    return rows.length > 0;
   }
 
   function updateButton(){
     const button = global.document.getElementById('recordAttendanceSummaryToggle');
     if (!button) return;
-    button.classList.toggle('active', active);
-    button.setAttribute('aria-pressed', active ? 'true' : 'false');
-    button.setAttribute('aria-label', active ? '출결 닫기' : '출결 보기');
+    const ready = isSearchReady();
+    button.disabled = !ready;
+    button.classList.toggle('active', active && ready);
+    button.setAttribute('aria-pressed', active && ready ? 'true' : 'false');
+    button.setAttribute('aria-label', active && ready ? '출결 닫기' : '출결 보기');
+  }
+
+  function deactivate(){
+    if (!active) {
+      updateButton();
+      return;
+    }
+    active = false;
+    clearRows();
+    updateButton();
   }
 
   function toggle(event){
@@ -230,31 +225,38 @@
       event.preventDefault();
       event.stopPropagation();
     }
+    if (!isSearchReady()) {
+      deactivate();
+      return;
+    }
     active = !active;
     updateButton();
-    if (active) scheduleRows({ restoreCache: false });
-    else {
-      renderGeneration += 1;
-      clearRows();
-      summaryCache.clear();
-      cacheContext = '';
-    }
+    if (active) renderSearchResults();
+    else clearRows();
   }
 
   function refreshStudent(studentId){
-    if (!active || !studentId) return false;
+    if (!active || !isSearchReady() || !studentId) return false;
     const snapshot = readSnapshot();
-    ensureCacheContext(snapshot);
-    summaryCache.delete(String(studentId));
-    const rows = Array.from(global.document.querySelectorAll('#recordRoomScreen [data-record-student-id]'))
-      .filter(row => row.getAttribute('data-record-student-id') === String(studentId));
-    rows.forEach(row => renderRow(row, snapshot));
+    const student = snapshot.studentMap.get(String(studentId));
+    if (!student) return false;
+    const payload = summaryPayload(calculateCounts(student, snapshot));
+    const rows = visibleSearchRows().filter(
+      row => row.getAttribute('data-record-search-student-id') === String(studentId)
+    );
+    rows.forEach(row => applyPayload(row, payload));
     return rows.length > 0;
   }
 
   global.addEventListener('olli:record-list-rendered', () => {
-    if (active) scheduleRows({ restoreCache: true });
+    updateButton();
+    if (!isSearchReady()) {
+      deactivate();
+      return;
+    }
+    if (active) renderSearchResults();
   });
+
   global.addEventListener('olli:attendance-changed', event => {
     const studentId = event?.detail?.studentId;
     if (active && studentId) refreshStudent(studentId);
@@ -263,7 +265,10 @@
   global.toggleRecordAttendanceSummary = toggle;
   global.OlliRecordAttendanceSummary = Object.freeze({
     isActive: () => active,
-    refresh: () => scheduleRows({ restoreCache: true }),
-    refreshStudent
+    refresh: renderSearchResults,
+    refreshStudent,
+    deactivate
   });
+
+  updateButton();
 })(window);

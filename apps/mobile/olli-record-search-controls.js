@@ -19,11 +19,9 @@ function syncRecordControlRail() {
   const viewportWidth = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
   if (!viewportWidth) return;
 
-  // 상단 검색과 출석 버튼은 페이지 폭/드로어 폭과 무관하게 같은 고정 세로축을 사용한다.
+  // 닫힌 검색 버튼은 기존 상단 가이드 축을 그대로 사용한다.
   const fixedEdgeX = 276;
-  const right = Math.max(0, Math.round(viewportWidth - fixedEdgeX));
   document.documentElement.style.setProperty('--record-control-rail-edge-x', fixedEdgeX + 'px');
-  document.documentElement.style.setProperty('--record-control-rail-right', right + 'px');
 
   const utilityRow = screen.querySelector('.recordUtilityRow');
   if (utilityRow) {

@@ -41,36 +41,60 @@ test('attendance summary old implementation is fully deleted before the rebuild'
   assert.doesNotMatch(attendanceRecordCss, /recordAttendanceGuide|recordAttendanceSummaryWrap|recordAttendanceSummaryTable|recordAttendanceToggle/);
 });
 
-test('rebuilt attendance summary owns one static button and one dedicated runtime', () => {
-  assert.match(html, /id="recordAttendanceSummaryToggle"[^>]*onclick="toggleRecordAttendanceSummary\(event\)"/);
-  assert.match(html, /olli-record-attendance-summary\.js\?v=20260930-summary-v3/);
-  assert.match(html, /olli-record-attendance-summary\.css\?v=20260930-summary-v1/);
-  assert.match(attendanceSummary, /global\.toggleRecordAttendanceSummary = toggle/);
-  assert.match(attendanceSummary, /global\.OlliRecordAttendanceSummary = Object\.freeze/);
-});
-
-test('rebuilt attendance summary button stays inside the visible record area while the drawer is open', () => {
-  assert.match(attendanceSummaryCss, /#recordAttendanceSummaryToggle\.recordAttendanceSummaryBtn\{[\s\S]*?position:absolute;[\s\S]*?right:16px/);
-  assert.match(attendanceSummaryCss, /body\.olli-main-subpage-drawer-open #recordRoomScreen #recordAttendanceSummaryToggle\{[\s\S]*?right:calc\(25% \+ 16px\)/);
+test('attendance summary button exists only for record search mode', () => {
+  const summaryButtonTag = html.match(/<button[^>]*id="recordAttendanceSummaryToggle"[^>]*>/)?.[0] || '';
+  assert.ok(summaryButtonTag, 'search-only attendance summary button must exist');
+  assert.match(summaryButtonTag, /\bdisabled\b/);
+  assert.match(summaryButtonTag, /onclick="toggleRecordAttendanceSummary\(event\)"/);
+  assert.match(html, /olli-record-attendance-summary\.js\?v=20260930-search-only-1/);
+  assert.match(html, /olli-record-attendance-summary\.css\?v=20260930-search-only-1/);
+  assert.match(attendanceSummaryCss, /#recordAttendanceSummaryToggle\.recordAttendanceSummaryBtn\{[\s\S]*?display:none;[\s\S]*?right:16px/);
+  assert.match(attendanceSummaryCss, /#recordRoomScreen\.record-search-open #recordAttendanceSummaryToggle\.recordAttendanceSummaryBtn\{[\s\S]*?display:inline-flex/);
+  assert.doesNotMatch(attendanceSummaryCss, /olli-main-subpage-drawer-open[\s\S]*?recordAttendanceSummaryToggle/);
   assert.doesNotMatch(attendanceSummaryCss, /!important/);
 });
 
-test('rebuilt attendance summary is decoupled from normal student metadata', () => {
-  assert.match(recordListView, /data-record-student-id=/);
-  assert.match(recordListView, /notifyPhoneRecordListRendered\('elementary'\)/);
-  assert.match(recordListView, /notifyPhoneRecordListRendered\('kinder'\)/);
-  assert.match(attendanceSummary, /#recordRoomScreen \[data-record-student-id\]/);
+test('attendance summary rows are tagged only in search results, never in the normal attendance list', () => {
+  assert.match(recordListView, /const searchStudentAttr = searchMode \? ` data-record-search-student-id=/);
+  assert.doesNotMatch(recordListView, /data-record-student-id=/);
+  assert.match(attendanceSummary, /#recordRoomScreen\.record-search-open #recordList \[data-record-search-student-id\]/);
+  assert.doesNotMatch(attendanceSummary, /\[data-record-student-id\]/);
+});
+
+test('attendance summary requires an open search with a non-empty query', () => {
+  assert.match(attendanceSummary, /function isSearchReady\(\)[\s\S]*?return isSearchOpen\(\) && !!searchQuery\(\)/);
+  assert.match(attendanceSummary, /if \(!isSearchReady\(\)\) \{[\s\S]*?deactivate\(\)/);
+  assert.match(attendanceSummary, /button\.disabled = !ready/);
+});
+
+test('attendance summary calculates only current search result rows with one attendance-store snapshot', () => {
+  assert.match(attendanceSummary, /function readSnapshot\(\)[\s\S]*?global\.readRecordDailyAttendanceStore\(\)/);
+  assert.match(attendanceSummary, /function renderSearchResults\(\)[\s\S]*?const rows = visibleSearchRows\(\);[\s\S]*?const snapshot = readSnapshot\(\)/);
+  assert.match(attendanceSummary, /const payloads = new Map\(\)/);
+  assert.doesNotMatch(attendanceSummary, /summaryCache|cacheContext|renderGeneration|runChunk|requestAnimationFrame/);
+});
+
+test('attendance summary follows search-result rerenders without whole-roster background work', () => {
+  assert.match(attendanceSummary, /addEventListener\('olli:record-list-rendered',[\s\S]*?if \(!isSearchReady\(\)\)[\s\S]*?deactivate\(\)[\s\S]*?if \(active\) renderSearchResults\(\)/);
+  assert.match(attendanceSummary, /addEventListener\('olli:attendance-changed'/);
+  assert.match(adapter, /emitRecordListRendered\(view\)/);
+  assert.match(adapter, /emitAttendanceChanged\(student\.id\)/);
+  assert.doesNotMatch(attendanceSummary, /MutationObserver|ResizeObserver|getBoundingClientRect|offsetWidth|clientWidth/);
+});
+
+test('attendance summary output remains below the searched student name', () => {
   assert.match(attendanceSummaryCss, /\.studentTextWrap\.recordAttendanceSummaryHost\{[\s\S]*?position:relative/);
   assert.match(attendanceSummaryCss, /#recordRoomScreen \.recordAttendanceSummaryLine\{[\s\S]*?position:absolute;[\s\S]*?top:calc\(100% \+ 2px\)/);
 });
 
-test('rebuilt attendance summary reads the attendance store once per refresh and calculates after paint in chunks', () => {
-  assert.match(attendanceSummary, /function readSnapshot\(\)[\s\S]*?global\.readRecordDailyAttendanceStore\(\)/);
-  assert.match(attendanceSummary, /const snapshot = readSnapshot\(\)/);
-  assert.match(attendanceSummary, /requestAnimationFrame\(\(\) => global\.requestAnimationFrame\(runChunk\)\)/);
-  assert.match(attendanceSummary, /const stop = Math\.min\(index \+ 4, ids\.length\)/);
-  assert.doesNotMatch(attendanceSummary, /OlliAttendancePolicy\?\.getCounts|getOlliAttendancePolicyCounts/);
-});
+
+
+
+
+
+
+
+
 
 test('attendance local store separates same-kind sessions by time and class', () => {
   assert.match(adapter, /function sessionStorageKey\(timeSlot, classGroup\)/);
@@ -171,9 +195,9 @@ test('phone loads cache-busted shared and adapter attendance scripts', () => {
   assert.match(html, /olli-attendance-data\.js\?v=20260924-week-local-first-1/);
   assert.match(html, /olli-attendance-phone-adapter\.js\?v=20260930-summary-v1/);
   assert.match(html, /olli-attendance-record\.css\?v=20260930-summary-reset-1/);
-  assert.match(html, /olli-record-list-view\.js\?v=20260930-summary-v1/);
-  assert.match(html, /olli-record-attendance-summary\.js\?v=20260930-summary-v3/);
-  assert.match(html, /olli-record-attendance-summary\.css\?v=20260930-summary-v1/);
+  assert.match(html, /olli-record-list-view\.js\?v=20260930-search-only-1/);
+  assert.match(html, /olli-record-attendance-summary\.js\?v=20260930-search-only-1/);
+  assert.match(html, /olli-record-attendance-summary\.css\?v=20260930-search-only-1/);
   assert.match(html, /olli-attendance-sync-fallback\.js\?v=20260930-clean-1/);
   assert.match(html, /olli-record-room-navigation\.js\?v=20260930-attendance-runtime-cleanup-1/);
 });
@@ -203,48 +227,15 @@ test('attendance taps do not start the student-row long press timer', () => {
   assert.match(studentOperations, /if \(e\?\.target\?\.closest\?\.\('\.recordAttendanceLeadBtn'\)\) return;/);
 });
 
-test('attendance summary uses explicit events instead of DOM observers or geometry polling', () => {
-  assert.doesNotMatch(attendanceSummary, /MutationObserver|ResizeObserver|getBoundingClientRect|offsetWidth|clientWidth/);
-  assert.match(attendanceSummary, /addEventListener\('olli:record-list-rendered'/);
-  assert.match(attendanceSummary, /addEventListener\('olli:attendance-changed'/);
-  assert.match(adapter, /emitRecordListRendered\(view\)/);
-  assert.match(adapter, /emitAttendanceChanged\(student\.id\)/);
-});
 
-test('attendance summary does not clear visible summary rows during background list rerenders', () => {
-  const start = attendanceSummary.indexOf('function scheduleRows');
-  const end = attendanceSummary.indexOf('function updateButton', start);
-  const body = attendanceSummary.slice(start, end);
-  assert.doesNotMatch(body, /clearRows\(\)/);
-  assert.match(body, /restoreCachedRows\(rows\)/);
-  assert.match(attendanceSummary, /const summaryCache = new Map\(\)/);
-  assert.match(attendanceSummary, /data-attendance-summary-key/);
-  assert.match(attendanceSummary, /existing\?\.getAttribute\('data-attendance-summary-key'\) === payload\.key/);
-  assert.match(attendanceSummary, /addEventListener\('olli:record-list-rendered',[\s\S]*?scheduleRows\(\{ restoreCache: true \}\)/);
-});
 
-test('attendance summary clears rows only when the user turns the summary off', () => {
-  const start = attendanceSummary.indexOf('function toggle');
-  const end = attendanceSummary.indexOf('function refreshStudent', start);
-  const body = attendanceSummary.slice(start, end);
-  assert.match(body, /if \(active\) scheduleRows\(\{ restoreCache: false \}\)/);
-  assert.match(body, /else \{[\s\S]*?clearRows\(\)/);
-});
 
-test('attendance summary listens to the exact event emitted by the attendance adapter', () => {
-  assert.match(adapter, /new global\.CustomEvent\('olli:attendance-changed'/);
-  assert.match(attendanceSummary, /addEventListener\('olli:attendance-changed'/);
-  assert.doesNotMatch(attendanceSummary, /olli:attendance-saved/);
-});
 
-test('attendance summary renders every visible row even when a student appears in multiple sessions', () => {
-  assert.match(attendanceSummary, /const rows = Array\.from\(global\.document\.querySelectorAll\('#recordRoomScreen \[data-record-student-id\]'\)\)/);
-  assert.match(attendanceSummary, /renderRow\(rows\[index\], snapshot\)/);
-  assert.doesNotMatch(attendanceSummary, /function findRow\(/);
-  assert.doesNotMatch(attendanceSummary, /function renderStudent\(/);
-  assert.match(attendanceSummary, /\.filter\(row => row\.getAttribute\('data-record-student-id'\) === String\(studentId\)\)/);
-  assert.match(attendanceSummary, /rows\.forEach\(row => renderRow\(row, snapshot\)\)/);
-});
+
+
+
+
+
 
 test('revision polling stays isolated from the rebuilt summary UI', () => {
   assert.match(syncFallback, /function hasRealtimeConnection\(\)/);
@@ -254,7 +245,7 @@ test('revision polling stays isolated from the rebuilt summary UI', () => {
 
 test('attendance long-press assets are cache-busted', () => {
   assert.match(html, /olli-data-student-operations\.js\?v=20260930-attendance-runtime-cleanup-1/);
-  assert.match(html, /olli-record-list-view\.js\?v=20260930-summary-v1/);
+  assert.match(html, /olli-record-list-view\.js\?v=20260930-search-only-1/);
 });
 
 
