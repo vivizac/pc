@@ -24,7 +24,7 @@ test('PC mention picker offers Olli as an AI-only virtual target', () => {
   assert.match(talk, /state\.olliAiMentionSelected = true/);
   assert.match(talk, /olliAiMentionRequested && !isAiEnabled\(\)/);
   assert.match(talk, /const usingAi = olliAiMentionRequested \|\| isAiEnabled\(\)/);
-  assert.match(html, /pc-team-talk\.js\?v=20260930-olli-ai-mention-1/);
+  assert.match(html, /pc-team-talk\.js\?v=20261001-pickup-agent-bridge-1/);
 });
 
 test('PC AI requests carry the active AI conversation context but never the full Team Talk history', () => {
