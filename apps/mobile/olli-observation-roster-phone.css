@@ -23,6 +23,7 @@
 
 #observationRosterScreen #memoStudentRosterView {
   display:none;
+  position:relative;
   flex:1 1 auto;
   min-height:0;
   overflow:hidden;
@@ -32,17 +33,34 @@
 }
 
 #observationRosterScreen .memoBodyRosterScroll {
-  flex:1 1 auto;
+  position:absolute;
+  left:0;
+  right:-18px;
+  top:0;
+  bottom:var(--observation-roster-scroll-bottom, 94px);
   min-height:0;
   overflow-y:auto;
   overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
-  overscroll-behavior:contain;
-  margin-right:-18px;
-  padding:calc(var(--vivizac-note-header-h) + max(18px, calc(env(safe-area-inset-top) + 6px)) + 6px) 18px 94px 0;
+  overscroll-behavior-y:contain;
+  touch-action:pan-y;
+  overflow-anchor:none;
+  padding:calc(var(--vivizac-note-header-h) + max(18px, calc(env(safe-area-inset-top) + 6px)) + 6px) 18px 0 0;
   background:transparent;
+}
+#observationRosterScreen .memoBodyRosterScroll::after {
+  content:'';
+  display:block;
+  width:1px;
+  height:1px;
+  pointer-events:none;
+}
+#observationRosterScreen .memoBodyRosterContent {
+  width:100%;
+  min-height:100%;
   display:flex;
   flex-direction:column;
+  justify-content:flex-start;
 }
 
 #observationRosterScreen .memoBodyRosterHeader {
@@ -186,17 +204,12 @@
   justify-content:center;
 }
 
-/* 학생목록 하단 검색/정렬 도구 */
+/* 학생목록 하단 검색/정렬 도구: 위치/키보드 이동은 UtilityLayer만 소유한다. */
 #observationRosterScreen .memoRosterUtilityBar {
-  position:relative;
-  z-index:20;
-  flex:0 0 auto;
-  min-height:72px;
-  padding:8px 3px var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom)));
   display:grid;
-  grid-template-columns:minmax(0, 1fr) 48px;
+  grid-template-columns:minmax(0, 1fr) 47px;
   align-items:center;
-  column-gap:12px;
+  column-gap:10px;
   background:transparent;
 }
 
@@ -507,6 +520,7 @@
 
 /* 학생목록은 메모와 독립된 실제 pageScreen이다. 두 화면이 서로의 헤더/본문을 공유하지 않는다. */
 #observationRosterScreen {
+  --observation-roster-scroll-bottom:94px;
   background:#FEFEFE;
   isolation:isolate;
   padding-top:0;
@@ -514,7 +528,8 @@
 }
 
 #observationRosterScreen .observationRosterPageInner {
-  position:relative;
+  position:absolute;
+  inset:0;
   width:100%;
   max-width:860px;
   height:100%;
@@ -764,36 +779,49 @@
 
 /* 검색/정렬 도구만 화면 하단에 고정한다.
    마지막 학생이 버튼 아래에 가려지지 않도록 필요한 86px 여유는 memoBodyRosterScroll의 내부 하단 여백이 소유한다. */
+#observationRosterScreen .observationRosterUtilityLayer {
+  --observation-roster-vv-left:0px;
+  --observation-roster-vv-top:0px;
+  --observation-roster-vv-width:100vw;
+  --observation-roster-vv-height:100vh;
+  position:fixed;
+  left:var(--observation-roster-vv-left);
+  top:var(--observation-roster-vv-top);
+  width:var(--observation-roster-vv-width);
+  height:var(--observation-roster-vv-height);
+  overflow:visible;
+  pointer-events:none;
+  z-index:120;
+}
+#observationRosterScreen .observationRosterUtilityMount {
+  position:absolute;
+  inset:0;
+  overflow:visible;
+  pointer-events:none;
+}
 #observationRosterScreen .memoRosterUtilityBar {
-  position:fixed !important;
-  left:var(--olli-phone-guide-x) !important;
-  right:var(--olli-phone-guide-x) !important;
-  bottom:var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom))) !important;
-  width:auto !important;
-  height:var(--olli-phone-bottom-control-height, 47px) !important;
-  min-height:var(--olli-phone-bottom-control-height, 47px) !important;
-  padding:0 !important;
-  z-index:120 !important;
-  transform:translate3d(0, calc(-1 * var(--olli-observation-keyboard-offset, 0px)), 0) !important;
-  animation:none !important;
-  transition:none !important;
+  position:absolute;
+  left:var(--olli-phone-guide-x);
+  right:var(--olli-phone-guide-x);
+  bottom:var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom)));
+  width:auto;
+  height:var(--olli-phone-bottom-control-height, 47px);
+  min-height:var(--olli-phone-bottom-control-height, 47px);
+  padding:0;
+  z-index:1;
+  transform:none;
+  animation:none;
+  transition:none;
+  pointer-events:auto;
+  touch-action:none;
+  overscroll-behavior:none;
 }
 
-/* 출석부 검색바와 동일하게 키보드 위 4px 간격만 남긴다.
-   키보드가 열린 동안에는 iPhone safe-area 하단 패딩을 제거해 검색창이 불필요하게 위로 뜨지 않도록 한다. */
+/* 키보드가 열린 동안 visualViewport 레이어 안에서 4px 간격만 남긴다. */
 #observationRosterScreen.observation-keyboard-open .memoRosterUtilityBar {
-  bottom:4px !important;
-  height:var(--olli-phone-bottom-control-height, 47px) !important;
-  min-height:var(--olli-phone-bottom-control-height, 47px) !important;
-  padding-top:0 !important;
-  padding-bottom:0 !important;
+  bottom:4px;
 }
 
-/* 하단 [검색][정렬] 도구 크기를 맞춘다. */
-#observationRosterScreen .memoRosterUtilityBar {
-  grid-template-columns:minmax(0, 1fr) 47px !important;
-  column-gap:10px !important;
-}
 #observationRosterScreen .memoRosterUtilityBtn,
 #observationRosterScreen .memoRosterSearchPill,
 #observationRosterScreen .memoRosterSortWrap {
@@ -821,42 +849,33 @@
   stroke-width:1.7 !important;
 }
 
-/* 관찰노트 검색 키보드가 열리면 오른쪽 정렬 버튼 대신 검색 종료 X를 표시한다. */
+/* 검색 모드 자체가 X/정렬 버튼 표시를 소유한다.
+   키보드/visualViewport 상태와 분리해 재터치에도 X가 유지되게 한다. */
 #observationRosterScreen #memoRosterSearchClose {
   display:none !important;
   font-size:calc(21px * var(--olli-text-scale));
   font-weight:400;
   line-height:1;
 }
-#observationRosterScreen.observation-keyboard-open #memoRosterSortBtn,
-#observationRosterScreen.observation-keyboard-open .memoRosterSortPopup {
+#observationRosterScreen.observation-search-active #memoRosterSortBtn,
+#observationRosterScreen.observation-search-active .memoRosterSortPopup {
   display:none !important;
   visibility:hidden !important;
   pointer-events:none !important;
 }
-#observationRosterScreen.observation-keyboard-open #memoRosterSearchClose {
+#observationRosterScreen.observation-search-active #memoRosterSearchClose {
   display:inline-flex !important;
   visibility:visible !important;
   opacity:1 !important;
   pointer-events:auto !important;
 }
-#observationRosterScreen.observation-keyboard-open #memoRosterSearchClose:active {
+#observationRosterScreen.observation-search-active #memoRosterSearchClose:active {
   background:#eeeeee !important;
-}
-
-/* 키보드 포커스 중에만 학생명단 자체의 이동·애니메이션을 막는다. */
-#observationRosterScreen.observation-keyboard-open,
-#observationRosterScreen.observation-keyboard-open .memoPageInner,
-#observationRosterScreen.observation-keyboard-open .memoHeader,
-#observationRosterScreen.observation-keyboard-open #memoStudentRosterView,
-#observationRosterScreen.observation-keyboard-open .memoBodyRosterScroll {
-  animation:none !important;
-  transition:none !important;
 }
 
 #observationRosterScreen .memoPageInner,
 #observationRosterScreen #memoStudentRosterView {
-  overscroll-behavior:none;
+  overflow:hidden;
 }
 
 /* 수업기록 하단 4버튼은 studentMemoScreen 원본 마크업이 고정 소유한다. */

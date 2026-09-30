@@ -2,14 +2,9 @@
 #kinderChatFeedbackScreen {
   --kcf-chat-reserve:176px;
   --kcf-message-lift:0px;
-  position:fixed;
-  inset:0;
-  width:100%;
-  height:100%;
-  overflow:hidden;
-  overscroll-behavior:none;
   background:#fff;
   padding-top:0;
+  align-items:stretch;
 }
 #kcfPersistentTopLayer {
   position:fixed;
@@ -37,7 +32,6 @@
   flex-direction:column;
   background:#fff;
   overflow:hidden;
-  overscroll-behavior:none;
 }
 
 #kinderChatFeedbackScreen .kcfInner::before{
@@ -527,6 +521,15 @@
   height:1px;
   pointer-events:none;
 }
+#kinderChatFeedbackScreen .kcfMessageList{
+  width:100%;
+  min-height:100%;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  transform:translate3d(0,calc(-1 * var(--kcf-message-lift, 0px)),0);
+  transition:none;
+}
 #kinderChatFeedbackScreen .kcfCenterIntro {
   position:fixed;
   left:50%;
@@ -550,12 +553,6 @@
   width:100%;
   display:flex;
   margin-bottom:14px;
-  transform:translate3d(0,calc(-1 * var(--kcf-message-lift, 0px)),0);
-  transition:none;
-}
-#kinderChatFeedbackScreen .kcfChatArea > .kcfCommandConfirmActions {
-  transform:translate3d(0,calc(-1 * var(--kcf-message-lift, 0px)),0);
-  transition:none;
 }
 #kinderChatFeedbackScreen .kcfMsgRow.user { justify-content:flex-end; }
 #kinderChatFeedbackScreen .kcfMsgRow.bot { justify-content:flex-start; }
@@ -670,6 +667,9 @@
   background:transparent;
   border:none;
   box-shadow:none;
+  pointer-events:auto;
+  touch-action:none;
+  overscroll-behavior:contain;
 }
 #kinderChatFeedbackScreen .kcfQuestionGuide.show { display:block; }
 #kinderChatFeedbackScreen .kcfQuestionList {
@@ -1070,10 +1070,15 @@
   -webkit-overflow-scrolling:touch;
   padding:1px 0 2px;
   scrollbar-width:none;
+  pointer-events:auto;
+  touch-action:pan-x;
+  overscroll-behavior-x:contain;
+  overscroll-behavior-y:none;
 }
 #kinderChatFeedbackScreen .kcfKeywordScroller::-webkit-scrollbar { display:none; }
 #kinderChatFeedbackScreen .kcfKeywordBtn {
   flex:0 0 auto;
+  touch-action:pan-x;
   height:32px;
   border:none;
   border-radius:999px;

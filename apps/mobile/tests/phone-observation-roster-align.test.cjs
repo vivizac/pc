@@ -81,7 +81,7 @@ test('observation roster title matches student-name size with lighter weight', (
   assert.match(name, /color:#111;/);
   assert.match(name, /font-size:calc\(16px \* var\(--olli-text-scale\)\);/);
   assert.match(meta, /color:#8f8f8f;/);
-  assert.match(html, /olli-observation-roster-phone\.css\?v=20260928-sort-prefix-gray-1/);
+  assert.match(html, /olli-observation-roster-phone\.css\?v=20260930-observation-roster-physical-boundary-1/);
 });
 
 
@@ -95,7 +95,7 @@ test('roster header and student cards share one scroll owner without leftover ne
   assert.match(scroll, /overflow-y:auto;/);
   assert.match(scroll, /overflow-x:hidden;/);
   assert.match(scroll, /margin-right:-18px;/);
-  assert.match(scroll, /padding:calc\(var\(--vivizac-note-header-h\) \+ max\(18px, calc\(env\(safe-area-inset-top\) \+ 6px\)\) \+ 6px\) 18px 94px 0;/);
+  assert.match(scroll, /padding:calc\(var\(--vivizac-note-header-h\) \+ max\(18px, calc\(env\(safe-area-inset-top\) \+ 6px\)\) \+ 6px\) 18px var\(--observation-roster-reserve, 94px\) 0;/);
   assert.match(scroll, /display:flex;/);
   assert.match(scroll, /flex-direction:column;/);
 
@@ -119,10 +119,10 @@ test('observation roster scrolls under fixed top and bottom controls without out
   assert.match(page, /background:transparent;/);
   assert.match(rosterView, /padding:0 18px;/);
   assert.doesNotMatch(rosterCss, /#observationRosterScreen #memoStudentRosterView \{\s*padding-bottom:86px !important;/);
-  assert.match(scroll, /padding:calc\(var\(--vivizac-note-header-h\) \+ max\(18px, calc\(env\(safe-area-inset-top\) \+ 6px\)\) \+ 6px\) 18px 94px 0;/);
+  assert.match(scroll, /padding:calc\(var\(--vivizac-note-header-h\) \+ max\(18px, calc\(env\(safe-area-inset-top\) \+ 6px\)\) \+ 6px\) 18px var\(--observation-roster-reserve, 94px\) 0;/);
   assert.match(scroll, /overflow-y:auto;/);
   assert.match(scroll, /background:transparent;/);
-  assert.match(html, /olli-observation-roster-phone\.css\?v=20260928-sort-prefix-gray-1/);
+  assert.match(html, /olli-observation-roster-phone\.css\?v=20260930-observation-roster-physical-boundary-1/);
 });
 
 
@@ -135,6 +135,6 @@ test('roster sort prefix uses the same gray as student guide text while the sort
   assert.match(prefix, /color:#8f8f8f;/);
   assert.match(meta, /color:#8f8f8f;/);
   assert.match(value, /color:#0A84FF;/);
-  assert.match(html, /olli-observation-roster-phone\.js\?v=20260928-sort-prefix-gray-1/);
-  assert.match(html, /olli-observation-roster-phone\.css\?v=20260928-sort-prefix-gray-1/);
+  assert.match(html, /olli-observation-roster-phone\.js\?v=20260930-observation-roster-physical-boundary-1/);
+  assert.match(html, /olli-observation-roster-phone\.css\?v=20260930-observation-roster-physical-boundary-1/);
 });
