@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'apps/mobile/**'
+      - 'supabase/migrations/*_schedule_availability_rules_and_read_rpc.sql'
       - 'packages/common/**'
       - 'deploy/vercel-projects.json'
       - 'MONOREPO_TRANSITION.md'
@@ -23,6 +24,7 @@ on:
     paths:
       - 'apps/pc/olli-app-startup.js'
       - 'apps/mobile/**'
+      - 'supabase/migrations/*_schedule_availability_rules_and_read_rpc.sql'
       - 'packages/common/**'
       - 'deploy/vercel-projects.json'
       - 'MONOREPO_TRANSITION.md'
