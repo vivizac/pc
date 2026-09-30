@@ -31,6 +31,7 @@ test('independent olli-agent endpoint keeps diagnostics isolated from the existi
   assert.match(endpoint, /mode === 'pickup_prepare_probe'/);
   assert.match(endpoint, /runTimetableMemoPrepareProbe/);
   assert.match(endpoint, /runPickupPrepareProbe/);
+  assert.match(endpoint, /runPickupPrepare/);
   assert.match(endpoint, /runPickupProbe/);
   assert.match(endpoint, /runAttendanceProbe/);
   assert.match(endpoint, /runScheduleAvailabilityProbe/);
