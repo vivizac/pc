@@ -738,6 +738,18 @@
     return found;
   }
 
+  function getOlliTalkPersistentMentionPrefix(value){
+    const text = String(value || '');
+    const mentions = [];
+    olliTalkMentionSelections.forEach(member => {
+      const name = String(member?.display_name || '').trim();
+      if (!name) return;
+      const pattern = new RegExp('(^|\\s)@' + escapeRegExp(name) + '(?=\\s|$|[,.!?，。！？])');
+      if (pattern.test(text)) mentions.push('@' + name);
+    });
+    return mentions.length ? mentions.join(' ') + ' ' : '';
+  }
+
   function isOlliTalkMentionMessageReady(){
     const input = getOlliTalkBetaInput();
     if (!input || !olliTalkMentionModeActive) return false;
@@ -3820,7 +3832,7 @@
     const input = getOlliTalkBetaInput();
     if (!input) return false;
 
-    if (olliTalkMentionModeActive && !isOlliTalkMentionMessageReady()) {
+    if (olliTalkMentionModeActive) {
       clearOlliTalkMentionDraft();
       olliTalkMentionModeActive = false;
       hideOlliTalkMentionMenu();
@@ -4077,6 +4089,9 @@
     if (!input) return;
 
     const rawBody = String(input.value || '').trim();
+    const persistentMentionPrefix = olliTalkMentionModeActive
+      ? getOlliTalkPersistentMentionPrefix(rawBody)
+      : '';
     const olliAiMentionRequested = hasOlliTalkAiMentionSelection(rawBody);
     const olliRequested = olliAiMentionRequested || /^\s*@올리(?:\s|$)/.test(rawBody);
     const commandText = olliRequested
@@ -4129,9 +4144,11 @@
       const mentionedMembers=olliRequested?[]:resolveMentionedMembers(body);
       const mentionedIds=mentionedMembers.map(member=>String(member.member_id)).filter(Boolean);
 
-      input.value = '';
-      olliTalkMentionSelections.clear();
-      olliTalkMentionModeActive = false;
+      input.value = persistentMentionPrefix;
+      if (!persistentMentionPrefix) {
+        olliTalkMentionSelections.clear();
+        olliTalkMentionModeActive = false;
+      }
       hideOlliTalkMentionMenu();
       resizeInput();
       updateOlliTalkBetaComposerState();
