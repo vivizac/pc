@@ -413,19 +413,23 @@ test('Team Talk chat owns iOS vertical gestures like one-minute feedback', () =>
   assert.match(css,/#olliTalkBetaScreen \.olliTalkBetaChatArea::after\{[\s\S]*?width:1px;[\s\S]*?height:1px/);
 });
 
-test('Team Talk visualViewport scroll remains composer-only after iOS gesture fix', () => {
+test('Team Talk visualViewport scroll remains composer-only and respects the chat-gesture freeze', () => {
   const start=source.indexOf('function bindViewport');
   const end=source.indexOf('function resizeInput',start);
   const body=source.slice(start,end);
   assert.match(body,/visualViewport\.addEventListener\('scroll', syncOlliTalkComposerViewport/);
   assert.doesNotMatch(body,/visualViewport\.addEventListener\('scroll', syncViewport/);
+  assert.match(source,/if \(olliTalkChatGestureActive && options\.force !== true\) return;/);
 });
 
 
-test('Team Talk runtime stays on the known-good pre gesture-tracking path', () => {
-  assert.doesNotMatch(source,/olliTalkChatPointerActive/);
-  assert.doesNotMatch(source,/beginOlliTalkChatGesture/);
-  assert.doesNotMatch(source,/endOlliTalkChatGesture/);
+test('Team Talk freezes composer and viewport correction while the user drags chat', () => {
+  assert.match(source,/let olliTalkChatGestureActive = false/);
+  assert.match(source,/function syncOlliTalkComposerViewport\(options = \{\}\)\{[\s\S]{0,120}olliTalkChatGestureActive && options\.force !== true/);
+  assert.match(source,/if \(olliTalkChatGestureActive\) \{[\s\S]{0,120}olliTalkLastViewportSignature = signature;[\s\S]{0,80}return;/);
+  assert.match(source,/chatArea\.addEventListener\('pointerdown', beginOlliTalkChatGesture/);
+  assert.match(source,/window\.addEventListener\('touchend', endOlliTalkChatGesture/);
+  assert.match(source,/syncOlliTalkComposerViewport\(\{ force:true \}\)/);
 });
 
 

@@ -17,6 +17,8 @@
   let olliTalkViewportTransitionComposerTop = null;
   let olliTalkViewportTransitionChatScrollTop = null;
   let olliTalkViewportTransitionUserTouchedChat = false;
+  let olliTalkChatGestureActive = false;
+  let olliTalkChatGestureSettleTimer = null;
   let olliTalkArchiveTab = 'materials';
   let olliTalkArchivePayload = null;
   let olliTalkArchiveLoadSequence = 0;
@@ -221,7 +223,8 @@
     window.addEventListener('resize', scheduleOlliTalkChatToComposer, { passive:true });
   }
 
-  function syncOlliTalkComposerViewport(){
+  function syncOlliTalkComposerViewport(options = {}){
+    if (olliTalkChatGestureActive && options.force !== true) return;
     const layer = document.getElementById('olliTalkBetaComposerLayer');
     if (!layer) return;
     const viewport = window.visualViewport;
@@ -316,6 +319,12 @@
     const keyboardOpen = inputFocused && keyboardOffset > 24;
     const signature = [Math.round(top), Math.round(left), Math.round(width), Math.round(height)].join(':');
     const viewportChanged = signature !== olliTalkLastViewportSignature;
+
+    if (olliTalkChatGestureActive) {
+      olliTalkLastViewportSignature = signature;
+      return;
+    }
+
     const keyboardInteraction = inputFocused
       || screen.classList.contains('olliTalkKeyboardOpen')
       || screen.classList.contains('olliTalkViewportMoving');
@@ -4375,6 +4384,9 @@
   }
 
   function resetOlliTalkAfterPageTransition(){
+    if (olliTalkChatGestureSettleTimer) clearTimeout(olliTalkChatGestureSettleTimer);
+    olliTalkChatGestureSettleTimer = null;
+    olliTalkChatGestureActive = false;
     olliTalkLastComposerTop = null;
     olliTalkFollowBottomAfterViewportSettle = false;
     resetOlliTalkViewportTransitionAnchor();
@@ -4807,17 +4819,32 @@
 
     const chatArea = document.getElementById('olliTalkBetaChatArea');
     if (chatArea) {
-      const markViewportTransitionChatGesture = () => {
-        const screen = getScreen();
-        if (
-          screen?.classList.contains('olliTalkViewportMoving')
-          || Number.isFinite(olliTalkViewportTransitionComposerTop)
-        ) {
-          olliTalkViewportTransitionUserTouchedChat = true;
+      const beginOlliTalkChatGesture = () => {
+        if (olliTalkChatGestureSettleTimer) {
+          clearTimeout(olliTalkChatGestureSettleTimer);
+          olliTalkChatGestureSettleTimer = null;
         }
+        olliTalkChatGestureActive = true;
+        olliTalkViewportTransitionUserTouchedChat = true;
       };
-      chatArea.addEventListener('pointerdown', markViewportTransitionChatGesture, { passive:true });
-      chatArea.addEventListener('touchstart', markViewportTransitionChatGesture, { passive:true });
+      const endOlliTalkChatGesture = () => {
+        if (!olliTalkChatGestureActive && !olliTalkChatGestureSettleTimer) return;
+        if (olliTalkChatGestureSettleTimer) clearTimeout(olliTalkChatGestureSettleTimer);
+        olliTalkChatGestureSettleTimer = setTimeout(() => {
+          olliTalkChatGestureSettleTimer = null;
+          olliTalkChatGestureActive = false;
+          syncOlliTalkComposerViewport({ force:true });
+          syncViewport();
+          scheduleOlliTalkChatToComposer();
+        }, 120);
+      };
+
+      chatArea.addEventListener('pointerdown', beginOlliTalkChatGesture, { passive:true });
+      chatArea.addEventListener('touchstart', beginOlliTalkChatGesture, { passive:true });
+      window.addEventListener('pointerup', endOlliTalkChatGesture, { passive:true });
+      window.addEventListener('pointercancel', endOlliTalkChatGesture, { passive:true });
+      window.addEventListener('touchend', endOlliTalkChatGesture, { passive:true });
+      window.addEventListener('touchcancel', endOlliTalkChatGesture, { passive:true });
       chatArea.addEventListener('scroll',()=>{
         if(chatArea.scrollTop>96||olliTalkHistoryLoading||olliTalkHistoryExhausted)return;
         if(olliTalkHistoryScrollRaf)return;
