@@ -211,52 +211,56 @@ test('QuickNote input grows with content while the keyboard is open and remains 
 });
 
 
-test('QuickNote reuses keyboard inset for message-only lift while keeping the chat scroller stable', () => {
-  const chatRule = css.match(/#kinderChatFeedbackScreen \.kcfChatArea\{[^}]*\}/)?.[0] || '';
-  const rowRule = css.match(/#kinderChatFeedbackScreen \.kcfMsgRow \{[^}]*\}/)?.[0] || '';
-  assert.match(css, /--kcf-chat-reserve:176px/);
-  assert.match(css, /--kcf-message-lift:0px/);
-  assert.match(chatRule, /var\(--kcf-chat-reserve, 176px\)/);
-  assert.match(chatRule, /overflow-anchor:none/);
-  assert.match(rowRule, /--kcf-message-lift/);
-  assert.match(js, /--kcf-message-lift', Math\.max\(0, inset\) \+ 'px'/);
-  assert.match(js, /layerRect\.bottom - composerRect\.top/);
-  assert.doesNotMatch(js, /measuredReserve - keyboardInset/);
-  assert.doesNotMatch(js, /kcfChatArea[^\n]*scrollTop\s*\+=/);
+
+test('QuickNote keyboard and scroll controller mirrors Team Chat ownership', () => {
+  assert.doesNotMatch(js,/updateKinderChatFeedbackKeyboardOffset/);
+  assert.doesNotMatch(js,/scheduleKinderChatFeedbackComposerViewportSync/);
+  assert.doesNotMatch(js,/syncKinderChatFeedbackChatReserve/);
+  assert.doesNotMatch(js,/scheduleKinderChatFeedbackChatReserve/);
+  assert.match(js,/function syncKinderChatFeedbackViewport\(options = \{\}\)/);
+  assert.match(js,/function bindKinderChatFeedbackViewport\(\)/);
+  assert.match(js,/function syncKinderChatFeedbackChatToComposer\(\)/);
+  assert.match(js,/function lockKinderChatFeedbackComposerViewport\(\)/);
+  assert.match(js,/if \(kcfComposerViewportLock && options\.followKeyboard !== true\)/);
+  assert.match(js,/if \(kcfChatGestureActive\) \{[\s\S]*?kcfLastViewportSignature = signature;[\s\S]*?return;/);
+  assert.match(js,/input\.focus\(\{ preventScroll:true \}\)/);
+  assert.match(js,/composer\.addEventListener\('touchmove',[\s\S]*?event\.preventDefault\(\)[\s\S]*?passive:false/);
 });
 
-test('QuickNote protects input focus and composer while the user owns chat scrolling', () => {
-  assert.match(js, /input\.focus\(\{ preventScroll:true \}\)/);
-  assert.match(js, /if \(kcfChatGestureActive && options\.force !== true\) return/);
-  assert.match(js, /chatArea\.addEventListener\('touchstart', beginKinderChatFeedbackChatGesture/);
-  assert.match(js, /composer\.addEventListener\('touchmove',[\s\S]*?event\.preventDefault\(\)[\s\S]*?passive:false/);
-  assert.match(js, /if \(kcfChatGestureActive\) return;[\s\S]*?updateKinderChatFeedbackKeyboardOffset\(\)/);
+test('QuickNote uses one full-height chat scroller and one transformed message layer', () => {
+  const rootRule = css.match(/#kinderChatFeedbackScreen \{[\s\S]*?\}/)?.[0] || '';
+  const viewportRule = css.match(/#kinderChatFeedbackScreen \.kcfInner \{[\s\S]*?\}/)?.[0] || '';
+  const chatRule = css.match(/#kinderChatFeedbackScreen \.kcfChatArea\{[\s\S]*?\}/)?.[0] || '';
+  const listRule = css.match(/#kinderChatFeedbackScreen \.kcfMessageList\{[\s\S]*?\}/)?.[0] || '';
+  const rowRule = css.match(/#kinderChatFeedbackScreen \.kcfMsgRow \{[\s\S]*?\}/)?.[0] || '';
+  assert.doesNotMatch(rootRule,/position:fixed/);
+  assert.match(viewportRule,/position:absolute/);
+  assert.match(viewportRule,/inset:0/);
+  assert.match(viewportRule,/overflow:hidden/);
+  assert.match(chatRule,/flex:1/);
+  assert.match(chatRule,/overflow-y:auto/);
+  assert.match(chatRule,/overscroll-behavior-y:contain/);
+  assert.match(chatRule,/touch-action:pan-y/);
+  assert.match(chatRule,/overflow-anchor:none/);
+  assert.match(listRule,/min-height:100%/);
+  assert.match(listRule,/justify-content:flex-end/);
+  assert.match(listRule,/--kcf-message-lift/);
+  assert.doesNotMatch(rowRule,/--kcf-message-lift/);
 });
 
+test('QuickNote message rendering appends into kcfMessageList while scrollTop stays owned by kcfChatArea', () => {
+  assert.match(index,/id="kcfChatArea"[\s\S]*?id="kcfMessageList"/);
+  assert.match(js,/const messageList = getKinderChatFeedbackMessageList\(\)/);
+  assert.match(js,/messageList\.appendChild\(row\)/);
+  assert.match(js,/area\.scrollTop = area\.scrollHeight/);
+  assert.doesNotMatch(js,/kcfChatArea[^\n]*scrollTop\s*\+=/);
+});
 
-test('QuickNote programmatic refocus paths also use preventScroll', () => {
+test('QuickNote programmatic refocus paths keep preventScroll protection', () => {
   const helperStart = js.indexOf('function focusKinderChatFeedbackInput()');
   const helperEnd = js.indexOf('function openKinderChatFeedbackPhotoPicker', helperStart);
   const helper = js.slice(helperStart, helperEnd);
   assert.match(helper,/focus\(\{ preventScroll:true \}\)/);
   assert.doesNotMatch(js,/if \(textInput\) textInput\.focus\(\);/);
   assert.match(js,/textInput\.focus\(\{ preventScroll:true \}\)/);
-  assert.match(js,/setKinderChatFeedbackWarning\(''\);[\s\S]{0,120}input\.focus\(\{ preventScroll:true \}\)/);
-});
-
-
-test('QuickNote owns one fixed page surface and only the chat area scrolls', () => {
-  const screenRule = css.match(/#kinderChatFeedbackScreen \{[\s\S]*?\}/)?.[0] || '';
-  const innerRule = css.match(/#kinderChatFeedbackScreen \.kcfInner \{[\s\S]*?\}/)?.[0] || '';
-  const chatRule = css.match(/#kinderChatFeedbackScreen \.kcfChatArea\{[\s\S]*?\}/)?.[0] || '';
-  assert.match(screenRule,/position:fixed/);
-  assert.match(screenRule,/inset:0/);
-  assert.match(screenRule,/overflow:hidden/);
-  assert.match(screenRule,/overscroll-behavior:none/);
-  assert.match(innerRule,/position:absolute/);
-  assert.match(innerRule,/inset:0/);
-  assert.match(innerRule,/overflow:hidden/);
-  assert.match(chatRule,/overflow-y:auto/);
-  assert.match(chatRule,/overscroll-behavior-y:contain/);
-  assert.match(chatRule,/touch-action:pan-y/);
 });
