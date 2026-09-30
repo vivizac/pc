@@ -15,6 +15,7 @@
     archiveLoadSequence: 0,
     sendBusy: false,
     olliModeActive: false,
+    olliAiMentionSelected: false,
     assistantReplyPending: false,
     aiConversationMessages: [],
     pendingActionReason: null,
@@ -996,6 +997,17 @@
     catch (_) { return false; }
   }
 
+  function hasOlliAiMention(value) {
+    return /(^|\s)@올리(?=\s|$|[,.!?，。！？])/.test(String(value || ''));
+  }
+
+  function stripOlliAiMention(value) {
+    return String(value || '')
+      .replace(/(^|\s)@올리(?=\s|$|[,.!?，。！？])/, '$1')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   function syncAssistantUi() {
     const button = byId('olliPcTeamTalkOlli');
     const input = byId('olliPcTeamTalkInput');
@@ -1341,6 +1353,27 @@
     if (!menu) return;
     const current = context();
     menu.replaceChildren();
+
+    const olliButton = document.createElement('button');
+    olliButton.type = 'button';
+    olliButton.className = 'olliPcTeamTalkMentionOption';
+    olliButton.append(
+      create('span', 'olliPcTeamTalkMentionAvatar', 'AI'),
+      create('span', '', '올리 · AI')
+    );
+    olliButton.addEventListener('click', () => {
+      const input = byId('olliPcTeamTalkInput');
+      if (!input) return;
+      const prefix = input.value && !/\s$/.test(input.value) ? ' ' : '';
+      input.value += `${prefix}@올리 `;
+      state.olliAiMentionSelected = true;
+      menu.hidden = true;
+      resizeComposer();
+      updateComposerState();
+      input.focus();
+    });
+    menu.appendChild(olliButton);
+
     state.members
       .filter((member) => clean(member?.member_id) !== clean(current.memberId) && !member?.is_current_member)
       .forEach((member) => {
@@ -1371,7 +1404,10 @@
     const menu = byId('olliPcTeamTalkMentionMenu');
     if (!menu) return;
     menu.hidden = !menu.hidden;
-    if (!menu.hidden && !state.members.length) loadMembers();
+    if (!menu.hidden) {
+      renderMentionMenu();
+      if (!state.members.length) loadMembers();
+    }
   }
 
   function resolveMentionIds(body) {
@@ -1396,12 +1432,21 @@
     const input = byId('olliPcTeamTalkInput');
     const send = byId('olliPcTeamTalkSend');
     const rawBody = clean(input?.value);
-    const olliRequested = state.olliModeActive || /^\s*@올리(?:\s|$)/.test(rawBody);
+    const olliAiMentionRequested = state.olliAiMentionSelected && hasOlliAiMention(rawBody);
+    const olliRequested = state.olliModeActive || olliAiMentionRequested || /^\s*@올리(?:\s|$)/.test(rawBody);
     const commandText = olliRequested
-      ? rawBody.replace(/^\s*@올리(?:\s+|$)/, '').trim()
+      ? (olliAiMentionRequested
+        ? stripOlliAiMention(rawBody)
+        : rawBody.replace(/^\s*@올리(?:\s+|$)/, '').trim())
       : '';
     const body = olliRequested ? ('@올리 ' + commandText).trim() : rawBody;
     if (!input || !rawBody || (olliRequested && !commandText)) {
+      updateComposerState();
+      return;
+    }
+
+    if (olliAiMentionRequested && !isAiEnabled()) {
+      alert('올리 AI를 사용하려면 설정에서 올리 AI를 켜 주세요.');
       updateComposerState();
       return;
     }
@@ -1427,10 +1472,11 @@
       if (!payload?.ok || !payload?.message) throw new Error(payload?.message || '메시지를 저장하지 못했습니다.');
 
       input.value = '';
+      state.olliAiMentionSelected = false;
       resizeComposer();
       updateComposerState();
       appendPersistedMessage(payload.message, current.memberId);
-      if (olliRequested && isAiEnabled()) {
+      if (olliRequested && (olliAiMentionRequested || isAiEnabled())) {
         state.assistantReplyPending = true;
         syncAssistantTypingIndicator();
       }
@@ -1454,7 +1500,7 @@
       }
 
       if (olliRequested) {
-        const usingAi = isAiEnabled();
+        const usingAi = olliAiMentionRequested || isAiEnabled();
         try {
           if (usingAi) {
             const turn = await resolveAiTurn(commandText, current, Number(payload.message.id));
@@ -1589,6 +1635,9 @@
     if (input && !input.dataset.bound) {
       input.dataset.bound = '1';
       input.addEventListener('input', () => {
+        if (state.olliAiMentionSelected && !hasOlliAiMention(input.value)) {
+          state.olliAiMentionSelected = false;
+        }
         resizeComposer();
         updateComposerState();
       });

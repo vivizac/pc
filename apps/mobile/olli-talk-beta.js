@@ -42,6 +42,14 @@
   let olliTalkArchiveFileTransferSequence = 0;
   const OLLI_TALK_TRANSFER_RING_CIRCUMFERENCE = 2 * Math.PI * 31;
   let olliTalkMembers = [];
+  const OLLI_TALK_AI_MENTION_ID = '__olli_ai__';
+  const OLLI_TALK_AI_MENTION = Object.freeze({
+    member_id:OLLI_TALK_AI_MENTION_ID,
+    display_name:'올리',
+    role:'ai',
+    is_olli_ai:true,
+    is_current_member:false
+  });
   let olliTalkMentionSelections = new Map();
   let olliTalkMentionModeActive = false;
   let olliTalkMentionBadgeWatcher = null;
@@ -359,6 +367,19 @@
 
   function stripOlliTalkOlliPrefix(value){
     return String(value || '').replace(/^\s*@올리(?:\s+|$)/, '').trim();
+  }
+
+  function hasOlliTalkAiMentionSelection(value){
+    const selected = olliTalkMentionSelections.get(OLLI_TALK_AI_MENTION_ID);
+    if (!selected?.is_olli_ai) return false;
+    return /(^|\s)@올리(?=\s|$|[,.!?，。！？])/.test(String(value || ''));
+  }
+
+  function stripOlliTalkOlliMention(value){
+    return String(value || '')
+      .replace(/(^|\s)@올리(?=\s|$|[,.!?，。！？])/, '$1')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   function hasOlliTalkPendingCommand(){
@@ -3746,8 +3767,8 @@
     }
 
     const query = info.query.toLowerCase();
-    const candidates = olliTalkMembers
-      .filter(member => !member.is_current_member)
+    const candidates = [OLLI_TALK_AI_MENTION, ...olliTalkMembers]
+      .filter(member => member?.is_olli_ai === true || !member.is_current_member)
       .filter(member => !query || String(member.display_name || '').toLowerCase().includes(query));
 
     menu.replaceChildren();
@@ -3763,7 +3784,8 @@
       button.type = 'button';
       button.className = 'olliTalkMentionOption';
       const displayName = String(member.display_name || '').trim() || '이름 없음';
-      const name = createMessageText('span', 'olliTalkMentionName', '@' + displayName);
+      const mentionLabel = member?.is_olli_ai === true ? '@올리 · AI' : '@' + displayName;
+      const name = createMessageText('span', 'olliTalkMentionName', mentionLabel);
       button.append(name);
       button.addEventListener('pointerdown', event => event.preventDefault());
       button.addEventListener('click', () => insertOlliTalkMention(member));
@@ -3824,17 +3846,11 @@
     resizeInput();
     updateOlliTalkBetaComposerState();
 
-    if (!olliTalkMembers.length) {
-      const menu = getOlliTalkMentionMenu();
-      if (menu) {
-        menu.replaceChildren(createMessageText('div', 'olliTalkMentionHint', '선생님 목록을 불러오는 중...'));
-        menu.hidden = false;
-        scheduleOlliTalkChatToComposer();
-      }
-      await loadOlliTalkMembers();
-    }
-
     renderOlliTalkMentionMenu();
+    if (!olliTalkMembers.length) {
+      await loadOlliTalkMembers();
+      renderOlliTalkMentionMenu();
+    }
     [0, 80, 180].forEach(delay => setTimeout(syncViewport, delay));
     return true;
   }
@@ -3848,6 +3864,7 @@
     const found = new Map();
 
     olliTalkMentionSelections.forEach((member, id) => {
+      if (member?.is_olli_ai === true) return;
       const name = String(member?.display_name || '').trim();
       if (name && text.includes('@' + name)) found.set(String(id), member);
     });
@@ -4060,8 +4077,11 @@
     if (!input) return;
 
     const rawBody = String(input.value || '').trim();
-    const olliRequested = /^\s*@올리(?:\s|$)/.test(rawBody);
-    const commandText = olliRequested ? stripOlliTalkOlliPrefix(rawBody) : '';
+    const olliAiMentionRequested = hasOlliTalkAiMentionSelection(rawBody);
+    const olliRequested = olliAiMentionRequested || /^\s*@올리(?:\s|$)/.test(rawBody);
+    const commandText = olliRequested
+      ? (olliAiMentionRequested ? stripOlliTalkOlliMention(rawBody) : stripOlliTalkOlliPrefix(rawBody))
+      : '';
     const body = olliRequested ? ('@올리 ' + commandText).trim() : rawBody;
 
     if (
@@ -4069,6 +4089,12 @@
       || (olliRequested && !commandText)
       || (olliTalkMentionModeActive && !isOlliTalkMentionMessageReady())
     ) {
+      updateOlliTalkBetaComposerState();
+      return;
+    }
+
+    if (olliAiMentionRequested && !isOlliTalkAiEnabled()) {
+      alert('올리 AI를 사용하려면 설정에서 올리 AI를 켜 주세요.');
       updateOlliTalkBetaComposerState();
       return;
     }
@@ -4110,7 +4136,7 @@
       resizeInput();
       updateOlliTalkBetaComposerState();
       appendOlliTalkPersistedMessage(payload.message, context.memberId);
-      if (olliRequested && isOlliTalkAiEnabled()) {
+      if (olliRequested && (olliAiMentionRequested || isOlliTalkAiEnabled())) {
         olliTalkAssistantReplyPending = true;
         syncOlliTalkAssistantTypingIndicator();
       }
@@ -4145,7 +4171,7 @@
       }
 
       if (olliRequested) {
-        const usingAi = isOlliTalkAiEnabled();
+        const usingAi = olliAiMentionRequested || isOlliTalkAiEnabled();
         try {
           if(usingAi){
             const turn=await resolveOlliTalkAiTurn(commandText,context,Number(payload.message.id));
