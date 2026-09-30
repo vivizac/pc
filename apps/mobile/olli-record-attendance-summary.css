@@ -1,4 +1,5 @@
 #recordAttendanceSummaryToggle.recordAttendanceSummaryBtn{
+  display:none;
   position:absolute;
   top:50%;
   right:16px;
@@ -19,13 +20,20 @@
   -webkit-tap-highlight-color:transparent;
   touch-action:manipulation;
 }
-#recordAttendanceSummaryToggle.recordAttendanceSummaryBtn.active{
+#recordRoomScreen.record-search-open #recordAttendanceSummaryToggle.recordAttendanceSummaryBtn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+#recordRoomScreen.record-search-open #recordAttendanceSummaryToggle.recordAttendanceSummaryBtn:disabled{
+  opacity:.35;
+  cursor:default;
+  pointer-events:none;
+}
+#recordRoomScreen.record-search-open #recordAttendanceSummaryToggle.recordAttendanceSummaryBtn.active{
   background:#0A84FF;
   color:#fff;
   font-weight:700;
-}
-body.olli-main-subpage-drawer-open #recordRoomScreen #recordAttendanceSummaryToggle{
-  right:calc(25% + 16px);
 }
 #recordRoomScreen .studentTextWrap.recordAttendanceSummaryHost{
   position:relative;
@@ -60,7 +68,4 @@ body.olli-main-subpage-drawer-open #recordRoomScreen #recordAttendanceSummaryTog
 }
 #recordRoomScreen .recordAttendanceSummaryYear{
   color:#8f8f8f;
-}
-body.olli-main-subpage-drawer-open #recordRoomScreen .recordAttendanceSummaryLine{
-  max-width:calc(75vw - 72px);
 }
