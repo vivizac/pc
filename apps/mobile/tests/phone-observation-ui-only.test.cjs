@@ -162,3 +162,12 @@ test('Observation roster keeps X button tied to search mode instead of keyboard 
   assert.doesNotMatch(css,/#observationRosterScreen\.observation-keyboard-open #memoRosterSortBtn/);
   assert.doesNotMatch(css,/#observationRosterScreen\.observation-keyboard-open #memoRosterSearchClose/);
 });
+
+
+test('Observation roster keeps 18px visual inset while preserving the physical search-bar boundary', () => {
+  const scroll = css.match(/#observationRosterScreen \.memoBodyRosterScroll \{[\s\S]*?\}/)?.[0] || '';
+  assert.match(scroll,/left:0/);
+  assert.match(scroll,/right:0/);
+  assert.match(scroll,/bottom:var\(--observation-roster-scroll-bottom, 94px\)/);
+  assert.match(scroll,/padding:calc\(var\(--vivizac-note-header-h\) \+ max\(18px, calc\(env\(safe-area-inset-top\) \+ 6px\)\) \+ 6px\) 18px 0 18px/);
+});

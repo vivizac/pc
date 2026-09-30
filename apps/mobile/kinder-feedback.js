@@ -454,9 +454,6 @@ function syncKinderChatFeedbackViewport(options = {}) {
   screen.style.setProperty('--kcf-message-lift', messageLift + 'px');
   scheduleKinderChatFeedbackChatToComposer();
 
-  const topLayer = document.getElementById('kcfPersistentTopLayer');
-  if (topLayer) topLayer.classList.toggle('kcfKeyboardHidden', keyboardOpen);
-
   if (!keyboardOpen && !inputFocused) {
     releaseKinderChatFeedbackComposerViewportLock();
     kcfKeyboardTransitionActive = false;

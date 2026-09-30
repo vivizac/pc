@@ -99,13 +99,9 @@ test('persistent KCF top controls use independent fixed positioning', () => {
   assert.doesNotMatch(inboxBubble, /position:absolute;/);
 });
 
-test('persistent KCF header hides completely while the keyboard is open', () => {
-  const hiddenRule = css.match(/#kcfPersistentTopLayer\.kcfKeyboardHidden \{[^}]*\}/)?.[0] || '';
-  assert.match(hiddenRule, /visibility:hidden;/);
-  assert.match(hiddenRule, /opacity:0;/);
-  assert.match(hiddenRule, /pointer-events:none;/);
-  assert.match(js, /topLayer\.classList\.toggle\('kcfKeyboardHidden', open\)/);
-  assert.match(js, /topLayer\.classList\.remove\('kcfKeyboardHidden'\)/);
+test('persistent KCF header stays visible while the keyboard is open', () => {
+  assert.doesNotMatch(css, /kcfKeyboardHidden/);
+  assert.doesNotMatch(js, /kcfKeyboardHidden/);
   assert.doesNotMatch(js, /--kcf-top-shift-y/);
   assert.doesNotMatch(css, /--kcf-top-shift-y/);
 });

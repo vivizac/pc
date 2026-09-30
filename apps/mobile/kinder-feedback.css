@@ -16,11 +16,6 @@
 #kcfPersistentTopLayer.show {
   display:block;
 }
-#kcfPersistentTopLayer.kcfKeyboardHidden {
-  visibility:hidden;
-  opacity:0;
-  pointer-events:none;
-}
 #kinderChatFeedbackScreen .kcfInner {
   position:absolute;
   inset:0;

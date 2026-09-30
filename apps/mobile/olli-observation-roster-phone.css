@@ -35,7 +35,7 @@
 #observationRosterScreen .memoBodyRosterScroll {
   position:absolute;
   left:0;
-  right:-18px;
+  right:0;
   top:0;
   bottom:var(--observation-roster-scroll-bottom, 94px);
   min-height:0;
@@ -45,7 +45,7 @@
   overscroll-behavior-y:contain;
   touch-action:pan-y;
   overflow-anchor:none;
-  padding:calc(var(--vivizac-note-header-h) + max(18px, calc(env(safe-area-inset-top) + 6px)) + 6px) 18px 0 0;
+  padding:calc(var(--vivizac-note-header-h) + max(18px, calc(env(safe-area-inset-top) + 6px)) + 6px) 18px 0 18px;
   background:transparent;
 }
 #observationRosterScreen .memoBodyRosterScroll::after {
