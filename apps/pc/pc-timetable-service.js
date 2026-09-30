@@ -399,11 +399,29 @@
     }));
   }
 
-  async function changeMakeupDate(oneTimeSessionId, sessionDate) {
-    return rpc('olli_schedule_update_one_time_date', contextPayload({
+  async function updateOneTimeSession(oneTimeSessionId, options) {
+    const item = options || {};
+    return rpc('olli_schedule_update_one_time_session', contextPayload({
       p_one_time_session_id: oneTimeSessionId,
-      p_session_date: clean(sessionDate)
+      p_session_date: clean(item.sessionDate) || null,
+      p_time_slot: Number(item.timeSlot) || null,
+      p_class_group: clean(item.classGroup) || null
     }));
+  }
+
+  async function updateWaitlistTarget(waitlistId, options) {
+    const item = options || {};
+    return rpc('olli_schedule_update_waitlist_target', contextPayload({
+      p_waitlist_id: waitlistId,
+      p_target_weekday: Number(item.targetWeekday) || null,
+      p_target_time_slot: Number(item.targetTimeSlot) || null,
+      p_target_class_group: clean(item.targetClassGroup) || null,
+      p_desired_effective_date: clean(item.desiredEffectiveDate) || null
+    }));
+  }
+
+  async function changeMakeupDate(oneTimeSessionId, sessionDate) {
+    return updateOneTimeSession(oneTimeSessionId, { sessionDate });
   }
 
   async function cancelMakeup(oneTimeSessionId) {
@@ -610,6 +628,8 @@
     addMakeup,
     addWaitlist,
     addGuestEntry,
+    updateOneTimeSession,
+    updateWaitlistTarget,
     changeMakeupDate,
     cancelMakeup,
     cancelChange,
