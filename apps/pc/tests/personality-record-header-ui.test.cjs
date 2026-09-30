@@ -29,3 +29,12 @@ test('student info button stays on the far right after mode tabs move beside the
 test('observation student name uses a much lighter weight', () => {
   assert.match(editorCss, /#memoPageStudentName\{[^}]*font-weight:400!important;/);
 });
+
+
+test('active personality record tab is blue with white text', () => {
+  assert.match(attendanceCss, /\.pcAttendanceRecordModeTab\.active\{background:#0A84FF;color:#fff;box-shadow:none;\}/);
+});
+
+test('observation send button is gray with black icon color', () => {
+  assert.match(editorCss, /\.memoFeedbackBottomBtn\{[^}]*background:#e5e5e5!important;color:#111!important;box-shadow:none!important;/);
+});
