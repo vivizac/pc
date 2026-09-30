@@ -1571,18 +1571,38 @@
   function openWait(waitlistId, clickedDate) {
     const item = waitlist().find((row) => clean(row.id) === clean(waitlistId));
     if (!item) return;
-    const selectedDate = /^\d{4}-\d{2}-\d{2}$/.test(clean(clickedDate)) ? clean(clickedDate) : todayKey();
-    state.dialog = { kind: 'wait', waitlistId: clean(waitlistId), effectiveDate: todayKey(), cancelDate: selectedDate, cancelNote: '' };
+    const clicked = clean(clickedDate);
+    const desired = clean(item.desired_effective_date);
+    const selectedDate = /^\d{4}-\d{2}-\d{2}$/.test(clicked)
+      ? clicked
+      : (/^\d{4}-\d{2}-\d{2}$/.test(desired) ? desired : todayKey());
+    const targetDate = selectedDate >= todayKey() ? selectedDate : todayKey();
+    state.dialog = {
+      kind: 'wait',
+      waitlistId: clean(waitlistId),
+      effectiveDate: todayKey(),
+      cancelDate: selectedDate,
+      cancelNote: '',
+      targetDate,
+      targetWeekday: Number(item.target_weekday),
+      targetTime: Number(item.target_time_slot),
+      targetClassGroup: classGroupOf(item, 'target_class_group')
+    };
     openOverlay();
   }
 
   function openMakeup(makeupId) {
     const item = oneTimeSessions().find((row) => clean(row.id) === clean(makeupId));
     if (!item) return;
+    const makeupDate = clean(item.session_date);
+    const parsedDate = parseDate(makeupDate);
     state.dialog = {
       kind: 'makeup',
       makeupId: clean(makeupId),
-      makeupDate: clean(item.session_date),
+      makeupDate,
+      targetWeekday: parsedDate.getDay(),
+      targetTime: Number(item.time_slot),
+      targetClassGroup: classGroupOf(item),
       cancelNote: ''
     };
     openOverlay();
@@ -1922,27 +1942,78 @@
       + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogPrimary" data-tt-save-memo>저장</button><button type="button" class="olliTtDialogPrimary danger" data-tt-delete-memo>메모 삭제</button></div></div>';
   }
 
+  function managedScheduleTimeChoicesHtml(division, targetDate, targetWeekday, selectedTime) {
+    const weekday = Number(targetWeekday);
+    if (weekday < 1 || weekday > 6) {
+      return '<div class="olliTtStatusNotice">월요일부터 토요일 사이의 날짜를 선택해 주세요.</div>';
+    }
+    const options = timeOptionsFor(division, weekday);
+    if (!options.length) return '<div class="olliTtStatusNotice">선택한 날짜에 사용할 수 있는 수업 시간이 없습니다.</div>';
+    return options.map((time) => {
+      const active = Number(selectedTime) === Number(time);
+      return `<button type="button" class="olliTtChoice ${active ? 'active' : ''}" data-tt-managed-time="${Number(time)}">${esc(scheduleSlotLabel(division, time, '', weekday))}</button>`;
+    }).join('');
+  }
+
+  function managedScheduleGroupHtml(division, targetDate, targetWeekday, targetTime, targetClassGroup) {
+    if (!targetDate || Number(targetWeekday) < 1 || Number(targetWeekday) > 6 || !Number(targetTime)) return '';
+    return classGroupChoiceHtml(
+      division,
+      targetClassGroup,
+      Number(targetWeekday),
+      Number(targetTime),
+      targetDate,
+      true,
+      false
+    );
+  }
+
+  function managedDialogScheduleItem(dialog) {
+    if (!dialog) return null;
+    if (dialog.kind === 'makeup') {
+      return oneTimeSessions().find((row) => clean(row.id) === clean(dialog.makeupId)) || null;
+    }
+    if (dialog.kind === 'wait') {
+      return waitlist().find((row) => clean(row.id) === clean(dialog.waitlistId)) || null;
+    }
+    return null;
+  }
+
   function waitDialogHtml(dialog) {
     const item = waitlist().find((row) => clean(row.id) === clean(dialog.waitlistId));
     if (!item) return '';
     const guest = item.is_guest === true;
     const displayName = `${item.student_name}${guest ? ' (비)' : ''}`;
-    const capacity = capacityFor(clean(item.division));
-    const occupied = countAt(clean(item.division), item.target_weekday, item.target_time_slot, dialog.effectiveDate, item.target_class_group);
+    const division = clean(item.division);
+    const targetDate = clean(dialog.targetDate) || todayKey();
+    const targetWeekday = Number(dialog.targetWeekday);
+    const targetTime = Number(dialog.targetTime);
+    const targetGroup = classGroupOf({ class_group: dialog.targetClassGroup });
+    const timeHtml = managedScheduleTimeChoicesHtml(division, targetDate, targetWeekday, targetTime);
+    const groupHtml = managedScheduleGroupHtml(division, targetDate, targetWeekday, targetTime, targetGroup);
+    const scheduleChangeHtml = '<div class="olliTtField"><div class="olliTtFieldHead"><span>대기 일정 변경</span><small>날짜를 바꾸면 해당 날짜의 요일로 대기 요일도 함께 변경됩니다.</small></div>'
+      + `<input type="date" class="olliTtDateInput" data-tt-managed-date min="${todayKey()}" value="${esc(targetDate)}"></div>`
+      + '<div class="olliTtField"><div class="olliTtFieldHead"><span>대기 시간</span></div><div class="olliTtChoiceGrid times">'
+      + timeHtml + '</div></div>' + groupHtml;
+    const capacity = capacityFor(division);
+    const occupied = countAt(division, item.target_weekday, item.target_time_slot, dialog.effectiveDate, item.target_class_group);
     const canEnter = !guest && (!capacity || occupied < capacity);
+    const currentSub = `${weekdayLabel(item.target_weekday)}요일 · ${scheduleSlotLabel(division, item.target_time_slot, item.target_class_group, item.target_weekday)}${classGroupLabel(division, item.target_class_group) ? ` · ${classGroupLabel(division, item.target_class_group)}` : ''}`;
     if (guest) {
-      return dialogHead('⌛', `${displayName} 대기 관리`, `${weekdayLabel(item.target_weekday)}요일 · ${scheduleSlotLabel(clean(item.division), item.target_time_slot, item.target_class_group, item.target_weekday)}${classGroupLabel(clean(item.division), item.target_class_group) ? ` · ${classGroupLabel(clean(item.division), item.target_class_group)}` : ''}`)
+      return dialogHead('⌛', `${displayName} 대기 관리`, currentSub)
         + '<div class="olliTtDialogBody">'
+        + scheduleChangeHtml
         + '<div class="olliTtCurrentBox"><strong>비재원 학생 대기입니다.</strong>현재 학생명단에는 등록하지 않고 대기 이름만 시간표에 보관합니다.</div>'
         + `<label class="olliTtAddMemo olliTtCancelMemo"><span>취소 사유</span><textarea data-tt-cancel-note maxlength="500" placeholder="취소 사유를 입력하세요">${esc(dialog.cancelNote || '')}</textarea></label>`
-        + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-wait>대기 취소</button></div></div>';
+        + '<div class="olliTtDialogActions olliTtMakeupManageActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary secondary" data-tt-change-wait-schedule>일정 변경</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-wait>대기 취소</button></div></div>';
     }
-    return dialogHead('⌛', `${item.student_name} 대기 관리`, `${weekdayLabel(item.target_weekday)}요일 · ${scheduleSlotLabel(clean(item.division), item.target_time_slot, item.target_class_group, item.target_weekday)}${classGroupLabel(clean(item.division), item.target_class_group) ? ` · ${classGroupLabel(clean(item.division), item.target_class_group)}` : ''}`)
+    return dialogHead('⌛', `${item.student_name} 대기 관리`, currentSub)
       + '<div class="olliTtDialogBody">'
+      + scheduleChangeHtml
       + `<div class="olliTtField"><div class="olliTtFieldHead"><span>입장 적용 날짜</span><small>자리가 있는 날짜를 선택하세요</small></div><input type="date" class="olliTtDateInput" data-tt-wait-date min="${todayKey()}" value="${esc(dialog.effectiveDate)}"></div>`
       + `<label class="olliTtAddMemo olliTtCancelMemo"><span>취소 사유</span><textarea data-tt-cancel-note maxlength="500" placeholder="취소 사유를 입력하세요">${esc(dialog.cancelNote || '')}</textarea></label>`
       + '<div class="olliTtStatusNotice">입장시키기 직전에 정원을 다시 확인합니다. 대기를 취소해도 기존 수업은 그대로 유지됩니다.</div>'
-      + `<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-cancel-wait>대기 취소</button><button type="button" class="olliTtDialogPrimary" data-tt-accept-wait ${canEnter ? '' : 'disabled'}>입장시키기</button></div></div>`;
+      + `<div class="olliTtDialogActions olliTtMakeupManageActions"><button type="button" class="olliTtDialogPrimary secondary" data-tt-change-wait-schedule>일정 변경</button><button type="button" class="olliTtDialogCancel" data-tt-cancel-wait>대기 취소</button><button type="button" class="olliTtDialogPrimary" data-tt-accept-wait ${canEnter ? '' : 'disabled'}>입장시키기</button></div></div>`;
   }
 
   function makeupDialogHtml(dialog) {
@@ -1952,11 +2023,20 @@
     const trial = clean(item.session_type) === 'trial';
     const displayName = `${item.student_name}${item.is_guest === true ? ' (비)' : ''}`;
     const typeLabel = trial ? '체험' : '보강';
-    const dateChangeHtml = `<div class="olliTtField"><div class="olliTtFieldHead"><span>${typeLabel} 날짜 변경</span><small>현재 ${typeLabel} 시간 ${scheduleSlotLabel(clean(item.division), item.time_slot, item.class_group, parseDate(item.session_date).getDay())}은 그대로 유지됩니다.</small></div><input type="date" class="olliTtDateInput" data-tt-makeup-date min="${todayKey()}" value="${esc(dialog.makeupDate || item.session_date)}"></div>`;
-    const actionsHtml = `<div class="olliTtDialogActions olliTtMakeupManageActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary" data-tt-change-makeup-date>날짜 변경</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>${typeLabel} 취소</button></div>`;
-    return dialogHead(trial ? '★' : '✓', `${displayName} ${typeLabel}`, `${koreanDate(date)} ${DAYS[date.getDay() - 1]}요일 · ${scheduleSlotLabel(clean(item.division), item.time_slot, item.class_group, parseDate(item.session_date).getDay())}`)
+    const division = clean(item.division);
+    const targetDate = clean(dialog.makeupDate) || clean(item.session_date);
+    const targetWeekday = Number(dialog.targetWeekday) || parseDate(targetDate).getDay();
+    const targetTime = Number(dialog.targetTime) || Number(item.time_slot);
+    const targetGroup = classGroupOf({ class_group: dialog.targetClassGroup || item.class_group });
+    const timeHtml = managedScheduleTimeChoicesHtml(division, targetDate, targetWeekday, targetTime);
+    const groupHtml = managedScheduleGroupHtml(division, targetDate, targetWeekday, targetTime, targetGroup);
+    const scheduleChangeHtml = `<div class="olliTtField"><div class="olliTtFieldHead"><span>${typeLabel} 날짜</span><small>날짜·시간·반을 각각 또는 함께 변경할 수 있습니다.</small></div><input type="date" class="olliTtDateInput" data-tt-managed-date min="${todayKey()}" value="${esc(targetDate)}"></div>`
+      + `<div class="olliTtField"><div class="olliTtFieldHead"><span>${typeLabel} 시간</span></div><div class="olliTtChoiceGrid times">${timeHtml}</div></div>`
+      + groupHtml;
+    const actionsHtml = `<div class="olliTtDialogActions olliTtMakeupManageActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>닫기</button><button type="button" class="olliTtDialogPrimary secondary" data-tt-change-makeup-schedule>일정 변경</button><button type="button" class="olliTtDialogPrimary danger" data-tt-cancel-makeup>${typeLabel} 취소</button></div>`;
+    return dialogHead(trial ? '★' : '✓', `${displayName} ${typeLabel}`, `${koreanDate(date)} ${DAYS[date.getDay() - 1]}요일 · ${scheduleSlotLabel(division, item.time_slot, item.class_group, date.getDay())}`)
       + '<div class="olliTtDialogBody">'
-      + dateChangeHtml
+      + scheduleChangeHtml
       + `<label class="olliTtAddMemo olliTtCancelMemo"><span>취소 사유</span><textarea data-tt-cancel-note maxlength="500" placeholder="취소 사유를 입력하세요">${esc(dialog.cancelNote || '')}</textarea></label>`
       + actionsHtml + '</div>';
   }
@@ -2337,6 +2417,35 @@
     if (pickupEffectiveDate) pickupEffectiveDate.addEventListener('change', () => { if (state.dialog && state.dialog.kind === 'pickupManage') state.dialog.effectiveDate = pickupEffectiveDate.value || todayKey(); });
     const waitDate = dialog.querySelector('[data-tt-wait-date]');
     if (waitDate) waitDate.addEventListener('change', () => { state.dialog.effectiveDate = waitDate.value || todayKey(); renderDialog(); });
+    const managedDate = dialog.querySelector('[data-tt-managed-date]');
+    if (managedDate) managedDate.addEventListener('change', () => {
+      if (!state.dialog || (state.dialog.kind !== 'makeup' && state.dialog.kind !== 'wait')) return;
+      const targetDate = clean(managedDate.value);
+      const parsed = parseDate(targetDate);
+      const weekday = parsed.getDay();
+      const item = managedDialogScheduleItem(state.dialog);
+      const division = clean(item && item.division);
+      if (state.dialog.kind === 'makeup') state.dialog.makeupDate = targetDate;
+      else state.dialog.targetDate = targetDate;
+      state.dialog.targetWeekday = weekday;
+      const options = weekday >= 1 && weekday <= 6 ? timeOptionsFor(division, weekday) : [];
+      if (!options.includes(Number(state.dialog.targetTime))) state.dialog.targetTime = Number(options[0] || 0);
+      if (isHalfHourMode() || !state.dialog.targetTime || !isClassSplit(division, weekday, state.dialog.targetTime, targetDate)) {
+        state.dialog.targetClassGroup = 'A';
+      }
+      renderDialog();
+    });
+    dialog.querySelectorAll('[data-tt-managed-time]').forEach((button) => button.addEventListener('click', () => {
+      if (!state.dialog || (state.dialog.kind !== 'makeup' && state.dialog.kind !== 'wait')) return;
+      state.dialog.targetTime = Number(button.dataset.ttManagedTime);
+      const item = managedDialogScheduleItem(state.dialog);
+      const division = clean(item && item.division);
+      const targetDate = state.dialog.kind === 'makeup' ? clean(state.dialog.makeupDate) : clean(state.dialog.targetDate);
+      if (isHalfHourMode() || !isClassSplit(division, state.dialog.targetWeekday, state.dialog.targetTime, targetDate)) {
+        state.dialog.targetClassGroup = 'A';
+      }
+      renderDialog();
+    }));
     const moveNote = dialog.querySelector('[data-tt-move-note]');
     if (moveNote) moveNote.addEventListener('input', () => {
       if (state.dialog && state.dialog.kind === 'move') state.dialog.note = moveNote.value;
@@ -2388,12 +2497,10 @@
     if (cancelNote) cancelNote.addEventListener('input', () => {
       if (state.dialog && (state.dialog.kind === 'makeup' || state.dialog.kind === 'wait')) state.dialog.cancelNote = cancelNote.value;
     });
-    const makeupDate = dialog.querySelector('[data-tt-makeup-date]');
-    if (makeupDate) makeupDate.addEventListener('change', () => {
-      if (state.dialog && state.dialog.kind === 'makeup') state.dialog.makeupDate = makeupDate.value || '';
-    });
-    const changeMakeupDateButton = dialog.querySelector('[data-tt-change-makeup-date]');
-    if (changeMakeupDateButton) changeMakeupDateButton.addEventListener('click', changeMakeupSessionDate);
+    const changeWaitScheduleButton = dialog.querySelector('[data-tt-change-wait-schedule]');
+    if (changeWaitScheduleButton) changeWaitScheduleButton.addEventListener('click', changeWaitSchedule);
+    const changeMakeupScheduleButton = dialog.querySelector('[data-tt-change-makeup-schedule]');
+    if (changeMakeupScheduleButton) changeMakeupScheduleButton.addEventListener('click', changeMakeupSessionSchedule);
     const cancelMakeup = dialog.querySelector('[data-tt-cancel-makeup]');
     if (cancelMakeup) cancelMakeup.addEventListener('click', cancelMakeupSession);
     dialog.querySelectorAll('[data-tt-history-refresh]').forEach((button) => button.addEventListener('click', loadHistoryIntoDialog));
@@ -2978,6 +3085,53 @@ ${combined.memoError}`);
     if (result) notify(`${item.student_name} 학생의 픽업 일정을 삭제했어요.`);
   }
 
+  async function changeWaitSchedule() {
+    const dialog = state.dialog;
+    if (!dialog || dialog.kind !== 'wait') return;
+    const item = waitlist().find((row) => clean(row.id) === clean(dialog.waitlistId));
+    if (!item) return;
+
+    const targetDate = clean(dialog.targetDate);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate) || targetDate < todayKey()) {
+      alert('변경할 대기 날짜를 확인해 주세요.');
+      return;
+    }
+    const parsed = parseDate(targetDate);
+    const targetWeekday = parsed.getDay();
+    if (targetWeekday < 1 || targetWeekday > 6) {
+      alert('대기는 월요일부터 토요일 수업으로만 변경할 수 있습니다.');
+      return;
+    }
+    const division = clean(item.division);
+    const targetTime = Number(dialog.targetTime);
+    if (!timeOptionsFor(division, targetWeekday).includes(targetTime)) {
+      alert('변경할 대기 시간을 선택해 주세요.');
+      return;
+    }
+    const split = !isHalfHourMode() && isClassSplit(division, targetWeekday, targetTime, targetDate);
+    const targetGroup = split ? classGroupOf({ class_group: dialog.targetClassGroup }) : 'A';
+    const currentGroup = classGroupOf(item, 'target_class_group');
+    const currentDesiredDate = clean(item.desired_effective_date);
+    if (Number(item.target_weekday) === targetWeekday
+      && Number(item.target_time_slot) === targetTime
+      && currentGroup === targetGroup
+      && currentDesiredDate === targetDate) {
+      notify('현재 대기 일정과 같은 일정이에요.');
+      return;
+    }
+
+    const result = await withSaving(() => service.updateWaitlistTarget(dialog.waitlistId, {
+      targetWeekday,
+      targetTimeSlot: targetTime,
+      targetClassGroup: targetGroup,
+      desiredEffectiveDate: targetDate
+    }));
+    if (result) {
+      const groupText = split ? ` ${targetGroup}반` : '';
+      notify(`${item.student_name}${item.is_guest === true ? ' (비)' : ''} 학생의 대기를 ${shortDate(targetDate)} ${scheduleSlotLabel(division, targetTime, targetGroup, targetWeekday)}${groupText}로 변경했어요.`);
+    }
+  }
+
   async function resolveWait(action) {
     const dialog = state.dialog;
     if (!dialog || dialog.kind !== 'wait') return;
@@ -3005,27 +3159,49 @@ ${combined.memoError}`);
     }
   }
 
-  async function changeMakeupSessionDate() {
+  async function changeMakeupSessionSchedule() {
     const dialog = state.dialog;
     if (!dialog || dialog.kind !== 'makeup') return;
     const item = oneTimeSessions().find((row) => clean(row.id) === clean(dialog.makeupId));
     if (!item) return;
     const trial = clean(item.session_type) === 'trial';
     const typeLabel = trial ? '체험' : '보강';
-    const root = document.getElementById('olliTtDialog');
-    const dateInput = root && root.querySelector('[data-tt-makeup-date]');
-    const nextDate = clean(dateInput ? dateInput.value : dialog.makeupDate);
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(nextDate) || nextDate < todayKey()) {
+    const targetDate = clean(dialog.makeupDate);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate) || targetDate < todayKey()) {
       alert(`변경할 ${typeLabel} 날짜를 확인해 주세요.`);
       return;
     }
-    if (nextDate === clean(item.session_date)) {
-      notify(`현재 ${typeLabel} 날짜와 같은 날짜예요.`);
+    const parsed = parseDate(targetDate);
+    const targetWeekday = parsed.getDay();
+    if (targetWeekday < 1 || targetWeekday > 6) {
+      alert(`${typeLabel}은 월요일부터 토요일 수업으로만 변경할 수 있습니다.`);
+      return;
+    }
+    const division = clean(item.division);
+    const targetTime = Number(dialog.targetTime);
+    if (!timeOptionsFor(division, targetWeekday).includes(targetTime)) {
+      alert(`변경할 ${typeLabel} 시간을 선택해 주세요.`);
+      return;
+    }
+    const split = !isHalfHourMode() && isClassSplit(division, targetWeekday, targetTime, targetDate);
+    const targetGroup = split ? classGroupOf({ class_group: dialog.targetClassGroup }) : 'A';
+    const currentGroup = classGroupOf(item);
+    if (targetDate === clean(item.session_date)
+      && targetTime === Number(item.time_slot)
+      && targetGroup === currentGroup) {
+      notify(`현재 ${typeLabel} 일정과 같은 일정이에요.`);
       return;
     }
     const studentName = clean(item.student_name) || '학생';
-    const result = await withSaving(() => service.changeMakeupDate(dialog.makeupId, nextDate));
-    if (result) notify(`${studentName}${item.is_guest === true ? ' (비)' : ''} 학생의 ${typeLabel} 날짜를 ${shortDate(nextDate)}로 변경했어요.`);
+    const result = await withSaving(() => service.updateOneTimeSession(dialog.makeupId, {
+      sessionDate: targetDate,
+      timeSlot: targetTime,
+      classGroup: targetGroup
+    }));
+    if (result) {
+      const groupText = split ? ` ${targetGroup}반` : '';
+      notify(`${studentName}${item.is_guest === true ? ' (비)' : ''} 학생의 ${typeLabel}을 ${shortDate(targetDate)} ${scheduleSlotLabel(division, targetTime, targetGroup, targetWeekday)}${groupText}로 변경했어요.`);
+    }
   }
 
   async function cancelMakeupSession() {
