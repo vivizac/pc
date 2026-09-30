@@ -243,3 +243,19 @@ test('QuickNote programmatic refocus paths also use preventScroll', () => {
   assert.match(js,/textInput\.focus\(\{ preventScroll:true \}\)/);
   assert.match(js,/setKinderChatFeedbackWarning\(''\);[\s\S]{0,120}input\.focus\(\{ preventScroll:true \}\)/);
 });
+
+
+test('QuickNote locks the settled keyboard viewport so chat scrolling cannot recalculate message lift', () => {
+  assert.match(js,/let kcfComposerViewportLock = null;/);
+  assert.match(js,/function lockKinderChatFeedbackComposerViewport\(\)/);
+  assert.match(js,/function scheduleKinderChatFeedbackComposerViewportLock\(\)/);
+  assert.match(js,/if \(kcfComposerViewportLock && options\.followKeyboard !== true\)/);
+  assert.match(js,/window\.visualViewport\.addEventListener\('scroll', handleKinderChatFeedbackViewportScroll\)/);
+  assert.match(js,/if \(kcfComposerViewportLock\) \{[\s\S]*?syncKinderChatFeedbackComposerViewport\(\);[\s\S]*?return;/);
+  assert.match(js,/if \(kcfComposerViewportLock\) \{[\s\S]*?scheduleKinderChatFeedbackChatReserve\(\);[\s\S]*?\} else \{[\s\S]*?updateKinderChatFeedbackKeyboardOffset\(\);/);
+});
+
+test('QuickNote focus lifecycle follows keyboard only until viewport lock settles', () => {
+  assert.match(js,/releaseKinderChatFeedbackComposerViewportLock\(\);[\s\S]*?kcfKeyboardTransitionActive = true;[\s\S]*?setTimeout\(updateKinderChatFeedbackKeyboardOffset, 300\)/);
+  assert.match(js,/syncKinderChatFeedbackComposerViewport\(\{ followKeyboard:true \}\);[\s\S]*?scheduleKinderChatFeedbackComposerViewportLock\(\)/);
+});
