@@ -59,3 +59,43 @@ test('observation roster has fixed top and bottom haze layers behind the control
   assert.match(css, /#observationRosterScreen \.observationRosterTopFadeLayer \{[\s\S]*?top:0;[\s\S]*?to bottom,[\s\S]*?rgba\(var\(--vivizac-edge-fade-rgb\),1\) 0%/);
   assert.match(css, /#observationRosterScreen \.observationRosterBottomFadeLayer \{[\s\S]*?bottom:0;[\s\S]*?to top,[\s\S]*?rgba\(var\(--vivizac-edge-fade-rgb\),1\) 0%/);
 });
+
+
+test('Observation roster mirrors QuickNote scroll ownership while search keyboard is open', () => {
+  const page = css.match(/#observationRosterScreen \.observationRosterPageInner \{[\s\S]*?\}/)?.[0] || '';
+  const scroll = css.match(/#observationRosterScreen \.memoBodyRosterScroll \{[\s\S]*?\}/)?.[0] || '';
+  const content = css.match(/#observationRosterScreen \.memoBodyRosterContent \{[\s\S]*?\}/)?.[0] || '';
+  const layer = css.match(/#observationRosterScreen \.observationRosterUtilityLayer \{[\s\S]*?\}/)?.[0] || '';
+  const utility = css.match(/#observationRosterScreen \.memoRosterUtilityBar \{[\s\S]*?\}/)?.[0] || '';
+
+  assert.match(page,/position:absolute/);
+  assert.match(page,/inset:0/);
+  assert.match(page,/overflow:hidden/);
+  assert.match(scroll,/overflow-y:auto/);
+  assert.match(scroll,/overscroll-behavior-y:contain/);
+  assert.match(scroll,/touch-action:pan-y/);
+  assert.match(scroll,/overflow-anchor:none/);
+  assert.match(content,/--observation-roster-content-lift/);
+  assert.match(layer,/position:fixed/);
+  assert.match(layer,/pointer-events:none/);
+  assert.match(utility,/position:absolute !important/);
+  assert.match(utility,/pointer-events:auto !important/);
+  assert.doesNotMatch(utility,/--olli-observation-keyboard-offset/);
+});
+
+test('Observation roster search input uses Team Chat style viewport lock and preventScroll focus', () => {
+  assert.match(source,/function syncObservationRosterViewport\(options = \{\}\)/);
+  assert.match(source,/function lockObservationRosterUtilityViewport\(\)/);
+  assert.match(source,/if \(observationRosterUtilityViewportLock && options\.followKeyboard !== true\)/);
+  assert.match(source,/if \(observationRosterScrollGestureActive\) \{[\s\S]*?observationRosterLastViewportSignature = signature;[\s\S]*?return;/);
+  assert.match(source,/input\.focus\(\{ preventScroll:true \}\)/);
+  assert.match(source,/utilityBar\.addEventListener\('touchmove',[\s\S]*?event\.preventDefault\(\)[\s\S]*?passive:false/);
+});
+
+test('Observation roster renders a dedicated content layer and visualViewport utility layer', () => {
+  assert.match(source,/memoBodyRosterScroll"><div class="memoBodyRosterContent">/);
+  assert.match(source,/observationRosterUtilityLayer/);
+  assert.match(source,/--observation-roster-reserve/);
+  assert.match(source,/--observation-roster-content-lift/);
+  assert.doesNotMatch(source,/--olli-observation-keyboard-offset/);
+});
