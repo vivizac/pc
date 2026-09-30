@@ -9,10 +9,21 @@ const html = fs.readFileSync('index.html', 'utf8');
 test('phone composer removes the Bot trigger while keeping explicit @올리 routing', () => {
   assert.doesNotMatch(html, /id="olliTalkOlliTriggerBtn"/);
   assert.doesNotMatch(talk, /toggleOlliTalkOlliMode/);
-  assert.ok(talk.includes("const olliRequested = /^\\s*@올리(?:\\s|$)/.test(rawBody);"));
-  assert.match(talk, /const usingAi = isOlliTalkAiEnabled\(\)|const usingAi=isOlliTalkAiEnabled\(\)/);
+  assert.match(talk, /const olliRequested = olliAiMentionRequested \|\| \/\^\\s\*@올리/);
+  assert.match(talk, /const usingAi = olliAiMentionRequested \|\| isOlliTalkAiEnabled\(\)/);
   assert.match(talk, /resolveOlliTalkAiTurn/);
   assert.match(talk, /resolveOlliTalkBotTurn/);
+});
+
+test('phone mention picker offers Olli as a virtual AI target without registering Olli as a teacher recipient', () => {
+  assert.match(talk, /const OLLI_TALK_AI_MENTION_ID = '__olli_ai__'/);
+  assert.match(talk, /display_name:'올리'[\s\S]{0,80}is_olli_ai:true/);
+  assert.match(talk, /const candidates = \[OLLI_TALK_AI_MENTION, \.\.\.olliTalkMembers\]/);
+  assert.match(talk, /mentionLabel = member\?\.is_olli_ai === true \? '@올리 · AI'/);
+  assert.match(talk, /if \(member\?\.is_olli_ai === true\) return/);
+  assert.match(talk, /olliAiMentionRequested && !isOlliTalkAiEnabled\(\)/);
+  assert.match(talk, /const usingAi = olliAiMentionRequested \|\| isOlliTalkAiEnabled\(\)/);
+  assert.match(html, /olli-talk-beta\.js\?v=20260930-olli-ai-mention-1/);
 });
 
 test('phone AI request keeps the session token but no longer depends on a button-selected conversation mode', () => {
