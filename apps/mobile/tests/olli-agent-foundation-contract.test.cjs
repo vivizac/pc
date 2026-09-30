@@ -18,8 +18,9 @@ test('independent olli-agent endpoint keeps diagnostics isolated from the existi
   const endpoint = read('api/olli-agent.js');
   const chat = read('api/chat.js');
 
-  assert.match(endpoint, /\['probe', 'privacy_probe'\]\.includes\(mode\)/);
+  assert.match(endpoint, /\['probe', 'privacy_probe', 'schedule_probe'\]\.includes\(mode\)/);
   assert.match(endpoint, /mode === 'privacy_probe'/);
+  assert.match(endpoint, /mode === 'schedule_probe'/);
   assert.match(endpoint, /loadOlliAgentRequestContext/);
   assert.match(endpoint, /runFoundationProbe/);
   assert.doesNotMatch(chat, /@openai\/agents/);
@@ -45,11 +46,12 @@ test('session token remains server-local and is not copied into the model run co
   assert.match(match[0], /memberId:/);
 });
 
-test('foundation runtime loads Agents SDK dynamically and has no business tools', () => {
+test('foundation runtime loads Agents SDK dynamically and keeps foundation probe tool-free', () => {
   const runtime = read('api/_lib/olli-agent/runtime.cjs');
 
   assert.match(runtime, /import\('@openai\/agents'\)/);
   assert.match(runtime, /import\('zod'\)/);
+  assert.match(runtime, /agentsSdk\.tool/);
   assert.match(runtime, /tools: \[\]/);
   assert.match(runtime, /OLLI_AGENT_READY/);
   assert.match(runtime, /MIN_NODE_MAJOR = 22/);
