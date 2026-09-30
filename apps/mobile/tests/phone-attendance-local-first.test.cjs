@@ -5,7 +5,8 @@ const fs = require('node:fs');
 const adapter = fs.readFileSync('olli-attendance-phone-adapter.js', 'utf8');
 const navigation = fs.readFileSync('olli-record-room-navigation.js', 'utf8');
 const observationRuntime = fs.readFileSync('olli-observation-runtime.js', 'utf8');
-const guideRuntime = fs.readFileSync('olli-attendance-guide-align-runtime.js', 'utf8');
+const attendanceGuide = fs.readFileSync('olli-attendance-guide.js', 'utf8');
+const syncFallback = fs.readFileSync('olli-attendance-sync-fallback.js', 'utf8');
 const studentOperations = fs.readFileSync('olli-data-student-operations.js', 'utf8');
 const recordListView = fs.readFileSync('olli-record-list-view.js', 'utf8');
 const attendanceRecordCss = fs.readFileSync('olli-attendance-record.css', 'utf8');
@@ -27,17 +28,35 @@ test('record list paints local attendance before awaiting student server refresh
   assert.match(navigation, /if \(!refreshOnly \|\| studentsChanged\) renderKinderRecords\(name\)/);
 });
 
-test('attendance guide output is marked separately from the normal student meta line', () => {
-  assert.match(recordListView, /const attendanceGuideOutput = metaHtml\.includes\('recordAttendanceGuideMeta'\)/);
-  assert.match(recordListView, /recordAttendanceGuideTextWrap/);
-  assert.match(recordListView, /recordAttendanceGuideOutput/);
+test('attendance guide has one clean owner and static button', () => {
+  assert.match(html, /id="recordAttendanceGuideToggle"[^>]*onclick="toggleOlliAttendanceGuide\(event\)"/);
+  assert.match(attendanceGuide, /global\.toggleOlliAttendanceGuide = toggle/);
+  assert.match(attendanceGuide, /global\.OlliAttendanceGuide = Object\.freeze/);
+  assert.doesNotMatch(observationRuntime, /OlliAttendanceGuideUI/);
+  assert.doesNotMatch(adapter, /OlliAttendanceGuideUI/);
 });
 
-test('attendance guide output sits below the name without changing the name flow position', () => {
-  assert.match(attendanceRecordCss, /\.studentTextWrap\.recordAttendanceGuideTextWrap\{[\s\S]*?position:relative/);
-  assert.match(attendanceRecordCss, /\.studentMetaText\.recordAttendanceGuideOutput\{[\s\S]*?position:absolute;[\s\S]*?left:0;[\s\S]*?top:calc\(100% \+ 2px\)/);
+test('attendance guide renders separately from normal student metadata', () => {
+  assert.match(recordListView, /const metaHtml = escapeHtml\(metaText \|\| ''\)/);
+  assert.match(recordListView, /const attendanceGuideHtml = window\.OlliAttendanceGuide\?\.renderHtml\?\.\(student\) \|\| ''/);
+  assert.match(recordListView, /recordAttendanceGuideHost/);
+  assert.match(recordListView, /data-record-student-id/);
+  assert.doesNotMatch(recordListView, /getPhoneRecordStudentMetaHtml/);
+  assert.doesNotMatch(recordListView, /recordAttendanceGuideTextWrap/);
+});
+
+test('attendance guide output sits below the name without changing normal meta flow', () => {
+  assert.match(attendanceRecordCss, /\.studentTextWrap\.recordAttendanceGuideHost\{[\s\S]*?position:relative/);
+  assert.match(attendanceRecordCss, /#recordRoomScreen \.recordAttendanceGuideOutput\{[\s\S]*?position:absolute;[\s\S]*?left:0;[\s\S]*?top:calc\(100% \+ 2px\)/);
   assert.match(attendanceRecordCss, /body\.olli-main-subpage-drawer-open[\s\S]*?max-width:calc\(75vw - 72px\)/);
   assert.doesNotMatch(attendanceRecordCss, /recordAttendanceGuideOutput[^}]*!important/);
+});
+
+test('legacy attendance guide files are completely removed', () => {
+  assert.equal(fs.existsSync('olli-attendance-record-summary-ui.js'), false);
+  assert.equal(fs.existsSync('olli-attendance-guide-align-runtime.js'), false);
+  assert.equal(fs.existsSync('olli-attendance-guide-button.css'), false);
+  assert.doesNotMatch(html, /olli-attendance-record-summary-ui|olli-attendance-guide-align-runtime|olli-attendance-guide-button/);
 });
 
 test('attendance local store separates same-kind sessions by time and class', () => {
@@ -138,8 +157,10 @@ test('attendance server refresh only rerenders schedule when the visible snapsho
 test('phone loads cache-busted shared and adapter attendance scripts', () => {
   assert.match(html, /olli-attendance-data\.js\?v=20260924-week-local-first-1/);
   assert.match(html, /olli-attendance-phone-adapter\.js\?v=20260930-attendance-real-paint-1/);
-  assert.match(html, /olli-attendance-record\.css\?v=20260930-guide-under-name-1/);
-  assert.match(html, /olli-record-list-view\.js\?v=20260930-guide-under-name-1/);
+  assert.match(html, /olli-attendance-record\.css\?v=20260930-clean-guide-1/);
+  assert.match(html, /olli-record-list-view\.js\?v=20260930-clean-guide-1/);
+  assert.match(html, /olli-attendance-guide\.js\?v=20260930-clean-1/);
+  assert.match(html, /olli-attendance-sync-fallback\.js\?v=20260930-clean-1/);
   assert.match(html, /olli-record-room-navigation\.js\?v=20260930-attendance-runtime-cleanup-1/);
 });
 
@@ -168,20 +189,20 @@ test('attendance taps do not start the student-row long press timer', () => {
   assert.match(studentOperations, /if \(e\?\.target\?\.closest\?\.\('\.recordAttendanceLeadBtn'\)\) return;/);
 });
 
-test('attendance guide alignment no longer observes the entire attendance DOM', () => {
-  assert.doesNotMatch(guideRuntime, /new MutationObserver\(scheduleAlign\)/);
-  assert.match(guideRuntime, /new ResizeObserver\(scheduleAlign\)/);
+test('attendance guide has no alignment observer runtime', () => {
+  assert.doesNotMatch(attendanceGuide, /MutationObserver|ResizeObserver|getBoundingClientRect|offsetWidth|clientWidth/);
+  assert.doesNotMatch(attendanceRecordCss, /#recordAttendanceGuideToggle[^}]*position:absolute/);
 });
 
-test('revision polling is only a fallback while realtime is disconnected', () => {
-  assert.match(guideRuntime, /function hasRealtimeConnection\(\)/);
-  assert.match(guideRuntime, /if \(!allowWithRealtime && hasRealtimeConnection\(\)\) return false;/);
-  assert.doesNotMatch(guideRuntime, /changed \|\| \(firstCheck && forceRefresh\) \|\| forceRefresh/);
+test('revision polling is isolated from guide UI and only falls back when realtime is disconnected', () => {
+  assert.match(syncFallback, /function hasRealtimeConnection\(\)/);
+  assert.match(syncFallback, /if \(!allowWithRealtime && hasRealtimeConnection\(\)\) return false;/);
+  assert.doesNotMatch(syncFallback, /recordAttendanceGuideToggle|scheduleAlign|ResizeObserver/);
 });
 
 test('attendance long-press assets are cache-busted', () => {
   assert.match(html, /olli-data-student-operations\.js\?v=20260930-attendance-runtime-cleanup-1/);
-  assert.match(html, /olli-record-list-view\.js\?v=20260926-attendance-longpress-1/);
+  assert.match(html, /olli-record-list-view\.js\?v=20260930-clean-guide-1/);
 });
 
 

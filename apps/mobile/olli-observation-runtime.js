@@ -748,9 +748,6 @@ function updateRecordHeaderUI() {
     if (isObservationView && studentSelectionMode) selectionControls.classList.add('show');
     else selectionControls.classList.remove('show');
   }
-  if (window.OlliAttendanceGuideUI && typeof window.OlliAttendanceGuideUI.onHeaderUpdated === 'function') {
-    window.OlliAttendanceGuideUI.onHeaderUpdated();
-  }
 }
 
 function restoreRecordSearchFocus() {
