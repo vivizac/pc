@@ -859,28 +859,35 @@ begin
     end if;
 
     v_date := coalesce(
+      nullif(v_result->>'session_date','')::date,
       nullif(v_payload->>'targetSessionDate','')::date,
       nullif(v_payload->>'sessionDate','')::date,
       nullif(v_payload->>'desiredEffectiveDate','')::date,
       nullif(v_payload->>'effectiveDate','')::date
     );
     v_time := coalesce(
+      nullif(v_result->>'time_slot','')::integer,
       nullif(v_payload->>'targetTimeSlot','')::integer,
       nullif(v_payload->>'timeSlot','')::integer,
       nullif(v_payload->>'classTime','')::integer
     );
     v_source_weekday := nullif(v_payload->>'sourceWeekday','')::integer;
     v_target_weekday := coalesce(
+      nullif(v_result->>'target_weekday','')::integer,
       nullif(v_payload->>'targetWeekday','')::integer,
       nullif(v_payload->>'weekday','')::integer
     );
     v_source_time := nullif(v_payload->>'sourceTimeSlot','')::integer;
     v_target_time := coalesce(
+      nullif(v_result->>'target_time_slot','')::integer,
+      nullif(v_result->>'time_slot','')::integer,
       nullif(v_payload->>'targetTimeSlot','')::integer,
       nullif(v_payload->>'classTime','')::integer,
       nullif(v_payload->>'timeSlot','')::integer
     );
     v_target_group := coalesce(
+      nullif(v_result->>'target_class_group',''),
+      nullif(v_result->>'class_group',''),
       nullif(v_payload->>'targetClassGroup',''),
       nullif(v_payload->>'classGroup',''),
       'A'
