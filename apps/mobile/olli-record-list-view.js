@@ -136,6 +136,14 @@ function getPhoneRecordStudentGuideText(student, view) {
   return [kindergarten, age].filter(Boolean).join(' ');
 }
 
+function notifyPhoneRecordListRendered(view) {
+  try {
+    window.dispatchEvent(new CustomEvent('olli:record-list-rendered', {
+      detail: { view: view === 'kinder' ? 'kinder' : 'elementary' }
+    }));
+  } catch (_) {}
+}
+
 function renderElementaryStudentRows(students, searchMode = false) {
   const cycleGroups = getElementaryCycleGroups(students);
   let previousVisualSectionKey = '';
@@ -159,7 +167,7 @@ function renderElementaryStudentRows(students, searchMode = false) {
     const status = getStudentStatus(student);
     const statusClass = status === 'paused' ? ' studentStatusPaused' : (status === 'withdrawn' ? ' studentStatusWithdrawn' : '');
     return `${dividerHtml}
-    <button class="elementaryStudentRow${groupBreakClass}${statusClass}" onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')" onpointerdown="startStudentLongPress(event,'${escapeTemplateLiteral(student.id)}')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">
+    <button class="elementaryStudentRow${groupBreakClass}${statusClass}" data-record-student-id="${escapeHtml(student.id)}" onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')" onpointerdown="startStudentLongPress(event,'${escapeTemplateLiteral(student.id)}')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">
       <div class="elementaryRowInner">
         ${renderPhoneElementaryAttendanceLeadIcon(student)}
         <span class="studentTextWrap">
@@ -193,7 +201,7 @@ function renderKinderStudentRows(students, searchMode = false) {
     const status = getStudentStatus(student);
     const statusClass = status === 'paused' ? ' studentStatusPaused' : (status === 'withdrawn' ? ' studentStatusWithdrawn' : '');
     return `${dividerHtml}
-    <button class="kinderStudentRow${groupBreakClass}${statusClass}" onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')" onpointerdown="startStudentLongPress(event,'${escapeTemplateLiteral(student.id)}')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">
+    <button class="kinderStudentRow${groupBreakClass}${statusClass}" data-record-student-id="${escapeHtml(student.id)}" onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')" onpointerdown="startStudentLongPress(event,'${escapeTemplateLiteral(student.id)}')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">
       <div class="kinderRowInner">
         ${renderPhoneKinderAttendanceLeadIcon(student)}
         <span class="studentTextWrap">
@@ -228,6 +236,8 @@ function renderElementaryRecords(name) {
     + renderPhoneRecordStatusSection('elementary', 'paused', '휴원', pausedHtml, '휴원생이 없습니다.', searchMode)
     + renderPhoneRecordStatusSection('elementary', 'withdrawn', '퇴원', withdrawnHtml, '최근 한 달 내 퇴원생이 없습니다.', searchMode);
   syncPhoneRecordInitialSortLabel();
+  notifyPhoneRecordListRendered('kinder');
+  notifyPhoneRecordListRendered('elementary');
 }
 
 function renderKinderRecords(name) {
