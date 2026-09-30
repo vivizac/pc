@@ -75,7 +75,7 @@ body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .kinderStuden
   display:none;height:100%;min-height:0;overflow:hidden;background:#fff;border:1px solid #e2e4e8;border-radius:26px;padding:0;box-sizing:border-box;box-shadow:0 8px 24px rgba(20,24,30,.035);
 }
 .recordBodyNew.pcAttendanceLayout .pcAttendanceDetailPanel{display:flex;flex-direction:column;}
-.pcAttendanceDetailHead{display:flex;align-items:center;justify-content:space-between;gap:16px;flex:0 0 auto;padding:20px 22px;border-bottom:1px solid #f0f1f3;}
+.pcAttendanceDetailHead{display:flex;align-items:center;justify-content:flex-start;gap:14px;flex:0 0 auto;padding:12px 22px;border-bottom:1px solid #f0f1f3;}
 .pcAttendanceDetailTitle{font-size:18px;font-weight:880;letter-spacing:-.045em;color:#15171a;}
 .pcAttendanceDetailEmpty{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#9398a0;padding:30px;}
 .pcAttendanceDetailEmptyIcon{display:grid;place-items:center;width:54px;height:54px;border-radius:18px;background:#f2f6fb;color:#92bce9;margin-bottom:17px;}
@@ -88,7 +88,6 @@ body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .kinderStuden
 @keyframes pcAttendanceLoading{0%{background-position:100% 0}100%{background-position:-100% 0}}
 .pcAttendanceDetailBody{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:18px;flex:1;min-width:0;min-height:0;padding:18px 20px 20px;box-sizing:border-box;overflow:hidden;}
 .pcAttendanceEditorCard,.pcAttendanceCombinedCard{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;border:1px solid #edf0f3;border-radius:21px;background:#fafbfc;box-sizing:border-box;}
-.pcAttendanceEditorHead{display:flex;align-items:center;justify-content:center;flex:0 0 auto;min-height:58px;padding:8px 12px;border-bottom:1px solid #f0f1f3;background:#fff;box-sizing:border-box;}
 .pcAttendanceRecordModeTabs{display:inline-flex;align-items:center;gap:3px;padding:4px;border:1px solid rgba(0,0,0,.055);border-radius:15px;background:#f4f4f2;}
 .pcAttendanceRecordModeTab{height:34px;min-width:78px;padding:0 15px;border:0;border-radius:11px;background:transparent;color:#8c8c8c;font:700 13px 'Pretendard',sans-serif;letter-spacing:-.035em;cursor:pointer;}
 .pcAttendanceRecordModeTab.active{background:#fff;color:#111;box-shadow:0 2px 8px rgba(0,0,0,.07);}

@@ -424,14 +424,18 @@ function mountRecordEditor(student) {
   });
 }
 
-function recordWorkspaceHtml(student, recordContent) {
+function recordModeTabsHtml() {
     const observationActive = state.recordMode === 'observation';
-    return '<div class="pcAttendanceDetailBody">'
-      + '<section class="pcAttendanceEditorCard" aria-label="수업 기록 작성">'
-      + '<div class="pcAttendanceEditorHead"><div class="pcAttendanceRecordModeTabs" role="tablist" aria-label="관찰노트와 퀵노트 전환">'
+    return '<div class="pcAttendanceRecordModeTabs" role="tablist" aria-label="관찰노트와 퀵노트 전환">'
       + '<button type="button" class="pcAttendanceRecordModeTab '+(observationActive ? 'active' : '')+'" aria-selected="'+(observationActive ? 'true' : 'false')+'" onclick="pcSetPersonalityRecordMode(\'observation\')">관찰노트</button>'
       + '<button type="button" class="pcAttendanceRecordModeTab '+(!observationActive ? 'active' : '')+'" aria-selected="'+(!observationActive ? 'true' : 'false')+'" onclick="pcSetPersonalityRecordMode(\'quick\')">퀵노트</button>'
-      + '</div></div><div class="pcAttendanceSharedEditorHost" id="pcAttendanceSharedEditorHost"></div></section>'
+      + '</div>';
+  }
+
+  function recordWorkspaceHtml(student, recordContent) {
+    return '<div class="pcAttendanceDetailBody">'
+      + '<section class="pcAttendanceEditorCard" aria-label="수업 기록 작성">'
+      + '<div class="pcAttendanceSharedEditorHost" id="pcAttendanceSharedEditorHost"></div></section>'
       + '<section class="pcAttendanceCombinedCard" aria-label="피드백 보관함"><div class="pcAttendanceArchiveHead"><div class="pcAttendanceArchiveTitle">피드백 보관함</div><div class="pcAttendanceArchiveMonths" id="pcAttendanceArchiveMonths"></div></div>'
       + '<div class="pcAttendanceCombinedBody" id="pcAttendanceCombinedBody">'+recordContent+'</div></section></div>';
   }
@@ -472,7 +476,7 @@ function recordWorkspaceHtml(student, recordContent) {
     let body = document.getElementById('pcAttendanceCombinedBody');
     if (!host || !body || !panel.contains(host) || !panel.contains(body)) {
       unmountRecordEditor();
-      panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">성향기록부</div></div>'
+      panel.innerHTML = '<div class="pcAttendanceDetailHead"><div class="pcAttendanceDetailTitle">성향기록부</div>'+recordModeTabsHtml()+'</div>'
         + recordWorkspaceHtml(student, recordQuietLoadingHtml());
       host = document.getElementById('pcAttendanceSharedEditorHost');
       body = document.getElementById('pcAttendanceCombinedBody');
