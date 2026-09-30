@@ -1134,10 +1134,19 @@
   }
 
   function pickupGridHtml(dates) {
-    let grid = '<div class="olliTtPickupGrid"><div class="olliTtPickupTitle">픽업 시간표</div>';
-    [4, 5].forEach((classTime) => {
-      grid += `<div class="olliTtPickupTime">${classTime}시</div>`;
-      dates.forEach((date) => { grid += pickupCellHtml(date, classTime); });
+    const halfHour = isHalfHourMode();
+    const slots = halfHour
+      ? HALF_HOUR_SLOTS.kinder
+      : TIME_SLOTS.kinder.map((time) => ({ time, label:`${time}시` }));
+    let grid = `<div class="olliTtPickupGrid${halfHour ? ' halfHour' : ''}"><div class="olliTtPickupTitle">픽업 시간표</div>`;
+    slots.forEach((slot) => {
+      const label = clean(slot.label);
+      const labelParts = label.match(/^(\d+)시(?:\s+(30분))?$/);
+      const labelHtml = labelParts
+        ? `<span>${labelParts[1]}시</span>${labelParts[2] ? `<small>${labelParts[2]}</small>` : ''}`
+        : esc(label);
+      grid += `<div class="olliTtPickupTime${labelParts && labelParts[2] ? ' halfHourLabel' : ''}">${labelHtml}</div>`;
+      dates.forEach((date) => { grid += pickupCellHtml(date, Number(slot.time)); });
     });
     return `${grid}</div>`;
   }
@@ -2062,8 +2071,9 @@
 
   function pickupAddDialogHtml(dialog) {
     const selected = studentById(dialog.studentId);
+    const classTimeLabel = scheduleSlotLabel('kinder', dialog.classTime, '', dialog.weekday);
     return '<div class="olliTtPickupManageHead"><div><div class="olliTtDialogTitle" id="olliTtDialogTitle">픽업 학생 추가</div>'
-      + `<div class="olliTtDialogSub">${koreanDate(dialog.date)} ${weekdayLabel(dialog.weekday)}요일 · ${dialog.classTime}시 수업</div></div>`
+      + `<div class="olliTtDialogSub">${koreanDate(dialog.date)} ${weekdayLabel(dialog.weekday)}요일 · ${classTimeLabel} 수업</div></div>`
       + '<button type="button" class="olliTtDialogClose" data-tt-dialog-close aria-label="닫기">×</button></div>'
       + '<div class="olliTtDialogBody olliTtPickupAddBody">'
       + '<div class="olliTtField"><div class="olliTtFieldHead"><span>학생 선택</span><small>유치부 학생을 검색하세요</small></div>'
@@ -2108,6 +2118,7 @@
   function pickupManageDialogHtml(dialog) {
     const item = pickups().find((row) => clean(row.id) === clean(dialog.pickupId));
     if (!item) return '';
+    const classTimeLabel = scheduleSlotLabel('kinder', item.class_time, '', item.weekday);
     const isDropoffOnly = item.is_dropoff === true;
     const hasArrival = !isDropoffOnly && Boolean(clean(item.pickup_label)) && Boolean(item.pickup_time);
     const hasDropoff = Boolean(clean(item.dropoff_label)) || isDropoffOnly;
@@ -2123,7 +2134,7 @@
 
     return '<div class="olliTtPickupManageHead">'
       + '<div><div class="olliTtDialogTitle" id="olliTtDialogTitle">' + esc(item.student_name) + ' 픽업</div>'
-      + '<div class="olliTtDialogSub">' + esc(weekdayLabel(item.weekday)) + '요일 · ' + esc(item.class_time) + '시 수업</div></div>'
+      + '<div class="olliTtDialogSub">' + esc(weekdayLabel(item.weekday)) + '요일 · ' + esc(classTimeLabel) + ' 수업</div></div>'
       + '<button type="button" class="olliTtDialogClose" data-tt-dialog-close aria-label="닫기">×</button></div>'
       + '<div class="olliTtDialogBody olliTtPickupManageBody">'
       + '<section class="olliTtPickupManageSection arrival">'
