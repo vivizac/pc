@@ -1507,8 +1507,9 @@ test('phone dropoff pickup execution calls pickup v3 with a dropoff label', asyn
     division:'kinder',
     weekday:1,
     classTime:4,
-    pickupLabel:'리슈빌',
-    pickupTime:'15:30',
+    pickupLabel:'',
+    pickupTime:'',
+    dropoffLabel:'리슈빌',
     effectiveDate:'2026-09-21',
     isDropoff:true
   });
