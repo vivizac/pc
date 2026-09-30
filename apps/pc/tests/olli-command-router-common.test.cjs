@@ -276,6 +276,19 @@ test('makeup cancellation wording parses optional date and time', () => {
   assert.equal(short.timeSlot, 0);
 });
 
+test('slash month/day does not become part of a registered student name during makeup cancellation', () => {
+  const router = loadRouter();
+
+  const parsed = router.parseMakeupCancelMutationIntent('토)김채원 10/6일 5시 보강 취소해줘');
+
+  assert.equal(parsed.intent, 'cancel_makeup');
+  assert.equal(parsed.studentName, '토)김채원');
+  assert.equal(parsed.dateSpec.mode, 'month_day');
+  assert.equal(parsed.dateSpec.month, 10);
+  assert.equal(parsed.dateSpec.day, 6);
+  assert.equal(parsed.timeSlot, 5);
+});
+
 test('scheduled move cancellation wording parses optional source day and time', () => {
   const router = loadRouter();
 
