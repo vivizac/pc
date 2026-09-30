@@ -79,6 +79,7 @@ jobs:
           node --check api/_lib/olli-agent/tools/attendance-tools.cjs
           node --check api/_lib/olli-agent/tools/pickup-tools.cjs
           node --check api/_lib/olli-agent/tools/profile-tools.cjs
+          node --check api/_lib/olli-agent/tools/timetable-memo-tools.cjs
           node --test \
             tests/schedule-realtime.test.cjs \
             tests/phone-schedule-class-layout-date-contract.test.cjs \
@@ -97,4 +98,5 @@ jobs:
             tests/olli-agent-attendance-tool.test.cjs \
             tests/olli-agent-pickups-tool.test.cjs \
             tests/olli-agent-pickups-db-contract.test.cjs \
-            tests/olli-agent-student-profile-tool.test.cjs
+            tests/olli-agent-student-profile-tool.test.cjs \
+            tests/olli-agent-timetable-memo-tool.test.cjs

@@ -620,6 +620,153 @@ async function runPickupProbe({
 }
 
 
+function resolveTimetableMemoScope(preparedPrivacy) {
+  if (preparedPrivacy?.needsDisambiguation) {
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+
+  const subjectRefs = Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+  if (subjectRefs.length > 1) {
+    throw runtimeError(
+      '시간표 메모는 한 번에 학생 한 명만 지정해 주세요.',
+      400,
+      'OLLI_AGENT_TIMETABLE_MEMO_MULTI_STUDENT'
+    );
+  }
+
+  const safeText = String(preparedPrivacy?.safeText || '');
+  const elementaryExplicit = /(?:초등부|초등|elementary)/i.test(safeText);
+  const kinderExplicit = /(?:유치부|유치|유아|kinder)/i.test(safeText);
+  if (elementaryExplicit && kinderExplicit) {
+    throw runtimeError(
+      '초등부와 유치부 중 한 수업 구분만 지정해 주세요.',
+      400,
+      'OLLI_AGENT_TIMETABLE_MEMO_DIVISION_AMBIGUOUS'
+    );
+  }
+
+  const explicitDivision = elementaryExplicit
+    ? 'elementary'
+    : (kinderExplicit ? 'kinder' : '');
+  const subjectLabel = subjectRefs.length === 1 ? subjectRefs[0].label : '';
+
+  let subjectDivision = '';
+  if (subjectLabel) {
+    const subject = preparedPrivacy?.subjectAccess?.resolve?.(subjectLabel);
+    const value = String(subject?.division || '').trim().toLowerCase();
+    if (value === 'elementary' || value === 'kinder') subjectDivision = value;
+  }
+
+  if (explicitDivision && subjectDivision && explicitDivision !== subjectDivision) {
+    throw runtimeError(
+      '지정한 학생의 수업 구분과 요청한 초등부·유치부가 서로 다릅니다.',
+      400,
+      'OLLI_AGENT_TIMETABLE_MEMO_DIVISION_MISMATCH'
+    );
+  }
+
+  const division = subjectDivision || explicitDivision;
+  if (!division) {
+    throw runtimeError(
+      '학생을 지정하지 않은 시간표 메모에는 초등부 또는 유치부를 함께 알려 주세요.',
+      400,
+      'OLLI_AGENT_TIMETABLE_MEMO_DIVISION_REQUIRED'
+    );
+  }
+
+  const deleteIntent = /(?:메모.{0,20}(?:삭제|지워|지우|제거|없애)|(?:삭제|지워|지우|제거|없애).{0,20}메모)/.test(safeText);
+  return {
+    subjectLabel,
+    division,
+    operation:deleteIntent ? 'delete' : 'add',
+  };
+}
+
+async function runTimetableMemoPrepareProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+}) {
+  assertOpenAiKey();
+
+  const scope = resolveTimetableMemoScope(preparedPrivacy);
+  const { Agent, run, tool, z } = await loadAgentsSdk();
+  const { createPrepareTimetableMemoTool } = require('./tools/timetable-memo-tools.cjs');
+  const { sanitizeAgentToolPayload } = require('./privacy.cjs');
+  const model = agentModel();
+  const today = todayInSeoul();
+
+  const prepareTimetableMemo = createPrepareTimetableMemoTool({
+    tool,
+    z,
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    studentLabel:scope.subjectLabel,
+    division:scope.division,
+    operation:scope.operation,
+    requestId,
+    sanitizePayload(payload) {
+      return sanitizeAgentToolPayload(payload, preparedPrivacy);
+    },
+  });
+
+  const subjectText = scope.subjectLabel
+    ? 'The anonymous student label for this run is ' + scope.subjectLabel + '.'
+    : 'This memo is not tied to a specific student.';
+
+  const agent = new Agent({
+    name:'Olli Timetable Memo Prepare Probe',
+    model,
+    instructions:[
+      'You are the Olli timetable-memo preparation assistant.',
+      'The user message has already been privacy-sanitized.',
+      subjectText,
+      'The server has fixed the division to ' + scope.division + ' and the operation to ' + scope.operation + '. Do not override them.',
+      'Today in Korea is ' + today + '.',
+      'Always call prepare_timetable_memo exactly once before answering.',
+      'This tool creates a pending confirmation card only. It never directly changes timetable memo data.',
+      'Resolve relative dates into YYYY-MM-DD.',
+      'Use the visible clock hour from 1 to 12 and minute 0 or 30.',
+      'If the user named a student but omitted the time, use hour 0 and minute 0 so the server can resolve a single class.',
+      'Use class_group AUTO unless the user explicitly asked for A반 or B반.',
+      'For add, memo_note must contain the requested memo content only. For delete, memo_note may be empty when the target is otherwise unique.',
+      'Never say the memo was saved or deleted. Say that the work is waiting for user confirmation.',
+      'Never ask for, infer, or reveal a real student name, UUID, member ID, session token, academy ID, action ID, or message ID.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[prepareTimetableMemo],
+    modelSettings:{ toolChoice:'prepare_timetable_memo' },
+  });
+
+  const result = await run(agent, preparedPrivacy.safeText, {
+    context:agentContext,
+  });
+
+  const finalOutput = String(result?.finalOutput || '').trim();
+  if (!finalOutput) {
+    throw runtimeError(
+      '시간표 메모 준비 Agent 응답이 비어 있습니다.',
+      502,
+      'OLLI_AGENT_EMPTY_TIMETABLE_MEMO_RESPONSE'
+    );
+  }
+
+  return {
+    ready:true,
+    model,
+    output:finalOutput,
+    nodeVersion:process.versions.node,
+  };
+}
+
+
 async function runStudentProfileProbe({
   agentContext,
   requestContext,
@@ -716,4 +863,6 @@ module.exports = {
   runAttendanceProbe,
   runPickupProbe,
   runStudentProfileProbe,
+  resolveTimetableMemoScope,
+  runTimetableMemoPrepareProbe,
 };
