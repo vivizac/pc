@@ -260,33 +260,27 @@ function scheduleKinderChatFeedbackComposerViewportSync() {
 function syncKinderChatFeedbackChatReserve() {
   kcfChatReserveFrame = 0;
   const screen = document.getElementById('kinderChatFeedbackScreen');
-  const inner = screen?.querySelector('.kcfInner');
+  const layer = document.getElementById('kcfComposerLayer');
   const composerWrap = screen?.querySelector('.kcfComposerWrap');
-  if (!screen || !inner || !composerWrap) return;
+  if (!screen || !layer || !composerWrap) return;
 
-  const innerRect = inner.getBoundingClientRect();
+  const layerRect = layer.getBoundingClientRect();
   const composerRect = composerWrap.getBoundingClientRect();
   if (
-    !Number.isFinite(innerRect.bottom)
-    || !Number.isFinite(innerRect.height)
+    !Number.isFinite(layerRect.bottom)
+    || !Number.isFinite(layerRect.height)
     || !Number.isFinite(composerRect.top)
   ) return;
 
-  const input = document.getElementById('kcfInput');
-  const keyboardTracking = document.activeElement === input
-    || Date.now() < kcfKeepInputFocusUntil
-    || screen.classList.contains('kcfKeyboardOpen');
-  const keyboardInset = keyboardTracking && kcfKeyboardBaselineBottom
-    ? Math.max(0, kcfKeyboardBaselineBottom - getKinderChatFeedbackViewportBottom())
-    : 0;
-  const measuredReserve = Math.max(
+  // Reserve only the composer's own footprint inside its visualViewport layer.
+  // Keyboard displacement belongs exclusively to --kcf-message-lift.
+  const reserve = Math.max(
     0,
     Math.min(
-      Math.ceil(innerRect.height),
-      Math.ceil(innerRect.bottom - composerRect.top)
+      Math.ceil(layerRect.height),
+      Math.ceil(layerRect.bottom - composerRect.top)
     )
   );
-  const reserve = Math.max(0, measuredReserve - keyboardInset);
   screen.style.setProperty('--kcf-chat-reserve', reserve + 'px');
 }
 function scheduleKinderChatFeedbackChatReserve() {

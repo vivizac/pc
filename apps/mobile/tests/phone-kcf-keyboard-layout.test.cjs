@@ -220,7 +220,8 @@ test('QuickNote reuses keyboard inset for message-only lift while keeping the ch
   assert.match(chatRule, /overflow-anchor:none/);
   assert.match(rowRule, /--kcf-message-lift/);
   assert.match(js, /--kcf-message-lift', Math\.max\(0, inset\) \+ 'px'/);
-  assert.match(js, /measuredReserve[\s\S]*?reserve = Math\.max\(0, measuredReserve - keyboardInset\)/);
+  assert.match(js, /layerRect\.bottom - composerRect\.top/);
+  assert.doesNotMatch(js, /measuredReserve - keyboardInset/);
   assert.doesNotMatch(js, /kcfChatArea[^\n]*scrollTop\s*\+=/);
 });
 
