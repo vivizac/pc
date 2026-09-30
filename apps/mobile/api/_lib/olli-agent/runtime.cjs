@@ -198,6 +198,92 @@ async function runStudentScheduleProbe({
   };
 }
 
+
+async function runRecentRecordsProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+}) {
+  assertOpenAiKey();
+
+  const subjectRefs = Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+
+  if (preparedPrivacy?.needsDisambiguation) {
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+
+  if (subjectRefs.length !== 1) {
+    throw runtimeError(
+      '최근 기록 조회 probe에서는 학생 한 명을 정확히 지정해 주세요.',
+      400,
+      'OLLI_AGENT_SINGLE_STUDENT_REQUIRED'
+    );
+  }
+
+  const { Agent, run, tool, z } = await loadAgentsSdk();
+  const { createGetRecentRecordsTool } = require('./tools/record-tools.cjs');
+  const { sanitizeAgentToolPayload } = require('./privacy.cjs');
+  const model = agentModel();
+  const onlyLabel = subjectRefs[0].label;
+
+  const getRecentRecords = createGetRecentRecordsTool({
+    tool,
+    z,
+    requestContext,
+    subjectAccess: preparedPrivacy.subjectAccess,
+    sanitizePayload(payload) {
+      return sanitizeAgentToolPayload(payload, preparedPrivacy);
+    },
+  });
+
+  const agent = new Agent({
+    name: 'Olli Recent Records Probe',
+    model,
+    instructions: [
+      'You are the Olli academy recent-record assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The only available anonymous student label for this run is ' + onlyLabel + '.',
+      'Always use get_recent_records before answering about recent class behavior, observations, or feedback.',
+      'Use max_records 12 unless the user explicitly asks for another amount from 1 to 20.',
+      'The tool returns saved general feedback, growth feedback, and observation records only. It does not return generated summary feedback.',
+      'Use only evidence in the tool result. Do not invent causes, diagnoses, or traits that are not supported by the records.',
+      'If there are no saved records, say that no recent saved records were found.',
+      'Never ask for, infer, or reveal a real student name, UUID, member ID, session token, or academy ID.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools: [getRecentRecords],
+    modelSettings: {
+      toolChoice: 'get_recent_records',
+    },
+  });
+
+  const result = await run(agent, preparedPrivacy.safeText, {
+    context: agentContext,
+  });
+
+  const finalOutput = String(result?.finalOutput || '').trim();
+  if (!finalOutput) {
+    throw runtimeError(
+      '학생 최근 기록 Agent 응답이 비어 있습니다.',
+      502,
+      'OLLI_AGENT_EMPTY_RECENT_RECORDS_RESPONSE'
+    );
+  }
+
+  return {
+    ready: true,
+    model,
+    output: finalOutput,
+    nodeVersion: process.versions.node,
+  };
+}
+
 module.exports = {
   MIN_NODE_MAJOR,
   assertSupportedNodeRuntime,
@@ -205,4 +291,5 @@ module.exports = {
   loadAgentsSdk,
   runFoundationProbe,
   runStudentScheduleProbe,
+  runRecentRecordsProbe,
 };
