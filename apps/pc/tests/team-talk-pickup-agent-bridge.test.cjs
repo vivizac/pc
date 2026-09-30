@@ -20,3 +20,23 @@ test('PC AI pickup add is routed before the legacy action path', () => {
 test('PC pickup bridge reuses the shared pickup parser', () => {
   assert.match(talk, /parsePickupMutationIntent\(commandText\)/);
 });
+
+
+test('PC pickup Agent uses the saved message id and returns the persisted action message', () => {
+  const start = talk.indexOf('async function resolvePickupAddAgentTurn');
+  const end = talk.indexOf('async function saveAssistantReply', start);
+  const block = talk.slice(start, end);
+
+  assert.match(block, /mode:'pickup_prepare'/);
+  assert.match(block, /sourceMessageId = Number\(replyToMessageId \|\| 0\)/);
+  assert.match(block, /assistantMessage:data\.message/);
+  assert.match(block, /recordAi:false/);
+});
+
+test('PC bot path remains independent from the pickup Agent bridge', () => {
+  const start = talk.indexOf('async function resolveBotTurn');
+  const end = talk.indexOf('function buildAiConversationMessages', start);
+  const block = talk.slice(start, end);
+
+  assert.doesNotMatch(block, /resolvePickupAddAgentTurn|isPickupAddAgentCandidate/);
+});
