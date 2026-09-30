@@ -12,8 +12,10 @@ on:
       - 'supabase/migrations/*_waitlist_ab_division_slot_integrity.sql'
       - 'supabase/migrations/*_timetable_memo_half_hour_source_of_truth.sql'
       - 'supabase/migrations/*_team_chat_pickup_v3_action.sql'
+      - 'supabase/migrations/*_pickup_half_hour_slot_source_of_truth.sql'
       - 'tests/timetable-memo-half-hour-db-contract.test.cjs'
-      - 'tests/team-talk-pickup-v3-action.test.cjs'
+      - 'tests/team-talk-pickup-v3-action.test.cjs tests/pickup-half-hour-db-contract.test.cjs'
+      - 'tests/pickup-half-hour-db-contract.test.cjs'
       - '.github/workflows/validate-schedule-realtime.yml'
   push:
     branches: [main]
