@@ -362,10 +362,11 @@
     const input = getOlliTalkBetaInput();
     const inputFocused = !!input && document.activeElement === input;
     if (inputFocused && !olliTalkKeyboardBaselineBottom) captureOlliTalkKeyboardBaseline(true);
-    const keyboardOffset = inputFocused || screen.classList.contains('olliTalkKeyboardOpen')
-      ? getOlliTalkKeyboardOffset()
-      : 0;
-    const keyboardOpen = inputFocused && keyboardOffset > 24;
+    const keyboardTracking = inputFocused
+      || screen.classList.contains('olliTalkKeyboardOpen')
+      || olliTalkKeyboardTransitionActive;
+    const keyboardOffset = keyboardTracking ? getOlliTalkKeyboardOffset() : 0;
+    const keyboardOpen = keyboardTracking && keyboardOffset > 24;
     const signature = [Math.round(top), Math.round(left), Math.round(width), Math.round(height)].join(':');
     const viewportChanged = signature !== olliTalkLastViewportSignature;
 
@@ -386,10 +387,15 @@
     olliTalkLastViewportSignature = signature;
 
     if (keyboardOpen) {
-      if (olliTalkKeyboardTransitionActive || !olliTalkComposerViewportLock) {
+      if (!inputFocused) {
+        // Keyboard is physically closing: follow its viewport until it reaches the bottom.
+        syncOlliTalkComposerViewport({ followKeyboard:true });
+      } else if (olliTalkKeyboardTransitionActive || !olliTalkComposerViewportLock) {
+        // Keyboard is opening/resizing: follow it, then lock the final geometry.
         syncOlliTalkComposerViewport({ followKeyboard:true });
         scheduleOlliTalkComposerViewportLock();
       } else {
+        // Keyboard is fully open: the locked geometry is authoritative.
         syncOlliTalkComposerViewport();
       }
     } else {
