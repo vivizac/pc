@@ -14,7 +14,7 @@ const kcfJs = fs.readFileSync('kinder-feedback.js', 'utf8');
 test('QuickNote and Observation hamburgers open the shared Attendance drawer', () => {
   assert.match(html, /id="observationRosterRecordRoomBtn" onclick="openOlliMainSubpageDrawer\(event, 'observation'\)"/);
   assert.match(html, /class="kcfRoundBtn kcfRecordBtn" onclick="openOlliMainSubpageDrawer\(event, 'quicknote'\)"/);
-  assert.match(html, /src="olli-main-subpage-drawer\.js\?v=20260930-attendance-runtime-cleanup-1"/);
+  assert.match(html, /src="olli-main-subpage-drawer\.js\?v=20260930-attendance-real-paint-1"/);
   assert.match(drawerJs, /async function prepareAttendanceState\(\)[\s\S]*openRecordAttendanceDashboard/);
   assert.match(drawerJs, /getOlliLastRecordDivisionView/);
 });
@@ -44,6 +44,18 @@ test('drawer orders QuickNote and Observation by the page that opened it', () =>
   assert.match(drawerJs, /const fromObservation = sourceId === 'observationRosterScreen' \|\| sourceId === 'studentMemoScreen';/);
   assert.match(drawerJs, /observationItem\.style\.order = fromObservation \? '4' : '3';/);
   assert.match(drawerJs, /quickNoteItem\.style\.order = fromObservation \? '3' : '4';/);
+});
+
+test('Attendance return paints the visible shell before running local list preparation', () => {
+  assert.match(drawerJs, /function afterMainSubpagePaint\(\)[\s\S]*?requestAnimationFrame[\s\S]*?requestAnimationFrame/);
+  const start = drawerJs.indexOf('async function openOlliAttendancePage');
+  const end = drawerJs.indexOf('function setOlliMainSubpageDrawerCompanionHidden', start);
+  const body = drawerJs.slice(start, end);
+  const show = body.indexOf("screen.style.display = screen.id === 'recordRoomScreen' ? 'flex' : 'none'");
+  const paint = body.indexOf('await afterMainSubpagePaint()');
+  const prepare = body.indexOf('await prepareAttendanceState({ localOnly: true })');
+  assert.ok(show >= 0 && paint > show && prepare > paint);
+  assert.match(drawerJs, /function refreshRecordRoomSubpage\(\)[\s\S]*?afterMainSubpagePaint\(\)[\s\S]*?prepareAttendanceState\(\{ localOnly: true \}\)/);
 });
 
 test('cross-main navigation is locked against duplicate calls', () => {
