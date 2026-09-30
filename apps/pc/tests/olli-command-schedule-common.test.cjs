@@ -504,6 +504,22 @@ test('trial prepares an open slot and executes through existing guest-entry serv
   assert.equal(calls.addGuestEntry.timeSlot, 4);
 });
 
+test('timetable memo confirmation includes the resolved student name', () => {
+  const { schedule } = loadSchedule({});
+  const message = schedule.writeConfirmationMessage({
+    intent:'add_timetable_memo',
+    studentName:'한재림',
+    division:'kinder',
+    sessionDate:'2026-09-30',
+    timeSlot:5,
+    classGroup:'A',
+    memoNote:'어머님이 픽업'
+  });
+
+  assert.match(message, /^한재림 · 유치부 · /);
+  assert.match(message, /메모: 어머님이 픽업/);
+});
+
 test('timetable memo add prepares and executes through the existing memo service', async () => {
   const calls = {};
   const week = {

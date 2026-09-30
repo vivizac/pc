@@ -1201,13 +1201,15 @@
         + '\n이 체험수업을 취소할까요?';
     }
     if (item.intent === 'add_timetable_memo') {
-      return divisionLabel(item.division) + ' · ' + fallbackDateLabel(item.sessionDate) + ' '
+      return (clean(item.studentName) ? clean(item.studentName) + ' · ' : '')
+        + divisionLabel(item.division) + ' · ' + fallbackDateLabel(item.sessionDate) + ' '
         + timetableMemoTimeLabel(item.division, item.sessionDate, item.timeSlot)
         + '\n메모: ' + clean(item.memoNote)
         + '\n등록할까요?';
     }
     if (item.intent === 'delete_timetable_memo') {
-      return divisionLabel(item.division) + ' · ' + fallbackDateLabel(item.sessionDate) + ' '
+      return (clean(item.studentName) ? clean(item.studentName) + ' · ' : '')
+        + divisionLabel(item.division) + ' · ' + fallbackDateLabel(item.sessionDate) + ' '
         + timetableMemoTimeLabel(item.division, item.sessionDate, item.timeSlot)
         + '\n메모: ' + clean(item.memoNote)
         + '\n삭제할까요?';
@@ -3289,11 +3291,13 @@
       return clean(item.studentName) + ' 학생의 예약된 수업 이동을 취소했어요.';
     }
     if (item.intent === 'add_timetable_memo') {
-      return divisionLabel(item.division) + ' ' + fallbackDateLabel(item.sessionDate) + ' '
+      return (clean(item.studentName) ? clean(item.studentName) + ' · ' : '')
+        + divisionLabel(item.division) + ' ' + fallbackDateLabel(item.sessionDate) + ' '
         + timetableMemoTimeLabel(item.division, item.sessionDate, item.timeSlot) + ' 메모를 등록했어요.';
     }
     if (item.intent === 'delete_timetable_memo') {
-      return divisionLabel(item.division) + ' ' + fallbackDateLabel(item.sessionDate) + ' '
+      return (clean(item.studentName) ? clean(item.studentName) + ' · ' : '')
+        + divisionLabel(item.division) + ' ' + fallbackDateLabel(item.sessionDate) + ' '
         + timetableMemoTimeLabel(item.division, item.sessionDate, item.timeSlot) + ' 메모를 삭제했어요.';
     }
     return '시간표 작업을 완료했어요.';
