@@ -14,11 +14,12 @@ test('Agents SDK dependencies are pinned and Node 24 is explicit for the mobile 
   assert.equal(pkg.dependencies?.zod, '4.6.5');
 });
 
-test('independent olli-agent endpoint is probe-only and does not replace existing chat endpoint', () => {
+test('independent olli-agent endpoint keeps diagnostics isolated from the existing chat endpoint', () => {
   const endpoint = read('api/olli-agent.js');
   const chat = read('api/chat.js');
 
-  assert.match(endpoint, /mode !== 'probe'/);
+  assert.match(endpoint, /\['probe', 'privacy_probe'\]\.includes\(mode\)/);
+  assert.match(endpoint, /mode === 'privacy_probe'/);
   assert.match(endpoint, /loadOlliAgentRequestContext/);
   assert.match(endpoint, /runFoundationProbe/);
   assert.doesNotMatch(chat, /@openai\/agents/);

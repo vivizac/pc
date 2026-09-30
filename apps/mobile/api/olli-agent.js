@@ -18,16 +18,42 @@ export default async function handler(req, res) {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const mode = safeText(body.mode, 40);
 
-    if (mode !== 'probe') {
+    if (!['probe', 'privacy_probe'].includes(mode)) {
       return res.status(400).json({
-        error: '현재 독립 Agent endpoint는 probe 모드만 지원합니다.',
+        error: '현재 독립 Agent endpoint는 probe 또는 privacy_probe 모드만 지원합니다.',
       });
     }
 
     const contextModule = await import('./_lib/olli-agent/request-context.cjs');
-    const runtimeModule = await import('./_lib/olli-agent/runtime.cjs');
-
     const requestContext = await contextModule.loadOlliAgentRequestContext(body);
+
+    if (mode === 'privacy_probe') {
+      const message = safeText(body.message, 5000);
+      if (!message) {
+        return res.status(400).json({
+          error: 'privacy_probe에는 확인할 메시지가 필요합니다.',
+          code: 'OLLI_AGENT_MESSAGE_REQUIRED',
+        });
+      }
+
+      const privacyModule = await import('./_lib/olli-agent/privacy.cjs');
+      const prepared = await privacyModule.prepareAgentPrivacyInput(
+        message,
+        requestContext
+      );
+
+      return res.status(200).json({
+        ok: true,
+        mode: 'privacy_probe',
+        safeText: prepared.safeText,
+        subjectRefs: prepared.subjectRefs,
+        needsDisambiguation: prepared.needsDisambiguation,
+        ambiguousCount: prepared.ambiguousCount,
+        privacy: prepared.privacy,
+      });
+    }
+
+    const runtimeModule = await import('./_lib/olli-agent/runtime.cjs');
     const agentContext = contextModule.toAgentRunContext(requestContext);
     const probe = await runtimeModule.runFoundationProbe(agentContext);
 
@@ -41,7 +67,7 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     const statusCode = Number(error?.statusCode || 500);
-    console.error('[OLLI Agent] foundation probe failed:', safeText(error?.code || error?.name || 'ERROR', 80));
+    console.error('[OLLI Agent] request failed:', safeText(error?.code || error?.name || 'ERROR', 80));
 
     return res.status(statusCode).json({
       error: error?.message || '올리 Agent 서버 오류가 발생했습니다.',
