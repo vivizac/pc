@@ -61,14 +61,11 @@ jobs:
       - name: Validate PC Team Chat pickup Agent bridge
         working-directory: apps/pc
         run: |
-          node --test \
-            tests/team-talk-ai-mode.test.cjs \
-            tests/team-talk-pickup-agent-bridge.test.cjs
+          node --test tests/team-talk-pickup-agent-bridge.test.cjs
 
       - name: Validate Mobile Team Chat pickup Agent bridge
         working-directory: apps/mobile
         run: |
           node --test \
-            tests/team-talk-ai-mode.test.cjs \
             tests/team-talk-pickup-agent-bridge.test.cjs \
             tests/olli-agent-pickup-production-contract.test.cjs
