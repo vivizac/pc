@@ -38,7 +38,7 @@
 <link rel="stylesheet" href="olli-settings-team-talk-phone.css?v=20260927-phone-only-1">
 <link rel="stylesheet" href="olli-auth-lookup.css">
 <link rel="stylesheet" href="olli-attendance-record.css?v=20260930-summary-reset-1">
-<link rel="stylesheet" href="olli-record-attendance-summary.css?v=20260930-summary-v1">
+<link rel="stylesheet" href="olli-record-attendance-summary.css?v=20260930-search-only-1">
 <link rel="stylesheet" href="olli-student-time-options.css">
 <link rel="stylesheet" href="olli-student-bulk-apply.css">
 <link rel="stylesheet" href="olli-student-info-layout.css?v=20260923-student-add-schedule-1">
@@ -108,7 +108,7 @@
 <button class="recordModeLabel active" id="recordElementaryToggle" onclick="handleRecordViewToggleClick(event,'elementary')" onpointerdown="handleRecordViewTogglePress(event,'elementary')" type="button">초등부</button>
 <button class="recordModeLabel" id="recordKinderToggle" onclick="handleRecordViewToggleClick(event,'kinder')" onpointerdown="handleRecordViewTogglePress(event,'kinder')" type="button">유치부</button>
 </div>
-<button aria-label="출결 보기" aria-pressed="false" class="recordAttendanceSummaryBtn" id="recordAttendanceSummaryToggle" onclick="toggleRecordAttendanceSummary(event)" type="button">출결</button>
+<button aria-label="출결 보기" aria-pressed="false" class="recordAttendanceSummaryBtn" disabled id="recordAttendanceSummaryToggle" onclick="toggleRecordAttendanceSummary(event)" type="button">출결</button>
 </div>
 </div>
 <div class="recordBodyNew">
@@ -573,7 +573,7 @@
 <script src="observation-memo-save-common.js?v=20260909-2143-1"></script>
 <script src="olli-observation-runtime.js?v=20260930-attendance-runtime-cleanup-1"></script>
 <script src="olli-observation-roster-phone.js?v=20260929-fixed-survey-visible-1"></script>
-<script src="olli-record-list-view.js?v=20260930-summary-v1"></script>
+<script src="olli-record-list-view.js?v=20260930-search-only-1"></script>
 <script src="olli-record-board-actions-phone-adapter.js"></script>
 <script src="olli-operations-consultation-policy.js"></script>
 <script src="olli-settings-server-sync.js?v=20260924-academy-owner-cleanup-1"></script>
@@ -1182,7 +1182,7 @@
 <script src="olli-start-page-storage-phone.js?v=20260924-reconnect-local-first-1"></script>
 <link rel="stylesheet" href="olli-attendance-policy-phone.css">
 <script src="olli-attendance-policy-runtime.js?v=20260930-summary-reset-1"></script>
-<script src="olli-record-attendance-summary.js?v=20260930-summary-v3"></script>
+<script src="olli-record-attendance-summary.js?v=20260930-search-only-1"></script>
 <script src="olli-student-lifecycle-init.js"></script>
 
 <link rel="stylesheet" href="olli-observation-roster-phone.css?v=20260929-memo-fixed-group-1">
