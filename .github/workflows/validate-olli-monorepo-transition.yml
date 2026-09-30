@@ -67,6 +67,8 @@ jobs:
           node --check api/_lib/olli-agent/supabase-rpc.cjs
           node --check api/_lib/olli-agent/request-context.cjs
           node --check api/_lib/olli-agent/runtime.cjs
+          node --check api/_lib/olli-agent/student-reference-resolver.cjs
+          node --check api/_lib/olli-agent/privacy.cjs
           node --test \
             tests/schedule-realtime.test.cjs \
             tests/phone-schedule-class-layout-date-contract.test.cjs \
@@ -76,4 +78,5 @@ jobs:
             tests/phone-feedback-archive-saved-date.test.cjs \
             tests/phone-teamchat-local-first.test.cjs \
             tests/team-chat-thumbnail-viewport.test.cjs \
-            tests/olli-agent-foundation-contract.test.cjs
+            tests/olli-agent-foundation-contract.test.cjs \
+            tests/olli-agent-student-privacy.test.cjs
