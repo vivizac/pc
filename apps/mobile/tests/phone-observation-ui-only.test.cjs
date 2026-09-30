@@ -133,3 +133,18 @@ test('Observation roster never recreates the focused search input during list re
   assert.doesNotMatch(source,/input\.addEventListener\('focus',[\s\S]{0,320}renderObservationRosterUtility\(\)/);
   assert.match(source,/if \(!currentInput \|\| document\.activeElement !== currentInput\) \{[\s\S]*?renderObservationRosterUtility\(\);/);
 });
+
+
+test('Observation roster contains iOS scroll chaining at its top and bottom boundaries', () => {
+  const afterRule = css.match(/#observationRosterScreen \.memoBodyRosterScroll::after \{[\s\S]*?\}/)?.[0] || '';
+  assert.match(afterRule,/height:1px/);
+  assert.match(afterRule,/pointer-events:none/);
+
+  assert.match(source,/scrollArea\.addEventListener\('touchmove',[\s\S]*?passive:false/);
+  assert.match(source,/const maxScroll = Math\.max\(0, scrollArea\.scrollHeight - scrollArea\.clientHeight\)/);
+  assert.match(source,/const atTop = scrollArea\.scrollTop <= 0/);
+  assert.match(source,/const atBottom = scrollArea\.scrollTop >= maxScroll - 1/);
+  assert.match(source,/atTop && deltaY > 0/);
+  assert.match(source,/atBottom && deltaY < 0/);
+  assert.match(source,/event\.preventDefault\(\);[\s\S]{0,80}event\.stopPropagation\(\);/);
+});

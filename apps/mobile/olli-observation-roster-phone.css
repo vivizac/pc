@@ -48,6 +48,13 @@
   padding:calc(var(--vivizac-note-header-h) + max(18px, calc(env(safe-area-inset-top) + 6px)) + 6px) 18px 0 0;
   background:transparent;
 }
+#observationRosterScreen .memoBodyRosterScroll::after {
+  content:'';
+  display:block;
+  width:1px;
+  height:1px;
+  pointer-events:none;
+}
 #observationRosterScreen .memoBodyRosterContent {
   width:100%;
   min-height:100%;

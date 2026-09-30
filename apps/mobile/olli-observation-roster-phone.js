@@ -585,9 +585,46 @@ function endObservationRosterScrollGesture() {
 function bindObservationRosterScrollSurface() {
   const scrollArea = getObservationRosterScrollArea();
   if (!scrollArea || scrollArea.dataset.observationViewportGestureBound === '1') return;
+
   scrollArea.dataset.observationViewportGestureBound = '1';
+  let touchStartY = null;
+
   scrollArea.addEventListener('pointerdown', beginObservationRosterScrollGesture, { passive:true });
-  scrollArea.addEventListener('touchstart', beginObservationRosterScrollGesture, { passive:true });
+  scrollArea.addEventListener('touchstart', event => {
+    beginObservationRosterScrollGesture();
+    const touch = event.touches?.[0];
+    touchStartY = touch ? Number(touch.clientY) : null;
+  }, { passive:true });
+
+  scrollArea.addEventListener('touchmove', event => {
+    const touch = event.touches?.[0];
+    if (!touch || !Number.isFinite(touchStartY)) return;
+
+    const deltaY = Number(touch.clientY) - touchStartY;
+    if (Math.abs(deltaY) < 2) return;
+
+    const maxScroll = Math.max(0, scrollArea.scrollHeight - scrollArea.clientHeight);
+    const atTop = scrollArea.scrollTop <= 0;
+    const atBottom = scrollArea.scrollTop >= maxScroll - 1;
+    const noScrollableRange = maxScroll <= 1;
+
+    // Keep the gesture inside the roster scroller. Only block the direction
+    // that would otherwise escape into the page/visualViewport.
+    if (
+      noScrollableRange
+      || (atTop && deltaY > 0)
+      || (atBottom && deltaY < 0)
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, { passive:false });
+
+  const clearRosterTouch = () => {
+    touchStartY = null;
+  };
+  scrollArea.addEventListener('touchend', clearRosterTouch, { passive:true });
+  scrollArea.addEventListener('touchcancel', clearRosterTouch, { passive:true });
 }
 function bindObservationRosterUtilitySurface() {
   const screen = getObservationRosterScreen();
