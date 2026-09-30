@@ -520,7 +520,7 @@
 
 /* 학생목록은 메모와 독립된 실제 pageScreen이다. 두 화면이 서로의 헤더/본문을 공유하지 않는다. */
 #observationRosterScreen {
-  --observation-roster-scroll-bottom:94px;
+  --observation-roster-scroll-bottom:0px;
   background:#FEFEFE;
   isolation:isolate;
   padding-top:0;

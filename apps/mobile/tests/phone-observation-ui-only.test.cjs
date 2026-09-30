@@ -171,3 +171,16 @@ test('Observation roster keeps 18px visual inset while preserving the physical s
   assert.match(scroll,/bottom:var\(--observation-roster-scroll-bottom, 94px\)/);
   assert.match(scroll,/padding:calc\(var\(--vivizac-note-header-h\) \+ max\(18px, calc\(env\(safe-area-inset-top\) \+ 6px\)\) \+ 6px\) 18px 0 18px/);
 });
+
+
+test('Observation roster reaches screen bottom unless search is active', () => {
+  const root = css.match(/#observationRosterScreen \{[\s\S]*?\}/)?.[0] || '';
+  const start = source.indexOf('function syncObservationRosterScrollToUtility');
+  const end = source.indexOf('function scheduleObservationRosterScrollToUtility', start);
+  const body = source.slice(start, end);
+
+  assert.match(root,/--observation-roster-scroll-bottom:0px/);
+  assert.match(body,/if \(!observationRosterSearchFocused\) \{/);
+  assert.match(body,/--observation-roster-scroll-bottom', '0px'/);
+  assert.match(body,/viewportRect\.bottom - utilityRect\.top/);
+});

@@ -460,6 +460,13 @@ function syncObservationRosterScrollToUtility() {
   const utilityBar = getObservationRosterUtilityBar();
   if (!screen || !viewport || !utilityBar || !isObservationRosterScreenVisible()) return;
 
+  // When search is inactive, the roster body reaches the actual screen bottom
+  // and the transparent utility bar simply overlays it.
+  if (!observationRosterSearchFocused) {
+    screen.style.setProperty('--observation-roster-scroll-bottom', '0px');
+    return;
+  }
+
   const viewportRect = viewport.getBoundingClientRect();
   const utilityRect = utilityBar.getBoundingClientRect();
   if (
@@ -468,7 +475,7 @@ function syncObservationRosterScrollToUtility() {
     || !Number.isFinite(utilityRect.top)
   ) return;
 
-  // Physical boundary: the roster scroller itself stops above the fixed input.
+  // Only active search physically excludes the input-bar area from scrolling.
   const bottomGap = Math.max(
     0,
     Math.min(
