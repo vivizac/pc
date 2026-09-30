@@ -93,15 +93,26 @@
     );
   }
 
+  function timetableMode(data) {
+    const raw = clean(data && (data.timetable_mode || data.kinder_timetable_mode)).toLowerCase();
+    return raw === 'half_hour' ? 'half_hour' : 'hourly';
+  }
+
   function classGroups(data, division, weekday, timeSlot, targetDate) {
+    if (timetableMode(data) === 'half_hour') return ['A'];
     if (division === 'kinder') return isKinderMerged(data, weekday, timeSlot) ? ['A'] : ['A', 'B'];
     return isElementarySplit(data, weekday, timeSlot, targetDate) ? ['A', 'B'] : ['A'];
   }
 
-  function validTimes(division, weekday) {
+  function validTimes(data, division, weekday) {
     if (weekday < 1 || weekday > 6) return [];
+    if (division === 'elementary' && weekday === 6) return [10, 11, 12];
+    if (timetableMode(data) === 'half_hour') {
+      if (division === 'kinder') return [4, 5, 7, 8, 9];
+      if (division === 'elementary') return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+      return [];
+    }
     if (division === 'kinder') return [4, 5];
-    if (weekday === 6) return [10, 11, 12];
     return [1, 2, 3, 4, 5, 6];
   }
 
@@ -319,7 +330,7 @@
     const allSlots = [];
 
     divisions.forEach(division => {
-      validTimes(division, weekday).forEach(timeSlot => {
+      validTimes(data, division, weekday).forEach(timeSlot => {
         const groups = classGroups(data, division, weekday, timeSlot, dateKey);
         groups.forEach(group => {
           if (!classIsOperating(data, division, dateKey, weekday, timeSlot, group)) return;
@@ -1203,14 +1214,14 @@
     if (item.intent === 'add_timetable_memo') {
       return (clean(item.studentName) ? clean(item.studentName) + ' · ' : '')
         + divisionLabel(item.division) + ' · ' + fallbackDateLabel(item.sessionDate) + ' '
-        + timetableMemoTimeLabel(item.division, item.sessionDate, item.timeSlot)
+        + timetableMemoTimeLabel(item.division, item.sessionDate, item.timeSlot, item.timetableMode)
         + '\n메모: ' + clean(item.memoNote)
         + '\n등록할까요?';
     }
     if (item.intent === 'delete_timetable_memo') {
       return (clean(item.studentName) ? clean(item.studentName) + ' · ' : '')
         + divisionLabel(item.division) + ' · ' + fallbackDateLabel(item.sessionDate) + ' '
-        + timetableMemoTimeLabel(item.division, item.sessionDate, item.timeSlot)
+        + timetableMemoTimeLabel(item.division, item.sessionDate, item.timeSlot, item.timetableMode)
         + '\n메모: ' + clean(item.memoNote)
         + '\n삭제할까요?';
     }
@@ -2534,20 +2545,50 @@
     };
   }
 
-  function timetableMemoTimeSlot(division, sessionDate, requestedTimeSlot) {
-    const timeSlot = Number(requestedTimeSlot || 0);
+  function timetableMemoTimeSlot(mode, division, sessionDate, requestedTimeSlot, requestedMinute) {
+    const hour = Number(requestedTimeSlot || 0);
+    const minute = Number(requestedMinute || 0);
     const weekday = isoWeekday(sessionDate);
-    if (division === 'elementary' && weekday === 6 && timeSlot >= 1 && timeSlot <= 3) {
-      return timeSlot + 9;
+    if (!hour) return 0;
+    if (minute !== 0 && minute !== 30) return -1;
+
+    if (division === 'elementary' && weekday === 6) {
+      if (minute !== 0) return -1;
+      if (hour >= 1 && hour <= 3) return hour + 9;
+      return hour;
     }
-    return timeSlot;
+
+    if (mode === 'half_hour') {
+      const key = String(hour) + ':' + String(minute);
+      const elementary = {
+        '1:0':1, '1:30':7, '2:0':2, '2:30':8, '3:0':3, '3:30':9,
+        '4:0':4, '4:30':10, '5:0':5, '5:30':11, '6:0':6
+      };
+      const kinder = {
+        '3:30':7, '4:0':4, '4:30':8, '5:0':5, '5:30':9
+      };
+      return Number((division === 'kinder' ? kinder : elementary)[key] || -1);
+    }
+
+    return minute === 0 ? hour : -1;
   }
 
-  function timetableMemoTimeLabel(division, sessionDate, timeSlot) {
+  function timetableMemoTimeLabel(division, sessionDate, timeSlot, mode) {
     const weekday = isoWeekday(sessionDate);
     const stored = Number(timeSlot || 0);
     if (division === 'elementary' && weekday === 6 && stored >= 10 && stored <= 12) {
       return String(stored - 9) + '시';
+    }
+    if (mode === 'half_hour') {
+      const elementary = {
+        1:'1시', 7:'1시 30분', 2:'2시', 8:'2시 30분', 3:'3시', 9:'3시 30분',
+        4:'4시', 10:'4시 30분', 5:'5시', 11:'5시 30분', 6:'6시'
+      };
+      const kinder = {
+        7:'3시 30분', 4:'4시', 8:'4시 30분', 5:'5시', 9:'5시 30분'
+      };
+      const label = (division === 'kinder' ? kinder : elementary)[stored];
+      if (label) return label;
     }
     return String(stored) + '시';
   }
@@ -2595,8 +2636,8 @@
     });
   }
 
-  function timetableMemoTargetSummary(target, sessionDate) {
-    return timetableMemoTimeLabel(target.division, sessionDate, target.timeSlot) + ' ' + target.classGroup + '반';
+  function timetableMemoTargetSummary(target, sessionDate, mode) {
+    return timetableMemoTimeLabel(target.division, sessionDate, target.timeSlot, mode) + ' ' + target.classGroup + '반';
   }
 
   async function resolveTimetableMemoTarget(options) {
@@ -2621,21 +2662,28 @@
     const division = requestedDivision || studentDivision;
     if (!division) return { ok:false, message:'시간표 메모가 초등부인지 유치부인지 함께 적어 주세요.' };
 
-    let timeSlot = timetableMemoTimeSlot(division, sessionDate, Number(opts.timeSlot || 0));
     let targetGroup = clean(opts.classGroup).toUpperCase();
     const weekData = await loadFreshWeek(sessionDate);
+    const mode = timetableMode(weekData);
+    let timeSlot = timetableMemoTimeSlot(
+      mode,
+      division,
+      sessionDate,
+      Number(opts.timeSlot || 0),
+      Number(opts.timeMinute || 0)
+    );
 
     if (student) {
       let targets = timetableMemoStudentClassTargets(weekData, student, sessionDate);
       if (timeSlot) targets = targets.filter(target => Number(target.timeSlot) === Number(timeSlot));
-      if (targetGroup) targets = targets.filter(target => target.classGroup === classGroup(targetGroup));
+      if (targetGroup && mode !== 'half_hour') targets = targets.filter(target => target.classGroup === classGroup(targetGroup));
 
       if (!targets.length) {
         const when = fallbackDateLabel(sessionDate);
         return {
           ok:false,
           message:clean(student.name) + ' 학생의 ' + when
-            + (timeSlot ? ' ' + timetableMemoTimeLabel(division, sessionDate, timeSlot) : '')
+            + (timeSlot ? ' ' + timetableMemoTimeLabel(division, sessionDate, timeSlot, mode) : '')
             + ' 수업 클래스를 찾지 못했어요.'
         };
       }
@@ -2643,18 +2691,18 @@
         return {
           ok:false,
           message:clean(student.name) + ' 학생은 ' + fallbackDateLabel(sessionDate) + '에 '
-            + targets.map(target => timetableMemoTargetSummary(target, sessionDate)).join(', ')
+            + targets.map(target => timetableMemoTargetSummary(target, sessionDate, mode)).join(', ')
             + ' 수업이 있어요. 메모를 남길 시간을 함께 적어 주세요.'
         };
       }
 
       const target = targets[0];
       timeSlot = Number(target.timeSlot);
-      targetGroup = target.classGroup;
+      targetGroup = mode === 'half_hour' ? 'A' : target.classGroup;
     }
 
     if (!student) {
-      const targetCheck = validateTimetableMemoTarget(division, sessionDate, timeSlot);
+      const targetCheck = validateTimetableMemoTarget(weekData, division, sessionDate, timeSlot);
       if (!targetCheck.ok) return targetCheck;
     }
 
@@ -2674,6 +2722,7 @@
       sessionDate,
       timeSlot,
       classGroup:targetGroup ? classGroup(targetGroup) : classGroup(groups[0] || 'A'),
+      timetableMode:mode,
       weekData,
       groups
     };
@@ -2689,7 +2738,7 @@
     );
   }
 
-  function validateTimetableMemoTarget(division, sessionDate, timeSlot) {
+  function validateTimetableMemoTarget(data, division, sessionDate, timeSlot) {
     if (!division) return { ok:false, message:'시간표 메모가 초등부인지 유치부인지 함께 적어 주세요.' };
     if (!sessionDate) return { ok:false, message:'시간표 메모의 날짜를 함께 적어 주세요.' };
     if (!timeSlot) return { ok:false, message:'시간표 메모의 시간을 함께 적어 주세요.' };
@@ -2698,7 +2747,7 @@
     if (weekday < 1 || weekday > 6) {
       return { ok:false, message:'시간표 메모는 월요일부터 토요일 수업에 등록할 수 있어요.' };
     }
-    if (!validTimes(division, weekday).includes(Number(timeSlot))) {
+    if (!validTimes(data, division, weekday).includes(Number(timeSlot))) {
       return { ok:false, message:divisionLabel(division) + ' ' + weekdayLabel(weekday) + ' 시간표에서 사용할 수 있는 시간을 확인해 주세요.' };
     }
     return { ok:true };
@@ -2722,12 +2771,13 @@
         sessionDate:target.sessionDate,
         timeSlot:target.timeSlot,
         classGroup:target.classGroup,
+        timetableMode:target.timetableMode,
         memoNote
       },
       message:
         (target.studentName ? target.studentName + ' · ' : '')
         + divisionLabel(target.division) + ' · ' + fallbackDateLabel(target.sessionDate) + ' '
-        + timetableMemoTimeLabel(target.division, target.sessionDate, target.timeSlot)
+        + timetableMemoTimeLabel(target.division, target.sessionDate, target.timeSlot, target.timetableMode)
         + (target.groups.length > 1 ? ' ' + target.classGroup + '반' : '')
         + '\n메모: ' + memoNote
         + '\n등록할까요?'
@@ -2783,13 +2833,14 @@
         sessionDate,
         timeSlot,
         classGroup:classGroup(row && row.class_group),
+        timetableMode:target.timetableMode,
         memoId:clean(row && row.id),
         memoNote:clean(row && row.note)
       },
       message:
         (target.studentName ? target.studentName + ' · ' : '')
         + divisionLabel(division) + ' · ' + fallbackDateLabel(sessionDate) + ' '
-        + timetableMemoTimeLabel(division, sessionDate, timeSlot)
+        + timetableMemoTimeLabel(division, sessionDate, timeSlot, target.timetableMode)
         + '\n메모: ' + clean(row && row.note)
         + '\n삭제할까요?'
     };
@@ -3293,12 +3344,12 @@
     if (item.intent === 'add_timetable_memo') {
       return (clean(item.studentName) ? clean(item.studentName) + ' · ' : '')
         + divisionLabel(item.division) + ' ' + fallbackDateLabel(item.sessionDate) + ' '
-        + timetableMemoTimeLabel(item.division, item.sessionDate, item.timeSlot) + ' 메모를 등록했어요.';
+        + timetableMemoTimeLabel(item.division, item.sessionDate, item.timeSlot, item.timetableMode) + ' 메모를 등록했어요.';
     }
     if (item.intent === 'delete_timetable_memo') {
       return (clean(item.studentName) ? clean(item.studentName) + ' · ' : '')
         + divisionLabel(item.division) + ' ' + fallbackDateLabel(item.sessionDate) + ' '
-        + timetableMemoTimeLabel(item.division, item.sessionDate, item.timeSlot) + ' 메모를 삭제했어요.';
+        + timetableMemoTimeLabel(item.division, item.sessionDate, item.timeSlot, item.timetableMode) + ' 메모를 삭제했어요.';
     }
     return '시간표 작업을 완료했어요.';
   }

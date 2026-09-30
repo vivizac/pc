@@ -10,6 +10,8 @@ on:
       - 'tests/waitlist-class-slot-integrity.test.cjs'
       - 'supabase/migrations/20260930160000_expand_team_talk_schedule_action_capabilities.sql'
       - 'supabase/migrations/*_waitlist_ab_division_slot_integrity.sql'
+      - 'supabase/migrations/*_timetable_memo_half_hour_source_of_truth.sql'
+      - 'tests/timetable-memo-half-hour-db-contract.test.cjs'
       - '.github/workflows/validate-schedule-realtime.yml'
   push:
     branches: [main]
@@ -22,6 +24,8 @@ on:
       - 'tests/waitlist-class-slot-integrity.test.cjs'
       - 'supabase/migrations/20260930160000_expand_team_talk_schedule_action_capabilities.sql'
       - 'supabase/migrations/*_waitlist_ab_division_slot_integrity.sql'
+      - 'supabase/migrations/*_timetable_memo_half_hour_source_of_truth.sql'
+      - 'tests/timetable-memo-half-hour-db-contract.test.cjs'
       - '.github/workflows/validate-schedule-realtime.yml'
   workflow_dispatch:
 permissions:
@@ -40,4 +44,4 @@ jobs:
           node --check apps/pc/pc-timetable.js
           node --check apps/pc/pc-timetable-service.js
       - name: Test schedule and Team Talk action contracts
-        run: node --test tests/schedule-realtime.test.cjs tests/team-talk-action-capabilities.test.cjs tests/waitlist-class-slot-integrity.test.cjs
+        run: node --test tests/schedule-realtime.test.cjs tests/team-talk-action-capabilities.test.cjs tests/waitlist-class-slot-integrity.test.cjs tests/timetable-memo-half-hour-db-contract.test.cjs

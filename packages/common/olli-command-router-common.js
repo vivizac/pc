@@ -180,6 +180,11 @@
     return Number(match && match[1] || 0);
   }
 
+  function firstTimeMinute(value) {
+    const match = cleanText(value).match(/\d{1,2}\s*시(?:\s*(\d{1,2})\s*분)?/);
+    return Number(match && match[1] || 0);
+  }
+
   function firstClassGroup(value) {
     const match = cleanText(value).match(/([AaBb])\s*반/i);
     return cleanText(match && match[1]).toUpperCase();
@@ -849,6 +854,7 @@
       dateSpec,
       dateLabel:dateSpec ? dateSpec.label : '',
       timeSlot:firstTimeSlot(raw),
+      timeMinute:firstTimeMinute(raw),
       classGroup:firstClassGroup(raw),
       studentName:extractTimetableMemoStudentName(raw),
       memoNote:extractTimetableMemoNote(raw),
@@ -870,6 +876,7 @@
       dateSpec,
       dateLabel:dateSpec ? dateSpec.label : '',
       timeSlot:firstTimeSlot(raw),
+      timeMinute:firstTimeMinute(raw),
       classGroup:firstClassGroup(raw),
       studentName:extractTimetableMemoStudentName(raw),
       memoNote:extractTimetableMemoNote(raw),
