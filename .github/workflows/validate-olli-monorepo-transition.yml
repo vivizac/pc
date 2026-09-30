@@ -72,4 +72,4 @@ jobs:
             tests/storage-secure-transport-contract.test.cjs \
             tests/phone-feedback-archive-saved-date.test.cjs \
             tests/phone-teamchat-local-first.test.cjs \
-            tests/team-chat-thumbnail-viewport.test.cjs
+            tests/team-chat-thumbnail-viewport.test.cjs \\\n            tests/olli-agent-foundation-contract.test.cjs
