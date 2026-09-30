@@ -119,7 +119,7 @@ test('memo navigation opens the screen shell before optional initialization', ()
 
   assert.match(html, /observation-memo-session-common\.js\?v=20260929-memo-page-owner-1/);
   assert.match(html, /olli-observation-runtime\.js\?v=20260930-attendance-runtime-cleanup-1/);
-  assert.match(html, /olli-observation-roster-phone\.js\?v=20260930-observation-search-active-button-1/);
+  assert.match(html, /olli-observation-roster-phone\.js\?v=20261001-observation-roster-active-bottom-only-1/);
 });
 
 
@@ -157,7 +157,7 @@ test('memo utility controls are fixed markup and never dynamically mounted', () 
   assert.doesNotMatch(baseCss, /memoBottomBar/);
 
   assert.match(html, /olli-phone-base\.css\?v=20260929-settings-spacing-3/);
-  assert.match(html, /olli-observation-roster-phone\.css\?v=20260930-observation-search-active-button-1/);
+  assert.match(html, /olli-observation-roster-phone\.css\?v=20261001-observation-roster-active-bottom-only-1/);
   assert.match(html, /olli-record-utility-touch\.js\?v=20260929-memo-fixed-group-1/);
 });
 
@@ -183,5 +183,5 @@ test('memo archive uses secure feedback reads and fixed survey visibility', () =
 
   assert.match(html, /olli-data-attendance-feedback\.js\?v=20260929-secure-archive-read-1/);
   assert.match(html, /elementary-analysis-phone-adapter\.js\?v=20260929-secure-archive-read-1/);
-  assert.match(html, /olli-observation-roster-phone\.js\?v=20260930-observation-search-active-button-1/);
+  assert.match(html, /olli-observation-roster-phone\.js\?v=20261001-observation-roster-active-bottom-only-1/);
 });
