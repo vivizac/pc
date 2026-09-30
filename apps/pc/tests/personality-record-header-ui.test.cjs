@@ -16,3 +16,16 @@ test('observation bottom history voice survey controls have no shadows in embedd
   assert.match(editorCss, /#memoEditorUtilityGroup\{[^}]*box-shadow:none;/);
   assert.match(editorCss, /#memoEditorUtilityGroup>button\{[^}]*box-shadow:none!important;/);
 });
+
+
+test('personality record header keeps empty and selected states on the same baseline', () => {
+  assert.match(attendanceCss, /\.pcAttendanceDetailHead\{[^}]*min-height:67px;[^}]*box-sizing:border-box;/);
+});
+
+test('student info button stays on the far right after mode tabs move beside the title', () => {
+  assert.match(attendanceCss, /\.pcAttendanceStudentInfoBtn\{margin-left:auto;\}/);
+});
+
+test('observation student name uses a much lighter weight', () => {
+  assert.match(editorCss, /#memoPageStudentName\{[^}]*font-weight:400!important;/);
+});
