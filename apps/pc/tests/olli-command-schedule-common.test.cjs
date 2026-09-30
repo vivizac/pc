@@ -1457,8 +1457,9 @@ test('dropoff pickup execution reuses the existing timetable savePickup service'
     division:'kinder',
     weekday:1,
     classTime:4,
-    pickupLabel:'리슈빌',
-    pickupTime:'15:30',
+    pickupLabel:'',
+    pickupTime:'',
+    dropoffLabel:'리슈빌',
     effectiveDate:'2026-09-21',
     isDropoff:true
   });
