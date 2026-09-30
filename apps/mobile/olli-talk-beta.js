@@ -12,10 +12,6 @@
   let olliTalkChatMeasureRaf = 0;
   let olliTalkChatTrackingBound = false;
   let olliTalkComposerResizeObserver = null;
-  let olliTalkFollowBottomAfterViewportSettle = false;
-  let olliTalkViewportTransitionComposerTop = null;
-  let olliTalkViewportTransitionChatScrollTop = null;
-  let olliTalkViewportTransitionUserTouchedChat = false;
   let olliTalkChatGestureActive = false;
   let olliTalkChatGestureSettleTimer = null;
   let olliTalkComposerViewportLock = null;
@@ -142,30 +138,7 @@
     return distance <= Math.max(0, Number(threshold) || 0);
   }
 
-  function resetOlliTalkViewportTransitionAnchor(){
-    olliTalkViewportTransitionComposerTop = null;
-    olliTalkViewportTransitionChatScrollTop = null;
-    olliTalkViewportTransitionUserTouchedChat = false;
-  }
-
-  function captureOlliTalkViewportTransitionAnchor(){
-    if (Number.isFinite(olliTalkViewportTransitionComposerTop)) return;
-
-    const screen = getScreen();
-    const chatArea = document.getElementById('olliTalkBetaChatArea');
-    const composerWrap = screen?.querySelector('.olliTalkBetaComposerWrap');
-    if (!screen || !chatArea || !composerWrap || !isOlliTalkBetaVisible()) return;
-
-    const composerTop = Number(composerWrap.getBoundingClientRect().top);
-    if (!Number.isFinite(composerTop)) return;
-
-    olliTalkViewportTransitionComposerTop = composerTop;
-    olliTalkViewportTransitionChatScrollTop = Math.max(0, Number(chatArea.scrollTop || 0));
-    olliTalkViewportTransitionUserTouchedChat = false;
-    olliTalkFollowBottomAfterViewportSettle = isOlliTalkChatNearBottom(chatArea);
-  }
-
-  function syncOlliTalkChatToComposer(options = {}){
+  function syncOlliTalkChatToComposer(){
     olliTalkChatMeasureRaf = 0;
 
     const screen = getScreen();
@@ -194,14 +167,7 @@
     // This replaces the old full-height scroller + bottom padding reserve.
     screen.style.setProperty('--olli-talk-chat-bottom-gap', bottomGap + 'px');
 
-    // Important: composer / visualViewport movement never directly changes chatArea.scrollTop.
-    // Only an explicit settled keyboard transition may keep an already-bottomed chat at bottom.
-    if (options.followBottom === true) {
-      requestAnimationFrame(() => {
-        if (!chatArea.isConnected) return;
-        chatArea.scrollTop = chatArea.scrollHeight;
-      });
-    }
+    // Keyboard/composer geometry may resize this scroller, but it never owns chat scrollTop.
   }
 
   function scheduleOlliTalkChatToComposer(){
@@ -315,35 +281,9 @@
     screen.classList.remove('olliTalkViewportMoving');
     olliTalkViewportSettleTimer = null;
 
-    const chatArea = document.getElementById('olliTalkBetaChatArea');
-    const composerWrap = screen.querySelector('.olliTalkBetaComposerWrap');
-    const startTop = Number(olliTalkViewportTransitionComposerTop);
-    const startScrollTop = Number(olliTalkViewportTransitionChatScrollTop);
-    const finalTop = Number(composerWrap?.getBoundingClientRect().top);
-    const delta = Number.isFinite(startTop) && Number.isFinite(finalTop)
-      ? startTop - finalTop
-      : 0;
-    const followBottom = olliTalkFollowBottomAfterViewportSettle === true;
-    const userTouched = olliTalkViewportTransitionUserTouchedChat === true;
-
-    olliTalkFollowBottomAfterViewportSettle = false;
+    // The composer may move with the keyboard, but keyboard settling must not
+    // move the user's current message position.
     syncOlliTalkChatToComposer();
-
-    requestAnimationFrame(() => {
-      if (!chatArea?.isConnected || userTouched) {
-        resetOlliTalkViewportTransitionAnchor();
-        return;
-      }
-
-      if (followBottom) {
-        chatArea.scrollTop = chatArea.scrollHeight;
-      } else if (Number.isFinite(startScrollTop) && Math.abs(delta) > 0.5) {
-        const maxScroll = Math.max(0, chatArea.scrollHeight - chatArea.clientHeight);
-        chatArea.scrollTop = Math.max(0, Math.min(maxScroll, startScrollTop + delta));
-      }
-
-      resetOlliTalkViewportTransitionAnchor();
-    });
   }
 
   function scheduleOlliTalkViewportSettle(){
@@ -380,7 +320,6 @@
       || screen.classList.contains('olliTalkViewportMoving');
 
     if (keyboardInteraction && viewportChanged) {
-      captureOlliTalkViewportTransitionAnchor();
       screen.classList.add('olliTalkViewportMoving');
       scheduleOlliTalkViewportSettle();
     }
@@ -4463,8 +4402,6 @@
     olliTalkChatGestureActive = false;
     releaseOlliTalkComposerViewportLock();
     olliTalkKeyboardTransitionActive = false;
-    olliTalkFollowBottomAfterViewportSettle = false;
-    resetOlliTalkViewportTransitionAnchor();
   }
 
   async function slideOlliTalkOutTo(targetScreen){
@@ -4898,7 +4835,6 @@
         olliTalkChatGestureSettleTimer = null;
       }
       olliTalkChatGestureActive = true;
-      olliTalkViewportTransitionUserTouchedChat = true;
     };
     const endOlliTalkChatGesture = () => {
       if (!olliTalkChatGestureActive && !olliTalkChatGestureSettleTimer) return;
@@ -4936,7 +4872,16 @@
       const composer = input.closest('.olliTalkBetaComposer');
 
       input.addEventListener('pointerdown', event => {
-        if (event.pointerType === 'touch') return;
+        if (event.pointerType === 'touch') {
+          if (document.activeElement !== input) {
+            captureOlliTalkKeyboardBaseline(true);
+            // Match the @ mention path: focus before iOS performs its native
+            // scroll-into-view step, while leaving the tap/caret default intact.
+            try { input.focus({ preventScroll:true }); }
+            catch (_) { input.focus(); }
+          }
+          return;
+        }
         captureOlliTalkKeyboardBaseline(true);
       }, true);
 
@@ -4976,7 +4921,6 @@
         const screen = getScreen();
         releaseOlliTalkComposerViewportLock();
         olliTalkKeyboardTransitionActive = true;
-        captureOlliTalkViewportTransitionAnchor();
         captureOlliTalkKeyboardBaseline(true);
         if (screen) screen.classList.add('olliTalkViewportMoving');
         scheduleOlliTalkViewportSettle();
@@ -4988,7 +4932,6 @@
         const screen = getScreen();
         releaseOlliTalkComposerViewportLock();
         olliTalkKeyboardTransitionActive = true;
-        captureOlliTalkViewportTransitionAnchor();
         if (screen) screen.classList.add('olliTalkViewportMoving');
         scheduleOlliTalkViewportSettle();
         setTimeout(() => syncViewport({ source:'blur' }), 40);

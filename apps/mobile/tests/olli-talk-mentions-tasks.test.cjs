@@ -275,8 +275,8 @@ test('Team Talk composer measurement no longer applies composer delta to chat sc
   const end=source.indexOf('function scheduleOlliTalkChatToComposer',start);
   const body=source.slice(start,end);
   assert.doesNotMatch(body,/composerDelta/);
-  assert.doesNotMatch(body,/chatArea\.scrollTop \+ /);
-  assert.match(body,/options\.followBottom === true/);
+  assert.doesNotMatch(body,/chatArea\.scrollTop/);
+  assert.doesNotMatch(body,/followBottom/);
 });
 
 test('Team Talk realtime refresh preserves middle scroll and follows only when near bottom', () => {
@@ -324,18 +324,23 @@ test('Team Talk composer action buttons use a very light gray background and thi
 });
 
 
-test('Team Talk restores one-time chat content movement after keyboard settles', () => {
-  assert.match(source,/function captureOlliTalkViewportTransitionAnchor/);
-  assert.match(source,/const delta = Number\.isFinite\(startTop\)[\s\S]*?startTop - finalTop/);
-  assert.match(source,/startScrollTop \+ delta/);
-  assert.match(source,/requestAnimationFrame\(\(\) => \{/);
+test('Team Talk keyboard settling never moves the current chat scroll position', () => {
+  const start = source.indexOf('function finishOlliTalkViewportTransition');
+  const end = source.indexOf('function scheduleOlliTalkViewportSettle', start);
+  const body = source.slice(start, end);
+  assert.match(body, /syncOlliTalkChatToComposer\(\)/);
+  assert.doesNotMatch(body, /chatArea\.scrollTop|startScrollTop|startTop|finalTop|followBottom|delta/);
+  assert.doesNotMatch(source, /olliTalkViewportTransitionComposerTop|olliTalkViewportTransitionChatScrollTop|olliTalkViewportTransitionUserTouchedChat|olliTalkFollowBottomAfterViewportSettle/);
 });
 
-test('Team Talk never applies keyboard content correction while user touches chat during transition', () => {
-  assert.match(source,/olliTalkViewportTransitionUserTouchedChat/);
-  assert.match(source,/chatArea\.addEventListener\('pointerdown'/);
-  assert.match(source,/chatArea\.addEventListener\('touchstart'/);
-  assert.match(source,/if \(!chatArea\?\.isConnected \|\| userTouched\)/);
+test('Team Talk direct first touch focuses like mention without cancelling tap or caret placement', () => {
+  const start = source.indexOf("input.addEventListener('pointerdown'");
+  const end = source.indexOf("input.addEventListener('input'", start);
+  const body = source.slice(start, end);
+  assert.match(body, /event\.pointerType === 'touch'/);
+  assert.match(body, /document\.activeElement !== input/);
+  assert.match(body, /input\.focus\(\{ preventScroll:true \}\)/);
+  assert.doesNotMatch(body, /event\.preventDefault\(\)/);
 });
 
 test('Team Talk locked composer geometry is authoritative during viewport pan', () => {
