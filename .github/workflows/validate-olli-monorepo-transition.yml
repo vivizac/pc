@@ -71,6 +71,7 @@ jobs:
           node --check api/_lib/olli-agent/privacy.cjs
           node --check api/_lib/olli-agent/tools/schedule-tools.cjs
           node --check api/_lib/olli-agent/tools/record-tools.cjs
+          node --check api/_lib/olli-agent/tools/availability-tools.cjs
           node --test \
             tests/schedule-realtime.test.cjs \
             tests/phone-schedule-class-layout-date-contract.test.cjs \
@@ -83,4 +84,6 @@ jobs:
             tests/olli-agent-foundation-contract.test.cjs \
             tests/olli-agent-student-privacy.test.cjs \
             tests/olli-agent-student-schedule-tool.test.cjs \
-            tests/olli-agent-recent-records-tool.test.cjs
+            tests/olli-agent-recent-records-tool.test.cjs \
+            tests/olli-agent-schedule-availability-tool.test.cjs \
+            tests/olli-agent-schedule-availability-db-contract.test.cjs
