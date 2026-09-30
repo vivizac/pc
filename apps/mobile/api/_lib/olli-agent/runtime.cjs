@@ -25,6 +25,11 @@ function assertSupportedNodeRuntime() {
   return major;
 }
 
+function todayInSeoul() {
+  const shifted = new Date(Date.now() + (9 * 60 * 60 * 1000));
+  return shifted.toISOString().slice(0, 10);
+}
+
 async function loadAgentsSdk() {
   assertSupportedNodeRuntime();
 
@@ -33,7 +38,12 @@ async function loadAgentsSdk() {
     import('zod'),
   ]);
 
-  if (!agentsSdk?.Agent || typeof agentsSdk?.run !== 'function' || !zodModule?.z) {
+  if (
+    !agentsSdk?.Agent ||
+    typeof agentsSdk?.run !== 'function' ||
+    typeof agentsSdk?.tool !== 'function' ||
+    !zodModule?.z
+  ) {
     throw runtimeError(
       'OpenAI Agents SDK 의존성을 불러오지 못했습니다.',
       500,
@@ -44,10 +54,19 @@ async function loadAgentsSdk() {
   return {
     Agent: agentsSdk.Agent,
     run: agentsSdk.run,
+    tool: agentsSdk.tool,
+    z: zodModule.z,
   };
 }
 
-async function runFoundationProbe(agentContext) {
+function agentModel() {
+  return (
+    String(process.env.OPENAI_AGENT_MODEL || process.env.OPENAI_MODEL || '').trim() ||
+    'gpt-5-mini'
+  );
+}
+
+function assertOpenAiKey() {
   if (!process.env.OPENAI_API_KEY) {
     throw runtimeError(
       'OPENAI_API_KEY가 서버 환경변수에 설정되지 않았습니다.',
@@ -55,11 +74,13 @@ async function runFoundationProbe(agentContext) {
       'OPENAI_API_KEY_MISSING'
     );
   }
+}
+
+async function runFoundationProbe(agentContext) {
+  assertOpenAiKey();
 
   const { Agent, run } = await loadAgentsSdk();
-  const model =
-    String(process.env.OPENAI_AGENT_MODEL || process.env.OPENAI_MODEL || '').trim() ||
-    'gpt-5-mini';
+  const model = agentModel();
 
   const agent = new Agent({
     name: 'Olli Foundation Probe',
@@ -97,9 +118,91 @@ async function runFoundationProbe(agentContext) {
   };
 }
 
+async function runStudentScheduleProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+}) {
+  assertOpenAiKey();
+
+  const subjectRefs = Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+
+  if (preparedPrivacy?.needsDisambiguation) {
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+
+  if (subjectRefs.length !== 1) {
+    throw runtimeError(
+      '시간표 조회 probe에서는 학생 한 명을 정확히 지정해 주세요.',
+      400,
+      'OLLI_AGENT_SINGLE_STUDENT_REQUIRED'
+    );
+  }
+
+  const { Agent, run, tool, z } = await loadAgentsSdk();
+  const { createGetStudentScheduleTool } = require('./tools/schedule-tools.cjs');
+  const model = agentModel();
+  const today = todayInSeoul();
+  const onlyLabel = subjectRefs[0].label;
+
+  const getStudentSchedule = createGetStudentScheduleTool({
+    tool,
+    z,
+    requestContext,
+    subjectAccess: preparedPrivacy.subjectAccess,
+  });
+
+  const agent = new Agent({
+    name: 'Olli Student Schedule Probe',
+    model,
+    instructions: [
+      'You are the Olli academy schedule assistant.',
+      'The user message has already been privacy-sanitized.',
+      `The only available anonymous student label for this run is ${onlyLabel}.`,
+      `Today in Korea is ${today}.`,
+      'Always use get_student_schedule before answering a student schedule question.',
+      'Never ask for, infer, or reveal a real student name, UUID, member ID, session token, or academy ID.',
+      'Use the tool result only. If no regular enrollment exists, say that no regular class was found for that reference date.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools: [getStudentSchedule],
+    modelSettings: {
+      toolChoice: 'get_student_schedule',
+    },
+  });
+
+  const result = await run(agent, preparedPrivacy.safeText, {
+    context: agentContext,
+  });
+
+  const finalOutput = String(result?.finalOutput || '').trim();
+  if (!finalOutput) {
+    throw runtimeError(
+      '학생 시간표 Agent 응답이 비어 있습니다.',
+      502,
+      'OLLI_AGENT_EMPTY_SCHEDULE_RESPONSE'
+    );
+  }
+
+  return {
+    ready: true,
+    model,
+    output: finalOutput,
+    nodeVersion: process.versions.node,
+  };
+}
+
 module.exports = {
   MIN_NODE_MAJOR,
   assertSupportedNodeRuntime,
+  todayInSeoul,
   loadAgentsSdk,
   runFoundationProbe,
+  runStudentScheduleProbe,
 };

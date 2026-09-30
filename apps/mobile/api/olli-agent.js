@@ -18,20 +18,20 @@ export default async function handler(req, res) {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const mode = safeText(body.mode, 40);
 
-    if (!['probe', 'privacy_probe'].includes(mode)) {
+    if (!['probe', 'privacy_probe', 'schedule_probe'].includes(mode)) {
       return res.status(400).json({
-        error: '현재 독립 Agent endpoint는 probe 또는 privacy_probe 모드만 지원합니다.',
+        error: '현재 독립 Agent endpoint는 probe, privacy_probe 또는 schedule_probe 모드만 지원합니다.',
       });
     }
 
     const contextModule = await import('./_lib/olli-agent/request-context.cjs');
     const requestContext = await contextModule.loadOlliAgentRequestContext(body);
 
-    if (mode === 'privacy_probe') {
+    if (mode === 'privacy_probe' || mode === 'schedule_probe') {
       const message = safeText(body.message, 5000);
       if (!message) {
         return res.status(400).json({
-          error: 'privacy_probe에는 확인할 메시지가 필요합니다.',
+          error: mode + '에는 확인할 메시지가 필요합니다.',
           code: 'OLLI_AGENT_MESSAGE_REQUIRED',
         });
       }
@@ -42,13 +42,34 @@ export default async function handler(req, res) {
         requestContext
       );
 
+      if (mode === 'privacy_probe') {
+        return res.status(200).json({
+          ok: true,
+          mode: 'privacy_probe',
+          safeText: prepared.safeText,
+          subjectRefs: prepared.subjectRefs,
+          needsDisambiguation: prepared.needsDisambiguation,
+          ambiguousCount: prepared.ambiguousCount,
+          privacy: prepared.privacy,
+        });
+      }
+
+      const runtimeModule = await import('./_lib/olli-agent/runtime.cjs');
+      const agentContext = contextModule.toAgentRunContext(requestContext);
+      const probe = await runtimeModule.runStudentScheduleProbe({
+        agentContext,
+        requestContext,
+        preparedPrivacy: prepared,
+      });
+
       return res.status(200).json({
         ok: true,
-        mode: 'privacy_probe',
-        safeText: prepared.safeText,
+        mode: 'schedule_probe',
+        ready: probe.ready === true,
+        model: probe.model,
+        nodeVersion: probe.nodeVersion,
+        output: probe.output,
         subjectRefs: prepared.subjectRefs,
-        needsDisambiguation: prepared.needsDisambiguation,
-        ambiguousCount: prepared.ambiguousCount,
         privacy: prepared.privacy,
       });
     }
