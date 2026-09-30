@@ -10,6 +10,7 @@ const endpoint = fs.readFileSync(path.join(mobileRoot, 'api/olli-agent.js'), 'ut
 const runtime = fs.readFileSync(path.join(mobileRoot, 'api/_lib/olli-agent/runtime.cjs'), 'utf8');
 const tool = fs.readFileSync(path.join(mobileRoot, 'api/_lib/olli-agent/tools/pickup-prepare-tools.cjs'), 'utf8');
 const pcProxy = fs.readFileSync(path.join(repoRoot, 'apps/pc/api/olli-agent.js'), 'utf8');
+const { pickupPersistedMessageForClient } = require('../api/_lib/olli-agent/runtime.cjs');
 
 test('production pickup_prepare is separate from pickup_prepare_probe and requires a source Team Chat message id', () => {
   assert.match(endpoint, /'pickup_prepare_probe', 'pickup_prepare'/);
@@ -42,6 +43,38 @@ test('persisted Team Chat action message returned to UI excludes internal payloa
   assert.match(projection, /action_type:/);
   assert.match(projection, /status:/);
   assert.doesNotMatch(projection, /action_payload|studentId|studentName|academy_id|client_message_id|sessionToken/);
+});
+
+test('persisted message projection strips server-only identifiers and action payload data', () => {
+  const projected = pickupPersistedMessageForClient({
+    id:901,
+    academy_id:'academy-secret',
+    sender_member_id:'member-secret',
+    sender_name:'올리',
+    message_type:'ai',
+    body:'픽업을 등록할까요?',
+    reply_to_message_id:77,
+    client_message_id:'client-secret',
+    created_at:'2026-10-01T00:00:00Z',
+    action:{
+      id:'action-ui-id',
+      action_type:'add_pickup',
+      status:'pending',
+      revision:0,
+      action_payload:{
+        studentId:'student-secret',
+        studentName:'실명',
+      },
+    },
+  });
+
+  assert.equal(projected.id, 901);
+  assert.equal(projected.reply_to_message_id, 77);
+  assert.equal(projected.action.id, 'action-ui-id');
+  assert.equal(projected.action.action_type, 'add_pickup');
+  assert.equal(projected.sender_member_id, null);
+  const serialized = JSON.stringify(projected);
+  assert.doesNotMatch(serialized, /academy-secret|member-secret|client-secret|student-secret|실명|action_payload/);
 });
 
 test('production runtime can return the already-persisted action if the model finalization fails afterwards', () => {
