@@ -21,6 +21,7 @@ on:
     paths:
       - 'packages/common/**'
       - 'tests/timetable-memo-half-hour.test.cjs'
+      - 'tests/pickup-half-hour.test.cjs'
       - 'apps/pc/scripts/stage-common.cjs'
       - 'apps/mobile/scripts/stage-common.cjs'
       - 'apps/pc/index.html'
