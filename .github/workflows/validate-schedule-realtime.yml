@@ -6,6 +6,8 @@ on:
       - 'apps/pc/pc-timetable.js'
       - 'apps/pc/pc-timetable-service.js'
       - 'tests/schedule-realtime.test.cjs'
+      - 'tests/team-talk-action-capabilities.test.cjs'
+      - 'supabase/migrations/20260930160000_expand_team_talk_schedule_action_capabilities.sql'
       - '.github/workflows/validate-schedule-realtime.yml'
   push:
     branches: [main]
@@ -14,6 +16,8 @@ on:
       - 'apps/pc/pc-timetable.js'
       - 'apps/pc/pc-timetable-service.js'
       - 'tests/schedule-realtime.test.cjs'
+      - 'tests/team-talk-action-capabilities.test.cjs'
+      - 'supabase/migrations/20260930160000_expand_team_talk_schedule_action_capabilities.sql'
       - '.github/workflows/validate-schedule-realtime.yml'
   workflow_dispatch:
 permissions:
@@ -31,5 +35,5 @@ jobs:
           node --check packages/common/olli-realtime-common.js
           node --check apps/pc/pc-timetable.js
           node --check apps/pc/pc-timetable-service.js
-      - name: Test schedule Realtime behavior
-        run: node --test tests/schedule-realtime.test.cjs
+      - name: Test schedule and Team Talk action contracts
+        run: node --test tests/schedule-realtime.test.cjs tests/team-talk-action-capabilities.test.cjs
