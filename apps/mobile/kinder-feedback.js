@@ -559,6 +559,21 @@ function bindKinderChatFeedbackViewportInteractions() {
 
     input.addEventListener('pointerdown', event => {
       if (event.pointerType === 'touch') {
+        const teacherMode = getKinderChatFeedbackTeacherMode();
+        const teacherEnabled = !!(
+          teacherMode
+          && typeof teacherMode.isEnabled === 'function'
+          && teacherMode.isEnabled()
+        );
+
+        // iOS can emit a very short blur while the already-focused textarea is
+        // tapped again for caret placement. Treat that as the same protected
+        // interaction as the keyword buttons, unless Class mode intentionally
+        // hands focus to the Teacher sheet.
+        if (!teacherEnabled) {
+          kcfKeepInputFocusUntil = Date.now() + 900;
+        }
+
         if (document.activeElement !== input) {
           captureKinderChatFeedbackKeyboardBaseline(true);
           try { input.focus({ preventScroll:true }); }

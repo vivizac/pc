@@ -286,3 +286,23 @@ test('QuickNote guide touch guard blocks vertical fallthrough but preserves hori
   assert.match(js,/questionGuide\.addEventListener\('touchmove',[\s\S]*?event\.preventDefault\(\)[\s\S]*?event\.stopPropagation\(\)[\s\S]*?passive:false/);
   assert.match(js,/keywordScroller\.addEventListener\('touchmove',[\s\S]*?deltaY <= deltaX[\s\S]*?event\.preventDefault\(\)[\s\S]*?event\.stopPropagation\(\)[\s\S]*?passive:false/);
 });
+
+
+test('QuickNote touch retap protects the focused input from transient iOS blur', () => {
+  const start = js.indexOf("input.addEventListener('pointerdown'");
+  const end = js.indexOf("if (composer)", start);
+  const block = js.slice(start, end);
+
+  assert.match(block,/event\.pointerType === 'touch'/);
+  assert.match(block,/teacherEnabled/);
+  assert.match(block,/kcfKeepInputFocusUntil = Date\.now\(\) \+ 900/);
+  assert.match(block,/input\.focus\(\{ preventScroll:true \}\)/);
+  assert.match(js,/if \(Date\.now\(\) < kcfKeepInputFocusUntil\)[\s\S]*?currentInput\.focus\(\{ preventScroll:true \}\)/);
+});
+
+test('QuickNote Class mode can still intentionally hand focus to the Teacher sheet', () => {
+  const start = js.indexOf("input.addEventListener('pointerdown'");
+  const end = js.indexOf("if (composer)", start);
+  const block = js.slice(start, end);
+  assert.match(block,/if \(!teacherEnabled\) \{[\s\S]*?kcfKeepInputFocusUntil/);
+});
