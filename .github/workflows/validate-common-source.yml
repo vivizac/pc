@@ -6,6 +6,7 @@ on:
     paths:
       - 'packages/common/**'
       - 'tests/timetable-memo-half-hour.test.cjs'
+      - 'tests/pickup-half-hour.test.cjs'
       - 'apps/pc/scripts/stage-common.cjs'
       - 'apps/mobile/scripts/stage-common.cjs'
       - 'apps/pc/index.html'
@@ -54,7 +55,8 @@ jobs:
             tests/mobile-self-contained-build.test.cjs \
             tests/pc-build-closure.test.cjs \
             tests/mobile-entry-integrity.test.cjs \
-            tests/timetable-memo-half-hour.test.cjs
+            tests/timetable-memo-half-hour.test.cjs \
+            tests/pickup-half-hour.test.cjs
 
       - name: Reject platform adapters from common runtime manifests
         run: |
