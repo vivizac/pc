@@ -818,11 +818,41 @@ function resolvePickupPrepareScope(preparedPrivacy) {
   };
 }
 
-async function runPickupPrepareProbe({
+function pickupPersistedMessageForClient(message) {
+  const action = message?.action && typeof message.action === 'object'
+    ? message.action
+    : null;
+  const id = Number(message?.id || 0);
+  if (!Number.isSafeInteger(id) || id <= 0 || !action?.id) return null;
+
+  return {
+    id,
+    sender_member_id:null,
+    sender_name:'올리',
+    message_type:'ai',
+    body:String(message?.body || '').trim(),
+    reply_to_message_id:Number(message?.reply_to_message_id || 0) || null,
+    created_at:message?.created_at || null,
+    action:{
+      id:String(action.id || '').trim(),
+      action_type:String(action.action_type || '').trim(),
+      status:String(action.status || '').trim(),
+      revision:Number(action.revision || 0) || 0,
+      created_at:action.created_at || null,
+      updated_at:action.updated_at || null,
+      resolved_at:action.resolved_at || null,
+      error:action.error || null,
+    },
+  };
+}
+
+async function runPickupPrepareAgent({
   agentContext,
   requestContext,
   preparedPrivacy,
   requestId,
+  replyToMessageId = null,
+  requirePersistedMessage = false,
 }) {
   assertOpenAiKey();
 
@@ -832,6 +862,7 @@ async function runPickupPrepareProbe({
   const { sanitizeAgentToolPayload } = require('./privacy.cjs');
   const model = agentModel();
   const today = todayInSeoul();
+  let persistedMessage = null;
 
   const preparePickupAdd = createPreparePickupAddTool({
     tool,
@@ -842,6 +873,10 @@ async function runPickupPrepareProbe({
     pickupKind:scope.pickupKind,
     currentDate:today,
     requestId,
+    replyToMessageId,
+    capturePersistedMessage(message) {
+      persistedMessage = pickupPersistedMessageForClient(message);
+    },
     sanitizePayload(payload) {
       return sanitizeAgentToolPayload(payload, preparedPrivacy);
     },
@@ -854,7 +889,7 @@ async function runPickupPrepareProbe({
       : 'This request is arrival-only. Fill arrival_label and arrival_time and use an empty string for dropoff_label.');
 
   const agent = new Agent({
-    name:'Olli Pickup Prepare Probe',
+    name:requirePersistedMessage ? 'Olli Pickup Prepare' : 'Olli Pickup Prepare Probe',
     model,
     instructions:[
       'You are the Olli pickup-registration preparation assistant.',
@@ -877,16 +912,30 @@ async function runPickupPrepareProbe({
     modelSettings:{ toolChoice:'prepare_pickup_add' },
   });
 
-  const result = await run(agent, preparedPrivacy.safeText, {
-    context:agentContext,
-  });
+  let result = null;
+  let runError = null;
+  try {
+    result = await run(agent, preparedPrivacy.safeText, {
+      context:agentContext,
+    });
+  } catch (error) {
+    runError = error;
+    if (!requirePersistedMessage || !persistedMessage) throw error;
+  }
 
   const finalOutput = String(result?.finalOutput || '').trim();
-  if (!finalOutput) {
+  if (!finalOutput && !persistedMessage) {
     throw runtimeError(
       '픽업 등록 준비 Agent 응답이 비어 있습니다.',
       502,
       'OLLI_AGENT_EMPTY_PICKUP_PREPARE_RESPONSE'
+    );
+  }
+  if (requirePersistedMessage && !persistedMessage) {
+    throw runtimeError(
+      '픽업 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_AGENT_PICKUP_PERSISTED_MESSAGE_MISSING'
     );
   }
 
@@ -895,9 +944,49 @@ async function runPickupPrepareProbe({
     model,
     output:finalOutput,
     nodeVersion:process.versions.node,
+    persistedMessage,
+    recoveredAfterPersist:!!runError,
   };
 }
 
+async function runPickupPrepareProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+}) {
+  return runPickupPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId,
+  });
+}
+
+async function runPickupPrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+}) {
+  const sourceId = Number(sourceMessageId || 0);
+  if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_PICKUP_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  return runPickupPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-message:' + sourceId,
+    replyToMessageId:sourceId,
+    requirePersistedMessage:true,
+  });
+}
 
 async function runStudentProfileProbe({
   agentContext,
@@ -995,7 +1084,9 @@ module.exports = {
   runAttendanceProbe,
   runPickupProbe,
   resolvePickupPrepareScope,
+  pickupPersistedMessageForClient,
   runPickupPrepareProbe,
+  runPickupPrepare,
   runStudentProfileProbe,
   resolveTimetableMemoScope,
   runTimetableMemoPrepareProbe,
