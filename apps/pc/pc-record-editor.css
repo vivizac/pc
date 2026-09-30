@@ -1240,7 +1240,7 @@ body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScree
 }
 body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .elementaryAnalysisBlock{margin:0!important;padding:16px 0 8px!important;}
 body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoAnalysisTitleRow{padding:0!important;}
-body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen #memoPageStudentName{font-size:18px!important;font-weight:820!important;}
+body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen #memoPageStudentName{font-size:18px!important;font-weight:400!important;}
 body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen #memoEditor{
   flex:1 1 auto!important;width:100%!important;min-height:310px!important;height:auto!important;padding:12px 4px!important;font-size:14px!important;line-height:1.7!important;box-sizing:border-box!important;
 }
