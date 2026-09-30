@@ -924,7 +924,7 @@ async function runPickupPrepareAgent({
   }
 
   const finalOutput = String(result?.finalOutput || '').trim();
-  if (!finalOutput && !persistedMessage) {
+  if (!finalOutput && (!requirePersistedMessage || !persistedMessage)) {
     throw runtimeError(
       '픽업 등록 준비 Agent 응답이 비어 있습니다.',
       502,
