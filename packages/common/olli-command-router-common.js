@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-30-slash-date-1';
+  const VERSION = '2026-09-30-timetable-memo-write-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -768,9 +768,75 @@
     };
   }
 
+  function extractTimetableMemoNote(value) {
+    let stripped = removeDivisionWords(value)
+      .replace(/[.!?]/g, ' ')
+      .replace(/(?:오늘|금일|내일|(?:(?:이번\s*주|금주|다다음\s*주|다음\s*주|차주)\s*)?[월화수목금토]요일)/g, ' ')
+      .replace(/\d{1,2}\s*월\s*\d{1,2}\s*일/g, ' ')
+      .replace(/\d{1,2}\s*\/\s*\d{1,2}\s*일/g, ' ')
+      .replace(/(?:^|\s)\d{1,2}\s*일(?=\s|$)/g, ' ')
+      .replace(/\d{1,2}\s*시(?:\s*\d{1,2}\s*분)?(?:에서|으로|에|로)?/g, ' ')
+      .replace(/[AaBb]\s*반/g, ' ')
+      .replace(/(?:시간표\s*)?메모(?:\s*내용)?(?:에|로|를|을)?/g, ' ')
+      .replace(/(?:내용|문구)\s*[:：-]?\s*/g, ' ')
+      .replace(addActionPattern(), ' ')
+      .replace(/(?:(?:취소|삭제|제거|해제|없애)(?:\s*(?:좀|한번))?\s*(?:해)?(?:줘요|주세요|줘|줄래|해줘요|해주세요|해줘|해줄래|할래|해|요)?|(?:지워|지우|빼)(?:\s*(?:좀|한번))?\s*(?:줘요|주세요|줘|줄래|해줘요|해주세요|해줘|해줄래|할래|해|요)?)/g, ' ')
+      .replace(/(?:전부|모두|전체)/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    stripped = stripped
+      .replace(/^(?:에|로|를|을|좀|한번)\s*/g, '')
+      .replace(/^["'“”‘’]+|["'“”‘’]+$/g, '')
+      .trim();
+    return stripped;
+  }
+
+  function parseTimetableMemoAddMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !/(?:시간표)?메모/.test(compact)) return null;
+    if (!hasAddAction(compact) || hasRemoveAction(compact)) return null;
+
+    const dateSpec = parseDateExpression(compact);
+    return {
+      type:'mutation',
+      intent:'add_timetable_memo',
+      division:detectDivision(compact),
+      dateSpec,
+      dateLabel:dateSpec ? dateSpec.label : '',
+      timeSlot:firstTimeSlot(raw),
+      classGroup:firstClassGroup(raw),
+      memoNote:extractTimetableMemoNote(raw),
+      originalText:raw
+    };
+  }
+
+  function parseTimetableMemoDeleteMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !/(?:시간표)?메모/.test(compact)) return null;
+    if (!hasRemoveAction(compact)) return null;
+
+    const dateSpec = parseDateExpression(compact);
+    return {
+      type:'mutation',
+      intent:'delete_timetable_memo',
+      division:detectDivision(compact),
+      dateSpec,
+      dateLabel:dateSpec ? dateSpec.label : '',
+      timeSlot:firstTimeSlot(raw),
+      classGroup:firstClassGroup(raw),
+      memoNote:extractTimetableMemoNote(raw),
+      originalText:raw
+    };
+  }
+
   function parseSingleWriteIntent(text) {
     const normalizedText = cleanText(text);
-    return parseAbsenceMutationIntent(normalizedText)
+    return parseTimetableMemoDeleteMutationIntent(normalizedText)
+      || parseTimetableMemoAddMutationIntent(normalizedText)
+      || parseAbsenceMutationIntent(normalizedText)
       || parseTrialCancelMutationIntent(normalizedText)
       || parseMakeupCancelMutationIntent(normalizedText)
       || parseMoveCancelMutationIntent(normalizedText)
@@ -1770,6 +1836,8 @@
     parsePickupCancelMutationIntent,
     parsePickupUpdateMutationIntent,
     parsePickupMutationIntent,
+    parseTimetableMemoAddMutationIntent,
+    parseTimetableMemoDeleteMutationIntent,
     parseMultiWriteIntent,
     parseClassMutationIntent,
     parseDateExpression,
