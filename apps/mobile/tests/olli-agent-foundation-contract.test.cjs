@@ -18,8 +18,10 @@ test('independent olli-agent endpoint keeps diagnostics isolated from the existi
   const endpoint = read('api/olli-agent.js');
   const chat = read('api/chat.js');
 
-  assert.match(endpoint, /\['probe', 'privacy_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe'\]\.includes\(mode\)/);
+  assert.match(endpoint, /\['probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe'\]\.includes\(mode\)/);
   assert.match(endpoint, /mode === 'privacy_probe'/);
+  assert.match(endpoint, /mode === 'profile_probe'/);
+  assert.match(endpoint, /runStudentProfileProbe/);
   assert.match(endpoint, /mode === 'schedule_probe'/);
   assert.match(endpoint, /mode === 'records_probe'/);
   assert.match(endpoint, /mode === 'availability_probe'/);

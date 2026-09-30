@@ -619,6 +619,90 @@ async function runPickupProbe({
   };
 }
 
+
+async function runStudentProfileProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+}) {
+  assertOpenAiKey();
+
+  const subjectRefs = Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+
+  if (preparedPrivacy?.needsDisambiguation) {
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+
+  if (subjectRefs.length !== 1) {
+    throw runtimeError(
+      '학생 기본정보 조회에서는 학생 한 명을 정확히 지정해 주세요.',
+      400,
+      'OLLI_AGENT_SINGLE_STUDENT_REQUIRED'
+    );
+  }
+
+  const { Agent, run, tool, z } = await loadAgentsSdk();
+  const { createGetStudentProfileTool } = require('./tools/profile-tools.cjs');
+  const { sanitizeAgentToolPayload } = require('./privacy.cjs');
+  const model = agentModel();
+  const onlyLabel = subjectRefs[0].label;
+
+  const getStudentProfile = createGetStudentProfileTool({
+    tool,
+    z,
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    sanitizePayload(payload) {
+      return sanitizeAgentToolPayload(payload, preparedPrivacy);
+    },
+  });
+
+  const agent = new Agent({
+    name:'Olli Student Profile Probe',
+    model,
+    instructions:[
+      'You are the Olli academy student-profile assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The only available anonymous student label for this run is ' + onlyLabel + '.',
+      'Always use get_student_profile before answering a student basic-profile question.',
+      'The tool intentionally returns only minimum profile fields: division, current status, grade, age, and enrollment date.',
+      'School or kindergarten names, personality labels, memos, old lesson-day/time fields, internal IDs, and the real student name are intentionally excluded.',
+      'If the user asks for an excluded field, explain briefly that it is not available in this AI profile scope instead of guessing.',
+      'Use only the tool result. Do not infer missing grade, age, or dates.',
+      'Never ask for, infer, or reveal a real student name, UUID, member ID, session token, academy ID, school name, kindergarten name, or memo.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[getStudentProfile],
+    modelSettings:{ toolChoice:'get_student_profile' },
+  });
+
+  const result = await run(agent, preparedPrivacy.safeText, {
+    context:agentContext,
+  });
+
+  const finalOutput = String(result?.finalOutput || '').trim();
+  if (!finalOutput) {
+    throw runtimeError(
+      '학생 기본정보 Agent 응답이 비어 있습니다.',
+      502,
+      'OLLI_AGENT_EMPTY_STUDENT_PROFILE_RESPONSE'
+    );
+  }
+
+  return {
+    ready:true,
+    model,
+    output:finalOutput,
+    nodeVersion:process.versions.node,
+  };
+}
+
 module.exports = {
   MIN_NODE_MAJOR,
   assertSupportedNodeRuntime,
@@ -631,4 +715,5 @@ module.exports = {
   runScheduleAvailabilityProbe,
   runAttendanceProbe,
   runPickupProbe,
+  runStudentProfileProbe,
 };
