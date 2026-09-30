@@ -275,8 +275,8 @@ test('Team Talk composer measurement no longer applies composer delta to chat sc
   const end=source.indexOf('function scheduleOlliTalkChatToComposer',start);
   const body=source.slice(start,end);
   assert.doesNotMatch(body,/composerDelta/);
-  assert.doesNotMatch(body,/chatArea\.scrollTop/);
-  assert.doesNotMatch(body,/followBottom/);
+  assert.doesNotMatch(body,/chatArea\.scrollTop \+ /);
+  assert.match(body,/olliTalkFollowBottomDuringKeyboardTransition/);
 });
 
 test('Team Talk realtime refresh preserves middle scroll and follows only when near bottom', () => {
@@ -324,13 +324,24 @@ test('Team Talk composer action buttons use a very light gray background and thi
 });
 
 
-test('Team Talk keyboard settling never moves the current chat scroll position', () => {
+test('Team Talk keyboard settling does not restore the old composer-delta scroll correction', () => {
   const start = source.indexOf('function finishOlliTalkViewportTransition');
   const end = source.indexOf('function scheduleOlliTalkViewportSettle', start);
   const body = source.slice(start, end);
   assert.match(body, /syncOlliTalkChatToComposer\(\)/);
-  assert.doesNotMatch(body, /chatArea\.scrollTop|startScrollTop|startTop|finalTop|followBottom|delta/);
+  assert.doesNotMatch(body, /startScrollTop|startTop|finalTop|delta/);
   assert.doesNotMatch(source, /olliTalkViewportTransitionComposerTop|olliTalkViewportTransitionChatScrollTop|olliTalkViewportTransitionUserTouchedChat|olliTalkFollowBottomAfterViewportSettle/);
+});
+
+test('Team Talk keeps the newest message visible above composer only when focus starts near bottom', () => {
+  assert.match(source, /let olliTalkFollowBottomDuringKeyboardTransition = false/);
+  assert.match(source, /input\.addEventListener\('focus',[\s\S]{0,220}isOlliTalkChatNearBottom\(chatArea\)/);
+  const start = source.indexOf('function syncOlliTalkChatToComposer');
+  const end = source.indexOf('function scheduleOlliTalkChatToComposer', start);
+  const body = source.slice(start, end);
+  assert.match(body, /olliTalkFollowBottomDuringKeyboardTransition/);
+  assert.match(body, /chatArea\.scrollTop = chatArea\.scrollHeight/);
+  assert.match(source, /olliTalkChatGestureActive = true;[\s\S]{0,180}olliTalkFollowBottomDuringKeyboardTransition = false/);
 });
 
 test('Team Talk direct first touch focuses like mention without cancelling tap or caret placement', () => {

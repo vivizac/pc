@@ -12,6 +12,7 @@
   let olliTalkChatMeasureRaf = 0;
   let olliTalkChatTrackingBound = false;
   let olliTalkComposerResizeObserver = null;
+  let olliTalkFollowBottomDuringKeyboardTransition = false;
   let olliTalkChatGestureActive = false;
   let olliTalkChatGestureSettleTimer = null;
   let olliTalkComposerViewportLock = null;
@@ -167,7 +168,14 @@
     // This replaces the old full-height scroller + bottom padding reserve.
     screen.style.setProperty('--olli-talk-chat-bottom-gap', bottomGap + 'px');
 
-    // Keyboard/composer geometry may resize this scroller, but it never owns chat scrollTop.
+    // If the user was already at the newest message when the keyboard started
+    // opening, keep the newest message attached just above the moving composer.
+    if (olliTalkFollowBottomDuringKeyboardTransition && !olliTalkChatGestureActive) {
+      requestAnimationFrame(() => {
+        if (!chatArea.isConnected || !olliTalkFollowBottomDuringKeyboardTransition) return;
+        chatArea.scrollTop = chatArea.scrollHeight;
+      });
+    }
   }
 
   function scheduleOlliTalkChatToComposer(){
@@ -345,6 +353,7 @@
     if (!keyboardOpen && !inputFocused) {
       releaseOlliTalkComposerViewportLock();
       olliTalkKeyboardTransitionActive = false;
+      olliTalkFollowBottomDuringKeyboardTransition = false;
       hideOlliTalkMentionMenu();
       olliTalkKeyboardBaselineBottom = 0;
     }
@@ -4402,6 +4411,7 @@
     olliTalkChatGestureActive = false;
     releaseOlliTalkComposerViewportLock();
     olliTalkKeyboardTransitionActive = false;
+    olliTalkFollowBottomDuringKeyboardTransition = false;
   }
 
   async function slideOlliTalkOutTo(targetScreen){
@@ -4835,6 +4845,8 @@
         olliTalkChatGestureSettleTimer = null;
       }
       olliTalkChatGestureActive = true;
+      // Once the user deliberately scrolls the chat, never pull it back to bottom.
+      olliTalkFollowBottomDuringKeyboardTransition = false;
     };
     const endOlliTalkChatGesture = () => {
       if (!olliTalkChatGestureActive && !olliTalkChatGestureSettleTimer) return;
@@ -4919,6 +4931,8 @@
       });
       input.addEventListener('focus', () => {
         const screen = getScreen();
+        const chatArea = document.getElementById('olliTalkBetaChatArea');
+        olliTalkFollowBottomDuringKeyboardTransition = isOlliTalkChatNearBottom(chatArea);
         releaseOlliTalkComposerViewportLock();
         olliTalkKeyboardTransitionActive = true;
         captureOlliTalkKeyboardBaseline(true);
