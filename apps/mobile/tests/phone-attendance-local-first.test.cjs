@@ -43,7 +43,7 @@ test('attendance summary old implementation is fully deleted before the rebuild'
 
 test('rebuilt attendance summary owns one static button and one dedicated runtime', () => {
   assert.match(html, /id="recordAttendanceSummaryToggle"[^>]*onclick="toggleRecordAttendanceSummary\(event\)"/);
-  assert.match(html, /olli-record-attendance-summary\.js\?v=20260930-summary-v2/);
+  assert.match(html, /olli-record-attendance-summary\.js\?v=20260930-summary-v3/);
   assert.match(html, /olli-record-attendance-summary\.css\?v=20260930-summary-v1/);
   assert.match(attendanceSummary, /global\.toggleRecordAttendanceSummary = toggle/);
   assert.match(attendanceSummary, /global\.OlliRecordAttendanceSummary = Object\.freeze/);
@@ -172,7 +172,7 @@ test('phone loads cache-busted shared and adapter attendance scripts', () => {
   assert.match(html, /olli-attendance-phone-adapter\.js\?v=20260930-summary-v1/);
   assert.match(html, /olli-attendance-record\.css\?v=20260930-summary-reset-1/);
   assert.match(html, /olli-record-list-view\.js\?v=20260930-summary-v1/);
-  assert.match(html, /olli-record-attendance-summary\.js\?v=20260930-summary-v2/);
+  assert.match(html, /olli-record-attendance-summary\.js\?v=20260930-summary-v3/);
   assert.match(html, /olli-record-attendance-summary\.css\?v=20260930-summary-v1/);
   assert.match(html, /olli-attendance-sync-fallback\.js\?v=20260930-clean-1/);
   assert.match(html, /olli-record-room-navigation\.js\?v=20260930-attendance-runtime-cleanup-1/);
@@ -209,6 +209,26 @@ test('attendance summary uses explicit events instead of DOM observers or geomet
   assert.match(attendanceSummary, /addEventListener\('olli:attendance-changed'/);
   assert.match(adapter, /emitRecordListRendered\(view\)/);
   assert.match(adapter, /emitAttendanceChanged\(student\.id\)/);
+});
+
+test('attendance summary does not clear visible summary rows during background list rerenders', () => {
+  const start = attendanceSummary.indexOf('function scheduleRows');
+  const end = attendanceSummary.indexOf('function updateButton', start);
+  const body = attendanceSummary.slice(start, end);
+  assert.doesNotMatch(body, /clearRows\(\)/);
+  assert.match(body, /restoreCachedRows\(rows\)/);
+  assert.match(attendanceSummary, /const summaryCache = new Map\(\)/);
+  assert.match(attendanceSummary, /data-attendance-summary-key/);
+  assert.match(attendanceSummary, /existing\?\.getAttribute\('data-attendance-summary-key'\) === payload\.key/);
+  assert.match(attendanceSummary, /addEventListener\('olli:record-list-rendered',[\s\S]*?scheduleRows\(\{ restoreCache: true \}\)/);
+});
+
+test('attendance summary clears rows only when the user turns the summary off', () => {
+  const start = attendanceSummary.indexOf('function toggle');
+  const end = attendanceSummary.indexOf('function refreshStudent', start);
+  const body = attendanceSummary.slice(start, end);
+  assert.match(body, /if \(active\) scheduleRows\(\{ restoreCache: false \}\)/);
+  assert.match(body, /else \{[\s\S]*?clearRows\(\)/);
 });
 
 test('attendance summary listens to the exact event emitted by the attendance adapter', () => {
