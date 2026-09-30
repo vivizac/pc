@@ -264,3 +264,29 @@ test('QuickNote programmatic refocus paths keep preventScroll protection', () =>
   assert.doesNotMatch(js,/if \(textInput\) textInput\.focus\(\);/);
   assert.match(js,/textInput\.focus\(\{ preventScroll:true \}\)/);
 });
+
+
+test('QuickNote guide area is excluded from vertical chat scrolling without shrinking the chat scroller', () => {
+  const questionRule = css.match(/#kinderChatFeedbackScreen \.kcfQuestionGuide \{[\s\S]*?\}/)?.[0] || '';
+  const keywordRule = css.match(/#kinderChatFeedbackScreen \.kcfKeywordScroller \{[\s\S]*?\}/)?.[0] || '';
+  const buttonRule = css.match(/#kinderChatFeedbackScreen \.kcfKeywordBtn \{[\s\S]*?\}/)?.[0] || '';
+  const chatRule = css.match(/#kinderChatFeedbackScreen \.kcfChatArea\{[\s\S]*?\}/)?.[0] || '';
+
+  assert.match(questionRule,/touch-action:none/);
+  assert.match(questionRule,/overscroll-behavior:contain/);
+  assert.match(keywordRule,/touch-action:pan-x/);
+  assert.match(keywordRule,/overscroll-behavior-y:none/);
+  assert.match(buttonRule,/touch-action:pan-x/);
+  assert.match(chatRule,/overflow-y:auto/);
+});
+
+test('QuickNote guide visibility and question height immediately refresh composer reserve', () => {
+  assert.match(js,/function applyKinderChatFeedbackGuideVisibility\(\)[\s\S]*?scheduleKinderChatFeedbackChatToComposer\(\)/);
+  assert.match(js,/guide\.classList\.remove\('show'\);[\s\S]{0,100}scheduleKinderChatFeedbackChatToComposer\(\)/);
+  assert.match(js,/guide\.classList\.add\('show'\);[\s\S]{0,100}scheduleKinderChatFeedbackChatToComposer\(\)/);
+});
+
+test('QuickNote guide touch guard blocks vertical fallthrough but preserves horizontal keyword swipe', () => {
+  assert.match(js,/questionGuide\.addEventListener\('touchmove',[\s\S]*?event\.preventDefault\(\)[\s\S]*?event\.stopPropagation\(\)[\s\S]*?passive:false/);
+  assert.match(js,/keywordScroller\.addEventListener\('touchmove',[\s\S]*?deltaY <= deltaX[\s\S]*?event\.preventDefault\(\)[\s\S]*?event\.stopPropagation\(\)[\s\S]*?passive:false/);
+});

@@ -667,6 +667,9 @@
   background:transparent;
   border:none;
   box-shadow:none;
+  pointer-events:auto;
+  touch-action:none;
+  overscroll-behavior:contain;
 }
 #kinderChatFeedbackScreen .kcfQuestionGuide.show { display:block; }
 #kinderChatFeedbackScreen .kcfQuestionList {
@@ -1067,10 +1070,15 @@
   -webkit-overflow-scrolling:touch;
   padding:1px 0 2px;
   scrollbar-width:none;
+  pointer-events:auto;
+  touch-action:pan-x;
+  overscroll-behavior-x:contain;
+  overscroll-behavior-y:none;
 }
 #kinderChatFeedbackScreen .kcfKeywordScroller::-webkit-scrollbar { display:none; }
 #kinderChatFeedbackScreen .kcfKeywordBtn {
   flex:0 0 auto;
+  touch-action:pan-x;
   height:32px;
   border:none;
   border-radius:999px;

@@ -119,6 +119,7 @@ function applyKinderChatFeedbackGuideVisibility(){
   const screen = document.getElementById('kinderChatFeedbackScreen');
   if (!screen) return;
   screen.classList.toggle('kcfGuideHidden', !isKinderChatFeedbackGuideVisible());
+  scheduleKinderChatFeedbackChatToComposer();
 }
 function setKinderChatFeedbackGuideVisibility(visible){
   try {
@@ -484,6 +485,8 @@ function bindKinderChatFeedbackViewportInteractions() {
 
   const chatArea = document.getElementById('kcfChatArea');
   const input = getKinderChatFeedbackInput();
+  const questionGuide = document.getElementById('kcfQuestionGuide');
+  const keywordScroller = document.getElementById('kcfKeywordScroller');
 
   const beginKinderChatFeedbackChatGesture = () => {
     if (kcfChatGestureSettleTimer) {
@@ -511,6 +514,45 @@ function bindKinderChatFeedbackViewportInteractions() {
     window.addEventListener('pointercancel', endKinderChatFeedbackChatGesture, { passive:true });
     window.addEventListener('touchend', endKinderChatFeedbackChatGesture, { passive:true });
     window.addEventListener('touchcancel', endKinderChatFeedbackChatGesture, { passive:true });
+  }
+
+  if (questionGuide) {
+    questionGuide.addEventListener('touchmove', event => {
+      if (!questionGuide.classList.contains('show')) return;
+      event.preventDefault();
+      event.stopPropagation();
+    }, { passive:false });
+  }
+
+  if (keywordScroller) {
+    let keywordTouchStartX = null;
+    let keywordTouchStartY = null;
+
+    keywordScroller.addEventListener('touchstart', event => {
+      const touch = event.touches?.[0];
+      keywordTouchStartX = touch ? Number(touch.clientX) : null;
+      keywordTouchStartY = touch ? Number(touch.clientY) : null;
+    }, { passive:true });
+
+    keywordScroller.addEventListener('touchmove', event => {
+      const touch = event.touches?.[0];
+      if (!touch || !Number.isFinite(keywordTouchStartX) || !Number.isFinite(keywordTouchStartY)) return;
+      const deltaX = Math.abs(Number(touch.clientX) - keywordTouchStartX);
+      const deltaY = Math.abs(Number(touch.clientY) - keywordTouchStartY);
+
+      // Keyword chips keep their native horizontal swipe, but a vertical drag
+      // that starts on the guide area never falls through to chat/page scrolling.
+      if (deltaY < 6 || deltaY <= deltaX) return;
+      event.preventDefault();
+      event.stopPropagation();
+    }, { passive:false });
+
+    const clearKeywordTouch = () => {
+      keywordTouchStartX = null;
+      keywordTouchStartY = null;
+    };
+    keywordScroller.addEventListener('touchend', clearKeywordTouch, { passive:true });
+    keywordScroller.addEventListener('touchcancel', clearKeywordTouch, { passive:true });
   }
 
   if (input) {
@@ -2223,11 +2265,13 @@ function renderKinderChatFeedbackGuide(key) {
   if (!data) {
     guide.innerHTML = '';
     guide.classList.remove('show');
+    scheduleKinderChatFeedbackChatToComposer();
     return;
   }
   const icon = '<svg class="kcfQuestionIcon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"></circle><path d="M15 15l4 4"></path></svg>';
   guide.innerHTML = `<ul class="kcfQuestionList">${data.questions.map(q => `<li>${icon}<span class="kcfQuestionText">${escapeHtml(q)}</span></li>`).join('')}</ul>`;
   guide.classList.add('show');
+  scheduleKinderChatFeedbackChatToComposer();
 }
 function toggleKinderChatFeedbackKeyword(key, button) {
   const buttons = document.querySelectorAll('.kcfKeywordBtn');
