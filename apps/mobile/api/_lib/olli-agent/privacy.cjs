@@ -4,7 +4,10 @@ const {
   preparePrivacySafeMessages,
   assertPreparedPrivacyEgress,
   collectStudentNameVariants,
+  buildPrivacyPlan,
 } = require('../ai-privacy-gateway.cjs');
+const { sanitizeValue } = require('../ai-privacy-sanitizer.cjs');
+const { assertSafeEgress } = require('../ai-egress-guard.cjs');
 const {
   resolveStudentReferences,
   createSubjectAccess,
@@ -41,6 +44,33 @@ function unresolvedSensitiveEntities(resolution) {
   });
 
   return entities;
+}
+
+function buildAgentToolPrivacyPlan(resolution) {
+  const resolved = Array.isArray(resolution?.resolved) ? resolution.resolved : [];
+  const primary = resolved[0] || null;
+  const related = resolved.slice(1);
+
+  return buildPrivacyPlan({
+    subject: primary?.student?.row || {},
+    relatedStudents: related.map((item) => item.student.row),
+    sensitiveEntities: unresolvedSensitiveEntities(resolution),
+  });
+}
+
+function sanitizeAgentToolPayload(value, preparedPrivacy) {
+  const resolution = preparedPrivacy?.rawResolution;
+  if (!resolution) {
+    const error = new Error('Agent Tool 결과를 익명화할 개인정보 범위를 확인하지 못했습니다.');
+    error.statusCode = 500;
+    error.code = 'OLLI_AGENT_PRIVACY_CONTEXT_MISSING';
+    throw error;
+  }
+
+  const plan = buildAgentToolPrivacyPlan(resolution);
+  const sanitized = sanitizeValue(value, { entities: plan.entities });
+  assertSafeEgress(sanitized, { forbiddenValues: plan.forbiddenValues });
+  return sanitized;
 }
 
 function prepareAgentPrivacyFromResolution(text, resolution) {
@@ -101,6 +131,7 @@ async function prepareAgentPrivacyInput(text, requestContext, options = {}) {
 
 module.exports = {
   safeSubjectRefs,
+  sanitizeAgentToolPayload,
   prepareAgentPrivacyFromResolution,
   prepareAgentPrivacyInput,
 };
