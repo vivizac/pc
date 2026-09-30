@@ -25,7 +25,7 @@ function subjectAccess(division = 'kinder') {
   };
 }
 
-function baseRpc(overrides = {}) {
+function baseRpc(options = {}) {
   const calls = [];
   const rpc = async (name, params) => {
     calls.push({name, params});
@@ -46,12 +46,11 @@ function baseRpc(overrides = {}) {
       return { ok:true, academy:{ kinder_timetable_mode:'half_hour' } };
     }
     if (name === 'olli_schedule_week') {
-      return { ok:true, pickups:[] };
+      return options.scheduleWeek || { ok:true, pickups:[] };
     }
     if (name === 'olli_team_chat_send_action') {
       return { ok:true, message:{ action:{ id:'hidden-action-id', status:'pending' } } };
     }
-    if (typeof overrides[name] === 'function') return overrides[name](params);
     throw new Error('unexpected RPC: ' + name);
   };
   return { calls, rpc };
@@ -199,18 +198,16 @@ test('same request id produces the same pickup action client id', () => {
 
 test('existing same student weekday and class blocks a second add action before storage', async () => {
   const {calls, rpc} = baseRpc({
-    olli_schedule_week() {
-      return {
-        ok:true,
-        pickups:[{
-          id:'existing-pickup',
-          student_id:'11111111-1111-4111-8111-111111111111',
-          weekday:4,
-          class_time:8,
-          effective_from:'2026-09-01',
-          effective_to:null,
-        }],
-      };
+    scheduleWeek:{
+      ok:true,
+      pickups:[{
+        id:'existing-pickup',
+        student_id:'11111111-1111-4111-8111-111111111111',
+        weekday:4,
+        class_time:8,
+        effective_from:'2026-09-01',
+        effective_to:null,
+      }],
     },
   });
 
