@@ -7,6 +7,7 @@ const navigation = fs.readFileSync('olli-record-room-navigation.js', 'utf8');
 const observationRuntime = fs.readFileSync('olli-observation-runtime.js', 'utf8');
 const attendanceSummary = fs.readFileSync('olli-record-attendance-summary.js', 'utf8');
 const attendanceSummaryCss = fs.readFileSync('olli-record-attendance-summary.css', 'utf8');
+const recordSearchControls = fs.readFileSync('olli-record-search-controls.js', 'utf8');
 const syncFallback = fs.readFileSync('olli-attendance-sync-fallback.js', 'utf8');
 const studentOperations = fs.readFileSync('olli-data-student-operations.js', 'utf8');
 const recordListView = fs.readFileSync('olli-record-list-view.js', 'utf8');
@@ -39,6 +40,20 @@ test('attendance summary old implementation is fully deleted before the rebuild'
   assert.doesNotMatch(adapter, /OlliAttendanceGuide/);
   assert.doesNotMatch(observationRuntime, /renderRecordAttendanceSummary|getRecordAttendanceStudentMonthSummary|getRecordAttendanceMonthRange|formatRecordAttendanceDayList/);
   assert.doesNotMatch(attendanceRecordCss, /recordAttendanceGuide|recordAttendanceSummaryWrap|recordAttendanceSummaryTable|recordAttendanceToggle/);
+});
+
+test('record search remains open with a query when the keyboard closes', () => {
+  assert.match(recordSearchControls, /function shouldKeepRecordSearchOpenWithoutKeyboard\(\)/);
+  assert.match(recordSearchControls, /isRecordSearchOpen\(\)[\s\S]*?String\(input\.value \|\| ''\)\.trim\(\)/);
+  assert.match(recordSearchControls, /if \(shouldKeepRecordSearchOpenWithoutKeyboard\(\)\) \{[\s\S]*?record-keyboard-offset'[\s\S]*?return;/);
+  assert.match(recordSearchControls, /if \(keyboardClosed && isRecordSearchOpen\(\) && document\.activeElement !== input\) \{[\s\S]*?shouldKeepRecordSearchOpenWithoutKeyboard\(\)[\s\S]*?return;[\s\S]*?closeSearch\(\)/);
+});
+
+test('record search still closes explicitly or when no query remains', () => {
+  assert.match(recordSearchControls, /function closeSearch\(event\)/);
+  assert.match(recordSearchControls, /if \(isRecordSearchOpen\(\)\) \{\s*closeSearch\(\);\s*return;/);
+  assert.match(recordSearchControls, /function restoreRecordSearchIfKeyboardClosed\(\)[\s\S]*?if \(shouldKeepRecordSearchOpenWithoutKeyboard\(\)\) return;\s*closeSearch\(\);/);
+  assert.match(html, /olli-record-search-controls\.js\?v=20260930-search-preserve-1/);
 });
 
 test('attendance summary button exists only for record search mode', () => {
