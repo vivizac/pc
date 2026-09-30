@@ -24,7 +24,7 @@ test('phone mention picker offers Olli as a virtual AI target without registerin
   assert.match(talk, /if \(member\?\.is_olli_ai === true\) return/);
   assert.match(talk, /olliAiMentionRequested && !isOlliTalkAiEnabled\(\)/);
   assert.match(talk, /const usingAi = olliAiMentionRequested \|\| isOlliTalkAiEnabled\(\)/);
-  assert.match(html, /olli-talk-beta\.js\?v=20260930-keyboard-lock-1/);
+  assert.match(html, /olli-talk-beta\.js\?v=20260930-scroll-split-1/);
 });
 
 test('phone AI mention keeps bounded conversation context while the Olli mention remains active', () => {
