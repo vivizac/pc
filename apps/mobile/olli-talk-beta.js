@@ -12,7 +12,6 @@
   let olliTalkChatMeasureRaf = 0;
   let olliTalkChatTrackingBound = false;
   let olliTalkComposerResizeObserver = null;
-  let olliTalkLastComposerTop = null;
   let olliTalkFollowBottomAfterViewportSettle = false;
   let olliTalkViewportTransitionComposerTop = null;
   let olliTalkViewportTransitionChatScrollTop = null;
@@ -183,7 +182,7 @@
       || !Number.isFinite(composerRect.top)
     ) return;
 
-    const reserve = Math.max(
+    const bottomGap = Math.max(
       0,
       Math.min(
         Math.ceil(viewportRect.height),
@@ -191,8 +190,9 @@
       )
     );
 
-    screen.style.setProperty('--olli-talk-chat-reserve', reserve + 'px');
-    olliTalkLastComposerTop = composerRect.top;
+    // The message scroller physically ends at the composer's top edge.
+    // This replaces the old full-height scroller + bottom padding reserve.
+    screen.style.setProperty('--olli-talk-chat-bottom-gap', bottomGap + 'px');
 
     // Important: composer / visualViewport movement never directly changes chatArea.scrollTop.
     // Only an explicit settled keyboard transition may keep an already-bottomed chat at bottom.
@@ -4463,7 +4463,6 @@
     olliTalkChatGestureActive = false;
     releaseOlliTalkComposerViewportLock();
     olliTalkKeyboardTransitionActive = false;
-    olliTalkLastComposerTop = null;
     olliTalkFollowBottomAfterViewportSettle = false;
     resetOlliTalkViewportTransitionAnchor();
   }
@@ -4932,37 +4931,41 @@
     }
 
     if (input) {
-      let inputTouchStartX = null;
-      let inputTouchStartY = null;
-      let inputTouchDragActive = false;
+      let composerTouchStartX = null;
+      let composerTouchStartY = null;
+      const composer = input.closest('.olliTalkBetaComposer');
 
       input.addEventListener('pointerdown', event => {
         if (event.pointerType === 'touch') return;
         captureOlliTalkKeyboardBaseline(true);
       }, true);
-      input.addEventListener('touchstart', event => {
-        const touch = event.touches?.[0];
-        inputTouchStartX = touch ? Number(touch.clientX) : null;
-        inputTouchStartY = touch ? Number(touch.clientY) : null;
-        inputTouchDragActive = false;
-      }, { passive:true });
-      input.addEventListener('touchmove', event => {
-        if (inputTouchDragActive) return;
-        const touch = event.touches?.[0];
-        if (!touch || !Number.isFinite(inputTouchStartX) || !Number.isFinite(inputTouchStartY)) return;
-        const deltaX = Math.abs(Number(touch.clientX) - inputTouchStartX);
-        const deltaY = Math.abs(Number(touch.clientY) - inputTouchStartY);
-        if (deltaY < 8 || deltaY <= deltaX) return;
-        inputTouchDragActive = true;
-        beginOlliTalkChatGesture();
-      }, { passive:true });
-      const clearOlliTalkInputTouchGesture = () => {
-        inputTouchStartX = null;
-        inputTouchStartY = null;
-        inputTouchDragActive = false;
-      };
-      window.addEventListener('touchend', clearOlliTalkInputTouchGesture, { passive:true });
-      window.addEventListener('touchcancel', clearOlliTalkInputTouchGesture, { passive:true });
+
+      if (composer) {
+        composer.addEventListener('touchstart', event => {
+          const touch = event.touches?.[0];
+          composerTouchStartX = touch ? Number(touch.clientX) : null;
+          composerTouchStartY = touch ? Number(touch.clientY) : null;
+        }, { passive:true });
+
+        composer.addEventListener('touchmove', event => {
+          if (!getScreen()?.classList.contains('olliTalkKeyboardOpen')) return;
+          const touch = event.touches?.[0];
+          if (!touch || !Number.isFinite(composerTouchStartX) || !Number.isFinite(composerTouchStartY)) return;
+          const deltaX = Math.abs(Number(touch.clientX) - composerTouchStartX);
+          const deltaY = Math.abs(Number(touch.clientY) - composerTouchStartY);
+          if (deltaY < 6 || deltaY <= deltaX) return;
+          // Keep taps/cursor placement, but prevent a vertical drag that starts
+          // inside composer from becoming an iOS page/WKScrollView pan.
+          event.preventDefault();
+        }, { passive:false });
+
+        const clearComposerTouch = () => {
+          composerTouchStartX = null;
+          composerTouchStartY = null;
+        };
+        composer.addEventListener('touchend', clearComposerTouch, { passive:true });
+        composer.addEventListener('touchcancel', clearComposerTouch, { passive:true });
+      }
 
       input.addEventListener('input', () => {
         resizeInput();
