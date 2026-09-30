@@ -125,12 +125,11 @@ test('Team Talk one-minute grouping uses the first bubble in the group', () => {
   assert.match(source, /isOlliTalkConnectedMessage\(groupStartItem, item/);
 });
 
-test('Team Talk keyboard hiding keeps the focused input visible to iOS focus engine', () => {
+test('Team Talk no longer hides the focused composer during keyboard motion', () => {
   const css = fs.readFileSync(path.join(root, 'olli-talk-beta.css'), 'utf8');
-  const moving = css.match(/#olliTalkBetaScreen\.olliTalkViewportMoving \.olliTalkBetaComposerWrap\{([\s\S]*?)\}/)?.[1] || '';
-  assert.match(moving, /opacity:0/);
-  assert.doesNotMatch(moving, /visibility:hidden/);
-  assert.doesNotMatch(moving, /display:none/);
+  assert.doesNotMatch(css, /#olliTalkBetaScreen\.olliTalkViewportMoving \.olliTalkBetaComposerWrap\{[\s\S]*?opacity:0/);
+  assert.doesNotMatch(css, /#olliTalkBetaScreen\.olliTalkViewportMoving \.olliTalkBetaComposerWrap\{[\s\S]*?visibility:hidden/);
+  assert.doesNotMatch(css, /#olliTalkBetaScreen\.olliTalkViewportMoving \.olliTalkBetaComposerWrap\{[\s\S]*?display:none/);
 });
 
 
