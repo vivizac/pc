@@ -531,6 +531,94 @@ async function runAttendanceProbe({
   };
 }
 
+
+async function runPickupProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+}) {
+  assertOpenAiKey();
+
+  const subjectRefs = Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+
+  if (preparedPrivacy?.needsDisambiguation) {
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+
+  if (subjectRefs.length !== 1) {
+    throw runtimeError(
+      '픽업 조회에서는 학생 한 명을 정확히 지정해 주세요.',
+      400,
+      'OLLI_AGENT_SINGLE_STUDENT_REQUIRED'
+    );
+  }
+
+  const { Agent, run, tool, z } = await loadAgentsSdk();
+  const { createGetPickupsTool } = require('./tools/pickup-tools.cjs');
+  const { sanitizeAgentToolPayload } = require('./privacy.cjs');
+  const model = agentModel();
+  const today = todayInSeoul();
+  const onlyLabel = subjectRefs[0].label;
+
+  const getPickups = createGetPickupsTool({
+    tool,
+    z,
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    sanitizePayload(payload) {
+      return sanitizeAgentToolPayload(payload, preparedPrivacy);
+    },
+  });
+
+  const agent = new Agent({
+    name:'Olli Pickup Probe',
+    model,
+    instructions:[
+      'You are the Olli academy pickup-schedule assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The only available anonymous student label for this run is ' + onlyLabel + '.',
+      'Today in Korea is ' + today + '.',
+      'Always use get_pickups before answering a pickup question.',
+      'If the user names a date or range, use it. For this week or next week, use the corresponding Monday through Saturday. If no date is given, use today through the next 7 days.',
+      'The maximum tool date range is 62 days.',
+      'The tool distinguishes arrival pickup and dropoff. Arrival may have a place and time; dropoff has a place and may not have a time.',
+      'If pickup_supported is false, explain that the student division is not using the kinder pickup timetable.',
+      'Closed days are excluded from pickup occurrences.',
+      'Use only the tool result. Do not invent times, locations, or transport details.',
+      'Never ask for, infer, or reveal a real student name, UUID, pickup row ID, member ID, session token, or academy ID.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[getPickups],
+    modelSettings:{ toolChoice:'get_pickups' },
+  });
+
+  const result = await run(agent, preparedPrivacy.safeText, {
+    context:agentContext,
+  });
+
+  const finalOutput = String(result?.finalOutput || '').trim();
+  if (!finalOutput) {
+    throw runtimeError(
+      '픽업 Agent 응답이 비어 있습니다.',
+      502,
+      'OLLI_AGENT_EMPTY_PICKUP_RESPONSE'
+    );
+  }
+
+  return {
+    ready:true,
+    model,
+    output:finalOutput,
+    nodeVersion:process.versions.node,
+  };
+}
+
 module.exports = {
   MIN_NODE_MAJOR,
   assertSupportedNodeRuntime,
@@ -542,4 +630,5 @@ module.exports = {
   resolveAvailabilityScope,
   runScheduleAvailabilityProbe,
   runAttendanceProbe,
+  runPickupProbe,
 };
