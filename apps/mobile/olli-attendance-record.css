@@ -271,7 +271,7 @@
   background:#f1f1f1 !important;
 }
 
-/* 학생 이름과 가이드 텍스트를 한 줄에 표시한다. */
+/* 학생 이름과 기본 학생정보를 한 줄에 표시한다. */
 #recordRoomScreen .elementaryStudentRow .studentTextWrap,
 #recordRoomScreen .kinderStudentRow .studentTextWrap{
   min-width:0;
@@ -305,32 +305,64 @@
 }
 
 
-/* 출결 가이드 출력만 이름 아래에 겹쳐 표시한다.
-   이름 자체의 기존 수직 위치와 학생행 높이는 바꾸지 않는다. */
-#recordRoomScreen .studentTextWrap.recordAttendanceGuideTextWrap{
+/* Clean attendance guide: one static button and one per-student output layer. */
+#recordAttendanceGuideToggle.recordAttendanceGuideBtn{
+  margin-left:auto;
+  margin-right:16px;
+  min-width:52px;
+  height:32px;
+  padding:0 12px;
+  border:0;
+  border-radius:999px;
+  background:#f7f7f7;
+  color:#111;
+  font-family:inherit;
+  font-size:calc(12.5px * var(--olli-text-scale));
+  font-weight:500;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+#recordAttendanceGuideToggle.recordAttendanceGuideBtn.active{
+  background:#0A84FF;
+  color:#fff;
+  font-weight:700;
+}
+#recordRoomScreen .studentTextWrap.recordAttendanceGuideHost{
   position:relative;
   overflow:visible;
 }
-#recordRoomScreen .studentTextWrap.recordAttendanceGuideTextWrap > span:first-child{
-  position:relative;
-}
-#recordRoomScreen .studentTextWrap.recordAttendanceGuideTextWrap .studentMetaText.recordAttendanceGuideOutput{
+#recordRoomScreen .recordAttendanceGuideOutput{
   position:absolute;
   left:0;
   top:calc(100% + 2px);
+  display:flex;
+  align-items:baseline;
+  gap:6px;
   width:max-content;
   max-width:calc(100vw - 88px);
-  margin:0;
   overflow:hidden;
   white-space:nowrap;
   text-overflow:ellipsis;
   pointer-events:none;
+  color:#8f8f8f;
+  font-size:calc(12px * var(--olli-text-scale));
+  line-height:1.15;
 }
-#recordRoomScreen .studentTextWrap.recordAttendanceGuideTextWrap .recordAttendanceGuideMeta{
-  max-width:100%;
-  overflow:hidden;
+#recordRoomScreen .recordAttendanceGuideMetric{
+  display:inline-flex;
+  align-items:baseline;
+  gap:3px;
+  white-space:nowrap;
 }
-body.olli-main-subpage-drawer-open #recordRoomScreen .studentTextWrap.recordAttendanceGuideTextWrap .studentMetaText.recordAttendanceGuideOutput{
+#recordRoomScreen .recordAttendanceGuideMetric b{
+  color:#111;
+  font-weight:800;
+}
+#recordRoomScreen .recordAttendanceGuideYear{
+  color:#8f8f8f;
+}
+body.olli-main-subpage-drawer-open #recordRoomScreen .recordAttendanceGuideOutput{
   max-width:calc(75vw - 72px);
 }
 
