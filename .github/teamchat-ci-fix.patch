@@ -1,0 +1,12 @@
+diff --git a/.github/workflows/validate-team-talk-pickup-agent.yml b/.github/workflows/validate-team-talk-pickup-agent.yml
+--- a/.github/workflows/validate-team-talk-pickup-agent.yml
++++ b/.github/workflows/validate-team-talk-pickup-agent.yml
+@@ -58,5 +58,6 @@
+       - name: Validate PC Team Chat pickup Agent bridge
++        working-directory: apps/pc
+         run: |
+           node --test \
+-            apps/pc/tests/team-talk-ai-mode.test.cjs \
+-            apps/pc/tests/team-talk-pickup-agent-bridge.test.cjs
++            tests/team-talk-ai-mode.test.cjs \
++            tests/team-talk-pickup-agent-bridge.test.cjs
