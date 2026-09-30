@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-30-timetable-memo-write-1';
+  const VERSION = '2026-09-30-memo-auto-class-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -768,7 +768,45 @@
     };
   }
 
+  function quotedTimetableMemoNote(value) {
+    const raw = cleanText(value);
+    const match = raw.match(/(?:‘([^’]+)’|“([^”]+)”|"([^"]+)"|'([^']+)')/);
+    if (!match) return '';
+    return cleanText(match[1] || match[2] || match[3] || match[4]);
+  }
+
+  function stripTimetableMemoTargetParts(value) {
+    return removeDivisionWords(value)
+      .replace(/(?:‘[^’]+’|“[^”]+”|"[^"]+"|'[^']+')/g, ' ')
+      .replace(/[.!?]/g, ' ')
+      .replace(/(?:오늘|금일|내일|(?:(?:이번\s*주|금주|다다음\s*주|다음\s*주|차주)\s*)?[월화수목금토]요일)/g, ' ')
+      .replace(/\d{1,2}\s*월\s*\d{1,2}\s*일/g, ' ')
+      .replace(/\d{1,2}\s*\/\s*\d{1,2}\s*일/g, ' ')
+      .replace(/(?:^|\s)\d{1,2}\s*일(?=\s|$)/g, ' ')
+      .replace(/\d{1,2}\s*시(?:\s*\d{1,2}\s*분)?(?:에서|으로|에|로)?/g, ' ')
+      .replace(/[AaBb]\s*반/g, ' ')
+      .replace(/(?:이라고|라고|이라는|라는)/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function extractTimetableMemoStudentName(value) {
+    const raw = cleanText(value);
+    const memoIndex = raw.search(/(?:시간표\s*)?메모/);
+    if (memoIndex < 0) return '';
+    let prefix = stripTimetableMemoTargetParts(raw.slice(0, memoIndex))
+      .replace(/(?:내용|문구)\s*[:：-]?\s*/g, ' ')
+      .replace(/(?:학생|원생)/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return cleanupStudentName(prefix);
+  }
+
   function extractTimetableMemoNote(value) {
+    const quoted = quotedTimetableMemoNote(value);
+    if (quoted) return quoted;
+
+    const studentName = extractTimetableMemoStudentName(value);
     let stripped = removeDivisionWords(value)
       .replace(/[.!?]/g, ' ')
       .replace(/(?:오늘|금일|내일|(?:(?:이번\s*주|금주|다다음\s*주|다음\s*주|차주)\s*)?[월화수목금토]요일)/g, ' ')
@@ -781,9 +819,14 @@
       .replace(/(?:내용|문구)\s*[:：-]?\s*/g, ' ')
       .replace(addActionPattern(), ' ')
       .replace(/(?:(?:취소|삭제|제거|해제|없애)(?:\s*(?:좀|한번))?\s*(?:해)?(?:줘요|주세요|줘|줄래|해줘요|해주세요|해줘|해줄래|할래|해|요)?|(?:지워|지우|빼)(?:\s*(?:좀|한번))?\s*(?:줘요|주세요|줘|줄래|해줘요|해주세요|해줘|해줄래|할래|해|요)?)/g, ' ')
+      .replace(/(?:이라고|라고|이라는|라는)/g, ' ')
       .replace(/(?:전부|모두|전체)/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+
+    if (studentName && stripped.indexOf(studentName) === 0) {
+      stripped = stripped.slice(studentName.length).trim();
+    }
 
     stripped = stripped
       .replace(/^(?:에|로|를|을|좀|한번)\s*/g, '')
@@ -807,6 +850,7 @@
       dateLabel:dateSpec ? dateSpec.label : '',
       timeSlot:firstTimeSlot(raw),
       classGroup:firstClassGroup(raw),
+      studentName:extractTimetableMemoStudentName(raw),
       memoNote:extractTimetableMemoNote(raw),
       originalText:raw
     };
@@ -827,6 +871,7 @@
       dateLabel:dateSpec ? dateSpec.label : '',
       timeSlot:firstTimeSlot(raw),
       classGroup:firstClassGroup(raw),
+      studentName:extractTimetableMemoStudentName(raw),
       memoNote:extractTimetableMemoNote(raw),
       originalText:raw
     };

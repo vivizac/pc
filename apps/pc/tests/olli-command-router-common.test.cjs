@@ -154,6 +154,18 @@ test('timetable memo add and delete wording parses target and memo content', () 
   assert.equal(remove.memoNote, '앞치마 준비');
 });
 
+test('timetable memo parser keeps quoted memo text and extracts the student for automatic class lookup', () => {
+  const router = loadRouter();
+  const parsed = router.parseTimetableMemoAddMutationIntent('오늘 한재림 ‘오늘 어머님이 픽업’ 이라고 메모 등록해줘');
+
+  assert.equal(parsed.intent, 'add_timetable_memo');
+  assert.equal(parsed.studentName, '한재림');
+  assert.equal(parsed.dateSpec.mode, 'today');
+  assert.equal(parsed.timeSlot, 0);
+  assert.equal(parsed.classGroup, '');
+  assert.equal(parsed.memoNote, '오늘 어머님이 픽업');
+});
+
 test('timetable memo write enters the same confirmation flow as other write commands', async () => {
   let prepared = null;
   const router = loadRouter({
