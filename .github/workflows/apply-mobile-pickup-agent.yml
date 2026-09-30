@@ -1,0 +1,28 @@
+name: Apply mobile pickup Agent patch
+
+on:
+  push:
+    branches:
+      - work/pickup-teamchat-20261001
+    paths:
+      - '.github/mobile-pickup-agent.patch'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - name: Apply focused mobile patch
+        run: |
+          git apply --check .github/mobile-pickup-agent.patch
+          git apply .github/mobile-pickup-agent.patch
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/mobile/olli-talk-beta.js
+          git commit -m "Route mobile AI pickup add through Agent"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
