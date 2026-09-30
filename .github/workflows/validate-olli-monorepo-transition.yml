@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'apps/mobile/**'
+      - 'apps/pc/api/olli-agent.js'
       - 'supabase/migrations/*_schedule_availability_rules_and_read_rpc.sql'
       - 'supabase/migrations/*_agent_student_pickups_range_read_rpc.sql'
       - 'packages/common/**'
@@ -24,6 +25,7 @@ on:
   pull_request:
     paths:
       - 'apps/pc/olli-app-startup.js'
+      - 'apps/pc/api/olli-agent.js'
       - 'apps/mobile/**'
       - 'supabase/migrations/*_schedule_availability_rules_and_read_rpc.sql'
       - 'supabase/migrations/*_agent_student_pickups_range_read_rpc.sql'
@@ -51,6 +53,7 @@ jobs:
         run: |
           node --check apps/mobile/scripts/stage-common.cjs
           node --check apps/pc/scripts/stage-common.cjs
+          node --check apps/pc/api/olli-agent.js
           node --test \
             tests/mobile-self-contained-build.test.cjs \
             tests/pc-self-contained-build.test.cjs \
@@ -99,6 +102,7 @@ jobs:
             tests/olli-agent-attendance-tool.test.cjs \
             tests/olli-agent-pickups-tool.test.cjs \
             tests/olli-agent-pickup-prepare-tool.test.cjs \
+            tests/olli-agent-pickup-production-contract.test.cjs \
             tests/olli-agent-pickups-db-contract.test.cjs \
             tests/olli-agent-student-profile-tool.test.cjs \
             tests/olli-agent-timetable-memo-tool.test.cjs
