@@ -459,16 +459,24 @@ function syncObservationRosterScrollToUtility() {
   const viewport = screen?.querySelector('.observationRosterPageInner');
   const utilityBar = getObservationRosterUtilityBar();
   if (!screen || !viewport || !utilityBar || !isObservationRosterScreenVisible()) return;
+
   const viewportRect = viewport.getBoundingClientRect();
   const utilityRect = utilityBar.getBoundingClientRect();
-  if (!Number.isFinite(viewportRect.bottom) || !Number.isFinite(viewportRect.height) || !Number.isFinite(utilityRect.top)) return;
-  const input = getObservationRosterSearchInput();
-  const keyboardTracking = (!!input && document.activeElement === input)
-    || screen.classList.contains('observation-keyboard-open')
-    || observationRosterKeyboardTransitionActive;
-  const keyboardOffset = keyboardTracking ? getObservationRosterKeyboardOffset() : 0;
-  const measuredReserve = Math.max(0, Math.min(Math.ceil(viewportRect.height), Math.ceil(viewportRect.bottom - utilityRect.top)));
-  screen.style.setProperty('--observation-roster-reserve', Math.max(0, measuredReserve - keyboardOffset) + 'px');
+  if (
+    !Number.isFinite(viewportRect.bottom)
+    || !Number.isFinite(viewportRect.height)
+    || !Number.isFinite(utilityRect.top)
+  ) return;
+
+  // Physical boundary: the roster scroller itself stops above the fixed input.
+  const bottomGap = Math.max(
+    0,
+    Math.min(
+      Math.ceil(viewportRect.height),
+      Math.ceil(viewportRect.bottom - utilityRect.top)
+    )
+  );
+  screen.style.setProperty('--observation-roster-scroll-bottom', bottomGap + 'px');
 }
 function scheduleObservationRosterScrollToUtility() {
   if (observationRosterMeasureRaf) cancelAnimationFrame(observationRosterMeasureRaf);
@@ -534,7 +542,6 @@ function syncObservationRosterViewport(options = {}) {
     syncObservationRosterUtilityViewport({ followKeyboard:true });
   }
   screen.classList.toggle('observation-keyboard-open', keyboardOpen);
-  screen.style.setProperty('--observation-roster-content-lift', (keyboardTracking ? Math.max(0, keyboardOffset) : 0) + 'px');
   scheduleObservationRosterScrollToUtility();
   if (!keyboardOpen && !inputFocused) {
     releaseObservationRosterUtilityViewportLock();
@@ -597,13 +604,15 @@ function bindObservationRosterUtilitySurface() {
       touchStartY = touch ? Number(touch.clientY) : null;
     }, { passive:true });
     utilityBar.addEventListener('touchmove', event => {
-      if (!screen.classList.contains('observation-keyboard-open')) return;
+      const inputFocused = document.activeElement === getObservationRosterSearchInput();
+      if (!inputFocused && !screen.classList.contains('observation-keyboard-open')) return;
       const touch = event.touches?.[0];
       if (!touch || !Number.isFinite(touchStartX) || !Number.isFinite(touchStartY)) return;
       const deltaX = Math.abs(Number(touch.clientX) - touchStartX);
       const deltaY = Math.abs(Number(touch.clientY) - touchStartY);
       if (deltaY < 6 || deltaY <= deltaX) return;
       event.preventDefault();
+      event.stopPropagation();
     }, { passive:false });
     const clearTouch = () => {
       touchStartX = null;
@@ -692,7 +701,6 @@ function closeObservationRosterSearch(event) {
   observationRosterKeyboardTransitionActive = false;
   if (screen) {
     screen.classList.remove('observation-keyboard-open','observation-roster-viewport-moving','observation-roster-viewport-locked');
-    screen.style.setProperty('--observation-roster-content-lift','0px');
   }
   renderObservationRosterList();
   renderObservationRosterUtility();
@@ -707,7 +715,7 @@ function bindObservationRosterFooterEvents() {
       observationRosterSearchFocused = true;
       observationRosterSortPopupOpen = false;
       renderObservationRosterList();
-      renderObservationRosterUtility();
+      scheduleObservationRosterScrollToUtility();
     });
     input.addEventListener('input', () => {
       observationRosterSearchFocused = true;
@@ -841,7 +849,13 @@ function renderObservationRosterUtility() {
 }
 function renderObservationMemoRoster() {
   renderObservationRosterList();
-  renderObservationRosterUtility();
+  const currentInput = getObservationRosterSearchInput();
+  if (!currentInput || document.activeElement !== currentInput) {
+    renderObservationRosterUtility();
+  } else {
+    bindObservationRosterUtilitySurface();
+    bindObservationRosterUtilityTracking();
+  }
   syncObservationRosterViewport();
 }
 function applyObservationMemoNavigationIcons() {
@@ -930,7 +944,6 @@ function hideObservationRosterScreen() {
   observationRosterKeyboardTransitionActive = false;
   observationRosterLastViewportSignature = '';
   rosterScreen.classList.remove('observation-keyboard-open','observation-roster-viewport-moving','observation-roster-viewport-locked');
-  rosterScreen.style.setProperty('--observation-roster-content-lift','0px');
   rosterScreen.style.display = 'none';
 }
 

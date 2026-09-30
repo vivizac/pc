@@ -61,28 +61,6 @@ test('observation roster has fixed top and bottom haze layers behind the control
 });
 
 
-test('Observation roster mirrors QuickNote scroll ownership while search keyboard is open', () => {
-  const page = css.match(/#observationRosterScreen \.observationRosterPageInner \{[\s\S]*?\}/)?.[0] || '';
-  const scroll = css.match(/#observationRosterScreen \.memoBodyRosterScroll \{[\s\S]*?\}/)?.[0] || '';
-  const content = css.match(/#observationRosterScreen \.memoBodyRosterContent \{[\s\S]*?\}/)?.[0] || '';
-  const layer = css.match(/#observationRosterScreen \.observationRosterUtilityLayer \{[\s\S]*?\}/)?.[0] || '';
-  const utility = css.match(/#observationRosterScreen \.memoRosterUtilityBar \{[\s\S]*?\}/)?.[0] || '';
-
-  assert.match(page,/position:absolute/);
-  assert.match(page,/inset:0/);
-  assert.match(page,/overflow:hidden/);
-  assert.match(scroll,/overflow-y:auto/);
-  assert.match(scroll,/overscroll-behavior-y:contain/);
-  assert.match(scroll,/touch-action:pan-y/);
-  assert.match(scroll,/overflow-anchor:none/);
-  assert.match(content,/--observation-roster-content-lift/);
-  assert.match(layer,/position:fixed/);
-  assert.match(layer,/pointer-events:none/);
-  assert.match(utility,/position:absolute !important/);
-  assert.match(utility,/pointer-events:auto !important/);
-  assert.doesNotMatch(utility,/--olli-observation-keyboard-offset/);
-});
-
 test('Observation roster search input uses Team Chat style viewport lock and preventScroll focus', () => {
   assert.match(source,/function syncObservationRosterViewport\(options = \{\}\)/);
   assert.match(source,/function lockObservationRosterUtilityViewport\(\)/);
@@ -90,14 +68,6 @@ test('Observation roster search input uses Team Chat style viewport lock and pre
   assert.match(source,/if \(observationRosterScrollGestureActive\) \{[\s\S]*?observationRosterLastViewportSignature = signature;[\s\S]*?return;/);
   assert.match(source,/input\.focus\(\{ preventScroll:true \}\)/);
   assert.match(source,/utilityBar\.addEventListener\('touchmove',[\s\S]*?event\.preventDefault\(\)[\s\S]*?passive:false/);
-});
-
-test('Observation roster renders a dedicated content layer and visualViewport utility layer', () => {
-  assert.match(source,/memoBodyRosterScroll"><div class="memoBodyRosterContent">/);
-  assert.match(source,/observationRosterUtilityLayer/);
-  assert.match(source,/--observation-roster-reserve/);
-  assert.match(source,/--observation-roster-content-lift/);
-  assert.doesNotMatch(source,/--olli-observation-keyboard-offset/);
 });
 
 
@@ -113,21 +83,6 @@ test('Observation roster search input stays static while typing rerenders only t
   assert.doesNotMatch(source,/input\.addEventListener\('input',[\s\S]{0,500}?renderObservationMemoRoster\(\)/);
 });
 
-test('Observation roster has one scroll owner and one keyboard-lift content layer', () => {
-  const scroll = css.match(/#observationRosterScreen \.memoBodyRosterScroll \{[\s\S]*?\}/)?.[0] || '';
-  const content = css.match(/#observationRosterScreen \.memoBodyRosterContent \{[\s\S]*?\}/)?.[0] || '';
-  const utility = css.match(/#observationRosterScreen \.memoRosterUtilityBar \{[\s\S]*?\}/)?.[0] || '';
-  assert.match(scroll,/overflow-y:auto/);
-  assert.match(scroll,/overscroll-behavior-y:contain/);
-  assert.match(scroll,/touch-action:pan-y/);
-  assert.match(scroll,/overflow-anchor:none/);
-  assert.match(content,/--observation-roster-content-lift/);
-  assert.match(utility,/position:absolute/);
-  assert.match(utility,/transform:none/);
-  assert.doesNotMatch(css,/--olli-observation-keyboard-offset/);
-  assert.doesNotMatch(css,/키보드 포커스 중에만 학생명단 자체의 이동/);
-});
-
 test('Observation roster UtilityLayer alone owns search-bar viewport movement', () => {
   const layer = css.match(/#observationRosterScreen \.observationRosterUtilityLayer \{[\s\S]*?\}/)?.[0] || '';
   assert.match(layer,/position:fixed/);
@@ -136,4 +91,45 @@ test('Observation roster UtilityLayer alone owns search-bar viewport movement', 
   assert.match(source,/function syncObservationRosterUtilityViewport\(options = \{\}\)/);
   assert.match(source,/input\.focus\(\{ preventScroll:true \}\)/);
   assert.match(source,/if \(observationRosterScrollGestureActive\)[\s\S]*?return;/);
+});
+
+
+test('Observation roster physically stops its scroll surface above the fixed search bar', () => {
+  const view = css.match(/#observationRosterScreen #memoStudentRosterView \{[\s\S]*?\}/)?.[0] || '';
+  const scroll = css.match(/#observationRosterScreen \.memoBodyRosterScroll \{[\s\S]*?\}/)?.[0] || '';
+  const content = css.match(/#observationRosterScreen \.memoBodyRosterContent \{[\s\S]*?\}/)?.[0] || '';
+  assert.match(view,/position:relative/);
+  assert.match(view,/overflow:hidden/);
+  assert.match(scroll,/position:absolute/);
+  assert.match(scroll,/bottom:var\(--observation-roster-scroll-bottom, 94px\)/);
+  assert.match(scroll,/overflow-y:auto/);
+  assert.doesNotMatch(scroll,/--observation-roster-reserve/);
+  assert.doesNotMatch(content,/transform:/);
+  assert.doesNotMatch(css,/--observation-roster-content-lift/);
+  assert.doesNotMatch(css,/--observation-roster-reserve/);
+});
+
+test('Observation roster computes the physical scroll bottom directly from the search bar top', () => {
+  const start = source.indexOf('function syncObservationRosterScrollToUtility');
+  const end = source.indexOf('function scheduleObservationRosterScrollToUtility', start);
+  const body = source.slice(start, end);
+  assert.match(body,/viewportRect\.bottom - utilityRect\.top/);
+  assert.match(body,/--observation-roster-scroll-bottom/);
+  assert.doesNotMatch(body,/keyboardOffset/);
+  assert.doesNotMatch(body,/measuredReserve/);
+});
+
+test('Observation roster search bar is a non-scroll touch surface while focused', () => {
+  const utility = css.match(/#observationRosterScreen \.memoRosterUtilityBar \{[\s\S]*?\}/)?.[0] || '';
+  assert.match(utility,/touch-action:none/);
+  assert.match(utility,/overscroll-behavior:none/);
+  assert.match(source,/const inputFocused = document\.activeElement === getObservationRosterSearchInput\(\)/);
+  assert.match(source,/event\.preventDefault\(\);[\s\S]{0,100}event\.stopPropagation\(\);/);
+  assert.match(source,/input\.focus\(\{ preventScroll:true \}\)/);
+});
+
+test('Observation roster never recreates the focused search input during list refresh', () => {
+  assert.match(source,/input\.addEventListener\('focus',[\s\S]{0,260}renderObservationRosterList\(\);[\s\S]{0,100}scheduleObservationRosterScrollToUtility\(\);/);
+  assert.doesNotMatch(source,/input\.addEventListener\('focus',[\s\S]{0,320}renderObservationRosterUtility\(\)/);
+  assert.match(source,/if \(!currentInput \|\| document\.activeElement !== currentInput\) \{[\s\S]*?renderObservationRosterUtility\(\);/);
 });

@@ -81,7 +81,7 @@ test('observation roster title matches student-name size with lighter weight', (
   assert.match(name, /color:#111;/);
   assert.match(name, /font-size:calc\(16px \* var\(--olli-text-scale\)\);/);
   assert.match(meta, /color:#8f8f8f;/);
-  assert.match(html, /olli-observation-roster-phone\.css\?v=20260930-observation-roster-clean-rebuild-1/);
+  assert.match(html, /olli-observation-roster-phone\.css\?v=20260930-observation-roster-physical-boundary-1/);
 });
 
 
@@ -122,7 +122,7 @@ test('observation roster scrolls under fixed top and bottom controls without out
   assert.match(scroll, /padding:calc\(var\(--vivizac-note-header-h\) \+ max\(18px, calc\(env\(safe-area-inset-top\) \+ 6px\)\) \+ 6px\) 18px var\(--observation-roster-reserve, 94px\) 0;/);
   assert.match(scroll, /overflow-y:auto;/);
   assert.match(scroll, /background:transparent;/);
-  assert.match(html, /olli-observation-roster-phone\.css\?v=20260930-observation-roster-clean-rebuild-1/);
+  assert.match(html, /olli-observation-roster-phone\.css\?v=20260930-observation-roster-physical-boundary-1/);
 });
 
 
@@ -135,6 +135,6 @@ test('roster sort prefix uses the same gray as student guide text while the sort
   assert.match(prefix, /color:#8f8f8f;/);
   assert.match(meta, /color:#8f8f8f;/);
   assert.match(value, /color:#0A84FF;/);
-  assert.match(html, /olli-observation-roster-phone\.js\?v=20260930-observation-roster-clean-rebuild-1/);
-  assert.match(html, /olli-observation-roster-phone\.css\?v=20260930-observation-roster-clean-rebuild-1/);
+  assert.match(html, /olli-observation-roster-phone\.js\?v=20260930-observation-roster-physical-boundary-1/);
+  assert.match(html, /olli-observation-roster-phone\.css\?v=20260930-observation-roster-physical-boundary-1/);
 });
