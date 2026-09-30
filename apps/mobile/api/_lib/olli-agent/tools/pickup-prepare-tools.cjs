@@ -239,6 +239,8 @@ async function preparePickupAddAction({
   dropoffLabel = '',
   currentDate,
   requestId,
+  replyToMessageId = null,
+  capturePersistedMessage = null,
   sanitizePayload,
   callRpc = callSupabaseRpc,
 }) {
@@ -369,6 +371,14 @@ async function preparePickupAddAction({
 
   const timeText = timeLabel('kinder', targetWeekday, classTime, mode);
   const isDropoffOnly = kind === 'dropoff';
+  const replyId = replyToMessageId == null ? null : Number(replyToMessageId);
+  if (replyId != null && (!Number.isSafeInteger(replyId) || replyId <= 0)) {
+    throw pickupPrepareError(
+      '픽업 원문 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_PICKUP_SOURCE_MESSAGE_INVALID'
+    );
+  }
   const actionPayload = {
     intent:'add_pickup',
     studentId:clean(subject.studentId),
@@ -403,7 +413,7 @@ async function preparePickupAddAction({
       memberId:requestContext.memberId,
       requestId,
     }),
-    p_reply_to_message_id:null,
+    p_reply_to_message_id:replyId,
   });
 
   if (!sent?.ok || !sent?.message?.action) {
@@ -412,6 +422,10 @@ async function preparePickupAddAction({
       500,
       'OLLI_AGENT_PICKUP_ACTION_STORE_FAILED'
     );
+  }
+
+  if (typeof capturePersistedMessage === 'function') {
+    capturePersistedMessage(sent.message);
   }
 
   return sanitizePayload({
@@ -441,6 +455,8 @@ function createPreparePickupAddTool({
   pickupKind,
   currentDate,
   requestId,
+  replyToMessageId = null,
+  capturePersistedMessage = null,
   sanitizePayload,
 }) {
   if (typeof tool !== 'function' || !z) {
@@ -484,6 +500,8 @@ function createPreparePickupAddTool({
         dropoffLabel:dropoff_label,
         currentDate,
         requestId,
+        replyToMessageId,
+        capturePersistedMessage,
         sanitizePayload,
       });
       return JSON.stringify(payload);
