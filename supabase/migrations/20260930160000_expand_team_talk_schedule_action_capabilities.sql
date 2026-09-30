@@ -243,6 +243,7 @@ begin
 
   v_account_id := public.olli_account_id_from_session(p_session_token);
   perform set_config('olli.actor_account_id', coalesce(v_account_id::text, ''), true);
+  perform set_config('olli.schedule_effective_date', v_target_date::text, true);
   perform set_config(
     'olli.schedule_action',
     case when v_item.session_type = 'trial' then 'trial_session_change' else 'makeup_session_change' end,
@@ -327,6 +328,7 @@ declare
   v_time integer;
   v_group text;
   v_effective date;
+  v_account_id uuid;
 begin
   if not private.olli_schedule_can_access(p_session_token, p_academy_id) then
     return jsonb_build_object('ok', false, 'message', '대기 명단을 변경할 권한이 없습니다.');
@@ -442,6 +444,11 @@ begin
   ) then
     return jsonb_build_object('ok', false, 'message', '이 시간에는 이미 다른 대기 학생이 있습니다.', 'waitlist_full', true);
   end if;
+
+  v_account_id := public.olli_account_id_from_session(p_session_token);
+  perform set_config('olli.actor_account_id', coalesce(v_account_id::text, ''), true);
+  perform set_config('olli.schedule_effective_date', v_effective::text, true);
+  perform set_config('olli.schedule_action', 'waitlist_target_change', true);
 
   update public.olli_schedule_waitlist
   set target_weekday = v_weekday,
