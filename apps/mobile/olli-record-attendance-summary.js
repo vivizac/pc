@@ -138,16 +138,11 @@
     global.document.querySelectorAll('#recordRoomScreen .recordAttendanceSummaryHost').forEach(node => node.classList.remove('recordAttendanceSummaryHost'));
   }
 
-  function findRow(studentId){
-    return Array.from(global.document.querySelectorAll('#recordRoomScreen [data-record-student-id]'))
-      .find(row => row.getAttribute('data-record-student-id') === String(studentId)) || null;
-  }
-
-  function renderStudent(studentId, snapshot){
-    if (!active) return false;
-    const student = snapshot.studentMap.get(String(studentId));
-    const row = findRow(studentId);
-    const host = row?.querySelector('.studentTextWrap');
+  function renderRow(row, snapshot){
+    if (!active || !row) return false;
+    const studentId = row.getAttribute('data-record-student-id');
+    const student = snapshot.studentMap.get(String(studentId || ''));
+    const host = row.querySelector('.studentTextWrap');
     if (!student || !host) return false;
     host.querySelector('.recordAttendanceSummaryLine')?.remove();
     host.classList.add('recordAttendanceSummaryHost');
@@ -161,19 +156,17 @@
     if (!active) return;
 
     const snapshot = readSnapshot();
-    const ids = Array.from(global.document.querySelectorAll('#recordRoomScreen [data-record-student-id]'))
-      .map(row => row.getAttribute('data-record-student-id'))
-      .filter(Boolean);
+    const rows = Array.from(global.document.querySelectorAll('#recordRoomScreen [data-record-student-id]'));
     let index = 0;
 
     const runChunk = () => {
       if (!active || generation !== renderGeneration) return;
-      const stop = Math.min(index + 4, ids.length);
+      const stop = Math.min(index + 4, rows.length);
       while (index < stop) {
-        renderStudent(ids[index], snapshot);
+        renderRow(rows[index], snapshot);
         index += 1;
       }
-      if (index < ids.length) global.setTimeout(runChunk, 0);
+      if (index < rows.length) global.setTimeout(runChunk, 0);
     };
 
     if (typeof global.requestAnimationFrame === 'function') {
@@ -207,13 +200,17 @@
 
   function refreshStudent(studentId){
     if (!active || !studentId) return false;
-    return renderStudent(String(studentId), readSnapshot());
+    const snapshot = readSnapshot();
+    const rows = Array.from(global.document.querySelectorAll('#recordRoomScreen [data-record-student-id]'))
+      .filter(row => row.getAttribute('data-record-student-id') === String(studentId));
+    rows.forEach(row => renderRow(row, snapshot));
+    return rows.length > 0;
   }
 
   global.addEventListener('olli:record-list-rendered', () => {
     if (active) scheduleRows();
   });
-  global.addEventListener('olli:attendance-saved', event => {
+  global.addEventListener('olli:attendance-changed', event => {
     const studentId = event?.detail?.studentId;
     if (active && studentId) refreshStudent(studentId);
   });
