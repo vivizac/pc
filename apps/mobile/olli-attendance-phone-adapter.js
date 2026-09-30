@@ -881,23 +881,8 @@
     return result;
   }
 
-  function preserveAttendanceSearchFocus() {
-    const input = global.document.getElementById('searchName');
-    if (!input || !clean(input.value)) return;
-    const screen = global.document.getElementById('recordRoomScreen');
-    if (!screen || (typeof screen.getClientRects === 'function' && !screen.getClientRects().length)) return;
-    try {
-      input.focus({ preventScroll: true });
-      const end = String(input.value || '').length;
-      if (typeof input.setSelectionRange === 'function') input.setSelectionRange(end, end);
-    } catch (_) {
-      try { input.focus(); } catch (_) {}
-    }
-  }
-
   async function toggleTodayAttendance(event, studentId, requestedKind, timeSlot, classGroup) {
     if (event) { event.preventDefault(); event.stopPropagation(); }
-    preserveAttendanceSearchFocus();
     if (isStudentSelectionMode() || typeof global.getAllStudents !== 'function') return;
 
     const today = new Date();
