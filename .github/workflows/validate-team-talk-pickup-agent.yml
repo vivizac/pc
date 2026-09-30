@@ -1,0 +1,70 @@
+name: Validate Team Chat pickup Agent bridge
+
+on:
+  pull_request:
+    paths:
+      - 'apps/pc/pc-team-talk.js'
+      - 'apps/pc/api/olli-agent.js'
+      - 'apps/pc/index.html'
+      - 'apps/pc/tests/team-talk-ai-mode.test.cjs'
+      - 'apps/pc/tests/team-talk-pickup-agent-bridge.test.cjs'
+      - 'apps/mobile/olli-talk-beta.js'
+      - 'apps/mobile/api/olli-agent.js'
+      - 'apps/mobile/api/_lib/olli-agent/runtime.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/tools/pickup-prepare-tools.cjs'
+      - 'apps/mobile/index.html'
+      - 'apps/mobile/tests/team-talk-ai-mode.test.cjs'
+      - 'apps/mobile/tests/team-talk-pickup-agent-bridge.test.cjs'
+      - 'apps/mobile/tests/olli-agent-pickup-production-contract.test.cjs'
+      - 'packages/common/olli-command-router-common.js'
+      - '.github/workflows/validate-team-talk-pickup-agent.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/pc/pc-team-talk.js'
+      - 'apps/pc/api/olli-agent.js'
+      - 'apps/pc/index.html'
+      - 'apps/pc/tests/team-talk-ai-mode.test.cjs'
+      - 'apps/pc/tests/team-talk-pickup-agent-bridge.test.cjs'
+      - 'apps/mobile/olli-talk-beta.js'
+      - 'apps/mobile/api/olli-agent.js'
+      - 'apps/mobile/api/_lib/olli-agent/runtime.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/tools/pickup-prepare-tools.cjs'
+      - 'apps/mobile/index.html'
+      - 'apps/mobile/tests/team-talk-ai-mode.test.cjs'
+      - 'apps/mobile/tests/team-talk-pickup-agent-bridge.test.cjs'
+      - 'apps/mobile/tests/olli-agent-pickup-production-contract.test.cjs'
+      - 'packages/common/olli-command-router-common.js'
+      - '.github/workflows/validate-team-talk-pickup-agent.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Check Team Chat JavaScript syntax
+        run: |
+          node --check apps/pc/pc-team-talk.js
+          node --check apps/mobile/olli-talk-beta.js
+
+      - name: Validate PC Team Chat pickup Agent bridge
+        run: |
+          node --test \
+            apps/pc/tests/team-talk-ai-mode.test.cjs \
+            apps/pc/tests/team-talk-pickup-agent-bridge.test.cjs
+
+      - name: Validate Mobile Team Chat pickup Agent bridge
+        working-directory: apps/mobile
+        run: |
+          node --test \
+            tests/team-talk-ai-mode.test.cjs \
+            tests/team-talk-pickup-agent-bridge.test.cjs \
+            tests/olli-agent-pickup-production-contract.test.cjs
