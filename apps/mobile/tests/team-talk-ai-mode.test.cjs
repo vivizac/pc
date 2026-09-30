@@ -78,8 +78,16 @@ test('phone mention mode keeps @ active until a selected teacher has actual mess
   assert.match(talk, /trigger\.classList\.toggle\('active', olliTalkMentionModeActive\)/);
 });
 
-test('pressing active @ before message text cancels mention, clears the mention draft and dismisses keyboard', () => {
-  assert.match(talk, /if \(olliTalkMentionModeActive && !isOlliTalkMentionMessageReady\(\)\) \{[\s\S]*clearOlliTalkMentionDraft\(\);[\s\S]*olliTalkMentionModeActive = false;[\s\S]*input\.blur\(\)/);
+test('phone mention mode stays active across sends until @ is pressed again', () => {
+  assert.match(talk, /function getOlliTalkPersistentMentionPrefix\(value\)/);
+  assert.match(talk, /const persistentMentionPrefix = olliTalkMentionModeActive[\s\S]{0,120}getOlliTalkPersistentMentionPrefix\(rawBody\)/);
+  assert.match(talk, /input\.value = persistentMentionPrefix/);
+  assert.match(talk, /if \(!persistentMentionPrefix\) \{[\s\S]{0,120}olliTalkMentionModeActive = false/);
+  assert.doesNotMatch(talk, /input\.value = '';[\s\S]{0,120}olliTalkMentionModeActive = false/);
+});
+
+test('pressing active @ always cancels mention mode and clears the mention draft', () => {
+  assert.match(talk, /if \(olliTalkMentionModeActive\) \{[\s\S]*clearOlliTalkMentionDraft\(\);[\s\S]*olliTalkMentionModeActive = false;[\s\S]*input\.blur\(\)/);
   assert.match(talk, /olliTalkMentionSelections\.clear\(\)/);
 });
 
