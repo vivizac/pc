@@ -55,6 +55,9 @@ jobs:
           node --check apps/pc/pc-team-talk.js
           node --check apps/mobile/olli-talk-beta.js
 
+      - name: Stage PC common runtime
+        run: node apps/pc/scripts/stage-common.cjs
+
       - name: Validate PC Team Chat pickup Agent bridge
         working-directory: apps/pc
         run: |
