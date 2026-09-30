@@ -216,7 +216,6 @@
   function refreshCurrentRows(){
     var searchValue = document.getElementById('searchName')?.value.trim() || '';
     try {
-      if (typeof window.scheduleRecordAttendanceGuideButtonAlign === 'function') window.scheduleRecordAttendanceGuideButtonAlign();
       if (typeof currentRecordView !== 'undefined' && currentRecordView === 'kinder' && typeof window.renderKinderRecords === 'function') window.renderKinderRecords(searchValue);
       else if (typeof currentRecordView !== 'undefined' && currentRecordView === 'elementary' && typeof window.renderElementaryRecords === 'function') window.renderElementaryRecords(searchValue);
       else if (typeof window.loadRecords === 'function') window.loadRecords(searchValue);
