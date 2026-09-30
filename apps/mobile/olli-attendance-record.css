@@ -132,15 +132,18 @@
   align-items:center;
 }
 #recordRoomScreen .recordModeSettingsBtn{
-  position:fixed !important;
+  order:3 !important;
+  position:relative !important;
   top:auto !important;
-  right:var(--record-control-rail-right, 82px) !important;
-  bottom:var(--record-bottom-control-bottom, max(10px, env(safe-area-inset-bottom))) !important;
+  right:auto !important;
+  bottom:auto !important;
+  left:auto !important;
   width:47px !important;
   min-width:47px !important;
   max-width:47px !important;
   height:47px !important;
   min-height:47px !important;
+  flex:0 0 47px !important;
   border:none !important;
   border-radius:50% !important;
   background:#fff !important;
