@@ -209,3 +209,25 @@ test('QuickNote input grows with content while the keyboard is open and remains 
   assert.match(css, /grid-template-rows:minmax\(34px, auto\) 38px;/);
   assert.match(css, /kcfKeyboardOpen:not\(\.kcfTeacherRosterMode\) \.kcfInput \{[\s\S]*?max-height:110px;/);
 });
+
+
+test('QuickNote reuses keyboard inset for message-only lift while keeping the chat scroller stable', () => {
+  const chatRule = css.match(/#kinderChatFeedbackScreen \.kcfChatArea\{[^}]*\}/)?.[0] || '';
+  const rowRule = css.match(/#kinderChatFeedbackScreen \.kcfMsgRow \{[^}]*\}/)?.[0] || '';
+  assert.match(css, /--kcf-chat-reserve:176px/);
+  assert.match(css, /--kcf-message-lift:0px/);
+  assert.match(chatRule, /var\(--kcf-chat-reserve, 176px\)/);
+  assert.match(chatRule, /overflow-anchor:none/);
+  assert.match(rowRule, /--kcf-message-lift/);
+  assert.match(js, /--kcf-message-lift', Math\.max\(0, inset\) \+ 'px'/);
+  assert.match(js, /measuredReserve[\s\S]*?reserve = Math\.max\(0, measuredReserve - keyboardInset\)/);
+  assert.doesNotMatch(js, /kcfChatArea[^\n]*scrollTop\s*\+=/);
+});
+
+test('QuickNote protects input focus and composer while the user owns chat scrolling', () => {
+  assert.match(js, /input\.focus\(\{ preventScroll:true \}\)/);
+  assert.match(js, /if \(kcfChatGestureActive && options\.force !== true\) return/);
+  assert.match(js, /chatArea\.addEventListener\('touchstart', beginKinderChatFeedbackChatGesture/);
+  assert.match(js, /composer\.addEventListener\('touchmove',[\s\S]*?event\.preventDefault\(\)[\s\S]*?passive:false/);
+  assert.match(js, /if \(kcfChatGestureActive\) return;[\s\S]*?updateKinderChatFeedbackKeyboardOffset\(\)/);
+});

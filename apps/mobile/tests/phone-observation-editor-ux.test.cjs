@@ -151,7 +151,7 @@ test('memo history normalizes iOS Hangul first, then groups edits as user action
   assert.doesNotMatch(source, /pushObservationMemoUndoSnapshot/);
   assert.doesNotMatch(source, /recordObservationMemoCompositionStep/);
   assert.doesNotMatch(source, /isObservationMemoHangulReplacementStep/);
-  assert.match(source, /ensureObservationMemoCaretVisible/);
+  assert.doesNotMatch(source, /ensureObservationMemoCaretVisible/);\n  assert.doesNotMatch(source, /page\\.scrollTop \\+= delta/);
   assert.doesNotMatch(source, /visualViewport\.addEventListener\('scroll'/);
 });
 
@@ -473,4 +473,20 @@ test('feedback save resets the observation memo caret and scroll to the initial 
   assert.match(runtime, /requestAnimationFrame\(reset\)/);
   assert.match(runtime, /setTimeout\(reset, 80\)/);
   assert.match(html, /olli-observation-runtime\.js\?v=20260928-stabilization-main-merge-1/);
+});
+
+
+test('observation memo keeps its scroll owner stable and lifts only memo content by keyboard inset', () => {
+  const css = read(cssPath);
+  const source = read(rosterPath);
+  const pageRule = css.match(/#studentMemoScreen\[data-memo-body-view="editor"\] \.memoPageInner \{[\s\S]*?\}/)?.[0] || '';
+  const wrapRule = css.match(/#studentMemoScreen\[data-memo-body-view="editor"\] #elementaryMemoWrap \{[\s\S]*?\}/)?.[0] || '';
+  assert.match(pageRule,/overscroll-behavior-y:contain/);
+  assert.match(pageRule,/touch-action:pan-y/);
+  assert.match(pageRule,/overflow-anchor:none/);
+  assert.match(wrapRule,/--olli-observation-content-lift/);
+  assert.match(source,/editor\.focus\(\{ preventScroll:true \}\)/);
+  assert.match(source,/--olli-observation-content-lift', Math\.max\(0, inset\) \+ 'px'/);
+  assert.doesNotMatch(source,/page\.scrollTop \+= delta/);
+  assert.doesNotMatch(source,/visualViewport\.addEventListener\('scroll'/);
 });

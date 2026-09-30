@@ -1,5 +1,7 @@
 /* ── 유치부 대화형 1분 피드백 페이지: 정리본 ── */
 #kinderChatFeedbackScreen {
+  --kcf-chat-reserve:176px;
+  --kcf-message-lift:0px;
   background:#fff;
   padding-top:0;
 }
@@ -502,7 +504,8 @@
   -webkit-overflow-scrolling:touch;
   overscroll-behavior-y:contain;
   touch-action:pan-y;
-  padding:112px 16px 176px;
+  overflow-anchor:none;
+  padding:112px 16px var(--kcf-chat-reserve, 176px);
   position:relative;
   z-index:1;
   background:#fff;
@@ -539,6 +542,12 @@
   width:100%;
   display:flex;
   margin-bottom:14px;
+  transform:translate3d(0,calc(-1 * var(--kcf-message-lift, 0px)),0);
+  transition:none;
+}
+#kinderChatFeedbackScreen .kcfChatArea > .kcfCommandConfirmActions {
+  transform:translate3d(0,calc(-1 * var(--kcf-message-lift, 0px)),0);
+  transition:none;
 }
 #kinderChatFeedbackScreen .kcfMsgRow.user { justify-content:flex-end; }
 #kinderChatFeedbackScreen .kcfMsgRow.bot { justify-content:flex-start; }

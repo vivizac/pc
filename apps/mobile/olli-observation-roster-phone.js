@@ -41,7 +41,6 @@ let observationMemoPendingHangulDeleteTimer = null;
 let observationMemoIsComposing = false;
 let observationMemoKeyboardBaselineBottom = 0;
 let observationMemoKeyboardRaf = 0;
-let observationMemoCaretRaf = 0;
 let observationMemoKeyboardSettleTimer = null;
 
 
@@ -1102,7 +1101,6 @@ function applyObservationMemoSnapshot(editor, snapshot) {
   try { editor.focus({ preventScroll: true }); } catch (_) { try { editor.focus(); } catch (_) {} }
   requestAnimationFrame(() => {
     resizeObservationMemoEditorToContent();
-    scheduleObservationMemoCaretVisible();
   });
 }
 
@@ -1217,84 +1215,6 @@ function captureObservationMemoKeyboardBaseline(force = false) {
   if (force || !observationMemoKeyboardBaselineBottom) observationMemoKeyboardBaselineBottom = candidate;
 }
 
-function measureObservationMemoCaretOffset(editor) {
-  if (!editor) return 0;
-  const style = getComputedStyle(editor);
-  const mirror = document.createElement('div');
-  const rect = editor.getBoundingClientRect();
-  mirror.setAttribute('aria-hidden', 'true');
-  mirror.style.position = 'fixed';
-  mirror.style.left = '-100000px';
-  mirror.style.top = '0';
-  mirror.style.visibility = 'hidden';
-  mirror.style.pointerEvents = 'none';
-  mirror.style.whiteSpace = 'pre-wrap';
-  mirror.style.wordWrap = 'break-word';
-  mirror.style.overflowWrap = 'break-word';
-  mirror.style.boxSizing = style.boxSizing;
-  mirror.style.width = `${Math.max(1, rect.width)}px`;
-  mirror.style.fontFamily = style.fontFamily;
-  mirror.style.fontSize = style.fontSize;
-  mirror.style.fontWeight = style.fontWeight;
-  mirror.style.fontStyle = style.fontStyle;
-  mirror.style.lineHeight = style.lineHeight;
-  mirror.style.letterSpacing = style.letterSpacing;
-  mirror.style.textTransform = style.textTransform;
-  mirror.style.textIndent = style.textIndent;
-  mirror.style.paddingTop = style.paddingTop;
-  mirror.style.paddingRight = style.paddingRight;
-  mirror.style.paddingBottom = style.paddingBottom;
-  mirror.style.paddingLeft = style.paddingLeft;
-  mirror.style.borderTopWidth = style.borderTopWidth;
-  mirror.style.borderRightWidth = style.borderRightWidth;
-  mirror.style.borderBottomWidth = style.borderBottomWidth;
-  mirror.style.borderLeftWidth = style.borderLeftWidth;
-  mirror.style.borderStyle = 'solid';
-  mirror.style.borderColor = 'transparent';
-
-  const selectionStart = Number.isFinite(editor.selectionStart) ? editor.selectionStart : String(editor.value || '').length;
-  mirror.appendChild(document.createTextNode(String(editor.value || '').slice(0, selectionStart)));
-  const marker = document.createElement('span');
-  marker.textContent = '\u200b';
-  mirror.appendChild(marker);
-  document.body.appendChild(mirror);
-  const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.8 || 24;
-  const offset = marker.offsetTop + lineHeight;
-  mirror.remove();
-  return offset;
-}
-
-function ensureObservationMemoCaretVisible() {
-  const screen = getObservationMemoScreen();
-  const editor = getObservationMemoEditor();
-  const page = getObservationMemoPage();
-  if (!screen || !editor || !page || !isObservationMemoEditorView()) return;
-  if (document.activeElement !== editor || !screen.classList.contains('observation-editor-keyboard-open')) return;
-
-  const viewport = window.visualViewport;
-  const visualTop = Number(viewport?.offsetTop || 0);
-  const visualBottom = visualTop + Number(viewport?.height || window.innerHeight || 0);
-  const header = screen.querySelector('.memoHeader');
-  const headerBottom = Math.max(visualTop, Number(header?.getBoundingClientRect().bottom || visualTop)) + 12;
-  const editorRect = editor.getBoundingClientRect();
-  const caretBottom = editorRect.top + measureObservationMemoCaretOffset(editor);
-  const lowerLimit = visualBottom - 22;
-
-  let delta = 0;
-  if (caretBottom > lowerLimit) delta = caretBottom - lowerLimit;
-  else if (caretBottom < headerBottom) delta = caretBottom - headerBottom;
-
-  if (Math.abs(delta) > 1) page.scrollTop += delta;
-}
-
-function scheduleObservationMemoCaretVisible() {
-  if (observationMemoCaretRaf) cancelAnimationFrame(observationMemoCaretRaf);
-  observationMemoCaretRaf = requestAnimationFrame(() => {
-    observationMemoCaretRaf = 0;
-    ensureObservationMemoCaretVisible();
-  });
-}
-
 function syncObservationMemoKeyboardState() {
   if (observationMemoKeyboardRaf) cancelAnimationFrame(observationMemoKeyboardRaf);
   observationMemoKeyboardRaf = requestAnimationFrame(() => {
@@ -1305,6 +1225,7 @@ function syncObservationMemoKeyboardState() {
     const active = !!(editor && document.activeElement === editor && isObservationMemoEditorView());
     if (!active) {
       screen.classList.remove('observation-editor-keyboard-open');
+      screen.style.setProperty('--olli-observation-content-lift', '0px');
       return;
     }
 
@@ -1315,9 +1236,9 @@ function syncObservationMemoKeyboardState() {
     const viewportShrunk = viewport ? (Math.max(window.innerHeight || 0, observationMemoKeyboardBaselineBottom) - viewport.height) > OBSERVATION_MEMO_KEYBOARD_THRESHOLD : true;
     const open = !viewport || inset > OBSERVATION_MEMO_KEYBOARD_THRESHOLD || viewportShrunk;
     screen.classList.toggle('observation-editor-keyboard-open', open);
+    screen.style.setProperty('--olli-observation-content-lift', Math.max(0, inset) + 'px');
     if (open) {
       ensureObservationMemoEditingActions();
-      scheduleObservationMemoCaretVisible();
     }
   });
 }
@@ -1329,6 +1250,12 @@ function bindObservationMemoEditorEvents() {
   document.addEventListener('pointerdown', event => {
     if (event.target?.id !== 'memoEditor' || !isObservationMemoEditorView()) return;
     const editor = event.target;
+    if (event.pointerType === 'touch' && document.activeElement !== editor) {
+      captureObservationMemoKeyboardBaseline(true);
+      try { editor.focus({ preventScroll:true }); }
+      catch (_) { editor.focus(); }
+      return;
+    }
     if (document.activeElement === editor) {
       finalizeObservationMemoHistoryBoundary(editor);
     }
@@ -1471,7 +1398,6 @@ function bindObservationMemoEditorEvents() {
       });
     }
     updateObservationMemoHistoryButtons();
-    scheduleObservationMemoCaretVisible();
   }, true);
 
   document.addEventListener('focusin', event => {
@@ -1495,7 +1421,10 @@ function bindObservationMemoEditorEvents() {
       const editor = getObservationMemoEditor();
       if (editor && document.activeElement === editor && isObservationMemoEditorView()) return;
       const screen = getObservationMemoScreen();
-      if (screen) screen.classList.remove('observation-editor-keyboard-open');
+      if (screen) {
+        screen.classList.remove('observation-editor-keyboard-open');
+        screen.style.setProperty('--olli-observation-content-lift', '0px');
+      }
       observationMemoKeyboardBaselineBottom = 0;
       if (observationMemoKeyboardSettleTimer) {
         clearTimeout(observationMemoKeyboardSettleTimer);
@@ -1530,8 +1459,6 @@ function bindObservationMemoEditorEvents() {
         finalizeObservationMemoCurrentAction();
       }
     }
-
-    scheduleObservationMemoCaretVisible();
   });
 
   if (window.visualViewport) {
@@ -1541,11 +1468,9 @@ function bindObservationMemoEditorEvents() {
   window.addEventListener('pagehide', () => {
     if (observationMemoSlideTimer) clearTimeout(observationMemoSlideTimer);
     if (observationMemoKeyboardRaf) cancelAnimationFrame(observationMemoKeyboardRaf);
-    if (observationMemoCaretRaf) cancelAnimationFrame(observationMemoCaretRaf);
     if (observationMemoKeyboardSettleTimer) clearTimeout(observationMemoKeyboardSettleTimer);
     observationMemoSlideTimer = null;
     observationMemoKeyboardRaf = 0;
-    observationMemoCaretRaf = 0;
     observationMemoKeyboardSettleTimer = null;
     clearObservationMemoActionIdleTimer();
     observationMemoCurrentAction = null;
@@ -1687,7 +1612,6 @@ document.addEventListener('input', event => {
   if (event.target?.id === 'memoEditor') {
     requestAnimationFrame(() => {
       resizeObservationMemoEditorToContent();
-      scheduleObservationMemoCaretVisible();
     });
   }
 });

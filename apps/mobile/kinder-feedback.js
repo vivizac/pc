@@ -176,6 +176,10 @@ let kcfActiveKeyword = '';
 let kcfKeepInputFocusUntil = 0;
 let kcfKeyboardBaselineBottom = 0;
 let kcfComposerViewportFrame = 0;
+let kcfChatReserveFrame = 0;
+let kcfChatGestureActive = false;
+let kcfChatGestureSettleTimer = null;
+let kcfComposerResizeObserver = null;
 let kcfPendingPhoto = null;
 let kcfManualSelectedStudentId = '';
 let kcfManualSelectedStudentName = '';
@@ -227,7 +231,8 @@ const kcfKeywordQuestions = {
   friend: { title:'친구와 협력', questions:['친구와 어떤 상호작용이 있었나요?', '양보하거나 도와준 장면이 있었나요?', '협력 후 아이의 반응은 어땠나요?'] },
   focus: { title:'집중', questions:['아이가 집중한 장면은 무엇이었나요?', '얼마나 오래 이어가려 했나요?', '집중이 표현으로 이어진 부분은 무엇인가요?'] }
 };
-function syncKinderChatFeedbackComposerViewport() {
+function syncKinderChatFeedbackComposerViewport(options = {}) {
+  if (kcfChatGestureActive && options.force !== true) return;
   const layer = document.getElementById('kcfComposerLayer');
   if (!layer) return;
 
@@ -252,6 +257,43 @@ function scheduleKinderChatFeedbackComposerViewportSync() {
   });
 }
 
+function syncKinderChatFeedbackChatReserve() {
+  kcfChatReserveFrame = 0;
+  const screen = document.getElementById('kinderChatFeedbackScreen');
+  const inner = screen?.querySelector('.kcfInner');
+  const composerWrap = screen?.querySelector('.kcfComposerWrap');
+  if (!screen || !inner || !composerWrap) return;
+
+  const innerRect = inner.getBoundingClientRect();
+  const composerRect = composerWrap.getBoundingClientRect();
+  if (
+    !Number.isFinite(innerRect.bottom)
+    || !Number.isFinite(innerRect.height)
+    || !Number.isFinite(composerRect.top)
+  ) return;
+
+  const input = document.getElementById('kcfInput');
+  const keyboardTracking = document.activeElement === input
+    || Date.now() < kcfKeepInputFocusUntil
+    || screen.classList.contains('kcfKeyboardOpen');
+  const keyboardInset = keyboardTracking && kcfKeyboardBaselineBottom
+    ? Math.max(0, kcfKeyboardBaselineBottom - getKinderChatFeedbackViewportBottom())
+    : 0;
+  const measuredReserve = Math.max(
+    0,
+    Math.min(
+      Math.ceil(innerRect.height),
+      Math.ceil(innerRect.bottom - composerRect.top)
+    )
+  );
+  const reserve = Math.max(0, measuredReserve - keyboardInset);
+  screen.style.setProperty('--kcf-chat-reserve', reserve + 'px');
+}
+function scheduleKinderChatFeedbackChatReserve() {
+  if (kcfChatReserveFrame) return;
+  kcfChatReserveFrame = requestAnimationFrame(syncKinderChatFeedbackChatReserve);
+}
+
 function getKinderChatFeedbackViewportBottom() {
   const viewport = window.visualViewport;
   if (!viewport) return Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
@@ -274,6 +316,8 @@ function updateKinderChatFeedbackKeyboardOffset() {
     kcfKeyboardBaselineBottom = 0;
     screen.classList.remove('kcfKeyboardOpen');
     screen.style.setProperty('--kcf-composer-bottom', '0px');
+    screen.style.setProperty('--kcf-message-lift', '0px');
+    scheduleKinderChatFeedbackChatReserve();
     if (topLayer) topLayer.classList.remove('kcfKeyboardHidden');
     if (input) autoResizeKinderChatFeedbackInput(input);
     return;
@@ -287,7 +331,9 @@ function updateKinderChatFeedbackKeyboardOffset() {
     : true;
   const open = !viewport || inset > 80 || viewportShrunk;
   screen.classList.toggle('kcfKeyboardOpen', open);
+  screen.style.setProperty('--kcf-message-lift', Math.max(0, inset) + 'px');
   if (input) autoResizeKinderChatFeedbackInput(input);
+  scheduleKinderChatFeedbackChatReserve();
 
   // Keep the inline composer at its normal keyboard-open position.
   screen.style.setProperty('--kcf-composer-bottom', '0px');
@@ -302,16 +348,85 @@ function getKinderChatFeedbackTeacherMode() {
 function bindKinderChatFeedbackKeyboardOffset() {
   if (window.__kcfKeyboardOffsetBound) return;
   window.__kcfKeyboardOffsetBound = true;
-  scheduleKinderChatFeedbackComposerViewportSync();
-  const handleKinderChatFeedbackViewportChange = () => {
-    scheduleKinderChatFeedbackComposerViewportSync();
-    updateKinderChatFeedbackKeyboardOffset();
+
+  const chatArea = document.getElementById('kcfChatArea');
+  const composer = document.querySelector('#kinderChatFeedbackScreen .kcfComposer');
+  const composerWrap = document.querySelector('#kinderChatFeedbackScreen .kcfComposerWrap');
+  let composerTouchStartX = null;
+  let composerTouchStartY = null;
+
+  const beginKinderChatFeedbackChatGesture = () => {
+    if (kcfChatGestureSettleTimer) clearTimeout(kcfChatGestureSettleTimer);
+    kcfChatGestureSettleTimer = null;
+    kcfChatGestureActive = true;
   };
+  const endKinderChatFeedbackChatGesture = () => {
+    if (!kcfChatGestureActive && !kcfChatGestureSettleTimer) return;
+    if (kcfChatGestureSettleTimer) clearTimeout(kcfChatGestureSettleTimer);
+    kcfChatGestureSettleTimer = setTimeout(() => {
+      kcfChatGestureSettleTimer = null;
+      kcfChatGestureActive = false;
+      syncKinderChatFeedbackComposerViewport({ force:true });
+      updateKinderChatFeedbackKeyboardOffset();
+    }, 120);
+  };
+
+  if (chatArea) {
+    chatArea.addEventListener('pointerdown', beginKinderChatFeedbackChatGesture, { passive:true });
+    chatArea.addEventListener('touchstart', beginKinderChatFeedbackChatGesture, { passive:true });
+    window.addEventListener('pointerup', endKinderChatFeedbackChatGesture, { passive:true });
+    window.addEventListener('pointercancel', endKinderChatFeedbackChatGesture, { passive:true });
+    window.addEventListener('touchend', endKinderChatFeedbackChatGesture, { passive:true });
+    window.addEventListener('touchcancel', endKinderChatFeedbackChatGesture, { passive:true });
+  }
+
   document.addEventListener('pointerdown', event => {
     const input = document.getElementById('kcfInput');
     if (!input || event.target !== input) return;
+    if (event.pointerType === 'touch' && document.activeElement !== input) {
+      captureKinderChatFeedbackKeyboardBaseline(true);
+      try { input.focus({ preventScroll:true }); }
+      catch (_) { input.focus(); }
+      return;
+    }
     captureKinderChatFeedbackKeyboardBaseline(true);
   }, true);
+
+  if (composer) {
+    composer.addEventListener('touchstart', event => {
+      const touch = event.touches?.[0];
+      composerTouchStartX = touch ? Number(touch.clientX) : null;
+      composerTouchStartY = touch ? Number(touch.clientY) : null;
+    }, { passive:true });
+    composer.addEventListener('touchmove', event => {
+      if (!document.getElementById('kinderChatFeedbackScreen')?.classList.contains('kcfKeyboardOpen')) return;
+      const touch = event.touches?.[0];
+      if (!touch || !Number.isFinite(composerTouchStartX) || !Number.isFinite(composerTouchStartY)) return;
+      const deltaX = Math.abs(Number(touch.clientX) - composerTouchStartX);
+      const deltaY = Math.abs(Number(touch.clientY) - composerTouchStartY);
+      if (deltaY < 6 || deltaY <= deltaX) return;
+      event.preventDefault();
+    }, { passive:false });
+    const clearComposerTouch = () => {
+      composerTouchStartX = null;
+      composerTouchStartY = null;
+    };
+    composer.addEventListener('touchend', clearComposerTouch, { passive:true });
+    composer.addEventListener('touchcancel', clearComposerTouch, { passive:true });
+  }
+
+  if (composerWrap && typeof ResizeObserver === 'function') {
+    kcfComposerResizeObserver = new ResizeObserver(scheduleKinderChatFeedbackChatReserve);
+    kcfComposerResizeObserver.observe(composerWrap);
+  }
+
+  scheduleKinderChatFeedbackComposerViewportSync();
+  scheduleKinderChatFeedbackChatReserve();
+  const handleKinderChatFeedbackViewportChange = () => {
+    if (kcfChatGestureActive) return;
+    scheduleKinderChatFeedbackComposerViewportSync();
+    updateKinderChatFeedbackKeyboardOffset();
+  };
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', handleKinderChatFeedbackViewportChange);
     window.visualViewport.addEventListener('scroll', handleKinderChatFeedbackViewportChange);
@@ -570,6 +685,7 @@ function autoResizeKinderChatFeedbackInput(input) {
     input.style.minHeight = `${minHeight}px`;
     input.style.maxHeight = `${minHeight}px`;
     input.style.overflowY = 'hidden';
+    scheduleKinderChatFeedbackChatReserve();
     return;
   }
 
@@ -579,6 +695,7 @@ function autoResizeKinderChatFeedbackInput(input) {
   const nextHeight = Math.max(minHeight, Math.min(maxHeight, input.scrollHeight || minHeight));
   input.style.height = `${nextHeight}px`;
   input.style.overflowY = (input.scrollHeight || 0) > maxHeight ? 'auto' : 'hidden';
+  scheduleKinderChatFeedbackChatReserve();
 }
 window.autoResizeKinderChatFeedbackInput = autoResizeKinderChatFeedbackInput;
 function focusKinderChatFeedbackInput() {
