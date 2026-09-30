@@ -651,9 +651,14 @@
     const compact = compactText(raw);
     const weekdayMatch = compact.match(/([월화수목금토])요일/);
     const weekday = weekdayMatch ? (WEEKDAY_MAP[weekdayMatch[1]] || 0) : 0;
-    const explicitClass = raw.match(/(\d{1,2})\s*시\s*(?:수업|클래스)/);
-    const weekdayClass = raw.match(/[월화수목금토]\s*요일\s*(\d{1,2})\s*시/);
-    return { weekday, classTime:Number((explicitClass || weekdayClass)?.[1] || 0) };
+    const explicitClass = raw.match(/(\d{1,2})\s*시(?:\s*(\d{1,2})\s*분)?\s*(?:수업|클래스)/);
+    const weekdayClass = raw.match(/[월화수목금토]\s*요일\s*(\d{1,2})\s*시(?:\s*(\d{1,2})\s*분)?/);
+    const match = explicitClass || weekdayClass;
+    return {
+      weekday,
+      classTime:Number(match?.[1] || 0),
+      classMinute:Number(match?.[2] || 0)
+    };
   }
 
   function pickupEditLabel(value, studentName) {
@@ -676,7 +681,7 @@
     const target = pickupClassTarget(raw);
     return {
       type:'mutation', intent:'cancel_pickup', studentName,
-      weekday:target.weekday, classTime:target.classTime,
+      weekday:target.weekday, classTime:target.classTime, classMinute:target.classMinute,
       pickupKind:/하원/.test(compact) ? 'dropoff' : 'all',
       originalText:raw
     };
@@ -692,11 +697,16 @@
     const target = pickupClassTarget(raw);
     const clocks = pickupClockMentions(raw);
     let classClock = null;
-    if (target.classTime) classClock = clocks.find(item => Number(item.hour) === target.classTime) || null;
+    if (target.classTime) {
+      classClock = clocks.find(item =>
+        Number(item.hour) === target.classTime
+        && Number(item.minute || 0) === Number(target.classMinute || 0)
+      ) || null;
+    }
     const pickupClock = clocks.filter(item => item !== classClock).slice(-1)[0] || null;
     return {
       type:'mutation', intent:'update_pickup', studentName,
-      weekday:target.weekday, classTime:target.classTime,
+      weekday:target.weekday, classTime:target.classTime, classMinute:target.classMinute,
       pickupKind:/하원/.test(compact) ? 'dropoff' : 'arrival',
       pickupLabel:pickupEditLabel(raw, studentName),
       pickupTime:normalizePickupClock(pickupClock),
@@ -722,7 +732,10 @@
 
     let classClock = null;
     if (classTime) {
-      classClock = clocks.find(item => Number(item.hour) === classTime) || null;
+      classClock = clocks.find(item =>
+        Number(item.hour) === classTime
+        && Number(item.minute || 0) === Number(target.classMinute || 0)
+      ) || null;
     }
     const pickupClock = clocks.filter(item => item !== classClock).slice(-1)[0] || null;
 
@@ -735,6 +748,7 @@
       studentName,
       weekday,
       classTime,
+      classMinute:target.classMinute,
       pickupLabel,
       pickupTime:normalizePickupClock(pickupClock),
       isDropoff:/하원/.test(compact),
