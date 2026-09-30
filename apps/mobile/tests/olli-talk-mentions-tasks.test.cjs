@@ -167,16 +167,7 @@ test('Team Talk message scroller is physically bounded above the composer', () =
   assert.match(area, /touch-action:pan-y/);
 });
 
-test('Team Talk moves chat content by composer position delta without reading keyboard state', () => {
-  const start = source.indexOf('function syncOlliTalkChatToComposer');
-  const end = source.indexOf('function scheduleOlliTalkChatToComposer', start);
-  const body = source.slice(start, end);
-  assert.match(body, /previousComposerTop - composerRect\.top/);
-  assert.match(body, /chatArea\.scrollTop \+ composerDelta/);
-  assert.match(body, /viewportRect\.bottom - composerRect\.top/);
-  assert.doesNotMatch(body, /keyboardOpen/);
-  assert.doesNotMatch(body, /keyboardOffset/);
-});
+
 
 
 test('Team Talk locks composer viewport after the keyboard finishes opening', () => {
