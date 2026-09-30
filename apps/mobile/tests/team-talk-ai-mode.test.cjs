@@ -9,7 +9,8 @@ const html = fs.readFileSync('index.html', 'utf8');
 test('phone composer removes the Bot trigger while keeping explicit @올리 routing', () => {
   assert.doesNotMatch(html, /id="olliTalkOlliTriggerBtn"/);
   assert.doesNotMatch(talk, /toggleOlliTalkOlliMode/);
-  assert.match(talk, /const olliRequested = olliAiMentionRequested \|\| \/\^\\s\*@올리/);
+  assert.match(talk, /const directOlliRequested = \/\^\\s\*@올리/);
+  assert.match(talk, /const olliRequested = olliAiMentionRequested \|\| directOlliRequested/);
   assert.match(talk, /const usingAi = olliAiMentionRequested \|\| isOlliTalkAiEnabled\(\)/);
   assert.match(talk, /resolveOlliTalkAiTurn/);
   assert.match(talk, /resolveOlliTalkBotTurn/);
@@ -28,9 +29,9 @@ test('phone mention picker offers Olli as a virtual AI target without registerin
 
 test('phone AI mention keeps bounded conversation context while the Olli mention remains active', () => {
   assert.match(talk, /let olliTalkAiConversationMessages = \[\]/);
-  assert.match(talk, /function buildOlliTalkAiConversationMessages\(commandText\)/);
+  assert.match(talk, /function buildOlliTalkAiConversationMessages\(commandText, context\)/);
   assert.match(talk, /return olliTalkAiConversationMessages\.concat\(current\)/);
-  assert.match(talk, /messages:buildOlliTalkAiConversationMessages\(commandText\)/);
+  assert.match(talk, /messages:buildOlliTalkAiConversationMessages\(commandText, context\)/);
   assert.match(talk, /if \(olliTalkAiConversationMessages\.length > 12\)/);
   assert.match(talk, /recordOlliTalkAiConversationTurn\(commandText, turn\.replyText\)/);
 });
@@ -41,9 +42,9 @@ test('AI server accepts talk prompt only after Team Talk AI setting check', () =
   assert.match(api, /data\?\.ai_enabled !== true/);
 });
 
-test('normal phone messages keep mention and task creation behavior', () => {
-  assert.match(talk, /if \(!olliRequested && mentionedIds\.length\)/);
-  assert.match(talk, /if \(!olliRequested\) \{[\s\S]{0,450}parseOlliTalkTaskItems/);
+test('normal phone messages keep mention recipients and task creation behavior', () => {
+  assert.match(talk, /if \(!olliRequested\) \{[\s\S]{0,260}registerOlliTalkMessageRecipients\(Number\(payload\.message\.id\),mentionedIds,context\)/);
+  assert.match(talk, /if \(!olliRequested\) \{[\s\S]{0,520}parseOlliTalkTaskItems/);
 });
 
 test('button-bound Olli mode code is removed and direct @올리 parsing remains', () => {
@@ -53,10 +54,9 @@ test('button-bound Olli mode code is removed and direct @올리 parsing remains'
   assert.match(talk, /function stripOlliTalkOlliPrefix\(value\)/);
 });
 
-test('AI setting changes only clear pending assistant action state', () => {
-  assert.match(talk, /function handleOlliTalkAiModeChanged\(\)\{[\s\S]*olliTalkPendingActionReason = null;/);
+test('AI setting changes clear pending action state and the active AI conversation context', () => {
+  assert.match(talk, /function handleOlliTalkAiModeChanged\(\)\{[\s\S]*olliTalkPendingActionReason = null;[\s\S]*resetOlliTalkAiConversation\(\)/);
   assert.doesNotMatch(talk, /syncOlliTalkAssistantUi/);
-  assert.doesNotMatch(talk, /recordOlliTalkAiConversationTurn/);
 });
 
 test('phone shows the saved user bubble immediately and only AI gets the animated typing indicator', () => {
@@ -93,7 +93,7 @@ test('phone send button preserves composer focus so the keyboard does not close 
 });
 
 test('phone mention mode stays active across sends until @ is pressed again', () => {
-  assert.match(talk, /function getOlliTalkPersistentMentionPrefix\(value\)/);
+  assert.match(talk, /function getOlliTalkPersistentMentionPrefix\(\)/);
   assert.match(talk, /const persistentMentionPrefix = olliTalkMentionModeActive[\s\S]{0,120}getOlliTalkPersistentMentionPrefix\(\)/);
   assert.match(talk, /input\.value = ''/);
   assert.match(talk, /syncOlliTalkSelectedMentionPrefix\(\)/);

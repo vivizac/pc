@@ -53,6 +53,7 @@
   let olliTalkMentionSelections = new Map();
   let olliTalkMentionModeActive = false;
   let olliTalkAiConversationMessages = [];
+  let olliTalkAiConversationAcademyId = '';
   let olliTalkMentionBadgeWatcher = null;
   let olliTalkMentionSummaryInitialized = false;
   let olliTalkLastUnreadMentionCount = 0;
@@ -389,11 +390,18 @@
 
   function resetOlliTalkAiConversation(){
     olliTalkAiConversationMessages = [];
+    olliTalkAiConversationAcademyId = '';
   }
 
-  function buildOlliTalkAiConversationMessages(commandText){
+  function buildOlliTalkAiConversationMessages(commandText, context){
     const current = { role:'user', content:String(commandText || '').trim() };
     if (!isOlliTalkAiMentionConversationActive()) return [current];
+
+    const academyId = String(context?.academyId || '').trim();
+    if (olliTalkAiConversationAcademyId && olliTalkAiConversationAcademyId !== academyId) {
+      resetOlliTalkAiConversation();
+    }
+    olliTalkAiConversationAcademyId = academyId;
     return olliTalkAiConversationMessages.concat(current);
   }
 
@@ -588,7 +596,7 @@
         promptType:'talk',
         academyId:context?.academyId || '',
         sessionToken:context?.sessionToken || '',
-        messages:buildOlliTalkAiConversationMessages(commandText),
+        messages:buildOlliTalkAiConversationMessages(commandText, context),
         stream:false
       })
     });

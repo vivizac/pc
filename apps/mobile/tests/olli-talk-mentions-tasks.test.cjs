@@ -6,6 +6,7 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'olli-talk-beta.js'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const css = fs.readFileSync(path.join(root, 'olli-talk-beta.css'), 'utf8');
 
 test('Team Talk composer places the selected mention token immediately before the message textarea', () => {
   const prefixIndex=html.indexOf('id="olliTalkSelectedMentionPrefix"');
