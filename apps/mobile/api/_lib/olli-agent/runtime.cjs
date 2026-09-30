@@ -767,6 +767,138 @@ async function runTimetableMemoPrepareProbe({
 }
 
 
+function resolvePickupPrepareScope(preparedPrivacy) {
+  if (preparedPrivacy?.needsDisambiguation) {
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+
+  const subjectRefs = Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+  if (subjectRefs.length !== 1) {
+    throw runtimeError(
+      '픽업 등록은 한 번에 유치부 학생 한 명만 지정해 주세요.',
+      400,
+      'OLLI_AGENT_PICKUP_SINGLE_STUDENT_REQUIRED'
+    );
+  }
+
+  const subjectLabel = subjectRefs[0].label;
+  const subject = preparedPrivacy?.subjectAccess?.resolve?.(subjectLabel);
+  const division = String(subject?.division || '').trim().toLowerCase();
+  if (division !== 'kinder') {
+    throw runtimeError(
+      '픽업 등록은 유치부 학생만 지원해요.',
+      400,
+      'OLLI_AGENT_PICKUP_KINDER_ONLY'
+    );
+  }
+
+  const safeText = String(preparedPrivacy?.safeText || '');
+  if (/(?:초등부|초등|elementary)/i.test(safeText)) {
+    throw runtimeError(
+      '픽업 등록은 유치부 학생만 지원해요.',
+      400,
+      'OLLI_AGENT_PICKUP_KINDER_ONLY'
+    );
+  }
+
+  const both = /등하원|등원[\s\S]{0,40}하원|하원[\s\S]{0,40}등원/.test(safeText);
+  const pickupKind = both
+    ? 'both'
+    : (/하원/.test(safeText) ? 'dropoff' : 'arrival');
+
+  return {
+    subjectLabel,
+    pickupKind,
+  };
+}
+
+async function runPickupPrepareProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+}) {
+  assertOpenAiKey();
+
+  const scope = resolvePickupPrepareScope(preparedPrivacy);
+  const { Agent, run, tool, z } = await loadAgentsSdk();
+  const { createPreparePickupAddTool } = require('./tools/pickup-prepare-tools.cjs');
+  const { sanitizeAgentToolPayload } = require('./privacy.cjs');
+  const model = agentModel();
+  const today = todayInSeoul();
+
+  const preparePickupAdd = createPreparePickupAddTool({
+    tool,
+    z,
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    studentLabel:scope.subjectLabel,
+    pickupKind:scope.pickupKind,
+    currentDate:today,
+    requestId,
+    sanitizePayload(payload) {
+      return sanitizeAgentToolPayload(payload, preparedPrivacy);
+    },
+  });
+
+  const kindInstruction = scope.pickupKind === 'both'
+    ? 'This request contains both arrival and dropoff pickup. Fill arrival_label, arrival_time, and dropoff_label.'
+    : (scope.pickupKind === 'dropoff'
+      ? 'This request is dropoff-only. Fill dropoff_label and use empty strings for arrival_label and arrival_time.'
+      : 'This request is arrival-only. Fill arrival_label and arrival_time and use an empty string for dropoff_label.');
+
+  const agent = new Agent({
+    name:'Olli Pickup Prepare Probe',
+    model,
+    instructions:[
+      'You are the Olli pickup-registration preparation assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The only available anonymous student label for this run is ' + scope.subjectLabel + '.',
+      'The server has fixed the pickup kind to ' + scope.pickupKind + '. Do not override it.',
+      kindInstruction,
+      'Today in Korea is ' + today + '.',
+      'Always call prepare_pickup_add exactly once before answering.',
+      'This tool creates a pending confirmation card only. It never directly changes pickup data.',
+      'weekday uses 1=Monday through 6=Saturday.',
+      'Use the visible class clock hour from 1 to 12 and class_minute 0 or 30. Never pass an internal stored slot such as 7, 8, or 9 as the clock hour.',
+      'arrival_time must be converted to 24-hour HH:MM format.',
+      'The server chooses the effective date as the next occurrence of the requested weekday, matching the existing Team Chat pickup behavior.',
+      'Never say the pickup was saved. Say that the pickup registration is waiting for user confirmation.',
+      'Never ask for, infer, or reveal a real student name, UUID, member ID, session token, academy ID, action ID, message ID, or internal stored time slot.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[preparePickupAdd],
+    modelSettings:{ toolChoice:'prepare_pickup_add' },
+  });
+
+  const result = await run(agent, preparedPrivacy.safeText, {
+    context:agentContext,
+  });
+
+  const finalOutput = String(result?.finalOutput || '').trim();
+  if (!finalOutput) {
+    throw runtimeError(
+      '픽업 등록 준비 Agent 응답이 비어 있습니다.',
+      502,
+      'OLLI_AGENT_EMPTY_PICKUP_PREPARE_RESPONSE'
+    );
+  }
+
+  return {
+    ready:true,
+    model,
+    output:finalOutput,
+    nodeVersion:process.versions.node,
+  };
+}
+
+
 async function runStudentProfileProbe({
   agentContext,
   requestContext,
@@ -862,6 +994,8 @@ module.exports = {
   runScheduleAvailabilityProbe,
   runAttendanceProbe,
   runPickupProbe,
+  resolvePickupPrepareScope,
+  runPickupPrepareProbe,
   runStudentProfileProbe,
   resolveTimetableMemoScope,
   runTimetableMemoPrepareProbe,
