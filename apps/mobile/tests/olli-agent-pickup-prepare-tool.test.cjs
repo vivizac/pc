@@ -49,7 +49,24 @@ function baseRpc(options = {}) {
       return options.scheduleWeek || { ok:true, pickups:[] };
     }
     if (name === 'olli_team_chat_send_action') {
-      return { ok:true, message:{ action:{ id:'hidden-action-id', status:'pending' } } };
+      return {
+        ok:true,
+        message:{
+          id:987,
+          sender_member_id:null,
+          sender_name:'올리',
+          message_type:'ai',
+          body:params.p_body,
+          reply_to_message_id:params.p_reply_to_message_id,
+          created_at:'2026-10-01T00:00:00Z',
+          action:{
+            id:'hidden-action-id',
+            action_type:'add_pickup',
+            status:'pending',
+            revision:0,
+          },
+        },
+      };
     }
     throw new Error('unexpected RPC: ' + name);
   };
@@ -73,6 +90,7 @@ test('next occurrence matches existing Team Chat semantics including same-day ap
 
 test('prepare arrival pickup keeps real identity server-side and returns anonymous pending data', async () => {
   const {calls, rpc} = baseRpc();
+  let persistedMessage = null;
   const result = await pickup.preparePickupAddAction({
     requestContext:requestContext(),
     subjectAccess:subjectAccess(),
@@ -86,6 +104,8 @@ test('prepare arrival pickup keeps real identity server-side and returns anonymo
     dropoffLabel:'',
     currentDate:'2026-10-01',
     requestId:'pickup-source-123',
+    replyToMessageId:321,
+    capturePersistedMessage(message) { persistedMessage = message; },
     sanitizePayload(payload) { return payload; },
     callRpc:rpc,
   });
@@ -113,6 +133,10 @@ test('prepare arrival pickup keeps real identity server-side and returns anonymo
   assert.equal(action.params.p_action_payload.pickupTime, '15:20');
   assert.equal(action.params.p_action_payload.dropoffLabel, '');
   assert.equal(action.params.p_action_payload.isDropoff, false);
+  assert.equal(action.params.p_reply_to_message_id, 321);
+  assert.equal(persistedMessage?.id, 987);
+  assert.equal(persistedMessage?.reply_to_message_id, 321);
+  assert.equal(persistedMessage?.action?.id, 'hidden-action-id');
   assert.match(action.params.p_body, /최지안/);
   assert.match(action.params.p_body, /4시 30분/);
   assert.doesNotMatch(action.params.p_body, /학생A/);
@@ -324,4 +348,29 @@ test('pickup prepare validates required fields for each pickup kind', async () =
     }),
     (error) => error?.code === 'OLLI_AGENT_PICKUP_DROPOFF_REQUIRED'
   );
+});
+
+
+test('pickup prepare rejects an invalid source reply id before storing an action', async () => {
+  const {calls, rpc} = baseRpc();
+  await assert.rejects(
+    pickup.preparePickupAddAction({
+      requestContext:requestContext(),
+      subjectAccess:subjectAccess(),
+      studentLabel:'학생A',
+      pickupKind:'arrival',
+      weekday:4,
+      classHour:4,
+      classMinute:0,
+      arrivalLabel:'리슈빌',
+      arrivalTime:'15:20',
+      currentDate:'2026-10-01',
+      requestId:'pickup-invalid-source',
+      replyToMessageId:-1,
+      sanitizePayload(payload) { return payload; },
+      callRpc:rpc,
+    }),
+    (error) => error?.code === 'OLLI_AGENT_PICKUP_SOURCE_MESSAGE_INVALID'
+  );
+  assert.equal(calls.some((item) => item.name === 'olli_team_chat_send_action'), false);
 });
