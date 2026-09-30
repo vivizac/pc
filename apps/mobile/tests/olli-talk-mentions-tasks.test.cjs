@@ -270,13 +270,14 @@ test('Team Talk visualViewport scroll reuses the locked composer geometry', () =
   assert.doesNotMatch(body,/visualViewport\.addEventListener\('scroll', syncOlliTalkComposerViewport/);
 });
 
-test('Team Talk composer measurement no longer applies composer delta to chat scrollTop', () => {
+test('Team Talk moves chat content by the exact composer delta at every scroll position', () => {
   const start=source.indexOf('function syncOlliTalkChatToComposer');
   const end=source.indexOf('function scheduleOlliTalkChatToComposer',start);
   const body=source.slice(start,end);
-  assert.doesNotMatch(body,/composerDelta/);
-  assert.doesNotMatch(body,/chatArea\.scrollTop/);
-  assert.doesNotMatch(body,/followBottom/);
+  assert.match(source,/let olliTalkLastComposerTop = null/);
+  assert.match(body,/const composerDelta = previousComposerTop - currentComposerTop/);
+  assert.match(body,/chatArea\.scrollTop = Math\.max\(0, Number\(chatArea\.scrollTop \|\| 0\) \+ composerDelta\)/);
+  assert.doesNotMatch(body,/isOlliTalkChatNearBottom|followBottom/);
 });
 
 test('Team Talk realtime refresh preserves middle scroll and follows only when near bottom', () => {
@@ -324,12 +325,11 @@ test('Team Talk composer action buttons use a very light gray background and thi
 });
 
 
-test('Team Talk keyboard settling never moves the current chat scroll position', () => {
+test('Team Talk keyboard settling uses composer geometry only and keeps no old transition anchor state', () => {
   const start = source.indexOf('function finishOlliTalkViewportTransition');
   const end = source.indexOf('function scheduleOlliTalkViewportSettle', start);
   const body = source.slice(start, end);
   assert.match(body, /syncOlliTalkChatToComposer\(\)/);
-  assert.doesNotMatch(body, /chatArea\.scrollTop|startScrollTop|startTop|finalTop|followBottom|delta/);
   assert.doesNotMatch(source, /olliTalkViewportTransitionComposerTop|olliTalkViewportTransitionChatScrollTop|olliTalkViewportTransitionUserTouchedChat|olliTalkFollowBottomAfterViewportSettle/);
 });
 
@@ -594,4 +594,13 @@ test('messages without a teacher target register broadcast recipients while targ
   assert.match(source, /async function registerOlliTalkMessageRecipients\(messageId,memberIds/);
   assert.match(source, /registerOlliTalkMessageRecipients\(Number\(payload\.message\.id\),mentionedIds,context\)/);
   assert.match(source, /registerOlliTalkMessageRecipients\(messageId,\[\],context\)/);
+});
+
+
+test('Team Talk captures composer top before keyboard open and clears it after keyboard close', () => {
+  assert.match(source,/input\.addEventListener\('focus',[\s\S]{0,320}olliTalkLastComposerTop = Number\.isFinite\(composerTop\) \? composerTop : null/);
+  const start=source.indexOf('function syncViewport');
+  const end=source.indexOf('function bindViewport',start);
+  const body=source.slice(start,end);
+  assert.match(body,/if \(!keyboardOpen && !inputFocused\)[\s\S]*?olliTalkLastComposerTop = null/);
 });

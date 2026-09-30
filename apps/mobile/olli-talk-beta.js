@@ -12,6 +12,7 @@
   let olliTalkChatMeasureRaf = 0;
   let olliTalkChatTrackingBound = false;
   let olliTalkComposerResizeObserver = null;
+  let olliTalkLastComposerTop = null;
   let olliTalkChatGestureActive = false;
   let olliTalkChatGestureSettleTimer = null;
   let olliTalkComposerViewportLock = null;
@@ -163,11 +164,25 @@
       )
     );
 
+    const previousComposerTop = Number(olliTalkLastComposerTop);
+    const currentComposerTop = Number(composerRect.top);
+
     // The message scroller physically ends at the composer's top edge.
     // This replaces the old full-height scroller + bottom padding reserve.
     screen.style.setProperty('--olli-talk-chat-bottom-gap', bottomGap + 'px');
 
-    // Keyboard/composer geometry may resize this scroller, but it never owns chat scrollTop.
+    // Keep the same conversation content visually attached to the composer:
+    // if the composer moves up/down N px, move chat scrollTop by the same N px.
+    if (
+      Number.isFinite(previousComposerTop)
+      && !olliTalkChatGestureActive
+    ) {
+      const composerDelta = previousComposerTop - currentComposerTop;
+      if (Math.abs(composerDelta) > 0.5) {
+        chatArea.scrollTop = Math.max(0, Number(chatArea.scrollTop || 0) + composerDelta);
+      }
+    }
+    olliTalkLastComposerTop = currentComposerTop;
   }
 
   function scheduleOlliTalkChatToComposer(){
@@ -345,6 +360,7 @@
     if (!keyboardOpen && !inputFocused) {
       releaseOlliTalkComposerViewportLock();
       olliTalkKeyboardTransitionActive = false;
+      olliTalkLastComposerTop = null;
       hideOlliTalkMentionMenu();
       olliTalkKeyboardBaselineBottom = 0;
     }
@@ -4402,6 +4418,7 @@
     olliTalkChatGestureActive = false;
     releaseOlliTalkComposerViewportLock();
     olliTalkKeyboardTransitionActive = false;
+    olliTalkLastComposerTop = null;
   }
 
   async function slideOlliTalkOutTo(targetScreen){
@@ -4919,6 +4936,9 @@
       });
       input.addEventListener('focus', () => {
         const screen = getScreen();
+        const composerWrap = screen?.querySelector('.olliTalkBetaComposerWrap');
+        const composerTop = Number(composerWrap?.getBoundingClientRect().top);
+        olliTalkLastComposerTop = Number.isFinite(composerTop) ? composerTop : null;
         releaseOlliTalkComposerViewportLock();
         olliTalkKeyboardTransitionActive = true;
         captureOlliTalkKeyboardBaseline(true);
@@ -4930,6 +4950,9 @@
       }, true);
       input.addEventListener('blur', () => {
         const screen = getScreen();
+        const composerWrap = screen?.querySelector('.olliTalkBetaComposerWrap');
+        const composerTop = Number(composerWrap?.getBoundingClientRect().top);
+        olliTalkLastComposerTop = Number.isFinite(composerTop) ? composerTop : olliTalkLastComposerTop;
         releaseOlliTalkComposerViewportLock();
         olliTalkKeyboardTransitionActive = true;
         if (screen) screen.classList.add('olliTalkViewportMoving');
