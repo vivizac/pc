@@ -4823,6 +4823,13 @@
     }
 
     if (sendButton) {
+      sendButton.addEventListener('pointerdown', event => {
+        event.preventDefault();
+        const composerInput = getOlliTalkBetaInput();
+        if (!composerInput) return;
+        try { composerInput.focus({ preventScroll:true }); }
+        catch (_) { composerInput.focus(); }
+      });
       sendButton.addEventListener('click', sendOlliTalkBetaMessage);
     }
 

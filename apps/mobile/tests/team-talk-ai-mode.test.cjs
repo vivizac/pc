@@ -78,6 +78,11 @@ test('phone mention mode keeps @ active until a selected teacher has actual mess
   assert.match(talk, /trigger\.classList\.toggle\('active', olliTalkMentionModeActive\)/);
 });
 
+test('phone send button preserves composer focus so the keyboard does not close and reopen', () => {
+  assert.match(talk, /sendButton\.addEventListener\('pointerdown',[\s\S]{0,260}event\.preventDefault\(\)[\s\S]{0,260}composerInput\.focus\(\{ preventScroll:true \}\)/);
+  assert.match(talk, /sendButton\.addEventListener\('click', sendOlliTalkBetaMessage\)/);
+});
+
 test('phone mention mode stays active across sends until @ is pressed again', () => {
   assert.match(talk, /function getOlliTalkPersistentMentionPrefix\(value\)/);
   assert.match(talk, /const persistentMentionPrefix = olliTalkMentionModeActive[\s\S]{0,120}getOlliTalkPersistentMentionPrefix\(rawBody\)/);
