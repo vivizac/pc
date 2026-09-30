@@ -20,7 +20,7 @@ export default async function handler(req, res) {
 
     if (!['probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'memo_prepare_probe', 'pickup_prepare_probe', 'pickup_prepare'].includes(mode)) {
       return res.status(400).json({
-        error: '현재 독립 Agent endpoint는 probe, privacy_probe, profile_probe, schedule_probe, records_probe, availability_probe, attendance_probe, pickups_probe, memo_prepare_probe 또는 pickup_prepare_probe 또는 pickup_prepare 모드만 지원합니다.',
+        error: '현재 독립 Agent endpoint는 probe, privacy_probe, profile_probe, schedule_probe, records_probe, availability_probe, attendance_probe, pickups_probe, memo_prepare_probe 또는 pickup_prepare_probe, pickup_prepare 모드만 지원합니다.',
       });
     }
 
