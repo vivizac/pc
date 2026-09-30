@@ -53,6 +53,14 @@ test('legacy coarse attendance migrates once to the first exact session', () => 
   assert.match(adapter, /global\.writeRecordDailyAttendanceStore\(store\)/);
 });
 
+test('attendance paint barrier spans two animation frames before heavy local work resumes', () => {
+  const start = adapter.indexOf('function afterNextPaint()');
+  const end = adapter.indexOf('function clean', start);
+  const body = adapter.slice(start, end);
+  const frames = body.match(/requestAnimationFrame/g) || [];
+  assert.ok(frames.length >= 2, 'attendance paint barrier must span two animation frames');
+});
+
 test('attendance tapping paints exact-session state before local storage or network work', () => {
   const start = adapter.indexOf('async function toggleTodayAttendance');
   const end = adapter.indexOf('function afterRecordListLoaded', start);
@@ -114,7 +122,7 @@ test('attendance server refresh only rerenders schedule when the visible snapsho
 
 test('phone loads cache-busted shared and adapter attendance scripts', () => {
   assert.match(html, /olli-attendance-data\.js\?v=20260924-week-local-first-1/);
-  assert.match(html, /olli-attendance-phone-adapter\.js\?v=20260930-attendance-runtime-cleanup-1/);
+  assert.match(html, /olli-attendance-phone-adapter\.js\?v=20260930-attendance-real-paint-1/);
   assert.match(html, /olli-record-room-navigation\.js\?v=20260930-attendance-runtime-cleanup-1/);
 });
 

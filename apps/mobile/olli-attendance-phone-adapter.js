@@ -38,7 +38,9 @@
   function afterNextPaint() {
     return new Promise(resolve => {
       if (typeof global.requestAnimationFrame === 'function') {
-        global.requestAnimationFrame(() => resolve());
+        global.requestAnimationFrame(() => {
+          global.requestAnimationFrame(() => resolve());
+        });
       } else {
         global.setTimeout(resolve, 0);
       }
