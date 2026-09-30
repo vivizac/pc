@@ -245,17 +245,18 @@ test('QuickNote programmatic refocus paths also use preventScroll', () => {
 });
 
 
-test('QuickNote locks the settled keyboard viewport so chat scrolling cannot recalculate message lift', () => {
-  assert.match(js,/let kcfComposerViewportLock = null;/);
-  assert.match(js,/function lockKinderChatFeedbackComposerViewport\(\)/);
-  assert.match(js,/function scheduleKinderChatFeedbackComposerViewportLock\(\)/);
-  assert.match(js,/if \(kcfComposerViewportLock && options\.followKeyboard !== true\)/);
-  assert.match(js,/window\.visualViewport\.addEventListener\('scroll', handleKinderChatFeedbackViewportScroll\)/);
-  assert.match(js,/if \(kcfComposerViewportLock\) \{[\s\S]*?syncKinderChatFeedbackComposerViewport\(\);[\s\S]*?return;/);
-  assert.match(js,/if \(kcfComposerViewportLock\) \{[\s\S]*?scheduleKinderChatFeedbackChatReserve\(\);[\s\S]*?\} else \{[\s\S]*?updateKinderChatFeedbackKeyboardOffset\(\);/);
-});
-
-test('QuickNote focus lifecycle follows keyboard only until viewport lock settles', () => {
-  assert.match(js,/releaseKinderChatFeedbackComposerViewportLock\(\);[\s\S]*?kcfKeyboardTransitionActive = true;[\s\S]*?setTimeout\(updateKinderChatFeedbackKeyboardOffset, 300\)/);
-  assert.match(js,/syncKinderChatFeedbackComposerViewport\(\{ followKeyboard:true \}\);[\s\S]*?scheduleKinderChatFeedbackComposerViewportLock\(\)/);
+test('QuickNote owns one fixed page surface and only the chat area scrolls', () => {
+  const screenRule = css.match(/#kinderChatFeedbackScreen \{[\s\S]*?\}/)?.[0] || '';
+  const innerRule = css.match(/#kinderChatFeedbackScreen \.kcfInner \{[\s\S]*?\}/)?.[0] || '';
+  const chatRule = css.match(/#kinderChatFeedbackScreen \.kcfChatArea\{[\s\S]*?\}/)?.[0] || '';
+  assert.match(screenRule,/position:fixed/);
+  assert.match(screenRule,/inset:0/);
+  assert.match(screenRule,/overflow:hidden/);
+  assert.match(screenRule,/overscroll-behavior:none/);
+  assert.match(innerRule,/position:absolute/);
+  assert.match(innerRule,/inset:0/);
+  assert.match(innerRule,/overflow:hidden/);
+  assert.match(chatRule,/overflow-y:auto/);
+  assert.match(chatRule,/overscroll-behavior-y:contain/);
+  assert.match(chatRule,/touch-action:pan-y/);
 });
