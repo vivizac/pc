@@ -734,6 +734,21 @@
       return `${renderSessionDivider(label)}${renderRowsForSession(renderRows, group.students, 'regular')}`;
     }).join('');
   }
+  function emitRecordListRendered(view) {
+    try {
+      global.dispatchEvent(new global.CustomEvent('olli:record-list-rendered', {
+        detail: { view: view === 'kinder' ? 'kinder' : 'elementary' }
+      }));
+    } catch (_) {}
+  }
+  function emitAttendanceChanged(studentId) {
+    try {
+      global.dispatchEvent(new global.CustomEvent('olli:attendance-changed', {
+        detail: { studentId: String(studentId || '') }
+      }));
+    } catch (_) {}
+  }
+
   function renderTodayAttendanceList(view, name) {
     const list = global.document.getElementById('recordList');
     if (!list || typeof global.getStudentsByType !== 'function') return false;
@@ -749,6 +764,7 @@
     const regularEmpty = regularHtml ? '' : `<div class="recordEmpty recordTodayEmpty">${query ? '검색된 당일 등원 학생이 없습니다.' : '오늘 등원 예정인 학생이 없습니다.'}</div>`;
     const makeupSection = makeupHtml ? `${renderSessionDivider('보강')}${makeupHtml}` : '';
     list.innerHTML = `${regularHtml}${regularEmpty}${makeupSection}`;
+    emitRecordListRendered(view);
     return true;
   }
 
@@ -951,13 +967,14 @@
     writeLocalStatus(
       student, targetDateKey, kind, nextStatus, false, target.timeSlot, target.classGroup, localStore
     );
+    emitAttendanceChanged(student.id);
 
     try {
       await setAttendanceRegisterStatus(student, targetDateKey, kind, nextStatus, target.timeSlot, target.classGroup);
       writeLocalStatus(student, targetDateKey, kind, nextStatus, true, target.timeSlot, target.classGroup);
-      if (global.OlliAttendanceGuide?.isActive?.()) global.OlliAttendanceGuide.refreshStudent?.(student.id);
     } catch (error) {
       restoreLocalSession(student, targetDateKey, kind, target.timeSlot, target.classGroup, beforeSession);
+      emitAttendanceChanged(student.id);
       if (visualApplied) applyButtonStatus(currentStatus);
       else renderCurrentRecordList();
       const message = String(error?.message || error || '출석 저장에 실패했습니다.');

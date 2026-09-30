@@ -1,0 +1,66 @@
+#recordAttendanceSummaryToggle.recordAttendanceSummaryBtn{
+  position:absolute;
+  top:50%;
+  right:16px;
+  z-index:3;
+  transform:translateY(-50%);
+  min-width:52px;
+  height:32px;
+  padding:0 12px;
+  border:0;
+  border-radius:999px;
+  background:#f7f7f7;
+  color:#111;
+  font-family:inherit;
+  font-size:calc(12.5px * var(--olli-text-scale));
+  font-weight:500;
+  line-height:1;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+#recordAttendanceSummaryToggle.recordAttendanceSummaryBtn.active{
+  background:#0A84FF;
+  color:#fff;
+  font-weight:700;
+}
+body.olli-main-subpage-drawer-open #recordRoomScreen #recordAttendanceSummaryToggle{
+  right:calc(25% + 16px);
+}
+#recordRoomScreen .studentTextWrap.recordAttendanceSummaryHost{
+  position:relative;
+  overflow:visible;
+}
+#recordRoomScreen .recordAttendanceSummaryLine{
+  position:absolute;
+  left:0;
+  top:calc(100% + 2px);
+  display:flex;
+  align-items:baseline;
+  gap:6px;
+  width:max-content;
+  max-width:calc(100vw - 88px);
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  pointer-events:none;
+  color:#8f8f8f;
+  font-size:calc(12px * var(--olli-text-scale));
+  line-height:1.15;
+}
+#recordRoomScreen .recordAttendanceSummaryMetric{
+  display:inline-flex;
+  align-items:baseline;
+  gap:3px;
+  white-space:nowrap;
+}
+#recordRoomScreen .recordAttendanceSummaryMetric b{
+  color:#111;
+  font-weight:800;
+}
+#recordRoomScreen .recordAttendanceSummaryYear{
+  color:#8f8f8f;
+}
+body.olli-main-subpage-drawer-open #recordRoomScreen .recordAttendanceSummaryLine{
+  max-width:calc(75vw - 72px);
+}
