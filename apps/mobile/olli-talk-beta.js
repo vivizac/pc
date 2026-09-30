@@ -52,6 +52,8 @@
   });
   let olliTalkMentionSelections = new Map();
   let olliTalkMentionModeActive = false;
+  let olliTalkAiConversationMessages = [];
+  let olliTalkAiConversationAcademyId = '';
   let olliTalkMentionBadgeWatcher = null;
   let olliTalkMentionSummaryInitialized = false;
   let olliTalkLastUnreadMentionCount = 0;
@@ -360,26 +362,70 @@
     return document.getElementById('olliTalkBetaSendBtn');
   }
 
+  function getOlliTalkSelectedMentionPrefix(){
+    return document.getElementById('olliTalkSelectedMentionPrefix');
+  }
+
+  function syncOlliTalkSelectedMentionPrefix(){
+    const prefix = getOlliTalkSelectedMentionPrefix();
+    if (!prefix) return;
+    const labels = [];
+    olliTalkMentionSelections.forEach(member => {
+      const name = String(member?.display_name || '').trim();
+      if (name) labels.push('@' + name);
+    });
+    prefix.textContent = labels.join(' ');
+    prefix.hidden = labels.length === 0;
+  }
+
   function isOlliTalkAiEnabled(){
     try { return window.OlliTeamTalkSettings?.state?.aiEnabled === true; }
     catch (_) { return false; }
+  }
+
+  function isOlliTalkAiMentionConversationActive(){
+    const selected = olliTalkMentionSelections.get(OLLI_TALK_AI_MENTION_ID);
+    return olliTalkMentionModeActive && selected?.is_olli_ai === true;
+  }
+
+  function resetOlliTalkAiConversation(){
+    olliTalkAiConversationMessages = [];
+    olliTalkAiConversationAcademyId = '';
+  }
+
+  function buildOlliTalkAiConversationMessages(commandText, context){
+    const current = { role:'user', content:String(commandText || '').trim() };
+    if (!isOlliTalkAiMentionConversationActive()) return [current];
+
+    const academyId = String(context?.academyId || '').trim();
+    if (olliTalkAiConversationAcademyId && olliTalkAiConversationAcademyId !== academyId) {
+      resetOlliTalkAiConversation();
+    }
+    olliTalkAiConversationAcademyId = academyId;
+    return olliTalkAiConversationMessages.concat(current);
+  }
+
+  function recordOlliTalkAiConversationTurn(commandText, replyText){
+    if (!isOlliTalkAiMentionConversationActive()) return;
+    const userText = String(commandText || '').trim();
+    const assistantText = String(replyText || '').trim();
+    if (!userText || !assistantText) return;
+    olliTalkAiConversationMessages.push(
+      { role:'user', content:userText },
+      { role:'assistant', content:assistantText }
+    );
+    if (olliTalkAiConversationMessages.length > 12) {
+      olliTalkAiConversationMessages = olliTalkAiConversationMessages.slice(-12);
+    }
   }
 
   function stripOlliTalkOlliPrefix(value){
     return String(value || '').replace(/^\s*@올리(?:\s+|$)/, '').trim();
   }
 
-  function hasOlliTalkAiMentionSelection(value){
+  function hasOlliTalkAiMentionSelection(){
     const selected = olliTalkMentionSelections.get(OLLI_TALK_AI_MENTION_ID);
-    if (!selected?.is_olli_ai) return false;
-    return /(^|\s)@올리(?=\s|$|[,.!?，。！？])/.test(String(value || ''));
-  }
-
-  function stripOlliTalkOlliMention(value){
-    return String(value || '')
-      .replace(/(^|\s)@올리(?=\s|$|[,.!?，。！？])/, '$1')
-      .replace(/\s+/g, ' ')
-      .trim();
+    return selected?.is_olli_ai === true;
   }
 
   function hasOlliTalkPendingCommand(){
@@ -539,6 +585,7 @@
 
   function handleOlliTalkAiModeChanged(){
     olliTalkPendingActionReason = null;
+    resetOlliTalkAiConversation();
   }
 
   async function resolveOlliTalkAiReply(commandText, context){
@@ -549,7 +596,7 @@
         promptType:'talk',
         academyId:context?.academyId || '',
         sessionToken:context?.sessionToken || '',
-        messages:[{ role:'user', content:String(commandText || '').trim() }],
+        messages:buildOlliTalkAiConversationMessages(commandText, context),
         stream:false
       })
     });
@@ -725,27 +772,15 @@
       .trim();
   }
 
-  function hasOlliTalkSelectedMentionInInput(value){
-    const text = String(value || '');
-    let found = false;
-    olliTalkMentionSelections.forEach(member => {
-      if (found) return;
-      const name = String(member?.display_name || '').trim();
-      if (!name) return;
-      const pattern = new RegExp('(^|\\s)@' + escapeRegExp(name) + '(?=\\s|$|[,.!?，。！？])');
-      if (pattern.test(text)) found = true;
-    });
-    return found;
+  function hasOlliTalkSelectedMentionInInput(){
+    return olliTalkMentionSelections.size > 0;
   }
 
-  function getOlliTalkPersistentMentionPrefix(value){
-    const text = String(value || '');
+  function getOlliTalkPersistentMentionPrefix(){
     const mentions = [];
     olliTalkMentionSelections.forEach(member => {
       const name = String(member?.display_name || '').trim();
-      if (!name) return;
-      const pattern = new RegExp('(^|\\s)@' + escapeRegExp(name) + '(?=\\s|$|[,.!?，。！？])');
-      if (pattern.test(text)) mentions.push('@' + name);
+      if (name) mentions.push('@' + name);
     });
     return mentions.length ? mentions.join(' ') + ' ' : '';
   }
@@ -753,7 +788,7 @@
   function isOlliTalkMentionMessageReady(){
     const input = getOlliTalkBetaInput();
     if (!input || !olliTalkMentionModeActive) return false;
-    return hasOlliTalkSelectedMentionInInput(input.value)
+    return hasOlliTalkSelectedMentionInInput()
       && getOlliTalkMentionMessageText(input.value).length > 0;
   }
 
@@ -780,6 +815,7 @@
     const canSend = olliTalkMentionModeActive ? isOlliTalkMentionMessageReady() : hasText;
     sendButton.disabled = !canSend;
     sendButton.setAttribute('aria-disabled', canSend ? 'false' : 'true');
+    syncOlliTalkSelectedMentionPrefix();
     syncOlliTalkMentionModeUi();
   }
 
@@ -3760,9 +3796,16 @@
 
     const name = String(member.display_name || '').trim();
     if (!name) return;
-    const insertion = '@' + name + ' ';
-    input.setRangeText(insertion, info.start, info.end, 'end');
+
+    const wasAiSelected = hasOlliTalkAiMentionSelection();
+    input.setRangeText('', info.start, info.end, 'end');
+    input.value = String(input.value || '').replace(/^\s+/, '');
+
     olliTalkMentionSelections.set(String(member.member_id), member);
+    if (member?.is_olli_ai === true && !wasAiSelected) resetOlliTalkAiConversation();
+    if (member?.is_olli_ai !== true && wasAiSelected) resetOlliTalkAiConversation();
+
+    syncOlliTalkSelectedMentionPrefix();
     hideOlliTalkMentionMenu();
     resizeInput();
     updateOlliTalkBetaComposerState();
@@ -3811,16 +3854,14 @@
     const input = getOlliTalkBetaInput();
     if (!input) return;
 
-    let value = String(input.value || '');
-    olliTalkMentionSelections.forEach(member => {
-      const name = String(member?.display_name || '').trim();
-      if (!name) return;
-      const pattern = new RegExp('(^|\\s)@' + escapeRegExp(name) + '(?=\\s|$|[,.!?，。！？])', 'g');
-      value = value.replace(pattern, '$1');
-    });
-    value = value.replace(/(^|\s)@[^\s@]*$/g, '$1').replace(/\s+/g, ' ').trim();
+    const value = String(input.value || '')
+      .replace(/(^|\s)@[^\s@]*$/g, '$1')
+      .replace(/\s+/g, ' ')
+      .trimStart();
     input.value = value;
     olliTalkMentionSelections.clear();
+    resetOlliTalkAiConversation();
+    syncOlliTalkSelectedMentionPrefix();
   }
 
   async function openOlliTalkMentionPicker(event){
@@ -4090,14 +4131,17 @@
 
     const rawBody = String(input.value || '').trim();
     const persistentMentionPrefix = olliTalkMentionModeActive
-      ? getOlliTalkPersistentMentionPrefix(rawBody)
+      ? getOlliTalkPersistentMentionPrefix()
       : '';
-    const olliAiMentionRequested = hasOlliTalkAiMentionSelection(rawBody);
-    const olliRequested = olliAiMentionRequested || /^\s*@올리(?:\s|$)/.test(rawBody);
+    const olliAiMentionRequested = olliTalkMentionModeActive && hasOlliTalkAiMentionSelection();
+    const directOlliRequested = /^\s*@올리(?:\s|$)/.test(rawBody);
+    const olliRequested = olliAiMentionRequested || directOlliRequested;
     const commandText = olliRequested
-      ? (olliAiMentionRequested ? stripOlliTalkOlliMention(rawBody) : stripOlliTalkOlliPrefix(rawBody))
+      ? (olliAiMentionRequested ? rawBody : stripOlliTalkOlliPrefix(rawBody))
       : '';
-    const body = olliRequested ? ('@올리 ' + commandText).trim() : rawBody;
+    const body = olliRequested
+      ? ('@올리 ' + commandText).trim()
+      : (persistentMentionPrefix + rawBody).trim();
 
     if (
       !rawBody
@@ -4144,11 +4188,13 @@
       const mentionedMembers=olliRequested?[]:resolveMentionedMembers(body);
       const mentionedIds=mentionedMembers.map(member=>String(member.member_id)).filter(Boolean);
 
-      input.value = persistentMentionPrefix;
+      input.value = '';
       if (!persistentMentionPrefix) {
         olliTalkMentionSelections.clear();
         olliTalkMentionModeActive = false;
+        resetOlliTalkAiConversation();
       }
+      syncOlliTalkSelectedMentionPrefix();
       hideOlliTalkMentionMenu();
       resizeInput();
       updateOlliTalkBetaComposerState();
@@ -4194,6 +4240,7 @@
             const turn=await resolveOlliTalkAiTurn(commandText,context,Number(payload.message.id));
             olliTalkAssistantReplyPending=false;
             replaceOlliTalkAssistantTypingWithMessage(turn.assistantMessage,context.memberId);
+            if (turn.recordAi) recordOlliTalkAiConversationTurn(commandText, turn.replyText);
           }else{
             const turn=await resolveOlliTalkBotTurn(commandText,context,Number(payload.message.id));
             appendOlliTalkPersistedMessage(turn.assistantMessage,context.memberId);

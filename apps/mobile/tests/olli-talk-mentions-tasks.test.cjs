@@ -6,6 +6,14 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'olli-talk-beta.js'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const css = fs.readFileSync(path.join(root, 'olli-talk-beta.css'), 'utf8');
+
+test('Team Talk composer places the selected mention token immediately before the message textarea', () => {
+  const prefixIndex=html.indexOf('id="olliTalkSelectedMentionPrefix"');
+  const inputIndex=html.indexOf('id="olliTalkBetaInput"');
+  assert.ok(prefixIndex>=0 && inputIndex>prefixIndex);
+  assert.match(css,/\.olliTalkSelectedMentionPrefix\{[\s\S]*?margin-right:\.38em[\s\S]*?color:#1687F8/);
+});
 
 test('Olli Talk supports targeted member mention selection and badge', () => {
   assert.match(source, /olli_team_chat_members/);
