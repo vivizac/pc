@@ -18,16 +18,16 @@ export default async function handler(req, res) {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const mode = safeText(body.mode, 40);
 
-    if (!['probe', 'privacy_probe', 'schedule_probe', 'records_probe', 'availability_probe'].includes(mode)) {
+    if (!['probe', 'privacy_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe'].includes(mode)) {
       return res.status(400).json({
-        error: '현재 독립 Agent endpoint는 probe, privacy_probe, schedule_probe, records_probe 또는 availability_probe 모드만 지원합니다.',
+        error: '현재 독립 Agent endpoint는 probe, privacy_probe, schedule_probe, records_probe, availability_probe 또는 attendance_probe 모드만 지원합니다.',
       });
     }
 
     const contextModule = await import('./_lib/olli-agent/request-context.cjs');
     const requestContext = await contextModule.loadOlliAgentRequestContext(body);
 
-    if (mode === 'privacy_probe' || mode === 'schedule_probe' || mode === 'records_probe' || mode === 'availability_probe') {
+    if (mode === 'privacy_probe' || mode === 'schedule_probe' || mode === 'records_probe' || mode === 'availability_probe' || mode === 'attendance_probe') {
       const message = safeText(body.message, 5000);
       if (!message) {
         return res.status(400).json({
@@ -69,8 +69,14 @@ export default async function handler(req, res) {
           requestContext,
           preparedPrivacy: prepared,
         });
-      } else {
+      } else if (mode === 'availability_probe') {
         probe = await runtimeModule.runScheduleAvailabilityProbe({
+          agentContext,
+          requestContext,
+          preparedPrivacy: prepared,
+        });
+      } else {
+        probe = await runtimeModule.runAttendanceProbe({
           agentContext,
           requestContext,
           preparedPrivacy: prepared,
