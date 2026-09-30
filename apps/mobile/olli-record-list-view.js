@@ -236,7 +236,6 @@ function renderElementaryRecords(name) {
     + renderPhoneRecordStatusSection('elementary', 'paused', '휴원', pausedHtml, '휴원생이 없습니다.', searchMode)
     + renderPhoneRecordStatusSection('elementary', 'withdrawn', '퇴원', withdrawnHtml, '최근 한 달 내 퇴원생이 없습니다.', searchMode);
   syncPhoneRecordInitialSortLabel();
-  notifyPhoneRecordListRendered('kinder');
   notifyPhoneRecordListRendered('elementary');
 }
 
@@ -270,4 +269,5 @@ function renderKinderRecords(name) {
     + renderPhoneRecordStatusSection('kinder', 'paused', '휴원', pausedHtml, '휴원생이 없습니다.', searchMode)
     + renderPhoneRecordStatusSection('kinder', 'withdrawn', '퇴원', withdrawnHtml, '최근 한 달 내 퇴원생이 없습니다.', searchMode);
   syncPhoneRecordInitialSortLabel();
+  notifyPhoneRecordListRendered('kinder');
 }
