@@ -108,7 +108,7 @@
 <button class="recordModeLabel active" id="recordElementaryToggle" onclick="handleRecordViewToggleClick(event,'elementary')" onpointerdown="handleRecordViewTogglePress(event,'elementary')" type="button">초등부</button>
 <button class="recordModeLabel" id="recordKinderToggle" onclick="handleRecordViewToggleClick(event,'kinder')" onpointerdown="handleRecordViewTogglePress(event,'kinder')" type="button">유치부</button>
 </div>
-<button aria-label="출결 보기" aria-pressed="false" class="recordAttendanceSummaryBtn" disabled id="recordAttendanceSummaryToggle" onclick="toggleRecordAttendanceSummary(event)" type="button">출결</button>
+<button aria-label="출결 보기" aria-pressed="false" class="recordAttendanceSummaryBtn" disabled id="recordAttendanceSummaryToggle" onclick="toggleRecordAttendanceSummary(event)" onpointerdown="event.preventDefault()" type="button">출결</button>
 </div>
 </div>
 <div class="recordBodyNew">
