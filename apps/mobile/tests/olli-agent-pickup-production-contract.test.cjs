@@ -26,7 +26,9 @@ test('production pickup_prepare is separate from pickup_prepare_probe and requir
 });
 
 test('production pickup prepare derives retry id and reply linkage from the same source message id', () => {
-  const block = runtime.match(/async function runPickupPrepare\([\s\S]*?\n\}/)?.[0] || '';
+  const start = runtime.indexOf('async function runPickupPrepare({');
+  const end = runtime.indexOf('\n\nasync function runStudentProfileProbe({', start);
+  const block = start >= 0 && end > start ? runtime.slice(start, end) : '';
   assert.match(block, /Number\.isSafeInteger\(sourceId\)/);
   assert.match(block, /requestId:'team-chat-message:' \+ sourceId/);
   assert.match(block, /replyToMessageId:sourceId/);
