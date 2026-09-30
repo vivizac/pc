@@ -1479,14 +1479,14 @@ test('dropoff pickup execution reuses the existing timetable savePickup service'
   }), /하원 픽업/);
 });
 
-test('phone dropoff pickup execution calls the same v2 pickup RPC with is_dropoff', async () => {
+test('phone dropoff pickup execution calls pickup v3 with a dropoff label', async () => {
   const calls = [];
   const sandbox = {
     window: {
       OlliPhoneStudentScheduleService: {
         async request(name, payload) {
           calls.push({ name, payload });
-          return { ok:true, result:'saved', is_dropoff:payload.p_is_dropoff === true };
+          return { ok:true, result:'saved', has_dropoff:!!payload.p_dropoff_label };
         },
         clearWeekCache() {}
       },
@@ -1513,11 +1513,11 @@ test('phone dropoff pickup execution calls the same v2 pickup RPC with is_dropof
   });
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].name, 'olli_schedule_save_pickup_v2');
+  assert.equal(calls[0].name, 'olli_schedule_save_pickup_v3');
   assert.equal(calls[0].payload.p_student_id, 'student-k1');
   assert.equal(calls[0].payload.p_weekday, 1);
   assert.equal(calls[0].payload.p_class_time, 4);
-  assert.equal(calls[0].payload.p_pickup_label, '리슈빌');
-  assert.equal(calls[0].payload.p_pickup_time, '15:30');
-  assert.equal(calls[0].payload.p_is_dropoff, true);
+  assert.equal(calls[0].payload.p_arrival_label, null);
+  assert.equal(calls[0].payload.p_pickup_time, null);
+  assert.equal(calls[0].payload.p_dropoff_label, '리슈빌');
 });
