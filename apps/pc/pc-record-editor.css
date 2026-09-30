@@ -1253,6 +1253,7 @@ body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScree
 body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen #memoEditorVoiceBtn.connecting{opacity:.45;}
 body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#studentMemoScreen .memoFeedbackBottomBtn{
   position:absolute!important;left:auto!important;right:14px!important;bottom:13px!important;top:auto!important;z-index:21!important;
+  background:#e5e5e5!important;color:#111!important;box-shadow:none!important;
 }
 body.olliPcApp #recordRoomScreen .pcAttendanceSharedEditorHost>#kinderChatFeedbackScreen .kcfInner{
   position:relative!important;width:100%!important;max-width:none!important;height:100%!important;min-height:0!important;margin:0!important;overflow:hidden!important;background:#fff!important;
