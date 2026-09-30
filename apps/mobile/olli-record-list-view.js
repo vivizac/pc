@@ -166,8 +166,9 @@ function renderElementaryStudentRows(students, searchMode = false) {
     previousVisualSectionKey = visualSectionKey;
     const status = getStudentStatus(student);
     const statusClass = status === 'paused' ? ' studentStatusPaused' : (status === 'withdrawn' ? ' studentStatusWithdrawn' : '');
+    const searchStudentAttr = searchMode ? ` data-record-search-student-id="${escapeHtml(student.id)}"` : '';
     return `${dividerHtml}
-    <button class="elementaryStudentRow${groupBreakClass}${statusClass}" data-record-student-id="${escapeHtml(student.id)}" onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')" onpointerdown="startStudentLongPress(event,'${escapeTemplateLiteral(student.id)}')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">
+    <button class="elementaryStudentRow${groupBreakClass}${statusClass}"${searchStudentAttr} onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')" onpointerdown="startStudentLongPress(event,'${escapeTemplateLiteral(student.id)}')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">
       <div class="elementaryRowInner">
         ${renderPhoneElementaryAttendanceLeadIcon(student)}
         <span class="studentTextWrap">
@@ -200,8 +201,9 @@ function renderKinderStudentRows(students, searchMode = false) {
     previousVisualSectionKey = visualSectionKey;
     const status = getStudentStatus(student);
     const statusClass = status === 'paused' ? ' studentStatusPaused' : (status === 'withdrawn' ? ' studentStatusWithdrawn' : '');
+    const searchStudentAttr = searchMode ? ` data-record-search-student-id="${escapeHtml(student.id)}"` : '';
     return `${dividerHtml}
-    <button class="kinderStudentRow${groupBreakClass}${statusClass}" data-record-student-id="${escapeHtml(student.id)}" onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')" onpointerdown="startStudentLongPress(event,'${escapeTemplateLiteral(student.id)}')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">
+    <button class="kinderStudentRow${groupBreakClass}${statusClass}"${searchStudentAttr} onclick="handleStudentRowClick(event,'${escapeTemplateLiteral(student.id)}')" onpointerdown="startStudentLongPress(event,'${escapeTemplateLiteral(student.id)}')" onpointermove="moveStudentLongPress(event)" onpointerup="cancelStudentLongPress()" onpointercancel="cancelStudentLongPress()" oncontextmenu="event.preventDefault()">
       <div class="kinderRowInner">
         ${renderPhoneKinderAttendanceLeadIcon(student)}
         <span class="studentTextWrap">
