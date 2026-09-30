@@ -99,3 +99,41 @@ test('Observation roster renders a dedicated content layer and visualViewport ut
   assert.match(source,/--observation-roster-content-lift/);
   assert.doesNotMatch(source,/--olli-observation-keyboard-offset/);
 });
+
+
+test('Observation roster search input stays static while typing rerenders only the list', () => {
+  const rosterStart = html.indexOf('id="observationRosterScreen"');
+  const memoStart = html.indexOf('id="studentMemoScreen"');
+  const rosterSegment = html.slice(rosterStart, memoStart);
+  assert.match(rosterSegment,/id="observationRosterUtilityLayer"/);
+  assert.match(rosterSegment,/id="observationRosterUtilityMount"/);
+  assert.match(source,/function renderObservationRosterList\(\)/);
+  assert.match(source,/function renderObservationRosterUtility\(\)/);
+  assert.match(source,/input\.addEventListener\('input',[\s\S]*?renderObservationRosterList\(\);/);
+  assert.doesNotMatch(source,/input\.addEventListener\('input',[\s\S]{0,500}?renderObservationMemoRoster\(\)/);
+});
+
+test('Observation roster has one scroll owner and one keyboard-lift content layer', () => {
+  const scroll = css.match(/#observationRosterScreen \.memoBodyRosterScroll \{[\s\S]*?\}/)?.[0] || '';
+  const content = css.match(/#observationRosterScreen \.memoBodyRosterContent \{[\s\S]*?\}/)?.[0] || '';
+  const utility = css.match(/#observationRosterScreen \.memoRosterUtilityBar \{[\s\S]*?\}/)?.[0] || '';
+  assert.match(scroll,/overflow-y:auto/);
+  assert.match(scroll,/overscroll-behavior-y:contain/);
+  assert.match(scroll,/touch-action:pan-y/);
+  assert.match(scroll,/overflow-anchor:none/);
+  assert.match(content,/--observation-roster-content-lift/);
+  assert.match(utility,/position:absolute/);
+  assert.match(utility,/transform:none/);
+  assert.doesNotMatch(css,/--olli-observation-keyboard-offset/);
+  assert.doesNotMatch(css,/키보드 포커스 중에만 학생명단 자체의 이동/);
+});
+
+test('Observation roster UtilityLayer alone owns search-bar viewport movement', () => {
+  const layer = css.match(/#observationRosterScreen \.observationRosterUtilityLayer \{[\s\S]*?\}/)?.[0] || '';
+  assert.match(layer,/position:fixed/);
+  assert.match(layer,/--observation-roster-vv-left/);
+  assert.match(layer,/--observation-roster-vv-top/);
+  assert.match(source,/function syncObservationRosterUtilityViewport\(options = \{\}\)/);
+  assert.match(source,/input\.focus\(\{ preventScroll:true \}\)/);
+  assert.match(source,/if \(observationRosterScrollGestureActive\)[\s\S]*?return;/);
+});

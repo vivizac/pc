@@ -381,6 +381,9 @@ function getObservationRosterUtilityLayer() {
 function getObservationRosterScrollArea() {
   return getObservationRosterScreen()?.querySelector('.memoBodyRosterScroll') || null;
 }
+function getObservationRosterUtilityBar() {
+  return getObservationRosterScreen()?.querySelector('.memoRosterUtilityBar') || null;
+}
 function getObservationRosterViewportBottom() {
   const viewport = window.visualViewport;
   if (!viewport) return Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
@@ -391,9 +394,7 @@ function captureObservationRosterKeyboardBaseline(force = false) {
   if (!currentBottom) return;
   const layoutBottom = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
   const candidate = Math.max(currentBottom, layoutBottom);
-  if (force || !observationRosterKeyboardBaselineBottom) {
-    observationRosterKeyboardBaselineBottom = candidate;
-  }
+  if (force || !observationRosterKeyboardBaselineBottom) observationRosterKeyboardBaselineBottom = candidate;
 }
 function getObservationRosterKeyboardOffset() {
   const currentBottom = getObservationRosterViewportBottom();
@@ -446,65 +447,44 @@ function syncObservationRosterUtilityViewport(options = {}) {
   if (observationRosterScrollGestureActive && options.force !== true) return;
   const layer = getObservationRosterUtilityLayer();
   if (!layer) return;
-
   if (observationRosterUtilityViewportLock && options.followKeyboard !== true) {
     applyObservationRosterUtilityViewportGeometry(layer, observationRosterUtilityViewportLock);
     return;
   }
-
   applyObservationRosterUtilityViewportGeometry(layer, readObservationRosterUtilityViewportGeometry());
 }
 function syncObservationRosterScrollToUtility() {
   observationRosterMeasureRaf = 0;
-
   const screen = getObservationRosterScreen();
   const viewport = screen?.querySelector('.observationRosterPageInner');
-  const scrollArea = getObservationRosterScrollArea();
-  const utilityBar = screen?.querySelector('.memoRosterUtilityBar');
-  if (!screen || !viewport || !scrollArea || !utilityBar || !isObservationRosterScreenVisible()) return;
-
+  const utilityBar = getObservationRosterUtilityBar();
+  if (!screen || !viewport || !utilityBar || !isObservationRosterScreenVisible()) return;
   const viewportRect = viewport.getBoundingClientRect();
   const utilityRect = utilityBar.getBoundingClientRect();
-  if (
-    !Number.isFinite(viewportRect.bottom)
-    || !Number.isFinite(viewportRect.height)
-    || !Number.isFinite(utilityRect.top)
-  ) return;
-
+  if (!Number.isFinite(viewportRect.bottom) || !Number.isFinite(viewportRect.height) || !Number.isFinite(utilityRect.top)) return;
   const input = getObservationRosterSearchInput();
   const keyboardTracking = (!!input && document.activeElement === input)
     || screen.classList.contains('observation-keyboard-open')
     || observationRosterKeyboardTransitionActive;
   const keyboardOffset = keyboardTracking ? getObservationRosterKeyboardOffset() : 0;
-  const measuredReserve = Math.max(
-    0,
-    Math.min(
-      Math.ceil(viewportRect.height),
-      Math.ceil(viewportRect.bottom - utilityRect.top)
-    )
-  );
-  const reserve = Math.max(0, measuredReserve - keyboardOffset);
-
-  screen.style.setProperty('--observation-roster-reserve', reserve + 'px');
+  const measuredReserve = Math.max(0, Math.min(Math.ceil(viewportRect.height), Math.ceil(viewportRect.bottom - utilityRect.top)));
+  screen.style.setProperty('--observation-roster-reserve', Math.max(0, measuredReserve - keyboardOffset) + 'px');
 }
 function scheduleObservationRosterScrollToUtility() {
   if (observationRosterMeasureRaf) cancelAnimationFrame(observationRosterMeasureRaf);
   observationRosterMeasureRaf = requestAnimationFrame(syncObservationRosterScrollToUtility);
 }
 function bindObservationRosterUtilityTracking() {
-  const utilityBar = getObservationRosterScreen()?.querySelector('.memoRosterUtilityBar') || null;
+  const utilityBar = getObservationRosterUtilityBar();
   if (utilityBar === observationRosterUtilityObservedElement) return;
-
   if (observationRosterUtilityResizeObserver) {
     try { observationRosterUtilityResizeObserver.disconnect(); } catch (_) {}
   }
   observationRosterUtilityObservedElement = utilityBar;
-
   if (utilityBar && typeof ResizeObserver === 'function') {
     observationRosterUtilityResizeObserver = new ResizeObserver(scheduleObservationRosterScrollToUtility);
     observationRosterUtilityResizeObserver.observe(utilityBar);
   }
-
   scheduleObservationRosterScrollToUtility();
 }
 function finishObservationRosterViewportTransition() {
@@ -521,7 +501,6 @@ function scheduleObservationRosterViewportSettle() {
 function syncObservationRosterViewport(options = {}) {
   const screen = getObservationRosterScreen();
   if (!screen || !isObservationRosterScreenVisible()) return;
-
   const vv = window.visualViewport;
   const top = vv ? Number(vv.offsetTop || 0) : 0;
   const left = vv ? Number(vv.offsetLeft || 0) : 0;
@@ -529,51 +508,34 @@ function syncObservationRosterViewport(options = {}) {
   const height = vv ? Number(vv.height || window.innerHeight) : window.innerHeight;
   const input = getObservationRosterSearchInput();
   const inputFocused = !!input && document.activeElement === input;
-
-  if (inputFocused && !observationRosterKeyboardBaselineBottom) {
-    captureObservationRosterKeyboardBaseline(true);
-  }
-
-  const keyboardTracking = inputFocused
-    || screen.classList.contains('observation-keyboard-open')
-    || observationRosterKeyboardTransitionActive;
+  if (inputFocused && !observationRosterKeyboardBaselineBottom) captureObservationRosterKeyboardBaseline(true);
+  const keyboardTracking = inputFocused || screen.classList.contains('observation-keyboard-open') || observationRosterKeyboardTransitionActive;
   const keyboardOffset = keyboardTracking ? getObservationRosterKeyboardOffset() : 0;
   const keyboardOpen = keyboardTracking && keyboardOffset > 24;
   const signature = [Math.round(top), Math.round(left), Math.round(width), Math.round(height)].join(':');
   const viewportChanged = signature !== observationRosterLastViewportSignature;
-
   if (observationRosterScrollGestureActive) {
     observationRosterLastViewportSignature = signature;
     return;
   }
-
-  const keyboardInteraction = inputFocused
-    || screen.classList.contains('observation-keyboard-open')
-    || screen.classList.contains('observation-roster-viewport-moving');
-
+  const keyboardInteraction = inputFocused || screen.classList.contains('observation-keyboard-open') || screen.classList.contains('observation-roster-viewport-moving');
   if (keyboardInteraction && viewportChanged) {
     screen.classList.add('observation-roster-viewport-moving');
     scheduleObservationRosterViewportSettle();
   }
   observationRosterLastViewportSignature = signature;
-
   if (keyboardOpen) {
-    if (!inputFocused) {
-      syncObservationRosterUtilityViewport({ followKeyboard:true });
-    } else if (observationRosterKeyboardTransitionActive || !observationRosterUtilityViewportLock) {
+    if (!inputFocused) syncObservationRosterUtilityViewport({ followKeyboard:true });
+    else if (observationRosterKeyboardTransitionActive || !observationRosterUtilityViewportLock) {
       syncObservationRosterUtilityViewport({ followKeyboard:true });
       scheduleObservationRosterUtilityViewportLock();
-    } else {
-      syncObservationRosterUtilityViewport();
-    }
+    } else syncObservationRosterUtilityViewport();
   } else {
     syncObservationRosterUtilityViewport({ followKeyboard:true });
   }
-
   screen.classList.toggle('observation-keyboard-open', keyboardOpen);
   screen.style.setProperty('--observation-roster-content-lift', (keyboardTracking ? Math.max(0, keyboardOffset) : 0) + 'px');
   scheduleObservationRosterScrollToUtility();
-
   if (!keyboardOpen && !inputFocused) {
     releaseObservationRosterUtilityViewportLock();
     observationRosterKeyboardTransitionActive = false;
@@ -583,15 +545,9 @@ function syncObservationRosterViewport(options = {}) {
 function bindObservationRosterViewport() {
   if (observationRosterViewportBound) return;
   observationRosterViewportBound = true;
-
-  window.addEventListener('resize', () => {
-    syncObservationRosterViewport({ source:'window-resize' });
-  }, { passive:true });
-
+  window.addEventListener('resize', () => syncObservationRosterViewport({ source:'window-resize' }), { passive:true });
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', () => {
-      syncObservationRosterViewport({ source:'visual-resize' });
-    }, { passive:true });
+    window.visualViewport.addEventListener('resize', () => syncObservationRosterViewport({ source:'visual-resize' }), { passive:true });
     window.visualViewport.addEventListener('scroll', () => {
       if (observationRosterUtilityViewportLock) {
         syncObservationRosterUtilityViewport();
@@ -619,19 +575,19 @@ function endObservationRosterScrollGesture() {
     scheduleObservationRosterScrollToUtility();
   }, 120);
 }
-function bindObservationRosterDynamicViewportTargets() {
-  const screen = getObservationRosterScreen();
+function bindObservationRosterScrollSurface() {
   const scrollArea = getObservationRosterScrollArea();
-  const utilityBar = screen?.querySelector('.memoRosterUtilityBar') || null;
+  if (!scrollArea || scrollArea.dataset.observationViewportGestureBound === '1') return;
+  scrollArea.dataset.observationViewportGestureBound = '1';
+  scrollArea.addEventListener('pointerdown', beginObservationRosterScrollGesture, { passive:true });
+  scrollArea.addEventListener('touchstart', beginObservationRosterScrollGesture, { passive:true });
+}
+function bindObservationRosterUtilitySurface() {
+  const screen = getObservationRosterScreen();
+  const utilityBar = getObservationRosterUtilityBar();
   const input = getObservationRosterSearchInput();
-
-  if (scrollArea && scrollArea.dataset.observationViewportGestureBound !== '1') {
-    scrollArea.dataset.observationViewportGestureBound = '1';
-    scrollArea.addEventListener('pointerdown', beginObservationRosterScrollGesture, { passive:true });
-    scrollArea.addEventListener('touchstart', beginObservationRosterScrollGesture, { passive:true });
-  }
-
-  if (utilityBar && utilityBar.dataset.observationUtilityTouchBound !== '1') {
+  if (!screen || !utilityBar || !input) return;
+  if (utilityBar.dataset.observationUtilityTouchBound !== '1') {
     utilityBar.dataset.observationUtilityTouchBound = '1';
     let touchStartX = null;
     let touchStartY = null;
@@ -641,7 +597,7 @@ function bindObservationRosterDynamicViewportTargets() {
       touchStartY = touch ? Number(touch.clientY) : null;
     }, { passive:true });
     utilityBar.addEventListener('touchmove', event => {
-      if (!screen?.classList.contains('observation-keyboard-open')) return;
+      if (!screen.classList.contains('observation-keyboard-open')) return;
       const touch = event.touches?.[0];
       if (!touch || !Number.isFinite(touchStartX) || !Number.isFinite(touchStartY)) return;
       const deltaX = Math.abs(Number(touch.clientX) - touchStartX);
@@ -656,66 +612,53 @@ function bindObservationRosterDynamicViewportTargets() {
     utilityBar.addEventListener('touchend', clearTouch, { passive:true });
     utilityBar.addEventListener('touchcancel', clearTouch, { passive:true });
   }
-
-  if (input && input.dataset.observationViewportInputBound !== '1') {
-    input.dataset.observationViewportInputBound = '1';
-
-    input.addEventListener('pointerdown', event => {
-      if (event.pointerType === 'touch') {
-        if (document.activeElement !== input) {
-          captureObservationRosterKeyboardBaseline(true);
-          try { input.focus({ preventScroll:true }); }
-          catch (_) { input.focus(); }
-        }
-        return;
+  if (input.dataset.observationViewportInputBound === '1') return;
+  input.dataset.observationViewportInputBound = '1';
+  input.addEventListener('pointerdown', event => {
+    if (event.pointerType === 'touch') {
+      if (document.activeElement !== input) {
+        captureObservationRosterKeyboardBaseline(true);
+        try { input.focus({ preventScroll:true }); }
+        catch (_) { input.focus(); }
       }
-      captureObservationRosterKeyboardBaseline(true);
-    }, true);
-
-    input.addEventListener('focus', () => {
-      const currentScreen = getObservationRosterScreen();
-      releaseObservationRosterUtilityViewportLock();
-      observationRosterKeyboardTransitionActive = true;
-      captureObservationRosterKeyboardBaseline(true);
-      if (currentScreen) currentScreen.classList.add('observation-roster-viewport-moving');
-      scheduleObservationRosterViewportSettle();
-      setTimeout(() => syncObservationRosterViewport({ source:'focus' }), 40);
-      setTimeout(() => syncObservationRosterViewport({ source:'focus' }), 160);
-      setTimeout(() => syncObservationRosterViewport({ source:'focus' }), 300);
-    }, true);
-
-    input.addEventListener('blur', () => {
-      setTimeout(() => {
-        const currentInput = getObservationRosterSearchInput();
-        if (currentInput && document.activeElement === currentInput) return;
-
-        const currentScreen = getObservationRosterScreen();
-        releaseObservationRosterUtilityViewportLock();
-        observationRosterKeyboardTransitionActive = true;
-        if (currentScreen) currentScreen.classList.add('observation-roster-viewport-moving');
-        scheduleObservationRosterViewportSettle();
-        setTimeout(() => syncObservationRosterViewport({ source:'blur' }), 40);
-        setTimeout(() => syncObservationRosterViewport({ source:'blur' }), 140);
-        setTimeout(() => {
-          syncObservationRosterViewport({ source:'blur' });
-          if (
-            document.activeElement?.id !== 'memoRosterSearchInput'
-            && !currentScreen?.classList.contains('observation-keyboard-open')
-          ) {
-            observationRosterKeyboardBaselineBottom = 0;
-            observationRosterKeyboardTransitionActive = false;
-          }
-        }, 320);
-      }, 0);
-    });
-  }
-
+      return;
+    }
+    captureObservationRosterKeyboardBaseline(true);
+  }, true);
+  input.addEventListener('focus', () => {
+    releaseObservationRosterUtilityViewportLock();
+    observationRosterKeyboardTransitionActive = true;
+    captureObservationRosterKeyboardBaseline(true);
+    screen.classList.add('observation-roster-viewport-moving');
+    scheduleObservationRosterViewportSettle();
+    setTimeout(() => syncObservationRosterViewport({ source:'focus' }), 40);
+    setTimeout(() => syncObservationRosterViewport({ source:'focus' }), 160);
+    setTimeout(() => syncObservationRosterViewport({ source:'focus' }), 300);
+  }, true);
+  input.addEventListener('blur', () => {
+    releaseObservationRosterUtilityViewportLock();
+    observationRosterKeyboardTransitionActive = true;
+    screen.classList.add('observation-roster-viewport-moving');
+    scheduleObservationRosterViewportSettle();
+    setTimeout(() => syncObservationRosterViewport({ source:'blur' }), 40);
+    setTimeout(() => syncObservationRosterViewport({ source:'blur' }), 140);
+    setTimeout(() => {
+      syncObservationRosterViewport({ source:'blur' });
+      if (document.activeElement !== input && !screen.classList.contains('observation-keyboard-open')) {
+        observationRosterKeyboardBaselineBottom = 0;
+        observationRosterKeyboardTransitionActive = false;
+      }
+    }, 320);
+  });
+}
+function bindObservationRosterViewportSurfaces() {
+  bindObservationRosterScrollSurface();
+  bindObservationRosterUtilitySurface();
   bindObservationRosterUtilityTracking();
   bindObservationRosterViewport();
   syncObservationRosterViewport();
   scheduleObservationRosterScrollToUtility();
 }
-
 function renderObservationRosterFooter() {
   return `<div class="memoRosterUtilityBar" aria-label="관찰노트 학생 목록 도구">
     <button type="button" class="memoRosterSearchPill ${observationRosterSearchQuery ? 'active' : ''}" id="memoRosterSearchBtn" aria-label="검색" title="검색">
@@ -743,7 +686,7 @@ function closeObservationRosterSearch(event) {
     input.value = '';
     try { input.blur(); } catch (_) {}
   }
-  const screen = document.getElementById('observationRosterScreen');
+  const screen = getObservationRosterScreen();
   releaseObservationRosterUtilityViewportLock();
   observationRosterKeyboardBaselineBottom = 0;
   observationRosterKeyboardTransitionActive = false;
@@ -751,37 +694,25 @@ function closeObservationRosterSearch(event) {
     screen.classList.remove('observation-keyboard-open','observation-roster-viewport-moving','observation-roster-viewport-locked');
     screen.style.setProperty('--observation-roster-content-lift','0px');
   }
-  renderObservationMemoRoster();
+  renderObservationRosterList();
+  renderObservationRosterUtility();
+  syncObservationRosterViewport();
 }
 
 function bindObservationRosterFooterEvents() {
-  const input = document.getElementById('memoRosterSearchInput');
+  const input = getObservationRosterSearchInput();
   if (input) {
     input.addEventListener('focus', () => {
       if (observationRosterSearchFocused) return;
       observationRosterSearchFocused = true;
       observationRosterSortPopupOpen = false;
-      renderObservationMemoRoster();
-      const nextInput = document.getElementById('memoRosterSearchInput');
-      if (nextInput) {
-        try {
-          nextInput.focus({ preventScroll: true });
-          nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
-        } catch (_) {}
-      }
+      renderObservationRosterList();
+      renderObservationRosterUtility();
     });
     input.addEventListener('input', () => {
       observationRosterSearchFocused = true;
       observationRosterSearchQuery = String(input.value || '').trim();
-      const active = document.activeElement === input;
-      renderObservationMemoRoster();
-      const nextInput = document.getElementById('memoRosterSearchInput');
-      if (active && nextInput) {
-        try {
-          nextInput.focus({ preventScroll: true });
-          nextInput.setSelectionRange(nextInput.value.length, nextInput.value.length);
-        } catch (_) {}
-      }
+      renderObservationRosterList();
     });
     input.addEventListener('click', event => event.stopPropagation());
     input.addEventListener('keydown', event => {
@@ -789,38 +720,36 @@ function bindObservationRosterFooterEvents() {
       closeObservationRosterSearch(event);
     });
   }
-
   const searchBtn = document.getElementById('memoRosterSearchBtn');
   if (searchBtn) searchBtn.addEventListener('click', event => {
     if (event.target?.closest?.('input')) return;
     event.preventDefault();
     event.stopPropagation();
-    const target = document.getElementById('memoRosterSearchInput');
+    const target = getObservationRosterSearchInput();
     if (target) {
-      try { target.focus({ preventScroll: true }); } catch (_) { target.focus(); }
+      try { target.focus({ preventScroll:true }); }
+      catch (_) { target.focus(); }
     }
   });
-
   const closeBtn = document.getElementById('memoRosterSearchClose');
   if (closeBtn) closeBtn.addEventListener('click', closeObservationRosterSearch);
-
   const sortBtn = document.getElementById('memoRosterSortBtn');
   if (sortBtn) sortBtn.addEventListener('click', event => {
     event.preventDefault();
     event.stopPropagation();
     observationRosterSortPopupOpen = !observationRosterSortPopupOpen;
-    renderObservationMemoRoster();
+    renderObservationRosterUtility();
   });
-
   document.querySelectorAll('[data-memo-roster-division]').forEach(btn => {
     btn.addEventListener('click', event => {
       event.preventDefault();
       event.stopPropagation();
       setObservationRosterDivision(btn.dataset.memoRosterDivision || 'elementary');
-      renderObservationMemoRoster();
+      observationRosterSortPopupOpen = false;
+      renderObservationRosterList();
+      renderObservationRosterUtility();
     });
   });
-
   document.querySelectorAll('[data-memo-roster-sort]').forEach(btn => {
     btn.addEventListener('click', event => {
       event.preventDefault();
@@ -828,12 +757,12 @@ function bindObservationRosterFooterEvents() {
       setObservationRosterSortCriterion(btn.dataset.memoRosterSort || OBSERVATION_ROSTER_SORT_DEFAULT);
       observationRosterSortPopupOpen = false;
       if (getObservationRosterSortCriterion() === 'lessonDay') hydrateObservationRosterLocalScheduleSnapshot();
-      renderObservationMemoRoster();
+      renderObservationRosterList();
+      renderObservationRosterUtility();
       refreshObservationRosterScheduleInBackground();
     });
   });
 }
-
 function getObservationRosterScheduleSignature() {
   const criterion = getObservationRosterSortCriterion();
   const rows = getObservationRosterStudentsForCurrentSort().map(student => {
@@ -877,14 +806,13 @@ function refreshObservationRosterScheduleInBackground() {
     .catch(() => {});
 }
 
-function renderObservationMemoRoster() {
+function renderObservationRosterList() {
   const container = document.getElementById('memoStudentRosterView');
   if (!container) return;
   const criterion = getObservationRosterSortCriterion();
   const students = getObservationRosterStudentsForCurrentSort();
   const sortLabel = getObservationRosterSortLabel(criterion);
   const title = '학생 목록';
-
   const rows = students.map(student => {
     const studentId = escapeHtml(String(student?.id || ''));
     const meta = getObservationRosterMeta(student);
@@ -894,17 +822,28 @@ function renderObservationMemoRoster() {
       </button>
     </div>`;
   }).join('');
-
   const emptyText = observationRosterSearchQuery ? '검색된 학생이 없습니다.' : '등록된 학생이 없습니다.';
   const rosterContent = observationRosterSearchFocused && !observationRosterSearchQuery
     ? ''
     : (rows || `<div class="memoBodyRosterEmpty">${escapeHtml(emptyText)}</div>`);
-
-  container.innerHTML = `<div class="memoBodyRosterScroll"><div class="memoBodyRosterContent"><div class="memoBodyRosterHeader"><div class="memoBodyRosterTitle">${escapeHtml(title)}</div><div class="memoBodyRosterDay"><span class="memoBodyRosterSortPrefix">정렬</span><span class="memoBodyRosterSortValue"> · ${escapeHtml(sortLabel)}</span></div></div><div class="memoBodyRosterList">${rosterContent}</div></div></div><div class="observationRosterUtilityLayer" id="observationRosterUtilityLayer">${renderObservationRosterFooter()}</div>`;
-  bindObservationRosterFooterEvents();
-  bindObservationRosterDynamicViewportTargets();
+  container.innerHTML = `<div class="memoBodyRosterScroll"><div class="memoBodyRosterContent"><div class="memoBodyRosterHeader"><div class="memoBodyRosterTitle">${escapeHtml(title)}</div><div class="memoBodyRosterDay"><span class="memoBodyRosterSortPrefix">정렬</span><span class="memoBodyRosterSortValue"> · ${escapeHtml(sortLabel)}</span></div></div><div class="memoBodyRosterList">${rosterContent}</div></div></div>`;
+  bindObservationRosterScrollSurface();
+  scheduleObservationRosterScrollToUtility();
 }
-
+function renderObservationRosterUtility() {
+  const mount = document.getElementById('observationRosterUtilityMount');
+  if (!mount) return;
+  mount.innerHTML = renderObservationRosterFooter();
+  bindObservationRosterFooterEvents();
+  bindObservationRosterUtilitySurface();
+  bindObservationRosterUtilityTracking();
+  scheduleObservationRosterScrollToUtility();
+}
+function renderObservationMemoRoster() {
+  renderObservationRosterList();
+  renderObservationRosterUtility();
+  syncObservationRosterViewport();
+}
 function applyObservationMemoNavigationIcons() {
   const studentListBtn = document.getElementById('memoStudentListBtn');
   if (studentListBtn) {
@@ -2107,7 +2046,7 @@ function initObservationRosterPhoneUi() {
       if (!observationRosterSortPopupOpen) return;
       if (event.target?.closest?.('.memoRosterSortWrap')) return;
       observationRosterSortPopupOpen = false;
-      if (isObservationRosterScreenVisible()) renderObservationMemoRoster();
+      if (isObservationRosterScreenVisible()) renderObservationRosterUtility();
     });
   }
 }

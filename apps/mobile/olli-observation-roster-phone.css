@@ -43,14 +43,13 @@
   margin-right:-18px;
   padding:calc(var(--vivizac-note-header-h) + max(18px, calc(env(safe-area-inset-top) + 6px)) + 6px) 18px var(--observation-roster-reserve, 94px) 0;
   background:transparent;
-  display:flex;
-  flex-direction:column;
 }
 #observationRosterScreen .memoBodyRosterContent {
   width:100%;
   min-height:100%;
   display:flex;
   flex-direction:column;
+  justify-content:flex-start;
   transform:translate3d(0,calc(-1 * var(--observation-roster-content-lift, 0px)),0);
   transition:none;
 }
@@ -196,17 +195,12 @@
   justify-content:center;
 }
 
-/* 학생목록 하단 검색/정렬 도구 */
+/* 학생목록 하단 검색/정렬 도구: 위치/키보드 이동은 UtilityLayer만 소유한다. */
 #observationRosterScreen .memoRosterUtilityBar {
-  position:relative;
-  z-index:20;
-  flex:0 0 auto;
-  min-height:72px;
-  padding:8px 3px var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom)));
   display:grid;
-  grid-template-columns:minmax(0, 1fr) 48px;
+  grid-template-columns:minmax(0, 1fr) 47px;
   align-items:center;
-  column-gap:12px;
+  column-gap:10px;
   background:transparent;
 }
 
@@ -785,44 +779,39 @@
   position:fixed;
   left:var(--observation-roster-vv-left);
   top:var(--observation-roster-vv-top);
-  right:auto;
-  bottom:auto;
   width:var(--observation-roster-vv-width);
   height:var(--observation-roster-vv-height);
   overflow:visible;
   pointer-events:none;
   z-index:120;
 }
+#observationRosterScreen .observationRosterUtilityMount {
+  position:absolute;
+  inset:0;
+  overflow:visible;
+  pointer-events:none;
+}
 #observationRosterScreen .memoRosterUtilityBar {
-  position:absolute !important;
-  left:var(--olli-phone-guide-x) !important;
-  right:var(--olli-phone-guide-x) !important;
-  bottom:var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom))) !important;
-  width:auto !important;
-  height:var(--olli-phone-bottom-control-height, 47px) !important;
-  min-height:var(--olli-phone-bottom-control-height, 47px) !important;
-  padding:0 !important;
-  z-index:1 !important;
-  transform:none !important;
-  animation:none !important;
-  transition:none !important;
-  pointer-events:auto !important;
+  position:absolute;
+  left:var(--olli-phone-guide-x);
+  right:var(--olli-phone-guide-x);
+  bottom:var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom)));
+  width:auto;
+  height:var(--olli-phone-bottom-control-height, 47px);
+  min-height:var(--olli-phone-bottom-control-height, 47px);
+  padding:0;
+  z-index:1;
+  transform:none;
+  animation:none;
+  transition:none;
+  pointer-events:auto;
 }
 
 /* 키보드가 열린 동안 visualViewport 레이어 안에서 4px 간격만 남긴다. */
 #observationRosterScreen.observation-keyboard-open .memoRosterUtilityBar {
-  bottom:4px !important;
-  height:var(--olli-phone-bottom-control-height, 47px) !important;
-  min-height:var(--olli-phone-bottom-control-height, 47px) !important;
-  padding-top:0 !important;
-  padding-bottom:0 !important;
+  bottom:4px;
 }
 
-/* 하단 [검색][정렬] 도구 크기를 맞춘다. */
-#observationRosterScreen .memoRosterUtilityBar {
-  grid-template-columns:minmax(0, 1fr) 47px !important;
-  column-gap:10px !important;
-}
 #observationRosterScreen .memoRosterUtilityBtn,
 #observationRosterScreen .memoRosterSearchPill,
 #observationRosterScreen .memoRosterSortWrap {
@@ -873,19 +862,8 @@
   background:#eeeeee !important;
 }
 
-/* 키보드 포커스 중에만 학생명단 자체의 이동·애니메이션을 막는다. */
-#observationRosterScreen.observation-keyboard-open,
-#observationRosterScreen.observation-keyboard-open .memoPageInner,
-#observationRosterScreen.observation-keyboard-open .memoHeader,
-#observationRosterScreen.observation-keyboard-open #memoStudentRosterView,
-#observationRosterScreen.observation-keyboard-open .memoBodyRosterScroll {
-  animation:none !important;
-  transition:none !important;
-}
-
 #observationRosterScreen .memoPageInner,
 #observationRosterScreen #memoStudentRosterView {
-  overscroll-behavior:none;
   overflow:hidden;
 }
 

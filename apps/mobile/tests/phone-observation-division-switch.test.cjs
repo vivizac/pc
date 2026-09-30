@@ -31,7 +31,7 @@ test('observation roster reopens with the last selected division instead of defa
 });
 
 test('phone loads the cache-busted observation roster last-division fix', () => {
-  assert.match(html, /olli-observation-roster-phone\.js\?v=20260930-observation-roster-teamchat-scroll-1/);
+  assert.match(html, /olli-observation-roster-phone\.js\?v=20260930-observation-roster-clean-rebuild-1/);
 });
 
 
@@ -41,5 +41,5 @@ test('observation roster search ignores the active division and searches all act
 });
 
 test('phone loads the cache-busted observation roster global-search fix', () => {
-  assert.match(html, /olli-observation-roster-phone\.js\?v=20260930-observation-roster-teamchat-scroll-1/);
+  assert.match(html, /olli-observation-roster-phone\.js\?v=20260930-observation-roster-clean-rebuild-1/);
 });
