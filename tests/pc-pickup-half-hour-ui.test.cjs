@@ -45,7 +45,7 @@ test('PC pickup add and manage dialogs render the timetable label instead of raw
   const manageEnd = ui.indexOf('let timetableHistoryRuntime', manageStart);
   const manageBlock = ui.slice(manageStart, manageEnd);
   assert.match(manageBlock, /scheduleSlotLabel\('kinder', item\.class_time, '', item\.weekday\)/);
-  assert.match(manageBlock, /esc\(classTimeLabel\) \+ ' 수업'/);
+  assert.ok(manageBlock.includes("esc(classTimeLabel) + ' 수업"));
   assert.doesNotMatch(manageBlock, /esc\(item\.class_time\) \+ '시 수업'/);
 });
 
