@@ -432,6 +432,14 @@ test('Team Talk freezes composer and viewport correction while the user drags ch
   assert.match(source,/syncOlliTalkComposerViewport\(\{ force:true \}\)/);
 });
 
+test('Team Talk treats a vertical drag that starts on the message input as a viewport-freeze gesture', () => {
+  assert.match(source,/input\.addEventListener\('touchstart',[\s\S]{0,220}inputTouchStartY/);
+  assert.match(source,/input\.addEventListener\('touchmove',[\s\S]{0,420}deltaY < 8 \|\| deltaY <= deltaX[\s\S]{0,180}beginOlliTalkChatGesture\(\)/);
+  assert.match(source,/input\.addEventListener\('pointerdown', event => \{[\s\S]{0,100}event\.pointerType === 'touch'[\s\S]{0,100}captureOlliTalkKeyboardBaseline\(true\)/);
+  assert.doesNotMatch(source,/input\.addEventListener\('pointerdown', \(\) => captureOlliTalkKeyboardBaseline\(true\)/);
+  assert.match(source,/input\.addEventListener\('focus',[\s\S]{0,180}captureOlliTalkKeyboardBaseline\(true\)/);
+});
+
 
 
 test('Team Talk has separate top and bottom chat blur layers', () => {

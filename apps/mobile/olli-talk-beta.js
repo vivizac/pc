@@ -4817,28 +4817,28 @@
       });
     }
 
+    const beginOlliTalkChatGesture = () => {
+      if (olliTalkChatGestureSettleTimer) {
+        clearTimeout(olliTalkChatGestureSettleTimer);
+        olliTalkChatGestureSettleTimer = null;
+      }
+      olliTalkChatGestureActive = true;
+      olliTalkViewportTransitionUserTouchedChat = true;
+    };
+    const endOlliTalkChatGesture = () => {
+      if (!olliTalkChatGestureActive && !olliTalkChatGestureSettleTimer) return;
+      if (olliTalkChatGestureSettleTimer) clearTimeout(olliTalkChatGestureSettleTimer);
+      olliTalkChatGestureSettleTimer = setTimeout(() => {
+        olliTalkChatGestureSettleTimer = null;
+        olliTalkChatGestureActive = false;
+        syncOlliTalkComposerViewport({ force:true });
+        syncViewport();
+        scheduleOlliTalkChatToComposer();
+      }, 120);
+    };
+
     const chatArea = document.getElementById('olliTalkBetaChatArea');
     if (chatArea) {
-      const beginOlliTalkChatGesture = () => {
-        if (olliTalkChatGestureSettleTimer) {
-          clearTimeout(olliTalkChatGestureSettleTimer);
-          olliTalkChatGestureSettleTimer = null;
-        }
-        olliTalkChatGestureActive = true;
-        olliTalkViewportTransitionUserTouchedChat = true;
-      };
-      const endOlliTalkChatGesture = () => {
-        if (!olliTalkChatGestureActive && !olliTalkChatGestureSettleTimer) return;
-        if (olliTalkChatGestureSettleTimer) clearTimeout(olliTalkChatGestureSettleTimer);
-        olliTalkChatGestureSettleTimer = setTimeout(() => {
-          olliTalkChatGestureSettleTimer = null;
-          olliTalkChatGestureActive = false;
-          syncOlliTalkComposerViewport({ force:true });
-          syncViewport();
-          scheduleOlliTalkChatToComposer();
-        }, 120);
-      };
-
       chatArea.addEventListener('pointerdown', beginOlliTalkChatGesture, { passive:true });
       chatArea.addEventListener('touchstart', beginOlliTalkChatGesture, { passive:true });
       window.addEventListener('pointerup', endOlliTalkChatGesture, { passive:true });
@@ -4856,7 +4856,38 @@
     }
 
     if (input) {
-      input.addEventListener('pointerdown', () => captureOlliTalkKeyboardBaseline(true), true);
+      let inputTouchStartX = null;
+      let inputTouchStartY = null;
+      let inputTouchDragActive = false;
+
+      input.addEventListener('pointerdown', event => {
+        if (event.pointerType === 'touch') return;
+        captureOlliTalkKeyboardBaseline(true);
+      }, true);
+      input.addEventListener('touchstart', event => {
+        const touch = event.touches?.[0];
+        inputTouchStartX = touch ? Number(touch.clientX) : null;
+        inputTouchStartY = touch ? Number(touch.clientY) : null;
+        inputTouchDragActive = false;
+      }, { passive:true });
+      input.addEventListener('touchmove', event => {
+        if (inputTouchDragActive) return;
+        const touch = event.touches?.[0];
+        if (!touch || !Number.isFinite(inputTouchStartX) || !Number.isFinite(inputTouchStartY)) return;
+        const deltaX = Math.abs(Number(touch.clientX) - inputTouchStartX);
+        const deltaY = Math.abs(Number(touch.clientY) - inputTouchStartY);
+        if (deltaY < 8 || deltaY <= deltaX) return;
+        inputTouchDragActive = true;
+        beginOlliTalkChatGesture();
+      }, { passive:true });
+      const clearOlliTalkInputTouchGesture = () => {
+        inputTouchStartX = null;
+        inputTouchStartY = null;
+        inputTouchDragActive = false;
+      };
+      window.addEventListener('touchend', clearOlliTalkInputTouchGesture, { passive:true });
+      window.addEventListener('touchcancel', clearOlliTalkInputTouchGesture, { passive:true });
+
       input.addEventListener('input', () => {
         resizeInput();
         updateOlliTalkBetaComposerState();
