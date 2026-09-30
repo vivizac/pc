@@ -441,6 +441,96 @@ async function runScheduleAvailabilityProbe({
   };
 }
 
+
+async function runAttendanceProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+}) {
+  assertOpenAiKey();
+
+  const subjectRefs = Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+
+  if (preparedPrivacy?.needsDisambiguation) {
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+
+  if (subjectRefs.length !== 1) {
+    throw runtimeError(
+      '출결 조회에서는 학생 한 명을 정확히 지정해 주세요.',
+      400,
+      'OLLI_AGENT_SINGLE_STUDENT_REQUIRED'
+    );
+  }
+
+  const { Agent, run, tool, z } = await loadAgentsSdk();
+  const { createGetAttendanceTool } = require('./tools/attendance-tools.cjs');
+  const { sanitizeAgentToolPayload } = require('./privacy.cjs');
+  const model = agentModel();
+  const today = todayInSeoul();
+  const onlyLabel = subjectRefs[0].label;
+
+  const getAttendance = createGetAttendanceTool({
+    tool,
+    z,
+    requestContext,
+    subjectAccess: preparedPrivacy.subjectAccess,
+    sanitizePayload(payload) {
+      return sanitizeAgentToolPayload(payload, preparedPrivacy);
+    },
+  });
+
+  const agent = new Agent({
+    name: 'Olli Attendance Probe',
+    model,
+    instructions: [
+      'You are the Olli academy attendance assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The only available anonymous student label for this run is ' + onlyLabel + '.',
+      'Today in Korea is ' + today + '.',
+      'Always use get_attendance before answering an attendance question.',
+      'If the user names a specific date or range, use it. If the user asks generally about attendance without a range, use the current month from the first day through today.',
+      'Use session_kind ALL unless the user explicitly asks only about regular classes or only about makeup classes.',
+      'The maximum tool date range is 62 days.',
+      'The tool already applies the same final-state rules as the attendance register: closed days are excluded; explicit session overrides take priority when newer; actual attendance is next; a past expected regular class without a mark is absent; an unmarked makeup remains blank.',
+      'Do not treat blank as absent.',
+      'Use only the tool result. Do not invent attendance states or reasons.',
+      'Never ask for, infer, or reveal a real student name, UUID, member ID, session token, academy ID, or attendance row ID.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools: [getAttendance],
+    modelSettings: {
+      toolChoice: 'get_attendance',
+    },
+  });
+
+  const result = await run(agent, preparedPrivacy.safeText, {
+    context: agentContext,
+  });
+
+  const finalOutput = String(result?.finalOutput || '').trim();
+  if (!finalOutput) {
+    throw runtimeError(
+      '출결 Agent 응답이 비어 있습니다.',
+      502,
+      'OLLI_AGENT_EMPTY_ATTENDANCE_RESPONSE'
+    );
+  }
+
+  return {
+    ready: true,
+    model,
+    output: finalOutput,
+    nodeVersion: process.versions.node,
+  };
+}
+
 module.exports = {
   MIN_NODE_MAJOR,
   assertSupportedNodeRuntime,
@@ -451,4 +541,5 @@ module.exports = {
   runRecentRecordsProbe,
   resolveAvailabilityScope,
   runScheduleAvailabilityProbe,
+  runAttendanceProbe,
 };
