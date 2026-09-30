@@ -16,6 +16,7 @@ on:
       - 'tests/timetable-memo-half-hour-db-contract.test.cjs'
       - 'tests/team-talk-pickup-v3-action.test.cjs'
       - 'tests/pickup-half-hour-db-contract.test.cjs'
+      - 'tests/pc-pickup-half-hour-ui.test.cjs'
       - '.github/workflows/validate-schedule-realtime.yml'
   push:
     branches: [main]
@@ -34,6 +35,7 @@ on:
       - 'tests/timetable-memo-half-hour-db-contract.test.cjs'
       - 'tests/team-talk-pickup-v3-action.test.cjs'
       - 'tests/pickup-half-hour-db-contract.test.cjs'
+      - 'tests/pc-pickup-half-hour-ui.test.cjs'
       - '.github/workflows/validate-schedule-realtime.yml'
   workflow_dispatch:
 permissions:
@@ -52,4 +54,4 @@ jobs:
           node --check apps/pc/pc-timetable.js
           node --check apps/pc/pc-timetable-service.js
       - name: Test schedule and Team Talk action contracts
-        run: node --test tests/schedule-realtime.test.cjs tests/team-talk-action-capabilities.test.cjs tests/waitlist-class-slot-integrity.test.cjs tests/timetable-memo-half-hour-db-contract.test.cjs tests/team-talk-pickup-v3-action.test.cjs tests/pickup-half-hour-db-contract.test.cjs
+        run: node --test tests/schedule-realtime.test.cjs tests/team-talk-action-capabilities.test.cjs tests/waitlist-class-slot-integrity.test.cjs tests/timetable-memo-half-hour-db-contract.test.cjs tests/team-talk-pickup-v3-action.test.cjs tests/pickup-half-hour-db-contract.test.cjs tests/pc-pickup-half-hour-ui.test.cjs
