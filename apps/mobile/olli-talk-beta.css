@@ -1393,11 +1393,6 @@
   transition:none;
 }
 
-#olliTalkBetaScreen.olliTalkViewportMoving .olliTalkBetaComposerWrap{
-  opacity:0;
-  transition:none;
-}
-
 #olliTalkBetaScreen.olliTalkViewportMoving .olliTalkBetaComposer{
   transition:none;
 }
