@@ -1342,6 +1342,42 @@
     return { message };
   }
 
+  function parseBatchAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parseMultiWriteIntent !== 'function') return null;
+    try {
+      const parsed = router.parseMultiWriteIntent(commandText);
+      return clean(parsed?.intent) === 'batch_write' && Array.isArray(parsed?.commands)
+        ? parsed
+        : null;
+    } catch (error) {
+      console.warn('PC 복합쓰기 Agent 후보 판별 실패:', error?.message || error);
+      return null;
+    }
+  }
+
+  function batchCommandNeedsReason(command) {
+    return ['mark_absent', 'cancel_makeup', 'cancel_trial'].includes(clean(command?.intent));
+  }
+
+  function batchReasonPrompt(command) {
+    const intent=clean(command?.intent);
+    if (intent === 'mark_absent') return clean(command?.studentName) + ' 학생의 결석 사유를 알려주세요.';
+    if (intent === 'cancel_makeup') return clean(command?.studentName) + ' 학생의 보강 취소 사유를 알려주세요.';
+    if (intent === 'cancel_trial') return clean(command?.guestName || command?.studentName) + ' 학생의 체험 취소 사유를 알려주세요.';
+    return '사유를 알려주세요.';
+  }
+
+  function buildBatchAgentCommands(batch, sourceMessageId, sourceMessageText) {
+    return (Array.isArray(batch?.commands) ? batch.commands : []).map((command) => ({
+      intent:clean(command?.intent),
+      text:clean(command?.originalText),
+      reason:clean(command?.reason),
+      reasonMessageId:batchCommandNeedsReason(command) && clean(command?.reason) ? Number(sourceMessageId || 0) : 0,
+      reasonMessageText:batchCommandNeedsReason(command) && clean(command?.reason) ? clean(sourceMessageText) : '',
+      memoNote:clean(command?.memoNote)
+    }));
+  }
+
   function parseTimetableMemoAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router) return null;
     try {
@@ -1526,6 +1562,41 @@
       console.warn('PC 픽업 Agent 후보 판별 실패:', error?.message || error);
       return false;
     }
+  }
+
+  async function resolveBatchAgentTurn({
+    sourceText,
+    sourceMessageId,
+    commands,
+    current,
+  }) {
+    const sourceId=Number(sourceMessageId || 0);
+    if(!Number.isSafeInteger(sourceId) || sourceId<=0){
+      throw new Error('복합쓰기 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'batch_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(sourceText),
+        sourceMessageId:sourceId,
+        commands
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    const messages=Array.isArray(data?.messages) ? data.messages : [];
+    if(!response.ok || data?.ok!==true || messages.length<2){
+      throw new Error(data?.error || data?.message || '복합쓰기 Agent 응답을 받지 못했습니다.');
+    }
+    return {
+      assistantMessage:messages[0],
+      assistantMessages:messages,
+      replyText:messages.map((message)=>clean(message?.body)).filter(Boolean).join('\n'),
+      recordAi:false
+    };
   }
 
   async function resolveTimetableMemoAgentTurn(commandText, parsed, current, replyToMessageId) {
@@ -2192,6 +2263,52 @@
         };
       }
 
+      const pendingBatch = state.pendingActionReason.__batchAgent;
+      if (clean(state.pendingActionReason.intent) === 'batch_write' && pendingBatch) {
+        const commands=Array.isArray(pendingBatch.commands)
+          ? pendingBatch.commands.map((item)=>Object.assign({},item))
+          : [];
+        const reasonIndex=commands.findIndex((item)=>batchCommandNeedsReason(item) && !clean(item.reason));
+        if(reasonIndex<0){
+          state.pendingActionReason=null;
+          return resolveBatchAgentTurn({
+            sourceText:clean(pendingBatch.sourceMessageText),
+            sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+            commands,
+            current,
+          });
+        }
+
+        commands[reasonIndex].reason=clean(commandText);
+        commands[reasonIndex].reasonMessageId=Number(replyToMessageId || 0);
+        commands[reasonIndex].reasonMessageText=clean(commandText);
+        const nextIndex=commands.findIndex((item)=>batchCommandNeedsReason(item) && !clean(item.reason));
+        if(nextIndex>=0){
+          state.pendingActionReason={
+            intent:'batch_write',
+            __batchAgent:{
+              sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+              sourceMessageText:clean(pendingBatch.sourceMessageText),
+              commands
+            }
+          };
+          const prompt=batchReasonPrompt(commands[nextIndex]);
+          return {
+            assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),
+            replyText:prompt,
+            recordAi:false
+          };
+        }
+
+        state.pendingActionReason=null;
+        return resolveBatchAgentTurn({
+          sourceText:clean(pendingBatch.sourceMessageText),
+          sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+          commands,
+          current,
+        });
+      }
+
       const pendingTrialCancel = state.pendingActionReason.__trialCancelAgent;
       if (clean(state.pendingActionReason.intent) === 'cancel_trial' && pendingTrialCancel) {
         state.pendingActionReason = null;
@@ -2239,6 +2356,35 @@
         replyText:confirmation,
         recordAi:false
       };
+    }
+
+    const batchCandidate = parseBatchAgentCandidate(commandText, router);
+    if (batchCandidate) {
+      const sourceId=Number(replyToMessageId || 0);
+      const commands=buildBatchAgentCommands(batchCandidate,sourceId,commandText);
+      const missingIndex=commands.findIndex((item)=>batchCommandNeedsReason(item) && !clean(item.reason));
+      if(missingIndex>=0){
+        state.pendingActionReason={
+          intent:'batch_write',
+          __batchAgent:{
+            sourceMessageId:sourceId,
+            sourceMessageText:clean(commandText),
+            commands
+          }
+        };
+        const prompt=batchReasonPrompt(commands[missingIndex]);
+        return {
+          assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),
+          replyText:prompt,
+          recordAi:false
+        };
+      }
+      return resolveBatchAgentTurn({
+        sourceText:clean(commandText),
+        sourceMessageId:sourceId,
+        commands,
+        current,
+      });
     }
 
     const timetableMemoCandidate = parseTimetableMemoAgentCandidate(commandText, router);
@@ -2621,7 +2767,15 @@
           if (usingAi) {
             const turn = await resolveAiTurn(commandText, current, Number(payload.message.id));
             state.assistantReplyPending = false;
-            replaceAssistantTypingWithMessage(turn.assistantMessage, current.memberId);
+            const assistantMessages=Array.isArray(turn.assistantMessages) && turn.assistantMessages.length
+              ? turn.assistantMessages
+              : [turn.assistantMessage].filter(Boolean);
+            if(assistantMessages.length){
+              replaceAssistantTypingWithMessage(assistantMessages[0], current.memberId);
+              assistantMessages.slice(1).forEach((message)=>appendPersistedMessage(message,current.memberId));
+            }else{
+              syncAssistantTypingIndicator();
+            }
             if (turn.recordAi) recordAiConversationTurn(commandText, turn.replyText);
           } else {
             const turn = await resolveBotTurn(commandText, current, Number(payload.message.id));
