@@ -1928,6 +1928,164 @@ async function runWaitlistCancelPrepareProbe({
 
 
 
+function resolveMovePrepareScope(preparedPrivacy) {
+  if (preparedPrivacy?.needsDisambiguation) {
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
+  if(subjectRefs.length!==1){
+    throw runtimeError(
+      '수업 이동은 한 번에 학생 한 명만 지정해 주세요.',
+      400,
+      'OLLI_AGENT_MOVE_SINGLE_STUDENT_REQUIRED'
+    );
+  }
+
+  const subjectLabel=subjectRefs[0].label;
+  const subject=preparedPrivacy?.subjectAccess?.resolve?.(subjectLabel);
+  const division=String(subject?.division||'').trim().toLowerCase();
+  if(!['elementary','kinder'].includes(division)){
+    throw runtimeError(
+      '수업 이동 대상 학생의 수업 구분을 확인하지 못했습니다.',
+      400,
+      'OLLI_AGENT_MOVE_DIVISION_REQUIRED'
+    );
+  }
+
+  const safeText=String(preparedPrivacy?.safeText||'');
+  const compact=safeText.replace(/\s+/g,'');
+  const hasMove=/(?:수업이동|수업변경|시간표변경|옮겨|옮기|이동|변경|바꿔|바꾸)/.test(compact);
+  const hasRemove=/(?:취소|삭제|지워|지우|제거|빼|해제|없애)/.test(compact);
+  const weekdayMentions=Array.from(safeText.matchAll(/([월화수목금토])요일/g));
+  const timeMentions=Array.from(safeText.matchAll(/\d{1,2}\s*시(?:\s*(?:30|0)\s*분)?/g));
+
+  if(!hasMove||hasRemove||weekdayMentions.length<2||timeMentions.length<2){
+    throw runtimeError(
+      '수업 이동은 기존 수업과 새 수업의 요일·시간을 모두 알려 주세요.',
+      400,
+      'OLLI_AGENT_MOVE_INTENT_REQUIRED'
+    );
+  }
+
+  return {subjectLabel,division};
+}
+
+async function runMovePrepareAgent({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+  replyToMessageId=null,
+  requirePersistedMessage=false,
+}) {
+  const scope=resolveMovePrepareScope(preparedPrivacy);
+  assertOpenAiKey();
+
+  const {Agent,run,tool,z}=await loadAgentsSdk();
+  const {createPrepareMoveTool}=require('./tools/move-prepare-tools.cjs');
+  const {sanitizeAgentToolPayload}=require('./privacy.cjs');
+  const model=agentModel();
+  const today=todayInSeoul();
+  let persistedMessage=null;
+
+  const prepareMove=createPrepareMoveTool({
+    tool,
+    z,
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    studentLabel:scope.subjectLabel,
+    division:scope.division,
+    currentDate:today,
+    requestId,
+    replyToMessageId,
+    capturePersistedMessage(message){
+      persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload){
+      return sanitizeAgentToolPayload(payload,preparedPrivacy);
+    },
+  });
+
+  const agent=new Agent({
+    name:requirePersistedMessage?'Olli Move Prepare':'Olli Move Prepare Probe',
+    model,
+    instructions:[
+      'You are the Olli regular-class move preparation assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The only available anonymous student label for this run is '+scope.subjectLabel+'.',
+      'The server has fixed the student division to '+scope.division+'. Do not override it.',
+      'Today in Korea is '+today+'.',
+      'Always call prepare_move_class exactly once before answering.',
+      'Read the first explicitly stated weekday/time pair as the current source class and the second explicitly stated weekday/time pair as the target class.',
+      'weekday uses 1=Monday through 6=Saturday.',
+      'Convert visible clock times to source_hour/source_minute and target_hour/target_minute. For 4시 30분 use 4 and 30.',
+      'Set target_class_group to A or B only when the destination group is explicitly stated. If the destination group is omitted or unclear, use AUTO.',
+      'Do not use a source-group mention as the target group.',
+      'The server rechecks the current source enrollment, target operating slot, capacity, duplicate enrollment, and A/B behavior before storing the card.',
+      'If target_class_group is AUTO, the server preserves the current source group when possible, matching the existing Olli behavior.',
+      'The tool creates a pending confirmation card only. It never directly changes the regular timetable.',
+      'Never say the class was moved. Say that the move is waiting for user confirmation.',
+      'Never ask for, infer, or reveal a real student name, UUID, enrollment ID, internal time slot, member ID, session token, academy ID, action ID, or message ID.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[prepareMove],
+    modelSettings:{toolChoice:'prepare_move_class'},
+  });
+
+  let result=null;
+  let runError=null;
+  try{
+    result=await run(agent,preparedPrivacy.safeText,{context:agentContext});
+  }catch(error){
+    runError=error;
+    if(!requirePersistedMessage||!persistedMessage) throw error;
+  }
+
+  const finalOutput=String(result?.finalOutput||'').trim();
+  if(!finalOutput&&(!requirePersistedMessage||!persistedMessage)){
+    throw runtimeError(
+      '수업 이동 준비 Agent 응답이 비어 있습니다.',
+      502,
+      'OLLI_AGENT_EMPTY_MOVE_PREPARE_RESPONSE'
+    );
+  }
+  if(requirePersistedMessage&&!persistedMessage){
+    throw runtimeError(
+      '수업 이동 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_AGENT_MOVE_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+
+  return {
+    ready:true,
+    model,
+    output:finalOutput,
+    nodeVersion:process.versions.node,
+    persistedMessage,
+    recoveredAfterPersist:!!runError,
+  };
+}
+
+async function runMovePrepareProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+}) {
+  return runMovePrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId,
+  });
+}
+
 function resolveMoveCancelPrepareScope(preparedPrivacy) {
   if (preparedPrivacy?.needsDisambiguation) {
     throw runtimeError(
@@ -3195,6 +3353,38 @@ async function validateMoveSourceMessage({
   }
 }
 
+async function runMovePrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_MOVE_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validateMoveSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  return runMovePrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-message:'+sourceId,
+    replyToMessageId:sourceId,
+    requirePersistedMessage:true,
+  });
+}
+
 async function runMoveCancelPrepare({
   agentContext,
   requestContext,
@@ -3517,6 +3707,10 @@ module.exports = {
   runWaitlistUpdatePrepareAgent,
   runWaitlistUpdatePrepareProbe,
   runWaitlistUpdatePrepare,
+  resolveMovePrepareScope,
+  runMovePrepareAgent,
+  runMovePrepareProbe,
+  runMovePrepare,
   resolveMoveCancelPrepareScope,
   runMoveCancelPrepareAgent,
   runMoveCancelPrepareProbe,
