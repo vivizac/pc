@@ -22,5 +22,5 @@ test('KCF LIVE renders incoming network chunks immediately without artificial ch
 });
 
 test('phone cache-busts the direct LIVE renderer', () => {
-  assert.match(html, /kinder-feedback\.js\?v=20261002-auto-save-actions-1/);
+  assert.match(html, /kinder-feedback\.js\?v=20261002-auto-save-actions-2/);
 });
