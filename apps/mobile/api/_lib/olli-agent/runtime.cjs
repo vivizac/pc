@@ -4314,7 +4314,7 @@ async function runStudentProfileProbe({
 function splitBatchWriteParts(value) {
   return String(value || '')
     .trim()
-    .split(/\s*(?:;|그리고|그다음|그 다음|하고|\n)\s*/g)
+    .split(/\s*(?:;|그리고|그다음|그 다음|하고|\n)\s*[,，]?\s*/g)
     .map((item) => String(item || '').trim())
     .filter(Boolean);
 }
