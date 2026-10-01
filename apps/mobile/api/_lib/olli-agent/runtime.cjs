@@ -1050,11 +1050,13 @@ function resolvePickupCancelPrepareScope(preparedPrivacy) {
   };
 }
 
-async function runPickupCancelPrepareProbe({
+async function runPickupCancelPrepareAgent({
   agentContext,
   requestContext,
   preparedPrivacy,
   requestId,
+  replyToMessageId = null,
+  requirePersistedMessage = false,
 }) {
   assertOpenAiKey();
 
@@ -1064,6 +1066,7 @@ async function runPickupCancelPrepareProbe({
   const { sanitizeAgentToolPayload } = require('./privacy.cjs');
   const model = agentModel();
   const today = todayInSeoul();
+  let persistedMessage = null;
 
   const preparePickupCancel = createPreparePickupCancelTool({
     tool,
@@ -1074,6 +1077,10 @@ async function runPickupCancelPrepareProbe({
     cancelKind:scope.cancelKind,
     currentDate:today,
     requestId,
+    replyToMessageId,
+    capturePersistedMessage(message) {
+      persistedMessage = pickupPersistedMessageForClient(message);
+    },
     sanitizePayload(payload) {
       return sanitizeAgentToolPayload(payload, preparedPrivacy);
     },
@@ -1084,7 +1091,7 @@ async function runPickupCancelPrepareProbe({
     : 'This request removes the whole pickup schedule from the server-fixed effective date onward. Do not convert it to dropoff-only removal.';
 
   const agent = new Agent({
-    name:'Olli Pickup Cancel Prepare Probe',
+    name:requirePersistedMessage ? 'Olli Pickup Cancel Prepare' : 'Olli Pickup Cancel Prepare Probe',
     model,
     instructions:[
       'You are the Olli pickup-cancel preparation assistant.',
@@ -1108,16 +1115,30 @@ async function runPickupCancelPrepareProbe({
     modelSettings:{ toolChoice:'prepare_pickup_cancel' },
   });
 
-  const result = await run(agent, preparedPrivacy.safeText, {
-    context:agentContext,
-  });
+  let result = null;
+  let runError = null;
+  try {
+    result = await run(agent, preparedPrivacy.safeText, {
+      context:agentContext,
+    });
+  } catch (error) {
+    runError = error;
+    if (!requirePersistedMessage || !persistedMessage) throw error;
+  }
 
   const finalOutput = String(result?.finalOutput || '').trim();
-  if (!finalOutput) {
+  if (!finalOutput && (!requirePersistedMessage || !persistedMessage)) {
     throw runtimeError(
       '픽업 삭제 준비 Agent 응답이 비어 있습니다.',
       502,
       'OLLI_AGENT_EMPTY_PICKUP_CANCEL_PREPARE_RESPONSE'
+    );
+  }
+  if (requirePersistedMessage && !persistedMessage) {
+    throw runtimeError(
+      '픽업 삭제 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_AGENT_PICKUP_CANCEL_PERSISTED_MESSAGE_MISSING'
     );
   }
 
@@ -1126,7 +1147,23 @@ async function runPickupCancelPrepareProbe({
     model,
     output:finalOutput,
     nodeVersion:process.versions.node,
+    persistedMessage,
+    recoveredAfterPersist:!!runError,
   };
+}
+
+async function runPickupCancelPrepareProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+}) {
+  return runPickupCancelPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId,
+  });
 }
 
 function pickupPersistedMessageForClient(message) {
@@ -1425,6 +1462,38 @@ async function runPickupUpdatePrepare({
   });
 }
 
+async function runPickupCancelPrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId = Number(sourceMessageId || 0);
+  if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_PICKUP_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validatePickupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  return runPickupCancelPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-message:' + sourceId,
+    replyToMessageId:sourceId,
+    requirePersistedMessage:true,
+  });
+}
+
 async function runStudentProfileProbe({
   agentContext,
   requestContext,
@@ -1523,7 +1592,9 @@ module.exports = {
   resolvePickupPrepareScope,
   resolvePickupUpdatePrepareScope,
   resolvePickupCancelPrepareScope,
+  runPickupCancelPrepareAgent,
   runPickupCancelPrepareProbe,
+  runPickupCancelPrepare,
   runPickupUpdatePrepareAgent,
   runPickupUpdatePrepareProbe,
   runPickupUpdatePrepare,

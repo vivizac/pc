@@ -98,6 +98,8 @@ async function preparePickupCancelAction({
   classMinute = 0,
   currentDate,
   requestId,
+  replyToMessageId = null,
+  capturePersistedMessage = null,
   sanitizePayload,
   callRpc = callSupabaseRpc,
 }) {
@@ -238,6 +240,15 @@ async function preparePickupCancelAction({
     effectiveDate,
   };
 
+  const replyId = replyToMessageId == null ? null : Number(replyToMessageId);
+  if (replyId != null && (!Number.isSafeInteger(replyId) || replyId <= 0)) {
+    throw pickupCancelError(
+      '픽업 원문 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_PICKUP_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
   const sent = await callRpc('olli_team_chat_send_action', {
     p_session_token:requestContext.sessionToken,
     p_academy_id:requestContext.academyId,
@@ -254,7 +265,7 @@ async function preparePickupCancelAction({
       memberId:requestContext.memberId,
       requestId,
     }),
-    p_reply_to_message_id:null,
+    p_reply_to_message_id:replyId,
   });
 
   if (!sent?.ok || !sent?.message?.action) {
@@ -263,6 +274,10 @@ async function preparePickupCancelAction({
       500,
       'OLLI_AGENT_PICKUP_CANCEL_ACTION_STORE_FAILED'
     );
+  }
+
+  if (typeof capturePersistedMessage === 'function') {
+    capturePersistedMessage(sent.message);
   }
 
   return sanitizePayload({
@@ -289,6 +304,8 @@ function createPreparePickupCancelTool({
   cancelKind,
   currentDate,
   requestId,
+  replyToMessageId = null,
+  capturePersistedMessage = null,
   sanitizePayload,
 }) {
   if (typeof tool !== 'function' || !z) {
@@ -319,6 +336,8 @@ function createPreparePickupCancelTool({
         classMinute:class_minute,
         currentDate,
         requestId,
+        replyToMessageId,
+        capturePersistedMessage,
         sanitizePayload,
       });
       return JSON.stringify(payload);

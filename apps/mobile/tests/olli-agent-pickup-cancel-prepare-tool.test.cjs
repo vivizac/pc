@@ -351,7 +351,7 @@ test('cancel tool does not expose cancel kind or effective date to the model', (
   assert.doesNotMatch(schema, /cancel_kind|effective_date|pickup_id|student_id/);
 });
 
-test('endpoint exposes cancel as probe-only mode with request id', () => {
+test('endpoint keeps cancel probe separate from source-bound production mode', () => {
   const endpoint = fs.readFileSync(
     path.join(__dirname, '../api/olli-agent.js'),
     'utf8'
@@ -360,5 +360,7 @@ test('endpoint exposes cancel as probe-only mode with request id', () => {
   assert.match(endpoint, /mode === 'pickup_cancel_prepare_probe'/);
   assert.match(endpoint, /pickup_cancel_prepare_probe에는 재시도 중복 방지용 requestId가 필요합니다/);
   assert.match(endpoint, /runPickupCancelPrepareProbe/);
-  assert.doesNotMatch(endpoint, /mode === 'pickup_cancel_prepare'/);
+  assert.match(endpoint, /mode === 'pickup_cancel_prepare'/);
+  assert.match(endpoint, /pickup_cancel_prepare에는 저장된 원문 Team Chat message id가 필요합니다/);
+  assert.match(endpoint, /runPickupCancelPrepare\(/);
 });

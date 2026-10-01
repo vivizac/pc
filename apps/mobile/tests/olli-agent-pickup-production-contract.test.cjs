@@ -9,6 +9,7 @@ const repoRoot = path.resolve(mobileRoot, '../..');
 const endpoint = fs.readFileSync(path.join(mobileRoot, 'api/olli-agent.js'), 'utf8');
 const runtime = fs.readFileSync(path.join(mobileRoot, 'api/_lib/olli-agent/runtime.cjs'), 'utf8');
 const tool = fs.readFileSync(path.join(mobileRoot, 'api/_lib/olli-agent/tools/pickup-prepare-tools.cjs'), 'utf8');
+const cancelTool = fs.readFileSync(path.join(mobileRoot, 'api/_lib/olli-agent/tools/pickup-cancel-prepare-tools.cjs'), 'utf8');
 const pcProxy = fs.readFileSync(path.join(repoRoot, 'apps/pc/api/olli-agent.js'), 'utf8');
 const {
   pickupPersistedMessageForClient,
@@ -85,6 +86,55 @@ test('production pickup prepare derives retry id and reply linkage from the same
 
   assert.match(tool, /p_reply_to_message_id:replyId/);
   assert.match(tool, /capturePersistedMessage\(sent\.message\)/);
+});
+
+
+test('production pickup_cancel_prepare is source-bound and returns only the persisted action message', () => {
+  assert.match(endpoint, /'pickup_cancel_prepare'/);
+  assert.match(endpoint, /mode === 'pickup_cancel_prepare'/);
+  assert.match(endpoint, /pickup_cancel_prepare에는 저장된 원문 Team Chat message id가 필요합니다/);
+  assert.match(endpoint, /runPickupCancelPrepare\(/);
+  assert.match(endpoint, /sourceMessageText: message/);
+
+  const response = endpoint.match(/mode:'pickup_cancel_prepare'[\s\S]*?\}\);/)?.[0] || '';
+  assert.match(response, /message:probe\.persistedMessage/);
+  assert.match(response, /recoveredAfterPersist:probe\.recoveredAfterPersist === true/);
+  assert.doesNotMatch(response, /subjectRefs|privacy:|output:|pickupId|studentId|studentName/);
+});
+
+test('production pickup cancel validates source before Agent run and reuses source id for retry and reply linkage', () => {
+  const start = runtime.indexOf('async function runPickupCancelPrepare({');
+  const end = runtime.indexOf('\n\nasync function runStudentProfileProbe({', start);
+  const block = start >= 0 && end > start ? runtime.slice(start, end) : '';
+
+  assert.match(block, /Number\.isSafeInteger\(sourceId\)/);
+  assert.match(block, /validatePickupSourceMessage\(/);
+  assert.ok(block.indexOf('validatePickupSourceMessage({') < block.indexOf('return runPickupCancelPrepareAgent({'));
+  assert.match(block, /sourceMessageText/);
+  assert.match(block, /requestId:'team-chat-message:' \+ sourceId/);
+  assert.match(block, /replyToMessageId:sourceId/);
+  assert.match(block, /requirePersistedMessage:true/);
+});
+
+test('production pickup cancel can recover the persisted confirmation card when model finalization fails', () => {
+  const start = runtime.indexOf('async function runPickupCancelPrepareAgent({');
+  const end = runtime.indexOf('\n\nasync function runPickupCancelPrepareProbe({', start);
+  const block = start >= 0 && end > start ? runtime.slice(start, end) : '';
+
+  assert.match(block, /capturePersistedMessage\(message\)/);
+  assert.match(block, /pickupPersistedMessageForClient\(message\)/);
+  assert.match(block, /catch \(error\) \{[\s\S]*runError = error;[\s\S]*!requirePersistedMessage \|\| !persistedMessage/);
+  assert.match(block, /requirePersistedMessage && !persistedMessage/);
+  assert.match(block, /recoveredAfterPersist:!!runError/);
+});
+
+test('pickup cancel tool links the confirmation card to the verified source without exposing source control to the model', () => {
+  assert.match(cancelTool, /p_reply_to_message_id:replyId/);
+  assert.match(cancelTool, /capturePersistedMessage\(sent\.message\)/);
+  const start = cancelTool.indexOf("parameters:z.object({");
+  const end = cancelTool.indexOf("}),\n    async execute", start);
+  const schema = cancelTool.slice(start, end);
+  assert.doesNotMatch(schema, /sourceMessageId|replyToMessageId|requestId|cancelKind|effectiveDate|pickupId|studentId/);
 });
 
 test('pickup source normalization accepts direct @올리 and reply-suggestion forms', () => {
