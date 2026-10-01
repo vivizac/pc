@@ -18,6 +18,9 @@
   function overlay(){ return document.getElementById('kcfTeacherSheetOverlay'); }
   function editor(){ return document.getElementById('kcfTeacherSheetInput'); }
   function rosterHost(){ return document.getElementById('kcfTeacherSheetRosterHost'); }
+  function normalSpacer(){ return document.getElementById('kcfTeacherSheetNormalSpacer'); }
+  function attachButton(){ return document.getElementById('kcfTeacherSheetAttachBtn'); }
+  function voiceButton(){ return document.getElementById('kcfTeacherSheetVoiceBtn'); }
   function warning(){ return document.getElementById('kcfTeacherSheetWarning'); }
   function sendButton(){ return document.getElementById('kcfTeacherSheetSendBtn'); }
 
@@ -32,13 +35,19 @@
     var modeBtn = document.getElementById('kcfTeacherSheetModeBtn');
     if (modeBtn) {
       modeBtn.classList.toggle('active', enabled);
-      modeBtn.textContent = enabled ? 'C' : 'Class';
+      modeBtn.textContent = 'C';
       modeBtn.setAttribute('aria-label', enabled ? 'Class 모드 닫기' : 'Class 모드 열기');
       modeBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
       modeBtn.title = enabled ? 'Class 모드 닫기' : 'Class 모드 열기';
     }
     var host = rosterHost();
+    var spacer = normalSpacer();
+    var attach = attachButton();
+    var voice = voiceButton();
     if (host) host.hidden = !enabled;
+    if (spacer) spacer.hidden = enabled;
+    if (attach) attach.hidden = enabled;
+    if (voice) voice.hidden = enabled;
   }
 
   function syncViewport(){
@@ -171,8 +180,19 @@
       '    <textarea id="kcfTeacherSheetInput" class="kcfTeacherSheetInput" aria-label="퀵노트 수업기록"></textarea>',
       '    <div id="kcfTeacherSheetWarning" class="kcfTeacherSheetWarning" aria-live="polite"></div>',
       '    <div class="kcfTeacherSheetBottom">',
-      '      <button id="kcfTeacherSheetModeBtn" class="kcfTeacherSheetModeBtn" type="button" aria-label="Class 모드 열기" aria-pressed="false">Class</button>',
-      '      <div id="kcfTeacherSheetRosterHost" class="kcfTeacherSheetRosterHost"></div>',
+      '      <button id="kcfTeacherSheetAttachBtn" class="kcfTeacherSheetAttachBtn" type="button" aria-label="사진 추가" title="사진 추가">',
+      '        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>',
+      '      </button>',
+      '      <div id="kcfTeacherSheetNormalSpacer" class="kcfTeacherSheetNormalSpacer"></div>',
+      '      <button id="kcfTeacherSheetModeBtn" class="kcfTeacherSheetModeBtn" type="button" aria-label="Class 모드 열기" aria-pressed="false">C</button>',
+      '      <div id="kcfTeacherSheetRosterHost" class="kcfTeacherSheetRosterHost" hidden></div>',
+      '      <button id="kcfTeacherSheetVoiceBtn" class="kcfTeacherSheetVoiceBtn" type="button" aria-label="음성 입력" title="음성 입력">',
+      '        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">',
+      '          <rect x="8" y="3" width="8" height="13" rx="4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></rect>',
+      '          <path d="M5 12.5C5 16.09 8.13 19 12 19C15.87 19 19 16.09 19 12.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>',
+      '          <path d="M12 19V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>',
+      '        </svg>',
+      '      </button>',
       '      <button id="kcfTeacherSheetSendBtn" class="kcfTeacherSheetSendBtn" type="button" aria-label="피드백 전송">',
       '        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>',
       '      </button>',
@@ -205,6 +225,36 @@
         scheduleViewportSync();
       });
       input.addEventListener('focus', scheduleViewportSync);
+    }
+
+    var attach = attachButton();
+    if (attach) {
+      attach.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
+      attach.addEventListener('click', function(event){
+        event.preventDefault();
+        if (modeEnabled()) return;
+        syncToBase();
+        close({ sync:false });
+        if (typeof global.openKinderChatFeedbackPhotoPicker === 'function') {
+          global.openKinderChatFeedbackPhotoPicker(event);
+        } else {
+          var source = document.getElementById('kcfAttachBtn');
+          if (source) source.click();
+        }
+      });
+    }
+
+    var voice = voiceButton();
+    if (voice) {
+      voice.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
+      voice.addEventListener('click', function(event){
+        event.preventDefault();
+        if (modeEnabled()) return;
+        syncToBase();
+        close({ sync:false });
+        var source = document.getElementById('kcfVoiceBtn');
+        if (source) source.click();
+      });
     }
 
     var modeBtn = document.getElementById('kcfTeacherSheetModeBtn');

@@ -846,6 +846,10 @@
 
   function focusQuickNoteInputAfterVoiceEnd(target) {
     if (!target) return;
+    if (target.id === 'kcfInput' && typeof global.openKinderChatFeedbackComposerSheet === 'function') {
+      global.openKinderChatFeedbackComposerSheet();
+      return;
+    }
     try {
       target.focus({ preventScroll:true });
       var end = String(target.value || '').length;
@@ -857,9 +861,6 @@
     var resize = function() {
       if (typeof global.autoResizeKinderChatFeedbackInput === 'function') {
         global.autoResizeKinderChatFeedbackInput(target);
-      }
-      if (typeof global.updateKinderChatFeedbackKeyboardOffset === 'function') {
-        global.updateKinderChatFeedbackKeyboardOffset();
       }
     };
     if (typeof global.requestAnimationFrame === 'function') {

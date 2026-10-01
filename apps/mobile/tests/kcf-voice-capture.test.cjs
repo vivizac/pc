@@ -57,8 +57,8 @@ test('voice cancel restores text that existed before recording', () => {
 });
 
 test('voice capture assets are cache-busted together', () => {
-  assert.match(html, /kinder-feedback\.css\?v=20260926-input-autogrow-1/);
-  assert.match(html, /kcf-voice-transcription\.js\?v=20260926-input-autogrow-1/);
+  assert.match(html, /kinder-feedback\.css\?v=20261002-sheet-controls-1/);
+  assert.match(html, /kcf-voice-transcription\.js\?v=20261002-sheet-controls-1/);
 });
 
 test('voice capture does not auto-submit after silence', () => {
@@ -178,9 +178,10 @@ test('wake lock failure never blocks voice recording', () => {
 });
 
 
-test('QuickNote voice end resizes the restored textarea to the transcript length', () => {
-  assert.match(voice, /typeof global\.autoResizeKinderChatFeedbackInput === 'function'/);
-  assert.match(voice, /global\.autoResizeKinderChatFeedbackInput\(target\)/);
-  assert.match(voice, /requestAnimationFrame\(resize\)/);
-  assert.match(voice, /setTimeout\(resize, 80\)/);
+test('QuickNote voice end returns to the shared composer sheet without focusing the readonly inline source', () => {
+  const focus = voice.match(/function focusQuickNoteInputAfterVoiceEnd\(target\)[\s\S]*?\n  \}/)?.[0] || '';
+  assert.match(focus, /target\.id === 'kcfInput'/);
+  assert.match(focus, /global\.openKinderChatFeedbackComposerSheet\(\)/);
+  assert.match(focus, /return;/);
+  assert.doesNotMatch(focus, /updateKinderChatFeedbackKeyboardOffset/);
 });

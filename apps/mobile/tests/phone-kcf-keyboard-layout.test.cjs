@@ -40,13 +40,15 @@ test('inline QuickNote source stays fixed at its normal page position', () => {
   assert.doesNotMatch(wrap, /bottom:4px/);
 });
 
-test('inline QuickNote input is read-only and opens the shared sheet', () => {
+test('inline QuickNote input is read-only and its parent opens the shared sheet without native tap flash', () => {
   assert.match(html, /<textarea class="kcfInput" id="kcfInput"[^>]*readonly[^>]*>/);
-  const pointer = js.match(/input\.addEventListener\('pointerdown',[\s\S]*?\n    \}\);/)?.[0] || '';
+  assert.match(css, /#kinderChatFeedbackScreen \.kcfInput \{[\s\S]*?pointer-events:none;[\s\S]*?-webkit-user-select:none;[\s\S]*?-webkit-touch-callout:none;/);
+  assert.match(css, /#kinderChatFeedbackScreen \.kcfComposerBottom \{[\s\S]*?-webkit-tap-highlight-color:transparent;/);
+  const pointer = js.match(/composerBottom\.addEventListener\('pointerdown',[\s\S]*?\n    \}\);/)?.[0] || '';
   assert.match(pointer, /window\.KcfComposerSheet \|\| window\.KcfTeacherSheet/);
   assert.match(pointer, /event\.preventDefault\(\)/);
   assert.match(pointer, /sheet\.open\(\)/);
-  assert.doesNotMatch(pointer, /teacherMode\.isEnabled/);
+  assert.doesNotMatch(js, /input\.addEventListener\('pointerdown'/);
 });
 
 test('all programmatic QuickNote focus requests route to the shared sheet', () => {

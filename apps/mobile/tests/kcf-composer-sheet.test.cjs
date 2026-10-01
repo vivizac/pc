@@ -13,15 +13,16 @@ test('normal QuickNote input is only a read-only launcher for the shared sheet',
   assert.match(html, /id="kcfInput"[^>]*readonly/);
   assert.doesNotMatch(baseJs, /kcfKeyboardOpen/);
   assert.doesNotMatch(baseJs, /updateKinderChatFeedbackKeyboardOffset/);
-  const pointer = baseJs.match(/input\.addEventListener\('pointerdown',[\s\S]*?\n    \}\);/)?.[0] || '';
+  const pointer = baseJs.match(/composerBottom\.addEventListener\('pointerdown',[\s\S]*?\n    \}\);/)?.[0] || '';
   assert.match(pointer, /window\.KcfComposerSheet \|\| window\.KcfTeacherSheet/);
   assert.match(pointer, /event\.preventDefault\(\)/);
   assert.match(pointer, /sheet\.open\(\)/);
+  assert.doesNotMatch(baseJs, /input\.addEventListener\('pointerdown'/);
 });
 
 test('normal and Class modes share the same flat QuickNote sheet', () => {
-  assert.match(html, /kcf-teacher-sheet\.css\?v=20261001-unified-sheet-1/);
-  assert.match(html, /kcf-teacher-sheet\.js\?v=20261001-unified-sheet-1/);
+  assert.match(html, /kcf-teacher-sheet\.css\?v=20261002-sheet-controls-1/);
+  assert.match(html, /kcf-teacher-sheet\.js\?v=20261002-sheet-controls-1/);
   assert.match(teacherJs, /global\.KcfComposerSheet = api/);
   assert.match(teacherCss, /\.kcfTeacherSheet \{[\s\S]*?border-radius:0;/);
   assert.match(teacherCss, /\.kcfTeacherSheetOverlay\.show \.kcfTeacherSheet/);
@@ -61,15 +62,14 @@ test('Teacher send closes the sheet only after successful submit', () => {
 test('shared sheet exposes Class mode control and the existing feedback submit source', () => {
   assert.match(html, /id="kcfTeacherBtn"[^>]*>Class<\/button>/);
   assert.match(teacherJs, /id="kcfTeacherSheetModeBtn"/);
-  assert.match(teacherJs, /modeBtn\.textContent = enabled \? 'C' : 'Class'/);
+  assert.match(teacherJs, /modeBtn\.textContent = 'C'/);
   assert.match(teacherJs, /id="kcfTeacherSheetSendBtn"/);
   assert.match(teacherJs, /toggleKinderChatFeedbackTeacherMode/);
 });
 
 
-test('tapping the inline input opens the shared sheet regardless of Class mode state', () => {
-  const pointer = baseJs.match(/input\.addEventListener\('pointerdown',[\s\S]*?\n    \}\);/)?.[0] || '';
-  assert.doesNotMatch(pointer, /teacherMode\.isEnabled\(\)/);
+test('tapping the inline composer opens the shared sheet regardless of Class mode state', () => {
+  const pointer = baseJs.match(/composerBottom\.addEventListener\('pointerdown',[\s\S]*?\n    \}\);/)?.[0] || '';
   assert.match(pointer, /event\.preventDefault\(\)/);
   assert.match(pointer, /sheet\.open\(\)/);
 });
@@ -113,4 +113,23 @@ test('Teacher action row sits directly above the keyboard without safe-area padd
 test('Class sheet send button matches the normal QuickNote send button size', () => {
   assert.match(teacherCss, /\.kcfTeacherSheetSendBtn \{[\s\S]*?width:33px;[\s\S]*?height:33px;[\s\S]*?min-width:33px;/);
   assert.match(teacherCss, /\.kcfTeacherSheetSendBtn svg \{[\s\S]*?width:21px;[\s\S]*?height:21px;/);
+});
+
+
+test('normal shared sheet mirrors the inline utility row as plus spacer C mic send', () => {
+  assert.match(teacherJs, /id="kcfTeacherSheetAttachBtn"/);
+  assert.match(teacherJs, /id="kcfTeacherSheetNormalSpacer"/);
+  assert.match(teacherJs, /id="kcfTeacherSheetModeBtn"[^>]*>C<\/button>/);
+  assert.match(teacherJs, /id="kcfTeacherSheetVoiceBtn"/);
+  assert.match(teacherJs, /id="kcfTeacherSheetSendBtn"/);
+  assert.match(teacherJs, /if \(attach\) attach\.hidden = enabled/);
+  assert.match(teacherJs, /if \(voice\) voice\.hidden = enabled/);
+  assert.match(teacherJs, /if \(host\) host\.hidden = !enabled/);
+  assert.match(teacherCss, /\.kcfTeacherSheetAttachBtn,[\s\S]*?\.kcfTeacherSheetVoiceBtn \{[\s\S]*?width:33px;/);
+});
+
+test('normal sheet utility buttons reuse the existing photo and microphone flows', () => {
+  assert.match(teacherJs, /openKinderChatFeedbackPhotoPicker/);
+  assert.match(teacherJs, /document\.getElementById\('kcfVoiceBtn'\)/);
+  assert.match(teacherJs, /source\.click\(\)/);
 });
