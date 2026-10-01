@@ -141,7 +141,7 @@
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfComposerBottom {
   display:grid;
-  grid-template-columns:33px minmax(0,1fr) 33px 33px;
+  grid-template-columns:33px minmax(0,1fr) 33px;
   grid-template-rows:minmax(34px, auto) 38px;
   align-items:center;
   column-gap:8px;
@@ -182,15 +182,16 @@
   justify-self:start;
   margin-left:0;
   margin-right:0;
+  box-sizing:border-box;
+  border:1px solid #111 !important;
+  background:#f1f1f1 !important;
+  color:#111 !important;
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfVoiceBtn {
-  grid-column:3;
-  grid-row:2;
-  justify-self:end;
-  margin-right:0;
+  display:none;
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfSendBtn {
-  grid-column:4;
+  grid-column:3;
   grid-row:2;
   justify-self:end;
 }
