@@ -954,6 +954,182 @@ async function runMakeupCancelPrepareProbe({
   });
 }
 
+function resolveWaitlistCancelPrepareScope(preparedPrivacy) {
+  if (preparedPrivacy?.needsDisambiguation) {
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+
+  const subjectRefs = Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+  if (subjectRefs.length === 0) {
+    throw runtimeError(
+      '비재원 대기 취소는 기존 대기 취소 경로에서 처리합니다.',
+      409,
+      'OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED'
+    );
+  }
+  if (subjectRefs.length !== 1) {
+    throw runtimeError(
+      '대기 취소는 한 번에 학생 한 명만 지정해 주세요.',
+      400,
+      'OLLI_AGENT_WAITLIST_CANCEL_SINGLE_STUDENT_REQUIRED'
+    );
+  }
+
+  const subjectLabel = subjectRefs[0].label;
+  const subject = preparedPrivacy?.subjectAccess?.resolve?.(subjectLabel);
+  const division = String(subject?.division || '').trim().toLowerCase();
+  if (!['elementary', 'kinder'].includes(division)) {
+    throw runtimeError(
+      '대기 취소 대상 학생의 수업 구분을 확인하지 못했습니다.',
+      400,
+      'OLLI_AGENT_WAITLIST_CANCEL_DIVISION_REQUIRED'
+    );
+  }
+
+  const safeText = String(preparedPrivacy?.safeText || '');
+  const compact = safeText.replace(/\s+/g, '');
+  const hasWaitlist = /(?:대기|웨이팅)/.test(compact);
+  const hasRemove = /(?:취소|삭제|지워|지우|제거|빼|해제|없애)/.test(compact);
+  const hasOtherMutation = /(?:등록|추가|예약|신청|배정|넣|저장|변경|수정|바꿔|바꾸|옮|이동)/.test(compact);
+
+  if (!hasWaitlist || !hasRemove || hasOtherMutation) {
+    throw runtimeError(
+      '대기 취소 요청을 확인하지 못했습니다.',
+      400,
+      'OLLI_AGENT_WAITLIST_CANCEL_INTENT_REQUIRED'
+    );
+  }
+
+  const groupMatch = safeText.match(/([ABab])\s*반/);
+  return {
+    subjectLabel,
+    division,
+    classGroup:groupMatch ? groupMatch[1].toUpperCase() : 'AUTO',
+  };
+}
+
+async function runWaitlistCancelPrepareAgent({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+  replyToMessageId = null,
+  requirePersistedMessage = false,
+}) {
+  const scope = resolveWaitlistCancelPrepareScope(preparedPrivacy);
+  assertOpenAiKey();
+
+  const { Agent, run, tool, z } = await loadAgentsSdk();
+  const { createPrepareWaitlistCancelTool } = require('./tools/waitlist-cancel-prepare-tools.cjs');
+  const { sanitizeAgentToolPayload } = require('./privacy.cjs');
+  const model = agentModel();
+  const today = todayInSeoul();
+  let persistedMessage = null;
+
+  const prepareWaitlistCancel = createPrepareWaitlistCancelTool({
+    tool,
+    z,
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    studentLabel:scope.subjectLabel,
+    division:scope.division,
+    classGroup:scope.classGroup,
+    currentDate:today,
+    requestId,
+    replyToMessageId,
+    capturePersistedMessage(message) {
+      persistedMessage = pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload) {
+      return sanitizeAgentToolPayload(payload, preparedPrivacy);
+    },
+  });
+
+  const groupInstruction = scope.classGroup === 'AUTO'
+    ? 'The user did not explicitly select A반 or B반. The server must not guess if multiple waitlist rows still match.'
+    : 'The server has fixed the requested class group to ' + scope.classGroup + '. Do not override it.';
+
+  const agent = new Agent({
+    name:requirePersistedMessage ? 'Olli Waitlist Cancel Prepare' : 'Olli Waitlist Cancel Prepare Probe',
+    model,
+    instructions:[
+      'You are the Olli waitlist-cancellation preparation assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The only available anonymous student label for this run is ' + scope.subjectLabel + '.',
+      'The server has fixed the student division to ' + scope.division + '. Do not override it.',
+      groupInstruction,
+      'Today in Korea is ' + today + '.',
+      'Always call prepare_waitlist_cancel exactly once before answering.',
+      'If the user explicitly names a date, convert it to exact YYYY-MM-DD and pass it as waitlist_date. The server uses that date only to identify the requested weekday. If no date is present, pass an empty string.',
+      'If the user explicitly names a class time, convert the visible time to class_hour and class_minute. For 4시 반 use 4 and 30. If no time is present, pass 0 and 0.',
+      'The server re-reads the current active waitlist and rejects ambiguous matches. It never trusts or exposes an internal time slot or waitlist id.',
+      'The tool creates a pending confirmation card only. It never directly cancels a waitlist row.',
+      'Never say the waitlist was cancelled. Say that the cancellation is waiting for user confirmation.',
+      'Never ask for, infer, or reveal a real student name, UUID, waitlist ID, member ID, session token, academy ID, action ID, message ID, or internal time slot.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[prepareWaitlistCancel],
+    modelSettings:{ toolChoice:'prepare_waitlist_cancel' },
+  });
+
+  let result = null;
+  let runError = null;
+  try {
+    result = await run(agent, preparedPrivacy.safeText, {
+      context:agentContext,
+    });
+  } catch (error) {
+    runError = error;
+    if (!requirePersistedMessage || !persistedMessage) throw error;
+  }
+
+  const finalOutput = String(result?.finalOutput || '').trim();
+  if (!finalOutput && (!requirePersistedMessage || !persistedMessage)) {
+    throw runtimeError(
+      '대기 취소 준비 Agent 응답이 비어 있습니다.',
+      502,
+      'OLLI_AGENT_EMPTY_WAITLIST_CANCEL_PREPARE_RESPONSE'
+    );
+  }
+  if (requirePersistedMessage && !persistedMessage) {
+    throw runtimeError(
+      '대기 취소 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_AGENT_WAITLIST_CANCEL_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+
+  return {
+    ready:true,
+    model,
+    output:finalOutput,
+    nodeVersion:process.versions.node,
+    persistedMessage,
+    recoveredAfterPersist:!!runError,
+  };
+}
+
+async function runWaitlistCancelPrepareProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+}) {
+  return runWaitlistCancelPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId,
+  });
+}
+
+
 async function runAttendanceProbe({
   agentContext,
   requestContext,
@@ -2242,6 +2418,9 @@ module.exports = {
   runMakeupCancelPrepareAgent,
   runMakeupCancelPrepareProbe,
   runMakeupCancelPrepare,
+  resolveWaitlistCancelPrepareScope,
+  runWaitlistCancelPrepareAgent,
+  runWaitlistCancelPrepareProbe,
   validateMakeupSourceMessage,
   runMakeupPrepare,
   runAttendanceProbe,

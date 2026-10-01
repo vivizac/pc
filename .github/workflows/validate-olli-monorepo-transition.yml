@@ -89,9 +89,11 @@ jobs:
           node --check api/_lib/olli-agent/tools/makeup-prepare-tools.cjs
           node --check api/_lib/olli-agent/tools/makeup-update-prepare-tools.cjs
           node --check api/_lib/olli-agent/tools/makeup-cancel-prepare-tools.cjs
+          node --check api/_lib/olli-agent/tools/waitlist-cancel-prepare-tools.cjs
           node --check api/_lib/olli-agent/tools/profile-tools.cjs
           node --check api/_lib/olli-agent/tools/timetable-memo-tools.cjs
           node --test tests/olli-agent-makeup-cancel-prepare-tool.test.cjs
+          node --test tests/olli-agent-waitlist-cancel-prepare-tool.test.cjs
           node --test tests/olli-agent-makeup-update-prepare-tool.test.cjs
           node --test \
             tests/schedule-realtime.test.cjs \
