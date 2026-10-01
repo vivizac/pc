@@ -48,7 +48,9 @@
   }
 
   function resetPageScroll(root) {
-    if (!root || hasActiveEditableInside(root)) return;
+    // QuickNote owns its own iOS keyboard/viewport behavior. Do not let the
+    // legacy page-reset layer mutate its page or chat scroll position.
+    if (!root || root.id === 'kinderChatFeedbackScreen' || hasActiveEditableInside(root)) return;
     resetScrollElement(root);
     try {
       root.querySelectorAll(SCROLL_CONTAINER_SELECTOR).forEach(function(el){
