@@ -45,6 +45,14 @@ export default async function handler(req, res) {
           memoNote,
           requestContext
         );
+      } else if (mode === 'makeup_cancel_prepare_probe' || mode === 'makeup_cancel_prepare') {
+        const privacyModule = await import('./_lib/olli-agent/privacy.cjs');
+        const reason = safeText(body.reason, 300);
+        prepared = await privacyModule.prepareMakeupCancelPrivacyInput(
+          message,
+          reason,
+          requestContext
+        );
       } else if (mode === 'absence_prepare_probe' || mode === 'absence_prepare') {
         const privacyModule = await import('./_lib/olli-agent/privacy.cjs');
         const reason = safeText(body.reason, 300);
@@ -302,11 +310,18 @@ export default async function handler(req, res) {
           recoveredAfterPersist:probe.recoveredAfterPersist === true,
         });
       } else if (mode === 'makeup_cancel_prepare_probe') {
-        const requestId = safeText(body.requestId || body.request_id, 160);
+        const requestId = safeText(body.requestId || body.request_id, 180);
+        const reason = safeText(body.reason, 300);
         if (!requestId) {
           return res.status(400).json({
             error: 'makeup_cancel_prepare_probe에는 재시도 중복 방지용 requestId가 필요합니다.',
             code: 'OLLI_AGENT_REQUEST_ID_REQUIRED',
+          });
+        }
+        if (!reason) {
+          return res.status(400).json({
+            error: 'makeup_cancel_prepare_probe에는 보강 취소 사유가 필요합니다.',
+            code: 'OLLI_AGENT_MAKEUP_CANCEL_REASON_REQUIRED',
           });
         }
         probe = await runtimeModule.runMakeupCancelPrepareProbe({
@@ -314,13 +329,23 @@ export default async function handler(req, res) {
           requestContext,
           preparedPrivacy: prepared,
           requestId,
+          reason,
         });
       } else if (mode === 'makeup_cancel_prepare') {
         const sourceMessageId = Number(body.sourceMessageId || body.source_message_id || 0);
+        const reasonMessageId = Number(body.reasonMessageId || body.reason_message_id || 0);
+        const reasonMessageText = safeText(body.reasonMessageText || body.reason_message_text, 5000);
+        const reason = safeText(body.reason, 300);
         if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
           return res.status(400).json({
             error: 'makeup_cancel_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
             code: 'OLLI_AGENT_MAKEUP_SOURCE_MESSAGE_REQUIRED',
+          });
+        }
+        if (!Number.isSafeInteger(reasonMessageId) || reasonMessageId <= 0 || !reasonMessageText || !reason) {
+          return res.status(400).json({
+            error: 'makeup_cancel_prepare에는 저장된 보강 취소 사유 메시지와 사유가 필요합니다.',
+            code: 'OLLI_AGENT_MAKEUP_REASON_MESSAGE_REQUIRED',
           });
         }
         probe = await runtimeModule.runMakeupCancelPrepare({
@@ -329,6 +354,9 @@ export default async function handler(req, res) {
           preparedPrivacy: prepared,
           sourceMessageId,
           sourceMessageText: message,
+          reasonMessageId,
+          reasonMessageText,
+          reason,
         });
         return res.status(200).json({
           ok:true,
