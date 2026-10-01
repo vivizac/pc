@@ -371,10 +371,13 @@ test('makeup update tool schema exposes no internal ids, real names, division or
   );
 });
 
-test('endpoint exposes only makeup update probe mode at this checkpoint', () => {
+test('endpoint keeps makeup update probe mode separate from source-bound production mode', () => {
   const endpoint=fs.readFileSync(path.join(__dirname,'../api/olli-agent.js'),'utf8');
   assert.match(endpoint,/'makeup_update_prepare_probe'/);
   assert.match(endpoint,/runMakeupUpdatePrepareProbe/);
   assert.match(endpoint,/makeup_update_prepare_probe에는 재시도 중복 방지용 requestId가 필요합니다/);
-  assert.doesNotMatch(endpoint,/mode === 'makeup_update_prepare'/);
+  assert.match(endpoint,/'makeup_update_prepare'/);
+  assert.match(endpoint,/mode === 'makeup_update_prepare'/);
+  assert.match(endpoint,/runMakeupUpdatePrepare\(/);
+  assert.match(endpoint,/makeup_update_prepare에는 저장된 원문 Team Chat message id가 필요합니다/);
 });
