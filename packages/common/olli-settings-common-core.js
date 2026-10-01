@@ -219,6 +219,12 @@ function settingsSetCachedAcademy(academy) {
   if (academy.kinder_timetable_mode) {
     settingsSaveCachePatch({ kinderTimetableMode: String(academy.kinder_timetable_mode) === 'half_hour' ? 'half_hour' : 'hourly' });
   }
+  if (academy.timetable_week_days != null || academy.timetable_student_columns != null) {
+    settingsSaveCachePatch({
+      timetableWeekDays: Number(academy.timetable_week_days) === 5 ? 5 : 6,
+      timetableStudentColumns: Number(academy.timetable_student_columns) === 3 ? 3 : 2
+    });
+  }
   if (academy.profile_image_url) {
     settingsSaveCachePatch({ profileImageUrl: academy.profile_image_url, profileImageDataUrl: '' });
   }
