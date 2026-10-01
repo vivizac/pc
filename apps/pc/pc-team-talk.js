@@ -1342,6 +1342,16 @@
     return { message };
   }
 
+  function isWaitlistCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parseWaitlistCancelMutationIntent !== 'function') return false;
+    try {
+      return clean(router.parseWaitlistCancelMutationIntent(commandText)?.intent) === 'cancel_waitlist';
+    } catch (error) {
+      console.warn('PC 대기 취소 Agent 후보 판별 실패:', error?.message || error);
+      return false;
+    }
+  }
+
   function isMakeupAddAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router || typeof router.parseMakeupMutationIntent !== 'function') return false;
     try {
@@ -1489,6 +1499,41 @@
     }
     if (clean(data.message.action.action_type) !== 'update_makeup') {
       throw new Error('보강 변경 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
+  async function resolveWaitlistCancelAgentTurn(commandText, current, replyToMessageId) {
+    const sourceMessageId = Number(replyToMessageId || 0);
+    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+      throw new Error('대기 취소 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response = await fetch('/api/olli-agent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        mode:'waitlist_cancel_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageId
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok && clean(data?.code) === 'OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED') {
+      return null;
+    }
+    if (!response.ok || data?.ok !== true || !data?.message?.action) {
+      throw new Error(data?.error || data?.message || '대기 취소 Agent 응답을 받지 못했습니다.');
+    }
+    if (clean(data.message.action.action_type) !== 'cancel_waitlist') {
+      throw new Error('대기 취소 Agent 작업 종류가 올바르지 않습니다.');
     }
 
     return {
@@ -1658,6 +1703,11 @@
         replyText:confirmation,
         recordAi:false
       };
+    }
+
+    if (isWaitlistCancelAgentCandidate(commandText, router)) {
+      const waitlistTurn = await resolveWaitlistCancelAgentTurn(commandText, current, replyToMessageId);
+      if (waitlistTurn) return waitlistTurn;
     }
 
     if (isPickupCancelAgentCandidate(commandText, router)) {
