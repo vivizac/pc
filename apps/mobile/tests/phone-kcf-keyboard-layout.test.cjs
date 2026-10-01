@@ -22,7 +22,7 @@ test('empty KCF chat still owns vertical gestures without page overscroll', () =
   assert.match(sentinel, /pointer-events:none;/);
 });
 
-test('KCF composer layer follows visualViewport without locking document scroll', () => {
+test('KCF composer follows visualViewport without forcing root scroll resets', () => {
   assert.match(js, /function syncKinderChatFeedbackComposerViewport\(\)/);
   assert.match(js, /window\.visualViewport/);
   assert.match(js, /viewport \? Number\(viewport\.offsetLeft \|\| 0\) : 0/);
@@ -34,9 +34,9 @@ test('KCF composer layer follows visualViewport without locking document scroll'
   assert.match(js, /--kcf-composer-vv-width/);
   assert.match(js, /--kcf-composer-vv-height/);
   assert.match(js, /visualViewport\.addEventListener\('resize', syncKinderChatFeedbackViewport/);
-  assert.match(js, /visualViewport\.addEventListener\('scroll',[\s\S]*?resetKinderChatFeedbackRootViewportScroll\(\)/);
-  assert.doesNotMatch(js, /kcfComposerViewportLocked/);
-  assert.doesNotMatch(js, /preventKinderChatFeedbackKeyboardBackgroundTouchMove/);
+  assert.match(js, /visualViewport\.addEventListener\('scroll', syncKinderChatFeedbackViewport/);
+  assert.doesNotMatch(js, /resetKinderChatFeedbackRootViewportScroll/);
+  assert.doesNotMatch(js, /window\.scrollTo\(0, 0\)/);
 });
 
 test('KCF composer uses a dedicated fixed layer outside the chat inner layer', () => {
@@ -207,41 +207,44 @@ test('QuickNote input grows with content while the keyboard is open and remains 
 
 
 
-test('QuickNote keyboard controller follows only the composer and leaves chat geometry native', () => {
+test('QuickNote keyboard controller moves messages with the same keyboard offset as the composer', () => {
   assert.match(js,/function syncKinderChatFeedbackViewport\(\)/);
   assert.match(js,/function bindKinderChatFeedbackViewport\(\)/);
   assert.match(js,/function syncKinderChatFeedbackComposerViewport\(\)/);
-  assert.match(js,/function resetKinderChatFeedbackRootViewportScroll\(\)/);
-  assert.match(js,/window\.scrollTo\(0, 0\)/);
-  assert.doesNotMatch(js,/syncKinderChatFeedbackChatToComposer/);
-  assert.doesNotMatch(js,/kcfComposerViewportLock/);
-  assert.doesNotMatch(js,/kcfKeyboardTransitionActive/);
-  assert.doesNotMatch(js,/kcfViewportMoving/);
-  assert.doesNotMatch(js,/kcfChatGestureActive/);
+  assert.match(js,/function syncKinderChatFeedbackChatToComposer\(\)/);
+  assert.match(js,/function bindKinderChatFeedbackChatComposerTracking\(\)/);
+  assert.match(js,/--kcf-message-lift/);
+  assert.match(js,/Math\.max\(0, keyboardOffset\) \+ 'px'/);
+  assert.doesNotMatch(js,/resetKinderChatFeedbackRootViewportScroll/);
+  assert.doesNotMatch(js,/window\.scrollTo\(0, 0\)/);
 });
 
-test('QuickNote uses one full-height chat scroller without translating the message layer', () => {
+test('QuickNote chat reserve and message lift stay linked to the composer', () => {
   const rootRule = css.match(/#kinderChatFeedbackScreen \{[\s\S]*?\}/)?.[0] || '';
   const viewportRule = css.match(/#kinderChatFeedbackScreen \.kcfInner \{[\s\S]*?\}/)?.[0] || '';
   const chatRule = css.match(/#kinderChatFeedbackScreen \.kcfChatArea\{[\s\S]*?\}/)?.[0] || '';
   const listRule = css.match(/#kinderChatFeedbackScreen \.kcfMessageList\{[\s\S]*?\}/)?.[0] || '';
-  const rowRule = css.match(/#kinderChatFeedbackScreen \.kcfMsgRow \{[\s\S]*?\}/)?.[0] || '';
   assert.doesNotMatch(rootRule,/position:fixed/);
+  assert.match(rootRule,/--kcf-chat-reserve:176px/);
+  assert.match(rootRule,/--kcf-message-lift:0px/);
   assert.match(viewportRule,/position:absolute/);
   assert.match(viewportRule,/inset:0/);
   assert.match(viewportRule,/overflow:hidden/);
-  assert.match(chatRule,/flex:1/);
+  assert.match(chatRule,/padding:112px 16px var\(--kcf-chat-reserve, 176px\)/);
   assert.match(chatRule,/overflow-y:auto/);
-  assert.match(chatRule,/overscroll-behavior-y:contain/);
-  assert.match(chatRule,/touch-action:pan-y/);
-  assert.match(chatRule,/overflow-anchor:none/);
-  assert.match(listRule,/min-height:100%/);
   assert.match(listRule,/justify-content:flex-end/);
-  assert.doesNotMatch(listRule,/transform:/);
-  assert.doesNotMatch(listRule,/--kcf-message-lift/);
-  assert.doesNotMatch(rowRule,/--kcf-message-lift/);
-  assert.match(chatRule,/padding:112px 16px 176px;/);
-  assert.doesNotMatch(css,/--kcf-chat-reserve/);
+  assert.match(listRule,/transform:translate3d\(0,calc\(-1 \* var\(--kcf-message-lift, 0px\)\),0\)/);
+  assert.match(listRule,/transition:none/);
+});
+
+test('QuickNote measures chat reserve from the live composer footprint', () => {
+  const start = js.indexOf('function syncKinderChatFeedbackChatToComposer()');
+  const end = js.indexOf('function scheduleKinderChatFeedbackChatToComposer()', start);
+  const block = js.slice(start, end);
+  assert.match(block,/viewportRect\.bottom - composerRect\.top/);
+  assert.match(block,/const keyboardOffset = keyboardTracking \? getKinderChatFeedbackKeyboardOffset\(\) : 0/);
+  assert.match(block,/const reserve = Math\.max\(0, measuredReserve - keyboardOffset\)/);
+  assert.match(block,/--kcf-chat-reserve/);
 });
 
 test('QuickNote message rendering appends into kcfMessageList while scrollTop stays owned by kcfChatArea', () => {
@@ -276,10 +279,13 @@ test('QuickNote guide area is excluded from vertical chat scrolling without shri
   assert.match(chatRule,/overflow-y:auto/);
 });
 
-test('QuickNote guide visibility does not recalculate chat geometry', () => {
-  assert.match(js,/function applyKinderChatFeedbackGuideVisibility\(\)/);
-  assert.doesNotMatch(js,/scheduleKinderChatFeedbackChatToComposer/);
-  assert.doesNotMatch(js,/syncKinderChatFeedbackChatReserve/);
+test('QuickNote guide visibility itself does not recalculate chat geometry', () => {
+  const start = js.indexOf('function applyKinderChatFeedbackGuideVisibility()');
+  const end = js.indexOf('function setKinderChatFeedbackGuideVisibility', start);
+  const block = js.slice(start, end);
+  assert.match(block,/kcfGuideHidden/);
+  assert.doesNotMatch(block,/scheduleKinderChatFeedbackChatToComposer/);
+  assert.doesNotMatch(block,/syncKinderChatFeedbackChatToComposer/);
 });
 
 test('QuickNote guide touch guard blocks vertical fallthrough but preserves horizontal keyword swipe', () => {
@@ -295,7 +301,7 @@ test('QuickNote composer does not hand vertical drag gestures to the page while 
 });
 
 
-test('QuickNote touch retap protects the focused input from transient iOS blur', () => {
+test('QuickNote first touch uses preventScroll and retap protects transient iOS blur', () => {
   const start = js.indexOf("input.addEventListener('pointerdown'");
   const end = js.indexOf("input.addEventListener('focus'", start);
   const block = js.slice(start, end);
@@ -303,7 +309,8 @@ test('QuickNote touch retap protects the focused input from transient iOS blur',
   assert.match(block,/event\.pointerType === 'touch'/);
   assert.match(block,/teacherEnabled/);
   assert.match(block,/kcfKeepInputFocusUntil = Date\.now\(\) \+ 900/);
-  assert.doesNotMatch(block,/input\.focus\(/);
+  assert.match(block,/document\.activeElement !== input/);
+  assert.match(block,/input\.focus\(\{ preventScroll:true \}\)/);
   assert.match(js,/if \(Date\.now\(\) < kcfKeepInputFocusUntil\)[\s\S]*?currentInput\.focus\(\{ preventScroll:true \}\)/);
 });
 
