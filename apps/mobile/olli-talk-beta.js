@@ -640,6 +640,16 @@
     return { route:null, message };
   }
 
+  function isOlliTalkPickupCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parsePickupCancelMutationIntent!=='function') return false;
+    try{
+      return String(router.parsePickupCancelMutationIntent(commandText)?.intent || '').trim()==='cancel_pickup';
+    }catch(error){
+      console.warn('올리톡 픽업 삭제 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
   function isOlliTalkPickupUpdateAgentCandidate(commandText,router=window.OlliCommandRouter){
     if(!router || typeof router.parsePickupUpdateMutationIntent!=='function') return false;
     try{
@@ -658,6 +668,40 @@
       console.warn('올리톡 픽업 Agent 후보 판별 실패:',error);
       return false;
     }
+  }
+
+  async function resolveOlliTalkPickupCancelAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('픽업 삭제 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'pickup_cancel_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '픽업 삭제 Agent 응답을 받지 못했습니다.');
+    }
+
+    const actionType=String(data.message.action.action_type || '').trim();
+    if(!['cancel_pickup','cancel_pickup_dropoff'].includes(actionType)){
+      throw new Error('픽업 삭제 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return{
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
   }
 
   async function resolveOlliTalkPickupUpdateAgentTurn(commandText,context,replyToMessageId){
@@ -796,6 +840,10 @@
         replyText:message,
         recordAi:false
       };
+    }
+
+    if(isOlliTalkPickupCancelAgentCandidate(commandText,router)){
+      return resolveOlliTalkPickupCancelAgentTurn(commandText,context,replyToMessageId);
     }
 
     if(isOlliTalkPickupUpdateAgentCandidate(commandText,router)){
