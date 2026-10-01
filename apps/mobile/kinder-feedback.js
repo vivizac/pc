@@ -980,12 +980,27 @@ function loadKinderChatFeedbackDraft() {
 function clearKinderChatFeedbackDraft() {
   try { localStorage.removeItem(getKinderChatFeedbackDraftKey()); } catch(e) {}
 }
+let kcfInputWarningTimer = 0;
 function setKinderChatFeedbackWarning(message) {
   const el = document.getElementById('kcfInputWarning');
   if (!el) return;
   const text = String(message || '').trim();
+  if (kcfInputWarningTimer) {
+    clearTimeout(kcfInputWarningTimer);
+    kcfInputWarningTimer = 0;
+  }
   el.textContent = text;
   el.classList.toggle('show', !!text);
+  if (!text) return;
+
+  const visibleMs = Math.min(4800, Math.max(2800, 2200 + (text.length * 28)));
+  kcfInputWarningTimer = setTimeout(() => {
+    el.classList.remove('show');
+    kcfInputWarningTimer = 0;
+    setTimeout(() => {
+      if (!el.classList.contains('show')) el.textContent = '';
+    }, 180);
+  }, visibleMs);
 }
 function typeKinderChatFeedbackBotMessage(bubble, messageText, area) {
   if (!bubble) return;
