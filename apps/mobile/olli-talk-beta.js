@@ -17,6 +17,7 @@
   let olliTalkComposerViewportLock = null;
   let olliTalkComposerViewportLockTimer = null;
   let olliTalkKeyboardTransitionActive = false;
+  let olliTalkKeepInputFocusUntil = 0;
   let olliTalkArchiveTab = 'materials';
   let olliTalkArchivePayload = null;
   let olliTalkArchiveLoadSequence = 0;
@@ -5068,9 +5069,17 @@
       let composerTouchStartY = null;
       const composer = input.closest('.olliTalkBetaComposer');
 
+      const screen = getScreen();
+      if (screen) {
+        screen.addEventListener('pointerdown', event => {
+          if (event.target !== input) olliTalkKeepInputFocusUntil = 0;
+        }, true);
+      }
+
       input.addEventListener('pointerdown', event => {
         if (event.pointerType === 'touch') {
           if (document.activeElement !== input) {
+            olliTalkKeepInputFocusUntil = Date.now() + 900;
             captureOlliTalkKeyboardBaseline(true);
             // Match the @ mention path: focus before iOS performs its native
             // scroll-into-view step, while leaving the tap/caret default intact.
@@ -5126,6 +5135,23 @@
         setTimeout(() => syncViewport({ source:'focus' }), 300);
       }, true);
       input.addEventListener('blur', () => {
+        if (Date.now() < olliTalkKeepInputFocusUntil && isOlliTalkBetaVisible()) {
+          setTimeout(() => {
+            const currentInput = getOlliTalkBetaInput();
+            if (
+              currentInput
+              && Date.now() < olliTalkKeepInputFocusUntil
+              && isOlliTalkBetaVisible()
+              && document.activeElement !== currentInput
+            ) {
+              try { currentInput.focus({ preventScroll:true }); }
+              catch (_) { currentInput.focus(); }
+            }
+          }, 0);
+          return;
+        }
+
+        olliTalkKeepInputFocusUntil = 0;
         const screen = getScreen();
         releaseOlliTalkComposerViewportLock();
         olliTalkKeyboardTransitionActive = true;
