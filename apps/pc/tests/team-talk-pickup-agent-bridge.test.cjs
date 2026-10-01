@@ -60,7 +60,7 @@ test('PC pickup update bridge uses shared update parser and persisted production
   assert.match(talk, /parsePickupUpdateMutationIntent\(commandText\)/);
 
   const start = talk.indexOf('async function resolvePickupUpdateAgentTurn');
-  const end = talk.indexOf('function isPickupAddAgentCandidate', start);
+  const end = talk.indexOf('async function resolvePickupAddAgentTurn', start);
   const block = talk.slice(start, end);
 
   assert.match(block, /mode:'pickup_update_prepare'/);
