@@ -963,11 +963,99 @@ async function runPickupPrepareProbe({
   });
 }
 
+function normalizePickupSourceMessageText(value) {
+  return String(value == null ? '' : value)
+    .trim()
+    .replace(/^\s*@올리(?:\s+|$)/, '')
+    .trim();
+}
+
+async function validatePickupSourceMessage({
+  requestContext,
+  sourceMessageId,
+  sourceMessageText,
+  callRpc,
+}) {
+  const sourceId = Number(sourceMessageId || 0);
+  if (!Number.isSafeInteger(sourceId) || sourceId <= 0 || sourceId >= Number.MAX_SAFE_INTEGER) {
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_PICKUP_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  const rpc = typeof callRpc === 'function'
+    ? callRpc
+    : require('./supabase-rpc.cjs').callSupabaseRpc;
+  const payload = await rpc('olli_team_chat_list', {
+    p_session_token:requestContext.sessionToken,
+    p_academy_id:requestContext.academyId,
+    p_before_message_id:sourceId + 1,
+    p_limit:1,
+  });
+
+  if (!payload?.ok) {
+    throw runtimeError(
+      payload?.message || '원문 Team Chat 메시지를 확인하지 못했습니다.',
+      403,
+      payload?.code || 'OLLI_AGENT_PICKUP_SOURCE_MESSAGE_READ_FAILED'
+    );
+  }
+
+  if (String(payload.current_member_id || '').trim() !== String(requestContext.memberId || '').trim()) {
+    throw runtimeError(
+      '원문 Team Chat 요청자 정보를 확인하지 못했습니다.',
+      403,
+      'OLLI_AGENT_PICKUP_SOURCE_CONTEXT_MISMATCH'
+    );
+  }
+
+  const source = (Array.isArray(payload.messages) ? payload.messages : [])
+    .find((item) => Number(item?.id || 0) === sourceId) || null;
+  if (!source) {
+    throw runtimeError(
+      '원문 Team Chat 메시지를 찾지 못했습니다.',
+      404,
+      'OLLI_AGENT_PICKUP_SOURCE_MESSAGE_NOT_FOUND'
+    );
+  }
+
+  if (String(source.sender_member_id || '').trim() !== String(requestContext.memberId || '').trim()) {
+    throw runtimeError(
+      '본인이 보낸 Team Chat 메시지만 픽업 Agent 원문으로 사용할 수 있습니다.',
+      403,
+      'OLLI_AGENT_PICKUP_SOURCE_MESSAGE_OWNER_MISMATCH'
+    );
+  }
+
+  if (String(source.message_type || '').trim() !== 'text') {
+    throw runtimeError(
+      '일반 Team Chat 메시지만 픽업 Agent 원문으로 사용할 수 있습니다.',
+      400,
+      'OLLI_AGENT_PICKUP_SOURCE_MESSAGE_TYPE_INVALID'
+    );
+  }
+
+  const storedText = normalizePickupSourceMessageText(source.body);
+  const requestedText = normalizePickupSourceMessageText(sourceMessageText);
+  if (!storedText || !requestedText || storedText !== requestedText) {
+    throw runtimeError(
+      '원문 Team Chat 메시지 내용이 현재 픽업 요청과 일치하지 않습니다.',
+      409,
+      'OLLI_AGENT_PICKUP_SOURCE_MESSAGE_BODY_MISMATCH'
+    );
+  }
+
+  return source;
+}
+
 async function runPickupPrepare({
   agentContext,
   requestContext,
   preparedPrivacy,
   sourceMessageId,
+  sourceMessageText,
 }) {
   const sourceId = Number(sourceMessageId || 0);
   if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
@@ -977,6 +1065,12 @@ async function runPickupPrepare({
       'OLLI_AGENT_PICKUP_SOURCE_MESSAGE_INVALID'
     );
   }
+
+  await validatePickupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
 
   return runPickupPrepareAgent({
     agentContext,
@@ -1085,6 +1179,8 @@ module.exports = {
   runPickupProbe,
   resolvePickupPrepareScope,
   pickupPersistedMessageForClient,
+  normalizePickupSourceMessageText,
+  validatePickupSourceMessage,
   runPickupPrepareProbe,
   runPickupPrepare,
   runStudentProfileProbe,
