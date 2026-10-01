@@ -9,6 +9,7 @@ const autoCss = fs.readFileSync('kcf-auto-mode.css', 'utf8');
 const teacherJs = fs.readFileSync('kcf-teacher-sheet.js', 'utf8');
 const teacherCss = fs.readFileSync('kcf-teacher-sheet.css', 'utf8');
 const observationCss = fs.readFileSync('olli-observation-roster-phone.css', 'utf8');
+const pageResetJs = fs.readFileSync('olli-page-scroll-reset.js', 'utf8');
 
 test('empty KCF chat still owns vertical gestures without page overscroll', () => {
   const chatRule = css.match(/#kinderChatFeedbackScreen \.kcfChatArea\{[^}]*\}/)?.[0] || '';
@@ -206,6 +207,13 @@ test('QuickNote input grows with content while the keyboard is open and remains 
 });
 
 
+
+test('legacy page scroll reset never owns QuickNote page or chat position', () => {
+  const start = pageResetJs.indexOf('function resetPageScroll(root)');
+  const end = pageResetJs.indexOf('function resetVisiblePageScroll()', start);
+  const block = pageResetJs.slice(start, end);
+  assert.match(block,/root\.id === 'kinderChatFeedbackScreen'/);
+});
 
 test('QuickNote keyboard controller matches Team Chat viewport ownership without moving root page', () => {
   assert.match(js,/function syncKinderChatFeedbackViewport\(options = \{\}\)/);
