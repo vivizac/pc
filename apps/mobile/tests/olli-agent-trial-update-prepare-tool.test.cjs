@@ -153,7 +153,7 @@ test('omitted trial target time and group preserve current values',async()=>{
     targetDate:'2026-10-09',targetHour:0,targetMinute:0,targetGroup:'AUTO',
     currentDate:'2026-10-01',requestId:'req-trial-preserve',sanitizePayload:p=>p,callRpc:rpc,
   });
-  assert.equal(result.target_date,'2026-10-03');
+  assert.equal(result.target_date,'2026-10-09');
   assert.equal(result.target_time_label,'4시 30분');
   assert.equal(result.target_class_group,'A');
 });
