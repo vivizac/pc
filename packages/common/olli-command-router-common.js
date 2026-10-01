@@ -451,7 +451,7 @@
     const timeSlot = firstTimeSlot(raw);
     const studentName = extractStudentName(
       raw,
-      /(?:보강|보충(?:수업)?)(?:수업)?(?:으로|에|을|를)?/g,
+      /(?:보강|보충(?:수업)?)(?:수업)?(?:으로|에|을|를|도)?/g,
       addActionPattern()
     );
     if (!studentName || !dateSpec || !timeSlot) return null;
@@ -964,6 +964,40 @@
     };
   }
 
+  function parseBatchDraftWriteIntent(text) {
+    const raw=cleanText(text);
+    const compact=compactText(raw);
+    if(!raw) return null;
+
+    if(hasMakeupWord(compact) && hasAddAction(compact) && !hasRemoveAction(compact)){
+      const studentName=extractStudentName(
+        raw,
+        /(?:보강|보충(?:수업)?)(?:수업)?(?:으로|에|을|를|도)?/g,
+        addActionPattern()
+      );
+      if(!studentName) return null;
+      const dateSpec=parseDateExpression(compact);
+      const timeSlot=firstTimeSlot(raw);
+      return {
+        type:'mutation',
+        intent:'add_makeup',
+        studentName,
+        dateSpec,
+        dateLabel:dateSpec ? dateSpec.label : '',
+        timeSlot,
+        classGroup:firstClassGroup(raw),
+        originalText:raw,
+        batchDraft:true,
+        missingBatchFields:[
+          !dateSpec ? 'date' : '',
+          !timeSlot ? 'time' : ''
+        ].filter(Boolean)
+      };
+    }
+
+    return null;
+  }
+
   function parseSingleWriteIntent(text) {
     const normalizedText = cleanText(text);
     return parseTimetableMemoDeleteMutationIntent(normalizedText)
@@ -991,7 +1025,7 @@
     if (!raw) return null;
     const parts = raw.split(/\s*(?:;|그리고|그다음|그 다음|하고|\n)\s*[,，]?\s*/g).map(cleanText).filter(Boolean);
     if (parts.length < 2 || parts.length > 3) return null;
-    const commands = parts.map(parseSingleWriteIntent);
+    const commands = parts.map(part => parseSingleWriteIntent(part) || parseBatchDraftWriteIntent(part));
     if (commands.some(item => !item)) return null;
     return { type:'mutation', intent:'batch_write', commands, originalText:raw };
   }
@@ -1978,6 +2012,7 @@
     parseTimetableMemoAddMutationIntent,
     parseTimetableMemoDeleteMutationIntent,
     parseMultiWriteIntent,
+    parseBatchDraftWriteIntent,
     parseClassMutationIntent,
     parseDateExpression,
     resolveDateExpression,
