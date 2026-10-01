@@ -176,6 +176,7 @@ let kcfVivicotInboxMidnightTimer = null;
 let kcfActiveKeyword = '';
 let kcfKeepInputFocusUntil = 0;
 let kcfKeyboardBaselineBottom = 0;
+let kcfContentBaselineHeight = 0;
 let kcfViewportBound = false;
 let kcfViewportSettleTimer = null;
 let kcfLastViewportSignature = '';
@@ -427,6 +428,39 @@ function getKinderChatFeedbackKeyboardOffset() {
   if (!kcfKeyboardBaselineBottom) captureKinderChatFeedbackKeyboardBaseline(true);
   return Math.max(0, Math.round(kcfKeyboardBaselineBottom - currentBottom));
 }
+function captureKinderChatFeedbackContentBaseline(force = false) {
+  const screen = getKinderChatFeedbackScreen();
+  const inner = screen?.querySelector('.kcfInner');
+  if (!screen || !inner) return;
+  const rect = inner.getBoundingClientRect();
+  const candidate = Math.max(
+    1,
+    Math.round(Number(rect.height || 0)),
+    Math.round(Number(window.innerHeight || 0)),
+    Math.round(Number(window.visualViewport?.height || 0))
+  );
+  if (force || !kcfContentBaselineHeight) kcfContentBaselineHeight = candidate;
+}
+function syncKinderChatFeedbackContentViewportCompensation(options = {}) {
+  const screen = getKinderChatFeedbackScreen();
+  if (!screen) return;
+  const input = getKinderChatFeedbackInput();
+  const keyboardTracking = (!!input && document.activeElement === input)
+    || screen.classList.contains('kcfKeyboardOpen')
+    || kcfKeyboardTransitionActive;
+
+  if (options.reset === true || !keyboardTracking) {
+    screen.style.setProperty('--kcf-content-vv-offset-top', '0px');
+    screen.style.setProperty('--kcf-content-layout-height', '100%');
+    if (options.reset === true) kcfContentBaselineHeight = 0;
+    return;
+  }
+
+  if (!kcfContentBaselineHeight) captureKinderChatFeedbackContentBaseline(true);
+  const visualOffsetTop = Math.max(0, Math.round(Number(window.visualViewport?.offsetTop || 0)));
+  screen.style.setProperty('--kcf-content-vv-offset-top', visualOffsetTop + 'px');
+  screen.style.setProperty('--kcf-content-layout-height', Math.max(1, kcfContentBaselineHeight) + 'px');
+}
 function finishKinderChatFeedbackViewportTransition() {
   const screen = getKinderChatFeedbackScreen();
   if (!screen) return;
@@ -457,6 +491,8 @@ function syncKinderChatFeedbackViewport(options = {}) {
   const keyboardOpen = keyboardTracking && keyboardOffset > 24;
   const signature = [Math.round(top), Math.round(left), Math.round(width), Math.round(height)].join(':');
   const viewportChanged = signature !== kcfLastViewportSignature;
+
+  syncKinderChatFeedbackContentViewportCompensation();
 
   if (kcfChatGestureActive) {
     kcfLastViewportSignature = signature;
@@ -586,6 +622,7 @@ function bindKinderChatFeedbackViewportInteractions() {
     input.addEventListener('pointerdown', event => {
       if (event.pointerType === 'touch') {
         captureKinderChatFeedbackViewportDebug('pointerdown-before-focus', true);
+        captureKinderChatFeedbackContentBaseline(true);
         const teacherMode = getKinderChatFeedbackTeacherMode();
         const teacherEnabled = !!(
           teacherMode
@@ -636,6 +673,7 @@ function bindKinderChatFeedbackViewportInteractions() {
       releaseKinderChatFeedbackComposerViewportLock();
       kcfKeyboardTransitionActive = true;
       captureKinderChatFeedbackKeyboardBaseline(true);
+      if (!kcfContentBaselineHeight) captureKinderChatFeedbackContentBaseline(true);
       if (screen) screen.classList.add('kcfViewportMoving');
       scheduleKinderChatFeedbackViewportSettle();
       setTimeout(() => syncKinderChatFeedbackViewport({ source:'focus' }), 40);
@@ -777,6 +815,7 @@ async function closeKinderChatFeedbackPage() {
     window.KcfTeacherSheet.close({ sync:true });
   }
   releaseKinderChatFeedbackComposerViewportLock();
+  syncKinderChatFeedbackContentViewportCompensation({ reset:true });
   kcfKeyboardBaselineBottom = 0;
   kcfKeyboardTransitionActive = false;
   kcfLastViewportSignature = '';
