@@ -622,6 +622,153 @@ async function runMakeupPrepareProbe({
   });
 }
 
+function resolveMakeupCancelPrepareScope(preparedPrivacy) {
+  if (preparedPrivacy?.needsDisambiguation) {
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+
+  const subjectRefs = Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+  if (subjectRefs.length !== 1) {
+    throw runtimeError(
+      '보강 취소는 한 번에 학생 한 명만 지정해 주세요.',
+      400,
+      'OLLI_AGENT_MAKEUP_CANCEL_SINGLE_STUDENT_REQUIRED'
+    );
+  }
+
+  const subjectLabel = subjectRefs[0].label;
+  const subject = preparedPrivacy?.subjectAccess?.resolve?.(subjectLabel);
+  const division = String(subject?.division || '').trim().toLowerCase();
+  if (!['elementary', 'kinder'].includes(division)) {
+    throw runtimeError(
+      '보강 취소 대상 학생의 수업 구분을 확인하지 못했습니다.',
+      400,
+      'OLLI_AGENT_MAKEUP_CANCEL_DIVISION_REQUIRED'
+    );
+  }
+
+  const safeText = String(preparedPrivacy?.safeText || '');
+  const compact = safeText.replace(/\s+/g, '');
+  const hasMakeup = /(?:보강|보충)/.test(compact);
+  const hasRemove = /(?:취소|삭제|지워|지우|제거|빼|해제|없애)/.test(compact);
+  const hasOtherMutation = /(?:등록|추가|예약|신청|배정|넣|저장|잡아|변경|수정|바꿔|옮)/.test(compact);
+
+  if (!hasMakeup || !hasRemove || hasOtherMutation) {
+    throw runtimeError(
+      '보강 취소 요청을 확인하지 못했습니다.',
+      400,
+      'OLLI_AGENT_MAKEUP_CANCEL_INTENT_REQUIRED'
+    );
+  }
+
+  const groupMatch = safeText.match(/([ABab])\s*반/);
+  return {
+    subjectLabel,
+    division,
+    classGroup:groupMatch ? groupMatch[1].toUpperCase() : 'AUTO',
+  };
+}
+
+async function runMakeupCancelPrepareAgent({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+}) {
+  assertOpenAiKey();
+
+  const scope = resolveMakeupCancelPrepareScope(preparedPrivacy);
+  const { Agent, run, tool, z } = await loadAgentsSdk();
+  const { createPrepareMakeupCancelTool } = require('./tools/makeup-cancel-prepare-tools.cjs');
+  const { sanitizeAgentToolPayload } = require('./privacy.cjs');
+  const model = agentModel();
+  const today = todayInSeoul();
+
+  const prepareMakeupCancel = createPrepareMakeupCancelTool({
+    tool,
+    z,
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    studentLabel:scope.subjectLabel,
+    division:scope.division,
+    classGroup:scope.classGroup,
+    sourceText:preparedPrivacy.safeText,
+    currentDate:today,
+    requestId,
+    sanitizePayload(payload) {
+      return sanitizeAgentToolPayload(payload, preparedPrivacy);
+    },
+  });
+
+  const groupInstruction = scope.classGroup === 'AUTO'
+    ? 'The user did not explicitly select A반 or B반. The server must not guess a group if multiple rows still match.'
+    : 'The server has fixed the requested class group to ' + scope.classGroup + '. Do not override it.';
+
+  const agent = new Agent({
+    name:'Olli Makeup Cancel Prepare Probe',
+    model,
+    instructions:[
+      'You are the Olli makeup-cancellation preparation assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The only available anonymous student label for this run is ' + scope.subjectLabel + '.',
+      'The server has fixed the student division to ' + scope.division + '. Do not override it.',
+      groupInstruction,
+      'Today in Korea is ' + today + '.',
+      'Always call prepare_makeup_cancel exactly once before answering.',
+      'If the user explicitly names a date, convert it to exact YYYY-MM-DD. If no date is present, pass an empty session_date string.',
+      'If the user explicitly names a class time, convert the visible time to class_hour and class_minute. For 4시 반 use 4 and 30. If no time is present, pass 0 and 0.',
+      'Pass reason as an exact substring copied from the user message. Never invent, summarize, translate, or paraphrase the cancellation reason.',
+      'The server rejects a missing, generic, or invented reason and re-resolves the current stored makeup row before creating the card.',
+      'The tool creates a pending confirmation card only. It never directly cancels a makeup class.',
+      'Never say the makeup was cancelled. Say that the cancellation is waiting for user confirmation.',
+      'Never ask for, infer, or reveal a real student name, UUID, one-time-session ID, member ID, session token, academy ID, action ID, message ID, or internal time slot.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[prepareMakeupCancel],
+    modelSettings:{ toolChoice:'prepare_makeup_cancel' },
+  });
+
+  const result = await run(agent, preparedPrivacy.safeText, {
+    context:agentContext,
+  });
+
+  const finalOutput = String(result?.finalOutput || '').trim();
+  if (!finalOutput) {
+    throw runtimeError(
+      '보강 취소 준비 Agent 응답이 비어 있습니다.',
+      502,
+      'OLLI_AGENT_EMPTY_MAKEUP_CANCEL_PREPARE_RESPONSE'
+    );
+  }
+
+  return {
+    ready:true,
+    model,
+    output:finalOutput,
+    nodeVersion:process.versions.node,
+  };
+}
+
+async function runMakeupCancelPrepareProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+}) {
+  return runMakeupCancelPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId,
+  });
+}
+
 async function runAttendanceProbe({
   agentContext,
   requestContext,
@@ -1836,6 +1983,9 @@ module.exports = {
   resolveMakeupPrepareScope,
   runMakeupPrepareAgent,
   runMakeupPrepareProbe,
+  resolveMakeupCancelPrepareScope,
+  runMakeupCancelPrepareAgent,
+  runMakeupCancelPrepareProbe,
   validateMakeupSourceMessage,
   runMakeupPrepare,
   runAttendanceProbe,
