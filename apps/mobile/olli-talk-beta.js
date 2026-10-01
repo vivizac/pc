@@ -17,7 +17,6 @@
   let olliTalkComposerViewportLock = null;
   let olliTalkComposerViewportLockTimer = null;
   let olliTalkKeyboardTransitionActive = false;
-  let olliTalkKeepInputFocusUntil = 0;
   let olliTalkArchiveTab = 'materials';
   let olliTalkArchivePayload = null;
   let olliTalkArchiveLoadSequence = 0;
@@ -156,25 +155,19 @@
       || !Number.isFinite(composerRect.top)
     ) return;
 
-    const measuredReserve = Math.max(
+    const bottomGap = Math.max(
       0,
       Math.min(
         Math.ceil(viewportRect.height),
         Math.ceil(viewportRect.bottom - composerRect.top)
       )
     );
-    const input = getOlliTalkBetaInput();
-    const keyboardTracking = (!!input && document.activeElement === input)
-      || screen.classList.contains('olliTalkKeyboardOpen')
-      || olliTalkKeyboardTransitionActive;
-    const keyboardOffset = keyboardTracking ? getOlliTalkKeyboardOffset() : 0;
-    const reserve = Math.max(0, measuredReserve - keyboardOffset);
 
-    // Keep the scroll area full-height. Reserve only the composer's own footprint;
-    // keyboard displacement is applied once, to the message layer below.
-    screen.style.setProperty('--olli-talk-chat-reserve', reserve + 'px');
+    // The message scroller physically ends at the composer's top edge.
+    // This replaces the old full-height scroller + bottom padding reserve.
+    screen.style.setProperty('--olli-talk-chat-bottom-gap', bottomGap + 'px');
 
-    // Keyboard/composer geometry never owns chatArea.scrollTop.
+    // Keyboard/composer geometry may resize this scroller, but it never owns chat scrollTop.
   }
 
   function scheduleOlliTalkChatToComposer(){
@@ -349,9 +342,6 @@
     }
 
     screen.classList.toggle('olliTalkKeyboardOpen', keyboardOpen);
-    const messageLift = keyboardTracking ? Math.max(0, keyboardOffset) : 0;
-    screen.style.setProperty('--olli-talk-message-lift', messageLift + 'px');
-    scheduleOlliTalkChatToComposer();
     if (!keyboardOpen && !inputFocused) {
       releaseOlliTalkComposerViewportLock();
       olliTalkKeyboardTransitionActive = false;
@@ -5211,17 +5201,9 @@
       let composerTouchStartY = null;
       const composer = input.closest('.olliTalkBetaComposer');
 
-      const screen = getScreen();
-      if (screen) {
-        screen.addEventListener('pointerdown', event => {
-          if (event.target !== input) olliTalkKeepInputFocusUntil = 0;
-        }, true);
-      }
-
       input.addEventListener('pointerdown', event => {
         if (event.pointerType === 'touch') {
           if (document.activeElement !== input) {
-            olliTalkKeepInputFocusUntil = Date.now() + 900;
             captureOlliTalkKeyboardBaseline(true);
             // Match the @ mention path: focus before iOS performs its native
             // scroll-into-view step, while leaving the tap/caret default intact.
@@ -5277,23 +5259,6 @@
         setTimeout(() => syncViewport({ source:'focus' }), 300);
       }, true);
       input.addEventListener('blur', () => {
-        if (Date.now() < olliTalkKeepInputFocusUntil && isOlliTalkBetaVisible()) {
-          setTimeout(() => {
-            const currentInput = getOlliTalkBetaInput();
-            if (
-              currentInput
-              && Date.now() < olliTalkKeepInputFocusUntil
-              && isOlliTalkBetaVisible()
-              && document.activeElement !== currentInput
-            ) {
-              try { currentInput.focus({ preventScroll:true }); }
-              catch (_) { currentInput.focus(); }
-            }
-          }, 0);
-          return;
-        }
-
-        olliTalkKeepInputFocusUntil = 0;
         const screen = getScreen();
         releaseOlliTalkComposerViewportLock();
         olliTalkKeyboardTransitionActive = true;

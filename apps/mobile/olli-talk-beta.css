@@ -62,8 +62,7 @@
   --olli-talk-composer-vv-top:0px;
   --olli-talk-composer-vv-width:100vw;
   --olli-talk-composer-vv-height:100vh;
-  --olli-talk-chat-reserve:74px;
-  --olli-talk-message-lift:0px;
+  --olli-talk-chat-bottom-gap:74px;
   padding-top:0;
   align-items:stretch;
   background:var(--olli-talk-bg);
@@ -422,7 +421,12 @@
 }
 
 #olliTalkBetaScreen .olliTalkBetaChatArea{
-  flex:1;
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  bottom:var(--olli-talk-chat-bottom-gap, 74px);
+  flex:none;
   min-height:0;
   width:100%;
   max-width:860px;
@@ -431,7 +435,7 @@
   padding:
     calc(env(safe-area-inset-top) + 86px)
     16px
-    var(--olli-talk-chat-reserve, 74px);
+    12px;
   overflow-y:auto;
   overflow-x:hidden;
   -webkit-overflow-scrolling:touch;
@@ -713,14 +717,6 @@
   flex-direction:column;
   justify-content:flex-end;
   padding:8px 0 10px;
-  transform:translate3d(0,calc(-1 * var(--olli-talk-message-lift, 0px)),0);
-  transition:none;
-  animation:none;
-}
-#olliTalkBetaScreen.olliTalkViewportMoving .olliTalkBetaMessageList{
-  visibility:hidden;
-  transition:none;
-  animation:none;
 }
 
 #olliTalkBetaScreen .olliTalkBetaPreviewNote{
