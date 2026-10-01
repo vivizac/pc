@@ -306,6 +306,14 @@ test('QuickNote composer does not hand vertical drag gestures to the page while 
 });
 
 
+test('QuickNote bottom fade stays inside the content viewport like Team Chat', () => {
+  const rule = css.match(/#kinderChatFeedbackScreen \.kcfBottomFadeLayer\{[\s\S]*?\}/)?.[0] || '';
+  assert.match(rule,/position:absolute/);
+  assert.doesNotMatch(rule,/position:fixed/);
+  assert.match(rule,/bottom:0/);
+  assert.match(rule,/height:104px/);
+});
+
 test('QuickNote root cancels iOS visual viewport pan without moving chat scroll', () => {
   const rootRule = css.match(/#kinderChatFeedbackScreen \{[\s\S]*?\}/)?.[0] || '';
   const innerRule = css.match(/#kinderChatFeedbackScreen \.kcfInner \{[\s\S]*?\}/)?.[0] || '';
