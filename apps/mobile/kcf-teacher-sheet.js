@@ -299,6 +299,10 @@
     unbindWarning();
     document.documentElement.classList.remove('kcfTeacherSheetOpen');
     document.body.classList.remove('kcfTeacherSheetOpen');
+    var inlineInput = baseInput();
+    if (inlineInput) {
+      try { inlineInput.blur(); } catch (_) {}
+    }
     if (state.viewportFrame) cancelAnimationFrame(state.viewportFrame);
     state.viewportFrame = 0;
   }
