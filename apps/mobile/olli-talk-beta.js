@@ -445,11 +445,7 @@
         };
       }
 
-      if(isOlliTalkMoveCancelAgentCandidate(commandText,router)){
-      return resolveOlliTalkMoveCancelAgentTurn(commandText,context,replyToMessageId);
-    }
-
-    const studentInfo=resolveOlliTalkStudentInfoCommand(commandText);
+      const studentInfo=resolveOlliTalkStudentInfoCommand(commandText);
       if(studentInfo?.handled===true){
         return saveReply(studentInfo.message);
       }
@@ -930,6 +926,10 @@
 
     if(isOlliTalkWaitlistUpdateAgentCandidate(commandText,router)){
       return resolveOlliTalkWaitlistUpdateAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    if(isOlliTalkMoveCancelAgentCandidate(commandText,router)){
+      return resolveOlliTalkMoveCancelAgentTurn(commandText,context,replyToMessageId);
     }
 
     const studentInfo=resolveOlliTalkStudentInfoCommand(commandText);
