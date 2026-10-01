@@ -490,7 +490,13 @@ function bindKinderChatFeedbackViewportInteractions() {
     }, true);
 
     input.addEventListener('blur', () => {
-      if (Date.now() < kcfKeepInputFocusUntil) {
+      const teacherMode = getKinderChatFeedbackTeacherMode();
+      const teacherEnabled = !!(
+        teacherMode
+        && typeof teacherMode.isEnabled === 'function'
+        && teacherMode.isEnabled()
+      );
+      if (!teacherEnabled && Date.now() < kcfKeepInputFocusUntil) {
         setTimeout(() => {
           const currentInput = getKinderChatFeedbackInput();
           if (currentInput) {
