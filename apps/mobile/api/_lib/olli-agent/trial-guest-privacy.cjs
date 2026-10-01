@@ -35,6 +35,8 @@ function stripTrialCommandParts(value) {
     .replace(/(?:체험\s*클래스|체험\s*수업|체험)(?:에서|으로|에|을|를)?/g,' ')
     .replace(/(?:수정|변경|옮겨|옮기|이동|바꿔|바꾸|고쳐|고치)(?:줘요|해주세요|해줘|해줄래|할래|해|줘|주세요|어줘|아줘|어요|아요|기)?/g,' ')
     .replace(/(?:등록|추가|예약|신청|배정|넣어|넣|저장|잡아)(?:줘요|해주세요|해줘|해줄래|할래|해|줘|주세요|어줘|아줘|어요|아요|기)?/g,' ')
+    .replace(/(?:취소|삭제|지워|지우|제거|빼|해제|없애)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요|어줘|아줘|어요|아요|기)?/g,' ')
+    .replace(/(?:사유|이유)\s*(?:는|은)?\s*[:：-]?/g,' ')
     .replace(/(?:타임|시간대|날짜|시간|기존|현재|원래|새로|새로운)/g,' ')
     .replace(/(?:^|\s)(?:에서|으로|로|을|를|에|에게|한테|좀|한번)(?=\s|$)/g,' ')
     .replace(/\s+/g,' ')
@@ -117,6 +119,19 @@ function prepareTrialGuestPrivacyInput(text) {
   return Object.freeze(result);
 }
 
+function prepareTrialCancelPrivacyInput(text,reasonText='') {
+  const sourceText=String(text || '');
+  const reason=clean(reasonText);
+  let commandText=sourceText;
+  if(reason){
+    const index=commandText.lastIndexOf(reason);
+    if(index>=0){
+      commandText=(commandText.slice(0,index)+' '+commandText.slice(index+reason.length)).trim();
+    }
+  }
+  return prepareTrialGuestPrivacyInput(commandText);
+}
+
 function sanitizeTrialToolPayload(value,preparedPrivacy) {
   const subject=preparedPrivacy?.rawTrialSubject;
   const guestName=clean(subject?.guestName);
@@ -138,5 +153,6 @@ module.exports={
   extractTrialGuestName,
   detectTrialDivision,
   prepareTrialGuestPrivacyInput,
+  prepareTrialCancelPrivacyInput,
   sanitizeTrialToolPayload,
 };
