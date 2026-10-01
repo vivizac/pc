@@ -1927,6 +1927,160 @@ async function runWaitlistCancelPrepareProbe({
 }
 
 
+
+function resolveMoveCancelPrepareScope(preparedPrivacy) {
+  if (preparedPrivacy?.needsDisambiguation) {
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
+  if(subjectRefs.length!==1){
+    throw runtimeError(
+      '수업 이동 취소는 한 번에 학생 한 명만 지정해 주세요.',
+      400,
+      'OLLI_AGENT_MOVE_CANCEL_SINGLE_STUDENT_REQUIRED'
+    );
+  }
+
+  const subjectLabel=subjectRefs[0].label;
+  const subject=preparedPrivacy?.subjectAccess?.resolve?.(subjectLabel);
+  const division=String(subject?.division||'').trim().toLowerCase();
+  if(!['elementary','kinder'].includes(division)){
+    throw runtimeError(
+      '수업 이동 취소 대상 학생의 수업 구분을 확인하지 못했습니다.',
+      400,
+      'OLLI_AGENT_MOVE_CANCEL_DIVISION_REQUIRED'
+    );
+  }
+
+  const safeText=String(preparedPrivacy?.safeText||'');
+  const compact=safeText.replace(/\s+/g,'');
+  const hasMove=/(?:수업이동|수업변경|시간표변경|이동예약|변경예약|옮긴|옮겨|이동|변경)/.test(compact);
+  const hasRemove=/(?:취소|삭제|지워|지우|제거|빼|해제|없애)/.test(compact);
+  if(!hasMove||!hasRemove){
+    throw runtimeError(
+      '예약된 수업 이동 취소 요청을 확인하지 못했습니다.',
+      400,
+      'OLLI_AGENT_MOVE_CANCEL_INTENT_REQUIRED'
+    );
+  }
+
+  return {subjectLabel,division};
+}
+
+async function runMoveCancelPrepareAgent({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+  replyToMessageId=null,
+  requirePersistedMessage=false,
+}) {
+  const scope=resolveMoveCancelPrepareScope(preparedPrivacy);
+  assertOpenAiKey();
+
+  const {Agent,run,tool,z}=await loadAgentsSdk();
+  const {createPrepareMoveCancelTool}=require('./tools/move-cancel-prepare-tools.cjs');
+  const {sanitizeAgentToolPayload}=require('./privacy.cjs');
+  const model=agentModel();
+  const today=todayInSeoul();
+  let persistedMessage=null;
+
+  const prepareMoveCancel=createPrepareMoveCancelTool({
+    tool,
+    z,
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    studentLabel:scope.subjectLabel,
+    division:scope.division,
+    currentDate:today,
+    requestId,
+    replyToMessageId,
+    capturePersistedMessage(message){
+      persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload){
+      return sanitizeAgentToolPayload(payload,preparedPrivacy);
+    },
+  });
+
+  const agent=new Agent({
+    name:requirePersistedMessage?'Olli Move Cancel Prepare':'Olli Move Cancel Prepare Probe',
+    model,
+    instructions:[
+      'You are the Olli scheduled-class-move cancellation preparation assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The only available anonymous student label for this run is '+scope.subjectLabel+'.',
+      'The server has fixed the student division to '+scope.division+'. Do not override it.',
+      'Today in Korea is '+today+'.',
+      'Always call prepare_move_cancel exactly once before answering.',
+      'If the user explicitly names the original class weekday, pass source_weekday using 1=Monday through 6=Saturday. Otherwise pass 0.',
+      'If the user explicitly names the original visible class time, pass source_hour and source_minute. For 4시 반 use 4 and 30. If the original time is omitted, pass 0 and 0.',
+      'Use only the original/source class details for filtering. Do not use target class details as source details.',
+      'The server re-reads current scheduled move rows and their source/target enrollments. If more than one still matches it rejects instead of guessing.',
+      'The tool creates a pending confirmation card only. It never directly cancels a scheduled move.',
+      'Never say the move was cancelled. Say the cancellation is waiting for user confirmation.',
+      'Never ask for, infer, or reveal a real student name, UUID, change ID, enrollment ID, internal time slot, member ID, session token, academy ID, action ID, or message ID.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[prepareMoveCancel],
+    modelSettings:{toolChoice:'prepare_move_cancel'},
+  });
+
+  let result=null;
+  let runError=null;
+  try{
+    result=await run(agent,preparedPrivacy.safeText,{context:agentContext});
+  }catch(error){
+    runError=error;
+    if(!requirePersistedMessage||!persistedMessage) throw error;
+  }
+
+  const finalOutput=String(result?.finalOutput||'').trim();
+  if(!finalOutput&&(!requirePersistedMessage||!persistedMessage)){
+    throw runtimeError(
+      '수업 이동 취소 준비 Agent 응답이 비어 있습니다.',
+      502,
+      'OLLI_AGENT_EMPTY_MOVE_CANCEL_PREPARE_RESPONSE'
+    );
+  }
+  if(requirePersistedMessage&&!persistedMessage){
+    throw runtimeError(
+      '수업 이동 취소 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_AGENT_MOVE_CANCEL_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+
+  return {
+    ready:true,
+    model,
+    output:finalOutput,
+    nodeVersion:process.versions.node,
+    persistedMessage,
+    recoveredAfterPersist:!!runError,
+  };
+}
+
+async function runMoveCancelPrepareProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+}) {
+  return runMoveCancelPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId,
+  });
+}
+
+
 async function runAttendanceProbe({
   agentContext,
   requestContext,
@@ -3012,6 +3166,67 @@ async function validateMakeupSourceMessage({
   }
 }
 
+
+
+async function validateMoveSourceMessage({
+  requestContext,
+  sourceMessageId,
+  sourceMessageText,
+  callRpc,
+}) {
+  try {
+    return await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId,
+      sourceMessageText,
+      callRpc,
+    });
+  } catch (error) {
+    const pickupCode=String(error?.code||'');
+    if(!pickupCode.startsWith('OLLI_AGENT_PICKUP_SOURCE_')) throw error;
+    const moveCode=pickupCode.replace('OLLI_AGENT_PICKUP_SOURCE_','OLLI_AGENT_MOVE_SOURCE_');
+    const message=String(error?.message||'원문 Team Chat 메시지를 확인하지 못했습니다.')
+      .replace(/픽업/g,'수업 이동 취소');
+    throw runtimeError(
+      message,
+      Number(error?.statusCode||400),
+      moveCode
+    );
+  }
+}
+
+async function runMoveCancelPrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_MOVE_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validateMoveSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  return runMoveCancelPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-message:'+sourceId,
+    replyToMessageId:sourceId,
+    requirePersistedMessage:true,
+  });
+}
+
 async function runMakeupPrepare({
   agentContext,
   requestContext,
@@ -3302,6 +3517,11 @@ module.exports = {
   runWaitlistUpdatePrepareAgent,
   runWaitlistUpdatePrepareProbe,
   runWaitlistUpdatePrepare,
+  resolveMoveCancelPrepareScope,
+  runMoveCancelPrepareAgent,
+  runMoveCancelPrepareProbe,
+  runMoveCancelPrepare,
+  validateMoveSourceMessage,
   resolveWaitlistCancelPrepareScope,
   runWaitlistCancelPrepareAgent,
   runWaitlistCancelPrepareProbe,

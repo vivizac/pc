@@ -1,0 +1,45 @@
+name: Validate move cancel Agent
+
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/api/_lib/olli-agent/tools/move-cancel-prepare-tools.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/runtime.cjs'
+      - 'apps/mobile/api/olli-agent.js'
+      - 'apps/mobile/tests/olli-agent-move-cancel-prepare-tool.test.cjs'
+      - 'apps/mobile/tests/olli-agent-move-cancel-production-contract.test.cjs'
+      - 'apps/pc/pc-team-talk.js'
+      - 'apps/mobile/olli-talk-beta.js'
+      - 'apps/pc/tests/team-talk-move-cancel-agent-bridge.test.cjs'
+      - 'apps/mobile/tests/team-talk-move-cancel-agent-bridge.test.cjs'
+      - '.github/workflows/validate-move-cancel-agent.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check move cancel Agent syntax
+        run: |
+          node --check apps/mobile/api/_lib/olli-agent/tools/move-cancel-prepare-tools.cjs
+          node --check apps/mobile/api/_lib/olli-agent/runtime.cjs
+          node --check apps/mobile/api/olli-agent.js
+          node --check apps/pc/pc-team-talk.js
+          node --check apps/mobile/olli-talk-beta.js
+      - name: Run move cancel server contracts
+        working-directory: apps/mobile
+        run: |
+          node --test tests/olli-agent-move-cancel-prepare-tool.test.cjs
+          node --test tests/olli-agent-move-cancel-production-contract.test.cjs
+      - name: Run move cancel PC bridge contract
+        working-directory: apps/pc
+        run: node --test tests/team-talk-move-cancel-agent-bridge.test.cjs
+      - name: Run move cancel Mobile bridge contract
+        working-directory: apps/mobile
+        run: node --test tests/team-talk-move-cancel-agent-bridge.test.cjs

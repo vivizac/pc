@@ -1405,6 +1405,16 @@
     }
   }
 
+  function isMoveCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parseMoveCancelMutationIntent !== 'function') return false;
+    try {
+      return clean(router.parseMoveCancelMutationIntent(commandText)?.intent) === 'cancel_move';
+    } catch (error) {
+      console.warn('PC 수업 이동 취소 Agent 후보 판별 실패:', error?.message || error);
+      return false;
+    }
+  }
+
   function isMakeupAddAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router || typeof router.parseMakeupMutationIntent !== 'function') return false;
     try {
@@ -1784,6 +1794,38 @@
     };
   }
 
+  async function resolveMoveCancelAgentTurn(commandText, current, replyToMessageId) {
+    const sourceMessageId = Number(replyToMessageId || 0);
+    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+      throw new Error('수업 이동 취소 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response = await fetch('/api/olli-agent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        mode:'move_cancel_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageId
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.ok !== true || !data?.message?.action) {
+      throw new Error(data?.error || data?.message || '수업 이동 취소 Agent 응답을 받지 못했습니다.');
+    }
+    if (clean(data.message.action.action_type) !== 'cancel_move') {
+      throw new Error('수업 이동 취소 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
   async function resolvePickupCancelAgentTurn(commandText, current, replyToMessageId) {
     const sourceMessageId = Number(replyToMessageId || 0);
     if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
@@ -1991,6 +2033,10 @@
     if (isWaitlistCancelAgentCandidate(commandText, router)) {
       const waitlistTurn = await resolveWaitlistCancelAgentTurn(commandText, current, replyToMessageId);
       if (waitlistTurn) return waitlistTurn;
+    }
+
+    if (isMoveCancelAgentCandidate(commandText, router)) {
+      return resolveMoveCancelAgentTurn(commandText, current, replyToMessageId);
     }
 
     if (isPickupCancelAgentCandidate(commandText, router)) {
