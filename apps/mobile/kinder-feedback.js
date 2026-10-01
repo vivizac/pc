@@ -430,9 +430,8 @@ function getKinderChatFeedbackKeyboardOffset() {
 }
 function captureKinderChatFeedbackContentBaseline(force = false) {
   const screen = getKinderChatFeedbackScreen();
-  const inner = screen?.querySelector('.kcfInner');
-  if (!screen || !inner) return;
-  const rect = inner.getBoundingClientRect();
+  if (!screen) return;
+  const rect = screen.getBoundingClientRect();
   const candidate = Math.max(
     1,
     Math.round(Number(rect.height || 0)),
