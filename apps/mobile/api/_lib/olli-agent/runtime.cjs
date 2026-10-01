@@ -2790,11 +2790,14 @@ function resolveTimetableMemoScope(preparedPrivacy) {
   };
 }
 
-async function runTimetableMemoPrepareProbe({
+async function runTimetableMemoPrepareAgent({
   agentContext,
   requestContext,
   preparedPrivacy,
   requestId,
+  memoNote,
+  replyToMessageId = null,
+  requirePersistedMessage = false,
 }) {
   assertOpenAiKey();
 
@@ -2804,6 +2807,7 @@ async function runTimetableMemoPrepareProbe({
   const { sanitizeAgentToolPayload } = require('./privacy.cjs');
   const model = agentModel();
   const today = todayInSeoul();
+  let persistedMessage = null;
 
   const prepareTimetableMemo = createPrepareTimetableMemoTool({
     tool,
@@ -2813,7 +2817,12 @@ async function runTimetableMemoPrepareProbe({
     studentLabel:scope.subjectLabel,
     division:scope.division,
     operation:scope.operation,
+    memoNote:String(memoNote || '').trim(),
     requestId,
+    replyToMessageId,
+    capturePersistedMessage(message) {
+      persistedMessage = pickupPersistedMessageForClient(message);
+    },
     sanitizePayload(payload) {
       return sanitizeAgentToolPayload(payload, preparedPrivacy);
     },
@@ -2824,13 +2833,14 @@ async function runTimetableMemoPrepareProbe({
     : 'This memo is not tied to a specific student.';
 
   const agent = new Agent({
-    name:'Olli Timetable Memo Prepare Probe',
+    name:requirePersistedMessage ? 'Olli Timetable Memo Prepare' : 'Olli Timetable Memo Prepare Probe',
     model,
     instructions:[
       'You are the Olli timetable-memo preparation assistant.',
       'The user message has already been privacy-sanitized.',
       subjectText,
       'The server has fixed the division to ' + scope.division + ' and the operation to ' + scope.operation + '. Do not override them.',
+      'The memo text is private server-side context and is not included in the model input or tool schema. Never ask for, infer, repeat, summarize, or invent memo text.',
       'Today in Korea is ' + today + '.',
       'Always call prepare_timetable_memo exactly once before answering.',
       'This tool creates a pending confirmation card only. It never directly changes timetable memo data.',
@@ -2838,25 +2848,38 @@ async function runTimetableMemoPrepareProbe({
       'Use the visible clock hour from 1 to 12 and minute 0 or 30.',
       'If the user named a student but omitted the time, use hour 0 and minute 0 so the server can resolve a single class.',
       'Use class_group AUTO unless the user explicitly asked for A반 or B반.',
-      'For add, memo_note must contain the requested memo content only. For delete, memo_note may be empty when the target is otherwise unique.',
       'Never say the memo was saved or deleted. Say that the work is waiting for user confirmation.',
-      'Never ask for, infer, or reveal a real student name, UUID, member ID, session token, academy ID, action ID, or message ID.',
+      'Never ask for, infer, or reveal a real student name, UUID, memo ID, memo text, internal time slot, member ID, session token, academy ID, action ID, or message ID.',
       'Answer briefly in Korean.',
     ].join(' '),
     tools:[prepareTimetableMemo],
     modelSettings:{ toolChoice:'prepare_timetable_memo' },
   });
 
-  const result = await run(agent, preparedPrivacy.safeText, {
-    context:agentContext,
-  });
+  let result = null;
+  let runError = null;
+  try {
+    result = await run(agent, preparedPrivacy.safeText, {
+      context:agentContext,
+    });
+  } catch (error) {
+    runError = error;
+    if (!requirePersistedMessage || !persistedMessage) throw error;
+  }
 
   const finalOutput = String(result?.finalOutput || '').trim();
-  if (!finalOutput) {
+  if (!finalOutput && (!requirePersistedMessage || !persistedMessage)) {
     throw runtimeError(
       '시간표 메모 준비 Agent 응답이 비어 있습니다.',
       502,
       'OLLI_AGENT_EMPTY_TIMETABLE_MEMO_RESPONSE'
+    );
+  }
+  if (requirePersistedMessage && !persistedMessage) {
+    throw runtimeError(
+      '시간표 메모 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_AGENT_TIMETABLE_MEMO_PERSISTED_MESSAGE_MISSING'
     );
   }
 
@@ -2865,7 +2888,89 @@ async function runTimetableMemoPrepareProbe({
     model,
     output:finalOutput,
     nodeVersion:process.versions.node,
+    persistedMessage,
+    recoveredAfterPersist:!!runError,
   };
+}
+
+async function runTimetableMemoPrepareProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+  memoNote,
+}) {
+  return runTimetableMemoPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId,
+    memoNote,
+  });
+}
+
+async function validateTimetableMemoSourceMessage({
+  requestContext,
+  sourceMessageId,
+  sourceMessageText,
+  callRpc,
+}) {
+  try {
+    return await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId,
+      sourceMessageText,
+      callRpc,
+    });
+  } catch (error) {
+    const pickupCode = String(error?.code || '');
+    if (!pickupCode.startsWith('OLLI_AGENT_PICKUP_SOURCE_')) throw error;
+    const memoCode = pickupCode.replace(
+      'OLLI_AGENT_PICKUP_SOURCE_',
+      'OLLI_AGENT_TIMETABLE_MEMO_SOURCE_'
+    );
+    const message = String(error?.message || '원문 Team Chat 메시지를 확인하지 못했습니다.')
+      .replace(/픽업/g, '시간표 메모');
+    throw runtimeError(
+      message,
+      Number(error?.statusCode || 400),
+      memoCode
+    );
+  }
+}
+
+async function runTimetableMemoPrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+  memoNote,
+}) {
+  const sourceId = Number(sourceMessageId || 0);
+  if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_TIMETABLE_MEMO_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validateTimetableMemoSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  return runTimetableMemoPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-memo:' + sourceId,
+    memoNote,
+    replyToMessageId:sourceId,
+    requirePersistedMessage:true,
+  });
 }
 
 
@@ -4224,5 +4329,8 @@ module.exports = {
   runPickupPrepare,
   runStudentProfileProbe,
   resolveTimetableMemoScope,
+  runTimetableMemoPrepareAgent,
   runTimetableMemoPrepareProbe,
+  runTimetableMemoPrepare,
+  validateTimetableMemoSourceMessage,
 };
