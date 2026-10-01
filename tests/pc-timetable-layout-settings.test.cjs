@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const settings = fs.readFileSync('apps/pc/olli-settings-pc-ui.js', 'utf8');
 const ui = fs.readFileSync('apps/pc/pc-timetable.js', 'utf8');
 const css = fs.readFileSync('apps/pc/pc-timetable.css', 'utf8');
-const migration = fs.readFileSync('supabase/migrations/20261001223000_pc_timetable_layout_settings.sql', 'utf8');
+const migration = fs.readFileSync('supabase/migrations/20261001133648_pc_timetable_layout_settings.sql', 'utf8');
 
 test('PC timetable settings expose five/six day and capacity-based card layout options', () => {
   assert.match(settings, /data-timetable-week-days-option/);
