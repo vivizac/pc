@@ -105,3 +105,9 @@ test('Teacher action row sits directly above the keyboard without safe-area padd
   assert.match(teacherCss, /\.kcfTeacherSheetBottom \{[\s\S]*?flex:0 0 40px;[\s\S]*?height:40px;[\s\S]*?padding:0;/);
   assert.doesNotMatch(teacherCss, /safe-area-inset-bottom/);
 });
+
+
+test('Class sheet send button matches the normal QuickNote send button size', () => {
+  assert.match(teacherCss, /\.kcfTeacherSheetSendBtn \{[\s\S]*?width:33px;[\s\S]*?height:33px;[\s\S]*?min-width:33px;/);
+  assert.match(teacherCss, /\.kcfTeacherSheetSendBtn svg \{[\s\S]*?width:21px;[\s\S]*?height:21px;/);
+});

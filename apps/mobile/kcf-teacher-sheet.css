@@ -214,9 +214,9 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
 }
 
 .kcfTeacherSheetSendBtn {
-  width:40px;
-  height:40px;
-  min-width:40px;
+  width:33px;
+  height:33px;
+  min-width:33px;
   border:0;
   border-radius:999px;
   padding:0;
