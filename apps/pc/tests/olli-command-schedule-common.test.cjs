@@ -504,6 +504,262 @@ test('trial prepares an open slot and executes through existing guest-entry serv
   assert.equal(calls.addGuestEntry.timeSlot, 4);
 });
 
+test('timetable memo confirmation includes the resolved student name', () => {
+  const { schedule } = loadSchedule({});
+  const message = schedule.writeConfirmationMessage({
+    intent:'add_timetable_memo',
+    studentName:'한재림',
+    division:'kinder',
+    sessionDate:'2026-09-30',
+    timeSlot:5,
+    classGroup:'A',
+    memoNote:'어머님이 픽업'
+  });
+
+  assert.match(message, /^한재림 · 유치부 · /);
+  assert.match(message, /메모: 어머님이 픽업/);
+});
+
+test('timetable memo add prepares and executes through the existing memo service', async () => {
+  const calls = {};
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    cell_memos:[],
+    class_split_periods:[],
+    class_layout_version:2,
+    kinder_class_merges:[]
+  };
+  const { schedule } = loadSchedule(week, [], { calls });
+  const prepared = await schedule.prepareWriteCommand('add_timetable_memo', {
+    division:'elementary',
+    date:'2026-10-02',
+    timeSlot:5,
+    memoNote:'준비물 주문'
+  });
+
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.command.intent, 'add_timetable_memo');
+  assert.equal(prepared.command.sessionDate, '2026-10-02');
+  assert.equal(prepared.command.timeSlot, 5);
+  assert.equal(prepared.command.classGroup, 'A');
+  assert.equal(prepared.command.memoNote, '준비물 주문');
+
+  await schedule.executePreparedWrite(prepared.command);
+  assert.deepEqual(calls.saveCellMemo, {
+    division:'elementary',
+    sessionDate:'2026-10-02',
+    timeSlot:5,
+    note:'준비물 주문',
+    classGroup:'A',
+    memoId:null
+  });
+});
+
+test('timetable memo infers time division and split class from the named student', async () => {
+  const calls = {};
+  const student = { id:'student-han', name:'한재림', division:'elementary' };
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[
+      {
+        id:'enrollment-han', student_id:'student-han', student_name:'한재림',
+        division:'elementary', weekday:5, time_slot:5, class_group:'B',
+        effective_from:'2026-01-01', effective_to:null
+      }
+    ],
+    cell_memos:[],
+    class_layout_version:2,
+    class_split_periods:[
+      { weekday:5, time_slot:5, effective_from:'2026-01-01', effective_to:null }
+    ],
+    one_time_sessions:[]
+  };
+  const { schedule } = loadSchedule(week, [], { calls, students:[student] });
+
+  const prepared = await schedule.prepareWriteCommand('add_timetable_memo', {
+    studentName:'한재림',
+    date:'2026-10-02',
+    memoNote:'오늘 어머님이 픽업'
+  });
+
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.command.studentId, 'student-han');
+  assert.equal(prepared.command.studentName, '한재림');
+  assert.equal(prepared.command.division, 'elementary');
+  assert.equal(prepared.command.timeSlot, 5);
+  assert.equal(prepared.command.classGroup, 'B');
+  assert.equal(prepared.command.memoNote, '오늘 어머님이 픽업');
+  assert.match(prepared.message, /한재림/);
+  assert.match(prepared.message, /B반/);
+
+  await schedule.executePreparedWrite(prepared.command);
+  assert.deepEqual(calls.saveCellMemo, {
+    division:'elementary',
+    sessionDate:'2026-10-02',
+    timeSlot:5,
+    note:'오늘 어머님이 픽업',
+    classGroup:'B',
+    memoId:null
+  });
+});
+
+test('timetable memo delete also infers the named student split class when time is omitted', async () => {
+  const calls = {};
+  const student = { id:'student-han', name:'한재림', division:'elementary' };
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[
+      {
+        id:'enrollment-han', student_id:'student-han', student_name:'한재림',
+        division:'elementary', weekday:5, time_slot:5, class_group:'B',
+        effective_from:'2026-01-01', effective_to:null
+      }
+    ],
+    cell_memos:[
+      {
+        id:'memo-han', division:'elementary', session_date:'2026-10-02',
+        time_slot:5, class_group:'B', note:'오늘 어머님이 픽업'
+      }
+    ],
+    class_layout_version:2,
+    class_split_periods:[
+      { weekday:5, time_slot:5, effective_from:'2026-01-01', effective_to:null }
+    ],
+    one_time_sessions:[]
+  };
+  const { schedule } = loadSchedule(week, [], { calls, students:[student] });
+
+  const prepared = await schedule.prepareWriteCommand('delete_timetable_memo', {
+    studentName:'한재림',
+    date:'2026-10-02',
+    memoNote:'오늘 어머님이 픽업'
+  });
+
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.command.timeSlot, 5);
+  assert.equal(prepared.command.classGroup, 'B');
+  assert.equal(prepared.command.memoId, 'memo-han');
+
+  await schedule.executePreparedWrite(prepared.command);
+  assert.deepEqual(calls.saveCellMemo, {
+    division:'elementary',
+    sessionDate:'2026-10-02',
+    timeSlot:5,
+    note:'',
+    classGroup:'B',
+    memoId:'memo-han'
+  });
+});
+
+test('timetable memo without time asks for a time only when the student has multiple classes that day', async () => {
+  const student = { id:'student-han', name:'한재림', division:'elementary' };
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    enrollments:[
+      { id:'e1', student_id:'student-han', division:'elementary', weekday:5, time_slot:4, class_group:'A', effective_from:'2026-01-01' },
+      { id:'e2', student_id:'student-han', division:'elementary', weekday:5, time_slot:5, class_group:'B', effective_from:'2026-01-01' }
+    ],
+    cell_memos:[],
+    class_layout_version:2,
+    class_split_periods:[
+      { weekday:5, time_slot:5, effective_from:'2026-01-01', effective_to:null }
+    ],
+    one_time_sessions:[]
+  };
+  const { schedule } = loadSchedule(week, [], { students:[student] });
+
+  const prepared = await schedule.prepareWriteCommand('add_timetable_memo', {
+    studentName:'한재림',
+    date:'2026-10-02',
+    memoNote:'오늘 어머님이 픽업'
+  });
+
+  assert.equal(prepared.ok, false);
+  assert.match(prepared.message, /4시 A반/);
+  assert.match(prepared.message, /5시 B반/);
+  assert.match(prepared.message, /시간을 함께/);
+});
+
+test('timetable memo delete resolves exactly one stored memo before execution', async () => {
+  const calls = {};
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    cell_memos:[
+      { id:'memo-1', division:'elementary', session_date:'2026-10-02', time_slot:5, class_group:'A', note:'준비물 주문' },
+      { id:'memo-2', division:'elementary', session_date:'2026-10-02', time_slot:5, class_group:'A', note:'사진 촬영' }
+    ],
+    class_split_periods:[],
+    class_layout_version:2,
+    kinder_class_merges:[]
+  };
+  const { schedule } = loadSchedule(week, [], { calls });
+
+  const ambiguous = await schedule.prepareWriteCommand('delete_timetable_memo', {
+    division:'elementary',
+    date:'2026-10-02',
+    timeSlot:5
+  });
+  assert.equal(ambiguous.ok, false);
+  assert.match(ambiguous.message, /여러 개/);
+
+  const prepared = await schedule.prepareWriteCommand('delete_timetable_memo', {
+    division:'elementary',
+    date:'2026-10-02',
+    timeSlot:5,
+    memoNote:'준비물 주문'
+  });
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.command.memoId, 'memo-1');
+  assert.equal(prepared.command.memoNote, '준비물 주문');
+
+  await schedule.executePreparedWrite(prepared.command);
+  assert.deepEqual(calls.saveCellMemo, {
+    division:'elementary',
+    sessionDate:'2026-10-02',
+    timeSlot:5,
+    note:'',
+    classGroup:'A',
+    memoId:'memo-1'
+  });
+});
+
+test('split timetable memo add requires an explicit class group', async () => {
+  const week = {
+    elementary_capacity:5,
+    kinder_capacity:5,
+    cell_memos:[],
+    class_layout_version:2,
+    class_split_periods:[
+      { weekday:5, time_slot:5, effective_from:'2026-01-01', effective_to:null }
+    ]
+  };
+  const { schedule } = loadSchedule(week);
+
+  const missingGroup = await schedule.prepareWriteCommand('add_timetable_memo', {
+    division:'elementary',
+    date:'2026-10-02',
+    timeSlot:5,
+    memoNote:'준비물 주문'
+  });
+  assert.equal(missingGroup.ok, false);
+  assert.match(missingGroup.message, /A반과 B반/);
+
+  const prepared = await schedule.prepareWriteCommand('add_timetable_memo', {
+    division:'elementary',
+    date:'2026-10-02',
+    timeSlot:5,
+    classGroup:'B',
+    memoNote:'준비물 주문'
+  });
+  assert.equal(prepared.ok, true);
+  assert.equal(prepared.command.classGroup, 'B');
+});
+
 test('makeup cancellation resolves the one-time session id before execution', async () => {
   const calls = {};
   const student = { id:'student-1', name:'김태리', division:'elementary' };

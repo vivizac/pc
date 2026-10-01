@@ -1,0 +1,30 @@
+(function initOlliPcKcfClassMode(global){
+'use strict';if(global.OlliPcKcfClassMode)return;
+const state={enabled:false,loading:false,queue:[],completed:new Set(),selectedStudentId:'',screen:null};
+function clean(value){return String(value==null?'':value).trim();}
+function dateKey(date){const d=date instanceof Date?date:new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function mondayKey(){const d=new Date();const day=d.getDay();d.setDate(d.getDate()-(day===0?6:day-1));return dateKey(d);}
+function activeOn(row,today){const from=clean(row?.effective_from||row?.start_date),to=clean(row?.effective_to||row?.end_date);return(!from||from<=today)&&(!to||to>=today);}
+function allStudents(){const list=typeof global.getAllStudents==='function'?global.getAllStudents():[];return Array.isArray(list)?list:[];}
+function studentById(id){if(typeof global.findStudentById==='function')return global.findStudentById(id);return allStudents().find(student=>clean(student?.id)===clean(id))||null;}
+function isActiveStudent(student){if(!student)return false;try{return typeof global.getStudentStatus!=='function'||global.getStudentStatus(student)==='active';}catch(_){return true;}}
+function division(student){return student?.type==='kinder'?'kinder':'elementary';}
+async function loadTodayQueue(){const service=global.OlliTimetableService;if(!service||typeof service.loadWeek!=='function')return[];const start=mondayKey(),data=service.getCachedWeek?.(start)||await service.loadWeek(start),today=dateKey(new Date()),weekday=new Date().getDay(),ids=[];(Array.isArray(data?.enrollments)?data.enrollments:[]).forEach(row=>{if(Number(row?.weekday)!==weekday||!activeOn(row,today))return;const id=clean(row?.student_id);if(id&&!ids.includes(id))ids.push(id);});(Array.isArray(data?.one_time_sessions)?data.one_time_sessions:[]).forEach(row=>{if(clean(row?.session_date)!==today||/cancel/i.test(clean(row?.status)))return;const id=clean(row?.student_id);if(id&&!ids.includes(id))ids.push(id);});return ids.map(studentById).filter(isActiveStudent).sort((a,b)=>clean(a.name).localeCompare(clean(b.name),'ko'));}
+function button(){return state.screen?.querySelector('#kcfTeacherBtn')||null;}
+function roster(){return state.screen?.querySelector('.pcKcfClassRoster')||null;}
+function syncButton(){const btn=button();if(!btn)return;btn.classList.toggle('active',state.enabled);btn.classList.toggle('loading',state.loading);btn.textContent=state.loading?'···':'Class';btn.setAttribute('aria-pressed',state.enabled?'true':'false');btn.setAttribute('aria-label',state.enabled?'Class 모드 닫기':'Class 모드 열기');}
+function ensureRoster(){if(!state.screen)return null;let host=roster();if(host)return host;host=document.createElement('div');host.className='pcKcfClassRoster';const composer=state.screen.querySelector('.kcfComposer');if(composer)composer.insertBefore(host,composer.firstChild);return host;}
+function currentId(){return clean(state.selectedStudentId||global.__kcfSelectedStudentId);}
+function renderRoster(){const host=ensureRoster();if(!host)return;host.hidden=!state.enabled;if(!state.enabled)return;const remaining=state.queue.filter(student=>!state.completed.has(clean(student.id)));if(!remaining.length){host.innerHTML='<span class="pcKcfClassEmpty">오늘 수업 학생 기록 완료</span>';return;}host.innerHTML=remaining.map(student=>{const id=clean(student.id);return '<button type="button" class="pcKcfClassChip '+(id===currentId()?'active':'')+'" data-student-id="'+id+'">'+clean(student.name)+'</button>';}).join('');host.querySelectorAll('.pcKcfClassChip').forEach(chip=>chip.addEventListener('click',()=>selectStudent(clean(chip.dataset.studentId))));}
+function setGlobals(student){if(!student)return;state.selectedStudentId=clean(student.id);global.__kcfSelectedStudentId=state.selectedStudentId;global.__kcfSelectedStudentName=clean(student.name);global.__kcfSelectedStudentDivision=division(student);}
+function selectStudent(id){const student=studentById(id);if(!student)return;setGlobals(student);renderRoster();if(global.OlliPcPersonalityRecords?.selectStudent)Promise.resolve(global.OlliPcPersonalityRecords.selectStudent(student.id)).catch(()=>{});}
+function selectFirst(){const first=state.queue.find(student=>!state.completed.has(clean(student.id)));if(first)selectStudent(first.id);}
+async function toggle(event){event?.preventDefault?.();event?.stopPropagation?.();if(state.loading)return;if(state.enabled){state.enabled=false;state.selectedStudentId='';syncButton();renderRoster();return;}state.loading=true;syncButton();try{state.queue=await loadTodayQueue();state.completed.clear();if(!state.queue.length){global.showPushToast?.('오늘 시간표에 등록된 학생이 없어요.');return;}state.enabled=true;const current=studentById(global.__kcfSelectedStudentId);if(current&&state.queue.some(student=>clean(student.id)===clean(current.id)))setGlobals(current);else selectFirst();renderRoster();}catch(error){console.warn('PC 퀵노트 Class 불러오기 실패:',error);global.showPushToast?.('오늘 수업 학생을 불러오지 못했어요.');}finally{state.loading=false;syncButton();}}
+function onQuickMounted(screen,student){state.screen=screen||null;if(student)setGlobals(student);syncButton();if(state.enabled)renderRoster();}
+function onQuickUnmounted(){state.screen=null;}
+function getSelection(){const student=studentById(currentId());return student?{studentId:clean(student.id),studentName:clean(student.name),studentDivision:division(student)}:null;}
+function captureSubmitContext(){return state.enabled?{studentId:currentId()}:null;}
+function completeSuccessfulSubmit(context){if(!state.enabled)return;const id=clean(context?.studentId||currentId());if(id)state.completed.add(id);state.selectedStudentId='';selectFirst();renderRoster();}
+const api=Object.freeze({isEnabled:()=>state.enabled,getSelection,captureSubmitContext,completeSuccessfulSubmit,onQuickMounted,onQuickUnmounted,toggle});
+global.OlliPcKcfClassMode=api;global.KcfTeacherMode=api;global.KcfAutoMode=api;global.toggleKinderChatFeedbackTeacherMode=toggle;
+})(window);

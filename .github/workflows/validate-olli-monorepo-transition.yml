@@ -6,6 +6,10 @@ on:
       - main
     paths:
       - 'apps/mobile/**'
+      - 'apps/pc/api/olli-agent.js'
+      - 'supabase/migrations/*_schedule_availability_rules_and_read_rpc.sql'
+      - 'supabase/migrations/*_makeup_closed_day_guard.sql'
+      - 'supabase/migrations/*_agent_student_pickups_range_read_rpc.sql'
       - 'packages/common/**'
       - 'deploy/vercel-projects.json'
       - 'MONOREPO_TRANSITION.md'
@@ -22,7 +26,11 @@ on:
   pull_request:
     paths:
       - 'apps/pc/olli-app-startup.js'
+      - 'apps/pc/api/olli-agent.js'
       - 'apps/mobile/**'
+      - 'supabase/migrations/*_schedule_availability_rules_and_read_rpc.sql'
+      - 'supabase/migrations/*_makeup_closed_day_guard.sql'
+      - 'supabase/migrations/*_agent_student_pickups_range_read_rpc.sql'
       - 'packages/common/**'
       - 'deploy/vercel-projects.json'
       - 'MONOREPO_TRANSITION.md'
@@ -47,6 +55,7 @@ jobs:
         run: |
           node --check apps/mobile/scripts/stage-common.cjs
           node --check apps/pc/scripts/stage-common.cjs
+          node --check apps/pc/api/olli-agent.js
           node --test \
             tests/mobile-self-contained-build.test.cjs \
             tests/pc-self-contained-build.test.cjs \
@@ -64,6 +73,28 @@ jobs:
         run: |
           node --check olli-talk-beta.js
           node --check olli-talk-attachment-cache-phone.js
+          node --check api/_lib/olli-agent/supabase-rpc.cjs
+          node --check api/_lib/olli-agent/request-context.cjs
+          node --check api/_lib/olli-agent/runtime.cjs
+          node --check api/_lib/olli-agent/student-reference-resolver.cjs
+          node --check api/_lib/olli-agent/privacy.cjs
+          node --check api/_lib/olli-agent/tools/schedule-tools.cjs
+          node --check api/_lib/olli-agent/tools/record-tools.cjs
+          node --check api/_lib/olli-agent/tools/availability-tools.cjs
+          node --check api/_lib/olli-agent/tools/attendance-tools.cjs
+          node --check api/_lib/olli-agent/tools/pickup-tools.cjs
+          node --check api/_lib/olli-agent/tools/pickup-prepare-tools.cjs
+          node --check api/_lib/olli-agent/tools/pickup-update-prepare-tools.cjs
+          node --check api/_lib/olli-agent/tools/pickup-cancel-prepare-tools.cjs
+          node --check api/_lib/olli-agent/tools/makeup-prepare-tools.cjs
+          node --check api/_lib/olli-agent/tools/makeup-update-prepare-tools.cjs
+          node --check api/_lib/olli-agent/tools/makeup-cancel-prepare-tools.cjs
+          node --check api/_lib/olli-agent/tools/waitlist-cancel-prepare-tools.cjs
+          node --check api/_lib/olli-agent/tools/profile-tools.cjs
+          node --check api/_lib/olli-agent/tools/timetable-memo-tools.cjs
+          node --test tests/olli-agent-makeup-cancel-prepare-tool.test.cjs
+          node --test tests/olli-agent-waitlist-cancel-prepare-tool.test.cjs
+          node --test tests/olli-agent-makeup-update-prepare-tool.test.cjs
           node --test \
             tests/schedule-realtime.test.cjs \
             tests/phone-schedule-class-layout-date-contract.test.cjs \
@@ -72,4 +103,24 @@ jobs:
             tests/storage-secure-transport-contract.test.cjs \
             tests/phone-feedback-archive-saved-date.test.cjs \
             tests/phone-teamchat-local-first.test.cjs \
-            tests/team-chat-thumbnail-viewport.test.cjs
+            tests/team-chat-thumbnail-viewport.test.cjs \
+            tests/olli-agent-foundation-contract.test.cjs \
+            tests/olli-agent-student-privacy.test.cjs \
+            tests/olli-agent-student-schedule-tool.test.cjs \
+            tests/olli-agent-recent-records-tool.test.cjs \
+            tests/olli-agent-schedule-availability-tool.test.cjs \
+            tests/olli-agent-schedule-availability-db-contract.test.cjs \
+            tests/olli-agent-makeup-db-contract.test.cjs \
+            tests/olli-agent-makeup-prepare-tool.test.cjs \
+            tests/olli-agent-makeup-production-contract.test.cjs \
+            tests/olli-agent-makeup-update-production-contract.test.cjs \
+            tests/olli-agent-waitlist-cancel-production-contract.test.cjs \
+            tests/olli-agent-attendance-tool.test.cjs \
+            tests/olli-agent-pickups-tool.test.cjs \
+            tests/olli-agent-pickup-prepare-tool.test.cjs \
+            tests/olli-agent-pickup-update-prepare-tool.test.cjs \
+            tests/olli-agent-pickup-cancel-prepare-tool.test.cjs \
+            tests/olli-agent-pickup-production-contract.test.cjs \
+            tests/olli-agent-pickups-db-contract.test.cjs \
+            tests/olli-agent-student-profile-tool.test.cjs \
+            tests/olli-agent-timetable-memo-tool.test.cjs
