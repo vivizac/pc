@@ -954,6 +954,139 @@ async function runMakeupCancelPrepareProbe({
   });
 }
 
+function resolveWaitlistUpdatePrepareScope(preparedPrivacy) {
+  if (preparedPrivacy?.needsDisambiguation) {
+    throw runtimeError('학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',409,'OLLI_AGENT_STUDENT_AMBIGUOUS');
+  }
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
+  if(subjectRefs.length===0){
+    throw runtimeError('비재원 대기 변경은 기존 대기 경로에서 처리합니다.',409,'OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED');
+  }
+  if(subjectRefs.length!==1){
+    throw runtimeError('대기 변경은 한 번에 학생 한 명만 지정해 주세요.',400,'OLLI_AGENT_WAITLIST_UPDATE_SINGLE_STUDENT_REQUIRED');
+  }
+  const subjectLabel=subjectRefs[0].label;
+  const subject=preparedPrivacy?.subjectAccess?.resolve?.(subjectLabel);
+  const division=String(subject?.division||'').trim().toLowerCase();
+  if(!['elementary','kinder'].includes(division)){
+    throw runtimeError('대기 변경 대상 학생의 수업 구분을 확인하지 못했습니다.',400,'OLLI_AGENT_WAITLIST_UPDATE_DIVISION_REQUIRED');
+  }
+  const safeText=String(preparedPrivacy?.safeText||'');
+  const compact=safeText.replace(/\s+/g,'');
+  const hasWait=/(?:대기|웨이팅)/.test(compact);
+  const hasUpdate=/(?:변경|수정|바꿔|바꾸|옮|이동|고쳐|고치)/.test(compact);
+  const hasRemove=/(?:취소|삭제|지워|지우|제거|빼|해제|없애)/.test(compact);
+  const hasAdd=/(?:등록|추가|신청|예약|넣|저장)/.test(compact);
+  if(!hasWait||!hasUpdate||hasRemove||hasAdd){
+    throw runtimeError('대기 변경 요청을 확인하지 못했습니다.',400,'OLLI_AGENT_WAITLIST_UPDATE_INTENT_REQUIRED');
+  }
+  return {subjectLabel,division};
+}
+
+async function runWaitlistUpdatePrepareAgent({
+  agentContext,requestContext,preparedPrivacy,requestId,
+  replyToMessageId=null,requirePersistedMessage=false,
+}) {
+  const scope=resolveWaitlistUpdatePrepareScope(preparedPrivacy);
+  assertOpenAiKey();
+  const {Agent,run,tool,z}=await loadAgentsSdk();
+  const {createPrepareWaitlistUpdateTool}=require('./tools/waitlist-update-prepare-tools.cjs');
+  const {sanitizeAgentToolPayload}=require('./privacy.cjs');
+  const model=agentModel();
+  const today=todayInSeoul();
+  let persistedMessage=null;
+
+  const prepareWaitlistUpdate=createPrepareWaitlistUpdateTool({
+    tool,z,requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    studentLabel:scope.subjectLabel,
+    division:scope.division,
+    currentDate:today,
+    requestId,
+    replyToMessageId,
+    capturePersistedMessage(message){persistedMessage=pickupPersistedMessageForClient(message);},
+    sanitizePayload(payload){return sanitizeAgentToolPayload(payload,preparedPrivacy);},
+  });
+
+  const agent=new Agent({
+    name:requirePersistedMessage?'Olli Waitlist Update Prepare':'Olli Waitlist Update Prepare Probe',
+    model,
+    instructions:[
+      'You are the Olli waitlist-update preparation assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The only available anonymous student label for this run is '+scope.subjectLabel+'.',
+      'The server has fixed the student division to '+scope.division+'. Do not override it.',
+      'Today in Korea is '+today+'.',
+      'Always call prepare_waitlist_update exactly once before answering.',
+      'Extract source information only when the user explicitly gives it. Otherwise pass empty source_date, source_weekday 0, source_hour 0, source_minute 0, source_group AUTO so the server can resolve a unique current waitlist.',
+      'For target information, pass only what the user explicitly changes. Use empty target_date, target_weekday 0, target_hour 0, target_minute 0, target_group AUTO for omitted fields so the server preserves the current value.',
+      'If an exact date is stated, convert it to YYYY-MM-DD. If a weekday is stated without a date, pass target_weekday 1 through 6 for Monday through Saturday.',
+      'For visible half-hour times, 4시 30분 means hour 4 and minute 30.',
+      'The server resolves internal slots and the current waitlist id. Never infer or expose them.',
+      'The tool creates only a pending update_waitlist confirmation card. It never updates the waitlist row directly.',
+      'Never say the waitlist was changed. Say the change is waiting for confirmation.',
+      'Never ask for, infer, or reveal a real student name, UUID, waitlist ID, member ID, session token, academy ID, action ID, message ID, or internal time slot.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[prepareWaitlistUpdate],
+    modelSettings:{toolChoice:'prepare_waitlist_update'},
+  });
+
+  let result=null,runError=null;
+  try{
+    result=await run(agent,preparedPrivacy.safeText,{context:agentContext});
+  }catch(error){
+    runError=error;
+    if(!requirePersistedMessage||!persistedMessage) throw error;
+  }
+  const finalOutput=String(result?.finalOutput||'').trim();
+  if(!finalOutput&&(!requirePersistedMessage||!persistedMessage)){
+    throw runtimeError('대기 변경 준비 Agent 응답이 비어 있습니다.',502,'OLLI_AGENT_EMPTY_WAITLIST_UPDATE_PREPARE_RESPONSE');
+  }
+  if(requirePersistedMessage&&!persistedMessage){
+    throw runtimeError('대기 변경 확인 카드 저장 결과를 확인하지 못했습니다.',502,'OLLI_AGENT_WAITLIST_UPDATE_PERSISTED_MESSAGE_MISSING');
+  }
+  return {ready:true,model,output:finalOutput,nodeVersion:process.versions.node,persistedMessage,recoveredAfterPersist:!!runError};
+}
+
+async function runWaitlistUpdatePrepareProbe({agentContext,requestContext,preparedPrivacy,requestId}) {
+  return runWaitlistUpdatePrepareAgent({agentContext,requestContext,preparedPrivacy,requestId});
+}
+
+
+async function runWaitlistUpdatePrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId || 0);
+  if(!Number.isSafeInteger(sourceId) || sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_WAITLIST_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validateWaitlistSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  return runWaitlistUpdatePrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-message:' + sourceId,
+    replyToMessageId:sourceId,
+    requirePersistedMessage:true,
+  });
+}
+
+
 function resolveWaitlistCancelPrepareScope(preparedPrivacy) {
   if (preparedPrivacy?.needsDisambiguation) {
     throw runtimeError(
@@ -2483,6 +2616,10 @@ module.exports = {
   runMakeupCancelPrepareAgent,
   runMakeupCancelPrepareProbe,
   runMakeupCancelPrepare,
+  resolveWaitlistUpdatePrepareScope,
+  runWaitlistUpdatePrepareAgent,
+  runWaitlistUpdatePrepareProbe,
+  runWaitlistUpdatePrepare,
   resolveWaitlistCancelPrepareScope,
   runWaitlistCancelPrepareAgent,
   runWaitlistCancelPrepareProbe,
