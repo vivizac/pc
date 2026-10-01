@@ -17,11 +17,16 @@
   display:block;
 }
 #kinderChatFeedbackScreen .kcfInner {
+  --kcf-chat-vv-offset-top:0px;
+  --kcf-chat-layout-height:100%;
   position:absolute;
-  inset:0;
+  left:0;
+  right:0;
+  top:var(--kcf-chat-vv-offset-top, 0px);
+  bottom:auto;
   width:100%;
   max-width:860px;
-  height:100%;
+  height:var(--kcf-chat-layout-height, 100%);
   margin:0 auto;
   display:flex;
   flex-direction:column;
