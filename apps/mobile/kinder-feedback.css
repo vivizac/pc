@@ -650,7 +650,7 @@
   -webkit-tap-highlight-color:transparent;
 }
 #kinderChatFeedbackScreen.kcfKeyboardOpen .kcfComposerWrap {
-  bottom:4px;
+  bottom:0;
   padding-bottom:0;
 }
 #kinderChatFeedbackScreen.kcfGuideHidden .kcfQuestionGuide,
