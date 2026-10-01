@@ -22,22 +22,6 @@ test('empty KCF chat still owns vertical gestures without page overscroll', () =
   assert.match(sentinel, /pointer-events:none;/);
 });
 
-test('QuickNote counters native iOS visual viewport pan only on the non-composer shell', () => {
-  assert.match(js, /function readKinderChatFeedbackVisualPanY\(\)/);
-  assert.match(js, /document\.body\?\.getBoundingClientRect\?\.\(\)\.top/);
-  assert.match(js, /return Math\.max\(viewportTop, bodyPan\)/);
-  assert.match(js, /--kcf-layout-pan-compensation/);
-  assert.match(js, /syncKinderChatFeedbackLayoutViewportAnchor\(\);\s*syncKinderChatFeedbackComposerViewport\(\);/);
-
-  const topLayer = css.match(/#kcfPersistentTopLayer \{[^}]*\}/)?.[0] || '';
-  const inner = css.match(/#kinderChatFeedbackScreen \.kcfInner \{[^}]*\}/)?.[0] || '';
-  const composer = css.match(/#kinderChatFeedbackScreen \.kcfComposerLayer \{[^}]*\}/)?.[0] || '';
-
-  assert.match(topLayer, /transform:translate3d\(0,var\(--kcf-layout-pan-compensation, 0px\),0\);/);
-  assert.match(inner, /transform:translate3d\(0,var\(--kcf-layout-pan-compensation, 0px\),0\);/);
-  assert.doesNotMatch(composer, /kcf-layout-pan-compensation/);
-});
-
 test('KCF composer layer follows visualViewport without locking document scroll', () => {
   assert.match(js, /function syncKinderChatFeedbackComposerViewport\(\)/);
   assert.match(js, /window\.visualViewport/);
@@ -50,9 +34,7 @@ test('KCF composer layer follows visualViewport without locking document scroll'
   assert.match(js, /--kcf-composer-vv-width/);
   assert.match(js, /--kcf-composer-vv-height/);
   assert.match(js, /visualViewport\.addEventListener\('resize', syncKinderChatFeedbackViewport/);
-  const visualScroll = js.match(/window\.visualViewport\.addEventListener\('scroll',[\s\S]*?\}, \{ passive:true \}\);/)?.[0] || '';
-  assert.match(visualScroll, /syncKinderChatFeedbackViewport\(\)/);
-  assert.doesNotMatch(visualScroll, /resetKinderChatFeedbackRootViewportScroll\(\)/);
+  assert.match(js, /visualViewport\.addEventListener\('scroll',[\s\S]*?resetKinderChatFeedbackRootViewportScroll\(\)/);
   assert.doesNotMatch(js, /kcfComposerViewportLocked/);
   assert.doesNotMatch(js, /preventKinderChatFeedbackKeyboardBackgroundTouchMove/);
 });
@@ -321,34 +303,9 @@ test('QuickNote touch retap protects the focused input from transient iOS blur',
   assert.match(block,/event\.pointerType === 'touch'/);
   assert.match(block,/teacherEnabled/);
   assert.match(block,/kcfKeepInputFocusUntil = Date\.now\(\) \+ 900/);
-  assert.match(block,/document\.activeElement !== input/);
-  assert.match(block,/input\.focus\(\{ preventScroll:true \}\)/);
+  assert.doesNotMatch(block,/input\.focus\(/);
   assert.match(js,/if \(Date\.now\(\) < kcfKeepInputFocusUntil\)[\s\S]*?currentInput\.focus\(\{ preventScroll:true \}\)/);
 });
-
-test('QuickNote keyboard focus never force-resets the root document while iOS is opening the keyboard', () => {
-  const start = js.indexOf("input.addEventListener('focus'", js.indexOf('function bindKinderChatFeedbackViewportInteractions'));
-  const end = js.indexOf("input.addEventListener('blur'", start);
-  const block = js.slice(start, end);
-
-  assert.match(block,/captureKinderChatFeedbackKeyboardBaseline\(true\)/);
-  assert.match(block,/syncKinderChatFeedbackViewport\(\)/);
-  assert.doesNotMatch(block,/scheduleKinderChatFeedbackRootViewportReset\(\)/);
-  assert.doesNotMatch(block,/resetKinderChatFeedbackRootViewportScroll\(\)/);
-});
-
-test('QuickNote keyboard blur never force-resets the root document while iOS is closing the keyboard', () => {
-  const start = js.indexOf("input.addEventListener('blur'", js.indexOf('function bindKinderChatFeedbackViewportInteractions'));
-  const end = js.indexOf('bindKinderChatFeedbackViewport();', start);
-  const block = js.slice(start, end);
-
-  assert.match(block,/setTimeout\(syncKinderChatFeedbackViewport, 40\)/);
-  assert.match(block,/setTimeout\(syncKinderChatFeedbackViewport, 140\)/);
-  assert.doesNotMatch(block,/scheduleKinderChatFeedbackRootViewportReset\(\)/);
-  assert.doesNotMatch(block,/resetKinderChatFeedbackRootViewportScroll\(\)/);
-});
-
-
 
 test('QuickNote Class mode can still intentionally hand focus to the Teacher sheet', () => {
   const start = js.indexOf("input.addEventListener('pointerdown'");

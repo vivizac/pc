@@ -274,46 +274,6 @@ function syncKinderChatFeedbackComposerViewport() {
   if (!layer) return;
   applyKinderChatFeedbackComposerViewportGeometry(layer, readKinderChatFeedbackComposerViewportGeometry());
 }
-function readKinderChatFeedbackVisualPanY() {
-  const viewport = window.visualViewport;
-  const viewportTop = Math.max(0, Math.round(Number(viewport?.offsetTop || 0)));
-  let bodyPan = 0;
-
-  try {
-    const bodyTop = Number(document.body?.getBoundingClientRect?.().top || 0);
-    const rootScroll = Math.max(
-      Math.abs(Number(window.scrollY || 0)),
-      Math.abs(Number(document.documentElement?.scrollTop || 0)),
-      Math.abs(Number(document.body?.scrollTop || 0))
-    );
-    if (rootScroll <= 1 && bodyTop < -1) bodyPan = Math.max(0, Math.round(-bodyTop));
-  } catch (_) {}
-
-  return Math.max(viewportTop, bodyPan);
-}
-function syncKinderChatFeedbackLayoutViewportAnchor() {
-  const screen = getKinderChatFeedbackScreen();
-  const input = getKinderChatFeedbackInput();
-  const root = document.documentElement;
-  if (!root) return;
-
-  if (!screen || !isKinderChatFeedbackVisible()) {
-    root.style.setProperty('--kcf-layout-pan-compensation', '0px');
-    return;
-  }
-
-  const viewport = window.visualViewport;
-  const layoutHeight = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
-  const viewportShrunk = viewport ? (layoutHeight - Number(viewport.height || 0)) > 40 : false;
-  const inputFocused = !!input && document.activeElement === input;
-  const keyboardTracking = inputFocused
-    || screen.classList.contains('kcfKeyboardOpen')
-    || viewportShrunk
-    || Number(viewport?.offsetTop || 0) > 1;
-
-  const panY = keyboardTracking ? readKinderChatFeedbackVisualPanY() : 0;
-  root.style.setProperty('--kcf-layout-pan-compensation', panY + 'px');
-}
 function getKinderChatFeedbackViewportBottom() {
   const viewport = window.visualViewport;
   if (!viewport) return Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
@@ -347,7 +307,6 @@ function syncKinderChatFeedbackViewport() {
   const input = getKinderChatFeedbackInput();
   if (!screen) return;
 
-  syncKinderChatFeedbackLayoutViewportAnchor();
   syncKinderChatFeedbackComposerViewport();
 
   const inputFocused = !!input && document.activeElement === input;
@@ -376,9 +335,7 @@ function bindKinderChatFeedbackViewport() {
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', syncKinderChatFeedbackViewport, { passive:true });
     window.visualViewport.addEventListener('scroll', () => {
-      // During native keyboard movement, visualViewport may pan briefly on iOS.
-      // Follow the viewport geometry without fighting that transition by forcing
-      // the document root back to scrollTop 0.
+      resetKinderChatFeedbackRootViewportScroll();
       syncKinderChatFeedbackViewport();
     }, { passive:true });
   }
@@ -450,14 +407,6 @@ function bindKinderChatFeedbackViewportInteractions() {
         );
         if (!teacherEnabled) {
           kcfKeepInputFocusUntil = Date.now() + 900;
-          if (document.activeElement !== input) {
-            captureKinderChatFeedbackKeyboardBaseline(true);
-            try { input.focus({ preventScroll:true }); }
-            catch (_) { input.focus(); }
-          } else {
-            captureKinderChatFeedbackKeyboardBaseline(true);
-          }
-          return;
         }
         captureKinderChatFeedbackKeyboardBaseline(true);
         return;
@@ -493,9 +442,7 @@ function bindKinderChatFeedbackViewportInteractions() {
 
     input.addEventListener('focus', () => {
       captureKinderChatFeedbackKeyboardBaseline(true);
-      // Let iOS perform its native keyboard/visualViewport transition.
-      // Repeated root scroll resets here made the whole QuickNote surface
-      // disappear and re-enter from below while the keyboard was opening.
+      scheduleKinderChatFeedbackRootViewportReset();
       syncKinderChatFeedbackViewport();
       setTimeout(syncKinderChatFeedbackViewport, 50);
       setTimeout(syncKinderChatFeedbackViewport, 150);
@@ -513,9 +460,7 @@ function bindKinderChatFeedbackViewportInteractions() {
         }, 0);
         return;
       }
-      // Let iOS restore the visual viewport naturally as the keyboard closes.
-      // Repeated root scroll resets here caused fixed top controls and chat content
-      // to disappear/repaint during the blur transition.
+      scheduleKinderChatFeedbackRootViewportReset();
       setTimeout(syncKinderChatFeedbackViewport, 40);
       setTimeout(syncKinderChatFeedbackViewport, 140);
       setTimeout(() => {
