@@ -12,11 +12,12 @@
   let olliTalkChatMeasureRaf = 0;
   let olliTalkChatTrackingBound = false;
   let olliTalkComposerResizeObserver = null;
-  let olliTalkLastComposerTop = null;
-  let olliTalkFollowBottomAfterViewportSettle = false;
-  let olliTalkViewportTransitionComposerTop = null;
-  let olliTalkViewportTransitionChatScrollTop = null;
-  let olliTalkViewportTransitionUserTouchedChat = false;
+  let olliTalkChatGestureActive = false;
+  let olliTalkChatGestureSettleTimer = null;
+  let olliTalkComposerViewportLock = null;
+  let olliTalkComposerViewportLockTimer = null;
+  let olliTalkKeyboardTransitionActive = false;
+  let olliTalkKeepInputFocusUntil = 0;
   let olliTalkArchiveTab = 'materials';
   let olliTalkArchivePayload = null;
   let olliTalkArchiveLoadSequence = 0;
@@ -42,8 +43,18 @@
   let olliTalkArchiveFileTransferSequence = 0;
   const OLLI_TALK_TRANSFER_RING_CIRCUMFERENCE = 2 * Math.PI * 31;
   let olliTalkMembers = [];
+  const OLLI_TALK_AI_MENTION_ID = '__olli_ai__';
+  const OLLI_TALK_AI_MENTION = Object.freeze({
+    member_id:OLLI_TALK_AI_MENTION_ID,
+    display_name:'올리',
+    role:'ai',
+    is_olli_ai:true,
+    is_current_member:false
+  });
   let olliTalkMentionSelections = new Map();
   let olliTalkMentionModeActive = false;
+  let olliTalkAiConversationMessages = [];
+  let olliTalkAiConversationAcademyId = '';
   let olliTalkMentionBadgeWatcher = null;
   let olliTalkMentionSummaryInitialized = false;
   let olliTalkLastUnreadMentionCount = 0;
@@ -128,30 +139,7 @@
     return distance <= Math.max(0, Number(threshold) || 0);
   }
 
-  function resetOlliTalkViewportTransitionAnchor(){
-    olliTalkViewportTransitionComposerTop = null;
-    olliTalkViewportTransitionChatScrollTop = null;
-    olliTalkViewportTransitionUserTouchedChat = false;
-  }
-
-  function captureOlliTalkViewportTransitionAnchor(){
-    if (Number.isFinite(olliTalkViewportTransitionComposerTop)) return;
-
-    const screen = getScreen();
-    const chatArea = document.getElementById('olliTalkBetaChatArea');
-    const composerWrap = screen?.querySelector('.olliTalkBetaComposerWrap');
-    if (!screen || !chatArea || !composerWrap || !isOlliTalkBetaVisible()) return;
-
-    const composerTop = Number(composerWrap.getBoundingClientRect().top);
-    if (!Number.isFinite(composerTop)) return;
-
-    olliTalkViewportTransitionComposerTop = composerTop;
-    olliTalkViewportTransitionChatScrollTop = Math.max(0, Number(chatArea.scrollTop || 0));
-    olliTalkViewportTransitionUserTouchedChat = false;
-    olliTalkFollowBottomAfterViewportSettle = isOlliTalkChatNearBottom(chatArea);
-  }
-
-  function syncOlliTalkChatToComposer(options = {}){
+  function syncOlliTalkChatToComposer(){
     olliTalkChatMeasureRaf = 0;
 
     const screen = getScreen();
@@ -168,25 +156,25 @@
       || !Number.isFinite(composerRect.top)
     ) return;
 
-    const reserve = Math.max(
+    const measuredReserve = Math.max(
       0,
       Math.min(
         Math.ceil(viewportRect.height),
         Math.ceil(viewportRect.bottom - composerRect.top)
       )
     );
+    const input = getOlliTalkBetaInput();
+    const keyboardTracking = (!!input && document.activeElement === input)
+      || screen.classList.contains('olliTalkKeyboardOpen')
+      || olliTalkKeyboardTransitionActive;
+    const keyboardOffset = keyboardTracking ? getOlliTalkKeyboardOffset() : 0;
+    const reserve = Math.max(0, measuredReserve - keyboardOffset);
 
+    // Keep the scroll area full-height. Reserve only the composer's own footprint;
+    // keyboard displacement is applied once, to the message layer below.
     screen.style.setProperty('--olli-talk-chat-reserve', reserve + 'px');
-    olliTalkLastComposerTop = composerRect.top;
 
-    // Important: composer / visualViewport movement never directly changes chatArea.scrollTop.
-    // Only an explicit settled keyboard transition may keep an already-bottomed chat at bottom.
-    if (options.followBottom === true) {
-      requestAnimationFrame(() => {
-        if (!chatArea.isConnected) return;
-        chatArea.scrollTop = chatArea.scrollHeight;
-      });
-    }
+    // Keyboard/composer geometry never owns chatArea.scrollTop.
   }
 
   function scheduleOlliTalkChatToComposer(){
@@ -211,20 +199,67 @@
     window.addEventListener('resize', scheduleOlliTalkChatToComposer, { passive:true });
   }
 
-  function syncOlliTalkComposerViewport(){
-    const layer = document.getElementById('olliTalkBetaComposerLayer');
-    if (!layer) return;
+  function readOlliTalkComposerViewportGeometry(){
     const viewport = window.visualViewport;
     const layoutWidth = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
     const layoutHeight = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
-    const left = viewport ? Number(viewport.offsetLeft || 0) : 0;
-    const top = viewport ? Number(viewport.offsetTop || 0) : 0;
-    const width = viewport ? Number(viewport.width || layoutWidth) : layoutWidth;
-    const height = viewport ? Number(viewport.height || layoutHeight) : layoutHeight;
-    layer.style.setProperty('--olli-talk-composer-vv-left', Math.round(left) + 'px');
-    layer.style.setProperty('--olli-talk-composer-vv-top', Math.round(top) + 'px');
-    layer.style.setProperty('--olli-talk-composer-vv-width', Math.max(1, Math.round(width)) + 'px');
-    layer.style.setProperty('--olli-talk-composer-vv-height', Math.max(1, Math.round(height)) + 'px');
+    return {
+      left: viewport ? Number(viewport.offsetLeft || 0) : 0,
+      top: viewport ? Number(viewport.offsetTop || 0) : 0,
+      width: viewport ? Number(viewport.width || layoutWidth) : layoutWidth,
+      height: viewport ? Number(viewport.height || layoutHeight) : layoutHeight
+    };
+  }
+
+  function applyOlliTalkComposerViewportGeometry(layer, geometry){
+    if (!layer || !geometry) return;
+    layer.style.setProperty('--olli-talk-composer-vv-left', Math.round(Number(geometry.left) || 0) + 'px');
+    layer.style.setProperty('--olli-talk-composer-vv-top', Math.round(Number(geometry.top) || 0) + 'px');
+    layer.style.setProperty('--olli-talk-composer-vv-width', Math.max(1, Math.round(Number(geometry.width) || 1)) + 'px');
+    layer.style.setProperty('--olli-talk-composer-vv-height', Math.max(1, Math.round(Number(geometry.height) || 1)) + 'px');
+  }
+
+  function releaseOlliTalkComposerViewportLock(){
+    if (olliTalkComposerViewportLockTimer) clearTimeout(olliTalkComposerViewportLockTimer);
+    olliTalkComposerViewportLockTimer = null;
+    olliTalkComposerViewportLock = null;
+    getScreen()?.classList.remove('olliTalkComposerViewportLocked');
+  }
+
+  function lockOlliTalkComposerViewport(){
+    const screen = getScreen();
+    const input = getOlliTalkBetaInput();
+    if (!screen || !input || document.activeElement !== input) return false;
+    if (getOlliTalkKeyboardOffset() <= 24) return false;
+    olliTalkComposerViewportLock = readOlliTalkComposerViewportGeometry();
+    const layer = document.getElementById('olliTalkBetaComposerLayer');
+    applyOlliTalkComposerViewportGeometry(layer, olliTalkComposerViewportLock);
+    screen.classList.add('olliTalkComposerViewportLocked');
+    olliTalkKeyboardTransitionActive = false;
+    return true;
+  }
+
+  function scheduleOlliTalkComposerViewportLock(){
+    if (olliTalkComposerViewportLockTimer) clearTimeout(olliTalkComposerViewportLockTimer);
+    olliTalkComposerViewportLockTimer = setTimeout(() => {
+      olliTalkComposerViewportLockTimer = null;
+      lockOlliTalkComposerViewport();
+    }, 120);
+  }
+
+  function syncOlliTalkComposerViewport(options = {}){
+    if (olliTalkChatGestureActive && options.force !== true) return;
+    const layer = document.getElementById('olliTalkBetaComposerLayer');
+    if (!layer) return;
+
+    // Keyboard-open lock is authoritative. visualViewport scroll/pan events may
+    // continue on iOS while the user scrolls chat, but they must not move composer.
+    if (olliTalkComposerViewportLock && options.followKeyboard !== true) {
+      applyOlliTalkComposerViewportGeometry(layer, olliTalkComposerViewportLock);
+      return;
+    }
+
+    applyOlliTalkComposerViewportGeometry(layer, readOlliTalkComposerViewportGeometry());
   }
 
   function getOlliTalkViewportBottom(){
@@ -253,35 +288,9 @@
     screen.classList.remove('olliTalkViewportMoving');
     olliTalkViewportSettleTimer = null;
 
-    const chatArea = document.getElementById('olliTalkBetaChatArea');
-    const composerWrap = screen.querySelector('.olliTalkBetaComposerWrap');
-    const startTop = Number(olliTalkViewportTransitionComposerTop);
-    const startScrollTop = Number(olliTalkViewportTransitionChatScrollTop);
-    const finalTop = Number(composerWrap?.getBoundingClientRect().top);
-    const delta = Number.isFinite(startTop) && Number.isFinite(finalTop)
-      ? startTop - finalTop
-      : 0;
-    const followBottom = olliTalkFollowBottomAfterViewportSettle === true;
-    const userTouched = olliTalkViewportTransitionUserTouchedChat === true;
-
-    olliTalkFollowBottomAfterViewportSettle = false;
+    // The composer may move with the keyboard, but keyboard settling must not
+    // move the user's current message position.
     syncOlliTalkChatToComposer();
-
-    requestAnimationFrame(() => {
-      if (!chatArea?.isConnected || userTouched) {
-        resetOlliTalkViewportTransitionAnchor();
-        return;
-      }
-
-      if (followBottom) {
-        chatArea.scrollTop = chatArea.scrollHeight;
-      } else if (Number.isFinite(startScrollTop) && Math.abs(delta) > 0.5) {
-        const maxScroll = Math.max(0, chatArea.scrollHeight - chatArea.clientHeight);
-        chatArea.scrollTop = Math.max(0, Math.min(maxScroll, startScrollTop + delta));
-      }
-
-      resetOlliTalkViewportTransitionAnchor();
-    });
   }
 
   function scheduleOlliTalkViewportSettle(){
@@ -289,7 +298,7 @@
     olliTalkViewportSettleTimer = setTimeout(finishOlliTalkViewportTransition, 130);
   }
 
-  function syncViewport(){
+  function syncViewport(options = {}){
     const screen = getScreen();
     if (!screen) return;
     const vv = window.visualViewport;
@@ -300,26 +309,52 @@
     const input = getOlliTalkBetaInput();
     const inputFocused = !!input && document.activeElement === input;
     if (inputFocused && !olliTalkKeyboardBaselineBottom) captureOlliTalkKeyboardBaseline(true);
-    const keyboardOffset = inputFocused || screen.classList.contains('olliTalkKeyboardOpen')
-      ? getOlliTalkKeyboardOffset()
-      : 0;
-    const keyboardOpen = inputFocused && keyboardOffset > 24;
+    const keyboardTracking = inputFocused
+      || screen.classList.contains('olliTalkKeyboardOpen')
+      || olliTalkKeyboardTransitionActive;
+    const keyboardOffset = keyboardTracking ? getOlliTalkKeyboardOffset() : 0;
+    const keyboardOpen = keyboardTracking && keyboardOffset > 24;
     const signature = [Math.round(top), Math.round(left), Math.round(width), Math.round(height)].join(':');
     const viewportChanged = signature !== olliTalkLastViewportSignature;
+
+    if (olliTalkChatGestureActive) {
+      olliTalkLastViewportSignature = signature;
+      return;
+    }
+
     const keyboardInteraction = inputFocused
       || screen.classList.contains('olliTalkKeyboardOpen')
       || screen.classList.contains('olliTalkViewportMoving');
 
     if (keyboardInteraction && viewportChanged) {
-      captureOlliTalkViewportTransitionAnchor();
       screen.classList.add('olliTalkViewportMoving');
       scheduleOlliTalkViewportSettle();
     }
     olliTalkLastViewportSignature = signature;
 
-    syncOlliTalkComposerViewport();
+    if (keyboardOpen) {
+      if (!inputFocused) {
+        // Keyboard is physically closing: follow its viewport until it reaches the bottom.
+        syncOlliTalkComposerViewport({ followKeyboard:true });
+      } else if (olliTalkKeyboardTransitionActive || !olliTalkComposerViewportLock) {
+        // Keyboard is opening/resizing: follow it, then lock the final geometry.
+        syncOlliTalkComposerViewport({ followKeyboard:true });
+        scheduleOlliTalkComposerViewportLock();
+      } else {
+        // Keyboard is fully open: the locked geometry is authoritative.
+        syncOlliTalkComposerViewport();
+      }
+    } else {
+      syncOlliTalkComposerViewport({ followKeyboard:true });
+    }
+
     screen.classList.toggle('olliTalkKeyboardOpen', keyboardOpen);
+    const messageLift = keyboardTracking ? Math.max(0, keyboardOffset) : 0;
+    screen.style.setProperty('--olli-talk-message-lift', messageLift + 'px');
+    scheduleOlliTalkChatToComposer();
     if (!keyboardOpen && !inputFocused) {
+      releaseOlliTalkComposerViewportLock();
+      olliTalkKeyboardTransitionActive = false;
       hideOlliTalkMentionMenu();
       olliTalkKeyboardBaselineBottom = 0;
     }
@@ -329,10 +364,17 @@
   function bindViewport(){
     if (olliTalkBetaViewportBound) return;
     olliTalkBetaViewportBound = true;
-    window.addEventListener('resize', syncViewport, { passive:true });
+    window.addEventListener('resize', () => syncViewport({ source:'window-resize' }), { passive:true });
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', syncViewport, { passive:true });
-      window.visualViewport.addEventListener('scroll', syncOlliTalkComposerViewport, { passive:true });
+      window.visualViewport.addEventListener('resize', () => syncViewport({ source:'visual-resize' }), { passive:true });
+      window.visualViewport.addEventListener('scroll', () => {
+        // During keyboard-open lock, scroll/pan must never recalculate composer coordinates.
+        if (olliTalkComposerViewportLock) {
+          syncOlliTalkComposerViewport();
+          return;
+        }
+        syncViewport({ source:'visual-scroll' });
+      }, { passive:true });
     }
   }
 
@@ -352,13 +394,70 @@
     return document.getElementById('olliTalkBetaSendBtn');
   }
 
+  function getOlliTalkSelectedMentionPrefix(){
+    return document.getElementById('olliTalkSelectedMentionPrefix');
+  }
+
+  function syncOlliTalkSelectedMentionPrefix(){
+    const prefix = getOlliTalkSelectedMentionPrefix();
+    if (!prefix) return;
+    const labels = [];
+    olliTalkMentionSelections.forEach(member => {
+      const name = String(member?.display_name || '').trim();
+      if (name) labels.push('@' + name);
+    });
+    prefix.textContent = labels.join(' ');
+    prefix.hidden = labels.length === 0;
+  }
+
   function isOlliTalkAiEnabled(){
     try { return window.OlliTeamTalkSettings?.state?.aiEnabled === true; }
     catch (_) { return false; }
   }
 
+  function isOlliTalkAiMentionConversationActive(){
+    const selected = olliTalkMentionSelections.get(OLLI_TALK_AI_MENTION_ID);
+    return olliTalkMentionModeActive && selected?.is_olli_ai === true;
+  }
+
+  function resetOlliTalkAiConversation(){
+    olliTalkAiConversationMessages = [];
+    olliTalkAiConversationAcademyId = '';
+  }
+
+  function buildOlliTalkAiConversationMessages(commandText, context){
+    const current = { role:'user', content:String(commandText || '').trim() };
+    if (!isOlliTalkAiMentionConversationActive()) return [current];
+
+    const academyId = String(context?.academyId || '').trim();
+    if (olliTalkAiConversationAcademyId && olliTalkAiConversationAcademyId !== academyId) {
+      resetOlliTalkAiConversation();
+    }
+    olliTalkAiConversationAcademyId = academyId;
+    return olliTalkAiConversationMessages.concat(current);
+  }
+
+  function recordOlliTalkAiConversationTurn(commandText, replyText){
+    if (!isOlliTalkAiMentionConversationActive()) return;
+    const userText = String(commandText || '').trim();
+    const assistantText = String(replyText || '').trim();
+    if (!userText || !assistantText) return;
+    olliTalkAiConversationMessages.push(
+      { role:'user', content:userText },
+      { role:'assistant', content:assistantText }
+    );
+    if (olliTalkAiConversationMessages.length > 12) {
+      olliTalkAiConversationMessages = olliTalkAiConversationMessages.slice(-12);
+    }
+  }
+
   function stripOlliTalkOlliPrefix(value){
     return String(value || '').replace(/^\s*@올리(?:\s+|$)/, '').trim();
+  }
+
+  function hasOlliTalkAiMentionSelection(){
+    const selected = olliTalkMentionSelections.get(OLLI_TALK_AI_MENTION_ID);
+    return selected?.is_olli_ai === true;
   }
 
   function hasOlliTalkPendingCommand(){
@@ -518,6 +617,7 @@
 
   function handleOlliTalkAiModeChanged(){
     olliTalkPendingActionReason = null;
+    resetOlliTalkAiConversation();
   }
 
   async function resolveOlliTalkAiReply(commandText, context){
@@ -528,7 +628,7 @@
         promptType:'talk',
         academyId:context?.academyId || '',
         sessionToken:context?.sessionToken || '',
-        messages:[{ role:'user', content:String(commandText || '').trim() }],
+        messages:buildOlliTalkAiConversationMessages(commandText, context),
         stream:false
       })
     });
@@ -539,6 +639,178 @@
     const message = String(data?.reply || '').trim();
     if (!message) throw new Error('올리 AI 응답이 비어 있습니다.');
     return { route:null, message };
+  }
+
+  function isOlliTalkMakeupAddAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseMakeupMutationIntent!=='function') return false;
+    try{
+      return String(router.parseMakeupMutationIntent(commandText)?.intent || '').trim()==='add_makeup';
+    }catch(error){
+      console.warn('올리톡 보강 등록 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
+  function isOlliTalkPickupCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parsePickupCancelMutationIntent!=='function') return false;
+    try{
+      return String(router.parsePickupCancelMutationIntent(commandText)?.intent || '').trim()==='cancel_pickup';
+    }catch(error){
+      console.warn('올리톡 픽업 삭제 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
+  function isOlliTalkPickupUpdateAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parsePickupUpdateMutationIntent!=='function') return false;
+    try{
+      return String(router.parsePickupUpdateMutationIntent(commandText)?.intent || '').trim()==='update_pickup';
+    }catch(error){
+      console.warn('올리톡 픽업 수정 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
+  function isOlliTalkPickupAddAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parsePickupMutationIntent!=='function') return false;
+    try{
+      return String(router.parsePickupMutationIntent(commandText)?.intent || '').trim()==='add_pickup';
+    }catch(error){
+      console.warn('올리톡 픽업 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
+  async function resolveOlliTalkMakeupAddAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('보강 등록 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'makeup_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '보강 등록 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='add_makeup'){
+      throw new Error('보강 등록 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return{
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkPickupCancelAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('픽업 삭제 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'pickup_cancel_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '픽업 삭제 Agent 응답을 받지 못했습니다.');
+    }
+
+    const actionType=String(data.message.action.action_type || '').trim();
+    if(!['cancel_pickup','cancel_pickup_dropoff'].includes(actionType)){
+      throw new Error('픽업 삭제 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return{
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkPickupUpdateAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('픽업 수정 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'pickup_update_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '픽업 수정 Agent 응답을 받지 못했습니다.');
+    }
+
+    const actionType=String(data.message.action.action_type || '').trim();
+    if(!['update_pickup_arrival','update_pickup_dropoff'].includes(actionType)){
+      throw new Error('픽업 수정 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return{
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkPickupAddAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('픽업 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'pickup_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '픽업 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='add_pickup'){
+      throw new Error('픽업 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return{
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
   }
 
   async function saveOlliTalkOlliReply(context, body, replyToMessageId){
@@ -611,6 +883,22 @@
         replyText:message,
         recordAi:false
       };
+    }
+
+    if(isOlliTalkPickupCancelAgentCandidate(commandText,router)){
+      return resolveOlliTalkPickupCancelAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    if(isOlliTalkPickupUpdateAgentCandidate(commandText,router)){
+      return resolveOlliTalkPickupUpdateAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    if(isOlliTalkPickupAddAgentCandidate(commandText,router)){
+      return resolveOlliTalkPickupAddAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    if(isOlliTalkMakeupAddAgentCandidate(commandText,router)){
+      return resolveOlliTalkMakeupAddAgentTurn(commandText,context,replyToMessageId);
     }
 
     if(router && typeof router.prepareAction==='function'){
@@ -704,23 +992,23 @@
       .trim();
   }
 
-  function hasOlliTalkSelectedMentionInInput(value){
-    const text = String(value || '');
-    let found = false;
+  function hasOlliTalkSelectedMentionInInput(){
+    return olliTalkMentionSelections.size > 0;
+  }
+
+  function getOlliTalkPersistentMentionPrefix(){
+    const mentions = [];
     olliTalkMentionSelections.forEach(member => {
-      if (found) return;
       const name = String(member?.display_name || '').trim();
-      if (!name) return;
-      const pattern = new RegExp('(^|\\s)@' + escapeRegExp(name) + '(?=\\s|$|[,.!?，。！？])');
-      if (pattern.test(text)) found = true;
+      if (name) mentions.push('@' + name);
     });
-    return found;
+    return mentions.length ? mentions.join(' ') + ' ' : '';
   }
 
   function isOlliTalkMentionMessageReady(){
     const input = getOlliTalkBetaInput();
     if (!input || !olliTalkMentionModeActive) return false;
-    return hasOlliTalkSelectedMentionInInput(input.value)
+    return hasOlliTalkSelectedMentionInInput()
       && getOlliTalkMentionMessageText(input.value).length > 0;
   }
 
@@ -747,6 +1035,7 @@
     const canSend = olliTalkMentionModeActive ? isOlliTalkMentionMessageReady() : hasText;
     sendButton.disabled = !canSend;
     sendButton.setAttribute('aria-disabled', canSend ? 'false' : 'true');
+    syncOlliTalkSelectedMentionPrefix();
     syncOlliTalkMentionModeUi();
   }
 
@@ -3727,9 +4016,16 @@
 
     const name = String(member.display_name || '').trim();
     if (!name) return;
-    const insertion = '@' + name + ' ';
-    input.setRangeText(insertion, info.start, info.end, 'end');
+
+    const wasAiSelected = hasOlliTalkAiMentionSelection();
+    input.setRangeText('', info.start, info.end, 'end');
+    input.value = String(input.value || '').replace(/^\s+/, '');
+
     olliTalkMentionSelections.set(String(member.member_id), member);
+    if (member?.is_olli_ai === true && !wasAiSelected) resetOlliTalkAiConversation();
+    if (member?.is_olli_ai !== true && wasAiSelected) resetOlliTalkAiConversation();
+
+    syncOlliTalkSelectedMentionPrefix();
     hideOlliTalkMentionMenu();
     resizeInput();
     updateOlliTalkBetaComposerState();
@@ -3746,8 +4042,8 @@
     }
 
     const query = info.query.toLowerCase();
-    const candidates = olliTalkMembers
-      .filter(member => !member.is_current_member)
+    const candidates = [OLLI_TALK_AI_MENTION, ...olliTalkMembers]
+      .filter(member => member?.is_olli_ai === true || !member.is_current_member)
       .filter(member => !query || String(member.display_name || '').toLowerCase().includes(query));
 
     menu.replaceChildren();
@@ -3763,7 +4059,8 @@
       button.type = 'button';
       button.className = 'olliTalkMentionOption';
       const displayName = String(member.display_name || '').trim() || '이름 없음';
-      const name = createMessageText('span', 'olliTalkMentionName', '@' + displayName);
+      const mentionLabel = member?.is_olli_ai === true ? '@올리 · AI' : '@' + displayName;
+      const name = createMessageText('span', 'olliTalkMentionName', mentionLabel);
       button.append(name);
       button.addEventListener('pointerdown', event => event.preventDefault());
       button.addEventListener('click', () => insertOlliTalkMention(member));
@@ -3777,16 +4074,14 @@
     const input = getOlliTalkBetaInput();
     if (!input) return;
 
-    let value = String(input.value || '');
-    olliTalkMentionSelections.forEach(member => {
-      const name = String(member?.display_name || '').trim();
-      if (!name) return;
-      const pattern = new RegExp('(^|\\s)@' + escapeRegExp(name) + '(?=\\s|$|[,.!?，。！？])', 'g');
-      value = value.replace(pattern, '$1');
-    });
-    value = value.replace(/(^|\s)@[^\s@]*$/g, '$1').replace(/\s+/g, ' ').trim();
+    const value = String(input.value || '')
+      .replace(/(^|\s)@[^\s@]*$/g, '$1')
+      .replace(/\s+/g, ' ')
+      .trimStart();
     input.value = value;
     olliTalkMentionSelections.clear();
+    resetOlliTalkAiConversation();
+    syncOlliTalkSelectedMentionPrefix();
   }
 
   async function openOlliTalkMentionPicker(event){
@@ -3798,7 +4093,7 @@
     const input = getOlliTalkBetaInput();
     if (!input) return false;
 
-    if (olliTalkMentionModeActive && !isOlliTalkMentionMessageReady()) {
+    if (olliTalkMentionModeActive) {
       clearOlliTalkMentionDraft();
       olliTalkMentionModeActive = false;
       hideOlliTalkMentionMenu();
@@ -3824,17 +4119,11 @@
     resizeInput();
     updateOlliTalkBetaComposerState();
 
-    if (!olliTalkMembers.length) {
-      const menu = getOlliTalkMentionMenu();
-      if (menu) {
-        menu.replaceChildren(createMessageText('div', 'olliTalkMentionHint', '선생님 목록을 불러오는 중...'));
-        menu.hidden = false;
-        scheduleOlliTalkChatToComposer();
-      }
-      await loadOlliTalkMembers();
-    }
-
     renderOlliTalkMentionMenu();
+    if (!olliTalkMembers.length) {
+      await loadOlliTalkMembers();
+      renderOlliTalkMentionMenu();
+    }
     [0, 80, 180].forEach(delay => setTimeout(syncViewport, delay));
     return true;
   }
@@ -3848,6 +4137,7 @@
     const found = new Map();
 
     olliTalkMentionSelections.forEach((member, id) => {
+      if (member?.is_olli_ai === true) return;
       const name = String(member?.display_name || '').trim();
       if (name && text.includes('@' + name)) found.set(String(id), member);
     });
@@ -4060,15 +4350,30 @@
     if (!input) return;
 
     const rawBody = String(input.value || '').trim();
-    const olliRequested = /^\s*@올리(?:\s|$)/.test(rawBody);
-    const commandText = olliRequested ? stripOlliTalkOlliPrefix(rawBody) : '';
-    const body = olliRequested ? ('@올리 ' + commandText).trim() : rawBody;
+    const persistentMentionPrefix = olliTalkMentionModeActive
+      ? getOlliTalkPersistentMentionPrefix()
+      : '';
+    const olliAiMentionRequested = olliTalkMentionModeActive && hasOlliTalkAiMentionSelection();
+    const directOlliRequested = /^\s*@올리(?:\s|$)/.test(rawBody);
+    const olliRequested = olliAiMentionRequested || directOlliRequested;
+    const commandText = olliRequested
+      ? (olliAiMentionRequested ? rawBody : stripOlliTalkOlliPrefix(rawBody))
+      : '';
+    const body = olliRequested
+      ? ('@올리 ' + commandText).trim()
+      : (persistentMentionPrefix + rawBody).trim();
 
     if (
       !rawBody
       || (olliRequested && !commandText)
       || (olliTalkMentionModeActive && !isOlliTalkMentionMessageReady())
     ) {
+      updateOlliTalkBetaComposerState();
+      return;
+    }
+
+    if (olliAiMentionRequested && !isOlliTalkAiEnabled()) {
+      alert('올리 AI를 사용하려면 설정에서 올리 AI를 켜 주세요.');
       updateOlliTalkBetaComposerState();
       return;
     }
@@ -4104,13 +4409,17 @@
       const mentionedIds=mentionedMembers.map(member=>String(member.member_id)).filter(Boolean);
 
       input.value = '';
-      olliTalkMentionSelections.clear();
-      olliTalkMentionModeActive = false;
+      if (!persistentMentionPrefix) {
+        olliTalkMentionSelections.clear();
+        olliTalkMentionModeActive = false;
+        resetOlliTalkAiConversation();
+      }
+      syncOlliTalkSelectedMentionPrefix();
       hideOlliTalkMentionMenu();
       resizeInput();
       updateOlliTalkBetaComposerState();
       appendOlliTalkPersistedMessage(payload.message, context.memberId);
-      if (olliRequested && isOlliTalkAiEnabled()) {
+      if (olliRequested && (olliAiMentionRequested || isOlliTalkAiEnabled())) {
         olliTalkAssistantReplyPending = true;
         syncOlliTalkAssistantTypingIndicator();
       }
@@ -4145,12 +4454,13 @@
       }
 
       if (olliRequested) {
-        const usingAi = isOlliTalkAiEnabled();
+        const usingAi = olliAiMentionRequested || isOlliTalkAiEnabled();
         try {
           if(usingAi){
             const turn=await resolveOlliTalkAiTurn(commandText,context,Number(payload.message.id));
             olliTalkAssistantReplyPending=false;
             replaceOlliTalkAssistantTypingWithMessage(turn.assistantMessage,context.memberId);
+            if (turn.recordAi) recordOlliTalkAiConversationTurn(commandText, turn.replyText);
           }else{
             const turn=await resolveOlliTalkBotTurn(commandText,context,Number(payload.message.id));
             appendOlliTalkPersistedMessage(turn.assistantMessage,context.memberId);
@@ -4285,9 +4595,11 @@
   }
 
   function resetOlliTalkAfterPageTransition(){
-    olliTalkLastComposerTop = null;
-    olliTalkFollowBottomAfterViewportSettle = false;
-    resetOlliTalkViewportTransitionAnchor();
+    if (olliTalkChatGestureSettleTimer) clearTimeout(olliTalkChatGestureSettleTimer);
+    olliTalkChatGestureSettleTimer = null;
+    olliTalkChatGestureActive = false;
+    releaseOlliTalkComposerViewportLock();
+    olliTalkKeyboardTransitionActive = false;
   }
 
   async function slideOlliTalkOutTo(targetScreen){
@@ -4715,19 +5027,33 @@
       });
     }
 
+    const beginOlliTalkChatGesture = () => {
+      if (olliTalkChatGestureSettleTimer) {
+        clearTimeout(olliTalkChatGestureSettleTimer);
+        olliTalkChatGestureSettleTimer = null;
+      }
+      olliTalkChatGestureActive = true;
+    };
+    const endOlliTalkChatGesture = () => {
+      if (!olliTalkChatGestureActive && !olliTalkChatGestureSettleTimer) return;
+      if (olliTalkChatGestureSettleTimer) clearTimeout(olliTalkChatGestureSettleTimer);
+      olliTalkChatGestureSettleTimer = setTimeout(() => {
+        olliTalkChatGestureSettleTimer = null;
+        olliTalkChatGestureActive = false;
+        syncOlliTalkComposerViewport({ force:true });
+        syncViewport();
+        scheduleOlliTalkChatToComposer();
+      }, 120);
+    };
+
     const chatArea = document.getElementById('olliTalkBetaChatArea');
     if (chatArea) {
-      const markViewportTransitionChatGesture = () => {
-        const screen = getScreen();
-        if (
-          screen?.classList.contains('olliTalkViewportMoving')
-          || Number.isFinite(olliTalkViewportTransitionComposerTop)
-        ) {
-          olliTalkViewportTransitionUserTouchedChat = true;
-        }
-      };
-      chatArea.addEventListener('pointerdown', markViewportTransitionChatGesture, { passive:true });
-      chatArea.addEventListener('touchstart', markViewportTransitionChatGesture, { passive:true });
+      chatArea.addEventListener('pointerdown', beginOlliTalkChatGesture, { passive:true });
+      chatArea.addEventListener('touchstart', beginOlliTalkChatGesture, { passive:true });
+      window.addEventListener('pointerup', endOlliTalkChatGesture, { passive:true });
+      window.addEventListener('pointercancel', endOlliTalkChatGesture, { passive:true });
+      window.addEventListener('touchend', endOlliTalkChatGesture, { passive:true });
+      window.addEventListener('touchcancel', endOlliTalkChatGesture, { passive:true });
       chatArea.addEventListener('scroll',()=>{
         if(chatArea.scrollTop>96||olliTalkHistoryLoading||olliTalkHistoryExhausted)return;
         if(olliTalkHistoryScrollRaf)return;
@@ -4739,7 +5065,59 @@
     }
 
     if (input) {
-      input.addEventListener('pointerdown', () => captureOlliTalkKeyboardBaseline(true), true);
+      let composerTouchStartX = null;
+      let composerTouchStartY = null;
+      const composer = input.closest('.olliTalkBetaComposer');
+
+      const screen = getScreen();
+      if (screen) {
+        screen.addEventListener('pointerdown', event => {
+          if (event.target !== input) olliTalkKeepInputFocusUntil = 0;
+        }, true);
+      }
+
+      input.addEventListener('pointerdown', event => {
+        if (event.pointerType === 'touch') {
+          if (document.activeElement !== input) {
+            olliTalkKeepInputFocusUntil = Date.now() + 900;
+            captureOlliTalkKeyboardBaseline(true);
+            // Match the @ mention path: focus before iOS performs its native
+            // scroll-into-view step, while leaving the tap/caret default intact.
+            try { input.focus({ preventScroll:true }); }
+            catch (_) { input.focus(); }
+          }
+          return;
+        }
+        captureOlliTalkKeyboardBaseline(true);
+      }, true);
+
+      if (composer) {
+        composer.addEventListener('touchstart', event => {
+          const touch = event.touches?.[0];
+          composerTouchStartX = touch ? Number(touch.clientX) : null;
+          composerTouchStartY = touch ? Number(touch.clientY) : null;
+        }, { passive:true });
+
+        composer.addEventListener('touchmove', event => {
+          if (!getScreen()?.classList.contains('olliTalkKeyboardOpen')) return;
+          const touch = event.touches?.[0];
+          if (!touch || !Number.isFinite(composerTouchStartX) || !Number.isFinite(composerTouchStartY)) return;
+          const deltaX = Math.abs(Number(touch.clientX) - composerTouchStartX);
+          const deltaY = Math.abs(Number(touch.clientY) - composerTouchStartY);
+          if (deltaY < 6 || deltaY <= deltaX) return;
+          // Keep taps/cursor placement, but prevent a vertical drag that starts
+          // inside composer from becoming an iOS page/WKScrollView pan.
+          event.preventDefault();
+        }, { passive:false });
+
+        const clearComposerTouch = () => {
+          composerTouchStartX = null;
+          composerTouchStartY = null;
+        };
+        composer.addEventListener('touchend', clearComposerTouch, { passive:true });
+        composer.addEventListener('touchcancel', clearComposerTouch, { passive:true });
+      }
+
       input.addEventListener('input', () => {
         resizeInput();
         updateOlliTalkBetaComposerState();
@@ -4747,25 +5125,45 @@
       });
       input.addEventListener('focus', () => {
         const screen = getScreen();
-        captureOlliTalkViewportTransitionAnchor();
+        releaseOlliTalkComposerViewportLock();
+        olliTalkKeyboardTransitionActive = true;
         captureOlliTalkKeyboardBaseline(true);
         if (screen) screen.classList.add('olliTalkViewportMoving');
         scheduleOlliTalkViewportSettle();
-        setTimeout(syncViewport, 40);
-        setTimeout(syncViewport, 160);
-        setTimeout(syncViewport, 300);
+        setTimeout(() => syncViewport({ source:'focus' }), 40);
+        setTimeout(() => syncViewport({ source:'focus' }), 160);
+        setTimeout(() => syncViewport({ source:'focus' }), 300);
       }, true);
       input.addEventListener('blur', () => {
+        if (Date.now() < olliTalkKeepInputFocusUntil && isOlliTalkBetaVisible()) {
+          setTimeout(() => {
+            const currentInput = getOlliTalkBetaInput();
+            if (
+              currentInput
+              && Date.now() < olliTalkKeepInputFocusUntil
+              && isOlliTalkBetaVisible()
+              && document.activeElement !== currentInput
+            ) {
+              try { currentInput.focus({ preventScroll:true }); }
+              catch (_) { currentInput.focus(); }
+            }
+          }, 0);
+          return;
+        }
+
+        olliTalkKeepInputFocusUntil = 0;
         const screen = getScreen();
-        captureOlliTalkViewportTransitionAnchor();
+        releaseOlliTalkComposerViewportLock();
+        olliTalkKeyboardTransitionActive = true;
         if (screen) screen.classList.add('olliTalkViewportMoving');
         scheduleOlliTalkViewportSettle();
-        setTimeout(syncViewport, 40);
-        setTimeout(syncViewport, 140);
+        setTimeout(() => syncViewport({ source:'blur' }), 40);
+        setTimeout(() => syncViewport({ source:'blur' }), 140);
         setTimeout(() => {
-          syncViewport();
+          syncViewport({ source:'blur' });
           if (document.activeElement !== input && !screen?.classList.contains('olliTalkKeyboardOpen')) {
             olliTalkKeyboardBaselineBottom = 0;
+            olliTalkKeyboardTransitionActive = false;
           }
         }, 320);
       });
@@ -4780,6 +5178,13 @@
     }
 
     if (sendButton) {
+      sendButton.addEventListener('pointerdown', event => {
+        event.preventDefault();
+        const composerInput = getOlliTalkBetaInput();
+        if (!composerInput) return;
+        try { composerInput.focus({ preventScroll:true }); }
+        catch (_) { composerInput.focus(); }
+      });
       sendButton.addEventListener('click', sendOlliTalkBetaMessage);
     }
 

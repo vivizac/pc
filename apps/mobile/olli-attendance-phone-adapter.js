@@ -4,8 +4,48 @@
   const REGISTER_STATUS_TO_LOCAL = Object.freeze({ present: 'attended', absent: 'absent', makeup: 'makeup', blank: '' });
   const LOCAL_STATUS_TO_REGISTER = Object.freeze({ attended: 'present', absent: 'absent', makeup: 'makeup', '': 'blank' });
   const todayScheduleState = { academyId: '', sessionToken: '', dateKey: '', loaded: false, loading: null, signature: '', regular: new Map(), regularSessions: new Map(), makeup: new Map() };
+  let renderAttendanceStoreSnapshot = null;
+  let renderAttendanceStoreDirty = false;
+  let renderAttendanceStoreAutoScheduled = false;
+  let lastAppliedMonthSnapshotKey = '';
 
   function shared() { return global.OlliAttendanceData || null; }
+  function endRecordListRender() {
+    if (renderAttendanceStoreSnapshot && renderAttendanceStoreDirty
+        && typeof global.writeRecordDailyAttendanceStore === 'function') {
+      global.writeRecordDailyAttendanceStore(renderAttendanceStoreSnapshot);
+    }
+    renderAttendanceStoreSnapshot = null;
+    renderAttendanceStoreDirty = false;
+    renderAttendanceStoreAutoScheduled = false;
+  }
+  function scheduleAttendanceStoreRelease() {
+    if (renderAttendanceStoreAutoScheduled) return;
+    renderAttendanceStoreAutoScheduled = true;
+    Promise.resolve().then(endRecordListRender);
+  }
+  function readAttendanceStore() {
+    if (!renderAttendanceStoreSnapshot) {
+      renderAttendanceStoreSnapshot = typeof global.readRecordDailyAttendanceStore === 'function'
+        ? global.readRecordDailyAttendanceStore()
+        : {};
+      renderAttendanceStoreDirty = false;
+      scheduleAttendanceStoreRelease();
+    }
+    return renderAttendanceStoreSnapshot;
+  }
+
+  function afterNextPaint() {
+    return new Promise(resolve => {
+      if (typeof global.requestAnimationFrame === 'function') {
+        global.requestAnimationFrame(() => {
+          global.requestAnimationFrame(() => resolve());
+        });
+      } else {
+        global.setTimeout(resolve, 0);
+      }
+    });
+  }
   function clean(value) { return String(value == null ? '' : value).trim(); }
   function dateKey(value) {
     if (typeof global.formatRecordAttendanceDateKey === 'function') {
@@ -58,10 +98,14 @@
     return !!global.studentSelectionMode;
   }
   function renderCurrentRecordList() {
+    const screen = global.document.getElementById('recordRoomScreen');
+    if (!screen || (typeof screen.getClientRects === 'function' && !screen.getClientRects().length)) return false;
     const searchValue = global.document.getElementById('searchName')?.value?.trim() || '';
     const view = getCurrentRecordView();
     if (view === 'elementary' && typeof global.renderElementaryRecords === 'function') global.renderElementaryRecords(searchValue);
     else if (view === 'kinder' && typeof global.renderKinderRecords === 'function') global.renderKinderRecords(searchValue);
+    else return false;
+    return true;
   }
   function cloneValue(value) {
     if (value == null) return value;
@@ -205,15 +249,15 @@
       if (!Object.keys(store[targetDateKey]).length) delete store[targetDateKey];
     }
   }
-  function writeLocalStatus(student, targetDateKey, kind, status, serverSynced, timeSlot, classGroup) {
-    if (!student?.id || !targetDateKey || typeof global.readRecordDailyAttendanceStore !== 'function' || typeof global.writeRecordDailyAttendanceStore !== 'function') return;
-    const store = global.readRecordDailyAttendanceStore();
+  function writeLocalStatus(student, targetDateKey, kind, status, serverSynced, timeSlot, classGroup, storeOverride = null) {
+    if (!student?.id || !targetDateKey || typeof global.writeRecordDailyAttendanceStore !== 'function') return;
+    const store = storeOverride || (typeof global.readRecordDailyAttendanceStore === 'function' ? global.readRecordDailyAttendanceStore() : {});
     setStoreSessionStatus(store, student, targetDateKey, kind, status, serverSynced, timeSlot, classGroup);
     global.writeRecordDailyAttendanceStore(store);
   }
-  function getLocalSessionSnapshot(studentId, targetDateKey, kind, timeSlot, classGroup) {
-    if (!studentId || !targetDateKey || typeof global.readRecordDailyAttendanceStore !== 'function') return null;
-    const store = global.readRecordDailyAttendanceStore();
+  function getLocalSessionSnapshot(studentId, targetDateKey, kind, timeSlot, classGroup, storeOverride = null) {
+    if (!studentId || !targetDateKey) return null;
+    const store = storeOverride || readAttendanceStore();
     const item = store?.[targetDateKey]?.[String(studentId)];
     if (!item || typeof item !== 'object') return null;
     const targetKind = normalizeSessionKind(kind);
@@ -283,9 +327,9 @@
     });
     if (!Object.keys(bucket).length) delete sessions[kind];
   }
-  function getAttendanceSessionStatus(studentId, targetDateKey, kind, timeSlot, classGroup) {
-    if (!studentId || !targetDateKey || typeof global.readRecordDailyAttendanceStore !== 'function') return '';
-    const store = global.readRecordDailyAttendanceStore();
+  function getAttendanceSessionStatus(studentId, targetDateKey, kind, timeSlot, classGroup, storeOverride = null) {
+    if (!studentId || !targetDateKey) return '';
+    const store = storeOverride || readAttendanceStore();
     const item = store?.[targetDateKey]?.[String(studentId)];
     if (!item || typeof item !== 'object') return '';
     const targetKind = normalizeSessionKind(kind);
@@ -300,7 +344,9 @@
     if (exactKey && (legacyBucket || legacyItem)) {
       ensureItemSessions(item, targetKind, timeSlot, classGroup);
       refreshAggregateStatus(item);
-      if (typeof global.writeRecordDailyAttendanceStore === 'function') {
+      if (store === renderAttendanceStoreSnapshot) {
+        renderAttendanceStoreDirty = true;
+      } else if (typeof global.writeRecordDailyAttendanceStore === 'function') {
         global.writeRecordDailyAttendanceStore(store);
       }
     }
@@ -402,6 +448,7 @@
     const cached = data.getCachedMonth(yearMonth);
     if (!Array.isArray(cached)) return false;
     mergeServerMonth(cached, yearMonth);
+    lastAppliedMonthSnapshotKey = `${clean(typeof data.currentAcademyId === 'function' ? data.currentAcademyId() : '')}|${yearMonth}|${attendanceRowsSignature(cached)}`;
     if (options.render !== false) renderCurrentRecordList();
     return true;
   }
@@ -416,11 +463,16 @@
       if (options.skipLocal !== true && Array.isArray(cached)) mergeServerMonth(cached, yearMonth);
       const before = attendanceRowsSignature(cached);
       const rows = await data.loadMonth(yearMonth);
-      const changed = !Array.isArray(cached) || attendanceRowsSignature(rows) !== before;
-      if (changed) {
+      const nextSignature = attendanceRowsSignature(rows);
+      const snapshotKey = `${clean(typeof data.currentAcademyId === 'function' ? data.currentAcademyId() : '')}|${yearMonth}|${nextSignature}`;
+      const serverChanged = !Array.isArray(cached) || nextSignature !== before;
+      const shouldMerge = serverChanged || (options.forceMerge === true && snapshotKey !== lastAppliedMonthSnapshotKey);
+      if (shouldMerge) {
         mergeServerMonth(rows, yearMonth);
+        lastAppliedMonthSnapshotKey = snapshotKey;
         if (options.render !== false) renderCurrentRecordList();
       }
+      if (typeof options.onChanged === 'function') options.onChanged(shouldMerge);
       return true;
     } catch (error) {
       console.warn('출석 서버 동기화 보류:', error?.message || error);
@@ -505,6 +557,10 @@
     return monthHydrated || weekHydrated;
   }
 
+  function hydrateLocalAttendanceNavigationSnapshot(baseDate, options = {}) {
+    return hydrateTodayScheduleFromLocal(baseDate, { render: options.render });
+  }
+
   async function syncTodaySchedule(baseDate, options = {}) {
     const data = shared();
     const targetDateKey = dateKey(baseDate || new Date());
@@ -540,6 +596,7 @@
         const nextSignature = currentTodayScheduleSignature();
         const changed = nextSignature !== beforeSignature;
         todayScheduleState.signature = nextSignature;
+        if (typeof options.onChanged === 'function') options.onChanged(changed);
         if (changed && options.render !== false) renderCurrentRecordList();
         return true;
       } catch (error) {
@@ -677,6 +734,21 @@
       return `${renderSessionDivider(label)}${renderRowsForSession(renderRows, group.students, 'regular')}`;
     }).join('');
   }
+  function emitRecordListRendered(view) {
+    try {
+      global.dispatchEvent(new global.CustomEvent('olli:record-list-rendered', {
+        detail: { view: view === 'kinder' ? 'kinder' : 'elementary' }
+      }));
+    } catch (_) {}
+  }
+  function emitAttendanceChanged(studentId) {
+    try {
+      global.dispatchEvent(new global.CustomEvent('olli:attendance-changed', {
+        detail: { studentId: String(studentId || '') }
+      }));
+    } catch (_) {}
+  }
+
   function renderTodayAttendanceList(view, name) {
     const list = global.document.getElementById('recordList');
     if (!list || typeof global.getStudentsByType !== 'function') return false;
@@ -692,6 +764,7 @@
     const regularEmpty = regularHtml ? '' : `<div class="recordEmpty recordTodayEmpty">${query ? '검색된 당일 등원 학생이 없습니다.' : '오늘 등원 예정인 학생이 없습니다.'}</div>`;
     const makeupSection = makeupHtml ? `${renderSessionDivider('보강')}${makeupHtml}` : '';
     list.innerHTML = `${regularHtml}${regularEmpty}${makeupSection}`;
+    emitRecordListRendered(view);
     return true;
   }
 
@@ -811,49 +884,99 @@
   async function toggleTodayAttendance(event, studentId, requestedKind, timeSlot, classGroup) {
     if (event) { event.preventDefault(); event.stopPropagation(); }
     if (isStudentSelectionMode() || typeof global.getAllStudents !== 'function') return;
-    const student = global.getAllStudents().find(item => String(item.id) === String(studentId));
-    if (!student) return;
+
     const today = new Date();
     const targetDateKey = dateKey(today);
-    hydrateLocalAttendanceSnapshot(today, { render: false });
-
     const requested = clean(requestedKind).toLowerCase();
-    const scheduleEntry = getTodayScheduleEntry(student.id);
-    const kind = requested === 'regular' || requested === 'makeup'
-      ? requested
-      : (scheduleEntry.regular ? 'regular' : (scheduleEntry.makeup ? 'makeup' : (isRegularScheduledToday(student, today) ? 'regular' : 'makeup')));
-    const target = resolveAttendanceSessionTarget(student, kind, timeSlot, classGroup);
-    if (!Number.isFinite(Number(target.timeSlot)) || Number(target.timeSlot) <= 0) {
-      const message = '출석 수업 시간을 확인할 수 없습니다. 시간표를 다시 불러와 주세요.';
-      if (typeof global.showPushToast === 'function') global.showPushToast(message);
-      else global.alert(message);
+    const pressedButton = event?.currentTarget?.classList?.contains('recordAttendanceLeadBtn')
+      ? event.currentTarget
+      : event?.target?.closest?.('.recordAttendanceLeadBtn');
+    const exactSlot = Number(timeSlot);
+    const hasExactTarget = (requested === 'regular' || requested === 'makeup')
+      && Number.isFinite(exactSlot) && exactSlot > 0;
+
+    let kind = hasExactTarget ? requested : '';
+    let target = hasExactTarget
+      ? { timeSlot: exactSlot, classGroup: clean(classGroup) || 'A' }
+      : null;
+    let currentStatus = pressedButton?.classList?.contains('attended')
+      ? 'attended'
+      : (pressedButton?.classList?.contains('absent')
+        ? 'absent'
+        : (pressedButton?.classList?.contains('makeup') ? 'makeup' : ''));
+    let nextStatus = '';
+    let visualApplied = false;
+
+    const computeNextStatus = () => {
+      if (kind === 'makeup') return currentStatus === 'makeup' ? '' : 'makeup';
+      if (currentStatus === 'attended') return 'absent';
+      if (currentStatus === 'absent') return '';
+      return 'attended';
+    };
+    const applyButtonStatus = status => {
+      if (!pressedButton) return;
+      pressedButton.classList.remove('attended', 'absent', 'makeup', 'blank');
+      if (status === 'attended' || status === 'absent' || status === 'makeup') pressedButton.classList.add(status);
+      else pressedButton.classList.add('blank');
+    };
+
+    // Normal controls carry exact session metadata, so paint first without reading any LocalStorage.
+    if (pressedButton && hasExactTarget) {
+      nextStatus = computeNextStatus();
+      applyButtonStatus(nextStatus);
+      visualApplied = true;
+      await afterNextPaint();
+    }
+
+    const student = global.getAllStudents().find(item => String(item.id) === String(studentId));
+    if (!student) {
+      if (visualApplied) applyButtonStatus(currentStatus);
       return;
     }
 
-    const currentStatus = getAttendanceSessionStatus(student.id, targetDateKey, kind, target.timeSlot, target.classGroup);
-    const beforeSession = getLocalSessionSnapshot(student.id, targetDateKey, kind, target.timeSlot, target.classGroup);
-
-    let nextStatus = '';
-    if (kind === 'makeup') {
-      nextStatus = currentStatus === 'makeup' ? '' : 'makeup';
-    } else if (currentStatus === 'attended') {
-      nextStatus = 'absent';
-    } else if (currentStatus === 'absent') {
-      nextStatus = '';
-    } else {
-      nextStatus = 'attended';
+    if (!hasExactTarget) {
+      hydrateTodayScheduleFromLocal(today, { render: false });
+      const scheduleEntry = getTodayScheduleEntry(student.id);
+      kind = requested === 'regular' || requested === 'makeup'
+        ? requested
+        : (scheduleEntry.regular ? 'regular' : (scheduleEntry.makeup ? 'makeup' : (isRegularScheduledToday(student, today) ? 'regular' : 'makeup')));
+      target = resolveAttendanceSessionTarget(student, kind, timeSlot, classGroup);
+      if (!Number.isFinite(Number(target.timeSlot)) || Number(target.timeSlot) <= 0) {
+        const message = '출석 수업 시간을 확인할 수 없습니다. 시간표를 다시 불러와 주세요.';
+        if (typeof global.showPushToast === 'function') global.showPushToast(message);
+        else global.alert(message);
+        return;
+      }
+      currentStatus = pressedButton
+        ? currentStatus
+        : getAttendanceSessionStatus(student.id, targetDateKey, kind, target.timeSlot, target.classGroup);
+      nextStatus = computeNextStatus();
+      if (pressedButton) {
+        applyButtonStatus(nextStatus);
+        visualApplied = true;
+        await afterNextPaint();
+      }
     }
 
-    writeLocalStatus(student, targetDateKey, kind, nextStatus, false, target.timeSlot, target.classGroup);
-    renderCurrentRecordList();
+    const localStore = typeof global.readRecordDailyAttendanceStore === 'function'
+      ? global.readRecordDailyAttendanceStore()
+      : {};
+    const beforeSession = getLocalSessionSnapshot(
+      student.id, targetDateKey, kind, target.timeSlot, target.classGroup, localStore
+    );
+    writeLocalStatus(
+      student, targetDateKey, kind, nextStatus, false, target.timeSlot, target.classGroup, localStore
+    );
+    emitAttendanceChanged(student.id);
+
     try {
       await setAttendanceRegisterStatus(student, targetDateKey, kind, nextStatus, target.timeSlot, target.classGroup);
       writeLocalStatus(student, targetDateKey, kind, nextStatus, true, target.timeSlot, target.classGroup);
-      await Promise.all([syncCurrentMonth(today, { render: false }), syncTodaySchedule(today, { render: false })]);
-      renderCurrentRecordList();
     } catch (error) {
       restoreLocalSession(student, targetDateKey, kind, target.timeSlot, target.classGroup, beforeSession);
-      renderCurrentRecordList();
+      emitAttendanceChanged(student.id);
+      if (visualApplied) applyButtonStatus(currentStatus);
+      else renderCurrentRecordList();
       const message = String(error?.message || error || '출석 저장에 실패했습니다.');
       if (typeof global.showPushToast === 'function') global.showPushToast(message);
       else global.alert(message);
@@ -863,11 +986,14 @@
   function afterRecordListLoaded() {
     const view = getCurrentRecordView();
     if (view !== 'elementary' && view !== 'kinder') return false;
-    hydrateLocalAttendanceSnapshot(new Date(), { render: true });
+    let attendanceChanged = false;
+    const markChanged = changed => { if (changed) attendanceChanged = true; };
     Promise.all([
-      syncCurrentMonth(new Date(), { render: true, skipLocal: true }),
-      syncTodaySchedule(new Date(), { render: true, skipLocal: true })
-    ]).catch(error => console.warn('출석 백그라운드 최신화 실패:', error?.message || error));
+      syncCurrentMonth(new Date(), { render: false, skipLocal: true, forceMerge: true, onChanged: markChanged }),
+      syncTodaySchedule(new Date(), { render: false, skipLocal: true, onChanged: markChanged })
+    ]).then(() => {
+      if (attendanceChanged && getCurrentRecordView() === view) renderCurrentRecordList();
+    }).catch(error => console.warn('출석 백그라운드 최신화 실패:', error?.message || error));
     return true;
   }
 
@@ -922,6 +1048,7 @@
     decorateLeadIcon,
     toggleTodayAttendance,
     hydrateLocalAttendanceSnapshot,
+    hydrateLocalAttendanceNavigationSnapshot,
     afterRecordListLoaded
   });
   global.syncRecordAttendanceCurrentMonthFromServer = syncCurrentMonth;

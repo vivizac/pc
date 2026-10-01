@@ -50,8 +50,8 @@ test('Teacher roster uses student name cards only and removes teacher labels', (
 });
 
 test('Class UI assets use the updated cache keys', () => {
-  assert.match(html, /kinder-feedback\.css\?v=20260922-class-composer-1/);
-  assert.match(html, /kinder-feedback\.js\?v=20260922-class-composer-1/);
+  assert.match(html, /kinder-feedback\.css\?v=20260930-note-keyboard-stability-1/);
+  assert.match(html, /kinder-feedback\.js\?v=20260930-note-keyboard-stability-1/);
   assert.match(html, /kcf-auto-mode\.css\?v=20260922-class-label-1/);
   assert.match(html, /kcf-auto-mode-runtime\.js\?v=20260922-class-label-1/);
   assert.match(html, /kcf-teacher-sheet\.css\?v=20260922-class-label-1/);

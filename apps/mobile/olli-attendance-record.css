@@ -54,108 +54,6 @@
 .recordAttendanceLeadBtn.missingEnrollment:not(.attended):not(.makeup) .recordAttendanceLeadLine {
   stroke: rgba(255,255,255,.88);
 }
-.recordAttendanceSummaryWrap {
-  padding: 2px 10px 36px;
-}
-.recordAttendanceSummaryHead {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0 0 14px;
-}
-.recordAttendanceSummaryTitle {
-  font-size: calc(22px * var(--olli-text-scale));
-  font-weight: 780;
-  letter-spacing: -0.055em;
-  color: #111;
-  line-height: 1.15;
-}
-.recordAttendanceSummarySub {
-  font-size: calc(12px * var(--olli-text-scale));
-  font-weight: 600;
-  color: #9a9a9a;
-  line-height: 1.35;
-  text-align: right;
-  white-space: nowrap;
-}
-.recordAttendanceGuideCard {
-  border-radius: 20px;
-  background: #fff;
-  border: 1px solid rgba(0,0,0,.05);
-  padding: 12px 13px;
-  font-size: calc(12px * var(--olli-text-scale));
-  color: #777;
-  line-height: 1.5;
-  letter-spacing: -0.025em;
-  margin-bottom: 10px;
-}
-.recordAttendanceColorDot {
-  width: 9px;
-  height: 9px;
-  min-width: 9px;
-  border-radius: 999px;
-  display: inline-flex;
-  margin: 0 4px 0 8px;
-  vertical-align: 0;
-}
-.recordAttendanceColorDot:first-child { margin-left: 0; }
-.recordAttendanceColorDot.blue { background: #0A84FF; }
-.recordAttendanceColorDot.yellow { background: #FFD88A; }
-.recordAttendanceSummaryTableWrap {
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  border-radius: 24px;
-  background: #fff;
-  box-shadow: 0 10px 26px rgba(0,0,0,.045), 0 2px 8px rgba(0,0,0,.02);
-}
-.recordAttendanceSummaryTable {
-  width: 100%;
-  min-width: 720px;
-  border-collapse: collapse;
-  border-spacing: 0;
-  table-layout: fixed;
-}
-.recordAttendanceSummaryTable th,
-.recordAttendanceSummaryTable td {
-  border-bottom: 1px solid #f0f0ee;
-  padding: 11px 10px;
-  font-size: calc(13px * var(--olli-text-scale));
-  line-height: 1.45;
-  color: #111;
-  text-align: left;
-  vertical-align: top;
-  word-break: keep-all;
-}
-.recordAttendanceSummaryTable th {
-  background: #fafaf8;
-  color: #777;
-  font-size: calc(12px * var(--olli-text-scale));
-  font-weight: 780;
-  white-space: nowrap;
-}
-.recordAttendanceSummaryTable tr:last-child td { border-bottom: none; }
-.recordAttendanceSummaryTable .nameCol { width: 92px; font-weight: 760; }
-.recordAttendanceSummaryTable .dateCol { width: 190px; color: #333; }
-.recordAttendanceSummaryTable .remainCol { width: 78px; text-align: center; font-weight: 780; color: #0A84FF; }
-.recordAttendanceSummaryEmpty {
-  padding: 46px 12px;
-  text-align: center;
-  color: #999;
-  font-size: calc(14px * var(--olli-text-scale));
-  line-height: 1.55;
-}
-
-.recordAttendanceSummaryWrap { padding-left: 6px; padding-right: 6px; }
-  .recordAttendanceSummaryHead { align-items: flex-start; flex-direction: column; gap: 4px; }
-  .recordAttendanceSummarySub { text-align: left; }
-
-
-/* integrated cleanup: olliRecordAttendanceTabRemovedStyle */
-/* 2026-07-03: 출석부 페이지의 초등부/유치부 옆 월별 출석부 요약 탭 삭제 */
-#recordAttendanceToggle { display: none; }
-.recordAttendanceSummaryWrap { display: none; }
 /* 2026-09-10: 폰 출석부 판정 상태 - 등원(초록) / 결석(빨강) / 보강(노랑) / 판정없음 */
 #recordRoomScreen .recordAttendanceLeadBtn.attended .recordAttendanceLeadFill {
   fill: #22C55E !important;
@@ -234,15 +132,18 @@
   align-items:center;
 }
 #recordRoomScreen .recordModeSettingsBtn{
-  position:fixed !important;
+  order:3 !important;
+  position:relative !important;
   top:auto !important;
-  right:var(--record-control-rail-right, 82px) !important;
-  bottom:var(--record-bottom-control-bottom, max(10px, env(safe-area-inset-bottom))) !important;
+  right:auto !important;
+  bottom:auto !important;
+  left:auto !important;
   width:47px !important;
   min-width:47px !important;
   max-width:47px !important;
   height:47px !important;
   min-height:47px !important;
+  flex:0 0 47px !important;
   border:none !important;
   border-radius:50% !important;
   background:#fff !important;
@@ -271,7 +172,7 @@
   background:#f1f1f1 !important;
 }
 
-/* 학생 이름과 가이드 텍스트를 한 줄에 표시한다. */
+/* 학생 이름과 기본 학생정보를 한 줄에 표시한다. */
 #recordRoomScreen .elementaryStudentRow .studentTextWrap,
 #recordRoomScreen .kinderStudentRow .studentTextWrap{
   min-width:0;

@@ -48,6 +48,7 @@ body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout #recordList::
 .pcAttendanceRosterHead>span{display:inline-flex;align-items:center;justify-content:center;min-width:48px;height:30px;padding:0 10px;border-radius:999px;background:#f2f4f7;color:#747b85;font-size:11px;font-weight:820;box-sizing:border-box;}
 .pcAttendanceRosterHead>span.pcAttendanceRosterDivision.elementary{background:#eaf4ff;color:#1687ff;}
 .pcAttendanceRosterHead>span.pcAttendanceRosterDivision.kinder{background:#ffe8f0;color:#e85b8d;}
+.pcAttendanceRosterHead>span.pcAttendanceRosterDivision.all{background:#f2f4f7;color:#747b85;}
 body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .recordStatusSection{margin-top:12px;}
 
 /* PC 학생명단 정렬 구분: 외부 margin이 아닌 divider 자체 padding으로 그룹 사이 30px을 확실히 확보 */
@@ -74,7 +75,7 @@ body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .kinderStuden
   display:none;height:100%;min-height:0;overflow:hidden;background:#fff;border:1px solid #e2e4e8;border-radius:26px;padding:0;box-sizing:border-box;box-shadow:0 8px 24px rgba(20,24,30,.035);
 }
 .recordBodyNew.pcAttendanceLayout .pcAttendanceDetailPanel{display:flex;flex-direction:column;}
-.pcAttendanceDetailHead{display:flex;align-items:center;justify-content:space-between;gap:16px;flex:0 0 auto;padding:20px 22px;border-bottom:1px solid #f0f1f3;}
+.pcAttendanceDetailHead{display:flex;align-items:center;justify-content:flex-start;gap:14px;flex:0 0 auto;min-height:67px;padding:12px 22px;border-bottom:1px solid #f0f1f3;box-sizing:border-box;}
 .pcAttendanceDetailTitle{font-size:18px;font-weight:880;letter-spacing:-.045em;color:#15171a;}
 .pcAttendanceDetailEmpty{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#9398a0;padding:30px;}
 .pcAttendanceDetailEmptyIcon{display:grid;place-items:center;width:54px;height:54px;border-radius:18px;background:#f2f6fb;color:#92bce9;margin-bottom:17px;}
@@ -87,7 +88,17 @@ body.olliPcApp #recordRoomScreen .recordBodyNew.pcAttendanceLayout .kinderStuden
 @keyframes pcAttendanceLoading{0%{background-position:100% 0}100%{background-position:-100% 0}}
 .pcAttendanceDetailBody{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:18px;flex:1;min-width:0;min-height:0;padding:18px 20px 20px;box-sizing:border-box;overflow:hidden;}
 .pcAttendanceEditorCard,.pcAttendanceCombinedCard{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;border:1px solid #edf0f3;border-radius:21px;background:#fafbfc;box-sizing:border-box;}
+.pcAttendanceRecordModeTabs{display:inline-flex;align-items:center;gap:3px;padding:4px;border:1px solid rgba(0,0,0,.055);border-radius:15px;background:#f4f4f2;}
+.pcAttendanceRecordModeTab{height:34px;min-width:78px;padding:0 15px;border:0;border-radius:11px;background:transparent;color:#8c8c8c;font:700 13px 'Pretendard',sans-serif;letter-spacing:-.035em;cursor:pointer;}
+.pcAttendanceRecordModeTab.active{background:#fff;color:#111;box-shadow:none;}
+.pcAttendanceStudentInfoBtn{margin-left:auto;}
 .pcAttendanceSharedEditorHost{position:relative;flex:1;min-width:0;min-height:0;overflow:hidden;background:#fff;}
+.pcAttendanceArchiveHead{flex:0 0 auto;padding:14px 12px 0;background:#fff;border-bottom:1px solid #f4f5f6;}
+.pcAttendanceArchiveTitle{padding:0 2px 10px;font:800 14px 'Pretendard',sans-serif;color:#15171a;letter-spacing:-.035em;}
+.pcAttendanceArchiveMonths{display:flex;flex-wrap:nowrap;align-items:center;gap:8px;width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;padding:0 2px 14px;}
+.pcAttendanceArchiveMonths::-webkit-scrollbar{display:none;}
+.pcAttendanceArchiveMonthBtn{flex:0 0 auto;min-width:60px;height:42px;padding:0 15px;border:1px solid #fff;border-radius:999px;background:#fff;color:#8e8e93;font:600 14px 'Pretendard',sans-serif;line-height:1;cursor:pointer;}
+.pcAttendanceArchiveMonthBtn.active{border-color:#0A84FF;background:#0A84FF;color:#fff;}
 .pcAttendanceCombinedBody{display:flex;flex-direction:column;gap:0;flex:1;min-height:0;overflow:hidden;padding:0 10px 10px;}
 /* 로컬 캐시가 없는 최초 조회에서도 로딩 문구는 노출하지 않고 서버 갱신은 뒤에서 계속 진행 */
 body.olliPcApp #recordRoomScreen #pcAttendanceCombinedBody > .attendanceFeedbackSheetEmpty{visibility:hidden;}

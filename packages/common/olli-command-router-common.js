@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-24-short-response-1';
+  const VERSION = '2026-09-30-memo-auto-class-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -180,6 +180,11 @@
     return Number(match && match[1] || 0);
   }
 
+  function firstTimeMinute(value) {
+    const match = cleanText(value).match(/\d{1,2}\s*시(?:\s*(\d{1,2})\s*분)?/);
+    return Number(match && match[1] || 0);
+  }
+
   function firstClassGroup(value) {
     const match = cleanText(value).match(/([AaBb])\s*반/i);
     return cleanText(match && match[1]).toUpperCase();
@@ -255,6 +260,7 @@
       .replace(/[.!?,]/g, ' ')
       .replace(/(?:오늘|금일|내일|(?:(?:이번\s*주|금주|다다음\s*주|다음\s*주|차주)\s*)?[월화수목금토]요일)/g, ' ')
       .replace(/\d{1,2}\s*월\s*\d{1,2}\s*일/g, ' ')
+      .replace(/\d{1,2}\s*\/\s*\d{1,2}\s*일/g, ' ')
       .replace(/(?:^|\s)\d{1,2}\s*일(?=\s|$)/g, ' ')
       .replace(/\d{1,2}\s*시(?:에서|으로|에|로)?/g, ' ')
       .replace(/[AaBb]\s*반/g, ' ')
@@ -308,6 +314,16 @@
         month:Number(monthDay[1]),
         day:Number(monthDay[2]),
         label:Number(monthDay[1]) + '월 ' + Number(monthDay[2]) + '일'
+      };
+    }
+
+    const slashMonthDay = compact.match(/(?:^|[^\d])(\d{1,2})\/(\d{1,2})일(?!요일)/);
+    if (slashMonthDay) {
+      return {
+        mode:'month_day',
+        month:Number(slashMonthDay[1]),
+        day:Number(slashMonthDay[2]),
+        label:Number(slashMonthDay[1]) + '월 ' + Number(slashMonthDay[2]) + '일'
       };
     }
 
@@ -635,9 +651,14 @@
     const compact = compactText(raw);
     const weekdayMatch = compact.match(/([월화수목금토])요일/);
     const weekday = weekdayMatch ? (WEEKDAY_MAP[weekdayMatch[1]] || 0) : 0;
-    const explicitClass = raw.match(/(\d{1,2})\s*시\s*(?:수업|클래스)/);
-    const weekdayClass = raw.match(/[월화수목금토]\s*요일\s*(\d{1,2})\s*시/);
-    return { weekday, classTime:Number((explicitClass || weekdayClass)?.[1] || 0) };
+    const explicitClass = raw.match(/(\d{1,2})\s*시(?:\s*(\d{1,2})\s*분)?\s*(?:수업|클래스)/);
+    const weekdayClass = raw.match(/[월화수목금토]\s*요일\s*(\d{1,2})\s*시(?:\s*(\d{1,2})\s*분)?/);
+    const match = explicitClass || weekdayClass;
+    return {
+      weekday,
+      classTime:Number(match?.[1] || 0),
+      classMinute:Number(match?.[2] || 0)
+    };
   }
 
   function pickupEditLabel(value, studentName) {
@@ -660,7 +681,7 @@
     const target = pickupClassTarget(raw);
     return {
       type:'mutation', intent:'cancel_pickup', studentName,
-      weekday:target.weekday, classTime:target.classTime,
+      weekday:target.weekday, classTime:target.classTime, classMinute:target.classMinute,
       pickupKind:/하원/.test(compact) ? 'dropoff' : 'all',
       originalText:raw
     };
@@ -676,11 +697,16 @@
     const target = pickupClassTarget(raw);
     const clocks = pickupClockMentions(raw);
     let classClock = null;
-    if (target.classTime) classClock = clocks.find(item => Number(item.hour) === target.classTime) || null;
+    if (target.classTime) {
+      classClock = clocks.find(item =>
+        Number(item.hour) === target.classTime
+        && Number(item.minute || 0) === Number(target.classMinute || 0)
+      ) || null;
+    }
     const pickupClock = clocks.filter(item => item !== classClock).slice(-1)[0] || null;
     return {
       type:'mutation', intent:'update_pickup', studentName,
-      weekday:target.weekday, classTime:target.classTime,
+      weekday:target.weekday, classTime:target.classTime, classMinute:target.classMinute,
       pickupKind:/하원/.test(compact) ? 'dropoff' : 'arrival',
       pickupLabel:pickupEditLabel(raw, studentName),
       pickupTime:normalizePickupClock(pickupClock),
@@ -706,7 +732,10 @@
 
     let classClock = null;
     if (classTime) {
-      classClock = clocks.find(item => Number(item.hour) === classTime) || null;
+      classClock = clocks.find(item =>
+        Number(item.hour) === classTime
+        && Number(item.minute || 0) === Number(target.classMinute || 0)
+      ) || null;
     }
     const pickupClock = clocks.filter(item => item !== classClock).slice(-1)[0] || null;
 
@@ -719,6 +748,7 @@
       studentName,
       weekday,
       classTime,
+      classMinute:target.classMinute,
       pickupLabel,
       pickupTime:normalizePickupClock(pickupClock),
       isDropoff:/하원/.test(compact),
@@ -757,9 +787,122 @@
     };
   }
 
+  function quotedTimetableMemoNote(value) {
+    const raw = cleanText(value);
+    const match = raw.match(/(?:‘([^’]+)’|“([^”]+)”|"([^"]+)"|'([^']+)')/);
+    if (!match) return '';
+    return cleanText(match[1] || match[2] || match[3] || match[4]);
+  }
+
+  function stripTimetableMemoTargetParts(value) {
+    return removeDivisionWords(value)
+      .replace(/(?:‘[^’]+’|“[^”]+”|"[^"]+"|'[^']+')/g, ' ')
+      .replace(/[.!?]/g, ' ')
+      .replace(/(?:오늘|금일|내일|(?:(?:이번\s*주|금주|다다음\s*주|다음\s*주|차주)\s*)?[월화수목금토]요일)/g, ' ')
+      .replace(/\d{1,2}\s*월\s*\d{1,2}\s*일/g, ' ')
+      .replace(/\d{1,2}\s*\/\s*\d{1,2}\s*일/g, ' ')
+      .replace(/(?:^|\s)\d{1,2}\s*일(?=\s|$)/g, ' ')
+      .replace(/\d{1,2}\s*시(?:\s*\d{1,2}\s*분)?(?:에서|으로|에|로)?/g, ' ')
+      .replace(/[AaBb]\s*반/g, ' ')
+      .replace(/(?:이라고|라고|이라는|라는)/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function extractTimetableMemoStudentName(value) {
+    const raw = cleanText(value);
+    const memoIndex = raw.search(/(?:시간표\s*)?메모/);
+    if (memoIndex < 0) return '';
+    let prefix = stripTimetableMemoTargetParts(raw.slice(0, memoIndex))
+      .replace(/(?:내용|문구)\s*[:：-]?\s*/g, ' ')
+      .replace(/(?:학생|원생)/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return cleanupStudentName(prefix);
+  }
+
+  function extractTimetableMemoNote(value) {
+    const quoted = quotedTimetableMemoNote(value);
+    if (quoted) return quoted;
+
+    const studentName = extractTimetableMemoStudentName(value);
+    let stripped = removeDivisionWords(value)
+      .replace(/[.!?]/g, ' ')
+      .replace(/(?:오늘|금일|내일|(?:(?:이번\s*주|금주|다다음\s*주|다음\s*주|차주)\s*)?[월화수목금토]요일)/g, ' ')
+      .replace(/\d{1,2}\s*월\s*\d{1,2}\s*일/g, ' ')
+      .replace(/\d{1,2}\s*\/\s*\d{1,2}\s*일/g, ' ')
+      .replace(/(?:^|\s)\d{1,2}\s*일(?=\s|$)/g, ' ')
+      .replace(/\d{1,2}\s*시(?:\s*\d{1,2}\s*분)?(?:에서|으로|에|로)?/g, ' ')
+      .replace(/[AaBb]\s*반/g, ' ')
+      .replace(/(?:시간표\s*)?메모(?:\s*내용)?(?:에|로|를|을)?/g, ' ')
+      .replace(/(?:내용|문구)\s*[:：-]?\s*/g, ' ')
+      .replace(addActionPattern(), ' ')
+      .replace(/(?:(?:취소|삭제|제거|해제|없애)(?:\s*(?:좀|한번))?\s*(?:해)?(?:줘요|주세요|줘|줄래|해줘요|해주세요|해줘|해줄래|할래|해|요)?|(?:지워|지우|빼)(?:\s*(?:좀|한번))?\s*(?:줘요|주세요|줘|줄래|해줘요|해주세요|해줘|해줄래|할래|해|요)?)/g, ' ')
+      .replace(/(?:이라고|라고|이라는|라는)/g, ' ')
+      .replace(/(?:전부|모두|전체)/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (studentName && stripped.indexOf(studentName) === 0) {
+      stripped = stripped.slice(studentName.length).trim();
+    }
+
+    stripped = stripped
+      .replace(/^(?:에|로|를|을|좀|한번)\s*/g, '')
+      .replace(/^["'“”‘’]+|["'“”‘’]+$/g, '')
+      .trim();
+    return stripped;
+  }
+
+  function parseTimetableMemoAddMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !/(?:시간표)?메모/.test(compact)) return null;
+    if (!hasAddAction(compact) || hasRemoveAction(compact)) return null;
+
+    const dateSpec = parseDateExpression(compact);
+    return {
+      type:'mutation',
+      intent:'add_timetable_memo',
+      division:detectDivision(compact),
+      dateSpec,
+      dateLabel:dateSpec ? dateSpec.label : '',
+      timeSlot:firstTimeSlot(raw),
+      timeMinute:firstTimeMinute(raw),
+      classGroup:firstClassGroup(raw),
+      studentName:extractTimetableMemoStudentName(raw),
+      memoNote:extractTimetableMemoNote(raw),
+      originalText:raw
+    };
+  }
+
+  function parseTimetableMemoDeleteMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw || !/(?:시간표)?메모/.test(compact)) return null;
+    if (!hasRemoveAction(compact)) return null;
+
+    const dateSpec = parseDateExpression(compact);
+    return {
+      type:'mutation',
+      intent:'delete_timetable_memo',
+      division:detectDivision(compact),
+      dateSpec,
+      dateLabel:dateSpec ? dateSpec.label : '',
+      timeSlot:firstTimeSlot(raw),
+      timeMinute:firstTimeMinute(raw),
+      classGroup:firstClassGroup(raw),
+      studentName:extractTimetableMemoStudentName(raw),
+      memoNote:extractTimetableMemoNote(raw),
+      originalText:raw
+    };
+  }
+
   function parseSingleWriteIntent(text) {
     const normalizedText = cleanText(text);
-    return parseAbsenceMutationIntent(normalizedText)
+    return parseTimetableMemoDeleteMutationIntent(normalizedText)
+      || parseTimetableMemoAddMutationIntent(normalizedText)
+      || parseAbsenceMutationIntent(normalizedText)
       || parseTrialCancelMutationIntent(normalizedText)
       || parseMakeupCancelMutationIntent(normalizedText)
       || parseMoveCancelMutationIntent(normalizedText)
@@ -1759,6 +1902,8 @@
     parsePickupCancelMutationIntent,
     parsePickupUpdateMutationIntent,
     parsePickupMutationIntent,
+    parseTimetableMemoAddMutationIntent,
+    parseTimetableMemoDeleteMutationIntent,
     parseMultiWriteIntent,
     parseClassMutationIntent,
     parseDateExpression,

@@ -132,6 +132,71 @@ test('makeup write wording parses date, time, and optional class group', () => {
   assert.equal(parsed.classGroup, 'B');
 });
 
+test('timetable memo add and delete wording parses target and memo content', () => {
+  const router = loadRouter();
+
+  const add = router.parseTimetableMemoAddMutationIntent('초등부 10/2일 5시 A반 메모에 준비물 주문 등록해줘');
+  assert.equal(add.intent, 'add_timetable_memo');
+  assert.equal(add.division, 'elementary');
+  assert.equal(add.dateSpec.mode, 'month_day');
+  assert.equal(add.dateSpec.month, 10);
+  assert.equal(add.dateSpec.day, 2);
+  assert.equal(add.timeSlot, 5);
+  assert.equal(add.classGroup, 'A');
+  assert.equal(add.memoNote, '준비물 주문');
+
+  const remove = router.parseTimetableMemoDeleteMutationIntent('유치부 내일 4시 B반 "앞치마 준비" 메모 삭제해줘');
+  assert.equal(remove.intent, 'delete_timetable_memo');
+  assert.equal(remove.division, 'kinder');
+  assert.equal(remove.dateSpec.mode, 'tomorrow');
+  assert.equal(remove.timeSlot, 4);
+  assert.equal(remove.classGroup, 'B');
+  assert.equal(remove.memoNote, '앞치마 준비');
+});
+
+test('timetable memo parser keeps quoted memo text and extracts the student for automatic class lookup', () => {
+  const router = loadRouter();
+  const parsed = router.parseTimetableMemoAddMutationIntent('오늘 한재림 ‘오늘 어머님이 픽업’ 이라고 메모 등록해줘');
+
+  assert.equal(parsed.intent, 'add_timetable_memo');
+  assert.equal(parsed.studentName, '한재림');
+  assert.equal(parsed.dateSpec.mode, 'today');
+  assert.equal(parsed.timeSlot, 0);
+  assert.equal(parsed.classGroup, '');
+  assert.equal(parsed.memoNote, '오늘 어머님이 픽업');
+});
+
+test('timetable memo write enters the same confirmation flow as other write commands', async () => {
+  let prepared = null;
+  const router = loadRouter({
+    async prepareWriteCommand(intent, options) {
+      prepared = { intent, options };
+      return {
+        ok:true,
+        command:{
+          intent,
+          division:options.division,
+          sessionDate:'2026-10-02',
+          timeSlot:5,
+          classGroup:'A',
+          memoNote:options.memoNote
+        },
+        message:'메모를 등록할까요?'
+      };
+    },
+    writeConfirmationMessage() { return '메모를 등록할까요?'; }
+  });
+
+  const result = await router.route('초등부 10/2일 5시 메모에 준비물 주문 등록해줘', {
+    source:'olli_talk'
+  });
+  assert.equal(result.kind, 'command_confirmation');
+  assert.equal(result.intent, 'add_timetable_memo');
+  assert.equal(prepared.intent, 'add_timetable_memo');
+  assert.equal(prepared.options.memoNote, '준비물 주문');
+  assert.ok(prepared.options.date instanceof Date);
+});
+
 test('write command requires confirmation before execution', async () => {
   let prepared = null;
   let executed = null;
@@ -274,6 +339,19 @@ test('makeup cancellation wording parses optional date and time', () => {
   assert.equal(short.studentName, '김태리');
   assert.equal(short.dateSpec, null);
   assert.equal(short.timeSlot, 0);
+});
+
+test('slash month/day does not become part of a registered student name during makeup cancellation', () => {
+  const router = loadRouter();
+
+  const parsed = router.parseMakeupCancelMutationIntent('토)김채원 10/6일 5시 보강 취소해줘');
+
+  assert.equal(parsed.intent, 'cancel_makeup');
+  assert.equal(parsed.studentName, '토)김채원');
+  assert.equal(parsed.dateSpec.mode, 'month_day');
+  assert.equal(parsed.dateSpec.month, 10);
+  assert.equal(parsed.dateSpec.day, 6);
+  assert.equal(parsed.timeSlot, 5);
 });
 
 test('scheduled move cancellation wording parses optional source day and time', () => {

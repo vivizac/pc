@@ -30,8 +30,8 @@ test('opening one-minute feedback explicitly hides the observation persistent na
 });
 
 test('observation navigation assets use the roster-hamburger-owner cache key', () => {
-  assert.match(index, /olli-observation-roster-phone\.js\?v=20260928-roster-header-scroll-1/);
-  assert.match(index, /olli-observation-roster-phone\.css\?v=20260928-memo-voice-pending-1/);
+  assert.match(index, /olli-observation-roster-phone\.js\?v=20260930-observation-roster-physical-boundary-1/);
+  assert.match(index, /olli-observation-roster-phone\.css\?v=20260930-observation-roster-physical-boundary-1/);
   assert.match(index, /olli-phone-control-style\.css\?v=20260925-roster-hamburger-owner-1/);
   assert.doesNotMatch(index, /kinder-feedback-keyboard\.css/);
 });

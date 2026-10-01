@@ -63,6 +63,7 @@
   --olli-talk-composer-vv-width:100vw;
   --olli-talk-composer-vv-height:100vh;
   --olli-talk-chat-reserve:74px;
+  --olli-talk-message-lift:0px;
   padding-top:0;
   align-items:stretch;
   background:var(--olli-talk-bg);
@@ -550,6 +551,29 @@
   align-items:flex-end;
 }
 
+#olliTalkBetaScreen .olliTalkSelectedMentionPrefix{
+  position:relative;
+  z-index:2;
+  flex:0 0 auto;
+  max-width:42%;
+  min-height:34px;
+  display:inline-flex;
+  align-items:center;
+  padding:5px 0 3px;
+  margin-right:.38em;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#1687F8;
+  font-family:inherit;
+  font-size:calc(16px * var(--olli-text-scale, 1));
+  font-weight:500;
+  line-height:1.45;
+}
+#olliTalkBetaScreen .olliTalkSelectedMentionPrefix[hidden]{
+  display:none;
+}
+
 #olliTalkBetaScreen .olliTalkBetaInput{
   position:relative;
   z-index:2;
@@ -689,6 +713,8 @@
   flex-direction:column;
   justify-content:flex-end;
   padding:8px 0 10px;
+  transform:translate3d(0,calc(-1 * var(--olli-talk-message-lift, 0px)),0);
+  transition:none;
 }
 
 #olliTalkBetaScreen .olliTalkBetaPreviewNote{
@@ -1367,11 +1393,6 @@
 
 
 #olliTalkBetaScreen .olliTalkBetaComposerWrap{
-  transition:none;
-}
-
-#olliTalkBetaScreen.olliTalkViewportMoving .olliTalkBetaComposerWrap{
-  opacity:0;
   transition:none;
 }
 

@@ -119,6 +119,7 @@ function applyKinderChatFeedbackGuideVisibility(){
   const screen = document.getElementById('kinderChatFeedbackScreen');
   if (!screen) return;
   screen.classList.toggle('kcfGuideHidden', !isKinderChatFeedbackGuideVisible());
+
 }
 function setKinderChatFeedbackGuideVisibility(visible){
   try {
@@ -175,7 +176,7 @@ let kcfVivicotInboxMidnightTimer = null;
 let kcfActiveKeyword = '';
 let kcfKeepInputFocusUntil = 0;
 let kcfKeyboardBaselineBottom = 0;
-let kcfComposerViewportFrame = 0;
+let kcfViewportBound = false;
 let kcfPendingPhoto = null;
 let kcfManualSelectedStudentId = '';
 let kcfManualSelectedStudentName = '';
@@ -227,31 +228,52 @@ const kcfKeywordQuestions = {
   friend: { title:'친구와 협력', questions:['친구와 어떤 상호작용이 있었나요?', '양보하거나 도와준 장면이 있었나요?', '협력 후 아이의 반응은 어땠나요?'] },
   focus: { title:'집중', questions:['아이가 집중한 장면은 무엇이었나요?', '얼마나 오래 이어가려 했나요?', '집중이 표현으로 이어진 부분은 무엇인가요?'] }
 };
-function syncKinderChatFeedbackComposerViewport() {
-  const layer = document.getElementById('kcfComposerLayer');
-  if (!layer) return;
-
+function getKinderChatFeedbackScreen() {
+  return document.getElementById('kinderChatFeedbackScreen');
+}
+function getKinderChatFeedbackInput() {
+  return document.getElementById('kcfInput');
+}
+function getKinderChatFeedbackMessageList() {
+  const area = document.getElementById('kcfChatArea');
+  if (!area) return null;
+  let list = document.getElementById('kcfMessageList');
+  if (!list) {
+    list = document.createElement('div');
+    list.id = 'kcfMessageList';
+    list.className = 'kcfMessageList';
+    area.appendChild(list);
+  }
+  return list;
+}
+function isKinderChatFeedbackVisible() {
+  const screen = getKinderChatFeedbackScreen();
+  if (!screen) return false;
+  return getComputedStyle(screen).display !== 'none';
+}
+function readKinderChatFeedbackComposerViewportGeometry() {
   const viewport = window.visualViewport;
   const layoutWidth = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
   const layoutHeight = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
-  const left = viewport ? Number(viewport.offsetLeft || 0) : 0;
-  const top = viewport ? Number(viewport.offsetTop || 0) : 0;
-  const width = viewport ? Number(viewport.width || layoutWidth) : layoutWidth;
-  const height = viewport ? Number(viewport.height || layoutHeight) : layoutHeight;
-
-  layer.style.setProperty('--kcf-composer-vv-left', Math.round(left) + 'px');
-  layer.style.setProperty('--kcf-composer-vv-top', Math.round(top) + 'px');
-  layer.style.setProperty('--kcf-composer-vv-width', Math.max(1, Math.round(width)) + 'px');
-  layer.style.setProperty('--kcf-composer-vv-height', Math.max(1, Math.round(height)) + 'px');
+  return {
+    left: viewport ? Number(viewport.offsetLeft || 0) : 0,
+    top: viewport ? Number(viewport.offsetTop || 0) : 0,
+    width: viewport ? Number(viewport.width || layoutWidth) : layoutWidth,
+    height: viewport ? Number(viewport.height || layoutHeight) : layoutHeight
+  };
 }
-function scheduleKinderChatFeedbackComposerViewportSync() {
-  if (kcfComposerViewportFrame) return;
-  kcfComposerViewportFrame = requestAnimationFrame(() => {
-    kcfComposerViewportFrame = 0;
-    syncKinderChatFeedbackComposerViewport();
-  });
+function applyKinderChatFeedbackComposerViewportGeometry(layer, geometry) {
+  if (!layer || !geometry) return;
+  layer.style.setProperty('--kcf-composer-vv-left', Math.round(Number(geometry.left) || 0) + 'px');
+  layer.style.setProperty('--kcf-composer-vv-top', Math.round(Number(geometry.top) || 0) + 'px');
+  layer.style.setProperty('--kcf-composer-vv-width', Math.max(1, Math.round(Number(geometry.width) || 1)) + 'px');
+  layer.style.setProperty('--kcf-composer-vv-height', Math.max(1, Math.round(Number(geometry.height) || 1)) + 'px');
 }
-
+function syncKinderChatFeedbackComposerViewport() {
+  const layer = document.getElementById('kcfComposerLayer');
+  if (!layer) return;
+  applyKinderChatFeedbackComposerViewportGeometry(layer, readKinderChatFeedbackComposerViewportGeometry());
+}
 function getKinderChatFeedbackViewportBottom() {
   const viewport = window.visualViewport;
   if (!viewport) return Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
@@ -259,64 +281,197 @@ function getKinderChatFeedbackViewportBottom() {
 }
 function captureKinderChatFeedbackKeyboardBaseline(force = false) {
   const currentBottom = getKinderChatFeedbackViewportBottom();
+  if (!currentBottom) return;
   const layoutBottom = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
   const candidate = Math.max(currentBottom, layoutBottom);
   if (force || !kcfKeyboardBaselineBottom) kcfKeyboardBaselineBottom = candidate;
 }
-function updateKinderChatFeedbackKeyboardOffset() {
-  scheduleKinderChatFeedbackComposerViewportSync();
-  const screen = document.getElementById('kinderChatFeedbackScreen');
-  const input = document.getElementById('kcfInput');
+function getKinderChatFeedbackKeyboardOffset() {
+  const currentBottom = getKinderChatFeedbackViewportBottom();
+  if (!kcfKeyboardBaselineBottom) captureKinderChatFeedbackKeyboardBaseline(true);
+  return Math.max(0, Math.round(kcfKeyboardBaselineBottom - currentBottom));
+}
+function resetKinderChatFeedbackRootViewportScroll() {
+  if (!isKinderChatFeedbackVisible()) return;
+  try { window.scrollTo(0, 0); } catch (_) {}
+  try { document.documentElement.scrollTop = 0; } catch (_) {}
+  try { document.body.scrollTop = 0; } catch (_) {}
+}
+function scheduleKinderChatFeedbackRootViewportReset() {
+  [0, 16, 50, 100, 200].forEach(delay => {
+    setTimeout(resetKinderChatFeedbackRootViewportScroll, delay);
+  });
+}
+function syncKinderChatFeedbackViewport() {
+  const screen = getKinderChatFeedbackScreen();
+  const input = getKinderChatFeedbackInput();
   if (!screen) return;
-  const isFocused = (document.activeElement === input) || (Date.now() < kcfKeepInputFocusUntil);
-  const topLayer = document.getElementById('kcfPersistentTopLayer');
-  if (!isFocused) {
+
+  syncKinderChatFeedbackComposerViewport();
+
+  const inputFocused = !!input && document.activeElement === input;
+  const protectedFocus = inputFocused || Date.now() < kcfKeepInputFocusUntil;
+  if (!protectedFocus) {
     kcfKeyboardBaselineBottom = 0;
     screen.classList.remove('kcfKeyboardOpen');
-    screen.style.setProperty('--kcf-composer-bottom', '0px');
-    if (topLayer) topLayer.classList.remove('kcfKeyboardHidden');
     if (input) autoResizeKinderChatFeedbackInput(input);
     return;
   }
+
   if (!kcfKeyboardBaselineBottom) captureKinderChatFeedbackKeyboardBaseline(true);
-  const currentBottom = getKinderChatFeedbackViewportBottom();
-  const inset = Math.max(0, kcfKeyboardBaselineBottom - currentBottom);
+  const keyboardOffset = getKinderChatFeedbackKeyboardOffset();
   const viewport = window.visualViewport;
   const viewportShrunk = viewport
     ? (Math.max(window.innerHeight || 0, kcfKeyboardBaselineBottom) - viewport.height) > 80
     : true;
-  const open = !viewport || inset > 80 || viewportShrunk;
-  screen.classList.toggle('kcfKeyboardOpen', open);
+  const keyboardOpen = !viewport || keyboardOffset > 80 || viewportShrunk;
+  screen.classList.toggle('kcfKeyboardOpen', keyboardOpen);
   if (input) autoResizeKinderChatFeedbackInput(input);
-
-  // Keep the inline composer at its normal keyboard-open position.
-  screen.style.setProperty('--kcf-composer-bottom', '0px');
-
-  // 키보드가 열리면 상단 고정 버튼 레이어는 완전히 숨긴다.
-  // 위로 밀면 iOS에서 버튼 일부가 화면 상단 끝에 남아 보일 수 있다.
-  if (topLayer) topLayer.classList.toggle('kcfKeyboardHidden', open);
 }
-function getKinderChatFeedbackTeacherMode() {
-  return window.KcfTeacherMode || window.KcfAutoMode || null;
-}
-function bindKinderChatFeedbackKeyboardOffset() {
-  if (window.__kcfKeyboardOffsetBound) return;
-  window.__kcfKeyboardOffsetBound = true;
-  scheduleKinderChatFeedbackComposerViewportSync();
-  const handleKinderChatFeedbackViewportChange = () => {
-    scheduleKinderChatFeedbackComposerViewportSync();
-    updateKinderChatFeedbackKeyboardOffset();
-  };
-  document.addEventListener('pointerdown', event => {
-    const input = document.getElementById('kcfInput');
-    if (!input || event.target !== input) return;
-    captureKinderChatFeedbackKeyboardBaseline(true);
-  }, true);
+function bindKinderChatFeedbackViewport() {
+  if (kcfViewportBound) return;
+  kcfViewportBound = true;
+  window.addEventListener('resize', syncKinderChatFeedbackViewport, { passive:true });
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', handleKinderChatFeedbackViewportChange);
-    window.visualViewport.addEventListener('scroll', handleKinderChatFeedbackViewportChange);
+    window.visualViewport.addEventListener('resize', syncKinderChatFeedbackViewport, { passive:true });
+    window.visualViewport.addEventListener('scroll', () => {
+      resetKinderChatFeedbackRootViewportScroll();
+      syncKinderChatFeedbackViewport();
+    }, { passive:true });
   }
-  window.addEventListener('resize', handleKinderChatFeedbackViewportChange);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden || !isKinderChatFeedbackVisible()) return;
+    scheduleKinderChatFeedbackRootViewportReset();
+    setTimeout(syncKinderChatFeedbackViewport, 50);
+    setTimeout(syncKinderChatFeedbackViewport, 160);
+  });
+  window.addEventListener('pageshow', () => {
+    if (!isKinderChatFeedbackVisible()) return;
+    scheduleKinderChatFeedbackRootViewportReset();
+    setTimeout(syncKinderChatFeedbackViewport, 50);
+  });
+}
+function bindKinderChatFeedbackViewportInteractions() {
+  if (window.__kcfViewportInteractionsBound) return;
+  window.__kcfViewportInteractionsBound = true;
+
+  const input = getKinderChatFeedbackInput();
+  const questionGuide = document.getElementById('kcfQuestionGuide');
+  const keywordScroller = document.getElementById('kcfKeywordScroller');
+
+  if (questionGuide) {
+    questionGuide.addEventListener('touchmove', event => {
+      if (!questionGuide.classList.contains('show')) return;
+      event.preventDefault();
+      event.stopPropagation();
+    }, { passive:false });
+  }
+
+  if (keywordScroller) {
+    let keywordTouchStartX = null;
+    let keywordTouchStartY = null;
+    keywordScroller.addEventListener('touchstart', event => {
+      const touch = event.touches?.[0];
+      keywordTouchStartX = touch ? Number(touch.clientX) : null;
+      keywordTouchStartY = touch ? Number(touch.clientY) : null;
+    }, { passive:true });
+    keywordScroller.addEventListener('touchmove', event => {
+      const touch = event.touches?.[0];
+      if (!touch || !Number.isFinite(keywordTouchStartX) || !Number.isFinite(keywordTouchStartY)) return;
+      const deltaX = Math.abs(Number(touch.clientX) - keywordTouchStartX);
+      const deltaY = Math.abs(Number(touch.clientY) - keywordTouchStartY);
+      if (deltaY < 6 || deltaY <= deltaX) return;
+      event.preventDefault();
+      event.stopPropagation();
+    }, { passive:false });
+    const clearKeywordTouch = () => {
+      keywordTouchStartX = null;
+      keywordTouchStartY = null;
+    };
+    keywordScroller.addEventListener('touchend', clearKeywordTouch, { passive:true });
+    keywordScroller.addEventListener('touchcancel', clearKeywordTouch, { passive:true });
+  }
+
+  if (input) {
+    const composer = input.closest('.kcfComposer');
+    let composerTouchStartX = null;
+    let composerTouchStartY = null;
+
+    input.addEventListener('pointerdown', event => {
+      if (event.pointerType === 'touch') {
+        const teacherMode = getKinderChatFeedbackTeacherMode();
+        const teacherEnabled = !!(
+          teacherMode
+          && typeof teacherMode.isEnabled === 'function'
+          && teacherMode.isEnabled()
+        );
+        if (!teacherEnabled) {
+          kcfKeepInputFocusUntil = Date.now() + 900;
+        }
+        captureKinderChatFeedbackKeyboardBaseline(true);
+        return;
+      }
+      captureKinderChatFeedbackKeyboardBaseline(true);
+    }, true);
+
+    if (composer) {
+      composer.addEventListener('touchstart', event => {
+        const touch = event.touches?.[0];
+        composerTouchStartX = touch ? Number(touch.clientX) : null;
+        composerTouchStartY = touch ? Number(touch.clientY) : null;
+      }, { passive:true });
+
+      composer.addEventListener('touchmove', event => {
+        if (!getKinderChatFeedbackScreen()?.classList.contains('kcfKeyboardOpen')) return;
+        const touch = event.touches?.[0];
+        if (!touch || !Number.isFinite(composerTouchStartX) || !Number.isFinite(composerTouchStartY)) return;
+        const deltaX = Math.abs(Number(touch.clientX) - composerTouchStartX);
+        const deltaY = Math.abs(Number(touch.clientY) - composerTouchStartY);
+        if (deltaY < 6 || deltaY <= deltaX) return;
+        event.preventDefault();
+        event.stopPropagation();
+      }, { passive:false });
+
+      const clearComposerTouch = () => {
+        composerTouchStartX = null;
+        composerTouchStartY = null;
+      };
+      composer.addEventListener('touchend', clearComposerTouch, { passive:true });
+      composer.addEventListener('touchcancel', clearComposerTouch, { passive:true });
+    }
+
+    input.addEventListener('focus', () => {
+      captureKinderChatFeedbackKeyboardBaseline(true);
+      scheduleKinderChatFeedbackRootViewportReset();
+      syncKinderChatFeedbackViewport();
+      setTimeout(syncKinderChatFeedbackViewport, 50);
+      setTimeout(syncKinderChatFeedbackViewport, 150);
+      setTimeout(syncKinderChatFeedbackViewport, 300);
+    }, true);
+
+    input.addEventListener('blur', () => {
+      if (Date.now() < kcfKeepInputFocusUntil) {
+        setTimeout(() => {
+          const currentInput = getKinderChatFeedbackInput();
+          if (currentInput) {
+            try { currentInput.focus({ preventScroll:true }); }
+            catch (_) { currentInput.focus(); }
+          }
+        }, 0);
+        return;
+      }
+      scheduleKinderChatFeedbackRootViewportReset();
+      setTimeout(syncKinderChatFeedbackViewport, 40);
+      setTimeout(syncKinderChatFeedbackViewport, 140);
+      setTimeout(() => {
+        syncKinderChatFeedbackViewport();
+        if (document.activeElement !== input) kcfKeyboardBaselineBottom = 0;
+      }, 320);
+    });
+  }
+
+  bindKinderChatFeedbackViewport();
+  syncKinderChatFeedbackViewport();
 }
 function setKinderChatFeedbackPersistentTopVisible(visible) {
   const layer = document.getElementById('kcfPersistentTopLayer');
@@ -394,16 +549,16 @@ function openKinderChatFeedbackPage(options = {}) {
   }
   const page = document.getElementById('kinderChatFeedbackScreen');
   if (page) page.style.display = 'flex';
-  scheduleKinderChatFeedbackComposerViewportSync();
   restoreKinderChatFeedbackLiveSession();
   setKinderChatFeedbackPersistentTopVisible(true);
-  bindKinderChatFeedbackKeyboardOffset();
+  bindKinderChatFeedbackViewportInteractions();
   loadKinderChatFeedbackDraft();
   applyKinderChatFeedbackGuideVisibility();
   syncKinderChatFeedbackManualSelectionUi();
   updateKinderChatFeedbackBadge();
   scheduleKinderChatFeedbackVivicotBubbleMidnightReset();
-  updateKinderChatFeedbackKeyboardOffset();
+  syncKinderChatFeedbackViewport();
+
   const teacherMode = getKinderChatFeedbackTeacherMode();
   if (teacherMode && typeof teacherMode.onPageOpened === 'function') {
     setTimeout(() => teacherMode.onPageOpened(), 0);
@@ -421,6 +576,7 @@ async function closeKinderChatFeedbackPage() {
   }
   kcfKeyboardBaselineBottom = 0;
   const page = document.getElementById('kinderChatFeedbackScreen');
+  if (page) page.classList.remove('kcfKeyboardOpen');
   if (page) page.style.display = 'none';
   setKinderChatFeedbackPersistentTopVisible(false);
   if (typeof window.openOlliAttendancePage === 'function') {
@@ -570,6 +726,7 @@ function autoResizeKinderChatFeedbackInput(input) {
     input.style.minHeight = `${minHeight}px`;
     input.style.maxHeight = `${minHeight}px`;
     input.style.overflowY = 'hidden';
+
     return;
   }
 
@@ -579,12 +736,14 @@ function autoResizeKinderChatFeedbackInput(input) {
   const nextHeight = Math.max(minHeight, Math.min(maxHeight, input.scrollHeight || minHeight));
   input.style.height = `${nextHeight}px`;
   input.style.overflowY = (input.scrollHeight || 0) > maxHeight ? 'auto' : 'hidden';
+
 }
 window.autoResizeKinderChatFeedbackInput = autoResizeKinderChatFeedbackInput;
 function focusKinderChatFeedbackInput() {
   const input = document.getElementById('kcfInput');
   if (!input) return;
-  input.focus();
+  try { input.focus({ preventScroll:true }); }
+  catch (_) { input.focus(); }
 }
 function openKinderChatFeedbackPhotoPicker(event) {
   if (event) event.stopPropagation();
@@ -912,7 +1071,10 @@ async function handleKinderChatFeedbackPhotoChange(event) {
     };
     renderKinderChatFeedbackPhotoPreview();
     const textInput = document.getElementById('kcfInput');
-    if (textInput) textInput.focus();
+    if (textInput) {
+      try { textInput.focus({ preventScroll:true }); }
+      catch (_) { textInput.focus(); }
+    }
   } catch(err) {
     console.error('1분 피드백 사진 처리 오류:', err);
     setKinderChatFeedbackWarning(err.message || '사진을 추가하지 못했습니다.');
@@ -1007,7 +1169,8 @@ function typeKinderChatFeedbackBotMessage(bubble, messageText, area) {
 }
 function addKinderChatMessage(role, text) {
   const area = document.getElementById('kcfChatArea');
-  if (!area) return;
+  const messageList = getKinderChatFeedbackMessageList();
+  if (!area || !messageList) return;
   const intro = document.getElementById('kcfCenterIntro');
   if (intro) intro.classList.add('hidden');
   const row = document.createElement('div');
@@ -1019,7 +1182,7 @@ function addKinderChatMessage(role, text) {
     bubble.textContent = messageText;
   }
   row.appendChild(bubble);
-  area.appendChild(row);
+  messageList.appendChild(row);
   if (role === 'user') {
     requestAnimationFrame(() => { area.scrollTop = area.scrollHeight; });
   } else {
@@ -1384,7 +1547,8 @@ function createKinderChatFeedbackLiveActionButton(label, className = '', iconNam
 }
 function createKinderChatFeedbackLiveMessage(options = {}) {
   const area = document.getElementById('kcfChatArea');
-  if (!area) return { row:null, bubble:null, area:null };
+  const messageList = getKinderChatFeedbackMessageList();
+  if (!area || !messageList) return { row:null, bubble:null, area:null };
   const intro = document.getElementById('kcfCenterIntro');
   if (intro) intro.classList.add('hidden');
 
@@ -1423,7 +1587,7 @@ function createKinderChatFeedbackLiveMessage(options = {}) {
 
   actions.append(copyBtn, editBtn, saveBtn, cancelBtn, doneBtn);
   row.append(studentTitle, bubble, editArea, actions);
-  area.appendChild(row);
+  messageList.appendChild(row);
   requestAnimationFrame(() => { area.scrollTop = area.scrollHeight; });
   return { row, studentTitle, bubble, editArea, actions, area };
 }
@@ -1892,7 +2056,8 @@ async function copyKinderChatSourceCardText(btn, text) {
 
 function addKinderChatDocumentMessage(title, subtitle, bodyText = '', variant = '', photoMeta = null) {
   const area = document.getElementById('kcfChatArea');
-  if (!area) return;
+  const messageList = getKinderChatFeedbackMessageList();
+  if (!area || !messageList) return;
   const intro = document.getElementById('kcfCenterIntro');
   if (intro) intro.classList.add('hidden');
 
@@ -1913,7 +2078,7 @@ function addKinderChatDocumentMessage(title, subtitle, bodyText = '', variant = 
   card.innerHTML = `${iconHtml}<span class="kcfDocumentText"><span class="kcfDocumentTitle">${escapeHtml(cleanTitle)}</span><span class="kcfDocumentSub">${escapeHtml(cleanSubtitle)}</span></span>`;
 
   row.appendChild(card);
-  area.appendChild(row);
+  messageList.appendChild(row);
   const teacherMode = getKinderChatFeedbackTeacherMode();
   if (variant === 'minute' && teacherMode && typeof teacherMode.onDocumentMessageAdded === 'function') {
     teacherMode.onDocumentMessageAdded(row, { studentName:cleanTitle, body:String(bodyText || '').trim(), subtitle:cleanSubtitle, photoMeta:photoMeta || null });
@@ -1927,11 +2092,13 @@ function renderKinderChatFeedbackGuide(key) {
   if (!data) {
     guide.innerHTML = '';
     guide.classList.remove('show');
+
     return;
   }
   const icon = '<svg class="kcfQuestionIcon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"></circle><path d="M15 15l4 4"></path></svg>';
   guide.innerHTML = `<ul class="kcfQuestionList">${data.questions.map(q => `<li>${icon}<span class="kcfQuestionText">${escapeHtml(q)}</span></li>`).join('')}</ul>`;
   guide.classList.add('show');
+
 }
 function toggleKinderChatFeedbackKeyword(key, button) {
   const buttons = document.querySelectorAll('.kcfKeywordBtn');
@@ -2453,7 +2620,7 @@ function submitKinderChatFeedbackGrowthSheet() {
   }
 }
 document.addEventListener('DOMContentLoaded', () => {
-  bindKinderChatFeedbackKeyboardOffset();
+  bindKinderChatFeedbackViewportInteractions();
   const input = document.getElementById('kcfInput');
   if (input) {
     loadKinderChatFeedbackDraft();
@@ -2465,21 +2632,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (typeof teacherSheet.isOpen === 'function' && teacherSheet.isOpen()) return;
       event.preventDefault();
       teacherSheet.open();
-    });
-    input.addEventListener('focus', () => {
-      if (!kcfKeyboardBaselineBottom) captureKinderChatFeedbackKeyboardBaseline(true);
-      updateKinderChatFeedbackKeyboardOffset();
-    });
-    input.addEventListener('blur', () => {
-      if (Date.now() < kcfKeepInputFocusUntil) {
-        setTimeout(() => {
-          const currentInput = document.getElementById('kcfInput');
-          if (currentInput) currentInput.focus({ preventScroll:true });
-          updateKinderChatFeedbackKeyboardOffset();
-        }, 0);
-        return;
-      }
-      setTimeout(updateKinderChatFeedbackKeyboardOffset, 120);
     });
     input.addEventListener('input', () => {
       autoResizeKinderChatFeedbackInput(input);
@@ -2503,7 +2655,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const currentInput = document.getElementById('kcfInput');
       if (currentInput && document.activeElement === currentInput) {
         kcfKeepInputFocusUntil = Date.now() + 1400;
-        updateKinderChatFeedbackKeyboardOffset();
       }
     };
     const activateKeyword = event => {
@@ -2516,9 +2667,7 @@ document.addEventListener('DOMContentLoaded', () => {
         kcfKeepInputFocusUntil = Date.now() + 1400;
       }
       toggleKinderChatFeedbackKeyword(btn.getAttribute('data-kcf-keyword'), btn);
-      requestAnimationFrame(updateKinderChatFeedbackKeyboardOffset);
-      setTimeout(updateKinderChatFeedbackKeyboardOffset, 80);
-      setTimeout(updateKinderChatFeedbackKeyboardOffset, 220);
+
     };
     btn.addEventListener('pointerdown', keepInputAlive);
     btn.addEventListener('click', activateKeyword);
@@ -2830,7 +2979,8 @@ function selectKinderChatFeedbackStudentFromManage(studentId, event) {
     autoResizeKinderChatFeedbackInput(input);
     saveKinderChatFeedbackDraft();
     setKinderChatFeedbackWarning('');
-    input.focus();
+    try { input.focus({ preventScroll:true }); }
+    catch (_) { input.focus(); }
   }
   closeKinderChatFeedbackStudentManagePopup();
 }
@@ -2887,7 +3037,6 @@ window.confirmKinderChatFeedbackInboxEdit = confirmKinderChatFeedbackInboxEdit;
 window.toggleKinderChatFeedbackInboxItem = toggleKinderChatFeedbackInboxItem;
 window.updateKinderChatFeedbackBadge = updateKinderChatFeedbackBadge;
 window.renderKinderChatFeedbackInbox = renderKinderChatFeedbackInbox;
-window.updateKinderChatFeedbackKeyboardOffset = updateKinderChatFeedbackKeyboardOffset;
 window.setKinderChatFeedbackPersistentTopVisible = setKinderChatFeedbackPersistentTopVisible;
 window.toggleKinderChatFeedbackModeMenu = toggleKinderChatFeedbackModeMenu;
 window.switchKinderChatFeedbackMode = switchKinderChatFeedbackMode;

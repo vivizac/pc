@@ -3,8 +3,10 @@
 
   if (global.OlliPcTeamTalk?.version) return;
 
-  const VERSION = '1.1.0';
+  const VERSION = '1.2.0';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
+  // Shared Work notification summary. The RPC name is historical; the contract is used by both PC and mobile.
+  const TEAM_TALK_NOTIFICATION_SUMMARY_RPC = 'olli_mobile_work_notification_summary';
   const state = {
     archiveTab: 'files',
     workspaceTab: 'materials',
@@ -15,6 +17,7 @@
     archiveLoadSequence: 0,
     sendBusy: false,
     olliModeActive: false,
+    olliAiMentionSelected: false,
     assistantReplyPending: false,
     aiConversationMessages: [],
     pendingActionReason: null,
@@ -23,6 +26,10 @@
     uploadBusy: false,
     realtimeWatcher: null,
     blobUrls: new Map(),
+    desktopNotificationContextKey: '',
+    desktopNotificationLatestMessageId: 0,
+    desktopNotificationSyncBusy: false,
+    desktopNotificationSyncPending: false,
     started: false
   };
 
@@ -211,6 +218,148 @@
     } catch (error) {
       console.warn('PC 팀톡 읽음 처리 실패:', error?.message || error);
       return false;
+    }
+  }
+
+  function desktopNotificationContextKey(current = context()) {
+    const academyId = clean(current?.academyId);
+    const memberId = clean(current?.memberId);
+    return academyId && memberId ? `${academyId}:${memberId}` : '';
+  }
+
+  function pcSystemNotificationsEnabled() {
+    try {
+      const cached = typeof global.settingsGetCachedState === 'function'
+        ? global.settingsGetCachedState()
+        : null;
+      return cached?.notificationEnabled !== false;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  async function fetchTeamTalkNotificationSummary(current = context()) {
+    if (!current?.sessionToken || !current?.academyId) return null;
+    const payload = await rpc(TEAM_TALK_NOTIFICATION_SUMMARY_RPC, {
+      p_session_token: current.sessionToken,
+      p_academy_id: current.academyId
+    });
+    if (!payload?.ok) return null;
+    return payload;
+  }
+
+  function isCurrentMemberMention(body, current = context()) {
+    const memberName = clean(current?.memberName);
+    return !!memberName && String(body || '').includes(`@${memberName}`);
+  }
+
+  function isTeamTalkActivelyViewed() {
+    return isVisible()
+      && document.visibilityState === 'visible'
+      && typeof document.hasFocus === 'function'
+      && document.hasFocus();
+  }
+
+  async function openDesktopNotificationMessage(messageId) {
+    try { global.focus?.(); } catch (_) {}
+    try {
+      await open();
+      const id = String(Number(messageId || 0) || '');
+      if (!id) return;
+      const row = document.querySelector(`#olliPcTeamTalkMessages [data-message-id="${id}"]`);
+      row?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+    } catch (error) {
+      console.warn('PC Team Chat 알림 이동 실패:', error?.message || error);
+    }
+  }
+
+  function showDesktopTeamTalkNotification(summary, current = context()) {
+    if (!pcSystemNotificationsEnabled()) return false;
+    if (!('Notification' in global) || global.Notification.permission !== 'granted') return false;
+    if (isTeamTalkActivelyViewed()) return false;
+
+    const messageId = Number(summary?.latest_message_id || 0);
+    if (!messageId) return false;
+
+    const senderName = clean(summary?.latest_sender_name) || '선생님';
+    const rawBody = clean(summary?.latest_body);
+    const body = rawBody || '사진 또는 파일을 보냈습니다.';
+    const mentioned = isCurrentMemberMention(rawBody, current);
+    const title = mentioned ? 'Team Chat · 멘션' : 'Team Chat 새 메시지';
+
+    try {
+      const notification = new global.Notification(title, {
+        body: `${senderName}: ${body}`,
+        tag: `olli-pc-team-chat-${messageId}`,
+        silent: false
+      });
+      notification.onclick = () => {
+        try { notification.close(); } catch (_) {}
+        openDesktopNotificationMessage(messageId);
+      };
+      return true;
+    } catch (error) {
+      console.warn('PC Team Chat Windows 알림 표시 실패:', error?.message || error);
+      return false;
+    }
+  }
+
+  async function primeDesktopNotificationState() {
+    const current = context();
+    const key = desktopNotificationContextKey(current);
+    if (!key) return false;
+
+    try {
+      const summary = await fetchTeamTalkNotificationSummary(current);
+      if (!summary) return false;
+      state.desktopNotificationContextKey = key;
+      const latestMessageId = Number(summary.latest_message_id || 0);
+      state.desktopNotificationLatestMessageId = latestMessageId > 0 ? latestMessageId : 0;
+      return true;
+    } catch (error) {
+      console.warn('PC Team Chat Windows 알림 기준점 확인 실패:', error?.message || error);
+      return false;
+    }
+  }
+
+  async function refreshDesktopNotificationFromRealtime() {
+    const current = context();
+    const key = desktopNotificationContextKey(current);
+    if (!key) return false;
+
+    if (state.desktopNotificationContextKey !== key) {
+      return primeDesktopNotificationState();
+    }
+
+    if (state.desktopNotificationSyncBusy) {
+      state.desktopNotificationSyncPending = true;
+      return false;
+    }
+
+    state.desktopNotificationSyncBusy = true;
+    try {
+      const summary = await fetchTeamTalkNotificationSummary(current);
+      if (!summary) return false;
+
+      const latestMessageId = Number(summary.latest_message_id || 0);
+      if (!latestMessageId) return false;
+
+      const previousMessageId = Number(state.desktopNotificationLatestMessageId || 0);
+      if (latestMessageId <= previousMessageId) return false;
+
+      state.desktopNotificationLatestMessageId = latestMessageId;
+      if (Number(summary.chat_unread_count || 0) < 1) return false;
+
+      return showDesktopTeamTalkNotification(summary, current);
+    } catch (error) {
+      console.warn('PC Team Chat Windows 알림 동기화 실패:', error?.message || error);
+      return false;
+    } finally {
+      state.desktopNotificationSyncBusy = false;
+      if (state.desktopNotificationSyncPending) {
+        state.desktopNotificationSyncPending = false;
+        Promise.resolve().then(() => refreshDesktopNotificationFromRealtime());
+      }
     }
   }
 
@@ -996,6 +1145,17 @@
     catch (_) { return false; }
   }
 
+  function hasOlliAiMention(value) {
+    return /(^|\s)@올리(?=\s|$|[,.!?，。！？])/.test(String(value || ''));
+  }
+
+  function stripOlliAiMention(value) {
+    return String(value || '')
+      .replace(/(^|\s)@올리(?=\s|$|[,.!?，。！？])/, '$1')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   function syncAssistantUi() {
     const button = byId('olliPcTeamTalkOlli');
     const input = byId('olliPcTeamTalkInput');
@@ -1182,6 +1342,178 @@
     return { message };
   }
 
+  function isMakeupAddAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parseMakeupMutationIntent !== 'function') return false;
+    try {
+      return clean(router.parseMakeupMutationIntent(commandText)?.intent) === 'add_makeup';
+    } catch (error) {
+      console.warn('PC 보강 등록 Agent 후보 판별 실패:', error?.message || error);
+      return false;
+    }
+  }
+
+  function isPickupCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parsePickupCancelMutationIntent !== 'function') return false;
+    try {
+      return clean(router.parsePickupCancelMutationIntent(commandText)?.intent) === 'cancel_pickup';
+    } catch (error) {
+      console.warn('PC 픽업 삭제 Agent 후보 판별 실패:', error?.message || error);
+      return false;
+    }
+  }
+
+  function isPickupUpdateAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parsePickupUpdateMutationIntent !== 'function') return false;
+    try {
+      return clean(router.parsePickupUpdateMutationIntent(commandText)?.intent) === 'update_pickup';
+    } catch (error) {
+      console.warn('PC 픽업 수정 Agent 후보 판별 실패:', error?.message || error);
+      return false;
+    }
+  }
+
+  function isPickupAddAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parsePickupMutationIntent !== 'function') return false;
+    try {
+      return clean(router.parsePickupMutationIntent(commandText)?.intent) === 'add_pickup';
+    } catch (error) {
+      console.warn('PC 픽업 Agent 후보 판별 실패:', error?.message || error);
+      return false;
+    }
+  }
+
+  async function resolveMakeupAddAgentTurn(commandText, current, replyToMessageId) {
+    const sourceMessageId = Number(replyToMessageId || 0);
+    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+      throw new Error('보강 등록 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response = await fetch('/api/olli-agent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        mode:'makeup_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageId
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.ok !== true || !data?.message?.action) {
+      throw new Error(data?.error || data?.message || '보강 등록 Agent 응답을 받지 못했습니다.');
+    }
+    if (clean(data.message.action.action_type) !== 'add_makeup') {
+      throw new Error('보강 등록 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
+  async function resolvePickupCancelAgentTurn(commandText, current, replyToMessageId) {
+    const sourceMessageId = Number(replyToMessageId || 0);
+    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+      throw new Error('픽업 삭제 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response = await fetch('/api/olli-agent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        mode:'pickup_cancel_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageId
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.ok !== true || !data?.message?.action) {
+      throw new Error(data?.error || data?.message || '픽업 삭제 Agent 응답을 받지 못했습니다.');
+    }
+
+    const actionType = clean(data.message.action.action_type);
+    if (!['cancel_pickup', 'cancel_pickup_dropoff'].includes(actionType)) {
+      throw new Error('픽업 삭제 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
+  async function resolvePickupUpdateAgentTurn(commandText, current, replyToMessageId) {
+    const sourceMessageId = Number(replyToMessageId || 0);
+    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+      throw new Error('픽업 수정 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response = await fetch('/api/olli-agent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        mode:'pickup_update_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageId
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.ok !== true || !data?.message?.action) {
+      throw new Error(data?.error || data?.message || '픽업 수정 Agent 응답을 받지 못했습니다.');
+    }
+
+    const actionType = clean(data.message.action.action_type);
+    if (!['update_pickup_arrival', 'update_pickup_dropoff'].includes(actionType)) {
+      throw new Error('픽업 수정 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
+  async function resolvePickupAddAgentTurn(commandText, current, replyToMessageId) {
+    const sourceMessageId = Number(replyToMessageId || 0);
+    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+      throw new Error('픽업 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response = await fetch('/api/olli-agent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        mode:'pickup_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageId
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.ok !== true || !data?.message?.action) {
+      throw new Error(data?.error || data?.message || '픽업 Agent 응답을 받지 못했습니다.');
+    }
+    if (clean(data.message.action.action_type) !== 'add_pickup') {
+      throw new Error('픽업 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
   async function saveAssistantReply(current, body, replyToMessageId) {
     const payload = await rpc('olli_team_chat_send_ai', {
       p_session_token: current.sessionToken,
@@ -1242,6 +1574,22 @@
         replyText:confirmation,
         recordAi:false
       };
+    }
+
+    if (isPickupCancelAgentCandidate(commandText, router)) {
+      return resolvePickupCancelAgentTurn(commandText, current, replyToMessageId);
+    }
+
+    if (isPickupUpdateAgentCandidate(commandText, router)) {
+      return resolvePickupUpdateAgentTurn(commandText, current, replyToMessageId);
+    }
+
+    if (isPickupAddAgentCandidate(commandText, router)) {
+      return resolvePickupAddAgentTurn(commandText, current, replyToMessageId);
+    }
+
+    if (isMakeupAddAgentCandidate(commandText, router)) {
+      return resolveMakeupAddAgentTurn(commandText, current, replyToMessageId);
     }
 
     if (router && typeof router.prepareAction === 'function') {
@@ -1341,6 +1689,27 @@
     if (!menu) return;
     const current = context();
     menu.replaceChildren();
+
+    const olliButton = document.createElement('button');
+    olliButton.type = 'button';
+    olliButton.className = 'olliPcTeamTalkMentionOption';
+    olliButton.append(
+      create('span', 'olliPcTeamTalkMentionAvatar', 'AI'),
+      create('span', '', '올리 · AI')
+    );
+    olliButton.addEventListener('click', () => {
+      const input = byId('olliPcTeamTalkInput');
+      if (!input) return;
+      const prefix = input.value && !/\s$/.test(input.value) ? ' ' : '';
+      input.value += `${prefix}@올리 `;
+      state.olliAiMentionSelected = true;
+      menu.hidden = true;
+      resizeComposer();
+      updateComposerState();
+      input.focus();
+    });
+    menu.appendChild(olliButton);
+
     state.members
       .filter((member) => clean(member?.member_id) !== clean(current.memberId) && !member?.is_current_member)
       .forEach((member) => {
@@ -1371,7 +1740,10 @@
     const menu = byId('olliPcTeamTalkMentionMenu');
     if (!menu) return;
     menu.hidden = !menu.hidden;
-    if (!menu.hidden && !state.members.length) loadMembers();
+    if (!menu.hidden) {
+      renderMentionMenu();
+      if (!state.members.length) loadMembers();
+    }
   }
 
   function resolveMentionIds(body) {
@@ -1396,12 +1768,21 @@
     const input = byId('olliPcTeamTalkInput');
     const send = byId('olliPcTeamTalkSend');
     const rawBody = clean(input?.value);
-    const olliRequested = state.olliModeActive || /^\s*@올리(?:\s|$)/.test(rawBody);
+    const olliAiMentionRequested = state.olliAiMentionSelected && hasOlliAiMention(rawBody);
+    const olliRequested = state.olliModeActive || olliAiMentionRequested || /^\s*@올리(?:\s|$)/.test(rawBody);
     const commandText = olliRequested
-      ? rawBody.replace(/^\s*@올리(?:\s+|$)/, '').trim()
+      ? (olliAiMentionRequested
+        ? stripOlliAiMention(rawBody)
+        : rawBody.replace(/^\s*@올리(?:\s+|$)/, '').trim())
       : '';
     const body = olliRequested ? ('@올리 ' + commandText).trim() : rawBody;
     if (!input || !rawBody || (olliRequested && !commandText)) {
+      updateComposerState();
+      return;
+    }
+
+    if (olliAiMentionRequested && !isAiEnabled()) {
+      alert('올리 AI를 사용하려면 설정에서 올리 AI를 켜 주세요.');
       updateComposerState();
       return;
     }
@@ -1427,10 +1808,11 @@
       if (!payload?.ok || !payload?.message) throw new Error(payload?.message || '메시지를 저장하지 못했습니다.');
 
       input.value = '';
+      state.olliAiMentionSelected = false;
       resizeComposer();
       updateComposerState();
       appendPersistedMessage(payload.message, current.memberId);
-      if (olliRequested && isAiEnabled()) {
+      if (olliRequested && (olliAiMentionRequested || isAiEnabled())) {
         state.assistantReplyPending = true;
         syncAssistantTypingIndicator();
       }
@@ -1454,7 +1836,7 @@
       }
 
       if (olliRequested) {
-        const usingAi = isAiEnabled();
+        const usingAi = olliAiMentionRequested || isAiEnabled();
         try {
           if (usingAi) {
             const turn = await resolveAiTurn(commandText, current, Number(payload.message.id));
@@ -1589,6 +1971,9 @@
     if (input && !input.dataset.bound) {
       input.dataset.bound = '1';
       input.addEventListener('input', () => {
+        if (state.olliAiMentionSelected && !hasOlliAiMention(input.value)) {
+          state.olliAiMentionSelected = false;
+        }
         resizeComposer();
         updateComposerState();
       });
@@ -1683,7 +2068,7 @@
   }
 
   async function refreshFromRealtime() {
-    const jobs = [refreshBadge()];
+    const jobs = [refreshBadge(), refreshDesktopNotificationFromRealtime()];
     if (isVisible()) {
       jobs.push(loadMessages({ showLoading: false, followBottom: false }));
       jobs.push(loadArchive({ showLoading: false }));
@@ -1731,8 +2116,17 @@
     syncAssistantUi();
     global.addEventListener('olli-team-talk-ai-mode-changed', handleAiModeChanged);
     refreshBadge();
+    primeDesktopNotificationState();
     global.addEventListener('storage', (event) => {
-      if (!event || event.key === ACCOUNT_SESSION_TOKEN_KEY || event.key === 'olli_current_academy_id') refreshBadge();
+      if (!event || event.key === ACCOUNT_SESSION_TOKEN_KEY || event.key === 'olli_current_academy_id') {
+        refreshBadge();
+        primeDesktopNotificationState();
+      }
+    });
+    global.addEventListener('olli:realtime-status', (event) => {
+      if (event?.detail?.status === 'SUBSCRIBED' && !state.desktopNotificationContextKey) {
+        primeDesktopNotificationState();
+      }
     });
   }
 

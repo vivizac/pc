@@ -748,9 +748,6 @@ function updateRecordHeaderUI() {
     if (isObservationView && studentSelectionMode) selectionControls.classList.add('show');
     else selectionControls.classList.remove('show');
   }
-  if (window.OlliAttendanceGuideUI && typeof window.OlliAttendanceGuideUI.onHeaderUpdated === 'function') {
-    window.OlliAttendanceGuideUI.onHeaderUpdated();
-  }
 }
 
 function restoreRecordSearchFocus() {
@@ -1895,9 +1892,11 @@ function renderPhoneElementaryAttendanceLeadIcon(student) {
   return renderPhoneRecordAttendanceLeadIcon(student);
 }
 function renderPhoneRecordAttendanceLeadIcon(student, requestedKind) {
-  const status = getRecordAttendanceStatus(student?.id);
+  const adapter = window.OlliPhoneAttendanceAdapter;
+  const adapterOwnsStatus = !!(adapter && typeof adapter.decorateLeadIcon === 'function');
+  const status = adapterOwnsStatus ? '' : getRecordAttendanceStatus(student?.id);
   const missingEnrollment = isRecordStudentEnrollmentDateMissing(student);
-  const stateClass = [getRecordAttendanceStatusClass(status), missingEnrollment ? 'missingEnrollment' : ''].filter(Boolean).join(' ');
+  const stateClass = [adapterOwnsStatus ? '' : getRecordAttendanceStatusClass(status), missingEnrollment ? 'missingEnrollment' : ''].filter(Boolean).join(' ');
   const baseTitle = getRecordAttendanceStatusTitle(status, student);
   const title = missingEnrollment ? `${baseTitle} · 등록일 미입력` : baseTitle;
   let html = `<span class="recordAttendanceLeadBtn ${escapeHtml(stateClass)}" role="button" tabindex="0" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}" onclick="toggleRecordTodayAttendance(event,'${escapeTemplateLiteral(student?.id || '')}')" onkeydown="handleRecordAttendanceLeadKeydown(event,'${escapeTemplateLiteral(student?.id || '')}')">
@@ -1907,8 +1906,7 @@ function renderPhoneRecordAttendanceLeadIcon(student, requestedKind) {
       <path class="recordAttendanceLeadLine" d="M20.5 17.8 L20.5 30.5" fill="none" stroke="#8f8f8f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
   </span>`;
-  const adapter = window.OlliPhoneAttendanceAdapter;
-  if (adapter && typeof adapter.decorateLeadIcon === 'function') html = adapter.decorateLeadIcon(html, student, requestedKind);
+  if (adapterOwnsStatus) html = adapter.decorateLeadIcon(html, student, requestedKind);
   return html;
 }
 function handleRecordAttendanceLeadKeydown(event, studentId, sessionKind, timeSlot, classGroup) {
@@ -1937,57 +1935,4 @@ async function toggleRecordTodayAttendance(event, studentId, sessionKind, timeSl
   if (currentRecordView === 'elementary') renderElementaryRecords(searchValue);
   else if (currentRecordView === 'kinder') renderKinderRecords(searchValue);
 }
-function getRecordAttendanceMonthRange(baseDate = new Date()) {
-  const year = baseDate.getFullYear();
-  const month = baseDate.getMonth() + 1;
-  const lastDay = new Date(year, month, 0).getDate();
-  return { year, month, lastDay };
-}
-function shouldCountRecordAttendanceDate(dateValue) {
-  const policy = window.OlliAttendancePolicy;
-  if (policy && typeof policy.shouldCountDate === 'function') return !!policy.shouldCountDate(dateValue);
-  const d = dateValue instanceof Date ? dateValue : new Date(dateValue);
-  if (Number.isNaN(d.getTime())) return false;
-  const today = new Date();
-  const dKey = Number(formatRecordAttendanceDateKey(d).replace(/-/g, ''));
-  const todayKey = Number(formatRecordAttendanceDateKey(today).replace(/-/g, ''));
-  return dKey < todayKey;
-}
-function getRecordAttendanceStudentMonthSummary(student, baseDate = new Date()) {
-  const { year, month, lastDay } = getRecordAttendanceMonthRange(baseDate);
-  const store = readRecordDailyAttendanceStore();
-  const attended = [];
-  const absent = [];
-  const makeup = [];
-  for (let day = 1; day <= lastDay; day += 1) {
-    const date = new Date(year, month - 1, day);
-    const dateKey = formatRecordAttendanceDateKey(date);
-    const status = String(store?.[dateKey]?.[String(student.id)]?.status || '');
-    const isLessonDate = isRecordStudentLessonDate(student, date);
-    const countable = shouldCountRecordAttendanceDate(date);
-    if (status === 'attended') attended.push(day);
-    if (status === 'makeup') makeup.push(day);
-    if (isLessonDate && countable && status !== 'attended') absent.push(day);
-  }
-  let remainingMakeup = Math.max(absent.length - makeup.length, 0);
-  const policy = window.OlliAttendancePolicy;
-  if (policy && typeof policy.getCounts === 'function') {
-    const policyCounts = policy.getCounts(student);
-    if (policyCounts && Number.isFinite(Number(policyCounts.remainingMakeup))) remainingMakeup = Number(policyCounts.remainingMakeup);
-  }
-  return { attended, absent, makeup, remainingMakeup };
-}
-function formatRecordAttendanceDayList(days) {
-  const list = Array.isArray(days) ? days.filter(v => Number(v) > 0).sort((a,b) => a - b) : [];
-  return list.length ? list.map(day => `${day}일`).join(' ') : '-';
-}
-function renderRecordAttendanceSummary() {
-  // 초등부/유치부 옆 출석부 요약 탭과 월별 출석부 내용은 삭제되었습니다.
-  const list = document.getElementById('recordList');
-  if (!list) return;
-  currentRecordView = currentObservationView === 'kinder' ? 'kinder' : 'elementary';
-  updateRecordHeaderUI();
-  const searchValue = document.getElementById('searchName')?.value.trim() || '';
-  if (currentRecordView === 'kinder') renderKinderRecords(searchValue);
-  else renderElementaryRecords(searchValue);
-}
+

@@ -18,6 +18,15 @@ test('PC composer exposes the same bot or AI trigger contract', () => {
   assert.match(talk, /usingAi[\s\S]{0,220}resolveAiReply[\s\S]{0,160}resolveBotReply/);
 });
 
+test('PC mention picker offers Olli as an AI-only virtual target', () => {
+  assert.match(talk, /olliAiMentionSelected:\s*false/);
+  assert.match(talk, /create\('span', '', '올리 · AI'\)/);
+  assert.match(talk, /state\.olliAiMentionSelected = true/);
+  assert.match(talk, /olliAiMentionRequested && !isAiEnabled\(\)/);
+  assert.match(talk, /const usingAi = olliAiMentionRequested \|\| isAiEnabled\(\)/);
+  assert.match(html, /pc-team-talk\.js\?v=20261001-pickup-agent-bridge-1/);
+});
+
 test('PC AI requests carry the active AI conversation context but never the full Team Talk history', () => {
   assert.match(talk, /sessionToken:current\?\.sessionToken \|\| ''/);
   assert.match(talk, /aiConversationMessages:\s*\[\]/);

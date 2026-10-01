@@ -37,10 +37,10 @@
 <link rel="stylesheet" href="olli-login.css">
 <link rel="stylesheet" href="olli-settings-team-talk-phone.css?v=20260927-phone-only-1">
 <link rel="stylesheet" href="olli-auth-lookup.css">
-<link rel="stylesheet" href="olli-attendance-record.css?v=20260927-guide-names-2">
+<link rel="stylesheet" href="olli-attendance-record.css?v=20260930-summary-reset-1">
+<link rel="stylesheet" href="olli-record-attendance-summary.css?v=20260930-search-only-1">
 <link rel="stylesheet" href="olli-student-time-options.css">
 <link rel="stylesheet" href="olli-student-bulk-apply.css">
-<link rel="stylesheet" href="olli-attendance-guide-button.css?v=20260923-guide-align-2">
 <link rel="stylesheet" href="olli-student-info-layout.css?v=20260923-student-add-schedule-1">
 </head>
 <body>
@@ -108,7 +108,7 @@
 <button class="recordModeLabel active" id="recordElementaryToggle" onclick="handleRecordViewToggleClick(event,'elementary')" onpointerdown="handleRecordViewTogglePress(event,'elementary')" type="button">초등부</button>
 <button class="recordModeLabel" id="recordKinderToggle" onclick="handleRecordViewToggleClick(event,'kinder')" onpointerdown="handleRecordViewTogglePress(event,'kinder')" type="button">유치부</button>
 </div>
-
+<button aria-label="출결 보기" aria-pressed="false" class="recordAttendanceSummaryBtn" disabled id="recordAttendanceSummaryToggle" onclick="toggleRecordAttendanceSummary(event)" onpointerdown="event.preventDefault()" type="button">출결</button>
 </div>
 </div>
 <div class="recordBodyNew">
@@ -231,6 +231,9 @@
 </div>
 <div class="memoPageInner observationRosterPageInner">
 <div aria-label="오늘 등원 학생 목록" id="memoStudentRosterView"></div>
+</div>
+<div aria-label="관찰노트 학생 목록 도구" class="observationRosterUtilityLayer" id="observationRosterUtilityLayer">
+<div class="observationRosterUtilityMount" id="observationRosterUtilityMount"></div>
 </div>
 </div>
 <!-- PAGE: 초등부 노트 -->
@@ -547,7 +550,7 @@
 
 <script src="olli-data-record-list.js"></script>
 <script src="olli-data-attendance-feedback.js?v=20260929-secure-archive-read-1"></script>
-<script src="olli-data-student-operations.js?v=20260926-student-action-owner-1"></script>
+<script src="olli-data-student-operations.js?v=20260930-attendance-runtime-cleanup-1"></script>
 <script src="olli-observation-core.js"></script>
 <script src="olli-data-ui-utils.js"></script>
 <script src="elementary-analysis.js"></script>
@@ -561,7 +564,7 @@
 <script src="olli-record-scene-tools.js"></script>
 <script src="scene-feedback-text-common.js"></script>
 <script src="olli-record-scene-tools-phone-adapter.js"></script>
-<script src="olli-record-search-controls.js?v=20260923-record-ui-10"></script>
+<script src="olli-record-search-controls.js?v=20260930-search-preserve-1"></script>
 <script src="olli-attendance-data.js?v=20260924-week-local-first-1"></script>
 <script src="olli-observation-autosave-phone-adapter.js?v=20260920-growth-all-divisions-1"></script>
 <script src="observation-memo-edit-state-core.js?v=20260928-edit-state-core-1"></script>
@@ -571,17 +574,17 @@
 <script src="olli-observation-memo-storage-phone-adapter.js?v=20260920-growth-all-divisions-1"></script>
 <script src="observation-memo-session-common.js?v=20260929-memo-page-owner-1"></script>
 <script src="observation-memo-save-common.js?v=20260909-2143-1"></script>
-<script src="olli-observation-runtime.js?v=20260929-memo-page-owner-1"></script>
-<script src="olli-observation-roster-phone.js?v=20260929-fixed-survey-visible-1"></script>
-<script src="olli-record-list-view.js?v=20260926-attendance-longpress-1"></script>
+<script src="olli-observation-runtime.js?v=20260930-attendance-runtime-cleanup-1"></script>
+<script src="olli-observation-roster-phone.js?v=20261001-native-keyboard-scroll-1"></script>
+<script src="olli-record-list-view.js?v=20260930-search-only-1"></script>
 <script src="olli-record-board-actions-phone-adapter.js"></script>
 <script src="olli-operations-consultation-policy.js"></script>
 <script src="olli-settings-server-sync.js?v=20260924-academy-owner-cleanup-1"></script>
-<script src="olli-record-room-navigation.js?v=20260924-academy-owner-cleanup-1"></script>
-<script src="olli-attendance-phone-adapter.js?v=20260928-attendance-exact-session-1"></script>
+<script src="olli-record-room-navigation.js?v=20260930-attendance-runtime-cleanup-1"></script>
+<script src="olli-attendance-phone-adapter.js?v=20260930-summary-v1"></script>
 <script src="olli-student-info-runtime.js?v=20260908-student-info-3"></script>
 <script src="olli-app-startup.js?v=20260929-push-notification-fix-1"></script>
-<script src="olli-main-subpage-drawer.js?v=20260923-academy-note-slide-1"></script>
+<script src="olli-main-subpage-drawer.js?v=20260930-attendance-real-paint-1"></script>
 <script src="olli-feedback-runtime.js?v=20260922-unicode-mark-1"></script>
 <link rel="stylesheet" href="olli-academy-switch-phone.css">
 <!-- PAGE: 설정 -->
@@ -833,7 +836,6 @@
 <script src="olli-settings-detail-phone.js?v=20260927-team-talk-phone-only-1"></script>
 <script src="olli-settings-team-talk-phone.js?v=20260928-reset-all-olli1-1"></script>
 
-<script src="olli-attendance-record-summary-ui.js"></script>
 <script src="olli-login-ui.js"></script>
 
 <script src="olli-auth-entry-ui.js"></script>
@@ -860,8 +862,8 @@
 <!-- 2026-04-30 patch v2: 선생님 비활성화 되돌아감 방지 + 그룹 SVG 데이터 URL # 보정 -->
 <link rel="stylesheet" href="olli-settings-teacher-management.css">
 <script src="olli-teacher-management-legacy-cleanup.js"></script>
-<link rel="stylesheet" href="kinder-feedback.css?v=20260929-push-toast-fix-1">
-<link rel="stylesheet" href="olli-talk-beta.css?v=20260928-broken-thumb-fallback-1">
+<link rel="stylesheet" href="kinder-feedback.css?v=20261001-native-keyboard-scroll-1">
+<link rel="stylesheet" href="olli-talk-beta.css?v=20260930-keyboard-offset-message-lift-1">
 <link rel="stylesheet" href="olli-talk-material-orders-mobile.css?v=20260928-status-colors-5">
 <!-- PAGE: 유치부 대화형 1분 피드백 -->
 <div aria-hidden="true" id="kcfPersistentTopLayer">
@@ -887,6 +889,7 @@
 <div aria-hidden="true" class="kcfTopFadeLayer" id="kcfTopFadeLayer"></div>
 <div aria-hidden="true" class="kcfBottomFadeLayer" id="kcfBottomFadeLayer"></div>
 <div class="kcfChatArea" id="kcfChatArea">
+<div class="kcfMessageList" id="kcfMessageList"></div>
 </div>
 </div>
 <div class="kcfComposerLayer" id="kcfComposerLayer">
@@ -979,6 +982,7 @@
 <div class="olliTalkBetaComposer">
 <div aria-label="선생님 멘션 선택" class="olliTalkMentionMenu" id="olliTalkMentionMenu" hidden></div>
 <button aria-label="파일 추가" class="olliTalkFileAddBtn" id="olliTalkFileAddBtn" title="파일 추가" type="button"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button>
+<span aria-hidden="true" class="olliTalkSelectedMentionPrefix" id="olliTalkSelectedMentionPrefix" hidden></span>
 <textarea aria-label="메시지 입력" class="olliTalkBetaInput" id="olliTalkBetaInput" placeholder="메시지를 입력하세요" rows="1"></textarea>
 <button aria-label="재료 퀵주문" class="olliTalkQuickOrderBtn" id="olliTalkQuickOrderBtn" onclick="openOlliTalkQuickOrder(event)" title="퀵주문" type="button"><svg aria-hidden="true" viewBox="0 0 86 99" fill="none" xmlns="http://www.w3.org/2000/svg"><g fill="#000000"><path d="M10 6C10 2.686 12.686 0 16 0H70C73.314 0 76 2.686 76 6V9C76 9.552 75.552 10 75 10H11C10.448 10 10 9.552 10 9V6Z"></path><path d="M4 10C4 8.895 4.895 8 6 8H80C81.105 8 82 8.895 82 10V15C82 17.761 79.761 20 77 20H9C6.239 20 4 17.761 4 15V10Z"></path><path d="M12 20H74L66 96.5C65.86 97.82 64.74 98.82 63.42 98.82H22.58C21.26 98.82 20.14 97.82 20 96.5L12 20Z"></path></g><circle cx="43" cy="48" r="11.5" fill="#FFFFFF"></circle></svg></button>
 <button aria-label="선생님 멘션" class="olliTalkMentionTriggerBtn" id="olliTalkMentionTriggerBtn" type="button">@</button>
@@ -1145,16 +1149,16 @@
 </div>
 </div>
 <script src="olli-feedback-photo-storage-common.js"></script>
-<script src="kinder-feedback.js?v=20260926-input-autogrow-1"></script>
+<script src="kinder-feedback.js?v=20261001-native-keyboard-scroll-touchguard-2"></script>
 <script src="olli-talk-material-orders-mobile.js?v=20260929-work-material-badge-1"></script>
 <script src="olli-talk-attachment-cache-phone.js?v=20260929-link-preview-local-first-1"></script>
 <script src="olli-talk-image-thumbnail-phone.js?v=20260924-client-thumbnail-1"></script>
-<script src="olli-talk-beta.js?v=20260929-team-chat-notification-root-1"></script>
+<script src="olli-talk-beta.js?v=20261001-pickup-update-agent-bridge-1"></script>
 <script src="olli-talk-push.js?v=20260929-team-chat-notification-root-1"></script>
 <script src="kcf-voice-text-normalizer.js?v=20260918-time-normalize-1"></script>
 <script src="kcf-voice-transcription.js?v=20260926-input-autogrow-1"></script>
-<script src="olli-command-schedule-common.js?v=20260923-write-actions-2"></script>
-<script src="olli-command-router-common.js?v=20260923-write-actions-2"></script>
+<script src="olli-command-schedule-common.js?v=20260930-memo-auto-class-1"></script>
+<script src="olli-command-router-common.js?v=20260930-memo-auto-class-1"></script>
 <script src="olli-feedback-registration-runtime.js?v=20260921-ai-guaranteed-1"></script>
 <link rel="stylesheet" href="olli-record-search-controls.css?v=20260929-attendance-bottom-fade-1">
 <script src="olli-storage-core.js?v=20260924-consult-summary-local-first-1"></script>
@@ -1178,13 +1182,14 @@
 <script src="olli-phone-student-schedule-editor.js?v=20260929-half-hour-class-picker-1"></script>
 <script src="olli-phone-kinder-student-info-card.js?v=20260923-student-info-labels-1"></script>
 <script src="olli-phone-elementary-student-info-card.js?v=20260923-student-info-labels-1"></script>
-<script src="olli-attendance-guide-align-runtime.js?v=20260923-guide-align-2"></script>
+<script src="olli-attendance-sync-fallback.js?v=20260930-clean-1"></script>
 <script src="olli-start-page-storage-phone.js?v=20260924-reconnect-local-first-1"></script>
 <link rel="stylesheet" href="olli-attendance-policy-phone.css">
-<script src="olli-attendance-policy-runtime.js?v=20260924-settings-core-split-1"></script>
+<script src="olli-attendance-policy-runtime.js?v=20260930-summary-reset-1"></script>
+<script src="olli-record-attendance-summary.js?v=20260930-search-only-1"></script>
 <script src="olli-student-lifecycle-init.js"></script>
 
-<link rel="stylesheet" href="olli-observation-roster-phone.css?v=20260929-memo-fixed-group-1">
+<link rel="stylesheet" href="olli-observation-roster-phone.css?v=20261001-native-keyboard-scroll-1">
 <link rel="stylesheet" href="olli-record-utility-touch.css?v=20260927-guide-names-1">
 <link rel="stylesheet" href="olli-phone-control-style.css?v=20260929-attendance-glass-buttons-1">
 <script src="olli-record-utility-touch.js?v=20260929-memo-fixed-group-1"></script>

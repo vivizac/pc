@@ -96,6 +96,7 @@ function cancelStudentLongPress() {
 
 function startStudentLongPress(e, studentId) {
   if (studentSelectionMode) return;
+  if (e?.target?.closest?.('.recordAttendanceLeadBtn')) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   cancelStudentLongPress();
   const row = e.currentTarget;

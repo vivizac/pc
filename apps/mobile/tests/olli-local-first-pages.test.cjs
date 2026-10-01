@@ -36,8 +36,10 @@ test('local-first start-page entry skips network session validation only for rec
 
 test('record room has a render-only path that cannot await student server refresh', () => {
   assert.match(recordNavigation, /async function loadRecords\(name, options = \{\}\)/);
-  assert.match(recordNavigation, /renderElementaryRecords\(name\);\s*hydrateRecordAttendanceLocalSnapshot\(\);\s*if \(localOnly\) return true;\s*await loadStudentsFromSupabase\(\);/);
-  assert.match(recordNavigation, /renderKinderRecords\(name\);\s*hydrateRecordAttendanceLocalSnapshot\(\);\s*if \(localOnly\) return true;\s*await loadStudentsFromSupabase\(\);/);
+  assert.match(recordNavigation, /hydrateRecordAttendanceLocalSnapshot\(\{ render: false \}\);\s*renderElementaryRecords\(name\);\s*if \(localOnly\) return true;/);
+  assert.match(recordNavigation, /hydrateRecordAttendanceLocalSnapshot\(\{ render: false \}\);\s*renderKinderRecords\(name\);\s*if \(localOnly\) return true;/);
+  assert.match(recordNavigation, /const beforeStudentSignature = getRecordAttendanceStudentSignature\('elementary'\);\s*await loadStudentsFromSupabase\(\);/);
+  assert.match(recordNavigation, /const beforeStudentSignature = getRecordAttendanceStudentSignature\('kinder'\);\s*await loadStudentsFromSupabase\(\);/);
   assert.match(recordNavigation, /renderRecordAcademyManagementDashboard\(\);[\s\S]*?if \(localOnly\) return true;[\s\S]*?refreshRecordAcademyManagementFromServer/);
   assert.match(observationRuntime, /async function showRecordRoom\(options = \{\}\)[\s\S]*?loadRecords\('', \{ localOnly \}\)/);
 });

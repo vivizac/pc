@@ -286,6 +286,12 @@
   opacity: 1;
   transition: flex-basis .28s ease, height .28s ease, max-height .28s ease, transform .28s ease, opacity .2s ease;
 }
+#recordRoomScreen .olliTtPickupGrid.halfHour {
+  height: 594px;
+  max-height: 594px;
+  flex-basis: 594px;
+  grid-template-rows: 34px repeat(5, 112px);
+}
 #recordRoomScreen .olliTtSection.kinder.pickupCollapsed .olliTtPickupGrid {
   height: 0;
   max-height: 0;
@@ -328,11 +334,13 @@
 }
 #recordRoomScreen .olliTtPickupToggle > strong { font-size: calc(10px * var(--olli-text-scale)); font-weight: 780; line-height: 1; }
 #recordRoomScreen .olliTtPickupGrid > * { border-right: 1px solid #e8ebef; border-bottom: 1px solid #e8ebef; }
-#recordRoomScreen .olliTtPickupGrid > :nth-child(8),
-#recordRoomScreen .olliTtPickupGrid > :nth-child(15) { border-right: 0; }
+#recordRoomScreen .olliTtPickupGrid > :nth-child(7n + 1) { border-right: 0; }
 #recordRoomScreen .olliTtPickupGrid > :nth-last-child(-n+7) { border-bottom: 0; }
 #recordRoomScreen .olliTtPickupTitle { grid-column: 1 / -1; padding: 0 15px; display: flex; align-items: center; color: #536171; background: #f5f8fa; font-size: calc(12px * var(--olli-text-scale)); font-weight: 850; }
 #recordRoomScreen .olliTtPickupTime { padding-top: 13px; color: #7b838e; background: #fafbfc; text-align: center; font-size: calc(11px * var(--olli-text-scale)); font-weight: 820; }
+#recordRoomScreen .olliTtPickupTime.halfHourLabel { padding-top: 0; display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.05; }
+#recordRoomScreen .olliTtPickupTime.halfHourLabel span { display:block; }
+#recordRoomScreen .olliTtPickupTime.halfHourLabel small { display:block; margin-top:4px; color:inherit; font-size:calc(9px * var(--olli-text-scale)); font-weight:760; }
 #recordRoomScreen .olliTtPickupCell { min-height: 0; padding: 5px; background: #fff; cursor: pointer; transition: background .15s ease, box-shadow .15s ease; }
 #recordRoomScreen .olliTtPickupCell:hover { background: #f5faff; box-shadow: inset 0 0 0 2px #c4e2ff; }
 #recordRoomScreen .olliTtPickupCell.holiday, #recordRoomScreen .olliTtPickupCell.holiday:hover { background:#eceff1; box-shadow:none; cursor:not-allowed; }

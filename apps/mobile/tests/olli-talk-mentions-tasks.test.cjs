@@ -6,6 +6,14 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'olli-talk-beta.js'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const css = fs.readFileSync(path.join(root, 'olli-talk-beta.css'), 'utf8');
+
+test('Team Talk composer places the selected mention token immediately before the message textarea', () => {
+  const prefixIndex=html.indexOf('id="olliTalkSelectedMentionPrefix"');
+  const inputIndex=html.indexOf('id="olliTalkBetaInput"');
+  assert.ok(prefixIndex>=0 && inputIndex>prefixIndex);
+  assert.match(css,/\.olliTalkSelectedMentionPrefix\{[\s\S]*?margin-right:\.38em[\s\S]*?color:#1687F8/);
+});
 
 test('Olli Talk supports targeted member mention selection and badge', () => {
   assert.match(source, /olli_team_chat_members/);
@@ -104,9 +112,11 @@ test('Team Talk groups same-sender messages inside one minute and tails only gro
   assert.match(source, /olliTalkBetaMessageGroupStart/);
 });
 
-test('Team Talk hides composer while visual viewport moves and snaps it into final keyboard position', () => {
+test('Team Talk keeps composer visible while the keyboard viewport moves', () => {
+  const css=fs.readFileSync(path.join(root,'olli-talk-beta.css'),'utf8');
   assert.match(source, /olliTalkViewportMoving/);
   assert.match(source, /scheduleOlliTalkViewportSettle/);
+  assert.doesNotMatch(css, /olliTalkViewportMoving \.olliTalkBetaComposerWrap\{[\s\S]*?opacity:0/);
 });
 
 
@@ -115,62 +125,59 @@ test('Team Talk one-minute grouping uses the first bubble in the group', () => {
   assert.match(source, /isOlliTalkConnectedMessage\(groupStartItem, item/);
 });
 
-test('Team Talk keyboard hiding keeps the focused input visible to iOS focus engine', () => {
+test('Team Talk no longer hides the focused composer during keyboard motion', () => {
   const css = fs.readFileSync(path.join(root, 'olli-talk-beta.css'), 'utf8');
-  const moving = css.match(/#olliTalkBetaScreen\.olliTalkViewportMoving \.olliTalkBetaComposerWrap\{([\s\S]*?)\}/)?.[1] || '';
-  assert.match(moving, /opacity:0/);
-  assert.doesNotMatch(moving, /visibility:hidden/);
-  assert.doesNotMatch(moving, /display:none/);
+  assert.doesNotMatch(css, /#olliTalkBetaScreen\.olliTalkViewportMoving \.olliTalkBetaComposerWrap\{[\s\S]*?opacity:0/);
+  assert.doesNotMatch(css, /#olliTalkBetaScreen\.olliTalkViewportMoving \.olliTalkBetaComposerWrap\{[\s\S]*?visibility:hidden/);
+  assert.doesNotMatch(css, /#olliTalkBetaScreen\.olliTalkViewportMoving \.olliTalkBetaComposerWrap\{[\s\S]*?display:none/);
 });
 
 
-test('Team Talk chat area follows measured composer position independently of keyboard state', () => {
+test('Team Talk keeps the chat scroller full-height and measures composer reserve', () => {
   const start = source.indexOf('function syncOlliTalkChatToComposer');
   const end = source.indexOf('function scheduleOlliTalkChatToComposer', start);
   const body = source.slice(start, end);
   assert.match(body, /composerWrap\.getBoundingClientRect\(\)/);
   assert.match(body, /viewport\.getBoundingClientRect\(\)/);
   assert.match(body, /--olli-talk-chat-reserve/);
-  assert.doesNotMatch(body, /olliTalkKeyboardOpen/);
-  assert.doesNotMatch(body, /getOlliTalkKeyboardOffset/);
+  assert.match(body, /measuredReserve - keyboardOffset/);
+  assert.doesNotMatch(body, /--olli-talk-chat-bottom-gap/);
+  assert.doesNotMatch(body, /chatArea\.scrollTop\s*=/);
 });
 
-test('Team Talk header stays separately fixed while chat reserves composer space', () => {
-  const css = fs.readFileSync(path.join(root, 'olli-talk-beta.css'), 'utf8');
-  assert.match(css, /--olli-talk-chat-reserve:74px/);
-  assert.match(css, /margin:0 auto var\(--olli-talk-chat-reserve, 74px\)/);
-  assert.match(css, /#olliTalkBetaScreen \.olliTalkBetaHeader\{[\s\S]*?transition:none/);
-});
-
-
-test('Team Talk keeps chat viewport full height and uses measured bottom padding to screen edge', () => {
-  const css = fs.readFileSync(path.join(root, 'olli-talk-beta.css'), 'utf8');
+test('Team Talk keeps the chat area full-height while the composer overlays it', () => {
   const area = css.match(/#olliTalkBetaScreen \.olliTalkBetaChatArea\{([\s\S]*?)\}/)?.[1] || '';
-  assert.match(area, /margin:0 auto/);
+  assert.match(css, /--olli-talk-chat-reserve:74px/);
+  assert.match(area, /flex:1/);
   assert.match(area, /var\(--olli-talk-chat-reserve, 74px\)/);
-  assert.doesNotMatch(area, /margin:0 auto var\(--olli-talk-chat-reserve/);
-  assert.match(area, /overflow-anchor:none/);
+  assert.doesNotMatch(area, /position:absolute/);
+  assert.doesNotMatch(area, /--olli-talk-chat-bottom-gap/);
+  assert.match(area, /overflow-y:auto/);
+  assert.match(area, /overscroll-behavior-y:contain/);
+  assert.match(area, /touch-action:pan-y/);
 });
 
-test('Team Talk moves chat content by composer position delta without reading keyboard state', () => {
-  const start = source.indexOf('function syncOlliTalkChatToComposer');
-  const end = source.indexOf('function scheduleOlliTalkChatToComposer', start);
-  const body = source.slice(start, end);
-  assert.match(body, /previousComposerTop - composerRect\.top/);
-  assert.match(body, /chatArea\.scrollTop \+ composerDelta/);
-  assert.match(body, /viewportRect\.bottom - composerRect\.top/);
-  assert.doesNotMatch(body, /keyboardOpen/);
-  assert.doesNotMatch(body, /keyboardOffset/);
+test('Team Talk lifts only the message layer by the existing keyboard offset', () => {
+  const viewportStart = source.indexOf('function syncViewport');
+  const viewportEnd = source.indexOf('function bindViewport', viewportStart);
+  const body = source.slice(viewportStart, viewportEnd);
+  const list = css.match(/#olliTalkBetaScreen \.olliTalkBetaMessageList\{([\s\S]*?)\}/)?.[1] || '';
+  assert.match(body, /messageLift = keyboardTracking \? Math\.max\(0, keyboardOffset\) : 0/);
+  assert.match(body, /--olli-talk-message-lift/);
+  assert.doesNotMatch(body, /scrollTop\s*=/);
+  assert.match(list, /transform:translate3d\(0,calc\(-1 \* var\(--olli-talk-message-lift, 0px\)\),0\)/);
 });
 
-
-test('Team Talk visual viewport moves only the composer, not the chat layer', () => {
+test('Team Talk locks composer viewport after the keyboard finishes opening', () => {
   const start = source.indexOf('function syncViewport');
   const end = source.indexOf('function bindViewport', start);
   const body = source.slice(start, end);
-  assert.match(body, /--olli-talk-composer-bottom/);
-  assert.doesNotMatch(body, /--olli-talk-vv-top/);
-  assert.doesNotMatch(body, /--olli-talk-vv-height/);
+  assert.match(source, /let olliTalkComposerViewportLock = null/);
+  assert.match(source, /function lockOlliTalkComposerViewport\(\)/);
+  assert.match(source, /function scheduleOlliTalkComposerViewportLock\(\)/);
+  assert.match(body, /keyboardTracking = inputFocused[\s\S]*?olliTalkKeyboardTransitionActive/);
+  assert.match(body, /scheduleOlliTalkComposerViewportLock\(\)/);
+  assert.match(body, /syncOlliTalkComposerViewport\(\);/);
 });
 
 test('Team Talk chat position tracking no longer subscribes directly to visualViewport', () => {
@@ -253,12 +260,12 @@ test('Team Talk header search and archive icons are enlarged inside the shared p
 });
 
 
-test('Team Talk visualViewport scroll moves composer only and never syncs chat scroll', () => {
+test('Team Talk visualViewport scroll reuses the locked composer geometry', () => {
   const start=source.indexOf('function bindViewport');
   const end=source.indexOf('function resizeInput',start);
   const body=source.slice(start,end);
-  assert.match(body,/visualViewport\.addEventListener\('scroll', syncOlliTalkComposerViewport/);
-  assert.doesNotMatch(body,/visualViewport\.addEventListener\('scroll', syncViewport/);
+  assert.match(body,/visualViewport\.addEventListener\('scroll', \(\) => \{[\s\S]*?if \(olliTalkComposerViewportLock\)[\s\S]*?syncOlliTalkComposerViewport\(\);[\s\S]*?return;/);
+  assert.doesNotMatch(body,/visualViewport\.addEventListener\('scroll', syncOlliTalkComposerViewport/);
 });
 
 test('Team Talk composer measurement no longer applies composer delta to chat scrollTop', () => {
@@ -266,8 +273,8 @@ test('Team Talk composer measurement no longer applies composer delta to chat sc
   const end=source.indexOf('function scheduleOlliTalkChatToComposer',start);
   const body=source.slice(start,end);
   assert.doesNotMatch(body,/composerDelta/);
-  assert.doesNotMatch(body,/chatArea\.scrollTop \+ /);
-  assert.match(body,/options\.followBottom === true/);
+  assert.doesNotMatch(body,/chatArea\.scrollTop/);
+  assert.doesNotMatch(body,/followBottom/);
 });
 
 test('Team Talk realtime refresh preserves middle scroll and follows only when near bottom', () => {
@@ -315,26 +322,31 @@ test('Team Talk composer action buttons use a very light gray background and thi
 });
 
 
-test('Team Talk restores one-time chat content movement after keyboard settles', () => {
-  assert.match(source,/function captureOlliTalkViewportTransitionAnchor/);
-  assert.match(source,/const delta = Number\.isFinite\(startTop\)[\s\S]*?startTop - finalTop/);
-  assert.match(source,/startScrollTop \+ delta/);
-  assert.match(source,/requestAnimationFrame\(\(\) => \{/);
+test('Team Talk keyboard settling never moves the current chat scroll position', () => {
+  const start = source.indexOf('function finishOlliTalkViewportTransition');
+  const end = source.indexOf('function scheduleOlliTalkViewportSettle', start);
+  const body = source.slice(start, end);
+  assert.match(body, /syncOlliTalkChatToComposer\(\)/);
+  assert.doesNotMatch(body, /chatArea\.scrollTop|startScrollTop|startTop|finalTop|followBottom|delta/);
+  assert.doesNotMatch(source, /olliTalkViewportTransitionComposerTop|olliTalkViewportTransitionChatScrollTop|olliTalkViewportTransitionUserTouchedChat|olliTalkFollowBottomAfterViewportSettle/);
 });
 
-test('Team Talk never applies keyboard content correction while user touches chat during transition', () => {
-  assert.match(source,/olliTalkViewportTransitionUserTouchedChat/);
-  assert.match(source,/chatArea\.addEventListener\('pointerdown'/);
-  assert.match(source,/chatArea\.addEventListener\('touchstart'/);
-  assert.match(source,/if \(!chatArea\?\.isConnected \|\| userTouched\)/);
+test('Team Talk direct first touch focuses like mention without cancelling tap or caret placement', () => {
+  const start = source.indexOf("input.addEventListener('pointerdown'");
+  const end = source.indexOf("input.addEventListener('input'", start);
+  const body = source.slice(start, end);
+  assert.match(body, /event\.pointerType === 'touch'/);
+  assert.match(body, /document\.activeElement !== input/);
+  assert.match(body, /input\.focus\(\{ preventScroll:true \}\)/);
+  assert.doesNotMatch(body, /event\.preventDefault\(\)/);
 });
 
-test('Team Talk visualViewport scroll still moves composer only', () => {
-  const start=source.indexOf('function bindViewport');
-  const end=source.indexOf('function resizeInput',start);
+test('Team Talk locked composer geometry is authoritative during viewport pan', () => {
+  const start=source.indexOf('function syncOlliTalkComposerViewport');
+  const end=source.indexOf('function getOlliTalkViewportBottom',start);
   const body=source.slice(start,end);
-  assert.match(body,/visualViewport\.addEventListener\('scroll', syncOlliTalkComposerViewport/);
-  assert.doesNotMatch(body,/visualViewport\.addEventListener\('scroll', syncViewport/);
+  assert.match(body,/if \(olliTalkComposerViewportLock && options\.followKeyboard !== true\)[\s\S]*?applyOlliTalkComposerViewportGeometry\(layer, olliTalkComposerViewportLock\);[\s\S]*?return;/);
+  assert.match(source,/function releaseOlliTalkComposerViewportLock\(\)/);
 });
 
 
@@ -405,19 +417,33 @@ test('Team Talk chat owns iOS vertical gestures like one-minute feedback', () =>
   assert.match(css,/#olliTalkBetaScreen \.olliTalkBetaChatArea::after\{[\s\S]*?width:1px;[\s\S]*?height:1px/);
 });
 
-test('Team Talk visualViewport scroll remains composer-only after iOS gesture fix', () => {
-  const start=source.indexOf('function bindViewport');
-  const end=source.indexOf('function resizeInput',start);
+test('Team Talk unlocks composer on blur and follows the keyboard until it actually closes', () => {
+  const start=source.indexOf('function syncViewport');
+  const end=source.indexOf('function bindViewport',start);
   const body=source.slice(start,end);
-  assert.match(body,/visualViewport\.addEventListener\('scroll', syncOlliTalkComposerViewport/);
-  assert.doesNotMatch(body,/visualViewport\.addEventListener\('scroll', syncViewport/);
+  assert.match(source,/input\.addEventListener\('blur',[\s\S]*?releaseOlliTalkComposerViewportLock\(\);[\s\S]*?olliTalkKeyboardTransitionActive = true/);
+  assert.match(body,/if \(keyboardOpen\) \{[\s\S]*?if \(!inputFocused\) \{[\s\S]*?syncOlliTalkComposerViewport\(\{ followKeyboard:true \}\)/);
+  assert.match(body,/if \(!keyboardOpen && !inputFocused\) \{[\s\S]*?releaseOlliTalkComposerViewportLock\(\);[\s\S]*?olliTalkKeyboardTransitionActive = false/);
 });
 
 
-test('Team Talk runtime stays on the known-good pre gesture-tracking path', () => {
-  assert.doesNotMatch(source,/olliTalkChatPointerActive/);
-  assert.doesNotMatch(source,/beginOlliTalkChatGesture/);
-  assert.doesNotMatch(source,/endOlliTalkChatGesture/);
+test('Team Talk freezes composer and viewport correction while the user drags chat', () => {
+  assert.match(source,/let olliTalkChatGestureActive = false/);
+  assert.match(source,/function syncOlliTalkComposerViewport\(options = \{\}\)\{[\s\S]{0,120}olliTalkChatGestureActive && options\.force !== true/);
+  assert.match(source,/if \(olliTalkChatGestureActive\) \{[\s\S]{0,120}olliTalkLastViewportSignature = signature;[\s\S]{0,80}return;/);
+  assert.match(source,/chatArea\.addEventListener\('pointerdown', beginOlliTalkChatGesture/);
+  assert.match(source,/window\.addEventListener\('touchend', endOlliTalkChatGesture/);
+  assert.match(source,/syncOlliTalkComposerViewport\(\{ force:true \}\)/);
+});
+
+test('Team Talk cancels vertical touch drag inside composer instead of freezing viewport after it starts', () => {
+  assert.match(source,/const composer = input\.closest\('\.olliTalkBetaComposer'\)/);
+  assert.match(source,/composer\.addEventListener\('touchstart',[\s\S]{0,260}composerTouchStartY/);
+  assert.match(source,/composer\.addEventListener\('touchmove',[\s\S]{0,620}deltaY < 6 \|\| deltaY <= deltaX[\s\S]{0,260}event\.preventDefault\(\)/);
+  assert.match(source,/composer\.addEventListener\('touchmove',[\s\S]{0,900}\{ passive:false \}/);
+  assert.doesNotMatch(source,/inputTouchDragActive|inputTouchStartY/);
+  assert.doesNotMatch(source,/input\.addEventListener\('touchmove',[\s\S]{0,500}beginOlliTalkChatGesture\(\)/);
+  assert.match(source,/input\.addEventListener\('focus',[\s\S]{0,220}captureOlliTalkKeyboardBaseline\(true\)/);
 });
 
 
@@ -566,4 +592,12 @@ test('messages without a teacher target register broadcast recipients while targ
   assert.match(source, /async function registerOlliTalkMessageRecipients\(messageId,memberIds/);
   assert.match(source, /registerOlliTalkMessageRecipients\(Number\(payload\.message\.id\),mentionedIds,context\)/);
   assert.match(source, /registerOlliTalkMessageRecipients\(messageId,\[\],context\)/);
+});
+
+test('Team Talk message lift does not weaken input or chat scroll protections', () => {
+  assert.match(source,/input\.focus\(\{ preventScroll:true \}\)/);
+  assert.match(source,/composer\.addEventListener\('touchmove',[\s\S]{0,900}event\.preventDefault\(\)[\s\S]{0,180}\{ passive:false \}/);
+  assert.match(source,/if \(olliTalkChatGestureActive && options\.force !== true\) return/);
+  assert.match(css,/overscroll-behavior-y:contain/);
+  assert.match(css,/touch-action:pan-y/);
 });
