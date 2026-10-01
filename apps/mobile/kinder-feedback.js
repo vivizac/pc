@@ -409,6 +409,14 @@ function bindKinderChatFeedbackViewportInteractions() {
         );
         if (!teacherEnabled) {
           kcfKeepInputFocusUntil = Date.now() + 900;
+          if (document.activeElement !== input) {
+            captureKinderChatFeedbackKeyboardBaseline(true);
+            try { input.focus({ preventScroll:true }); }
+            catch (_) { input.focus(); }
+          } else {
+            captureKinderChatFeedbackKeyboardBaseline(true);
+          }
+          return;
         }
         captureKinderChatFeedbackKeyboardBaseline(true);
         return;

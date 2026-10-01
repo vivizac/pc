@@ -305,7 +305,8 @@ test('QuickNote touch retap protects the focused input from transient iOS blur',
   assert.match(block,/event\.pointerType === 'touch'/);
   assert.match(block,/teacherEnabled/);
   assert.match(block,/kcfKeepInputFocusUntil = Date\.now\(\) \+ 900/);
-  assert.doesNotMatch(block,/input\.focus\(/);
+  assert.match(block,/document\.activeElement !== input/);
+  assert.match(block,/input\.focus\(\{ preventScroll:true \}\)/);
   assert.match(js,/if \(Date\.now\(\) < kcfKeepInputFocusUntil\)[\s\S]*?currentInput\.focus\(\{ preventScroll:true \}\)/);
 });
 
