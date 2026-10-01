@@ -800,7 +800,7 @@
     if (btn) {
       btn.classList.toggle('active', state.enabled);
       btn.classList.toggle('loading', state.loading);
-      btn.textContent = state.loading ? '···' : 'Class';
+      btn.textContent = state.loading ? '···' : (state.enabled ? 'C' : 'Class');
       btn.setAttribute('aria-pressed', state.enabled ? 'true' : 'false');
       btn.setAttribute('aria-label', state.enabled ? 'Class 모드 닫기' : 'Class 모드 열기');
       btn.title = state.enabled ? 'Class 모드 닫기' : 'Class 모드 열기';
