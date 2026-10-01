@@ -7,7 +7,7 @@ const talk=fs.readFileSync(path.join(__dirname,'../olli-talk-beta.js'),'utf8');
 
 test('mobile waitlist update gate uses only the shared candidate parser',()=>{
   const start=talk.indexOf('function isOlliTalkWaitlistUpdateAgentCandidate');
-  const end=talk.indexOf('async function resolveOlliTalkWaitlistUpdateAgentTurn',start);
+  const end=talk.indexOf('async function resolveOlliTalkTrialAddAgentTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/parseWaitlistUpdateMutationIntent\(commandText\)/);
   assert.match(block,/==='update_waitlist'/);
