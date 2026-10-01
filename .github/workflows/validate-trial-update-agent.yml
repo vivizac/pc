@@ -9,6 +9,12 @@ on:
       - 'apps/mobile/api/olli-agent.js'
       - 'apps/mobile/tests/olli-agent-trial-update-prepare-tool.test.cjs'
       - 'apps/mobile/tests/olli-agent-trial-update-production-contract.test.cjs'
+      - 'packages/common/olli-command-router-common.js'
+      - 'apps/pc/pc-team-talk.js'
+      - 'apps/mobile/olli-talk-beta.js'
+      - 'apps/pc/tests/trial-update-router-candidate.test.cjs'
+      - 'apps/pc/tests/team-talk-trial-update-agent-bridge.test.cjs'
+      - 'apps/mobile/tests/team-talk-trial-update-agent-bridge.test.cjs'
       - '.github/workflows/validate-trial-update-agent.yml'
 
 permissions:
@@ -32,3 +38,12 @@ jobs:
         run: |
           node --test tests/olli-agent-trial-update-prepare-tool.test.cjs
           node --test tests/olli-agent-trial-update-production-contract.test.cjs
+
+      - name: Run trial update Router and PC bridge contracts
+        working-directory: apps/pc
+        run: |
+          node --test tests/trial-update-router-candidate.test.cjs
+          node --test tests/team-talk-trial-update-agent-bridge.test.cjs
+      - name: Run trial update Mobile bridge contracts
+        working-directory: apps/mobile
+        run: node --test tests/team-talk-trial-update-agent-bridge.test.cjs
