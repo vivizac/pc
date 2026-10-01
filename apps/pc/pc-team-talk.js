@@ -1907,9 +1907,6 @@
     });
     const data = await response.json().catch(() => ({}));
 
-    if (!response.ok && clean(data?.code) === 'OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED') {
-      return null;
-    }
     if (!response.ok || data?.ok !== true || !data?.message?.action) {
       throw new Error(data?.error || data?.message || '대기 등록 Agent 응답을 받지 못했습니다.');
     }
@@ -1943,14 +1940,6 @@
     });
     const data = await response.json().catch(() => ({}));
 
-    if (!response.ok && clean(data?.code) === 'OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED') {
-      const message = '비재원 대기 변경은 현재 Team Chat에서 지원하지 않아요. 대기 관리에서 직접 변경해 주세요.';
-      return {
-        assistantMessage:await saveAssistantReply(current, message, sourceMessageId),
-        replyText:message,
-        recordAi:false
-      };
-    }
 
     if (!response.ok || data?.ok !== true || !data?.message?.action) {
       throw new Error(data?.error || data?.message || '대기 변경 Agent 응답을 받지 못했습니다.');
