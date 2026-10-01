@@ -54,6 +54,13 @@ test('Olli Talk mention picker uses wrapped teacher chips above the composer', (
 });
 
 
+test('Team Talk hides messages during keyboard viewport movement and reveals the final position without animation', () => {
+  assert.match(talkJs,/screen\.classList\.add\('olliTalkViewportMoving'\)/);
+  assert.match(talkJs,/screen\.classList\.remove\('olliTalkViewportMoving'\)/);
+  assert.match(talkCss,/#olliTalkBetaScreen\.olliTalkViewportMoving \.olliTalkBetaMessageList\{[\s\S]*?visibility:hidden;[\s\S]*?transition:none;[\s\S]*?animation:none;/);
+  assert.match(talkCss,/\.olliTalkBetaMessageList\{[\s\S]*?transform:translate3d\(0,calc\(-1 \* var\(--olli-talk-message-lift, 0px\)\),0\);[\s\S]*?transition:none;[\s\S]*?animation:none;/);
+});
+
 test('Olli Talk message bubble keeps compact text and curved top tail', () => {
   assert.match(talkCss, /\.olliTalkBetaBubble\{[\s\S]*?border-radius:14px;[\s\S]*?font-size:calc\(14\.5px \* var\(--olli-text-scale, 1\)\)/);
   assert.match(talkCss, /\.olliTalkBetaMessageGroupStart\.outgoing \.olliTalkBetaBubble::after\{[\s\S]*?right:-3px;[\s\S]*?top:0;[\s\S]*?width:19px;[\s\S]*?height:13px;[\s\S]*?clip-path:path\("M 0 4 C 4 4 7 6 10 9 C 12 6 15 3 19 1 C 17 4 16 7 16 11 C 12 9 9 8 6 8 C 3 8 1 7 0 6 Z"\)/);
