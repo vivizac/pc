@@ -277,10 +277,12 @@ test('makeup tool schema does not expose internal ids, division, group or stored
   assert.doesNotMatch(schema,/studentId|student_id|division|classGroup|class_group|timeSlot|time_slot|requestId|action_type/);
 });
 
-test('endpoint exposes makeup as probe-only mode with request id', () => {
+test('endpoint keeps makeup probe request-id flow separate from production source-message flow', () => {
   const endpoint=fs.readFileSync(path.join(__dirname,'../api/olli-agent.js'),'utf8');
   assert.match(endpoint,/'makeup_prepare_probe'/);
   assert.match(endpoint,/runMakeupPrepareProbe/);
   assert.match(endpoint,/makeup_prepare_probe에는 재시도 중복 방지용 requestId가 필요합니다/);
-  assert.doesNotMatch(endpoint,/mode === 'makeup_prepare'/);
+  assert.match(endpoint,/mode === 'makeup_prepare'/);
+  assert.match(endpoint,/runMakeupPrepare\(/);
+  assert.match(endpoint,/makeup_prepare에는 저장된 원문 Team Chat message id가 필요합니다/);
 });
