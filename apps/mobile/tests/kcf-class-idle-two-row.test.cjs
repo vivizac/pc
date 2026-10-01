@@ -31,13 +31,13 @@ test('successful Class feedback still auto-advances to the next student before c
 
 test('active Class control becomes compact C beside the first-row input', () => {
   assert.match(runtime, /btn\.textContent = state\.loading \? '···' : \(state\.enabled \? 'C' : 'Class'\)/);
-  assert.match(css, /\.kcfTeacherBtn\.active \{[\s\S]*?min-width:28px !important;[\s\S]*?padding:0 8px !important;/);
+  assert.match(css, /\.kcfTeacherBtn\.active \{[\s\S]*?width:33px !important;[\s\S]*?min-width:33px !important;[\s\S]*?border-radius:50% !important;/);
   assert.match(css, /kcfTeacherRosterMode \.kcfTeacherBtn \{[\s\S]*?grid-column:1;[\s\S]*?grid-row:1;[\s\S]*?justify-self:start;/);
 });
 
 test('active Class sheet control also uses compact C', () => {
   assert.match(sheet, /id="kcfTeacherSheetModeBtn"[^>]*>C<\/button>/);
-  assert.match(sheetCss, /\.kcfTeacherSheetModeBtn \{[\s\S]*?min-width:28px;[\s\S]*?padding:0 8px;/);
+  assert.match(sheetCss, /\.kcfTeacherSheetModeBtn \{[\s\S]*?width:32px;[\s\S]*?min-width:32px;[\s\S]*?border-radius:50%;/);
 });
 
 test('student cards remain manually selectable while Class mode waits', () => {
