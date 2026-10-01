@@ -9,19 +9,21 @@ const teacherCss = fs.readFileSync('kcf-teacher-sheet.css', 'utf8');
 const adapter = fs.readFileSync('olli-feedback-registration-phone-adapter.js', 'utf8');
 const runtime = fs.readFileSync('kcf-auto-mode-runtime.js', 'utf8');
 
-test('normal Olli input stays inline and legacy expanded-composer path is removed', () => {
-  assert.doesNotMatch(baseJs, /kcfComposerExpanded/);
-  assert.doesNotMatch(baseJs, /setKinderChatFeedbackComposerExpanded/);
-  assert.doesNotMatch(baseJs, /monitorKinderChatFeedbackComposerReveal/);
-  assert.doesNotMatch(baseJs, /kcfKeyboardRevealFrame/);
-  assert.match(baseJs, /input\.addEventListener\('focus',[\s\S]*?updateKinderChatFeedbackKeyboardOffset\(\);/);
+test('normal QuickNote input is only a read-only launcher for the shared sheet', () => {
+  assert.match(html, /id="kcfInput"[^>]*readonly/);
+  assert.doesNotMatch(baseJs, /kcfKeyboardOpen/);
+  assert.doesNotMatch(baseJs, /updateKinderChatFeedbackKeyboardOffset/);
+  const pointer = baseJs.match(/input\.addEventListener\('pointerdown',[\s\S]*?\n    \}\);/)?.[0] || '';
+  assert.match(pointer, /window\.KcfComposerSheet \|\| window\.KcfTeacherSheet/);
+  assert.match(pointer, /event\.preventDefault\(\)/);
+  assert.match(pointer, /sheet\.open\(\)/);
 });
 
-test('Teacher mode loads one dedicated rebuilt sheet', () => {
-  assert.match(html, /kcf-teacher-sheet\.css\?v=20260918-done-background-gap-1/);
-  assert.match(html, /kcf-teacher-sheet\.js\?v=20260918-done-background-gap-1/);
-  assert.doesNotMatch(html, /olli-kcf-composer-sheet/);
-  assert.match(teacherCss, /\.kcfTeacherSheet \{[\s\S]*?border-radius:28px 28px 0 0;/);
+test('normal and Class modes share the same flat QuickNote sheet', () => {
+  assert.match(html, /kcf-teacher-sheet\.css\?v=20261001-unified-sheet-1/);
+  assert.match(html, /kcf-teacher-sheet\.js\?v=20261001-unified-sheet-1/);
+  assert.match(teacherJs, /global\.KcfComposerSheet = api/);
+  assert.match(teacherCss, /\.kcfTeacherSheet \{[\s\S]*?border-radius:0;/);
   assert.match(teacherCss, /\.kcfTeacherSheetOverlay\.show \.kcfTeacherSheet/);
 });
 
@@ -56,19 +58,20 @@ test('Teacher send closes the sheet only after successful submit', () => {
   assert.doesNotMatch(adapter, /__olliPhoneSubmitCloseInstalled/);
 });
 
-test('Teacher sheet uses the T control and existing feedback submit source', () => {
-  assert.match(html, /id="kcfTeacherBtn"[^>]*>T<\/button>/);
+test('shared sheet exposes Class mode control and the existing feedback submit source', () => {
+  assert.match(html, /id="kcfTeacherBtn"[^>]*>Class<\/button>/);
   assert.match(teacherJs, /id="kcfTeacherSheetModeBtn"/);
+  assert.match(teacherJs, /modeBtn\.textContent = enabled \? 'C' : 'Class'/);
   assert.match(teacherJs, /id="kcfTeacherSheetSendBtn"/);
   assert.match(teacherJs, /toggleKinderChatFeedbackTeacherMode/);
 });
 
 
-test('when T remains active, tapping the inline input reopens Teacher sheet instead of typing inline', () => {
+test('tapping the inline input opens the shared sheet regardless of Class mode state', () => {
   const pointer = baseJs.match(/input\.addEventListener\('pointerdown',[\s\S]*?\n    \}\);/)?.[0] || '';
-  assert.match(pointer, /teacherMode\.isEnabled\(\)/);
+  assert.doesNotMatch(pointer, /teacherMode\.isEnabled\(\)/);
   assert.match(pointer, /event\.preventDefault\(\)/);
-  assert.match(pointer, /teacherSheet\.open\(\)/);
+  assert.match(pointer, /sheet\.open\(\)/);
 });
 
 
