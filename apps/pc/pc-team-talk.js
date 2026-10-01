@@ -1342,6 +1342,23 @@
     return { message };
   }
 
+  function parseTimetableMemoAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router) return null;
+    try {
+      const deleted = typeof router.parseTimetableMemoDeleteMutationIntent === 'function'
+        ? router.parseTimetableMemoDeleteMutationIntent(commandText)
+        : null;
+      if (clean(deleted?.intent) === 'delete_timetable_memo') return deleted;
+      const added = typeof router.parseTimetableMemoAddMutationIntent === 'function'
+        ? router.parseTimetableMemoAddMutationIntent(commandText)
+        : null;
+      return clean(added?.intent) === 'add_timetable_memo' ? added : null;
+    } catch (error) {
+      console.warn('PC 시간표 메모 Agent 후보 판별 실패:', error?.message || error);
+      return null;
+    }
+  }
+
   function isTrialAddAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router || typeof router.parseTrialMutationIntent !== 'function') return false;
     try {
@@ -1504,6 +1521,43 @@
       console.warn('PC 픽업 Agent 후보 판별 실패:', error?.message || error);
       return false;
     }
+  }
+
+  async function resolveTimetableMemoAgentTurn(commandText, parsed, current, replyToMessageId) {
+    const sourceMessageId = Number(replyToMessageId || 0);
+    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+      throw new Error('시간표 메모 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const expectedType = clean(parsed?.intent);
+    if (!['add_timetable_memo', 'delete_timetable_memo'].includes(expectedType)) {
+      throw new Error('시간표 메모 작업 종류를 확인하지 못했습니다.');
+    }
+
+    const response = await fetch('/api/olli-agent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        mode:'memo_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageId,
+        memoNote:clean(parsed?.memoNote)
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.ok !== true || !data?.message?.action) {
+      throw new Error(data?.error || data?.message || '시간표 메모 Agent 응답을 받지 못했습니다.');
+    }
+    if (clean(data.message.action.action_type) !== expectedType) {
+      throw new Error('시간표 메모 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
   }
 
   async function resolveMakeupAddAgentTurn(commandText, current, replyToMessageId) {
@@ -2153,6 +2207,16 @@
         replyText:confirmation,
         recordAi:false
       };
+    }
+
+    const timetableMemoCandidate = parseTimetableMemoAgentCandidate(commandText, router);
+    if (timetableMemoCandidate) {
+      return resolveTimetableMemoAgentTurn(
+        commandText,
+        timetableMemoCandidate,
+        current,
+        replyToMessageId
+      );
     }
 
     const trialCancelCandidate = parseTrialCancelAgentCandidate(commandText, router);
