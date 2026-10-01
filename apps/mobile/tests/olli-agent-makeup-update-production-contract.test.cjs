@@ -129,8 +129,20 @@ test('makeup update source binding accepts exact stored text and rejects a chang
   );
 });
 
-test('production makeup update checkpoint does not connect PC or Mobile Team Chat routing', () => {
-  assert.doesNotMatch(endpoint, /sendTeamChat.*makeup_update|routeTeamChat.*makeup_update/i);
+test('PC and Mobile Team Chat route makeup update only through source-bound production prepare', () => {
   const mobileTalk = fs.readFileSync(path.join(mobileRoot, 'olli-talk-beta.js'), 'utf8');
-  assert.doesNotMatch(mobileTalk, /makeup_update_prepare/);
+  const pcTalk = fs.readFileSync(path.resolve(mobileRoot, '../pc/pc-team-talk.js'), 'utf8');
+
+  assert.match(mobileTalk, /mode:'makeup_update_prepare'/);
+  assert.match(mobileTalk, /sourceMessageId/);
+  assert.match(mobileTalk, /action_type \|\| ''\)\.trim\(\)!=='update_makeup'/);
+  assert.doesNotMatch(mobileTalk, /mode:'makeup_update_prepare_probe'/);
+
+  assert.match(pcTalk, /mode:'makeup_update_prepare'/);
+  assert.match(pcTalk, /sourceMessageId/);
+  assert.match(pcTalk, /action_type\) !== 'update_makeup'/);
+  assert.doesNotMatch(pcTalk, /mode:'makeup_update_prepare_probe'/);
+
+  assert.doesNotMatch(mobileTalk, /olli_schedule_update_one_time_session/);
+  assert.doesNotMatch(pcTalk, /olli_schedule_update_one_time_session/);
 });
