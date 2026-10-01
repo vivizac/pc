@@ -106,6 +106,7 @@ jobs:
             tests/olli-agent-schedule-availability-db-contract.test.cjs \
             tests/olli-agent-makeup-db-contract.test.cjs \
             tests/olli-agent-makeup-prepare-tool.test.cjs \
+            tests/olli-agent-makeup-production-contract.test.cjs \
             tests/olli-agent-attendance-tool.test.cjs \
             tests/olli-agent-pickups-tool.test.cjs \
             tests/olli-agent-pickup-prepare-tool.test.cjs \

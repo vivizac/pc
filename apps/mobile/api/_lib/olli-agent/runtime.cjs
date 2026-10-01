@@ -506,11 +506,13 @@ function resolveMakeupPrepareScope(preparedPrivacy) {
   };
 }
 
-async function runMakeupPrepareProbe({
+async function runMakeupPrepareAgent({
   agentContext,
   requestContext,
   preparedPrivacy,
   requestId,
+  replyToMessageId = null,
+  requirePersistedMessage = false,
 }) {
   assertOpenAiKey();
 
@@ -520,6 +522,7 @@ async function runMakeupPrepareProbe({
   const { sanitizeAgentToolPayload } = require('./privacy.cjs');
   const model = agentModel();
   const today = todayInSeoul();
+  let persistedMessage = null;
 
   const prepareMakeup = createPrepareMakeupTool({
     tool,
@@ -531,6 +534,10 @@ async function runMakeupPrepareProbe({
     classGroup:scope.classGroup,
     currentDate:today,
     requestId,
+    replyToMessageId,
+    capturePersistedMessage(message) {
+      persistedMessage = pickupPersistedMessageForClient(message);
+    },
     sanitizePayload(payload) {
       return sanitizeAgentToolPayload(payload, preparedPrivacy);
     },
@@ -541,7 +548,7 @@ async function runMakeupPrepareProbe({
     : 'The server has fixed the requested class group to ' + scope.classGroup + '. Do not override it.';
 
   const agent = new Agent({
-    name:'Olli Makeup Prepare Probe',
+    name:requirePersistedMessage ? 'Olli Makeup Prepare' : 'Olli Makeup Prepare Probe',
     model,
     instructions:[
       'You are the Olli makeup-class preparation assistant.',
@@ -564,16 +571,30 @@ async function runMakeupPrepareProbe({
     modelSettings:{ toolChoice:'prepare_makeup' },
   });
 
-  const result = await run(agent, preparedPrivacy.safeText, {
-    context:agentContext,
-  });
+  let result = null;
+  let runError = null;
+  try {
+    result = await run(agent, preparedPrivacy.safeText, {
+      context:agentContext,
+    });
+  } catch (error) {
+    runError = error;
+    if (!requirePersistedMessage || !persistedMessage) throw error;
+  }
 
   const finalOutput = String(result?.finalOutput || '').trim();
-  if (!finalOutput) {
+  if (!finalOutput && (!requirePersistedMessage || !persistedMessage)) {
     throw runtimeError(
       '보강 등록 준비 Agent 응답이 비어 있습니다.',
       502,
       'OLLI_AGENT_EMPTY_MAKEUP_PREPARE_RESPONSE'
+    );
+  }
+  if (requirePersistedMessage && !persistedMessage) {
+    throw runtimeError(
+      '보강 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_AGENT_MAKEUP_PERSISTED_MESSAGE_MISSING'
     );
   }
 
@@ -582,7 +603,23 @@ async function runMakeupPrepareProbe({
     model,
     output:finalOutput,
     nodeVersion:process.versions.node,
+    persistedMessage,
+    recoveredAfterPersist:!!runError,
   };
+}
+
+async function runMakeupPrepareProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+}) {
+  return runMakeupPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId,
+  });
 }
 
 async function runAttendanceProbe({
@@ -1637,6 +1674,72 @@ async function runPickupCancelPrepare({
   });
 }
 
+
+async function validateMakeupSourceMessage({
+  requestContext,
+  sourceMessageId,
+  sourceMessageText,
+  callRpc,
+}) {
+  try {
+    return await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId,
+      sourceMessageText,
+      callRpc,
+    });
+  } catch (error) {
+    const pickupCode = String(error?.code || '');
+    if (!pickupCode.startsWith('OLLI_AGENT_PICKUP_SOURCE_')) throw error;
+
+    const makeupCode = pickupCode.replace(
+      'OLLI_AGENT_PICKUP_SOURCE_',
+      'OLLI_AGENT_MAKEUP_SOURCE_'
+    );
+    const message = String(error?.message || '원문 Team Chat 메시지를 확인하지 못했습니다.')
+      .replace(/픽업/g, '보강');
+
+    throw runtimeError(
+      message,
+      Number(error?.statusCode || 400),
+      makeupCode
+    );
+  }
+}
+
+async function runMakeupPrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId = Number(sourceMessageId || 0);
+  if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_MAKEUP_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validateMakeupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  return runMakeupPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-message:' + sourceId,
+    replyToMessageId:sourceId,
+    requirePersistedMessage:true,
+  });
+}
+
+
 async function runStudentProfileProbe({
   agentContext,
   requestContext,
@@ -1731,7 +1834,10 @@ module.exports = {
   resolveAvailabilityScope,
   runScheduleAvailabilityProbe,
   resolveMakeupPrepareScope,
+  runMakeupPrepareAgent,
   runMakeupPrepareProbe,
+  validateMakeupSourceMessage,
+  runMakeupPrepare,
   runAttendanceProbe,
   runPickupProbe,
   resolvePickupPrepareScope,
