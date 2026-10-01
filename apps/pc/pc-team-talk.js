@@ -1473,14 +1473,19 @@
     }
   }
 
-  function isMakeupCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
-    if (!router || typeof router.parseMakeupCancelMutationIntent !== 'function') return false;
+  function parseMakeupCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parseMakeupCancelMutationIntent !== 'function') return null;
     try {
-      return clean(router.parseMakeupCancelMutationIntent(commandText)?.intent) === 'cancel_makeup';
+      const parsed = router.parseMakeupCancelMutationIntent(commandText);
+      return clean(parsed?.intent) === 'cancel_makeup' ? parsed : null;
     } catch (error) {
       console.warn('PC 보강 취소 Agent 후보 판별 실패:', error?.message || error);
-      return false;
+      return null;
     }
+  }
+
+  function isMakeupCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    return !!parseMakeupCancelAgentCandidate(commandText, router);
   }
 
   function isMakeupUpdateAgentCandidate(commandText, router = global.OlliCommandRouter) {
@@ -1592,10 +1597,21 @@
     };
   }
 
-  async function resolveMakeupCancelAgentTurn(commandText, current, replyToMessageId) {
-    const sourceMessageId = Number(replyToMessageId || 0);
-    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+  async function resolveMakeupCancelAgentTurn({
+    sourceText,
+    sourceMessageId,
+    reasonText,
+    reasonMessageText,
+    reasonMessageId,
+    current,
+  }) {
+    const sourceId = Number(sourceMessageId || 0);
+    const reasonId = Number(reasonMessageId || 0);
+    if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
       throw new Error('보강 취소 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    if (!Number.isSafeInteger(reasonId) || reasonId <= 0 || !clean(reasonText)) {
+      throw new Error('보강 취소 사유 메시지를 확인하지 못했습니다.');
     }
 
     const response = await fetch('/api/olli-agent', {
@@ -1605,8 +1621,11 @@
         mode:'makeup_cancel_prepare',
         academyId:current?.academyId || '',
         sessionToken:current?.sessionToken || '',
-        message:clean(commandText),
-        sourceMessageId
+        message:clean(sourceText),
+        sourceMessageId:sourceId,
+        reasonMessageId:reasonId,
+        reasonMessageText:clean(reasonMessageText),
+        reason:clean(reasonText)
       })
     });
     const data = await response.json().catch(() => ({}));
@@ -2186,6 +2205,19 @@
         });
       }
 
+      const pendingMakeupCancel = state.pendingActionReason.__makeupCancelAgent;
+      if (clean(state.pendingActionReason.intent) === 'cancel_makeup' && pendingMakeupCancel) {
+        state.pendingActionReason = null;
+        return resolveMakeupCancelAgentTurn({
+          sourceText:clean(pendingMakeupCancel.sourceMessageText),
+          sourceMessageId:Number(pendingMakeupCancel.sourceMessageId || 0),
+          reasonText:clean(commandText),
+          reasonMessageText:clean(commandText),
+          reasonMessageId:Number(replyToMessageId || 0),
+          current,
+        });
+      }
+
       const pendingAbsence = state.pendingActionReason.__absenceAgent;
       if (clean(state.pendingActionReason.intent) === 'mark_absent' && pendingAbsence) {
         state.pendingActionReason = null;
@@ -2225,6 +2257,18 @@
         sourceText:clean(commandText),
         sourceMessageId:Number(replyToMessageId || 0),
         reasonText:clean(trialCancelCandidate.reason),
+        reasonMessageText:clean(commandText),
+        reasonMessageId:Number(replyToMessageId || 0),
+        current,
+      });
+    }
+
+    const makeupCancelCandidate = parseMakeupCancelAgentCandidate(commandText, router);
+    if (makeupCancelCandidate && clean(makeupCancelCandidate.reason)) {
+      return resolveMakeupCancelAgentTurn({
+        sourceText:clean(commandText),
+        sourceMessageId:Number(replyToMessageId || 0),
+        reasonText:clean(makeupCancelCandidate.reason),
         reasonMessageText:clean(commandText),
         reasonMessageId:Number(replyToMessageId || 0),
         current,
@@ -2289,10 +2333,6 @@
       return resolvePickupAddAgentTurn(commandText, current, replyToMessageId);
     }
 
-    if (isMakeupCancelAgentCandidate(commandText, router)) {
-      return resolveMakeupCancelAgentTurn(commandText, current, replyToMessageId);
-    }
-
     if (isMakeupUpdateAgentCandidate(commandText, router)) {
       return resolveMakeupUpdateAgentTurn(commandText, current, replyToMessageId);
     }
@@ -2329,6 +2369,16 @@
             const sourceMessageId = Number(replyToMessageId || 0);
             if (parsedTrialCancel && Number.isSafeInteger(sourceMessageId) && sourceMessageId > 0) {
               pendingPayload.__trialCancelAgent = {
+                sourceMessageId,
+                sourceMessageText:clean(commandText)
+              };
+            }
+          }
+          if (clean(pendingPayload.intent) === 'cancel_makeup') {
+            const parsedMakeupCancel = parseMakeupCancelAgentCandidate(commandText, router);
+            const sourceMessageId = Number(replyToMessageId || 0);
+            if (parsedMakeupCancel && Number.isSafeInteger(sourceMessageId) && sourceMessageId > 0) {
+              pendingPayload.__makeupCancelAgent = {
                 sourceMessageId,
                 sourceMessageText:clean(commandText)
               };
