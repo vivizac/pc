@@ -158,7 +158,7 @@
       '    <textarea id="kcfTeacherSheetInput" class="kcfTeacherSheetInput" aria-label="Class 수업기록"></textarea>',
       '    <div id="kcfTeacherSheetWarning" class="kcfTeacherSheetWarning" aria-live="polite"></div>',
       '    <div class="kcfTeacherSheetBottom">',
-      '      <button id="kcfTeacherSheetModeBtn" class="kcfTeacherSheetModeBtn active" type="button" aria-label="Class 모드 닫기">Class</button>',
+      '      <button id="kcfTeacherSheetModeBtn" class="kcfTeacherSheetModeBtn active" type="button" aria-label="Class 모드 닫기">C</button>',
       '      <div id="kcfTeacherSheetRosterHost" class="kcfTeacherSheetRosterHost"></div>',
       '      <button id="kcfTeacherSheetSendBtn" class="kcfTeacherSheetSendBtn" type="button" aria-label="피드백 전송">',
       '        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>',
