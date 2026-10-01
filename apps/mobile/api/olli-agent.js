@@ -134,6 +134,7 @@ export default async function handler(req, res) {
           requestContext,
           preparedPrivacy: prepared,
           sourceMessageId,
+          sourceMessageText: message,
         });
         return res.status(200).json({
           ok:true,
