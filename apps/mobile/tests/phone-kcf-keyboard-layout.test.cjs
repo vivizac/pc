@@ -288,6 +288,13 @@ test('QuickNote guide touch guard blocks vertical fallthrough but preserves hori
 });
 
 
+test('QuickNote composer does not hand vertical drag gestures to the page while keyboard is open', () => {
+  assert.match(js,/const composer = input\.closest\('\.kcfComposer'\)/);
+  assert.match(js,/composer\.addEventListener\('touchstart'/);
+  assert.match(js,/composer\.addEventListener\('touchmove',[\s\S]*?classList\.contains\('kcfKeyboardOpen'\)[\s\S]*?deltaY <= deltaX[\s\S]*?event\.preventDefault\(\)[\s\S]*?event\.stopPropagation\(\)[\s\S]*?passive:false/);
+});
+
+
 test('QuickNote touch retap protects the focused input from transient iOS blur', () => {
   const start = js.indexOf("input.addEventListener('pointerdown'");
   const end = js.indexOf("input.addEventListener('focus'", start);
