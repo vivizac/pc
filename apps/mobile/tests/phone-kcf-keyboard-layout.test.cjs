@@ -316,8 +316,15 @@ test('QuickNote touch retap protects the focused input from transient iOS blur',
 });
 
 test('QuickNote Class mode can still intentionally hand focus to the Teacher sheet', () => {
-  const start = js.indexOf("input.addEventListener('pointerdown'");
-  const end = js.indexOf("input.addEventListener('focus'", start);
-  const block = js.slice(start, end);
-  assert.match(block,/if \(!teacherEnabled\) \{[\s\S]*?kcfKeepInputFocusUntil/);
+  const pointerStart = js.indexOf("input.addEventListener('pointerdown'");
+  const pointerEnd = js.indexOf("input.addEventListener('focus'", pointerStart);
+  const pointerBlock = js.slice(pointerStart, pointerEnd);
+  assert.match(pointerBlock,/if \(!teacherEnabled\) \{[\s\S]*?kcfKeepInputFocusUntil/);
+
+  const blurStart = js.indexOf("input.addEventListener('blur'");
+  const blurEnd = js.indexOf('bindKinderChatFeedbackViewport();', blurStart);
+  const blurBlock = js.slice(blurStart, blurEnd);
+  assert.match(blurBlock,/const teacherMode = getKinderChatFeedbackTeacherMode\(\)/);
+  assert.match(blurBlock,/teacherMode\.isEnabled\(\)/);
+  assert.match(blurBlock,/if \(!teacherEnabled && Date\.now\(\) < kcfKeepInputFocusUntil\)/);
 });
