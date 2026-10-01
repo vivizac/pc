@@ -549,10 +549,12 @@
     const hasUpdateAction = /(?:수정|변경|옮|이동|바꿔|바꾸|고쳐|고치)/.test(compact);
     if (!raw || !hasTrialWord(compact) || hasRemoveAction(compact) || !hasUpdateAction) return null;
 
-    const guestName = extractStudentName(
-      raw,
-      /(?:체험\s*클래스|체험\s*수업|체험)(?:에서|으로|에|을|를)?/g,
-      /(?:수정|변경|옮겨|옮기|이동|바꿔|바꾸|고쳐|고치)(?:줘요|해주세요|해줘|해줄래|할래|해|줘|주세요|어줘|아줘|어요|아요|기)?/g
+    const guestName = cleanupStudentName(
+      extractStudentName(
+        raw,
+        /(?:체험\s*클래스|체험\s*수업|체험)(?:에서|으로|에|을|를)?/g,
+        /(?:수정|변경|옮겨|옮기|이동|바꿔|바꾸|고쳐|고치)(?:줘요|해주세요|해줘|해줄래|할래|해|줘|주세요|어줘|아줘|어요|아요|기)?/g
+      ).replace(/(?:^|\s)\d{1,2}\s*분(?=\s|$)/g, ' ')
     );
     if (!guestName) return null;
 
