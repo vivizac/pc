@@ -13,11 +13,6 @@
 #kcfPersistentTopLayer.show {
   display:block;
 }
-#kcfPersistentTopLayer.kcfKeyboardHidden {
-  visibility:hidden;
-  opacity:0;
-  pointer-events:none;
-}
 #kinderChatFeedbackScreen .kcfInner {
   position:relative;
   width:100%;
@@ -607,17 +602,10 @@
 
 /* 입력 영역: 채팅/배경과 분리된 전용 고정 레이어 */
 #kinderChatFeedbackScreen .kcfComposerLayer {
-  --kcf-composer-vv-left:0px;
-  --kcf-composer-vv-top:0px;
-  --kcf-composer-vv-width:100vw;
-  --kcf-composer-vv-height:100vh;
   position:fixed;
-  left:var(--kcf-composer-vv-left);
-  top:var(--kcf-composer-vv-top);
-  right:auto;
-  bottom:auto;
-  width:var(--kcf-composer-vv-width);
-  height:var(--kcf-composer-vv-height);
+  inset:0;
+  width:100%;
+  height:100%;
   background:transparent;
   overflow:visible;
   pointer-events:none;
@@ -637,10 +625,6 @@
   pointer-events:auto;
   transition:none;
   -webkit-tap-highlight-color:transparent;
-}
-#kinderChatFeedbackScreen.kcfKeyboardOpen .kcfComposerWrap {
-  bottom:4px;
-  padding-bottom:0;
 }
 #kinderChatFeedbackScreen.kcfGuideHidden .kcfQuestionGuide,
 #kinderChatFeedbackScreen.kcfGuideHidden .kcfKeywordScroller {
@@ -704,7 +688,6 @@
   padding:4px 11px 3px;
   -webkit-tap-highlight-color:transparent;
 }
-#kinderChatFeedbackScreen.kcfKeyboardOpen .kcfComposer:not(.kcfVoiceCaptureMode),
 #kinderChatFeedbackScreen .kcfComposer:has(.kcfPhotoPreview.show) {
   height:auto;
   max-height:none;
@@ -859,11 +842,6 @@
   appearance:none;
   box-shadow:none;
 }
-#kinderChatFeedbackScreen.kcfKeyboardOpen:not(.kcfTeacherRosterMode) .kcfInput {
-  height:auto;
-  min-height:34px;
-  max-height:110px;
-}
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfInput {
   height:34px;
   min-height:34px;
@@ -930,51 +908,6 @@
   padding-left:0;
 }
 
-/* 기본 모드에서 키보드가 올라오면 '입력칸 / + Class 마이크 전송'의 기존 2단 레이아웃으로 전환한다.
-   Class 모드는 전용 흐름을 그대로 유지하므로 이 규칙에서 제외한다. */
-#kinderChatFeedbackScreen.kcfKeyboardOpen:not(.kcfTeacherRosterMode) .kcfComposerBottom {
-  display:grid;
-  grid-template-columns:33px minmax(0,1fr) 36px 33px 33px;
-  grid-template-rows:minmax(34px, auto) 38px;
-  align-items:center;
-  column-gap:12px;
-  row-gap:4px;
-}
-#kinderChatFeedbackScreen.kcfKeyboardOpen:not(.kcfTeacherRosterMode) .kcfInput {
-  grid-column:1 / -1;
-  grid-row:1;
-  width:100%;
-}
-#kinderChatFeedbackScreen.kcfKeyboardOpen:not(.kcfTeacherRosterMode) .kcfStudentManageWrap {
-  grid-column:1;
-  grid-row:2;
-  width:0;
-  height:0;
-  min-width:0;
-  overflow:visible;
-}
-#kinderChatFeedbackScreen.kcfKeyboardOpen:not(.kcfTeacherRosterMode) .kcfAttachBtn {
-  grid-column:1;
-  grid-row:2;
-}
-#kinderChatFeedbackScreen.kcfKeyboardOpen:not(.kcfTeacherRosterMode) .kcfTeacherBtn {
-  grid-column:3;
-  grid-row:2;
-  justify-self:end;
-  margin-left:0;
-  margin-right:0;
-}
-#kinderChatFeedbackScreen.kcfKeyboardOpen:not(.kcfTeacherRosterMode) .kcfVoiceBtn {
-  grid-column:4;
-  grid-row:2;
-  justify-self:end;
-  margin-right:0;
-}
-#kinderChatFeedbackScreen.kcfKeyboardOpen:not(.kcfTeacherRosterMode) .kcfSendBtn {
-  grid-column:5;
-  grid-row:2;
-  justify-self:end;
-}
 #kinderChatFeedbackScreen .kcfAttachBtn {
   width:33px;
   height:33px;
