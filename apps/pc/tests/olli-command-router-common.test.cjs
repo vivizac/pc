@@ -296,6 +296,19 @@ test('availability date expressions distinguish concrete dates from recurring we
 });
 
 
+
+test('waitlist update parser is Agent candidate-only and does not enter legacy write routing', () => {
+  const router = loadRouter();
+  const command = '최민기 금요일 4시 A반 대기를 토요일 1시 B반으로 변경해줘';
+
+  const parsed = router.parseWaitlistUpdateMutationIntent(command);
+  assert.equal(parsed.intent, 'update_waitlist');
+  assert.equal(parsed.studentName, '최민기');
+  assert.equal(router.parseWaitlistUpdateMutationIntent('최민기 월요일 4시 대기 넣어줘'), null);
+  assert.equal(router.parseWaitlistUpdateMutationIntent('최민기 월요일 4시 대기 취소해줘'), null);
+  assert.equal(router.parseWriteIntent(command), null);
+});
+
 test('waitlist add wording parses enrolled or guest wait intent', () => {
   const router = loadRouter();
 
