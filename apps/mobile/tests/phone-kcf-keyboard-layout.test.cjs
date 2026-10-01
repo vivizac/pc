@@ -306,6 +306,21 @@ test('QuickNote composer does not hand vertical drag gestures to the page while 
 });
 
 
+test('QuickNote viewport diagnostics are opt-in and read-only', () => {
+  assert.match(js,/new URLSearchParams\(window\.location\.search\)\.get\('kcfDebug'\) === '1'/);
+  assert.match(js,/pointerdown-before-focus/);
+  assert.match(js,/vv\.offsetTop/);
+  assert.match(js,/chatScroll:Math\.round\(Number\(chat\?\.scrollTop \|\| 0\)\)/);
+  assert.match(js,/viewport 이동/);
+  assert.match(js,/chat scroll 이동/);
+  assert.match(js,/viewport \+ chat/);
+  const start = js.indexOf('function captureKinderChatFeedbackViewportDebug');
+  const end = js.indexOf('function bindKinderChatFeedbackViewportDiagnostics', start);
+  const block = js.slice(start, end);
+  assert.doesNotMatch(block,/scrollTop\s*=/);
+  assert.doesNotMatch(block,/scrollTo\(/);
+});
+
 test('QuickNote first touch focuses with preventScroll and retap protects transient iOS blur', () => {
   const start = js.indexOf("input.addEventListener('pointerdown'");
   const end = js.indexOf("input.addEventListener('focus'", start);
