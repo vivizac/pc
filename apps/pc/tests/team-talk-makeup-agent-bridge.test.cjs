@@ -19,7 +19,7 @@ test('PC AI makeup add is routed before legacy action preparation', () => {
 test('PC makeup Agent gate uses shared add_makeup parser only as candidate detection', () => {
   assert.match(talk,/parseMakeupMutationIntent\(commandText\)/);
   const start=talk.indexOf('function isMakeupAddAgentCandidate');
-  const end=talk.indexOf('function isMakeupCancelAgentCandidate',start);
+  const end=talk.indexOf('function parseMakeupCancelAgentCandidate',start);
   const block=talk.slice(start,end);
   assert.match(block,/=== 'add_makeup'/);
   assert.doesNotMatch(block,/parseMakeupCancelMutationIntent|cancel_makeup|update_makeup/);
@@ -57,7 +57,7 @@ test('PC makeup cancel preserves inline and two-turn reason Agent routing', () =
 });
 
 test('PC makeup cancel Agent gate uses only the shared cancel parser as candidate detection', () => {
-  const start=talk.indexOf('function isMakeupCancelAgentCandidate');
+  const start=talk.indexOf('function parseMakeupCancelAgentCandidate');
   const end=talk.indexOf('function isMakeupUpdateAgentCandidate',start);
   const block=talk.slice(start,end);
   assert.match(block,/parseMakeupCancelMutationIntent\(commandText\)/);
