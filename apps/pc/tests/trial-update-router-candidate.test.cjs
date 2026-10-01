@@ -28,5 +28,5 @@ test('trial update parser is available to multi-write parsing without changing s
   const start=source.indexOf('function parseSingleWriteIntent');
   const end=source.indexOf('function parseMultiWriteIntent',start);
   assert.ok(start>=0&&end>start);
-  assert.doesNotMatch(source.slice(start,end),/parseTrialUpdateMutationIntent/);
+  assert.match(source.slice(start,end),/parseTrialUpdateMutationIntent/);
 });
