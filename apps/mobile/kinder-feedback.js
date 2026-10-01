@@ -675,9 +675,13 @@ async function closeKinderChatFeedbackPage() {
   if (window.KcfTeacherSheet && typeof window.KcfTeacherSheet.close === 'function') {
     window.KcfTeacherSheet.close({ sync:true });
   }
+  releaseKinderChatFeedbackComposerViewportLock();
   kcfKeyboardBaselineBottom = 0;
+  kcfKeyboardTransitionActive = false;
+  kcfLastViewportSignature = '';
+  kcfChatGestureActive = false;
   const page = document.getElementById('kinderChatFeedbackScreen');
-  if (page) page.classList.remove('kcfKeyboardOpen');
+  if (page) page.classList.remove('kcfKeyboardOpen','kcfViewportMoving','kcfComposerViewportLocked');
   if (page) page.style.display = 'none';
   setKinderChatFeedbackPersistentTopVisible(false);
   if (typeof window.openOlliAttendancePage === 'function') {
