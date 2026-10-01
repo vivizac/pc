@@ -8,6 +8,10 @@ on:
       - 'apps/mobile/api/olli-agent.js'
       - 'apps/mobile/tests/olli-agent-waitlist-update-prepare-tool.test.cjs'
       - 'apps/mobile/tests/olli-agent-waitlist-update-production-contract.test.cjs'
+      - 'packages/common/olli-command-router-common.js'
+      - 'apps/pc/pc-team-talk.js'
+      - 'apps/pc/tests/olli-command-router-common.test.cjs'
+      - 'apps/pc/tests/team-talk-waitlist-agent-bridge.test.cjs'
       - '.github/workflows/validate-waitlist-update-agent.yml'
 
 permissions:
@@ -25,8 +29,13 @@ jobs:
         run: |
           node --check apps/mobile/api/_lib/olli-agent/runtime.cjs
           node --check apps/mobile/api/_lib/olli-agent/tools/waitlist-update-prepare-tools.cjs
-      - name: Run waitlist update contracts
+      - name: Run waitlist update server contracts
         working-directory: apps/mobile
         run: |
           node --test tests/olli-agent-waitlist-update-prepare-tool.test.cjs
           node --test tests/olli-agent-waitlist-update-production-contract.test.cjs
+      - name: Run Router and PC bridge contracts
+        working-directory: apps/pc
+        run: |
+          node --test tests/olli-command-router-common.test.cjs
+          node --test tests/team-talk-waitlist-agent-bridge.test.cjs
