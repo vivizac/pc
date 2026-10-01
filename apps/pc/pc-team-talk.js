@@ -1342,6 +1342,91 @@
     return { message };
   }
 
+  function parseBatchAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parseMultiWriteIntent !== 'function') return null;
+    try {
+      const parsed = router.parseMultiWriteIntent(commandText);
+      return clean(parsed?.intent) === 'batch_write' && Array.isArray(parsed?.commands)
+        ? parsed
+        : null;
+    } catch (error) {
+      console.warn('PC 복합쓰기 Agent 후보 판별 실패:', error?.message || error);
+      return null;
+    }
+  }
+
+  function batchCommandNeedsReason(command) {
+    return ['mark_absent', 'cancel_makeup', 'cancel_trial'].includes(clean(command?.intent));
+  }
+
+  function batchReasonPrompt(command) {
+    const intent=clean(command?.intent);
+    if (intent === 'mark_absent') return clean(command?.studentName) + ' 학생의 결석 사유를 알려주세요.';
+    if (intent === 'cancel_makeup') return clean(command?.studentName) + ' 학생의 보강 취소 사유를 알려주세요.';
+    if (intent === 'cancel_trial') return clean(command?.guestName || command?.studentName) + ' 학생의 체험 취소 사유를 알려주세요.';
+    return '사유를 알려주세요.';
+  }
+
+  function batchCommandNeedsClarification(command) {
+    return command?.needsClarification === true;
+  }
+
+  function batchClarificationPrompt(command) {
+    if (clean(command?.intent) === 'add_makeup') {
+      return clean(command?.studentName) + ' 학생의 보강 날짜와 시간을 함께 알려주세요.';
+    }
+    return '작업에 필요한 날짜와 시간을 함께 알려주세요.';
+  }
+
+  function applyBatchClarification(command, replyText, replyMessageId, router) {
+    const item=Object.assign({},command);
+    const reply=clean(replyText);
+    if (clean(item.intent) === 'add_makeup' && router && typeof router.parseMakeupMutationIntent === 'function') {
+      const contextText=clean(item.text + ' ' + reply);
+      const parsed=router.parseMakeupMutationIntent(contextText);
+      if (!parsed || clean(parsed.intent) !== 'add_makeup') return null;
+      item.needsClarification=false;
+      item.contextText=contextText;
+      item.clarificationMessageId=Number(replyMessageId || 0);
+      item.clarificationMessageText=reply;
+      return item;
+    }
+    return null;
+  }
+
+  function buildBatchAgentCommands(batch, sourceMessageId, sourceMessageText) {
+    return (Array.isArray(batch?.commands) ? batch.commands : []).map((command) => ({
+      intent:clean(command?.intent),
+      text:clean(command?.originalText),
+      studentName:clean(command?.studentName || command?.guestName),
+      reason:clean(command?.reason),
+      reasonMessageId:batchCommandNeedsReason(command) && clean(command?.reason) ? Number(sourceMessageId || 0) : 0,
+      reasonMessageText:batchCommandNeedsReason(command) && clean(command?.reason) ? clean(sourceMessageText) : '',
+      memoNote:clean(command?.memoNote),
+      needsClarification:command?.batchDraft === true,
+      contextText:'',
+      clarificationMessageId:0,
+      clarificationMessageText:''
+    }));
+  }
+
+  function parseTimetableMemoAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router) return null;
+    try {
+      const deleted = typeof router.parseTimetableMemoDeleteMutationIntent === 'function'
+        ? router.parseTimetableMemoDeleteMutationIntent(commandText)
+        : null;
+      if (clean(deleted?.intent) === 'delete_timetable_memo') return deleted;
+      const added = typeof router.parseTimetableMemoAddMutationIntent === 'function'
+        ? router.parseTimetableMemoAddMutationIntent(commandText)
+        : null;
+      return clean(added?.intent) === 'add_timetable_memo' ? added : null;
+    } catch (error) {
+      console.warn('PC 시간표 메모 Agent 후보 판별 실패:', error?.message || error);
+      return null;
+    }
+  }
+
   function isTrialAddAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router || typeof router.parseTrialMutationIntent !== 'function') return false;
     try {
@@ -1456,14 +1541,19 @@
     }
   }
 
-  function isMakeupCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
-    if (!router || typeof router.parseMakeupCancelMutationIntent !== 'function') return false;
+  function parseMakeupCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parseMakeupCancelMutationIntent !== 'function') return null;
     try {
-      return clean(router.parseMakeupCancelMutationIntent(commandText)?.intent) === 'cancel_makeup';
+      const parsed = router.parseMakeupCancelMutationIntent(commandText);
+      return clean(parsed?.intent) === 'cancel_makeup' ? parsed : null;
     } catch (error) {
       console.warn('PC 보강 취소 Agent 후보 판별 실패:', error?.message || error);
-      return false;
+      return null;
     }
+  }
+
+  function isMakeupCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    return !!parseMakeupCancelAgentCandidate(commandText, router);
   }
 
   function isMakeupUpdateAgentCandidate(commandText, router = global.OlliCommandRouter) {
@@ -1506,6 +1596,78 @@
     }
   }
 
+  async function resolveBatchAgentTurn({
+    sourceText,
+    sourceMessageId,
+    commands,
+    current,
+  }) {
+    const sourceId=Number(sourceMessageId || 0);
+    if(!Number.isSafeInteger(sourceId) || sourceId<=0){
+      throw new Error('복합쓰기 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'batch_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(sourceText),
+        sourceMessageId:sourceId,
+        commands
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    const messages=Array.isArray(data?.messages) ? data.messages : [];
+    if(!response.ok || data?.ok!==true || messages.length<2){
+      throw new Error(data?.error || data?.message || '복합쓰기 Agent 응답을 받지 못했습니다.');
+    }
+    return {
+      assistantMessage:messages[0],
+      assistantMessages:messages,
+      replyText:messages.map((message)=>clean(message?.body)).filter(Boolean).join('\n'),
+      recordAi:false
+    };
+  }
+
+  async function resolveTimetableMemoAgentTurn(commandText, parsed, current, replyToMessageId) {
+    const sourceMessageId = Number(replyToMessageId || 0);
+    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+      throw new Error('시간표 메모 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const expectedType = clean(parsed?.intent);
+    if (!['add_timetable_memo', 'delete_timetable_memo'].includes(expectedType)) {
+      throw new Error('시간표 메모 작업 종류를 확인하지 못했습니다.');
+    }
+
+    const response = await fetch('/api/olli-agent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        mode:'memo_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageId,
+        memoNote:clean(parsed?.memoNote)
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.ok !== true || !data?.message?.action) {
+      throw new Error(data?.error || data?.message || '시간표 메모 Agent 응답을 받지 못했습니다.');
+    }
+    if (clean(data.message.action.action_type) !== expectedType) {
+      throw new Error('시간표 메모 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
   async function resolveMakeupAddAgentTurn(commandText, current, replyToMessageId) {
     const sourceMessageId = Number(replyToMessageId || 0);
     if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
@@ -1538,10 +1700,21 @@
     };
   }
 
-  async function resolveMakeupCancelAgentTurn(commandText, current, replyToMessageId) {
-    const sourceMessageId = Number(replyToMessageId || 0);
-    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+  async function resolveMakeupCancelAgentTurn({
+    sourceText,
+    sourceMessageId,
+    reasonText,
+    reasonMessageText,
+    reasonMessageId,
+    current,
+  }) {
+    const sourceId = Number(sourceMessageId || 0);
+    const reasonId = Number(reasonMessageId || 0);
+    if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
       throw new Error('보강 취소 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    if (!Number.isSafeInteger(reasonId) || reasonId <= 0 || !clean(reasonText)) {
+      throw new Error('보강 취소 사유 메시지를 확인하지 못했습니다.');
     }
 
     const response = await fetch('/api/olli-agent', {
@@ -1551,8 +1724,11 @@
         mode:'makeup_cancel_prepare',
         academyId:current?.academyId || '',
         sessionToken:current?.sessionToken || '',
-        message:clean(commandText),
-        sourceMessageId
+        message:clean(sourceText),
+        sourceMessageId:sourceId,
+        reasonMessageId:reasonId,
+        reasonMessageText:clean(reasonMessageText),
+        reason:clean(reasonText)
       })
     });
     const data = await response.json().catch(() => ({}));
@@ -2119,12 +2295,125 @@
         };
       }
 
+      const pendingBatch = state.pendingActionReason.__batchAgent;
+      if (clean(state.pendingActionReason.intent) === 'batch_write' && pendingBatch) {
+        const commands=Array.isArray(pendingBatch.commands)
+          ? pendingBatch.commands.map((item)=>Object.assign({},item))
+          : [];
+        const reasonIndex=commands.findIndex((item)=>batchCommandNeedsReason(item) && !clean(item.reason));
+        if(reasonIndex>=0){
+          commands[reasonIndex].reason=clean(commandText);
+          commands[reasonIndex].reasonMessageId=Number(replyToMessageId || 0);
+          commands[reasonIndex].reasonMessageText=clean(commandText);
+          const nextReasonIndex=commands.findIndex((item)=>batchCommandNeedsReason(item) && !clean(item.reason));
+          if(nextReasonIndex>=0){
+            state.pendingActionReason={
+              intent:'batch_write',
+              __batchAgent:{
+                sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+                sourceMessageText:clean(pendingBatch.sourceMessageText),
+                commands
+              }
+            };
+            const prompt=batchReasonPrompt(commands[nextReasonIndex]);
+            return {
+              assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),
+              replyText:prompt,
+              recordAi:false
+            };
+          }
+
+          const clarificationIndex=commands.findIndex(batchCommandNeedsClarification);
+          if(clarificationIndex>=0){
+            state.pendingActionReason={
+              intent:'batch_write',
+              __batchAgent:{
+                sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+                sourceMessageText:clean(pendingBatch.sourceMessageText),
+                commands
+              }
+            };
+            const prompt=batchClarificationPrompt(commands[clarificationIndex]);
+            return {
+              assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),
+              replyText:prompt,
+              recordAi:false
+            };
+          }
+        }else{
+          const clarificationIndex=commands.findIndex(batchCommandNeedsClarification);
+          if(clarificationIndex>=0){
+            const clarified=applyBatchClarification(
+              commands[clarificationIndex],
+              commandText,
+              replyToMessageId,
+              router
+            );
+            if(!clarified){
+              const prompt=batchClarificationPrompt(commands[clarificationIndex]);
+              state.pendingActionReason={
+                intent:'batch_write',
+                __batchAgent:{
+                  sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+                  sourceMessageText:clean(pendingBatch.sourceMessageText),
+                  commands
+                }
+              };
+              return {
+                assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),
+                replyText:prompt,
+                recordAi:false
+              };
+            }
+            commands[clarificationIndex]=clarified;
+            const nextClarificationIndex=commands.findIndex(batchCommandNeedsClarification);
+            if(nextClarificationIndex>=0){
+              state.pendingActionReason={
+                intent:'batch_write',
+                __batchAgent:{
+                  sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+                  sourceMessageText:clean(pendingBatch.sourceMessageText),
+                  commands
+                }
+              };
+              const prompt=batchClarificationPrompt(commands[nextClarificationIndex]);
+              return {
+                assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),
+                replyText:prompt,
+                recordAi:false
+              };
+            }
+          }
+        }
+
+        state.pendingActionReason=null;
+        return resolveBatchAgentTurn({
+          sourceText:clean(pendingBatch.sourceMessageText),
+          sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+          commands,
+          current,
+        });
+      }
+
       const pendingTrialCancel = state.pendingActionReason.__trialCancelAgent;
       if (clean(state.pendingActionReason.intent) === 'cancel_trial' && pendingTrialCancel) {
         state.pendingActionReason = null;
         return resolveTrialCancelAgentTurn({
           sourceText:clean(pendingTrialCancel.sourceMessageText),
           sourceMessageId:Number(pendingTrialCancel.sourceMessageId || 0),
+          reasonText:clean(commandText),
+          reasonMessageText:clean(commandText),
+          reasonMessageId:Number(replyToMessageId || 0),
+          current,
+        });
+      }
+
+      const pendingMakeupCancel = state.pendingActionReason.__makeupCancelAgent;
+      if (clean(state.pendingActionReason.intent) === 'cancel_makeup' && pendingMakeupCancel) {
+        state.pendingActionReason = null;
+        return resolveMakeupCancelAgentTurn({
+          sourceText:clean(pendingMakeupCancel.sourceMessageText),
+          sourceMessageId:Number(pendingMakeupCancel.sourceMessageId || 0),
           reasonText:clean(commandText),
           reasonMessageText:clean(commandText),
           reasonMessageId:Number(replyToMessageId || 0),
@@ -2155,12 +2444,80 @@
       };
     }
 
+    const batchCandidate = parseBatchAgentCandidate(commandText, router);
+    if (batchCandidate) {
+      const sourceId=Number(replyToMessageId || 0);
+      const commands=buildBatchAgentCommands(batchCandidate,sourceId,commandText);
+      const missingIndex=commands.findIndex((item)=>batchCommandNeedsReason(item) && !clean(item.reason));
+      if(missingIndex>=0){
+        state.pendingActionReason={
+          intent:'batch_write',
+          __batchAgent:{
+            sourceMessageId:sourceId,
+            sourceMessageText:clean(commandText),
+            commands
+          }
+        };
+        const prompt=batchReasonPrompt(commands[missingIndex]);
+        return {
+          assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),
+          replyText:prompt,
+          recordAi:false
+        };
+      }
+      const clarificationIndex=commands.findIndex(batchCommandNeedsClarification);
+      if(clarificationIndex>=0){
+        state.pendingActionReason={
+          intent:'batch_write',
+          __batchAgent:{
+            sourceMessageId:sourceId,
+            sourceMessageText:clean(commandText),
+            commands
+          }
+        };
+        const prompt=batchClarificationPrompt(commands[clarificationIndex]);
+        return {
+          assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),
+          replyText:prompt,
+          recordAi:false
+        };
+      }
+      return resolveBatchAgentTurn({
+        sourceText:clean(commandText),
+        sourceMessageId:sourceId,
+        commands,
+        current,
+      });
+    }
+
+    const timetableMemoCandidate = parseTimetableMemoAgentCandidate(commandText, router);
+    if (timetableMemoCandidate) {
+      return resolveTimetableMemoAgentTurn(
+        commandText,
+        timetableMemoCandidate,
+        current,
+        replyToMessageId
+      );
+    }
+
     const trialCancelCandidate = parseTrialCancelAgentCandidate(commandText, router);
     if (trialCancelCandidate && clean(trialCancelCandidate.reason)) {
       return resolveTrialCancelAgentTurn({
         sourceText:clean(commandText),
         sourceMessageId:Number(replyToMessageId || 0),
         reasonText:clean(trialCancelCandidate.reason),
+        reasonMessageText:clean(commandText),
+        reasonMessageId:Number(replyToMessageId || 0),
+        current,
+      });
+    }
+
+    const makeupCancelCandidate = parseMakeupCancelAgentCandidate(commandText, router);
+    if (makeupCancelCandidate && clean(makeupCancelCandidate.reason)) {
+      return resolveMakeupCancelAgentTurn({
+        sourceText:clean(commandText),
+        sourceMessageId:Number(replyToMessageId || 0),
+        reasonText:clean(makeupCancelCandidate.reason),
         reasonMessageText:clean(commandText),
         reasonMessageId:Number(replyToMessageId || 0),
         current,
@@ -2225,10 +2582,6 @@
       return resolvePickupAddAgentTurn(commandText, current, replyToMessageId);
     }
 
-    if (isMakeupCancelAgentCandidate(commandText, router)) {
-      return resolveMakeupCancelAgentTurn(commandText, current, replyToMessageId);
-    }
-
     if (isMakeupUpdateAgentCandidate(commandText, router)) {
       return resolveMakeupUpdateAgentTurn(commandText, current, replyToMessageId);
     }
@@ -2265,6 +2618,16 @@
             const sourceMessageId = Number(replyToMessageId || 0);
             if (parsedTrialCancel && Number.isSafeInteger(sourceMessageId) && sourceMessageId > 0) {
               pendingPayload.__trialCancelAgent = {
+                sourceMessageId,
+                sourceMessageText:clean(commandText)
+              };
+            }
+          }
+          if (clean(pendingPayload.intent) === 'cancel_makeup') {
+            const parsedMakeupCancel = parseMakeupCancelAgentCandidate(commandText, router);
+            const sourceMessageId = Number(replyToMessageId || 0);
+            if (parsedMakeupCancel && Number.isSafeInteger(sourceMessageId) && sourceMessageId > 0) {
+              pendingPayload.__makeupCancelAgent = {
                 sourceMessageId,
                 sourceMessageText:clean(commandText)
               };
@@ -2507,7 +2870,15 @@
           if (usingAi) {
             const turn = await resolveAiTurn(commandText, current, Number(payload.message.id));
             state.assistantReplyPending = false;
-            replaceAssistantTypingWithMessage(turn.assistantMessage, current.memberId);
+            const assistantMessages=Array.isArray(turn.assistantMessages) && turn.assistantMessages.length
+              ? turn.assistantMessages
+              : [turn.assistantMessage].filter(Boolean);
+            if(assistantMessages.length){
+              replaceAssistantTypingWithMessage(assistantMessages[0], current.memberId);
+              assistantMessages.slice(1).forEach((message)=>appendPersistedMessage(message,current.memberId));
+            }else{
+              syncAssistantTypingIndicator();
+            }
             if (turn.recordAi) recordAiConversationTurn(commandText, turn.replyText);
           } else {
             const turn = await resolveBotTurn(commandText, current, Number(payload.message.id));

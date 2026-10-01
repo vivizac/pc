@@ -35,10 +35,10 @@ test('waitlist update parser identifies update commands and rejects add/cancel w
   );
 });
 
-test('waitlist update parser stays candidate-only and is not added to legacy parseSingleWriteIntent', () => {
+test('waitlist update parser is available to multi-write parsing while standalone Agent routing remains separate', () => {
   const start = source.indexOf('function parseSingleWriteIntent');
   const end = source.indexOf('function parseMultiWriteIntent', start);
   assert.ok(start >= 0 && end > start);
   const legacyWriteBlock = source.slice(start, end);
-  assert.doesNotMatch(legacyWriteBlock, /parseWaitlistUpdateMutationIntent/);
+  assert.match(legacyWriteBlock, /parseWaitlistUpdateMutationIntent/);
 });

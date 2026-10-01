@@ -56,10 +56,14 @@ function requestedTimeLabel(hour, minute) {
 }
 
 function normalizeReason(value) {
-  return clean(value).replace(/\s+/g, ' ');
+  return clean(value)
+    .replace(/^(?:사유|이유)\s*(?:는|은)?\s*[:：-]?\s*/i, '')
+    .replace(/[.!?]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
-function validateReasonFromSource(reasonValue, sourceText) {
+function normalizeMakeupCancelReason(reasonValue) {
   const reason = normalizeReason(reasonValue);
   if (!reason) {
     throw makeupCancelError(
@@ -76,15 +80,6 @@ function validateReasonFromSource(reasonValue, sourceText) {
     );
   }
 
-  const source = normalizeReason(sourceText);
-  if (!source || !source.includes(reason)) {
-    throw makeupCancelError(
-      '취소 사유는 사용자가 입력한 내용 그대로 사용해야 합니다.',
-      400,
-      'OLLI_AGENT_MAKEUP_CANCEL_REASON_NOT_FROM_SOURCE'
-    );
-  }
-
   const generic = reason
     .replace(/[\s.,!?~"'“”‘’()[\]{}:;·_-]+/g, '')
     .toLowerCase();
@@ -93,6 +88,19 @@ function validateReasonFromSource(reasonValue, sourceText) {
       '보강 취소 사유를 함께 알려 주세요.',
       400,
       'OLLI_AGENT_MAKEUP_CANCEL_REASON_REQUIRED'
+    );
+  }
+  return reason;
+}
+
+function validateReasonFromSource(reasonValue, sourceText) {
+  const reason = normalizeMakeupCancelReason(reasonValue);
+  const source = normalizeReason(sourceText);
+  if (!source || !source.includes(reason)) {
+    throw makeupCancelError(
+      '취소 사유는 사용자가 입력한 내용 그대로 사용해야 합니다.',
+      400,
+      'OLLI_AGENT_MAKEUP_CANCEL_REASON_NOT_FROM_SOURCE'
     );
   }
   return reason;
@@ -154,7 +162,6 @@ async function prepareMakeupCancelAction({
   classHour = 0,
   classMinute = 0,
   reason,
-  sourceText,
   currentDate,
   requestId,
   replyToMessageId = null,
@@ -217,7 +224,7 @@ async function prepareMakeupCancelAction({
 
   const requestedGroup = normalizeRequestedGroup(classGroup);
   const requestedTime = requestedTimeLabel(classHour, classMinute);
-  const safeReason = validateReasonFromSource(reason, sourceText);
+  const safeReason = normalizeMakeupCancelReason(reason);
 
   const student = await loadPrivateMakeupStudent({
     requestContext,
@@ -391,7 +398,7 @@ function createPrepareMakeupCancelTool({
   studentLabel,
   division,
   classGroup,
-  sourceText,
+  reason,
   currentDate,
   requestId,
   replyToMessageId = null,
@@ -414,9 +421,8 @@ function createPrepareMakeupCancelTool({
       session_date:z.string(),
       class_hour:z.number().int().min(0).max(12),
       class_minute:z.union([z.literal(0), z.literal(30)]),
-      reason:z.string().min(1).max(300),
     }),
-    async execute({ session_date, class_hour, class_minute, reason }) {
+    async execute({ session_date, class_hour, class_minute }) {
       const payload = await prepareMakeupCancelAction({
         requestContext,
         subjectAccess,
@@ -427,7 +433,6 @@ function createPrepareMakeupCancelTool({
         classHour:class_hour,
         classMinute:class_minute,
         reason,
-        sourceText,
         currentDate,
         requestId,
         replyToMessageId,
@@ -441,6 +446,7 @@ function createPrepareMakeupCancelTool({
 
 module.exports = {
   requestedTimeLabel,
+  normalizeMakeupCancelReason,
   validateReasonFromSource,
   stableMakeupCancelActionClientMessageId,
   prepareMakeupCancelAction,

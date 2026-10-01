@@ -1147,12 +1147,14 @@ async function runMakeupCancelPrepareAgent({
   requestContext,
   preparedPrivacy,
   requestId,
+  reason,
   replyToMessageId = null,
   requirePersistedMessage = false,
 }) {
-  assertOpenAiKey();
-
   const scope = resolveMakeupCancelPrepareScope(preparedPrivacy);
+  const { normalizeMakeupCancelReason } = require('./tools/makeup-cancel-prepare-tools.cjs');
+  const fixedReason = normalizeMakeupCancelReason(reason);
+  assertOpenAiKey();
   const { Agent, run, tool, z } = await loadAgentsSdk();
   const { createPrepareMakeupCancelTool } = require('./tools/makeup-cancel-prepare-tools.cjs');
   const { sanitizeAgentToolPayload } = require('./privacy.cjs');
@@ -1168,7 +1170,7 @@ async function runMakeupCancelPrepareAgent({
     studentLabel:scope.subjectLabel,
     division:scope.division,
     classGroup:scope.classGroup,
-    sourceText:preparedPrivacy.safeText,
+    reason:fixedReason,
     currentDate:today,
     requestId,
     replyToMessageId,
@@ -1197,8 +1199,8 @@ async function runMakeupCancelPrepareAgent({
       'Always call prepare_makeup_cancel exactly once before answering.',
       'If the user explicitly names a date, convert it to exact YYYY-MM-DD. If no date is present, pass an empty session_date string.',
       'If the user explicitly names a class time, convert the visible time to class_hour and class_minute. For 4시 반 use 4 and 30. If no time is present, pass 0 and 0.',
-      'Pass reason as an exact substring copied from the user message. Never invent, summarize, translate, or paraphrase the cancellation reason.',
-      'The server rejects a missing, generic, or invented reason and re-resolves the current stored makeup row before creating the card.',
+      'The cancellation reason is private server-side context. It is not included in model input or the tool schema. Never ask for, infer, repeat, summarize, translate, or invent it.',
+      'The server validates the stored reason message and re-resolves the current stored makeup row before creating the card.',
       'The tool creates a pending confirmation card only. It never directly cancels a makeup class.',
       'Never say the makeup was cancelled. Say that the cancellation is waiting for user confirmation.',
       'Never ask for, infer, or reveal a real student name, UUID, one-time-session ID, member ID, session token, academy ID, action ID, message ID, or internal time slot.',
@@ -1250,12 +1252,14 @@ async function runMakeupCancelPrepareProbe({
   requestContext,
   preparedPrivacy,
   requestId,
+  reason,
 }) {
   return runMakeupCancelPrepareAgent({
     agentContext,
     requestContext,
     preparedPrivacy,
     requestId,
+    reason,
   });
 }
 
@@ -2790,11 +2794,14 @@ function resolveTimetableMemoScope(preparedPrivacy) {
   };
 }
 
-async function runTimetableMemoPrepareProbe({
+async function runTimetableMemoPrepareAgent({
   agentContext,
   requestContext,
   preparedPrivacy,
   requestId,
+  memoNote,
+  replyToMessageId = null,
+  requirePersistedMessage = false,
 }) {
   assertOpenAiKey();
 
@@ -2804,6 +2811,7 @@ async function runTimetableMemoPrepareProbe({
   const { sanitizeAgentToolPayload } = require('./privacy.cjs');
   const model = agentModel();
   const today = todayInSeoul();
+  let persistedMessage = null;
 
   const prepareTimetableMemo = createPrepareTimetableMemoTool({
     tool,
@@ -2813,7 +2821,12 @@ async function runTimetableMemoPrepareProbe({
     studentLabel:scope.subjectLabel,
     division:scope.division,
     operation:scope.operation,
+    memoNote:String(memoNote || '').trim(),
     requestId,
+    replyToMessageId,
+    capturePersistedMessage(message) {
+      persistedMessage = pickupPersistedMessageForClient(message);
+    },
     sanitizePayload(payload) {
       return sanitizeAgentToolPayload(payload, preparedPrivacy);
     },
@@ -2824,13 +2837,14 @@ async function runTimetableMemoPrepareProbe({
     : 'This memo is not tied to a specific student.';
 
   const agent = new Agent({
-    name:'Olli Timetable Memo Prepare Probe',
+    name:requirePersistedMessage ? 'Olli Timetable Memo Prepare' : 'Olli Timetable Memo Prepare Probe',
     model,
     instructions:[
       'You are the Olli timetable-memo preparation assistant.',
       'The user message has already been privacy-sanitized.',
       subjectText,
       'The server has fixed the division to ' + scope.division + ' and the operation to ' + scope.operation + '. Do not override them.',
+      'The memo text is private server-side context and is not included in the model input or tool schema. Never ask for, infer, repeat, summarize, or invent memo text.',
       'Today in Korea is ' + today + '.',
       'Always call prepare_timetable_memo exactly once before answering.',
       'This tool creates a pending confirmation card only. It never directly changes timetable memo data.',
@@ -2838,25 +2852,38 @@ async function runTimetableMemoPrepareProbe({
       'Use the visible clock hour from 1 to 12 and minute 0 or 30.',
       'If the user named a student but omitted the time, use hour 0 and minute 0 so the server can resolve a single class.',
       'Use class_group AUTO unless the user explicitly asked for A반 or B반.',
-      'For add, memo_note must contain the requested memo content only. For delete, memo_note may be empty when the target is otherwise unique.',
       'Never say the memo was saved or deleted. Say that the work is waiting for user confirmation.',
-      'Never ask for, infer, or reveal a real student name, UUID, member ID, session token, academy ID, action ID, or message ID.',
+      'Never ask for, infer, or reveal a real student name, UUID, memo ID, memo text, internal time slot, member ID, session token, academy ID, action ID, or message ID.',
       'Answer briefly in Korean.',
     ].join(' '),
     tools:[prepareTimetableMemo],
     modelSettings:{ toolChoice:'prepare_timetable_memo' },
   });
 
-  const result = await run(agent, preparedPrivacy.safeText, {
-    context:agentContext,
-  });
+  let result = null;
+  let runError = null;
+  try {
+    result = await run(agent, preparedPrivacy.safeText, {
+      context:agentContext,
+    });
+  } catch (error) {
+    runError = error;
+    if (!requirePersistedMessage || !persistedMessage) throw error;
+  }
 
   const finalOutput = String(result?.finalOutput || '').trim();
-  if (!finalOutput) {
+  if (!finalOutput && (!requirePersistedMessage || !persistedMessage)) {
     throw runtimeError(
       '시간표 메모 준비 Agent 응답이 비어 있습니다.',
       502,
       'OLLI_AGENT_EMPTY_TIMETABLE_MEMO_RESPONSE'
+    );
+  }
+  if (requirePersistedMessage && !persistedMessage) {
+    throw runtimeError(
+      '시간표 메모 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_AGENT_TIMETABLE_MEMO_PERSISTED_MESSAGE_MISSING'
     );
   }
 
@@ -2865,7 +2892,89 @@ async function runTimetableMemoPrepareProbe({
     model,
     output:finalOutput,
     nodeVersion:process.versions.node,
+    persistedMessage,
+    recoveredAfterPersist:!!runError,
   };
+}
+
+async function runTimetableMemoPrepareProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+  memoNote,
+}) {
+  return runTimetableMemoPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId,
+    memoNote,
+  });
+}
+
+async function validateTimetableMemoSourceMessage({
+  requestContext,
+  sourceMessageId,
+  sourceMessageText,
+  callRpc,
+}) {
+  try {
+    return await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId,
+      sourceMessageText,
+      callRpc,
+    });
+  } catch (error) {
+    const pickupCode = String(error?.code || '');
+    if (!pickupCode.startsWith('OLLI_AGENT_PICKUP_SOURCE_')) throw error;
+    const memoCode = pickupCode.replace(
+      'OLLI_AGENT_PICKUP_SOURCE_',
+      'OLLI_AGENT_TIMETABLE_MEMO_SOURCE_'
+    );
+    const message = String(error?.message || '원문 Team Chat 메시지를 확인하지 못했습니다.')
+      .replace(/픽업/g, '시간표 메모');
+    throw runtimeError(
+      message,
+      Number(error?.statusCode || 400),
+      memoCode
+    );
+  }
+}
+
+async function runTimetableMemoPrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+  memoNote,
+}) {
+  const sourceId = Number(sourceMessageId || 0);
+  if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_TIMETABLE_MEMO_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validateTimetableMemoSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  return runTimetableMemoPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-memo:' + sourceId,
+    memoNote,
+    replyToMessageId:sourceId,
+    requirePersistedMessage:true,
+  });
 }
 
 
@@ -3955,19 +4064,78 @@ async function runMakeupUpdatePrepare({
 }
 
 
+async function validateMakeupReasonMessage({
+  requestContext,
+  reasonMessageId,
+  reasonMessageText,
+  reason,
+  callRpc,
+}) {
+  let source;
+  try {
+    source = await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId:reasonMessageId,
+      sourceMessageText:reasonMessageText,
+      callRpc,
+    });
+  } catch (error) {
+    const pickupCode = String(error?.code || '');
+    if (!pickupCode.startsWith('OLLI_AGENT_PICKUP_SOURCE_')) throw error;
+    const code = pickupCode.replace(
+      'OLLI_AGENT_PICKUP_SOURCE_',
+      'OLLI_AGENT_MAKEUP_REASON_'
+    );
+    const message = String(error?.message || '보강 취소 사유 메시지를 확인하지 못했습니다.')
+      .replace(/원문 Team Chat/g, '보강 취소 사유')
+      .replace(/픽업 Agent 원문/g, '보강 취소 사유')
+      .replace(/픽업/g, '보강 취소');
+    throw runtimeError(message, Number(error?.statusCode || 400), code);
+  }
+
+  const { normalizeMakeupCancelReason } = require('./tools/makeup-cancel-prepare-tools.cjs');
+  const normalizedReason = normalizeMakeupCancelReason(reason);
+  const storedText = normalizePickupSourceMessageText(source?.body);
+  const requestedText = normalizePickupSourceMessageText(reasonMessageText);
+  if (
+    !storedText ||
+    !requestedText ||
+    storedText !== requestedText ||
+    !requestedText.includes(normalizedReason)
+  ) {
+    throw runtimeError(
+      '보강 취소 사유가 저장된 Team Chat 메시지와 일치하지 않습니다.',
+      409,
+      'OLLI_AGENT_MAKEUP_REASON_BODY_MISMATCH'
+    );
+  }
+  return { source, reason:normalizedReason };
+}
+
 async function runMakeupCancelPrepare({
   agentContext,
   requestContext,
   preparedPrivacy,
   sourceMessageId,
   sourceMessageText,
+  reasonMessageId,
+  reasonMessageText,
+  reason,
 }) {
   const sourceId = Number(sourceMessageId || 0);
+  const reasonId = Number(reasonMessageId || 0);
   if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
     throw runtimeError(
       '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
       400,
       'OLLI_AGENT_MAKEUP_SOURCE_MESSAGE_INVALID'
+    );
+  }
+  if (!Number.isSafeInteger(reasonId) || reasonId <= 0) {
+    throw runtimeError(
+      '보강 취소 사유 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_MAKEUP_REASON_MESSAGE_INVALID'
     );
   }
 
@@ -3976,13 +4144,20 @@ async function runMakeupCancelPrepare({
     sourceMessageId:sourceId,
     sourceMessageText,
   });
+  const validatedReason = await validateMakeupReasonMessage({
+    requestContext,
+    reasonMessageId:reasonId,
+    reasonMessageText,
+    reason,
+  });
 
   return runMakeupCancelPrepareAgent({
     agentContext,
     requestContext,
     preparedPrivacy,
-    requestId:'team-chat-message:' + sourceId,
-    replyToMessageId:sourceId,
+    requestId:'team-chat-makeup-cancel:' + sourceId + ':' + reasonId,
+    reason:validatedReason.reason,
+    replyToMessageId:reasonId,
     requirePersistedMessage:true,
   });
 }
@@ -4136,6 +4311,291 @@ async function runStudentProfileProbe({
   };
 }
 
+function normalizeBatchPartText(value) {
+  return String(value || '').trim().replace(/\s+/g,' ');
+}
+
+function splitBatchWriteParts(value) {
+  return String(value || '')
+    .trim()
+    .split(/\s*(?:;|그리고|그다음|그 다음|하고|\n)\s*[,，]?\s*/g)
+    .map(normalizeBatchPartText)
+    .filter(Boolean);
+}
+
+function batchExpectedActionTypes(intent) {
+  const key=String(intent || '').trim();
+  const map={
+    add_timetable_memo:['add_timetable_memo'],
+    delete_timetable_memo:['delete_timetable_memo'],
+    mark_absent:['mark_absent'],
+    add_class_once:['add_class_once'],
+    add_makeup:['add_makeup'],
+    update_makeup:['update_makeup'],
+    cancel_makeup:['cancel_makeup'],
+    add_trial:['add_trial'],
+    update_trial:['update_trial'],
+    cancel_trial:['cancel_trial'],
+    add_waitlist:['add_waitlist'],
+    update_waitlist:['update_waitlist'],
+    cancel_waitlist:['cancel_waitlist'],
+    move_class:['move_class'],
+    cancel_move:['cancel_move'],
+    add_pickup:['add_pickup'],
+    update_pickup:['update_pickup_arrival','update_pickup_dropoff'],
+    cancel_pickup:['cancel_pickup','cancel_pickup_dropoff'],
+  };
+  return map[key] || [];
+}
+
+async function prepareBatchPrivacy(item, requestContext) {
+  const intent=String(item?.intent || '').trim();
+  const text=String(item?.contextText || item?.text || '').trim();
+  const reason=String(item?.reason || '').trim();
+  const memoNote=String(item?.memoNote || '').trim();
+
+  if(intent==='add_trial' || intent==='update_trial'){
+    return require('./trial-guest-privacy.cjs').prepareTrialGuestPrivacyInput(text);
+  }
+  if(intent==='cancel_trial'){
+    return require('./trial-guest-privacy.cjs').prepareTrialCancelPrivacyInput(text,reason);
+  }
+
+  const privacy=require('./privacy.cjs');
+  if(intent==='mark_absent'){
+    return privacy.prepareAbsencePrivacyInput(text,reason,requestContext);
+  }
+  if(intent==='cancel_makeup'){
+    return privacy.prepareMakeupCancelPrivacyInput(text,reason,requestContext);
+  }
+  if(intent==='add_timetable_memo' || intent==='delete_timetable_memo'){
+    return privacy.prepareTimetableMemoPrivacyInput(text,memoNote,requestContext);
+  }
+  return privacy.prepareAgentPrivacyInput(text,requestContext);
+}
+
+async function runBatchPrepare({
+  agentContext,
+  requestContext,
+  sourceMessageId,
+  sourceMessageText,
+  commands,
+}) {
+  const sourceId=Number(sourceMessageId || 0);
+  if(!Number.isSafeInteger(sourceId) || sourceId<=0){
+    throw runtimeError(
+      '복합쓰기 원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_BATCH_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validatePickupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  const items=Array.isArray(commands) ? commands : [];
+  if(items.length<2 || items.length>3){
+    throw runtimeError(
+      '복합쓰기는 한 번에 2개 또는 3개 작업만 지원합니다.',
+      400,
+      'OLLI_AGENT_BATCH_COUNT_INVALID'
+    );
+  }
+
+  const parts=splitBatchWriteParts(sourceMessageText);
+  if(parts.length!==items.length){
+    throw runtimeError(
+      '복합쓰기 원문의 작업 개수가 요청 데이터와 일치하지 않습니다.',
+      409,
+      'OLLI_AGENT_BATCH_PARTS_MISMATCH'
+    );
+  }
+
+  for(let index=0; index<items.length; index+=1){
+    const item=items[index] || {};
+    const intent=String(item.intent || '').trim();
+    const text=String(item.text || '').trim();
+    if(!batchExpectedActionTypes(intent).length){
+      throw runtimeError(
+        '복합쓰기에서 아직 지원하지 않는 작업이 포함되어 있습니다.',
+        400,
+        'OLLI_AGENT_BATCH_INTENT_UNSUPPORTED'
+      );
+    }
+    if(!text || normalizeBatchPartText(text)!==normalizeBatchPartText(parts[index])){
+      throw runtimeError(
+        '복합쓰기 부분 명령이 저장된 원문과 일치하지 않습니다.',
+        409,
+        'OLLI_AGENT_BATCH_PART_BODY_MISMATCH'
+      );
+    }
+    if(item?.needsClarification===true){
+      throw runtimeError(
+        '복합쓰기 작업에 필요한 추가 정보가 아직 없습니다.',
+        400,
+        'OLLI_AGENT_BATCH_CLARIFICATION_REQUIRED'
+      );
+    }
+    const memoNote=String(item.memoNote || '').trim();
+    if(intent==='add_timetable_memo' && (!memoNote || !text.includes(memoNote))){
+      throw runtimeError(
+        '시간표 메모 내용이 원문과 일치하지 않습니다.',
+        409,
+        'OLLI_AGENT_BATCH_MEMO_BODY_MISMATCH'
+      );
+    }
+    if(intent==='delete_timetable_memo' && memoNote && !text.includes(memoNote)){
+      throw runtimeError(
+        '삭제할 시간표 메모 내용이 원문과 일치하지 않습니다.',
+        409,
+        'OLLI_AGENT_BATCH_MEMO_BODY_MISMATCH'
+      );
+    }
+  }
+
+  // Validate every stored clarification before creating any pending action card.
+  for(const item of items){
+    const clarificationMessageId=Number(item?.clarificationMessageId || 0);
+    const clarificationMessageText=String(item?.clarificationMessageText || '').trim();
+    const contextText=String(item?.contextText || '').trim();
+    if(!clarificationMessageId && !clarificationMessageText && !contextText) continue;
+    if(!Number.isSafeInteger(clarificationMessageId) || clarificationMessageId<=0 || !clarificationMessageText || !contextText){
+      throw runtimeError(
+        '복합쓰기 추가 정보 메시지를 확인하지 못했습니다.',
+        400,
+        'OLLI_AGENT_BATCH_CLARIFICATION_MESSAGE_REQUIRED'
+      );
+    }
+    await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId:clarificationMessageId,
+      sourceMessageText:clarificationMessageText,
+    });
+    const expectedContext=normalizeBatchPartText(String(item?.text || '')+' '+clarificationMessageText);
+    if(normalizeBatchPartText(contextText)!==expectedContext){
+      throw runtimeError(
+        '복합쓰기 추가 정보가 저장된 메시지와 일치하지 않습니다.',
+        409,
+        'OLLI_AGENT_BATCH_CLARIFICATION_BODY_MISMATCH'
+      );
+    }
+  }
+
+  // Validate every reason-bearing item before creating any pending action card.
+  for(const item of items){
+    const intent=String(item?.intent || '').trim();
+    if(!['mark_absent','cancel_makeup','cancel_trial'].includes(intent)) continue;
+    const reason=String(item?.reason || '').trim();
+    const reasonMessageId=Number(item?.reasonMessageId || 0);
+    const reasonMessageText=String(item?.reasonMessageText || '').trim();
+    if(!reason || !Number.isSafeInteger(reasonMessageId) || reasonMessageId<=0 || !reasonMessageText){
+      throw runtimeError(
+        '복합쓰기의 사유가 필요한 작업에 사유 메시지가 없습니다.',
+        400,
+        'OLLI_AGENT_BATCH_REASON_REQUIRED'
+      );
+    }
+    if(intent==='mark_absent'){
+      await validateAbsenceReasonMessage({
+        requestContext,
+        reasonMessageId,
+        reasonMessageText,
+        reason,
+      });
+    }else if(intent==='cancel_makeup'){
+      await validateMakeupReasonMessage({
+        requestContext,
+        reasonMessageId,
+        reasonMessageText,
+        reason,
+      });
+    }else{
+      await validateTrialReasonMessage({
+        requestContext,
+        reasonMessageId,
+        reasonMessageText,
+        reason,
+      });
+    }
+  }
+
+  const preparedMessages=[];
+  for(let index=0; index<items.length; index+=1){
+    const item=items[index];
+    const intent=String(item.intent || '').trim();
+    const privacy=await prepareBatchPrivacy(item,requestContext);
+    const common={
+      agentContext,
+      requestContext,
+      preparedPrivacy:privacy,
+      requestId:'team-chat-batch:'+sourceId+':'+index+':'+intent,
+      replyToMessageId:sourceId,
+      requirePersistedMessage:true,
+    };
+    let result;
+
+    if(intent==='add_timetable_memo' || intent==='delete_timetable_memo'){
+      result=await runTimetableMemoPrepareAgent({
+        ...common,
+        memoNote:String(item.memoNote || '').trim(),
+      });
+    }else if(intent==='mark_absent'){
+      result=await runAbsencePrepareAgent({...common,reason:String(item.reason || '').trim()});
+    }else if(intent==='add_class_once'){
+      result=await runClassOncePrepareAgent(common);
+    }else if(intent==='add_makeup'){
+      result=await runMakeupPrepareAgent(common);
+    }else if(intent==='update_makeup'){
+      result=await runMakeupUpdatePrepareAgent(common);
+    }else if(intent==='cancel_makeup'){
+      result=await runMakeupCancelPrepareAgent({...common,reason:String(item.reason || '').trim()});
+    }else if(intent==='add_trial'){
+      result=await runTrialAddPrepareAgent(common);
+    }else if(intent==='update_trial'){
+      result=await runTrialUpdatePrepareAgent(common);
+    }else if(intent==='cancel_trial'){
+      result=await runTrialCancelPrepareAgent({...common,reason:String(item.reason || '').trim()});
+    }else if(intent==='add_waitlist'){
+      result=await runWaitlistAddPrepareAgent(common);
+    }else if(intent==='update_waitlist'){
+      result=await runWaitlistUpdatePrepareAgent(common);
+    }else if(intent==='cancel_waitlist'){
+      result=await runWaitlistCancelPrepareAgent(common);
+    }else if(intent==='move_class'){
+      result=await runMovePrepareAgent(common);
+    }else if(intent==='cancel_move'){
+      result=await runMoveCancelPrepareAgent(common);
+    }else if(intent==='add_pickup'){
+      result=await runPickupPrepareAgent(common);
+    }else if(intent==='update_pickup'){
+      result=await runPickupUpdatePrepareAgent(common);
+    }else if(intent==='cancel_pickup'){
+      result=await runPickupCancelPrepareAgent(common);
+    }
+
+    const persisted=result?.persistedMessage;
+    const actionType=String(persisted?.action?.action_type || '').trim();
+    if(!persisted || !batchExpectedActionTypes(intent).includes(actionType)){
+      throw runtimeError(
+        '복합쓰기 작업의 확인 카드 종류가 예상과 다릅니다.',
+        502,
+        'OLLI_AGENT_BATCH_ACTION_TYPE_MISMATCH'
+      );
+    }
+    preparedMessages.push(persisted);
+  }
+
+  return {
+    ready:true,
+    messages:preparedMessages,
+    recoveredAfterPersist:false,
+  };
+}
+
+
 module.exports = {
   MIN_NODE_MAJOR,
   assertSupportedNodeRuntime,
@@ -4168,6 +4628,7 @@ module.exports = {
   runMakeupCancelPrepareAgent,
   runMakeupCancelPrepareProbe,
   runMakeupCancelPrepare,
+  validateMakeupReasonMessage,
   resolveTrialAddPrepareScope,
   runTrialAddPrepareAgent,
   runTrialAddPrepareProbe,
@@ -4220,9 +4681,19 @@ module.exports = {
   pickupPersistedMessageForClient,
   normalizePickupSourceMessageText,
   validatePickupSourceMessage,
+  runPickupPrepareAgent,
+  runPickupUpdatePrepareAgent,
+  runPickupCancelPrepareAgent,
   runPickupPrepareProbe,
   runPickupPrepare,
   runStudentProfileProbe,
   resolveTimetableMemoScope,
+  runTimetableMemoPrepareAgent,
   runTimetableMemoPrepareProbe,
+  runTimetableMemoPrepare,
+  validateTimetableMemoSourceMessage,
+  normalizeBatchPartText,
+  splitBatchWriteParts,
+  batchExpectedActionTypes,
+  runBatchPrepare,
 };

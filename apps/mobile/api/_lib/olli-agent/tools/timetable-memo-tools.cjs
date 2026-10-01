@@ -296,6 +296,8 @@ async function prepareTimetableMemoAction({
   classGroup = 'AUTO',
   memoNote = '',
   requestId,
+  replyToMessageId = null,
+  capturePersistedMessage = null,
   sanitizePayload,
   callRpc = callSupabaseRpc,
 }) {
@@ -537,7 +539,7 @@ async function prepareTimetableMemoAction({
       requestId,
       actionType,
     }),
-    p_reply_to_message_id:null,
+    p_reply_to_message_id:replyToMessageId == null ? null : Number(replyToMessageId),
   });
 
   if (!sent?.ok || !sent?.message?.action) {
@@ -547,6 +549,7 @@ async function prepareTimetableMemoAction({
       'OLLI_AGENT_TIMETABLE_MEMO_ACTION_STORE_FAILED'
     );
   }
+  if (typeof capturePersistedMessage === 'function') capturePersistedMessage(sent.message);
 
   return sanitizePayload({
     ok:true,
@@ -560,7 +563,6 @@ async function prepareTimetableMemoAction({
     time_label:displayedTime,
     class_group:targetGroup,
     timetable_mode:mode,
-    memo_note:note,
   });
 }
 
@@ -572,7 +574,10 @@ function createPrepareTimetableMemoTool({
   studentLabel,
   division,
   operation,
+  memoNote,
   requestId,
+  replyToMessageId = null,
+  capturePersistedMessage = null,
   sanitizePayload,
 }) {
   if (typeof tool !== 'function' || !z) {
@@ -592,9 +597,8 @@ function createPrepareTimetableMemoTool({
       hour:z.number().int().min(0).max(12),
       minute:z.union([z.literal(0), z.literal(30)]),
       class_group:z.enum(['AUTO', 'A', 'B']),
-      memo_note:z.string().max(5000),
     }),
-    async execute({ session_date, hour, minute, class_group, memo_note }) {
+    async execute({ session_date, hour, minute, class_group }) {
       const payload = await prepareTimetableMemoAction({
         requestContext,
         subjectAccess,
@@ -605,8 +609,10 @@ function createPrepareTimetableMemoTool({
         hour,
         minute,
         classGroup:class_group,
-        memoNote:memo_note,
+        memoNote,
         requestId,
+        replyToMessageId,
+        capturePersistedMessage,
         sanitizePayload,
       });
       return JSON.stringify(payload);

@@ -18,16 +18,69 @@ export default async function handler(req, res) {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const mode = safeText(body.mode, 40);
 
-    if (!['probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'memo_prepare_probe', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
+    if (!['probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
       return res.status(400).json({
-        error: '현재 독립 Agent endpoint는 probe, privacy_probe, profile_probe, schedule_probe, records_probe, availability_probe, attendance_probe, pickups_probe, memo_prepare_probe, absence_prepare_probe, absence_prepare, class_once_prepare_probe, class_once_prepare, makeup_prepare_probe, makeup_update_prepare_probe, makeup_update_prepare, makeup_cancel_prepare_probe, makeup_cancel_prepare, makeup_prepare, trial_add_prepare_probe, trial_add_prepare, trial_cancel_prepare_probe, trial_cancel_prepare, trial_update_prepare_probe, trial_update_prepare, waitlist_add_prepare_probe, waitlist_add_prepare, waitlist_update_prepare_probe, waitlist_update_prepare, waitlist_cancel_prepare_probe, waitlist_cancel_prepare, move_prepare_probe, move_prepare, move_cancel_prepare_probe, move_cancel_prepare, pickup_prepare_probe, pickup_update_prepare_probe, pickup_cancel_prepare_probe, pickup_cancel_prepare, pickup_update_prepare 또는 pickup_prepare 모드만 지원합니다.',
+        error: '지원하지 않는 Olli Agent mode입니다. 현재 production prepare에는 memo_prepare, batch_prepare, absence_prepare, class_once_prepare, makeup/trial/waitlist/move/pickup prepare 계열이 포함됩니다.',
       });
     }
 
     const contextModule = await import('./_lib/olli-agent/request-context.cjs');
     const requestContext = await contextModule.loadOlliAgentRequestContext(body);
 
-    if (mode === 'privacy_probe' || mode === 'profile_probe' || mode === 'schedule_probe' || mode === 'records_probe' || mode === 'availability_probe' || mode === 'attendance_probe' || mode === 'pickups_probe' || mode === 'memo_prepare_probe' || mode === 'absence_prepare_probe' || mode === 'absence_prepare' || mode === 'class_once_prepare_probe' || mode === 'class_once_prepare' || mode === 'makeup_prepare_probe' || mode === 'makeup_update_prepare_probe' || mode === 'makeup_update_prepare' || mode === 'makeup_cancel_prepare_probe' || mode === 'makeup_cancel_prepare' || mode === 'makeup_prepare' || mode === 'trial_add_prepare_probe' || mode === 'trial_add_prepare' || mode === 'trial_cancel_prepare_probe' || mode === 'trial_cancel_prepare' || mode === 'trial_update_prepare_probe' || mode === 'trial_update_prepare' || mode === 'waitlist_add_prepare_probe' || mode === 'waitlist_add_prepare' || mode === 'waitlist_update_prepare_probe' || mode === 'waitlist_update_prepare' || mode === 'waitlist_cancel_prepare_probe' || mode === 'waitlist_cancel_prepare' || mode === 'move_prepare_probe' || mode === 'move_prepare' || mode === 'move_cancel_prepare_probe' || mode === 'move_cancel_prepare' || mode === 'pickup_prepare_probe' || mode === 'pickup_update_prepare_probe' || mode === 'pickup_cancel_prepare_probe' || mode === 'pickup_cancel_prepare' || mode === 'pickup_update_prepare' || mode === 'pickup_prepare') {
+    if (mode === 'batch_prepare') {
+      const message = safeText(body.message, 5000);
+      const sourceMessageId = Number(body.sourceMessageId || body.source_message_id || 0);
+      const rawCommands = Array.isArray(body.commands) ? body.commands : [];
+      if (!message) {
+        return res.status(400).json({
+          error:'batch_prepare에는 원문 메시지가 필요합니다.',
+          code:'OLLI_AGENT_BATCH_MESSAGE_REQUIRED',
+        });
+      }
+      if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+        return res.status(400).json({
+          error:'batch_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+          code:'OLLI_AGENT_BATCH_SOURCE_MESSAGE_REQUIRED',
+        });
+      }
+      if (rawCommands.length < 2 || rawCommands.length > 3) {
+        return res.status(400).json({
+          error:'batch_prepare는 한 번에 2개 또는 3개 작업만 지원합니다.',
+          code:'OLLI_AGENT_BATCH_COUNT_INVALID',
+        });
+      }
+
+      const commands = rawCommands.map((item) => ({
+        intent:safeText(item?.intent, 80),
+        text:safeText(item?.text, 5000),
+        reason:safeText(item?.reason, 300),
+        reasonMessageId:Number(item?.reasonMessageId || item?.reason_message_id || 0),
+        reasonMessageText:safeText(item?.reasonMessageText || item?.reason_message_text, 5000),
+        memoNote:safeText(item?.memoNote || item?.memo_note, 5000),
+        needsClarification:item?.needsClarification === true,
+        contextText:safeText(item?.contextText || item?.context_text, 5000),
+        clarificationMessageId:Number(item?.clarificationMessageId || item?.clarification_message_id || 0),
+        clarificationMessageText:safeText(item?.clarificationMessageText || item?.clarification_message_text, 5000),
+      }));
+
+      const runtimeModule = await import('./_lib/olli-agent/runtime.cjs');
+      const agentContext = contextModule.toAgentRunContext(requestContext);
+      const result = await runtimeModule.runBatchPrepare({
+        agentContext,
+        requestContext,
+        sourceMessageId,
+        sourceMessageText:message,
+        commands,
+      });
+      return res.status(200).json({
+        ok:true,
+        mode:'batch_prepare',
+        ready:result.ready === true,
+        messages:Array.isArray(result.messages) ? result.messages : [],
+      });
+    }
+
+    if (mode === 'privacy_probe' || mode === 'profile_probe' || mode === 'schedule_probe' || mode === 'records_probe' || mode === 'availability_probe' || mode === 'attendance_probe' || mode === 'pickups_probe' || mode === 'memo_prepare_probe' || mode === 'memo_prepare' || mode === 'absence_prepare_probe' || mode === 'absence_prepare' || mode === 'class_once_prepare_probe' || mode === 'class_once_prepare' || mode === 'makeup_prepare_probe' || mode === 'makeup_update_prepare_probe' || mode === 'makeup_update_prepare' || mode === 'makeup_cancel_prepare_probe' || mode === 'makeup_cancel_prepare' || mode === 'makeup_prepare' || mode === 'trial_add_prepare_probe' || mode === 'trial_add_prepare' || mode === 'trial_cancel_prepare_probe' || mode === 'trial_cancel_prepare' || mode === 'trial_update_prepare_probe' || mode === 'trial_update_prepare' || mode === 'waitlist_add_prepare_probe' || mode === 'waitlist_add_prepare' || mode === 'waitlist_update_prepare_probe' || mode === 'waitlist_update_prepare' || mode === 'waitlist_cancel_prepare_probe' || mode === 'waitlist_cancel_prepare' || mode === 'move_prepare_probe' || mode === 'move_prepare' || mode === 'move_cancel_prepare_probe' || mode === 'move_cancel_prepare' || mode === 'pickup_prepare_probe' || mode === 'pickup_update_prepare_probe' || mode === 'pickup_cancel_prepare_probe' || mode === 'pickup_cancel_prepare' || mode === 'pickup_update_prepare' || mode === 'pickup_prepare') {
       const message = safeText(body.message, 5000);
       if (!message) {
         return res.status(400).json({
@@ -37,7 +90,23 @@ export default async function handler(req, res) {
       }
 
       let prepared;
-      if (mode === 'absence_prepare_probe' || mode === 'absence_prepare') {
+      if (mode === 'memo_prepare_probe' || mode === 'memo_prepare') {
+        const privacyModule = await import('./_lib/olli-agent/privacy.cjs');
+        const memoNote = safeText(body.memoNote || body.memo_note, 5000);
+        prepared = await privacyModule.prepareTimetableMemoPrivacyInput(
+          message,
+          memoNote,
+          requestContext
+        );
+      } else if (mode === 'makeup_cancel_prepare_probe' || mode === 'makeup_cancel_prepare') {
+        const privacyModule = await import('./_lib/olli-agent/privacy.cjs');
+        const reason = safeText(body.reason, 300);
+        prepared = await privacyModule.prepareMakeupCancelPrivacyInput(
+          message,
+          reason,
+          requestContext
+        );
+      } else if (mode === 'absence_prepare_probe' || mode === 'absence_prepare') {
         const privacyModule = await import('./_lib/olli-agent/privacy.cjs');
         const reason = safeText(body.reason, 300);
         prepared = await privacyModule.prepareAbsencePrivacyInput(
@@ -113,6 +182,7 @@ export default async function handler(req, res) {
         });
       } else if (mode === 'memo_prepare_probe') {
         const requestId = safeText(body.requestId || body.request_id, 160);
+        const memoNote = safeText(body.memoNote || body.memo_note, 5000);
         if (!requestId) {
           return res.status(400).json({
             error: 'memo_prepare_probe에는 재시도 중복 방지용 requestId가 필요합니다.',
@@ -124,6 +194,31 @@ export default async function handler(req, res) {
           requestContext,
           preparedPrivacy: prepared,
           requestId,
+          memoNote,
+        });
+      } else if (mode === 'memo_prepare') {
+        const sourceMessageId = Number(body.sourceMessageId || body.source_message_id || 0);
+        const memoNote = safeText(body.memoNote || body.memo_note, 5000);
+        if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+          return res.status(400).json({
+            error: 'memo_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+            code: 'OLLI_AGENT_TIMETABLE_MEMO_SOURCE_MESSAGE_REQUIRED',
+          });
+        }
+        probe = await runtimeModule.runTimetableMemoPrepare({
+          agentContext,
+          requestContext,
+          preparedPrivacy: prepared,
+          sourceMessageId,
+          sourceMessageText: message,
+          memoNote,
+        });
+        return res.status(200).json({
+          ok:true,
+          mode:'memo_prepare',
+          ready:probe.ready === true,
+          message:probe.persistedMessage,
+          recoveredAfterPersist:probe.recoveredAfterPersist === true,
         });
       } else if (mode === 'absence_prepare_probe') {
         const requestId=safeText(body.requestId || body.request_id,180);
@@ -268,11 +363,18 @@ export default async function handler(req, res) {
           recoveredAfterPersist:probe.recoveredAfterPersist === true,
         });
       } else if (mode === 'makeup_cancel_prepare_probe') {
-        const requestId = safeText(body.requestId || body.request_id, 160);
+        const requestId = safeText(body.requestId || body.request_id, 180);
+        const reason = safeText(body.reason, 300);
         if (!requestId) {
           return res.status(400).json({
             error: 'makeup_cancel_prepare_probe에는 재시도 중복 방지용 requestId가 필요합니다.',
             code: 'OLLI_AGENT_REQUEST_ID_REQUIRED',
+          });
+        }
+        if (!reason) {
+          return res.status(400).json({
+            error: 'makeup_cancel_prepare_probe에는 보강 취소 사유가 필요합니다.',
+            code: 'OLLI_AGENT_MAKEUP_CANCEL_REASON_REQUIRED',
           });
         }
         probe = await runtimeModule.runMakeupCancelPrepareProbe({
@@ -280,13 +382,23 @@ export default async function handler(req, res) {
           requestContext,
           preparedPrivacy: prepared,
           requestId,
+          reason,
         });
       } else if (mode === 'makeup_cancel_prepare') {
         const sourceMessageId = Number(body.sourceMessageId || body.source_message_id || 0);
+        const reasonMessageId = Number(body.reasonMessageId || body.reason_message_id || 0);
+        const reasonMessageText = safeText(body.reasonMessageText || body.reason_message_text, 5000);
+        const reason = safeText(body.reason, 300);
         if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
           return res.status(400).json({
             error: 'makeup_cancel_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
             code: 'OLLI_AGENT_MAKEUP_SOURCE_MESSAGE_REQUIRED',
+          });
+        }
+        if (!Number.isSafeInteger(reasonMessageId) || reasonMessageId <= 0 || !reasonMessageText || !reason) {
+          return res.status(400).json({
+            error: 'makeup_cancel_prepare에는 저장된 보강 취소 사유 메시지와 사유가 필요합니다.',
+            code: 'OLLI_AGENT_MAKEUP_REASON_MESSAGE_REQUIRED',
           });
         }
         probe = await runtimeModule.runMakeupCancelPrepare({
@@ -295,6 +407,9 @@ export default async function handler(req, res) {
           preparedPrivacy: prepared,
           sourceMessageId,
           sourceMessageText: message,
+          reasonMessageId,
+          reasonMessageText,
+          reason,
         });
         return res.status(200).json({
           ok:true,

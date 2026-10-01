@@ -129,7 +129,7 @@ async function prepareAgentPrivacyInput(text, requestContext, options = {}) {
   return prepareAgentPrivacyFromResolution(text, resolution);
 }
 
-async function prepareAbsencePrivacyInput(text, reasonText, requestContext, options = {}) {
+async function preparePrivateReasonPrivacyInput(text, reasonText, requestContext, options = {}) {
   const sourceText=String(text || '');
   const reason=clean(reasonText);
   let commandText=sourceText;
@@ -148,11 +148,54 @@ async function prepareAbsencePrivacyInput(text, reasonText, requestContext, opti
   return prepareAgentPrivacyFromResolution(commandText,resolution);
 }
 
+async function prepareAbsencePrivacyInput(text, reasonText, requestContext, options = {}) {
+  return preparePrivateReasonPrivacyInput(text,reasonText,requestContext,options);
+}
+
+async function prepareMakeupCancelPrivacyInput(text, reasonText, requestContext, options = {}) {
+  return preparePrivateReasonPrivacyInput(text,reasonText,requestContext,options);
+}
+
+
+async function prepareTimetableMemoPrivacyInput(text, memoNote, requestContext, options = {}) {
+  const sourceText=String(text || '');
+  const note=clean(memoNote);
+  let commandText=sourceText;
+
+  if(note){
+    const quotedVariants=[
+      '“'+note+'”',
+      '‘'+note+'’',
+      '"'+note+'"',
+      "'"+note+"'"
+    ];
+    for(const quoted of quotedVariants){
+      if(commandText.includes(quoted)){
+        commandText=commandText.replace(quoted,' ');
+        break;
+      }
+    }
+    if(commandText.includes(note)){
+      commandText=commandText.replace(note,' ');
+    }
+    commandText=commandText
+      .replace(/(?:내용|문구)\s*[:：-]?\s*/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
+  const resolution=await resolveStudentReferences(commandText,requestContext,options);
+  return prepareAgentPrivacyFromResolution(commandText,resolution);
+}
+
 
 module.exports = {
   safeSubjectRefs,
   sanitizeAgentToolPayload,
   prepareAgentPrivacyFromResolution,
   prepareAgentPrivacyInput,
+  preparePrivateReasonPrivacyInput,
   prepareAbsencePrivacyInput,
+  prepareMakeupCancelPrivacyInput,
+  prepareTimetableMemoPrivacyInput,
 };

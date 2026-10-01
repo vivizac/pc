@@ -19,7 +19,7 @@ test('PC AI makeup add is routed before legacy action preparation', () => {
 test('PC makeup Agent gate uses shared add_makeup parser only as candidate detection', () => {
   assert.match(talk,/parseMakeupMutationIntent\(commandText\)/);
   const start=talk.indexOf('function isMakeupAddAgentCandidate');
-  const end=talk.indexOf('function isMakeupCancelAgentCandidate',start);
+  const end=talk.indexOf('function parseMakeupCancelAgentCandidate',start);
   const block=talk.slice(start,end);
   assert.match(block,/=== 'add_makeup'/);
   assert.doesNotMatch(block,/parseMakeupCancelMutationIntent|cancel_makeup|update_makeup/);
@@ -45,19 +45,19 @@ test('PC bot path remains independent from makeup Agent production routing', () 
 });
 
 
-test('PC AI makeup cancel is routed before legacy action preparation', () => {
+test('PC makeup cancel preserves inline and two-turn reason Agent routing', () => {
   const start=talk.indexOf('async function resolveAiTurn');
   const end=talk.indexOf('function updateComposerState',start);
   const block=talk.slice(start,end);
-  const makeupCancel=block.indexOf('if (isMakeupCancelAgentCandidate(commandText, router))');
-  const legacy=block.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(makeupCancel>=0);
-  assert.ok(legacy>makeupCancel);
-  assert.match(block,/return resolveMakeupCancelAgentTurn\(commandText, current, replyToMessageId\)/);
+  assert.match(block,/const makeupCancelCandidate = parseMakeupCancelAgentCandidate/);
+  assert.match(block,/clean\(makeupCancelCandidate\.reason\)/);
+  assert.match(block,/pendingPayload\.__makeupCancelAgent/);
+  assert.match(block,/const pendingMakeupCancel = state\.pendingActionReason\.__makeupCancelAgent/);
+  assert.match(block,/return resolveMakeupCancelAgentTurn\(\{/);
 });
 
 test('PC makeup cancel Agent gate uses only the shared cancel parser as candidate detection', () => {
-  const start=talk.indexOf('function isMakeupCancelAgentCandidate');
+  const start=talk.indexOf('function parseMakeupCancelAgentCandidate');
   const end=talk.indexOf('function isMakeupUpdateAgentCandidate',start);
   const block=talk.slice(start,end);
   assert.match(block,/parseMakeupCancelMutationIntent\(commandText\)/);
@@ -65,15 +65,17 @@ test('PC makeup cancel Agent gate uses only the shared cancel parser as candidat
   assert.doesNotMatch(block,/parseMakeupMutationIntent|add_makeup|update_makeup/);
 });
 
-test('PC makeup cancel bridge uses source message id and consumes the server-persisted cancel action directly', () => {
+test('PC makeup cancel bridge binds command and reason messages to server Agent', () => {
   const start=talk.indexOf('async function resolveMakeupCancelAgentTurn');
-  const end=talk.indexOf('async function resolvePickupCancelAgentTurn',start);
+  const end=talk.indexOf('async function resolveMakeupUpdateAgentTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'makeup_cancel_prepare'/);
-  assert.match(block,/sourceMessageId = Number\(replyToMessageId \|\| 0\)/);
+  assert.match(block,/sourceMessageId:sourceId/);
+  assert.match(block,/reasonMessageId:reasonId/);
+  assert.match(block,/reasonMessageText:clean\(reasonMessageText\)/);
+  assert.match(block,/reason:clean\(reasonText\)/);
   assert.match(block,/action_type\) !== 'cancel_makeup'/);
   assert.match(block,/assistantMessage:data\.message/);
-  assert.match(block,/recordAi:false/);
   assert.doesNotMatch(block,/saveAssistantAction|olli_team_chat_send_action/);
 });
 

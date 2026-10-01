@@ -71,14 +71,15 @@ function baseRpc({enrollments,timetableMode='half_hour'}={}){
   return {rpc,calls};
 }
 
-test('absence privacy removes the explicit reason before student resolution and model egress',()=>{
+test('absence privacy removes the explicit reason through the shared private-reason helper',()=>{
   const privacySource=fs.readFileSync(path.join(__dirname,'../api/_lib/olli-agent/privacy.cjs'),'utf8');
-  const start=privacySource.indexOf('async function prepareAbsencePrivacyInput');
-  const end=privacySource.indexOf('\n\nmodule.exports',start);
+  const start=privacySource.indexOf('async function preparePrivateReasonPrivacyInput');
+  const end=privacySource.indexOf('async function prepareTimetableMemoPrivacyInput',start);
   const block=privacySource.slice(start,end);
   assert.match(block,/lastIndexOf\(reason\)/);
   assert.match(block,/resolveStudentReferences\(commandText,requestContext,options\)/);
   assert.match(block,/prepareAgentPrivacyFromResolution\(commandText,resolution\)/);
+  assert.match(block,/prepareAbsencePrivacyInput/);
   assert.doesNotMatch(block,/prepareAgentPrivacyFromResolution\(sourceText,resolution\)/);
 });
 

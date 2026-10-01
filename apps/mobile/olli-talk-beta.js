@@ -574,6 +574,95 @@
     return payload.message;
   }
 
+  function parseOlliTalkBatchAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseMultiWriteIntent!=='function') return null;
+    try{
+      const parsed=router.parseMultiWriteIntent(commandText);
+      return String(parsed?.intent || '').trim()==='batch_write' && Array.isArray(parsed?.commands)
+        ? parsed
+        : null;
+    }catch(error){
+      console.warn('올리톡 복합쓰기 Agent 후보 판별 실패:',error);
+      return null;
+    }
+  }
+
+  function olliTalkBatchCommandNeedsReason(command){
+    return ['mark_absent','cancel_makeup','cancel_trial'].includes(String(command?.intent || '').trim());
+  }
+
+  function olliTalkBatchReasonPrompt(command){
+    const intent=String(command?.intent || '').trim();
+    if(intent==='mark_absent') return String(command?.studentName || '').trim()+' 학생의 결석 사유를 알려주세요.';
+    if(intent==='cancel_makeup') return String(command?.studentName || '').trim()+' 학생의 보강 취소 사유를 알려주세요.';
+    if(intent==='cancel_trial') return String(command?.guestName || command?.studentName || '').trim()+' 학생의 체험 취소 사유를 알려주세요.';
+    return '사유를 알려주세요.';
+  }
+
+  function olliTalkBatchCommandNeedsClarification(command){
+    return command?.needsClarification===true;
+  }
+
+  function olliTalkBatchClarificationPrompt(command){
+    if(String(command?.intent || '').trim()==='add_makeup'){
+      return String(command?.studentName || '').trim()+' 학생의 보강 날짜와 시간을 함께 알려주세요.';
+    }
+    return '작업에 필요한 날짜와 시간을 함께 알려주세요.';
+  }
+
+  function applyOlliTalkBatchClarification(command,replyText,replyMessageId,router){
+    const item=Object.assign({},command);
+    const reply=String(replyText || '').trim();
+    if(String(item.intent || '').trim()==='add_makeup' && router && typeof router.parseMakeupMutationIntent==='function'){
+      const contextText=String(item.text+' '+reply).trim();
+      const parsed=router.parseMakeupMutationIntent(contextText);
+      if(!parsed || String(parsed.intent || '').trim()!=='add_makeup') return null;
+      item.needsClarification=false;
+      item.contextText=contextText;
+      item.clarificationMessageId=Number(replyMessageId || 0);
+      item.clarificationMessageText=reply;
+      return item;
+    }
+    return null;
+  }
+
+  function buildOlliTalkBatchAgentCommands(batch,sourceMessageId,sourceMessageText){
+    return (Array.isArray(batch?.commands)?batch.commands:[]).map(command=>({
+      intent:String(command?.intent || '').trim(),
+      text:String(command?.originalText || '').trim(),
+      studentName:String(command?.studentName || command?.guestName || '').trim(),
+      reason:String(command?.reason || '').trim(),
+      reasonMessageId:olliTalkBatchCommandNeedsReason(command) && String(command?.reason || '').trim()
+        ? Number(sourceMessageId || 0)
+        : 0,
+      reasonMessageText:olliTalkBatchCommandNeedsReason(command) && String(command?.reason || '').trim()
+        ? String(sourceMessageText || '').trim()
+        : '',
+      memoNote:String(command?.memoNote || '').trim(),
+      needsClarification:command?.batchDraft===true,
+      contextText:'',
+      clarificationMessageId:0,
+      clarificationMessageText:''
+    }));
+  }
+
+  function parseOlliTalkTimetableMemoAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router) return null;
+    try{
+      const deleted=typeof router.parseTimetableMemoDeleteMutationIntent==='function'
+        ? router.parseTimetableMemoDeleteMutationIntent(commandText)
+        : null;
+      if(String(deleted?.intent || '').trim()==='delete_timetable_memo') return deleted;
+      const added=typeof router.parseTimetableMemoAddMutationIntent==='function'
+        ? router.parseTimetableMemoAddMutationIntent(commandText)
+        : null;
+      return String(added?.intent || '').trim()==='add_timetable_memo' ? added : null;
+    }catch(error){
+      console.warn('올리톡 시간표 메모 Agent 후보 판별 실패:',error);
+      return null;
+    }
+  }
+
   function isOlliTalkTrialAddAgentCandidate(commandText,router=window.OlliCommandRouter){
     if(!router || typeof router.parseTrialMutationIntent!=='function') return false;
     try{
@@ -627,6 +716,77 @@
     }
   }
 
+  function isOlliTalkWaitlistCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseWaitlistCancelMutationIntent!=='function') return false;
+    try{
+      return String(router.parseWaitlistCancelMutationIntent(commandText)?.intent || '').trim()==='cancel_waitlist';
+    }catch(error){
+      console.warn('올리톡 대기 취소 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
+  function isOlliTalkMakeupAddAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseMakeupMutationIntent!=='function') return false;
+    try{
+      return String(router.parseMakeupMutationIntent(commandText)?.intent || '').trim()==='add_makeup';
+    }catch(error){
+      console.warn('올리톡 보강 등록 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
+  function parseOlliTalkMakeupCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseMakeupCancelMutationIntent!=='function') return null;
+    try{
+      const parsed=router.parseMakeupCancelMutationIntent(commandText);
+      return String(parsed?.intent || '').trim()==='cancel_makeup' ? parsed : null;
+    }catch(error){
+      console.warn('올리톡 보강 취소 Agent 후보 판별 실패:',error);
+      return null;
+    }
+  }
+
+  function isOlliTalkMakeupUpdateAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseMakeupUpdateMutationIntent!=='function') return false;
+    try{
+      return String(router.parseMakeupUpdateMutationIntent(commandText)?.intent || '').trim()==='update_makeup';
+    }catch(error){
+      console.warn('올리톡 보강 변경 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
+  function isOlliTalkPickupCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parsePickupCancelMutationIntent!=='function') return false;
+    try{
+      return String(router.parsePickupCancelMutationIntent(commandText)?.intent || '').trim()==='cancel_pickup';
+    }catch(error){
+      console.warn('올리톡 픽업 삭제 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
+  function isOlliTalkPickupUpdateAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parsePickupUpdateMutationIntent!=='function') return false;
+    try{
+      return String(router.parsePickupUpdateMutationIntent(commandText)?.intent || '').trim()==='update_pickup';
+    }catch(error){
+      console.warn('올리톡 픽업 수정 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
+  function isOlliTalkPickupAddAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parsePickupMutationIntent!=='function') return false;
+    try{
+      return String(router.parsePickupMutationIntent(commandText)?.intent || '').trim()==='add_pickup';
+    }catch(error){
+      console.warn('올리톡 픽업 등록 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
   function parseOlliTalkAbsenceAgentCandidate(commandText,router=window.OlliCommandRouter){
     if(!router || typeof router.parseAbsenceMutationIntent!=='function') return null;
     try{
@@ -666,6 +826,78 @@
       console.warn('올리톡 수업 이동 취소 Agent 후보 판별 실패:',error);
       return false;
     }
+  }
+
+  async function resolveOlliTalkBatchAgentTurn({
+    sourceText,
+    sourceMessageId,
+    commands,
+    context,
+  }){
+    const sourceId=Number(sourceMessageId || 0);
+    if(!Number.isSafeInteger(sourceId) || sourceId<=0){
+      throw new Error('복합쓰기 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'batch_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(sourceText || '').trim(),
+        sourceMessageId:sourceId,
+        commands
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    const messages=Array.isArray(data?.messages)?data.messages:[];
+    if(!response.ok || data?.ok!==true || messages.length<2){
+      throw new Error(data?.error || data?.message || '복합쓰기 Agent 응답을 받지 못했습니다.');
+    }
+    return {
+      assistantMessage:messages[0],
+      assistantMessages:messages,
+      replyText:messages.map(message=>String(message?.body || '').trim()).filter(Boolean).join('\n'),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkTimetableMemoAgentTurn(commandText,parsed,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('시간표 메모 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const expectedType=String(parsed?.intent || '').trim();
+    if(!['add_timetable_memo','delete_timetable_memo'].includes(expectedType)){
+      throw new Error('시간표 메모 작업 종류를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'memo_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId,
+        memoNote:String(parsed?.memoNote || '').trim()
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '시간표 메모 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!==expectedType){
+      throw new Error('시간표 메모 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
   }
 
   async function resolveOlliTalkTrialAddAgentTurn(commandText,context,replyToMessageId){
@@ -856,6 +1088,235 @@
     };
   }
 
+  async function resolveOlliTalkWaitlistCancelAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('대기 취소 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'waitlist_cancel_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok && String(data?.code || '').trim()==='OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED'){
+      return null;
+    }
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '대기 취소 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='cancel_waitlist'){
+      throw new Error('대기 취소 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkMakeupAddAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('보강 등록 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'makeup_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '보강 등록 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='add_makeup'){
+      throw new Error('보강 등록 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkMakeupCancelAgentTurn({
+    sourceText,
+    sourceMessageId,
+    reasonText,
+    reasonMessageText,
+    reasonMessageId,
+    context,
+  }){
+    const sourceId=Number(sourceMessageId || 0);
+    const reasonId=Number(reasonMessageId || 0);
+    if(!Number.isSafeInteger(sourceId) || sourceId<=0){
+      throw new Error('보강 취소 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    if(!Number.isSafeInteger(reasonId) || reasonId<=0 || !String(reasonText || '').trim()){
+      throw new Error('보강 취소 사유 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'makeup_cancel_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(sourceText || '').trim(),
+        sourceMessageId:sourceId,
+        reasonMessageId:reasonId,
+        reasonMessageText:String(reasonMessageText || '').trim(),
+        reason:String(reasonText || '').trim()
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '보강 취소 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='cancel_makeup'){
+      throw new Error('보강 취소 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkMakeupUpdateAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('보강 변경 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'makeup_update_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '보강 변경 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='update_makeup'){
+      throw new Error('보강 변경 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkPickupCancelAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('픽업 삭제 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'pickup_cancel_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '픽업 삭제 Agent 응답을 받지 못했습니다.');
+    }
+    const actionType=String(data.message.action.action_type || '').trim();
+    if(!['cancel_pickup','cancel_pickup_dropoff'].includes(actionType)){
+      throw new Error('픽업 삭제 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkPickupUpdateAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('픽업 수정 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'pickup_update_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '픽업 수정 Agent 응답을 받지 못했습니다.');
+    }
+    const actionType=String(data.message.action.action_type || '').trim();
+    if(!['update_pickup_arrival','update_pickup_dropoff'].includes(actionType)){
+      throw new Error('픽업 수정 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkPickupAddAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('픽업 등록 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'pickup_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '픽업 등록 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='add_pickup'){
+      throw new Error('픽업 등록 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
   async function resolveOlliTalkAbsenceAgentTurn({
     sourceText,
     sourceMessageId,
@@ -1017,12 +1478,125 @@
         };
       }
 
+      const pendingBatch=olliTalkPendingActionReason.__batchAgent;
+      if(String(olliTalkPendingActionReason.intent || '').trim()==='batch_write' && pendingBatch){
+        const commands=Array.isArray(pendingBatch.commands)
+          ? pendingBatch.commands.map(item=>Object.assign({},item))
+          : [];
+        const reasonIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
+        if(reasonIndex>=0){
+          commands[reasonIndex].reason=String(commandText || '').trim();
+          commands[reasonIndex].reasonMessageId=Number(replyToMessageId || 0);
+          commands[reasonIndex].reasonMessageText=String(commandText || '').trim();
+          const nextReasonIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
+          if(nextReasonIndex>=0){
+            olliTalkPendingActionReason={
+              intent:'batch_write',
+              __batchAgent:{
+                sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+                sourceMessageText:String(pendingBatch.sourceMessageText || '').trim(),
+                commands
+              }
+            };
+            const prompt=olliTalkBatchReasonPrompt(commands[nextReasonIndex]);
+            return {
+              assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
+              replyText:prompt,
+              recordAi:false
+            };
+          }
+
+          const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
+          if(clarificationIndex>=0){
+            olliTalkPendingActionReason={
+              intent:'batch_write',
+              __batchAgent:{
+                sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+                sourceMessageText:String(pendingBatch.sourceMessageText || '').trim(),
+                commands
+              }
+            };
+            const prompt=olliTalkBatchClarificationPrompt(commands[clarificationIndex]);
+            return {
+              assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
+              replyText:prompt,
+              recordAi:false
+            };
+          }
+        }else{
+          const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
+          if(clarificationIndex>=0){
+            const clarified=applyOlliTalkBatchClarification(
+              commands[clarificationIndex],
+              commandText,
+              replyToMessageId,
+              router
+            );
+            if(!clarified){
+              const prompt=olliTalkBatchClarificationPrompt(commands[clarificationIndex]);
+              olliTalkPendingActionReason={
+                intent:'batch_write',
+                __batchAgent:{
+                  sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+                  sourceMessageText:String(pendingBatch.sourceMessageText || '').trim(),
+                  commands
+                }
+              };
+              return {
+                assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
+                replyText:prompt,
+                recordAi:false
+              };
+            }
+            commands[clarificationIndex]=clarified;
+            const nextClarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
+            if(nextClarificationIndex>=0){
+              olliTalkPendingActionReason={
+                intent:'batch_write',
+                __batchAgent:{
+                  sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+                  sourceMessageText:String(pendingBatch.sourceMessageText || '').trim(),
+                  commands
+                }
+              };
+              const prompt=olliTalkBatchClarificationPrompt(commands[nextClarificationIndex]);
+              return {
+                assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
+                replyText:prompt,
+                recordAi:false
+              };
+            }
+          }
+        }
+
+        olliTalkPendingActionReason=null;
+        return resolveOlliTalkBatchAgentTurn({
+          sourceText:String(pendingBatch.sourceMessageText || '').trim(),
+          sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+          commands,
+          context,
+        });
+      }
+
       const pendingTrialCancel=olliTalkPendingActionReason.__trialCancelAgent;
       if(String(olliTalkPendingActionReason.intent || '').trim()==='cancel_trial' && pendingTrialCancel){
         olliTalkPendingActionReason=null;
         return resolveOlliTalkTrialCancelAgentTurn({
           sourceText:String(pendingTrialCancel.sourceMessageText || '').trim(),
           sourceMessageId:Number(pendingTrialCancel.sourceMessageId || 0),
+          reasonText:String(commandText || '').trim(),
+          reasonMessageText:String(commandText || '').trim(),
+          reasonMessageId:Number(replyToMessageId || 0),
+          context,
+        });
+      }
+
+      const pendingMakeupCancel=olliTalkPendingActionReason.__makeupCancelAgent;
+      if(String(olliTalkPendingActionReason.intent || '').trim()==='cancel_makeup' && pendingMakeupCancel){
+        olliTalkPendingActionReason=null;
+        return resolveOlliTalkMakeupCancelAgentTurn({
+          sourceText:String(pendingMakeupCancel.sourceMessageText || '').trim(),
+          sourceMessageId:Number(pendingMakeupCancel.sourceMessageId || 0),
           reasonText:String(commandText || '').trim(),
           reasonMessageText:String(commandText || '').trim(),
           reasonMessageId:Number(replyToMessageId || 0),
@@ -1053,12 +1627,80 @@
       };
     }
 
+    const batchCandidate=parseOlliTalkBatchAgentCandidate(commandText,router);
+    if(batchCandidate){
+      const sourceId=Number(replyToMessageId || 0);
+      const commands=buildOlliTalkBatchAgentCommands(batchCandidate,sourceId,commandText);
+      const missingIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
+      if(missingIndex>=0){
+        olliTalkPendingActionReason={
+          intent:'batch_write',
+          __batchAgent:{
+            sourceMessageId:sourceId,
+            sourceMessageText:String(commandText || '').trim(),
+            commands
+          }
+        };
+        const prompt=olliTalkBatchReasonPrompt(commands[missingIndex]);
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
+          replyText:prompt,
+          recordAi:false
+        };
+      }
+      const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
+      if(clarificationIndex>=0){
+        olliTalkPendingActionReason={
+          intent:'batch_write',
+          __batchAgent:{
+            sourceMessageId:sourceId,
+            sourceMessageText:String(commandText || '').trim(),
+            commands
+          }
+        };
+        const prompt=olliTalkBatchClarificationPrompt(commands[clarificationIndex]);
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
+          replyText:prompt,
+          recordAi:false
+        };
+      }
+      return resolveOlliTalkBatchAgentTurn({
+        sourceText:String(commandText || '').trim(),
+        sourceMessageId:sourceId,
+        commands,
+        context,
+      });
+    }
+
+    const timetableMemoCandidate=parseOlliTalkTimetableMemoAgentCandidate(commandText,router);
+    if(timetableMemoCandidate){
+      return resolveOlliTalkTimetableMemoAgentTurn(
+        commandText,
+        timetableMemoCandidate,
+        context,
+        replyToMessageId
+      );
+    }
+
     const trialCancelCandidate=parseOlliTalkTrialCancelAgentCandidate(commandText,router);
     if(trialCancelCandidate && String(trialCancelCandidate.reason || '').trim()){
       return resolveOlliTalkTrialCancelAgentTurn({
         sourceText:String(commandText || '').trim(),
         sourceMessageId:Number(replyToMessageId || 0),
         reasonText:String(trialCancelCandidate.reason || '').trim(),
+        reasonMessageText:String(commandText || '').trim(),
+        reasonMessageId:Number(replyToMessageId || 0),
+        context,
+      });
+    }
+
+    const makeupCancelCandidate=parseOlliTalkMakeupCancelAgentCandidate(commandText,router);
+    if(makeupCancelCandidate && String(makeupCancelCandidate.reason || '').trim()){
+      return resolveOlliTalkMakeupCancelAgentTurn({
+        sourceText:String(commandText || '').trim(),
+        sourceMessageId:Number(replyToMessageId || 0),
+        reasonText:String(makeupCancelCandidate.reason || '').trim(),
         reasonMessageText:String(commandText || '').trim(),
         reasonMessageId:Number(replyToMessageId || 0),
         context,
@@ -1092,6 +1734,31 @@
 
     if(isOlliTalkWaitlistUpdateAgentCandidate(commandText,router)){
       return resolveOlliTalkWaitlistUpdateAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    if(isOlliTalkWaitlistCancelAgentCandidate(commandText,router)){
+      const waitlistCancelTurn=await resolveOlliTalkWaitlistCancelAgentTurn(commandText,context,replyToMessageId);
+      if(waitlistCancelTurn) return waitlistCancelTurn;
+    }
+
+    if(isOlliTalkPickupCancelAgentCandidate(commandText,router)){
+      return resolveOlliTalkPickupCancelAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    if(isOlliTalkPickupUpdateAgentCandidate(commandText,router)){
+      return resolveOlliTalkPickupUpdateAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    if(isOlliTalkPickupAddAgentCandidate(commandText,router)){
+      return resolveOlliTalkPickupAddAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    if(isOlliTalkMakeupUpdateAgentCandidate(commandText,router)){
+      return resolveOlliTalkMakeupUpdateAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    if(isOlliTalkMakeupAddAgentCandidate(commandText,router)){
+      return resolveOlliTalkMakeupAddAgentTurn(commandText,context,replyToMessageId);
     }
 
     if(isOlliTalkClassOnceAgentCandidate(commandText,router)){
@@ -1144,6 +1811,16 @@
             const sourceMessageId=Number(replyToMessageId || 0);
             if(parsedTrialCancel && Number.isSafeInteger(sourceMessageId) && sourceMessageId>0){
               pendingPayload.__trialCancelAgent={
+                sourceMessageId,
+                sourceMessageText:String(commandText || '').trim()
+              };
+            }
+          }
+          if(String(pendingPayload.intent || '').trim()==='cancel_makeup'){
+            const parsedMakeupCancel=parseOlliTalkMakeupCancelAgentCandidate(commandText,router);
+            const sourceMessageId=Number(replyToMessageId || 0);
+            if(parsedMakeupCancel && Number.isSafeInteger(sourceMessageId) && sourceMessageId>0){
+              pendingPayload.__makeupCancelAgent={
                 sourceMessageId,
                 sourceMessageText:String(commandText || '').trim()
               };
@@ -3576,7 +4253,15 @@
         syncOlliTalkAssistantTypingIndicator();
         const turn=await resolveOlliTalkAiTurn(commandText,context,Number(messageId),{allowSuggestedQuery:true});
         olliTalkAssistantReplyPending=false;
-        replaceOlliTalkAssistantTypingWithMessage(turn.assistantMessage,context.memberId);
+        const assistantMessages=Array.isArray(turn.assistantMessages) && turn.assistantMessages.length
+          ? turn.assistantMessages
+          : [turn.assistantMessage].filter(Boolean);
+        if(assistantMessages.length){
+          replaceOlliTalkAssistantTypingWithMessage(assistantMessages[0],context.memberId);
+          assistantMessages.slice(1).forEach(message=>appendOlliTalkPersistedMessage(message,context.memberId));
+        }else{
+          syncOlliTalkAssistantTypingIndicator();
+        }
       }else{
         const turn=await resolveOlliTalkBotTurn(commandText,context,Number(messageId),{allowSuggestedQuery:true});
         appendOlliTalkPersistedMessage(turn.assistantMessage,context.memberId);
@@ -4674,7 +5359,15 @@
           if(usingAi){
             const turn=await resolveOlliTalkAiTurn(commandText,context,Number(payload.message.id));
             olliTalkAssistantReplyPending=false;
-            replaceOlliTalkAssistantTypingWithMessage(turn.assistantMessage,context.memberId);
+            const assistantMessages=Array.isArray(turn.assistantMessages) && turn.assistantMessages.length
+              ? turn.assistantMessages
+              : [turn.assistantMessage].filter(Boolean);
+            if(assistantMessages.length){
+              replaceOlliTalkAssistantTypingWithMessage(assistantMessages[0],context.memberId);
+              assistantMessages.slice(1).forEach(message=>appendOlliTalkPersistedMessage(message,context.memberId));
+            }else{
+              syncOlliTalkAssistantTypingIndicator();
+            }
           }else{
             const turn=await resolveOlliTalkBotTurn(commandText,context,Number(payload.message.id));
             appendOlliTalkPersistedMessage(turn.assistantMessage,context.memberId);
