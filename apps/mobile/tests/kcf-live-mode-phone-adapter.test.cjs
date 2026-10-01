@@ -15,17 +15,19 @@ test('LIVE submitted record keeps the original full-text user bubble while Inbox
   assert.match(liveRuntime, /function addKinderChatMessage\(role, text\)[\s\S]*?if \(role === 'user'\) bubble\.textContent = messageText;/);
 });
 
-test('Phone LIVE feedback removes the separate save action', () => {
-  assert.match(adapter, /querySelector\('\.kcfLiveSaveBtn'\)/);
-  assert.match(adapter, /if \(saveBtn\) saveBtn\.remove\(\);/);
+test('Phone LIVE feedback has no save action or copy-triggered save wrapper', () => {
+  assert.doesNotMatch(adapter, /kcfLiveSaveBtn|kcfLiveCopySaveBtn/);
+  assert.doesNotMatch(adapter, /phoneCopyKinderChatFeedbackLive|__olliPhoneAutoSave/);
+  assert.doesNotMatch(adapter, /복사 \+ 저장/);
 });
 
-test('Phone LIVE copy reuses the existing save path automatically after copy succeeds', () => {
-  const copyWrapper = adapter.match(/async function phoneCopyKinderChatFeedbackLive\(id, btn\)[\s\S]*?\n    \}/)?.[0] || '';
-  assert.match(copyWrapper, /const copied = await originalCopyLive\.call\(this, id, btn\);/);
-  assert.match(copyWrapper, /if \(copied !== true\) return copied;/);
-  assert.match(copyWrapper, /!item\.saved && !item\.reviewed/);
-  assert.match(copyWrapper, /await window\.saveKinderChatFeedbackLive\(id, null\);/);
+test('Phone LIVE feedback decorates temporary inbox and copy as text controls', () => {
+  const decorate = adapter.match(/function decoratePhoneKcfLiveMessage\(ui\)[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(decorate, /querySelector\('\.kcfLiveInboxBtn'\)/);
+  assert.match(decorate, /inboxBtn\.classList\.add\('kcfLivePhoneTextActionBtn'\)/);
+  assert.match(decorate, /inboxBtn\.textContent = '임시보관함'/);
+  assert.match(decorate, /copyBtn\.classList\.add\('kcfLivePhoneTextActionBtn'\)/);
+  assert.match(decorate, /copyBtn\.textContent = '복사'/);
 });
 
 test('LIVE feedback edit uses a dedicated sheet with only cancel and done below the text', () => {
