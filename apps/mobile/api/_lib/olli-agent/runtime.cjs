@@ -4567,6 +4567,120 @@ async function runBatchPrepare({
 }
 
 
+async function runStudentScheduleRead({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError('학생 시간표 원문 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_SCHEDULE_READ_SOURCE_INVALID');
+  }
+  await validatePickupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+  return runStudentScheduleProbe({agentContext,requestContext,preparedPrivacy});
+}
+
+async function runAttendanceRead({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError('출결 조회 원문 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_ATTENDANCE_READ_SOURCE_INVALID');
+  }
+  await validatePickupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+  return runAttendanceProbe({agentContext,requestContext,preparedPrivacy});
+}
+
+async function runTimetableRead({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+  readIntent,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError('시간표 조회 원문 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_TIMETABLE_READ_SOURCE_INVALID');
+  }
+  await validatePickupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
+  const intent=readIntent&&typeof readIntent==='object'?JSON.parse(JSON.stringify(readIntent)):{};
+
+  if(
+    intent?.intent==='find_available_slots' &&
+    String(intent?.viewMode||'').trim()==='schedule' &&
+    subjectRefs.length===1
+  ){
+    return runStudentScheduleProbe({agentContext,requestContext,preparedPrivacy});
+  }
+  if(intent?.intent==='find_pickups' && subjectRefs.length===1){
+    return runPickupProbe({agentContext,requestContext,preparedPrivacy});
+  }
+
+  if(intent?.intent==='find_available_slots' && !String(intent?.division||'').trim() && subjectRefs.length===1){
+    const subject=preparedPrivacy?.subjectAccess?.resolve?.(subjectRefs[0].label);
+    const division=String(subject?.division||'').trim().toLowerCase();
+    if(['elementary','kinder'].includes(division)) intent.division=division;
+  }
+
+  assertOpenAiKey();
+  const {Agent,run,tool,z}=await loadAgentsSdk();
+  const {createLabelBook,createTimetableReadTool}=require('./tools/timetable-read-tools.cjs');
+  const labelBook=createLabelBook();
+  const model=agentModel();
+  const today=todayInSeoul();
+
+  const readTool=createTimetableReadTool({
+    tool,z,requestContext,intent,sourceText:sourceMessageText,todayKey:today,labelBook,
+  });
+
+  const agent=new Agent({
+    name:'Olli Timetable Read',
+    model,
+    instructions:[
+      'You are the Olli timetable read assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The server has fixed the exact read operation from the stored Team Chat source message.',
+      'Always call read_timetable_query exactly once before answering.',
+      'Use only the tool result. Never invent students, classes, availability, pickup details, attendance, waitlists, or move reservations.',
+      'Roster names in tool output are anonymous labels such as 명단1 or 명단2. Preserve those labels exactly; the server restores real display names after model execution.',
+      'If a result is empty, clearly say that no matching timetable data was found.',
+      'Never ask for, infer, or reveal UUIDs, internal time slots, member IDs, session tokens, academy IDs, or hidden identifiers.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[readTool],
+    modelSettings:{toolChoice:'read_timetable_query'},
+  });
+
+  const result=await run(agent,preparedPrivacy.safeText,{context:agentContext});
+  const finalOutput=labelBook.restore(String(result?.finalOutput||'').trim());
+  if(!finalOutput){
+    throw runtimeError('시간표 읽기 Agent 응답이 비어 있습니다.',502,'OLLI_AGENT_EMPTY_TIMETABLE_READ_RESPONSE');
+  }
+  return {ready:true,model,output:finalOutput,nodeVersion:process.versions.node};
+}
+
+
 module.exports = {
   MIN_NODE_MAJOR,
   assertSupportedNodeRuntime,
@@ -4574,6 +4688,8 @@ module.exports = {
   loadAgentsSdk,
   runFoundationProbe,
   runStudentScheduleProbe,
+  runStudentScheduleRead,
+  runTimetableRead,
   runRecentRecordsProbe,
   resolveAvailabilityScope,
   runScheduleAvailabilityProbe,
@@ -4639,6 +4755,7 @@ module.exports = {
   validateMakeupSourceMessage,
   runMakeupPrepare,
   runAttendanceProbe,
+  runAttendanceRead,
   runPickupProbe,
   resolvePickupPrepareScope,
   resolvePickupUpdatePrepareScope,
