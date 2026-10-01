@@ -574,6 +574,23 @@
     return payload.message;
   }
 
+  function parseOlliTalkTimetableMemoAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router) return null;
+    try{
+      const deleted=typeof router.parseTimetableMemoDeleteMutationIntent==='function'
+        ? router.parseTimetableMemoDeleteMutationIntent(commandText)
+        : null;
+      if(String(deleted?.intent || '').trim()==='delete_timetable_memo') return deleted;
+      const added=typeof router.parseTimetableMemoAddMutationIntent==='function'
+        ? router.parseTimetableMemoAddMutationIntent(commandText)
+        : null;
+      return String(added?.intent || '').trim()==='add_timetable_memo' ? added : null;
+    }catch(error){
+      console.warn('올리톡 시간표 메모 Agent 후보 판별 실패:',error);
+      return null;
+    }
+  }
+
   function isOlliTalkTrialAddAgentCandidate(commandText,router=window.OlliCommandRouter){
     if(!router || typeof router.parseTrialMutationIntent!=='function') return false;
     try{
@@ -666,6 +683,43 @@
       console.warn('올리톡 수업 이동 취소 Agent 후보 판별 실패:',error);
       return false;
     }
+  }
+
+  async function resolveOlliTalkTimetableMemoAgentTurn(commandText,parsed,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('시간표 메모 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const expectedType=String(parsed?.intent || '').trim();
+    if(!['add_timetable_memo','delete_timetable_memo'].includes(expectedType)){
+      throw new Error('시간표 메모 작업 종류를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'memo_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId,
+        memoNote:String(parsed?.memoNote || '').trim()
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '시간표 메모 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!==expectedType){
+      throw new Error('시간표 메모 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
   }
 
   async function resolveOlliTalkTrialAddAgentTurn(commandText,context,replyToMessageId){
@@ -1051,6 +1105,16 @@
         replyText:confirmation,
         recordAi:false
       };
+    }
+
+    const timetableMemoCandidate=parseOlliTalkTimetableMemoAgentCandidate(commandText,router);
+    if(timetableMemoCandidate){
+      return resolveOlliTalkTimetableMemoAgentTurn(
+        commandText,
+        timetableMemoCandidate,
+        context,
+        replyToMessageId
+      );
     }
 
     const trialCancelCandidate=parseOlliTalkTrialCancelAgentCandidate(commandText,router);
