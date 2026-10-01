@@ -82,9 +82,6 @@
   -webkit-mask-image:linear-gradient(to top,#000 0%,#000 54%,transparent 100%);
   mask-image:linear-gradient(to top,#000 0%,#000 54%,transparent 100%);
 }
-#kinderChatFeedbackScreen.kcfKeyboardOpen .kcfBottomFadeLayer{
-  display:none;
-}
 /* 상단바 */
 #kcfPersistentTopLayer .kcfHeader{
   display:contents;
