@@ -4342,6 +4342,11 @@ async function prepareBatchPrivacy(item, requestContext) {
   if(intent==='add_timetable_memo' || intent==='delete_timetable_memo'){
     return privacy.prepareTimetableMemoPrivacyInput(text,memoNote,requestContext);
   }
+  if(['add_waitlist','update_waitlist','cancel_waitlist'].includes(intent)){
+    const registered=await privacy.prepareAgentPrivacyInput(text,requestContext);
+    if(Array.isArray(registered?.subjectRefs) && registered.subjectRefs.length>0) return registered;
+    return require('./waitlist-guest-privacy.cjs').prepareWaitlistGuestPrivacyInput(text);
+  }
   return privacy.prepareAgentPrivacyInput(text,requestContext);
 }
 
