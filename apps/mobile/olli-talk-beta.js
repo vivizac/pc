@@ -574,6 +574,16 @@
     return payload.message;
   }
 
+  function isOlliTalkTrialUpdateAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseTrialUpdateMutationIntent!=='function') return false;
+    try{
+      return String(router.parseTrialUpdateMutationIntent(commandText)?.intent || '').trim()==='update_trial';
+    }catch(error){
+      console.warn('올리톡 체험 변경 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
   function isOlliTalkWaitlistUpdateAgentCandidate(commandText,router=window.OlliCommandRouter){
     if(!router || typeof router.parseWaitlistUpdateMutationIntent!=='function') return false;
     try{
@@ -582,6 +592,38 @@
       console.warn('올리톡 대기 변경 Agent 후보 판별 실패:',error);
       return false;
     }
+  }
+
+  async function resolveOlliTalkTrialUpdateAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('체험 변경 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'trial_update_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '체험 변경 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='update_trial'){
+      throw new Error('체험 변경 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
   }
 
   async function resolveOlliTalkWaitlistUpdateAgentTurn(commandText,context,replyToMessageId){
@@ -653,6 +695,10 @@
         replyText:confirmation,
         recordAi:false
       };
+    }
+
+    if(isOlliTalkTrialUpdateAgentCandidate(commandText,router)){
+      return resolveOlliTalkTrialUpdateAgentTurn(commandText,context,replyToMessageId);
     }
 
     if(isOlliTalkWaitlistUpdateAgentCandidate(commandText,router)){
