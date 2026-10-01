@@ -11,10 +11,6 @@ const {
 const {
   resolveAbsencePrepareScope,
 }=require('../api/_lib/olli-agent/runtime.cjs');
-const {
-  prepareAbsencePrivacyInput,
-}=require('../api/_lib/olli-agent/privacy.cjs');
-
 function requestContext(){
   return {
     sessionToken:'server-session-secret',
@@ -75,16 +71,15 @@ function baseRpc({enrollments,timetableMode='half_hour'}={}){
   return {rpc,calls};
 }
 
-test('absence privacy removes inline reason before model-safe input',async()=>{
-  const prepared=await prepareAbsencePrivacyInput(
-    '박하늘 오늘 결석 처리해줘, 사유: 감기',
-    '감기',
-    requestContext(),
-    {
-      resolveStudentReferences:undefined
-    }
-  ).catch(()=>null);
-  assert.equal(prepared,null);
+test('absence privacy removes the explicit reason before student resolution and model egress',()=>{
+  const privacySource=fs.readFileSync(path.join(__dirname,'../api/_lib/olli-agent/privacy.cjs'),'utf8');
+  const start=privacySource.indexOf('async function prepareAbsencePrivacyInput');
+  const end=privacySource.indexOf('\n\nmodule.exports',start);
+  const block=privacySource.slice(start,end);
+  assert.match(block,/lastIndexOf\(reason\)/);
+  assert.match(block,/resolveStudentReferences\(commandText,requestContext,options\)/);
+  assert.match(block,/prepareAgentPrivacyFromResolution\(commandText,resolution\)/);
+  assert.doesNotMatch(block,/prepareAgentPrivacyFromResolution\(sourceText,resolution\)/);
 });
 
 test('absence reason normalization keeps content but rejects generic commands',()=>{
