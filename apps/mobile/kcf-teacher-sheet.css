@@ -19,6 +19,7 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
 
 .kcfTeacherSheetOverlay {
   position:fixed;
+  -webkit-tap-highlight-color:transparent;
   left:var(--kcf-teacher-vv-left, 0px);
   top:var(--kcf-teacher-vv-top, 0px);
   width:var(--kcf-teacher-vv-width, 100vw);
@@ -39,6 +40,7 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
 
 .kcfTeacherSheet {
   width:100%;
+  -webkit-tap-highlight-color:transparent;
   max-width:860px;
   height:calc(100% - var(--olli-phone-guide-top, 64px));
   min-height:220px;
@@ -66,6 +68,7 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
 
 .kcfTeacherSheetInput {
   flex:1 1 auto;
+  -webkit-tap-highlight-color:transparent;
   width:100%;
   min-height:0;
   border:0;
@@ -113,29 +116,77 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   padding:0;
 }
 
+.kcfTeacherSheetAttachBtn,
+.kcfTeacherSheetVoiceBtn,
+.kcfTeacherSheetSendBtn,
 .kcfTeacherSheetModeBtn {
-  width:auto;
-  height:32px;
-  min-width:52px;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+
+.kcfTeacherSheetAttachBtn,
+.kcfTeacherSheetVoiceBtn {
+  width:33px;
+  height:33px;
+  min-width:33px;
   border:0;
   border-radius:999px;
-  padding:0 10px;
+  padding:0;
+  background:transparent;
+  color:#111;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 33px;
+}
+
+.kcfTeacherSheetAttachBtn svg {
+  width:24px;
+  height:24px;
+  stroke:currentColor;
+  fill:none;
+  stroke-width:1.7;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.kcfTeacherSheetVoiceBtn svg {
+  width:26px;
+  height:26px;
+}
+
+.kcfTeacherSheetNormalSpacer {
+  flex:1 1 auto;
+  min-width:0;
+}
+
+.kcfTeacherSheetAttachBtn[hidden],
+.kcfTeacherSheetVoiceBtn[hidden],
+.kcfTeacherSheetNormalSpacer[hidden],
+.kcfTeacherSheetRosterHost[hidden] {
+  display:none !important;
+}
+
+.kcfTeacherSheetModeBtn {
+  width:33px;
+  height:33px;
+  min-width:33px;
+  max-width:33px;
+  border:0;
+  border-radius:50%;
+  padding:0;
   background:#f1f1f1;
-  color:rgba(17,17,17,.50);
+  color:#111;
   font-family:inherit;
   font-size:calc(11px * var(--olli-text-scale));
   font-weight:650;
   display:inline-flex;
   align-items:center;
   justify-content:center;
+  flex:0 0 33px;
   z-index:3;
 }
 .kcfTeacherSheetModeBtn.active {
-  width:32px;
-  min-width:32px;
-  max-width:32px;
-  padding:0;
-  border-radius:50%;
   background:#111;
   color:#fff;
 }
