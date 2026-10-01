@@ -675,6 +675,8 @@ async function runMakeupUpdatePrepareAgent({
   requestContext,
   preparedPrivacy,
   requestId,
+  replyToMessageId = null,
+  requirePersistedMessage = false,
 }) {
   assertOpenAiKey();
 
@@ -684,6 +686,7 @@ async function runMakeupUpdatePrepareAgent({
   const { sanitizeAgentToolPayload } = require('./privacy.cjs');
   const model = agentModel();
   const today = todayInSeoul();
+  let persistedMessage = null;
 
   const prepareMakeupUpdate = createPrepareMakeupUpdateTool({
     tool,
@@ -694,13 +697,17 @@ async function runMakeupUpdatePrepareAgent({
     division:scope.division,
     currentDate:today,
     requestId,
+    replyToMessageId,
+    capturePersistedMessage(message) {
+      persistedMessage = pickupPersistedMessageForClient(message);
+    },
     sanitizePayload(payload) {
       return sanitizeAgentToolPayload(payload, preparedPrivacy);
     },
   });
 
   const agent = new Agent({
-    name:'Olli Makeup Update Prepare Probe',
+    name:requirePersistedMessage ? 'Olli Makeup Update Prepare' : 'Olli Makeup Update Prepare Probe',
     model,
     instructions:[
       'You are the Olli makeup-update preparation assistant.',
@@ -726,16 +733,30 @@ async function runMakeupUpdatePrepareAgent({
     modelSettings:{ toolChoice:'prepare_makeup_update' },
   });
 
-  const result = await run(agent, preparedPrivacy.safeText, {
-    context:agentContext,
-  });
+  let result = null;
+  let runError = null;
+  try {
+    result = await run(agent, preparedPrivacy.safeText, {
+      context:agentContext,
+    });
+  } catch (error) {
+    runError = error;
+    if (!requirePersistedMessage || !persistedMessage) throw error;
+  }
 
   const finalOutput = String(result?.finalOutput || '').trim();
-  if (!finalOutput) {
+  if (!finalOutput && (!requirePersistedMessage || !persistedMessage)) {
     throw runtimeError(
       '보강 변경 준비 Agent 응답이 비어 있습니다.',
       502,
       'OLLI_AGENT_EMPTY_MAKEUP_UPDATE_PREPARE_RESPONSE'
+    );
+  }
+  if (requirePersistedMessage && !persistedMessage) {
+    throw runtimeError(
+      '보강 변경 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_AGENT_MAKEUP_UPDATE_PERSISTED_MESSAGE_MISSING'
     );
   }
 
@@ -744,6 +765,8 @@ async function runMakeupUpdatePrepareAgent({
     model,
     output:finalOutput,
     nodeVersion:process.versions.node,
+    persistedMessage,
+    recoveredAfterPersist:!!runError,
   };
 }
 
@@ -2049,6 +2072,39 @@ async function runMakeupPrepare({
 }
 
 
+async function runMakeupUpdatePrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId = Number(sourceMessageId || 0);
+  if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_MAKEUP_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validateMakeupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  return runMakeupUpdatePrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-message:' + sourceId,
+    replyToMessageId:sourceId,
+    requirePersistedMessage:true,
+  });
+}
+
+
 async function runMakeupCancelPrepare({
   agentContext,
   requestContext,
@@ -2181,6 +2237,7 @@ module.exports = {
   resolveMakeupUpdatePrepareScope,
   runMakeupUpdatePrepareAgent,
   runMakeupUpdatePrepareProbe,
+  runMakeupUpdatePrepare,
   resolveMakeupCancelPrepareScope,
   runMakeupCancelPrepareAgent,
   runMakeupCancelPrepareProbe,
