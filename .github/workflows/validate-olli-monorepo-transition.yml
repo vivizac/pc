@@ -114,6 +114,7 @@ jobs:
             tests/olli-agent-makeup-prepare-tool.test.cjs \
             tests/olli-agent-makeup-production-contract.test.cjs \
             tests/olli-agent-makeup-update-production-contract.test.cjs \
+            tests/olli-agent-waitlist-cancel-production-contract.test.cjs \
             tests/olli-agent-attendance-tool.test.cjs \
             tests/olli-agent-pickups-tool.test.cjs \
             tests/olli-agent-pickup-prepare-tool.test.cjs \

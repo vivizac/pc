@@ -2314,6 +2314,71 @@ async function runMakeupCancelPrepare({
 }
 
 
+async function validateWaitlistSourceMessage({
+  requestContext,
+  sourceMessageId,
+  sourceMessageText,
+  callRpc,
+}) {
+  try {
+    return await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId,
+      sourceMessageText,
+      callRpc,
+    });
+  } catch (error) {
+    const pickupCode = String(error?.code || '');
+    if (!pickupCode.startsWith('OLLI_AGENT_PICKUP_SOURCE_')) throw error;
+
+    const waitlistCode = pickupCode.replace(
+      'OLLI_AGENT_PICKUP_SOURCE_',
+      'OLLI_AGENT_WAITLIST_SOURCE_'
+    );
+    const message = String(error?.message || '원문 Team Chat 메시지를 확인하지 못했습니다.')
+      .replace(/픽업/g, '대기');
+
+    throw runtimeError(
+      message,
+      Number(error?.statusCode || 400),
+      waitlistCode
+    );
+  }
+}
+
+async function runWaitlistCancelPrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId = Number(sourceMessageId || 0);
+  if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_WAITLIST_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validateWaitlistSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  return runWaitlistCancelPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-message:' + sourceId,
+    replyToMessageId:sourceId,
+    requirePersistedMessage:true,
+  });
+}
+
+
 async function runStudentProfileProbe({
   agentContext,
   requestContext,
@@ -2421,6 +2486,8 @@ module.exports = {
   resolveWaitlistCancelPrepareScope,
   runWaitlistCancelPrepareAgent,
   runWaitlistCancelPrepareProbe,
+  runWaitlistCancelPrepare,
+  validateWaitlistSourceMessage,
   validateMakeupSourceMessage,
   runMakeupPrepare,
   runAttendanceProbe,
