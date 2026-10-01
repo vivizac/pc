@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const mode = safeText(body.mode, 40);
 
-    if (!['probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'memo_prepare_probe', 'memo_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
+    if (!['probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
       return res.status(400).json({
         error: '현재 독립 Agent endpoint는 probe, privacy_probe, profile_probe, schedule_probe, records_probe, availability_probe, attendance_probe, pickups_probe, memo_prepare_probe, absence_prepare_probe, absence_prepare, class_once_prepare_probe, class_once_prepare, makeup_prepare_probe, makeup_update_prepare_probe, makeup_update_prepare, makeup_cancel_prepare_probe, makeup_cancel_prepare, makeup_prepare, trial_add_prepare_probe, trial_add_prepare, trial_cancel_prepare_probe, trial_cancel_prepare, trial_update_prepare_probe, trial_update_prepare, waitlist_add_prepare_probe, waitlist_add_prepare, waitlist_update_prepare_probe, waitlist_update_prepare, waitlist_cancel_prepare_probe, waitlist_cancel_prepare, move_prepare_probe, move_prepare, move_cancel_prepare_probe, move_cancel_prepare, pickup_prepare_probe, pickup_update_prepare_probe, pickup_cancel_prepare_probe, pickup_cancel_prepare, pickup_update_prepare 또는 pickup_prepare 모드만 지원합니다.',
       });
@@ -26,6 +26,55 @@ export default async function handler(req, res) {
 
     const contextModule = await import('./_lib/olli-agent/request-context.cjs');
     const requestContext = await contextModule.loadOlliAgentRequestContext(body);
+
+    if (mode === 'batch_prepare') {
+      const message = safeText(body.message, 5000);
+      const sourceMessageId = Number(body.sourceMessageId || body.source_message_id || 0);
+      const rawCommands = Array.isArray(body.commands) ? body.commands : [];
+      if (!message) {
+        return res.status(400).json({
+          error:'batch_prepare에는 원문 메시지가 필요합니다.',
+          code:'OLLI_AGENT_BATCH_MESSAGE_REQUIRED',
+        });
+      }
+      if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+        return res.status(400).json({
+          error:'batch_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+          code:'OLLI_AGENT_BATCH_SOURCE_MESSAGE_REQUIRED',
+        });
+      }
+      if (rawCommands.length < 2 || rawCommands.length > 3) {
+        return res.status(400).json({
+          error:'batch_prepare는 한 번에 2개 또는 3개 작업만 지원합니다.',
+          code:'OLLI_AGENT_BATCH_COUNT_INVALID',
+        });
+      }
+
+      const commands = rawCommands.map((item) => ({
+        intent:safeText(item?.intent, 80),
+        text:safeText(item?.text, 5000),
+        reason:safeText(item?.reason, 300),
+        reasonMessageId:Number(item?.reasonMessageId || item?.reason_message_id || 0),
+        reasonMessageText:safeText(item?.reasonMessageText || item?.reason_message_text, 5000),
+        memoNote:safeText(item?.memoNote || item?.memo_note, 5000),
+      }));
+
+      const runtimeModule = await import('./_lib/olli-agent/runtime.cjs');
+      const agentContext = contextModule.toAgentRunContext(requestContext);
+      const result = await runtimeModule.runBatchPrepare({
+        agentContext,
+        requestContext,
+        sourceMessageId,
+        sourceMessageText:message,
+        commands,
+      });
+      return res.status(200).json({
+        ok:true,
+        mode:'batch_prepare',
+        ready:result.ready === true,
+        messages:Array.isArray(result.messages) ? result.messages : [],
+      });
+    }
 
     if (mode === 'privacy_probe' || mode === 'profile_probe' || mode === 'schedule_probe' || mode === 'records_probe' || mode === 'availability_probe' || mode === 'attendance_probe' || mode === 'pickups_probe' || mode === 'memo_prepare_probe' || mode === 'memo_prepare' || mode === 'absence_prepare_probe' || mode === 'absence_prepare' || mode === 'class_once_prepare_probe' || mode === 'class_once_prepare' || mode === 'makeup_prepare_probe' || mode === 'makeup_update_prepare_probe' || mode === 'makeup_update_prepare' || mode === 'makeup_cancel_prepare_probe' || mode === 'makeup_cancel_prepare' || mode === 'makeup_prepare' || mode === 'trial_add_prepare_probe' || mode === 'trial_add_prepare' || mode === 'trial_cancel_prepare_probe' || mode === 'trial_cancel_prepare' || mode === 'trial_update_prepare_probe' || mode === 'trial_update_prepare' || mode === 'waitlist_add_prepare_probe' || mode === 'waitlist_add_prepare' || mode === 'waitlist_update_prepare_probe' || mode === 'waitlist_update_prepare' || mode === 'waitlist_cancel_prepare_probe' || mode === 'waitlist_cancel_prepare' || mode === 'move_prepare_probe' || mode === 'move_prepare' || mode === 'move_cancel_prepare_probe' || mode === 'move_cancel_prepare' || mode === 'pickup_prepare_probe' || mode === 'pickup_update_prepare_probe' || mode === 'pickup_cancel_prepare_probe' || mode === 'pickup_cancel_prepare' || mode === 'pickup_update_prepare' || mode === 'pickup_prepare') {
       const message = safeText(body.message, 5000);
