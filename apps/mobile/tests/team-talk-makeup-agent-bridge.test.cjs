@@ -63,7 +63,7 @@ test('mobile AI makeup cancel is routed before legacy action preparation', () =>
 
 test('mobile makeup cancel Agent gate uses only the shared cancel parser as candidate detection', () => {
   const start=talk.indexOf('function isOlliTalkMakeupCancelAgentCandidate');
-  const end=talk.indexOf('function isOlliTalkPickupCancelAgentCandidate',start);
+  const end=talk.indexOf('function isOlliTalkMakeupUpdateAgentCandidate',start);
   const block=talk.slice(start,end);
   assert.match(block,/parseMakeupCancelMutationIntent\(commandText\)/);
   assert.match(block,/==='cancel_makeup'/);
