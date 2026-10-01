@@ -64,3 +64,13 @@ test('makeup cancel reason is private server context and absent from tool schema
   const end=makeupCancel.indexOf('}),\n    async execute',start);
   assert.doesNotMatch(makeupCancel.slice(start,end),/reason/);
 });
+
+test('batch validates stored clarification messages before card preparation',()=>{
+  const start=runtime.indexOf('async function runBatchPrepare({');
+  const end=runtime.indexOf('\n\nmodule.exports = {',start);
+  const block=runtime.slice(start,end);
+  assert.match(block,/clarificationMessageId/);
+  assert.match(block,/OLLI_AGENT_BATCH_CLARIFICATION_BODY_MISMATCH/);
+  assert.match(block,/expectedContext/);
+  assert.ok(block.indexOf('OLLI_AGENT_BATCH_CLARIFICATION_BODY_MISMATCH')<block.indexOf('const preparedMessages=[]'));
+});
