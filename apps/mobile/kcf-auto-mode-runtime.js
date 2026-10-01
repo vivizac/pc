@@ -320,6 +320,7 @@
   function buildScheduleQueueFromWeek(week) {
     var key = todayKey();
     var weekday = isoWeekday(key);
+    var allowUnassignedManagementRoster = canUseUnassignedManagementRoster(week);
     var students = getAllActiveFeedbackStudents();
     var byId = Object.create(null);
     students.forEach(function(student) { byId[clean(student.id)] = student; });
@@ -330,7 +331,7 @@
       var student = scheduleStudentForRow(row, byId);
       if (!student) return;
       var next = makeQueueItem(student, row, week, 'regular');
-      if (!queueItemMatchesCurrentMember(next)) return;
+      if (!queueItemMatchesCurrentMember(next, { allowUnassignedManagementRoster: allowUnassignedManagementRoster })) return;
       var current = selectedByStudent.get(next.studentId);
       if (shouldReplaceQueueItem(current, next)) selectedByStudent.set(next.studentId, next);
     });
@@ -341,7 +342,7 @@
       var student = scheduleStudentForRow(row, byId);
       if (!student) return;
       var next = makeQueueItem(student, row, week, clean(row.session_kind || 'one_time'));
-      if (!queueItemMatchesCurrentMember(next)) return;
+      if (!queueItemMatchesCurrentMember(next, { allowUnassignedManagementRoster: allowUnassignedManagementRoster })) return;
       var current = selectedByStudent.get(next.studentId);
       if (shouldReplaceQueueItem(current, next)) selectedByStudent.set(next.studentId, next);
     });
@@ -433,6 +434,7 @@
 
   function mergeTeacherContextIntoWeek(week, context, overrides) {
     var next = Object.assign({}, week || {});
+    next.__kcfTeacherContextLoaded = !!context;
     if (context) {
       next.teachers = Array.isArray(context.teachers) ? context.teachers : [];
       next.teacher_assignments = Array.isArray(context.assignments) ? context.assignments : [];
@@ -590,14 +592,36 @@
     try { return clean(localStorage.getItem('olli_current_member_id')); } catch (_) { return ''; }
   }
 
-  function queueItemMatchesCurrentMember(item) {
+  function currentMemberRole() {
+    try {
+      var current = global.OlliStorageCore && global.OlliStorageCore.AcademyContext && typeof global.OlliStorageCore.AcademyContext.getCurrent === 'function'
+        ? global.OlliStorageCore.AcademyContext.getCurrent()
+        : null;
+      var role = clean(current && current.role).toLowerCase();
+      if (role) return role;
+    } catch (_) {}
+    try { return clean(localStorage.getItem('olli_current_member_role')).toLowerCase(); } catch (_) { return ''; }
+  }
+
+  function canUseUnassignedManagementRoster(week) {
+    if (!week || week.__kcfTeacherContextLoaded !== true) return false;
+    var assignments = Array.isArray(week.teacher_assignments) ? week.teacher_assignments : [];
+    if (assignments.length) return false;
+    var role = currentMemberRole();
+    return role === 'owner' || role === 'manager';
+  }
+
+  function queueItemMatchesCurrentMember(item, options) {
+    var opts = options || {};
     var activeMemberId = currentMemberId();
     var feedbackTeacherMemberId = clean(item && (item.feedbackTeacherMemberId || item.teacherMemberId));
     if (activeMemberId && feedbackTeacherMemberId) return activeMemberId === feedbackTeacherMemberId;
 
     var activeMemberName = currentMemberName();
     var feedbackTeacherName = clean(item && (item.feedbackTeacherName || item.teacherName));
-    return !!activeMemberName && !!feedbackTeacherName && activeMemberName === feedbackTeacherName;
+    if (activeMemberName && feedbackTeacherName && activeMemberName === feedbackTeacherName) return true;
+
+    return opts.allowUnassignedManagementRoster === true && !feedbackTeacherMemberId;
   }
 
   function currentMemberName() {
