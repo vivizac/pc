@@ -19,7 +19,8 @@ test('production trial_update_prepare requires persisted source message and retu
   assert.match(endpoint,/runTrialUpdatePrepare\(/);
   const marker="mode:'trial_update_prepare'";
   const start=endpoint.indexOf(marker);
-  const block=start>=0?endpoint.slice(start,start+950):'';
+  const end=endpoint.indexOf("} else if (mode === 'waitlist_update_prepare_probe')",start);
+  const block=start>=0&&end>start?endpoint.slice(start,end):'';
   assert.match(block,/message:probe\.persistedMessage/);
   assert.match(block,/recoveredAfterPersist:probe\.recoveredAfterPersist===true/);
   assert.doesNotMatch(block,/safeText|subjectRefs|output:|guestName|oneTimeSessionId|targetTimeSlot/);
