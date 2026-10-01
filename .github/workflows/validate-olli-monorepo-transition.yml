@@ -8,6 +8,7 @@ on:
       - 'apps/mobile/**'
       - 'apps/pc/api/olli-agent.js'
       - 'supabase/migrations/*_schedule_availability_rules_and_read_rpc.sql'
+      - 'supabase/migrations/*_makeup_closed_day_guard.sql'
       - 'supabase/migrations/*_agent_student_pickups_range_read_rpc.sql'
       - 'packages/common/**'
       - 'deploy/vercel-projects.json'
@@ -28,6 +29,7 @@ on:
       - 'apps/pc/api/olli-agent.js'
       - 'apps/mobile/**'
       - 'supabase/migrations/*_schedule_availability_rules_and_read_rpc.sql'
+      - 'supabase/migrations/*_makeup_closed_day_guard.sql'
       - 'supabase/migrations/*_agent_student_pickups_range_read_rpc.sql'
       - 'packages/common/**'
       - 'deploy/vercel-projects.json'
@@ -84,6 +86,7 @@ jobs:
           node --check api/_lib/olli-agent/tools/pickup-prepare-tools.cjs
           node --check api/_lib/olli-agent/tools/pickup-update-prepare-tools.cjs
           node --check api/_lib/olli-agent/tools/pickup-cancel-prepare-tools.cjs
+          node --check api/_lib/olli-agent/tools/makeup-prepare-tools.cjs
           node --check api/_lib/olli-agent/tools/profile-tools.cjs
           node --check api/_lib/olli-agent/tools/timetable-memo-tools.cjs
           node --test \
@@ -101,6 +104,9 @@ jobs:
             tests/olli-agent-recent-records-tool.test.cjs \
             tests/olli-agent-schedule-availability-tool.test.cjs \
             tests/olli-agent-schedule-availability-db-contract.test.cjs \
+            tests/olli-agent-makeup-db-contract.test.cjs \
+            tests/olli-agent-makeup-prepare-tool.test.cjs \
+            tests/olli-agent-makeup-production-contract.test.cjs \
             tests/olli-agent-attendance-tool.test.cjs \
             tests/olli-agent-pickups-tool.test.cjs \
             tests/olli-agent-pickup-prepare-tool.test.cjs \
