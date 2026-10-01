@@ -40,14 +40,12 @@
         if (modeEnabled()) return;
         syncToBase();
         close({ sync:false });
-        requestAnimationFrame(function(){
-          if (typeof global.openKinderChatFeedbackPhotoPicker === 'function') {
-            global.openKinderChatFeedbackPhotoPicker(event);
-          } else {
-            var source = document.getElementById('kcfAttachBtn');
-            if (source) source.click();
-          }
-        });
+        if (typeof global.openKinderChatFeedbackPhotoPicker === 'function') {
+          global.openKinderChatFeedbackPhotoPicker(event);
+        } else {
+          var source = document.getElementById('kcfAttachBtn');
+          if (source) source.click();
+        }
       });
     }
 
@@ -59,10 +57,8 @@
         if (modeEnabled()) return;
         syncToBase();
         close({ sync:false });
-        requestAnimationFrame(function(){
-          var source = document.getElementById('kcfVoiceBtn');
-          if (source) source.click();
-        });
+        var source = document.getElementById('kcfVoiceBtn');
+        if (source) source.click();
       });
     }
 
