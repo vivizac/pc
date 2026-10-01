@@ -82,6 +82,7 @@ jobs:
           node --check api/_lib/olli-agent/tools/attendance-tools.cjs
           node --check api/_lib/olli-agent/tools/pickup-tools.cjs
           node --check api/_lib/olli-agent/tools/pickup-prepare-tools.cjs
+          node --check api/_lib/olli-agent/tools/pickup-update-prepare-tools.cjs
           node --check api/_lib/olli-agent/tools/profile-tools.cjs
           node --check api/_lib/olli-agent/tools/timetable-memo-tools.cjs
           node --test \
@@ -102,6 +103,7 @@ jobs:
             tests/olli-agent-attendance-tool.test.cjs \
             tests/olli-agent-pickups-tool.test.cjs \
             tests/olli-agent-pickup-prepare-tool.test.cjs \
+            tests/olli-agent-pickup-update-prepare-tool.test.cjs \
             tests/olli-agent-pickup-production-contract.test.cjs \
             tests/olli-agent-pickups-db-contract.test.cjs \
             tests/olli-agent-student-profile-tool.test.cjs \

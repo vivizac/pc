@@ -18,7 +18,23 @@ test('independent olli-agent endpoint keeps diagnostics isolated from the existi
   const endpoint = read('api/olli-agent.js');
   const chat = read('api/chat.js');
 
-  assert.match(endpoint, /\['probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'memo_prepare_probe', 'pickup_prepare_probe', 'pickup_prepare'\]\.includes\(mode\)/);
+  for (const mode of [
+    'probe',
+    'privacy_probe',
+    'profile_probe',
+    'schedule_probe',
+    'records_probe',
+    'availability_probe',
+    'attendance_probe',
+    'pickups_probe',
+    'memo_prepare_probe',
+    'pickup_prepare_probe',
+    'pickup_update_prepare_probe',
+    'pickup_update_prepare',
+    'pickup_prepare',
+  ]) {
+    assert.match(endpoint, new RegExp("'" + mode + "'"));
+  }
   assert.match(endpoint, /mode === 'privacy_probe'/);
   assert.match(endpoint, /mode === 'profile_probe'/);
   assert.match(endpoint, /runStudentProfileProbe/);
@@ -31,6 +47,8 @@ test('independent olli-agent endpoint keeps diagnostics isolated from the existi
   assert.match(endpoint, /mode === 'pickup_prepare_probe'/);
   assert.match(endpoint, /runTimetableMemoPrepareProbe/);
   assert.match(endpoint, /runPickupPrepareProbe/);
+  assert.match(endpoint, /runPickupUpdatePrepareProbe/);
+  assert.match(endpoint, /runPickupUpdatePrepare/);
   assert.match(endpoint, /runPickupPrepare/);
   assert.match(endpoint, /runPickupProbe/);
   assert.match(endpoint, /runAttendanceProbe/);
