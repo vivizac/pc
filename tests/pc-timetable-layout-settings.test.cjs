@@ -6,6 +6,8 @@ const settings = fs.readFileSync('apps/pc/olli-settings-pc-ui.js', 'utf8');
 const ui = fs.readFileSync('apps/pc/pc-timetable.js', 'utf8');
 const css = fs.readFileSync('apps/pc/pc-timetable.css', 'utf8');
 const migration = fs.readFileSync('supabase/migrations/20261001133648_pc_timetable_layout_settings.sql', 'utf8');
+const mobileIndex = fs.readFileSync('apps/mobile/index.html', 'utf8');
+const mobileSettings = fs.readFileSync('apps/mobile/olli-settings-phone-ui.js', 'utf8');
 
 test('PC timetable settings expose five/six day and capacity-based card layout options', () => {
   assert.match(settings, /data-timetable-week-days-option/);
@@ -49,4 +51,22 @@ test('academy settings migration is additive and constrains layout values', () =
   assert.match(migration, /timetable_student_columns in \(2,3\)/);
   assert.match(migration, /SETTING_FIELD_NOT_ALLOWED/);
   assert.match(migration, /set search_path=''/);
+});
+
+
+test('new weekday and student-column controls stay PC-only', () => {
+  assert.doesNotMatch(mobileIndex, /data-timetable-week-days-option/);
+  assert.doesNotMatch(mobileIndex, /data-timetable-student-columns-option/);
+  assert.doesNotMatch(mobileSettings, /timetable_week_days/);
+  assert.doesNotMatch(mobileSettings, /timetable_student_columns/);
+  assert.doesNotMatch(mobileSettings, /selectSettingsTimetableWeekDaysOption/);
+  assert.doesNotMatch(mobileSettings, /selectSettingsTimetableStudentColumnsOption/);
+});
+
+test('two-column default uses the same split padding and student menu position as three-column mode', () => {
+  assert.match(css, /#recordRoomScreen \.olliTtSection \{ --olli-tt-student-columns:2; \}/);
+  assert.match(css, /#recordRoomScreen \.olliTtCell\.split \.olliTtClassLane\.elementary,[\s\S]*?padding: 4px 6px;/);
+  assert.match(css, /#recordRoomScreen \.olliTtStudentMore \{[^}]*margin-right: -4px;/);
+  assert.doesNotMatch(css, /threeStudentColumns[^\n{]*\{[^}]*padding:\s*4px 6px/);
+  assert.doesNotMatch(css, /threeStudentColumns[^\n{]*\{[^}]*margin-right:\s*-4px/);
 });
