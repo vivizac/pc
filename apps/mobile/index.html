@@ -861,7 +861,7 @@
 <!-- 2026-04-30 patch v2: 선생님 비활성화 되돌아감 방지 + 그룹 SVG 데이터 URL # 보정 -->
 <link rel="stylesheet" href="olli-settings-teacher-management.css">
 <script src="olli-teacher-management-legacy-cleanup.js"></script>
-<link rel="stylesheet" href="kinder-feedback.css?v=20260929-push-toast-fix-1">
+<link rel="stylesheet" href="kinder-feedback.css?v=20261001-input-guide-float-1">
 <link rel="stylesheet" href="olli-talk-beta.css?v=20260928-broken-thumb-fallback-1">
 <link rel="stylesheet" href="olli-talk-material-orders-mobile.css?v=20260928-status-colors-5">
 <!-- PAGE: 유치부 대화형 1분 피드백 -->
@@ -937,7 +937,7 @@
 <svg viewbox="0 0 24 24"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>
 </button>
 </div>
-<div class="kcfInputWarning" id="kcfInputWarning"></div>
+<div aria-live="polite" class="kcfInputWarning" id="kcfInputWarning" role="status"></div>
 <input accept="image/*" class="kcfPhotoInputHidden" id="kcfPhotoInput" onchange="handleKinderChatFeedbackPhotoChange(event)" type="file"/>
 </div>
 </div>
@@ -1146,7 +1146,7 @@
 </div>
 </div>
 <script src="olli-feedback-photo-storage-common.js"></script>
-<script src="kinder-feedback.js?v=20260926-input-autogrow-1"></script>
+<script src="kinder-feedback.js?v=20261001-input-guide-float-1"></script>
 <script src="olli-talk-material-orders-mobile.js?v=20260929-work-material-badge-1"></script>
 <script src="olli-talk-attachment-cache-phone.js?v=20260929-link-preview-local-first-1"></script>
 <script src="olli-talk-image-thumbnail-phone.js?v=20260924-client-thumbnail-1"></script>
