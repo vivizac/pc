@@ -1147,12 +1147,14 @@ async function runMakeupCancelPrepareAgent({
   requestContext,
   preparedPrivacy,
   requestId,
+  reason,
   replyToMessageId = null,
   requirePersistedMessage = false,
 }) {
-  assertOpenAiKey();
-
   const scope = resolveMakeupCancelPrepareScope(preparedPrivacy);
+  const { normalizeMakeupCancelReason } = require('./tools/makeup-cancel-prepare-tools.cjs');
+  const fixedReason = normalizeMakeupCancelReason(reason);
+  assertOpenAiKey();
   const { Agent, run, tool, z } = await loadAgentsSdk();
   const { createPrepareMakeupCancelTool } = require('./tools/makeup-cancel-prepare-tools.cjs');
   const { sanitizeAgentToolPayload } = require('./privacy.cjs');
@@ -1168,7 +1170,7 @@ async function runMakeupCancelPrepareAgent({
     studentLabel:scope.subjectLabel,
     division:scope.division,
     classGroup:scope.classGroup,
-    sourceText:preparedPrivacy.safeText,
+    reason:fixedReason,
     currentDate:today,
     requestId,
     replyToMessageId,
@@ -1197,8 +1199,8 @@ async function runMakeupCancelPrepareAgent({
       'Always call prepare_makeup_cancel exactly once before answering.',
       'If the user explicitly names a date, convert it to exact YYYY-MM-DD. If no date is present, pass an empty session_date string.',
       'If the user explicitly names a class time, convert the visible time to class_hour and class_minute. For 4시 반 use 4 and 30. If no time is present, pass 0 and 0.',
-      'Pass reason as an exact substring copied from the user message. Never invent, summarize, translate, or paraphrase the cancellation reason.',
-      'The server rejects a missing, generic, or invented reason and re-resolves the current stored makeup row before creating the card.',
+      'The cancellation reason is private server-side context. It is not included in model input or the tool schema. Never ask for, infer, repeat, summarize, translate, or invent it.',
+      'The server validates the stored reason message and re-resolves the current stored makeup row before creating the card.',
       'The tool creates a pending confirmation card only. It never directly cancels a makeup class.',
       'Never say the makeup was cancelled. Say that the cancellation is waiting for user confirmation.',
       'Never ask for, infer, or reveal a real student name, UUID, one-time-session ID, member ID, session token, academy ID, action ID, message ID, or internal time slot.',
@@ -1250,12 +1252,14 @@ async function runMakeupCancelPrepareProbe({
   requestContext,
   preparedPrivacy,
   requestId,
+  reason,
 }) {
   return runMakeupCancelPrepareAgent({
     agentContext,
     requestContext,
     preparedPrivacy,
     requestId,
+    reason,
   });
 }
 
@@ -4060,19 +4064,78 @@ async function runMakeupUpdatePrepare({
 }
 
 
+async function validateMakeupReasonMessage({
+  requestContext,
+  reasonMessageId,
+  reasonMessageText,
+  reason,
+  callRpc,
+}) {
+  let source;
+  try {
+    source = await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId:reasonMessageId,
+      sourceMessageText:reasonMessageText,
+      callRpc,
+    });
+  } catch (error) {
+    const pickupCode = String(error?.code || '');
+    if (!pickupCode.startsWith('OLLI_AGENT_PICKUP_SOURCE_')) throw error;
+    const code = pickupCode.replace(
+      'OLLI_AGENT_PICKUP_SOURCE_',
+      'OLLI_AGENT_MAKEUP_REASON_'
+    );
+    const message = String(error?.message || '보강 취소 사유 메시지를 확인하지 못했습니다.')
+      .replace(/원문 Team Chat/g, '보강 취소 사유')
+      .replace(/픽업 Agent 원문/g, '보강 취소 사유')
+      .replace(/픽업/g, '보강 취소');
+    throw runtimeError(message, Number(error?.statusCode || 400), code);
+  }
+
+  const { normalizeMakeupCancelReason } = require('./tools/makeup-cancel-prepare-tools.cjs');
+  const normalizedReason = normalizeMakeupCancelReason(reason);
+  const storedText = normalizePickupSourceMessageText(source?.body);
+  const requestedText = normalizePickupSourceMessageText(reasonMessageText);
+  if (
+    !storedText ||
+    !requestedText ||
+    storedText !== requestedText ||
+    !requestedText.includes(normalizedReason)
+  ) {
+    throw runtimeError(
+      '보강 취소 사유가 저장된 Team Chat 메시지와 일치하지 않습니다.',
+      409,
+      'OLLI_AGENT_MAKEUP_REASON_BODY_MISMATCH'
+    );
+  }
+  return { source, reason:normalizedReason };
+}
+
 async function runMakeupCancelPrepare({
   agentContext,
   requestContext,
   preparedPrivacy,
   sourceMessageId,
   sourceMessageText,
+  reasonMessageId,
+  reasonMessageText,
+  reason,
 }) {
   const sourceId = Number(sourceMessageId || 0);
+  const reasonId = Number(reasonMessageId || 0);
   if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
     throw runtimeError(
       '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
       400,
       'OLLI_AGENT_MAKEUP_SOURCE_MESSAGE_INVALID'
+    );
+  }
+  if (!Number.isSafeInteger(reasonId) || reasonId <= 0) {
+    throw runtimeError(
+      '보강 취소 사유 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_MAKEUP_REASON_MESSAGE_INVALID'
     );
   }
 
@@ -4081,13 +4144,20 @@ async function runMakeupCancelPrepare({
     sourceMessageId:sourceId,
     sourceMessageText,
   });
+  const validatedReason = await validateMakeupReasonMessage({
+    requestContext,
+    reasonMessageId:reasonId,
+    reasonMessageText,
+    reason,
+  });
 
   return runMakeupCancelPrepareAgent({
     agentContext,
     requestContext,
     preparedPrivacy,
-    requestId:'team-chat-message:' + sourceId,
-    replyToMessageId:sourceId,
+    requestId:'team-chat-makeup-cancel:' + sourceId + ':' + reasonId,
+    reason:validatedReason.reason,
+    replyToMessageId:reasonId,
     requirePersistedMessage:true,
   });
 }
@@ -4273,6 +4343,7 @@ module.exports = {
   runMakeupCancelPrepareAgent,
   runMakeupCancelPrepareProbe,
   runMakeupCancelPrepare,
+  validateMakeupReasonMessage,
   resolveTrialAddPrepareScope,
   runTrialAddPrepareAgent,
   runTrialAddPrepareProbe,
