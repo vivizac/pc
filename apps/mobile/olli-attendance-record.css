@@ -236,7 +236,8 @@
 #recordRoomScreen .recordModeSettingsBtn{
   position:fixed !important;
   top:auto !important;
-  right:var(--record-control-rail-right, 82px) !important;
+  left:calc(var(--record-control-rail-edge-x, 276px) - 47px) !important;
+  right:auto !important;
   bottom:var(--record-bottom-control-bottom, max(10px, env(safe-area-inset-bottom))) !important;
   width:47px !important;
   min-width:47px !important;
