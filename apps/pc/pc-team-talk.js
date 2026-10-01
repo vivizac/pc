@@ -1405,6 +1405,17 @@
     }
   }
 
+  function parseAbsenceAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parseAbsenceMutationIntent !== 'function') return null;
+    try {
+      const parsed = router.parseAbsenceMutationIntent(commandText);
+      return clean(parsed?.intent) === 'mark_absent' && clean(parsed?.studentName) ? parsed : null;
+    } catch (error) {
+      console.warn('PC 결석 Agent 후보 판별 실패:', error?.message || error);
+      return null;
+    }
+  }
+
   function isClassOnceAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router || typeof router.parseClassMutationIntent !== 'function') return false;
     try {
@@ -1814,6 +1825,52 @@
     };
   }
 
+  async function resolveAbsenceAgentTurn({
+    sourceText,
+    sourceMessageId,
+    reasonText,
+    reasonMessageText,
+    reasonMessageId,
+    current,
+  }) {
+    const sourceId = Number(sourceMessageId || 0);
+    const reasonId = Number(reasonMessageId || 0);
+    if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
+      throw new Error('결석 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    if (!Number.isSafeInteger(reasonId) || reasonId <= 0 || !clean(reasonText)) {
+      throw new Error('결석 사유 메시지를 확인하지 못했습니다.');
+    }
+
+    const response = await fetch('/api/olli-agent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        mode:'absence_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(sourceText),
+        sourceMessageId:sourceId,
+        reasonMessageId:reasonId,
+        reasonMessageText:clean(reasonMessageText),
+        reason:clean(reasonText)
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.ok !== true || !data?.message?.action) {
+      throw new Error(data?.error || data?.message || '결석 Agent 응답을 받지 못했습니다.');
+    }
+    if (clean(data.message.action.action_type) !== 'mark_absent') {
+      throw new Error('결석 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
   async function resolveClassOnceAgentTurn(commandText, current, replyToMessageId) {
     const sourceMessageId = Number(replyToMessageId || 0);
     if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
@@ -2075,6 +2132,19 @@
         });
       }
 
+      const pendingAbsence = state.pendingActionReason.__absenceAgent;
+      if (clean(state.pendingActionReason.intent) === 'mark_absent' && pendingAbsence) {
+        state.pendingActionReason = null;
+        return resolveAbsenceAgentTurn({
+          sourceText:clean(pendingAbsence.sourceMessageText),
+          sourceMessageId:Number(pendingAbsence.sourceMessageId || 0),
+          reasonText:clean(commandText),
+          reasonMessageText:clean(commandText),
+          reasonMessageId:Number(replyToMessageId || 0),
+          current,
+        });
+      }
+
       const command = Object.assign({}, state.pendingActionReason, { reason:clean(commandText) });
       state.pendingActionReason = null;
       const confirmation = clean(schedule?.writeConfirmationMessage?.(command)) || '이 작업을 진행할까요?';
@@ -2091,6 +2161,18 @@
         sourceText:clean(commandText),
         sourceMessageId:Number(replyToMessageId || 0),
         reasonText:clean(trialCancelCandidate.reason),
+        reasonMessageText:clean(commandText),
+        reasonMessageId:Number(replyToMessageId || 0),
+        current,
+      });
+    }
+
+    const absenceCandidate = parseAbsenceAgentCandidate(commandText, router);
+    if (absenceCandidate && clean(absenceCandidate.reason)) {
+      return resolveAbsenceAgentTurn({
+        sourceText:clean(commandText),
+        sourceMessageId:Number(replyToMessageId || 0),
+        reasonText:clean(absenceCandidate.reason),
         reasonMessageText:clean(commandText),
         reasonMessageId:Number(replyToMessageId || 0),
         current,
@@ -2183,6 +2265,16 @@
             const sourceMessageId = Number(replyToMessageId || 0);
             if (parsedTrialCancel && Number.isSafeInteger(sourceMessageId) && sourceMessageId > 0) {
               pendingPayload.__trialCancelAgent = {
+                sourceMessageId,
+                sourceMessageText:clean(commandText)
+              };
+            }
+          }
+          if (clean(pendingPayload.intent) === 'mark_absent') {
+            const parsedAbsence = parseAbsenceAgentCandidate(commandText, router);
+            const sourceMessageId = Number(replyToMessageId || 0);
+            if (parsedAbsence && Number.isSafeInteger(sourceMessageId) && sourceMessageId > 0) {
+              pendingPayload.__absenceAgent = {
                 sourceMessageId,
                 sourceMessageText:clean(commandText)
               };
