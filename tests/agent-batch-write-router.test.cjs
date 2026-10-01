@@ -13,11 +13,13 @@ function loadRouter(){
 
 test('batch parser accepts connector comma and absence + makeup example',()=>{
   const router=loadRouter();
-  const parsed=router.parseMultiWriteIntent('민지 오늘 결석 처리하고, 지수 토요일 1시 보강 등록해줘');
+  const parsed=router.parseMultiWriteIntent('민지 결석 처리하고, 지수 보강도 등록해줘');
   assert.equal(parsed?.intent,'batch_write');
   assert.deepEqual(Array.from(parsed.commands,cmd=>cmd.intent),['mark_absent','add_makeup']);
   assert.equal(parsed.commands[0].studentName,'민지');
   assert.equal(parsed.commands[1].studentName,'지수');
+  assert.equal(parsed.commands[1].batchDraft,true);
+  assert.deepEqual(Array.from(parsed.commands[1].missingBatchFields),['date','time']);
 });
 
 test('batch parser includes update intents and one-time class',()=>{
