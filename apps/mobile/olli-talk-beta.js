@@ -627,6 +627,16 @@
     }
   }
 
+  function isOlliTalkMoveAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseScheduleMoveMutationIntent!=='function') return false;
+    try{
+      return String(router.parseScheduleMoveMutationIntent(commandText)?.intent || '').trim()==='move_class';
+    }catch(error){
+      console.warn('올리톡 수업 이동 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
   function isOlliTalkMoveCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
     if(!router || typeof router.parseMoveCancelMutationIntent!=='function') return false;
     try{
@@ -825,6 +835,38 @@
     };
   }
 
+  async function resolveOlliTalkMoveAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('수업 이동 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'move_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '수업 이동 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='move_class'){
+      throw new Error('수업 이동 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
   async function resolveOlliTalkMoveCancelAgentTurn(commandText,context,replyToMessageId){
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
@@ -926,6 +968,10 @@
 
     if(isOlliTalkWaitlistUpdateAgentCandidate(commandText,router)){
       return resolveOlliTalkWaitlistUpdateAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    if(isOlliTalkMoveAgentCandidate(commandText,router)){
+      return resolveOlliTalkMoveAgentTurn(commandText,context,replyToMessageId);
     }
 
     if(isOlliTalkMoveCancelAgentCandidate(commandText,router)){
