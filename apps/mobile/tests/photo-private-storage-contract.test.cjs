@@ -28,7 +28,7 @@ test('mobile does not persist expiring signed thumbnail URLs in live session',()
 
 test('mobile loads shared signed photo helper before local feedback runtime',()=> {
   const helperPos=index.indexOf('olli-feedback-photo-storage-common.js');
-  const runtimePos=index.indexOf('kinder-feedback.js?v=20261001-native-keyboard-scroll-touchguard-2');
+  const runtimePos=index.indexOf('kinder-feedback.js?v=');
   assert.ok(helperPos >= 0 && runtimePos > helperPos);
   assert.equal(JSON.stringify(vercel).includes('raw.githubusercontent.com/vivizac/pc/'), false);
   assert.ok(manifest.files.includes('olli-feedback-photo-storage-common.js'));
