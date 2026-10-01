@@ -1405,6 +1405,16 @@
     }
   }
 
+  function isClassOnceAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parseClassMutationIntent !== 'function') return false;
+    try {
+      return clean(router.parseClassMutationIntent(commandText)?.intent) === 'add_class_once';
+    } catch (error) {
+      console.warn('PC 1회 수업 Agent 후보 판별 실패:', error?.message || error);
+      return false;
+    }
+  }
+
   function isMoveAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router || typeof router.parseScheduleMoveMutationIntent !== 'function') return false;
     try {
@@ -1804,6 +1814,38 @@
     };
   }
 
+  async function resolveClassOnceAgentTurn(commandText, current, replyToMessageId) {
+    const sourceMessageId = Number(replyToMessageId || 0);
+    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+      throw new Error('1회 수업 등록 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response = await fetch('/api/olli-agent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        mode:'class_once_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageId
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.ok !== true || !data?.message?.action) {
+      throw new Error(data?.error || data?.message || '1회 수업 Agent 응답을 받지 못했습니다.');
+    }
+    if (clean(data.message.action.action_type) !== 'add_class_once') {
+      throw new Error('1회 수업 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
   async function resolveMoveAgentTurn(commandText, current, replyToMessageId) {
     const sourceMessageId = Number(replyToMessageId || 0);
     if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
@@ -2075,6 +2117,10 @@
     if (isWaitlistCancelAgentCandidate(commandText, router)) {
       const waitlistTurn = await resolveWaitlistCancelAgentTurn(commandText, current, replyToMessageId);
       if (waitlistTurn) return waitlistTurn;
+    }
+
+    if (isClassOnceAgentCandidate(commandText, router)) {
+      return resolveClassOnceAgentTurn(commandText, current, replyToMessageId);
     }
 
     if (isMoveAgentCandidate(commandText, router)) {
