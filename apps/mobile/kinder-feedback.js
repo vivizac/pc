@@ -1488,6 +1488,7 @@ async function confirmKinderChatFeedbackLiveEdit(id, btn) {
   row.classList.remove('editing');
   refreshKinderChatFeedbackLiveActions(item);
   persistKinderChatFeedbackLiveSessionNow();
+  syncKinderChatFeedbackLiveItemToInbox(item);
   if (wasSaved) {
     try { showPushToast('수정 내용을 저장했어요.'); } catch(e) {}
   }
@@ -1959,8 +1960,7 @@ function buildKinderChatFeedbackInboxCard(item) {
   const canEdit = status === 'done' || status === 'review';
   const canDelete = true;
   const isLoadFail = isTodayFeedbackLoadFailItem(item);
-  const canSave = status === 'done' && !isLoadFail && !getSuspiciousFeedbackSegments(item.resultText || '').length;
-  const canCopy = canSave;
+  const canCopy = (status === 'done' || status === 'review') && !isLoadFail && !getSuspiciousFeedbackSegments(item.resultText || '').length;
   const name = item.studentName || '학생';
   const avatarIcon = getKinderChatFeedbackAvatarIcon(item);
   const avatarColor = getKinderChatFeedbackAvatarColor(item);
@@ -1989,7 +1989,7 @@ function buildKinderChatFeedbackInboxCard(item) {
       </div>
       <div class="kcfInboxActionsRight">
         <button type="button" class="todayFeedbackActionBtn kcfInboxActionBtn kcfInboxEditBtn" onclick="editKinderChatFeedbackInboxItem('${escapeHtml(item.id)}')"${canEdit ? '' : ' disabled'}>수정</button>
-        <button type="button" class="todayFeedbackActionBtn kcfInboxActionBtn kcfInboxCopyBtn" onclick="copyAndSaveKinderChatFeedback('${escapeHtml(item.id)}', this)"${canCopy ? '' : ' disabled'}>복사 + 저장</button>
+        <button type="button" class="todayFeedbackActionBtn kcfInboxActionBtn kcfInboxCopyBtn" onclick="copyKinderChatFeedbackInbox('${escapeHtml(item.id)}', this)"${canCopy ? '' : ' disabled'}>복사</button>
         <button type="button" class="todayFeedbackActionBtn kcfInboxActionBtn kcfInboxEditCancelBtn" onclick="cancelKinderChatFeedbackInboxEdit('${escapeHtml(item.id)}')" style="display:none;">취소</button>
         <button type="button" class="todayFeedbackActionBtn primary kcfInboxActionBtn kcfInboxEditDoneBtn" onclick="confirmKinderChatFeedbackInboxEdit('${escapeHtml(item.id)}')" style="display:none;">수정 완료</button>
       </div>
@@ -2043,13 +2043,11 @@ function editKinderChatFeedbackInboxItem(id) {
   const cancelBtn = card.querySelector('.kcfInboxEditCancelBtn');
   const deleteBtn = card.querySelector('.kcfInboxDeleteBtn');
   const copyBtn = card.querySelector('.kcfInboxCopyBtn');
-  const saveBtn = card.querySelector('.kcfInboxSaveBtn');
   if (editBtn) editBtn.style.display = 'none';
   if (deleteBtn) deleteBtn.style.display = 'none';
   if (doneBtn) doneBtn.style.display = 'inline-flex';
   if (cancelBtn) cancelBtn.style.display = 'inline-flex';
   if (copyBtn) copyBtn.style.display = 'none';
-  if (saveBtn) saveBtn.style.display = 'none';
   const textarea = card.querySelector('.kcfInboxEditArea');
   if (textarea) {
     const fitEditArea = () => {
@@ -2106,7 +2104,7 @@ async function writeKinderChatFeedbackClipboard(text) {
   }
 }
 
-async function copyAndSaveKinderChatFeedback(id, btn, selectedStudentId = '') {
+async function copyKinderChatFeedbackInbox(id, btn) {
   const item = getTodayFeedbackItemById(id);
   if (!item || !item.resultText) return false;
 
@@ -2116,7 +2114,7 @@ async function copyAndSaveKinderChatFeedback(id, btn, selectedStudentId = '') {
     return false;
   }
 
-  const oldText = btn ? (btn.textContent || '복사 + 저장') : '복사 + 저장';
+  const oldText = btn ? (btn.textContent || '복사') : '복사';
   if (btn) {
     btn.disabled = true;
     btn.textContent = '복사 중...';
@@ -2132,32 +2130,12 @@ async function copyAndSaveKinderChatFeedback(id, btn, selectedStudentId = '') {
     return false;
   }
 
-  if (item.saved || item.reviewed) {
-    if (btn) showOlliCopySuccess(btn, { restoreHtml: '저장완료', restoreDisabled: false });
-    showPushToast('이미 기록실에 저장된 피드백입니다.');
-    return true;
-  }
-
-  if (btn) btn.textContent = '저장 중...';
-  const saved = await saveTodayFeedbackItem(id, btn || null, selectedStudentId);
-
   if (btn) {
     btn.disabled = false;
-    btn.textContent = saved === true ? '저장완료' : oldText;
+    showOlliCopySuccess(btn, { restoreHtml: oldText, restoreDisabled: false });
   }
-
-  if (saved === true) {
-    if (btn) showOlliCopySuccess(btn, { restoreHtml: '저장완료', restoreDisabled: false });
-    showPushToast('피드백을 저장했어요.');
-  } else if (saved === null) {
-    if (btn) showOlliCopySuccess(btn, { restoreHtml: oldText, restoreDisabled: false });
-    showPushToast('피드백을 복사했어요. 저장할 학생을 선택해 주세요.');
-  } else {
-    if (btn) showOlliCopySuccess(btn, { restoreHtml: oldText, restoreDisabled: false });
-    showPushToast('피드백은 복사했지만 기록실 저장은 확인이 필요해요.');
-  }
-
-  return saved;
+  showPushToast('피드백을 복사했어요.');
+  return true;
 }
 
 async function confirmKinderChatFeedbackInboxEdit(id) {
@@ -2230,7 +2208,6 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
     const cancelBtn = card.querySelector('.kcfInboxEditCancelBtn');
     const deleteBtn = card.querySelector('.kcfInboxDeleteBtn');
     const copyBtn = card.querySelector('.kcfInboxCopyBtn');
-    const saveBtn = card.querySelector('.kcfInboxSaveBtn');
     const labelText = String(updatedItem?.label || '유치부 1분 피드백').replace(/^유치부\s*/, '') || '1분 피드백';
     const dateText = formatNotificationDate(updatedItem?.updatedAt || updatedItem?.createdAt);
     const openMetaText = dateText ? `${labelText} · ${dateText}` : labelText;
@@ -2259,10 +2236,6 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
     if (copyBtn) {
       copyBtn.style.display = 'inline-flex';
       copyBtn.disabled = !!segments.length;
-    }
-    if (saveBtn) {
-      saveBtn.style.display = 'inline-flex';
-      saveBtn.disabled = !!segments.length;
     }
   }
 }
