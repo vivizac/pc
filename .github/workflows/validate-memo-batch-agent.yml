@@ -1,0 +1,49 @@
+name: Validate memo and batch Agent
+
+on:
+  pull_request:
+    paths:
+      - 'packages/common/olli-command-router-common.js'
+      - 'apps/mobile/api/_lib/olli-agent/privacy.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/runtime.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/tools/timetable-memo-tools.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/tools/makeup-cancel-prepare-tools.cjs'
+      - 'apps/mobile/api/olli-agent.js'
+      - 'apps/pc/pc-team-talk.js'
+      - 'apps/mobile/olli-talk-beta.js'
+      - 'tests/agent-batch-write-router.test.cjs'
+      - 'apps/pc/tests/team-talk-memo-batch-agent-bridge.test.cjs'
+      - 'apps/mobile/tests/team-talk-memo-batch-agent-bridge.test.cjs'
+      - 'apps/mobile/tests/olli-agent-memo-batch-production-contract.test.cjs'
+      - '.github/workflows/validate-memo-batch-agent.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check syntax
+        run: |
+          node --check packages/common/olli-command-router-common.js
+          node --check apps/mobile/api/_lib/olli-agent/privacy.cjs
+          node --check apps/mobile/api/_lib/olli-agent/runtime.cjs
+          node --check apps/mobile/api/_lib/olli-agent/tools/timetable-memo-tools.cjs
+          node --check apps/mobile/api/_lib/olli-agent/tools/makeup-cancel-prepare-tools.cjs
+          node --check apps/pc/pc-team-talk.js
+          node --check apps/mobile/olli-talk-beta.js
+      - name: Validate batch parser
+        run: node --test tests/agent-batch-write-router.test.cjs
+      - name: Validate PC memo and batch bridge
+        working-directory: apps/pc
+        run: node --test tests/team-talk-memo-batch-agent-bridge.test.cjs
+      - name: Validate Mobile memo and batch bridge
+        working-directory: apps/mobile
+        run: |
+          node --test tests/team-talk-memo-batch-agent-bridge.test.cjs
+          node --test tests/olli-agent-memo-batch-production-contract.test.cjs
