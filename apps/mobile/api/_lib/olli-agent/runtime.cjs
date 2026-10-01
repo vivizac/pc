@@ -4572,6 +4572,22 @@ async function runBatchPrepare({
 }
 
 
+function restorePreparedSubjectLabels(value,preparedPrivacy){
+  let text=String(value || '');
+  const resolved=Array.isArray(preparedPrivacy?.rawResolution?.resolved)
+    ? preparedPrivacy.rawResolution.resolved
+    : [];
+  resolved
+    .slice()
+    .sort((a,b)=>String(b?.label||'').length-String(a?.label||'').length)
+    .forEach((item)=>{
+      const label=String(item?.label||'').trim();
+      const name=String(item?.student?.name||'').trim();
+      if(label&&name) text=text.split(label).join(name);
+    });
+  return text;
+}
+
 async function runStudentScheduleRead({
   agentContext,
   requestContext,
@@ -4588,7 +4604,8 @@ async function runStudentScheduleRead({
     sourceMessageId:sourceId,
     sourceMessageText,
   });
-  return runStudentScheduleProbe({agentContext,requestContext,preparedPrivacy});
+  const result=await runStudentScheduleProbe({agentContext,requestContext,preparedPrivacy});
+  return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
 }
 
 async function runAttendanceRead({
@@ -4607,7 +4624,8 @@ async function runAttendanceRead({
     sourceMessageId:sourceId,
     sourceMessageText,
   });
-  return runAttendanceProbe({agentContext,requestContext,preparedPrivacy});
+  const result=await runAttendanceProbe({agentContext,requestContext,preparedPrivacy});
+  return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
 }
 
 async function runPickupRead({
@@ -4626,7 +4644,8 @@ async function runPickupRead({
     sourceMessageId:sourceId,
     sourceMessageText,
   });
-  return runPickupProbe({agentContext,requestContext,preparedPrivacy});
+  const result=await runPickupProbe({agentContext,requestContext,preparedPrivacy});
+  return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
 }
 
 async function runTimetableRead({
@@ -4697,7 +4716,10 @@ async function runTimetableRead({
   });
 
   const result=await run(agent,preparedPrivacy.safeText,{context:agentContext});
-  const finalOutput=labelBook.restore(String(result?.finalOutput||'').trim());
+  const finalOutput=restorePreparedSubjectLabels(
+    labelBook.restore(String(result?.finalOutput||'').trim()),
+    preparedPrivacy
+  );
   if(!finalOutput){
     throw runtimeError('시간표 읽기 Agent 응답이 비어 있습니다.',502,'OLLI_AGENT_EMPTY_TIMETABLE_READ_RESPONSE');
   }
@@ -4712,6 +4734,7 @@ module.exports = {
   loadAgentsSdk,
   runFoundationProbe,
   runStudentScheduleProbe,
+  restorePreparedSubjectLabels,
   runStudentScheduleRead,
   runTimetableRead,
   runRecentRecordsProbe,
