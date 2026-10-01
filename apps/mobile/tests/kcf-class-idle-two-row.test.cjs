@@ -42,26 +42,27 @@ test('active Class control is uppercase black C in the second-row add slot only'
   assert.match(css, /kcfTeacherRosterMode \.kcfSendBtn \{[\s\S]*?grid-column:3;[\s\S]*?grid-row:2;/);
 });
 
-test('shared sheet switches its mode button from Class to compact C only when Class is enabled', () => {
-  assert.match(sheet, /id="kcfTeacherSheetModeBtn"[^>]*>Class<\/button>/);
-  assert.match(sheet, /modeBtn\.textContent = enabled \? 'C' : 'Class'/);
-  assert.match(sheetCss, /\.kcfTeacherSheetModeBtn\.active \{[\s\S]*?width:32px;[\s\S]*?background:#111;[\s\S]*?color:#fff;/);
+test('shared sheet keeps an uppercase C control and switches only its active styling', () => {
+  assert.match(sheet, /id="kcfTeacherSheetModeBtn"[^>]*>C<\/button>/);
+  assert.match(sheet, /modeBtn\.textContent = 'C'/);
+  assert.match(sheetCss, /\.kcfTeacherSheetModeBtn \{[\s\S]*?width:33px;[\s\S]*?background:#f1f1f1;[\s\S]*?color:#111;/);
+  assert.match(sheetCss, /\.kcfTeacherSheetModeBtn\.active \{[\s\S]*?background:#111;[\s\S]*?color:#fff;/);
 });
 
 test('student cards remain manually selectable while Class mode waits', () => {
   assert.match(runtime, /button\.addEventListener\('click',[\s\S]*?selectAutoStudent\(item\)/);
 });
 
-test('tapping the inline input opens the shared sheet in both normal and Class modes', () => {
-  const pointer = base.match(/input\.addEventListener\('pointerdown',[\s\S]*?\n    \}\);/)?.[0] || '';
-  assert.doesNotMatch(pointer, /teacherMode\.isEnabled\(\)/);
+test('tapping the inline composer opens the shared sheet in both normal and Class modes', () => {
+  const pointer = base.match(/composerBottom\.addEventListener\('pointerdown',[\s\S]*?\n    \}\);/)?.[0] || '';
   assert.match(pointer, /event\.preventDefault\(\)/);
   assert.match(pointer, /sheet\.open\(\)/);
+  assert.doesNotMatch(base, /input\.addEventListener\('pointerdown'/);
 });
 
 test('Class idle layout assets are cache busted', () => {
   assert.match(html, /kcf-auto-mode\.css\?v=20261001-unified-sheet-1/);
-  assert.match(html, /kcf-teacher-sheet\.css\?v=20261001-unified-sheet-1/);
-  assert.match(html, /kcf-teacher-sheet\.js\?v=20261001-unified-sheet-1/);
-  assert.match(html, /kinder-feedback\.js\?v=20261001-unified-sheet-1/);
+  assert.match(html, /kcf-teacher-sheet\.css\?v=20261002-sheet-controls-1/);
+  assert.match(html, /kcf-teacher-sheet\.js\?v=20261002-sheet-controls-1/);
+  assert.match(html, /kinder-feedback\.js\?v=20261002-sheet-controls-1/);
 });
