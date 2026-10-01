@@ -24,7 +24,7 @@ test('trial update parser identifies update commands and rejects add/cancel word
   assert.equal(router.parseTrialUpdateMutationIntent('박하늘 10월 3일 체험 취소해줘'),null);
 });
 
-test('trial update parser remains candidate-only and is not added to legacy write parsing',()=>{
+test('trial update parser is available to multi-write parsing without changing standalone Agent routing',()=>{
   const start=source.indexOf('function parseSingleWriteIntent');
   const end=source.indexOf('function parseMultiWriteIntent',start);
   assert.ok(start>=0&&end>start);
