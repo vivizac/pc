@@ -114,15 +114,14 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
 }
 
 .kcfTeacherSheetModeBtn {
-  width:32px;
+  width:auto;
   height:32px;
-  min-width:32px;
-  max-width:32px;
+  min-width:52px;
   border:0;
-  border-radius:50%;
-  padding:0;
-  background:#111;
-  color:#fff;
+  border-radius:999px;
+  padding:0 10px;
+  background:#f1f1f1;
+  color:rgba(17,17,17,.50);
   font-family:inherit;
   font-size:calc(11px * var(--olli-text-scale));
   font-weight:650;
@@ -130,6 +129,15 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   align-items:center;
   justify-content:center;
   z-index:3;
+}
+.kcfTeacherSheetModeBtn.active {
+  width:32px;
+  min-width:32px;
+  max-width:32px;
+  padding:0;
+  border-radius:50%;
+  background:#111;
+  color:#fff;
 }
 
 .kcfTeacherSheetRosterHost {

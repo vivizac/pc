@@ -1,6 +1,5 @@
-/* Phone-only Teacher composer sheet.
- * Normal Olli commands keep using #kcfInput inline.
- * Teacher mode mirrors #kcfInput into one dedicated large editor without changing submit logic.
+/* Phone-only QuickNote composer sheet shared by normal and Class modes.
+ * #kcfInput remains the storage/source field while all keyboard editing happens here.
  */
 (function initKcfTeacherSheet(global) {
   'use strict';
@@ -26,6 +25,20 @@
     var mode = global.KcfTeacherMode || global.KcfAutoMode;
     try { return !!(mode && typeof mode.isEnabled === 'function' && mode.isEnabled()); }
     catch (_) { return false; }
+  }
+
+  function syncModeUi(){
+    var enabled = modeEnabled();
+    var modeBtn = document.getElementById('kcfTeacherSheetModeBtn');
+    if (modeBtn) {
+      modeBtn.classList.toggle('active', enabled);
+      modeBtn.textContent = enabled ? 'C' : 'Class';
+      modeBtn.setAttribute('aria-label', enabled ? 'Class 모드 닫기' : 'Class 모드 열기');
+      modeBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+      modeBtn.title = enabled ? 'Class 모드 닫기' : 'Class 모드 열기';
+    }
+    var host = rosterHost();
+    if (host) host.hidden = !enabled;
   }
 
   function syncViewport(){
@@ -153,12 +166,12 @@
     root.className = 'kcfTeacherSheetOverlay';
     root.setAttribute('aria-hidden', 'true');
     root.innerHTML = [
-      '<section class="kcfTeacherSheet" role="dialog" aria-modal="true" aria-label="Class 수업기록 입력">',
+      '<section class="kcfTeacherSheet" role="dialog" aria-modal="true" aria-label="퀵노트 수업기록 입력">',
       '  <div class="kcfTeacherSheetBody">',
-      '    <textarea id="kcfTeacherSheetInput" class="kcfTeacherSheetInput" aria-label="Class 수업기록"></textarea>',
+      '    <textarea id="kcfTeacherSheetInput" class="kcfTeacherSheetInput" aria-label="퀵노트 수업기록"></textarea>',
       '    <div id="kcfTeacherSheetWarning" class="kcfTeacherSheetWarning" aria-live="polite"></div>',
       '    <div class="kcfTeacherSheetBottom">',
-      '      <button id="kcfTeacherSheetModeBtn" class="kcfTeacherSheetModeBtn active" type="button" aria-label="Class 모드 닫기">C</button>',
+      '      <button id="kcfTeacherSheetModeBtn" class="kcfTeacherSheetModeBtn" type="button" aria-label="Class 모드 열기" aria-pressed="false">Class</button>',
       '      <div id="kcfTeacherSheetRosterHost" class="kcfTeacherSheetRosterHost"></div>',
       '      <button id="kcfTeacherSheetSendBtn" class="kcfTeacherSheetSendBtn" type="button" aria-label="피드백 전송">',
       '        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>',
@@ -197,11 +210,16 @@
     var modeBtn = document.getElementById('kcfTeacherSheetModeBtn');
     if (modeBtn) {
       modeBtn.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
-      modeBtn.addEventListener('click', function(event){
+      modeBtn.addEventListener('click', async function(event){
         event.preventDefault();
         if (typeof global.toggleKinderChatFeedbackTeacherMode === 'function') {
-          global.toggleKinderChatFeedbackTeacherMode(event);
+          await global.toggleKinderChatFeedbackTeacherMode(event);
         }
+        if (!state.open) return;
+        syncModeUi();
+        if (modeEnabled()) mountRoster();
+        else restoreRoster();
+        syncFromBase();
       });
     }
 
@@ -250,7 +268,6 @@
   }
 
   function open(){
-    if (!modeEnabled()) return false;
     try {
       if (typeof global.warmKinderChatFeedbackPromptCache === 'function') {
         global.warmKinderChatFeedbackPromptCache();
@@ -263,7 +280,9 @@
     root.setAttribute('aria-hidden', 'false');
     document.documentElement.classList.add('kcfTeacherSheetOpen');
     document.body.classList.add('kcfTeacherSheetOpen');
-    mountRoster();
+    syncModeUi();
+    if (modeEnabled()) mountRoster();
+    else restoreRoster();
     bindWarning();
     syncFromBase();
     syncViewport();
@@ -325,15 +344,18 @@
     close({ sync:false });
   }
 
-  global.KcfTeacherSheet = {
+  var api = {
     open:open,
     close:close,
     isOpen:function(){ return state.open; },
     syncFromBase:syncFromBase,
     syncToBase:syncToBase,
+    syncModeUi:syncModeUi,
     focus:focusEditor,
     onSuccessfulSubmit:onSuccessfulSubmit
   };
+  global.KcfTeacherSheet = api;
+  global.KcfComposerSheet = api;
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once:true });
   else init();

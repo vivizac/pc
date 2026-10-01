@@ -182,10 +182,6 @@
   justify-self:start;
   margin-left:0;
   margin-right:0;
-  box-sizing:border-box;
-  border:1px solid #111 !important;
-  background:#f1f1f1 !important;
-  color:#111 !important;
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfVoiceBtn {
   display:none;
