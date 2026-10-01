@@ -38,7 +38,7 @@ test('KCF LIVE function is exported and reuses the existing temporary inbox shee
 });
 
 test('phone loads cache-busted LIVE streaming source', () => {
-  assert.match(html, /kinder-feedback\.js\?v=20261002-auto-save-actions-1/);
+  assert.match(html, /kinder-feedback\.js\?v=20261002-auto-save-actions-2/);
 });
 
 
