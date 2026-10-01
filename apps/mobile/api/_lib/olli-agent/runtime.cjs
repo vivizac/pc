@@ -443,6 +443,188 @@ async function runScheduleAvailabilityProbe({
 
 
 
+function resolveClassOncePrepareScope(preparedPrivacy) {
+  if (preparedPrivacy?.needsDisambiguation) {
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
+  if(subjectRefs.length!==1){
+    throw runtimeError(
+      '1회 수업 등록은 한 번에 학생 한 명만 지정해 주세요.',
+      400,
+      'OLLI_AGENT_CLASS_ONCE_SINGLE_STUDENT_REQUIRED'
+    );
+  }
+
+  const subjectLabel=subjectRefs[0].label;
+  const subject=preparedPrivacy?.subjectAccess?.resolve?.(subjectLabel);
+  const division=String(subject?.division||'').trim().toLowerCase();
+  if(!['elementary','kinder'].includes(division)){
+    throw runtimeError(
+      '1회 수업 등록 대상 학생의 수업 구분을 확인하지 못했습니다.',
+      400,
+      'OLLI_AGENT_CLASS_ONCE_DIVISION_REQUIRED'
+    );
+  }
+
+  const safeText=String(preparedPrivacy?.safeText||'');
+  const compact=safeText.replace(/\s+/g,'');
+  const hasClass=/(?:수업|클래스)/.test(compact);
+  const hasAdd=/(?:등록|추가|예약|신청|배정|넣|저장|잡아|올려)/.test(compact);
+  const hasExcluded=/(?:보강|보충|체험|대기|웨이팅|결석|이동|변경|바꿔|바꾸|옮|취소|삭제|지워|지우|제거|빼|해제|없애|신규|신입|새학생|새원생|처음등록)/.test(compact);
+  if(!hasClass||!hasAdd||hasExcluded){
+    throw runtimeError(
+      '일반 1회 수업 등록 요청을 확인하지 못했습니다.',
+      400,
+      'OLLI_AGENT_CLASS_ONCE_INTENT_REQUIRED'
+    );
+  }
+
+  const hasDateSignal=/(?:오늘|내일|모레|이번\s*주|다음\s*주|다다음\s*주|월요일|화요일|수요일|목요일|금요일|토요일|\d{1,2}\s*월\s*\d{1,2}\s*일|\d{1,2}[./]\d{1,2})/.test(safeText);
+  const hasTimeSignal=/\d{1,2}\s*시/.test(safeText);
+  if(!hasDateSignal||!hasTimeSignal){
+    throw runtimeError(
+      '1회 수업 등록에는 날짜와 수업 시간을 함께 알려 주세요.',
+      400,
+      'OLLI_AGENT_CLASS_ONCE_DATE_TIME_REQUIRED'
+    );
+  }
+
+  let requestedDivision='';
+  if(/(?:초등부|초등)/.test(safeText)) requestedDivision='elementary';
+  else if(/(?:유치부|유치원|유치|유아)/.test(safeText)) requestedDivision='kinder';
+
+  const groupMatch=safeText.match(/([ABab])\s*반/);
+  return {
+    subjectLabel,
+    division,
+    requestedDivision,
+    classGroup:groupMatch?groupMatch[1].toUpperCase():'AUTO',
+  };
+}
+
+async function runClassOncePrepareAgent({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+  replyToMessageId=null,
+  requirePersistedMessage=false,
+}) {
+  const scope=resolveClassOncePrepareScope(preparedPrivacy);
+  assertOpenAiKey();
+
+  const {Agent,run,tool,z}=await loadAgentsSdk();
+  const {createPrepareClassOnceTool}=require('./tools/class-once-prepare-tools.cjs');
+  const {sanitizeAgentToolPayload}=require('./privacy.cjs');
+  const model=agentModel();
+  const today=todayInSeoul();
+  let persistedMessage=null;
+
+  const prepareClassOnce=createPrepareClassOnceTool({
+    tool,
+    z,
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    studentLabel:scope.subjectLabel,
+    division:scope.division,
+    requestedDivision:scope.requestedDivision,
+    classGroup:scope.classGroup,
+    currentDate:today,
+    requestId,
+    replyToMessageId,
+    capturePersistedMessage(message){
+      persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload){
+      return sanitizeAgentToolPayload(payload,preparedPrivacy);
+    },
+  });
+
+  const groupInstruction=scope.classGroup==='AUTO'
+    ? 'The user did not explicitly select A반 or B반. The server must reject a split class rather than guessing.'
+    : 'The server has fixed the requested class group to '+scope.classGroup+'. Do not override it.';
+
+  const agent=new Agent({
+    name:requirePersistedMessage?'Olli One-time Class Prepare':'Olli One-time Class Prepare Probe',
+    model,
+    instructions:[
+      'You are the Olli one-time regular-class registration preparation assistant.',
+      'This is a generic one-time class registration, not a makeup class, trial class, waitlist action, class move, or absence.',
+      'The user message has already been privacy-sanitized.',
+      'The only available anonymous student label for this run is '+scope.subjectLabel+'.',
+      'The server has fixed the student division to '+scope.division+'. Do not override it.',
+      groupInstruction,
+      'Today in Korea is '+today+'.',
+      'The server already confirmed that the user explicitly supplied both a date expression and a class time.',
+      'Convert the requested date to exact YYYY-MM-DD using today as the reference. Do not invent a different date.',
+      'Convert the visible class time to class_hour and class_minute. For 4시 30분 or 4시 반, use 4 and 30.',
+      'Always call prepare_class_once exactly once before answering.',
+      'The server rechecks active student status, requested division, operating slot, capacity, A/B group, and duplicate one-time sessions before storing the card.',
+      'The tool creates a pending confirmation card only. It never directly registers the class.',
+      'Never say the class was registered. Say that the registration is waiting for user confirmation.',
+      'Never ask for, infer, or reveal a real student name, UUID, one-time-session ID, internal time slot, member ID, session token, academy ID, action ID, or message ID.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[prepareClassOnce],
+    modelSettings:{toolChoice:'prepare_class_once'},
+  });
+
+  let result=null;
+  let runError=null;
+  try{
+    result=await run(agent,preparedPrivacy.safeText,{context:agentContext});
+  }catch(error){
+    runError=error;
+    if(!requirePersistedMessage||!persistedMessage) throw error;
+  }
+
+  const finalOutput=String(result?.finalOutput||'').trim();
+  if(!finalOutput&&(!requirePersistedMessage||!persistedMessage)){
+    throw runtimeError(
+      '1회 수업 준비 Agent 응답이 비어 있습니다.',
+      502,
+      'OLLI_AGENT_EMPTY_CLASS_ONCE_PREPARE_RESPONSE'
+    );
+  }
+  if(requirePersistedMessage&&!persistedMessage){
+    throw runtimeError(
+      '1회 수업 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_AGENT_CLASS_ONCE_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+
+  return {
+    ready:true,
+    model,
+    output:finalOutput,
+    nodeVersion:process.versions.node,
+    persistedMessage,
+    recoveredAfterPersist:!!runError,
+  };
+}
+
+async function runClassOncePrepareProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+}) {
+  return runClassOncePrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId,
+  });
+}
+
+
 function resolveMakeupPrepareScope(preparedPrivacy) {
   if (preparedPrivacy?.needsDisambiguation) {
     throw runtimeError(
@@ -3292,6 +3474,69 @@ async function runPickupCancelPrepare({
 }
 
 
+async function validateClassOnceSourceMessage({
+  requestContext,
+  sourceMessageId,
+  sourceMessageText,
+  callRpc,
+}) {
+  try {
+    return await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId,
+      sourceMessageText,
+      callRpc,
+    });
+  } catch (error) {
+    const pickupCode=String(error?.code||'');
+    if(!pickupCode.startsWith('OLLI_AGENT_PICKUP_SOURCE_')) throw error;
+    const classCode=pickupCode.replace(
+      'OLLI_AGENT_PICKUP_SOURCE_',
+      'OLLI_AGENT_CLASS_ONCE_SOURCE_'
+    );
+    const message=String(error?.message||'원문 Team Chat 메시지를 확인하지 못했습니다.')
+      .replace(/픽업/g,'1회 수업');
+    throw runtimeError(
+      message,
+      Number(error?.statusCode||400),
+      classCode
+    );
+  }
+}
+
+async function runClassOncePrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_CLASS_ONCE_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validateClassOnceSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  return runClassOncePrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-message:'+sourceId,
+    replyToMessageId:sourceId,
+    requirePersistedMessage:true,
+  });
+}
+
+
 async function validateMakeupSourceMessage({
   requestContext,
   sourceMessageId,
@@ -3674,6 +3919,11 @@ module.exports = {
   runRecentRecordsProbe,
   resolveAvailabilityScope,
   runScheduleAvailabilityProbe,
+  resolveClassOncePrepareScope,
+  runClassOncePrepareAgent,
+  runClassOncePrepareProbe,
+  runClassOncePrepare,
+  validateClassOnceSourceMessage,
   resolveMakeupPrepareScope,
   runMakeupPrepareAgent,
   runMakeupPrepareProbe,
