@@ -10,7 +10,7 @@ on:
       - 'apps/mobile/tests/olli-agent-waitlist-update-production-contract.test.cjs'
       - 'packages/common/olli-command-router-common.js'
       - 'apps/pc/pc-team-talk.js'
-      - 'apps/pc/tests/olli-command-router-common.test.cjs'
+      - 'apps/pc/tests/waitlist-update-router-candidate.test.cjs'
       - 'apps/pc/tests/team-talk-waitlist-agent-bridge.test.cjs'
       - '.github/workflows/validate-waitlist-update-agent.yml'
 
@@ -34,11 +34,8 @@ jobs:
         run: |
           node --test tests/olli-agent-waitlist-update-prepare-tool.test.cjs
           node --test tests/olli-agent-waitlist-update-production-contract.test.cjs
-      - name: Stage common runtime for PC contracts
-        working-directory: apps/pc
-        run: node scripts/stage-common.cjs
-      - name: Run Router and PC bridge contracts
+      - name: Run Router candidate and PC bridge contracts
         working-directory: apps/pc
         run: |
-          node --test tests/olli-command-router-common.test.cjs
+          node --test tests/waitlist-update-router-candidate.test.cjs
           node --test tests/team-talk-waitlist-agent-bridge.test.cjs
