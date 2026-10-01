@@ -32,36 +32,6 @@
 
   function syncModeUi(){
     var enabled = modeEnabled();
-    var attach = attachButton();
-    if (attach) {
-      attach.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
-      attach.addEventListener('click', function(event){
-        event.preventDefault();
-        if (modeEnabled()) return;
-        syncToBase();
-        close({ sync:false });
-        if (typeof global.openKinderChatFeedbackPhotoPicker === 'function') {
-          global.openKinderChatFeedbackPhotoPicker(event);
-        } else {
-          var source = document.getElementById('kcfAttachBtn');
-          if (source) source.click();
-        }
-      });
-    }
-
-    var voice = voiceButton();
-    if (voice) {
-      voice.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
-      voice.addEventListener('click', function(event){
-        event.preventDefault();
-        if (modeEnabled()) return;
-        syncToBase();
-        close({ sync:false });
-        var source = document.getElementById('kcfVoiceBtn');
-        if (source) source.click();
-      });
-    }
-
     var modeBtn = document.getElementById('kcfTeacherSheetModeBtn');
     if (modeBtn) {
       modeBtn.classList.toggle('active', enabled);
@@ -255,6 +225,36 @@
         scheduleViewportSync();
       });
       input.addEventListener('focus', scheduleViewportSync);
+    }
+
+    var attach = attachButton();
+    if (attach) {
+      attach.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
+      attach.addEventListener('click', function(event){
+        event.preventDefault();
+        if (modeEnabled()) return;
+        syncToBase();
+        close({ sync:false });
+        if (typeof global.openKinderChatFeedbackPhotoPicker === 'function') {
+          global.openKinderChatFeedbackPhotoPicker(event);
+        } else {
+          var source = document.getElementById('kcfAttachBtn');
+          if (source) source.click();
+        }
+      });
+    }
+
+    var voice = voiceButton();
+    if (voice) {
+      voice.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
+      voice.addEventListener('click', function(event){
+        event.preventDefault();
+        if (modeEnabled()) return;
+        syncToBase();
+        close({ sync:false });
+        var source = document.getElementById('kcfVoiceBtn');
+        if (source) source.click();
+      });
     }
 
     var modeBtn = document.getElementById('kcfTeacherSheetModeBtn');
