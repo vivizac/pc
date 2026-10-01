@@ -7,7 +7,7 @@ const talk=fs.readFileSync(path.join(__dirname,'../pc-team-talk.js'),'utf8');
 
 test('PC trial add gate uses shared add parser and requires explicit division',()=>{
   const start=talk.indexOf('function isTrialAddAgentCandidate');
-  const end=talk.indexOf('function isTrialUpdateAgentCandidate',start);
+  const end=talk.indexOf('function parseTrialCancelAgentCandidate',start);
   const block=talk.slice(start,end);
   assert.match(block,/parseTrialMutationIntent\(commandText\)/);
   assert.match(block,/=== 'add_trial'/);

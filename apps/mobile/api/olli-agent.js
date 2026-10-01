@@ -18,16 +18,16 @@ export default async function handler(req, res) {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const mode = safeText(body.mode, 40);
 
-    if (!['probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'memo_prepare_probe', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
+    if (!['probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'memo_prepare_probe', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
       return res.status(400).json({
-        error: '현재 독립 Agent endpoint는 probe, privacy_probe, profile_probe, schedule_probe, records_probe, availability_probe, attendance_probe, pickups_probe, memo_prepare_probe, makeup_prepare_probe, makeup_update_prepare_probe, makeup_update_prepare, makeup_cancel_prepare_probe, makeup_cancel_prepare, makeup_prepare, trial_add_prepare_probe, trial_add_prepare, trial_update_prepare_probe, trial_update_prepare, waitlist_update_prepare_probe, waitlist_update_prepare, waitlist_cancel_prepare_probe, waitlist_cancel_prepare, pickup_prepare_probe, pickup_update_prepare_probe, pickup_cancel_prepare_probe, pickup_cancel_prepare, pickup_update_prepare 또는 pickup_prepare 모드만 지원합니다.',
+        error: '현재 독립 Agent endpoint는 probe, privacy_probe, profile_probe, schedule_probe, records_probe, availability_probe, attendance_probe, pickups_probe, memo_prepare_probe, makeup_prepare_probe, makeup_update_prepare_probe, makeup_update_prepare, makeup_cancel_prepare_probe, makeup_cancel_prepare, makeup_prepare, trial_add_prepare_probe, trial_add_prepare, trial_cancel_prepare_probe, trial_cancel_prepare, trial_update_prepare_probe, trial_update_prepare, waitlist_update_prepare_probe, waitlist_update_prepare, waitlist_cancel_prepare_probe, waitlist_cancel_prepare, pickup_prepare_probe, pickup_update_prepare_probe, pickup_cancel_prepare_probe, pickup_cancel_prepare, pickup_update_prepare 또는 pickup_prepare 모드만 지원합니다.',
       });
     }
 
     const contextModule = await import('./_lib/olli-agent/request-context.cjs');
     const requestContext = await contextModule.loadOlliAgentRequestContext(body);
 
-    if (mode === 'privacy_probe' || mode === 'profile_probe' || mode === 'schedule_probe' || mode === 'records_probe' || mode === 'availability_probe' || mode === 'attendance_probe' || mode === 'pickups_probe' || mode === 'memo_prepare_probe' || mode === 'makeup_prepare_probe' || mode === 'makeup_update_prepare_probe' || mode === 'makeup_update_prepare' || mode === 'makeup_cancel_prepare_probe' || mode === 'makeup_cancel_prepare' || mode === 'makeup_prepare' || mode === 'trial_add_prepare_probe' || mode === 'trial_add_prepare' || mode === 'trial_update_prepare_probe' || mode === 'trial_update_prepare' || mode === 'waitlist_update_prepare_probe' || mode === 'waitlist_update_prepare' || mode === 'waitlist_cancel_prepare_probe' || mode === 'waitlist_cancel_prepare' || mode === 'pickup_prepare_probe' || mode === 'pickup_update_prepare_probe' || mode === 'pickup_cancel_prepare_probe' || mode === 'pickup_cancel_prepare' || mode === 'pickup_update_prepare' || mode === 'pickup_prepare') {
+    if (mode === 'privacy_probe' || mode === 'profile_probe' || mode === 'schedule_probe' || mode === 'records_probe' || mode === 'availability_probe' || mode === 'attendance_probe' || mode === 'pickups_probe' || mode === 'memo_prepare_probe' || mode === 'makeup_prepare_probe' || mode === 'makeup_update_prepare_probe' || mode === 'makeup_update_prepare' || mode === 'makeup_cancel_prepare_probe' || mode === 'makeup_cancel_prepare' || mode === 'makeup_prepare' || mode === 'trial_add_prepare_probe' || mode === 'trial_add_prepare' || mode === 'trial_cancel_prepare_probe' || mode === 'trial_cancel_prepare' || mode === 'trial_update_prepare_probe' || mode === 'trial_update_prepare' || mode === 'waitlist_update_prepare_probe' || mode === 'waitlist_update_prepare' || mode === 'waitlist_cancel_prepare_probe' || mode === 'waitlist_cancel_prepare' || mode === 'pickup_prepare_probe' || mode === 'pickup_update_prepare_probe' || mode === 'pickup_cancel_prepare_probe' || mode === 'pickup_cancel_prepare' || mode === 'pickup_update_prepare' || mode === 'pickup_prepare') {
       const message = safeText(body.message, 5000);
       if (!message) {
         return res.status(400).json({
@@ -37,7 +37,11 @@ export default async function handler(req, res) {
       }
 
       let prepared;
-      if (mode === 'trial_add_prepare_probe' || mode === 'trial_add_prepare' || mode === 'trial_update_prepare_probe' || mode === 'trial_update_prepare') {
+      if (mode === 'trial_cancel_prepare_probe' || mode === 'trial_cancel_prepare') {
+        const trialPrivacyModule = await import('./_lib/olli-agent/trial-guest-privacy.cjs');
+        const reason = safeText(body.reason, 300);
+        prepared = trialPrivacyModule.prepareTrialCancelPrivacyInput(message, reason);
+      } else if (mode === 'trial_add_prepare_probe' || mode === 'trial_add_prepare' || mode === 'trial_update_prepare_probe' || mode === 'trial_update_prepare') {
         const trialPrivacyModule = await import('./_lib/olli-agent/trial-guest-privacy.cjs');
         prepared = trialPrivacyModule.prepareTrialGuestPrivacyInput(message, requestContext);
       } else {
@@ -253,6 +257,62 @@ export default async function handler(req, res) {
         return res.status(200).json({
           ok:true,
           mode:'trial_add_prepare',
+          ready:probe.ready===true,
+          message:probe.persistedMessage,
+          recoveredAfterPersist:probe.recoveredAfterPersist===true,
+        });
+      } else if (mode === 'trial_cancel_prepare_probe') {
+        const requestId=safeText(body.requestId || body.request_id,200);
+        const reason=safeText(body.reason,300);
+        if(!requestId){
+          return res.status(400).json({
+            error:'trial_cancel_prepare_probe에는 재시도 중복 방지용 requestId가 필요합니다.',
+            code:'OLLI_AGENT_REQUEST_ID_REQUIRED',
+          });
+        }
+        if(!reason){
+          return res.status(400).json({
+            error:'trial_cancel_prepare_probe에는 체험 취소 사유가 필요합니다.',
+            code:'OLLI_AGENT_TRIAL_CANCEL_REASON_REQUIRED',
+          });
+        }
+        probe=await runtimeModule.runTrialCancelPrepareProbe({
+          agentContext,
+          requestContext,
+          preparedPrivacy:prepared,
+          requestId,
+          reason,
+        });
+      } else if (mode === 'trial_cancel_prepare') {
+        const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
+        const reasonMessageId=Number(body.reasonMessageId || body.reason_message_id || 0);
+        const reasonMessageText=safeText(body.reasonMessageText || body.reason_message_text,5000);
+        const reason=safeText(body.reason,300);
+        if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
+          return res.status(400).json({
+            error:'trial_cancel_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+            code:'OLLI_AGENT_TRIAL_SOURCE_MESSAGE_REQUIRED',
+          });
+        }
+        if(!Number.isSafeInteger(reasonMessageId)||reasonMessageId<=0||!reasonMessageText||!reason){
+          return res.status(400).json({
+            error:'trial_cancel_prepare에는 저장된 체험 취소 사유 메시지와 사유가 필요합니다.',
+            code:'OLLI_AGENT_TRIAL_REASON_MESSAGE_REQUIRED',
+          });
+        }
+        probe=await runtimeModule.runTrialCancelPrepare({
+          agentContext,
+          requestContext,
+          preparedPrivacy:prepared,
+          sourceMessageId,
+          sourceMessageText:message,
+          reasonMessageId,
+          reasonMessageText,
+          reason,
+        });
+        return res.status(200).json({
+          ok:true,
+          mode:'trial_cancel_prepare',
           ready:probe.ready===true,
           message:probe.persistedMessage,
           recoveredAfterPersist:probe.recoveredAfterPersist===true,

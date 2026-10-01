@@ -1104,6 +1104,205 @@ async function runTrialAddPrepare({
 }
 
 
+function resolveTrialCancelPrepareScope(preparedPrivacy){
+  if(preparedPrivacy?.needsDisambiguation){
+    throw runtimeError('체험 학생 이름을 하나로 구분할 수 없습니다.',409,'OLLI_AGENT_TRIAL_GUEST_AMBIGUOUS');
+  }
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
+  if(subjectRefs.length!==1){
+    throw runtimeError('체험 취소는 한 번에 학생 한 명만 지정해 주세요.',400,'OLLI_AGENT_TRIAL_CANCEL_SINGLE_GUEST_REQUIRED');
+  }
+  const guestLabel=subjectRefs[0].label;
+  const guest=preparedPrivacy?.trialAccess?.resolve?.(guestLabel);
+  if(!guest?.guestName){
+    throw runtimeError('취소할 체험 학생을 확인하지 못했습니다.',400,'OLLI_AGENT_TRIAL_GUEST_REQUIRED');
+  }
+
+  const safeText=String(preparedPrivacy?.safeText||'');
+  const compact=safeText.replace(/\s+/g,'');
+  const hasTrial=/(?:체험클래스|체험수업|체험)/.test(compact);
+  const hasRemove=/(?:취소|삭제|지워|지우|제거|빼|해제|없애)/.test(compact);
+  const hasOtherMutation=/(?:등록|추가|신청|예약|배정|넣|저장|잡아|변경|수정|바꿔|바꾸|옮|이동|고쳐|고치)/.test(compact);
+  if(!hasTrial||!hasRemove||hasOtherMutation){
+    throw runtimeError('체험 취소 요청을 확인하지 못했습니다.',400,'OLLI_AGENT_TRIAL_CANCEL_INTENT_REQUIRED');
+  }
+
+  const groupMatch=safeText.match(/([ABab])\s*반/);
+  return {
+    guestLabel,
+    classGroup:groupMatch?groupMatch[1].toUpperCase():'AUTO',
+  };
+}
+
+async function runTrialCancelPrepareAgent({
+  agentContext,requestContext,preparedPrivacy,requestId,reason,
+  replyToMessageId=null,requirePersistedMessage=false,
+}){
+  const scope=resolveTrialCancelPrepareScope(preparedPrivacy);
+  assertOpenAiKey();
+  const {Agent,run,tool,z}=await loadAgentsSdk();
+  const {createPrepareTrialCancelTool}=require('./tools/trial-cancel-prepare-tools.cjs');
+  const {sanitizeTrialToolPayload}=require('./trial-guest-privacy.cjs');
+  const model=agentModel();
+  const today=todayInSeoul();
+  let persistedMessage=null;
+
+  const prepareTrialCancel=createPrepareTrialCancelTool({
+    tool,z,requestContext,
+    trialAccess:preparedPrivacy.trialAccess,
+    guestLabel:scope.guestLabel,
+    classGroup:scope.classGroup,
+    reason,
+    currentDate:today,
+    requestId,
+    replyToMessageId,
+    capturePersistedMessage(message){persistedMessage=pickupPersistedMessageForClient(message);},
+    sanitizePayload(payload){return sanitizeTrialToolPayload(payload,preparedPrivacy);},
+  });
+
+  const groupInstruction=scope.classGroup==='AUTO'
+    ? 'The user did not explicitly select A반 or B반. Do not guess a group if more than one current trial still matches.'
+    : 'The server has fixed the requested class group to '+scope.classGroup+'. Do not override it.';
+
+  const agent=new Agent({
+    name:requirePersistedMessage?'Olli Trial Cancel Prepare':'Olli Trial Cancel Prepare Probe',
+    model,
+    instructions:[
+      'You are the Olli trial-class cancellation preparation assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The real guest name is private. The only available anonymous label is '+scope.guestLabel+'.',
+      groupInstruction,
+      'Today in Korea is '+today+'.',
+      'The cancellation reason is private server-side context. It is not included in the model input and you must never ask for or invent it.',
+      'Always call prepare_trial_cancel exactly once before answering.',
+      'If the user explicitly names a date, convert it to exact YYYY-MM-DD. If no date is present, pass an empty source_date string.',
+      'If the user explicitly names a class time, convert the visible time to source_hour and source_minute. For 4시 반 use 4 and 30. If no time is present, pass 0 and 0.',
+      'The server re-resolves the current stored trial row and binds the already-validated cancellation reason before creating the card.',
+      'The tool creates a pending confirmation card only. It never directly cancels a trial class.',
+      'Never say the trial was cancelled. Say that the cancellation is waiting for user confirmation.',
+      'Never ask for, infer, or reveal the real guest name, cancellation reason, UUID, one-time-session ID, internal time slot, member ID, session token, academy ID, action ID, or message ID.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[prepareTrialCancel],
+    modelSettings:{toolChoice:'prepare_trial_cancel'},
+  });
+
+  let result=null,runError=null;
+  try{
+    result=await run(agent,preparedPrivacy.safeText,{context:agentContext});
+  }catch(error){
+    runError=error;
+    if(!requirePersistedMessage||!persistedMessage) throw error;
+  }
+
+  const finalOutput=String(result?.finalOutput||'').trim();
+  if(!finalOutput&&(!requirePersistedMessage||!persistedMessage)){
+    throw runtimeError('체험 취소 준비 Agent 응답이 비어 있습니다.',502,'OLLI_AGENT_EMPTY_TRIAL_CANCEL_PREPARE_RESPONSE');
+  }
+  if(requirePersistedMessage&&!persistedMessage){
+    throw runtimeError('체험 취소 확인 카드 저장 결과를 확인하지 못했습니다.',502,'OLLI_AGENT_TRIAL_CANCEL_PERSISTED_MESSAGE_MISSING');
+  }
+  return {ready:true,model,output:finalOutput,nodeVersion:process.versions.node,persistedMessage,recoveredAfterPersist:!!runError};
+}
+
+async function validateTrialReasonMessage({
+  requestContext,
+  reasonMessageId,
+  reasonMessageText,
+  reason,
+  callRpc,
+}){
+  let source;
+  try{
+    source=await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId:reasonMessageId,
+      sourceMessageText:reasonMessageText,
+      callRpc,
+    });
+  }catch(error){
+    const pickupCode=String(error?.code||'');
+    if(!pickupCode.startsWith('OLLI_AGENT_PICKUP_SOURCE_')) throw error;
+    const trialCode=pickupCode.replace(
+      'OLLI_AGENT_PICKUP_SOURCE_',
+      'OLLI_AGENT_TRIAL_REASON_'
+    );
+    const message=String(error?.message||'체험 취소 사유 메시지를 확인하지 못했습니다.')
+      .replace(/원문 Team Chat/g,'체험 취소 사유')
+      .replace(/픽업 Agent 원문/g,'체험 취소 사유');
+    throw runtimeError(message,Number(error?.statusCode||400),trialCode);
+  }
+
+  const {normalizeTrialCancelReason}=require('./tools/trial-cancel-prepare-tools.cjs');
+  const normalizedReason=normalizeTrialCancelReason(reason);
+  const storedText=normalizePickupSourceMessageText(source?.body);
+  const requestedText=normalizePickupSourceMessageText(reasonMessageText);
+  if(!storedText||!requestedText||storedText!==requestedText||!requestedText.includes(normalizedReason)){
+    throw runtimeError(
+      '체험 취소 사유가 저장된 Team Chat 메시지와 일치하지 않습니다.',
+      409,
+      'OLLI_AGENT_TRIAL_REASON_BODY_MISMATCH'
+    );
+  }
+  return {source,reason:normalizedReason};
+}
+
+async function runTrialCancelPrepareProbe({
+  agentContext,requestContext,preparedPrivacy,requestId,reason,
+}){
+  const {normalizeTrialCancelReason}=require('./tools/trial-cancel-prepare-tools.cjs');
+  return runTrialCancelPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId,
+    reason:normalizeTrialCancelReason(reason),
+  });
+}
+
+async function runTrialCancelPrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+  reasonMessageId,
+  reasonMessageText,
+  reason,
+}){
+  const sourceId=Number(sourceMessageId||0);
+  const reasonId=Number(reasonMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError('원문 Team Chat 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_TRIAL_SOURCE_MESSAGE_INVALID');
+  }
+  if(!Number.isSafeInteger(reasonId)||reasonId<=0){
+    throw runtimeError('체험 취소 사유 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_TRIAL_REASON_MESSAGE_INVALID');
+  }
+
+  await validateTrialSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+  const validatedReason=await validateTrialReasonMessage({
+    requestContext,
+    reasonMessageId:reasonId,
+    reasonMessageText,
+    reason,
+  });
+
+  return runTrialCancelPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-trial-cancel:'+sourceId+':'+reasonId,
+    reason:validatedReason.reason,
+    replyToMessageId:reasonId,
+    requirePersistedMessage:true,
+  });
+}
+
+
 function resolveTrialUpdatePrepareScope(preparedPrivacy){
   if(preparedPrivacy?.needsDisambiguation){
     throw runtimeError('체험 학생 이름을 하나로 구분할 수 없습니다.',409,'OLLI_AGENT_TRIAL_GUEST_AMBIGUOUS');
@@ -2930,6 +3129,11 @@ module.exports = {
   runTrialAddPrepareAgent,
   runTrialAddPrepareProbe,
   runTrialAddPrepare,
+  resolveTrialCancelPrepareScope,
+  runTrialCancelPrepareAgent,
+  runTrialCancelPrepareProbe,
+  runTrialCancelPrepare,
+  validateTrialReasonMessage,
   resolveTrialUpdatePrepareScope,
   runTrialUpdatePrepareAgent,
   runTrialUpdatePrepareProbe,
