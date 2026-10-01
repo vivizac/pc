@@ -29,34 +29,39 @@ test('successful Class feedback still auto-advances to the next student before c
   assert.ok(complete.indexOf('selectNextAvailableAutoStudent') < complete.indexOf('onSuccessfulSubmit'));
 });
 
-test('active Class control is uppercase C in the second-row add slot', () => {
+test('active Class control is uppercase black C in the second-row add slot only', () => {
   assert.match(runtime, /btn\.textContent = state\.loading \? '···' : \(state\.enabled \? 'C' : 'Class'\)/);
-  assert.match(css, /\.kcfTeacherBtn\.active \{[\s\S]*?width:33px !important;[\s\S]*?min-width:33px !important;[\s\S]*?border-radius:50% !important;/);
-  assert.match(css, /kcfTeacherRosterMode \.kcfTeacherBtn \{[\s\S]*?grid-column:1;[\s\S]*?grid-row:2;[\s\S]*?border:1px solid #111 !important;[\s\S]*?background:#f1f1f1 !important;[\s\S]*?color:#111 !important;/);
+  assert.match(css, /\.kcfTeacherBtn\.active \{[\s\S]*?width:33px !important;[\s\S]*?background:#111 !important;[\s\S]*?color:#fff !important;/);
+  const idleButton = css.match(/#kinderChatFeedbackScreen\.kcfTeacherRosterMode \.kcfTeacherBtn \{[^}]*\}/)?.[0] || '';
+  assert.match(idleButton, /grid-column:1;/);
+  assert.match(idleButton, /grid-row:2;/);
+  assert.doesNotMatch(idleButton, /grid-row:1;/);
+  assert.doesNotMatch(idleButton, /background:#f1f1f1/);
   assert.match(css, /kcfTeacherRosterMode \.kcfAttachBtn \{[\s\S]*?display:none;/);
   assert.match(css, /kcfTeacherRosterMode \.kcfVoiceBtn \{[\s\S]*?display:none;/);
   assert.match(css, /kcfTeacherRosterMode \.kcfSendBtn \{[\s\S]*?grid-column:3;[\s\S]*?grid-row:2;/);
 });
 
-test('active Class sheet control also uses compact C', () => {
-  assert.match(sheet, /id="kcfTeacherSheetModeBtn"[^>]*>C<\/button>/);
-  assert.match(sheetCss, /\.kcfTeacherSheetModeBtn \{[\s\S]*?width:32px;[\s\S]*?min-width:32px;[\s\S]*?border-radius:50%;/);
+test('shared sheet switches its mode button from Class to compact C only when Class is enabled', () => {
+  assert.match(sheet, /id="kcfTeacherSheetModeBtn"[^>]*>Class<\/button>/);
+  assert.match(sheet, /modeBtn\.textContent = enabled \? 'C' : 'Class'/);
+  assert.match(sheetCss, /\.kcfTeacherSheetModeBtn\.active \{[\s\S]*?width:32px;[\s\S]*?background:#111;[\s\S]*?color:#fff;/);
 });
 
 test('student cards remain manually selectable while Class mode waits', () => {
   assert.match(runtime, /button\.addEventListener\('click',[\s\S]*?selectAutoStudent\(item\)/);
 });
 
-test('tapping the idle Class input reopens the sheet instead of focusing inline', () => {
+test('tapping the inline input opens the shared sheet in both normal and Class modes', () => {
   const pointer = base.match(/input\.addEventListener\('pointerdown',[\s\S]*?\n    \}\);/)?.[0] || '';
-  assert.match(pointer, /teacherMode\.isEnabled\(\)/);
+  assert.doesNotMatch(pointer, /teacherMode\.isEnabled\(\)/);
   assert.match(pointer, /event\.preventDefault\(\)/);
-  assert.match(pointer, /teacherSheet\.open\(\)/);
+  assert.match(pointer, /sheet\.open\(\)/);
 });
 
 test('Class idle layout assets are cache busted', () => {
-  assert.match(html, /kcf-auto-mode\.css\?v=20261001-class-idle-hide-mic-1/);
-  assert.match(html, /kcf-auto-mode-runtime\.js\?v=20261001-class-active-c-1/);
-  assert.match(html, /kcf-teacher-sheet\.css\?v=20261001-class-active-c-1/);
-  assert.match(html, /kcf-teacher-sheet\.js\?v=20261001-class-active-c-1/);
+  assert.match(html, /kcf-auto-mode\.css\?v=20261001-unified-sheet-1/);
+  assert.match(html, /kcf-teacher-sheet\.css\?v=20261001-unified-sheet-1/);
+  assert.match(html, /kcf-teacher-sheet\.js\?v=20261001-unified-sheet-1/);
+  assert.match(html, /kinder-feedback\.js\?v=20261001-unified-sheet-1/);
 });
