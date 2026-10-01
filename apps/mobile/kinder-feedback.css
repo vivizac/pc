@@ -1964,30 +1964,6 @@ width:100%;
   cursor:pointer;
   -webkit-tap-highlight-color:transparent;
 }
-#kinderChatFeedbackScreen .kcfLiveActionBtn.kcfLiveIconActionBtn {
-  width:34px;
-  min-width:34px;
-  height:34px;
-  padding:0;
-  border-radius:10px;
-  background:transparent;
-  color:#8e8e93;
-}
-#kinderChatFeedbackScreen .kcfLiveActionBtn.kcfLiveIconActionBtn svg {
-  width:20px;
-  height:20px;
-  display:block;
-  fill:none;
-  stroke:currentColor;
-  stroke-width:1.55;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-  pointer-events:none;
-}
-#kinderChatFeedbackScreen .kcfLiveActionBtn.kcfLiveIconActionBtn:active:not(:disabled) {
-  background:#f5f5f5;
-  color:#555;
-}
 #kinderChatFeedbackScreen .kcfLiveActionBtn.kcfLivePhoneTextActionBtn {
   width:auto;
   min-width:0;
@@ -2000,6 +1976,9 @@ width:100%;
   font-weight:600;
   white-space:nowrap;
 }
+#kinderChatFeedbackScreen .kcfLiveInboxBtn {
+  margin-right:auto;
+}
 #kinderChatFeedbackScreen .kcfLiveActionBtn.kcfLivePhoneTextActionBtn:active:not(:disabled) {
   background:transparent;
   color:#6f6f73;
@@ -2011,10 +1990,6 @@ width:100%;
 #kinderChatFeedbackScreen .kcfLiveEditAction { display:none; }
 #kinderChatFeedbackScreen .kcfLiveResponseRow.editing .kcfLiveNormalAction { display:none; }
 #kinderChatFeedbackScreen .kcfLiveResponseRow.editing .kcfLiveEditAction { display:inline-flex; }
-#kinderChatFeedbackScreen .kcfLiveResponseRow.saved .kcfLiveSaveBtn {
-  min-width:34px;
-}
-
 
 /* 2026-09-23: 퀵노트 상단 [메뉴] [관찰노트/퀵노트] [Work] */
 #kcfPersistentTopLayer .kcfTopInboxHidden{
