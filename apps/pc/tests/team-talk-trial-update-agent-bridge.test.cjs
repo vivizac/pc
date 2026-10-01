@@ -41,7 +41,7 @@ test('PC trial update uses source-bound production mode and server-persisted car
 
 test('PC Bot path is independent from trial update Agent routing',()=>{
   const start=talk.indexOf('async function resolveBotTurn');
-  const end=talk.indexOf('function isMentioningOlli',start);
+  const end=talk.indexOf('function buildAiConversationMessages',start);
   const block=talk.slice(start,end);
   assert.doesNotMatch(block,/resolveTrialUpdateAgentTurn|isTrialUpdateAgentCandidate|trial_update_prepare/);
 });
