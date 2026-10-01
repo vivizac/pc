@@ -574,6 +574,46 @@
     return payload.message;
   }
 
+  function parseOlliTalkBatchAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseMultiWriteIntent!=='function') return null;
+    try{
+      const parsed=router.parseMultiWriteIntent(commandText);
+      return String(parsed?.intent || '').trim()==='batch_write' && Array.isArray(parsed?.commands)
+        ? parsed
+        : null;
+    }catch(error){
+      console.warn('올리톡 복합쓰기 Agent 후보 판별 실패:',error);
+      return null;
+    }
+  }
+
+  function olliTalkBatchCommandNeedsReason(command){
+    return ['mark_absent','cancel_makeup','cancel_trial'].includes(String(command?.intent || '').trim());
+  }
+
+  function olliTalkBatchReasonPrompt(command){
+    const intent=String(command?.intent || '').trim();
+    if(intent==='mark_absent') return String(command?.studentName || '').trim()+' 학생의 결석 사유를 알려주세요.';
+    if(intent==='cancel_makeup') return String(command?.studentName || '').trim()+' 학생의 보강 취소 사유를 알려주세요.';
+    if(intent==='cancel_trial') return String(command?.guestName || command?.studentName || '').trim()+' 학생의 체험 취소 사유를 알려주세요.';
+    return '사유를 알려주세요.';
+  }
+
+  function buildOlliTalkBatchAgentCommands(batch,sourceMessageId,sourceMessageText){
+    return (Array.isArray(batch?.commands)?batch.commands:[]).map(command=>({
+      intent:String(command?.intent || '').trim(),
+      text:String(command?.originalText || '').trim(),
+      reason:String(command?.reason || '').trim(),
+      reasonMessageId:olliTalkBatchCommandNeedsReason(command) && String(command?.reason || '').trim()
+        ? Number(sourceMessageId || 0)
+        : 0,
+      reasonMessageText:olliTalkBatchCommandNeedsReason(command) && String(command?.reason || '').trim()
+        ? String(sourceMessageText || '').trim()
+        : '',
+      memoNote:String(command?.memoNote || '').trim()
+    }));
+  }
+
   function parseOlliTalkTimetableMemoAgentCandidate(commandText,router=window.OlliCommandRouter){
     if(!router) return null;
     try{
@@ -754,6 +794,41 @@
       console.warn('올리톡 수업 이동 취소 Agent 후보 판별 실패:',error);
       return false;
     }
+  }
+
+  async function resolveOlliTalkBatchAgentTurn({
+    sourceText,
+    sourceMessageId,
+    commands,
+    context,
+  }){
+    const sourceId=Number(sourceMessageId || 0);
+    if(!Number.isSafeInteger(sourceId) || sourceId<=0){
+      throw new Error('복합쓰기 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'batch_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(sourceText || '').trim(),
+        sourceMessageId:sourceId,
+        commands
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    const messages=Array.isArray(data?.messages)?data.messages:[];
+    if(!response.ok || data?.ok!==true || messages.length<2){
+      throw new Error(data?.error || data?.message || '복합쓰기 Agent 응답을 받지 못했습니다.');
+    }
+    return {
+      assistantMessage:messages[0],
+      assistantMessages:messages,
+      replyText:messages.map(message=>String(message?.body || '').trim()).filter(Boolean).join('\n'),
+      recordAi:false
+    };
   }
 
   async function resolveOlliTalkTimetableMemoAgentTurn(commandText,parsed,context,replyToMessageId){
@@ -1371,6 +1446,52 @@
         };
       }
 
+      const pendingBatch=olliTalkPendingActionReason.__batchAgent;
+      if(String(olliTalkPendingActionReason.intent || '').trim()==='batch_write' && pendingBatch){
+        const commands=Array.isArray(pendingBatch.commands)
+          ? pendingBatch.commands.map(item=>Object.assign({},item))
+          : [];
+        const reasonIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
+        if(reasonIndex<0){
+          olliTalkPendingActionReason=null;
+          return resolveOlliTalkBatchAgentTurn({
+            sourceText:String(pendingBatch.sourceMessageText || '').trim(),
+            sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+            commands,
+            context,
+          });
+        }
+
+        commands[reasonIndex].reason=String(commandText || '').trim();
+        commands[reasonIndex].reasonMessageId=Number(replyToMessageId || 0);
+        commands[reasonIndex].reasonMessageText=String(commandText || '').trim();
+        const nextIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
+        if(nextIndex>=0){
+          olliTalkPendingActionReason={
+            intent:'batch_write',
+            __batchAgent:{
+              sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+              sourceMessageText:String(pendingBatch.sourceMessageText || '').trim(),
+              commands
+            }
+          };
+          const prompt=olliTalkBatchReasonPrompt(commands[nextIndex]);
+          return {
+            assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
+            replyText:prompt,
+            recordAi:false
+          };
+        }
+
+        olliTalkPendingActionReason=null;
+        return resolveOlliTalkBatchAgentTurn({
+          sourceText:String(pendingBatch.sourceMessageText || '').trim(),
+          sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+          commands,
+          context,
+        });
+      }
+
       const pendingTrialCancel=olliTalkPendingActionReason.__trialCancelAgent;
       if(String(olliTalkPendingActionReason.intent || '').trim()==='cancel_trial' && pendingTrialCancel){
         olliTalkPendingActionReason=null;
@@ -1418,6 +1539,35 @@
         replyText:confirmation,
         recordAi:false
       };
+    }
+
+    const batchCandidate=parseOlliTalkBatchAgentCandidate(commandText,router);
+    if(batchCandidate){
+      const sourceId=Number(replyToMessageId || 0);
+      const commands=buildOlliTalkBatchAgentCommands(batchCandidate,sourceId,commandText);
+      const missingIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
+      if(missingIndex>=0){
+        olliTalkPendingActionReason={
+          intent:'batch_write',
+          __batchAgent:{
+            sourceMessageId:sourceId,
+            sourceMessageText:String(commandText || '').trim(),
+            commands
+          }
+        };
+        const prompt=olliTalkBatchReasonPrompt(commands[missingIndex]);
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
+          replyText:prompt,
+          recordAi:false
+        };
+      }
+      return resolveOlliTalkBatchAgentTurn({
+        sourceText:String(commandText || '').trim(),
+        sourceMessageId:sourceId,
+        commands,
+        context,
+      });
     }
 
     const timetableMemoCandidate=parseOlliTalkTimetableMemoAgentCandidate(commandText,router);
@@ -4000,7 +4150,15 @@
         syncOlliTalkAssistantTypingIndicator();
         const turn=await resolveOlliTalkAiTurn(commandText,context,Number(messageId),{allowSuggestedQuery:true});
         olliTalkAssistantReplyPending=false;
-        replaceOlliTalkAssistantTypingWithMessage(turn.assistantMessage,context.memberId);
+        const assistantMessages=Array.isArray(turn.assistantMessages) && turn.assistantMessages.length
+          ? turn.assistantMessages
+          : [turn.assistantMessage].filter(Boolean);
+        if(assistantMessages.length){
+          replaceOlliTalkAssistantTypingWithMessage(assistantMessages[0],context.memberId);
+          assistantMessages.slice(1).forEach(message=>appendOlliTalkPersistedMessage(message,context.memberId));
+        }else{
+          syncOlliTalkAssistantTypingIndicator();
+        }
       }else{
         const turn=await resolveOlliTalkBotTurn(commandText,context,Number(messageId),{allowSuggestedQuery:true});
         appendOlliTalkPersistedMessage(turn.assistantMessage,context.memberId);
@@ -5098,7 +5256,15 @@
           if(usingAi){
             const turn=await resolveOlliTalkAiTurn(commandText,context,Number(payload.message.id));
             olliTalkAssistantReplyPending=false;
-            replaceOlliTalkAssistantTypingWithMessage(turn.assistantMessage,context.memberId);
+            const assistantMessages=Array.isArray(turn.assistantMessages) && turn.assistantMessages.length
+              ? turn.assistantMessages
+              : [turn.assistantMessage].filter(Boolean);
+            if(assistantMessages.length){
+              replaceOlliTalkAssistantTypingWithMessage(assistantMessages[0],context.memberId);
+              assistantMessages.slice(1).forEach(message=>appendOlliTalkPersistedMessage(message,context.memberId));
+            }else{
+              syncOlliTalkAssistantTypingIndicator();
+            }
           }else{
             const turn=await resolveOlliTalkBotTurn(commandText,context,Number(payload.message.id));
             appendOlliTalkPersistedMessage(turn.assistantMessage,context.memberId);
