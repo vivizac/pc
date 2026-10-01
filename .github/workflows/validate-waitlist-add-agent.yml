@@ -1,0 +1,45 @@
+name: Validate waitlist add Agent
+
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/api/_lib/olli-agent/tools/waitlist-add-prepare-tools.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/runtime.cjs'
+      - 'apps/mobile/api/olli-agent.js'
+      - 'apps/mobile/tests/olli-agent-waitlist-add-prepare-tool.test.cjs'
+      - 'apps/mobile/tests/olli-agent-waitlist-add-production-contract.test.cjs'
+      - 'apps/pc/pc-team-talk.js'
+      - 'apps/mobile/olli-talk-beta.js'
+      - 'apps/pc/tests/team-talk-waitlist-add-agent-bridge.test.cjs'
+      - 'apps/mobile/tests/team-talk-waitlist-add-agent-bridge.test.cjs'
+      - '.github/workflows/validate-waitlist-add-agent.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check waitlist add Agent syntax
+        run: |
+          node --check apps/mobile/api/_lib/olli-agent/tools/waitlist-add-prepare-tools.cjs
+          node --check apps/mobile/api/_lib/olli-agent/runtime.cjs
+          node --check apps/mobile/api/olli-agent.js
+          node --check apps/pc/pc-team-talk.js
+          node --check apps/mobile/olli-talk-beta.js
+      - name: Run waitlist add server contracts
+        working-directory: apps/mobile
+        run: |
+          node --test tests/olli-agent-waitlist-add-prepare-tool.test.cjs
+          node --test tests/olli-agent-waitlist-add-production-contract.test.cjs
+      - name: Run waitlist add PC bridge contract
+        working-directory: apps/pc
+        run: node --test tests/team-talk-waitlist-add-agent-bridge.test.cjs
+      - name: Run waitlist add Mobile bridge contract
+        working-directory: apps/mobile
+        run: node --test tests/team-talk-waitlist-add-agent-bridge.test.cjs

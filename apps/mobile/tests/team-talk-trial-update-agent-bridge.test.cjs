@@ -7,7 +7,7 @@ const talk=fs.readFileSync(path.join(__dirname,'../olli-talk-beta.js'),'utf8');
 
 test('mobile trial update gate uses only shared trial update candidate parser',()=>{
   const start=talk.indexOf('function isOlliTalkTrialUpdateAgentCandidate');
-  const end=talk.indexOf('function isOlliTalkWaitlistUpdateAgentCandidate',start);
+  const end=talk.indexOf('function isOlliTalkWaitlistAddAgentCandidate',start);
   const block=talk.slice(start,end);
   assert.match(block,/parseTrialUpdateMutationIntent\(commandText\)/);
   assert.match(block,/==='update_trial'/);
@@ -29,7 +29,7 @@ test('mobile trial update routes before waitlist and legacy preparation',()=>{
 
 test('mobile trial update uses source-bound production mode and server-persisted card',()=>{
   const start=talk.indexOf('async function resolveOlliTalkTrialUpdateAgentTurn');
-  const end=talk.indexOf('async function resolveOlliTalkWaitlistUpdateAgentTurn',start);
+  const end=talk.indexOf('async function resolveOlliTalkWaitlistAddAgentTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'trial_update_prepare'/);
   assert.match(block,/sourceMessageId=Number\(replyToMessageId \|\| 0\)/);

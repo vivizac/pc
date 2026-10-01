@@ -19,7 +19,7 @@ test('production trial_update_prepare requires persisted source message and retu
   assert.match(endpoint,/runTrialUpdatePrepare\(/);
   const marker="mode:'trial_update_prepare'";
   const start=endpoint.indexOf(marker);
-  const end=endpoint.indexOf("} else if (mode === 'waitlist_update_prepare_probe')",start);
+  const end=endpoint.indexOf("} else if (mode === 'waitlist_add_prepare_probe')",start);
   const block=start>=0&&end>start?endpoint.slice(start,end):'';
   assert.match(block,/message:probe\.persistedMessage/);
   assert.match(block,/recoveredAfterPersist:probe\.recoveredAfterPersist===true/);
@@ -28,7 +28,7 @@ test('production trial_update_prepare requires persisted source message and retu
 
 test('production trial update validates stored Team Chat source before Agent execution',()=>{
   const start=runtime.indexOf('async function runTrialUpdatePrepare({');
-  const end=runtime.indexOf('\n\nfunction resolveWaitlistUpdatePrepareScope',start);
+  const end=runtime.indexOf('\n\nfunction resolveWaitlistAddPrepareScope',start);
   const block=start>=0&&end>start?runtime.slice(start,end):'';
   assert.match(block,/validateTrialSourceMessage\(/);
   assert.ok(block.indexOf('validateTrialSourceMessage({')<block.indexOf('return runTrialUpdatePrepareAgent({'));
