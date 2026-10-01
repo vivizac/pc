@@ -321,6 +321,18 @@ test('QuickNote keyboard focus never force-resets the root document while iOS is
   assert.doesNotMatch(block,/resetKinderChatFeedbackRootViewportScroll\(\)/);
 });
 
+test('QuickNote keyboard blur never force-resets the root document while iOS is closing the keyboard', () => {
+  const start = js.indexOf("input.addEventListener('blur'", js.indexOf('function bindKinderChatFeedbackViewportInteractions'));
+  const end = js.indexOf('bindKinderChatFeedbackViewport();', start);
+  const block = js.slice(start, end);
+
+  assert.match(block,/setTimeout\(syncKinderChatFeedbackViewport, 40\)/);
+  assert.match(block,/setTimeout\(syncKinderChatFeedbackViewport, 140\)/);
+  assert.doesNotMatch(block,/scheduleKinderChatFeedbackRootViewportReset\(\)/);
+  assert.doesNotMatch(block,/resetKinderChatFeedbackRootViewportScroll\(\)/);
+});
+
+
 
 test('QuickNote Class mode can still intentionally hand focus to the Teacher sheet', () => {
   const start = js.indexOf("input.addEventListener('pointerdown'");
