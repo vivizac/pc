@@ -443,6 +443,129 @@ async function runScheduleAvailabilityProbe({
 
 
 
+function resolveAbsencePrepareScope(preparedPrivacy) {
+  if(preparedPrivacy?.needsDisambiguation){
+    throw runtimeError('학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',409,'OLLI_AGENT_STUDENT_AMBIGUOUS');
+  }
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
+  if(subjectRefs.length!==1){
+    throw runtimeError('결석 처리는 한 번에 학생 한 명만 지정해 주세요.',400,'OLLI_AGENT_ABSENCE_SINGLE_STUDENT_REQUIRED');
+  }
+
+  const subjectLabel=subjectRefs[0].label;
+  const subject=preparedPrivacy?.subjectAccess?.resolve?.(subjectLabel);
+  const division=String(subject?.division||'').trim().toLowerCase();
+  if(!['elementary','kinder'].includes(division)){
+    throw runtimeError('결석 처리 대상 학생의 수업 구분을 확인하지 못했습니다.',400,'OLLI_AGENT_ABSENCE_DIVISION_REQUIRED');
+  }
+
+  const safeText=String(preparedPrivacy?.safeText||'');
+  const compact=safeText.replace(/\s+/g,'');
+  if(!/(?:결석|결석처리)/.test(compact)){
+    throw runtimeError('결석 처리 요청을 확인하지 못했습니다.',400,'OLLI_AGENT_ABSENCE_INTENT_REQUIRED');
+  }
+  if(/(?:보강|보충|체험|대기|웨이팅|이동|변경|취소|삭제)/.test(compact)){
+    throw runtimeError('정규수업 결석 처리 요청을 확인해 주세요.',400,'OLLI_AGENT_ABSENCE_INTENT_REQUIRED');
+  }
+
+  const groupMatch=safeText.match(/([ABab])\s*반/);
+  return {
+    subjectLabel,
+    division,
+    classGroup:groupMatch?groupMatch[1].toUpperCase():'AUTO',
+  };
+}
+
+async function runAbsencePrepareAgent({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+  reason,
+  replyToMessageId=null,
+  requirePersistedMessage=false,
+}) {
+  const scope=resolveAbsencePrepareScope(preparedPrivacy);
+  const {normalizeAbsenceReason}=require('./tools/absence-prepare-tools.cjs');
+  const fixedReason=normalizeAbsenceReason(reason);
+  assertOpenAiKey();
+
+  const {Agent,run,tool,z}=await loadAgentsSdk();
+  const {createPrepareAbsenceTool}=require('./tools/absence-prepare-tools.cjs');
+  const {sanitizeAgentToolPayload}=require('./privacy.cjs');
+  const model=agentModel();
+  const today=todayInSeoul();
+  let persistedMessage=null;
+
+  const prepareAbsence=createPrepareAbsenceTool({
+    tool,z,requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    studentLabel:scope.subjectLabel,
+    division:scope.division,
+    classGroup:scope.classGroup,
+    reason:fixedReason,
+    currentDate:today,
+    requestId,
+    replyToMessageId,
+    capturePersistedMessage(message){persistedMessage=pickupPersistedMessageForClient(message);},
+    sanitizePayload(payload){return sanitizeAgentToolPayload(payload,preparedPrivacy);},
+  });
+
+  const agent=new Agent({
+    name:requirePersistedMessage?'Olli Absence Prepare':'Olli Absence Prepare Probe',
+    model,
+    instructions:[
+      'You are the Olli regular-class absence preparation assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The only available anonymous student label for this run is '+scope.subjectLabel+'.',
+      'The server has fixed the student division to '+scope.division+'. Do not override it.',
+      'The absence reason is private server-side context. It is not included in model input. Never ask for, infer, repeat, or invent it.',
+      'Today in Korea is '+today+'.',
+      'Always call prepare_absence exactly once before answering.',
+      'If the user explicitly states a date, convert it to exact YYYY-MM-DD. If no date is stated, pass an empty session_date string so the server uses today, matching existing Olli behavior.',
+      'If the user explicitly states a visible class time, pass class_hour and class_minute. For 4시 30분 or 4시 반 use 4 and 30. If no class time is stated, pass 0 and 0.',
+      'The server rechecks the active regular enrollment for that date. If multiple classes remain it rejects instead of guessing.',
+      'The tool creates a pending confirmation card only. It never directly changes attendance or writes the reason memo.',
+      'Never say the student was marked absent. Say the absence is waiting for user confirmation.',
+      'Never ask for, infer, or reveal a real student name, UUID, enrollment ID, internal time slot, member ID, session token, academy ID, action ID, message ID, or absence reason.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[prepareAbsence],
+    modelSettings:{toolChoice:'prepare_absence'},
+  });
+
+  let result=null,runError=null;
+  try{
+    result=await run(agent,preparedPrivacy.safeText,{context:agentContext});
+  }catch(error){
+    runError=error;
+    if(!requirePersistedMessage||!persistedMessage) throw error;
+  }
+
+  const finalOutput=String(result?.finalOutput||'').trim();
+  if(!finalOutput&&(!requirePersistedMessage||!persistedMessage)){
+    throw runtimeError('결석 준비 Agent 응답이 비어 있습니다.',502,'OLLI_AGENT_EMPTY_ABSENCE_PREPARE_RESPONSE');
+  }
+  if(requirePersistedMessage&&!persistedMessage){
+    throw runtimeError('결석 확인 카드 저장 결과를 확인하지 못했습니다.',502,'OLLI_AGENT_ABSENCE_PERSISTED_MESSAGE_MISSING');
+  }
+
+  return {
+    ready:true,
+    model,
+    output:finalOutput,
+    nodeVersion:process.versions.node,
+    persistedMessage,
+    recoveredAfterPersist:!!runError,
+  };
+}
+
+async function runAbsencePrepareProbe({agentContext,requestContext,preparedPrivacy,requestId,reason}){
+  return runAbsencePrepareAgent({
+    agentContext,requestContext,preparedPrivacy,requestId,reason,
+  });
+}
+
 function resolveClassOncePrepareScope(preparedPrivacy) {
   if (preparedPrivacy?.needsDisambiguation) {
     throw runtimeError(
@@ -3474,6 +3597,110 @@ async function runPickupCancelPrepare({
 }
 
 
+async function validateAbsenceSourceMessage({
+  requestContext,
+  sourceMessageId,
+  sourceMessageText,
+  callRpc,
+}) {
+  try{
+    return await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId,
+      sourceMessageText,
+      callRpc,
+    });
+  }catch(error){
+    const pickupCode=String(error?.code||'');
+    if(!pickupCode.startsWith('OLLI_AGENT_PICKUP_SOURCE_')) throw error;
+    const code=pickupCode.replace('OLLI_AGENT_PICKUP_SOURCE_','OLLI_AGENT_ABSENCE_SOURCE_');
+    const message=String(error?.message||'원문 Team Chat 메시지를 확인하지 못했습니다.')
+      .replace(/픽업/g,'결석');
+    throw runtimeError(message,Number(error?.statusCode||400),code);
+  }
+}
+
+async function validateAbsenceReasonMessage({
+  requestContext,
+  reasonMessageId,
+  reasonMessageText,
+  reason,
+  callRpc,
+}) {
+  let source;
+  try{
+    source=await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId:reasonMessageId,
+      sourceMessageText:reasonMessageText,
+      callRpc,
+    });
+  }catch(error){
+    const pickupCode=String(error?.code||'');
+    if(!pickupCode.startsWith('OLLI_AGENT_PICKUP_SOURCE_')) throw error;
+    const code=pickupCode.replace('OLLI_AGENT_PICKUP_SOURCE_','OLLI_AGENT_ABSENCE_REASON_');
+    const message=String(error?.message||'결석 사유 메시지를 확인하지 못했습니다.')
+      .replace(/원문 Team Chat/g,'결석 사유')
+      .replace(/픽업 Agent 원문/g,'결석 사유');
+    throw runtimeError(message,Number(error?.statusCode||400),code);
+  }
+
+  const {normalizeAbsenceReason}=require('./tools/absence-prepare-tools.cjs');
+  const normalizedReason=normalizeAbsenceReason(reason);
+  const storedText=normalizePickupSourceMessageText(source?.body);
+  const requestedText=normalizePickupSourceMessageText(reasonMessageText);
+  if(!storedText||!requestedText||storedText!==requestedText||!requestedText.includes(normalizedReason)){
+    throw runtimeError(
+      '결석 사유가 저장된 Team Chat 메시지와 일치하지 않습니다.',
+      409,
+      'OLLI_AGENT_ABSENCE_REASON_BODY_MISMATCH'
+    );
+  }
+  return {source,reason:normalizedReason};
+}
+
+async function runAbsencePrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+  reasonMessageId,
+  reasonMessageText,
+  reason,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  const reasonId=Number(reasonMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError('원문 Team Chat 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_ABSENCE_SOURCE_MESSAGE_INVALID');
+  }
+  if(!Number.isSafeInteger(reasonId)||reasonId<=0){
+    throw runtimeError('결석 사유 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_ABSENCE_REASON_MESSAGE_INVALID');
+  }
+
+  await validateAbsenceSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+  const validatedReason=await validateAbsenceReasonMessage({
+    requestContext,
+    reasonMessageId:reasonId,
+    reasonMessageText,
+    reason,
+  });
+
+  return runAbsencePrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-absence:'+sourceId+':'+reasonId,
+    reason:validatedReason.reason,
+    replyToMessageId:reasonId,
+    requirePersistedMessage:true,
+  });
+}
+
 async function validateClassOnceSourceMessage({
   requestContext,
   sourceMessageId,
@@ -3919,6 +4146,12 @@ module.exports = {
   runRecentRecordsProbe,
   resolveAvailabilityScope,
   runScheduleAvailabilityProbe,
+  resolveAbsencePrepareScope,
+  runAbsencePrepareAgent,
+  runAbsencePrepareProbe,
+  runAbsencePrepare,
+  validateAbsenceSourceMessage,
+  validateAbsenceReasonMessage,
   resolveClassOncePrepareScope,
   runClassOncePrepareAgent,
   runClassOncePrepareProbe,

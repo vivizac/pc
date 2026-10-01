@@ -627,6 +627,17 @@
     }
   }
 
+  function parseOlliTalkAbsenceAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseAbsenceMutationIntent!=='function') return null;
+    try{
+      const parsed=router.parseAbsenceMutationIntent(commandText);
+      return String(parsed?.intent || '').trim()==='mark_absent' && String(parsed?.studentName || '').trim() ? parsed : null;
+    }catch(error){
+      console.warn('올리톡 결석 Agent 후보 판별 실패:',error);
+      return null;
+    }
+  }
+
   function isOlliTalkClassOnceAgentCandidate(commandText,router=window.OlliCommandRouter){
     if(!router || typeof router.parseClassMutationIntent!=='function') return false;
     try{
@@ -845,6 +856,52 @@
     };
   }
 
+  async function resolveOlliTalkAbsenceAgentTurn({
+    sourceText,
+    sourceMessageId,
+    reasonText,
+    reasonMessageText,
+    reasonMessageId,
+    context,
+  }){
+    const sourceId=Number(sourceMessageId || 0);
+    const reasonId=Number(reasonMessageId || 0);
+    if(!Number.isSafeInteger(sourceId) || sourceId<=0){
+      throw new Error('결석 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    if(!Number.isSafeInteger(reasonId) || reasonId<=0 || !String(reasonText || '').trim()){
+      throw new Error('결석 사유 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'absence_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(sourceText || '').trim(),
+        sourceMessageId:sourceId,
+        reasonMessageId:reasonId,
+        reasonMessageText:String(reasonMessageText || '').trim(),
+        reason:String(reasonText || '').trim()
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '결석 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='mark_absent'){
+      throw new Error('결석 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
   async function resolveOlliTalkClassOnceAgentTurn(commandText,context,replyToMessageId){
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
@@ -973,6 +1030,19 @@
         });
       }
 
+      const pendingAbsence=olliTalkPendingActionReason.__absenceAgent;
+      if(String(olliTalkPendingActionReason.intent || '').trim()==='mark_absent' && pendingAbsence){
+        olliTalkPendingActionReason=null;
+        return resolveOlliTalkAbsenceAgentTurn({
+          sourceText:String(pendingAbsence.sourceMessageText || '').trim(),
+          sourceMessageId:Number(pendingAbsence.sourceMessageId || 0),
+          reasonText:String(commandText || '').trim(),
+          reasonMessageText:String(commandText || '').trim(),
+          reasonMessageId:Number(replyToMessageId || 0),
+          context,
+        });
+      }
+
       const command=Object.assign({},olliTalkPendingActionReason,{reason:String(commandText || '').trim()});
       olliTalkPendingActionReason=null;
       const confirmation=String(schedule?.writeConfirmationMessage?.(command) || '').trim() || '이 작업을 진행할까요?';
@@ -989,6 +1059,18 @@
         sourceText:String(commandText || '').trim(),
         sourceMessageId:Number(replyToMessageId || 0),
         reasonText:String(trialCancelCandidate.reason || '').trim(),
+        reasonMessageText:String(commandText || '').trim(),
+        reasonMessageId:Number(replyToMessageId || 0),
+        context,
+      });
+    }
+
+    const absenceCandidate=parseOlliTalkAbsenceAgentCandidate(commandText,router);
+    if(absenceCandidate && String(absenceCandidate.reason || '').trim()){
+      return resolveOlliTalkAbsenceAgentTurn({
+        sourceText:String(commandText || '').trim(),
+        sourceMessageId:Number(replyToMessageId || 0),
+        reasonText:String(absenceCandidate.reason || '').trim(),
         reasonMessageText:String(commandText || '').trim(),
         reasonMessageId:Number(replyToMessageId || 0),
         context,
@@ -1062,6 +1144,16 @@
             const sourceMessageId=Number(replyToMessageId || 0);
             if(parsedTrialCancel && Number.isSafeInteger(sourceMessageId) && sourceMessageId>0){
               pendingPayload.__trialCancelAgent={
+                sourceMessageId,
+                sourceMessageText:String(commandText || '').trim()
+              };
+            }
+          }
+          if(String(pendingPayload.intent || '').trim()==='mark_absent'){
+            const parsedAbsence=parseOlliTalkAbsenceAgentCandidate(commandText,router);
+            const sourceMessageId=Number(replyToMessageId || 0);
+            if(parsedAbsence && Number.isSafeInteger(sourceMessageId) && sourceMessageId>0){
+              pendingPayload.__absenceAgent={
                 sourceMessageId,
                 sourceMessageText:String(commandText || '').trim()
               };
