@@ -57,6 +57,10 @@ export default async function handler(req, res) {
         reasonMessageId:Number(item?.reasonMessageId || item?.reason_message_id || 0),
         reasonMessageText:safeText(item?.reasonMessageText || item?.reason_message_text, 5000),
         memoNote:safeText(item?.memoNote || item?.memo_note, 5000),
+        needsClarification:item?.needsClarification === true,
+        contextText:safeText(item?.contextText || item?.context_text, 5000),
+        clarificationMessageId:Number(item?.clarificationMessageId || item?.clarification_message_id || 0),
+        clarificationMessageText:safeText(item?.clarificationMessageText || item?.clarification_message_text, 5000),
       }));
 
       const runtimeModule = await import('./_lib/olli-agent/runtime.cjs');
