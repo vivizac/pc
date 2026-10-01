@@ -1,11 +1,15 @@
 /* ── 유치부 대화형 1분 피드백 페이지: 정리본 ── */
 #kinderChatFeedbackScreen {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
   background:#fff;
   padding-top:0;
   align-items:stretch;
 }
 #kcfPersistentTopLayer {
-  position:fixed;
+  position:absolute;
   inset:0;
   display:none;
   pointer-events:none;
@@ -37,7 +41,7 @@
   mask-image:none;
 }
 #kinderChatFeedbackScreen .kcfTopFadeLayer{
-  position:fixed;
+  position:absolute;
   left:0;
   right:0;
   top:0;
@@ -57,7 +61,7 @@
   mask-image:linear-gradient(to bottom,#000 0%,#000 58%,transparent 100%);
 }
 #kinderChatFeedbackScreen .kcfBottomFadeLayer{
-  position:fixed;
+  position:absolute;
   left:0;
   right:0;
   bottom:0;
@@ -94,7 +98,7 @@
   z-index:auto;
 }
 #kcfPersistentTopLayer .kcfHeaderCenter{
-  position:fixed;
+  position:absolute;
   left:var(--olli-phone-guide-center-x);
   top:var(--olli-phone-guide-top);
   transform:translateX(-50%);
@@ -188,7 +192,7 @@
   justify-content:center;
   padding:0;
   cursor:pointer;
-  position:fixed;
+  position:absolute;
   top:var(--olli-phone-guide-top);
   z-index:5000;
   pointer-events:auto;
@@ -200,7 +204,7 @@
 #kcfPersistentTopLayer #kcfOlliBtn,
 #kcfPersistentTopLayer #kcfInboxModeBtn{
   right:var(--olli-phone-guide-x);
-  position:fixed;
+  position:absolute;
 }
 #kcfPersistentTopLayer #kcfOlliBtn{
   overflow:hidden;
@@ -260,7 +264,7 @@
 }
 #kcfPersistentTopLayer .kcfVivicotInboxBubble {
   display:none;
-  position:fixed;
+  position:absolute;
   top:calc(var(--olli-phone-guide-top) + 54px);
   right:var(--olli-phone-guide-x);
   max-width:calc(100vw - 32px);
@@ -2075,7 +2079,7 @@ width:100%;
   display:none !important;
 }
 #kcfPersistentTopLayer .kcfTopWorkBtn{
-  position:fixed;
+  position:absolute;
   top:var(--olli-phone-guide-top);
   right:var(--olli-phone-guide-x);
   width:58px;
