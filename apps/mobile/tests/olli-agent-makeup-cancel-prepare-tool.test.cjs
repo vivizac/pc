@@ -281,7 +281,7 @@ test('production makeup cancel can return the persisted confirmation card even i
   assert.match(block,/recoveredAfterPersist:!!runError/);
 });
 
-test('makeup cancel confirmation linkage stays server-only and Team Chat routing is not connected yet', () => {
+test('makeup cancel confirmation linkage stays server-only and the endpoint does not duplicate Team Chat persistence', () => {
   const tool=fs.readFileSync(
     path.join(__dirname,'../api/_lib/olli-agent/tools/makeup-cancel-prepare-tools.cjs'),
     'utf8'
