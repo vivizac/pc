@@ -24,9 +24,12 @@
   transition:background .16s ease,color .16s ease,width .16s ease,min-width .16s ease,padding .16s ease;
 }
 #kinderChatFeedbackScreen .kcfTeacherBtn.active {
-  width:auto !important;
-  min-width:28px !important;
-  padding:0 8px !important;
+  width:33px !important;
+  min-width:33px !important;
+  max-width:33px !important;
+  height:33px !important;
+  padding:0 !important;
+  border-radius:50% !important;
   background:#111 !important;
   color:#fff !important;
 }
