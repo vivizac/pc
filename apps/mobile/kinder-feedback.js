@@ -242,105 +242,6 @@ function getKinderChatFeedbackScreen() {
 function getKinderChatFeedbackInput() {
   return document.getElementById('kcfInput');
 }
-const kcfViewportDebugEnabled = (() => {
-  try { return new URLSearchParams(window.location.search).get('kcfDebug') === '1'; }
-  catch (_) { return false; }
-})();
-let kcfViewportDebugBaseline = null;
-let kcfViewportDebugOverlay = null;
-let kcfViewportDebugBound = false;
-function readKinderChatFeedbackViewportDebugSample(label) {
-  const vv = window.visualViewport;
-  const screen = getKinderChatFeedbackScreen();
-  const inner = screen?.querySelector('.kcfInner');
-  const chat = document.getElementById('kcfChatArea');
-  const composer = document.getElementById('kcfComposerLayer');
-  const rectTop = el => {
-    try { return Math.round(el?.getBoundingClientRect?.().top || 0); }
-    catch (_) { return 0; }
-  };
-  return {
-    label:String(label || ''),
-    t:Math.round(performance.now()),
-    scrollY:Math.round(Number(window.scrollY || window.pageYOffset || 0)),
-    vvTop:Math.round(Number(vv?.offsetTop || 0)),
-    vvHeight:Math.round(Number(vv?.height || window.innerHeight || 0)),
-    innerHeight:Math.round(Number(window.innerHeight || 0)),
-    chatScroll:Math.round(Number(chat?.scrollTop || 0)),
-    screenTop:rectTop(screen),
-    innerTop:rectTop(inner),
-    chatTop:rectTop(chat),
-    composerTop:rectTop(composer)
-  };
-}
-function classifyKinderChatFeedbackViewportDebug(sample) {
-  if (!kcfViewportDebugBaseline || !sample) return 'baseline';
-  const b = kcfViewportDebugBaseline;
-  const vvMoved = Math.abs(sample.vvTop - b.vvTop) > 2;
-  const windowMoved = Math.abs(sample.scrollY - b.scrollY) > 2;
-  const chatMoved = Math.abs(sample.chatScroll - b.chatScroll) > 2;
-  if ((vvMoved || windowMoved) && chatMoved) return 'viewport + chat';
-  if (vvMoved || windowMoved) return 'viewport 이동';
-  if (chatMoved) return 'chat scroll 이동';
-  return '이동 없음';
-}
-function ensureKinderChatFeedbackViewportDebugOverlay() {
-  if (!kcfViewportDebugEnabled) return null;
-  if (kcfViewportDebugOverlay?.isConnected) return kcfViewportDebugOverlay;
-  const el = document.createElement('pre');
-  el.id = 'kcfViewportDebugOverlay';
-  el.style.cssText = [
-    'position:fixed','left:6px','right:6px','bottom:110px','z-index:999999',
-    'margin:0','padding:8px 10px','border-radius:10px','background:rgba(0,0,0,.78)',
-    'color:#fff','font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace',
-    'white-space:pre-wrap','pointer-events:none','max-height:34vh','overflow:hidden'
-  ].join(';');
-  document.body.appendChild(el);
-  kcfViewportDebugOverlay = el;
-  return el;
-}
-function captureKinderChatFeedbackViewportDebug(label, setBaseline = false) {
-  if (!kcfViewportDebugEnabled) return;
-  const sample = readKinderChatFeedbackViewportDebugSample(label);
-  if (setBaseline || !kcfViewportDebugBaseline) kcfViewportDebugBaseline = sample;
-  const b = kcfViewportDebugBaseline;
-  const result = classifyKinderChatFeedbackViewportDebug(sample);
-  const overlay = ensureKinderChatFeedbackViewportDebugOverlay();
-  if (!overlay) return;
-  overlay.textContent = [
-    'KCF VIEWPORT DEBUG · ' + result,
-    sample.label + '  +' + Math.max(0, sample.t - b.t) + 'ms',
-    'window.scrollY  ' + b.scrollY + ' → ' + sample.scrollY,
-    'vv.offsetTop    ' + b.vvTop + ' → ' + sample.vvTop,
-    'vv.height       ' + b.vvHeight + ' → ' + sample.vvHeight,
-    'innerHeight     ' + b.innerHeight + ' → ' + sample.innerHeight,
-    'chat.scrollTop  ' + b.chatScroll + ' → ' + sample.chatScroll,
-    'tops screen/inner/chat/composer',
-    [b.screenTop,b.innerTop,b.chatTop,b.composerTop].join('/') + ' → ' +
-      [sample.screenTop,sample.innerTop,sample.chatTop,sample.composerTop].join('/')
-  ].join('\n');
-}
-function bindKinderChatFeedbackViewportDiagnostics() {
-  if (!kcfViewportDebugEnabled || kcfViewportDebugBound) return;
-  kcfViewportDebugBound = true;
-  const input = getKinderChatFeedbackInput();
-  const chat = document.getElementById('kcfChatArea');
-  if (input) {
-    input.addEventListener('focus', () => {
-      captureKinderChatFeedbackViewportDebug('focus');
-      [50,150,300,600].forEach(delay => setTimeout(() => {
-        captureKinderChatFeedbackViewportDebug('focus+' + delay);
-      }, delay));
-    }, true);
-    input.addEventListener('blur', () => captureKinderChatFeedbackViewportDebug('blur'), true);
-  }
-  if (chat) chat.addEventListener('scroll', () => captureKinderChatFeedbackViewportDebug('chat-scroll'), { passive:true });
-  window.addEventListener('resize', () => captureKinderChatFeedbackViewportDebug('window-resize'), { passive:true });
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', () => captureKinderChatFeedbackViewportDebug('vv-resize'), { passive:true });
-    window.visualViewport.addEventListener('scroll', () => captureKinderChatFeedbackViewportDebug('vv-scroll'), { passive:true });
-  }
-}
 function getKinderChatFeedbackMessageList() {
   const area = document.getElementById('kcfChatArea');
   if (!area) return null;
@@ -620,8 +521,7 @@ function bindKinderChatFeedbackViewportInteractions() {
 
     input.addEventListener('pointerdown', event => {
       if (event.pointerType === 'touch') {
-        captureKinderChatFeedbackViewportDebug('pointerdown-before-focus', true);
-        captureKinderChatFeedbackContentBaseline(true);
+captureKinderChatFeedbackContentBaseline(true);
         const teacherMode = getKinderChatFeedbackTeacherMode();
         const teacherEnabled = !!(
           teacherMode
@@ -709,8 +609,7 @@ function bindKinderChatFeedbackViewportInteractions() {
   }
 
   bindKinderChatFeedbackViewport();
-  bindKinderChatFeedbackViewportDiagnostics();
-  syncKinderChatFeedbackViewport();
+syncKinderChatFeedbackViewport();
 }
 function setKinderChatFeedbackPersistentTopVisible(visible) {
   const layer = document.getElementById('kcfPersistentTopLayer');
