@@ -373,9 +373,6 @@
 }
 
 /* 학생 선택 후 관찰내용 작성 화면: 원래 sticky 상단바 흐름을 유지한다. */
-#studentMemoScreen[data-memo-body-view="editor"] {
-  --olli-observation-content-lift:0px;
-}
 #studentMemoScreen[data-memo-body-view="editor"] .memoPageInner {
   scroll-padding-top:84px;
   scroll-padding-bottom:24px;
@@ -402,8 +399,6 @@
 
 #studentMemoScreen[data-memo-body-view="editor"] #elementaryMemoWrap {
   padding-top:12px;
-  transform:translate3d(0,calc(-1 * var(--olli-observation-content-lift, 0px)),0);
-  transition:none;
 }
 
 #studentMemoScreen[data-memo-body-view="editor"] .memoPageStudentName {

@@ -455,8 +455,8 @@ test('phone adapter loads history core before phone UI and is the single history
 
 test('memo archive return assets are cache-busted', () => {
   const html = read(indexPath);
-  assert.match(html, /olli-observation-roster-phone\.css\?v=20260928-sort-prefix-gray-1/);
-  assert.match(html, /olli-record-utility-touch\.js\?v=20260928-stabilization-main-merge-1/);
+  assert.match(html, /olli-observation-roster-phone\.css\?v=20261001-native-keyboard-scroll-1/);
+  assert.match(html, /olli-record-utility-touch\.js\?v=20260929-memo-fixed-group-1/);
 });
 
 
@@ -472,11 +472,11 @@ test('feedback save resets the observation memo caret and scroll to the initial 
   assert.match(runtime, /memo\.value = '';\s*resetObservationMemoViewportAfterFeedbackSave\(memo\);/);
   assert.match(runtime, /requestAnimationFrame\(reset\)/);
   assert.match(runtime, /setTimeout\(reset, 80\)/);
-  assert.match(html, /olli-observation-runtime\.js\?v=20260928-stabilization-main-merge-1/);
+  assert.match(html, /olli-observation-runtime\.js\?v=20260930-attendance-runtime-cleanup-1/);
 });
 
 
-test('observation memo keeps its scroll owner stable and lifts only memo content by keyboard inset', () => {
+test('observation memo keeps one scroll owner and only moves it when the caret is obscured', () => {
   const css = read(cssPath);
   const source = read(rosterPath);
   const pageRule = css.match(/#studentMemoScreen\[data-memo-body-view="editor"\] \.memoPageInner \{[\s\S]*?\}/)?.[0] || '';
@@ -484,9 +484,11 @@ test('observation memo keeps its scroll owner stable and lifts only memo content
   assert.match(pageRule,/overscroll-behavior-y:contain/);
   assert.match(pageRule,/touch-action:pan-y/);
   assert.match(pageRule,/overflow-anchor:none/);
-  assert.match(wrapRule,/--olli-observation-content-lift/);
-  assert.match(source,/editor\.focus\(\{ preventScroll:true \}\)/);
-  assert.match(source,/--olli-observation-content-lift', Math\.max\(0, inset\) \+ 'px'/);
-  assert.doesNotMatch(source,/page\.scrollTop \+= delta/);
-  assert.doesNotMatch(source,/visualViewport\.addEventListener\('scroll'/);
+  assert.doesNotMatch(wrapRule,/transform:/);
+  assert.doesNotMatch(css,/--olli-observation-content-lift/);
+  assert.match(source,/function ensureObservationMemoCaretVisible\(\)/);
+  assert.match(source,/page\.scrollTop \+= delta/);
+  assert.match(source,/function resetObservationMemoRootViewportScroll\(\)/);
+  assert.match(source,/visualViewport\.addEventListener\('scroll',[\s\S]*?resetObservationMemoRootViewportScroll\(\)/);
+  assert.doesNotMatch(source,/event\.pointerType === 'touch'[\s\S]{0,220}?editor\.focus\(\{ preventScroll:true \}\)/);
 });
