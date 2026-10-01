@@ -83,28 +83,22 @@ test('keyboard-open KCF keeps the composer four pixels above the visual viewport
   assert.match(rule, /padding-bottom:0;/);
 });
 
-test('QuickNote shell and persistent top controls stay on the layout viewport', () => {
-  const screen = css.match(/#kinderChatFeedbackScreen \{[^}]*\}/)?.[0] || '';
+test('persistent KCF top controls use independent fixed positioning', () => {
   const layer = css.match(/#kcfPersistentTopLayer \{[^}]*\}/)?.[0] || '';
   const headerCenter = css.match(/#kcfPersistentTopLayer \.kcfHeaderCenter\{[^}]*\}/)?.[0] || '';
   const roundButton = css.match(/#kcfPersistentTopLayer \.kcfRoundBtn\{[^}]*\}/)?.[0] || '';
   const modeButtons = css.match(/#kcfPersistentTopLayer #kcfOlliBtn,[\s\S]*?#kcfPersistentTopLayer #kcfInboxModeBtn\{[^}]*\}/)?.[0] || '';
   const inboxBubble = css.match(/#kcfPersistentTopLayer \.kcfVivicotInboxBubble \{[^}]*\}/)?.[0] || '';
-  const topFade = css.match(/#kinderChatFeedbackScreen \.kcfTopFadeLayer\{[^}]*\}/)?.[0] || '';
-  const bottomFade = css.match(/#kinderChatFeedbackScreen \.kcfBottomFadeLayer\{[^}]*\}/)?.[0] || '';
 
-  assert.match(screen, /position:absolute;/);
-  assert.match(layer, /position:absolute;/);
-  assert.match(headerCenter, /position:absolute;/);
-  assert.match(roundButton, /position:absolute;/);
-  assert.match(modeButtons, /position:absolute;/);
-  assert.match(inboxBubble, /position:absolute;/);
-  assert.match(topFade, /position:absolute;/);
-  assert.match(bottomFade, /position:absolute;/);
-  assert.doesNotMatch(layer, /position:fixed;/);
-  assert.doesNotMatch(headerCenter, /position:fixed;/);
-  assert.doesNotMatch(roundButton, /position:fixed;/);
-  assert.doesNotMatch(inboxBubble, /position:fixed;/);
+  assert.doesNotMatch(layer, /transform:/);
+  assert.doesNotMatch(layer, /--kcf-top-shift-y/);
+  assert.match(headerCenter, /position:fixed;/);
+  assert.match(roundButton, /position:fixed;/);
+  assert.match(modeButtons, /position:fixed;/);
+  assert.match(inboxBubble, /position:fixed;/);
+  assert.doesNotMatch(headerCenter, /position:absolute;/);
+  assert.doesNotMatch(roundButton, /position:absolute;/);
+  assert.doesNotMatch(inboxBubble, /position:absolute;/);
 });
 
 test('persistent KCF header stays visible while the keyboard is open', () => {
