@@ -129,8 +129,8 @@ test('makeup cancel never guesses when more than one current row matches', async
   await assert.rejects(
     prepareMakeupCancelAction({
       requestContext:requestContext(),subjectAccess:subjectAccess(),studentLabel:'학생A',
-      division:'elementary',classGroup:'AUTO',sessionDate:'',classHour:4,classMinute:30,
-      reason:'가족 일정 때문에',sourceText:'학생A 4시 30분 보강 가족 일정 때문에 취소해줘',
+      division:'elementary',classGroup:'AUTO',sessionDate:'',classHour:0,classMinute:0,
+      reason:'가족 일정 때문에',sourceText:'학생A 보강 가족 일정 때문에 취소해줘',
       currentDate:'2026-10-01',requestId:'req-ambiguous',sanitizePayload(p){return p;},callRpc:rpc,
     }),
     (error)=>error?.code==='OLLI_AGENT_MAKEUP_CANCEL_AMBIGUOUS'
