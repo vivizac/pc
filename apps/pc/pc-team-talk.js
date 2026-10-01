@@ -1367,14 +1367,46 @@
     return '사유를 알려주세요.';
   }
 
+  function batchCommandNeedsClarification(command) {
+    return command?.needsClarification === true;
+  }
+
+  function batchClarificationPrompt(command) {
+    if (clean(command?.intent) === 'add_makeup') {
+      return clean(command?.studentName) + ' 학생의 보강 날짜와 시간을 함께 알려주세요.';
+    }
+    return '작업에 필요한 날짜와 시간을 함께 알려주세요.';
+  }
+
+  function applyBatchClarification(command, replyText, replyMessageId, router) {
+    const item=Object.assign({},command);
+    const reply=clean(replyText);
+    if (clean(item.intent) === 'add_makeup' && router && typeof router.parseMakeupMutationIntent === 'function') {
+      const contextText=clean(item.text + ' ' + reply);
+      const parsed=router.parseMakeupMutationIntent(contextText);
+      if (!parsed || clean(parsed.intent) !== 'add_makeup') return null;
+      item.needsClarification=false;
+      item.contextText=contextText;
+      item.clarificationMessageId=Number(replyMessageId || 0);
+      item.clarificationMessageText=reply;
+      return item;
+    }
+    return null;
+  }
+
   function buildBatchAgentCommands(batch, sourceMessageId, sourceMessageText) {
     return (Array.isArray(batch?.commands) ? batch.commands : []).map((command) => ({
       intent:clean(command?.intent),
       text:clean(command?.originalText),
+      studentName:clean(command?.studentName || command?.guestName),
       reason:clean(command?.reason),
       reasonMessageId:batchCommandNeedsReason(command) && clean(command?.reason) ? Number(sourceMessageId || 0) : 0,
       reasonMessageText:batchCommandNeedsReason(command) && clean(command?.reason) ? clean(sourceMessageText) : '',
-      memoNote:clean(command?.memoNote)
+      memoNote:clean(command?.memoNote),
+      needsClarification:command?.batchDraft === true,
+      contextText:'',
+      clarificationMessageId:0,
+      clarificationMessageText:''
     }));
   }
 
@@ -2269,35 +2301,89 @@
           ? pendingBatch.commands.map((item)=>Object.assign({},item))
           : [];
         const reasonIndex=commands.findIndex((item)=>batchCommandNeedsReason(item) && !clean(item.reason));
-        if(reasonIndex<0){
-          state.pendingActionReason=null;
-          return resolveBatchAgentTurn({
-            sourceText:clean(pendingBatch.sourceMessageText),
-            sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
-            commands,
-            current,
-          });
-        }
+        if(reasonIndex>=0){
+          commands[reasonIndex].reason=clean(commandText);
+          commands[reasonIndex].reasonMessageId=Number(replyToMessageId || 0);
+          commands[reasonIndex].reasonMessageText=clean(commandText);
+          const nextReasonIndex=commands.findIndex((item)=>batchCommandNeedsReason(item) && !clean(item.reason));
+          if(nextReasonIndex>=0){
+            state.pendingActionReason={
+              intent:'batch_write',
+              __batchAgent:{
+                sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+                sourceMessageText:clean(pendingBatch.sourceMessageText),
+                commands
+              }
+            };
+            const prompt=batchReasonPrompt(commands[nextReasonIndex]);
+            return {
+              assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),
+              replyText:prompt,
+              recordAi:false
+            };
+          }
 
-        commands[reasonIndex].reason=clean(commandText);
-        commands[reasonIndex].reasonMessageId=Number(replyToMessageId || 0);
-        commands[reasonIndex].reasonMessageText=clean(commandText);
-        const nextIndex=commands.findIndex((item)=>batchCommandNeedsReason(item) && !clean(item.reason));
-        if(nextIndex>=0){
-          state.pendingActionReason={
-            intent:'batch_write',
-            __batchAgent:{
-              sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
-              sourceMessageText:clean(pendingBatch.sourceMessageText),
-              commands
+          const clarificationIndex=commands.findIndex(batchCommandNeedsClarification);
+          if(clarificationIndex>=0){
+            state.pendingActionReason={
+              intent:'batch_write',
+              __batchAgent:{
+                sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+                sourceMessageText:clean(pendingBatch.sourceMessageText),
+                commands
+              }
+            };
+            const prompt=batchClarificationPrompt(commands[clarificationIndex]);
+            return {
+              assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),
+              replyText:prompt,
+              recordAi:false
+            };
+          }
+        }else{
+          const clarificationIndex=commands.findIndex(batchCommandNeedsClarification);
+          if(clarificationIndex>=0){
+            const clarified=applyBatchClarification(
+              commands[clarificationIndex],
+              commandText,
+              replyToMessageId,
+              router
+            );
+            if(!clarified){
+              const prompt=batchClarificationPrompt(commands[clarificationIndex]);
+              state.pendingActionReason={
+                intent:'batch_write',
+                __batchAgent:{
+                  sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+                  sourceMessageText:clean(pendingBatch.sourceMessageText),
+                  commands
+                }
+              };
+              return {
+                assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),
+                replyText:prompt,
+                recordAi:false
+              };
             }
-          };
-          const prompt=batchReasonPrompt(commands[nextIndex]);
-          return {
-            assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),
-            replyText:prompt,
-            recordAi:false
-          };
+            commands[clarificationIndex]=clarified;
+            const nextClarificationIndex=commands.findIndex(batchCommandNeedsClarification);
+            if(nextClarificationIndex>=0){
+              state.pendingActionReason={
+                intent:'batch_write',
+                __batchAgent:{
+                  sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+                  sourceMessageText:clean(pendingBatch.sourceMessageText),
+                  commands
+                }
+              };
+              const prompt=batchClarificationPrompt(commands[nextClarificationIndex]);
+              return {
+                assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),
+                replyText:prompt,
+                recordAi:false
+              };
+            }
+          }
         }
 
         state.pendingActionReason=null;
@@ -2373,6 +2459,23 @@
           }
         };
         const prompt=batchReasonPrompt(commands[missingIndex]);
+        return {
+          assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),
+          replyText:prompt,
+          recordAi:false
+        };
+      }
+      const clarificationIndex=commands.findIndex(batchCommandNeedsClarification);
+      if(clarificationIndex>=0){
+        state.pendingActionReason={
+          intent:'batch_write',
+          __batchAgent:{
+            sourceMessageId:sourceId,
+            sourceMessageText:clean(commandText),
+            commands
+          }
+        };
+        const prompt=batchClarificationPrompt(commands[clarificationIndex]);
         return {
           assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),
           replyText:prompt,
