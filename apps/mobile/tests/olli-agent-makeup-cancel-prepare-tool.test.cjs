@@ -235,10 +235,59 @@ test('makeup cancel tool schema exposes no internal ids, division, group or stor
   assert.doesNotMatch(schema,/studentId|student_id|division|classGroup|class_group|timeSlot|time_slot|oneTimeSessionId|requestId|action_type/);
 });
 
-test('endpoint adds only the makeup cancel probe mode at this checkpoint', () => {
+test('production makeup cancel is separate from probe and requires a saved source Team Chat message', () => {
   const endpoint=fs.readFileSync(path.join(__dirname,'../api/olli-agent.js'),'utf8');
   assert.match(endpoint,/'makeup_cancel_prepare_probe'/);
+  assert.match(endpoint,/'makeup_cancel_prepare'/);
   assert.match(endpoint,/runMakeupCancelPrepareProbe/);
-  assert.match(endpoint,/makeup_cancel_prepare_probe에는 재시도 중복 방지용 requestId가 필요합니다/);
-  assert.doesNotMatch(endpoint,/mode === 'makeup_cancel_prepare'/);
+  assert.match(endpoint,/mode === 'makeup_cancel_prepare'/);
+  assert.match(endpoint,/makeup_cancel_prepare에는 저장된 원문 Team Chat message id가 필요합니다/);
+  assert.match(endpoint,/OLLI_AGENT_MAKEUP_SOURCE_MESSAGE_REQUIRED/);
+  assert.match(endpoint,/runMakeupCancelPrepare\(/);
+  assert.match(endpoint,/sourceMessageText: message/);
+
+  const response=endpoint.match(/mode:'makeup_cancel_prepare'[\s\S]*?\}\);/)?.[0] || '';
+  assert.match(response,/message:probe\.persistedMessage/);
+  assert.match(response,/recoveredAfterPersist:probe\.recoveredAfterPersist === true/);
+  assert.doesNotMatch(response,/subjectRefs|privacy:|output:|studentId|studentName|oneTimeSessionId|timeSlot|classGroup/);
+});
+
+test('production makeup cancel validates the stored source before Agent run and derives retry and reply linkage from source id', () => {
+  const runtime=fs.readFileSync(path.join(__dirname,'../api/_lib/olli-agent/runtime.cjs'),'utf8');
+  const start=runtime.indexOf('async function runMakeupCancelPrepare({');
+  const end=runtime.indexOf('\n\nasync function runStudentProfileProbe({',start);
+  const block=start >= 0 && end > start ? runtime.slice(start,end) : '';
+
+  assert.match(block,/Number\.isSafeInteger\(sourceId\)/);
+  assert.match(block,/validateMakeupSourceMessage\(/);
+  assert.ok(block.indexOf('validateMakeupSourceMessage({') < block.indexOf('return runMakeupCancelPrepareAgent({'));
+  assert.match(block,/sourceMessageText/);
+  assert.match(block,/requestId:'team-chat-message:' \+ sourceId/);
+  assert.match(block,/replyToMessageId:sourceId/);
+  assert.match(block,/requirePersistedMessage:true/);
+});
+
+test('production makeup cancel can return the persisted confirmation card even if model finalization fails', () => {
+  const runtime=fs.readFileSync(path.join(__dirname,'../api/_lib/olli-agent/runtime.cjs'),'utf8');
+  const start=runtime.indexOf('async function runMakeupCancelPrepareAgent({');
+  const end=runtime.indexOf('\n\nasync function runMakeupCancelPrepareProbe({',start);
+  const block=start >= 0 && end > start ? runtime.slice(start,end) : '';
+
+  assert.match(block,/capturePersistedMessage\(message\)/);
+  assert.match(block,/pickupPersistedMessageForClient\(message\)/);
+  assert.match(block,/replyToMessageId/);
+  assert.match(block,/catch \(error\) \{[\s\S]*runError = error;[\s\S]*!requirePersistedMessage \|\| !persistedMessage/);
+  assert.match(block,/requirePersistedMessage && !persistedMessage/);
+  assert.match(block,/recoveredAfterPersist:!!runError/);
+});
+
+test('makeup cancel confirmation linkage stays server-only and Team Chat routing is not connected yet', () => {
+  const tool=fs.readFileSync(
+    path.join(__dirname,'../api/_lib/olli-agent/tools/makeup-cancel-prepare-tools.cjs'),
+    'utf8'
+  );
+  const endpoint=fs.readFileSync(path.join(__dirname,'../api/olli-agent.js'),'utf8');
+  assert.match(tool,/p_reply_to_message_id:replyId/);
+  assert.match(tool,/capturePersistedMessage\(sent\.message\)/);
+  assert.doesNotMatch(endpoint,/sendTeamChat.*makeup_cancel|routeTeamChat.*makeup_cancel/i);
 });
