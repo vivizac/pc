@@ -472,7 +472,9 @@ function bindKinderChatFeedbackViewportInteractions() {
         }, 0);
         return;
       }
-      scheduleKinderChatFeedbackRootViewportReset();
+      // Let iOS restore the visual viewport naturally as the keyboard closes.
+      // Repeated root scroll resets here caused fixed top controls and chat content
+      // to disappear/repaint during the blur transition.
       setTimeout(syncKinderChatFeedbackViewport, 40);
       setTimeout(syncKinderChatFeedbackViewport, 140);
       setTimeout(() => {
