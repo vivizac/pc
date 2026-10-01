@@ -989,7 +989,7 @@
   function parseMultiWriteIntent(text) {
     const raw = cleanText(text);
     if (!raw) return null;
-    const parts = raw.split(/\s*(?:;|그리고|그다음|그 다음|하고|\n)\s*/g).map(cleanText).filter(Boolean);
+    const parts = raw.split(/\s*(?:;|그리고|그다음|그 다음|하고|\n)\s*[,，]?\s*/g).map(cleanText).filter(Boolean);
     if (parts.length < 2 || parts.length > 3) return null;
     const commands = parts.map(parseSingleWriteIntent);
     if (commands.some(item => !item)) return null;
