@@ -327,13 +327,24 @@
       }
     }
 
-    if (typeof addKinderChatDocumentMessage === 'function') addKinderChatDocumentMessage(studentName, getKcfStudentFeedbackLabel(student, 'class'), text, 'minute', photoSnapshot);
+    try {
+      if (typeof addKinderChatDocumentMessage === 'function') {
+        addKinderChatDocumentMessage(studentName, getKcfStudentFeedbackLabel(student, 'class'), text, 'minute', photoSnapshot);
+      }
+    } catch (err) {
+      console.warn('1분 피드백 사용자 메시지 표시 실패, AI 요청은 계속합니다:', err);
+    }
+
     var canUseKinderChatLive =
       typeof window.getKinderChatFeedbackTopMode === 'function' &&
       window.getKinderChatFeedbackTopMode() === 'live' &&
       typeof window.startKinderChatFeedbackLiveRequest === 'function';
     if (!canUseKinderChatLive && typeof addKinderChatMessage === 'function') {
-      addKinderChatMessage('bot', '관찰 내용을 부모님께 잘 전달될 수 있도록 정리해둘게요.\n다음 학생 기록을 이어서 작성해 주세요.');
+      try {
+        addKinderChatMessage('bot', '관찰 내용을 부모님께 잘 전달될 수 있도록 정리해둘게요.\n다음 학생 기록을 이어서 작성해 주세요.');
+      } catch (err) {
+        console.warn('1분 피드백 안내 메시지 표시 실패, AI 요청은 계속합니다:', err);
+      }
     }
     var requestOptions = {
       id: feedbackJobId,
