@@ -7,7 +7,7 @@ const talk=fs.readFileSync(path.join(__dirname,'../olli-talk-beta.js'),'utf8');
 
 test('mobile trial add gate uses shared add parser and requires explicit division',()=>{
   const start=talk.indexOf('function isOlliTalkTrialAddAgentCandidate');
-  const end=talk.indexOf('function isOlliTalkTrialUpdateAgentCandidate',start);
+  const end=talk.indexOf('function parseOlliTalkTrialCancelAgentCandidate',start);
   const block=talk.slice(start,end);
   assert.match(block,/parseTrialMutationIntent\(commandText\)/);
   assert.match(block,/==='add_trial'/);
