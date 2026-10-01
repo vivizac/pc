@@ -520,6 +520,13 @@
   display:flex;
   flex-direction:column;
   justify-content:flex-end;
+  transition:none;
+  animation:none;
+}
+#kinderChatFeedbackScreen.kcfMessageRelocating .kcfMessageList{
+  visibility:hidden;
+  transition:none;
+  animation:none;
 }
 #kinderChatFeedbackScreen .kcfCenterIntro {
   position:fixed;

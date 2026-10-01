@@ -715,6 +715,12 @@
   padding:8px 0 10px;
   transform:translate3d(0,calc(-1 * var(--olli-talk-message-lift, 0px)),0);
   transition:none;
+  animation:none;
+}
+#olliTalkBetaScreen.olliTalkViewportMoving .olliTalkBetaMessageList{
+  visibility:hidden;
+  transition:none;
+  animation:none;
 }
 
 #olliTalkBetaScreen .olliTalkBetaPreviewNote{

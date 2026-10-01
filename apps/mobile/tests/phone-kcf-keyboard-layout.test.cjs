@@ -244,6 +244,14 @@ test('QuickNote uses one full-height chat scroller without translating the messa
   assert.doesNotMatch(css,/--kcf-chat-reserve/);
 });
 
+test('QuickNote hides the message list while the keyboard viewport is moving and reveals it without animation', () => {
+  assert.match(js,/function beginKinderChatFeedbackMessageRelocation\(\)/);
+  assert.match(js,/function scheduleKinderChatFeedbackMessageRelocation\(delay = 140\)/);
+  assert.match(js,/input\.addEventListener\('focus',[\s\S]*?beginKinderChatFeedbackMessageRelocation\(\)[\s\S]*?scheduleKinderChatFeedbackMessageRelocation\(360\)/);
+  assert.match(js,/visualViewport\.addEventListener\('resize',[\s\S]*?scheduleKinderChatFeedbackMessageRelocation\(\)/);
+  assert.match(css,/#kinderChatFeedbackScreen\.kcfMessageRelocating \.kcfMessageList\{[\s\S]*?visibility:hidden;[\s\S]*?transition:none;[\s\S]*?animation:none;/);
+});
+
 test('QuickNote message rendering appends into kcfMessageList while scrollTop stays owned by kcfChatArea', () => {
   assert.match(index,/id="kcfChatArea"[\s\S]*?id="kcfMessageList"/);
   assert.match(js,/const messageList = getKinderChatFeedbackMessageList\(\)/);
