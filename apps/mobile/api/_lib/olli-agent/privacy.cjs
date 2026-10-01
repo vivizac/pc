@@ -129,9 +129,30 @@ async function prepareAgentPrivacyInput(text, requestContext, options = {}) {
   return prepareAgentPrivacyFromResolution(text, resolution);
 }
 
+async function prepareAbsencePrivacyInput(text, reasonText, requestContext, options = {}) {
+  const sourceText=String(text || '');
+  const reason=clean(reasonText);
+  let commandText=sourceText;
+
+  if(reason){
+    const index=commandText.lastIndexOf(reason);
+    if(index>=0){
+      commandText=commandText.slice(0,index)
+        .replace(/(?:사유|이유)\s*(?:는|은)?\s*[:：-]?\s*$/i,'')
+        .replace(/[,，:：-]\s*$/,'')
+        .trim();
+    }
+  }
+
+  const resolution=await resolveStudentReferences(commandText,requestContext,options);
+  return prepareAgentPrivacyFromResolution(commandText,resolution);
+}
+
+
 module.exports = {
   safeSubjectRefs,
   sanitizeAgentToolPayload,
   prepareAgentPrivacyFromResolution,
   prepareAgentPrivacyInput,
+  prepareAbsencePrivacyInput,
 };
