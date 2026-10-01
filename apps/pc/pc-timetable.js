@@ -105,6 +105,7 @@
     pane: 'schedule',
     scheduleDivision: 'elementary',
     pickupCollapsed: false,
+    saturdayCollapsed: false,
     attendanceDivision: 'elementary',
     attendanceSort: 'grade',
     attendanceMonth: dateKey(new Date()).slice(0, 7),
@@ -1163,12 +1164,12 @@
       let headerHeight = 0;
 
       if (isClassSplit('elementary', date.getDay(), storedTime, date)) {
-        contentRows = Math.ceil(slotEntryCount('elementary', date, storedTime, 'A') / 2)
-          + Math.ceil(slotEntryCount('elementary', date, storedTime, 'B') / 2);
+        contentRows = Math.ceil(slotEntryCount('elementary', date, storedTime, 'A') / 3)
+          + Math.ceil(slotEntryCount('elementary', date, storedTime, 'B') / 3);
         if (effectiveClassTeacherLabel('elementary', date, storedTime, 'A')) headerHeight += 14;
         if (effectiveClassTeacherLabel('elementary', date, storedTime, 'B')) headerHeight += 14;
       } else {
-        contentRows = Math.ceil(slotEntryCount('elementary', date, storedTime, '') / 2);
+        contentRows = Math.ceil(slotEntryCount('elementary', date, storedTime, '') / 3);
         if (effectiveClassTeacherLabel('elementary', date, storedTime, 'A')) headerHeight += 14;
       }
 
@@ -1197,7 +1198,14 @@
       const toggle = defaultHoliday
         ? `<button type="button" class="olliTtNormalClassBtn${holiday ? '' : ' active'}" data-tt-normal-class-date="${dateKey(date)}" data-tt-make-normal="${holiday ? '1' : '0'}">${holiday ? '정상수업' : '공휴일'}</button>`
         : '';
-      grid += `<div class="olliTtDay ${isToday(date) ? 'today ' : ''}${holiday ? 'holiday' : ''}"${holidayName(date) ? ` title="${esc(holidayName(date))}"` : ''}><strong>${DAYS[index]}요일</strong><span>${date.getMonth() + 1}월 ${date.getDate()}일${isToday(date) ? ' · 오늘' : ''}</span>${toggle}</div>`;
+      const dayText = `${DAYS[index]}요일`;
+      const dateText = `${date.getMonth() + 1}월 ${date.getDate()}일${isToday(date) ? ' · 오늘' : ''}`;
+      const dayHeading = index === 5
+        ? `<button type="button" class="olliTtSaturdayToggle" data-tt-saturday-toggle aria-expanded="${state.saturdayCollapsed ? 'false' : 'true'}" aria-label="${state.saturdayCollapsed ? '토요일 펼치기' : '토요일 접기'}">${state.saturdayCollapsed
+          ? '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5 10 7.5l5 5" /></svg>'
+          : '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5" /></svg>'}<strong>${dayText}</strong></button>`
+        : `<strong>${dayText}</strong>`;
+      grid += `<div class="olliTtDay ${index === 5 ? 'olliTtSaturdayDay ' : ''}${isToday(date) ? 'today ' : ''}${holiday ? 'holiday' : ''}"${holidayName(date) ? ` title="${esc(holidayName(date))}"` : ''}>${dayHeading}<span>${dateText}</span>${toggle}</div>`;
     });
     rows.forEach((row) => {
       if (halfHour) {
@@ -1219,7 +1227,7 @@
         ? '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5 10 7.5l5 5" /></svg>'
         : '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5" /></svg>'}<strong>${state.pickupCollapsed ? '픽업 펼치기' : '픽업 접기'}</strong></button>`
       : '';
-    return `<section class="olliTtSection ${division}${division === 'kinder' && state.pickupCollapsed ? ' pickupCollapsed' : ''}"><div class="olliTtScroll">${grid}${division === 'kinder' ? pickupGridHtml(dates) : ''}</div>${pickupToggle}</section>`;
+    return `<section class="olliTtSection ${division}${division === 'kinder' && state.pickupCollapsed ? ' pickupCollapsed' : ''}${state.saturdayCollapsed ? ' saturdayCollapsed' : ''}"><div class="olliTtScroll">${grid}${division === 'kinder' ? pickupGridHtml(dates) : ''}</div>${pickupToggle}</section>`;
   }
 
   function renderTimetable() {
@@ -1338,6 +1346,18 @@
 
   function onTimetableClick(event) {
     if (handleScheduleControl(event)) return;
+    const saturdayToggle = event.target.closest('[data-tt-saturday-toggle]');
+    if (saturdayToggle) {
+      state.saturdayCollapsed = !state.saturdayCollapsed;
+      const section = saturdayToggle.closest('.olliTtSection');
+      if (section) section.classList.toggle('saturdayCollapsed', state.saturdayCollapsed);
+      saturdayToggle.setAttribute('aria-expanded', state.saturdayCollapsed ? 'false' : 'true');
+      saturdayToggle.setAttribute('aria-label', state.saturdayCollapsed ? '토요일 펼치기' : '토요일 접기');
+      saturdayToggle.innerHTML = `${state.saturdayCollapsed
+        ? '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5 10 7.5l5 5" /></svg>'
+        : '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5" /></svg>'}<strong>토요일</strong>`;
+      return;
+    }
     const pickupToggle = event.target.closest('[data-tt-pickup-toggle]');
     if (pickupToggle) {
       state.pickupCollapsed = !state.pickupCollapsed;

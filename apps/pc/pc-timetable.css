@@ -110,7 +110,8 @@
   box-shadow: 0 7px 20px rgba(27, 39, 58, .045);
 }
 #recordRoomScreen .olliTtScroll { min-width: 0; min-height: 0; display: flex; flex: 1; flex-direction: column; overflow: auto; }
-#recordRoomScreen .olliTtGrid { --olli-tt-class-row-height:108px; width: 100%; height: 100%; min-width: 0; box-sizing: border-box; display: grid; grid-template-columns: 56px repeat(6, minmax(0, 1fr)); grid-template-rows: 52px repeat(var(--olli-tt-rows), minmax(var(--olli-tt-class-row-height), 1fr)); }
+#recordRoomScreen .olliTtGrid { --olli-tt-class-row-height:108px; width: 100%; height: 100%; min-width: 0; box-sizing: border-box; display: grid; grid-template-columns: 56px repeat(5, minmax(0, 1fr)) minmax(0, 1fr); grid-template-rows: 52px repeat(var(--olli-tt-rows), minmax(var(--olli-tt-class-row-height), 1fr)); transition: grid-template-columns .28s ease; }
+#recordRoomScreen .olliTtSection.saturdayCollapsed .olliTtGrid { grid-template-columns: 56px repeat(5, minmax(0, 1fr)) 82px; }
 #recordRoomScreen .olliTtGrid.olliTtHalfHourGrid { height:auto; min-height:calc(52px + (var(--olli-tt-rows) * var(--olli-tt-class-row-height))); grid-template-rows:52px repeat(var(--olli-tt-rows), var(--olli-tt-class-row-height)); }
 #recordRoomScreen .olliTtSection.elementary .olliTtGrid { min-height: 100%; }
 #recordRoomScreen .olliTtSection.kinder .olliTtScroll { overflow-y: hidden; }
@@ -141,6 +142,12 @@
 #recordRoomScreen .olliTtDay.today strong,
 #recordRoomScreen .olliTtDay.today span { color: #0A73DC; }
 #recordRoomScreen .olliTtDay { position: relative; }
+#recordRoomScreen .olliTtSaturdayToggle { padding:0; border:0; display:inline-flex; align-items:center; justify-content:center; gap:2px; color:inherit; background:transparent; font:inherit; cursor:pointer; }
+#recordRoomScreen .olliTtSaturdayToggle .olliTtPickupToggleIcon { transform:rotate(-90deg); }
+#recordRoomScreen .olliTtSection.saturdayCollapsed .olliTtSaturdayDay { padding-left:4px; padding-right:4px; }
+#recordRoomScreen .olliTtSection.saturdayCollapsed .olliTtSaturdayDay .olliTtNormalClassBtn { display:none; }
+#recordRoomScreen .olliTtSection.saturdayCollapsed .olliTtGrid > :nth-child(7n):not(.olliTtDay) { padding-left:0; padding-right:0; overflow:hidden; pointer-events:none; cursor:default; }
+#recordRoomScreen .olliTtSection.saturdayCollapsed .olliTtGrid > :nth-child(7n):not(.olliTtDay) > * { opacity:0; visibility:hidden; pointer-events:none; }
 #recordRoomScreen .olliTtDay.holiday { background: #e5484d; }
 #recordRoomScreen .olliTtDay.holiday strong, #recordRoomScreen .olliTtDay.holiday span { color: #fff; }
 #recordRoomScreen .olliTtNormalClassBtn { position:absolute; right:4px; top:50%; transform:translateY(-50%); height:24px; padding:0 7px; border:1px solid rgba(255,255,255,.7); border-radius:8px; color:#fff; background:rgba(120,0,0,.18); font:700 calc(8px * var(--olli-text-scale)) 'Pretendard',sans-serif; cursor:pointer; }
@@ -278,13 +285,17 @@
   max-height: 258px;
   flex: 0 0 258px;
   display: grid;
-  grid-template-columns: 56px repeat(6, minmax(0, 1fr));
+  grid-template-columns: 56px repeat(5, minmax(0, 1fr)) minmax(0, 1fr);
   grid-template-rows: 34px repeat(2, 112px);
   overflow: hidden;
   background: #fff;
   transform: translateY(0);
   opacity: 1;
-  transition: flex-basis .28s ease, height .28s ease, max-height .28s ease, transform .28s ease, opacity .2s ease;
+  transition: flex-basis .28s ease, height .28s ease, max-height .28s ease, transform .28s ease, opacity .2s ease, grid-template-columns .28s ease;
+}
+#recordRoomScreen .olliTtSection.saturdayCollapsed .olliTtPickupGrid { grid-template-columns: 56px repeat(5, minmax(0, 1fr)) 82px; }
+#recordRoomScreen .olliTtSection.saturdayCollapsed .olliTtPickupGrid > :nth-child(7n + 1):not(.olliTtPickupTitle) { padding-left:0; padding-right:0; overflow:hidden; pointer-events:none; cursor:default; }
+#recordRoomScreen .olliTtSection.saturdayCollapsed .olliTtPickupGrid > :nth-child(7n + 1):not(.olliTtPickupTitle) > * { opacity:0; visibility:hidden; pointer-events:none; }
 }
 #recordRoomScreen .olliTtPickupGrid.halfHour {
   height: 594px;
