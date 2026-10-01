@@ -1490,6 +1490,10 @@
       };
     }
 
+    if (isPickupUpdateAgentCandidate(commandText, router)) {
+      return resolvePickupUpdateAgentTurn(commandText, current, replyToMessageId);
+    }
+
     if (isPickupAddAgentCandidate(commandText, router)) {
       return resolvePickupAddAgentTurn(commandText, current, replyToMessageId);
     }
