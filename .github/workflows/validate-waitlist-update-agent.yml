@@ -34,6 +34,9 @@ jobs:
         run: |
           node --test tests/olli-agent-waitlist-update-prepare-tool.test.cjs
           node --test tests/olli-agent-waitlist-update-production-contract.test.cjs
+      - name: Stage common runtime for PC contracts
+        working-directory: apps/pc
+        run: node scripts/stage-common.cjs
       - name: Run Router and PC bridge contracts
         working-directory: apps/pc
         run: |
