@@ -283,12 +283,13 @@ function renderKinderChatFeedbackGapDebug(label) {
     const el = document.createElement('pre');
     el.id = 'kcfGapDebugOverlay';
     el.style.cssText = [
-      'position:fixed','left:8px','right:8px','top:8px','z-index:999999',
+      'position:absolute','left:8px','right:8px','top:8px','z-index:999999',
       'margin:0','padding:8px 10px','border-radius:10px','background:rgba(0,0,0,.80)',
       'color:#fff','font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace',
       'white-space:pre-wrap','pointer-events:none'
     ].join(';');
-    document.body.appendChild(el);
+    const host = document.getElementById('kcfComposerLayer') || document.body;
+    host.appendChild(el);
     kcfGapDebugOverlay = el;
   }
 
