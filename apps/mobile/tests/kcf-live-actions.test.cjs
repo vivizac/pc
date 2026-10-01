@@ -48,6 +48,7 @@ test('automatic LIVE save reuses canonical Supabase feedback storage', () => {
   assert.match(save, /linkFeedbackPhotosToStudent\(item, finalStudentId\)/);
   assert.match(save, /item\.saved = true/);
   assert.match(save, /syncKinderChatFeedbackLiveItemToInbox\(item\)/);
+  assert.doesNotMatch(save, /확인이 필요한 문자가 있어 자동 저장하지 않았어요/);
   assert.doesNotMatch(save, /setKinderChatFeedbackLiveActionLabel|저장 중|저장 완료/);
 });
 
@@ -91,7 +92,7 @@ test('editing an already auto-saved LIVE response patches the server and refresh
 });
 
 test('auto-save LIVE assets are cache-busted', () => {
-  assert.match(html, /kinder-feedback\.js\?v=20261002-auto-save-actions-1/);
+  assert.match(html, /kinder-feedback\.js\?v=20261002-auto-save-actions-2/);
   assert.match(html, /kinder-feedback\.css\?v=20261002-auto-save-actions-1/);
   assert.match(html, /olli-feedback-registration-phone-adapter\.js\?v=20261002-auto-save-actions-1/);
 });

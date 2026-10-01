@@ -1499,14 +1499,6 @@ async function saveKinderChatFeedbackLive(id, selectedStudentId = '') {
   if (!item || !String(item.resultText || '').trim() || item.status === 'streaming') return false;
   if (item.saved || item.reviewed) return true;
 
-  const segments = typeof getSuspiciousFeedbackSegments === 'function'
-    ? getSuspiciousFeedbackSegments(item.resultText)
-    : [];
-  if (segments.length) {
-    try { showPushToast('확인이 필요한 문자가 있어 자동 저장하지 않았어요. 수정 후 다시 확인해 주세요.'); } catch(e) {}
-    return false;
-  }
-
   let finalStudentId = String(selectedStudentId || item.studentId || item.savedStudentId || '').trim();
   if (!finalStudentId) {
     const candidates = typeof getKinderChatFeedbackSaveStudentCandidates === 'function'
@@ -1690,12 +1682,12 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
       ).trim();
       if (!finalText) throw new Error('응답 본문이 비어 있습니다.');
 
-      item.status = 'done';
       item.resultText = finalText;
       markKinderChatFeedbackPromptCacheTouched();
       item.suspiciousSegments = typeof getSuspiciousFeedbackSegments === 'function'
         ? getSuspiciousFeedbackSegments(finalText)
         : [];
+      item.status = item.suspiciousSegments.length ? 'review' : 'done';
       item.updatedAt = new Date().toISOString();
       persistKinderChatFeedbackLiveSessionNow();
       const successTeacherMode = getKinderChatFeedbackTeacherMode();

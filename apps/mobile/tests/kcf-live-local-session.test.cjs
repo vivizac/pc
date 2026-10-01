@@ -25,7 +25,7 @@ assert(js.includes('sanitizeKinderChatFeedbackLiveAttachments'));
 assert(js.includes("!/^data:/i.test(text)"));
 assert(js.includes('syncKinderChatFeedbackLiveItemToInbox(item)'));
 assert(js.includes('await saveKinderChatFeedbackLive(item.id, item.studentId)'));
-assert(html.includes('kinder-feedback.js?v=20261002-auto-save-actions-1'));
+assert(html.includes('kinder-feedback.js?v=20261002-auto-save-actions-2'));
 assert(html.includes('kinder-feedback.css?v=20261002-auto-save-actions-1'));
 
 const sessionKeyIndex = js.indexOf('KCF_LIVE_SESSION_KEY_PREFIX');
