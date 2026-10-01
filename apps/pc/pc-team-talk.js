@@ -1342,6 +1342,43 @@
     return { message };
   }
 
+  function parseTimetableReadAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parseQueryIntent !== 'function') return null;
+    try {
+      const parsed=router.parseQueryIntent(commandText);
+      return parsed && ['find_available_slots','find_roster_entries','find_pickups','multi_read_query'].includes(clean(parsed.intent))
+        ? parsed
+        : null;
+    } catch (error) {
+      console.warn('PC 시간표 읽기 Agent 후보 판별 실패:', error?.message || error);
+      return null;
+    }
+  }
+
+  function isStudentAttendanceReadCandidate(commandText) {
+    const compact=clean(commandText).replace(/\s+/g,'');
+    if (!compact) return false;
+    return /(?:출결|출석(?:기록|현황|내역)?|결석(?:기록|현황|내역|횟수))/.test(compact)
+      && /(?:알려|보여|확인|조회|기록|현황|내역|횟수|몇번|몇회|했어|했나|있어|어때)/.test(compact);
+  }
+
+  function isStudentPickupReadCandidate(commandText) {
+    const compact=clean(commandText).replace(/\s+/g,'');
+    return !!compact && (
+      /(?:픽업|하원).*(?:일정|시간|어디|몇시|확인|알려|보여|조회)/.test(compact)
+      || /(?:일정|시간|어디|몇시).*(?:픽업|하원)/.test(compact)
+    );
+  }
+
+  function isStudentScheduleReadCandidate(commandText) {
+    const compact=clean(commandText).replace(/\s+/g,'');
+    return !!compact && (
+      /시간표/.test(compact)
+      || /수업.*(?:언제|요일|몇시|시간|스케줄)/.test(compact)
+      || /(?:언제|요일|몇시|시간|스케줄).*수업/.test(compact)
+    );
+  }
+
   function parseBatchAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router || typeof router.parseMultiWriteIntent !== 'function') return null;
     try {
@@ -1594,6 +1631,43 @@
       console.warn('PC 픽업 Agent 후보 판별 실패:', error?.message || error);
       return false;
     }
+  }
+
+  async function resolveSourceBoundReadAgentTurn({
+    mode,
+    commandText,
+    readIntent=null,
+    current,
+    replyToMessageId,
+  }) {
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('시간표 조회 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const body={
+      mode,
+      academyId:current?.academyId || '',
+      sessionToken:current?.sessionToken || '',
+      message:clean(commandText),
+      sourceMessageId
+    };
+    if(readIntent) body.readIntent=readIntent;
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !clean(data?.output)){
+      throw new Error(data?.error || data?.message || '시간표 읽기 Agent 응답을 받지 못했습니다.');
+    }
+    const replyText=clean(data.output);
+    return {
+      assistantMessage:await saveAssistantReply(current,replyText,sourceMessageId),
+      replyText,
+      recordAi:false
+    };
   }
 
   async function resolveBatchAgentTurn({
@@ -2577,6 +2651,44 @@
 
     if (isMakeupAddAgentCandidate(commandText, router)) {
       return resolveMakeupAddAgentTurn(commandText, current, replyToMessageId);
+    }
+
+    const timetableReadCandidate=parseTimetableReadAgentCandidate(commandText,router);
+    if(timetableReadCandidate){
+      return resolveSourceBoundReadAgentTurn({
+        mode:'timetable_read',
+        commandText,
+        readIntent:timetableReadCandidate,
+        current,
+        replyToMessageId
+      });
+    }
+
+    if(isStudentAttendanceReadCandidate(commandText)){
+      return resolveSourceBoundReadAgentTurn({
+        mode:'attendance_read',
+        commandText,
+        current,
+        replyToMessageId
+      });
+    }
+
+    if(isStudentPickupReadCandidate(commandText)){
+      return resolveSourceBoundReadAgentTurn({
+        mode:'pickup_read',
+        commandText,
+        current,
+        replyToMessageId
+      });
+    }
+
+    if(isStudentScheduleReadCandidate(commandText)){
+      return resolveSourceBoundReadAgentTurn({
+        mode:'schedule_read',
+        commandText,
+        current,
+        replyToMessageId
+      });
     }
 
     if (router && typeof router.prepareAction === 'function') {
