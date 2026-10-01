@@ -186,14 +186,14 @@
 #recordRoomScreen .olliTtClassLane.kinder + .olliTtClassLane.kinder { border-left: 0; border-top: 1px solid #dfe4e9; }
 #recordRoomScreen .olliTtClassLane.elementary { min-height: var(--olli-tt-class-row-height); padding: 6px 4px; border: 0; border-radius: 0; overflow: visible; }
 #recordRoomScreen .olliTtClassLane.elementary + .olliTtClassLane.elementary { border-top: 1px solid #dfe4e9; }
-#recordRoomScreen .olliTtClassLane.elementary .olliTtEntries { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-#recordRoomScreen .olliTtClassLane.kinder .olliTtEntries { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#recordRoomScreen .olliTtClassLane.elementary .olliTtEntries { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#recordRoomScreen .olliTtClassLane.kinder .olliTtEntries { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 #recordRoomScreen .olliTtClassLaneHead { margin: 0 1px 4px; display: flex; align-items: center; justify-content: space-between; gap: 4px; color: #9ba2ac; font-size: calc(8px * var(--olli-text-scale)); font-weight: 720; }
 #recordRoomScreen .olliTtClassLaneHead strong { color: #697383; font-size: calc(9px * var(--olli-text-scale)); font-weight: 850; }
 #recordRoomScreen .olliTtMergedClassHead { margin-bottom: 5px; padding-bottom: 0; border-bottom: 0; }
 #recordRoomScreen .olliTtMergedClassHead strong { font-size: calc(9px * var(--olli-text-scale)); font-weight: 850; }
 #recordRoomScreen .olliTtClassLane .olliTtEntries { grid-template-columns: 1fr; }
-#recordRoomScreen .olliTtEntries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; }
+#recordRoomScreen .olliTtEntries { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
 #recordRoomScreen .olliTtCellMemoCard {
   grid-column: 1 / -1;
   width: 100%;
