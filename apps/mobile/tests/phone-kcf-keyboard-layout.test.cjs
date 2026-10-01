@@ -22,6 +22,22 @@ test('empty KCF chat still owns vertical gestures without page overscroll', () =
   assert.match(sentinel, /pointer-events:none;/);
 });
 
+test('QuickNote counters native iOS visual viewport pan only on the non-composer shell', () => {
+  assert.match(js, /function readKinderChatFeedbackVisualPanY\(\)/);
+  assert.match(js, /document\.body\?\.getBoundingClientRect\?\.\(\)\.top/);
+  assert.match(js, /return Math\.max\(viewportTop, bodyPan\)/);
+  assert.match(js, /--kcf-layout-pan-compensation/);
+  assert.match(js, /syncKinderChatFeedbackLayoutViewportAnchor\(\);\s*syncKinderChatFeedbackComposerViewport\(\);/);
+
+  const topLayer = css.match(/#kcfPersistentTopLayer \{[^}]*\}/)?.[0] || '';
+  const inner = css.match(/#kinderChatFeedbackScreen \.kcfInner \{[^}]*\}/)?.[0] || '';
+  const composer = css.match(/#kinderChatFeedbackScreen \.kcfComposerLayer \{[^}]*\}/)?.[0] || '';
+
+  assert.match(topLayer, /transform:translate3d\(0,var\(--kcf-layout-pan-compensation, 0px\),0\);/);
+  assert.match(inner, /transform:translate3d\(0,var\(--kcf-layout-pan-compensation, 0px\),0\);/);
+  assert.doesNotMatch(composer, /kcf-layout-pan-compensation/);
+});
+
 test('KCF composer layer follows visualViewport without locking document scroll', () => {
   assert.match(js, /function syncKinderChatFeedbackComposerViewport\(\)/);
   assert.match(js, /window\.visualViewport/);

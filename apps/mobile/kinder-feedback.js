@@ -274,6 +274,46 @@ function syncKinderChatFeedbackComposerViewport() {
   if (!layer) return;
   applyKinderChatFeedbackComposerViewportGeometry(layer, readKinderChatFeedbackComposerViewportGeometry());
 }
+function readKinderChatFeedbackVisualPanY() {
+  const viewport = window.visualViewport;
+  const viewportTop = Math.max(0, Math.round(Number(viewport?.offsetTop || 0)));
+  let bodyPan = 0;
+
+  try {
+    const bodyTop = Number(document.body?.getBoundingClientRect?.().top || 0);
+    const rootScroll = Math.max(
+      Math.abs(Number(window.scrollY || 0)),
+      Math.abs(Number(document.documentElement?.scrollTop || 0)),
+      Math.abs(Number(document.body?.scrollTop || 0))
+    );
+    if (rootScroll <= 1 && bodyTop < -1) bodyPan = Math.max(0, Math.round(-bodyTop));
+  } catch (_) {}
+
+  return Math.max(viewportTop, bodyPan);
+}
+function syncKinderChatFeedbackLayoutViewportAnchor() {
+  const screen = getKinderChatFeedbackScreen();
+  const input = getKinderChatFeedbackInput();
+  const root = document.documentElement;
+  if (!root) return;
+
+  if (!screen || !isKinderChatFeedbackVisible()) {
+    root.style.setProperty('--kcf-layout-pan-compensation', '0px');
+    return;
+  }
+
+  const viewport = window.visualViewport;
+  const layoutHeight = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
+  const viewportShrunk = viewport ? (layoutHeight - Number(viewport.height || 0)) > 40 : false;
+  const inputFocused = !!input && document.activeElement === input;
+  const keyboardTracking = inputFocused
+    || screen.classList.contains('kcfKeyboardOpen')
+    || viewportShrunk
+    || Number(viewport?.offsetTop || 0) > 1;
+
+  const panY = keyboardTracking ? readKinderChatFeedbackVisualPanY() : 0;
+  root.style.setProperty('--kcf-layout-pan-compensation', panY + 'px');
+}
 function getKinderChatFeedbackViewportBottom() {
   const viewport = window.visualViewport;
   if (!viewport) return Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
@@ -307,6 +347,7 @@ function syncKinderChatFeedbackViewport() {
   const input = getKinderChatFeedbackInput();
   if (!screen) return;
 
+  syncKinderChatFeedbackLayoutViewportAnchor();
   syncKinderChatFeedbackComposerViewport();
 
   const inputFocused = !!input && document.activeElement === input;

@@ -10,6 +10,7 @@
   display:none;
   pointer-events:none;
   z-index:5000;
+  transform:translate3d(0,var(--kcf-layout-pan-compensation, 0px),0);
 }
 #kcfPersistentTopLayer.show {
   display:block;
@@ -25,6 +26,7 @@
   flex-direction:column;
   background:#fff;
   overflow:hidden;
+  transform:translate3d(0,var(--kcf-layout-pan-compensation, 0px),0);
 }
 
 #kinderChatFeedbackScreen .kcfInner::before{
