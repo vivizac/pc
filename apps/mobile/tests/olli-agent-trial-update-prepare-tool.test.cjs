@@ -221,11 +221,13 @@ test('trial tool schema exposes no real guest name or internal ids',()=>{
   assert.doesNotMatch(schema,/guestName|studentName|oneTimeSessionId|timeSlot|academyId|memberId|division/);
 });
 
-test('endpoint uses trial-specific privacy for trial update probe',()=>{
+test('endpoint keeps trial probe and adds privacy-safe production mode',()=>{
   const endpoint=fs.readFileSync(path.join(__dirname,'../api/olli-agent.js'),'utf8');
   assert.match(endpoint,/'trial_update_prepare_probe'/);
   assert.match(endpoint,/prepareTrialGuestPrivacyInput\(message, requestContext\)/);
   assert.match(endpoint,/runTrialUpdatePrepareProbe/);
   assert.match(endpoint,/trial_update_prepare_probe에는 재시도 중복 방지용 requestId가 필요합니다/);
-  assert.doesNotMatch(endpoint,/mode === 'trial_update_prepare'/);
+  assert.match(endpoint,/mode === 'trial_update_prepare'/);
+  assert.match(endpoint,/runTrialUpdatePrepare\(/);
+  assert.match(endpoint,/OLLI_AGENT_TRIAL_SOURCE_MESSAGE_REQUIRED/);
 });
