@@ -22,21 +22,21 @@ test('empty KCF chat still owns vertical gestures without page overscroll', () =
   assert.match(sentinel, /pointer-events:none;/);
 });
 
-test('KCF composer layer follows visualViewport without locking document scroll', () => {
-  assert.match(js, /function syncKinderChatFeedbackComposerViewport\(\)/);
+test('KCF composer follows visualViewport and locks settled keyboard geometry like Team Chat', () => {
+  assert.match(js, /function syncKinderChatFeedbackComposerViewport\(options = \{\}\)/);
+  assert.match(js, /function lockKinderChatFeedbackComposerViewport\(\)/);
+  assert.match(js, /function releaseKinderChatFeedbackComposerViewportLock\(\)/);
+  assert.match(js, /kcfComposerViewportLock/);
+  assert.match(js, /kcfComposerViewportLocked/);
   assert.match(js, /window\.visualViewport/);
   assert.match(js, /viewport \? Number\(viewport\.offsetLeft \|\| 0\) : 0/);
   assert.match(js, /viewport \? Number\(viewport\.offsetTop \|\| 0\) : 0/);
   assert.match(js, /viewport \? Number\(viewport\.width \|\| layoutWidth\) : layoutWidth/);
   assert.match(js, /viewport \? Number\(viewport\.height \|\| layoutHeight\) : layoutHeight/);
-  assert.match(js, /--kcf-composer-vv-left/);
-  assert.match(js, /--kcf-composer-vv-top/);
-  assert.match(js, /--kcf-composer-vv-width/);
-  assert.match(js, /--kcf-composer-vv-height/);
-  assert.match(js, /visualViewport\.addEventListener\('resize', syncKinderChatFeedbackViewport/);
-  assert.match(js, /visualViewport\.addEventListener\('scroll',[\s\S]*?resetKinderChatFeedbackRootViewportScroll\(\)/);
-  assert.doesNotMatch(js, /kcfComposerViewportLocked/);
-  assert.doesNotMatch(js, /preventKinderChatFeedbackKeyboardBackgroundTouchMove/);
+  assert.match(js, /visualViewport\.addEventListener\('resize',[\s\S]*?source:'visual-resize'/);
+  assert.match(js, /visualViewport\.addEventListener\('scroll',[\s\S]*?if \(kcfComposerViewportLock\)/);
+  assert.doesNotMatch(js, /resetKinderChatFeedbackRootViewportScroll/);
+  assert.doesNotMatch(js, /window\.scrollTo\(0, 0\)/);
 });
 
 test('KCF composer uses a dedicated fixed layer outside the chat inner layer', () => {
@@ -62,17 +62,17 @@ test('KCF composer uses a dedicated fixed layer outside the chat inner layer', (
   assert.match(autoCss, /kcfDedicatedEditSheetOpen #kinderChatFeedbackScreen \.kcfComposerLayer/);
 });
 
-test('inline KCF keeps normal composer position without document scroll locking', () => {
+test('inline KCF keeps page scroll native while locking only the composer visual viewport', () => {
   assert.match(js, /let kcfKeyboardBaselineBottom = 0;/);
+  assert.match(js, /let kcfComposerViewportLock = null;/);
+  assert.match(js, /let kcfKeyboardTransitionActive = false;/);
   assert.match(js, /function getKinderChatFeedbackViewportBottom\(\)/);
   assert.match(js, /kcfKeyboardBaselineBottom - currentBottom/);
-  assert.match(js, /viewportShrunk/);
   assert.match(js, /screen\.classList\.toggle\('kcfKeyboardOpen', keyboardOpen\)/);
+  assert.match(js, /scheduleKinderChatFeedbackComposerViewportLock\(\)/);
   assert.doesNotMatch(js, /--kcf-composer-bottom/);
-  assert.doesNotMatch(js, /kcfComposerViewportLocked/);
-  assert.doesNotMatch(js, /setKinderChatFeedbackComposerViewportLocked/);
-  assert.doesNotMatch(js, /preventKinderChatFeedbackKeyboardBackgroundTouchMove/);
-  assert.doesNotMatch(js, /composerVisualOffset/);
+  assert.doesNotMatch(js, /resetKinderChatFeedbackRootViewportScroll/);
+  assert.doesNotMatch(js, /window\.scrollTo\(0, 0\)/);
 });
 
 test('keyboard-open KCF keeps the composer four pixels above the visual viewport bottom', () => {
@@ -207,17 +207,20 @@ test('QuickNote input grows with content while the keyboard is open and remains 
 
 
 
-test('QuickNote keyboard controller follows only the composer and leaves chat geometry native', () => {
-  assert.match(js,/function syncKinderChatFeedbackViewport\(\)/);
+test('QuickNote keyboard controller matches Team Chat viewport ownership without moving root page', () => {
+  assert.match(js,/function syncKinderChatFeedbackViewport\(options = \{\}\)/);
   assert.match(js,/function bindKinderChatFeedbackViewport\(\)/);
-  assert.match(js,/function syncKinderChatFeedbackComposerViewport\(\)/);
-  assert.match(js,/function resetKinderChatFeedbackRootViewportScroll\(\)/);
-  assert.match(js,/window\.scrollTo\(0, 0\)/);
+  assert.match(js,/function syncKinderChatFeedbackComposerViewport\(options = \{\}\)/);
+  assert.match(js,/kcfComposerViewportLock/);
+  assert.match(js,/kcfKeyboardTransitionActive/);
+  assert.match(js,/kcfViewportMoving/);
+  assert.match(js,/kcfChatGestureActive/);
+  assert.match(js,/if \(kcfChatGestureActive\)[\s\S]*?return/);
+  assert.doesNotMatch(js,/resetKinderChatFeedbackRootViewportScroll/);
+  assert.doesNotMatch(js,/window\.scrollTo\(0, 0\)/);
+  assert.doesNotMatch(js,/document\.documentElement\.scrollTop = 0/);
+  assert.doesNotMatch(js,/document\.body\.scrollTop = 0/);
   assert.doesNotMatch(js,/syncKinderChatFeedbackChatToComposer/);
-  assert.doesNotMatch(js,/kcfComposerViewportLock/);
-  assert.doesNotMatch(js,/kcfKeyboardTransitionActive/);
-  assert.doesNotMatch(js,/kcfViewportMoving/);
-  assert.doesNotMatch(js,/kcfChatGestureActive/);
 });
 
 test('QuickNote uses one full-height chat scroller without translating the message layer', () => {
@@ -295,7 +298,7 @@ test('QuickNote composer does not hand vertical drag gestures to the page while 
 });
 
 
-test('QuickNote touch retap protects the focused input from transient iOS blur', () => {
+test('QuickNote first touch focuses with preventScroll and retap protects transient iOS blur', () => {
   const start = js.indexOf("input.addEventListener('pointerdown'");
   const end = js.indexOf("input.addEventListener('focus'", start);
   const block = js.slice(start, end);
@@ -303,7 +306,8 @@ test('QuickNote touch retap protects the focused input from transient iOS blur',
   assert.match(block,/event\.pointerType === 'touch'/);
   assert.match(block,/teacherEnabled/);
   assert.match(block,/kcfKeepInputFocusUntil = Date\.now\(\) \+ 900/);
-  assert.doesNotMatch(block,/input\.focus\(/);
+  assert.match(block,/document\.activeElement !== input/);
+  assert.match(block,/input\.focus\(\{ preventScroll:true \}\)/);
   assert.match(js,/if \(Date\.now\(\) < kcfKeepInputFocusUntil\)[\s\S]*?currentInput\.focus\(\{ preventScroll:true \}\)/);
 });
 
