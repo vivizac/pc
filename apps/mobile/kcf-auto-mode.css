@@ -148,7 +148,7 @@
   row-gap:4px;
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfInput {
-  grid-column:2 / -1;
+  grid-column:1 / -1;
   grid-row:1;
   width:100%;
   height:34px;
@@ -164,8 +164,7 @@
   overflow:visible;
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfAttachBtn {
-  grid-column:1;
-  grid-row:2;
+  display:none;
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfAutoStudentRoster {
   position:static;
@@ -179,7 +178,7 @@
 }
 #kinderChatFeedbackScreen.kcfTeacherRosterMode .kcfTeacherBtn {
   grid-column:1;
-  grid-row:1;
+  grid-row:2;
   justify-self:start;
   margin-left:0;
   margin-right:0;

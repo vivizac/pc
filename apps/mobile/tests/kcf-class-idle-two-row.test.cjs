@@ -12,7 +12,7 @@ const html = fs.readFileSync('index.html', 'utf8');
 test('closed Class mode keeps the inline composer in two rows', () => {
   assert.match(css, /kcfTeacherRosterMode \.kcfComposer \{[\s\S]*?height:auto;[\s\S]*?max-height:none;/);
   assert.match(css, /kcfTeacherRosterMode \.kcfComposerBottom \{[\s\S]*?display:grid;[\s\S]*?grid-template-rows:minmax\(34px, auto\) 38px;/);
-  assert.match(css, /kcfTeacherRosterMode \.kcfInput \{[\s\S]*?grid-column:2 \/ -1;[\s\S]*?grid-row:1;/);
+  assert.match(css, /kcfTeacherRosterMode \.kcfInput \{[\s\S]*?grid-column:1 \/ -1;[\s\S]*?grid-row:1;/);
   assert.match(css, /kcfTeacherRosterMode \.kcfAutoStudentRoster \{[\s\S]*?grid-column:2;[\s\S]*?grid-row:2;[\s\S]*?position:static;/);
 });
 
@@ -29,10 +29,11 @@ test('successful Class feedback still auto-advances to the next student before c
   assert.ok(complete.indexOf('selectNextAvailableAutoStudent') < complete.indexOf('onSuccessfulSubmit'));
 });
 
-test('active Class control becomes compact C beside the first-row input', () => {
+test('active Class control is uppercase C in the second-row add slot', () => {
   assert.match(runtime, /btn\.textContent = state\.loading \? '···' : \(state\.enabled \? 'C' : 'Class'\)/);
   assert.match(css, /\.kcfTeacherBtn\.active \{[\s\S]*?width:33px !important;[\s\S]*?min-width:33px !important;[\s\S]*?border-radius:50% !important;/);
-  assert.match(css, /kcfTeacherRosterMode \.kcfTeacherBtn \{[\s\S]*?grid-column:1;[\s\S]*?grid-row:1;[\s\S]*?justify-self:start;/);
+  assert.match(css, /kcfTeacherRosterMode \.kcfTeacherBtn \{[\s\S]*?grid-column:1;[\s\S]*?grid-row:2;[\s\S]*?justify-self:start;/);
+  assert.match(css, /kcfTeacherRosterMode \.kcfAttachBtn \{[\s\S]*?display:none;/);
 });
 
 test('active Class sheet control also uses compact C', () => {
@@ -52,7 +53,7 @@ test('tapping the idle Class input reopens the sheet instead of focusing inline'
 });
 
 test('Class idle layout assets are cache busted', () => {
-  assert.match(html, /kcf-auto-mode\.css\?v=20261001-class-active-c-1/);
+  assert.match(html, /kcf-auto-mode\.css\?v=20261001-class-c-second-row-1/);
   assert.match(html, /kcf-auto-mode-runtime\.js\?v=20261001-class-active-c-1/);
   assert.match(html, /kcf-teacher-sheet\.css\?v=20261001-class-active-c-1/);
   assert.match(html, /kcf-teacher-sheet\.js\?v=20261001-class-active-c-1/);
