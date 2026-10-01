@@ -149,10 +149,43 @@ async function prepareAbsencePrivacyInput(text, reasonText, requestContext, opti
 }
 
 
+async function prepareTimetableMemoPrivacyInput(text, memoNote, requestContext, options = {}) {
+  const sourceText=String(text || '');
+  const note=clean(memoNote);
+  let commandText=sourceText;
+
+  if(note){
+    const quotedVariants=[
+      '“'+note+'”',
+      '‘'+note+'’',
+      '"'+note+'"',
+      "'"+note+"'"
+    ];
+    for(const quoted of quotedVariants){
+      if(commandText.includes(quoted)){
+        commandText=commandText.replace(quoted,' ');
+        break;
+      }
+    }
+    if(commandText.includes(note)){
+      commandText=commandText.replace(note,' ');
+    }
+    commandText=commandText
+      .replace(/(?:내용|문구)\s*[:：-]?\s*/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
+  const resolution=await resolveStudentReferences(commandText,requestContext,options);
+  return prepareAgentPrivacyFromResolution(commandText,resolution);
+}
+
+
 module.exports = {
   safeSubjectRefs,
   sanitizeAgentToolPayload,
   prepareAgentPrivacyFromResolution,
   prepareAgentPrivacyInput,
   prepareAbsencePrivacyInput,
+  prepareTimetableMemoPrivacyInput,
 };
