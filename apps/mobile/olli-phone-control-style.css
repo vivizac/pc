@@ -48,13 +48,7 @@
 #olliTalkBetaScreen .olliTalkHeaderTools,
 #observationRosterScreen .memoRosterSearchPill,
 #kinderChatFeedbackScreen .kcfComposer,
-#olliTalkBetaScreen .olliTalkBetaComposer,
-#recordRoomScreen #studentAddBtn.recordAddBtn,
-#recordRoomScreen #recordSearchGroup.recordSearchGroup,
-#recordRoomScreen #recordSearchGroup.recordSearchOnlyGroup,
-#recordRoomScreen .recordSearchClose,
-#recordRoomScreen #recordSortBtn,
-#recordRoomScreen .recordModeSettingsBtn{
+#olliTalkBetaScreen .olliTalkBetaComposer{
   border:.5px solid var(--olli-phone-glass-border) !important;
   background:var(--olli-phone-glass-bg) !important;
   box-shadow:var(--olli-phone-academy-button-shadow) !important;
