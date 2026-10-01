@@ -285,7 +285,7 @@ test('waitlist cancel tool schema exposes no internal ids, real names, division 
   );
 });
 
-test('endpoint exposes only waitlist cancel probe mode at this checkpoint', () => {
+test('endpoint keeps probe mode and adds source-bound production waitlist cancel mode', () => {
   const endpoint=fs.readFileSync(path.join(__dirname,'../api/olli-agent.js'),'utf8');
   assert.match(endpoint,/'waitlist_cancel_prepare_probe'/);
   assert.match(endpoint,/runWaitlistCancelPrepareProbe/);
@@ -293,5 +293,7 @@ test('endpoint exposes only waitlist cancel probe mode at this checkpoint', () =
     endpoint,
     /waitlist_cancel_prepare_probe에는 재시도 중복 방지용 requestId가 필요합니다/
   );
-  assert.doesNotMatch(endpoint,/mode === 'waitlist_cancel_prepare'/);
+  assert.match(endpoint,/mode === 'waitlist_cancel_prepare'/);
+  assert.match(endpoint,/runWaitlistCancelPrepare\(/);
+  assert.match(endpoint,/OLLI_AGENT_WAITLIST_SOURCE_MESSAGE_REQUIRED/);
 });
