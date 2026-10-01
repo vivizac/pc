@@ -2363,19 +2363,26 @@ function submitKinderChatFeedbackGrowthSheet() {
 }
 document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('kcfInput');
+  const composerBottom = document.querySelector('#kinderChatFeedbackScreen .kcfComposerBottom');
   if (input) {
     loadKinderChatFeedbackDraft();
-    input.addEventListener('pointerdown', event => {
+    input.addEventListener('input', () => {
+      autoResizeKinderChatFeedbackInput(input);
+      saveKinderChatFeedbackDraft();
+      setKinderChatFeedbackWarning('');
+    });
+  }
+  if (composerBottom) {
+    composerBottom.addEventListener('pointerdown', event => {
+      const interactive = event.target && event.target.closest
+        ? event.target.closest('button, input, .kcfAutoStudentChip, .memoStudentSelectPopup')
+        : null;
+      if (interactive) return;
       const sheet = window.KcfComposerSheet || window.KcfTeacherSheet;
       if (!sheet || typeof sheet.open !== 'function') return;
       if (typeof sheet.isOpen === 'function' && sheet.isOpen()) return;
       event.preventDefault();
       sheet.open();
-    });
-    input.addEventListener('input', () => {
-      autoResizeKinderChatFeedbackInput(input);
-      saveKinderChatFeedbackDraft();
-      setKinderChatFeedbackWarning('');
     });
   }
   document.querySelectorAll('.kcfKeywordBtn').forEach(btn => {
