@@ -173,9 +173,6 @@ function toggleKinderChatFeedbackTopMode(event){
 }
 let kcfVivicotInboxMidnightTimer = null;
 let kcfActiveKeyword = '';
-let kcfKeepInputFocusUntil = 0;
-let kcfKeyboardBaselineBottom = 0;
-let kcfComposerViewportFrame = 0;
 let kcfPendingPhoto = null;
 let kcfManualSelectedStudentId = '';
 let kcfManualSelectedStudentName = '';
@@ -227,96 +224,8 @@ const kcfKeywordQuestions = {
   friend: { title:'친구와 협력', questions:['친구와 어떤 상호작용이 있었나요?', '양보하거나 도와준 장면이 있었나요?', '협력 후 아이의 반응은 어땠나요?'] },
   focus: { title:'집중', questions:['아이가 집중한 장면은 무엇이었나요?', '얼마나 오래 이어가려 했나요?', '집중이 표현으로 이어진 부분은 무엇인가요?'] }
 };
-function syncKinderChatFeedbackComposerViewport() {
-  const layer = document.getElementById('kcfComposerLayer');
-  if (!layer) return;
-
-  const viewport = window.visualViewport;
-  const layoutWidth = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
-  const layoutHeight = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
-  const left = viewport ? Number(viewport.offsetLeft || 0) : 0;
-  const top = viewport ? Number(viewport.offsetTop || 0) : 0;
-  const width = viewport ? Number(viewport.width || layoutWidth) : layoutWidth;
-  const height = viewport ? Number(viewport.height || layoutHeight) : layoutHeight;
-
-  layer.style.setProperty('--kcf-composer-vv-left', Math.round(left) + 'px');
-  layer.style.setProperty('--kcf-composer-vv-top', Math.round(top) + 'px');
-  layer.style.setProperty('--kcf-composer-vv-width', Math.max(1, Math.round(width)) + 'px');
-  layer.style.setProperty('--kcf-composer-vv-height', Math.max(1, Math.round(height)) + 'px');
-}
-function scheduleKinderChatFeedbackComposerViewportSync() {
-  if (kcfComposerViewportFrame) return;
-  kcfComposerViewportFrame = requestAnimationFrame(() => {
-    kcfComposerViewportFrame = 0;
-    syncKinderChatFeedbackComposerViewport();
-  });
-}
-
-function getKinderChatFeedbackViewportBottom() {
-  const viewport = window.visualViewport;
-  if (!viewport) return Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
-  return Number(viewport.offsetTop || 0) + Number(viewport.height || 0);
-}
-function captureKinderChatFeedbackKeyboardBaseline(force = false) {
-  const currentBottom = getKinderChatFeedbackViewportBottom();
-  const layoutBottom = Math.max(window.innerHeight || 0, document.documentElement.clientHeight || 0);
-  const candidate = Math.max(currentBottom, layoutBottom);
-  if (force || !kcfKeyboardBaselineBottom) kcfKeyboardBaselineBottom = candidate;
-}
-function updateKinderChatFeedbackKeyboardOffset() {
-  scheduleKinderChatFeedbackComposerViewportSync();
-  const screen = document.getElementById('kinderChatFeedbackScreen');
-  const input = document.getElementById('kcfInput');
-  if (!screen) return;
-  const isFocused = (document.activeElement === input) || (Date.now() < kcfKeepInputFocusUntil);
-  const topLayer = document.getElementById('kcfPersistentTopLayer');
-  if (!isFocused) {
-    kcfKeyboardBaselineBottom = 0;
-    screen.classList.remove('kcfKeyboardOpen');
-    screen.style.setProperty('--kcf-composer-bottom', '0px');
-    if (topLayer) topLayer.classList.remove('kcfKeyboardHidden');
-    if (input) autoResizeKinderChatFeedbackInput(input);
-    return;
-  }
-  if (!kcfKeyboardBaselineBottom) captureKinderChatFeedbackKeyboardBaseline(true);
-  const currentBottom = getKinderChatFeedbackViewportBottom();
-  const inset = Math.max(0, kcfKeyboardBaselineBottom - currentBottom);
-  const viewport = window.visualViewport;
-  const viewportShrunk = viewport
-    ? (Math.max(window.innerHeight || 0, kcfKeyboardBaselineBottom) - viewport.height) > 80
-    : true;
-  const open = !viewport || inset > 80 || viewportShrunk;
-  screen.classList.toggle('kcfKeyboardOpen', open);
-  if (input) autoResizeKinderChatFeedbackInput(input);
-
-  // Keep the inline composer at its normal keyboard-open position.
-  screen.style.setProperty('--kcf-composer-bottom', '0px');
-
-  // 키보드가 열리면 상단 고정 버튼 레이어는 완전히 숨긴다.
-  // 위로 밀면 iOS에서 버튼 일부가 화면 상단 끝에 남아 보일 수 있다.
-  if (topLayer) topLayer.classList.toggle('kcfKeyboardHidden', open);
-}
 function getKinderChatFeedbackTeacherMode() {
   return window.KcfTeacherMode || window.KcfAutoMode || null;
-}
-function bindKinderChatFeedbackKeyboardOffset() {
-  if (window.__kcfKeyboardOffsetBound) return;
-  window.__kcfKeyboardOffsetBound = true;
-  scheduleKinderChatFeedbackComposerViewportSync();
-  const handleKinderChatFeedbackViewportChange = () => {
-    scheduleKinderChatFeedbackComposerViewportSync();
-    updateKinderChatFeedbackKeyboardOffset();
-  };
-  document.addEventListener('pointerdown', event => {
-    const input = document.getElementById('kcfInput');
-    if (!input || event.target !== input) return;
-    captureKinderChatFeedbackKeyboardBaseline(true);
-  }, true);
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', handleKinderChatFeedbackViewportChange);
-    window.visualViewport.addEventListener('scroll', handleKinderChatFeedbackViewportChange);
-  }
-  window.addEventListener('resize', handleKinderChatFeedbackViewportChange);
 }
 function setKinderChatFeedbackPersistentTopVisible(visible) {
   const layer = document.getElementById('kcfPersistentTopLayer');
@@ -394,16 +303,13 @@ function openKinderChatFeedbackPage(options = {}) {
   }
   const page = document.getElementById('kinderChatFeedbackScreen');
   if (page) page.style.display = 'flex';
-  scheduleKinderChatFeedbackComposerViewportSync();
   restoreKinderChatFeedbackLiveSession();
   setKinderChatFeedbackPersistentTopVisible(true);
-  bindKinderChatFeedbackKeyboardOffset();
   loadKinderChatFeedbackDraft();
   applyKinderChatFeedbackGuideVisibility();
   syncKinderChatFeedbackManualSelectionUi();
   updateKinderChatFeedbackBadge();
   scheduleKinderChatFeedbackVivicotBubbleMidnightReset();
-  updateKinderChatFeedbackKeyboardOffset();
   const teacherMode = getKinderChatFeedbackTeacherMode();
   if (teacherMode && typeof teacherMode.onPageOpened === 'function') {
     setTimeout(() => teacherMode.onPageOpened(), 0);
@@ -419,7 +325,6 @@ async function closeKinderChatFeedbackPage() {
   if (window.KcfTeacherSheet && typeof window.KcfTeacherSheet.close === 'function') {
     window.KcfTeacherSheet.close({ sync:true });
   }
-  kcfKeyboardBaselineBottom = 0;
   const page = document.getElementById('kinderChatFeedbackScreen');
   if (page) page.style.display = 'none';
   setKinderChatFeedbackPersistentTopVisible(false);
@@ -560,31 +465,21 @@ function scheduleKinderChatFeedbackVivicotBubbleMidnightReset() {
 
 function autoResizeKinderChatFeedbackInput(input) {
   if (!input) return;
-  const minHeight = 34;
-  const maxHeight = 110;
-  const screen = document.getElementById('kinderChatFeedbackScreen');
-  const canGrow = document.activeElement === input || !!screen?.classList.contains('kcfKeyboardOpen');
-
-  if (!canGrow) {
-    input.style.height = `${minHeight}px`;
-    input.style.minHeight = `${minHeight}px`;
-    input.style.maxHeight = `${minHeight}px`;
-    input.style.overflowY = 'hidden';
-    return;
-  }
-
-  input.style.minHeight = `${minHeight}px`;
-  input.style.maxHeight = `${maxHeight}px`;
-  input.style.height = 'auto';
-  const nextHeight = Math.max(minHeight, Math.min(maxHeight, input.scrollHeight || minHeight));
-  input.style.height = `${nextHeight}px`;
-  input.style.overflowY = (input.scrollHeight || 0) > maxHeight ? 'auto' : 'hidden';
+  const height = 34;
+  input.style.height = `${height}px`;
+  input.style.minHeight = `${height}px`;
+  input.style.maxHeight = `${height}px`;
+  input.style.overflowY = 'hidden';
 }
 window.autoResizeKinderChatFeedbackInput = autoResizeKinderChatFeedbackInput;
+function openKinderChatFeedbackComposerSheet() {
+  const sheet = window.KcfComposerSheet || window.KcfTeacherSheet;
+  if (!sheet || typeof sheet.open !== 'function') return false;
+  if (typeof sheet.isOpen === 'function' && sheet.isOpen()) return true;
+  return sheet.open() !== false;
+}
 function focusKinderChatFeedbackInput() {
-  const input = document.getElementById('kcfInput');
-  if (!input) return;
-  input.focus();
+  openKinderChatFeedbackComposerSheet();
 }
 function openKinderChatFeedbackPhotoPicker(event) {
   if (event) event.stopPropagation();
@@ -911,8 +806,7 @@ async function handleKinderChatFeedbackPhotoChange(event) {
       isDeleted: false
     };
     renderKinderChatFeedbackPhotoPreview();
-    const textInput = document.getElementById('kcfInput');
-    if (textInput) textInput.focus();
+    focusKinderChatFeedbackInput();
   } catch(err) {
     console.error('1분 피드백 사진 처리 오류:', err);
     setKinderChatFeedbackWarning(err.message || '사진을 추가하지 못했습니다.');
@@ -2468,75 +2362,31 @@ function submitKinderChatFeedbackGrowthSheet() {
   }
 }
 document.addEventListener('DOMContentLoaded', () => {
-  bindKinderChatFeedbackKeyboardOffset();
   const input = document.getElementById('kcfInput');
   if (input) {
     loadKinderChatFeedbackDraft();
     input.addEventListener('pointerdown', event => {
-      const teacherMode = getKinderChatFeedbackTeacherMode();
-      const teacherEnabled = !!(teacherMode && typeof teacherMode.isEnabled === 'function' && teacherMode.isEnabled());
-      const teacherSheet = window.KcfTeacherSheet;
-      if (!teacherEnabled || !teacherSheet || typeof teacherSheet.open !== 'function') return;
-      if (typeof teacherSheet.isOpen === 'function' && teacherSheet.isOpen()) return;
+      const sheet = window.KcfComposerSheet || window.KcfTeacherSheet;
+      if (!sheet || typeof sheet.open !== 'function') return;
+      if (typeof sheet.isOpen === 'function' && sheet.isOpen()) return;
       event.preventDefault();
-      teacherSheet.open();
-    });
-    input.addEventListener('focus', () => {
-      if (!kcfKeyboardBaselineBottom) captureKinderChatFeedbackKeyboardBaseline(true);
-      updateKinderChatFeedbackKeyboardOffset();
-    });
-    input.addEventListener('blur', () => {
-      if (Date.now() < kcfKeepInputFocusUntil) {
-        setTimeout(() => {
-          const currentInput = document.getElementById('kcfInput');
-          if (currentInput) currentInput.focus({ preventScroll:true });
-          updateKinderChatFeedbackKeyboardOffset();
-        }, 0);
-        return;
-      }
-      setTimeout(updateKinderChatFeedbackKeyboardOffset, 120);
+      sheet.open();
     });
     input.addEventListener('input', () => {
       autoResizeKinderChatFeedbackInput(input);
       saveKinderChatFeedbackDraft();
       setKinderChatFeedbackWarning('');
     });
-    input.addEventListener('keydown', event => {
-      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-        event.preventDefault();
-        submitKinderChatFeedback();
-      }
-    });
   }
   document.querySelectorAll('.kcfKeywordBtn').forEach(btn => {
     btn.setAttribute('tabindex', '-1');
-    const keepInputAlive = event => {
+    btn.addEventListener('click', event => {
       if (event) {
         event.preventDefault();
         event.stopPropagation();
-      }
-      const currentInput = document.getElementById('kcfInput');
-      if (currentInput && document.activeElement === currentInput) {
-        kcfKeepInputFocusUntil = Date.now() + 1400;
-        updateKinderChatFeedbackKeyboardOffset();
-      }
-    };
-    const activateKeyword = event => {
-      if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-      const currentInput = document.getElementById('kcfInput');
-      if (currentInput && document.activeElement === currentInput) {
-        kcfKeepInputFocusUntil = Date.now() + 1400;
       }
       toggleKinderChatFeedbackKeyword(btn.getAttribute('data-kcf-keyword'), btn);
-      requestAnimationFrame(updateKinderChatFeedbackKeyboardOffset);
-      setTimeout(updateKinderChatFeedbackKeyboardOffset, 80);
-      setTimeout(updateKinderChatFeedbackKeyboardOffset, 220);
-    };
-    btn.addEventListener('pointerdown', keepInputAlive);
-    btn.addEventListener('click', activateKeyword);
+    });
   });
   document.addEventListener('click', event => {
     if (!event.target.closest || !event.target.closest('.kcfHeaderCenter')) closeKinderChatFeedbackModeMenu();
@@ -2845,9 +2695,9 @@ function selectKinderChatFeedbackStudentFromManage(studentId, event) {
     autoResizeKinderChatFeedbackInput(input);
     saveKinderChatFeedbackDraft();
     setKinderChatFeedbackWarning('');
-    input.focus();
   }
   closeKinderChatFeedbackStudentManagePopup();
+  focusKinderChatFeedbackInput();
 }
 
 function openKinderChatFeedbackStudentAddFromManage(event) {
@@ -2902,7 +2752,7 @@ window.confirmKinderChatFeedbackInboxEdit = confirmKinderChatFeedbackInboxEdit;
 window.toggleKinderChatFeedbackInboxItem = toggleKinderChatFeedbackInboxItem;
 window.updateKinderChatFeedbackBadge = updateKinderChatFeedbackBadge;
 window.renderKinderChatFeedbackInbox = renderKinderChatFeedbackInbox;
-window.updateKinderChatFeedbackKeyboardOffset = updateKinderChatFeedbackKeyboardOffset;
+window.openKinderChatFeedbackComposerSheet = openKinderChatFeedbackComposerSheet;
 window.setKinderChatFeedbackPersistentTopVisible = setKinderChatFeedbackPersistentTopVisible;
 window.toggleKinderChatFeedbackModeMenu = toggleKinderChatFeedbackModeMenu;
 window.switchKinderChatFeedbackMode = switchKinderChatFeedbackMode;
