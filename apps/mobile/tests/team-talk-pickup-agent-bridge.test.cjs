@@ -40,3 +40,42 @@ test('mobile bot path remains independent from the pickup Agent bridge', () => {
 
   assert.doesNotMatch(block, /resolveOlliTalkPickupAddAgentTurn|isOlliTalkPickupAddAgentCandidate/);
 });
+
+
+test('mobile AI pickup update is routed before add and legacy action paths', () => {
+  const start = talk.indexOf('async function resolveOlliTalkAiTurn');
+  const end = talk.indexOf('function getOlliTalkMentionMessageText', start);
+  const block = talk.slice(start, end);
+  const updateGate = block.indexOf('if(isOlliTalkPickupUpdateAgentCandidate(commandText,router))');
+  const addGate = block.indexOf('if(isOlliTalkPickupAddAgentCandidate(commandText,router))');
+  const legacyGate = block.indexOf("if(router && typeof router.prepareAction==='function')");
+
+  assert.ok(updateGate >= 0);
+  assert.ok(addGate > updateGate);
+  assert.ok(legacyGate > addGate);
+  assert.match(block, /return resolveOlliTalkPickupUpdateAgentTurn\(commandText,context,replyToMessageId\)/);
+});
+
+test('mobile pickup update bridge uses shared update parser and persisted production action', () => {
+  assert.match(talk, /parsePickupUpdateMutationIntent\(commandText\)/);
+
+  const start = talk.indexOf('async function resolveOlliTalkPickupUpdateAgentTurn');
+  const end = talk.indexOf('async function resolveOlliTalkPickupAddAgentTurn', start);
+  const block = talk.slice(start, end);
+
+  assert.match(block, /mode:'pickup_update_prepare'/);
+  assert.match(block, /sourceMessageId=Number\(replyToMessageId \|\| 0\)/);
+  assert.match(block, /update_pickup_arrival/);
+  assert.match(block, /update_pickup_dropoff/);
+  assert.match(block, /assistantMessage:data\.message/);
+  assert.match(block, /recordAi:false/);
+  assert.doesNotMatch(block, /saveOlliTalkOlliReply|saveOlliTalkActionReply|olli_team_chat_send_ai|olli_team_chat_send_action/);
+});
+
+test('mobile bot path remains independent from pickup update Agent bridge', () => {
+  const start = talk.indexOf('async function resolveOlliTalkBotTurn');
+  const end = talk.indexOf('function handleOlliTalkAiModeChanged', start);
+  const block = talk.slice(start, end);
+
+  assert.doesNotMatch(block, /resolveOlliTalkPickupUpdateAgentTurn|isOlliTalkPickupUpdateAgentCandidate|pickup_update_prepare/);
+});

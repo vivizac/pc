@@ -17,7 +17,9 @@ const {
 } = require('../api/_lib/olli-agent/runtime.cjs');
 
 test('production pickup_prepare is separate from pickup_prepare_probe and requires a source Team Chat message id', () => {
-  assert.match(endpoint, /'pickup_prepare_probe', 'pickup_prepare'/);
+  assert.match(endpoint, /'pickup_prepare_probe'/);
+  assert.match(endpoint, /'pickup_update_prepare_probe'/);
+  assert.match(endpoint, /'pickup_prepare'/);
   assert.match(endpoint, /mode === 'pickup_prepare_probe'/);
   assert.match(endpoint, /sourceMessageId = Number\(body\.sourceMessageId \|\| body\.source_message_id \|\| 0\)/);
   assert.match(endpoint, /OLLI_AGENT_PICKUP_SOURCE_MESSAGE_REQUIRED/);
@@ -28,6 +30,45 @@ test('production pickup_prepare is separate from pickup_prepare_probe and requir
     endpoint.match(/mode:'pickup_prepare'[\s\S]*?\}\);/)?.[0] || '',
     /subjectRefs|privacy:|output:/
   );
+});
+
+test('production pickup_update_prepare is source-bound and returns only the persisted action message', () => {
+  assert.match(endpoint, /'pickup_update_prepare'/);
+  assert.match(endpoint, /mode === 'pickup_update_prepare'/);
+  assert.match(endpoint, /pickup_update_prepare에는 저장된 원문 Team Chat message id가 필요합니다/);
+  assert.match(endpoint, /runPickupUpdatePrepare\(/);
+  assert.match(endpoint, /sourceMessageText: message/);
+
+  const response = endpoint.match(/mode:'pickup_update_prepare'[\s\S]*?\}\);/)?.[0] || '';
+  assert.match(response, /message:probe\.persistedMessage/);
+  assert.match(response, /recoveredAfterPersist:probe\.recoveredAfterPersist === true/);
+  assert.doesNotMatch(response, /subjectRefs|privacy:|output:|pickupId|studentId|studentName/);
+});
+
+test('production pickup update validates the source before running the update Agent and reuses the source id for retry and reply linkage', () => {
+  const start = runtime.indexOf('async function runPickupUpdatePrepare({');
+  const end = runtime.indexOf('\n\nasync function runStudentProfileProbe({', start);
+  const block = start >= 0 && end > start ? runtime.slice(start, end) : '';
+
+  assert.match(block, /Number\.isSafeInteger\(sourceId\)/);
+  assert.match(block, /validatePickupSourceMessage\(/);
+  assert.ok(block.indexOf('validatePickupSourceMessage({') < block.indexOf('return runPickupUpdatePrepareAgent({'));
+  assert.match(block, /sourceMessageText/);
+  assert.match(block, /requestId:'team-chat-message:' \+ sourceId/);
+  assert.match(block, /replyToMessageId:sourceId/);
+  assert.match(block, /requirePersistedMessage:true/);
+});
+
+test('production pickup update can recover the persisted confirmation card when model finalization fails', () => {
+  const start = runtime.indexOf('async function runPickupUpdatePrepareAgent({');
+  const end = runtime.indexOf('\n\nasync function runPickupUpdatePrepareProbe({', start);
+  const block = start >= 0 && end > start ? runtime.slice(start, end) : '';
+
+  assert.match(block, /capturePersistedMessage\(message\)/);
+  assert.match(block, /pickupPersistedMessageForClient\(message\)/);
+  assert.match(block, /catch \(error\) \{[\s\S]*runError = error;[\s\S]*!requirePersistedMessage \|\| !persistedMessage/);
+  assert.match(block, /requirePersistedMessage && !persistedMessage/);
+  assert.match(block, /recoveredAfterPersist:!!runError/);
 });
 
 test('production pickup prepare derives retry id and reply linkage from the same source message id', () => {
