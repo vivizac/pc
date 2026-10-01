@@ -145,12 +145,12 @@ test('same visible trial time can switch A to B',async()=>{
 
 test('omitted trial target time and group preserve current values',async()=>{
   const {rpc}=baseRpc({
-    slots:[slot({date:'2026-10-03',weekday:6,time_slot:10,class_group:'A',time_label:'4시 30분',grouped:false})],
+    slots:[slot({date:'2026-10-09',weekday:5,time_slot:10,class_group:'A',time_label:'4시 30분',grouped:false})],
   });
   const result=await prepareTrialUpdateAction({
     requestContext:requestContext(),trialAccess:trialAccess(),guestLabel:'학생A',
     sourceDate:'2026-10-02',sourceHour:0,sourceMinute:0,sourceGroup:'AUTO',
-    targetDate:'2026-10-03',targetHour:0,targetMinute:0,targetGroup:'AUTO',
+    targetDate:'2026-10-09',targetHour:0,targetMinute:0,targetGroup:'AUTO',
     currentDate:'2026-10-01',requestId:'req-trial-preserve',sanitizePayload:p=>p,callRpc:rpc,
   });
   assert.equal(result.target_date,'2026-10-03');
@@ -178,8 +178,8 @@ test('duplicate same-name guest trial at target is blocked before confirmation',
     session_date:'2026-10-03',time_slot:1,class_group:'B',
   });
   const {rpc}=baseRpc({
+    rows:[row(),other],
     slots:[slot({class_group:'B'})],
-    targetRows:[row(),other],
   });
   await assert.rejects(
     prepareTrialUpdateAction({
