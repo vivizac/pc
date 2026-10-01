@@ -689,6 +689,7 @@
   white-space:nowrap;
 }
 #kinderChatFeedbackScreen .kcfComposer {
+  position:relative;
   display:flex;
   flex-direction:column;
   justify-content:center;
@@ -1143,13 +1144,32 @@
   cursor:default;
 }
 #kinderChatFeedbackScreen .kcfInputWarning {
-  display:none;
+  position:absolute;
+  left:8px;
+  right:8px;
+  bottom:calc(100% + 8px);
+  display:block;
+  max-width:calc(100% - 16px);
+  box-sizing:border-box;
   font-size:calc(12px * var(--olli-text-scale));
   color:#d94444;
   line-height:1.35;
-  padding:8px 4px 0;
+  text-align:left;
+  padding:0;
+  margin:0;
+  opacity:0;
+  visibility:hidden;
+  transform:translateY(4px);
+  pointer-events:none;
+  z-index:6;
+  transition:opacity .18s ease, transform .18s ease, visibility 0s linear .18s;
 }
-#kinderChatFeedbackScreen .kcfInputWarning.show { display:block; }
+#kinderChatFeedbackScreen .kcfInputWarning.show {
+  opacity:1;
+  visibility:visible;
+  transform:translateY(0);
+  transition-delay:0s;
+}
 
 /* 받은 피드백 보관함 */
 #kcfInboxOverlay {
