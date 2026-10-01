@@ -121,6 +121,17 @@ export default async function handler(req, res) {
       } else if (mode === 'trial_add_prepare_probe' || mode === 'trial_add_prepare' || mode === 'trial_update_prepare_probe' || mode === 'trial_update_prepare') {
         const trialPrivacyModule = await import('./_lib/olli-agent/trial-guest-privacy.cjs');
         prepared = trialPrivacyModule.prepareTrialGuestPrivacyInput(message, requestContext);
+      } else if (
+        mode === 'waitlist_add_prepare_probe' || mode === 'waitlist_add_prepare' ||
+        mode === 'waitlist_update_prepare_probe' || mode === 'waitlist_update_prepare' ||
+        mode === 'waitlist_cancel_prepare_probe' || mode === 'waitlist_cancel_prepare'
+      ) {
+        const privacyModule = await import('./_lib/olli-agent/privacy.cjs');
+        prepared = await privacyModule.prepareAgentPrivacyInput(message, requestContext);
+        if (!Array.isArray(prepared?.subjectRefs) || prepared.subjectRefs.length === 0) {
+          const guestPrivacyModule = await import('./_lib/olli-agent/waitlist-guest-privacy.cjs');
+          prepared = guestPrivacyModule.prepareWaitlistGuestPrivacyInput(message);
+        }
       } else {
         const privacyModule = await import('./_lib/olli-agent/privacy.cjs');
         prepared = await privacyModule.prepareAgentPrivacyInput(
