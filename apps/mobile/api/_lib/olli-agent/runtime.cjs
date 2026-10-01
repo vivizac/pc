@@ -1051,6 +1051,69 @@ async function runTrialUpdatePrepareProbe({agentContext,requestContext,preparedP
 }
 
 
+async function validateTrialSourceMessage({
+  requestContext,
+  sourceMessageId,
+  sourceMessageText,
+  callRpc,
+}) {
+  try {
+    return await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId,
+      sourceMessageText,
+      callRpc,
+    });
+  } catch (error) {
+    const pickupCode=String(error?.code||'');
+    if(!pickupCode.startsWith('OLLI_AGENT_PICKUP_SOURCE_')) throw error;
+    const trialCode=pickupCode.replace(
+      'OLLI_AGENT_PICKUP_SOURCE_',
+      'OLLI_AGENT_TRIAL_SOURCE_'
+    );
+    const message=String(error?.message||'원문 Team Chat 메시지를 확인하지 못했습니다.')
+      .replace(/픽업/g,'체험');
+    throw runtimeError(
+      message,
+      Number(error?.statusCode||400),
+      trialCode
+    );
+  }
+}
+
+async function runTrialUpdatePrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_TRIAL_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validateTrialSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  return runTrialUpdatePrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-message:'+sourceId,
+    replyToMessageId:sourceId,
+    requirePersistedMessage:true,
+  });
+}
+
+
 function resolveWaitlistUpdatePrepareScope(preparedPrivacy) {
   if (preparedPrivacy?.needsDisambiguation) {
     throw runtimeError('학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',409,'OLLI_AGENT_STUDENT_AMBIGUOUS');
@@ -2716,6 +2779,8 @@ module.exports = {
   resolveTrialUpdatePrepareScope,
   runTrialUpdatePrepareAgent,
   runTrialUpdatePrepareProbe,
+  runTrialUpdatePrepare,
+  validateTrialSourceMessage,
   resolveWaitlistUpdatePrepareScope,
   runWaitlistUpdatePrepareAgent,
   runWaitlistUpdatePrepareProbe,
