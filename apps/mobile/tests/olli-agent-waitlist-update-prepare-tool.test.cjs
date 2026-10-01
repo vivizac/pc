@@ -85,7 +85,7 @@ function baseRpc({rows,slots,targetRows}={}){
 
 test('waitlist update changes date time and group but only stores a pending action',async()=>{
   const {rpc,calls}=baseRpc({
-    slots:[slot({date:'2026-10-03',weekday:6,time_slot:2,class_group:'A'}),slot({date:'2026-10-03',weekday:6,time_slot:2,class_group:'B'})],
+    slots:[slot({date:'2026-10-03',weekday:6,time_slot:1,class_group:'A'}),slot({date:'2026-10-03',weekday:6,time_slot:1,class_group:'B'})],
     targetRows:[row()],
   });
   const result=await prepareWaitlistUpdateAction({
@@ -103,7 +103,7 @@ test('waitlist update changes date time and group but only stores a pending acti
   assert.equal(action.params.p_action_type,'update_waitlist');
   assert.equal(action.params.p_action_payload.waitlistId,'44444444-4444-4444-8444-444444444444');
   assert.equal(action.params.p_action_payload.targetWeekday,6);
-  assert.equal(action.params.p_action_payload.targetTimeSlot,2);
+  assert.equal(action.params.p_action_payload.targetTimeSlot,1);
   assert.equal(action.params.p_action_payload.targetClassGroup,'B');
   assert.equal(action.params.p_action_payload.desiredEffectiveDate,'2026-10-03');
   assert.ok(!calls.some(c=>/update_waitlist_target|action_execute/.test(c.name)));
@@ -133,13 +133,13 @@ test('same visible time can switch A to B',async()=>{
 
 test('omitted target time and group preserve current visible values',async()=>{
   const {rpc}=baseRpc({
-    slots:[slot({date:'2026-10-02',weekday:5,time_slot:10,class_group:'A',grouped:false})],
+    slots:[slot({date:'2026-10-09',weekday:5,time_slot:10,class_group:'A',grouped:false})],
     targetRows:[row()],
   });
   const result=await prepareWaitlistUpdateAction({
     requestContext:requestContext(),subjectAccess:subjectAccess(),studentLabel:'학생A',division:'elementary',
     sourceWeekday:0,sourceHour:0,sourceMinute:0,sourceGroup:'AUTO',
-    targetDate:'2026-10-02',targetWeekday:0,targetHour:0,targetMinute:0,targetGroup:'AUTO',
+    targetDate:'2026-10-09',targetWeekday:0,targetHour:0,targetMinute:0,targetGroup:'AUTO',
     currentDate:'2026-10-01',requestId:'req-preserve',sanitizePayload:p=>p,callRpc:rpc,
   });
   assert.equal(result.target_weekday,5);
@@ -162,11 +162,11 @@ test('another active waitlist at the target blocks preparation',async()=>{
   const other=row({
     id:'66666666-6666-4666-8666-666666666666',
     student_id:'77777777-7777-4777-8777-777777777777',
-    target_weekday:6,target_time_slot:2,target_class_group:'B',
+    target_weekday:6,target_time_slot:1,target_class_group:'B',
   });
   const {rpc}=baseRpc({
-    slots:[slot({date:'2026-10-03',weekday:6,time_slot:2,class_group:'B'})],
-    targetRows:[row(),other],
+    slots:[slot({date:'2026-10-03',weekday:6,time_slot:1,class_group:'B'})],
+    rows:[row(),other],
   });
   await assert.rejects(
     prepareWaitlistUpdateAction({
