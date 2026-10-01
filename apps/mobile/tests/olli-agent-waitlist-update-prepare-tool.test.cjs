@@ -210,10 +210,12 @@ test('tool schema exposes no internal ids or real names',()=>{
   assert.doesNotMatch(schema,/studentId|studentName|waitlistId|timeSlot|academyId|memberId|division/);
 });
 
-test('endpoint exposes only update waitlist probe mode at this checkpoint',()=>{
+test('endpoint keeps probe mode and adds source-bound production waitlist update mode',()=>{
   const endpoint=fs.readFileSync(path.join(__dirname,'../api/olli-agent.js'),'utf8');
   assert.match(endpoint,/'waitlist_update_prepare_probe'/);
   assert.match(endpoint,/runWaitlistUpdatePrepareProbe/);
   assert.match(endpoint,/waitlist_update_prepare_probe에는 재시도 중복 방지용 requestId가 필요합니다/);
-  assert.doesNotMatch(endpoint,/mode === 'waitlist_update_prepare'/);
+  assert.match(endpoint,/mode === 'waitlist_update_prepare'/);
+  assert.match(endpoint,/runWaitlistUpdatePrepare\(/);
+  assert.match(endpoint,/OLLI_AGENT_WAITLIST_SOURCE_MESSAGE_REQUIRED/);
 });
