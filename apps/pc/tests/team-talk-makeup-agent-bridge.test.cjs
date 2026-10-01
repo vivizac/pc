@@ -58,7 +58,7 @@ test('PC AI makeup cancel is routed before legacy action preparation', () => {
 
 test('PC makeup cancel Agent gate uses only the shared cancel parser as candidate detection', () => {
   const start=talk.indexOf('function isMakeupCancelAgentCandidate');
-  const end=talk.indexOf('function isPickupCancelAgentCandidate',start);
+  const end=talk.indexOf('function isMakeupUpdateAgentCandidate',start);
   const block=talk.slice(start,end);
   assert.match(block,/parseMakeupCancelMutationIntent\(commandText\)/);
   assert.match(block,/=== 'cancel_makeup'/);
