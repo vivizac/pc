@@ -40,3 +40,42 @@ test('PC bot path remains independent from the pickup Agent bridge', () => {
 
   assert.doesNotMatch(block, /resolvePickupAddAgentTurn|isPickupAddAgentCandidate/);
 });
+
+
+test('PC AI pickup update is routed before add and legacy action paths', () => {
+  const start = talk.indexOf('async function resolveAiTurn');
+  const end = talk.indexOf('function updateComposerState', start);
+  const block = talk.slice(start, end);
+  const updateGate = block.indexOf('if (isPickupUpdateAgentCandidate(commandText, router))');
+  const addGate = block.indexOf('if (isPickupAddAgentCandidate(commandText, router))');
+  const legacyGate = block.indexOf("if (router && typeof router.prepareAction === 'function')");
+
+  assert.ok(updateGate >= 0);
+  assert.ok(addGate > updateGate);
+  assert.ok(legacyGate > addGate);
+  assert.match(block, /return resolvePickupUpdateAgentTurn\(commandText, current, replyToMessageId\)/);
+});
+
+test('PC pickup update bridge uses shared update parser and persisted production action', () => {
+  assert.match(talk, /parsePickupUpdateMutationIntent\(commandText\)/);
+
+  const start = talk.indexOf('async function resolvePickupUpdateAgentTurn');
+  const end = talk.indexOf('function isPickupAddAgentCandidate', start);
+  const block = talk.slice(start, end);
+
+  assert.match(block, /mode:'pickup_update_prepare'/);
+  assert.match(block, /sourceMessageId = Number\(replyToMessageId \|\| 0\)/);
+  assert.match(block, /update_pickup_arrival/);
+  assert.match(block, /update_pickup_dropoff/);
+  assert.match(block, /assistantMessage:data\.message/);
+  assert.match(block, /recordAi:false/);
+  assert.doesNotMatch(block, /saveAssistantReply|saveAssistantAction|olli_team_chat_send_ai|olli_team_chat_send_action/);
+});
+
+test('PC bot path remains independent from pickup update Agent bridge', () => {
+  const start = talk.indexOf('async function resolveBotTurn');
+  const end = talk.indexOf('function buildAiConversationMessages', start);
+  const block = talk.slice(start, end);
+
+  assert.doesNotMatch(block, /resolvePickupUpdateAgentTurn|isPickupUpdateAgentCandidate|pickup_update_prepare/);
+});
