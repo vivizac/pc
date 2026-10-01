@@ -1190,6 +1190,7 @@ function restoreKinderChatFeedbackLiveSession(){
       changed = true;
     }
     kcfLiveFeedbackItems.set(item.id, item);
+    if (item.resultText) syncKinderChatFeedbackLiveItemToInbox(item);
     renderKinderChatFeedbackRestoredUserMessage(item);
 
     let row = getKinderChatFeedbackLiveRow(item.id);
@@ -1247,6 +1248,45 @@ function isKinderChatFeedbackLiveRequestDiscarded(id) {
 function getKinderChatFeedbackLiveItem(id) {
   return kcfLiveFeedbackItems.get(String(id || '')) || null;
 }
+function syncKinderChatFeedbackLiveItemToInbox(item) {
+  if (!item || !item.id || typeof getTodayFeedbackItemsRaw !== 'function' || typeof setTodayFeedbackItemsRaw !== 'function') return false;
+  const mirror = {
+    id:String(item.id || ''),
+    status:String(item.status || 'done'),
+    studentName:String(item.studentName || ''),
+    studentDivision:item.studentDivision === 'kinder' ? 'kinder' : 'elementary',
+    studentId:String(item.studentId || item.savedStudentId || ''),
+    feedbackType:String(item.feedbackType || 'class'),
+    label:String(item.label || '피드백'),
+    sourcePage:'kinderChatFeedback',
+    sourceText:String(item.sourceText || ''),
+    attachments:Array.isArray(item.attachments) ? item.attachments.slice() : [],
+    resultText:String(item.resultText || ''),
+    errorMessage:String(item.errorMessage || ''),
+    suspiciousSegments:Array.isArray(item.suspiciousSegments) ? item.suspiciousSegments.slice() : [],
+    createdAt:String(item.createdAt || new Date().toISOString()),
+    updatedAt:String(item.updatedAt || new Date().toISOString()),
+    dateKey:String(item.dateKey || getKinderChatFeedbackLiveDateKey()),
+    feedbackMonth:String(item.feedbackMonth || ''),
+    feedbackMonthNumber:Number(item.feedbackMonthNumber || 0) || 0,
+    reviewed:!!item.reviewed,
+    saved:!!item.saved,
+    savedStudentId:String(item.savedStudentId || item.studentId || ''),
+    savedSourceTable:String(item.savedSourceTable || ''),
+    savedAcademyId:String(item.savedAcademyId || ''),
+    savedRowId:String(item.savedRowId || ''),
+    savedAt:String(item.savedAt || ''),
+    savedRow:item.savedRow && typeof item.savedRow === 'object' ? { ...item.savedRow } : null
+  };
+  const list = getTodayFeedbackItemsRaw();
+  const safeList = Array.isArray(list) ? list.slice() : [];
+  const index = safeList.findIndex(entry => entry && String(entry.id || '') === mirror.id);
+  if (index >= 0) safeList[index] = { ...safeList[index], ...mirror };
+  else safeList.unshift(mirror);
+  setTodayFeedbackItemsRaw(safeList);
+  try { updateKinderChatFeedbackBadge(); } catch(e) {}
+  return true;
+}
 function getKinderChatFeedbackLiveRow(id) {
   const key = String(id || '');
   if (!key) return null;
@@ -1265,29 +1305,11 @@ function renderKinderChatFeedbackLiveResultText(bubble, text) {
   }
   return segments;
 }
-const KCF_LIVE_ACTION_ICON_SVG = {
-  copy:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="10" height="10" rx="2.2"></rect><path d="M15 9V7.2A2.2 2.2 0 0 0 12.8 5H7.2A2.2 2.2 0 0 0 5 7.2v5.6A2.2 2.2 0 0 0 7.2 15H9"></path></svg>',
-  edit:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.2 18.8l3.6-.8L18.4 8.4a2 2 0 0 0-2.8-2.8L6 15.2l-.8 3.6z"></path><path d="M13.9 7.3l2.8 2.8"></path></svg>',
-  save:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5v10"></path><path d="M8.5 11l3.5 3.5 3.5-3.5"></path><path d="M5 18v.7A1.3 1.3 0 0 0 6.3 20h11.4a1.3 1.3 0 0 0 1.3-1.3V18"></path></svg>'
-};
-function setKinderChatFeedbackLiveActionLabel(btn, label) {
-  if (!btn) return;
-  const text = String(label || '').trim();
-  btn.setAttribute('aria-label', text);
-  btn.title = text;
-  if (!btn.classList.contains('kcfLiveIconActionBtn')) btn.textContent = text;
-}
-function createKinderChatFeedbackLiveActionButton(label, className = '', iconName = '') {
+function createKinderChatFeedbackLiveActionButton(label, className = '') {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = `kcfLiveActionBtn ${className}`.trim();
-  if (iconName && KCF_LIVE_ACTION_ICON_SVG[iconName]) {
-    btn.classList.add('kcfLiveIconActionBtn');
-    btn.dataset.kcfLiveActionIcon = iconName;
-    btn.innerHTML = KCF_LIVE_ACTION_ICON_SVG[iconName];
-  } else {
-    btn.textContent = label;
-  }
+  btn.textContent = label;
   setKinderChatFeedbackLiveActionLabel(btn, label);
   return btn;
 }
@@ -1318,19 +1340,19 @@ function createKinderChatFeedbackLiveMessage(options = {}) {
   const actions = document.createElement('div');
   actions.className = 'kcfLiveActions';
 
-  const copyBtn = createKinderChatFeedbackLiveActionButton('복사', 'kcfLiveNormalAction kcfLiveCopyBtn', 'copy');
-  const editBtn = createKinderChatFeedbackLiveActionButton('수정', 'kcfLiveNormalAction kcfLiveEditBtn', 'edit');
-  const saveBtn = createKinderChatFeedbackLiveActionButton('저장', 'kcfLiveNormalAction kcfLiveSaveBtn', 'save');
+  const inboxBtn = createKinderChatFeedbackLiveActionButton('임시보관함', 'kcfLiveNormalAction kcfLiveInboxBtn');
+  const copyBtn = createKinderChatFeedbackLiveActionButton('복사', 'kcfLiveNormalAction kcfLiveCopyBtn');
+  const editBtn = createKinderChatFeedbackLiveActionButton('수정', 'kcfLiveNormalAction kcfLiveEditBtn');
   const cancelBtn = createKinderChatFeedbackLiveActionButton('취소', 'kcfLiveEditAction kcfLiveCancelBtn');
   const doneBtn = createKinderChatFeedbackLiveActionButton('완료', 'kcfLiveEditAction kcfLiveDoneBtn');
 
+  inboxBtn.addEventListener('click', () => openKinderChatFeedbackInbox());
   copyBtn.addEventListener('click', () => copyKinderChatFeedbackLive(options.id, copyBtn));
   editBtn.addEventListener('click', () => editKinderChatFeedbackLive(options.id));
-  saveBtn.addEventListener('click', () => saveKinderChatFeedbackLive(options.id, saveBtn));
   cancelBtn.addEventListener('click', () => cancelKinderChatFeedbackLiveEdit(options.id));
   doneBtn.addEventListener('click', () => confirmKinderChatFeedbackLiveEdit(options.id, doneBtn));
 
-  actions.append(copyBtn, editBtn, saveBtn, cancelBtn, doneBtn);
+  actions.append(inboxBtn, copyBtn, editBtn, cancelBtn, doneBtn);
   row.append(studentTitle, bubble, editArea, actions);
   area.appendChild(row);
   requestAnimationFrame(() => { area.scrollTop = area.scrollHeight; });
@@ -1356,16 +1378,12 @@ function refreshKinderChatFeedbackLiveActions(item) {
   const segments = typeof getSuspiciousFeedbackSegments === 'function'
     ? getSuspiciousFeedbackSegments(item.resultText || '')
     : [];
+  const inboxBtn = row.querySelector('.kcfLiveInboxBtn');
   const copyBtn = row.querySelector('.kcfLiveCopyBtn');
-  const saveBtn = row.querySelector('.kcfLiveSaveBtn');
   const editBtn = row.querySelector('.kcfLiveEditBtn');
+  if (inboxBtn) inboxBtn.disabled = !item.resultText || item.status === 'streaming';
   if (copyBtn) copyBtn.disabled = !item.resultText || !!segments.length;
   if (editBtn) editBtn.disabled = !item.resultText || item.status === 'streaming';
-  if (saveBtn) {
-    setKinderChatFeedbackLiveActionLabel(saveBtn, item.saved || item.reviewed ? '저장 완료' : '저장');
-    saveBtn.disabled = !item.resultText || ['streaming','interrupted','error'].includes(item.status) || !!segments.length || !!(item.saved || item.reviewed);
-  }
-  row.classList.toggle('saved', !!(item.saved || item.reviewed));
 }
 function showKinderChatFeedbackLiveActions(item) {
   const row = getKinderChatFeedbackLiveRow(item?.id);
@@ -1475,20 +1493,16 @@ async function confirmKinderChatFeedbackLiveEdit(id, btn) {
   }
   return true;
 }
-async function saveKinderChatFeedbackLive(id, btn = null, selectedStudentId = '') {
+async function saveKinderChatFeedbackLive(id, selectedStudentId = '') {
   const item = getKinderChatFeedbackLiveItem(id);
   if (!item || !String(item.resultText || '').trim() || item.status === 'streaming') return false;
-  if (item.saved || item.reviewed) {
-    try { showPushToast('이미 기록실에 저장된 피드백입니다.'); } catch(e) {}
-    refreshKinderChatFeedbackLiveActions(item);
-    return true;
-  }
+  if (item.saved || item.reviewed) return true;
 
   const segments = typeof getSuspiciousFeedbackSegments === 'function'
     ? getSuspiciousFeedbackSegments(item.resultText)
     : [];
   if (segments.length) {
-    try { showPushToast('확인이 필요한 문자가 있어요. 수정 후 저장해 주세요.'); } catch(e) {}
+    try { showPushToast('확인이 필요한 문자가 있어 자동 저장하지 않았어요. 수정 후 다시 확인해 주세요.'); } catch(e) {}
     return false;
   }
 
@@ -1498,7 +1512,7 @@ async function saveKinderChatFeedbackLive(id, btn = null, selectedStudentId = ''
       ? getKinderChatFeedbackSaveStudentCandidates(item.studentName, item.studentDivision)
       : [];
     if (!candidates.length) {
-      try { showPushToast(`${item.studentName || '입력한 이름'}로 등록된 학생 이름이 없습니다.`); } catch(e) {}
+      try { showPushToast(`${item.studentName || '입력한 이름'}로 등록된 학생 이름이 없어 자동 저장하지 못했어요.`); } catch(e) {}
       return false;
     }
     if (candidates.length > 1) {
@@ -1509,14 +1523,8 @@ async function saveKinderChatFeedbackLive(id, btn = null, selectedStudentId = ''
   }
   if (!finalStudentId) return false;
   if (typeof autoSaveGeneratedFeedback !== 'function') {
-    try { showPushToast('피드백 저장 기능을 불러오지 못했습니다.'); } catch(e) {}
+    try { showPushToast('피드백 자동 저장 기능을 불러오지 못했습니다.'); } catch(e) {}
     return false;
-  }
-
-  const oldLabel = btn ? (btn.getAttribute('aria-label') || btn.textContent || '저장') : '저장';
-  if (btn) {
-    btn.disabled = true;
-    setKinderChatFeedbackLiveActionLabel(btn, '저장 중');
   }
 
   let savedOk = false;
@@ -1528,16 +1536,12 @@ async function saveKinderChatFeedbackLive(id, btn = null, selectedStudentId = ''
       studentId: finalStudentId
     }, null);
   } catch (err) {
-    console.error('LIVE 피드백 저장 오류:', err);
+    console.error('LIVE 피드백 자동 저장 오류:', err);
     savedOk = false;
   }
 
   if (savedOk === false) {
-    if (btn) {
-      btn.disabled = false;
-      setKinderChatFeedbackLiveActionLabel(btn, oldLabel || '저장');
-    }
-    try { showPushToast('피드백 저장을 확인해 주세요.'); } catch(e) {}
+    try { showPushToast('피드백 자동 저장을 확인해 주세요.'); } catch(e) {}
     return false;
   }
 
@@ -1563,13 +1567,8 @@ async function saveKinderChatFeedbackLive(id, btn = null, selectedStudentId = ''
   item.savedAt = new Date().toISOString();
   item.updatedAt = item.savedAt;
   persistKinderChatFeedbackLiveSessionNow();
-
-  if (btn) {
-    setKinderChatFeedbackLiveActionLabel(btn, '저장 완료');
-    btn.disabled = true;
-  }
+  syncKinderChatFeedbackLiveItemToInbox(item);
   refreshKinderChatFeedbackLiveActions(item);
-  try { showPushToast('피드백을 저장했어요.'); } catch(e) {}
   return true;
 }
 function startKinderChatFeedbackLiveRequest(options = {}) {
@@ -1718,6 +1717,9 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
         renderKinderChatFeedbackLiveResultText(liveUi.bubble, finalText);
         liveUi.bubble.setAttribute('aria-busy', 'false');
       }
+      syncKinderChatFeedbackLiveItemToInbox(item);
+      await saveKinderChatFeedbackLive(item.id, item.studentId);
+      syncKinderChatFeedbackLiveItemToInbox(item);
       showKinderChatFeedbackLiveActions(item);
       if (liveUi.area) liveUi.area.scrollTop = liveUi.area.scrollHeight;
     } catch(err) {
@@ -2320,7 +2322,7 @@ function confirmKinderChatFeedbackSaveStudentPicker() {
   const source = kcfPendingSaveStudentPicker.source || 'inbox';
   closeKinderChatFeedbackSaveStudentPicker();
   if (!itemId || !selectedId) return;
-  if (source === 'live') saveKinderChatFeedbackLive(itemId, null, selectedId);
+  if (source === 'live') saveKinderChatFeedbackLive(itemId, selectedId);
   else saveTodayFeedbackItem(itemId, null, selectedId);
 }
 
