@@ -306,6 +306,30 @@ test('QuickNote composer does not hand vertical drag gestures to the page while 
 });
 
 
+test('QuickNote content plane cancels iOS visual viewport pan without moving chat scroll', () => {
+  const rootRule = css.match(/#kinderChatFeedbackScreen \{[\s\S]*?\}/)?.[0] || '';
+  const innerRule = css.match(/#kinderChatFeedbackScreen \.kcfInner \{[\s\S]*?\}/)?.[0] || '';
+  assert.match(rootRule,/--kcf-content-vv-offset-top:0px/);
+  assert.match(rootRule,/--kcf-content-layout-height:100%/);
+  assert.match(innerRule,/top:var\(--kcf-content-vv-offset-top, 0px\)/);
+  assert.match(innerRule,/height:var\(--kcf-content-layout-height, 100%\)/);
+  assert.doesNotMatch(innerRule,/transform:/);
+
+  assert.match(js,/let kcfContentBaselineHeight = 0/);
+  assert.match(js,/function captureKinderChatFeedbackContentBaseline\(force = false\)/);
+  assert.match(js,/function syncKinderChatFeedbackContentViewportCompensation\(options = \{\}\)/);
+  assert.match(js,/window\.visualViewport\?\.offsetTop/);
+  assert.match(js,/--kcf-content-vv-offset-top/);
+  assert.match(js,/--kcf-content-layout-height/);
+  assert.match(js,/captureKinderChatFeedbackContentBaseline\(true\)/);
+
+  const start = js.indexOf('function syncKinderChatFeedbackContentViewportCompensation');
+  const end = js.indexOf('function finishKinderChatFeedbackViewportTransition', start);
+  const block = js.slice(start, end);
+  assert.doesNotMatch(block,/scrollTop\s*=/);
+  assert.doesNotMatch(block,/scrollTo\(/);
+});
+
 test('QuickNote viewport diagnostics are opt-in and read-only', () => {
   assert.match(js,/new URLSearchParams\(window\.location\.search\)\.get\('kcfDebug'\) === '1'/);
   assert.match(js,/pointerdown-before-focus/);
