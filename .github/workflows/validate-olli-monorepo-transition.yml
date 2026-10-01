@@ -9,6 +9,7 @@ on:
       - 'apps/pc/api/olli-agent.js'
       - 'supabase/migrations/*_schedule_availability_rules_and_read_rpc.sql'
       - 'supabase/migrations/*_makeup_closed_day_guard.sql'
+      - 'supabase/migrations/*_makeup_update_closed_day_guard.sql'
       - 'supabase/migrations/*_agent_student_pickups_range_read_rpc.sql'
       - 'packages/common/**'
       - 'deploy/vercel-projects.json'
@@ -30,6 +31,7 @@ on:
       - 'apps/mobile/**'
       - 'supabase/migrations/*_schedule_availability_rules_and_read_rpc.sql'
       - 'supabase/migrations/*_makeup_closed_day_guard.sql'
+      - 'supabase/migrations/*_makeup_update_closed_day_guard.sql'
       - 'supabase/migrations/*_agent_student_pickups_range_read_rpc.sql'
       - 'packages/common/**'
       - 'deploy/vercel-projects.json'
@@ -105,6 +107,7 @@ jobs:
             tests/olli-agent-schedule-availability-tool.test.cjs \
             tests/olli-agent-schedule-availability-db-contract.test.cjs \
             tests/olli-agent-makeup-db-contract.test.cjs \
+            tests/olli-agent-makeup-update-db-contract.test.cjs \
             tests/olli-agent-makeup-prepare-tool.test.cjs \
             tests/olli-agent-makeup-production-contract.test.cjs \
             tests/olli-agent-attendance-tool.test.cjs \
