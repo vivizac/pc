@@ -1,0 +1,34 @@
+name: Validate restored Agent server
+
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/api/_lib/olli-agent/**'
+      - 'apps/mobile/api/olli-agent.js'
+      - 'apps/mobile/package.json'
+      - '.github/workflows/validate-restored-agent-server.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check restored Agent server syntax
+        run: |
+          test -f apps/mobile/api/olli-agent.js
+          test -f apps/mobile/api/_lib/olli-agent/runtime.cjs
+          test -f apps/mobile/api/_lib/olli-agent/privacy.cjs
+          test -f apps/mobile/api/_lib/olli-agent/request-context.cjs
+          test -f apps/mobile/api/_lib/olli-agent/supabase-rpc.cjs
+          node --check apps/mobile/api/_lib/olli-agent/runtime.cjs
+          node --check apps/mobile/api/_lib/olli-agent/privacy.cjs
+          node --check apps/mobile/api/_lib/olli-agent/request-context.cjs
+          node --check apps/mobile/api/_lib/olli-agent/supabase-rpc.cjs
+          node --check apps/mobile/api/_lib/olli-agent/tools/waitlist-cancel-prepare-tools.cjs
+          node --check apps/mobile/api/_lib/olli-agent/tools/makeup-update-prepare-tools.cjs
