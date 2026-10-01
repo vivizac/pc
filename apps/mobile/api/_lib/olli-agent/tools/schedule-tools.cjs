@@ -187,7 +187,13 @@ function createGetStudentScheduleTool({
         studentLabel: student_label,
         referenceDate: reference_date,
       });
-      return JSON.stringify(payload);
+      return JSON.stringify(Object.assign({},payload,{
+        enrollments:(Array.isArray(payload?.enrollments)?payload.enrollments:[]).map((row)=>{
+          const copy=Object.assign({},row);
+          delete copy.time_slot;
+          return copy;
+        })
+      }));
     },
   });
 }
