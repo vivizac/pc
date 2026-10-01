@@ -34,7 +34,12 @@ async function openRecordAttendanceDashboard(){
 
 async function toggleRecordAcademyManagementMode(){
   if (typeof canAccessOlliStartPageAcademyManagement === 'function' && !canAccessOlliStartPageAcademyManagement()) {
-    if (currentRecordView === 'academy') {
+    if (currentRecordView === 'attendance') {
+    currentRecordView = currentObservationView === 'kinder' ? 'kinder' : 'elementary';
+    updateRecordHeaderUI();
+  }
+
+  if (currentRecordView === 'academy') {
       currentRecordView = currentObservationView === 'kinder' ? 'kinder' : 'elementary';
       updateRecordHeaderUI();
       syncRecordAcademyPageState();
