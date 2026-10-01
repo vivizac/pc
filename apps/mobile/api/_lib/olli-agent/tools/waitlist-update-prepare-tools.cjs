@@ -52,7 +52,7 @@ function rowGroup(row) {
 }
 
 function rowDivision(row) {
-  return clean(row?.target_division || row?.division).toLowerCase();
+  return clean(row?.target_division || row?.division || row?.guest_division).toLowerCase();
 }
 
 function rowTimeLabel(row, division, mode) {
