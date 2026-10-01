@@ -622,6 +622,145 @@ async function runMakeupPrepareProbe({
   });
 }
 
+function resolveMakeupUpdatePrepareScope(preparedPrivacy) {
+  if (preparedPrivacy?.needsDisambiguation) {
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+
+  const subjectRefs = Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+  if (subjectRefs.length !== 1) {
+    throw runtimeError(
+      '보강 변경은 한 번에 학생 한 명만 지정해 주세요.',
+      400,
+      'OLLI_AGENT_MAKEUP_UPDATE_SINGLE_STUDENT_REQUIRED'
+    );
+  }
+
+  const subjectLabel = subjectRefs[0].label;
+  const subject = preparedPrivacy?.subjectAccess?.resolve?.(subjectLabel);
+  const division = String(subject?.division || '').trim().toLowerCase();
+  if (!['elementary', 'kinder'].includes(division)) {
+    throw runtimeError(
+      '보강 변경 대상 학생의 수업 구분을 확인하지 못했습니다.',
+      400,
+      'OLLI_AGENT_MAKEUP_UPDATE_DIVISION_REQUIRED'
+    );
+  }
+
+  const safeText = String(preparedPrivacy?.safeText || '');
+  const compact = safeText.replace(/\s+/g, '');
+  const hasMakeup = /(?:보강|보충)/.test(compact);
+  const hasUpdate = /(?:변경|수정|바꿔|바꾸|옮겨|옮기|이동)/.test(compact);
+  const hasRemove = /(?:취소|삭제|지워|지우|제거|빼|해제|없애)/.test(compact);
+
+  if (!hasMakeup || !hasUpdate || hasRemove) {
+    throw runtimeError(
+      '보강 변경 요청을 확인하지 못했습니다.',
+      400,
+      'OLLI_AGENT_MAKEUP_UPDATE_INTENT_REQUIRED'
+    );
+  }
+
+  return { subjectLabel, division };
+}
+
+async function runMakeupUpdatePrepareAgent({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+}) {
+  assertOpenAiKey();
+
+  const scope = resolveMakeupUpdatePrepareScope(preparedPrivacy);
+  const { Agent, run, tool, z } = await loadAgentsSdk();
+  const { createPrepareMakeupUpdateTool } = require('./tools/makeup-update-prepare-tools.cjs');
+  const { sanitizeAgentToolPayload } = require('./privacy.cjs');
+  const model = agentModel();
+  const today = todayInSeoul();
+
+  const prepareMakeupUpdate = createPrepareMakeupUpdateTool({
+    tool,
+    z,
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    studentLabel:scope.subjectLabel,
+    division:scope.division,
+    currentDate:today,
+    requestId,
+    sanitizePayload(payload) {
+      return sanitizeAgentToolPayload(payload, preparedPrivacy);
+    },
+  });
+
+  const agent = new Agent({
+    name:'Olli Makeup Update Prepare Probe',
+    model,
+    instructions:[
+      'You are the Olli makeup-update preparation assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The only available anonymous student label for this run is ' + scope.subjectLabel + '.',
+      'The server has fixed the student division to ' + scope.division + '. Do not override it.',
+      'Today in Korea is ' + today + '.',
+      'Always call prepare_makeup_update exactly once before answering.',
+      'source_date identifies the existing makeup date and is required. Convert relative source dates to exact YYYY-MM-DD.',
+      'For the existing makeup time, pass source_hour and source_minute only when the user identifies it. Otherwise pass 0 and 0.',
+      'For the existing makeup group, use A or B only when the user identifies the old group. Otherwise use AUTO.',
+      'For the new date, use exact target_date only when the user changes the date. Otherwise pass an empty string.',
+      'For the new visible time, pass target_hour and target_minute only when the user changes the time. Otherwise pass 0 and 0.',
+      'For the new group, use A or B only when the user explicitly requests the new group. Otherwise use AUTO.',
+      'For A반에서 B반으로 변경, source_group must be A and target_group must be B.',
+      'The server re-resolves the existing makeup row and the target availability. It never trusts or exposes an internal time_slot.',
+      'The tool creates a pending confirmation card only. It never directly changes the makeup class.',
+      'Never say the makeup was changed. Say that the change is waiting for user confirmation.',
+      'Never ask for, infer, or reveal a real student name, UUID, one-time-session ID, member ID, session token, academy ID, action ID, message ID, or internal time slot.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[prepareMakeupUpdate],
+    modelSettings:{ toolChoice:'prepare_makeup_update' },
+  });
+
+  const result = await run(agent, preparedPrivacy.safeText, {
+    context:agentContext,
+  });
+
+  const finalOutput = String(result?.finalOutput || '').trim();
+  if (!finalOutput) {
+    throw runtimeError(
+      '보강 변경 준비 Agent 응답이 비어 있습니다.',
+      502,
+      'OLLI_AGENT_EMPTY_MAKEUP_UPDATE_PREPARE_RESPONSE'
+    );
+  }
+
+  return {
+    ready:true,
+    model,
+    output:finalOutput,
+    nodeVersion:process.versions.node,
+  };
+}
+
+async function runMakeupUpdatePrepareProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+}) {
+  return runMakeupUpdatePrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId,
+  });
+}
+
 function resolveMakeupCancelPrepareScope(preparedPrivacy) {
   if (preparedPrivacy?.needsDisambiguation) {
     throw runtimeError(
@@ -2039,6 +2178,9 @@ module.exports = {
   resolveMakeupPrepareScope,
   runMakeupPrepareAgent,
   runMakeupPrepareProbe,
+  resolveMakeupUpdatePrepareScope,
+  runMakeupUpdatePrepareAgent,
+  runMakeupUpdatePrepareProbe,
   resolveMakeupCancelPrepareScope,
   runMakeupCancelPrepareAgent,
   runMakeupCancelPrepareProbe,
