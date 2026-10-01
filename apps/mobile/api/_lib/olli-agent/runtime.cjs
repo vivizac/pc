@@ -4605,6 +4605,25 @@ async function runAttendanceRead({
   return runAttendanceProbe({agentContext,requestContext,preparedPrivacy});
 }
 
+async function runPickupRead({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError('픽업 조회 원문 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_PICKUP_READ_SOURCE_INVALID');
+  }
+  await validatePickupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+  return runPickupProbe({agentContext,requestContext,preparedPrivacy});
+}
+
 async function runTimetableRead({
   agentContext,
   requestContext,
@@ -4757,6 +4776,7 @@ module.exports = {
   runAttendanceProbe,
   runAttendanceRead,
   runPickupProbe,
+  runPickupRead,
   resolvePickupPrepareScope,
   resolvePickupUpdatePrepareScope,
   resolvePickupCancelPrepareScope,
