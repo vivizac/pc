@@ -18,16 +18,16 @@ export default async function handler(req, res) {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const mode = safeText(body.mode, 40);
 
-    if (!['probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'memo_prepare_probe', 'makeup_prepare_probe', 'makeup_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
+    if (!['probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'memo_prepare_probe', 'makeup_prepare_probe', 'makeup_cancel_prepare_probe', 'makeup_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
       return res.status(400).json({
-        error: '현재 독립 Agent endpoint는 probe, privacy_probe, profile_probe, schedule_probe, records_probe, availability_probe, attendance_probe, pickups_probe, memo_prepare_probe, makeup_prepare_probe, makeup_prepare, pickup_prepare_probe, pickup_update_prepare_probe, pickup_cancel_prepare_probe, pickup_cancel_prepare, pickup_update_prepare 또는 pickup_prepare 모드만 지원합니다.',
+        error: '현재 독립 Agent endpoint는 probe, privacy_probe, profile_probe, schedule_probe, records_probe, availability_probe, attendance_probe, pickups_probe, memo_prepare_probe, makeup_prepare_probe, makeup_cancel_prepare_probe, makeup_prepare, pickup_prepare_probe, pickup_update_prepare_probe, pickup_cancel_prepare_probe, pickup_cancel_prepare, pickup_update_prepare 또는 pickup_prepare 모드만 지원합니다.',
       });
     }
 
     const contextModule = await import('./_lib/olli-agent/request-context.cjs');
     const requestContext = await contextModule.loadOlliAgentRequestContext(body);
 
-    if (mode === 'privacy_probe' || mode === 'profile_probe' || mode === 'schedule_probe' || mode === 'records_probe' || mode === 'availability_probe' || mode === 'attendance_probe' || mode === 'pickups_probe' || mode === 'memo_prepare_probe' || mode === 'makeup_prepare_probe' || mode === 'makeup_prepare' || mode === 'pickup_prepare_probe' || mode === 'pickup_update_prepare_probe' || mode === 'pickup_cancel_prepare_probe' || mode === 'pickup_cancel_prepare' || mode === 'pickup_update_prepare' || mode === 'pickup_prepare') {
+    if (mode === 'privacy_probe' || mode === 'profile_probe' || mode === 'schedule_probe' || mode === 'records_probe' || mode === 'availability_probe' || mode === 'attendance_probe' || mode === 'pickups_probe' || mode === 'memo_prepare_probe' || mode === 'makeup_prepare_probe' || mode === 'makeup_cancel_prepare_probe' || mode === 'makeup_prepare' || mode === 'pickup_prepare_probe' || mode === 'pickup_update_prepare_probe' || mode === 'pickup_cancel_prepare_probe' || mode === 'pickup_cancel_prepare' || mode === 'pickup_update_prepare' || mode === 'pickup_prepare') {
       const message = safeText(body.message, 5000);
       if (!message) {
         return res.status(400).json({
@@ -116,6 +116,20 @@ export default async function handler(req, res) {
           });
         }
         probe = await runtimeModule.runMakeupPrepareProbe({
+          agentContext,
+          requestContext,
+          preparedPrivacy: prepared,
+          requestId,
+        });
+      } else if (mode === 'makeup_cancel_prepare_probe') {
+        const requestId = safeText(body.requestId || body.request_id, 160);
+        if (!requestId) {
+          return res.status(400).json({
+            error: 'makeup_cancel_prepare_probe에는 재시도 중복 방지용 requestId가 필요합니다.',
+            code: 'OLLI_AGENT_REQUEST_ID_REQUIRED',
+          });
+        }
+        probe = await runtimeModule.runMakeupCancelPrepareProbe({
           agentContext,
           requestContext,
           preparedPrivacy: prepared,
