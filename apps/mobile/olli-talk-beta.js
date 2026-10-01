@@ -599,10 +599,38 @@
     return '사유를 알려주세요.';
   }
 
+  function olliTalkBatchCommandNeedsClarification(command){
+    return command?.needsClarification===true;
+  }
+
+  function olliTalkBatchClarificationPrompt(command){
+    if(String(command?.intent || '').trim()==='add_makeup'){
+      return String(command?.studentName || '').trim()+' 학생의 보강 날짜와 시간을 함께 알려주세요.';
+    }
+    return '작업에 필요한 날짜와 시간을 함께 알려주세요.';
+  }
+
+  function applyOlliTalkBatchClarification(command,replyText,replyMessageId,router){
+    const item=Object.assign({},command);
+    const reply=String(replyText || '').trim();
+    if(String(item.intent || '').trim()==='add_makeup' && router && typeof router.parseMakeupMutationIntent==='function'){
+      const contextText=String(item.text+' '+reply).trim();
+      const parsed=router.parseMakeupMutationIntent(contextText);
+      if(!parsed || String(parsed.intent || '').trim()!=='add_makeup') return null;
+      item.needsClarification=false;
+      item.contextText=contextText;
+      item.clarificationMessageId=Number(replyMessageId || 0);
+      item.clarificationMessageText=reply;
+      return item;
+    }
+    return null;
+  }
+
   function buildOlliTalkBatchAgentCommands(batch,sourceMessageId,sourceMessageText){
     return (Array.isArray(batch?.commands)?batch.commands:[]).map(command=>({
       intent:String(command?.intent || '').trim(),
       text:String(command?.originalText || '').trim(),
+      studentName:String(command?.studentName || command?.guestName || '').trim(),
       reason:String(command?.reason || '').trim(),
       reasonMessageId:olliTalkBatchCommandNeedsReason(command) && String(command?.reason || '').trim()
         ? Number(sourceMessageId || 0)
@@ -610,7 +638,11 @@
       reasonMessageText:olliTalkBatchCommandNeedsReason(command) && String(command?.reason || '').trim()
         ? String(sourceMessageText || '').trim()
         : '',
-      memoNote:String(command?.memoNote || '').trim()
+      memoNote:String(command?.memoNote || '').trim(),
+      needsClarification:command?.batchDraft===true,
+      contextText:'',
+      clarificationMessageId:0,
+      clarificationMessageText:''
     }));
   }
 
@@ -1452,35 +1484,89 @@
           ? pendingBatch.commands.map(item=>Object.assign({},item))
           : [];
         const reasonIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
-        if(reasonIndex<0){
-          olliTalkPendingActionReason=null;
-          return resolveOlliTalkBatchAgentTurn({
-            sourceText:String(pendingBatch.sourceMessageText || '').trim(),
-            sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
-            commands,
-            context,
-          });
-        }
+        if(reasonIndex>=0){
+          commands[reasonIndex].reason=String(commandText || '').trim();
+          commands[reasonIndex].reasonMessageId=Number(replyToMessageId || 0);
+          commands[reasonIndex].reasonMessageText=String(commandText || '').trim();
+          const nextReasonIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
+          if(nextReasonIndex>=0){
+            olliTalkPendingActionReason={
+              intent:'batch_write',
+              __batchAgent:{
+                sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+                sourceMessageText:String(pendingBatch.sourceMessageText || '').trim(),
+                commands
+              }
+            };
+            const prompt=olliTalkBatchReasonPrompt(commands[nextReasonIndex]);
+            return {
+              assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
+              replyText:prompt,
+              recordAi:false
+            };
+          }
 
-        commands[reasonIndex].reason=String(commandText || '').trim();
-        commands[reasonIndex].reasonMessageId=Number(replyToMessageId || 0);
-        commands[reasonIndex].reasonMessageText=String(commandText || '').trim();
-        const nextIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
-        if(nextIndex>=0){
-          olliTalkPendingActionReason={
-            intent:'batch_write',
-            __batchAgent:{
-              sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
-              sourceMessageText:String(pendingBatch.sourceMessageText || '').trim(),
-              commands
+          const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
+          if(clarificationIndex>=0){
+            olliTalkPendingActionReason={
+              intent:'batch_write',
+              __batchAgent:{
+                sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+                sourceMessageText:String(pendingBatch.sourceMessageText || '').trim(),
+                commands
+              }
+            };
+            const prompt=olliTalkBatchClarificationPrompt(commands[clarificationIndex]);
+            return {
+              assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
+              replyText:prompt,
+              recordAi:false
+            };
+          }
+        }else{
+          const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
+          if(clarificationIndex>=0){
+            const clarified=applyOlliTalkBatchClarification(
+              commands[clarificationIndex],
+              commandText,
+              replyToMessageId,
+              router
+            );
+            if(!clarified){
+              const prompt=olliTalkBatchClarificationPrompt(commands[clarificationIndex]);
+              olliTalkPendingActionReason={
+                intent:'batch_write',
+                __batchAgent:{
+                  sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+                  sourceMessageText:String(pendingBatch.sourceMessageText || '').trim(),
+                  commands
+                }
+              };
+              return {
+                assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
+                replyText:prompt,
+                recordAi:false
+              };
             }
-          };
-          const prompt=olliTalkBatchReasonPrompt(commands[nextIndex]);
-          return {
-            assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
-            replyText:prompt,
-            recordAi:false
-          };
+            commands[clarificationIndex]=clarified;
+            const nextClarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
+            if(nextClarificationIndex>=0){
+              olliTalkPendingActionReason={
+                intent:'batch_write',
+                __batchAgent:{
+                  sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+                  sourceMessageText:String(pendingBatch.sourceMessageText || '').trim(),
+                  commands
+                }
+              };
+              const prompt=olliTalkBatchClarificationPrompt(commands[nextClarificationIndex]);
+              return {
+                assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
+                replyText:prompt,
+                recordAi:false
+              };
+            }
+          }
         }
 
         olliTalkPendingActionReason=null;
@@ -1556,6 +1642,23 @@
           }
         };
         const prompt=olliTalkBatchReasonPrompt(commands[missingIndex]);
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
+          replyText:prompt,
+          recordAi:false
+        };
+      }
+      const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
+      if(clarificationIndex>=0){
+        olliTalkPendingActionReason={
+          intent:'batch_write',
+          __batchAgent:{
+            sourceMessageId:sourceId,
+            sourceMessageText:String(commandText || '').trim(),
+            commands
+          }
+        };
+        const prompt=olliTalkBatchClarificationPrompt(commands[clarificationIndex]);
         return {
           assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
           replyText:prompt,
