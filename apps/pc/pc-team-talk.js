@@ -1342,6 +1342,18 @@
     return { message };
   }
 
+  function isTrialAddAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parseTrialMutationIntent !== 'function') return false;
+    try {
+      const parsed = router.parseTrialMutationIntent(commandText);
+      const division = clean(parsed?.division).toLowerCase();
+      return clean(parsed?.intent) === 'add_trial' && ['elementary', 'kinder'].includes(division);
+    } catch (error) {
+      console.warn('PC 체험 등록 Agent 후보 판별 실패:', error?.message || error);
+      return false;
+    }
+  }
+
   function isTrialUpdateAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router || typeof router.parseTrialUpdateMutationIntent !== 'function') return false;
     try {
@@ -1519,6 +1531,38 @@
     }
     if (clean(data.message.action.action_type) !== 'update_makeup') {
       throw new Error('보강 변경 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
+  async function resolveTrialAddAgentTurn(commandText, current, replyToMessageId) {
+    const sourceMessageId = Number(replyToMessageId || 0);
+    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+      throw new Error('체험 등록 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response = await fetch('/api/olli-agent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        mode:'trial_add_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageId
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.ok !== true || !data?.message?.action) {
+      throw new Error(data?.error || data?.message || '체험 등록 Agent 응답을 받지 못했습니다.');
+    }
+    if (clean(data.message.action.action_type) !== 'add_trial') {
+      throw new Error('체험 등록 Agent 작업 종류가 올바르지 않습니다.');
     }
 
     return {
@@ -1797,6 +1841,10 @@
         replyText:confirmation,
         recordAi:false
       };
+    }
+
+    if (isTrialAddAgentCandidate(commandText, router)) {
+      return resolveTrialAddAgentTurn(commandText, current, replyToMessageId);
     }
 
     if (isTrialUpdateAgentCandidate(commandText, router)) {
