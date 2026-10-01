@@ -228,13 +228,31 @@ test('QuickNote chat reserve and message lift stay linked to the composer', () =
   assert.match(rootRule,/--kcf-chat-reserve:176px/);
   assert.match(rootRule,/--kcf-message-lift:0px/);
   assert.match(viewportRule,/position:absolute/);
-  assert.match(viewportRule,/inset:0/);
+  assert.match(viewportRule,/top:var\(--kcf-chat-vv-offset-top, 0px\)/);
+  assert.match(viewportRule,/height:var\(--kcf-chat-layout-height, 100%\)/);
   assert.match(viewportRule,/overflow:hidden/);
   assert.match(chatRule,/padding:112px 16px var\(--kcf-chat-reserve, 176px\)/);
   assert.match(chatRule,/overflow-y:auto/);
   assert.match(listRule,/justify-content:flex-end/);
   assert.match(listRule,/transform:translate3d\(0,calc\(-1 \* var\(--kcf-message-lift, 0px\)\),0\)/);
   assert.match(listRule,/transition:none/);
+});
+
+test('QuickNote chat viewport cancels iOS visual pan while messages keep their own lift', () => {
+  assert.match(js,/let kcfChatViewportBaselineHeight = 0/);
+  assert.match(js,/function captureKinderChatFeedbackChatViewportBaseline\(force = false\)/);
+  assert.match(js,/function syncKinderChatFeedbackChatViewportCompensation\(reset = false\)/);
+  assert.match(js,/window\.visualViewport\?\.offsetTop/);
+  assert.match(js,/--kcf-chat-vv-offset-top/);
+  assert.match(js,/--kcf-chat-layout-height/);
+  assert.match(js,/captureKinderChatFeedbackChatViewportBaseline\(true\)/);
+
+  const innerRule = css.match(/#kinderChatFeedbackScreen \.kcfInner \{[\s\S]*?\}/)?.[0] || '';
+  const listRule = css.match(/#kinderChatFeedbackScreen \.kcfMessageList\{[\s\S]*?\}/)?.[0] || '';
+  assert.match(innerRule,/--kcf-chat-vv-offset-top:0px/);
+  assert.match(innerRule,/top:var\(--kcf-chat-vv-offset-top, 0px\)/);
+  assert.match(innerRule,/height:var\(--kcf-chat-layout-height, 100%\)/);
+  assert.match(listRule,/--kcf-message-lift/);
 });
 
 test('QuickNote measures chat reserve from the live composer footprint', () => {
