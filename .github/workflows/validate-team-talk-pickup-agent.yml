@@ -16,11 +16,13 @@ on:
       - 'apps/mobile/api/_lib/olli-agent/tools/pickup-update-prepare-tools.cjs'
       - 'apps/mobile/api/_lib/olli-agent/tools/pickup-cancel-prepare-tools.cjs'
       - 'apps/mobile/api/_lib/olli-agent/tools/makeup-prepare-tools.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/tools/makeup-cancel-prepare-tools.cjs'
       - 'apps/mobile/index.html'
       - 'apps/mobile/tests/team-talk-ai-mode.test.cjs'
       - 'apps/mobile/tests/team-talk-pickup-agent-bridge.test.cjs'
       - 'apps/mobile/tests/team-talk-makeup-agent-bridge.test.cjs'
       - 'apps/mobile/tests/olli-agent-makeup-production-contract.test.cjs'
+      - 'apps/mobile/tests/olli-agent-makeup-cancel-prepare-tool.test.cjs'
       - 'apps/mobile/tests/olli-agent-pickup-production-contract.test.cjs'
       - 'apps/mobile/tests/olli-agent-pickup-update-prepare-tool.test.cjs'
       - 'apps/mobile/tests/olli-agent-pickup-cancel-prepare-tool.test.cjs'
@@ -43,11 +45,13 @@ on:
       - 'apps/mobile/api/_lib/olli-agent/tools/pickup-update-prepare-tools.cjs'
       - 'apps/mobile/api/_lib/olli-agent/tools/pickup-cancel-prepare-tools.cjs'
       - 'apps/mobile/api/_lib/olli-agent/tools/makeup-prepare-tools.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/tools/makeup-cancel-prepare-tools.cjs'
       - 'apps/mobile/index.html'
       - 'apps/mobile/tests/team-talk-ai-mode.test.cjs'
       - 'apps/mobile/tests/team-talk-pickup-agent-bridge.test.cjs'
       - 'apps/mobile/tests/team-talk-makeup-agent-bridge.test.cjs'
       - 'apps/mobile/tests/olli-agent-makeup-production-contract.test.cjs'
+      - 'apps/mobile/tests/olli-agent-makeup-cancel-prepare-tool.test.cjs'
       - 'apps/mobile/tests/olli-agent-pickup-production-contract.test.cjs'
       - 'apps/mobile/tests/olli-agent-pickup-update-prepare-tool.test.cjs'
       - 'apps/mobile/tests/olli-agent-pickup-cancel-prepare-tool.test.cjs'
@@ -70,6 +74,7 @@ jobs:
         run: |
           node --check apps/pc/pc-team-talk.js
           node --check apps/mobile/olli-talk-beta.js
+          node --check apps/mobile/api/_lib/olli-agent/tools/makeup-cancel-prepare-tools.cjs
 
       - name: Stage PC common runtime
         run: node apps/pc/scripts/stage-common.cjs
@@ -88,6 +93,7 @@ jobs:
             tests/team-talk-pickup-agent-bridge.test.cjs \
             tests/team-talk-makeup-agent-bridge.test.cjs \
             tests/olli-agent-makeup-production-contract.test.cjs \
+            tests/olli-agent-makeup-cancel-prepare-tool.test.cjs \
             tests/olli-agent-pickup-production-contract.test.cjs \
             tests/olli-agent-pickup-update-prepare-tool.test.cjs \
             tests/olli-agent-pickup-cancel-prepare-tool.test.cjs
