@@ -278,9 +278,16 @@ async function readAvailability({requestContext,intent,todayKey,callRpc}){
   const group=requestedGroup(intent)||'ALL';
   const results=[];
   for(const division of divisions){
-    results.push(await readScheduleAvailability({
+    const value=await readScheduleAvailability({
       requestContext,division,purpose,startDate:start,endDate:end,timeSlot:0,classGroup:group,
-      sanitizePayload(value){return value;},callRpc,
+      sanitizePayload(payload){return payload;},callRpc,
+    });
+    results.push(Object.assign({},value,{
+      slots:(Array.isArray(value?.slots)?value.slots:[]).map((row)=>{
+        const copy=Object.assign({},row);
+        delete copy.time_slot;
+        return copy;
+      })
     }));
   }
   return {scope:scope||'date',view_mode:clean(intent?.viewMode)||'availability',purpose,start_date:start,end_date:end,results};
