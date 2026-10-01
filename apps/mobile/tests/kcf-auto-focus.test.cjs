@@ -49,12 +49,12 @@ test('Teacher roster uses student name cards only and removes teacher labels', (
   assert.match(sheet, /event\.target\.closest\('\.kcfAutoStudentChip'\)/);
 });
 
-test('QuickNote shared-sheet assets use the unified cache keys', () => {
-  assert.match(html, /kinder-feedback\.css\?v=20261001-unified-sheet-1/);
-  assert.match(html, /kinder-feedback\.js\?v=20261001-unified-sheet-1/);
+test('QuickNote shared-sheet assets use the current cache keys', () => {
+  assert.match(html, /kinder-feedback\.css\?v=20261002-sheet-controls-1/);
+  assert.match(html, /kinder-feedback\.js\?v=20261002-sheet-controls-1/);
   assert.match(html, /kcf-auto-mode\.css\?v=20261001-unified-sheet-1/);
-  assert.match(html, /kcf-teacher-sheet\.css\?v=20261001-unified-sheet-1/);
-  assert.match(html, /kcf-teacher-sheet\.js\?v=20261001-unified-sheet-1/);
+  assert.match(html, /kcf-teacher-sheet\.css\?v=20261002-sheet-controls-1/);
+  assert.match(html, /kcf-teacher-sheet\.js\?v=20261002-sheet-controls-1/);
 });
 
 test('Teacher roster is preloaded on page entry and empty state never opens the sheet', () => {
