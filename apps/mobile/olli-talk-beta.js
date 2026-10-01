@@ -640,6 +640,16 @@
     return { route:null, message };
   }
 
+  function isOlliTalkPickupUpdateAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parsePickupUpdateMutationIntent!=='function') return false;
+    try{
+      return String(router.parsePickupUpdateMutationIntent(commandText)?.intent || '').trim()==='update_pickup';
+    }catch(error){
+      console.warn('올리톡 픽업 수정 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
   function isOlliTalkPickupAddAgentCandidate(commandText,router=window.OlliCommandRouter){
     if(!router || typeof router.parsePickupMutationIntent!=='function') return false;
     try{
