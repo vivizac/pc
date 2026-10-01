@@ -35,7 +35,7 @@
     var modeBtn = document.getElementById('kcfTeacherSheetModeBtn');
     if (modeBtn) {
       modeBtn.classList.toggle('active', enabled);
-      modeBtn.textContent = 'C';
+      modeBtn.textContent = enabled ? 'C' : 'Class';
       modeBtn.setAttribute('aria-label', enabled ? 'Class 모드 닫기' : 'Class 모드 열기');
       modeBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
       modeBtn.title = enabled ? 'Class 모드 닫기' : 'Class 모드 열기';
@@ -184,7 +184,7 @@
       '        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>',
       '      </button>',
       '      <div id="kcfTeacherSheetNormalSpacer" class="kcfTeacherSheetNormalSpacer"></div>',
-      '      <button id="kcfTeacherSheetModeBtn" class="kcfTeacherSheetModeBtn" type="button" aria-label="Class 모드 열기" aria-pressed="false">C</button>',
+      '      <button id="kcfTeacherSheetModeBtn" class="kcfTeacherSheetModeBtn" type="button" aria-label="Class 모드 열기" aria-pressed="false">Class</button>',
       '      <div id="kcfTeacherSheetRosterHost" class="kcfTeacherSheetRosterHost" hidden></div>',
       '      <button id="kcfTeacherSheetVoiceBtn" class="kcfTeacherSheetVoiceBtn" type="button" aria-label="음성 입력" title="음성 입력">',
       '        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">',

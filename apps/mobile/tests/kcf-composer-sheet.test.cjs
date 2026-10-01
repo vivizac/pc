@@ -62,7 +62,7 @@ test('Teacher send closes the sheet only after successful submit', () => {
 test('shared sheet exposes Class mode control and the existing feedback submit source', () => {
   assert.match(html, /id="kcfTeacherBtn"[^>]*>Class<\/button>/);
   assert.match(teacherJs, /id="kcfTeacherSheetModeBtn"/);
-  assert.match(teacherJs, /modeBtn\.textContent = 'C'/);
+  assert.match(teacherJs, /modeBtn\.textContent = enabled \? 'C' : 'Class'/);
   assert.match(teacherJs, /id="kcfTeacherSheetSendBtn"/);
   assert.match(teacherJs, /toggleKinderChatFeedbackTeacherMode/);
 });
@@ -116,10 +116,10 @@ test('Class sheet send button matches the normal QuickNote send button size', ()
 });
 
 
-test('normal shared sheet mirrors the inline utility row as plus spacer C mic send', () => {
+test('normal shared sheet mirrors the inline utility row as plus spacer Class mic send', () => {
   assert.match(teacherJs, /id="kcfTeacherSheetAttachBtn"/);
   assert.match(teacherJs, /id="kcfTeacherSheetNormalSpacer"/);
-  assert.match(teacherJs, /id="kcfTeacherSheetModeBtn"[^>]*>C<\/button>/);
+  assert.match(teacherJs, /id="kcfTeacherSheetModeBtn"[^>]*>Class<\/button>/);
   assert.match(teacherJs, /id="kcfTeacherSheetVoiceBtn"/);
   assert.match(teacherJs, /id="kcfTeacherSheetSendBtn"/);
   assert.match(teacherJs, /if \(attach\) attach\.hidden = enabled/);
