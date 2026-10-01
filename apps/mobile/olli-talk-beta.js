@@ -644,6 +644,77 @@
     }
   }
 
+  function isOlliTalkWaitlistCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseWaitlistCancelMutationIntent!=='function') return false;
+    try{
+      return String(router.parseWaitlistCancelMutationIntent(commandText)?.intent || '').trim()==='cancel_waitlist';
+    }catch(error){
+      console.warn('올리톡 대기 취소 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
+  function isOlliTalkMakeupAddAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseMakeupMutationIntent!=='function') return false;
+    try{
+      return String(router.parseMakeupMutationIntent(commandText)?.intent || '').trim()==='add_makeup';
+    }catch(error){
+      console.warn('올리톡 보강 등록 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
+  function parseOlliTalkMakeupCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseMakeupCancelMutationIntent!=='function') return null;
+    try{
+      const parsed=router.parseMakeupCancelMutationIntent(commandText);
+      return String(parsed?.intent || '').trim()==='cancel_makeup' ? parsed : null;
+    }catch(error){
+      console.warn('올리톡 보강 취소 Agent 후보 판별 실패:',error);
+      return null;
+    }
+  }
+
+  function isOlliTalkMakeupUpdateAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseMakeupUpdateMutationIntent!=='function') return false;
+    try{
+      return String(router.parseMakeupUpdateMutationIntent(commandText)?.intent || '').trim()==='update_makeup';
+    }catch(error){
+      console.warn('올리톡 보강 변경 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
+  function isOlliTalkPickupCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parsePickupCancelMutationIntent!=='function') return false;
+    try{
+      return String(router.parsePickupCancelMutationIntent(commandText)?.intent || '').trim()==='cancel_pickup';
+    }catch(error){
+      console.warn('올리톡 픽업 삭제 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
+  function isOlliTalkPickupUpdateAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parsePickupUpdateMutationIntent!=='function') return false;
+    try{
+      return String(router.parsePickupUpdateMutationIntent(commandText)?.intent || '').trim()==='update_pickup';
+    }catch(error){
+      console.warn('올리톡 픽업 수정 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
+  function isOlliTalkPickupAddAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parsePickupMutationIntent!=='function') return false;
+    try{
+      return String(router.parsePickupMutationIntent(commandText)?.intent || '').trim()==='add_pickup';
+    }catch(error){
+      console.warn('올리톡 픽업 등록 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
   function parseOlliTalkAbsenceAgentCandidate(commandText,router=window.OlliCommandRouter){
     if(!router || typeof router.parseAbsenceMutationIntent!=='function') return null;
     try{
@@ -910,6 +981,235 @@
     };
   }
 
+  async function resolveOlliTalkWaitlistCancelAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('대기 취소 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'waitlist_cancel_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok && String(data?.code || '').trim()==='OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED'){
+      return null;
+    }
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '대기 취소 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='cancel_waitlist'){
+      throw new Error('대기 취소 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkMakeupAddAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('보강 등록 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'makeup_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '보강 등록 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='add_makeup'){
+      throw new Error('보강 등록 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkMakeupCancelAgentTurn({
+    sourceText,
+    sourceMessageId,
+    reasonText,
+    reasonMessageText,
+    reasonMessageId,
+    context,
+  }){
+    const sourceId=Number(sourceMessageId || 0);
+    const reasonId=Number(reasonMessageId || 0);
+    if(!Number.isSafeInteger(sourceId) || sourceId<=0){
+      throw new Error('보강 취소 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    if(!Number.isSafeInteger(reasonId) || reasonId<=0 || !String(reasonText || '').trim()){
+      throw new Error('보강 취소 사유 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'makeup_cancel_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(sourceText || '').trim(),
+        sourceMessageId:sourceId,
+        reasonMessageId:reasonId,
+        reasonMessageText:String(reasonMessageText || '').trim(),
+        reason:String(reasonText || '').trim()
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '보강 취소 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='cancel_makeup'){
+      throw new Error('보강 취소 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkMakeupUpdateAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('보강 변경 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'makeup_update_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '보강 변경 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='update_makeup'){
+      throw new Error('보강 변경 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkPickupCancelAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('픽업 삭제 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'pickup_cancel_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '픽업 삭제 Agent 응답을 받지 못했습니다.');
+    }
+    const actionType=String(data.message.action.action_type || '').trim();
+    if(!['cancel_pickup','cancel_pickup_dropoff'].includes(actionType)){
+      throw new Error('픽업 삭제 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkPickupUpdateAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('픽업 수정 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'pickup_update_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '픽업 수정 Agent 응답을 받지 못했습니다.');
+    }
+    const actionType=String(data.message.action.action_type || '').trim();
+    if(!['update_pickup_arrival','update_pickup_dropoff'].includes(actionType)){
+      throw new Error('픽업 수정 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkPickupAddAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('픽업 등록 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'pickup_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '픽업 등록 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='add_pickup'){
+      throw new Error('픽업 등록 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
   async function resolveOlliTalkAbsenceAgentTurn({
     sourceText,
     sourceMessageId,
@@ -1084,6 +1384,19 @@
         });
       }
 
+      const pendingMakeupCancel=olliTalkPendingActionReason.__makeupCancelAgent;
+      if(String(olliTalkPendingActionReason.intent || '').trim()==='cancel_makeup' && pendingMakeupCancel){
+        olliTalkPendingActionReason=null;
+        return resolveOlliTalkMakeupCancelAgentTurn({
+          sourceText:String(pendingMakeupCancel.sourceMessageText || '').trim(),
+          sourceMessageId:Number(pendingMakeupCancel.sourceMessageId || 0),
+          reasonText:String(commandText || '').trim(),
+          reasonMessageText:String(commandText || '').trim(),
+          reasonMessageId:Number(replyToMessageId || 0),
+          context,
+        });
+      }
+
       const pendingAbsence=olliTalkPendingActionReason.__absenceAgent;
       if(String(olliTalkPendingActionReason.intent || '').trim()==='mark_absent' && pendingAbsence){
         olliTalkPendingActionReason=null;
@@ -1129,6 +1442,18 @@
       });
     }
 
+    const makeupCancelCandidate=parseOlliTalkMakeupCancelAgentCandidate(commandText,router);
+    if(makeupCancelCandidate && String(makeupCancelCandidate.reason || '').trim()){
+      return resolveOlliTalkMakeupCancelAgentTurn({
+        sourceText:String(commandText || '').trim(),
+        sourceMessageId:Number(replyToMessageId || 0),
+        reasonText:String(makeupCancelCandidate.reason || '').trim(),
+        reasonMessageText:String(commandText || '').trim(),
+        reasonMessageId:Number(replyToMessageId || 0),
+        context,
+      });
+    }
+
     const absenceCandidate=parseOlliTalkAbsenceAgentCandidate(commandText,router);
     if(absenceCandidate && String(absenceCandidate.reason || '').trim()){
       return resolveOlliTalkAbsenceAgentTurn({
@@ -1156,6 +1481,31 @@
 
     if(isOlliTalkWaitlistUpdateAgentCandidate(commandText,router)){
       return resolveOlliTalkWaitlistUpdateAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    if(isOlliTalkWaitlistCancelAgentCandidate(commandText,router)){
+      const waitlistCancelTurn=await resolveOlliTalkWaitlistCancelAgentTurn(commandText,context,replyToMessageId);
+      if(waitlistCancelTurn) return waitlistCancelTurn;
+    }
+
+    if(isOlliTalkPickupCancelAgentCandidate(commandText,router)){
+      return resolveOlliTalkPickupCancelAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    if(isOlliTalkPickupUpdateAgentCandidate(commandText,router)){
+      return resolveOlliTalkPickupUpdateAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    if(isOlliTalkPickupAddAgentCandidate(commandText,router)){
+      return resolveOlliTalkPickupAddAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    if(isOlliTalkMakeupUpdateAgentCandidate(commandText,router)){
+      return resolveOlliTalkMakeupUpdateAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    if(isOlliTalkMakeupAddAgentCandidate(commandText,router)){
+      return resolveOlliTalkMakeupAddAgentTurn(commandText,context,replyToMessageId);
     }
 
     if(isOlliTalkClassOnceAgentCandidate(commandText,router)){
@@ -1208,6 +1558,16 @@
             const sourceMessageId=Number(replyToMessageId || 0);
             if(parsedTrialCancel && Number.isSafeInteger(sourceMessageId) && sourceMessageId>0){
               pendingPayload.__trialCancelAgent={
+                sourceMessageId,
+                sourceMessageText:String(commandText || '').trim()
+              };
+            }
+          }
+          if(String(pendingPayload.intent || '').trim()==='cancel_makeup'){
+            const parsedMakeupCancel=parseOlliTalkMakeupCancelAgentCandidate(commandText,router);
+            const sourceMessageId=Number(replyToMessageId || 0);
+            if(parsedMakeupCancel && Number.isSafeInteger(sourceMessageId) && sourceMessageId>0){
+              pendingPayload.__makeupCancelAgent={
                 sourceMessageId,
                 sourceMessageText:String(commandText || '').trim()
               };
