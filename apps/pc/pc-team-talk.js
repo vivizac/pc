@@ -1342,6 +1342,16 @@
     return { message };
   }
 
+  function isPickupUpdateAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parsePickupUpdateMutationIntent !== 'function') return false;
+    try {
+      return clean(router.parsePickupUpdateMutationIntent(commandText)?.intent) === 'update_pickup';
+    } catch (error) {
+      console.warn('PC 픽업 수정 Agent 후보 판별 실패:', error?.message || error);
+      return false;
+    }
+  }
+
   function isPickupAddAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router || typeof router.parsePickupMutationIntent !== 'function') return false;
     try {
