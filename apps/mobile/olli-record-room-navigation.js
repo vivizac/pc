@@ -34,12 +34,7 @@ async function openRecordAttendanceDashboard(){
 
 async function toggleRecordAcademyManagementMode(){
   if (typeof canAccessOlliStartPageAcademyManagement === 'function' && !canAccessOlliStartPageAcademyManagement()) {
-    if (currentRecordView === 'attendance') {
-    currentRecordView = currentObservationView === 'kinder' ? 'kinder' : 'elementary';
-    updateRecordHeaderUI();
-  }
-
-  if (currentRecordView === 'academy') {
+    if (currentRecordView === 'academy') {
       currentRecordView = currentObservationView === 'kinder' ? 'kinder' : 'elementary';
       updateRecordHeaderUI();
       syncRecordAcademyPageState();
@@ -172,6 +167,11 @@ async function loadRecords(name, options = {}) {
   if (!getOlliCurrentAcademyId()) {
     list.innerHTML = '<div class="recordEmpty">현재 학원 ID가 없어 기록을 불러올 수 없습니다.<br>다시 로그인해 주세요.</div>';
     return;
+  }
+
+  if (currentRecordView === 'attendance') {
+    currentRecordView = currentObservationView === 'kinder' ? 'kinder' : 'elementary';
+    updateRecordHeaderUI();
   }
 
   if (currentRecordView === 'academy') {
