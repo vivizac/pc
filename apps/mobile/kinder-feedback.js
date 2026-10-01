@@ -335,7 +335,9 @@ function bindKinderChatFeedbackViewport() {
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', syncKinderChatFeedbackViewport, { passive:true });
     window.visualViewport.addEventListener('scroll', () => {
-      resetKinderChatFeedbackRootViewportScroll();
+      // During native keyboard movement, visualViewport may pan briefly on iOS.
+      // Follow the viewport geometry without fighting that transition by forcing
+      // the document root back to scrollTop 0.
       syncKinderChatFeedbackViewport();
     }, { passive:true });
   }
@@ -442,7 +444,9 @@ function bindKinderChatFeedbackViewportInteractions() {
 
     input.addEventListener('focus', () => {
       captureKinderChatFeedbackKeyboardBaseline(true);
-      scheduleKinderChatFeedbackRootViewportReset();
+      // Let iOS perform its native keyboard/visualViewport transition.
+      // Repeated root scroll resets here made the whole QuickNote surface
+      // disappear and re-enter from below while the keyboard was opening.
       syncKinderChatFeedbackViewport();
       setTimeout(syncKinderChatFeedbackViewport, 50);
       setTimeout(syncKinderChatFeedbackViewport, 150);

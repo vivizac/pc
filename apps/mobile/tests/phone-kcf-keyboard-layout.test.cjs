@@ -34,7 +34,9 @@ test('KCF composer layer follows visualViewport without locking document scroll'
   assert.match(js, /--kcf-composer-vv-width/);
   assert.match(js, /--kcf-composer-vv-height/);
   assert.match(js, /visualViewport\.addEventListener\('resize', syncKinderChatFeedbackViewport/);
-  assert.match(js, /visualViewport\.addEventListener\('scroll',[\s\S]*?resetKinderChatFeedbackRootViewportScroll\(\)/);
+  const visualScroll = js.match(/window\.visualViewport\.addEventListener\('scroll',[\s\S]*?\}, \{ passive:true \}\);/)?.[0] || '';
+  assert.match(visualScroll, /syncKinderChatFeedbackViewport\(\)/);
+  assert.doesNotMatch(visualScroll, /resetKinderChatFeedbackRootViewportScroll\(\)/);
   assert.doesNotMatch(js, /kcfComposerViewportLocked/);
   assert.doesNotMatch(js, /preventKinderChatFeedbackKeyboardBackgroundTouchMove/);
 });
@@ -306,6 +308,18 @@ test('QuickNote touch retap protects the focused input from transient iOS blur',
   assert.doesNotMatch(block,/input\.focus\(/);
   assert.match(js,/if \(Date\.now\(\) < kcfKeepInputFocusUntil\)[\s\S]*?currentInput\.focus\(\{ preventScroll:true \}\)/);
 });
+
+test('QuickNote keyboard focus never force-resets the root document while iOS is opening the keyboard', () => {
+  const start = js.indexOf("input.addEventListener('focus'", js.indexOf('function bindKinderChatFeedbackViewportInteractions'));
+  const end = js.indexOf("input.addEventListener('blur'", start);
+  const block = js.slice(start, end);
+
+  assert.match(block,/captureKinderChatFeedbackKeyboardBaseline\(true\)/);
+  assert.match(block,/syncKinderChatFeedbackViewport\(\)/);
+  assert.doesNotMatch(block,/scheduleKinderChatFeedbackRootViewportReset\(\)/);
+  assert.doesNotMatch(block,/resetKinderChatFeedbackRootViewportScroll\(\)/);
+});
+
 
 test('QuickNote Class mode can still intentionally hand focus to the Teacher sheet', () => {
   const start = js.indexOf("input.addEventListener('pointerdown'");
