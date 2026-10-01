@@ -14,7 +14,7 @@ assert(!js.includes('.filter(item => String(item.dateKey || dateKey) === dateKey
 assert(js.includes('localStorage.removeItem(key);'));
 assert(!js.includes('localStorage.clear()'));
 assert(js.includes("item.status = 'interrupted';"));
-assert(js.includes("['streaming','interrupted','error'].includes(item.status)"));
+assert(js.includes("item.status === 'streaming'"));
 assert(js.includes('scheduleKinderChatFeedbackLiveSessionPersist();'));
 assert(js.includes('persistKinderChatFeedbackLiveSessionNow();'));
 assert(js.includes("window.addEventListener('pagehide'"));
@@ -23,8 +23,10 @@ assert(js.includes('restoreKinderChatFeedbackLiveSession();'));
 assert(js.includes('tagKinderChatFeedbackLiveUserRow(item);'));
 assert(js.includes('sanitizeKinderChatFeedbackLiveAttachments'));
 assert(js.includes("!/^data:/i.test(text)"));
-assert(html.includes('kinder-feedback.js?v=20260916-composer-sheet-1'));
-assert(html.includes('kinder-feedback.css?v=20260916-composer-sheet-1'));
+assert(js.includes('syncKinderChatFeedbackLiveItemToInbox(item)'));
+assert(js.includes('await saveKinderChatFeedbackLive(item.id, item.studentId)'));
+assert(html.includes('kinder-feedback.js?v=20261002-auto-save-actions-1'));
+assert(html.includes('kinder-feedback.css?v=20261002-auto-save-actions-1'));
 
 const sessionKeyIndex = js.indexOf('KCF_LIVE_SESSION_KEY_PREFIX');
 assert(sessionKeyIndex >= 0);
