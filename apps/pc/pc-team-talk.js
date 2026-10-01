@@ -1362,6 +1362,16 @@
     }
   }
 
+  function isMakeupUpdateAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parseMakeupUpdateMutationIntent !== 'function') return false;
+    try {
+      return clean(router.parseMakeupUpdateMutationIntent(commandText)?.intent) === 'update_makeup';
+    } catch (error) {
+      console.warn('PC 보강 변경 Agent 후보 판별 실패:', error?.message || error);
+      return false;
+    }
+  }
+
   function isPickupCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router || typeof router.parsePickupCancelMutationIntent !== 'function') return false;
     try {
@@ -1447,6 +1457,38 @@
     }
     if (clean(data.message.action.action_type) !== 'cancel_makeup') {
       throw new Error('보강 취소 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
+  async function resolveMakeupUpdateAgentTurn(commandText, current, replyToMessageId) {
+    const sourceMessageId = Number(replyToMessageId || 0);
+    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+      throw new Error('보강 변경 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response = await fetch('/api/olli-agent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        mode:'makeup_update_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageId
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.ok !== true || !data?.message?.action) {
+      throw new Error(data?.error || data?.message || '보강 변경 Agent 응답을 받지 못했습니다.');
+    }
+    if (clean(data.message.action.action_type) !== 'update_makeup') {
+      throw new Error('보강 변경 Agent 작업 종류가 올바르지 않습니다.');
     }
 
     return {
@@ -1632,6 +1674,10 @@
 
     if (isMakeupCancelAgentCandidate(commandText, router)) {
       return resolveMakeupCancelAgentTurn(commandText, current, replyToMessageId);
+    }
+
+    if (isMakeupUpdateAgentCandidate(commandText, router)) {
+      return resolveMakeupUpdateAgentTurn(commandText, current, replyToMessageId);
     }
 
     if (isMakeupAddAgentCandidate(commandText, router)) {
