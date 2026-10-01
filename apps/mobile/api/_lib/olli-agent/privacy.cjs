@@ -129,7 +129,7 @@ async function prepareAgentPrivacyInput(text, requestContext, options = {}) {
   return prepareAgentPrivacyFromResolution(text, resolution);
 }
 
-async function prepareAbsencePrivacyInput(text, reasonText, requestContext, options = {}) {
+async function preparePrivateReasonPrivacyInput(text, reasonText, requestContext, options = {}) {
   const sourceText=String(text || '');
   const reason=clean(reasonText);
   let commandText=sourceText;
@@ -146,6 +146,14 @@ async function prepareAbsencePrivacyInput(text, reasonText, requestContext, opti
 
   const resolution=await resolveStudentReferences(commandText,requestContext,options);
   return prepareAgentPrivacyFromResolution(commandText,resolution);
+}
+
+async function prepareAbsencePrivacyInput(text, reasonText, requestContext, options = {}) {
+  return preparePrivateReasonPrivacyInput(text,reasonText,requestContext,options);
+}
+
+async function prepareMakeupCancelPrivacyInput(text, reasonText, requestContext, options = {}) {
+  return preparePrivateReasonPrivacyInput(text,reasonText,requestContext,options);
 }
 
 
@@ -186,6 +194,8 @@ module.exports = {
   sanitizeAgentToolPayload,
   prepareAgentPrivacyFromResolution,
   prepareAgentPrivacyInput,
+  preparePrivateReasonPrivacyInput,
   prepareAbsencePrivacyInput,
+  prepareMakeupCancelPrivacyInput,
   prepareTimetableMemoPrivacyInput,
 };
