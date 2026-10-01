@@ -13,8 +13,8 @@ test('Feedback actions use Class beside the mic and keep compact controls', () =
   assert.match(feedbackCss, /\.kcfAttachBtn \{[\s\S]*?width:33px;[\s\S]*?height:33px;/);
   assert.match(feedbackCss, /\.kcfSendBtn \{[\s\S]*?width:33px;[\s\S]*?height:33px;[\s\S]*?min-width:33px;/);
   assert.match(css, /\.kcfTeacherBtn \{[\s\S]*?min-width:52px !important;[\s\S]*?height:33px !important;[\s\S]*?padding:0 10px !important;/);
-  assert.match(css, /\.kcfTeacherBtn\.active \{[\s\S]*?min-width:52px !important;[\s\S]*?background:#111 !important;[\s\S]*?color:#fff !important;/);
-  assert.match(runtime, /btn\.textContent = state\.loading \? '···' : 'Class'/);
+  assert.match(css, /\.kcfTeacherBtn\.active \{[\s\S]*?min-width:33px !important;[\s\S]*?background:#111 !important;[\s\S]*?color:#fff !important;/);
+  assert.match(runtime, /btn\.textContent = state\.loading \? '···' : \(state\.enabled \? 'C' : 'Class'\)/);
 });
 
 test('Teacher is the canonical mode namespace and legacy AUTO remains only as an alias', () => {
@@ -49,13 +49,12 @@ test('Teacher roster uses student name cards only and removes teacher labels', (
   assert.match(sheet, /event\.target\.closest\('\.kcfAutoStudentChip'\)/);
 });
 
-test('Class UI assets use the updated cache keys', () => {
-  assert.match(html, /kinder-feedback\.css\?v=20260922-class-composer-1/);
-  assert.match(html, /kinder-feedback\.js\?v=20260922-class-composer-1/);
-  assert.match(html, /kcf-auto-mode\.css\?v=20260922-class-label-1/);
-  assert.match(html, /kcf-auto-mode-runtime\.js\?v=20260922-class-label-1/);
-  assert.match(html, /kcf-teacher-sheet\.css\?v=20260922-class-label-1/);
-  assert.match(html, /kcf-teacher-sheet\.js\?v=20260922-class-label-1/);
+test('QuickNote shared-sheet assets use the unified cache keys', () => {
+  assert.match(html, /kinder-feedback\.css\?v=20261001-unified-sheet-1/);
+  assert.match(html, /kinder-feedback\.js\?v=20261001-unified-sheet-1/);
+  assert.match(html, /kcf-auto-mode\.css\?v=20261001-unified-sheet-1/);
+  assert.match(html, /kcf-teacher-sheet\.css\?v=20261001-unified-sheet-1/);
+  assert.match(html, /kcf-teacher-sheet\.js\?v=20261001-unified-sheet-1/);
 });
 
 test('Teacher roster is preloaded on page entry and empty state never opens the sheet', () => {
@@ -93,8 +92,8 @@ test('one-minute feedback stays Live-only and removes the old top Live/inbox but
   assert.match(feedback, /function restoreKinderChatFeedbackTopMode\(\)\{\s*setKinderChatFeedbackTopMode\('live', false\)/);
 });
 
-test('normal composer is one line and expands to two lines only while the keyboard is open outside Class mode', () => {
+test('normal composer stays one-line because editing now happens in the shared sheet', () => {
   assert.match(feedbackCss, /\.kcfInput \{[\s\S]*?height:34px;[\s\S]*?max-height:34px;/);
-  assert.match(feedbackCss, /\.kcfKeyboardOpen:not\(\.kcfTeacherRosterMode\) \.kcfInput \{[\s\S]*?height:52px;/);
-  assert.match(feedbackCss, /\.kcfTeacherRosterMode \.kcfInput \{[\s\S]*?height:34px;/);
+  assert.doesNotMatch(feedbackCss, /kcfKeyboardOpen/);
+  assert.match(html, /id="kcfInput"[^>]*readonly/);
 });
