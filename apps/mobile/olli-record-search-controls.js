@@ -19,11 +19,9 @@ function syncRecordControlRail() {
   const viewportWidth = Math.max(window.innerWidth || 0, document.documentElement.clientWidth || 0);
   if (!viewportWidth) return;
 
-  // 상단 검색과 출석 버튼은 페이지 폭/드로어 폭과 무관하게 같은 고정 세로축을 사용한다.
+  // 닫힌 검색 버튼은 기존 상단 가이드 축을 그대로 사용한다.
   const fixedEdgeX = 276;
-  const right = Math.max(0, Math.round(viewportWidth - fixedEdgeX));
   document.documentElement.style.setProperty('--record-control-rail-edge-x', fixedEdgeX + 'px');
-  document.documentElement.style.setProperty('--record-control-rail-right', right + 'px');
 
   const utilityRow = screen.querySelector('.recordUtilityRow');
   if (utilityRow) {
@@ -115,12 +113,17 @@ function setRecordKeyboardOffset() {
     if (!keyboardOpen && closingNow) {
       screen.classList.remove('record-keyboard-closing');
 
-      // 키보드가 완전히 내려온 순간 검색 모드도 닫아
-      // [+][검색][정렬]과 상단 메뉴를 한 번에 원래 상태로 복원합니다.
+      // 검색어가 남아 있으면 키보드만 닫고 검색 화면/결과는 유지한다.
+      // 출결 버튼처럼 검색 결과 위에서 실행하는 동작이 blur를 만들더라도
+      // 명시적인 닫기(X) 전까지 record-search-open 상태를 유지한다.
+      if (shouldKeepRecordSearchOpenWithoutKeyboard()) {
+        document.documentElement.style.setProperty('--record-keyboard-offset', '0px');
+        window.__olliRecordSearchViewportBottomBaseline = getRecordVisualViewportBottom();
+        window.__olliRecordKeyboardLastOffset = 0;
+        return;
+      }
+
       if (isRecordSearchOpen()) {
-        if (input && document.activeElement === input) {
-          try { input.blur(); } catch(err) {}
-        }
         closeSearch();
         return;
       }
@@ -139,6 +142,14 @@ function syncRecordSearchQueryState() {
   const input = getRecordSearchInput();
   const hasQuery = !!(input && String(input.value || '').trim());
   if (screen) screen.classList.toggle('record-search-has-query', hasQuery);
+}
+function shouldKeepRecordSearchOpenWithoutKeyboard() {
+  const input = getRecordSearchInput();
+  return !!(
+    isRecordSearchOpen() &&
+    input &&
+    String(input.value || '').trim()
+  );
 }
 function focusRecordSearchInput() {
   const input = getRecordSearchInput();
@@ -239,6 +250,7 @@ function restoreRecordSearchIfKeyboardClosed() {
   const inputFocused = document.activeElement === input;
 
   if (keyboardClosed && !inputFocused) {
+    if (shouldKeepRecordSearchOpenWithoutKeyboard()) return;
     closeSearch();
   }
 }
@@ -328,6 +340,16 @@ function bindRecordSearchInput() {
       const currentScreen = getRecordSearchScreen();
       const keyboardClosed = getRecordKeyboardOffset() < 24;
       if (keyboardClosed && isRecordSearchOpen() && document.activeElement !== input) {
+        if (shouldKeepRecordSearchOpenWithoutKeyboard()) {
+          if (currentScreen) {
+            currentScreen.classList.remove('record-keyboard-open');
+            currentScreen.classList.remove('record-keyboard-closing');
+          }
+          document.documentElement.style.setProperty('--record-keyboard-offset', '0px');
+          window.__olliRecordSearchViewportBottomBaseline = getRecordVisualViewportBottom();
+          window.__olliRecordKeyboardLastOffset = 0;
+          return;
+        }
         closeSearch();
         return;
       }
