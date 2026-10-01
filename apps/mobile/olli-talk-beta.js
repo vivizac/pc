@@ -445,7 +445,11 @@
         };
       }
 
-      const studentInfo=resolveOlliTalkStudentInfoCommand(commandText);
+      if(isOlliTalkMoveCancelAgentCandidate(commandText,router)){
+      return resolveOlliTalkMoveCancelAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    const studentInfo=resolveOlliTalkStudentInfoCommand(commandText);
       if(studentInfo?.handled===true){
         return saveReply(studentInfo.message);
       }
@@ -623,6 +627,16 @@
       return String(router.parseWaitlistUpdateMutationIntent(commandText)?.intent || '').trim()==='update_waitlist';
     }catch(error){
       console.warn('올리톡 대기 변경 Agent 후보 판별 실패:',error);
+      return false;
+    }
+  }
+
+  function isOlliTalkMoveCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseMoveCancelMutationIntent!=='function') return false;
+    try{
+      return String(router.parseMoveCancelMutationIntent(commandText)?.intent || '').trim()==='cancel_move';
+    }catch(error){
+      console.warn('올리톡 수업 이동 취소 Agent 후보 판별 실패:',error);
       return false;
     }
   }
@@ -806,6 +820,38 @@
     }
     if(String(data.message.action.action_type || '').trim()!=='update_waitlist'){
       throw new Error('대기 변경 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+  async function resolveOlliTalkMoveCancelAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('수업 이동 취소 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'move_cancel_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '수업 이동 취소 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='cancel_move'){
+      throw new Error('수업 이동 취소 Agent 작업 종류가 올바르지 않습니다.');
     }
 
     return {
