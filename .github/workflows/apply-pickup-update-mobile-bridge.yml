@@ -17,10 +17,68 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
-      - name: Apply focused mobile bridge patch
+      - name: Apply focused mobile source edits
         run: |
-          git apply --check .github/pickup-update-mobile-bridge.patch
-          git apply .github/pickup-update-mobile-bridge.patch
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/mobile/olli-talk-beta.js')
+          text = path.read_text()
+
+          resolver_anchor = "  async function resolveOlliTalkPickupAddAgentTurn(commandText,context,replyToMessageId){"
+          resolver = """  async function resolveOlliTalkPickupUpdateAgentTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('픽업 수정 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'pickup_update_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '픽업 수정 Agent 응답을 받지 못했습니다.');
+    }
+
+    const actionType=String(data.message.action.action_type || '').trim();
+    if(!['update_pickup_arrival','update_pickup_dropoff'].includes(actionType)){
+      throw new Error('픽업 수정 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return{
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+"""
+          if resolver_anchor not in text:
+              raise SystemExit('mobile resolver anchor not found')
+          text = text.replace(resolver_anchor, resolver + resolver_anchor, 1)
+
+          add_gate = """    if(isOlliTalkPickupAddAgentCandidate(commandText,router)){
+      return resolveOlliTalkPickupAddAgentTurn(commandText,context,replyToMessageId);
+    }"""
+          update_gate = """    if(isOlliTalkPickupUpdateAgentCandidate(commandText,router)){
+      return resolveOlliTalkPickupUpdateAgentTurn(commandText,context,replyToMessageId);
+    }
+
+""" + add_gate
+          if add_gate not in text:
+              raise SystemExit('mobile add gate not found')
+          text = text.replace(add_gate, update_gate, 1)
+
+          path.write_text(text)
+          PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add apps/mobile/olli-talk-beta.js
