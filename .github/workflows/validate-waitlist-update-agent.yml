@@ -1,0 +1,29 @@
+name: Validate waitlist update Agent
+
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/api/_lib/olli-agent/runtime.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/tools/waitlist-update-prepare-tools.cjs'
+      - 'apps/mobile/api/olli-agent.js'
+      - 'apps/mobile/tests/olli-agent-waitlist-update-prepare-tool.test.cjs'
+      - '.github/workflows/validate-waitlist-update-agent.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check syntax
+        run: |
+          node --check apps/mobile/api/_lib/olli-agent/runtime.cjs
+          node --check apps/mobile/api/_lib/olli-agent/tools/waitlist-update-prepare-tools.cjs
+      - name: Run waitlist update probe contracts
+        working-directory: apps/mobile
+        run: node --test tests/olli-agent-waitlist-update-prepare-tool.test.cjs
