@@ -42,11 +42,11 @@ test('active Class control is uppercase black C in the second-row add slot only'
   assert.match(css, /kcfTeacherRosterMode \.kcfSendBtn \{[\s\S]*?grid-column:3;[\s\S]*?grid-row:2;/);
 });
 
-test('shared sheet keeps an uppercase C control and switches only its active styling', () => {
-  assert.match(sheet, /id="kcfTeacherSheetModeBtn"[^>]*>C<\/button>/);
-  assert.match(sheet, /modeBtn\.textContent = 'C'/);
-  assert.match(sheetCss, /\.kcfTeacherSheetModeBtn \{[\s\S]*?width:33px;[\s\S]*?background:#f1f1f1;[\s\S]*?color:#111;/);
-  assert.match(sheetCss, /\.kcfTeacherSheetModeBtn\.active \{[\s\S]*?background:#111;[\s\S]*?color:#fff;/);
+test('shared sheet shows Class normally and compact C only when Class mode is active', () => {
+  assert.match(sheet, /id="kcfTeacherSheetModeBtn"[^>]*>Class<\/button>/);
+  assert.match(sheet, /modeBtn\.textContent = enabled \? 'C' : 'Class'/);
+  assert.match(sheetCss, /\.kcfTeacherSheetModeBtn \{[\s\S]*?min-width:52px;[\s\S]*?background:#f1f1f1;[\s\S]*?color:#111;/);
+  assert.match(sheetCss, /\.kcfTeacherSheetModeBtn\.active \{[\s\S]*?width:33px;[\s\S]*?background:#111;[\s\S]*?color:#fff;/);
 });
 
 test('student cards remain manually selectable while Class mode waits', () => {
