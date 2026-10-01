@@ -449,6 +449,7 @@ module.exports = {
   normalizeRequestedGroup,
   requestedTimeLabel,
   stableMakeupActionClientMessageId,
+  loadPrivateMakeupStudent,
   duplicateMakeup,
   prepareMakeupAction,
   createPrepareMakeupTool,
