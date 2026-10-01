@@ -1054,6 +1054,39 @@ async function runWaitlistUpdatePrepareProbe({agentContext,requestContext,prepar
 }
 
 
+async function runWaitlistUpdatePrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId || 0);
+  if(!Number.isSafeInteger(sourceId) || sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_WAITLIST_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validateWaitlistSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  return runWaitlistUpdatePrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-message:' + sourceId,
+    replyToMessageId:sourceId,
+    requirePersistedMessage:true,
+  });
+}
+
+
 function resolveWaitlistCancelPrepareScope(preparedPrivacy) {
   if (preparedPrivacy?.needsDisambiguation) {
     throw runtimeError(
@@ -2586,6 +2619,7 @@ module.exports = {
   resolveWaitlistUpdatePrepareScope,
   runWaitlistUpdatePrepareAgent,
   runWaitlistUpdatePrepareProbe,
+  runWaitlistUpdatePrepare,
   resolveWaitlistCancelPrepareScope,
   runWaitlistCancelPrepareAgent,
   runWaitlistCancelPrepareProbe,
