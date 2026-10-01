@@ -1354,6 +1354,17 @@
     }
   }
 
+  function parseTrialCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parseTrialCancelMutationIntent !== 'function') return null;
+    try {
+      const parsed = router.parseTrialCancelMutationIntent(commandText);
+      return clean(parsed?.intent) === 'cancel_trial' ? parsed : null;
+    } catch (error) {
+      console.warn('PC 체험 취소 Agent 후보 판별 실패:', error?.message || error);
+      return null;
+    }
+  }
+
   function isTrialUpdateAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router || typeof router.parseTrialUpdateMutationIntent !== 'function') return false;
     try {
@@ -1563,6 +1574,52 @@
     }
     if (clean(data.message.action.action_type) !== 'add_trial') {
       throw new Error('체험 등록 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
+  async function resolveTrialCancelAgentTurn({
+    sourceText,
+    sourceMessageId,
+    reasonText,
+    reasonMessageText,
+    reasonMessageId,
+    current,
+  }) {
+    const sourceId = Number(sourceMessageId || 0);
+    const reasonId = Number(reasonMessageId || 0);
+    if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
+      throw new Error('체험 취소 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    if (!Number.isSafeInteger(reasonId) || reasonId <= 0 || !clean(reasonText)) {
+      throw new Error('체험 취소 사유 메시지를 확인하지 못했습니다.');
+    }
+
+    const response = await fetch('/api/olli-agent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        mode:'trial_cancel_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(sourceText),
+        sourceMessageId:sourceId,
+        reasonMessageId:reasonId,
+        reasonMessageText:clean(reasonMessageText),
+        reason:clean(reasonText)
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.ok !== true || !data?.message?.action) {
+      throw new Error(data?.error || data?.message || '체험 취소 Agent 응답을 받지 못했습니다.');
+    }
+    if (clean(data.message.action.action_type) !== 'cancel_trial') {
+      throw new Error('체험 취소 Agent 작업 종류가 올바르지 않습니다.');
     }
 
     return {
@@ -1833,6 +1890,19 @@
         };
       }
 
+      const pendingTrialCancel = state.pendingActionReason.__trialCancelAgent;
+      if (clean(state.pendingActionReason.intent) === 'cancel_trial' && pendingTrialCancel) {
+        state.pendingActionReason = null;
+        return resolveTrialCancelAgentTurn({
+          sourceText:clean(pendingTrialCancel.sourceMessageText),
+          sourceMessageId:Number(pendingTrialCancel.sourceMessageId || 0),
+          reasonText:clean(commandText),
+          reasonMessageText:clean(commandText),
+          reasonMessageId:Number(replyToMessageId || 0),
+          current,
+        });
+      }
+
       const command = Object.assign({}, state.pendingActionReason, { reason:clean(commandText) });
       state.pendingActionReason = null;
       const confirmation = clean(schedule?.writeConfirmationMessage?.(command)) || '이 작업을 진행할까요?';
@@ -1841,6 +1911,18 @@
         replyText:confirmation,
         recordAi:false
       };
+    }
+
+    const trialCancelCandidate = parseTrialCancelAgentCandidate(commandText, router);
+    if (trialCancelCandidate && clean(trialCancelCandidate.reason)) {
+      return resolveTrialCancelAgentTurn({
+        sourceText:clean(commandText),
+        sourceMessageId:Number(replyToMessageId || 0),
+        reasonText:clean(trialCancelCandidate.reason),
+        reasonMessageText:clean(commandText),
+        reasonMessageId:Number(replyToMessageId || 0),
+        current,
+      });
     }
 
     if (isTrialAddAgentCandidate(commandText, router)) {
@@ -1906,7 +1988,18 @@
         }
 
         if (prepared.kind === 'action_needs_reason' && prepared.payload) {
-          state.pendingActionReason = Object.assign({}, prepared.payload);
+          const pendingPayload = Object.assign({}, prepared.payload);
+          if (clean(pendingPayload.intent) === 'cancel_trial') {
+            const parsedTrialCancel = parseTrialCancelAgentCandidate(commandText, router);
+            const sourceMessageId = Number(replyToMessageId || 0);
+            if (parsedTrialCancel && Number.isSafeInteger(sourceMessageId) && sourceMessageId > 0) {
+              pendingPayload.__trialCancelAgent = {
+                sourceMessageId,
+                sourceMessageText:clean(commandText)
+              };
+            }
+          }
+          state.pendingActionReason = pendingPayload;
           const reasonMessage = clean(prepared.message) || '사유를 알려주세요.';
           return {
             assistantMessage:await saveAssistantReply(current, reasonMessage, replyToMessageId),
