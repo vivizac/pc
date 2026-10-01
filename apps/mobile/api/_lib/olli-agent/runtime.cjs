@@ -993,6 +993,179 @@ async function runPickupUpdatePrepareProbe({
 }
 
 
+
+function resolvePickupCancelPrepareScope(preparedPrivacy) {
+  if (preparedPrivacy?.needsDisambiguation) {
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+
+  const subjectRefs = Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+  if (subjectRefs.length !== 1) {
+    throw runtimeError(
+      '픽업 삭제는 한 번에 유치부 학생 한 명만 지정해 주세요.',
+      400,
+      'OLLI_AGENT_PICKUP_CANCEL_SINGLE_STUDENT_REQUIRED'
+    );
+  }
+
+  const subjectLabel = subjectRefs[0].label;
+  const subject = preparedPrivacy?.subjectAccess?.resolve?.(subjectLabel);
+  const division = String(subject?.division || '').trim().toLowerCase();
+  if (division !== 'kinder') {
+    throw runtimeError(
+      '픽업 삭제는 유치부 학생만 지원해요.',
+      400,
+      'OLLI_AGENT_PICKUP_CANCEL_KINDER_ONLY'
+    );
+  }
+
+  const safeText = String(preparedPrivacy?.safeText || '');
+  if (/(?:초등부|초등|elementary)/i.test(safeText)) {
+    throw runtimeError(
+      '픽업 삭제는 유치부 학생만 지원해요.',
+      400,
+      'OLLI_AGENT_PICKUP_CANCEL_KINDER_ONLY'
+    );
+  }
+
+  const compact = safeText.replace(/\s+/g, '');
+  const hasRemove = /(?:취소|삭제|지워|지우|제거|빼|해제|없애)/.test(compact);
+  if (!/픽업/.test(compact) || !hasRemove) {
+    throw runtimeError(
+      '픽업 삭제 요청을 확인하지 못했습니다.',
+      400,
+      'OLLI_AGENT_PICKUP_CANCEL_INTENT_REQUIRED'
+    );
+  }
+
+  return {
+    subjectLabel,
+    cancelKind:/하원/.test(compact) ? 'dropoff' : 'all',
+  };
+}
+
+async function runPickupCancelPrepareAgent({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+  replyToMessageId = null,
+  requirePersistedMessage = false,
+}) {
+  assertOpenAiKey();
+
+  const scope = resolvePickupCancelPrepareScope(preparedPrivacy);
+  const { Agent, run, tool, z } = await loadAgentsSdk();
+  const { createPreparePickupCancelTool } = require('./tools/pickup-cancel-prepare-tools.cjs');
+  const { sanitizeAgentToolPayload } = require('./privacy.cjs');
+  const model = agentModel();
+  const today = todayInSeoul();
+  let persistedMessage = null;
+
+  const preparePickupCancel = createPreparePickupCancelTool({
+    tool,
+    z,
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    studentLabel:scope.subjectLabel,
+    cancelKind:scope.cancelKind,
+    currentDate:today,
+    requestId,
+    replyToMessageId,
+    capturePersistedMessage(message) {
+      persistedMessage = pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload) {
+      return sanitizeAgentToolPayload(payload, preparedPrivacy);
+    },
+  });
+
+  const kindInstruction = scope.cancelKind === 'dropoff'
+    ? 'This request removes only the dropoff part of the selected pickup. An existing arrival pickup must remain unchanged.'
+    : 'This request removes the whole pickup schedule from the server-fixed effective date onward. Do not convert it to dropoff-only removal.';
+
+  const agent = new Agent({
+    name:requirePersistedMessage ? 'Olli Pickup Cancel Prepare' : 'Olli Pickup Cancel Prepare Probe',
+    model,
+    instructions:[
+      'You are the Olli pickup-cancel preparation assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The only available anonymous student label for this run is ' + scope.subjectLabel + '.',
+      'The server has fixed the cancel kind to ' + scope.cancelKind + '. Do not override it.',
+      kindInstruction,
+      'Today in Korea is ' + today + '. The server fixes the cancellation effective date to today; never invent or change an effective date.',
+      'Always call prepare_pickup_cancel exactly once before answering.',
+      'This tool creates a pending confirmation card only. It never directly changes pickup data.',
+      'If the user omitted the class weekday, use weekday 0.',
+      'If the user omitted the class time, use class_hour 0 and class_minute 0.',
+      'When provided, weekday uses 1=Monday through 6=Saturday.',
+      'When provided, use the visible class clock hour from 1 to 12 and class_minute 0 or 30. Never use internal stored slots as class_hour.',
+      'The server re-reads the current pickup schedule and chooses an existing row only when the target is unique.',
+      'Never say the pickup was deleted. Say that the pickup deletion is waiting for user confirmation.',
+      'Never ask for, infer, or reveal a real student name, UUID, pickup ID, member ID, session token, academy ID, action ID, message ID, or internal stored time slot.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[preparePickupCancel],
+    modelSettings:{ toolChoice:'prepare_pickup_cancel' },
+  });
+
+  let result = null;
+  let runError = null;
+  try {
+    result = await run(agent, preparedPrivacy.safeText, {
+      context:agentContext,
+    });
+  } catch (error) {
+    runError = error;
+    if (!requirePersistedMessage || !persistedMessage) throw error;
+  }
+
+  const finalOutput = String(result?.finalOutput || '').trim();
+  if (!finalOutput && (!requirePersistedMessage || !persistedMessage)) {
+    throw runtimeError(
+      '픽업 삭제 준비 Agent 응답이 비어 있습니다.',
+      502,
+      'OLLI_AGENT_EMPTY_PICKUP_CANCEL_PREPARE_RESPONSE'
+    );
+  }
+  if (requirePersistedMessage && !persistedMessage) {
+    throw runtimeError(
+      '픽업 삭제 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_AGENT_PICKUP_CANCEL_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+
+  return {
+    ready:true,
+    model,
+    output:finalOutput,
+    nodeVersion:process.versions.node,
+    persistedMessage,
+    recoveredAfterPersist:!!runError,
+  };
+}
+
+async function runPickupCancelPrepareProbe({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  requestId,
+}) {
+  return runPickupCancelPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId,
+  });
+}
+
 function pickupPersistedMessageForClient(message) {
   const action = message?.action && typeof message.action === 'object'
     ? message.action
@@ -1289,6 +1462,38 @@ async function runPickupUpdatePrepare({
   });
 }
 
+async function runPickupCancelPrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId = Number(sourceMessageId || 0);
+  if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_PICKUP_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validatePickupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  return runPickupCancelPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-message:' + sourceId,
+    replyToMessageId:sourceId,
+    requirePersistedMessage:true,
+  });
+}
+
 async function runStudentProfileProbe({
   agentContext,
   requestContext,
@@ -1386,6 +1591,10 @@ module.exports = {
   runPickupProbe,
   resolvePickupPrepareScope,
   resolvePickupUpdatePrepareScope,
+  resolvePickupCancelPrepareScope,
+  runPickupCancelPrepareAgent,
+  runPickupCancelPrepareProbe,
+  runPickupCancelPrepare,
   runPickupUpdatePrepareAgent,
   runPickupUpdatePrepareProbe,
   runPickupUpdatePrepare,

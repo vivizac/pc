@@ -79,3 +79,44 @@ test('PC bot path remains independent from pickup update Agent bridge', () => {
 
   assert.doesNotMatch(block, /resolvePickupUpdateAgentTurn|isPickupUpdateAgentCandidate|pickup_update_prepare/);
 });
+
+test('PC AI pickup cancel is routed before update, add and legacy action paths', () => {
+  const start = talk.indexOf('async function resolveAiTurn');
+  const end = talk.indexOf('function updateComposerState', start);
+  const block = talk.slice(start, end);
+  const cancelGate = block.indexOf('if (isPickupCancelAgentCandidate(commandText, router))');
+  const updateGate = block.indexOf('if (isPickupUpdateAgentCandidate(commandText, router))');
+  const addGate = block.indexOf('if (isPickupAddAgentCandidate(commandText, router))');
+  const legacyGate = block.indexOf("if (router && typeof router.prepareAction === 'function')");
+
+  assert.ok(cancelGate >= 0);
+  assert.ok(updateGate > cancelGate);
+  assert.ok(addGate > updateGate);
+  assert.ok(legacyGate > addGate);
+  assert.match(block, /return resolvePickupCancelAgentTurn\(commandText, current, replyToMessageId\)/);
+});
+
+test('PC pickup cancel bridge uses shared cancel parser and persisted production action', () => {
+  assert.match(talk, /parsePickupCancelMutationIntent\(commandText\)/);
+
+  const start = talk.indexOf('async function resolvePickupCancelAgentTurn');
+  const end = talk.indexOf('async function resolvePickupUpdateAgentTurn', start);
+  const block = talk.slice(start, end);
+
+  assert.match(block, /mode:'pickup_cancel_prepare'/);
+  assert.match(block, /sourceMessageId = Number\(replyToMessageId \|\| 0\)/);
+  assert.match(block, /cancel_pickup/);
+  assert.match(block, /cancel_pickup_dropoff/);
+  assert.match(block, /assistantMessage:data\.message/);
+  assert.match(block, /recordAi:false/);
+  assert.doesNotMatch(block, /saveAssistantReply|saveAssistantAction|olli_team_chat_send_ai|olli_team_chat_send_action/);
+});
+
+test('PC bot path remains independent from pickup cancel Agent bridge', () => {
+  const start = talk.indexOf('async function resolveBotTurn');
+  const end = talk.indexOf('function buildAiConversationMessages', start);
+  const block = talk.slice(start, end);
+
+  assert.doesNotMatch(block, /resolvePickupCancelAgentTurn|isPickupCancelAgentCandidate|pickup_cancel_prepare/);
+});
+

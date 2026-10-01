@@ -1342,6 +1342,16 @@
     return { message };
   }
 
+  function isPickupCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parsePickupCancelMutationIntent !== 'function') return false;
+    try {
+      return clean(router.parsePickupCancelMutationIntent(commandText)?.intent) === 'cancel_pickup';
+    } catch (error) {
+      console.warn('PC 픽업 삭제 Agent 후보 판별 실패:', error?.message || error);
+      return false;
+    }
+  }
+
   function isPickupUpdateAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router || typeof router.parsePickupUpdateMutationIntent !== 'function') return false;
     try {
@@ -1360,6 +1370,40 @@
       console.warn('PC 픽업 Agent 후보 판별 실패:', error?.message || error);
       return false;
     }
+  }
+
+  async function resolvePickupCancelAgentTurn(commandText, current, replyToMessageId) {
+    const sourceMessageId = Number(replyToMessageId || 0);
+    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
+      throw new Error('픽업 삭제 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response = await fetch('/api/olli-agent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        mode:'pickup_cancel_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageId
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.ok !== true || !data?.message?.action) {
+      throw new Error(data?.error || data?.message || '픽업 삭제 Agent 응답을 받지 못했습니다.');
+    }
+
+    const actionType = clean(data.message.action.action_type);
+    if (!['cancel_pickup', 'cancel_pickup_dropoff'].includes(actionType)) {
+      throw new Error('픽업 삭제 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
   }
 
   async function resolvePickupUpdateAgentTurn(commandText, current, replyToMessageId) {
@@ -1488,6 +1532,10 @@
         replyText:confirmation,
         recordAi:false
       };
+    }
+
+    if (isPickupCancelAgentCandidate(commandText, router)) {
+      return resolvePickupCancelAgentTurn(commandText, current, replyToMessageId);
     }
 
     if (isPickupUpdateAgentCandidate(commandText, router)) {

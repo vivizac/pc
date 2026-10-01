@@ -13,11 +13,13 @@ on:
       - 'apps/mobile/api/_lib/olli-agent/runtime.cjs'
       - 'apps/mobile/api/_lib/olli-agent/tools/pickup-prepare-tools.cjs'
       - 'apps/mobile/api/_lib/olli-agent/tools/pickup-update-prepare-tools.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/tools/pickup-cancel-prepare-tools.cjs'
       - 'apps/mobile/index.html'
       - 'apps/mobile/tests/team-talk-ai-mode.test.cjs'
       - 'apps/mobile/tests/team-talk-pickup-agent-bridge.test.cjs'
       - 'apps/mobile/tests/olli-agent-pickup-production-contract.test.cjs'
       - 'apps/mobile/tests/olli-agent-pickup-update-prepare-tool.test.cjs'
+      - 'apps/mobile/tests/olli-agent-pickup-cancel-prepare-tool.test.cjs'
       - 'packages/common/olli-command-router-common.js'
       - '.github/workflows/validate-team-talk-pickup-agent.yml'
   push:
@@ -34,11 +36,13 @@ on:
       - 'apps/mobile/api/_lib/olli-agent/runtime.cjs'
       - 'apps/mobile/api/_lib/olli-agent/tools/pickup-prepare-tools.cjs'
       - 'apps/mobile/api/_lib/olli-agent/tools/pickup-update-prepare-tools.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/tools/pickup-cancel-prepare-tools.cjs'
       - 'apps/mobile/index.html'
       - 'apps/mobile/tests/team-talk-ai-mode.test.cjs'
       - 'apps/mobile/tests/team-talk-pickup-agent-bridge.test.cjs'
       - 'apps/mobile/tests/olli-agent-pickup-production-contract.test.cjs'
       - 'apps/mobile/tests/olli-agent-pickup-update-prepare-tool.test.cjs'
+      - 'apps/mobile/tests/olli-agent-pickup-cancel-prepare-tool.test.cjs'
       - 'packages/common/olli-command-router-common.js'
       - '.github/workflows/validate-team-talk-pickup-agent.yml'
 
@@ -73,4 +77,5 @@ jobs:
           node --test \
             tests/team-talk-pickup-agent-bridge.test.cjs \
             tests/olli-agent-pickup-production-contract.test.cjs \
-            tests/olli-agent-pickup-update-prepare-tool.test.cjs
+            tests/olli-agent-pickup-update-prepare-tool.test.cjs \
+            tests/olli-agent-pickup-cancel-prepare-tool.test.cjs
