@@ -19,7 +19,7 @@ test('production trial_add_prepare requires persisted source message and returns
 
   const marker="mode:'trial_add_prepare'";
   const start=endpoint.indexOf(marker);
-  const end=endpoint.indexOf("} else if (mode === 'trial_update_prepare_probe')",start);
+  const end=endpoint.indexOf("} else if (mode === 'trial_cancel_prepare_probe')",start);
   const block=start>=0&&end>start?endpoint.slice(start,end):'';
   assert.match(block,/message:probe\.persistedMessage/);
   assert.match(block,/recoveredAfterPersist:probe\.recoveredAfterPersist===true/);
