@@ -137,10 +137,6 @@ function getPhoneRecordStudentGuideText(student, view) {
 }
 
 function getPhoneRecordStudentMetaHtml(student, normalText) {
-  const attendanceGuide = window.OlliAttendanceGuideUI;
-  if (attendanceGuide && typeof attendanceGuide.getMetaHtml === 'function') {
-    return attendanceGuide.getMetaHtml(student, normalText);
-  }
   return escapeHtml(normalText || '');
 }
 
