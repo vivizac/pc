@@ -393,6 +393,10 @@ function bindKinderChatFeedbackViewportInteractions() {
   }
 
   if (input) {
+    const composer = input.closest('.kcfComposer');
+    let composerTouchStartX = null;
+    let composerTouchStartY = null;
+
     input.addEventListener('pointerdown', event => {
       if (event.pointerType === 'touch') {
         const teacherMode = getKinderChatFeedbackTeacherMode();
@@ -409,6 +413,32 @@ function bindKinderChatFeedbackViewportInteractions() {
       }
       captureKinderChatFeedbackKeyboardBaseline(true);
     }, true);
+
+    if (composer) {
+      composer.addEventListener('touchstart', event => {
+        const touch = event.touches?.[0];
+        composerTouchStartX = touch ? Number(touch.clientX) : null;
+        composerTouchStartY = touch ? Number(touch.clientY) : null;
+      }, { passive:true });
+
+      composer.addEventListener('touchmove', event => {
+        if (!getKinderChatFeedbackScreen()?.classList.contains('kcfKeyboardOpen')) return;
+        const touch = event.touches?.[0];
+        if (!touch || !Number.isFinite(composerTouchStartX) || !Number.isFinite(composerTouchStartY)) return;
+        const deltaX = Math.abs(Number(touch.clientX) - composerTouchStartX);
+        const deltaY = Math.abs(Number(touch.clientY) - composerTouchStartY);
+        if (deltaY < 6 || deltaY <= deltaX) return;
+        event.preventDefault();
+        event.stopPropagation();
+      }, { passive:false });
+
+      const clearComposerTouch = () => {
+        composerTouchStartX = null;
+        composerTouchStartY = null;
+      };
+      composer.addEventListener('touchend', clearComposerTouch, { passive:true });
+      composer.addEventListener('touchcancel', clearComposerTouch, { passive:true });
+    }
 
     input.addEventListener('focus', () => {
       captureKinderChatFeedbackKeyboardBaseline(true);
