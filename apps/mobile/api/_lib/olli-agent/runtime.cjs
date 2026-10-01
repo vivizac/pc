@@ -4311,11 +4311,15 @@ async function runStudentProfileProbe({
   };
 }
 
+function normalizeBatchPartText(value) {
+  return String(value || '').trim().replace(/\s+/g,' ');
+}
+
 function splitBatchWriteParts(value) {
   return String(value || '')
     .trim()
     .split(/\s*(?:;|그리고|그다음|그 다음|하고|\n)\s*[,，]?\s*/g)
-    .map((item) => String(item || '').trim())
+    .map(normalizeBatchPartText)
     .filter(Boolean);
 }
 
@@ -4346,7 +4350,7 @@ function batchExpectedActionTypes(intent) {
 
 async function prepareBatchPrivacy(item, requestContext) {
   const intent=String(item?.intent || '').trim();
-  const text=String(item?.text || '').trim();
+  const text=String(item?.contextText || item?.text || '').trim();
   const reason=String(item?.reason || '').trim();
   const memoNote=String(item?.memoNote || '').trim();
 
@@ -4421,11 +4425,18 @@ async function runBatchPrepare({
         'OLLI_AGENT_BATCH_INTENT_UNSUPPORTED'
       );
     }
-    if(!text || text!==parts[index]){
+    if(!text || normalizeBatchPartText(text)!==normalizeBatchPartText(parts[index])){
       throw runtimeError(
         '복합쓰기 부분 명령이 저장된 원문과 일치하지 않습니다.',
         409,
         'OLLI_AGENT_BATCH_PART_BODY_MISMATCH'
+      );
+    }
+    if(item?.needsClarification===true){
+      throw runtimeError(
+        '복합쓰기 작업에 필요한 추가 정보가 아직 없습니다.',
+        400,
+        'OLLI_AGENT_BATCH_CLARIFICATION_REQUIRED'
       );
     }
     const memoNote=String(item.memoNote || '').trim();
@@ -4441,6 +4452,34 @@ async function runBatchPrepare({
         '삭제할 시간표 메모 내용이 원문과 일치하지 않습니다.',
         409,
         'OLLI_AGENT_BATCH_MEMO_BODY_MISMATCH'
+      );
+    }
+  }
+
+  // Validate every stored clarification before creating any pending action card.
+  for(const item of items){
+    const clarificationMessageId=Number(item?.clarificationMessageId || 0);
+    const clarificationMessageText=String(item?.clarificationMessageText || '').trim();
+    const contextText=String(item?.contextText || '').trim();
+    if(!clarificationMessageId && !clarificationMessageText && !contextText) continue;
+    if(!Number.isSafeInteger(clarificationMessageId) || clarificationMessageId<=0 || !clarificationMessageText || !contextText){
+      throw runtimeError(
+        '복합쓰기 추가 정보 메시지를 확인하지 못했습니다.',
+        400,
+        'OLLI_AGENT_BATCH_CLARIFICATION_MESSAGE_REQUIRED'
+      );
+    }
+    await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId:clarificationMessageId,
+      sourceMessageText:clarificationMessageText,
+    });
+    const expectedContext=normalizeBatchPartText(String(item?.text || '')+' '+clarificationMessageText);
+    if(normalizeBatchPartText(contextText)!==expectedContext){
+      throw runtimeError(
+        '복합쓰기 추가 정보가 저장된 메시지와 일치하지 않습니다.',
+        409,
+        'OLLI_AGENT_BATCH_CLARIFICATION_BODY_MISMATCH'
       );
     }
   }
@@ -4653,6 +4692,7 @@ module.exports = {
   runTimetableMemoPrepareProbe,
   runTimetableMemoPrepare,
   validateTimetableMemoSourceMessage,
+  normalizeBatchPartText,
   splitBatchWriteParts,
   batchExpectedActionTypes,
   runBatchPrepare,
