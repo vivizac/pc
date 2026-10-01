@@ -242,6 +242,79 @@ function getKinderChatFeedbackScreen() {
 function getKinderChatFeedbackInput() {
   return document.getElementById('kcfInput');
 }
+const kcfGapDebugEnabled = (() => {
+  try { return new URLSearchParams(window.location.search).get('kcfGapDebug') === '1'; }
+  catch (_) { return false; }
+})();
+let kcfGapDebugOverlay = null;
+function getKcfGapDebugRect(selectorOrEl) {
+  const el = typeof selectorOrEl === 'string' ? document.querySelector(selectorOrEl) : selectorOrEl;
+  if (!el?.getBoundingClientRect) return null;
+  const r = el.getBoundingClientRect();
+  return { top:Math.round(r.top), bottom:Math.round(r.bottom), height:Math.round(r.height) };
+}
+function describeKcfGapDebugElement(el) {
+  if (!el) return '(none)';
+  const id = el.id ? '#' + el.id : '';
+  const cls = String(el.className || '').trim().split(/\s+/).filter(Boolean).slice(0,2).map(x=>'.'+x).join('');
+  return (el.tagName || '').toLowerCase() + id + cls;
+}
+function renderKinderChatFeedbackGapDebug(label) {
+  if (!kcfGapDebugEnabled) return;
+  const vv = window.visualViewport;
+  const wrap = document.querySelector('#kinderChatFeedbackScreen .kcfComposerWrap');
+  const composer = document.querySelector('#kinderChatFeedbackScreen .kcfComposer');
+  const chat = document.getElementById('kcfChatArea');
+  const inner = document.querySelector('#kinderChatFeedbackScreen .kcfInner');
+  const fade = document.getElementById('kcfBottomFadeLayer');
+  const wrapRect = getKcfGapDebugRect(wrap);
+  const composerRect = getKcfGapDebugRect(composer);
+  const chatRect = getKcfGapDebugRect(chat);
+  const innerRect = getKcfGapDebugRect(inner);
+  const fadeRect = getKcfGapDebugRect(fade);
+  const vvHeight = Math.round(Number(vv?.height || window.innerHeight || 0));
+  const wrapGap = wrapRect ? Math.round(vvHeight - wrapRect.bottom) : null;
+  const composerGap = composerRect ? Math.round(vvHeight - composerRect.bottom) : null;
+  const probeY = Math.max(0, Math.min(vvHeight - 2, Math.round((composerRect?.bottom || 0) + Math.max(2, (composerGap || 0) / 2))));
+  const probeX = Math.round((window.innerWidth || 0) / 2);
+  const probe = document.elementFromPoint(probeX, probeY);
+
+  if (!kcfGapDebugOverlay?.isConnected) {
+    const el = document.createElement('pre');
+    el.id = 'kcfGapDebugOverlay';
+    el.style.cssText = [
+      'position:fixed','left:8px','right:8px','top:8px','z-index:999999',
+      'margin:0','padding:8px 10px','border-radius:10px','background:rgba(0,0,0,.80)',
+      'color:#fff','font:11px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace',
+      'white-space:pre-wrap','pointer-events:none'
+    ].join(';');
+    document.body.appendChild(el);
+    kcfGapDebugOverlay = el;
+  }
+
+  kcfGapDebugOverlay.textContent = [
+    'KCF GAP DEBUG · ' + String(label || ''),
+    'vv.height=' + vvHeight + '  vv.top=' + Math.round(Number(vv?.offsetTop || 0)),
+    'wrap bottom=' + (wrapRect?.bottom ?? '-') + '  gap=' + (wrapGap ?? '-') + 'px',
+    'composer bottom=' + (composerRect?.bottom ?? '-') + '  gap=' + (composerGap ?? '-') + 'px',
+    'chat bottom=' + (chatRect?.bottom ?? '-') + '  inner bottom=' + (innerRect?.bottom ?? '-'),
+    'fade top/bottom=' + (fadeRect ? fadeRect.top + '/' + fadeRect.bottom : '-'),
+    'probe y=' + probeY + ' → ' + describeKcfGapDebugElement(probe)
+  ].join('\n');
+}
+function bindKinderChatFeedbackGapDebug() {
+  if (!kcfGapDebugEnabled) return;
+  const input = getKinderChatFeedbackInput();
+  if (!input || input.dataset.kcfGapDebugBound === '1') return;
+  input.dataset.kcfGapDebugBound = '1';
+  input.addEventListener('focus', () => {
+    [50,150,300,600].forEach(delay => setTimeout(() => renderKinderChatFeedbackGapDebug('focus+'+delay), delay));
+  }, true);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => renderKinderChatFeedbackGapDebug('vv-resize'), { passive:true });
+    window.visualViewport.addEventListener('scroll', () => renderKinderChatFeedbackGapDebug('vv-scroll'), { passive:true });
+  }
+}
 function getKinderChatFeedbackMessageList() {
   const area = document.getElementById('kcfChatArea');
   if (!area) return null;
@@ -609,6 +682,7 @@ captureKinderChatFeedbackContentBaseline(true);
   }
 
   bindKinderChatFeedbackViewport();
+  bindKinderChatFeedbackGapDebug();
 syncKinderChatFeedbackViewport();
 }
 function setKinderChatFeedbackPersistentTopVisible(visible) {
