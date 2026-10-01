@@ -954,6 +954,156 @@ async function runMakeupCancelPrepareProbe({
   });
 }
 
+function resolveTrialAddPrepareScope(preparedPrivacy){
+  if(preparedPrivacy?.needsDisambiguation){
+    throw runtimeError('체험 학생 이름을 하나로 구분할 수 없습니다.',409,'OLLI_AGENT_TRIAL_GUEST_AMBIGUOUS');
+  }
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
+  if(subjectRefs.length!==1){
+    throw runtimeError('체험 등록은 한 번에 학생 한 명만 지정해 주세요.',400,'OLLI_AGENT_TRIAL_ADD_SINGLE_GUEST_REQUIRED');
+  }
+  const guestLabel=subjectRefs[0].label;
+  const guest=preparedPrivacy?.trialAccess?.resolve?.(guestLabel);
+  const division=String(guest?.division||'').trim().toLowerCase();
+  if(!guest?.guestName){
+    throw runtimeError('체험할 학생 이름을 확인하지 못했습니다.',400,'OLLI_AGENT_TRIAL_GUEST_REQUIRED');
+  }
+  if(!['elementary','kinder'].includes(division)){
+    throw runtimeError('체험 등록은 유치부인지 초등부인지 함께 알려 주세요.',400,'OLLI_AGENT_TRIAL_ADD_DIVISION_REQUIRED');
+  }
+
+  const safeText=String(preparedPrivacy?.safeText||'');
+  const compact=safeText.replace(/\s+/g,'');
+  const hasTrial=/(?:체험클래스|체험수업|체험)/.test(compact);
+  const hasAdd=/(?:등록|추가|신청|예약|배정|넣|저장|잡아)/.test(compact);
+  const hasOtherMutation=/(?:변경|수정|바꿔|바꾸|옮|이동|고쳐|고치|취소|삭제|지워|지우|제거|빼|해제|없애)/.test(compact);
+  if(!hasTrial||!hasAdd||hasOtherMutation){
+    throw runtimeError('체험 등록 요청을 확인하지 못했습니다.',400,'OLLI_AGENT_TRIAL_ADD_INTENT_REQUIRED');
+  }
+
+  const hasDateSignal=/(?:오늘|내일|모레|이번\s*주|다음\s*주|다다음\s*주|월요일|화요일|수요일|목요일|금요일|토요일|\d{1,2}\s*월\s*\d{1,2}\s*일|\d{1,2}[./]\d{1,2})/.test(safeText);
+  const hasTimeSignal=/\d{1,2}\s*시/.test(safeText);
+  if(!hasDateSignal||!hasTimeSignal){
+    throw runtimeError('체험 등록에는 날짜와 수업 시간을 함께 알려 주세요.',400,'OLLI_AGENT_TRIAL_ADD_DATE_TIME_REQUIRED');
+  }
+
+  const groupMatch=safeText.match(/([ABab])\s*반/);
+  return {
+    guestLabel,
+    division,
+    classGroup:groupMatch?groupMatch[1].toUpperCase():'AUTO',
+  };
+}
+
+async function runTrialAddPrepareAgent({
+  agentContext,requestContext,preparedPrivacy,requestId,
+  replyToMessageId=null,requirePersistedMessage=false,
+}){
+  const scope=resolveTrialAddPrepareScope(preparedPrivacy);
+  assertOpenAiKey();
+  const {Agent,run,tool,z}=await loadAgentsSdk();
+  const {createPrepareTrialAddTool}=require('./tools/trial-add-prepare-tools.cjs');
+  const {sanitizeTrialToolPayload}=require('./trial-guest-privacy.cjs');
+  const model=agentModel();
+  const today=todayInSeoul();
+  let persistedMessage=null;
+
+  const prepareTrialAdd=createPrepareTrialAddTool({
+    tool,z,requestContext,
+    trialAccess:preparedPrivacy.trialAccess,
+    guestLabel:scope.guestLabel,
+    division:scope.division,
+    classGroup:scope.classGroup,
+    currentDate:today,
+    requestId,
+    replyToMessageId,
+    capturePersistedMessage(message){persistedMessage=pickupPersistedMessageForClient(message);},
+    sanitizePayload(payload){return sanitizeTrialToolPayload(payload,preparedPrivacy);},
+  });
+
+  const groupInstruction=scope.classGroup==='AUTO'
+    ? 'The user did not explicitly select A반 or B반. The server must reject a split class rather than guessing.'
+    : 'The server has fixed the requested class group to '+scope.classGroup+'. Do not override it.';
+
+  const agent=new Agent({
+    name:requirePersistedMessage?'Olli Trial Add Prepare':'Olli Trial Add Prepare Probe',
+    model,
+    instructions:[
+      'You are the Olli trial-class registration preparation assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The real guest name is private. The only available anonymous label is '+scope.guestLabel+'.',
+      'The server has fixed the division to '+scope.division+'. Do not override it.',
+      groupInstruction,
+      'Today in Korea is '+today+'.',
+      'The server already confirmed that the user explicitly supplied both a date expression and a class time.',
+      'Convert the requested date to exact YYYY-MM-DD using today as the reference. Do not invent a different date.',
+      'Convert the visible class time to class_hour and class_minute. For expressions such as 4시 반, use class_minute 30.',
+      'Always call prepare_trial_add exactly once before answering.',
+      'The server rechecks current trial availability and duplicate guest trials before storing the card.',
+      'The tool creates a pending confirmation card only. It never directly registers a trial class.',
+      'Never say the trial was registered. Say that the registration is waiting for user confirmation.',
+      'Never ask for, infer, or reveal the real guest name, UUID, one-time-session ID, internal time slot, member ID, session token, academy ID, action ID, or message ID.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[prepareTrialAdd],
+    modelSettings:{toolChoice:'prepare_trial_add'},
+  });
+
+  let result=null,runError=null;
+  try{
+    result=await run(agent,preparedPrivacy.safeText,{context:agentContext});
+  }catch(error){
+    runError=error;
+    if(!requirePersistedMessage||!persistedMessage) throw error;
+  }
+
+  const finalOutput=String(result?.finalOutput||'').trim();
+  if(!finalOutput&&(!requirePersistedMessage||!persistedMessage)){
+    throw runtimeError('체험 등록 준비 Agent 응답이 비어 있습니다.',502,'OLLI_AGENT_EMPTY_TRIAL_ADD_PREPARE_RESPONSE');
+  }
+  if(requirePersistedMessage&&!persistedMessage){
+    throw runtimeError('체험 등록 확인 카드 저장 결과를 확인하지 못했습니다.',502,'OLLI_AGENT_TRIAL_ADD_PERSISTED_MESSAGE_MISSING');
+  }
+  return {ready:true,model,output:finalOutput,nodeVersion:process.versions.node,persistedMessage,recoveredAfterPersist:!!runError};
+}
+
+async function runTrialAddPrepareProbe({agentContext,requestContext,preparedPrivacy,requestId}){
+  return runTrialAddPrepareAgent({agentContext,requestContext,preparedPrivacy,requestId});
+}
+
+async function runTrialAddPrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}){
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_AGENT_TRIAL_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validateTrialSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  return runTrialAddPrepareAgent({
+    agentContext,
+    requestContext,
+    preparedPrivacy,
+    requestId:'team-chat-message:'+sourceId,
+    replyToMessageId:sourceId,
+    requirePersistedMessage:true,
+  });
+}
+
+
 function resolveTrialUpdatePrepareScope(preparedPrivacy){
   if(preparedPrivacy?.needsDisambiguation){
     throw runtimeError('체험 학생 이름을 하나로 구분할 수 없습니다.',409,'OLLI_AGENT_TRIAL_GUEST_AMBIGUOUS');
@@ -2776,6 +2926,10 @@ module.exports = {
   runMakeupCancelPrepareAgent,
   runMakeupCancelPrepareProbe,
   runMakeupCancelPrepare,
+  resolveTrialAddPrepareScope,
+  runTrialAddPrepareAgent,
+  runTrialAddPrepareProbe,
+  runTrialAddPrepare,
   resolveTrialUpdatePrepareScope,
   runTrialUpdatePrepareAgent,
   runTrialUpdatePrepareProbe,
