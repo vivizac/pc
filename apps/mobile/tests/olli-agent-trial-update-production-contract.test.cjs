@@ -77,7 +77,8 @@ test('trial source binding accepts exact stored text and rejects changed text',a
 });
 
 test('production trial update keeps guest privacy before model execution',()=>{
-  assert.match(endpoint,/mode === 'trial_update_prepare_probe' \|\| mode === 'trial_update_prepare'/);
+  assert.match(endpoint,/trial_update_prepare_probe/);
+  assert.match(endpoint,/trial_update_prepare/);
   assert.match(endpoint,/prepareTrialGuestPrivacyInput\(message, requestContext\)/);
   const start=runtime.indexOf('async function runTrialUpdatePrepareAgent({');
   const end=runtime.indexOf('\n\nasync function runTrialUpdatePrepareProbe',start);
