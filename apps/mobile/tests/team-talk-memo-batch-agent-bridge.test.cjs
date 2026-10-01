@@ -30,3 +30,11 @@ test('Mobile batch uses batch_prepare and renders all persisted cards',()=>{
   assert.match(talk,/assistantMessages:messages/);
   assert.match(talk,/assistantMessages\.slice\(1\)\.forEach\(message=>appendOlliTalkPersistedMessage/);
 });
+
+test('Mobile batch collects missing makeup date/time after reason turns',()=>{
+  assert.match(talk,/function olliTalkBatchCommandNeedsClarification/);
+  assert.match(talk,/function olliTalkBatchClarificationPrompt/);
+  assert.match(talk,/function applyOlliTalkBatchClarification/);
+  assert.match(talk,/보강 날짜와 시간을 함께 알려주세요/);
+  assert.match(talk,/clarificationMessageId/);
+});
