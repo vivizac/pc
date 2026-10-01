@@ -154,7 +154,6 @@
     root.setAttribute('aria-hidden', 'true');
     root.innerHTML = [
       '<section class="kcfTeacherSheet" role="dialog" aria-modal="true" aria-label="Class 수업기록 입력">',
-      '  <div class="kcfTeacherSheetHandle" aria-hidden="true"></div>',
       '  <div class="kcfTeacherSheetBody">',
       '    <textarea id="kcfTeacherSheetInput" class="kcfTeacherSheetInput" aria-label="Class 수업기록"></textarea>',
       '    <div id="kcfTeacherSheetWarning" class="kcfTeacherSheetWarning" aria-live="polite"></div>',
@@ -300,6 +299,10 @@
     unbindWarning();
     document.documentElement.classList.remove('kcfTeacherSheetOpen');
     document.body.classList.remove('kcfTeacherSheetOpen');
+    var inlineInput = baseInput();
+    if (inlineInput) {
+      try { inlineInput.blur(); } catch (_) {}
+    }
     if (state.viewportFrame) cancelAnimationFrame(state.viewportFrame);
     state.viewportFrame = 0;
   }
