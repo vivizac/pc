@@ -18,7 +18,10 @@
 }
 #kinderChatFeedbackScreen .kcfInner {
   position:absolute;
-  inset:0;
+  top:var(--kcf-content-vv-offset-top, 0px);
+  left:0;
+  right:0;
+  bottom:auto;
   width:100%;
   max-width:860px;
   height:var(--kcf-content-layout-height, 100%);
@@ -27,7 +30,6 @@
   flex-direction:column;
   background:#fff;
   overflow:hidden;
-  transform:translate3d(0,var(--kcf-content-vv-offset-top, 0px),0);
 }
 
 #kinderChatFeedbackScreen .kcfInner::before{
