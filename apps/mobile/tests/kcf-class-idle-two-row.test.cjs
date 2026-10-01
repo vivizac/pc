@@ -4,6 +4,7 @@ const fs = require('node:fs');
 
 const css = fs.readFileSync('kcf-auto-mode.css', 'utf8');
 const sheet = fs.readFileSync('kcf-teacher-sheet.js', 'utf8');
+const sheetCss = fs.readFileSync('kcf-teacher-sheet.css', 'utf8');
 const runtime = fs.readFileSync('kcf-auto-mode-runtime.js', 'utf8');
 const base = fs.readFileSync('kinder-feedback.js', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
@@ -34,6 +35,11 @@ test('active Class control becomes compact C beside the first-row input', () => 
   assert.match(css, /kcfTeacherRosterMode \.kcfTeacherBtn \{[\s\S]*?grid-column:1;[\s\S]*?grid-row:1;[\s\S]*?justify-self:start;/);
 });
 
+test('active Class sheet control also uses compact C', () => {
+  assert.match(sheet, /id="kcfTeacherSheetModeBtn"[^>]*>C<\/button>/);
+  assert.match(sheetCss, /\.kcfTeacherSheetModeBtn \{[\s\S]*?min-width:28px;[\s\S]*?padding:0 8px;/);
+});
+
 test('student cards remain manually selectable while Class mode waits', () => {
   assert.match(runtime, /button\.addEventListener\('click',[\s\S]*?selectAutoStudent\(item\)/);
 });
@@ -48,4 +54,6 @@ test('tapping the idle Class input reopens the sheet instead of focusing inline'
 test('Class idle layout assets are cache busted', () => {
   assert.match(html, /kcf-auto-mode\.css\?v=20261001-class-active-c-1/);
   assert.match(html, /kcf-auto-mode-runtime\.js\?v=20261001-class-active-c-1/);
+  assert.match(html, /kcf-teacher-sheet\.css\?v=20261001-class-active-c-1/);
+  assert.match(html, /kcf-teacher-sheet\.js\?v=20261001-class-active-c-1/);
 });
