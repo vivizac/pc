@@ -89,6 +89,44 @@ function getOlliKinderTimetableMode() {
 }
 window.getOlliKinderTimetableMode = getOlliKinderTimetableMode;
 
+function normalizeSettingsTimetableWeekDays(value) {
+  return Number(value) === 5 ? 5 : 6;
+}
+function normalizeSettingsTimetableStudentColumns(value) {
+  return Number(value) === 3 ? 3 : 2;
+}
+function getOlliTimetableWeekDays() {
+  const academyValue = olliSettingsState?.academy?.timetable_week_days;
+  if (academyValue != null) return normalizeSettingsTimetableWeekDays(academyValue);
+  return normalizeSettingsTimetableWeekDays(settingsGetCachedState().timetableWeekDays);
+}
+function getOlliTimetableStudentColumns() {
+  const academyValue = olliSettingsState?.academy?.timetable_student_columns;
+  if (academyValue != null) return normalizeSettingsTimetableStudentColumns(academyValue);
+  return normalizeSettingsTimetableStudentColumns(settingsGetCachedState().timetableStudentColumns);
+}
+window.getOlliTimetableWeekDays = getOlliTimetableWeekDays;
+window.getOlliTimetableStudentColumns = getOlliTimetableStudentColumns;
+
+function selectSettingsTimetableWeekDaysOption(value) {
+  const selected = normalizeSettingsTimetableWeekDays(value);
+  document.querySelectorAll('[data-timetable-week-days-option]').forEach((button) => {
+    const active = Number(button.getAttribute('data-timetable-week-days-option')) === selected;
+    button.classList.toggle('active', active);
+    const check = button.querySelector('.check');
+    if (check) check.textContent = active ? '✓' : '';
+  });
+}
+function selectSettingsTimetableStudentColumnsOption(value) {
+  const selected = normalizeSettingsTimetableStudentColumns(value);
+  document.querySelectorAll('[data-timetable-student-columns-option]').forEach((button) => {
+    const active = Number(button.getAttribute('data-timetable-student-columns-option')) === selected;
+    button.classList.toggle('active', active);
+    const check = button.querySelector('.check');
+    if (check) check.textContent = active ? '✓' : '';
+  });
+}
+
 function selectSettingsTimetableModeOption(mode) {
   const selected = normalizeSettingsKinderTimetableMode(mode);
   document.querySelectorAll('[data-timetable-mode-option]').forEach((button) => {
@@ -190,27 +228,56 @@ const settingsSheetData = {
   },
   timetableMode: {
     title:'시간표 설정',
-    desc:'초등부와 유치부 시간표의 운영 방식을 함께 선택합니다.',
+    desc:'초등부와 유치부 시간표의 운영 방식, 수업 요일, 학생 카드 배치를 함께 설정합니다.',
     html:function(){
-      const current = getOlliKinderTimetableMode();
-      const option = function(value, label, guide){
-        const active = current === value;
+      const currentMode = getOlliKinderTimetableMode();
+      const currentWeekDays = getOlliTimetableWeekDays();
+      const currentStudentColumns = getOlliTimetableStudentColumns();
+      const modeOption = function(value, label, guide){
+        const active = currentMode === value;
         return '<button type="button" class="settingsStartPageOption ' + (active ? 'active' : '') + '" data-timetable-mode-option="' + value + '" onclick="selectSettingsTimetableModeOption(\'' + value + '\')"><span>' + label + '<span class="settingsTextSizeGuide">' + guide + '</span></span><span class="check">' + (active ? '✓' : '') + '</span></button>';
       };
-      return '<div class="settingsInputGroup">'
-        + option('hourly', '정시 타임', '기존 시간별 수업 · A/B 분반 가능')
-        + option('half_hour', '30분 단위', '초등 1:00~6:00 · 유치 3:30~5:30')
-        + '</div><div class="settingsMiniText">30분 단위는 한 시간대를 한 클래스로 사용합니다. 운영 방식을 바꿔도 기존 정각 학생·보강·출석 데이터는 삭제되지 않습니다.</div>';
+      const weekOption = function(value, label, guide){
+        const active = currentWeekDays === value;
+        return '<button type="button" class="settingsStartPageOption ' + (active ? 'active' : '') + '" data-timetable-week-days-option="' + value + '" onclick="selectSettingsTimetableWeekDaysOption(' + value + ')"><span>' + label + '<span class="settingsTextSizeGuide">' + guide + '</span></span><span class="check">' + (active ? '✓' : '') + '</span></button>';
+      };
+      const columnOption = function(value, label, guide){
+        const active = currentStudentColumns === value;
+        return '<button type="button" class="settingsStartPageOption ' + (active ? 'active' : '') + '" data-timetable-student-columns-option="' + value + '" onclick="selectSettingsTimetableStudentColumnsOption(' + value + ')"><span>' + label + '<span class="settingsTextSizeGuide">' + guide + '</span></span><span class="check">' + (active ? '✓' : '') + '</span></button>';
+      };
+      return '<div class="settingsInputLabel">수업 시간</div><div class="settingsInputGroup">'
+        + modeOption('hourly', '정시 타임', '기존 시간별 수업 · A/B 분반 가능')
+        + modeOption('half_hour', '30분 단위', '초등 1:00~6:00 · 유치 3:30~5:30')
+        + '</div><div class="settingsInputLabel" style="margin-top:16px;">수업 요일</div><div class="settingsInputGroup">'
+        + weekOption(5, '주 5일', '월요일~금요일만 시간표에 표시')
+        + weekOption(6, '주 6일', '월요일~토요일 표시 · 토요일 접기/펼치기 가능')
+        + '</div><div class="settingsInputLabel" style="margin-top:16px;">타임당 정원</div><div class="settingsInputGroup">'
+        + columnOption(2, '6명 이하', '학생 이름 카드를 한 줄에 2명씩 표시')
+        + columnOption(3, '7명 이상', '학생 이름 카드를 한 줄에 3명씩 표시')
+        + '</div><div class="settingsMiniText">주 5일로 바꾸면 토요일 칸만 숨겨지고 기존 토요일 학생·보강·출석 데이터는 삭제되지 않습니다. 타임당 정원 설정은 카드 배치만 바꿉니다.</div>';
     },
     onSave: async function(){
-      const selected = normalizeSettingsKinderTimetableMode(document.querySelector('[data-timetable-mode-option].active')?.getAttribute('data-timetable-mode-option'));
+      const selectedMode = normalizeSettingsKinderTimetableMode(document.querySelector('[data-timetable-mode-option].active')?.getAttribute('data-timetable-mode-option'));
+      const selectedWeekDays = normalizeSettingsTimetableWeekDays(document.querySelector('[data-timetable-week-days-option].active')?.getAttribute('data-timetable-week-days-option'));
+      const selectedStudentColumns = normalizeSettingsTimetableStudentColumns(document.querySelector('[data-timetable-student-columns-option].active')?.getAttribute('data-timetable-student-columns-option'));
       const academyId = settingsGetAcademyId();
       if (!academyId) throw new Error('현재 학원 ID를 찾지 못했습니다.');
-      const academy = await saveOlliAcademySettingsSecure(academyId, { kinder_timetable_mode: selected });
+      const academy = await saveOlliAcademySettingsSecure(academyId, {
+        kinder_timetable_mode: selectedMode,
+        timetable_week_days: selectedWeekDays,
+        timetable_student_columns: selectedStudentColumns
+      });
       if (olliSettingsState) olliSettingsState.academy = academy;
-      settingsSaveCachePatch({ kinderTimetableMode: selected });
+      settingsSaveCachePatch({
+        kinderTimetableMode: selectedMode,
+        timetableWeekDays: selectedWeekDays,
+        timetableStudentColumns: selectedStudentColumns
+      });
       updateSettingsTimetableModeValue();
-      window.dispatchEvent(new CustomEvent('olli:kinder-timetable-mode-changed', { detail: { mode: selected } }));
+      window.dispatchEvent(new CustomEvent('olli:kinder-timetable-mode-changed', { detail: { mode: selectedMode } }));
+      window.dispatchEvent(new CustomEvent('olli:timetable-layout-settings-changed', {
+        detail: { weekDays: selectedWeekDays, studentColumns: selectedStudentColumns }
+      }));
     }
   },
   consultationMonths: {

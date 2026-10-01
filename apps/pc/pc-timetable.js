@@ -59,6 +59,37 @@
     return getTimetableMode() === 'half_hour';
   }
 
+  function normalizeTimetableWeekDays(value) {
+    return Number(value) === 5 ? 5 : 6;
+  }
+
+  function normalizeTimetableStudentColumns(value) {
+    return Number(value) === 3 ? 3 : 2;
+  }
+
+  function timetableSettingsCache() {
+    try {
+      const academyId = clean(localStorage.getItem('olli_current_academy_id')) || 'unscoped';
+      return JSON.parse(localStorage.getItem(`olli_settings_cache_v2_${academyId}`) || '{}');
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function getTimetableWeekDays() {
+    if (typeof global.getOlliTimetableWeekDays === 'function') {
+      try { return normalizeTimetableWeekDays(global.getOlliTimetableWeekDays()); } catch (_) {}
+    }
+    return normalizeTimetableWeekDays(timetableSettingsCache().timetableWeekDays);
+  }
+
+  function getTimetableStudentColumns() {
+    if (typeof global.getOlliTimetableStudentColumns === 'function') {
+      try { return normalizeTimetableStudentColumns(global.getOlliTimetableStudentColumns()); } catch (_) {}
+    }
+    return normalizeTimetableStudentColumns(timetableSettingsCache().timetableStudentColumns);
+  }
+
   function halfHourSlotsFor(division, weekday) {
     if (!isHalfHourMode()) return [];
     if (division === 'elementary' && Number(weekday) === 6) return [];
@@ -105,6 +136,7 @@
     pane: 'schedule',
     scheduleDivision: 'elementary',
     pickupCollapsed: false,
+    saturdayCollapsed: false,
     attendanceDivision: 'elementary',
     attendanceSort: 'grade',
     attendanceMonth: dateKey(new Date()).slice(0, 7),
@@ -656,6 +688,16 @@
     });
   }
 
+  if (!global.__OLLI_TIMETABLE_LAYOUT_SETTINGS_SYNC_V1__) {
+    global.__OLLI_TIMETABLE_LAYOUT_SETTINGS_SYNC_V1__ = true;
+    global.addEventListener('olli:timetable-layout-settings-changed', () => {
+      if (!state.active || state.pane !== 'schedule') return;
+      closeDialog();
+      renderTimetable();
+      renderSidebar();
+    });
+  }
+
   if (!global.__OLLI_TIMETABLE_LIVE_SYNC_V1__) {
     global.__OLLI_TIMETABLE_LIVE_SYNC_V1__ = true;
     // 시간표와 출석부 모두 Supabase Realtime을 사용합니다.
@@ -1153,6 +1195,7 @@
 
   function elementaryAdaptiveEdgeRowHeight(displayTime, dates) {
     let required = 64;
+    const studentColumns = getTimetableStudentColumns();
     dates.forEach((date) => {
       if (date.getDay() === 6 && Number(displayTime) > 3) return;
       const storedTime = storedTimeForCell('elementary', date, displayTime);
@@ -1163,12 +1206,12 @@
       let headerHeight = 0;
 
       if (isClassSplit('elementary', date.getDay(), storedTime, date)) {
-        contentRows = Math.ceil(slotEntryCount('elementary', date, storedTime, 'A') / 2)
-          + Math.ceil(slotEntryCount('elementary', date, storedTime, 'B') / 2);
+        contentRows = Math.ceil(slotEntryCount('elementary', date, storedTime, 'A') / studentColumns)
+          + Math.ceil(slotEntryCount('elementary', date, storedTime, 'B') / studentColumns);
         if (effectiveClassTeacherLabel('elementary', date, storedTime, 'A')) headerHeight += 14;
         if (effectiveClassTeacherLabel('elementary', date, storedTime, 'B')) headerHeight += 14;
       } else {
-        contentRows = Math.ceil(slotEntryCount('elementary', date, storedTime, '') / 2);
+        contentRows = Math.ceil(slotEntryCount('elementary', date, storedTime, '') / studentColumns);
         if (effectiveClassTeacherLabel('elementary', date, storedTime, 'A')) headerHeight += 14;
       }
 
@@ -1184,7 +1227,8 @@
   function sectionHtml(division) {
     const halfHour = isHalfHourMode();
     const rows = halfHour ? (HALF_HOUR_SLOTS[division] || []) : TIME_SLOTS[division];
-    const dates = DAYS.map((_, index) => addDays(state.weekStart, index));
+    const weekDays = getTimetableWeekDays();
+    const dates = DAYS.slice(0, weekDays).map((_, index) => addDays(state.weekStart, index));
     const adaptiveClass = division === 'elementary' && !halfHour ? ' olliTtAdaptiveEdgeRows' : '';
     const adaptiveVars = division === 'elementary' && !halfHour
       ? `;--olli-tt-edge-row-1:${elementaryAdaptiveEdgeRowHeight(1, dates)}px;--olli-tt-edge-row-6:${elementaryAdaptiveEdgeRowHeight(6, dates)}px`
@@ -1197,7 +1241,14 @@
       const toggle = defaultHoliday
         ? `<button type="button" class="olliTtNormalClassBtn${holiday ? '' : ' active'}" data-tt-normal-class-date="${dateKey(date)}" data-tt-make-normal="${holiday ? '1' : '0'}">${holiday ? '정상수업' : '공휴일'}</button>`
         : '';
-      grid += `<div class="olliTtDay ${isToday(date) ? 'today ' : ''}${holiday ? 'holiday' : ''}"${holidayName(date) ? ` title="${esc(holidayName(date))}"` : ''}><strong>${DAYS[index]}요일</strong><span>${date.getMonth() + 1}월 ${date.getDate()}일${isToday(date) ? ' · 오늘' : ''}</span>${toggle}</div>`;
+      const dayText = `${DAYS[index]}요일`;
+      const dateText = `${date.getMonth() + 1}월 ${date.getDate()}일${isToday(date) ? ' · 오늘' : ''}`;
+      const dayHeading = index === 5
+        ? `<button type="button" class="olliTtSaturdayToggle" data-tt-saturday-toggle aria-expanded="${state.saturdayCollapsed ? 'false' : 'true'}" aria-label="${state.saturdayCollapsed ? '토요일 펼치기' : '토요일 접기'}">${state.saturdayCollapsed
+          ? '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5 10 7.5l5 5" /></svg>'
+          : '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5" /></svg>'}<strong>${dayText}</strong></button>`
+        : `<strong>${dayText}</strong>`;
+      grid += `<div class="olliTtDay ${index === 5 ? 'olliTtSaturdayDay ' : ''}${isToday(date) ? 'today ' : ''}${holiday ? 'holiday' : ''}"${holidayName(date) ? ` title="${esc(holidayName(date))}"` : ''}>${dayHeading}<span>${dateText}</span>${toggle}</div>`;
     });
     rows.forEach((row) => {
       if (halfHour) {
@@ -1219,7 +1270,10 @@
         ? '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5 10 7.5l5 5" /></svg>'
         : '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5" /></svg>'}<strong>${state.pickupCollapsed ? '픽업 펼치기' : '픽업 접기'}</strong></button>`
       : '';
-    return `<section class="olliTtSection ${division}${division === 'kinder' && state.pickupCollapsed ? ' pickupCollapsed' : ''}"><div class="olliTtScroll">${grid}${division === 'kinder' ? pickupGridHtml(dates) : ''}</div>${pickupToggle}</section>`;
+    const fiveDayClass = weekDays === 5 ? ' fiveDay' : '';
+    const studentColumnClass = getTimetableStudentColumns() === 3 ? ' threeStudentColumns' : '';
+    const saturdayClass = weekDays === 6 && state.saturdayCollapsed ? ' saturdayCollapsed' : '';
+    return `<section class="olliTtSection ${division}${division === 'kinder' && state.pickupCollapsed ? ' pickupCollapsed' : ''}${fiveDayClass}${studentColumnClass}${saturdayClass}"><div class="olliTtScroll">${grid}${division === 'kinder' ? pickupGridHtml(dates) : ''}</div>${pickupToggle}</section>`;
   }
 
   function renderTimetable() {
@@ -1338,6 +1392,18 @@
 
   function onTimetableClick(event) {
     if (handleScheduleControl(event)) return;
+    const saturdayToggle = event.target.closest('[data-tt-saturday-toggle]');
+    if (saturdayToggle) {
+      state.saturdayCollapsed = !state.saturdayCollapsed;
+      const section = saturdayToggle.closest('.olliTtSection');
+      if (section) section.classList.toggle('saturdayCollapsed', state.saturdayCollapsed);
+      saturdayToggle.setAttribute('aria-expanded', state.saturdayCollapsed ? 'false' : 'true');
+      saturdayToggle.setAttribute('aria-label', state.saturdayCollapsed ? '토요일 펼치기' : '토요일 접기');
+      saturdayToggle.innerHTML = `${state.saturdayCollapsed
+        ? '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5 10 7.5l5 5" /></svg>'
+        : '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5" /></svg>'}<strong>토요일</strong>`;
+      return;
+    }
     const pickupToggle = event.target.closest('[data-tt-pickup-toggle]');
     if (pickupToggle) {
       state.pickupCollapsed = !state.pickupCollapsed;
@@ -1765,7 +1831,7 @@
       const deleteLabel = '삭제';
       return `<div class="olliTtEnrollmentRow${order ? ' hasSessionOrder' : ''}"><button type="button" class="olliTtEnrollmentChoice ${selected ? 'active' : ''}" data-tt-source="${esc(item.id)}"><strong>${schedule}</strong></button>${orderHtml}<button type="button" class="olliTtEnrollmentDelete" data-tt-remove-enrollment="${esc(item.id)}" aria-label="${esc(schedule)} 삭제">${deleteLabel}</button></div>`;
     }).join('') : '<div class="olliTtStatusNotice">현재 등록된 정규 수업이 없습니다.</div>';
-    const dayHtml = DAYS.map((day, index) => `<button type="button" class="olliTtChoice ${dialog.targetWeekday === index + 1 ? 'active' : ''}" data-tt-target-day="${index + 1}">${day}</button>`).join('');
+    const dayHtml = DAYS.slice(0, getTimetableWeekDays()).map((day, index) => `<button type="button" class="olliTtChoice ${dialog.targetWeekday === index + 1 ? 'active' : ''}" data-tt-target-day="${index + 1}">${day}</button>`).join('');
     const timeHtml = isHalfHourMode() && !(division === 'elementary' && Number(dialog.targetWeekday) === 6)
       ? (HALF_HOUR_SLOTS[division] || []).map((slot) => {
         const count = countAt(division, dialog.targetWeekday, slot.time, dialog.effectiveDate, '', dialog.actionType === 'makeup');
