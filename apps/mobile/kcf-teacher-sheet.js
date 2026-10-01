@@ -154,7 +154,6 @@
     root.setAttribute('aria-hidden', 'true');
     root.innerHTML = [
       '<section class="kcfTeacherSheet" role="dialog" aria-modal="true" aria-label="Class 수업기록 입력">',
-      '  <div class="kcfTeacherSheetHandle" aria-hidden="true"></div>',
       '  <div class="kcfTeacherSheetBody">',
       '    <textarea id="kcfTeacherSheetInput" class="kcfTeacherSheetInput" aria-label="Class 수업기록"></textarea>',
       '    <div id="kcfTeacherSheetWarning" class="kcfTeacherSheetWarning" aria-live="polite"></div>',
