@@ -87,6 +87,7 @@ jobs:
           node --check api/_lib/olli-agent/tools/pickup-update-prepare-tools.cjs
           node --check api/_lib/olli-agent/tools/pickup-cancel-prepare-tools.cjs
           node --check api/_lib/olli-agent/tools/makeup-prepare-tools.cjs
+          node --check api/_lib/olli-agent/tools/makeup-cancel-prepare-tools.cjs
           node --check api/_lib/olli-agent/tools/profile-tools.cjs
           node --check api/_lib/olli-agent/tools/timetable-memo-tools.cjs
           node --test \
@@ -106,6 +107,7 @@ jobs:
             tests/olli-agent-schedule-availability-db-contract.test.cjs \
             tests/olli-agent-makeup-db-contract.test.cjs \
             tests/olli-agent-makeup-prepare-tool.test.cjs \
+            tests/olli-agent-makeup-cancel-prepare-tool.test.cjs \
             tests/olli-agent-makeup-production-contract.test.cjs \
             tests/olli-agent-attendance-tool.test.cjs \
             tests/olli-agent-pickups-tool.test.cjs \
