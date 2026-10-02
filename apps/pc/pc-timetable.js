@@ -1274,57 +1274,7 @@
     const fiveDayClass = weekDays === 5 ? ' fiveDay' : '';
     const studentColumnClass = getTimetableStudentColumns() === 3 ? ' threeStudentColumns' : '';
     const saturdayClass = weekDays === 6 && state.saturdayCollapsed ? ' saturdayCollapsed' : '';
-    const section = `<section class="olliTtSection ${division}${division === 'kinder' && state.pickupCollapsed ? ' pickupCollapsed' : ''}${fiveDayClass}${studentColumnClass}${saturdayClass}"><div class="olliTtScroll">${grid}${division === 'kinder' ? pickupGridHtml(dates) : ''}</div>${pickupToggle}</section>`;
-    if (!halfHour) return section;
-    return `<div class="olliTtHalfHourShell">${section}<div class="olliTtHalfHourExternalScroll" aria-label="30분 단위 시간표 스크롤"><div class="olliTtHalfHourExternalScrollSpacer"></div></div></div>`;
-  }
-
-  function bindHalfHourExternalScrollbar(root) {
-    const shell = root && root.querySelector('.olliTtHalfHourShell');
-    if (!shell) return;
-    const inner = shell.querySelector('.olliTtSection .olliTtScroll');
-    const external = shell.querySelector('.olliTtHalfHourExternalScroll');
-    const spacer = shell.querySelector('.olliTtHalfHourExternalScrollSpacer');
-    if (!inner || !external || !spacer) return;
-
-    let syncing = false;
-    const scrollMax = (element) => Math.max(0, element.scrollHeight - element.clientHeight);
-    const syncExternalFromInner = () => {
-      if (syncing) return;
-      const innerMax = scrollMax(inner);
-      const externalMax = scrollMax(external);
-      syncing = true;
-      external.scrollTop = innerMax > 0 && externalMax > 0
-        ? (inner.scrollTop / innerMax) * externalMax
-        : 0;
-      syncing = false;
-    };
-    const syncInnerFromExternal = () => {
-      if (syncing) return;
-      const innerMax = scrollMax(inner);
-      const externalMax = scrollMax(external);
-      syncing = true;
-      inner.scrollTop = innerMax > 0 && externalMax > 0
-        ? (external.scrollTop / externalMax) * innerMax
-        : 0;
-      syncing = false;
-    };
-    const syncMetrics = () => {
-      spacer.style.height = `${Math.max(1, inner.scrollHeight)}px`;
-      syncExternalFromInner();
-    };
-
-    inner.addEventListener('scroll', syncExternalFromInner, { passive: true });
-    external.addEventListener('scroll', syncInnerFromExternal, { passive: true });
-    shell.__olliHalfHourScrollSyncMetrics = syncMetrics;
-    syncMetrics();
-    requestAnimationFrame(syncMetrics);
-  }
-
-  function refreshHalfHourExternalScrollbar(root) {
-    const shell = root && root.querySelector('.olliTtHalfHourShell');
-    if (!shell || typeof shell.__olliHalfHourScrollSyncMetrics !== 'function') return;
-    requestAnimationFrame(shell.__olliHalfHourScrollSyncMetrics);
+    return `<section class="olliTtSection ${division}${division === 'kinder' && state.pickupCollapsed ? ' pickupCollapsed' : ''}${fiveDayClass}${studentColumnClass}${saturdayClass}"><div class="olliTtScroll">${grid}${division === 'kinder' ? pickupGridHtml(dates) : ''}</div>${pickupToggle}</section>`;
   }
 
   function renderTimetable() {
@@ -1344,7 +1294,6 @@
     }
     renderScheduleHeader();
     ui.root.innerHTML = sectionHtml(state.scheduleDivision);
-    bindHalfHourExternalScrollbar(ui.root);
   }
 
   function handleScheduleControl(event) {
@@ -1466,7 +1415,6 @@
       pickupToggle.innerHTML = `${state.pickupCollapsed
         ? '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 12.5 10 7.5l5 5" /></svg>'
         : '<svg class="olliTtPickupToggleIcon" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5" /></svg>'}<strong>${state.pickupCollapsed ? '픽업 펼치기' : '픽업 접기'}</strong>`;
-      refreshHalfHourExternalScrollbar(event.currentTarget || document.getElementById('olliTtRoot'));
       return;
     }
     const holidayTarget = event.target.closest('[data-holiday="1"]');

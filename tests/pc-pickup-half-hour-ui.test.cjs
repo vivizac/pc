@@ -81,23 +81,17 @@ test('PC half-hour timetable keeps internal scroll and disables wheel division s
 });
 
 
-test('PC half-hour timetable uses a real external scrollbar beside the timetable box', () => {
+test('PC half-hour timetable keeps scrolling but hides the scrollbar UI', () => {
   const sectionStart = ui.indexOf('function sectionHtml');
-  const sectionEnd = ui.indexOf('function bindHalfHourExternalScrollbar', sectionStart);
+  const sectionEnd = ui.indexOf('function renderTimetable', sectionStart);
   const sectionBlock = ui.slice(sectionStart, sectionEnd);
 
-  assert.match(sectionBlock, /const section = `<section class="olliTtSection/);
-  assert.match(sectionBlock, /if \(!halfHour\) return section;/);
-  assert.match(sectionBlock, /<div class="olliTtHalfHourShell">\$\{section\}<div class="olliTtHalfHourExternalScroll"/);
-  assert.match(css, /\.olliTtHalfHourShell \{[\s\S]*?display: flex;[\s\S]*?gap: 8px;/);
-  assert.match(css, /\.olliTtHalfHourExternalScroll \{[\s\S]*?flex: 0 0 12px;[\s\S]*?overflow-y: scroll;/);
-  assert.match(css, /\.olliTtHalfHourShell \.olliTtScroll \{[\s\S]*?scrollbar-width: none;/);
-  assert.doesNotMatch(css, /\.olliTtSection:has\(\.olliTtHalfHourGrid\) \.olliTtScroll \{[\s\S]*?padding-right: 10px;/);
-  assert.match(ui, /function bindHalfHourExternalScrollbar\(root\)/);
-  assert.match(ui, /const scrollMax = \(element\) => Math\.max\(0, element\.scrollHeight - element\.clientHeight\)/);
-  assert.match(ui, /\(inner\.scrollTop \/ innerMax\) \* externalMax/);
-  assert.match(ui, /\(external\.scrollTop \/ externalMax\) \* innerMax/);
-  assert.match(ui, /spacer\.style\.height = `\$\{Math\.max\(1, inner\.scrollHeight\)\}px`/);
-  assert.match(index, /pc-timetable\.css\?v=20261002-half-hour-external-scrollbar-1/);
-  assert.match(index, /pc-timetable\.js\?v=20261002-half-hour-scroll-ratio-1/);
+  assert.match(sectionBlock, /return `<section class="olliTtSection/);
+  assert.doesNotMatch(sectionBlock, /olliTtHalfHourShell|olliTtHalfHourExternalScroll/);
+  assert.doesNotMatch(ui, /function bindHalfHourExternalScrollbar|function refreshHalfHourExternalScrollbar/);
+  assert.match(css, /\.olliTtSection:has\(\.olliTtHalfHourGrid\) \.olliTtScroll \{[\s\S]*?scrollbar-width: none;[\s\S]*?-ms-overflow-style: none;/);
+  assert.match(css, /\.olliTtSection:has\(\.olliTtHalfHourGrid\) \.olliTtScroll::\-webkit-scrollbar \{[\s\S]*?width: 0;[\s\S]*?display: none;/);
+  assert.doesNotMatch(css, /olliTtHalfHourExternalScroll|olliTtHalfHourShell/);
+  assert.match(index, /pc-timetable\.css\?v=20261002-half-hour-hidden-scrollbar-1/);
+  assert.match(index, /pc-timetable\.js\?v=20261002-half-hour-hidden-scrollbar-1/);
 });
