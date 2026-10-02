@@ -171,7 +171,6 @@ async function prepareMakeupAction({
   requestId,
   replyToMessageId = null,
   capturePersistedMessage = null,
-  capturePrepareError = null,
   sanitizePayload,
   callRpc = callSupabaseRpc,
 }) {
@@ -406,6 +405,7 @@ function createPrepareMakeupTool({
   requestId,
   replyToMessageId = null,
   capturePersistedMessage = null,
+  capturePrepareError = null,
   sanitizePayload,
 }) {
   if (typeof tool !== 'function' || !z) {
