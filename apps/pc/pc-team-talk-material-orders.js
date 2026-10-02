@@ -3,7 +3,7 @@
 
   if (global.OlliTeamTalkMaterialOrders?.version) return;
 
-  const VERSION = '1.5.0';
+  const VERSION = '1.6.0';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
 
   const state = {
@@ -20,7 +20,13 @@
     filter: 'all',
     search: '',
     realtimeWatcher: null,
-    started: false
+    started: false,
+    archiveMode: false,
+    archiveYears: [],
+    archiveYear: 0,
+    archiveItems: [],
+    archiveLoading: false,
+    archiveSequence: 0
   };
 
   const clean = value => String(value == null ? '' : value).trim();
@@ -116,6 +122,29 @@
     const hh = String(date.getHours()).padStart(2, '0');
     const mm = String(date.getMinutes()).padStart(2, '0');
     return `${y}.${m}.${d} ${hh}:${mm}`;
+  }
+
+  function materialArchiveCutoffMs(now = new Date()) {
+    const source = now instanceof Date ? now : new Date(now);
+    if (!Number.isFinite(source.getTime())) return 0;
+    const target = new Date(source.getTime());
+    const originalDay = source.getDate();
+    target.setDate(1);
+    target.setMonth(target.getMonth() - 1);
+    const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+    target.setDate(Math.min(originalDay, lastDay));
+    return target.getTime();
+  }
+
+  function isMaterialArchiveEligible(item, now = new Date()) {
+    if (clean(item?.status) !== 'arrived') return false;
+    const orderedAt = new Date(item?.ordered_at || 0).getTime();
+    if (!Number.isFinite(orderedAt) || orderedAt <= 0) return false;
+    return orderedAt <= materialArchiveCutoffMs(now);
+  }
+
+  function currentMaterialItems() {
+    return state.items.filter(item => !isMaterialArchiveEligible(item));
   }
 
   function localDateKey(date = new Date()) {
@@ -244,6 +273,7 @@
   function shellHtml() {
     return `
       <section class="olliMatRoot" aria-label="팀톡 재료주문">
+        <div class="olliMatCurrent" data-material-current>
         <div class="olliMatSummary" aria-label="재료 주문 현황">
           <button class="olliMatSummaryCard requested" type="button" data-material-filter="requested">
             <span class="olliMatSummaryIcon" aria-hidden="true">＋</span>
@@ -267,6 +297,10 @@
             <div class="olliMatListHead">
               <div class="olliMatPaneTitle">요청 목록</div>
               <div class="olliMatListTools">
+                <button class="olliMatArchiveOpenBtn" type="button" data-material-action="open-archive">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v11H4z"></path><path d="M7 7.5V5h10v2.5"></path></svg>
+                  <span>보관함</span>
+                </button>
                 <label class="olliMatSearch">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
                   <input type="search" data-material-search placeholder="품목명, 요청자로 검색" aria-label="재료 요청 검색">
@@ -291,6 +325,34 @@
             <div class="olliMatDetailBody" data-material-detail></div>
           </aside>
         </div>
+        </div>
+
+        <section class="olliMatArchiveView" data-material-archive hidden aria-label="재료주문 보관함">
+          <header class="olliMatArchiveHeader">
+            <button class="olliMatArchiveBackBtn" type="button" data-material-action="close-archive" aria-label="재료주문 목록으로 돌아가기">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"></path></svg>
+            </button>
+            <div class="olliMatArchiveHeaderCopy">
+              <strong>재료주문 보관함</strong>
+              <span>도착 완료 후 주문일로부터 한 달이 지난 기록을 연도별로 정리합니다.</span>
+            </div>
+          </header>
+          <div class="olliMatArchiveWorkspace">
+            <aside class="olliMatArchiveYearsPane" aria-label="보관 연도">
+              <div class="olliMatArchivePaneTitle">연도</div>
+              <div class="olliMatArchiveYears" data-material-archive-years></div>
+            </aside>
+            <section class="olliMatArchiveRecordsPane" aria-label="보관 주문 기록">
+              <div class="olliMatArchiveRecordsHead">
+                <div>
+                  <strong data-material-archive-title>보관 기록</strong>
+                  <span data-material-archive-meta></span>
+                </div>
+              </div>
+              <div class="olliMatArchiveRecords" data-material-archive-list></div>
+            </section>
+          </div>
+        </section>
 
         <div class="olliMatToast" data-material-toast hidden></div>
 
@@ -360,9 +422,15 @@
   }
 
   function renderSummary() {
+    const currentItems = currentMaterialItems();
+    const counts = {
+      requested: currentItems.filter(item => clean(item?.status) === 'requested').length,
+      ordered: currentItems.filter(item => clean(item?.status) === 'ordered').length,
+      arrived: currentItems.filter(item => clean(item?.status) === 'arrived').length
+    };
     ['requested', 'ordered', 'arrived'].forEach(key => {
       const node = rootQuery(`[data-material-count="${key}"]`);
-      if (node) node.textContent = String(Math.max(0, Number(state.summary?.[key] || 0)));
+      if (node) node.textContent = String(Math.max(0, Number(counts[key] || 0)));
     });
     state.root?.querySelectorAll('[data-material-filter]').forEach(button => {
       button.classList.toggle('active', button.dataset.materialFilter === state.filter);
@@ -372,6 +440,7 @@
   }
 
   function matchesFilter(item) {
+    if (isMaterialArchiveEligible(item)) return false;
     if (state.filter !== 'all' && clean(item?.status) !== state.filter) return false;
     const q = state.search.toLowerCase();
     if (!q) return true;
@@ -485,6 +554,227 @@
     });
     body.appendChild(fragment);
     renderDetail();
+  }
+
+  function archiveYearNumber(value) {
+    const year = Math.trunc(Number(value || 0));
+    return year >= 2000 && year <= 2100 ? year : 0;
+  }
+
+  function renderArchiveVisibility() {
+    const current = rootQuery('[data-material-current]');
+    const archive = rootQuery('[data-material-archive]');
+    if (current) current.hidden = state.archiveMode;
+    if (archive) archive.hidden = !state.archiveMode;
+  }
+
+  function renderArchiveYears() {
+    const host = rootQuery('[data-material-archive-years]');
+    if (!host) return;
+    host.replaceChildren();
+    const years = Array.isArray(state.archiveYears) ? state.archiveYears : [];
+    if (!years.length) {
+      const empty = create('div', 'olliMatArchiveYearsEmpty', '보관된 기록이 없습니다.');
+      host.appendChild(empty);
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    years.forEach(entry => {
+      const year = archiveYearNumber(entry?.year);
+      if (!year) return;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'olliMatArchiveYearCard';
+      button.dataset.materialArchiveYear = String(year);
+      button.classList.toggle('active', year === state.archiveYear);
+      button.innerHTML = '<span class="olliMatArchiveFolderIcon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 7h6l1.8 2H20v9.5H3.5z"></path><path d="M3.5 7V5.5h5.2L10 7"></path></svg></span>';
+      const copy = create('span', 'olliMatArchiveYearCopy');
+      copy.append(create('strong', '', year + '년'), create('small', '', Math.max(0, Number(entry?.count || 0)) + '건'));
+      button.appendChild(copy);
+      fragment.appendChild(button);
+    });
+    host.appendChild(fragment);
+  }
+
+  function renderArchiveList() {
+    const host = rootQuery('[data-material-archive-list]');
+    const title = rootQuery('[data-material-archive-title]');
+    const meta = rootQuery('[data-material-archive-meta]');
+    if (!host || !title || !meta) return;
+    host.replaceChildren();
+
+    if (state.archiveLoading) {
+      title.textContent = state.archiveYear ? state.archiveYear + '년' : '보관 기록';
+      meta.textContent = '';
+      const empty = create('div', 'olliMatArchiveEmpty');
+      empty.append(create('strong', '', '보관함을 불러오는 중이에요.'), create('span', '', '기록을 정리하고 있습니다.'));
+      host.appendChild(empty);
+      return;
+    }
+
+    if (!state.archiveYears.length) {
+      title.textContent = '보관 기록';
+      meta.textContent = '';
+      const empty = create('div', 'olliMatArchiveEmpty');
+      empty.append(
+        create('strong', '', '아직 보관된 주문이 없어요.'),
+        create('span', '', '도착 완료된 주문은 주문일로부터 한 달 뒤 자동으로 이곳에 정리됩니다.')
+      );
+      host.appendChild(empty);
+      return;
+    }
+
+    if (!state.archiveYear) {
+      title.textContent = '보관 기록';
+      meta.textContent = '왼쪽에서 연도를 선택해 주세요.';
+      return;
+    }
+
+    const items = Array.isArray(state.archiveItems) ? state.archiveItems : [];
+    title.textContent = state.archiveYear + '년';
+    meta.textContent = items.length + '건';
+
+    if (!items.length) {
+      const empty = create('div', 'olliMatArchiveEmpty');
+      empty.append(create('strong', '', '이 연도에는 보관된 주문이 없어요.'), create('span', '', '다른 연도 폴더를 선택해 주세요.'));
+      host.appendChild(empty);
+      return;
+    }
+
+    const byMonth = new Map();
+    items.forEach(item => {
+      const ordered = new Date(item?.ordered_at || 0);
+      if (!Number.isFinite(ordered.getTime())) return;
+      const month = ordered.getMonth() + 1;
+      if (!byMonth.has(month)) byMonth.set(month, []);
+      byMonth.get(month).push(item);
+    });
+
+    Array.from(byMonth.keys()).sort((a, b) => b - a).forEach(month => {
+      const section = create('section', 'olliMatArchiveMonth');
+      const head = create('div', 'olliMatArchiveMonthHead');
+      head.append(create('strong', '', month + '월'), create('span', '', byMonth.get(month).length + '건'));
+      section.appendChild(head);
+
+      const grid = create('div', 'olliMatArchiveMonthGrid');
+      byMonth.get(month).forEach(item => {
+        const card = create('article', 'olliMatArchiveOrderCard');
+        const top = create('div', 'olliMatArchiveOrderTop');
+        const copy = create('div', 'olliMatArchiveOrderCopy');
+        copy.append(
+          create('strong', '', clean(item?.item_name) || '재료'),
+          create('span', '', [
+            '수량 ' + (clean(item?.quantity_text) || '-'),
+            '주문 ' + formatDate(item?.ordered_at),
+            '도착 ' + formatDate(item?.arrived_at)
+          ].join(' · '))
+        );
+        top.append(materialIcon(item), copy, create('span', 'olliMatStatusTag arrived', '보관'));
+        card.appendChild(top);
+
+        const detail = create('div', 'olliMatArchiveOrderDetail');
+        [
+          ['요청자', clean(item?.requested_by_name) || '-'],
+          ['사용수업', clean(item?.use_context) || '미지정'],
+          ['필요일', item?.needed_on ? formatDate(item.needed_on) : '미지정']
+        ].forEach(([label, value]) => {
+          const row = create('div', 'olliMatArchiveOrderRow');
+          row.append(create('span', '', label), create('strong', '', value));
+          detail.appendChild(row);
+        });
+
+        if (clean(item?.memo)) {
+          const memo = create('div', 'olliMatArchiveOrderMemo');
+          memo.append(create('span', '', '메모'), create('p', '', clean(item.memo)));
+          detail.appendChild(memo);
+        }
+
+        if (clean(item?.purchase_url)) {
+          const link = document.createElement('a');
+          link.href = item.purchase_url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.className = 'olliMatArchiveOrderLink';
+          link.textContent = '구매링크 열기 ↗';
+          detail.appendChild(link);
+        }
+        card.appendChild(detail);
+        grid.appendChild(card);
+      });
+      section.appendChild(grid);
+      host.appendChild(section);
+    });
+  }
+
+  function renderArchive() {
+    renderArchiveVisibility();
+    renderArchiveYears();
+    renderArchiveList();
+  }
+
+  async function loadArchive(year = 0, options = {}) {
+    const sequence = ++state.archiveSequence;
+    const current = context();
+    const selectedYear = archiveYearNumber(year);
+    if (!current.sessionToken || !current.academyId) return false;
+
+    if (options.showLoading !== false) {
+      state.archiveLoading = true;
+      renderArchive();
+    }
+
+    try {
+      const payload = await rpc('olli_team_material_requests_archive', {
+        p_session_token: current.sessionToken,
+        p_academy_id: current.academyId,
+        p_year: selectedYear || null
+      });
+      if (sequence !== state.archiveSequence) return true;
+      if (!payload?.ok) throw new Error(payload?.message || '재료주문 보관함을 불러오지 못했습니다.');
+      state.archiveYears = Array.isArray(payload.years) ? payload.years : [];
+      state.archiveYear = selectedYear;
+      state.archiveItems = selectedYear && Array.isArray(payload.items) ? payload.items : [];
+      return true;
+    } catch (error) {
+      if (sequence !== state.archiveSequence) return true;
+      console.warn('재료주문 보관함 조회 실패:', error?.message || error);
+      showToast(error?.message || '재료주문 보관함을 불러오지 못했습니다.', 'error');
+      return false;
+    } finally {
+      if (sequence === state.archiveSequence) {
+        state.archiveLoading = false;
+        renderArchive();
+      }
+    }
+  }
+
+  async function openArchive() {
+    state.archiveMode = true;
+    state.selectedId = '';
+    renderArchive();
+    const loaded = await loadArchive(0);
+    if (!loaded) return false;
+    const preferredYear = state.archiveYears
+      .map(entry => archiveYearNumber(entry?.year))
+      .find(Boolean) || 0;
+    if (preferredYear) await loadArchive(preferredYear);
+    return true;
+  }
+
+  function closeArchive() {
+    state.archiveMode = false;
+    state.archiveYear = 0;
+    state.archiveItems = [];
+    renderArchiveVisibility();
+    renderSummary();
+    renderList();
+  }
+
+  async function selectArchiveYear(year) {
+    const selectedYear = archiveYearNumber(year);
+    if (!selectedYear || selectedYear === state.archiveYear) return false;
+    return loadArchive(selectedYear);
   }
 
   function detailRow(label, valueNode) {
@@ -833,6 +1123,20 @@
         closeCreate();
         return;
       }
+      if (action === 'open-archive') {
+        openArchive().catch(() => {});
+        return;
+      }
+      if (action === 'close-archive') {
+        closeArchive();
+        return;
+      }
+
+      const archiveYear = event.target.closest('[data-material-archive-year]');
+      if (archiveYear) {
+        selectArchiveYear(archiveYear.dataset.materialArchiveYear).catch(() => {});
+        return;
+      }
 
       const quickWord = event.target.closest('[data-material-quick-word]');
       if (quickWord) {
@@ -910,7 +1214,11 @@
     try {
       state.realtimeWatcher = global.OlliRealtime.watchDomain('chat', async () => {
         if (!state.root?.isConnected) return true;
-        return refresh({ showLoading: false });
+        const refreshed = await refresh({ showLoading: false });
+        if (state.archiveMode) {
+          await loadArchive(state.archiveYear, { showLoading: false });
+        }
+        return refreshed;
       });
       global.OlliRealtime.ensureConnected?.({ reason: 'team_material_orders_start' }).catch(() => {});
     } catch (error) {
@@ -930,6 +1238,14 @@
     state.root.innerHTML = shellHtml();
     bindEvents();
     bindRealtime();
+
+    state.archiveMode = false;
+    state.archiveYears = [];
+    state.archiveYear = 0;
+    state.archiveItems = [];
+    state.archiveLoading = false;
+    state.archiveSequence = 0;
+    renderArchiveVisibility();
 
     if (options.filter) state.filter = clean(options.filter);
     renderSummary();
@@ -958,6 +1274,12 @@
     state.root = null;
     state.items = [];
     state.selectedId = '';
+    state.archiveMode = false;
+    state.archiveYears = [];
+    state.archiveYear = 0;
+    state.archiveItems = [];
+    state.archiveLoading = false;
+    state.archiveSequence = 0;
   }
 
   function start() {
