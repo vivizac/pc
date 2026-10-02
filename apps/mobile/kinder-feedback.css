@@ -145,7 +145,7 @@
   -webkit-tap-highlight-color:transparent;
 }
 .olliWorkTab.active{
-  background:rgba(242,242,242,.96);
+  background:rgba(232,232,232,.96);
   font-weight:450;
 }
 .olliWorkTabWithBadge{
@@ -1940,7 +1940,7 @@ width:100%;
   width:100%;
   align-items:center;
   justify-content:flex-start;
-  gap:12px;
+  gap:20px;
   flex-wrap:wrap;
   margin:8px 0 0;
   padding:0;
@@ -1977,7 +1977,7 @@ width:100%;
   white-space:nowrap;
 }
 #kinderChatFeedbackScreen .kcfLiveInboxBtn {
-  margin-right:auto;
+  margin-right:0;
 }
 #kinderChatFeedbackScreen .kcfLiveActionBtn.kcfLivePhoneTextActionBtn:active:not(:disabled) {
   background:transparent;
