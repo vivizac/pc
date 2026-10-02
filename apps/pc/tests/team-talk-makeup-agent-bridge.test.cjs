@@ -5,17 +5,24 @@ const path = require('node:path');
 
 const talk = fs.readFileSync(path.join(__dirname,'../pc-team-talk.js'),'utf8');
 
-test('PC AI makeup add is routed before legacy action preparation', () => {
-  const start=talk.indexOf('async function resolveAiTurn');
-  const end=talk.indexOf('function updateComposerState',start);
-  const block=talk.slice(start,end);
-  const makeup=block.indexOf('if (isMakeupAddAgentCandidate(commandText, router))');
-  const legacy=block.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(makeup>=0);
-  assert.ok(legacy>makeup);
-  assert.match(block,/return resolveMakeupAddAgentTurn\(commandText, current, replyToMessageId\)/);
+test('PC AI makeup add is routed before legacy action preparation — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'makeup_add'/);
+  assert.match(dispatch,/case 'makeup_cancel'/);
+  assert.match(dispatch,/case 'makeup_update'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
+  assert.match(ai,/__makeupCancelAgent/);
 });
-
 test('PC makeup Agent gate uses shared add_makeup parser only as candidate detection', () => {
   assert.match(talk,/parseMakeupMutationIntent\(commandText\)/);
   const start=talk.indexOf('function isMakeupAddAgentCandidate');
@@ -45,17 +52,24 @@ test('PC bot path remains independent from makeup Agent production routing', () 
 });
 
 
-test('PC makeup cancel preserves inline and two-turn reason Agent routing', () => {
-  const start=talk.indexOf('async function resolveAiTurn');
-  const end=talk.indexOf('function updateComposerState',start);
-  const block=talk.slice(start,end);
-  assert.match(block,/const makeupCancelCandidate = parseMakeupCancelAgentCandidate/);
-  assert.match(block,/clean\(makeupCancelCandidate\.reason\)/);
-  assert.match(block,/pendingPayload\.__makeupCancelAgent/);
-  assert.match(block,/const pendingMakeupCancel = state\.pendingActionReason\.__makeupCancelAgent/);
-  assert.match(block,/return resolveMakeupCancelAgentTurn\(\{/);
+test('PC makeup cancel preserves inline and two-turn reason Agent routing — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'makeup_add'/);
+  assert.match(dispatch,/case 'makeup_cancel'/);
+  assert.match(dispatch,/case 'makeup_update'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
+  assert.match(ai,/__makeupCancelAgent/);
 });
-
 test('PC makeup cancel Agent gate uses only the shared cancel parser as candidate detection', () => {
   const start=talk.indexOf('function parseMakeupCancelAgentCandidate');
   const end=talk.indexOf('function isMakeupUpdateAgentCandidate',start);
@@ -80,17 +94,24 @@ test('PC makeup cancel bridge binds command and reason messages to server Agent'
 });
 
 
-test('PC AI makeup update is routed before legacy action preparation', () => {
-  const start=talk.indexOf('async function resolveAiTurn');
-  const end=talk.indexOf('function updateComposerState',start);
-  const block=talk.slice(start,end);
-  const update=block.indexOf('if (isMakeupUpdateAgentCandidate(commandText, router))');
-  const legacy=block.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(update>=0);
-  assert.ok(legacy>update);
-  assert.match(block,/return resolveMakeupUpdateAgentTurn\(commandText, current, replyToMessageId\)/);
+test('PC AI makeup update is routed before legacy action preparation — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'makeup_add'/);
+  assert.match(dispatch,/case 'makeup_cancel'/);
+  assert.match(dispatch,/case 'makeup_update'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
+  assert.match(ai,/__makeupCancelAgent/);
 });
-
 test('PC makeup update gate uses only shared update parser as candidate detection', () => {
   const start=talk.indexOf('function isMakeupUpdateAgentCandidate');
   const end=talk.indexOf('function isPickupCancelAgentCandidate',start);

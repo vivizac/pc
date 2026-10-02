@@ -5,17 +5,23 @@ const path=require('node:path');
 
 const talk=fs.readFileSync(path.join(__dirname,'../pc-team-talk.js'),'utf8');
 
-test('PC timetable memo add/delete routes through memo_prepare before legacy prepareAction',()=>{
-  const ai=talk.slice(talk.indexOf('async function resolveAiTurn'),talk.indexOf('function updateComposerState'));
-  assert.match(talk,/function parseTimetableMemoAgentCandidate/);
-  assert.match(talk,/parseTimetableMemoDeleteMutationIntent/);
-  assert.match(talk,/parseTimetableMemoAddMutationIntent/);
-  assert.match(talk,/mode:'memo_prepare'/);
-  const memo=ai.indexOf('const timetableMemoCandidate = parseTimetableMemoAgentCandidate');
+test('PC timetable memo add/delete routes through memo_prepare before legacy prepareAction — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'timetable_memo'/);
+  assert.match(dispatch,/case 'batch_write'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
   const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(memo>=0 && legacy>memo);
-});
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('PC memo bridge sends server-side memo note and consumes persisted action',()=>{
   const start=talk.indexOf('async function resolveTimetableMemoAgentTurn');
   const end=talk.indexOf('async function resolveMakeupAddAgentTurn',start);
@@ -26,16 +32,23 @@ test('PC memo bridge sends server-side memo note and consumes persisted action',
   assert.doesNotMatch(block,/saveAssistantAction|olli_team_chat_send_action/);
 });
 
-test('PC batch is detected before individual writes and missing reasons are collected',()=>{
-  const ai=talk.slice(talk.indexOf('async function resolveAiTurn'),talk.indexOf('function updateComposerState'));
-  assert.match(talk,/function parseBatchAgentCandidate/);
-  assert.match(talk,/function buildBatchAgentCommands/);
-  assert.match(talk,/function batchCommandNeedsReason/);
-  assert.match(ai,/const pendingBatch = state\.pendingActionReason\.__batchAgent/);
-  assert.match(ai,/const batchCandidate = parseBatchAgentCandidate/);
-  assert.ok(ai.indexOf('const batchCandidate = parseBatchAgentCandidate')<ai.indexOf('const timetableMemoCandidate = parseTimetableMemoAgentCandidate'));
-});
+test('PC batch is detected before individual writes and missing reasons are collected — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'timetable_memo'/);
+  assert.match(dispatch,/case 'batch_write'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('PC batch uses batch_prepare and renders multiple persisted cards',()=>{
   assert.match(talk,/mode:'batch_prepare'/);
   assert.match(talk,/assistantMessages:messages/);

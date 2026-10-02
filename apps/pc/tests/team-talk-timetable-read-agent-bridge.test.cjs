@@ -16,25 +16,25 @@ test('PC timetable read candidate is fixed by shared parseQueryIntent',()=>{
   assert.doesNotMatch(block,/runQuery|prepareAction/);
 });
 
-test('PC timetable and student reads run before legacy prepareAction and runQuery',()=>{
-  const start=talk.indexOf('async function resolveAiTurn');
-  const end=talk.indexOf('function updateComposerState',start);
-  const block=talk.slice(start,end);
-  const timetable=block.indexOf('const timetableReadCandidate=parseTimetableReadAgentCandidate');
-  const attendance=block.indexOf('isStudentAttendanceReadCandidate');
-  const pickup=block.indexOf('isStudentPickupReadCandidate');
-  const schedule=block.indexOf('isStudentScheduleReadCandidate');
-  const prepare=block.indexOf("if (router && typeof router.prepareAction === 'function')");
-  const query=block.indexOf("if (router && typeof router.runQuery === 'function')");
-  assert.ok(timetable>=0);
-  assert.ok(attendance>timetable && pickup>attendance && schedule>pickup);
-  assert.ok(prepare>schedule && query>prepare);
-  assert.match(block,/mode:'timetable_read'/);
-  assert.match(block,/mode:'attendance_read'/);
-  assert.match(block,/mode:'pickup_read'/);
-  assert.match(block,/mode:'schedule_read'/);
-});
+test('PC timetable and student reads run before legacy prepareAction and runQuery — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'timetable_read'/);
+  assert.match(dispatch,/case 'attendance_read'/);
+  assert.match(dispatch,/case 'pickup_read'/);
+  assert.match(dispatch,/case 'schedule_read'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('PC read bridge saves only the source-bound Agent answer',()=>{
   const start=talk.indexOf('async function resolveSourceBoundReadAgentTurn');
   const end=talk.indexOf('async function resolveBatchAgentTurn',start);

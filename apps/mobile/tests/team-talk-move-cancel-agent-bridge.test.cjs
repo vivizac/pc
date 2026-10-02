@@ -14,19 +14,22 @@ test('mobile move cancel gate uses only shared cancellation parser',()=>{
   assert.doesNotMatch(block,/parseScheduleMoveMutationIntent|prepareAction|move_class/);
 });
 
-test('mobile move cancel routes before student info and legacy preparation',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const end=talk.indexOf('function getOlliTalkMentionMessageText',start);
-  const block=talk.slice(start,end);
-  const move=block.indexOf('if(isOlliTalkMoveCancelAgentCandidate(commandText,router))');
-  const studentInfo=block.indexOf('const studentInfo=resolveOlliTalkStudentInfoCommand(commandText)');
-  const legacy=block.indexOf("if(router && typeof router.prepareAction==='function')");
-  assert.ok(move>=0);
-  assert.ok(studentInfo>move);
-  assert.ok(legacy>studentInfo);
-  assert.match(block,/return resolveOlliTalkMoveCancelAgentTurn\(commandText,context,replyToMessageId\)/);
-});
+test('mobile move cancel routes before student info and legacy preparation — shared dispatch contract',()=> {
+  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
+  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'move_cancel'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('mobile move cancel bridge uses source-bound production without second action save',()=>{
   const start=talk.indexOf('async function resolveOlliTalkMoveCancelAgentTurn');
   const end=talk.indexOf('function isOlliTalkPendingReasonCancel',start);

@@ -11,13 +11,21 @@ test('Mobile pickup production modes are source-bound',()=>{
   for(const mode of ["mode:'pickup_prepare'","mode:'pickup_update_prepare'","mode:'pickup_cancel_prepare'"]) assert.ok(talk.includes(mode),mode);
   assert.ok(talk.includes('sourceMessageId'));
 });
-test('Mobile AI routes pickup Agent paths before legacy prepareAction',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const end=talk.indexOf('function getOlliTalkMentionMessageText',start);
-  const block=talk.slice(start,end);
-  const legacy=block.indexOf("if(router && typeof router.prepareAction==='function')");
-  for(const route of ['isOlliTalkPickupCancelAgentCandidate','isOlliTalkPickupUpdateAgentCandidate','isOlliTalkPickupAddAgentCandidate']){
-    const at=block.indexOf(route);
-    assert.ok(at>=0 && legacy>at,route);
-  }
+test('Mobile AI routes pickup Agent paths before legacy prepareAction — shared dispatch contract',()=> {
+  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
+  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'pickup_cancel'/);
+  assert.match(dispatch,/case 'pickup_update'/);
+  assert.match(dispatch,/case 'pickup_add'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
+  assert.ok(classify>=0 && legacy>classify);
+
 });

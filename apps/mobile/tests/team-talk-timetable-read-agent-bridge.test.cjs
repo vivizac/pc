@@ -16,25 +16,25 @@ test('Mobile timetable read candidate is fixed by shared parseQueryIntent',()=>{
   assert.doesNotMatch(block,/runQuery|prepareAction/);
 });
 
-test('Mobile timetable and student reads run before legacy prepareAction and runQuery',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const end=talk.indexOf('function getOlliTalkMentionMessageText',start);
-  const block=talk.slice(start,end);
-  const timetable=block.indexOf('const timetableReadCandidate=parseOlliTalkTimetableReadAgentCandidate');
-  const attendance=block.indexOf('isOlliTalkStudentAttendanceReadCandidate');
-  const pickup=block.indexOf('isOlliTalkStudentPickupReadCandidate');
-  const schedule=block.indexOf('isOlliTalkStudentScheduleReadCandidate');
-  const prepare=block.indexOf("if(router && typeof router.prepareAction==='function')");
-  const query=block.indexOf("if(router && typeof router.runQuery==='function')");
-  assert.ok(timetable>=0);
-  assert.ok(attendance>timetable && pickup>attendance && schedule>pickup);
-  assert.ok(prepare>schedule && query>prepare);
-  assert.match(block,/mode:'timetable_read'/);
-  assert.match(block,/mode:'attendance_read'/);
-  assert.match(block,/mode:'pickup_read'/);
-  assert.match(block,/mode:'schedule_read'/);
-});
+test('Mobile timetable and student reads run before legacy prepareAction and runQuery — shared dispatch contract',()=> {
+  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
+  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'timetable_read'/);
+  assert.match(dispatch,/case 'attendance_read'/);
+  assert.match(dispatch,/case 'pickup_read'/);
+  assert.match(dispatch,/case 'schedule_read'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('Mobile read bridge saves only the source-bound Agent answer',()=>{
   const start=talk.indexOf('async function resolveOlliTalkSourceBoundReadAgentTurn');
   const end=talk.indexOf('async function resolveOlliTalkBatchAgentTurn',start);

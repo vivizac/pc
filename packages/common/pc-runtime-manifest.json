@@ -20,6 +20,7 @@
     "olli-auth-owner-onboarding.js",
     "olli-auth-teacher-membership.js",
     "olli-command-router-common.js",
+    "olli-team-talk-agent-route-common.js",
     "olli-command-schedule-common.js",
     "olli-data-record-list.js",
     "olli-data-students.js",

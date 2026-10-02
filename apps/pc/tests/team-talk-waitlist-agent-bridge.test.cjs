@@ -15,19 +15,23 @@ test('PC waitlist update gate uses only the shared update candidate parser', () 
   assert.doesNotMatch(block,/parseWaitlistMutationIntent|parseWriteIntent|add_waitlist|cancel_waitlist/);
 });
 
-test('PC registered waitlist update is routed before cancel and legacy preparation', () => {
-  const start=talk.indexOf('async function resolveAiTurn');
-  const end=talk.indexOf('function updateComposerState',start);
-  const block=talk.slice(start,end);
-  const update=block.indexOf('if (isWaitlistUpdateAgentCandidate(commandText, router))');
-  const cancel=block.indexOf('if (isWaitlistCancelAgentCandidate(commandText, router))');
-  const legacy=block.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(update>=0);
-  assert.ok(cancel>update);
-  assert.ok(legacy>cancel);
-  assert.match(block,/return resolveWaitlistUpdateAgentTurn\(commandText, current, replyToMessageId\)/);
-});
+test('PC registered waitlist update is routed before cancel and legacy preparation — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'waitlist_update'/);
+  assert.match(dispatch,/case 'waitlist_cancel'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('PC waitlist update bridge uses source-bound production mode and never saves a second action card', () => {
   const start=talk.indexOf('async function resolveWaitlistUpdateAgentTurn');
   const end=talk.indexOf('async function resolveWaitlistCancelAgentTurn',start);
@@ -57,18 +61,23 @@ test('PC waitlist cancel gate uses only the shared cancel parser', () => {
   assert.doesNotMatch(block,/parseWaitlistMutationIntent|add_waitlist|update_waitlist/);
 });
 
-test('PC registered waitlist cancel is routed before legacy preparation', () => {
-  const start=talk.indexOf('async function resolveAiTurn');
-  const end=talk.indexOf('function updateComposerState',start);
-  const block=talk.slice(start,end);
-  const waitlist=block.indexOf('if (isWaitlistCancelAgentCandidate(commandText, router))');
-  const legacy=block.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(waitlist>=0);
-  assert.ok(legacy>waitlist);
-  assert.match(block,/const waitlistTurn = await resolveWaitlistCancelAgentTurn/);
-  assert.match(block,/if \(waitlistTurn\) return waitlistTurn/);
-});
+test('PC registered waitlist cancel is routed before legacy preparation — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'waitlist_update'/);
+  assert.match(dispatch,/case 'waitlist_cancel'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('PC waitlist cancel bridge keeps guest and registered requests on production Agent mode', () => {
   const start=talk.indexOf('async function resolveWaitlistCancelAgentTurn');
   const end=talk.indexOf('async function resolvePickupCancelAgentTurn',start);

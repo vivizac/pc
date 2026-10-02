@@ -14,20 +14,22 @@ test('mobile waitlist add gate uses only shared add parser',()=>{
   assert.doesNotMatch(block,/parseWaitlistUpdateMutationIntent|parseWriteIntent|prepareAction/);
 });
 
-test('mobile waitlist add routes before update and legacy preparation',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const end=talk.indexOf('function getOlliTalkMentionMessageText',start);
-  const block=talk.slice(start,end);
-  const add=block.indexOf('if(isOlliTalkWaitlistAddAgentCandidate(commandText,router))');
-  const update=block.indexOf('if(isOlliTalkWaitlistUpdateAgentCandidate(commandText,router))');
-  const legacy=block.indexOf("if(router && typeof router.prepareAction==='function')");
-  assert.ok(add>=0);
-  assert.ok(update>add);
-  assert.ok(legacy>update);
-  assert.match(block,/const waitlistAddTurn=await resolveOlliTalkWaitlistAddAgentTurn/);
-  assert.match(block,/if\(waitlistAddTurn\) return waitlistAddTurn/);
-});
+test('mobile waitlist add routes before update and legacy preparation — shared dispatch contract',()=> {
+  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
+  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'waitlist_add'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('mobile waitlist add bridge keeps registered and guest requests on source-bound Agent production',()=>{
   const start=talk.indexOf('async function resolveOlliTalkWaitlistAddAgentTurn');
   const end=talk.indexOf('async function resolveOlliTalkWaitlistUpdateAgentTurn',start);

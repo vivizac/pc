@@ -14,19 +14,22 @@ test('mobile trial update gate uses only shared trial update candidate parser',(
   assert.doesNotMatch(block,/parseWriteIntent|prepareAction|add_trial|cancel_trial/);
 });
 
-test('mobile trial update routes before waitlist and legacy preparation',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const end=talk.indexOf('function getOlliTalkMentionMessageText',start);
-  const block=talk.slice(start,end);
-  const trial=block.indexOf('if(isOlliTalkTrialUpdateAgentCandidate(commandText,router))');
-  const wait=block.indexOf('if(isOlliTalkWaitlistUpdateAgentCandidate(commandText,router))');
-  const legacy=block.indexOf("if(router && typeof router.prepareAction==='function')");
-  assert.ok(trial>=0);
-  assert.ok(wait>trial);
-  assert.ok(legacy>wait);
-  assert.match(block,/return resolveOlliTalkTrialUpdateAgentTurn\(commandText,context,replyToMessageId\)/);
-});
+test('mobile trial update routes before waitlist and legacy preparation — shared dispatch contract',()=> {
+  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
+  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'trial_update'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('mobile trial update uses source-bound production mode and server-persisted card',()=>{
   const start=talk.indexOf('async function resolveOlliTalkTrialUpdateAgentTurn');
   const end=talk.indexOf('async function resolveOlliTalkWaitlistAddAgentTurn',start);

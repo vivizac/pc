@@ -1713,6 +1713,91 @@
     return /^(취소|취소해|취소해줘|그만|중단|하지마|아니|아니야)$/i.test(String(text || '').trim());
   }
 
+
+  async function resolveOlliTalkSharedAgentRouteTurn(route,commandText,context,replyToMessageId){
+    if(!route || !route.key) return null;
+    const parsed=route.parsed || null;
+
+    switch(route.key){
+      case 'attendance_status':
+        return resolveOlliTalkAttendanceStatusAgentTurn(commandText,parsed,context,replyToMessageId);
+      case 'timetable_admin':
+        return resolveOlliTalkTimetableAdminAgentTurn(commandText,parsed,context,replyToMessageId);
+      case 'batch_write':{
+        const sourceId=Number(replyToMessageId || 0);
+        const commands=buildOlliTalkBatchAgentCommands(parsed,sourceId,commandText);
+        const missingIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
+        if(missingIndex>=0){
+          olliTalkPendingActionReason={intent:'batch_write',__batchAgent:{
+            sourceMessageId:sourceId,sourceMessageText:String(commandText || '').trim(),commands
+          }};
+          const prompt=olliTalkBatchReasonPrompt(commands[missingIndex]);
+          return {assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),replyText:prompt,recordAi:false};
+        }
+        const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
+        if(clarificationIndex>=0){
+          olliTalkPendingActionReason={intent:'batch_write',__batchAgent:{
+            sourceMessageId:sourceId,sourceMessageText:String(commandText || '').trim(),commands
+          }};
+          const prompt=olliTalkBatchClarificationPrompt(commands[clarificationIndex]);
+          return {assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),replyText:prompt,recordAi:false};
+        }
+        return resolveOlliTalkBatchAgentTurn({
+          sourceText:String(commandText || '').trim(),sourceMessageId:sourceId,commands,context
+        });
+      }
+      case 'timetable_memo':
+        return resolveOlliTalkTimetableMemoAgentTurn(commandText,parsed,context,replyToMessageId);
+      case 'trial_cancel':
+        if(!String(parsed?.reason || '').trim()) return null;
+        return resolveOlliTalkTrialCancelAgentTurn({
+          sourceText:String(commandText || '').trim(),sourceMessageId:Number(replyToMessageId || 0),
+          reasonText:String(parsed.reason || '').trim(),reasonMessageText:String(commandText || '').trim(),
+          reasonMessageId:Number(replyToMessageId || 0),context
+        });
+      case 'makeup_cancel':
+        if(!String(parsed?.reason || '').trim()) return null;
+        return resolveOlliTalkMakeupCancelAgentTurn({
+          sourceText:String(commandText || '').trim(),sourceMessageId:Number(replyToMessageId || 0),
+          reasonText:String(parsed.reason || '').trim(),reasonMessageText:String(commandText || '').trim(),
+          reasonMessageId:Number(replyToMessageId || 0),context
+        });
+      case 'absence':
+        if(!String(parsed?.reason || '').trim()) return null;
+        return resolveOlliTalkAbsenceAgentTurn({
+          sourceText:String(commandText || '').trim(),sourceMessageId:Number(replyToMessageId || 0),
+          reasonText:String(parsed.reason || '').trim(),reasonMessageText:String(commandText || '').trim(),
+          reasonMessageId:Number(replyToMessageId || 0),context
+        });
+      case 'trial_add': return resolveOlliTalkTrialAddAgentTurn(commandText,context,replyToMessageId);
+      case 'trial_update': return resolveOlliTalkTrialUpdateAgentTurn(commandText,context,replyToMessageId);
+      case 'waitlist_add':{
+        const turn=await resolveOlliTalkWaitlistAddAgentTurn(commandText,context,replyToMessageId); return turn||null;
+      }
+      case 'waitlist_update': return resolveOlliTalkWaitlistUpdateAgentTurn(commandText,context,replyToMessageId);
+      case 'waitlist_cancel':{
+        const turn=await resolveOlliTalkWaitlistCancelAgentTurn(commandText,context,replyToMessageId); return turn||null;
+      }
+      case 'pickup_cancel': return resolveOlliTalkPickupCancelAgentTurn(commandText,context,replyToMessageId);
+      case 'pickup_update': return resolveOlliTalkPickupUpdateAgentTurn(commandText,context,replyToMessageId);
+      case 'pickup_add': return resolveOlliTalkPickupAddAgentTurn(commandText,context,replyToMessageId);
+      case 'makeup_update': return resolveOlliTalkMakeupUpdateAgentTurn(commandText,context,replyToMessageId);
+      case 'makeup_add': return resolveOlliTalkMakeupAddAgentTurn(commandText,context,replyToMessageId);
+      case 'move_cancel': return resolveOlliTalkMoveCancelAgentTurn(commandText,context,replyToMessageId);
+      case 'move': return resolveOlliTalkMoveAgentTurn(commandText,context,replyToMessageId);
+      case 'class_once': return resolveOlliTalkClassOnceAgentTurn(commandText,context,replyToMessageId);
+      case 'timetable_read':
+        return resolveOlliTalkSourceBoundReadAgentTurn({mode:'timetable_read',commandText,readIntent:parsed,context,replyToMessageId});
+      case 'attendance_read':
+        return resolveOlliTalkSourceBoundReadAgentTurn({mode:'attendance_read',commandText,context,replyToMessageId});
+      case 'pickup_read':
+        return resolveOlliTalkSourceBoundReadAgentTurn({mode:'pickup_read',commandText,context,replyToMessageId});
+      case 'schedule_read':
+        return resolveOlliTalkSourceBoundReadAgentTurn({mode:'schedule_read',commandText,context,replyToMessageId});
+      default: return null;
+    }
+  }
+
   async function resolveOlliTalkAiTurn(commandText,context,replyToMessageId,options={}){
     const router=window.OlliCommandRouter;
     const schedule=window.OlliCommandSchedule;
@@ -1877,158 +1962,13 @@
       };
     }
 
-    const attendanceStatusCandidate=parseOlliTalkAttendanceStatusAgentCandidate(commandText,router);
-    if(attendanceStatusCandidate){
-      return resolveOlliTalkAttendanceStatusAgentTurn(
-        commandText,
-        attendanceStatusCandidate,
-        context,
-        replyToMessageId
-      );
-    }
-
-    const timetableAdminCandidate=parseOlliTalkTimetableAdminAgentCandidate(commandText,router);
-    if(timetableAdminCandidate){
-      return resolveOlliTalkTimetableAdminAgentTurn(
-        commandText,
-        timetableAdminCandidate,
-        context,
-        replyToMessageId
-      );
-    }
-
-    const batchCandidate=parseOlliTalkBatchAgentCandidate(commandText,router);
-    if(batchCandidate){
-      const sourceId=Number(replyToMessageId || 0);
-      const commands=buildOlliTalkBatchAgentCommands(batchCandidate,sourceId,commandText);
-      const missingIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
-      if(missingIndex>=0){
-        olliTalkPendingActionReason={
-          intent:'batch_write',
-          __batchAgent:{
-            sourceMessageId:sourceId,
-            sourceMessageText:String(commandText || '').trim(),
-            commands
-          }
-        };
-        const prompt=olliTalkBatchReasonPrompt(commands[missingIndex]);
-        return {
-          assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
-          replyText:prompt,
-          recordAi:false
-        };
-      }
-      const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
-      if(clarificationIndex>=0){
-        olliTalkPendingActionReason={
-          intent:'batch_write',
-          __batchAgent:{
-            sourceMessageId:sourceId,
-            sourceMessageText:String(commandText || '').trim(),
-            commands
-          }
-        };
-        const prompt=olliTalkBatchClarificationPrompt(commands[clarificationIndex]);
-        return {
-          assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
-          replyText:prompt,
-          recordAi:false
-        };
-      }
-      return resolveOlliTalkBatchAgentTurn({
-        sourceText:String(commandText || '').trim(),
-        sourceMessageId:sourceId,
-        commands,
-        context,
-      });
-    }
-
-    const timetableMemoCandidate=parseOlliTalkTimetableMemoAgentCandidate(commandText,router);
-    if(timetableMemoCandidate){
-      return resolveOlliTalkTimetableMemoAgentTurn(
-        commandText,
-        timetableMemoCandidate,
-        context,
-        replyToMessageId
-      );
-    }
-
-    const trialCancelCandidate=parseOlliTalkTrialCancelAgentCandidate(commandText,router);
-    if(trialCancelCandidate && String(trialCancelCandidate.reason || '').trim()){
-      return resolveOlliTalkTrialCancelAgentTurn({
-        sourceText:String(commandText || '').trim(),
-        sourceMessageId:Number(replyToMessageId || 0),
-        reasonText:String(trialCancelCandidate.reason || '').trim(),
-        reasonMessageText:String(commandText || '').trim(),
-        reasonMessageId:Number(replyToMessageId || 0),
-        context,
-      });
-    }
-
-    const makeupCancelCandidate=parseOlliTalkMakeupCancelAgentCandidate(commandText,router);
-    if(makeupCancelCandidate && String(makeupCancelCandidate.reason || '').trim()){
-      return resolveOlliTalkMakeupCancelAgentTurn({
-        sourceText:String(commandText || '').trim(),
-        sourceMessageId:Number(replyToMessageId || 0),
-        reasonText:String(makeupCancelCandidate.reason || '').trim(),
-        reasonMessageText:String(commandText || '').trim(),
-        reasonMessageId:Number(replyToMessageId || 0),
-        context,
-      });
-    }
-
-    const absenceCandidate=parseOlliTalkAbsenceAgentCandidate(commandText,router);
-    if(absenceCandidate && String(absenceCandidate.reason || '').trim()){
-      return resolveOlliTalkAbsenceAgentTurn({
-        sourceText:String(commandText || '').trim(),
-        sourceMessageId:Number(replyToMessageId || 0),
-        reasonText:String(absenceCandidate.reason || '').trim(),
-        reasonMessageText:String(commandText || '').trim(),
-        reasonMessageId:Number(replyToMessageId || 0),
-        context,
-      });
-    }
-
-    if(isOlliTalkTrialAddAgentCandidate(commandText,router)){
-      return resolveOlliTalkTrialAddAgentTurn(commandText,context,replyToMessageId);
-    }
-
-    if(isOlliTalkTrialUpdateAgentCandidate(commandText,router)){
-      return resolveOlliTalkTrialUpdateAgentTurn(commandText,context,replyToMessageId);
-    }
-
-    if(isOlliTalkWaitlistAddAgentCandidate(commandText,router)){
-      const waitlistAddTurn=await resolveOlliTalkWaitlistAddAgentTurn(commandText,context,replyToMessageId);
-      if(waitlistAddTurn) return waitlistAddTurn;
-    }
-
-    if(isOlliTalkWaitlistUpdateAgentCandidate(commandText,router)){
-      return resolveOlliTalkWaitlistUpdateAgentTurn(commandText,context,replyToMessageId);
-    }
-
-    if(isOlliTalkWaitlistCancelAgentCandidate(commandText,router)){
-      const waitlistCancelTurn=await resolveOlliTalkWaitlistCancelAgentTurn(commandText,context,replyToMessageId);
-      if(waitlistCancelTurn) return waitlistCancelTurn;
-    }
-
-    if(isOlliTalkPickupCancelAgentCandidate(commandText,router)){
-      return resolveOlliTalkPickupCancelAgentTurn(commandText,context,replyToMessageId);
-    }
-
-    if(isOlliTalkPickupUpdateAgentCandidate(commandText,router)){
-      return resolveOlliTalkPickupUpdateAgentTurn(commandText,context,replyToMessageId);
-    }
-
-    if(isOlliTalkPickupAddAgentCandidate(commandText,router)){
-      return resolveOlliTalkPickupAddAgentTurn(commandText,context,replyToMessageId);
-    }
-
-    if(isOlliTalkMakeupUpdateAgentCandidate(commandText,router)){
-      return resolveOlliTalkMakeupUpdateAgentTurn(commandText,context,replyToMessageId);
-    }
-
-    if(isOlliTalkMakeupAddAgentCandidate(commandText,router)){
-      return resolveOlliTalkMakeupAddAgentTurn(commandText,context,replyToMessageId);
+    const routeClassifier=window.OlliTeamTalkAgentRouteClassifier;
+    const sharedRoute=routeClassifier && typeof routeClassifier.classify==='function'
+      ? routeClassifier.classify(commandText,{router})
+      : null;
+    if(sharedRoute){
+      const routedTurn=await resolveOlliTalkSharedAgentRouteTurn(sharedRoute,commandText,context,replyToMessageId);
+      if(routedTurn) return routedTurn;
     }
 
     const makeupAddDraftCandidate=parseOlliTalkMakeupAddDraftCandidate(commandText,router);
@@ -2039,56 +1979,6 @@
         replyText:message,
         recordAi:false
       };
-    }
-
-    if(isOlliTalkClassOnceAgentCandidate(commandText,router)){
-      return resolveOlliTalkClassOnceAgentTurn(commandText,context,replyToMessageId);
-    }
-
-    if(isOlliTalkMoveAgentCandidate(commandText,router)){
-      return resolveOlliTalkMoveAgentTurn(commandText,context,replyToMessageId);
-    }
-
-    if(isOlliTalkMoveCancelAgentCandidate(commandText,router)){
-      return resolveOlliTalkMoveCancelAgentTurn(commandText,context,replyToMessageId);
-    }
-
-    const timetableReadCandidate=parseOlliTalkTimetableReadAgentCandidate(commandText,router);
-    if(timetableReadCandidate){
-      return resolveOlliTalkSourceBoundReadAgentTurn({
-        mode:'timetable_read',
-        commandText,
-        readIntent:timetableReadCandidate,
-        context,
-        replyToMessageId
-      });
-    }
-
-    if(isOlliTalkStudentAttendanceReadCandidate(commandText)){
-      return resolveOlliTalkSourceBoundReadAgentTurn({
-        mode:'attendance_read',
-        commandText,
-        context,
-        replyToMessageId
-      });
-    }
-
-    if(isOlliTalkStudentPickupReadCandidate(commandText)){
-      return resolveOlliTalkSourceBoundReadAgentTurn({
-        mode:'pickup_read',
-        commandText,
-        context,
-        replyToMessageId
-      });
-    }
-
-    if(isOlliTalkStudentScheduleReadCandidate(commandText)){
-      return resolveOlliTalkSourceBoundReadAgentTurn({
-        mode:'schedule_read',
-        commandText,
-        context,
-        replyToMessageId
-      });
     }
 
     const studentInfo=resolveOlliTalkStudentInfoCommand(commandText);

@@ -15,15 +15,22 @@ test('mobile absence candidate uses shared absence parser and requires a named s
   assert.doesNotMatch(block,/prepareAction|parseMakeupMutationIntent/);
 });
 
-test('mobile inline absence reason routes directly to source-bound Agent',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const end=talk.indexOf('function getOlliTalkMentionMessageText',start);
-  const block=talk.slice(start,end);
-  assert.match(block,/const absenceCandidate=parseOlliTalkAbsenceAgentCandidate/);
-  assert.match(block,/String\(absenceCandidate\.reason \|\| ''\)\.trim\(\)/);
-  assert.match(block,/return resolveOlliTalkAbsenceAgentTurn\(\{/);
+test('mobile inline absence reason routes directly to source-bound Agent — shared dispatch contract',()=> {
+  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
+  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'absence'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
+  assert.ok(classify>=0 && legacy>classify);
+  assert.match(ai,/__absenceAgent/);
 });
-
 test('mobile two-turn absence keeps existing reason prompt then uses Agent for the second message',()=>{
   const start=talk.indexOf('async function resolveOlliTalkAiTurn');
   const end=talk.indexOf('function getOlliTalkMentionMessageText',start);

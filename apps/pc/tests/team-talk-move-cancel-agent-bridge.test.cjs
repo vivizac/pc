@@ -14,19 +14,22 @@ test('PC move cancel gate uses only shared cancellation parser',()=>{
   assert.doesNotMatch(block,/parseScheduleMoveMutationIntent|prepareAction|move_class/);
 });
 
-test('PC move cancel is routed before pickup and legacy preparation',()=>{
-  const start=talk.indexOf('async function resolveAiTurn');
-  const end=talk.indexOf('function updateComposerState',start);
-  const block=talk.slice(start,end);
-  const move=block.indexOf('if (isMoveCancelAgentCandidate(commandText, router))');
-  const pickup=block.indexOf('if (isPickupCancelAgentCandidate(commandText, router))');
-  const legacy=block.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(move>=0);
-  assert.ok(pickup>move);
-  assert.ok(legacy>pickup);
-  assert.match(block,/return resolveMoveCancelAgentTurn\(commandText, current, replyToMessageId\)/);
-});
+test('PC move cancel is routed before pickup and legacy preparation — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'move_cancel'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('PC move cancel bridge uses source-bound production without second action save',()=>{
   const start=talk.indexOf('async function resolveMoveCancelAgentTurn');
   const end=talk.indexOf('async function resolvePickupCancelAgentTurn',start);
