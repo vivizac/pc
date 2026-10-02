@@ -7,7 +7,7 @@ const root=path.resolve(__dirname,'..');
 const endpoint=fs.readFileSync(path.join(root,'api/olli-agent.js'),'utf8');
 const runtime=fs.readFileSync(path.join(root,'api/_lib/olli-agent/runtime.cjs'),'utf8');
 const tool=fs.readFileSync(path.join(root,'api/_lib/olli-agent/tools/attendance-status-prepare-tools.cjs'),'utf8');
-const migration=fs.readFileSync(path.resolve(root,'../../supabase/migrations/20261002070000_team_chat_attendance_status_agent_action.sql'),'utf8');
+const migration=fs.readFileSync(path.resolve(root,'../../supabase/migrations/20261002070047_team_chat_attendance_status_agent_action.sql'),'utf8');
 
 test('production endpoint exposes only source-bound attendance status prepare',()=>{
   assert.match(endpoint,/'attendance_status_prepare'/);
