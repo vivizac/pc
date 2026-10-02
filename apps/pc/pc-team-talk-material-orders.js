@@ -3,7 +3,7 @@
 
   if (global.OlliTeamTalkMaterialOrders?.version) return;
 
-  const VERSION = '1.6.2';
+  const VERSION = '1.6.3';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
 
   const state = {
@@ -329,13 +329,13 @@
         </div>
         </div>
 
-        <section class="olliMatArchiveView" data-material-archive hidden aria-label="재료주문 보관함">
+        <section class="olliMatArchiveView" data-material-archive hidden aria-label="지난 주문내역">
           <header class="olliMatArchiveHeader">
             <button class="olliMatArchiveBackBtn" type="button" data-material-action="close-archive" aria-label="재료주문 목록으로 돌아가기">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"></path></svg>
             </button>
             <div class="olliMatArchiveHeaderCopy">
-              <strong>재료주문 보관함</strong>
+              <strong>지난 주문내역</strong>
               <span>도착 완료 후 주문일로부터 한 달이 지난 기록을 연도별로 정리합니다.</span>
             </div>
           </header>
