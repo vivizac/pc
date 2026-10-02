@@ -5044,25 +5044,32 @@
     return '선생님';
   }
 
-  function setOlliTalkMentionBadge(count){
-    const badges = Array.from(document.querySelectorAll('[data-olli-work-badge], #kcfOlliTalkBadge'));
-    const value = Math.max(0, Number(count || 0));
-    badges.forEach((badge) => {
-      if (!value) {
-        badge.hidden = true;
-        badge.textContent = '';
+  function applyOlliTalkBadgeValue(badges,count){
+    const value=Math.max(0,Number(count||0));
+    Array.from(badges||[]).forEach((badge)=>{
+      if(!value){
+        badge.hidden=true;
+        badge.textContent='';
         return;
       }
-      badge.hidden = false;
-      badge.textContent = value > 99 ? '99+' : String(value);
+      badge.hidden=false;
+      badge.textContent=value>99?'99+':String(value);
     });
+    return value;
+  }
+
+  function setOlliTalkMentionBadge(count,materialCount=0){
+    const workBadges=document.querySelectorAll('[data-olli-work-badge], #kcfOlliTalkBadge');
+    const workHubBadges=document.querySelectorAll('[data-olli-work-hub-badge]');
+    const value=applyOlliTalkBadgeValue(workBadges,count);
+    applyOlliTalkBadgeValue(workHubBadges,materialCount);
     try { window.OlliTalkPush?.setAppBadge?.(value); } catch (_) {}
   }
 
   async function refreshOlliTalkMentionBadge(options = {}){
     const context = getOlliTalkBetaContext();
     if (!context.sessionToken || !context.academyId) {
-      setOlliTalkMentionBadge(0);
+      setOlliTalkMentionBadge(0,0);
       return false;
     }
     try {
@@ -5097,7 +5104,7 @@
         }
       }
 
-      setOlliTalkMentionBadge(unreadCount);
+      setOlliTalkMentionBadge(unreadCount,materialUnreadCount);
       olliTalkLastUnreadMentionCount = mentionUnreadCount;
       olliTalkLastUnreadMaterialCount = materialUnreadCount;
       olliTalkLastMentionMessageId = latestMessageId;
