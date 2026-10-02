@@ -4573,6 +4573,19 @@ async function runBatchPrepare({
 }
 
 
+function loadSharedCommandRouter(){
+  const router=require('../../../../../packages/common/olli-command-router-common.js');
+  if(!router || typeof router.parseQueryIntent!=='function'){
+    throw runtimeError('공용 시간표 조회 파서를 불러오지 못했습니다.',500,'OLLI_AGENT_TIMETABLE_READ_ROUTER_MISSING');
+  }
+  return router;
+}
+
+function canonicalReadIntent(value){
+  if(!value || typeof value!=='object') return '';
+  return JSON.stringify(value);
+}
+
 function restorePreparedSubjectLabels(value,preparedPrivacy){
   let text=String(value || '');
   const resolved=Array.isArray(preparedPrivacy?.rawResolution?.resolved)
@@ -4668,17 +4681,27 @@ async function runTimetableRead({
   });
 
   const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
-  const intent=readIntent&&typeof readIntent==='object'?JSON.parse(JSON.stringify(readIntent)):{};
+  const router=loadSharedCommandRouter();
+  const serverIntent=router.parseQueryIntent(String(sourceMessageText||''));
+  if(!serverIntent){
+    throw runtimeError('저장된 원문에서 시간표 조회 요청을 확인하지 못했습니다.',400,'OLLI_AGENT_TIMETABLE_READ_PARSE_FAILED');
+  }
+  if(readIntent && canonicalReadIntent(readIntent)!==canonicalReadIntent(serverIntent)){
+    throw runtimeError('클라이언트 조회 조건과 저장된 원문이 일치하지 않습니다.',409,'OLLI_AGENT_TIMETABLE_READ_INTENT_MISMATCH');
+  }
+  const intent=JSON.parse(JSON.stringify(serverIntent));
 
   if(
     intent?.intent==='find_available_slots' &&
     String(intent?.viewMode||'').trim()==='schedule' &&
     subjectRefs.length===1
   ){
-    return runStudentScheduleProbe({agentContext,requestContext,preparedPrivacy});
+    const result=await runStudentScheduleProbe({agentContext,requestContext,preparedPrivacy});
+    return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
   }
   if(intent?.intent==='find_pickups' && subjectRefs.length===1){
-    return runPickupProbe({agentContext,requestContext,preparedPrivacy});
+    const result=await runPickupProbe({agentContext,requestContext,preparedPrivacy});
+    return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
   }
 
   if(intent?.intent==='find_available_slots' && !String(intent?.division||'').trim() && subjectRefs.length===1){
