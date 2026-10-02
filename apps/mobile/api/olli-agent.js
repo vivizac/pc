@@ -217,52 +217,60 @@ export default async function handler(req, res) {
         sourceMessageText:message,
       });
 
-      let effectiveMode=mode;
-      let executionMessage=message;
-      let readIntent=mode==='timetable_read'
-        ? (body.readIntent && typeof body.readIntent==='object' ? body.readIntent : null)
-        : null;
+      const privacyModule=await import('./_lib/olli-agent/privacy.cjs');
+      const agentContext=contextModule.toAgentRunContext(requestContext);
 
       if(mode==='context_read'){
-        const contextRouteModule=await import('./_lib/olli-agent/context-route.cjs');
-        const resolveContextualReadRewrite=
-          contextRouteModule.resolveContextualReadRewrite ||
-          contextRouteModule.default?.resolveContextualReadRewrite;
-        if(typeof resolveContextualReadRewrite!=='function'){
-          throw new Error('문맥 해석 모듈을 불러오지 못했습니다.');
-        }
-        const resolved=await resolveContextualReadRewrite({
-          requestContext,
-          sourceMessageId,
-          currentMessage:message,
-          conversation:Array.isArray(body.conversation) ? body.conversation : [],
-        });
-        if(resolved?.usedContext!==true || !safeText(resolved?.resolvedText,5000)){
-          return res.status(200).json({
-            ok:true,
-            mode:'context_read',
-            handled:false,
+        let contextPrivacy;
+        try{
+          const sessionModule=await import('./_lib/olli-agent/session.cjs');
+          const subjectSession=sessionModule.createOlliAgentSession({
+            requestContext,
+            surface:'team_talk',
+            runKey:'team-chat-message:'+String(sourceMessageId),
           });
+          contextPrivacy=await privacyModule.prepareAgentContextReadPrivacyInput(
+            message,
+            Array.isArray(body.conversation) ? body.conversation : [],
+            requestContext,
+            {session:subjectSession}
+          );
+        }catch(sessionError){
+          if(!String(sessionError?.code||'').startsWith('OLLI_AGENT_SESSION_')) throw sessionError;
+          contextPrivacy=await privacyModule.prepareAgentContextReadPrivacyInput(
+            message,
+            Array.isArray(body.conversation) ? body.conversation : [],
+            requestContext
+          );
         }
 
-        executionMessage=safeText(resolved.resolvedText,5000);
-        const routerModule=await import('../../../packages/common/olli-command-router-common.js');
-        const routeModule=await import('../../../packages/common/olli-team-talk-agent-route-common.js');
-        const router=routerModule.default || routerModule;
-        const routeClassifier=routeModule.default || routeModule;
-        const route=typeof routeClassifier?.classify==='function'
-          ? routeClassifier.classify(executionMessage,{router})
-          : null;
-        if(!route || !['timetable_read','schedule_read','attendance_read','pickup_read'].includes(safeText(route.key,40))){
+        const result=await runtimeModule.runContextualReadAgent({
+          agentContext,
+          requestContext,
+          preparedPrivacy:contextPrivacy.preparedPrivacy,
+          agentInput:contextPrivacy.agentInput,
+        });
+        if(result?.handled!==true){
           return res.status(200).json({
             ok:true,
             mode:'context_read',
             handled:false,
           });
         }
-        effectiveMode=safeText(route.key,40);
-        readIntent=effectiveMode==='timetable_read' ? route.parsed : null;
+        return res.status(200).json({
+          ok:true,
+          mode:'context_read',
+          handled:true,
+          contextResolved:true,
+          output:safeText(result?.output,12000),
+        });
       }
+
+      const executionMessage=message;
+      const effectiveMode=mode;
+      const readIntent=mode==='timetable_read'
+        ? (body.readIntent && typeof body.readIntent==='object' ? body.readIntent : null)
+        : null;
 
       if(effectiveMode==='timetable_read' && !readIntent){
         return res.status(400).json({
@@ -271,7 +279,6 @@ export default async function handler(req, res) {
         });
       }
 
-      const privacyModule=await import('./_lib/olli-agent/privacy.cjs');
       let prepared;
       try{
         const sessionModule=await import('./_lib/olli-agent/session.cjs');
@@ -290,7 +297,6 @@ export default async function handler(req, res) {
         if(!String(sessionError?.code||'').startsWith('OLLI_AGENT_SESSION_')) throw sessionError;
         prepared=await privacyModule.prepareAgentPrivacyInput(executionMessage,requestContext);
       }
-      const agentContext=contextModule.toAgentRunContext(requestContext);
       let result;
 
       if(effectiveMode==='timetable_read'){
@@ -336,7 +342,7 @@ export default async function handler(req, res) {
         ok:true,
         mode:effectiveMode,
         handled:true,
-        contextResolved:mode==='context_read',
+        contextResolved:false,
         output:safeText(result?.output,12000),
       });
     }
