@@ -20,6 +20,22 @@ test('arrived orders move out of the current PC list one calendar month after or
   assert.match(js, /if \(isMaterialArchiveEligible\(item\)\) return false/);
 });
 
+test('PC material archive entry sits beside the three summary status buttons', () => {
+  const summaryStart = js.indexOf('<div class="olliMatSummary"');
+  const summaryEnd = js.indexOf('<div class="olliMatWorkspace"', summaryStart);
+  const summary = js.slice(summaryStart, summaryEnd);
+  const listHeadStart = js.indexOf('<div class="olliMatListHead">');
+  const listHeadEnd = js.indexOf('<div class="olliMatList"', listHeadStart);
+  const listHead = js.slice(listHeadStart, listHeadEnd);
+
+  assert.equal((summary.match(/class="olliMatSummaryCard/g) || []).length, 4);
+  assert.match(summary, /data-material-action="open-archive"/);
+  assert.match(summary, /재료 보관함/);
+  assert.doesNotMatch(listHead, /open-archive|olliMatArchiveOpenBtn/);
+  assert.match(css, /grid-template-columns:repeat\(4,minmax\(0,160px\)\)/);
+  assert.match(css, /\.olliMatSummaryCard\.archive\{background:#fff;border-color:#e6e8eb;color:#666c73\}/);
+});
+
 test('PC archive uses year folders and month groups', () => {
   assert.match(js, /data-material-action="open-archive"/);
   assert.match(js, /data-material-archive-years/);
@@ -51,6 +67,6 @@ test('existing material list RPC remains the current-list source and archive has
 });
 
 test('PC archive assets are cache-busted', () => {
-  assert.match(html, /pc-team-talk-material-orders\.css\?v=20261002-material-archive-1/);
-  assert.match(html, /pc-team-talk-material-orders\.js\?v=20261002-material-archive-1/);
+  assert.match(html, /pc-team-talk-material-orders\.css\?v=20261002-material-archive-toolbar-1/);
+  assert.match(html, /pc-team-talk-material-orders\.js\?v=20261002-material-archive-toolbar-1/);
 });
