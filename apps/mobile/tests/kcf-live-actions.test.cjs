@@ -62,7 +62,7 @@ test('LIVE items mirror into the existing temporary inbox without a second serve
   assert.doesNotMatch(mirror, /autoSaveGeneratedFeedback|saveOlliData|supabase/);
 });
 
-test('Phone LIVE controls use text-only layout with inbox left and copy/edit right', () => {
+test('Phone LIVE controls keep temporary inbox, copy, and edit together with wider spacing', () => {
   const start = phoneAdapter.indexOf('function decoratePhoneKcfLiveMessage');
   const end = phoneAdapter.indexOf('/* LIVE feedback actions use text-only', start);
   const decorate = phoneAdapter.slice(start, end);
@@ -70,8 +70,14 @@ test('Phone LIVE controls use text-only layout with inbox left and copy/edit rig
   assert.match(decorate, /inboxBtn\.classList\.add\('kcfLivePhoneTextActionBtn'\)/);
   assert.match(decorate, /copyBtn\.textContent = '복사'/);
   assert.match(decorate, /editBtn\.classList\.add\('kcfLivePhoneTextActionBtn'\)/);
-  assert.match(css, /\.kcfLiveInboxBtn \{\s*margin-right:auto;/);
+  assert.match(css, /\.kcfLiveActions \{[\s\S]*?gap:20px;/);
+  assert.match(css, /\.kcfLiveInboxBtn \{\s*margin-right:0;/);
+  assert.doesNotMatch(css, /\.kcfLiveInboxBtn \{\s*margin-right:auto;/);
   assert.match(css, /\.kcfLiveActionBtn\.kcfLivePhoneTextActionBtn \{[\s\S]*?background:transparent;[\s\S]*?color:#8e8e93;/);
+});
+
+test('Phone observation and quick-note active tabs share the darker gray background', () => {
+  assert.match(css, /\.olliWorkTab\.active\{\s*background:rgba\(232,232,232,\.96\);/);
 });
 
 test('temporary inbox itself remains connected and copy-only', () => {
@@ -93,7 +99,7 @@ test('editing an already auto-saved LIVE response patches the server and refresh
 
 test('auto-save LIVE assets are cache-busted', () => {
   assert.match(html, /kinder-feedback\.js\?v=20261002-auto-save-actions-2/);
-  assert.match(html, /kinder-feedback\.css\?v=20261002-auto-save-actions-1/);
+  assert.match(html, /kinder-feedback\.css\?v=20261002-header-actions-spacing-1/);
   assert.match(html, /olli-feedback-registration-phone-adapter\.js\?v=20261002-auto-save-actions-1/);
 });
 
