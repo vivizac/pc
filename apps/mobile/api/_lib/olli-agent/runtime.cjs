@@ -472,7 +472,6 @@ function resolveAbsencePrepareScope(preparedPrivacy) {
   return {
     subjectLabel,
     division,
-    isGuest,
     classGroup:groupMatch?groupMatch[1].toUpperCase():'AUTO',
   };
 }
