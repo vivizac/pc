@@ -28,14 +28,13 @@ test('mobile waitlist add routes before update and legacy preparation',()=>{
   assert.match(block,/if\(waitlistAddTurn\) return waitlistAddTurn/);
 });
 
-test('mobile waitlist add bridge uses source-bound production and guest fallback to legacy',()=>{
+test('mobile waitlist add bridge keeps registered and guest requests on source-bound Agent production',()=>{
   const start=talk.indexOf('async function resolveOlliTalkWaitlistAddAgentTurn');
   const end=talk.indexOf('async function resolveOlliTalkWaitlistUpdateAgentTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'waitlist_add_prepare'/);
   assert.match(block,/sourceMessageId=Number\(replyToMessageId \|\| 0\)/);
-  assert.match(block,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED/);
-  assert.match(block,/return null/);
+  assert.doesNotMatch(block,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED|return null/);
   assert.match(block,/action_type \|\| ''\)\.trim\(\)!=='add_waitlist'/);
   assert.match(block,/assistantMessage:data\.message/);
   assert.doesNotMatch(block,/saveOlliTalkActionReply|olli_team_chat_send_action/);
