@@ -2669,7 +2669,7 @@
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        mode:'context_resolve',
+        mode:'context_schedule_resolve',
         academyId:current?.academyId || '',
         sessionToken:current?.sessionToken || '',
         message:String(commandText || '').trim(),
@@ -2947,18 +2947,22 @@
       ? routeClassifier.classify(commandText,{router})
       : null;
     if(!sharedRoute && classifierAvailable){
-      const contextualRuleTurn=await resolveContextualRuleStudentScheduleTurn(
-        commandText,
-        current,
-        replyToMessageId
-      );
-      if(contextualRuleTurn) return contextualRuleTurn;
-      const contextualTurn=await resolveContextualReadTurn(
-        commandText,
-        current,
-        replyToMessageId
-      );
-      if(contextualTurn) return contextualTurn;
+      const scheduleContextActive=hasRuleStudentScheduleContext();
+      if(scheduleContextActive){
+        const contextualRuleTurn=await resolveContextualRuleStudentScheduleTurn(
+          commandText,
+          current,
+          replyToMessageId
+        );
+        if(contextualRuleTurn) return contextualRuleTurn;
+      }else{
+        const contextualTurn=await resolveContextualReadTurn(
+          commandText,
+          current,
+          replyToMessageId
+        );
+        if(contextualTurn) return contextualTurn;
+      }
     }
     if(sharedRoute){
       const routedTurn=await resolveSharedAgentRouteTurn(sharedRoute,commandText,current,replyToMessageId);
