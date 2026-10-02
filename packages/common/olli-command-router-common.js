@@ -949,19 +949,24 @@
     };
   }
 
-  function extractTeacherTargetName(value) {
-    const raw=cleanText(value);
-    let match=raw.match(/(?:담당\s*)?(?:선생님|담임|쌤)\s*(?:을|를)?\s*[:：]?\s*([가-힣A-Za-z0-9·ㆍ_-]{1,30})(?:\s*(?:선생님|쌤))?(?:으로|로)?/);
-    let name=cleanText(match&&match[1]);
-    if(!name){
-      match=raw.match(/([가-힣A-Za-z0-9·ㆍ_-]{1,30})\s*(?:선생님|쌤)(?:으로|로)?/);
-      name=cleanText(match&&match[1]);
-    }
-    if(/^(?:담당|담임|선생님|쌤|수업|오늘|내일)$/.test(name)) return '';
-    return name
+  function normalizeTeacherTargetName(value) {
+    const name=cleanText(value)
       .replace(/(?:으로|로)$/,'')
       .replace(/[을를이가은는]$/,'')
       .trim();
+    if(!name || /^(?:담당|담임|선생님|쌤|수업|오늘|내일)$/.test(name)) return '';
+    return name;
+  }
+
+  function extractTeacherTargetName(value) {
+    const raw=cleanText(value);
+    let match=raw.match(/([가-힣A-Za-z0-9·ㆍ_-]{1,30})\s*(?:선생님|쌤)(?:으로|로)?/);
+    let name=normalizeTeacherTargetName(match&&match[1]);
+    if(name) return name;
+
+    match=raw.match(/(?:담당\s*)?(?:선생님|담임|쌤)\s*(?:을|를)?\s*[:：]?\s*([가-힣A-Za-z0-9·ㆍ_-]{1,30})(?:\s*(?:선생님|쌤))?(?:으로|로)?/);
+    name=normalizeTeacherTargetName(match&&match[1]);
+    return name;
   }
 
   function parseTeacherAssignmentMutationIntent(text) {
@@ -1005,8 +1010,8 @@
     if(!sessionOrder || !weekday) return null;
 
     let stripped=stripCommonCommandParts(raw)
+      .replace(/[12]\s*(?:회차|번(?:째)?)(?:으로|로)?/g,' ')
       .replace(/(?:수업\s*)?(?:순서|회차)/g,' ')
-      .replace(/[12]\s*(?:회차|번(?:째)?)/g,' ')
       .replace(/(?:변경|바꿔|바꾸|지정|설정|교체)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요|어줘|아줘|어요|아요|기)?/g,' ')
       .replace(/(?:첫번째|두번째|첫째|둘째)/g,' ')
       .replace(/\s+/g,' ')
