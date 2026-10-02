@@ -167,6 +167,10 @@
     return /(?:(?:추가|입력|기입|기재|등록|예약|신청|배정|생성|기록|반영|저장)(?:\s*(?:좀|한번))?\s*(?:해)?(?:놔|놓아|둬|두어|둘래|둘)?(?:줘요|주세요|줘|줄래|해줘요|해주세요|해줘|해줄래|할래|해|요)?|(?:넣|잡|적|만들)(?:어|아)?(?:\s*(?:좀|한번))?\s*(?:놔|놓아|둬|두어|둘래|둘)?(?:줘요|주세요|줘|줄래|해줘요|해주세요|해줘|해줄래|할래|해|요)?|(?:올려|걸어)(?:\s*(?:좀|한번))?\s*(?:놔|놓아|둬|두어|둘래|둘)?(?:줘요|주세요|줘|줄래|해줘요|해주세요|해줘|해줄래|할래|해|요)?)/g;
   }
 
+  function removeActionPattern() {
+    return /(?:(?:취소|삭제|제거|해제|없애)(?:\s*(?:좀|한번))?\s*(?:해)?(?:줘요|주세요|줘|줄래|해줘요|해주세요|해줘|해줄래|할래|해|요)?|(?:지워|지우|빼)(?:\s*(?:좀|한번))?\s*(?:줘요|주세요|줘|줄래|해줘요|해주세요|해줘|해줄래|할래|해|요)?)/g;
+  }
+
   function hasRemoveAction(value) {
     return /(?:취소|삭제|지워|지우|제거|빼|해제|없애)/.test(compactText(value));
   }
@@ -853,6 +857,164 @@
     };
   }
 
+
+  function parseRegularScheduleMutationIntent(text) {
+    const raw=cleanText(text);
+    const compact=compactText(raw);
+    if(!raw || hasMakeupWord(compact) || hasWaitlistWord(compact) || hasTrialWord(compact) || hasAbsenceWord(compact)) return null;
+    if(hasMoveAction(compact)) return null;
+    if(!/(?:정규수업|본반|매주)/.test(compact)) return null;
+
+    const add=hasAddAction(compact) && !hasRemoveAction(compact);
+    const remove=hasRemoveAction(compact);
+    if(!add && !remove) return null;
+
+    const mentions=weekdayTimeMentions(raw);
+    const target=mentions.find(item=>item.weekday && item.timeSlot) || null;
+    if(!target) return null;
+
+    const domain=/(?:정규\s*수업|본반|매주|수업|클래스)(?:으로|에|을|를)?/g;
+    const studentName=extractStudentName(raw,domain,add?addActionPattern():removeActionPattern());
+    if(!studentName) return null;
+
+    return {
+      type:'mutation',
+      intent:add?'add_regular_class':'remove_regular_class',
+      studentName,
+      division:detectDivision(compact),
+      weekday:target.weekday,
+      timeSlot:target.timeSlot,
+      classMinute:firstTimeMinute(raw),
+      classGroup:firstClassGroup(raw),
+      effectiveDateSpec:parseDateExpression(compact),
+      originalText:raw
+    };
+  }
+
+  function parseClassOnceCancelMutationIntent(text) {
+    const raw=cleanText(text);
+    const compact=compactText(raw);
+    if(!raw || !hasRemoveAction(compact)) return null;
+    if(hasMakeupWord(compact) || hasTrialWord(compact) || hasWaitlistWord(compact) || hasMoveAction(compact)) return null;
+    if(!/(?:1회수업|일회수업|수업등록|클래스등록)/.test(compact)) return null;
+
+    const dateSpec=parseDateExpression(compact);
+    const timeSlot=firstTimeSlot(raw);
+    const studentName=extractStudentName(
+      raw,
+      /(?:1\s*회|일회)?\s*(?:수업|클래스)(?:\s*등록)?(?:으로|에|을|를)?/g,
+      removeActionPattern()
+    );
+    if(!studentName || !dateSpec) return null;
+
+    return {
+      type:'mutation',
+      intent:'cancel_class_once',
+      studentName,
+      dateSpec,
+      dateLabel:dateSpec.label,
+      timeSlot,
+      classMinute:firstTimeMinute(raw),
+      classGroup:firstClassGroup(raw),
+      originalText:raw
+    };
+  }
+
+  function parseWaitlistAcceptMutationIntent(text) {
+    const raw=cleanText(text);
+    const compact=compactText(raw);
+    if(!raw || !hasWaitlistWord(compact)) return null;
+    if(!/(?:수업으로|본반으로|등록으로|자리나서|자리났|입장|확정|수락|받아|넣어|넣)/.test(compact)) return null;
+    if(hasRemoveAction(compact) || hasMoveAction(compact)) return null;
+
+    const studentName=extractStudentName(
+      raw,
+      /(?:대기(?:자|명단|리스트)?|웨이팅(?:리스트)?|수업|본반|자리)/g,
+      /(?:입장|확정|수락|받아|넣어|넣|등록)(?:해줘|해주세요|해|줘|주세요)?/g
+    );
+    if(!studentName) return null;
+
+    return {
+      type:'mutation',
+      intent:'accept_waitlist',
+      studentName,
+      division:detectDivision(compact),
+      dateSpec:parseDateExpression(compact),
+      weekday:(weekdayTimeMentions(raw)[0]||{}).weekday||0,
+      timeSlot:firstTimeSlot(raw),
+      classMinute:firstTimeMinute(raw),
+      classGroup:firstClassGroup(raw),
+      originalText:raw
+    };
+  }
+
+  function parseAttendanceStatusMutationIntent(text) {
+    const raw=cleanText(text);
+    const compact=compactText(raw);
+    if(!raw || hasAbsenceWord(compact)) return null;
+    const hasAttendance=/(?:출석|출결|보강출석)/.test(compact);
+    if(!hasAttendance) return null;
+
+    let status='';
+    let sessionKind=/보강/.test(compact)?'makeup':'regular';
+    if(/(?:출석처리|출석체크|출석으로|출석했|출석해)/.test(compact) && !hasRemoveAction(compact)) {
+      status=sessionKind==='makeup'?'makeup':'present';
+    } else if(hasRemoveAction(compact) || /(?:빈칸|초기화|미처리)/.test(compact)) {
+      status='blank';
+    }
+    if(!status) return null;
+
+    const studentName=extractStudentName(
+      raw,
+      /(?:보강\s*)?(?:출석|출결)(?:상태|처리|체크)?/g,
+      status==='blank'?removeActionPattern():/(?:처리|체크|변경|바꿔|해줘|해주세요|해|줘|주세요)/g
+    );
+    if(!studentName) return null;
+
+    return {
+      type:'mutation',
+      intent:'set_attendance_status',
+      studentName,
+      sessionKind,
+      status,
+      dateSpec:parseDateExpression(compact),
+      timeSlot:firstTimeSlot(raw),
+      classMinute:firstTimeMinute(raw),
+      classGroup:firstClassGroup(raw),
+      originalText:raw
+    };
+  }
+
+  function parseSessionOrderMutationIntent(text) {
+    const raw=cleanText(text);
+    const compact=compactText(raw);
+    if(!raw || !/(?:수업순서|순서)/.test(compact) || !hasMoveAction(compact)) return null;
+    const orderMatch=compact.match(/(?:순서)?(\d{1,2})(?:번째|번)?/);
+    const sessionOrder=Number(orderMatch&&orderMatch[1]||0);
+    if(sessionOrder<1||sessionOrder>20) return null;
+
+    const studentName=extractStudentName(
+      raw,
+      /(?:수업\s*)?순서/g,
+      /(?:변경|옮겨|옮기|이동|바꿔|바꾸)(?:해줘|해주세요|해|줘|주세요)?/g
+    );
+    if(!studentName) return null;
+
+    const mention=weekdayTimeMentions(raw)[0]||{};
+    return {
+      type:'mutation',
+      intent:'set_session_order',
+      studentName,
+      weekday:Number(mention.weekday||0),
+      timeSlot:firstTimeSlot(raw),
+      classMinute:firstTimeMinute(raw),
+      classGroup:firstClassGroup(raw),
+      sessionOrder,
+      effectiveDateSpec:parseDateExpression(compact),
+      originalText:raw
+    };
+  }
+
   function quotedTimetableMemoNote(value) {
     const raw = cleanText(value);
     const match = raw.match(/(?:‘([^’]+)’|“([^”]+)”|"([^"]+)"|'([^']+)')/);
@@ -1002,6 +1164,11 @@
     const normalizedText = cleanText(text);
     return parseTimetableMemoDeleteMutationIntent(normalizedText)
       || parseTimetableMemoAddMutationIntent(normalizedText)
+      || parseAttendanceStatusMutationIntent(normalizedText)
+      || parseSessionOrderMutationIntent(normalizedText)
+      || parseWaitlistAcceptMutationIntent(normalizedText)
+      || parseClassOnceCancelMutationIntent(normalizedText)
+      || parseRegularScheduleMutationIntent(normalizedText)
       || parseAbsenceMutationIntent(normalizedText)
       || parseTrialCancelMutationIntent(normalizedText)
       || parseMakeupCancelMutationIntent(normalizedText)
@@ -2013,6 +2180,11 @@
     parseTimetableMemoDeleteMutationIntent,
     parseMultiWriteIntent,
     parseBatchDraftWriteIntent,
+    parseRegularScheduleMutationIntent,
+    parseClassOnceCancelMutationIntent,
+    parseWaitlistAcceptMutationIntent,
+    parseAttendanceStatusMutationIntent,
+    parseSessionOrderMutationIntent,
     parseClassMutationIntent,
     parseDateExpression,
     resolveDateExpression,
