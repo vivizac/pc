@@ -106,3 +106,30 @@ test('common classifier remains classification-only',()=>{
   assert.doesNotMatch(common,/supabase/i);
   assert.doesNotMatch(common,/olli_team_chat_action_execute/);
 });
+
+
+test('PC and Mobile report only handled legacy/suggested route outcomes without raw command text',()=>{
+  const pcStart=pc.indexOf('function reportAiLegacyRouteOutcome');
+  const pcEnd=pc.indexOf('async function resolveAiTurn',pcStart);
+  const pcReporter=pc.slice(pcStart,pcEnd);
+  assert.match(pcReporter,/mode:'route_outcome'/);
+  assert.match(pcReporter,/surface:'pc'/);
+  assert.doesNotMatch(pcReporter,/commandText|message:/);
+
+  const mobileStart=mobile.indexOf('function reportOlliTalkAiLegacyRouteOutcome');
+  const mobileEnd=mobile.indexOf('async function resolveOlliTalkAiTurn',mobileStart);
+  const mobileReporter=mobile.slice(mobileStart,mobileEnd);
+  assert.match(mobileReporter,/mode:'route_outcome'/);
+  assert.match(mobileReporter,/surface:'mobile'/);
+  assert.doesNotMatch(mobileReporter,/commandText|message:/);
+
+  const pcTurn=pc.slice(pc.indexOf('async function resolveAiTurn'),pc.indexOf('function updateComposerState'));
+  assert.match(pcTurn,/reportAiLegacyRouteOutcome\([\s\S]*?'legacy_write'/);
+  assert.match(pcTurn,/reportAiLegacyRouteOutcome\([\s\S]*?'legacy_read'/);
+  assert.match(pcTurn,/reportAiLegacyRouteOutcome\([\s\S]*?'suggested'/);
+
+  const mobileTurn=mobile.slice(mobile.indexOf('async function resolveOlliTalkAiTurn'),mobile.indexOf('function getOlliTalkMentionMessageText'));
+  assert.match(mobileTurn,/reportOlliTalkAiLegacyRouteOutcome\([\s\S]*?'legacy_write'/);
+  assert.match(mobileTurn,/reportOlliTalkAiLegacyRouteOutcome\([\s\S]*?'legacy_read'/);
+  assert.match(mobileTurn,/reportOlliTalkAiLegacyRouteOutcome\([\s\S]*?'suggested'/);
+});

@@ -8,6 +8,7 @@ const path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const runtime=fs.readFileSync(path.join(root,'api/_lib/olli-agent/runtime.cjs'),'utf8');
 const observability=fs.readFileSync(path.join(root,'api/_lib/olli-agent/observability.cjs'),'utf8');
+const agentApi=fs.readFileSync(path.join(root,'api/olli-agent.js'),'utf8');
 
 test('all Agents SDK runs are wrapped at the single runtime load boundary',()=>{
   assert.match(runtime,/require\('\.\/observability\.cjs'\)/);
@@ -27,4 +28,15 @@ test('eval logs contain structural tool metadata only',()=>{
   assert.match(observability,/shape:\s*outputShape/);
   assert.doesNotMatch(observability,/JSON\.stringify\(result\)/);
   assert.doesNotMatch(observability,/JSON\.stringify\(input\)/);
+});
+
+
+test('fallback route outcome endpoint authenticates first and emits only safe structural fields',()=>{
+  const contextPos=agentApi.indexOf('loadOlliAgentRequestContext(body)');
+  const routePos=agentApi.indexOf("if (mode === 'route_outcome')");
+  assert.ok(contextPos>=0);
+  assert.ok(routePos>contextPos);
+  assert.match(agentApi,/emitRouteOutcomeLog\(\{[\s\S]*?surface:[\s\S]*?outcome:[\s\S]*?routeKey:[\s\S]*?sharedRouteKey:[\s\S]*?classifierAvailable:/);
+  assert.match(observability,/const ROUTE_OUTCOMES = new Set\(\['legacy_write', 'legacy_read', 'suggested'\]\)/);
+  assert.match(observability,/ROUTE_OUTCOME_LOG_PREFIX \+ JSON\.stringify\(event\)/);
 });

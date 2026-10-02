@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const mode = safeText(body.mode, 40);
 
-    if (!['probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'timetable_read', 'schedule_read', 'attendance_read', 'pickup_read', 'timetable_admin_prepare', 'attendance_status_prepare', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
+    if (!['route_outcome', 'probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'timetable_read', 'schedule_read', 'attendance_read', 'pickup_read', 'timetable_admin_prepare', 'attendance_status_prepare', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
       return res.status(400).json({
         error: '지원하지 않는 Olli Agent mode입니다. 현재 production prepare에는 memo_prepare, batch_prepare, absence_prepare, class_once_prepare, makeup/trial/waitlist/move/pickup prepare 계열이 포함됩니다.',
       });
@@ -26,6 +26,29 @@ export default async function handler(req, res) {
 
     const contextModule = await import('./_lib/olli-agent/request-context.cjs');
     const requestContext = await contextModule.loadOlliAgentRequestContext(body);
+
+    if (mode === 'route_outcome') {
+      const observabilityModule = await import('./_lib/olli-agent/observability.cjs');
+      const emitRouteOutcomeLog =
+        observabilityModule.emitRouteOutcomeLog ||
+        observabilityModule.default?.emitRouteOutcomeLog;
+      const accepted = typeof emitRouteOutcomeLog === 'function'
+        ? emitRouteOutcomeLog({
+            surface:safeText(body.surface, 20),
+            outcome:safeText(body.outcome, 40),
+            routeKey:safeText(body.routeKey || body.route_key, 80),
+            sharedRouteKey:safeText(body.sharedRouteKey || body.shared_route_key, 80),
+            classifierAvailable:body.classifierAvailable === true || body.classifier_available === true,
+          })
+        : false;
+      if (!accepted) {
+        return res.status(400).json({
+          error:'지원하지 않는 route outcome 관찰 값입니다.',
+          code:'OLLI_AGENT_ROUTE_OUTCOME_INVALID',
+        });
+      }
+      return res.status(200).json({ ok:true, mode:'route_outcome' });
+    }
 
     if (mode === 'timetable_read' || mode === 'schedule_read' || mode === 'attendance_read' || mode === 'pickup_read') {
       const message=safeText(body.message,5000);
