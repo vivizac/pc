@@ -16,6 +16,11 @@ test('source-bound read endpoint creates one academy-member Team Chat session',(
   assert.match(endpoint,/runKey:'team-chat-message:'\+String\(sourceMessageId\)/);
   assert.match(endpoint,/prepareAgentReadPrivacyInput/);
   assert.match(endpoint,/session:agentSession/);
+  assert.match(endpoint,/sourceValidated:true/);
+  assert.ok(
+    endpoint.indexOf('validatePickupSourceMessage') < endpoint.indexOf('prepareAgentReadPrivacyInput'),
+    'stored Team Chat source must be validated before persistent session context changes'
+  );
 });
 
 test('session failures fall back to the previous explicit-subject privacy path',()=>{
@@ -41,6 +46,7 @@ test('read runtimes pass the Session object to the Agents SDK only when enabled'
     const block=runtime.slice(start,end);
     assert.match(block,/session=null/);
     assert.match(block,/if\(session\) runOptions\.session=session/);
+    if(fn.endsWith('Read')) assert.match(block,/sourceValidated=false/);
   }
 });
 
