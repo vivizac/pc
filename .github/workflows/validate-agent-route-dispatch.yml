@@ -1,0 +1,38 @@
+name: Validate Olli Agent route dispatch
+
+on:
+  pull_request:
+    paths:
+      - 'packages/common/olli-team-talk-agent-route-common.js'
+      - 'packages/common/pc-runtime-manifest.json'
+      - 'packages/common/mobile-runtime-manifest.json'
+      - 'apps/pc/index.html'
+      - 'apps/mobile/index.html'
+      - 'apps/pc/pc-team-talk.js'
+      - 'apps/mobile/olli-talk-beta.js'
+      - 'tests/olli-agent-route-classifier.test.cjs'
+      - 'tests/olli-agent-route-dispatch-parity.test.cjs'
+      - 'tests/pc-self-contained-build.test.cjs'
+      - 'tests/mobile-self-contained-build.test.cjs'
+      - 'tests/pc-build-closure.test.cjs'
+      - 'tests/monorepo-structure-contract.test.cjs'
+      - 'tests/mobile-entry-integrity.test.cjs'
+      - '.github/workflows/validate-agent-route-dispatch.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check platform dispatch syntax
+        run: |
+          node --check apps/pc/pc-team-talk.js
+          node --check apps/mobile/olli-talk-beta.js
+      - name: Validate shared classifier dispatch parity
+        run: node --test tests/olli-agent-route-classifier.test.cjs tests/olli-agent-route-dispatch-parity.test.cjs
