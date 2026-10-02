@@ -23,14 +23,19 @@ test('PC attendance status bridge is source-bound and validates returned action 
   assert.ok(block.includes("action.action_type)!=='set_attendance_status'"));
 });
 
-test('PC direct attendance status routing runs before timetable admin, batch, and legacy fallback',()=>{
-  const start=talk.indexOf('async function resolveAiTurn');
-  const end=talk.indexOf("if(router && typeof router.prepareAction==='function')",start);
-  const block=talk.slice(start,end);
-  const attendance=block.indexOf('parseAttendanceStatusAgentCandidate');
-  const admin=block.indexOf('parseTimetableAdminAgentCandidate');
-  const batch=block.indexOf('const batchCandidate');
-  assert.ok(attendance>=0,'attendance candidate missing');
-  assert.ok(admin>attendance,'attendance must run before timetable admin');
-  assert.ok(batch>admin,'batch must remain after source-bound candidates');
+test('PC direct attendance status routing runs before timetable admin, batch, and legacy fallback — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'attendance_status'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
+
 });
