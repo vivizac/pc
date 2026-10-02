@@ -81,26 +81,28 @@ test('makeup business ambiguity returns structured tool outcome for the Agent to
   assert.match(pc,/mode:'context_makeup_prepare'/);
 });
 
-test('makeup clarification and blocked results stay inside active Olli conversation state',()=>{
+test('makeup clarification state remains stored for compatibility while unified interpretation owns follow-ups',()=>{
   assert.match(talk,/let olliTalkPendingMakeupDialogue = null/);
   assert.match(talk,/olliTalkPendingMakeupDialogue=\{ active:true, status:interactionStatus, prompt:aiReply \};/);
-  assert.match(talk,/if\(olliTalkPendingMakeupDialogue\)\{/);
-  assert.match(talk,/conversation:olliTalkAiConversationMessages\.map/);
+  assert.match(talk,/interpretOlliTalkSystemLanguage/);
+  assert.doesNotMatch(
+    talk.slice(
+      talk.indexOf('async function resolveOlliTalkAiTurn'),
+      talk.indexOf('function getOlliTalkMentionMessageText')
+    ),
+    /resolveOlliTalkContextualMakeupTurn\(/
+  );
 });
 
 
-test('mobile pending makeup dialogue owns the next turn until explicit cancellation',()=>{
+test('mobile unified interpreter owns makeup follow-ups before deterministic execution',()=>{
   const start=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const end=talk.indexOf('if(olliTalkPendingActionReason)',start);
+  const end=talk.indexOf('function getOlliTalkMentionMessageText',start);
   const block=talk.slice(start,end);
-  assert.match(block,/if\(olliTalkPendingMakeupDialogue\)/);
-  assert.match(block,/isOlliTalkPendingReasonCancel\(commandText\)/);
-  assert.match(block,/보강 등록 준비를 취소했어요/);
-
-  const contextStart=talk.indexOf('async function resolveOlliTalkContextualMakeupTurn');
-  const contextEnd=talk.indexOf('async function resolveOlliTalkContextualReadTurn',contextStart);
-  const contextBlock=talk.slice(contextStart,contextEnd);
-  assert.match(contextBlock,/data\?\.handled!==true/);
-  assert.match(contextBlock,/보강 등록을 이어서 진행 중이에요/);
-  assert.doesNotMatch(contextBlock,/data\?\.handled!==true\)[\s\S]{0,120}olliTalkPendingMakeupDialogue=null/);
+  const interpret=block.indexOf('interpretOlliTalkSystemLanguage(');
+  const prepare=block.indexOf("router.prepareAction(commandText");
+  assert.ok(interpret>=0 && prepare>interpret);
+  assert.doesNotMatch(block,/resolveOlliTalkContextualMakeupTurn\(/);
+  assert.match(block,/interpreterIntent==='cancel_pending'/);
+  assert.match(block,/olliTalkPendingMakeupDialogue=null/);
 });
