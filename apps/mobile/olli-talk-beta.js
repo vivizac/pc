@@ -63,6 +63,7 @@
   let olliTalkSearchMatches = [];
   let olliTalkSearchIndex = -1;
   let olliTalkPendingActionReason = null;
+  let olliTalkPendingMakeupDialogue = null;
   const olliTalkActionBusy = new Set();
   const olliTalkOlliReplyBusy = new Set();
   const OLLI_TALK_LINK_PREVIEW_REFRESH_MS = 24 * 60 * 60 * 1000;
@@ -386,6 +387,7 @@
   function resetOlliTalkAiConversation(){
     olliTalkAiConversationMessages = [];
     olliTalkAiConversationAcademyId = '';
+    olliTalkPendingMakeupDialogue = null;
   }
 
   function buildOlliTalkAiConversationMessages(commandText, context){
@@ -1388,6 +1390,52 @@
       && !!String(data?.error || '').trim();
   }
 
+  async function resolveOlliTalkMakeupAgentResponse({
+    response,
+    data,
+    context,
+    replyToMessageId,
+  }){
+    if(!response.ok){
+      if(isOlliTalkSafeMakeupClarification(response,data)){
+        const message=String(data.error || '').trim();
+        olliTalkPendingMakeupDialogue=null;
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+      throw new Error(data?.error || data?.message || '보강 등록 Agent 응답을 받지 못했습니다.');
+    }
+
+    const interactionStatus=String(data?.interactionStatus || '').trim();
+    const aiReply=String(data?.output || '').trim();
+    if(data?.ok===true && ['needs_clarification','blocked'].includes(interactionStatus) && aiReply){
+      olliTalkPendingMakeupDialogue=interactionStatus==='needs_clarification'
+        ? { active:true }
+        : null;
+      return {
+        assistantMessage:await saveOlliTalkOlliReply(context,aiReply,replyToMessageId),
+        replyText:aiReply,
+        recordAi:false
+      };
+    }
+
+    if(data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '보강 등록 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='add_makeup'){
+      throw new Error('보강 등록 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    olliTalkPendingMakeupDialogue=null;
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
   async function resolveOlliTalkMakeupAddAgentTurn(commandText,context,replyToMessageId){
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
@@ -1405,28 +1453,12 @@
       })
     });
     const data=await response.json().catch(()=>({}));
-    if(!response.ok){
-      if(isOlliTalkSafeMakeupClarification(response,data)){
-        const message=String(data.error || '').trim();
-        return {
-          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
-          replyText:message,
-          recordAi:false
-        };
-      }
-      throw new Error(data?.error || data?.message || '보강 등록 Agent 응답을 받지 못했습니다.');
-    }
-    if(data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '보강 등록 Agent 응답을 받지 못했습니다.');
-    }
-    if(String(data.message.action.action_type || '').trim()!=='add_makeup'){
-      throw new Error('보강 등록 Agent 작업 종류가 올바르지 않습니다.');
-    }
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
+    return resolveOlliTalkMakeupAgentResponse({
+      response,
+      data,
+      context,
+      replyToMessageId,
+    });
   }
 
   async function resolveOlliTalkMakeupCancelAgentTurn({
@@ -1826,6 +1858,43 @@
     }
   }
 
+  async function resolveOlliTalkContextualMakeupTurn(commandText,context,replyToMessageId){
+    if(!olliTalkPendingMakeupDialogue) return null;
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0) return null;
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'context_makeup_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId,
+        conversation:olliTalkAiConversationMessages.map((item)=>({
+          role:item.role,
+          content:item.content
+        }))
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok){
+      olliTalkPendingMakeupDialogue=null;
+      throw new Error(data?.error || data?.message || '보강 문맥 응답을 받지 못했습니다.');
+    }
+    if(data?.ok!==true || data?.handled!==true){
+      olliTalkPendingMakeupDialogue=null;
+      return null;
+    }
+    return resolveOlliTalkMakeupAgentResponse({
+      response,
+      data,
+      context,
+      replyToMessageId:sourceMessageId,
+    });
+  }
+
   async function resolveOlliTalkContextualReadTurn(commandText,context,replyToMessageId){
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0) return null;
@@ -1886,6 +1955,15 @@
  async function resolveOlliTalkAiTurn(commandText,context,replyToMessageId,options={}){
     const router=window.OlliCommandRouter;
     const schedule=window.OlliCommandSchedule;
+
+    if(olliTalkPendingMakeupDialogue){
+      const makeupTurn=await resolveOlliTalkContextualMakeupTurn(
+        commandText,
+        context,
+        replyToMessageId
+      );
+      if(makeupTurn) return makeupTurn;
+    }
 
     if(olliTalkPendingActionReason){
       if(isOlliTalkPendingReasonCancel(commandText)){
