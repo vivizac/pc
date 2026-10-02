@@ -4861,6 +4861,102 @@ async function runTimetableAdminPrepare({
 }
 
 
+function parseAttendanceStatusSource(sourceMessageText){
+  const router=loadSharedCommandRouter();
+  if(typeof router?.parseAttendanceStatusMutationIntent!=='function') return null;
+  return router.parseAttendanceStatusMutationIntent(String(sourceMessageText||''))||null;
+}
+
+async function runAttendanceStatusPrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError('출석부 변경 원문 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_ATTENDANCE_STATUS_SOURCE_INVALID');
+  }
+  await validatePickupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  const intent=parseAttendanceStatusSource(sourceMessageText);
+  if(!intent){
+    throw runtimeError('저장된 원문에서 출석부 상태 변경 요청을 확인하지 못했습니다.',400,'OLLI_AGENT_ATTENDANCE_STATUS_PARSE_FAILED');
+  }
+  if(preparedPrivacy?.needsDisambiguation){
+    throw runtimeError('학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',409,'OLLI_AGENT_STUDENT_AMBIGUOUS');
+  }
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
+  if(subjectRefs.length!==1){
+    throw runtimeError('출석부 상태 변경은 학생 한 명을 정확히 지정해 주세요.',400,'OLLI_AGENT_ATTENDANCE_STATUS_SINGLE_STUDENT_REQUIRED');
+  }
+  const studentLabel=String(subjectRefs[0]?.label||'').trim();
+  if(!studentLabel){
+    throw runtimeError('출석부를 변경할 학생을 확인하지 못했습니다.',400,'OLLI_AGENT_ATTENDANCE_STATUS_STUDENT_REQUIRED');
+  }
+
+  assertOpenAiKey();
+  const {Agent,run,tool,z}=await loadAgentsSdk();
+  const {createPrepareAttendanceStatusTool}=require('./tools/attendance-status-prepare-tools.cjs');
+  const {sanitizeAgentToolPayload}=require('./privacy.cjs');
+  const model=agentModel();
+  const today=todayInSeoul();
+  let persistedMessage=null;
+
+  const prepareAttendanceStatus=createPrepareAttendanceStatusTool({
+    tool,z,requestContext,intent,
+    subjectAccess:preparedPrivacy?.subjectAccess,
+    studentLabel,
+    currentDate:today,
+    requestId:'team-chat-message:'+sourceId,
+    replyToMessageId:sourceId,
+    capturePersistedMessage(message){persistedMessage=pickupPersistedMessageForClient(message);},
+    sanitizePayload(payload){return sanitizeAgentToolPayload(payload,preparedPrivacy);},
+  });
+
+  const agent=new Agent({
+    name:'Olli Attendance Status Prepare',
+    model,
+    instructions:[
+      'You are the Olli attendance-register status preparation assistant.',
+      'The stored Team Chat source message has already been parsed by the server into one fixed attendance status change.',
+      'Always call prepare_attendance_status exactly once. The tool accepts no arguments, so never invent dates, student ids, class groups, session kinds, internal slots, or attendance values.',
+      'The server re-reads the current schedule and attendance register before saving a pending confirmation card.',
+      'This is different from the regular-class absence workflow: it changes only the attendance-register status and does not invent an absence reason or a makeup schedule.',
+      'The tool never performs the attendance mutation. Never say the status change is complete.',
+      'Never ask for, infer, or reveal a real student name, UUID, internal time slot, member ID, session token, academy ID, action ID, or message ID.',
+      'Answer briefly in Korean and say the change is waiting for confirmation.',
+    ].join(' '),
+    tools:[prepareAttendanceStatus],
+    modelSettings:{toolChoice:'prepare_attendance_status'},
+  });
+
+  let result=null,runError=null;
+  try{
+    result=await run(agent,preparedPrivacy?.safeText||String(sourceMessageText||''),{context:agentContext});
+  }catch(error){
+    runError=error;
+    if(!persistedMessage) throw error;
+  }
+  if(!persistedMessage){
+    throw runtimeError('출석부 변경 확인 카드 저장 결과를 확인하지 못했습니다.',502,'OLLI_AGENT_ATTENDANCE_STATUS_PERSISTED_MESSAGE_MISSING');
+  }
+  return {
+    ready:true,
+    model,
+    output:String(result?.finalOutput||'').trim(),
+    nodeVersion:process.versions.node,
+    persistedMessage,
+    recoveredAfterPersist:!!runError,
+  };
+}
+
+
 module.exports = {
   MIN_NODE_MAJOR,
   assertSupportedNodeRuntime,
@@ -4873,6 +4969,8 @@ module.exports = {
   runTimetableRead,
   parseTimetableAdminSource,
   runTimetableAdminPrepare,
+  parseAttendanceStatusSource,
+  runAttendanceStatusPrepare,
   runRecentRecordsProbe,
   resolveAvailabilityScope,
   runScheduleAvailabilityProbe,
