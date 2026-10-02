@@ -3,7 +3,7 @@
 
   if (global.OlliTeamTalkMaterialOrders?.version) return;
 
-  const VERSION = '1.6.1';
+  const VERSION = '1.6.2';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
 
   const state = {
@@ -294,7 +294,7 @@
             <span class="olliMatSummaryIcon" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M4 7.5h16v11H4z"></path><path d="M7 7.5V5h10v2.5"></path></svg>
             </span>
-            <span class="olliMatSummaryLabel">재료 보관함</span>
+            <span class="olliMatSummaryLabel">지난 주문내역</span>
           </button>
         </div>
 
