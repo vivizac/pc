@@ -1,5 +1,7 @@
 'use strict';
 
+const { startPerfTimer, perfDurationMs, emitPerfLog } = require('./perf.cjs');
+
 const SUPABASE_URL = 'https://fvkxipjwgeyosgnfhdnx.supabase.co';
 const RPC_NAME_PATTERN = /^[a-z0-9_]+$/i;
 
@@ -33,18 +35,31 @@ async function callSupabaseRpc(name, params = {}) {
     );
   }
 
-  const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(rpcName)}`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: serverKey,
-        Authorization: `Bearer ${serverKey}`,
-      },
-      body: JSON.stringify(params || {}),
-    }
-  );
+  const startedAt = startPerfTimer();
+  let response;
+  try {
+    response = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(rpcName)}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: serverKey,
+          Authorization: `Bearer ${serverKey}`,
+        },
+        body: JSON.stringify(params || {}),
+      }
+    );
+  } catch (error) {
+    emitPerfLog({
+      phase: 'supabase_rpc',
+      status: 'error',
+      rpc: rpcName,
+      durationMs: perfDurationMs(startedAt),
+      errorCode: error?.code || error?.name,
+    });
+    throw error;
+  }
 
   const raw = await response.text();
   let data;
@@ -55,6 +70,13 @@ async function callSupabaseRpc(name, params = {}) {
   }
 
   if (!response.ok) {
+    emitPerfLog({
+      phase: 'supabase_rpc',
+      status: 'error',
+      rpc: rpcName,
+      durationMs: perfDurationMs(startedAt),
+      httpStatus: response.status,
+    });
     const message =
       data?.message ||
       data?.error ||
@@ -63,6 +85,13 @@ async function callSupabaseRpc(name, params = {}) {
     throw httpError(message, statusCode, 'SUPABASE_RPC_HTTP_ERROR');
   }
 
+  emitPerfLog({
+    phase: 'supabase_rpc',
+    status: 'ok',
+    rpc: rpcName,
+    durationMs: perfDurationMs(startedAt),
+    httpStatus: response.status,
+  });
   return data;
 }
 

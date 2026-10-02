@@ -1,5 +1,7 @@
 'use strict';
 
+const { startPerfTimer, perfDurationMs, emitPerfLog } = require('./perf.cjs');
+
 const { loadAcademyStudents } = require('./student-reference-resolver.cjs');
 const { collectStudentNameVariants } = require('../ai-privacy-gateway.cjs');
 const { sanitizeText } = require('../ai-privacy-sanitizer.cjs');
@@ -164,7 +166,10 @@ async function defaultModelRunner({ transcript, currentText }) {
     currentText,
   ].join('\n');
 
-  const response = await fetch('https://api.openai.com/v1/responses', {
+  const startedAt = startPerfTimer();
+  let response;
+  try {
+    response = await fetch('https://api.openai.com/v1/responses', {
     method:'POST',
     headers:{
       'Content-Type':'application/json',
@@ -179,16 +184,37 @@ async function defaultModelRunner({ transcript, currentText }) {
       reasoning:{ effort:'minimal' },
       max_output_tokens:120,
     }),
-  });
+    });
+  } catch (error) {
+    emitPerfLog({
+      phase: 'context_openai',
+      status: 'error',
+      durationMs: perfDurationMs(startedAt),
+      errorCode: error?.code || error?.name,
+    });
+    throw error;
+  }
 
   const raw = await response.text();
   let data = {};
   try { data = raw ? JSON.parse(raw) : {}; } catch (_) {}
   if (!response.ok) {
+    emitPerfLog({
+      phase: 'context_openai',
+      status: 'error',
+      durationMs: perfDurationMs(startedAt),
+      httpStatus: response.status,
+    });
     const error = new Error(data?.error?.message || data?.message || '문맥 해석 AI 요청에 실패했습니다.');
     error.code = 'OLLI_CONTEXT_OPENAI_FAILED';
     throw error;
   }
+  emitPerfLog({
+    phase: 'context_openai',
+    status: 'ok',
+    durationMs: perfDurationMs(startedAt),
+    httpStatus: response.status,
+  });
   return extractOutputText(data);
 }
 

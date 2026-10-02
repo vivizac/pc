@@ -1,5 +1,7 @@
 'use strict';
 
+const { startPerfTimer, perfDurationMs, emitPerfLog } = require('./perf.cjs');
+
 const crypto = require('node:crypto');
 const { resolveAgentEvalContract } = require('./eval-contracts.cjs');
 
@@ -220,6 +222,7 @@ function summarizeAgentRun(agent, result) {
     duplicateToolNames,
     assistantMessageCount,
     unknownItemCount,
+    modelResponseCount: Array.isArray(result?.rawResponses) ? result.rawResponses.length : null,
     finalOutputPresent: clean(result?.finalOutput).length > 0,
   });
 }
@@ -318,9 +321,19 @@ function wrapOlliAgentRun(runFn) {
 
   return async function olliObservedRun(agent, input, options = {}) {
     const runOptions = buildOlliTraceOptions(agent, options);
+    const startedAt = startPerfTimer();
     try {
       const result = await runFn(agent, input, runOptions);
       const summary = summarizeAgentRun(agent, result);
+      emitPerfLog({
+        phase: 'agent_run',
+        status: 'ok',
+        agent: summary.agent,
+        durationMs: perfDurationMs(startedAt),
+        toolCallCount: summary.toolCallCount,
+        assistantMessageCount: summary.assistantMessageCount,
+        modelResponseCount: summary.modelResponseCount,
+      });
       const contract = resolveAgentEvalContract(agent?.name);
       const evaluation = contract ? evaluateRunSummary(summary, contract) : null;
       emitEvalLog({
@@ -340,6 +353,13 @@ function wrapOlliAgentRun(runFn) {
       }, evaluation && evaluation.ok === false ? 'warn' : 'info');
       return result;
     } catch (error) {
+      emitPerfLog({
+        phase: 'agent_run',
+        status: 'error',
+        agent: safeName(agent?.name, 'olli-agent'),
+        durationMs: perfDurationMs(startedAt),
+        errorCode: safeErrorCode(error?.code || error?.name),
+      });
       emitEvalLog({
         status: 'error',
         version: 1,

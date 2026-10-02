@@ -104,6 +104,7 @@ test('run summary records tool names and shapes without argument or output value
   assert.equal(summary.toolOutputs[0].shape.type, 'object');
   assert.deepEqual(summary.toolOutputs[0].shape.keys, ['private_value', 'sessions']);
   assert.equal(summary.finalOutputPresent, true);
+  assert.equal(summary.modelResponseCount, null);
 
   const serialized = JSON.stringify(summary);
   assert.doesNotMatch(serialized, /subject_private_value|2026-10-02|must-not-leak|화요일|4시/);
