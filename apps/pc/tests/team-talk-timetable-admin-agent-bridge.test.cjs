@@ -31,7 +31,7 @@ test('PC timetable admin bridge is source-bound and validates returned action ty
 
 test('PC timetable admin Agent routing runs before batch and legacy write fallback',()=>{
   const start=talk.indexOf('async function resolveAiTurn');
-  const end=talk.indexOf('if (router && typeof router.prepareAction === 'function')',start);
+  const end=talk.indexOf("if (router && typeof router.prepareAction === 'function')",start);
   const block=talk.slice(start,end);
   const admin=block.indexOf('parseTimetableAdminAgentCandidate');
   const batch=block.indexOf('const batchCandidate = parseBatchAgentCandidate');
