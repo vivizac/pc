@@ -2736,7 +2736,7 @@
       if(makeupTurn) return makeupTurn;
     }
 
-    if (state.pendingActionReason) {
+    if (interpreterRoute!=='rule' && state.pendingActionReason) {
       if (isPendingReasonCancel(commandText)) {
         state.pendingActionReason = null;
         const message = '작업 준비를 취소했어요.';
@@ -3043,7 +3043,16 @@
       }
     }
 
-    const resolved = await resolveAiReply(commandText, current);
+    if(interpreterRoute==='rule'){
+      const message='요청을 시스템 명령으로 해석했지만 규칙 시스템에 연결하지 못했어요. 필요한 정보를 조금 더 구체적으로 알려 주세요.';
+      return {
+        assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+        replyText:message,
+        recordAi:false
+      };
+    }
+
+    const resolved = await resolveAiReply(rawCommandText, current);
     return {
       assistantMessage:await saveAssistantReply(current, resolved.message, replyToMessageId),
       replyText:resolved.message,
