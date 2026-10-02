@@ -44,3 +44,9 @@ test('half-hour text is preserved as visible hour and minute for server resoluti
   assert.equal(parsed.classHour,4);
   assert.equal(parsed.classMinute,30);
 });
+
+test('Korean half-hour shorthand stays 30 minutes for attendance status',()=>{
+  const parsed=router.parseAttendanceStatusMutationIntent('민수 오늘 출석부 4시 반 출석으로 표시해줘');
+  assert.equal(parsed.classHour,4);
+  assert.equal(parsed.classMinute,30);
+});
