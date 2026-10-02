@@ -255,7 +255,7 @@ test('Agent phase timing hooks emit only structural pre-tool, tool, and post-too
     ]);
     assert.equal(payloads[1].tool,'get_student_schedule');
     assert.ok(payloads.every((item)=>typeof item.durationMs==='number'));
-    assert.doesNotMatch(JSON.stringify(payloads),/student|academy-secret|member-secret/i);
+    assert.doesNotMatch(JSON.stringify(payloads),/academy-secret|member-secret|김민수|subject_private_value/i);
   }finally{
     console.info=previousInfo;
     if(previousNodeEnv===undefined) delete process.env.NODE_ENV;
