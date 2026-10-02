@@ -7,10 +7,12 @@ const talk=fs.readFileSync(path.join(__dirname,'../olli-talk-beta.js'),'utf8');
 test('Mobile waitlist add update cancel all route through Agent candidates',()=>{
   for(const name of ['isOlliTalkWaitlistAddAgentCandidate','isOlliTalkWaitlistUpdateAgentCandidate','isOlliTalkWaitlistCancelAgentCandidate']) assert.ok(talk.includes(name),name);
 });
-test('Mobile waitlist cancel uses source-bound production and registered-student fallback',()=>{
+test('Mobile waitlist cancel keeps registered and guest requests on source-bound production',()=>{
   assert.ok(talk.includes("mode:'waitlist_cancel_prepare'"));
-  assert.ok(talk.includes('OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED'));
-  assert.ok(talk.includes('return null'));
+  const start=talk.indexOf('async function resolveOlliTalkWaitlistCancelAgentTurn');
+  const end=talk.indexOf('async function resolveOlliTalkMakeupAddAgentTurn',start);
+  const block=talk.slice(start,end);
+  assert.doesNotMatch(block,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED|return null/);
 });
 test('Mobile waitlist routes occur before legacy prepareAction',()=>{
   const start=talk.indexOf('async function resolveOlliTalkAiTurn');
