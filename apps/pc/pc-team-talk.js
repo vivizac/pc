@@ -1881,9 +1881,7 @@
     const interactionStatus=clean(data?.interactionStatus);
     const aiReply=clean(data?.output);
     if (data?.ok === true && ['needs_clarification','blocked'].includes(interactionStatus) && aiReply) {
-      state.pendingMakeupDialogue=interactionStatus==='needs_clarification'
-        ? { active:true }
-        : null;
+      state.pendingMakeupDialogue={ active:true, status:interactionStatus };
       return {
         assistantMessage:await saveAssistantReply(current,aiReply,replyToMessageId),
         replyText:aiReply,

@@ -110,10 +110,13 @@ export default async function handler(req, res) {
       });
 
       const contextRouteModule=await import('./_lib/olli-agent/context-route.cjs');
-      const resolveContextualReadRewrite=
-        contextRouteModule.resolveContextualReadRewrite ||
-        contextRouteModule.default?.resolveContextualReadRewrite;
-      const resolved=await resolveContextualReadRewrite({
+      const resolveContextualMakeupRewrite=
+        contextRouteModule.resolveContextualMakeupRewrite ||
+        contextRouteModule.default?.resolveContextualMakeupRewrite;
+      if(typeof resolveContextualMakeupRewrite!=='function'){
+        throw new Error('보강 문맥 해석 모듈을 불러오지 못했습니다.');
+      }
+      const resolved=await resolveContextualMakeupRewrite({
         requestContext,
         sourceMessageId,
         currentMessage:message,

@@ -8,6 +8,7 @@ const test = require('node:test');
 const {
   normalizeMentionConversation,
   resolveContextualReadRewrite,
+  resolveContextualMakeupRewrite,
   studentLabel,
 } = require('../apps/mobile/api/_lib/olli-agent/context-route.cjs');
 
@@ -70,6 +71,82 @@ test('context resolver anonymizes the full active mention conversation and resto
   assert.equal(result.resolvedText,'테스트2학생의 시간표를 알려줘');
 });
 
+test('makeup continuation restores B반 into the prior complete makeup request', async () => {
+  let observed=null;
+  const result=await resolveContextualMakeupRewrite({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:30,
+    currentMessage:'B반',
+    conversation:[
+      {role:'user',content:'테스트2 학생 다음주 화요일 4시 보강 등록'},
+      {role:'assistant',content:'A반과 B반 중 어느 반으로 보강을 진행할까요?'},
+    ],
+    loadStudents:async()=>[
+      {id:'student-2',name:'테스트2 학생'},
+    ],
+    modelRunner:async(input)=>{
+      observed=input;
+      return '학생A 다음주 화요일 4시 B반 보강 등록';
+    },
+  });
+
+  assert.ok(observed);
+  assert.match(observed.transcript,/학생A 다음주 화요일 4시 보강 등록/);
+  assert.match(observed.currentText,/B반/);
+  assert.equal(result.usedContext,true);
+  assert.equal(result.resolvedText,'테스트2 학생 다음주 화요일 4시 B반 보강 등록');
+});
+
+test('makeup continuation restores a changed date after a blocked makeup result', async () => {
+  const result=await resolveContextualMakeupRewrite({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:31,
+    currentMessage:'그럼 다다음주로 해줘',
+    conversation:[
+      {role:'user',content:'테스트 학생 다음주 월요일 5시에 보강 등록해줘'},
+      {role:'assistant',content:'공휴일에는 보강을 등록할 수 없습니다.'},
+    ],
+    loadStudents:async()=>[
+      {id:'student-1',name:'테스트 학생'},
+    ],
+    modelRunner:async()=> '학생A 다다음주 월요일 5시 보강 등록',
+  });
+
+  assert.equal(result.usedContext,true);
+  assert.equal(result.resolvedText,'테스트 학생 다다음주 월요일 5시 보강 등록');
+});
+
+test('makeup continuation can reject an unrelated reply without hijacking general chat', async () => {
+  const result=await resolveContextualMakeupRewrite({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:32,
+    currentMessage:'오늘 비 와?',
+    conversation:[
+      {role:'user',content:'테스트 학생 다음주 화요일 4시 보강 등록'},
+      {role:'assistant',content:'A반과 B반 중 어느 반으로 보강을 진행할까요?'},
+    ],
+    loadStudents:async()=>[
+      {id:'student-1',name:'테스트 학생'},
+    ],
+    modelRunner:async()=> 'OLLI_CONTEXT_UNRELATED',
+  });
+
+  assert.equal(result.usedContext,false);
+  assert.equal(result.resolvedText,'오늘 비 와?');
+});
+
 test('context resolver does not call AI without an active mention conversation containing an Olli reply', async () => {
   let called=false;
   const result=await resolveContextualReadRewrite({
@@ -113,6 +190,20 @@ test('PC and Mobile record every AI turn while their persistent Olli conversatio
   assert.match(pc,/conversation:state\.aiConversationMessages\.map/);
 });
 
+
+test('makeup context stays active for both clarification and recoverable blocked replies', () => {
+  const root=path.resolve(__dirname,'..');
+  const api=fs.readFileSync(path.join(root,'apps/mobile/api/olli-agent.js'),'utf8');
+  const mobile=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'utf8');
+  const pc=fs.readFileSync(path.join(root,'apps/pc/pc-team-talk.js'),'utf8');
+
+  const branch=api.indexOf("if (mode === 'context_makeup_prepare')");
+  const resolver=api.indexOf('resolveContextualMakeupRewrite',branch);
+  const classify=api.indexOf("safeText(route?.key,40)!=='makeup_add'",branch);
+  assert.ok(branch>=0 && resolver>branch && classify>resolver);
+  assert.match(mobile,/olliTalkPendingMakeupDialogue=\{ active:true, status:interactionStatus \};/);
+  assert.match(pc,/state\.pendingMakeupDialogue=\{ active:true, status:interactionStatus \};/);
+});
 
 test('contextual read is executed server-side after persisted source validation', () => {
   const root=path.resolve(__dirname,'..');

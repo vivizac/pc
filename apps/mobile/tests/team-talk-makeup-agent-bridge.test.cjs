@@ -75,15 +75,15 @@ test('makeup business ambiguity returns structured tool outcome for the Agent to
   assert.match(runtime,/If status is needs_clarification, ask exactly one short natural Korean follow-up question/);
   assert.match(runtime,/interactionStatus:conversationalOutcome \? interactionStatus : ''/);
   assert.match(endpoint,/interactionStatus:safeText\(probe\.interactionStatus,40\)/);
-  assert.match(talk,/interactionStatus==='needs_clarification'/);
+  assert.match(talk,/\['needs_clarification','blocked'\]\.includes\(interactionStatus\)/);
   assert.match(talk,/mode:'context_makeup_prepare'/);
-  assert.match(pc,/interactionStatus==='needs_clarification'/);
+  assert.match(pc,/\['needs_clarification','blocked'\]\.includes\(interactionStatus\)/);
   assert.match(pc,/mode:'context_makeup_prepare'/);
 });
 
-test('makeup clarification continuation is bounded by active Olli conversation state',()=>{
+test('makeup clarification and blocked results stay inside active Olli conversation state',()=>{
   assert.match(talk,/let olliTalkPendingMakeupDialogue = null/);
-  assert.match(talk,/olliTalkPendingMakeupDialogue=interactionStatus==='needs_clarification'/);
+  assert.match(talk,/olliTalkPendingMakeupDialogue=\{ active:true, status:interactionStatus \};/);
   assert.match(talk,/if\(olliTalkPendingMakeupDialogue\)\{/);
   assert.match(talk,/conversation:olliTalkAiConversationMessages\.map/);
 });

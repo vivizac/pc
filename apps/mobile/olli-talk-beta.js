@@ -1412,9 +1412,7 @@
     const interactionStatus=String(data?.interactionStatus || '').trim();
     const aiReply=String(data?.output || '').trim();
     if(data?.ok===true && ['needs_clarification','blocked'].includes(interactionStatus) && aiReply){
-      olliTalkPendingMakeupDialogue=interactionStatus==='needs_clarification'
-        ? { active:true }
-        : null;
+      olliTalkPendingMakeupDialogue={ active:true, status:interactionStatus };
       return {
         assistantMessage:await saveOlliTalkOlliReply(context,aiReply,replyToMessageId),
         replyText:aiReply,
