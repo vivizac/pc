@@ -79,3 +79,10 @@ test('PC half-hour timetable keeps internal scroll and disables wheel division s
   assert.match(block, /nextButton\.click\(\)/);
   assert.match(index, /pc-start-page\.js\?v=20261002-half-hour-wheel-guard-1/);
 });
+
+
+test('PC half-hour timetable keeps the vertical scrollbar outside the table grid', () => {
+  assert.match(css, /\.olliTtSection:has\(\.olliTtHalfHourGrid\) \.olliTtScroll \{[\s\S]*?padding-right: 10px;[\s\S]*?scrollbar-gutter: stable;/);
+  assert.match(css, /\.olliTtSection:has\(\.olliTtHalfHourGrid\) \.olliTtGrid,[\s\S]*?\.olliTtPickupGrid \{[\s\S]*?border-right: 1px solid #e4e7eb;/);
+  assert.match(index, /pc-timetable\.css\?v=20261002-half-hour-scrollbar-outside-1/);
+});
