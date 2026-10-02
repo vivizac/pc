@@ -1223,7 +1223,7 @@
     };
 
     try {
-      if (state.pendingActionReason) {
+      if (interpreterRoute!=='rule' && state.pendingActionReason) {
         if (isPendingReasonCancel(commandText)) {
           state.pendingActionReason = null;
           return saveReply('작업 준비를 취소했어요.');
@@ -2622,57 +2622,20 @@
   }
 
 
-  async function resolveRuleStudentScheduleTurn(commandText,current,replyToMessageId) {
-    const router=global.OlliCommandRouter;
-    if(
-      !router
-      || typeof router.parseStudentScheduleQueryIntent!=='function'
-      || typeof router.runQuery!=='function'
-    ) return null;
 
-    const parsed=router.parseStudentScheduleQueryIntent(commandText);
-    if(!parsed || String(parsed.intent || '').trim()!=='get_student_schedule') return null;
-
-    const queried=await router.runQuery(commandText,{
-      source:'olli_talk_ai',
-      selectedStudent:null,
-      autoSubmitContext:null
-    });
-    if(queried?.handled!==true || String(queried.intent || '').trim()!=='get_student_schedule') return null;
-
-    const queryMessage=String(queried.message || '').trim() || '학생 시간표를 확인했어요.';
-    return {
-      assistantMessage:await saveAssistantReply(current,queryMessage,replyToMessageId),
-      replyText:queryMessage,
-      recordAi:false
-    };
-  }
-
-  function hasRuleStudentScheduleContext() {
-    const router=global.OlliCommandRouter;
-    if(!router || typeof router.parseStudentScheduleQueryIntent!=='function') return false;
-    const messages=Array.isArray(state.aiConversationMessages) ? state.aiConversationMessages : [];
-    for(let index=messages.length-1;index>=0;index-=1){
-      const item=messages[index];
-      if(String(item?.role || '').trim()!=='user') continue;
-      return !!router.parseStudentScheduleQueryIntent(String(item?.content || '').trim());
-    }
-    return false;
-  }
-
-  async function resolveContextualRuleStudentScheduleTurn(commandText,current,replyToMessageId) {
-    if(!hasRuleStudentScheduleContext()) return null;
+  async function interpretOlliSystemLanguage(commandText,current,replyToMessageId) {
     const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0) return null;
-
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('올리 해석에 필요한 원문 메시지를 확인하지 못했습니다.');
+    }
     const response=await fetch('/api/olli-agent',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        mode:'context_resolve',
+        mode:'interpret',
         academyId:current?.academyId || '',
         sessionToken:current?.sessionToken || '',
-        message:String(commandText || '').trim(),
+        message:clean(commandText),
         sourceMessageId,
         conversation:(Array.isArray(state.aiConversationMessages) ? state.aiConversationMessages : []).map((item)=>({
           role:item.role,
@@ -2682,57 +2645,44 @@
     });
     const data=await response.json().catch(()=>({}));
     if(!response.ok){
-      throw new Error(data?.error || data?.message || '문맥 명령 정리 응답을 받지 못했습니다.');
+      throw new Error(data?.error || data?.message || '올리 공통 해석 응답을 받지 못했습니다.');
     }
-    const resolvedText=String(data?.resolvedText || '').trim();
-    if(data?.ok!==true || data?.usedContext!==true || !resolvedText) return null;
-    if(resolvedText===String(commandText || '').trim()) return null;
-    return resolveRuleStudentScheduleTurn(
-      resolvedText,
-      current,
-      sourceMessageId
-    );
+    const language=data?.systemLanguage || {};
+    const route=clean(language.route);
+    const intent=clean(language.intent);
+    const standaloneCommand=clean(language.standaloneCommand);
+    if(data?.ok!==true || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
+      throw new Error('올리 공통 해석 결과가 올바르지 않습니다.');
+    }
+    return {
+      route,
+      intent,
+      standaloneCommand,
+      contextUsed:language.contextUsed===true
+    };
   }
 
 
-  async function resolveContextualReadTurn(commandText,current,replyToMessageId) {
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0) return null;
 
-    try {
-      const response=await fetch('/api/olli-agent',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          mode:'context_read',
-          academyId:current?.academyId || '',
-          sessionToken:current?.sessionToken || '',
-          message:clean(commandText),
-          sourceMessageId,
-          conversation:state.aiConversationMessages.map((item)=>({
-            role:item.role,
-            content:item.content
-          }))
-        })
-      });
-      const data=await response.json().catch(()=>({}));
-      if(!response.ok){
-        throw new Error(data?.error || data?.message || '문맥 조회 응답을 받지 못했습니다.');
-      }
-      const replyText=clean(data?.output);
-      if(data?.ok!==true || data?.handled!==true || !replyText) return null;
-      return {
-        assistantMessage:await saveAssistantReply(current,replyText,sourceMessageId),
-        replyText,
-        recordAi:false
-      };
-    } catch (error) {
-      console.warn('PC 올리 AI 문맥 조회 실패:',error?.message || error);
-      throw error;
+  function ruleCommandMatchesInterpretation(router,intent,commandText) {
+    const expected=clean(intent);
+    if(!router || !expected) return false;
+    if(expected==='open_student_info'){
+      try{
+        return typeof router.parseStudentInfoLookupIntent==='function'
+          && !!router.parseStudentInfoLookupIntent(commandText);
+      }catch(_){ return false; }
+    }
+    try{
+      const classified=typeof router.classifyRequest==='function'
+        ? router.classifyRequest(commandText)
+        : null;
+      return clean(classified?.intent)===expected;
+    }catch(_){
+      return false;
     }
   }
 
- 
 
   function reportAiLegacyRouteOutcome(current, outcome, routeKey, sharedRoute, classifierAvailable) {
     if (!current?.academyId || !current?.sessionToken) return;
@@ -2755,26 +2705,72 @@
  async function resolveAiTurn(commandText, current, replyToMessageId, options = {}) {
     const router = global.OlliCommandRouter;
     const schedule = global.OlliCommandSchedule;
+    const rawCommandText=clean(commandText);
+    const interpretation=await interpretOlliSystemLanguage(
+      rawCommandText,
+      current,
+      replyToMessageId
+    );
+    const interpreterRoute=clean(interpretation.route);
+    const interpreterIntent=clean(interpretation.intent);
+    commandText=clean(interpretation.standaloneCommand) || rawCommandText;
 
-    if (state.pendingMakeupDialogue) {
-      if (isPendingReasonCancel(commandText)) {
+    if (options.allowSuggestedQuery && router && typeof router.runSuggestedQuery === 'function') {
+      const suggested = await router.runSuggestedQuery(commandText, {
+        source:'olli_talk_reply_button',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if (suggested?.handled === true) {
+        reportAiLegacyRouteOutcome(
+          current,
+          'suggested',
+          clean(suggested.intent || suggested.payload?.intent),
+          null,
+          false
+        );
+        const suggestedMessage = clean(suggested.message) || '조회 결과를 확인했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current, suggestedMessage, replyToMessageId),
+          replyText:suggestedMessage,
+          recordAi:false
+        };
+      }
+    }
+
+    if(interpreterRoute==='chat'){
+      const resolved=await resolveAiReply(rawCommandText,current);
+      return {
+        assistantMessage:await saveAssistantReply(current,resolved.message,replyToMessageId),
+        replyText:resolved.message,
+        recordAi:true
+      };
+    }
+
+    if(interpreterRoute==='rule'){
+      if(interpreterIntent==='cancel_pending'){
         state.pendingMakeupDialogue=null;
-        const message='보강 등록 준비를 취소했어요.';
+        state.pendingActionReason=null;
+        const message='진행 중인 작업 준비를 취소했어요.';
         return {
           assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
           replyText:message,
           recordAi:false
         };
       }
-      const makeupTurn=await resolveContextualMakeupTurn(
-        commandText,
-        current,
-        replyToMessageId
-      );
-      if(makeupTurn) return makeupTurn;
+      if(!ruleCommandMatchesInterpretation(router,interpreterIntent,commandText)){
+        const message='올리가 이해한 업무와 규칙 시스템 명령이 일치하지 않아 실행하지 않았어요. 요청을 조금 더 구체적으로 알려 주세요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+      state.pendingMakeupDialogue=null;
+      state.pendingActionReason=null;
     }
 
-    if (state.pendingActionReason) {
+    if (interpreterRoute!=='rule' && state.pendingActionReason) {
       if (isPendingReasonCancel(commandText)) {
         state.pendingActionReason = null;
         const message = '작업 준비를 취소했어요.';
@@ -2934,35 +2930,22 @@
       };
     }
 
-    const ruleStudentScheduleTurn=await resolveRuleStudentScheduleTurn(
-      commandText,
-      current,
-      replyToMessageId
-    );
-    if(ruleStudentScheduleTurn) return ruleStudentScheduleTurn;
-
     const routeClassifier=global.OlliTeamTalkAgentRouteClassifier;
     const classifierAvailable=!!(routeClassifier && typeof routeClassifier.classify==='function');
-    const sharedRoute=classifierAvailable
+    const sharedRoute=interpreterRoute==='agent' && classifierAvailable
       ? routeClassifier.classify(commandText,{router})
       : null;
-    if(!sharedRoute && classifierAvailable){
-      const contextualRuleTurn=await resolveContextualRuleStudentScheduleTurn(
-        commandText,
-        current,
-        replyToMessageId
-      );
-      if(contextualRuleTurn) return contextualRuleTurn;
-      const contextualTurn=await resolveContextualReadTurn(
-        commandText,
-        current,
-        replyToMessageId
-      );
-      if(contextualTurn) return contextualTurn;
-    }
-    if(sharedRoute){
-      const routedTurn=await resolveSharedAgentRouteTurn(sharedRoute,commandText,current,replyToMessageId);
-      if(routedTurn) return routedTurn;
+    if(interpreterRoute==='agent'){
+      if(sharedRoute){
+        const routedTurn=await resolveSharedAgentRouteTurn(sharedRoute,commandText,current,replyToMessageId);
+        if(routedTurn) return routedTurn;
+      }
+      const resolved=await resolveAiReply(rawCommandText,current);
+      return {
+        assistantMessage:await saveAssistantReply(current,resolved.message,replyToMessageId),
+        replyText:resolved.message,
+        recordAi:true
+      };
     }
 
     if (router && typeof router.prepareAction === 'function') {
@@ -3071,30 +3054,16 @@
       }
     }
 
-    if (options.allowSuggestedQuery && router && typeof router.runSuggestedQuery === 'function') {
-      const suggested = await router.runSuggestedQuery(commandText, {
-        source:'olli_talk_reply_button',
-        selectedStudent:null,
-        autoSubmitContext:null
-      });
-      if (suggested?.handled === true) {
-        reportAiLegacyRouteOutcome(
-          current,
-          'suggested',
-          clean(suggested.intent || suggested.payload?.intent),
-          sharedRoute,
-          classifierAvailable
-        );
-        const suggestedMessage = clean(suggested.message) || '조회 결과를 확인했어요.';
-        return {
-          assistantMessage:await saveAssistantReply(current, suggestedMessage, replyToMessageId),
-          replyText:suggestedMessage,
-          recordAi:false
-        };
-      }
+    if(interpreterRoute==='rule'){
+      const message='요청을 시스템 명령으로 해석했지만 규칙 시스템에 연결하지 못했어요. 필요한 정보를 조금 더 구체적으로 알려 주세요.';
+      return {
+        assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+        replyText:message,
+        recordAi:false
+      };
     }
 
-    const resolved = await resolveAiReply(commandText, current);
+    const resolved = await resolveAiReply(rawCommandText, current);
     return {
       assistantMessage:await saveAssistantReply(current, resolved.message, replyToMessageId),
       replyText:resolved.message,

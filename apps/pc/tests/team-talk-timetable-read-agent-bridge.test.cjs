@@ -16,7 +16,7 @@ test('PC timetable read candidate is fixed by shared parseQueryIntent',()=>{
   assert.doesNotMatch(block,/runQuery|prepareAction/);
 });
 
-test('PC timetable and student reads run before legacy prepareAction and runQuery — shared dispatch contract', () => {
+test('PC interpreter decides whether Agent dispatch is allowed before rule execution', () => {
   const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
   const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
   const dispatch=talk.slice(dispatchStart,dispatchEnd);
@@ -24,16 +24,17 @@ test('PC timetable and student reads run before legacy prepareAction and runQuer
   const aiEnd=talk.indexOf('function updateComposerState',aiStart);
   const ai=talk.slice(aiStart,aiEnd);
   assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
-  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/interpretOlliSystemLanguage/);
+  assert.match(ai,/sharedRoute=interpreterRoute==='agent'/);
   assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
   assert.match(dispatch,/case 'timetable_read'/);
   assert.match(dispatch,/case 'attendance_read'/);
   assert.match(dispatch,/case 'pickup_read'/);
   assert.match(dispatch,/case 'schedule_read'/);
+  const interpret=ai.indexOf('interpretOlliSystemLanguage(');
   const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
   const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(classify>=0 && legacy>classify);
-
+  assert.ok(interpret>=0 && classify>interpret && legacy>classify);
 });
 test('PC read bridge saves only the source-bound Agent answer',()=>{
   const start=talk.indexOf('async function resolveSourceBoundReadAgentTurn');
@@ -53,23 +54,15 @@ test('PC Bot path stays independent from Agent timetable reads',()=>{
 });
 
 
-test('PC student schedule uses rule system before Agent dispatch and context AI only normalizes the follow-up',()=>{
+test('PC student schedule and follow-ups use the same unified interpreter and never call legacy context AI',()=>{
   const aiStart=talk.indexOf('async function resolveAiTurn');
   const aiEnd=talk.indexOf('function updateComposerState',aiStart);
   const ai=talk.slice(aiStart,aiEnd);
-  const ruleIndex=ai.indexOf('resolveRuleStudentScheduleTurn(');
-  const classifyIndex=ai.indexOf('routeClassifier.classify(commandText,{router})');
-  assert.ok(ruleIndex>=0 && classifyIndex>ruleIndex);
-
-  const helperStart=talk.indexOf('async function resolveContextualRuleStudentScheduleTurn');
-  const helperEnd=talk.indexOf('async function resolveContextualReadTurn',helperStart);
-  const helper=talk.slice(helperStart,helperEnd);
-  assert.match(helper,/mode:'context_resolve'/);
-  assert.match(helper,/resolveRuleStudentScheduleTurn/);
-  assert.doesNotMatch(helper,/mode:'context_read'/);
-
-  const noRouteBlock=ai.slice(ai.indexOf('if(!sharedRoute && classifierAvailable){'));
-  const normalizedIndex=noRouteBlock.indexOf('resolveContextualRuleStudentScheduleTurn');
-  const agentContextIndex=noRouteBlock.indexOf('resolveContextualReadTurn');
-  assert.ok(normalizedIndex>=0 && agentContextIndex>normalizedIndex);
+  assert.match(ai,/interpretOlliSystemLanguage\(/);
+  assert.match(ai,/commandText=clean\(interpretation\.standaloneCommand\)/);
+  assert.doesNotMatch(ai,/mode:'context_read'/);
+  assert.doesNotMatch(ai,/mode:'context_resolve'/);
+  assert.doesNotMatch(ai,/resolveRuleStudentScheduleTurn/);
+  assert.doesNotMatch(ai,/resolveContextualRuleStudentScheduleTurn/);
+  assert.match(ai,/if\(interpreterRoute==='rule'\)/);
 });

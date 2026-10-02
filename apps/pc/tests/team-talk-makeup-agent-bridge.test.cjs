@@ -148,18 +148,14 @@ test('PC makeup clarification and blocked outcomes remain in contextual continua
 });
 
 
-test('PC pending makeup dialogue owns the next turn until explicit cancellation', () => {
+test('PC unified interpreter owns makeup follow-ups before deterministic execution', () => {
   const start=talk.indexOf('async function resolveAiTurn');
-  const end=talk.indexOf('if (state.pendingActionReason)',start);
+  const end=talk.indexOf('function updateComposerState',start);
   const block=talk.slice(start,end);
-  assert.match(block,/if \(state\.pendingMakeupDialogue\)/);
-  assert.match(block,/isPendingReasonCancel\(commandText\)/);
-  assert.match(block,/보강 등록 준비를 취소했어요/);
-
-  const contextStart=talk.indexOf('async function resolveContextualMakeupTurn');
-  const contextEnd=talk.indexOf('async function resolveContextualReadTurn',contextStart);
-  const contextBlock=talk.slice(contextStart,contextEnd);
-  assert.match(contextBlock,/data\?\.handled!==true/);
-  assert.match(contextBlock,/보강 등록을 이어서 진행 중이에요/);
-  assert.doesNotMatch(contextBlock,/data\?\.handled!==true\)[\s\S]{0,120}state\.pendingMakeupDialogue=null/);
+  const interpret=block.indexOf('interpretOlliSystemLanguage(');
+  const prepare=block.indexOf("router.prepareAction(commandText");
+  assert.ok(interpret>=0 && prepare>interpret);
+  assert.doesNotMatch(block,/resolveContextualMakeupTurn\(/);
+  assert.match(block,/interpreterIntent==='cancel_pending'/);
+  assert.match(block,/state\.pendingMakeupDialogue=null/);
 });

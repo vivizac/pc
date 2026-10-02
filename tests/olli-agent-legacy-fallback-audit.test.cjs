@@ -99,8 +99,8 @@ test('reply-button suggested query remains an intentional legacy dependency befo
 
   for(const source of [pcTurn,mobileTurn]){
     const suggestedPos=source.indexOf('runSuggestedQuery(commandText');
-    const generalPos=source.indexOf('resolveAiReply(commandText');
-    const mobileGeneralPos=source.indexOf('resolveOlliTalkAiReply(commandText');
+    const generalPos=source.indexOf('resolveAiReply(rawCommandText');
+    const mobileGeneralPos=source.indexOf('resolveOlliTalkAiReply(rawCommandText');
     const fallbackPos=generalPos>=0 ? generalPos : mobileGeneralPos;
     assert.ok(suggestedPos>=0);
     assert.ok(fallbackPos>suggestedPos);

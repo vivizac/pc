@@ -449,15 +449,17 @@ test('existing availability lookup remains a read query', () => {
   assert.equal(classified.intent, 'find_available_slots');
 });
 
-test('PC AI uses Olli read query before calling OpenAI and keeps query result out of AI history', () => {
-  const queryIndex = pcTalkSource.indexOf("typeof router.runQuery === 'function'");
-  const openAiIndex = pcTalkSource.indexOf('const resolved = await resolveAiReply(commandText, current)', queryIndex);
-  assert.ok(queryIndex >= 0);
-  assert.ok(openAiIndex > queryIndex);
-
-  const block = pcTalkSource.slice(queryIndex, openAiIndex);
-  assert.match(block, /saveAssistantReply\(current, queryMessage, replyToMessageId\)/);
-  assert.match(block, /recordAi:false/);
+test('PC AI interprets every Olli turn before deterministic read execution', () => {
+  const aiStart=pcTalkSource.indexOf('async function resolveAiTurn');
+  const aiEnd=pcTalkSource.indexOf('function updateComposerState',aiStart);
+  const block=pcTalkSource.slice(aiStart,aiEnd);
+  const interpretIndex=block.indexOf('interpretOlliSystemLanguage(');
+  const queryIndex=block.indexOf("typeof router.runQuery === 'function'");
+  assert.ok(interpretIndex>=0);
+  assert.ok(queryIndex>interpretIndex);
+  assert.match(block,/interpreterRoute==='rule'/);
+  assert.match(block,/saveAssistantReply\(current, queryMessage, replyToMessageId\)/);
+  assert.match(block,/recordAi:false/);
 });
 
 

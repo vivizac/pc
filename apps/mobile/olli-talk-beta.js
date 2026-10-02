@@ -496,7 +496,7 @@
     };
 
     try{
-      if(olliTalkPendingActionReason){
+      if(interpreterRoute!=='rule' && olliTalkPendingActionReason){
         if(isOlliTalkPendingReasonCancel(commandText)){
           olliTalkPendingActionReason=null;
           return saveReply('작업 준비를 취소했어요.');
@@ -1900,54 +1900,17 @@
   }
 
 
-  async function resolveOlliTalkRuleStudentScheduleTurn(commandText,context,replyToMessageId){
-    const router=window.OlliCommandRouter;
-    if(
-      !router
-      || typeof router.parseStudentScheduleQueryIntent!=='function'
-      || typeof router.runQuery!=='function'
-    ) return null;
 
-    const parsed=router.parseStudentScheduleQueryIntent(commandText);
-    if(!parsed || String(parsed.intent || '').trim()!=='get_student_schedule') return null;
-
-    const queried=await router.runQuery(commandText,{
-      source:'olli_talk_ai',
-      selectedStudent:null,
-      autoSubmitContext:null
-    });
-    if(queried?.handled!==true || String(queried.intent || '').trim()!=='get_student_schedule') return null;
-
-    const queryMessage=String(queried.message || '').trim() || '학생 시간표를 확인했어요.';
-    return {
-      assistantMessage:await saveOlliTalkOlliReply(context,queryMessage,replyToMessageId),
-      replyText:queryMessage,
-      recordAi:false
-    };
-  }
-
-  function hasOlliTalkRuleStudentScheduleContext(){
-    const router=window.OlliCommandRouter;
-    if(!router || typeof router.parseStudentScheduleQueryIntent!=='function') return false;
-    const messages=Array.isArray(olliTalkAiConversationMessages) ? olliTalkAiConversationMessages : [];
-    for(let index=messages.length-1;index>=0;index-=1){
-      const item=messages[index];
-      if(String(item?.role || '').trim()!=='user') continue;
-      return !!router.parseStudentScheduleQueryIntent(String(item?.content || '').trim());
-    }
-    return false;
-  }
-
-  async function resolveOlliTalkContextualRuleStudentScheduleTurn(commandText,context,replyToMessageId){
-    if(!hasOlliTalkRuleStudentScheduleContext()) return null;
+  async function interpretOlliTalkSystemLanguage(commandText,context,replyToMessageId){
     const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0) return null;
-
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('올리 해석에 필요한 원문 메시지를 확인하지 못했습니다.');
+    }
     const response=await fetch('/api/olli-agent',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        mode:'context_resolve',
+        mode:'interpret',
         academyId:context?.academyId || '',
         sessionToken:context?.sessionToken || '',
         message:String(commandText || '').trim(),
@@ -1960,57 +1923,44 @@
     });
     const data=await response.json().catch(()=>({}));
     if(!response.ok){
-      throw new Error(data?.error || data?.message || '문맥 명령 정리 응답을 받지 못했습니다.');
+      throw new Error(data?.error || data?.message || '올리 공통 해석 응답을 받지 못했습니다.');
     }
-    const resolvedText=String(data?.resolvedText || '').trim();
-    if(data?.ok!==true || data?.usedContext!==true || !resolvedText) return null;
-    if(resolvedText===String(commandText || '').trim()) return null;
-    return resolveOlliTalkRuleStudentScheduleTurn(
-      resolvedText,
-      context,
-      sourceMessageId
-    );
+    const language=data?.systemLanguage || {};
+    const route=String(language.route || '').trim();
+    const intent=String(language.intent || '').trim();
+    const standaloneCommand=String(language.standaloneCommand || '').trim();
+    if(data?.ok!==true || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
+      throw new Error('올리 공통 해석 결과가 올바르지 않습니다.');
+    }
+    return {
+      route,
+      intent,
+      standaloneCommand,
+      contextUsed:language.contextUsed===true
+    };
   }
 
 
-  async function resolveOlliTalkContextualReadTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0) return null;
 
+  function olliTalkRuleCommandMatchesInterpretation(router,intent,commandText){
+    const expected=String(intent || '').trim();
+    if(!router || !expected) return false;
+    if(expected==='open_student_info'){
+      try{
+        return typeof router.parseStudentInfoLookupIntent==='function'
+          && !!router.parseStudentInfoLookupIntent(commandText);
+      }catch(_){ return false; }
+    }
     try{
-      const response=await fetch('/api/olli-agent',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          mode:'context_read',
-          academyId:context?.academyId || '',
-          sessionToken:context?.sessionToken || '',
-          message:String(commandText || '').trim(),
-          sourceMessageId,
-          conversation:olliTalkAiConversationMessages.map((item)=>({
-            role:item.role,
-            content:item.content
-          }))
-        })
-      });
-      const data=await response.json().catch(()=>({}));
-      if(!response.ok){
-        throw new Error(data?.error || data?.message || '문맥 조회 응답을 받지 못했습니다.');
-      }
-      const replyText=String(data?.output || '').trim();
-      if(data?.ok!==true || data?.handled!==true || !replyText) return null;
-      return {
-        assistantMessage:await saveOlliTalkOlliReply(context,replyText,sourceMessageId),
-        replyText,
-        recordAi:false
-      };
-    }catch(error){
-      console.warn('올리톡 AI 문맥 조회 실패:',error?.message || error);
-      throw error;
+      const classified=typeof router.classifyRequest==='function'
+        ? router.classifyRequest(commandText)
+        : null;
+      return String(classified?.intent || '').trim()===expected;
+    }catch(_){
+      return false;
     }
   }
 
- 
 
   function reportOlliTalkAiLegacyRouteOutcome(context,outcome,routeKey,sharedRoute,classifierAvailable){
     if(!context?.academyId || !context?.sessionToken) return;
@@ -2033,26 +1983,72 @@
  async function resolveOlliTalkAiTurn(commandText,context,replyToMessageId,options={}){
     const router=window.OlliCommandRouter;
     const schedule=window.OlliCommandSchedule;
+    const rawCommandText=String(commandText || '').trim();
+    const interpretation=await interpretOlliTalkSystemLanguage(
+      rawCommandText,
+      context,
+      replyToMessageId
+    );
+    const interpreterRoute=String(interpretation.route || '').trim();
+    const interpreterIntent=String(interpretation.intent || '').trim();
+    commandText=String(interpretation.standaloneCommand || rawCommandText).trim();
 
-    if(olliTalkPendingMakeupDialogue){
-      if(isOlliTalkPendingReasonCancel(commandText)){
+    if(options.allowSuggestedQuery && router && typeof router.runSuggestedQuery==='function'){
+      const suggested=await router.runSuggestedQuery(commandText,{
+        source:'olli_talk_reply_button',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(suggested?.handled===true){
+        reportOlliTalkAiLegacyRouteOutcome(
+          context,
+          'suggested',
+          String(suggested.intent || suggested.payload?.intent || '').trim(),
+          null,
+          false
+        );
+        const suggestedMessage=String(suggested.message || '').trim() || '조회 결과를 확인했어요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,suggestedMessage,replyToMessageId),
+          replyText:suggestedMessage,
+          recordAi:false
+        };
+      }
+    }
+
+    if(interpreterRoute==='chat'){
+      const resolved=await resolveOlliTalkAiReply(rawCommandText,context);
+      return {
+        assistantMessage:await saveOlliTalkOlliReply(context,resolved.message,replyToMessageId),
+        replyText:resolved.message,
+        recordAi:true
+      };
+    }
+
+    if(interpreterRoute==='rule'){
+      if(interpreterIntent==='cancel_pending'){
         olliTalkPendingMakeupDialogue=null;
-        const message='보강 등록 준비를 취소했어요.';
+        olliTalkPendingActionReason=null;
+        const message='진행 중인 작업 준비를 취소했어요.';
         return {
           assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
           replyText:message,
           recordAi:false
         };
       }
-      const makeupTurn=await resolveOlliTalkContextualMakeupTurn(
-        commandText,
-        context,
-        replyToMessageId
-      );
-      if(makeupTurn) return makeupTurn;
+      if(!olliTalkRuleCommandMatchesInterpretation(router,interpreterIntent,commandText)){
+        const message='올리가 이해한 업무와 규칙 시스템 명령이 일치하지 않아 실행하지 않았어요. 요청을 조금 더 구체적으로 알려 주세요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+      olliTalkPendingMakeupDialogue=null;
+      olliTalkPendingActionReason=null;
     }
 
-    if(olliTalkPendingActionReason){
+    if(interpreterRoute!=='rule' && olliTalkPendingActionReason){
       if(isOlliTalkPendingReasonCancel(commandText)){
         olliTalkPendingActionReason=null;
         const message='작업 준비를 취소했어요.';
@@ -2212,35 +2208,22 @@
       };
     }
 
-    const ruleStudentScheduleTurn=await resolveOlliTalkRuleStudentScheduleTurn(
-      commandText,
-      context,
-      replyToMessageId
-    );
-    if(ruleStudentScheduleTurn) return ruleStudentScheduleTurn;
-
     const routeClassifier=window.OlliTeamTalkAgentRouteClassifier;
     const classifierAvailable=!!(routeClassifier && typeof routeClassifier.classify==='function');
-    const sharedRoute=classifierAvailable
+    const sharedRoute=interpreterRoute==='agent' && classifierAvailable
       ? routeClassifier.classify(commandText,{router})
       : null;
-    if(!sharedRoute && classifierAvailable){
-      const contextualRuleTurn=await resolveOlliTalkContextualRuleStudentScheduleTurn(
-        commandText,
-        context,
-        replyToMessageId
-      );
-      if(contextualRuleTurn) return contextualRuleTurn;
-      const contextualTurn=await resolveOlliTalkContextualReadTurn(
-        commandText,
-        context,
-        replyToMessageId
-      );
-      if(contextualTurn) return contextualTurn;
-    }
-    if(sharedRoute){
-      const routedTurn=await resolveOlliTalkSharedAgentRouteTurn(sharedRoute,commandText,context,replyToMessageId);
-      if(routedTurn) return routedTurn;
+    if(interpreterRoute==='agent'){
+      if(sharedRoute){
+        const routedTurn=await resolveOlliTalkSharedAgentRouteTurn(sharedRoute,commandText,context,replyToMessageId);
+        if(routedTurn) return routedTurn;
+      }
+      const resolved=await resolveOlliTalkAiReply(rawCommandText,context);
+      return {
+        assistantMessage:await saveOlliTalkOlliReply(context,resolved.message,replyToMessageId),
+        replyText:resolved.message,
+        recordAi:true
+      };
     }
 
     const makeupAddDraftCandidate=parseOlliTalkMakeupAddDraftCandidate(commandText,router);
@@ -2369,30 +2352,16 @@
       }
     }
 
-    if(options.allowSuggestedQuery && router && typeof router.runSuggestedQuery==='function'){
-      const suggested=await router.runSuggestedQuery(commandText,{
-        source:'olli_talk_reply_button',
-        selectedStudent:null,
-        autoSubmitContext:null
-      });
-      if(suggested?.handled===true){
-        reportOlliTalkAiLegacyRouteOutcome(
-          context,
-          'suggested',
-          String(suggested.intent || suggested.payload?.intent || '').trim(),
-          sharedRoute,
-          classifierAvailable
-        );
-        const suggestedMessage=String(suggested.message || '').trim() || '조회 결과를 확인했어요.';
-        return {
-          assistantMessage:await saveOlliTalkOlliReply(context,suggestedMessage,replyToMessageId),
-          replyText:suggestedMessage,
-          recordAi:false
-        };
-      }
+    if(interpreterRoute==='rule'){
+      const message='요청을 시스템 명령으로 해석했지만 규칙 시스템에 연결하지 못했어요. 필요한 정보를 조금 더 구체적으로 알려 주세요.';
+      return {
+        assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+        replyText:message,
+        recordAi:false
+      };
     }
 
-    const resolved=await resolveOlliTalkAiReply(commandText,context);
+    const resolved=await resolveOlliTalkAiReply(rawCommandText,context);
     return {
       assistantMessage:await saveOlliTalkOlliReply(context,resolved.message,replyToMessageId),
       replyText:resolved.message,

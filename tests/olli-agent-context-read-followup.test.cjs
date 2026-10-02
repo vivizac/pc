@@ -7,10 +7,93 @@ const test = require('node:test');
 
 const {
   normalizeMentionConversation,
+  resolveOlliSystemInterpretation,
+  routeForSystemIntent,
   resolveContextualReadRewrite,
   resolveContextualMakeupRewrite,
   studentLabel,
 } = require('../apps/mobile/api/_lib/olli-agent/context-route.cjs');
+
+
+
+test('unified interpreter runs on the first turn, anonymizes students, and restores rule system language', async () => {
+  let observed=null;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:10,
+    currentMessage:'이민형 시간표 알려줘',
+    conversation:[],
+    loadStudents:async()=>[
+      {id:'student-1',name:'이민형'},
+    ],
+    modelRunner:async(input)=>{
+      observed=input;
+      return {
+        route:'rule',
+        intent:'get_student_schedule',
+        standalone_command:'학생A 시간표 알려줘',
+        context_used:false,
+      };
+    },
+  });
+
+  assert.ok(observed);
+  assert.equal(observed.transcript,'');
+  assert.equal(observed.currentText,'학생A 시간표 알려줘');
+  assert.equal(result.route,'rule');
+  assert.equal(result.intent,'get_student_schedule');
+  assert.equal(result.standaloneCommand,'이민형 시간표 알려줘');
+  assert.equal(result.contextUsed,false);
+});
+
+test('unified interpreter resolves follow-up context before deterministic routing', async () => {
+  let observed=null;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:11,
+    currentMessage:'그럼 지난주는?',
+    conversation:[
+      {role:'user',content:'이민형 시간표 알려줘'},
+      {role:'assistant',content:'이민형님의 정규 수업은 월요일 4시 A반입니다.'},
+    ],
+    loadStudents:async()=>[
+      {id:'student-1',name:'이민형'},
+    ],
+    modelRunner:async(input)=>{
+      observed=input;
+      return {
+        route:'agent',
+        intent:'get_student_schedule',
+        standalone_command:'학생A 지난주 시간표 알려줘',
+        context_used:true,
+      };
+    },
+  });
+
+  assert.match(observed.transcript,/학생A 시간표 알려줘/);
+  assert.doesNotMatch(observed.transcript,/이민형/);
+  assert.equal(result.route,'rule','server route is derived from the intent contract, not model route text');
+  assert.equal(result.intent,'get_student_schedule');
+  assert.equal(result.standaloneCommand,'이민형 지난주 시간표 알려줘');
+  assert.equal(result.contextUsed,true);
+});
+
+test('unified interpreter has one deterministic route contract per system intent', () => {
+  assert.equal(routeForSystemIntent('add_makeup'),'rule');
+  assert.equal(routeForSystemIntent('get_student_schedule'),'rule');
+  assert.equal(routeForSystemIntent('get_attendance'),'agent');
+  assert.equal(routeForSystemIntent('set_attendance_status'),'agent');
+  assert.equal(routeForSystemIntent('complex_analysis'),'chat');
+  assert.equal(routeForSystemIntent('general_chat'),'chat');
+});
 
 test('active mention conversation keeps every valid user/assistant turn without truncation', () => {
   const source=[];
@@ -205,42 +288,33 @@ test('makeup context stays active for both clarification and recoverable blocked
   assert.match(pc,/state\.pendingMakeupDialogue=\{ active:true, status:interactionStatus, prompt:aiReply \};/);
 });
 
-test('contextual read goes directly to the main read Agent after source validation', () => {
+test('PC and Mobile use one unified interpreter before rule or Agent routing', () => {
   const root=path.resolve(__dirname,'..');
   const api=fs.readFileSync(path.join(root,'apps/mobile/api/olli-agent.js'),'utf8');
-  const runtime=fs.readFileSync(path.join(root,'apps/mobile/api/_lib/olli-agent/runtime.cjs'),'utf8');
   const mobile=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'utf8');
   const pc=fs.readFileSync(path.join(root,'apps/pc/pc-team-talk.js'),'utf8');
 
-  const readBranch=api.indexOf("if (mode === 'context_read'");
-  const readEnd=api.indexOf("const executionMessage=message;",readBranch);
-  const block=api.slice(readBranch,readEnd);
-  assert.ok(readBranch>=0 && readEnd>readBranch);
-  assert.match(block,/prepareAgentContextReadPrivacyInput\(/);
-  assert.match(block,/runContextualReadAgent\(/);
-  assert.doesNotMatch(block,/resolveContextualReadRewrite/);
-  assert.doesNotMatch(block,/context-route\.cjs/);
-  assert.match(runtime,/name:'Olli Contextual Read'/);
-  assert.match(runtime,/get_student_schedule/);
-  assert.match(runtime,/get_attendance/);
-  assert.match(runtime,/get_pickups/);
-  assert.match(runtime,/read_timetable_context_query/);
-  assert.match(runtime,/OLLI_CONTEXT_UNRELATED/);
+  const interpretBranch=api.indexOf("if (mode === 'interpret')");
+  const validateIndex=api.indexOf('validatePickupSourceMessage({',interpretBranch);
+  const resolverIndex=api.indexOf('resolveOlliSystemInterpretation',interpretBranch);
+  assert.ok(interpretBranch>=0 && validateIndex>interpretBranch && resolverIndex>validateIndex);
 
-  assert.match(mobile,/mode:'context_read'/);
-  assert.match(pc,/mode:'context_read'/);
-  assert.doesNotMatch(
-    mobile.slice(
-      mobile.indexOf('async function resolveOlliTalkContextualReadTurn'),
-      mobile.indexOf('function reportOlliTalkAiLegacyRouteOutcome')
-    ),
-    /routeClassifier\.classify/
-  );
-  assert.doesNotMatch(
-    pc.slice(
-      pc.indexOf('async function resolveContextualReadTurn'),
-      pc.indexOf('function reportAiLegacyRouteOutcome')
-    ),
-    /routeClassifier\.classify/
-  );
+  for(const source of [mobile,pc]){
+    const resolveName=source===mobile ? 'async function resolveOlliTalkAiTurn' : 'async function resolveAiTurn';
+    const start=source.indexOf(resolveName);
+    const end=source===mobile
+      ? source.indexOf('function getOlliTalkMentionMessageText',start)
+      : source.indexOf('function updateComposerState',start);
+    const block=source.slice(start,end);
+    assert.match(source,/mode:'interpret'/);
+    assert.doesNotMatch(block,/mode:'context_read'/);
+    assert.doesNotMatch(block,/mode:'context_resolve'/);
+    const interpret=block.indexOf('interpretOlli');
+    const classify=block.indexOf('routeClassifier.classify(commandText,{router})');
+    const prepare=block.search(/router\.prepareAction/);
+    assert.ok(interpret>=0 && classify>interpret && prepare>interpret);
+    assert.match(block,/sharedRoute=interpreterRoute==='agent'/);
+    assert.match(block,/if\(interpreterRoute==='rule'\)/);
+  }
 });
+
