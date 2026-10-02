@@ -409,9 +409,6 @@
       { role:'user', content:userText },
       { role:'assistant', content:assistantText }
     );
-    if (olliTalkAiConversationMessages.length > 12) {
-      olliTalkAiConversationMessages = olliTalkAiConversationMessages.slice(-12);
-    }
   }
 
   function isOlliTalkAiEnabled(){
@@ -1812,7 +1809,11 @@
           academyId:context?.academyId || '',
           sessionToken:context?.sessionToken || '',
           message:String(commandText || '').trim(),
-          sourceMessageId
+          sourceMessageId,
+          conversation:olliTalkAiConversationMessages.map((item)=>({
+            role:item.role,
+            content:item.content
+          }))
         })
       });
       const data=await response.json().catch(()=>({}));
@@ -5690,7 +5691,7 @@
             }else{
               syncOlliTalkAssistantTypingIndicator();
             }
-            if (turn.recordAi) recordOlliTalkAiConversationTurn(commandText, turn.replyText);
+            recordOlliTalkAiConversationTurn(commandText, turn.replyText);
           }else{
             const turn=await resolveOlliTalkBotTurn(commandText,context,Number(payload.message.id));
             appendOlliTalkPersistedMessage(turn.assistantMessage,context.memberId);

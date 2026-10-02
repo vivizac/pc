@@ -61,6 +61,7 @@ export default async function handler(req, res) {
         requestContext,
         sourceMessageId,
         currentMessage:message,
+        conversation:Array.isArray(body.conversation) ? body.conversation : [],
       });
       return res.status(200).json({
         ok:true,
