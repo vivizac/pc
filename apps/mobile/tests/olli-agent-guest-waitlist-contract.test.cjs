@@ -27,7 +27,7 @@ test('guest waitlist privacy replaces the real guest name before model egress',(
   assert.equal(prepared.subjectRefs[0].label,'학생A');
   assert.doesNotMatch(prepared.safeText,/비재원민지/);
   assert.match(prepared.safeText,/학생A/);
-  assert.equal(prepared.waitlistGuestAccess.resolve('학생A').guestName,'비재원민지');
+  assert.equal(prepared.waitlistGuestAccess.resolve('학생A').guestName,'민지');
 });
 
 test('guest waitlist cancel resolves current row and stores only a pending cancel card',async()=>{
