@@ -14,19 +14,22 @@ test('PC move gate uses only shared move parser',()=>{
   assert.doesNotMatch(block,/parseMoveCancelMutationIntent|prepareAction|cancel_move/);
 });
 
-test('PC move is routed before move cancel and legacy preparation',()=>{
-  const start=talk.indexOf('async function resolveAiTurn');
-  const end=talk.indexOf('function updateComposerState',start);
-  const block=talk.slice(start,end);
-  const move=block.indexOf('if (isMoveAgentCandidate(commandText, router))');
-  const cancel=block.indexOf('if (isMoveCancelAgentCandidate(commandText, router))');
-  const legacy=block.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(move>=0);
-  assert.ok(cancel>move);
-  assert.ok(legacy>cancel);
-  assert.match(block,/return resolveMoveAgentTurn\(commandText, current, replyToMessageId\)/);
-});
+test('PC move is routed before move cancel and legacy preparation — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'move'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('PC move bridge uses source-bound production without client-side second action save',()=>{
   const start=talk.indexOf('async function resolveMoveAgentTurn');
   const end=talk.indexOf('async function resolveMoveCancelAgentTurn',start);
