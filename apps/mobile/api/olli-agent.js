@@ -44,7 +44,26 @@ export default async function handler(req, res) {
       }
 
       const privacyModule=await import('./_lib/olli-agent/privacy.cjs');
-      const prepared=await privacyModule.prepareAgentPrivacyInput(message,requestContext);
+      let prepared;
+      let agentSession=null;
+      try{
+        const sessionModule=await import('./_lib/olli-agent/session.cjs');
+        const candidateSession=sessionModule.createOlliAgentSession({
+          requestContext,
+          surface:'team_talk',
+          runKey:'team-chat-message:'+String(sourceMessageId),
+        });
+        const sessionPrivacy=await privacyModule.prepareAgentReadPrivacyInput(
+          message,
+          requestContext,
+          {session:candidateSession}
+        );
+        prepared=sessionPrivacy.preparedPrivacy;
+        if(sessionPrivacy.sessionEnabled===true) agentSession=candidateSession;
+      }catch(sessionError){
+        if(!String(sessionError?.code||'').startsWith('OLLI_AGENT_SESSION_')) throw sessionError;
+        prepared=await privacyModule.prepareAgentPrivacyInput(message,requestContext);
+      }
       const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
       const agentContext=contextModule.toAgentRunContext(requestContext);
       let result;
@@ -64,6 +83,7 @@ export default async function handler(req, res) {
           sourceMessageId,
           sourceMessageText:message,
           readIntent,
+          session:agentSession,
         });
       }else if(mode==='schedule_read'){
         result=await runtimeModule.runStudentScheduleRead({
@@ -72,6 +92,7 @@ export default async function handler(req, res) {
           preparedPrivacy:prepared,
           sourceMessageId,
           sourceMessageText:message,
+          session:agentSession,
         });
       }else if(mode==='attendance_read'){
         result=await runtimeModule.runAttendanceRead({
@@ -80,6 +101,7 @@ export default async function handler(req, res) {
           preparedPrivacy:prepared,
           sourceMessageId,
           sourceMessageText:message,
+          session:agentSession,
         });
       }else{
         result=await runtimeModule.runPickupRead({
@@ -88,6 +110,7 @@ export default async function handler(req, res) {
           preparedPrivacy:prepared,
           sourceMessageId,
           sourceMessageText:message,
+          session:agentSession,
         });
       }
 
