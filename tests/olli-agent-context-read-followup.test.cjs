@@ -112,3 +112,39 @@ test('PC and Mobile record every AI turn while their persistent Olli conversatio
   assert.match(mobile,/conversation:olliTalkAiConversationMessages\.map/);
   assert.match(pc,/conversation:state\.aiConversationMessages\.map/);
 });
+
+
+test('contextual read is executed server-side after persisted source validation', () => {
+  const root=path.resolve(__dirname,'..');
+  const api=fs.readFileSync(path.join(root,'apps/mobile/api/olli-agent.js'),'utf8');
+  const mobile=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'utf8');
+  const pc=fs.readFileSync(path.join(root,'apps/pc/pc-team-talk.js'),'utf8');
+
+  assert.match(api,/mode === 'context_read'/);
+  const readBranch=api.indexOf("if (mode === 'context_read'");
+  const validateIndex=api.indexOf('validatePickupSourceMessage({',readBranch);
+  const resolveIndex=api.indexOf('resolveContextualReadRewrite({',readBranch);
+  const privacyIndex=api.indexOf('prepareAgentReadPrivacyInput(',readBranch);
+  assert.ok(readBranch>=0 && validateIndex>readBranch);
+  assert.ok(resolveIndex>validateIndex);
+  assert.ok(privacyIndex>resolveIndex);
+  assert.match(api,/executionMessage=safeText\(resolved\.resolvedText,5000\)/);
+  assert.match(api,/sourceMessageText:executionMessage/);
+
+  assert.match(mobile,/mode:'context_read'/);
+  assert.match(pc,/mode:'context_read'/);
+  assert.doesNotMatch(
+    mobile.slice(
+      mobile.indexOf('async function resolveOlliTalkContextualReadTurn'),
+      mobile.indexOf('function reportOlliTalkAiLegacyRouteOutcome')
+    ),
+    /routeClassifier\.classify/
+  );
+  assert.doesNotMatch(
+    pc.slice(
+      pc.indexOf('async function resolveContextualReadTurn'),
+      pc.indexOf('function reportAiLegacyRouteOutcome')
+    ),
+    /routeClassifier\.classify/
+  );
+});

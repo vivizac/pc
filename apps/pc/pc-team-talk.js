@@ -2515,8 +2515,7 @@
     }
   }
 
-  async function resolveContextualReadRoute(commandText,current,replyToMessageId,routeClassifier,router) {
-    if (!routeClassifier || typeof routeClassifier.classify !== 'function') return null;
+  async function resolveContextualReadTurn(commandText,current,replyToMessageId) {
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0) return null;
 
@@ -2525,7 +2524,7 @@
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          mode:'context_resolve',
+          mode:'context_read',
           academyId:current?.academyId || '',
           sessionToken:current?.sessionToken || '',
           message:clean(commandText),
@@ -2537,18 +2536,19 @@
         })
       });
       const data=await response.json().catch(()=>({}));
-      if(!response.ok || data?.ok!==true || data?.usedContext!==true) return null;
-      const resolvedText=clean(data?.resolvedText);
-      if(!resolvedText || resolvedText===clean(commandText)) return null;
-
-      const route=routeClassifier.classify(resolvedText,{router});
-      if(!route || !['timetable_read','attendance_read','pickup_read','schedule_read'].includes(clean(route.key))){
-        return null;
+      if(!response.ok){
+        throw new Error(data?.error || data?.message || '문맥 조회 응답을 받지 못했습니다.');
       }
-      return route;
+      const replyText=clean(data?.output);
+      if(data?.ok!==true || data?.handled!==true || !replyText) return null;
+      return {
+        assistantMessage:await saveAssistantReply(current,replyText,sourceMessageId),
+        replyText,
+        recordAi:false
+      };
     } catch (error) {
-      console.warn('PC 올리 AI 문맥 해석 실패:',error?.message || error);
-      return null;
+      console.warn('PC 올리 AI 문맥 조회 실패:',error?.message || error);
+      throw error;
     }
   }
 
@@ -2738,17 +2738,16 @@
 
     const routeClassifier=global.OlliTeamTalkAgentRouteClassifier;
     const classifierAvailable=!!(routeClassifier && typeof routeClassifier.classify==='function');
-    let sharedRoute=classifierAvailable
+    const sharedRoute=classifierAvailable
       ? routeClassifier.classify(commandText,{router})
       : null;
     if(!sharedRoute && classifierAvailable){
-      sharedRoute=await resolveContextualReadRoute(
+      const contextualTurn=await resolveContextualReadTurn(
         commandText,
         current,
-        replyToMessageId,
-        routeClassifier,
-        router
+        replyToMessageId
       );
+      if(contextualTurn) return contextualTurn;
     }
     if(sharedRoute){
       const routedTurn=await resolveSharedAgentRouteTurn(sharedRoute,commandText,current,replyToMessageId);
