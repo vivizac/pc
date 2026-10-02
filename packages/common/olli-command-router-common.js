@@ -2019,4 +2019,8 @@
     getPendingWriteCommand() { return pendingWriteCommand ? Object.assign({}, pendingWriteCommand) : null; },
     getPendingReasonCommand() { return pendingReasonCommand ? Object.assign({}, pendingReasonCommand) : null; }
   });
-})(window);
+})(typeof window !== 'undefined' ? window : globalThis);
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = globalThis.OlliCommandRouter;
+}
