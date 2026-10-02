@@ -2715,6 +2715,29 @@
     const interpreterIntent=clean(interpretation.intent);
     commandText=clean(interpretation.standaloneCommand) || rawCommandText;
 
+    if (options.allowSuggestedQuery && router && typeof router.runSuggestedQuery === 'function') {
+      const suggested = await router.runSuggestedQuery(commandText, {
+        source:'olli_talk_reply_button',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if (suggested?.handled === true) {
+        reportAiLegacyRouteOutcome(
+          current,
+          'suggested',
+          clean(suggested.intent || suggested.payload?.intent),
+          null,
+          false
+        );
+        const suggestedMessage = clean(suggested.message) || '조회 결과를 확인했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current, suggestedMessage, replyToMessageId),
+          replyText:suggestedMessage,
+          recordAi:false
+        };
+      }
+    }
+
     if(interpreterRoute==='chat'){
       const resolved=await resolveAiReply(rawCommandText,current);
       return {
@@ -3044,29 +3067,6 @@
         return {
           assistantMessage:await saveAssistantReply(current, queryMessage, replyToMessageId),
           replyText:queryMessage,
-          recordAi:false
-        };
-      }
-    }
-
-    if (options.allowSuggestedQuery && router && typeof router.runSuggestedQuery === 'function') {
-      const suggested = await router.runSuggestedQuery(commandText, {
-        source:'olli_talk_reply_button',
-        selectedStudent:null,
-        autoSubmitContext:null
-      });
-      if (suggested?.handled === true) {
-        reportAiLegacyRouteOutcome(
-          current,
-          'suggested',
-          clean(suggested.intent || suggested.payload?.intent),
-          sharedRoute,
-          classifierAvailable
-        );
-        const suggestedMessage = clean(suggested.message) || '조회 결과를 확인했어요.';
-        return {
-          assistantMessage:await saveAssistantReply(current, suggestedMessage, replyToMessageId),
-          replyText:suggestedMessage,
           recordAi:false
         };
       }
