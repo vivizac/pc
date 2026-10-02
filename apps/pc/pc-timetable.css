@@ -116,39 +116,14 @@
 #recordRoomScreen .olliTtSection.fiveDay .olliTtGrid { grid-template-columns: 56px repeat(5, minmax(0, 1fr)); }
 #recordRoomScreen .olliTtSection.saturdayCollapsed .olliTtGrid { grid-template-columns: 56px repeat(5, minmax(0, 1fr)) 82px; }
 #recordRoomScreen .olliTtGrid.olliTtHalfHourGrid { height:auto; min-height:calc(52px + (var(--olli-tt-rows) * var(--olli-tt-class-row-height))); grid-template-rows:52px repeat(var(--olli-tt-rows), var(--olli-tt-class-row-height)); }
-#recordRoomScreen .olliTtHalfHourShell {
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex: 1;
-  align-items: stretch;
-  gap: 8px;
-}
-#recordRoomScreen .olliTtHalfHourShell > .olliTtSection {
-  min-width: 0;
-  min-height: 0;
-  flex: 1;
-}
-#recordRoomScreen .olliTtHalfHourShell .olliTtScroll {
+#recordRoomScreen .olliTtSection:has(.olliTtHalfHourGrid) .olliTtScroll {
   scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-#recordRoomScreen .olliTtHalfHourShell .olliTtScroll::-webkit-scrollbar {
+#recordRoomScreen .olliTtSection:has(.olliTtHalfHourGrid) .olliTtScroll::-webkit-scrollbar {
   width: 0;
   height: 0;
-}
-#recordRoomScreen .olliTtHalfHourExternalScroll {
-  width: 12px;
-  min-width: 12px;
-  min-height: 0;
-  flex: 0 0 12px;
-  overflow-x: hidden;
-  overflow-y: scroll;
-  background: transparent;
-  scrollbar-gutter: stable;
-}
-#recordRoomScreen .olliTtHalfHourExternalScrollSpacer {
-  width: 1px;
-  min-height: 1px;
+  display: none;
 }
 #recordRoomScreen .olliTtSection.elementary .olliTtGrid { min-height: 100%; }
 #recordRoomScreen .olliTtSection.kinder .olliTtScroll { overflow-y: hidden; }
