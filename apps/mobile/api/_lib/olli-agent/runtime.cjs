@@ -122,6 +122,7 @@ async function runStudentScheduleProbe({
   agentContext,
   requestContext,
   preparedPrivacy,
+  session=null,
 }) {
   assertOpenAiKey();
 
@@ -177,9 +178,9 @@ async function runStudentScheduleProbe({
     },
   });
 
-  const result = await run(agent, preparedPrivacy.safeText, {
-    context: agentContext,
-  });
+  const runOptions={ context:agentContext };
+  if(session) runOptions.session=session;
+  const result = await run(agent, preparedPrivacy.safeText, runOptions);
 
   const finalOutput = String(result?.finalOutput || '').trim();
   if (!finalOutput) {
@@ -2524,6 +2525,7 @@ async function runAttendanceProbe({
   agentContext,
   requestContext,
   preparedPrivacy,
+  session=null,
 }) {
   assertOpenAiKey();
 
@@ -2588,9 +2590,9 @@ async function runAttendanceProbe({
     },
   });
 
-  const result = await run(agent, preparedPrivacy.safeText, {
-    context: agentContext,
-  });
+  const runOptions={ context:agentContext };
+  if(session) runOptions.session=session;
+  const result = await run(agent, preparedPrivacy.safeText, runOptions);
 
   const finalOutput = String(result?.finalOutput || '').trim();
   if (!finalOutput) {
@@ -2614,6 +2616,7 @@ async function runPickupProbe({
   agentContext,
   requestContext,
   preparedPrivacy,
+  session=null,
 }) {
   assertOpenAiKey();
 
@@ -2676,9 +2679,9 @@ async function runPickupProbe({
     modelSettings:{ toolChoice:'get_pickups' },
   });
 
-  const result = await run(agent, preparedPrivacy.safeText, {
-    context:agentContext,
-  });
+  const runOptions={ context:agentContext };
+  if(session) runOptions.session=session;
+  const result = await run(agent, preparedPrivacy.safeText, runOptions);
 
   const finalOutput = String(result?.finalOutput || '').trim();
   if (!finalOutput) {
@@ -4608,6 +4611,7 @@ async function runStudentScheduleRead({
   preparedPrivacy,
   sourceMessageId,
   sourceMessageText,
+  session=null,
 }) {
   const sourceId=Number(sourceMessageId||0);
   if(!Number.isSafeInteger(sourceId)||sourceId<=0){
@@ -4618,7 +4622,7 @@ async function runStudentScheduleRead({
     sourceMessageId:sourceId,
     sourceMessageText,
   });
-  const result=await runStudentScheduleProbe({agentContext,requestContext,preparedPrivacy});
+  const result=await runStudentScheduleProbe({agentContext,requestContext,preparedPrivacy,session});
   return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
 }
 
@@ -4628,6 +4632,7 @@ async function runAttendanceRead({
   preparedPrivacy,
   sourceMessageId,
   sourceMessageText,
+  session=null,
 }) {
   const sourceId=Number(sourceMessageId||0);
   if(!Number.isSafeInteger(sourceId)||sourceId<=0){
@@ -4638,7 +4643,7 @@ async function runAttendanceRead({
     sourceMessageId:sourceId,
     sourceMessageText,
   });
-  const result=await runAttendanceProbe({agentContext,requestContext,preparedPrivacy});
+  const result=await runAttendanceProbe({agentContext,requestContext,preparedPrivacy,session});
   return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
 }
 
@@ -4648,6 +4653,7 @@ async function runPickupRead({
   preparedPrivacy,
   sourceMessageId,
   sourceMessageText,
+  session=null,
 }) {
   const sourceId=Number(sourceMessageId||0);
   if(!Number.isSafeInteger(sourceId)||sourceId<=0){
@@ -4658,7 +4664,7 @@ async function runPickupRead({
     sourceMessageId:sourceId,
     sourceMessageText,
   });
-  const result=await runPickupProbe({agentContext,requestContext,preparedPrivacy});
+  const result=await runPickupProbe({agentContext,requestContext,preparedPrivacy,session});
   return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
 }
 
@@ -4669,6 +4675,7 @@ async function runTimetableRead({
   sourceMessageId,
   sourceMessageText,
   readIntent,
+  session=null,
 }) {
   const sourceId=Number(sourceMessageId||0);
   if(!Number.isSafeInteger(sourceId)||sourceId<=0){
@@ -4696,11 +4703,11 @@ async function runTimetableRead({
     String(intent?.viewMode||'').trim()==='schedule' &&
     subjectRefs.length===1
   ){
-    const result=await runStudentScheduleProbe({agentContext,requestContext,preparedPrivacy});
+    const result=await runStudentScheduleProbe({agentContext,requestContext,preparedPrivacy,session});
     return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
   }
   if(intent?.intent==='find_pickups' && subjectRefs.length===1){
-    const result=await runPickupProbe({agentContext,requestContext,preparedPrivacy});
+    const result=await runPickupProbe({agentContext,requestContext,preparedPrivacy,session});
     return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
   }
 
@@ -4741,7 +4748,9 @@ async function runTimetableRead({
     modelSettings:{toolChoice:'read_timetable_query'},
   });
 
-  const result=await run(agent,preparedPrivacy.safeText,{context:agentContext});
+  const runOptions={context:agentContext};
+  if(session) runOptions.session=session;
+  const result=await run(agent,preparedPrivacy.safeText,runOptions);
   const finalOutput=restorePreparedSubjectLabels(
     labelBook.restore(String(result?.finalOutput||'').trim()),
     preparedPrivacy
