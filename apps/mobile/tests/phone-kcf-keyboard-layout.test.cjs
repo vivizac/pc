@@ -5,6 +5,8 @@ const assert = require('node:assert/strict');
 const js = fs.readFileSync('kinder-feedback.js', 'utf8');
 const css = fs.readFileSync('kinder-feedback.css', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
+const normalJs = fs.readFileSync('kcf-normal-sheet.js', 'utf8');
+const normalCss = fs.readFileSync('kcf-normal-sheet.css', 'utf8');
 const teacherJs = fs.readFileSync('kcf-teacher-sheet.js', 'utf8');
 const teacherCss = fs.readFileSync('kcf-teacher-sheet.css', 'utf8');
 
@@ -40,35 +42,37 @@ test('inline QuickNote source stays fixed at its normal page position', () => {
   assert.doesNotMatch(wrap, /bottom:4px/);
 });
 
-test('inline QuickNote input is read-only and its parent opens the shared sheet without native tap flash', () => {
+test('inline QuickNote input is read-only and its parent routes to a mode-specific sheet without native tap flash', () => {
   assert.match(html, /<textarea class="kcfInput" id="kcfInput"[^>]*readonly[^>]*>/);
   assert.match(css, /#kinderChatFeedbackScreen \.kcfInput \{[\s\S]*?pointer-events:none;[\s\S]*?-webkit-user-select:none;[\s\S]*?-webkit-touch-callout:none;/);
   assert.match(css, /#kinderChatFeedbackScreen \.kcfComposerBottom \{[\s\S]*?-webkit-tap-highlight-color:transparent;/);
   const pointer = js.match(/composerBottom\.addEventListener\('pointerdown',[\s\S]*?\n    \}\);/)?.[0] || '';
-  assert.match(pointer, /window\.KcfComposerSheet \|\| window\.KcfTeacherSheet/);
   assert.match(pointer, /event\.preventDefault\(\)/);
-  assert.match(pointer, /sheet\.open\(\)/);
+  assert.match(pointer, /openKinderChatFeedbackComposerSheet\(\)/);
+  assert.match(js, /window\.KcfTeacherSheet[\s\S]*?window\.KcfNormalSheet/);
   assert.doesNotMatch(js, /input\.addEventListener\('pointerdown'/);
 });
 
-test('all programmatic QuickNote focus requests route to the shared sheet', () => {
+test('all programmatic QuickNote focus requests route to the correct mode-specific sheet', () => {
   assert.match(js, /function openKinderChatFeedbackComposerSheet\(\)/);
   assert.match(js, /function focusKinderChatFeedbackInput\(\) \{\s*openKinderChatFeedbackComposerSheet\(\);\s*\}/);
   assert.doesNotMatch(js, /document\.getElementById\('kcfInput'\)[\s\S]{0,120}\.focus\(/);
 });
 
-test('shared QuickNote sheet alone follows visualViewport while its keyboard is open', () => {
+test('normal and Class sheets keep independent visualViewport state', () => {
+  assert.match(normalJs, /global\.visualViewport/);
+  assert.match(normalJs, /--kcf-normal-vv-top/);
+  assert.match(normalCss, /top:var\(--kcf-normal-vv-top, 0px\)/);
   assert.match(teacherJs, /global\.visualViewport/);
   assert.match(teacherJs, /--kcf-teacher-vv-top/);
-  assert.match(teacherJs, /--kcf-teacher-vv-height/);
   assert.match(teacherCss, /top:var\(--kcf-teacher-vv-top, 0px\)/);
-  assert.match(teacherCss, /height:var\(--kcf-teacher-vv-height, 100vh\)/);
 });
 
-test('shared sheet hides the underlying message page while editing', () => {
-  assert.match(teacherCss, /body\.kcfTeacherSheetOpen #kcfPersistentTopLayer,[\s\S]*?body\.kcfTeacherSheetOpen #kinderChatFeedbackScreen \.kcfInner,[\s\S]*?body\.kcfTeacherSheetOpen #kinderChatFeedbackScreen \.kcfComposerLayer/);
+test('each sheet hides the underlying message page with its own body class', () => {
+  assert.match(normalCss, /body\.kcfNormalSheetOpen #kcfPersistentTopLayer/);
+  assert.match(normalJs, /document\.body\.classList\.add\('kcfNormalSheetOpen'\)/);
+  assert.match(teacherCss, /body\.kcfTeacherSheetOpen #kcfPersistentTopLayer/);
   assert.match(teacherJs, /document\.body\.classList\.add\('kcfTeacherSheetOpen'\)/);
-  assert.match(teacherJs, /document\.body\.classList\.remove\('kcfTeacherSheetOpen'\)/);
 });
 
 test('inline source remains one line because multiline editing belongs to the sheet', () => {
