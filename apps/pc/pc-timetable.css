@@ -125,6 +125,11 @@
   grid-template-rows: 52px repeat(2, minmax(216px, 1fr));
 }
 #recordRoomScreen .olliTtSection.kinder .olliTtGrid.olliTtHalfHourGrid { flex:0 0 auto; }
+#recordRoomScreen .olliTtSection.kinder.pickupCollapsed .olliTtGrid.olliTtHalfHourGrid {
+  height:100%;
+  flex:1 1 auto;
+  grid-template-rows:52px repeat(var(--olli-tt-rows), minmax(var(--olli-tt-class-row-height), 1fr));
+}
 #recordRoomScreen .olliTtSection.kinder:has(.olliTtHalfHourGrid) .olliTtScroll { overflow-y:auto; }
 #recordRoomScreen .olliTtGrid > * { border-right: 1px solid #e8ebef; border-bottom: 1px solid #e8ebef; }
 #recordRoomScreen .olliTtGrid > :nth-child(7n) { border-right: 0; }
@@ -169,9 +174,9 @@
   font-size: calc(12px * var(--olli-text-scale));
   font-weight: 820;
 }
-#recordRoomScreen .olliTtTime.halfHourLabel { padding-top: 0; display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.05; }
+#recordRoomScreen .olliTtTime.halfHourLabel { padding-top:13px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; line-height:1.05; }
 #recordRoomScreen .olliTtTime.halfHourLabel span { display:block; }
-#recordRoomScreen .olliTtTime.halfHourLabel small { display:block; margin-top:4px; color:inherit; font-size:calc(10px * var(--olli-text-scale)); font-weight:760; }
+#recordRoomScreen .olliTtTime.halfHourLabel small { display:block; margin-top:4px; color:inherit; font-size:inherit; font-weight:760; }
 #recordRoomScreen .olliTtCell {
   min-width: 0;
   min-height: 0;
