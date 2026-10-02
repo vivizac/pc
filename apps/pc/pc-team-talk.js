@@ -1342,6 +1342,27 @@
     return { message };
   }
 
+  function parseTimetableAdminAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router) return null;
+    try {
+      const parsers=[
+        'parseClassLayoutMutationIntent',
+        'parseTeacherAssignmentMutationIntent',
+        'parseSessionOrderMutationIntent',
+        'parseNormalClassDayMutationIntent'
+      ];
+      for (const name of parsers) {
+        if (typeof router[name] !== 'function') continue;
+        const parsed=router[name](commandText);
+        if (parsed) return parsed;
+      }
+      return null;
+    } catch (error) {
+      console.warn('PC 시간표 관리 Agent 후보 판별 실패:', error?.message || error);
+      return null;
+    }
+  }
+
   function parseTimetableReadAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router || typeof router.parseQueryIntent !== 'function') return null;
     try {
@@ -1631,6 +1652,37 @@
       console.warn('PC 픽업 Agent 후보 판별 실패:', error?.message || error);
       return false;
     }
+  }
+
+  async function resolveTimetableAdminAgentTurn(commandText, parsed, current, replyToMessageId) {
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('시간표 관리 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const expectedType=clean(parsed?.intent);
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'timetable_admin_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '시간표 관리 Agent 응답을 받지 못했습니다.');
+    }
+    if(clean(data.message.action.action_type)!==expectedType){
+      throw new Error('시간표 관리 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
   }
 
   async function resolveSourceBoundReadAgentTurn({
@@ -2502,6 +2554,16 @@
         replyText:confirmation,
         recordAi:false
       };
+    }
+
+    const timetableAdminCandidate=parseTimetableAdminAgentCandidate(commandText,router);
+    if(timetableAdminCandidate){
+      return resolveTimetableAdminAgentTurn(
+        commandText,
+        timetableAdminCandidate,
+        current,
+        replyToMessageId
+      );
     }
 
     const batchCandidate = parseBatchAgentCandidate(commandText, router);
