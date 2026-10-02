@@ -158,6 +158,79 @@ function actionPrompt({
   ].join('\n');
 }
 
+const MAKEUP_DIALOGUE_OUTCOMES = Object.freeze({
+  OLLI_AGENT_MAKEUP_GROUP_REQUIRED:{
+    status:'needs_clarification',
+    reason:'class_group_required',
+  },
+  OLLI_AGENT_MAKEUP_TARGET_AMBIGUOUS:{
+    status:'needs_clarification',
+    reason:'target_ambiguous',
+  },
+  OLLI_AGENT_MAKEUP_TIME_INVALID:{
+    status:'needs_clarification',
+    reason:'time_invalid',
+  },
+  OLLI_AGENT_MAKEUP_DATE_INVALID:{
+    status:'needs_clarification',
+    reason:'date_invalid',
+  },
+  OLLI_AGENT_MAKEUP_TIME_NOT_AVAILABLE:{
+    status:'blocked',
+    reason:'time_not_available',
+  },
+  OLLI_AGENT_MAKEUP_GROUP_NOT_AVAILABLE:{
+    status:'blocked',
+    reason:'class_group_not_available',
+  },
+  OLLI_AGENT_MAKEUP_FULL:{
+    status:'blocked',
+    reason:'class_full',
+  },
+  OLLI_AGENT_MAKEUP_ALREADY_EXISTS:{
+    status:'blocked',
+    reason:'duplicate_makeup',
+  },
+  OLLI_AGENT_MAKEUP_CLOSED_DAY:{
+    status:'blocked',
+    reason:'closed_day',
+  },
+  OLLI_AGENT_MAKEUP_DATE_PAST:{
+    status:'blocked',
+    reason:'date_past',
+  },
+  OLLI_AGENT_MAKEUP_ACTIVE_STUDENT_REQUIRED:{
+    status:'blocked',
+    reason:'student_not_active',
+  },
+});
+
+function makeupDialogueOutcomeFromError(error,{
+  sessionDate,
+  classHour,
+  classMinute,
+  classGroup,
+}={}) {
+  const code=clean(error?.code);
+  const spec=MAKEUP_DIALOGUE_OUTCOMES[code];
+  if(!spec) return null;
+
+  const outcome={
+    ok:false,
+    status:spec.status,
+    reason:spec.reason,
+    session_date:clean(sessionDate),
+    class_hour:Number(classHour || 0),
+    class_minute:Number(classMinute || 0),
+  };
+  const group=normalizeRequestedGroup(classGroup);
+  if(group!=='AUTO') outcome.requested_class_group=group;
+  if(code==='OLLI_AGENT_MAKEUP_GROUP_REQUIRED'){
+    outcome.options={ class_groups:['A','B'] };
+  }
+  return outcome;
+}
+
 async function prepareMakeupAction({
   requestContext,
   subjectAccess,
@@ -406,6 +479,7 @@ function createPrepareMakeupTool({
   replyToMessageId = null,
   capturePersistedMessage = null,
   capturePrepareError = null,
+  captureToolOutcome = null,
   sanitizePayload,
 }) {
   if (typeof tool !== 'function' || !z) {
@@ -442,8 +516,20 @@ function createPrepareMakeupTool({
           capturePersistedMessage,
           sanitizePayload,
         });
+        if(typeof captureToolOutcome==='function') captureToolOutcome(payload);
         return JSON.stringify(payload);
       } catch (error) {
+        const dialogue=makeupDialogueOutcomeFromError(error,{
+          sessionDate:session_date,
+          classHour:class_hour,
+          classMinute:class_minute,
+          classGroup,
+        });
+        if(dialogue){
+          const safeDialogue=sanitizePayload(dialogue);
+          if(typeof captureToolOutcome==='function') captureToolOutcome(safeDialogue);
+          return JSON.stringify(safeDialogue);
+        }
         if (typeof capturePrepareError === 'function') {
           capturePrepareError(error);
         }
@@ -459,6 +545,8 @@ module.exports = {
   stableMakeupActionClientMessageId,
   loadPrivateMakeupStudent,
   duplicateMakeup,
+  MAKEUP_DIALOGUE_OUTCOMES,
+  makeupDialogueOutcomeFromError,
   prepareMakeupAction,
   createPrepareMakeupTool,
 };

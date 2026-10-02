@@ -63,26 +63,27 @@ test('shared router exposes a makeup draft for the screenshot command without a 
 });
 
 
-test('makeup business validation errors become normal Olli replies instead of generic AI failures',()=>{
+test('makeup business ambiguity returns structured tool outcome for the Agent to phrase',()=>{
   const runtime=fs.readFileSync(path.join(__dirname,'../api/_lib/olli-agent/runtime.cjs'),'utf8');
   const tool=fs.readFileSync(path.join(__dirname,'../api/_lib/olli-agent/tools/makeup-prepare-tools.cjs'),'utf8');
+  const endpoint=fs.readFileSync(path.join(__dirname,'../api/olli-agent.js'),'utf8');
   const pc=fs.readFileSync(path.resolve(__dirname,'../../pc/pc-team-talk.js'),'utf8');
 
-  assert.match(tool,/capturePrepareError/);
-  assert.match(runtime,/if \(requirePersistedMessage && !persistedMessage && prepareError\) \{\s*throw prepareError;/);
-  assert.match(talk,/OLLI_AGENT_MAKEUP_GROUP_REQUIRED/);
-  assert.match(talk,/saveOlliTalkOlliReply\(context,message,replyToMessageId\)/);
-  assert.match(pc,/OLLI_AGENT_MAKEUP_GROUP_REQUIRED/);
-  assert.match(pc,/saveAssistantReply\(current,message,replyToMessageId\)/);
+  assert.match(tool,/status:'needs_clarification'/);
+  assert.match(tool,/reason:'class_group_required'/);
+  assert.match(tool,/options=\{ class_groups:\['A','B'\] \}/);
+  assert.match(runtime,/If status is needs_clarification, ask exactly one short natural Korean follow-up question/);
+  assert.match(runtime,/interactionStatus:conversationalOutcome \? interactionStatus : ''/);
+  assert.match(endpoint,/interactionStatus:safeText\(probe\.interactionStatus,40\)/);
+  assert.match(talk,/interactionStatus==='needs_clarification'/);
+  assert.match(talk,/mode:'context_makeup_prepare'/);
+  assert.match(pc,/interactionStatus==='needs_clarification'/);
+  assert.match(pc,/mode:'context_makeup_prepare'/);
 });
 
-
-test('makeup tool wires capturePrepareError into createPrepareMakeupTool parameters',()=>{
-  const tool=fs.readFileSync(path.join(__dirname,'../api/_lib/olli-agent/tools/makeup-prepare-tools.cjs'),'utf8');
-  const start=tool.indexOf('function createPrepareMakeupTool({');
-  const end=tool.indexOf('}) {',start);
-  const signature=tool.slice(start,end);
-  assert.ok(start>=0 && end>start);
-  assert.match(signature,/capturePrepareError\s*=\s*null/);
-  assert.match(tool,/if \(typeof capturePrepareError === 'function'\) \{\s*capturePrepareError\(error\);/);
+test('makeup clarification continuation is bounded by active Olli conversation state',()=>{
+  assert.match(talk,/let olliTalkPendingMakeupDialogue = null/);
+  assert.match(talk,/olliTalkPendingMakeupDialogue=interactionStatus==='needs_clarification'/);
+  assert.match(talk,/if\(olliTalkPendingMakeupDialogue\)\{/);
+  assert.match(talk,/conversation:olliTalkAiConversationMessages\.map/);
 });

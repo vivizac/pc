@@ -32,15 +32,19 @@ test('PC makeup Agent gate uses shared add_makeup parser only as candidate detec
   assert.doesNotMatch(block,/parseMakeupCancelMutationIntent|cancel_makeup|update_makeup/);
 });
 
-test('PC makeup bridge uses source message id and consumes server-persisted action directly', () => {
+test('PC makeup bridge uses source message id and shared Agent response handler', () => {
   const start=talk.indexOf('async function resolveMakeupAddAgentTurn');
   const end=talk.indexOf('async function resolveMakeupCancelAgentTurn',start);
   const block=talk.slice(start,end);
+  const helperStart=talk.indexOf('async function resolveMakeupAgentResponse');
+  const helperEnd=talk.indexOf('async function resolveMakeupAddAgentTurn',helperStart);
+  const helper=talk.slice(helperStart,helperEnd);
   assert.match(block,/mode:'makeup_prepare'/);
   assert.match(block,/sourceMessageId = Number\(replyToMessageId \|\| 0\)/);
-  assert.match(block,/action_type\) !== 'add_makeup'/);
-  assert.match(block,/assistantMessage:data\.message/);
-  assert.match(block,/recordAi:false/);
+  assert.match(block,/return resolveMakeupAgentResponse/);
+  assert.match(helper,/action_type\) !== 'add_makeup'/);
+  assert.match(helper,/assistantMessage:data\.message/);
+  assert.match(helper,/recordAi:false/);
   assert.doesNotMatch(block,/saveAssistantAction|olli_team_chat_send_action/);
 });
 
@@ -131,4 +135,13 @@ test('PC makeup update bridge uses source message id and server-persisted update
   assert.match(block,/assistantMessage:data\.message/);
   assert.match(block,/recordAi:false/);
   assert.doesNotMatch(block,/saveAssistantAction|olli_team_chat_send_action/);
+});
+
+
+test('PC makeup clarification uses Agent output and contextual continuation', () => {
+  assert.match(talk,/pendingMakeupDialogue/);
+  assert.match(talk,/interactionStatus==='needs_clarification'/);
+  assert.match(talk,/mode:'context_makeup_prepare'/);
+  assert.match(talk,/conversation:state\.aiConversationMessages\.map/);
+  assert.match(talk,/resolveContextualMakeupTurn/);
 });

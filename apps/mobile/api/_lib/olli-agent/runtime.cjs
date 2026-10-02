@@ -835,6 +835,7 @@ async function runMakeupPrepareAgent({
   const today = todayInSeoul();
   let persistedMessage = null;
   let prepareError = null;
+  let toolOutcome = null;
 
   const prepareMakeup = createPrepareMakeupTool({
     tool,
@@ -852,6 +853,9 @@ async function runMakeupPrepareAgent({
     },
     capturePrepareError(error) {
       prepareError = error;
+    },
+    captureToolOutcome(outcome) {
+      toolOutcome = outcome;
     },
     sanitizePayload(payload) {
       return sanitizeAgentToolPayload(payload, preparedPrivacy);
@@ -877,8 +881,9 @@ async function runMakeupPrepareAgent({
       'Convert the visible class time to class_hour and class_minute. For expressions such as 4시 반, use class_minute 30.',
       'Always call prepare_makeup exactly once before answering.',
       'The tool resolves the actual stored timetable slot from current server availability. Never invent or expose an internal time_slot.',
-      'The tool creates a pending confirmation card only. It never directly registers a makeup class.',
-      'Never say the makeup was registered. Say that the makeup registration is waiting for user confirmation.',
+      'The tool returns one of three business outcomes: pending, needs_clarification, or blocked.',
+      'If status is pending, a confirmation card was saved. Never say the makeup was registered.',
+      'If status is needs_clarification or blocked, return the tool result without inventing a choice or a different schedule.',
       'Never ask for, infer, or reveal a real student name, UUID, member ID, session token, academy ID, action ID, message ID, or internal time slot.',
       'Answer briefly in Korean.',
     ].join(' '),
@@ -902,15 +907,41 @@ async function runMakeupPrepareAgent({
     throw prepareError;
   }
 
-  const finalOutput = String(result?.finalOutput || '').trim();
-  if (!finalOutput && (!requirePersistedMessage || !persistedMessage)) {
+  const interactionStatus=String(toolOutcome?.status || '').trim();
+  const conversationalOutcome=['needs_clarification','blocked'].includes(interactionStatus);
+
+  let dialogueOutput='';
+  if(requirePersistedMessage && !persistedMessage && conversationalOutcome){
+    const dialogueAgent=new Agent({
+      name:'Olli Makeup Dialogue',
+      model,
+      instructions:[
+        'You are Olli, continuing a Korean academy-operation conversation.',
+        'You receive only a privacy-safe structured makeup tool result.',
+        'If status is needs_clarification, ask exactly one short natural Korean follow-up question.',
+        'If reason is class_group_required, ask which returned class group the user wants. Do not choose one yourself.',
+        'If status is blocked, explain the reason briefly and naturally. Do not call it a system error.',
+        'Do not mention internal status names, reason codes, anonymous student labels, UUIDs, IDs, or internal time slots.',
+        'Use only facts present in the structured result. Do not invent availability or schedule data.',
+      ].join(' '),
+    });
+    const dialogueResult=await run(
+      dialogueAgent,
+      JSON.stringify(toolOutcome),
+      {context:agentContext}
+    );
+    dialogueOutput=String(dialogueResult?.finalOutput || '').trim();
+  }
+
+  const finalOutput = dialogueOutput || String(result?.finalOutput || '').trim();
+  if (!finalOutput && (!requirePersistedMessage || !persistedMessage || conversationalOutcome)) {
     throw runtimeError(
       '보강 등록 준비 Agent 응답이 비어 있습니다.',
       502,
       'OLLI_AGENT_EMPTY_MAKEUP_PREPARE_RESPONSE'
     );
   }
-  if (requirePersistedMessage && !persistedMessage) {
+  if (requirePersistedMessage && !persistedMessage && !conversationalOutcome) {
     throw runtimeError(
       '보강 확인 카드 저장 결과를 확인하지 못했습니다.',
       502,
@@ -924,6 +955,8 @@ async function runMakeupPrepareAgent({
     output:finalOutput,
     nodeVersion:process.versions.node,
     persistedMessage,
+    interactionStatus:conversationalOutcome ? interactionStatus : '',
+    interaction:conversationalOutcome ? toolOutcome : null,
     recoveredAfterPersist:!!runError,
   };
 }
