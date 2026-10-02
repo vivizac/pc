@@ -3,7 +3,7 @@
 
   if (global.OlliTeamTalkMaterialOrders?.version) return;
 
-  const VERSION = '1.6.0';
+  const VERSION = '1.6.1';
   const ACCOUNT_SESSION_TOKEN_KEY = 'olli_account_session_token_v1';
 
   const state = {
@@ -290,6 +290,12 @@
             <span class="olliMatSummaryLabel">도착</span>
             <strong data-material-count="arrived">0</strong>
           </button>
+          <button class="olliMatSummaryCard archive" type="button" data-material-action="open-archive">
+            <span class="olliMatSummaryIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 7.5h16v11H4z"></path><path d="M7 7.5V5h10v2.5"></path></svg>
+            </span>
+            <span class="olliMatSummaryLabel">재료 보관함</span>
+          </button>
         </div>
 
         <div class="olliMatWorkspace">
@@ -297,10 +303,6 @@
             <div class="olliMatListHead">
               <div class="olliMatPaneTitle">요청 목록</div>
               <div class="olliMatListTools">
-                <button class="olliMatArchiveOpenBtn" type="button" data-material-action="open-archive">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h16v11H4z"></path><path d="M7 7.5V5h10v2.5"></path></svg>
-                  <span>보관함</span>
-                </button>
                 <label class="olliMatSearch">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
                   <input type="search" data-material-search placeholder="품목명, 요청자로 검색" aria-label="재료 요청 검색">
