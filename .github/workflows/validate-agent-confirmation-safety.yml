@@ -1,0 +1,30 @@
+name: Validate Olli Agent confirmation safety
+
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/api/_lib/olli-agent/confirmation-safety.cjs'
+      - 'apps/mobile/api/olli-agent.js'
+      - 'apps/pc/pc-team-talk.js'
+      - 'apps/mobile/olli-talk-beta.js'
+      - 'apps/mobile/tests/olli-agent-confirmation-safety.test.cjs'
+      - 'apps/mobile/tests/olli-agent-confirmation-safety-production-contract.test.cjs'
+      - 'supabase/migrations/*team_chat*agent*.sql'
+      - '.github/workflows/validate-agent-confirmation-safety.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check syntax
+        run: node --check apps/mobile/api/_lib/olli-agent/confirmation-safety.cjs
+      - name: Validate confirmation and stale-state safety
+        working-directory: apps/mobile
+        run: node --test tests/olli-agent-confirmation-safety.test.cjs tests/olli-agent-confirmation-safety-production-contract.test.cjs
