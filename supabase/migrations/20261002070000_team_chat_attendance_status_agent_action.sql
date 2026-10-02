@@ -501,7 +501,7 @@ begin
     'result_message_id',v_result_message_id
   );
 end;
-$function$
+$function$;
 
 
 
