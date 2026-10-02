@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const { resolveAgentEvalContract } = require('./eval-contracts.cjs');
 
 const WORKFLOW_NAME = 'Olli Team Chat Agent';
 const GROUP_PREFIX = 'olli_team_talk_';
@@ -232,10 +233,24 @@ function wrapOlliAgentRun(runFn) {
     const runOptions = buildOlliTraceOptions(agent, options);
     try {
       const result = await runFn(agent, input, runOptions);
+      const summary = summarizeAgentRun(agent, result);
+      const contract = resolveAgentEvalContract(agent?.name);
+      const evaluation = contract ? evaluateRunSummary(summary, contract) : null;
       emitEvalLog({
         status: 'ok',
-        ...summarizeAgentRun(agent, result),
-      });
+        ...summary,
+        evalContract: contract
+          ? {
+              category: contract.category || 'unknown',
+              ok: evaluation.ok,
+              issues: evaluation.issues,
+            }
+          : {
+              category: 'unmapped',
+              ok: false,
+              issues: ['AGENT_EVAL_CONTRACT_MISSING'],
+            },
+      }, evaluation && evaluation.ok === false ? 'warn' : 'info');
       return result;
     } catch (error) {
       emitEvalLog({

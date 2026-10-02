@@ -1,0 +1,33 @@
+name: Validate Olli Agent eval pack
+
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/api/_lib/olli-agent/eval-contracts.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/observability.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/runtime.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/privacy.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/session.cjs'
+      - 'apps/mobile/api/olli-agent.js'
+      - 'apps/mobile/tests/olli-agent-eval-pack.test.cjs'
+      - 'apps/mobile/tests/olli-agent-eval-pack-production-contract.test.cjs'
+      - '.github/workflows/validate-agent-eval-pack.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check syntax
+        run: |
+          node --check apps/mobile/api/_lib/olli-agent/eval-contracts.cjs
+          node --check apps/mobile/api/_lib/olli-agent/observability.cjs
+      - name: Validate representative Agent eval pack
+        working-directory: apps/mobile
+        run: node --test tests/olli-agent-eval-pack.test.cjs tests/olli-agent-eval-pack-production-contract.test.cjs
