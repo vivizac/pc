@@ -1,12 +1,9 @@
 'use strict';
 
-const { callSupabaseRpc } = require('./supabase-rpc.cjs');
 const { loadAcademyStudents } = require('./student-reference-resolver.cjs');
 const { collectStudentNameVariants } = require('../ai-privacy-gateway.cjs');
 const { sanitizeText } = require('../ai-privacy-sanitizer.cjs');
 
-const MAX_CONTEXT_MESSAGES = 8;
-const MAX_STUDENT_LABELS = 20;
 
 function clean(value) {
   return String(value == null ? '' : value).trim();
@@ -55,11 +52,30 @@ function recentConversation(messages, memberId, sourceMessageId) {
       const replyTo=Number(item?.reply_to_message_id || item?.replyToMessageId || 0) || 0;
       return replyTo > 0 && ownUserIds.has(replyTo);
     })
-    .slice(-MAX_CONTEXT_MESSAGES)
     .map((item) => ({
       role:isAiMessage(item) ? 'assistant' : 'user',
       text:messageBody(item),
     }));
+}
+
+function normalizeMentionConversation(messages) {
+  return (Array.isArray(messages) ? messages : [])
+    .map((item) => {
+      const role=clean(item?.role)==='assistant' ? 'assistant' : clean(item?.role)==='user' ? 'user' : '';
+      const text=clean(item?.content ?? item?.text);
+      return role && text ? { role, text } : null;
+    })
+    .filter(Boolean);
+}
+
+function studentLabel(index) {
+  let value=Math.max(0,Number(index)||0);
+  let suffix='';
+  do {
+    suffix=String.fromCharCode(65+(value%26))+suffix;
+    value=Math.floor(value/26)-1;
+  } while(value>=0);
+  return '학생'+suffix;
 }
 
 function canonicalStudentName(row) {
@@ -88,8 +104,8 @@ function buildStudentPrivacyMap(students, texts) {
   const entities = [];
   const reverse = new Map();
 
-  matches.slice(0, MAX_STUDENT_LABELS).forEach((item, index) => {
-    const label = '학생' + String.fromCharCode(65 + index);
+  matches.forEach((item, index) => {
+    const label = studentLabel(index);
     entities.push({ values:item.aliases, replacement:label });
     reverse.set(label, item.name);
   });
@@ -132,7 +148,7 @@ async function defaultModelRunner({ transcript, currentText }) {
   const model = clean(process.env.OPENAI_AGENT_MODEL || process.env.OPENAI_MODEL) || 'gpt-5-mini';
   const system = [
     'You resolve conversational ellipsis for Olli academy operations.',
-    'Read the recent conversation and rewrite ONLY the current user message as a standalone Korean request.',
+    'Read the entire active @Olli conversation and rewrite ONLY the current user message as a standalone Korean request.',
     'Do not answer the request. Do not add facts that are not implied by the conversation.',
     'Preserve a newly named student, date, time, class group, or action from the current message.',
     'If the current message does not clearly depend on the prior conversation, return it unchanged.',
@@ -141,7 +157,7 @@ async function defaultModelRunner({ transcript, currentText }) {
   ].join(' ');
 
   const user = [
-    '[Recent conversation]',
+    '[Active @Olli conversation]',
     transcript,
     '',
     '[Current user message]',
@@ -180,7 +196,7 @@ async function resolveContextualReadRewrite({
   requestContext,
   sourceMessageId,
   currentMessage,
-  callRpc = callSupabaseRpc,
+  conversation = [],
   loadStudents = loadAcademyStudents,
   modelRunner = defaultModelRunner,
 } = {}) {
@@ -193,13 +209,7 @@ async function resolveContextualReadRewrite({
     return { usedContext:false, resolvedText:current };
   }
 
-  const payload = await callRpc('olli_team_chat_list', {
-    p_session_token:requestContext.sessionToken,
-    p_academy_id:requestContext.academyId,
-    p_before_message_id:null,
-    p_limit:40,
-  });
-  const context = recentConversation(payload?.messages, requestContext.memberId, sourceId);
+  const context = normalizeMentionConversation(conversation);
   if (context.length < 2 || !context.some((item) => item.role === 'assistant')) {
     return { usedContext:false, resolvedText:current };
   }
@@ -231,8 +241,9 @@ async function resolveContextualReadRewrite({
 }
 
 module.exports = {
-  MAX_CONTEXT_MESSAGES,
   recentConversation,
+  normalizeMentionConversation,
+  studentLabel,
   buildStudentPrivacyMap,
   restoreStudentLabels,
   extractOutputText,
