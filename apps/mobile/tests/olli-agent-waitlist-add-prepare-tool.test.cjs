@@ -21,6 +21,9 @@ function requestContext(){
 function subjectAccess(division='elementary'){
   return {resolve(label){return label==='학생A'?{studentId:'33333333-3333-4333-8333-333333333333',division}:null;}};
 }
+function guestAccess(division='elementary',guestName='비재원민지'){
+  return {resolve(label){return label==='학생A'?{guestName,division,isGuest:true}:null;}};
+}
 function slot(overrides={}){
   return Object.assign({
     date:'2026-10-03',
@@ -165,16 +168,7 @@ test('waitlist add blocks an existing regular enrollment for the same time',asyn
   );
 });
 
-test('waitlist add scope sends guest requests back to legacy before OpenAI',()=>{
-  assert.throws(
-    ()=>resolveWaitlistAddPrepareScope({
-      needsDisambiguation:false,
-      subjectRefs:[],
-      safeText:'비재원학생 토요일 1시 초등부 대기 등록해줘'
-    }),
-    e=>e?.code==='OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED'
-  );
-
+test('waitlist add scope supports registered and non-enrolled guest subjects',()=>{
   const prepared={
     needsDisambiguation:false,
     subjectRefs:[{label:'학생A'}],
@@ -184,11 +178,50 @@ test('waitlist add scope sends guest requests back to legacy before OpenAI',()=>
   const scope=resolveWaitlistAddPrepareScope(prepared);
   assert.equal(scope.subjectLabel,'학생A');
   assert.equal(scope.division,'elementary');
+  assert.equal(scope.isGuest,false);
   assert.equal(scope.classGroup,'A');
+
+  const guestPrepared={
+    needsDisambiguation:false,
+    subjectRefs:[{label:'학생A'}],
+    waitlistGuestAccess:guestAccess('elementary'),
+    safeText:'학생A 토요일 1시 초등부 대기 등록해줘',
+  };
+  const guestScope=resolveWaitlistAddPrepareScope(guestPrepared);
+  assert.equal(guestScope.isGuest,true);
+  assert.equal(guestScope.division,'elementary');
+
   assert.throws(
     ()=>resolveWaitlistAddPrepareScope({...prepared,safeText:'학생A 대기 취소해줘'}),
     e=>e?.code==='OLLI_AGENT_WAITLIST_ADD_INTENT_REQUIRED'
   );
+});
+
+test('non-enrolled guest waitlist add creates the same pending action without student lookup',async()=>{
+  const {rpc,calls}=baseRpc();
+  const result=await prepareWaitlistAddAction({
+    requestContext:requestContext(),
+    subjectAccess:{resolve(){return null;}},
+    guestAccess:guestAccess('elementary','비재원민지'),
+    studentLabel:'학생A',
+    division:'elementary',
+    sessionDate:'2026-10-03',
+    classHour:1,
+    classMinute:0,
+    classGroup:'A',
+    currentDate:'2026-10-01',
+    requestId:'guest-wait-add',
+    sanitizePayload:p=>p,
+    callRpc:rpc,
+  });
+  assert.equal(result.action_type,'add_waitlist');
+  const action=calls.find(c=>c.name==='olli_team_chat_send_action');
+  assert.equal(action.params.p_action_payload.studentId,'');
+  assert.equal(action.params.p_action_payload.guestName,'비재원민지');
+  assert.equal(action.params.p_action_payload.isGuest,true);
+  assert.equal(action.params.p_action_payload.division,'elementary');
+  assert.ok(!calls.some(c=>c.name==='olli_student_data_access'));
+  assert.doesNotMatch(JSON.stringify(result),/비재원민지/);
 });
 
 test('waitlist add retry key is deterministic',()=>{
