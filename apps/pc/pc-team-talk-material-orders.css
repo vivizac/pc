@@ -29,7 +29,7 @@
 .olliMatSummary{
   flex:0 0 auto;
   display:grid;
-  grid-template-columns:repeat(3,minmax(0,160px));
+  grid-template-columns:repeat(4,minmax(0,160px));
   gap:10px;
   padding:14px 22px 12px;
   border-bottom:1px solid #f1f2f4;
@@ -53,6 +53,12 @@
 .olliMatSummaryCard.requested{background:#fff9da}
 .olliMatSummaryCard.ordered{background:#f2f6fc}
 .olliMatSummaryCard.arrived{background:#eff8f2}
+.olliMatSummaryCard.archive{background:#fff;border-color:#e6e8eb;color:#666c73}
+.olliMatSummaryCard.archive .olliMatSummaryIcon{background:#f7f8f9;color:#777d85}
+.olliMatSummaryCard.archive .olliMatSummaryIcon svg{
+  width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;
+  stroke-linecap:round;stroke-linejoin:round
+}
 .olliMatSummaryCard.active{border-color:rgba(32,35,39,.18);box-shadow:0 2px 9px rgba(20,24,30,.045)}
 .olliMatSummaryIcon{
   width:26px;height:26px;display:grid;place-items:center;border-radius:9px;
@@ -263,7 +269,7 @@
 
 @media(max-width:1220px){
   .olliMatWorkspace{grid-template-columns:minmax(300px,1.15fr) minmax(230px,.85fr)}
-  .olliMatSummary{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .olliMatSummary{grid-template-columns:repeat(4,minmax(0,1fr))}
   .olliMatSearch{width:190px}
   .olliMatItemCard{grid-template-columns:40px minmax(0,1fr) auto 14px}
   .olliMatItemIcon{width:40px;height:40px;flex-basis:40px}
@@ -279,7 +285,7 @@
 
 
 @container (max-width:680px){
-  .olliMatSummary{grid-template-columns:repeat(3,minmax(0,1fr));padding-left:16px;padding-right:16px}
+  .olliMatSummary{grid-template-columns:repeat(4,minmax(0,1fr));padding-left:16px;padding-right:16px}
   .olliMatWorkspace{grid-template-columns:minmax(280px,1.08fr) minmax(210px,.92fr)}
   .olliMatListHead{padding-left:14px;padding-right:10px}
   .olliMatSearch{width:160px;min-width:120px}
@@ -334,26 +340,6 @@
   overflow:hidden;
 }
 .olliMatCurrent[hidden],.olliMatArchiveView[hidden]{display:none!important}
-.olliMatArchiveOpenBtn{
-  height:36px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
-  padding:0 11px;
-  border:1px solid #e6e8eb;
-  border-radius:11px;
-  background:#fff;
-  color:#666c73;
-  font:650 11.5px 'Pretendard',sans-serif;
-  cursor:pointer;
-  white-space:nowrap;
-}
-.olliMatArchiveOpenBtn:hover{background:#f8f9fa;border-color:#dde0e4}
-.olliMatArchiveOpenBtn svg{
-  width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;
-  stroke-linecap:round;stroke-linejoin:round
-}
 .olliMatArchiveView{
   min-height:0;
   flex:1 1 auto;
