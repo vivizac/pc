@@ -1,0 +1,52 @@
+name: Validate attendance status Agent
+
+on:
+  pull_request:
+    paths:
+      - 'packages/common/olli-command-router-common.js'
+      - 'apps/mobile/api/_lib/olli-agent/runtime.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/tools/attendance-status-prepare-tools.cjs'
+      - 'apps/mobile/api/olli-agent.js'
+      - 'apps/pc/pc-team-talk.js'
+      - 'apps/mobile/olli-talk-beta.js'
+      - 'supabase/migrations/*attendance_status_agent_action.sql'
+      - 'tests/attendance-status-agent-router.test.cjs'
+      - 'apps/mobile/tests/olli-agent-attendance-status-prepare-tool.test.cjs'
+      - 'apps/mobile/tests/olli-agent-attendance-status-production-contract.test.cjs'
+      - 'apps/pc/tests/team-talk-attendance-status-agent-bridge.test.cjs'
+      - 'apps/mobile/tests/team-talk-attendance-status-agent-bridge.test.cjs'
+      - '.github/workflows/validate-attendance-status-agent.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check syntax
+        run: |
+          node --check packages/common/olli-command-router-common.js
+          node --check apps/mobile/api/_lib/olli-agent/runtime.cjs
+          node --check apps/mobile/api/_lib/olli-agent/tools/attendance-status-prepare-tools.cjs
+          node --check apps/mobile/api/olli-agent.js
+          node --check apps/pc/pc-team-talk.js
+          node --check apps/mobile/olli-talk-beta.js
+      - name: Validate attendance router
+        run: node --test tests/attendance-status-agent-router.test.cjs
+      - name: Validate attendance prepare tool
+        working-directory: apps/mobile
+        run: node --test tests/olli-agent-attendance-status-prepare-tool.test.cjs
+      - name: Validate attendance production contract
+        working-directory: apps/mobile
+        run: node --test tests/olli-agent-attendance-status-production-contract.test.cjs
+      - name: Validate PC bridge
+        working-directory: apps/pc
+        run: node --test tests/team-talk-attendance-status-agent-bridge.test.cjs
+      - name: Validate Mobile bridge
+        working-directory: apps/mobile
+        run: node --test tests/team-talk-attendance-status-agent-bridge.test.cjs

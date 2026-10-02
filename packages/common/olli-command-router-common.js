@@ -1098,6 +1098,55 @@
     };
   }
 
+  function parseAttendanceStatusMutationIntent(text) {
+    const raw = cleanText(text);
+    const compact = compactText(raw);
+    if (!raw) return null;
+
+    const hasAttendanceContext = /(?:출석부|출결부|출결상태|출석상태|출석체크)/.test(compact);
+    if (!hasAttendanceContext) return null;
+
+    const hasWriteAction = /(?:표시|변경|수정|바꿔|바꾸|체크|처리|기록|입력|저장|초기화|지워|지우|삭제|해제)/.test(compact);
+    if (!hasWriteAction) return null;
+
+    const stripped = compact
+      .replace(/(?:출석부|출결부|출결상태|출석상태)/g, '');
+
+    let status = '';
+    if (/(?:빈칸|공란)/.test(stripped)
+      || /(?:상태|표시).*(?:초기화|지워|지우|삭제|해제)/.test(stripped)
+      || /(?:출석|결석|보강).*(?:지워|지우|삭제|해제)/.test(stripped)) {
+      status = 'blank';
+    } else if (/결석/.test(stripped)) {
+      status = 'absent';
+    } else if (/보강/.test(stripped)) {
+      status = 'makeup';
+    } else if (/(?:출석체크|출석)/.test(stripped)) {
+      status = 'present';
+    }
+    if (!status) return null;
+
+    const sessionKind = status === 'makeup'
+      ? 'makeup'
+      : (status === 'present' || status === 'absent'
+        ? 'regular'
+        : (/(?:보강|보충)/.test(stripped) ? 'makeup' : (/(?:정규|본수업)/.test(stripped) ? 'regular' : 'AUTO')));
+
+    const dateSpec = parseDateExpression(compact);
+    return {
+      type:'mutation',
+      intent:'set_attendance_status',
+      status,
+      sessionKind,
+      dateSpec,
+      dateLabel:dateSpec ? dateSpec.label : '',
+      classHour:firstTimeSlot(raw),
+      classMinute:/\d{1,2}\s*시\s*반/.test(raw)?30:firstTimeMinute(raw),
+      classGroup:firstClassGroup(raw),
+      originalText:raw
+    };
+  }
+
   function parseBatchDraftWriteIntent(text) {
     const raw=cleanText(text);
     const compact=compactText(raw);
@@ -2149,6 +2198,7 @@
     parseTeacherAssignmentMutationIntent,
     parseSessionOrderMutationIntent,
     parseNormalClassDayMutationIntent,
+    parseAttendanceStatusMutationIntent,
     parseMultiWriteIntent,
     parseBatchDraftWriteIntent,
     parseClassMutationIntent,

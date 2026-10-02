@@ -1342,6 +1342,16 @@
     return { message };
   }
 
+  function parseAttendanceStatusAgentCandidate(commandText, router = global.OlliCommandRouter) {
+    if (!router || typeof router.parseAttendanceStatusMutationIntent !== 'function') return null;
+    try {
+      return router.parseAttendanceStatusMutationIntent(commandText) || null;
+    } catch (error) {
+      console.warn('PC 출석부 상태 변경 Agent 후보 판별 실패:', error?.message || error);
+      return null;
+    }
+  }
+
   function parseTimetableAdminAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router) return null;
     try {
@@ -1652,6 +1662,36 @@
       console.warn('PC 픽업 Agent 후보 판별 실패:', error?.message || error);
       return false;
     }
+  }
+
+  async function resolveAttendanceStatusAgentTurn(commandText, parsed, current, replyToMessageId) {
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('출석부 상태 변경 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'attendance_status_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '출석부 상태 변경 Agent 응답을 받지 못했습니다.');
+    }
+    if(clean(data.message.action.action_type)!=='set_attendance_status'){
+      throw new Error('출석부 상태 변경 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
   }
 
   async function resolveTimetableAdminAgentTurn(commandText, parsed, current, replyToMessageId) {
@@ -2554,6 +2594,16 @@
         replyText:confirmation,
         recordAi:false
       };
+    }
+
+    const attendanceStatusCandidate=parseAttendanceStatusAgentCandidate(commandText,router);
+    if(attendanceStatusCandidate){
+      return resolveAttendanceStatusAgentTurn(
+        commandText,
+        attendanceStatusCandidate,
+        current,
+        replyToMessageId
+      );
     }
 
     const timetableAdminCandidate=parseTimetableAdminAgentCandidate(commandText,router);
