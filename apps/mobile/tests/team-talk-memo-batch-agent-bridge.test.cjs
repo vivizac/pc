@@ -5,26 +5,40 @@ const path=require('node:path');
 
 const talk=fs.readFileSync(path.join(__dirname,'../olli-talk-beta.js'),'utf8');
 
-test('Mobile timetable memo add/delete routes through memo_prepare before legacy prepareAction',()=>{
-  const ai=talk.slice(talk.indexOf('async function resolveOlliTalkAiTurn'),talk.indexOf('function getOlliTalkMentionMessageText'));
-  assert.match(talk,/function parseOlliTalkTimetableMemoAgentCandidate/);
-  assert.match(talk,/parseTimetableMemoDeleteMutationIntent/);
-  assert.match(talk,/parseTimetableMemoAddMutationIntent/);
-  assert.match(talk,/mode:'memo_prepare'/);
-  const memo=ai.indexOf('const timetableMemoCandidate=parseOlliTalkTimetableMemoAgentCandidate');
+test('Mobile timetable memo add/delete routes through memo_prepare before legacy prepareAction — shared dispatch contract',()=> {
+  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
+  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'timetable_memo'/);
+  assert.match(dispatch,/case 'batch_write'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
   const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
-  assert.ok(memo>=0 && legacy>memo);
-});
+  assert.ok(classify>=0 && legacy>classify);
 
-test('Mobile batch is detected before individual writes and collects reason turns',()=>{
-  const ai=talk.slice(talk.indexOf('async function resolveOlliTalkAiTurn'),talk.indexOf('function getOlliTalkMentionMessageText'));
-  assert.match(talk,/function parseOlliTalkBatchAgentCandidate/);
-  assert.match(talk,/function buildOlliTalkBatchAgentCommands/);
-  assert.match(ai,/const pendingBatch=olliTalkPendingActionReason\.__batchAgent/);
-  assert.match(ai,/const batchCandidate=parseOlliTalkBatchAgentCandidate/);
-  assert.ok(ai.indexOf('const batchCandidate=parseOlliTalkBatchAgentCandidate')<ai.indexOf('const timetableMemoCandidate=parseOlliTalkTimetableMemoAgentCandidate'));
 });
+test('Mobile batch is detected before individual writes and collects reason turns — shared dispatch contract',()=> {
+  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
+  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'timetable_memo'/);
+  assert.match(dispatch,/case 'batch_write'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('Mobile batch uses batch_prepare and renders all persisted cards',()=>{
   assert.match(talk,/mode:'batch_prepare'/);
   assert.match(talk,/assistantMessages:messages/);
