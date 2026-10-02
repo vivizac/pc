@@ -260,6 +260,13 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
     'Allowed intents are: '+intentList+'.',
     'Rule intents: '+Array.from(OLLI_RULE_INTENTS).join(', ')+'.',
     'Agent intents: '+Array.from(OLLI_AGENT_INTENTS).join(', ')+'.',
+    'get_student_schedule means one enrolled student regular timetable.',
+    'find_available_slots means seat or class availability.',
+    'find_roster_entries means class, absence, makeup, trial, waitlist, or move roster/list lookup.',
+    'find_pickups means pickup roster/list lookup for a date or class.',
+    'get_attendance means one student attendance history and is Agent-routed.',
+    'get_pickups means one student pickup history and is Agent-routed.',
+    'complex_analysis is not yet connected to a dedicated analysis Agent, so use route chat for it.',
     'general_chat must use route chat.',
     'Examples:',
     'User: 학생A 시간표 알려줘 -> route rule, intent get_student_schedule, standalone_command "학생A 시간표 알려줘".',
@@ -306,7 +313,7 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
           {role:'user',content:[{type:'input_text',text:user}]},
         ],
         reasoning:{effort:'minimal'},
-        max_output_tokens:220,
+        max_output_tokens:500,
         text:{
           format:{
             type:'json_schema',
