@@ -12,7 +12,7 @@ test('recentConversation keeps only current member and Olli AI before the source
   const result = recentConversation([
     { id:1, message_type:'text', sender_member_id:'member-a', body:'테스트 학생 시간표 알려줘' },
     { id:2, message_type:'text', sender_member_id:'member-b', body:'다른 선생님 메시지' },
-    { id:3, message_type:'ai', body:'정규 수업이 없습니다.' },
+    { id:3, message_type:'ai', reply_to_message_id:1, body:'정규 수업이 없습니다.' },
     { id:4, message_type:'text', sender_member_id:'member-a', body:'테스트2학생은?' },
   ], 'member-a', 4);
 
@@ -39,7 +39,7 @@ test('context resolver anonymizes names and restores a standalone follow-up requ
         ok:true,
         messages:[
           { id:1, message_type:'text', sender_member_id:'member-a', body:'테스트 학생의 시간표를 알려줘' },
-          { id:2, message_type:'ai', body:'2026-10-02 기준으로 테스트 학생의 정규 수업이 없습니다.' },
+          { id:2, message_type:'ai', reply_to_message_id:1, body:'2026-10-02 기준으로 테스트 학생의 정규 수업이 없습니다.' },
           { id:3, message_type:'text', sender_member_id:'member-a', body:'테스트2학생은?' },
         ],
       };
