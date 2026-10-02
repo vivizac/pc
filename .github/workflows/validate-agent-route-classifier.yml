@@ -1,0 +1,27 @@
+name: Validate Olli Agent route classifier
+
+on:
+  pull_request:
+    paths:
+      - 'packages/common/olli-team-talk-agent-route-common.js'
+      - 'packages/common/pc-runtime-manifest.json'
+      - 'packages/common/mobile-runtime-manifest.json'
+      - 'tests/olli-agent-route-classifier.test.cjs'
+      - 'tests/olli-agent-route-classifier-production-contract.test.cjs'
+      - '.github/workflows/validate-agent-route-classifier.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check syntax
+        run: node --check packages/common/olli-team-talk-agent-route-common.js
+      - name: Validate shared route classifier
+        run: node --test tests/olli-agent-route-classifier.test.cjs tests/olli-agent-route-classifier-production-contract.test.cjs
