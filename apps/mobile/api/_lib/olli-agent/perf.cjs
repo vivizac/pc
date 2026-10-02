@@ -36,7 +36,7 @@ function buildPerfEvent(input = {}) {
     status: cleanName(input.status || 'ok', 20) || 'ok',
   };
 
-  for (const key of ['mode', 'agent', 'rpc', 'errorCode']) {
+  for (const key of ['mode', 'agent', 'rpc', 'tool', 'errorCode']) {
     const value = cleanName(input[key], 100);
     if (value) event[key] = value;
   }

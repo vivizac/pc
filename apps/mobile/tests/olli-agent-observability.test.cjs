@@ -2,6 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { EventEmitter } = require('node:events');
 const {
   WORKFLOW_NAME,
   buildTraceGroupId,
@@ -9,6 +10,7 @@ const {
   summarizeAgentRun,
   evaluateRunSummary,
   buildRouteOutcomeEvent,
+  attachAgentPhaseTiming,
   wrapOlliAgentRun,
 } = require('../api/_lib/olli-agent/observability.cjs');
 
@@ -210,4 +212,55 @@ test('route outcome event rejects unknown surface/outcome and buckets unknown ro
       classifierAvailable:false,
     }
   );
+});
+
+
+test('Agent phase timing hooks emit only structural pre-tool, tool, and post-tool timings', async () => {
+  const previousNodeEnv=process.env.NODE_ENV;
+  const previousPerf=process.env.OLLI_AGENT_PERF_LOGS;
+  const previousInfo=console.info;
+  process.env.NODE_ENV='production';
+  process.env.OLLI_AGENT_PERF_LOGS='1';
+
+  const lines=[];
+  console.info=(line)=>lines.push(String(line));
+
+  class FakeAgent extends EventEmitter {
+    constructor(){
+      super();
+      this.name='Olli Student Schedule Probe';
+    }
+  }
+
+  try{
+    const fake=new FakeAgent();
+    const detach=attachAgentPhaseTiming(fake);
+    fake.emit('agent_start',{},fake,[]);
+    await new Promise((resolve)=>setTimeout(resolve,2));
+    fake.emit('agent_tool_start',{}, {name:'get_student_schedule'}, {toolCall:{}});
+    await new Promise((resolve)=>setTimeout(resolve,2));
+    fake.emit('agent_tool_end',{}, {name:'get_student_schedule'}, '{}', {toolCall:{}});
+    await new Promise((resolve)=>setTimeout(resolve,2));
+    fake.emit('agent_end',{},'done');
+    detach();
+
+    const payloads=lines
+      .filter((line)=>line.startsWith('[OLLI Agent Perf] '))
+      .map((line)=>JSON.parse(line.slice('[OLLI Agent Perf] '.length)));
+
+    assert.deepEqual(payloads.map((item)=>item.phase),[
+      'agent_before_tool',
+      'agent_tool_execution',
+      'agent_after_tool',
+    ]);
+    assert.equal(payloads[1].tool,'get_student_schedule');
+    assert.ok(payloads.every((item)=>typeof item.durationMs==='number'));
+    assert.doesNotMatch(JSON.stringify(payloads),/academy-secret|member-secret|김민수|subject_private_value/i);
+  }finally{
+    console.info=previousInfo;
+    if(previousNodeEnv===undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV=previousNodeEnv;
+    if(previousPerf===undefined) delete process.env.OLLI_AGENT_PERF_LOGS;
+    else process.env.OLLI_AGENT_PERF_LOGS=previousPerf;
+  }
 });

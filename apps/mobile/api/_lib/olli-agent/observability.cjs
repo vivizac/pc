@@ -314,6 +314,80 @@ function emitEvalLog(payload, level = 'info') {
   else console.info(line);
 }
 
+
+function attachAgentPhaseTiming(agent) {
+  if (!agent || typeof agent.on !== 'function') return () => {};
+
+  const agentName = safeName(agent?.name, 'olli-agent');
+  let agentStartedAt = null;
+  let firstToolStartedAt = null;
+  let activeToolStartedAt = null;
+  let lastToolEndedAt = null;
+  let activeToolName = '';
+
+  const onAgentStart = () => {
+    agentStartedAt = startPerfTimer();
+  };
+  const onToolStart = (_context, tool) => {
+    const now = startPerfTimer();
+    if (firstToolStartedAt == null && agentStartedAt != null) {
+      firstToolStartedAt = now;
+      emitPerfLog({
+        phase:'agent_before_tool',
+        status:'ok',
+        agent:agentName,
+        durationMs:perfDurationMs(agentStartedAt),
+      });
+    }
+    activeToolStartedAt = now;
+    activeToolName = safeName(tool?.name, 'unknown-tool');
+  };
+  const onToolEnd = () => {
+    if (activeToolStartedAt != null) {
+      emitPerfLog({
+        phase:'agent_tool_execution',
+        status:'ok',
+        agent:agentName,
+        tool:activeToolName,
+        durationMs:perfDurationMs(activeToolStartedAt),
+      });
+    }
+    lastToolEndedAt = startPerfTimer();
+    activeToolStartedAt = null;
+    activeToolName = '';
+  };
+  const onAgentEnd = () => {
+    if (lastToolEndedAt != null) {
+      emitPerfLog({
+        phase:'agent_after_tool',
+        status:'ok',
+        agent:agentName,
+        durationMs:perfDurationMs(lastToolEndedAt),
+      });
+    } else if (agentStartedAt != null) {
+      emitPerfLog({
+        phase:'agent_without_tool',
+        status:'ok',
+        agent:agentName,
+        durationMs:perfDurationMs(agentStartedAt),
+      });
+    }
+  };
+
+  agent.on('agent_start', onAgentStart);
+  agent.on('agent_tool_start', onToolStart);
+  agent.on('agent_tool_end', onToolEnd);
+  agent.on('agent_end', onAgentEnd);
+
+  return () => {
+    if (typeof agent.off !== 'function') return;
+    agent.off('agent_start', onAgentStart);
+    agent.off('agent_tool_start', onToolStart);
+    agent.off('agent_tool_end', onToolEnd);
+    agent.off('agent_end', onAgentEnd);
+  };
+}
+
 function wrapOlliAgentRun(runFn) {
   if (typeof runFn !== 'function') {
     throw new TypeError('Agents SDK run 함수가 필요합니다.');
@@ -321,6 +395,7 @@ function wrapOlliAgentRun(runFn) {
 
   return async function olliObservedRun(agent, input, options = {}) {
     const runOptions = buildOlliTraceOptions(agent, options);
+    const detachPhaseTiming = attachAgentPhaseTiming(agent);
     const startedAt = startPerfTimer();
     try {
       const result = await runFn(agent, input, runOptions);
@@ -367,6 +442,8 @@ function wrapOlliAgentRun(runFn) {
         errorCode: safeErrorCode(error?.code || error?.name),
       }, 'warn');
       throw error;
+    } finally {
+      detachPhaseTiming();
     }
   };
 }
@@ -382,5 +459,6 @@ module.exports = {
   evaluateRunSummary,
   buildRouteOutcomeEvent,
   emitRouteOutcomeLog,
+  attachAgentPhaseTiming,
   wrapOlliAgentRun,
 };
