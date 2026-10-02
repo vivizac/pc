@@ -4731,6 +4731,8 @@ async function runTimetableRead({
       'Always call read_timetable_query exactly once before answering.',
       'Use only the tool result. Never invent students, classes, availability, pickup details, attendance, waitlists, or move reservations.',
       'Roster names in tool output are anonymous labels such as 명단1 or 명단2. Preserve those labels exactly; the server restores real display names after model execution.',
+      'For roster or pickup counts, use student_count when reporting the number of students. count may represent rows when one student has multiple entries.',
+      'For move reservations, preserve the visible source and target weekday/time/group fields returned by the tool.',
       'If a result is empty, clearly say that no matching timetable data was found.',
       'Never ask for, infer, or reveal UUIDs, internal time slots, member IDs, session tokens, academy IDs, or hidden identifiers.',
       'Answer briefly in Korean.',
