@@ -9,6 +9,11 @@ on:
       - 'tests/olli-agent-route-classifier.test.cjs'
       - 'tests/olli-agent-route-classifier-production-contract.test.cjs'
       - 'tests/olli-agent-legacy-fallback-audit.test.cjs'
+      - 'tests/olli-agent-context-read-followup.test.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/context-route.cjs'
+      - 'apps/mobile/api/olli-agent.js'
+      - 'apps/mobile/olli-talk-beta.js'
+      - 'apps/pc/pc-team-talk.js'
       - '.github/workflows/validate-agent-route-classifier.yml'
 
 permissions:
@@ -23,6 +28,10 @@ jobs:
         with:
           node-version: '24'
       - name: Check syntax
-        run: node --check packages/common/olli-team-talk-agent-route-common.js
+        run: |
+          node --check packages/common/olli-team-talk-agent-route-common.js
+          node --check apps/mobile/api/_lib/olli-agent/context-route.cjs
+          node --check apps/mobile/olli-talk-beta.js
+          node --check apps/pc/pc-team-talk.js
       - name: Validate shared route classifier and fallback audit
-        run: node --test tests/olli-agent-route-classifier.test.cjs tests/olli-agent-route-classifier-production-contract.test.cjs tests/olli-agent-legacy-fallback-audit.test.cjs
+        run: node --test tests/olli-agent-route-classifier.test.cjs tests/olli-agent-route-classifier-production-contract.test.cjs tests/olli-agent-legacy-fallback-audit.test.cjs tests/olli-agent-context-read-followup.test.cjs
