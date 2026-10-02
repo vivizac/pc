@@ -1368,6 +1368,26 @@
     };
   }
 
+  function isOlliTalkSafeMakeupClarification(response,data){
+    const code=String(data?.code || '').trim();
+    const safeCodes=new Set([
+      'OLLI_AGENT_MAKEUP_GROUP_REQUIRED',
+      'OLLI_AGENT_MAKEUP_TIME_NOT_AVAILABLE',
+      'OLLI_AGENT_MAKEUP_GROUP_NOT_AVAILABLE',
+      'OLLI_AGENT_MAKEUP_FULL',
+      'OLLI_AGENT_MAKEUP_ALREADY_EXISTS',
+      'OLLI_AGENT_MAKEUP_CLOSED_DAY',
+      'OLLI_AGENT_MAKEUP_DATE_PAST',
+      'OLLI_AGENT_MAKEUP_TARGET_AMBIGUOUS',
+      'OLLI_AGENT_MAKEUP_ACTIVE_STUDENT_REQUIRED',
+      'OLLI_AGENT_MAKEUP_TIME_INVALID',
+      'OLLI_AGENT_MAKEUP_DATE_INVALID'
+    ]);
+    return [400,404,409].includes(Number(response?.status || 0))
+      && safeCodes.has(code)
+      && !!String(data?.error || '').trim();
+  }
+
   async function resolveOlliTalkMakeupAddAgentTurn(commandText,context,replyToMessageId){
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
@@ -1385,7 +1405,18 @@
       })
     });
     const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
+    if(!response.ok){
+      if(isOlliTalkSafeMakeupClarification(response,data)){
+        const message=String(data.error || '').trim();
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+      throw new Error(data?.error || data?.message || '보강 등록 Agent 응답을 받지 못했습니다.');
+    }
+    if(data?.ok!==true || !data?.message?.action){
       throw new Error(data?.error || data?.message || '보강 등록 Agent 응답을 받지 못했습니다.');
     }
     if(String(data.message.action.action_type || '').trim()!=='add_makeup'){
