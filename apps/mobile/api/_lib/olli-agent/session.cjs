@@ -76,18 +76,18 @@ function normalizeSubjectBinding(item) {
 }
 
 function safeSubjectBinding(row) {
-  const safe = Object.freeze({
+  const safe = {
     label: clean(row?.label),
     subjectRef: clean(row?.subject_ref),
     lastUsedAt: clean(row?.last_used_at),
-  });
+  };
   Object.defineProperty(safe, 'studentId', {
     value: clean(row?.student_id),
     enumerable: false,
     writable: false,
     configurable: false,
   });
-  return safe;
+  return Object.freeze(safe);
 }
 
 class OlliSupabaseAgentSession {
