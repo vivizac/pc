@@ -1317,10 +1317,12 @@ function renderKinderChatFeedbackLiveResultText(bubble, text) {
 }
 function createKinderChatFeedbackLiveActionButton(label, className = '') {
   const btn = document.createElement('button');
+  const text = String(label || '').trim();
   btn.type = 'button';
   btn.className = `kcfLiveActionBtn ${className}`.trim();
-  btn.textContent = label;
-  setKinderChatFeedbackLiveActionLabel(btn, label);
+  btn.textContent = text;
+  btn.setAttribute('aria-label', text);
+  btn.title = text;
   return btn;
 }
 function createKinderChatFeedbackLiveMessage(options = {}) {

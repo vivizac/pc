@@ -96,3 +96,18 @@ test('auto-save LIVE assets are cache-busted', () => {
   assert.match(html, /kinder-feedback\.css\?v=20261002-auto-save-actions-1/);
   assert.match(html, /olli-feedback-registration-phone-adapter\.js\?v=20261002-auto-save-actions-1/);
 });
+
+
+test('LIVE text action button creation has no stale helper dependency', () => {
+  const start = js.indexOf('function createKinderChatFeedbackLiveActionButton');
+  const end = js.indexOf('function createKinderChatFeedbackLiveMessage', start);
+  const helper = js.slice(start, end);
+  assert.match(helper, /btn\.setAttribute\('aria-label', text\)/);
+  assert.match(helper, /btn\.title = text/);
+  assert.doesNotMatch(helper, /setKinderChatFeedbackLiveActionLabel/);
+  assert.doesNotMatch(js, /function setKinderChatFeedbackLiveActionLabel/);
+});
+
+test('LIVE action label fix is cache-busted', () => {
+  assert.match(html, /kinder-feedback\.js\?v=20261002-live-action-label-fix-1/);
+});
