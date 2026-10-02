@@ -45,6 +45,17 @@ test('getSessionId is scoped and cached without exposing secrets on serializatio
   assert.equal(JSON.stringify(session), '{}');
 });
 
+test('getItems returns an empty list for a zero limit without touching storage', async () => {
+  let calls=0;
+  const session=createOlliAgentSession({
+    requestContext:context(),
+    callRpc:async()=>{ calls+=1; return {ok:true,session_id:'agent-session-1',items:[]}; },
+  });
+
+  assert.deepEqual(await session.getItems(0),[]);
+  assert.equal(calls,0);
+});
+
 test('getItems requests bounded recent history and preserves returned order', async () => {
   const payloads = [];
   const session = createOlliAgentSession({
