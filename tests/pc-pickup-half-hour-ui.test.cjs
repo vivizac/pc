@@ -4,6 +4,8 @@ const fs = require('node:fs');
 
 const ui = fs.readFileSync('apps/pc/pc-timetable.js', 'utf8');
 const css = fs.readFileSync('apps/pc/pc-timetable.css', 'utf8');
+const startPage = fs.readFileSync('apps/pc/pc-start-page.js', 'utf8');
+const index = fs.readFileSync('apps/pc/index.html', 'utf8');
 
 test('PC pickup grid keeps hourly two-row layout and uses five timetable slots in half-hour mode', () => {
   const start = ui.indexOf('function pickupGridHtml');
@@ -62,4 +64,18 @@ test('PC pickup add and manage dialogs render the timetable label instead of raw
 test('pickup grid border rule supports any number of seven-column rows', () => {
   assert.match(css, /\.olliTtPickupGrid > :nth-child\(7n \+ 1\) \{ border-right: 0; \}/);
   assert.doesNotMatch(css, /\.olliTtPickupGrid > :nth-child\(8\),\s*\n#recordRoomScreen \.olliTtPickupGrid > :nth-child\(15\)/);
+});
+
+
+test('PC half-hour timetable keeps internal scroll and disables wheel division switching', () => {
+  const start = startPage.indexOf('function installPcTimetableDivisionWheelSwitch');
+  const end = startPage.indexOf('installPcTimetableDivisionWheelSwitch();', start);
+  const block = startPage.slice(start, end);
+
+  assert.ok(start >= 0 && end > start);
+  assert.match(block, /const section = scroll\.closest\('\.olliTtSection'\)/);
+  assert.match(block, /section && section\.querySelector\('\.olliTtHalfHourGrid'\)/);
+  assert.match(block, /resetWheelState\(\);\s*return;/);
+  assert.match(block, /nextButton\.click\(\)/);
+  assert.match(index, /pc-start-page\.js\?v=20261002-half-hour-wheel-guard-1/);
 });

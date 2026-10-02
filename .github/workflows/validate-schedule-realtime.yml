@@ -4,6 +4,7 @@ on:
     paths:
       - 'packages/common/olli-realtime-common.js'
       - 'apps/pc/pc-timetable.js'
+      - 'apps/pc/pc-start-page.js'
       - 'apps/pc/pc-timetable-service.js'
       - 'tests/schedule-realtime.test.cjs'
       - 'tests/team-talk-action-capabilities.test.cjs'
@@ -25,6 +26,7 @@ on:
     paths:
       - 'packages/common/olli-realtime-common.js'
       - 'apps/pc/pc-timetable.js'
+      - 'apps/pc/pc-start-page.js'
       - 'apps/pc/pc-timetable-service.js'
       - 'tests/schedule-realtime.test.cjs'
       - 'tests/team-talk-action-capabilities.test.cjs'
@@ -56,6 +58,7 @@ jobs:
         run: |
           node --check packages/common/olli-realtime-common.js
           node --check apps/pc/pc-timetable.js
+          node --check apps/pc/pc-start-page.js
           node --check apps/pc/pc-timetable-service.js
       - name: Test schedule and Team Talk action contracts
         run: node --test tests/schedule-realtime.test.cjs tests/team-talk-action-capabilities.test.cjs tests/waitlist-class-slot-integrity.test.cjs tests/timetable-memo-half-hour-db-contract.test.cjs tests/team-talk-pickup-v3-action.test.cjs tests/pickup-half-hour-db-contract.test.cjs tests/team-talk-pickup-completion-label.test.cjs tests/pc-pickup-half-hour-ui.test.cjs

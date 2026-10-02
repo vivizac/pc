@@ -67,6 +67,12 @@
       const scroll = target.closest('#recordRoomScreen .olliTtRoot.show .olliTtScroll');
       if (!scroll) return;
 
+      const section = scroll.closest('.olliTtSection');
+      if (section && section.querySelector('.olliTtHalfHourGrid')) {
+        resetWheelState();
+        return;
+      }
+
       const activeTab = document.querySelector('#olliPcTopbar .olliTtDivisionTab.active[data-tt-division]');
       const currentDivision = activeTab?.dataset.ttDivision;
       if (currentDivision !== 'elementary' && currentDivision !== 'kinder') return;
