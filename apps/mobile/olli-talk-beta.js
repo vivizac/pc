@@ -445,44 +445,6 @@
         };
       }
 
-      const timetableReadCandidate=parseOlliTalkTimetableReadAgentCandidate(commandText,router);
-    if(timetableReadCandidate){
-      return resolveOlliTalkSourceBoundReadAgentTurn({
-        mode:'timetable_read',
-        commandText,
-        readIntent:timetableReadCandidate,
-        context,
-        replyToMessageId
-      });
-    }
-
-    if(isOlliTalkStudentAttendanceReadCandidate(commandText)){
-      return resolveOlliTalkSourceBoundReadAgentTurn({
-        mode:'attendance_read',
-        commandText,
-        context,
-        replyToMessageId
-      });
-    }
-
-    if(isOlliTalkStudentPickupReadCandidate(commandText)){
-      return resolveOlliTalkSourceBoundReadAgentTurn({
-        mode:'pickup_read',
-        commandText,
-        context,
-        replyToMessageId
-      });
-    }
-
-    if(isOlliTalkStudentScheduleReadCandidate(commandText)){
-      return resolveOlliTalkSourceBoundReadAgentTurn({
-        mode:'schedule_read',
-        commandText,
-        context,
-        replyToMessageId
-      });
-    }
-
     const studentInfo=resolveOlliTalkStudentInfoCommand(commandText);
       if(studentInfo?.handled===true){
         return saveReply(studentInfo.message);
@@ -1868,6 +1830,44 @@
 
     if(isOlliTalkMoveCancelAgentCandidate(commandText,router)){
       return resolveOlliTalkMoveCancelAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    const timetableReadCandidate=parseOlliTalkTimetableReadAgentCandidate(commandText,router);
+    if(timetableReadCandidate){
+      return resolveOlliTalkSourceBoundReadAgentTurn({
+        mode:'timetable_read',
+        commandText,
+        readIntent:timetableReadCandidate,
+        context,
+        replyToMessageId
+      });
+    }
+
+    if(isOlliTalkStudentAttendanceReadCandidate(commandText)){
+      return resolveOlliTalkSourceBoundReadAgentTurn({
+        mode:'attendance_read',
+        commandText,
+        context,
+        replyToMessageId
+      });
+    }
+
+    if(isOlliTalkStudentPickupReadCandidate(commandText)){
+      return resolveOlliTalkSourceBoundReadAgentTurn({
+        mode:'pickup_read',
+        commandText,
+        context,
+        replyToMessageId
+      });
+    }
+
+    if(isOlliTalkStudentScheduleReadCandidate(commandText)){
+      return resolveOlliTalkSourceBoundReadAgentTurn({
+        mode:'schedule_read',
+        commandText,
+        context,
+        replyToMessageId
+      });
     }
 
     const studentInfo=resolveOlliTalkStudentInfoCommand(commandText);
