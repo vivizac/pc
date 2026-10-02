@@ -595,8 +595,9 @@
   }
 
   function scheduleEditorOpen() {
-    return !!state.dialog || Array.from(document.querySelectorAll('.modalOverlay')).some(el => el.getClientRects().length)
-      || !!document.activeElement?.matches('input, textarea, select, [contenteditable="true"]');
+    // 실제 시간표 편집 UI만 Realtime 반영을 보류합니다.
+    // 다른 화면의 검색/채팅 입력창 포커스는 섹션 전환 뒤에도 남을 수 있으므로 동기화를 막지 않습니다.
+    return !!state.dialog || Array.from(document.querySelectorAll('.modalOverlay')).some(el => el.getClientRects().length);
   }
 
   async function refreshActiveSchedulePane(realtimeContext) {
