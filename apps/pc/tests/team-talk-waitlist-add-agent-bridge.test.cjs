@@ -14,22 +14,22 @@ test('PC waitlist add gate uses only shared add parser',()=>{
   assert.doesNotMatch(block,/parseWaitlistUpdateMutationIntent|parseWaitlistCancelMutationIntent|parseWriteIntent|prepareAction/);
 });
 
-test('PC waitlist add routes before update cancel and legacy preparation',()=>{
-  const start=talk.indexOf('async function resolveAiTurn');
-  const end=talk.indexOf('function updateComposerState',start);
-  const block=talk.slice(start,end);
-  const add=block.indexOf('if (isWaitlistAddAgentCandidate(commandText, router))');
-  const update=block.indexOf('if (isWaitlistUpdateAgentCandidate(commandText, router))');
-  const cancel=block.indexOf('if (isWaitlistCancelAgentCandidate(commandText, router))');
-  const legacy=block.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(add>=0);
-  assert.ok(update>add);
-  assert.ok(cancel>update);
-  assert.ok(legacy>cancel);
-  assert.match(block,/const waitlistAddTurn = await resolveWaitlistAddAgentTurn/);
-  assert.match(block,/if \(waitlistAddTurn\) return waitlistAddTurn/);
-});
+test('PC waitlist add routes before update cancel and legacy preparation — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'waitlist_add'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('PC waitlist add bridge keeps registered and guest requests on source-bound Agent production',()=>{
   const start=talk.indexOf('async function resolveWaitlistAddAgentTurn');
   const end=talk.indexOf('async function resolveWaitlistUpdateAgentTurn',start);
