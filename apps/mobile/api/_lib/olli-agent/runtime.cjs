@@ -536,6 +536,7 @@ async function runAbsencePrepareAgent({
     ].join(' '),
     tools:[prepareAbsence],
     modelSettings:{toolChoice:'prepare_absence'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result=null,runError=null;
@@ -700,6 +701,7 @@ async function runClassOncePrepareAgent({
     ].join(' '),
     tools:[prepareClassOnce],
     modelSettings:{toolChoice:'prepare_class_once'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result=null;
@@ -881,7 +883,8 @@ async function runMakeupPrepareAgent({
       'Answer briefly in Korean.',
     ].join(' '),
     tools:[prepareMakeup],
-    modelSettings:{ toolChoice:'prepare_makeup' },
+    modelSettings:{toolChoice:'prepare_makeup'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result = null;
@@ -1047,7 +1050,8 @@ async function runMakeupUpdatePrepareAgent({
       'Answer briefly in Korean.',
     ].join(' '),
     tools:[prepareMakeupUpdate],
-    modelSettings:{ toolChoice:'prepare_makeup_update' },
+    modelSettings:{toolChoice:'prepare_makeup_update'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result = null;
@@ -1219,7 +1223,8 @@ async function runMakeupCancelPrepareAgent({
       'Answer briefly in Korean.',
     ].join(' '),
     tools:[prepareMakeupCancel],
-    modelSettings:{ toolChoice:'prepare_makeup_cancel' },
+    modelSettings:{toolChoice:'prepare_makeup_cancel'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result = null;
@@ -1368,6 +1373,7 @@ async function runTrialAddPrepareAgent({
     ].join(' '),
     tools:[prepareTrialAdd],
     modelSettings:{toolChoice:'prepare_trial_add'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result=null,runError=null;
@@ -1506,6 +1512,7 @@ async function runTrialCancelPrepareAgent({
     ].join(' '),
     tools:[prepareTrialCancel],
     modelSettings:{toolChoice:'prepare_trial_cancel'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result=null,runError=null;
@@ -1696,6 +1703,7 @@ async function runTrialUpdatePrepareAgent({
     ].join(' '),
     tools:[prepareTrialUpdate],
     modelSettings:{toolChoice:'prepare_trial_update'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result=null,runError=null;
@@ -1896,6 +1904,7 @@ async function runWaitlistAddPrepareAgent({
     ].join(' '),
     tools:[prepareWaitlistAdd],
     modelSettings:{toolChoice:'prepare_waitlist_add'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result=null,runError=null;
@@ -2019,6 +2028,7 @@ async function runWaitlistUpdatePrepareAgent({
     ].join(' '),
     tools:[prepareWaitlistUpdate],
     modelSettings:{toolChoice:'prepare_waitlist_update'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result=null,runError=null;
@@ -2164,7 +2174,8 @@ async function runWaitlistCancelPrepareAgent({
       'Answer briefly in Korean.',
     ].join(' '),
     tools:[prepareWaitlistCancel],
-    modelSettings:{ toolChoice:'prepare_waitlist_cancel' },
+    modelSettings:{toolChoice:'prepare_waitlist_cancel'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result = null;
@@ -2327,6 +2338,7 @@ async function runMovePrepareAgent({
     ].join(' '),
     tools:[prepareMove],
     modelSettings:{toolChoice:'prepare_move_class'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result=null;
@@ -2479,6 +2491,7 @@ async function runMoveCancelPrepareAgent({
     ].join(' '),
     tools:[prepareMoveCancel],
     modelSettings:{toolChoice:'prepare_move_cancel'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result=null;
@@ -2842,7 +2855,8 @@ async function runTimetableMemoPrepareAgent({
       'Answer briefly in Korean.',
     ].join(' '),
     tools:[prepareTimetableMemo],
-    modelSettings:{ toolChoice:'prepare_timetable_memo' },
+    modelSettings:{toolChoice:'prepare_timetable_memo'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result = null;
@@ -3134,7 +3148,8 @@ async function runPickupUpdatePrepareAgent({
       'Answer briefly in Korean.',
     ].join(' '),
     tools:[preparePickupUpdate],
-    modelSettings:{ toolChoice:'prepare_pickup_update' },
+    modelSettings:{toolChoice:'prepare_pickup_update'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result = null;
@@ -3308,7 +3323,8 @@ async function runPickupCancelPrepareAgent({
       'Answer briefly in Korean.',
     ].join(' '),
     tools:[preparePickupCancel],
-    modelSettings:{ toolChoice:'prepare_pickup_cancel' },
+    modelSettings:{toolChoice:'prepare_pickup_cancel'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result = null;
@@ -3453,7 +3469,8 @@ async function runPickupPrepareAgent({
       'Answer briefly in Korean.',
     ].join(' '),
     tools:[preparePickupAdd],
-    modelSettings:{ toolChoice:'prepare_pickup_add' },
+    modelSettings:{toolChoice:'prepare_pickup_add'},
+    toolUseBehavior: requirePersistedMessage ? 'stop_on_first_tool' : 'run_llm_again',
   });
 
   let result = null;
@@ -4868,6 +4885,7 @@ async function runTimetableAdminPrepare({
     ].join(' '),
     tools:[prepareAdmin],
     modelSettings:{toolChoice:'prepare_timetable_admin'},
+    toolUseBehavior:'stop_on_first_tool',
   });
 
   let result=null,runError=null;
@@ -4965,6 +4983,7 @@ async function runAttendanceStatusPrepare({
     ].join(' '),
     tools:[prepareAttendanceStatus],
     modelSettings:{toolChoice:'prepare_attendance_status'},
+    toolUseBehavior:'stop_on_first_tool',
   });
 
   let result=null,runError=null;

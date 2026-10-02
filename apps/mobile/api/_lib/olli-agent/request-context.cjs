@@ -25,10 +25,16 @@ async function loadOlliAgentRequestContext(body = {}) {
     );
   }
 
-  const settings = await callSupabaseRpc('olli_team_talk_settings_get', {
-    p_session_token: sessionToken,
-    p_academy_id: academyId,
-  });
+  const [settings, members] = await Promise.all([
+    callSupabaseRpc('olli_team_talk_settings_get', {
+      p_session_token: sessionToken,
+      p_academy_id: academyId,
+    }),
+    callSupabaseRpc('olli_team_chat_members', {
+      p_session_token: sessionToken,
+      p_academy_id: academyId,
+    }),
+  ]);
 
   if (!settings?.ok || settings?.ai_enabled !== true) {
     throw contextError(
@@ -37,11 +43,6 @@ async function loadOlliAgentRequestContext(body = {}) {
       'OLLI_AGENT_AI_DISABLED'
     );
   }
-
-  const members = await callSupabaseRpc('olli_team_chat_members', {
-    p_session_token: sessionToken,
-    p_academy_id: academyId,
-  });
 
   const currentMemberId = clean(members?.current_member_id);
   const currentMember = Array.isArray(members?.members)
