@@ -28,3 +28,30 @@ test('Mobile AI makeup routes occur before legacy prepareAction',()=>{
     assert.ok(at>=0 && legacy>at,route);
   }
 });
+
+
+test('Mobile incomplete makeup add is handled before generic AI fallback',()=>{
+  assert.ok(talk.includes('parseOlliTalkMakeupAddDraftCandidate'));
+  assert.ok(talk.includes('olliTalkMakeupAddDraftPrompt'));
+  assert.ok(talk.includes('보강 날짜가 빠져 있어요.'));
+  const start=talk.indexOf('async function resolveOlliTalkAiTurn');
+  const end=talk.indexOf('function getOlliTalkMentionMessageText',start);
+  const block=talk.slice(start,end);
+  const draft=block.indexOf('const makeupAddDraftCandidate=parseOlliTalkMakeupAddDraftCandidate(commandText,router)');
+  const fallback=block.indexOf('const resolved=await resolveOlliTalkAiReply(commandText,context)');
+  assert.ok(draft>=0 && fallback>draft);
+});
+
+test('shared router exposes a makeup draft for the screenshot command without a date',()=>{
+  const vm=require('node:vm');
+  const routerText=fs.readFileSync(path.resolve(__dirname,'../../../packages/common/olli-command-router-common.js'),'utf8');
+  const sandbox={window:{},globalThis:{},console};
+  sandbox.globalThis=sandbox.window;
+  vm.runInNewContext(routerText,sandbox);
+  const router=sandbox.window.OlliCommandRouter;
+  const draft=router.parseBatchDraftWriteIntent('권보미 초등부 5시 보강 등록해줘');
+  assert.equal(draft?.intent,'add_makeup');
+  assert.equal(draft?.batchDraft,true);
+  assert.deepEqual(Array.from(draft?.missingBatchFields||[]),['date']);
+  assert.equal(router.parseMakeupMutationIntent('권보미 초등부 5시 보강 등록해줘'),null);
+});

@@ -76,6 +76,6 @@ test('waitlist cancellation Agent bridge remains intact while restoring mentions
 });
 
 test('restored Team Chat assets are cache-busted', () => {
-  assert.match(html, /olli-talk-beta\.js\?v=20261002-olli-ai-mention-restore-1/);
-  assert.match(html, /olli-talk-beta\.css\?v=20261002-olli-ai-mention-restore-1/);
+  assert.match(html, /olli-talk-beta\.js\?v=20261002-makeup-draft-route-1/);
+  assert.match(html, /olli-talk-beta\.css\?v=20261002-makeup-draft-route-1/);
 });

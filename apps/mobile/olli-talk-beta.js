@@ -841,6 +841,37 @@
     }
   }
 
+  function parseOlliTalkMakeupAddDraftCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseBatchDraftWriteIntent!=='function') return null;
+    try{
+      const parsed=router.parseBatchDraftWriteIntent(commandText);
+      if(String(parsed?.intent || '').trim()!=='add_makeup' || parsed?.batchDraft!==true) return null;
+      const missing=Array.isArray(parsed.missingBatchFields)
+        ? parsed.missingBatchFields.map(item=>String(item || '').trim()).filter(Boolean)
+        : [];
+      return missing.length ? Object.assign({},parsed,{missingBatchFields:missing}) : null;
+    }catch(error){
+      console.warn('올리톡 보강 등록 추가정보 후보 판별 실패:',error);
+      return null;
+    }
+  }
+
+  function olliTalkMakeupAddDraftPrompt(candidate){
+    const missing=Array.isArray(candidate?.missingBatchFields) ? candidate.missingBatchFields : [];
+    const needsDate=missing.includes('date');
+    const needsTime=missing.includes('time');
+    if(needsDate && needsTime){
+      return '보강 날짜와 시간이 빠져 있어요. 날짜와 시간을 포함해서 다시 요청해 주세요. 예: 권보미 10월 5일 5시 보강 등록해줘';
+    }
+    if(needsDate){
+      return '보강 날짜가 빠져 있어요. 날짜를 포함해서 다시 요청해 주세요. 예: 권보미 10월 5일 5시 보강 등록해줘';
+    }
+    if(needsTime){
+      return '보강 시간이 빠져 있어요. 시간을 포함해서 다시 요청해 주세요. 예: 권보미 10월 5일 5시 보강 등록해줘';
+    }
+    return '보강 등록에 필요한 날짜와 시간을 함께 알려 주세요.';
+  }
+
   function parseOlliTalkMakeupCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
     if(!router || typeof router.parseMakeupCancelMutationIntent!=='function') return null;
     try{
@@ -1886,6 +1917,16 @@
 
     if(isOlliTalkMakeupAddAgentCandidate(commandText,router)){
       return resolveOlliTalkMakeupAddAgentTurn(commandText,context,replyToMessageId);
+    }
+
+    const makeupAddDraftCandidate=parseOlliTalkMakeupAddDraftCandidate(commandText,router);
+    if(makeupAddDraftCandidate){
+      const message=olliTalkMakeupAddDraftPrompt(makeupAddDraftCandidate);
+      return {
+        assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+        replyText:message,
+        recordAi:false
+      };
     }
 
     if(isOlliTalkClassOnceAgentCandidate(commandText,router)){
