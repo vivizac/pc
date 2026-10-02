@@ -36,6 +36,12 @@ test('PC material archive entry sits beside the three summary status buttons', (
   assert.match(css, /\.olliMatSummaryCard\.archive\{background:#fff;border-color:#e6e8eb;color:#666c73\}/);
 });
 
+test('PC past orders page title matches the toolbar entry', () => {
+  assert.match(js, /<section class="olliMatArchiveView"[^>]*aria-label="지난 주문내역"/);
+  assert.match(js, /<strong>지난 주문내역<\/strong>/);
+  assert.doesNotMatch(js, /<strong>재료주문 보관함<\/strong>/);
+});
+
 test('PC archive uses year folders and month groups', () => {
   assert.match(js, /data-material-action="open-archive"/);
   assert.match(js, /data-material-archive-years/);
@@ -68,5 +74,5 @@ test('existing material list RPC remains the current-list source and archive has
 
 test('PC archive assets are cache-busted', () => {
   assert.match(html, /pc-team-talk-material-orders\.css\?v=20261002-material-archive-toolbar-1/);
-  assert.match(html, /pc-team-talk-material-orders\.js\?v=20261002-past-orders-label-1/);
+  assert.match(html, /pc-team-talk-material-orders\.js\?v=20261002-past-orders-page-title-1/);
 });
