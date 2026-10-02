@@ -89,10 +89,11 @@ test('guest waitlist cancel resolves current row and stores only a pending cance
 
 test('waitlist endpoint falls back to guest privacy, not legacy routing',()=>{
   const endpoint=fs.readFileSync(path.join(__dirname,'../api/olli-agent.js'),'utf8');
+  const runtime=fs.readFileSync(path.join(__dirname,'../api/_lib/olli-agent/runtime.cjs'),'utf8');
   const pc=fs.readFileSync(path.join(__dirname,'../../pc/pc-team-talk.js'),'utf8');
   const mobile=fs.readFileSync(path.join(__dirname,'../olli-talk-beta.js'),'utf8');
   assert.match(endpoint,/prepareWaitlistGuestPrivacyInput/);
-  assert.match(endpoint,/waitlistGuestAccess/);
+  assert.match(runtime,/waitlistGuestAccess/);
   assert.doesNotMatch(pc,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED/);
   assert.doesNotMatch(mobile,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED/);
 });
