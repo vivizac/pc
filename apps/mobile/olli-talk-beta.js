@@ -1930,10 +1930,12 @@
     const router=window.OlliCommandRouter;
     if(!router || typeof router.parseStudentScheduleQueryIntent!=='function') return false;
     const messages=Array.isArray(olliTalkAiConversationMessages) ? olliTalkAiConversationMessages : [];
-    return messages.some((item)=>
-      String(item?.role || '').trim()==='user'
-      && !!router.parseStudentScheduleQueryIntent(String(item?.content || '').trim())
-    );
+    for(let index=messages.length-1;index>=0;index-=1){
+      const item=messages[index];
+      if(String(item?.role || '').trim()!=='user') continue;
+      return !!router.parseStudentScheduleQueryIntent(String(item?.content || '').trim());
+    }
+    return false;
   }
 
   async function resolveOlliTalkContextualRuleStudentScheduleTurn(commandText,context,replyToMessageId){
