@@ -2621,6 +2621,78 @@
     });
   }
 
+
+  async function resolveRuleStudentScheduleTurn(commandText,current,replyToMessageId) {
+    const router=global.OlliCommandRouter;
+    if(
+      !router
+      || typeof router.parseStudentScheduleQueryIntent!=='function'
+      || typeof router.runQuery!=='function'
+    ) return null;
+
+    const parsed=router.parseStudentScheduleQueryIntent(commandText);
+    if(!parsed || String(parsed.intent || '').trim()!=='get_student_schedule') return null;
+
+    const queried=await router.runQuery(commandText,{
+      source:'olli_talk_ai',
+      selectedStudent:null,
+      autoSubmitContext:null
+    });
+    if(queried?.handled!==true || String(queried.intent || '').trim()!=='get_student_schedule') return null;
+
+    const queryMessage=String(queried.message || '').trim() || '학생 시간표를 확인했어요.';
+    return {
+      assistantMessage:await saveAssistantReply(current,queryMessage,replyToMessageId),
+      replyText:queryMessage,
+      recordAi:false
+    };
+  }
+
+  function hasRuleStudentScheduleContext() {
+    const router=global.OlliCommandRouter;
+    if(!router || typeof router.parseStudentScheduleQueryIntent!=='function') return false;
+    const messages=Array.isArray(state.aiConversationMessages) ? state.aiConversationMessages : [];
+    return messages.some((item)=>
+      String(item?.role || '').trim()==='user'
+      && !!router.parseStudentScheduleQueryIntent(String(item?.content || '').trim())
+    );
+  }
+
+  async function resolveContextualRuleStudentScheduleTurn(commandText,current,replyToMessageId) {
+    if(!hasRuleStudentScheduleContext()) return null;
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0) return null;
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'context_resolve',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId,
+        conversation:(Array.isArray(state.aiConversationMessages) ? state.aiConversationMessages : []).map((item)=>({
+          role:item.role,
+          content:item.content
+        }))
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok){
+      throw new Error(data?.error || data?.message || '문맥 명령 정리 응답을 받지 못했습니다.');
+    }
+    const resolvedText=String(data?.resolvedText || '').trim();
+    if(data?.ok!==true || data?.usedContext!==true || !resolvedText) return null;
+    if(resolvedText===String(commandText || '').trim()) return null;
+    return resolveRuleStudentScheduleTurn(
+      resolvedText,
+      current,
+      sourceMessageId
+    );
+  }
+
+
   async function resolveContextualReadTurn(commandText,current,replyToMessageId) {
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0) return null;
@@ -2860,12 +2932,25 @@
       };
     }
 
+    const ruleStudentScheduleTurn=await resolveRuleStudentScheduleTurn(
+      commandText,
+      current,
+      replyToMessageId
+    );
+    if(ruleStudentScheduleTurn) return ruleStudentScheduleTurn;
+
     const routeClassifier=global.OlliTeamTalkAgentRouteClassifier;
     const classifierAvailable=!!(routeClassifier && typeof routeClassifier.classify==='function');
     const sharedRoute=classifierAvailable
       ? routeClassifier.classify(commandText,{router})
       : null;
     if(!sharedRoute && classifierAvailable){
+      const contextualRuleTurn=await resolveContextualRuleStudentScheduleTurn(
+        commandText,
+        current,
+        replyToMessageId
+      );
+      if(contextualRuleTurn) return contextualRuleTurn;
       const contextualTurn=await resolveContextualReadTurn(
         commandText,
         current,
