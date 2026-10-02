@@ -7,7 +7,8 @@ const root=path.resolve(__dirname,'..');
 const endpoint=fs.readFileSync(path.join(root,'api/olli-agent.js'),'utf8');
 const runtime=fs.readFileSync(path.join(root,'api/_lib/olli-agent/runtime.cjs'),'utf8');
 const tool=fs.readFileSync(path.join(root,'api/_lib/olli-agent/tools/timetable-admin-prepare-tools.cjs'),'utf8');
-const migration=fs.readFileSync(path.resolve(root,'../../supabase/migrations/20261002033226_team_chat_timetable_admin_agent_actions.sql'),'utf8');
+const executorMigration=fs.readFileSync(path.resolve(root,'../../supabase/migrations/20261002033226_team_chat_timetable_admin_agent_actions.sql'),'utf8');
+const senderMigration=fs.readFileSync(path.resolve(root,'../../supabase/migrations/20261002151000_allow_timetable_admin_team_chat_actions.sql'),'utf8');
 
 test('production endpoint exposes only source-bound timetable admin prepare',()=>{
   assert.match(endpoint,/'timetable_admin_prepare'/);
@@ -48,8 +49,8 @@ test('database action executor allows and executes all timetable admin action ty
   for(const type of [
     'set_class_layout','set_class_teacher','set_teacher_override','set_session_order','set_normal_class_day'
   ]){
-    assert.ok(migration.includes("'"+type+"'::text"),type+' constraint');
-    assert.ok(migration.includes("v_type='"+type+"'"),type+' executor');
+    assert.ok(executorMigration.includes("'"+type+"'::text"),type+' constraint');
+    assert.ok(executorMigration.includes("v_type='"+type+"'"),type+' executor');
   }
   for(const rpc of [
     'olli_schedule_set_kinder_class_split',
@@ -57,8 +58,8 @@ test('database action executor allows and executes all timetable admin action ty
     'olli_schedule_set_teacher_override',
     'olli_schedule_set_session_order',
     'olli_schedule_set_normal_class_day',
-  ]) assert.ok(migration.includes(rpc),rpc);
-  assert.ok(migration.includes("then 'split_class' else 'merge_class' end"));
+  ]) assert.ok(executorMigration.includes(rpc),rpc);
+  assert.ok(executorMigration.includes("then 'split_class' else 'merge_class' end"));
 });
 
 
