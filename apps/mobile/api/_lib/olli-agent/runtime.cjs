@@ -4780,6 +4780,7 @@ async function runContextualReadAgent({
     instructions:[
       'You are Olli continuing an active Korean academy-operation conversation.',
       'The input contains the entire active Olli conversation, already privacy-sanitized. The final item is the current user message.',
+      'Today in Korea is '+today+'.',
       subjectInstruction,
       'Decide whether the final user message clearly continues an academy data READ from the preceding conversation.',
       'If it is unrelated to academy schedule, attendance, pickup, roster, or availability data, call no tool and return exactly OLLI_CONTEXT_UNRELATED.',
