@@ -1,0 +1,52 @@
+name: Validate timetable admin Agent
+
+on:
+  pull_request:
+    paths:
+      - 'packages/common/olli-command-router-common.js'
+      - 'apps/mobile/api/_lib/olli-agent/runtime.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/tools/timetable-admin-prepare-tools.cjs'
+      - 'apps/mobile/api/olli-agent.js'
+      - 'apps/pc/pc-team-talk.js'
+      - 'apps/mobile/olli-talk-beta.js'
+      - 'supabase/migrations/20261002033226_team_chat_timetable_admin_agent_actions.sql'
+      - 'tests/timetable-admin-agent-router.test.cjs'
+      - 'apps/mobile/tests/olli-agent-timetable-admin-prepare-tool.test.cjs'
+      - 'apps/mobile/tests/olli-agent-timetable-admin-production-contract.test.cjs'
+      - 'apps/pc/tests/team-talk-timetable-admin-agent-bridge.test.cjs'
+      - 'apps/mobile/tests/team-talk-timetable-admin-agent-bridge.test.cjs'
+      - '.github/workflows/validate-timetable-admin-agent.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check syntax
+        run: |
+          node --check packages/common/olli-command-router-common.js
+          node --check apps/mobile/api/_lib/olli-agent/runtime.cjs
+          node --check apps/mobile/api/_lib/olli-agent/tools/timetable-admin-prepare-tools.cjs
+          node --check apps/mobile/api/olli-agent.js
+          node --check apps/pc/pc-team-talk.js
+          node --check apps/mobile/olli-talk-beta.js
+      - name: Validate admin router
+        run: node --test tests/timetable-admin-agent-router.test.cjs
+      - name: Validate admin prepare tool
+        working-directory: apps/mobile
+        run: node --test tests/olli-agent-timetable-admin-prepare-tool.test.cjs
+      - name: Validate admin production contract
+        working-directory: apps/mobile
+        run: node --test tests/olli-agent-timetable-admin-production-contract.test.cjs
+      - name: Validate PC bridge
+        working-directory: apps/pc
+        run: node --test tests/team-talk-timetable-admin-agent-bridge.test.cjs
+      - name: Validate Mobile bridge
+        working-directory: apps/mobile
+        run: node --test tests/team-talk-timetable-admin-agent-bridge.test.cjs
