@@ -39,10 +39,10 @@ test('mobile keeps mutation preparation ahead of read queries', () => {
 });
 
 test('mobile refreshes shared query-tool assets from PC main', () => {
-  assert.match(html, /olli-talk-beta\\.js\\?v=20260923-student-info-link-1/);
-  assert.match(html, /olli-talk-beta\\.css\\?v=20260923-student-info-link-1/);
-  assert.match(html, /olli-command-schedule-common\.js\?v=20260921-query-tools-1/);
-  assert.match(html, /olli-command-router-common\\.js\\?v=20260923-student-info-query-1/);
+  assert.match(html, /olli-talk-beta\\.js\\?v=20261003-unified-interpreter-1/);
+  assert.match(html, /olli-talk-beta\\.css\\?v=20261002-olli-ai-mention-restore-1/);
+  assert.match(html, /olli-command-schedule-common\.js\?v=20261003-rule-student-schedule-1/);
+  assert.match(html, /olli-command-router-common\\.js\\?v=20261003-rule-student-schedule-1/);
 });
 
 test('mobile student info command persists a clickable student-info link instead of opening the sheet during send', () => {
@@ -76,8 +76,8 @@ test('student-info reply renders a link-style button that opens the existing she
   assert.match(js, /window\.openStudentInfoById\(String\(studentId \|\| ''\)\)/);
   assert.match(js, /olliTalkBetaStudentInfoLinkButton/);
   assert.match(css, /\.olliTalkBetaStudentInfoLinkButton/);
-  assert.match(html, /olli-talk-beta\.js\?v=20260923-student-info-link-1/);
-  assert.match(html, /olli-talk-beta\.css\?v=20260923-student-info-link-1/);
+  assert.match(html, /olli-talk-beta\.js\?v=20261003-unified-interpreter-1/);
+  assert.match(html, /olli-talk-beta\.css\?v=20261002-olli-ai-mention-restore-1/);
 });
 
 test('mobile exposes one direct student-info opener backed by the existing info modals', () => {
