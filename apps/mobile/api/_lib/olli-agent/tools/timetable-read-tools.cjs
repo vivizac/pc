@@ -182,6 +182,16 @@ async function readRoster({requestContext,intent,todayKey,labelBook,callRpc}){
       entry_kind:meta.entry_kind||kind,
       is_guest:meta.is_guest===true || row?.is_guest===true || !!clean(row?.guest_name),
     };
+    if(meta.source_weekday){
+      item.source_weekday_label=weekdayLabel(meta.source_weekday);
+      item.source_time_label=timeLabel(division,meta.source_weekday,meta.source_time_slot,mode);
+      item.source_class_group=meta.source_class_group||'A';
+    }
+    if(meta.target_weekday){
+      item.target_weekday_label=weekdayLabel(meta.target_weekday);
+      item.target_time_label=timeLabel(division,meta.target_weekday,meta.target_time_slot,mode);
+      item.target_class_group=meta.target_class_group||'A';
+    }
     if(item.student_label&&matchesCommon(item,intent)) items.push(item);
   };
   const inRange=(date)=>scope==='all'||(date>=start&&date<=end);
@@ -250,11 +260,25 @@ async function readRoster({requestContext,intent,todayKey,labelBook,callRpc}){
       if(clean(row?.status).toLowerCase()!=='scheduled'||clean(row?.change_type).toLowerCase()!=='move') continue;
       const date=clean(row?.effective_date).slice(0,10);
       if(scope!=='all'&&!inRange(date)) continue;
+      const source=(data.enrollments||[]).find(e=>clean(e?.id)===clean(row?.source_enrollment_id))||null;
       const target=(data.enrollments||[]).find(e=>clean(e?.id)===clean(row?.target_enrollment_id))||row;
-      push(target,{name:rosterName(data,row),date,entry_kind:'move'});
+      const division=rowDivision(target)||rowDivision(source)||rowDivision(row);
+      push(target,{
+        name:rosterName(data,row),
+        date,
+        division,
+        entry_kind:'move',
+        source_weekday:Number(source?.weekday||0),
+        source_time_slot:Number(source?.time_slot||0),
+        source_class_group:groupOf(source),
+        target_weekday:Number(target?.weekday||0),
+        target_time_slot:Number(target?.time_slot||0),
+        target_class_group:groupOf(target),
+      });
     }
   }
-  return {kind,scope,reference_date:reference,timetable_mode:mode,count:items.length,items:items.slice(0,100),truncated:items.length>100};
+  const studentCount=new Set(items.map(item=>clean(item.student_label)).filter(Boolean)).size;
+  return {kind,scope,reference_date:reference,timetable_mode:mode,count:items.length,student_count:studentCount,items:items.slice(0,100),truncated:items.length>100};
 }
 async function readPickupRoster({requestContext,intent,todayKey,labelBook,callRpc}){
   const date=resolveDateSpec(intent?.dateSpec,todayKey)||todayKey;
@@ -302,7 +326,8 @@ async function readPickupRoster({requestContext,intent,todayKey,labelBook,callRp
       pickup_time:isDropoff?'':clean(row?.pickup_time).slice(0,5),
     });
   }
-  return {date,kind,count:items.length,items:items.slice(0,100),truncated:items.length>100};
+  const studentCount=new Set(items.map(item=>clean(item.student_label)).filter(Boolean)).size;
+  return {date,kind,count:items.length,student_count:studentCount,items:items.slice(0,100),truncated:items.length>100};
 }
 async function readAvailability({requestContext,intent,todayKey,callRpc}){
   let start,end;
