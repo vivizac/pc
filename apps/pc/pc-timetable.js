@@ -1288,23 +1288,30 @@
     if (!inner || !external || !spacer) return;
 
     let syncing = false;
-    const syncMetrics = () => {
-      const innerMax = Math.max(0, inner.scrollHeight - inner.clientHeight);
-      const externalHeight = Math.max(0, external.clientHeight);
-      spacer.style.height = `${Math.max(1, innerMax + externalHeight)}px`;
-      if (!syncing) external.scrollTop = inner.scrollTop;
-    };
+    const scrollMax = (element) => Math.max(0, element.scrollHeight - element.clientHeight);
     const syncExternalFromInner = () => {
       if (syncing) return;
+      const innerMax = scrollMax(inner);
+      const externalMax = scrollMax(external);
       syncing = true;
-      external.scrollTop = inner.scrollTop;
+      external.scrollTop = innerMax > 0 && externalMax > 0
+        ? (inner.scrollTop / innerMax) * externalMax
+        : 0;
       syncing = false;
     };
     const syncInnerFromExternal = () => {
       if (syncing) return;
+      const innerMax = scrollMax(inner);
+      const externalMax = scrollMax(external);
       syncing = true;
-      inner.scrollTop = external.scrollTop;
+      inner.scrollTop = innerMax > 0 && externalMax > 0
+        ? (external.scrollTop / externalMax) * innerMax
+        : 0;
       syncing = false;
+    };
+    const syncMetrics = () => {
+      spacer.style.height = `${Math.max(1, inner.scrollHeight)}px`;
+      syncExternalFromInner();
     };
 
     inner.addEventListener('scroll', syncExternalFromInner, { passive: true });

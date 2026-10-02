@@ -94,8 +94,10 @@ test('PC half-hour timetable uses a real external scrollbar beside the timetable
   assert.match(css, /\.olliTtHalfHourShell \.olliTtScroll \{[\s\S]*?scrollbar-width: none;/);
   assert.doesNotMatch(css, /\.olliTtSection:has\(\.olliTtHalfHourGrid\) \.olliTtScroll \{[\s\S]*?padding-right: 10px;/);
   assert.match(ui, /function bindHalfHourExternalScrollbar\(root\)/);
-  assert.match(ui, /external\.scrollTop = inner\.scrollTop/);
-  assert.match(ui, /inner\.scrollTop = external\.scrollTop/);
+  assert.match(ui, /const scrollMax = \(element\) => Math\.max\(0, element\.scrollHeight - element\.clientHeight\)/);
+  assert.match(ui, /\(inner\.scrollTop \/ innerMax\) \* externalMax/);
+  assert.match(ui, /\(external\.scrollTop \/ externalMax\) \* innerMax/);
+  assert.match(ui, /spacer\.style\.height = `\$\{Math\.max\(1, inner\.scrollHeight\)\}px`/);
   assert.match(index, /pc-timetable\.css\?v=20261002-half-hour-external-scrollbar-1/);
-  assert.match(index, /pc-timetable\.js\?v=20261002-half-hour-external-scrollbar-1/);
+  assert.match(index, /pc-timetable\.js\?v=20261002-half-hour-scroll-ratio-1/);
 });
