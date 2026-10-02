@@ -5,6 +5,7 @@
   const PC_SORT_TIME_ORDER = ['1시', '2시', '3시', '4시', '5시', '6시', '7시'];
   const PC_GROUP_LABELS = { '1': 'A그룹', '2': 'B그룹', '3': 'C그룹', '4': 'D그룹', '5': 'E그룹', '6': 'F그룹' };
   const PC_DAY_NAMES = { 0: '일', 1: '월', 2: '화', 3: '수', 4: '목', 5: '금', 6: '토' };
+  const PC_VIEW_PREFS_PREFIX = 'olli_pc_personality_records_view_v1';
 
   const state = {
     selectedStudentId: '',
@@ -38,6 +39,38 @@
 
   function normalizeSortMode(mode) {
     return Object.values(PC_SORT_MODES).includes(mode) ? mode : PC_SORT_MODES.DAY;
+  }
+
+  function normalizeDivision(division) {
+    return division === 'kinder' ? 'kinder' : (division === 'elementary' ? 'elementary' : 'all');
+  }
+
+  function getPcPersonalityViewPrefsStorageKey() {
+    return `${PC_VIEW_PREFS_PREFIX}_${getRecordCacheScope()}`;
+  }
+
+  function readPcPersonalityViewPrefs() {
+    const fallback = { division: 'all', sortMode: PC_SORT_MODES.DAY };
+    try {
+      const parsed = JSON.parse(localStorage.getItem(getPcPersonalityViewPrefsStorageKey()) || '{}');
+      return {
+        division: normalizeDivision(parsed?.division),
+        sortMode: normalizeSortMode(parsed?.sortMode)
+      };
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  function writePcPersonalityViewPrefs(next) {
+    try {
+      const current = readPcPersonalityViewPrefs();
+      const value = {
+        division: normalizeDivision(next?.division ?? current.division),
+        sortMode: normalizeSortMode(next?.sortMode ?? current.sortMode)
+      };
+      localStorage.setItem(getPcPersonalityViewPrefsStorageKey(), JSON.stringify(value));
+    } catch (_) {}
   }
 
   function statusForSortMode(mode) {
@@ -803,9 +836,10 @@ function recordModeTabsHtml() {
     installLegacyBridge();
     state.selectedStudentId = '';
     state.loadToken += 1;
-    state.sortMode = PC_SORT_MODES.DAY;
+    const savedViewPrefs = readPcPersonalityViewPrefs();
+    state.sortMode = savedViewPrefs.sortMode;
     renderEmptyDetail();
-    app.state.attendanceDivision = 'all';
+    app.state.attendanceDivision = savedViewPrefs.division;
     app.state.attendanceDay = '';
     app.updateRecordLayout();
     app.renderContext();
@@ -868,18 +902,22 @@ function recordModeTabsHtml() {
   }
 
   function filterDivision(division) {
-    core().state.attendanceDivision = division === 'all' ? 'all' : (division === 'kinder' ? 'kinder' : 'elementary');
+    const nextDivision = normalizeDivision(division);
+    core().state.attendanceDivision = nextDivision;
+    writePcPersonalityViewPrefs({ division: nextDivision, sortMode: state.sortMode });
     renderList();
   }
 
   function filterDay(day) {
     if (!day) return;
     state.sortMode = PC_SORT_MODES.DAY;
+    writePcPersonalityViewPrefs({ division: core().state.attendanceDivision, sortMode: state.sortMode });
     renderList();
   }
 
   function setSortMode(mode) {
     state.sortMode = normalizeSortMode(mode);
+    writePcPersonalityViewPrefs({ division: core().state.attendanceDivision, sortMode: state.sortMode });
     renderList();
   }
 
