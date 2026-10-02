@@ -68,6 +68,11 @@ jobs:
             tests/vercel-monorepo-separation-contract.test.cjs
       - name: Validate PC schedule Realtime
         run: node --test tests/schedule-realtime.test.cjs
+      - name: Validate PC material order archive
+        working-directory: apps/pc
+        run: |
+          node --check pc-team-talk-material-orders.js
+          node --test tests/pc-material-archive.test.cjs
       - name: Validate Mobile schedule and security contracts
         working-directory: apps/mobile
         run: |
