@@ -1,0 +1,36 @@
+name: Validate Olli Agent session
+
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/api/_lib/olli-agent/session.cjs'
+      - 'apps/mobile/api/olli-agent.js'
+      - 'apps/mobile/tests/olli-agent-session.test.cjs'
+      - 'apps/mobile/tests/olli-agent-session-production-contract.test.cjs'
+      - 'supabase/migrations/*agent_session*.sql'
+      - '.github/workflows/validate-agent-session.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check syntax
+        run: |
+          node --check apps/mobile/api/_lib/olli-agent/session.cjs
+          node --check apps/mobile/api/olli-agent.js
+      - name: Validate Agent session adapter
+        working-directory: apps/mobile
+        run: node --test tests/olli-agent-session.test.cjs
+      - name: Validate production contract
+        working-directory: apps/mobile
+        run: |
+          if [ -f tests/olli-agent-session-production-contract.test.cjs ]; then
+            node --test tests/olli-agent-session-production-contract.test.cjs
+          fi
