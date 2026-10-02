@@ -323,3 +323,245 @@
 }
 .olliMatDeleteBtn:hover{background:#fff;border-color:#d7dbe0}
 .olliMatDeleteBtn:disabled{opacity:.55;cursor:default}
+
+
+/* 재료주문 보관함: 현재 목록과 분리된 읽기 전용 연도/월 기록 */
+.olliMatCurrent{
+  min-height:0;
+  flex:1 1 auto;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.olliMatCurrent[hidden],.olliMatArchiveView[hidden]{display:none!important}
+.olliMatArchiveOpenBtn{
+  height:36px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:0 11px;
+  border:1px solid #e6e8eb;
+  border-radius:11px;
+  background:#fff;
+  color:#666c73;
+  font:650 11.5px 'Pretendard',sans-serif;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.olliMatArchiveOpenBtn:hover{background:#f8f9fa;border-color:#dde0e4}
+.olliMatArchiveOpenBtn svg{
+  width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;
+  stroke-linecap:round;stroke-linejoin:round
+}
+.olliMatArchiveView{
+  min-height:0;
+  flex:1 1 auto;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  background:#fff;
+}
+.olliMatArchiveHeader{
+  min-height:68px;
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 18px;
+  border-bottom:1px solid #eceef1;
+  background:#fff;
+}
+.olliMatArchiveBackBtn{
+  width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;
+  border:1px solid #e7e9ec;border-radius:12px;background:#fff;color:#555b63;cursor:pointer
+}
+.olliMatArchiveBackBtn:hover{background:#f7f8f9}
+.olliMatArchiveBackBtn svg{
+  width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round
+}
+.olliMatArchiveHeaderCopy{min-width:0;display:flex;flex-direction:column;gap:4px}
+.olliMatArchiveHeaderCopy strong{font-size:16px;font-weight:800;letter-spacing:-.035em;color:#202327}
+.olliMatArchiveHeaderCopy span{font-size:10.8px;font-weight:520;color:#999ea5}
+.olliMatArchiveWorkspace{
+  min-height:0;
+  flex:1 1 auto;
+  display:grid;
+  grid-template-columns:210px minmax(0,1fr);
+  overflow:hidden;
+}
+.olliMatArchiveYearsPane{
+  min-width:0;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  border-right:1px solid #eceef1;
+  background:#fafbfc;
+}
+.olliMatArchivePaneTitle{
+  height:48px;
+  flex:0 0 48px;
+  display:flex;
+  align-items:center;
+  padding:0 16px;
+  border-bottom:1px solid #eceef1;
+  color:#777d85;
+  font-size:11px;
+  font-weight:740;
+}
+.olliMatArchiveYears{
+  min-height:0;
+  flex:1 1 auto;
+  overflow:auto;
+  padding:10px;
+}
+.olliMatArchiveYearCard{
+  width:100%;
+  min-height:58px;
+  display:grid;
+  grid-template-columns:34px minmax(0,1fr);
+  align-items:center;
+  gap:9px;
+  margin:0 0 8px;
+  padding:8px 10px;
+  border:1px solid transparent;
+  border-radius:13px;
+  background:transparent;
+  color:#666c73;
+  font-family:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+.olliMatArchiveYearCard:hover{background:#fff;border-color:#eceef1}
+.olliMatArchiveYearCard.active{background:#fff;border-color:#dfe3e7;box-shadow:0 4px 14px rgba(24,29,36,.035)}
+.olliMatArchiveFolderIcon{
+  width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:#f0f2f4;color:#8a9097
+}
+.olliMatArchiveYearCard.active .olliMatArchiveFolderIcon{background:#eef2f5;color:#4f565e}
+.olliMatArchiveFolderIcon svg{
+  width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;
+  stroke-linecap:round;stroke-linejoin:round
+}
+.olliMatArchiveYearCopy{min-width:0;display:flex;flex-direction:column;gap:4px}
+.olliMatArchiveYearCopy strong{font-size:12.5px;font-weight:760;color:#3c4147}
+.olliMatArchiveYearCopy small{font-size:9.8px;font-weight:560;color:#a0a5ab}
+.olliMatArchiveYearsEmpty{padding:18px 10px;color:#a0a5ab;font-size:10.8px;line-height:1.5}
+.olliMatArchiveRecordsPane{
+  min-width:0;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  background:#fff;
+}
+.olliMatArchiveRecordsHead{
+  min-height:48px;
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:8px 18px;
+  border-bottom:1px solid #eceef1;
+}
+.olliMatArchiveRecordsHead>div{display:flex;align-items:baseline;gap:8px}
+.olliMatArchiveRecordsHead strong{font-size:13.5px;font-weight:800;color:#2a2d31}
+.olliMatArchiveRecordsHead span{font-size:10px;font-weight:560;color:#a0a5ab}
+.olliMatArchiveRecords{
+  min-height:0;
+  flex:1 1 auto;
+  overflow:auto;
+  padding:14px 16px 24px;
+  overscroll-behavior:contain;
+}
+.olliMatArchiveMonth{margin:0 0 18px}
+.olliMatArchiveMonthHead{
+  height:34px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 2px 7px;
+  border-bottom:1px solid #eceef1;
+}
+.olliMatArchiveMonthHead strong{font-size:12px;font-weight:780;color:#555b62}
+.olliMatArchiveMonthHead span{font-size:9.8px;font-weight:560;color:#a0a5ab}
+.olliMatArchiveMonthGrid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  padding-top:10px;
+}
+.olliMatArchiveOrderCard{
+  min-width:0;
+  padding:12px 13px;
+  border:1px solid #e7e9ec;
+  border-radius:14px;
+  background:#fff;
+}
+.olliMatArchiveOrderTop{
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+}
+.olliMatArchiveOrderTop .olliMatItemIcon{width:42px;height:42px;flex-basis:42px}
+.olliMatArchiveOrderCopy{min-width:0;display:flex;flex-direction:column;gap:5px}
+.olliMatArchiveOrderCopy strong{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:#2a2d31;font-size:12.8px;font-weight:760
+}
+.olliMatArchiveOrderCopy span{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:#969ba2;font-size:9.8px;font-weight:530
+}
+.olliMatArchiveOrderDetail{
+  margin-top:11px;
+  padding-top:9px;
+  border-top:1px solid #f0f1f3;
+}
+.olliMatArchiveOrderRow{
+  min-height:25px;
+  display:grid;
+  grid-template-columns:58px minmax(0,1fr);
+  align-items:center;
+  gap:8px;
+}
+.olliMatArchiveOrderRow span{color:#9a9fa6;font-size:9.8px;font-weight:590}
+.olliMatArchiveOrderRow strong{
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:#5d636b;font-size:10.3px;font-weight:620
+}
+.olliMatArchiveOrderMemo{
+  margin-top:7px;
+  padding:8px 9px;
+  border-radius:10px;
+  background:#f7f8f9;
+}
+.olliMatArchiveOrderMemo span{display:block;margin-bottom:4px;color:#9a9fa6;font-size:9.5px;font-weight:650}
+.olliMatArchiveOrderMemo p{
+  margin:0;color:#666c73;font-size:10px;font-weight:520;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere
+}
+.olliMatArchiveOrderLink{
+  display:inline-block;
+  margin-top:8px;
+  color:#3970c8;
+  font-size:10px;
+  font-weight:650;
+  text-decoration:none
+}
+.olliMatArchiveOrderLink:hover{text-decoration:underline}
+.olliMatArchiveEmpty{
+  min-height:220px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:24px;
+  text-align:center
+}
+.olliMatArchiveEmpty strong{color:#777d85;font-size:12.5px;font-weight:720}
+.olliMatArchiveEmpty span{max-width:320px;color:#a1a6ad;font-size:10.8px;font-weight:510;line-height:1.55}
+@container (max-width:760px){
+  .olliMatArchiveWorkspace{grid-template-columns:170px minmax(0,1fr)}
+  .olliMatArchiveMonthGrid{grid-template-columns:minmax(0,1fr)}
+}

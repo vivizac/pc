@@ -124,6 +124,17 @@
 
   function rootQuery(selector){return state.root?.querySelector(selector)||null}
 
+  function refreshWorkNotificationBadge(){
+    try{
+      const pending=global.refreshOlliTalkMentionBadge?.();
+      if(pending&&typeof pending.catch==='function'){
+        pending.catch(error=>console.warn('Work 알림 배지 갱신 실패:',error));
+      }
+    }catch(error){
+      console.warn('Work 알림 배지 갱신 실패:',error);
+    }
+  }
+
   function statusMeta(status){
     const map={
       requested:{label:'요청',className:'requested'},
@@ -679,6 +690,7 @@
       state.filter='requested';
       closeCreate();
       if(state.root?.isConnected)await refresh({showLoading:false});
+      refreshWorkNotificationBadge();
       showToast(isCoffee?'커피 요청을 등록했습니다.':'재료 요청을 등록했습니다.','ok');
     }catch(error){
       showToast(error?.message||(isCoffee?'커피 요청을 등록하지 못했습니다.':'재료 요청을 등록하지 못했습니다.'),'error');
@@ -708,6 +720,7 @@
       });
       if(!payload?.ok)throw new Error(payload?.message||'주문 상태를 변경하지 못했습니다.');
       await refresh({showLoading:false});
+      refreshWorkNotificationBadge();
       showToast(`${statusMeta(nextStatus).label} 상태로 변경했습니다.`,'ok');
     }catch(error){
       await refresh({showLoading:false});
@@ -739,6 +752,7 @@
       if(!payload?.ok)throw new Error(payload?.message||'재료 요청을 삭제하지 못했습니다.');
       if(state.expandedId===clean(item.id))state.expandedId='';
       await refresh({showLoading:false});
+      refreshWorkNotificationBadge();
       showToast('재료 요청을 삭제했습니다.','ok');
     }catch(error){
       await refresh({showLoading:false});
