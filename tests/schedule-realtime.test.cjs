@@ -130,6 +130,13 @@ test('PC saves, editors and in-flight reads defer signals',async()=>{
   env.state.dialog=null;env.state.loading=true;assert.equal(await env.check(),false);assert.equal(env.reads,0);
   env.state.loading=false;assert.equal(await env.check(),true);assert.equal(env.reads,1);
 });
+test('PC unrelated focused input does not block schedule Realtime refresh',async()=>{
+  const env=pc();
+  env.dom.activeElement={matches:()=>true};
+  assert.equal(await env.check(),true);
+  assert.equal(env.reads,1);
+  assert.equal(env.state.syncRevision,10);
+});
 test('PC failed week read does not acknowledge revision; retries same revision',async()=>{
   const env=pc();env.setRead(async()=>{throw Error('network');});assert.equal(await env.check(),false);assert.equal(env.state.syncRevision,9);
   env.setRead(async()=>({enrollments:[]}));assert.equal(await env.check(),true);assert.equal(env.reads,2);assert.equal(env.state.syncRevision,10);
