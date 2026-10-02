@@ -21,6 +21,7 @@
     assistantReplyPending: false,
     aiConversationMessages: [],
     pendingActionReason: null,
+    pendingMakeupDialogue: null,
     actionBusy: new Set(),
     olliReplyBusy: new Set(),
     uploadBusy: false,
@@ -1177,7 +1178,10 @@
 
   function setOlliMode(active, options = {}) {
     const nextActive = !!active;
-    if (nextActive !== state.olliModeActive) state.aiConversationMessages = [];
+    if (nextActive !== state.olliModeActive) {
+      state.aiConversationMessages = [];
+      state.pendingMakeupDialogue = null;
+    }
     state.olliModeActive = nextActive;
     syncAssistantUi();
     const input = byId('olliPcTeamTalkInput');
@@ -1320,6 +1324,7 @@
   function handleAiModeChanged() {
     state.aiConversationMessages = [];
     state.pendingActionReason = null;
+    state.pendingMakeupDialogue = null;
     syncAssistantUi();
   }
 
@@ -1854,6 +1859,52 @@
       && !!clean(data?.error);
   }
 
+  async function resolveMakeupAgentResponse({
+    response,
+    data,
+    current,
+    replyToMessageId,
+  }) {
+    if (!response.ok) {
+      if (isSafeMakeupClarification(response,data)) {
+        const message=clean(data?.error);
+        state.pendingMakeupDialogue=null;
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+      throw new Error(data?.error || data?.message || '보강 등록 Agent 응답을 받지 못했습니다.');
+    }
+
+    const interactionStatus=clean(data?.interactionStatus);
+    const aiReply=clean(data?.output);
+    if (data?.ok === true && ['needs_clarification','blocked'].includes(interactionStatus) && aiReply) {
+      state.pendingMakeupDialogue=interactionStatus==='needs_clarification'
+        ? { active:true }
+        : null;
+      return {
+        assistantMessage:await saveAssistantReply(current,aiReply,replyToMessageId),
+        replyText:aiReply,
+        recordAi:false
+      };
+    }
+
+    if (data?.ok !== true || !data?.message?.action) {
+      throw new Error(data?.error || data?.message || '보강 등록 Agent 응답을 받지 못했습니다.');
+    }
+    if (clean(data.message.action.action_type) !== 'add_makeup') {
+      throw new Error('보강 등록 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    state.pendingMakeupDialogue=null;
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
   async function resolveMakeupAddAgentTurn(commandText, current, replyToMessageId) {
     const sourceMessageId = Number(replyToMessageId || 0);
     if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
@@ -1872,29 +1923,12 @@
       })
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      if (isSafeMakeupClarification(response,data)) {
-        const message=clean(data?.error);
-        return {
-          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
-          replyText:message,
-          recordAi:false
-        };
-      }
-      throw new Error(data?.error || data?.message || '보강 등록 Agent 응답을 받지 못했습니다.');
-    }
-    if (data?.ok !== true || !data?.message?.action) {
-      throw new Error(data?.error || data?.message || '보강 등록 Agent 응답을 받지 못했습니다.');
-    }
-    if (clean(data.message.action.action_type) !== 'add_makeup') {
-      throw new Error('보강 등록 Agent 작업 종류가 올바르지 않습니다.');
-    }
-
-    return {
-      assistantMessage:data.message,
-      replyText:clean(data.message.body),
-      recordAi:false
-    };
+    return resolveMakeupAgentResponse({
+      response,
+      data,
+      current,
+      replyToMessageId,
+    });
   }
 
   async function resolveMakeupCancelAgentTurn({
@@ -2546,6 +2580,43 @@
     }
   }
 
+  async function resolveContextualMakeupTurn(commandText,current,replyToMessageId) {
+    if (!state.pendingMakeupDialogue) return null;
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0) return null;
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'context_makeup_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageId,
+        conversation:state.aiConversationMessages.map((item)=>({
+          role:item.role,
+          content:item.content
+        }))
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok){
+      state.pendingMakeupDialogue=null;
+      throw new Error(data?.error || data?.message || '보강 문맥 응답을 받지 못했습니다.');
+    }
+    if(data?.ok!==true || data?.handled!==true){
+      state.pendingMakeupDialogue=null;
+      return null;
+    }
+    return resolveMakeupAgentResponse({
+      response,
+      data,
+      current,
+      replyToMessageId:sourceMessageId,
+    });
+  }
+
   async function resolveContextualReadTurn(commandText,current,replyToMessageId) {
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0) return null;
@@ -2606,6 +2677,15 @@
  async function resolveAiTurn(commandText, current, replyToMessageId, options = {}) {
     const router = global.OlliCommandRouter;
     const schedule = global.OlliCommandSchedule;
+
+    if (state.pendingMakeupDialogue) {
+      const makeupTurn=await resolveContextualMakeupTurn(
+        commandText,
+        current,
+        replyToMessageId
+      );
+      if(makeupTurn) return makeupTurn;
+    }
 
     if (state.pendingActionReason) {
       if (isPendingReasonCancel(commandText)) {
