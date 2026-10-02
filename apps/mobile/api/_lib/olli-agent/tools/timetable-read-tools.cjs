@@ -182,6 +182,16 @@ async function readRoster({requestContext,intent,todayKey,labelBook,callRpc}){
       entry_kind:meta.entry_kind||kind,
       is_guest:meta.is_guest===true || row?.is_guest===true || !!clean(row?.guest_name),
     };
+    if(meta.source_weekday){
+      item.source_weekday_label=weekdayLabel(meta.source_weekday);
+      item.source_time_label=timeLabel(division,meta.source_weekday,meta.source_time_slot,mode);
+      item.source_class_group=meta.source_class_group||'A';
+    }
+    if(meta.target_weekday){
+      item.target_weekday_label=weekdayLabel(meta.target_weekday);
+      item.target_time_label=timeLabel(division,meta.target_weekday,meta.target_time_slot,mode);
+      item.target_class_group=meta.target_class_group||'A';
+    }
     if(item.student_label&&matchesCommon(item,intent)) items.push(item);
   };
   const inRange=(date)=>scope==='all'||(date>=start&&date<=end);
@@ -190,7 +200,7 @@ async function readRoster({requestContext,intent,todayKey,labelBook,callRpc}){
     for(const row of (Array.isArray(data?.enrollments)?data.enrollments:[])){
       const wd=Number(row?.weekday||0);
       const date=scope==='week'?addDaysKey(weekStart,wd-1):reference;
-      if(wd<1||wd>6||!inRange(date)||isoWeekday(date)!==wd||!rowEffectiveOn(row,date)||clean(row?.status).toLowerCase()!=='active') continue;
+      if(wd<1||wd>6||!inRange(date)||isoWeekday(date)!==wd||!rowEffectiveOn(row,date)) continue;
       push(row,{date,entry_kind:'regular'});
     }
     for(const row of (Array.isArray(data?.one_time_sessions)?data.one_time_sessions:[])){
@@ -199,12 +209,37 @@ async function readRoster({requestContext,intent,todayKey,labelBook,callRpc}){
       push(row,{date,weekday:isoWeekday(date),entry_kind:clean(row?.session_type).toLowerCase()==='trial'?'trial':'makeup'});
     }
   }else if(kind==='absence'){
-    for(const row of (Array.isArray(data?.attendance_overrides)?data.attendance_overrides:[])){
+    const overrides=await callRpc('olli_schedule_attendance_session_overrides_range',{
+      p_session_token:requestContext.sessionToken,
+      p_academy_id:requestContext.academyId,
+      p_start_date:start,
+      p_end_date:end,
+    });
+    if(!overrides?.ok){
+      throw readError(overrides?.message||'결석 명단을 조회하지 못했습니다.',403,overrides?.code||'OLLI_AGENT_TIMETABLE_ABSENCE_READ_FAILED');
+    }
+    for(const row of (Array.isArray(overrides?.overrides)?overrides.overrides:[])){
       const date=clean(row?.session_date).slice(0,10);
-      if(!inRange(date)||clean(row?.register_status).toLowerCase()!=='absent') continue;
+      if(!inRange(date)) continue;
+      if(clean(row?.register_session_kind).toLowerCase()!=='regular') continue;
+      if(clean(row?.register_status).toLowerCase()!=='absent') continue;
       const wd=isoWeekday(date);
-      const division=rowDivision(row) || rowDivision((data.enrollments||[]).find(e=>clean(e?.student_id)===clean(row?.student_id)&&Number(e?.weekday)===wd));
-      push(row,{date,weekday:wd,division,entry_kind:'absence'});
+      const enrollment=(Array.isArray(data?.enrollments)?data.enrollments:[]).find(e=>
+        clean(e?.student_id)===clean(row?.student_id) &&
+        Number(e?.weekday||0)===wd &&
+        Number(e?.time_slot||0)===Number(row?.time_slot||0) &&
+        groupOf(e)===groupOf(row) &&
+        rowEffectiveOn(e,date)
+      ) || null;
+      if(!enrollment) continue;
+      push(enrollment,{
+        date,
+        weekday:wd,
+        division:rowDivision(enrollment),
+        time_slot:Number(row?.time_slot||0),
+        class_group:groupOf(row),
+        entry_kind:'absence',
+      });
     }
   }else if(kind==='makeup'||kind==='trial'){
     for(const row of (Array.isArray(data?.one_time_sessions)?data.one_time_sessions:[])){
@@ -225,11 +260,25 @@ async function readRoster({requestContext,intent,todayKey,labelBook,callRpc}){
       if(clean(row?.status).toLowerCase()!=='scheduled'||clean(row?.change_type).toLowerCase()!=='move') continue;
       const date=clean(row?.effective_date).slice(0,10);
       if(scope!=='all'&&!inRange(date)) continue;
+      const source=(data.enrollments||[]).find(e=>clean(e?.id)===clean(row?.source_enrollment_id))||null;
       const target=(data.enrollments||[]).find(e=>clean(e?.id)===clean(row?.target_enrollment_id))||row;
-      push(target,{name:rosterName(data,row),date,entry_kind:'move'});
+      const division=rowDivision(target)||rowDivision(source)||rowDivision(row);
+      push(target,{
+        name:rosterName(data,row),
+        date,
+        division,
+        entry_kind:'move',
+        source_weekday:Number(source?.weekday||0),
+        source_time_slot:Number(source?.time_slot||0),
+        source_class_group:groupOf(source),
+        target_weekday:Number(target?.weekday||0),
+        target_time_slot:Number(target?.time_slot||0),
+        target_class_group:groupOf(target),
+      });
     }
   }
-  return {kind,scope,reference_date:reference,timetable_mode:mode,count:items.length,items:items.slice(0,100),truncated:items.length>100};
+  const studentCount=new Set(items.map(item=>clean(item.student_label)).filter(Boolean)).size;
+  return {kind,scope,reference_date:reference,timetable_mode:mode,count:items.length,student_count:studentCount,items:items.slice(0,100),truncated:items.length>100};
 }
 async function readPickupRoster({requestContext,intent,todayKey,labelBook,callRpc}){
   const date=resolveDateSpec(intent?.dateSpec,todayKey)||todayKey;
@@ -238,8 +287,26 @@ async function readPickupRoster({requestContext,intent,todayKey,labelBook,callRp
   const weekday=isoWeekday(date);
   const wanted=requestedTimeText(intent);
   const kind=clean(intent?.kind)||'all';
+  const flags=await callRpc('olli_schedule_pickup_dropoff_flags',{
+    p_session_token:requestContext.sessionToken,
+    p_academy_id:requestContext.academyId,
+    p_start_date:date,
+    p_end_date:date,
+  });
+  if(!flags?.ok){
+    throw readError(flags?.message||'픽업 구분을 조회하지 못했습니다.',403,flags?.code||'OLLI_AGENT_TIMETABLE_PICKUP_FLAGS_FAILED');
+  }
+  const flagMap=new Map((Array.isArray(flags?.flags)?flags.flags:[]).map(row=>[
+    clean(row?.id),
+    {is_dropoff:row?.is_dropoff===true,dropoff_label:clean(row?.dropoff_label)}
+  ]));
   const items=[];
-  for(const row of (Array.isArray(data?.pickups)?data.pickups:[])){
+  for(const baseRow of (Array.isArray(data?.pickups)?data.pickups:[])){
+    const flag=flagMap.get(clean(baseRow?.id))||{};
+    const row=Object.assign({},baseRow,{
+      is_dropoff:flag.is_dropoff===true,
+      dropoff_label:flag.dropoff_label||clean(baseRow?.dropoff_label),
+    });
     if(Number(row?.weekday||0)!==weekday||!rowEffectiveOn(row,date)) continue;
     const division='kinder';
     const label=timeLabel(division,weekday,Number(row?.class_time||0),mode);
@@ -259,7 +326,8 @@ async function readPickupRoster({requestContext,intent,todayKey,labelBook,callRp
       pickup_time:isDropoff?'':clean(row?.pickup_time).slice(0,5),
     });
   }
-  return {date,kind,count:items.length,items:items.slice(0,100),truncated:items.length>100};
+  const studentCount=new Set(items.map(item=>clean(item.student_label)).filter(Boolean)).size;
+  return {date,kind,count:items.length,student_count:studentCount,items:items.slice(0,100),truncated:items.length>100};
 }
 async function readAvailability({requestContext,intent,todayKey,callRpc}){
   let start,end;
