@@ -36,7 +36,20 @@ test('production source-bound reads do not attach SDK Session history after priv
   assert.ok(start>=0 && end>start);
   const readBlock=endpoint.slice(start,end);
   assert.doesNotMatch(readBlock,/session:agentSession/);
-  assert.doesNotMatch(readBlock,/session:subjectSession[\s\S]*?run(?:TimetableRead|StudentScheduleRead|AttendanceRead|PickupRead)/);
+
+  for(const call of [
+    'runtimeModule.runTimetableRead({',
+    'runtimeModule.runStudentScheduleRead({',
+    'runtimeModule.runAttendanceRead({',
+    'runtimeModule.runPickupRead({',
+  ]){
+    const callStart=readBlock.indexOf(call);
+    assert.ok(callStart>=0,call+' missing');
+    const callEnd=readBlock.indexOf('});',callStart);
+    assert.ok(callEnd>callStart);
+    const args=readBlock.slice(callStart,callEnd);
+    assert.doesNotMatch(args,/session:/);
+  }
 });
 
 test('runtime Session support remains available for probes and non-production callers',()=>{
@@ -67,7 +80,7 @@ test('persistent context is deliberately single-subject and resets on an explici
   assert.match(privacy,/label:'학생A'/);
   assert.match(privacy,/isContextualStudentReference/);
   assert.match(privacy,/if\(sameBinding\)[\s\S]*?else\{[\s\S]*?bindSubjectBindings/);
-  const contextualStart=privacy.indexOf("bindings.length===1");
+  const contextualStart=privacy.indexOf("if(\n    bindings.length===1\n    && clean(bindings[0]?.label)==='학생A'\n    && isContextualStudentReference(text)");
   const contextualEnd=privacy.indexOf("return Object.freeze({",contextualStart);
   assert.ok(contextualStart>=0 && contextualEnd>contextualStart);
   assert.doesNotMatch(privacy.slice(contextualStart,contextualEnd),/bindSubjectBindings/);
