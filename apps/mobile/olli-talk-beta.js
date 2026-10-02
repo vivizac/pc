@@ -642,6 +642,16 @@
     return payload.message;
   }
 
+  function parseOlliTalkAttendanceStatusAgentCandidate(commandText,router=window.OlliCommandRouter){
+    if(!router || typeof router.parseAttendanceStatusMutationIntent!=='function') return null;
+    try{
+      return router.parseAttendanceStatusMutationIntent(commandText) || null;
+    }catch(error){
+      console.warn('올리톡 출석부 상태 변경 Agent 후보 판별 실패:',error);
+      return null;
+    }
+  }
+
   function parseOlliTalkTimetableAdminAgentCandidate(commandText,router=window.OlliCommandRouter){
     if(!router) return null;
     try{
@@ -983,6 +993,36 @@
       console.warn('올리톡 수업 이동 취소 Agent 후보 판별 실패:',error);
       return false;
     }
+  }
+
+  async function resolveOlliTalkAttendanceStatusAgentTurn(commandText,parsed,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('출석부 상태 변경 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'attendance_status_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '출석부 상태 변경 Agent 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='set_attendance_status'){
+      throw new Error('출석부 상태 변경 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
   }
 
   async function resolveOlliTalkTimetableAdminAgentTurn(commandText,parsed,context,replyToMessageId){
@@ -1835,6 +1875,16 @@
         replyText:confirmation,
         recordAi:false
       };
+    }
+
+    const attendanceStatusCandidate=parseOlliTalkAttendanceStatusAgentCandidate(commandText,router);
+    if(attendanceStatusCandidate){
+      return resolveOlliTalkAttendanceStatusAgentTurn(
+        commandText,
+        attendanceStatusCandidate,
+        context,
+        replyToMessageId
+      );
     }
 
     const timetableAdminCandidate=parseOlliTalkTimetableAdminAgentCandidate(commandText,router);
