@@ -43,6 +43,23 @@ export default async function handler(req, res) {
         });
       }
 
+      const readIntent=mode==='timetable_read'
+        ? (body.readIntent && typeof body.readIntent==='object' ? body.readIntent : null)
+        : null;
+      if(mode==='timetable_read' && !readIntent){
+        return res.status(400).json({
+          error:'timetable_read에는 Router가 확정한 readIntent가 필요합니다.',
+          code:'OLLI_AGENT_TIMETABLE_READ_INTENT_REQUIRED',
+        });
+      }
+
+      const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
+      await runtimeModule.validatePickupSourceMessage({
+        requestContext,
+        sourceMessageId,
+        sourceMessageText:message,
+      });
+
       const privacyModule=await import('./_lib/olli-agent/privacy.cjs');
       let prepared;
       let agentSession=null;
@@ -64,18 +81,10 @@ export default async function handler(req, res) {
         if(!String(sessionError?.code||'').startsWith('OLLI_AGENT_SESSION_')) throw sessionError;
         prepared=await privacyModule.prepareAgentPrivacyInput(message,requestContext);
       }
-      const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
       const agentContext=contextModule.toAgentRunContext(requestContext);
       let result;
 
       if(mode==='timetable_read'){
-        const readIntent=body.readIntent && typeof body.readIntent==='object' ? body.readIntent : null;
-        if(!readIntent){
-          return res.status(400).json({
-            error:'timetable_read에는 Router가 확정한 readIntent가 필요합니다.',
-            code:'OLLI_AGENT_TIMETABLE_READ_INTENT_REQUIRED',
-          });
-        }
         result=await runtimeModule.runTimetableRead({
           agentContext,
           requestContext,
@@ -84,6 +93,7 @@ export default async function handler(req, res) {
           sourceMessageText:message,
           readIntent,
           session:agentSession,
+          sourceValidated:true,
         });
       }else if(mode==='schedule_read'){
         result=await runtimeModule.runStudentScheduleRead({
@@ -93,6 +103,7 @@ export default async function handler(req, res) {
           sourceMessageId,
           sourceMessageText:message,
           session:agentSession,
+          sourceValidated:true,
         });
       }else if(mode==='attendance_read'){
         result=await runtimeModule.runAttendanceRead({
@@ -102,6 +113,7 @@ export default async function handler(req, res) {
           sourceMessageId,
           sourceMessageText:message,
           session:agentSession,
+          sourceValidated:true,
         });
       }else{
         result=await runtimeModule.runPickupRead({
@@ -111,6 +123,7 @@ export default async function handler(req, res) {
           sourceMessageId,
           sourceMessageText:message,
           session:agentSession,
+          sourceValidated:true,
         });
       }
 
