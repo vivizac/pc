@@ -284,11 +284,25 @@ function prepareAgentConversationInput(preparedPrivacy, conversation, currentTex
   assertPreparedPrivacyEgress(prepared.messages,prepared);
 
   return prepared.messages
-    .map((item)=>({
-      role:clean(item?.role),
-      content:clean(item?.content),
-    }))
-    .filter((item)=>['user','assistant'].includes(item.role) && item.content);
+    .map((item)=>{
+      const role=clean(item?.role);
+      const content=clean(item?.content);
+      if(!content || !['user','assistant'].includes(role)) return null;
+      if(role==='assistant'){
+        return {
+          type:'message',
+          role:'assistant',
+          status:'completed',
+          content:[{type:'output_text',text:content}],
+        };
+      }
+      return {
+        type:'message',
+        role:'user',
+        content:[{type:'input_text',text:content}],
+      };
+    })
+    .filter(Boolean);
 }
 
 async function prepareAgentContextReadPrivacyInput(
