@@ -2048,24 +2048,6 @@
       olliTalkPendingActionReason=null;
     }
 
-    if(interpreterRoute!=='rule' && olliTalkPendingMakeupDialogue){
-      if(isOlliTalkPendingReasonCancel(commandText)){
-        olliTalkPendingMakeupDialogue=null;
-        const message='보강 등록 준비를 취소했어요.';
-        return {
-          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
-          replyText:message,
-          recordAi:false
-        };
-      }
-      const makeupTurn=await resolveOlliTalkContextualMakeupTurn(
-        commandText,
-        context,
-        replyToMessageId
-      );
-      if(makeupTurn) return makeupTurn;
-    }
-
     if(interpreterRoute!=='rule' && olliTalkPendingActionReason){
       if(isOlliTalkPendingReasonCancel(commandText)){
         olliTalkPendingActionReason=null;
