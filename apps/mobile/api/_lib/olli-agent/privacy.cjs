@@ -124,6 +124,131 @@ function prepareAgentPrivacyFromResolution(text, resolution) {
   return Object.freeze(result);
 }
 
+
+function isContextualStudentReference(text) {
+  const compact=String(text || '').replace(/\s+/g,'');
+  return /(?:그학생|그아이|그친구|그애|걔|아까(?:그)?(?:학생|아이|친구)?|방금(?:그)?(?:학생|아이|친구)?)/.test(compact);
+}
+
+function withStableSingleSubject(resolution, item, binding) {
+  const stable=Object.assign({},item,{
+    label:'학생A',
+    subjectRef:clean(binding?.subjectRef) || item.subjectRef,
+  });
+  return Object.assign({},resolution,{resolved:[stable]});
+}
+
+async function prepareAgentReadPrivacyInput(text, requestContext, options = {}) {
+  const session=options?.session;
+  const resolverOptions=Object.assign({},options);
+  delete resolverOptions.session;
+
+  const resolution=await resolveStudentReferences(text,requestContext,resolverOptions);
+  const preparedWithoutSession=()=>prepareAgentPrivacyFromResolution(text,resolution);
+
+  if(!session || typeof session.getSubjectBindings!=='function' || typeof session.bindSubjectBindings!=='function'){
+    return Object.freeze({
+      preparedPrivacy:preparedWithoutSession(),
+      sessionEnabled:false,
+      sessionReset:false,
+    });
+  }
+
+  const resolved=Array.isArray(resolution?.resolved)?resolution.resolved:[];
+  const ambiguous=Array.isArray(resolution?.ambiguous)?resolution.ambiguous:[];
+
+  // Keep multi-student and ambiguous requests on the existing per-request privacy path.
+  // Persistent read context is intentionally single-subject first so a stale context
+  // can never silently select a different student.
+  if(ambiguous.length>0 || resolved.length>1){
+    return Object.freeze({
+      preparedPrivacy:preparedWithoutSession(),
+      sessionEnabled:false,
+      sessionReset:false,
+    });
+  }
+
+  let bindings=await session.getSubjectBindings();
+  bindings=Array.isArray(bindings)?bindings:[];
+
+  if(resolved.length===1){
+    const current=resolved[0];
+    const currentId=clean(current?.student?.id);
+    const sameBinding=bindings.length===1
+      && clean(bindings[0]?.studentId)===currentId
+      && clean(bindings[0]?.label)==='학생A';
+
+    let sessionReset=false;
+    let subjectRef=current.subjectRef;
+
+    if(sameBinding){
+      subjectRef=clean(bindings[0]?.subjectRef) || subjectRef;
+    }else if(bindings.length>0){
+      await session.clearSession();
+      bindings=[];
+      sessionReset=true;
+    }
+
+    await session.bindSubjectBindings([{
+      label:'학생A',
+      subjectRef,
+      studentId:currentId,
+    }]);
+
+    const stableResolution=withStableSingleSubject(
+      resolution,
+      current,
+      {subjectRef}
+    );
+
+    return Object.freeze({
+      preparedPrivacy:prepareAgentPrivacyFromResolution(text,stableResolution),
+      sessionEnabled:true,
+      sessionReset,
+    });
+  }
+
+  if(
+    bindings.length===1
+    && clean(bindings[0]?.label)==='학생A'
+    && isContextualStudentReference(text)
+  ){
+    const boundStudent=(Array.isArray(resolution?.students)?resolution.students:[])
+      .find((student)=>clean(student?.id)===clean(bindings[0]?.studentId));
+
+    if(boundStudent){
+      await session.bindSubjectBindings([{
+        label:'학생A',
+        subjectRef:bindings[0].subjectRef,
+        studentId:boundStudent.id,
+      }]);
+
+      const contextualResolution=Object.assign({},resolution,{
+        resolved:[{
+          label:'학생A',
+          subjectRef:bindings[0].subjectRef,
+          position:-1,
+          matchedAlias:'',
+          fromSession:true,
+          student:boundStudent,
+        }],
+      });
+
+      return Object.freeze({
+        preparedPrivacy:prepareAgentPrivacyFromResolution(text,contextualResolution),
+        sessionEnabled:true,
+        sessionReset:false,
+      });
+    }
+  }
+
+  return Object.freeze({
+    preparedPrivacy:preparedWithoutSession(),
+    sessionEnabled:false,
+    sessionReset:false,
+  });
+}
+
 async function prepareAgentPrivacyInput(text, requestContext, options = {}) {
   const resolution = await resolveStudentReferences(text, requestContext, options);
   return prepareAgentPrivacyFromResolution(text, resolution);
@@ -193,6 +318,7 @@ module.exports = {
   safeSubjectRefs,
   sanitizeAgentToolPayload,
   prepareAgentPrivacyFromResolution,
+  prepareAgentReadPrivacyInput,
   prepareAgentPrivacyInput,
   preparePrivateReasonPrivacyInput,
   prepareAbsencePrivacyInput,
