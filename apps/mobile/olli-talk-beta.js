@@ -2014,7 +2014,7 @@
       if(makeupTurn) return makeupTurn;
     }
 
-    if(olliTalkPendingActionReason){
+    if(interpreterRoute!=='rule' && olliTalkPendingActionReason){
       if(isOlliTalkPendingReasonCancel(commandText)){
         olliTalkPendingActionReason=null;
         const message='작업 준비를 취소했어요.';
@@ -2341,7 +2341,16 @@
       }
     }
 
-    const resolved=await resolveOlliTalkAiReply(commandText,context);
+    if(interpreterRoute==='rule'){
+      const message='요청을 시스템 명령으로 해석했지만 규칙 시스템에 연결하지 못했어요. 필요한 정보를 조금 더 구체적으로 알려 주세요.';
+      return {
+        assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+        replyText:message,
+        recordAi:false
+      };
+    }
+
+    const resolved=await resolveOlliTalkAiReply(rawCommandText,context);
     return {
       assistantMessage:await saveOlliTalkOlliReply(context,resolved.message,replyToMessageId),
       replyText:resolved.message,
