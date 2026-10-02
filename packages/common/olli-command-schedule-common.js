@@ -1316,7 +1316,7 @@
 
     const seen=new Set();
     const items=rows.filter((item)=>{
-      const key=[item.weekday,item.timeSlot,item.classGroup,item.sessionOrder == null ? '' : item.sessionOrder].join(':');
+      const key=[item.weekday,item.timeSlot,item.classGroup].join(':');
       if(seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -1346,8 +1346,7 @@
     }
     const summary=items.map((item)=>{
       const group=clean(item.classGroup) ? ' ' + clean(item.classGroup) + '반' : '';
-      const order=Number(item.sessionOrder || 0)>0 ? ' ' + Number(item.sessionOrder) + '회차' : '';
-      return clean(item.weekdayLabel) + ' ' + clean(item.timeLabel) + group + order;
+      return clean(item.weekdayLabel) + ' ' + clean(item.timeLabel) + group;
     }).join(', ');
     return name + '님의 ' + prefix + '정규 수업은 ' + summary + '입니다.';
   }
