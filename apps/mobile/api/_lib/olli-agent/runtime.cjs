@@ -833,6 +833,7 @@ async function runMakeupPrepareAgent({
   const today = todayInSeoul();
   let persistedMessage = null;
   let prepareError = null;
+  let toolOutcome = null;
 
   const prepareMakeup = createPrepareMakeupTool({
     tool,
@@ -850,6 +851,9 @@ async function runMakeupPrepareAgent({
     },
     capturePrepareError(error) {
       prepareError = error;
+    },
+    captureToolOutcome(outcome) {
+      toolOutcome = outcome;
     },
     sanitizePayload(payload) {
       return sanitizeAgentToolPayload(payload, preparedPrivacy);
@@ -875,9 +879,12 @@ async function runMakeupPrepareAgent({
       'Convert the visible class time to class_hour and class_minute. For expressions such as 4시 반, use class_minute 30.',
       'Always call prepare_makeup exactly once before answering.',
       'The tool resolves the actual stored timetable slot from current server availability. Never invent or expose an internal time_slot.',
-      'The tool creates a pending confirmation card only. It never directly registers a makeup class.',
-      'Never say the makeup was registered. Say that the makeup registration is waiting for user confirmation.',
-      'Never ask for, infer, or reveal a real student name, UUID, member ID, session token, academy ID, action ID, message ID, or internal time slot.',
+      'The tool returns one of three business outcomes: pending, needs_clarification, or blocked.',
+      'If status is pending, a confirmation card was saved. Never say the makeup was registered; say it is waiting for confirmation.',
+      'If status is needs_clarification, ask exactly one short natural Korean follow-up question using only the returned reason and options.',
+      'If reason is class_group_required, ask which returned class group the user wants. Do not choose one yourself.',
+      'If status is blocked, explain the returned reason briefly in natural Korean. Do not call it a system error.',
+      'Do not mention internal status names, reason codes, anonymous student labels, UUIDs, member IDs, session tokens, academy IDs, action IDs, message IDs, or internal time slots.',
       'Answer briefly in Korean.',
     ].join(' '),
     tools:[prepareMakeup],
@@ -900,14 +907,17 @@ async function runMakeupPrepareAgent({
   }
 
   const finalOutput = String(result?.finalOutput || '').trim();
-  if (!finalOutput && (!requirePersistedMessage || !persistedMessage)) {
+  const interactionStatus = String(toolOutcome?.status || '').trim();
+  const conversationalOutcome = ['needs_clarification','blocked'].includes(interactionStatus);
+
+  if (!finalOutput && (!requirePersistedMessage || !persistedMessage || conversationalOutcome)) {
     throw runtimeError(
       '보강 등록 준비 Agent 응답이 비어 있습니다.',
       502,
       'OLLI_AGENT_EMPTY_MAKEUP_PREPARE_RESPONSE'
     );
   }
-  if (requirePersistedMessage && !persistedMessage) {
+  if (requirePersistedMessage && !persistedMessage && !conversationalOutcome) {
     throw runtimeError(
       '보강 확인 카드 저장 결과를 확인하지 못했습니다.',
       502,
@@ -921,6 +931,8 @@ async function runMakeupPrepareAgent({
     output:finalOutput,
     nodeVersion:process.versions.node,
     persistedMessage,
+    interactionStatus:conversationalOutcome ? interactionStatus : '',
+    interaction:conversationalOutcome ? toolOutcome : null,
     recoveredAfterPersist:!!runError,
   };
 }
