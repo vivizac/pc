@@ -920,6 +920,130 @@
     return stripped;
   }
 
+  function hasScopedDateSignal(value) {
+    const compact=compactText(value);
+    return /(?:오늘|금일|내일|이번주|이번주간|금주|다음주|차주|다다음주|\d{1,2}월\d{1,2}일|\d{1,2}\/\d{1,2}일|(?:^|[^\d월])\d{1,2}일(?!요일))/.test(compact);
+  }
+
+  function parseClassLayoutMutationIntent(text) {
+    const raw=cleanText(text);
+    const compact=compactText(raw);
+    if(!raw) return null;
+    const split=/(?:분반|분리)/.test(compact);
+    const merge=/(?:합반|통합|합쳐|합치)/.test(compact);
+    if(split===merge) return null;
+    const division=detectDivision(compact);
+    const dateSpec=parseDateExpression(compact);
+    const timeSlot=firstTimeSlot(raw);
+    if(!division || !dateSpec || !timeSlot) return null;
+    return {
+      type:'mutation',
+      intent:'set_class_layout',
+      division,
+      split,
+      dateSpec,
+      dateLabel:dateSpec.label,
+      timeSlot,
+      timeMinute:firstTimeMinute(raw),
+      originalText:raw
+    };
+  }
+
+  function extractTeacherTargetName(value) {
+    const raw=cleanText(value);
+    let match=raw.match(/(?:담당\s*)?(?:선생님|담임|쌤)\s*(?:을|를)?\s*[:：]?\s*([가-힣A-Za-z0-9·ㆍ_-]{1,30})(?:\s*(?:선생님|쌤))?(?:으로|로)?/);
+    let name=cleanText(match&&match[1]);
+    if(!name){
+      match=raw.match(/([가-힣A-Za-z0-9·ㆍ_-]{1,30})\s*(?:선생님|쌤)(?:으로|로)?/);
+      name=cleanText(match&&match[1]);
+    }
+    if(/^(?:담당|담임|선생님|쌤|수업|오늘|내일)$/.test(name)) return '';
+    return name.replace(/[을를이가은는]$/,'').trim();
+  }
+
+  function parseTeacherAssignmentMutationIntent(text) {
+    const raw=cleanText(text);
+    const compact=compactText(raw);
+    if(!raw || !/(?:선생님|담임|담당|쌤)/.test(compact)) return null;
+    if(!/(?:배정|지정|담당|변경|바꿔|바꾸|교체)/.test(compact)) return null;
+    const teacherName=extractTeacherTargetName(raw);
+    const division=detectDivision(compact);
+    const dateSpec=parseDateExpression(compact);
+    const mention=weekdayTimeMentions(raw)[0]||null;
+    const weekday=Number(mention?.weekday || dateSpec?.weekday || 0);
+    const timeSlot=firstTimeSlot(raw);
+    if(!teacherName || !division || !weekday || !timeSlot) return null;
+    const dateSpecific=hasScopedDateSignal(raw);
+    return {
+      type:'mutation',
+      intent:dateSpecific?'set_teacher_override':'set_class_teacher',
+      teacherName,
+      division,
+      weekday,
+      dateSpec:dateSpecific?dateSpec:null,
+      dateLabel:dateSpecific&&dateSpec?dateSpec.label:'',
+      timeSlot,
+      timeMinute:firstTimeMinute(raw),
+      classGroup:firstClassGroup(raw),
+      originalText:raw
+    };
+  }
+
+  function parseSessionOrderMutationIntent(text) {
+    const raw=cleanText(text);
+    const compact=compactText(raw);
+    if(!raw || !/(?:수업순서|순서|회차)/.test(compact)) return null;
+    if(!/(?:변경|바꿔|바꾸|지정|설정|교체)/.test(compact)) return null;
+    const orderMatch=raw.match(/([12])\s*(?:회차|번(?:째)?)/);
+    const sessionOrder=Number(orderMatch&&orderMatch[1]||0);
+    const mention=weekdayTimeMentions(raw)[0]||null;
+    const dateSpec=parseDateExpression(compact);
+    const weekday=Number(mention?.weekday || dateSpec?.weekday || 0);
+    if(!sessionOrder || !weekday) return null;
+
+    let stripped=stripCommonCommandParts(raw)
+      .replace(/(?:수업\s*)?(?:순서|회차)/g,' ')
+      .replace(/[12]\s*(?:회차|번(?:째)?)/g,' ')
+      .replace(/(?:변경|바꿔|바꾸|지정|설정|교체)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요|어줘|아줘|어요|아요|기)?/g,' ')
+      .replace(/(?:첫번째|두번째|첫째|둘째)/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
+    const studentName=cleanupStudentName(stripped);
+    if(!studentName) return null;
+    return {
+      type:'mutation',
+      intent:'set_session_order',
+      studentName,
+      sessionOrder,
+      weekday,
+      timeSlot:firstTimeSlot(raw),
+      timeMinute:firstTimeMinute(raw),
+      classGroup:firstClassGroup(raw),
+      dateSpec:hasScopedDateSignal(raw)?dateSpec:null,
+      originalText:raw
+    };
+  }
+
+  function parseNormalClassDayMutationIntent(text) {
+    const raw=cleanText(text);
+    const compact=compactText(raw);
+    if(!raw || !hasScopedDateSignal(raw)) return null;
+    const normal=/(?:정상수업|정상수업일|수업진행)/.test(compact);
+    const holiday=/(?:휴원일|휴원|공휴일로|수업없음)/.test(compact);
+    if(!normal && !holiday) return null;
+    if(!/(?:변경|바꿔|바꾸|설정|전환|돌려|진행|해줘|해주세요)/.test(compact)) return null;
+    const dateSpec=parseDateExpression(compact);
+    if(!dateSpec) return null;
+    return {
+      type:'mutation',
+      intent:'set_normal_class_day',
+      normalClass:normal,
+      dateSpec,
+      dateLabel:dateSpec.label,
+      originalText:raw
+    };
+  }
+
   function parseTimetableMemoAddMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
@@ -2011,6 +2135,10 @@
     parsePickupMutationIntent,
     parseTimetableMemoAddMutationIntent,
     parseTimetableMemoDeleteMutationIntent,
+    parseClassLayoutMutationIntent,
+    parseTeacherAssignmentMutationIntent,
+    parseSessionOrderMutationIntent,
+    parseNormalClassDayMutationIntent,
     parseMultiWriteIntent,
     parseBatchDraftWriteIntent,
     parseClassMutationIntent,
