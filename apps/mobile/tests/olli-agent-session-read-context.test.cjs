@@ -226,9 +226,22 @@ test('bare contextual follow-up reuses 학생A and sends the full sanitized conv
     division:'elementary',
   }]);
   assert.equal(follow.agentInput.length,3);
-  assert.equal(follow.agentInput[0].role,'user');
-  assert.match(follow.agentInput[0].content,/학생A/);
+  assert.deepEqual(follow.agentInput[0],{
+    type:'message',
+    role:'user',
+    content:[{type:'input_text',text:'학생A 시간표 알려줘'}],
+  });
+  assert.deepEqual(follow.agentInput[1],{
+    type:'message',
+    role:'assistant',
+    status:'completed',
+    content:[{type:'output_text',text:'학생A는 화요일 5시 A반이에요.'}],
+  });
+  assert.deepEqual(follow.agentInput[2],{
+    type:'message',
+    role:'user',
+    content:[{type:'input_text',text:'그럼 지난주는?'}],
+  });
   assert.doesNotMatch(JSON.stringify(follow.agentInput),/김민수/);
-  assert.equal(follow.agentInput[2].content,'그럼 지난주는?');
   assert.equal(session.state().binds,1,'context continuation should reuse the existing subject binding');
 });
