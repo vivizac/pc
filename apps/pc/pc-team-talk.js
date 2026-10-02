@@ -2770,24 +2770,6 @@
       state.pendingActionReason=null;
     }
 
-    if (interpreterRoute!=='rule' && state.pendingMakeupDialogue) {
-      if (isPendingReasonCancel(commandText)) {
-        state.pendingMakeupDialogue=null;
-        const message='보강 등록 준비를 취소했어요.';
-        return {
-          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
-          replyText:message,
-          recordAi:false
-        };
-      }
-      const makeupTurn=await resolveContextualMakeupTurn(
-        commandText,
-        current,
-        replyToMessageId
-      );
-      if(makeupTurn) return makeupTurn;
-    }
-
     if (interpreterRoute!=='rule' && state.pendingActionReason) {
       if (isPendingReasonCancel(commandText)) {
         state.pendingActionReason = null;
