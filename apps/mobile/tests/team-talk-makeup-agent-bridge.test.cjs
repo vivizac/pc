@@ -83,7 +83,24 @@ test('makeup business ambiguity returns structured tool outcome for the Agent to
 
 test('makeup clarification and blocked results stay inside active Olli conversation state',()=>{
   assert.match(talk,/let olliTalkPendingMakeupDialogue = null/);
-  assert.match(talk,/olliTalkPendingMakeupDialogue=\{ active:true, status:interactionStatus \};/);
+  assert.match(talk,/olliTalkPendingMakeupDialogue=\{ active:true, status:interactionStatus, prompt:aiReply \};/);
   assert.match(talk,/if\(olliTalkPendingMakeupDialogue\)\{/);
   assert.match(talk,/conversation:olliTalkAiConversationMessages\.map/);
+});
+
+
+test('mobile pending makeup dialogue owns the next turn until explicit cancellation',()=>{
+  const start=talk.indexOf('async function resolveOlliTalkAiTurn');
+  const end=talk.indexOf('if(olliTalkPendingActionReason)',start);
+  const block=talk.slice(start,end);
+  assert.match(block,/if\(olliTalkPendingMakeupDialogue\)/);
+  assert.match(block,/isOlliTalkPendingReasonCancel\(commandText\)/);
+  assert.match(block,/보강 등록 준비를 취소했어요/);
+
+  const contextStart=talk.indexOf('async function resolveOlliTalkContextualMakeupTurn');
+  const contextEnd=talk.indexOf('async function resolveOlliTalkContextualReadTurn',contextStart);
+  const contextBlock=talk.slice(contextStart,contextEnd);
+  assert.match(contextBlock,/data\?\.handled!==true/);
+  assert.match(contextBlock,/보강 등록을 이어서 진행 중이에요/);
+  assert.doesNotMatch(contextBlock,/data\?\.handled!==true\)[\s\S]{0,120}olliTalkPendingMakeupDialogue=null/);
 });
