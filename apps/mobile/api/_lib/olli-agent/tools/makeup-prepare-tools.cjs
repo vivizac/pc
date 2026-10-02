@@ -171,6 +171,7 @@ async function prepareMakeupAction({
   requestId,
   replyToMessageId = null,
   capturePersistedMessage = null,
+  capturePrepareError = null,
   sanitizePayload,
   callRpc = callSupabaseRpc,
 }) {
@@ -425,22 +426,29 @@ function createPrepareMakeupTool({
       class_minute:z.union([z.literal(0), z.literal(30)]),
     }),
     async execute({ session_date, class_hour, class_minute }) {
-      const payload = await prepareMakeupAction({
-        requestContext,
-        subjectAccess,
-        studentLabel,
-        division,
-        sessionDate:session_date,
-        classHour:class_hour,
-        classMinute:class_minute,
-        classGroup,
-        currentDate,
-        requestId,
-        replyToMessageId,
-        capturePersistedMessage,
-        sanitizePayload,
-      });
-      return JSON.stringify(payload);
+      try {
+        const payload = await prepareMakeupAction({
+          requestContext,
+          subjectAccess,
+          studentLabel,
+          division,
+          sessionDate:session_date,
+          classHour:class_hour,
+          classMinute:class_minute,
+          classGroup,
+          currentDate,
+          requestId,
+          replyToMessageId,
+          capturePersistedMessage,
+          sanitizePayload,
+        });
+        return JSON.stringify(payload);
+      } catch (error) {
+        if (typeof capturePrepareError === 'function') {
+          capturePrepareError(error);
+        }
+        throw error;
+      }
     },
   });
 }
