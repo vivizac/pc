@@ -69,14 +69,13 @@ test('PC registered waitlist cancel is routed before legacy preparation', () => 
   assert.match(block,/if \(waitlistTurn\) return waitlistTurn/);
 });
 
-test('PC waitlist cancel bridge uses source-bound production mode and guest fallback code', () => {
+test('PC waitlist cancel bridge keeps guest and registered requests on production Agent mode', () => {
   const start=talk.indexOf('async function resolveWaitlistCancelAgentTurn');
   const end=talk.indexOf('async function resolvePickupCancelAgentTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'waitlist_cancel_prepare'/);
   assert.match(block,/sourceMessageId = Number\(replyToMessageId \|\| 0\)/);
-  assert.match(block,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED/);
-  assert.match(block,/return null/);
+  assert.doesNotMatch(block,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED|return null/);
   assert.match(block,/action_type\) !== 'cancel_waitlist'/);
   assert.match(block,/assistantMessage:data\.message/);
   assert.match(block,/recordAi:false/);
