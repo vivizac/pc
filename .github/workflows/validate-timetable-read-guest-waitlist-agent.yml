@@ -3,6 +3,7 @@ name: Validate timetable read and guest waitlist Agent
 on:
   pull_request:
     paths:
+      - 'packages/common/olli-command-router-common.js'
       - 'apps/mobile/api/_lib/olli-agent/waitlist-guest-privacy.cjs'
       - 'apps/mobile/api/_lib/olli-agent/runtime.cjs'
       - 'apps/mobile/api/_lib/olli-agent/tools/waitlist-add-prepare-tools.cjs'
@@ -34,6 +35,7 @@ jobs:
           node-version: '24'
       - name: Check syntax
         run: |
+          node --check packages/common/olli-command-router-common.js
           node --check apps/mobile/api/_lib/olli-agent/waitlist-guest-privacy.cjs
           node --check apps/mobile/api/_lib/olli-agent/runtime.cjs
           node --check apps/mobile/api/_lib/olli-agent/tools/waitlist-add-prepare-tools.cjs
