@@ -217,7 +217,6 @@ const OLLI_AGENT_INTENTS = new Set([
   'batch_write',
   'get_attendance',
   'get_pickups',
-  'complex_analysis',
 ]);
 
 function routeForSystemIntent(intent) {
