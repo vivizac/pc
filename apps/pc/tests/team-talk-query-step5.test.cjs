@@ -719,3 +719,50 @@ test('PC renders a small Olli reply button only on eligible own messages and reu
   assert.match(pcTalkSource, /reply_to_message_id/);
   assert.match(pcTalkSource, /removeOlliReplySuggestion/);
 });
+
+
+test('student schedule query is parsed as a deterministic read, including previous-week context', () => {
+  const router=loadRouter();
+
+  const current=router.parseStudentScheduleQueryIntent('이민형 시간표 알려줘');
+  assert.ok(current);
+  assert.equal(current.intent,'get_student_schedule');
+  assert.equal(current.studentName,'이민형');
+  assert.equal(current.dateLabel,'현재');
+
+  const previous=router.parseStudentScheduleQueryIntent('이민형 지난주 시간표 알려줘');
+  assert.ok(previous);
+  assert.equal(previous.studentName,'이민형');
+  assert.equal(previous.dateSpec.mode,'previous_week');
+  assert.equal(previous.dateLabel,'지난주');
+
+  assert.equal(router.parseStudentScheduleQueryIntent('오늘 시간표 보여줘'),null);
+});
+
+test('student schedule query executes through the rule schedule service without Agent output generation', async () => {
+  let calls=0;
+  const router=loadRouter({
+    async findStudentSchedule(options){
+      calls+=1;
+      assert.equal(options.studentName,'이민형');
+      return {
+        ok:true,
+        studentName:'이민형',
+        dateLabel:options.dateLabel,
+        items:[
+          {weekdayLabel:'월요일',timeLabel:'4시',classGroup:'A'},
+          {weekdayLabel:'목요일',timeLabel:'4시',classGroup:'A'},
+        ],
+      };
+    },
+    describeStudentSchedule(result){
+      return result.studentName+'님의 정규 수업은 월요일 4시 A반, 목요일 4시 A반입니다.';
+    },
+  });
+
+  const result=await router.runQuery('이민형 시간표 알려줘',{source:'olli_talk_ai'});
+  assert.equal(result.handled,true);
+  assert.equal(result.intent,'get_student_schedule');
+  assert.equal(calls,1);
+  assert.equal(result.message,'이민형님의 정규 수업은 월요일 4시 A반, 목요일 4시 A반입니다.');
+});
