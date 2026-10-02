@@ -68,5 +68,5 @@ test('existing material list RPC remains the current-list source and archive has
 
 test('PC archive assets are cache-busted', () => {
   assert.match(html, /pc-team-talk-material-orders\.css\?v=20261002-material-archive-toolbar-1/);
-  assert.match(html, /pc-team-talk-material-orders\\.js\\?v=20261002-past-orders-label-1/);
+  assert.match(html, /pc-team-talk-material-orders\.js\?v=20261002-past-orders-label-1/);
 });
