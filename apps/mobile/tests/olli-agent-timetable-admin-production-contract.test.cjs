@@ -60,3 +60,13 @@ test('database action executor allows and executes all timetable admin action ty
   ]) assert.ok(migration.includes(rpc),rpc);
   assert.ok(migration.includes("then 'split_class' else 'merge_class' end"));
 });
+
+
+test('database action sender accepts every timetable admin action type',()=>{
+  const start=migration.indexOf('CREATE OR REPLACE FUNCTION public.olli_team_chat_send_action');
+  assert.ok(start>=0,'send_action definition missing');
+  const block=migration.slice(start);
+  for(const type of [
+    'set_class_layout','set_class_teacher','set_teacher_override','set_session_order','set_normal_class_day'
+  ]) assert.ok(block.includes("'"+type+"'"),type+' send allowlist');
+});
