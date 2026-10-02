@@ -29,7 +29,6 @@
     "olli-auth-member-validation.js",
     "olli-auth-owner-onboarding.js",
     "olli-auth-teacher-membership.js",
-    "olli-agent-routing-common.js",
     "olli-command-router-common.js",
     "olli-command-schedule-common.js",
     "olli-data-record-list.js",

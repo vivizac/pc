@@ -141,13 +141,13 @@ test('platform-only adapters remain explicit instead of being hidden in common c
   ]);
 });
 
-test('both runtime manifests and source inventory include the classifier SOT',()=>{
+test('phase A keeps the classifier out of runtime manifests until PC/Mobile wiring',()=>{
   for(const relative of [
     '../../../packages/common/mobile-runtime-manifest.json',
     '../../../packages/common/pc-runtime-manifest.json',
     '../../../packages/common/source-manifest.json',
   ]){
     const json=JSON.parse(fs.readFileSync(path.join(__dirname,relative),'utf8'));
-    assert.ok(json.files.includes('olli-agent-routing-common.js'),relative);
+    assert.equal(json.files.includes('olli-agent-routing-common.js'),false,relative);
   }
 });
