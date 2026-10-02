@@ -75,3 +75,14 @@ test('makeup business validation errors become normal Olli replies instead of ge
   assert.match(pc,/OLLI_AGENT_MAKEUP_GROUP_REQUIRED/);
   assert.match(pc,/saveAssistantReply\(current,message,replyToMessageId\)/);
 });
+
+
+test('makeup tool wires capturePrepareError into createPrepareMakeupTool parameters',()=>{
+  const tool=fs.readFileSync(path.join(__dirname,'../api/_lib/olli-agent/tools/makeup-prepare-tools.cjs'),'utf8');
+  const start=tool.indexOf('function createPrepareMakeupTool({');
+  const end=tool.indexOf('}) {',start);
+  const signature=tool.slice(start,end);
+  assert.ok(start>=0 && end>start);
+  assert.match(signature,/capturePrepareError\s*=\s*null/);
+  assert.match(tool,/if \(typeof capturePrepareError === 'function'\) \{\s*capturePrepareError\(error\);/);
+});
