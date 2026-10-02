@@ -2529,7 +2529,11 @@
           academyId:current?.academyId || '',
           sessionToken:current?.sessionToken || '',
           message:clean(commandText),
-          sourceMessageId
+          sourceMessageId,
+          conversation:state.aiConversationMessages.map((item)=>({
+            role:item.role,
+            content:item.content
+          }))
         })
       });
       const data=await response.json().catch(()=>({}));
@@ -3063,7 +3067,7 @@
             }else{
               syncAssistantTypingIndicator();
             }
-            if (turn.recordAi) recordAiConversationTurn(commandText, turn.replyText);
+            recordAiConversationTurn(commandText, turn.replyText);
           } else {
             const turn = await resolveBotTurn(commandText, current, Number(payload.message.id));
             appendPersistedMessage(turn.assistantMessage, current.memberId);
