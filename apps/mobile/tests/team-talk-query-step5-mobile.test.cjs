@@ -6,23 +6,29 @@ const js = fs.readFileSync('olli-talk-beta.js', 'utf8');
 const css = fs.readFileSync('olli-talk-beta.css', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
 
-test('mobile AI checks Olli read queries before OpenAI', () => {
-  const queryIndex = js.indexOf("typeof router.runQuery==='function'");
-  const openAiIndex = js.indexOf('const resolved=await resolveOlliTalkAiReply(commandText,context)', queryIndex);
-  assert.ok(queryIndex >= 0);
-  assert.ok(openAiIndex > queryIndex);
+test('mobile AI interprets every Olli turn before deterministic read execution', () => {
+  const aiStart=js.indexOf('async function resolveOlliTalkAiTurn');
+  const aiEnd=js.indexOf('function getOlliTalkMentionMessageText',aiStart);
+  const block=js.slice(aiStart,aiEnd);
+  const interpretIndex=block.indexOf('interpretOlliTalkSystemLanguage(');
+  const queryIndex=block.indexOf("typeof router.runQuery==='function'");
+  assert.ok(interpretIndex>=0);
+  assert.ok(queryIndex>interpretIndex);
+  assert.match(block,/interpreterRoute==='rule'/);
 });
 
-test('mobile read results are persisted as AI messages but excluded from OpenAI history', () => {
-  const queryIndex = js.indexOf("typeof router.runQuery==='function'");
-  const openAiIndex = js.indexOf('const resolved=await resolveOlliTalkAiReply(commandText,context)', queryIndex);
-  const block = js.slice(queryIndex, openAiIndex);
+test('mobile rule read results are persisted without a second AI answer call', () => {
+  const aiStart=js.indexOf('async function resolveOlliTalkAiTurn');
+  const aiEnd=js.indexOf('function getOlliTalkMentionMessageText',aiStart);
+  const block=js.slice(aiStart,aiEnd);
+  const queryIndex=block.indexOf("typeof router.runQuery==='function'");
+  const ruleFailureIndex=block.indexOf("if(interpreterRoute==='rule')",queryIndex);
+  const queryBlock=block.slice(queryIndex,ruleFailureIndex);
 
-  assert.match(block, /router\.runQuery\(commandText/);
-  assert.match(block, /saveOlliTalkOlliReply\(context,queryMessage,replyToMessageId\)/);
-  assert.match(block, /recordAi:false/);
-  assert.doesNotMatch(block, /recordOlliTalkAiConversationTurn/);
-  assert.doesNotMatch(block, /resolveOlliTalkAiReply/);
+  assert.match(queryBlock, /router\.runQuery\(commandText/);
+  assert.match(queryBlock, /saveOlliTalkOlliReply\(context,queryMessage,replyToMessageId\)/);
+  assert.match(queryBlock, /recordAi:false/);
+  assert.doesNotMatch(queryBlock, /resolveOlliTalkAiReply/);
 });
 
 test('mobile keeps mutation preparation ahead of read queries', () => {
