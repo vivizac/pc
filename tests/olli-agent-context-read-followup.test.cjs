@@ -201,8 +201,8 @@ test('makeup context stays active for both clarification and recoverable blocked
   const resolver=api.indexOf('resolveContextualMakeupRewrite',branch);
   const classify=api.indexOf("safeText(route?.key,40)!=='makeup_add'",branch);
   assert.ok(branch>=0 && resolver>branch && classify>resolver);
-  assert.match(mobile,/olliTalkPendingMakeupDialogue=\{ active:true, status:interactionStatus \};/);
-  assert.match(pc,/state\.pendingMakeupDialogue=\{ active:true, status:interactionStatus \};/);
+  assert.match(mobile,/olliTalkPendingMakeupDialogue=\{ active:true, status:interactionStatus, prompt:aiReply \};/);
+  assert.match(pc,/state\.pendingMakeupDialogue=\{ active:true, status:interactionStatus, prompt:aiReply \};/);
 });
 
 test('contextual read is executed server-side after persisted source validation', () => {

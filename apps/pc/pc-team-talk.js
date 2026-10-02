@@ -1881,7 +1881,7 @@
     const interactionStatus=clean(data?.interactionStatus);
     const aiReply=clean(data?.output);
     if (data?.ok === true && ['needs_clarification','blocked'].includes(interactionStatus) && aiReply) {
-      state.pendingMakeupDialogue={ active:true, status:interactionStatus };
+      state.pendingMakeupDialogue={ active:true, status:interactionStatus, prompt:aiReply };
       return {
         assistantMessage:await saveAssistantReply(current,aiReply,replyToMessageId),
         replyText:aiReply,
@@ -2600,12 +2600,18 @@
     });
     const data=await response.json().catch(()=>({}));
     if(!response.ok){
-      state.pendingMakeupDialogue=null;
       throw new Error(data?.error || data?.message || '보강 문맥 응답을 받지 못했습니다.');
     }
     if(data?.ok!==true || data?.handled!==true){
-      state.pendingMakeupDialogue=null;
-      return null;
+      const pendingStatus=clean(state.pendingMakeupDialogue?.status);
+      const retryMessage=pendingStatus==='blocked'
+        ? '보강 등록을 이어서 진행 중이에요. 변경할 날짜·시간·반을 알려 주세요. 그만하려면 "취소"라고 말해 주세요.'
+        : (clean(state.pendingMakeupDialogue?.prompt) || '보강 등록을 이어서 진행 중이에요. 필요한 내용을 다시 알려 주세요. 그만하려면 "취소"라고 말해 주세요.');
+      return {
+        assistantMessage:await saveAssistantReply(current,retryMessage,sourceMessageId),
+        replyText:retryMessage,
+        recordAi:false
+      };
     }
     return resolveMakeupAgentResponse({
       response,
@@ -2677,6 +2683,15 @@
     const schedule = global.OlliCommandSchedule;
 
     if (state.pendingMakeupDialogue) {
+      if (isPendingReasonCancel(commandText)) {
+        state.pendingMakeupDialogue=null;
+        const message='보강 등록 준비를 취소했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
       const makeupTurn=await resolveContextualMakeupTurn(
         commandText,
         current,
