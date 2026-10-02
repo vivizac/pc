@@ -66,3 +66,34 @@ test('push payload carries per-recipient unread badge count and service worker a
   assert.match(sw, /self\.navigator\?\.setAppBadge/);
   assert.match(sw, /data\.badgeCount/);
 });
+
+
+test('Work badge keeps all unread work while Work Hub badge shows material orders only', () => {
+  assert.match(html, /aria-label="Work Hub"[\s\S]{0,650}data-olli-work-hub-badge/);
+  assert.doesNotMatch(
+    html.match(/<button[^>]*id="olliTalkArchiveBtn"[\s\S]*?<\/button>/)?.[0] || '',
+    /data-olli-work-badge/
+  );
+  assert.match(html, /aria-label="Work 열기"[\s\S]{0,400}data-olli-work-badge/);
+
+  const start = talk.indexOf('function setOlliTalkMentionBadge');
+  const end = talk.indexOf('async function markOlliTalkMessagesRead', start);
+  const badgeFlow = talk.slice(start, end);
+  assert.match(badgeFlow, /querySelectorAll\('\[data-olli-work-badge\], #kcfOlliTalkBadge'\)/);
+  assert.match(badgeFlow, /querySelectorAll\('\[data-olli-work-hub-badge\]'\)/);
+  assert.match(badgeFlow, /setOlliTalkMentionBadge\(unreadCount,materialUnreadCount\)/);
+  assert.match(badgeFlow, /setAppBadge\?\.\(value\)/);
+});
+
+test('Work Hub material read keeps using the dedicated material read RPC', () => {
+  const start = talk.indexOf('async function markOlliTalkMaterialNotificationsRead');
+  const end = talk.indexOf('function setOlliTalkArchiveTab', start);
+  const materialRead = talk.slice(start, end);
+  assert.match(materialRead, /olli_mobile_work_mark_material_read/);
+  assert.match(materialRead, /olliTalkLastUnreadMaterialCount=0/);
+  assert.match(materialRead, /await refreshOlliTalkMentionBadge\(\)/);
+});
+
+test('split Work and Work Hub badge bundle is cache-busted', () => {
+  assert.match(html, /olli-talk-beta\.js\?v=20261002-workhub-material-badge-1/);
+});
