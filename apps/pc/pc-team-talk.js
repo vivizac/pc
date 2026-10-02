@@ -2663,6 +2663,27 @@
   }
 
 
+
+  function ruleCommandMatchesInterpretation(router,intent,commandText) {
+    const expected=clean(intent);
+    if(!router || !expected) return false;
+    if(expected==='open_student_info'){
+      try{
+        return typeof router.parseStudentInfoLookupIntent==='function'
+          && !!router.parseStudentInfoLookupIntent(commandText);
+      }catch(_){ return false; }
+    }
+    try{
+      const classified=typeof router.classifyRequest==='function'
+        ? router.classifyRequest(commandText)
+        : null;
+      return clean(classified?.intent)===expected;
+    }catch(_){
+      return false;
+    }
+  }
+
+
   function reportAiLegacyRouteOutcome(current, outcome, routeKey, sharedRoute, classifierAvailable) {
     if (!current?.academyId || !current?.sessionToken) return;
     void fetch('/api/olli-agent', {
@@ -2708,6 +2729,14 @@
         state.pendingMakeupDialogue=null;
         state.pendingActionReason=null;
         const message='진행 중인 작업 준비를 취소했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+      if(!ruleCommandMatchesInterpretation(router,interpreterIntent,commandText)){
+        const message='올리가 이해한 업무와 규칙 시스템 명령이 일치하지 않아 실행하지 않았어요. 요청을 조금 더 구체적으로 알려 주세요.';
         return {
           assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
           replyText:message,
