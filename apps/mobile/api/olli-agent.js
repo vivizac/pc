@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const mode = safeText(body.mode, 40);
 
-    if (!['context_resolve', 'route_outcome', 'probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'timetable_read', 'schedule_read', 'attendance_read', 'pickup_read', 'timetable_admin_prepare', 'attendance_status_prepare', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
+    if (!['context_read', 'context_resolve', 'route_outcome', 'probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'timetable_read', 'schedule_read', 'attendance_read', 'pickup_read', 'timetable_admin_prepare', 'attendance_status_prepare', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
       return res.status(400).json({
         error: '지원하지 않는 Olli Agent mode입니다. 현재 production prepare에는 memo_prepare, batch_prepare, absence_prepare, class_once_prepare, makeup/trial/waitlist/move/pickup prepare 계열이 포함됩니다.',
       });
@@ -94,7 +94,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok:true, mode:'route_outcome' });
     }
 
-    if (mode === 'timetable_read' || mode === 'schedule_read' || mode === 'attendance_read' || mode === 'pickup_read') {
+    if (mode === 'context_read' || mode === 'timetable_read' || mode === 'schedule_read' || mode === 'attendance_read' || mode === 'pickup_read') {
       const message=safeText(body.message,5000);
       const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
       if(!message){
@@ -110,22 +110,66 @@ export default async function handler(req, res) {
         });
       }
 
-      const readIntent=mode==='timetable_read'
-        ? (body.readIntent && typeof body.readIntent==='object' ? body.readIntent : null)
-        : null;
-      if(mode==='timetable_read' && !readIntent){
-        return res.status(400).json({
-          error:'timetable_read에는 Router가 확정한 readIntent가 필요합니다.',
-          code:'OLLI_AGENT_TIMETABLE_READ_INTENT_REQUIRED',
-        });
-      }
-
       const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
       await runtimeModule.validatePickupSourceMessage({
         requestContext,
         sourceMessageId,
         sourceMessageText:message,
       });
+
+      let effectiveMode=mode;
+      let executionMessage=message;
+      let readIntent=mode==='timetable_read'
+        ? (body.readIntent && typeof body.readIntent==='object' ? body.readIntent : null)
+        : null;
+
+      if(mode==='context_read'){
+        const contextRouteModule=await import('./_lib/olli-agent/context-route.cjs');
+        const resolveContextualReadRewrite=
+          contextRouteModule.resolveContextualReadRewrite ||
+          contextRouteModule.default?.resolveContextualReadRewrite;
+        if(typeof resolveContextualReadRewrite!=='function'){
+          throw new Error('문맥 해석 모듈을 불러오지 못했습니다.');
+        }
+        const resolved=await resolveContextualReadRewrite({
+          requestContext,
+          sourceMessageId,
+          currentMessage:message,
+          conversation:Array.isArray(body.conversation) ? body.conversation : [],
+        });
+        if(resolved?.usedContext!==true || !safeText(resolved?.resolvedText,5000)){
+          return res.status(200).json({
+            ok:true,
+            mode:'context_read',
+            handled:false,
+          });
+        }
+
+        executionMessage=safeText(resolved.resolvedText,5000);
+        const routerModule=await import('../../../packages/common/olli-command-router-common.js');
+        const routeModule=await import('../../../packages/common/olli-team-talk-agent-route-common.js');
+        const router=routerModule.default || routerModule;
+        const routeClassifier=routeModule.default || routeModule;
+        const route=typeof routeClassifier?.classify==='function'
+          ? routeClassifier.classify(executionMessage,{router})
+          : null;
+        if(!route || !['timetable_read','schedule_read','attendance_read','pickup_read'].includes(safeText(route.key,40))){
+          return res.status(200).json({
+            ok:true,
+            mode:'context_read',
+            handled:false,
+          });
+        }
+        effectiveMode=safeText(route.key,40);
+        readIntent=effectiveMode==='timetable_read' ? route.parsed : null;
+      }
+
+      if(effectiveMode==='timetable_read' && !readIntent){
+        return res.status(400).json({
+          error:'timetable_read에는 Router가 확정한 readIntent가 필요합니다.',
+          code:'OLLI_AGENT_TIMETABLE_READ_INTENT_REQUIRED',
+        });
+      }
 
       const privacyModule=await import('./_lib/olli-agent/privacy.cjs');
       let prepared;
@@ -138,7 +182,7 @@ export default async function handler(req, res) {
           runKey:'team-chat-message:'+String(sourceMessageId),
         });
         const sessionPrivacy=await privacyModule.prepareAgentReadPrivacyInput(
-          message,
+          executionMessage,
           requestContext,
           {session:candidateSession}
         );
@@ -146,39 +190,39 @@ export default async function handler(req, res) {
         if(sessionPrivacy.sessionEnabled===true) agentSession=candidateSession;
       }catch(sessionError){
         if(!String(sessionError?.code||'').startsWith('OLLI_AGENT_SESSION_')) throw sessionError;
-        prepared=await privacyModule.prepareAgentPrivacyInput(message,requestContext);
+        prepared=await privacyModule.prepareAgentPrivacyInput(executionMessage,requestContext);
       }
       const agentContext=contextModule.toAgentRunContext(requestContext);
       let result;
 
-      if(mode==='timetable_read'){
+      if(effectiveMode==='timetable_read'){
         result=await runtimeModule.runTimetableRead({
           agentContext,
           requestContext,
           preparedPrivacy:prepared,
           sourceMessageId,
-          sourceMessageText:message,
+          sourceMessageText:executionMessage,
           readIntent,
           session:agentSession,
           sourceValidated:true,
         });
-      }else if(mode==='schedule_read'){
+      }else if(effectiveMode==='schedule_read'){
         result=await runtimeModule.runStudentScheduleRead({
           agentContext,
           requestContext,
           preparedPrivacy:prepared,
           sourceMessageId,
-          sourceMessageText:message,
+          sourceMessageText:executionMessage,
           session:agentSession,
           sourceValidated:true,
         });
-      }else if(mode==='attendance_read'){
+      }else if(effectiveMode==='attendance_read'){
         result=await runtimeModule.runAttendanceRead({
           agentContext,
           requestContext,
           preparedPrivacy:prepared,
           sourceMessageId,
-          sourceMessageText:message,
+          sourceMessageText:executionMessage,
           session:agentSession,
           sourceValidated:true,
         });
@@ -188,7 +232,7 @@ export default async function handler(req, res) {
           requestContext,
           preparedPrivacy:prepared,
           sourceMessageId,
-          sourceMessageText:message,
+          sourceMessageText:executionMessage,
           session:agentSession,
           sourceValidated:true,
         });
@@ -196,8 +240,9 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         ok:true,
-        mode,
-        ready:result?.ready===true,
+        mode:effectiveMode,
+        handled:true,
+        contextResolved:mode==='context_read',
         output:safeText(result?.output,12000),
       });
     }
