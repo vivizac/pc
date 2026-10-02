@@ -3,6 +3,20 @@ function safeText(value, maxLength = 200) {
 }
 
 export default async function handler(req, res) {
+  const requestStartedAt = process.hrtime.bigint();
+  let requestMode = 'unknown';
+  res.once('finish', () => {
+    if (process.env.NODE_ENV === 'test' || process.env.OLLI_AGENT_PERF_LOGS === '0') return;
+    const durationMs = Math.round((Number(process.hrtime.bigint() - requestStartedAt) / 1e6) * 10) / 10;
+    console.info('[OLLI Agent Perf] ' + JSON.stringify({
+      version:1,
+      phase:'agent_request_total',
+      status:res.statusCode >= 500 ? 'error' : 'ok',
+      mode:requestMode,
+      durationMs,
+      httpStatus:res.statusCode,
+    }));
+  });
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -17,6 +31,7 @@ export default async function handler(req, res) {
   try {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const mode = safeText(body.mode, 40);
+    requestMode = mode || 'probe';
 
     if (!['context_read', 'context_resolve', 'route_outcome', 'probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'timetable_read', 'schedule_read', 'attendance_read', 'pickup_read', 'timetable_admin_prepare', 'attendance_status_prepare', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
       return res.status(400).json({
