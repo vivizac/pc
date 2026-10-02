@@ -14,20 +14,22 @@ test('PC trial cancel candidate uses only shared trial cancel parser',()=>{
   assert.doesNotMatch(block,/parseWriteIntent|prepareAction|add_trial|update_trial/);
 });
 
-test('PC inline trial cancel reason routes directly to source-bound Agent',()=>{
-  const start=talk.indexOf('async function resolveAiTurn');
-  const end=talk.indexOf('function updateComposerState',start);
-  const block=talk.slice(start,end);
-  const cancel=block.indexOf('const trialCancelCandidate = parseTrialCancelAgentCandidate');
-  const add=block.indexOf('if (isTrialAddAgentCandidate(commandText, router))');
-  const legacy=block.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(cancel>=0);
-  assert.ok(add>cancel);
-  assert.ok(legacy>add);
-  assert.match(block,/reasonText:clean\(trialCancelCandidate\.reason\)/);
-  assert.match(block,/reasonMessageId:Number\(replyToMessageId \|\| 0\)/);
+test('PC inline trial cancel reason routes directly to source-bound Agent — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'trial_cancel'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
+  assert.match(ai,/__trialCancelAgent/);
 });
-
 test('PC two-turn trial cancellation preserves reason prompt then uses Agent on second message',()=>{
   const start=talk.indexOf('async function resolveAiTurn');
   const end=talk.indexOf('function updateComposerState',start);
