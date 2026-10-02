@@ -387,7 +387,7 @@ function createPrepareWaitlistCancelTool({
   return tool({
     name:'prepare_waitlist_cancel',
     description:
-      '재원생의 현재 대기 항목을 실제 취소하지 않고 Team Chat 확인 대기 카드로 준비합니다. 서버가 현재 waitlist row를 다시 조회해 정확한 항목을 확정하며, 확인 전에는 대기 데이터가 변경되지 않습니다.',
+      '재원·비재원 학생의 현재 대기 항목을 실제 취소하지 않고 Team Chat 확인 대기 카드로 준비합니다. 서버가 현재 waitlist row를 다시 조회해 정확한 항목을 확정하며, 확인 전에는 대기 데이터가 변경되지 않습니다.',
     parameters:z.object({
       waitlist_date:z.string(),
       class_hour:z.number().int().min(0).max(12),
