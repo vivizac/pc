@@ -10,6 +10,7 @@ on:
       - 'apps/pc/pc-team-talk.js'
       - 'apps/mobile/olli-talk-beta.js'
       - 'supabase/migrations/20261002033226_team_chat_timetable_admin_agent_actions.sql'
+      - 'supabase/migrations/20261002151000_allow_timetable_admin_team_chat_actions.sql'
       - 'tests/timetable-admin-agent-router.test.cjs'
       - 'apps/mobile/tests/olli-agent-timetable-admin-prepare-tool.test.cjs'
       - 'apps/mobile/tests/olli-agent-timetable-admin-production-contract.test.cjs'
