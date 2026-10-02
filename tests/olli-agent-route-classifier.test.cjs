@@ -91,12 +91,16 @@ test('representative reads share one classifier across PC and Mobile',()=>{
   const cases=[
     ['오늘 초등부 4시 빈자리 알려줘','timetable_read'],
     ['민수 출결 내역 알려줘','attendance_read'],
-    ['민수 픽업 일정 알려줘','pickup_read'],
+    ['민수 픽업 일정 알려줘','timetable_read'],
     ['민수 수업 언제야?','schedule_read'],
   ];
   for(const [input,key] of cases){
     assert.equal(classify(input)?.key,key,input);
   }
+});
+
+test('student pickup fallback heuristic remains available behind timetable read parser',()=>{
+  assert.equal(classifier.isStudentPickupReadCandidate('민수 픽업 일정 알려줘'),true);
 });
 
 test('classifier returns parsed candidate so platform dispatch will not need to reparse',()=>{
