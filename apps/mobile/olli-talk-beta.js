@@ -1798,24 +1798,6 @@
     }
   }
 
-  function reportOlliTalkAiLegacyRouteOutcome(context,outcome,routeKey,sharedRoute,classifierAvailable){
-    if(!context?.academyId || !context?.sessionToken) return;
-    void fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'route_outcome',
-        academyId:context.academyId,
-        sessionToken:context.sessionToken,
-        surface:'mobile',
-        outcome:String(outcome || '').trim(),
-        routeKey:String(routeKey || '').trim(),
-        sharedRouteKey:String(sharedRoute?.key || '').trim(),
-        classifierAvailable:classifierAvailable===true
-      })
-    }).catch(()=>{});
-  }
-
   async function resolveOlliTalkContextualReadRoute(commandText,context,replyToMessageId,routeClassifier,router){
     if(!routeClassifier || typeof routeClassifier.classify!=='function') return null;
     const sourceMessageId=Number(replyToMessageId || 0);
@@ -1849,7 +1831,27 @@
     }
   }
 
-  async function resolveOlliTalkAiTurn(commandText,context,replyToMessageId,options={}){
+ 
+
+  function reportOlliTalkAiLegacyRouteOutcome(context,outcome,routeKey,sharedRoute,classifierAvailable){
+    if(!context?.academyId || !context?.sessionToken) return;
+    void fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'route_outcome',
+        academyId:context.academyId,
+        sessionToken:context.sessionToken,
+        surface:'mobile',
+        outcome:String(outcome || '').trim(),
+        routeKey:String(routeKey || '').trim(),
+        sharedRouteKey:String(sharedRoute?.key || '').trim(),
+        classifierAvailable:classifierAvailable===true
+      })
+    }).catch(()=>{});
+  }
+
+ async function resolveOlliTalkAiTurn(commandText,context,replyToMessageId,options={}){
     const router=window.OlliCommandRouter;
     const schedule=window.OlliCommandSchedule;
 
