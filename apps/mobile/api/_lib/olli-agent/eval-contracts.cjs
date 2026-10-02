@@ -28,6 +28,19 @@ const CONTRACTS = Object.freeze({
   'Olli Pickup Probe': singleToolContract('get_pickups', 'read'),
   'Olli Student Profile Probe': singleToolContract('get_student_profile', 'read'),
   'Olli Timetable Read': singleToolContract('read_timetable_query', 'read'),
+  'Olli Contextual Read': Object.freeze({
+    category:'read',
+    requiredTools:[],
+    allowedTools:[
+      'get_student_schedule',
+      'get_attendance',
+      'get_pickups',
+      'read_timetable_context_query',
+    ],
+    maxToolCalls:3,
+    requireFinalOutput:true,
+    forbidDuplicateTools:true,
+  }),
 
   'Olli Absence Prepare': singleToolContract('prepare_absence', 'prepare'),
   'Olli Absence Prepare Probe': singleToolContract('prepare_absence', 'prepare'),
