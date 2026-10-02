@@ -1899,6 +1899,80 @@
     });
   }
 
+
+  async function resolveOlliTalkRuleStudentScheduleTurn(commandText,context,replyToMessageId){
+    const router=window.OlliCommandRouter;
+    if(
+      !router
+      || typeof router.parseStudentScheduleQueryIntent!=='function'
+      || typeof router.runQuery!=='function'
+    ) return null;
+
+    const parsed=router.parseStudentScheduleQueryIntent(commandText);
+    if(!parsed || String(parsed.intent || '').trim()!=='get_student_schedule') return null;
+
+    const queried=await router.runQuery(commandText,{
+      source:'olli_talk_ai',
+      selectedStudent:null,
+      autoSubmitContext:null
+    });
+    if(queried?.handled!==true || String(queried.intent || '').trim()!=='get_student_schedule') return null;
+
+    const queryMessage=String(queried.message || '').trim() || '학생 시간표를 확인했어요.';
+    return {
+      assistantMessage:await saveOlliTalkOlliReply(context,queryMessage,replyToMessageId),
+      replyText:queryMessage,
+      recordAi:false
+    };
+  }
+
+  function hasOlliTalkRuleStudentScheduleContext(){
+    const router=window.OlliCommandRouter;
+    if(!router || typeof router.parseStudentScheduleQueryIntent!=='function') return false;
+    const messages=Array.isArray(olliTalkAiConversationMessages) ? olliTalkAiConversationMessages : [];
+    for(let index=messages.length-1;index>=0;index-=1){
+      const item=messages[index];
+      if(String(item?.role || '').trim()!=='user') continue;
+      return !!router.parseStudentScheduleQueryIntent(String(item?.content || '').trim());
+    }
+    return false;
+  }
+
+  async function resolveOlliTalkContextualRuleStudentScheduleTurn(commandText,context,replyToMessageId){
+    if(!hasOlliTalkRuleStudentScheduleContext()) return null;
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0) return null;
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'context_resolve',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId,
+        conversation:(Array.isArray(olliTalkAiConversationMessages) ? olliTalkAiConversationMessages : []).map((item)=>({
+          role:item.role,
+          content:item.content
+        }))
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok){
+      throw new Error(data?.error || data?.message || '문맥 명령 정리 응답을 받지 못했습니다.');
+    }
+    const resolvedText=String(data?.resolvedText || '').trim();
+    if(data?.ok!==true || data?.usedContext!==true || !resolvedText) return null;
+    if(resolvedText===String(commandText || '').trim()) return null;
+    return resolveOlliTalkRuleStudentScheduleTurn(
+      resolvedText,
+      context,
+      sourceMessageId
+    );
+  }
+
+
   async function resolveOlliTalkContextualReadTurn(commandText,context,replyToMessageId){
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0) return null;
@@ -2138,12 +2212,25 @@
       };
     }
 
+    const ruleStudentScheduleTurn=await resolveOlliTalkRuleStudentScheduleTurn(
+      commandText,
+      context,
+      replyToMessageId
+    );
+    if(ruleStudentScheduleTurn) return ruleStudentScheduleTurn;
+
     const routeClassifier=window.OlliTeamTalkAgentRouteClassifier;
     const classifierAvailable=!!(routeClassifier && typeof routeClassifier.classify==='function');
     const sharedRoute=classifierAvailable
       ? routeClassifier.classify(commandText,{router})
       : null;
     if(!sharedRoute && classifierAvailable){
+      const contextualRuleTurn=await resolveOlliTalkContextualRuleStudentScheduleTurn(
+        commandText,
+        context,
+        replyToMessageId
+      );
+      if(contextualRuleTurn) return contextualRuleTurn;
       const contextualTurn=await resolveOlliTalkContextualReadTurn(
         commandText,
         context,

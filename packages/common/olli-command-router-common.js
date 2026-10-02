@@ -1548,9 +1548,68 @@
     };
   }
 
+
+  function parseStudentSchedulePeriodSpec(text) {
+    const compact=compactText(text);
+    if(/(?:지난주|저번주|전주)/.test(compact)) return {mode:'previous_week',label:'지난주'};
+    if(/(?:다다음주)/.test(compact)) return {mode:'week_after_next',label:'다다음 주'};
+    if(/(?:다음주|차주)/.test(compact)) return {mode:'next_week',label:'다음 주'};
+    if(/(?:이번주|이번주간|금주)/.test(compact)) return {mode:'current_week',label:'이번 주'};
+    return parseDateExpression(compact);
+  }
+
+  function resolveStudentScheduleReferenceDate(spec, baseDate) {
+    const base=baseDate instanceof Date ? new Date(baseDate.getTime()) : new Date(baseDate || Date.now());
+    if(Number.isNaN(base.getTime())) return null;
+    base.setHours(12,0,0,0);
+    if(!spec) return base;
+    if(spec.mode==='previous_week') return addDays(base,-7);
+    if(spec.mode==='current_week') return base;
+    if(spec.mode==='next_week') return addDays(base,7);
+    if(spec.mode==='week_after_next') return addDays(base,14);
+    return resolveDateExpression(spec,base);
+  }
+
+  function parseStudentScheduleQueryIntent(text) {
+    const raw=cleanText(text);
+    const compact=compactText(raw);
+    if(!raw || isExplicitWriteCommand(raw)) return null;
+
+    const asksSchedule=
+      /시간표/.test(compact)
+      || /(?:정규)?수업.*(?:언제|요일|몇시|시간|스케줄|알려|보여|확인|조회)/.test(compact)
+      || /(?:언제|요일|몇시|시간|스케줄|알려|보여|확인|조회).*(?:정규)?수업/.test(compact);
+    if(!asksSchedule) return null;
+
+    const withoutPeriod=raw
+      .replace(/(?:지난|저번|이번|다음|다다음|전)\s*주(?:간)?/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
+    let studentName=extractStudentName(
+      withoutPeriod,
+      /(?:정규\s*)?수업(?:시간|요일|스케줄)?|시간표|스케줄/g,
+      /(?:알려(?:줘|주세요|줄래|줘요)?|보여(?:줘|주세요|줄래|줘요)?|확인(?:해줘|해주세요|해|해요)?|조회(?:해줘|해주세요|해|해요)?|언제(?:야|예요|인가요)?|몇\s*시(?:야|예요|인가요)?)/g
+    );
+    studentName=cleanText(studentName)
+      .replace(/(?:님|님의)$/,'')
+      .trim();
+    if(!studentName) return null;
+
+    const dateSpec=parseStudentSchedulePeriodSpec(raw);
+    return {
+      type:'query',
+      intent:'get_student_schedule',
+      studentName,
+      dateSpec,
+      dateLabel:dateSpec ? cleanText(dateSpec.label) : '현재',
+      originalText:raw,
+    };
+  }
+
   function parseQueryIntent(text) {
     const normalizedText = cleanText(text);
-    return parseMultiQueryIntent(normalizedText)
+    return parseStudentScheduleQueryIntent(normalizedText)
+      || parseMultiQueryIntent(normalizedText)
       || parseRosterQueryIntent(normalizedText)
       || parsePickupQueryIntent(normalizedText)
       || parseAvailableSlotsIntent(normalizedText);
@@ -1598,6 +1657,7 @@
 
   async function runQuery(text, context) {
     const normalizedText = cleanText(text);
+    const routeContext = normalizeContext(context);
     const schedule = global.OlliCommandSchedule;
     const queryIntent = parseQueryIntent(normalizedText);
 
@@ -1623,6 +1683,55 @@
         clearInput:true,
         payload:queryIntent
       };
+    }
+
+
+    if (queryIntent.intent === 'get_student_schedule') {
+      if (
+        typeof schedule.findStudentSchedule !== 'function'
+        || typeof schedule.describeStudentSchedule !== 'function'
+      ) {
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:queryIntent.intent,
+          text:normalizedText,
+          message:'학생 시간표 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:queryIntent
+        };
+      }
+
+      try {
+        const referenceDate=resolveStudentScheduleReferenceDate(queryIntent.dateSpec,new Date());
+        if(!referenceDate) throw new Error('시간표 기준 날짜를 해석하지 못했습니다.');
+        const result=await schedule.findStudentSchedule({
+          studentName:queryIntent.studentName,
+          selectedStudent:routeContext.selectedStudent,
+          referenceDate,
+          dateLabel:queryIntent.dateLabel || '현재',
+        });
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:queryIntent.intent,
+          text:normalizedText,
+          message:schedule.describeStudentSchedule(result),
+          clearInput:true,
+          payload:Object.assign({},queryIntent,{result})
+        };
+      } catch (error) {
+        console.warn('올리 학생 시간표 조회 실패:',error);
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:queryIntent.intent,
+          text:normalizedText,
+          message:'학생 시간표를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:queryIntent
+        };
+      }
     }
 
     if (queryIntent.intent === 'multi_read_query') {
@@ -2170,6 +2279,7 @@
     prepareAction,
     parseWriteIntent,
     parseQueryIntent,
+    parseStudentScheduleQueryIntent,
     parseMultiQueryIntent,
     parseAvailableSlotsIntent,
     parseRosterQueryIntent,

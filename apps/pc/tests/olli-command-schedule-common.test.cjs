@@ -1521,3 +1521,42 @@ test('phone dropoff pickup execution calls the same v2 pickup RPC with is_dropof
   assert.equal(calls[0].payload.p_pickup_time, '15:30');
   assert.equal(calls[0].payload.p_is_dropoff, true);
 });
+
+
+test('student schedule lookup uses existing weekly enrollments and returns a fixed concise reply', async () => {
+  const student={id:'student-1',name:'이민형',division:'elementary'};
+  const week={
+    timetable_mode:'hourly',
+    enrollments:[
+      {
+        id:'e1',student_id:'student-1',student_name:'이민형',division:'elementary',
+        weekday:1,time_slot:4,class_group:'A',session_order:1,effective_from:'2026-01-01',effective_to:null
+      },
+      {
+        id:'e2',student_id:'student-1',student_name:'이민형',division:'elementary',
+        weekday:4,time_slot:4,class_group:'A',session_order:2,effective_from:'2026-01-01',effective_to:null
+      },
+      {
+        id:'other',student_id:'student-2',student_name:'다른학생',division:'elementary',
+        weekday:2,time_slot:5,class_group:'B',effective_from:'2026-01-01',effective_to:null
+      },
+    ],
+  };
+  const {schedule}=loadSchedule(week,[],{students:[student]});
+  const result=await schedule.findStudentSchedule({
+    studentName:'이민형',
+    referenceDate:'2026-10-03',
+    dateLabel:'현재',
+  });
+
+  assert.equal(result.ok,true);
+  assert.equal(result.items.length,2);
+  assert.deepEqual(
+    Array.from(result.items,item=>[item.weekdayLabel,item.timeLabel,item.classGroup]),
+    [['월요일','4시','A'],['목요일','4시','A']]
+  );
+  assert.equal(
+    schedule.describeStudentSchedule(result),
+    '이민형님의 정규 수업은 월요일 4시 A반, 목요일 4시 A반입니다.'
+  );
+});

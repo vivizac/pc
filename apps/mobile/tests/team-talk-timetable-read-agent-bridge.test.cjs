@@ -51,3 +51,25 @@ test('Mobile Bot path stays independent from Agent timetable reads',()=>{
   const block=talk.slice(start,end);
   assert.doesNotMatch(block,/timetable_read|schedule_read|attendance_read|pickup_read|resolveOlliTalkSourceBoundReadAgentTurn/);
 });
+
+
+test('Mobile student schedule uses rule system before Agent dispatch and context AI only normalizes the follow-up',()=>{
+  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
+  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  const ruleIndex=ai.indexOf('resolveOlliTalkRuleStudentScheduleTurn(');
+  const classifyIndex=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  assert.ok(ruleIndex>=0 && classifyIndex>ruleIndex);
+
+  const helperStart=talk.indexOf('async function resolveOlliTalkContextualRuleStudentScheduleTurn');
+  const helperEnd=talk.indexOf('async function resolveOlliTalkContextualReadTurn',helperStart);
+  const helper=talk.slice(helperStart,helperEnd);
+  assert.match(helper,/mode:'context_resolve'/);
+  assert.match(helper,/resolveOlliTalkRuleStudentScheduleTurn/);
+  assert.doesNotMatch(helper,/mode:'context_read'/);
+
+  const noRouteBlock=ai.slice(ai.indexOf('if(!sharedRoute && classifierAvailable){'));
+  const normalizedIndex=noRouteBlock.indexOf('resolveOlliTalkContextualRuleStudentScheduleTurn');
+  const agentContextIndex=noRouteBlock.indexOf('resolveOlliTalkContextualReadTurn');
+  assert.ok(normalizedIndex>=0 && agentContextIndex>normalizedIndex);
+});
