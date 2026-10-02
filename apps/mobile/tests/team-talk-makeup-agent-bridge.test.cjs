@@ -36,16 +36,17 @@ test('Mobile AI makeup routes occur before legacy prepareAction — shared dispa
   assert.ok(classify>=0 && legacy>classify);
   assert.match(ai,/__makeupCancelAgent/);
 });
-test('Mobile incomplete makeup add is handled before generic AI fallback',()=>{
+test('Mobile incomplete makeup add stays on interpreter and deterministic draft paths before generic AI fallback',()=>{
   assert.ok(talk.includes('parseOlliTalkMakeupAddDraftCandidate'));
   assert.ok(talk.includes('olliTalkMakeupAddDraftPrompt'));
   assert.ok(talk.includes('보강 날짜가 빠져 있어요.'));
   const start=talk.indexOf('async function resolveOlliTalkAiTurn');
   const end=talk.indexOf('function getOlliTalkMentionMessageText',start);
   const block=talk.slice(start,end);
+  const interpret=block.indexOf('interpretOlliTalkSystemLanguage(');
   const draft=block.indexOf('const makeupAddDraftCandidate=parseOlliTalkMakeupAddDraftCandidate(commandText,router)');
-  const fallback=block.indexOf('const resolved=await resolveOlliTalkAiReply(commandText,context)');
-  assert.ok(draft>=0 && fallback>draft);
+  const fallback=block.lastIndexOf('const resolved=await resolveOlliTalkAiReply(rawCommandText,context)');
+  assert.ok(interpret>=0 && draft>interpret && fallback>draft);
 });
 
 test('shared router exposes a makeup draft for the screenshot command without a date',()=>{
