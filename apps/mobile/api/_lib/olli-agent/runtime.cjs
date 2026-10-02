@@ -4753,6 +4753,114 @@ async function runTimetableRead({
 }
 
 
+function parseTimetableAdminSource(sourceMessageText){
+  const router=loadSharedCommandRouter();
+  const text=String(sourceMessageText||'');
+  const parsers=[
+    'parseClassLayoutMutationIntent',
+    'parseTeacherAssignmentMutationIntent',
+    'parseSessionOrderMutationIntent',
+    'parseNormalClassDayMutationIntent',
+  ];
+  for(const name of parsers){
+    if(typeof router[name]!=='function') continue;
+    const parsed=router[name](text);
+    if(parsed) return parsed;
+  }
+  return null;
+}
+
+async function runTimetableAdminPrepare({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError('시간표 관리 원문 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_TIMETABLE_ADMIN_SOURCE_INVALID');
+  }
+  await validatePickupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  const intent=parseTimetableAdminSource(sourceMessageText);
+  if(!intent){
+    throw runtimeError('저장된 원문에서 시간표 관리 요청을 확인하지 못했습니다.',400,'OLLI_AGENT_TIMETABLE_ADMIN_PARSE_FAILED');
+  }
+
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
+  let studentLabel='';
+  if(String(intent.intent||'')==='set_session_order'){
+    if(preparedPrivacy?.needsDisambiguation){
+      throw runtimeError('학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',409,'OLLI_AGENT_STUDENT_AMBIGUOUS');
+    }
+    if(subjectRefs.length!==1){
+      throw runtimeError('수업 순서 변경은 학생 한 명을 정확히 지정해 주세요.',400,'OLLI_AGENT_SESSION_ORDER_SINGLE_STUDENT_REQUIRED');
+    }
+    studentLabel=String(subjectRefs[0]?.label||'').trim();
+  }
+
+  assertOpenAiKey();
+  const {Agent,run,tool,z}=await loadAgentsSdk();
+  const {createPrepareTimetableAdminTool}=require('./tools/timetable-admin-prepare-tools.cjs');
+  const {sanitizeAgentToolPayload}=require('./privacy.cjs');
+  const model=agentModel();
+  const today=todayInSeoul();
+  let persistedMessage=null;
+
+  const prepareAdmin=createPrepareTimetableAdminTool({
+    tool,z,requestContext,intent,
+    subjectAccess:preparedPrivacy?.subjectAccess,
+    studentLabel,
+    currentDate:today,
+    requestId:'team-chat-message:'+sourceId,
+    replyToMessageId:sourceId,
+    capturePersistedMessage(message){persistedMessage=pickupPersistedMessageForClient(message);},
+    sanitizePayload(payload){return sanitizeAgentToolPayload(payload,preparedPrivacy);},
+  });
+
+  const agent=new Agent({
+    name:'Olli Timetable Admin Prepare',
+    model,
+    instructions:[
+      'You are the Olli timetable administration preparation assistant.',
+      'The stored Team Chat source message has already been parsed by the server into one fixed administrative action.',
+      'Always call prepare_timetable_admin exactly once. The tool accepts no arguments, so never invent dates, teachers, student ids, class groups, or internal slots.',
+      'The server re-reads the current timetable, class layout, teacher list, holiday state, and student schedule as required before saving a pending confirmation card.',
+      'The tool never performs the timetable mutation. Never say the change is complete.',
+      'Never ask for, infer, or reveal UUIDs, internal time slots, member IDs, session tokens, academy IDs, action IDs, or message IDs.',
+      'Answer briefly in Korean and say the change is waiting for confirmation.',
+    ].join(' '),
+    tools:[prepareAdmin],
+    modelSettings:{toolChoice:'prepare_timetable_admin'},
+  });
+
+  let result=null,runError=null;
+  try{
+    result=await run(agent,preparedPrivacy?.safeText||String(sourceMessageText||''),{context:agentContext});
+  }catch(error){
+    runError=error;
+    if(!persistedMessage) throw error;
+  }
+
+  if(!persistedMessage){
+    throw runtimeError('시간표 관리 확인 카드 저장 결과를 확인하지 못했습니다.',502,'OLLI_AGENT_TIMETABLE_ADMIN_PERSISTED_MESSAGE_MISSING');
+  }
+  return {
+    ready:true,
+    model,
+    output:String(result?.finalOutput||'').trim(),
+    nodeVersion:process.versions.node,
+    persistedMessage,
+    recoveredAfterPersist:!!runError,
+  };
+}
+
+
 module.exports = {
   MIN_NODE_MAJOR,
   assertSupportedNodeRuntime,
@@ -4763,6 +4871,8 @@ module.exports = {
   restorePreparedSubjectLabels,
   runStudentScheduleRead,
   runTimetableRead,
+  parseTimetableAdminSource,
+  runTimetableAdminPrepare,
   runRecentRecordsProbe,
   resolveAvailabilityScope,
   runScheduleAvailabilityProbe,
