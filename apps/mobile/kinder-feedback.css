@@ -1221,21 +1221,25 @@
   gap:10px;
   margin-bottom:0;
 }
-#kcfInboxOverlay .kcfInboxAvatar {
+#kcfInboxOverlay .kcfInboxCopyIconBtn {
   width:38px;
   height:38px;
   min-width:38px;
+  padding:0;
+  border:1px solid #d9dde3;
   border-radius:50%;
+  background:#fff;
+  color:#8e8e93;
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  font-size:0;
-  font-weight:700;
-  color:#234;
-  letter-spacing:-0.04em;
   align-self:center;
+  cursor:pointer;
+  box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;
+  transition:background-color .16s ease,border-color .16s ease,color .16s ease,transform .12s ease;
 }
-#kcfInboxOverlay .kcfInboxAvatar svg {
+#kcfInboxOverlay .kcfInboxCopyIconBtn svg {
   width:22px;
   height:22px;
   display:block;
@@ -1245,18 +1249,20 @@
   stroke-linecap:round;
   stroke-linejoin:round;
 }
-#kcfInboxOverlay .kcfInboxAvatar .artAvatarIcon {
-  width:22px;
-  height:22px;
+#kcfInboxOverlay .kcfInboxCopyIconBtn:active:not(:disabled) {
+  transform:scale(.94);
 }
-#kcfInboxOverlay .kcfInboxAvatar .artAvatarPalette circle {
-  fill:currentColor;
-  stroke:none;
+#kcfInboxOverlay .kcfInboxCopyIconBtn.copied {
+  border-color:#0A84FF;
+  background:#0A84FF;
+  color:#fff;
 }
-
-#kcfInboxOverlay .kcfInboxAvatar svg circle {
-  fill:currentColor;
-  stroke:none;
+#kcfInboxOverlay .kcfInboxCopyIconBtn:disabled {
+  opacity:.42;
+  cursor:default;
+}
+#kcfInboxOverlay .kcfInboxCopyIconBtn.copySuccess:disabled {
+  opacity:1;
 }
 #kcfInboxOverlay .kcfInboxMain {
   min-width:0;
