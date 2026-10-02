@@ -975,8 +975,8 @@
     const mention=weekdayTimeMentions(raw)[0]||null;
     const weekday=Number(mention?.weekday || dateSpec?.weekday || 0);
     const timeSlot=firstTimeSlot(raw);
-    if(!teacherName || !division || !weekday || !timeSlot) return null;
     const dateSpecific=hasScopedDateSignal(raw);
+    if(!teacherName || !division || !timeSlot || (!dateSpecific && !weekday)) return null;
     return {
       type:'mutation',
       intent:dateSpecific?'set_teacher_override':'set_class_teacher',
@@ -1006,6 +1006,7 @@
 
     let stripped=stripCommonCommandParts(raw)
       .replace(/(?:수업\s*)?(?:순서|회차)/g,' ')
+      .replace(/수업/g,' ')
       .replace(/[12]\s*(?:회차|번(?:째)?)/g,' ')
       .replace(/(?:변경|바꿔|바꾸|지정|설정|교체)(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요|어줘|아줘|어요|아요|기)?/g,' ')
       .replace(/(?:첫번째|두번째|첫째|둘째)/g,' ')
