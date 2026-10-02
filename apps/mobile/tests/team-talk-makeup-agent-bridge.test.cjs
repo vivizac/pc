@@ -61,3 +61,17 @@ test('shared router exposes a makeup draft for the screenshot command without a 
   assert.deepEqual(Array.from(draft?.missingBatchFields||[]),['date']);
   assert.equal(router.parseMakeupMutationIntent('권보미 초등부 5시 보강 등록해줘'),null);
 });
+
+
+test('makeup business validation errors become normal Olli replies instead of generic AI failures',()=>{
+  const runtime=fs.readFileSync(path.join(__dirname,'../api/_lib/olli-agent/runtime.cjs'),'utf8');
+  const tool=fs.readFileSync(path.join(__dirname,'../api/_lib/olli-agent/tools/makeup-prepare-tools.cjs'),'utf8');
+  const pc=fs.readFileSync(path.resolve(__dirname,'../../pc/pc-team-talk.js'),'utf8');
+
+  assert.match(tool,/capturePrepareError/);
+  assert.match(runtime,/if \(requirePersistedMessage && !persistedMessage && prepareError\) \{\s*throw prepareError;/);
+  assert.match(talk,/OLLI_AGENT_MAKEUP_GROUP_REQUIRED/);
+  assert.match(talk,/saveOlliTalkOlliReply\(context,message,replyToMessageId\)/);
+  assert.match(pc,/OLLI_AGENT_MAKEUP_GROUP_REQUIRED/);
+  assert.match(pc,/saveAssistantReply\(current,message,replyToMessageId\)/);
+});
