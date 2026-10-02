@@ -1795,8 +1795,7 @@
     }
   }
 
-  async function resolveOlliTalkContextualReadRoute(commandText,context,replyToMessageId,routeClassifier,router){
-    if(!routeClassifier || typeof routeClassifier.classify!=='function') return null;
+  async function resolveOlliTalkContextualReadTurn(commandText,context,replyToMessageId){
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0) return null;
 
@@ -1805,7 +1804,7 @@
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          mode:'context_resolve',
+          mode:'context_read',
           academyId:context?.academyId || '',
           sessionToken:context?.sessionToken || '',
           message:String(commandText || '').trim(),
@@ -1817,18 +1816,19 @@
         })
       });
       const data=await response.json().catch(()=>({}));
-      if(!response.ok || data?.ok!==true || data?.usedContext!==true) return null;
-      const resolvedText=String(data?.resolvedText || '').trim();
-      if(!resolvedText || resolvedText===String(commandText || '').trim()) return null;
-
-      const route=routeClassifier.classify(resolvedText,{router});
-      if(!route || !['timetable_read','attendance_read','pickup_read','schedule_read'].includes(String(route.key || '').trim())){
-        return null;
+      if(!response.ok){
+        throw new Error(data?.error || data?.message || '문맥 조회 응답을 받지 못했습니다.');
       }
-      return route;
+      const replyText=String(data?.output || '').trim();
+      if(data?.ok!==true || data?.handled!==true || !replyText) return null;
+      return {
+        assistantMessage:await saveOlliTalkOlliReply(context,replyText,sourceMessageId),
+        replyText,
+        recordAi:false
+      };
     }catch(error){
-      console.warn('올리톡 AI 문맥 해석 실패:',error?.message || error);
-      return null;
+      console.warn('올리톡 AI 문맥 조회 실패:',error?.message || error);
+      throw error;
     }
   }
 
@@ -2018,17 +2018,16 @@
 
     const routeClassifier=window.OlliTeamTalkAgentRouteClassifier;
     const classifierAvailable=!!(routeClassifier && typeof routeClassifier.classify==='function');
-    let sharedRoute=classifierAvailable
+    const sharedRoute=classifierAvailable
       ? routeClassifier.classify(commandText,{router})
       : null;
     if(!sharedRoute && classifierAvailable){
-      sharedRoute=await resolveOlliTalkContextualReadRoute(
+      const contextualTurn=await resolveOlliTalkContextualReadTurn(
         commandText,
         context,
-        replyToMessageId,
-        routeClassifier,
-        router
+        replyToMessageId
       );
+      if(contextualTurn) return contextualTurn;
     }
     if(sharedRoute){
       const routedTurn=await resolveOlliTalkSharedAgentRouteTurn(sharedRoute,commandText,context,replyToMessageId);
