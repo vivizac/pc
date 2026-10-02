@@ -10,6 +10,8 @@ const {
   summarizeAgentRun,
   evaluateRunSummary,
   buildRouteOutcomeEvent,
+  emitModelUsageDiagnostics,
+  emitAgentInputDiagnostics,
   attachAgentPhaseTiming,
   wrapOlliAgentRun,
 } = require('../api/_lib/olli-agent/observability.cjs');
@@ -239,7 +241,7 @@ test('Agent phase timing hooks emit only structural pre-tool, tool, and post-too
     await new Promise((resolve)=>setTimeout(resolve,2));
     fake.emit('agent_tool_start',{}, {name:'get_student_schedule'}, {toolCall:{}});
     await new Promise((resolve)=>setTimeout(resolve,2));
-    fake.emit('agent_tool_end',{}, {name:'get_student_schedule'}, '{}', {toolCall:{}});
+    fake.emit('agent_tool_end',{}, {name:'get_student_schedule'}, '{"private":"must-not-log"}', {toolCall:{}});
     await new Promise((resolve)=>setTimeout(resolve,2));
     fake.emit('agent_end',{},'done');
     detach();
@@ -254,8 +256,107 @@ test('Agent phase timing hooks emit only structural pre-tool, tool, and post-too
       'agent_after_tool',
     ]);
     assert.equal(payloads[1].tool,'get_student_schedule');
+    assert.ok(payloads[1].toolOutputChars>0);
     assert.ok(payloads.every((item)=>typeof item.durationMs==='number'));
     assert.doesNotMatch(JSON.stringify(payloads),/academy-secret|member-secret|김민수|subject_private_value/i);
+  }finally{
+    console.info=previousInfo;
+    if(previousNodeEnv===undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV=previousNodeEnv;
+    if(previousPerf===undefined) delete process.env.OLLI_AGENT_PERF_LOGS;
+    else process.env.OLLI_AGENT_PERF_LOGS=previousPerf;
+  }
+});
+
+
+test('model usage diagnostics record per-call token counts without response content', () => {
+  const previousNodeEnv=process.env.NODE_ENV;
+  const previousPerf=process.env.OLLI_AGENT_PERF_LOGS;
+  const previousInfo=console.info;
+  process.env.NODE_ENV='production';
+  process.env.OLLI_AGENT_PERF_LOGS='1';
+
+  const lines=[];
+  console.info=(line)=>lines.push(String(line));
+
+  try{
+    emitModelUsageDiagnostics(
+      {name:'Olli Contextual Read'},
+      {
+        rawResponses:[
+          {
+            usage:{
+              inputTokens:120,
+              outputTokens:30,
+              totalTokens:150,
+              inputTokensDetails:{cached_tokens:20},
+              outputTokensDetails:{reasoning_tokens:24},
+            },
+          },
+          {
+            usage:{
+              inputTokens:180,
+              outputTokens:18,
+              totalTokens:198,
+              inputTokensDetails:[{cached_tokens:40}],
+              outputTokensDetails:[{reasoning_tokens:12}],
+            },
+          },
+        ],
+      }
+    );
+
+    const payloads=lines
+      .filter((line)=>line.startsWith('[OLLI Agent Perf] '))
+      .map((line)=>JSON.parse(line.slice('[OLLI Agent Perf] '.length)));
+
+    assert.equal(payloads.length,2);
+    assert.deepEqual(payloads.map((item)=>item.modelCallIndex),[1,2]);
+    assert.deepEqual(payloads.map((item)=>item.reasoningTokens),[24,12]);
+    assert.deepEqual(payloads.map((item)=>item.cachedInputTokens),[20,40]);
+    assert.doesNotMatch(JSON.stringify(payloads),/must-not-log|김민수|academy-secret/i);
+  }finally{
+    console.info=previousInfo;
+    if(previousNodeEnv===undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV=previousNodeEnv;
+    if(previousPerf===undefined) delete process.env.OLLI_AGENT_PERF_LOGS;
+    else process.env.OLLI_AGENT_PERF_LOGS=previousPerf;
+  }
+});
+
+test('input diagnostics log only counts, never input text', () => {
+  const previousNodeEnv=process.env.NODE_ENV;
+  const previousPerf=process.env.OLLI_AGENT_PERF_LOGS;
+  const previousInfo=console.info;
+  process.env.NODE_ENV='production';
+  process.env.OLLI_AGENT_PERF_LOGS='1';
+
+  const lines=[];
+  console.info=(line)=>lines.push(String(line));
+
+  try{
+    emitAgentInputDiagnostics(
+      {
+        name:'Olli Contextual Read',
+        instructions:'private-instruction-text',
+        tools:[{name:'get_student_schedule'}],
+      },
+      [
+        {role:'user',content:'김민수 시간표 알려줘'},
+        {role:'assistant',content:'화요일 5시예요'},
+      ]
+    );
+
+    const payload=JSON.parse(
+      lines.find((line)=>line.startsWith('[OLLI Agent Perf] '))
+        .slice('[OLLI Agent Perf] '.length)
+    );
+    assert.equal(payload.phase,'agent_input_shape');
+    assert.equal(payload.inputItems,2);
+    assert.ok(payload.inputChars>0);
+    assert.equal(payload.instructionsChars,'private-instruction-text'.length);
+    assert.equal(payload.toolCount,1);
+    assert.doesNotMatch(JSON.stringify(payload),/김민수|private-instruction-text|화요일/i);
   }finally{
     console.info=previousInfo;
     if(previousNodeEnv===undefined) delete process.env.NODE_ENV;

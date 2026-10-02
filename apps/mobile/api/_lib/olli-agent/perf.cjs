@@ -47,6 +47,17 @@ function buildPerfEvent(input = {}) {
     'toolCallCount',
     'assistantMessageCount',
     'modelResponseCount',
+    'modelCallIndex',
+    'inputTokens',
+    'outputTokens',
+    'totalTokens',
+    'reasoningTokens',
+    'cachedInputTokens',
+    'inputItems',
+    'inputChars',
+    'instructionsChars',
+    'toolCount',
+    'toolOutputChars',
   ]) {
     const value = finiteNumber(input[key]);
     if (value != null) event[key] = value;
