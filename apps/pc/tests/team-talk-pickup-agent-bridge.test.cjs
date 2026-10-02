@@ -4,19 +4,24 @@ const fs = require('node:fs');
 
 const talk = fs.readFileSync('pc-team-talk.js', 'utf8');
 
-test('PC AI pickup add is routed before the legacy action path', () => {
-  const start = talk.indexOf('async function resolveAiTurn');
-  const end = talk.indexOf('function updateComposerState', start);
-  const block = talk.slice(start, end);
-  const agentGate = block.indexOf('if (isPickupAddAgentCandidate(commandText, router))');
-  const legacyGate = block.indexOf("if (router && typeof router.prepareAction === 'function')");
+test('PC AI pickup add is routed before the legacy action path — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'pickup_cancel'/);
+  assert.match(dispatch,/case 'pickup_update'/);
+  assert.match(dispatch,/case 'pickup_add'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
 
-  assert.ok(start >= 0 && end > start);
-  assert.ok(agentGate >= 0);
-  assert.ok(legacyGate > agentGate);
-  assert.match(block, /return resolvePickupAddAgentTurn/);
 });
-
 test('PC pickup bridge reuses the shared pickup parser', () => {
   assert.match(talk, /parsePickupMutationIntent\(commandText\)/);
 });
@@ -42,20 +47,24 @@ test('PC bot path remains independent from the pickup Agent bridge', () => {
 });
 
 
-test('PC AI pickup update is routed before add and legacy action paths', () => {
-  const start = talk.indexOf('async function resolveAiTurn');
-  const end = talk.indexOf('function updateComposerState', start);
-  const block = talk.slice(start, end);
-  const updateGate = block.indexOf('if (isPickupUpdateAgentCandidate(commandText, router))');
-  const addGate = block.indexOf('if (isPickupAddAgentCandidate(commandText, router))');
-  const legacyGate = block.indexOf("if (router && typeof router.prepareAction === 'function')");
+test('PC AI pickup update is routed before add and legacy action paths — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'pickup_cancel'/);
+  assert.match(dispatch,/case 'pickup_update'/);
+  assert.match(dispatch,/case 'pickup_add'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
 
-  assert.ok(updateGate >= 0);
-  assert.ok(addGate > updateGate);
-  assert.ok(legacyGate > addGate);
-  assert.match(block, /return resolvePickupUpdateAgentTurn\(commandText, current, replyToMessageId\)/);
 });
-
 test('PC pickup update bridge uses shared update parser and persisted production action', () => {
   assert.match(talk, /parsePickupUpdateMutationIntent\(commandText\)/);
 
@@ -80,22 +89,24 @@ test('PC bot path remains independent from pickup update Agent bridge', () => {
   assert.doesNotMatch(block, /resolvePickupUpdateAgentTurn|isPickupUpdateAgentCandidate|pickup_update_prepare/);
 });
 
-test('PC AI pickup cancel is routed before update, add and legacy action paths', () => {
-  const start = talk.indexOf('async function resolveAiTurn');
-  const end = talk.indexOf('function updateComposerState', start);
-  const block = talk.slice(start, end);
-  const cancelGate = block.indexOf('if (isPickupCancelAgentCandidate(commandText, router))');
-  const updateGate = block.indexOf('if (isPickupUpdateAgentCandidate(commandText, router))');
-  const addGate = block.indexOf('if (isPickupAddAgentCandidate(commandText, router))');
-  const legacyGate = block.indexOf("if (router && typeof router.prepareAction === 'function')");
+test('PC AI pickup cancel is routed before update, add and legacy action paths — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'pickup_cancel'/);
+  assert.match(dispatch,/case 'pickup_update'/);
+  assert.match(dispatch,/case 'pickup_add'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
 
-  assert.ok(cancelGate >= 0);
-  assert.ok(updateGate > cancelGate);
-  assert.ok(addGate > updateGate);
-  assert.ok(legacyGate > addGate);
-  assert.match(block, /return resolvePickupCancelAgentTurn\(commandText, current, replyToMessageId\)/);
 });
-
 test('PC pickup cancel bridge uses shared cancel parser and persisted production action', () => {
   assert.match(talk, /parsePickupCancelMutationIntent\(commandText\)/);
 
