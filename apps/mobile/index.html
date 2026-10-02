@@ -862,7 +862,7 @@
 <link rel="stylesheet" href="olli-settings-teacher-management.css">
 <script src="olli-teacher-management-legacy-cleanup.js"></script>
 <link rel="stylesheet" href="kinder-feedback.css?v=20261002-inbox-copy-icon-1">
-<link rel="stylesheet" href="olli-talk-beta.css?v=20260928-broken-thumb-fallback-1">
+<link rel="stylesheet" href="olli-talk-beta.css?v=20261002-olli-ai-mention-restore-1">
 <link rel="stylesheet" href="olli-talk-material-orders-mobile.css?v=20260928-status-colors-5">
 <!-- PAGE: 유치부 대화형 1분 피드백 -->
 <div aria-hidden="true" id="kcfPersistentTopLayer">
@@ -980,6 +980,7 @@
 <div class="olliTalkBetaComposer">
 <div aria-label="선생님 멘션 선택" class="olliTalkMentionMenu" id="olliTalkMentionMenu" hidden></div>
 <button aria-label="파일 추가" class="olliTalkFileAddBtn" id="olliTalkFileAddBtn" title="파일 추가" type="button"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></button>
+<span aria-hidden="true" class="olliTalkSelectedMentionPrefix" id="olliTalkSelectedMentionPrefix" hidden></span>
 <textarea aria-label="메시지 입력" class="olliTalkBetaInput" id="olliTalkBetaInput" placeholder="메시지를 입력하세요" rows="1"></textarea>
 <button aria-label="재료 퀵주문" class="olliTalkQuickOrderBtn" id="olliTalkQuickOrderBtn" onclick="openOlliTalkQuickOrder(event)" title="퀵주문" type="button"><svg aria-hidden="true" viewBox="0 0 86 99" fill="none" xmlns="http://www.w3.org/2000/svg"><g fill="#000000"><path d="M10 6C10 2.686 12.686 0 16 0H70C73.314 0 76 2.686 76 6V9C76 9.552 75.552 10 75 10H11C10.448 10 10 9.552 10 9V6Z"></path><path d="M4 10C4 8.895 4.895 8 6 8H80C81.105 8 82 8.895 82 10V15C82 17.761 79.761 20 77 20H9C6.239 20 4 17.761 4 15V10Z"></path><path d="M12 20H74L66 96.5C65.86 97.82 64.74 98.82 63.42 98.82H22.58C21.26 98.82 20.14 97.82 20 96.5L12 20Z"></path></g><circle cx="43" cy="48" r="11.5" fill="#FFFFFF"></circle></svg></button>
 <button aria-label="선생님 멘션" class="olliTalkMentionTriggerBtn" id="olliTalkMentionTriggerBtn" type="button">@</button>
@@ -1150,7 +1151,7 @@
 <script src="olli-talk-material-orders-mobile.js?v=20260929-work-material-badge-1"></script>
 <script src="olli-talk-attachment-cache-phone.js?v=20260929-link-preview-local-first-1"></script>
 <script src="olli-talk-image-thumbnail-phone.js?v=20260924-client-thumbnail-1"></script>
-<script src="olli-talk-beta.js?v=20260929-team-chat-notification-root-1"></script>
+<script src="olli-talk-beta.js?v=20261002-olli-ai-mention-restore-1"></script>
 <script src="olli-talk-push.js?v=20260929-team-chat-notification-root-1"></script>
 <script src="kcf-voice-text-normalizer.js?v=20260918-time-normalize-1"></script>
 <script src="kcf-voice-transcription.js?v=20261002-sheet-controls-1"></script>
