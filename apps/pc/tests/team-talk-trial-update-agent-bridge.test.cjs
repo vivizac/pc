@@ -14,19 +14,22 @@ test('PC trial update gate uses only shared trial update candidate parser',()=>{
   assert.doesNotMatch(block,/parseWriteIntent|prepareAction|add_trial|cancel_trial/);
 });
 
-test('PC trial update routes before waitlist and legacy preparation',()=>{
-  const start=talk.indexOf('async function resolveAiTurn');
-  const end=talk.indexOf('function updateComposerState',start);
-  const block=talk.slice(start,end);
-  const trial=block.indexOf('if (isTrialUpdateAgentCandidate(commandText, router))');
-  const wait=block.indexOf('if (isWaitlistUpdateAgentCandidate(commandText, router))');
-  const legacy=block.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(trial>=0);
-  assert.ok(wait>trial);
-  assert.ok(legacy>wait);
-  assert.match(block,/return resolveTrialUpdateAgentTurn\(commandText, current, replyToMessageId\)/);
-});
+test('PC trial update routes before waitlist and legacy preparation — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'trial_update'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('PC trial update uses source-bound production mode and server-persisted card',()=>{
   const start=talk.indexOf('async function resolveTrialUpdateAgentTurn');
   const end=talk.indexOf('async function resolveWaitlistAddAgentTurn',start);
