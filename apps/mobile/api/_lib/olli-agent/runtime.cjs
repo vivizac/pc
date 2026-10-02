@@ -832,6 +832,7 @@ async function runMakeupPrepareAgent({
   const model = agentModel();
   const today = todayInSeoul();
   let persistedMessage = null;
+  let prepareError = null;
 
   const prepareMakeup = createPrepareMakeupTool({
     tool,
@@ -846,6 +847,9 @@ async function runMakeupPrepareAgent({
     replyToMessageId,
     capturePersistedMessage(message) {
       persistedMessage = pickupPersistedMessageForClient(message);
+    },
+    capturePrepareError(error) {
+      prepareError = error;
     },
     sanitizePayload(payload) {
       return sanitizeAgentToolPayload(payload, preparedPrivacy);
@@ -889,6 +893,10 @@ async function runMakeupPrepareAgent({
   } catch (error) {
     runError = error;
     if (!requirePersistedMessage || !persistedMessage) throw error;
+  }
+
+  if (requirePersistedMessage && !persistedMessage && prepareError) {
+    throw prepareError;
   }
 
   const finalOutput = String(result?.finalOutput || '').trim();
