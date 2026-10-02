@@ -132,3 +132,12 @@ test('PC makeup update bridge uses source message id and server-persisted update
   assert.match(block,/recordAi:false/);
   assert.doesNotMatch(block,/saveAssistantAction|olli_team_chat_send_action/);
 });
+
+
+test('PC makeup clarification uses Agent output and contextual continuation', () => {
+  assert.match(talk,/pendingMakeupDialogue/);
+  assert.match(talk,/interactionStatus==='needs_clarification'/);
+  assert.match(talk,/mode:'context_makeup_prepare'/);
+  assert.match(talk,/conversation:state\.aiConversationMessages\.map/);
+  assert.match(talk,/resolveContextualMakeupTurn/);
+});
