@@ -960,12 +960,13 @@
 
   function extractTeacherTargetName(value) {
     const raw=cleanText(value);
-    let match=raw.match(/([가-힣A-Za-z0-9·ㆍ_-]{1,30})\s*(?:선생님|쌤)(?:으로|로)?/);
+    let match=raw.match(/(?:담당\s*)?(?:선생님|담임|쌤)\s*(?:을|를)?\s*[:：]?\s*([가-힣A-Za-z0-9·ㆍ_-]{1,30})(?:\s*(?:선생님|쌤))?(?:으로|로)?/);
     let name=normalizeTeacherTargetName(match&&match[1]);
     if(name) return name;
 
-    match=raw.match(/(?:담당\s*)?(?:선생님|담임|쌤)\s*(?:을|를)?\s*[:：]?\s*([가-힣A-Za-z0-9·ㆍ_-]{1,30})(?:\s*(?:선생님|쌤))?(?:으로|로)?/);
+    match=raw.match(/([가-힣A-Za-z0-9·ㆍ_-]{1,30})\s*(?:선생님|쌤)(?:으로|로)?/);
     name=normalizeTeacherTargetName(match&&match[1]);
+    if(/^(?:\d{1,2}시|[ABab]반)$/.test(name)) return '';
     return name;
   }
 
