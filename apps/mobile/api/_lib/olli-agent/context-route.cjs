@@ -35,14 +35,26 @@ function messageBody(item) {
 
 function recentConversation(messages, memberId, sourceMessageId) {
   const sourceId = Number(sourceMessageId || 0);
-  return (Array.isArray(messages) ? messages : [])
+  const rows = (Array.isArray(messages) ? messages : [])
     .filter((item) => {
       const id = messageId(item);
-      if (!id || id >= sourceId) return false;
-      if (!messageBody(item)) return false;
-      return isAiMessage(item) || isUserMessage(item, memberId);
+      return id > 0 && id < sourceId && !!messageBody(item);
     })
-    .sort((a, b) => messageId(a) - messageId(b))
+    .sort((a, b) => messageId(a) - messageId(b));
+
+  const ownUserIds = new Set(
+    rows
+      .filter((item) => isUserMessage(item, memberId))
+      .map((item) => messageId(item))
+  );
+
+  return rows
+    .filter((item) => {
+      if (isUserMessage(item, memberId)) return true;
+      if (!isAiMessage(item)) return false;
+      const replyTo=Number(item?.reply_to_message_id || item?.replyToMessageId || 0) || 0;
+      return replyTo > 0 && ownUserIds.has(replyTo);
+    })
     .slice(-MAX_CONTEXT_MESSAGES)
     .map((item) => ({
       role:isAiMessage(item) ? 'assistant' : 'user',
