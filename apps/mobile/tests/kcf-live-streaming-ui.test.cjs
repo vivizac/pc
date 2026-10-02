@@ -17,7 +17,8 @@ test('KCF LIVE streams /api/chat directly into one bot bubble', () => {
   assert.match(live, /restoreKinderChatFeedbackLiveStudentAliases\([\s\S]*?stripKinderChatFeedbackLivePrefix\(fullText\),[\s\S]*?item\.studentName[\s\S]*?\)/);
   assert.match(live, /liveUi\.bubble\.textContent = visibleText \|\| '…'/);
   assert.doesNotMatch(live, /liveTextRenderer/);
-  assert.doesNotMatch(live, /setTodayFeedbackItemsRaw|createTodayFeedbackItem|updateTodayFeedbackItem/);
+  assert.match(live, /syncKinderChatFeedbackLiveItemToInbox\(item\)/);
+  assert.match(live, /await saveKinderChatFeedbackLive\(item\.id, item\.studentId\)/);
 });
 
 test('KCF LIVE restores anonymized student aliases in current and restored results', () => {
@@ -28,15 +29,16 @@ test('KCF LIVE restores anonymized student aliases in current and restored resul
   assert.match(js, /const finalText = restoreKinderChatFeedbackLiveStudentAliases\([\s\S]*?stripKinderChatFeedbackLivePrefix\(fullText\),[\s\S]*?item\.studentName[\s\S]*?\)\.trim\(\)/);
 });
 
-test('KCF LIVE function is exported and old inbox flow remains separate', () => {
+test('KCF LIVE function is exported and reuses the existing temporary inbox sheet', () => {
   assert.match(js, /window\.startKinderChatFeedbackLiveRequest = startKinderChatFeedbackLiveRequest/);
   assert.match(js, /window\.getKinderChatFeedbackTopMode = getKinderChatFeedbackTopMode/);
   assert.match(js, /function renderKinderChatFeedbackInbox\(\)/);
-  assert.match(js, /getKinderChatFeedbackTopMode\(\) !== 'live'/);
+  assert.match(js, /function syncKinderChatFeedbackLiveItemToInbox\(item\)/);
+  assert.match(js, /openKinderChatFeedbackInbox\(\)/);
 });
 
 test('phone loads cache-busted LIVE streaming source', () => {
-  assert.match(html, /kinder-feedback\.js\?v=20260923-live-direct-1/);
+  assert.match(html, /kinder-feedback\.js\?v=20261002-auto-save-actions-2/);
 });
 
 

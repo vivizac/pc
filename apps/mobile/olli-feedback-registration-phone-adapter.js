@@ -517,18 +517,21 @@ function decoratePhoneKcfLiveMessage(ui){
   const row = ui && ui.row;
   if (!row || !row.querySelector) return ui;
 
-  const copyBtn = row.querySelector('.kcfLiveCopyBtn');
-  if (copyBtn && !copyBtn.classList.contains('kcfLiveCopySaveBtn')) {
-    copyBtn.classList.remove('kcfLiveIconActionBtn');
-    copyBtn.classList.add('kcfLiveCopySaveBtn', 'kcfLivePhoneTextActionBtn');
-    delete copyBtn.dataset.kcfLiveActionIcon;
-    copyBtn.textContent = '복사 + 저장';
-    copyBtn.setAttribute('aria-label', '본문 복사 및 기록실 저장');
-    copyBtn.title = '본문 복사 및 기록실 저장';
+  const inboxBtn = row.querySelector('.kcfLiveInboxBtn');
+  if (inboxBtn) {
+    inboxBtn.classList.add('kcfLivePhoneTextActionBtn');
+    inboxBtn.textContent = '임시보관함';
+    inboxBtn.setAttribute('aria-label', '임시보관함 열기');
+    inboxBtn.title = '임시보관함';
   }
 
-  const saveBtn = row.querySelector('.kcfLiveSaveBtn');
-  if (saveBtn) saveBtn.remove();
+  const copyBtn = row.querySelector('.kcfLiveCopyBtn');
+  if (copyBtn) {
+    copyBtn.classList.add('kcfLivePhoneTextActionBtn');
+    copyBtn.textContent = '복사';
+    copyBtn.setAttribute('aria-label', '피드백 본문 복사');
+    copyBtn.title = '복사';
+  }
 
   const bubble = row.querySelector('.kcfLiveBubble');
   installPhoneKcfLiveTypingIndicator(bubble);
@@ -547,9 +550,7 @@ function decoratePhoneKcfLiveMessage(ui){
   if (originalEditBtn && !originalEditBtn.__olliPhoneSeparateEditSheet) {
     const editBtn = originalEditBtn.cloneNode(true);
     editBtn.__olliPhoneSeparateEditSheet = true;
-    editBtn.classList.remove('kcfLiveIconActionBtn');
     editBtn.classList.add('kcfLivePhoneTextActionBtn');
-    delete editBtn.dataset.kcfLiveActionIcon;
     editBtn.textContent = '수정하기';
     editBtn.setAttribute('aria-label', '피드백 수정하기');
     editBtn.title = '피드백 수정하기';
@@ -562,41 +563,18 @@ function decoratePhoneKcfLiveMessage(ui){
   return ui;
 }
 
-/* LIVE feedback actions: copy also saves, and the separate save icon is not rendered on Phone. */
+/* LIVE feedback actions use text-only temporary-inbox, copy, and edit controls on Phone. */
 (function installPhoneKinderChatLiveActions(){
   const originalCreateLiveMessage = window.createKinderChatFeedbackLiveMessage;
-  if (typeof originalCreateLiveMessage === 'function' && !originalCreateLiveMessage.__olliPhoneNoSaveAction) {
+  if (typeof originalCreateLiveMessage === 'function' && !originalCreateLiveMessage.__olliPhoneTextActions) {
     function phoneCreateKinderChatFeedbackLiveMessage(){
       const ui = originalCreateLiveMessage.apply(this, arguments);
       decoratePhoneKcfLiveMessage(ui);
       return ui;
     }
-    phoneCreateKinderChatFeedbackLiveMessage.__olliPhoneNoSaveAction = true;
+    phoneCreateKinderChatFeedbackLiveMessage.__olliPhoneTextActions = true;
     phoneCreateKinderChatFeedbackLiveMessage.__olliOriginal = originalCreateLiveMessage;
     window.createKinderChatFeedbackLiveMessage = phoneCreateKinderChatFeedbackLiveMessage;
-  }
-
-  const originalCopyLive = window.copyKinderChatFeedbackLive;
-  if (typeof originalCopyLive === 'function' && !originalCopyLive.__olliPhoneAutoSave) {
-    async function phoneCopyKinderChatFeedbackLive(id, btn){
-      const copied = await originalCopyLive.call(this, id, btn);
-      if (copied !== true) return copied;
-
-      let item = null;
-      try {
-        item = typeof window.getKinderChatFeedbackLiveItem === 'function'
-          ? window.getKinderChatFeedbackLiveItem(id)
-          : null;
-      } catch(e) {}
-
-      if (item && !item.saved && !item.reviewed && typeof window.saveKinderChatFeedbackLive === 'function') {
-        await window.saveKinderChatFeedbackLive(id, null);
-      }
-      return copied;
-    }
-    phoneCopyKinderChatFeedbackLive.__olliPhoneAutoSave = true;
-    phoneCopyKinderChatFeedbackLive.__olliOriginal = originalCopyLive;
-    window.copyKinderChatFeedbackLive = phoneCopyKinderChatFeedbackLive;
   }
 })();
 

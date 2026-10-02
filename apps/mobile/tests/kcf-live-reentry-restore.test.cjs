@@ -73,5 +73,5 @@ test('LIVE does not read or write an unscoped academy session', () => {
 });
 
 test('phone cache-busts rolling retention source', () => {
-  assert.match(html, /kinder-feedback\.js\?v=20260916-composer-sheet-1/);
+  assert.match(html, /kinder-feedback\.js\?v=20261002-auto-save-actions-2/);
 });

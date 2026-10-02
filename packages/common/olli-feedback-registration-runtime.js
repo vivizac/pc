@@ -327,13 +327,24 @@
       }
     }
 
-    if (typeof addKinderChatDocumentMessage === 'function') addKinderChatDocumentMessage(studentName, getKcfStudentFeedbackLabel(student, 'class'), text, 'minute', photoSnapshot);
+    try {
+      if (typeof addKinderChatDocumentMessage === 'function') {
+        addKinderChatDocumentMessage(studentName, getKcfStudentFeedbackLabel(student, 'class'), text, 'minute', photoSnapshot);
+      }
+    } catch (err) {
+      console.warn('1분 피드백 사용자 메시지 표시 실패, AI 요청은 계속합니다:', err);
+    }
+
     var canUseKinderChatLive =
       typeof window.getKinderChatFeedbackTopMode === 'function' &&
       window.getKinderChatFeedbackTopMode() === 'live' &&
       typeof window.startKinderChatFeedbackLiveRequest === 'function';
     if (!canUseKinderChatLive && typeof addKinderChatMessage === 'function') {
-      addKinderChatMessage('bot', '관찰 내용을 부모님께 잘 전달될 수 있도록 정리해둘게요.\n다음 학생 기록을 이어서 작성해 주세요.');
+      try {
+        addKinderChatMessage('bot', '관찰 내용을 부모님께 잘 전달될 수 있도록 정리해둘게요.\n다음 학생 기록을 이어서 작성해 주세요.');
+      } catch (err) {
+        console.warn('1분 피드백 안내 메시지 표시 실패, AI 요청은 계속합니다:', err);
+      }
     }
     var requestOptions = {
       id: feedbackJobId,
@@ -350,25 +361,49 @@
     };
     var feedbackItem = startKcfFeedbackRequestGuaranteed(requestOptions, canUseKinderChatLive);
     if (!feedbackItem) throw new Error('1분 피드백 AI 요청을 시작하지 못했습니다.');
+
+    // From this point the AI request has already started successfully.
+    // Post-submit UI cleanup must never be reported as an AI connection failure.
     if (window.KcfAutoMode && typeof window.KcfAutoMode.onFeedbackRequestStarted === 'function') {
-      try { window.KcfAutoMode.onFeedbackRequestStarted(requestOptions, feedbackItem); } catch (err) {}
+      try { window.KcfAutoMode.onFeedbackRequestStarted(requestOptions, feedbackItem); }
+      catch (err) { console.warn('1분 피드백 요청 시작 후 상태 반영 실패:', err); }
     }
     if (window.KcfAutoMode && typeof window.KcfAutoMode.completeSuccessfulSubmit === 'function') {
-      try { window.KcfAutoMode.completeSuccessfulSubmit(autoSubmitContext || null); } catch (err) {}
+      try { window.KcfAutoMode.completeSuccessfulSubmit(autoSubmitContext || null); }
+      catch (err) { console.warn('1분 피드백 요청 시작 후 Class 상태 정리 실패:', err); }
+    } else if (window.KcfTeacherSheet && typeof window.KcfTeacherSheet.onSuccessfulSubmit === 'function') {
+      try { window.KcfTeacherSheet.onSuccessfulSubmit(); }
+      catch (err) { console.warn('1분 피드백 요청 시작 후 입력 바텀시트 닫기 실패:', err); }
     }
 
-    var autoSelection = window.KcfAutoMode && typeof window.KcfAutoMode.getSelection === 'function'
-      ? window.KcfAutoMode.getSelection()
-      : null;
-    if (!autoSelection || !autoSelection.studentId) clearKcfSelectedStudent();
-    if (input) {
-      input.value = '';
-      if (typeof autoResizeKinderChatFeedbackInput === 'function') autoResizeKinderChatFeedbackInput(input);
+    var autoSelection = null;
+    try {
+      autoSelection = window.KcfAutoMode && typeof window.KcfAutoMode.getSelection === 'function'
+        ? window.KcfAutoMode.getSelection()
+        : null;
+    } catch (err) {
+      console.warn('1분 피드백 요청 시작 후 학생 선택 상태 확인 실패:', err);
     }
-    if (typeof clearKinderChatFeedbackPhoto === 'function') clearKinderChatFeedbackPhoto();
-    if (typeof clearKinderChatFeedbackDraft === 'function') clearKinderChatFeedbackDraft();
-    if (typeof clearKinderChatFeedbackKeyword === 'function') clearKinderChatFeedbackKeyword();
-    if (typeof updateKinderChatFeedbackBadge === 'function') updateKinderChatFeedbackBadge();
+    if (!autoSelection || !autoSelection.studentId) {
+      try { clearKcfSelectedStudent(); }
+      catch (err) { console.warn('1분 피드백 요청 시작 후 학생 선택 해제 실패:', err); }
+    }
+    if (input) {
+      try {
+        input.value = '';
+        if (typeof autoResizeKinderChatFeedbackInput === 'function') autoResizeKinderChatFeedbackInput(input);
+      } catch (err) {
+        console.warn('1분 피드백 요청 시작 후 입력창 초기화 실패:', err);
+      }
+    }
+    try { if (typeof clearKinderChatFeedbackPhoto === 'function') clearKinderChatFeedbackPhoto(); }
+    catch (err) { console.warn('1분 피드백 요청 시작 후 사진 초기화 실패:', err); }
+    try { if (typeof clearKinderChatFeedbackDraft === 'function') clearKinderChatFeedbackDraft(); }
+    catch (err) { console.warn('1분 피드백 요청 시작 후 임시 입력 초기화 실패:', err); }
+    try { if (typeof clearKinderChatFeedbackKeyword === 'function') clearKinderChatFeedbackKeyword(); }
+    catch (err) { console.warn('1분 피드백 요청 시작 후 키워드 초기화 실패:', err); }
+    try { if (typeof updateKinderChatFeedbackBadge === 'function') updateKinderChatFeedbackBadge(); }
+    catch (err) { console.warn('1분 피드백 요청 시작 후 배지 갱신 실패:', err); }
   }
 
   window.submitKinderChatFeedback = async function(){
