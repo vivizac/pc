@@ -20,6 +20,35 @@ function dateDisplay(value){
   const m=clean(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return m?Number(m[2])+'월 '+Number(m[3])+'일':clean(value);
 }
+function parseDateKey(value){
+  const raw=clean(value);
+  const match=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!match) return null;
+  const year=Number(match[1]),month=Number(match[2]),day=Number(match[3]);
+  const timestamp=Date.UTC(year,month-1,day);
+  const date=new Date(timestamp);
+  if(date.getUTCFullYear()!==year||date.getUTCMonth()+1!==month||date.getUTCDate()!==day) return null;
+  return {key:raw,year,month,day,timestamp};
+}
+function resolveAttendanceDateSpec(spec,todayKey){
+  const today=parseDateKey(todayKey);
+  if(!today) return '';
+  if(!spec||typeof spec!=='object') return today.key;
+  const mode=clean(spec.mode);
+  if(mode==='today') return today.key;
+  if(mode==='tomorrow') return new Date(today.timestamp+86400000).toISOString().slice(0,10);
+  if(mode==='month_day'){
+    const month=Number(spec.month||0),day=Number(spec.day||0);
+    const key=String(today.year).padStart(4,'0')+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    return parseDateKey(key)?.key||'';
+  }
+  if(mode==='day_of_month'){
+    const day=Number(spec.day||0);
+    const key=String(today.year).padStart(4,'0')+'-'+String(today.month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+    return parseDateKey(key)?.key||'';
+  }
+  return resolveDateSpec(spec,today.key);
+}
 function statusLabel(status){
   if(status==='present') return '출석';
   if(status==='absent') return '결석';
@@ -64,7 +93,7 @@ async function prepareAttendanceStatusAction({
   const status=normalizedStatus(intent?.status);
   const kind=targetKind(intent?.sessionKind,status);
   const today=clean(currentDate);
-  const sessionDate=intent?.dateSpec?resolveDateSpec(intent.dateSpec,today):today;
+  const sessionDate=resolveAttendanceDateSpec(intent?.dateSpec,today);
   if(!sessionDate) throw attendanceStatusError('출석부를 변경할 날짜를 확인해 주세요.',400,'OLLI_AGENT_ATTENDANCE_STATUS_DATE_INVALID');
 
   const weekday=isoWeekday(sessionDate);
@@ -176,6 +205,7 @@ function createPrepareAttendanceStatusTool({
   });
 }
 module.exports={
+  resolveAttendanceDateSpec,
   stableAttendanceStatusClientMessageId,
   prepareAttendanceStatusAction,
   createPrepareAttendanceStatusTool,
