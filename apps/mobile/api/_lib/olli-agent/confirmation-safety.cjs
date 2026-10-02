@@ -1,0 +1,87 @@
+'use strict';
+
+const CONFIRMATION_INVARIANTS = Object.freeze({
+  pendingOnly: true,
+  userGestureRequired: true,
+  actionRowLocked: true,
+  mutationAtConfirmationOnly: true,
+  authoritativeResultRequired: true,
+  failureNeverCompletes: true,
+  resolutionRevisioned: true,
+  retrySafeCardCreation: true,
+});
+
+const ACTION_SOTS = Object.freeze({
+  add_class_once: ['olli_schedule_execute:add_one_time'],
+  cancel_class_once: ['olli_schedule_execute:cancel_one_time'],
+  add_pickup: ['olli_schedule_save_pickup_v3'],
+  update_pickup_arrival: ['olli_schedule_save_pickup_arrival'],
+  update_pickup_dropoff: ['olli_schedule_register_pickup_dropoff'],
+  cancel_pickup: ['olli_schedule_remove_pickup'],
+  cancel_pickup_dropoff: ['olli_schedule_remove_pickup_dropoff'],
+  add_makeup: ['olli_schedule_execute:add_one_time'],
+  update_makeup: ['olli_schedule_update_one_time_session'],
+  cancel_makeup: ['olli_schedule_execute:cancel_one_time'],
+  add_trial: ['olli_schedule_add_guest_entry'],
+  update_trial: ['olli_schedule_update_one_time_session'],
+  cancel_trial: ['olli_schedule_execute:cancel_one_time'],
+  add_waitlist: ['olli_schedule_execute:add_waitlist','olli_schedule_add_guest_entry'],
+  update_waitlist: ['olli_schedule_update_waitlist_target'],
+  cancel_waitlist: ['olli_schedule_resolve_waitlist'],
+  move_class: ['olli_schedule_execute:change'],
+  cancel_move: ['olli_schedule_execute:cancel_change'],
+  mark_absent: ['olli_schedule_set_attendance_session_status_v2'],
+  add_timetable_memo: ['olli_schedule_save_cell_memo_v3'],
+  delete_timetable_memo: ['olli_schedule_save_cell_memo_v3'],
+  set_class_layout: ['olli_schedule_execute:split_class','olli_schedule_execute:merge_class','olli_schedule_set_kinder_class_split'],
+  set_class_teacher: ['olli_schedule_set_class_teacher'],
+  set_teacher_override: ['olli_schedule_set_teacher_override'],
+  set_session_order: ['olli_schedule_set_session_order'],
+  set_normal_class_day: ['olli_schedule_set_normal_class_day'],
+  set_attendance_status: ['olli_schedule_set_attendance_session_status_v2'],
+});
+
+const STALE_SENSITIVE_ACTIONS = Object.freeze([
+  'add_class_once',
+  'add_makeup',
+  'update_makeup',
+  'cancel_makeup',
+  'add_trial',
+  'update_trial',
+  'cancel_trial',
+  'add_waitlist',
+  'update_waitlist',
+  'cancel_waitlist',
+  'move_class',
+  'cancel_move',
+  'add_pickup',
+  'update_pickup_arrival',
+  'update_pickup_dropoff',
+  'cancel_pickup',
+  'cancel_pickup_dropoff',
+  'set_class_layout',
+  'set_class_teacher',
+  'set_teacher_override',
+  'set_session_order',
+  'set_normal_class_day',
+  'set_attendance_status',
+  'mark_absent',
+]);
+
+const PRODUCTION_ATTENTION_CODES = Object.freeze([
+  'AGENT_EVAL_CONTRACT_MISSING',
+  'REQUIRED_TOOL_MISSING',
+  'UNEXPECTED_TOOL',
+  'TOOL_CALL_LIMIT_EXCEEDED',
+  'FINAL_OUTPUT_MISSING',
+  'DUPLICATE_TOOL_CALL',
+  'CONFIRMATION_NON_PENDING_EXECUTION',
+  'CONFIRMATION_STALE_SOT_REJECTED',
+]);
+
+module.exports = {
+  CONFIRMATION_INVARIANTS,
+  ACTION_SOTS,
+  STALE_SENSITIVE_ACTIONS,
+  PRODUCTION_ATTENTION_CODES,
+};
