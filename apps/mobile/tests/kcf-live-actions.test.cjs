@@ -141,3 +141,29 @@ test('LIVE text action button creation has no stale helper dependency', () => {
 test('LIVE action label fix is cache-busted', () => {
   assert.match(html, /kinder-feedback\.js\?v=20261002-inbox-copy-icon-1/);
 });
+
+
+test('temporary inbox removes the header guide and lifts saved feedback content', () => {
+  assert.doesNotMatch(html, /class="kcfInboxSub"/);
+  assert.match(css, /#kcfInboxOverlay \.kcfInboxHead \{[\s\S]*?padding:0 18px;[\s\S]*?position:relative;/);
+  assert.match(css, /#kcfInboxOverlay \.kcfInboxBody \{[\s\S]*?padding:4px 16px/);
+  assert.match(css, /#kcfInboxOverlay \.kcfInboxSectionTitle \{[\s\S]*?margin:0 2px 8px;/);
+});
+
+test('temporary inbox class feedback uses renamed division labels and elementary inline guide', () => {
+  const start = js.indexOf('function getKinderChatFeedbackInboxDisplayLabel');
+  const end = js.indexOf('function toggleKinderChatFeedbackInboxItem', start);
+  const block = js.slice(start, end);
+  assert.match(block, /유치부 수업 피드백/);
+  assert.match(block, /초등부 수업 피드백/);
+  assert.match(block, /kcfInboxMetaRow\$\{elementaryClassGuide \? ' inlineGuide' : ''\}/);
+  assert.match(block, /kcfInboxInlineGuide/);
+  assert.match(css, /#kcfInboxOverlay \.kcfInboxMetaRow\.inlineGuide \{[\s\S]*?display:flex;[\s\S]*?gap:7px;/);
+  assert.match(css, /#kcfInboxOverlay \.kcfInboxName \{[\s\S]*?line-height:1\.3;/);
+  assert.match(css, /#kcfInboxOverlay \.kcfInboxText \{[\s\S]*?line-height:1\.35;/);
+});
+
+test('temporary inbox card layout assets are cache-busted', () => {
+  assert.match(html, /kinder-feedback\.js\?v=20261002-inbox-card-layout-1/);
+  assert.match(html, /kinder-feedback\.css\?v=20261002-inbox-card-layout-1/);
+});
