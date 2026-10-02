@@ -31,7 +31,7 @@ test('Mobile timetable admin bridge is source-bound and validates returned actio
 
 test('Mobile timetable admin Agent routing runs before batch and legacy write fallback',()=>{
   const start=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const end=talk.indexOf('if(router && typeof router.prepareAction==='function')',start);
+  const end=talk.indexOf("if(router && typeof router.prepareAction==='function')",start);
   const block=talk.slice(start,end);
   const admin=block.indexOf('parseOlliTalkTimetableAdminAgentCandidate');
   const batch=block.indexOf('const batchCandidate=parseOlliTalkBatchAgentCandidate');
