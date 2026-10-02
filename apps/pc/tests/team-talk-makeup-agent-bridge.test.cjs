@@ -141,8 +141,25 @@ test('PC makeup update bridge uses source message id and server-persisted update
 test('PC makeup clarification and blocked outcomes remain in contextual continuation', () => {
   assert.match(talk,/pendingMakeupDialogue/);
   assert.match(talk,/\['needs_clarification','blocked'\]\.includes\(interactionStatus\)/);
-  assert.match(talk,/state\.pendingMakeupDialogue=\{ active:true, status:interactionStatus \};/);
+  assert.match(talk,/state\.pendingMakeupDialogue=\{ active:true, status:interactionStatus, prompt:aiReply \};/);
   assert.match(talk,/mode:'context_makeup_prepare'/);
   assert.match(talk,/conversation:state\.aiConversationMessages\.map/);
   assert.match(talk,/resolveContextualMakeupTurn/);
+});
+
+
+test('PC pending makeup dialogue owns the next turn until explicit cancellation', () => {
+  const start=talk.indexOf('async function resolveAiTurn');
+  const end=talk.indexOf('if (state.pendingActionReason)',start);
+  const block=talk.slice(start,end);
+  assert.match(block,/if \(state\.pendingMakeupDialogue\)/);
+  assert.match(block,/isPendingReasonCancel\(commandText\)/);
+  assert.match(block,/보강 등록 준비를 취소했어요/);
+
+  const contextStart=talk.indexOf('async function resolveContextualMakeupTurn');
+  const contextEnd=talk.indexOf('async function resolveContextualReadTurn',contextStart);
+  const contextBlock=talk.slice(contextStart,contextEnd);
+  assert.match(contextBlock,/data\?\.handled!==true/);
+  assert.match(contextBlock,/보강 등록을 이어서 진행 중이에요/);
+  assert.doesNotMatch(contextBlock,/data\?\.handled!==true\)[\s\S]{0,120}state\.pendingMakeupDialogue=null/);
 });
