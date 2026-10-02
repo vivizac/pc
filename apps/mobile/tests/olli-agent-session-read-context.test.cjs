@@ -4,6 +4,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const {
   prepareAgentReadPrivacyInput,
+  prepareAgentContextReadPrivacyInput,
 }=require('../api/_lib/olli-agent/privacy.cjs');
 
 function student(id,name,division='elementary'){
@@ -186,4 +187,48 @@ test('generic no-student query does not silently inherit the active student',asy
   assert.equal(generic.sessionEnabled,false);
   assert.deepEqual(generic.preparedPrivacy.subjectRefs,[]);
   assert.equal(session.state().clears,0);
+});
+
+
+test('bare contextual follow-up reuses 학생A and sends the full sanitized conversation to the main Agent',async()=>{
+  const session=fakeSession();
+  const rows=[student('student-1','김민수')];
+
+  await prepareAgentReadPrivacyInput(
+    '김민수 시간표 알려줘',
+    requestContext,
+    {
+      session,
+      rows,
+      createSubjectRef:()=> 'subject_abcdefghijklmnop',
+    }
+  );
+
+  const follow=await prepareAgentContextReadPrivacyInput(
+    '그럼 지난주는?',
+    [
+      {role:'user',content:'김민수 시간표 알려줘'},
+      {role:'assistant',content:'김민수는 화요일 5시 A반이에요.'},
+    ],
+    requestContext,
+    {
+      session,
+      rows,
+      createSubjectRef:()=> 'subject_qrstuvwxyzABCDEF',
+    }
+  );
+
+  assert.equal(follow.sessionEnabled,true);
+  assert.equal(follow.sessionReset,false);
+  assert.deepEqual(follow.preparedPrivacy.subjectRefs,[{
+    label:'학생A',
+    subject_ref:'subject_abcdefghijklmnop',
+    division:'elementary',
+  }]);
+  assert.equal(follow.agentInput.length,3);
+  assert.equal(follow.agentInput[0].role,'user');
+  assert.match(follow.agentInput[0].content,/학생A/);
+  assert.doesNotMatch(JSON.stringify(follow.agentInput),/김민수/);
+  assert.equal(follow.agentInput[2].content,'그럼 지난주는?');
+  assert.equal(session.state().binds,1,'context continuation should reuse the existing subject binding');
 });

@@ -10,6 +10,7 @@ const { sanitizeValue } = require('../ai-privacy-sanitizer.cjs');
 const { assertSafeEgress } = require('../ai-egress-guard.cjs');
 const {
   resolveStudentReferences,
+  matchStudentReferences,
   createSubjectAccess,
 } = require('./student-reference-resolver.cjs');
 
@@ -140,8 +141,10 @@ function withStableSingleSubject(resolution, item, binding) {
 
 async function prepareAgentReadPrivacyInput(text, requestContext, options = {}) {
   const session=options?.session;
+  const allowBoundSubjectContinuation=options?.allowBoundSubjectContinuation===true;
   const resolverOptions=Object.assign({},options);
   delete resolverOptions.session;
+  delete resolverOptions.allowBoundSubjectContinuation;
 
   const resolution=await resolveStudentReferences(text,requestContext,resolverOptions);
   const preparedWithoutSession=()=>prepareAgentPrivacyFromResolution(text,resolution);
@@ -212,7 +215,7 @@ async function prepareAgentReadPrivacyInput(text, requestContext, options = {}) 
   if(
     bindings.length===1
     && clean(bindings[0]?.label)==='학생A'
-    && isContextualStudentReference(text)
+    && (isContextualStudentReference(text) || allowBoundSubjectContinuation)
   ){
     const boundStudent=(Array.isArray(resolution?.students)?resolution.students:[])
       .find((student)=>clean(student?.id)===clean(bindings[0]?.studentId));
@@ -242,6 +245,122 @@ async function prepareAgentReadPrivacyInput(text, requestContext, options = {}) 
     sessionEnabled:false,
     sessionReset:false,
   });
+}
+
+
+function normalizeAgentConversation(conversation) {
+  return (Array.isArray(conversation) ? conversation : [])
+    .map((item) => {
+      const role=clean(item?.role);
+      const content=clean(item?.content ?? item?.text);
+      if(!content || !['user','assistant'].includes(role)) return null;
+      return { role, content };
+    })
+    .filter(Boolean);
+}
+
+function prepareAgentConversationInput(preparedPrivacy, conversation, currentText) {
+  const resolution=preparedPrivacy?.rawResolution;
+  if(!resolution){
+    const error=new Error('Agent 대화 익명화 범위를 확인하지 못했습니다.');
+    error.statusCode=500;
+    error.code='OLLI_AGENT_PRIVACY_CONTEXT_MISSING';
+    throw error;
+  }
+
+  const resolved=Array.isArray(resolution?.resolved)?resolution.resolved:[];
+  const primary=resolved[0] || null;
+  const related=resolved.slice(1);
+  const messages=normalizeAgentConversation(conversation)
+    .concat({role:'user',content:String(currentText || '')});
+
+  const prepared=preparePrivacySafeMessages({
+    requestScope:primary ? {subjectRef:primary.subjectRef} : {},
+    subject:primary?.student?.row || {},
+    relatedStudents:related.map((item)=>item.student.row),
+    sensitiveEntities:unresolvedSensitiveEntities(resolution),
+    messages,
+  });
+  assertPreparedPrivacyEgress(prepared.messages,prepared);
+
+  return prepared.messages
+    .map((item)=>({
+      role:clean(item?.role),
+      content:clean(item?.content),
+    }))
+    .filter((item)=>['user','assistant'].includes(item.role) && item.content);
+}
+
+async function prepareAgentContextReadPrivacyInput(
+  text,
+  conversation,
+  requestContext,
+  options = {}
+) {
+  let result=await prepareAgentReadPrivacyInput(
+    text,
+    requestContext,
+    Object.assign({},options,{allowBoundSubjectContinuation:true})
+  );
+
+  if(
+    !result.preparedPrivacy?.needsDisambiguation
+    && (Array.isArray(result.preparedPrivacy?.subjectRefs)
+      ? result.preparedPrivacy.subjectRefs.length
+      : 0)===0
+  ){
+    const baseResolution=result.preparedPrivacy?.rawResolution;
+    const rawRows=(Array.isArray(baseResolution?.students) ? baseResolution.students : [])
+      .map((student)=>student?.row)
+      .filter(Boolean);
+    const resolverOptions=Object.assign({},options);
+    delete resolverOptions.session;
+    delete resolverOptions.allowBoundSubjectContinuation;
+
+    const priorUsers=normalizeAgentConversation(conversation)
+      .filter((item)=>item.role==='user')
+      .reverse();
+
+    let inferred=null;
+    for(const item of priorUsers){
+      const candidate=matchStudentReferences(item.content,rawRows,resolverOptions);
+      const resolved=Array.isArray(candidate?.resolved)?candidate.resolved:[];
+      const ambiguous=Array.isArray(candidate?.ambiguous)?candidate.ambiguous:[];
+      if(resolved.length===1 && ambiguous.length===0){
+        inferred=candidate;
+        break;
+      }
+    }
+
+    if(inferred){
+      const current=inferred.resolved[0];
+      const stableResolution=withStableSingleSubject(
+        inferred,
+        current,
+        {subjectRef:current.subjectRef}
+      );
+      const session=options?.session;
+      if(session && typeof session.bindSubjectBindings==='function'){
+        await session.bindSubjectBindings([{
+          label:'학생A',
+          subjectRef:current.subjectRef,
+          studentId:clean(current?.student?.id),
+        }]);
+      }
+      result=Object.freeze({
+        preparedPrivacy:prepareAgentPrivacyFromResolution(text,stableResolution),
+        sessionEnabled:!!session,
+        sessionReset:false,
+      });
+    }
+  }
+
+  const input=prepareAgentConversationInput(
+    result.preparedPrivacy,
+    conversation,
+    text
+  );
+  return Object.freeze(Object.assign({},result,{agentInput:input}));
 }
 
 async function prepareAgentPrivacyInput(text, requestContext, options = {}) {
@@ -314,6 +433,8 @@ module.exports = {
   sanitizeAgentToolPayload,
   prepareAgentPrivacyFromResolution,
   prepareAgentReadPrivacyInput,
+  prepareAgentContextReadPrivacyInput,
+  prepareAgentConversationInput,
   prepareAgentPrivacyInput,
   preparePrivateReasonPrivacyInput,
   prepareAbsencePrivacyInput,

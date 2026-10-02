@@ -80,8 +80,10 @@ test('persistent context is deliberately single-subject and resets on an explici
   assert.match(privacy,/label:'학생A'/);
   assert.match(privacy,/isContextualStudentReference/);
   assert.match(privacy,/if\(sameBinding\)[\s\S]*?else\{[\s\S]*?bindSubjectBindings/);
-  const contextualStart=privacy.indexOf("if(\n    bindings.length===1\n    && clean(bindings[0]?.label)==='학생A'\n    && isContextualStudentReference(text)");
+  const contextualStart=privacy.indexOf("if(\n    bindings.length===1\n    && clean(bindings[0]?.label)==='학생A'\n    && (isContextualStudentReference(text) || allowBoundSubjectContinuation)");
   const contextualEnd=privacy.indexOf("return Object.freeze({",contextualStart);
   assert.ok(contextualStart>=0 && contextualEnd>contextualStart);
   assert.doesNotMatch(privacy.slice(contextualStart,contextualEnd),/bindSubjectBindings/);
+  assert.match(privacy,/prepareAgentContextReadPrivacyInput/);
+  assert.match(privacy,/allowBoundSubjectContinuation:true/);
 });
