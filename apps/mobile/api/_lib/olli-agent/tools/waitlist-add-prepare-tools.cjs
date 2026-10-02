@@ -53,6 +53,7 @@ function actionPrompt({studentName,sessionDate,timeText,classGroup,grouped}){
 async function prepareWaitlistAddAction({
   requestContext,
   subjectAccess,
+  guestAccess=null,
   studentLabel,
   division,
   sessionDate,
@@ -71,13 +72,22 @@ async function prepareWaitlistAddAction({
   }
 
   const label=clean(studentLabel);
-  const subject=subjectAccess?.resolve?.(label);
-  if(!subject?.studentId){
+  const subject=subjectAccess?.resolve?.(label) || null;
+  const guest=guestAccess?.resolve?.(label) || null;
+  const isGuest=!subject?.studentId && !!clean(guest?.guestName);
+  if(!subject?.studentId && !isGuest){
     throw waitlistAddError('현재 Agent 대화에서 확인할 수 없는 학생 참조입니다.',400,'OLLI_AGENT_SUBJECT_NOT_AVAILABLE');
   }
 
-  const fixedDivision=clean(division).toLowerCase();
-  if(!['elementary','kinder'].includes(fixedDivision)||clean(subject.division).toLowerCase()!==fixedDivision){
+  const fixedDivision=clean(division || guest?.division).toLowerCase();
+  if(!['elementary','kinder'].includes(fixedDivision)){
+    throw waitlistAddError(
+      isGuest ? '비재원 대기는 유치부인지 초등부인지 함께 알려 주세요.' : '대기 등록 학생의 수업 구분을 확인하지 못했습니다.',
+      400,
+      'OLLI_AGENT_WAITLIST_ADD_DIVISION_REQUIRED'
+    );
+  }
+  if(!isGuest && clean(subject.division).toLowerCase()!==fixedDivision){
     throw waitlistAddError('대기 등록 학생의 수업 구분을 확인하지 못했습니다.',400,'OLLI_AGENT_WAITLIST_ADD_DIVISION_MISMATCH');
   }
 
@@ -101,12 +111,14 @@ async function prepareWaitlistAddAction({
   }
   const requestedGroup=normalizeGroup(classGroup);
 
-  const student=await loadPrivateMakeupStudent({
+  const student=isGuest ? null : await loadPrivateMakeupStudent({
     requestContext,
     studentId:subject.studentId,
     expectedDivision:fixedDivision,
     callRpc,
   });
+  const subjectStudentId=isGuest ? '' : clean(subject.studentId);
+  const subjectName=isGuest ? clean(guest.guestName) : clean(student?.name);
 
   const availability=await readScheduleAvailability({
     requestContext,
@@ -168,8 +180,8 @@ async function prepareWaitlistAddAction({
     throw waitlistAddError(week?.message||'현재 학생 시간표와 대기 정보를 확인하지 못했습니다.',403,week?.code||'OLLI_AGENT_WAITLIST_ADD_WEEK_READ_FAILED');
   }
 
-  const duplicateEnrollment=(Array.isArray(week?.enrollments)?week.enrollments:[]).some(row=>
-    clean(row?.student_id)===clean(subject.studentId) &&
+  const duplicateEnrollment=!isGuest && (Array.isArray(week?.enrollments)?week.enrollments:[]).some(row=>
+    clean(row?.student_id)===subjectStudentId &&
     Number(row?.weekday||0)===weekday &&
     Number(row?.time_slot||0)===targetSlot &&
     clean(row?.status).toLowerCase()==='active'
@@ -178,13 +190,16 @@ async function prepareWaitlistAddAction({
     throw waitlistAddError('이미 같은 요일과 시간에 등록된 학생입니다.',409,'OLLI_AGENT_WAITLIST_ADD_ALREADY_ENROLLED');
   }
 
-  const duplicateWaitlist=(Array.isArray(week?.waitlist)?week.waitlist:[]).some(row=>
-    clean(row?.student_id)===clean(subject.studentId) &&
-    Number(row?.target_weekday||0)===weekday &&
-    Number(row?.target_time_slot||0)===targetSlot &&
-    clean(row?.target_class_group).toUpperCase()===targetGroup &&
-    ['waiting','offered'].includes(clean(row?.status).toLowerCase())
-  );
+  const duplicateWaitlist=(Array.isArray(week?.waitlist)?week.waitlist:[]).some(row=>{
+    const sameSubject=isGuest
+      ? row?.is_guest===true && clean(row?.guest_name || row?.student_name).toLowerCase()===subjectName.toLowerCase()
+      : clean(row?.student_id)===subjectStudentId && row?.is_guest!==true;
+    return sameSubject &&
+      Number(row?.target_weekday||0)===weekday &&
+      Number(row?.target_time_slot||0)===targetSlot &&
+      clean(row?.target_class_group).toUpperCase()===targetGroup &&
+      ['waiting','offered'].includes(clean(row?.status).toLowerCase());
+  });
   if(duplicateWaitlist){
     throw waitlistAddError('이미 같은 요일과 시간에 대기가 등록되어 있습니다.',409,'OLLI_AGENT_WAITLIST_ADD_DUPLICATE');
   }
@@ -196,10 +211,10 @@ async function prepareWaitlistAddAction({
 
   const actionPayload={
     intent:'add_waitlist',
-    studentId:clean(subject.studentId),
-    studentName:student.name,
-    guestName:'',
-    isGuest:false,
+    studentId:subjectStudentId,
+    studentName:subjectName,
+    guestName:isGuest ? subjectName : '',
+    isGuest,
     division:fixedDivision,
     effectiveDate:date.key,
     sessionDate:date.key,
@@ -212,7 +227,7 @@ async function prepareWaitlistAddAction({
     p_session_token:requestContext.sessionToken,
     p_academy_id:requestContext.academyId,
     p_body:actionPrompt({
-      studentName:student.name,
+      studentName:subjectName,
       sessionDate:date.key,
       timeText,
       classGroup:targetGroup,
@@ -249,7 +264,7 @@ async function prepareWaitlistAddAction({
 }
 
 function createPrepareWaitlistAddTool({
-  tool,z,requestContext,subjectAccess,studentLabel,division,classGroup,currentDate,requestId,
+  tool,z,requestContext,subjectAccess,guestAccess=null,studentLabel,division,classGroup,currentDate,requestId,
   replyToMessageId=null,capturePersistedMessage=null,sanitizePayload,
 }){
   if(typeof tool!=='function'||!z){
@@ -258,7 +273,7 @@ function createPrepareWaitlistAddTool({
 
   return tool({
     name:'prepare_waitlist_add',
-    description:'재원생의 대기 등록을 실제 실행하지 않고 Team Chat 확인 대기 카드로 준비합니다. 서버가 학생 상태, 수업 시간, A/B반, 기존 등록, 현재 대기 점유를 다시 확인하며 확인 전에는 대기 데이터가 변경되지 않습니다.',
+    description:'재원·비재원 학생의 대기 등록을 실제 실행하지 않고 Team Chat 확인 카드로 준비합니다. 서버가 학생/비재원 이름, 수업 구분, 시간, A/B반, 기존 등록, 현재 대기 점유를 다시 확인하며 확인 전에는 대기 데이터가 변경되지 않습니다.',
     parameters:z.object({
       target_date:z.string(),
       class_hour:z.number().int().min(1).max(12),
@@ -268,6 +283,7 @@ function createPrepareWaitlistAddTool({
       const payload=await prepareWaitlistAddAction({
         requestContext,
         subjectAccess,
+        guestAccess,
         studentLabel,
         division,
         sessionDate:target_date,

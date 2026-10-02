@@ -232,7 +232,13 @@ function createGetPickupsTool({
         endDate:end_date,
         sanitizePayload,
       });
-      return JSON.stringify(payload);
+      return JSON.stringify(Object.assign({},payload,{
+        pickups:(Array.isArray(payload?.pickups)?payload.pickups:[]).map((row)=>{
+          const copy=Object.assign({},row);
+          delete copy.class_time;
+          return copy;
+        })
+      }));
     },
   });
 }

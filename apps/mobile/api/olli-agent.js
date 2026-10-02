@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const mode = safeText(body.mode, 40);
 
-    if (!['probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
+    if (!['probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'timetable_read', 'schedule_read', 'attendance_read', 'pickup_read', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
       return res.status(400).json({
         error: '지원하지 않는 Olli Agent mode입니다. 현재 production prepare에는 memo_prepare, batch_prepare, absence_prepare, class_once_prepare, makeup/trial/waitlist/move/pickup prepare 계열이 포함됩니다.',
       });
@@ -26,6 +26,78 @@ export default async function handler(req, res) {
 
     const contextModule = await import('./_lib/olli-agent/request-context.cjs');
     const requestContext = await contextModule.loadOlliAgentRequestContext(body);
+
+    if (mode === 'timetable_read' || mode === 'schedule_read' || mode === 'attendance_read' || mode === 'pickup_read') {
+      const message=safeText(body.message,5000);
+      const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
+      if(!message){
+        return res.status(400).json({
+          error:mode+'에는 원문 메시지가 필요합니다.',
+          code:'OLLI_AGENT_READ_MESSAGE_REQUIRED',
+        });
+      }
+      if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
+        return res.status(400).json({
+          error:mode+'에는 저장된 원문 Team Chat message id가 필요합니다.',
+          code:'OLLI_AGENT_READ_SOURCE_MESSAGE_REQUIRED',
+        });
+      }
+
+      const privacyModule=await import('./_lib/olli-agent/privacy.cjs');
+      const prepared=await privacyModule.prepareAgentPrivacyInput(message,requestContext);
+      const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
+      const agentContext=contextModule.toAgentRunContext(requestContext);
+      let result;
+
+      if(mode==='timetable_read'){
+        const readIntent=body.readIntent && typeof body.readIntent==='object' ? body.readIntent : null;
+        if(!readIntent){
+          return res.status(400).json({
+            error:'timetable_read에는 Router가 확정한 readIntent가 필요합니다.',
+            code:'OLLI_AGENT_TIMETABLE_READ_INTENT_REQUIRED',
+          });
+        }
+        result=await runtimeModule.runTimetableRead({
+          agentContext,
+          requestContext,
+          preparedPrivacy:prepared,
+          sourceMessageId,
+          sourceMessageText:message,
+          readIntent,
+        });
+      }else if(mode==='schedule_read'){
+        result=await runtimeModule.runStudentScheduleRead({
+          agentContext,
+          requestContext,
+          preparedPrivacy:prepared,
+          sourceMessageId,
+          sourceMessageText:message,
+        });
+      }else if(mode==='attendance_read'){
+        result=await runtimeModule.runAttendanceRead({
+          agentContext,
+          requestContext,
+          preparedPrivacy:prepared,
+          sourceMessageId,
+          sourceMessageText:message,
+        });
+      }else{
+        result=await runtimeModule.runPickupRead({
+          agentContext,
+          requestContext,
+          preparedPrivacy:prepared,
+          sourceMessageId,
+          sourceMessageText:message,
+        });
+      }
+
+      return res.status(200).json({
+        ok:true,
+        mode,
+        ready:result?.ready===true,
+        output:safeText(result?.output,12000),
+      });
+    }
 
     if (mode === 'batch_prepare') {
       const message = safeText(body.message, 5000);
@@ -121,6 +193,17 @@ export default async function handler(req, res) {
       } else if (mode === 'trial_add_prepare_probe' || mode === 'trial_add_prepare' || mode === 'trial_update_prepare_probe' || mode === 'trial_update_prepare') {
         const trialPrivacyModule = await import('./_lib/olli-agent/trial-guest-privacy.cjs');
         prepared = trialPrivacyModule.prepareTrialGuestPrivacyInput(message, requestContext);
+      } else if (
+        mode === 'waitlist_add_prepare_probe' || mode === 'waitlist_add_prepare' ||
+        mode === 'waitlist_update_prepare_probe' || mode === 'waitlist_update_prepare' ||
+        mode === 'waitlist_cancel_prepare_probe' || mode === 'waitlist_cancel_prepare'
+      ) {
+        const privacyModule = await import('./_lib/olli-agent/privacy.cjs');
+        prepared = await privacyModule.prepareAgentPrivacyInput(message, requestContext);
+        if (!Array.isArray(prepared?.subjectRefs) || prepared.subjectRefs.length === 0) {
+          const guestPrivacyModule = await import('./_lib/olli-agent/waitlist-guest-privacy.cjs');
+          prepared = guestPrivacyModule.prepareWaitlistGuestPrivacyInput(message);
+        }
       } else {
         const privacyModule = await import('./_lib/olli-agent/privacy.cjs');
         prepared = await privacyModule.prepareAgentPrivacyInput(

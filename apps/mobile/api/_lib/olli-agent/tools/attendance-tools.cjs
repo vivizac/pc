@@ -483,7 +483,13 @@ function createGetAttendanceTool({
         sessionKind:session_kind,
         sanitizePayload,
       });
-      return JSON.stringify(payload);
+      return JSON.stringify(Object.assign({},payload,{
+        sessions:(Array.isArray(payload?.sessions)?payload.sessions:[]).map((row)=>{
+          const copy=Object.assign({},row);
+          delete copy.time_slot;
+          return copy;
+        })
+      }));
     },
   });
 }

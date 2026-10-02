@@ -500,6 +500,7 @@ async function runAbsencePrepareAgent({
   const prepareAbsence=createPrepareAbsenceTool({
     tool,z,requestContext,
     subjectAccess:preparedPrivacy.subjectAccess,
+    guestAccess:preparedPrivacy.waitlistGuestAccess,
     studentLabel:scope.subjectLabel,
     division:scope.division,
     classGroup:scope.classGroup,
@@ -508,7 +509,7 @@ async function runAbsencePrepareAgent({
     requestId,
     replyToMessageId,
     capturePersistedMessage(message){persistedMessage=pickupPersistedMessageForClient(message);},
-    sanitizePayload(payload){return sanitizeAgentToolPayload(payload,preparedPrivacy);},
+    sanitizePayload(payload){return sanitizeWaitlistPayload(payload,preparedPrivacy,scope);},
   });
 
   const agent=new Agent({
@@ -1772,24 +1773,41 @@ async function runTrialUpdatePrepare({
 }
 
 
-function resolveWaitlistAddPrepareScope(preparedPrivacy) {
+function resolveWaitlistActor(preparedPrivacy,{operation='대기 작업',requireGuestDivision=false}={}) {
   if (preparedPrivacy?.needsDisambiguation) {
     throw runtimeError('학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',409,'OLLI_AGENT_STUDENT_AMBIGUOUS');
   }
   const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
-  if(subjectRefs.length===0){
-    throw runtimeError('비재원 대기 등록은 기존 대기 등록 경로에서 처리합니다.',409,'OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED');
-  }
   if(subjectRefs.length!==1){
-    throw runtimeError('대기 등록은 한 번에 학생 한 명만 지정해 주세요.',400,'OLLI_AGENT_WAITLIST_ADD_SINGLE_STUDENT_REQUIRED');
+    throw runtimeError(operation+'은 한 번에 학생 한 명만 지정해 주세요.',400,'OLLI_AGENT_WAITLIST_SINGLE_SUBJECT_REQUIRED');
   }
-
   const subjectLabel=subjectRefs[0].label;
-  const subject=preparedPrivacy?.subjectAccess?.resolve?.(subjectLabel);
-  const division=String(subject?.division||'').trim().toLowerCase();
-  if(!['elementary','kinder'].includes(division)){
-    throw runtimeError('대기 등록 대상 학생의 수업 구분을 확인하지 못했습니다.',400,'OLLI_AGENT_WAITLIST_ADD_DIVISION_REQUIRED');
+  const registered=preparedPrivacy?.subjectAccess?.resolve?.(subjectLabel) || null;
+  const guest=preparedPrivacy?.waitlistGuestAccess?.resolve?.(subjectLabel) || null;
+  const isGuest=!registered?.studentId && !!String(guest?.guestName||'').trim();
+  if(!registered?.studentId && !isGuest){
+    throw runtimeError(operation+' 대상 학생을 확인하지 못했습니다.',400,'OLLI_AGENT_WAITLIST_SUBJECT_REQUIRED');
   }
+  const division=String(registered?.division || guest?.division || '').trim().toLowerCase();
+  if(!isGuest && !['elementary','kinder'].includes(division)){
+    throw runtimeError(operation+' 대상 학생의 수업 구분을 확인하지 못했습니다.',400,'OLLI_AGENT_WAITLIST_DIVISION_REQUIRED');
+  }
+  if(isGuest && requireGuestDivision && !['elementary','kinder'].includes(division)){
+    throw runtimeError('비재원 대기는 유치부인지 초등부인지 함께 알려 주세요.',400,'OLLI_AGENT_WAITLIST_GUEST_DIVISION_REQUIRED');
+  }
+  return {subjectLabel,division,isGuest};
+}
+
+function sanitizeWaitlistPayload(payload,preparedPrivacy,scope){
+  if(scope?.isGuest){
+    return require('./waitlist-guest-privacy.cjs').sanitizeWaitlistGuestToolPayload(payload,preparedPrivacy);
+  }
+  return require('./privacy.cjs').sanitizeAgentToolPayload(payload,preparedPrivacy);
+}
+
+function resolveWaitlistAddPrepareScope(preparedPrivacy) {
+  const actor=resolveWaitlistActor(preparedPrivacy,{operation:'대기 등록',requireGuestDivision:true});
+  const {subjectLabel,division,isGuest}=actor;
 
   const safeText=String(preparedPrivacy?.safeText||'');
   const compact=safeText.replace(/\s+/g,'');
@@ -1810,6 +1828,7 @@ function resolveWaitlistAddPrepareScope(preparedPrivacy) {
   return {
     subjectLabel,
     division,
+    isGuest,
     classGroup:groupMatch?groupMatch[1].toUpperCase():'AUTO',
   };
 }
@@ -1822,7 +1841,6 @@ async function runWaitlistAddPrepareAgent({
   assertOpenAiKey();
   const {Agent,run,tool,z}=await loadAgentsSdk();
   const {createPrepareWaitlistAddTool}=require('./tools/waitlist-add-prepare-tools.cjs');
-  const {sanitizeAgentToolPayload}=require('./privacy.cjs');
   const model=agentModel();
   const today=todayInSeoul();
   let persistedMessage=null;
@@ -1830,6 +1848,7 @@ async function runWaitlistAddPrepareAgent({
   const prepareWaitlistAdd=createPrepareWaitlistAddTool({
     tool,z,requestContext,
     subjectAccess:preparedPrivacy.subjectAccess,
+    guestAccess:preparedPrivacy.waitlistGuestAccess,
     studentLabel:scope.subjectLabel,
     division:scope.division,
     classGroup:scope.classGroup,
@@ -1837,7 +1856,7 @@ async function runWaitlistAddPrepareAgent({
     requestId,
     replyToMessageId,
     capturePersistedMessage(message){persistedMessage=pickupPersistedMessageForClient(message);},
-    sanitizePayload(payload){return sanitizeAgentToolPayload(payload,preparedPrivacy);},
+    sanitizePayload(payload){return sanitizeWaitlistPayload(payload,preparedPrivacy,scope);},
   });
 
   const groupInstruction=scope.classGroup==='AUTO'
@@ -1848,7 +1867,7 @@ async function runWaitlistAddPrepareAgent({
     name:requirePersistedMessage?'Olli Waitlist Add Prepare':'Olli Waitlist Add Prepare Probe',
     model,
     instructions:[
-      'You are the Olli registered-student waitlist-registration preparation assistant.',
+      'You are the Olli registered-or-guest waitlist-registration preparation assistant.',
       'The user message has already been privacy-sanitized.',
       'The only available anonymous student label for this run is '+scope.subjectLabel+'.',
       'The server has fixed the student division to '+scope.division+'. Do not override it.',
@@ -1858,7 +1877,7 @@ async function runWaitlistAddPrepareAgent({
       'Convert the requested date to exact YYYY-MM-DD using today as the reference. Do not invent a different date.',
       'Convert the visible class time to class_hour and class_minute. For 4시 반 use class_minute 30.',
       'Always call prepare_waitlist_add exactly once before answering.',
-      'The server rechecks the active student, operating slot, current enrollment, and current waitlist occupancy before storing the card.',
+      'The server rechecks the registered student or non-enrolled guest identity, operating slot, current enrollment when applicable, and current waitlist occupancy before storing the card.',
       'The tool creates a pending confirmation card only. It never directly registers a waitlist row.',
       'Never say the waitlist was registered. Say that the registration is waiting for user confirmation.',
       'Never ask for, infer, or reveal a real student name, UUID, waitlist ID, internal time slot, member ID, session token, academy ID, action ID, or message ID.',
@@ -1928,22 +1947,8 @@ async function runWaitlistAddPrepare({
 
 
 function resolveWaitlistUpdatePrepareScope(preparedPrivacy) {
-  if (preparedPrivacy?.needsDisambiguation) {
-    throw runtimeError('학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',409,'OLLI_AGENT_STUDENT_AMBIGUOUS');
-  }
-  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
-  if(subjectRefs.length===0){
-    throw runtimeError('비재원 대기 변경은 기존 대기 경로에서 처리합니다.',409,'OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED');
-  }
-  if(subjectRefs.length!==1){
-    throw runtimeError('대기 변경은 한 번에 학생 한 명만 지정해 주세요.',400,'OLLI_AGENT_WAITLIST_UPDATE_SINGLE_STUDENT_REQUIRED');
-  }
-  const subjectLabel=subjectRefs[0].label;
-  const subject=preparedPrivacy?.subjectAccess?.resolve?.(subjectLabel);
-  const division=String(subject?.division||'').trim().toLowerCase();
-  if(!['elementary','kinder'].includes(division)){
-    throw runtimeError('대기 변경 대상 학생의 수업 구분을 확인하지 못했습니다.',400,'OLLI_AGENT_WAITLIST_UPDATE_DIVISION_REQUIRED');
-  }
+  const actor=resolveWaitlistActor(preparedPrivacy,{operation:'대기 변경',requireGuestDivision:false});
+  const {subjectLabel,division,isGuest}=actor;
   const safeText=String(preparedPrivacy?.safeText||'');
   const compact=safeText.replace(/\s+/g,'');
   const hasWait=/(?:대기|웨이팅)/.test(compact);
@@ -1953,7 +1958,7 @@ function resolveWaitlistUpdatePrepareScope(preparedPrivacy) {
   if(!hasWait||!hasUpdate||hasRemove||hasAdd){
     throw runtimeError('대기 변경 요청을 확인하지 못했습니다.',400,'OLLI_AGENT_WAITLIST_UPDATE_INTENT_REQUIRED');
   }
-  return {subjectLabel,division};
+  return {subjectLabel,division,isGuest};
 }
 
 async function runWaitlistUpdatePrepareAgent({
@@ -1964,7 +1969,6 @@ async function runWaitlistUpdatePrepareAgent({
   assertOpenAiKey();
   const {Agent,run,tool,z}=await loadAgentsSdk();
   const {createPrepareWaitlistUpdateTool}=require('./tools/waitlist-update-prepare-tools.cjs');
-  const {sanitizeAgentToolPayload}=require('./privacy.cjs');
   const model=agentModel();
   const today=todayInSeoul();
   let persistedMessage=null;
@@ -1972,13 +1976,14 @@ async function runWaitlistUpdatePrepareAgent({
   const prepareWaitlistUpdate=createPrepareWaitlistUpdateTool({
     tool,z,requestContext,
     subjectAccess:preparedPrivacy.subjectAccess,
+    guestAccess:preparedPrivacy.waitlistGuestAccess,
     studentLabel:scope.subjectLabel,
     division:scope.division,
     currentDate:today,
     requestId,
     replyToMessageId,
     capturePersistedMessage(message){persistedMessage=pickupPersistedMessageForClient(message);},
-    sanitizePayload(payload){return sanitizeAgentToolPayload(payload,preparedPrivacy);},
+    sanitizePayload(payload){return sanitizeWaitlistPayload(payload,preparedPrivacy,scope);},
   });
 
   const agent=new Agent({
@@ -1988,7 +1993,7 @@ async function runWaitlistUpdatePrepareAgent({
       'You are the Olli waitlist-update preparation assistant.',
       'The user message has already been privacy-sanitized.',
       'The only available anonymous student label for this run is '+scope.subjectLabel+'.',
-      'The server has fixed the student division to '+scope.division+'. Do not override it.',
+      scope.division ? 'The server has fixed the division to '+scope.division+'. Do not override it.' : 'For a non-enrolled guest with no division stated, the server resolves the division from the current waitlist row.',
       'Today in Korea is '+today+'.',
       'Always call prepare_waitlist_update exactly once before answering.',
       'Extract source information only when the user explicitly gives it. Otherwise pass empty source_date, source_weekday 0, source_hour 0, source_minute 0, source_group AUTO so the server can resolve a unique current waitlist.',
@@ -2061,42 +2066,8 @@ async function runWaitlistUpdatePrepare({
 
 
 function resolveWaitlistCancelPrepareScope(preparedPrivacy) {
-  if (preparedPrivacy?.needsDisambiguation) {
-    throw runtimeError(
-      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
-      409,
-      'OLLI_AGENT_STUDENT_AMBIGUOUS'
-    );
-  }
-
-  const subjectRefs = Array.isArray(preparedPrivacy?.subjectRefs)
-    ? preparedPrivacy.subjectRefs
-    : [];
-  if (subjectRefs.length === 0) {
-    throw runtimeError(
-      '비재원 대기 취소는 기존 대기 취소 경로에서 처리합니다.',
-      409,
-      'OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED'
-    );
-  }
-  if (subjectRefs.length !== 1) {
-    throw runtimeError(
-      '대기 취소는 한 번에 학생 한 명만 지정해 주세요.',
-      400,
-      'OLLI_AGENT_WAITLIST_CANCEL_SINGLE_STUDENT_REQUIRED'
-    );
-  }
-
-  const subjectLabel = subjectRefs[0].label;
-  const subject = preparedPrivacy?.subjectAccess?.resolve?.(subjectLabel);
-  const division = String(subject?.division || '').trim().toLowerCase();
-  if (!['elementary', 'kinder'].includes(division)) {
-    throw runtimeError(
-      '대기 취소 대상 학생의 수업 구분을 확인하지 못했습니다.',
-      400,
-      'OLLI_AGENT_WAITLIST_CANCEL_DIVISION_REQUIRED'
-    );
-  }
+  const actor=resolveWaitlistActor(preparedPrivacy,{operation:'대기 취소',requireGuestDivision:false});
+  const {subjectLabel,division,isGuest}=actor;
 
   const safeText = String(preparedPrivacy?.safeText || '');
   const compact = safeText.replace(/\s+/g, '');
@@ -2116,6 +2087,7 @@ function resolveWaitlistCancelPrepareScope(preparedPrivacy) {
   return {
     subjectLabel,
     division,
+    isGuest,
     classGroup:groupMatch ? groupMatch[1].toUpperCase() : 'AUTO',
   };
 }
@@ -2133,7 +2105,6 @@ async function runWaitlistCancelPrepareAgent({
 
   const { Agent, run, tool, z } = await loadAgentsSdk();
   const { createPrepareWaitlistCancelTool } = require('./tools/waitlist-cancel-prepare-tools.cjs');
-  const { sanitizeAgentToolPayload } = require('./privacy.cjs');
   const model = agentModel();
   const today = todayInSeoul();
   let persistedMessage = null;
@@ -2143,6 +2114,7 @@ async function runWaitlistCancelPrepareAgent({
     z,
     requestContext,
     subjectAccess:preparedPrivacy.subjectAccess,
+    guestAccess:preparedPrivacy.waitlistGuestAccess,
     studentLabel:scope.subjectLabel,
     division:scope.division,
     classGroup:scope.classGroup,
@@ -2153,7 +2125,7 @@ async function runWaitlistCancelPrepareAgent({
       persistedMessage = pickupPersistedMessageForClient(message);
     },
     sanitizePayload(payload) {
-      return sanitizeAgentToolPayload(payload, preparedPrivacy);
+      return sanitizeWaitlistPayload(payload, preparedPrivacy, scope);
     },
   });
 
@@ -2168,7 +2140,7 @@ async function runWaitlistCancelPrepareAgent({
       'You are the Olli waitlist-cancellation preparation assistant.',
       'The user message has already been privacy-sanitized.',
       'The only available anonymous student label for this run is ' + scope.subjectLabel + '.',
-      'The server has fixed the student division to ' + scope.division + '. Do not override it.',
+      scope.division ? 'The server has fixed the division to ' + scope.division + '. Do not override it.' : 'For a non-enrolled guest with no division stated, the server resolves the division from the current waitlist row.',
       groupInstruction,
       'Today in Korea is ' + today + '.',
       'Always call prepare_waitlist_cancel exactly once before answering.',
@@ -4371,6 +4343,11 @@ async function prepareBatchPrivacy(item, requestContext) {
   if(intent==='add_timetable_memo' || intent==='delete_timetable_memo'){
     return privacy.prepareTimetableMemoPrivacyInput(text,memoNote,requestContext);
   }
+  if(['add_waitlist','update_waitlist','cancel_waitlist'].includes(intent)){
+    const registered=await privacy.prepareAgentPrivacyInput(text,requestContext);
+    if(Array.isArray(registered?.subjectRefs) && registered.subjectRefs.length>0) return registered;
+    return require('./waitlist-guest-privacy.cjs').prepareWaitlistGuestPrivacyInput(text);
+  }
   return privacy.prepareAgentPrivacyInput(text,requestContext);
 }
 
@@ -4596,6 +4573,161 @@ async function runBatchPrepare({
 }
 
 
+function restorePreparedSubjectLabels(value,preparedPrivacy){
+  let text=String(value || '');
+  const resolved=Array.isArray(preparedPrivacy?.rawResolution?.resolved)
+    ? preparedPrivacy.rawResolution.resolved
+    : [];
+  resolved
+    .slice()
+    .sort((a,b)=>String(b?.label||'').length-String(a?.label||'').length)
+    .forEach((item)=>{
+      const label=String(item?.label||'').trim();
+      const name=String(item?.student?.name||'').trim();
+      if(label&&name) text=text.split(label).join(name);
+    });
+  return text;
+}
+
+async function runStudentScheduleRead({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError('학생 시간표 원문 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_SCHEDULE_READ_SOURCE_INVALID');
+  }
+  await validatePickupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+  const result=await runStudentScheduleProbe({agentContext,requestContext,preparedPrivacy});
+  return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
+}
+
+async function runAttendanceRead({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError('출결 조회 원문 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_ATTENDANCE_READ_SOURCE_INVALID');
+  }
+  await validatePickupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+  const result=await runAttendanceProbe({agentContext,requestContext,preparedPrivacy});
+  return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
+}
+
+async function runPickupRead({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError('픽업 조회 원문 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_PICKUP_READ_SOURCE_INVALID');
+  }
+  await validatePickupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+  const result=await runPickupProbe({agentContext,requestContext,preparedPrivacy});
+  return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
+}
+
+async function runTimetableRead({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  sourceMessageId,
+  sourceMessageText,
+  readIntent,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError('시간표 조회 원문 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_TIMETABLE_READ_SOURCE_INVALID');
+  }
+  await validatePickupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
+  const intent=readIntent&&typeof readIntent==='object'?JSON.parse(JSON.stringify(readIntent)):{};
+
+  if(
+    intent?.intent==='find_available_slots' &&
+    String(intent?.viewMode||'').trim()==='schedule' &&
+    subjectRefs.length===1
+  ){
+    return runStudentScheduleProbe({agentContext,requestContext,preparedPrivacy});
+  }
+  if(intent?.intent==='find_pickups' && subjectRefs.length===1){
+    return runPickupProbe({agentContext,requestContext,preparedPrivacy});
+  }
+
+  if(intent?.intent==='find_available_slots' && !String(intent?.division||'').trim() && subjectRefs.length===1){
+    const subject=preparedPrivacy?.subjectAccess?.resolve?.(subjectRefs[0].label);
+    const division=String(subject?.division||'').trim().toLowerCase();
+    if(['elementary','kinder'].includes(division)) intent.division=division;
+  }
+
+  assertOpenAiKey();
+  const {Agent,run,tool,z}=await loadAgentsSdk();
+  const {createLabelBook,createTimetableReadTool}=require('./tools/timetable-read-tools.cjs');
+  const labelBook=createLabelBook();
+  const model=agentModel();
+  const today=todayInSeoul();
+
+  const readTool=createTimetableReadTool({
+    tool,z,requestContext,intent,sourceText:sourceMessageText,todayKey:today,labelBook,
+  });
+
+  const agent=new Agent({
+    name:'Olli Timetable Read',
+    model,
+    instructions:[
+      'You are the Olli timetable read assistant.',
+      'The user message has already been privacy-sanitized.',
+      'The server has fixed the exact read operation from the stored Team Chat source message.',
+      'Always call read_timetable_query exactly once before answering.',
+      'Use only the tool result. Never invent students, classes, availability, pickup details, attendance, waitlists, or move reservations.',
+      'Roster names in tool output are anonymous labels such as 명단1 or 명단2. Preserve those labels exactly; the server restores real display names after model execution.',
+      'If a result is empty, clearly say that no matching timetable data was found.',
+      'Never ask for, infer, or reveal UUIDs, internal time slots, member IDs, session tokens, academy IDs, or hidden identifiers.',
+      'Answer briefly in Korean.',
+    ].join(' '),
+    tools:[readTool],
+    modelSettings:{toolChoice:'read_timetable_query'},
+  });
+
+  const result=await run(agent,preparedPrivacy.safeText,{context:agentContext});
+  const finalOutput=restorePreparedSubjectLabels(
+    labelBook.restore(String(result?.finalOutput||'').trim()),
+    preparedPrivacy
+  );
+  if(!finalOutput){
+    throw runtimeError('시간표 읽기 Agent 응답이 비어 있습니다.',502,'OLLI_AGENT_EMPTY_TIMETABLE_READ_RESPONSE');
+  }
+  return {ready:true,model,output:finalOutput,nodeVersion:process.versions.node};
+}
+
+
 module.exports = {
   MIN_NODE_MAJOR,
   assertSupportedNodeRuntime,
@@ -4603,6 +4735,9 @@ module.exports = {
   loadAgentsSdk,
   runFoundationProbe,
   runStudentScheduleProbe,
+  restorePreparedSubjectLabels,
+  runStudentScheduleRead,
+  runTimetableRead,
   runRecentRecordsProbe,
   resolveAvailabilityScope,
   runScheduleAvailabilityProbe,
@@ -4668,7 +4803,9 @@ module.exports = {
   validateMakeupSourceMessage,
   runMakeupPrepare,
   runAttendanceProbe,
+  runAttendanceRead,
   runPickupProbe,
+  runPickupRead,
   resolvePickupPrepareScope,
   resolvePickupUpdatePrepareScope,
   resolvePickupCancelPrepareScope,

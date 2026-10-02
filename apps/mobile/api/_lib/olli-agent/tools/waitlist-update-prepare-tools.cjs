@@ -52,7 +52,7 @@ function rowGroup(row) {
 }
 
 function rowDivision(row) {
-  return clean(row?.target_division || row?.division).toLowerCase();
+  return clean(row?.target_division || row?.division || row?.guest_division).toLowerCase();
 }
 
 function rowTimeLabel(row, division, mode) {
@@ -111,6 +111,7 @@ function updatePrompt({studentName,sourceWeekday,sourceTime,sourceGroup,targetWe
 async function prepareWaitlistUpdateAction({
   requestContext,
   subjectAccess,
+  guestAccess=null,
   studentLabel,
   division,
   sourceDate='',
@@ -134,12 +135,17 @@ async function prepareWaitlistUpdateAction({
     throw waitlistUpdateError('Agent Tool 결과 개인정보 필터가 준비되지 않았습니다.',500,'OLLI_AGENT_WAITLIST_UPDATE_PRIVACY_MISSING');
   }
   const label=clean(studentLabel);
-  const subject=subjectAccess?.resolve?.(label);
-  if(!subject?.studentId){
+  const subject=subjectAccess?.resolve?.(label) || null;
+  const guest=guestAccess?.resolve?.(label) || null;
+  const isGuest=!subject?.studentId && !!clean(guest?.guestName);
+  if(!subject?.studentId && !isGuest){
     throw waitlistUpdateError('현재 Agent 대화에서 확인할 수 없는 학생 참조입니다.',400,'OLLI_AGENT_SUBJECT_NOT_AVAILABLE');
   }
-  const fixedDivision=clean(division).toLowerCase();
-  if(!['elementary','kinder'].includes(fixedDivision)||clean(subject.division).toLowerCase()!==fixedDivision){
+  const requestedDivision=clean(division || guest?.division).toLowerCase();
+  if(requestedDivision && !['elementary','kinder'].includes(requestedDivision)){
+    throw waitlistUpdateError('변경할 대기 학생의 수업 구분을 확인해 주세요.',400,'OLLI_AGENT_WAITLIST_UPDATE_DIVISION_INVALID');
+  }
+  if(!isGuest && (!requestedDivision || clean(subject.division).toLowerCase()!==requestedDivision)){
     throw waitlistUpdateError('변경할 대기 학생의 수업 구분을 확인하지 못했습니다.',400,'OLLI_AGENT_WAITLIST_UPDATE_DIVISION_MISMATCH');
   }
 
@@ -175,12 +181,14 @@ async function prepareWaitlistUpdateAction({
   const requestedSourceGroup=normalizeGroup(sourceGroup,'기존 대기 반');
   const requestedTargetGroup=normalizeGroup(targetGroup,'변경할 대기 반');
 
-  const student=await loadPrivateMakeupStudent({
+  const student=isGuest ? null : await loadPrivateMakeupStudent({
     requestContext,
     studentId:subject.studentId,
-    expectedDivision:fixedDivision,
+    expectedDivision:requestedDivision,
     callRpc,
   });
+  const subjectStudentId=isGuest ? '' : clean(subject.studentId);
+  const subjectName=isGuest ? clean(guest.guestName) : clean(student?.name);
 
   const weekData=await callRpc('olli_schedule_week',{
     p_session_token:requestContext.sessionToken,
@@ -191,14 +199,19 @@ async function prepareWaitlistUpdateAction({
     throw waitlistUpdateError(weekData?.message||'현재 대기 정보를 확인하지 못했습니다.',403,weekData?.code||'OLLI_AGENT_WAITLIST_UPDATE_WEEK_READ_FAILED');
   }
   const sourceMode=normalizeTimetableMode(weekData?.timetable_mode);
-  let rows=(Array.isArray(weekData?.waitlist)?weekData.waitlist:[]).filter(row=>
-    clean(row?.student_id)===clean(subject.studentId) &&
-    row?.is_guest!==true &&
-    ['waiting','offered'].includes(clean(row?.status).toLowerCase())
-  );
+  let rows=(Array.isArray(weekData?.waitlist)?weekData.waitlist:[]).filter(row=>{
+    const sameSubject=isGuest
+      ? row?.is_guest===true && clean(row?.guest_name || row?.student_name).toLowerCase()===subjectName.toLowerCase()
+      : clean(row?.student_id)===subjectStudentId && row?.is_guest!==true;
+    return sameSubject && ['waiting','offered'].includes(clean(row?.status).toLowerCase());
+  });
 
+  if(requestedDivision) rows=rows.filter(row=>rowDivision(row)===requestedDivision);
   if(wantedSourceWeekday) rows=rows.filter(row=>Number(row?.target_weekday||0)===wantedSourceWeekday);
-  if(requestedSourceTime) rows=rows.filter(row=>clean(rowTimeLabel(row,fixedDivision,sourceMode))===requestedSourceTime);
+  if(requestedSourceTime) rows=rows.filter(row=>{
+    const divisionForRow=rowDivision(row)||requestedDivision;
+    return clean(rowTimeLabel(row,divisionForRow,sourceMode))===requestedSourceTime;
+  });
   if(requestedSourceGroup!=='AUTO') rows=rows.filter(row=>rowGroup(row)===requestedSourceGroup);
 
   rows.sort((a,b)=>
@@ -210,6 +223,10 @@ async function prepareWaitlistUpdateAction({
   if(rows.length>1) throw waitlistUpdateError('변경할 대기가 여러 개 있습니다. 기존 요일과 시간을 함께 알려 주세요.',409,'OLLI_AGENT_WAITLIST_UPDATE_SOURCE_AMBIGUOUS');
 
   const sourceRow=rows[0];
+  const fixedDivision=requestedDivision || rowDivision(sourceRow);
+  if(!['elementary','kinder'].includes(fixedDivision)){
+    throw waitlistUpdateError('기존 대기의 수업 구분을 서버에서 확인하지 못했습니다.',500,'OLLI_AGENT_WAITLIST_UPDATE_SOURCE_DIVISION_INVALID');
+  }
   const waitlistId=clean(sourceRow?.id);
   const actualSourceWeekday=Number(sourceRow?.target_weekday||0);
   const sourceSlot=Number(sourceRow?.target_time_slot||0);
@@ -302,8 +319,9 @@ async function prepareWaitlistUpdateAction({
 
   const actionPayload={
     intent:'update_waitlist',
-    studentId:clean(subject.studentId),
-    studentName:student.name,
+    studentId:subjectStudentId,
+    studentName:subjectName,
+    guestName:isGuest ? subjectName : '',
     division:fixedDivision,
     waitlistId,
     sourceWeekday:actualSourceWeekday,
@@ -313,14 +331,14 @@ async function prepareWaitlistUpdateAction({
     targetTimeSlot:targetSlot,
     targetClassGroup:actualTargetGroup,
     desiredEffectiveDate,
-    isGuest:false,
+    isGuest,
   };
   const showGroup=requestedSourceGroup!=='AUTO'||requestedTargetGroup!=='AUTO'||actualSourceGroup!==actualTargetGroup||target?.grouped===true||actualSourceGroup==='B'||actualTargetGroup==='B';
   const sent=await callRpc('olli_team_chat_send_action',{
     p_session_token:requestContext.sessionToken,
     p_academy_id:requestContext.academyId,
     p_body:updatePrompt({
-      studentName:student.name,
+      studentName:subjectName,
       sourceWeekday:actualSourceWeekday,
       sourceTime:sourceTimeText,
       sourceGroup:actualSourceGroup,
@@ -364,7 +382,7 @@ async function prepareWaitlistUpdateAction({
 }
 
 function createPrepareWaitlistUpdateTool({
-  tool,z,requestContext,subjectAccess,studentLabel,division,currentDate,requestId,
+  tool,z,requestContext,subjectAccess,guestAccess=null,studentLabel,division,currentDate,requestId,
   replyToMessageId=null,capturePersistedMessage=null,sanitizePayload,
 }) {
   if(typeof tool!=='function'||!z){
@@ -372,7 +390,7 @@ function createPrepareWaitlistUpdateTool({
   }
   return tool({
     name:'prepare_waitlist_update',
-    description:'재원생의 기존 대기 날짜·요일·시간·A/B반 변경을 실제 실행하지 않고 확인 카드로 준비합니다. 서버가 기존 대기 row와 대상 시간표를 다시 확인하며 확인 전에는 대기 데이터가 변경되지 않습니다.',
+    description:'재원·비재원 학생의 기존 대기 날짜·요일·시간·A/B반 변경을 실제 실행하지 않고 확인 카드로 준비합니다. 서버가 기존 대기 row와 대상 시간표를 다시 확인하며 확인 전에는 대기 데이터가 변경되지 않습니다.',
     parameters:z.object({
       source_date:z.string(),
       source_weekday:z.number().int().min(0).max(6),
@@ -387,7 +405,7 @@ function createPrepareWaitlistUpdateTool({
     }),
     async execute(args){
       const payload=await prepareWaitlistUpdateAction({
-        requestContext,subjectAccess,studentLabel,division,currentDate,requestId,
+        requestContext,subjectAccess,guestAccess,studentLabel,division,currentDate,requestId,
         replyToMessageId,capturePersistedMessage,sanitizePayload,
         sourceDate:args.source_date,
         sourceWeekday:args.source_weekday,

@@ -107,6 +107,7 @@ function cancelPrompt({ studentName, targetWeekday, timeText, classGroup, groupe
 async function prepareWaitlistCancelAction({
   requestContext,
   subjectAccess,
+  guestAccess = null,
   studentLabel,
   division,
   classGroup = 'AUTO',
@@ -129,8 +130,10 @@ async function prepareWaitlistCancelAction({
   }
 
   const label = clean(studentLabel);
-  const subject = subjectAccess?.resolve?.(label);
-  if (!subject?.studentId) {
+  const subject = subjectAccess?.resolve?.(label) || null;
+  const guest = guestAccess?.resolve?.(label) || null;
+  const isGuest = !subject?.studentId && !!clean(guest?.guestName);
+  if (!subject?.studentId && !isGuest) {
     throw waitlistCancelError(
       '현재 Agent 대화에서 확인할 수 없는 학생 참조입니다.',
       400,
@@ -138,11 +141,15 @@ async function prepareWaitlistCancelAction({
     );
   }
 
-  const fixedDivision = clean(division).toLowerCase();
-  if (
-    !['elementary', 'kinder'].includes(fixedDivision) ||
-    clean(subject.division).toLowerCase() !== fixedDivision
-  ) {
+  const requestedDivision = clean(division || guest?.division).toLowerCase();
+  if (requestedDivision && !['elementary', 'kinder'].includes(requestedDivision)) {
+    throw waitlistCancelError(
+      '취소할 대기 학생의 수업 구분을 확인해 주세요.',
+      400,
+      'OLLI_AGENT_WAITLIST_CANCEL_DIVISION_INVALID'
+    );
+  }
+  if (!isGuest && (!requestedDivision || clean(subject.division).toLowerCase() !== requestedDivision)) {
     throw waitlistCancelError(
       '취소할 대기 학생의 수업 구분을 확인하지 못했습니다.',
       400,
@@ -181,12 +188,14 @@ async function prepareWaitlistCancelAction({
   const requestedGroup = normalizeRequestedGroup(classGroup);
   const requestedTime = requestedTimeLabel(classHour, classMinute);
 
-  const student = await loadPrivateMakeupStudent({
+  const student = isGuest ? null : await loadPrivateMakeupStudent({
     requestContext,
     studentId:subject.studentId,
-    expectedDivision:fixedDivision,
+    expectedDivision:requestedDivision,
     callRpc,
   });
+  const subjectStudentId = isGuest ? '' : clean(subject.studentId);
+  const subjectName = isGuest ? clean(guest.guestName) : clean(student?.name);
 
   const weekData = await callRpc('olli_schedule_week', {
     p_session_token:requestContext.sessionToken,
@@ -203,11 +212,14 @@ async function prepareWaitlistCancelAction({
 
   const mode = normalizeTimetableMode(weekData?.timetable_mode);
   let rows = (Array.isArray(weekData?.waitlist) ? weekData.waitlist : [])
-    .filter((row) =>
-      clean(row?.student_id) === clean(subject.studentId) &&
-      row?.is_guest !== true &&
-      ['waiting', 'offered'].includes(clean(row?.status).toLowerCase())
-    );
+    .filter((row) => {
+      const sameSubject = isGuest
+        ? row?.is_guest === true && clean(row?.guest_name || row?.student_name).toLowerCase() === subjectName.toLowerCase()
+        : clean(row?.student_id) === subjectStudentId && row?.is_guest !== true;
+      if (!sameSubject || !['waiting', 'offered'].includes(clean(row?.status).toLowerCase())) return false;
+      if (!requestedDivision) return true;
+      return clean(row?.target_division || row?.division || row?.guest_division).toLowerCase() === requestedDivision;
+    });
 
   if (requestedWeekday) {
     rows = rows.filter((row) => Number(row?.target_weekday || 0) === requestedWeekday);
@@ -218,7 +230,8 @@ async function prepareWaitlistCancelAction({
       const rowWeekday = Number(row?.target_weekday || 0);
       const rowSlot = Number(row?.target_time_slot || 0);
       if (rowWeekday < 1 || rowWeekday > 6 || rowSlot <= 0) return false;
-      return clean(timeLabel(fixedDivision, rowWeekday, rowSlot, mode)) === requestedTime;
+      const rowDivision = clean(row?.target_division || row?.division || row?.guest_division || requestedDivision).toLowerCase();
+      return clean(timeLabel(rowDivision, rowWeekday, rowSlot, mode)) === requestedTime;
     });
   }
 
@@ -249,6 +262,14 @@ async function prepareWaitlistCancelAction({
   }
 
   const row = rows[0];
+  const fixedDivision = requestedDivision || clean(row?.target_division || row?.division || row?.guest_division).toLowerCase();
+  if (!['elementary','kinder'].includes(fixedDivision)) {
+    throw waitlistCancelError(
+      '취소할 대기의 수업 구분을 서버에서 확인하지 못했습니다.',
+      500,
+      'OLLI_AGENT_WAITLIST_CANCEL_SOURCE_DIVISION_INVALID'
+    );
+  }
   const waitlistId = clean(row?.id);
   const targetWeekday = Number(row?.target_weekday || 0);
   const targetTimeSlot = Number(row?.target_time_slot || 0);
@@ -281,15 +302,16 @@ async function prepareWaitlistCancelAction({
 
   const actionPayload = {
     intent:'cancel_waitlist',
-    studentId:clean(subject.studentId),
-    studentName:student.name,
+    studentId:subjectStudentId,
+    studentName:subjectName,
+    guestName:isGuest ? subjectName : '',
     division:fixedDivision,
     waitlistId,
     targetWeekday,
     targetTimeSlot,
     targetClassGroup,
     effectiveDate:today.key,
-    isGuest:false,
+    isGuest,
   };
 
   const grouped = requestedGroup !== 'AUTO' || targetClassGroup === 'B';
@@ -297,7 +319,7 @@ async function prepareWaitlistCancelAction({
     p_session_token:requestContext.sessionToken,
     p_academy_id:requestContext.academyId,
     p_body:cancelPrompt({
-      studentName:student.name,
+      studentName:subjectName,
       targetWeekday,
       timeText,
       classGroup:targetClassGroup,
@@ -344,6 +366,7 @@ function createPrepareWaitlistCancelTool({
   z,
   requestContext,
   subjectAccess,
+  guestAccess = null,
   studentLabel,
   division,
   classGroup,
@@ -374,6 +397,7 @@ function createPrepareWaitlistCancelTool({
       const payload = await prepareWaitlistCancelAction({
         requestContext,
         subjectAccess,
+        guestAccess,
         studentLabel,
         division,
         classGroup,

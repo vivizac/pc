@@ -40,13 +40,12 @@ test('PC waitlist update bridge uses source-bound production mode and never save
   assert.doesNotMatch(block,/saveAssistantAction|olli_team_chat_send_action/);
 });
 
-test('PC waitlist update guest is stopped locally after privacy-safe server rejection', () => {
+test('PC waitlist update guest remains on the same source-bound Agent bridge', () => {
   const start=talk.indexOf('async function resolveWaitlistUpdateAgentTurn');
   const end=talk.indexOf('async function resolveWaitlistCancelAgentTurn',start);
   const block=talk.slice(start,end);
-  assert.match(block,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED/);
-  assert.match(block,/비재원 대기 변경은 현재 Team Chat에서 지원하지 않아요/);
-  assert.match(block,/saveAssistantReply\(current, message, sourceMessageId\)/);
+  assert.match(block,/mode:'waitlist_update_prepare'/);
+  assert.doesNotMatch(block,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED|비재원 대기 변경은 현재 Team Chat에서 지원하지 않아요/);
 });
 
 test('PC waitlist cancel gate uses only the shared cancel parser', () => {
@@ -70,14 +69,13 @@ test('PC registered waitlist cancel is routed before legacy preparation', () => 
   assert.match(block,/if \(waitlistTurn\) return waitlistTurn/);
 });
 
-test('PC waitlist cancel bridge uses source-bound production mode and guest fallback code', () => {
+test('PC waitlist cancel bridge keeps guest and registered requests on production Agent mode', () => {
   const start=talk.indexOf('async function resolveWaitlistCancelAgentTurn');
   const end=talk.indexOf('async function resolvePickupCancelAgentTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'waitlist_cancel_prepare'/);
   assert.match(block,/sourceMessageId = Number\(replyToMessageId \|\| 0\)/);
-  assert.match(block,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED/);
-  assert.match(block,/return null/);
+  assert.doesNotMatch(block,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED|return null/);
   assert.match(block,/action_type\) !== 'cancel_waitlist'/);
   assert.match(block,/assistantMessage:data\.message/);
   assert.match(block,/recordAi:false/);
