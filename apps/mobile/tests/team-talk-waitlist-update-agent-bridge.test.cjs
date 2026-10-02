@@ -39,13 +39,12 @@ test('mobile waitlist update bridge uses source-bound production mode without cr
   assert.doesNotMatch(block,/saveOlliTalkActionReply|olli_team_chat_send_action/);
 });
 
-test('mobile guest waitlist update stops with privacy-safe reply after server rejection',()=>{
+test('mobile guest waitlist update remains on the same source-bound Agent bridge',()=>{
   const start=talk.indexOf('async function resolveOlliTalkWaitlistUpdateAgentTurn');
   const end=talk.indexOf('function isOlliTalkPendingReasonCancel',start);
   const block=talk.slice(start,end);
-  assert.match(block,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED/);
-  assert.match(block,/비재원 대기 변경은 현재 Team Chat에서 지원하지 않아요/);
-  assert.match(block,/saveOlliTalkOlliReply\(context,message,sourceMessageId\)/);
+  assert.match(block,/mode:'waitlist_update_prepare'/);
+  assert.doesNotMatch(block,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED|비재원 대기 변경은 현재 Team Chat에서 지원하지 않아요/);
 });
 
 test('mobile Bot path remains independent from waitlist update Agent routing',()=>{
