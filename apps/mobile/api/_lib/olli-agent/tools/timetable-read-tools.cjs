@@ -190,7 +190,7 @@ async function readRoster({requestContext,intent,todayKey,labelBook,callRpc}){
     for(const row of (Array.isArray(data?.enrollments)?data.enrollments:[])){
       const wd=Number(row?.weekday||0);
       const date=scope==='week'?addDaysKey(weekStart,wd-1):reference;
-      if(wd<1||wd>6||!inRange(date)||isoWeekday(date)!==wd||!rowEffectiveOn(row,date)||clean(row?.status).toLowerCase()!=='active') continue;
+      if(wd<1||wd>6||!inRange(date)||isoWeekday(date)!==wd||!rowEffectiveOn(row,date)) continue;
       push(row,{date,entry_kind:'regular'});
     }
     for(const row of (Array.isArray(data?.one_time_sessions)?data.one_time_sessions:[])){
@@ -199,12 +199,37 @@ async function readRoster({requestContext,intent,todayKey,labelBook,callRpc}){
       push(row,{date,weekday:isoWeekday(date),entry_kind:clean(row?.session_type).toLowerCase()==='trial'?'trial':'makeup'});
     }
   }else if(kind==='absence'){
-    for(const row of (Array.isArray(data?.attendance_overrides)?data.attendance_overrides:[])){
+    const overrides=await callRpc('olli_schedule_attendance_session_overrides_range',{
+      p_session_token:requestContext.sessionToken,
+      p_academy_id:requestContext.academyId,
+      p_start_date:start,
+      p_end_date:end,
+    });
+    if(!overrides?.ok){
+      throw readError(overrides?.message||'결석 명단을 조회하지 못했습니다.',403,overrides?.code||'OLLI_AGENT_TIMETABLE_ABSENCE_READ_FAILED');
+    }
+    for(const row of (Array.isArray(overrides?.overrides)?overrides.overrides:[])){
       const date=clean(row?.session_date).slice(0,10);
-      if(!inRange(date)||clean(row?.register_status).toLowerCase()!=='absent') continue;
+      if(!inRange(date)) continue;
+      if(clean(row?.register_session_kind).toLowerCase()!=='regular') continue;
+      if(clean(row?.register_status).toLowerCase()!=='absent') continue;
       const wd=isoWeekday(date);
-      const division=rowDivision(row) || rowDivision((data.enrollments||[]).find(e=>clean(e?.student_id)===clean(row?.student_id)&&Number(e?.weekday)===wd));
-      push(row,{date,weekday:wd,division,entry_kind:'absence'});
+      const enrollment=(Array.isArray(data?.enrollments)?data.enrollments:[]).find(e=>
+        clean(e?.student_id)===clean(row?.student_id) &&
+        Number(e?.weekday||0)===wd &&
+        Number(e?.time_slot||0)===Number(row?.time_slot||0) &&
+        groupOf(e)===groupOf(row) &&
+        rowEffectiveOn(e,date)
+      ) || null;
+      if(!enrollment) continue;
+      push(enrollment,{
+        date,
+        weekday:wd,
+        division:rowDivision(enrollment),
+        time_slot:Number(row?.time_slot||0),
+        class_group:groupOf(row),
+        entry_kind:'absence',
+      });
     }
   }else if(kind==='makeup'||kind==='trial'){
     for(const row of (Array.isArray(data?.one_time_sessions)?data.one_time_sessions:[])){
@@ -238,8 +263,26 @@ async function readPickupRoster({requestContext,intent,todayKey,labelBook,callRp
   const weekday=isoWeekday(date);
   const wanted=requestedTimeText(intent);
   const kind=clean(intent?.kind)||'all';
+  const flags=await callRpc('olli_schedule_pickup_dropoff_flags',{
+    p_session_token:requestContext.sessionToken,
+    p_academy_id:requestContext.academyId,
+    p_start_date:date,
+    p_end_date:date,
+  });
+  if(!flags?.ok){
+    throw readError(flags?.message||'픽업 구분을 조회하지 못했습니다.',403,flags?.code||'OLLI_AGENT_TIMETABLE_PICKUP_FLAGS_FAILED');
+  }
+  const flagMap=new Map((Array.isArray(flags?.flags)?flags.flags:[]).map(row=>[
+    clean(row?.id),
+    {is_dropoff:row?.is_dropoff===true,dropoff_label:clean(row?.dropoff_label)}
+  ]));
   const items=[];
-  for(const row of (Array.isArray(data?.pickups)?data.pickups:[])){
+  for(const baseRow of (Array.isArray(data?.pickups)?data.pickups:[])){
+    const flag=flagMap.get(clean(baseRow?.id))||{};
+    const row=Object.assign({},baseRow,{
+      is_dropoff:flag.is_dropoff===true,
+      dropoff_label:flag.dropoff_label||clean(baseRow?.dropoff_label),
+    });
     if(Number(row?.weekday||0)!==weekday||!rowEffectiveOn(row,date)) continue;
     const division='kinder';
     const label=timeLabel(division,weekday,Number(row?.class_time||0),mode);
