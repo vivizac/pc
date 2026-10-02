@@ -1993,6 +1993,29 @@
     const interpreterIntent=String(interpretation.intent || '').trim();
     commandText=String(interpretation.standaloneCommand || rawCommandText).trim();
 
+    if(options.allowSuggestedQuery && router && typeof router.runSuggestedQuery==='function'){
+      const suggested=await router.runSuggestedQuery(commandText,{
+        source:'olli_talk_reply_button',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(suggested?.handled===true){
+        reportOlliTalkAiLegacyRouteOutcome(
+          context,
+          'suggested',
+          String(suggested.intent || suggested.payload?.intent || '').trim(),
+          null,
+          false
+        );
+        const suggestedMessage=String(suggested.message || '').trim() || '조회 결과를 확인했어요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,suggestedMessage,replyToMessageId),
+          replyText:suggestedMessage,
+          recordAi:false
+        };
+      }
+    }
+
     if(interpreterRoute==='chat'){
       const resolved=await resolveOlliTalkAiReply(rawCommandText,context);
       return {
@@ -2342,29 +2365,6 @@
         return {
           assistantMessage:await saveOlliTalkOlliReply(context,queryMessage,replyToMessageId),
           replyText:queryMessage,
-          recordAi:false
-        };
-      }
-    }
-
-    if(options.allowSuggestedQuery && router && typeof router.runSuggestedQuery==='function'){
-      const suggested=await router.runSuggestedQuery(commandText,{
-        source:'olli_talk_reply_button',
-        selectedStudent:null,
-        autoSubmitContext:null
-      });
-      if(suggested?.handled===true){
-        reportOlliTalkAiLegacyRouteOutcome(
-          context,
-          'suggested',
-          String(suggested.intent || suggested.payload?.intent || '').trim(),
-          sharedRoute,
-          classifierAvailable
-        );
-        const suggestedMessage=String(suggested.message || '').trim() || '조회 결과를 확인했어요.';
-        return {
-          assistantMessage:await saveOlliTalkOlliReply(context,suggestedMessage,replyToMessageId),
-          replyText:suggestedMessage,
           recordAi:false
         };
       }
