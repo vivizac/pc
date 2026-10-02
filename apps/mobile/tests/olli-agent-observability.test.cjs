@@ -8,6 +8,7 @@ const {
   buildOlliTraceOptions,
   summarizeAgentRun,
   evaluateRunSummary,
+  buildRouteOutcomeEvent,
   wrapOlliAgentRun,
 } = require('../api/_lib/olli-agent/observability.cjs');
 
@@ -159,4 +160,53 @@ test('wrapped SDK run applies safe trace options on the actual run boundary', as
   assert.equal(calls[0].options.workflowName, WORKFLOW_NAME);
   assert.match(calls[0].options.groupId, /^olli_team_talk_[a-f0-9]{32}$/);
   assert.equal(calls[0].options.context, runContext);
+});
+
+
+test('route outcome event keeps only fixed structural fields and drops private input', () => {
+  const event = buildRouteOutcomeEvent({
+    surface:'pc',
+    outcome:'legacy_write',
+    routeKey:'cancel_trial',
+    sharedRouteKey:'trial_cancel',
+    classifierAvailable:true,
+    academyId:'academy-secret',
+    memberId:'member-secret',
+    sessionToken:'session-secret',
+    message:'민수 체험 취소해줘',
+  });
+
+  assert.deepEqual(event, {
+    version:1,
+    surface:'pc',
+    outcome:'legacy_write',
+    routeKey:'cancel_trial',
+    sharedRouteKey:'trial_cancel',
+    classifierAvailable:true,
+  });
+
+  const serialized=JSON.stringify(event);
+  assert.doesNotMatch(serialized,/academy-secret|member-secret|session-secret|민수/);
+});
+
+test('route outcome event rejects unknown surface/outcome and buckets unknown route keys', () => {
+  assert.equal(buildRouteOutcomeEvent({surface:'web',outcome:'legacy_write'}),null);
+  assert.equal(buildRouteOutcomeEvent({surface:'pc',outcome:'raw-message'}),null);
+  assert.deepEqual(
+    buildRouteOutcomeEvent({
+      surface:'mobile',
+      outcome:'legacy_read',
+      routeKey:'student-private-value',
+      sharedRouteKey:'private-shared-value',
+      classifierAvailable:false,
+    }),
+    {
+      version:1,
+      surface:'mobile',
+      outcome:'legacy_read',
+      routeKey:'other',
+      sharedRouteKey:'other',
+      classifierAvailable:false,
+    }
+  );
 });

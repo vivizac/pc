@@ -5,6 +5,7 @@ on:
     paths:
       - 'apps/mobile/api/_lib/olli-agent/observability.cjs'
       - 'apps/mobile/api/_lib/olli-agent/runtime.cjs'
+      - 'apps/mobile/api/olli-agent.js'
       - 'apps/mobile/tests/olli-agent-observability.test.cjs'
       - 'apps/mobile/tests/olli-agent-observability-production-contract.test.cjs'
       - '.github/workflows/validate-agent-observability.yml'

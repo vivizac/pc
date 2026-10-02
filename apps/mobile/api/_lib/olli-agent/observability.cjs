@@ -6,6 +6,63 @@ const { resolveAgentEvalContract } = require('./eval-contracts.cjs');
 const WORKFLOW_NAME = 'Olli Team Chat Agent';
 const GROUP_PREFIX = 'olli_team_talk_';
 const MAX_KEYS = 24;
+const ROUTE_OUTCOME_LOG_PREFIX = '[OLLI Route Outcome] ';
+const ROUTE_OUTCOME_SURFACES = new Set(['pc', 'mobile']);
+const ROUTE_OUTCOMES = new Set(['legacy_write', 'legacy_read', 'suggested']);
+const ROUTE_KEYS = new Set([
+  'add_timetable_memo',
+  'delete_timetable_memo',
+  'mark_absent',
+  'add_class_once',
+  'add_pickup',
+  'update_pickup',
+  'update_pickup_arrival',
+  'update_pickup_dropoff',
+  'cancel_pickup',
+  'cancel_pickup_dropoff',
+  'cancel_waitlist',
+  'add_makeup',
+  'update_makeup',
+  'move_class',
+  'add_waitlist',
+  'update_waitlist',
+  'add_trial',
+  'update_trial',
+  'cancel_makeup',
+  'cancel_trial',
+  'cancel_move',
+  'batch_write',
+  'multi_read_query',
+  'find_roster_entries',
+  'find_pickups',
+  'find_available_slots',
+]);
+const SHARED_ROUTE_KEYS = new Set([
+  'attendance_status',
+  'timetable_admin',
+  'batch_write',
+  'timetable_memo',
+  'trial_cancel',
+  'makeup_cancel',
+  'absence',
+  'trial_add',
+  'trial_update',
+  'waitlist_cancel',
+  'waitlist_update',
+  'waitlist_add',
+  'pickup_cancel',
+  'pickup_update',
+  'pickup_add',
+  'makeup_update',
+  'makeup_add',
+  'move_cancel',
+  'move',
+  'class_once',
+  'timetable_read',
+  'attendance_read',
+  'pickup_read',
+  'schedule_read',
+]);
 
 function clean(value) {
   return String(value == null ? '' : value).trim();
@@ -212,6 +269,36 @@ function evaluateRunSummary(summary, contract = {}) {
   });
 }
 
+function normalizeRouteOutcomeKey(value, allowed) {
+  const key = safeName(value, '');
+  if (!key) return '';
+  return allowed.has(key) ? key : 'other';
+}
+
+function buildRouteOutcomeEvent(input = {}) {
+  const surface = safeName(input?.surface, '');
+  const outcome = safeName(input?.outcome, '');
+  if (!ROUTE_OUTCOME_SURFACES.has(surface) || !ROUTE_OUTCOMES.has(outcome)) return null;
+
+  return Object.freeze({
+    version: 1,
+    surface,
+    outcome,
+    routeKey: normalizeRouteOutcomeKey(input?.routeKey, ROUTE_KEYS),
+    sharedRouteKey: normalizeRouteOutcomeKey(input?.sharedRouteKey, SHARED_ROUTE_KEYS),
+    classifierAvailable: input?.classifierAvailable === true,
+  });
+}
+
+function emitRouteOutcomeLog(input = {}) {
+  const event = buildRouteOutcomeEvent(input);
+  if (!event) return false;
+  if (process.env.NODE_ENV !== 'test' && process.env.OLLI_AGENT_ROUTE_OUTCOME_LOGS !== '0') {
+    console.info(ROUTE_OUTCOME_LOG_PREFIX + JSON.stringify(event));
+  }
+  return true;
+}
+
 function shouldEmitEvalLog() {
   return process.env.NODE_ENV !== 'test' && process.env.OLLI_AGENT_EVAL_LOGS !== '0';
 }
@@ -273,5 +360,7 @@ module.exports = {
   outputShape,
   summarizeAgentRun,
   evaluateRunSummary,
+  buildRouteOutcomeEvent,
+  emitRouteOutcomeLog,
   wrapOlliAgentRun,
 };

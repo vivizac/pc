@@ -2515,6 +2515,24 @@
     }
   }
 
+  function reportAiLegacyRouteOutcome(current, outcome, routeKey, sharedRoute, classifierAvailable) {
+    if (!current?.academyId || !current?.sessionToken) return;
+    void fetch('/api/olli-agent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        mode:'route_outcome',
+        academyId:current.academyId,
+        sessionToken:current.sessionToken,
+        surface:'pc',
+        outcome:clean(outcome),
+        routeKey:clean(routeKey),
+        sharedRouteKey:clean(sharedRoute?.key),
+        classifierAvailable:classifierAvailable === true
+      })
+    }).catch(() => {});
+  }
+
   async function resolveAiTurn(commandText, current, replyToMessageId, options = {}) {
     const router = global.OlliCommandRouter;
     const schedule = global.OlliCommandSchedule;
@@ -2680,7 +2698,8 @@
     }
 
     const routeClassifier=global.OlliTeamTalkAgentRouteClassifier;
-    const sharedRoute=routeClassifier && typeof routeClassifier.classify==='function'
+    const classifierAvailable=!!(routeClassifier && typeof routeClassifier.classify==='function');
+    const sharedRoute=classifierAvailable
       ? routeClassifier.classify(commandText,{router})
       : null;
     if(sharedRoute){
@@ -2696,6 +2715,15 @@
       });
 
       if (prepared?.handled === true) {
+        if (['action_pending','action_needs_reason','action_rejected'].includes(clean(prepared.kind))) {
+          reportAiLegacyRouteOutcome(
+            current,
+            'legacy_write',
+            clean(prepared.intent || prepared.payload?.intent),
+            sharedRoute,
+            classifierAvailable
+          );
+        }
         if (prepared.kind === 'action_pending' && prepared.payload) {
           return {
             assistantMessage:await saveAssistantAction(
@@ -2769,6 +2797,13 @@
       });
 
       if (queried?.handled === true) {
+        reportAiLegacyRouteOutcome(
+          current,
+          'legacy_read',
+          clean(queried.intent || queried.payload?.intent),
+          sharedRoute,
+          classifierAvailable
+        );
         const queryMessage = clean(queried.message) || '조회 결과를 확인했어요.';
         return {
           assistantMessage:await saveAssistantReply(current, queryMessage, replyToMessageId),
@@ -2785,6 +2820,13 @@
         autoSubmitContext:null
       });
       if (suggested?.handled === true) {
+        reportAiLegacyRouteOutcome(
+          current,
+          'suggested',
+          clean(suggested.intent || suggested.payload?.intent),
+          sharedRoute,
+          classifierAvailable
+        );
         const suggestedMessage = clean(suggested.message) || '조회 결과를 확인했어요.';
         return {
           assistantMessage:await saveAssistantReply(current, suggestedMessage, replyToMessageId),

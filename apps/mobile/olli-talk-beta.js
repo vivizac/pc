@@ -1798,6 +1798,24 @@
     }
   }
 
+  function reportOlliTalkAiLegacyRouteOutcome(context,outcome,routeKey,sharedRoute,classifierAvailable){
+    if(!context?.academyId || !context?.sessionToken) return;
+    void fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'route_outcome',
+        academyId:context.academyId,
+        sessionToken:context.sessionToken,
+        surface:'mobile',
+        outcome:String(outcome || '').trim(),
+        routeKey:String(routeKey || '').trim(),
+        sharedRouteKey:String(sharedRoute?.key || '').trim(),
+        classifierAvailable:classifierAvailable===true
+      })
+    }).catch(()=>{});
+  }
+
   async function resolveOlliTalkAiTurn(commandText,context,replyToMessageId,options={}){
     const router=window.OlliCommandRouter;
     const schedule=window.OlliCommandSchedule;
@@ -1963,7 +1981,8 @@
     }
 
     const routeClassifier=window.OlliTeamTalkAgentRouteClassifier;
-    const sharedRoute=routeClassifier && typeof routeClassifier.classify==='function'
+    const classifierAvailable=!!(routeClassifier && typeof routeClassifier.classify==='function');
+    const sharedRoute=classifierAvailable
       ? routeClassifier.classify(commandText,{router})
       : null;
     if(sharedRoute){
@@ -1999,6 +2018,15 @@
       });
 
       if(prepared?.handled===true){
+        if(['action_pending','action_needs_reason','action_rejected'].includes(String(prepared.kind || '').trim())){
+          reportOlliTalkAiLegacyRouteOutcome(
+            context,
+            'legacy_write',
+            String(prepared.intent || prepared.payload?.intent || '').trim(),
+            sharedRoute,
+            classifierAvailable
+          );
+        }
         if(prepared.kind==='action_pending' && prepared.payload){
           return {
             assistantMessage:await saveOlliTalkActionReply(
@@ -2072,6 +2100,13 @@
       });
 
       if(queried?.handled===true){
+        reportOlliTalkAiLegacyRouteOutcome(
+          context,
+          'legacy_read',
+          String(queried.intent || queried.payload?.intent || '').trim(),
+          sharedRoute,
+          classifierAvailable
+        );
         const queryMessage=String(queried.message || '').trim() || '조회 결과를 확인했어요.';
         return {
           assistantMessage:await saveOlliTalkOlliReply(context,queryMessage,replyToMessageId),
@@ -2088,6 +2123,13 @@
         autoSubmitContext:null
       });
       if(suggested?.handled===true){
+        reportOlliTalkAiLegacyRouteOutcome(
+          context,
+          'suggested',
+          String(suggested.intent || suggested.payload?.intent || '').trim(),
+          sharedRoute,
+          classifierAvailable
+        );
         const suggestedMessage=String(suggested.message || '').trim() || '조회 결과를 확인했어요.';
         return {
           assistantMessage:await saveOlliTalkOlliReply(context,suggestedMessage,replyToMessageId),
