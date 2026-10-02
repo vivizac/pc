@@ -1,0 +1,26 @@
+name: Validate PC material archive
+
+on:
+  pull_request:
+    paths:
+      - 'apps/pc/pc-team-talk-material-orders.js'
+      - 'apps/pc/pc-team-talk-material-orders.css'
+      - 'apps/pc/index.html'
+      - 'apps/pc/tests/pc-material-archive.test.cjs'
+      - 'supabase/migrations/*pc_material_order_archive.sql'
+      - '.github/workflows/validate-pc-material-archive.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate PC material archive
+        working-directory: apps/pc
+        run: |
+          node --check pc-team-talk-material-orders.js
+          node --test tests/pc-material-archive.test.cjs
