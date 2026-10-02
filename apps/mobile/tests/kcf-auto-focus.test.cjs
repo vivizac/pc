@@ -6,6 +6,7 @@ const runtime = fs.readFileSync('kcf-auto-mode-runtime.js', 'utf8');
 const css = fs.readFileSync('kcf-auto-mode.css', 'utf8');
 const feedbackCss = fs.readFileSync('kinder-feedback.css', 'utf8');
 const sheet = fs.readFileSync('kcf-teacher-sheet.js', 'utf8');
+const normalSheet = fs.readFileSync('kcf-normal-sheet.js', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
 
 test('Feedback actions use Class beside the mic and keep compact controls', () => {
@@ -49,12 +50,15 @@ test('Teacher roster uses student name cards only and removes teacher labels', (
   assert.match(sheet, /event\.target\.closest\('\.kcfAutoStudentChip'\)/);
 });
 
-test('QuickNote shared-sheet assets use the current cache keys', () => {
-  assert.match(html, /kinder-feedback\.css\?v=20261002-sheet-controls-1/);
-  assert.match(html, /kinder-feedback\.js\?v=20261002-sheet-controls-1/);
+test('QuickNote separate-sheet assets use the current cache keys', () => {
+  assert.match(html, /kinder-feedback\.js\?v=20261002-separate-sheets-1/);
   assert.match(html, /kcf-auto-mode\.css\?v=20261001-unified-sheet-1/);
-  assert.match(html, /kcf-teacher-sheet\.css\?v=20261002-sheet-controls-1/);
-  assert.match(html, /kcf-teacher-sheet\.js\?v=20261002-sheet-controls-1/);
+  assert.match(html, /kcf-normal-sheet\.css\?v=20261002-separate-sheets-1/);
+  assert.match(html, /kcf-normal-sheet\.js\?v=20261002-separate-sheets-1/);
+  assert.match(html, /kcf-teacher-sheet\.css\?v=20261002-separate-sheets-1/);
+  assert.match(html, /kcf-teacher-sheet\.js\?v=20261002-separate-sheets-1/);
+  assert.match(normalSheet, /global\.KcfNormalSheet = api/);
+  assert.doesNotMatch(sheet, /global\.KcfComposerSheet = api/);
 });
 
 test('Teacher roster is preloaded on page entry and empty state never opens the sheet', () => {
@@ -92,7 +96,7 @@ test('one-minute feedback stays Live-only and removes the old top Live/inbox but
   assert.match(feedback, /function restoreKinderChatFeedbackTopMode\(\)\{\s*setKinderChatFeedbackTopMode\('live', false\)/);
 });
 
-test('normal composer stays one-line because editing now happens in the shared sheet', () => {
+test('normal composer stays one-line because editing now happens in the dedicated normal sheet', () => {
   assert.match(feedbackCss, /\.kcfInput \{[\s\S]*?height:34px;[\s\S]*?max-height:34px;/);
   assert.doesNotMatch(feedbackCss, /kcfKeyboardOpen/);
   assert.match(html, /id="kcfInput"[^>]*readonly/);

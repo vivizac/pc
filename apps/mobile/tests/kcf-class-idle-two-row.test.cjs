@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const css = fs.readFileSync('kcf-auto-mode.css', 'utf8');
 const sheet = fs.readFileSync('kcf-teacher-sheet.js', 'utf8');
 const sheetCss = fs.readFileSync('kcf-teacher-sheet.css', 'utf8');
+const normalSheet = fs.readFileSync('kcf-normal-sheet.js', 'utf8');
 const runtime = fs.readFileSync('kcf-auto-mode-runtime.js', 'utf8');
 const base = fs.readFileSync('kinder-feedback.js', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
@@ -42,27 +43,28 @@ test('active Class control is uppercase black C in the second-row add slot only'
   assert.match(css, /kcfTeacherRosterMode \.kcfSendBtn \{[\s\S]*?grid-column:3;[\s\S]*?grid-row:2;/);
 });
 
-test('shared sheet shows Class normally and compact C only when Class mode is active', () => {
-  assert.match(sheet, /id="kcfTeacherSheetModeBtn"[^>]*>Class<\/button>/);
-  assert.match(sheet, /modeBtn\.textContent = enabled \? 'C' : 'Class'/);
-  assert.match(sheetCss, /\.kcfTeacherSheetModeBtn \{[\s\S]*?min-width:52px;[\s\S]*?background:#f1f1f1;[\s\S]*?color:#111;/);
-  assert.match(sheetCss, /\.kcfTeacherSheetModeBtn\.active \{[\s\S]*?width:33px;[\s\S]*?background:#111;[\s\S]*?color:#fff;/);
+test('Class sheet is Class-only and normal sheet owns the Class label', () => {
+  assert.match(sheet, /id="kcfTeacherSheetModeBtn"[^>]*>C<\/button>/);
+  assert.match(sheet, /function open\(\)\{\s*if \(!modeEnabled\(\)\) return false;/);
+  assert.match(sheetCss, /\.kcfTeacherSheetModeBtn \{[\s\S]*?width:33px;[\s\S]*?background:#111;[\s\S]*?color:#fff;/);
+  assert.match(normalSheet, /id="kcfNormalSheetClassBtn"[^>]*>Class<\/button>/);
 });
 
 test('student cards remain manually selectable while Class mode waits', () => {
   assert.match(runtime, /button\.addEventListener\('click',[\s\S]*?selectAutoStudent\(item\)/);
 });
 
-test('tapping the inline composer opens the shared sheet in both normal and Class modes', () => {
+test('tapping the inline composer routes to the mode-specific sheet', () => {
   const pointer = base.match(/composerBottom\.addEventListener\('pointerdown',[\s\S]*?\n    \}\);/)?.[0] || '';
   assert.match(pointer, /event\.preventDefault\(\)/);
-  assert.match(pointer, /sheet\.open\(\)/);
-  assert.doesNotMatch(base, /input\.addEventListener\('pointerdown'/);
+  assert.match(pointer, /openKinderChatFeedbackComposerSheet\(\)/);
+  assert.match(base, /isKinderChatFeedbackClassModeEnabled\(\)[\s\S]*?window\.KcfTeacherSheet[\s\S]*?window\.KcfNormalSheet/);
 });
 
 test('Class idle layout assets are cache busted', () => {
   assert.match(html, /kcf-auto-mode\.css\?v=20261001-unified-sheet-1/);
-  assert.match(html, /kcf-teacher-sheet\.css\?v=20261002-sheet-controls-1/);
-  assert.match(html, /kcf-teacher-sheet\.js\?v=20261002-sheet-controls-1/);
-  assert.match(html, /kinder-feedback\.js\?v=20261002-sheet-controls-1/);
+  assert.match(html, /kcf-normal-sheet\.js\?v=20261002-separate-sheets-1/);
+  assert.match(html, /kcf-teacher-sheet\.css\?v=20261002-separate-sheets-1/);
+  assert.match(html, /kcf-teacher-sheet\.js\?v=20261002-separate-sheets-1/);
+  assert.match(html, /kinder-feedback\.js\?v=20261002-separate-sheets-1/);
 });

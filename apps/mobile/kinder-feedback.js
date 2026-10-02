@@ -472,8 +472,18 @@ function autoResizeKinderChatFeedbackInput(input) {
   input.style.overflowY = 'hidden';
 }
 window.autoResizeKinderChatFeedbackInput = autoResizeKinderChatFeedbackInput;
+function isKinderChatFeedbackClassModeEnabled() {
+  const mode = getKinderChatFeedbackTeacherMode();
+  try { return !!(mode && typeof mode.isEnabled === 'function' && mode.isEnabled()); }
+  catch(e) { return false; }
+}
+function getKinderChatFeedbackComposerSheetForMode() {
+  return isKinderChatFeedbackClassModeEnabled()
+    ? window.KcfTeacherSheet
+    : window.KcfNormalSheet;
+}
 function openKinderChatFeedbackComposerSheet() {
-  const sheet = window.KcfComposerSheet || window.KcfTeacherSheet;
+  const sheet = getKinderChatFeedbackComposerSheetForMode();
   if (!sheet || typeof sheet.open !== 'function') return false;
   if (typeof sheet.isOpen === 'function' && sheet.isOpen()) return true;
   return sheet.open() !== false;
@@ -2345,11 +2355,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ? event.target.closest('button, input, .kcfAutoStudentChip, .memoStudentSelectPopup')
         : null;
       if (interactive) return;
-      const sheet = window.KcfComposerSheet || window.KcfTeacherSheet;
-      if (!sheet || typeof sheet.open !== 'function') return;
-      if (typeof sheet.isOpen === 'function' && sheet.isOpen()) return;
       event.preventDefault();
-      sheet.open();
+      openKinderChatFeedbackComposerSheet();
     });
   }
   document.querySelectorAll('.kcfKeywordBtn').forEach(btn => {

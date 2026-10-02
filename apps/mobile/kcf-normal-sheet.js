@@ -1,27 +1,24 @@
-/* Phone-only QuickNote Class-mode composer sheet.
- * Normal mode uses KcfNormalSheet and never enters this sheet.
+/* Phone-only QuickNote normal-mode composer sheet.
+ * This sheet never owns Class roster state. Class mode uses KcfTeacherSheet separately.
  */
-(function initKcfTeacherSheet(global) {
+(function initKcfNormalSheet(global) {
   'use strict';
 
   var state = {
     open:false,
     submitting:false,
-    rosterMarker:null,
-    rosterNode:null,
     warningObserver:null,
     viewportFrame:0,
     suppressBlurSync:false
   };
 
   function baseInput(){ return document.getElementById('kcfInput'); }
-  function overlay(){ return document.getElementById('kcfTeacherSheetOverlay'); }
-  function editor(){ return document.getElementById('kcfTeacherSheetInput'); }
-  function rosterHost(){ return document.getElementById('kcfTeacherSheetRosterHost'); }
-  function warning(){ return document.getElementById('kcfTeacherSheetWarning'); }
-  function sendButton(){ return document.getElementById('kcfTeacherSheetSendBtn'); }
+  function overlay(){ return document.getElementById('kcfNormalSheetOverlay'); }
+  function editor(){ return document.getElementById('kcfNormalSheetInput'); }
+  function warning(){ return document.getElementById('kcfNormalSheetWarning'); }
+  function sendButton(){ return document.getElementById('kcfNormalSheetSendBtn'); }
 
-  function modeEnabled(){
+  function classModeEnabled(){
     var mode = global.KcfTeacherMode || global.KcfAutoMode;
     try { return !!(mode && typeof mode.isEnabled === 'function' && mode.isEnabled()); }
     catch (_) { return false; }
@@ -35,10 +32,10 @@
     var height = viewport ? Number(viewport.height || global.innerHeight || 0) : Math.max(global.innerHeight || 0, document.documentElement.clientHeight || 0);
     var left = viewport ? Number(viewport.offsetLeft || 0) : 0;
     var top = viewport ? Number(viewport.offsetTop || 0) : 0;
-    root.style.setProperty('--kcf-teacher-vv-left', Math.round(left) + 'px');
-    root.style.setProperty('--kcf-teacher-vv-top', Math.round(top) + 'px');
-    root.style.setProperty('--kcf-teacher-vv-width', Math.max(1, Math.round(width)) + 'px');
-    root.style.setProperty('--kcf-teacher-vv-height', Math.max(1, Math.round(height)) + 'px');
+    root.style.setProperty('--kcf-normal-vv-left', Math.round(left) + 'px');
+    root.style.setProperty('--kcf-normal-vv-top', Math.round(top) + 'px');
+    root.style.setProperty('--kcf-normal-vv-width', Math.max(1, Math.round(width)) + 'px');
+    root.style.setProperty('--kcf-normal-vv-height', Math.max(1, Math.round(height)) + 'px');
   }
 
   function scheduleViewportSync(){
@@ -49,18 +46,10 @@
     });
   }
 
-  function teacherScrollableTarget(target){
-    if (!target || !target.closest) return null;
-    return target.closest('.kcfTeacherSheetInput, .kcfAutoStudentRosterScroller');
-  }
-
-  function preventTeacherBackgroundTouchMove(event){
-    if (!document.body.classList.contains('kcfTeacherSheetOpen')) return;
-    var scrollable = teacherScrollableTarget(event.target);
-    if (scrollable) {
-      if (scrollable.classList.contains('kcfAutoStudentRosterScroller')) return;
-      if (scrollable.scrollHeight > scrollable.clientHeight + 1) return;
-    }
+  function preventNormalBackgroundTouchMove(event){
+    if (!document.body.classList.contains('kcfNormalSheetOpen')) return;
+    var target = event.target && event.target.closest ? event.target.closest('.kcfNormalSheetInput') : null;
+    if (target && target.scrollHeight > target.clientHeight + 1) return;
     if (event.cancelable) event.preventDefault();
   }
 
@@ -121,45 +110,33 @@
     return document.activeElement === input;
   }
 
-  function mountRoster(){
-    var host = rosterHost();
-    var roster = document.getElementById('kcfAutoStudentRoster');
-    if (!host || !roster || roster.parentNode === host) return;
-    if (!state.rosterMarker && roster.parentNode) {
-      state.rosterMarker = document.createComment('kcf-teacher-roster-home');
-      roster.parentNode.insertBefore(state.rosterMarker, roster);
-    }
-    state.rosterNode = roster;
-    host.appendChild(roster);
-    roster.hidden = false;
-  }
-
-  function restoreRoster(){
-    if (state.rosterNode && state.rosterMarker && state.rosterMarker.parentNode) {
-      state.rosterMarker.parentNode.insertBefore(state.rosterNode, state.rosterMarker);
-      state.rosterMarker.remove();
-    }
-    state.rosterMarker = null;
-    state.rosterNode = null;
-  }
-
   function ensureSheet(){
     var existing = overlay();
     if (existing) return existing;
 
     var root = document.createElement('div');
-    root.id = 'kcfTeacherSheetOverlay';
-    root.className = 'kcfTeacherSheetOverlay';
+    root.id = 'kcfNormalSheetOverlay';
+    root.className = 'kcfNormalSheetOverlay';
     root.setAttribute('aria-hidden', 'true');
     root.innerHTML = [
-      '<section class="kcfTeacherSheet" role="dialog" aria-modal="true" aria-label="Class 수업기록 입력">',
-      '  <div class="kcfTeacherSheetBody">',
-      '    <textarea id="kcfTeacherSheetInput" class="kcfTeacherSheetInput" aria-label="Class 수업기록"></textarea>',
-      '    <div id="kcfTeacherSheetWarning" class="kcfTeacherSheetWarning" aria-live="polite"></div>',
-      '    <div class="kcfTeacherSheetBottom">',
-      '      <button id="kcfTeacherSheetModeBtn" class="kcfTeacherSheetModeBtn" type="button" aria-label="Class 모드 닫기" aria-pressed="true">C</button>',
-      '      <div id="kcfTeacherSheetRosterHost" class="kcfTeacherSheetRosterHost"></div>',
-      '      <button id="kcfTeacherSheetSendBtn" class="kcfTeacherSheetSendBtn" type="button" aria-label="피드백 전송">',
+      '<section class="kcfNormalSheet" role="dialog" aria-modal="true" aria-label="퀵노트 일반 입력">',
+      '  <div class="kcfNormalSheetBody">',
+      '    <textarea id="kcfNormalSheetInput" class="kcfNormalSheetInput" aria-label="퀵노트 일반 입력"></textarea>',
+      '    <div id="kcfNormalSheetWarning" class="kcfNormalSheetWarning" aria-live="polite"></div>',
+      '    <div class="kcfNormalSheetBottom">',
+      '      <button id="kcfNormalSheetAttachBtn" class="kcfNormalSheetAttachBtn" type="button" aria-label="사진 추가" title="사진 추가">',
+      '        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>',
+      '      </button>',
+      '      <div class="kcfNormalSheetSpacer"></div>',
+      '      <button id="kcfNormalSheetClassBtn" class="kcfNormalSheetClassBtn" type="button" aria-label="Class 모드 열기">Class</button>',
+      '      <button id="kcfNormalSheetVoiceBtn" class="kcfNormalSheetVoiceBtn" type="button" aria-label="음성 입력" title="음성 입력">',
+      '        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">',
+      '          <rect x="8" y="3" width="8" height="13" rx="4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></rect>',
+      '          <path d="M5 12.5C5 16.09 8.13 19 12 19C15.87 19 19 16.09 19 12.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>',
+      '          <path d="M12 19V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>',
+      '        </svg>',
+      '      </button>',
+      '      <button id="kcfNormalSheetSendBtn" class="kcfNormalSheetSendBtn" type="button" aria-label="피드백 전송">',
       '        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>',
       '      </button>',
       '    </div>',
@@ -179,10 +156,6 @@
           scheduleViewportSync();
           return;
         }
-
-        // iOS keyboard accessory ✓ ends textarea focus rather than emitting
-        // a dedicated key event. Treat that focus end as Cancel:
-        // preserve the draft, close Teacher, and return to the inline composer.
         if (state.open && !state.submitting) {
           syncToBase();
           close({ sync:false });
@@ -193,17 +166,46 @@
       input.addEventListener('focus', scheduleViewportSync);
     }
 
-    var modeBtn = document.getElementById('kcfTeacherSheetModeBtn');
-    if (modeBtn) {
-      modeBtn.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
-      modeBtn.addEventListener('click', async function(event){
+    var attach = document.getElementById('kcfNormalSheetAttachBtn');
+    if (attach) {
+      attach.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
+      attach.addEventListener('click', function(event){
         event.preventDefault();
         syncToBase();
+        close({ sync:false });
+        if (typeof global.openKinderChatFeedbackPhotoPicker === 'function') {
+          global.openKinderChatFeedbackPhotoPicker(event);
+        } else {
+          var source = document.getElementById('kcfAttachBtn');
+          if (source) source.click();
+        }
+      });
+    }
+
+    var voice = document.getElementById('kcfNormalSheetVoiceBtn');
+    if (voice) {
+      voice.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
+      voice.addEventListener('click', function(event){
+        event.preventDefault();
+        syncToBase();
+        close({ sync:false });
+        var source = document.getElementById('kcfVoiceBtn');
+        if (source) source.click();
+      });
+    }
+
+    var classBtn = document.getElementById('kcfNormalSheetClassBtn');
+    if (classBtn) {
+      classBtn.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
+      classBtn.addEventListener('click', async function(event){
+        event.preventDefault();
+        syncToBase();
+        close({ sync:false });
         if (typeof global.toggleKinderChatFeedbackTeacherMode === 'function') {
           await global.toggleKinderChatFeedbackTeacherMode(event);
         }
-        if (!modeEnabled() && global.KcfNormalSheet && typeof global.KcfNormalSheet.open === 'function') {
-          global.KcfNormalSheet.open();
+        if (!classModeEnabled()) {
+          open();
         }
       });
     }
@@ -238,22 +240,11 @@
       });
     }
 
-    var host = rosterHost();
-    if (host) {
-      host.addEventListener('pointerdown', function(event){
-        var chip = event.target && event.target.closest ? event.target.closest('.kcfAutoStudentChip') : null;
-        if (chip && event.cancelable) event.preventDefault();
-      }, true);
-      host.addEventListener('click', function(){
-        requestAnimationFrame(function(){ syncFromBase(); });
-      }, true);
-    }
-
     return root;
   }
 
   function open(){
-    if (!modeEnabled()) return false;
+    if (classModeEnabled()) return false;
     try {
       if (typeof global.warmKinderChatFeedbackPromptCache === 'function') {
         global.warmKinderChatFeedbackPromptCache();
@@ -264,14 +255,11 @@
     state.open = true;
     root.classList.add('show');
     root.setAttribute('aria-hidden', 'false');
-    document.documentElement.classList.add('kcfTeacherSheetOpen');
-    document.body.classList.add('kcfTeacherSheetOpen');
-    mountRoster();
+    document.documentElement.classList.add('kcfNormalSheetOpen');
+    document.body.classList.add('kcfNormalSheetOpen');
     bindWarning();
     syncFromBase();
     syncViewport();
-
-    // Focus synchronously first so iOS shows the cursor/keyboard in the same tap.
     focusEditor();
     requestAnimationFrame(function(){
       syncViewport();
@@ -298,10 +286,9 @@
       root.classList.remove('show');
       root.setAttribute('aria-hidden', 'true');
     }
-    restoreRoster();
     unbindWarning();
-    document.documentElement.classList.remove('kcfTeacherSheetOpen');
-    document.body.classList.remove('kcfTeacherSheetOpen');
+    document.documentElement.classList.remove('kcfNormalSheetOpen');
+    document.body.classList.remove('kcfNormalSheetOpen');
     var inlineInput = baseInput();
     if (inlineInput) {
       try { inlineInput.blur(); } catch (_) {}
@@ -317,15 +304,10 @@
       global.visualViewport.addEventListener('scroll', scheduleViewportSync);
     }
     global.addEventListener('resize', scheduleViewportSync);
-    if (!global.__kcfTeacherSheetTouchLockBound) {
-      global.__kcfTeacherSheetTouchLockBound = true;
-      document.addEventListener('touchmove', preventTeacherBackgroundTouchMove, { capture:true, passive:false });
+    if (!global.__kcfNormalSheetTouchLockBound) {
+      global.__kcfNormalSheetTouchLockBound = true;
+      document.addEventListener('touchmove', preventNormalBackgroundTouchMove, { capture:true, passive:false });
     }
-  }
-
-  function onSuccessfulSubmit(){
-    if (!state.open) return;
-    close({ sync:false });
   }
 
   var api = {
@@ -334,10 +316,9 @@
     isOpen:function(){ return state.open; },
     syncFromBase:syncFromBase,
     syncToBase:syncToBase,
-    focus:focusEditor,
-    onSuccessfulSubmit:onSuccessfulSubmit
+    focus:focusEditor
   };
-  global.KcfTeacherSheet = api;
+  global.KcfNormalSheet = api;
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once:true });
   else init();
