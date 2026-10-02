@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const js = fs.readFileSync('pc-team-talk-material-orders.js', 'utf8');
 const css = fs.readFileSync('pc-team-talk-material-orders.css', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
-const migration = fs.readFileSync('../../supabase/migrations/20261002070000_pc_material_order_archive.sql', 'utf8');
+const migration = fs.readFileSync('../../supabase/migrations/20261002065349_pc_material_order_archive.sql', 'utf8');
 
 test('PC material order runtime compiles after archive addition', () => {
   assert.doesNotThrow(() => new vm.Script(js, { filename: 'pc-team-talk-material-orders.js' }));
