@@ -183,17 +183,18 @@ async function prepareAgentReadPrivacyInput(text, requestContext, options = {}) 
 
     if(sameBinding){
       subjectRef=clean(bindings[0]?.subjectRef) || subjectRef;
-    }else if(bindings.length>0){
-      await session.clearSession();
-      bindings=[];
-      sessionReset=true;
+    }else{
+      if(bindings.length>0){
+        await session.clearSession();
+        bindings=[];
+        sessionReset=true;
+      }
+      await session.bindSubjectBindings([{
+        label:'학생A',
+        subjectRef,
+        studentId:currentId,
+      }]);
     }
-
-    await session.bindSubjectBindings([{
-      label:'학생A',
-      subjectRef,
-      studentId:currentId,
-    }]);
 
     const stableResolution=withStableSingleSubject(
       resolution,
@@ -217,12 +218,6 @@ async function prepareAgentReadPrivacyInput(text, requestContext, options = {}) 
       .find((student)=>clean(student?.id)===clean(bindings[0]?.studentId));
 
     if(boundStudent){
-      await session.bindSubjectBindings([{
-        label:'학생A',
-        subjectRef:bindings[0].subjectRef,
-        studentId:boundStudent.id,
-      }]);
-
       const contextualResolution=Object.assign({},resolution,{
         resolved:[{
           label:'학생A',

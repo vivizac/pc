@@ -19,9 +19,11 @@ function student(id,name,division='elementary'){
 function fakeSession(){
   let bindings=[];
   let clears=0;
+  let binds=0;
   return {
     async getSubjectBindings(){ return bindings.slice(); },
     async bindSubjectBindings(items){
+      binds+=1;
       for(const item of items){
         const current={
           label:item.label,
@@ -41,6 +43,7 @@ function fakeSession(){
       return {
         bindings:bindings.slice(),
         clears,
+        binds,
       };
     },
   };
@@ -79,6 +82,7 @@ test('first explicit student is sanitized and bound as stable 학생A',async()=>
   );
   assert.equal(JSON.stringify(result.preparedPrivacy).includes('student-1'),false);
   assert.equal(session.state().bindings[0].studentId,'student-1');
+  assert.equal(session.state().binds,1);
 });
 
 test('context phrase reuses the same private subject without requiring the real name again',async()=>{
@@ -117,6 +121,7 @@ test('context phrase reuses the same private subject without requiring the real 
     follow.preparedPrivacy.subjectAccess.resolve('학생A').studentId,
     'student-1'
   );
+  assert.equal(session.state().binds,1,'same subject follow-up should not rewrite the binding');
 });
 
 test('explicitly switching to another student clears stale history before binding the new subject',async()=>{

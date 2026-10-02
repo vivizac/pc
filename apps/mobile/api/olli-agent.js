@@ -270,10 +270,9 @@ export default async function handler(req, res) {
 
       const privacyModule=await import('./_lib/olli-agent/privacy.cjs');
       let prepared;
-      let agentSession=null;
       try{
         const sessionModule=await import('./_lib/olli-agent/session.cjs');
-        const candidateSession=sessionModule.createOlliAgentSession({
+        const subjectSession=sessionModule.createOlliAgentSession({
           requestContext,
           surface:'team_talk',
           runKey:'team-chat-message:'+String(sourceMessageId),
@@ -281,10 +280,9 @@ export default async function handler(req, res) {
         const sessionPrivacy=await privacyModule.prepareAgentReadPrivacyInput(
           executionMessage,
           requestContext,
-          {session:candidateSession}
+          {session:subjectSession}
         );
         prepared=sessionPrivacy.preparedPrivacy;
-        if(sessionPrivacy.sessionEnabled===true) agentSession=candidateSession;
       }catch(sessionError){
         if(!String(sessionError?.code||'').startsWith('OLLI_AGENT_SESSION_')) throw sessionError;
         prepared=await privacyModule.prepareAgentPrivacyInput(executionMessage,requestContext);
@@ -300,7 +298,6 @@ export default async function handler(req, res) {
           sourceMessageId,
           sourceMessageText:executionMessage,
           readIntent,
-          session:agentSession,
           sourceValidated:true,
         });
       }else if(effectiveMode==='schedule_read'){
@@ -310,7 +307,6 @@ export default async function handler(req, res) {
           preparedPrivacy:prepared,
           sourceMessageId,
           sourceMessageText:executionMessage,
-          session:agentSession,
           sourceValidated:true,
         });
       }else if(effectiveMode==='attendance_read'){
@@ -320,7 +316,6 @@ export default async function handler(req, res) {
           preparedPrivacy:prepared,
           sourceMessageId,
           sourceMessageText:executionMessage,
-          session:agentSession,
           sourceValidated:true,
         });
       }else{
@@ -330,7 +325,6 @@ export default async function handler(req, res) {
           preparedPrivacy:prepared,
           sourceMessageId,
           sourceMessageText:executionMessage,
-          session:agentSession,
           sourceValidated:true,
         });
       }
