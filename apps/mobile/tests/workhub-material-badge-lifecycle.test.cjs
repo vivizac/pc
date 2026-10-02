@@ -8,7 +8,7 @@ const talk = fs.readFileSync(path.join(root, 'olli-talk-beta.js'), 'utf8');
 const materials = fs.readFileSync(path.join(root, 'olli-talk-material-orders-mobile.js'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const migration = fs.readFileSync(
-  path.resolve(__dirname, '../../../supabase/migrations/20261002065000_material_badge_until_ordered.sql'),
+  path.resolve(__dirname, '../../../supabase/migrations/20261002065442_material_badge_until_ordered.sql'),
   'utf8'
 );
 
