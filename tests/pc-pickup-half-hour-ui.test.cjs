@@ -81,8 +81,21 @@ test('PC half-hour timetable keeps internal scroll and disables wheel division s
 });
 
 
-test('PC half-hour timetable keeps the vertical scrollbar outside the table grid', () => {
-  assert.match(css, /\.olliTtSection:has\(\.olliTtHalfHourGrid\) \.olliTtScroll \{[\s\S]*?padding-right: 10px;[\s\S]*?scrollbar-gutter: stable;/);
-  assert.match(css, /\.olliTtSection:has\(\.olliTtHalfHourGrid\) \.olliTtGrid,[\s\S]*?\.olliTtPickupGrid \{[\s\S]*?border-right: 1px solid #e4e7eb;/);
-  assert.match(index, /pc-timetable\.css\?v=20261002-half-hour-scrollbar-outside-1/);
+test('PC half-hour timetable uses a real external scrollbar beside the timetable box', () => {
+  const sectionStart = ui.indexOf('function sectionHtml');
+  const sectionEnd = ui.indexOf('function bindHalfHourExternalScrollbar', sectionStart);
+  const sectionBlock = ui.slice(sectionStart, sectionEnd);
+
+  assert.match(sectionBlock, /const section = `<section class="olliTtSection/);
+  assert.match(sectionBlock, /if \(!halfHour\) return section;/);
+  assert.match(sectionBlock, /<div class="olliTtHalfHourShell">\$\{section\}<div class="olliTtHalfHourExternalScroll"/);
+  assert.match(css, /\.olliTtHalfHourShell \{[\s\S]*?display: flex;[\s\S]*?gap: 8px;/);
+  assert.match(css, /\.olliTtHalfHourExternalScroll \{[\s\S]*?flex: 0 0 12px;[\s\S]*?overflow-y: scroll;/);
+  assert.match(css, /\.olliTtHalfHourShell \.olliTtScroll \{[\s\S]*?scrollbar-width: none;/);
+  assert.doesNotMatch(css, /\.olliTtSection:has\(\.olliTtHalfHourGrid\) \.olliTtScroll \{[\s\S]*?padding-right: 10px;/);
+  assert.match(ui, /function bindHalfHourExternalScrollbar\(root\)/);
+  assert.match(ui, /external\.scrollTop = inner\.scrollTop/);
+  assert.match(ui, /inner\.scrollTop = external\.scrollTop/);
+  assert.match(index, /pc-timetable\.css\?v=20261002-half-hour-external-scrollbar-1/);
+  assert.match(index, /pc-timetable\.js\?v=20261002-half-hour-external-scrollbar-1/);
 });
