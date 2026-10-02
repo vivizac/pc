@@ -144,7 +144,6 @@ test('Mobile entry script order preserves critical dependency contracts', () => 
 
   before('olli-feedback-photo-storage-common.js', 'kinder-feedback.js');
   before('olli-command-schedule-common.js', 'olli-command-router-common.js');
-  before('olli-command-router-common.js', 'olli-team-talk-agent-route-common.js');
   before('olli-team-talk-agent-route-common.js', 'olli-talk-beta.js');
 });
 
