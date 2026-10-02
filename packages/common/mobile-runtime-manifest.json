@@ -44,6 +44,7 @@
     "olli-data-ui-utils.js",
     "olli-feedback-runtime.js",
     "olli-command-schedule-common.js",
+    "olli-agent-routing-common.js",
     "olli-command-router-common.js",
     "olli-feedback-registration-runtime.js",
     "olli-record-student-picker.js",
