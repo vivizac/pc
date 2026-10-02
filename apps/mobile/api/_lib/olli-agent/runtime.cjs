@@ -4665,6 +4665,197 @@ function restorePreparedSubjectLabels(value,preparedPrivacy){
   return text;
 }
 
+
+async function runContextualReadAgent({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+  agentInput,
+}) {
+  assertOpenAiKey();
+
+  const input=Array.isArray(agentInput) ? agentInput : [];
+  if(!input.length){
+    throw runtimeError(
+      '문맥 조회 Agent 입력 대화를 확인하지 못했습니다.',
+      400,
+      'OLLI_AGENT_CONTEXT_READ_INPUT_REQUIRED'
+    );
+  }
+
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+  if(preparedPrivacy?.needsDisambiguation){
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+  if(subjectRefs.length>1){
+    throw runtimeError(
+      '문맥 조회에서는 학생을 한 명만 이어서 확인할 수 있습니다.',
+      400,
+      'OLLI_AGENT_CONTEXT_READ_MULTI_STUDENT'
+    );
+  }
+
+  const {Agent,run,tool,z}=await loadAgentsSdk();
+  const {createGetStudentScheduleTool}=require('./tools/schedule-tools.cjs');
+  const {createGetAttendanceTool}=require('./tools/attendance-tools.cjs');
+  const {createGetPickupsTool}=require('./tools/pickup-tools.cjs');
+  const {createLabelBook,readTimetableIntent}=require('./tools/timetable-read-tools.cjs');
+  const {sanitizeAgentToolPayload}=require('./privacy.cjs');
+  const model=agentModel();
+  const today=todayInSeoul();
+  const labelBook=createLabelBook();
+  const tools=[];
+
+  if(subjectRefs.length===1){
+    tools.push(
+      createGetStudentScheduleTool({
+        tool,z,requestContext,
+        subjectAccess:preparedPrivacy.subjectAccess,
+      }),
+      createGetAttendanceTool({
+        tool,z,requestContext,
+        subjectAccess:preparedPrivacy.subjectAccess,
+        sanitizePayload(payload){
+          return sanitizeAgentToolPayload(payload,preparedPrivacy);
+        },
+      }),
+      createGetPickupsTool({
+        tool,z,requestContext,
+        subjectAccess:preparedPrivacy.subjectAccess,
+        sanitizePayload(payload){
+          return sanitizeAgentToolPayload(payload,preparedPrivacy);
+        },
+      })
+    );
+  }
+
+  tools.push(tool({
+    name:'read_timetable_context_query',
+    description:
+      '활성 Olli 대화의 마지막 사용자 질문을 앞 문맥과 합쳐 만든 독립적인 읽기 전용 시간표 조회 문장을 서버 규칙 파서로 검증한 뒤 실행합니다. 등록·수정·삭제는 절대 수행하지 않습니다.',
+    parameters:z.object({
+      standalone_query:z.string().min(2).max(700),
+    }),
+    async execute({standalone_query}){
+      const query=String(standalone_query || '').trim();
+      const router=loadSharedCommandRouter();
+      const intent=router.parseQueryIntent(query);
+      const supported=new Set([
+        'find_roster_entries',
+        'find_pickups',
+        'find_available_slots',
+        'multi_read_query',
+      ]);
+      if(!intent || !supported.has(String(intent?.intent || '').trim())){
+        throw runtimeError(
+          '문맥에서 읽기 전용 시간표 조회 조건을 확정하지 못했습니다.',
+          400,
+          'OLLI_AGENT_CONTEXT_TIMETABLE_QUERY_INVALID'
+        );
+      }
+      const payload=await readTimetableIntent({
+        requestContext,
+        intent,
+        sourceText:query,
+        todayKey:today,
+        labelBook,
+      });
+      return JSON.stringify(payload);
+    },
+  }));
+
+  const subjectInstruction=subjectRefs.length===1
+    ? 'The currently bound anonymous student is '+subjectRefs[0].label+'. Use that label for student-specific tools when the final user message continues the same student.'
+    : 'No student is currently bound. Do not call student-specific tools.';
+
+  const agent=new Agent({
+    name:'Olli Contextual Read',
+    model,
+    instructions:[
+      'You are Olli continuing an active Korean academy-operation conversation.',
+      'The input contains the entire active Olli conversation, already privacy-sanitized. The final item is the current user message.',
+      subjectInstruction,
+      'Decide whether the final user message clearly continues an academy data READ from the preceding conversation.',
+      'If it is unrelated to academy schedule, attendance, pickup, roster, or availability data, call no tool and return exactly OLLI_CONTEXT_UNRELATED.',
+      'If it is related, you MUST use the smallest appropriate read tool set before answering. Never answer academy facts from memory.',
+      'Use get_student_schedule for one student regular schedule questions, get_attendance for one student attendance history, and get_pickups for one student pickup history.',
+      'Use read_timetable_context_query for roster, seat availability, wait availability, pickup-roster, or other shared timetable reads. Its standalone_query must faithfully combine the prior request with only the changes stated in the final user message.',
+      'Do not invent a student, date, time, class group, division, or operation that is not supported by the conversation.',
+      'All tools are read-only. Never claim that data was registered, changed, cancelled, or deleted.',
+      'Use only tool results for the final answer.',
+      'Never reveal UUIDs, internal time slots, member IDs, session tokens, academy IDs, or hidden identifiers.',
+      'Answer briefly and naturally in Korean.',
+    ].join(' '),
+    tools,
+  });
+
+  const result=await run(agent,input,{context:agentContext});
+  const finalOutput=String(result?.finalOutput || '').trim();
+  const toolCalls=(Array.isArray(result?.newItems) ? result.newItems : [])
+    .filter((item)=>item?.type==='tool_call_item')
+    .map((item)=>String(item?.toolName || item?.rawItem?.name || '').trim())
+    .filter(Boolean);
+
+  if(finalOutput==='OLLI_CONTEXT_UNRELATED' && toolCalls.length===0){
+    return {
+      ready:true,
+      handled:false,
+      model,
+      output:'',
+      nodeVersion:process.versions.node,
+    };
+  }
+
+  if(toolCalls.length<1){
+    throw runtimeError(
+      '문맥 조회 Agent가 데이터 Tool 없이 답변하려고 했습니다.',
+      502,
+      'OLLI_AGENT_CONTEXT_READ_TOOL_REQUIRED'
+    );
+  }
+
+  const allowedTools=new Set([
+    'get_student_schedule',
+    'get_attendance',
+    'get_pickups',
+    'read_timetable_context_query',
+  ]);
+  if(toolCalls.some((name)=>!allowedTools.has(name))){
+    throw runtimeError(
+      '문맥 조회 Agent가 허용되지 않은 Tool을 호출했습니다.',
+      502,
+      'OLLI_AGENT_CONTEXT_READ_TOOL_INVALID'
+    );
+  }
+
+  if(!finalOutput || finalOutput==='OLLI_CONTEXT_UNRELATED'){
+    throw runtimeError(
+      '문맥 조회 Agent 응답이 비어 있습니다.',
+      502,
+      'OLLI_AGENT_EMPTY_CONTEXT_READ_RESPONSE'
+    );
+  }
+
+  const output=restorePreparedSubjectLabels(
+    labelBook.restore(finalOutput),
+    preparedPrivacy
+  );
+  return {
+    ready:true,
+    handled:true,
+    model,
+    output,
+    nodeVersion:process.versions.node,
+  };
+}
+
+
 async function runStudentScheduleRead({
   agentContext,
   requestContext,
@@ -5048,6 +5239,7 @@ module.exports = {
   runFoundationProbe,
   runStudentScheduleProbe,
   restorePreparedSubjectLabels,
+  runContextualReadAgent,
   runStudentScheduleRead,
   runTimetableRead,
   parseTimetableAdminSource,
