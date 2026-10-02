@@ -1829,6 +1829,7 @@ function resolveWaitlistAddPrepareScope(preparedPrivacy) {
   return {
     subjectLabel,
     division,
+    isGuest,
     classGroup:groupMatch?groupMatch[1].toUpperCase():'AUTO',
   };
 }
@@ -1848,6 +1849,7 @@ async function runWaitlistAddPrepareAgent({
   const prepareWaitlistAdd=createPrepareWaitlistAddTool({
     tool,z,requestContext,
     subjectAccess:preparedPrivacy.subjectAccess,
+    guestAccess:preparedPrivacy.waitlistGuestAccess,
     studentLabel:scope.subjectLabel,
     division:scope.division,
     classGroup:scope.classGroup,
@@ -1855,7 +1857,7 @@ async function runWaitlistAddPrepareAgent({
     requestId,
     replyToMessageId,
     capturePersistedMessage(message){persistedMessage=pickupPersistedMessageForClient(message);},
-    sanitizePayload(payload){return sanitizeAgentToolPayload(payload,preparedPrivacy);},
+    sanitizePayload(payload){return sanitizeWaitlistPayload(payload,preparedPrivacy,scope);},
   });
 
   const groupInstruction=scope.classGroup==='AUTO'
