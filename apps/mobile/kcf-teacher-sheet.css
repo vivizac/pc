@@ -1,4 +1,4 @@
-/* Teacher mode large editor. Normal Olli command input remains inline. */
+/* QuickNote Class-mode bottom sheet. Normal mode uses kcf-normal-sheet.css. */
 html.kcfTeacherSheetOpen,
 body.kcfTeacherSheetOpen {
   width:100%;
@@ -116,84 +116,35 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   padding:0;
 }
 
-.kcfTeacherSheetAttachBtn,
-.kcfTeacherSheetVoiceBtn,
 .kcfTeacherSheetSendBtn,
 .kcfTeacherSheetModeBtn {
   -webkit-tap-highlight-color:transparent;
   touch-action:manipulation;
 }
 
-.kcfTeacherSheetAttachBtn,
-.kcfTeacherSheetVoiceBtn {
-  width:33px;
-  height:33px;
-  min-width:33px;
-  border:0;
-  border-radius:999px;
-  padding:0;
-  background:transparent;
-  color:#111;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  flex:0 0 33px;
-}
-
-.kcfTeacherSheetAttachBtn svg {
-  width:24px;
-  height:24px;
-  stroke:currentColor;
-  fill:none;
-  stroke-width:1.7;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-}
-
-.kcfTeacherSheetVoiceBtn svg {
-  width:26px;
-  height:26px;
-}
-
-.kcfTeacherSheetNormalSpacer {
-  flex:1 1 auto;
-  min-width:0;
-}
-
-.kcfTeacherSheetAttachBtn[hidden],
-.kcfTeacherSheetVoiceBtn[hidden],
-.kcfTeacherSheetNormalSpacer[hidden],
-.kcfTeacherSheetRosterHost[hidden] {
-  display:none !important;
+.kcfTeacherSheetModeBtn {
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
 }
 
 .kcfTeacherSheetModeBtn {
-  width:auto;
+  width:33px;
   height:33px;
-  min-width:52px;
-  max-width:none;
+  min-width:33px;
+  max-width:33px;
   border:0;
-  border-radius:999px;
-  padding:0 10px;
-  background:#f1f1f1;
-  color:#111;
+  border-radius:50%;
+  padding:0;
+  background:#111;
+  color:#fff;
   font-family:inherit;
   font-size:calc(11px * var(--olli-text-scale));
   font-weight:650;
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  flex:0 0 auto;
+  flex:0 0 33px;
   z-index:3;
-}
-.kcfTeacherSheetModeBtn.active {
-  width:33px;
-  min-width:33px;
-  max-width:33px;
-  padding:0;
-  border-radius:50%;
-  background:#111;
-  color:#fff;
 }
 
 .kcfTeacherSheetRosterHost {
