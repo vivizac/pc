@@ -929,6 +929,7 @@
     const raw=cleanText(text);
     const compact=compactText(raw);
     if(!raw) return null;
+    if(!/(?:변경|바꿔|바꾸|설정|전환|해줘|해주세요|해줄래|분리해|합쳐|합치)/.test(compact)) return null;
     const split=/(?:분반|분리)/.test(compact);
     const merge=/(?:합반|통합|합쳐|합치)/.test(compact);
     if(split===merge) return null;
@@ -968,7 +969,7 @@
     const raw=cleanText(text);
     const compact=compactText(raw);
     if(!raw || !/(?:선생님|담임|담당|쌤)/.test(compact)) return null;
-    if(!/(?:배정|지정|담당|변경|바꿔|바꾸|교체)/.test(compact)) return null;
+    if(!/(?:배정|지정|변경|바꿔|바꾸|교체|해줘|해주세요|해줄래)/.test(compact)) return null;
     const teacherName=extractTeacherTargetName(raw);
     const division=detectDivision(compact);
     const dateSpec=parseDateExpression(compact);
@@ -1035,7 +1036,7 @@
     const normal=/(?:정상수업|정상수업일|수업진행)/.test(compact);
     const holiday=/(?:휴원일|휴원|공휴일로|수업없음)/.test(compact);
     if(!normal && !holiday) return null;
-    if(!/(?:변경|바꿔|바꾸|설정|전환|돌려|진행|해줘|해주세요)/.test(compact)) return null;
+    if(!/(?:변경|바꿔|바꾸|설정|전환|돌려|해줘|해주세요)/.test(compact)) return null;
     const dateSpec=parseDateExpression(compact);
     if(!dateSpec) return null;
     return {
