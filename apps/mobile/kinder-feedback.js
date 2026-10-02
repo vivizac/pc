@@ -1872,89 +1872,29 @@ function getKinderChatFeedbackStatusLabel(status) {
   if (status === 'review') return '확인 필요';
   return '도착';
 }
-function getKinderChatFeedbackAvatarSeed(item, fallbackName = '') {
-  if (item && typeof item === 'object') {
-    return String(item.id || item.createdAt || item.updatedAt || item.studentId || item.studentName || fallbackName || 'olli');
-  }
-  return String(item || fallbackName || 'olli');
+function getKinderChatFeedbackInboxCopyIconSvg() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="8.2" y="8.2" width="10.3" height="10.3" rx="2"></rect>
+    <path d="M15.8 8.2V6.7A2.2 2.2 0 0 0 13.6 4.5H6.7A2.2 2.2 0 0 0 4.5 6.7v6.9a2.2 2.2 0 0 0 2.2 2.2h1.5"></path>
+  </svg>`;
 }
-function getKinderChatFeedbackAvatarHash(seed) {
-  const text = String(seed || 'olli');
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) {
-    hash = (hash * 31 + text.charCodeAt(i) * (i + 7)) % 1000003;
-  }
-  return Math.abs(hash);
+function getKinderChatFeedbackInboxCopyCheckSvg() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M5.2 12.4l4.2 4.2L18.9 7"></path>
+  </svg>`;
 }
-function getKinderChatFeedbackAvatarIcon(item) {
-  const seed = getKinderChatFeedbackAvatarSeed(item);
-  const hash = getKinderChatFeedbackAvatarHash(seed);
-
-  // 미술용품 전용 아이콘만 사용합니다.
-  // 순서: 붓, 팔레트, 물감튜브, 크레파스, 연필, 지우개
-  const icons = [
-    // 붓
-    `<svg viewBox="0 0 24 24" aria-hidden="true" class="artAvatarIcon artAvatarBrush">
-      <path d="M14.7 4.6l4.7 4.7"></path>
-      <path d="M5.4 18.8c1.9.3 3.7-.2 5-1.5l8.1-8.1-3.7-3.7-8.1 8.1c-1.3 1.3-1.8 3.1-1.3 5.2z"></path>
-      <path d="M5.1 19l4.1-1.2"></path>
-    </svg>`,
-
-    // 팔레트
-    `<svg viewBox="0 0 24 24" aria-hidden="true" class="artAvatarIcon artAvatarPalette">
-      <path d="M12.1 4.7c-4.4 0-7.8 2.9-7.8 6.6 0 3.5 2.9 6 6.8 6.4.7.1 1.1.5 1.1 1.2 0 .8.7 1.3 1.6 1.1 3.6-.8 6-3.5 6-7.1 0-4.5-3.3-8.2-7.7-8.2z"></path>
-      <circle cx="8.1" cy="10.4" r="1"></circle>
-      <circle cx="11.3" cy="8.6" r="1"></circle>
-      <circle cx="14.8" cy="10.2" r="1"></circle>
-      <path d="M15.2 15.1h2.1"></path>
-    </svg>`,
-
-    // 물감 튜브
-    `<svg viewBox="0 0 24 24" aria-hidden="true" class="artAvatarIcon artAvatarPaintTube">
-      <path d="M8.4 5.2h7.2"></path>
-      <path d="M9.1 5.2v2.4h5.8V5.2"></path>
-      <path d="M8.7 7.6h6.6l2.4 9.1c.3 1.2-.6 2.3-1.8 2.3H8.1c-1.2 0-2.1-1.1-1.8-2.3l2.4-9.1z"></path>
-      <path d="M8.2 14.2h7.6"></path>
-      <path d="M10.2 16.6h3.6"></path>
-    </svg>`,
-
-    // 크레파스
-    `<svg viewBox="0 0 24 24" aria-hidden="true" class="artAvatarIcon artAvatarCrayon">
-      <path d="M6.1 8.7l2.6-2.6c.6-.6 1.6-.6 2.2 0l7 7c.6.6.6 1.6 0 2.2l-2.6 2.6c-.6.6-1.6.6-2.2 0l-7-7c-.6-.6-.6-1.6 0-2.2z"></path>
-      <path d="M8.5 6.3l-1.9-1 1 1.9"></path>
-      <path d="M10.2 9.6l4.2 4.2"></path>
-      <path d="M12.4 7.4l4.2 4.2"></path>
-    </svg>`,
-
-    // 연필
-    `<svg viewBox="0 0 24 24" aria-hidden="true" class="artAvatarIcon artAvatarPencil">
-      <path d="M5.5 18.5l1.1-4.4 8.6-8.6 3.3 3.3-8.6 8.6-4.4 1.1z"></path>
-      <path d="M14.1 6.6l3.3 3.3"></path>
-      <path d="M6.6 14.1l3.3 3.3"></path>
-      <path d="M5.5 18.5l2.6-.7-1.9-1.9-.7 2.6z"></path>
-    </svg>`,
-
-    // 지우개
-    `<svg viewBox="0 0 24 24" aria-hidden="true" class="artAvatarIcon artAvatarEraser">
-      <path d="M6.2 13.2l5.7-5.7c.8-.8 2-.8 2.8 0l3 3c.8.8.8 2 0 2.8L12 19H6.2v-5.8z"></path>
-      <path d="M10.8 8.6l6.1 6.1"></path>
-      <path d="M12 19h6.2"></path>
-    </svg>`
-  ];
-
-  return icons[hash % icons.length];
-}
-function getKinderChatFeedbackAvatarColor(item) {
-  const palette = ['#9BE7E8', '#FFD3B8', '#FFC5DB', '#9DDEF2', '#BFD9FF', '#E8B8FF', '#D7F3C8', '#FFE4A8'];
-  const seed = getKinderChatFeedbackAvatarSeed(item);
-  const hash = getKinderChatFeedbackAvatarHash(seed);
-  return palette[hash % palette.length];
-}
-function getKinderChatFeedbackAvatarIconColor(item) {
-  const colors = ['#1D6F73', '#9A5B24', '#A2446A', '#1B7790', '#2D6EA8', '#9D31C9', '#4C8440', '#9A6A12'];
-  const seed = getKinderChatFeedbackAvatarSeed(item);
-  const hash = getKinderChatFeedbackAvatarHash(seed);
-  return colors[hash % colors.length];
+function markKinderChatFeedbackInboxCopied(id) {
+  const key = String(id || '');
+  if (!key || typeof getTodayFeedbackItemsRaw !== 'function' || typeof setTodayFeedbackItemsRaw !== 'function') return false;
+  const list = getTodayFeedbackItemsRaw();
+  let changed = false;
+  const next = list.map(item => {
+    if (!item || String(item.id || '') !== key || item.copiedAt) return item;
+    changed = true;
+    return { ...item, copiedAt:new Date().toISOString() };
+  });
+  if (changed) setTodayFeedbackItemsRaw(next);
+  return changed;
 }
 function buildKinderChatFeedbackInboxCard(item) {
   const status = item.status || 'done';
@@ -1966,16 +1906,14 @@ function buildKinderChatFeedbackInboxCard(item) {
   const isLoadFail = isTodayFeedbackLoadFailItem(item);
   const canCopy = (status === 'done' || status === 'review') && !isLoadFail && !getSuspiciousFeedbackSegments(item.resultText || '').length;
   const name = item.studentName || '학생';
-  const avatarIcon = getKinderChatFeedbackAvatarIcon(item);
-  const avatarColor = getKinderChatFeedbackAvatarColor(item);
-  const avatarIconColor = getKinderChatFeedbackAvatarIconColor(item);
+  const copied = !!item.copiedAt;
   const dateText = formatNotificationDate(item.updatedAt || item.createdAt);
   const labelText = String(item.label || '유치부 1분 피드백').replace(/^유치부\s*/, '') || '1분 피드백';
   const openMetaText = dateText ? `${labelText} · ${dateText}` : labelText;
   const renderedText = status === 'done' || status === 'review' ? renderSuspiciousFeedbackText(text) : escapeHtml(text);
   return `<div class="kcfInboxCard" data-kcf-feedback-id="${escapeHtml(item.id)}" onclick="toggleKinderChatFeedbackInboxItem('${escapeHtml(item.id)}')">
     <div class="kcfInboxTop">
-      <div class="kcfInboxAvatar" style="background:${escapeHtml(avatarColor)}; color:${escapeHtml(avatarIconColor)};">${avatarIcon}</div>
+      <button type="button" class="kcfInboxCopyIconBtn${copied ? ' copied' : ''}" onclick="event.stopPropagation(); copyKinderChatFeedbackInbox('${escapeHtml(item.id)}', this)" aria-label="${escapeHtml(name)} 피드백 복사" title="피드백 복사"${canCopy ? '' : ' disabled'}>${getKinderChatFeedbackInboxCopyIconSvg()}</button>
       <div class="kcfInboxMain">
         <div class="kcfInboxMetaRow">
           <div class="kcfInboxName">${escapeHtml(name)}</div>
@@ -1993,7 +1931,6 @@ function buildKinderChatFeedbackInboxCard(item) {
       </div>
       <div class="kcfInboxActionsRight">
         <button type="button" class="todayFeedbackActionBtn kcfInboxActionBtn kcfInboxEditBtn" onclick="editKinderChatFeedbackInboxItem('${escapeHtml(item.id)}')"${canEdit ? '' : ' disabled'}>수정</button>
-        <button type="button" class="todayFeedbackActionBtn kcfInboxActionBtn kcfInboxCopyBtn" onclick="copyKinderChatFeedbackInbox('${escapeHtml(item.id)}', this)"${canCopy ? '' : ' disabled'}>복사</button>
         <button type="button" class="todayFeedbackActionBtn kcfInboxActionBtn kcfInboxEditCancelBtn" onclick="cancelKinderChatFeedbackInboxEdit('${escapeHtml(item.id)}')" style="display:none;">취소</button>
         <button type="button" class="todayFeedbackActionBtn primary kcfInboxActionBtn kcfInboxEditDoneBtn" onclick="confirmKinderChatFeedbackInboxEdit('${escapeHtml(item.id)}')" style="display:none;">수정 완료</button>
       </div>
@@ -2046,12 +1983,12 @@ function editKinderChatFeedbackInboxItem(id) {
   const doneBtn = card.querySelector('.kcfInboxEditDoneBtn');
   const cancelBtn = card.querySelector('.kcfInboxEditCancelBtn');
   const deleteBtn = card.querySelector('.kcfInboxDeleteBtn');
-  const copyBtn = card.querySelector('.kcfInboxCopyBtn');
+  const copyBtn = card.querySelector('.kcfInboxCopyIconBtn');
   if (editBtn) editBtn.style.display = 'none';
   if (deleteBtn) deleteBtn.style.display = 'none';
   if (doneBtn) doneBtn.style.display = 'inline-flex';
   if (cancelBtn) cancelBtn.style.display = 'inline-flex';
-  if (copyBtn) copyBtn.style.display = 'none';
+  if (copyBtn) copyBtn.disabled = true;
   const textarea = card.querySelector('.kcfInboxEditArea');
   if (textarea) {
     const fitEditArea = () => {
@@ -2118,25 +2055,29 @@ async function copyKinderChatFeedbackInbox(id, btn) {
     return false;
   }
 
-  const oldText = btn ? (btn.textContent || '복사') : '복사';
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = '복사 중...';
-  }
-
+  if (btn) btn.disabled = true;
   const copied = await writeKinderChatFeedbackClipboard(item.resultText);
   if (!copied) {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = oldText;
-    }
+    if (btn) btn.disabled = false;
     showPushToast('복사에 실패했어요.');
     return false;
   }
 
-  if (btn) {
-    btn.disabled = false;
-    showOlliCopySuccess(btn, { restoreHtml: oldText, restoreDisabled: false });
+  markKinderChatFeedbackInboxCopied(id);
+  const card = document.querySelector(`[data-kcf-feedback-id="${CSS.escape(String(id || ''))}"]`);
+  const copyBtn = card?.querySelector?.('.kcfInboxCopyIconBtn') || btn || null;
+  if (copyBtn) {
+    copyBtn.classList.add('copied', 'copySuccess');
+    copyBtn.disabled = true;
+    copyBtn.innerHTML = getKinderChatFeedbackInboxCopyCheckSvg();
+    window.setTimeout(() => {
+      const latestCard = document.querySelector(`[data-kcf-feedback-id="${CSS.escape(String(id || ''))}"]`);
+      const latestBtn = latestCard?.querySelector?.('.kcfInboxCopyIconBtn');
+      if (!latestBtn) return;
+      latestBtn.classList.remove('copySuccess');
+      latestBtn.innerHTML = getKinderChatFeedbackInboxCopyIconSvg();
+      latestBtn.disabled = false;
+    }, 850);
   }
   showPushToast('피드백을 복사했어요.');
   return true;
@@ -2201,7 +2142,7 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
   if (card) {
     card.classList.remove('editing');
     card.classList.add('open');
-    const avatarEl = card.querySelector('.kcfInboxAvatar');
+    const copyIconBtn = card.querySelector('.kcfInboxCopyIconBtn');
     const preview = card.querySelector('.kcfInboxText');
     const full = card.querySelector('.kcfInboxFullText');
     const statusEl = card.querySelector('.kcfInboxStatus');
@@ -2211,11 +2152,10 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
     const doneBtn = card.querySelector('.kcfInboxEditDoneBtn');
     const cancelBtn = card.querySelector('.kcfInboxEditCancelBtn');
     const deleteBtn = card.querySelector('.kcfInboxDeleteBtn');
-    const copyBtn = card.querySelector('.kcfInboxCopyBtn');
+    const copyBtn = copyIconBtn;
     const labelText = String(updatedItem?.label || '유치부 1분 피드백').replace(/^유치부\s*/, '') || '1분 피드백';
     const dateText = formatNotificationDate(updatedItem?.updatedAt || updatedItem?.createdAt);
     const openMetaText = dateText ? `${labelText} · ${dateText}` : labelText;
-    if (avatarEl) avatarEl.style.display = 'none';
     if (preview) {
       preview.dataset.kcfPreviewText = nextText;
       preview.dataset.kcfOpenMeta = openMetaText;
@@ -2237,10 +2177,7 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
     if (deleteBtn) deleteBtn.style.display = 'inline-flex';
     if (doneBtn) doneBtn.style.display = 'none';
     if (cancelBtn) cancelBtn.style.display = 'none';
-    if (copyBtn) {
-      copyBtn.style.display = 'inline-flex';
-      copyBtn.disabled = !!segments.length;
-    }
+    if (copyBtn) copyBtn.disabled = !!segments.length;
   }
 }
 

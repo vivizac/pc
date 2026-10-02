@@ -86,6 +86,31 @@ test('temporary inbox itself remains connected and copy-only', () => {
   assert.doesNotMatch(js, /copyAndSaveKinderChatFeedback/);
 });
 
+test('temporary inbox cards use a persistent copy icon instead of random art avatars', () => {
+  const start = js.indexOf('function buildKinderChatFeedbackInboxCard');
+  const end = js.indexOf('function toggleKinderChatFeedbackInboxItem', start);
+  const card = js.slice(start, end);
+  assert.match(card, /kcfInboxCopyIconBtn/);
+  assert.match(card, /copiedAt/);
+  assert.match(card, /copyKinderChatFeedbackInbox/);
+  assert.doesNotMatch(card, /getKinderChatFeedbackAvatarIcon|getKinderChatFeedbackAvatarColor|getKinderChatFeedbackAvatarIconColor/);
+  assert.doesNotMatch(card, /kcfInboxCopyBtn/);
+  assert.doesNotMatch(js, /function getKinderChatFeedbackAvatar/);
+  assert.match(css, /\.kcfInboxCopyIconBtn \{[\s\S]*?width:38px;[\s\S]*?border:1px solid #d9dde3;[\s\S]*?background:#fff;[\s\S]*?color:#8e8e93;/);
+  assert.match(css, /\.kcfInboxCopyIconBtn\.copied \{[\s\S]*?background:#0A84FF;[\s\S]*?color:#fff;/);
+});
+
+test('temporary inbox copy success shows a check then restores the repeatable copy icon', () => {
+  const start = js.indexOf('async function copyKinderChatFeedbackInbox');
+  const end = js.indexOf('async function confirmKinderChatFeedbackInboxEdit', start);
+  const copy = js.slice(start, end);
+  assert.match(copy, /markKinderChatFeedbackInboxCopied\(id\)/);
+  assert.match(copy, /getKinderChatFeedbackInboxCopyCheckSvg\(\)/);
+  assert.match(copy, /getKinderChatFeedbackInboxCopyIconSvg\(\)/);
+  assert.match(copy, /copySuccess/);
+  assert.match(copy, /latestBtn\.disabled = false/);
+});
+
 test('editing an already auto-saved LIVE response patches the server and refreshes inbox mirror', () => {
   const start = js.indexOf('async function confirmKinderChatFeedbackLiveEdit');
   const end = js.indexOf('async function saveKinderChatFeedbackLive', start);
@@ -98,7 +123,7 @@ test('editing an already auto-saved LIVE response patches the server and refresh
 
 test('auto-save LIVE assets are cache-busted', () => {
   assert.match(html, /kinder-feedback\.js\?v=20261002-auto-save-actions-2/);
-  assert.match(html, /kinder-feedback\.css\?v=20261002-note-action-spacing-1/);
+  assert.match(html, /kinder-feedback\.css\?v=20261002-inbox-copy-icon-1/);
   assert.match(html, /olli-feedback-registration-phone-adapter\.js\?v=20261002-auto-save-actions-1/);
 });
 
@@ -114,5 +139,5 @@ test('LIVE text action button creation has no stale helper dependency', () => {
 });
 
 test('LIVE action label fix is cache-busted', () => {
-  assert.match(html, /kinder-feedback\.js\?v=20261002-live-action-label-fix-1/);
+  assert.match(html, /kinder-feedback\.js\?v=20261002-inbox-copy-icon-1/);
 });
