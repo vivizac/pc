@@ -1,12 +1,46 @@
 'use strict';
 
+const { createHmac, timingSafeEqual } = require('node:crypto');
 const { loadAcademyStudents } = require('./student-reference-resolver.cjs');
+const { getServerKey } = require('./supabase-rpc.cjs');
 const { collectStudentNameVariants } = require('../ai-privacy-gateway.cjs');
 const { sanitizeText } = require('../ai-privacy-sanitizer.cjs');
 
 
 function clean(value) {
   return String(value == null ? '' : value).trim();
+}
+
+function contextResolutionPayload(requestContext, sourceMessageId, resolvedText) {
+  return [
+    clean(requestContext?.academyId),
+    clean(requestContext?.memberId),
+    clean(requestContext?.sessionToken),
+    String(Number(sourceMessageId || 0)),
+    clean(resolvedText),
+  ].join('\u001f');
+}
+
+function signContextResolution({ requestContext, sourceMessageId, resolvedText } = {}) {
+  const secret=clean(getServerKey());
+  const sourceId=Number(sourceMessageId || 0);
+  const resolved=clean(resolvedText);
+  if(!secret || !requestContext?.academyId || !requestContext?.memberId || !requestContext?.sessionToken){
+    return '';
+  }
+  if(!Number.isSafeInteger(sourceId) || sourceId<=0 || !resolved) return '';
+  return createHmac('sha256',secret)
+    .update(contextResolutionPayload(requestContext,sourceId,resolved))
+    .digest('hex');
+}
+
+function verifyContextResolution({ requestContext, sourceMessageId, resolvedText, token } = {}) {
+  const expected=signContextResolution({requestContext,sourceMessageId,resolvedText});
+  const actual=clean(token);
+  if(!expected || !/^[a-f0-9]{64}$/i.test(actual)) return false;
+  const expectedBuffer=Buffer.from(expected,'hex');
+  const actualBuffer=Buffer.from(actual,'hex');
+  return expectedBuffer.length===actualBuffer.length && timingSafeEqual(expectedBuffer,actualBuffer);
 }
 
 function messageId(item) {
@@ -248,4 +282,6 @@ module.exports = {
   restoreStudentLabels,
   extractOutputText,
   resolveContextualReadRewrite,
+  signContextResolution,
+  verifyContextResolution,
 };
