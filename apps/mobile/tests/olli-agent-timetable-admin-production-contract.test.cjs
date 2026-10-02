@@ -8,7 +8,7 @@ const endpoint=fs.readFileSync(path.join(root,'api/olli-agent.js'),'utf8');
 const runtime=fs.readFileSync(path.join(root,'api/_lib/olli-agent/runtime.cjs'),'utf8');
 const tool=fs.readFileSync(path.join(root,'api/_lib/olli-agent/tools/timetable-admin-prepare-tools.cjs'),'utf8');
 const executorMigration=fs.readFileSync(path.resolve(root,'../../supabase/migrations/20261002033226_team_chat_timetable_admin_agent_actions.sql'),'utf8');
-const senderMigration=fs.readFileSync(path.resolve(root,'../../supabase/migrations/20261002151000_allow_timetable_admin_team_chat_actions.sql'),'utf8');
+const senderMigration=fs.readFileSync(path.resolve(root,'../../supabase/migrations/20261002061029_allow_timetable_admin_team_chat_actions.sql'),'utf8');
 
 test('production endpoint exposes only source-bound timetable admin prepare',()=>{
   assert.match(endpoint,/'timetable_admin_prepare'/);
