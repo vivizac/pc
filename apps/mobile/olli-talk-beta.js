@@ -1947,7 +1947,7 @@
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        mode:'context_resolve',
+        mode:'context_schedule_resolve',
         academyId:context?.academyId || '',
         sessionToken:context?.sessionToken || '',
         message:String(commandText || '').trim(),
@@ -2225,18 +2225,22 @@
       ? routeClassifier.classify(commandText,{router})
       : null;
     if(!sharedRoute && classifierAvailable){
-      const contextualRuleTurn=await resolveOlliTalkContextualRuleStudentScheduleTurn(
-        commandText,
-        context,
-        replyToMessageId
-      );
-      if(contextualRuleTurn) return contextualRuleTurn;
-      const contextualTurn=await resolveOlliTalkContextualReadTurn(
-        commandText,
-        context,
-        replyToMessageId
-      );
-      if(contextualTurn) return contextualTurn;
+      const scheduleContextActive=hasOlliTalkRuleStudentScheduleContext();
+      if(scheduleContextActive){
+        const contextualRuleTurn=await resolveOlliTalkContextualRuleStudentScheduleTurn(
+          commandText,
+          context,
+          replyToMessageId
+        );
+        if(contextualRuleTurn) return contextualRuleTurn;
+      }else{
+        const contextualTurn=await resolveOlliTalkContextualReadTurn(
+          commandText,
+          context,
+          replyToMessageId
+        );
+        if(contextualTurn) return contextualTurn;
+      }
     }
     if(sharedRoute){
       const routedTurn=await resolveOlliTalkSharedAgentRouteTurn(sharedRoute,commandText,context,replyToMessageId);
