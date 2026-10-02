@@ -64,3 +64,18 @@ test('admin-only parsers do not silently enter legacy parseWriteIntent',()=>{
   assert.equal(router.parseWriteIntent('다음주 수요일 초등부 5시 분반해줘'),null);
   assert.equal(router.parseWriteIntent('초등부 수요일 5시 담당 선생님 김민지로 배정해줘'),null);
 });
+
+
+test('query-shaped timetable admin text is not treated as a write',()=>{
+  assert.equal(router.parseClassLayoutMutationIntent('초등부 수요일 5시 분반이야?'),null);
+  assert.equal(router.parseTeacherAssignmentMutationIntent('초등부 수요일 5시 담당 선생님 김민지 맞아?'),null);
+  assert.equal(router.parseNormalClassDayMutationIntent('10월 9일 정상수업이야?'),null);
+});
+
+test('exact-date teacher override can derive weekday server-side',()=>{
+  const parsed=router.parseTeacherAssignmentMutationIntent('10월 9일 초등부 4시 담당 선생님 김민지로 변경해줘');
+  assert.equal(parsed.intent,'set_teacher_override');
+  assert.equal(parsed.teacherName,'김민지');
+  assert.equal(parsed.dateSpec.mode,'month_day');
+  assert.equal(parsed.weekday,0);
+});
