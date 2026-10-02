@@ -2515,24 +2515,6 @@
     }
   }
 
-  function reportAiLegacyRouteOutcome(current, outcome, routeKey, sharedRoute, classifierAvailable) {
-    if (!current?.academyId || !current?.sessionToken) return;
-    void fetch('/api/olli-agent', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body:JSON.stringify({
-        mode:'route_outcome',
-        academyId:current.academyId,
-        sessionToken:current.sessionToken,
-        surface:'pc',
-        outcome:clean(outcome),
-        routeKey:clean(routeKey),
-        sharedRouteKey:clean(sharedRoute?.key),
-        classifierAvailable:classifierAvailable === true
-      })
-    }).catch(() => {});
-  }
-
   async function resolveContextualReadRoute(commandText,current,replyToMessageId,routeClassifier,router) {
     if (!routeClassifier || typeof routeClassifier.classify !== 'function') return null;
     const sourceMessageId=Number(replyToMessageId || 0);
@@ -2566,7 +2548,27 @@
     }
   }
 
-  async function resolveAiTurn(commandText, current, replyToMessageId, options = {}) {
+ 
+
+  function reportAiLegacyRouteOutcome(current, outcome, routeKey, sharedRoute, classifierAvailable) {
+    if (!current?.academyId || !current?.sessionToken) return;
+    void fetch('/api/olli-agent', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body:JSON.stringify({
+        mode:'route_outcome',
+        academyId:current.academyId,
+        sessionToken:current.sessionToken,
+        surface:'pc',
+        outcome:clean(outcome),
+        routeKey:clean(routeKey),
+        sharedRouteKey:clean(sharedRoute?.key),
+        classifierAvailable:classifierAvailable === true
+      })
+    }).catch(() => {});
+  }
+
+ async function resolveAiTurn(commandText, current, replyToMessageId, options = {}) {
     const router = global.OlliCommandRouter;
     const schedule = global.OlliCommandSchedule;
 
