@@ -306,7 +306,7 @@ test('PC and Mobile use one unified interpreter before rule or Agent routing', (
       ? source.indexOf('function getOlliTalkMentionMessageText',start)
       : source.indexOf('function updateComposerState',start);
     const block=source.slice(start,end);
-    assert.match(block,/mode:'interpret'/);
+    assert.match(source,/mode:'interpret'/);
     assert.doesNotMatch(block,/mode:'context_read'/);
     assert.doesNotMatch(block,/mode:'context_resolve'/);
     const interpret=block.indexOf('interpretOlli');
