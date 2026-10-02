@@ -24,6 +24,9 @@ function requestContext(){
 function subjectAccess(division='elementary'){
   return {resolve(label){return label==='학생A'?{studentId:'33333333-3333-4333-8333-333333333333',division}:null;}};
 }
+function guestAccess(division='',guestName='비재원민지'){
+  return {resolve(label){return label==='학생A'?{guestName,division,isGuest:true}:null;}};
+}
 function row(overrides={}){
   return Object.assign({
     id:'44444444-4444-4444-8444-444444444444',
@@ -178,17 +181,69 @@ test('another active waitlist at the target blocks preparation',async()=>{
   );
 });
 
-test('guest fallback happens before Agents SDK execution scope',()=>{
-  assert.throws(
-    ()=>resolveWaitlistUpdatePrepareScope({needsDisambiguation:false,subjectRefs:[],safeText:'비재원A 대기를 금요일 4시로 변경해줘'}),
-    e=>e?.code==='OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED'
-  );
+test('waitlist update scope supports registered and non-enrolled guest subjects',()=>{
   const prepared={needsDisambiguation:false,subjectRefs:[{label:'학생A'}],subjectAccess:subjectAccess(),safeText:'학생A 대기를 토요일 1시 B반으로 변경해줘'};
-  assert.equal(resolveWaitlistUpdatePrepareScope(prepared).subjectLabel,'학생A');
+  const registered=resolveWaitlistUpdatePrepareScope(prepared);
+  assert.equal(registered.subjectLabel,'학생A');
+  assert.equal(registered.isGuest,false);
+
+  const guestPrepared={
+    needsDisambiguation:false,
+    subjectRefs:[{label:'학생A'}],
+    waitlistGuestAccess:guestAccess(''),
+    safeText:'학생A 대기를 토요일 1시 B반으로 변경해줘'
+  };
+  const guest=resolveWaitlistUpdatePrepareScope(guestPrepared);
+  assert.equal(guest.subjectLabel,'학생A');
+  assert.equal(guest.isGuest,true);
+  assert.equal(guest.division,'');
+
   assert.throws(
     ()=>resolveWaitlistUpdatePrepareScope({...prepared,safeText:'학생A 대기 취소해줘'}),
     e=>e?.code==='OLLI_AGENT_WAITLIST_UPDATE_INTENT_REQUIRED'
   );
+});
+
+test('non-enrolled guest waitlist update resolves division from current row and stores pending action',async()=>{
+  const guestRow=row({
+    student_id:null,
+    student_name:'비재원민지',
+    guest_name:'비재원민지',
+    guest_division:'elementary',
+    target_division:'elementary',
+    is_guest:true,
+  });
+  const {rpc,calls}=baseRpc({
+    rows:[guestRow],
+    slots:[slot({date:'2026-10-03',weekday:6,time_slot:1,class_group:'B'})],
+    targetRows:[guestRow],
+  });
+  const result=await prepareWaitlistUpdateAction({
+    requestContext:requestContext(),
+    subjectAccess:{resolve(){return null;}},
+    guestAccess:guestAccess('', '비재원민지'),
+    studentLabel:'학생A',
+    division:'',
+    sourceWeekday:5,
+    sourceHour:4,
+    sourceMinute:30,
+    targetDate:'2026-10-03',
+    targetHour:1,
+    targetMinute:0,
+    targetGroup:'B',
+    currentDate:'2026-10-01',
+    requestId:'guest-update',
+    sanitizePayload:p=>p,
+    callRpc:rpc,
+  });
+  assert.equal(result.action_type,'update_waitlist');
+  const action=calls.find(c=>c.name==='olli_team_chat_send_action');
+  assert.equal(action.params.p_action_payload.studentId,'');
+  assert.equal(action.params.p_action_payload.guestName,'비재원민지');
+  assert.equal(action.params.p_action_payload.isGuest,true);
+  assert.equal(action.params.p_action_payload.division,'elementary');
+  assert.ok(!calls.some(c=>c.name==='olli_student_data_access'));
+  assert.doesNotMatch(JSON.stringify(result),/비재원민지|44444444/);
 });
 
 test('stable retry key and date helpers are deterministic',()=>{
