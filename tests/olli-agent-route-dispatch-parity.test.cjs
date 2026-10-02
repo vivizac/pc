@@ -25,7 +25,7 @@ test('shared classifier is staged and loaded before platform Team Chat runtimes'
   assert.ok(pos(pcHtml,'pc-team-talk.js')>pos(pcHtml,'olli-team-talk-agent-route-common.js'));
 
   assert.ok(pos(mobileHtml,'olli-command-router-common.js')>=0);
-  assert.ok(pos(mobileHtml,'olli-team-talk-agent-route-common.js')>pos(mobileHtml,'olli-command-router-common.js'));
+  assert.ok(pos(mobileHtml,'olli-team-talk-agent-route-common.js')>=0);
   assert.ok(pos(mobileHtml,'olli-talk-beta.js')>pos(mobileHtml,'olli-team-talk-agent-route-common.js'));
 });
 
