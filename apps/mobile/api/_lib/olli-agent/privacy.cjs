@@ -10,6 +10,7 @@ const { sanitizeValue } = require('../ai-privacy-sanitizer.cjs');
 const { assertSafeEgress } = require('../ai-egress-guard.cjs');
 const {
   resolveStudentReferences,
+  matchStudentReferences,
   createSubjectAccess,
 } = require('./student-reference-resolver.cjs');
 
@@ -296,11 +297,64 @@ async function prepareAgentContextReadPrivacyInput(
   requestContext,
   options = {}
 ) {
-  const result=await prepareAgentReadPrivacyInput(
+  let result=await prepareAgentReadPrivacyInput(
     text,
     requestContext,
     Object.assign({},options,{allowBoundSubjectContinuation:true})
   );
+
+  if(
+    !result.preparedPrivacy?.needsDisambiguation
+    && (Array.isArray(result.preparedPrivacy?.subjectRefs)
+      ? result.preparedPrivacy.subjectRefs.length
+      : 0)===0
+  ){
+    const baseResolution=result.preparedPrivacy?.rawResolution;
+    const rawRows=(Array.isArray(baseResolution?.students) ? baseResolution.students : [])
+      .map((student)=>student?.row)
+      .filter(Boolean);
+    const resolverOptions=Object.assign({},options);
+    delete resolverOptions.session;
+    delete resolverOptions.allowBoundSubjectContinuation;
+
+    const priorUsers=normalizeAgentConversation(conversation)
+      .filter((item)=>item.role==='user')
+      .reverse();
+
+    let inferred=null;
+    for(const item of priorUsers){
+      const candidate=matchStudentReferences(item.content,rawRows,resolverOptions);
+      const resolved=Array.isArray(candidate?.resolved)?candidate.resolved:[];
+      const ambiguous=Array.isArray(candidate?.ambiguous)?candidate.ambiguous:[];
+      if(resolved.length===1 && ambiguous.length===0){
+        inferred=candidate;
+        break;
+      }
+    }
+
+    if(inferred){
+      const current=inferred.resolved[0];
+      const stableResolution=withStableSingleSubject(
+        inferred,
+        current,
+        {subjectRef:current.subjectRef}
+      );
+      const session=options?.session;
+      if(session && typeof session.bindSubjectBindings==='function'){
+        await session.bindSubjectBindings([{
+          label:'학생A',
+          subjectRef:current.subjectRef,
+          studentId:clean(current?.student?.id),
+        }]);
+      }
+      result=Object.freeze({
+        preparedPrivacy:prepareAgentPrivacyFromResolution(text,stableResolution),
+        sessionEnabled:!!session,
+        sessionReset:false,
+      });
+    }
+  }
+
   const input=prepareAgentConversationInput(
     result.preparedPrivacy,
     conversation,
