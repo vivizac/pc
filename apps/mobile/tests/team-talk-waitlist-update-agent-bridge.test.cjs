@@ -14,19 +14,22 @@ test('mobile waitlist update gate uses only the shared candidate parser',()=>{
   assert.doesNotMatch(block,/parseWriteIntent|prepareAction|add_waitlist|cancel_waitlist/);
 });
 
-test('mobile waitlist update is routed before student info and legacy prepareAction',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const end=talk.indexOf('function getOlliTalkMentionMessageText',start);
-  const block=talk.slice(start,end);
-  const update=block.indexOf('if(isOlliTalkWaitlistUpdateAgentCandidate(commandText,router))');
-  const studentInfo=block.indexOf('const studentInfo=resolveOlliTalkStudentInfoCommand(commandText)');
-  const legacy=block.indexOf("if(router && typeof router.prepareAction==='function')");
-  assert.ok(update>=0);
-  assert.ok(studentInfo>update);
-  assert.ok(legacy>studentInfo);
-  assert.match(block,/return resolveOlliTalkWaitlistUpdateAgentTurn\(commandText,context,replyToMessageId\)/);
-});
+test('mobile waitlist update is routed before student info and legacy prepareAction — shared dispatch contract',()=> {
+  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
+  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'waitlist_update'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('mobile waitlist update bridge uses source-bound production mode without creating a second action',()=>{
   const start=talk.indexOf('async function resolveOlliTalkWaitlistUpdateAgentTurn');
   const end=talk.indexOf('function isOlliTalkPendingReasonCancel',start);
