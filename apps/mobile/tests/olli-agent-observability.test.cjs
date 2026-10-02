@@ -1,0 +1,162 @@
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const {
+  WORKFLOW_NAME,
+  buildTraceGroupId,
+  buildOlliTraceOptions,
+  summarizeAgentRun,
+  evaluateRunSummary,
+  wrapOlliAgentRun,
+} = require('../api/_lib/olli-agent/observability.cjs');
+
+function agent(name = 'Olli Student Schedule') {
+  return { name };
+}
+
+function context(memberId = 'member-secret-1') {
+  return {
+    academyId: 'academy-secret-1',
+    memberId,
+    memberRole: 'teacher',
+  };
+}
+
+test('trace grouping is stable for one academy/member and separated by member', () => {
+  const first = buildTraceGroupId(context());
+  const second = buildTraceGroupId(context());
+  const otherMember = buildTraceGroupId(context('member-secret-2'));
+
+  assert.equal(first, second);
+  assert.notEqual(first, otherMember);
+  assert.match(first, /^olli_team_talk_[a-f0-9]{32}$/);
+  assert.doesNotMatch(first, /academy-secret|member-secret/);
+});
+
+test('trace options force redacted tracing and never serialize academy/member ids', () => {
+  const options = buildOlliTraceOptions(agent(), {
+    context: context(),
+    session: { kind: 'opaque-session' },
+    traceIncludeSensitiveData: true,
+    workflowName: 'unsafe workflow',
+    groupId: 'academy-secret-1',
+    traceMetadata: {
+      student: 'real student',
+    },
+  });
+
+  assert.equal(options.traceIncludeSensitiveData, false);
+  assert.equal(options.workflowName, WORKFLOW_NAME);
+  assert.equal(options.traceMetadata.privacy, 'redacted');
+  assert.equal(options.traceMetadata.surface, 'team_talk');
+  assert.equal(options.context.academyId, 'academy-secret-1');
+  assert.equal(options.session.kind, 'opaque-session');
+
+  const tracingOnly = JSON.stringify({
+    workflowName: options.workflowName,
+    groupId: options.groupId,
+    traceMetadata: options.traceMetadata,
+    traceIncludeSensitiveData: options.traceIncludeSensitiveData,
+  });
+  assert.doesNotMatch(tracingOnly, /academy-secret|member-secret|real student/);
+});
+
+test('run summary records tool names and shapes without argument or output values', () => {
+  const result = {
+    finalOutput: '학생A는 화요일 4시에 수업이 있어요.',
+    newItems: [
+      {
+        type: 'tool_call_item',
+        rawItem: {
+          type: 'function_call',
+          name: 'get_student_schedule',
+          arguments: JSON.stringify({
+            subject_ref: 'subject_private_value',
+            reference_date: '2026-10-02',
+          }),
+        },
+      },
+      {
+        type: 'tool_call_output_item',
+        rawItem: {
+          type: 'function_call_result',
+          name: 'get_student_schedule',
+        },
+        output: {
+          sessions: [{ weekday: 2, time_slot: 16 }],
+          private_value: 'must-not-leak',
+        },
+      },
+      {
+        type: 'message_output_item',
+      },
+    ],
+  };
+
+  const summary = summarizeAgentRun(agent(), result);
+  assert.equal(summary.toolCallCount, 1);
+  assert.deepEqual(summary.toolCalls[0], {
+    name: 'get_student_schedule',
+    argumentKeys: ['reference_date', 'subject_ref'],
+  });
+  assert.equal(summary.toolOutputs[0].shape.type, 'object');
+  assert.deepEqual(summary.toolOutputs[0].shape.keys, ['private_value', 'sessions']);
+  assert.equal(summary.finalOutputPresent, true);
+
+  const serialized = JSON.stringify(summary);
+  assert.doesNotMatch(serialized, /subject_private_value|2026-10-02|must-not-leak|화요일|4시/);
+});
+
+test('eval contracts detect missing, unexpected and duplicate tools deterministically', () => {
+  const summary = {
+    toolCalls: [
+      { name: 'get_student_schedule' },
+      { name: 'get_student_schedule' },
+      { name: 'unexpected_tool' },
+    ],
+    toolCallCount: 3,
+    duplicateToolNames: ['get_student_schedule'],
+    finalOutputPresent: false,
+  };
+
+  const evaluation = evaluateRunSummary(summary, {
+    requiredTools: ['get_student_schedule', 'get_attendance'],
+    allowedTools: ['get_student_schedule', 'get_attendance'],
+    maxToolCalls: 2,
+    requireFinalOutput: true,
+    forbidDuplicateTools: true,
+  });
+
+  assert.equal(evaluation.ok, false);
+  assert.deepEqual(evaluation.issues.sort(), [
+    'DUPLICATE_TOOL_CALL',
+    'FINAL_OUTPUT_MISSING',
+    'REQUIRED_TOOL_MISSING:get_attendance',
+    'TOOL_CALL_LIMIT_EXCEEDED',
+    'UNEXPECTED_TOOL:unexpected_tool',
+  ].sort());
+});
+
+test('wrapped SDK run applies safe trace options on the actual run boundary', async () => {
+  const calls = [];
+  const wrapped = wrapOlliAgentRun(async (receivedAgent, input, options) => {
+    calls.push({ receivedAgent, input, options });
+    return {
+      finalOutput: 'ok',
+      newItems: [],
+    };
+  });
+
+  const runContext = context();
+  const result = await wrapped(agent('Olli Pickup Read'), '학생A 픽업 알려줘', {
+    context: runContext,
+  });
+
+  assert.equal(result.finalOutput, 'ok');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].options.traceIncludeSensitiveData, false);
+  assert.equal(calls[0].options.workflowName, WORKFLOW_NAME);
+  assert.match(calls[0].options.groupId, /^olli_team_talk_[a-f0-9]{32}$/);
+  assert.equal(calls[0].options.context, runContext);
+});

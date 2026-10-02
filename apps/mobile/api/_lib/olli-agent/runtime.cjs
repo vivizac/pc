@@ -1,5 +1,7 @@
 'use strict';
 
+const { wrapOlliAgentRun } = require('./observability.cjs');
+
 const MIN_NODE_MAJOR = 22;
 
 function runtimeError(message, statusCode = 500, code = 'OLLI_AGENT_RUNTIME_ERROR') {
@@ -53,7 +55,7 @@ async function loadAgentsSdk() {
 
   return {
     Agent: agentsSdk.Agent,
-    run: agentsSdk.run,
+    run: wrapOlliAgentRun(agentsSdk.run),
     tool: agentsSdk.tool,
     z: zodModule.z,
   };
