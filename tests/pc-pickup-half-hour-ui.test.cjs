@@ -22,6 +22,16 @@ test('PC pickup grid keeps hourly two-row layout and uses five timetable slots i
   assert.match(css, /\.olliTtPickupGrid\.halfHour \{[\s\S]*?height: 594px;[\s\S]*?grid-template-rows: 34px repeat\(5, 112px\);/);
 });
 
+test('collapsed PC pickup lets the half-hour kinder timetable fill the released height', () => {
+  assert.match(css, /\.olliTtSection\.kinder\.pickupCollapsed \.olliTtGrid\.olliTtHalfHourGrid \{[\s\S]*?height:100%;[\s\S]*?flex:1 1 auto;[\s\S]*?grid-template-rows:52px repeat\(var\(--olli-tt-rows\), minmax\(var\(--olli-tt-class-row-height\), 1fr\)\);/);
+});
+
+test('PC half-hour timetable time labels use top alignment and the same font size for 30 minutes', () => {
+  assert.match(css, /\.olliTtTime\.halfHourLabel \{[^}]*padding-top:13px;[^}]*justify-content:flex-start;/);
+  assert.match(css, /\.olliTtTime\.halfHourLabel small \{[^}]*font-size:inherit;/);
+  assert.doesNotMatch(css, /\.olliTtTime\.halfHourLabel \{[^}]*justify-content:center;/);
+});
+
 test('PC pickup grid shows half-hour labels as hour and 30-minute lines', () => {
   const start = ui.indexOf('function pickupGridHtml');
   const end = ui.indexOf('function elementaryAdaptiveEdgeRowHeight', start);
