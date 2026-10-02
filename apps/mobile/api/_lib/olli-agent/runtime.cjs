@@ -122,6 +122,7 @@ async function runStudentScheduleProbe({
   agentContext,
   requestContext,
   preparedPrivacy,
+  session=null,
 }) {
   assertOpenAiKey();
 
@@ -177,9 +178,9 @@ async function runStudentScheduleProbe({
     },
   });
 
-  const result = await run(agent, preparedPrivacy.safeText, {
-    context: agentContext,
-  });
+  const runOptions={ context:agentContext };
+  if(session) runOptions.session=session;
+  const result = await run(agent, preparedPrivacy.safeText, runOptions);
 
   const finalOutput = String(result?.finalOutput || '').trim();
   if (!finalOutput) {
@@ -2524,6 +2525,7 @@ async function runAttendanceProbe({
   agentContext,
   requestContext,
   preparedPrivacy,
+  session=null,
 }) {
   assertOpenAiKey();
 
@@ -2588,9 +2590,9 @@ async function runAttendanceProbe({
     },
   });
 
-  const result = await run(agent, preparedPrivacy.safeText, {
-    context: agentContext,
-  });
+  const runOptions={ context:agentContext };
+  if(session) runOptions.session=session;
+  const result = await run(agent, preparedPrivacy.safeText, runOptions);
 
   const finalOutput = String(result?.finalOutput || '').trim();
   if (!finalOutput) {
@@ -2614,6 +2616,7 @@ async function runPickupProbe({
   agentContext,
   requestContext,
   preparedPrivacy,
+  session=null,
 }) {
   assertOpenAiKey();
 
@@ -2676,9 +2679,9 @@ async function runPickupProbe({
     modelSettings:{ toolChoice:'get_pickups' },
   });
 
-  const result = await run(agent, preparedPrivacy.safeText, {
-    context:agentContext,
-  });
+  const runOptions={ context:agentContext };
+  if(session) runOptions.session=session;
+  const result = await run(agent, preparedPrivacy.safeText, runOptions);
 
   const finalOutput = String(result?.finalOutput || '').trim();
   if (!finalOutput) {
@@ -4608,17 +4611,21 @@ async function runStudentScheduleRead({
   preparedPrivacy,
   sourceMessageId,
   sourceMessageText,
+  session=null,
+  sourceValidated=false,
 }) {
   const sourceId=Number(sourceMessageId||0);
   if(!Number.isSafeInteger(sourceId)||sourceId<=0){
     throw runtimeError('학생 시간표 원문 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_SCHEDULE_READ_SOURCE_INVALID');
   }
-  await validatePickupSourceMessage({
-    requestContext,
-    sourceMessageId:sourceId,
-    sourceMessageText,
-  });
-  const result=await runStudentScheduleProbe({agentContext,requestContext,preparedPrivacy});
+  if(!sourceValidated){
+    await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId:sourceId,
+      sourceMessageText,
+    });
+  }
+  const result=await runStudentScheduleProbe({agentContext,requestContext,preparedPrivacy,session});
   return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
 }
 
@@ -4628,17 +4635,21 @@ async function runAttendanceRead({
   preparedPrivacy,
   sourceMessageId,
   sourceMessageText,
+  session=null,
+  sourceValidated=false,
 }) {
   const sourceId=Number(sourceMessageId||0);
   if(!Number.isSafeInteger(sourceId)||sourceId<=0){
     throw runtimeError('출결 조회 원문 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_ATTENDANCE_READ_SOURCE_INVALID');
   }
-  await validatePickupSourceMessage({
-    requestContext,
-    sourceMessageId:sourceId,
-    sourceMessageText,
-  });
-  const result=await runAttendanceProbe({agentContext,requestContext,preparedPrivacy});
+  if(!sourceValidated){
+    await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId:sourceId,
+      sourceMessageText,
+    });
+  }
+  const result=await runAttendanceProbe({agentContext,requestContext,preparedPrivacy,session});
   return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
 }
 
@@ -4648,17 +4659,21 @@ async function runPickupRead({
   preparedPrivacy,
   sourceMessageId,
   sourceMessageText,
+  session=null,
+  sourceValidated=false,
 }) {
   const sourceId=Number(sourceMessageId||0);
   if(!Number.isSafeInteger(sourceId)||sourceId<=0){
     throw runtimeError('픽업 조회 원문 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_PICKUP_READ_SOURCE_INVALID');
   }
-  await validatePickupSourceMessage({
-    requestContext,
-    sourceMessageId:sourceId,
-    sourceMessageText,
-  });
-  const result=await runPickupProbe({agentContext,requestContext,preparedPrivacy});
+  if(!sourceValidated){
+    await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId:sourceId,
+      sourceMessageText,
+    });
+  }
+  const result=await runPickupProbe({agentContext,requestContext,preparedPrivacy,session});
   return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
 }
 
@@ -4669,16 +4684,20 @@ async function runTimetableRead({
   sourceMessageId,
   sourceMessageText,
   readIntent,
+  session=null,
+  sourceValidated=false,
 }) {
   const sourceId=Number(sourceMessageId||0);
   if(!Number.isSafeInteger(sourceId)||sourceId<=0){
     throw runtimeError('시간표 조회 원문 메시지 식별값이 올바르지 않습니다.',400,'OLLI_AGENT_TIMETABLE_READ_SOURCE_INVALID');
   }
-  await validatePickupSourceMessage({
-    requestContext,
-    sourceMessageId:sourceId,
-    sourceMessageText,
-  });
+  if(!sourceValidated){
+    await validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId:sourceId,
+      sourceMessageText,
+    });
+  }
 
   const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
   const router=loadSharedCommandRouter();
@@ -4696,11 +4715,11 @@ async function runTimetableRead({
     String(intent?.viewMode||'').trim()==='schedule' &&
     subjectRefs.length===1
   ){
-    const result=await runStudentScheduleProbe({agentContext,requestContext,preparedPrivacy});
+    const result=await runStudentScheduleProbe({agentContext,requestContext,preparedPrivacy,session});
     return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
   }
   if(intent?.intent==='find_pickups' && subjectRefs.length===1){
-    const result=await runPickupProbe({agentContext,requestContext,preparedPrivacy});
+    const result=await runPickupProbe({agentContext,requestContext,preparedPrivacy,session});
     return Object.assign({},result,{output:restorePreparedSubjectLabels(result?.output,preparedPrivacy)});
   }
 
@@ -4741,7 +4760,9 @@ async function runTimetableRead({
     modelSettings:{toolChoice:'read_timetable_query'},
   });
 
-  const result=await run(agent,preparedPrivacy.safeText,{context:agentContext});
+  const runOptions={context:agentContext};
+  if(session) runOptions.session=session;
+  const result=await run(agent,preparedPrivacy.safeText,runOptions);
   const finalOutput=restorePreparedSubjectLabels(
     labelBook.restore(String(result?.finalOutput||'').trim()),
     preparedPrivacy
