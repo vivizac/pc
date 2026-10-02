@@ -1033,7 +1033,21 @@
     try {
       if (typeof global.getKinderChatFeedbackSaveStudentCandidates === 'function') {
         const rows = global.getKinderChatFeedbackSaveStudentCandidates(studentName) || [];
-        if (Array.isArray(rows)) return rows.filter(Boolean);
+        const filtered=Array.isArray(rows) ? rows.filter(Boolean) : [];
+        if (filtered.length) return filtered;
+      }
+    } catch (_) {}
+
+    try {
+      if (typeof global.getAllStudents === 'function') {
+        const rows=global.getAllStudents() || [];
+        const matches=(Array.isArray(rows) ? rows : [])
+          .filter(student => clean(student && student.name) === studentName)
+          .filter(student => {
+            if (typeof global.getStudentStatus !== 'function') return true;
+            try { return global.getStudentStatus(student) === 'active'; } catch (_) { return true; }
+          });
+        if (matches.length) return matches;
       }
     } catch (_) {}
 
@@ -1255,6 +1269,87 @@
       clean(row && row.student_id) === clean(studentId)
       && rowEffectiveOn(row, dateKey)
     );
+  }
+
+
+  async function findStudentSchedule(options) {
+    const opts=options || {};
+    const resolved=resolveCommandStudent(opts.studentName, opts.selectedStudent);
+    if (!resolved.ok) return { ok:false, message:resolved.message || '학생을 확인하지 못했어요.' };
+
+    const student=resolved.student;
+    const studentId=clean(student && student.id);
+    const studentName=clean(student && student.name) || clean(opts.studentName) || '학생';
+    const referenceDate=localDateKey(opts.referenceDate || new Date());
+    if (!studentId || !referenceDate) {
+      return { ok:false, message:studentName + ' 학생의 시간표 기준 날짜를 확인하지 못했어요.' };
+    }
+
+    const weekData=await loadFreshWeek(referenceDate);
+    const division=normalizeStudentDivision(student);
+    const mode=timetableMode(weekData);
+    const monday=mondayKey(referenceDate);
+    const rows=activeStudentEnrollments(weekData,studentId,referenceDate)
+      .map((row)=>{
+        const weekday=Number(row && row.weekday || 0);
+        const timeSlot=Number(row && row.time_slot || 0);
+        if(weekday<1 || weekday>6 || !timeSlot) return null;
+        const sessionDate=addDaysKey(monday,weekday-1);
+        return {
+          weekday,
+          weekdayLabel:weekdayLabel(weekday),
+          timeSlot,
+          timeLabel:timetableMemoTimeLabel(division,sessionDate,timeSlot,mode),
+          classGroup:classGroup(row && row.class_group),
+          sessionOrder:Number.isFinite(Number(row && row.session_order))
+            ? Number(row.session_order)
+            : null,
+        };
+      })
+      .filter(Boolean)
+      .sort((a,b)=>
+        a.weekday-b.weekday
+        || a.timeSlot-b.timeSlot
+        || clean(a.classGroup).localeCompare(clean(b.classGroup))
+        || Number(a.sessionOrder || 0)-Number(b.sessionOrder || 0)
+      );
+
+    const seen=new Set();
+    const items=rows.filter((item)=>{
+      const key=[item.weekday,item.timeSlot,item.classGroup,item.sessionOrder == null ? '' : item.sessionOrder].join(':');
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    return {
+      ok:true,
+      studentName,
+      division,
+      referenceDate,
+      dateLabel:clean(opts.dateLabel) || '현재',
+      timetableMode:mode,
+      items,
+    };
+  }
+
+  function describeStudentSchedule(result) {
+    if(!result || result.ok!==true){
+      return clean(result && result.message) || '학생 시간표를 확인하지 못했어요.';
+    }
+    const name=clean(result.studentName) || '학생';
+    const items=Array.isArray(result.items) ? result.items : [];
+    const period=clean(result.dateLabel);
+    const prefix=period && period!=='현재' ? period + ' 기준 ' : '';
+    if(!items.length){
+      return name + ' 학생의 ' + prefix + '정규 수업을 찾지 못했어요.';
+    }
+    const summary=items.map((item)=>{
+      const group=clean(item.classGroup) ? ' ' + clean(item.classGroup) + '반' : '';
+      const order=Number(item.sessionOrder || 0)>0 ? ' ' + Number(item.sessionOrder) + '회차' : '';
+      return clean(item.weekdayLabel) + ' ' + clean(item.timeLabel) + group + order;
+    }).join(', ');
+    return name + '님의 ' + prefix + '정규 수업은 ' + summary + '입니다.';
   }
 
   function pickupTimeDisplay(value) {
@@ -3413,11 +3508,13 @@
     findRecurringAvailability,
     findRosterEntries,
     findPickups,
+    findStudentSchedule,
     describeAvailableSlots,
     describeWeekAvailability,
     describeRecurringAvailability,
     describeRosterEntries,
     describePickups,
+    describeStudentSchedule,
     prepareWriteCommand,
     executePreparedWrite,
     writeReasonPrompt,
