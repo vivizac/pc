@@ -1898,7 +1898,9 @@ function markKinderChatFeedbackInboxCopied(id) {
 }
 function getKinderChatFeedbackInboxDisplayLabel(item) {
   const rawLabel = String(item?.label || '').trim();
-  const division = item?.studentDivision === 'kinder' ? 'kinder' : 'elementary';
+  const division = item?.studentDivision === 'kinder' || /^유치부\s*/.test(rawLabel)
+    ? 'kinder'
+    : 'elementary';
   const classFeedback = String(item?.feedbackType || '').trim() === 'class'
     || /(?:1분|수업)\s*피드백/.test(rawLabel);
 
@@ -1910,8 +1912,8 @@ function getKinderChatFeedbackInboxDisplayLabel(item) {
   return renamed || '피드백';
 }
 function isKinderChatFeedbackInboxElementaryClass(item) {
-  if (item?.studentDivision === 'kinder') return false;
   const rawLabel = String(item?.label || '').trim();
+  if (item?.studentDivision === 'kinder' || /^유치부\s*/.test(rawLabel)) return false;
   return String(item?.feedbackType || '').trim() === 'class'
     || /(?:1분|수업)\s*피드백/.test(rawLabel);
 }
