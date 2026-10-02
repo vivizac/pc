@@ -1896,6 +1896,27 @@ function markKinderChatFeedbackInboxCopied(id) {
   if (changed) setTodayFeedbackItemsRaw(next);
   return changed;
 }
+function getKinderChatFeedbackInboxDisplayLabel(item) {
+  const rawLabel = String(item?.label || '').trim();
+  const division = item?.studentDivision === 'kinder' || /^유치부\s*/.test(rawLabel)
+    ? 'kinder'
+    : 'elementary';
+  const classFeedback = String(item?.feedbackType || '').trim() === 'class'
+    || /(?:1분|수업)\s*피드백/.test(rawLabel);
+
+  if (classFeedback) {
+    return division === 'kinder' ? '유치부 수업 피드백' : '초등부 수업 피드백';
+  }
+
+  const renamed = rawLabel.replace(/1분\s*피드백/g, '수업 피드백');
+  return renamed || '피드백';
+}
+function isKinderChatFeedbackInboxElementaryClass(item) {
+  const rawLabel = String(item?.label || '').trim();
+  if (item?.studentDivision === 'kinder' || /^유치부\s*/.test(rawLabel)) return false;
+  return String(item?.feedbackType || '').trim() === 'class'
+    || /(?:1분|수업)\s*피드백/.test(rawLabel);
+}
 function buildKinderChatFeedbackInboxCard(item) {
   const status = item.status || 'done';
   const text = status === 'generating'
@@ -1908,15 +1929,19 @@ function buildKinderChatFeedbackInboxCard(item) {
   const name = item.studentName || '학생';
   const copied = !!item.copiedAt;
   const dateText = formatNotificationDate(item.updatedAt || item.createdAt);
-  const labelText = String(item.label || '유치부 1분 피드백').replace(/^유치부\s*/, '') || '1분 피드백';
-  const openMetaText = dateText ? `${labelText} · ${dateText}` : labelText;
+  const labelText = getKinderChatFeedbackInboxDisplayLabel(item);
+  const elementaryClassGuide = isKinderChatFeedbackInboxElementaryClass(item);
+  const openMetaText = elementaryClassGuide
+    ? dateText
+    : (dateText ? `${labelText} · ${dateText}` : labelText);
   const renderedText = status === 'done' || status === 'review' ? renderSuspiciousFeedbackText(text) : escapeHtml(text);
   return `<div class="kcfInboxCard" data-kcf-feedback-id="${escapeHtml(item.id)}" onclick="toggleKinderChatFeedbackInboxItem('${escapeHtml(item.id)}')">
     <div class="kcfInboxTop">
       <button type="button" class="kcfInboxCopyIconBtn${copied ? ' copied' : ''}" onclick="event.stopPropagation(); copyKinderChatFeedbackInbox('${escapeHtml(item.id)}', this)" aria-label="${escapeHtml(name)} 피드백 복사" title="피드백 복사"${canCopy ? '' : ' disabled'}>${getKinderChatFeedbackInboxCopyIconSvg()}</button>
       <div class="kcfInboxMain">
-        <div class="kcfInboxMetaRow">
+        <div class="kcfInboxMetaRow${elementaryClassGuide ? ' inlineGuide' : ''}">
           <div class="kcfInboxName">${escapeHtml(name)}</div>
+          ${elementaryClassGuide ? `<div class="kcfInboxInlineGuide">${escapeHtml(labelText)}</div>` : ''}
           <div class="kcfInboxStatus ${escapeHtml(status)}">${escapeHtml(getKinderChatFeedbackStatusLabel(status))}</div>
         </div>
         <div class="kcfInboxText" data-kcf-open-meta="${escapeHtml(openMetaText)}">${escapeHtml(openMetaText || getKinderChatFeedbackStatusLabel(status))}</div>
@@ -2153,9 +2178,12 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
     const cancelBtn = card.querySelector('.kcfInboxEditCancelBtn');
     const deleteBtn = card.querySelector('.kcfInboxDeleteBtn');
     const copyBtn = copyIconBtn;
-    const labelText = String(updatedItem?.label || '유치부 1분 피드백').replace(/^유치부\s*/, '') || '1분 피드백';
+    const labelText = getKinderChatFeedbackInboxDisplayLabel(updatedItem);
     const dateText = formatNotificationDate(updatedItem?.updatedAt || updatedItem?.createdAt);
-    const openMetaText = dateText ? `${labelText} · ${dateText}` : labelText;
+    const elementaryClassGuide = isKinderChatFeedbackInboxElementaryClass(updatedItem);
+    const openMetaText = elementaryClassGuide
+      ? dateText
+      : (dateText ? `${labelText} · ${dateText}` : labelText);
     if (preview) {
       preview.dataset.kcfPreviewText = nextText;
       preview.dataset.kcfOpenMeta = openMetaText;
