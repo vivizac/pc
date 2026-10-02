@@ -315,6 +315,57 @@ function emitEvalLog(payload, level = 'info') {
 }
 
 
+
+function safeSerializedLength(value) {
+  try {
+    return JSON.stringify(value).length;
+  } catch {
+    return 0;
+  }
+}
+
+function sumDetailValue(details, key) {
+  const list=Array.isArray(details) ? details : [details];
+  return list.reduce((sum,item)=>{
+    const value=Number(item && typeof item==='object' ? item[key] : 0);
+    return sum+(Number.isFinite(value)?value:0);
+  },0);
+}
+
+function emitModelUsageDiagnostics(agent, result) {
+  const responses=Array.isArray(result?.rawResponses) ? result.rawResponses : [];
+  const agentName=safeName(agent?.name,'olli-agent');
+  responses.forEach((response,index)=>{
+    const usage=response?.usage || {};
+    emitPerfLog({
+      phase:'agent_model_usage',
+      status:'ok',
+      agent:agentName,
+      modelCallIndex:index+1,
+      inputTokens:Number(usage?.inputTokens || 0),
+      outputTokens:Number(usage?.outputTokens || 0),
+      totalTokens:Number(usage?.totalTokens || 0),
+      reasoningTokens:sumDetailValue(usage?.outputTokensDetails,'reasoning_tokens'),
+      cachedInputTokens:sumDetailValue(usage?.inputTokensDetails,'cached_tokens'),
+    });
+  });
+}
+
+function emitAgentInputDiagnostics(agent,input) {
+  const inputItems=Array.isArray(input) ? input.length : (input == null ? 0 : 1);
+  const instructions=typeof agent?.instructions==='string' ? agent.instructions : '';
+  const tools=Array.isArray(agent?.tools) ? agent.tools : [];
+  emitPerfLog({
+    phase:'agent_input_shape',
+    status:'ok',
+    agent:safeName(agent?.name,'olli-agent'),
+    inputItems,
+    inputChars:safeSerializedLength(input),
+    instructionsChars:instructions.length,
+    toolCount:tools.length,
+  });
+}
+
 function attachAgentPhaseTiming(agent) {
   if (!agent || typeof agent.on !== 'function') return () => {};
 
@@ -342,7 +393,7 @@ function attachAgentPhaseTiming(agent) {
     activeToolStartedAt = now;
     activeToolName = safeName(tool?.name, 'unknown-tool');
   };
-  const onToolEnd = () => {
+  const onToolEnd = (_context, _tool, output) => {
     if (activeToolStartedAt != null) {
       emitPerfLog({
         phase:'agent_tool_execution',
@@ -350,6 +401,7 @@ function attachAgentPhaseTiming(agent) {
         agent:agentName,
         tool:activeToolName,
         durationMs:perfDurationMs(activeToolStartedAt),
+        toolOutputChars:safeSerializedLength(output),
       });
     }
     lastToolEndedAt = startPerfTimer();
@@ -396,9 +448,11 @@ function wrapOlliAgentRun(runFn) {
   return async function olliObservedRun(agent, input, options = {}) {
     const runOptions = buildOlliTraceOptions(agent, options);
     const detachPhaseTiming = attachAgentPhaseTiming(agent);
+    emitAgentInputDiagnostics(agent,input);
     const startedAt = startPerfTimer();
     try {
       const result = await runFn(agent, input, runOptions);
+      emitModelUsageDiagnostics(agent,result);
       const summary = summarizeAgentRun(agent, result);
       emitPerfLog({
         phase: 'agent_run',
@@ -459,6 +513,10 @@ module.exports = {
   evaluateRunSummary,
   buildRouteOutcomeEvent,
   emitRouteOutcomeLog,
+  safeSerializedLength,
+  sumDetailValue,
+  emitModelUsageDiagnostics,
+  emitAgentInputDiagnostics,
   attachAgentPhaseTiming,
   wrapOlliAgentRun,
 };
