@@ -205,22 +205,27 @@ test('makeup context stays active for both clarification and recoverable blocked
   assert.match(pc,/state\.pendingMakeupDialogue=\{ active:true, status:interactionStatus, prompt:aiReply \};/);
 });
 
-test('contextual read is executed server-side after persisted source validation', () => {
+test('contextual read goes directly to the main read Agent after source validation', () => {
   const root=path.resolve(__dirname,'..');
   const api=fs.readFileSync(path.join(root,'apps/mobile/api/olli-agent.js'),'utf8');
+  const runtime=fs.readFileSync(path.join(root,'apps/mobile/api/_lib/olli-agent/runtime.cjs'),'utf8');
   const mobile=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'utf8');
   const pc=fs.readFileSync(path.join(root,'apps/pc/pc-team-talk.js'),'utf8');
 
-  assert.match(api,/mode === 'context_read'/);
   const readBranch=api.indexOf("if (mode === 'context_read'");
-  const validateIndex=api.indexOf('validatePickupSourceMessage({',readBranch);
-  const resolveIndex=api.indexOf('resolveContextualReadRewrite({',readBranch);
-  const privacyIndex=api.indexOf('prepareAgentReadPrivacyInput(',readBranch);
-  assert.ok(readBranch>=0 && validateIndex>readBranch);
-  assert.ok(resolveIndex>validateIndex);
-  assert.ok(privacyIndex>resolveIndex);
-  assert.match(api,/executionMessage=safeText\(resolved\.resolvedText,5000\)/);
-  assert.match(api,/sourceMessageText:executionMessage/);
+  const readEnd=api.indexOf("const executionMessage=message;",readBranch);
+  const block=api.slice(readBranch,readEnd);
+  assert.ok(readBranch>=0 && readEnd>readBranch);
+  assert.match(block,/prepareAgentContextReadPrivacyInput\(/);
+  assert.match(block,/runContextualReadAgent\(/);
+  assert.doesNotMatch(block,/resolveContextualReadRewrite/);
+  assert.doesNotMatch(block,/context-route\.cjs/);
+  assert.match(runtime,/name:'Olli Contextual Read'/);
+  assert.match(runtime,/get_student_schedule/);
+  assert.match(runtime,/get_attendance/);
+  assert.match(runtime,/get_pickups/);
+  assert.match(runtime,/read_timetable_context_query/);
+  assert.match(runtime,/OLLI_CONTEXT_UNRELATED/);
 
   assert.match(mobile,/mode:'context_read'/);
   assert.match(pc,/mode:'context_read'/);
