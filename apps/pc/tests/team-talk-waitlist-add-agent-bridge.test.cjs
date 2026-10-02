@@ -30,14 +30,13 @@ test('PC waitlist add routes before update cancel and legacy preparation',()=>{
   assert.match(block,/if \(waitlistAddTurn\) return waitlistAddTurn/);
 });
 
-test('PC waitlist add bridge uses source-bound production and guest fallback to legacy',()=>{
+test('PC waitlist add bridge keeps registered and guest requests on source-bound Agent production',()=>{
   const start=talk.indexOf('async function resolveWaitlistAddAgentTurn');
   const end=talk.indexOf('async function resolveWaitlistUpdateAgentTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'waitlist_add_prepare'/);
   assert.match(block,/sourceMessageId = Number\(replyToMessageId \|\| 0\)/);
-  assert.match(block,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED/);
-  assert.match(block,/return null/);
+  assert.doesNotMatch(block,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED|return null/);
   assert.match(block,/action_type\) !== 'add_waitlist'/);
   assert.match(block,/assistantMessage:data\.message/);
   assert.doesNotMatch(block,/saveAssistantAction|olli_team_chat_send_action/);
