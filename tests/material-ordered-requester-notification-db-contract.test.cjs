@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const sql = fs.readFileSync(
-  'supabase/migrations/20261002072000_material_ordered_requester_notification.sql',
+  'supabase/migrations/20261002070529_material_ordered_requester_notification.sql',
   'utf8'
 );
 
