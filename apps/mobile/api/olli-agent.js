@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     const mode = safeText(body.mode, 40);
     requestMode = mode || 'probe';
 
-    if (!['context_read', 'context_resolve', 'route_outcome', 'probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'timetable_read', 'schedule_read', 'attendance_read', 'pickup_read', 'timetable_admin_prepare', 'attendance_status_prepare', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
+    if (!['context_read', 'context_resolve', 'context_makeup_prepare', 'route_outcome', 'probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'timetable_read', 'schedule_read', 'attendance_read', 'pickup_read', 'timetable_admin_prepare', 'attendance_status_prepare', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
       return res.status(400).json({
         error: '지원하지 않는 Olli Agent mode입니다. 현재 production prepare에는 memo_prepare, batch_prepare, absence_prepare, class_once_prepare, makeup/trial/waitlist/move/pickup prepare 계열이 포함됩니다.',
       });
@@ -83,6 +83,88 @@ export default async function handler(req, res) {
         mode:'context_resolve',
         usedContext:result?.usedContext===true,
         resolvedText:safeText(result?.resolvedText,5000),
+      });
+    }
+
+    if (mode === 'context_makeup_prepare') {
+      const message=safeText(body.message,5000);
+      const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
+      if(!message){
+        return res.status(400).json({
+          error:'context_makeup_prepare에는 원문 메시지가 필요합니다.',
+          code:'OLLI_CONTEXT_MAKEUP_MESSAGE_REQUIRED',
+        });
+      }
+      if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
+        return res.status(400).json({
+          error:'context_makeup_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+          code:'OLLI_CONTEXT_MAKEUP_SOURCE_REQUIRED',
+        });
+      }
+
+      const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
+      await runtimeModule.validateMakeupSourceMessage({
+        requestContext,
+        sourceMessageId,
+        sourceMessageText:message,
+      });
+
+      const contextRouteModule=await import('./_lib/olli-agent/context-route.cjs');
+      const resolveContextualReadRewrite=
+        contextRouteModule.resolveContextualReadRewrite ||
+        contextRouteModule.default?.resolveContextualReadRewrite;
+      const resolved=await resolveContextualReadRewrite({
+        requestContext,
+        sourceMessageId,
+        currentMessage:message,
+        conversation:Array.isArray(body.conversation) ? body.conversation : [],
+      });
+      const resolvedText=safeText(resolved?.resolvedText,5000);
+      if(resolved?.usedContext!==true || !resolvedText){
+        return res.status(200).json({
+          ok:true,
+          mode:'context_makeup_prepare',
+          handled:false,
+        });
+      }
+
+      const routerModule=await import('../../../packages/common/olli-command-router-common.js');
+      const routeModule=await import('../../../packages/common/olli-team-talk-agent-route-common.js');
+      const router=routerModule.default || routerModule;
+      const routeClassifier=routeModule.default || routeModule;
+      const route=typeof routeClassifier?.classify==='function'
+        ? routeClassifier.classify(resolvedText,{router})
+        : null;
+      if(safeText(route?.key,40)!=='makeup_add'){
+        return res.status(200).json({
+          ok:true,
+          mode:'context_makeup_prepare',
+          handled:false,
+        });
+      }
+
+      const privacyModule=await import('./_lib/olli-agent/privacy.cjs');
+      const prepared=await privacyModule.prepareAgentPrivacyInput(resolvedText,requestContext);
+      const agentContext=contextModule.toAgentRunContext(requestContext);
+      const result=await runtimeModule.runMakeupPrepareAgent({
+        agentContext,
+        requestContext,
+        preparedPrivacy:prepared,
+        requestId:'team-chat-message:'+sourceMessageId,
+        replyToMessageId:sourceMessageId,
+        requirePersistedMessage:true,
+      });
+
+      return res.status(200).json({
+        ok:true,
+        mode:'context_makeup_prepare',
+        handled:true,
+        ready:result.ready===true,
+        message:result.persistedMessage,
+        output:safeText(result.output,12000),
+        interactionStatus:safeText(result.interactionStatus,40),
+        interaction:result.interaction || null,
+        recoveredAfterPersist:result.recoveredAfterPersist===true,
       });
     }
 
@@ -754,6 +836,9 @@ export default async function handler(req, res) {
           mode:'makeup_prepare',
           ready:probe.ready === true,
           message:probe.persistedMessage,
+          output:safeText(probe.output,12000),
+          interactionStatus:safeText(probe.interactionStatus,40),
+          interaction:probe.interaction || null,
           recoveredAfterPersist:probe.recoveredAfterPersist === true,
         });
       } else if (mode === 'trial_add_prepare_probe') {
