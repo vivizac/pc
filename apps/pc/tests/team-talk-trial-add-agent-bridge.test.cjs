@@ -15,19 +15,22 @@ test('PC trial add gate uses shared add parser and requires explicit division',(
   assert.doesNotMatch(block,/parseWriteIntent|prepareAction|cancel_trial|update_trial/);
 });
 
-test('PC trial add routes before trial update and legacy preparation',()=>{
-  const start=talk.indexOf('async function resolveAiTurn');
-  const end=talk.indexOf('function updateComposerState',start);
-  const block=talk.slice(start,end);
-  const add=block.indexOf('if (isTrialAddAgentCandidate(commandText, router))');
-  const update=block.indexOf('if (isTrialUpdateAgentCandidate(commandText, router))');
-  const legacy=block.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(add>=0);
-  assert.ok(update>add);
-  assert.ok(legacy>update);
-  assert.match(block,/return resolveTrialAddAgentTurn\(commandText, current, replyToMessageId\)/);
-});
+test('PC trial add routes before trial update and legacy preparation — shared dispatch contract', () => {
+  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveAiTurn');
+  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'trial_add'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('PC trial add uses source-bound production mode and server-persisted card',()=>{
   const start=talk.indexOf('async function resolveTrialAddAgentTurn');
   const end=talk.indexOf('async function resolveTrialUpdateAgentTurn',start);
