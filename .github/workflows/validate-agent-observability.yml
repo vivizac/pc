@@ -1,0 +1,29 @@
+name: Validate Olli Agent observability
+
+on:
+  pull_request:
+    paths:
+      - 'apps/mobile/api/_lib/olli-agent/observability.cjs'
+      - 'apps/mobile/api/_lib/olli-agent/runtime.cjs'
+      - 'apps/mobile/tests/olli-agent-observability.test.cjs'
+      - 'apps/mobile/tests/olli-agent-observability-production-contract.test.cjs'
+      - '.github/workflows/validate-agent-observability.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check syntax
+        run: |
+          node --check apps/mobile/api/_lib/olli-agent/observability.cjs
+          node --check apps/mobile/api/_lib/olli-agent/runtime.cjs
+      - name: Validate safe tracing and deterministic eval contracts
+        working-directory: apps/mobile
+        run: node --test tests/olli-agent-observability.test.cjs tests/olli-agent-observability-production-contract.test.cjs
