@@ -14,19 +14,22 @@ test('mobile class-once gate uses only shared generic class parser',()=>{
   assert.doesNotMatch(block,/parseMakeupMutationIntent|parseTrialMutationIntent|parseWaitlistMutationIntent|prepareAction/);
 });
 
-test('mobile class-once route stays before move and legacy preparation',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const end=talk.indexOf('function getOlliTalkMentionMessageText',start);
-  const block=talk.slice(start,end);
-  const once=block.indexOf('if(isOlliTalkClassOnceAgentCandidate(commandText,router))');
-  const move=block.indexOf('if(isOlliTalkMoveAgentCandidate(commandText,router))');
-  const legacy=block.indexOf("if(router && typeof router.prepareAction==='function')");
-  assert.ok(once>=0);
-  assert.ok(move>once);
-  assert.ok(legacy>move);
-  assert.match(block,/return resolveOlliTalkClassOnceAgentTurn\(commandText,context,replyToMessageId\)/);
-});
+test('mobile class-once route stays before move and legacy preparation — shared dispatch contract',()=> {
+  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
+  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'class_once'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
+  assert.ok(classify>=0 && legacy>classify);
 
+});
 test('mobile class-once bridge uses source-bound production without second action save',()=>{
   const start=talk.indexOf('async function resolveOlliTalkClassOnceAgentTurn');
   const end=talk.indexOf('async function resolveOlliTalkMoveAgentTurn',start);
