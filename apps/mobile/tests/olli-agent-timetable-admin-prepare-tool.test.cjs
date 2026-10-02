@@ -140,6 +140,7 @@ test('date-specific teacher change reads override state and stores pending overr
   const rpc=async(name,params)=>{
     calls.push({name,params});
     if(name==='olli_schedule_week') return {ok:true,timetable_mode:'hourly',class_split_periods:[]};
+    if(name==='olli_schedule_kinder_class_layouts') return {ok:true,merged_slots:[{weekday:5,time_slot:4}]};
     if(name==='olli_schedule_class_teacher_context') return {ok:true,teachers:[{id:teacherId,display_name:'김민지'}],assignments:[]};
     if(name==='olli_schedule_teacher_overrides_range') return {ok:true,overrides:[]};
     if(name==='olli_team_chat_send_action') return sendActionResult('set_teacher_override');
