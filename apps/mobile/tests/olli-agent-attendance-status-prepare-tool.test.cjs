@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 
 const {
+  resolveAttendanceDateSpec,
   prepareAttendanceStatusAction,
 }=require('../api/_lib/olli-agent/tools/attendance-status-prepare-tools.cjs');
 
@@ -158,4 +159,15 @@ test('Agent tool schema is zero-argument and prepare source contains no direct a
   assert.doesNotMatch(schema,/studentId|timeSlot|academyId|memberId/);
   assert.equal(source.includes("callRpc('olli_schedule_set_attendance_session_status_v2'"),false);
   assert.equal(source.includes("callRpc('olli_schedule_execute'"),false);
+});
+
+test('explicit past month/day stays in the current year for historical attendance edits',()=>{
+  assert.equal(
+    resolveAttendanceDateSpec({mode:'month_day',month:9,day:20},'2026-10-02'),
+    '2026-09-20'
+  );
+  assert.equal(
+    resolveAttendanceDateSpec({mode:'day_of_month',day:20},'2026-10-02'),
+    '2026-10-20'
+  );
 });
