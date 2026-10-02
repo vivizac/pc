@@ -1141,7 +1141,7 @@
       dateSpec,
       dateLabel:dateSpec ? dateSpec.label : '',
       classHour:firstTimeSlot(raw),
-      classMinute:firstTimeMinute(raw),
+      classMinute:/\d{1,2}\s*시\s*반/.test(raw)?30:firstTimeMinute(raw),
       classGroup:firstClassGroup(raw),
       originalText:raw
     };
