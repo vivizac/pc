@@ -319,7 +319,6 @@
     focus:focusEditor
   };
   global.KcfNormalSheet = api;
-  global.KcfComposerSheet = api;
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once:true });
   else init();
