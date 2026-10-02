@@ -2047,9 +2047,6 @@
       })
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok && clean(data?.code) === 'OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED') {
-      return null;
-    }
     if (!response.ok || data?.ok !== true || !data?.message?.action) {
       throw new Error(data?.error || data?.message || '대기 취소 Agent 응답을 받지 못했습니다.');
     }
