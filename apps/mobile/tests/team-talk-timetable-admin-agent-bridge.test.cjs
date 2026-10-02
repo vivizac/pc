@@ -29,12 +29,19 @@ test('Mobile timetable admin bridge is source-bound and validates returned actio
   assert.ok(block.includes('expectedType'));
 });
 
-test('Mobile timetable admin Agent routing runs before batch and legacy write fallback',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const end=talk.indexOf("if(router && typeof router.prepareAction==='function')",start);
-  const block=talk.slice(start,end);
-  const admin=block.indexOf('parseOlliTalkTimetableAdminAgentCandidate');
-  const batch=block.indexOf('const batchCandidate=parseOlliTalkBatchAgentCandidate');
-  assert.ok(admin>=0,'admin candidate missing');
-  assert.ok(batch>admin,'admin must run before batch');
+test('Mobile timetable admin Agent routing runs before batch and legacy write fallback — shared dispatch contract',()=> {
+  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
+  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
+  const dispatch=talk.slice(dispatchStart,dispatchEnd);
+  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
+  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
+  const ai=talk.slice(aiStart,aiEnd);
+  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
+  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
+  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
+  assert.match(dispatch,/case 'timetable_admin'/);
+  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+  const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
+  assert.ok(classify>=0 && legacy>classify);
+
 });
