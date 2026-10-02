@@ -1,5 +1,5 @@
-/* Phone-only QuickNote composer sheet shared by normal and Class modes.
- * #kcfInput remains the storage/source field while all keyboard editing happens here.
+/* Phone-only QuickNote Class-mode composer sheet.
+ * Normal mode uses KcfNormalSheet and never enters this sheet.
  */
 (function initKcfTeacherSheet(global) {
   'use strict';
@@ -18,9 +18,6 @@
   function overlay(){ return document.getElementById('kcfTeacherSheetOverlay'); }
   function editor(){ return document.getElementById('kcfTeacherSheetInput'); }
   function rosterHost(){ return document.getElementById('kcfTeacherSheetRosterHost'); }
-  function normalSpacer(){ return document.getElementById('kcfTeacherSheetNormalSpacer'); }
-  function attachButton(){ return document.getElementById('kcfTeacherSheetAttachBtn'); }
-  function voiceButton(){ return document.getElementById('kcfTeacherSheetVoiceBtn'); }
   function warning(){ return document.getElementById('kcfTeacherSheetWarning'); }
   function sendButton(){ return document.getElementById('kcfTeacherSheetSendBtn'); }
 
@@ -28,26 +25,6 @@
     var mode = global.KcfTeacherMode || global.KcfAutoMode;
     try { return !!(mode && typeof mode.isEnabled === 'function' && mode.isEnabled()); }
     catch (_) { return false; }
-  }
-
-  function syncModeUi(){
-    var enabled = modeEnabled();
-    var modeBtn = document.getElementById('kcfTeacherSheetModeBtn');
-    if (modeBtn) {
-      modeBtn.classList.toggle('active', enabled);
-      modeBtn.textContent = enabled ? 'C' : 'Class';
-      modeBtn.setAttribute('aria-label', enabled ? 'Class 모드 닫기' : 'Class 모드 열기');
-      modeBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false');
-      modeBtn.title = enabled ? 'Class 모드 닫기' : 'Class 모드 열기';
-    }
-    var host = rosterHost();
-    var spacer = normalSpacer();
-    var attach = attachButton();
-    var voice = voiceButton();
-    if (host) host.hidden = !enabled;
-    if (spacer) spacer.hidden = enabled;
-    if (attach) attach.hidden = enabled;
-    if (voice) voice.hidden = enabled;
   }
 
   function syncViewport(){
@@ -175,24 +152,13 @@
     root.className = 'kcfTeacherSheetOverlay';
     root.setAttribute('aria-hidden', 'true');
     root.innerHTML = [
-      '<section class="kcfTeacherSheet" role="dialog" aria-modal="true" aria-label="퀵노트 수업기록 입력">',
+      '<section class="kcfTeacherSheet" role="dialog" aria-modal="true" aria-label="Class 수업기록 입력">',
       '  <div class="kcfTeacherSheetBody">',
-      '    <textarea id="kcfTeacherSheetInput" class="kcfTeacherSheetInput" aria-label="퀵노트 수업기록"></textarea>',
+      '    <textarea id="kcfTeacherSheetInput" class="kcfTeacherSheetInput" aria-label="Class 수업기록"></textarea>',
       '    <div id="kcfTeacherSheetWarning" class="kcfTeacherSheetWarning" aria-live="polite"></div>',
       '    <div class="kcfTeacherSheetBottom">',
-      '      <button id="kcfTeacherSheetAttachBtn" class="kcfTeacherSheetAttachBtn" type="button" aria-label="사진 추가" title="사진 추가">',
-      '        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>',
-      '      </button>',
-      '      <div id="kcfTeacherSheetNormalSpacer" class="kcfTeacherSheetNormalSpacer"></div>',
-      '      <button id="kcfTeacherSheetModeBtn" class="kcfTeacherSheetModeBtn" type="button" aria-label="Class 모드 열기" aria-pressed="false">Class</button>',
-      '      <div id="kcfTeacherSheetRosterHost" class="kcfTeacherSheetRosterHost" hidden></div>',
-      '      <button id="kcfTeacherSheetVoiceBtn" class="kcfTeacherSheetVoiceBtn" type="button" aria-label="음성 입력" title="음성 입력">',
-      '        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">',
-      '          <rect x="8" y="3" width="8" height="13" rx="4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></rect>',
-      '          <path d="M5 12.5C5 16.09 8.13 19 12 19C15.87 19 19 16.09 19 12.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>',
-      '          <path d="M12 19V22" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>',
-      '        </svg>',
-      '      </button>',
+      '      <button id="kcfTeacherSheetModeBtn" class="kcfTeacherSheetModeBtn" type="button" aria-label="Class 모드 닫기" aria-pressed="true">C</button>',
+      '      <div id="kcfTeacherSheetRosterHost" class="kcfTeacherSheetRosterHost"></div>',
       '      <button id="kcfTeacherSheetSendBtn" class="kcfTeacherSheetSendBtn" type="button" aria-label="피드백 전송">',
       '        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>',
       '      </button>',
@@ -227,49 +193,18 @@
       input.addEventListener('focus', scheduleViewportSync);
     }
 
-    var attach = attachButton();
-    if (attach) {
-      attach.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
-      attach.addEventListener('click', function(event){
-        event.preventDefault();
-        if (modeEnabled()) return;
-        syncToBase();
-        close({ sync:false });
-        if (typeof global.openKinderChatFeedbackPhotoPicker === 'function') {
-          global.openKinderChatFeedbackPhotoPicker(event);
-        } else {
-          var source = document.getElementById('kcfAttachBtn');
-          if (source) source.click();
-        }
-      });
-    }
-
-    var voice = voiceButton();
-    if (voice) {
-      voice.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
-      voice.addEventListener('click', function(event){
-        event.preventDefault();
-        if (modeEnabled()) return;
-        syncToBase();
-        close({ sync:false });
-        var source = document.getElementById('kcfVoiceBtn');
-        if (source) source.click();
-      });
-    }
-
     var modeBtn = document.getElementById('kcfTeacherSheetModeBtn');
     if (modeBtn) {
       modeBtn.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
       modeBtn.addEventListener('click', async function(event){
         event.preventDefault();
+        syncToBase();
         if (typeof global.toggleKinderChatFeedbackTeacherMode === 'function') {
           await global.toggleKinderChatFeedbackTeacherMode(event);
         }
-        if (!state.open) return;
-        syncModeUi();
-        if (modeEnabled()) mountRoster();
-        else restoreRoster();
-        syncFromBase();
+        if (!modeEnabled() && global.KcfNormalSheet && typeof global.KcfNormalSheet.open === 'function') {
+          global.KcfNormalSheet.open();
+        }
       });
     }
 
@@ -318,6 +253,7 @@
   }
 
   function open(){
+    if (!modeEnabled()) return false;
     try {
       if (typeof global.warmKinderChatFeedbackPromptCache === 'function') {
         global.warmKinderChatFeedbackPromptCache();
@@ -330,9 +266,7 @@
     root.setAttribute('aria-hidden', 'false');
     document.documentElement.classList.add('kcfTeacherSheetOpen');
     document.body.classList.add('kcfTeacherSheetOpen');
-    syncModeUi();
-    if (modeEnabled()) mountRoster();
-    else restoreRoster();
+    mountRoster();
     bindWarning();
     syncFromBase();
     syncViewport();
@@ -400,12 +334,10 @@
     isOpen:function(){ return state.open; },
     syncFromBase:syncFromBase,
     syncToBase:syncToBase,
-    syncModeUi:syncModeUi,
     focus:focusEditor,
     onSuccessfulSubmit:onSuccessfulSubmit
   };
   global.KcfTeacherSheet = api;
-  global.KcfComposerSheet = api;
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once:true });
   else init();
