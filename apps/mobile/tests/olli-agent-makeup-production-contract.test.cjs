@@ -13,3 +13,14 @@ test('makeup cancel validates separate stored reason message',()=>{
   assert.ok(endpoint.includes('reasonMessageId'));
   assert.ok(endpoint.includes('reasonMessageText'));
 });
+
+
+test('makeup clarification can continue through full active Olli context',()=>{
+  assert.ok(endpoint.includes("'context_makeup_prepare'"));
+  assert.ok(endpoint.includes("mode:'context_makeup_prepare'"));
+  assert.ok(endpoint.includes("route?.key"));
+  assert.ok(endpoint.includes("'makeup_add'"));
+  assert.ok(endpoint.includes('runMakeupPrepareAgent'));
+  assert.ok(endpoint.includes('interactionStatus'));
+  assert.ok(endpoint.includes('output:safeText'));
+});
