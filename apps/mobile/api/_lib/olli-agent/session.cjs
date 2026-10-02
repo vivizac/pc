@@ -36,7 +36,8 @@ function normalizeItemLimit(value) {
   if (value == null || value === '') return MAX_SESSION_ITEMS;
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return MAX_SESSION_ITEMS;
-  return Math.min(MAX_SESSION_ITEMS, Math.max(1, Math.trunc(parsed)));
+  if (parsed <= 0) return 0;
+  return Math.min(MAX_SESSION_ITEMS, Math.trunc(parsed));
 }
 
 function normalizeItems(items) {
@@ -166,8 +167,10 @@ class OlliSupabaseAgentSession {
   }
 
   async getItems(limit) {
+    const normalizedLimit=normalizeItemLimit(limit);
+    if (normalizedLimit===0) return [];
     const result = await this.#access('get_items', {
-      limit: normalizeItemLimit(limit),
+      limit: normalizedLimit,
     });
     return Array.isArray(result.items) ? result.items : [];
   }
