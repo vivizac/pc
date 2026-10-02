@@ -138,9 +138,10 @@ test('PC makeup update bridge uses source message id and server-persisted update
 });
 
 
-test('PC makeup clarification uses Agent output and contextual continuation', () => {
+test('PC makeup clarification and blocked outcomes remain in contextual continuation', () => {
   assert.match(talk,/pendingMakeupDialogue/);
-  assert.match(talk,/interactionStatus==='needs_clarification'/);
+  assert.match(talk,/\['needs_clarification','blocked'\]\.includes\(interactionStatus\)/);
+  assert.match(talk,/state\.pendingMakeupDialogue=\{ active:true, status:interactionStatus \};/);
   assert.match(talk,/mode:'context_makeup_prepare'/);
   assert.match(talk,/conversation:state\.aiConversationMessages\.map/);
   assert.match(talk,/resolveContextualMakeupTurn/);
