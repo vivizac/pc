@@ -958,7 +958,10 @@
       name=cleanText(match&&match[1]);
     }
     if(/^(?:담당|담임|선생님|쌤|수업|오늘|내일)$/.test(name)) return '';
-    return name.replace(/[을를이가은는]$/,'').trim();
+    return name
+      .replace(/(?:으로|로)$/,'')
+      .replace(/[을를이가은는]$/,'')
+      .trim();
   }
 
   function parseTeacherAssignmentMutationIntent(text) {
