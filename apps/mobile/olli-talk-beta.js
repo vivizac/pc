@@ -2071,11 +2071,11 @@
         autoSubmitContext:null
       });
       if(prepared?.handled===true){
-        if(prepared.kind==='action_pending' && prepared.payload){
+        if(['action_pending','action_choice'].includes(prepared.kind) && prepared.payload){
           return {
             assistantMessage:await saveOlliTalkActionReply(
               context,
-              prepared.message || '이 작업을 진행할까요?',
+              prepared.message || (prepared.kind==='action_choice' ? '보강 반을 선택해 주세요.' : '이 작업을 진행할까요?'),
               prepared.payload,
               replyToMessageId
             ),
