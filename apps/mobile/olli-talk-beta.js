@@ -1947,7 +1947,13 @@
       division:String(structuredRaw.division || '').trim(),
       dateExpression:String(structuredRaw.dateExpression || '').trim(),
       timeSlot:Number(structuredRaw.timeSlot || 0),
-      classGroup:String(structuredRaw.classGroup || '').trim().toUpperCase()
+      classGroup:String(structuredRaw.classGroup || '').trim().toUpperCase(),
+      weekday:Number(structuredRaw.weekday || 0),
+      classTime:Number(structuredRaw.classTime || 0),
+      classMinute:Number(structuredRaw.classMinute || 0),
+      pickupKind:String(structuredRaw.pickupKind || '').trim(),
+      pickupLabel:String(structuredRaw.pickupLabel || '').trim(),
+      pickupTime:String(structuredRaw.pickupTime || '').trim()
     };
     const reply=String(language.reply || '').trim();
     if(data?.ok!==true || !['routine','feedback','chat'].includes(lane) || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
@@ -2070,7 +2076,7 @@
 
     if(
       interpreterLane==='routine'
-      && ['add_makeup','add_trial','add_waitlist'].includes(String(structuredCommand?.action || '').trim())
+      && ['add_makeup','add_trial','add_waitlist','add_pickup'].includes(String(structuredCommand?.action || '').trim())
       && router
       && typeof router.prepareStructuredAction==='function'
     ){
