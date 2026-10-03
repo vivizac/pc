@@ -1986,6 +1986,91 @@
   }
 
 
+  async function runStructuredQuery(systemCommand, context) {
+    const command=systemCommand && typeof systemCommand==='object' ? systemCommand : {};
+    const action=cleanText(command.action);
+    if(action!=='get_student_schedule'){
+      return {
+        handled:false,
+        kind:'pass_through',
+        intent:action,
+        text:'',
+        message:'',
+        clearInput:false,
+        payload:null
+      };
+    }
+
+    const routeContext=normalizeContext(context);
+    const schedule=global.OlliCommandSchedule;
+    const studentName=cleanText(command.student_name || command.studentName);
+    const dateExpression=cleanText(command.date_expression || command.dateExpression);
+    if(!studentName){
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:'get_student_schedule',
+        text:'',
+        message:'시간표를 확인할 학생 이름을 알려주세요.',
+        clearInput:true,
+        payload:command
+      };
+    }
+    if(
+      !schedule
+      || typeof schedule.findStudentSchedule!=='function'
+      || typeof schedule.describeStudentSchedule!=='function'
+    ){
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:'get_student_schedule',
+        text:'',
+        message:'학생 시간표 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+        clearInput:true,
+        payload:command
+      };
+    }
+
+    try{
+      const dateSpec=dateExpression ? parseStudentSchedulePeriodSpec(dateExpression) : null;
+      const referenceDate=resolveStudentScheduleReferenceDate(dateSpec,new Date());
+      if(!referenceDate) throw new Error('시간표 기준 날짜를 해석하지 못했습니다.');
+      const result=await schedule.findStudentSchedule({
+        studentName,
+        selectedStudent:routeContext.selectedStudent || null,
+        referenceDate,
+        dateLabel:dateSpec ? cleanText(dateSpec.label) : '현재'
+      });
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:'get_student_schedule',
+        text:'',
+        message:schedule.describeStudentSchedule(result),
+        clearInput:true,
+        payload:{
+          action:'get_student_schedule',
+          studentName,
+          dateExpression,
+          result
+        }
+      };
+    }catch(error){
+      console.warn('올리 구조화 학생 시간표 조회 실패:',error);
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:'get_student_schedule',
+        text:'',
+        message:'학생 시간표를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+        clearInput:true,
+        payload:command
+      };
+    }
+  }
+
+
   async function prepareStructuredAction(systemCommand, context) {
     const command = systemCommand && typeof systemCommand === 'object'
       ? systemCommand
@@ -2675,6 +2760,7 @@
     classifyRequest,
     runQuery,
     runSuggestedQuery,
+    runStructuredQuery,
     prepareStructuredAction,
     prepareAction,
     parseWriteIntent,
