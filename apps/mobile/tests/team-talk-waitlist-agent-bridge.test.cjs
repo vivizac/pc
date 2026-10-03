@@ -8,7 +8,9 @@ test('Mobile waitlist add update cancel all route through Agent candidates',()=>
   for(const name of ['isOlliTalkWaitlistAddAgentCandidate','isOlliTalkWaitlistUpdateAgentCandidate','isOlliTalkWaitlistCancelAgentCandidate']) assert.ok(talk.includes(name),name);
 });
 test('Mobile waitlist cancel keeps registered and guest requests on source-bound production',()=>{
-  assert.ok(talk.includes("mode:'waitlist_cancel_prepare'"));
+  assert.ok(talk.includes("'waitlist_cancel_prepare'"));
+  assert.ok(talk.includes("'structured_waitlist_cancel_prepare'"));
+  assert.ok(talk.includes("structuredCommand"));
   const start=talk.indexOf('async function resolveOlliTalkWaitlistCancelAgentTurn');
   const end=talk.indexOf('async function resolveOlliTalkMakeupAddAgentTurn',start);
   const block=talk.slice(start,end);
