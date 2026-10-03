@@ -279,6 +279,7 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
     'Structured command pilot: when intent is add_makeup, add_trial, or add_waitlist, structured_command.action must match that intent and fill only facts supported by the conversation: student_name, division, date_expression, time_slot, class_group. Do not query or infer academy data. Use empty string or 0 for facts the conversation does not provide.',
     'For add_trial and add_waitlist, student_name means the student/guest name. division must be kinder for 유치부, elementary for 초등부, or empty when the user has not provided enough information.',
     'For every other intent, structured_command.action must be none and its other fields must be empty string or 0.',
+    'The structured command schema is a transport contract only; business validation remains in the deterministic rule system.',
     'Examples:',
     'User: 학생A 시간표 알려줘 -> route rule, intent get_student_schedule, standalone_command "학생A 시간표 알려줘".',
     'After that, User: 그럼 지난주는? -> route rule, intent get_student_schedule, standalone_command "학생A 지난주 시간표 알려줘".',
