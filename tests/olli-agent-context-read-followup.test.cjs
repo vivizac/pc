@@ -41,8 +41,8 @@ test('unified interpreter runs on the first turn without loading student data', 
         intent:'get_student_schedule',
         standalone_command:'이민형 시간표 알려줘',
         structured_command:{
-          action:'none',
-          student_name:'',
+          action:'get_student_schedule',
+          student_name:'이민형',
           division:'',
           date_expression:'',
           time_slot:0,
@@ -61,6 +61,9 @@ test('unified interpreter runs on the first turn without loading student data', 
   assert.equal(result.route,'rule');
   assert.equal(result.intent,'get_student_schedule');
   assert.equal(result.standaloneCommand,'이민형 시간표 알려줘');
+  assert.equal(result.structuredCommand.action,'get_student_schedule');
+  assert.equal(result.structuredCommand.studentName,'이민형');
+  assert.equal(result.structuredCommand.dateExpression,'');
   assert.equal(result.contextUsed,false);
 });
 
@@ -91,10 +94,10 @@ test('unified interpreter resolves follow-up context from conversation text only
         intent:'get_student_schedule',
         standalone_command:'이민형 지난주 시간표 알려줘',
         structured_command:{
-          action:'none',
-          student_name:'',
+          action:'get_student_schedule',
+          student_name:'이민형',
           division:'',
-          date_expression:'',
+          date_expression:'지난주',
           time_slot:0,
           class_group:'',
         },
@@ -110,6 +113,9 @@ test('unified interpreter resolves follow-up context from conversation text only
   assert.equal(result.route,'rule','server route is derived from the intent contract, not model route text');
   assert.equal(result.intent,'get_student_schedule');
   assert.equal(result.standaloneCommand,'이민형 지난주 시간표 알려줘');
+  assert.equal(result.structuredCommand.action,'get_student_schedule');
+  assert.equal(result.structuredCommand.studentName,'이민형');
+  assert.equal(result.structuredCommand.dateExpression,'지난주');
   assert.equal(result.contextUsed,true);
 });
 
