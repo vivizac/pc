@@ -2010,7 +2010,9 @@
       standaloneCommand,
       structuredCommand,
       reply,
-      contextUsed:language.contextUsed===true
+      contextUsed:language.contextUsed===true,
+      feedbackHandled:data?.feedbackHandled===true,
+      feedbackOutput:String(data?.feedbackOutput || '').trim()
     };
   }
 
@@ -2110,6 +2112,14 @@
     }
 
     if(interpreterLane==='feedback'){
+      const feedbackOutput=String(interpretation.feedbackOutput || '').trim();
+      if(interpretation.feedbackHandled===true && feedbackOutput){
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,feedbackOutput,replyToMessageId),
+          replyText:feedbackOutput,
+          recordAi:true
+        };
+      }
       return resolveOlliTalkFeedbackDirectReadTurn(
         rawCommandText,
         commandText,
