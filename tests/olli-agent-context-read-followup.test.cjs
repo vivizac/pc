@@ -170,6 +170,7 @@ test('unified interpreter emits a structured add_makeup command from conversatio
     targetWeekday:0,
     targetTimeSlot:0,
     reason:'',
+    availabilityPurpose:'unknown',
   });
   assert.equal(result.contextUsed,true);
 });
@@ -227,6 +228,7 @@ test('unified interpreter emits a structured add_trial command without student d
     targetWeekday:0,
     targetTimeSlot:0,
     reason:'',
+    availabilityPurpose:'unknown',
   });
 });
 
@@ -283,6 +285,7 @@ test('unified interpreter emits a structured add_waitlist command without studen
     targetWeekday:0,
     targetTimeSlot:0,
     reason:'',
+    availabilityPurpose:'unknown',
   });
 });
 
@@ -345,6 +348,7 @@ test('unified interpreter emits structured pickup fields without student data lo
     targetWeekday:0,
     targetTimeSlot:0,
     reason:'',
+    availabilityPurpose:'unknown',
   });
 });
 
@@ -462,6 +466,7 @@ test('unified interpreter emits structured class move fields without student dat
     targetWeekday:3,
     targetTimeSlot:5,
     reason:'',
+    availabilityPurpose:'unknown',
   });
 });
 
@@ -529,7 +534,64 @@ test('unified interpreter emits a structured mark_absent command without loading
     targetWeekday:0,
     targetTimeSlot:0,
     reason:'감기',
+    availabilityPurpose:'unknown',
   });
+});
+
+test('unified interpreter emits a structured find_available_slots query without reading academy data', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:20,
+    currentMessage:'다음주 초등부 보강 가능한 자리 알려줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'find_available_slots',
+      standalone_command:'다음주 초등부 보강 가능한 자리 알려줘',
+      structured_command:{
+        action:'find_available_slots',
+        student_name:'',
+        division:'elementary',
+        date_expression:'다음주',
+        time_slot:0,
+        class_group:'',
+        weekday:0,
+        class_time:0,
+        class_minute:0,
+        pickup_kind:'',
+        pickup_label:'',
+        pickup_time:'',
+        source_weekday:0,
+        source_time_slot:0,
+        target_weekday:0,
+        target_time_slot:0,
+        reason:'',
+        availability_purpose:'makeup',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'find_available_slots');
+  assert.equal(result.structuredCommand.action,'find_available_slots');
+  assert.equal(result.structuredCommand.division,'elementary');
+  assert.equal(result.structuredCommand.dateExpression,'다음주');
+  assert.equal(result.structuredCommand.weekday,0);
+  assert.equal(result.structuredCommand.timeSlot,0);
+  assert.equal(result.structuredCommand.classGroup,'');
+  assert.equal(result.structuredCommand.availabilityPurpose,'makeup');
 });
 
 test('unified interpreter classifies feedback/data work separately from routine work', async () => {
