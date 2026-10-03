@@ -8,6 +8,7 @@ const path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const runtimeModule=require('../apps/mobile/api/_lib/olli-agent/runtime.cjs');
 const recordTools=require('../apps/mobile/api/_lib/olli-agent/tools/record-tools.cjs');
+const perf=require('../apps/mobile/api/_lib/olli-agent/perf.cjs');
 
 test('feedback period parser resolves common Korean long-range expressions deterministically',()=>{
   assert.deepEqual(
@@ -172,4 +173,65 @@ test('production feedback lane bypasses generic chat and direct runtime has no t
   assert.match(directBlock,/tools:\[\]/);
   assert.equal(directBlock.split('await run(agent,').length-1,1);
   assert.match(directBlock,/maxRecords:requestedRange \? 180 : 20/);
+});
+
+
+test('feedback latency instrumentation exposes only structural timing metadata',()=>{
+  const event=perf.buildPerfEvent({
+    phase:'feedback_data_read',
+    status:'ok',
+    mode:'feedback_read',
+    model:'gpt-test',
+    durationMs:12.3,
+    recordCount:8,
+    matchedRecordCount:10,
+    evidenceChars:1234,
+    conversationItems:4,
+    conversationChars:300,
+    rangeSampled:1,
+    sourceMayBeTruncated:0,
+    studentName:'민감정보',
+    content:'피드백 원문',
+  });
+
+  assert.equal(event.phase,'feedback_data_read');
+  assert.equal(event.model,'gpt-test');
+  assert.equal(event.recordCount,8);
+  assert.equal(event.matchedRecordCount,10);
+  assert.equal(event.evidenceChars,1234);
+  assert.equal(event.conversationItems,4);
+  assert.equal(event.conversationChars,300);
+  assert.equal(event.rangeSampled,1);
+  assert.equal(event.sourceMayBeTruncated,0);
+  assert.equal('studentName' in event,false);
+  assert.equal('content' in event,false);
+});
+
+test('feedback path is instrumented across interpretation, privacy, data, evidence and synthesis',()=>{
+  const endpoint=fs.readFileSync(path.join(root,'apps/mobile/api/olli-agent.js'),'utf8');
+  const runtime=fs.readFileSync(path.join(root,'apps/mobile/api/_lib/olli-agent/runtime.cjs'),'utf8');
+  const contextRoute=fs.readFileSync(path.join(root,'apps/mobile/api/_lib/olli-agent/context-route.cjs'),'utf8');
+  const requestContext=fs.readFileSync(path.join(root,'apps/mobile/api/_lib/olli-agent/request-context.cjs'),'utf8');
+
+  for(const phase of [
+    'feedback_source_validate',
+    'feedback_privacy_prepare',
+    'feedback_pipeline_total',
+  ]){
+    assert.match(endpoint,new RegExp(phase));
+  }
+
+  for(const phase of [
+    'feedback_sdk_load',
+    'feedback_data_read',
+    'feedback_evidence_build',
+    'feedback_analysis_model',
+    'feedback_runtime_total',
+  ]){
+    assert.match(runtime,new RegExp(phase));
+  }
+
+  assert.match(contextRoute,/interpreter_openai/);
+  assert.match(contextRoute,/interpreter_total/);
+  assert.match(requestContext,/request_context_load/);
 });
