@@ -125,6 +125,35 @@ test('interpreter lane contract is explicit', () => {
   assert.deepEqual(OLLI_INTERPRETER_LANES,['routine','feedback','chat']);
 });
 
+test('chat lane can return a direct reply without a second chat-model contract', async () => {
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:13,
+    currentMessage:'왜 그렇게 되는 거야?',
+    conversation:[
+      {role:'user',content:'앞에서 설명한 내용'},
+      {role:'assistant',content:'앞 설명'},
+    ],
+    modelRunner:async()=>({
+      lane:'chat',
+      route:'chat',
+      intent:'general_chat',
+      standalone_command:'왜 그렇게 되는 거야?',
+      reply:'앞에서 설명한 이유를 이어서 설명할게요.',
+      context_used:true,
+    }),
+  });
+
+  assert.equal(result.lane,'chat');
+  assert.equal(result.reply,'앞에서 설명한 이유를 이어서 설명할게요.');
+  assert.equal(result.route,'chat');
+  assert.equal(result.contextUsed,true);
+});
+
 test('unified interpreter has one deterministic route contract per system intent', () => {
   assert.equal(routeForSystemIntent('add_makeup'),'rule');
   assert.equal(routeForSystemIntent('get_student_schedule'),'rule');
