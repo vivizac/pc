@@ -2400,6 +2400,39 @@
     };
   }
 
+  async function resolveStructuredWaitlistUpdateTurn(structuredCommand,current,sourceText,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
+      throw new Error('대기 변경 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'structured_waitlist_update_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(sourceText),
+        sourceMessageId,
+        structuredCommand
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||data?.ok!==true||!data?.message?.action){
+      throw new Error(data?.error || data?.message || '대기 변경 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(clean(data.message.action.action_type)!=='update_waitlist'){
+      throw new Error('대기 변경 규칙 시스템 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
   async function resolveWaitlistUpdateAgentTurn(commandText, current, replyToMessageId) {
     const sourceMessageId = Number(replyToMessageId || 0);
     if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
@@ -3201,6 +3234,18 @@
         reasonMessageId,
         current,
       });
+    }
+
+    if(
+      interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='update_waitlist'
+    ){
+      return resolveStructuredWaitlistUpdateTurn(
+        structuredCommand,
+        current,
+        rawCommandText,
+        replyToMessageId
+      );
     }
 
     if(

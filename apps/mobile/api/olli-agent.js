@@ -309,6 +309,47 @@ export default async function handler(req, res) {
       });
     }
 
+    if (mode === 'structured_waitlist_update_prepare') {
+      const message=safeText(body.message,5000);
+      const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
+      const structuredCommand=body.structuredCommand && typeof body.structuredCommand==='object'
+        ? body.structuredCommand
+        : null;
+      if(!message){
+        return res.status(400).json({
+          error:'structured_waitlist_update_prepare에는 원문 메시지가 필요합니다.',
+          code:'OLLI_ROUTINE_WAITLIST_UPDATE_MESSAGE_REQUIRED',
+        });
+      }
+      if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
+        return res.status(400).json({
+          error:'structured_waitlist_update_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+          code:'OLLI_ROUTINE_WAITLIST_UPDATE_SOURCE_REQUIRED',
+        });
+      }
+      if(safeText(structuredCommand?.action,40)!=='update_waitlist'){
+        return res.status(400).json({
+          error:'structured_waitlist_update_prepare에는 update_waitlist 구조화 명령이 필요합니다.',
+          code:'OLLI_ROUTINE_WAITLIST_UPDATE_COMMAND_REQUIRED',
+        });
+      }
+
+      const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
+      const result=await runtimeModule.runStructuredWaitlistUpdatePrepare({
+        requestContext,
+        structuredCommand,
+        sourceMessageId,
+        sourceMessageText:message,
+      });
+      return res.status(200).json({
+        ok:true,
+        mode:'structured_waitlist_update_prepare',
+        ready:result?.ready===true,
+        message:result?.persistedMessage || null,
+        recoveredAfterPersist:result?.recoveredAfterPersist===true,
+      });
+    }
+
     if (mode === 'context_resolve') {
       const message=safeText(body.message,5000);
       const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);

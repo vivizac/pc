@@ -964,3 +964,41 @@ test('structured cancel_trial bypasses Agents SDK and preserves source-bound rea
   assert.match(mobileBlock,/mode:'structured_trial_cancel_prepare'/);
   assert.doesNotMatch(mobileBlock,/mode:'trial_cancel_prepare'/);
 });
+
+
+test('structured update_waitlist bypasses Agents SDK and reuses the deterministic waitlist-update SOT', () => {
+  assert.match(contextRouteSource,/update_waitlist/);
+  assert.match(contextRouteSource,/source_weekday/);
+  assert.match(contextRouteSource,/target_weekday/);
+  assert.match(apiSource,/structured_waitlist_update_prepare/);
+  assert.match(apiSource,/runStructuredWaitlistUpdatePrepare/);
+
+  const runtimeStart=runtimeSource.indexOf('async function runStructuredWaitlistUpdatePrepare');
+  const runtimeEnd=runtimeSource.indexOf('\nasync function ',runtimeStart+20);
+  assert.ok(runtimeStart>=0 && runtimeEnd>runtimeStart);
+  const runtimeBlock=runtimeSource.slice(runtimeStart,runtimeEnd);
+  assert.match(runtimeBlock,/validateWaitlistSourceMessage/);
+  assert.match(runtimeBlock,/prepareStructuredWaitlistPrivacy/);
+  assert.match(runtimeBlock,/resolveWaitlistUpdatePrepareScope/);
+  assert.match(runtimeBlock,/prepareWaitlistUpdateAction/);
+  assert.doesNotMatch(runtimeBlock,/loadAgentsSdk|new Agent|runWaitlistUpdatePrepareAgent/);
+
+  for(const source of [pcSource,mobileSource]){
+    assert.match(source,/structured_waitlist_update_prepare/);
+    assert.match(source,/structuredCommand/);
+  }
+
+  const pcStart=pcSource.indexOf('async function resolveStructuredWaitlistUpdateTurn');
+  const pcEnd=pcSource.indexOf('\n  async function ',pcStart+20);
+  assert.ok(pcStart>=0 && pcEnd>pcStart);
+  const pcBlock=pcSource.slice(pcStart,pcEnd);
+  assert.match(pcBlock,/mode:'structured_waitlist_update_prepare'/);
+  assert.doesNotMatch(pcBlock,/mode:'waitlist_update_prepare'/);
+
+  const mobileStart=mobileSource.indexOf('async function resolveOlliTalkStructuredWaitlistUpdateTurn');
+  const mobileEnd=mobileSource.indexOf('\n  async function ',mobileStart+20);
+  assert.ok(mobileStart>=0 && mobileEnd>mobileStart);
+  const mobileBlock=mobileSource.slice(mobileStart,mobileEnd);
+  assert.match(mobileBlock,/mode:'structured_waitlist_update_prepare'/);
+  assert.doesNotMatch(mobileBlock,/mode:'waitlist_update_prepare'/);
+});
