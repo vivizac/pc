@@ -2652,6 +2652,16 @@
     const route=clean(language.route);
     const intent=clean(language.intent);
     const standaloneCommand=clean(language.standaloneCommand);
+    const structuredRaw=language.structuredCommand && typeof language.structuredCommand==='object'
+      ? language.structuredCommand
+      : {};
+    const structuredCommand={
+      action:clean(structuredRaw.action),
+      studentName:clean(structuredRaw.studentName),
+      dateExpression:clean(structuredRaw.dateExpression),
+      timeSlot:Number(structuredRaw.timeSlot || 0),
+      classGroup:clean(structuredRaw.classGroup).toUpperCase()
+    };
     const reply=clean(language.reply);
     if(data?.ok!==true || !['routine','feedback','chat'].includes(lane) || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
       throw new Error('올리 공통 해석 결과가 올바르지 않습니다.');
@@ -2661,6 +2671,7 @@
       route,
       intent,
       standaloneCommand,
+      structuredCommand,
       reply,
       contextUsed:language.contextUsed===true
     };
@@ -2718,6 +2729,7 @@
     const interpreterLane=clean(interpretation.lane) || 'routine';
     const interpreterRoute=clean(interpretation.route);
     const interpreterIntent=clean(interpretation.intent);
+    const structuredCommand=interpretation.structuredCommand || null;
     commandText=clean(interpretation.standaloneCommand) || rawCommandText;
 
     if (options.allowSuggestedQuery && router && typeof router.runSuggestedQuery === 'function') {
@@ -2767,6 +2779,41 @@
         replyText:resolved.message,
         recordAi:true
       };
+    }
+
+    if(
+      interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='add_makeup'
+      && router
+      && typeof router.prepareStructuredAction==='function'
+    ){
+      const prepared=await router.prepareStructuredAction(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(prepared?.handled===true){
+        if(prepared.kind==='action_pending' && prepared.payload){
+          return {
+            assistantMessage:await saveAssistantAction(
+              current,
+              prepared.message || '이 작업을 진행할까요?',
+              prepared.payload,
+              replyToMessageId
+            ),
+            replyText:prepared.message || '',
+            recordAi:false
+          };
+        }
+        if(prepared.kind==='action_rejected'){
+          const rejectedMessage=clean(prepared.message) || '작업을 준비하지 못했어요.';
+          return {
+            assistantMessage:await saveAssistantReply(current,rejectedMessage,replyToMessageId),
+            replyText:rejectedMessage,
+            recordAi:false
+          };
+        }
+      }
     }
 
     if(interpreterRoute==='rule'){
