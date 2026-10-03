@@ -2483,23 +2483,88 @@
 
     const writeDraftState = getStructuredWriteDraftState(command);
     if (writeDraftState.supported && !writeDraftState.complete) {
-      const field = writeDraftState.nextField;
+      let field = writeDraftState.nextField;
       const noun = action === 'add_trial'
         ? '체험 등록'
         : (action === 'add_waitlist' ? '대기 등록' : '보강 등록');
-      const message = field === 'student'
+      let draft=Object.assign({},writeDraftState.draft);
+      let choices=[];
+      let message = field === 'student'
         ? noun + '할 학생을 알려주세요.'
         : (field === 'date'
           ? noun + '할 날짜를 선택해 주세요.'
           : (field === 'time'
             ? noun + '할 시간을 선택해 주세요.'
             : noun + '에 필요한 정보를 알려주세요.'));
+
+      if(field==='time'){
+        if(!schedule || typeof schedule.prepareStructuredTimeChoices!=='function'){
+          return {
+            handled:true,
+            kind:'action_rejected',
+            intent:action,
+            text:'',
+            message:'시간표 시간 선택 기능을 아직 불러오지 못했어요.',
+            clearInput:true,
+            payload:command,
+            action:null
+          };
+        }
+        const dateSpec=parseDateExpression(compactText(draft.dateExpression));
+        const date=dateSpec ? resolveDateExpression(dateSpec,new Date()) : null;
+        if(!date){
+          return {
+            handled:true,
+            kind:'action_rejected',
+            intent:action,
+            text:'',
+            message:'선택한 날짜를 해석하지 못했어요. 날짜를 다시 선택해 주세요.',
+            clearInput:true,
+            payload:command,
+            action:null
+          };
+        }
+        const timeChoices=await schedule.prepareStructuredTimeChoices({
+          action,
+          studentName:draft.studentName,
+          division:draft.division,
+          date,
+          dateLabel:cleanText(dateSpec.label),
+          selectedStudent:routeContext.selectedStudent || null
+        });
+        if(!timeChoices?.ok){
+          if(timeChoices?.code==='division_required'){
+            field='division';
+            choices=Array.isArray(timeChoices.choices) ? timeChoices.choices.slice() : ['kinder','elementary'];
+            message=String(timeChoices.message || draft.studentName+' 학생은 유치부인지 초등부인지 선택해 주세요.');
+          }else{
+            return {
+              handled:true,
+              kind:'action_rejected',
+              intent:action,
+              text:'',
+              message:String(timeChoices?.message || '선택 가능한 수업 시간을 확인하지 못했어요.'),
+              clearInput:true,
+              payload:command,
+              action:null
+            };
+          }
+        }else{
+          draft=updateStructuredWriteDraft(draft,'division',timeChoices.division);
+          choices=Array.isArray(timeChoices.choices)
+            ? timeChoices.choices.map(item=>Object.assign({},item))
+            : [];
+          message=String(timeChoices.message || noun+'할 시간을 선택해 주세요.');
+        }
+      }
+
       const payload = {
         type:'structured_write_draft',
         targetIntent:action,
         field,
         missingFields:writeDraftState.missingFields.slice(),
-        draft:Object.assign({}, writeDraftState.draft)
+        draft,
+        choices
       };
 
       return {
@@ -2515,7 +2580,8 @@
           intent:action,
           field,
           missingFields:writeDraftState.missingFields.slice(),
-          command:Object.assign({}, writeDraftState.draft),
+          command:Object.assign({},draft),
+          choices:choices.map(item=>typeof item==='object' ? Object.assign({},item) : item),
           requiresReason:false
         }
       };

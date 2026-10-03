@@ -302,6 +302,7 @@
         division:requestedDivision,
         dateLabel:clean(opts.dateLabel),
         viewMode:clean(opts.viewMode) || 'availability',
+        timetableMode:timetableMode(data),
         closedDay:true,
         closedReason:'일요일',
         allSlots:[],
@@ -318,6 +319,7 @@
         division:requestedDivision,
         dateLabel:clean(opts.dateLabel),
         viewMode:clean(opts.viewMode) || 'availability',
+        timetableMode:timetableMode(data),
         closedDay:true,
         closedReason:clean(calendar.name) || '휴원일',
         allSlots:[],
@@ -355,6 +357,7 @@
       division:requestedDivision,
       dateLabel:clean(opts.dateLabel),
       viewMode:clean(opts.viewMode) || 'availability',
+      timetableMode:timetableMode(data),
       closedDay:false,
       closedReason:'',
       allSlots,
@@ -381,6 +384,132 @@
     }
     return buildDateAvailabilityFromData(weekData, dateKey, opts);
   }
+
+  function structuredStoredTimeMinutes(mode, division, dateKey, timeSlot) {
+    const stored=Number(timeSlot || 0);
+    const weekday=isoWeekday(dateKey);
+    if(!stored) return Number.POSITIVE_INFINITY;
+    if(division==='elementary' && weekday===6 && stored>=10 && stored<=12){
+      return (stored-9)*60;
+    }
+    if(mode==='half_hour'){
+      const elementary={1:60,7:90,2:120,8:150,3:180,9:210,4:240,10:270,5:300,11:330,6:360};
+      const kinder={7:210,4:240,8:270,5:300,9:330};
+      return Number((division==='kinder' ? kinder : elementary)[stored] || stored*60);
+    }
+    return stored*60;
+  }
+
+  async function prepareStructuredTimeChoices(options) {
+    const opts=options || {};
+    const action=clean(opts.action);
+    const studentName=clean(opts.studentName);
+    const selected=opts.selectedStudent && clean(opts.selectedStudent.id) ? opts.selectedStudent : null;
+    const dateKey=localDateKey(opts.date);
+    const dateLabel=clean(opts.dateLabel) || fallbackDateLabel(dateKey);
+    let division=normalizeDivision(opts.division);
+
+    if(!['add_makeup','add_trial','add_waitlist'].includes(action)){
+      return {ok:false,code:'unsupported_action',message:'시간 선택을 지원하지 않는 작업입니다.'};
+    }
+    if(!studentName) return {ok:false,code:'student_required',message:'시간을 선택할 학생을 확인하지 못했어요.'};
+    if(!dateKey) return {ok:false,code:'date_required',message:'시간을 선택할 날짜를 확인하지 못했어요.'};
+
+    if(action==='add_makeup'){
+      const resolved=resolveCommandStudent(studentName,selected);
+      if(!resolved.ok) return resolved;
+      const studentDivision=normalizeStudentDivision(resolved.student);
+      if(division && studentDivision && division!==studentDivision){
+        return {ok:false,message:clean(resolved.student.name)+' 학생의 수업 구분과 입력한 유치부·초등부 정보가 달라요.'};
+      }
+      division=studentDivision || division;
+    }else{
+      let student=null;
+      if(selected && clean(selected.name)===studentName){
+        student=selected;
+      }else{
+        const candidates=findStudentsByExactName(studentName);
+        if(candidates.length===1) student=candidates[0];
+      }
+      const studentDivision=student ? normalizeStudentDivision(student) : '';
+      if(division && studentDivision && division!==studentDivision){
+        return {ok:false,message:clean(student.name)+' 학생의 수업 구분과 입력한 유치부·초등부 정보가 달라요.'};
+      }
+      division=studentDivision || division;
+    }
+
+    if(!division){
+      return {
+        ok:false,
+        code:'division_required',
+        field:'division',
+        choices:['kinder','elementary'],
+        message:studentName+' 학생은 유치부인지 초등부인지 선택해 주세요.'
+      };
+    }
+
+    const purpose=action==='add_makeup' ? 'makeup' : (action==='add_trial' ? 'trial' : 'unknown');
+    const availability=await findAvailableSlots({
+      date:dateKey,
+      dateLabel,
+      division,
+      purpose,
+      viewMode:'schedule'
+    });
+    if(availability.closedDay){
+      return {ok:false,code:'closed_day',message:describeAvailableSlots(availability),division,date:dateKey};
+    }
+
+    const rows=Array.isArray(availability.allSlots) ? availability.allSlots : [];
+    if(!rows.length){
+      return {
+        ok:false,
+        code:'no_operating_slots',
+        message:dateLabel+'에는 '+divisionLabel(division)+' 운영 수업이 없어요.',
+        division,
+        date:dateKey
+      };
+    }
+
+    const mode=clean(availability.timetableMode) || 'hourly';
+    const grouped=new Map();
+    rows.forEach(slot=>{
+      const timeSlot=Number(slot && slot.timeSlot || 0);
+      if(!timeSlot) return;
+      if(!grouped.has(timeSlot)) grouped.set(timeSlot,[]);
+      grouped.get(timeSlot).push(slot);
+    });
+
+    const choices=Array.from(grouped.entries()).map(([timeSlot,timeRows])=>{
+      const open=timeRows.some(slot=>Number(slot && slot.remaining || 0)>0);
+      const remaining=timeRows.reduce((sum,slot)=>sum+Math.max(0,Number(slot && slot.remaining || 0)),0);
+      const selectable=action==='add_waitlist' ? true : open;
+      const label=timetableMemoTimeLabel(division,dateKey,timeSlot,mode);
+      return {
+        timeSlot:Number(timeSlot),
+        label,
+        status:open ? 'available' : 'full',
+        selectable,
+        remaining,
+        grouped:timeRows.length>1
+      };
+    }).sort((a,b)=>
+      structuredStoredTimeMinutes(mode,division,dateKey,a.timeSlot)
+      - structuredStoredTimeMinutes(mode,division,dateKey,b.timeSlot)
+    );
+
+    return {
+      ok:true,
+      action,
+      division,
+      date:dateKey,
+      dateLabel,
+      timetableMode:mode,
+      choices,
+      message:studentName+' · '+dateLabel+'\n시간을 선택해 주세요.'
+    };
+  }
+
 
   async function loadAvailabilityHorizon(startDate, endDate) {
     const start = localDateKey(startDate);
@@ -3624,6 +3753,7 @@
     findRosterEntries,
     findPickups,
     findStudentSchedule,
+    prepareStructuredTimeChoices,
     describeAvailableSlots,
     describeWeekAvailability,
     describeRecurringAvailability,

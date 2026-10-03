@@ -648,6 +648,9 @@
       if(clean(prepared.payload?.field)==='date' && prepared.payload){
         return saveStructuredDateChoice(current,prepared.message || '날짜를 선택해 주세요.',prepared.payload,null);
       }
+      if(clean(prepared.payload?.field)==='time' && prepared.payload){
+        return saveStructuredTimeChoice(current,prepared.message || '시간을 선택해 주세요.',prepared.payload,null);
+      }
       return saveAssistantReply(current,clean(prepared.message) || '필요한 정보를 선택해 주세요.',null);
     }
     if(['action_pending','action_choice'].includes(prepared.kind) && prepared.payload){
@@ -750,6 +753,94 @@
     card.append(dateInput,pick);
   }
 
+  async function handleStructuredTimeChoice(action,timeSlot) {
+    const actionId=clean(action?.id);
+    const selectedTime=Number(timeSlot || 0);
+    if(!actionId || !selectedTime || state.actionBusy.has(actionId)) return;
+    const current=context();
+    if(!current.sessionToken || !current.academyId){
+      alert('팀톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    state.actionBusy.add(actionId);
+    document.querySelectorAll('[data-action-id]').forEach(card=>{
+      if(clean(card.dataset.actionId)!==actionId) return;
+      card.querySelectorAll('button').forEach(button=>{ button.disabled=true; });
+      card.classList.add('busy');
+    });
+
+    try{
+      const payload=await rpc('olli_team_chat_action_select_structured_time',{
+        p_session_token:current.sessionToken,
+        p_academy_id:current.academyId,
+        p_action_id:actionId,
+        p_time_slot:selectedTime
+      });
+      if(!payload?.ok || !payload?.action || !payload?.draft){
+        throw new Error(payload?.message || '시간을 선택하지 못했습니다.');
+      }
+      await continueStructuredWriteDraft(payload.draft,current);
+      await loadMessages({showLoading:false,followBottom:true});
+    }catch(error){
+      console.warn('PC 팀톡 구조화 시간 선택 실패:',error?.message || error);
+      alert(error?.message || '시간을 선택하지 못했습니다.');
+      await loadMessages({showLoading:false,followBottom:true});
+    }finally{
+      state.actionBusy.delete(actionId);
+      document.querySelectorAll('[data-action-id]').forEach(card=>{
+        if(clean(card.dataset.actionId)===actionId) card.classList.remove('busy');
+      });
+    }
+  }
+
+  async function populateStructuredTimeChoiceCard(card,action) {
+    const actionId=clean(action?.id);
+    const current=context();
+    if(!actionId || !current.sessionToken || !current.academyId) return;
+
+    try{
+      const payload=await rpc('olli_team_chat_get_structured_time_choice',{
+        p_session_token:current.sessionToken,
+        p_academy_id:current.academyId,
+        p_action_id:actionId
+      });
+      if(!payload?.ok || !Array.isArray(payload?.choices)){
+        throw new Error(payload?.message || '선택 가능한 시간을 확인하지 못했습니다.');
+      }
+      if(!card.isConnected || clean(card.dataset.actionId)!==actionId) return;
+      card.replaceChildren();
+      if(!payload.choices.length){
+        card.appendChild(create('span','olliPcTeamTalkActionStatus','선택 가능한 수업 시간이 없어요.'));
+        return;
+      }
+      payload.choices.forEach(choice=>{
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='olliPcTeamTalkActionButton primary timeChoice';
+        const label=clean(choice?.label) || Number(choice?.timeSlot || 0)+'시';
+        const status=clean(choice?.status);
+        const selectable=choice?.selectable===true;
+        button.textContent=status==='full'
+          ? label+'\n'+(clean(payload?.targetIntent)==='add_waitlist' ? '대기 가능' : '마감')
+          : label;
+        button.disabled=!selectable;
+        if(!selectable) button.classList.add('closed');
+        button.addEventListener('click',()=>handleStructuredTimeChoice(action,Number(choice?.timeSlot || 0)));
+        card.appendChild(button);
+      });
+    }catch(error){
+      if(!card.isConnected) return;
+      card.replaceChildren(create('span','olliPcTeamTalkActionStatus failed',clean(error?.message) || '시간을 불러오지 못했어요.'));
+    }
+  }
+
+  function appendStructuredTimeChoiceButtons(card,action) {
+    card.classList.add('structuredTime');
+    card.appendChild(create('span','olliPcTeamTalkActionStatus','시간 확인 중'));
+    void populateStructuredTimeChoiceCard(card,action);
+  }
+
   function makeActionCard(action) {
     const card = create('div', 'olliPcTeamTalkActionCard');
     const status = clean(action?.status) || 'pending';
@@ -765,6 +856,11 @@
 
     if(clean(action?.action_type)==='choose_structured_date'){
       appendStructuredDateChoiceButtons(card,action);
+      return card;
+    }
+
+    if(clean(action?.action_type)==='choose_structured_time'){
+      appendStructuredTimeChoiceButtons(card,action);
       return card;
     }
 
@@ -2891,6 +2987,21 @@
     return payload.message;
   }
 
+  async function saveStructuredTimeChoice(current,body,payload,replyToMessageId) {
+    const result=await rpc('olli_team_chat_send_structured_time_choice',{
+      p_session_token:current.sessionToken,
+      p_academy_id:current.academyId,
+      p_body:normalizeActionPrompt(body),
+      p_action_payload:payload,
+      p_client_message_id:clientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if(!result?.ok || !result?.message?.action){
+      throw new Error(result?.message || '시간 선택 카드를 저장하지 못했습니다.');
+    }
+    return result.message;
+  }
+
   async function saveStructuredDateChoice(current,body,payload,replyToMessageId) {
     const result=await rpc('olli_team_chat_send_structured_date_choice',{
       p_session_token:current.sessionToken,
@@ -3511,6 +3622,18 @@
               assistantMessage:await saveStructuredDateChoice(
                 current,
                 prepared.message || '날짜를 선택해 주세요.',
+                prepared.payload,
+                replyToMessageId
+              ),
+              replyText:prepared.message || '',
+              recordAi:false
+            };
+          }
+          if(clean(prepared.payload.field)==='time'){
+            return {
+              assistantMessage:await saveStructuredTimeChoice(
+                current,
+                prepared.message || '시간을 선택해 주세요.',
                 prepared.payload,
                 replyToMessageId
               ),

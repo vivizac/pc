@@ -173,27 +173,59 @@ test('structured add_makeup returns a date draft state instead of rejecting miss
   }
 });
 
-test('structured add_trial returns date then time as the shared draft order', async () => {
-  const dateState = await router.prepareStructuredAction({
-    action:'add_trial',
-    studentName:'서준',
-    division:'elementary',
-    dateExpression:'',
-    timeSlot:0,
-  }, {});
+test('structured add_trial returns date then real SOT time choices as the shared draft order', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async prepareStructuredTimeChoices(options){
+      assert.equal(options.action,'add_trial');
+      assert.equal(options.studentName,'서준');
+      assert.equal(options.division,'elementary');
+      assert.ok(options.date instanceof Date);
+      return {
+        ok:true,
+        division:'elementary',
+        date:'2026-10-05',
+        dateLabel:'내일',
+        timetableMode:'half_hour',
+        choices:[
+          {timeSlot:4,label:'4시',status:'available',selectable:true,remaining:2,grouped:false},
+          {timeSlot:10,label:'4시 30분',status:'full',selectable:false,remaining:0,grouped:false}
+        ],
+        message:'서준 · 내일\n시간을 선택해 주세요.'
+      };
+    }
+  };
 
-  assert.equal(dateState.kind,'action_needs_field');
-  assert.equal(dateState.payload.field,'date');
-  assert.deepEqual(dateState.payload.missingFields,['date','time']);
+  try{
+    const dateState = await router.prepareStructuredAction({
+      action:'add_trial',
+      studentName:'서준',
+      division:'elementary',
+      dateExpression:'',
+      timeSlot:0,
+    }, {});
 
-  const withDate = router.updateStructuredWriteDraft(dateState.payload.draft,'date','내일');
-  const timeState = await router.prepareStructuredAction(withDate,{});
+    assert.equal(dateState.kind,'action_needs_field');
+    assert.equal(dateState.payload.field,'date');
+    assert.deepEqual(dateState.payload.missingFields,['date','time']);
 
-  assert.equal(timeState.kind,'action_needs_field');
-  assert.equal(timeState.payload.field,'time');
-  assert.deepEqual(timeState.payload.missingFields,['time']);
-  assert.equal(timeState.payload.draft.dateExpression,'내일');
-  assert.match(timeState.message,/시간을 선택/);
+    const withDate = router.updateStructuredWriteDraft(dateState.payload.draft,'date','내일');
+    const timeState = await router.prepareStructuredAction(withDate,{});
+
+    assert.equal(timeState.kind,'action_needs_field');
+    assert.equal(timeState.payload.field,'time');
+    assert.deepEqual(timeState.payload.missingFields,['time']);
+    assert.equal(timeState.payload.draft.dateExpression,'내일');
+    assert.equal(timeState.payload.draft.division,'elementary');
+    assert.equal(timeState.payload.choices.length,2);
+    assert.equal(timeState.payload.choices[0].label,'4시');
+    assert.equal(timeState.payload.choices[0].selectable,true);
+    assert.equal(timeState.payload.choices[1].label,'4시 30분');
+    assert.equal(timeState.payload.choices[1].selectable,false);
+    assert.match(timeState.message,/시간을 선택/);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
 });
 
 test('structured add_waitlist can represent a missing student without inventing one', async () => {
