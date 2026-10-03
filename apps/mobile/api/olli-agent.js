@@ -88,6 +88,7 @@ export default async function handler(req, res) {
           route:safeText(result?.route,20),
           intent:safeText(result?.intent,80),
           standaloneCommand:safeText(result?.standaloneCommand,5000),
+          reply:safeText(result?.reply,5000),
           contextUsed:result?.contextUsed===true,
         },
       });
