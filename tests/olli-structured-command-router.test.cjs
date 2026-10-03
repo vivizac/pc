@@ -70,6 +70,62 @@ test('structured add_makeup bypasses natural-language parsing and reaches existi
   }
 });
 
+test('structured write draft core orders missing add fields without requiring A/B early', () => {
+  const state = router.getStructuredWriteDraftState({
+    action:'add_makeup',
+    student_name:'민준',
+    date_expression:'',
+    time_slot:0,
+    class_group:'',
+  });
+
+  assert.equal(state.supported,true);
+  assert.deepEqual(state.requiredFields,['student','date','time']);
+  assert.deepEqual(state.missingFields,['date','time']);
+  assert.equal(state.nextField,'date');
+  assert.equal(state.complete,false);
+  assert.equal(state.draft.studentName,'민준');
+  assert.equal(state.draft.classGroup,'');
+});
+
+test('structured write draft core advances one missing field at a time and preserves normalized command facts', () => {
+  let draft = router.createStructuredWriteDraft({
+    action:'add_trial',
+    studentName:'서준',
+    division:'elementary',
+    class_group:'b',
+  });
+
+  let state = router.getStructuredWriteDraftState(draft);
+  assert.equal(state.nextField,'date');
+
+  draft = router.updateStructuredWriteDraft(draft,'date','내일');
+  state = router.getStructuredWriteDraftState(draft);
+  assert.deepEqual(state.missingFields,['time']);
+  assert.equal(state.nextField,'time');
+
+  draft = router.updateStructuredWriteDraft(draft,'time',5);
+  state = router.getStructuredWriteDraftState(draft);
+  assert.equal(state.complete,true);
+  assert.equal(state.nextField,'');
+  assert.equal(state.draft.dateExpression,'내일');
+  assert.equal(state.draft.timeSlot,5);
+  assert.equal(state.draft.classGroup,'B');
+  assert.equal(state.draft.division,'elementary');
+});
+
+test('structured write draft core stays inert for actions not migrated to the common draft flow yet', () => {
+  const state = router.getStructuredWriteDraftState({
+    action:'update_pickup',
+    studentName:'민준',
+  });
+
+  assert.equal(state.supported,false);
+  assert.equal(state.complete,false);
+  assert.deepEqual(state.requiredFields,[]);
+  assert.deepEqual(state.missingFields,[]);
+});
+
 test('structured command adapter does not claim unsupported actions', async () => {
   const result = await router.prepareStructuredAction({
     action:'update_trial',

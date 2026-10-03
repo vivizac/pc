@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-30-memo-auto-class-1';
+  const VERSION = '2026-10-03-structured-write-draft-core-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -1216,6 +1216,81 @@
   function parseWriteIntent(text) {
     const normalizedText = cleanText(text);
     return parseMultiWriteIntent(normalizedText) || parseSingleWriteIntent(normalizedText);
+  }
+
+  const STRUCTURED_WRITE_DRAFT_REQUIRED_FIELDS = Object.freeze({
+    add_makeup:Object.freeze(['student','date','time']),
+    add_trial:Object.freeze(['student','date','time']),
+    add_waitlist:Object.freeze(['student','date','time'])
+  });
+
+  function createStructuredWriteDraft(systemCommand) {
+    const source = systemCommand && typeof systemCommand === 'object'
+      ? systemCommand
+      : {};
+    const classGroup = cleanText(source.classGroup || source.class_group).toUpperCase();
+
+    return Object.assign({}, source, {
+      action:cleanText(source.action || source.targetIntent || source.intent),
+      studentName:cleanText(source.studentName || source.student_name),
+      division:cleanText(source.division),
+      dateExpression:cleanText(source.dateExpression || source.date_expression),
+      timeSlot:Number(source.timeSlot || source.time_slot || 0),
+      classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+      reason:cleanText(source.reason)
+    });
+  }
+
+  function hasStructuredWriteDraftField(draft, field) {
+    if (!draft || typeof draft !== 'object') return false;
+    if (field === 'student') return !!cleanText(draft.studentName);
+    if (field === 'date') return !!cleanText(draft.dateExpression);
+    if (field === 'time') return Number(draft.timeSlot || 0) > 0;
+    if (field === 'class_group') return /^[AB]$/.test(cleanText(draft.classGroup).toUpperCase());
+    if (field === 'division') return !!cleanText(draft.division);
+    if (field === 'reason') return !!cleanText(draft.reason);
+    return false;
+  }
+
+  function getStructuredWriteDraftState(systemCommand) {
+    const draft = createStructuredWriteDraft(systemCommand);
+    const requiredFields = STRUCTURED_WRITE_DRAFT_REQUIRED_FIELDS[draft.action] || null;
+    if (!requiredFields) {
+      return {
+        supported:false,
+        draft,
+        requiredFields:[],
+        missingFields:[],
+        nextField:'',
+        complete:false
+      };
+    }
+
+    const missingFields = requiredFields.filter(field => !hasStructuredWriteDraftField(draft, field));
+    return {
+      supported:true,
+      draft,
+      requiredFields:requiredFields.slice(),
+      missingFields,
+      nextField:missingFields[0] || '',
+      complete:missingFields.length === 0
+    };
+  }
+
+  function updateStructuredWriteDraft(systemCommand, field, value) {
+    const draft = createStructuredWriteDraft(systemCommand);
+    const key = cleanText(field);
+
+    if (key === 'student') draft.studentName = cleanText(value);
+    else if (key === 'date') draft.dateExpression = cleanText(value);
+    else if (key === 'time') draft.timeSlot = Number(value || 0);
+    else if (key === 'class_group') {
+      const classGroup = cleanText(value).toUpperCase();
+      draft.classGroup = /^[AB]$/.test(classGroup) ? classGroup : '';
+    } else if (key === 'division') draft.division = cleanText(value);
+    else if (key === 'reason') draft.reason = cleanText(value);
+
+    return createStructuredWriteDraft(draft);
   }
 
   function isConfirmCommand(text) {
@@ -3077,6 +3152,9 @@
     prepareStructuredAction,
     prepareAction,
     parseWriteIntent,
+    createStructuredWriteDraft,
+    getStructuredWriteDraftState,
+    updateStructuredWriteDraft,
     parseQueryIntent,
     parseStudentScheduleQueryIntent,
     parseMultiQueryIntent,
