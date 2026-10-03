@@ -36,7 +36,7 @@ function buildPerfEvent(input = {}) {
     status: cleanName(input.status || 'ok', 20) || 'ok',
   };
 
-  for (const key of ['mode', 'agent', 'rpc', 'tool', 'errorCode']) {
+  for (const key of ['mode', 'agent', 'model', 'rpc', 'tool', 'errorCode']) {
     const value = cleanName(input[key], 100);
     if (value) event[key] = value;
   }
@@ -58,6 +58,13 @@ function buildPerfEvent(input = {}) {
     'instructionsChars',
     'toolCount',
     'toolOutputChars',
+    'recordCount',
+    'matchedRecordCount',
+    'evidenceChars',
+    'conversationItems',
+    'conversationChars',
+    'rangeSampled',
+    'sourceMayBeTruncated',
   ]) {
     const value = finiteNumber(input[key]);
     if (value != null) event[key] = value;
