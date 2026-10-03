@@ -1989,7 +1989,7 @@
   async function runStructuredQuery(systemCommand, context) {
     const command=systemCommand && typeof systemCommand==='object' ? systemCommand : {};
     const action=cleanText(command.action);
-    const supported=new Set(['get_student_schedule','find_available_slots','find_roster_entries']);
+    const supported=new Set(['get_student_schedule','find_available_slots','find_roster_entries','find_pickups']);
     if(!supported.has(action)){
       return {
         handled:false,
@@ -2004,6 +2004,77 @@
 
     const routeContext=normalizeContext(context);
     const schedule=global.OlliCommandSchedule;
+
+    if(action==='find_pickups'){
+      if(
+        !schedule
+        || typeof schedule.findPickups!=='function'
+        || typeof schedule.describePickups!=='function'
+      ){
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_pickups',
+          text:'',
+          message:'픽업 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:command
+        };
+      }
+
+      const studentName=cleanText(command.student_name || command.studentName);
+      const dateExpression=cleanText(command.date_expression || command.dateExpression);
+      const classTime=Number(command.class_time || command.classTime || 0);
+      const pickupKind=cleanText(command.pickup_kind || command.pickupKind);
+      const kind=pickupKind==='dropoff' ? 'dropoff' : (pickupKind==='arrival' ? 'pickup' : 'all');
+
+      try{
+        const dateSpec=dateExpression
+          ? parseDateExpression(compactText(dateExpression))
+          : {mode:'today',label:'오늘'};
+        if(!dateSpec) throw new Error('조회 날짜를 해석하지 못했습니다.');
+        const targetDate=resolveDateExpression(dateSpec,new Date());
+        if(!targetDate) throw new Error('조회 날짜를 해석하지 못했습니다.');
+        const dateLabel=cleanText(dateSpec.label) || (dateExpression || '오늘');
+
+        const result=await schedule.findPickups({
+          date:targetDate,
+          dateLabel,
+          studentName,
+          classTime,
+          kind
+        });
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_pickups',
+          text:'',
+          message:schedule.describePickups(result),
+          clearInput:true,
+          payload:{
+            action:'find_pickups',
+            studentName,
+            dateExpression,
+            dateLabel,
+            classTime,
+            pickupKind,
+            kind,
+            result
+          }
+        };
+      }catch(error){
+        console.warn('올리 구조화 픽업 조회 실패:',error);
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_pickups',
+          text:'',
+          message:'픽업 일정을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:command
+        };
+      }
+    }
 
     if(action==='find_roster_entries'){
       if(
