@@ -159,6 +159,10 @@ test('unified interpreter emits a structured add_makeup command from conversatio
     pickupKind:'',
     pickupLabel:'',
     pickupTime:'',
+    sourceWeekday:0,
+    sourceTimeSlot:0,
+    targetWeekday:0,
+    targetTimeSlot:0,
   });
   assert.equal(result.contextUsed,true);
 });
@@ -211,6 +215,10 @@ test('unified interpreter emits a structured add_trial command without student d
     pickupKind:'',
     pickupLabel:'',
     pickupTime:'',
+    sourceWeekday:0,
+    sourceTimeSlot:0,
+    targetWeekday:0,
+    targetTimeSlot:0,
   });
 });
 
@@ -262,6 +270,10 @@ test('unified interpreter emits a structured add_waitlist command without studen
     pickupKind:'',
     pickupLabel:'',
     pickupTime:'',
+    sourceWeekday:0,
+    sourceTimeSlot:0,
+    targetWeekday:0,
+    targetTimeSlot:0,
   });
 });
 
@@ -319,6 +331,10 @@ test('unified interpreter emits structured pickup fields without student data lo
     pickupKind:'arrival',
     pickupLabel:'리슈빌',
     pickupTime:'15:30',
+    sourceWeekday:0,
+    sourceTimeSlot:0,
+    targetWeekday:0,
+    targetTimeSlot:0,
   });
 });
 
@@ -371,6 +387,71 @@ test('unified interpreter emits a structured add_pickup command without student 
   assert.equal(result.structuredCommand.pickupKind,'arrival');
   assert.equal(result.structuredCommand.pickupLabel,'리슈빌');
   assert.equal(result.structuredCommand.pickupTime,'15:30');
+});
+
+test('unified interpreter emits structured class move fields without student data lookup', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:18,
+    currentMessage:'민준 월요일 4시 수업을 수요일 5시로 옮겨줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'move_class',
+      standalone_command:'민준 월요일 4시 수업을 수요일 5시로 옮겨줘',
+      structured_command:{
+        action:'move_class',
+        student_name:'민준',
+        division:'',
+        date_expression:'',
+        time_slot:0,
+        class_group:'',
+        weekday:0,
+        class_time:0,
+        class_minute:0,
+        pickup_kind:'',
+        pickup_label:'',
+        pickup_time:'',
+        source_weekday:1,
+        source_time_slot:4,
+        target_weekday:3,
+        target_time_slot:5,
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'move_class');
+  assert.deepEqual(result.structuredCommand,{
+    action:'move_class',
+    studentName:'민준',
+    division:'',
+    dateExpression:'',
+    timeSlot:0,
+    classGroup:'',
+    weekday:0,
+    classTime:0,
+    classMinute:0,
+    pickupKind:'',
+    pickupLabel:'',
+    pickupTime:'',
+    sourceWeekday:1,
+    sourceTimeSlot:4,
+    targetWeekday:3,
+    targetTimeSlot:5,
+  });
 });
 
 test('unified interpreter classifies feedback/data work separately from routine work', async () => {
