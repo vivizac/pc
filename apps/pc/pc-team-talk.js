@@ -2741,7 +2741,8 @@
       targetWeekday:Number(structuredRaw.targetWeekday || 0),
       targetTimeSlot:Number(structuredRaw.targetTimeSlot || 0),
       reason:clean(structuredRaw.reason),
-      availabilityPurpose:clean(structuredRaw.availabilityPurpose)
+      availabilityPurpose:clean(structuredRaw.availabilityPurpose),
+      rosterKind:clean(structuredRaw.rosterKind)
     };
     const reply=clean(language.reply);
     if(data?.ok!==true || !['routine','feedback','chat'].includes(lane) || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
@@ -2860,6 +2861,27 @@
         replyText:resolved.message,
         recordAi:true
       };
+    }
+
+    if(
+      interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='find_roster_entries'
+      && router
+      && typeof router.runStructuredQuery==='function'
+    ){
+      const queried=await router.runStructuredQuery(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(queried?.handled===true){
+        const message=clean(queried.message) || '학생 명단을 확인했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
     }
 
     if(
