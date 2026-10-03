@@ -626,15 +626,19 @@
     const actionType=String(command?.intent || '').trim();
     if(!actionType) throw new Error('작업 종류를 확인하지 못했습니다.');
 
-    const payload=await callOlliTalkRpc('olli_team_chat_send_action',{
+    const rpcName=actionType==='choose_makeup_group'
+      ? 'olli_team_chat_send_makeup_group_choice'
+      : 'olli_team_chat_send_action';
+    const rpcPayload={
       p_session_token:context.sessionToken,
       p_academy_id:context.academyId,
       p_body:normalizeOlliTalkActionPrompt(body),
-      p_action_type:actionType,
       p_action_payload:command,
       p_client_message_id:createOlliTalkClientMessageId(),
       p_reply_to_message_id:Number(replyToMessageId || 0) || null
-    });
+    };
+    if(rpcName==='olli_team_chat_send_action')rpcPayload.p_action_type=actionType;
+    const payload=await callOlliTalkRpc(rpcName,rpcPayload);
     if(!payload?.ok || !payload?.message?.action){
       throw new Error(payload?.message || '작업 카드를 저장하지 못했습니다.');
     }
