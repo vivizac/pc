@@ -1102,6 +1102,40 @@
     };
   }
 
+  async function resolveOlliTalkFeedbackDirectReadTurn(commandText,context,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('피드백 분석 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'feedback_read',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageId,
+        conversation:(Array.isArray(olliTalkAiConversationMessages) ? olliTalkAiConversationMessages : []).map((item)=>({
+          role:item.role,
+          content:item.content
+        }))
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    const replyText=String(data?.output || '').trim();
+    if(!response.ok || data?.ok!==true || !replyText){
+      throw new Error(data?.error || data?.message || '피드백 분석 응답을 받지 못했습니다.');
+    }
+
+    return {
+      assistantMessage:await saveOlliTalkOlliReply(context,replyText,sourceMessageId),
+      replyText,
+      recordAi:true
+    };
+  }
+
   async function resolveOlliTalkBatchAgentTurn({
     sourceText,
     sourceMessageId,
@@ -2075,12 +2109,11 @@
     }
 
     if(interpreterLane==='feedback'){
-      const resolved=await resolveOlliTalkAiReply(rawCommandText,context);
-      return {
-        assistantMessage:await saveOlliTalkOlliReply(context,resolved.message,replyToMessageId),
-        replyText:resolved.message,
-        recordAi:true
-      };
+      return resolveOlliTalkFeedbackDirectReadTurn(
+        rawCommandText,
+        context,
+        replyToMessageId
+      );
     }
 
     if(
