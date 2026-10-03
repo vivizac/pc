@@ -65,6 +65,7 @@ function buildPerfEvent(input = {}) {
     'conversationChars',
     'rangeSampled',
     'sourceMayBeTruncated',
+    'contextFallback',
   ]) {
     const value = finiteNumber(input[key]);
     if (value != null) event[key] = value;
