@@ -2085,6 +2085,27 @@
 
     if(
       interpreterLane==='routine'
+      && String(structuredCommand?.action || '').trim()==='find_pickups'
+      && router
+      && typeof router.runStructuredQuery==='function'
+    ){
+      const queried=await router.runStructuredQuery(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(queried?.handled===true){
+        const message=String(queried.message || '').trim() || '픽업 일정을 확인했어요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+    }
+
+    if(
+      interpreterLane==='routine'
       && String(structuredCommand?.action || '').trim()==='find_roster_entries'
       && router
       && typeof router.runStructuredQuery==='function'
