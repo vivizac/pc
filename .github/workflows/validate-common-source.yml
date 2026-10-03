@@ -16,6 +16,8 @@ on:
       - 'supabase/migrations/20261003031500_team_chat_move_group_choice.sql'
       - 'apps/pc/pc-team-talk.js'
       - 'apps/mobile/olli-talk-beta.js'
+      - 'apps/mobile/api/olli-agent.js'
+      - 'apps/mobile/api/_lib/olli-agent/context-route.cjs'
       - 'apps/pc/scripts/stage-common.cjs'
       - 'apps/mobile/scripts/stage-common.cjs'
       - 'apps/pc/index.html'
