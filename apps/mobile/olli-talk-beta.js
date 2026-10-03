@@ -2083,6 +2083,27 @@
 
     if(
       interpreterLane==='routine'
+      && String(structuredCommand?.action || '').trim()==='get_student_schedule'
+      && router
+      && typeof router.runStructuredQuery==='function'
+    ){
+      const queried=await router.runStructuredQuery(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(queried?.handled===true){
+        const message=String(queried.message || '').trim() || '조회 결과를 확인했어요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+    }
+
+    if(
+      interpreterLane==='routine'
       && ['add_makeup','add_trial','add_waitlist','add_pickup','move_class','mark_absent'].includes(String(structuredCommand?.action || '').trim())
       && router
       && typeof router.prepareStructuredAction==='function'
