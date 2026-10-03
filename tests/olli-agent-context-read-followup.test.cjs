@@ -171,6 +171,7 @@ test('unified interpreter emits a structured add_makeup command from conversatio
     targetTimeSlot:0,
     reason:'',
     availabilityPurpose:'unknown',
+    rosterKind:'',
   });
   assert.equal(result.contextUsed,true);
 });
@@ -229,6 +230,7 @@ test('unified interpreter emits a structured add_trial command without student d
     targetTimeSlot:0,
     reason:'',
     availabilityPurpose:'unknown',
+    rosterKind:'',
   });
 });
 
@@ -286,6 +288,7 @@ test('unified interpreter emits a structured add_waitlist command without studen
     targetTimeSlot:0,
     reason:'',
     availabilityPurpose:'unknown',
+    rosterKind:'',
   });
 });
 
@@ -349,6 +352,7 @@ test('unified interpreter emits structured pickup fields without student data lo
     targetTimeSlot:0,
     reason:'',
     availabilityPurpose:'unknown',
+    rosterKind:'',
   });
 });
 
@@ -467,6 +471,7 @@ test('unified interpreter emits structured class move fields without student dat
     targetTimeSlot:5,
     reason:'',
     availabilityPurpose:'unknown',
+    rosterKind:'',
   });
 });
 
@@ -535,6 +540,7 @@ test('unified interpreter emits a structured mark_absent command without loading
     targetTimeSlot:0,
     reason:'감기',
     availabilityPurpose:'unknown',
+    rosterKind:'',
   });
 });
 
@@ -592,6 +598,62 @@ test('unified interpreter emits a structured find_available_slots query without 
   assert.equal(result.structuredCommand.timeSlot,0);
   assert.equal(result.structuredCommand.classGroup,'');
   assert.equal(result.structuredCommand.availabilityPurpose,'makeup');
+});
+
+test('unified interpreter emits a structured find_roster_entries query without reading student data', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:21,
+    currentMessage:'화요일 5시 B반 학생 누구야?',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'find_roster_entries',
+      standalone_command:'화요일 5시 B반 학생 누구야?',
+      structured_command:{
+        action:'find_roster_entries',
+        student_name:'',
+        division:'',
+        date_expression:'화요일',
+        time_slot:5,
+        class_group:'B',
+        weekday:2,
+        class_time:0,
+        class_minute:0,
+        pickup_kind:'',
+        pickup_label:'',
+        pickup_time:'',
+        source_weekday:0,
+        source_time_slot:0,
+        target_weekday:0,
+        target_time_slot:0,
+        reason:'',
+        availability_purpose:'',
+        roster_kind:'class_roster',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'find_roster_entries');
+  assert.equal(result.structuredCommand.action,'find_roster_entries');
+  assert.equal(result.structuredCommand.rosterKind,'class_roster');
+  assert.equal(result.structuredCommand.dateExpression,'화요일');
+  assert.equal(result.structuredCommand.weekday,2);
+  assert.equal(result.structuredCommand.timeSlot,5);
+  assert.equal(result.structuredCommand.classGroup,'B');
 });
 
 test('unified interpreter classifies feedback/data work separately from routine work', async () => {
