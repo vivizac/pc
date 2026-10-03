@@ -267,3 +267,44 @@ test('feedback second-stage AI prefers compact interpreter output with safe fall
   assert.match(endpoint,/contextFallback=true/);
   assert.match(endpoint,/sourceMessageText:message/);
 });
+
+
+test('feedback lane completes inside the interpret request and keeps compatibility fallback',()=>{
+  const endpoint=fs.readFileSync(path.join(root,'apps/mobile/api/olli-agent.js'),'utf8');
+  const pc=fs.readFileSync(path.join(root,'apps/pc/pc-team-talk.js'),'utf8');
+  const mobile=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'utf8');
+
+  assert.match(endpoint,/async function runFeedbackReadPipeline/);
+  assert.match(endpoint,/safeText\(result\?\.lane,20\)==='feedback'/);
+  assert.match(endpoint,/sourceValidated:true/);
+  assert.match(endpoint,/feedbackHandled:!!feedbackOutput/);
+  assert.match(endpoint,/feedbackOutput,/);
+
+  assert.match(pc,/feedbackHandled:data\?\.feedbackHandled===true/);
+  assert.match(pc,/feedbackOutput:clean\(data\?\.feedbackOutput\)/);
+  assert.match(pc,/if\(interpretation\.feedbackHandled===true && feedbackOutput\)/);
+  assert.match(pc,/saveAssistantReply\(current,feedbackOutput,replyToMessageId\)/);
+  assert.match(pc,/resolveFeedbackDirectReadTurn\(/);
+
+  assert.match(mobile,/feedbackHandled:data\?\.feedbackHandled===true/);
+  assert.match(mobile,/feedbackOutput:String\(data\?\.feedbackOutput \|\| ''\)\.trim\(\)/);
+  assert.match(mobile,/if\(interpretation\.feedbackHandled===true && feedbackOutput\)/);
+  assert.match(mobile,/saveOlliTalkOlliReply\(context,feedbackOutput,replyToMessageId\)/);
+  assert.match(mobile,/resolveOlliTalkFeedbackDirectReadTurn\(/);
+});
+
+test('combined feedback path validates the source only once',()=>{
+  const endpoint=fs.readFileSync(path.join(root,'apps/mobile/api/olli-agent.js'),'utf8');
+  const helperStart=endpoint.indexOf('async function runFeedbackReadPipeline');
+  const helperEnd=endpoint.indexOf('export default async function handler',helperStart);
+  const helper=endpoint.slice(helperStart,helperEnd);
+
+  assert.match(helper,/if\(sourceValidated!==true\)/);
+  assert.match(helper,/validatePickupSourceMessage\(/);
+
+  const interpretStart=endpoint.indexOf("if (mode === 'interpret')");
+  const contextResolveStart=endpoint.indexOf("if (mode === 'context_resolve')",interpretStart);
+  const interpretBlock=endpoint.slice(interpretStart,contextResolveStart);
+  assert.match(interpretBlock,/validatePickupSourceMessage\(/);
+  assert.match(interpretBlock,/sourceValidated:true/);
+});
