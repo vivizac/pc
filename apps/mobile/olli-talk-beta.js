@@ -1102,7 +1102,7 @@
     };
   }
 
-  async function resolveOlliTalkFeedbackDirectReadTurn(commandText,context,replyToMessageId){
+  async function resolveOlliTalkFeedbackDirectReadTurn(sourceText,resolvedText,context,replyToMessageId){
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
       throw new Error('피드백 분석 요청의 원문 메시지를 확인하지 못했습니다.');
@@ -1115,7 +1115,8 @@
         mode:'feedback_read',
         academyId:context?.academyId || '',
         sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
+        message:String(sourceText || '').trim(),
+        resolvedMessage:String(resolvedText || '').trim(),
         sourceMessageId,
         conversation:(Array.isArray(olliTalkAiConversationMessages) ? olliTalkAiConversationMessages : []).map((item)=>({
           role:item.role,
@@ -2111,6 +2112,7 @@
     if(interpreterLane==='feedback'){
       return resolveOlliTalkFeedbackDirectReadTurn(
         rawCommandText,
+        commandText,
         context,
         replyToMessageId
       );
