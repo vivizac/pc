@@ -1,6 +1,7 @@
 'use strict';
 
 const { callSupabaseRpc } = require('./supabase-rpc.cjs');
+const { startPerfTimer, perfDurationMs, emitPerfLog } = require('./perf.cjs');
 
 function clean(value) {
   return String(value == null ? '' : value).trim();
@@ -14,6 +15,7 @@ function contextError(message, statusCode, code) {
 }
 
 async function loadOlliAgentRequestContext(body = {}) {
+  const startedAt=startPerfTimer();
   const sessionToken = clean(body.sessionToken || body.session_token);
   const academyId = clean(body.academyId || body.academy_id);
 
@@ -59,6 +61,12 @@ async function loadOlliAgentRequestContext(body = {}) {
 
   const memberRole = clean(currentMember?.role);
   const memberName = clean(currentMember?.display_name);
+
+  emitPerfLog({
+    phase:'request_context_load',
+    status:'ok',
+    durationMs:perfDurationMs(startedAt),
+  });
 
   return Object.freeze({
     academyId,
