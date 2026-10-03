@@ -1993,7 +1993,7 @@
     const action = cleanText(command.action);
     const routeContext = normalizeContext(context);
     const schedule = global.OlliCommandSchedule;
-    const supported = new Set(['add_makeup','add_trial']);
+    const supported = new Set(['add_makeup','add_trial','add_waitlist']);
 
     if (!supported.has(action)) {
       return {
@@ -2014,7 +2014,7 @@
     const timeSlot = Number(command.time_slot || command.timeSlot || 0);
     const classGroup = cleanText(command.class_group || command.classGroup).toUpperCase();
     const dateSpec = dateExpression ? parseDateExpression(compactText(dateExpression)) : null;
-    const noun = action === 'add_trial' ? '체험 등록' : '보강 등록';
+    const noun = action === 'add_trial' ? '체험 등록' : action === 'add_waitlist' ? '대기 등록' : '보강 등록';
 
     if (!studentName || !dateSpec || !timeSlot) {
       return {
@@ -2064,7 +2064,7 @@
         kind:'action_rejected',
         intent:action,
         text:'',
-        message:(action === 'add_trial' ? '체험' : '보강') + ' 날짜를 해석하지 못했어요.',
+        message:(action === 'add_trial' ? '체험' : action === 'add_waitlist' ? '대기' : '보강') + ' 날짜를 해석하지 못했어요.',
         clearInput:true,
         payload:command,
         action:null
@@ -2074,7 +2074,7 @@
     try {
       const prepared = await schedule.prepareWriteCommand(action, options);
       if (prepared?.code === 'class_group_required' && prepared?.commandDraft) {
-        const choiceIntent = action === 'add_trial' ? 'choose_trial_group' : 'choose_makeup_group';
+        const choiceIntent = action === 'add_trial' ? 'choose_trial_group' : action === 'add_waitlist' ? 'choose_waitlist_group' : 'choose_makeup_group';
         const choicePayload = Object.assign({},prepared.commandDraft,{ intent:choiceIntent,targetIntent:action });
         return {
           handled:true,
