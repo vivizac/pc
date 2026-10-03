@@ -128,7 +128,7 @@ function recordTimestamp(record) {
   return 0;
 }
 
-function mergeRecentRecords(generalRows, growthRows, observationRows, maxRecords, options = {}) {
+function mergeFeedbackRecordSet(generalRows, growthRows, observationRows, maxRecords, options = {}) {
   const directEvidence = options?.directEvidence === true;
   const limit = directEvidence
     ? normalizeDirectMaxRecords(maxRecords)
@@ -172,6 +172,16 @@ function mergeRecentRecords(generalRows, growthRows, observationRows, maxRecords
       : sorted.slice(0, limit),
     matchedCount:sorted.length,
   };
+}
+
+function mergeRecentRecords(generalRows, growthRows, observationRows, maxRecords) {
+  return mergeFeedbackRecordSet(
+    generalRows,
+    growthRows,
+    observationRows,
+    maxRecords,
+    { directEvidence:false }
+  ).records;
 }
 
 function assertReadResult(result, label) {
@@ -244,7 +254,7 @@ async function readRecentRecords({
   assertReadResult(growth, '성장 피드백 기록');
   assertReadResult(observations, '관찰노트 기록');
 
-  const merged = mergeRecentRecords(
+  const merged = mergeFeedbackRecordSet(
     general.rows,
     growth.rows,
     observations.rows,
@@ -333,6 +343,7 @@ module.exports = {
   normalizeDateText,
   normalizeFeedbackRecord,
   normalizeObservationRecord,
+  mergeFeedbackRecordSet,
   mergeRecentRecords,
   readRecentRecords,
   createGetRecentRecordsTool,
