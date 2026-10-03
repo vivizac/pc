@@ -2007,19 +2007,6 @@
       };
     }
 
-    if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
-      return {
-        handled:true,
-        kind:'action_rejected',
-        intent:'add_makeup',
-        text:'',
-        message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
-        clearInput:true,
-        payload:command,
-        action:null
-      };
-    }
-
     const studentName = cleanText(command.student_name || command.studentName);
     const dateExpression = cleanText(command.date_expression || command.dateExpression);
     const timeSlot = Number(command.time_slot || command.timeSlot || 0);
@@ -2033,6 +2020,19 @@
         intent:'add_makeup',
         text:'',
         message:'보강 등록에는 학생, 날짜, 시간이 필요해요.',
+        clearInput:true,
+        payload:command,
+        action:null
+      };
+    }
+
+    if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
+      return {
+        handled:true,
+        kind:'action_rejected',
+        intent:'add_makeup',
+        text:'',
+        message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
         clearInput:true,
         payload:command,
         action:null
