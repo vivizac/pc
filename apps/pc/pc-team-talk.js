@@ -574,7 +574,7 @@
     }
   }
 
-  async function handleMakeupGroupChoice(action, group) {
+  async function handleSessionGroupChoice(action, group) {
     const actionId=clean(action?.id);
     const classGroup=clean(group).toUpperCase();
     if(!actionId || !['A','B'].includes(classGroup) || state.actionBusy.has(actionId)) return;
@@ -592,19 +592,23 @@
     });
 
     try{
-      const payload=await rpc('olli_team_chat_action_select_makeup_group',{
+      const actionType=clean(action?.action_type);
+      const rpcName=actionType==='choose_trial_group'
+        ? 'olli_team_chat_action_select_trial_group'
+        : 'olli_team_chat_action_select_makeup_group';
+      const payload=await rpc(rpcName,{
         p_session_token:current.sessionToken,
         p_academy_id:current.academyId,
         p_action_id:actionId,
         p_class_group:classGroup
       });
       if(!payload?.ok || !payload?.action){
-        throw new Error(payload?.message || '보강 반을 선택하지 못했습니다.');
+        throw new Error(payload?.message || '반을 선택하지 못했습니다.');
       }
       await loadMessages({showLoading:false,followBottom:true});
     }catch(error){
       console.warn('PC 팀톡 보강 반 선택 실패:',error?.message || error);
-      alert(error?.message || '보강 반을 선택하지 못했습니다.');
+      alert(error?.message || '반을 선택하지 못했습니다.');
       await loadMessages({showLoading:false,followBottom:true});
     }finally{
       state.actionBusy.delete(actionId);
@@ -625,13 +629,13 @@
       return card;
     }
 
-    if(clean(action?.action_type)==='choose_makeup_group'){
+    if(['choose_makeup_group','choose_trial_group'].includes(clean(action?.action_type))){
       ['A','B'].forEach(group=>{
         const button=document.createElement('button');
         button.type='button';
         button.className='olliPcTeamTalkActionButton primary';
         button.textContent=group+'반';
-        button.addEventListener('click',()=>handleMakeupGroupChoice(action,group));
+        button.addEventListener('click',()=>handleSessionGroupChoice(action,group));
         card.appendChild(button);
       });
       return card;
@@ -2528,7 +2532,9 @@
 
     const rpcName=actionType==='choose_makeup_group'
       ? 'olli_team_chat_send_makeup_group_choice'
-      : 'olli_team_chat_send_action';
+      : actionType==='choose_trial_group'
+        ? 'olli_team_chat_send_trial_group_choice'
+        : 'olli_team_chat_send_action';
     const rpcPayload={
       p_session_token:current.sessionToken,
       p_academy_id:current.academyId,
