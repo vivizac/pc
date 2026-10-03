@@ -628,7 +628,9 @@
 
     const rpcName=actionType==='choose_makeup_group'
       ? 'olli_team_chat_send_makeup_group_choice'
-      : 'olli_team_chat_send_action';
+      : actionType==='choose_trial_group'
+        ? 'olli_team_chat_send_trial_group_choice'
+        : 'olli_team_chat_send_action';
     const rpcPayload={
       p_session_token:context.sessionToken,
       p_academy_id:context.academyId,
@@ -4724,7 +4726,7 @@
     return card;
   }
 
-  async function handleOlliTalkMakeupGroupChoice(action,group){
+  async function handleOlliTalkSessionGroupChoice(action,group){
     const actionId=String(action?.id || '').trim();
     const classGroup=String(group || '').trim().toUpperCase();
     if(!actionId || !['A','B'].includes(classGroup) || olliTalkActionBusy.has(actionId)) return;
@@ -4738,14 +4740,18 @@
     olliTalkActionBusy.add(actionId);
     setOlliTalkActionCardBusy(actionId,true);
     try{
-      const payload=await callOlliTalkRpc('olli_team_chat_action_select_makeup_group',{
+      const actionType=String(action?.action_type || '').trim();
+      const rpcName=actionType==='choose_trial_group'
+        ? 'olli_team_chat_action_select_trial_group'
+        : 'olli_team_chat_action_select_makeup_group';
+      const payload=await callOlliTalkRpc(rpcName,{
         p_session_token:context.sessionToken,
         p_academy_id:context.academyId,
         p_action_id:actionId,
         p_class_group:classGroup
       });
       if(!payload?.ok || !payload?.action){
-        throw new Error(payload?.message || '보강 반을 선택하지 못했습니다.');
+        throw new Error(payload?.message || '반을 선택하지 못했습니다.');
       }
       await loadOlliTalkBetaMessages({
         showLoading:false,
@@ -4754,7 +4760,7 @@
       });
     }catch(error){
       console.warn('올리톡 보강 반 선택 실패:',error);
-      alert(error?.message || '보강 반을 선택하지 못했습니다.');
+      alert(error?.message || '반을 선택하지 못했습니다.');
       await loadOlliTalkBetaMessages({
         showLoading:false,
         localFirst:false,
@@ -4781,13 +4787,13 @@
       return card;
     }
 
-    if(String(action?.action_type || '').trim()==='choose_makeup_group'){
+    if(['choose_makeup_group','choose_trial_group'].includes(String(action?.action_type || '').trim())){
       ['A','B'].forEach(group=>{
         const button=document.createElement('button');
         button.type='button';
         button.className='olliTalkBetaActionButton primary';
         button.textContent=group+'반';
-        button.addEventListener('click',()=>handleOlliTalkMakeupGroupChoice(action,group));
+        button.addEventListener('click',()=>handleOlliTalkSessionGroupChoice(action,group));
         card.appendChild(button);
       });
       return card;
