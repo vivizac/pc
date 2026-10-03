@@ -17,6 +17,10 @@ const trialMigration = fs.readFileSync(
   path.join(root,'supabase/migrations/20261003024500_team_chat_trial_group_choice.sql'),
   'utf8'
 );
+const waitlistMigration = fs.readFileSync(
+  path.join(root,'supabase/migrations/20261003030000_team_chat_waitlist_group_choice.sql'),
+  'utf8'
+);
 
 test('schedule returns a typed class-group choice instead of asking for typed A/B text', () => {
   assert.match(schedule,/code:'class_group_required'/);
@@ -28,26 +32,30 @@ test('schedule returns a typed class-group choice instead of asking for typed A/
   );
 });
 
-test('PC and Mobile persist makeup and trial group choices with dedicated RPCs', () => {
+test('PC and Mobile persist makeup, trial, and waitlist group choices with dedicated RPCs', () => {
   for (const source of [pc,mobile]) {
     assert.match(source,/actionType==='choose_makeup_group'/);
     assert.match(source,/actionType==='choose_trial_group'/);
+    assert.match(source,/actionType==='choose_waitlist_group'/);
     assert.match(source,/olli_team_chat_send_makeup_group_choice/);
     assert.match(source,/olli_team_chat_send_trial_group_choice/);
+    assert.match(source,/olli_team_chat_send_waitlist_group_choice/);
     assert.match(source,/olli_team_chat_action_select_makeup_group/);
     assert.match(source,/olli_team_chat_action_select_trial_group/);
+    assert.match(source,/olli_team_chat_action_select_waitlist_group/);
   }
 });
 
-test('PC and Mobile render A/B buttons for makeup and trial choices without calling AI', () => {
+test('PC and Mobile render A/B buttons for makeup, trial, and waitlist choices without calling AI', () => {
   const pcStart=pc.indexOf('async function handleSessionGroupChoice');
   const pcEnd=pc.indexOf('function makeActionCard',pcStart);
   const pcHandler=pc.slice(pcStart,pcEnd);
   assert.ok(pcStart>=0 && pcEnd>pcStart);
   assert.match(pcHandler,/olli_team_chat_action_select_makeup_group/);
   assert.match(pcHandler,/olli_team_chat_action_select_trial_group/);
+  assert.match(pcHandler,/olli_team_chat_action_select_waitlist_group/);
   assert.doesNotMatch(pcHandler,/interpretOlliSystemLanguage|resolveAiReply|\/api\/olli-agent|\/api\/chat/);
-  assert.match(pc,/\['choose_makeup_group','choose_trial_group'\]\.includes/);
+  assert.match(pc,/\['choose_makeup_group','choose_trial_group','choose_waitlist_group'\]\.includes/);
   assert.match(pc,/\['A','B'\]\.forEach/);
 
   const mobileStart=mobile.indexOf('async function handleOlliTalkSessionGroupChoice');
@@ -56,8 +64,9 @@ test('PC and Mobile render A/B buttons for makeup and trial choices without call
   assert.ok(mobileStart>=0 && mobileEnd>mobileStart);
   assert.match(mobileHandler,/olli_team_chat_action_select_makeup_group/);
   assert.match(mobileHandler,/olli_team_chat_action_select_trial_group/);
+  assert.match(mobileHandler,/olli_team_chat_action_select_waitlist_group/);
   assert.doesNotMatch(mobileHandler,/interpretOlliTalkSystemLanguage|resolveOlliTalkAiReply|\/api\/olli-agent|\/api\/chat/);
-  assert.match(mobile,/\['choose_makeup_group','choose_trial_group'\]\.includes/);
+  assert.match(mobile,/\['choose_makeup_group','choose_trial_group','choose_waitlist_group'\]\.includes/);
   assert.match(mobile,/\['A','B'\]\.forEach/);
 });
 
@@ -83,4 +92,16 @@ test('database trial choice is non-executable until a valid group converts it to
   assert.match(trialMigration,/where upper\(btrim\(item\.value\)\)=v_group/);
   assert.match(trialMigration,/olli_account_id_from_session/);
   assert.match(trialMigration,/m\.account_id=v_account_id/);
+});
+
+test('database waitlist choice is non-executable until a valid group converts it to add_waitlist', () => {
+  assert.match(waitlistMigration,/'choose_waitlist_group'::text/);
+  assert.match(waitlistMigration,/olli_team_chat_send_waitlist_group_choice/);
+  assert.match(waitlistMigration,/olli_team_chat_action_select_waitlist_group/);
+  assert.match(waitlistMigration,/v_action\.action_type <> 'choose_waitlist_group'/);
+  assert.match(waitlistMigration,/set action_type='add_waitlist'/);
+  assert.match(waitlistMigration,/'targetClassGroup',v_group/);
+  assert.match(waitlistMigration,/where upper\(btrim\(item\.value\)\)=v_group/);
+  assert.match(waitlistMigration,/olli_account_id_from_session/);
+  assert.match(waitlistMigration,/m\.account_id=v_account_id/);
 });
