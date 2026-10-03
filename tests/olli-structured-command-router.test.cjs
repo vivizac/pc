@@ -460,3 +460,143 @@ test('structured add_pickup preserves dropoff semantics without inventing pickup
     globalThis.OlliCommandSchedule = previousSchedule;
   }
 });
+
+test('structured add_pickup bypasses natural-language parsing and reaches existing pickup SOT', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+  let observed = null;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      observed = { intent, options };
+      return {
+        ok:true,
+        command:{
+          intent:'add_pickup',
+          studentId:'student-1',
+          studentName:'민서',
+          division:'kinder',
+          weekday:1,
+          classTime:4,
+          timetableMode:'hour',
+          pickupLabel:'리슈빌',
+          pickupTime:'15:30',
+          dropoffLabel:'',
+          effectiveDate:'2026-10-05',
+          isDropoff:false,
+        },
+        message:'민서 · 월요일 4시 수업\n리슈빌 · 3시 30분 · 등원 픽업\n등록할까요?',
+      };
+    },
+    writeConfirmationMessage() {
+      return '';
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_pickup',
+      studentName:'민서',
+      weekday:1,
+      classTime:4,
+      classMinute:0,
+      pickupKind:'arrival',
+      pickupLabel:'리슈빌',
+      pickupTime:'15:30',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'add_pickup');
+    assert.equal(result.payload.intent,'add_pickup');
+
+    assert.ok(observed);
+    assert.equal(observed.intent,'add_pickup');
+    assert.equal(observed.options.studentName,'민서');
+    assert.equal(observed.options.weekday,1);
+    assert.equal(observed.options.classTime,4);
+    assert.equal(observed.options.classMinute,0);
+    assert.equal(observed.options.pickupLabel,'리슈빌');
+    assert.equal(observed.options.pickupTime,'15:30');
+    assert.equal(observed.options.isDropoff,false);
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
+
+test('structured pickup preserves deterministic update intent when an existing pickup card is found', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      assert.equal(intent,'add_pickup');
+      assert.equal(options.studentName,'민서');
+      return {
+        ok:true,
+        command:{
+          intent:'update_pickup_arrival',
+          studentId:'student-1',
+          studentName:'민서',
+          pickupId:'pickup-1',
+          weekday:1,
+          classTime:4,
+          pickupLabel:'새 장소',
+          pickupTime:'15:40',
+        },
+        message:'민서 학생은 이미 이 수업의 픽업 카드가 있어요.\n등원 픽업 새 장소 · 3시 40분을 저장할까요?',
+      };
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_pickup',
+      studentName:'민서',
+      weekday:1,
+      classTime:4,
+      classMinute:0,
+      pickupKind:'arrival',
+      pickupLabel:'새 장소',
+      pickupTime:'15:40',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'update_pickup_arrival');
+    assert.equal(result.payload.intent,'update_pickup_arrival');
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
+
+test('structured pickup does not invent missing pickup details', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+  let observed=null;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      observed={intent,options};
+      return {ok:false,message:'등원 픽업 등록은 학생 이름, 수업 요일·시간, 픽업 장소, 픽업 시간을 함께 적어 주세요.'};
+    },
+  };
+
+  try {
+    const result=await router.prepareStructuredAction({
+      action:'add_pickup',
+      studentName:'민서',
+      weekday:1,
+      classTime:4,
+      classMinute:0,
+      pickupKind:'arrival',
+      pickupLabel:'',
+      pickupTime:'',
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_rejected');
+    assert.match(result.message,/픽업 장소, 픽업 시간을 함께/);
+    assert.equal(observed.options.pickupLabel,'');
+    assert.equal(observed.options.pickupTime,'');
+  } finally {
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
