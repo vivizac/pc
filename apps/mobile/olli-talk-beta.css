@@ -1111,6 +1111,24 @@
 #olliTalkBetaScreen .olliTalkBetaActionButton:disabled{
   opacity:.55;
 }
+#olliTalkBetaScreen .olliTalkBetaActionCard.structuredDate{
+  position:relative;
+  width:min(260px,78vw);
+  display:grid;
+  grid-template-columns:repeat(2,minmax(86px,1fr));
+}
+#olliTalkBetaScreen .olliTalkBetaActionCard.structuredDate .dateWide{
+  grid-column:1/-1;
+  width:100%;
+}
+#olliTalkBetaScreen .olliTalkBetaDateInput{
+  position:absolute;
+  width:1px;
+  height:1px;
+  opacity:0;
+  pointer-events:none;
+  inset:auto 0 0 auto;
+}
 #olliTalkBetaScreen .olliTalkBetaActionStatus{
   min-height:32px;
   display:inline-flex;

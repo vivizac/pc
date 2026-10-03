@@ -620,6 +620,136 @@
   }
 
 
+  function structuredDateExpressionFromDate(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    return (date.getMonth() + 1) + '월 ' + date.getDate() + '일';
+  }
+
+  function structuredDateInputValue(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    return [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2,'0'),
+      String(date.getDate()).padStart(2,'0')
+    ].join('-');
+  }
+
+  async function continueStructuredWriteDraft(draft,current) {
+    const router=global.OlliCommandRouter;
+    if(!router || typeof router.prepareStructuredAction!=='function') return null;
+    const prepared=await router.prepareStructuredAction(draft,{
+      source:'olli_talk_structured_field_choice',
+      selectedStudent:null,
+      autoSubmitContext:null
+    });
+    if(prepared?.handled!==true) return null;
+
+    if(prepared.kind==='action_needs_field'){
+      if(clean(prepared.payload?.field)==='date' && prepared.payload){
+        return saveStructuredDateChoice(current,prepared.message || '날짜를 선택해 주세요.',prepared.payload,null);
+      }
+      return saveAssistantReply(current,clean(prepared.message) || '필요한 정보를 선택해 주세요.',null);
+    }
+    if(['action_pending','action_choice'].includes(prepared.kind) && prepared.payload){
+      return saveAssistantAction(
+        current,
+        prepared.message || (prepared.kind==='action_choice' ? '반을 선택해 주세요.' : '이 작업을 진행할까요?'),
+        prepared.payload,
+        null
+      );
+    }
+    if(prepared.kind==='action_rejected'){
+      return saveAssistantReply(current,clean(prepared.message) || '작업을 준비하지 못했어요.',null);
+    }
+    return null;
+  }
+
+  async function handleStructuredDateChoice(action,dateExpression) {
+    const actionId=clean(action?.id);
+    const selected=clean(dateExpression);
+    if(!actionId || !selected || state.actionBusy.has(actionId)) return;
+
+    const current=context();
+    if(!current.sessionToken || !current.academyId){
+      alert('팀톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    state.actionBusy.add(actionId);
+    document.querySelectorAll('[data-action-id]').forEach(card=>{
+      if(clean(card.dataset.actionId)!==actionId) return;
+      card.querySelectorAll('button,input').forEach(control=>{ control.disabled=true; });
+    });
+
+    try{
+      const payload=await rpc('olli_team_chat_action_select_structured_date',{
+        p_session_token:current.sessionToken,
+        p_academy_id:current.academyId,
+        p_action_id:actionId,
+        p_date_expression:selected
+      });
+      if(!payload?.ok || !payload?.action || !payload?.draft){
+        throw new Error(payload?.message || '날짜를 선택하지 못했습니다.');
+      }
+      await continueStructuredWriteDraft(payload.draft,current);
+      await loadMessages({showLoading:false,followBottom:true});
+    }catch(error){
+      console.warn('PC 팀톡 구조화 날짜 선택 실패:',error?.message || error);
+      alert(error?.message || '날짜를 선택하지 못했습니다.');
+      await loadMessages({showLoading:false,followBottom:true});
+    }finally{
+      state.actionBusy.delete(actionId);
+    }
+  }
+
+  function appendStructuredDateChoiceButtons(card,action) {
+    card.classList.add('structuredDate');
+
+    const now=new Date();
+    const today=new Date(now.getFullYear(),now.getMonth(),now.getDate(),12,0,0,0);
+    const tomorrow=new Date(today.getTime());
+    tomorrow.setDate(tomorrow.getDate()+1);
+
+    const addQuick=(label,date)=>{
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='olliPcTeamTalkActionButton primary';
+      button.textContent=label;
+      button.addEventListener('click',()=>handleStructuredDateChoice(action,structuredDateExpressionFromDate(date)));
+      card.appendChild(button);
+    };
+    addQuick('오늘',today);
+    addQuick('내일',tomorrow);
+
+    const dateInput=document.createElement('input');
+    dateInput.type='date';
+    dateInput.className='olliPcTeamTalkDateInput';
+    dateInput.min=structuredDateInputValue(today);
+    const maxDate=new Date(today.getTime());
+    maxDate.setDate(maxDate.getDate()+364);
+    dateInput.max=structuredDateInputValue(maxDate);
+    dateInput.addEventListener('change',()=>{
+      const match=String(dateInput.value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if(!match) return;
+      handleStructuredDateChoice(action,Number(match[2])+'월 '+Number(match[3])+'일');
+    });
+
+    const pick=document.createElement('button');
+    pick.type='button';
+    pick.className='olliPcTeamTalkActionButton secondary dateWide';
+    pick.textContent='날짜 선택';
+    pick.addEventListener('click',()=>{
+      try{
+        if(typeof dateInput.showPicker==='function') dateInput.showPicker();
+        else dateInput.click();
+      }catch(_){
+        dateInput.click();
+      }
+    });
+
+    card.append(dateInput,pick);
+  }
+
   function makeActionCard(action) {
     const card = create('div', 'olliPcTeamTalkActionCard');
     const status = clean(action?.status) || 'pending';
@@ -630,6 +760,11 @@
       const label = create('span', 'olliPcTeamTalkActionStatus', actionStatusLabel(status));
       if (status === 'failed') label.classList.add('failed');
       card.appendChild(label);
+      return card;
+    }
+
+    if(clean(action?.action_type)==='choose_structured_date'){
+      appendStructuredDateChoiceButtons(card,action);
       return card;
     }
 
@@ -2756,6 +2891,21 @@
     return payload.message;
   }
 
+  async function saveStructuredDateChoice(current,body,payload,replyToMessageId) {
+    const result=await rpc('olli_team_chat_send_structured_date_choice',{
+      p_session_token:current.sessionToken,
+      p_academy_id:current.academyId,
+      p_body:normalizeActionPrompt(body),
+      p_action_payload:payload,
+      p_client_message_id:clientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if(!result?.ok || !result?.message?.action){
+      throw new Error(result?.message || '날짜 선택 카드를 저장하지 못했습니다.');
+    }
+    return result.message;
+  }
+
   async function saveAssistantAction(current, body, command, replyToMessageId) {
     const actionType = clean(command?.intent);
     if (!actionType) throw new Error('작업 종류를 확인하지 못했습니다.');
@@ -3355,6 +3505,26 @@
         autoSubmitContext:null
       });
       if(prepared?.handled===true){
+        if(prepared.kind==='action_needs_field' && prepared.payload){
+          if(clean(prepared.payload.field)==='date'){
+            return {
+              assistantMessage:await saveStructuredDateChoice(
+                current,
+                prepared.message || '날짜를 선택해 주세요.',
+                prepared.payload,
+                replyToMessageId
+              ),
+              replyText:prepared.message || '',
+              recordAi:false
+            };
+          }
+          const fieldMessage=clean(prepared.message) || '필요한 정보를 선택해 주세요.';
+          return {
+            assistantMessage:await saveAssistantReply(current,fieldMessage,replyToMessageId),
+            replyText:fieldMessage,
+            recordAi:false
+          };
+        }
         if(['action_pending','action_choice'].includes(prepared.kind) && prepared.payload){
           return {
             assistantMessage:await saveAssistantAction(
