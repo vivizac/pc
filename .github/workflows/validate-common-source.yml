@@ -12,6 +12,7 @@ on:
       - 'supabase/migrations/20261003022400_team_chat_makeup_group_choice.sql'
       - 'supabase/migrations/20261003024500_team_chat_trial_group_choice.sql'
       - 'supabase/migrations/20261003030000_team_chat_waitlist_group_choice.sql'
+      - 'supabase/migrations/20261003031500_team_chat_move_group_choice.sql'
       - 'apps/pc/pc-team-talk.js'
       - 'apps/mobile/olli-talk-beta.js'
       - 'apps/pc/scripts/stage-common.cjs'
