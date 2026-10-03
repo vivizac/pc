@@ -8,6 +8,7 @@ const test = require('node:test');
 const {
   normalizeMentionConversation,
   resolveOlliSystemInterpretation,
+  OLLI_INTERPRETER_LANES,
   routeForSystemIntent,
   resolveContextualReadRewrite,
   resolveContextualMakeupRewrite,
@@ -16,8 +17,9 @@ const {
 
 
 
-test('unified interpreter runs on the first turn, anonymizes students, and restores rule system language', async () => {
+test('unified interpreter runs on the first turn without loading student data', async () => {
   let observed=null;
+  let studentLoadCalled=false;
   const result=await resolveOlliSystemInterpretation({
     requestContext:{
       sessionToken:'session',
@@ -27,31 +29,36 @@ test('unified interpreter runs on the first turn, anonymizes students, and resto
     sourceMessageId:10,
     currentMessage:'이민형 시간표 알려줘',
     conversation:[],
-    loadStudents:async()=>[
-      {id:'student-1',name:'이민형'},
-    ],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [{id:'student-1',name:'이민형'}];
+    },
     modelRunner:async(input)=>{
       observed=input;
       return {
+        lane:'routine',
         route:'rule',
         intent:'get_student_schedule',
-        standalone_command:'학생A 시간표 알려줘',
+        standalone_command:'이민형 시간표 알려줘',
         context_used:false,
       };
     },
   });
 
   assert.ok(observed);
+  assert.equal(studentLoadCalled,false,'routine interpretation must not load the academy student list');
   assert.equal(observed.transcript,'');
-  assert.equal(observed.currentText,'학생A 시간표 알려줘');
+  assert.equal(observed.currentText,'이민형 시간표 알려줘');
+  assert.equal(result.lane,'routine');
   assert.equal(result.route,'rule');
   assert.equal(result.intent,'get_student_schedule');
   assert.equal(result.standaloneCommand,'이민형 시간표 알려줘');
   assert.equal(result.contextUsed,false);
 });
 
-test('unified interpreter resolves follow-up context before deterministic routing', async () => {
+test('unified interpreter resolves follow-up context from conversation text only', async () => {
   let observed=null;
+  let studentLoadCalled=false;
   const result=await resolveOlliSystemInterpretation({
     requestContext:{
       sessionToken:'session',
@@ -64,26 +71,58 @@ test('unified interpreter resolves follow-up context before deterministic routin
       {role:'user',content:'이민형 시간표 알려줘'},
       {role:'assistant',content:'이민형님의 정규 수업은 월요일 4시 A반입니다.'},
     ],
-    loadStudents:async()=>[
-      {id:'student-1',name:'이민형'},
-    ],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [{id:'student-1',name:'이민형'}];
+    },
     modelRunner:async(input)=>{
       observed=input;
       return {
+        lane:'routine',
         route:'agent',
         intent:'get_student_schedule',
-        standalone_command:'학생A 지난주 시간표 알려줘',
+        standalone_command:'이민형 지난주 시간표 알려줘',
         context_used:true,
       };
     },
   });
 
-  assert.match(observed.transcript,/학생A 시간표 알려줘/);
-  assert.doesNotMatch(observed.transcript,/이민형/);
+  assert.equal(studentLoadCalled,false);
+  assert.match(observed.transcript,/이민형 시간표 알려줘/);
+  assert.match(observed.transcript,/이민형님의 정규 수업/);
+  assert.equal(result.lane,'routine');
   assert.equal(result.route,'rule','server route is derived from the intent contract, not model route text');
   assert.equal(result.intent,'get_student_schedule');
   assert.equal(result.standaloneCommand,'이민형 지난주 시간표 알려줘');
   assert.equal(result.contextUsed,true);
+});
+
+test('unified interpreter classifies feedback/data work separately from routine work', async () => {
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:12,
+    currentMessage:'민준이 최근 관찰노트 보고 성장피드백 작성해줘',
+    conversation:[],
+    modelRunner:async()=>({
+      lane:'feedback',
+      route:'chat',
+      intent:'complex_analysis',
+      standalone_command:'민준이 최근 관찰노트 보고 성장피드백 작성해줘',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(result.lane,'feedback');
+  assert.equal(result.route,'chat');
+  assert.equal(result.intent,'complex_analysis');
+});
+
+test('interpreter lane contract is explicit', () => {
+  assert.deepEqual(OLLI_INTERPRETER_LANES,['routine','feedback','chat']);
 });
 
 test('unified interpreter has one deterministic route contract per system intent', () => {
