@@ -136,6 +136,76 @@ test('structured command adapter does not claim unsupported actions', async () =
   assert.equal(result.kind,'pass_through');
 });
 
+test('structured write resolves decorated student names and asks for a card when the base name is ambiguous', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(options){
+      assert.equal(options.action,'add_makeup');
+      assert.equal(options.studentName,'이한율');
+      return {
+        ok:false,
+        code:'student_choice_required',
+        studentName:'이한율',
+        choices:[
+          {studentName:'이한율(6)',label:'이한율(6)',division:'elementary'},
+          {studentName:'이한율(2)',label:'이한율(2)',division:'elementary'}
+        ],
+        message:'이한율 학생이 여러 명 있어요. 학생을 선택해 주세요.'
+      };
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'add_makeup',
+      studentName:'이한율',
+      dateExpression:'',
+      timeSlot:0
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'student_choice');
+    assert.deepEqual(result.payload.choices.map(item=>item.studentName),['이한율(6)','이한율(2)']);
+    assert.equal(result.payload.draft.studentName,'이한율');
+    assert.match(result.message,/학생을 선택/);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured write canonicalizes a unique decorated student before asking for the next missing field', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(options){
+      assert.equal(options.studentName,'김채원');
+      return {
+        ok:true,
+        matched:true,
+        student:{id:'student-1',name:'토)김채원',division:'elementary'},
+        studentName:'토)김채원',
+        division:'elementary'
+      };
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'add_makeup',
+      studentName:'김채원',
+      dateExpression:'',
+      timeSlot:0
+    },{});
+
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'date');
+    assert.equal(result.payload.draft.studentName,'토)김채원');
+    assert.equal(result.payload.draft.division,'elementary');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
 test('structured add_makeup returns a date draft state instead of rejecting missing date', async () => {
   const previousSchedule = globalThis.OlliCommandSchedule;
   let prepareCalled = false;

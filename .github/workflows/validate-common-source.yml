@@ -14,6 +14,9 @@ on:
       - 'supabase/migrations/20261003141000_team_chat_structured_date_choice.sql'
       - 'tests/team-talk-structured-time-choice.test.cjs'
       - 'supabase/migrations/20261004073600_team_chat_structured_time_choice.sql'
+      - 'tests/olli-structured-student-name.test.cjs'
+      - 'tests/team-talk-structured-student-choice.test.cjs'
+      - 'supabase/migrations/20261004081500_team_chat_structured_student_choice.sql'
       - 'supabase/migrations/20261003022400_team_chat_makeup_group_choice.sql'
       - 'supabase/migrations/20261003024500_team_chat_trial_group_choice.sql'
       - 'supabase/migrations/20261003030000_team_chat_waitlist_group_choice.sql'
@@ -77,7 +80,9 @@ jobs:
             tests/olli-structured-query-route.test.cjs \
             tests/team-talk-makeup-group-choice.test.cjs \
             tests/team-talk-structured-date-choice.test.cjs \
-            tests/team-talk-structured-time-choice.test.cjs
+            tests/team-talk-structured-time-choice.test.cjs \
+            tests/olli-structured-student-name.test.cjs \
+            tests/team-talk-structured-student-choice.test.cjs
 
       - name: Reject platform adapters from common runtime manifests
         run: |

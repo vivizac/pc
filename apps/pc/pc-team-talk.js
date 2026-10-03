@@ -645,6 +645,9 @@
     if(prepared?.handled!==true) return null;
 
     if(prepared.kind==='action_needs_field'){
+      if(clean(prepared.payload?.field)==='student_choice' && prepared.payload){
+        return saveStructuredStudentChoice(current,prepared.message || '학생을 선택해 주세요.',prepared.payload,null);
+      }
       if(clean(prepared.payload?.field)==='date' && prepared.payload){
         return saveStructuredDateChoice(current,prepared.message || '날짜를 선택해 주세요.',prepared.payload,null);
       }
@@ -753,6 +756,88 @@
     card.append(dateInput,pick);
   }
 
+  async function handleStructuredStudentChoice(action,studentName) {
+    const actionId=clean(action?.id);
+    const selectedName=clean(studentName);
+    if(!actionId || !selectedName || state.actionBusy.has(actionId)) return;
+
+    const current=context();
+    if(!current.sessionToken || !current.academyId){
+      alert('팀톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    state.actionBusy.add(actionId);
+    document.querySelectorAll('[data-action-id]').forEach(card=>{
+      if(clean(card.dataset.actionId)!==actionId) return;
+      card.querySelectorAll('button').forEach(button=>{ button.disabled=true; });
+      card.classList.add('busy');
+    });
+
+    try{
+      const payload=await rpc('olli_team_chat_action_select_structured_student',{
+        p_session_token:current.sessionToken,
+        p_academy_id:current.academyId,
+        p_action_id:actionId,
+        p_student_name:selectedName
+      });
+      if(!payload?.ok || !payload?.action || !payload?.draft){
+        throw new Error(payload?.message || '학생을 선택하지 못했습니다.');
+      }
+      await continueStructuredWriteDraft(payload.draft,current);
+      await loadMessages({showLoading:false,followBottom:true});
+    }catch(error){
+      console.warn('PC 팀톡 구조화 학생 선택 실패:',error?.message || error);
+      alert(error?.message || '학생을 선택하지 못했습니다.');
+      await loadMessages({showLoading:false,followBottom:true});
+    }finally{
+      state.actionBusy.delete(actionId);
+      document.querySelectorAll('[data-action-id]').forEach(card=>{
+        if(clean(card.dataset.actionId)===actionId) card.classList.remove('busy');
+      });
+    }
+  }
+
+  async function populateStructuredStudentChoiceCard(card,action) {
+    const actionId=clean(action?.id);
+    const current=context();
+    if(!actionId || !current.sessionToken || !current.academyId) return;
+
+    try{
+      const payload=await rpc('olli_team_chat_get_structured_student_choice',{
+        p_session_token:current.sessionToken,
+        p_academy_id:current.academyId,
+        p_action_id:actionId
+      });
+      if(!payload?.ok || !Array.isArray(payload?.choices)){
+        throw new Error(payload?.message || '선택할 학생을 확인하지 못했습니다.');
+      }
+      if(!card.isConnected || clean(card.dataset.actionId)!==actionId) return;
+      card.replaceChildren();
+      if(!payload.choices.length){
+        card.appendChild(create('span','olliPcTeamTalkActionStatus','선택할 학생이 없어요.'));
+        return;
+      }
+      payload.choices.forEach(choice=>{
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='olliPcTeamTalkActionButton primary studentChoice';
+        button.textContent=clean(choice?.label || choice?.studentName) || '학생';
+        button.addEventListener('click',()=>handleStructuredStudentChoice(action,clean(choice?.studentName)));
+        card.appendChild(button);
+      });
+    }catch(error){
+      if(!card.isConnected) return;
+      card.replaceChildren(create('span','olliPcTeamTalkActionStatus failed',clean(error?.message) || '학생 목록을 불러오지 못했어요.'));
+    }
+  }
+
+  function appendStructuredStudentChoiceButtons(card,action) {
+    card.classList.add('structuredStudent');
+    card.appendChild(create('span','olliPcTeamTalkActionStatus','학생 확인 중'));
+    void populateStructuredStudentChoiceCard(card,action);
+  }
+
   async function handleStructuredTimeChoice(action,timeSlot) {
     const actionId=clean(action?.id);
     const selectedTime=Number(timeSlot || 0);
@@ -851,6 +936,11 @@
       const label = create('span', 'olliPcTeamTalkActionStatus', actionStatusLabel(status));
       if (status === 'failed') label.classList.add('failed');
       card.appendChild(label);
+      return card;
+    }
+
+    if(clean(action?.action_type)==='choose_structured_student'){
+      appendStructuredStudentChoiceButtons(card,action);
       return card;
     }
 
@@ -2987,6 +3077,21 @@
     return payload.message;
   }
 
+  async function saveStructuredStudentChoice(current,body,payload,replyToMessageId) {
+    const result=await rpc('olli_team_chat_send_structured_student_choice',{
+      p_session_token:current.sessionToken,
+      p_academy_id:current.academyId,
+      p_body:normalizeActionPrompt(body),
+      p_action_payload:payload,
+      p_client_message_id:clientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if(!result?.ok || !result?.message?.action){
+      throw new Error(result?.message || '학생 선택 카드를 저장하지 못했습니다.');
+    }
+    return result.message;
+  }
+
   async function saveStructuredTimeChoice(current,body,payload,replyToMessageId) {
     const result=await rpc('olli_team_chat_send_structured_time_choice',{
       p_session_token:current.sessionToken,
@@ -3617,6 +3722,18 @@
       });
       if(prepared?.handled===true){
         if(prepared.kind==='action_needs_field' && prepared.payload){
+          if(clean(prepared.payload.field)==='student_choice'){
+            return {
+              assistantMessage:await saveStructuredStudentChoice(
+                current,
+                prepared.message || '학생을 선택해 주세요.',
+                prepared.payload,
+                replyToMessageId
+              ),
+              replyText:prepared.message || '',
+              recordAi:false
+            };
+          }
           if(clean(prepared.payload.field)==='date'){
             return {
               assistantMessage:await saveStructuredDateChoice(

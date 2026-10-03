@@ -1155,39 +1155,150 @@
     return '';
   }
 
-  function findStudentsByExactName(name) {
-    const studentName = clean(name);
-    if (!studentName) return [];
+  function normalizeStudentSearchName(name) {
+    let value=clean(name);
+    if(!value) return '';
+    value=value.replace(/^토\)\s*/,'');
+    value=value.replace(/\(\d+\)\s*$/,'');
+    value=value.replace(/\*+\s*$/,'');
+    return clean(value);
+  }
+
+  function collectCommandStudentCandidates(studentName) {
+    const rows=[];
+
+    function pushRows(items) {
+      (Array.isArray(items) ? items : []).forEach(student=>{
+        if(!student || !clean(student.name)) return;
+        rows.push(student);
+      });
+    }
 
     try {
       if (typeof global.getKinderChatFeedbackSaveStudentCandidates === 'function') {
-        const rows = global.getKinderChatFeedbackSaveStudentCandidates(studentName) || [];
-        const filtered=Array.isArray(rows) ? rows.filter(Boolean) : [];
-        if (filtered.length) return filtered;
+        pushRows(global.getKinderChatFeedbackSaveStudentCandidates(studentName) || []);
+        const baseName=normalizeStudentSearchName(studentName);
+        if(baseName && baseName!==studentName){
+          pushRows(global.getKinderChatFeedbackSaveStudentCandidates(baseName) || []);
+        }
       }
     } catch (_) {}
 
     try {
       if (typeof global.getAllStudents === 'function') {
-        const rows=global.getAllStudents() || [];
-        const matches=(Array.isArray(rows) ? rows : [])
-          .filter(student => clean(student && student.name) === studentName)
-          .filter(student => {
-            if (typeof global.getStudentStatus !== 'function') return true;
-            try { return global.getStudentStatus(student) === 'active'; } catch (_) { return true; }
-          });
-        if (matches.length) return matches;
+        const all=global.getAllStudents() || [];
+        pushRows((Array.isArray(all) ? all : []).filter(student=>{
+          if (typeof global.getStudentStatus !== 'function') return true;
+          try { return global.getStudentStatus(student) === 'active'; } catch (_) { return true; }
+        }));
       }
     } catch (_) {}
 
     try {
       const pc = global.OlliTimetableService;
-      if (pc && typeof pc.activeStudents === 'function') {
-        return pc.activeStudents().filter(student => clean(student && student.name) === studentName);
-      }
+      if (pc && typeof pc.activeStudents === 'function') pushRows(pc.activeStudents() || []);
     } catch (_) {}
 
-    return [];
+    const seen=new Set();
+    return rows.filter(student=>{
+      const id=clean(student && student.id);
+      const key=id
+        ? 'id:'+id
+        : [
+            'fallback',
+            clean(student && student.name),
+            normalizeStudentDivision(student),
+            clean(student && (student.school || student.school_name)),
+            clean(student && (student.grade || student.age))
+          ].join('|');
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function findStudentsByExactName(name) {
+    const studentName=clean(name);
+    if(!studentName) return [];
+
+    const rows=collectCommandStudentCandidates(studentName);
+    const exact=rows.filter(student=>clean(student && student.name)===studentName);
+    if(exact.length) return exact;
+
+    const baseName=normalizeStudentSearchName(studentName);
+    if(!baseName) return [];
+    return rows.filter(student=>normalizeStudentSearchName(student && student.name)===baseName);
+  }
+
+  function resolveStructuredStudentReference(options) {
+    const opts=options || {};
+    const action=clean(opts.action);
+    const requestedName=clean(opts.studentName);
+    const selected=opts.selectedStudent && clean(opts.selectedStudent.id) ? opts.selectedStudent : null;
+
+    if(!requestedName){
+      if(selected){
+        return {
+          ok:true,
+          matched:true,
+          student:selected,
+          studentName:clean(selected.name),
+          division:normalizeStudentDivision(selected)
+        };
+      }
+      return {ok:false,code:'student_required',message:'학생 이름을 확인하지 못했어요.'};
+    }
+
+    if(selected){
+      const selectedName=clean(selected.name);
+      if(selectedName===requestedName || normalizeStudentSearchName(selectedName)===normalizeStudentSearchName(requestedName)){
+        return {
+          ok:true,
+          matched:true,
+          student:selected,
+          studentName:selectedName,
+          division:normalizeStudentDivision(selected)
+        };
+      }
+    }
+
+    const candidates=findStudentsByExactName(requestedName);
+    if(candidates.length===1){
+      const student=candidates[0];
+      return {
+        ok:true,
+        matched:true,
+        student,
+        studentName:clean(student.name),
+        division:normalizeStudentDivision(student)
+      };
+    }
+    if(candidates.length>1){
+      return {
+        ok:false,
+        code:'student_choice_required',
+        studentName:requestedName,
+        choices:candidates.map(student=>({
+          studentName:clean(student.name),
+          label:clean(student.name),
+          division:normalizeStudentDivision(student)
+        })),
+        message:requestedName+' 학생이 여러 명 있어요. 학생을 선택해 주세요.'
+      };
+    }
+
+    if(action==='add_makeup'){
+      return {ok:false,code:'student_not_found',message:requestedName+' 학생을 찾지 못했어요.'};
+    }
+
+    return {
+      ok:true,
+      matched:false,
+      guest:true,
+      student:null,
+      studentName:requestedName,
+      division:normalizeDivision(opts.division)
+    };
   }
 
   function resolveCommandStudent(studentName, selectedStudent) {
@@ -3753,6 +3864,8 @@
     findRosterEntries,
     findPickups,
     findStudentSchedule,
+    normalizeStudentSearchName,
+    resolveStructuredStudentReference,
     prepareStructuredTimeChoices,
     describeAvailableSlots,
     describeWeekAvailability,

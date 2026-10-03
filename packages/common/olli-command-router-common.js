@@ -2460,8 +2460,8 @@
 
 
   async function prepareStructuredAction(systemCommand, context) {
-    const command = systemCommand && typeof systemCommand === 'object'
-      ? systemCommand
+    let command = systemCommand && typeof systemCommand === 'object'
+      ? Object.assign({},systemCommand)
       : {};
     const action = cleanText(command.action);
     const routeContext = normalizeContext(context);
@@ -2481,7 +2481,84 @@
       };
     }
 
-    const writeDraftState = getStructuredWriteDraftState(command);
+    let writeDraftState = getStructuredWriteDraftState(command);
+    if (
+      writeDraftState.supported
+      && cleanText(writeDraftState.draft.studentName)
+      && schedule
+      && typeof schedule.resolveStructuredStudentReference === 'function'
+    ) {
+      const studentReference=await schedule.resolveStructuredStudentReference({
+        action,
+        studentName:writeDraftState.draft.studentName,
+        division:writeDraftState.draft.division,
+        selectedStudent:routeContext.selectedStudent || null
+      });
+
+      if(studentReference?.code==='student_choice_required'){
+        const choices=Array.isArray(studentReference.choices)
+          ? studentReference.choices.map(item=>Object.assign({},item))
+          : [];
+        const payload={
+          type:'structured_write_draft',
+          targetIntent:action,
+          field:'student_choice',
+          missingFields:['student_choice'].concat(writeDraftState.missingFields.slice()),
+          draft:Object.assign({},writeDraftState.draft),
+          choices
+        };
+        return {
+          handled:true,
+          kind:'action_needs_field',
+          intent:action,
+          text:'',
+          message:String(studentReference.message || writeDraftState.draft.studentName+' 학생이 여러 명 있어요. 학생을 선택해 주세요.'),
+          clearInput:true,
+          payload,
+          action:{
+            status:'pending_fields',
+            intent:action,
+            field:'student_choice',
+            missingFields:payload.missingFields.slice(),
+            command:Object.assign({},writeDraftState.draft),
+            choices:choices.map(item=>Object.assign({},item)),
+            requiresReason:false
+          }
+        };
+      }
+
+      if(studentReference?.ok===false){
+        return {
+          handled:true,
+          kind:'action_rejected',
+          intent:action,
+          text:'',
+          message:String(studentReference.message || '학생 정보를 확인하지 못했어요.'),
+          clearInput:true,
+          payload:command,
+          action:null
+        };
+      }
+
+      if(studentReference?.ok===true && studentReference?.matched===true){
+        let resolvedDraft=updateStructuredWriteDraft(
+          writeDraftState.draft,
+          'student',
+          studentReference.studentName
+        );
+        if(cleanText(studentReference.division)){
+          resolvedDraft=updateStructuredWriteDraft(resolvedDraft,'division',studentReference.division);
+        }
+        command=Object.assign({},command,resolvedDraft,{
+          student_name:resolvedDraft.studentName,
+          date_expression:resolvedDraft.dateExpression,
+          time_slot:resolvedDraft.timeSlot,
+          class_group:resolvedDraft.classGroup
+        });
+        writeDraftState=getStructuredWriteDraftState(command);
+      }
+    }
+
     if (writeDraftState.supported && !writeDraftState.complete) {
       let field = writeDraftState.nextField;
       const noun = action === 'add_trial'
