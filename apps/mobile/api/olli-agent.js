@@ -44,9 +44,6 @@ export default async function handler(req, res) {
 
     if (mode === 'interpret') {
       const message=safeText(body.message,5000);
-      const resolvedMessage=mode==='feedback_read'
-        ? safeText(body.resolvedMessage || body.resolved_message,5000)
-        : '';
       const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
       if(!message){
         return res.status(400).json({
@@ -272,6 +269,9 @@ export default async function handler(req, res) {
 
     if (mode === 'context_read' || mode === 'timetable_read' || mode === 'schedule_read' || mode === 'attendance_read' || mode === 'pickup_read' || mode === 'feedback_read') {
       const message=safeText(body.message,5000);
+      const resolvedMessage=mode==='feedback_read'
+        ? safeText(body.resolvedMessage || body.resolved_message,5000)
+        : '';
       const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
       if(!message){
         return res.status(400).json({
