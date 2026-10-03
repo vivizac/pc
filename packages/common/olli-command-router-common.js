@@ -1989,7 +1989,8 @@
   async function runStructuredQuery(systemCommand, context) {
     const command=systemCommand && typeof systemCommand==='object' ? systemCommand : {};
     const action=cleanText(command.action);
-    if(action!=='get_student_schedule'){
+    const supported=new Set(['get_student_schedule','find_available_slots']);
+    if(!supported.has(action)){
       return {
         handled:false,
         kind:'pass_through',
@@ -2003,6 +2004,133 @@
 
     const routeContext=normalizeContext(context);
     const schedule=global.OlliCommandSchedule;
+
+    if(action==='find_available_slots'){
+      if(
+        !schedule
+        || typeof schedule.findAvailableSlots!=='function'
+        || typeof schedule.findWeekAvailability!=='function'
+        || typeof schedule.findRecurringAvailability!=='function'
+      ){
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_available_slots',
+          text:'',
+          message:'시간표 빈자리 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:command
+        };
+      }
+
+      const dateExpression=cleanText(command.date_expression || command.dateExpression);
+      const division=cleanText(command.division);
+      const weekday=Number(command.weekday || 0);
+      const timeSlot=Number(command.time_slot || command.timeSlot || 0);
+      const classGroup=cleanText(command.class_group || command.classGroup).toUpperCase();
+      const purposeRaw=cleanText(command.availability_purpose || command.availabilityPurpose);
+      const purpose=['makeup','trial','schedule_move','new_enrollment'].includes(purposeRaw)
+        ? purposeRaw
+        : 'unknown';
+
+      try{
+        const compact=compactText(dateExpression);
+        const weekOnly=/^(?:이번주|이번주간|금주|다음주|차주|다다음주)$/.test(compact);
+        let result;
+        let message;
+        let scope='recurring';
+        let dateLabel='';
+        let weekOffset=0;
+
+        if(weekOnly){
+          scope='week';
+          weekOffset=/다다음주/.test(compact) ? 2 : (/(?:다음주|차주)/.test(compact) ? 1 : 0);
+          dateLabel=weekOffset===2 ? '다다음 주' : (weekOffset===1 ? '다음 주' : '이번 주');
+          result=await schedule.findWeekAvailability({
+            date:new Date(),
+            weekOffset,
+            dateLabel,
+            division,
+            purpose,
+            viewMode:'availability',
+            timeSlot,
+            classGroup:/^[AB]$/.test(classGroup) ? classGroup : ''
+          });
+          message=typeof schedule.describeWeekAvailability==='function'
+            ? schedule.describeWeekAvailability(result)
+            : '주간 빈자리를 확인했어요.';
+        }else if(dateExpression){
+          scope='date';
+          const dateSpec=parseDateExpression(compact);
+          if(!dateSpec) throw new Error('조회 날짜를 해석하지 못했습니다.');
+          const targetDate=resolveDateExpression(dateSpec,new Date());
+          if(!targetDate) throw new Error('조회 날짜를 해석하지 못했습니다.');
+          dateLabel=cleanText(dateSpec.label);
+          result=await schedule.findAvailableSlots({
+            date:targetDate,
+            dateLabel,
+            division,
+            purpose,
+            viewMode:'availability',
+            timeSlot,
+            classGroup:/^[AB]$/.test(classGroup) ? classGroup : ''
+          });
+          message=typeof schedule.describeAvailableSlots==='function'
+            ? schedule.describeAvailableSlots(result)
+            : '시간표 빈자리를 확인했어요.';
+        }else{
+          scope='recurring';
+          const weekdayNames=['','월요일','화요일','수요일','목요일','금요일','토요일'];
+          dateLabel=weekday>=1 && weekday<=6 ? weekdayNames[weekday] : '';
+          result=await schedule.findRecurringAvailability({
+            date:new Date(),
+            weekday,
+            division,
+            purpose,
+            viewMode:'availability',
+            timeSlot,
+            classGroup:/^[AB]$/.test(classGroup) ? classGroup : ''
+          });
+          message=typeof schedule.describeRecurringAvailability==='function'
+            ? schedule.describeRecurringAvailability(result)
+            : '정규수업 기준 빈자리를 확인했어요.';
+        }
+
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_available_slots',
+          text:'',
+          message,
+          clearInput:true,
+          payload:{
+            action:'find_available_slots',
+            scope,
+            dateExpression,
+            dateLabel,
+            weekOffset,
+            weekday,
+            division,
+            purpose,
+            timeSlot,
+            classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+            result
+          }
+        };
+      }catch(error){
+        console.warn('올리 구조화 빈자리 조회 실패:',error);
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_available_slots',
+          text:'',
+          message:'시간표 빈자리를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:command
+        };
+      }
+    }
+
     const studentName=cleanText(command.student_name || command.studentName);
     const dateExpression=cleanText(command.date_expression || command.dateExpression);
     if(!studentName){
