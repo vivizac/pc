@@ -2033,6 +2033,38 @@
     };
   }
 
+  async function resolveStructuredMakeupUpdateTurn(structuredCommand, current, sourceText, replyToMessageId) {
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('보강 변경 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'structured_makeup_update_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(sourceText),
+        sourceMessageId,
+        structuredCommand
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '보강 변경 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(clean(data.message.action.action_type)!=='update_makeup'){
+      throw new Error('보강 변경 규칙 시스템 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
   async function resolveMakeupUpdateAgentTurn(commandText, current, replyToMessageId) {
     const sourceMessageId = Number(replyToMessageId || 0);
     if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
@@ -2736,10 +2768,16 @@
       pickupKind:clean(structuredRaw.pickupKind),
       pickupLabel:clean(structuredRaw.pickupLabel),
       pickupTime:clean(structuredRaw.pickupTime),
+      sourceDateExpression:clean(structuredRaw.sourceDateExpression),
       sourceWeekday:Number(structuredRaw.sourceWeekday || 0),
       sourceTimeSlot:Number(structuredRaw.sourceTimeSlot || 0),
+      sourceMinute:Number(structuredRaw.sourceMinute || 0),
+      sourceClassGroup:clean(structuredRaw.sourceClassGroup).toUpperCase(),
+      targetDateExpression:clean(structuredRaw.targetDateExpression),
       targetWeekday:Number(structuredRaw.targetWeekday || 0),
       targetTimeSlot:Number(structuredRaw.targetTimeSlot || 0),
+      targetMinute:Number(structuredRaw.targetMinute || 0),
+      targetClassGroup:clean(structuredRaw.targetClassGroup).toUpperCase(),
       reason:clean(structuredRaw.reason),
       availabilityPurpose:clean(structuredRaw.availabilityPurpose),
       rosterKind:clean(structuredRaw.rosterKind)
@@ -2945,6 +2983,18 @@
           recordAi:false
         };
       }
+    }
+
+    if(
+      interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='update_makeup'
+    ){
+      return resolveStructuredMakeupUpdateTurn(
+        structuredCommand,
+        current,
+        rawCommandText,
+        replyToMessageId
+      );
     }
 
     if(

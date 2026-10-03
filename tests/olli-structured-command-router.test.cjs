@@ -1,9 +1,17 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
 
 const router = require('../packages/common/olli-command-router-common.js');
+const root = path.resolve(__dirname,'..');
+const contextRouteSource = fs.readFileSync(path.join(root,'apps/mobile/api/_lib/olli-agent/context-route.cjs'),'utf8');
+const runtimeSource = fs.readFileSync(path.join(root,'apps/mobile/api/_lib/olli-agent/runtime.cjs'),'utf8');
+const apiSource = fs.readFileSync(path.join(root,'apps/mobile/api/olli-agent.js'),'utf8');
+const pcSource = fs.readFileSync(path.join(root,'apps/pc/pc-team-talk.js'),'utf8');
+const mobileSource = fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'utf8');
 
 test('structured add_makeup bypasses natural-language parsing and reaches existing schedule SOT', async () => {
   const previousSchedule = globalThis.OlliCommandSchedule;
@@ -804,4 +812,44 @@ test('structured mark_absent asks for a free-text reason without inventing one',
   }finally{
     globalThis.OlliCommandSchedule=previousSchedule;
   }
+});
+
+
+test('structured update_makeup bypasses Agents SDK and reuses the deterministic makeup-update SOT', () => {
+  assert.match(contextRouteSource,/update_makeup/);
+  assert.match(contextRouteSource,/source_date_expression/);
+  assert.match(contextRouteSource,/target_date_expression/);
+  assert.match(contextRouteSource,/source_class_group/);
+  assert.match(contextRouteSource,/target_class_group/);
+
+  assert.match(apiSource,/structured_makeup_update_prepare/);
+  assert.match(apiSource,/runStructuredMakeupUpdatePrepare/);
+
+  const runtimeStart=runtimeSource.indexOf('async function runStructuredMakeupUpdatePrepare');
+  const runtimeEnd=runtimeSource.indexOf('\nasync function ',runtimeStart+20);
+  assert.ok(runtimeStart>=0 && runtimeEnd>runtimeStart);
+  const runtimeBlock=runtimeSource.slice(runtimeStart,runtimeEnd);
+  assert.match(runtimeBlock,/resolveStudentReferences/);
+  assert.match(runtimeBlock,/prepareMakeupUpdateAction/);
+  assert.match(runtimeBlock,/validateMakeupSourceMessage/);
+  assert.doesNotMatch(runtimeBlock,/loadAgentsSdk|new Agent|runMakeupUpdatePrepareAgent/);
+
+  for(const source of [pcSource,mobileSource]){
+    assert.match(source,/structured_makeup_update_prepare/);
+    assert.match(source,/structuredCommand/);
+  }
+
+  const pcStart=pcSource.indexOf('async function resolveStructuredMakeupUpdateTurn');
+  const pcEnd=pcSource.indexOf('\n  async function ',pcStart+20);
+  const pcBlock=pcSource.slice(pcStart,pcEnd);
+  assert.ok(pcStart>=0 && pcEnd>pcStart);
+  assert.match(pcBlock,/mode:'structured_makeup_update_prepare'/);
+  assert.doesNotMatch(pcBlock,/mode:'makeup_update_prepare'/);
+
+  const mobileStart=mobileSource.indexOf('async function resolveOlliTalkStructuredMakeupUpdateTurn');
+  const mobileEnd=mobileSource.indexOf('\n  async function ',mobileStart+20);
+  const mobileBlock=mobileSource.slice(mobileStart,mobileEnd);
+  assert.ok(mobileStart>=0 && mobileEnd>mobileStart);
+  assert.match(mobileBlock,/mode:'structured_makeup_update_prepare'/);
+  assert.doesNotMatch(mobileBlock,/mode:'makeup_update_prepare'/);
 });

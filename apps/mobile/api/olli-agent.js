@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     const mode = safeText(body.mode, 40);
     requestMode = mode || 'probe';
 
-    if (!['interpret', 'context_read', 'context_resolve', 'context_makeup_prepare', 'route_outcome', 'probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'timetable_read', 'schedule_read', 'attendance_read', 'pickup_read', 'timetable_admin_prepare', 'attendance_status_prepare', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
+    if (!['interpret', 'context_read', 'context_resolve', 'context_makeup_prepare', 'route_outcome', 'probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'timetable_read', 'schedule_read', 'attendance_read', 'pickup_read', 'timetable_admin_prepare', 'attendance_status_prepare', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'structured_makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
       return res.status(400).json({
         error: '지원하지 않는 Olli Agent mode입니다. 현재 production prepare에는 memo_prepare, batch_prepare, absence_prepare, class_once_prepare, makeup/trial/waitlist/move/pickup prepare 계열이 포함됩니다.',
       });
@@ -101,10 +101,16 @@ export default async function handler(req, res) {
             pickupKind:safeText(result?.structuredCommand?.pickupKind,20),
             pickupLabel:safeText(result?.structuredCommand?.pickupLabel,500),
             pickupTime:safeText(result?.structuredCommand?.pickupTime,20),
+            sourceDateExpression:safeText(result?.structuredCommand?.sourceDateExpression,200),
             sourceWeekday:Number(result?.structuredCommand?.sourceWeekday || 0),
             sourceTimeSlot:Number(result?.structuredCommand?.sourceTimeSlot || 0),
+            sourceMinute:Number(result?.structuredCommand?.sourceMinute || 0),
+            sourceClassGroup:safeText(result?.structuredCommand?.sourceClassGroup,10),
+            targetDateExpression:safeText(result?.structuredCommand?.targetDateExpression,200),
             targetWeekday:Number(result?.structuredCommand?.targetWeekday || 0),
             targetTimeSlot:Number(result?.structuredCommand?.targetTimeSlot || 0),
+            targetMinute:Number(result?.structuredCommand?.targetMinute || 0),
+            targetClassGroup:safeText(result?.structuredCommand?.targetClassGroup,10),
             reason:safeText(result?.structuredCommand?.reason,1000),
             availabilityPurpose:safeText(result?.structuredCommand?.availabilityPurpose,40),
             rosterKind:safeText(result?.structuredCommand?.rosterKind,40),
@@ -112,6 +118,47 @@ export default async function handler(req, res) {
           reply:safeText(result?.reply,5000),
           contextUsed:result?.contextUsed===true,
         },
+      });
+    }
+
+    if (mode === 'structured_makeup_update_prepare') {
+      const message=safeText(body.message,5000);
+      const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
+      const structuredCommand=body.structuredCommand && typeof body.structuredCommand==='object'
+        ? body.structuredCommand
+        : null;
+      if(!message){
+        return res.status(400).json({
+          error:'structured_makeup_update_prepare에는 원문 메시지가 필요합니다.',
+          code:'OLLI_ROUTINE_MAKEUP_UPDATE_MESSAGE_REQUIRED',
+        });
+      }
+      if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+        return res.status(400).json({
+          error:'structured_makeup_update_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+          code:'OLLI_ROUTINE_MAKEUP_UPDATE_SOURCE_REQUIRED',
+        });
+      }
+      if(safeText(structuredCommand?.action,40)!=='update_makeup'){
+        return res.status(400).json({
+          error:'structured_makeup_update_prepare에는 update_makeup 구조화 명령이 필요합니다.',
+          code:'OLLI_ROUTINE_MAKEUP_UPDATE_COMMAND_REQUIRED',
+        });
+      }
+
+      const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
+      const result=await runtimeModule.runStructuredMakeupUpdatePrepare({
+        requestContext,
+        structuredCommand,
+        sourceMessageId,
+        sourceMessageText:message,
+      });
+      return res.status(200).json({
+        ok:true,
+        mode:'structured_makeup_update_prepare',
+        ready:result?.ready===true,
+        message:result?.persistedMessage || null,
+        recoveredAfterPersist:result?.recoveredAfterPersist===true,
       });
     }
 
