@@ -2481,6 +2481,46 @@
       };
     }
 
+    const writeDraftState = getStructuredWriteDraftState(command);
+    if (writeDraftState.supported && !writeDraftState.complete) {
+      const field = writeDraftState.nextField;
+      const noun = action === 'add_trial'
+        ? '체험 등록'
+        : (action === 'add_waitlist' ? '대기 등록' : '보강 등록');
+      const message = field === 'student'
+        ? noun + '할 학생을 알려주세요.'
+        : (field === 'date'
+          ? noun + '할 날짜를 선택해 주세요.'
+          : (field === 'time'
+            ? noun + '할 시간을 선택해 주세요.'
+            : noun + '에 필요한 정보를 알려주세요.'));
+      const payload = {
+        type:'structured_write_draft',
+        targetIntent:action,
+        field,
+        missingFields:writeDraftState.missingFields.slice(),
+        draft:Object.assign({}, writeDraftState.draft)
+      };
+
+      return {
+        handled:true,
+        kind:'action_needs_field',
+        intent:action,
+        text:'',
+        message,
+        clearInput:true,
+        payload,
+        action:{
+          status:'pending_fields',
+          intent:action,
+          field,
+          missingFields:writeDraftState.missingFields.slice(),
+          command:Object.assign({}, writeDraftState.draft),
+          requiresReason:false
+        }
+      };
+    }
+
     if (action === 'move_class') {
       const studentName=cleanText(command.student_name || command.studentName);
       const sourceWeekday=Number(command.source_weekday || command.sourceWeekday || 0);

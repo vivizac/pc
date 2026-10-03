@@ -136,18 +136,81 @@ test('structured command adapter does not claim unsupported actions', async () =
   assert.equal(result.kind,'pass_through');
 });
 
-test('structured add_makeup rejects missing conversational facts without inventing them', async () => {
-  const result = await router.prepareStructuredAction({
-    action:'add_makeup',
-    studentName:'민준',
+test('structured add_makeup returns a date draft state instead of rejecting missing date', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+  let prepareCalled = false;
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand() {
+      prepareCalled = true;
+      throw new Error('missing-field draft must stop before schedule preparation');
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_makeup',
+      studentName:'민준',
+      dateExpression:'',
+      timeSlot:5,
+      classGroup:'',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.intent,'add_makeup');
+    assert.match(result.message,/날짜를 선택/);
+    assert.equal(result.payload.type,'structured_write_draft');
+    assert.equal(result.payload.targetIntent,'add_makeup');
+    assert.equal(result.payload.field,'date');
+    assert.deepEqual(result.payload.missingFields,['date']);
+    assert.equal(result.payload.draft.studentName,'민준');
+    assert.equal(result.payload.draft.timeSlot,5);
+    assert.equal(result.action.status,'pending_fields');
+    assert.equal(result.action.field,'date');
+    assert.equal(prepareCalled,false);
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
+
+test('structured add_trial returns date then time as the shared draft order', async () => {
+  const dateState = await router.prepareStructuredAction({
+    action:'add_trial',
+    studentName:'서준',
+    division:'elementary',
     dateExpression:'',
-    timeSlot:5,
-    classGroup:'',
+    timeSlot:0,
+  }, {});
+
+  assert.equal(dateState.kind,'action_needs_field');
+  assert.equal(dateState.payload.field,'date');
+  assert.deepEqual(dateState.payload.missingFields,['date','time']);
+
+  const withDate = router.updateStructuredWriteDraft(dateState.payload.draft,'date','내일');
+  const timeState = await router.prepareStructuredAction(withDate,{});
+
+  assert.equal(timeState.kind,'action_needs_field');
+  assert.equal(timeState.payload.field,'time');
+  assert.deepEqual(timeState.payload.missingFields,['time']);
+  assert.equal(timeState.payload.draft.dateExpression,'내일');
+  assert.match(timeState.message,/시간을 선택/);
+});
+
+test('structured add_waitlist can represent a missing student without inventing one', async () => {
+  const result = await router.prepareStructuredAction({
+    action:'add_waitlist',
+    studentName:'',
+    division:'elementary',
+    dateExpression:'내일',
+    timeSlot:4,
   }, {});
 
   assert.equal(result.handled,true);
-  assert.equal(result.kind,'action_rejected');
-  assert.match(result.message,/학생, 날짜, 시간이 필요/);
+  assert.equal(result.kind,'action_needs_field');
+  assert.equal(result.payload.field,'student');
+  assert.deepEqual(result.payload.missingFields,['student']);
+  assert.equal(result.payload.draft.studentName,'');
+  assert.match(result.message,/학생을 알려/);
 });
 
 test('structured add_makeup surfaces a persisted A/B choice instead of rejecting the command', async () => {
