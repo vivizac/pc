@@ -574,6 +574,44 @@
     }
   }
 
+  async function handleMakeupGroupChoice(action, group) {
+    const actionId=clean(action?.id);
+    const classGroup=clean(group).toUpperCase();
+    if(!actionId || !['A','B'].includes(classGroup) || state.actionBusy.has(actionId)) return;
+
+    const current=context();
+    if(!current.sessionToken || !current.academyId){
+      alert('팀톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    state.actionBusy.add(actionId);
+    document.querySelectorAll('[data-action-id]').forEach(card=>{
+      if(clean(card.dataset.actionId)!==actionId) return;
+      card.querySelectorAll('button').forEach(button=>{ button.disabled=true; });
+    });
+
+    try{
+      const payload=await rpc('olli_team_chat_action_select_makeup_group',{
+        p_session_token:current.sessionToken,
+        p_academy_id:current.academyId,
+        p_action_id:actionId,
+        p_class_group:classGroup
+      });
+      if(!payload?.ok || !payload?.action){
+        throw new Error(payload?.message || '보강 반을 선택하지 못했습니다.');
+      }
+      await loadMessages({showLoading:false,followBottom:true});
+    }catch(error){
+      console.warn('PC 팀톡 보강 반 선택 실패:',error?.message || error);
+      alert(error?.message || '보강 반을 선택하지 못했습니다.');
+      await loadMessages({showLoading:false,followBottom:true});
+    }finally{
+      state.actionBusy.delete(actionId);
+    }
+  }
+
+
   function makeActionCard(action) {
     const card = create('div', 'olliPcTeamTalkActionCard');
     const status = clean(action?.status) || 'pending';
@@ -584,6 +622,18 @@
       const label = create('span', 'olliPcTeamTalkActionStatus', actionStatusLabel(status));
       if (status === 'failed') label.classList.add('failed');
       card.appendChild(label);
+      return card;
+    }
+
+    if(clean(action?.action_type)==='choose_makeup_group'){
+      ['A','B'].forEach(group=>{
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='olliPcTeamTalkActionButton primary';
+        button.textContent=group+'반';
+        button.addEventListener('click',()=>handleMakeupGroupChoice(action,group));
+        card.appendChild(button);
+      });
       return card;
     }
 
