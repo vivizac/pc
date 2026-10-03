@@ -31,8 +31,12 @@ jobs:
           node --check apps/mobile/api/_lib/olli-agent/request-context.cjs
           node --check apps/mobile/api/_lib/olli-agent/context-route.cjs
           node --check apps/mobile/api/_lib/olli-agent/supabase-rpc.cjs
+          node --check apps/mobile/api/_lib/olli-agent/tools/record-tools.cjs
           node --check apps/mobile/api/_lib/olli-agent/tools/waitlist-cancel-prepare-tools.cjs
           node --check apps/mobile/api/_lib/olli-agent/tools/makeup-update-prepare-tools.cjs
 
       - name: Validate unified interpreter split
         run: node --test tests/olli-agent-context-read-followup.test.cjs
+
+      - name: Validate feedback period analysis
+        run: node --test tests/olli-feedback-period-analysis.test.cjs

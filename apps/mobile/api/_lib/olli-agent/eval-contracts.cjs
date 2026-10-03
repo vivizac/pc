@@ -41,6 +41,14 @@ const CONTRACTS = Object.freeze({
     requireFinalOutput:true,
     forbidDuplicateTools:true,
   }),
+  'Olli Feedback Direct Read': Object.freeze({
+    category:'read',
+    requiredTools:[],
+    allowedTools:[],
+    maxToolCalls:0,
+    requireFinalOutput:true,
+    forbidDuplicateTools:true,
+  }),
 
   'Olli Absence Prepare': singleToolContract('prepare_absence', 'prepare'),
   'Olli Absence Prepare Probe': singleToolContract('prepare_absence', 'prepare'),
