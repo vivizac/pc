@@ -1166,7 +1166,9 @@
     if (groups.length === 1) return { ok:true, classGroup:groups[0] };
     return {
       ok:false,
-      message:Number(timeSlot) + '시는 A반과 B반으로 나뉘어 있어요. 대기할 반을 같이 적어 주세요.'
+      code:'class_group_required',
+      choices:groups.slice(),
+      message:Number(timeSlot) + '시는 A반과 B반으로 나뉘어 있어요. 대기할 반을 선택해 주세요.'
     };
   }
 
@@ -2373,10 +2375,39 @@
 
     const weekData = await loadFreshWeek(sessionDate);
     const groupResult = chooseTargetGroup(weekData, division, sessionDate, targetTimeSlot, opts.classGroup);
-    if (!groupResult.ok) return groupResult;
 
     const studentId = clean(student && student.id);
     const studentName = clean(student && student.name) || guestName;
+
+    if (!groupResult.ok) {
+      if (groupResult.code === 'class_group_required' && Array.isArray(groupResult.choices) && groupResult.choices.length > 1) {
+        return {
+          ok:false,
+          code:'class_group_required',
+          choices:groupResult.choices.slice(),
+          commandDraft:{
+            intent:'choose_waitlist_group',
+            targetIntent:'add_waitlist',
+            studentId,
+            studentName,
+            guestName,
+            isGuest:!studentId,
+            division,
+            effectiveDate:sessionDate,
+            sessionDate,
+            targetWeekday,
+            targetTimeSlot,
+            targetClassGroup:'',
+            allowedClassGroups:groupResult.choices.slice()
+          },
+          message:
+            studentName + (studentId ? '' : ' (비재원)') + ' · '
+            + weekdayLabel(targetWeekday) + ' ' + targetTimeSlot + '시\n'
+            + groupResult.message
+        };
+      }
+      return groupResult;
+    }
     if (duplicateWaitlist(weekData, {
       studentId,
       guestName,
