@@ -188,10 +188,18 @@ export default async function handler(req, res) {
       }
 
       const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
+      const perfModule=await import('./_lib/olli-agent/perf.cjs');
+      const sourceValidationStartedAt=perfModule.startPerfTimer();
       await runtimeModule.validatePickupSourceMessage({
         requestContext,
         sourceMessageId,
         sourceMessageText:message,
+      });
+      perfModule.emitPerfLog({
+        phase:'interpret_source_validate',
+        status:'ok',
+        mode:'interpret',
+        durationMs:perfModule.perfDurationMs(sourceValidationStartedAt),
       });
 
       const contextRouteModule=await import('./_lib/olli-agent/context-route.cjs');
@@ -202,16 +210,33 @@ export default async function handler(req, res) {
         throw new Error('올리 공통 해석 모듈을 불러오지 못했습니다.');
       }
 
+      const conversation=Array.isArray(body.conversation) ? body.conversation : [];
       const result=await resolveOlliSystemInterpretation({
         requestContext,
         sourceMessageId,
         currentMessage:message,
-        conversation:Array.isArray(body.conversation) ? body.conversation : [],
+        conversation,
       });
+
+      let feedbackOutput='';
+      if(safeText(result?.lane,20)==='feedback'){
+        const feedbackResult=await runFeedbackReadPipeline({
+          requestContext,
+          agentContext:contextModule.toAgentRunContext(requestContext),
+          sourceMessageId,
+          sourceMessageText:message,
+          resolvedMessage:safeText(result?.standaloneCommand,5000),
+          conversation,
+          sourceValidated:true,
+        });
+        feedbackOutput=safeText(feedbackResult?.output,12000);
+      }
 
       return res.status(200).json({
         ok:true,
         mode:'interpret',
+        feedbackHandled:!!feedbackOutput,
+        feedbackOutput,
         systemLanguage:{
           lane:safeText(result?.lane,20),
           route:safeText(result?.route,20),
@@ -415,139 +440,77 @@ export default async function handler(req, res) {
         });
       }
 
-      const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
-      const feedbackPerf=mode==='feedback_read'
-        ? await import('./_lib/olli-agent/perf.cjs')
-        : null;
-      const feedbackPipelineStartedAt=feedbackPerf?.startPerfTimer?.() || null;
-      const sourceValidationStartedAt=feedbackPerf?.startPerfTimer?.() || null;
+      if(mode==='feedback_read'){
+        const feedbackResult=await runFeedbackReadPipeline({
+          requestContext,
+          agentContext:contextModule.toAgentRunContext(requestContext),
+          sourceMessageId,
+          sourceMessageText:message,
+          resolvedMessage,
+          conversation:Array.isArray(body.conversation) ? body.conversation : [],
+          sourceValidated:false,
+        });
+        return res.status(200).json({
+          ok:true,
+          mode:'feedback_read',
+          handled:true,
+          contextResolved:true,
+          output:safeText(feedbackResult?.output,12000),
+        });
+      }
 
+      const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
       await runtimeModule.validatePickupSourceMessage({
         requestContext,
         sourceMessageId,
         sourceMessageText:message,
       });
 
-      if(feedbackPerf){
-        feedbackPerf.emitPerfLog({
-          phase:'feedback_source_validate',
-          status:'ok',
-          mode:'feedback_read',
-          durationMs:feedbackPerf.perfDurationMs(sourceValidationStartedAt),
-        });
-      }
-
       const privacyModule=await import('./_lib/olli-agent/privacy.cjs');
       const agentContext=contextModule.toAgentRunContext(requestContext);
 
-      if(mode==='context_read' || mode==='feedback_read'){
-        const privacyStartedAt=feedbackPerf?.startPerfTimer?.() || null;
-        const conversation=Array.isArray(body.conversation) ? body.conversation : [];
-        const compactFeedbackInput=mode==='feedback_read' && !!resolvedMessage;
-        const primaryPrivacyText=compactFeedbackInput ? resolvedMessage : message;
-        const primaryPrivacyConversation=compactFeedbackInput ? [] : conversation;
+      if(mode==='context_read'){
         let contextPrivacy;
-        let subjectSession=null;
         try{
           const sessionModule=await import('./_lib/olli-agent/session.cjs');
-          subjectSession=sessionModule.createOlliAgentSession({
+          const subjectSession=sessionModule.createOlliAgentSession({
             requestContext,
             surface:'team_talk',
             runKey:'team-chat-message:'+String(sourceMessageId),
           });
           contextPrivacy=await privacyModule.prepareAgentContextReadPrivacyInput(
-            primaryPrivacyText,
-            primaryPrivacyConversation,
+            message,
+            Array.isArray(body.conversation) ? body.conversation : [],
             requestContext,
             {session:subjectSession}
           );
         }catch(sessionError){
           if(!String(sessionError?.code||'').startsWith('OLLI_AGENT_SESSION_')) throw sessionError;
-          subjectSession=null;
           contextPrivacy=await privacyModule.prepareAgentContextReadPrivacyInput(
-            primaryPrivacyText,
-            primaryPrivacyConversation,
+            message,
+            Array.isArray(body.conversation) ? body.conversation : [],
             requestContext
           );
         }
 
-        let contextFallback=false;
-        const primarySubjectRefs=Array.isArray(contextPrivacy?.preparedPrivacy?.subjectRefs)
-          ? contextPrivacy.preparedPrivacy.subjectRefs
-          : [];
-        if(
-          compactFeedbackInput
-          && contextPrivacy?.preparedPrivacy?.needsDisambiguation!==true
-          && primarySubjectRefs.length===0
-        ){
-          contextFallback=true;
-          try{
-            contextPrivacy=await privacyModule.prepareAgentContextReadPrivacyInput(
-              message,
-              conversation,
-              requestContext,
-              subjectSession ? {session:subjectSession} : {}
-            );
-          }catch(sessionError){
-            if(!String(sessionError?.code||'').startsWith('OLLI_AGENT_SESSION_')) throw sessionError;
-            contextPrivacy=await privacyModule.prepareAgentContextReadPrivacyInput(
-              message,
-              conversation,
-              requestContext
-            );
-          }
-        }
+        const result=await runtimeModule.runContextualReadAgent({
+          agentContext,
+          requestContext,
+          preparedPrivacy:contextPrivacy.preparedPrivacy,
+          agentInput:contextPrivacy.agentInput,
+        });
 
-        if(feedbackPerf){
-          const usedConversation=contextFallback ? conversation : primaryPrivacyConversation;
-          feedbackPerf.emitPerfLog({
-            phase:'feedback_privacy_prepare',
-            status:'ok',
-            mode:'feedback_read',
-            durationMs:feedbackPerf.perfDurationMs(privacyStartedAt),
-            conversationItems:usedConversation.length,
-            conversationChars:JSON.stringify(usedConversation).length,
-            inputItems:Array.isArray(contextPrivacy?.agentInput)
-              ? contextPrivacy.agentInput.length
-              : 0,
-            inputChars:JSON.stringify(contextPrivacy?.agentInput || []).length,
-            contextFallback:contextFallback ? 1 : 0,
-          });
-        }
-
-        const result=mode==='feedback_read'
-          ? await runtimeModule.runFeedbackDirectRead({
-              agentContext,
-              requestContext,
-              preparedPrivacy:contextPrivacy.preparedPrivacy,
-              agentInput:contextPrivacy.agentInput,
-            })
-          : await runtimeModule.runContextualReadAgent({
-              agentContext,
-              requestContext,
-              preparedPrivacy:contextPrivacy.preparedPrivacy,
-              agentInput:contextPrivacy.agentInput,
-            });
-
-        if(mode==='context_read' && result?.handled!==true){
+        if(result?.handled!==true){
           return res.status(200).json({
             ok:true,
             mode:'context_read',
             handled:false,
           });
         }
-        if(feedbackPerf){
-          feedbackPerf.emitPerfLog({
-            phase:'feedback_pipeline_total',
-            status:'ok',
-            mode:'feedback_read',
-            durationMs:feedbackPerf.perfDurationMs(feedbackPipelineStartedAt),
-          });
-        }
 
         return res.status(200).json({
           ok:true,
-          mode,
+          mode:'context_read',
           handled:true,
           contextResolved:true,
           output:safeText(result?.output,12000),
