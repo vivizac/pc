@@ -275,6 +275,7 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
     'general_chat must use route chat.',
     'Use lane feedback for feedback/student-record work even though its compatibility route remains chat until the dedicated Feedback Agent is connected.',
     'For all other deterministic academy operations and reads, use lane routine. For ordinary conversation, use lane chat.',
+    'For lane chat, answer the user directly and briefly in Korean in reply. For lane routine or feedback, reply must be an empty string.',
     'Examples:',
     'User: 학생A 시간표 알려줘 -> route rule, intent get_student_schedule, standalone_command "학생A 시간표 알려줘".',
     'After that, User: 그럼 지난주는? -> route rule, intent get_student_schedule, standalone_command "학생A 지난주 시간표 알려줘".',
@@ -295,12 +296,13 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
   const schema={
     type:'object',
     additionalProperties:false,
-    required:['lane','route','intent','standalone_command','context_used'],
+    required:['lane','route','intent','standalone_command','reply','context_used'],
     properties:{
       lane:{type:'string',enum:OLLI_INTERPRETER_LANES},
       route:{type:'string',enum:['rule','agent','chat']},
       intent:{type:'string',enum:OLLI_SYSTEM_LANGUAGE_INTENTS},
       standalone_command:{type:'string'},
+      reply:{type:'string'},
       context_used:{type:'boolean'},
     },
   };
@@ -415,6 +417,7 @@ async function resolveOlliSystemInterpretation({
     route:expectedRoute,
     intent:OLLI_SYSTEM_LANGUAGE_INTENTS.includes(intent) ? intent : 'general_chat',
     standaloneCommand:command || current,
+    reply:lane==='chat' ? clean(interpreted?.reply) : '',
     contextUsed:interpreted?.context_used===true,
     modelRoute,
   });
