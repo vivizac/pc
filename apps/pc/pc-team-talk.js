@@ -2648,16 +2648,20 @@
       throw new Error(data?.error || data?.message || '올리 공통 해석 응답을 받지 못했습니다.');
     }
     const language=data?.systemLanguage || {};
+    const lane=clean(language.lane) || 'routine';
     const route=clean(language.route);
     const intent=clean(language.intent);
     const standaloneCommand=clean(language.standaloneCommand);
-    if(data?.ok!==true || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
+    const reply=clean(language.reply);
+    if(data?.ok!==true || !['routine','feedback','chat'].includes(lane) || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
       throw new Error('올리 공통 해석 결과가 올바르지 않습니다.');
     }
     return {
+      lane,
       route,
       intent,
       standaloneCommand,
+      reply,
       contextUsed:language.contextUsed===true
     };
   }
@@ -2711,6 +2715,7 @@
       current,
       replyToMessageId
     );
+    const interpreterLane=clean(interpretation.lane) || 'routine';
     const interpreterRoute=clean(interpretation.route);
     const interpreterIntent=clean(interpretation.intent);
     commandText=clean(interpretation.standaloneCommand) || rawCommandText;
@@ -2738,7 +2743,24 @@
       }
     }
 
-    if(interpreterRoute==='chat'){
+    if(interpreterLane==='chat'){
+      const message=clean(interpretation.reply);
+      if(message){
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:true
+        };
+      }
+      const resolved=await resolveAiReply(rawCommandText,current);
+      return {
+        assistantMessage:await saveAssistantReply(current,resolved.message,replyToMessageId),
+        replyText:resolved.message,
+        recordAi:true
+      };
+    }
+
+    if(interpreterLane==='feedback'){
       const resolved=await resolveAiReply(rawCommandText,current);
       return {
         assistantMessage:await saveAssistantReply(current,resolved.message,replyToMessageId),
