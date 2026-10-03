@@ -600,3 +600,63 @@ test('structured pickup does not invent missing pickup details', async () => {
     globalThis.OlliCommandSchedule=previousSchedule;
   }
 });
+
+test('structured move_class reaches the existing schedule move SOT without reparsing Korean', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+  let observed = null;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      observed = { intent, options };
+      return {
+        ok:true,
+        command:{
+          intent:'move_class',
+          studentId:'student-1',
+          studentName:'민준',
+          division:'elementary',
+          sourceEnrollmentId:'enrollment-1',
+          sourceWeekday:1,
+          sourceTimeSlot:4,
+          targetWeekday:3,
+          targetTimeSlot:5,
+          targetClassGroup:'A',
+          targetCheckDate:'2026-10-07',
+          effectiveDate:'2026-10-03',
+        },
+        message:'민준 · 월요일 4시 → 수요일 5시 A반\n정규수업 시간을 변경할까요?',
+      };
+    },
+    writeConfirmationMessage() {
+      return '';
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'move_class',
+      studentName:'민준',
+      sourceWeekday:1,
+      sourceTimeSlot:4,
+      targetWeekday:3,
+      targetTimeSlot:5,
+      classGroup:'',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'move_class');
+    assert.equal(result.payload.intent,'move_class');
+
+    assert.ok(observed);
+    assert.equal(observed.intent,'move_class');
+    assert.equal(observed.options.studentName,'민준');
+    assert.equal(observed.options.sourceWeekday,1);
+    assert.equal(observed.options.sourceTimeSlot,4);
+    assert.equal(observed.options.targetWeekday,3);
+    assert.equal(observed.options.targetTimeSlot,5);
+    assert.equal(observed.options.classGroup,'');
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
