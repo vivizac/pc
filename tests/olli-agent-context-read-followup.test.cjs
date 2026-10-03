@@ -202,6 +202,51 @@ test('unified interpreter emits a structured add_trial command without student d
   });
 });
 
+test('unified interpreter emits a structured add_waitlist command without student data lookup', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:16,
+    currentMessage:'지우 초등부 다음주 목요일 4시 대기 등록해줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'add_waitlist',
+      standalone_command:'지우 초등부 다음주 목요일 4시 대기 등록해줘',
+      structured_command:{
+        action:'add_waitlist',
+        student_name:'지우',
+        division:'elementary',
+        date_expression:'다음주 목요일',
+        time_slot:4,
+        class_group:'',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'add_waitlist');
+  assert.deepEqual(result.structuredCommand,{
+    action:'add_waitlist',
+    studentName:'지우',
+    division:'elementary',
+    dateExpression:'다음주 목요일',
+    timeSlot:4,
+    classGroup:'',
+  });
+});
+
 test('unified interpreter classifies feedback/data work separately from routine work', async () => {
   const result=await resolveOlliSystemInterpretation({
     requestContext:{
