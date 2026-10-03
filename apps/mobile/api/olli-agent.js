@@ -91,6 +91,7 @@ export default async function handler(req, res) {
           structuredCommand:{
             action:safeText(result?.structuredCommand?.action,40),
             studentName:safeText(result?.structuredCommand?.studentName,200),
+            division:safeText(result?.structuredCommand?.division,20),
             dateExpression:safeText(result?.structuredCommand?.dateExpression,200),
             timeSlot:Number(result?.structuredCommand?.timeSlot || 0),
             classGroup:safeText(result?.structuredCommand?.classGroup,10),
