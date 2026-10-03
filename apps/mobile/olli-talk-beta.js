@@ -1481,7 +1481,7 @@
     };
   }
 
-  async function resolveOlliTalkWaitlistCancelAgentTurn(commandText,context,replyToMessageId){
+  async function resolveOlliTalkWaitlistCancelAgentTurn(commandText,context,replyToMessageId,structuredCommand=null){
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
       throw new Error('대기 취소 요청의 원문 메시지를 확인하지 못했습니다.');
@@ -1490,11 +1490,12 @@
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        mode:'waitlist_cancel_prepare',
+        mode:structuredCommand ? 'structured_waitlist_cancel_prepare' : 'waitlist_cancel_prepare',
         academyId:context?.academyId || '',
         sessionToken:context?.sessionToken || '',
         message:String(commandText || '').trim(),
-        sourceMessageId
+        sourceMessageId,
+        structuredCommand
       })
     });
     const data=await response.json().catch(()=>({}));
@@ -2453,6 +2454,18 @@
         reasonMessageId,
         context,
       });
+    }
+
+    if(
+      interpreterLane==='routine'
+      && String(structuredCommand?.action || '').trim()==='cancel_waitlist'
+    ){
+      return resolveOlliTalkWaitlistCancelAgentTurn(
+        rawCommandText,
+        context,
+        replyToMessageId,
+        structuredCommand
+      );
     }
 
     if(

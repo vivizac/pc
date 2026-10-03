@@ -1012,3 +1012,56 @@ test('structured update_waitlist bypasses Agents SDK and reuses the deterministi
   assert.match(mobileBlock,/mode:'structured_waitlist_update_prepare'/);
   assert.doesNotMatch(mobileBlock,/mode:'waitlist_update_prepare'/);
 });
+
+
+test('structured cancel_waitlist bypasses Agents SDK and reuses the deterministic waitlist-cancel SOT', () => {
+  assert.match(contextRouteSource,/cancel_waitlist/);
+  assert.match(apiSource,/structured_waitlist_cancel_prepare/);
+  assert.match(apiSource,/runStructuredWaitlistCancelPrepare/);
+
+  const runtimeStart=runtimeSource.indexOf('async function runStructuredWaitlistCancelPrepare');
+  const runtimeEnd=runtimeSource.indexOf('\nasync function ',runtimeStart+20);
+  assert.ok(runtimeStart>=0 && runtimeEnd>runtimeStart);
+  const runtimeBlock=runtimeSource.slice(runtimeStart,runtimeEnd);
+  assert.match(runtimeBlock,/validateWaitlistSourceMessage/);
+  assert.match(runtimeBlock,/prepareStructuredWaitlistCancelPrivacy/);
+  assert.match(runtimeBlock,/resolveWaitlistCancelPrepareScope/);
+  assert.match(runtimeBlock,/prepareWaitlistCancelAction/);
+  assert.doesNotMatch(runtimeBlock,/loadAgentsSdk|new Agent|runWaitlistCancelPrepareAgent/);
+
+  const privacyStart=runtimeSource.indexOf('async function prepareStructuredWaitlistCancelPrivacy');
+  const privacyEnd=runtimeSource.indexOf('\nfunction structuredWaitlistCancelDateKey',privacyStart+20);
+  assert.ok(privacyStart>=0 && privacyEnd>privacyStart);
+  const privacyBlock=runtimeSource.slice(privacyStart,privacyEnd);
+  assert.match(privacyBlock,/studentName/);
+  assert.match(privacyBlock,/prepareAgentPrivacyInput/);
+  assert.match(privacyBlock,/prepareWaitlistGuestPrivacyInput/);
+  assert.doesNotMatch(privacyBlock,/sourceMessageText/);
+
+  const dateStart=runtimeSource.indexOf('function structuredWaitlistCancelDateKey');
+  const dateEnd=runtimeSource.indexOf('\nasync function ',dateStart+20);
+  assert.ok(dateStart>=0 && dateEnd>dateStart);
+  const dateBlock=runtimeSource.slice(dateStart,dateEnd);
+  assert.match(dateBlock,/dateExpression/);
+  assert.match(dateBlock,/weekday/);
+  assert.match(dateBlock,/nextOccurrenceOnOrAfter/);
+
+  const pcStart=pcSource.indexOf('async function resolveWaitlistCancelAgentTurn');
+  const pcEnd=pcSource.indexOf('\n  async function ',pcStart+20);
+  assert.ok(pcStart>=0 && pcEnd>pcStart);
+  const pcBlock=pcSource.slice(pcStart,pcEnd);
+  assert.match(pcBlock,/structuredCommand/);
+  assert.match(pcBlock,/structured_waitlist_cancel_prepare/);
+  assert.match(pcBlock,/waitlist_cancel_prepare/);
+
+  const mobileStart=mobileSource.indexOf('async function resolveOlliTalkWaitlistCancelAgentTurn');
+  const mobileEnd=mobileSource.indexOf('\n  async function ',mobileStart+20);
+  assert.ok(mobileStart>=0 && mobileEnd>mobileStart);
+  const mobileBlock=mobileSource.slice(mobileStart,mobileEnd);
+  assert.match(mobileBlock,/structuredCommand/);
+  assert.match(mobileBlock,/structured_waitlist_cancel_prepare/);
+  assert.match(mobileBlock,/waitlist_cancel_prepare/);
+
+  assert.match(pcSource,/structuredCommand\?\.action\)===\'cancel_waitlist\'/);
+  assert.match(mobileSource,/structuredCommand\?\.action \|\| \'\'\)\.trim\(\)===\'cancel_waitlist\'/);
+});

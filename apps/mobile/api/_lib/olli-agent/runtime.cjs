@@ -2875,6 +2875,151 @@ function resolveWaitlistCancelPrepareScope(preparedPrivacy) {
   };
 }
 
+async function prepareStructuredWaitlistCancelPrivacy(structuredCommand,requestContext){
+  const command=structuredCommand&&typeof structuredCommand==='object'
+    ? structuredCommand
+    : {};
+  const studentName=String(command.studentName||'').trim();
+  if(!studentName){
+    throw runtimeError(
+      '취소할 대기 학생 이름을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_WAITLIST_CANCEL_STUDENT_REQUIRED'
+    );
+  }
+
+  const division=String(command.division||'').trim().toLowerCase();
+  const divisionWord=division==='elementary'
+    ? '초등부'
+    : division==='kinder'
+      ? '유치부'
+      : '';
+  const classGroup=/^[AB]$/.test(String(command.classGroup||'').trim().toUpperCase())
+    ? String(command.classGroup||'').trim().toUpperCase()+'반'
+    : '';
+  const identityText=[studentName,divisionWord,classGroup,'대기 취소']
+    .filter(Boolean)
+    .join(' ');
+
+  const privacyModule=require('./privacy.cjs');
+  let prepared=await privacyModule.prepareAgentPrivacyInput(
+    identityText,
+    requestContext
+  );
+  if(!Array.isArray(prepared?.subjectRefs)||prepared.subjectRefs.length===0){
+    const guestPrivacyModule=require('./waitlist-guest-privacy.cjs');
+    prepared=guestPrivacyModule.prepareWaitlistGuestPrivacyInput(identityText);
+  }
+  return prepared;
+}
+
+function structuredWaitlistCancelDateKey(command,currentDate){
+  const dateExpression=String(command?.dateExpression||'').trim();
+  if(dateExpression){
+    return structuredWaitlistDateKey(dateExpression,currentDate);
+  }
+
+  const weekday=Number(command?.weekday||0);
+  if(!weekday) return '';
+  if(!Number.isInteger(weekday)||weekday<1||weekday>6){
+    throw runtimeError(
+      '취소할 대기 요일을 확인해 주세요.',
+      400,
+      'OLLI_ROUTINE_WAITLIST_CANCEL_WEEKDAY_INVALID'
+    );
+  }
+
+  const {nextOccurrenceOnOrAfter}=require('./tools/waitlist-update-prepare-tools.cjs');
+  const resolved=nextOccurrenceOnOrAfter(currentDate,weekday);
+  if(!resolved){
+    throw runtimeError(
+      '취소할 대기 요일을 날짜로 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_WAITLIST_CANCEL_WEEKDAY_RESOLVE_FAILED'
+    );
+  }
+  return resolved;
+}
+
+async function runStructuredWaitlistCancelPrepare({
+  requestContext,
+  structuredCommand,
+  sourceMessageId,
+  sourceMessageText,
+}){
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_ROUTINE_WAITLIST_CANCEL_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  const command=structuredCommand&&typeof structuredCommand==='object'
+    ? structuredCommand
+    : {};
+  if(String(command.action||'').trim()!=='cancel_waitlist'){
+    throw runtimeError(
+      '대기 취소 구조화 명령을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_WAITLIST_CANCEL_ACTION_INVALID'
+    );
+  }
+
+  await validateWaitlistSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  const preparedPrivacy=await prepareStructuredWaitlistCancelPrivacy(
+    command,
+    requestContext
+  );
+  const scope=resolveWaitlistCancelPrepareScope(preparedPrivacy);
+  const today=todayInSeoul();
+  const waitlistDate=structuredWaitlistCancelDateKey(command,today);
+
+  const {prepareWaitlistCancelAction}=require('./tools/waitlist-cancel-prepare-tools.cjs');
+  let persistedMessage=null;
+  await prepareWaitlistCancelAction({
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    guestAccess:preparedPrivacy.waitlistGuestAccess,
+    studentLabel:scope.subjectLabel,
+    division:scope.division,
+    classGroup:scope.classGroup,
+    waitlistDate,
+    classHour:Number(command.timeSlot||0),
+    classMinute:Number(command.classMinute||0),
+    currentDate:today,
+    requestId:'team-chat-waitlist-cancel:'+sourceId,
+    replyToMessageId:sourceId,
+    capturePersistedMessage(message){
+      persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload){
+      return sanitizeWaitlistPayload(payload,preparedPrivacy,scope);
+    },
+  });
+
+  if(!persistedMessage?.action||String(persistedMessage.action.action_type||'').trim()!=='cancel_waitlist'){
+    throw runtimeError(
+      '대기 취소 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_ROUTINE_WAITLIST_CANCEL_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+
+  return {
+    ready:true,
+    persistedMessage,
+    recoveredAfterPersist:false,
+  };
+}
+
+
 async function runWaitlistCancelPrepareAgent({
   agentContext,
   requestContext,
@@ -6042,6 +6187,7 @@ module.exports = {
   runWaitlistCancelPrepareAgent,
   runWaitlistCancelPrepareProbe,
   runWaitlistCancelPrepare,
+  runStructuredWaitlistCancelPrepare,
   validateWaitlistSourceMessage,
   validateMakeupSourceMessage,
   runMakeupPrepare,
