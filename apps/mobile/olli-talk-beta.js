@@ -1953,7 +1953,11 @@
       classMinute:Number(structuredRaw.classMinute || 0),
       pickupKind:String(structuredRaw.pickupKind || '').trim(),
       pickupLabel:String(structuredRaw.pickupLabel || '').trim(),
-      pickupTime:String(structuredRaw.pickupTime || '').trim()
+      pickupTime:String(structuredRaw.pickupTime || '').trim(),
+      sourceWeekday:Number(structuredRaw.sourceWeekday || 0),
+      sourceTimeSlot:Number(structuredRaw.sourceTimeSlot || 0),
+      targetWeekday:Number(structuredRaw.targetWeekday || 0),
+      targetTimeSlot:Number(structuredRaw.targetTimeSlot || 0)
     };
     const reply=String(language.reply || '').trim();
     if(data?.ok!==true || !['routine','feedback','chat'].includes(lane) || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
@@ -2076,7 +2080,7 @@
 
     if(
       interpreterLane==='routine'
-      && ['add_makeup','add_trial','add_waitlist','add_pickup'].includes(String(structuredCommand?.action || '').trim())
+      && ['add_makeup','add_trial','add_waitlist','add_pickup','move_class'].includes(String(structuredCommand?.action || '').trim())
       && router
       && typeof router.prepareStructuredAction==='function'
     ){
