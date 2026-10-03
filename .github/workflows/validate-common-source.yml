@@ -8,6 +8,7 @@ on:
       - 'tests/timetable-memo-half-hour.test.cjs'
       - 'tests/pickup-half-hour.test.cjs'
       - 'tests/olli-structured-command-router.test.cjs'
+      - 'tests/olli-structured-query-route.test.cjs'
       - 'tests/team-talk-makeup-group-choice.test.cjs'
       - 'supabase/migrations/20261003022400_team_chat_makeup_group_choice.sql'
       - 'supabase/migrations/20261003024500_team_chat_trial_group_choice.sql'
@@ -67,6 +68,7 @@ jobs:
             tests/timetable-memo-half-hour.test.cjs \
             tests/pickup-half-hour.test.cjs \
             tests/olli-structured-command-router.test.cjs \
+            tests/olli-structured-query-route.test.cjs \
             tests/team-talk-makeup-group-choice.test.cjs
 
       - name: Reject platform adapters from common runtime manifests
