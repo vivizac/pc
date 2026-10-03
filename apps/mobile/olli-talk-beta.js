@@ -1930,6 +1930,16 @@
     const route=String(language.route || '').trim();
     const intent=String(language.intent || '').trim();
     const standaloneCommand=String(language.standaloneCommand || '').trim();
+    const structuredRaw=language.structuredCommand && typeof language.structuredCommand==='object'
+      ? language.structuredCommand
+      : {};
+    const structuredCommand={
+      action:String(structuredRaw.action || '').trim(),
+      studentName:String(structuredRaw.studentName || '').trim(),
+      dateExpression:String(structuredRaw.dateExpression || '').trim(),
+      timeSlot:Number(structuredRaw.timeSlot || 0),
+      classGroup:String(structuredRaw.classGroup || '').trim().toUpperCase()
+    };
     const reply=String(language.reply || '').trim();
     if(data?.ok!==true || !['routine','feedback','chat'].includes(lane) || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
       throw new Error('올리 공통 해석 결과가 올바르지 않습니다.');
@@ -1939,6 +1949,7 @@
       route,
       intent,
       standaloneCommand,
+      structuredCommand,
       reply,
       contextUsed:language.contextUsed===true
     };
@@ -1996,6 +2007,7 @@
     const interpreterLane=String(interpretation.lane || '').trim() || 'routine';
     const interpreterRoute=String(interpretation.route || '').trim();
     const interpreterIntent=String(interpretation.intent || '').trim();
+    const structuredCommand=interpretation.structuredCommand || null;
     commandText=String(interpretation.standaloneCommand || rawCommandText).trim();
 
     if(options.allowSuggestedQuery && router && typeof router.runSuggestedQuery==='function'){
@@ -2045,6 +2057,41 @@
         replyText:resolved.message,
         recordAi:true
       };
+    }
+
+    if(
+      interpreterLane==='routine'
+      && String(structuredCommand?.action || '').trim()==='add_makeup'
+      && router
+      && typeof router.prepareStructuredAction==='function'
+    ){
+      const prepared=await router.prepareStructuredAction(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(prepared?.handled===true){
+        if(prepared.kind==='action_pending' && prepared.payload){
+          return {
+            assistantMessage:await saveOlliTalkActionReply(
+              context,
+              prepared.message || '이 작업을 진행할까요?',
+              prepared.payload,
+              replyToMessageId
+            ),
+            replyText:String(prepared.message || ''),
+            recordAi:false
+          };
+        }
+        if(prepared.kind==='action_rejected'){
+          const rejectedMessage=String(prepared.message || '').trim() || '작업을 준비하지 못했어요.';
+          return {
+            assistantMessage:await saveOlliTalkOlliReply(context,rejectedMessage,replyToMessageId),
+            replyText:rejectedMessage,
+            recordAi:false
+          };
+        }
+      }
     }
 
     if(interpreterRoute==='rule'){
