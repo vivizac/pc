@@ -163,6 +163,7 @@ test('unified interpreter emits a structured add_makeup command from conversatio
     sourceTimeSlot:0,
     targetWeekday:0,
     targetTimeSlot:0,
+    reason:'',
   });
   assert.equal(result.contextUsed,true);
 });
@@ -219,6 +220,7 @@ test('unified interpreter emits a structured add_trial command without student d
     sourceTimeSlot:0,
     targetWeekday:0,
     targetTimeSlot:0,
+    reason:'',
   });
 });
 
@@ -274,6 +276,7 @@ test('unified interpreter emits a structured add_waitlist command without studen
     sourceTimeSlot:0,
     targetWeekday:0,
     targetTimeSlot:0,
+    reason:'',
   });
 });
 
@@ -335,6 +338,7 @@ test('unified interpreter emits structured pickup fields without student data lo
     sourceTimeSlot:0,
     targetWeekday:0,
     targetTimeSlot:0,
+    reason:'',
   });
 });
 
@@ -451,6 +455,74 @@ test('unified interpreter emits structured class move fields without student dat
     sourceTimeSlot:4,
     targetWeekday:3,
     targetTimeSlot:5,
+    reason:'',
+  });
+});
+
+test('unified interpreter emits a structured mark_absent command without loading student data', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:19,
+    currentMessage:'민준이 오늘 4시 결석 처리해줘 사유 감기',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'mark_absent',
+      standalone_command:'민준이 오늘 4시 결석 처리해줘 사유 감기',
+      structured_command:{
+        action:'mark_absent',
+        student_name:'민준',
+        division:'',
+        date_expression:'오늘',
+        time_slot:4,
+        class_group:'',
+        weekday:0,
+        class_time:0,
+        class_minute:0,
+        pickup_kind:'',
+        pickup_label:'',
+        pickup_time:'',
+        source_weekday:0,
+        source_time_slot:0,
+        target_weekday:0,
+        target_time_slot:0,
+        reason:'감기',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'mark_absent');
+  assert.deepEqual(result.structuredCommand,{
+    action:'mark_absent',
+    studentName:'민준',
+    division:'',
+    dateExpression:'오늘',
+    timeSlot:4,
+    classGroup:'',
+    weekday:0,
+    classTime:0,
+    classMinute:0,
+    pickupKind:'',
+    pickupLabel:'',
+    pickupTime:'',
+    sourceWeekday:0,
+    sourceTimeSlot:0,
+    targetWeekday:0,
+    targetTimeSlot:0,
+    reason:'감기',
   });
 });
 
