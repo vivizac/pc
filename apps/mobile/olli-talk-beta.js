@@ -4719,6 +4719,49 @@
     return card;
   }
 
+  async function handleOlliTalkMakeupGroupChoice(action,group){
+    const actionId=String(action?.id || '').trim();
+    const classGroup=String(group || '').trim().toUpperCase();
+    if(!actionId || !['A','B'].includes(classGroup) || olliTalkActionBusy.has(actionId)) return;
+
+    const context=getOlliTalkBetaContext();
+    if(!context.sessionToken || !context.academyId){
+      alert('올리톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    olliTalkActionBusy.add(actionId);
+    setOlliTalkActionCardBusy(actionId,true);
+    try{
+      const payload=await callOlliTalkRpc('olli_team_chat_action_select_makeup_group',{
+        p_session_token:context.sessionToken,
+        p_academy_id:context.academyId,
+        p_action_id:actionId,
+        p_class_group:classGroup
+      });
+      if(!payload?.ok || !payload?.action){
+        throw new Error(payload?.message || '보강 반을 선택하지 못했습니다.');
+      }
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }catch(error){
+      console.warn('올리톡 보강 반 선택 실패:',error);
+      alert(error?.message || '보강 반을 선택하지 못했습니다.');
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }finally{
+      olliTalkActionBusy.delete(actionId);
+      setOlliTalkActionCardBusy(actionId,false);
+    }
+  }
+
+
   function createOlliTalkActionCard(action){
     const card=document.createElement('div');
     const status=String(action?.status || 'pending').trim() || 'pending';
@@ -4730,6 +4773,18 @@
       const label=createMessageText('span','olliTalkBetaActionStatus',getOlliTalkActionStatusLabel(status));
       if(status==='failed') label.classList.add('failed');
       card.appendChild(label);
+      return card;
+    }
+
+    if(String(action?.action_type || '').trim()==='choose_makeup_group'){
+      ['A','B'].forEach(group=>{
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='olliTalkBetaActionButton primary';
+        button.textContent=group+'반';
+        button.addEventListener('click',()=>handleOlliTalkMakeupGroupChoice(action,group));
+        card.appendChild(button);
+      });
       return card;
     }
 
