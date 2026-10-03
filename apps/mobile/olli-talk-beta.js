@@ -632,7 +632,9 @@
         ? 'olli_team_chat_send_trial_group_choice'
         : actionType==='choose_waitlist_group'
           ? 'olli_team_chat_send_waitlist_group_choice'
-          : 'olli_team_chat_send_action';
+          : actionType==='choose_move_group'
+            ? 'olli_team_chat_send_move_group_choice'
+            : 'olli_team_chat_send_action';
     const rpcPayload={
       p_session_token:context.sessionToken,
       p_academy_id:context.academyId,
@@ -4766,7 +4768,9 @@
         ? 'olli_team_chat_action_select_trial_group'
         : actionType==='choose_waitlist_group'
           ? 'olli_team_chat_action_select_waitlist_group'
-          : 'olli_team_chat_action_select_makeup_group';
+          : actionType==='choose_move_group'
+            ? 'olli_team_chat_action_select_move_group'
+            : 'olli_team_chat_action_select_makeup_group';
       const payload=await callOlliTalkRpc(rpcName,{
         p_session_token:context.sessionToken,
         p_academy_id:context.academyId,
@@ -4810,7 +4814,7 @@
       return card;
     }
 
-    if(['choose_makeup_group','choose_trial_group','choose_waitlist_group'].includes(String(action?.action_type || '').trim())){
+    if(['choose_makeup_group','choose_trial_group','choose_waitlist_group','choose_move_group'].includes(String(action?.action_type || '').trim())){
       ['A','B'].forEach(group=>{
         const button=document.createElement('button');
         button.type='button';
