@@ -1993,7 +1993,7 @@
     const action = cleanText(command.action);
     const routeContext = normalizeContext(context);
     const schedule = global.OlliCommandSchedule;
-    const supported = new Set(['add_makeup','add_trial','add_waitlist','add_pickup']);
+    const supported = new Set(['add_makeup','add_trial','add_waitlist','add_pickup','move_class']);
 
     if (!supported.has(action)) {
       return {
@@ -2006,6 +2006,85 @@
         payload:null,
         action:null
       };
+    }
+
+    if (action === 'move_class') {
+      const studentName=cleanText(command.student_name || command.studentName);
+      const sourceWeekday=Number(command.source_weekday || command.sourceWeekday || 0);
+      const sourceTimeSlot=Number(command.source_time_slot || command.sourceTimeSlot || 0);
+      const targetWeekday=Number(command.target_weekday || command.targetWeekday || 0);
+      const targetTimeSlot=Number(command.target_time_slot || command.targetTimeSlot || 0);
+      const classGroup=cleanText(command.class_group || command.classGroup).toUpperCase();
+
+      if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
+        return {
+          handled:true,
+          kind:'action_rejected',
+          intent:'move_class',
+          text:'',
+          message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+          clearInput:true,
+          payload:command,
+          action:null
+        };
+      }
+
+      try {
+        const prepared=await schedule.prepareWriteCommand('move_class',{
+          type:'mutation',
+          intent:'move_class',
+          studentName,
+          sourceWeekday,
+          sourceTimeSlot,
+          targetWeekday,
+          targetTimeSlot,
+          classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+          selectedStudent:routeContext.selectedStudent || null,
+          effectiveDate:new Date(),
+          originalText:''
+        });
+
+        if (!prepared || prepared.ok !== true || !prepared.command) {
+          return {
+            handled:true,
+            kind:'action_rejected',
+            intent:'move_class',
+            text:'',
+            message:String(prepared && prepared.message || '작업을 준비하지 못했어요.'),
+            clearInput:true,
+            payload:command,
+            action:null
+          };
+        }
+
+        return {
+          handled:true,
+          kind:'action_pending',
+          intent:'move_class',
+          text:'',
+          message:confirmationMessage(prepared.command,schedule,prepared.message),
+          clearInput:true,
+          payload:prepared.command,
+          action:{
+            status:'pending',
+            intent:'move_class',
+            command:Object.assign({},prepared.command),
+            requiresReason:false
+          }
+        };
+      } catch (error) {
+        console.warn('올리 구조화 수업 이동 명령 준비 실패:',error);
+        return {
+          handled:true,
+          kind:'action_rejected',
+          intent:'move_class',
+          text:'',
+          message:String(error && (error.message || error) || '작업을 준비하지 못했어요.'),
+          clearInput:true,
+          payload:command,
+          action:null
+        };
+      }
     }
 
     if (action === 'add_pickup') {
