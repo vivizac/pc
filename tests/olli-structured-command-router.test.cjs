@@ -983,6 +983,16 @@ test('structured update_waitlist bypasses Agents SDK and reuses the deterministi
   assert.match(runtimeBlock,/prepareWaitlistUpdateAction/);
   assert.doesNotMatch(runtimeBlock,/loadAgentsSdk|new Agent|runWaitlistUpdatePrepareAgent/);
 
+  const privacyStart=runtimeSource.indexOf('async function prepareStructuredWaitlistPrivacy');
+  const privacyEnd=runtimeSource.indexOf('\nasync function ',privacyStart+20);
+  assert.ok(privacyStart>=0 && privacyEnd>privacyStart);
+  const privacyBlock=runtimeSource.slice(privacyStart,privacyEnd);
+  assert.match(privacyBlock,/structuredCommand/);
+  assert.match(privacyBlock,/studentName/);
+  assert.match(privacyBlock,/prepareAgentPrivacyInput/);
+  assert.match(privacyBlock,/prepareWaitlistGuestPrivacyInput/);
+  assert.doesNotMatch(privacyBlock,/sourceMessageText/);
+
   for(const source of [pcSource,mobileSource]){
     assert.match(source,/structured_waitlist_update_prepare/);
     assert.match(source,/structuredCommand/);

@@ -2721,12 +2721,37 @@ function structuredWaitlistDateKey(value,currentDate){
   return resolved.toISOString().slice(0,10);
 }
 
-async function prepareStructuredWaitlistPrivacy(sourceMessageText,requestContext){
+async function prepareStructuredWaitlistPrivacy(structuredCommand,requestContext){
+  const command=structuredCommand&&typeof structuredCommand==='object'
+    ? structuredCommand
+    : {};
+  const studentName=String(command.studentName||'').trim();
+  if(!studentName){
+    throw runtimeError(
+      '변경할 대기 학생 이름을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_WAITLIST_UPDATE_STUDENT_REQUIRED'
+    );
+  }
+
+  const division=String(command.division||'').trim().toLowerCase();
+  const divisionWord=division==='elementary'
+    ? '초등부'
+    : division==='kinder'
+      ? '유치부'
+      : '';
+  const identityText=[studentName,divisionWord,'대기 변경']
+    .filter(Boolean)
+    .join(' ');
+
   const privacyModule=require('./privacy.cjs');
-  let prepared=await privacyModule.prepareAgentPrivacyInput(sourceMessageText,requestContext);
+  let prepared=await privacyModule.prepareAgentPrivacyInput(
+    identityText,
+    requestContext
+  );
   if(!Array.isArray(prepared?.subjectRefs)||prepared.subjectRefs.length===0){
     const guestPrivacyModule=require('./waitlist-guest-privacy.cjs');
-    prepared=guestPrivacyModule.prepareWaitlistGuestPrivacyInput(sourceMessageText);
+    prepared=guestPrivacyModule.prepareWaitlistGuestPrivacyInput(identityText);
   }
   return prepared;
 }
@@ -2764,7 +2789,7 @@ async function runStructuredWaitlistUpdatePrepare({
   });
 
   const preparedPrivacy=await prepareStructuredWaitlistPrivacy(
-    sourceMessageText,
+    command,
     requestContext
   );
   const scope=resolveWaitlistUpdatePrepareScope(preparedPrivacy);
