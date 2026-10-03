@@ -595,7 +595,9 @@
       const actionType=clean(action?.action_type);
       const rpcName=actionType==='choose_trial_group'
         ? 'olli_team_chat_action_select_trial_group'
-        : 'olli_team_chat_action_select_makeup_group';
+        : actionType==='choose_waitlist_group'
+          ? 'olli_team_chat_action_select_waitlist_group'
+          : 'olli_team_chat_action_select_makeup_group';
       const payload=await rpc(rpcName,{
         p_session_token:current.sessionToken,
         p_academy_id:current.academyId,
@@ -629,7 +631,7 @@
       return card;
     }
 
-    if(['choose_makeup_group','choose_trial_group'].includes(clean(action?.action_type))){
+    if(['choose_makeup_group','choose_trial_group','choose_waitlist_group'].includes(clean(action?.action_type))){
       ['A','B'].forEach(group=>{
         const button=document.createElement('button');
         button.type='button';
@@ -2534,7 +2536,9 @@
       ? 'olli_team_chat_send_makeup_group_choice'
       : actionType==='choose_trial_group'
         ? 'olli_team_chat_send_trial_group_choice'
-        : 'olli_team_chat_send_action';
+        : actionType==='choose_waitlist_group'
+          ? 'olli_team_chat_send_waitlist_group_choice'
+          : 'olli_team_chat_send_action';
     const rpcPayload={
       p_session_token:current.sessionToken,
       p_academy_id:current.academyId,
@@ -2844,7 +2848,7 @@
 
     if(
       interpreterLane==='routine'
-      && ['add_makeup','add_trial'].includes(clean(structuredCommand?.action))
+      && ['add_makeup','add_trial','add_waitlist'].includes(clean(structuredCommand?.action))
       && router
       && typeof router.prepareStructuredAction==='function'
     ){
