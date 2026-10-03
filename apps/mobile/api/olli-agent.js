@@ -105,6 +105,7 @@ export default async function handler(req, res) {
             sourceTimeSlot:Number(result?.structuredCommand?.sourceTimeSlot || 0),
             targetWeekday:Number(result?.structuredCommand?.targetWeekday || 0),
             targetTimeSlot:Number(result?.structuredCommand?.targetTimeSlot || 0),
+            reason:safeText(result?.structuredCommand?.reason,1000),
           },
           reply:safeText(result?.reply,5000),
           contextUsed:result?.contextUsed===true,
