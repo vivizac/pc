@@ -284,16 +284,32 @@ export default async function handler(req, res) {
       }
 
       const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
+      const feedbackPerf=mode==='feedback_read'
+        ? await import('./_lib/olli-agent/perf.cjs')
+        : null;
+      const feedbackPipelineStartedAt=feedbackPerf?.startPerfTimer?.() || null;
+      const sourceValidationStartedAt=feedbackPerf?.startPerfTimer?.() || null;
+
       await runtimeModule.validatePickupSourceMessage({
         requestContext,
         sourceMessageId,
         sourceMessageText:message,
       });
 
+      if(feedbackPerf){
+        feedbackPerf.emitPerfLog({
+          phase:'feedback_source_validate',
+          status:'ok',
+          mode:'feedback_read',
+          durationMs:feedbackPerf.perfDurationMs(sourceValidationStartedAt),
+        });
+      }
+
       const privacyModule=await import('./_lib/olli-agent/privacy.cjs');
       const agentContext=contextModule.toAgentRunContext(requestContext);
 
       if(mode==='context_read' || mode==='feedback_read'){
+        const privacyStartedAt=feedbackPerf?.startPerfTimer?.() || null;
         let contextPrivacy;
         try{
           const sessionModule=await import('./_lib/olli-agent/session.cjs');
@@ -317,6 +333,22 @@ export default async function handler(req, res) {
           );
         }
 
+        if(feedbackPerf){
+          const conversation=Array.isArray(body.conversation) ? body.conversation : [];
+          feedbackPerf.emitPerfLog({
+            phase:'feedback_privacy_prepare',
+            status:'ok',
+            mode:'feedback_read',
+            durationMs:feedbackPerf.perfDurationMs(privacyStartedAt),
+            conversationItems:conversation.length,
+            conversationChars:JSON.stringify(conversation).length,
+            inputItems:Array.isArray(contextPrivacy?.agentInput)
+              ? contextPrivacy.agentInput.length
+              : 0,
+            inputChars:JSON.stringify(contextPrivacy?.agentInput || []).length,
+          });
+        }
+
         const result=mode==='feedback_read'
           ? await runtimeModule.runFeedbackDirectRead({
               agentContext,
@@ -338,6 +370,15 @@ export default async function handler(req, res) {
             handled:false,
           });
         }
+        if(feedbackPerf){
+          feedbackPerf.emitPerfLog({
+            phase:'feedback_pipeline_total',
+            status:'ok',
+            mode:'feedback_read',
+            durationMs:feedbackPerf.perfDurationMs(feedbackPipelineStartedAt),
+          });
+        }
+
         return res.status(200).json({
           ok:true,
           mode,
