@@ -128,6 +128,16 @@ function recordTimestamp(record) {
   return 0;
 }
 
+function evidenceTimestamp(record) {
+  const values = [clean(record?.date), clean(record?.created_at)];
+  for (const value of values) {
+    if (!value) continue;
+    const timestamp = Date.parse(value);
+    if (Number.isFinite(timestamp)) return timestamp;
+  }
+  return 0;
+}
+
 function mergeFeedbackRecordSet(generalRows, growthRows, observationRows, maxRecords, options = {}) {
   const directEvidence = options?.directEvidence === true;
   const limit = directEvidence
@@ -160,10 +170,11 @@ function mergeFeedbackRecordSet(generalRows, growthRows, observationRows, maxRec
     return true;
   });
 
+  const timestampForSort = directEvidence ? evidenceTimestamp : recordTimestamp;
   const sorted = unique.sort((a, b) =>
-    recordTimestamp(b) - recordTimestamp(a) ||
-    clean(b.created_at).localeCompare(clean(a.created_at)) ||
-    clean(b.date).localeCompare(clean(a.date))
+    timestampForSort(b) - timestampForSort(a) ||
+    clean(b.date).localeCompare(clean(a.date)) ||
+    clean(b.created_at).localeCompare(clean(a.created_at))
   );
 
   return {
@@ -343,6 +354,7 @@ module.exports = {
   normalizeDateText,
   normalizeFeedbackRecord,
   normalizeObservationRecord,
+  evidenceTimestamp,
   mergeFeedbackRecordSet,
   mergeRecentRecords,
   readRecentRecords,
