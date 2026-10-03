@@ -1989,7 +1989,7 @@
   async function runStructuredQuery(systemCommand, context) {
     const command=systemCommand && typeof systemCommand==='object' ? systemCommand : {};
     const action=cleanText(command.action);
-    const supported=new Set(['get_student_schedule','find_available_slots']);
+    const supported=new Set(['get_student_schedule','find_available_slots','find_roster_entries']);
     if(!supported.has(action)){
       return {
         handled:false,
@@ -2004,6 +2004,120 @@
 
     const routeContext=normalizeContext(context);
     const schedule=global.OlliCommandSchedule;
+
+    if(action==='find_roster_entries'){
+      if(
+        !schedule
+        || typeof schedule.findRosterEntries!=='function'
+        || typeof schedule.describeRosterEntries!=='function'
+      ){
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_roster_entries',
+          text:'',
+          message:'학생 명단 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:command
+        };
+      }
+
+      const rosterKind=cleanText(command.roster_kind || command.rosterKind);
+      const allowedKinds=['class_roster','absence','makeup','trial','waitlist','move'];
+      if(!allowedKinds.includes(rosterKind)){
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_roster_entries',
+          text:'',
+          message:'확인할 명단 종류를 알려주세요.',
+          clearInput:true,
+          payload:command
+        };
+      }
+
+      const dateExpression=cleanText(command.date_expression || command.dateExpression);
+      const division=cleanText(command.division);
+      const weekday=Number(command.weekday || 0);
+      const timeSlot=Number(command.time_slot || command.timeSlot || 0);
+      const classGroup=cleanText(command.class_group || command.classGroup).toUpperCase();
+
+      try{
+        const compact=compactText(dateExpression);
+        const weekOnly=/^(?:이번주|이번주간|금주|다음주|차주|다다음주)$/.test(compact);
+        let scope='date';
+        let dateLabel='오늘';
+        let weekOffset=0;
+        let referenceDate=new Date();
+
+        if(weekOnly){
+          scope='week';
+          weekOffset=/다다음주/.test(compact) ? 2 : (/(?:다음주|차주)/.test(compact) ? 1 : 0);
+          dateLabel=weekOffset===2 ? '다다음 주' : (weekOffset===1 ? '다음 주' : '이번 주');
+          referenceDate=addDays(new Date(),weekOffset*7);
+        }else if(dateExpression){
+          const dateSpec=parseDateExpression(compact);
+          if(!dateSpec) throw new Error('조회 날짜를 해석하지 못했습니다.');
+          referenceDate=resolveDateExpression(dateSpec,new Date());
+          if(!referenceDate) throw new Error('조회 날짜를 해석하지 못했습니다.');
+          scope='date';
+          dateLabel=cleanText(dateSpec.label) || dateExpression;
+        }else if(rosterKind==='waitlist' || rosterKind==='move'){
+          scope='all';
+          dateLabel='현재';
+        }else if(weekday){
+          const weekdayNames=['','월요일','화요일','수요일','목요일','금요일','토요일'];
+          const dateSpec=parseDateExpression(weekdayNames[weekday] || '');
+          referenceDate=resolveDateExpression(dateSpec,new Date());
+          if(!referenceDate) throw new Error('조회 요일을 해석하지 못했습니다.');
+          scope='date';
+          dateLabel=weekdayNames[weekday];
+        }
+
+        const result=await schedule.findRosterEntries({
+          kind:rosterKind,
+          scope,
+          date:referenceDate,
+          dateLabel,
+          division,
+          timeSlot,
+          classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+          weekday
+        });
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_roster_entries',
+          text:'',
+          message:schedule.describeRosterEntries(result),
+          clearInput:true,
+          payload:{
+            action:'find_roster_entries',
+            rosterKind,
+            scope,
+            dateExpression,
+            dateLabel,
+            weekOffset,
+            weekday,
+            division,
+            timeSlot,
+            classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+            result
+          }
+        };
+      }catch(error){
+        console.warn('올리 구조화 학생 명단 조회 실패:',error);
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_roster_entries',
+          text:'',
+          message:'학생 명단을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:command
+        };
+      }
+    }
 
     if(action==='find_available_slots'){
       if(
