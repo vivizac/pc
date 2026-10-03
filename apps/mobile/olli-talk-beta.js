@@ -2102,6 +2102,15 @@
             recordAi:false
           };
         }
+        if(prepared.kind==='action_needs_reason' && prepared.payload){
+          olliTalkPendingActionReason=Object.assign({},prepared.payload);
+          const reasonMessage=String(prepared.message || '').trim() || '사유를 알려주세요.';
+          return {
+            assistantMessage:await saveOlliTalkOlliReply(context,reasonMessage,replyToMessageId),
+            replyText:reasonMessage,
+            recordAi:false
+          };
+        }
         if(prepared.kind==='action_rejected'){
           const rejectedMessage=String(prepared.message || '').trim() || '작업을 준비하지 못했어요.';
           return {
