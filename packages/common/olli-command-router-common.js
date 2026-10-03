@@ -2550,6 +2550,8 @@
             };
           }
         }else{
+          const absoluteDateExpression=(date.getMonth()+1)+'월 '+date.getDate()+'일';
+          draft=updateStructuredWriteDraft(draft,'date',absoluteDateExpression);
           draft=updateStructuredWriteDraft(draft,'division',timeChoices.division);
           choices=Array.isArray(timeChoices.choices)
             ? timeChoices.choices.map(item=>Object.assign({},item))

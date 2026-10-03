@@ -215,7 +215,8 @@ test('structured add_trial returns date then real SOT time choices as the shared
     assert.equal(timeState.kind,'action_needs_field');
     assert.equal(timeState.payload.field,'time');
     assert.deepEqual(timeState.payload.missingFields,['time']);
-    assert.equal(timeState.payload.draft.dateExpression,'내일');
+    assert.match(timeState.payload.draft.dateExpression,/^\d{1,2}월 \d{1,2}일$/);
+    assert.notEqual(timeState.payload.draft.dateExpression,'내일');
     assert.equal(timeState.payload.draft.division,'elementary');
     assert.equal(timeState.payload.choices.length,2);
     assert.equal(timeState.payload.choices[0].label,'4시');
