@@ -2068,6 +2068,25 @@
 
     try {
       const prepared = await schedule.prepareWriteCommand('add_makeup', options);
+      if (prepared?.code === 'class_group_required' && prepared?.commandDraft) {
+        return {
+          handled:true,
+          kind:'action_choice',
+          intent:'choose_makeup_group',
+          text:'',
+          message:String(prepared.message || '보강 반을 선택해 주세요.'),
+          clearInput:true,
+          payload:Object.assign({},prepared.commandDraft),
+          action:{
+            status:'pending_choice',
+            intent:'choose_makeup_group',
+            command:Object.assign({},prepared.commandDraft),
+            choices:Array.isArray(prepared.choices) ? prepared.choices.slice() : ['A','B'],
+            requiresReason:false
+          }
+        };
+      }
+
       if (!prepared || prepared.ok !== true || !prepared.command) {
         return {
           handled:true,
