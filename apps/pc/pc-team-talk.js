@@ -2712,6 +2712,7 @@
     const structuredCommand={
       action:clean(structuredRaw.action),
       studentName:clean(structuredRaw.studentName),
+      division:clean(structuredRaw.division),
       dateExpression:clean(structuredRaw.dateExpression),
       timeSlot:Number(structuredRaw.timeSlot || 0),
       classGroup:clean(structuredRaw.classGroup).toUpperCase()
@@ -2837,7 +2838,7 @@
 
     if(
       interpreterLane==='routine'
-      && clean(structuredCommand?.action)==='add_makeup'
+      && ['add_makeup','add_trial'].includes(clean(structuredCommand?.action))
       && router
       && typeof router.prepareStructuredAction==='function'
     ){
@@ -2851,7 +2852,7 @@
           return {
             assistantMessage:await saveAssistantAction(
               current,
-              prepared.message || (prepared.kind==='action_choice' ? '보강 반을 선택해 주세요.' : '이 작업을 진행할까요?'),
+              prepared.message || (prepared.kind==='action_choice' ? '반을 선택해 주세요.' : '이 작업을 진행할까요?'),
               prepared.payload,
               replyToMessageId
             ),
