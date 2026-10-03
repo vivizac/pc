@@ -160,3 +160,52 @@ test('half-hour pickup update and cancel resolve 4:30 to the same stored slot', 
   assert.equal(cancel.command.classTime,8);
   assert.match(cancel.message,/4시 30분/);
 });
+
+test('pickup read filters by student name without changing other pickup rows', async () => {
+  const week = {
+    timetable_mode:'hourly',
+    pickups:[
+      {
+        id:'pickup-1',
+        student_id:'student-1',
+        student_name:'민서',
+        weekday:1,
+        class_time:4,
+        pickup_label:'리슈빌',
+        pickup_time:'15:20',
+        effective_from:'2026-01-01',
+        effective_to:null,
+        is_dropoff:false,
+      },
+      {
+        id:'pickup-2',
+        student_id:'student-2',
+        student_name:'지우',
+        weekday:1,
+        class_time:4,
+        pickup_label:'센트럴',
+        pickup_time:'15:10',
+        effective_from:'2026-01-01',
+        effective_to:null,
+        is_dropoff:false,
+      },
+    ],
+    enrollments:[],
+    one_time_sessions:[],
+  };
+  const {schedule}=loadSchedule(week,[]);
+
+  const result=await schedule.findPickups({
+    date:new Date(2026,9,5,12,0,0),
+    dateLabel:'오늘',
+    studentName:'민서',
+    classTime:4,
+    kind:'pickup',
+  });
+
+  assert.equal(result.studentName,'민서');
+  assert.equal(result.items.length,1);
+  assert.equal(result.items[0].student_name,'민서');
+  assert.match(schedule.describePickups(result),/민서/);
+  assert.doesNotMatch(schedule.describePickups(result),/지우/);
+});
