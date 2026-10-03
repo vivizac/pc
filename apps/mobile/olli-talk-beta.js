@@ -1940,6 +1940,7 @@
     const structuredCommand={
       action:String(structuredRaw.action || '').trim(),
       studentName:String(structuredRaw.studentName || '').trim(),
+      division:String(structuredRaw.division || '').trim(),
       dateExpression:String(structuredRaw.dateExpression || '').trim(),
       timeSlot:Number(structuredRaw.timeSlot || 0),
       classGroup:String(structuredRaw.classGroup || '').trim().toUpperCase()
@@ -2065,7 +2066,7 @@
 
     if(
       interpreterLane==='routine'
-      && String(structuredCommand?.action || '').trim()==='add_makeup'
+      && ['add_makeup','add_trial'].includes(String(structuredCommand?.action || '').trim())
       && router
       && typeof router.prepareStructuredAction==='function'
     ){
@@ -2079,7 +2080,7 @@
           return {
             assistantMessage:await saveOlliTalkActionReply(
               context,
-              prepared.message || (prepared.kind==='action_choice' ? '보강 반을 선택해 주세요.' : '이 작업을 진행할까요?'),
+              prepared.message || (prepared.kind==='action_choice' ? '반을 선택해 주세요.' : '이 작업을 진행할까요?'),
               prepared.payload,
               replyToMessageId
             ),
