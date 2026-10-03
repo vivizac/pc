@@ -1986,6 +1986,132 @@
   }
 
 
+  async function prepareStructuredAction(systemCommand, context) {
+    const command = systemCommand && typeof systemCommand === 'object'
+      ? systemCommand
+      : {};
+    const action = cleanText(command.action);
+    const routeContext = normalizeContext(context);
+    const schedule = global.OlliCommandSchedule;
+
+    if (action !== 'add_makeup') {
+      return {
+        handled:false,
+        kind:'pass_through',
+        intent:action,
+        text:'',
+        message:'',
+        clearInput:false,
+        payload:null,
+        action:null
+      };
+    }
+
+    if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
+      return {
+        handled:true,
+        kind:'action_rejected',
+        intent:'add_makeup',
+        text:'',
+        message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+        clearInput:true,
+        payload:command,
+        action:null
+      };
+    }
+
+    const studentName = cleanText(command.student_name || command.studentName);
+    const dateExpression = cleanText(command.date_expression || command.dateExpression);
+    const timeSlot = Number(command.time_slot || command.timeSlot || 0);
+    const classGroup = cleanText(command.class_group || command.classGroup).toUpperCase();
+    const dateSpec = dateExpression ? parseDateExpression(compactText(dateExpression)) : null;
+
+    if (!studentName || !dateSpec || !timeSlot) {
+      return {
+        handled:true,
+        kind:'action_rejected',
+        intent:'add_makeup',
+        text:'',
+        message:'보강 등록에는 학생, 날짜, 시간이 필요해요.',
+        clearInput:true,
+        payload:command,
+        action:null
+      };
+    }
+
+    const options = {
+      type:'mutation',
+      intent:'add_makeup',
+      studentName,
+      dateSpec,
+      dateLabel:dateSpec.label,
+      date:resolveDateExpression(dateSpec,new Date()),
+      timeSlot,
+      classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+      selectedStudent:routeContext.selectedStudent || null,
+      effectiveDate:new Date(),
+      originalText:''
+    };
+
+    if (!options.date) {
+      return {
+        handled:true,
+        kind:'action_rejected',
+        intent:'add_makeup',
+        text:'',
+        message:'보강 날짜를 해석하지 못했어요.',
+        clearInput:true,
+        payload:command,
+        action:null
+      };
+    }
+
+    try {
+      const prepared = await schedule.prepareWriteCommand('add_makeup', options);
+      if (!prepared || prepared.ok !== true || !prepared.command) {
+        return {
+          handled:true,
+          kind:'action_rejected',
+          intent:'add_makeup',
+          text:'',
+          message:String(prepared && prepared.message || '작업을 준비하지 못했어요.'),
+          clearInput:true,
+          payload:command,
+          action:null
+        };
+      }
+
+      return {
+        handled:true,
+        kind:'action_pending',
+        intent:'add_makeup',
+        text:'',
+        message:confirmationMessage(prepared.command, schedule, prepared.message),
+        clearInput:true,
+        payload:prepared.command,
+        action:{
+          status:'pending',
+          intent:'add_makeup',
+          command:Object.assign({},prepared.command),
+          requiresReason:false
+        }
+      };
+    } catch (error) {
+      console.warn('올리 구조화 명령 준비 실패:',error);
+      return {
+        handled:true,
+        kind:'action_rejected',
+        intent:'add_makeup',
+        text:'',
+        message:String(error && (error.message || error) || '작업을 준비하지 못했어요.'),
+        clearInput:true,
+        payload:command,
+        action:null
+      };
+    }
+  }
+
+
   async function prepareAction(text, context) {
     const normalizedText = cleanText(text);
     const routeContext = normalizeContext(context);
@@ -2276,6 +2402,7 @@
     classifyRequest,
     runQuery,
     runSuggestedQuery,
+    prepareStructuredAction,
     prepareAction,
     parseWriteIntent,
     parseQueryIntent,
