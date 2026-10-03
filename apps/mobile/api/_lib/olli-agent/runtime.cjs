@@ -1023,6 +1023,295 @@ function resolveMakeupUpdatePrepareScope(preparedPrivacy) {
   return { subjectLabel, division };
 }
 
+
+function structuredMakeupUpdateDateKey(value, currentDate) {
+  const expression = String(value == null ? '' : value).trim();
+  if (!expression) return '';
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(expression)) {
+    const exact = new Date(expression + 'T12:00:00Z');
+    if (!Number.isNaN(exact.getTime()) && exact.toISOString().slice(0, 10) === expression) {
+      return expression;
+    }
+  }
+
+  const router = loadSharedCommandRouter();
+  const spec = router.parseDateExpression(expression.replace(/\s+/g, ''));
+  const base = new Date(String(currentDate || '') + 'T12:00:00Z');
+  const resolved = spec && !Number.isNaN(base.getTime())
+    ? router.resolveDateExpression(spec, base)
+    : null;
+  if (!resolved || Number.isNaN(resolved.getTime())) {
+    throw runtimeError(
+      '보강 날짜 표현을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_MAKEUP_UPDATE_DATE_INVALID'
+    );
+  }
+  return resolved.toISOString().slice(0, 10);
+}
+
+async function runStructuredMakeupUpdatePrepare({
+  requestContext,
+  structuredCommand,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId = Number(sourceMessageId || 0);
+  if (!Number.isSafeInteger(sourceId) || sourceId <= 0) {
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_ROUTINE_MAKEUP_UPDATE_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validateMakeupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  const command = structuredCommand && typeof structuredCommand === 'object'
+    ? structuredCommand
+    : {};
+  if (String(command.action || '').trim() !== 'update_makeup') {
+    throw runtimeError(
+      '보강 변경 구조화 명령을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_MAKEUP_UPDATE_ACTION_INVALID'
+    );
+  }
+
+  const studentName = String(command.studentName || '').trim();
+  const sourceDateExpression = String(command.sourceDateExpression || '').trim();
+  if (!studentName || !sourceDateExpression) {
+    throw runtimeError(
+      '보강 변경에는 학생 이름과 기존 보강 날짜가 필요합니다.',
+      400,
+      'OLLI_ROUTINE_MAKEUP_UPDATE_FACTS_REQUIRED'
+    );
+  }
+
+  const {
+    resolveStudentReferences,
+    createSubjectAccess,
+  } = require('./student-reference-resolver.cjs');
+  const resolution = await resolveStudentReferences(studentName, requestContext);
+  if (Array.isArray(resolution?.ambiguous) && resolution.ambiguous.length) {
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_ROUTINE_MAKEUP_UPDATE_STUDENT_AMBIGUOUS'
+    );
+  }
+  const resolvedStudents = Array.isArray(resolution?.resolved)
+    ? resolution.resolved
+    : [];
+  if (resolvedStudents.length !== 1) {
+    throw runtimeError(
+      '보강을 변경할 학생을 한 명으로 확인하지 못했습니다.',
+      404,
+      'OLLI_ROUTINE_MAKEUP_UPDATE_STUDENT_NOT_FOUND'
+    );
+  }
+
+  const subject = resolvedStudents[0];
+  const division = String(subject?.student?.division || '').trim().toLowerCase();
+  if (!['elementary', 'kinder'].includes(division)) {
+    throw runtimeError(
+      '보강 변경 대상 학생의 수업 구분을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_MAKEUP_UPDATE_DIVISION_REQUIRED'
+    );
+  }
+
+  const today = todayInSeoul();
+  const sourceDate = structuredMakeupUpdateDateKey(sourceDateExpression, today);
+  const targetDateExpression = String(command.targetDateExpression || '').trim();
+  const targetDate = targetDateExpression
+    ? structuredMakeupUpdateDateKey(targetDateExpression, today)
+    : '';
+
+  const { prepareMakeupUpdateAction } = require('./tools/makeup-update-prepare-tools.cjs');
+  let persistedMessage = null;
+  await prepareMakeupUpdateAction({
+    requestContext,
+    subjectAccess:createSubjectAccess(resolution),
+    studentLabel:subject.label,
+    division,
+    sourceDate,
+    sourceHour:Number(command.sourceTimeSlot || 0),
+    sourceMinute:Number(command.sourceMinute || 0),
+    sourceGroup:String(command.sourceClassGroup || '').trim().toUpperCase() || 'AUTO',
+    targetDate,
+    targetHour:Number(command.targetTimeSlot || 0),
+    targetMinute:Number(command.targetMinute || 0),
+    targetGroup:String(command.targetClassGroup || '').trim().toUpperCase() || 'AUTO',
+    currentDate:today,
+    requestId:'team-chat-message:' + sourceId,
+    replyToMessageId:sourceId,
+    capturePersistedMessage(message) {
+      persistedMessage = pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload) {
+      return payload;
+    },
+  });
+
+  if (!persistedMessage?.action || String(persistedMessage.action.action_type || '').trim() !== 'update_makeup') {
+    throw runtimeError(
+      '보강 변경 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_ROUTINE_MAKEUP_UPDATE_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+
+  return {
+    ready:true,
+    persistedMessage,
+    recoveredAfterPersist:false,
+  };
+}
+
+
+
+async function runStructuredMakeupCancelPrepare({
+  requestContext,
+  structuredCommand,
+  sourceMessageId,
+  sourceMessageText,
+  reasonMessageId,
+  reasonMessageText,
+  reason,
+}) {
+  const sourceId=Number(sourceMessageId || 0);
+  const reasonId=Number(reasonMessageId || 0);
+  if(!Number.isSafeInteger(sourceId) || sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_ROUTINE_MAKEUP_CANCEL_SOURCE_MESSAGE_INVALID'
+    );
+  }
+  if(!Number.isSafeInteger(reasonId) || reasonId<=0){
+    throw runtimeError(
+      '보강 취소 사유 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_ROUTINE_MAKEUP_CANCEL_REASON_MESSAGE_INVALID'
+    );
+  }
+
+  const command=structuredCommand && typeof structuredCommand==='object'
+    ? structuredCommand
+    : {};
+  if(String(command.action || '').trim()!=='cancel_makeup'){
+    throw runtimeError(
+      '보강 취소 구조화 명령을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_MAKEUP_CANCEL_ACTION_INVALID'
+    );
+  }
+
+  await validateMakeupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+  const validatedReason=await validateMakeupReasonMessage({
+    requestContext,
+    reasonMessageId:reasonId,
+    reasonMessageText,
+    reason,
+  });
+
+  const studentName=String(command.studentName || '').trim();
+  if(!studentName){
+    throw runtimeError(
+      '보강을 취소할 학생 이름이 필요합니다.',
+      400,
+      'OLLI_ROUTINE_MAKEUP_CANCEL_STUDENT_REQUIRED'
+    );
+  }
+
+  const {
+    resolveStudentReferences,
+    createSubjectAccess,
+  }=require('./student-reference-resolver.cjs');
+  const resolution=await resolveStudentReferences(studentName,requestContext);
+  if(Array.isArray(resolution?.ambiguous) && resolution.ambiguous.length){
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_ROUTINE_MAKEUP_CANCEL_STUDENT_AMBIGUOUS'
+    );
+  }
+  const resolvedStudents=Array.isArray(resolution?.resolved)
+    ? resolution.resolved
+    : [];
+  if(resolvedStudents.length!==1){
+    throw runtimeError(
+      '보강을 취소할 학생을 한 명으로 확인하지 못했습니다.',
+      404,
+      'OLLI_ROUTINE_MAKEUP_CANCEL_STUDENT_NOT_FOUND'
+    );
+  }
+
+  const subject=resolvedStudents[0];
+  const division=String(subject?.student?.division || '').trim().toLowerCase();
+  if(!['elementary','kinder'].includes(division)){
+    throw runtimeError(
+      '보강 취소 대상 학생의 수업 구분을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_MAKEUP_CANCEL_DIVISION_REQUIRED'
+    );
+  }
+
+  const today=todayInSeoul();
+  const dateExpression=String(command.dateExpression || '').trim();
+  const sessionDate=dateExpression
+    ? structuredMakeupUpdateDateKey(dateExpression,today)
+    : '';
+
+  const {prepareMakeupCancelAction}=require('./tools/makeup-cancel-prepare-tools.cjs');
+  let persistedMessage=null;
+  await prepareMakeupCancelAction({
+    requestContext,
+    subjectAccess:createSubjectAccess(resolution),
+    studentLabel:subject.label,
+    division,
+    classGroup:String(command.classGroup || '').trim().toUpperCase() || 'AUTO',
+    sessionDate,
+    classHour:Number(command.timeSlot || 0),
+    classMinute:Number(command.classMinute || 0),
+    reason:validatedReason.reason,
+    currentDate:today,
+    requestId:'team-chat-makeup-cancel:'+sourceId+':'+reasonId,
+    replyToMessageId:reasonId,
+    capturePersistedMessage(message){
+      persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload){
+      return payload;
+    },
+  });
+
+  if(!persistedMessage?.action || String(persistedMessage.action.action_type || '').trim()!=='cancel_makeup'){
+    throw runtimeError(
+      '보강 취소 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_ROUTINE_MAKEUP_CANCEL_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+
+  return {
+    ready:true,
+    persistedMessage,
+    recoveredAfterPersist:false,
+  };
+}
+
+
 async function runMakeupUpdatePrepareAgent({
   agentContext,
   requestContext,
@@ -1664,6 +1953,291 @@ async function runTrialCancelPrepare({
 }
 
 
+
+
+function structuredTrialCancelDateKey(value,currentDate){
+  const expression=String(value==null?'':value).trim();
+  if(!expression) return '';
+
+  if(/^\d{4}-\d{2}-\d{2}$/.test(expression)){
+    const exact=new Date(expression+'T12:00:00Z');
+    if(!Number.isNaN(exact.getTime())&&exact.toISOString().slice(0,10)===expression){
+      return expression;
+    }
+  }
+
+  const router=loadSharedCommandRouter();
+  const spec=router.parseDateExpression(expression.replace(/\s+/g,''));
+  const base=new Date(String(currentDate||'')+'T12:00:00Z');
+  const resolved=spec&&!Number.isNaN(base.getTime())
+    ? router.resolveDateExpression(spec,base)
+    : null;
+  if(!resolved||Number.isNaN(resolved.getTime())){
+    throw runtimeError(
+      '체험 취소 날짜 표현을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_CANCEL_DATE_INVALID'
+    );
+  }
+  return resolved.toISOString().slice(0,10);
+}
+
+async function runStructuredTrialCancelPrepare({
+  requestContext,
+  structuredCommand,
+  sourceMessageId,
+  sourceMessageText,
+  reasonMessageId,
+  reasonMessageText,
+  reason,
+}){
+  const sourceId=Number(sourceMessageId||0);
+  const reasonId=Number(reasonMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_CANCEL_SOURCE_MESSAGE_INVALID'
+    );
+  }
+  if(!Number.isSafeInteger(reasonId)||reasonId<=0){
+    throw runtimeError(
+      '체험 취소 사유 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_CANCEL_REASON_MESSAGE_INVALID'
+    );
+  }
+
+  const command=structuredCommand&&typeof structuredCommand==='object'
+    ? structuredCommand
+    : {};
+  if(String(command.action||'').trim()!=='cancel_trial'){
+    throw runtimeError(
+      '체험 취소 구조화 명령을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_CANCEL_ACTION_INVALID'
+    );
+  }
+
+  await validateTrialSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+  const validatedReason=await validateTrialReasonMessage({
+    requestContext,
+    reasonMessageId:reasonId,
+    reasonMessageText,
+    reason,
+  });
+
+  const {prepareTrialCancelPrivacyInput}=require('./trial-guest-privacy.cjs');
+  const preparedPrivacy=prepareTrialCancelPrivacyInput(
+    sourceMessageText,
+    validatedReason.reason
+  );
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+  if(subjectRefs.length!==1){
+    throw runtimeError(
+      '취소할 체험 학생을 한 명으로 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_CANCEL_GUEST_REQUIRED'
+    );
+  }
+  const guestLabel=subjectRefs[0].label;
+  const guest=preparedPrivacy?.trialAccess?.resolve?.(guestLabel);
+  if(!guest?.guestName){
+    throw runtimeError(
+      '취소할 체험 학생을 원문에서 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_CANCEL_GUEST_REQUIRED'
+    );
+  }
+
+  const today=todayInSeoul();
+  const dateExpression=String(command.dateExpression||'').trim();
+  const sourceDate=dateExpression
+    ? structuredTrialCancelDateKey(dateExpression,today)
+    : '';
+
+  const {prepareTrialCancelAction}=require('./tools/trial-cancel-prepare-tools.cjs');
+  let persistedMessage=null;
+  await prepareTrialCancelAction({
+    requestContext,
+    trialAccess:preparedPrivacy.trialAccess,
+    guestLabel,
+    sourceDate,
+    sourceHour:Number(command.timeSlot||0),
+    sourceMinute:Number(command.classMinute||0),
+    classGroup:String(command.classGroup||'').trim().toUpperCase()||'AUTO',
+    reason:validatedReason.reason,
+    currentDate:today,
+    requestId:'team-chat-trial-cancel:'+sourceId+':'+reasonId,
+    replyToMessageId:reasonId,
+    capturePersistedMessage(message){
+      persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload){
+      return payload;
+    },
+  });
+
+  if(!persistedMessage?.action||String(persistedMessage.action.action_type||'').trim()!=='cancel_trial'){
+    throw runtimeError(
+      '체험 취소 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_ROUTINE_TRIAL_CANCEL_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+
+  return {
+    ready:true,
+    persistedMessage,
+    recoveredAfterPersist:false,
+  };
+}
+
+
+function structuredTrialUpdateDateKey(value,currentDate){
+  const expression=String(value==null?'':value).trim();
+  if(!expression) return '';
+
+  if(/^\d{4}-\d{2}-\d{2}$/.test(expression)){
+    const exact=new Date(expression+'T12:00:00Z');
+    if(!Number.isNaN(exact.getTime())&&exact.toISOString().slice(0,10)===expression){
+      return expression;
+    }
+  }
+
+  const router=loadSharedCommandRouter();
+  const spec=router.parseDateExpression(expression.replace(/\s+/g,''));
+  const base=new Date(String(currentDate||'')+'T12:00:00Z');
+  const resolved=spec&&!Number.isNaN(base.getTime())
+    ? router.resolveDateExpression(spec,base)
+    : null;
+  if(!resolved||Number.isNaN(resolved.getTime())){
+    throw runtimeError(
+      '체험 날짜 표현을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_UPDATE_DATE_INVALID'
+    );
+  }
+  return resolved.toISOString().slice(0,10);
+}
+
+async function runStructuredTrialUpdatePrepare({
+  requestContext,
+  structuredCommand,
+  sourceMessageId,
+  sourceMessageText,
+}){
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_UPDATE_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validateTrialSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  const command=structuredCommand&&typeof structuredCommand==='object'
+    ? structuredCommand
+    : {};
+  if(String(command.action||'').trim()!=='update_trial'){
+    throw runtimeError(
+      '체험 변경 구조화 명령을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_UPDATE_ACTION_INVALID'
+    );
+  }
+
+  const sourceDateExpression=String(command.sourceDateExpression||'').trim();
+  if(!sourceDateExpression){
+    throw runtimeError(
+      '체험 변경에는 기존 체험 날짜가 필요합니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_UPDATE_SOURCE_DATE_REQUIRED'
+    );
+  }
+
+  const trialPrivacyModule=require('./trial-guest-privacy.cjs');
+  const preparedPrivacy=trialPrivacyModule.prepareTrialGuestPrivacyInput(sourceMessageText);
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+  if(subjectRefs.length!==1){
+    throw runtimeError(
+      '변경할 체험 학생을 한 명으로 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_UPDATE_GUEST_REQUIRED'
+    );
+  }
+  const guestLabel=subjectRefs[0].label;
+  const guest=preparedPrivacy?.trialAccess?.resolve?.(guestLabel);
+  if(!guest?.guestName){
+    throw runtimeError(
+      '변경할 체험 학생을 원문에서 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_UPDATE_GUEST_REQUIRED'
+    );
+  }
+
+  const today=todayInSeoul();
+  const sourceDate=structuredTrialUpdateDateKey(sourceDateExpression,today);
+  const targetDateExpression=String(command.targetDateExpression||'').trim();
+  const targetDate=targetDateExpression
+    ? structuredTrialUpdateDateKey(targetDateExpression,today)
+    : '';
+
+  const {prepareTrialUpdateAction}=require('./tools/trial-update-prepare-tools.cjs');
+  let persistedMessage=null;
+  await prepareTrialUpdateAction({
+    requestContext,
+    trialAccess:preparedPrivacy.trialAccess,
+    guestLabel,
+    sourceDate,
+    sourceHour:Number(command.sourceTimeSlot||0),
+    sourceMinute:Number(command.sourceMinute||0),
+    sourceGroup:String(command.sourceClassGroup||'').trim().toUpperCase()||'AUTO',
+    targetDate,
+    targetHour:Number(command.targetTimeSlot||0),
+    targetMinute:Number(command.targetMinute||0),
+    targetGroup:String(command.targetClassGroup||'').trim().toUpperCase()||'AUTO',
+    currentDate:today,
+    requestId:'team-chat-trial-update:'+sourceId,
+    replyToMessageId:sourceId,
+    capturePersistedMessage(message){
+      persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload){
+      return payload;
+    },
+  });
+
+  if(!persistedMessage?.action||String(persistedMessage.action.action_type||'').trim()!=='update_trial'){
+    throw runtimeError(
+      '체험 변경 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_ROUTINE_TRIAL_UPDATE_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+
+  return {
+    ready:true,
+    persistedMessage,
+    recoveredAfterPersist:false,
+  };
+}
+
+
 function resolveTrialUpdatePrepareScope(preparedPrivacy){
   if(preparedPrivacy?.needsDisambiguation){
     throw runtimeError('체험 학생 이름을 하나로 구분할 수 없습니다.',409,'OLLI_AGENT_TRIAL_GUEST_AMBIGUOUS');
@@ -2119,6 +2693,161 @@ async function runWaitlistUpdatePrepare({
 }
 
 
+
+function structuredWaitlistDateKey(value,currentDate){
+  const expression=String(value==null?'':value).trim();
+  if(!expression) return '';
+
+  if(/^\d{4}-\d{2}-\d{2}$/.test(expression)){
+    const exact=new Date(expression+'T12:00:00Z');
+    if(!Number.isNaN(exact.getTime())&&exact.toISOString().slice(0,10)===expression){
+      return expression;
+    }
+  }
+
+  const router=loadSharedCommandRouter();
+  const spec=router.parseDateExpression(expression.replace(/\s+/g,''));
+  const base=new Date(String(currentDate||'')+'T12:00:00Z');
+  const resolved=spec&&!Number.isNaN(base.getTime())
+    ? router.resolveDateExpression(spec,base)
+    : null;
+  if(!resolved||Number.isNaN(resolved.getTime())){
+    throw runtimeError(
+      '대기 날짜 표현을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_WAITLIST_UPDATE_DATE_INVALID'
+    );
+  }
+  return resolved.toISOString().slice(0,10);
+}
+
+async function prepareStructuredWaitlistPrivacy(structuredCommand,requestContext){
+  const command=structuredCommand&&typeof structuredCommand==='object'
+    ? structuredCommand
+    : {};
+  const studentName=String(command.studentName||'').trim();
+  if(!studentName){
+    throw runtimeError(
+      '변경할 대기 학생 이름을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_WAITLIST_UPDATE_STUDENT_REQUIRED'
+    );
+  }
+
+  const division=String(command.division||'').trim().toLowerCase();
+  const divisionWord=division==='elementary'
+    ? '초등부'
+    : division==='kinder'
+      ? '유치부'
+      : '';
+  const identityText=[studentName,divisionWord,'대기 변경']
+    .filter(Boolean)
+    .join(' ');
+
+  const privacyModule=require('./privacy.cjs');
+  let prepared=await privacyModule.prepareAgentPrivacyInput(
+    identityText,
+    requestContext
+  );
+  if(!Array.isArray(prepared?.subjectRefs)||prepared.subjectRefs.length===0){
+    const guestPrivacyModule=require('./waitlist-guest-privacy.cjs');
+    prepared=guestPrivacyModule.prepareWaitlistGuestPrivacyInput(identityText);
+  }
+  return prepared;
+}
+
+async function runStructuredWaitlistUpdatePrepare({
+  requestContext,
+  structuredCommand,
+  sourceMessageId,
+  sourceMessageText,
+}){
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_ROUTINE_WAITLIST_UPDATE_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  const command=structuredCommand&&typeof structuredCommand==='object'
+    ? structuredCommand
+    : {};
+  if(String(command.action||'').trim()!=='update_waitlist'){
+    throw runtimeError(
+      '대기 변경 구조화 명령을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_WAITLIST_UPDATE_ACTION_INVALID'
+    );
+  }
+
+  await validateWaitlistSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  const preparedPrivacy=await prepareStructuredWaitlistPrivacy(
+    command,
+    requestContext
+  );
+  const scope=resolveWaitlistUpdatePrepareScope(preparedPrivacy);
+  const today=todayInSeoul();
+  const sourceDateExpression=String(command.sourceDateExpression||'').trim();
+  const targetDateExpression=String(command.targetDateExpression||'').trim();
+  const sourceDate=sourceDateExpression
+    ? structuredWaitlistDateKey(sourceDateExpression,today)
+    : '';
+  const targetDate=targetDateExpression
+    ? structuredWaitlistDateKey(targetDateExpression,today)
+    : '';
+
+  const {prepareWaitlistUpdateAction}=require('./tools/waitlist-update-prepare-tools.cjs');
+  let persistedMessage=null;
+  await prepareWaitlistUpdateAction({
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    guestAccess:preparedPrivacy.waitlistGuestAccess,
+    studentLabel:scope.subjectLabel,
+    division:scope.division,
+    sourceDate,
+    sourceWeekday:Number(command.sourceWeekday||0),
+    sourceHour:Number(command.sourceTimeSlot||0),
+    sourceMinute:Number(command.sourceMinute||0),
+    sourceGroup:String(command.sourceClassGroup||'').trim().toUpperCase()||'AUTO',
+    targetDate,
+    targetWeekday:Number(command.targetWeekday||0),
+    targetHour:Number(command.targetTimeSlot||0),
+    targetMinute:Number(command.targetMinute||0),
+    targetGroup:String(command.targetClassGroup||'').trim().toUpperCase()||'AUTO',
+    currentDate:today,
+    requestId:'team-chat-waitlist-update:'+sourceId,
+    replyToMessageId:sourceId,
+    capturePersistedMessage(message){
+      persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload){
+      return sanitizeWaitlistPayload(payload,preparedPrivacy,scope);
+    },
+  });
+
+  if(!persistedMessage?.action||String(persistedMessage.action.action_type||'').trim()!=='update_waitlist'){
+    throw runtimeError(
+      '대기 변경 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_ROUTINE_WAITLIST_UPDATE_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+
+  return {
+    ready:true,
+    persistedMessage,
+    recoveredAfterPersist:false,
+  };
+}
+
+
 function resolveWaitlistCancelPrepareScope(preparedPrivacy) {
   const actor=resolveWaitlistActor(preparedPrivacy,{operation:'대기 취소',requireGuestDivision:false});
   const {subjectLabel,division,isGuest}=actor;
@@ -2145,6 +2874,151 @@ function resolveWaitlistCancelPrepareScope(preparedPrivacy) {
     classGroup:groupMatch ? groupMatch[1].toUpperCase() : 'AUTO',
   };
 }
+
+async function prepareStructuredWaitlistCancelPrivacy(structuredCommand,requestContext){
+  const command=structuredCommand&&typeof structuredCommand==='object'
+    ? structuredCommand
+    : {};
+  const studentName=String(command.studentName||'').trim();
+  if(!studentName){
+    throw runtimeError(
+      '취소할 대기 학생 이름을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_WAITLIST_CANCEL_STUDENT_REQUIRED'
+    );
+  }
+
+  const division=String(command.division||'').trim().toLowerCase();
+  const divisionWord=division==='elementary'
+    ? '초등부'
+    : division==='kinder'
+      ? '유치부'
+      : '';
+  const classGroup=/^[AB]$/.test(String(command.classGroup||'').trim().toUpperCase())
+    ? String(command.classGroup||'').trim().toUpperCase()+'반'
+    : '';
+  const identityText=[studentName,divisionWord,classGroup,'대기 취소']
+    .filter(Boolean)
+    .join(' ');
+
+  const privacyModule=require('./privacy.cjs');
+  let prepared=await privacyModule.prepareAgentPrivacyInput(
+    identityText,
+    requestContext
+  );
+  if(!Array.isArray(prepared?.subjectRefs)||prepared.subjectRefs.length===0){
+    const guestPrivacyModule=require('./waitlist-guest-privacy.cjs');
+    prepared=guestPrivacyModule.prepareWaitlistGuestPrivacyInput(identityText);
+  }
+  return prepared;
+}
+
+function structuredWaitlistCancelDateKey(command,currentDate){
+  const dateExpression=String(command?.dateExpression||'').trim();
+  if(dateExpression){
+    return structuredWaitlistDateKey(dateExpression,currentDate);
+  }
+
+  const weekday=Number(command?.weekday||0);
+  if(!weekday) return '';
+  if(!Number.isInteger(weekday)||weekday<1||weekday>6){
+    throw runtimeError(
+      '취소할 대기 요일을 확인해 주세요.',
+      400,
+      'OLLI_ROUTINE_WAITLIST_CANCEL_WEEKDAY_INVALID'
+    );
+  }
+
+  const {nextOccurrenceOnOrAfter}=require('./tools/waitlist-update-prepare-tools.cjs');
+  const resolved=nextOccurrenceOnOrAfter(currentDate,weekday);
+  if(!resolved){
+    throw runtimeError(
+      '취소할 대기 요일을 날짜로 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_WAITLIST_CANCEL_WEEKDAY_RESOLVE_FAILED'
+    );
+  }
+  return resolved;
+}
+
+async function runStructuredWaitlistCancelPrepare({
+  requestContext,
+  structuredCommand,
+  sourceMessageId,
+  sourceMessageText,
+}){
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_ROUTINE_WAITLIST_CANCEL_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  const command=structuredCommand&&typeof structuredCommand==='object'
+    ? structuredCommand
+    : {};
+  if(String(command.action||'').trim()!=='cancel_waitlist'){
+    throw runtimeError(
+      '대기 취소 구조화 명령을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_WAITLIST_CANCEL_ACTION_INVALID'
+    );
+  }
+
+  await validateWaitlistSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  const preparedPrivacy=await prepareStructuredWaitlistCancelPrivacy(
+    command,
+    requestContext
+  );
+  const scope=resolveWaitlistCancelPrepareScope(preparedPrivacy);
+  const today=todayInSeoul();
+  const waitlistDate=structuredWaitlistCancelDateKey(command,today);
+
+  const {prepareWaitlistCancelAction}=require('./tools/waitlist-cancel-prepare-tools.cjs');
+  let persistedMessage=null;
+  await prepareWaitlistCancelAction({
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    guestAccess:preparedPrivacy.waitlistGuestAccess,
+    studentLabel:scope.subjectLabel,
+    division:scope.division,
+    classGroup:scope.classGroup,
+    waitlistDate,
+    classHour:Number(command.timeSlot||0),
+    classMinute:Number(command.classMinute||0),
+    currentDate:today,
+    requestId:'team-chat-waitlist-cancel:'+sourceId,
+    replyToMessageId:sourceId,
+    capturePersistedMessage(message){
+      persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload){
+      return sanitizeWaitlistPayload(payload,preparedPrivacy,scope);
+    },
+  });
+
+  if(!persistedMessage?.action||String(persistedMessage.action.action_type||'').trim()!=='cancel_waitlist'){
+    throw runtimeError(
+      '대기 취소 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_ROUTINE_WAITLIST_CANCEL_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+
+  return {
+    ready:true,
+    persistedMessage,
+    recoveredAfterPersist:false,
+  };
+}
+
 
 async function runWaitlistCancelPrepareAgent({
   agentContext,
@@ -5268,6 +6142,8 @@ module.exports = {
   runMakeupUpdatePrepareAgent,
   runMakeupUpdatePrepareProbe,
   runMakeupUpdatePrepare,
+  runStructuredMakeupUpdatePrepare,
+  runStructuredMakeupCancelPrepare,
   resolveMakeupCancelPrepareScope,
   runMakeupCancelPrepareAgent,
   runMakeupCancelPrepareProbe,
@@ -5281,11 +6157,13 @@ module.exports = {
   runTrialCancelPrepareAgent,
   runTrialCancelPrepareProbe,
   runTrialCancelPrepare,
+  runStructuredTrialCancelPrepare,
   validateTrialReasonMessage,
   resolveTrialUpdatePrepareScope,
   runTrialUpdatePrepareAgent,
   runTrialUpdatePrepareProbe,
   runTrialUpdatePrepare,
+  runStructuredTrialUpdatePrepare,
   validateTrialSourceMessage,
   resolveWaitlistAddPrepareScope,
   runWaitlistAddPrepareAgent,
@@ -5295,6 +6173,7 @@ module.exports = {
   runWaitlistUpdatePrepareAgent,
   runWaitlistUpdatePrepareProbe,
   runWaitlistUpdatePrepare,
+  runStructuredWaitlistUpdatePrepare,
   resolveMovePrepareScope,
   runMovePrepareAgent,
   runMovePrepareProbe,
@@ -5308,6 +6187,7 @@ module.exports = {
   runWaitlistCancelPrepareAgent,
   runWaitlistCancelPrepareProbe,
   runWaitlistCancelPrepare,
+  runStructuredWaitlistCancelPrepare,
   validateWaitlistSourceMessage,
   validateMakeupSourceMessage,
   runMakeupPrepare,

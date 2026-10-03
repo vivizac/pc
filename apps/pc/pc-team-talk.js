@@ -574,6 +574,358 @@
     }
   }
 
+  async function handleSessionGroupChoice(action, group) {
+    const actionId=clean(action?.id);
+    const classGroup=clean(group).toUpperCase();
+    if(!actionId || !['A','B'].includes(classGroup) || state.actionBusy.has(actionId)) return;
+
+    const current=context();
+    if(!current.sessionToken || !current.academyId){
+      alert('팀톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    state.actionBusy.add(actionId);
+    document.querySelectorAll('[data-action-id]').forEach(card=>{
+      if(clean(card.dataset.actionId)!==actionId) return;
+      card.querySelectorAll('button').forEach(button=>{ button.disabled=true; });
+    });
+
+    try{
+      const actionType=clean(action?.action_type);
+      const rpcName=actionType==='choose_trial_group'
+        ? 'olli_team_chat_action_select_trial_group'
+        : actionType==='choose_waitlist_group'
+          ? 'olli_team_chat_action_select_waitlist_group'
+          : actionType==='choose_move_group'
+            ? 'olli_team_chat_action_select_move_group'
+            : 'olli_team_chat_action_select_makeup_group';
+      const payload=await rpc(rpcName,{
+        p_session_token:current.sessionToken,
+        p_academy_id:current.academyId,
+        p_action_id:actionId,
+        p_class_group:classGroup
+      });
+      if(!payload?.ok || !payload?.action){
+        throw new Error(payload?.message || '반을 선택하지 못했습니다.');
+      }
+      await loadMessages({showLoading:false,followBottom:true});
+    }catch(error){
+      console.warn('PC 팀톡 보강 반 선택 실패:',error?.message || error);
+      alert(error?.message || '반을 선택하지 못했습니다.');
+      await loadMessages({showLoading:false,followBottom:true});
+    }finally{
+      state.actionBusy.delete(actionId);
+    }
+  }
+
+
+  function structuredDateExpressionFromDate(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    return (date.getMonth() + 1) + '월 ' + date.getDate() + '일';
+  }
+
+  function structuredDateInputValue(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    return [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2,'0'),
+      String(date.getDate()).padStart(2,'0')
+    ].join('-');
+  }
+
+  async function continueStructuredWriteDraft(draft,current) {
+    const router=global.OlliCommandRouter;
+    if(!router || typeof router.prepareStructuredAction!=='function') return null;
+    const prepared=await router.prepareStructuredAction(draft,{
+      source:'olli_talk_structured_field_choice',
+      selectedStudent:null,
+      autoSubmitContext:null
+    });
+    if(prepared?.handled!==true) return null;
+
+    if(prepared.kind==='action_needs_field'){
+      if(clean(prepared.payload?.field)==='student_choice' && prepared.payload){
+        return saveStructuredStudentChoice(current,prepared.message || '학생을 선택해 주세요.',prepared.payload,null);
+      }
+      if(clean(prepared.payload?.field)==='date' && prepared.payload){
+        return saveStructuredDateChoice(current,prepared.message || '날짜를 선택해 주세요.',prepared.payload,null);
+      }
+      if(clean(prepared.payload?.field)==='time' && prepared.payload){
+        return saveStructuredTimeChoice(current,prepared.message || '시간을 선택해 주세요.',prepared.payload,null);
+      }
+      return saveAssistantReply(current,clean(prepared.message) || '필요한 정보를 선택해 주세요.',null);
+    }
+    if(['action_pending','action_choice'].includes(prepared.kind) && prepared.payload){
+      return saveAssistantAction(
+        current,
+        prepared.message || (prepared.kind==='action_choice' ? '반을 선택해 주세요.' : '이 작업을 진행할까요?'),
+        prepared.payload,
+        null
+      );
+    }
+    if(prepared.kind==='action_rejected'){
+      return saveAssistantReply(current,clean(prepared.message) || '작업을 준비하지 못했어요.',null);
+    }
+    return null;
+  }
+
+  async function handleStructuredDateChoice(action,dateExpression) {
+    const actionId=clean(action?.id);
+    const selected=clean(dateExpression);
+    if(!actionId || !selected || state.actionBusy.has(actionId)) return;
+
+    const current=context();
+    if(!current.sessionToken || !current.academyId){
+      alert('팀톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    state.actionBusy.add(actionId);
+    document.querySelectorAll('[data-action-id]').forEach(card=>{
+      if(clean(card.dataset.actionId)!==actionId) return;
+      card.querySelectorAll('button,input').forEach(control=>{ control.disabled=true; });
+    });
+
+    try{
+      const payload=await rpc('olli_team_chat_action_select_structured_date',{
+        p_session_token:current.sessionToken,
+        p_academy_id:current.academyId,
+        p_action_id:actionId,
+        p_date_expression:selected
+      });
+      if(!payload?.ok || !payload?.action || !payload?.draft){
+        throw new Error(payload?.message || '날짜를 선택하지 못했습니다.');
+      }
+      await continueStructuredWriteDraft(payload.draft,current);
+      await loadMessages({showLoading:false,followBottom:true});
+    }catch(error){
+      console.warn('PC 팀톡 구조화 날짜 선택 실패:',error?.message || error);
+      alert(error?.message || '날짜를 선택하지 못했습니다.');
+      await loadMessages({showLoading:false,followBottom:true});
+    }finally{
+      state.actionBusy.delete(actionId);
+    }
+  }
+
+  function appendStructuredDateChoiceButtons(card,action) {
+    card.classList.add('structuredDate');
+
+    const now=new Date();
+    const today=new Date(now.getFullYear(),now.getMonth(),now.getDate(),12,0,0,0);
+    const tomorrow=new Date(today.getTime());
+    tomorrow.setDate(tomorrow.getDate()+1);
+
+    const addQuick=(label,date)=>{
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='olliPcTeamTalkActionButton primary';
+      button.textContent=label;
+      button.addEventListener('click',()=>handleStructuredDateChoice(action,structuredDateExpressionFromDate(date)));
+      card.appendChild(button);
+    };
+    addQuick('오늘',today);
+    addQuick('내일',tomorrow);
+
+    const dateInput=document.createElement('input');
+    dateInput.type='date';
+    dateInput.className='olliPcTeamTalkDateInput';
+    dateInput.min=structuredDateInputValue(today);
+    const maxDate=new Date(today.getTime());
+    maxDate.setDate(maxDate.getDate()+364);
+    dateInput.max=structuredDateInputValue(maxDate);
+    dateInput.addEventListener('change',()=>{
+      const match=String(dateInput.value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if(!match) return;
+      handleStructuredDateChoice(action,Number(match[2])+'월 '+Number(match[3])+'일');
+    });
+
+    const pick=document.createElement('button');
+    pick.type='button';
+    pick.className='olliPcTeamTalkActionButton secondary dateWide';
+    pick.textContent='날짜 선택';
+    pick.addEventListener('click',()=>{
+      try{
+        if(typeof dateInput.showPicker==='function') dateInput.showPicker();
+        else dateInput.click();
+      }catch(_){
+        dateInput.click();
+      }
+    });
+
+    card.append(dateInput,pick);
+  }
+
+  async function handleStructuredStudentChoice(action,studentName) {
+    const actionId=clean(action?.id);
+    const selectedName=clean(studentName);
+    if(!actionId || !selectedName || state.actionBusy.has(actionId)) return;
+
+    const current=context();
+    if(!current.sessionToken || !current.academyId){
+      alert('팀톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    state.actionBusy.add(actionId);
+    document.querySelectorAll('[data-action-id]').forEach(card=>{
+      if(clean(card.dataset.actionId)!==actionId) return;
+      card.querySelectorAll('button').forEach(button=>{ button.disabled=true; });
+      card.classList.add('busy');
+    });
+
+    try{
+      const payload=await rpc('olli_team_chat_action_select_structured_student',{
+        p_session_token:current.sessionToken,
+        p_academy_id:current.academyId,
+        p_action_id:actionId,
+        p_student_name:selectedName
+      });
+      if(!payload?.ok || !payload?.action || !payload?.draft){
+        throw new Error(payload?.message || '학생을 선택하지 못했습니다.');
+      }
+      await continueStructuredWriteDraft(payload.draft,current);
+      await loadMessages({showLoading:false,followBottom:true});
+    }catch(error){
+      console.warn('PC 팀톡 구조화 학생 선택 실패:',error?.message || error);
+      alert(error?.message || '학생을 선택하지 못했습니다.');
+      await loadMessages({showLoading:false,followBottom:true});
+    }finally{
+      state.actionBusy.delete(actionId);
+      document.querySelectorAll('[data-action-id]').forEach(card=>{
+        if(clean(card.dataset.actionId)===actionId) card.classList.remove('busy');
+      });
+    }
+  }
+
+  async function populateStructuredStudentChoiceCard(card,action) {
+    const actionId=clean(action?.id);
+    const current=context();
+    if(!actionId || !current.sessionToken || !current.academyId) return;
+
+    try{
+      const payload=await rpc('olli_team_chat_get_structured_student_choice',{
+        p_session_token:current.sessionToken,
+        p_academy_id:current.academyId,
+        p_action_id:actionId
+      });
+      if(!payload?.ok || !Array.isArray(payload?.choices)){
+        throw new Error(payload?.message || '선택할 학생을 확인하지 못했습니다.');
+      }
+      if(!card.isConnected || clean(card.dataset.actionId)!==actionId) return;
+      card.replaceChildren();
+      if(!payload.choices.length){
+        card.appendChild(create('span','olliPcTeamTalkActionStatus','선택할 학생이 없어요.'));
+        return;
+      }
+      payload.choices.forEach(choice=>{
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='olliPcTeamTalkActionButton primary studentChoice';
+        button.textContent=clean(choice?.label || choice?.studentName) || '학생';
+        button.addEventListener('click',()=>handleStructuredStudentChoice(action,clean(choice?.studentName)));
+        card.appendChild(button);
+      });
+    }catch(error){
+      if(!card.isConnected) return;
+      card.replaceChildren(create('span','olliPcTeamTalkActionStatus failed',clean(error?.message) || '학생 목록을 불러오지 못했어요.'));
+    }
+  }
+
+  function appendStructuredStudentChoiceButtons(card,action) {
+    card.classList.add('structuredStudent');
+    card.appendChild(create('span','olliPcTeamTalkActionStatus','학생 확인 중'));
+    void populateStructuredStudentChoiceCard(card,action);
+  }
+
+  async function handleStructuredTimeChoice(action,timeSlot) {
+    const actionId=clean(action?.id);
+    const selectedTime=Number(timeSlot || 0);
+    if(!actionId || !selectedTime || state.actionBusy.has(actionId)) return;
+    const current=context();
+    if(!current.sessionToken || !current.academyId){
+      alert('팀톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    state.actionBusy.add(actionId);
+    document.querySelectorAll('[data-action-id]').forEach(card=>{
+      if(clean(card.dataset.actionId)!==actionId) return;
+      card.querySelectorAll('button').forEach(button=>{ button.disabled=true; });
+      card.classList.add('busy');
+    });
+
+    try{
+      const payload=await rpc('olli_team_chat_action_select_structured_time',{
+        p_session_token:current.sessionToken,
+        p_academy_id:current.academyId,
+        p_action_id:actionId,
+        p_time_slot:selectedTime
+      });
+      if(!payload?.ok || !payload?.action || !payload?.draft){
+        throw new Error(payload?.message || '시간을 선택하지 못했습니다.');
+      }
+      await continueStructuredWriteDraft(payload.draft,current);
+      await loadMessages({showLoading:false,followBottom:true});
+    }catch(error){
+      console.warn('PC 팀톡 구조화 시간 선택 실패:',error?.message || error);
+      alert(error?.message || '시간을 선택하지 못했습니다.');
+      await loadMessages({showLoading:false,followBottom:true});
+    }finally{
+      state.actionBusy.delete(actionId);
+      document.querySelectorAll('[data-action-id]').forEach(card=>{
+        if(clean(card.dataset.actionId)===actionId) card.classList.remove('busy');
+      });
+    }
+  }
+
+  async function populateStructuredTimeChoiceCard(card,action) {
+    const actionId=clean(action?.id);
+    const current=context();
+    if(!actionId || !current.sessionToken || !current.academyId) return;
+
+    try{
+      const payload=await rpc('olli_team_chat_get_structured_time_choice',{
+        p_session_token:current.sessionToken,
+        p_academy_id:current.academyId,
+        p_action_id:actionId
+      });
+      if(!payload?.ok || !Array.isArray(payload?.choices)){
+        throw new Error(payload?.message || '선택 가능한 시간을 확인하지 못했습니다.');
+      }
+      if(!card.isConnected || clean(card.dataset.actionId)!==actionId) return;
+      card.replaceChildren();
+      if(!payload.choices.length){
+        card.appendChild(create('span','olliPcTeamTalkActionStatus','선택 가능한 수업 시간이 없어요.'));
+        return;
+      }
+      payload.choices.forEach(choice=>{
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='olliPcTeamTalkActionButton primary timeChoice';
+        const label=clean(choice?.label) || Number(choice?.timeSlot || 0)+'시';
+        const status=clean(choice?.status);
+        const selectable=choice?.selectable===true;
+        button.textContent=status==='full'
+          ? label+'\n'+(clean(payload?.targetIntent)==='add_waitlist' ? '대기 가능' : '마감')
+          : label;
+        button.disabled=!selectable;
+        if(!selectable) button.classList.add('closed');
+        button.addEventListener('click',()=>handleStructuredTimeChoice(action,Number(choice?.timeSlot || 0)));
+        card.appendChild(button);
+      });
+    }catch(error){
+      if(!card.isConnected) return;
+      card.replaceChildren(create('span','olliPcTeamTalkActionStatus failed',clean(error?.message) || '시간을 불러오지 못했어요.'));
+    }
+  }
+
+  function appendStructuredTimeChoiceButtons(card,action) {
+    card.classList.add('structuredTime');
+    card.appendChild(create('span','olliPcTeamTalkActionStatus','시간 확인 중'));
+    void populateStructuredTimeChoiceCard(card,action);
+  }
+
   function makeActionCard(action) {
     const card = create('div', 'olliPcTeamTalkActionCard');
     const status = clean(action?.status) || 'pending';
@@ -584,6 +936,33 @@
       const label = create('span', 'olliPcTeamTalkActionStatus', actionStatusLabel(status));
       if (status === 'failed') label.classList.add('failed');
       card.appendChild(label);
+      return card;
+    }
+
+    if(clean(action?.action_type)==='choose_structured_student'){
+      appendStructuredStudentChoiceButtons(card,action);
+      return card;
+    }
+
+    if(clean(action?.action_type)==='choose_structured_date'){
+      appendStructuredDateChoiceButtons(card,action);
+      return card;
+    }
+
+    if(clean(action?.action_type)==='choose_structured_time'){
+      appendStructuredTimeChoiceButtons(card,action);
+      return card;
+    }
+
+    if(['choose_makeup_group','choose_trial_group','choose_waitlist_group','choose_move_group'].includes(clean(action?.action_type))){
+      ['A','B'].forEach(group=>{
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='olliPcTeamTalkActionButton primary';
+        button.textContent=group+'반';
+        button.addEventListener('click',()=>handleSessionGroupChoice(action,group));
+        card.appendChild(button);
+      });
       return card;
     }
 
@@ -1929,6 +2308,68 @@
     });
   }
 
+  function mergeStructuredMakeupCancelCommand(previous,current){
+    const before=previous && typeof previous==='object' ? previous : {};
+    const next=current && typeof current==='object' ? current : {};
+    const nextTime=Number(next.timeSlot || 0);
+    const nextMinute=Number(next.classMinute || 0);
+    return {
+      action:'cancel_makeup',
+      studentName:clean(next.studentName) || clean(before.studentName),
+      dateExpression:clean(next.dateExpression) || clean(before.dateExpression),
+      timeSlot:nextTime>0 ? nextTime : Number(before.timeSlot || 0),
+      classMinute:(nextTime>0 || nextMinute>0) ? nextMinute : Number(before.classMinute || 0),
+      classGroup:clean(next.classGroup).toUpperCase() || clean(before.classGroup).toUpperCase(),
+      reason:clean(next.reason) || clean(before.reason),
+    };
+  }
+
+  async function resolveStructuredMakeupCancelTurn({
+    structuredCommand,
+    sourceText,
+    sourceMessageId,
+    reasonText,
+    reasonMessageText,
+    reasonMessageId,
+    current,
+  }){
+    const sourceId=Number(sourceMessageId || 0);
+    const reasonId=Number(reasonMessageId || 0);
+    if(!Number.isSafeInteger(sourceId) || sourceId<=0){
+      throw new Error('보강 취소 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    if(!Number.isSafeInteger(reasonId) || reasonId<=0 || !clean(reasonText)){
+      throw new Error('보강 취소 사유 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'structured_makeup_cancel_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(sourceText),
+        sourceMessageId:sourceId,
+        reasonMessageId:reasonId,
+        reasonMessageText:clean(reasonMessageText),
+        reason:clean(reasonText),
+        structuredCommand
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '보강 취소 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(clean(data.message.action.action_type)!=='cancel_makeup'){
+      throw new Error('보강 취소 규칙 시스템 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
   async function resolveMakeupCancelAgentTurn({
     sourceText,
     sourceMessageId,
@@ -1968,6 +2409,38 @@
       throw new Error('보강 취소 Agent 작업 종류가 올바르지 않습니다.');
     }
 
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
+  async function resolveStructuredMakeupUpdateTurn(structuredCommand, current, sourceText, replyToMessageId) {
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('보강 변경 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'structured_makeup_update_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(sourceText),
+        sourceMessageId,
+        structuredCommand
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true || !data?.message?.action){
+      throw new Error(data?.error || data?.message || '보강 변경 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(clean(data.message.action.action_type)!=='update_makeup'){
+      throw new Error('보강 변경 규칙 시스템 작업 종류가 올바르지 않습니다.');
+    }
     return {
       assistantMessage:data.message,
       replyText:clean(data.message.body),
@@ -2039,6 +2512,71 @@
     };
   }
 
+  function mergeStructuredTrialCancelCommand(previous,current){
+    const before=previous && typeof previous==='object' ? previous : {};
+    const next=current && typeof current==='object' ? current : {};
+    const nextTime=Number(next.timeSlot || 0);
+    const nextMinute=Number(next.classMinute || 0);
+    return {
+      action:'cancel_trial',
+      studentName:clean(next.studentName) || clean(before.studentName),
+      division:clean(next.division) || clean(before.division),
+      dateExpression:clean(next.dateExpression) || clean(before.dateExpression),
+      timeSlot:nextTime>0 ? nextTime : Number(before.timeSlot || 0),
+      classMinute:(nextTime>0 || nextMinute>0) ? nextMinute : Number(before.classMinute || 0),
+      classGroup:clean(next.classGroup).toUpperCase() || clean(before.classGroup).toUpperCase(),
+      reason:clean(next.reason) || clean(before.reason),
+    };
+  }
+
+  async function resolveStructuredTrialCancelTurn({
+    structuredCommand,
+    sourceText,
+    sourceMessageId,
+    reasonText,
+    reasonMessageText,
+    reasonMessageId,
+    current,
+  }){
+    const sourceId=Number(sourceMessageId || 0);
+    const reasonId=Number(reasonMessageId || 0);
+    if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+      throw new Error('체험 취소 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    if(!Number.isSafeInteger(reasonId)||reasonId<=0||!clean(reasonText)){
+      throw new Error('체험 취소 사유 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'structured_trial_cancel_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(sourceText),
+        sourceMessageId:sourceId,
+        reasonMessageId:reasonId,
+        reasonMessageText:clean(reasonMessageText),
+        reason:clean(reasonText),
+        structuredCommand
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||data?.ok!==true||!data?.message?.action){
+      throw new Error(data?.error || data?.message || '체험 취소 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(clean(data.message.action.action_type)!=='cancel_trial'){
+      throw new Error('체험 취소 규칙 시스템 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
   async function resolveTrialCancelAgentTurn({
     sourceText,
     sourceMessageId,
@@ -2076,6 +2614,39 @@
     }
     if (clean(data.message.action.action_type) !== 'cancel_trial') {
       throw new Error('체험 취소 Agent 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
+  async function resolveStructuredTrialUpdateTurn(structuredCommand,current,sourceText,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
+      throw new Error('체험 변경 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'structured_trial_update_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(sourceText),
+        sourceMessageId,
+        structuredCommand
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||data?.ok!==true||!data?.message?.action){
+      throw new Error(data?.error || data?.message || '체험 변경 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(clean(data.message.action.action_type)!=='update_trial'){
+      throw new Error('체험 변경 규칙 시스템 작업 종류가 올바르지 않습니다.');
     }
 
     return {
@@ -2150,6 +2721,39 @@
     };
   }
 
+  async function resolveStructuredWaitlistUpdateTurn(structuredCommand,current,sourceText,replyToMessageId){
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
+      throw new Error('대기 변경 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'structured_waitlist_update_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(sourceText),
+        sourceMessageId,
+        structuredCommand
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||data?.ok!==true||!data?.message?.action){
+      throw new Error(data?.error || data?.message || '대기 변경 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(clean(data.message.action.action_type)!=='update_waitlist'){
+      throw new Error('대기 변경 규칙 시스템 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
   async function resolveWaitlistUpdateAgentTurn(commandText, current, replyToMessageId) {
     const sourceMessageId = Number(replyToMessageId || 0);
     if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
@@ -2184,7 +2788,7 @@
     };
   }
 
-  async function resolveWaitlistCancelAgentTurn(commandText, current, replyToMessageId) {
+  async function resolveWaitlistCancelAgentTurn(commandText, current, replyToMessageId, structuredCommand = null) {
     const sourceMessageId = Number(replyToMessageId || 0);
     if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
       throw new Error('대기 취소 요청의 원문 메시지를 확인하지 못했습니다.');
@@ -2194,11 +2798,12 @@
       method:'POST',
       headers:{ 'Content-Type':'application/json' },
       body:JSON.stringify({
-        mode:'waitlist_cancel_prepare',
+        mode:structuredCommand ? 'structured_waitlist_cancel_prepare' : 'waitlist_cancel_prepare',
         academyId:current?.academyId || '',
         sessionToken:current?.sessionToken || '',
         message:clean(commandText),
-        sourceMessageId
+        sourceMessageId,
+        structuredCommand
       })
     });
     const data = await response.json().catch(() => ({}));
@@ -2472,19 +3077,74 @@
     return payload.message;
   }
 
+  async function saveStructuredStudentChoice(current,body,payload,replyToMessageId) {
+    const result=await rpc('olli_team_chat_send_structured_student_choice',{
+      p_session_token:current.sessionToken,
+      p_academy_id:current.academyId,
+      p_body:normalizeActionPrompt(body),
+      p_action_payload:payload,
+      p_client_message_id:clientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if(!result?.ok || !result?.message?.action){
+      throw new Error(result?.message || '학생 선택 카드를 저장하지 못했습니다.');
+    }
+    return result.message;
+  }
+
+  async function saveStructuredTimeChoice(current,body,payload,replyToMessageId) {
+    const result=await rpc('olli_team_chat_send_structured_time_choice',{
+      p_session_token:current.sessionToken,
+      p_academy_id:current.academyId,
+      p_body:normalizeActionPrompt(body),
+      p_action_payload:payload,
+      p_client_message_id:clientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if(!result?.ok || !result?.message?.action){
+      throw new Error(result?.message || '시간 선택 카드를 저장하지 못했습니다.');
+    }
+    return result.message;
+  }
+
+  async function saveStructuredDateChoice(current,body,payload,replyToMessageId) {
+    const result=await rpc('olli_team_chat_send_structured_date_choice',{
+      p_session_token:current.sessionToken,
+      p_academy_id:current.academyId,
+      p_body:normalizeActionPrompt(body),
+      p_action_payload:payload,
+      p_client_message_id:clientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if(!result?.ok || !result?.message?.action){
+      throw new Error(result?.message || '날짜 선택 카드를 저장하지 못했습니다.');
+    }
+    return result.message;
+  }
+
   async function saveAssistantAction(current, body, command, replyToMessageId) {
     const actionType = clean(command?.intent);
     if (!actionType) throw new Error('작업 종류를 확인하지 못했습니다.');
 
-    const payload = await rpc('olli_team_chat_send_action', {
-      p_session_token: current.sessionToken,
-      p_academy_id: current.academyId,
-      p_body: normalizeActionPrompt(body),
-      p_action_type: actionType,
-      p_action_payload: command,
-      p_client_message_id: clientMessageId(),
-      p_reply_to_message_id: Number(replyToMessageId || 0) || null
-    });
+    const rpcName=actionType==='choose_makeup_group'
+      ? 'olli_team_chat_send_makeup_group_choice'
+      : actionType==='choose_trial_group'
+        ? 'olli_team_chat_send_trial_group_choice'
+        : actionType==='choose_waitlist_group'
+          ? 'olli_team_chat_send_waitlist_group_choice'
+          : actionType==='choose_move_group'
+            ? 'olli_team_chat_send_move_group_choice'
+            : 'olli_team_chat_send_action';
+    const rpcPayload={
+      p_session_token:current.sessionToken,
+      p_academy_id:current.academyId,
+      p_body:normalizeActionPrompt(body),
+      p_action_payload:command,
+      p_client_message_id:clientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    };
+    if(rpcName==='olli_team_chat_send_action') rpcPayload.p_action_type=actionType;
+    const payload = await rpc(rpcName, rpcPayload);
     if (!payload?.ok || !payload?.message?.action) {
       throw new Error(payload?.message || '작업 카드를 저장하지 못했습니다.');
     }
@@ -2648,16 +3308,51 @@
       throw new Error(data?.error || data?.message || '올리 공통 해석 응답을 받지 못했습니다.');
     }
     const language=data?.systemLanguage || {};
+    const lane=clean(language.lane) || 'routine';
     const route=clean(language.route);
     const intent=clean(language.intent);
     const standaloneCommand=clean(language.standaloneCommand);
-    if(data?.ok!==true || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
+    const structuredRaw=language.structuredCommand && typeof language.structuredCommand==='object'
+      ? language.structuredCommand
+      : {};
+    const structuredCommand={
+      action:clean(structuredRaw.action),
+      studentName:clean(structuredRaw.studentName),
+      division:clean(structuredRaw.division),
+      dateExpression:clean(structuredRaw.dateExpression),
+      timeSlot:Number(structuredRaw.timeSlot || 0),
+      classGroup:clean(structuredRaw.classGroup).toUpperCase(),
+      weekday:Number(structuredRaw.weekday || 0),
+      classTime:Number(structuredRaw.classTime || 0),
+      classMinute:Number(structuredRaw.classMinute || 0),
+      pickupKind:clean(structuredRaw.pickupKind),
+      pickupLabel:clean(structuredRaw.pickupLabel),
+      pickupTime:clean(structuredRaw.pickupTime),
+      sourceDateExpression:clean(structuredRaw.sourceDateExpression),
+      sourceWeekday:Number(structuredRaw.sourceWeekday || 0),
+      sourceTimeSlot:Number(structuredRaw.sourceTimeSlot || 0),
+      sourceMinute:Number(structuredRaw.sourceMinute || 0),
+      sourceClassGroup:clean(structuredRaw.sourceClassGroup).toUpperCase(),
+      targetDateExpression:clean(structuredRaw.targetDateExpression),
+      targetWeekday:Number(structuredRaw.targetWeekday || 0),
+      targetTimeSlot:Number(structuredRaw.targetTimeSlot || 0),
+      targetMinute:Number(structuredRaw.targetMinute || 0),
+      targetClassGroup:clean(structuredRaw.targetClassGroup).toUpperCase(),
+      reason:clean(structuredRaw.reason),
+      availabilityPurpose:clean(structuredRaw.availabilityPurpose),
+      rosterKind:clean(structuredRaw.rosterKind)
+    };
+    const reply=clean(language.reply);
+    if(data?.ok!==true || !['routine','feedback','chat'].includes(lane) || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
       throw new Error('올리 공통 해석 결과가 올바르지 않습니다.');
     }
     return {
+      lane,
       route,
       intent,
       standaloneCommand,
+      structuredCommand,
+      reply,
       contextUsed:language.contextUsed===true
     };
   }
@@ -2711,8 +3406,10 @@
       current,
       replyToMessageId
     );
+    const interpreterLane=clean(interpretation.lane) || 'routine';
     const interpreterRoute=clean(interpretation.route);
     const interpreterIntent=clean(interpretation.intent);
+    const structuredCommand=interpretation.structuredCommand || null;
     commandText=clean(interpretation.standaloneCommand) || rawCommandText;
 
     if (options.allowSuggestedQuery && router && typeof router.runSuggestedQuery === 'function') {
@@ -2738,13 +3435,366 @@
       }
     }
 
-    if(interpreterRoute==='chat'){
+    if(interpreterLane==='chat'){
+      const message=clean(interpretation.reply);
+      if(message){
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:true
+        };
+      }
       const resolved=await resolveAiReply(rawCommandText,current);
       return {
         assistantMessage:await saveAssistantReply(current,resolved.message,replyToMessageId),
         replyText:resolved.message,
         recordAi:true
       };
+    }
+
+    if(interpreterLane==='feedback'){
+      const resolved=await resolveAiReply(rawCommandText,current);
+      return {
+        assistantMessage:await saveAssistantReply(current,resolved.message,replyToMessageId),
+        replyText:resolved.message,
+        recordAi:true
+      };
+    }
+
+    if(
+      interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='find_pickups'
+      && router
+      && typeof router.runStructuredQuery==='function'
+    ){
+      const queried=await router.runStructuredQuery(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(queried?.handled===true){
+        const message=clean(queried.message) || '픽업 일정을 확인했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+    }
+
+    if(
+      interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='find_roster_entries'
+      && router
+      && typeof router.runStructuredQuery==='function'
+    ){
+      const queried=await router.runStructuredQuery(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(queried?.handled===true){
+        const message=clean(queried.message) || '학생 명단을 확인했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+    }
+
+    if(
+      interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='find_available_slots'
+      && router
+      && typeof router.runStructuredQuery==='function'
+    ){
+      const queried=await router.runStructuredQuery(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(queried?.handled===true){
+        const message=clean(queried.message) || '빈자리 조회 결과를 확인했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+    }
+
+    if(
+      interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='get_student_schedule'
+      && router
+      && typeof router.runStructuredQuery==='function'
+    ){
+      const queried=await router.runStructuredQuery(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(queried?.handled===true){
+        const message=clean(queried.message) || '조회 결과를 확인했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+    }
+
+    if(
+      interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='cancel_makeup'
+    ){
+      const pending=state.pendingActionReason?.__structuredMakeupCancel || null;
+      if(pending && isPendingReasonCancel(rawCommandText)){
+        state.pendingActionReason=null;
+        const message='작업 준비를 취소했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+
+      const merged=mergeStructuredMakeupCancelCommand(
+        pending?.structuredCommand,
+        structuredCommand
+      );
+      const reason=clean(merged.reason);
+      if(!reason){
+        const sourceMessageId=Number(replyToMessageId || 0);
+        state.pendingActionReason={
+          intent:'cancel_makeup',
+          __structuredMakeupCancel:{
+            sourceMessageId,
+            sourceMessageText:clean(rawCommandText),
+            structuredCommand:merged
+          }
+        };
+        const reasonMessage=(clean(merged.studentName) || '학생')+' 학생의 보강 취소 사유를 알려주세요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,reasonMessage,replyToMessageId),
+          replyText:reasonMessage,
+          recordAi:false
+        };
+      }
+
+      const sourceMessageId=pending
+        ? Number(pending.sourceMessageId || 0)
+        : Number(replyToMessageId || 0);
+      const sourceText=pending
+        ? clean(pending.sourceMessageText)
+        : clean(rawCommandText);
+      const reasonMessageId=Number(replyToMessageId || 0);
+      const reasonMessageText=clean(rawCommandText);
+      state.pendingActionReason=null;
+      return resolveStructuredMakeupCancelTurn({
+        structuredCommand:merged,
+        sourceText,
+        sourceMessageId,
+        reasonText:pending ? reasonMessageText : reason,
+        reasonMessageText,
+        reasonMessageId,
+        current,
+      });
+    }
+
+    if(
+      interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='cancel_waitlist'
+    ){
+      return resolveWaitlistCancelAgentTurn(
+        rawCommandText,
+        current,
+        replyToMessageId,
+        structuredCommand
+      );
+    }
+
+    if(
+      interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='update_waitlist'
+    ){
+      return resolveStructuredWaitlistUpdateTurn(
+        structuredCommand,
+        current,
+        rawCommandText,
+        replyToMessageId
+      );
+    }
+
+    if(
+      interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='cancel_trial'
+    ){
+      const pending=state.pendingActionReason?.__structuredTrialCancel || null;
+      if(pending && isPendingReasonCancel(rawCommandText)){
+        state.pendingActionReason=null;
+        const message='작업 준비를 취소했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+
+      const merged=mergeStructuredTrialCancelCommand(
+        pending?.structuredCommand,
+        structuredCommand
+      );
+      const reason=clean(merged.reason);
+      if(!reason){
+        const sourceMessageId=Number(replyToMessageId || 0);
+        state.pendingActionReason={
+          intent:'cancel_trial',
+          __structuredTrialCancel:{
+            sourceMessageId,
+            sourceMessageText:clean(rawCommandText),
+            structuredCommand:merged
+          }
+        };
+        const reasonMessage=(clean(merged.studentName) || '체험 학생')+' 체험 취소 사유를 알려주세요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,reasonMessage,replyToMessageId),
+          replyText:reasonMessage,
+          recordAi:false
+        };
+      }
+
+      const sourceMessageId=pending
+        ? Number(pending.sourceMessageId || 0)
+        : Number(replyToMessageId || 0);
+      const sourceText=pending
+        ? clean(pending.sourceMessageText)
+        : clean(rawCommandText);
+      const reasonMessageId=Number(replyToMessageId || 0);
+      const reasonMessageText=clean(rawCommandText);
+      state.pendingActionReason=null;
+      return resolveStructuredTrialCancelTurn({
+        structuredCommand:merged,
+        sourceText,
+        sourceMessageId,
+        reasonText:pending ? reasonMessageText : reason,
+        reasonMessageText,
+        reasonMessageId,
+        current,
+      });
+    }
+
+    if(
+      interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='update_trial'
+    ){
+      return resolveStructuredTrialUpdateTurn(
+        structuredCommand,
+        current,
+        rawCommandText,
+        replyToMessageId
+      );
+    }
+
+    if(
+      interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='update_makeup'
+    ){
+      return resolveStructuredMakeupUpdateTurn(
+        structuredCommand,
+        current,
+        rawCommandText,
+        replyToMessageId
+      );
+    }
+
+    if(
+      interpreterLane==='routine'
+      && ['add_makeup','add_trial','add_waitlist','add_pickup','move_class','mark_absent'].includes(clean(structuredCommand?.action))
+      && router
+      && typeof router.prepareStructuredAction==='function'
+    ){
+      const prepared=await router.prepareStructuredAction(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(prepared?.handled===true){
+        if(prepared.kind==='action_needs_field' && prepared.payload){
+          if(clean(prepared.payload.field)==='student_choice'){
+            return {
+              assistantMessage:await saveStructuredStudentChoice(
+                current,
+                prepared.message || '학생을 선택해 주세요.',
+                prepared.payload,
+                replyToMessageId
+              ),
+              replyText:prepared.message || '',
+              recordAi:false
+            };
+          }
+          if(clean(prepared.payload.field)==='date'){
+            return {
+              assistantMessage:await saveStructuredDateChoice(
+                current,
+                prepared.message || '날짜를 선택해 주세요.',
+                prepared.payload,
+                replyToMessageId
+              ),
+              replyText:prepared.message || '',
+              recordAi:false
+            };
+          }
+          if(clean(prepared.payload.field)==='time'){
+            return {
+              assistantMessage:await saveStructuredTimeChoice(
+                current,
+                prepared.message || '시간을 선택해 주세요.',
+                prepared.payload,
+                replyToMessageId
+              ),
+              replyText:prepared.message || '',
+              recordAi:false
+            };
+          }
+          const fieldMessage=clean(prepared.message) || '필요한 정보를 선택해 주세요.';
+          return {
+            assistantMessage:await saveAssistantReply(current,fieldMessage,replyToMessageId),
+            replyText:fieldMessage,
+            recordAi:false
+          };
+        }
+        if(['action_pending','action_choice'].includes(prepared.kind) && prepared.payload){
+          return {
+            assistantMessage:await saveAssistantAction(
+              current,
+              prepared.message || (prepared.kind==='action_choice' ? '반을 선택해 주세요.' : '이 작업을 진행할까요?'),
+              prepared.payload,
+              replyToMessageId
+            ),
+            replyText:prepared.message || '',
+            recordAi:false
+          };
+        }
+        if(prepared.kind==='action_needs_reason' && prepared.payload){
+          state.pendingActionReason=Object.assign({},prepared.payload);
+          const reasonMessage=clean(prepared.message) || '사유를 알려주세요.';
+          return {
+            assistantMessage:await saveAssistantReply(current,reasonMessage,replyToMessageId),
+            replyText:reasonMessage,
+            recordAi:false
+          };
+        }
+        if(prepared.kind==='action_rejected'){
+          const rejectedMessage=clean(prepared.message) || '작업을 준비하지 못했어요.';
+          return {
+            assistantMessage:await saveAssistantReply(current,rejectedMessage,replyToMessageId),
+            replyText:rejectedMessage,
+            recordAi:false
+          };
+        }
+      }
     }
 
     if(interpreterRoute==='rule'){

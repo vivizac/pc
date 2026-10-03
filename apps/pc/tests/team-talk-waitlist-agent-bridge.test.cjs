@@ -82,7 +82,9 @@ test('PC waitlist cancel bridge keeps guest and registered requests on productio
   const start=talk.indexOf('async function resolveWaitlistCancelAgentTurn');
   const end=talk.indexOf('async function resolvePickupCancelAgentTurn',start);
   const block=talk.slice(start,end);
-  assert.match(block,/mode:'waitlist_cancel_prepare'/);
+  assert.match(block,/waitlist_cancel_prepare/);
+  assert.match(block,/structured_waitlist_cancel_prepare/);
+  assert.match(block,/structuredCommand/);
   assert.match(block,/sourceMessageId = Number\(replyToMessageId \|\| 0\)/);
   assert.doesNotMatch(block,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED|return null/);
   assert.match(block,/action_type\) !== 'cancel_waitlist'/);
