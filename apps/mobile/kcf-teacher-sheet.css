@@ -256,3 +256,125 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
 .kcfTeacherSheetSendBtn:disabled {
   background:#d8d8d8;
 }
+
+/* Muse Voice Transcribe POC: QuickNote Class mode only. */
+.kcfTeacherSheetMuseBtn {
+  width:auto;
+  height:33px;
+  min-width:52px;
+  flex:0 0 auto;
+  border:0;
+  border-radius:999px;
+  padding:0 10px;
+  background:#e9f7f2;
+  color:#176b58;
+  font-family:inherit;
+  font-size:calc(11px * var(--olli-text-scale));
+  font-weight:650;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+.kcfTeacherSheetMuseBtn.connecting { opacity:.55; }
+.kcfTeacherSheetMuseBtn.active { background:#111; color:#fff; }
+.kcfMuseClassStatus {
+  position:fixed;
+  left:50%;
+  top:calc(var(--olli-phone-guide-top, 64px) + 8px);
+  transform:translateX(-50%);
+  z-index:9960;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-height:36px;
+  padding:0 12px;
+  border:1px solid rgba(17,17,17,.08);
+  border-radius:999px;
+  background:rgba(255,255,255,.94);
+  box-shadow:0 6px 22px rgba(0,0,0,.08);
+  -webkit-backdrop-filter:blur(18px);
+  backdrop-filter:blur(18px);
+  color:#111;
+  font-size:calc(12px * var(--olli-text-scale));
+  font-weight:600;
+  white-space:nowrap;
+}
+.kcfMuseClassStatus[hidden] { display:none !important; }
+.kcfMuseClassStatusDot {
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#e35b63;
+  box-shadow:0 0 0 4px rgba(227,91,99,.1);
+}
+.kcfMuseClassStatusTimer {
+  min-width:38px;
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+  color:#5f6670;
+}
+.kcfMuseClassStatusStop {
+  border:0;
+  border-radius:999px;
+  height:26px;
+  padding:0 9px;
+  background:#f1f3f5;
+  color:#111;
+  font:inherit;
+  font-weight:650;
+}
+.kcfMuseResultOverlay {
+  position:fixed;
+  inset:0;
+  z-index:10020;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  background:rgba(0,0,0,.18);
+}
+.kcfMuseResultOverlay[hidden] { display:none !important; }
+.kcfMuseResultSheet {
+  width:100%;
+  max-width:860px;
+  max-height:78vh;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  padding:18px 16px calc(14px + env(safe-area-inset-bottom));
+  border-radius:22px 22px 0 0;
+  background:#fff;
+  box-shadow:0 -10px 36px rgba(0,0,0,.14);
+}
+.kcfMuseResultTitle { font-size:calc(17px * var(--olli-text-scale)); font-weight:700; color:#111; }
+.kcfMuseResultHelp { font-size:calc(12px * var(--olli-text-scale)); line-height:1.45; color:#707782; }
+.kcfMuseResultText {
+  width:100%;
+  min-height:180px;
+  max-height:46vh;
+  resize:none;
+  overflow:auto;
+  border:1px solid #e6e8eb;
+  border-radius:14px;
+  background:#fafbfc;
+  color:#111;
+  padding:12px;
+  font-family:inherit;
+  font-size:max(15px, calc(15px * var(--olli-text-scale)));
+  line-height:1.55;
+  box-sizing:border-box;
+  outline:0;
+}
+.kcfMuseResultActions { display:flex; gap:8px; }
+.kcfMuseResultBtn {
+  min-height:44px;
+  flex:1 1 0;
+  border:0;
+  border-radius:12px;
+  font-family:inherit;
+  font-size:calc(14px * var(--olli-text-scale));
+  font-weight:650;
+}
+.kcfMuseResultBtn.secondary { background:#f1f3f5; color:#111; }
+.kcfMuseResultBtn.primary { background:#111; color:#fff; }

@@ -158,6 +158,7 @@
       '    <div id="kcfTeacherSheetWarning" class="kcfTeacherSheetWarning" aria-live="polite"></div>',
       '    <div class="kcfTeacherSheetBottom">',
       '      <button id="kcfTeacherSheetModeBtn" class="kcfTeacherSheetModeBtn" type="button" aria-label="Class 모드 닫기" aria-pressed="true">C</button>',
+      '      <button id="kcfTeacherSheetMuseBtn" class="kcfTeacherSheetMuseBtn" type="button" aria-label="Muse 수업기록 시작" aria-pressed="false">Muse</button>',
       '      <div id="kcfTeacherSheetRosterHost" class="kcfTeacherSheetRosterHost"></div>',
       '      <button id="kcfTeacherSheetSendBtn" class="kcfTeacherSheetSendBtn" type="button" aria-label="피드백 전송">',
       '        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg>',
@@ -205,6 +206,19 @@
         if (!modeEnabled() && global.KcfNormalSheet && typeof global.KcfNormalSheet.open === 'function') {
           global.KcfNormalSheet.open();
         }
+      });
+    }
+
+    var museBtn = document.getElementById('kcfTeacherSheetMuseBtn');
+    if (museBtn) {
+      museBtn.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
+      museBtn.addEventListener('click', async function(event){
+        event.preventDefault();
+        if (!global.OlliMuseClassVoice || typeof global.OlliMuseClassVoice.toggle !== 'function') {
+          if (typeof global.showPushToast === 'function') global.showPushToast('Muse 수업기록 모듈을 불러오지 못했어요.');
+          return;
+        }
+        await global.OlliMuseClassVoice.toggle();
       });
     }
 
