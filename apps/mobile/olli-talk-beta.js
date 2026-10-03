@@ -1926,16 +1926,20 @@
       throw new Error(data?.error || data?.message || '올리 공통 해석 응답을 받지 못했습니다.');
     }
     const language=data?.systemLanguage || {};
+    const lane=String(language.lane || '').trim() || 'routine';
     const route=String(language.route || '').trim();
     const intent=String(language.intent || '').trim();
     const standaloneCommand=String(language.standaloneCommand || '').trim();
-    if(data?.ok!==true || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
+    const reply=String(language.reply || '').trim();
+    if(data?.ok!==true || !['routine','feedback','chat'].includes(lane) || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
       throw new Error('올리 공통 해석 결과가 올바르지 않습니다.');
     }
     return {
+      lane,
       route,
       intent,
       standaloneCommand,
+      reply,
       contextUsed:language.contextUsed===true
     };
   }
@@ -1989,6 +1993,7 @@
       context,
       replyToMessageId
     );
+    const interpreterLane=String(interpretation.lane || '').trim() || 'routine';
     const interpreterRoute=String(interpretation.route || '').trim();
     const interpreterIntent=String(interpretation.intent || '').trim();
     commandText=String(interpretation.standaloneCommand || rawCommandText).trim();
@@ -2016,7 +2021,24 @@
       }
     }
 
-    if(interpreterRoute==='chat'){
+    if(interpreterLane==='chat'){
+      const message=String(interpretation.reply || '').trim();
+      if(message){
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:true
+        };
+      }
+      const resolved=await resolveOlliTalkAiReply(rawCommandText,context);
+      return {
+        assistantMessage:await saveOlliTalkOlliReply(context,resolved.message,replyToMessageId),
+        replyText:resolved.message,
+        recordAi:true
+      };
+    }
+
+    if(interpreterLane==='feedback'){
       const resolved=await resolveOlliTalkAiReply(rawCommandText,context);
       return {
         assistantMessage:await saveOlliTalkOlliReply(context,resolved.message,replyToMessageId),
