@@ -388,7 +388,7 @@ async function runFeedbackDirectRead({
       'When requested_range is present, analyze changes across that period rather than focusing only on the newest records.',
       'For change-over-time questions, compare earlier and later evidence and distinguish repeated patterns from one-off observations.',
       'If recent_records.record_count is 0, say that no saved records were found for the requested period.',
-      'If recent_records.evidence_truncated is true, the records are evenly sampled across the requested period; describe the conclusion as based on representative records rather than claiming every record was inspected.',
+      'If recent_records.range_sampled is true, the records are evenly sampled across the requested period; describe the conclusion as based on representative records rather than claiming every record was inspected.',
       'If recent_records.source_may_be_truncated is true, explicitly say the available evidence may not include every saved source record.',
       'Do not invent causes, diagnoses, traits, events, or changes not supported by the records.',
       'Never reveal UUIDs, member IDs, session tokens, academy IDs, hidden identifiers, or a real student name.',
