@@ -2,6 +2,135 @@ function safeText(value, maxLength = 200) {
   return String(value == null ? '' : value).trim().slice(0, maxLength);
 }
 
+async function runFeedbackReadPipeline({
+  requestContext,
+  agentContext,
+  sourceMessageId,
+  sourceMessageText,
+  resolvedMessage='',
+  conversation=[],
+  sourceValidated=false,
+}) {
+  const [runtimeModule,privacyModule,sessionModule,perfModule]=await Promise.all([
+    import('./_lib/olli-agent/runtime.cjs'),
+    import('./_lib/olli-agent/privacy.cjs'),
+    import('./_lib/olli-agent/session.cjs'),
+    import('./_lib/olli-agent/perf.cjs'),
+  ]);
+
+  const pipelineStartedAt=perfModule.startPerfTimer();
+
+  if(sourceValidated!==true){
+    const sourceValidationStartedAt=perfModule.startPerfTimer();
+    await runtimeModule.validatePickupSourceMessage({
+      requestContext,
+      sourceMessageId,
+      sourceMessageText,
+    });
+    perfModule.emitPerfLog({
+      phase:'feedback_source_validate',
+      status:'ok',
+      mode:'feedback_read',
+      durationMs:perfModule.perfDurationMs(sourceValidationStartedAt),
+    });
+  }
+
+  const privacyStartedAt=perfModule.startPerfTimer();
+  const normalizedConversation=Array.isArray(conversation) ? conversation : [];
+  const compactText=safeText(resolvedMessage,5000);
+  const compactFeedbackInput=!!compactText;
+  const primaryPrivacyText=compactFeedbackInput
+    ? compactText
+    : safeText(sourceMessageText,5000);
+  const primaryPrivacyConversation=compactFeedbackInput
+    ? []
+    : normalizedConversation;
+
+  let contextPrivacy;
+  let subjectSession=null;
+  try{
+    subjectSession=sessionModule.createOlliAgentSession({
+      requestContext,
+      surface:'team_talk',
+      runKey:'team-chat-message:'+String(sourceMessageId),
+    });
+    contextPrivacy=await privacyModule.prepareAgentContextReadPrivacyInput(
+      primaryPrivacyText,
+      primaryPrivacyConversation,
+      requestContext,
+      {session:subjectSession}
+    );
+  }catch(sessionError){
+    if(!String(sessionError?.code||'').startsWith('OLLI_AGENT_SESSION_')) throw sessionError;
+    subjectSession=null;
+    contextPrivacy=await privacyModule.prepareAgentContextReadPrivacyInput(
+      primaryPrivacyText,
+      primaryPrivacyConversation,
+      requestContext
+    );
+  }
+
+  let contextFallback=false;
+  const primarySubjectRefs=Array.isArray(contextPrivacy?.preparedPrivacy?.subjectRefs)
+    ? contextPrivacy.preparedPrivacy.subjectRefs
+    : [];
+  if(
+    compactFeedbackInput
+    && contextPrivacy?.preparedPrivacy?.needsDisambiguation!==true
+    && primarySubjectRefs.length===0
+  ){
+    contextFallback=true;
+    try{
+      contextPrivacy=await privacyModule.prepareAgentContextReadPrivacyInput(
+        sourceMessageText,
+        normalizedConversation,
+        requestContext,
+        subjectSession ? {session:subjectSession} : {}
+      );
+    }catch(sessionError){
+      if(!String(sessionError?.code||'').startsWith('OLLI_AGENT_SESSION_')) throw sessionError;
+      contextPrivacy=await privacyModule.prepareAgentContextReadPrivacyInput(
+        sourceMessageText,
+        normalizedConversation,
+        requestContext
+      );
+    }
+  }
+
+  const usedConversation=contextFallback
+    ? normalizedConversation
+    : primaryPrivacyConversation;
+  perfModule.emitPerfLog({
+    phase:'feedback_privacy_prepare',
+    status:'ok',
+    mode:'feedback_read',
+    durationMs:perfModule.perfDurationMs(privacyStartedAt),
+    conversationItems:usedConversation.length,
+    conversationChars:JSON.stringify(usedConversation).length,
+    inputItems:Array.isArray(contextPrivacy?.agentInput)
+      ? contextPrivacy.agentInput.length
+      : 0,
+    inputChars:JSON.stringify(contextPrivacy?.agentInput || []).length,
+    contextFallback:contextFallback ? 1 : 0,
+  });
+
+  const result=await runtimeModule.runFeedbackDirectRead({
+    agentContext,
+    requestContext,
+    preparedPrivacy:contextPrivacy.preparedPrivacy,
+    agentInput:contextPrivacy.agentInput,
+  });
+
+  perfModule.emitPerfLog({
+    phase:'feedback_pipeline_total',
+    status:'ok',
+    mode:'feedback_read',
+    durationMs:perfModule.perfDurationMs(pipelineStartedAt),
+  });
+
+  return result;
+}
+
 export default async function handler(req, res) {
   const requestStartedAt = process.hrtime.bigint();
   let requestMode = 'unknown';
