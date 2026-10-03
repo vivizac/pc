@@ -1993,8 +1993,9 @@
     const action = cleanText(command.action);
     const routeContext = normalizeContext(context);
     const schedule = global.OlliCommandSchedule;
+    const supported = new Set(['add_makeup','add_trial']);
 
-    if (action !== 'add_makeup') {
+    if (!supported.has(action)) {
       return {
         handled:false,
         kind:'pass_through',
@@ -2008,18 +2009,20 @@
     }
 
     const studentName = cleanText(command.student_name || command.studentName);
+    const division = cleanText(command.division);
     const dateExpression = cleanText(command.date_expression || command.dateExpression);
     const timeSlot = Number(command.time_slot || command.timeSlot || 0);
     const classGroup = cleanText(command.class_group || command.classGroup).toUpperCase();
     const dateSpec = dateExpression ? parseDateExpression(compactText(dateExpression)) : null;
+    const noun = action === 'add_trial' ? '체험 등록' : '보강 등록';
 
     if (!studentName || !dateSpec || !timeSlot) {
       return {
         handled:true,
         kind:'action_rejected',
-        intent:'add_makeup',
+        intent:action,
         text:'',
-        message:'보강 등록에는 학생, 날짜, 시간이 필요해요.',
+        message:noun + '에는 학생, 날짜, 시간이 필요해요.',
         clearInput:true,
         payload:command,
         action:null
@@ -2030,7 +2033,7 @@
       return {
         handled:true,
         kind:'action_rejected',
-        intent:'add_makeup',
+        intent:action,
         text:'',
         message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
         clearInput:true,
@@ -2041,8 +2044,10 @@
 
     const options = {
       type:'mutation',
-      intent:'add_makeup',
+      intent:action,
       studentName,
+      guestName:action === 'add_trial' ? studentName : '',
+      division,
       dateSpec,
       dateLabel:dateSpec.label,
       date:resolveDateExpression(dateSpec,new Date()),
@@ -2057,9 +2062,9 @@
       return {
         handled:true,
         kind:'action_rejected',
-        intent:'add_makeup',
+        intent:action,
         text:'',
-        message:'보강 날짜를 해석하지 못했어요.',
+        message:(action === 'add_trial' ? '체험' : '보강') + ' 날짜를 해석하지 못했어요.',
         clearInput:true,
         payload:command,
         action:null
@@ -2067,20 +2072,22 @@
     }
 
     try {
-      const prepared = await schedule.prepareWriteCommand('add_makeup', options);
+      const prepared = await schedule.prepareWriteCommand(action, options);
       if (prepared?.code === 'class_group_required' && prepared?.commandDraft) {
+        const choiceIntent = action === 'add_trial' ? 'choose_trial_group' : 'choose_makeup_group';
+        const choicePayload = Object.assign({},prepared.commandDraft,{ intent:choiceIntent,targetIntent:action });
         return {
           handled:true,
           kind:'action_choice',
-          intent:'choose_makeup_group',
+          intent:choiceIntent,
           text:'',
-          message:String(prepared.message || '보강 반을 선택해 주세요.'),
+          message:String(prepared.message || '반을 선택해 주세요.'),
           clearInput:true,
-          payload:Object.assign({},prepared.commandDraft),
+          payload:choicePayload,
           action:{
             status:'pending_choice',
-            intent:'choose_makeup_group',
-            command:Object.assign({},prepared.commandDraft),
+            intent:choiceIntent,
+            command:Object.assign({},choicePayload),
             choices:Array.isArray(prepared.choices) ? prepared.choices.slice() : ['A','B'],
             requiresReason:false
           }
@@ -2091,7 +2098,7 @@
         return {
           handled:true,
           kind:'action_rejected',
-          intent:'add_makeup',
+          intent:action,
           text:'',
           message:String(prepared && prepared.message || '작업을 준비하지 못했어요.'),
           clearInput:true,
@@ -2103,14 +2110,14 @@
       return {
         handled:true,
         kind:'action_pending',
-        intent:'add_makeup',
+        intent:action,
         text:'',
         message:confirmationMessage(prepared.command, schedule, prepared.message),
         clearInput:true,
         payload:prepared.command,
         action:{
           status:'pending',
-          intent:'add_makeup',
+          intent:action,
           command:Object.assign({},prepared.command),
           requiresReason:false
         }
@@ -2120,7 +2127,7 @@
       return {
         handled:true,
         kind:'action_rejected',
-        intent:'add_makeup',
+        intent:action,
         text:'',
         message:String(error && (error.message || error) || '작업을 준비하지 못했어요.'),
         clearInput:true,
