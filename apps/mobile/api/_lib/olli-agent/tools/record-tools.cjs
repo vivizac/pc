@@ -291,6 +291,9 @@ async function readRecentRecords({
     record_count: records.length,
     matched_record_count: merged.matchedCount,
     evidence_truncated: merged.matchedCount > records.length,
+    range_sampled:
+      directEvidence && (normalizedRangeStart || normalizedRangeEnd) &&
+      merged.matchedCount > records.length,
     source_may_be_truncated:
       directEvidence && (normalizedRangeStart || normalizedRangeEnd) &&
       [general.rows, growth.rows, observations.rows].some((rows) =>
