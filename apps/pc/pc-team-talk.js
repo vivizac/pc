@@ -1825,6 +1825,40 @@
     };
   }
 
+  async function resolveFeedbackDirectReadTurn(commandText,current,replyToMessageId) {
+    const sourceMessageId=Number(replyToMessageId || 0);
+    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+      throw new Error('피드백 분석 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'feedback_read',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageId,
+        conversation:(Array.isArray(state.aiConversationMessages) ? state.aiConversationMessages : []).map((item)=>({
+          role:item.role,
+          content:item.content
+        }))
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    const replyText=clean(data?.output);
+    if(!response.ok || data?.ok!==true || !replyText){
+      throw new Error(data?.error || data?.message || '피드백 분석 응답을 받지 못했습니다.');
+    }
+
+    return {
+      assistantMessage:await saveAssistantReply(current,replyText,sourceMessageId),
+      replyText,
+      recordAi:true
+    };
+  }
+
   async function resolveBatchAgentTurn({
     sourceText,
     sourceMessageId,
@@ -2855,12 +2889,11 @@
     }
 
     if(interpreterLane==='feedback'){
-      const resolved=await resolveAiReply(rawCommandText,current);
-      return {
-        assistantMessage:await saveAssistantReply(current,resolved.message,replyToMessageId),
-        replyText:resolved.message,
-        recordAi:true
-      };
+      return resolveFeedbackDirectReadTurn(
+        rawCommandText,
+        current,
+        replyToMessageId
+      );
     }
 
     if(
