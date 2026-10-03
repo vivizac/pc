@@ -2740,7 +2740,8 @@
       sourceTimeSlot:Number(structuredRaw.sourceTimeSlot || 0),
       targetWeekday:Number(structuredRaw.targetWeekday || 0),
       targetTimeSlot:Number(structuredRaw.targetTimeSlot || 0),
-      reason:clean(structuredRaw.reason)
+      reason:clean(structuredRaw.reason),
+      availabilityPurpose:clean(structuredRaw.availabilityPurpose)
     };
     const reply=clean(language.reply);
     if(data?.ok!==true || !['routine','feedback','chat'].includes(lane) || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
@@ -2859,6 +2860,27 @@
         replyText:resolved.message,
         recordAi:true
       };
+    }
+
+    if(
+      interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='find_available_slots'
+      && router
+      && typeof router.runStructuredQuery==='function'
+    ){
+      const queried=await router.runStructuredQuery(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(queried?.handled===true){
+        const message=clean(queried.message) || '빈자리 조회 결과를 확인했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
     }
 
     if(
