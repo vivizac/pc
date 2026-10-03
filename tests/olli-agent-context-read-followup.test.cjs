@@ -322,6 +322,57 @@ test('unified interpreter emits structured pickup fields without student data lo
   });
 });
 
+test('unified interpreter emits a structured add_pickup command without student data lookup', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:17,
+    currentMessage:'민서 월요일 4시 수업 리슈빌 3시 30분 픽업 등록해줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'add_pickup',
+      standalone_command:'민서 월요일 4시 수업 리슈빌 3시 30분 픽업 등록해줘',
+      structured_command:{
+        action:'add_pickup',
+        student_name:'민서',
+        division:'',
+        date_expression:'',
+        time_slot:0,
+        class_group:'',
+        weekday:1,
+        class_time:4,
+        class_minute:0,
+        pickup_kind:'arrival',
+        pickup_label:'리슈빌',
+        pickup_time:'15:30',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'add_pickup');
+  assert.equal(result.structuredCommand.action,'add_pickup');
+  assert.equal(result.structuredCommand.studentName,'민서');
+  assert.equal(result.structuredCommand.weekday,1);
+  assert.equal(result.structuredCommand.classTime,4);
+  assert.equal(result.structuredCommand.classMinute,0);
+  assert.equal(result.structuredCommand.pickupKind,'arrival');
+  assert.equal(result.structuredCommand.pickupLabel,'리슈빌');
+  assert.equal(result.structuredCommand.pickupTime,'15:30');
+});
+
 test('unified interpreter classifies feedback/data work separately from routine work', async () => {
   const result=await resolveOlliSystemInterpretation({
     requestContext:{
