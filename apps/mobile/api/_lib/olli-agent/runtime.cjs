@@ -1,6 +1,7 @@
 'use strict';
 
 const { wrapOlliAgentRun } = require('./observability.cjs');
+const { startPerfTimer, perfDurationMs, emitPerfLog } = require('./perf.cjs');
 
 const MIN_NODE_MAJOR = 22;
 
@@ -297,6 +298,7 @@ async function runFeedbackDirectRead({
   preparedPrivacy,
   agentInput,
 }) {
+  const runtimeStartedAt=startPerfTimer();
   assertOpenAiKey();
 
   const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)
@@ -328,7 +330,15 @@ async function runFeedbackDirectRead({
     );
   }
 
+  const sdkStartedAt=startPerfTimer();
   const {Agent,run}=await loadAgentsSdk();
+  emitPerfLog({
+    phase:'feedback_sdk_load',
+    status:'ok',
+    mode:'feedback_read',
+    durationMs:perfDurationMs(sdkStartedAt),
+  });
+
   const {readRecentRecords}=require('./tools/record-tools.cjs');
   const {readStudentProfile}=require('./tools/profile-tools.cjs');
   const {sanitizeAgentToolPayload}=require('./privacy.cjs');
@@ -342,6 +352,7 @@ async function runFeedbackDirectRead({
   const sanitizePayload=(payload)=>
     sanitizeAgentToolPayload(payload,preparedPrivacy);
 
+  const dataStartedAt=startPerfTimer();
   const [profile,recentRecords]=await Promise.all([
     readStudentProfile({
       requestContext,
@@ -361,18 +372,41 @@ async function runFeedbackDirectRead({
     }),
   ]);
 
+  emitPerfLog({
+    phase:'feedback_data_read',
+    status:'ok',
+    mode:'feedback_read',
+    durationMs:perfDurationMs(dataStartedAt),
+    recordCount:Number(recentRecords?.record_count || 0),
+    matchedRecordCount:Number(recentRecords?.matched_record_count || 0),
+    rangeSampled:recentRecords?.range_sampled===true ? 1 : 0,
+    sourceMayBeTruncated:recentRecords?.source_may_be_truncated===true ? 1 : 0,
+  });
+
+  const evidenceStartedAt=startPerfTimer();
+  const evidenceText='[OLLI_SERVER_FEEDBACK_EVIDENCE]\n'+JSON.stringify({
+    requested_range:requestedRange || null,
+    student_profile:profile,
+    recent_records:recentRecords,
+  });
+
   const evidenceInput={
     type:'message',
     role:'user',
     content:[{
       type:'input_text',
-      text:'[OLLI_SERVER_FEEDBACK_EVIDENCE]\n'+JSON.stringify({
-        requested_range:requestedRange || null,
-        student_profile:profile,
-        recent_records:recentRecords,
-      }),
+      text:evidenceText,
     }],
   };
+
+  emitPerfLog({
+    phase:'feedback_evidence_build',
+    status:'ok',
+    mode:'feedback_read',
+    durationMs:perfDurationMs(evidenceStartedAt),
+    evidenceChars:evidenceText.length,
+    recordCount:Number(recentRecords?.record_count || 0),
+  });
 
   const agent=new Agent({
     name:'Olli Feedback Direct Read',
@@ -401,7 +435,38 @@ async function runFeedbackDirectRead({
     },
   });
 
-  const result=await run(agent,[evidenceInput,...input],{context:agentContext});
+  const modelInput=[evidenceInput,...input];
+  const analysisStartedAt=startPerfTimer();
+  let result;
+  try {
+    result=await run(agent,modelInput,{context:agentContext});
+    emitPerfLog({
+      phase:'feedback_analysis_model',
+      status:'ok',
+      mode:'feedback_read',
+      model,
+      durationMs:perfDurationMs(analysisStartedAt),
+      inputItems:modelInput.length,
+      inputChars:JSON.stringify(modelInput).length,
+      evidenceChars:evidenceText.length,
+      recordCount:Number(recentRecords?.record_count || 0),
+    });
+  } catch(error) {
+    emitPerfLog({
+      phase:'feedback_analysis_model',
+      status:'error',
+      mode:'feedback_read',
+      model,
+      durationMs:perfDurationMs(analysisStartedAt),
+      inputItems:modelInput.length,
+      inputChars:JSON.stringify(modelInput).length,
+      evidenceChars:evidenceText.length,
+      recordCount:Number(recentRecords?.record_count || 0),
+      errorCode:error?.code || error?.name,
+    });
+    throw error;
+  }
+
   const finalOutput=restorePreparedSubjectLabels(
     String(result?.finalOutput || '').trim(),
     preparedPrivacy
@@ -414,6 +479,18 @@ async function runFeedbackDirectRead({
       'OLLI_AGENT_EMPTY_FEEDBACK_RESPONSE'
     );
   }
+
+  emitPerfLog({
+    phase:'feedback_runtime_total',
+    status:'ok',
+    mode:'feedback_read',
+    model,
+    durationMs:perfDurationMs(runtimeStartedAt),
+    recordCount:Number(recentRecords?.record_count || 0),
+    matchedRecordCount:Number(recentRecords?.matched_record_count || 0),
+    evidenceChars:evidenceText.length,
+    inputItems:modelInput.length,
+  });
 
   return {
     ready:true,
