@@ -44,6 +44,9 @@ export default async function handler(req, res) {
 
     if (mode === 'interpret') {
       const message=safeText(body.message,5000);
+      const resolvedMessage=mode==='feedback_read'
+        ? safeText(body.resolvedMessage || body.resolved_message,5000)
+        : '';
       const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
       if(!message){
         return res.status(400).json({
@@ -310,42 +313,76 @@ export default async function handler(req, res) {
 
       if(mode==='context_read' || mode==='feedback_read'){
         const privacyStartedAt=feedbackPerf?.startPerfTimer?.() || null;
+        const conversation=Array.isArray(body.conversation) ? body.conversation : [];
+        const compactFeedbackInput=mode==='feedback_read' && !!resolvedMessage;
+        const primaryPrivacyText=compactFeedbackInput ? resolvedMessage : message;
+        const primaryPrivacyConversation=compactFeedbackInput ? [] : conversation;
         let contextPrivacy;
+        let subjectSession=null;
         try{
           const sessionModule=await import('./_lib/olli-agent/session.cjs');
-          const subjectSession=sessionModule.createOlliAgentSession({
+          subjectSession=sessionModule.createOlliAgentSession({
             requestContext,
             surface:'team_talk',
             runKey:'team-chat-message:'+String(sourceMessageId),
           });
           contextPrivacy=await privacyModule.prepareAgentContextReadPrivacyInput(
-            message,
-            Array.isArray(body.conversation) ? body.conversation : [],
+            primaryPrivacyText,
+            primaryPrivacyConversation,
             requestContext,
             {session:subjectSession}
           );
         }catch(sessionError){
           if(!String(sessionError?.code||'').startsWith('OLLI_AGENT_SESSION_')) throw sessionError;
+          subjectSession=null;
           contextPrivacy=await privacyModule.prepareAgentContextReadPrivacyInput(
-            message,
-            Array.isArray(body.conversation) ? body.conversation : [],
+            primaryPrivacyText,
+            primaryPrivacyConversation,
             requestContext
           );
         }
 
+        let contextFallback=false;
+        const primarySubjectRefs=Array.isArray(contextPrivacy?.preparedPrivacy?.subjectRefs)
+          ? contextPrivacy.preparedPrivacy.subjectRefs
+          : [];
+        if(
+          compactFeedbackInput
+          && contextPrivacy?.preparedPrivacy?.needsDisambiguation!==true
+          && primarySubjectRefs.length===0
+        ){
+          contextFallback=true;
+          try{
+            contextPrivacy=await privacyModule.prepareAgentContextReadPrivacyInput(
+              message,
+              conversation,
+              requestContext,
+              subjectSession ? {session:subjectSession} : {}
+            );
+          }catch(sessionError){
+            if(!String(sessionError?.code||'').startsWith('OLLI_AGENT_SESSION_')) throw sessionError;
+            contextPrivacy=await privacyModule.prepareAgentContextReadPrivacyInput(
+              message,
+              conversation,
+              requestContext
+            );
+          }
+        }
+
         if(feedbackPerf){
-          const conversation=Array.isArray(body.conversation) ? body.conversation : [];
+          const usedConversation=contextFallback ? conversation : primaryPrivacyConversation;
           feedbackPerf.emitPerfLog({
             phase:'feedback_privacy_prepare',
             status:'ok',
             mode:'feedback_read',
             durationMs:feedbackPerf.perfDurationMs(privacyStartedAt),
-            conversationItems:conversation.length,
-            conversationChars:JSON.stringify(conversation).length,
+            conversationItems:usedConversation.length,
+            conversationChars:JSON.stringify(usedConversation).length,
             inputItems:Array.isArray(contextPrivacy?.agentInput)
               ? contextPrivacy.agentInput.length
               : 0,
             inputChars:JSON.stringify(contextPrivacy?.agentInput || []).length,
+            contextFallback:contextFallback ? 1 : 0,
           });
         }
 
