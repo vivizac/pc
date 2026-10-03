@@ -2441,7 +2441,30 @@
     if (availability.closedDay) return { ok:false, message:describeAvailableSlots(availability) };
 
     const target = chooseOpenSlot(availability, timeSlot, opts.classGroup, '');
-    if (!target.ok) return target;
+    if (!target.ok) {
+      if (target.code === 'class_group_required' && Array.isArray(target.choices) && target.choices.length > 1) {
+        return {
+          ok:false,
+          code:'class_group_required',
+          choices:target.choices.slice(),
+          commandDraft:{
+            intent:'choose_trial_group',
+            targetIntent:'add_trial',
+            guestName,
+            studentName:guestName,
+            division,
+            sessionDate,
+            timeSlot,
+            classGroup:'',
+            allowedClassGroups:target.choices.slice()
+          },
+          message:
+            guestName + ' · ' + fallbackDateLabel(sessionDate) + ' ' + timeSlot + '시\n'
+            + target.message
+        };
+      }
+      return target;
+    }
     const slot = target.slot;
 
     if (duplicateTrial(weekData, guestName, sessionDate, timeSlot, slot.classGroup)) {
