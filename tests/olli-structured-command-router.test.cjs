@@ -235,3 +235,112 @@ test('structured add_trial surfaces a persisted A/B choice instead of asking for
     globalThis.OlliCommandSchedule = previousSchedule;
   }
 });
+
+test('structured add_waitlist bypasses natural-language parsing and reaches existing schedule SOT', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+  let observed = null;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      observed = { intent, options };
+      return {
+        ok:true,
+        command:{
+          intent:'add_waitlist',
+          studentId:'',
+          studentName:'지우',
+          guestName:'지우',
+          isGuest:true,
+          division:'elementary',
+          effectiveDate:'2026-10-08',
+          sessionDate:'2026-10-08',
+          targetWeekday:4,
+          targetTimeSlot:4,
+          targetClassGroup:'B',
+        },
+        message:'지우 (비재원) · 목요일 4시 B반\n대기로 등록할까요?',
+      };
+    },
+    writeConfirmationMessage() {
+      return '지우 (비재원) · 목요일 4시 B반\n대기로 등록할까요?';
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_waitlist',
+      studentName:'지우',
+      division:'elementary',
+      dateExpression:'10월 8일',
+      timeSlot:4,
+      classGroup:'B',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'add_waitlist');
+    assert.equal(result.payload.intent,'add_waitlist');
+
+    assert.ok(observed);
+    assert.equal(observed.intent,'add_waitlist');
+    assert.equal(observed.options.studentName,'지우');
+    assert.equal(observed.options.division,'elementary');
+    assert.equal(observed.options.timeSlot,4);
+    assert.equal(observed.options.classGroup,'B');
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
+
+test('structured add_waitlist surfaces a persisted A/B choice instead of asking for typed A/B', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      assert.equal(intent,'add_waitlist');
+      assert.equal(options.studentName,'지우');
+      assert.equal(options.division,'elementary');
+      return {
+        ok:false,
+        code:'class_group_required',
+        choices:['A','B'],
+        commandDraft:{
+          intent:'choose_waitlist_group',
+          targetIntent:'add_waitlist',
+          studentId:'',
+          studentName:'지우',
+          guestName:'지우',
+          isGuest:true,
+          division:'elementary',
+          effectiveDate:'2026-10-08',
+          sessionDate:'2026-10-08',
+          targetWeekday:4,
+          targetTimeSlot:4,
+          targetClassGroup:'',
+          allowedClassGroups:['A','B'],
+        },
+        message:'지우 (비재원) · 목요일 4시\n반을 선택해 주세요.',
+      };
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_waitlist',
+      studentName:'지우',
+      division:'elementary',
+      dateExpression:'10월 8일',
+      timeSlot:4,
+      classGroup:'',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_choice');
+    assert.equal(result.intent,'choose_waitlist_group');
+    assert.equal(result.payload.intent,'choose_waitlist_group');
+    assert.equal(result.payload.targetIntent,'add_waitlist');
+    assert.deepEqual(result.payload.allowedClassGroups,['A','B']);
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
