@@ -105,3 +105,138 @@ test('PC and Mobile structured schedule query path bypasses chat and Agent calls
   assert.match(mobileBlock,/runStructuredQuery/);
   assert.doesNotMatch(mobileBlock,/resolveOlliTalkAiReply|\/api\/chat|\/api\/olli-agent/);
 });
+
+test('structured find_available_slots routes a next-week query to existing week availability SOT', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let observed=null;
+
+  globalThis.OlliCommandSchedule={
+    async findWeekAvailability(options){
+      observed=options;
+      return {scope:'week',label:options.dateLabel,days:[]};
+    },
+    async findAvailableSlots(){ throw new Error('date path should not run'); },
+    async findRecurringAvailability(){ throw new Error('recurring path should not run'); },
+    describeWeekAvailability(result){ return result.label+' 빈자리 조회 완료'; },
+  };
+
+  try{
+    const result=await router.runStructuredQuery({
+      action:'find_available_slots',
+      division:'elementary',
+      dateExpression:'다음주',
+      weekday:0,
+      timeSlot:0,
+      classGroup:'',
+      availabilityPurpose:'makeup',
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.intent,'find_available_slots');
+    assert.equal(result.payload.scope,'week');
+    assert.equal(result.payload.weekOffset,1);
+    assert.equal(result.payload.purpose,'makeup');
+    assert.match(result.message,/다음 주/);
+    assert.ok(observed);
+    assert.equal(observed.weekOffset,1);
+    assert.equal(observed.division,'elementary');
+    assert.equal(observed.purpose,'makeup');
+    assert.equal(observed.viewMode,'availability');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured find_available_slots routes a recurring weekday/time/group query without reparsing Korean', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let observed=null;
+
+  globalThis.OlliCommandSchedule={
+    async findWeekAvailability(){ throw new Error('week path should not run'); },
+    async findAvailableSlots(){ throw new Error('date path should not run'); },
+    async findRecurringAvailability(options){
+      observed=options;
+      return {scope:'recurring',weekday:options.weekday,timeSlot:options.timeSlot,classGroup:options.classGroup};
+    },
+    describeRecurringAvailability(){ return '화요일 5시 B반은 1자리 있습니다.'; },
+  };
+
+  try{
+    const result=await router.runStructuredQuery({
+      action:'find_available_slots',
+      division:'',
+      dateExpression:'',
+      weekday:2,
+      timeSlot:5,
+      classGroup:'B',
+      availabilityPurpose:'unknown',
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.payload.scope,'recurring');
+    assert.equal(result.payload.weekday,2);
+    assert.equal(result.payload.timeSlot,5);
+    assert.equal(result.payload.classGroup,'B');
+    assert.ok(observed);
+    assert.equal(observed.weekday,2);
+    assert.equal(observed.timeSlot,5);
+    assert.equal(observed.classGroup,'B');
+    assert.equal(observed.purpose,'unknown');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured find_available_slots routes a specific date to existing date availability SOT', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let observed=null;
+
+  globalThis.OlliCommandSchedule={
+    async findWeekAvailability(){ throw new Error('week path should not run'); },
+    async findRecurringAvailability(){ throw new Error('recurring path should not run'); },
+    async findAvailableSlots(options){
+      observed=options;
+      return {date:options.date,dateLabel:options.dateLabel,slots:[],allSlots:[],displaySlots:[]};
+    },
+    describeAvailableSlots(result){ return result.dateLabel+' 체험 자리를 확인했어요.'; },
+  };
+
+  try{
+    const result=await router.runStructuredQuery({
+      action:'find_available_slots',
+      division:'kinder',
+      dateExpression:'내일',
+      weekday:0,
+      timeSlot:4,
+      classGroup:'',
+      availabilityPurpose:'trial',
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.payload.scope,'date');
+    assert.equal(result.payload.purpose,'trial');
+    assert.ok(observed);
+    assert.equal(observed.division,'kinder');
+    assert.equal(observed.purpose,'trial');
+    assert.equal(observed.timeSlot,4);
+    assert.equal(observed.dateLabel,'내일');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('PC and Mobile structured availability path bypasses chat and Agent calls after interpretation', () => {
+  const pcStart=pc.indexOf("clean(structuredCommand?.action)==='find_available_slots'");
+  const pcEnd=pc.indexOf("clean(structuredCommand?.action)==='get_student_schedule'",pcStart+10);
+  const pcBlock=pc.slice(pcStart,pcEnd>pcStart?pcEnd:pcStart+1900);
+  assert.ok(pcStart>=0);
+  assert.match(pcBlock,/runStructuredQuery/);
+  assert.doesNotMatch(pcBlock,/resolveAiReply|\/api\/chat|\/api\/olli-agent/);
+
+  const mobileStart=mobile.indexOf("String(structuredCommand?.action || '').trim()==='find_available_slots'");
+  const mobileEnd=mobile.indexOf("String(structuredCommand?.action || '').trim()==='get_student_schedule'",mobileStart+10);
+  const mobileBlock=mobile.slice(mobileStart,mobileEnd>mobileStart?mobileEnd:mobileStart+1900);
+  assert.ok(mobileStart>=0);
+  assert.match(mobileBlock,/runStructuredQuery/);
+  assert.doesNotMatch(mobileBlock,/resolveOlliTalkAiReply|\/api\/chat|\/api\/olli-agent/);
+});
