@@ -386,7 +386,11 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
     emitPerfLog({
       phase:'interpreter_openai',
       status:'error',
+      model,
       durationMs:perfDurationMs(startedAt),
+      inputChars:system.length + user.length,
+      instructionsChars:system.length,
+      conversationChars:transcript.length,
       errorCode:error?.code || error?.name,
     });
     throw error;
@@ -399,8 +403,12 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
     emitPerfLog({
       phase:'interpreter_openai',
       status:'error',
+      model,
       durationMs:perfDurationMs(startedAt),
       httpStatus:response.status,
+      inputChars:system.length + user.length,
+      instructionsChars:system.length,
+      conversationChars:transcript.length,
     });
     const error=new Error(data?.error?.message || data?.message || '올리 공통 해석 AI 요청에 실패했습니다.');
     error.code='OLLI_INTERPRETER_OPENAI_FAILED';
@@ -410,8 +418,12 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
   emitPerfLog({
     phase:'interpreter_openai',
     status:'ok',
+    model,
     durationMs:perfDurationMs(startedAt),
     httpStatus:response.status,
+    inputChars:system.length + user.length,
+    instructionsChars:system.length,
+    conversationChars:transcript.length,
   });
   const parsed=parseStructuredOutput(data);
   if(!parsed){
@@ -443,15 +455,30 @@ async function resolveOlliSystemInterpretation({
     throw error;
   }
 
+  const totalStartedAt=startPerfTimer();
   const context=normalizeMentionConversation(conversation);
   const transcript=context
     .map((item)=>(item.role==='assistant' ? '올리: ' : '사용자: ')+item.text)
     .join('\n');
 
-  const interpreted=await modelRunner({
-    transcript,
-    currentText:current,
-  });
+  let interpreted;
+  try {
+    interpreted=await modelRunner({
+      transcript,
+      currentText:current,
+    });
+  } catch(error) {
+    emitPerfLog({
+      phase:'interpreter_total',
+      status:'error',
+      durationMs:perfDurationMs(totalStartedAt),
+      inputChars:current.length,
+      conversationItems:context.length,
+      conversationChars:transcript.length,
+      errorCode:error?.code || error?.name,
+    });
+    throw error;
+  }
   const intent=clean(interpreted?.intent);
   const lane=OLLI_INTERPRETER_LANES.includes(clean(interpreted?.lane))
     ? clean(interpreted?.lane)
@@ -486,7 +513,7 @@ async function resolveOlliSystemInterpretation({
   });
   const modelRoute=clean(interpreted?.route);
 
-  return Object.freeze({
+  const result=Object.freeze({
     lane,
     route:expectedRoute,
     intent:OLLI_SYSTEM_LANGUAGE_INTENTS.includes(intent) ? intent : 'general_chat',
@@ -496,6 +523,18 @@ async function resolveOlliSystemInterpretation({
     contextUsed:interpreted?.context_used===true,
     modelRoute,
   });
+
+  emitPerfLog({
+    phase:'interpreter_total',
+    status:'ok',
+    mode:lane,
+    durationMs:perfDurationMs(totalStartedAt),
+    inputChars:current.length,
+    conversationItems:context.length,
+    conversationChars:transcript.length,
+  });
+
+  return result;
 }
 
 async function defaultModelRunner({ transcript, currentText }) {
