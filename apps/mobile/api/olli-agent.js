@@ -84,6 +84,7 @@ export default async function handler(req, res) {
         ok:true,
         mode:'interpret',
         systemLanguage:{
+          lane:safeText(result?.lane,20),
           route:safeText(result?.route,20),
           intent:safeText(result?.intent,80),
           standaloneCommand:safeText(result?.standaloneCommand,5000),
