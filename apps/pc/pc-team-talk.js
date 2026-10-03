@@ -2865,6 +2865,27 @@
 
     if(
       interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='find_pickups'
+      && router
+      && typeof router.runStructuredQuery==='function'
+    ){
+      const queried=await router.runStructuredQuery(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(queried?.handled===true){
+        const message=clean(queried.message) || '픽업 일정을 확인했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+    }
+
+    if(
+      interpreterLane==='routine'
       && clean(structuredCommand?.action)==='find_roster_entries'
       && router
       && typeof router.runStructuredQuery==='function'
