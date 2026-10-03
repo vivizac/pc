@@ -108,7 +108,9 @@ wss.on('connection',client => {
         audioEncoding:'PCM_24KHZ',
         model:META_MODEL,
         mode:'DIARIZATION',
-        languageBias:['korean']
+        partialMode:'CUMULATIVE',
+        emitAudioProgress:false,
+        languageBias:['Korean']
       }));
     });
     meta.on('message',(payload,isBinary) => {
