@@ -245,6 +245,58 @@ test('unified interpreter emits structured cancel_makeup facts without loading s
   assert.equal(result.structuredCommand.reason,'개인사정');
 });
 
+test('unified interpreter emits structured update_trial facts without loading academy data', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:116,
+    currentMessage:'서준 다음주 화요일 4시 체험을 다음주 목요일 5시 30분 B반으로 변경해줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'update_trial',
+      standalone_command:'서준 다음주 화요일 4시 체험을 다음주 목요일 5시 30분 B반으로 변경해줘',
+      structured_command:{
+        action:'update_trial',
+        student_name:'서준',
+        division:'',
+        source_date_expression:'다음주 화요일',
+        source_time_slot:4,
+        source_minute:0,
+        source_class_group:'',
+        target_date_expression:'다음주 목요일',
+        target_time_slot:5,
+        target_minute:30,
+        target_class_group:'B',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.lane,'routine');
+  assert.equal(result.route,'rule');
+  assert.equal(result.intent,'update_trial');
+  assert.equal(result.structuredCommand.action,'update_trial');
+  assert.equal(result.structuredCommand.studentName,'서준');
+  assert.equal(result.structuredCommand.sourceDateExpression,'다음주 화요일');
+  assert.equal(result.structuredCommand.sourceTimeSlot,4);
+  assert.equal(result.structuredCommand.targetDateExpression,'다음주 목요일');
+  assert.equal(result.structuredCommand.targetTimeSlot,5);
+  assert.equal(result.structuredCommand.targetMinute,30);
+  assert.equal(result.structuredCommand.targetClassGroup,'B');
+});
+
 test('unified interpreter emits a structured add_trial command without student data lookup', async () => {
   let studentLoadCalled=false;
   const result=await resolveOlliSystemInterpretation({
@@ -884,6 +936,7 @@ test('chat lane can return a direct reply without a second chat-model contract',
 test('unified interpreter has one deterministic route contract per system intent', () => {
   assert.equal(routeForSystemIntent('add_makeup'),'rule');
   assert.equal(routeForSystemIntent('cancel_makeup'),'rule');
+  assert.equal(routeForSystemIntent('update_trial'),'rule');
   assert.equal(routeForSystemIntent('get_student_schedule'),'rule');
   assert.equal(routeForSystemIntent('get_attendance'),'agent');
   assert.equal(routeForSystemIntent('set_attendance_status'),'agent');

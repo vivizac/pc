@@ -1953,6 +1953,145 @@ async function runTrialCancelPrepare({
 }
 
 
+
+function structuredTrialUpdateDateKey(value,currentDate){
+  const expression=String(value==null?'':value).trim();
+  if(!expression) return '';
+
+  if(/^\d{4}-\d{2}-\d{2}$/.test(expression)){
+    const exact=new Date(expression+'T12:00:00Z');
+    if(!Number.isNaN(exact.getTime())&&exact.toISOString().slice(0,10)===expression){
+      return expression;
+    }
+  }
+
+  const router=loadSharedCommandRouter();
+  const spec=router.parseDateExpression(expression.replace(/\s+/g,''));
+  const base=new Date(String(currentDate||'')+'T12:00:00Z');
+  const resolved=spec&&!Number.isNaN(base.getTime())
+    ? router.resolveDateExpression(spec,base)
+    : null;
+  if(!resolved||Number.isNaN(resolved.getTime())){
+    throw runtimeError(
+      '체험 날짜 표현을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_UPDATE_DATE_INVALID'
+    );
+  }
+  return resolved.toISOString().slice(0,10);
+}
+
+async function runStructuredTrialUpdatePrepare({
+  requestContext,
+  structuredCommand,
+  sourceMessageId,
+  sourceMessageText,
+}){
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_UPDATE_SOURCE_MESSAGE_INVALID'
+    );
+  }
+
+  await validateTrialSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  const command=structuredCommand&&typeof structuredCommand==='object'
+    ? structuredCommand
+    : {};
+  if(String(command.action||'').trim()!=='update_trial'){
+    throw runtimeError(
+      '체험 변경 구조화 명령을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_UPDATE_ACTION_INVALID'
+    );
+  }
+
+  const sourceDateExpression=String(command.sourceDateExpression||'').trim();
+  if(!sourceDateExpression){
+    throw runtimeError(
+      '체험 변경에는 기존 체험 날짜가 필요합니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_UPDATE_SOURCE_DATE_REQUIRED'
+    );
+  }
+
+  const trialPrivacyModule=require('./trial-guest-privacy.cjs');
+  const preparedPrivacy=trialPrivacyModule.prepareTrialGuestPrivacyInput(sourceMessageText);
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+  if(subjectRefs.length!==1){
+    throw runtimeError(
+      '변경할 체험 학생을 한 명으로 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_UPDATE_GUEST_REQUIRED'
+    );
+  }
+  const guestLabel=subjectRefs[0].label;
+  const guest=preparedPrivacy?.trialAccess?.resolve?.(guestLabel);
+  if(!guest?.guestName){
+    throw runtimeError(
+      '변경할 체험 학생을 원문에서 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_UPDATE_GUEST_REQUIRED'
+    );
+  }
+
+  const today=todayInSeoul();
+  const sourceDate=structuredTrialUpdateDateKey(sourceDateExpression,today);
+  const targetDateExpression=String(command.targetDateExpression||'').trim();
+  const targetDate=targetDateExpression
+    ? structuredTrialUpdateDateKey(targetDateExpression,today)
+    : '';
+
+  const {prepareTrialUpdateAction}=require('./tools/trial-update-prepare-tools.cjs');
+  let persistedMessage=null;
+  await prepareTrialUpdateAction({
+    requestContext,
+    trialAccess:preparedPrivacy.trialAccess,
+    guestLabel,
+    sourceDate,
+    sourceHour:Number(command.sourceTimeSlot||0),
+    sourceMinute:Number(command.sourceMinute||0),
+    sourceGroup:String(command.sourceClassGroup||'').trim().toUpperCase()||'AUTO',
+    targetDate,
+    targetHour:Number(command.targetTimeSlot||0),
+    targetMinute:Number(command.targetMinute||0),
+    targetGroup:String(command.targetClassGroup||'').trim().toUpperCase()||'AUTO',
+    currentDate:today,
+    requestId:'team-chat-trial-update:'+sourceId,
+    replyToMessageId:sourceId,
+    capturePersistedMessage(message){
+      persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload){
+      return payload;
+    },
+  });
+
+  if(!persistedMessage?.action||String(persistedMessage.action.action_type||'').trim()!=='update_trial'){
+    throw runtimeError(
+      '체험 변경 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_ROUTINE_TRIAL_UPDATE_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+
+  return {
+    ready:true,
+    persistedMessage,
+    recoveredAfterPersist:false,
+  };
+}
+
+
 function resolveTrialUpdatePrepareScope(preparedPrivacy){
   if(preparedPrivacy?.needsDisambiguation){
     throw runtimeError('체험 학생 이름을 하나로 구분할 수 없습니다.',409,'OLLI_AGENT_TRIAL_GUEST_AMBIGUOUS');
@@ -5577,6 +5716,7 @@ module.exports = {
   runTrialUpdatePrepareAgent,
   runTrialUpdatePrepareProbe,
   runTrialUpdatePrepare,
+  runStructuredTrialUpdatePrepare,
   validateTrialSourceMessage,
   resolveWaitlistAddPrepareScope,
   runWaitlistAddPrepareAgent,
