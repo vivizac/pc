@@ -1993,7 +1993,7 @@
     const action = cleanText(command.action);
     const routeContext = normalizeContext(context);
     const schedule = global.OlliCommandSchedule;
-    const supported = new Set(['add_makeup','add_trial','add_waitlist']);
+    const supported = new Set(['add_makeup','add_trial','add_waitlist','add_pickup']);
 
     if (!supported.has(action)) {
       return {
@@ -2006,6 +2006,88 @@
         payload:null,
         action:null
       };
+    }
+
+    if (action === 'add_pickup') {
+      const studentName = cleanText(command.student_name || command.studentName);
+      const weekday = Number(command.weekday || 0);
+      const classTime = Number(command.class_time || command.classTime || 0);
+      const classMinute = Number(command.class_minute || command.classMinute || 0);
+      const pickupKind = cleanText(command.pickup_kind || command.pickupKind);
+      const pickupLabel = cleanText(command.pickup_label || command.pickupLabel);
+      const pickupTime = cleanText(command.pickup_time || command.pickupTime);
+
+      if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
+        return {
+          handled:true,
+          kind:'action_rejected',
+          intent:'add_pickup',
+          text:'',
+          message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+          clearInput:true,
+          payload:command,
+          action:null
+        };
+      }
+
+      try {
+        const prepared = await schedule.prepareWriteCommand('add_pickup', {
+          type:'mutation',
+          intent:'add_pickup',
+          studentName,
+          weekday,
+          classTime,
+          classMinute,
+          pickupLabel,
+          pickupTime,
+          isDropoff:pickupKind === 'dropoff',
+          selectedStudent:routeContext.selectedStudent || null,
+          effectiveDate:new Date(),
+          originalText:''
+        });
+
+        if (!prepared || prepared.ok !== true || !prepared.command) {
+          return {
+            handled:true,
+            kind:'action_rejected',
+            intent:'add_pickup',
+            text:'',
+            message:String(prepared && prepared.message || '작업을 준비하지 못했어요.'),
+            clearInput:true,
+            payload:command,
+            action:null
+          };
+        }
+
+        const preparedIntent=cleanText(prepared.command.intent) || 'add_pickup';
+        return {
+          handled:true,
+          kind:'action_pending',
+          intent:preparedIntent,
+          text:'',
+          message:confirmationMessage(prepared.command, schedule, prepared.message),
+          clearInput:true,
+          payload:prepared.command,
+          action:{
+            status:'pending',
+            intent:preparedIntent,
+            command:Object.assign({},prepared.command),
+            requiresReason:false
+          }
+        };
+      } catch (error) {
+        console.warn('올리 구조화 픽업 명령 준비 실패:',error);
+        return {
+          handled:true,
+          kind:'action_rejected',
+          intent:'add_pickup',
+          text:'',
+          message:String(error && (error.message || error) || '작업을 준비하지 못했어요.'),
+          clearInput:true,
+          payload:command,
+          action:null
+        };
+      }
     }
 
     const studentName = cleanText(command.student_name || command.studentName);
