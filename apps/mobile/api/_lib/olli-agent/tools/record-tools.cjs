@@ -4,7 +4,9 @@ const { callSupabaseRpc } = require('../supabase-rpc.cjs');
 
 const DEFAULT_MAX_RECORDS = 12;
 const MAX_RECORDS = 20;
+const MAX_DIRECT_RECORDS = 180;
 const MAX_PER_SOURCE = 60;
+const MAX_DIRECT_PER_SOURCE = 1200;
 
 function clean(value) {
   return String(value == null ? '' : value).trim();
@@ -21,6 +23,43 @@ function normalizeMaxRecords(value) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return DEFAULT_MAX_RECORDS;
   return Math.min(MAX_RECORDS, Math.max(1, Math.trunc(parsed)));
+}
+
+function normalizeDirectMaxRecords(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return MAX_DIRECT_RECORDS;
+  return Math.min(MAX_DIRECT_RECORDS, Math.max(1, Math.trunc(parsed)));
+}
+
+function normalizeRangeDate(value) {
+  const text = clean(value);
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : '';
+}
+
+function recordDateInRange(record, rangeStart, rangeEnd) {
+  const date = clean(record?.date);
+  if (!date) return false;
+  if (rangeStart && date < rangeStart) return false;
+  if (rangeEnd && date > rangeEnd) return false;
+  return true;
+}
+
+function evenlySampleRecords(records, limit) {
+  const list = Array.isArray(records) ? records : [];
+  const max = Math.max(1, Math.trunc(Number(limit) || 1));
+  if (list.length <= max) return list.slice();
+  if (max === 1) return [list[0]];
+
+  const asc = list.slice().reverse();
+  const sampled = [];
+  const used = new Set();
+  for (let index = 0; index < max; index += 1) {
+    const sourceIndex = Math.round(index * (asc.length - 1) / (max - 1));
+    if (used.has(sourceIndex)) continue;
+    used.add(sourceIndex);
+    sampled.push(asc[sourceIndex]);
+  }
+  return sampled.reverse();
 }
 
 function normalizeDateText(row = {}) {
@@ -51,12 +90,15 @@ function normalizeFeedbackRecord(row, recordType) {
   const content = clean(row.content);
   if (!content) return null;
 
-  return {
+  const record = {
     record_type: recordType,
     date: normalizeDateText(row),
     created_at: clean(row.created_at),
     content,
   };
+  const futureDirection = clean(row.future_direction);
+  if (futureDirection) record.future_direction = futureDirection;
+  return record;
 }
 
 function normalizeObservationRecord(row) {
@@ -64,7 +106,7 @@ function normalizeObservationRecord(row) {
   const content = clean(row.content);
   if (!content) return null;
 
-  return {
+  const record = {
     record_type: 'observation',
     date: normalizeDateText(row),
     created_at: clean(row.created_at),
@@ -72,6 +114,8 @@ function normalizeObservationRecord(row) {
     record_label: clean(row.record_label),
     content,
   };
+  if (row.analysis != null) record.analysis = row.analysis;
+  return record;
 }
 
 function recordTimestamp(record) {
@@ -84,8 +128,13 @@ function recordTimestamp(record) {
   return 0;
 }
 
-function mergeRecentRecords(generalRows, growthRows, observationRows, maxRecords) {
-  const limit = normalizeMaxRecords(maxRecords);
+function mergeRecentRecords(generalRows, growthRows, observationRows, maxRecords, options = {}) {
+  const directEvidence = options?.directEvidence === true;
+  const limit = directEvidence
+    ? normalizeDirectMaxRecords(maxRecords)
+    : normalizeMaxRecords(maxRecords);
+  const rangeStart = normalizeRangeDate(options?.rangeStart);
+  const rangeEnd = normalizeRangeDate(options?.rangeEnd);
   const combined = [
     ...(Array.isArray(generalRows) ? generalRows : [])
       .map((row) => normalizeFeedbackRecord(row, 'feedback'))
@@ -100,6 +149,7 @@ function mergeRecentRecords(generalRows, growthRows, observationRows, maxRecords
 
   const seen = new Set();
   const unique = combined.filter((record) => {
+    if ((rangeStart || rangeEnd) && !recordDateInRange(record, rangeStart, rangeEnd)) return false;
     const key = [
       clean(record.record_type),
       clean(record.date),
@@ -110,13 +160,18 @@ function mergeRecentRecords(generalRows, growthRows, observationRows, maxRecords
     return true;
   });
 
-  return unique
-    .sort((a, b) =>
-      recordTimestamp(b) - recordTimestamp(a) ||
-      clean(b.created_at).localeCompare(clean(a.created_at)) ||
-      clean(b.date).localeCompare(clean(a.date))
-    )
-    .slice(0, limit);
+  const sorted = unique.sort((a, b) =>
+    recordTimestamp(b) - recordTimestamp(a) ||
+    clean(b.created_at).localeCompare(clean(a.created_at)) ||
+    clean(b.date).localeCompare(clean(a.date))
+  );
+
+  return {
+    records:(rangeStart || rangeEnd) && directEvidence
+      ? evenlySampleRecords(sorted, limit)
+      : sorted.slice(0, limit),
+    matchedCount:sorted.length,
+  };
 }
 
 function assertReadResult(result, label) {
@@ -133,6 +188,9 @@ async function readRecentRecords({
   subjectAccess,
   studentLabel,
   maxRecords = DEFAULT_MAX_RECORDS,
+  rangeStart = '',
+  rangeEnd = '',
+  directEvidence = false,
   sanitizePayload,
   callRpc = callSupabaseRpc,
 }) {
@@ -155,11 +213,17 @@ async function readRecentRecords({
     );
   }
 
-  const limit = normalizeMaxRecords(maxRecords);
-  const perSourceLimit = Math.min(
-    MAX_PER_SOURCE,
-    Math.max(24, limit * 3)
-  );
+  const limit = directEvidence
+    ? normalizeDirectMaxRecords(maxRecords)
+    : normalizeMaxRecords(maxRecords);
+  const normalizedRangeStart = normalizeRangeDate(rangeStart);
+  const normalizedRangeEnd = normalizeRangeDate(rangeEnd);
+  const perSourceLimit = directEvidence && (normalizedRangeStart || normalizedRangeEnd)
+    ? MAX_DIRECT_PER_SOURCE
+    : Math.min(
+        MAX_PER_SOURCE,
+        Math.max(24, limit * 3)
+      );
   const commonParams = {
     p_session_token: requestContext.sessionToken,
     p_academy_id: requestContext.academyId,
@@ -180,12 +244,18 @@ async function readRecentRecords({
   assertReadResult(growth, '성장 피드백 기록');
   assertReadResult(observations, '관찰노트 기록');
 
-  const records = mergeRecentRecords(
+  const merged = mergeRecentRecords(
     general.rows,
     growth.rows,
     observations.rows,
-    limit
+    limit,
+    {
+      directEvidence,
+      rangeStart:normalizedRangeStart,
+      rangeEnd:normalizedRangeEnd,
+    }
   );
+  const records = merged.records;
 
   const sourceCounts = records.reduce((counts, record) => {
     const key = clean(record.record_type);
@@ -198,6 +268,15 @@ async function readRecentRecords({
     student_label: label,
     records,
     record_count: records.length,
+    matched_record_count: merged.matchedCount,
+    evidence_truncated: merged.matchedCount > records.length,
+    source_may_be_truncated:
+      directEvidence && (normalizedRangeStart || normalizedRangeEnd) &&
+      [general.rows, growth.rows, observations.rows].some((rows) =>
+        Array.isArray(rows) && rows.length >= perSourceLimit
+      ),
+    range_start: normalizedRangeStart,
+    range_end: normalizedRangeEnd,
     source_counts: sourceCounts,
   };
 
@@ -243,8 +322,14 @@ function createGetRecentRecordsTool({
 module.exports = {
   DEFAULT_MAX_RECORDS,
   MAX_RECORDS,
+  MAX_DIRECT_RECORDS,
   MAX_PER_SOURCE,
+  MAX_DIRECT_PER_SOURCE,
   normalizeMaxRecords,
+  normalizeDirectMaxRecords,
+  normalizeRangeDate,
+  recordDateInRange,
+  evenlySampleRecords,
   normalizeDateText,
   normalizeFeedbackRecord,
   normalizeObservationRecord,
