@@ -40,6 +40,13 @@ test('unified interpreter runs on the first turn without loading student data', 
         route:'rule',
         intent:'get_student_schedule',
         standalone_command:'이민형 시간표 알려줘',
+        structured_command:{
+          action:'none',
+          student_name:'',
+          date_expression:'',
+          time_slot:0,
+          class_group:'',
+        },
         context_used:false,
       };
     },
@@ -82,6 +89,13 @@ test('unified interpreter resolves follow-up context from conversation text only
         route:'agent',
         intent:'get_student_schedule',
         standalone_command:'이민형 지난주 시간표 알려줘',
+        structured_command:{
+          action:'none',
+          student_name:'',
+          date_expression:'',
+          time_slot:0,
+          class_group:'',
+        },
         context_used:true,
       };
     },
@@ -94,6 +108,48 @@ test('unified interpreter resolves follow-up context from conversation text only
   assert.equal(result.route,'rule','server route is derived from the intent contract, not model route text');
   assert.equal(result.intent,'get_student_schedule');
   assert.equal(result.standaloneCommand,'이민형 지난주 시간표 알려줘');
+  assert.equal(result.contextUsed,true);
+});
+
+test('unified interpreter emits a structured add_makeup command from conversation context', async () => {
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:14,
+    currentMessage:'B반으로 해줘',
+    conversation:[
+      {role:'user',content:'민준이 다음주 수요일 5시 보강 등록해줘'},
+      {role:'assistant',content:'5시는 A반과 B반이 가능해요.'},
+    ],
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'add_makeup',
+      standalone_command:'민준이 다음주 수요일 5시 B반 보강 등록해줘',
+      structured_command:{
+        action:'add_makeup',
+        student_name:'민준',
+        date_expression:'다음주 수요일',
+        time_slot:5,
+        class_group:'B',
+      },
+      reply:'',
+      context_used:true,
+    }),
+  });
+
+  assert.equal(result.lane,'routine');
+  assert.equal(result.intent,'add_makeup');
+  assert.deepEqual(result.structuredCommand,{
+    action:'add_makeup',
+    studentName:'민준',
+    dateExpression:'다음주 수요일',
+    timeSlot:5,
+    classGroup:'B',
+  });
   assert.equal(result.contextUsed,true);
 });
 
@@ -112,6 +168,13 @@ test('unified interpreter classifies feedback/data work separately from routine 
       route:'chat',
       intent:'complex_analysis',
       standalone_command:'민준이 최근 관찰노트 보고 성장피드백 작성해줘',
+      structured_command:{
+        action:'none',
+        student_name:'',
+        date_expression:'',
+        time_slot:0,
+        class_group:'',
+      },
       context_used:false,
     }),
   });
@@ -143,6 +206,13 @@ test('chat lane can return a direct reply without a second chat-model contract',
       route:'chat',
       intent:'general_chat',
       standalone_command:'왜 그렇게 되는 거야?',
+      structured_command:{
+        action:'none',
+        student_name:'',
+        date_expression:'',
+        time_slot:0,
+        class_group:'',
+      },
       reply:'앞에서 설명한 이유를 이어서 설명할게요.',
       context_used:true,
     }),
