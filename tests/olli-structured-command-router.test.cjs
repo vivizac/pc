@@ -927,3 +927,40 @@ test('structured update_trial bypasses Agents SDK and reuses the deterministic t
   assert.match(mobileBlock,/mode:'structured_trial_update_prepare'/);
   assert.doesNotMatch(mobileBlock,/mode:'trial_update_prepare'/);
 });
+
+
+test('structured cancel_trial bypasses Agents SDK and preserves source-bound reason validation', () => {
+  assert.match(contextRouteSource,/cancel_trial/);
+  assert.match(apiSource,/structured_trial_cancel_prepare/);
+  assert.match(apiSource,/runStructuredTrialCancelPrepare/);
+
+  const runtimeStart=runtimeSource.indexOf('async function runStructuredTrialCancelPrepare');
+  const runtimeEnd=runtimeSource.indexOf('\nasync function ',runtimeStart+20);
+  assert.ok(runtimeStart>=0 && runtimeEnd>runtimeStart);
+  const runtimeBlock=runtimeSource.slice(runtimeStart,runtimeEnd);
+  assert.match(runtimeBlock,/validateTrialSourceMessage/);
+  assert.match(runtimeBlock,/validateTrialReasonMessage/);
+  assert.match(runtimeBlock,/prepareTrialCancelPrivacyInput/);
+  assert.match(runtimeBlock,/prepareTrialCancelAction/);
+  assert.doesNotMatch(runtimeBlock,/loadAgentsSdk|new Agent|runTrialCancelPrepareAgent/);
+
+  for(const source of [pcSource,mobileSource]){
+    assert.match(source,/structured_trial_cancel_prepare/);
+    assert.match(source,/__structuredTrialCancel/);
+    assert.match(source,/체험 취소 사유를 알려주세요/);
+  }
+
+  const pcStart=pcSource.indexOf('async function resolveStructuredTrialCancelTurn');
+  const pcEnd=pcSource.indexOf('\n  async function ',pcStart+20);
+  assert.ok(pcStart>=0 && pcEnd>pcStart);
+  const pcBlock=pcSource.slice(pcStart,pcEnd);
+  assert.match(pcBlock,/mode:'structured_trial_cancel_prepare'/);
+  assert.doesNotMatch(pcBlock,/mode:'trial_cancel_prepare'/);
+
+  const mobileStart=mobileSource.indexOf('async function resolveOlliTalkStructuredTrialCancelTurn');
+  const mobileEnd=mobileSource.indexOf('\n  async function ',mobileStart+20);
+  assert.ok(mobileStart>=0 && mobileEnd>mobileStart);
+  const mobileBlock=mobileSource.slice(mobileStart,mobileEnd);
+  assert.match(mobileBlock,/mode:'structured_trial_cancel_prepare'/);
+  assert.doesNotMatch(mobileBlock,/mode:'trial_cancel_prepare'/);
+});

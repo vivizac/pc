@@ -1954,6 +1954,152 @@ async function runTrialCancelPrepare({
 
 
 
+
+function structuredTrialCancelDateKey(value,currentDate){
+  const expression=String(value==null?'':value).trim();
+  if(!expression) return '';
+
+  if(/^\d{4}-\d{2}-\d{2}$/.test(expression)){
+    const exact=new Date(expression+'T12:00:00Z');
+    if(!Number.isNaN(exact.getTime())&&exact.toISOString().slice(0,10)===expression){
+      return expression;
+    }
+  }
+
+  const router=loadSharedCommandRouter();
+  const spec=router.parseDateExpression(expression.replace(/\s+/g,''));
+  const base=new Date(String(currentDate||'')+'T12:00:00Z');
+  const resolved=spec&&!Number.isNaN(base.getTime())
+    ? router.resolveDateExpression(spec,base)
+    : null;
+  if(!resolved||Number.isNaN(resolved.getTime())){
+    throw runtimeError(
+      '체험 취소 날짜 표현을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_CANCEL_DATE_INVALID'
+    );
+  }
+  return resolved.toISOString().slice(0,10);
+}
+
+async function runStructuredTrialCancelPrepare({
+  requestContext,
+  structuredCommand,
+  sourceMessageId,
+  sourceMessageText,
+  reasonMessageId,
+  reasonMessageText,
+  reason,
+}){
+  const sourceId=Number(sourceMessageId||0);
+  const reasonId=Number(reasonMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_CANCEL_SOURCE_MESSAGE_INVALID'
+    );
+  }
+  if(!Number.isSafeInteger(reasonId)||reasonId<=0){
+    throw runtimeError(
+      '체험 취소 사유 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_CANCEL_REASON_MESSAGE_INVALID'
+    );
+  }
+
+  const command=structuredCommand&&typeof structuredCommand==='object'
+    ? structuredCommand
+    : {};
+  if(String(command.action||'').trim()!=='cancel_trial'){
+    throw runtimeError(
+      '체험 취소 구조화 명령을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_CANCEL_ACTION_INVALID'
+    );
+  }
+
+  await validateTrialSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+  const validatedReason=await validateTrialReasonMessage({
+    requestContext,
+    reasonMessageId:reasonId,
+    reasonMessageText,
+    reason,
+  });
+
+  const {prepareTrialCancelPrivacyInput}=require('./trial-guest-privacy.cjs');
+  const preparedPrivacy=prepareTrialCancelPrivacyInput(
+    sourceMessageText,
+    validatedReason.reason
+  );
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+  if(subjectRefs.length!==1){
+    throw runtimeError(
+      '취소할 체험 학생을 한 명으로 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_CANCEL_GUEST_REQUIRED'
+    );
+  }
+  const guestLabel=subjectRefs[0].label;
+  const guest=preparedPrivacy?.trialAccess?.resolve?.(guestLabel);
+  if(!guest?.guestName){
+    throw runtimeError(
+      '취소할 체험 학생을 원문에서 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TRIAL_CANCEL_GUEST_REQUIRED'
+    );
+  }
+
+  const today=todayInSeoul();
+  const dateExpression=String(command.dateExpression||'').trim();
+  const sourceDate=dateExpression
+    ? structuredTrialCancelDateKey(dateExpression,today)
+    : '';
+
+  const {prepareTrialCancelAction}=require('./tools/trial-cancel-prepare-tools.cjs');
+  let persistedMessage=null;
+  await prepareTrialCancelAction({
+    requestContext,
+    trialAccess:preparedPrivacy.trialAccess,
+    guestLabel,
+    sourceDate,
+    sourceHour:Number(command.timeSlot||0),
+    sourceMinute:Number(command.classMinute||0),
+    classGroup:String(command.classGroup||'').trim().toUpperCase()||'AUTO',
+    reason:validatedReason.reason,
+    currentDate:today,
+    requestId:'team-chat-trial-cancel:'+sourceId+':'+reasonId,
+    replyToMessageId:reasonId,
+    capturePersistedMessage(message){
+      persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload){
+      return payload;
+    },
+  });
+
+  if(!persistedMessage?.action||String(persistedMessage.action.action_type||'').trim()!=='cancel_trial'){
+    throw runtimeError(
+      '체험 취소 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_ROUTINE_TRIAL_CANCEL_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+
+  return {
+    ready:true,
+    persistedMessage,
+    recoveredAfterPersist:false,
+  };
+}
+
+
 function structuredTrialUpdateDateKey(value,currentDate){
   const expression=String(value==null?'':value).trim();
   if(!expression) return '';
@@ -5711,6 +5857,7 @@ module.exports = {
   runTrialCancelPrepareAgent,
   runTrialCancelPrepareProbe,
   runTrialCancelPrepare,
+  runStructuredTrialCancelPrepare,
   validateTrialReasonMessage,
   resolveTrialUpdatePrepareScope,
   runTrialUpdatePrepareAgent,

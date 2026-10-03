@@ -2191,6 +2191,71 @@
     };
   }
 
+  function mergeStructuredTrialCancelCommand(previous,current){
+    const before=previous && typeof previous==='object' ? previous : {};
+    const next=current && typeof current==='object' ? current : {};
+    const nextTime=Number(next.timeSlot || 0);
+    const nextMinute=Number(next.classMinute || 0);
+    return {
+      action:'cancel_trial',
+      studentName:clean(next.studentName) || clean(before.studentName),
+      division:clean(next.division) || clean(before.division),
+      dateExpression:clean(next.dateExpression) || clean(before.dateExpression),
+      timeSlot:nextTime>0 ? nextTime : Number(before.timeSlot || 0),
+      classMinute:(nextTime>0 || nextMinute>0) ? nextMinute : Number(before.classMinute || 0),
+      classGroup:clean(next.classGroup).toUpperCase() || clean(before.classGroup).toUpperCase(),
+      reason:clean(next.reason) || clean(before.reason),
+    };
+  }
+
+  async function resolveStructuredTrialCancelTurn({
+    structuredCommand,
+    sourceText,
+    sourceMessageId,
+    reasonText,
+    reasonMessageText,
+    reasonMessageId,
+    current,
+  }){
+    const sourceId=Number(sourceMessageId || 0);
+    const reasonId=Number(reasonMessageId || 0);
+    if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+      throw new Error('체험 취소 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    if(!Number.isSafeInteger(reasonId)||reasonId<=0||!clean(reasonText)){
+      throw new Error('체험 취소 사유 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'structured_trial_cancel_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(sourceText),
+        sourceMessageId:sourceId,
+        reasonMessageId:reasonId,
+        reasonMessageText:clean(reasonMessageText),
+        reason:clean(reasonText),
+        structuredCommand
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||data?.ok!==true||!data?.message?.action){
+      throw new Error(data?.error || data?.message || '체험 취소 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(clean(data.message.action.action_type)!=='cancel_trial'){
+      throw new Error('체험 취소 규칙 시스템 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
   async function resolveTrialCancelAgentTurn({
     sourceText,
     sourceMessageId,
@@ -3128,6 +3193,64 @@
       const reasonMessageText=clean(rawCommandText);
       state.pendingActionReason=null;
       return resolveStructuredMakeupCancelTurn({
+        structuredCommand:merged,
+        sourceText,
+        sourceMessageId,
+        reasonText:pending ? reasonMessageText : reason,
+        reasonMessageText,
+        reasonMessageId,
+        current,
+      });
+    }
+
+    if(
+      interpreterLane==='routine'
+      && clean(structuredCommand?.action)==='cancel_trial'
+    ){
+      const pending=state.pendingActionReason?.__structuredTrialCancel || null;
+      if(pending && isPendingReasonCancel(rawCommandText)){
+        state.pendingActionReason=null;
+        const message='작업 준비를 취소했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+
+      const merged=mergeStructuredTrialCancelCommand(
+        pending?.structuredCommand,
+        structuredCommand
+      );
+      const reason=clean(merged.reason);
+      if(!reason){
+        const sourceMessageId=Number(replyToMessageId || 0);
+        state.pendingActionReason={
+          intent:'cancel_trial',
+          __structuredTrialCancel:{
+            sourceMessageId,
+            sourceMessageText:clean(rawCommandText),
+            structuredCommand:merged
+          }
+        };
+        const reasonMessage=(clean(merged.studentName) || '체험 학생')+' 체험 취소 사유를 알려주세요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,reasonMessage,replyToMessageId),
+          replyText:reasonMessage,
+          recordAi:false
+        };
+      }
+
+      const sourceMessageId=pending
+        ? Number(pending.sourceMessageId || 0)
+        : Number(replyToMessageId || 0);
+      const sourceText=pending
+        ? clean(pending.sourceMessageText)
+        : clean(rawCommandText);
+      const reasonMessageId=Number(replyToMessageId || 0);
+      const reasonMessageText=clean(rawCommandText);
+      state.pendingActionReason=null;
+      return resolveStructuredTrialCancelTurn({
         structuredCommand:merged,
         sourceText,
         sourceMessageId,

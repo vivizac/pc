@@ -245,6 +245,52 @@ test('unified interpreter emits structured cancel_makeup facts without loading s
   assert.equal(result.structuredCommand.reason,'개인사정');
 });
 
+test('unified interpreter emits structured cancel_trial facts without loading academy data', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:117,
+    currentMessage:'서준 다음주 화요일 4시 체험 취소해줘 사유 개인사정',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'cancel_trial',
+      standalone_command:'서준 다음주 화요일 4시 체험 취소 사유: 개인사정',
+      structured_command:{
+        action:'cancel_trial',
+        student_name:'서준',
+        division:'',
+        date_expression:'다음주 화요일',
+        time_slot:4,
+        class_minute:0,
+        class_group:'',
+        reason:'개인사정',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.lane,'routine');
+  assert.equal(result.route,'rule');
+  assert.equal(result.intent,'cancel_trial');
+  assert.equal(result.structuredCommand.action,'cancel_trial');
+  assert.equal(result.structuredCommand.studentName,'서준');
+  assert.equal(result.structuredCommand.dateExpression,'다음주 화요일');
+  assert.equal(result.structuredCommand.timeSlot,4);
+  assert.equal(result.structuredCommand.reason,'개인사정');
+});
+
 test('unified interpreter emits structured update_trial facts without loading academy data', async () => {
   let studentLoadCalled=false;
   const result=await resolveOlliSystemInterpretation({
@@ -937,6 +983,7 @@ test('unified interpreter has one deterministic route contract per system intent
   assert.equal(routeForSystemIntent('add_makeup'),'rule');
   assert.equal(routeForSystemIntent('cancel_makeup'),'rule');
   assert.equal(routeForSystemIntent('update_trial'),'rule');
+  assert.equal(routeForSystemIntent('cancel_trial'),'rule');
   assert.equal(routeForSystemIntent('get_student_schedule'),'rule');
   assert.equal(routeForSystemIntent('get_attendance'),'agent');
   assert.equal(routeForSystemIntent('set_attendance_status'),'agent');

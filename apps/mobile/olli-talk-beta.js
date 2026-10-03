@@ -1206,6 +1206,71 @@
     };
   }
 
+  function mergeOlliTalkStructuredTrialCancelCommand(previous,current){
+    const before=previous && typeof previous==='object' ? previous : {};
+    const next=current && typeof current==='object' ? current : {};
+    const nextTime=Number(next.timeSlot || 0);
+    const nextMinute=Number(next.classMinute || 0);
+    return {
+      action:'cancel_trial',
+      studentName:String(next.studentName || '').trim() || String(before.studentName || '').trim(),
+      division:String(next.division || '').trim() || String(before.division || '').trim(),
+      dateExpression:String(next.dateExpression || '').trim() || String(before.dateExpression || '').trim(),
+      timeSlot:nextTime>0 ? nextTime : Number(before.timeSlot || 0),
+      classMinute:(nextTime>0 || nextMinute>0) ? nextMinute : Number(before.classMinute || 0),
+      classGroup:String(next.classGroup || '').trim().toUpperCase() || String(before.classGroup || '').trim().toUpperCase(),
+      reason:String(next.reason || '').trim() || String(before.reason || '').trim(),
+    };
+  }
+
+  async function resolveOlliTalkStructuredTrialCancelTurn({
+    structuredCommand,
+    sourceText,
+    sourceMessageId,
+    reasonText,
+    reasonMessageText,
+    reasonMessageId,
+    context,
+  }){
+    const sourceId=Number(sourceMessageId || 0);
+    const reasonId=Number(reasonMessageId || 0);
+    if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+      throw new Error('체험 취소 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    if(!Number.isSafeInteger(reasonId)||reasonId<=0||!String(reasonText || '').trim()){
+      throw new Error('체험 취소 사유 메시지를 확인하지 못했습니다.');
+    }
+
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'structured_trial_cancel_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(sourceText || '').trim(),
+        sourceMessageId:sourceId,
+        reasonMessageId:reasonId,
+        reasonMessageText:String(reasonMessageText || '').trim(),
+        reason:String(reasonText || '').trim(),
+        structuredCommand
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||data?.ok!==true||!data?.message?.action){
+      throw new Error(data?.error || data?.message || '체험 취소 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='cancel_trial'){
+      throw new Error('체험 취소 규칙 시스템 작업 종류가 올바르지 않습니다.');
+    }
+
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
   async function resolveOlliTalkTrialCancelAgentTurn({
     sourceText,
     sourceMessageId,
@@ -2347,6 +2412,64 @@
       const reasonMessageText=String(rawCommandText || '').trim();
       olliTalkPendingActionReason=null;
       return resolveOlliTalkStructuredMakeupCancelTurn({
+        structuredCommand:merged,
+        sourceText,
+        sourceMessageId,
+        reasonText:pending ? reasonMessageText : reason,
+        reasonMessageText,
+        reasonMessageId,
+        context,
+      });
+    }
+
+    if(
+      interpreterLane==='routine'
+      && String(structuredCommand?.action || '').trim()==='cancel_trial'
+    ){
+      const pending=olliTalkPendingActionReason?.__structuredTrialCancel || null;
+      if(pending && isOlliTalkPendingReasonCancel(rawCommandText)){
+        olliTalkPendingActionReason=null;
+        const message='작업 준비를 취소했어요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+
+      const merged=mergeOlliTalkStructuredTrialCancelCommand(
+        pending?.structuredCommand,
+        structuredCommand
+      );
+      const reason=String(merged.reason || '').trim();
+      if(!reason){
+        const sourceMessageId=Number(replyToMessageId || 0);
+        olliTalkPendingActionReason={
+          intent:'cancel_trial',
+          __structuredTrialCancel:{
+            sourceMessageId,
+            sourceMessageText:String(rawCommandText || '').trim(),
+            structuredCommand:merged
+          }
+        };
+        const reasonMessage=(String(merged.studentName || '').trim() || '체험 학생')+' 체험 취소 사유를 알려주세요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,reasonMessage,replyToMessageId),
+          replyText:reasonMessage,
+          recordAi:false
+        };
+      }
+
+      const sourceMessageId=pending
+        ? Number(pending.sourceMessageId || 0)
+        : Number(replyToMessageId || 0);
+      const sourceText=pending
+        ? String(pending.sourceMessageText || '').trim()
+        : String(rawCommandText || '').trim();
+      const reasonMessageId=Number(replyToMessageId || 0);
+      const reasonMessageText=String(rawCommandText || '').trim();
+      olliTalkPendingActionReason=null;
+      return resolveOlliTalkStructuredTrialCancelTurn({
         structuredCommand:merged,
         sourceText,
         sourceMessageId,
