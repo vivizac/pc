@@ -2304,7 +2304,37 @@
       opts.classGroup,
       classGroup(source && source.class_group)
     );
-    if (!target.ok) return target;
+    if (!target.ok) {
+      if (target.code === 'class_group_required' && Array.isArray(target.choices) && target.choices.length > 1) {
+        const sourceText = weekdayLabel(sourceWeekday) + ' ' + Number(source.time_slot) + '시';
+        return {
+          ok:false,
+          code:'class_group_required',
+          choices:target.choices.slice(),
+          commandDraft:{
+            intent:'choose_move_group',
+            targetIntent:'move_class',
+            studentId,
+            studentName:clean(student.name),
+            division,
+            sourceEnrollmentId:clean(source.id),
+            sourceWeekday,
+            sourceTimeSlot:Number(source.time_slot),
+            targetWeekday,
+            targetTimeSlot,
+            targetClassGroup:'',
+            targetCheckDate:targetDate,
+            effectiveDate,
+            allowedClassGroups:target.choices.slice()
+          },
+          message:
+            clean(student.name) + ' · ' + sourceText + ' → '
+            + weekdayLabel(targetWeekday) + ' ' + targetTimeSlot + '시\n'
+            + '이동할 반을 선택해 주세요.'
+        };
+      }
+      return target;
+    }
 
     const slot = target.slot;
     const sourceText = weekdayLabel(sourceWeekday) + ' ' + Number(source.time_slot) + '시';
