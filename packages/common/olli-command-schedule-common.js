@@ -1133,10 +1133,15 @@
       if (sameGroup) return { ok:true, slot:sameGroup };
     }
 
+    const groups = Array.from(new Set(rows
+      .map(slot => classGroup(slot && slot.classGroup))
+      .filter(group => group === 'A' || group === 'B')));
     const choices = rows.map(slot => classGroup(slot.classGroup) + '반 ' + Number(slot.remaining || 0) + '자리').join(' · ');
     return {
       ok:false,
-      message:Number(timeSlot) + '시는 반이 나뉘어 있어요. ' + choices + '\nA반 또는 B반을 명령에 같이 적어 주세요.'
+      code:'class_group_required',
+      choices:groups,
+      message:Number(timeSlot) + '시는 반이 나뉘어 있어요. ' + choices + '\n반을 선택해 주세요.'
     };
   }
 
@@ -2128,7 +2133,30 @@
     }
 
     const target = chooseOpenSlot(availability, timeSlot, opts.classGroup, '');
-    if (!target.ok) return target;
+    if (!target.ok) {
+      if (target.code === 'class_group_required' && Array.isArray(target.choices) && target.choices.length > 1) {
+        return {
+          ok:false,
+          code:'class_group_required',
+          choices:target.choices.slice(),
+          commandDraft:{
+            intent:'choose_makeup_group',
+            targetIntent:'add_makeup',
+            studentId,
+            studentName:clean(student.name),
+            division,
+            sessionDate,
+            timeSlot,
+            classGroup:'',
+            allowedClassGroups:target.choices.slice()
+          },
+          message:
+            clean(student.name) + ' · ' + fallbackDateLabel(sessionDate) + ' ' + timeSlot + '시\n'
+            + target.message
+        };
+      }
+      return target;
+    }
 
     const slot = target.slot;
     const groupText = slot.grouped ? ' ' + classGroup(slot.classGroup) + '반' : '';
