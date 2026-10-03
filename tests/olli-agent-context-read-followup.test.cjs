@@ -153,6 +153,12 @@ test('unified interpreter emits a structured add_makeup command from conversatio
     dateExpression:'다음주 수요일',
     timeSlot:5,
     classGroup:'B',
+    weekday:0,
+    classTime:0,
+    classMinute:0,
+    pickupKind:'',
+    pickupLabel:'',
+    pickupTime:'',
   });
   assert.equal(result.contextUsed,true);
 });
@@ -199,6 +205,12 @@ test('unified interpreter emits a structured add_trial command without student d
     dateExpression:'다음주 금요일',
     timeSlot:5,
     classGroup:'',
+    weekday:0,
+    classTime:0,
+    classMinute:0,
+    pickupKind:'',
+    pickupLabel:'',
+    pickupTime:'',
   });
 });
 
@@ -244,6 +256,69 @@ test('unified interpreter emits a structured add_waitlist command without studen
     dateExpression:'다음주 목요일',
     timeSlot:4,
     classGroup:'',
+    weekday:0,
+    classTime:0,
+    classMinute:0,
+    pickupKind:'',
+    pickupLabel:'',
+    pickupTime:'',
+  });
+});
+
+test('unified interpreter emits structured pickup fields without student data lookup', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:17,
+    currentMessage:'민서 월요일 4시 30분 수업 리슈빌 3시 30분 픽업 등록해줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'add_pickup',
+      standalone_command:'민서 월요일 4시 30분 수업 리슈빌 3시 30분 픽업 등록해줘',
+      structured_command:{
+        action:'add_pickup',
+        student_name:'민서',
+        division:'',
+        date_expression:'',
+        time_slot:0,
+        class_group:'',
+        weekday:1,
+        class_time:4,
+        class_minute:30,
+        pickup_kind:'arrival',
+        pickup_label:'리슈빌',
+        pickup_time:'15:30',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'add_pickup');
+  assert.deepEqual(result.structuredCommand,{
+    action:'add_pickup',
+    studentName:'민서',
+    division:'',
+    dateExpression:'',
+    timeSlot:0,
+    classGroup:'',
+    weekday:1,
+    classTime:4,
+    classMinute:30,
+    pickupKind:'arrival',
+    pickupLabel:'리슈빌',
+    pickupTime:'15:30',
   });
 });
 
