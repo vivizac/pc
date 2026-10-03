@@ -660,3 +660,148 @@ test('structured move_class reaches the existing schedule move SOT without repar
     globalThis.OlliCommandSchedule = previousSchedule;
   }
 });
+
+test('structured move_class surfaces an A/B choice without another AI turn', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      assert.equal(intent,'move_class');
+      assert.equal(options.studentName,'민준');
+      return {
+        ok:false,
+        code:'class_group_required',
+        choices:['A','B'],
+        commandDraft:{
+          intent:'choose_move_group',
+          targetIntent:'move_class',
+          studentId:'student-1',
+          studentName:'민준',
+          division:'elementary',
+          sourceEnrollmentId:'enrollment-1',
+          sourceWeekday:1,
+          sourceTimeSlot:4,
+          targetWeekday:3,
+          targetTimeSlot:5,
+          targetClassGroup:'',
+          targetCheckDate:'2026-10-07',
+          effectiveDate:'2026-10-03',
+          allowedClassGroups:['A','B'],
+        },
+        message:'민준 · 월요일 4시 → 수요일 5시\n이동할 반을 선택해 주세요.',
+      };
+    },
+  };
+
+  try {
+    const result=await router.prepareStructuredAction({
+      action:'move_class',
+      studentName:'민준',
+      sourceWeekday:1,
+      sourceTimeSlot:4,
+      targetWeekday:3,
+      targetTimeSlot:5,
+      classGroup:'',
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_choice');
+    assert.equal(result.intent,'choose_move_group');
+    assert.equal(result.payload.intent,'choose_move_group');
+    assert.equal(result.payload.targetIntent,'move_class');
+    assert.deepEqual(result.payload.allowedClassGroups,['A','B']);
+  } finally {
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured mark_absent passes a stated reason to the existing schedule SOT', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let observed=null;
+
+  globalThis.OlliCommandSchedule={
+    async prepareWriteCommand(intent,options){
+      observed={intent,options};
+      return {
+        ok:true,
+        command:{
+          intent:'mark_absent',
+          studentId:'student-1',
+          studentName:'민준',
+          division:'elementary',
+          sessionDate:'2026-10-03',
+          timeSlot:4,
+          classGroup:'A',
+          reason:'감기',
+        },
+        message:'민준 · 10월 3일 4시 A반\n결석 처리할까요?',
+      };
+    },
+    writeConfirmationMessage(){ return ''; },
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'mark_absent',
+      studentName:'민준',
+      dateExpression:'오늘',
+      timeSlot:4,
+      classGroup:'',
+      reason:'감기',
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'mark_absent');
+    assert.equal(result.payload.reason,'감기');
+    assert.ok(observed);
+    assert.equal(observed.intent,'mark_absent');
+    assert.equal(observed.options.studentName,'민준');
+    assert.equal(observed.options.reason,'감기');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured mark_absent asks for a free-text reason without inventing one', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+
+  globalThis.OlliCommandSchedule={
+    async prepareWriteCommand(){
+      return {
+        ok:true,
+        command:{
+          intent:'mark_absent',
+          studentId:'student-1',
+          studentName:'민준',
+          division:'elementary',
+          sessionDate:'2026-10-03',
+          timeSlot:4,
+          classGroup:'A',
+          reason:'',
+        },
+        message:'민준 · 10월 3일 4시 A반',
+      };
+    },
+    writeReasonPrompt(){ return '민준 학생의 결석 사유를 알려주세요.'; },
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'mark_absent',
+      studentName:'민준',
+      dateExpression:'오늘',
+      timeSlot:4,
+      classGroup:'',
+      reason:'',
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_needs_reason');
+    assert.equal(result.intent,'mark_absent');
+    assert.equal(result.payload.reason,'');
+    assert.match(result.message,/결석 사유/);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
