@@ -276,16 +276,17 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
     'Use lane feedback for feedback/student-record work even though its compatibility route remains chat until the dedicated Feedback Agent is connected.',
     'For all other deterministic academy operations and reads, use lane routine. For ordinary conversation, use lane chat.',
     'For lane chat, answer the user directly and briefly in Korean in reply. For lane routine or feedback, reply must be an empty string.',
-    'Structured command pilot: when intent is add_makeup, add_trial, add_waitlist, add_pickup, move_class, or mark_absent, structured_command.action must match that intent and fill only facts supported by the conversation. Do not query or infer academy data. Use empty string or 0 for facts the conversation does not provide.',
+    'Structured command pilot: when intent is add_makeup, add_trial, add_waitlist, add_pickup, move_class, mark_absent, or get_student_schedule, structured_command.action must match that intent and fill only facts supported by the conversation. Do not query or infer academy data. Use empty string or 0 for facts the conversation does not provide.',
     'For add_trial and add_waitlist, student_name means the student/guest name. division must be kinder for 유치부, elementary for 초등부, or empty when the user has not provided enough information.',
     'For add_pickup, fill student_name, weekday (Mon=1..Sat=6), class_time, class_minute, pickup_kind (arrival or dropoff), pickup_label, and pickup_time in HH:MM for arrival. Do not infer missing pickup place or time.',
     'For move_class, fill student_name, source_weekday, source_time_slot, target_weekday, target_time_slot, and class_group only when the user explicitly names A/B. The rule system finds the actual enrollment and validates availability.',
     'For mark_absent, fill student_name, date_expression, time_slot, class_group, and reason only when stated. Never invent an absence reason.',
+    'For get_student_schedule, fill student_name and date_expression only when a period such as 지난주, 이번주, 다음주, 다다음주, or a date is stated or inherited from context. The rule system reads the actual schedule.',
     'For every other intent, structured_command.action must be none and its other fields must be empty string or 0.',
     'The structured command schema is a transport contract only; business validation remains in the deterministic rule system.',
     'Examples:',
     'User: 학생A 시간표 알려줘 -> route rule, intent get_student_schedule, standalone_command "학생A 시간표 알려줘".',
-    'After that, User: 그럼 지난주는? -> route rule, intent get_student_schedule, standalone_command "학생A 지난주 시간표 알려줘".',
+    'After that, User: 그럼 지난주는? -> lane routine, route rule, intent get_student_schedule, standalone_command "학생A 지난주 시간표 알려줘", structured_command {action:get_student_schedule, student_name:학생A, date_expression:지난주}.',
     'User: 민준이 다음주 화요일 4시 보강 등록해줘 -> lane routine, route rule, intent add_makeup, structured_command {action:add_makeup, student_name:민준, date_expression:다음주 화요일, time_slot:4, class_group:""}.',
     'After clarification, User: B반 -> lane routine, route rule, intent add_makeup, structured_command carries the same student/date/time and sets class_group:B.',
     'User: 서준이 초등부 다음주 금요일 5시 체험 등록해줘 -> lane routine, route rule, intent add_trial, structured_command {action:add_trial, student_name:서준, division:elementary, date_expression:다음주 금요일, time_slot:5, class_group:""}.',
@@ -319,7 +320,7 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
         additionalProperties:false,
         required:['action','student_name','division','date_expression','time_slot','class_group','weekday','class_time','class_minute','pickup_kind','pickup_label','pickup_time','source_weekday','source_time_slot','target_weekday','target_time_slot','reason'],
         properties:{
-          action:{type:'string',enum:['none','add_makeup','add_trial','add_waitlist','add_pickup','move_class','mark_absent']},
+          action:{type:'string',enum:['none','add_makeup','add_trial','add_waitlist','add_pickup','move_class','mark_absent','get_student_schedule']},
           student_name:{type:'string'},
           division:{type:'string',enum:['','kinder','elementary']},
           date_expression:{type:'string'},
@@ -450,7 +451,7 @@ async function resolveOlliSystemInterpretation({
     ? interpreted.structured_command
     : {};
   const structuredCommand=Object.freeze({
-    action:['add_makeup','add_trial','add_waitlist','add_pickup','move_class','mark_absent'].includes(clean(rawStructured.action)) ? clean(rawStructured.action) : 'none',
+    action:['add_makeup','add_trial','add_waitlist','add_pickup','move_class','mark_absent','get_student_schedule'].includes(clean(rawStructured.action)) ? clean(rawStructured.action) : 'none',
     studentName:clean(rawStructured.student_name),
     division:['kinder','elementary'].includes(clean(rawStructured.division)) ? clean(rawStructured.division) : '',
     dateExpression:clean(rawStructured.date_expression),
