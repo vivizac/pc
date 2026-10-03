@@ -235,3 +235,35 @@ test('feedback path is instrumented across interpretation, privacy, data, eviden
   assert.match(contextRoute,/interpreter_total/);
   assert.match(requestContext,/request_context_load/);
 });
+
+
+test('feedback direct read overlaps SDK loading with evidence reads',()=>{
+  const runtime=fs.readFileSync(path.join(root,'apps/mobile/api/_lib/olli-agent/runtime.cjs'),'utf8');
+  const start=runtime.indexOf('async function runFeedbackDirectRead');
+  const end=runtime.indexOf('async function runRecentRecordsProbe',start);
+  assert.ok(start>=0 && end>start);
+  const block=runtime.slice(start,end);
+
+  assert.match(block,/const sdkPromise=loadAgentsSdk\(\)\.then/);
+  assert.match(block,/const dataPromise=Promise\.all\(\[/);
+  assert.match(block,/await Promise\.all\(\[sdkPromise,dataPromise\]\)/);
+  assert.doesNotMatch(block,/const \{Agent,run\}=await loadAgentsSdk\(\)/);
+});
+
+test('feedback second-stage AI prefers compact interpreter output with safe fallback',()=>{
+  const pc=fs.readFileSync(path.join(root,'apps/pc/pc-team-talk.js'),'utf8');
+  const mobile=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'utf8');
+  const endpoint=fs.readFileSync(path.join(root,'apps/mobile/api/olli-agent.js'),'utf8');
+
+  assert.match(pc,/resolvedMessage:clean\(resolvedText\)/);
+  assert.match(pc,/resolveFeedbackDirectReadTurn\(\s*rawCommandText,\s*commandText,/);
+
+  assert.match(mobile,/resolvedMessage:String\(resolvedText \|\| ''\)\.trim\(\)/);
+  assert.match(mobile,/resolveOlliTalkFeedbackDirectReadTurn\(\s*rawCommandText,\s*commandText,/);
+
+  assert.match(endpoint,/compactFeedbackInput=mode==='feedback_read' && !!resolvedMessage/);
+  assert.match(endpoint,/primaryPrivacyConversation=compactFeedbackInput \? \[\] : conversation/);
+  assert.match(endpoint,/primarySubjectRefs\.length===0/);
+  assert.match(endpoint,/contextFallback=true/);
+  assert.match(endpoint,/sourceMessageText:message/);
+});
