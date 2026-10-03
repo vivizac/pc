@@ -362,3 +362,96 @@ test('PC and Mobile structured roster path bypasses chat and Agent calls after i
   assert.match(mobileBlock,/runStructuredQuery/);
   assert.doesNotMatch(mobileBlock,/resolveOlliTalkAiReply|\/api\/chat|\/api\/olli-agent/);
 });
+
+test('structured find_pickups routes student/date/class/kind filters to existing pickup SOT', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let observed=null;
+
+  globalThis.OlliCommandSchedule={
+    async findPickups(options){
+      observed=options;
+      return {
+        dateLabel:options.dateLabel,
+        studentName:options.studentName,
+        classTime:options.classTime,
+        kind:options.kind,
+        items:[{student_name:'민서',class_time:4,is_dropoff:true,pickup_label:'정문',pickup_time:''}]
+      };
+    },
+    describePickups(result){
+      return result.studentName+' · '+result.dateLabel+' '+result.classTime+'시 하원 픽업 확인';
+    },
+  };
+
+  try{
+    const result=await router.runStructuredQuery({
+      action:'find_pickups',
+      studentName:'민서',
+      dateExpression:'내일',
+      classTime:4,
+      pickupKind:'dropoff',
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.intent,'find_pickups');
+    assert.equal(result.payload.studentName,'민서');
+    assert.equal(result.payload.classTime,4);
+    assert.equal(result.payload.pickupKind,'dropoff');
+    assert.equal(result.payload.kind,'dropoff');
+    assert.ok(observed);
+    assert.equal(observed.studentName,'민서');
+    assert.equal(observed.classTime,4);
+    assert.equal(observed.kind,'dropoff');
+    assert.equal(observed.dateLabel,'내일');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured find_pickups defaults an omitted date to today and arrival to pickup kind', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let observed=null;
+
+  globalThis.OlliCommandSchedule={
+    async findPickups(options){
+      observed=options;
+      return {dateLabel:options.dateLabel,studentName:options.studentName,classTime:0,kind:options.kind,items:[]};
+    },
+    describePickups(){ return '오늘 픽업 조회 완료'; },
+  };
+
+  try{
+    const result=await router.runStructuredQuery({
+      action:'find_pickups',
+      studentName:'민서',
+      dateExpression:'',
+      classTime:0,
+      pickupKind:'arrival',
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.payload.dateLabel,'오늘');
+    assert.equal(result.payload.kind,'pickup');
+    assert.ok(observed);
+    assert.equal(observed.studentName,'민서');
+    assert.equal(observed.kind,'pickup');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('PC and Mobile structured pickup query path bypasses chat and Agent calls after interpretation', () => {
+  const pcStart=pc.indexOf("clean(structuredCommand?.action)==='find_pickups'");
+  const pcEnd=pc.indexOf("clean(structuredCommand?.action)==='find_roster_entries'",pcStart+10);
+  const pcBlock=pc.slice(pcStart,pcEnd>pcStart?pcEnd:pcStart+1900);
+  assert.ok(pcStart>=0);
+  assert.match(pcBlock,/runStructuredQuery/);
+  assert.doesNotMatch(pcBlock,/resolveAiReply|\/api\/chat|\/api\/olli-agent/);
+
+  const mobileStart=mobile.indexOf("String(structuredCommand?.action || '').trim()==='find_pickups'");
+  const mobileEnd=mobile.indexOf("String(structuredCommand?.action || '').trim()==='find_roster_entries'",mobileStart+10);
+  const mobileBlock=mobile.slice(mobileStart,mobileEnd>mobileStart?mobileEnd:mobileStart+1900);
+  assert.ok(mobileStart>=0);
+  assert.match(mobileBlock,/runStructuredQuery/);
+  assert.doesNotMatch(mobileBlock,/resolveOlliTalkAiReply|\/api\/chat|\/api\/olli-agent/);
+});
