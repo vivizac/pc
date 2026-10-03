@@ -2880,6 +2880,15 @@
             recordAi:false
           };
         }
+        if(prepared.kind==='action_needs_reason' && prepared.payload){
+          state.pendingActionReason=Object.assign({},prepared.payload);
+          const reasonMessage=clean(prepared.message) || '사유를 알려주세요.';
+          return {
+            assistantMessage:await saveAssistantReply(current,reasonMessage,replyToMessageId),
+            replyText:reasonMessage,
+            recordAi:false
+          };
+        }
         if(prepared.kind==='action_rejected'){
           const rejectedMessage=clean(prepared.message) || '작업을 준비하지 못했어요.';
           return {
