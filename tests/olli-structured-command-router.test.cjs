@@ -853,3 +853,40 @@ test('structured update_makeup bypasses Agents SDK and reuses the deterministic 
   assert.match(mobileBlock,/mode:'structured_makeup_update_prepare'/);
   assert.doesNotMatch(mobileBlock,/mode:'makeup_update_prepare'/);
 });
+
+
+test('structured cancel_makeup bypasses Agents SDK and preserves source-bound reason validation', () => {
+  assert.match(contextRouteSource,/cancel_makeup/);
+  assert.match(apiSource,/structured_makeup_cancel_prepare/);
+  assert.match(apiSource,/runStructuredMakeupCancelPrepare/);
+
+  const runtimeStart=runtimeSource.indexOf('async function runStructuredMakeupCancelPrepare');
+  const runtimeEnd=runtimeSource.indexOf('\nasync function ',runtimeStart+20);
+  assert.ok(runtimeStart>=0 && runtimeEnd>runtimeStart);
+  const runtimeBlock=runtimeSource.slice(runtimeStart,runtimeEnd);
+  assert.match(runtimeBlock,/validateMakeupSourceMessage/);
+  assert.match(runtimeBlock,/validateMakeupReasonMessage/);
+  assert.match(runtimeBlock,/resolveStudentReferences/);
+  assert.match(runtimeBlock,/prepareMakeupCancelAction/);
+  assert.doesNotMatch(runtimeBlock,/loadAgentsSdk|new Agent|runMakeupCancelPrepareAgent/);
+
+  for(const source of [pcSource,mobileSource]){
+    assert.match(source,/structured_makeup_cancel_prepare/);
+    assert.match(source,/__structuredMakeupCancel/);
+    assert.match(source,/보강 취소 사유를 알려주세요/);
+  }
+
+  const pcStart=pcSource.indexOf('async function resolveStructuredMakeupCancelTurn');
+  const pcEnd=pcSource.indexOf('\n  async function ',pcStart+20);
+  assert.ok(pcStart>=0 && pcEnd>pcStart);
+  const pcBlock=pcSource.slice(pcStart,pcEnd);
+  assert.match(pcBlock,/mode:'structured_makeup_cancel_prepare'/);
+  assert.doesNotMatch(pcBlock,/mode:'makeup_cancel_prepare'/);
+
+  const mobileStart=mobileSource.indexOf('async function resolveOlliTalkStructuredMakeupCancelTurn');
+  const mobileEnd=mobileSource.indexOf('\n  async function ',mobileStart+20);
+  assert.ok(mobileStart>=0 && mobileEnd>mobileStart);
+  const mobileBlock=mobileSource.slice(mobileStart,mobileEnd);
+  assert.match(mobileBlock,/mode:'structured_makeup_cancel_prepare'/);
+  assert.doesNotMatch(mobileBlock,/mode:'makeup_cancel_prepare'/);
+});

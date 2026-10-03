@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     const mode = safeText(body.mode, 40);
     requestMode = mode || 'probe';
 
-    if (!['interpret', 'context_read', 'context_resolve', 'context_makeup_prepare', 'route_outcome', 'probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'timetable_read', 'schedule_read', 'attendance_read', 'pickup_read', 'timetable_admin_prepare', 'attendance_status_prepare', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'structured_makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
+    if (!['interpret', 'context_read', 'context_resolve', 'context_makeup_prepare', 'route_outcome', 'probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'timetable_read', 'schedule_read', 'attendance_read', 'pickup_read', 'timetable_admin_prepare', 'attendance_status_prepare', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'structured_makeup_update_prepare', 'structured_makeup_cancel_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
       return res.status(400).json({
         error: '지원하지 않는 Olli Agent mode입니다. 현재 production prepare에는 memo_prepare, batch_prepare, absence_prepare, class_once_prepare, makeup/trial/waitlist/move/pickup prepare 계열이 포함됩니다.',
       });
@@ -156,6 +156,59 @@ export default async function handler(req, res) {
       return res.status(200).json({
         ok:true,
         mode:'structured_makeup_update_prepare',
+        ready:result?.ready===true,
+        message:result?.persistedMessage || null,
+        recoveredAfterPersist:result?.recoveredAfterPersist===true,
+      });
+    }
+
+    if (mode === 'structured_makeup_cancel_prepare') {
+      const message=safeText(body.message,5000);
+      const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
+      const reasonMessageId=Number(body.reasonMessageId || body.reason_message_id || 0);
+      const reasonMessageText=safeText(body.reasonMessageText || body.reason_message_text,5000);
+      const reason=safeText(body.reason,300);
+      const structuredCommand=body.structuredCommand && typeof body.structuredCommand==='object'
+        ? body.structuredCommand
+        : null;
+      if(!message){
+        return res.status(400).json({
+          error:'structured_makeup_cancel_prepare에는 원문 메시지가 필요합니다.',
+          code:'OLLI_ROUTINE_MAKEUP_CANCEL_MESSAGE_REQUIRED',
+        });
+      }
+      if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+        return res.status(400).json({
+          error:'structured_makeup_cancel_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+          code:'OLLI_ROUTINE_MAKEUP_CANCEL_SOURCE_REQUIRED',
+        });
+      }
+      if(!Number.isSafeInteger(reasonMessageId) || reasonMessageId<=0 || !reasonMessageText || !reason){
+        return res.status(400).json({
+          error:'structured_makeup_cancel_prepare에는 저장된 취소 사유 메시지와 사유가 필요합니다.',
+          code:'OLLI_ROUTINE_MAKEUP_CANCEL_REASON_REQUIRED',
+        });
+      }
+      if(safeText(structuredCommand?.action,40)!=='cancel_makeup'){
+        return res.status(400).json({
+          error:'structured_makeup_cancel_prepare에는 cancel_makeup 구조화 명령이 필요합니다.',
+          code:'OLLI_ROUTINE_MAKEUP_CANCEL_COMMAND_REQUIRED',
+        });
+      }
+
+      const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
+      const result=await runtimeModule.runStructuredMakeupCancelPrepare({
+        requestContext,
+        structuredCommand,
+        sourceMessageId,
+        sourceMessageText:message,
+        reasonMessageId,
+        reasonMessageText,
+        reason,
+      });
+      return res.status(200).json({
+        ok:true,
+        mode:'structured_makeup_cancel_prepare',
         ready:result?.ready===true,
         message:result?.persistedMessage || null,
         recoveredAfterPersist:result?.recoveredAfterPersist===true,

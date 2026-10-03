@@ -182,6 +182,69 @@ test('unified interpreter emits a structured add_makeup command from conversatio
   assert.equal(result.contextUsed,true);
 });
 
+test('unified interpreter emits structured cancel_makeup facts without loading student data', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:115,
+    currentMessage:'민준이 다음주 화요일 4시 보강 취소해줘 사유 개인사정',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'cancel_makeup',
+      standalone_command:'민준 다음주 화요일 4시 보강 취소 사유: 개인사정',
+      structured_command:{
+        action:'cancel_makeup',
+        student_name:'민준',
+        division:'',
+        date_expression:'다음주 화요일',
+        time_slot:4,
+        class_group:'',
+        weekday:0,
+        class_time:0,
+        class_minute:0,
+        pickup_kind:'',
+        pickup_label:'',
+        pickup_time:'',
+        source_date_expression:'',
+        source_weekday:0,
+        source_time_slot:0,
+        source_minute:0,
+        source_class_group:'',
+        target_date_expression:'',
+        target_weekday:0,
+        target_time_slot:0,
+        target_minute:0,
+        target_class_group:'',
+        reason:'개인사정',
+        availability_purpose:'',
+        roster_kind:'',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.lane,'routine');
+  assert.equal(result.route,'rule');
+  assert.equal(result.intent,'cancel_makeup');
+  assert.equal(result.structuredCommand.action,'cancel_makeup');
+  assert.equal(result.structuredCommand.studentName,'민준');
+  assert.equal(result.structuredCommand.dateExpression,'다음주 화요일');
+  assert.equal(result.structuredCommand.timeSlot,4);
+  assert.equal(result.structuredCommand.reason,'개인사정');
+});
+
 test('unified interpreter emits a structured add_trial command without student data lookup', async () => {
   let studentLoadCalled=false;
   const result=await resolveOlliSystemInterpretation({
@@ -820,6 +883,7 @@ test('chat lane can return a direct reply without a second chat-model contract',
 
 test('unified interpreter has one deterministic route contract per system intent', () => {
   assert.equal(routeForSystemIntent('add_makeup'),'rule');
+  assert.equal(routeForSystemIntent('cancel_makeup'),'rule');
   assert.equal(routeForSystemIntent('get_student_schedule'),'rule');
   assert.equal(routeForSystemIntent('get_attendance'),'agent');
   assert.equal(routeForSystemIntent('set_attendance_status'),'agent');

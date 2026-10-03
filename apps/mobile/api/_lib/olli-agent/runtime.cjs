@@ -1175,6 +1175,143 @@ async function runStructuredMakeupUpdatePrepare({
 }
 
 
+
+async function runStructuredMakeupCancelPrepare({
+  requestContext,
+  structuredCommand,
+  sourceMessageId,
+  sourceMessageText,
+  reasonMessageId,
+  reasonMessageText,
+  reason,
+}) {
+  const sourceId=Number(sourceMessageId || 0);
+  const reasonId=Number(reasonMessageId || 0);
+  if(!Number.isSafeInteger(sourceId) || sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_ROUTINE_MAKEUP_CANCEL_SOURCE_MESSAGE_INVALID'
+    );
+  }
+  if(!Number.isSafeInteger(reasonId) || reasonId<=0){
+    throw runtimeError(
+      '보강 취소 사유 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_ROUTINE_MAKEUP_CANCEL_REASON_MESSAGE_INVALID'
+    );
+  }
+
+  const command=structuredCommand && typeof structuredCommand==='object'
+    ? structuredCommand
+    : {};
+  if(String(command.action || '').trim()!=='cancel_makeup'){
+    throw runtimeError(
+      '보강 취소 구조화 명령을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_MAKEUP_CANCEL_ACTION_INVALID'
+    );
+  }
+
+  await validateMakeupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+  const validatedReason=await validateMakeupReasonMessage({
+    requestContext,
+    reasonMessageId:reasonId,
+    reasonMessageText,
+    reason,
+  });
+
+  const studentName=String(command.studentName || '').trim();
+  if(!studentName){
+    throw runtimeError(
+      '보강을 취소할 학생 이름이 필요합니다.',
+      400,
+      'OLLI_ROUTINE_MAKEUP_CANCEL_STUDENT_REQUIRED'
+    );
+  }
+
+  const {
+    resolveStudentReferences,
+    createSubjectAccess,
+  }=require('./student-reference-resolver.cjs');
+  const resolution=await resolveStudentReferences(studentName,requestContext);
+  if(Array.isArray(resolution?.ambiguous) && resolution.ambiguous.length){
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_ROUTINE_MAKEUP_CANCEL_STUDENT_AMBIGUOUS'
+    );
+  }
+  const resolvedStudents=Array.isArray(resolution?.resolved)
+    ? resolution.resolved
+    : [];
+  if(resolvedStudents.length!==1){
+    throw runtimeError(
+      '보강을 취소할 학생을 한 명으로 확인하지 못했습니다.',
+      404,
+      'OLLI_ROUTINE_MAKEUP_CANCEL_STUDENT_NOT_FOUND'
+    );
+  }
+
+  const subject=resolvedStudents[0];
+  const division=String(subject?.student?.division || '').trim().toLowerCase();
+  if(!['elementary','kinder'].includes(division)){
+    throw runtimeError(
+      '보강 취소 대상 학생의 수업 구분을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_MAKEUP_CANCEL_DIVISION_REQUIRED'
+    );
+  }
+
+  const today=todayInSeoul();
+  const dateExpression=String(command.dateExpression || '').trim();
+  const sessionDate=dateExpression
+    ? structuredMakeupUpdateDateKey(dateExpression,today)
+    : '';
+
+  const {prepareMakeupCancelAction}=require('./tools/makeup-cancel-prepare-tools.cjs');
+  let persistedMessage=null;
+  await prepareMakeupCancelAction({
+    requestContext,
+    subjectAccess:createSubjectAccess(resolution),
+    studentLabel:subject.label,
+    division,
+    classGroup:String(command.classGroup || '').trim().toUpperCase() || 'AUTO',
+    sessionDate,
+    classHour:Number(command.timeSlot || 0),
+    classMinute:Number(command.classMinute || 0),
+    reason:validatedReason.reason,
+    currentDate:today,
+    requestId:'team-chat-makeup-cancel:'+sourceId+':'+reasonId,
+    replyToMessageId:reasonId,
+    capturePersistedMessage(message){
+      persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload){
+      return payload;
+    },
+  });
+
+  if(!persistedMessage?.action || String(persistedMessage.action.action_type || '').trim()!=='cancel_makeup'){
+    throw runtimeError(
+      '보강 취소 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_ROUTINE_MAKEUP_CANCEL_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+
+  return {
+    ready:true,
+    persistedMessage,
+    recoveredAfterPersist:false,
+  };
+}
+
+
 async function runMakeupUpdatePrepareAgent({
   agentContext,
   requestContext,
@@ -5421,6 +5558,7 @@ module.exports = {
   runMakeupUpdatePrepareProbe,
   runMakeupUpdatePrepare,
   runStructuredMakeupUpdatePrepare,
+  runStructuredMakeupCancelPrepare,
   resolveMakeupCancelPrepareScope,
   runMakeupCancelPrepareAgent,
   runMakeupCancelPrepareProbe,
