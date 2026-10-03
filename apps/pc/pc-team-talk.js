@@ -1825,7 +1825,7 @@
     };
   }
 
-  async function resolveFeedbackDirectReadTurn(commandText,current,replyToMessageId) {
+  async function resolveFeedbackDirectReadTurn(sourceText,resolvedText,current,replyToMessageId) {
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
       throw new Error('피드백 분석 요청의 원문 메시지를 확인하지 못했습니다.');
@@ -1838,7 +1838,8 @@
         mode:'feedback_read',
         academyId:current?.academyId || '',
         sessionToken:current?.sessionToken || '',
-        message:clean(commandText),
+        message:clean(sourceText),
+        resolvedMessage:clean(resolvedText),
         sourceMessageId,
         conversation:(Array.isArray(state.aiConversationMessages) ? state.aiConversationMessages : []).map((item)=>({
           role:item.role,
@@ -2891,6 +2892,7 @@
     if(interpreterLane==='feedback'){
       return resolveFeedbackDirectReadTurn(
         rawCommandText,
+        commandText,
         current,
         replyToMessageId
       );
