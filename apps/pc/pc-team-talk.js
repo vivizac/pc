@@ -2790,7 +2790,9 @@
       standaloneCommand,
       structuredCommand,
       reply,
-      contextUsed:language.contextUsed===true
+      contextUsed:language.contextUsed===true,
+      feedbackHandled:data?.feedbackHandled===true,
+      feedbackOutput:clean(data?.feedbackOutput)
     };
   }
 
@@ -2890,6 +2892,14 @@
     }
 
     if(interpreterLane==='feedback'){
+      const feedbackOutput=clean(interpretation.feedbackOutput);
+      if(interpretation.feedbackHandled===true && feedbackOutput){
+        return {
+          assistantMessage:await saveAssistantReply(current,feedbackOutput,replyToMessageId),
+          replyText:feedbackOutput,
+          recordAi:true
+        };
+      }
       return resolveFeedbackDirectReadTurn(
         rawCommandText,
         commandText,
