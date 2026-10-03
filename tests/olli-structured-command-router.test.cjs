@@ -85,3 +85,51 @@ test('structured add_makeup rejects missing conversational facts without inventi
   assert.equal(result.kind,'action_rejected');
   assert.match(result.message,/학생, 날짜, 시간이 필요/);
 });
+
+test('structured add_makeup surfaces a persisted A/B choice instead of rejecting the command', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      assert.equal(intent,'add_makeup');
+      assert.equal(options.studentName,'민준');
+      assert.equal(options.classGroup,'');
+      return {
+        ok:false,
+        code:'class_group_required',
+        choices:['A','B'],
+        commandDraft:{
+          intent:'choose_makeup_group',
+          targetIntent:'add_makeup',
+          studentId:'student-1',
+          studentName:'민준',
+          division:'elementary',
+          sessionDate:'2026-10-07',
+          timeSlot:5,
+          classGroup:'',
+          allowedClassGroups:['A','B'],
+        },
+        message:'민준 · 10월 7일 5시\n반을 선택해 주세요.',
+      };
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_makeup',
+      studentName:'민준',
+      dateExpression:'10월 7일',
+      timeSlot:5,
+      classGroup:'',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_choice');
+    assert.equal(result.intent,'choose_makeup_group');
+    assert.equal(result.payload.intent,'choose_makeup_group');
+    assert.equal(result.payload.targetIntent,'add_makeup');
+    assert.deepEqual(result.payload.allowedClassGroups,['A','B']);
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
