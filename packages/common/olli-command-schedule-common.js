@@ -1748,9 +1748,11 @@
 
     const classTime = Number(opts.classTime || 0);
     const kind = ['pickup','dropoff'].includes(clean(opts.kind)) ? clean(opts.kind) : 'all';
+    const studentName = clean(opts.studentName);
     const items = pickups.filter(row => {
       if (Number(row && row.weekday) !== weekday) return false;
       if (!rowEffectiveOn(row, dateKey)) return false;
+      if (studentName && clean(row && row.student_name) !== studentName) return false;
       if (classTime && Number(row && row.class_time) !== classTime) return false;
       if (kind === 'dropoff' && row && row.is_dropoff !== true) return false;
       if (kind === 'pickup' && row && row.is_dropoff === true) return false;
@@ -1764,6 +1766,7 @@
     return {
       date:dateKey,
       dateLabel:clean(opts.dateLabel) || fallbackDateLabel(dateKey),
+      studentName,
       classTime,
       kind,
       items
@@ -1774,6 +1777,7 @@
     const data = result || {};
     const items = Array.isArray(data.items) ? data.items : [];
     const label = clean(data.dateLabel) || fallbackDateLabel(data.date);
+    const studentName = clean(data.studentName);
     const classTime = Number(data.classTime || 0);
     const classText = classTime ? ' ' + classTime + '시 수업' : '';
     const kind = clean(data.kind);
@@ -1782,7 +1786,7 @@
       : (kind === 'pickup' ? '등원 픽업 학생' : '픽업 관리 학생');
 
     if (!items.length) {
-      return label + classText + '에는 등록된 ' + kindText + '이 없어요.';
+      return (studentName ? studentName + ' · ' : '') + label + classText + '에는 등록된 ' + kindText + '이 없어요.';
     }
 
     const grouped = new Map();
@@ -1794,7 +1798,7 @@
     });
 
     const lines = [
-      label + classText + ' ' + kindText + '은 ' + grouped.size + '명이에요.'
+      (studentName ? studentName + ' · ' : '') + label + classText + ' ' + kindText + '은 ' + grouped.size + '명이에요.'
     ];
 
     grouped.forEach(group => {
