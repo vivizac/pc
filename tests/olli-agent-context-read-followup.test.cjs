@@ -43,6 +43,7 @@ test('unified interpreter runs on the first turn without loading student data', 
         structured_command:{
           action:'none',
           student_name:'',
+          division:'',
           date_expression:'',
           time_slot:0,
           class_group:'',
@@ -92,6 +93,7 @@ test('unified interpreter resolves follow-up context from conversation text only
         structured_command:{
           action:'none',
           student_name:'',
+          division:'',
           date_expression:'',
           time_slot:0,
           class_group:'',
@@ -132,6 +134,7 @@ test('unified interpreter emits a structured add_makeup command from conversatio
       structured_command:{
         action:'add_makeup',
         student_name:'민준',
+        division:'',
         date_expression:'다음주 수요일',
         time_slot:5,
         class_group:'B',
@@ -146,11 +149,57 @@ test('unified interpreter emits a structured add_makeup command from conversatio
   assert.deepEqual(result.structuredCommand,{
     action:'add_makeup',
     studentName:'민준',
+    division:'',
     dateExpression:'다음주 수요일',
     timeSlot:5,
     classGroup:'B',
   });
   assert.equal(result.contextUsed,true);
+});
+
+test('unified interpreter emits a structured add_trial command without student data lookup', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:15,
+    currentMessage:'서준이 초등부 다음주 금요일 5시 체험 등록해줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'add_trial',
+      standalone_command:'서준이 초등부 다음주 금요일 5시 체험 등록해줘',
+      structured_command:{
+        action:'add_trial',
+        student_name:'서준',
+        division:'elementary',
+        date_expression:'다음주 금요일',
+        time_slot:5,
+        class_group:'',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'add_trial');
+  assert.deepEqual(result.structuredCommand,{
+    action:'add_trial',
+    studentName:'서준',
+    division:'elementary',
+    dateExpression:'다음주 금요일',
+    timeSlot:5,
+    classGroup:'',
+  });
 });
 
 test('unified interpreter classifies feedback/data work separately from routine work', async () => {
