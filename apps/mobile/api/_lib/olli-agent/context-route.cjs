@@ -140,6 +140,8 @@ function extractOutputText(data) {
 }
 
 
+const OLLI_INTERPRETER_LANES = Object.freeze(['routine','feedback','chat']);
+
 const OLLI_SYSTEM_LANGUAGE_INTENTS = Object.freeze([
   'open_student_info',
   'get_student_schedule',
@@ -248,9 +250,12 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
   const model=clean(process.env.OPENAI_AGENT_MODEL || process.env.OPENAI_MODEL) || 'gpt-5-mini';
   const intentList=OLLI_SYSTEM_LANGUAGE_INTENTS.join(', ');
   const system=[
-    'You are the single interpretation layer for Olli academy operations.',
-    'Every @Olli user message comes to you before any rule system, Agent, or general chat response.',
-    'Read the entire active conversation and the current message, then emit system language only. Never answer the user.',
+    'You are Olli\'s lightweight conversation interpreter.',
+    'You receive conversation text only. You do not receive or query academy databases, student records, schedules, attendance, feedback records, or tool results.',
+    'Read the active conversation and current message, then classify the lane and translate routine work into deterministic system language. Never invent academy facts.',
+    'lane routine means ordinary repeatable academy operations or reads that the deterministic rule system can execute.',
+    'lane feedback means the user is asking to inspect, analyze, summarize, compare, or write from student feedback, observation notes, QuickNote/class notes, prior feedback, portfolios, or other student-record content that requires a separate data/Privacy Agent.',
+    'lane chat means ordinary conversation that does not require academy operational data or student-record analysis.',
     'Resolve ellipsis and short follow-ups from context. Carry forward the latest relevant student, date, time, class group, action, and reason unless the current message changes them.',
     'Do not invent missing facts. If an operational command is incomplete, preserve only known facts so the deterministic rule system can ask for the missing information.',
     'standalone_command must be one complete Korean command representing the current user meaning and must contain enough explicit words for a deterministic Korean command parser.',
@@ -268,6 +273,8 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
     'get_pickups means one student pickup history and is Agent-routed.',
     'complex_analysis is not yet connected to a dedicated analysis Agent, so use route chat for it.',
     'general_chat must use route chat.',
+    'Use lane feedback for feedback/student-record work even though its compatibility route remains chat until the dedicated Feedback Agent is connected.',
+    'For all other deterministic academy operations and reads, use lane routine. For ordinary conversation, use lane chat.',
     'Examples:',
     'User: 학생A 시간표 알려줘 -> route rule, intent get_student_schedule, standalone_command "학생A 시간표 알려줘".',
     'After that, User: 그럼 지난주는? -> route rule, intent get_student_schedule, standalone_command "학생A 지난주 시간표 알려줘".',
@@ -288,8 +295,9 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
   const schema={
     type:'object',
     additionalProperties:false,
-    required:['route','intent','standalone_command','context_used'],
+    required:['lane','route','intent','standalone_command','context_used'],
     properties:{
+      lane:{type:'string',enum:OLLI_INTERPRETER_LANES},
       route:{type:'string',enum:['rule','agent','chat']},
       intent:{type:'string',enum:OLLI_SYSTEM_LANGUAGE_INTENTS},
       standalone_command:{type:'string'},
@@ -386,31 +394,24 @@ async function resolveOlliSystemInterpretation({
   }
 
   const context=normalizeMentionConversation(conversation);
-  const students=await loadStudents(requestContext);
-  const allTexts=context.map((item)=>item.text).concat(current);
-  const privacy=buildStudentPrivacyMap(students,allTexts);
-  const sanitizedContext=context.map((item)=>({
-    role:item.role,
-    text:sanitizeText(item.text,{entities:privacy.entities}),
-  }));
-  const sanitizedCurrent=sanitizeText(current,{entities:privacy.entities});
-  const transcript=sanitizedContext
+  const transcript=context
     .map((item)=>(item.role==='assistant' ? '올리: ' : '사용자: ')+item.text)
     .join('\n');
 
   const interpreted=await modelRunner({
     transcript,
-    currentText:sanitizedCurrent,
+    currentText:current,
   });
   const intent=clean(interpreted?.intent);
+  const lane=OLLI_INTERPRETER_LANES.includes(clean(interpreted?.lane))
+    ? clean(interpreted?.lane)
+    : (intent==='complex_analysis' ? 'feedback' : (intent==='general_chat' ? 'chat' : 'routine'));
   const expectedRoute=routeForSystemIntent(intent);
-  const command=restoreStudentLabels(
-    clean(interpreted?.standalone_command) || sanitizedCurrent,
-    privacy.reverse
-  );
+  const command=clean(interpreted?.standalone_command) || current;
   const modelRoute=clean(interpreted?.route);
 
   return Object.freeze({
+    lane,
     route:expectedRoute,
     intent:OLLI_SYSTEM_LANGUAGE_INTENTS.includes(intent) ? intent : 'general_chat',
     standaloneCommand:command || current,
@@ -659,6 +660,7 @@ module.exports = {
   buildStudentPrivacyMap,
   restoreStudentLabels,
   extractOutputText,
+  OLLI_INTERPRETER_LANES,
   OLLI_SYSTEM_LANGUAGE_INTENTS,
   routeForSystemIntent,
   parseStructuredOutput,
