@@ -240,3 +240,125 @@ test('PC and Mobile structured availability path bypasses chat and Agent calls a
   assert.match(mobileBlock,/runStructuredQuery/);
   assert.doesNotMatch(mobileBlock,/resolveOlliTalkAiReply|\/api\/chat|\/api\/olli-agent/);
 });
+
+test('structured find_roster_entries routes a weekday class roster to existing roster SOT', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let observed=null;
+
+  globalThis.OlliCommandSchedule={
+    async findRosterEntries(options){
+      observed=options;
+      return {
+        kind:options.kind,
+        scope:options.scope,
+        dateLabel:options.dateLabel,
+        timeSlot:options.timeSlot,
+        classGroup:options.classGroup,
+        items:[
+          {studentId:'s1',studentName:'민준',division:'elementary',timeSlot:5,classGroup:'B',entryKind:'regular'}
+        ]
+      };
+    },
+    describeRosterEntries(result){
+      return result.dateLabel+' '+result.timeSlot+'시 수업 명단은 민준입니다.';
+    },
+  };
+
+  try{
+    const result=await router.runStructuredQuery({
+      action:'find_roster_entries',
+      rosterKind:'class_roster',
+      division:'',
+      dateExpression:'화요일',
+      weekday:2,
+      timeSlot:5,
+      classGroup:'B',
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.intent,'find_roster_entries');
+    assert.equal(result.payload.scope,'date');
+    assert.equal(result.payload.rosterKind,'class_roster');
+    assert.ok(observed);
+    assert.equal(observed.kind,'class_roster');
+    assert.equal(observed.scope,'date');
+    assert.equal(observed.weekday,2);
+    assert.equal(observed.timeSlot,5);
+    assert.equal(observed.classGroup,'B');
+    assert.match(result.message,/민준/);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured find_roster_entries keeps waitlist lookup in current all-scope when no date is stated', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let observed=null;
+
+  globalThis.OlliCommandSchedule={
+    async findRosterEntries(options){
+      observed=options;
+      return {kind:options.kind,scope:options.scope,dateLabel:options.dateLabel,items:[]};
+    },
+    describeRosterEntries(){ return '현재 대기 명단이 없어요.'; },
+  };
+
+  try{
+    const result=await router.runStructuredQuery({
+      action:'find_roster_entries',
+      rosterKind:'waitlist',
+      division:'',
+      dateExpression:'',
+      weekday:0,
+      timeSlot:0,
+      classGroup:'',
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.payload.scope,'all');
+    assert.equal(result.payload.dateLabel,'현재');
+    assert.ok(observed);
+    assert.equal(observed.kind,'waitlist');
+    assert.equal(observed.scope,'all');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured roster query refuses to invent a roster kind', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async findRosterEntries(){ throw new Error('must not run'); },
+    describeRosterEntries(){ return ''; },
+  };
+
+  try{
+    const result=await router.runStructuredQuery({
+      action:'find_roster_entries',
+      rosterKind:'',
+      dateExpression:'오늘',
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.intent,'find_roster_entries');
+    assert.match(result.message,/명단 종류/);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('PC and Mobile structured roster path bypasses chat and Agent calls after interpretation', () => {
+  const pcStart=pc.indexOf("clean(structuredCommand?.action)==='find_roster_entries'");
+  const pcEnd=pc.indexOf("clean(structuredCommand?.action)==='find_available_slots'",pcStart+10);
+  const pcBlock=pc.slice(pcStart,pcEnd>pcStart?pcEnd:pcStart+1900);
+  assert.ok(pcStart>=0);
+  assert.match(pcBlock,/runStructuredQuery/);
+  assert.doesNotMatch(pcBlock,/resolveAiReply|\/api\/chat|\/api\/olli-agent/);
+
+  const mobileStart=mobile.indexOf("String(structuredCommand?.action || '').trim()==='find_roster_entries'");
+  const mobileEnd=mobile.indexOf("String(structuredCommand?.action || '').trim()==='find_available_slots'",mobileStart+10);
+  const mobileBlock=mobile.slice(mobileStart,mobileEnd>mobileStart?mobileEnd:mobileStart+1900);
+  assert.ok(mobileStart>=0);
+  assert.match(mobileBlock,/runStructuredQuery/);
+  assert.doesNotMatch(mobileBlock,/resolveOlliTalkAiReply|\/api\/chat|\/api\/olli-agent/);
+});
