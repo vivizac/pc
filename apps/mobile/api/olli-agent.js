@@ -107,6 +107,7 @@ export default async function handler(req, res) {
             targetTimeSlot:Number(result?.structuredCommand?.targetTimeSlot || 0),
             reason:safeText(result?.structuredCommand?.reason,1000),
             availabilityPurpose:safeText(result?.structuredCommand?.availabilityPurpose,40),
+            rosterKind:safeText(result?.structuredCommand?.rosterKind,40),
           },
           reply:safeText(result?.reply,5000),
           contextUsed:result?.contextUsed===true,
