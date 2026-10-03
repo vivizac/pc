@@ -2739,7 +2739,8 @@
       sourceWeekday:Number(structuredRaw.sourceWeekday || 0),
       sourceTimeSlot:Number(structuredRaw.sourceTimeSlot || 0),
       targetWeekday:Number(structuredRaw.targetWeekday || 0),
-      targetTimeSlot:Number(structuredRaw.targetTimeSlot || 0)
+      targetTimeSlot:Number(structuredRaw.targetTimeSlot || 0),
+      reason:clean(structuredRaw.reason)
     };
     const reply=clean(language.reply);
     if(data?.ok!==true || !['routine','feedback','chat'].includes(lane) || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
@@ -2862,7 +2863,7 @@
 
     if(
       interpreterLane==='routine'
-      && ['add_makeup','add_trial','add_waitlist','add_pickup','move_class'].includes(clean(structuredCommand?.action))
+      && ['add_makeup','add_trial','add_waitlist','add_pickup','move_class','mark_absent'].includes(clean(structuredCommand?.action))
       && router
       && typeof router.prepareStructuredAction==='function'
     ){
