@@ -2725,7 +2725,13 @@
       division:clean(structuredRaw.division),
       dateExpression:clean(structuredRaw.dateExpression),
       timeSlot:Number(structuredRaw.timeSlot || 0),
-      classGroup:clean(structuredRaw.classGroup).toUpperCase()
+      classGroup:clean(structuredRaw.classGroup).toUpperCase(),
+      weekday:Number(structuredRaw.weekday || 0),
+      classTime:Number(structuredRaw.classTime || 0),
+      classMinute:Number(structuredRaw.classMinute || 0),
+      pickupKind:clean(structuredRaw.pickupKind),
+      pickupLabel:clean(structuredRaw.pickupLabel),
+      pickupTime:clean(structuredRaw.pickupTime)
     };
     const reply=clean(language.reply);
     if(data?.ok!==true || !['routine','feedback','chat'].includes(lane) || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
@@ -2848,7 +2854,7 @@
 
     if(
       interpreterLane==='routine'
-      && ['add_makeup','add_trial','add_waitlist'].includes(clean(structuredCommand?.action))
+      && ['add_makeup','add_trial','add_waitlist','add_pickup'].includes(clean(structuredCommand?.action))
       && router
       && typeof router.prepareStructuredAction==='function'
     ){
