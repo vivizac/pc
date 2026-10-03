@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     const mode = safeText(body.mode, 40);
     requestMode = mode || 'probe';
 
-    if (!['interpret', 'context_read', 'context_resolve', 'context_makeup_prepare', 'route_outcome', 'probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'timetable_read', 'schedule_read', 'attendance_read', 'pickup_read', 'timetable_admin_prepare', 'attendance_status_prepare', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
+    if (!['interpret', 'context_read', 'feedback_read', 'context_resolve', 'context_makeup_prepare', 'route_outcome', 'probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'timetable_read', 'schedule_read', 'attendance_read', 'pickup_read', 'timetable_admin_prepare', 'attendance_status_prepare', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
       return res.status(400).json({
         error: '지원하지 않는 Olli Agent mode입니다. 현재 production prepare에는 memo_prepare, batch_prepare, absence_prepare, class_once_prepare, makeup/trial/waitlist/move/pickup prepare 계열이 포함됩니다.',
       });
@@ -244,7 +244,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok:true, mode:'route_outcome' });
     }
 
-    if (mode === 'context_read' || mode === 'timetable_read' || mode === 'schedule_read' || mode === 'attendance_read' || mode === 'pickup_read') {
+    if (mode === 'context_read' || mode === 'timetable_read' || mode === 'schedule_read' || mode === 'attendance_read' || mode === 'pickup_read' || mode === 'feedback_read') {
       const message=safeText(body.message,5000);
       const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
       if(!message){
@@ -270,7 +270,7 @@ export default async function handler(req, res) {
       const privacyModule=await import('./_lib/olli-agent/privacy.cjs');
       const agentContext=contextModule.toAgentRunContext(requestContext);
 
-      if(mode==='context_read'){
+      if(mode==='context_read' || mode==='feedback_read'){
         let contextPrivacy;
         try{
           const sessionModule=await import('./_lib/olli-agent/session.cjs');
@@ -294,13 +294,21 @@ export default async function handler(req, res) {
           );
         }
 
-        const result=await runtimeModule.runContextualReadAgent({
-          agentContext,
-          requestContext,
-          preparedPrivacy:contextPrivacy.preparedPrivacy,
-          agentInput:contextPrivacy.agentInput,
-        });
-        if(result?.handled!==true){
+        const result=mode==='feedback_read'
+          ? await runtimeModule.runFeedbackDirectRead({
+              agentContext,
+              requestContext,
+              preparedPrivacy:contextPrivacy.preparedPrivacy,
+              agentInput:contextPrivacy.agentInput,
+            })
+          : await runtimeModule.runContextualReadAgent({
+              agentContext,
+              requestContext,
+              preparedPrivacy:contextPrivacy.preparedPrivacy,
+              agentInput:contextPrivacy.agentInput,
+            });
+
+        if(mode==='context_read' && result?.handled!==true){
           return res.status(200).json({
             ok:true,
             mode:'context_read',
@@ -309,7 +317,7 @@ export default async function handler(req, res) {
         }
         return res.status(200).json({
           ok:true,
-          mode:'context_read',
+          mode,
           handled:true,
           contextResolved:true,
           output:safeText(result?.output,12000),
