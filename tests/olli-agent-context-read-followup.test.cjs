@@ -656,6 +656,61 @@ test('unified interpreter emits a structured find_roster_entries query without r
   assert.equal(result.structuredCommand.classGroup,'B');
 });
 
+test('unified interpreter emits a structured find_pickups query without reading pickup data', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:22,
+    currentMessage:'민서 내일 4시 수업 하원 픽업 알려줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'find_pickups',
+      standalone_command:'민서 내일 4시 수업 하원 픽업 알려줘',
+      structured_command:{
+        action:'find_pickups',
+        student_name:'민서',
+        division:'',
+        date_expression:'내일',
+        time_slot:0,
+        class_group:'',
+        weekday:0,
+        class_time:4,
+        class_minute:0,
+        pickup_kind:'dropoff',
+        pickup_label:'',
+        pickup_time:'',
+        source_weekday:0,
+        source_time_slot:0,
+        target_weekday:0,
+        target_time_slot:0,
+        reason:'',
+        availability_purpose:'',
+        roster_kind:'',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'find_pickups');
+  assert.equal(result.structuredCommand.action,'find_pickups');
+  assert.equal(result.structuredCommand.studentName,'민서');
+  assert.equal(result.structuredCommand.dateExpression,'내일');
+  assert.equal(result.structuredCommand.classTime,4);
+  assert.equal(result.structuredCommand.pickupKind,'dropoff');
+});
+
 test('unified interpreter classifies feedback/data work separately from routine work', async () => {
   const result=await resolveOlliSystemInterpretation({
     requestContext:{
