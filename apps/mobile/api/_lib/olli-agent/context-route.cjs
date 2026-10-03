@@ -276,9 +276,9 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
     'Use lane feedback for feedback/student-record work even though its compatibility route remains chat until the dedicated Feedback Agent is connected.',
     'For all other deterministic academy operations and reads, use lane routine. For ordinary conversation, use lane chat.',
     'For lane chat, answer the user directly and briefly in Korean in reply. For lane routine or feedback, reply must be an empty string.',
-    'Structured command pilot: when intent is add_makeup, add_trial, add_waitlist, or add_pickup, structured_command.action must match that intent and fill only facts supported by the conversation. Do not query or infer academy data. Use empty string or 0 for facts the conversation does not provide.'
+    'Structured command pilot: when intent is add_makeup, add_trial, add_waitlist, or add_pickup, structured_command.action must match that intent and fill only facts supported by the conversation. Do not query or infer academy data. Use empty string or 0 for facts the conversation does not provide.',
     'For add_trial and add_waitlist, student_name means the student/guest name. division must be kinder for 유치부, elementary for 초등부, or empty when the user has not provided enough information.',
-    'For add_pickup, fill student_name, weekday (Mon=1..Sat=6), class_time, class_minute, pickup_kind (arrival or dropoff), pickup_label, and pickup_time in HH:MM for arrival. Do not infer missing pickup place or time.'
+    'For add_pickup, fill student_name, weekday (Mon=1..Sat=6), class_time, class_minute, pickup_kind (arrival or dropoff), pickup_label, and pickup_time in HH:MM for arrival. Do not infer missing pickup place or time.',
     'For every other intent, structured_command.action must be none and its other fields must be empty string or 0.',
     'The structured command schema is a transport contract only; business validation remains in the deterministic rule system.',
     'Examples:',
