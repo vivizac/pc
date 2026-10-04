@@ -7,6 +7,7 @@ const test = require('node:test');
 
 const router = require('../packages/common/olli-command-router-common.js');
 const root = path.resolve(__dirname,'..');
+const routerSource = fs.readFileSync(path.join(root,'packages/common/olli-command-router-common.js'),'utf8');
 const contextRouteSource = fs.readFileSync(path.join(root,'apps/mobile/api/_lib/olli-agent/context-route.cjs'),'utf8');
 const runtimeSource = fs.readFileSync(path.join(root,'apps/mobile/api/_lib/olli-agent/runtime.cjs'),'utf8');
 const apiSource = fs.readFileSync(path.join(root,'apps/mobile/api/olli-agent.js'),'utf8');
