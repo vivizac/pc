@@ -434,6 +434,24 @@ async function prepareTimetableMemoAction({
     ? encodeMemoTimeSlot(resolvedDivision, weekday, mode, hour, minute)
     : 0;
   let targetGroup = requestedGroup;
+  if(requestedMemoTarget){
+    if(timeSlot && timeSlot!==requestedMemoTarget.timeSlot){
+      throw memoToolError(
+        '선택한 메모 대상 수업 시간이 현재 요청과 다릅니다.',
+        409,
+        'OLLI_AGENT_TIMETABLE_MEMO_TARGET_TIME_MISMATCH'
+      );
+    }
+    if(targetGroup!=='AUTO' && targetGroup!==requestedMemoTarget.classGroup){
+      throw memoToolError(
+        '선택한 메모 대상 반이 현재 요청과 다릅니다.',
+        409,
+        'OLLI_AGENT_TIMETABLE_MEMO_TARGET_GROUP_MISMATCH'
+      );
+    }
+    timeSlot=requestedMemoTarget.timeSlot;
+    targetGroup=requestedMemoTarget.classGroup;
+  }
   let studentName = '';
 
   if (subject?.studentId) {
@@ -497,7 +515,7 @@ async function prepareTimetableMemoAction({
     targetGroup = target.classGroup;
     studentName = target.studentName;
   } else {
-    if (!Number(hour || 0) || !timeSlot) {
+    if (!timeSlot) {
       throw memoToolError(
         '학생을 지정하지 않은 메모는 날짜와 수업 시간을 함께 알려 주세요.',
         400,
@@ -520,6 +538,29 @@ async function prepareTimetableMemoAction({
       );
     }
     if (targetGroup === 'AUTO' && groups.length > 1) {
+      if(allowChoice===true){
+        const choices=groups.slice(0,8).map(group=>({
+          id:memoTargetKey({
+            division:resolvedDivision,
+            timeSlot,
+            classGroup:group,
+          }),
+          label:group+'반',
+        })).filter(item=>item.id);
+        if(choices.length>1){
+          return {
+            ok:false,
+            code:'target_choice_required',
+            field:'target_choice',
+            choiceKey:'memoTargetKey',
+            studentName:'',
+            division:resolvedDivision,
+            sessionDate:date.key,
+            choices,
+            message:'메모를 넣을 반을 선택해 주세요.'
+          };
+        }
+      }
       throw memoToolError(
         '이 시간은 A반과 B반이 나뉘어 있습니다. 메모를 넣을 반을 함께 알려 주세요.',
         409,
