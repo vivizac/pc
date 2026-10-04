@@ -2611,6 +2611,18 @@
         });
         if(!timeChoices?.ok){
           if(timeChoices?.code==='division_required'){
+            if(action==='add_makeup'){
+              return {
+                handled:true,
+                kind:'action_rejected',
+                intent:action,
+                text:'',
+                message:draft.studentName+' 학생정보에서 유치부·초등부 구분을 확인하지 못했어요. 학생정보를 확인해 주세요.',
+                clearInput:true,
+                payload:command,
+                action:null
+              };
+            }
             field='division';
             choices=Array.isArray(timeChoices.choices) ? timeChoices.choices.slice() : ['kinder','elementary'];
             message=String(timeChoices.message || draft.studentName+' 학생은 유치부인지 초등부인지 선택해 주세요.');
@@ -2637,11 +2649,14 @@
         }
       }
 
+      const dynamicMissingFields=field==='division'
+        ? ['division'].concat(writeDraftState.missingFields.filter(item=>item!=='division'))
+        : writeDraftState.missingFields.slice();
       const payload = {
         type:'structured_write_draft',
         targetIntent:action,
         field,
-        missingFields:writeDraftState.missingFields.slice(),
+        missingFields:dynamicMissingFields,
         draft,
         choices
       };
@@ -2658,7 +2673,7 @@
           status:'pending_fields',
           intent:action,
           field,
-          missingFields:writeDraftState.missingFields.slice(),
+          missingFields:dynamicMissingFields.slice(),
           command:Object.assign({},draft),
           choices:choices.map(item=>typeof item==='object' ? Object.assign({},item) : item),
           requiresReason:false

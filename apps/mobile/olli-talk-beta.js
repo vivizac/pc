@@ -637,6 +637,21 @@
     return result.message;
   }
 
+  async function saveOlliTalkStructuredDivisionChoice(context,body,payload,replyToMessageId){
+    const result=await callOlliTalkRpc('olli_team_chat_send_structured_division_choice',{
+      p_session_token:context.sessionToken,
+      p_academy_id:context.academyId,
+      p_body:normalizeOlliTalkActionPrompt(body),
+      p_action_payload:payload,
+      p_client_message_id:createOlliTalkClientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if(!result?.ok || !result?.message?.action){
+      throw new Error(result?.message || '수업 구분 선택 카드를 저장하지 못했습니다.');
+    }
+    return result.message;
+  }
+
   async function saveOlliTalkStructuredTimeChoice(context,body,payload,replyToMessageId){
     const result=await callOlliTalkRpc('olli_team_chat_send_structured_time_choice',{
       p_session_token:context.sessionToken,
@@ -2625,6 +2640,18 @@
               assistantMessage:await saveOlliTalkStructuredStudentChoice(
                 context,
                 prepared.message || '학생을 선택해 주세요.',
+                prepared.payload,
+                replyToMessageId
+              ),
+              replyText:String(prepared.message || ''),
+              recordAi:false
+            };
+          }
+          if(String(prepared.payload.field || '').trim()==='division'){
+            return {
+              assistantMessage:await saveOlliTalkStructuredDivisionChoice(
+                context,
+                prepared.message || '유치부인지 초등부인지 선택해 주세요.',
                 prepared.payload,
                 replyToMessageId
               ),
@@ -5399,6 +5426,9 @@
       if(String(prepared.payload?.field || '').trim()==='student_choice' && prepared.payload){
         return saveOlliTalkStructuredStudentChoice(context,prepared.message || '학생을 선택해 주세요.',prepared.payload,null);
       }
+      if(String(prepared.payload?.field || '').trim()==='division' && prepared.payload){
+        return saveOlliTalkStructuredDivisionChoice(context,prepared.message || '유치부인지 초등부인지 선택해 주세요.',prepared.payload,null);
+      }
       if(String(prepared.payload?.field || '').trim()==='date' && prepared.payload){
         return saveOlliTalkStructuredDateChoice(context,prepared.message || '날짜를 선택해 주세요.',prepared.payload,null);
       }
@@ -5595,6 +5625,64 @@
     void populateOlliTalkStructuredStudentChoiceCard(card,action);
   }
 
+  async function handleOlliTalkStructuredDivisionChoice(action,division){
+    const actionId=String(action?.id || '').trim();
+    const selected=String(division || '').trim().toLowerCase();
+    if(!actionId || !['kinder','elementary'].includes(selected) || olliTalkActionBusy.has(actionId)) return;
+
+    const context=getOlliTalkBetaContext();
+    if(!context.sessionToken || !context.academyId){
+      alert('올리톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    olliTalkActionBusy.add(actionId);
+    setOlliTalkActionCardBusy(actionId,true);
+    try{
+      const payload=await callOlliTalkRpc('olli_team_chat_action_select_structured_division',{
+        p_session_token:context.sessionToken,
+        p_academy_id:context.academyId,
+        p_action_id:actionId,
+        p_division:selected
+      });
+      if(!payload?.ok || !payload?.action || !payload?.draft){
+        throw new Error(payload?.message || '수업 구분을 선택하지 못했습니다.');
+      }
+      await continueOlliTalkStructuredWriteDraft(payload.draft,context);
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }catch(error){
+      console.warn('올리톡 구조화 수업 구분 선택 실패:',error);
+      alert(error?.message || '수업 구분을 선택하지 못했습니다.');
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }finally{
+      olliTalkActionBusy.delete(actionId);
+      setOlliTalkActionCardBusy(actionId,false);
+    }
+  }
+
+  function appendOlliTalkStructuredDivisionChoiceButtons(card,action){
+    card.classList.add('structuredDivision');
+    [
+      {value:'kinder',label:'유치부'},
+      {value:'elementary',label:'초등부'}
+    ].forEach(choice=>{
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='olliTalkBetaActionButton primary divisionChoice';
+      button.textContent=choice.label;
+      button.addEventListener('click',()=>handleOlliTalkStructuredDivisionChoice(action,choice.value));
+      card.appendChild(button);
+    });
+  }
+
   async function handleOlliTalkStructuredTimeChoice(action,timeSlot){
     const actionId=String(action?.id || '').trim();
     const selectedTime=Number(timeSlot || 0);
@@ -5701,6 +5789,11 @@
 
     if(String(action?.action_type || '').trim()==='choose_structured_student'){
       appendOlliTalkStructuredStudentChoiceButtons(card,action);
+      return card;
+    }
+
+    if(String(action?.action_type || '').trim()==='choose_structured_division'){
+      appendOlliTalkStructuredDivisionChoiceButtons(card,action);
       return card;
     }
 

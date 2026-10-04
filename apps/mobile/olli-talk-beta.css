@@ -1143,6 +1143,17 @@
   height:auto;
   padding:7px 10px;
 }
+#olliTalkBetaScreen .olliTalkBetaActionCard.structuredDivision{
+  width:min(260px,78vw);
+  display:grid;
+  grid-template-columns:repeat(2,minmax(86px,1fr));
+}
+#olliTalkBetaScreen .olliTalkBetaActionButton.divisionChoice{
+  width:100%;
+  min-height:40px;
+  height:auto;
+  padding:7px 10px;
+}
 #olliTalkBetaScreen .olliTalkBetaActionCard.structuredTime{
   width:min(260px,78vw);
   display:grid;

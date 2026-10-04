@@ -648,6 +648,9 @@
       if(clean(prepared.payload?.field)==='student_choice' && prepared.payload){
         return saveStructuredStudentChoice(current,prepared.message || '학생을 선택해 주세요.',prepared.payload,null);
       }
+      if(clean(prepared.payload?.field)==='division' && prepared.payload){
+        return saveStructuredDivisionChoice(current,prepared.message || '유치부인지 초등부인지 선택해 주세요.',prepared.payload,null);
+      }
       if(clean(prepared.payload?.field)==='date' && prepared.payload){
         return saveStructuredDateChoice(current,prepared.message || '날짜를 선택해 주세요.',prepared.payload,null);
       }
@@ -838,6 +841,63 @@
     void populateStructuredStudentChoiceCard(card,action);
   }
 
+  async function handleStructuredDivisionChoice(action,division) {
+    const actionId=clean(action?.id);
+    const selected=clean(division).toLowerCase();
+    if(!actionId || !['kinder','elementary'].includes(selected) || state.actionBusy.has(actionId)) return;
+
+    const current=context();
+    if(!current.sessionToken || !current.academyId){
+      alert('팀톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    state.actionBusy.add(actionId);
+    document.querySelectorAll('[data-action-id]').forEach(card=>{
+      if(clean(card.dataset.actionId)!==actionId) return;
+      card.querySelectorAll('button').forEach(button=>{ button.disabled=true; });
+      card.classList.add('busy');
+    });
+
+    try{
+      const payload=await rpc('olli_team_chat_action_select_structured_division',{
+        p_session_token:current.sessionToken,
+        p_academy_id:current.academyId,
+        p_action_id:actionId,
+        p_division:selected
+      });
+      if(!payload?.ok || !payload?.action || !payload?.draft){
+        throw new Error(payload?.message || '수업 구분을 선택하지 못했습니다.');
+      }
+      await continueStructuredWriteDraft(payload.draft,current);
+      await loadMessages({showLoading:false,followBottom:true});
+    }catch(error){
+      console.warn('PC 팀톡 구조화 수업 구분 선택 실패:',error?.message || error);
+      alert(error?.message || '수업 구분을 선택하지 못했습니다.');
+      await loadMessages({showLoading:false,followBottom:true});
+    }finally{
+      state.actionBusy.delete(actionId);
+      document.querySelectorAll('[data-action-id]').forEach(card=>{
+        if(clean(card.dataset.actionId)===actionId) card.classList.remove('busy');
+      });
+    }
+  }
+
+  function appendStructuredDivisionChoiceButtons(card,action) {
+    card.classList.add('structuredDivision');
+    [
+      {value:'kinder',label:'유치부'},
+      {value:'elementary',label:'초등부'}
+    ].forEach(choice=>{
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='olliPcTeamTalkActionButton primary divisionChoice';
+      button.textContent=choice.label;
+      button.addEventListener('click',()=>handleStructuredDivisionChoice(action,choice.value));
+      card.appendChild(button);
+    });
+  }
+
   async function handleStructuredTimeChoice(action,timeSlot) {
     const actionId=clean(action?.id);
     const selectedTime=Number(timeSlot || 0);
@@ -941,6 +1001,11 @@
 
     if(clean(action?.action_type)==='choose_structured_student'){
       appendStructuredStudentChoiceButtons(card,action);
+      return card;
+    }
+
+    if(clean(action?.action_type)==='choose_structured_division'){
+      appendStructuredDivisionChoiceButtons(card,action);
       return card;
     }
 
@@ -3092,6 +3157,21 @@
     return result.message;
   }
 
+  async function saveStructuredDivisionChoice(current,body,payload,replyToMessageId) {
+    const result=await rpc('olli_team_chat_send_structured_division_choice',{
+      p_session_token:current.sessionToken,
+      p_academy_id:current.academyId,
+      p_body:normalizeActionPrompt(body),
+      p_action_payload:payload,
+      p_client_message_id:clientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if(!result?.ok || !result?.message?.action){
+      throw new Error(result?.message || '수업 구분 선택 카드를 저장하지 못했습니다.');
+    }
+    return result.message;
+  }
+
   async function saveStructuredTimeChoice(current,body,payload,replyToMessageId) {
     const result=await rpc('olli_team_chat_send_structured_time_choice',{
       p_session_token:current.sessionToken,
@@ -3727,6 +3807,18 @@
               assistantMessage:await saveStructuredStudentChoice(
                 current,
                 prepared.message || '학생을 선택해 주세요.',
+                prepared.payload,
+                replyToMessageId
+              ),
+              replyText:prepared.message || '',
+              recordAi:false
+            };
+          }
+          if(clean(prepared.payload.field)==='division'){
+            return {
+              assistantMessage:await saveStructuredDivisionChoice(
+                current,
+                prepared.message || '유치부인지 초등부인지 선택해 주세요.',
                 prepared.payload,
                 replyToMessageId
               ),

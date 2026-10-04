@@ -243,6 +243,85 @@ test('structured add_makeup returns a date draft state instead of rejecting miss
   }
 });
 
+test('structured guest trial asks for division before time choices when student information cannot provide it', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(options){
+      return {
+        ok:true,
+        matched:false,
+        guest:true,
+        student:null,
+        studentName:options.studentName,
+        division:''
+      };
+    },
+    async prepareStructuredTimeChoices(){
+      return {
+        ok:false,
+        code:'division_required',
+        field:'division',
+        choices:['kinder','elementary'],
+        message:'서준 학생은 유치부인지 초등부인지 선택해 주세요.'
+      };
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'add_trial',
+      studentName:'서준',
+      dateExpression:'10월 6일',
+      timeSlot:0
+    },{});
+
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'division');
+    assert.deepEqual(result.payload.choices,['kinder','elementary']);
+    assert.deepEqual(result.payload.missingFields,['division','time']);
+    assert.equal(result.payload.draft.studentName,'서준');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured makeup never allows manual division fallback for an enrolled student', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(){
+      return {
+        ok:true,
+        matched:true,
+        student:{id:'student-1',name:'민준'},
+        studentName:'민준',
+        division:''
+      };
+    },
+    async prepareStructuredTimeChoices(){
+      return {
+        ok:false,
+        code:'division_required',
+        field:'division',
+        choices:['kinder','elementary']
+      };
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'add_makeup',
+      studentName:'민준',
+      dateExpression:'10월 6일',
+      timeSlot:0
+    },{});
+
+    assert.equal(result.kind,'action_rejected');
+    assert.match(result.message,/학생정보/);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
 test('structured add_trial returns date then real SOT time choices as the shared draft order', async () => {
   const previousSchedule=globalThis.OlliCommandSchedule;
   globalThis.OlliCommandSchedule={

@@ -195,6 +195,8 @@
 .olliPcTeamTalkActionCard.structuredStudent{width:min(260px,100%);display:grid;grid-template-columns:1fr}
 .olliPcTeamTalkActionCard.structuredStudent .olliPcTeamTalkActionStatus{grid-column:1/-1}
 .olliPcTeamTalkActionButton.studentChoice{width:100%;min-height:38px;height:auto;padding:7px 10px}
+.olliPcTeamTalkActionCard.structuredDivision{width:min(260px,100%);display:grid;grid-template-columns:repeat(2,minmax(86px,1fr))}
+.olliPcTeamTalkActionButton.divisionChoice{width:100%;min-height:38px;height:auto;padding:7px 10px}
 .olliPcTeamTalkActionCard.structuredTime{width:min(260px,100%);display:grid;grid-template-columns:repeat(2,minmax(86px,1fr))}
 .olliPcTeamTalkActionCard.structuredTime .olliPcTeamTalkActionStatus{grid-column:1/-1}
 .olliPcTeamTalkActionButton.timeChoice{width:100%;min-height:38px;height:auto;padding:6px 10px;white-space:pre-line;line-height:1.3}
