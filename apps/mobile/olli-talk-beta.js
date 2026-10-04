@@ -2141,13 +2141,61 @@
       })
     });
     const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
+    if(!response.ok || data?.ok!==true){
       throw new Error(data?.error || data?.message || '수업 이동 취소 Agent 응답을 받지 못했습니다.');
+    }
+    if(data?.choiceRequired?.payload){
+      const choiceMessage=String(data.choiceRequired.message || '').trim() || '취소할 수업 이동 예약을 선택해 주세요.';
+      return {
+        assistantMessage:await saveOlliTalkStructuredTargetChoice(
+          context,
+          choiceMessage,
+          data.choiceRequired.payload,
+          sourceMessageId
+        ),
+        replyText:choiceMessage,
+        recordAi:false
+      };
+    }
+    if(!data?.message?.action){
+      throw new Error(data?.error || data?.message || '수업 이동 취소 확인 카드를 받지 못했습니다.');
     }
     if(String(data.message.action.action_type || '').trim()!=='cancel_move'){
       throw new Error('수업 이동 취소 Agent 작업 종류가 올바르지 않습니다.');
     }
 
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+
+  async function resolveOlliTalkStructuredMoveCancelTurn(structuredCommand,context,sourceMessageText,sourceMessageId){
+    const sourceId=Number(sourceMessageId || 0);
+    if(!Number.isSafeInteger(sourceId)||sourceId<=0||!String(sourceMessageText || '').trim()){
+      throw new Error('수업 이동 취소 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'structured_move_cancel_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(sourceMessageText || '').trim(),
+        sourceMessageId:sourceId,
+        structuredCommand
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||data?.ok!==true||!data?.message?.action){
+      throw new Error(data?.error || data?.message || '수업 이동 취소 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='cancel_move'){
+      throw new Error('수업 이동 취소 규칙 시스템 작업 종류가 올바르지 않습니다.');
+    }
     return {
       assistantMessage:data.message,
       replyText:String(data.message.body || '').trim(),
@@ -5643,7 +5691,19 @@
       if(!payload?.ok || !payload?.action || !payload?.draft){
         throw new Error(payload?.message || '대상을 선택하지 못했습니다.');
       }
-      if(String(payload?.draft?.action || '').trim()==='cancel_trial'){
+      if(String(payload?.draft?.action || '').trim()==='cancel_move'){
+        const sourceMessageId=Number(payload?.source_message_id || 0);
+        const sourceMessageText=String(payload?.source_message_text || '').trim();
+        if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0||!sourceMessageText){
+          throw new Error('수업 이동 취소 원문 메시지를 확인하지 못했습니다.');
+        }
+        await resolveOlliTalkStructuredMoveCancelTurn(
+          payload.draft,
+          context,
+          sourceMessageText,
+          sourceMessageId
+        );
+      }else if(String(payload?.draft?.action || '').trim()==='cancel_trial'){
         const sourceMessageId=Number(payload?.source_message_id || 0);
         const sourceMessageText=String(payload?.source_message_text || '').trim();
         const reasonMessageId=Number(payload?.reason_message_id || 0);

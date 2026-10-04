@@ -37,6 +37,8 @@ test('mobile move cancel bridge uses source-bound production without second acti
   assert.match(block,/mode:'move_cancel_prepare'/);
   assert.match(block,/sourceMessageId=Number\(replyToMessageId \|\| 0\)/);
   assert.match(block,/action_type \|\| ''\)\.trim\(\)!=='cancel_move'/);
+  assert.match(block,/choiceRequired/);
+  assert.match(block,/saveOlliTalkStructuredTargetChoice/);
   assert.match(block,/assistantMessage:data\.message/);
   assert.match(block,/recordAi:false/);
   assert.doesNotMatch(block,/saveOlliTalkActionReply|olli_team_chat_send_action/);
@@ -47,4 +49,13 @@ test('mobile Bot path remains independent from move cancel Agent routing',()=>{
   const end=talk.indexOf('function handleOlliTalkAiModeChanged',start);
   const block=talk.slice(start,end);
   assert.doesNotMatch(block,/resolveOlliTalkMoveCancelAgentTurn|isOlliTalkMoveCancelAgentCandidate|move_cancel_prepare/);
+});
+
+test('mobile move cancel target choice resumes through deterministic structured prepare without another Agent turn',()=>{
+  const start=talk.indexOf('async function resolveOlliTalkStructuredMoveCancelTurn');
+  const end=talk.indexOf('function isOlliTalkPendingReasonCancel',start);
+  const block=talk.slice(start,end);
+  assert.match(block,/mode:'structured_move_cancel_prepare'/);
+  assert.match(block,/structuredCommand/);
+  assert.doesNotMatch(block,/mode:'move_cancel_prepare'/);
 });

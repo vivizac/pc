@@ -59,6 +59,8 @@ test('target selection only updates draft stable id and never mutates pickup or 
   assert.match(migration,/v_key:='waitlistId'/);
   assert.match(latestTargetChoiceMigration,/'move_class'/);
   assert.match(latestTargetChoiceMigration,/'sourceEnrollmentId'/);
+  assert.match(latestTargetChoiceMigration,/'cancel_move'/);
+  assert.match(latestTargetChoiceMigration,/'changeId'/);
   assert.match(latestTargetChoiceMigration,/jsonb_set\(v_draft,array\[v_key\]/);
   assert.doesNotMatch(migration,/olli_schedule_execute\s*\(/);
   assert.doesNotMatch(migration,/resolveWaitlist\s*\(/);
