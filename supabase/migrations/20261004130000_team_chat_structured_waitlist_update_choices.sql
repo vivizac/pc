@@ -33,7 +33,7 @@ begin
   end if;
 
   v_target:=lower(btrim(coalesce(v_payload->>'targetIntent','')));
-  if v_target not in ('update_makeup','update_trial','update_waitlist','update_pickup','cancel_pickup','cancel_waitlist','cancel_makeup','cancel_trial','move_class','cancel_move') then
+  if v_target not in ('update_makeup','update_trial','update_waitlist','update_pickup','cancel_pickup','cancel_waitlist','cancel_makeup','cancel_trial','move_class','cancel_move','add_timetable_memo','delete_timetable_memo') then
     raise exception '대상 선택 작업이 올바르지 않습니다.';
   end if;
 
@@ -57,11 +57,18 @@ begin
      and btrim(coalesce(v_payload->>'choiceKey','')) <> 'changeId' then
     raise exception '수업 이동 취소 예약 선택 종류가 올바르지 않습니다.';
   end if;
+  if v_target in ('add_timetable_memo','delete_timetable_memo')
+     and btrim(coalesce(v_payload->>'choiceKey','')) <> 'memoTargetKey' then
+    raise exception '시간표 메모 대상 수업 선택 종류가 올바르지 않습니다.';
+  end if;
 
   v_draft:=v_payload->'draft';
   if jsonb_typeof(v_draft) <> 'object'
      or lower(btrim(coalesce(v_draft->>'action',''))) <> v_target
-     or nullif(btrim(v_draft->>'studentName'),'') is null then
+     or (
+       v_target not in ('add_timetable_memo','delete_timetable_memo')
+       and nullif(btrim(v_draft->>'studentName'),'') is null
+     ) then
     raise exception '대상 선택 draft 정보가 올바르지 않습니다.';
   end if;
 
@@ -181,11 +188,15 @@ begin
     if v_key<>'changeId' then
       raise exception '수업 이동 취소 예약 선택 종류가 올바르지 않습니다.';
     end if;
+  elsif v_target in ('add_timetable_memo','delete_timetable_memo') then
+    if v_key<>'memoTargetKey' then
+      raise exception '시간표 메모 대상 수업 선택 종류가 올바르지 않습니다.';
+    end if;
   else
     raise exception '대상 선택 작업 종류가 올바르지 않습니다.';
   end if;
 
-  if v_target in ('update_waitlist','cancel_makeup','cancel_trial','cancel_move') then
+  if v_target in ('update_waitlist','cancel_makeup','cancel_trial','cancel_move','add_timetable_memo','delete_timetable_memo') then
     select m.reply_to_message_id
     into v_source_message_id
     from public.olli_team_chat_messages m

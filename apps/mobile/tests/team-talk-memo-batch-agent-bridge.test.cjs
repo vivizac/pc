@@ -22,6 +22,18 @@ test('Mobile timetable memo add/delete routes through memo_prepare before legacy
   assert.ok(classify>=0 && legacy>classify);
 
 });
+test('Mobile timetable memo class choice uses reusable target buttons and deterministic resume',()=>{
+  const start=talk.indexOf('async function resolveOlliTalkTimetableMemoAgentTurn');
+  const end=talk.indexOf('async function resolveOlliTalkTrialAddAgentTurn',start);
+  const block=talk.slice(start,end);
+  assert.match(block,/choiceRequired/);
+  assert.match(block,/saveOlliTalkStructuredTargetChoice/);
+  assert.match(block,/mode:'structured_memo_prepare'/);
+  assert.match(block,/memoNote/);
+  assert.match(block,/structuredCommand/);
+  assert.doesNotMatch(block,/mode:'memo_prepare'[\s\S]*mode:'memo_prepare'/);
+});
+
 test('Mobile batch is detected before individual writes and collects reason turns — shared dispatch contract',()=> {
   const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
   const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);

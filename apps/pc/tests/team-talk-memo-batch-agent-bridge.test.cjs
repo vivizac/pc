@@ -28,6 +28,8 @@ test('PC memo bridge sends server-side memo note and consumes persisted action',
   const block=talk.slice(start,end);
   assert.match(block,/sourceMessageId/);
   assert.match(block,/memoNote:clean\(parsed\?\.memoNote\)/);
+  assert.match(block,/choiceRequired/);
+  assert.match(block,/saveStructuredTargetChoice/);
   assert.match(block,/assistantMessage:data\.message/);
   assert.doesNotMatch(block,/saveAssistantAction|olli_team_chat_send_action/);
 });
@@ -62,4 +64,14 @@ test('PC batch collects missing makeup date/time after reason turns',()=>{
   assert.match(talk,/function applyBatchClarification/);
   assert.match(talk,/보강 날짜와 시간을 함께 알려주세요/);
   assert.match(talk,/clarificationMessageId/);
+});
+
+test('PC timetable memo class choice resumes through deterministic structured memo prepare',()=>{
+  const start=talk.indexOf('async function resolveStructuredTimetableMemoTurn');
+  const end=talk.indexOf('function isSafeMakeupClarification',start);
+  const block=talk.slice(start,end);
+  assert.match(block,/mode:'structured_memo_prepare'/);
+  assert.match(block,/memoNote/);
+  assert.match(block,/structuredCommand/);
+  assert.doesNotMatch(block,/mode:'memo_prepare'/);
 });

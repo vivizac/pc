@@ -61,6 +61,9 @@ test('target selection only updates draft stable id and never mutates pickup or 
   assert.match(latestTargetChoiceMigration,/'sourceEnrollmentId'/);
   assert.match(latestTargetChoiceMigration,/'cancel_move'/);
   assert.match(latestTargetChoiceMigration,/'changeId'/);
+  assert.match(latestTargetChoiceMigration,/'add_timetable_memo'/);
+  assert.match(latestTargetChoiceMigration,/'delete_timetable_memo'/);
+  assert.match(latestTargetChoiceMigration,/'memoTargetKey'/);
   assert.match(latestTargetChoiceMigration,/jsonb_set\(v_draft,array\[v_key\]/);
   assert.doesNotMatch(migration,/olli_schedule_execute\s*\(/);
   assert.doesNotMatch(migration,/resolveWaitlist\s*\(/);
