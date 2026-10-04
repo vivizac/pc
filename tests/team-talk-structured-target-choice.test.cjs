@@ -32,7 +32,8 @@ test('router carries stable target ids back to the existing SOTs',()=>{
   assert.match(router,/waitlistId:cleanText\(command\.waitlist_id \|\| command\.waitlistId\)/);
   assert.match(router,/pickupId:cleanText\(command\.pickup_id \|\| command\.pickupId\)/);
   assert.match(router,/structuredTargetChoiceResult/);
-  assert.match(router,/sourceEnrollmentId:cleanText\(command\.source_enrollment_id \|\| command\.sourceEnrollmentId\)/);
+  assert.match(router,/const sourceEnrollmentId=cleanText\(command\.source_enrollment_id \|\| command\.sourceEnrollmentId\)/);
+  assert.match(router,/sourceEnrollmentId,/);
 });
 
 test('PC and Mobile persist and render generic structured target-choice buttons',()=>{
