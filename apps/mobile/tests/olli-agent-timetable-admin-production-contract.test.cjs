@@ -86,3 +86,19 @@ test('session order ambiguity uses reusable target choice and deterministic stru
   assert.doesNotMatch(block,/new Agent\(/);
   assert.match(block,/selectedEnrollmentId:enrollmentId/);
 });
+
+
+test('teacher A/B ambiguity uses targetClassGroup choice and deterministic timetable admin resume',()=>{
+  assert.match(tool,/targetIntent:type/);
+  assert.match(tool,/choiceKey:'targetClassGroup'/);
+  assert.match(targetChoiceMigration,/'set_class_teacher'/);
+  assert.match(targetChoiceMigration,/'set_teacher_override'/);
+  assert.match(targetChoiceMigration,/'targetClassGroup'/);
+  const structuredStart=runtime.indexOf('async function runStructuredTimetableAdminPrepare');
+  const structuredEnd=runtime.indexOf('function parseAttendanceStatusSource',structuredStart);
+  const block=runtime.slice(structuredStart,structuredEnd);
+  assert.doesNotMatch(block,/new Agent\(/);
+  assert.match(block,/selectedClassGroup:targetClassGroup/);
+  assert.match(block,/set_class_teacher/);
+  assert.match(block,/set_teacher_override/);
+});
