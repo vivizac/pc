@@ -31,6 +31,7 @@ on:
       - 'tests/team-talk-structured-makeup-update.test.cjs'
       - 'tests/team-talk-structured-trial-update.test.cjs'
       - 'tests/team-talk-structured-waitlist-update-choice.test.cjs'
+      - 'tests/team-talk-structured-makeup-cancel-choice.test.cjs'
       - 'supabase/migrations/20261004121500_team_chat_structured_trial_update_choices.sql'
       - 'supabase/migrations/20261004130000_team_chat_structured_waitlist_update_choices.sql'
       - 'supabase/migrations/20261004113000_team_chat_structured_makeup_update_choices.sql'
@@ -110,7 +111,8 @@ jobs:
             tests/team-talk-pending-text-input.test.cjs \
             tests/team-talk-structured-makeup-update.test.cjs \
             tests/team-talk-structured-trial-update.test.cjs \
-            tests/team-talk-structured-waitlist-update-choice.test.cjs
+            tests/team-talk-structured-waitlist-update-choice.test.cjs \
+            tests/team-talk-structured-makeup-cancel-choice.test.cjs
 
       - name: Reject platform adapters from common runtime manifests
         run: |

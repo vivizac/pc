@@ -33,7 +33,7 @@ begin
   end if;
 
   v_target:=lower(btrim(coalesce(v_payload->>'targetIntent','')));
-  if v_target not in ('update_makeup','update_trial','update_waitlist','update_pickup','cancel_pickup','cancel_waitlist') then
+  if v_target not in ('update_makeup','update_trial','update_waitlist','update_pickup','cancel_pickup','cancel_waitlist','cancel_makeup') then
     raise exception '대상 선택 작업이 올바르지 않습니다.';
   end if;
 
@@ -44,6 +44,10 @@ begin
   if v_target='update_waitlist'
      and btrim(coalesce(v_payload->>'choiceKey','')) not in ('waitlistId','targetClassGroup') then
     raise exception '대기 변경 대상 선택 종류가 올바르지 않습니다.';
+  end if;
+  if v_target='cancel_makeup'
+     and btrim(coalesce(v_payload->>'choiceKey','')) <> 'oneTimeSessionId' then
+    raise exception '보강 취소 대상 선택 종류가 올바르지 않습니다.';
   end if;
 
   v_draft:=v_payload->'draft';
@@ -107,6 +111,8 @@ declare
   v_body text;
   v_source_message_id bigint;
   v_source_message_text text;
+  v_reason_message_id bigint;
+  v_reason_message_text text;
 begin
   v_account_id:=public.olli_account_id_from_session(p_session_token);
   if v_account_id is null then raise exception '로그인 세션이 만료되었거나 올바르지 않습니다.'; end if;
@@ -155,11 +161,15 @@ begin
     if v_key not in ('waitlistId','targetClassGroup') then
       raise exception '대기 변경 선택 종류가 올바르지 않습니다.';
     end if;
+  elsif v_target='cancel_makeup' then
+    if v_key<>'oneTimeSessionId' then
+      raise exception '보강 취소 선택 종류가 올바르지 않습니다.';
+    end if;
   else
     raise exception '대상 선택 작업 종류가 올바르지 않습니다.';
   end if;
 
-  if v_target='update_waitlist' then
+  if v_target in ('update_waitlist','cancel_makeup') then
     select m.reply_to_message_id
     into v_source_message_id
     from public.olli_team_chat_messages m
@@ -181,7 +191,31 @@ begin
     limit 1;
 
     if nullif(btrim(coalesce(v_source_message_text,'')),'') is null then
-      raise exception '대기 변경 원문 메시지를 확인하지 못했습니다.';
+      raise exception '원문 메시지를 확인하지 못했습니다.';
+    end if;
+  end if;
+
+  if v_target='cancel_makeup' then
+    if coalesce(v_draft->>'reasonMessageId','') !~ '^[0-9]+$' then
+      raise exception '보강 취소 사유 메시지 식별값을 확인하지 못했습니다.';
+    end if;
+    v_reason_message_id:=(v_draft->>'reasonMessageId')::bigint;
+    if v_reason_message_id<=0 or nullif(btrim(coalesce(v_draft->>'reason','')),'') is null then
+      raise exception '보강 취소 사유 정보를 확인하지 못했습니다.';
+    end if;
+
+    select m.body
+    into v_reason_message_text
+    from public.olli_team_chat_messages m
+    where m.id=v_reason_message_id
+      and m.academy_id=p_academy_id
+      and m.sender_member_id=v_member_id
+      and m.message_type='text'
+      and m.deleted_at is null
+    limit 1;
+
+    if nullif(btrim(coalesce(v_reason_message_text,'')),'') is null then
+      raise exception '보강 취소 사유 메시지를 확인하지 못했습니다.';
     end if;
   end if;
 
@@ -192,6 +226,8 @@ begin
       'ok',true,'changed',false,'draft',v_draft,
       'source_message_id',v_source_message_id,
       'source_message_text',v_source_message_text,
+      'reason_message_id',v_reason_message_id,
+      'reason_message_text',v_reason_message_text,
       'action',jsonb_build_object(
         'id',v_action.id,'action_type',v_action.action_type,'status',v_action.status,
         'revision',v_action.revision,'updated_at',v_action.updated_at,'resolved_at',v_action.resolved_at
@@ -253,6 +289,8 @@ begin
     'message_body',v_body,
     'source_message_id',v_source_message_id,
     'source_message_text',v_source_message_text,
+    'reason_message_id',v_reason_message_id,
+    'reason_message_text',v_reason_message_text,
     'action',jsonb_build_object(
       'id',v_action.id,
       'action_type',v_action.action_type,

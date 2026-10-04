@@ -211,6 +211,7 @@ export default async function handler(req, res) {
         mode:'structured_makeup_cancel_prepare',
         ready:result?.ready===true,
         message:result?.persistedMessage || null,
+        choiceRequired:result?.choiceRequired || null,
         recoveredAfterPersist:result?.recoveredAfterPersist===true,
       });
     }
