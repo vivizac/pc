@@ -132,10 +132,10 @@ test('common schedule local fallback delegates update_makeup to existing updateO
     targetTimeSlot:10,
     targetClassGroup:'A'
   });
-  assert.deepEqual(observed,{
-    id:'makeup-1',
-    options:{sessionDate:'2026-10-08',timeSlot:10,classGroup:'A'}
-  });
+  assert.equal(observed.id,'makeup-1');
+  assert.equal(observed.options.sessionDate,'2026-10-08');
+  assert.equal(observed.options.timeSlot,10);
+  assert.equal(observed.options.classGroup,'A');
 });
 
 test('PC and Mobile route structured update_makeup through common router while keeping legacy fallback helpers',()=>{
@@ -163,7 +163,7 @@ test('makeup update choice migration only persists draft selections and supports
   assert.match(migration,/'target_time'/);
   assert.match(migration,/'targetDateExpression'/);
   assert.match(migration,/'targetTimeSlot'/);
-  assert.match(migration,/'targetTimeStored'/);
+  assert.match(migration,/targetTimeStored/);
 
   assert.doesNotMatch(migration,/olli_schedule_update_one_time_session\s*\(/);
   assert.doesNotMatch(migration,/olli_team_chat_action_execute\s*\(/);

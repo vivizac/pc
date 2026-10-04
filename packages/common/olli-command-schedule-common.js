@@ -2529,11 +2529,11 @@
     const effectiveDate=localDateKey(opts.effectiveDate || new Date());
     const horizonEnd=addDaysKey(effectiveDate,56);
     const oneTimeSessionId=clean(opts.oneTimeSessionId);
-    const sourceDate=localDateKey(opts.sourceDate);
+    const sourceDate=opts.sourceDate ? localDateKey(opts.sourceDate) : '';
     const sourceHour=Number(opts.sourceTimeSlot || 0);
     const sourceMinute=Number(opts.sourceMinute || 0);
     const sourceGroup=requestedGroup(opts.sourceClassGroup);
-    let targetDate=localDateKey(opts.targetDate);
+    let targetDate=opts.targetDate ? localDateKey(opts.targetDate) : '';
     const targetHourOrSlot=Number(opts.targetTimeSlot || 0);
     const targetMinute=Number(opts.targetMinute || 0);
     const targetTimeStored=opts.targetTimeStored===true;
