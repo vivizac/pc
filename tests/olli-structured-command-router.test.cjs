@@ -654,6 +654,162 @@ test('structured add_waitlist surfaces a persisted A/B choice instead of asking 
   }
 });
 
+test('structured update_pickup reaches the existing pickup SOT and preserves arrival fields', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let observed=null;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(options){
+      return {
+        ok:true,
+        matched:true,
+        student:{id:'student-1',name:'토)김채원',division:'kinder'},
+        studentName:'토)김채원',
+        division:'kinder'
+      };
+    },
+    async prepareWriteCommand(intent,options){
+      observed={intent,options};
+      return {
+        ok:true,
+        command:{
+          intent:'update_pickup_arrival',
+          studentId:'student-1',
+          studentName:'토)김채원',
+          pickupId:'pickup-1',
+          weekday:2,
+          classTime:8,
+          pickupLabel:'정문',
+          pickupTime:'15:40'
+        },
+        message:'토)김채원 · 화요일 4시 30분\n등원 픽업을 정문 · 3시 40분으로 수정할까요?'
+      };
+    },
+    writeConfirmationMessage(command){
+      return command.studentName+' 픽업을 수정할까요?';
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'update_pickup',
+      studentName:'김채원',
+      weekday:2,
+      classTime:4,
+      classMinute:30,
+      pickupKind:'arrival',
+      pickupLabel:'정문',
+      pickupTime:'15:40'
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'update_pickup_arrival');
+    assert.equal(result.payload.studentName,'토)김채원');
+    assert.ok(observed);
+    assert.equal(observed.intent,'update_pickup');
+    assert.equal(observed.options.studentName,'토)김채원');
+    assert.equal(observed.options.weekday,2);
+    assert.equal(observed.options.classTime,4);
+    assert.equal(observed.options.classMinute,30);
+    assert.equal(observed.options.pickupKind,'arrival');
+    assert.equal(observed.options.pickupLabel,'정문');
+    assert.equal(observed.options.pickupTime,'15:40');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured update_pickup uses the common student-choice state for duplicate decorated names', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let prepareCalled=false;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(){
+      return {
+        ok:false,
+        code:'student_choice_required',
+        studentName:'이한율',
+        choices:[
+          {studentName:'이한율(6)',label:'이한율(6)',division:'kinder'},
+          {studentName:'이한율(2)',label:'이한율(2)',division:'kinder'}
+        ],
+        message:'이한율 학생이 여러 명 있어요. 학생을 선택해 주세요.'
+      };
+    },
+    async prepareWriteCommand(){
+      prepareCalled=true;
+      throw new Error('student choice must stop before pickup preparation');
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'update_pickup',
+      studentName:'이한율',
+      pickupKind:'arrival',
+      pickupLabel:'정문',
+      pickupTime:'15:40'
+    },{});
+
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'student_choice');
+    assert.deepEqual(result.payload.choices.map(item=>item.studentName),['이한율(6)','이한율(2)']);
+    assert.equal(result.payload.draft.action,'update_pickup');
+    assert.equal(result.payload.draft.pickupLabel,'정문');
+    assert.equal(prepareCalled,false);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured update_pickup preserves dropoff semantics', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(options){
+      return {
+        ok:true,matched:true,
+        student:{id:'student-1',name:'민서',division:'kinder'},
+        studentName:'민서',division:'kinder'
+      };
+    },
+    async prepareWriteCommand(intent,options){
+      assert.equal(intent,'update_pickup');
+      assert.equal(options.pickupKind,'dropoff');
+      assert.equal(options.pickupLabel,'후문');
+      return {
+        ok:true,
+        command:{
+          intent:'update_pickup_dropoff',
+          studentId:'student-1',
+          studentName:'민서',
+          pickupId:'pickup-1',
+          weekday:3,
+          classTime:4,
+          dropoffLabel:'후문'
+        },
+        message:'민서 · 수요일 4시\n하원 장소를 후문으로 수정할까요?'
+      };
+    },
+    writeConfirmationMessage(){ return '하원 장소를 수정할까요?'; }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'update_pickup',
+      studentName:'민서',
+      weekday:3,
+      classTime:4,
+      pickupKind:'dropoff',
+      pickupLabel:'후문'
+    },{});
+
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'update_pickup_dropoff');
+    assert.equal(result.payload.dropoffLabel,'후문');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
 test('structured add_pickup passes class and pickup clocks directly to existing schedule SOT', async () => {
   const previousSchedule = globalThis.OlliCommandSchedule;
   let observed = null;
