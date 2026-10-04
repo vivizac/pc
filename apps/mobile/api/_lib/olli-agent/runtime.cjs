@@ -2211,6 +2211,8 @@ async function runStructuredTrialUpdatePrepare({
     targetHour:Number(command.targetTimeSlot||0),
     targetMinute:Number(command.targetMinute||0),
     targetGroup:String(command.targetClassGroup||'').trim().toUpperCase()||'AUTO',
+    waitlistId:String(command.waitlistId||command.waitlist_id||'').trim(),
+    allowChoice:true,
     currentDate:today,
     requestId:'team-chat-trial-update:'+sourceId,
     replyToMessageId:sourceId,
@@ -2805,7 +2807,7 @@ async function runStructuredWaitlistUpdatePrepare({
 
   const {prepareWaitlistUpdateAction}=require('./tools/waitlist-update-prepare-tools.cjs');
   let persistedMessage=null;
-  await prepareWaitlistUpdateAction({
+  const prepared=await prepareWaitlistUpdateAction({
     requestContext,
     subjectAccess:preparedPrivacy.subjectAccess,
     guestAccess:preparedPrivacy.waitlistGuestAccess,
@@ -2831,6 +2833,45 @@ async function runStructuredWaitlistUpdatePrepare({
       return sanitizeWaitlistPayload(payload,preparedPrivacy,scope);
     },
   });
+
+  if(prepared?.code==='target_choice_required'&&Array.isArray(prepared.choices)&&prepared.choices.length>1){
+    const draft={
+      action:'update_waitlist',
+      studentName:String(command.studentName||'').trim(),
+      division:String(command.division||'').trim(),
+      sourceDateExpression:String(command.sourceDateExpression||'').trim(),
+      sourceWeekday:Number(command.sourceWeekday||0),
+      sourceTimeSlot:Number(command.sourceTimeSlot||0),
+      sourceMinute:Number(command.sourceMinute||0),
+      sourceClassGroup:String(command.sourceClassGroup||'').trim().toUpperCase(),
+      targetDateExpression:String(command.targetDateExpression||'').trim(),
+      targetWeekday:Number(command.targetWeekday||0),
+      targetTimeSlot:Number(command.targetTimeSlot||0),
+      targetMinute:Number(command.targetMinute||0),
+      targetClassGroup:String(command.targetClassGroup||'').trim().toUpperCase(),
+      waitlistId:String(command.waitlistId||command.waitlist_id||'').trim()
+    };
+    return {
+      ready:false,
+      choiceRequired:{
+        message:String(prepared.message||'변경할 대기를 선택해 주세요.'),
+        payload:{
+          type:'structured_write_draft',
+          targetIntent:'update_waitlist',
+          field:'target_choice',
+          choiceKey:String(prepared.choiceKey||'').trim(),
+          missingFields:['target_choice'],
+          draft,
+          choices:prepared.choices.map(item=>({
+            id:String(item?.id||'').trim(),
+            label:String(item?.label||'').trim()
+          })).filter(item=>item.id&&item.label)
+        }
+      },
+      persistedMessage:null,
+      recoveredAfterPersist:false
+    };
+  }
 
   if(!persistedMessage?.action||String(persistedMessage.action.action_type||'').trim()!=='update_waitlist'){
     throw runtimeError(

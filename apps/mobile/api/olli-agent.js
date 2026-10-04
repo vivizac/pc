@@ -346,6 +346,7 @@ export default async function handler(req, res) {
         mode:'structured_waitlist_update_prepare',
         ready:result?.ready===true,
         message:result?.persistedMessage || null,
+        choiceRequired:result?.choiceRequired || null,
         recoveredAfterPersist:result?.recoveredAfterPersist===true,
       });
     }

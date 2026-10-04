@@ -1546,7 +1546,18 @@
       })
     });
     const data=await response.json().catch(()=>({}));
-    if(!response.ok||data?.ok!==true||!data?.message?.action){
+    if(!response.ok||data?.ok!==true){
+      throw new Error(data?.error || data?.message || '대기 변경 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(data?.choiceRequired?.payload){
+      const choiceMessage=String(data.choiceRequired.message || '').trim() || '변경할 대기를 선택해 주세요.';
+      return {
+        assistantMessage:await saveOlliTalkStructuredTargetChoice(context,choiceMessage,data.choiceRequired.payload,sourceMessageId),
+        replyText:choiceMessage,
+        recordAi:false
+      };
+    }
+    if(!data?.message?.action){
       throw new Error(data?.error || data?.message || '대기 변경 규칙 시스템 응답을 받지 못했습니다.');
     }
     if(String(data.message.action.action_type || '').trim()!=='update_waitlist'){
@@ -5498,7 +5509,21 @@
       if(!payload?.ok || !payload?.action || !payload?.draft){
         throw new Error(payload?.message || '날짜를 선택하지 못했습니다.');
       }
-      await continueOlliTalkStructuredWriteDraft(payload.draft,context);
+      if(String(payload?.draft?.action || '').trim()==='update_waitlist'){
+        const sourceMessageId=Number(payload?.source_message_id || 0);
+        const sourceMessageText=String(payload?.source_message_text || '').trim();
+        if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0||!sourceMessageText){
+          throw new Error('대기 변경 원문 메시지를 확인하지 못했습니다.');
+        }
+        await resolveOlliTalkStructuredWaitlistUpdateTurn(
+          payload.draft,
+          context,
+          sourceMessageText,
+          sourceMessageId
+        );
+      }else{
+        await continueOlliTalkStructuredWriteDraft(payload.draft,context);
+      }
       await loadOlliTalkBetaMessages({
         showLoading:false,
         localFirst:false,

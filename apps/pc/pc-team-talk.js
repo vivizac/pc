@@ -704,7 +704,21 @@
       if(!payload?.ok || !payload?.action || !payload?.draft){
         throw new Error(payload?.message || '날짜를 선택하지 못했습니다.');
       }
-      await continueStructuredWriteDraft(payload.draft,current);
+      if(clean(payload?.draft?.action)==='update_waitlist'){
+        const sourceMessageId=Number(payload?.source_message_id || 0);
+        const sourceMessageText=clean(payload?.source_message_text);
+        if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0||!sourceMessageText){
+          throw new Error('대기 변경 원문 메시지를 확인하지 못했습니다.');
+        }
+        await resolveStructuredWaitlistUpdateTurn(
+          payload.draft,
+          current,
+          sourceMessageText,
+          sourceMessageId
+        );
+      }else{
+        await continueStructuredWriteDraft(payload.draft,current);
+      }
       await loadMessages({showLoading:false,followBottom:true});
     }catch(error){
       console.warn('PC 팀톡 구조화 날짜 선택 실패:',error?.message || error);
@@ -2897,7 +2911,18 @@
       })
     });
     const data=await response.json().catch(()=>({}));
-    if(!response.ok||data?.ok!==true||!data?.message?.action){
+    if(!response.ok||data?.ok!==true){
+      throw new Error(data?.error || data?.message || '대기 변경 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(data?.choiceRequired?.payload){
+      const choiceMessage=clean(data.choiceRequired.message) || '변경할 대기를 선택해 주세요.';
+      return {
+        assistantMessage:await saveStructuredTargetChoice(current,choiceMessage,data.choiceRequired.payload,sourceMessageId),
+        replyText:choiceMessage,
+        recordAi:false
+      };
+    }
+    if(!data?.message?.action){
       throw new Error(data?.error || data?.message || '대기 변경 규칙 시스템 응답을 받지 못했습니다.');
     }
     if(clean(data.message.action.action_type)!=='update_waitlist'){

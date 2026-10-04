@@ -47,6 +47,10 @@ function weekdayLabel(value) {
   return ['', '월요일','화요일','수요일','목요일','금요일','토요일'][Number(value||0)] || '';
 }
 
+function divisionLabel(value) {
+  return clean(value).toLowerCase()==='kinder' ? '유치부' : '초등부';
+}
+
 function rowGroup(row) {
   return clean(row?.target_class_group).toUpperCase()==='B'?'B':'A';
 }
@@ -124,6 +128,8 @@ async function prepareWaitlistUpdateAction({
   targetHour=0,
   targetMinute=0,
   targetGroup='AUTO',
+  waitlistId='',
+  allowChoice=false,
   currentDate,
   requestId,
   replyToMessageId=null,
@@ -180,6 +186,7 @@ async function prepareWaitlistUpdateAction({
   const requestedTargetTime=visibleTime(targetHour,targetMinute,'변경할 대기 시간');
   const requestedSourceGroup=normalizeGroup(sourceGroup,'기존 대기 반');
   const requestedTargetGroup=normalizeGroup(targetGroup,'변경할 대기 반');
+  const requestedWaitlistId=clean(waitlistId);
 
   const student=isGuest ? null : await loadPrivateMakeupStudent({
     requestContext,
@@ -213,6 +220,7 @@ async function prepareWaitlistUpdateAction({
     return clean(rowTimeLabel(row,divisionForRow,sourceMode))===requestedSourceTime;
   });
   if(requestedSourceGroup!=='AUTO') rows=rows.filter(row=>rowGroup(row)===requestedSourceGroup);
+  if(requestedWaitlistId) rows=rows.filter(row=>clean(row?.id)===requestedWaitlistId);
 
   rows.sort((a,b)=>
     Number(a?.target_weekday||0)-Number(b?.target_weekday||0) ||
@@ -220,7 +228,33 @@ async function prepareWaitlistUpdateAction({
     rowGroup(a).localeCompare(rowGroup(b))
   );
   if(!rows.length) throw waitlistUpdateError('변경할 기존 대기를 찾지 못했습니다.',404,'OLLI_AGENT_WAITLIST_UPDATE_SOURCE_NOT_FOUND');
-  if(rows.length>1) throw waitlistUpdateError('변경할 대기가 여러 개 있습니다. 기존 요일과 시간을 함께 알려 주세요.',409,'OLLI_AGENT_WAITLIST_UPDATE_SOURCE_AMBIGUOUS');
+  if(rows.length>1){
+    if(allowChoice===true){
+      const choices=rows.map(row=>{
+        const rowDivisionValue=rowDivision(row)||requestedDivision;
+        const rowWeekday=Number(row?.target_weekday||0);
+        const rowTime=rowTimeLabel(row,rowDivisionValue,sourceMode);
+        const rowClassGroup=rowGroup(row);
+        return {
+          id:clean(row?.id),
+          label:[
+            divisionLabel(rowDivisionValue),
+            weekdayLabel(rowWeekday)+' '+rowTime,
+            rowClassGroup+'반'
+          ].filter(Boolean).join(' · ')
+        };
+      }).filter(choice=>choice.id);
+      return {
+        ok:false,
+        code:'target_choice_required',
+        field:'target_choice',
+        choiceKey:'waitlistId',
+        choices,
+        message:subjectName+' 학생의 대기가 여러 개 있어요. 변경할 대기를 선택해 주세요.'
+      };
+    }
+    throw waitlistUpdateError('변경할 대기가 여러 개 있습니다. 기존 요일과 시간을 함께 알려 주세요.',409,'OLLI_AGENT_WAITLIST_UPDATE_SOURCE_AMBIGUOUS');
+  }
 
   const sourceRow=rows[0];
   const fixedDivision=requestedDivision || rowDivision(sourceRow);
@@ -273,6 +307,24 @@ async function prepareWaitlistUpdateAction({
     Number(slot?.weekday||0)===resolvedTargetWeekday &&
     clean(slot?.time_label)===targetTimeText
   );
+  if(requestedTargetGroup==='AUTO'&&candidates.length>1){
+    const preserved=candidates.filter(row=>clean(row?.class_group).toUpperCase()===actualSourceGroup);
+    if(preserved.length!==1&&allowChoice===true){
+      const groups=Array.from(new Set(
+        candidates.map(row=>clean(row?.class_group).toUpperCase()).filter(group=>group==='A'||group==='B')
+      ));
+      if(groups.length>1){
+        return {
+          ok:false,
+          code:'target_choice_required',
+          field:'target_choice',
+          choiceKey:'targetClassGroup',
+          choices:groups.map(group=>({id:group,label:group+'반'})),
+          message:'변경할 시간은 A반과 B반으로 나뉘어 있어요. 변경할 반을 선택해 주세요.'
+        };
+      }
+    }
+  }
   const target=chooseTarget(candidates,requestedTargetGroup,actualSourceGroup);
   const targetSlot=Number(target?.time_slot||0);
   const actualTargetGroup=clean(target?.class_group).toUpperCase()==='B'?'B':'A';
