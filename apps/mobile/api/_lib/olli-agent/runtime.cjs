@@ -2099,7 +2099,7 @@ async function runStructuredTrialCancelPrepare({
 
   const {prepareTrialCancelAction}=require('./tools/trial-cancel-prepare-tools.cjs');
   let persistedMessage=null;
-  await prepareTrialCancelAction({
+  const prepared=await prepareTrialCancelAction({
     requestContext,
     trialAccess:preparedPrivacy.trialAccess,
     guestLabel,
@@ -2107,6 +2107,8 @@ async function runStructuredTrialCancelPrepare({
     sourceHour:Number(command.timeSlot||0),
     sourceMinute:Number(command.classMinute||0),
     classGroup:String(command.classGroup||'').trim().toUpperCase()||'AUTO',
+    oneTimeSessionId:String(command.oneTimeSessionId||command.one_time_session_id||'').trim(),
+    allowChoice:true,
     reason:validatedReason.reason,
     currentDate:today,
     requestId:'team-chat-trial-cancel:'+sourceId+':'+reasonId,
@@ -2118,6 +2120,38 @@ async function runStructuredTrialCancelPrepare({
       return payload;
     },
   });
+
+  if(prepared?.code==='target_choice_required'){
+    const choices=Array.isArray(prepared.choices)?prepared.choices.map(item=>Object.assign({},item)):[];
+    return {
+      ready:false,
+      persistedMessage:null,
+      recoveredAfterPersist:false,
+      choiceRequired:{
+        message:String(prepared.message||'취소할 체험수업을 선택해 주세요.'),
+        payload:{
+          type:'structured_write_draft',
+          targetIntent:'cancel_trial',
+          field:'target_choice',
+          missingFields:['target_choice'],
+          choiceKey:'oneTimeSessionId',
+          draft:{
+            action:'cancel_trial',
+            studentName:guest.guestName,
+            division:String(command.division||'').trim(),
+            dateExpression,
+            timeSlot:Number(command.timeSlot||0),
+            classMinute:Number(command.classMinute||0),
+            classGroup:String(command.classGroup||'').trim().toUpperCase(),
+            oneTimeSessionId:'',
+            reason:validatedReason.reason,
+            reasonMessageId:reasonId,
+          },
+          choices,
+        },
+      },
+    };
+  }
 
   if(!persistedMessage?.action||String(persistedMessage.action.action_type||'').trim()!=='cancel_trial'){
     throw runtimeError(
