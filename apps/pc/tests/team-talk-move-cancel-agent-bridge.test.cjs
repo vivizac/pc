@@ -57,5 +57,5 @@ test('PC move cancel target choice resumes through deterministic structured prep
   const block=talk.slice(start,end);
   assert.match(block,/mode:'structured_move_cancel_prepare'/);
   assert.match(block,/structuredCommand/);
-  assert.doesNotMatch(block,/move_cancel_prepare'/);
+  assert.doesNotMatch(block,/mode:'move_cancel_prepare'/);
 });
