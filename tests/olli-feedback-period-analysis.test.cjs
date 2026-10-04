@@ -308,3 +308,33 @@ test('combined feedback path validates the source only once',()=>{
   assert.match(interpretBlock,/validatePickupSourceMessage\(/);
   assert.match(interpretBlock,/sourceValidated:true/);
 });
+
+
+test('first interpreter AI uses Luna none while feedback synthesis keeps its own model settings',()=>{
+  const contextRoute=fs.readFileSync(
+    path.join(root,'apps/mobile/api/_lib/olli-agent/context-route.cjs'),
+    'utf8'
+  );
+  const runtime=fs.readFileSync(
+    path.join(root,'apps/mobile/api/_lib/olli-agent/runtime.cjs'),
+    'utf8'
+  );
+
+  const interpreterStart=contextRoute.indexOf('async function defaultOlliInterpreterRunner');
+  const interpreterEnd=contextRoute.indexOf('async function resolveOlliSystemInterpretation',interpreterStart);
+  assert.ok(interpreterStart>=0 && interpreterEnd>interpreterStart);
+  const interpreterBlock=contextRoute.slice(interpreterStart,interpreterEnd);
+
+  assert.match(contextRoute,/OPENAI_INTERPRETER_MODEL/);
+  assert.match(contextRoute,/gpt-5\.6-luna/);
+  assert.match(interpreterBlock,/const model=olliInterpreterModel\(\)/);
+  assert.match(interpreterBlock,/reasoning:\{effort:'none'\}/);
+  assert.doesNotMatch(interpreterBlock,/OPENAI_AGENT_MODEL/);
+
+  const feedbackStart=runtime.indexOf('async function runFeedbackDirectRead');
+  const feedbackEnd=runtime.indexOf('async function runRecentRecordsProbe',feedbackStart);
+  assert.ok(feedbackStart>=0 && feedbackEnd>feedbackStart);
+  const feedbackBlock=runtime.slice(feedbackStart,feedbackEnd);
+  assert.match(feedbackBlock,/const model=agentModel\(\)/);
+  assert.match(feedbackBlock,/reasoning:\{effort:'minimal'\}/);
+});
