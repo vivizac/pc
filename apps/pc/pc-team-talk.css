@@ -193,6 +193,9 @@
 .olliPcTeamTalkActionCard.structuredDate .dateWide{grid-column:1/-1;width:100%}
 .olliPcTeamTalkDateInput{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;inset:auto 0 0 auto}
 .olliPcTeamTalkActionCard.structuredStudent{width:min(260px,100%);display:grid;grid-template-columns:1fr}
+.olliPcTeamTalkActionCard.structuredTarget{width:min(280px,100%);display:grid;grid-template-columns:1fr}
+.olliPcTeamTalkActionCard.structuredTarget .olliPcTeamTalkActionStatus{grid-column:1/-1}
+.olliPcTeamTalkActionButton.targetChoice{width:100%;min-height:38px;height:auto;padding:7px 10px;white-space:normal;line-height:1.35}
 .olliPcTeamTalkActionCard.structuredStudent .olliPcTeamTalkActionStatus{grid-column:1/-1}
 .olliPcTeamTalkActionButton.studentChoice{width:100%;min-height:38px;height:auto;padding:7px 10px}
 .olliPcTeamTalkActionCard.structuredDivision{width:min(260px,100%);display:grid;grid-template-columns:repeat(2,minmax(86px,1fr))}

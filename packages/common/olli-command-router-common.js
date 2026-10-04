@@ -1321,6 +1321,45 @@
     return cleanText(fallback) || '이 작업을 진행할까요?';
   }
 
+  function structuredTargetChoiceResult(action, command, prepared) {
+    const choices=Array.isArray(prepared && prepared.choices)
+      ? prepared.choices
+        .map(item=>({
+          id:cleanText(item && item.id),
+          label:cleanText(item && item.label)
+        }))
+        .filter(item=>item.id && item.label)
+      : [];
+    if(choices.length<2) return null;
+    const draft=createStructuredWriteDraft(command);
+    const payload={
+      type:'structured_write_draft',
+      targetIntent:action,
+      field:'target_choice',
+      missingFields:['target_choice'],
+      draft,
+      choices
+    };
+    return {
+      handled:true,
+      kind:'action_needs_field',
+      intent:action,
+      text:'',
+      message:String(prepared && prepared.message || '대상을 선택해 주세요.'),
+      clearInput:true,
+      payload,
+      action:{
+        status:'pending_fields',
+        intent:action,
+        field:'target_choice',
+        missingFields:['target_choice'],
+        command:Object.assign({},draft),
+        choices:choices.map(item=>Object.assign({},item)),
+        requiresReason:false
+      }
+    };
+  }
+
   function multiWeekdayTimeMentions(value) {
     const raw = cleanText(value);
     const pattern = /(?:(다다음\s*주|다음\s*주|차주|이번\s*주|금주)\s*)?([월화수목금토])요일\s*(\d{1,2})\s*시(?:\s*([AaBb])\s*반)?/g;
@@ -2707,6 +2746,7 @@
           targetWeekday,
           targetTimeSlot,
           classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+          waitlistId:cleanText(command.waitlist_id || command.waitlistId),
           selectedStudent:routeContext.selectedStudent || null,
           effectiveDate:new Date(),
           originalText:''
@@ -2892,6 +2932,10 @@
           originalText:''
         });
 
+        if(prepared?.code==='target_choice_required'){
+          const choiceResult=structuredTargetChoiceResult('cancel_waitlist',command,prepared);
+          if(choiceResult) return choiceResult;
+        }
         if(!prepared || prepared.ok!==true || !prepared.command){
           return {
             handled:true,kind:'action_rejected',intent:'cancel_waitlist',text:'',
@@ -2956,11 +3000,16 @@
           classTime,
           classMinute,
           pickupKind:pickupKind==='dropoff' ? 'dropoff' : 'all',
+          pickupId:cleanText(command.pickup_id || command.pickupId),
           selectedStudent:routeContext.selectedStudent || null,
           effectiveDate:new Date(),
           originalText:''
         });
 
+        if(prepared?.code==='target_choice_required'){
+          const choiceResult=structuredTargetChoiceResult('cancel_pickup',command,prepared);
+          if(choiceResult) return choiceResult;
+        }
         if(!prepared || prepared.ok!==true || !prepared.command){
           return {
             handled:true,kind:'action_rejected',intent:'cancel_pickup',text:'',
@@ -3038,11 +3087,16 @@
           pickupKind:pickupKind==='dropoff' ? 'dropoff' : 'arrival',
           pickupLabel,
           pickupTime,
+          pickupId:cleanText(command.pickup_id || command.pickupId),
           selectedStudent:routeContext.selectedStudent || null,
           effectiveDate:new Date(),
           originalText:''
         });
 
+        if(prepared?.code==='target_choice_required'){
+          const choiceResult=structuredTargetChoiceResult('update_pickup',command,prepared);
+          if(choiceResult) return choiceResult;
+        }
         if(!prepared || prepared.ok!==true || !prepared.command){
           return {
             handled:true,kind:'action_rejected',intent:'update_pickup',text:'',

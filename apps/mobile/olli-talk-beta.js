@@ -622,6 +622,21 @@
     return payload.message;
   }
 
+  async function saveOlliTalkStructuredTargetChoice(context,body,payload,replyToMessageId){
+    const result=await callOlliTalkRpc('olli_team_chat_send_structured_target_choice',{
+      p_session_token:context.sessionToken,
+      p_academy_id:context.academyId,
+      p_body:normalizeOlliTalkActionPrompt(body),
+      p_action_payload:payload,
+      p_client_message_id:createOlliTalkClientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if(!result?.ok || !result?.message?.action){
+      throw new Error(result?.message || '선택 카드를 저장하지 못했습니다.');
+    }
+    return result.message;
+  }
+
   async function saveOlliTalkStructuredStudentChoice(context,body,payload,replyToMessageId){
     const result=await callOlliTalkRpc('olli_team_chat_send_structured_student_choice',{
       p_session_token:context.sessionToken,
@@ -2628,6 +2643,18 @@
               assistantMessage:await saveOlliTalkStructuredStudentChoice(
                 context,
                 prepared.message || '학생을 선택해 주세요.',
+                prepared.payload,
+                replyToMessageId
+              ),
+              replyText:String(prepared.message || ''),
+              recordAi:false
+            };
+          }
+          if(String(prepared.payload.field || '').trim()==='target_choice'){
+            return {
+              assistantMessage:await saveOlliTalkStructuredTargetChoice(
+                context,
+                prepared.message || '대상을 선택해 주세요.',
                 prepared.payload,
                 replyToMessageId
               ),
@@ -5414,6 +5441,9 @@
       if(String(prepared.payload?.field || '').trim()==='student_choice' && prepared.payload){
         return saveOlliTalkStructuredStudentChoice(context,prepared.message || '학생을 선택해 주세요.',prepared.payload,null);
       }
+      if(String(prepared.payload?.field || '').trim()==='target_choice' && prepared.payload){
+        return saveOlliTalkStructuredTargetChoice(context,prepared.message || '대상을 선택해 주세요.',prepared.payload,null);
+      }
       if(String(prepared.payload?.field || '').trim()==='division' && prepared.payload){
         return saveOlliTalkStructuredDivisionChoice(context,prepared.message || '유치부인지 초등부인지 선택해 주세요.',prepared.payload,null);
       }
@@ -5528,6 +5558,89 @@
     });
 
     card.append(dateInput,pick);
+  }
+
+  async function handleOlliTalkStructuredTargetChoice(action,choiceId){
+    const actionId=String(action?.id || '').trim();
+    const selectedId=String(choiceId || '').trim();
+    if(!actionId || !selectedId || olliTalkActionBusy.has(actionId)) return;
+
+    const context=getOlliTalkBetaContext();
+    if(!context.sessionToken || !context.academyId){
+      alert('올리톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    olliTalkActionBusy.add(actionId);
+    setOlliTalkActionCardBusy(actionId,true);
+    try{
+      const payload=await callOlliTalkRpc('olli_team_chat_action_select_structured_target',{
+        p_session_token:context.sessionToken,
+        p_academy_id:context.academyId,
+        p_action_id:actionId,
+        p_choice_id:selectedId
+      });
+      if(!payload?.ok || !payload?.action || !payload?.draft){
+        throw new Error(payload?.message || '대상을 선택하지 못했습니다.');
+      }
+      await continueOlliTalkStructuredWriteDraft(payload.draft,context);
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }catch(error){
+      console.warn('올리톡 구조화 대상 선택 실패:',error);
+      alert(error?.message || '대상을 선택하지 못했습니다.');
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }finally{
+      olliTalkActionBusy.delete(actionId);
+      setOlliTalkActionCardBusy(actionId,false);
+    }
+  }
+
+  async function populateOlliTalkStructuredTargetChoiceCard(card,action){
+    const actionId=String(action?.id || '').trim();
+    const context=getOlliTalkBetaContext();
+    if(!actionId || !context.sessionToken || !context.academyId) return;
+
+    try{
+      const payload=await callOlliTalkRpc('olli_team_chat_get_structured_target_choice',{
+        p_session_token:context.sessionToken,
+        p_academy_id:context.academyId,
+        p_action_id:actionId
+      });
+      if(!payload?.ok || !Array.isArray(payload?.choices)){
+        throw new Error(payload?.message || '선택할 일정을 확인하지 못했습니다.');
+      }
+      if(!card.isConnected || String(card.dataset.olliTalkActionId || '').trim()!==actionId) return;
+      card.replaceChildren();
+      if(!payload.choices.length){
+        card.appendChild(createMessageText('span','olliTalkBetaActionStatus','선택할 일정이 없어요.'));
+        return;
+      }
+      payload.choices.forEach(choice=>{
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='olliTalkBetaActionButton primary targetChoice';
+        button.textContent=String(choice?.label || '일정').trim();
+        button.addEventListener('click',()=>handleOlliTalkStructuredTargetChoice(action,String(choice?.id || '').trim()));
+        card.appendChild(button);
+      });
+    }catch(error){
+      if(!card.isConnected) return;
+      card.replaceChildren(createMessageText('span','olliTalkBetaActionStatus failed',String(error?.message || '').trim() || '일정 목록을 불러오지 못했어요.'));
+    }
+  }
+
+  function appendOlliTalkStructuredTargetChoiceButtons(card,action){
+    card.classList.add('structuredTarget');
+    card.appendChild(createMessageText('span','olliTalkBetaActionStatus','일정 확인 중'));
+    void populateOlliTalkStructuredTargetChoiceCard(card,action);
   }
 
   async function handleOlliTalkStructuredStudentChoice(action,studentName){
@@ -5777,6 +5890,11 @@
 
     if(String(action?.action_type || '').trim()==='choose_structured_student'){
       appendOlliTalkStructuredStudentChoiceButtons(card,action);
+      return card;
+    }
+
+    if(String(action?.action_type || '').trim()==='choose_structured_target'){
+      appendOlliTalkStructuredTargetChoiceButtons(card,action);
       return card;
     }
 

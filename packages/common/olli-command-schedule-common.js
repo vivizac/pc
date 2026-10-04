@@ -2124,15 +2124,27 @@
     if (!requestedTarget.ok) return requestedTarget;
 
     let rows = activePickupRows(weekData, studentId, lookupDate);
+    if (clean(opts.pickupId)) rows = rows.filter(row => clean(row && row.id) === clean(opts.pickupId));
     if (Number(opts.weekday || 0)) rows = rows.filter(row => Number(row && row.weekday) === Number(opts.weekday));
     if (requestedTarget.classTime) rows = rows.filter(row => Number(row && row.class_time) === requestedTarget.classTime);
 
     if (!rows.length) return { ok:false, message:clean(student.name) + ' 학생의 수정할 픽업 일정을 찾지 못했어요.' };
     if (rows.length > 1) {
-      const choices = rows.map(row =>
-        weekdayLabel(row.weekday) + ' ' + pickupClassTimeLabel(weekData, lookupDate, row.class_time)
-      ).join(' · ');
-      return { ok:false, message:clean(student.name) + ' 학생의 픽업 일정이 여러 개 있어요: ' + choices + '\n수업 요일과 시간을 함께 적어 주세요.' };
+      const choices = rows.map(row => {
+        const rowDate=nextOccurrenceKey(referenceDate,Number(row && row.weekday)) || lookupDate;
+        return {
+          id:clean(row && row.id),
+          label:weekdayLabel(row && row.weekday) + ' ' + pickupClassTimeLabel(weekData,rowDate,row && row.class_time)
+        };
+      }).filter(choice=>choice.id);
+      return {
+        ok:false,
+        code:'target_choice_required',
+        field:'target_choice',
+        targetType:'pickup',
+        choices,
+        message:clean(student.name) + ' 학생의 픽업 일정이 여러 개 있어요. 수정할 일정을 선택해 주세요.'
+      };
     }
 
     const item = rows[0];
@@ -2194,6 +2206,7 @@
     if (!requestedTarget.ok) return requestedTarget;
 
     let rows = activePickupRows(weekData, studentId, lookupDate);
+    if (clean(opts.pickupId)) rows = rows.filter(row => clean(row && row.id) === clean(opts.pickupId));
     if (Number(opts.weekday || 0)) rows = rows.filter(row => Number(row && row.weekday) === Number(opts.weekday));
     if (requestedTarget.classTime) rows = rows.filter(row => Number(row && row.class_time) === requestedTarget.classTime);
     if (clean(opts.pickupKind) === 'dropoff') {
@@ -2202,10 +2215,21 @@
 
     if (!rows.length) return { ok:false, message:clean(student.name) + ' 학생의 삭제할 픽업 일정을 찾지 못했어요.' };
     if (rows.length > 1) {
-      const choices = rows.map(row =>
-        weekdayLabel(row.weekday) + ' ' + pickupClassTimeLabel(weekData, lookupDate, row.class_time)
-      ).join(' · ');
-      return { ok:false, message:clean(student.name) + ' 학생의 픽업 일정이 여러 개 있어요: ' + choices + '\n삭제할 수업 요일과 시간을 함께 적어 주세요.' };
+      const choices = rows.map(row => {
+        const rowDate=nextOccurrenceKey(referenceDate,Number(row && row.weekday)) || lookupDate;
+        return {
+          id:clean(row && row.id),
+          label:weekdayLabel(row && row.weekday) + ' ' + pickupClassTimeLabel(weekData,rowDate,row && row.class_time)
+        };
+      }).filter(choice=>choice.id);
+      return {
+        ok:false,
+        code:'target_choice_required',
+        field:'target_choice',
+        targetType:'pickup',
+        choices,
+        message:clean(student.name) + ' 학생의 픽업 일정이 여러 개 있어요. 삭제할 일정을 선택해 주세요.'
+      };
     }
 
     const item = rows[0];
@@ -2238,6 +2262,7 @@
       clean(row && row.student_name) === studentName
       && clean(row && row.status).toLowerCase() !== 'cancelled'
     );
+    if (clean(opts.waitlistId)) rows = rows.filter(row => clean(row && row.id) === clean(opts.waitlistId));
 
     const wantedWeekday = opts.date ? isoWeekday(referenceDate) : 0;
     if (wantedWeekday) rows = rows.filter(row => Number(row && row.target_weekday) === wantedWeekday);
@@ -2271,15 +2296,28 @@
         const rowDate=wantedWeekday
           ? referenceDate
           : nextOccurrenceKey(referenceDate,Number(row && row.target_weekday));
-        return weekdayLabel(row.target_weekday) + ' '
-          + timetableMemoTimeLabel(
-            normalizeDivision(row && row.division),
-            rowDate,
-            Number(row && row.target_time_slot),
-            mode
-          );
-      }).join(' · ');
-      return { ok:false, message:studentName + ' 학생의 대기가 여러 개 있어요: ' + choices + '\n취소할 요일과 시간을 함께 적어 주세요.' };
+        const division=normalizeDivision(row && row.division);
+        const group=classGroup(row && row.target_class_group);
+        return {
+          id:clean(row && row.id),
+          label:divisionLabel(division) + ' · ' + weekdayLabel(row && row.target_weekday) + ' '
+            + timetableMemoTimeLabel(
+              division,
+              rowDate,
+              Number(row && row.target_time_slot),
+              mode
+            )
+            + ' ' + group + '반'
+        };
+      }).filter(choice=>choice.id);
+      return {
+        ok:false,
+        code:'target_choice_required',
+        field:'target_choice',
+        targetType:'waitlist',
+        choices,
+        message:studentName + ' 학생의 대기가 여러 개 있어요. 취소할 대기를 선택해 주세요.'
+      };
     }
 
     const item = rows[0];

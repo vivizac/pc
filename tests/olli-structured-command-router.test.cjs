@@ -655,6 +655,146 @@ test('structured add_waitlist surfaces a persisted A/B choice instead of asking 
   }
 });
 
+test('structured pickup update returns a selectable target card instead of asking for typed weekday/time', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(){
+      return {
+        ok:true,matched:true,
+        student:{id:'student-1',name:'민서',division:'kinder'},
+        studentName:'민서',division:'kinder'
+      };
+    },
+    async prepareWriteCommand(){
+      return {
+        ok:false,
+        code:'target_choice_required',
+        field:'target_choice',
+        choices:[
+          {id:'pickup-1',label:'월요일 4시'},
+          {id:'pickup-2',label:'목요일 5시 30분'}
+        ],
+        message:'민서 학생의 픽업 일정이 여러 개 있어요. 수정할 일정을 선택해 주세요.'
+      };
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'update_pickup',
+      studentName:'민서',
+      pickupKind:'arrival',
+      pickupLabel:'정문',
+      pickupTime:'15:30'
+    },{});
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'target_choice');
+    assert.deepEqual(result.payload.choices.map(item=>item.id),['pickup-1','pickup-2']);
+    assert.doesNotMatch(result.message,/적어 주세요/);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured pickup cancellation continues with a selected pickup id', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let seenId='';
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(){
+      return {
+        ok:true,matched:true,
+        student:{id:'student-1',name:'민서',division:'kinder'},
+        studentName:'민서',division:'kinder'
+      };
+    },
+    async prepareWriteCommand(intent,options){
+      seenId=options.pickupId;
+      return {
+        ok:true,
+        command:{
+          intent:'cancel_pickup',
+          studentId:'student-1',
+          studentName:'민서',
+          pickupId:options.pickupId,
+          weekday:1,classTime:4,effectiveDate:'2026-10-05'
+        },
+        message:'민서 · 월요일 4시\n픽업 일정을 삭제할까요?'
+      };
+    },
+    writeConfirmationMessage(){ return '픽업 일정을 삭제할까요?'; }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'cancel_pickup',
+      studentName:'민서',
+      pickupId:'pickup-2'
+    },{});
+    assert.equal(result.kind,'action_pending');
+    assert.equal(seenId,'pickup-2');
+    assert.equal(result.payload.pickupId,'pickup-2');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured waitlist cancellation returns target choices and continues with selected waitlist id', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let selectedId='';
+  let call=0;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(options){
+      return {ok:true,matched:false,guest:true,student:null,studentName:options.studentName,division:''};
+    },
+    async prepareWriteCommand(intent,options){
+      call+=1;
+      if(call===1){
+        return {
+          ok:false,
+          code:'target_choice_required',
+          field:'target_choice',
+          choices:[
+            {id:'wait-1',label:'유치부 · 화요일 4시 A반'},
+            {id:'wait-2',label:'유치부 · 목요일 5시 B반'}
+          ],
+          message:'서준 학생의 대기가 여러 개 있어요. 취소할 대기를 선택해 주세요.'
+        };
+      }
+      selectedId=options.waitlistId;
+      return {
+        ok:true,
+        command:{
+          intent:'cancel_waitlist',
+          studentId:'',
+          studentName:'서준',
+          division:'kinder',
+          waitlistId:options.waitlistId,
+          targetWeekday:4,targetTimeSlot:5,targetClassGroup:'B',
+          effectiveDate:'2026-10-08',isGuest:true
+        },
+        message:'서준 · 목요일 5시\n대기를 취소할까요?'
+      };
+    },
+    writeConfirmationMessage(){ return '대기를 취소할까요?'; }
+  };
+
+  try{
+    let result=await router.prepareStructuredAction({action:'cancel_waitlist',studentName:'서준'},{});
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'target_choice');
+    assert.equal(result.payload.choices.length,2);
+    result=await router.prepareStructuredAction({
+      action:'cancel_waitlist',
+      studentName:'서준',
+      waitlistId:'wait-2'
+    },{});
+    assert.equal(result.kind,'action_pending');
+    assert.equal(selectedId,'wait-2');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
 test('structured cancel_waitlist reaches the common waitlist SOT with visible hour and minute', async () => {
   const previousSchedule=globalThis.OlliCommandSchedule;
   let observed=null;
