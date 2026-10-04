@@ -13,6 +13,10 @@ const mobile=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'ut
 const pcCss=fs.readFileSync(path.join(root,'apps/pc/pc-team-talk.css'),'utf8');
 const mobileCss=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.css'),'utf8');
 const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261004104500_team_chat_structured_target_choice.sql'),'utf8');
+const latestTargetChoiceMigration=fs.readFileSync(
+  path.join(root,'supabase/migrations/20261004130000_team_chat_structured_waitlist_update_choices.sql'),
+  'utf8'
+);
 
 test('ambiguous pickup and waitlist SOTs return reusable target choices instead of typed re-entry prompts',()=>{
   assert.match(schedule,/code:'target_choice_required'/);
@@ -52,9 +56,9 @@ test('target selection only updates draft stable id and never mutates pickup or 
   assert.match(migration,/choose_structured_target/);
   assert.match(migration,/v_key:='pickupId'/);
   assert.match(migration,/v_key:='waitlistId'/);
-  assert.match(migration,/'move_class'/);
-  assert.match(migration,/'sourceEnrollmentId'/);
-  assert.match(migration,/jsonb_set\(v_draft,array\[v_key\]/);
+  assert.match(latestTargetChoiceMigration,/'move_class'/);
+  assert.match(latestTargetChoiceMigration,/'sourceEnrollmentId'/);
+  assert.match(latestTargetChoiceMigration,/jsonb_set\(v_draft,array\[v_key\]/);
   assert.doesNotMatch(migration,/olli_schedule_execute\s*\(/);
   assert.doesNotMatch(migration,/resolveWaitlist\s*\(/);
   assert.doesNotMatch(migration,/removePickup\s*\(/);
