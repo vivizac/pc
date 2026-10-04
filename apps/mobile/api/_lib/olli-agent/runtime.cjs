@@ -3860,6 +3860,7 @@ async function runTimetableMemoPrepareAgent({
   const model = agentModel();
   const today = todayInSeoul();
   let persistedMessage = null;
+  let choiceRequired = null;
 
   const prepareTimetableMemo = createPrepareTimetableMemoTool({
     tool,
@@ -3872,8 +3873,12 @@ async function runTimetableMemoPrepareAgent({
     memoNote:String(memoNote || '').trim(),
     requestId,
     replyToMessageId,
+    allowChoice:requirePersistedMessage===true,
     capturePersistedMessage(message) {
       persistedMessage = pickupPersistedMessageForClient(message);
+    },
+    captureChoiceRequired(payload) {
+      choiceRequired=payload&&typeof payload==='object' ? Object.assign({},payload) : null;
     },
     sanitizePayload(payload) {
       return sanitizeAgentToolPayload(payload, preparedPrivacy);
@@ -3921,6 +3926,38 @@ async function runTimetableMemoPrepareAgent({
   }
 
   const finalOutput = String(result?.finalOutput || '').trim();
+  if(requirePersistedMessage&&choiceRequired){
+    const actionType=scope.operation==='delete'?'delete_timetable_memo':'add_timetable_memo';
+    return {
+      ready:false,
+      model,
+      output:finalOutput,
+      nodeVersion:process.versions.node,
+      persistedMessage:null,
+      recoveredAfterPersist:!!runError,
+      choiceRequired:{
+        message:String(choiceRequired.message||'메모를 남길 수업을 선택해 주세요.'),
+        payload:{
+          type:'structured_write_draft',
+          targetIntent:actionType,
+          field:'target_choice',
+          missingFields:['target_choice'],
+          choiceKey:'memoTargetKey',
+          draft:{
+            action:actionType,
+            studentName:String(choiceRequired.studentName||'').trim(),
+            division:String(choiceRequired.division||scope.division||'').trim(),
+            sessionDate:String(choiceRequired.sessionDate||'').trim(),
+            memoTargetKey:'',
+            memoNote:String(memoNote||'').trim(),
+          },
+          choices:Array.isArray(choiceRequired.choices)
+            ? choiceRequired.choices.map(item=>Object.assign({},item))
+            : []
+        }
+      }
+    };
+  }
   if (!finalOutput && (!requirePersistedMessage || !persistedMessage)) {
     throw runtimeError(
       '시간표 메모 준비 Agent 응답이 비어 있습니다.',
@@ -4026,6 +4063,91 @@ async function runTimetableMemoPrepare({
   });
 }
 
+
+async function runStructuredTimetableMemoPrepare({
+  requestContext,
+  preparedPrivacy,
+  structuredCommand,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError(
+      '원문 Team Chat 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_ROUTINE_TIMETABLE_MEMO_SOURCE_INVALID'
+    );
+  }
+  await validateTimetableMemoSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  const command=structuredCommand&&typeof structuredCommand==='object' ? structuredCommand : {};
+  const action=String(command.action||'').trim();
+  if(!['add_timetable_memo','delete_timetable_memo'].includes(action)){
+    throw runtimeError(
+      '시간표 메모 구조화 작업 종류를 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TIMETABLE_MEMO_ACTION_INVALID'
+    );
+  }
+  const memoTargetKey=String(command.memoTargetKey||command.memo_target_key||'').trim();
+  const sessionDate=String(command.sessionDate||command.session_date||'').trim();
+  if(!memoTargetKey||!sessionDate){
+    throw runtimeError(
+      '시간표 메모 대상 수업 선택 정보를 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_TIMETABLE_MEMO_TARGET_REQUIRED'
+    );
+  }
+
+  const scope=resolveTimetableMemoScope(preparedPrivacy);
+  const expectedOperation=action==='delete_timetable_memo'?'delete':'add';
+  if(scope.operation!==expectedOperation){
+    throw runtimeError(
+      '시간표 메모 원문 작업과 선택 작업이 일치하지 않습니다.',
+      409,
+      'OLLI_ROUTINE_TIMETABLE_MEMO_OPERATION_MISMATCH'
+    );
+  }
+
+  const {prepareTimetableMemoAction}=require('./tools/timetable-memo-tools.cjs');
+  let persistedMessage=null;
+  await prepareTimetableMemoAction({
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    studentLabel:scope.subjectLabel,
+    division:scope.division,
+    operation:scope.operation,
+    sessionDate,
+    hour:0,
+    minute:0,
+    classGroup:'AUTO',
+    memoTargetKey,
+    allowChoice:true,
+    memoNote:String(command.memoNote||command.memo_note||'').trim(),
+    requestId:'team-chat-memo:'+sourceId,
+    replyToMessageId:sourceId,
+    capturePersistedMessage(message){
+      persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload){
+      return payload;
+    },
+  });
+
+  if(!persistedMessage?.action||String(persistedMessage.action.action_type||'').trim()!==action){
+    throw runtimeError(
+      '시간표 메모 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_ROUTINE_TIMETABLE_MEMO_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+  return {ready:true,persistedMessage,recoveredAfterPersist:false};
+}
 
 function resolvePickupPrepareScope(preparedPrivacy) {
   if (preparedPrivacy?.needsDisambiguation) {
@@ -6410,6 +6532,7 @@ module.exports = {
   runTimetableMemoPrepareAgent,
   runTimetableMemoPrepareProbe,
   runTimetableMemoPrepare,
+  runStructuredTimetableMemoPrepare,
   validateTimetableMemoSourceMessage,
   normalizeBatchPartText,
   splitBatchWriteParts,

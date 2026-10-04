@@ -172,6 +172,25 @@ function studentClassTargets(weekData, {
   });
 }
 
+function memoTargetKey(target) {
+  if (!target || typeof target !== 'object') return '';
+  const division=clean(target.division).toLowerCase();
+  const timeSlot=Number(target.timeSlot || target.time_slot || 0);
+  const group=clean(target.classGroup || target.class_group).toUpperCase();
+  if (!VALID_DIVISIONS.has(division) || !Number.isInteger(timeSlot) || timeSlot<=0 || !['A','B'].includes(group)) return '';
+  return [division,timeSlot,group].join('|');
+}
+
+function parseMemoTargetKey(value) {
+  const parts=clean(value).split('|');
+  if(parts.length!==3) return null;
+  const division=clean(parts[0]).toLowerCase();
+  const timeSlot=Number(parts[1] || 0);
+  const classGroup=clean(parts[2]).toUpperCase();
+  if(!VALID_DIVISIONS.has(division)||!Number.isInteger(timeSlot)||timeSlot<=0||!['A','B'].includes(classGroup)) return null;
+  return {division,timeSlot,classGroup,key:[division,timeSlot,classGroup].join('|')};
+}
+
 function classSplitActive(row, weekday, timeSlot, dateKey) {
   if (
     Number(row?.weekday || 0) !== Number(weekday) ||
@@ -294,6 +313,8 @@ async function prepareTimetableMemoAction({
   hour = 0,
   minute = 0,
   classGroup = 'AUTO',
+  memoTargetKey:selectedMemoTargetKey = '',
+  allowChoice = false,
   memoNote = '',
   requestId,
   replyToMessageId = null,
@@ -356,6 +377,23 @@ async function prepareTimetableMemoAction({
 
   const resolvedDivision = normalizeDivision(subjectDivision || explicitDivision);
   const requestedGroup = normalizeRequestedGroup(classGroup);
+  const requestedMemoTarget = clean(selectedMemoTargetKey)
+    ? parseMemoTargetKey(selectedMemoTargetKey)
+    : null;
+  if(clean(selectedMemoTargetKey) && !requestedMemoTarget){
+    throw memoToolError(
+      '선택한 메모 대상 수업을 확인하지 못했습니다.',
+      400,
+      'OLLI_AGENT_TIMETABLE_MEMO_TARGET_INVALID'
+    );
+  }
+  if(requestedMemoTarget && requestedMemoTarget.division!==resolvedDivision){
+    throw memoToolError(
+      '선택한 메모 대상 수업 구분이 현재 요청과 다릅니다.',
+      400,
+      'OLLI_AGENT_TIMETABLE_MEMO_TARGET_DIVISION_MISMATCH'
+    );
+  }
   const note = clean(memoNote);
   if (op === 'add' && !note) {
     throw memoToolError(
@@ -412,6 +450,9 @@ async function prepareTimetableMemoAction({
     if (targetGroup !== 'AUTO' && mode !== 'half_hour') {
       targets = targets.filter((target) => target.classGroup === targetGroup);
     }
+    if(requestedMemoTarget){
+      targets=targets.filter(target=>memoTargetKey(target)===requestedMemoTarget.key);
+    }
 
     if (!targets.length) {
       throw memoToolError(
@@ -421,6 +462,29 @@ async function prepareTimetableMemoAction({
       );
     }
     if (targets.length > 1) {
+      if(allowChoice===true){
+        const choices=targets.slice(0,8).map(target=>{
+          const id=memoTargetKey(target);
+          const visibleTime=timeLabel(resolvedDivision,weekday,target.timeSlot,mode);
+          const groupText=mode==='half_hour' ? '' : ' · '+target.classGroup+'반';
+          return id&&clean(visibleTime)
+            ? {id,label:visibleTime+groupText}
+            : null;
+        }).filter(Boolean);
+        if(choices.length>1){
+          return {
+            ok:false,
+            code:'target_choice_required',
+            field:'target_choice',
+            choiceKey:'memoTargetKey',
+            studentName:clean(targets.find(target=>clean(target.studentName))?.studentName),
+            division:resolvedDivision,
+            sessionDate:date.key,
+            choices,
+            message:'메모를 남길 수업이 여러 개 있어요. 대상 수업을 선택해 주세요.'
+          };
+        }
+      }
       throw memoToolError(
         '지정한 학생에게 같은 날 여러 수업이 있습니다. 메모를 남길 시간을 더 정확히 알려 주세요.',
         409,
@@ -578,6 +642,8 @@ function createPrepareTimetableMemoTool({
   requestId,
   replyToMessageId = null,
   capturePersistedMessage = null,
+  captureChoiceRequired = null,
+  allowChoice = false,
   sanitizePayload,
 }) {
   if (typeof tool !== 'function' || !z) {
@@ -609,12 +675,21 @@ function createPrepareTimetableMemoTool({
         hour,
         minute,
         classGroup:class_group,
+        allowChoice,
         memoNote,
         requestId,
         replyToMessageId,
         capturePersistedMessage,
         sanitizePayload,
       });
+      if(payload?.code==='target_choice_required'){
+        if(typeof captureChoiceRequired==='function') captureChoiceRequired(payload);
+        return JSON.stringify({
+          ok:false,
+          status:'choice_required',
+          message:clean(payload.message)||'메모를 남길 수업을 선택해 주세요.'
+        });
+      }
       return JSON.stringify(payload);
     },
   });
@@ -626,6 +701,8 @@ module.exports = {
   mondayKey,
   encodeMemoTimeSlot,
   studentClassTargets,
+  memoTargetKey,
+  parseMemoTargetKey,
   availableGroups,
   stableActionClientMessageId,
   prepareTimetableMemoAction,
