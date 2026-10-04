@@ -3631,7 +3631,12 @@
           && Number.isInteger(Number(command?.batchCommandIndex))
           && Number(command.batchCommandIndex) >= 0
         ) {
-          const choiceResult=structuredTargetChoiceResult('add_makeup',command,{
+          const batchChoiceDraft=Object.assign({},command,prepared.commandDraft,{
+            action:'add_makeup',
+            batchStructured:true,
+            batchCommandIndex:Number(command.batchCommandIndex)
+          });
+          const choiceResult=structuredTargetChoiceResult('add_makeup',batchChoiceDraft,{
             choiceKey:'classGroup',
             choices:(Array.isArray(prepared.choices) ? prepared.choices : ['A','B'])
               .map(group=>({id:cleanText(group).toUpperCase(),label:cleanText(group).toUpperCase()+'반'})),
