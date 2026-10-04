@@ -124,6 +124,8 @@ async function prepareMoveCancelAction({
   sourceWeekday=0,
   sourceHour=0,
   sourceMinute=0,
+  changeId:selectedChangeId='',
+  allowChoice=false,
   currentDate,
   requestId,
   replyToMessageId=null,
@@ -156,6 +158,7 @@ async function prepareMoveCancelAction({
     throw moveCancelError('기존 수업 요일을 확인해 주세요.',400,'OLLI_AGENT_MOVE_CANCEL_WEEKDAY_INVALID');
   }
   const requestedTime=requestedTimeLabel(sourceHour,sourceMinute);
+  const requestedChangeId=clean(selectedChangeId);
 
   const student=await loadPrivateMakeupStudent({
     requestContext,
@@ -208,11 +211,37 @@ async function prepareMoveCancelAction({
       ))===requestedTime;
     });
   }
+  if(requestedChangeId){
+    resolved=resolved.filter(item=>clean(item?.row?.id)===requestedChangeId);
+  }
 
   if(!resolved.length){
     throw moveCancelError('입력한 기존 수업과 일치하는 이동 예약을 찾지 못했습니다.',404,'OLLI_AGENT_MOVE_CANCEL_SOURCE_NOT_FOUND');
   }
   if(resolved.length>1){
+    if(allowChoice===true){
+      const choices=resolved.slice(0,8).map(item=>{
+        const id=clean(item?.row?.id);
+        const sourceText=scheduleText(item?.source,fixedDivision,item?.mode);
+        const targetText=scheduleText(item?.target,fixedDivision,item?.mode);
+        if(!id||!parseDateKey(item?.effectiveDate)) return null;
+        return {
+          id,
+          label:dateLabel(item.effectiveDate)+' · '+(sourceText||'기존 수업')+' → '+(targetText||'변경 수업')
+        };
+      }).filter(Boolean);
+      if(choices.length>1){
+        return {
+          ok:false,
+          code:'target_choice_required',
+          field:'target_choice',
+          choiceKey:'changeId',
+          studentName:student.name,
+          choices,
+          message:student.name+' 학생의 취소할 수업 이동 예약을 선택해 주세요.'
+        };
+      }
+    }
     throw moveCancelError('취소할 수업 이동 예약이 여러 개 있습니다. 기존 수업 요일과 시간을 함께 알려 주세요.',409,'OLLI_AGENT_MOVE_CANCEL_AMBIGUOUS');
   }
 
@@ -286,7 +315,8 @@ async function prepareMoveCancelAction({
 
 function createPrepareMoveCancelTool({
   tool,z,requestContext,subjectAccess,studentLabel,division,currentDate,requestId,
-  replyToMessageId=null,capturePersistedMessage=null,sanitizePayload,
+  replyToMessageId=null,capturePersistedMessage=null,captureChoiceRequired=null,
+  allowChoice=false,sanitizePayload,
 }){
   if(typeof tool!=='function'||!z){
     throw moveCancelError('Agents SDK Tool 런타임이 준비되지 않았습니다.',500,'OLLI_AGENT_TOOL_RUNTIME_MISSING');
@@ -309,12 +339,21 @@ function createPrepareMoveCancelTool({
         sourceWeekday:source_weekday,
         sourceHour:source_hour,
         sourceMinute:source_minute,
+        allowChoice,
         currentDate,
         requestId,
         replyToMessageId,
         capturePersistedMessage,
         sanitizePayload,
       });
+      if(payload?.code==='target_choice_required'){
+        if(typeof captureChoiceRequired==='function') captureChoiceRequired(payload);
+        return JSON.stringify({
+          ok:false,
+          status:'choice_required',
+          message:clean(payload.message)||'취소할 수업 이동 예약을 선택해 주세요.'
+        });
+      }
       return JSON.stringify(payload);
     },
   });

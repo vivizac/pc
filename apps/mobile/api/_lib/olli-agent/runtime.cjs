@@ -3468,6 +3468,7 @@ async function runMoveCancelPrepareAgent({
   const model=agentModel();
   const today=todayInSeoul();
   let persistedMessage=null;
+  let choiceRequired=null;
 
   const prepareMoveCancel=createPrepareMoveCancelTool({
     tool,
@@ -3479,8 +3480,12 @@ async function runMoveCancelPrepareAgent({
     currentDate:today,
     requestId,
     replyToMessageId,
+    allowChoice:requirePersistedMessage===true,
     capturePersistedMessage(message){
       persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    captureChoiceRequired(payload){
+      choiceRequired=payload&&typeof payload==='object' ? Object.assign({},payload) : null;
     },
     sanitizePayload(payload){
       return sanitizeAgentToolPayload(payload,preparedPrivacy);
@@ -3521,6 +3526,34 @@ async function runMoveCancelPrepareAgent({
   }
 
   const finalOutput=String(result?.finalOutput||'').trim();
+  if(requirePersistedMessage&&choiceRequired){
+    return {
+      ready:false,
+      model,
+      output:finalOutput,
+      nodeVersion:process.versions.node,
+      persistedMessage:null,
+      recoveredAfterPersist:!!runError,
+      choiceRequired:{
+        message:String(choiceRequired.message||'취소할 수업 이동 예약을 선택해 주세요.'),
+        payload:{
+          type:'structured_write_draft',
+          targetIntent:'cancel_move',
+          field:'target_choice',
+          missingFields:['target_choice'],
+          choiceKey:'changeId',
+          draft:{
+            action:'cancel_move',
+            studentName:String(choiceRequired.studentName||'').trim(),
+            changeId:'',
+          },
+          choices:Array.isArray(choiceRequired.choices)
+            ? choiceRequired.choices.map(item=>Object.assign({},item))
+            : []
+        }
+      }
+    };
+  }
   if(!finalOutput&&(!requirePersistedMessage||!persistedMessage)){
     throw runtimeError(
       '수업 이동 취소 준비 Agent 응답이 비어 있습니다.',
@@ -5017,6 +5050,55 @@ async function runMoveCancelPrepare({
   });
 }
 
+async function runStructuredMoveCancelPrepare({
+  requestContext,
+  preparedPrivacy,
+  structuredCommand,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError('원문 Team Chat 메시지 식별값이 올바르지 않습니다.',400,'OLLI_ROUTINE_MOVE_CANCEL_SOURCE_INVALID');
+  }
+  await validateMoveSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  const command=structuredCommand&&typeof structuredCommand==='object' ? structuredCommand : {};
+  if(String(command.action||'').trim()!=='cancel_move'||!String(command.changeId||command.change_id||'').trim()){
+    throw runtimeError('수업 이동 취소 선택 정보를 확인하지 못했습니다.',400,'OLLI_ROUTINE_MOVE_CANCEL_TARGET_REQUIRED');
+  }
+
+  const scope=resolveMoveCancelPrepareScope(preparedPrivacy);
+  const {prepareMoveCancelAction}=require('./tools/move-cancel-prepare-tools.cjs');
+  let persistedMessage=null;
+  await prepareMoveCancelAction({
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    studentLabel:scope.subjectLabel,
+    division:scope.division,
+    changeId:String(command.changeId||command.change_id||'').trim(),
+    allowChoice:true,
+    currentDate:todayInSeoul(),
+    requestId:'team-chat-message:'+sourceId,
+    replyToMessageId:sourceId,
+    capturePersistedMessage(message){
+      persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload){
+      return payload;
+    },
+  });
+
+  if(!persistedMessage?.action||String(persistedMessage.action.action_type||'').trim()!=='cancel_move'){
+    throw runtimeError('수업 이동 취소 확인 카드 저장 결과를 확인하지 못했습니다.',502,'OLLI_ROUTINE_MOVE_CANCEL_PERSISTED_MESSAGE_MISSING');
+  }
+  return {ready:true,persistedMessage,recoveredAfterPersist:false};
+}
+
 async function runMakeupPrepare({
   agentContext,
   requestContext,
@@ -6292,6 +6374,7 @@ module.exports = {
   runMoveCancelPrepareAgent,
   runMoveCancelPrepareProbe,
   runMoveCancelPrepare,
+  runStructuredMoveCancelPrepare,
   validateMoveSourceMessage,
   resolveWaitlistCancelPrepareScope,
   runWaitlistCancelPrepareAgent,
