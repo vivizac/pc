@@ -128,7 +128,7 @@ async function prepareWaitlistUpdateAction({
   targetHour=0,
   targetMinute=0,
   targetGroup='AUTO',
-  waitlistId='',
+  waitlistId:selectedWaitlistId='',
   allowChoice=false,
   currentDate,
   requestId,
@@ -186,7 +186,7 @@ async function prepareWaitlistUpdateAction({
   const requestedTargetTime=visibleTime(targetHour,targetMinute,'변경할 대기 시간');
   const requestedSourceGroup=normalizeGroup(sourceGroup,'기존 대기 반');
   const requestedTargetGroup=normalizeGroup(targetGroup,'변경할 대기 반');
-  const requestedWaitlistId=clean(waitlistId);
+  const requestedWaitlistId=clean(selectedWaitlistId);
 
   const student=isGuest ? null : await loadPrivateMakeupStudent({
     requestContext,
