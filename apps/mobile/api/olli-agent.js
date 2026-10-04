@@ -997,6 +997,7 @@ export default async function handler(req, res) {
           mode:'structured_memo_prepare',
           ready:probe.ready===true,
           message:probe.persistedMessage,
+          choiceRequired:probe.choiceRequired || null,
           recoveredAfterPersist:probe.recoveredAfterPersist===true,
         });
       } else if (mode === 'absence_prepare_probe') {

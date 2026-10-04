@@ -3928,6 +3928,7 @@ async function runTimetableMemoPrepareAgent({
   const finalOutput = String(result?.finalOutput || '').trim();
   if(requirePersistedMessage&&choiceRequired){
     const actionType=scope.operation==='delete'?'delete_timetable_memo':'add_timetable_memo';
+    const choiceKey=String(choiceRequired.choiceKey||'memoTargetKey').trim()||'memoTargetKey';
     return {
       ready:false,
       model,
@@ -3942,13 +3943,14 @@ async function runTimetableMemoPrepareAgent({
           targetIntent:actionType,
           field:'target_choice',
           missingFields:['target_choice'],
-          choiceKey:'memoTargetKey',
+          choiceKey,
           draft:{
             action:actionType,
             studentName:String(choiceRequired.studentName||'').trim(),
             division:String(choiceRequired.division||scope.division||'').trim(),
             sessionDate:String(choiceRequired.sessionDate||'').trim(),
-            memoTargetKey:'',
+            memoTargetKey:String(choiceRequired.memoTargetKey||'').trim(),
+            memoId:'',
             memoNote:String(memoNote||'').trim(),
           },
           choices:Array.isArray(choiceRequired.choices)
@@ -4095,6 +4097,7 @@ async function runStructuredTimetableMemoPrepare({
     );
   }
   const memoTargetKey=String(command.memoTargetKey||command.memo_target_key||'').trim();
+  const memoId=String(command.memoId||command.memo_id||'').trim();
   const sessionDate=String(command.sessionDate||command.session_date||'').trim();
   if(!memoTargetKey||!sessionDate){
     throw runtimeError(
@@ -4116,7 +4119,7 @@ async function runStructuredTimetableMemoPrepare({
 
   const {prepareTimetableMemoAction}=require('./tools/timetable-memo-tools.cjs');
   let persistedMessage=null;
-  await prepareTimetableMemoAction({
+  const prepared=await prepareTimetableMemoAction({
     requestContext,
     subjectAccess:preparedPrivacy.subjectAccess,
     studentLabel:scope.subjectLabel,
@@ -4127,6 +4130,7 @@ async function runStructuredTimetableMemoPrepare({
     minute:0,
     classGroup:'AUTO',
     memoTargetKey,
+    memoId,
     allowChoice:true,
     memoNote:String(command.memoNote||command.memo_note||'').trim(),
     requestId:'team-chat-memo:'+sourceId,
@@ -4138,6 +4142,37 @@ async function runStructuredTimetableMemoPrepare({
       return payload;
     },
   });
+
+  if(prepared?.code==='target_choice_required'){
+    const choiceKey=String(prepared.choiceKey||'').trim();
+    return {
+      ready:false,
+      persistedMessage:null,
+      recoveredAfterPersist:false,
+      choiceRequired:{
+        message:String(prepared.message||'삭제할 메모를 선택해 주세요.'),
+        payload:{
+          type:'structured_write_draft',
+          targetIntent:action,
+          field:'target_choice',
+          missingFields:['target_choice'],
+          choiceKey,
+          draft:{
+            action,
+            studentName:String(prepared.studentName||command.studentName||'').trim(),
+            division:String(prepared.division||command.division||scope.division||'').trim(),
+            sessionDate:String(prepared.sessionDate||sessionDate).trim(),
+            memoTargetKey:String(prepared.memoTargetKey||memoTargetKey).trim(),
+            memoId:'',
+            memoNote:String(command.memoNote||command.memo_note||'').trim(),
+          },
+          choices:Array.isArray(prepared.choices)
+            ? prepared.choices.map(item=>Object.assign({},item))
+            : []
+        }
+      }
+    };
+  }
 
   if(!persistedMessage?.action||String(persistedMessage.action.action_type||'').trim()!==action){
     throw runtimeError(

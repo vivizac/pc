@@ -314,6 +314,7 @@ async function prepareTimetableMemoAction({
   minute = 0,
   classGroup = 'AUTO',
   memoTargetKey:selectedMemoTargetKey = '',
+  memoId:selectedMemoId = '',
   allowChoice = false,
   memoNote = '',
   requestId,
@@ -394,7 +395,15 @@ async function prepareTimetableMemoAction({
       'OLLI_AGENT_TIMETABLE_MEMO_TARGET_DIVISION_MISMATCH'
     );
   }
+  const requestedMemoId=clean(selectedMemoId);
   const note = clean(memoNote);
+  if(op==='add' && requestedMemoId){
+    throw memoToolError(
+      '메모 등록에는 삭제 대상 메모 식별값을 사용할 수 없습니다.',
+      400,
+      'OLLI_AGENT_TIMETABLE_MEMO_ID_NOT_ALLOWED'
+    );
+  }
   if (op === 'add' && !note) {
     throw memoToolError(
       '등록할 메모 내용을 알려 주세요.',
@@ -584,13 +593,16 @@ async function prepareTimetableMemoAction({
   let storedNote = restoredNote;
 
   if (op === 'delete') {
-    const rows = filterMemoRows(memoData?.memos, {
+    let rows = filterMemoRows(memoData?.memos, {
       division:resolvedDivision,
       sessionDate:date.key,
       timeSlot,
       classGroup:targetGroup,
       memoNote:restoredNote,
     });
+    if(requestedMemoId){
+      rows=rows.filter(row=>clean(row?.id)===requestedMemoId);
+    }
     if (!rows.length) {
       throw memoToolError(
         '해당 시간표 칸에서 삭제할 메모를 찾지 못했습니다.',
@@ -599,6 +611,31 @@ async function prepareTimetableMemoAction({
       );
     }
     if (rows.length !== 1) {
+      if(rows.length>1 && allowChoice===true){
+        const choices=rows.slice(0,8).map((row,index)=>{
+          const id=clean(row?.id);
+          const text=clean(row?.note);
+          return id ? {id,label:text || ('메모 '+String(index+1))} : null;
+        }).filter(Boolean);
+        if(choices.length>1){
+          return {
+            ok:false,
+            code:'target_choice_required',
+            field:'target_choice',
+            choiceKey:'memoId',
+            studentName,
+            division:resolvedDivision,
+            sessionDate:date.key,
+            memoTargetKey:memoTargetKey({
+              division:resolvedDivision,
+              timeSlot,
+              classGroup:targetGroup,
+            }),
+            choices,
+            message:'삭제할 메모가 여러 개 있어요. 삭제할 메모를 선택해 주세요.'
+          };
+        }
+      }
       throw memoToolError(
         '삭제할 메모가 여러 개 있습니다. 메모 내용을 더 구체적으로 알려 주세요.',
         409,
