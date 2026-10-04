@@ -2746,7 +2746,6 @@
           targetWeekday,
           targetTimeSlot,
           classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
-          waitlistId:cleanText(command.waitlist_id || command.waitlistId),
           selectedStudent:routeContext.selectedStudent || null,
           effectiveDate:new Date(),
           originalText:''
@@ -2927,6 +2926,7 @@
           classHour:visibleHour,
           classMinute,
           classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+          waitlistId:cleanText(command.waitlist_id || command.waitlistId),
           selectedStudent:routeContext.selectedStudent || null,
           effectiveDate:new Date(),
           originalText:''
