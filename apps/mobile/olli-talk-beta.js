@@ -1215,10 +1215,12 @@
     });
     const data=await response.json().catch(()=>({}));
     if(!response.ok||data?.ok!==true||!data?.message?.action){
-      throw new Error(data?.error || data?.message || '수업 순서 변경 규칙 시스템 응답을 받지 못했습니다.');
+      throw new Error(data?.error || data?.message || '시간표 관리 규칙 시스템 응답을 받지 못했습니다.');
     }
-    if(String(data.message.action.action_type || '').trim()!=='set_session_order'){
-      throw new Error('수업 순서 변경 규칙 시스템 작업 종류가 올바르지 않습니다.');
+    const expectedType=String(structuredCommand?.action || '').trim();
+    if(!['set_session_order','set_class_teacher','set_teacher_override'].includes(expectedType)
+      ||String(data.message.action.action_type || '').trim()!==expectedType){
+      throw new Error('시간표 관리 규칙 시스템 작업 종류가 올바르지 않습니다.');
     }
     return {
       assistantMessage:data.message,
@@ -5808,7 +5810,7 @@
       if(!payload?.ok || !payload?.action || !payload?.draft){
         throw new Error(payload?.message || '대상을 선택하지 못했습니다.');
       }
-      if(String(payload?.draft?.action || '').trim()==='set_session_order'){
+      if(['set_session_order','set_class_teacher','set_teacher_override'].includes(String(payload?.draft?.action || '').trim())){
         const sourceMessageId=Number(payload?.source_message_id || 0);
         const sourceMessageText=String(payload?.source_message_text || '').trim();
         if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0||!sourceMessageText){
