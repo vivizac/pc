@@ -123,6 +123,7 @@ async function sendAction({requestContext,requestId,replyToMessageId,actionType,
 }
 async function prepareTimetableAdminAction({
   requestContext,intent,subjectAccess=null,studentLabel='',currentDate,requestId,replyToMessageId,
+  selectedEnrollmentId='',allowChoice=false,
   capturePersistedMessage=null,sanitizePayload,callRpc=callSupabaseRpc,
 }){
   if(typeof sanitizePayload!=='function') throw adminError('Agent Tool 개인정보 필터가 준비되지 않았습니다.',500,'OLLI_AGENT_TIMETABLE_ADMIN_PRIVACY_MISSING');
@@ -228,8 +229,32 @@ async function prepareTimetableAdminAction({
     }
     const requestedGroup=clean(intent?.classGroup).toUpperCase();
     if(requestedGroup) candidates=candidates.filter(row=>clean(row?.class_group).toUpperCase()===requestedGroup);
+    const requestedEnrollmentId=clean(selectedEnrollmentId);
+    if(requestedEnrollmentId) candidates=candidates.filter(row=>clean(row?.id)===requestedEnrollmentId);
     if(candidates.length===0) throw adminError('해당 학생의 정규수업을 찾지 못했습니다.',404,'OLLI_AGENT_SESSION_ORDER_CLASS_NOT_FOUND');
-    if(candidates.length>1) throw adminError('변경할 수업이 여러 개입니다. 수업 시간을 함께 알려 주세요.',409,'OLLI_AGENT_SESSION_ORDER_CLASS_AMBIGUOUS');
+    if(candidates.length>1){
+      if(allowChoice===true){
+        const choices=candidates.slice(0,8).map(row=>{
+          const id=clean(row?.id);
+          const rowWeekday=Number(row?.weekday||0);
+          const rowSlot=Number(row?.time_slot||0);
+          const group=clean(row?.class_group).toUpperCase()==='B'?'B':'A';
+          const labelText=weekdayLabel(rowWeekday)+' '+timeLabel(division,rowWeekday,rowSlot,mode)+' '+group+'반';
+          return id ? {id,label:labelText} : null;
+        }).filter(Boolean);
+        if(choices.length>1){
+          return {
+            ok:false,
+            code:'target_choice_required',
+            field:'target_choice',
+            choiceKey:'enrollmentId',
+            choices,
+            message:'수업 순서를 변경할 수업을 선택해 주세요.'
+          };
+        }
+      }
+      throw adminError('변경할 수업이 여러 개입니다. 수업 시간을 함께 알려 주세요.',409,'OLLI_AGENT_SESSION_ORDER_CLASS_AMBIGUOUS');
+    }
     const selected=candidates[0];
     const order=Number(intent?.sessionOrder||0);
     if(![1,2].includes(order)) throw adminError('수업 순서를 1회차 또는 2회차로 알려 주세요.',400,'OLLI_AGENT_SESSION_ORDER_VALUE_INVALID');
@@ -271,7 +296,7 @@ async function prepareTimetableAdminAction({
 }
 function createPrepareTimetableAdminTool({
   tool,z,requestContext,intent,subjectAccess=null,studentLabel='',currentDate,requestId,
-  replyToMessageId,capturePersistedMessage,sanitizePayload,
+  replyToMessageId,capturePersistedMessage,captureChoiceRequired=null,allowChoice=false,sanitizePayload,
 }){
   if(typeof tool!=='function'||!z) throw adminError('Agents SDK Tool 런타임이 준비되지 않았습니다.',500,'OLLI_AGENT_TOOL_RUNTIME_MISSING');
   return tool({
@@ -281,8 +306,16 @@ function createPrepareTimetableAdminTool({
     async execute(){
       const result=await prepareTimetableAdminAction({
         requestContext,intent,subjectAccess,studentLabel,currentDate,requestId,
-        replyToMessageId,capturePersistedMessage,sanitizePayload,
+        replyToMessageId,allowChoice,capturePersistedMessage,sanitizePayload,
       });
+      if(result?.code==='target_choice_required'){
+        if(typeof captureChoiceRequired==='function') captureChoiceRequired(result);
+        return JSON.stringify({
+          ok:false,
+          status:'choice_required',
+          message:clean(result.message)||'수업을 선택해 주세요.'
+        });
+      }
       return JSON.stringify(result);
     },
   });

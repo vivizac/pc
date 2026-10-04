@@ -6307,6 +6307,7 @@ async function runTimetableAdminPrepare({
   const model=agentModel();
   const today=todayInSeoul();
   let persistedMessage=null;
+  let choiceRequired=null;
 
   const prepareAdmin=createPrepareTimetableAdminTool({
     tool,z,requestContext,intent,
@@ -6315,7 +6316,9 @@ async function runTimetableAdminPrepare({
     currentDate:today,
     requestId:'team-chat-message:'+sourceId,
     replyToMessageId:sourceId,
+    allowChoice:true,
     capturePersistedMessage(message){persistedMessage=pickupPersistedMessageForClient(message);},
+    captureChoiceRequired(payload){choiceRequired=payload&&typeof payload==='object'?Object.assign({},payload):null;},
     sanitizePayload(payload){return sanitizeAgentToolPayload(payload,preparedPrivacy);},
   });
 
@@ -6344,6 +6347,33 @@ async function runTimetableAdminPrepare({
     if(!persistedMessage) throw error;
   }
 
+  if(choiceRequired){
+    return {
+      ready:false,
+      model,
+      output:String(result?.finalOutput||'').trim(),
+      nodeVersion:process.versions.node,
+      persistedMessage:null,
+      recoveredAfterPersist:!!runError,
+      choiceRequired:{
+        message:String(choiceRequired.message||'수업 순서를 변경할 수업을 선택해 주세요.'),
+        payload:{
+          type:'structured_write_draft',
+          targetIntent:'set_session_order',
+          field:'target_choice',
+          missingFields:['target_choice'],
+          choiceKey:'enrollmentId',
+          draft:{
+            action:'set_session_order',
+            enrollmentId:'',
+          },
+          choices:Array.isArray(choiceRequired.choices)
+            ? choiceRequired.choices.map(item=>Object.assign({},item))
+            : []
+        }
+      }
+    };
+  }
   if(!persistedMessage){
     throw runtimeError('시간표 관리 확인 카드 저장 결과를 확인하지 못했습니다.',502,'OLLI_AGENT_TIMETABLE_ADMIN_PERSISTED_MESSAGE_MISSING');
   }
@@ -6355,6 +6385,88 @@ async function runTimetableAdminPrepare({
     persistedMessage,
     recoveredAfterPersist:!!runError,
   };
+}
+
+
+async function runStructuredTimetableAdminPrepare({
+  requestContext,
+  preparedPrivacy,
+  structuredCommand,
+  sourceMessageId,
+  sourceMessageText,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+    throw runtimeError(
+      '시간표 관리 원문 메시지 식별값이 올바르지 않습니다.',
+      400,
+      'OLLI_ROUTINE_TIMETABLE_ADMIN_SOURCE_INVALID'
+    );
+  }
+  await validatePickupSourceMessage({
+    requestContext,
+    sourceMessageId:sourceId,
+    sourceMessageText,
+  });
+
+  const intent=parseTimetableAdminSource(sourceMessageText);
+  if(String(intent?.intent||'')!=='set_session_order'){
+    throw runtimeError(
+      '저장된 원문에서 수업 순서 변경 요청을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_SESSION_ORDER_PARSE_FAILED'
+    );
+  }
+  const command=structuredCommand&&typeof structuredCommand==='object' ? structuredCommand : {};
+  const enrollmentId=String(command.enrollmentId||command.enrollment_id||'').trim();
+  if(String(command.action||'').trim()!=='set_session_order'||!enrollmentId){
+    throw runtimeError(
+      '수업 순서 변경 대상 선택 정보를 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_SESSION_ORDER_TARGET_REQUIRED'
+    );
+  }
+
+  if(preparedPrivacy?.needsDisambiguation){
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_AGENT_STUDENT_AMBIGUOUS'
+    );
+  }
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
+  if(subjectRefs.length!==1){
+    throw runtimeError(
+      '수업 순서 변경은 학생 한 명을 정확히 지정해 주세요.',
+      400,
+      'OLLI_AGENT_SESSION_ORDER_SINGLE_STUDENT_REQUIRED'
+    );
+  }
+  const studentLabel=String(subjectRefs[0]?.label||'').trim();
+  const {prepareTimetableAdminAction}=require('./tools/timetable-admin-prepare-tools.cjs');
+  let persistedMessage=null;
+  await prepareTimetableAdminAction({
+    requestContext,
+    intent,
+    subjectAccess:preparedPrivacy?.subjectAccess,
+    studentLabel,
+    currentDate:todayInSeoul(),
+    requestId:'team-chat-message:'+sourceId,
+    replyToMessageId:sourceId,
+    selectedEnrollmentId:enrollmentId,
+    allowChoice:true,
+    capturePersistedMessage(message){persistedMessage=pickupPersistedMessageForClient(message);},
+    sanitizePayload(payload){return payload;},
+  });
+
+  if(!persistedMessage?.action||String(persistedMessage.action.action_type||'').trim()!=='set_session_order'){
+    throw runtimeError(
+      '수업 순서 변경 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_ROUTINE_SESSION_ORDER_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+  return {ready:true,persistedMessage,recoveredAfterPersist:false};
 }
 
 
@@ -6468,6 +6580,7 @@ module.exports = {
   runTimetableRead,
   parseTimetableAdminSource,
   runTimetableAdminPrepare,
+  runStructuredTimetableAdminPrepare,
   parseAttendanceStatusSource,
   runAttendanceStatusPrepare,
   runRecentRecordsProbe,
