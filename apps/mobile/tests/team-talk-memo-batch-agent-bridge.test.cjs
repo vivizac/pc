@@ -64,3 +64,12 @@ test('Mobile batch collects missing makeup date/time after reason turns',()=>{
   assert.match(talk,/보강 날짜와 시간을 함께 알려주세요/);
   assert.match(talk,/clarificationMessageId/);
 });
+
+test('Mobile structured memo resume can persist a second memoId choice without another Agent turn',()=>{
+  const start=talk.indexOf('async function resolveOlliTalkStructuredTimetableMemoTurn');
+  const end=talk.indexOf('async function resolveOlliTalkTrialAddAgentTurn',start);
+  const block=talk.slice(start,end);
+  assert.match(block,/choiceRequired/);
+  assert.match(block,/saveOlliTalkStructuredTargetChoice/);
+  assert.match(block,/mode:'structured_memo_prepare'/);
+});

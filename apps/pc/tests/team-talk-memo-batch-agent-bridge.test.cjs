@@ -75,3 +75,12 @@ test('PC timetable memo class choice resumes through deterministic structured me
   assert.match(block,/structuredCommand/);
   assert.doesNotMatch(block,/mode:'memo_prepare'/);
 });
+
+test('PC structured memo resume can persist a second memoId choice without another Agent turn',()=>{
+  const start=talk.indexOf('async function resolveStructuredTimetableMemoTurn');
+  const end=talk.indexOf('function isSafeMakeupClarification',start);
+  const block=talk.slice(start,end);
+  assert.match(block,/choiceRequired/);
+  assert.match(block,/saveStructuredTargetChoice/);
+  assert.match(block,/mode:'structured_memo_prepare'/);
+});

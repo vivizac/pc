@@ -57,9 +57,13 @@ begin
      and btrim(coalesce(v_payload->>'choiceKey','')) <> 'changeId' then
     raise exception '수업 이동 취소 예약 선택 종류가 올바르지 않습니다.';
   end if;
-  if v_target in ('add_timetable_memo','delete_timetable_memo')
+  if v_target='add_timetable_memo'
      and btrim(coalesce(v_payload->>'choiceKey','')) <> 'memoTargetKey' then
     raise exception '시간표 메모 대상 수업 선택 종류가 올바르지 않습니다.';
+  end if;
+  if v_target='delete_timetable_memo'
+     and btrim(coalesce(v_payload->>'choiceKey','')) not in ('memoTargetKey','memoId') then
+    raise exception '시간표 메모 삭제 선택 종류가 올바르지 않습니다.';
   end if;
 
   v_draft:=v_payload->'draft';
@@ -188,9 +192,13 @@ begin
     if v_key<>'changeId' then
       raise exception '수업 이동 취소 예약 선택 종류가 올바르지 않습니다.';
     end if;
-  elsif v_target in ('add_timetable_memo','delete_timetable_memo') then
+  elsif v_target='add_timetable_memo' then
     if v_key<>'memoTargetKey' then
       raise exception '시간표 메모 대상 수업 선택 종류가 올바르지 않습니다.';
+    end if;
+  elsif v_target='delete_timetable_memo' then
+    if v_key not in ('memoTargetKey','memoId') then
+      raise exception '시간표 메모 삭제 선택 종류가 올바르지 않습니다.';
     end if;
   else
     raise exception '대상 선택 작업 종류가 올바르지 않습니다.';

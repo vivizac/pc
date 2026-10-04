@@ -1325,8 +1325,24 @@
       })
     });
     const data=await response.json().catch(()=>({}));
-    if(!response.ok||data?.ok!==true||!data?.message?.action){
+    if(!response.ok||data?.ok!==true){
       throw new Error(data?.error || data?.message || '시간표 메모 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(data?.choiceRequired?.payload){
+      const choiceMessage=String(data.choiceRequired.message || '').trim() || '삭제할 메모를 선택해 주세요.';
+      return {
+        assistantMessage:await saveOlliTalkStructuredTargetChoice(
+          context,
+          choiceMessage,
+          data.choiceRequired.payload,
+          sourceId
+        ),
+        replyText:choiceMessage,
+        recordAi:false
+      };
+    }
+    if(!data?.message?.action){
+      throw new Error(data?.error || data?.message || '시간표 메모 확인 카드를 받지 못했습니다.');
     }
     const expectedType=String(structuredCommand?.action || '').trim();
     if(String(data.message.action.action_type || '').trim()!==expectedType){
