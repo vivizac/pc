@@ -2737,6 +2737,7 @@
       const studentName=cleanText(command.student_name || command.studentName);
       const sourceWeekday=Number(command.source_weekday || command.sourceWeekday || 0);
       const sourceTimeSlot=Number(command.source_time_slot || command.sourceTimeSlot || 0);
+      const sourceEnrollmentId=cleanText(command.source_enrollment_id || command.sourceEnrollmentId);
       const targetWeekday=Number(command.target_weekday || command.targetWeekday || 0);
       const targetTimeSlot=Number(command.target_time_slot || command.targetTimeSlot || 0);
       const classGroup=cleanText(command.class_group || command.classGroup).toUpperCase();
@@ -2756,6 +2757,7 @@
           studentName,
           sourceWeekday,
           sourceTimeSlot,
+          sourceEnrollmentId,
           targetWeekday,
           targetTimeSlot,
           classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
@@ -2763,6 +2765,11 @@
           effectiveDate:new Date(),
           originalText:''
         });
+
+        if (prepared?.code === 'target_choice_required') {
+          const choiceResult=structuredTargetChoiceResult('move_class',command,prepared);
+          if(choiceResult) return choiceResult;
+        }
 
         if (prepared?.code === 'class_group_required' && prepared?.commandDraft) {
           const choicePayload=Object.assign({},prepared.commandDraft,{

@@ -3047,6 +3047,7 @@
     const effectiveDate = localDateKey(opts.effectiveDate || new Date());
     const sourceWeekday = Number(opts.sourceWeekday || 0);
     const sourceTimeSlot = Number(opts.sourceTimeSlot || 0);
+    const sourceEnrollmentId = clean(opts.sourceEnrollmentId);
     const targetWeekday = Number(opts.targetWeekday || 0);
     const targetTimeSlot = Number(opts.targetTimeSlot || 0);
 
@@ -3059,17 +3060,37 @@
     let sources = activeStudentEnrollments(currentWeek, studentId, effectiveDate)
       .filter(row => Number(row && row.weekday) === sourceWeekday);
     if (sourceTimeSlot) sources = sources.filter(row => Number(row && row.time_slot) === sourceTimeSlot);
+    if (sourceEnrollmentId) sources = sources.filter(row => clean(row && row.id) === sourceEnrollmentId);
 
     if (!sources.length) {
       const sourceText = weekdayLabel(sourceWeekday) + (sourceTimeSlot ? ' ' + sourceTimeSlot + '시' : '');
       return { ok:false, message:clean(student.name) + ' 학생의 ' + sourceText + ' 정규수업을 찾지 못했어요.' };
     }
     if (sources.length > 1) {
-      const times = sources.map(row => Number(row.time_slot) + '시').join(' · ');
+      const sourceDate = nextOccurrenceKey(effectiveDate, sourceWeekday);
+      const mode = timetableMode(currentWeek);
+      const choices = sources.slice(0, 8).map(row => ({
+        id:clean(row && row.id),
+        label:[
+          weekdayLabel(sourceWeekday),
+          timetableMemoTimeLabel(division, sourceDate, Number(row && row.time_slot), mode),
+          classGroup(row && row.class_group) + '반'
+        ].join(' · ')
+      })).filter(item => item.id && item.label);
+      if (choices.length > 1) {
+        return {
+          ok:false,
+          code:'target_choice_required',
+          field:'target_choice',
+          targetType:'regular_enrollment',
+          choiceKey:'sourceEnrollmentId',
+          choices,
+          message:clean(student.name) + ' 학생의 이동할 기존 수업을 선택해 주세요.'
+        };
+      }
       return {
         ok:false,
-        message:clean(student.name) + ' 학생은 ' + weekdayLabel(sourceWeekday) + ' 수업이 여러 개 있어요: ' + times
-          + '\n이동할 기존 시간도 함께 적어 주세요.'
+        message:clean(student.name) + ' 학생의 이동할 기존 수업을 한 개로 확인하지 못했어요.'
       };
     }
 

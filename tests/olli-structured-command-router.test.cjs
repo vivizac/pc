@@ -1764,6 +1764,81 @@ test('structured move_class reaches the existing schedule move SOT without repar
   }
 });
 
+test('structured move_class surfaces existing source-class choices and resumes with stable enrollment id', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  const observed=[];
+
+  globalThis.OlliCommandSchedule={
+    async prepareWriteCommand(intent,options){
+      observed.push({intent,options});
+      if(!options.sourceEnrollmentId){
+        return {
+          ok:false,
+          code:'target_choice_required',
+          field:'target_choice',
+          targetType:'regular_enrollment',
+          choiceKey:'sourceEnrollmentId',
+          choices:[
+            {id:'enrollment-1',label:'월요일 · 4시 · A반'},
+            {id:'enrollment-2',label:'월요일 · 5시 · A반'}
+          ],
+          message:'민준 학생의 이동할 기존 수업을 선택해 주세요.'
+        };
+      }
+      return {
+        ok:true,
+        command:{
+          intent:'move_class',
+          studentId:'student-1',
+          studentName:'민준',
+          division:'elementary',
+          sourceEnrollmentId:options.sourceEnrollmentId,
+          sourceWeekday:1,
+          sourceTimeSlot:5,
+          targetWeekday:3,
+          targetTimeSlot:6,
+          targetClassGroup:'A',
+          targetCheckDate:'2026-10-07',
+          effectiveDate:'2026-10-04'
+        },
+        message:'민준 · 월요일 5시 → 수요일 6시 A반'
+      };
+    },
+    writeConfirmationMessage(){ return ''; }
+  };
+
+  try{
+    const first=await router.prepareStructuredAction({
+      action:'move_class',
+      studentName:'민준',
+      sourceWeekday:1,
+      sourceTimeSlot:0,
+      targetWeekday:3,
+      targetTimeSlot:6,
+      classGroup:''
+    },{});
+
+    assert.equal(first.handled,true);
+    assert.equal(first.kind,'action_needs_field');
+    assert.equal(first.payload.field,'target_choice');
+    assert.equal(first.payload.choiceKey,'sourceEnrollmentId');
+    assert.deepEqual(first.payload.choices.map(item=>item.id),['enrollment-1','enrollment-2']);
+    assert.doesNotMatch(first.message,/함께 적어/);
+
+    const resumed=await router.prepareStructuredAction({
+      ...first.payload.draft,
+      sourceEnrollmentId:'enrollment-2'
+    },{});
+
+    assert.equal(resumed.handled,true);
+    assert.equal(resumed.kind,'action_pending');
+    assert.equal(resumed.payload.sourceEnrollmentId,'enrollment-2');
+    assert.equal(observed.at(-1).options.sourceEnrollmentId,'enrollment-2');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
 test('structured move_class surfaces an A/B choice without another AI turn', async () => {
   const previousSchedule = globalThis.OlliCommandSchedule;
 

@@ -28,6 +28,7 @@ test('router carries stable target ids back to the existing SOTs',()=>{
   assert.match(router,/waitlistId:cleanText\(command\.waitlist_id \|\| command\.waitlistId\)/);
   assert.match(router,/pickupId:cleanText\(command\.pickup_id \|\| command\.pickupId\)/);
   assert.match(router,/structuredTargetChoiceResult/);
+  assert.match(router,/sourceEnrollmentId:cleanText\(command\.source_enrollment_id \|\| command\.sourceEnrollmentId\)/);
 });
 
 test('PC and Mobile persist and render generic structured target-choice buttons',()=>{
@@ -51,6 +52,8 @@ test('target selection only updates draft stable id and never mutates pickup or 
   assert.match(migration,/choose_structured_target/);
   assert.match(migration,/v_key:='pickupId'/);
   assert.match(migration,/v_key:='waitlistId'/);
+  assert.match(migration,/'move_class'/);
+  assert.match(migration,/'sourceEnrollmentId'/);
   assert.match(migration,/jsonb_set\(v_draft,array\[v_key\]/);
   assert.doesNotMatch(migration,/olli_schedule_execute\s*\(/);
   assert.doesNotMatch(migration,/resolveWaitlist\s*\(/);
