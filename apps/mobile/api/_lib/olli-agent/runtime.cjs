@@ -6348,6 +6348,11 @@ async function runTimetableAdminPrepare({
   }
 
   if(choiceRequired){
+    const targetIntent=String(choiceRequired.targetIntent||intent?.intent||'').trim();
+    const choiceKey=String(choiceRequired.choiceKey||'').trim();
+    const draft={action:targetIntent};
+    if(choiceKey==='enrollmentId') draft.enrollmentId='';
+    if(choiceKey==='targetClassGroup') draft.targetClassGroup='';
     return {
       ready:false,
       model,
@@ -6356,17 +6361,14 @@ async function runTimetableAdminPrepare({
       persistedMessage:null,
       recoveredAfterPersist:!!runError,
       choiceRequired:{
-        message:String(choiceRequired.message||'수업 순서를 변경할 수업을 선택해 주세요.'),
+        message:String(choiceRequired.message||'대상을 선택해 주세요.'),
         payload:{
           type:'structured_write_draft',
-          targetIntent:'set_session_order',
+          targetIntent,
           field:'target_choice',
           missingFields:['target_choice'],
-          choiceKey:'enrollmentId',
-          draft:{
-            action:'set_session_order',
-            enrollmentId:'',
-          },
+          choiceKey,
+          draft,
           choices:Array.isArray(choiceRequired.choices)
             ? choiceRequired.choices.map(item=>Object.assign({},item))
             : []
@@ -6410,39 +6412,36 @@ async function runStructuredTimetableAdminPrepare({
   });
 
   const intent=parseTimetableAdminSource(sourceMessageText);
-  if(String(intent?.intent||'')!=='set_session_order'){
-    throw runtimeError(
-      '저장된 원문에서 수업 순서 변경 요청을 확인하지 못했습니다.',
-      400,
-      'OLLI_ROUTINE_SESSION_ORDER_PARSE_FAILED'
-    );
-  }
+  const intentType=String(intent?.intent||'').trim();
   const command=structuredCommand&&typeof structuredCommand==='object' ? structuredCommand : {};
+  const action=String(command.action||'').trim();
+  const supported=['set_session_order','set_class_teacher','set_teacher_override'];
+  if(!intent||!supported.includes(intentType)||action!==intentType){
+    throw runtimeError(
+      '저장된 원문과 시간표 관리 선택 작업이 일치하지 않습니다.',
+      400,
+      'OLLI_ROUTINE_TIMETABLE_ADMIN_PARSE_FAILED'
+    );
+  }
   const enrollmentId=String(command.enrollmentId||command.enrollment_id||'').trim();
-  if(String(command.action||'').trim()!=='set_session_order'||!enrollmentId){
-    throw runtimeError(
-      '수업 순서 변경 대상 선택 정보를 확인하지 못했습니다.',
-      400,
-      'OLLI_ROUTINE_SESSION_ORDER_TARGET_REQUIRED'
-    );
+  const targetClassGroup=String(command.targetClassGroup||command.target_class_group||'').trim().toUpperCase();
+  if(action==='set_session_order'&&!enrollmentId){
+    throw runtimeError('수업 순서 변경 대상 선택 정보를 확인하지 못했습니다.',400,'OLLI_ROUTINE_SESSION_ORDER_TARGET_REQUIRED');
   }
-
-  if(preparedPrivacy?.needsDisambiguation){
-    throw runtimeError(
-      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
-      409,
-      'OLLI_AGENT_STUDENT_AMBIGUOUS'
-    );
+  if(['set_class_teacher','set_teacher_override'].includes(action)&&!['A','B'].includes(targetClassGroup)){
+    throw runtimeError('담당 선생님을 변경할 반 선택 정보를 확인하지 못했습니다.',400,'OLLI_ROUTINE_TEACHER_GROUP_TARGET_REQUIRED');
   }
-  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
-  if(subjectRefs.length!==1){
-    throw runtimeError(
-      '수업 순서 변경은 학생 한 명을 정확히 지정해 주세요.',
-      400,
-      'OLLI_AGENT_SESSION_ORDER_SINGLE_STUDENT_REQUIRED'
-    );
+  let studentLabel='';
+  if(action==='set_session_order'){
+    if(preparedPrivacy?.needsDisambiguation){
+      throw runtimeError('학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',409,'OLLI_AGENT_STUDENT_AMBIGUOUS');
+    }
+    const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
+    if(subjectRefs.length!==1){
+      throw runtimeError('수업 순서 변경은 학생 한 명을 정확히 지정해 주세요.',400,'OLLI_AGENT_SESSION_ORDER_SINGLE_STUDENT_REQUIRED');
+    }
+    studentLabel=String(subjectRefs[0]?.label||'').trim();
   }
-  const studentLabel=String(subjectRefs[0]?.label||'').trim();
   const {prepareTimetableAdminAction}=require('./tools/timetable-admin-prepare-tools.cjs');
   let persistedMessage=null;
   await prepareTimetableAdminAction({
@@ -6454,16 +6453,17 @@ async function runStructuredTimetableAdminPrepare({
     requestId:'team-chat-message:'+sourceId,
     replyToMessageId:sourceId,
     selectedEnrollmentId:enrollmentId,
+    selectedClassGroup:targetClassGroup,
     allowChoice:true,
     capturePersistedMessage(message){persistedMessage=pickupPersistedMessageForClient(message);},
     sanitizePayload(payload){return payload;},
   });
 
-  if(!persistedMessage?.action||String(persistedMessage.action.action_type||'').trim()!=='set_session_order'){
+  if(!persistedMessage?.action||String(persistedMessage.action.action_type||'').trim()!==action){
     throw runtimeError(
-      '수업 순서 변경 확인 카드 저장 결과를 확인하지 못했습니다.',
+      '시간표 관리 확인 카드 저장 결과를 확인하지 못했습니다.',
       502,
-      'OLLI_ROUTINE_SESSION_ORDER_PERSISTED_MESSAGE_MISSING'
+      'OLLI_ROUTINE_TIMETABLE_ADMIN_PERSISTED_MESSAGE_MISSING'
     );
   }
   return {ready:true,persistedMessage,recoveredAfterPersist:false};

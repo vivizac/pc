@@ -123,7 +123,7 @@ async function sendAction({requestContext,requestId,replyToMessageId,actionType,
 }
 async function prepareTimetableAdminAction({
   requestContext,intent,subjectAccess=null,studentLabel='',currentDate,requestId,replyToMessageId,
-  selectedEnrollmentId='',allowChoice=false,
+  selectedEnrollmentId='',selectedClassGroup='',allowChoice=false,
   capturePersistedMessage=null,sanitizePayload,callRpc=callSupabaseRpc,
 }){
   if(typeof sanitizePayload!=='function') throw adminError('Agent Tool 개인정보 필터가 준비되지 않았습니다.',500,'OLLI_AGENT_TIMETABLE_ADMIN_PRIVACY_MISSING');
@@ -173,7 +173,19 @@ async function prepareTimetableAdminAction({
     const timeSlot=encodeVisibleSlot(division,weekday,mode,intent?.timeSlot,intent?.timeMinute);
     if(!timeSlot) throw adminError('선생님을 배정할 수업 시간을 확인해 주세요.',400,'OLLI_AGENT_TEACHER_TIME_INVALID');
     const groups=await availableGroups({requestContext,division,dateKey:targetDate,weekday,timeSlot,mode,weekData:week,callRpc});
-    const classGroup=resolveGroup(intent?.classGroup,groups);
+    const requestedClassGroup=clean(selectedClassGroup||intent?.classGroup).toUpperCase();
+    if(!requestedClassGroup&&groups.length>1&&allowChoice===true){
+      return {
+        ok:false,
+        code:'target_choice_required',
+        field:'target_choice',
+        targetIntent:type,
+        choiceKey:'targetClassGroup',
+        choices:groups.slice(0,8).map(group=>({id:group,label:group+'반'})),
+        message:'담당 선생님을 변경할 반을 선택해 주세요.'
+      };
+    }
+    const classGroup=resolveGroup(requestedClassGroup,groups);
     const teacherContext=await loadTeacherContext(requestContext,callRpc);
     const teacher=resolveTeacher(teacherContext,intent?.teacherName);
     if(!dateSpecific){
