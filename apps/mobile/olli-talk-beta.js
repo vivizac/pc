@@ -63,6 +63,7 @@
   let olliTalkSearchMatches = [];
   let olliTalkSearchIndex = -1;
   let olliTalkPendingActionReason = null;
+  let olliTalkPendingTextInputMessageId = '';
   let olliTalkPendingMakeupDialogue = null;
   const olliTalkActionBusy = new Set();
   const olliTalkOlliReplyBusy = new Set();
@@ -541,7 +542,7 @@
 
         if(prepared.kind==='action_needs_reason' && prepared.payload){
           olliTalkPendingActionReason=Object.assign({},prepared.payload);
-          return saveReply(String(prepared.message || '').trim() || '사유를 알려주세요.');
+          return saveOlliTalkPendingTextInputReply(context,String(prepared.message || '').trim() || '사유를 알려주세요.',replyToMessageId);
         }
 
         if(prepared.kind==='action_rejected'){
@@ -620,6 +621,43 @@
       throw new Error(payload?.message || '올리 응답을 저장하지 못했습니다.');
     }
     return payload.message;
+  }
+
+  async function saveOlliTalkPendingTextInputReply(context,message,replyToMessageId){
+    const text=String(message || '').trim() || '내용을 입력해 주세요.';
+    const assistantMessage=await saveOlliTalkOlliReply(context,text,replyToMessageId);
+    olliTalkPendingTextInputMessageId=String(assistantMessage?.id || '').trim();
+    return {
+      assistantMessage,
+      replyText:text,
+      recordAi:false
+    };
+  }
+
+  function focusOlliTalkPendingTextInput(){
+    const input=getOlliTalkBetaInput();
+    if(!input) return false;
+    try { input.focus({preventScroll:true}); } catch (_) { input.focus(); }
+    return true;
+  }
+
+  function createOlliTalkPendingTextInputButton(){
+    const wrap=document.createElement('div');
+    wrap.className='olliTalkBetaPendingInput';
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='olliTalkBetaPendingInputButton';
+    button.textContent='입력하기';
+    button.setAttribute('aria-label','요청한 내용을 입력하기');
+    button.addEventListener('click',focusOlliTalkPendingTextInput);
+    wrap.appendChild(button);
+    return wrap;
+  }
+
+  function shouldShowOlliTalkPendingTextInput(item){
+    return !!olliTalkPendingActionReason
+      && String(item?.message_type || '').trim()==='ai'
+      && String(item?.id || '').trim()===String(olliTalkPendingTextInputMessageId || '').trim();
   }
 
   async function saveOlliTalkStructuredTargetChoice(context,body,payload,replyToMessageId){
@@ -2720,11 +2758,7 @@
         if(prepared.kind==='action_needs_reason' && prepared.payload){
           olliTalkPendingActionReason=Object.assign({},prepared.payload);
           const reasonMessage=String(prepared.message || '').trim() || '사유를 알려주세요.';
-          return {
-            assistantMessage:await saveOlliTalkOlliReply(context,reasonMessage,replyToMessageId),
-            replyText:reasonMessage,
-            recordAi:false
-          };
+          return saveOlliTalkPendingTextInputReply(context,reasonMessage,replyToMessageId);
         }
         if(prepared.kind==='action_rejected'){
           const rejectedMessage=String(prepared.message || '').trim() || '작업을 준비하지 못했어요.';
@@ -3022,11 +3056,7 @@
           }
           olliTalkPendingActionReason=pendingPayload;
           const reasonMessage=String(prepared.message || '').trim() || '사유를 알려주세요.';
-          return {
-            assistantMessage:await saveOlliTalkOlliReply(context,reasonMessage,replyToMessageId),
-            replyText:reasonMessage,
-            recordAi:false
-          };
+          return saveOlliTalkPendingTextInputReply(context,reasonMessage,replyToMessageId);
         }
 
         if(prepared.kind==='action_rejected'){
@@ -6118,6 +6148,7 @@
       if (incomingLayout) {
         incomingLayout.appendChild(bubbleRow);
         if (item?.action) incomingLayout.appendChild(createOlliTalkActionCard(item.action));
+        if (shouldShowOlliTalkPendingTextInput(item)) incomingLayout.appendChild(createOlliTalkPendingTextInputButton());
         if (item?.material_request_id && item?.material_event_id) {
           incomingLayout.appendChild(createOlliTalkMaterialConfirmCard(item));
         }

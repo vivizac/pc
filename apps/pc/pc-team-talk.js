@@ -21,6 +21,7 @@
     assistantReplyPending: false,
     aiConversationMessages: [],
     pendingActionReason: null,
+    pendingTextInputMessageId: '',
     pendingMakeupDialogue: null,
     actionBusy: new Set(),
     olliReplyBusy: new Set(),
@@ -1278,6 +1279,7 @@
     bubbleRow.appendChild(meta);
     content.appendChild(bubbleRow);
     if (item?.action) content.appendChild(makeActionCard(item.action));
+    if (shouldShowPendingTextInput(item)) content.appendChild(makePendingTextInputButton());
     row.appendChild(content);
     if (shouldOfferOlliReply(item, own, options.olliReplyTargetIds)) {
       row.appendChild(makeOlliReplySuggestion(item));
@@ -1797,7 +1799,7 @@
 
         if (prepared.kind === 'action_needs_reason' && prepared.payload) {
           state.pendingActionReason = Object.assign({}, prepared.payload);
-          return saveReply(clean(prepared.message) || '사유를 알려주세요.');
+          return savePendingTextInputReply(current,clean(prepared.message) || '사유를 알려주세요.',replyToMessageId);
         }
 
         if (prepared.kind === 'action_rejected') {
@@ -3232,6 +3234,42 @@
     return payload.message;
   }
 
+  async function savePendingTextInputReply(current,message,replyToMessageId) {
+    const text=clean(message) || '내용을 입력해 주세요.';
+    const assistantMessage=await saveAssistantReply(current,text,replyToMessageId);
+    state.pendingTextInputMessageId=clean(assistantMessage?.id);
+    return {
+      assistantMessage,
+      replyText:text,
+      recordAi:false
+    };
+  }
+
+  function focusPendingTextInput() {
+    const input=byId('olliPcTeamTalkInput');
+    if(!input) return false;
+    try { input.focus({preventScroll:true}); } catch (_) { input.focus(); }
+    return true;
+  }
+
+  function makePendingTextInputButton() {
+    const wrap=create('div','olliPcTeamTalkPendingInput');
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='olliPcTeamTalkPendingInputButton';
+    button.textContent='입력하기';
+    button.setAttribute('aria-label','요청한 내용을 입력하기');
+    button.addEventListener('click',focusPendingTextInput);
+    wrap.appendChild(button);
+    return wrap;
+  }
+
+  function shouldShowPendingTextInput(item) {
+    return !!state.pendingActionReason
+      && clean(item?.message_type)==='ai'
+      && clean(item?.id)===clean(state.pendingTextInputMessageId);
+  }
+
   async function saveStructuredTargetChoice(current,body,payload,replyToMessageId) {
     const result=await rpc('olli_team_chat_send_structured_target_choice',{
       p_session_token:current.sessionToken,
@@ -3977,11 +4015,7 @@
         if(prepared.kind==='action_needs_reason' && prepared.payload){
           state.pendingActionReason=Object.assign({},prepared.payload);
           const reasonMessage=clean(prepared.message) || '사유를 알려주세요.';
-          return {
-            assistantMessage:await saveAssistantReply(current,reasonMessage,replyToMessageId),
-            replyText:reasonMessage,
-            recordAi:false
-          };
+          return savePendingTextInputReply(current,reasonMessage,replyToMessageId);
         }
         if(prepared.kind==='action_rejected'){
           const rejectedMessage=clean(prepared.message) || '작업을 준비하지 못했어요.';
@@ -4259,11 +4293,7 @@
           }
           state.pendingActionReason = pendingPayload;
           const reasonMessage = clean(prepared.message) || '사유를 알려주세요.';
-          return {
-            assistantMessage:await saveAssistantReply(current, reasonMessage, replyToMessageId),
-            replyText:reasonMessage,
-            recordAi:false
-          };
+          return savePendingTextInputReply(current,reasonMessage,replyToMessageId);
         }
 
         if (prepared.kind === 'action_rejected') {

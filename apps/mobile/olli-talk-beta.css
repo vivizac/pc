@@ -1206,6 +1206,22 @@
   color:#9b6666;
 }
 
+#olliTalkBetaScreen .olliTalkBetaPendingInput{
+  display:flex;
+  justify-content:flex-start;
+  margin:5px 0 0;
+}
+#olliTalkBetaScreen .olliTalkBetaPendingInputButton{
+  min-height:32px;
+  border:1px solid rgba(28,35,42,.12);
+  border-radius:10px;
+  padding:0 12px;
+  background:#fff;
+  color:#30343a;
+  font-size:calc(11.5px * var(--olli-text-scale, 1));
+  font-weight:600;
+}
+
 #olliTalkBetaScreen .olliTalkBetaSendBtn.sending{
   opacity:.55;
 }
