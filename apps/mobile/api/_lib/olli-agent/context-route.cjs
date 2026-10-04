@@ -239,6 +239,10 @@ function parseStructuredOutput(data) {
   }
 }
 
+function olliInterpreterModel() {
+  return clean(process.env.OPENAI_INTERPRETER_MODEL) || 'gpt-5.6-luna';
+}
+
 async function defaultOlliInterpreterRunner({ transcript, currentText }) {
   const apiKey=clean(process.env.OPENAI_API_KEY);
   if(!apiKey){
@@ -247,7 +251,7 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
     throw error;
   }
 
-  const model=clean(process.env.OPENAI_AGENT_MODEL || process.env.OPENAI_MODEL) || 'gpt-5-mini';
+  const model=olliInterpreterModel();
   const intentList=OLLI_SYSTEM_LANGUAGE_INTENTS.join(', ');
   const system=[
     'You are Olli\'s lightweight conversation interpreter.',
@@ -370,7 +374,7 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
           {role:'system',content:[{type:'input_text',text:system}]},
           {role:'user',content:[{type:'input_text',text:user}]},
         ],
-        reasoning:{effort:'minimal'},
+        reasoning:{effort:'none'},
         max_output_tokens:500,
         text:{
           format:{
