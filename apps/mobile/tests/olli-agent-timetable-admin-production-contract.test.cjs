@@ -9,6 +9,7 @@ const runtime=fs.readFileSync(path.join(root,'api/_lib/olli-agent/runtime.cjs'),
 const tool=fs.readFileSync(path.join(root,'api/_lib/olli-agent/tools/timetable-admin-prepare-tools.cjs'),'utf8');
 const executorMigration=fs.readFileSync(path.resolve(root,'../../supabase/migrations/20261002033226_team_chat_timetable_admin_agent_actions.sql'),'utf8');
 const senderMigration=fs.readFileSync(path.resolve(root,'../../supabase/migrations/20261002061029_allow_timetable_admin_team_chat_actions.sql'),'utf8');
+const targetChoiceMigration=fs.readFileSync(path.resolve(root,'../../supabase/migrations/20261004130000_team_chat_structured_waitlist_update_choices.sql'),'utf8');
 
 test('production endpoint exposes only source-bound timetable admin prepare',()=>{
   assert.match(endpoint,/'timetable_admin_prepare'/);
@@ -70,4 +71,18 @@ test('database action sender accepts every timetable admin action type',()=>{
   for(const type of [
     'set_class_layout','set_class_teacher','set_teacher_override','set_session_order','set_normal_class_day'
   ]) assert.ok(block.includes("'"+type+"'"),type+' send allowlist');
+});
+
+
+test('session order ambiguity uses reusable target choice and deterministic structured resume',()=>{
+  assert.match(endpoint,/'structured_timetable_admin_prepare'/);
+  assert.match(runtime,/async function runStructuredTimetableAdminPrepare/);
+  assert.match(tool,/choiceKey:'enrollmentId'/);
+  assert.match(targetChoiceMigration,/'set_session_order'/);
+  assert.match(targetChoiceMigration,/'enrollmentId'/);
+  const structuredStart=runtime.indexOf('async function runStructuredTimetableAdminPrepare');
+  const structuredEnd=runtime.indexOf('function parseAttendanceStatusSource',structuredStart);
+  const block=runtime.slice(structuredStart,structuredEnd);
+  assert.doesNotMatch(block,/new Agent\(/);
+  assert.match(block,/selectedEnrollmentId:enrollmentId/);
 });

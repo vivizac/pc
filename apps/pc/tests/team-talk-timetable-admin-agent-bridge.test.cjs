@@ -27,6 +27,8 @@ test('PC timetable admin bridge is source-bound and validates returned action ty
   assert.ok(block.includes('sourceMessageId'));
   assert.ok(block.includes('action.action_type'));
   assert.ok(block.includes('expectedType'));
+  assert.ok(block.includes('choiceRequired'));
+  assert.ok(block.includes('saveStructuredTargetChoice'));
 });
 
 test('PC timetable admin Agent routing runs before batch and legacy write fallback — shared dispatch contract', () => {
@@ -44,4 +46,13 @@ test('PC timetable admin Agent routing runs before batch and legacy write fallba
   const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
   assert.ok(classify>=0 && legacy>classify);
 
+});
+
+test('PC session order target choice resumes through deterministic timetable admin prepare',()=>{
+  const start=talk.indexOf('async function resolveStructuredTimetableAdminTurn');
+  const end=talk.indexOf('async function resolveSourceBoundReadAgentTurn',start);
+  const block=talk.slice(start,end);
+  assert.match(block,/mode:'structured_timetable_admin_prepare'/);
+  assert.match(block,/structuredCommand/);
+  assert.doesNotMatch(block,/mode:'timetable_admin_prepare'/);
 });

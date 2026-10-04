@@ -805,7 +805,19 @@
       if(!payload?.ok || !payload?.action || !payload?.draft){
         throw new Error(payload?.message || '대상을 선택하지 못했습니다.');
       }
-      if(['add_timetable_memo','delete_timetable_memo'].includes(clean(payload?.draft?.action))){
+      if(clean(payload?.draft?.action)==='set_session_order'){
+        const sourceMessageId=Number(payload?.source_message_id || 0);
+        const sourceMessageText=clean(payload?.source_message_text);
+        if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0||!sourceMessageText){
+          throw new Error('수업 순서 변경 원문 메시지를 확인하지 못했습니다.');
+        }
+        await resolveStructuredTimetableAdminTurn(
+          payload.draft,
+          current,
+          sourceMessageText,
+          sourceMessageId
+        );
+      }else if(['add_timetable_memo','delete_timetable_memo'].includes(clean(payload?.draft?.action))){
         const sourceMessageId=Number(payload?.source_message_id || 0);
         const sourceMessageText=clean(payload?.source_message_text);
         if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0||!sourceMessageText){
@@ -2340,11 +2352,60 @@
       })
     });
     const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
+    if(!response.ok || data?.ok!==true){
       throw new Error(data?.error || data?.message || '시간표 관리 Agent 응답을 받지 못했습니다.');
+    }
+    if(data?.choiceRequired?.payload){
+      const choiceMessage=clean(data.choiceRequired.message) || '수업 순서를 변경할 수업을 선택해 주세요.';
+      return {
+        assistantMessage:await saveStructuredTargetChoice(
+          current,
+          choiceMessage,
+          data.choiceRequired.payload,
+          sourceMessageId
+        ),
+        replyText:choiceMessage,
+        recordAi:false
+      };
+    }
+    if(!data?.message?.action){
+      throw new Error(data?.error || data?.message || '시간표 관리 확인 카드를 받지 못했습니다.');
     }
     if(clean(data.message.action.action_type)!==expectedType){
       throw new Error('시간표 관리 Agent 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:clean(data.message.body),
+      recordAi:false
+    };
+  }
+
+
+  async function resolveStructuredTimetableAdminTurn(structuredCommand,current,sourceMessageText,sourceMessageId){
+    const sourceId=Number(sourceMessageId || 0);
+    const sourceText=clean(sourceMessageText);
+    if(!Number.isSafeInteger(sourceId)||sourceId<=0||!sourceText){
+      throw new Error('수업 순서 변경 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'structured_timetable_admin_prepare',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:sourceText,
+        sourceMessageId:sourceId,
+        structuredCommand
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||data?.ok!==true||!data?.message?.action){
+      throw new Error(data?.error || data?.message || '수업 순서 변경 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(clean(data.message.action.action_type)!=='set_session_order'){
+      throw new Error('수업 순서 변경 규칙 시스템 작업 종류가 올바르지 않습니다.');
     }
     return {
       assistantMessage:data.message,

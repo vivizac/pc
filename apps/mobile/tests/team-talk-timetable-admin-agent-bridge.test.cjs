@@ -27,6 +27,8 @@ test('Mobile timetable admin bridge is source-bound and validates returned actio
   assert.ok(block.includes('sourceMessageId'));
   assert.ok(block.includes('action.action_type'));
   assert.ok(block.includes('expectedType'));
+  assert.ok(block.includes('choiceRequired'));
+  assert.ok(block.includes('saveOlliTalkStructuredTargetChoice'));
 });
 
 test('Mobile timetable admin Agent routing runs before batch and legacy write fallback — shared dispatch contract',()=> {
@@ -44,4 +46,13 @@ test('Mobile timetable admin Agent routing runs before batch and legacy write fa
   const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
   assert.ok(classify>=0 && legacy>classify);
 
+});
+
+test('Mobile session order target choice resumes through deterministic timetable admin prepare',()=>{
+  const start=talk.indexOf('async function resolveOlliTalkStructuredTimetableAdminTurn');
+  const end=talk.indexOf('async function resolveOlliTalkSourceBoundReadAgentTurn',start);
+  const block=talk.slice(start,end);
+  assert.match(block,/mode:'structured_timetable_admin_prepare'/);
+  assert.match(block,/structuredCommand/);
+  assert.doesNotMatch(block,/mode:'timetable_admin_prepare'/);
 });
