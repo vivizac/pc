@@ -247,7 +247,7 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
     throw error;
   }
 
-  const model=clean(process.env.OPENAI_AGENT_MODEL || process.env.OPENAI_MODEL) || 'gpt-5-mini';
+  const model=clean(process.env.OPENAI_ROUTINE_INTERPRETER_MODEL) || 'gpt-5.6-luna';
   const intentList=OLLI_SYSTEM_LANGUAGE_INTENTS.join(', ');
   const system=[
     'You are Olli\'s lightweight conversation interpreter.',
@@ -282,7 +282,7 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
     'For cancel_waitlist, student_name means the registered student or non-enrolled guest name. Fill date_expression only when the requested waitlist is identified by an explicit date or week-scoped date expression. Fill weekday for a weekday stated without an explicit date, time_slot/class_minute for the existing visible waitlist time, and class_group only when A/B is stated or inherited. division is optional and must only reflect an explicitly stated 유치부/초등부. Never invent a cancellation reason and never infer the stored waitlist row or internal slot.',
     'For update_trial, student_name means the trial guest name. Fill source_date_expression for the existing trial date. Fill source_time_slot, source_minute, and source_class_group only when the existing trial is identified that way. Fill target_date_expression, target_time_slot, target_minute, and target_class_group only for fields the user wants changed. division is optional and must only reflect an explicitly stated 유치부/초등부. If a target weekday clearly inherits the same week scope from the source request, preserve that scope in target_date_expression. Never infer the stored trial row, capacity, or availability.',
     'For cancel_trial, student_name means the trial guest name. Fill date_expression, time_slot, class_minute, class_group, and reason only from the conversation. date_expression identifies the existing trial date when stated or inherited. Use time_slot and class_minute only when the existing trial time is stated or inherited. Use class_group only when A/B is stated or inherited. Copy a cancellation reason in the user\'s wording; never paraphrase or invent it. If the user is answering a trial cancellation-reason prompt, carry forward the trial target and put the current reply in reason. Never infer the stored trial row.',
-    'For add_pickup, fill student_name, weekday (Mon=1..Sat=6), class_time, class_minute, pickup_kind (arrival or dropoff), pickup_label, and pickup_time in HH:MM for arrival. Do not infer missing pickup place or time.',
+    'For add_pickup, fill student_name, pickup_kind (arrival or dropoff), pickup_label, and pickup_time in HH:MM for arrival. Fill weekday (Mon=1..Sat=6), class_time, and class_minute only when the user explicitly states the regular class. If the class is omitted, keep weekday/class_time/class_minute as 0; the deterministic rule system will read the student\'s current regular timetable, auto-select a unique class, or show class-choice buttons. Do not infer missing pickup place, pickup time, or class.',
     'For update_makeup, fill student_name and source_date_expression for the existing makeup date. Fill source_time_slot, source_minute, and source_class_group only when the existing makeup is identified that way. Fill target_date_expression, target_time_slot, target_minute, and target_class_group only for fields the user wants changed. If a target weekday clearly inherits a week scope from the source in the same request, preserve that scope in target_date_expression. Never infer schedule rows, capacity, or availability.',
     'For cancel_makeup, fill student_name, date_expression, time_slot, class_minute, class_group, and reason only from the conversation. date_expression identifies the existing makeup date when stated or inherited. Use time_slot and class_minute only when the existing makeup time is stated or inherited. Use class_group only when A/B is stated or inherited. Copy a cancellation reason in the user\'s wording; never paraphrase or invent it. If the user is answering a cancellation-reason prompt, carry forward the cancellation target and put the current reply in reason.',
     'For move_class, fill student_name, source_weekday, source_time_slot, target_weekday, target_time_slot, and class_group only when the user explicitly names A/B. The rule system finds the actual enrollment and validates availability.',
@@ -309,6 +309,7 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
     'After Olli asks for the trial cancellation reason, User: 일정이 어려워졌어 -> lane routine, route rule, intent cancel_trial, structured_command carries the prior guest/date/time/group and sets reason:일정이 어려워졌어.',
     'User: 지우 초등부 다음주 목요일 4시 대기 등록해줘 -> lane routine, route rule, intent add_waitlist, structured_command {action:add_waitlist, student_name:지우, division:elementary, date_expression:다음주 목요일, time_slot:4, class_group:""}.',
     'User: 민서 월요일 4시 수업 리슈빌 3시 30분 픽업 등록해줘 -> lane routine, route rule, intent add_pickup, structured_command {action:add_pickup, student_name:민서, weekday:1, class_time:4, class_minute:0, pickup_kind:arrival, pickup_label:리슈빌, pickup_time:15:30}.',
+    'User: 민서 리슈빌 3시 30분 픽업 등록해줘 -> lane routine, route rule, intent add_pickup, structured_command {action:add_pickup, student_name:민서, weekday:0, class_time:0, class_minute:0, pickup_kind:arrival, pickup_label:리슈빌, pickup_time:15:30}. The rule system resolves the regular class.',
     'User: 민준 월요일 4시 수업을 수요일 5시로 옮겨줘 -> lane routine, route rule, intent move_class, structured_command {action:move_class, student_name:민준, source_weekday:1, source_time_slot:4, target_weekday:3, target_time_slot:5, class_group:""}.',
     'User: 민준이 오늘 4시 결석 처리해줘 사유 감기 -> lane routine, route rule, intent mark_absent, structured_command {action:mark_absent, student_name:민준, date_expression:오늘, time_slot:4, class_group:"", reason:감기}.',
     'User: 다음주 초등부 보강 가능한 자리 알려줘 -> lane routine, route rule, intent find_available_slots, structured_command {action:find_available_slots, division:elementary, date_expression:다음주, weekday:0, time_slot:0, class_group:"", availability_purpose:makeup}.',
@@ -390,7 +391,7 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
           {role:'system',content:[{type:'input_text',text:system}]},
           {role:'user',content:[{type:'input_text',text:user}]},
         ],
-        reasoning:{effort:'minimal'},
+        reasoning:{effort:'none'},
         max_output_tokens:500,
         text:{
           format:{

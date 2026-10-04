@@ -3509,11 +3509,17 @@
           classMinute,
           pickupLabel,
           pickupTime,
+          sourceEnrollmentId:cleanText(command.source_enrollment_id || command.sourceEnrollmentId),
           isDropoff:pickupKind === 'dropoff',
           selectedStudent:routeContext.selectedStudent || null,
           effectiveDate:new Date(),
           originalText:''
         });
+
+        if (prepared?.code === 'target_choice_required') {
+          const choiceResult=structuredTargetChoiceResult('add_pickup',command,prepared);
+          if(choiceResult) return choiceResult;
+        }
 
         if (!prepared || prepared.ok !== true || !prepared.command) {
           return {
