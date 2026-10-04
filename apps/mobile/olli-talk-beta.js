@@ -1327,6 +1327,7 @@
     return {
       action:'cancel_trial',
       studentName:String(next.studentName || '').trim() || String(before.studentName || '').trim(),
+      oneTimeSessionId:String(next.oneTimeSessionId || next.one_time_session_id || '').trim() || String(before.oneTimeSessionId || before.one_time_session_id || '').trim(),
       division:String(next.division || '').trim() || String(before.division || '').trim(),
       dateExpression:String(next.dateExpression || '').trim() || String(before.dateExpression || '').trim(),
       timeSlot:nextTime>0 ? nextTime : Number(before.timeSlot || 0),
@@ -1370,8 +1371,19 @@
       })
     });
     const data=await response.json().catch(()=>({}));
-    if(!response.ok||data?.ok!==true||!data?.message?.action){
+    if(!response.ok||data?.ok!==true){
       throw new Error(data?.error || data?.message || '체험 취소 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(data?.choiceRequired?.payload){
+      const choiceMessage=String(data.choiceRequired.message || '').trim() || '취소할 체험수업을 선택해 주세요.';
+      return {
+        assistantMessage:await saveOlliTalkStructuredTargetChoice(context,choiceMessage,data.choiceRequired.payload,sourceId),
+        replyText:choiceMessage,
+        recordAi:false
+      };
+    }
+    if(!data?.message?.action){
+      throw new Error(data?.error || data?.message || '체험 취소 확인 카드를 받지 못했습니다.');
     }
     if(String(data.message.action.action_type || '').trim()!=='cancel_trial'){
       throw new Error('체험 취소 규칙 시스템 작업 종류가 올바르지 않습니다.');
@@ -5631,7 +5643,21 @@
       if(!payload?.ok || !payload?.action || !payload?.draft){
         throw new Error(payload?.message || '대상을 선택하지 못했습니다.');
       }
-      if(String(payload?.draft?.action || '').trim()==='cancel_makeup'){
+      if(String(payload?.draft?.action || '').trim()==='cancel_trial'){
+        const sourceMessageId=Number(payload?.source_message_id || 0);
+        const sourceMessageText=String(payload?.source_message_text || '').trim();
+        const reasonMessageId=Number(payload?.reason_message_id || 0);
+        const reasonMessageText=String(payload?.reason_message_text || '').trim();
+        const reason=String(payload?.draft?.reason || '').trim();
+        if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0||!sourceMessageText
+          ||!Number.isSafeInteger(reasonMessageId)||reasonMessageId<=0||!reasonMessageText||!reason){
+          throw new Error('체험 취소 원문 또는 사유 메시지를 확인하지 못했습니다.');
+        }
+        await resolveOlliTalkStructuredTrialCancelTurn({
+          structuredCommand:payload.draft,sourceText:sourceMessageText,sourceMessageId,
+          reasonText:reason,reasonMessageText,reasonMessageId,context
+        });
+      }else if(String(payload?.draft?.action || '').trim()==='cancel_makeup'){
         const sourceMessageId=Number(payload?.source_message_id || 0);
         const sourceMessageText=String(payload?.source_message_text || '').trim();
         const reasonMessageId=Number(payload?.reason_message_id || 0);
