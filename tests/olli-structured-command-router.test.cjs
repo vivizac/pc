@@ -1815,6 +1815,9 @@ test('structured cancel_waitlist bypasses Agents SDK and reuses the deterministi
   assert.match(mobileBlock,/structured_waitlist_cancel_prepare/);
   assert.match(mobileBlock,/waitlist_cancel_prepare/);
 
-  assert.match(pcSource,/structuredCommand\?\.action\)===\'cancel_waitlist\'/);
-  assert.match(mobileSource,/structuredCommand\?\.action \|\| \'\'\)\.trim\(\)===\'cancel_waitlist\'/);
+  assert.doesNotMatch(pcSource,/structuredCommand\?\.action\)===\'cancel_waitlist\'/);
+  assert.doesNotMatch(mobileSource,/structuredCommand\?\.action \|\| \'\'\)\.trim\(\)===\'cancel_waitlist\'/);
+  assert.match(pcSource,/\[[^\]]*'cancel_waitlist'[^\]]*\]/);
+  assert.match(mobileSource,/\[[^\]]*'cancel_waitlist'[^\]]*\]/);
+  assert.match(routerSource,/schedule\.prepareWriteCommand\('cancel_waitlist'/);
 });

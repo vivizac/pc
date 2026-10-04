@@ -37,7 +37,7 @@ test('structured waitlist cancellation is routed through common router while leg
 
 test('common waitlist cancellation maps visible 4:30 to the half-hour stored slot',async()=>{
   const schedule=loadSchedule({
-    settings:{timetable_mode:'half_hour'},
+    timetable_mode:'half_hour',
     waitlist:[{
       id:'wait-1',
       student_id:'student-1',
