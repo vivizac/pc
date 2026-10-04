@@ -2624,7 +2624,7 @@
 
     if(
       interpreterLane==='routine'
-      && ['add_makeup','add_trial','add_waitlist','add_pickup','update_pickup','move_class','mark_absent'].includes(String(structuredCommand?.action || '').trim())
+      && ['add_makeup','add_trial','add_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent'].includes(String(structuredCommand?.action || '').trim())
       && router
       && typeof router.prepareStructuredAction==='function'
     ){

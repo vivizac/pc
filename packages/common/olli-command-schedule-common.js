@@ -1287,7 +1287,7 @@
       };
     }
 
-    if(['add_makeup','update_pickup'].includes(action)){
+    if(['add_makeup','update_pickup','cancel_pickup'].includes(action)){
       return {ok:false,code:'student_not_found',message:requestedName+' 학생을 찾지 못했어요.'};
     }
 

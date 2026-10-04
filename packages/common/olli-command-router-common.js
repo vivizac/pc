@@ -2466,7 +2466,7 @@
     const action = cleanText(command.action);
     const routeContext = normalizeContext(context);
     const schedule = global.OlliCommandSchedule;
-    const supported = new Set(['add_makeup','add_trial','add_waitlist','add_pickup','update_pickup','move_class','mark_absent']);
+    const supported = new Set(['add_makeup','add_trial','add_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent']);
 
     if (!supported.has(action)) {
       return {
@@ -2483,7 +2483,7 @@
 
     let writeDraftState = getStructuredWriteDraftState(command);
     if (
-      (writeDraftState.supported || action==='update_pickup')
+      (writeDraftState.supported || ['update_pickup','cancel_pickup'].includes(action))
       && cleanText(writeDraftState.draft.studentName)
       && schedule
       && typeof schedule.resolveStructuredStudentReference === 'function'
@@ -2842,6 +2842,84 @@
           handled:true, kind:'action_rejected', intent:'mark_absent', text:'',
           message:String(error && (error.message || error) || '작업을 준비하지 못했어요.'),
           clearInput:true, payload:command, action:null
+        };
+      }
+    }
+
+    if (action === 'cancel_pickup') {
+      const studentName=cleanText(command.student_name || command.studentName);
+      const weekday=Number(command.weekday || 0);
+      const classTime=Number(command.class_time || command.classTime || 0);
+      const classMinute=Number(command.class_minute || command.classMinute || 0);
+      const pickupKind=cleanText(command.pickup_kind || command.pickupKind).toLowerCase();
+
+      if(!studentName){
+        return {
+          handled:true,kind:'action_rejected',intent:'cancel_pickup',text:'',
+          message:'픽업을 삭제할 학생을 알려주세요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+      if(!schedule || typeof schedule.prepareWriteCommand!=='function'){
+        return {
+          handled:true,kind:'action_rejected',intent:'cancel_pickup',text:'',
+          message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+
+      try{
+        const prepared=await schedule.prepareWriteCommand('cancel_pickup',{
+          type:'mutation',
+          intent:'cancel_pickup',
+          studentName,
+          weekday,
+          classTime,
+          classMinute,
+          pickupKind:pickupKind==='dropoff' ? 'dropoff' : 'all',
+          selectedStudent:routeContext.selectedStudent || null,
+          effectiveDate:new Date(),
+          originalText:''
+        });
+
+        if(!prepared || prepared.ok!==true || !prepared.command){
+          return {
+            handled:true,kind:'action_rejected',intent:'cancel_pickup',text:'',
+            message:String(prepared && prepared.message || '픽업 삭제 작업을 준비하지 못했어요.'),
+            clearInput:true,payload:command,action:null
+          };
+        }
+
+        const preparedIntent=cleanText(prepared.command.intent);
+        if(!['cancel_pickup','cancel_pickup_dropoff'].includes(preparedIntent)){
+          return {
+            handled:true,kind:'action_rejected',intent:'cancel_pickup',text:'',
+            message:'픽업 삭제 작업 종류를 확인하지 못했어요.',
+            clearInput:true,payload:command,action:null
+          };
+        }
+
+        return {
+          handled:true,
+          kind:'action_pending',
+          intent:preparedIntent,
+          text:'',
+          message:confirmationMessage(prepared.command,schedule,prepared.message),
+          clearInput:true,
+          payload:prepared.command,
+          action:{
+            status:'pending',
+            intent:preparedIntent,
+            command:Object.assign({},prepared.command),
+            requiresReason:false
+          }
+        };
+      }catch(error){
+        console.warn('올리 구조화 픽업 삭제 준비 실패:',error);
+        return {
+          handled:true,kind:'action_rejected',intent:'cancel_pickup',text:'',
+          message:String(error && (error.message || error) || '픽업 삭제 작업을 준비하지 못했어요.'),
+          clearInput:true,payload:command,action:null
         };
       }
     }
