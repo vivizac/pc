@@ -2518,7 +2518,7 @@
     const action = cleanText(command.action);
     const routeContext = normalizeContext(context);
     const schedule = global.OlliCommandSchedule;
-    const supported = new Set(['add_makeup','update_makeup','add_trial','add_waitlist','cancel_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent']);
+    const supported = new Set(['add_makeup','update_makeup','add_trial','update_trial','add_waitlist','cancel_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent']);
 
     if (!supported.has(action)) {
       return {
@@ -2894,6 +2894,168 @@
           handled:true, kind:'action_rejected', intent:'mark_absent', text:'',
           message:String(error && (error.message || error) || '작업을 준비하지 못했어요.'),
           clearInput:true, payload:command, action:null
+        };
+      }
+    }
+
+    if (action === 'update_trial') {
+      const guestName=cleanText(command.guest_name || command.guestName || command.student_name || command.studentName);
+      const sourceDateExpression=cleanText(command.source_date_expression || command.sourceDateExpression);
+      const targetDateExpression=cleanText(command.target_date_expression || command.targetDateExpression);
+      const sourceDateSpec=sourceDateExpression ? parseDateExpression(compactText(sourceDateExpression)) : null;
+      const targetDateSpec=targetDateExpression ? parseDateExpression(compactText(targetDateExpression)) : null;
+      const sourceDate=sourceDateSpec ? resolveDateExpression(sourceDateSpec,new Date()) : null;
+      const targetDate=targetDateSpec ? resolveDateExpression(targetDateSpec,new Date()) : null;
+
+      if(!guestName){
+        return {
+          handled:true,kind:'action_rejected',intent:'update_trial',text:'',
+          message:'체험을 변경할 학생 이름을 알려주세요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+      if(sourceDateExpression && !sourceDate){
+        return {
+          handled:true,kind:'action_rejected',intent:'update_trial',text:'',
+          message:'기존 체험 날짜를 해석하지 못했어요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+      if(targetDateExpression && !targetDate){
+        return {
+          handled:true,kind:'action_rejected',intent:'update_trial',text:'',
+          message:'변경할 체험 날짜를 해석하지 못했어요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+      if(!schedule || typeof schedule.prepareWriteCommand!=='function'){
+        return {
+          handled:true,kind:'action_rejected',intent:'update_trial',text:'',
+          message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+
+      try{
+        const prepared=await schedule.prepareWriteCommand('update_trial',{
+          type:'mutation',
+          intent:'update_trial',
+          guestName,
+          studentName:guestName,
+          division:cleanText(command.division),
+          oneTimeSessionId:cleanText(command.one_time_session_id || command.oneTimeSessionId),
+          sourceDate,
+          sourceTimeSlot:Number(command.source_time_slot || command.sourceTimeSlot || 0),
+          sourceMinute:Number(command.source_minute || command.sourceMinute || 0),
+          sourceClassGroup:cleanText(command.source_class_group || command.sourceClassGroup),
+          targetDate,
+          targetTimeSlot:Number(command.target_time_slot || command.targetTimeSlot || 0),
+          targetMinute:Number(command.target_minute || command.targetMinute || 0),
+          targetClassGroup:cleanText(command.target_class_group || command.targetClassGroup),
+          targetTimeStored:command.targetTimeStored===true,
+          effectiveDate:new Date(),
+          originalText:''
+        });
+
+        if(prepared?.code==='target_choice_required'){
+          const choiceResult=structuredTargetChoiceResult('update_trial',command,prepared);
+          if(choiceResult) return choiceResult;
+        }
+
+        if(prepared?.code==='target_date_required'){
+          const draft=createStructuredWriteDraft(command);
+          draft.guestName=guestName;
+          draft.studentName=guestName;
+          draft.oneTimeSessionId=cleanText(prepared?.source?.oneTimeSessionId) || draft.oneTimeSessionId;
+          draft.division=cleanText(prepared?.source?.division) || draft.division;
+          const payload={
+            type:'structured_write_draft',
+            targetIntent:'update_trial',
+            field:'target_date',
+            missingFields:['target_date'],
+            draft
+          };
+          return {
+            handled:true,kind:'action_needs_field',intent:'update_trial',text:'',
+            message:String(prepared.message || '변경할 날짜를 선택해 주세요.'),
+            clearInput:true,payload,
+            action:{
+              status:'pending_fields',intent:'update_trial',field:'target_date',
+              missingFields:['target_date'],command:Object.assign({},draft),requiresReason:false
+            }
+          };
+        }
+
+        if(prepared?.code==='target_time_required'){
+          const draft=createStructuredWriteDraft(command);
+          draft.guestName=guestName;
+          draft.studentName=guestName;
+          draft.oneTimeSessionId=cleanText(prepared?.source?.oneTimeSessionId) || draft.oneTimeSessionId;
+          draft.division=cleanText(prepared?.source?.division) || draft.division;
+          draft.targetDateExpression=targetDateExpression;
+          const timeChoices=await schedule.prepareStructuredTimeChoices({
+            action:'update_trial',
+            studentName:guestName,
+            division:draft.division,
+            date:targetDate,
+            dateLabel:targetDateExpression || ''
+          });
+          if(!timeChoices?.ok){
+            return {
+              handled:true,kind:'action_rejected',intent:'update_trial',text:'',
+              message:String(timeChoices?.message || '변경할 시간을 확인하지 못했어요.'),
+              clearInput:true,payload:command,action:null
+            };
+          }
+          const payload={
+            type:'structured_write_draft',
+            targetIntent:'update_trial',
+            field:'target_time',
+            missingFields:['target_time'],
+            draft,
+            choices:Array.isArray(timeChoices.choices) ? timeChoices.choices.map(item=>Object.assign({},item)) : []
+          };
+          return {
+            handled:true,kind:'action_needs_field',intent:'update_trial',text:'',
+            message:String(timeChoices.message || prepared.message || '변경할 시간을 선택해 주세요.'),
+            clearInput:true,payload,
+            action:{
+              status:'pending_fields',intent:'update_trial',field:'target_time',
+              missingFields:['target_time'],command:Object.assign({},draft),
+              choices:payload.choices.map(item=>Object.assign({},item)),requiresReason:false
+            }
+          };
+        }
+
+        if(!prepared || prepared.ok!==true || !prepared.command){
+          return {
+            handled:true,kind:'action_rejected',intent:'update_trial',text:'',
+            message:String(prepared && prepared.message || '체험 변경 작업을 준비하지 못했어요.'),
+            clearInput:true,payload:command,action:null
+          };
+        }
+
+        return {
+          handled:true,
+          kind:'action_pending',
+          intent:'update_trial',
+          text:'',
+          message:confirmationMessage(prepared.command,schedule,prepared.message),
+          clearInput:true,
+          payload:prepared.command,
+          action:{
+            status:'pending',
+            intent:'update_trial',
+            command:Object.assign({},prepared.command),
+            requiresReason:false
+          }
+        };
+      }catch(error){
+        console.warn('올리 구조화 체험 변경 준비 실패:',error);
+        return {
+          handled:true,kind:'action_rejected',intent:'update_trial',text:'',
+          message:String(error && (error.message || error) || '체험 변경 작업을 준비하지 못했어요.'),
+          clearInput:true,payload:command,action:null
         };
       }
     }

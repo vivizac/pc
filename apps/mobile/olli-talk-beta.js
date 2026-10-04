@@ -2641,19 +2641,7 @@
 
     if(
       interpreterLane==='routine'
-      && String(structuredCommand?.action || '').trim()==='update_trial'
-    ){
-      return resolveOlliTalkStructuredTrialUpdateTurn(
-        structuredCommand,
-        context,
-        rawCommandText,
-        replyToMessageId
-      );
-    }
-
-    if(
-      interpreterLane==='routine'
-      && ['add_makeup','update_makeup','add_trial','add_waitlist','cancel_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent'].includes(String(structuredCommand?.action || '').trim())
+      && ['add_makeup','update_makeup','add_trial','update_trial','add_waitlist','cancel_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent'].includes(String(structuredCommand?.action || '').trim())
       && router
       && typeof router.prepareStructuredAction==='function'
     ){

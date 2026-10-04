@@ -3898,19 +3898,7 @@
 
     if(
       interpreterLane==='routine'
-      && clean(structuredCommand?.action)==='update_trial'
-    ){
-      return resolveStructuredTrialUpdateTurn(
-        structuredCommand,
-        current,
-        rawCommandText,
-        replyToMessageId
-      );
-    }
-
-    if(
-      interpreterLane==='routine'
-      && ['add_makeup','update_makeup','add_trial','add_waitlist','cancel_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent'].includes(clean(structuredCommand?.action))
+      && ['add_makeup','update_makeup','add_trial','update_trial','add_waitlist','cancel_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent'].includes(clean(structuredCommand?.action))
       && router
       && typeof router.prepareStructuredAction==='function'
     ){

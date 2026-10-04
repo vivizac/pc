@@ -409,7 +409,7 @@
     const dateLabel=clean(opts.dateLabel) || fallbackDateLabel(dateKey);
     let division=normalizeDivision(opts.division);
 
-    if(!['add_makeup','update_makeup','add_trial','add_waitlist'].includes(action)){
+    if(!['add_makeup','update_makeup','add_trial','update_trial','add_waitlist'].includes(action)){
       return {ok:false,code:'unsupported_action',message:'시간 선택을 지원하지 않는 작업입니다.'};
     }
     if(!studentName) return {ok:false,code:'student_required',message:'시간을 선택할 학생을 확인하지 못했어요.'};
@@ -423,6 +423,8 @@
         return {ok:false,message:clean(resolved.student.name)+' 학생의 수업 구분과 입력한 유치부·초등부 정보가 달라요.'};
       }
       division=studentDivision || division;
+    }else if(action==='update_trial'){
+      division=normalizeDivision(opts.division);
     }else{
       let student=null;
       if(selected && clean(selected.name)===studentName){
@@ -448,7 +450,7 @@
       };
     }
 
-    const purpose=['add_makeup','update_makeup'].includes(action) ? 'makeup' : (action==='add_trial' ? 'trial' : 'unknown');
+    const purpose=['add_makeup','update_makeup'].includes(action) ? 'makeup' : (['add_trial','update_trial'].includes(action) ? 'trial' : 'unknown');
     const availability=await findAvailableSlots({
       date:dateKey,
       dateLabel,
@@ -1465,6 +1467,18 @@
     if (item.intent === 'update_makeup') {
       return [
         clean(item.studentName)+' 보강 변경',
+        '현재: '+fallbackDateLabel(item.sourceSessionDate)+' '
+          +timetableMemoTimeLabel(item.division,item.sourceSessionDate,item.sourceTimeSlot,item.timetableMode)+' '
+          +classGroup(item.sourceClassGroup)+'반',
+        '변경: '+fallbackDateLabel(item.targetSessionDate)+' '
+          +timetableMemoTimeLabel(item.division,item.targetSessionDate,item.targetTimeSlot,item.timetableMode)+' '
+          +classGroup(item.targetClassGroup)+'반',
+        '이렇게 변경할까요?'
+      ].join('\n');
+    }
+    if (item.intent === 'update_trial') {
+      return [
+        clean(item.guestName || item.studentName)+' 체험수업 변경',
         '현재: '+fallbackDateLabel(item.sourceSessionDate)+' '
           +timetableMemoTimeLabel(item.division,item.sourceSessionDate,item.sourceTimeSlot,item.timetableMode)+' '
           +classGroup(item.sourceClassGroup)+'반',
@@ -2738,6 +2752,234 @@
   }
 
 
+  async function prepareTrialUpdateCommand(options) {
+    const opts=options || {};
+    const guestName=clean(opts.guestName || opts.studentName);
+    const requestedDivision=normalizeDivision(opts.division);
+    const effectiveDate=localDateKey(opts.effectiveDate || new Date());
+    const horizonEnd=addDaysKey(effectiveDate,370);
+    const oneTimeSessionId=clean(opts.oneTimeSessionId);
+    const sourceDate=opts.sourceDate ? localDateKey(opts.sourceDate) : '';
+    const sourceHour=Number(opts.sourceTimeSlot || 0);
+    const sourceMinute=Number(opts.sourceMinute || 0);
+    const sourceGroup=requestedGroup(opts.sourceClassGroup);
+    let targetDate=opts.targetDate ? localDateKey(opts.targetDate) : '';
+    const targetHourOrSlot=Number(opts.targetTimeSlot || 0);
+    const targetMinute=Number(opts.targetMinute || 0);
+    const targetTimeStored=opts.targetTimeStored===true;
+    const targetGroup=requestedGroup(opts.targetClassGroup);
+
+    if(!guestName) return {ok:false,message:'변경할 체험 학생 이름을 확인하지 못했어요.'};
+    if(!effectiveDate || !horizonEnd) return {ok:false,message:'체험 변경 기준 날짜를 확인하지 못했어요.'};
+
+    const sameGuest=(value)=>clean(value).toLocaleLowerCase('ko-KR')===guestName.toLocaleLowerCase('ko-KR');
+    let sourceData=sourceDate
+      ? await loadFreshWeek(sourceDate)
+      : await loadAvailabilityHorizon(effectiveDate,horizonEnd);
+    const sourceMode=timetableMode(sourceData);
+
+    let sourceRows=arrays(sourceData,'one_time_sessions').filter(row=>
+      row && row.is_guest===true
+      && clean(row.session_type).toLowerCase()==='trial'
+      && clean(row.status).toLowerCase()!=='cancelled'
+      && sameGuest(row.student_name)
+      && clean(row.session_date).slice(0,10)>=effectiveDate
+    );
+    if(sourceDate) sourceRows=sourceRows.filter(row=>clean(row.session_date).slice(0,10)===sourceDate);
+    if(oneTimeSessionId) sourceRows=sourceRows.filter(row=>clean(row.id)===oneTimeSessionId);
+    if(requestedDivision) sourceRows=sourceRows.filter(row=>normalizeDivision(row.division)===requestedDivision);
+    if(sourceHour){
+      sourceRows=sourceRows.filter(row=>{
+        const rowDate=clean(row.session_date).slice(0,10);
+        const rowDivision=normalizeDivision(row.division);
+        const stored=timetableMemoTimeSlot(sourceMode,rowDivision,rowDate,sourceHour,sourceMinute);
+        return stored>0 && Number(row.time_slot)===stored;
+      });
+    }
+    if(sourceGroup) sourceRows=sourceRows.filter(row=>classGroup(row.class_group)===sourceGroup);
+    sourceRows.sort((a,b)=>
+      clean(a.session_date).localeCompare(clean(b.session_date))
+      || structuredStoredTimeMinutes(
+        sourceMode,normalizeDivision(a.division),clean(a.session_date).slice(0,10),Number(a.time_slot)
+      )-structuredStoredTimeMinutes(
+        sourceMode,normalizeDivision(b.division),clean(b.session_date).slice(0,10),Number(b.time_slot)
+      )
+      || classGroup(a.class_group).localeCompare(classGroup(b.class_group))
+    );
+
+    if(!sourceRows.length){
+      return {ok:false,message:guestName+' 학생의 변경 가능한 체험 일정을 찾지 못했어요.'};
+    }
+    if(sourceRows.length>1){
+      return {
+        ok:false,
+        code:'target_choice_required',
+        field:'target_choice',
+        targetType:'trial_source',
+        choiceKey:'oneTimeSessionId',
+        choices:sourceRows.slice(0,12).map(row=>{
+          const rowDate=clean(row.session_date).slice(0,10);
+          const rowDivision=normalizeDivision(row.division);
+          return {
+            id:clean(row.id),
+            label:divisionLabel(rowDivision)+' · '+fallbackDateLabel(rowDate)+' '
+              +timetableMemoTimeLabel(rowDivision,rowDate,Number(row.time_slot),sourceMode)
+              +' '+classGroup(row.class_group)+'반'
+          };
+        }).filter(choice=>choice.id),
+        message:guestName+' 학생의 변경할 체험이 여러 개 있어요. 변경할 체험을 선택해 주세요.'
+      };
+    }
+
+    const source=sourceRows[0];
+    const sourceId=clean(source.id);
+    const division=normalizeDivision(source.division);
+    const sourceSessionDate=clean(source.session_date).slice(0,10);
+    const sourceTimeSlot=Number(source.time_slot || 0);
+    const sourceClassGroup=classGroup(source.class_group);
+    const sourceTimeLabel=timetableMemoTimeLabel(division,sourceSessionDate,sourceTimeSlot,sourceMode);
+    if(!sourceId || !division || !sourceSessionDate || !sourceTimeSlot){
+      return {ok:false,message:'기존 체험 정보를 확인하지 못했어요.'};
+    }
+    if(requestedDivision && requestedDivision!==division){
+      return {ok:false,message:'요청한 유치부·초등부 구분과 기존 체험 정보가 달라요.'};
+    }
+
+    const hasExplicitTarget=!!clean(opts.targetDate) || targetHourOrSlot>0 || !!targetGroup;
+    if(!targetDate && hasExplicitTarget) targetDate=sourceSessionDate;
+    if(!targetDate){
+      return {
+        ok:false,
+        code:'target_date_required',
+        field:'target_date',
+        source:{
+          oneTimeSessionId:sourceId,
+          guestName,
+          division,
+          sessionDate:sourceSessionDate,
+          timeSlot:sourceTimeSlot,
+          classGroup:sourceClassGroup
+        },
+        message:guestName+' · '+fallbackDateLabel(sourceSessionDate)+' '+sourceTimeLabel+' '+sourceClassGroup+'반\n변경할 날짜를 선택해 주세요.'
+      };
+    }
+    if(targetDate<effectiveDate){
+      return {ok:false,message:'지난 날짜로는 체험수업을 변경할 수 없어요.'};
+    }
+
+    if(!targetHourOrSlot){
+      return {
+        ok:false,
+        code:'target_time_required',
+        field:'target_time',
+        source:{
+          oneTimeSessionId:sourceId,
+          guestName,
+          division,
+          sessionDate:sourceSessionDate,
+          timeSlot:sourceTimeSlot,
+          classGroup:sourceClassGroup
+        },
+        targetDate,
+        message:guestName+' · '+fallbackDateLabel(targetDate)+'\n변경할 시간을 선택해 주세요.'
+      };
+    }
+
+    const availability=await findAvailableSlots({
+      date:targetDate,
+      dateLabel:fallbackDateLabel(targetDate),
+      division,
+      purpose:'trial',
+      viewMode:'schedule'
+    });
+    if(availability.closedDay) return {ok:false,message:describeAvailableSlots(availability)};
+
+    const targetMode=clean(availability.timetableMode) || 'hourly';
+    const targetTimeSlot=targetTimeStored
+      ? targetHourOrSlot
+      : timetableMemoTimeSlot(targetMode,division,targetDate,targetHourOrSlot,targetMinute);
+    if(targetTimeSlot<=0){
+      return {ok:false,message:'변경할 체험 시간을 확인하지 못했어요.'};
+    }
+
+    const target=chooseOpenSlot(
+      availability,
+      targetTimeSlot,
+      targetGroup,
+      sourceClassGroup
+    );
+    if(!target.ok){
+      if(target.code==='class_group_required' && Array.isArray(target.choices) && target.choices.length>1){
+        return {
+          ok:false,
+          code:'target_choice_required',
+          field:'target_choice',
+          targetType:'trial_group',
+          choiceKey:'targetClassGroup',
+          choices:target.choices.map(group=>({id:group,label:group+'반'})),
+          message:guestName+' · '+fallbackDateLabel(targetDate)+' '
+            +timetableMemoTimeLabel(division,targetDate,targetTimeSlot,targetMode)
+            +'\n변경할 반을 선택해 주세요.'
+        };
+      }
+      return target;
+    }
+
+    const slot=target.slot;
+    const actualTargetGroup=classGroup(slot && slot.classGroup);
+    if(
+      sourceSessionDate===targetDate
+      && sourceTimeSlot===targetTimeSlot
+      && sourceClassGroup===actualTargetGroup
+    ){
+      return {ok:false,message:'현재 체험 일정과 변경할 일정이 같아요.'};
+    }
+
+    const targetWeek=sourceSessionDate===targetDate
+      ? sourceData
+      : await loadFreshWeek(targetDate);
+    const duplicate=arrays(targetWeek,'one_time_sessions').some(row=>
+      clean(row && row.id)!==sourceId
+      && row && row.is_guest===true
+      && clean(row.session_type).toLowerCase()==='trial'
+      && clean(row.status).toLowerCase()!=='cancelled'
+      && clean(row.student_name).toLocaleLowerCase('ko-KR')===guestName.toLocaleLowerCase('ko-KR')
+      && clean(row.session_date).slice(0,10)===targetDate
+      && Number(row.time_slot)===targetTimeSlot
+      && classGroup(row.class_group)===actualTargetGroup
+    );
+    if(duplicate){
+      return {ok:false,message:'같은 이름의 체험수업이 변경할 날짜와 시간에 이미 등록되어 있어요.'};
+    }
+
+    const targetTimeLabel=timetableMemoTimeLabel(division,targetDate,targetTimeSlot,targetMode);
+    return {
+      ok:true,
+      command:{
+        intent:'update_trial',
+        guestName,
+        studentName:guestName,
+        division,
+        oneTimeSessionId:sourceId,
+        sourceSessionDate,
+        sourceTimeSlot,
+        sourceClassGroup,
+        targetSessionDate:targetDate,
+        targetTimeSlot,
+        targetClassGroup:actualTargetGroup,
+        timetableMode:targetMode,
+        isGuest:true
+      },
+      message:[
+        guestName+' 체험수업 변경',
+        '현재: '+fallbackDateLabel(sourceSessionDate)+' '+sourceTimeLabel+' '+sourceClassGroup+'반',
+        '변경: '+fallbackDateLabel(targetDate)+' '+targetTimeLabel+' '+actualTargetGroup+'반',
+        '이렇게 변경할까요?'
+      ].join('\n')
+    };
+  }
+
+
   async function prepareClassOnceCommand(options) {
     const opts = options || {};
     const resolved = resolveCommandStudent(opts.studentName, opts.selectedStudent);
@@ -3714,6 +3956,7 @@
     if (intent === 'cancel_waitlist') return prepareCancelWaitlistCommand(options);
     if (intent === 'add_makeup') return prepareMakeupCommand(options);
     if (intent === 'update_makeup') return prepareMakeupUpdateCommand(options);
+    if (intent === 'update_trial') return prepareTrialUpdateCommand(options);
     if (intent === 'move_class') return prepareMoveCommand(options);
     if (intent === 'add_waitlist') return prepareWaitlistCommand(options);
     if (intent === 'add_trial') return prepareTrialCommand(options);
@@ -4039,7 +4282,7 @@
       } else {
         throw new Error('시간표 저장 기능을 아직 불러오지 못했습니다.');
       }
-    } else if (intent === 'update_makeup') {
+    } else if (intent === 'update_makeup' || intent === 'update_trial') {
       if (pc && typeof pc.updateOneTimeSession === 'function') {
         result = await pc.updateOneTimeSession(item.oneTimeSessionId, {
           sessionDate:item.targetSessionDate,
@@ -4054,7 +4297,7 @@
           p_class_group:item.targetClassGroup || 'A'
         });
       } else {
-        throw new Error('보강 변경 저장 기능을 아직 불러오지 못했습니다.');
+        throw new Error((intent === 'update_trial' ? '체험' : '보강')+' 변경 저장 기능을 아직 불러오지 못했습니다.');
       }
     } else if (intent === 'cancel_makeup' || intent === 'cancel_trial') {
       if (pc && typeof pc.cancelMakeup === 'function') {
@@ -4153,6 +4396,12 @@
     }
     if (item.intent === 'update_makeup') {
       return clean(item.studentName)+' 학생의 보강을 '
+        +fallbackDateLabel(item.targetSessionDate)+' '
+        +timetableMemoTimeLabel(item.division,item.targetSessionDate,item.targetTimeSlot,item.timetableMode)+' '
+        +classGroup(item.targetClassGroup)+'반으로 변경했어요.';
+    }
+    if (item.intent === 'update_trial') {
+      return clean(item.guestName || item.studentName)+' 학생의 체험수업을 '
         +fallbackDateLabel(item.targetSessionDate)+' '
         +timetableMemoTimeLabel(item.division,item.targetSessionDate,item.targetTimeSlot,item.timetableMode)+' '
         +classGroup(item.targetClassGroup)+'반으로 변경했어요.';

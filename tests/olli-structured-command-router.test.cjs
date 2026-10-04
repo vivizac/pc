@@ -655,6 +655,79 @@ test('structured add_waitlist surfaces a persisted A/B choice instead of asking 
   }
 });
 
+test('structured update_trial selects an ambiguous existing trial before target fields', async()=>{
+  const previous=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async prepareWriteCommand(intent,options){
+      assert.equal(intent,'update_trial');
+      assert.equal(options.guestName,'민서');
+      return {
+        ok:false,code:'target_choice_required',field:'target_choice',
+        choiceKey:'oneTimeSessionId',
+        choices:[
+          {id:'t1',label:'유치부 · 10월 6일 4시 A반'},
+          {id:'t2',label:'초등부 · 10월 8일 5시 A반'}
+        ],
+        message:'민서 학생의 변경할 체험이 여러 개 있어요. 변경할 체험을 선택해 주세요.'
+      };
+    }
+  };
+  try{
+    const result=await router.prepareStructuredAction({action:'update_trial',studentName:'민서'},{});
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'target_choice');
+    assert.equal(result.payload.choiceKey,'oneTimeSessionId');
+    assert.deepEqual(result.payload.choices.map(x=>x.id),['t1','t2']);
+  }finally{globalThis.OlliCommandSchedule=previous;}
+});
+
+test('structured update_trial asks target date then target time without requiring source date re-entry', async()=>{
+  const previous=globalThis.OlliCommandSchedule;
+  let phase=0;
+  globalThis.OlliCommandSchedule={
+    async prepareWriteCommand(intent,options){
+      phase+=1;
+      assert.equal(intent,'update_trial');
+      if(phase===1){
+        assert.equal(options.sourceDate,null);
+        return {
+          ok:false,code:'target_date_required',field:'target_date',
+          source:{oneTimeSessionId:'t1',guestName:'민서',division:'kinder',sessionDate:'2026-10-06',timeSlot:4,classGroup:'A'},
+          message:'변경할 날짜를 선택해 주세요.'
+        };
+      }
+      assert.ok(options.targetDate instanceof Date);
+      return {
+        ok:false,code:'target_time_required',field:'target_time',
+        source:{oneTimeSessionId:'t1',guestName:'민서',division:'kinder',sessionDate:'2026-10-06',timeSlot:4,classGroup:'A'},
+        targetDate:'2026-10-08',
+        message:'변경할 시간을 선택해 주세요.'
+      };
+    },
+    async prepareStructuredTimeChoices(options){
+      assert.equal(options.action,'update_trial');
+      assert.equal(options.division,'kinder');
+      return {
+        ok:true,division:'kinder',
+        choices:[{timeSlot:4,label:'4시',status:'available',selectable:true,remaining:2,grouped:false}],
+        message:'민서 · 10월 8일\n변경할 시간을 선택해 주세요.'
+      };
+    }
+  };
+  try{
+    let result=await router.prepareStructuredAction({action:'update_trial',studentName:'민서'},{});
+    assert.equal(result.payload.field,'target_date');
+    assert.equal(result.payload.draft.division,'kinder');
+
+    result=await router.prepareStructuredAction({
+      action:'update_trial',studentName:'민서',guestName:'민서',
+      oneTimeSessionId:'t1',division:'kinder',targetDateExpression:'10월 8일'
+    },{});
+    assert.equal(result.payload.field,'target_time');
+    assert.equal(result.payload.choices[0].timeSlot,4);
+  }finally{globalThis.OlliCommandSchedule=previous;}
+});
+
 test('structured update_makeup selects an ambiguous existing makeup before target fields', async()=>{
   const previous=globalThis.OlliCommandSchedule;
   let prepareCount=0;
