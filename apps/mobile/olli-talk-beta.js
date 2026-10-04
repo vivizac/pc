@@ -2518,18 +2518,6 @@
 
     if(
       interpreterLane==='routine'
-      && String(structuredCommand?.action || '').trim()==='cancel_waitlist'
-    ){
-      return resolveOlliTalkWaitlistCancelAgentTurn(
-        rawCommandText,
-        context,
-        replyToMessageId,
-        structuredCommand
-      );
-    }
-
-    if(
-      interpreterLane==='routine'
       && String(structuredCommand?.action || '').trim()==='update_waitlist'
     ){
       return resolveOlliTalkStructuredWaitlistUpdateTurn(
@@ -2624,7 +2612,7 @@
 
     if(
       interpreterLane==='routine'
-      && ['add_makeup','add_trial','add_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent'].includes(String(structuredCommand?.action || '').trim())
+      && ['add_makeup','add_trial','add_waitlist','cancel_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent'].includes(String(structuredCommand?.action || '').trim())
       && router
       && typeof router.prepareStructuredAction==='function'
     ){

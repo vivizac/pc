@@ -15,7 +15,7 @@ const migration=fs.readFileSync(path.join(root,'supabase/migrations/202610040930
 test('structured pickup update is routed through the common router on PC and Mobile',()=>{
   assert.match(router,/supported = new Set\([^\n]*'update_pickup'/);
   for(const source of [pc,mobile]){
-    assert.match(source,/\['add_makeup','add_trial','add_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent'\]/);
+    assert.match(source,/\[[^\]]*'update_pickup'[^\]]*\]/);
   }
 });
 

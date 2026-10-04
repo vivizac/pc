@@ -3685,18 +3685,6 @@
 
     if(
       interpreterLane==='routine'
-      && clean(structuredCommand?.action)==='cancel_waitlist'
-    ){
-      return resolveWaitlistCancelAgentTurn(
-        rawCommandText,
-        current,
-        replyToMessageId,
-        structuredCommand
-      );
-    }
-
-    if(
-      interpreterLane==='routine'
       && clean(structuredCommand?.action)==='update_waitlist'
     ){
       return resolveStructuredWaitlistUpdateTurn(
@@ -3791,7 +3779,7 @@
 
     if(
       interpreterLane==='routine'
-      && ['add_makeup','add_trial','add_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent'].includes(clean(structuredCommand?.action))
+      && ['add_makeup','add_trial','add_waitlist','cancel_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent'].includes(clean(structuredCommand?.action))
       && router
       && typeof router.prepareStructuredAction==='function'
     ){

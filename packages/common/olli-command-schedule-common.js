@@ -2233,6 +2233,7 @@
 
     const referenceDate = localDateKey(opts.date || opts.effectiveDate || new Date());
     const weekData = await loadFreshWeek(referenceDate);
+    const mode=timetableMode(weekData);
     let rows = arrays(weekData, 'waitlist').filter(row =>
       clean(row && row.student_name) === studentName
       && clean(row && row.status).toLowerCase() !== 'cancelled'
@@ -2240,16 +2241,51 @@
 
     const wantedWeekday = opts.date ? isoWeekday(referenceDate) : 0;
     if (wantedWeekday) rows = rows.filter(row => Number(row && row.target_weekday) === wantedWeekday);
-    if (Number(opts.timeSlot || 0)) rows = rows.filter(row => Number(row && row.target_time_slot) === Number(opts.timeSlot));
+
+    const requestedVisibleHour=Number(opts.classHour || 0);
+    const requestedMinute=Number(opts.classMinute || 0);
+    if(requestedVisibleHour){
+      rows=rows.filter(row=>{
+        const division=normalizeDivision(row && row.division);
+        const rowDate=wantedWeekday
+          ? referenceDate
+          : nextOccurrenceKey(referenceDate,Number(row && row.target_weekday));
+        const stored=timetableMemoTimeSlot(
+          mode,
+          division,
+          rowDate,
+          requestedVisibleHour,
+          requestedMinute
+        );
+        return stored>0 && Number(row && row.target_time_slot)===Number(stored);
+      });
+    }else if (Number(opts.timeSlot || 0)) {
+      rows = rows.filter(row => Number(row && row.target_time_slot) === Number(opts.timeSlot));
+    }
+
     if (requestedGroup(opts.classGroup)) rows = rows.filter(row => classGroup(row && row.target_class_group) === requestedGroup(opts.classGroup));
 
     if (!rows.length) return { ok:false, message:studentName + ' 학생의 취소 가능한 대기를 찾지 못했어요.' };
     if (rows.length > 1) {
-      const choices = rows.map(row => weekdayLabel(row.target_weekday) + ' ' + Number(row.target_time_slot) + '시').join(' · ');
+      const choices = rows.map(row => {
+        const rowDate=wantedWeekday
+          ? referenceDate
+          : nextOccurrenceKey(referenceDate,Number(row && row.target_weekday));
+        return weekdayLabel(row.target_weekday) + ' '
+          + timetableMemoTimeLabel(
+            normalizeDivision(row && row.division),
+            rowDate,
+            Number(row && row.target_time_slot),
+            mode
+          );
+      }).join(' · ');
       return { ok:false, message:studentName + ' 학생의 대기가 여러 개 있어요: ' + choices + '\n취소할 요일과 시간을 함께 적어 주세요.' };
     }
 
     const item = rows[0];
+    const itemDate=wantedWeekday
+      ? referenceDate
+      : nextOccurrenceKey(referenceDate,Number(item.target_weekday));
     return {
       ok:true,
       command:{
@@ -2264,7 +2300,14 @@
         effectiveDate:referenceDate,
         isGuest:item && item.is_guest === true
       },
-      message:studentName + ' · ' + weekdayLabel(item.target_weekday) + ' ' + Number(item.target_time_slot) + '시\n대기를 취소할까요?'
+      message:studentName + ' · ' + weekdayLabel(item.target_weekday) + ' '
+        + timetableMemoTimeLabel(
+          normalizeDivision(item.division),
+          itemDate,
+          Number(item.target_time_slot),
+          mode
+        )
+        + '\n대기를 취소할까요?'
     };
   }
 

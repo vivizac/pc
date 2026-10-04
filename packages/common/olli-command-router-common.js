@@ -2466,7 +2466,7 @@
     const action = cleanText(command.action);
     const routeContext = normalizeContext(context);
     const schedule = global.OlliCommandSchedule;
-    const supported = new Set(['add_makeup','add_trial','add_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent']);
+    const supported = new Set(['add_makeup','add_trial','add_waitlist','cancel_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent']);
 
     if (!supported.has(action)) {
       return {
@@ -2483,7 +2483,7 @@
 
     let writeDraftState = getStructuredWriteDraftState(command);
     if (
-      (writeDraftState.supported || ['update_pickup','cancel_pickup'].includes(action))
+      (writeDraftState.supported || ['cancel_waitlist','update_pickup','cancel_pickup'].includes(action))
       && cleanText(writeDraftState.draft.studentName)
       && schedule
       && typeof schedule.resolveStructuredStudentReference === 'function'
@@ -2842,6 +2842,85 @@
           handled:true, kind:'action_rejected', intent:'mark_absent', text:'',
           message:String(error && (error.message || error) || '작업을 준비하지 못했어요.'),
           clearInput:true, payload:command, action:null
+        };
+      }
+    }
+
+    if (action === 'cancel_waitlist') {
+      const studentName=cleanText(command.student_name || command.studentName);
+      const dateExpression=cleanText(command.date_expression || command.dateExpression);
+      const visibleHour=Number(command.time_slot || command.timeSlot || 0);
+      const classMinute=Number(command.class_minute || command.classMinute || 0);
+      const classGroup=cleanText(command.class_group || command.classGroup).toUpperCase();
+      const dateSpec=dateExpression ? parseDateExpression(compactText(dateExpression)) : null;
+      const date=dateSpec ? resolveDateExpression(dateSpec,new Date()) : null;
+
+      if(!studentName){
+        return {
+          handled:true,kind:'action_rejected',intent:'cancel_waitlist',text:'',
+          message:'대기를 취소할 학생을 알려주세요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+      if(dateExpression && !date){
+        return {
+          handled:true,kind:'action_rejected',intent:'cancel_waitlist',text:'',
+          message:'취소할 대기 날짜를 해석하지 못했어요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+      if(!schedule || typeof schedule.prepareWriteCommand!=='function'){
+        return {
+          handled:true,kind:'action_rejected',intent:'cancel_waitlist',text:'',
+          message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+
+      try{
+        const prepared=await schedule.prepareWriteCommand('cancel_waitlist',{
+          type:'mutation',
+          intent:'cancel_waitlist',
+          studentName,
+          division:cleanText(command.division),
+          date,
+          classHour:visibleHour,
+          classMinute,
+          classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+          selectedStudent:routeContext.selectedStudent || null,
+          effectiveDate:new Date(),
+          originalText:''
+        });
+
+        if(!prepared || prepared.ok!==true || !prepared.command){
+          return {
+            handled:true,kind:'action_rejected',intent:'cancel_waitlist',text:'',
+            message:String(prepared && prepared.message || '대기 취소 작업을 준비하지 못했어요.'),
+            clearInput:true,payload:command,action:null
+          };
+        }
+
+        return {
+          handled:true,
+          kind:'action_pending',
+          intent:'cancel_waitlist',
+          text:'',
+          message:confirmationMessage(prepared.command,schedule,prepared.message),
+          clearInput:true,
+          payload:prepared.command,
+          action:{
+            status:'pending',
+            intent:'cancel_waitlist',
+            command:Object.assign({},prepared.command),
+            requiresReason:false
+          }
+        };
+      }catch(error){
+        console.warn('올리 구조화 대기 취소 준비 실패:',error);
+        return {
+          handled:true,kind:'action_rejected',intent:'cancel_waitlist',text:'',
+          message:String(error && (error.message || error) || '대기 취소 작업을 준비하지 못했어요.'),
+          clearInput:true,payload:command,action:null
         };
       }
     }
