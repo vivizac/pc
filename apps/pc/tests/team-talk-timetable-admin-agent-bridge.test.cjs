@@ -56,3 +56,13 @@ test('PC session order target choice resumes through deterministic timetable adm
   assert.match(block,/structuredCommand/);
   assert.doesNotMatch(block,/mode:'timetable_admin_prepare'/);
 });
+
+
+test('PC teacher A/B target choice shares deterministic timetable admin resume',()=>{
+  const start=talk.indexOf('async function resolveStructuredTimetableAdminTurn');
+  const end=talk.indexOf('async function resolveSourceBoundReadAgentTurn',start);
+  const block=talk.slice(start,end);
+  assert.match(block,/set_class_teacher/);
+  assert.match(block,/set_teacher_override/);
+  assert.match(block,/structured_timetable_admin_prepare/);
+});

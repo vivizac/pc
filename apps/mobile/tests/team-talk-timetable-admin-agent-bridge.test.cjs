@@ -56,3 +56,13 @@ test('Mobile session order target choice resumes through deterministic timetable
   assert.match(block,/structuredCommand/);
   assert.doesNotMatch(block,/mode:'timetable_admin_prepare'/);
 });
+
+
+test('Mobile teacher A/B target choice shares deterministic timetable admin resume',()=>{
+  const start=talk.indexOf('async function resolveOlliTalkStructuredTimetableAdminTurn');
+  const end=talk.indexOf('async function resolveOlliTalkSourceBoundReadAgentTurn',start);
+  const block=talk.slice(start,end);
+  assert.match(block,/set_class_teacher/);
+  assert.match(block,/set_teacher_override/);
+  assert.match(block,/structured_timetable_admin_prepare/);
+});
