@@ -805,7 +805,21 @@
       if(!payload?.ok || !payload?.action || !payload?.draft){
         throw new Error(payload?.message || '대상을 선택하지 못했습니다.');
       }
-      await continueStructuredWriteDraft(payload.draft,current);
+      if(clean(payload?.draft?.action)==='update_waitlist'){
+        const sourceMessageId=Number(payload?.source_message_id || 0);
+        const sourceMessageText=clean(payload?.source_message_text);
+        if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0||!sourceMessageText){
+          throw new Error('대기 변경 원문 메시지를 확인하지 못했습니다.');
+        }
+        await resolveStructuredWaitlistUpdateTurn(
+          payload.draft,
+          current,
+          sourceMessageText,
+          sourceMessageId
+        );
+      }else{
+        await continueStructuredWriteDraft(payload.draft,current);
+      }
       await loadMessages({showLoading:false,followBottom:true});
     }catch(error){
       console.warn('PC 팀톡 구조화 대상 선택 실패:',error?.message || error);

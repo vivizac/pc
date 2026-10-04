@@ -5614,7 +5614,21 @@
       if(!payload?.ok || !payload?.action || !payload?.draft){
         throw new Error(payload?.message || '대상을 선택하지 못했습니다.');
       }
-      await continueOlliTalkStructuredWriteDraft(payload.draft,context);
+      if(String(payload?.draft?.action || '').trim()==='update_waitlist'){
+        const sourceMessageId=Number(payload?.source_message_id || 0);
+        const sourceMessageText=String(payload?.source_message_text || '').trim();
+        if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0||!sourceMessageText){
+          throw new Error('대기 변경 원문 메시지를 확인하지 못했습니다.');
+        }
+        await resolveOlliTalkStructuredWaitlistUpdateTurn(
+          payload.draft,
+          context,
+          sourceMessageText,
+          sourceMessageId
+        );
+      }else{
+        await continueOlliTalkStructuredWriteDraft(payload.draft,context);
+      }
       await loadOlliTalkBetaMessages({
         showLoading:false,
         localFirst:false,

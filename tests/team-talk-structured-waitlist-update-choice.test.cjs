@@ -156,6 +156,21 @@ test('structured waitlist update bridge persists target choice and resumes with 
     assert.match(source,/source_message_id/);
     assert.match(source,/source_message_text/);
   }
+
+  const pcTargetHandler=pcSource.slice(
+    pcSource.indexOf('async function handleStructuredTargetChoice'),
+    pcSource.indexOf('async function populateStructuredTargetChoiceCard')
+  );
+  const mobileTargetHandler=mobileSource.slice(
+    mobileSource.indexOf('async function handleOlliTalkStructuredTargetChoice'),
+    mobileSource.indexOf('async function populateOlliTalkStructuredTargetChoiceCard')
+  );
+  assert.match(pcTargetHandler,/update_waitlist/);
+  assert.match(pcTargetHandler,/resolveStructuredWaitlistUpdateTurn/);
+  assert.match(pcTargetHandler,/source_message_id/);
+  assert.match(mobileTargetHandler,/update_waitlist/);
+  assert.match(mobileTargetHandler,/resolveOlliTalkStructuredWaitlistUpdateTurn/);
+  assert.match(mobileTargetHandler,/source_message_id/);
 });
 
 test('waitlist update target-choice migration only persists draft selection and never mutates waitlist data',()=>{
