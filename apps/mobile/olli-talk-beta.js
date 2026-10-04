@@ -2653,19 +2653,7 @@
 
     if(
       interpreterLane==='routine'
-      && String(structuredCommand?.action || '').trim()==='update_makeup'
-    ){
-      return resolveOlliTalkStructuredMakeupUpdateTurn(
-        structuredCommand,
-        context,
-        rawCommandText,
-        replyToMessageId
-      );
-    }
-
-    if(
-      interpreterLane==='routine'
-      && ['add_makeup','add_trial','add_waitlist','cancel_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent'].includes(String(structuredCommand?.action || '').trim())
+      && ['add_makeup','update_makeup','add_trial','add_waitlist','cancel_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent'].includes(String(structuredCommand?.action || '').trim())
       && router
       && typeof router.prepareStructuredAction==='function'
     ){
@@ -2712,7 +2700,7 @@
               recordAi:false
             };
           }
-          if(String(prepared.payload.field || '').trim()==='date'){
+          if(['date','target_date'].includes(String(prepared.payload.field || '').trim())){
             return {
               assistantMessage:await saveOlliTalkStructuredDateChoice(
                 context,
@@ -2724,7 +2712,7 @@
               recordAi:false
             };
           }
-          if(String(prepared.payload.field || '').trim()==='time'){
+          if(['time','target_time'].includes(String(prepared.payload.field || '').trim())){
             return {
               assistantMessage:await saveOlliTalkStructuredTimeChoice(
                 context,

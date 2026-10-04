@@ -3910,19 +3910,7 @@
 
     if(
       interpreterLane==='routine'
-      && clean(structuredCommand?.action)==='update_makeup'
-    ){
-      return resolveStructuredMakeupUpdateTurn(
-        structuredCommand,
-        current,
-        rawCommandText,
-        replyToMessageId
-      );
-    }
-
-    if(
-      interpreterLane==='routine'
-      && ['add_makeup','add_trial','add_waitlist','cancel_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent'].includes(clean(structuredCommand?.action))
+      && ['add_makeup','update_makeup','add_trial','add_waitlist','cancel_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent'].includes(clean(structuredCommand?.action))
       && router
       && typeof router.prepareStructuredAction==='function'
     ){
@@ -3969,7 +3957,7 @@
               recordAi:false
             };
           }
-          if(clean(prepared.payload.field)==='date'){
+          if(['date','target_date'].includes(clean(prepared.payload.field))){
             return {
               assistantMessage:await saveStructuredDateChoice(
                 current,
@@ -3981,7 +3969,7 @@
               recordAi:false
             };
           }
-          if(clean(prepared.payload.field)==='time'){
+          if(['time','target_time'].includes(clean(prepared.payload.field))){
             return {
               assistantMessage:await saveStructuredTimeChoice(
                 current,
