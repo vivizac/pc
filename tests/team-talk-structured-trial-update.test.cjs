@@ -83,7 +83,9 @@ test('common trial update SOT converts visible half-hour time and prepares exist
       one_time_sessions:[source],
       enrollments:[],
       attendance_overrides:[],
-      class_teachers:[],
+      class_teachers:[
+        {division:'elementary',weekday:4,time_slot:10,class_group:'A'}
+      ],
       calendar_days:[]
     })
   };

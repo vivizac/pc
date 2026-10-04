@@ -129,7 +129,7 @@ test('structured write draft core stays inert for actions not migrated to the co
 
 test('structured command adapter does not claim unsupported actions', async () => {
   const result = await router.prepareStructuredAction({
-    action:'update_trial',
+    action:'update_waitlist',
     studentName:'민준',
   }, {});
 
