@@ -3625,6 +3625,20 @@
     try {
       const prepared = await schedule.prepareWriteCommand(action, options);
       if (prepared?.code === 'class_group_required' && prepared?.commandDraft) {
+        if (
+          action === 'add_makeup'
+          && command?.batchStructured === true
+          && Number.isInteger(Number(command?.batchCommandIndex))
+          && Number(command.batchCommandIndex) >= 0
+        ) {
+          const choiceResult=structuredTargetChoiceResult('add_makeup',command,{
+            choiceKey:'classGroup',
+            choices:(Array.isArray(prepared.choices) ? prepared.choices : ['A','B'])
+              .map(group=>({id:cleanText(group).toUpperCase(),label:cleanText(group).toUpperCase()+'반'})),
+            message:String(prepared.message || '보강할 반을 선택해 주세요.')
+          });
+          if(choiceResult) return choiceResult;
+        }
         const choiceIntent = action === 'add_trial' ? 'choose_trial_group' : action === 'add_waitlist' ? 'choose_waitlist_group' : 'choose_makeup_group';
         const choicePayload = Object.assign({},prepared.commandDraft,{ intent:choiceIntent,targetIntent:action });
         return {

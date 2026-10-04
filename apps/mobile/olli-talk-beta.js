@@ -889,6 +889,10 @@
       intent:String(command?.intent || '').trim(),
       text:String(command?.originalText || '').trim(),
       studentName:String(command?.studentName || command?.guestName || '').trim(),
+      division:String(command?.division || '').trim(),
+      dateExpression:String(command?.dateLabel || command?.dateSpec?.label || '').trim(),
+      timeSlot:Number(command?.timeSlot || 0),
+      classGroup:String(command?.classGroup || '').trim().toUpperCase(),
       reason:String(command?.reason || '').trim(),
       reasonMessageId:olliTalkBatchCommandNeedsReason(command) && String(command?.reason || '').trim()
         ? Number(sourceMessageId || 0)
@@ -898,10 +902,116 @@
         : '',
       memoNote:String(command?.memoNote || '').trim(),
       needsClarification:command?.batchDraft===true,
+      structuredSelection:null,
       contextText:'',
       clarificationMessageId:0,
       clarificationMessageText:''
     }));
+  }
+
+  function olliTalkBatchStructuredMakeupCommand(command,index){
+    return {
+      action:'add_makeup',
+      studentName:String(command?.studentName || '').trim(),
+      division:String(command?.division || '').trim(),
+      dateExpression:String(command?.dateExpression || '').trim(),
+      timeSlot:Number(command?.timeSlot || 0),
+      classGroup:String(command?.classGroup || '').trim().toUpperCase(),
+      batchStructured:true,
+      batchCommandIndex:Number(index)
+    };
+  }
+
+  function activeOlliTalkBatchStructuredMakeup(draft){
+    const pending=olliTalkPendingActionReason?.__batchAgent;
+    const index=Number(draft?.batchCommandIndex);
+    if(
+      String(olliTalkPendingActionReason?.intent || '').trim()!=='batch_write'
+      || !pending
+      || draft?.batchStructured!==true
+      || !Number.isInteger(index)
+      || index<0
+    ) return null;
+    const commands=Array.isArray(pending.commands)
+      ? pending.commands.map(item=>Object.assign({},item))
+      : [];
+    if(String(commands[index]?.intent || '').trim()!=='add_makeup') return null;
+    return {pending,index,commands};
+  }
+
+  async function finishOlliTalkBatchStructuredMakeup(draft,prepared,context){
+    const active=activeOlliTalkBatchStructuredMakeup(draft);
+    if(!active || prepared?.kind!=='action_pending' || !prepared?.payload) return null;
+    const selection={
+      sessionDate:String(prepared.payload.sessionDate || '').trim(),
+      timeSlot:Number(prepared.payload.timeSlot || 0),
+      classGroup:String(prepared.payload.classGroup || '').trim().toUpperCase()
+    };
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(selection.sessionDate)
+      || selection.timeSlot<=0
+      || !['A','B'].includes(selection.classGroup)){
+      throw new Error('복합쓰기 보강 선택 결과를 확인하지 못했습니다.');
+    }
+
+    active.commands[active.index]=Object.assign({},active.commands[active.index],{
+      needsClarification:false,
+      structuredSelection:selection
+    });
+
+    const nextIndex=active.commands.findIndex(olliTalkBatchCommandNeedsClarification);
+    const nextPending={
+      sourceMessageId:Number(active.pending.sourceMessageId || 0),
+      sourceMessageText:String(active.pending.sourceMessageText || '').trim(),
+      commands:active.commands
+    };
+    if(nextIndex>=0){
+      olliTalkPendingActionReason={intent:'batch_write',__batchAgent:nextPending};
+      return startOlliTalkBatchStructuredMakeupChoice(context,nextPending,nextIndex);
+    }
+
+    olliTalkPendingActionReason=null;
+    const turn=await resolveOlliTalkBatchAgentTurn({
+      sourceText:nextPending.sourceMessageText,
+      sourceMessageId:nextPending.sourceMessageId,
+      commands:active.commands,
+      context
+    });
+    return turn?.assistantMessage || null;
+  }
+
+  async function startOlliTalkBatchStructuredMakeupChoice(context,pendingBatch,index){
+    const router=window.OlliCommandRouter;
+    const command=Array.isArray(pendingBatch?.commands)?pendingBatch.commands[index]:null;
+    if(
+      !router
+      || typeof router.prepareStructuredAction!=='function'
+      || String(command?.intent || '').trim()!=='add_makeup'
+    ){
+      throw new Error('복합쓰기 보강 선택 기능을 준비하지 못했습니다.');
+    }
+
+    const prepared=await router.prepareStructuredAction(
+      olliTalkBatchStructuredMakeupCommand(command,index),
+      {source:'olli_talk_batch_structured_choice',selectedStudent:null,autoSubmitContext:null}
+    );
+    if(prepared?.handled!==true) throw new Error('복합쓰기 보강 선택을 준비하지 못했습니다.');
+
+    const replyToMessageId=Number(pendingBatch?.sourceMessageId || 0) || null;
+    if(prepared.kind==='action_needs_field' && prepared.payload){
+      const field=String(prepared.payload.field || '').trim();
+      if(field==='student_choice') return saveOlliTalkStructuredStudentChoice(context,prepared.message || '학생을 선택해 주세요.',prepared.payload,replyToMessageId);
+      if(field==='target_choice') return saveOlliTalkStructuredTargetChoice(context,prepared.message || '보강할 반을 선택해 주세요.',prepared.payload,replyToMessageId);
+      if(field==='division') return saveOlliTalkStructuredDivisionChoice(context,prepared.message || '유치부인지 초등부인지 선택해 주세요.',prepared.payload,replyToMessageId);
+      if(field==='date') return saveOlliTalkStructuredDateChoice(context,prepared.message || '보강 날짜를 선택해 주세요.',prepared.payload,replyToMessageId);
+      if(field==='time') return saveOlliTalkStructuredTimeChoice(context,prepared.message || '보강 시간을 선택해 주세요.',prepared.payload,replyToMessageId);
+    }
+    if(prepared.kind==='action_pending' && prepared.payload){
+      return finishOlliTalkBatchStructuredMakeup(olliTalkBatchStructuredMakeupCommand(command,index),prepared,context);
+    }
+    if(prepared.kind==='action_rejected'){
+      return saveOlliTalkOlliReply(context,String(prepared.message || '').trim() || '보강 등록을 준비하지 못했어요.',replyToMessageId);
+    }
+    throw new Error('복합쓰기 보강 선택 상태를 확인하지 못했습니다.');
   }
 
   function parseOlliTalkTimetableMemoAgentCandidate(commandText,router=window.OlliCommandRouter){
@@ -2349,11 +2459,10 @@
         }
         const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
         if(clarificationIndex>=0){
-          olliTalkPendingActionReason={intent:'batch_write',__batchAgent:{
-            sourceMessageId:sourceId,sourceMessageText:String(commandText || '').trim(),commands
-          }};
-          const prompt=olliTalkBatchClarificationPrompt(commands[clarificationIndex]);
-          return {assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),replyText:prompt,recordAi:false};
+          const pendingBatch={sourceMessageId:sourceId,sourceMessageText:String(commandText || '').trim(),commands};
+          olliTalkPendingActionReason={intent:'batch_write',__batchAgent:pendingBatch};
+          const assistantMessage=await startOlliTalkBatchStructuredMakeupChoice(context,pendingBatch,clarificationIndex);
+          return {assistantMessage,replyText:String(assistantMessage?.body || '').trim() || '보강 날짜를 선택해 주세요.',recordAi:false};
         }
         return resolveOlliTalkBatchAgentTurn({
           sourceText:String(commandText || '').trim(),sourceMessageId:sourceId,commands,context
@@ -3018,18 +3127,16 @@
 
           const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
           if(clarificationIndex>=0){
-            olliTalkPendingActionReason={
-              intent:'batch_write',
-              __batchAgent:{
-                sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
-                sourceMessageText:String(pendingBatch.sourceMessageText || '').trim(),
-                commands
-              }
+            const nextPending={
+              sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+              sourceMessageText:String(pendingBatch.sourceMessageText || '').trim(),
+              commands
             };
-            const prompt=olliTalkBatchClarificationPrompt(commands[clarificationIndex]);
+            olliTalkPendingActionReason={intent:'batch_write',__batchAgent:nextPending};
+            const assistantMessage=await startOlliTalkBatchStructuredMakeupChoice(context,nextPending,clarificationIndex);
             return {
-              assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
-              replyText:prompt,
+              assistantMessage,
+              replyText:String(assistantMessage?.body || '').trim() || '보강 날짜를 선택해 주세요.',
               recordAi:false
             };
           }
@@ -5667,6 +5774,9 @@
         return saveOlliTalkStructuredTimeChoice(context,prepared.message || '시간을 선택해 주세요.',prepared.payload,null);
       }
       return saveOlliTalkOlliReply(context,String(prepared.message || '').trim() || '필요한 정보를 선택해 주세요.',null);
+    }
+    if(prepared.kind==='action_pending' && prepared.payload && draft?.batchStructured===true){
+      return finishOlliTalkBatchStructuredMakeup(draft,prepared,context);
     }
     if(['action_pending','action_choice'].includes(prepared.kind) && prepared.payload){
       return saveOlliTalkActionReply(

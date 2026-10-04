@@ -663,6 +663,9 @@
       }
       return saveAssistantReply(current,clean(prepared.message) || '필요한 정보를 선택해 주세요.',null);
     }
+    if(prepared.kind==='action_pending' && prepared.payload && draft?.batchStructured===true){
+      return finishBatchStructuredMakeup(draft,prepared,current);
+    }
     if(['action_pending','action_choice'].includes(prepared.kind) && prepared.payload){
       return saveAssistantAction(
         current,
@@ -2107,15 +2110,125 @@
       intent:clean(command?.intent),
       text:clean(command?.originalText),
       studentName:clean(command?.studentName || command?.guestName),
+      division:clean(command?.division),
+      dateExpression:clean(command?.dateLabel || command?.dateSpec?.label),
+      timeSlot:Number(command?.timeSlot || 0),
+      classGroup:clean(command?.classGroup).toUpperCase(),
       reason:clean(command?.reason),
       reasonMessageId:batchCommandNeedsReason(command) && clean(command?.reason) ? Number(sourceMessageId || 0) : 0,
       reasonMessageText:batchCommandNeedsReason(command) && clean(command?.reason) ? clean(sourceMessageText) : '',
       memoNote:clean(command?.memoNote),
       needsClarification:command?.batchDraft === true,
+      structuredSelection:null,
       contextText:'',
       clarificationMessageId:0,
       clarificationMessageText:''
     }));
+  }
+
+  function batchStructuredMakeupCommand(command,index) {
+    return {
+      action:'add_makeup',
+      studentName:clean(command?.studentName),
+      division:clean(command?.division),
+      dateExpression:clean(command?.dateExpression),
+      timeSlot:Number(command?.timeSlot || 0),
+      classGroup:clean(command?.classGroup).toUpperCase(),
+      batchStructured:true,
+      batchCommandIndex:Number(index)
+    };
+  }
+
+  function activeBatchStructuredMakeup(draft) {
+    const pending=state.pendingActionReason?.__batchAgent;
+    const index=Number(draft?.batchCommandIndex);
+    if(
+      clean(state.pendingActionReason?.intent)!=='batch_write'
+      || !pending
+      || draft?.batchStructured!==true
+      || !Number.isInteger(index)
+      || index<0
+    ) return null;
+    const commands=Array.isArray(pending.commands)
+      ? pending.commands.map(item=>Object.assign({},item))
+      : [];
+    if(clean(commands[index]?.intent)!=='add_makeup') return null;
+    return {pending,index,commands};
+  }
+
+  async function finishBatchStructuredMakeup(draft,prepared,current) {
+    const active=activeBatchStructuredMakeup(draft);
+    if(!active || prepared?.kind!=='action_pending' || !prepared?.payload) return null;
+    const selection={
+      sessionDate:clean(prepared.payload.sessionDate),
+      timeSlot:Number(prepared.payload.timeSlot || 0),
+      classGroup:clean(prepared.payload.classGroup).toUpperCase()
+    };
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(selection.sessionDate)
+      || selection.timeSlot<=0
+      || !['A','B'].includes(selection.classGroup)){
+      throw new Error('복합쓰기 보강 선택 결과를 확인하지 못했습니다.');
+    }
+
+    active.commands[active.index]=Object.assign({},active.commands[active.index],{
+      needsClarification:false,
+      structuredSelection:selection
+    });
+
+    const nextIndex=active.commands.findIndex(batchCommandNeedsClarification);
+    const nextPending={
+      sourceMessageId:Number(active.pending.sourceMessageId || 0),
+      sourceMessageText:clean(active.pending.sourceMessageText),
+      commands:active.commands
+    };
+    if(nextIndex>=0){
+      state.pendingActionReason={intent:'batch_write',__batchAgent:nextPending};
+      return startBatchStructuredMakeupChoice(current,nextPending,nextIndex);
+    }
+
+    state.pendingActionReason=null;
+    const turn=await resolveBatchAgentTurn({
+      sourceText:nextPending.sourceMessageText,
+      sourceMessageId:nextPending.sourceMessageId,
+      commands:active.commands,
+      current
+    });
+    return turn?.assistantMessage || null;
+  }
+
+  async function startBatchStructuredMakeupChoice(current,pendingBatch,index) {
+    const router=global.OlliCommandRouter;
+    const command=Array.isArray(pendingBatch?.commands) ? pendingBatch.commands[index] : null;
+    if(
+      !router
+      || typeof router.prepareStructuredAction!=='function'
+      || clean(command?.intent)!=='add_makeup'
+    ){
+      throw new Error('복합쓰기 보강 선택 기능을 준비하지 못했습니다.');
+    }
+
+    const prepared=await router.prepareStructuredAction(
+      batchStructuredMakeupCommand(command,index),
+      {source:'olli_talk_batch_structured_choice',selectedStudent:null,autoSubmitContext:null}
+    );
+    if(prepared?.handled!==true) throw new Error('복합쓰기 보강 선택을 준비하지 못했습니다.');
+
+    const replyToMessageId=Number(pendingBatch?.sourceMessageId || 0) || null;
+    if(prepared.kind==='action_needs_field' && prepared.payload){
+      const field=clean(prepared.payload.field);
+      if(field==='student_choice') return saveStructuredStudentChoice(current,prepared.message || '학생을 선택해 주세요.',prepared.payload,replyToMessageId);
+      if(field==='target_choice') return saveStructuredTargetChoice(current,prepared.message || '보강할 반을 선택해 주세요.',prepared.payload,replyToMessageId);
+      if(field==='division') return saveStructuredDivisionChoice(current,prepared.message || '유치부인지 초등부인지 선택해 주세요.',prepared.payload,replyToMessageId);
+      if(field==='date') return saveStructuredDateChoice(current,prepared.message || '보강 날짜를 선택해 주세요.',prepared.payload,replyToMessageId);
+      if(field==='time') return saveStructuredTimeChoice(current,prepared.message || '보강 시간을 선택해 주세요.',prepared.payload,replyToMessageId);
+    }
+    if(prepared.kind==='action_pending' && prepared.payload){
+      return finishBatchStructuredMakeup(batchStructuredMakeupCommand(command,index),prepared,current);
+    }
+    if(prepared.kind==='action_rejected'){
+      return saveAssistantReply(current,clean(prepared.message) || '보강 등록을 준비하지 못했어요.',replyToMessageId);
+    }
+    throw new Error('복합쓰기 보강 선택 상태를 확인하지 못했습니다.');
   }
 
   function parseTimetableMemoAgentCandidate(commandText, router = global.OlliCommandRouter) {
@@ -3707,11 +3820,10 @@
         }
         const clarificationIndex=commands.findIndex(batchCommandNeedsClarification);
         if(clarificationIndex>=0){
-          state.pendingActionReason={intent:'batch_write',__batchAgent:{
-            sourceMessageId:sourceId,sourceMessageText:clean(commandText),commands
-          }};
-          const prompt=batchClarificationPrompt(commands[clarificationIndex]);
-          return {assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),replyText:prompt,recordAi:false};
+          const pendingBatch={sourceMessageId:sourceId,sourceMessageText:clean(commandText),commands};
+          state.pendingActionReason={intent:'batch_write',__batchAgent:pendingBatch};
+          const assistantMessage=await startBatchStructuredMakeupChoice(current,pendingBatch,clarificationIndex);
+          return {assistantMessage,replyText:clean(assistantMessage?.body) || '보강 날짜를 선택해 주세요.',recordAi:false};
         }
         return resolveBatchAgentTurn({sourceText:clean(commandText),sourceMessageId:sourceId,commands,current});
       }
@@ -4374,18 +4486,16 @@
 
           const clarificationIndex=commands.findIndex(batchCommandNeedsClarification);
           if(clarificationIndex>=0){
-            state.pendingActionReason={
-              intent:'batch_write',
-              __batchAgent:{
-                sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
-                sourceMessageText:clean(pendingBatch.sourceMessageText),
-                commands
-              }
+            const nextPending={
+              sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+              sourceMessageText:clean(pendingBatch.sourceMessageText),
+              commands
             };
-            const prompt=batchClarificationPrompt(commands[clarificationIndex]);
+            state.pendingActionReason={intent:'batch_write',__batchAgent:nextPending};
+            const assistantMessage=await startBatchStructuredMakeupChoice(current,nextPending,clarificationIndex);
             return {
-              assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),
-              replyText:prompt,
+              assistantMessage,
+              replyText:clean(assistantMessage?.body) || '보강 날짜를 선택해 주세요.',
               recordAi:false
             };
           }

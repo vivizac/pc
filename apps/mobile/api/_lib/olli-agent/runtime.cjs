@@ -5637,6 +5637,68 @@ async function prepareBatchPrivacy(item, requestContext) {
   return privacy.prepareAgentPrivacyInput(text,requestContext);
 }
 
+async function runBatchStructuredMakeupPrepare({
+  requestContext,
+  preparedPrivacy,
+  selection,
+  sourceMessageId,
+  commandIndex,
+}) {
+  const sourceId=Number(sourceMessageId || 0);
+  const index=Number(commandIndex || 0);
+  const selected=selection && typeof selection==='object' ? selection : {};
+  const sessionDate=String(selected.sessionDate || '').trim();
+  const timeSlot=Number(selected.timeSlot || 0);
+  const classGroup=String(selected.classGroup || '').trim().toUpperCase();
+
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(sessionDate) || timeSlot<=0 || !['A','B'].includes(classGroup)){
+    throw runtimeError('복합쓰기 보강 선택 정보가 올바르지 않습니다.',400,'OLLI_AGENT_BATCH_MAKEUP_SELECTION_INVALID');
+  }
+  if(preparedPrivacy?.needsDisambiguation){
+    throw runtimeError('학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',409,'OLLI_AGENT_STUDENT_AMBIGUOUS');
+  }
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs) ? preparedPrivacy.subjectRefs : [];
+  if(subjectRefs.length!==1){
+    throw runtimeError('복합쓰기 보강 등록은 학생 한 명을 정확히 지정해 주세요.',400,'OLLI_AGENT_BATCH_MAKEUP_SINGLE_STUDENT_REQUIRED');
+  }
+  const subjectLabel=subjectRefs[0].label;
+  const subject=preparedPrivacy?.subjectAccess?.resolve?.(subjectLabel);
+  const division=String(subject?.division || '').trim().toLowerCase();
+  if(!['elementary','kinder'].includes(division)){
+    throw runtimeError('복합쓰기 보강 대상 학생의 수업 구분을 확인하지 못했습니다.',400,'OLLI_AGENT_BATCH_MAKEUP_DIVISION_REQUIRED');
+  }
+
+  const {prepareMakeupAction}=require('./tools/makeup-prepare-tools.cjs');
+  const {sanitizeAgentToolPayload}=require('./privacy.cjs');
+  let persistedMessage=null;
+  await prepareMakeupAction({
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    studentLabel:subjectLabel,
+    division,
+    sessionDate,
+    classHour:1,
+    classMinute:0,
+    selectedTimeSlot:timeSlot,
+    classGroup,
+    currentDate:todayInSeoul(),
+    requestId:'team-chat-batch:'+sourceId+':'+index+':add_makeup',
+    replyToMessageId:sourceId,
+    capturePersistedMessage(message){
+      persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload){
+      return sanitizeAgentToolPayload(payload,preparedPrivacy);
+    },
+  });
+
+  if(!persistedMessage){
+    throw runtimeError('복합쓰기 보강 확인 카드 저장 결과를 확인하지 못했습니다.',502,'OLLI_AGENT_BATCH_MAKEUP_PERSISTED_MESSAGE_MISSING');
+  }
+  return {ready:true,persistedMessage};
+}
+
+
 async function runBatchPrepare({
   agentContext,
   requestContext,
@@ -5810,7 +5872,17 @@ async function runBatchPrepare({
     }else if(intent==='add_class_once'){
       result=await runClassOncePrepareAgent(common);
     }else if(intent==='add_makeup'){
-      result=await runMakeupPrepareAgent(common);
+      if(item?.structuredSelection){
+        result=await runBatchStructuredMakeupPrepare({
+          requestContext,
+          preparedPrivacy:privacy,
+          selection:item.structuredSelection,
+          sourceMessageId:sourceId,
+          commandIndex:index,
+        });
+      }else{
+        result=await runMakeupPrepareAgent(common);
+      }
     }else if(intent==='update_makeup'){
       result=await runMakeupUpdatePrepareAgent(common);
     }else if(intent==='cancel_makeup'){

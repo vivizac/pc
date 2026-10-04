@@ -239,6 +239,7 @@ async function prepareMakeupAction({
   sessionDate,
   classHour,
   classMinute,
+  selectedTimeSlot = 0,
   classGroup = 'AUTO',
   currentDate,
   requestId,
@@ -292,7 +293,8 @@ async function prepareMakeupAction({
     );
   }
 
-  const timeText = requestedTimeLabel(classHour, classMinute);
+  const selectedStoredTimeSlot=Number(selectedTimeSlot || 0);
+  const requestedTimeText=selectedStoredTimeSlot>0 ? '' : requestedTimeLabel(classHour, classMinute);
   const requestedGroup = normalizeRequestedGroup(classGroup);
   const student = await loadPrivateMakeupStudent({
     requestContext,
@@ -324,7 +326,10 @@ async function prepareMakeupAction({
   }
 
   let candidates = (Array.isArray(availability.slots) ? availability.slots : [])
-    .filter((slot) => slot.date === date.key && clean(slot.time_label) === timeText);
+    .filter((slot) => slot.date === date.key);
+  candidates = selectedStoredTimeSlot>0
+    ? candidates.filter((slot) => Number(slot.time_slot || 0)===selectedStoredTimeSlot)
+    : candidates.filter((slot) => clean(slot.time_label)===requestedTimeText);
 
   if (!candidates.length) {
     throw makeupPrepareError(
@@ -360,6 +365,7 @@ async function prepareMakeupAction({
   }
 
   const target = candidates[0];
+  const timeText=clean(target?.time_label) || requestedTimeText;
   if (target.available !== true || Number(target.remaining || 0) <= 0) {
     throw makeupPrepareError(
       '선택한 날짜와 시간의 정원이 가득 찼습니다.',

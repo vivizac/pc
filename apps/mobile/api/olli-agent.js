@@ -838,6 +838,13 @@ export default async function handler(req, res) {
         reasonMessageText:safeText(item?.reasonMessageText || item?.reason_message_text, 5000),
         memoNote:safeText(item?.memoNote || item?.memo_note, 5000),
         needsClarification:item?.needsClarification === true,
+        structuredSelection:item?.structuredSelection && typeof item.structuredSelection==='object'
+          ? {
+              sessionDate:safeText(item.structuredSelection.sessionDate || item.structuredSelection.session_date, 20),
+              timeSlot:Number(item.structuredSelection.timeSlot || item.structuredSelection.time_slot || 0),
+              classGroup:safeText(item.structuredSelection.classGroup || item.structuredSelection.class_group, 10).toUpperCase(),
+            }
+          : null,
         contextText:safeText(item?.contextText || item?.context_text, 5000),
         clarificationMessageId:Number(item?.clarificationMessageId || item?.clarification_message_id || 0),
         clarificationMessageText:safeText(item?.clarificationMessageText || item?.clarification_message_text, 5000),
