@@ -516,11 +516,13 @@
     return '확인';
   }
 
-  function actionStatusLabel(status) {
-    const value = clean(status);
-    if (value === 'completed') return '처리 완료';
-    if (value === 'cancelled') return '취소됨';
-    if (value === 'failed') return '처리 실패';
+  function actionStatusLabel(action) {
+    const status = clean(action?.status);
+    const displayLabel = clean(action?.display_label);
+    if (displayLabel) return displayLabel;
+    if (status === 'completed') return '완료';
+    if (status === 'cancelled') return '취소됨';
+    if (status === 'failed') return '처리 실패';
     return '';
   }
 
@@ -734,6 +736,7 @@
 
   function appendStructuredDateChoiceButtons(card,action) {
     card.classList.add('structuredDate');
+    const interactive=clean(action?.status)==='pending';
 
     const now=new Date();
     const today=new Date(now.getFullYear(),now.getMonth(),now.getDate(),12,0,0,0);
@@ -745,7 +748,8 @@
       button.type='button';
       button.className='olliPcTeamTalkActionButton primary';
       button.textContent=label;
-      button.addEventListener('click',()=>handleStructuredDateChoice(action,structuredDateExpressionFromDate(date)));
+      button.disabled=!interactive;
+      if(interactive) button.addEventListener('click',()=>handleStructuredDateChoice(action,structuredDateExpressionFromDate(date)));
       card.appendChild(button);
     };
     addQuick('오늘',today);
@@ -754,11 +758,12 @@
     const dateInput=document.createElement('input');
     dateInput.type='date';
     dateInput.className='olliPcTeamTalkDateInput';
+    dateInput.disabled=!interactive;
     dateInput.min=structuredDateInputValue(today);
     const maxDate=new Date(today.getTime());
     maxDate.setDate(maxDate.getDate()+364);
     dateInput.max=structuredDateInputValue(maxDate);
-    dateInput.addEventListener('change',()=>{
+    if(interactive) dateInput.addEventListener('change',()=>{
       const match=String(dateInput.value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if(!match) return;
       handleStructuredDateChoice(action,Number(match[2])+'월 '+Number(match[3])+'일');
@@ -768,7 +773,8 @@
     pick.type='button';
     pick.className='olliPcTeamTalkActionButton secondary dateWide';
     pick.textContent='날짜 선택';
-    pick.addEventListener('click',()=>{
+    pick.disabled=!interactive;
+    if(interactive) pick.addEventListener('click',()=>{
       try{
         if(typeof dateInput.showPicker==='function') dateInput.showPicker();
         else dateInput.click();
@@ -909,6 +915,7 @@
 
   async function populateStructuredTargetChoiceCard(card,action) {
     const actionId=clean(action?.id);
+    const interactive=clean(action?.status)==='pending';
     const current=context();
     if(!actionId || !current.sessionToken || !current.academyId) return;
 
@@ -932,7 +939,8 @@
         button.type='button';
         button.className='olliPcTeamTalkActionButton primary targetChoice';
         button.textContent=clean(choice?.label) || '일정';
-        button.addEventListener('click',()=>handleStructuredTargetChoice(action,clean(choice?.id)));
+        button.disabled=!interactive;
+        if(interactive) button.addEventListener('click',()=>handleStructuredTargetChoice(action,clean(choice?.id)));
         card.appendChild(button);
       });
     }catch(error){
@@ -991,6 +999,7 @@
 
   async function populateStructuredStudentChoiceCard(card,action) {
     const actionId=clean(action?.id);
+    const interactive=clean(action?.status)==='pending';
     const current=context();
     if(!actionId || !current.sessionToken || !current.academyId) return;
 
@@ -1014,7 +1023,8 @@
         button.type='button';
         button.className='olliPcTeamTalkActionButton primary studentChoice';
         button.textContent=clean(choice?.label || choice?.studentName) || '학생';
-        button.addEventListener('click',()=>handleStructuredStudentChoice(action,clean(choice?.studentName)));
+        button.disabled=!interactive;
+        if(interactive) button.addEventListener('click',()=>handleStructuredStudentChoice(action,clean(choice?.studentName)));
         card.appendChild(button);
       });
     }catch(error){
@@ -1073,6 +1083,7 @@
 
   function appendStructuredDivisionChoiceButtons(card,action) {
     card.classList.add('structuredDivision');
+    const interactive=clean(action?.status)==='pending';
     [
       {value:'kinder',label:'유치부'},
       {value:'elementary',label:'초등부'}
@@ -1081,7 +1092,8 @@
       button.type='button';
       button.className='olliPcTeamTalkActionButton primary divisionChoice';
       button.textContent=choice.label;
-      button.addEventListener('click',()=>handleStructuredDivisionChoice(action,choice.value));
+      button.disabled=!interactive;
+      if(interactive) button.addEventListener('click',()=>handleStructuredDivisionChoice(action,choice.value));
       card.appendChild(button);
     });
   }
@@ -1129,6 +1141,7 @@
 
   async function populateStructuredTimeChoiceCard(card,action) {
     const actionId=clean(action?.id);
+    const interactive=clean(action?.status)==='pending';
     const current=context();
     if(!actionId || !current.sessionToken || !current.academyId) return;
 
@@ -1157,9 +1170,9 @@
         button.textContent=status==='full'
           ? label+'\n'+(clean(payload?.targetIntent)==='add_waitlist' ? '대기 가능' : '마감')
           : label;
-        button.disabled=!selectable;
+        button.disabled=!selectable || !interactive;
         if(!selectable) button.classList.add('closed');
-        button.addEventListener('click',()=>handleStructuredTimeChoice(action,Number(choice?.timeSlot || 0)));
+        if(selectable && interactive) button.addEventListener('click',()=>handleStructuredTimeChoice(action,Number(choice?.timeSlot || 0)));
         card.appendChild(button);
       });
     }catch(error){
@@ -1181,9 +1194,22 @@
     card.dataset.actionStatus = status;
 
     if (status !== 'pending') {
-      const label = create('span', 'olliPcTeamTalkActionStatus', actionStatusLabel(status));
+      const label = create('span', 'olliPcTeamTalkActionStatus', actionStatusLabel(action));
       if (status === 'failed') label.classList.add('failed');
       card.appendChild(label);
+      return card;
+    }
+
+    const isSessionGroupChoice=['choose_makeup_group','choose_trial_group','choose_waitlist_group','choose_move_group'].includes(clean(action?.action_type));
+    if(isSessionGroupChoice){
+      ['A','B'].forEach(group=>{
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='olliPcTeamTalkActionButton primary';
+        button.textContent=group+'반';
+        button.addEventListener('click',()=>handleSessionGroupChoice(action,group));
+        card.appendChild(button);
+      });
       return card;
     }
 
@@ -1209,18 +1235,6 @@
 
     if(clean(action?.action_type)==='choose_structured_time'){
       appendStructuredTimeChoiceButtons(card,action);
-      return card;
-    }
-
-    if(['choose_makeup_group','choose_trial_group','choose_waitlist_group','choose_move_group'].includes(clean(action?.action_type))){
-      ['A','B'].forEach(group=>{
-        const button=document.createElement('button');
-        button.type='button';
-        button.className='olliPcTeamTalkActionButton primary';
-        button.textContent=group+'반';
-        button.addEventListener('click',()=>handleSessionGroupChoice(action,group));
-        card.appendChild(button);
-      });
       return card;
     }
 
