@@ -1599,14 +1599,18 @@ function setObservationMemoRosterMode(enabled) {
   return setObservationMemoEditorMode();
 }
 
-function flushObservationMemoBeforeRosterNavigation() {
-  if (!currentMemoStudent || !['elementary', 'kinder'].includes(currentMemoType)) return;
+async function finalizeObservationMemoBeforeRosterNavigation() {
+  if (!currentMemoStudent || !['elementary', 'kinder'].includes(currentMemoType)) return null;
   try {
+    if (typeof window.finalizeObservationMemoSessionCheckpoint === 'function') {
+      return await window.finalizeObservationMemoSessionCheckpoint({ reason:'roster-back' });
+    }
     const dirty = typeof hasObservationMemoDirtyChanges === 'function' ? hasObservationMemoDirtyChanges() : false;
     if (dirty && typeof flushMemoAutoSave === 'function') flushMemoAutoSave();
   } catch (err) {
-    console.warn('학생 목록 이동 전 관찰노트 저장 상태 확인 실패:', err?.message || err);
+    console.warn('학생 목록 이동 전 관찰노트 최종 저장 확인 실패:', err?.message || err);
   }
+  return null;
 }
 
 function completeObservationMemoRosterNavigation(options = {}) {
@@ -1630,13 +1634,13 @@ function completeObservationMemoRosterNavigation(options = {}) {
   refreshObservationRosterScheduleInBackground();
 }
 
-function showObservationMemoRoster(event, options = {}) {
+async function showObservationMemoRoster(event, options = {}) {
   if (event) {
     event.preventDefault();
     event.stopPropagation();
   }
 
-  flushObservationMemoBeforeRosterNavigation();
+  await finalizeObservationMemoBeforeRosterNavigation();
 
   const memoScreen = getObservationMemoScreen();
   const shouldSlideOut = !!(memoScreen && isObservationMemoScreenVisible());
