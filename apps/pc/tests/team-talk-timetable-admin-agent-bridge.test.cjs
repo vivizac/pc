@@ -6,7 +6,7 @@ const path=require('node:path');
 const talk=fs.readFileSync(path.join(__dirname,'../pc-team-talk.js'),'utf8');
 
 test('PC timetable admin candidate uses only shared admin parsers',()=>{
-  const start=talk.indexOf('function parseTimetableAdminAgentCandidate');
+  const start=talk.indexOf('function parseTimetableAdminRuleCandidate');
   const end=talk.indexOf('function ',start+20);
   const block=talk.slice(start,end);
   for(const parser of [
@@ -20,7 +20,7 @@ test('PC timetable admin candidate uses only shared admin parsers',()=>{
 });
 
 test('PC timetable admin bridge is source-bound and validates returned action type',()=>{
-  const start=talk.indexOf('async function resolveTimetableAdminAgentTurn');
+  const start=talk.indexOf('async function resolveTimetableAdminRuleTurn');
   const end=talk.indexOf('async function ',start+30);
   const block=talk.slice(start,end);
   assert.ok(block.includes("mode:'timetable_admin_prepare'"));
@@ -31,7 +31,7 @@ test('PC timetable admin bridge is source-bound and validates returned action ty
   assert.ok(block.includes('saveStructuredTargetChoice'));
 });
 
-test('PC timetable admin Agent routing runs before batch and legacy write fallback — shared dispatch contract', () => {
+test('PC timetable admin rule routing runs before batch and legacy write fallback — shared dispatch contract', () => {
   const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
   const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
   const dispatch=talk.slice(dispatchStart,dispatchEnd);

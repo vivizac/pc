@@ -774,7 +774,7 @@
     }
   }
 
-  function parseOlliTalkTimetableAdminAgentCandidate(commandText,router=window.OlliCommandRouter){
+  function parseOlliTalkTimetableAdminRuleCandidate(commandText,router=window.OlliCommandRouter){
     if(!router) return null;
     try{
       const parsers=[
@@ -1292,7 +1292,7 @@
     };
   }
 
-  async function resolveOlliTalkTimetableAdminAgentTurn(commandText,parsed,context,replyToMessageId){
+  async function resolveOlliTalkTimetableAdminRuleTurn(commandText,parsed,context,replyToMessageId){
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
       throw new Error('시간표 관리 요청의 원문 메시지를 확인하지 못했습니다.');
@@ -1311,7 +1311,7 @@
     });
     const data=await response.json().catch(()=>({}));
     if(!response.ok || data?.ok!==true){
-      throw new Error(data?.error || data?.message || '시간표 관리 Agent 응답을 받지 못했습니다.');
+      throw new Error(data?.error || data?.message || '시간표 관리 규칙 시스템 응답을 받지 못했습니다.');
     }
     if(data?.choiceRequired?.payload){
       const choiceMessage=String(data.choiceRequired.message || '').trim() || '수업 순서를 변경할 수업을 선택해 주세요.';
@@ -1330,7 +1330,7 @@
       throw new Error(data?.error || data?.message || '시간표 관리 확인 카드를 받지 못했습니다.');
     }
     if(String(data.message.action.action_type || '').trim()!==expectedType){
-      throw new Error('시간표 관리 Agent 작업 종류가 올바르지 않습니다.');
+      throw new Error('시간표 관리 규칙 시스템 작업 종류가 올바르지 않습니다.');
     }
     return {
       assistantMessage:data.message,
@@ -2480,7 +2480,7 @@
       case 'attendance_status':
         return resolveOlliTalkAttendanceStatusAgentTurn(commandText,parsed,context,replyToMessageId);
       case 'timetable_admin':
-        return resolveOlliTalkTimetableAdminAgentTurn(commandText,parsed,context,replyToMessageId);
+        return resolveOlliTalkTimetableAdminRuleTurn(commandText,parsed,context,replyToMessageId);
       case 'batch_write':{
         const sourceId=Number(replyToMessageId || 0);
         const commands=buildOlliTalkBatchAgentCommands(parsed,sourceId,commandText,batchCommands);

@@ -6,7 +6,7 @@ const path=require('node:path');
 const talk=fs.readFileSync(path.join(__dirname,'../olli-talk-beta.js'),'utf8');
 
 test('Mobile timetable admin candidate uses only shared admin parsers',()=>{
-  const start=talk.indexOf('function parseOlliTalkTimetableAdminAgentCandidate');
+  const start=talk.indexOf('function parseOlliTalkTimetableAdminRuleCandidate');
   const end=talk.indexOf('function ',start+20);
   const block=talk.slice(start,end);
   for(const parser of [
@@ -20,7 +20,7 @@ test('Mobile timetable admin candidate uses only shared admin parsers',()=>{
 });
 
 test('Mobile timetable admin bridge is source-bound and validates returned action type',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkTimetableAdminAgentTurn');
+  const start=talk.indexOf('async function resolveOlliTalkTimetableAdminRuleTurn');
   const end=talk.indexOf('async function ',start+30);
   const block=talk.slice(start,end);
   assert.ok(block.includes("mode:'timetable_admin_prepare'"));
@@ -31,7 +31,7 @@ test('Mobile timetable admin bridge is source-bound and validates returned actio
   assert.ok(block.includes('saveOlliTalkStructuredTargetChoice'));
 });
 
-test('Mobile timetable admin Agent routing runs before batch and legacy write fallback — shared dispatch contract',()=> {
+test('Mobile timetable admin rule routing runs before batch and legacy write fallback — shared dispatch contract',()=> {
   const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
   const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
   const dispatch=talk.slice(dispatchStart,dispatchEnd);

@@ -6729,7 +6729,6 @@ function parseTimetableAdminSource(sourceMessageText){
 }
 
 async function runTimetableAdminPrepare({
-  agentContext,
   requestContext,
   preparedPrivacy,
   sourceMessageId,
@@ -6750,80 +6749,71 @@ async function runTimetableAdminPrepare({
     throw runtimeError('저장된 원문에서 시간표 관리 요청을 확인하지 못했습니다.',400,'OLLI_AGENT_TIMETABLE_ADMIN_PARSE_FAILED');
   }
 
+  const intentType=String(intent.intent||'').trim();
+  const supported=[
+    'set_class_layout',
+    'set_class_teacher',
+    'set_teacher_override',
+    'set_session_order',
+    'set_normal_class_day',
+  ];
+  if(!supported.includes(intentType)){
+    throw runtimeError(
+      '지원하지 않는 시간표 관리 작업입니다.',
+      400,
+      'OLLI_ROUTINE_TIMETABLE_ADMIN_INTENT_UNSUPPORTED'
+    );
+  }
+
   const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)?preparedPrivacy.subjectRefs:[];
   let studentLabel='';
-  if(String(intent.intent||'')==='set_session_order'){
+  if(intentType==='set_session_order'){
     if(preparedPrivacy?.needsDisambiguation){
-      throw runtimeError('학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',409,'OLLI_AGENT_STUDENT_AMBIGUOUS');
+      throw runtimeError(
+        '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+        409,
+        'OLLI_AGENT_STUDENT_AMBIGUOUS'
+      );
     }
     if(subjectRefs.length!==1){
-      throw runtimeError('수업 순서 변경은 학생 한 명을 정확히 지정해 주세요.',400,'OLLI_AGENT_SESSION_ORDER_SINGLE_STUDENT_REQUIRED');
+      throw runtimeError(
+        '수업 순서 변경은 학생 한 명을 정확히 지정해 주세요.',
+        400,
+        'OLLI_AGENT_SESSION_ORDER_SINGLE_STUDENT_REQUIRED'
+      );
     }
     studentLabel=String(subjectRefs[0]?.label||'').trim();
   }
 
-  assertOpenAiKey();
-  const {Agent,run,tool,z}=await loadAgentsSdk();
-  const {createPrepareTimetableAdminTool}=require('./tools/timetable-admin-prepare-tools.cjs');
-  const {sanitizeAgentToolPayload}=require('./privacy.cjs');
-  const model=agentModel();
-  const today=todayInSeoul();
+  const {prepareTimetableAdminAction}=require('./tools/timetable-admin-prepare-tools.cjs');
   let persistedMessage=null;
-  let choiceRequired=null;
-
-  const prepareAdmin=createPrepareTimetableAdminTool({
-    tool,z,requestContext,intent,
+  const prepared=await prepareTimetableAdminAction({
+    requestContext,
+    intent,
     subjectAccess:preparedPrivacy?.subjectAccess,
     studentLabel,
-    currentDate:today,
+    currentDate:todayInSeoul(),
     requestId:'team-chat-message:'+sourceId,
     replyToMessageId:sourceId,
     allowChoice:true,
-    capturePersistedMessage(message){persistedMessage=pickupPersistedMessageForClient(message);},
-    captureChoiceRequired(payload){choiceRequired=payload&&typeof payload==='object'?Object.assign({},payload):null;},
-    sanitizePayload(payload){return sanitizeAgentToolPayload(payload,preparedPrivacy);},
+    capturePersistedMessage(message){
+      persistedMessage=pickupPersistedMessageForClient(message);
+    },
+    sanitizePayload(payload){return payload;},
   });
 
-  const agent=new Agent({
-    name:'Olli Timetable Admin Prepare',
-    model,
-    instructions:[
-      'You are the Olli timetable administration preparation assistant.',
-      'The stored Team Chat source message has already been parsed by the server into one fixed administrative action.',
-      'Always call prepare_timetable_admin exactly once. The tool accepts no arguments, so never invent dates, teachers, student ids, class groups, or internal slots.',
-      'The server re-reads the current timetable, class layout, teacher list, holiday state, and student schedule as required before saving a pending confirmation card.',
-      'The tool never performs the timetable mutation. Never say the change is complete.',
-      'Never ask for, infer, or reveal UUIDs, internal time slots, member IDs, session tokens, academy IDs, action IDs, or message IDs.',
-      'Answer briefly in Korean and say the change is waiting for confirmation.',
-    ].join(' '),
-    tools:[prepareAdmin],
-    modelSettings:{toolChoice:'prepare_timetable_admin'},
-    toolUseBehavior:'stop_on_first_tool',
-  });
-
-  let result=null,runError=null;
-  try{
-    result=await run(agent,preparedPrivacy?.safeText||String(sourceMessageText||''),{context:agentContext});
-  }catch(error){
-    runError=error;
-    if(!persistedMessage) throw error;
-  }
-
-  if(choiceRequired){
-    const targetIntent=String(choiceRequired.targetIntent||intent?.intent||'').trim();
-    const choiceKey=String(choiceRequired.choiceKey||'').trim();
+  if(prepared?.code==='target_choice_required'){
+    const targetIntent=String(prepared.targetIntent||intentType).trim();
+    const choiceKey=String(prepared.choiceKey||'').trim();
     const draft={action:targetIntent};
     if(choiceKey==='enrollmentId') draft.enrollmentId='';
     if(choiceKey==='targetClassGroup') draft.targetClassGroup='';
     return {
       ready:false,
-      model,
-      output:String(result?.finalOutput||'').trim(),
-      nodeVersion:process.versions.node,
       persistedMessage:null,
-      recoveredAfterPersist:!!runError,
+      recoveredAfterPersist:false,
       choiceRequired:{
-        message:String(choiceRequired.message||'대상을 선택해 주세요.'),
+        message:String(prepared.message||'대상을 선택해 주세요.'),
         payload:{
           type:'structured_write_draft',
           targetIntent,
@@ -6831,23 +6821,26 @@ async function runTimetableAdminPrepare({
           missingFields:['target_choice'],
           choiceKey,
           draft,
-          choices:Array.isArray(choiceRequired.choices)
-            ? choiceRequired.choices.map(item=>Object.assign({},item))
+          choices:Array.isArray(prepared.choices)
+            ? prepared.choices.map(item=>Object.assign({},item))
             : []
         }
       }
     };
   }
-  if(!persistedMessage){
-    throw runtimeError('시간표 관리 확인 카드 저장 결과를 확인하지 못했습니다.',502,'OLLI_AGENT_TIMETABLE_ADMIN_PERSISTED_MESSAGE_MISSING');
+
+  if(!persistedMessage?.action||String(persistedMessage.action.action_type||'').trim()!==intentType){
+    throw runtimeError(
+      '시간표 관리 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_ROUTINE_TIMETABLE_ADMIN_PERSISTED_MESSAGE_MISSING'
+    );
   }
+
   return {
     ready:true,
-    model,
-    output:String(result?.finalOutput||'').trim(),
-    nodeVersion:process.versions.node,
     persistedMessage,
-    recoveredAfterPersist:!!runError,
+    recoveredAfterPersist:false,
   };
 }
 

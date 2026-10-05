@@ -743,9 +743,7 @@ export default async function handler(req, res) {
       const privacyModule=await import('./_lib/olli-agent/privacy.cjs');
       const prepared=await privacyModule.prepareAgentPrivacyInput(message,requestContext);
       const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
-      const agentContext=contextModule.toAgentRunContext(requestContext);
       const result=await runtimeModule.runTimetableAdminPrepare({
-        agentContext,
         requestContext,
         preparedPrivacy:prepared,
         sourceMessageId,

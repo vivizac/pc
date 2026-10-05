@@ -1995,7 +1995,7 @@
     }
   }
 
-  function parseTimetableAdminAgentCandidate(commandText, router = global.OlliCommandRouter) {
+  function parseTimetableAdminRuleCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router) return null;
     try {
       const parsers=[
@@ -2486,7 +2486,7 @@
     };
   }
 
-  async function resolveTimetableAdminAgentTurn(commandText, parsed, current, replyToMessageId) {
+  async function resolveTimetableAdminRuleTurn(commandText, parsed, current, replyToMessageId) {
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
       throw new Error('시간표 관리 요청의 원문 메시지를 확인하지 못했습니다.');
@@ -2505,7 +2505,7 @@
     });
     const data=await response.json().catch(()=>({}));
     if(!response.ok || data?.ok!==true){
-      throw new Error(data?.error || data?.message || '시간표 관리 Agent 응답을 받지 못했습니다.');
+      throw new Error(data?.error || data?.message || '시간표 관리 규칙 시스템 응답을 받지 못했습니다.');
     }
     if(data?.choiceRequired?.payload){
       const choiceMessage=clean(data.choiceRequired.message) || '수업 순서를 변경할 수업을 선택해 주세요.';
@@ -2524,7 +2524,7 @@
       throw new Error(data?.error || data?.message || '시간표 관리 확인 카드를 받지 못했습니다.');
     }
     if(clean(data.message.action.action_type)!==expectedType){
-      throw new Error('시간표 관리 Agent 작업 종류가 올바르지 않습니다.');
+      throw new Error('시간표 관리 규칙 시스템 작업 종류가 올바르지 않습니다.');
     }
     return {
       assistantMessage:data.message,
@@ -3845,7 +3845,7 @@
       case 'attendance_status':
         return resolveAttendanceStatusAgentTurn(commandText, parsed, current, replyToMessageId);
       case 'timetable_admin':
-        return resolveTimetableAdminAgentTurn(commandText, parsed, current, replyToMessageId);
+        return resolveTimetableAdminRuleTurn(commandText, parsed, current, replyToMessageId);
       case 'batch_write': {
         const sourceId=Number(replyToMessageId || 0);
         const commands=buildBatchAgentCommands(parsed,sourceId,commandText,batchCommands);
