@@ -387,6 +387,19 @@
 
     prefix.replaceChildren(...tokens);
     prefix.hidden = tokens.length === 0;
+
+    const textRow = document.getElementById('olliTalkComposerTextRow');
+    if (!textRow) return;
+    if (prefix.hidden) {
+      textRow.style.setProperty('--olli-talk-mention-indent', '0px');
+      return;
+    }
+
+    const mentionWidth = Math.ceil(prefix.getBoundingClientRect().width);
+    textRow.style.setProperty(
+      '--olli-talk-mention-indent',
+      Math.max(0, mentionWidth + 8) + 'px'
+    );
   }
 
   function isOlliTalkAiMentionConversationActive(){
@@ -5967,7 +5980,7 @@
       sender.className = 'olliTalkBetaSender';
       const avatar = document.createElement('span');
       avatar.className = 'olliTalkBetaMemberAvatar olliTalkBetaAiAvatar';
-      avatar.textContent = 'Olli';
+      avatar.textContent = '올리';
       avatar.setAttribute('aria-hidden', 'true');
       sender.appendChild(avatar);
       sender.appendChild(createMessageText('span', 'olliTalkBetaSenderName', '올리'));
@@ -6031,7 +6044,7 @@
     sender.className = 'olliTalkBetaSender';
     const avatar = document.createElement('span');
     avatar.className = 'olliTalkBetaMemberAvatar olliTalkBetaAiAvatar';
-    avatar.textContent = 'Olli';
+    avatar.textContent = '올리';
     avatar.setAttribute('aria-hidden', 'true');
     sender.appendChild(avatar);
     sender.appendChild(createMessageText('span', 'olliTalkBetaSenderName', '올리'));
