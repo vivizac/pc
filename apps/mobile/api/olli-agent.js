@@ -44,8 +44,9 @@ export default async function handler(req, res) {
 
     if (mode === 'feedback_analysis') {
       const message=safeText(body.message,5000);
+      const sourceMessageText=safeText(body.sourceMessageText || body.source_message_text || message,5000);
       const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
-      if(!message){
+      if(!message || !sourceMessageText){
         return res.status(400).json({
           error:'feedback_analysis에는 분석할 요청 메시지가 필요합니다.',
           code:'OLLI_FEEDBACK_ANALYSIS_MESSAGE_REQUIRED',
@@ -62,7 +63,7 @@ export default async function handler(req, res) {
       await runtimeModule.validatePickupSourceMessage({
         requestContext,
         sourceMessageId,
-        sourceMessageText:message,
+        sourceMessageText,
       });
 
       const privacyModule=await import('./_lib/olli-agent/privacy.cjs');
