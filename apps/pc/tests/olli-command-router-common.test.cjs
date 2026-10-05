@@ -121,6 +121,21 @@ test('specific class move wording parses as a write command', () => {
   assert.equal(parsed.targetTimeSlot, 4);
 });
 
+
+test('class move keyword can enter a partial rule draft while read questions stay queries', () => {
+  const router = loadRouter();
+
+  const partial = router.parseScheduleMoveMutationIntent('류다연 수업이동');
+  assert.equal(partial.intent, 'move_class');
+  assert.equal(partial.studentName, '류다연');
+  assert.equal(partial.targetWeekday, 0);
+  assert.equal(partial.targetTimeSlot, 0);
+
+  const query = router.classifyRequest('오늘 수업 이동 가능한 시간 알려줘');
+  assert.equal(query.type, 'query');
+  assert.equal(query.intent, 'find_available_slots');
+});
+
 test('makeup write wording parses date, time, and optional class group', () => {
   const router = loadRouter();
   const parsed = router.parseMakeupMutationIntent('김태리 다음 주 월요일 4시 B반 보강 넣어줘');
