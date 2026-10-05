@@ -5286,6 +5286,7 @@
 
   function appendOlliTalkStructuredDateChoiceButtons(card,action){
     card.classList.add('structuredDate');
+    const interactive=String(action?.status || '').trim()==='pending';
 
     const now=new Date();
     const today=new Date(now.getFullYear(),now.getMonth(),now.getDate(),12,0,0,0);
@@ -5297,7 +5298,8 @@
       button.type='button';
       button.className='olliTalkBetaActionButton primary';
       button.textContent=label;
-      button.addEventListener('click',()=>handleOlliTalkStructuredDateChoice(action,olliTalkStructuredDateExpressionFromDate(date)));
+      button.disabled=!interactive;
+      if(interactive) button.addEventListener('click',()=>handleOlliTalkStructuredDateChoice(action,olliTalkStructuredDateExpressionFromDate(date)));
       card.appendChild(button);
     };
     addQuick('오늘',today);
@@ -5306,11 +5308,12 @@
     const dateInput=document.createElement('input');
     dateInput.type='date';
     dateInput.className='olliTalkBetaDateInput';
+    dateInput.disabled=!interactive;
     dateInput.min=olliTalkStructuredDateInputValue(today);
     const maxDate=new Date(today.getTime());
     maxDate.setDate(maxDate.getDate()+364);
     dateInput.max=olliTalkStructuredDateInputValue(maxDate);
-    dateInput.addEventListener('change',()=>{
+    if(interactive) dateInput.addEventListener('change',()=>{
       const match=String(dateInput.value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if(!match) return;
       handleOlliTalkStructuredDateChoice(action,Number(match[2])+'월 '+Number(match[3])+'일');
@@ -5320,7 +5323,8 @@
     pick.type='button';
     pick.className='olliTalkBetaActionButton secondary dateWide';
     pick.textContent='날짜 선택';
-    pick.addEventListener('click',()=>{
+    pick.disabled=!interactive;
+    if(interactive) pick.addEventListener('click',()=>{
       try{
         if(typeof dateInput.showPicker==='function') dateInput.showPicker();
         else dateInput.click();
@@ -5462,6 +5466,7 @@
 
   async function populateOlliTalkStructuredTargetChoiceCard(card,action){
     const actionId=String(action?.id || '').trim();
+    const interactive=String(action?.status || '').trim()==='pending';
     const context=getOlliTalkBetaContext();
     if(!actionId || !context.sessionToken || !context.academyId) return;
 
@@ -5485,7 +5490,8 @@
         button.type='button';
         button.className='olliTalkBetaActionButton primary targetChoice';
         button.textContent=String(choice?.label || '일정').trim();
-        button.addEventListener('click',()=>handleOlliTalkStructuredTargetChoice(action,String(choice?.id || '').trim()));
+        button.disabled=!interactive;
+        if(interactive) button.addEventListener('click',()=>handleOlliTalkStructuredTargetChoice(action,String(choice?.id || '').trim()));
         card.appendChild(button);
       });
     }catch(error){
@@ -5545,6 +5551,7 @@
 
   async function populateOlliTalkStructuredStudentChoiceCard(card,action){
     const actionId=String(action?.id || '').trim();
+    const interactive=String(action?.status || '').trim()==='pending';
     const context=getOlliTalkBetaContext();
     if(!actionId || !context.sessionToken || !context.academyId) return;
 
@@ -5568,7 +5575,8 @@
         button.type='button';
         button.className='olliTalkBetaActionButton primary studentChoice';
         button.textContent=String(choice?.label || choice?.studentName || '학생').trim();
-        button.addEventListener('click',()=>handleOlliTalkStructuredStudentChoice(action,String(choice?.studentName || '').trim()));
+        button.disabled=!interactive;
+        if(interactive) button.addEventListener('click',()=>handleOlliTalkStructuredStudentChoice(action,String(choice?.studentName || '').trim()));
         card.appendChild(button);
       });
     }catch(error){
@@ -5628,6 +5636,7 @@
 
   function appendOlliTalkStructuredDivisionChoiceButtons(card,action){
     card.classList.add('structuredDivision');
+    const interactive=String(action?.status || '').trim()==='pending';
     [
       {value:'kinder',label:'유치부'},
       {value:'elementary',label:'초등부'}
@@ -5636,7 +5645,8 @@
       button.type='button';
       button.className='olliTalkBetaActionButton primary divisionChoice';
       button.textContent=choice.label;
-      button.addEventListener('click',()=>handleOlliTalkStructuredDivisionChoice(action,choice.value));
+      button.disabled=!interactive;
+      if(interactive) button.addEventListener('click',()=>handleOlliTalkStructuredDivisionChoice(action,choice.value));
       card.appendChild(button);
     });
   }
@@ -5686,6 +5696,7 @@
 
   async function populateOlliTalkStructuredTimeChoiceCard(card,action){
     const actionId=String(action?.id || '').trim();
+    const interactive=String(action?.status || '').trim()==='pending';
     const context=getOlliTalkBetaContext();
     if(!actionId || !context.sessionToken || !context.academyId) return;
 
@@ -5714,9 +5725,9 @@
         button.textContent=status==='full'
           ? label+'\n'+(String(payload?.targetIntent || '').trim()==='add_waitlist' ? '대기 가능' : '마감')
           : label;
-        button.disabled=!selectable;
+        button.disabled=!selectable || !interactive;
         if(!selectable) button.classList.add('closed');
-        button.addEventListener('click',()=>handleOlliTalkStructuredTimeChoice(action,Number(choice?.timeSlot || 0)));
+        if(selectable && interactive) button.addEventListener('click',()=>handleOlliTalkStructuredTimeChoice(action,Number(choice?.timeSlot || 0)));
         card.appendChild(button);
       });
     }catch(error){
@@ -5739,6 +5750,7 @@
     card.dataset.actionStatus=status;
 
     const isSessionGroupChoice=['choose_makeup_group','choose_trial_group','choose_waitlist_group','choose_move_group'].includes(String(action?.action_type || '').trim());
+    const isStructuredChoice=['choose_structured_student','choose_structured_target','choose_structured_division','choose_structured_date','choose_structured_time'].includes(String(action?.action_type || '').trim());
     if(isSessionGroupChoice){
       ['A','B'].forEach(group=>{
         const button=document.createElement('button');
@@ -5752,7 +5764,7 @@
       return card;
     }
 
-    if(status!=='pending'){
+    if(status!=='pending' && !isStructuredChoice){
       const label=createMessageText('span','olliTalkBetaActionStatus',getOlliTalkActionStatusLabel(status));
       if(status==='failed') label.classList.add('failed');
       card.appendChild(label);
