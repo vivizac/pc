@@ -2216,21 +2216,8 @@ test('structured cancel_waitlist bypasses Agents SDK and reuses the deterministi
   assert.match(dateBlock,/weekday/);
   assert.match(dateBlock,/nextOccurrenceOnOrAfter/);
 
-  const pcStart=pcSource.indexOf('async function resolveWaitlistCancelAgentTurn');
-  const pcEnd=pcSource.indexOf('\n  async function ',pcStart+20);
-  assert.ok(pcStart>=0 && pcEnd>pcStart);
-  const pcBlock=pcSource.slice(pcStart,pcEnd);
-  assert.match(pcBlock,/structuredCommand/);
-  assert.match(pcBlock,/structured_waitlist_cancel_prepare/);
-  assert.match(pcBlock,/waitlist_cancel_prepare/);
-
-  const mobileStart=mobileSource.indexOf('async function resolveOlliTalkWaitlistCancelAgentTurn');
-  const mobileEnd=mobileSource.indexOf('\n  async function ',mobileStart+20);
-  assert.ok(mobileStart>=0 && mobileEnd>mobileStart);
-  const mobileBlock=mobileSource.slice(mobileStart,mobileEnd);
-  assert.match(mobileBlock,/structuredCommand/);
-  assert.match(mobileBlock,/structured_waitlist_cancel_prepare/);
-  assert.match(mobileBlock,/waitlist_cancel_prepare/);
+  assert.doesNotMatch(pcSource,/resolveWaitlistCancelAgentTurn|waitlist_cancel_prepare/);
+  assert.doesNotMatch(mobileSource,/resolveOlliTalkWaitlistCancelAgentTurn|waitlist_cancel_prepare/);
 
   assert.doesNotMatch(pcSource,/structuredCommand\?\.action\)===\'cancel_waitlist\'/);
   assert.doesNotMatch(mobileSource,/structuredCommand\?\.action \|\| \'\'\)\.trim\(\)===\'cancel_waitlist\'/);

@@ -23,16 +23,15 @@ function loadSchedule(data){
   return context.OlliCommandSchedule;
 }
 
-test('structured waitlist cancellation is routed through common router while legacy Agent fallback remains',()=>{
+test('structured waitlist cancellation is routed through common router without a client Agent fallback',()=>{
   assert.match(router,/supported = new Set\([^\n]*'cancel_waitlist'/);
   for(const source of [pc,mobile]){
     assert.match(source,/\[[^\]]*'cancel_waitlist'[^\]]*\]/);
     assert.doesNotMatch(source,/structuredCommand\?\.action\)==='cancel_waitlist'[\s\S]{0,260}structured_waitlist_cancel_prepare/);
+    assert.doesNotMatch(source,/waitlist_cancel_prepare/);
   }
-  assert.match(pc,/async function resolveWaitlistCancelAgentTurn/);
-  assert.match(pc,/structured_waitlist_cancel_prepare/);
-  assert.match(mobile,/async function resolveOlliTalkWaitlistCancelAgentTurn/);
-  assert.match(mobile,/structured_waitlist_cancel_prepare/);
+  assert.doesNotMatch(pc,/async function resolveWaitlistCancelAgentTurn/);
+  assert.doesNotMatch(mobile,/async function resolveOlliTalkWaitlistCancelAgentTurn/);
 });
 
 test('common waitlist cancellation maps visible 4:30 to the half-hour stored slot',async()=>{
