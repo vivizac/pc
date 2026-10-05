@@ -1190,33 +1190,18 @@
 
   function parseBatchDraftWriteIntent(text) {
     const raw=cleanText(text);
-    const compact=compactText(raw);
     if(!raw) return null;
 
-    if(hasMakeupWord(compact) && hasAddAction(compact) && !hasRemoveAction(compact)){
-      const studentName=extractStudentName(
-        raw,
-        /(?:보강|보충(?:수업)?)(?:수업)?(?:으로|에|을|를|도)?/g,
-        addActionPattern()
-      );
-      if(!studentName) return null;
-      const dateSpec=parseDateExpression(compact);
-      const timeSlot=firstTimeSlot(raw);
-      return {
-        type:'mutation',
-        intent:'add_makeup',
-        studentName,
-        dateSpec,
-        dateLabel:dateSpec ? dateSpec.label : '',
-        timeSlot,
-        classGroup:firstClassGroup(raw),
-        originalText:raw,
+    for(const intent of ['add_makeup','add_trial','add_waitlist']){
+      const draft=parseCanonicalAddDraft(raw,intent);
+      if(!draft) continue;
+      return Object.assign({},draft,{
         batchDraft:true,
         missingBatchFields:[
-          !dateSpec ? 'date' : '',
-          !timeSlot ? 'time' : ''
+          !draft.dateSpec ? 'date' : '',
+          !Number(draft.timeSlot || 0) ? 'time' : ''
         ].filter(Boolean)
-      };
+      });
     }
 
     return null;
