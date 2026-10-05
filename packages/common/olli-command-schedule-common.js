@@ -3200,7 +3200,9 @@
     }
 
     const source = sources[0];
-    if (Number(source.weekday) === targetWeekday && Number(source.time_slot) === targetTimeSlot) {
+    const resolvedSourceWeekday=Number(source && source.weekday || 0);
+    const resolvedSourceTimeSlot=Number(source && source.time_slot || 0);
+    if (resolvedSourceWeekday === targetWeekday && resolvedSourceTimeSlot === targetTimeSlot) {
       return { ok:false, message:'현재 수업과 같은 요일·시간이에요.' };
     }
 
@@ -3232,7 +3234,7 @@
     );
     if (!target.ok) {
       if (target.code === 'class_group_required' && Array.isArray(target.choices) && target.choices.length > 1) {
-        const sourceText = weekdayLabel(sourceWeekday) + ' ' + Number(source.time_slot) + '시';
+        const sourceText = weekdayLabel(resolvedSourceWeekday) + ' ' + resolvedSourceTimeSlot + '시';
         return {
           ok:false,
           code:'class_group_required',
@@ -3244,8 +3246,8 @@
             studentName:clean(student.name),
             division,
             sourceEnrollmentId:clean(source.id),
-            sourceWeekday,
-            sourceTimeSlot:Number(source.time_slot),
+            sourceWeekday:resolvedSourceWeekday,
+            sourceTimeSlot:resolvedSourceTimeSlot,
             targetWeekday,
             targetTimeSlot,
             targetClassGroup:'',
@@ -3263,7 +3265,7 @@
     }
 
     const slot = target.slot;
-    const sourceText = weekdayLabel(sourceWeekday) + ' ' + Number(source.time_slot) + '시';
+    const sourceText = weekdayLabel(resolvedSourceWeekday) + ' ' + resolvedSourceTimeSlot + '시';
     const groupText = slot.grouped ? ' ' + classGroup(slot.classGroup) + '반' : '';
     const targetText = weekdayLabel(targetWeekday) + ' ' + targetTimeSlot + '시' + groupText;
 
@@ -3275,8 +3277,8 @@
         studentName:clean(student.name),
         division,
         sourceEnrollmentId:clean(source.id),
-        sourceWeekday,
-        sourceTimeSlot:Number(source.time_slot),
+        sourceWeekday:resolvedSourceWeekday,
+        sourceTimeSlot:resolvedSourceTimeSlot,
         targetWeekday,
         targetTimeSlot,
         targetClassGroup:classGroup(slot.classGroup),
