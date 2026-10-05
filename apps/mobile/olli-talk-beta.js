@@ -7048,6 +7048,11 @@
       sendButton.classList.add('sending');
     }
 
+    const isOlliWorkflowFollowup = olliRequested && (
+      hasOlliTalkPendingCommand()
+      || !!olliTalkPendingActionReason
+      || !!olliTalkPendingMakeupDialogue
+    );
     const clientMessageId = createOlliTalkClientMessageId();
 
     try {
@@ -7078,7 +7083,7 @@
       updateOlliTalkBetaComposerState();
       appendOlliTalkPersistedMessage(payload.message, context.memberId);
       let olliTalkFirstReplyStartedAt=0;
-      if (olliRequested && (olliAiMentionRequested || isOlliTalkAiEnabled())) {
+      if (olliRequested && !isOlliWorkflowFollowup) {
         olliTalkAssistantReplyPending = true;
         olliTalkFirstReplyStartedAt=Date.now();
         syncOlliTalkAssistantTypingIndicator();
@@ -7135,7 +7140,14 @@
             recordOlliTalkAiConversationTurn(commandText, turn.replyText);
           }else{
             const turn=await resolveOlliTalkBotTurn(commandText,context,Number(payload.message.id));
-            appendOlliTalkPersistedMessage(turn.assistantMessage,context.memberId);
+            if(olliTalkFirstReplyStartedAt){
+              const remaining=1000-(Date.now()-olliTalkFirstReplyStartedAt);
+              if(remaining>0) await new Promise(resolve=>setTimeout(resolve,remaining));
+              olliTalkAssistantReplyPending=false;
+              replaceOlliTalkAssistantTypingWithMessage(turn.assistantMessage,context.memberId);
+            }else{
+              appendOlliTalkPersistedMessage(turn.assistantMessage,context.memberId);
+            }
           }
         } catch(error) {
           console.warn(usingAi ? '올리톡 AI 응답 실패:' : '올리톡 올리봇 응답 실패:', error);
