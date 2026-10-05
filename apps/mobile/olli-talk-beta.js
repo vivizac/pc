@@ -884,10 +884,14 @@
   function buildOlliTalkBatchAgentCommands(batch,sourceMessageId,sourceMessageText,interpretedBatchCommands=[]){
     const parsed=Array.isArray(batch?.commands)?batch.commands:[];
     const structured=Array.isArray(interpretedBatchCommands)?interpretedBatchCommands:[];
-    if(structured.length!==parsed.length) return [];
+    const router=window.OlliCommandRouter;
     return parsed.map((command,index)=>{
-      const system=structured[index]&&typeof structured[index]==='object'?structured[index]:{};
       const intent=String(command?.intent || '').trim();
+      const provided=structured[index]&&typeof structured[index]==='object'?structured[index]:null;
+      const derived=router && typeof router.interpretedIntentToStructuredCommand==='function'
+        ? router.interpretedIntentToStructuredCommand(intent,String(command?.originalText || '').trim())
+        : null;
+      const system=provided && String(provided.action || '').trim()===intent ? provided : (derived || {});
       if(String(system?.action || '').trim()!==intent) return null;
       const reason=String(system?.reason || '').trim() || String(command?.reason || '').trim();
       const item={
