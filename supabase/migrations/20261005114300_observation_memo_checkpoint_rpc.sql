@@ -15,7 +15,7 @@ declare
   v_note_type text := btrim(coalesce(p_note_type, ''));
   v_device_id text := nullif(btrim(coalesce(p_device_id, '')), '');
   v_current public.student_note_drafts%rowtype;
-  v_created boolean := false;
+  v_inserted_count bigint := 0;
 begin
   v_account_id := public.olli_account_id_from_session(p_session_token);
   if v_account_id is null or not exists (
@@ -72,12 +72,12 @@ begin
   )
   on conflict (academy_id, student_id, note_type, revision) do nothing;
 
-  get diagnostics v_created = row_count;
+  get diagnostics v_inserted_count = row_count;
   perform private.olli_prune_note_checkpoint_history();
 
   return jsonb_build_object(
     'ok', true,
-    'created', v_created,
+    'created', v_inserted_count > 0,
     'revision', v_current.revision,
     'saved_at', now()
   );
