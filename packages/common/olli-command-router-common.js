@@ -498,13 +498,27 @@
     const targetDate=parseDateExpression(compactText(targetText));
     const sourceMention=weekdayTimeMentions(sourceText)[0] || null;
     const targetMention=weekdayTimeMentions(targetText)[0] || null;
+    let targetDateExpression=targetDate ? targetDate.label : '';
+    if(
+      sourceDate
+      && targetDate
+      && targetDate.mode==='upcoming_weekday'
+      && ['this_weekday','next_weekday','week_after_next_weekday'].includes(sourceDate.mode)
+    ){
+      const weekdayNames=['','월요일','화요일','수요일','목요일','금요일','토요일'];
+      const targetWeekday=Number(targetMention?.weekday || targetDate.weekday || 0);
+      const prefix=sourceDate.mode==='week_after_next_weekday'
+        ? '다다음 주 '
+        : (sourceDate.mode==='next_weekday' ? '다음 주 ' : '이번 주 ');
+      if(targetWeekday>=1 && targetWeekday<=6) targetDateExpression=prefix+weekdayNames[targetWeekday];
+    }
     return {
       sourceDateExpression:sourceDate ? sourceDate.label : '',
       sourceWeekday:Number(sourceMention?.weekday || sourceDate?.weekday || 0),
       sourceTimeSlot:firstTimeSlot(sourceText),
       sourceMinute:firstTimeMinute(sourceText),
       sourceClassGroup:firstClassGroup(sourceText),
-      targetDateExpression:targetDate ? targetDate.label : '',
+      targetDateExpression,
       targetWeekday:Number(targetMention?.weekday || targetDate?.weekday || 0),
       targetTimeSlot:firstTimeSlot(targetText),
       targetMinute:firstTimeMinute(targetText),
