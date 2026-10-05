@@ -2097,10 +2097,14 @@
   function buildBatchAgentCommands(batch,sourceMessageId,sourceMessageText,interpretedBatchCommands=[]){
     const parsed=Array.isArray(batch?.commands)?batch.commands:[];
     const structured=Array.isArray(interpretedBatchCommands)?interpretedBatchCommands:[];
-    if(structured.length!==parsed.length) return [];
+    const router=global.OlliCommandRouter;
     return parsed.map((command,index)=>{
-      const system=structured[index]&&typeof structured[index]==='object'?structured[index]:{};
       const intent=clean(command?.intent);
+      const provided=structured[index]&&typeof structured[index]==='object'?structured[index]:null;
+      const derived=router && typeof router.interpretedIntentToStructuredCommand==='function'
+        ? router.interpretedIntentToStructuredCommand(intent,clean(command?.originalText))
+        : null;
+      const system=provided && clean(provided.action)===intent ? provided : (derived || {});
       if(clean(system?.action)!==intent) return null;
       const reason=clean(system?.reason) || clean(command?.reason);
       const item={
