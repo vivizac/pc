@@ -132,6 +132,40 @@ test('makeup write wording parses date, time, and optional class group', () => {
   assert.equal(parsed.classGroup, 'B');
 });
 
+
+test('routine add intent no longer requires date and time before entering the rule draft flow', () => {
+  const router = loadRouter();
+
+  const makeup = router.parseMakeupMutationIntent('류다연 보강 등록해줘');
+  assert.equal(makeup.intent, 'add_makeup');
+  assert.equal(makeup.studentName, '류다연');
+  assert.equal(makeup.dateSpec, null);
+  assert.equal(makeup.timeSlot, 0);
+
+  const shortMakeup = router.parseMakeupMutationIntent('류다연 보강');
+  assert.equal(shortMakeup.intent, 'add_makeup');
+  assert.equal(shortMakeup.studentName, '류다연');
+
+  const trial = router.parseTrialMutationIntent('서준 체험');
+  assert.equal(trial.intent, 'add_trial');
+  assert.equal(trial.guestName, '서준');
+  assert.equal(trial.dateSpec, null);
+  assert.equal(trial.timeSlot, 0);
+
+  const waitlist = router.parseWaitlistMutationIntent('지우 대기');
+  assert.equal(waitlist.intent, 'add_waitlist');
+  assert.equal(waitlist.studentName, '지우');
+  assert.equal(waitlist.dateSpec, null);
+  assert.equal(waitlist.timeSlot, 0);
+});
+
+test('single domain keyword rule does not steal availability questions', () => {
+  const router = loadRouter();
+  const classified = router.classifyRequest('오늘 보강 가능한 시간 알려줘');
+  assert.equal(classified.type, 'query');
+  assert.equal(classified.intent, 'find_available_slots');
+});
+
 test('timetable memo add and delete wording parses target and memo content', () => {
   const router = loadRouter();
 
