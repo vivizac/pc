@@ -10,7 +10,10 @@ const common=fs.readFileSync(path.join(root,'packages/common/olli-command-router
 const pc=fs.readFileSync(path.join(root,'apps/pc/pc-team-talk.js'),'utf8');
 const mobile=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'utf8');
 
-assert.match(contextRoute,/Your job is translation, not data extraction/);
+assert.match(contextRoute,/Korean command translator/);
+assert.match(contextRoute,/never invent missing facts/);
+assert.doesNotMatch(contextRoute,/Allowed intents:/);
+assert.doesNotMatch(contextRoute,/Canonical operation phrases:/);
 assert.match(contextRoute,/max_output_tokens:160/);
 assert.doesNotMatch(contextRoute,/Structured command pilot:/);
 assert.doesNotMatch(contextRoute,/batch_commands:\{/);
