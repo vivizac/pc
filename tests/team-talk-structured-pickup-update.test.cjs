@@ -10,6 +10,7 @@ const router=fs.readFileSync(path.join(root,'packages/common/olli-command-router
 const schedule=fs.readFileSync(path.join(root,'packages/common/olli-command-schedule-common.js'),'utf8');
 const pc=fs.readFileSync(path.join(root,'apps/pc/pc-team-talk.js'),'utf8');
 const mobile=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'utf8');
+const endpoint=fs.readFileSync(path.join(root,'apps/mobile/api/olli-agent.js'),'utf8');
 const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261004093000_team_chat_structured_student_choice_update_pickup.sql'),'utf8');
 
 test('structured pickup update is routed through the common router on PC and Mobile',()=>{
@@ -27,11 +28,11 @@ test('pickup update keeps the existing deterministic schedule SOT',()=>{
   assert.match(router,/update_pickup_dropoff/);
 });
 
-test('legacy pickup update Agent preparation remains available as fallback',()=>{
-  assert.match(pc,/async function resolvePickupUpdateAgentTurn/);
-  assert.match(pc,/mode:'pickup_update_prepare'/);
-  assert.match(mobile,/async function resolveOlliTalkPickupUpdateAgentTurn/);
-  assert.match(mobile,/mode:'pickup_update_prepare'/);
+test('legacy pickup update server endpoint remains for compatibility while current clients use structured routing',()=>{
+  assert.doesNotMatch(pc,/async function resolvePickupUpdateAgentTurn/);
+  assert.doesNotMatch(mobile,/async function resolveOlliTalkPickupUpdateAgentTurn/);
+  assert.match(endpoint,/mode === 'pickup_update_prepare'/);
+  assert.match(endpoint,/runPickupUpdatePrepare/);
 });
 
 test('student disambiguation persistence allows pickup update but never mutates schedule',()=>{

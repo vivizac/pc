@@ -118,7 +118,7 @@ test('PC AI makeup update is routed before legacy action preparation — shared 
 });
 test('PC makeup update gate uses only shared update parser as candidate detection', () => {
   const start=talk.indexOf('function isMakeupUpdateAgentCandidate');
-  const end=talk.indexOf('function isPickupCancelAgentCandidate',start);
+  const end=talk.indexOf('async function resolveAttendanceStatusAgentTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/parseMakeupUpdateMutationIntent\(commandText\)/);
   assert.match(block,/=== 'update_makeup'/);
@@ -127,7 +127,7 @@ test('PC makeup update gate uses only shared update parser as candidate detectio
 
 test('PC makeup update bridge uses source message id and server-persisted update action', () => {
   const start=talk.indexOf('async function resolveMakeupUpdateAgentTurn');
-  const end=talk.indexOf('async function resolvePickupCancelAgentTurn',start);
+  const end=talk.indexOf('async function resolveTrialAddAgentTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'makeup_update_prepare'/);
   assert.match(block,/sourceMessageId = Number\(replyToMessageId \|\| 0\)/);

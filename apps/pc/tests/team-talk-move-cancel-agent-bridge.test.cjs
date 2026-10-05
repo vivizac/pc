@@ -32,7 +32,7 @@ test('PC move cancel is routed before pickup and legacy preparation — shared d
 });
 test('PC move cancel bridge uses source-bound production without second action save',()=>{
   const start=talk.indexOf('async function resolveMoveCancelAgentTurn');
-  const end=talk.indexOf('async function resolvePickupCancelAgentTurn',start);
+  const end=talk.indexOf('async function resolveStructuredMoveCancelTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'move_cancel_prepare'/);
   assert.match(block,/sourceMessageId = Number\(replyToMessageId \|\| 0\)/);
@@ -53,7 +53,7 @@ test('PC Bot path remains independent from move cancel Agent routing',()=>{
 
 test('PC move cancel target choice resumes through deterministic structured prepare without another Agent turn',()=>{
   const start=talk.indexOf('async function resolveStructuredMoveCancelTurn');
-  const end=talk.indexOf('async function resolvePickupCancelAgentTurn',start);
+  const end=talk.indexOf('async function saveAssistantReply',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'structured_move_cancel_prepare'/);
   assert.match(block,/structuredCommand/);

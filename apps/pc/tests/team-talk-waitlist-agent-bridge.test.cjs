@@ -80,7 +80,7 @@ test('PC registered waitlist cancel is routed before legacy preparation — shar
 });
 test('PC waitlist cancel bridge keeps guest and registered requests on production Agent mode', () => {
   const start=talk.indexOf('async function resolveWaitlistCancelAgentTurn');
-  const end=talk.indexOf('async function resolvePickupCancelAgentTurn',start);
+  const end=talk.indexOf('async function resolveAbsenceAgentTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/waitlist_cancel_prepare/);
   assert.match(block,/structured_waitlist_cancel_prepare/);
