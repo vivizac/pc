@@ -1213,6 +1213,81 @@
     return { type:'mutation', intent:'batch_write', commands, originalText:raw };
   }
 
+  function parseCanonicalAddDraft(text, intent) {
+    const raw=cleanText(text);
+    const compact=compactText(raw);
+    const key=cleanText(intent);
+    let targetPattern=null;
+    if(key==='add_makeup' && hasMakeupWord(compact)){
+      targetPattern=/(?:보강|보충(?:수업)?)(?:수업)?(?:으로|에|을|를|도)?/g;
+    }else if(key==='add_trial' && hasTrialWord(compact)){
+      targetPattern=/(?:체험\s*클래스|체험\s*수업|체험)(?:으로|에|을|를)?/g;
+    }else if(key==='add_waitlist' && hasWaitlistWord(compact)){
+      targetPattern=/(?:대기(?:자|명단|리스트)?|웨이팅(?:리스트)?)(?:에|로|을|를)?/g;
+    }else{
+      return null;
+    }
+    if(!hasAddAction(compact) || hasRemoveAction(compact)) return null;
+    const studentName=extractStudentName(raw,targetPattern,addActionPattern());
+    if(!studentName) return null;
+    const dateSpec=parseDateExpression(compact);
+    return {
+      type:'mutation',
+      intent:key,
+      studentName,
+      guestName:key==='add_trial' ? studentName : '',
+      division:detectDivision(compact),
+      dateSpec,
+      dateLabel:dateSpec ? dateSpec.label : '',
+      timeSlot:firstTimeSlot(raw),
+      classGroup:firstClassGroup(raw),
+      originalText:raw,
+      canonicalDraft:true
+    };
+  }
+
+  function interpretedIntentToStructuredCommand(intent, text) {
+    const key=cleanText(intent);
+    const raw=cleanText(text);
+    if(!key || !raw) return null;
+    const parsed=parseSingleWriteIntent(raw)
+      || parseCanonicalAddDraft(raw,key);
+    if(!parsed || cleanText(parsed.intent)!==key) return null;
+    const dateExpression=cleanText(parsed.dateLabel || parsed.dateSpec?.label);
+    return {
+      action:key,
+      studentName:cleanText(parsed.studentName || parsed.guestName),
+      division:cleanText(parsed.division),
+      dateExpression,
+      timeSlot:Number(parsed.timeSlot || 0),
+      classGroup:cleanText(parsed.classGroup).toUpperCase(),
+      weekday:Number(parsed.weekday || 0),
+      classTime:Number(parsed.classTime || 0),
+      classMinute:Number(parsed.classMinute || parsed.timeMinute || 0),
+      pickupKind:cleanText(parsed.pickupKind || (parsed.isDropoff ? 'dropoff' : '')),
+      pickupLabel:cleanText(parsed.pickupLabel),
+      pickupTime:cleanText(parsed.pickupTime),
+      sourceDateExpression:cleanText(parsed.sourceDateExpression),
+      sourceWeekday:Number(parsed.sourceWeekday || 0),
+      sourceTimeSlot:Number(parsed.sourceTimeSlot || 0),
+      sourceMinute:Number(parsed.sourceMinute || 0),
+      sourceClassGroup:cleanText(parsed.sourceClassGroup).toUpperCase(),
+      targetDateExpression:cleanText(parsed.targetDateExpression),
+      targetWeekday:Number(parsed.targetWeekday || 0),
+      targetTimeSlot:Number(parsed.targetTimeSlot || 0),
+      targetMinute:Number(parsed.targetMinute || 0),
+      targetClassGroup:cleanText(parsed.targetClassGroup).toUpperCase(),
+      reason:cleanText(parsed.reason),
+      memoNote:cleanText(parsed.memoNote)
+    };
+  }
+
+  async function prepareInterpretedAction(intent, text, context) {
+    const structured=interpretedIntentToStructuredCommand(intent,text);
+    if(!structured) return {handled:false,kind:'pass_through',intent:cleanText(intent),payload:null};
+    return prepareStructuredAction(structured,context);
+  }
+
   function parseWriteIntent(text) {
     const normalizedText = cleanText(text);
     return parseMultiWriteIntent(normalizedText) || parseSingleWriteIntent(normalizedText);
@@ -4113,6 +4188,8 @@
     runStructuredMultiQuery,
     prepareStructuredAction,
     prepareAction,
+    prepareInterpretedAction,
+    interpretedIntentToStructuredCommand,
     parseWriteIntent,
     createStructuredWriteDraft,
     getStructuredWriteDraftState,
