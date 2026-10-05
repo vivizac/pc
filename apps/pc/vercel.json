@@ -3,6 +3,8 @@
   "buildCommand": "node scripts/stage-common.cjs",
   "outputDirectory": ".",
   "git": {
-    "deploymentEnabled": false
+    "deploymentEnabled": {
+      "work/*": false
+    }
   }
 }
