@@ -12,6 +12,7 @@ const pcCss=fs.readFileSync(path.join(root,'apps/pc/pc-team-talk.css'),'utf8');
 const mobileCss=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.css'),'utf8');
 const schedule=fs.readFileSync(path.join(root,'packages/common/olli-command-schedule-common.js'),'utf8');
 const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261004073600_team_chat_structured_time_choice.sql'),'utf8');
+const moveMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261006112000_team_chat_move_structured_choices.sql'),'utf8');
 
 test('PC and Mobile persist and render structured time choice cards from stored options',()=>{
   for(const source of [pc,mobile]){
@@ -48,4 +49,15 @@ test('time cards keep two-column layout and closed booking slots disabled visual
   assert.match(pcCss,/timeChoice\.closed/);
   assert.match(mobileCss,/structuredTime[^{]*\{[^}]*grid-template-columns:repeat\(2/);
   assert.match(mobileCss,/timeChoice\.closed/);
+});
+
+
+test('class move reuses structured target-time choice and schedule_move availability',()=>{
+  assert.match(schedule,/move_class/);
+  assert.match(schedule,/schedule_move/);
+  assert.match(moveMigration,/target_time/);
+  assert.match(moveMigration,/move_class/);
+  assert.match(moveMigration,/olli_team_chat_send_structured_time_choice/);
+  assert.match(moveMigration,/olli_team_chat_action_select_structured_time/);
+  assert.doesNotMatch(moveMigration,/olli_schedule_execute\s*\(/);
 });
