@@ -14,7 +14,8 @@ assert.match(contextRoute,/Your job is translation, not data extraction/);
 assert.match(contextRoute,/max_output_tokens:160/);
 assert.doesNotMatch(contextRoute,/Structured command pilot:/);
 assert.doesNotMatch(contextRoute,/batch_commands:\{/);
-assert.match(contextRoute,/required:\['lane','intent','standalone_command','reply','context_used'\]/);
+assert.match(contextRoute,/required:\['lane','intent','standalone_command','context_used'\]/);
+assert.doesNotMatch(contextRoute,/reply:\{type:'string'\}/);
 
 assert.match(common,/function interpretedIntentToStructuredCommand\(intent, text\)/);
 assert.match(pc,/router\.interpretedIntentToStructuredCommand\(interpreterIntent,commandText\)/);
