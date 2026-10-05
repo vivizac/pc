@@ -47,3 +47,9 @@ test('makeup add/update dead client Agent bridges are removed while cancel compa
   assert.match(pc,/resolveMakeupCancelAgentTurn/);
   assert.match(mobile,/resolveOlliTalkMakeupCancelAgentTurn/);
 });
+
+
+test('waitlist CRUD dead client Agent bridges are removed after structured migration',()=>{
+  assert.doesNotMatch(pc,/resolveWaitlist(?:Add|Update|Cancel)AgentTurn|isWaitlist(?:Add|Update|Cancel)AgentCandidate/);
+  assert.doesNotMatch(mobile,/resolveOlliTalkWaitlist(?:Add|Update|Cancel)AgentTurn|isOlliTalkWaitlist(?:Add|Update|Cancel)AgentCandidate/);
+});
