@@ -371,13 +371,22 @@
   function syncOlliTalkSelectedMentionPrefix(){
     const prefix = getOlliTalkSelectedMentionPrefix();
     if (!prefix) return;
-    const labels = [];
+
+    const tokens = [];
     olliTalkMentionSelections.forEach(member => {
       const name = String(member?.display_name || '').trim();
-      if (name) labels.push('@' + name);
+      if (!name) return;
+      const token = document.createElement('span');
+      token.className = 'olliTalkSelectedMentionToken';
+      if (member?.is_olli_ai === true || String(member?.member_id || '') === OLLI_TALK_AI_MENTION_ID) {
+        token.classList.add('olli');
+      }
+      token.textContent = '@' + name;
+      tokens.push(token);
     });
-    prefix.textContent = labels.join(' ');
-    prefix.hidden = labels.length === 0;
+
+    prefix.replaceChildren(...tokens);
+    prefix.hidden = tokens.length === 0;
   }
 
   function isOlliTalkAiMentionConversationActive(){

@@ -13,6 +13,7 @@
   --olli-talk-text:#201818;
   --olli-talk-muted:#8F8F8F;
   --olli-talk-primary:#FEE500;
+  --olli-talk-olli-accent:#EC70AF;
   --olli-talk-unread-count:#F4E64C;
   --olli-talk-primary-soft:#F7F0AE;
   --olli-talk-primary-pale:#FBF7CF;
@@ -558,16 +559,22 @@
   min-height:34px;
   display:inline-flex;
   align-items:center;
+  gap:.38em;
   padding:5px 0 3px;
   margin-right:.38em;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  color:#1687F8;
   font-family:inherit;
   font-size:calc(16px * var(--olli-text-scale, 1));
   font-weight:500;
   line-height:1.45;
+}
+#olliTalkBetaScreen .olliTalkSelectedMentionToken{
+  color:#1687F8;
+}
+#olliTalkBetaScreen .olliTalkSelectedMentionToken.olli{
+  color:var(--olli-talk-olli-accent);
 }
 #olliTalkBetaScreen .olliTalkSelectedMentionPrefix[hidden]{
   display:none;
@@ -800,6 +807,9 @@
 
 #olliTalkBetaScreen .olliTalkBetaSenderName{
   align-self:center;
+}
+#olliTalkBetaScreen .olliTalkBetaMessage.ai .olliTalkBetaSenderName{
+  color:var(--olli-talk-olli-accent);
 }
 
 #olliTalkBetaScreen .olliTalkBetaBubbleRow{
