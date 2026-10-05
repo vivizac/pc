@@ -109,3 +109,14 @@ test('canonical multi-read parser splits requests and inherits shared date and d
   assert.equal(parsed.queries[1].dateLabel,'다음 주 목요일');
   assert.equal(parsed.queries[1].division,'elementary');
 });
+
+
+test('canonical student possessive wording keeps the real student name',()=>{
+  const command=router.interpretedIntentToStructuredCommand(
+    'add_makeup',
+    '테스트 학생의 내일 3시 보강 등록'
+  );
+  assert.equal(command?.studentName,'테스트');
+  assert.equal(command?.dateExpression,'내일');
+  assert.equal(command?.timeSlot,3);
+});
