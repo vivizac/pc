@@ -42,7 +42,7 @@ test('AI avatar label is Olli while sender name remains the Korean display name'
 
 test('Team Chat system notice renders as an Olli bubble while keeping the Display P3 gradient',()=>{
   assert.match(js,/const isAi = type === 'ai' \|\| type === 'system';/);
-  assert.match(js,/if \(type === 'system'\) bubble\.classList\.add\('olliTalkBetaSystemBubble'\)/);
+  assert.match(js,/if \(type === 'system'\) \{[\s\S]*bubble\.classList\.add\('olliTalkBetaSystemBubble'\)/);
   assert.doesNotMatch(js,/message\.className = 'olliTalkBetaSystemMessage'/);
   assert.match(css,/\.olliTalkBetaSystemBubble\{[\s\S]*color\(display-p3[\s\S]*color:#fff;/);
 });
