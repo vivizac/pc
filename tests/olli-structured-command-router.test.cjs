@@ -2199,3 +2199,87 @@ test('structured cancel_waitlist bypasses Agents SDK and reuses the deterministi
   assert.match(mobileSource,/\[[^\]]*'cancel_waitlist'[^\]]*\]/);
   assert.match(routerSource,/schedule\.prepareWriteCommand\('cancel_waitlist'/);
 });
+
+
+test('structured move_class asks for target date and time as persisted button fields', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(options){
+      assert.equal(options.action,'move_class');
+      assert.equal(options.studentName,'류다연');
+      return {
+        ok:true,
+        matched:true,
+        student:{id:'student-1',name:'류다연',division:'elementary'},
+        studentName:'류다연',
+        division:'elementary'
+      };
+    },
+    async prepareStructuredTimeChoices(options){
+      assert.equal(options.action,'move_class');
+      assert.equal(options.studentName,'류다연');
+      assert.equal(options.division,'elementary');
+      return {
+        ok:true,
+        action:'move_class',
+        division:'elementary',
+        date:'2026-10-08',
+        dateLabel:'10월 8일',
+        choices:[
+          {timeSlot:4,label:'4시',status:'available',selectable:true,remaining:2,grouped:false},
+          {timeSlot:5,label:'5시',status:'available',selectable:true,remaining:1,grouped:false}
+        ],
+        message:'류다연 · 10월 8일\n이동할 수업 시간을 선택해 주세요.'
+      };
+    },
+    async prepareWriteCommand(intent,options){
+      assert.equal(intent,'move_class');
+      assert.equal(options.studentName,'류다연');
+      assert.equal(options.targetTimeSlot,4);
+      assert.ok(options.targetDate instanceof Date);
+      return {
+        ok:true,
+        command:{
+          intent:'move_class',
+          studentId:'student-1',
+          studentName:'류다연',
+          division:'elementary',
+          sourceEnrollmentId:'enrollment-1',
+          sourceWeekday:1,
+          sourceTimeSlot:4,
+          targetWeekday:4,
+          targetTimeSlot:4,
+          targetClassGroup:'A',
+          effectiveDate:'2026-10-08'
+        },
+        message:'수업을 이동할까요?'
+      };
+    },
+    writeConfirmationMessage(){ return '수업을 이동할까요?'; }
+  };
+
+  try{
+    const first=await router.prepareStructuredAction({
+      action:'move_class',
+      studentName:'류다연',
+      targetDateExpression:'',
+      targetTimeSlot:0
+    },{});
+    assert.equal(first.kind,'action_needs_field');
+    assert.equal(first.payload.field,'target_date');
+    assert.deepEqual(first.payload.missingFields,['target_date','target_time']);
+
+    const withDate=router.updateStructuredWriteDraft(first.payload.draft,'target_date','10월 8일');
+    const second=await router.prepareStructuredAction(withDate,{});
+    assert.equal(second.kind,'action_needs_field');
+    assert.equal(second.payload.field,'target_time');
+    assert.equal(second.payload.choices.length,2);
+
+    const complete=router.updateStructuredWriteDraft(second.payload.draft,'target_time',4);
+    const third=await router.prepareStructuredAction(complete,{});
+    assert.equal(third.kind,'action_pending');
+    assert.equal(third.intent,'move_class');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
