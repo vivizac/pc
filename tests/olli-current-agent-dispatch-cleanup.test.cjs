@@ -86,3 +86,11 @@ test('obsolete local Agent candidate duplicates and unreachable read switch case
     assert.match(dispatch,/case 'pickup_read'/);
   }
 });
+
+
+test('dead structured trial and makeup update client resolvers are removed after common-router migration',()=>{
+  assert.doesNotMatch(pc,/resolveStructured(?:Trial|Makeup)UpdateTurn/);
+  assert.doesNotMatch(mobile,/resolveOlliTalkStructured(?:Trial|Makeup)UpdateTurn/);
+  assert.doesNotMatch(pc,/structured_(?:trial|makeup)_update_prepare/);
+  assert.doesNotMatch(mobile,/structured_(?:trial|makeup)_update_prepare/);
+});

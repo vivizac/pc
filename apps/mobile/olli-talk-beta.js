@@ -1434,39 +1434,6 @@
     };
   }
 
-  async function resolveOlliTalkStructuredTrialUpdateTurn(structuredCommand,context,sourceText,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
-      throw new Error('체험 변경 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'structured_trial_update_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(sourceText || '').trim(),
-        sourceMessageId,
-        structuredCommand
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok||data?.ok!==true||!data?.message?.action){
-      throw new Error(data?.error || data?.message || '체험 변경 규칙 시스템 응답을 받지 못했습니다.');
-    }
-    if(String(data.message.action.action_type || '').trim()!=='update_trial'){
-      throw new Error('체험 변경 규칙 시스템 작업 종류가 올바르지 않습니다.');
-    }
-
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
   async function resolveOlliTalkStructuredWaitlistUpdateTurn(structuredCommand,context,sourceText,replyToMessageId){
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
@@ -1690,37 +1657,6 @@
     }
     if(String(data.message.action.action_type || '').trim()!=='cancel_makeup'){
       throw new Error('보강 취소 Agent 작업 종류가 올바르지 않습니다.');
-    }
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
-  async function resolveOlliTalkStructuredMakeupUpdateTurn(structuredCommand,context,sourceText,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('보강 변경 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'structured_makeup_update_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(sourceText || '').trim(),
-        sourceMessageId,
-        structuredCommand
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '보강 변경 규칙 시스템 응답을 받지 못했습니다.');
-    }
-    if(String(data.message.action.action_type || '').trim()!=='update_makeup'){
-      throw new Error('보강 변경 규칙 시스템 작업 종류가 올바르지 않습니다.');
     }
     return {
       assistantMessage:data.message,

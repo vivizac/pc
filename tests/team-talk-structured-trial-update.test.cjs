@@ -138,17 +138,14 @@ test('common trial update local fallback delegates to existing updateOneTimeSess
   assert.equal(observed.options.classGroup,'A');
 });
 
-test('PC and Mobile route structured update_trial through common router and retain legacy fallback helper',()=>{
+test('PC and Mobile route structured update_trial through common router without dead client resolver helpers',()=>{
   assert.match(routerSource,/supported = new Set\([^\n]*'update_trial'/);
   for(const source of [pcSource,mobileSource]){
     assert.match(source,/\[[^\]]*'update_trial'[^\]]*\]/);
-    assert.doesNotMatch(
-      source,
-      /structuredCommand\?\.action[^\n]*update_trial[\s\S]{0,300}resolve(?:OlliTalk)?StructuredTrialUpdateTurn/
-    );
+    assert.match(source,/prepareStructuredAction\(structuredCommand/);
+    assert.doesNotMatch(source,/StructuredTrialUpdateTurn/);
+    assert.doesNotMatch(source,/structured_trial_update_prepare/);
   }
-  assert.match(pcSource,/async function resolveStructuredTrialUpdateTurn/);
-  assert.match(mobileSource,/async function resolveOlliTalkStructuredTrialUpdateTurn/);
 });
 
 test('trial update choice migration persists only draft fields for source, target date, target time and group',()=>{

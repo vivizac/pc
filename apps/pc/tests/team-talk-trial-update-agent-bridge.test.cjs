@@ -30,13 +30,10 @@ test('PC shared compatibility dispatch has no trial update Agent case and keeps 
   assert.match(dispatch,/case 'trial_cancel'/);
 });
 
-test('PC structured trial update production path remains source-bound',()=>{
-  const start=talk.indexOf('async function resolveStructuredTrialUpdateTurn');
-  const end=talk.indexOf('async function resolveStructuredWaitlistUpdateTurn',start);
-  const block=talk.slice(start,end);
-  assert.ok(start>=0 && end>start);
-  assert.match(block,/mode:'structured_trial_update_prepare'/);
-  assert.match(block,/sourceMessageId/);
-  assert.match(block,/structuredCommand/);
-  assert.match(block,/update_trial/);
+test('PC structured trial update now uses only the common prepareStructuredAction path',()=>{
+  assert.doesNotMatch(talk,/async function resolveStructuredTrialUpdateTurn/);
+  assert.doesNotMatch(talk,/mode:'structured_trial_update_prepare'/);
+  const ai=talk.slice(talk.indexOf('async function resolveAiTurn'),talk.indexOf('function updateComposerState'));
+  assert.match(ai,/['"]update_trial['"]/);
+  assert.match(ai,/prepareStructuredAction\(structuredCommand/);
 });

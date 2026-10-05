@@ -138,17 +138,14 @@ test('common schedule local fallback delegates update_makeup to existing updateO
   assert.equal(observed.options.classGroup,'A');
 });
 
-test('PC and Mobile route structured update_makeup through common router while keeping legacy fallback helpers',()=>{
+test('PC and Mobile route structured update_makeup through common router without dead client resolver helpers',()=>{
   assert.match(routerSource,/supported = new Set\([^\n]*'update_makeup'/);
   for(const source of [pcSource,mobileSource]){
     assert.match(source,/\[[^\]]*'update_makeup'[^\]]*\]/);
-    assert.doesNotMatch(
-      source,
-      /structuredCommand\?\.action[^\n]*update_makeup[\s\S]{0,300}resolve(?:OlliTalk)?StructuredMakeupUpdateTurn/
-    );
+    assert.match(source,/prepareStructuredAction\(structuredCommand/);
+    assert.doesNotMatch(source,/StructuredMakeupUpdateTurn/);
+    assert.doesNotMatch(source,/structured_makeup_update_prepare/);
   }
-  assert.match(pcSource,/async function resolveStructuredMakeupUpdateTurn/);
-  assert.match(mobileSource,/async function resolveOlliTalkStructuredMakeupUpdateTurn/);
   assert.match(pcSource,/\['date','target_date'\]/);
   assert.match(pcSource,/\['time','target_time'\]/);
   assert.match(mobileSource,/\['date','target_date'\]/);

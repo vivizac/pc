@@ -33,13 +33,10 @@ test('Mobile shared compatibility dispatch has no trial update Agent case and ke
   assert.match(dispatch,/case 'trial_cancel'/);
 });
 
-test('Mobile structured trial update production path remains source-bound',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkStructuredTrialUpdateTurn');
-  const end=talk.indexOf('async function resolveOlliTalkStructuredWaitlistUpdateTurn',start);
-  const block=talk.slice(start,end);
-  assert.ok(start>=0 && end>start);
-  assert.match(block,/mode:'structured_trial_update_prepare'/);
-  assert.match(block,/sourceMessageId/);
-  assert.match(block,/structuredCommand/);
-  assert.match(block,/update_trial/);
+test('Mobile structured trial update now uses only the common prepareStructuredAction path',()=>{
+  assert.doesNotMatch(talk,/async function resolveOlliTalkStructuredTrialUpdateTurn/);
+  assert.doesNotMatch(talk,/mode:'structured_trial_update_prepare'/);
+  const ai=talk.slice(talk.indexOf('async function resolveOlliTalkAiTurn'),talk.indexOf('function getOlliTalkMentionMessageText'));
+  assert.match(ai,/['"]update_trial['"]/);
+  assert.match(ai,/prepareStructuredAction\(structuredCommand/);
 });
