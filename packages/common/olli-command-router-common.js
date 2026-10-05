@@ -1320,12 +1320,6 @@
     };
   }
 
-  async function prepareInterpretedAction(intent, text, context) {
-    const structured=interpretedIntentToStructuredCommand(intent,text);
-    if(!structured) return {handled:false,kind:'pass_through',intent:cleanText(intent),payload:null};
-    return prepareStructuredAction(structured,context);
-  }
-
   function parseWriteIntent(text) {
     const normalizedText = cleanText(text);
     return parseMultiWriteIntent(normalizedText) || parseSingleWriteIntent(normalizedText);
@@ -4226,7 +4220,6 @@
     runStructuredMultiQuery,
     prepareStructuredAction,
     prepareAction,
-    prepareInterpretedAction,
     interpretedIntentToStructuredCommand,
     parseWriteIntent,
     createStructuredWriteDraft,
