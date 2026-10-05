@@ -3632,21 +3632,21 @@
       const prepared = await schedule.prepareWriteCommand(action, options);
       if (prepared?.code === 'class_group_required' && prepared?.commandDraft) {
         if (
-          action === 'add_makeup'
+          ['add_makeup','add_trial','add_waitlist'].includes(action)
           && command?.batchStructured === true
           && Number.isInteger(Number(command?.batchCommandIndex))
           && Number(command.batchCommandIndex) >= 0
         ) {
           const batchChoiceDraft=Object.assign({},command,prepared.commandDraft,{
-            action:'add_makeup',
+            action,
             batchStructured:true,
             batchCommandIndex:Number(command.batchCommandIndex)
           });
-          const choiceResult=structuredTargetChoiceResult('add_makeup',batchChoiceDraft,{
+          const choiceResult=structuredTargetChoiceResult(action,batchChoiceDraft,{
             choiceKey:'classGroup',
             choices:(Array.isArray(prepared.choices) ? prepared.choices : ['A','B'])
               .map(group=>({id:cleanText(group).toUpperCase(),label:cleanText(group).toUpperCase()+'반'})),
-            message:String(prepared.message || '보강할 반을 선택해 주세요.')
+            message:String(prepared.message || '반을 선택해 주세요.')
           });
           if(choiceResult) return choiceResult;
         }

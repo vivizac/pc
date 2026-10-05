@@ -5778,16 +5778,17 @@ async function runBatchDirectPrepare({
     });
   }else if(intent==='add_trial'){
     const scope=resolveTrialAddPrepareScope(preparedPrivacy);
+    const selection=item?.structuredSelection&&typeof item.structuredSelection==='object'?item.structuredSelection:{};
     const {prepareTrialAddAction}=require('./tools/trial-add-prepare-tools.cjs');
     await prepareTrialAddAction({
       requestContext,
       trialAccess:preparedPrivacy.trialAccess,
       guestLabel:scope.guestLabel,
-      division:scope.division,
-      sessionDate:batchDateKey(command.dateExpression,today,'체험 날짜'),
-      classHour:Number(command.timeSlot||0),
+      division:String(selection.division||'').trim()||scope.division,
+      sessionDate:String(selection.sessionDate||'').trim()||batchDateKey(command.dateExpression,today,'체험 날짜'),
+      classHour:Number(selection.timeSlot||command.timeSlot||0),
       classMinute:Number(command.classMinute||0),
-      classGroup:String(command.classGroup||'').trim().toUpperCase()||scope.classGroup||'AUTO',
+      classGroup:String(selection.classGroup||command.classGroup||'').trim().toUpperCase()||scope.classGroup||'AUTO',
       currentDate:today,
       requestId,
       replyToMessageId:sourceId,
@@ -5835,17 +5836,18 @@ async function runBatchDirectPrepare({
     });
   }else if(intent==='add_waitlist'){
     const scope=resolveWaitlistAddPrepareScope(preparedPrivacy);
+    const selection=item?.structuredSelection&&typeof item.structuredSelection==='object'?item.structuredSelection:{};
     const {prepareWaitlistAddAction}=require('./tools/waitlist-add-prepare-tools.cjs');
     await prepareWaitlistAddAction({
       requestContext,
       subjectAccess:preparedPrivacy.subjectAccess,
       guestAccess:preparedPrivacy.waitlistGuestAccess,
       studentLabel:scope.subjectLabel,
-      division:scope.division,
-      sessionDate:batchDateKey(command.dateExpression,today,'대기 날짜'),
-      classHour:Number(command.timeSlot||0),
+      division:String(selection.division||'').trim()||scope.division,
+      sessionDate:String(selection.sessionDate||'').trim()||batchDateKey(command.dateExpression,today,'대기 날짜'),
+      classHour:Number(selection.timeSlot||command.timeSlot||0),
       classMinute:Number(command.classMinute||0),
-      classGroup:String(command.classGroup||'').trim().toUpperCase()||scope.classGroup||'AUTO',
+      classGroup:String(selection.classGroup||command.classGroup||'').trim().toUpperCase()||scope.classGroup||'AUTO',
       currentDate:today,
       requestId,
       replyToMessageId:sourceId,
@@ -5988,7 +5990,7 @@ async function runBatchDirectPrepare({
       requestContext,
       subjectAccess:preparedPrivacy.subjectAccess,
       studentLabel:scope.subjectLabel,
-      cancelKind:String(command.pickupKind||'').trim()||scope.cancelKind,
+      cancelKind:String(command.pickupKind||'').trim()==='dropoff'?'dropoff':scope.cancelKind,
       weekday:Number(command.weekday||0),
       classHour:Number(command.classTime||0),
       classMinute:Number(command.classMinute||0),

@@ -234,6 +234,7 @@ async function preparePickupAddAction({
   weekday,
   classHour,
   classMinute,
+  selectedClassTime = 0,
   arrivalLabel = '',
   arrivalTime = '',
   dropoffLabel = '',
@@ -332,7 +333,10 @@ async function preparePickupAddAction({
   }
 
   const mode = normalizeTimetableMode(settings?.academy?.kinder_timetable_mode);
-  const classTime = encodePickupClassTime(mode, classHour, classMinute);
+  const selectedStoredClassTime=Number(selectedClassTime || 0);
+  const classTime = selectedStoredClassTime > 0
+    ? selectedStoredClassTime
+    : encodePickupClassTime(mode, classHour, classMinute);
   if (!classTime) {
     throw pickupPrepareError(
       '현재 시간표 모드에서 사용할 수 있는 유치부 수업 시간을 확인해 주세요.',
@@ -353,6 +357,23 @@ async function preparePickupAddAction({
       403,
       weekData?.code || 'OLLI_AGENT_PICKUP_WEEK_READ_FAILED'
     );
+  }
+
+  if(selectedStoredClassTime>0){
+    const regularEnrollment=(Array.isArray(weekData?.enrollments)?weekData.enrollments:[])
+      .find((row)=>
+        clean(row?.student_id)===clean(subject.studentId)
+        && Number(row?.weekday||0)===targetWeekday
+        && Number(row?.time_slot||0)===classTime
+        && effectiveOn(row,effectiveDate)
+      );
+    if(!regularEnrollment){
+      throw pickupPrepareError(
+        '선택한 정규 수업을 현재 시간표에서 확인하지 못했습니다.',
+        409,
+        'OLLI_ROUTINE_PICKUP_REGULAR_CLASS_MISMATCH'
+      );
+    }
   }
 
   if (hasExistingPickup(
