@@ -40,6 +40,16 @@ test('stale local-first attachment metadata still asks the server for a thumbnai
 });
 
 
+test('viewport hydration owns lazy loading so hidden iOS previews cannot stall forever',()=>{
+  const start=beta.indexOf('function loadOlliTalkThumbnailIntoImage');
+  const end=beta.indexOf('async function hydrateOlliTalkAttachmentImage',start);
+  const body=beta.slice(start,end);
+  assert.ok(start>=0&&end>start);
+  assert.match(body,/image\.loading='eager'/);
+  assert.match(body,/image\.loading='eager';[\s\S]*image\.src=url/);
+});
+
+
 test('broken Team Chat thumbnails stay hidden until a real image load succeeds',()=>{
   const css=fs.readFileSync('olli-talk-beta.css','utf8');
   const html=fs.readFileSync('index.html','utf8');
@@ -47,7 +57,7 @@ test('broken Team Chat thumbnails stay hidden until a real image load succeeds',
   const end=beta.indexOf('function observeOlliTalkAttachmentImage',start);
   const body=beta.slice(start,end);
   assert.ok(start>=0&&end>start);
-  assert.match(body,/image\.hidden=true;[\s\S]*image\.onload=ready;[\s\S]*image\.onerror=fail;[\s\S]*image\.src=url/);
+  assert.match(body,/image\.loading='eager';[\s\S]*image\.hidden=true;[\s\S]*image\.onload=ready;[\s\S]*image\.onerror=fail;[\s\S]*image\.src=url/);
   assert.match(body,/image\.removeAttribute\('src'\)/);
   assert.match(body,/await loadOlliTalkThumbnailIntoImage\(image,url\)/);
   assert.match(body,/image\.hidden=false;[\s\S]*fallback\.hidden=true/);
