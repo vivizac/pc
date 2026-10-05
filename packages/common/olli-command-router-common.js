@@ -273,8 +273,8 @@
   function cleanupStudentName(value) {
     return cleanText(value)
       .replace(/^(?:학생|원생)\s*/, '')
-      .replace(/\s*(?:학생|원생)$/, '')
       .replace(/(?:의|꺼|것)$/, '')
+      .replace(/\s*(?:학생|원생)$/, '')
       .replace(/^(?:의|꺼|것)\s*/, '')
       .replace(/(?:^|\s)(?:에서|으로|로|을|를|에|에게|한테|좀|한번)(?=\s|$)/g, ' ')
       .replace(/\s+/g, ' ')
