@@ -2962,7 +2962,7 @@
         });
         if(!timeChoices?.ok){
           if(timeChoices?.code==='division_required'){
-            if(action==='add_makeup'){
+            if(action==='add_makeup' || action==='move_class'){
               return {
                 handled:true,
                 kind:'action_rejected',
@@ -2991,7 +2991,11 @@
           }
         }else{
           const absoluteDateExpression=(date.getMonth()+1)+'월 '+date.getDate()+'일';
-          draft=updateStructuredWriteDraft(draft,'date',absoluteDateExpression);
+          draft=updateStructuredWriteDraft(
+            draft,
+            field==='target_time' ? 'target_date' : 'date',
+            absoluteDateExpression
+          );
           draft=updateStructuredWriteDraft(draft,'division',timeChoices.division);
           choices=Array.isArray(timeChoices.choices)
             ? timeChoices.choices.map(item=>Object.assign({},item))
@@ -3037,7 +3041,10 @@
       const sourceWeekday=Number(command.source_weekday || command.sourceWeekday || 0);
       const sourceTimeSlot=Number(command.source_time_slot || command.sourceTimeSlot || 0);
       const sourceEnrollmentId=cleanText(command.source_enrollment_id || command.sourceEnrollmentId);
-      const targetWeekday=Number(command.target_weekday || command.targetWeekday || 0);
+      const targetDateExpression=cleanText(command.target_date_expression || command.targetDateExpression);
+      const targetDateSpec=targetDateExpression ? parseDateExpression(compactText(targetDateExpression)) : null;
+      const targetDate=targetDateSpec ? resolveDateExpression(targetDateSpec,new Date()) : null;
+      const targetWeekday=Number(command.target_weekday || command.targetWeekday || (targetDate ? isoWeekdayOf(targetDate) : 0));
       const targetTimeSlot=Number(command.target_time_slot || command.targetTimeSlot || 0);
       const classGroup=cleanText(command.class_group || command.classGroup).toUpperCase();
 
@@ -3059,9 +3066,10 @@
           sourceEnrollmentId,
           targetWeekday,
           targetTimeSlot,
+          targetDate,
           classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
           selectedStudent:routeContext.selectedStudent || null,
-          effectiveDate:new Date(),
+          effectiveDate:targetDate || new Date(),
           originalText:''
         });
 
