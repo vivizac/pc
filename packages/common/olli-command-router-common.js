@@ -1526,7 +1526,6 @@
       const queries=parts.map(part=>{
         const partCompact=compactText(part);
         let candidate=part;
-        if(sharedDivision && !detectDivision(partCompact)) candidate=divisionText+candidate;
         const signals=olliReplyTemporalSignals(part);
         if(!signals.date && !signals.weekday && firstDate){
           candidate=cleanText(firstDate.label+' '+candidate);
@@ -1537,6 +1536,7 @@
         ){
           candidate=cleanText(sharedScope+' '+candidate);
         }
+        if(sharedDivision && !detectDivision(partCompact)) candidate=divisionText+candidate;
         return parseRosterQueryIntent(candidate)
           || parsePickupQueryIntent(candidate)
           || parseAvailableSlotsIntent(candidate);
@@ -1897,8 +1897,8 @@
     return parseMultiQueryIntent(normalizedText)
       || parseRosterQueryIntent(normalizedText)
       || parsePickupQueryIntent(normalizedText)
-      || parseAvailableSlotsIntent(normalizedText)
-      || parseStudentScheduleQueryIntent(normalizedText);
+      || parseStudentScheduleQueryIntent(normalizedText)
+      || parseAvailableSlotsIntent(normalizedText);
   }
 
   function classifyRequest(text) {
