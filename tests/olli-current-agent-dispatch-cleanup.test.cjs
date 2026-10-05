@@ -33,3 +33,9 @@ test('pickup CRUD dead client Agent bridges are removed after structured migrati
   assert.doesNotMatch(pc,/resolvePickup(?:Add|Update|Cancel)AgentTurn|isPickup(?:Add|Update|Cancel)AgentCandidate/);
   assert.doesNotMatch(mobile,/resolveOlliTalkPickup(?:Add|Update|Cancel)AgentTurn|isOlliTalkPickup(?:Add|Update|Cancel)AgentCandidate/);
 });
+
+
+test('move and move-cancel dead client Agent bridges are removed after structured migration',()=>{
+  assert.doesNotMatch(pc,/resolveMove(?:Cancel)?AgentTurn|isMove(?:Cancel)?AgentCandidate/);
+  assert.doesNotMatch(mobile,/resolveOlliTalkMove(?:Cancel)?AgentTurn|isOlliTalkMove(?:Cancel)?AgentCandidate/);
+});

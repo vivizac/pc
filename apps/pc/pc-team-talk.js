@@ -2354,26 +2354,6 @@
     }
   }
 
-  function isMoveAgentCandidate(commandText, router = global.OlliCommandRouter) {
-    if (!router || typeof router.parseScheduleMoveMutationIntent !== 'function') return false;
-    try {
-      return clean(router.parseScheduleMoveMutationIntent(commandText)?.intent) === 'move_class';
-    } catch (error) {
-      console.warn('PC 수업 이동 Agent 후보 판별 실패:', error?.message || error);
-      return false;
-    }
-  }
-
-  function isMoveCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
-    if (!router || typeof router.parseMoveCancelMutationIntent !== 'function') return false;
-    try {
-      return clean(router.parseMoveCancelMutationIntent(commandText)?.intent) === 'cancel_move';
-    } catch (error) {
-      console.warn('PC 수업 이동 취소 Agent 후보 판별 실패:', error?.message || error);
-      return false;
-    }
-  }
-
   function isMakeupAddAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router || typeof router.parseMakeupMutationIntent !== 'function') return false;
     try {
@@ -3365,87 +3345,6 @@
     };
   }
 
-  async function resolveMoveAgentTurn(commandText, current, replyToMessageId) {
-    const sourceMessageId = Number(replyToMessageId || 0);
-    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
-      throw new Error('수업 이동 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-
-    const response = await fetch('/api/olli-agent', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body:JSON.stringify({
-        mode:'move_prepare',
-        academyId:current?.academyId || '',
-        sessionToken:current?.sessionToken || '',
-        message:clean(commandText),
-        sourceMessageId
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || data?.ok !== true || !data?.message?.action) {
-      throw new Error(data?.error || data?.message || '수업 이동 Agent 응답을 받지 못했습니다.');
-    }
-    if (clean(data.message.action.action_type) !== 'move_class') {
-      throw new Error('수업 이동 Agent 작업 종류가 올바르지 않습니다.');
-    }
-
-    return {
-      assistantMessage:data.message,
-      replyText:clean(data.message.body),
-      recordAi:false
-    };
-  }
-
-  async function resolveMoveCancelAgentTurn(commandText, current, replyToMessageId) {
-    const sourceMessageId = Number(replyToMessageId || 0);
-    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
-      throw new Error('수업 이동 취소 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-
-    const response = await fetch('/api/olli-agent', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body:JSON.stringify({
-        mode:'move_cancel_prepare',
-        academyId:current?.academyId || '',
-        sessionToken:current?.sessionToken || '',
-        message:clean(commandText),
-        sourceMessageId
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || data?.ok !== true) {
-      throw new Error(data?.error || data?.message || '수업 이동 취소 Agent 응답을 받지 못했습니다.');
-    }
-    if(data?.choiceRequired?.payload){
-      const choiceMessage=clean(data.choiceRequired.message) || '취소할 수업 이동 예약을 선택해 주세요.';
-      return {
-        assistantMessage:await saveStructuredTargetChoice(
-          current,
-          choiceMessage,
-          data.choiceRequired.payload,
-          sourceMessageId
-        ),
-        replyText:choiceMessage,
-        recordAi:false
-      };
-    }
-    if(!data?.message?.action){
-      throw new Error(data?.error || data?.message || '수업 이동 취소 확인 카드를 받지 못했습니다.');
-    }
-    if (clean(data.message.action.action_type) !== 'cancel_move') {
-      throw new Error('수업 이동 취소 Agent 작업 종류가 올바르지 않습니다.');
-    }
-
-    return {
-      assistantMessage:data.message,
-      replyText:clean(data.message.body),
-      recordAi:false
-    };
-  }
-
-
   async function resolveStructuredMoveCancelTurn(structuredCommand,current,sourceMessageText,sourceMessageId){
     const sourceId=Number(sourceMessageId || 0);
     if(!Number.isSafeInteger(sourceId)||sourceId<=0||!clean(sourceMessageText)){
@@ -3719,8 +3618,6 @@
       }
       case 'makeup_update': return resolveMakeupUpdateAgentTurn(commandText,current,replyToMessageId);
       case 'makeup_add': return resolveMakeupAddAgentTurn(commandText,current,replyToMessageId);
-      case 'move_cancel': return resolveMoveCancelAgentTurn(commandText,current,replyToMessageId);
-      case 'move': return resolveMoveAgentTurn(commandText,current,replyToMessageId);
       case 'class_once': return resolveClassOnceAgentTurn(commandText,current,replyToMessageId);
       case 'timetable_read':
         return resolveSourceBoundReadAgentTurn({mode:'timetable_read',commandText,readIntent:parsed,current,replyToMessageId});
