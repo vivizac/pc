@@ -378,6 +378,19 @@
     });
     prefix.textContent = labels.join(' ');
     prefix.hidden = labels.length === 0;
+
+    const textRow = document.getElementById('olliTalkComposerTextRow');
+    if (!textRow) return;
+    if (prefix.hidden) {
+      textRow.style.setProperty('--olli-talk-mention-indent', '0px');
+      return;
+    }
+
+    const mentionWidth = Math.ceil(prefix.getBoundingClientRect().width);
+    textRow.style.setProperty(
+      '--olli-talk-mention-indent',
+      Math.max(0, mentionWidth + 8) + 'px'
+    );
   }
 
   function isOlliTalkAiMentionConversationActive(){
