@@ -292,13 +292,15 @@ function closeMemoStudentSelectPopup() {
   const popup = document.getElementById('memoStudentSelectPopup');
   if (popup) popup.classList.remove('show');
 }
-function openMemoStudentFromPicker(studentId) {
+async function openMemoStudentFromPicker(studentId) {
   closeMemoStudentSelectPopup();
   closeMemoModeMenu();
-  if (currentMemoStudent && currentMemoType === 'elementary') {
-    saveCurrentMemo({ silent: true }).catch(err => {
-      console.warn('학생 전환 중 관찰노트 저장 실패:', err?.message || err);
-    });
+  if (
+    currentMemoStudent &&
+    String(currentMemoStudent.id || '') !== String(studentId || '') &&
+    typeof window.finalizeObservationMemoSessionCheckpoint === 'function'
+  ) {
+    await window.finalizeObservationMemoSessionCheckpoint({ reason:'student-switch' });
   }
   openStudentMemoPageById(studentId);
 }
