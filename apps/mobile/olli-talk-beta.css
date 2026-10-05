@@ -13,7 +13,7 @@
   --olli-talk-text:#201818;
   --olli-talk-muted:#8F8F8F;
   --olli-talk-primary:#FEE500;
-  --olli-talk-olli-accent:#EC70AF;
+  --olli-talk-olli-accent:color(display-p3 .9255 .4392 .6863);
   --olli-talk-unread-count:#F4E64C;
   --olli-talk-primary-soft:#F7F0AE;
   --olli-talk-primary-pale:#FBF7CF;
@@ -1121,6 +1121,16 @@
 #olliTalkBetaScreen .olliTalkBetaMessage.ai .olliTalkBetaBubble.olliTalkBetaSystemBubble{
   --olli-talk-bubble-bg:linear-gradient(90deg,color(display-p3 .9255 .4392 .6863) 0%,color(display-p3 .9294 .4471 .6627) 34%,color(display-p3 .9373 .5216 .5294) 52%,color(display-p3 .9451 .5882 .4118) 68%,color(display-p3 .9451 .6549 .3216) 83%,color(display-p3 .9569 .7255 .2706) 100%);
   color:#fff;
+}
+
+#olliTalkBetaScreen .olliTalkBetaInlineSystemResult{
+  align-self:flex-start;
+  margin-top:6px;
+}
+
+#olliTalkBetaScreen .olliTalkBetaInlineSystemResult::before,
+#olliTalkBetaScreen .olliTalkBetaInlineSystemResult::after{
+  content:none !important;
 }
 
 #olliTalkBetaScreen .olliTalkBetaActionCard{
