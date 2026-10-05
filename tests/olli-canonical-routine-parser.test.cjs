@@ -29,6 +29,18 @@ test('canonical update parser separates existing and target makeup facts',()=>{
   assert.equal(command.targetTimeSlot,2);
 });
 
+
+test('canonical update parser carries the source week scope into an unscoped target weekday',()=>{
+  const command=router.interpretedIntentToStructuredCommand(
+    'update_makeup',
+    '민지 다음주 화요일 4시 보강을 목요일 5시로 변경'
+  );
+  assert.equal(command.sourceDateExpression,'다음 주 화요일');
+  assert.equal(command.targetDateExpression,'다음 주 목요일');
+  assert.equal(command.targetWeekday,4);
+  assert.equal(command.targetTimeSlot,5);
+});
+
 test('canonical move parser allows the current class to be resolved from timetable data',()=>{
   const command=router.interpretedIntentToStructuredCommand(
     'move_class',
