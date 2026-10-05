@@ -25,9 +25,11 @@ test('teacher and Olli mentions are blue while multiline text starts after the m
   assert.match(js,/getBoundingClientRect\(\)\.width/);
 });
 
-test('mention menu is anchored above the composer instead of becoming a grid row below the input',()=>{
-  assert.match(css,/\.olliTalkMentionMenu\{[\s\S]*position:absolute;[\s\S]*bottom:calc\(100% \+ 9px\);/);
-  assert.doesNotMatch(css,/\.olliTalkMentionMenu\{[\s\S]*order:-1;/);
+test('mention menu restores the original in-flow row above the input',()=>{
+  assert.match(css,/\.olliTalkMentionMenu\{[\s\S]*position:relative;[\s\S]*order:-1;[\s\S]*grid-column:1 \/ -1;[\s\S]*grid-row:1;[\s\S]*margin:0 0 9px;/);
+  assert.doesNotMatch(css,/\.olliTalkMentionMenu\{[\s\S]*position:absolute;/);
+  assert.match(css,/\.olliTalkComposerTextRow\{[\s\S]*grid-row:2;/);
+  assert.match(css,/\.olliTalkKeyboardOpen \.olliTalkFileAddBtn\{[\s\S]*grid-row:3;/);
 });
 
 test('AI avatar label is Olli while sender name remains the Korean display name',()=>{
@@ -40,7 +42,7 @@ test('Team Chat system pill uses the sampled pink-to-orange gradient and white t
   assert.match(css,/\.olliTalkBetaSystemMessage\{[\s\S]*linear-gradient\(90deg,#EC70AF 0%,#EC70AF 34%,#ED7D95 52%,#F08E75 68%,#F1A159 83%,#F3B347 100%\);[\s\S]*color:#fff;/);
 });
 
-test('mobile Team Chat assets share visual-fix cache bust revision',()=>{
-  assert.match(html,/olli-talk-beta\.css\?v=20261005-teamchat-visual-fix-1/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261005-teamchat-visual-fix-1/);
+test('mobile Team Chat assets share mention-restore cache bust revision',()=>{
+  assert.match(html,/olli-talk-beta\.css\?v=20261005-mention-menu-restore-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261005-mention-menu-restore-1/);
 });
