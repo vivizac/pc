@@ -470,18 +470,30 @@
 
   function parseUpdateSides(text) {
     const raw=cleanText(text);
-    const parts=raw.split(/(?:에서|->|→|에서\s*)/);
-    const changeMatch=raw.match(/^(.*?)(?:에서)?\s*(?:을|를)?\s*(?:수정|변경|옮겨|옮기|이동|바꿔|바꾸|고쳐|고치)(?:줘요|해주세요|해줘|해줄래|할래|해|줘|주세요|어줘|아줘|어요|아요|기)?\s*(.*)$/);
+    const actionMatch=raw.match(/(?:수정|변경|옮겨|옮기|이동|바꿔|바꾸|고쳐|고치)/);
+    const beforeAction=actionMatch ? raw.slice(0,actionMatch.index) : raw;
     let sourceText='';
     let targetText='';
-    if(parts.length>=2){
-      sourceText=cleanText(parts[0]);
-      targetText=cleanText(parts.slice(1).join(' '));
+
+    const fromIndex=beforeAction.lastIndexOf('에서');
+    if(fromIndex>=0){
+      sourceText=cleanText(beforeAction.slice(0,fromIndex));
+      targetText=cleanText(beforeAction.slice(fromIndex+2));
+    }else{
+      const connectorMatches=Array.from(beforeAction.matchAll(/(?:을|를)\s+/g));
+      const connector=connectorMatches.length ? connectorMatches[connectorMatches.length-1] : null;
+      if(connector){
+        sourceText=cleanText(beforeAction.slice(0,connector.index));
+        targetText=cleanText(beforeAction.slice(Number(connector.index||0)+String(connector[0]||'').length));
+      }else{
+        sourceText=cleanText(beforeAction);
+      }
     }
-    if(changeMatch){
-      sourceText=cleanText(changeMatch[1]) || sourceText;
-      targetText=cleanText(changeMatch[2]) || targetText;
-    }
+
+    targetText=targetText
+      .replace(/(?:으로|로)\s*$/,'')
+      .trim();
+
     const sourceDate=parseDateExpression(compactText(sourceText));
     const targetDate=parseDateExpression(compactText(targetText));
     const sourceMention=weekdayTimeMentions(sourceText)[0] || null;
