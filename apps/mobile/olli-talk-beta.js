@@ -5738,6 +5738,20 @@
     card.dataset.olliTalkActionId=String(action?.id || '').trim();
     card.dataset.actionStatus=status;
 
+    const isSessionGroupChoice=['choose_makeup_group','choose_trial_group','choose_waitlist_group','choose_move_group'].includes(String(action?.action_type || '').trim());
+    if(isSessionGroupChoice){
+      ['A','B'].forEach(group=>{
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='olliTalkBetaActionButton primary';
+        button.textContent=group+'반';
+        button.disabled=status!=='pending';
+        if(status==='pending') button.addEventListener('click',()=>handleOlliTalkSessionGroupChoice(action,group));
+        card.appendChild(button);
+      });
+      return card;
+    }
+
     if(status!=='pending'){
       const label=createMessageText('span','olliTalkBetaActionStatus',getOlliTalkActionStatusLabel(status));
       if(status==='failed') label.classList.add('failed');
@@ -5767,18 +5781,6 @@
 
     if(String(action?.action_type || '').trim()==='choose_structured_time'){
       appendOlliTalkStructuredTimeChoiceButtons(card,action);
-      return card;
-    }
-
-    if(['choose_makeup_group','choose_trial_group','choose_waitlist_group','choose_move_group'].includes(String(action?.action_type || '').trim())){
-      ['A','B'].forEach(group=>{
-        const button=document.createElement('button');
-        button.type='button';
-        button.className='olliTalkBetaActionButton primary';
-        button.textContent=group+'반';
-        button.addEventListener('click',()=>handleOlliTalkSessionGroupChoice(action,group));
-        card.appendChild(button);
-      });
       return card;
     }
 
