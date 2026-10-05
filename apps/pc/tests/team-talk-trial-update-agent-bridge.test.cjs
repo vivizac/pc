@@ -21,13 +21,15 @@ test('PC dead trial update Agent candidate and client bridge helper are removed'
   }
 });
 
-test('PC shared compatibility dispatch has no trial update Agent case and keeps trial cancel',()=>{
+test('PC shared dispatch has no trial update or trial cancel case while cancel fallback remains',()=>{
   const dispatch=talk.slice(
     talk.indexOf('async function resolveSharedAgentRouteTurn'),
     talk.indexOf('async function resolveContextualMakeupTurn')
   );
   assert.doesNotMatch(dispatch,/case 'trial_update'/);
-  assert.match(dispatch,/case 'trial_cancel'/);
+  assert.doesNotMatch(dispatch,/case 'trial_cancel'/);
+  assert.match(talk,/__trialCancelAgent/);
+  assert.match(talk,/resolve(?:OlliTalk)?TrialCancelAgentTurn/);
 });
 
 test('PC structured trial update now uses only the common prepareStructuredAction path',()=>{

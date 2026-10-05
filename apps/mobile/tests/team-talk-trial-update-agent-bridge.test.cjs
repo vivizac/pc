@@ -24,13 +24,15 @@ test('Mobile dead trial update Agent candidate and client bridge helper are remo
   }
 });
 
-test('Mobile shared compatibility dispatch has no trial update Agent case and keeps trial cancel',()=>{
+test('Mobile shared dispatch has no trial update or trial cancel case while cancel fallback remains',()=>{
   const dispatch=talk.slice(
     talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn'),
     talk.indexOf('async function resolveOlliTalkContextualMakeupTurn')
   );
   assert.doesNotMatch(dispatch,/case 'trial_update'/);
-  assert.match(dispatch,/case 'trial_cancel'/);
+  assert.doesNotMatch(dispatch,/case 'trial_cancel'/);
+  assert.match(talk,/__trialCancelAgent/);
+  assert.match(talk,/resolve(?:OlliTalk)?TrialCancelAgentTurn/);
 });
 
 test('Mobile structured trial update now uses only the common prepareStructuredAction path',()=>{
