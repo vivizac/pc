@@ -839,6 +839,7 @@
 
 #olliTalkBetaScreen .olliTalkBetaMessage.outgoing .olliTalkBetaBubble{
   --olli-talk-bubble-bg:var(--olli-talk-outgoing-bg);
+  max-width:min(68vw, 480px);
   color:var(--olli-talk-outgoing-text);
 }
 
@@ -1059,14 +1060,14 @@
 
 #olliTalkBetaScreen .olliTalkBetaSystemMessage{
   align-self:center;
-  max-width:86%;
+  max-width:88%;
   margin:12px auto 2px;
-  padding:6px 10px;
+  padding:8px 13px;
   border-radius:999px;
-  background:var(--olli-talk-system-pill-bg);
-  color:var(--olli-talk-system-pill-text);
-  font-size:calc(11px * var(--olli-text-scale, 1));
-  font-weight:500;
+  background:#EC70AF;
+  color:#fff;
+  font-size:calc(12px * var(--olli-text-scale, 1));
+  font-weight:600;
   line-height:1.35;
   text-align:center;
 }
