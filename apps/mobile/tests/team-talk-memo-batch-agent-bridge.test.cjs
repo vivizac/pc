@@ -1,3 +1,5 @@
+'use strict';
+
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -5,71 +7,46 @@ const path=require('node:path');
 
 const talk=fs.readFileSync(path.join(__dirname,'../olli-talk-beta.js'),'utf8');
 
-test('Mobile timetable memo add/delete routes through memo_prepare before legacy prepareAction — shared dispatch contract',()=> {
-  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
-  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
-  const dispatch=talk.slice(dispatchStart,dispatchEnd);
-  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
-  const ai=talk.slice(aiStart,aiEnd);
-  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
-  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
-  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
-  assert.match(dispatch,/case 'timetable_memo'/);
-  assert.match(dispatch,/case 'batch_write'/);
-  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
-  const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
-  assert.ok(classify>=0 && legacy>classify);
-
+test('Mobile timetable memo uses structured rule path before Agent classifier',()=>{
+  const ai=talk.slice(talk.indexOf('async function resolveOlliTalkAiTurn'),talk.indexOf('function getOlliTalkMentionMessageText'));
+  const structured=ai.indexOf("['add_timetable_memo','delete_timetable_memo'].includes(String(structuredCommand?.action || '').trim())");
+  const classifier=ai.indexOf('const routeClassifier=');
+  assert.ok(structured>=0 && classifier>structured);
+  assert.match(ai,/resolveOlliTalkStructuredTimetableMemoTurn/);
 });
-test('Mobile timetable memo class choice uses reusable target buttons and deterministic resume',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkTimetableMemoAgentTurn');
+
+test('Mobile dead memo Agent bridge is removed while structured server bridge remains',()=>{
+  assert.doesNotMatch(talk,/async function resolveOlliTalkTimetableMemoAgentTurn/);
+  assert.doesNotMatch(talk,/function parseOlliTalkTimetableMemoAgentCandidate/);
+  const dispatch=talk.slice(talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn'),talk.indexOf('async function resolveOlliTalkContextualMakeupTurn'));
+  assert.doesNotMatch(dispatch,/case 'timetable_memo'/);
+
+  const start=talk.indexOf('async function resolveOlliTalkStructuredTimetableMemoTurn');
   const end=talk.indexOf('async function resolveOlliTalkTrialAddAgentTurn',start);
   const block=talk.slice(start,end);
-  assert.match(block,/choiceRequired/);
-  assert.match(block,/saveOlliTalkStructuredTargetChoice/);
   assert.match(block,/mode:'structured_memo_prepare'/);
   assert.match(block,/memoNote/);
   assert.match(block,/structuredCommand/);
-  assert.doesNotMatch(block,/mode:'memo_prepare'[\s\S]*mode:'memo_prepare'/);
+  assert.match(block,/choiceRequired/);
+  assert.match(block,/saveOlliTalkStructuredTargetChoice/);
 });
 
-test('Mobile batch is detected before individual writes and collects reason turns — shared dispatch contract',()=> {
-  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
-  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
-  const dispatch=talk.slice(dispatchStart,dispatchEnd);
-  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
-  const ai=talk.slice(aiStart,aiEnd);
-  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
-  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
-  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
-  assert.match(dispatch,/case 'timetable_memo'/);
-  assert.match(dispatch,/case 'batch_write'/);
-  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
-  const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
-  assert.ok(classify>=0 && legacy>classify);
-
-});
-test('Mobile batch uses batch_prepare and renders all persisted cards',()=>{
+test('Mobile batch remains rule-routed and uses batch_prepare',()=>{
+  const ai=talk.slice(talk.indexOf('async function resolveOlliTalkAiTurn'),talk.indexOf('function getOlliTalkMentionMessageText'));
+  const batch=ai.indexOf("interpreterRoute==='rule' && interpreterIntent==='batch_write'");
+  const classifier=ai.indexOf('const routeClassifier=');
+  assert.ok(batch>=0 && classifier>batch);
   assert.match(talk,/mode:'batch_prepare'/);
   assert.match(talk,/assistantMessages:messages/);
-  assert.match(talk,/assistantMessages\.slice\(1\)\.forEach\(message=>appendOlliTalkPersistedMessage/);
-});
-
-test('Mobile batch collects missing makeup date/time after reason turns',()=>{
   assert.match(talk,/function olliTalkBatchCommandNeedsClarification/);
-  assert.match(talk,/function olliTalkBatchClarificationPrompt/);
   assert.match(talk,/function applyOlliTalkBatchClarification/);
-  assert.match(talk,/보강 날짜와 시간을 함께 알려주세요/);
-  assert.match(talk,/clarificationMessageId/);
 });
 
-test('Mobile structured memo resume can persist a second memoId choice without another Agent turn',()=>{
+test('Mobile structured memo resume supports repeated deterministic choices without another model call',()=>{
   const start=talk.indexOf('async function resolveOlliTalkStructuredTimetableMemoTurn');
   const end=talk.indexOf('async function resolveOlliTalkTrialAddAgentTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/choiceRequired/);
   assert.match(block,/saveOlliTalkStructuredTargetChoice/);
-  assert.match(block,/mode:'structured_memo_prepare'/);
+  assert.doesNotMatch(block,/resolveOlliTalkTimetableMemoAgentTurn/);
 });

@@ -1049,23 +1049,6 @@
     throw new Error('복합쓰기 선택 상태를 확인하지 못했습니다.');
   }
 
-  function parseOlliTalkTimetableMemoAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router) return null;
-    try{
-      const deleted=typeof router.parseTimetableMemoDeleteMutationIntent==='function'
-        ? router.parseTimetableMemoDeleteMutationIntent(commandText)
-        : null;
-      if(String(deleted?.intent || '').trim()==='delete_timetable_memo') return deleted;
-      const added=typeof router.parseTimetableMemoAddMutationIntent==='function'
-        ? router.parseTimetableMemoAddMutationIntent(commandText)
-        : null;
-      return String(added?.intent || '').trim()==='add_timetable_memo' ? added : null;
-    }catch(error){
-      console.warn('올리톡 시간표 메모 Agent 후보 판별 실패:',error);
-      return null;
-    }
-  }
-
   function isOlliTalkTrialAddAgentCandidate(commandText,router=window.OlliCommandRouter){
     if(!router || typeof router.parseTrialMutationIntent!=='function') return false;
     try{
@@ -1445,60 +1428,6 @@
       recordAi:false
     };
   }
-
-  async function resolveOlliTalkTimetableMemoAgentTurn(commandText,parsed,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('시간표 메모 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-    const expectedType=String(parsed?.intent || '').trim();
-    if(!['add_timetable_memo','delete_timetable_memo'].includes(expectedType)){
-      throw new Error('시간표 메모 작업 종류를 확인하지 못했습니다.');
-    }
-
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'memo_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId,
-        memoNote:String(parsed?.memoNote || '').trim()
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true){
-      throw new Error(data?.error || data?.message || '시간표 메모 Agent 응답을 받지 못했습니다.');
-    }
-    if(data?.choiceRequired?.payload){
-      const choiceMessage=String(data.choiceRequired.message || '').trim() || '메모를 남길 수업을 선택해 주세요.';
-      return {
-        assistantMessage:await saveOlliTalkStructuredTargetChoice(
-          context,
-          choiceMessage,
-          data.choiceRequired.payload,
-          sourceMessageId
-        ),
-        replyText:choiceMessage,
-        recordAi:false
-      };
-    }
-    if(!data?.message?.action){
-      throw new Error(data?.error || data?.message || '시간표 메모 확인 카드를 받지 못했습니다.');
-    }
-    if(String(data.message.action.action_type || '').trim()!==expectedType){
-      throw new Error('시간표 메모 Agent 작업 종류가 올바르지 않습니다.');
-    }
-
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
 
   async function resolveOlliTalkStructuredTimetableMemoTurn(structuredCommand,context,sourceMessageText,sourceMessageId){
     const sourceId=Number(sourceMessageId || 0);
@@ -2525,8 +2454,6 @@
         return resolveOlliTalkTimetableAdminRuleTurn(commandText,parsed,context,replyToMessageId);
       case 'batch_write':
         return resolveOlliTalkBatchRuleTurn(parsed,commandText,context,replyToMessageId,batchCommands);
-      case 'timetable_memo':
-        return resolveOlliTalkTimetableMemoAgentTurn(commandText,parsed,context,replyToMessageId);
       case 'trial_cancel':
         if(!String(parsed?.reason || '').trim()) return null;
         return resolveOlliTalkTrialCancelAgentTurn({

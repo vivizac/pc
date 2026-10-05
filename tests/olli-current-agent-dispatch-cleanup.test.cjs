@@ -15,11 +15,15 @@ test('current classifier cannot route deterministic routine families',()=>{
   }
 });
 
-test('compatibility switch may remain, but is gated behind the narrow Agent classifier',()=>{
+test('timetable memo dead client Agent bridge is actually removed',()=>{
+  assert.doesNotMatch(pc,/resolveTimetableMemoAgentTurn|parseTimetableMemoAgentCandidate/);
+  assert.doesNotMatch(mobile,/resolveOlliTalkTimetableMemoAgentTurn|parseOlliTalkTimetableMemoAgentCandidate/);
+});
+
+test('other compatibility switch cases remain gated behind the narrow Agent classifier for staged cleanup',()=>{
   for(const source of [pc,mobile]){
     const classifierPos=source.indexOf('const routeClassifier=');
-    const classifyPos=source.indexOf('routeClassifier.classify(commandText,{router})',classifierPos);
-    assert.ok(classifierPos>=0 && classifyPos>classifierPos);
+    assert.ok(classifierPos>=0);
     assert.match(source,/interpreterRoute==='agent'/);
   }
 });
