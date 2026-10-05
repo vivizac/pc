@@ -54,7 +54,7 @@ test('PC waitlist update guest remains on the same source-bound Agent bridge', (
 
 test('PC waitlist cancel gate uses only the shared cancel parser', () => {
   const start=talk.indexOf('function isWaitlistCancelAgentCandidate');
-  const end=talk.indexOf('function isMakeupAddAgentCandidate',start);
+  const end=talk.indexOf('function parseAbsenceAgentCandidate',start);
   const block=talk.slice(start,end);
   assert.match(block,/parseWaitlistCancelMutationIntent\(commandText\)/);
   assert.match(block,/=== 'cancel_waitlist'/);

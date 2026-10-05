@@ -7,7 +7,7 @@ const talk=fs.readFileSync(path.join(__dirname,'../pc-team-talk.js'),'utf8');
 
 test('PC class-once gate uses only shared generic class parser',()=>{
   const start=talk.indexOf('function isClassOnceAgentCandidate');
-  const end=talk.indexOf('function isMakeupAddAgentCandidate',start);
+  const end=talk.indexOf('function parseMakeupCancelAgentCandidate',start);
   const block=talk.slice(start,end);
   assert.match(block,/parseClassMutationIntent\(commandText\)/);
   assert.match(block,/=== 'add_class_once'/);
