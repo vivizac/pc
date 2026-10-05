@@ -131,7 +131,7 @@
         !global.__olliObservationMemoVersionHistoryPhoneUiInstalled ||
         typeof global.openObservationMemoVersionHistory !== 'function'
       ) {
-        await import('./olli-observation-version-history-phone.js?v=20260928-history-phone-1');
+        await import('./olli-observation-version-history-phone.js?v=20261005-exit-checkpoint-1');
       }
 
       if (typeof global.openObservationMemoVersionHistory !== 'function') {
