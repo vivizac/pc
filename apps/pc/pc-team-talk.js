@@ -2105,25 +2105,36 @@
     return null;
   }
 
-  function buildBatchAgentCommands(batch, sourceMessageId, sourceMessageText) {
-    return (Array.isArray(batch?.commands) ? batch.commands : []).map((command) => ({
-      intent:clean(command?.intent),
-      text:clean(command?.originalText),
-      studentName:clean(command?.studentName || command?.guestName),
-      division:clean(command?.division),
-      dateExpression:clean(command?.dateLabel || command?.dateSpec?.label),
-      timeSlot:Number(command?.timeSlot || 0),
-      classGroup:clean(command?.classGroup).toUpperCase(),
-      reason:clean(command?.reason),
-      reasonMessageId:batchCommandNeedsReason(command) && clean(command?.reason) ? Number(sourceMessageId || 0) : 0,
-      reasonMessageText:batchCommandNeedsReason(command) && clean(command?.reason) ? clean(sourceMessageText) : '',
-      memoNote:clean(command?.memoNote),
-      needsClarification:command?.batchDraft === true,
-      structuredSelection:null,
-      contextText:'',
-      clarificationMessageId:0,
-      clarificationMessageText:''
-    }));
+  function buildBatchAgentCommands(batch,sourceMessageId,sourceMessageText,interpretedBatchCommands=[]){
+    const parsed=Array.isArray(batch?.commands)?batch.commands:[];
+    const structured=Array.isArray(interpretedBatchCommands)?interpretedBatchCommands:[];
+    if(structured.length!==parsed.length) return [];
+    return parsed.map((command,index)=>{
+      const system=structured[index]&&typeof structured[index]==='object'?structured[index]:{};
+      const intent=clean(command?.intent);
+      if(clean(system?.action)!==intent) return null;
+      const reason=clean(system?.reason) || clean(command?.reason);
+      const item={
+        intent,
+        text:clean(command?.originalText),
+        studentName:clean(system?.studentName) || clean(command?.studentName || command?.guestName),
+        division:clean(system?.division) || clean(command?.division),
+        dateExpression:clean(system?.dateExpression) || clean(command?.dateLabel || command?.dateSpec?.label),
+        timeSlot:Number(system?.timeSlot || command?.timeSlot || 0),
+        classGroup:(clean(system?.classGroup) || clean(command?.classGroup)).toUpperCase(),
+        reason,
+        reasonMessageId:batchCommandNeedsReason(command) && reason ? Number(sourceMessageId || 0) : 0,
+        reasonMessageText:batchCommandNeedsReason(command) && reason ? clean(sourceMessageText) : '',
+        memoNote:clean(system?.memoNote) || clean(command?.memoNote),
+        needsClarification:command?.batchDraft===true,
+        structuredSelection:null,
+        structuredCommand:Object.assign({},system,{action:intent}),
+        contextText:'',
+        clarificationMessageId:0,
+        clarificationMessageText:''
+      };
+      return item;
+    }).filter(Boolean);
   }
 
   function batchStructuredMakeupCommand(command,index) {
@@ -3798,7 +3809,7 @@
   }
 
 
-  async function resolveSharedAgentRouteTurn(route, commandText, current, replyToMessageId) {
+  async function resolveSharedAgentRouteTurn(route, commandText, current, replyToMessageId, batchCommands=[]) {
     if (!route || !route.key) return null;
     const parsed = route.parsed || null;
 
@@ -3809,7 +3820,10 @@
         return resolveTimetableAdminAgentTurn(commandText, parsed, current, replyToMessageId);
       case 'batch_write': {
         const sourceId=Number(replyToMessageId || 0);
-        const commands=buildBatchAgentCommands(parsed,sourceId,commandText);
+        const commands=buildBatchAgentCommands(parsed,sourceId,commandText,batchCommands);
+        if(commands.length!==(Array.isArray(parsed?.commands)?parsed.commands.length:0)){
+          throw new Error('복합명령 구조화 결과와 규칙 시스템 작업 수가 일치하지 않습니다.');
+        }
         const missingIndex=commands.findIndex((item)=>batchCommandNeedsReason(item) && !clean(item.reason));
         if(missingIndex>=0){
           state.pendingActionReason={intent:'batch_write',__batchAgent:{
@@ -3983,6 +3997,32 @@
       availabilityPurpose:clean(structuredRaw.availabilityPurpose),
       rosterKind:clean(structuredRaw.rosterKind)
     };
+    const batchCommands=(Array.isArray(language.batchCommands)?language.batchCommands:[]).slice(0,3).map((command)=>({
+      action:clean(command?.action),
+      studentName:clean(command?.studentName),
+      division:clean(command?.division),
+      dateExpression:clean(command?.dateExpression),
+      timeSlot:Number(command?.timeSlot || 0),
+      classGroup:clean(command?.classGroup).toUpperCase(),
+      weekday:Number(command?.weekday || 0),
+      classTime:Number(command?.classTime || 0),
+      classMinute:Number(command?.classMinute || 0),
+      pickupKind:clean(command?.pickupKind),
+      pickupLabel:clean(command?.pickupLabel),
+      pickupTime:clean(command?.pickupTime),
+      sourceDateExpression:clean(command?.sourceDateExpression),
+      sourceWeekday:Number(command?.sourceWeekday || 0),
+      sourceTimeSlot:Number(command?.sourceTimeSlot || 0),
+      sourceMinute:Number(command?.sourceMinute || 0),
+      sourceClassGroup:clean(command?.sourceClassGroup).toUpperCase(),
+      targetDateExpression:clean(command?.targetDateExpression),
+      targetWeekday:Number(command?.targetWeekday || 0),
+      targetTimeSlot:Number(command?.targetTimeSlot || 0),
+      targetMinute:Number(command?.targetMinute || 0),
+      targetClassGroup:clean(command?.targetClassGroup).toUpperCase(),
+      reason:clean(command?.reason),
+      memoNote:clean(command?.memoNote)
+    }));
     const reply=clean(language.reply);
     if(data?.ok!==true || !['routine','feedback','chat'].includes(lane) || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
       throw new Error('올리 공통 해석 결과가 올바르지 않습니다.');
@@ -3993,6 +4033,7 @@
       intent,
       standaloneCommand,
       structuredCommand,
+      batchCommands,
       reply,
       contextUsed:language.contextUsed===true
     };
@@ -4051,6 +4092,7 @@
     const interpreterRoute=clean(interpretation.route);
     const interpreterIntent=clean(interpretation.intent);
     const structuredCommand=interpretation.structuredCommand || null;
+    const batchCommands=Array.isArray(interpretation.batchCommands)?interpretation.batchCommands:[];
     commandText=clean(interpretation.standaloneCommand) || rawCommandText;
 
     if (options.allowSuggestedQuery && router && typeof router.runSuggestedQuery === 'function') {
@@ -4610,7 +4652,7 @@
       : null;
     if(interpreterRoute==='agent'){
       if(sharedRoute){
-        const routedTurn=await resolveSharedAgentRouteTurn(sharedRoute,commandText,current,replyToMessageId);
+        const routedTurn=await resolveSharedAgentRouteTurn(sharedRoute,commandText,current,replyToMessageId,batchCommands);
         if(routedTurn) return routedTurn;
       }
       const resolved=await resolveAiReply(rawCommandText,current);

@@ -884,29 +884,36 @@
     return null;
   }
 
-  function buildOlliTalkBatchAgentCommands(batch,sourceMessageId,sourceMessageText){
-    return (Array.isArray(batch?.commands)?batch.commands:[]).map(command=>({
-      intent:String(command?.intent || '').trim(),
-      text:String(command?.originalText || '').trim(),
-      studentName:String(command?.studentName || command?.guestName || '').trim(),
-      division:String(command?.division || '').trim(),
-      dateExpression:String(command?.dateLabel || command?.dateSpec?.label || '').trim(),
-      timeSlot:Number(command?.timeSlot || 0),
-      classGroup:String(command?.classGroup || '').trim().toUpperCase(),
-      reason:String(command?.reason || '').trim(),
-      reasonMessageId:olliTalkBatchCommandNeedsReason(command) && String(command?.reason || '').trim()
-        ? Number(sourceMessageId || 0)
-        : 0,
-      reasonMessageText:olliTalkBatchCommandNeedsReason(command) && String(command?.reason || '').trim()
-        ? String(sourceMessageText || '').trim()
-        : '',
-      memoNote:String(command?.memoNote || '').trim(),
-      needsClarification:command?.batchDraft===true,
-      structuredSelection:null,
-      contextText:'',
-      clarificationMessageId:0,
-      clarificationMessageText:''
-    }));
+  function buildOlliTalkBatchAgentCommands(batch,sourceMessageId,sourceMessageText,interpretedBatchCommands=[]){
+    const parsed=Array.isArray(batch?.commands)?batch.commands:[];
+    const structured=Array.isArray(interpretedBatchCommands)?interpretedBatchCommands:[];
+    if(structured.length!==parsed.length) return [];
+    return parsed.map((command,index)=>{
+      const system=structured[index]&&typeof structured[index]==='object'?structured[index]:{};
+      const intent=String(command?.intent || '').trim();
+      if(String(system?.action || '').trim()!==intent) return null;
+      const reason=String(system?.reason || '').trim() || String(command?.reason || '').trim();
+      const item={
+        intent,
+        text:String(command?.originalText || '').trim(),
+        studentName:String(system?.studentName || '').trim() || String(command?.studentName || command?.guestName || '').trim(),
+        division:String(system?.division || '').trim() || String(command?.division || '').trim(),
+        dateExpression:String(system?.dateExpression || '').trim() || String(command?.dateLabel || command?.dateSpec?.label || '').trim(),
+        timeSlot:Number(system?.timeSlot || command?.timeSlot || 0),
+        classGroup:(String(system?.classGroup || '').trim() || String(command?.classGroup || '').trim()).toUpperCase(),
+        reason,
+        reasonMessageId:olliTalkBatchCommandNeedsReason(command) && reason ? Number(sourceMessageId || 0) : 0,
+        reasonMessageText:olliTalkBatchCommandNeedsReason(command) && reason ? String(sourceMessageText || '').trim() : '',
+        memoNote:String(system?.memoNote || '').trim() || String(command?.memoNote || '').trim(),
+        needsClarification:command?.batchDraft===true,
+        structuredSelection:null,
+        structuredCommand:Object.assign({},system,{action:intent}),
+        contextText:'',
+        clarificationMessageId:0,
+        clarificationMessageText:''
+      };
+      return item;
+    }).filter(Boolean);
   }
 
   function olliTalkBatchStructuredMakeupCommand(command,index){
@@ -2437,7 +2444,7 @@
   }
 
 
-  async function resolveOlliTalkSharedAgentRouteTurn(route,commandText,context,replyToMessageId){
+  async function resolveOlliTalkSharedAgentRouteTurn(route,commandText,context,replyToMessageId,batchCommands=[]){
     if(!route || !route.key) return null;
     const parsed=route.parsed || null;
 
@@ -2448,7 +2455,10 @@
         return resolveOlliTalkTimetableAdminAgentTurn(commandText,parsed,context,replyToMessageId);
       case 'batch_write':{
         const sourceId=Number(replyToMessageId || 0);
-        const commands=buildOlliTalkBatchAgentCommands(parsed,sourceId,commandText);
+        const commands=buildOlliTalkBatchAgentCommands(parsed,sourceId,commandText,batchCommands);
+        if(commands.length!==(Array.isArray(parsed?.commands)?parsed.commands.length:0)){
+          throw new Error('복합명령 구조화 결과와 규칙 시스템 작업 수가 일치하지 않습니다.');
+        }
         const missingIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
         if(missingIndex>=0){
           olliTalkPendingActionReason={intent:'batch_write',__batchAgent:{
@@ -2624,6 +2634,32 @@
       availabilityPurpose:String(structuredRaw.availabilityPurpose || '').trim(),
       rosterKind:String(structuredRaw.rosterKind || '').trim()
     };
+    const batchCommands=(Array.isArray(language.batchCommands)?language.batchCommands:[]).slice(0,3).map((command)=>({
+      action:String(command?.action || '').trim(),
+      studentName:String(command?.studentName || '').trim(),
+      division:String(command?.division || '').trim(),
+      dateExpression:String(command?.dateExpression || '').trim(),
+      timeSlot:Number(command?.timeSlot || 0),
+      classGroup:String(command?.classGroup || '').trim().toUpperCase(),
+      weekday:Number(command?.weekday || 0),
+      classTime:Number(command?.classTime || 0),
+      classMinute:Number(command?.classMinute || 0),
+      pickupKind:String(command?.pickupKind || '').trim(),
+      pickupLabel:String(command?.pickupLabel || '').trim(),
+      pickupTime:String(command?.pickupTime || '').trim(),
+      sourceDateExpression:String(command?.sourceDateExpression || '').trim(),
+      sourceWeekday:Number(command?.sourceWeekday || 0),
+      sourceTimeSlot:Number(command?.sourceTimeSlot || 0),
+      sourceMinute:Number(command?.sourceMinute || 0),
+      sourceClassGroup:String(command?.sourceClassGroup || '').trim().toUpperCase(),
+      targetDateExpression:String(command?.targetDateExpression || '').trim(),
+      targetWeekday:Number(command?.targetWeekday || 0),
+      targetTimeSlot:Number(command?.targetTimeSlot || 0),
+      targetMinute:Number(command?.targetMinute || 0),
+      targetClassGroup:String(command?.targetClassGroup || '').trim().toUpperCase(),
+      reason:String(command?.reason || '').trim(),
+      memoNote:String(command?.memoNote || '').trim()
+    }));
     const reply=String(language.reply || '').trim();
     if(data?.ok!==true || !['routine','feedback','chat'].includes(lane) || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
       throw new Error('올리 공통 해석 결과가 올바르지 않습니다.');
@@ -2634,6 +2670,7 @@
       intent,
       standaloneCommand,
       structuredCommand,
+      batchCommands,
       reply,
       contextUsed:language.contextUsed===true
     };
@@ -2692,6 +2729,7 @@
     const interpreterRoute=String(interpretation.route || '').trim();
     const interpreterIntent=String(interpretation.intent || '').trim();
     const structuredCommand=interpretation.structuredCommand || null;
+    const batchCommands=Array.isArray(interpretation.batchCommands)?interpretation.batchCommands:[];
     commandText=String(interpretation.standaloneCommand || rawCommandText).trim();
 
     if(options.allowSuggestedQuery && router && typeof router.runSuggestedQuery==='function'){
@@ -3251,7 +3289,7 @@
       : null;
     if(interpreterRoute==='agent'){
       if(sharedRoute){
-        const routedTurn=await resolveOlliTalkSharedAgentRouteTurn(sharedRoute,commandText,context,replyToMessageId);
+        const routedTurn=await resolveOlliTalkSharedAgentRouteTurn(sharedRoute,commandText,context,replyToMessageId,batchCommands);
         if(routedTurn) return routedTurn;
       }
       const resolved=await resolveOlliTalkAiReply(rawCommandText,context);
