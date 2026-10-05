@@ -657,10 +657,10 @@
       if(clean(prepared.payload?.field)==='division' && prepared.payload){
         return saveStructuredDivisionChoice(current,prepared.message || '유치부인지 초등부인지 선택해 주세요.',prepared.payload,null);
       }
-      if(clean(prepared.payload?.field)==='date' && prepared.payload){
+      if(['date','target_date'].includes(clean(prepared.payload?.field)) && prepared.payload){
         return saveStructuredDateChoice(current,prepared.message || '날짜를 선택해 주세요.',prepared.payload,null);
       }
-      if(clean(prepared.payload?.field)==='time' && prepared.payload){
+      if(['time','target_time'].includes(clean(prepared.payload?.field)) && prepared.payload){
         return saveStructuredTimeChoice(current,prepared.message || '시간을 선택해 주세요.',prepared.payload,null);
       }
       return saveAssistantReply(current,clean(prepared.message) || '필요한 정보를 선택해 주세요.',null);
