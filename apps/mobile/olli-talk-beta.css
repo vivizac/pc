@@ -938,31 +938,15 @@
 }
 
 #olliTalkBetaScreen .olliTalkBetaTypingBubble{
-  min-width:32px;
   min-height:26px;
   display:inline-flex;
   align-items:center;
-  justify-content:center;
-  gap:3px;
-  padding:6px 8px;
-}
-#olliTalkBetaScreen .olliTalkBetaTypingDot{
-  width:3px;
-  height:3px;
-  display:block;
-  border-radius:50%;
-  background:#8f949b;
-  opacity:.38;
-  animation:olliTalkBetaTypingDot 1.05s ease-in-out infinite;
-}
-#olliTalkBetaScreen .olliTalkBetaTypingDot:nth-child(2){animation-delay:.14s}
-#olliTalkBetaScreen .olliTalkBetaTypingDot:nth-child(3){animation-delay:.28s}
-@keyframes olliTalkBetaTypingDot{
-  0%,60%,100%{transform:translateY(0);opacity:.38}
-  30%{transform:translateY(-2px);opacity:1}
-}
-@media (prefers-reduced-motion:reduce){
-  #olliTalkBetaScreen .olliTalkBetaTypingDot{animation:none;opacity:.65}
+  justify-content:flex-start;
+  padding:7px 11px;
+  color:#6f747b;
+  font-size:calc(12px * var(--olli-text-scale, 1));
+  font-weight:500;
+  line-height:1.2;
 }
 
 #olliTalkBetaScreen .olliTalkBetaBubble.olliTalkBetaLinkBubble{
@@ -1121,6 +1105,11 @@
 #olliTalkBetaScreen .olliTalkBetaMessage.ai .olliTalkBetaBubble.olliTalkBetaSystemBubble{
   --olli-talk-bubble-bg:linear-gradient(90deg,color(display-p3 .9255 .4392 .6863) 0%,color(display-p3 .9294 .4471 .6627) 34%,color(display-p3 .9373 .5216 .5294) 52%,color(display-p3 .9451 .5882 .4118) 68%,color(display-p3 .9451 .6549 .3216) 83%,color(display-p3 .9569 .7255 .2706) 100%);
   color:#fff;
+}
+
+#olliTalkBetaScreen .olliTalkBetaMessage.ai .olliTalkBetaBubble.olliTalkBetaCancelSystemBubble{
+  --olli-talk-bubble-bg:#fff;
+  color:#201818;
 }
 
 #olliTalkBetaScreen .olliTalkBetaInlineSystemResult{
