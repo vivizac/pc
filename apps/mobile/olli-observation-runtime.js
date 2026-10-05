@@ -1590,8 +1590,13 @@ function openStudentMemoPageById(studentId) {
 
 
 
-function closeMemoPage() {
-  prepareObservationMemoPageClose();
+async function closeMemoPage() {
+  if (typeof window.finalizeObservationMemoSessionCheckpoint === 'function') {
+    await window.finalizeObservationMemoSessionCheckpoint({ reason:'memo-close' });
+  } else {
+    prepareObservationMemoPageClose();
+  }
+  if (typeof closeObservationMemoVersionHistory === 'function') closeObservationMemoVersionHistory();
   returnFromObservationMemoScreen(() => loadRecords(''));
 }
 
