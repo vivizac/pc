@@ -63,6 +63,7 @@
   let olliTalkSearchMatches = [];
   let olliTalkSearchIndex = -1;
   let olliTalkPendingActionReason = null;
+  let olliTalkPendingTextInputMessageId = '';
   let olliTalkPendingMakeupDialogue = null;
   const olliTalkActionBusy = new Set();
   const olliTalkOlliReplyBusy = new Set();
@@ -541,7 +542,7 @@
 
         if(prepared.kind==='action_needs_reason' && prepared.payload){
           olliTalkPendingActionReason=Object.assign({},prepared.payload);
-          return saveReply(String(prepared.message || '').trim() || '사유를 알려주세요.');
+          return saveOlliTalkPendingTextInputReply(context,String(prepared.message || '').trim() || '사유를 알려주세요.',replyToMessageId);
         }
 
         if(prepared.kind==='action_rejected'){
@@ -622,36 +623,148 @@
     return payload.message;
   }
 
+  async function saveOlliTalkPendingTextInputReply(context,message,replyToMessageId){
+    const text=String(message || '').trim() || '내용을 입력해 주세요.';
+    const assistantMessage=await saveOlliTalkOlliReply(context,text,replyToMessageId);
+    olliTalkPendingTextInputMessageId=String(assistantMessage?.id || '').trim();
+    return {
+      assistantMessage,
+      replyText:text,
+      recordAi:false
+    };
+  }
+
+  function focusOlliTalkPendingTextInput(){
+    const input=getOlliTalkBetaInput();
+    if(!input) return false;
+    try { input.focus({preventScroll:true}); } catch (_) { input.focus(); }
+    return true;
+  }
+
+  function createOlliTalkPendingTextInputButton(){
+    const wrap=document.createElement('div');
+    wrap.className='olliTalkBetaPendingInput';
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='olliTalkBetaPendingInputButton';
+    button.textContent='입력하기';
+    button.setAttribute('aria-label','요청한 내용을 입력하기');
+    button.addEventListener('click',focusOlliTalkPendingTextInput);
+    wrap.appendChild(button);
+    return wrap;
+  }
+
+  function shouldShowOlliTalkPendingTextInput(item){
+    return !!olliTalkPendingActionReason
+      && String(item?.message_type || '').trim()==='ai'
+      && String(item?.id || '').trim()===String(olliTalkPendingTextInputMessageId || '').trim();
+  }
+
+  async function saveOlliTalkStructuredTargetChoice(context,body,payload,replyToMessageId){
+    const result=await callOlliTalkRpc('olli_team_chat_send_structured_target_choice',{
+      p_session_token:context.sessionToken,
+      p_academy_id:context.academyId,
+      p_body:normalizeOlliTalkActionPrompt(body),
+      p_action_payload:payload,
+      p_client_message_id:createOlliTalkClientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if(!result?.ok || !result?.message?.action){
+      throw new Error(result?.message || '선택 카드를 저장하지 못했습니다.');
+    }
+    return result.message;
+  }
+
+  async function saveOlliTalkStructuredStudentChoice(context,body,payload,replyToMessageId){
+    const result=await callOlliTalkRpc('olli_team_chat_send_structured_student_choice',{
+      p_session_token:context.sessionToken,
+      p_academy_id:context.academyId,
+      p_body:normalizeOlliTalkActionPrompt(body),
+      p_action_payload:payload,
+      p_client_message_id:createOlliTalkClientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if(!result?.ok || !result?.message?.action){
+      throw new Error(result?.message || '학생 선택 카드를 저장하지 못했습니다.');
+    }
+    return result.message;
+  }
+
+  async function saveOlliTalkStructuredDivisionChoice(context,body,payload,replyToMessageId){
+    const result=await callOlliTalkRpc('olli_team_chat_send_structured_division_choice',{
+      p_session_token:context.sessionToken,
+      p_academy_id:context.academyId,
+      p_body:normalizeOlliTalkActionPrompt(body),
+      p_action_payload:payload,
+      p_client_message_id:createOlliTalkClientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if(!result?.ok || !result?.message?.action){
+      throw new Error(result?.message || '수업 구분 선택 카드를 저장하지 못했습니다.');
+    }
+    return result.message;
+  }
+
+  async function saveOlliTalkStructuredTimeChoice(context,body,payload,replyToMessageId){
+    const result=await callOlliTalkRpc('olli_team_chat_send_structured_time_choice',{
+      p_session_token:context.sessionToken,
+      p_academy_id:context.academyId,
+      p_body:normalizeOlliTalkActionPrompt(body),
+      p_action_payload:payload,
+      p_client_message_id:createOlliTalkClientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if(!result?.ok || !result?.message?.action){
+      throw new Error(result?.message || '시간 선택 카드를 저장하지 못했습니다.');
+    }
+    return result.message;
+  }
+
+  async function saveOlliTalkStructuredDateChoice(context,body,payload,replyToMessageId){
+    const result=await callOlliTalkRpc('olli_team_chat_send_structured_date_choice',{
+      p_session_token:context.sessionToken,
+      p_academy_id:context.academyId,
+      p_body:normalizeOlliTalkActionPrompt(body),
+      p_action_payload:payload,
+      p_client_message_id:createOlliTalkClientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if(!result?.ok || !result?.message?.action){
+      throw new Error(result?.message || '날짜 선택 카드를 저장하지 못했습니다.');
+    }
+    return result.message;
+  }
+
   async function saveOlliTalkActionReply(context,body,command,replyToMessageId){
     const actionType=String(command?.intent || '').trim();
     if(!actionType) throw new Error('작업 종류를 확인하지 못했습니다.');
 
-    const payload=await callOlliTalkRpc('olli_team_chat_send_action',{
+    const rpcName=actionType==='choose_makeup_group'
+      ? 'olli_team_chat_send_makeup_group_choice'
+      : actionType==='choose_trial_group'
+        ? 'olli_team_chat_send_trial_group_choice'
+        : actionType==='choose_waitlist_group'
+          ? 'olli_team_chat_send_waitlist_group_choice'
+          : actionType==='choose_move_group'
+            ? 'olli_team_chat_send_move_group_choice'
+            : 'olli_team_chat_send_action';
+    const rpcPayload={
       p_session_token:context.sessionToken,
       p_academy_id:context.academyId,
       p_body:normalizeOlliTalkActionPrompt(body),
-      p_action_type:actionType,
       p_action_payload:command,
       p_client_message_id:createOlliTalkClientMessageId(),
       p_reply_to_message_id:Number(replyToMessageId || 0) || null
-    });
+    };
+    if(rpcName==='olli_team_chat_send_action')rpcPayload.p_action_type=actionType;
+    const payload=await callOlliTalkRpc(rpcName,rpcPayload);
     if(!payload?.ok || !payload?.message?.action){
       throw new Error(payload?.message || '작업 카드를 저장하지 못했습니다.');
     }
     return payload.message;
   }
 
-  function parseOlliTalkAttendanceStatusAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parseAttendanceStatusMutationIntent!=='function') return null;
-    try{
-      return router.parseAttendanceStatusMutationIntent(commandText) || null;
-    }catch(error){
-      console.warn('올리톡 출석부 상태 변경 Agent 후보 판별 실패:',error);
-      return null;
-    }
-  }
-
-  function parseOlliTalkTimetableAdminAgentCandidate(commandText,router=window.OlliCommandRouter){
+  function parseOlliTalkTimetableAdminRuleCandidate(commandText,router=window.OlliCommandRouter){
     if(!router) return null;
     try{
       const parsers=[
@@ -670,43 +783,6 @@
       console.warn('올리톡 시간표 관리 Agent 후보 판별 실패:',error);
       return null;
     }
-  }
-
-  function parseOlliTalkTimetableReadAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parseQueryIntent!=='function') return null;
-    try{
-      const parsed=router.parseQueryIntent(commandText);
-      return parsed && ['find_available_slots','find_roster_entries','find_pickups','multi_read_query'].includes(String(parsed.intent || '').trim())
-        ? parsed
-        : null;
-    }catch(error){
-      console.warn('올리톡 시간표 읽기 Agent 후보 판별 실패:',error);
-      return null;
-    }
-  }
-
-  function isOlliTalkStudentAttendanceReadCandidate(commandText){
-    const compact=String(commandText || '').replace(/\s+/g,'');
-    if(!compact) return false;
-    return /(?:출결|출석(?:기록|현황|내역)?|결석(?:기록|현황|내역|횟수))/.test(compact)
-      && /(?:알려|보여|확인|조회|기록|현황|내역|횟수|몇번|몇회|했어|했나|있어|어때)/.test(compact);
-  }
-
-  function isOlliTalkStudentPickupReadCandidate(commandText){
-    const compact=String(commandText || '').replace(/\s+/g,'');
-    return !!compact && (
-      /(?:픽업|하원).*(?:일정|시간|어디|몇시|확인|알려|보여|조회)/.test(compact)
-      || /(?:일정|시간|어디|몇시).*(?:픽업|하원)/.test(compact)
-    );
-  }
-
-  function isOlliTalkStudentScheduleReadCandidate(commandText){
-    const compact=String(commandText || '').replace(/\s+/g,'');
-    return !!compact && (
-      /시간표/.test(compact)
-      || /수업.*(?:언제|요일|몇시|시간|스케줄)/.test(compact)
-      || /(?:언제|요일|몇시|시간|스케줄).*수업/.test(compact)
-    );
   }
 
   function parseOlliTalkBatchAgentCandidate(commandText,router=window.OlliCommandRouter){
@@ -761,53 +837,169 @@
     return null;
   }
 
-  function buildOlliTalkBatchAgentCommands(batch,sourceMessageId,sourceMessageText){
-    return (Array.isArray(batch?.commands)?batch.commands:[]).map(command=>({
-      intent:String(command?.intent || '').trim(),
-      text:String(command?.originalText || '').trim(),
-      studentName:String(command?.studentName || command?.guestName || '').trim(),
-      reason:String(command?.reason || '').trim(),
-      reasonMessageId:olliTalkBatchCommandNeedsReason(command) && String(command?.reason || '').trim()
-        ? Number(sourceMessageId || 0)
-        : 0,
-      reasonMessageText:olliTalkBatchCommandNeedsReason(command) && String(command?.reason || '').trim()
-        ? String(sourceMessageText || '').trim()
-        : '',
-      memoNote:String(command?.memoNote || '').trim(),
-      needsClarification:command?.batchDraft===true,
-      contextText:'',
-      clarificationMessageId:0,
-      clarificationMessageText:''
-    }));
+  function buildOlliTalkBatchAgentCommands(batch,sourceMessageId,sourceMessageText,interpretedBatchCommands=[]){
+    const parsed=Array.isArray(batch?.commands)?batch.commands:[];
+    const structured=Array.isArray(interpretedBatchCommands)?interpretedBatchCommands:[];
+    if(structured.length!==parsed.length) return [];
+    return parsed.map((command,index)=>{
+      const system=structured[index]&&typeof structured[index]==='object'?structured[index]:{};
+      const intent=String(command?.intent || '').trim();
+      if(String(system?.action || '').trim()!==intent) return null;
+      const reason=String(system?.reason || '').trim() || String(command?.reason || '').trim();
+      const item={
+        intent,
+        text:String(command?.originalText || '').trim(),
+        studentName:String(system?.studentName || '').trim() || String(command?.studentName || command?.guestName || '').trim(),
+        division:String(system?.division || '').trim() || String(command?.division || '').trim(),
+        dateExpression:String(system?.dateExpression || '').trim() || String(command?.dateLabel || command?.dateSpec?.label || '').trim(),
+        timeSlot:Number(system?.timeSlot || command?.timeSlot || 0),
+        classGroup:(String(system?.classGroup || '').trim() || String(command?.classGroup || '').trim()).toUpperCase(),
+        reason,
+        reasonMessageId:olliTalkBatchCommandNeedsReason(command) && reason ? Number(sourceMessageId || 0) : 0,
+        reasonMessageText:olliTalkBatchCommandNeedsReason(command) && reason ? String(sourceMessageText || '').trim() : '',
+        memoNote:String(system?.memoNote || '').trim() || String(command?.memoNote || '').trim(),
+        needsClarification:command?.batchDraft===true || ['add_makeup','add_trial','add_waitlist','add_pickup'].includes(intent),
+        structuredSelection:null,
+        structuredCommand:Object.assign({},system,{action:intent}),
+        contextText:'',
+        clarificationMessageId:0,
+        clarificationMessageText:''
+      };
+      return item;
+    }).filter(Boolean);
   }
 
-  function parseOlliTalkTimetableMemoAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router) return null;
-    try{
-      const deleted=typeof router.parseTimetableMemoDeleteMutationIntent==='function'
-        ? router.parseTimetableMemoDeleteMutationIntent(commandText)
-        : null;
-      if(String(deleted?.intent || '').trim()==='delete_timetable_memo') return deleted;
-      const added=typeof router.parseTimetableMemoAddMutationIntent==='function'
-        ? router.parseTimetableMemoAddMutationIntent(commandText)
-        : null;
-      return String(added?.intent || '').trim()==='add_timetable_memo' ? added : null;
-    }catch(error){
-      console.warn('올리톡 시간표 메모 Agent 후보 판별 실패:',error);
-      return null;
-    }
+  function olliTalkBatchStructuredCommand(command,index){
+    const intent=String(command?.intent || '').trim();
+    const base=command?.structuredCommand&&typeof command.structuredCommand==='object'
+      ? Object.assign({},command.structuredCommand)
+      : {};
+    return Object.assign(base,{
+      action:intent,
+      studentName:String(base.studentName || command?.studentName || '').trim(),
+      division:String(base.division || command?.division || '').trim(),
+      dateExpression:String(base.dateExpression || command?.dateExpression || '').trim(),
+      timeSlot:Number(base.timeSlot || command?.timeSlot || 0),
+      classGroup:String(base.classGroup || command?.classGroup || '').trim().toUpperCase(),
+      batchStructured:true,
+      batchCommandIndex:Number(index)
+    });
   }
 
-  function isOlliTalkTrialAddAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parseTrialMutationIntent!=='function') return false;
-    try{
-      const parsed=router.parseTrialMutationIntent(commandText);
-      const division=String(parsed?.division || '').trim().toLowerCase();
-      return String(parsed?.intent || '').trim()==='add_trial' && ['elementary','kinder'].includes(division);
-    }catch(error){
-      console.warn('올리톡 체험 등록 Agent 후보 판별 실패:',error);
-      return false;
+
+  function activeOlliTalkBatchStructuredCommand(draft){
+    const pending=olliTalkPendingActionReason?.__batchAgent;
+    const index=Number(draft?.batchCommandIndex);
+    if(
+      String(olliTalkPendingActionReason?.intent || '').trim()!=='batch_write'
+      || !pending
+      || draft?.batchStructured!==true
+      || !Number.isInteger(index)
+      || index<0
+    ) return null;
+    const commands=Array.isArray(pending.commands)
+      ? pending.commands.map(item=>Object.assign({},item))
+      : [];
+    if(!['add_makeup','add_trial','add_waitlist','add_pickup'].includes(String(commands[index]?.intent || '').trim())) return null;
+    return {pending,index,commands};
+  }
+
+  async function finishOlliTalkBatchStructuredCommand(draft,prepared,context){
+    const active=activeOlliTalkBatchStructuredCommand(draft);
+    if(!active || prepared?.kind!=='action_pending' || !prepared?.payload) return null;
+    const intent=String(active.commands[active.index]?.intent || '').trim();
+    let selection=null;
+    if(intent==='add_makeup'){
+      selection={
+        sessionDate:String(prepared.payload.sessionDate || '').trim(),
+        timeSlot:Number(prepared.payload.timeSlot || 0),
+        classGroup:String(prepared.payload.classGroup || '').trim().toUpperCase()
+      };
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(selection.sessionDate)||selection.timeSlot<=0||!['A','B'].includes(selection.classGroup)){
+        throw new Error('복합쓰기 보강 선택 결과를 확인하지 못했습니다.');
+      }
+    }else if(intent==='add_trial'){
+      selection={
+        sessionDate:String(prepared.payload.sessionDate || '').trim(),
+        timeSlot:Number(prepared.payload.timeSlot || 0),
+        classGroup:String(prepared.payload.classGroup || '').trim().toUpperCase(),
+        division:String(prepared.payload.division || '').trim()
+      };
+    }else if(intent==='add_waitlist'){
+      selection={
+        sessionDate:String(prepared.payload.sessionDate || prepared.payload.effectiveDate || '').trim(),
+        timeSlot:Number(prepared.payload.targetTimeSlot || 0),
+        classGroup:String(prepared.payload.targetClassGroup || '').trim().toUpperCase(),
+        division:String(prepared.payload.division || '').trim()
+      };
+    }else if(intent==='add_pickup'){
+      selection={
+        weekday:Number(prepared.payload.weekday || 0),
+        classTime:Number(prepared.payload.classTime || 0)
+      };
     }
+    if(!selection) throw new Error('복합쓰기 선택 결과를 확인하지 못했습니다.');
+
+    active.commands[active.index]=Object.assign({},active.commands[active.index],{
+      needsClarification:false,
+      structuredSelection:selection
+    });
+
+    const nextIndex=active.commands.findIndex(olliTalkBatchCommandNeedsClarification);
+    const nextPending={
+      sourceMessageId:Number(active.pending.sourceMessageId || 0),
+      sourceMessageText:String(active.pending.sourceMessageText || '').trim(),
+      commands:active.commands
+    };
+    if(nextIndex>=0){
+      olliTalkPendingActionReason={intent:'batch_write',__batchAgent:nextPending};
+      return startOlliTalkBatchStructuredChoice(context,nextPending,nextIndex);
+    }
+
+    olliTalkPendingActionReason=null;
+    const turn=await resolveOlliTalkBatchAgentTurn({
+      sourceText:nextPending.sourceMessageText,
+      sourceMessageId:nextPending.sourceMessageId,
+      commands:active.commands,
+      context
+    });
+    return turn?.assistantMessage || null;
+  }
+
+
+  async function startOlliTalkBatchStructuredChoice(context,pendingBatch,index){
+    const router=window.OlliCommandRouter;
+    const command=Array.isArray(pendingBatch?.commands)?pendingBatch.commands[index]:null;
+    if(
+      !router
+      || typeof router.prepareStructuredAction!=='function'
+      || !['add_makeup','add_trial','add_waitlist','add_pickup'].includes(String(command?.intent || '').trim())
+    ){
+      throw new Error('복합쓰기 선택 기능을 준비하지 못했습니다.');
+    }
+
+    const prepared=await router.prepareStructuredAction(
+      olliTalkBatchStructuredCommand(command,index),
+      {source:'olli_talk_batch_structured_choice',selectedStudent:null,autoSubmitContext:null}
+    );
+    if(prepared?.handled!==true) throw new Error('복합쓰기 선택을 준비하지 못했습니다.');
+
+    const replyToMessageId=Number(pendingBatch?.sourceMessageId || 0) || null;
+    if(prepared.kind==='action_needs_field' && prepared.payload){
+      const field=String(prepared.payload.field || '').trim();
+      if(field==='student_choice') return saveOlliTalkStructuredStudentChoice(context,prepared.message || '학생을 선택해 주세요.',prepared.payload,replyToMessageId);
+      if(field==='target_choice') return saveOlliTalkStructuredTargetChoice(context,prepared.message || '보강할 반을 선택해 주세요.',prepared.payload,replyToMessageId);
+      if(field==='division') return saveOlliTalkStructuredDivisionChoice(context,prepared.message || '유치부인지 초등부인지 선택해 주세요.',prepared.payload,replyToMessageId);
+      if(field==='date') return saveOlliTalkStructuredDateChoice(context,prepared.message || '보강 날짜를 선택해 주세요.',prepared.payload,replyToMessageId);
+      if(field==='time') return saveOlliTalkStructuredTimeChoice(context,prepared.message || '보강 시간을 선택해 주세요.',prepared.payload,replyToMessageId);
+    }
+    if(prepared.kind==='action_pending' && prepared.payload){
+      return finishOlliTalkBatchStructuredCommand(olliTalkBatchStructuredCommand(command,index),prepared,context);
+    }
+    if(prepared.kind==='action_rejected'){
+      return saveOlliTalkOlliReply(context,String(prepared.message || '').trim() || '보강 등록을 준비하지 못했어요.',replyToMessageId);
+    }
+    throw new Error('복합쓰기 선택 상태를 확인하지 못했습니다.');
   }
 
   function parseOlliTalkTrialCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
@@ -818,56 +1010,6 @@
     }catch(error){
       console.warn('올리톡 체험 취소 Agent 후보 판별 실패:',error);
       return null;
-    }
-  }
-
-  function isOlliTalkTrialUpdateAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parseTrialUpdateMutationIntent!=='function') return false;
-    try{
-      return String(router.parseTrialUpdateMutationIntent(commandText)?.intent || '').trim()==='update_trial';
-    }catch(error){
-      console.warn('올리톡 체험 변경 Agent 후보 판별 실패:',error);
-      return false;
-    }
-  }
-
-  function isOlliTalkWaitlistAddAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parseWaitlistMutationIntent!=='function') return false;
-    try{
-      return String(router.parseWaitlistMutationIntent(commandText)?.intent || '').trim()==='add_waitlist';
-    }catch(error){
-      console.warn('올리톡 대기 등록 Agent 후보 판별 실패:',error);
-      return false;
-    }
-  }
-
-  function isOlliTalkWaitlistUpdateAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parseWaitlistUpdateMutationIntent!=='function') return false;
-    try{
-      return String(router.parseWaitlistUpdateMutationIntent(commandText)?.intent || '').trim()==='update_waitlist';
-    }catch(error){
-      console.warn('올리톡 대기 변경 Agent 후보 판별 실패:',error);
-      return false;
-    }
-  }
-
-  function isOlliTalkWaitlistCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parseWaitlistCancelMutationIntent!=='function') return false;
-    try{
-      return String(router.parseWaitlistCancelMutationIntent(commandText)?.intent || '').trim()==='cancel_waitlist';
-    }catch(error){
-      console.warn('올리톡 대기 취소 Agent 후보 판별 실패:',error);
-      return false;
-    }
-  }
-
-  function isOlliTalkMakeupAddAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parseMakeupMutationIntent!=='function') return false;
-    try{
-      return String(router.parseMakeupMutationIntent(commandText)?.intent || '').trim()==='add_makeup';
-    }catch(error){
-      console.warn('올리톡 보강 등록 Agent 후보 판별 실패:',error);
-      return false;
     }
   }
 
@@ -913,46 +1055,6 @@
     }
   }
 
-  function isOlliTalkMakeupUpdateAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parseMakeupUpdateMutationIntent!=='function') return false;
-    try{
-      return String(router.parseMakeupUpdateMutationIntent(commandText)?.intent || '').trim()==='update_makeup';
-    }catch(error){
-      console.warn('올리톡 보강 변경 Agent 후보 판별 실패:',error);
-      return false;
-    }
-  }
-
-  function isOlliTalkPickupCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parsePickupCancelMutationIntent!=='function') return false;
-    try{
-      return String(router.parsePickupCancelMutationIntent(commandText)?.intent || '').trim()==='cancel_pickup';
-    }catch(error){
-      console.warn('올리톡 픽업 삭제 Agent 후보 판별 실패:',error);
-      return false;
-    }
-  }
-
-  function isOlliTalkPickupUpdateAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parsePickupUpdateMutationIntent!=='function') return false;
-    try{
-      return String(router.parsePickupUpdateMutationIntent(commandText)?.intent || '').trim()==='update_pickup';
-    }catch(error){
-      console.warn('올리톡 픽업 수정 Agent 후보 판별 실패:',error);
-      return false;
-    }
-  }
-
-  function isOlliTalkPickupAddAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parsePickupMutationIntent!=='function') return false;
-    try{
-      return String(router.parsePickupMutationIntent(commandText)?.intent || '').trim()==='add_pickup';
-    }catch(error){
-      console.warn('올리톡 픽업 등록 Agent 후보 판별 실패:',error);
-      return false;
-    }
-  }
-
   function parseOlliTalkAbsenceAgentCandidate(commandText,router=window.OlliCommandRouter){
     if(!router || typeof router.parseAbsenceMutationIntent!=='function') return null;
     try{
@@ -970,26 +1072,6 @@
       return String(router.parseClassMutationIntent(commandText)?.intent || '').trim()==='add_class_once';
     }catch(error){
       console.warn('올리톡 1회 수업 Agent 후보 판별 실패:',error);
-      return false;
-    }
-  }
-
-  function isOlliTalkMoveAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parseScheduleMoveMutationIntent!=='function') return false;
-    try{
-      return String(router.parseScheduleMoveMutationIntent(commandText)?.intent || '').trim()==='move_class';
-    }catch(error){
-      console.warn('올리톡 수업 이동 Agent 후보 판별 실패:',error);
-      return false;
-    }
-  }
-
-  function isOlliTalkMoveCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parseMoveCancelMutationIntent!=='function') return false;
-    try{
-      return String(router.parseMoveCancelMutationIntent(commandText)?.intent || '').trim()==='cancel_move';
-    }catch(error){
-      console.warn('올리톡 수업 이동 취소 Agent 후보 판별 실패:',error);
       return false;
     }
   }
@@ -1024,7 +1106,7 @@
     };
   }
 
-  async function resolveOlliTalkTimetableAdminAgentTurn(commandText,parsed,context,replyToMessageId){
+  async function resolveOlliTalkTimetableAdminRuleTurn(commandText,parsed,context,replyToMessageId){
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
       throw new Error('시간표 관리 요청의 원문 메시지를 확인하지 못했습니다.');
@@ -1042,11 +1124,62 @@
       })
     });
     const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '시간표 관리 Agent 응답을 받지 못했습니다.');
+    if(!response.ok || data?.ok!==true){
+      throw new Error(data?.error || data?.message || '시간표 관리 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(data?.choiceRequired?.payload){
+      const choiceMessage=String(data.choiceRequired.message || '').trim() || '수업 순서를 변경할 수업을 선택해 주세요.';
+      return {
+        assistantMessage:await saveOlliTalkStructuredTargetChoice(
+          context,
+          choiceMessage,
+          data.choiceRequired.payload,
+          sourceMessageId
+        ),
+        replyText:choiceMessage,
+        recordAi:false
+      };
+    }
+    if(!data?.message?.action){
+      throw new Error(data?.error || data?.message || '시간표 관리 확인 카드를 받지 못했습니다.');
     }
     if(String(data.message.action.action_type || '').trim()!==expectedType){
-      throw new Error('시간표 관리 Agent 작업 종류가 올바르지 않습니다.');
+      throw new Error('시간표 관리 규칙 시스템 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
+  }
+
+
+  async function resolveOlliTalkStructuredTimetableAdminTurn(structuredCommand,context,sourceMessageText,sourceMessageId){
+    const sourceId=Number(sourceMessageId || 0);
+    const sourceText=String(sourceMessageText || '').trim();
+    if(!Number.isSafeInteger(sourceId)||sourceId<=0||!sourceText){
+      throw new Error('수업 순서 변경 원문 메시지를 확인하지 못했습니다.');
+    }
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'structured_timetable_admin_prepare',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:sourceText,
+        sourceMessageId:sourceId,
+        structuredCommand
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||data?.ok!==true||!data?.message?.action){
+      throw new Error(data?.error || data?.message || '시간표 관리 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    const expectedType=String(structuredCommand?.action || '').trim();
+    if(!['set_session_order','set_class_teacher','set_teacher_override'].includes(expectedType)
+      ||String(data.message.action.action_type || '').trim()!==expectedType){
+      throw new Error('시간표 관리 규칙 시스템 작업 종류가 올바르지 않습니다.');
     }
     return {
       assistantMessage:data.message,
@@ -1127,36 +1260,50 @@
     };
   }
 
-  async function resolveOlliTalkTimetableMemoAgentTurn(commandText,parsed,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('시간표 메모 요청의 원문 메시지를 확인하지 못했습니다.');
+  async function resolveOlliTalkStructuredTimetableMemoTurn(structuredCommand,context,sourceMessageText,sourceMessageId){
+    const sourceId=Number(sourceMessageId || 0);
+    const sourceText=String(sourceMessageText || '').trim();
+    const memoNote=String(structuredCommand?.memoNote || structuredCommand?.memo_note || '').trim();
+    if(!Number.isSafeInteger(sourceId)||sourceId<=0||!sourceText){
+      throw new Error('시간표 메모 원문 메시지를 확인하지 못했습니다.');
     }
-    const expectedType=String(parsed?.intent || '').trim();
-    if(!['add_timetable_memo','delete_timetable_memo'].includes(expectedType)){
-      throw new Error('시간표 메모 작업 종류를 확인하지 못했습니다.');
-    }
-
     const response=await fetch('/api/olli-agent',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        mode:'memo_prepare',
+        mode:'structured_memo_prepare',
         academyId:context?.academyId || '',
         sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId,
-        memoNote:String(parsed?.memoNote || '').trim()
+        message:sourceText,
+        sourceMessageId:sourceId,
+        memoNote,
+        structuredCommand
       })
     });
     const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '시간표 메모 Agent 응답을 받지 못했습니다.');
+    if(!response.ok||data?.ok!==true){
+      throw new Error(data?.error || data?.message || '시간표 메모 규칙 시스템 응답을 받지 못했습니다.');
     }
+    if(data?.choiceRequired?.payload){
+      const choiceMessage=String(data.choiceRequired.message || '').trim() || '삭제할 메모를 선택해 주세요.';
+      return {
+        assistantMessage:await saveOlliTalkStructuredTargetChoice(
+          context,
+          choiceMessage,
+          data.choiceRequired.payload,
+          sourceId
+        ),
+        replyText:choiceMessage,
+        recordAi:false
+      };
+    }
+    if(!data?.message?.action){
+      throw new Error(data?.error || data?.message || '시간표 메모 확인 카드를 받지 못했습니다.');
+    }
+    const expectedType=String(structuredCommand?.action || '').trim();
     if(String(data.message.action.action_type || '').trim()!==expectedType){
-      throw new Error('시간표 메모 Agent 작업 종류가 올바르지 않습니다.');
+      throw new Error('시간표 메모 규칙 시스템 작업 종류가 올바르지 않습니다.');
     }
-
     return {
       assistantMessage:data.message,
       replyText:String(data.message.body || '').trim(),
@@ -1164,29 +1311,74 @@
     };
   }
 
-  async function resolveOlliTalkTrialAddAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('체험 등록 요청의 원문 메시지를 확인하지 못했습니다.');
+  function mergeOlliTalkStructuredTrialCancelCommand(previous,current){
+    const before=previous && typeof previous==='object' ? previous : {};
+    const next=current && typeof current==='object' ? current : {};
+    const nextTime=Number(next.timeSlot || 0);
+    const nextMinute=Number(next.classMinute || 0);
+    return {
+      action:'cancel_trial',
+      studentName:String(next.studentName || '').trim() || String(before.studentName || '').trim(),
+      oneTimeSessionId:String(next.oneTimeSessionId || next.one_time_session_id || '').trim() || String(before.oneTimeSessionId || before.one_time_session_id || '').trim(),
+      division:String(next.division || '').trim() || String(before.division || '').trim(),
+      dateExpression:String(next.dateExpression || '').trim() || String(before.dateExpression || '').trim(),
+      timeSlot:nextTime>0 ? nextTime : Number(before.timeSlot || 0),
+      classMinute:(nextTime>0 || nextMinute>0) ? nextMinute : Number(before.classMinute || 0),
+      classGroup:String(next.classGroup || '').trim().toUpperCase() || String(before.classGroup || '').trim().toUpperCase(),
+      reason:String(next.reason || '').trim() || String(before.reason || '').trim(),
+    };
+  }
+
+  async function resolveOlliTalkStructuredTrialCancelTurn({
+    structuredCommand,
+    sourceText,
+    sourceMessageId,
+    reasonText,
+    reasonMessageText,
+    reasonMessageId,
+    context,
+  }){
+    const sourceId=Number(sourceMessageId || 0);
+    const reasonId=Number(reasonMessageId || 0);
+    if(!Number.isSafeInteger(sourceId)||sourceId<=0){
+      throw new Error('체험 취소 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    if(!Number.isSafeInteger(reasonId)||reasonId<=0||!String(reasonText || '').trim()){
+      throw new Error('체험 취소 사유 메시지를 확인하지 못했습니다.');
     }
 
     const response=await fetch('/api/olli-agent',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        mode:'trial_add_prepare',
+        mode:'structured_trial_cancel_prepare',
         academyId:context?.academyId || '',
         sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
+        message:String(sourceText || '').trim(),
+        sourceMessageId:sourceId,
+        reasonMessageId:reasonId,
+        reasonMessageText:String(reasonMessageText || '').trim(),
+        reason:String(reasonText || '').trim(),
+        structuredCommand
       })
     });
     const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '체험 등록 Agent 응답을 받지 못했습니다.');
+    if(!response.ok||data?.ok!==true){
+      throw new Error(data?.error || data?.message || '체험 취소 규칙 시스템 응답을 받지 못했습니다.');
     }
-    if(String(data.message.action.action_type || '').trim()!=='add_trial'){
-      throw new Error('체험 등록 Agent 작업 종류가 올바르지 않습니다.');
+    if(data?.choiceRequired?.payload){
+      const choiceMessage=String(data.choiceRequired.message || '').trim() || '취소할 체험수업을 선택해 주세요.';
+      return {
+        assistantMessage:await saveOlliTalkStructuredTargetChoice(context,choiceMessage,data.choiceRequired.payload,sourceId),
+        replyText:choiceMessage,
+        recordAi:false
+      };
+    }
+    if(!data?.message?.action){
+      throw new Error(data?.error || data?.message || '체험 취소 확인 카드를 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='cancel_trial'){
+      throw new Error('체험 취소 규칙 시스템 작업 종류가 올바르지 않습니다.');
     }
 
     return {
@@ -1242,73 +1434,9 @@
     };
   }
 
-  async function resolveOlliTalkTrialUpdateAgentTurn(commandText,context,replyToMessageId){
+  async function resolveOlliTalkStructuredWaitlistUpdateTurn(structuredCommand,context,sourceText,replyToMessageId){
     const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('체험 변경 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'trial_update_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '체험 변경 Agent 응답을 받지 못했습니다.');
-    }
-    if(String(data.message.action.action_type || '').trim()!=='update_trial'){
-      throw new Error('체험 변경 Agent 작업 종류가 올바르지 않습니다.');
-    }
-
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
-  async function resolveOlliTalkWaitlistAddAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('대기 등록 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'waitlist_add_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '대기 등록 Agent 응답을 받지 못했습니다.');
-    }
-    if(String(data.message.action.action_type || '').trim()!=='add_waitlist'){
-      throw new Error('대기 등록 Agent 작업 종류가 올바르지 않습니다.');
-    }
-
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
-  async function resolveOlliTalkWaitlistUpdateAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+    if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
       throw new Error('대기 변경 요청의 원문 메시지를 확인하지 못했습니다.');
     }
 
@@ -1316,53 +1444,33 @@
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        mode:'waitlist_update_prepare',
+        mode:'structured_waitlist_update_prepare',
         academyId:context?.academyId || '',
         sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
+        message:String(sourceText || '').trim(),
+        sourceMessageId,
+        structuredCommand
       })
     });
     const data=await response.json().catch(()=>({}));
-
-
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '대기 변경 Agent 응답을 받지 못했습니다.');
+    if(!response.ok||data?.ok!==true){
+      throw new Error(data?.error || data?.message || '대기 변경 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(data?.choiceRequired?.payload){
+      const choiceMessage=String(data.choiceRequired.message || '').trim() || '변경할 대기를 선택해 주세요.';
+      return {
+        assistantMessage:await saveOlliTalkStructuredTargetChoice(context,choiceMessage,data.choiceRequired.payload,sourceMessageId),
+        replyText:choiceMessage,
+        recordAi:false
+      };
+    }
+    if(!data?.message?.action){
+      throw new Error(data?.error || data?.message || '대기 변경 규칙 시스템 응답을 받지 못했습니다.');
     }
     if(String(data.message.action.action_type || '').trim()!=='update_waitlist'){
-      throw new Error('대기 변경 Agent 작업 종류가 올바르지 않습니다.');
+      throw new Error('대기 변경 규칙 시스템 작업 종류가 올바르지 않습니다.');
     }
 
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
-  async function resolveOlliTalkWaitlistCancelAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('대기 취소 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'waitlist_cancel_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '대기 취소 Agent 응답을 받지 못했습니다.');
-    }
-    if(String(data.message.action.action_type || '').trim()!=='cancel_waitlist'){
-      throw new Error('대기 취소 Agent 작업 종류가 올바르지 않습니다.');
-    }
     return {
       assistantMessage:data.message,
       replyText:String(data.message.body || '').trim(),
@@ -1434,29 +1542,83 @@
     };
   }
 
-  async function resolveOlliTalkMakeupAddAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('보강 등록 요청의 원문 메시지를 확인하지 못했습니다.');
+  function mergeOlliTalkStructuredMakeupCancelCommand(previous,current){
+    const before=previous && typeof previous==='object' ? previous : {};
+    const next=current && typeof current==='object' ? current : {};
+    const nextTime=Number(next.timeSlot || 0);
+    const nextMinute=Number(next.classMinute || 0);
+    return {
+      action:'cancel_makeup',
+      studentName:String(next.studentName || '').trim() || String(before.studentName || '').trim(),
+      oneTimeSessionId:String(next.oneTimeSessionId || next.one_time_session_id || '').trim() || String(before.oneTimeSessionId || before.one_time_session_id || '').trim(),
+      dateExpression:String(next.dateExpression || '').trim() || String(before.dateExpression || '').trim(),
+      timeSlot:nextTime>0 ? nextTime : Number(before.timeSlot || 0),
+      classMinute:(nextTime>0 || nextMinute>0) ? nextMinute : Number(before.classMinute || 0),
+      classGroup:String(next.classGroup || '').trim().toUpperCase() || String(before.classGroup || '').trim().toUpperCase(),
+      reason:String(next.reason || '').trim() || String(before.reason || '').trim(),
+    };
+  }
+
+  async function resolveOlliTalkStructuredMakeupCancelTurn({
+    structuredCommand,
+    sourceText,
+    sourceMessageId,
+    reasonText,
+    reasonMessageText,
+    reasonMessageId,
+    context,
+  }){
+    const sourceId=Number(sourceMessageId || 0);
+    const reasonId=Number(reasonMessageId || 0);
+    if(!Number.isSafeInteger(sourceId) || sourceId<=0){
+      throw new Error('보강 취소 요청의 원문 메시지를 확인하지 못했습니다.');
+    }
+    if(!Number.isSafeInteger(reasonId) || reasonId<=0 || !String(reasonText || '').trim()){
+      throw new Error('보강 취소 사유 메시지를 확인하지 못했습니다.');
     }
     const response=await fetch('/api/olli-agent',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        mode:'makeup_prepare',
+        mode:'structured_makeup_cancel_prepare',
         academyId:context?.academyId || '',
         sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
+        message:String(sourceText || '').trim(),
+        sourceMessageId:sourceId,
+        reasonMessageId:reasonId,
+        reasonMessageText:String(reasonMessageText || '').trim(),
+        reason:String(reasonText || '').trim(),
+        structuredCommand
       })
     });
     const data=await response.json().catch(()=>({}));
-    return resolveOlliTalkMakeupAgentResponse({
-      response,
-      data,
-      context,
-      replyToMessageId,
-    });
+    if(!response.ok || data?.ok!==true){
+      throw new Error(data?.error || data?.message || '보강 취소 규칙 시스템 응답을 받지 못했습니다.');
+    }
+    if(data?.choiceRequired?.payload){
+      const choiceMessage=String(data.choiceRequired.message || '').trim() || '취소할 보강을 선택해 주세요.';
+      return {
+        assistantMessage:await saveOlliTalkStructuredTargetChoice(
+          context,
+          choiceMessage,
+          data.choiceRequired.payload,
+          sourceId
+        ),
+        replyText:choiceMessage,
+        recordAi:false
+      };
+    }
+    if(!data?.message?.action){
+      throw new Error(data?.error || data?.message || '보강 취소 확인 카드를 받지 못했습니다.');
+    }
+    if(String(data.message.action.action_type || '').trim()!=='cancel_makeup'){
+      throw new Error('보강 취소 규칙 시스템 작업 종류가 올바르지 않습니다.');
+    }
+    return {
+      assistantMessage:data.message,
+      replyText:String(data.message.body || '').trim(),
+      recordAi:false
+    };
   }
 
   async function resolveOlliTalkMakeupCancelAgentTurn({
@@ -1495,128 +1657,6 @@
     }
     if(String(data.message.action.action_type || '').trim()!=='cancel_makeup'){
       throw new Error('보강 취소 Agent 작업 종류가 올바르지 않습니다.');
-    }
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
-  async function resolveOlliTalkMakeupUpdateAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('보강 변경 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'makeup_update_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '보강 변경 Agent 응답을 받지 못했습니다.');
-    }
-    if(String(data.message.action.action_type || '').trim()!=='update_makeup'){
-      throw new Error('보강 변경 Agent 작업 종류가 올바르지 않습니다.');
-    }
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
-  async function resolveOlliTalkPickupCancelAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('픽업 삭제 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'pickup_cancel_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '픽업 삭제 Agent 응답을 받지 못했습니다.');
-    }
-    const actionType=String(data.message.action.action_type || '').trim();
-    if(!['cancel_pickup','cancel_pickup_dropoff'].includes(actionType)){
-      throw new Error('픽업 삭제 Agent 작업 종류가 올바르지 않습니다.');
-    }
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
-  async function resolveOlliTalkPickupUpdateAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('픽업 수정 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'pickup_update_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '픽업 수정 Agent 응답을 받지 못했습니다.');
-    }
-    const actionType=String(data.message.action.action_type || '').trim();
-    if(!['update_pickup_arrival','update_pickup_dropoff'].includes(actionType)){
-      throw new Error('픽업 수정 Agent 작업 종류가 올바르지 않습니다.');
-    }
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
-  async function resolveOlliTalkPickupAddAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('픽업 등록 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'pickup_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '픽업 등록 Agent 응답을 받지 못했습니다.');
-    }
-    if(String(data.message.action.action_type || '').trim()!=='add_pickup'){
-      throw new Error('픽업 등록 Agent 작업 종류가 올바르지 않습니다.');
     }
     return {
       assistantMessage:data.message,
@@ -1703,63 +1743,46 @@
     };
   }
 
-  async function resolveOlliTalkMoveAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('수업 이동 요청의 원문 메시지를 확인하지 못했습니다.');
+  async function resolveOlliTalkStructuredMoveCancelTurn(structuredCommand,context,sourceMessageText,sourceMessageId){
+    const sourceId=Number(sourceMessageId || 0);
+    if(!Number.isSafeInteger(sourceId)||sourceId<=0||!String(sourceMessageText || '').trim()){
+      throw new Error('수업 이동 취소 원문 메시지를 확인하지 못했습니다.');
     }
-
     const response=await fetch('/api/olli-agent',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        mode:'move_prepare',
+        mode:'structured_move_cancel_prepare',
         academyId:context?.academyId || '',
         sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
+        message:String(sourceMessageText || '').trim(),
+        sourceMessageId:sourceId,
+        structuredCommand
       })
     });
     const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '수업 이동 Agent 응답을 받지 못했습니다.');
+    if(!response.ok||data?.ok!==true){
+      throw new Error(data?.error || data?.message || '수업 이동 취소 규칙 시스템 응답을 받지 못했습니다.');
     }
-    if(String(data.message.action.action_type || '').trim()!=='move_class'){
-      throw new Error('수업 이동 Agent 작업 종류가 올바르지 않습니다.');
+    if(data?.choiceRequired?.payload){
+      const choiceMessage=String(data.choiceRequired.message || '').trim() || '취소할 수업 이동 예약을 선택해 주세요.';
+      return {
+        assistantMessage:await saveOlliTalkStructuredTargetChoice(
+          context,
+          choiceMessage,
+          data.choiceRequired.payload,
+          sourceId
+        ),
+        replyText:choiceMessage,
+        recordAi:false
+      };
     }
-
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
-  async function resolveOlliTalkMoveCancelAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('수업 이동 취소 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'move_cancel_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '수업 이동 취소 Agent 응답을 받지 못했습니다.');
+    if(!data?.message?.action){
+      throw new Error(data?.error || data?.message || '수업 이동 취소 확인 카드를 받지 못했습니다.');
     }
     if(String(data.message.action.action_type || '').trim()!=='cancel_move'){
-      throw new Error('수업 이동 취소 Agent 작업 종류가 올바르지 않습니다.');
+      throw new Error('수업 이동 취소 규칙 시스템 작업 종류가 올바르지 않습니다.');
     }
-
     return {
       assistantMessage:data.message,
       replyText:String(data.message.body || '').trim(),
@@ -1772,86 +1795,44 @@
   }
 
 
-  async function resolveOlliTalkSharedAgentRouteTurn(route,commandText,context,replyToMessageId){
+  async function resolveOlliTalkBatchRuleTurn(parsed,commandText,context,replyToMessageId,batchCommands=[]){
+    const sourceId=Number(replyToMessageId || 0);
+    const commands=buildOlliTalkBatchAgentCommands(parsed,sourceId,commandText,batchCommands);
+    if(commands.length!==(Array.isArray(parsed?.commands)?parsed.commands.length:0)){
+      throw new Error('복합명령 구조화 결과와 규칙 시스템 작업 수가 일치하지 않습니다.');
+    }
+    const missingIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
+    if(missingIndex>=0){
+      olliTalkPendingActionReason={intent:'batch_write',__batchAgent:{
+        sourceMessageId:sourceId,sourceMessageText:String(commandText || '').trim(),commands
+      }};
+      const prompt=olliTalkBatchReasonPrompt(commands[missingIndex]);
+      return {assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),replyText:prompt,recordAi:false};
+    }
+    const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
+    if(clarificationIndex>=0){
+      const pendingBatch={sourceMessageId:sourceId,sourceMessageText:String(commandText || '').trim(),commands};
+      olliTalkPendingActionReason={intent:'batch_write',__batchAgent:pendingBatch};
+      const assistantMessage=await startOlliTalkBatchStructuredChoice(context,pendingBatch,clarificationIndex);
+      return {assistantMessage,replyText:String(assistantMessage?.body || '').trim() || '보강 날짜를 선택해 주세요.',recordAi:false};
+    }
+    return resolveOlliTalkBatchAgentTurn({
+      sourceText:String(commandText || '').trim(),sourceMessageId:sourceId,commands,context
+    });
+  }
+
+  async function resolveOlliTalkSharedAgentRouteTurn(route,commandText,context,replyToMessageId,batchCommands=[]){
     if(!route || !route.key) return null;
     const parsed=route.parsed || null;
 
     switch(route.key){
       case 'attendance_status':
         return resolveOlliTalkAttendanceStatusAgentTurn(commandText,parsed,context,replyToMessageId);
-      case 'timetable_admin':
-        return resolveOlliTalkTimetableAdminAgentTurn(commandText,parsed,context,replyToMessageId);
-      case 'batch_write':{
-        const sourceId=Number(replyToMessageId || 0);
-        const commands=buildOlliTalkBatchAgentCommands(parsed,sourceId,commandText);
-        const missingIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
-        if(missingIndex>=0){
-          olliTalkPendingActionReason={intent:'batch_write',__batchAgent:{
-            sourceMessageId:sourceId,sourceMessageText:String(commandText || '').trim(),commands
-          }};
-          const prompt=olliTalkBatchReasonPrompt(commands[missingIndex]);
-          return {assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),replyText:prompt,recordAi:false};
-        }
-        const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
-        if(clarificationIndex>=0){
-          olliTalkPendingActionReason={intent:'batch_write',__batchAgent:{
-            sourceMessageId:sourceId,sourceMessageText:String(commandText || '').trim(),commands
-          }};
-          const prompt=olliTalkBatchClarificationPrompt(commands[clarificationIndex]);
-          return {assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),replyText:prompt,recordAi:false};
-        }
-        return resolveOlliTalkBatchAgentTurn({
-          sourceText:String(commandText || '').trim(),sourceMessageId:sourceId,commands,context
-        });
-      }
-      case 'timetable_memo':
-        return resolveOlliTalkTimetableMemoAgentTurn(commandText,parsed,context,replyToMessageId);
-      case 'trial_cancel':
-        if(!String(parsed?.reason || '').trim()) return null;
-        return resolveOlliTalkTrialCancelAgentTurn({
-          sourceText:String(commandText || '').trim(),sourceMessageId:Number(replyToMessageId || 0),
-          reasonText:String(parsed.reason || '').trim(),reasonMessageText:String(commandText || '').trim(),
-          reasonMessageId:Number(replyToMessageId || 0),context
-        });
-      case 'makeup_cancel':
-        if(!String(parsed?.reason || '').trim()) return null;
-        return resolveOlliTalkMakeupCancelAgentTurn({
-          sourceText:String(commandText || '').trim(),sourceMessageId:Number(replyToMessageId || 0),
-          reasonText:String(parsed.reason || '').trim(),reasonMessageText:String(commandText || '').trim(),
-          reasonMessageId:Number(replyToMessageId || 0),context
-        });
-      case 'absence':
-        if(!String(parsed?.reason || '').trim()) return null;
-        return resolveOlliTalkAbsenceAgentTurn({
-          sourceText:String(commandText || '').trim(),sourceMessageId:Number(replyToMessageId || 0),
-          reasonText:String(parsed.reason || '').trim(),reasonMessageText:String(commandText || '').trim(),
-          reasonMessageId:Number(replyToMessageId || 0),context
-        });
-      case 'trial_add': return resolveOlliTalkTrialAddAgentTurn(commandText,context,replyToMessageId);
-      case 'trial_update': return resolveOlliTalkTrialUpdateAgentTurn(commandText,context,replyToMessageId);
-      case 'waitlist_add':{
-        const turn=await resolveOlliTalkWaitlistAddAgentTurn(commandText,context,replyToMessageId); return turn||null;
-      }
-      case 'waitlist_update': return resolveOlliTalkWaitlistUpdateAgentTurn(commandText,context,replyToMessageId);
-      case 'waitlist_cancel':{
-        const turn=await resolveOlliTalkWaitlistCancelAgentTurn(commandText,context,replyToMessageId); return turn||null;
-      }
-      case 'pickup_cancel': return resolveOlliTalkPickupCancelAgentTurn(commandText,context,replyToMessageId);
-      case 'pickup_update': return resolveOlliTalkPickupUpdateAgentTurn(commandText,context,replyToMessageId);
-      case 'pickup_add': return resolveOlliTalkPickupAddAgentTurn(commandText,context,replyToMessageId);
-      case 'makeup_update': return resolveOlliTalkMakeupUpdateAgentTurn(commandText,context,replyToMessageId);
-      case 'makeup_add': return resolveOlliTalkMakeupAddAgentTurn(commandText,context,replyToMessageId);
-      case 'move_cancel': return resolveOlliTalkMoveCancelAgentTurn(commandText,context,replyToMessageId);
-      case 'move': return resolveOlliTalkMoveAgentTurn(commandText,context,replyToMessageId);
       case 'class_once': return resolveOlliTalkClassOnceAgentTurn(commandText,context,replyToMessageId);
-      case 'timetable_read':
-        return resolveOlliTalkSourceBoundReadAgentTurn({mode:'timetable_read',commandText,readIntent:parsed,context,replyToMessageId});
       case 'attendance_read':
         return resolveOlliTalkSourceBoundReadAgentTurn({mode:'attendance_read',commandText,context,replyToMessageId});
       case 'pickup_read':
         return resolveOlliTalkSourceBoundReadAgentTurn({mode:'pickup_read',commandText,context,replyToMessageId});
-      case 'schedule_read':
-        return resolveOlliTalkSourceBoundReadAgentTurn({mode:'schedule_read',commandText,context,replyToMessageId});
       default: return null;
     }
   }
@@ -1926,16 +1907,93 @@
       throw new Error(data?.error || data?.message || '올리 공통 해석 응답을 받지 못했습니다.');
     }
     const language=data?.systemLanguage || {};
+    const lane=String(language.lane || '').trim() || 'routine';
     const route=String(language.route || '').trim();
     const intent=String(language.intent || '').trim();
     const standaloneCommand=String(language.standaloneCommand || '').trim();
-    if(data?.ok!==true || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
+    const structuredRaw=language.structuredCommand && typeof language.structuredCommand==='object'
+      ? language.structuredCommand
+      : {};
+    const structuredCommand={
+      action:String(structuredRaw.action || '').trim(),
+      studentName:String(structuredRaw.studentName || '').trim(),
+      division:String(structuredRaw.division || '').trim(),
+      dateExpression:String(structuredRaw.dateExpression || '').trim(),
+      timeSlot:Number(structuredRaw.timeSlot || 0),
+      classGroup:String(structuredRaw.classGroup || '').trim().toUpperCase(),
+      weekday:Number(structuredRaw.weekday || 0),
+      classTime:Number(structuredRaw.classTime || 0),
+      classMinute:Number(structuredRaw.classMinute || 0),
+      pickupKind:String(structuredRaw.pickupKind || '').trim(),
+      pickupLabel:String(structuredRaw.pickupLabel || '').trim(),
+      pickupTime:String(structuredRaw.pickupTime || '').trim(),
+      sourceDateExpression:String(structuredRaw.sourceDateExpression || '').trim(),
+      sourceWeekday:Number(structuredRaw.sourceWeekday || 0),
+      sourceTimeSlot:Number(structuredRaw.sourceTimeSlot || 0),
+      sourceMinute:Number(structuredRaw.sourceMinute || 0),
+      sourceClassGroup:String(structuredRaw.sourceClassGroup || '').trim().toUpperCase(),
+      targetDateExpression:String(structuredRaw.targetDateExpression || '').trim(),
+      targetWeekday:Number(structuredRaw.targetWeekday || 0),
+      targetTimeSlot:Number(structuredRaw.targetTimeSlot || 0),
+      targetMinute:Number(structuredRaw.targetMinute || 0),
+      targetClassGroup:String(structuredRaw.targetClassGroup || '').trim().toUpperCase(),
+      reason:String(structuredRaw.reason || '').trim(),
+      memoNote:String(structuredRaw.memoNote || '').trim(),
+      availabilityPurpose:String(structuredRaw.availabilityPurpose || '').trim(),
+      rosterKind:String(structuredRaw.rosterKind || '').trim()
+    };
+    const readCommands=(Array.isArray(language.readCommands)?language.readCommands:[]).slice(0,3).map((command)=>({
+      action:String(command?.action || '').trim(),
+      studentName:String(command?.studentName || '').trim(),
+      division:String(command?.division || '').trim(),
+      dateExpression:String(command?.dateExpression || '').trim(),
+      timeSlot:Number(command?.timeSlot || 0),
+      classGroup:String(command?.classGroup || '').trim().toUpperCase(),
+      weekday:Number(command?.weekday || 0),
+      classTime:Number(command?.classTime || 0),
+      pickupKind:String(command?.pickupKind || '').trim(),
+      availabilityPurpose:String(command?.availabilityPurpose || '').trim(),
+      rosterKind:String(command?.rosterKind || '').trim()
+    }));
+    const batchCommands=(Array.isArray(language.batchCommands)?language.batchCommands:[]).slice(0,3).map((command)=>({
+      action:String(command?.action || '').trim(),
+      studentName:String(command?.studentName || '').trim(),
+      division:String(command?.division || '').trim(),
+      dateExpression:String(command?.dateExpression || '').trim(),
+      timeSlot:Number(command?.timeSlot || 0),
+      classGroup:String(command?.classGroup || '').trim().toUpperCase(),
+      weekday:Number(command?.weekday || 0),
+      classTime:Number(command?.classTime || 0),
+      classMinute:Number(command?.classMinute || 0),
+      pickupKind:String(command?.pickupKind || '').trim(),
+      pickupLabel:String(command?.pickupLabel || '').trim(),
+      pickupTime:String(command?.pickupTime || '').trim(),
+      sourceDateExpression:String(command?.sourceDateExpression || '').trim(),
+      sourceWeekday:Number(command?.sourceWeekday || 0),
+      sourceTimeSlot:Number(command?.sourceTimeSlot || 0),
+      sourceMinute:Number(command?.sourceMinute || 0),
+      sourceClassGroup:String(command?.sourceClassGroup || '').trim().toUpperCase(),
+      targetDateExpression:String(command?.targetDateExpression || '').trim(),
+      targetWeekday:Number(command?.targetWeekday || 0),
+      targetTimeSlot:Number(command?.targetTimeSlot || 0),
+      targetMinute:Number(command?.targetMinute || 0),
+      targetClassGroup:String(command?.targetClassGroup || '').trim().toUpperCase(),
+      reason:String(command?.reason || '').trim(),
+      memoNote:String(command?.memoNote || '').trim()
+    }));
+    const reply=String(language.reply || '').trim();
+    if(data?.ok!==true || !['routine','feedback','chat'].includes(lane) || !['rule','agent','chat'].includes(route) || !intent || !standaloneCommand){
       throw new Error('올리 공통 해석 결과가 올바르지 않습니다.');
     }
     return {
+      lane,
       route,
       intent,
       standaloneCommand,
+      structuredCommand,
+      batchCommands,
+      readCommands,
+      reply,
       contextUsed:language.contextUsed===true
     };
   }
@@ -1989,8 +2047,12 @@
       context,
       replyToMessageId
     );
+    const interpreterLane=String(interpretation.lane || '').trim() || 'routine';
     const interpreterRoute=String(interpretation.route || '').trim();
     const interpreterIntent=String(interpretation.intent || '').trim();
+    const structuredCommand=interpretation.structuredCommand || null;
+    const batchCommands=Array.isArray(interpretation.batchCommands)?interpretation.batchCommands:[];
+    const readCommands=Array.isArray(interpretation.readCommands)?interpretation.readCommands:[];
     commandText=String(interpretation.standaloneCommand || rawCommandText).trim();
 
     if(options.allowSuggestedQuery && router && typeof router.runSuggestedQuery==='function'){
@@ -2016,13 +2078,395 @@
       }
     }
 
-    if(interpreterRoute==='chat'){
+    if(interpreterLane==='chat'){
+      const message=String(interpretation.reply || '').trim();
+      if(message){
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:true
+        };
+      }
       const resolved=await resolveOlliTalkAiReply(rawCommandText,context);
       return {
         assistantMessage:await saveOlliTalkOlliReply(context,resolved.message,replyToMessageId),
         replyText:resolved.message,
         recordAi:true
       };
+    }
+
+    if(interpreterLane==='feedback'){
+      const resolved=await resolveOlliTalkAiReply(rawCommandText,context);
+      return {
+        assistantMessage:await saveOlliTalkOlliReply(context,resolved.message,replyToMessageId),
+        replyText:resolved.message,
+        recordAi:true
+      };
+    }
+
+    if(
+      interpreterLane==='routine'
+      && interpreterIntent==='multi_read_query'
+      && router
+      && typeof router.runStructuredMultiQuery==='function'
+    ){
+      const queried=await router.runStructuredMultiQuery(readCommands,commandText,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(queried?.handled===true){
+        const message=String(queried.message || '').trim() || '조회 결과를 확인했어요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+    }
+
+    if(
+      interpreterLane==='routine'
+      && String(structuredCommand?.action || '').trim()==='find_pickups'
+      && router
+      && typeof router.runStructuredQuery==='function'
+    ){
+      const queried=await router.runStructuredQuery(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(queried?.handled===true){
+        const message=String(queried.message || '').trim() || '픽업 일정을 확인했어요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+    }
+
+    if(
+      interpreterLane==='routine'
+      && String(structuredCommand?.action || '').trim()==='find_roster_entries'
+      && router
+      && typeof router.runStructuredQuery==='function'
+    ){
+      const queried=await router.runStructuredQuery(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(queried?.handled===true){
+        const message=String(queried.message || '').trim() || '학생 명단을 확인했어요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+    }
+
+    if(
+      interpreterLane==='routine'
+      && String(structuredCommand?.action || '').trim()==='find_available_slots'
+      && router
+      && typeof router.runStructuredQuery==='function'
+    ){
+      const queried=await router.runStructuredQuery(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(queried?.handled===true){
+        const message=String(queried.message || '').trim() || '빈자리 조회 결과를 확인했어요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+    }
+
+    if(
+      interpreterLane==='routine'
+      && String(structuredCommand?.action || '').trim()==='get_student_schedule'
+      && router
+      && typeof router.runStructuredQuery==='function'
+    ){
+      const queried=await router.runStructuredQuery(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(queried?.handled===true){
+        const message=String(queried.message || '').trim() || '조회 결과를 확인했어요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+    }
+
+    if(
+      interpreterLane==='routine'
+      && String(structuredCommand?.action || '').trim()==='cancel_makeup'
+    ){
+      const pending=olliTalkPendingActionReason?.__structuredMakeupCancel || null;
+      if(pending && isOlliTalkPendingReasonCancel(rawCommandText)){
+        olliTalkPendingActionReason=null;
+        const message='작업 준비를 취소했어요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+
+      const merged=mergeOlliTalkStructuredMakeupCancelCommand(
+        pending?.structuredCommand,
+        structuredCommand
+      );
+      const reason=String(merged.reason || '').trim();
+      if(!reason){
+        const sourceMessageId=Number(replyToMessageId || 0);
+        olliTalkPendingActionReason={
+          intent:'cancel_makeup',
+          __structuredMakeupCancel:{
+            sourceMessageId,
+            sourceMessageText:String(rawCommandText || '').trim(),
+            structuredCommand:merged
+          }
+        };
+        const reasonMessage=(String(merged.studentName || '').trim() || '학생')+' 학생의 보강 취소 사유를 알려주세요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,reasonMessage,replyToMessageId),
+          replyText:reasonMessage,
+          recordAi:false
+        };
+      }
+
+      const sourceMessageId=pending
+        ? Number(pending.sourceMessageId || 0)
+        : Number(replyToMessageId || 0);
+      const sourceText=pending
+        ? String(pending.sourceMessageText || '').trim()
+        : String(rawCommandText || '').trim();
+      const reasonMessageId=Number(replyToMessageId || 0);
+      const reasonMessageText=String(rawCommandText || '').trim();
+      olliTalkPendingActionReason=null;
+      return resolveOlliTalkStructuredMakeupCancelTurn({
+        structuredCommand:merged,
+        sourceText,
+        sourceMessageId,
+        reasonText:pending ? reasonMessageText : reason,
+        reasonMessageText,
+        reasonMessageId,
+        context,
+      });
+    }
+
+    if(
+      interpreterLane==='routine'
+      && String(structuredCommand?.action || '').trim()==='cancel_move'
+    ){
+      return resolveOlliTalkStructuredMoveCancelTurn(
+        structuredCommand,
+        context,
+        rawCommandText,
+        replyToMessageId
+      );
+    }
+
+    if(
+      interpreterLane==='routine'
+      && ['add_timetable_memo','delete_timetable_memo'].includes(String(structuredCommand?.action || '').trim())
+    ){
+      return resolveOlliTalkStructuredTimetableMemoTurn(
+        structuredCommand,
+        context,
+        rawCommandText,
+        replyToMessageId
+      );
+    }
+
+    if(
+      interpreterLane==='routine'
+      && String(structuredCommand?.action || '').trim()==='update_waitlist'
+    ){
+      return resolveOlliTalkStructuredWaitlistUpdateTurn(
+        structuredCommand,
+        context,
+        rawCommandText,
+        replyToMessageId
+      );
+    }
+
+    if(
+      interpreterLane==='routine'
+      && String(structuredCommand?.action || '').trim()==='cancel_trial'
+    ){
+      const pending=olliTalkPendingActionReason?.__structuredTrialCancel || null;
+      if(pending && isOlliTalkPendingReasonCancel(rawCommandText)){
+        olliTalkPendingActionReason=null;
+        const message='작업 준비를 취소했어요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+
+      const merged=mergeOlliTalkStructuredTrialCancelCommand(
+        pending?.structuredCommand,
+        structuredCommand
+      );
+      const reason=String(merged.reason || '').trim();
+      if(!reason){
+        const sourceMessageId=Number(replyToMessageId || 0);
+        olliTalkPendingActionReason={
+          intent:'cancel_trial',
+          __structuredTrialCancel:{
+            sourceMessageId,
+            sourceMessageText:String(rawCommandText || '').trim(),
+            structuredCommand:merged
+          }
+        };
+        const reasonMessage=(String(merged.studentName || '').trim() || '체험 학생')+' 체험 취소 사유를 알려주세요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,reasonMessage,replyToMessageId),
+          replyText:reasonMessage,
+          recordAi:false
+        };
+      }
+
+      const sourceMessageId=pending
+        ? Number(pending.sourceMessageId || 0)
+        : Number(replyToMessageId || 0);
+      const sourceText=pending
+        ? String(pending.sourceMessageText || '').trim()
+        : String(rawCommandText || '').trim();
+      const reasonMessageId=Number(replyToMessageId || 0);
+      const reasonMessageText=String(rawCommandText || '').trim();
+      olliTalkPendingActionReason=null;
+      return resolveOlliTalkStructuredTrialCancelTurn({
+        structuredCommand:merged,
+        sourceText,
+        sourceMessageId,
+        reasonText:pending ? reasonMessageText : reason,
+        reasonMessageText,
+        reasonMessageId,
+        context,
+      });
+    }
+
+    if(
+      interpreterLane==='routine'
+      && ['add_makeup','update_makeup','add_trial','update_trial','add_waitlist','cancel_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent'].includes(String(structuredCommand?.action || '').trim())
+      && router
+      && typeof router.prepareStructuredAction==='function'
+    ){
+      const prepared=await router.prepareStructuredAction(structuredCommand,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(prepared?.handled===true){
+        if(prepared.kind==='action_needs_field' && prepared.payload){
+          if(String(prepared.payload.field || '').trim()==='student_choice'){
+            return {
+              assistantMessage:await saveOlliTalkStructuredStudentChoice(
+                context,
+                prepared.message || '학생을 선택해 주세요.',
+                prepared.payload,
+                replyToMessageId
+              ),
+              replyText:String(prepared.message || ''),
+              recordAi:false
+            };
+          }
+          if(String(prepared.payload.field || '').trim()==='target_choice'){
+            return {
+              assistantMessage:await saveOlliTalkStructuredTargetChoice(
+                context,
+                prepared.message || '대상을 선택해 주세요.',
+                prepared.payload,
+                replyToMessageId
+              ),
+              replyText:String(prepared.message || ''),
+              recordAi:false
+            };
+          }
+          if(String(prepared.payload.field || '').trim()==='division'){
+            return {
+              assistantMessage:await saveOlliTalkStructuredDivisionChoice(
+                context,
+                prepared.message || '유치부인지 초등부인지 선택해 주세요.',
+                prepared.payload,
+                replyToMessageId
+              ),
+              replyText:String(prepared.message || ''),
+              recordAi:false
+            };
+          }
+          if(['date','target_date'].includes(String(prepared.payload.field || '').trim())){
+            return {
+              assistantMessage:await saveOlliTalkStructuredDateChoice(
+                context,
+                prepared.message || '날짜를 선택해 주세요.',
+                prepared.payload,
+                replyToMessageId
+              ),
+              replyText:String(prepared.message || ''),
+              recordAi:false
+            };
+          }
+          if(['time','target_time'].includes(String(prepared.payload.field || '').trim())){
+            return {
+              assistantMessage:await saveOlliTalkStructuredTimeChoice(
+                context,
+                prepared.message || '시간을 선택해 주세요.',
+                prepared.payload,
+                replyToMessageId
+              ),
+              replyText:String(prepared.message || ''),
+              recordAi:false
+            };
+          }
+          const fieldMessage=String(prepared.message || '').trim() || '필요한 정보를 선택해 주세요.';
+          return {
+            assistantMessage:await saveOlliTalkOlliReply(context,fieldMessage,replyToMessageId),
+            replyText:fieldMessage,
+            recordAi:false
+          };
+        }
+        if(['action_pending','action_choice'].includes(prepared.kind) && prepared.payload){
+          return {
+            assistantMessage:await saveOlliTalkActionReply(
+              context,
+              prepared.message || (prepared.kind==='action_choice' ? '반을 선택해 주세요.' : '이 작업을 진행할까요?'),
+              prepared.payload,
+              replyToMessageId
+            ),
+            replyText:String(prepared.message || ''),
+            recordAi:false
+          };
+        }
+        if(prepared.kind==='action_needs_reason' && prepared.payload){
+          olliTalkPendingActionReason=Object.assign({},prepared.payload);
+          const reasonMessage=String(prepared.message || '').trim() || '사유를 알려주세요.';
+          return saveOlliTalkPendingTextInputReply(context,reasonMessage,replyToMessageId);
+        }
+        if(prepared.kind==='action_rejected'){
+          const rejectedMessage=String(prepared.message || '').trim() || '작업을 준비하지 못했어요.';
+          return {
+            assistantMessage:await saveOlliTalkOlliReply(context,rejectedMessage,replyToMessageId),
+            replyText:rejectedMessage,
+            recordAi:false
+          };
+        }
+      }
     }
 
     if(interpreterRoute==='rule'){
@@ -2089,18 +2533,16 @@
 
           const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
           if(clarificationIndex>=0){
-            olliTalkPendingActionReason={
-              intent:'batch_write',
-              __batchAgent:{
-                sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
-                sourceMessageText:String(pendingBatch.sourceMessageText || '').trim(),
-                commands
-              }
+            const nextPending={
+              sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+              sourceMessageText:String(pendingBatch.sourceMessageText || '').trim(),
+              commands
             };
-            const prompt=olliTalkBatchClarificationPrompt(commands[clarificationIndex]);
+            olliTalkPendingActionReason={intent:'batch_write',__batchAgent:nextPending};
+            const assistantMessage=await startOlliTalkBatchStructuredChoice(context,nextPending,clarificationIndex);
             return {
-              assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),
-              replyText:prompt,
+              assistantMessage,
+              replyText:String(assistantMessage?.body || '').trim() || '보강 날짜를 선택해 주세요.',
               recordAi:false
             };
           }
@@ -2208,6 +2650,35 @@
       };
     }
 
+    if(
+      interpreterRoute==='rule'
+      && ['set_class_layout','set_class_teacher','set_teacher_override','set_session_order','set_normal_class_day'].includes(interpreterIntent)
+    ){
+      const parsed=parseOlliTalkTimetableAdminRuleCandidate(commandText,router);
+      if(!parsed || String(parsed.intent || '').trim()!==interpreterIntent){
+        const message='시간표 관리 요청을 규칙 시스템에서 확인하지 못했어요. 날짜·시간·대상을 조금 더 구체적으로 알려 주세요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+      return resolveOlliTalkTimetableAdminRuleTurn(commandText,parsed,context,replyToMessageId);
+    }
+
+    if(interpreterRoute==='rule' && interpreterIntent==='batch_write'){
+      const parsed=parseOlliTalkBatchAgentCandidate(commandText,router);
+      if(!parsed){
+        const message='복합명령 구조가 원문과 일치하지 않아 실행하지 않았어요. 요청을 조금 더 구체적으로 알려 주세요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+      return resolveOlliTalkBatchRuleTurn(parsed,commandText,context,replyToMessageId,batchCommands);
+    }
+
     const routeClassifier=window.OlliTeamTalkAgentRouteClassifier;
     const classifierAvailable=!!(routeClassifier && typeof routeClassifier.classify==='function');
     const sharedRoute=interpreterRoute==='agent' && classifierAvailable
@@ -2215,7 +2686,7 @@
       : null;
     if(interpreterRoute==='agent'){
       if(sharedRoute){
-        const routedTurn=await resolveOlliTalkSharedAgentRouteTurn(sharedRoute,commandText,context,replyToMessageId);
+        const routedTurn=await resolveOlliTalkSharedAgentRouteTurn(sharedRoute,commandText,context,replyToMessageId,batchCommands);
         if(routedTurn) return routedTurn;
       }
       const resolved=await resolveOlliTalkAiReply(rawCommandText,context);
@@ -2310,11 +2781,7 @@
           }
           olliTalkPendingActionReason=pendingPayload;
           const reasonMessage=String(prepared.message || '').trim() || '사유를 알려주세요.';
-          return {
-            assistantMessage:await saveOlliTalkOlliReply(context,reasonMessage,replyToMessageId),
-            replyText:reasonMessage,
-            recordAi:false
-          };
+          return saveOlliTalkPendingTextInputReply(context,reasonMessage,replyToMessageId);
         }
 
         if(prepared.kind==='action_rejected'){
@@ -4650,6 +5117,620 @@
     return card;
   }
 
+  async function handleOlliTalkSessionGroupChoice(action,group){
+    const actionId=String(action?.id || '').trim();
+    const classGroup=String(group || '').trim().toUpperCase();
+    if(!actionId || !['A','B'].includes(classGroup) || olliTalkActionBusy.has(actionId)) return;
+
+    const context=getOlliTalkBetaContext();
+    if(!context.sessionToken || !context.academyId){
+      alert('올리톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    olliTalkActionBusy.add(actionId);
+    setOlliTalkActionCardBusy(actionId,true);
+    try{
+      const actionType=String(action?.action_type || '').trim();
+      const rpcName=actionType==='choose_trial_group'
+        ? 'olli_team_chat_action_select_trial_group'
+        : actionType==='choose_waitlist_group'
+          ? 'olli_team_chat_action_select_waitlist_group'
+          : actionType==='choose_move_group'
+            ? 'olli_team_chat_action_select_move_group'
+            : 'olli_team_chat_action_select_makeup_group';
+      const payload=await callOlliTalkRpc(rpcName,{
+        p_session_token:context.sessionToken,
+        p_academy_id:context.academyId,
+        p_action_id:actionId,
+        p_class_group:classGroup
+      });
+      if(!payload?.ok || !payload?.action){
+        throw new Error(payload?.message || '반을 선택하지 못했습니다.');
+      }
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }catch(error){
+      console.warn('올리톡 보강 반 선택 실패:',error);
+      alert(error?.message || '반을 선택하지 못했습니다.');
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }finally{
+      olliTalkActionBusy.delete(actionId);
+      setOlliTalkActionCardBusy(actionId,false);
+    }
+  }
+
+
+  function olliTalkStructuredDateExpressionFromDate(date){
+    if(!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    return (date.getMonth()+1)+'월 '+date.getDate()+'일';
+  }
+
+  function olliTalkStructuredDateInputValue(date){
+    if(!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    return [
+      date.getFullYear(),
+      String(date.getMonth()+1).padStart(2,'0'),
+      String(date.getDate()).padStart(2,'0')
+    ].join('-');
+  }
+
+  async function continueOlliTalkStructuredWriteDraft(draft,context){
+    const router=window.OlliCommandRouter;
+    if(!router || typeof router.prepareStructuredAction!=='function') return null;
+    const prepared=await router.prepareStructuredAction(draft,{
+      source:'olli_talk_structured_field_choice',
+      selectedStudent:null,
+      autoSubmitContext:null
+    });
+    if(prepared?.handled!==true) return null;
+
+    if(prepared.kind==='action_needs_field'){
+      if(String(prepared.payload?.field || '').trim()==='student_choice' && prepared.payload){
+        return saveOlliTalkStructuredStudentChoice(context,prepared.message || '학생을 선택해 주세요.',prepared.payload,null);
+      }
+      if(String(prepared.payload?.field || '').trim()==='target_choice' && prepared.payload){
+        return saveOlliTalkStructuredTargetChoice(context,prepared.message || '대상을 선택해 주세요.',prepared.payload,null);
+      }
+      if(String(prepared.payload?.field || '').trim()==='division' && prepared.payload){
+        return saveOlliTalkStructuredDivisionChoice(context,prepared.message || '유치부인지 초등부인지 선택해 주세요.',prepared.payload,null);
+      }
+      if(String(prepared.payload?.field || '').trim()==='date' && prepared.payload){
+        return saveOlliTalkStructuredDateChoice(context,prepared.message || '날짜를 선택해 주세요.',prepared.payload,null);
+      }
+      if(String(prepared.payload?.field || '').trim()==='time' && prepared.payload){
+        return saveOlliTalkStructuredTimeChoice(context,prepared.message || '시간을 선택해 주세요.',prepared.payload,null);
+      }
+      return saveOlliTalkOlliReply(context,String(prepared.message || '').trim() || '필요한 정보를 선택해 주세요.',null);
+    }
+    if(prepared.kind==='action_pending' && prepared.payload && draft?.batchStructured===true){
+      return finishOlliTalkBatchStructuredCommand(draft,prepared,context);
+    }
+    if(['action_pending','action_choice'].includes(prepared.kind) && prepared.payload){
+      return saveOlliTalkActionReply(
+        context,
+        prepared.message || (prepared.kind==='action_choice' ? '반을 선택해 주세요.' : '이 작업을 진행할까요?'),
+        prepared.payload,
+        null
+      );
+    }
+    if(prepared.kind==='action_rejected'){
+      return saveOlliTalkOlliReply(context,String(prepared.message || '').trim() || '작업을 준비하지 못했어요.',null);
+    }
+    return null;
+  }
+
+  async function handleOlliTalkStructuredDateChoice(action,dateExpression){
+    const actionId=String(action?.id || '').trim();
+    const selected=String(dateExpression || '').trim();
+    if(!actionId || !selected || olliTalkActionBusy.has(actionId)) return;
+
+    const context=getOlliTalkBetaContext();
+    if(!context.sessionToken || !context.academyId){
+      alert('올리톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    olliTalkActionBusy.add(actionId);
+    setOlliTalkActionCardBusy(actionId,true);
+    try{
+      const payload=await callOlliTalkRpc('olli_team_chat_action_select_structured_date',{
+        p_session_token:context.sessionToken,
+        p_academy_id:context.academyId,
+        p_action_id:actionId,
+        p_date_expression:selected
+      });
+      if(!payload?.ok || !payload?.action || !payload?.draft){
+        throw new Error(payload?.message || '날짜를 선택하지 못했습니다.');
+      }
+      if(String(payload?.draft?.action || '').trim()==='update_waitlist'){
+        const sourceMessageId=Number(payload?.source_message_id || 0);
+        const sourceMessageText=String(payload?.source_message_text || '').trim();
+        if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0||!sourceMessageText){
+          throw new Error('대기 변경 원문 메시지를 확인하지 못했습니다.');
+        }
+        await resolveOlliTalkStructuredWaitlistUpdateTurn(
+          payload.draft,
+          context,
+          sourceMessageText,
+          sourceMessageId
+        );
+      }else{
+        await continueOlliTalkStructuredWriteDraft(payload.draft,context);
+      }
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }catch(error){
+      console.warn('올리톡 구조화 날짜 선택 실패:',error);
+      alert(error?.message || '날짜를 선택하지 못했습니다.');
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }finally{
+      olliTalkActionBusy.delete(actionId);
+      setOlliTalkActionCardBusy(actionId,false);
+    }
+  }
+
+  function appendOlliTalkStructuredDateChoiceButtons(card,action){
+    card.classList.add('structuredDate');
+
+    const now=new Date();
+    const today=new Date(now.getFullYear(),now.getMonth(),now.getDate(),12,0,0,0);
+    const tomorrow=new Date(today.getTime());
+    tomorrow.setDate(tomorrow.getDate()+1);
+
+    const addQuick=(label,date)=>{
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='olliTalkBetaActionButton primary';
+      button.textContent=label;
+      button.addEventListener('click',()=>handleOlliTalkStructuredDateChoice(action,olliTalkStructuredDateExpressionFromDate(date)));
+      card.appendChild(button);
+    };
+    addQuick('오늘',today);
+    addQuick('내일',tomorrow);
+
+    const dateInput=document.createElement('input');
+    dateInput.type='date';
+    dateInput.className='olliTalkBetaDateInput';
+    dateInput.min=olliTalkStructuredDateInputValue(today);
+    const maxDate=new Date(today.getTime());
+    maxDate.setDate(maxDate.getDate()+364);
+    dateInput.max=olliTalkStructuredDateInputValue(maxDate);
+    dateInput.addEventListener('change',()=>{
+      const match=String(dateInput.value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if(!match) return;
+      handleOlliTalkStructuredDateChoice(action,Number(match[2])+'월 '+Number(match[3])+'일');
+    });
+
+    const pick=document.createElement('button');
+    pick.type='button';
+    pick.className='olliTalkBetaActionButton secondary dateWide';
+    pick.textContent='날짜 선택';
+    pick.addEventListener('click',()=>{
+      try{
+        if(typeof dateInput.showPicker==='function') dateInput.showPicker();
+        else dateInput.click();
+      }catch(_){
+        dateInput.click();
+      }
+    });
+
+    card.append(dateInput,pick);
+  }
+
+  async function handleOlliTalkStructuredTargetChoice(action,choiceId){
+    const actionId=String(action?.id || '').trim();
+    const selectedId=String(choiceId || '').trim();
+    if(!actionId || !selectedId || olliTalkActionBusy.has(actionId)) return;
+
+    const context=getOlliTalkBetaContext();
+    if(!context.sessionToken || !context.academyId){
+      alert('올리톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    olliTalkActionBusy.add(actionId);
+    setOlliTalkActionCardBusy(actionId,true);
+    try{
+      const payload=await callOlliTalkRpc('olli_team_chat_action_select_structured_target',{
+        p_session_token:context.sessionToken,
+        p_academy_id:context.academyId,
+        p_action_id:actionId,
+        p_choice_id:selectedId
+      });
+      if(!payload?.ok || !payload?.action || !payload?.draft){
+        throw new Error(payload?.message || '대상을 선택하지 못했습니다.');
+      }
+      if(['set_session_order','set_class_teacher','set_teacher_override'].includes(String(payload?.draft?.action || '').trim())){
+        const sourceMessageId=Number(payload?.source_message_id || 0);
+        const sourceMessageText=String(payload?.source_message_text || '').trim();
+        if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0||!sourceMessageText){
+          throw new Error('수업 순서 변경 원문 메시지를 확인하지 못했습니다.');
+        }
+        await resolveOlliTalkStructuredTimetableAdminTurn(
+          payload.draft,
+          context,
+          sourceMessageText,
+          sourceMessageId
+        );
+      }else if(['add_timetable_memo','delete_timetable_memo'].includes(String(payload?.draft?.action || '').trim())){
+        const sourceMessageId=Number(payload?.source_message_id || 0);
+        const sourceMessageText=String(payload?.source_message_text || '').trim();
+        if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0||!sourceMessageText){
+          throw new Error('시간표 메모 원문 메시지를 확인하지 못했습니다.');
+        }
+        await resolveOlliTalkStructuredTimetableMemoTurn(
+          payload.draft,
+          context,
+          sourceMessageText,
+          sourceMessageId
+        );
+      }else if(String(payload?.draft?.action || '').trim()==='cancel_move'){
+        const sourceMessageId=Number(payload?.source_message_id || 0);
+        const sourceMessageText=String(payload?.source_message_text || '').trim();
+        if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0||!sourceMessageText){
+          throw new Error('수업 이동 취소 원문 메시지를 확인하지 못했습니다.');
+        }
+        await resolveOlliTalkStructuredMoveCancelTurn(
+          payload.draft,
+          context,
+          sourceMessageText,
+          sourceMessageId
+        );
+      }else if(String(payload?.draft?.action || '').trim()==='cancel_trial'){
+        const sourceMessageId=Number(payload?.source_message_id || 0);
+        const sourceMessageText=String(payload?.source_message_text || '').trim();
+        const reasonMessageId=Number(payload?.reason_message_id || 0);
+        const reasonMessageText=String(payload?.reason_message_text || '').trim();
+        const reason=String(payload?.draft?.reason || '').trim();
+        if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0||!sourceMessageText
+          ||!Number.isSafeInteger(reasonMessageId)||reasonMessageId<=0||!reasonMessageText||!reason){
+          throw new Error('체험 취소 원문 또는 사유 메시지를 확인하지 못했습니다.');
+        }
+        await resolveOlliTalkStructuredTrialCancelTurn({
+          structuredCommand:payload.draft,sourceText:sourceMessageText,sourceMessageId,
+          reasonText:reason,reasonMessageText,reasonMessageId,context
+        });
+      }else if(String(payload?.draft?.action || '').trim()==='cancel_makeup'){
+        const sourceMessageId=Number(payload?.source_message_id || 0);
+        const sourceMessageText=String(payload?.source_message_text || '').trim();
+        const reasonMessageId=Number(payload?.reason_message_id || 0);
+        const reasonMessageText=String(payload?.reason_message_text || '').trim();
+        const reason=String(payload?.draft?.reason || '').trim();
+        if(
+          !Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0||!sourceMessageText
+          || !Number.isSafeInteger(reasonMessageId)||reasonMessageId<=0||!reasonMessageText||!reason
+        ){
+          throw new Error('보강 취소 원문 또는 사유 메시지를 확인하지 못했습니다.');
+        }
+        await resolveOlliTalkStructuredMakeupCancelTurn({
+          structuredCommand:payload.draft,
+          sourceText:sourceMessageText,
+          sourceMessageId,
+          reasonText:reason,
+          reasonMessageText,
+          reasonMessageId,
+          context,
+        });
+      }else if(String(payload?.draft?.action || '').trim()==='update_waitlist'){
+        const sourceMessageId=Number(payload?.source_message_id || 0);
+        const sourceMessageText=String(payload?.source_message_text || '').trim();
+        if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0||!sourceMessageText){
+          throw new Error('대기 변경 원문 메시지를 확인하지 못했습니다.');
+        }
+        await resolveOlliTalkStructuredWaitlistUpdateTurn(
+          payload.draft,
+          context,
+          sourceMessageText,
+          sourceMessageId
+        );
+      }else{
+        await continueOlliTalkStructuredWriteDraft(payload.draft,context);
+      }
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }catch(error){
+      console.warn('올리톡 구조화 대상 선택 실패:',error);
+      alert(error?.message || '대상을 선택하지 못했습니다.');
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }finally{
+      olliTalkActionBusy.delete(actionId);
+      setOlliTalkActionCardBusy(actionId,false);
+    }
+  }
+
+  async function populateOlliTalkStructuredTargetChoiceCard(card,action){
+    const actionId=String(action?.id || '').trim();
+    const context=getOlliTalkBetaContext();
+    if(!actionId || !context.sessionToken || !context.academyId) return;
+
+    try{
+      const payload=await callOlliTalkRpc('olli_team_chat_get_structured_target_choice',{
+        p_session_token:context.sessionToken,
+        p_academy_id:context.academyId,
+        p_action_id:actionId
+      });
+      if(!payload?.ok || !Array.isArray(payload?.choices)){
+        throw new Error(payload?.message || '선택할 일정을 확인하지 못했습니다.');
+      }
+      if(!card.isConnected || String(card.dataset.olliTalkActionId || '').trim()!==actionId) return;
+      card.replaceChildren();
+      if(!payload.choices.length){
+        card.appendChild(createMessageText('span','olliTalkBetaActionStatus','선택할 일정이 없어요.'));
+        return;
+      }
+      payload.choices.forEach(choice=>{
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='olliTalkBetaActionButton primary targetChoice';
+        button.textContent=String(choice?.label || '일정').trim();
+        button.addEventListener('click',()=>handleOlliTalkStructuredTargetChoice(action,String(choice?.id || '').trim()));
+        card.appendChild(button);
+      });
+    }catch(error){
+      if(!card.isConnected) return;
+      card.replaceChildren(createMessageText('span','olliTalkBetaActionStatus failed',String(error?.message || '').trim() || '일정 목록을 불러오지 못했어요.'));
+    }
+  }
+
+  function appendOlliTalkStructuredTargetChoiceButtons(card,action){
+    card.classList.add('structuredTarget');
+    card.appendChild(createMessageText('span','olliTalkBetaActionStatus','일정 확인 중'));
+    void populateOlliTalkStructuredTargetChoiceCard(card,action);
+  }
+
+  async function handleOlliTalkStructuredStudentChoice(action,studentName){
+    const actionId=String(action?.id || '').trim();
+    const selectedName=String(studentName || '').trim();
+    if(!actionId || !selectedName || olliTalkActionBusy.has(actionId)) return;
+
+    const context=getOlliTalkBetaContext();
+    if(!context.sessionToken || !context.academyId){
+      alert('올리톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    olliTalkActionBusy.add(actionId);
+    setOlliTalkActionCardBusy(actionId,true);
+    try{
+      const payload=await callOlliTalkRpc('olli_team_chat_action_select_structured_student',{
+        p_session_token:context.sessionToken,
+        p_academy_id:context.academyId,
+        p_action_id:actionId,
+        p_student_name:selectedName
+      });
+      if(!payload?.ok || !payload?.action || !payload?.draft){
+        throw new Error(payload?.message || '학생을 선택하지 못했습니다.');
+      }
+      await continueOlliTalkStructuredWriteDraft(payload.draft,context);
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }catch(error){
+      console.warn('올리톡 구조화 학생 선택 실패:',error);
+      alert(error?.message || '학생을 선택하지 못했습니다.');
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }finally{
+      olliTalkActionBusy.delete(actionId);
+      setOlliTalkActionCardBusy(actionId,false);
+    }
+  }
+
+  async function populateOlliTalkStructuredStudentChoiceCard(card,action){
+    const actionId=String(action?.id || '').trim();
+    const context=getOlliTalkBetaContext();
+    if(!actionId || !context.sessionToken || !context.academyId) return;
+
+    try{
+      const payload=await callOlliTalkRpc('olli_team_chat_get_structured_student_choice',{
+        p_session_token:context.sessionToken,
+        p_academy_id:context.academyId,
+        p_action_id:actionId
+      });
+      if(!payload?.ok || !Array.isArray(payload?.choices)){
+        throw new Error(payload?.message || '선택할 학생을 확인하지 못했습니다.');
+      }
+      if(!card.isConnected || String(card.dataset.olliTalkActionId || '').trim()!==actionId) return;
+      card.replaceChildren();
+      if(!payload.choices.length){
+        card.appendChild(createMessageText('span','olliTalkBetaActionStatus','선택할 학생이 없어요.'));
+        return;
+      }
+      payload.choices.forEach(choice=>{
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='olliTalkBetaActionButton primary studentChoice';
+        button.textContent=String(choice?.label || choice?.studentName || '학생').trim();
+        button.addEventListener('click',()=>handleOlliTalkStructuredStudentChoice(action,String(choice?.studentName || '').trim()));
+        card.appendChild(button);
+      });
+    }catch(error){
+      if(!card.isConnected) return;
+      card.replaceChildren(createMessageText('span','olliTalkBetaActionStatus failed',String(error?.message || '').trim() || '학생 목록을 불러오지 못했어요.'));
+    }
+  }
+
+  function appendOlliTalkStructuredStudentChoiceButtons(card,action){
+    card.classList.add('structuredStudent');
+    card.appendChild(createMessageText('span','olliTalkBetaActionStatus','학생 확인 중'));
+    void populateOlliTalkStructuredStudentChoiceCard(card,action);
+  }
+
+  async function handleOlliTalkStructuredDivisionChoice(action,division){
+    const actionId=String(action?.id || '').trim();
+    const selected=String(division || '').trim().toLowerCase();
+    if(!actionId || !['kinder','elementary'].includes(selected) || olliTalkActionBusy.has(actionId)) return;
+
+    const context=getOlliTalkBetaContext();
+    if(!context.sessionToken || !context.academyId){
+      alert('올리톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    olliTalkActionBusy.add(actionId);
+    setOlliTalkActionCardBusy(actionId,true);
+    try{
+      const payload=await callOlliTalkRpc('olli_team_chat_action_select_structured_division',{
+        p_session_token:context.sessionToken,
+        p_academy_id:context.academyId,
+        p_action_id:actionId,
+        p_division:selected
+      });
+      if(!payload?.ok || !payload?.action || !payload?.draft){
+        throw new Error(payload?.message || '수업 구분을 선택하지 못했습니다.');
+      }
+      await continueOlliTalkStructuredWriteDraft(payload.draft,context);
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }catch(error){
+      console.warn('올리톡 구조화 수업 구분 선택 실패:',error);
+      alert(error?.message || '수업 구분을 선택하지 못했습니다.');
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }finally{
+      olliTalkActionBusy.delete(actionId);
+      setOlliTalkActionCardBusy(actionId,false);
+    }
+  }
+
+  function appendOlliTalkStructuredDivisionChoiceButtons(card,action){
+    card.classList.add('structuredDivision');
+    [
+      {value:'kinder',label:'유치부'},
+      {value:'elementary',label:'초등부'}
+    ].forEach(choice=>{
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='olliTalkBetaActionButton primary divisionChoice';
+      button.textContent=choice.label;
+      button.addEventListener('click',()=>handleOlliTalkStructuredDivisionChoice(action,choice.value));
+      card.appendChild(button);
+    });
+  }
+
+  async function handleOlliTalkStructuredTimeChoice(action,timeSlot){
+    const actionId=String(action?.id || '').trim();
+    const selectedTime=Number(timeSlot || 0);
+    if(!actionId || !selectedTime || olliTalkActionBusy.has(actionId)) return;
+
+    const context=getOlliTalkBetaContext();
+    if(!context.sessionToken || !context.academyId){
+      alert('올리톡을 사용하려면 계정 로그인이 필요합니다.');
+      return;
+    }
+
+    olliTalkActionBusy.add(actionId);
+    setOlliTalkActionCardBusy(actionId,true);
+    try{
+      const payload=await callOlliTalkRpc('olli_team_chat_action_select_structured_time',{
+        p_session_token:context.sessionToken,
+        p_academy_id:context.academyId,
+        p_action_id:actionId,
+        p_time_slot:selectedTime
+      });
+      if(!payload?.ok || !payload?.action || !payload?.draft){
+        throw new Error(payload?.message || '시간을 선택하지 못했습니다.');
+      }
+      await continueOlliTalkStructuredWriteDraft(payload.draft,context);
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }catch(error){
+      console.warn('올리톡 구조화 시간 선택 실패:',error);
+      alert(error?.message || '시간을 선택하지 못했습니다.');
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      });
+    }finally{
+      olliTalkActionBusy.delete(actionId);
+      setOlliTalkActionCardBusy(actionId,false);
+    }
+  }
+
+  async function populateOlliTalkStructuredTimeChoiceCard(card,action){
+    const actionId=String(action?.id || '').trim();
+    const context=getOlliTalkBetaContext();
+    if(!actionId || !context.sessionToken || !context.academyId) return;
+
+    try{
+      const payload=await callOlliTalkRpc('olli_team_chat_get_structured_time_choice',{
+        p_session_token:context.sessionToken,
+        p_academy_id:context.academyId,
+        p_action_id:actionId
+      });
+      if(!payload?.ok || !Array.isArray(payload?.choices)){
+        throw new Error(payload?.message || '선택 가능한 시간을 확인하지 못했습니다.');
+      }
+      if(!card.isConnected || String(card.dataset.olliTalkActionId || '').trim()!==actionId) return;
+      card.replaceChildren();
+      if(!payload.choices.length){
+        card.appendChild(createMessageText('span','olliTalkBetaActionStatus','선택 가능한 수업 시간이 없어요.'));
+        return;
+      }
+      payload.choices.forEach(choice=>{
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='olliTalkBetaActionButton primary timeChoice';
+        const label=String(choice?.label || '').trim() || Number(choice?.timeSlot || 0)+'시';
+        const status=String(choice?.status || '').trim();
+        const selectable=choice?.selectable===true;
+        button.textContent=status==='full'
+          ? label+'\n'+(String(payload?.targetIntent || '').trim()==='add_waitlist' ? '대기 가능' : '마감')
+          : label;
+        button.disabled=!selectable;
+        if(!selectable) button.classList.add('closed');
+        button.addEventListener('click',()=>handleOlliTalkStructuredTimeChoice(action,Number(choice?.timeSlot || 0)));
+        card.appendChild(button);
+      });
+    }catch(error){
+      if(!card.isConnected) return;
+      card.replaceChildren(createMessageText('span','olliTalkBetaActionStatus failed',String(error?.message || '').trim() || '시간을 불러오지 못했어요.'));
+    }
+  }
+
+  function appendOlliTalkStructuredTimeChoiceButtons(card,action){
+    card.classList.add('structuredTime');
+    card.appendChild(createMessageText('span','olliTalkBetaActionStatus','시간 확인 중'));
+    void populateOlliTalkStructuredTimeChoiceCard(card,action);
+  }
+
   function createOlliTalkActionCard(action){
     const card=document.createElement('div');
     const status=String(action?.status || 'pending').trim() || 'pending';
@@ -4661,6 +5742,43 @@
       const label=createMessageText('span','olliTalkBetaActionStatus',getOlliTalkActionStatusLabel(status));
       if(status==='failed') label.classList.add('failed');
       card.appendChild(label);
+      return card;
+    }
+
+    if(String(action?.action_type || '').trim()==='choose_structured_student'){
+      appendOlliTalkStructuredStudentChoiceButtons(card,action);
+      return card;
+    }
+
+    if(String(action?.action_type || '').trim()==='choose_structured_target'){
+      appendOlliTalkStructuredTargetChoiceButtons(card,action);
+      return card;
+    }
+
+    if(String(action?.action_type || '').trim()==='choose_structured_division'){
+      appendOlliTalkStructuredDivisionChoiceButtons(card,action);
+      return card;
+    }
+
+    if(String(action?.action_type || '').trim()==='choose_structured_date'){
+      appendOlliTalkStructuredDateChoiceButtons(card,action);
+      return card;
+    }
+
+    if(String(action?.action_type || '').trim()==='choose_structured_time'){
+      appendOlliTalkStructuredTimeChoiceButtons(card,action);
+      return card;
+    }
+
+    if(['choose_makeup_group','choose_trial_group','choose_waitlist_group','choose_move_group'].includes(String(action?.action_type || '').trim())){
+      ['A','B'].forEach(group=>{
+        const button=document.createElement('button');
+        button.type='button';
+        button.className='olliTalkBetaActionButton primary';
+        button.textContent=group+'반';
+        button.addEventListener('click',()=>handleOlliTalkSessionGroupChoice(action,group));
+        card.appendChild(button);
+      });
       return card;
     }
 
@@ -4857,6 +5975,7 @@
       if (incomingLayout) {
         incomingLayout.appendChild(bubbleRow);
         if (item?.action) incomingLayout.appendChild(createOlliTalkActionCard(item.action));
+        if (shouldShowOlliTalkPendingTextInput(item)) incomingLayout.appendChild(createOlliTalkPendingTextInputButton());
         if (item?.material_request_id && item?.material_event_id) {
           incomingLayout.appendChild(createOlliTalkMaterialConfirmCard(item));
         }

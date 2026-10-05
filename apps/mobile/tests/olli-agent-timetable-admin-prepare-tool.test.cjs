@@ -227,3 +227,131 @@ test('Agent tool schema is zero-argument and cannot accept ids or schedule value
   assert.match(schema,/parameters:z\.object\(\{\}\)/);
   assert.doesNotMatch(schema,/teacherMemberId|studentId|enrollmentId|timeSlot|academyId|memberId/);
 });
+
+
+test('session order ambiguity returns current enrollment buttons instead of asking for time text',async()=>{
+  const calls=[];
+  const studentId='44444444-4444-4444-8444-444444444444';
+  const rpc=async(name,params)=>{
+    calls.push({name,params});
+    if(name==='olli_schedule_week'){
+      return {
+        ok:true,timetable_mode:'hourly',
+        enrollments:[
+          {id:'e1',student_id:studentId,student_name:'민지',division:'elementary',weekday:2,time_slot:4,class_group:'A',session_order:2,effective_from:'2026-01-01'},
+          {id:'e2',student_id:studentId,student_name:'민지',division:'elementary',weekday:2,time_slot:5,class_group:'B',session_order:2,effective_from:'2026-01-01'},
+        ]
+      };
+    }
+    if(name==='olli_team_chat_send_action') throw new Error('choice must not persist final action');
+    throw new Error('unexpected RPC '+name);
+  };
+  const result=await prepareTimetableAdminAction({
+    requestContext:requestContext(),
+    intent:{intent:'set_session_order',sessionOrder:1,weekday:2,timeSlot:0,timeMinute:0,classGroup:''},
+    subjectAccess:{resolve(label){return label==='학생A'?{studentId,division:'elementary'}:null;}},
+    studentLabel:'학생A',
+    currentDate:'2026-10-02',requestId:'order-choice',replyToMessageId:84,
+    allowChoice:true,sanitizePayload:p=>p,callRpc:rpc,
+  });
+  assert.equal(result.code,'target_choice_required');
+  assert.equal(result.choiceKey,'enrollmentId');
+  assert.deepEqual(result.choices,[
+    {id:'e1',label:'화요일 4시 A반'},
+    {id:'e2',label:'화요일 5시 B반'}
+  ]);
+  assert.match(result.message,/선택해 주세요/);
+  assert.equal(calls.some(item=>item.name==='olli_team_chat_send_action'),false);
+});
+
+test('selected session-order enrollment id is re-read before pending confirmation',async()=>{
+  const calls=[];
+  const studentId='44444444-4444-4444-8444-444444444444';
+  const rpc=async(name,params)=>{
+    calls.push({name,params});
+    if(name==='olli_schedule_week'){
+      return {
+        ok:true,timetable_mode:'hourly',
+        enrollments:[
+          {id:'e1',student_id:studentId,student_name:'민지',division:'elementary',weekday:2,time_slot:4,class_group:'A',session_order:2,effective_from:'2026-01-01'},
+          {id:'e2',student_id:studentId,student_name:'민지',division:'elementary',weekday:2,time_slot:5,class_group:'B',session_order:2,effective_from:'2026-01-01'},
+        ]
+      };
+    }
+    if(name==='olli_team_chat_send_action') return sendActionResult('set_session_order');
+    throw new Error('unexpected RPC '+name);
+  };
+  const result=await prepareTimetableAdminAction({
+    requestContext:requestContext(),
+    intent:{intent:'set_session_order',sessionOrder:1,weekday:2,timeSlot:0,timeMinute:0,classGroup:''},
+    subjectAccess:{resolve(label){return label==='학생A'?{studentId,division:'elementary'}:null;}},
+    studentLabel:'학생A',
+    currentDate:'2026-10-02',requestId:'order-choice-selected',replyToMessageId:85,
+    selectedEnrollmentId:'e2',allowChoice:true,sanitizePayload:p=>p,callRpc:rpc,
+  });
+  assert.equal(result.action_type,'set_session_order');
+  const action=calls.find(item=>item.name==='olli_team_chat_send_action');
+  assert.ok(action);
+  assert.equal(action.params.p_action_payload.enrollmentId,'e2');
+  assert.equal(action.params.p_action_payload.timeSlot,5);
+  assert.equal(action.params.p_action_payload.classGroup,'B');
+  noMutationCalls(calls);
+});
+
+
+test('split class teacher assignment returns A/B buttons instead of typed group re-entry',async()=>{
+  const calls=[];
+  const teacherId='33333333-3333-4333-8333-333333333333';
+  const rpc=async(name,params)=>{
+    calls.push({name,params});
+    if(name==='olli_schedule_week') return {
+      ok:true,timetable_mode:'hourly',
+      class_split_periods:[{weekday:3,time_slot:5,effective_from:'2026-10-01',effective_to:null}]
+    };
+    if(name==='olli_schedule_class_teacher_context') return {
+      ok:true,teachers:[{id:teacherId,display_name:'김민지'}],assignments:[]
+    };
+    if(name==='olli_team_chat_send_action') throw new Error('A/B choice must not persist final action');
+    throw new Error('unexpected RPC '+name);
+  };
+  const result=await prepareTimetableAdminAction({
+    requestContext:requestContext(),
+    intent:{intent:'set_class_teacher',teacherName:'김민지',division:'elementary',weekday:3,timeSlot:5,timeMinute:0,classGroup:''},
+    currentDate:'2026-10-02',requestId:'teacher-group-choice',replyToMessageId:86,
+    allowChoice:true,sanitizePayload:p=>p,callRpc:rpc,
+  });
+  assert.equal(result.code,'target_choice_required');
+  assert.equal(result.targetIntent,'set_class_teacher');
+  assert.equal(result.choiceKey,'targetClassGroup');
+  assert.deepEqual(result.choices,[{id:'A',label:'A반'},{id:'B',label:'B반'}]);
+  assert.equal(calls.some(item=>item.name==='olli_team_chat_send_action'),false);
+});
+
+test('selected teacher A/B group is re-read before pending class-teacher confirmation',async()=>{
+  const calls=[];
+  const teacherId='33333333-3333-4333-8333-333333333333';
+  const rpc=async(name,params)=>{
+    calls.push({name,params});
+    if(name==='olli_schedule_week') return {
+      ok:true,timetable_mode:'hourly',
+      class_split_periods:[{weekday:3,time_slot:5,effective_from:'2026-10-01',effective_to:null}]
+    };
+    if(name==='olli_schedule_class_teacher_context') return {
+      ok:true,teachers:[{id:teacherId,display_name:'김민지'}],assignments:[]
+    };
+    if(name==='olli_team_chat_send_action') return sendActionResult('set_class_teacher');
+    throw new Error('unexpected RPC '+name);
+  };
+  const result=await prepareTimetableAdminAction({
+    requestContext:requestContext(),
+    intent:{intent:'set_class_teacher',teacherName:'김민지',division:'elementary',weekday:3,timeSlot:5,timeMinute:0,classGroup:''},
+    currentDate:'2026-10-02',requestId:'teacher-group-selected',replyToMessageId:87,
+    selectedClassGroup:'B',allowChoice:true,sanitizePayload:p=>p,callRpc:rpc,
+  });
+  assert.equal(result.action_type,'set_class_teacher');
+  const action=calls.find(item=>item.name==='olli_team_chat_send_action');
+  assert.ok(action);
+  assert.equal(action.params.p_action_payload.classGroup,'B');
+  assert.equal(action.params.p_action_payload.teacherMemberId,teacherId);
+  noMutationCalls(calls);
+});

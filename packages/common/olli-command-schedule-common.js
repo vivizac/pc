@@ -302,6 +302,7 @@
         division:requestedDivision,
         dateLabel:clean(opts.dateLabel),
         viewMode:clean(opts.viewMode) || 'availability',
+        timetableMode:timetableMode(data),
         closedDay:true,
         closedReason:'일요일',
         allSlots:[],
@@ -318,6 +319,7 @@
         division:requestedDivision,
         dateLabel:clean(opts.dateLabel),
         viewMode:clean(opts.viewMode) || 'availability',
+        timetableMode:timetableMode(data),
         closedDay:true,
         closedReason:clean(calendar.name) || '휴원일',
         allSlots:[],
@@ -355,6 +357,7 @@
       division:requestedDivision,
       dateLabel:clean(opts.dateLabel),
       viewMode:clean(opts.viewMode) || 'availability',
+      timetableMode:timetableMode(data),
       closedDay:false,
       closedReason:'',
       allSlots,
@@ -381,6 +384,134 @@
     }
     return buildDateAvailabilityFromData(weekData, dateKey, opts);
   }
+
+  function structuredStoredTimeMinutes(mode, division, dateKey, timeSlot) {
+    const stored=Number(timeSlot || 0);
+    const weekday=isoWeekday(dateKey);
+    if(!stored) return Number.POSITIVE_INFINITY;
+    if(division==='elementary' && weekday===6 && stored>=10 && stored<=12){
+      return (stored-9)*60;
+    }
+    if(mode==='half_hour'){
+      const elementary={1:60,7:90,2:120,8:150,3:180,9:210,4:240,10:270,5:300,11:330,6:360};
+      const kinder={7:210,4:240,8:270,5:300,9:330};
+      return Number((division==='kinder' ? kinder : elementary)[stored] || stored*60);
+    }
+    return stored*60;
+  }
+
+  async function prepareStructuredTimeChoices(options) {
+    const opts=options || {};
+    const action=clean(opts.action);
+    const studentName=clean(opts.studentName);
+    const selected=opts.selectedStudent && clean(opts.selectedStudent.id) ? opts.selectedStudent : null;
+    const dateKey=localDateKey(opts.date);
+    const dateLabel=clean(opts.dateLabel) || fallbackDateLabel(dateKey);
+    let division=normalizeDivision(opts.division);
+
+    if(!['add_makeup','update_makeup','add_trial','update_trial','add_waitlist'].includes(action)){
+      return {ok:false,code:'unsupported_action',message:'시간 선택을 지원하지 않는 작업입니다.'};
+    }
+    if(!studentName) return {ok:false,code:'student_required',message:'시간을 선택할 학생을 확인하지 못했어요.'};
+    if(!dateKey) return {ok:false,code:'date_required',message:'시간을 선택할 날짜를 확인하지 못했어요.'};
+
+    if(['add_makeup','update_makeup'].includes(action)){
+      const resolved=resolveCommandStudent(studentName,selected);
+      if(!resolved.ok) return resolved;
+      const studentDivision=normalizeStudentDivision(resolved.student);
+      if(division && studentDivision && division!==studentDivision){
+        return {ok:false,message:clean(resolved.student.name)+' 학생의 수업 구분과 입력한 유치부·초등부 정보가 달라요.'};
+      }
+      division=studentDivision || division;
+    }else if(action==='update_trial'){
+      division=normalizeDivision(opts.division);
+    }else{
+      let student=null;
+      if(selected && clean(selected.name)===studentName){
+        student=selected;
+      }else{
+        const candidates=findStudentsByExactName(studentName);
+        if(candidates.length===1) student=candidates[0];
+      }
+      const studentDivision=student ? normalizeStudentDivision(student) : '';
+      if(division && studentDivision && division!==studentDivision){
+        return {ok:false,message:clean(student.name)+' 학생의 수업 구분과 입력한 유치부·초등부 정보가 달라요.'};
+      }
+      division=studentDivision || division;
+    }
+
+    if(!division){
+      return {
+        ok:false,
+        code:'division_required',
+        field:'division',
+        choices:['kinder','elementary'],
+        message:studentName+' 학생은 유치부인지 초등부인지 선택해 주세요.'
+      };
+    }
+
+    const purpose=['add_makeup','update_makeup'].includes(action) ? 'makeup' : (['add_trial','update_trial'].includes(action) ? 'trial' : 'unknown');
+    const availability=await findAvailableSlots({
+      date:dateKey,
+      dateLabel,
+      division,
+      purpose,
+      viewMode:'schedule'
+    });
+    if(availability.closedDay){
+      return {ok:false,code:'closed_day',message:describeAvailableSlots(availability),division,date:dateKey};
+    }
+
+    const rows=Array.isArray(availability.allSlots) ? availability.allSlots : [];
+    if(!rows.length){
+      return {
+        ok:false,
+        code:'no_operating_slots',
+        message:dateLabel+'에는 '+divisionLabel(division)+' 운영 수업이 없어요.',
+        division,
+        date:dateKey
+      };
+    }
+
+    const mode=clean(availability.timetableMode) || 'hourly';
+    const grouped=new Map();
+    rows.forEach(slot=>{
+      const timeSlot=Number(slot && slot.timeSlot || 0);
+      if(!timeSlot) return;
+      if(!grouped.has(timeSlot)) grouped.set(timeSlot,[]);
+      grouped.get(timeSlot).push(slot);
+    });
+
+    const choices=Array.from(grouped.entries()).map(([timeSlot,timeRows])=>{
+      const open=timeRows.some(slot=>Number(slot && slot.remaining || 0)>0);
+      const remaining=timeRows.reduce((sum,slot)=>sum+Math.max(0,Number(slot && slot.remaining || 0)),0);
+      const selectable=action==='add_waitlist' ? true : open;
+      const label=timetableMemoTimeLabel(division,dateKey,timeSlot,mode);
+      return {
+        timeSlot:Number(timeSlot),
+        label,
+        status:open ? 'available' : 'full',
+        selectable,
+        remaining,
+        grouped:timeRows.length>1
+      };
+    }).sort((a,b)=>
+      structuredStoredTimeMinutes(mode,division,dateKey,a.timeSlot)
+      - structuredStoredTimeMinutes(mode,division,dateKey,b.timeSlot)
+    );
+
+    return {
+      ok:true,
+      action,
+      division,
+      date:dateKey,
+      dateLabel,
+      timetableMode:mode,
+      choices,
+      message:studentName+' · '+dateLabel+'\n시간을 선택해 주세요.'
+    };
+  }
+
 
   async function loadAvailabilityHorizon(startDate, endDate) {
     const start = localDateKey(startDate);
@@ -1026,39 +1157,150 @@
     return '';
   }
 
-  function findStudentsByExactName(name) {
-    const studentName = clean(name);
-    if (!studentName) return [];
+  function normalizeStudentSearchName(name) {
+    let value=clean(name);
+    if(!value) return '';
+    value=value.replace(/^토\)\s*/,'');
+    value=value.replace(/\(\d+\)\s*$/,'');
+    value=value.replace(/\*+\s*$/,'');
+    return clean(value);
+  }
+
+  function collectCommandStudentCandidates(studentName) {
+    const rows=[];
+
+    function pushRows(items) {
+      (Array.isArray(items) ? items : []).forEach(student=>{
+        if(!student || !clean(student.name)) return;
+        rows.push(student);
+      });
+    }
 
     try {
       if (typeof global.getKinderChatFeedbackSaveStudentCandidates === 'function') {
-        const rows = global.getKinderChatFeedbackSaveStudentCandidates(studentName) || [];
-        const filtered=Array.isArray(rows) ? rows.filter(Boolean) : [];
-        if (filtered.length) return filtered;
+        pushRows(global.getKinderChatFeedbackSaveStudentCandidates(studentName) || []);
+        const baseName=normalizeStudentSearchName(studentName);
+        if(baseName && baseName!==studentName){
+          pushRows(global.getKinderChatFeedbackSaveStudentCandidates(baseName) || []);
+        }
       }
     } catch (_) {}
 
     try {
       if (typeof global.getAllStudents === 'function') {
-        const rows=global.getAllStudents() || [];
-        const matches=(Array.isArray(rows) ? rows : [])
-          .filter(student => clean(student && student.name) === studentName)
-          .filter(student => {
-            if (typeof global.getStudentStatus !== 'function') return true;
-            try { return global.getStudentStatus(student) === 'active'; } catch (_) { return true; }
-          });
-        if (matches.length) return matches;
+        const all=global.getAllStudents() || [];
+        pushRows((Array.isArray(all) ? all : []).filter(student=>{
+          if (typeof global.getStudentStatus !== 'function') return true;
+          try { return global.getStudentStatus(student) === 'active'; } catch (_) { return true; }
+        }));
       }
     } catch (_) {}
 
     try {
       const pc = global.OlliTimetableService;
-      if (pc && typeof pc.activeStudents === 'function') {
-        return pc.activeStudents().filter(student => clean(student && student.name) === studentName);
-      }
+      if (pc && typeof pc.activeStudents === 'function') pushRows(pc.activeStudents() || []);
     } catch (_) {}
 
-    return [];
+    const seen=new Set();
+    return rows.filter(student=>{
+      const id=clean(student && student.id);
+      const key=id
+        ? 'id:'+id
+        : [
+            'fallback',
+            clean(student && student.name),
+            normalizeStudentDivision(student),
+            clean(student && (student.school || student.school_name)),
+            clean(student && (student.grade || student.age))
+          ].join('|');
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function findStudentsByExactName(name) {
+    const studentName=clean(name);
+    if(!studentName) return [];
+
+    const rows=collectCommandStudentCandidates(studentName);
+    const exact=rows.filter(student=>clean(student && student.name)===studentName);
+    if(exact.length) return exact;
+
+    const baseName=normalizeStudentSearchName(studentName);
+    if(!baseName) return [];
+    return rows.filter(student=>normalizeStudentSearchName(student && student.name)===baseName);
+  }
+
+  function resolveStructuredStudentReference(options) {
+    const opts=options || {};
+    const action=clean(opts.action);
+    const requestedName=clean(opts.studentName);
+    const selected=opts.selectedStudent && clean(opts.selectedStudent.id) ? opts.selectedStudent : null;
+
+    if(!requestedName){
+      if(selected){
+        return {
+          ok:true,
+          matched:true,
+          student:selected,
+          studentName:clean(selected.name),
+          division:normalizeStudentDivision(selected)
+        };
+      }
+      return {ok:false,code:'student_required',message:'학생 이름을 확인하지 못했어요.'};
+    }
+
+    if(selected){
+      const selectedName=clean(selected.name);
+      if(selectedName===requestedName || normalizeStudentSearchName(selectedName)===normalizeStudentSearchName(requestedName)){
+        return {
+          ok:true,
+          matched:true,
+          student:selected,
+          studentName:selectedName,
+          division:normalizeStudentDivision(selected)
+        };
+      }
+    }
+
+    const candidates=findStudentsByExactName(requestedName);
+    if(candidates.length===1){
+      const student=candidates[0];
+      return {
+        ok:true,
+        matched:true,
+        student,
+        studentName:clean(student.name),
+        division:normalizeStudentDivision(student)
+      };
+    }
+    if(candidates.length>1){
+      return {
+        ok:false,
+        code:'student_choice_required',
+        studentName:requestedName,
+        choices:candidates.map(student=>({
+          studentName:clean(student.name),
+          label:clean(student.name),
+          division:normalizeStudentDivision(student)
+        })),
+        message:requestedName+' 학생이 여러 명 있어요. 학생을 선택해 주세요.'
+      };
+    }
+
+    if(['add_makeup','update_makeup','update_pickup','cancel_pickup'].includes(action)){
+      return {ok:false,code:'student_not_found',message:requestedName+' 학생을 찾지 못했어요.'};
+    }
+
+    return {
+      ok:true,
+      matched:false,
+      guest:true,
+      student:null,
+      studentName:requestedName,
+      division:normalizeDivision(opts.division)
+    };
   }
 
   function resolveCommandStudent(studentName, selectedStudent) {
@@ -1133,10 +1375,15 @@
       if (sameGroup) return { ok:true, slot:sameGroup };
     }
 
+    const groups = Array.from(new Set(rows
+      .map(slot => classGroup(slot && slot.classGroup))
+      .filter(group => group === 'A' || group === 'B')));
     const choices = rows.map(slot => classGroup(slot.classGroup) + '반 ' + Number(slot.remaining || 0) + '자리').join(' · ');
     return {
       ok:false,
-      message:Number(timeSlot) + '시는 반이 나뉘어 있어요. ' + choices + '\nA반 또는 B반을 명령에 같이 적어 주세요.'
+      code:'class_group_required',
+      choices:groups,
+      message:Number(timeSlot) + '시는 반이 나뉘어 있어요. ' + choices + '\n반을 선택해 주세요.'
     };
   }
 
@@ -1161,7 +1408,9 @@
     if (groups.length === 1) return { ok:true, classGroup:groups[0] };
     return {
       ok:false,
-      message:Number(timeSlot) + '시는 A반과 B반으로 나뉘어 있어요. 대기할 반을 같이 적어 주세요.'
+      code:'class_group_required',
+      choices:groups.slice(),
+      message:Number(timeSlot) + '시는 A반과 B반으로 나뉘어 있어요. 대기할 반을 선택해 주세요.'
     };
   }
 
@@ -1214,6 +1463,30 @@
       return clean(item.studentName) + ' · ' + fallbackDateLabel(item.sessionDate) + ' ' + Number(item.timeSlot) + '시'
         + '\n결석 사유: ' + reason
         + '\n결석 처리할까요?';
+    }
+    if (item.intent === 'update_makeup') {
+      return [
+        clean(item.studentName)+' 보강 변경',
+        '현재: '+fallbackDateLabel(item.sourceSessionDate)+' '
+          +timetableMemoTimeLabel(item.division,item.sourceSessionDate,item.sourceTimeSlot,item.timetableMode)+' '
+          +classGroup(item.sourceClassGroup)+'반',
+        '변경: '+fallbackDateLabel(item.targetSessionDate)+' '
+          +timetableMemoTimeLabel(item.division,item.targetSessionDate,item.targetTimeSlot,item.timetableMode)+' '
+          +classGroup(item.targetClassGroup)+'반',
+        '이렇게 변경할까요?'
+      ].join('\n');
+    }
+    if (item.intent === 'update_trial') {
+      return [
+        clean(item.guestName || item.studentName)+' 체험수업 변경',
+        '현재: '+fallbackDateLabel(item.sourceSessionDate)+' '
+          +timetableMemoTimeLabel(item.division,item.sourceSessionDate,item.sourceTimeSlot,item.timetableMode)+' '
+          +classGroup(item.sourceClassGroup)+'반',
+        '변경: '+fallbackDateLabel(item.targetSessionDate)+' '
+          +timetableMemoTimeLabel(item.division,item.targetSessionDate,item.targetTimeSlot,item.timetableMode)+' '
+          +classGroup(item.targetClassGroup)+'반',
+        '이렇게 변경할까요?'
+      ].join('\n');
     }
     if (item.intent === 'cancel_makeup') {
       return clean(item.studentName) + ' · ' + fallbackDateLabel(item.sessionDate) + ' ' + Number(item.timeSlot) + '시'
@@ -1741,9 +2014,11 @@
 
     const classTime = Number(opts.classTime || 0);
     const kind = ['pickup','dropoff'].includes(clean(opts.kind)) ? clean(opts.kind) : 'all';
+    const studentName = clean(opts.studentName);
     const items = pickups.filter(row => {
       if (Number(row && row.weekday) !== weekday) return false;
       if (!rowEffectiveOn(row, dateKey)) return false;
+      if (studentName && clean(row && row.student_name) !== studentName) return false;
       if (classTime && Number(row && row.class_time) !== classTime) return false;
       if (kind === 'dropoff' && row && row.is_dropoff !== true) return false;
       if (kind === 'pickup' && row && row.is_dropoff === true) return false;
@@ -1757,6 +2032,7 @@
     return {
       date:dateKey,
       dateLabel:clean(opts.dateLabel) || fallbackDateLabel(dateKey),
+      studentName,
       classTime,
       kind,
       items
@@ -1767,6 +2043,7 @@
     const data = result || {};
     const items = Array.isArray(data.items) ? data.items : [];
     const label = clean(data.dateLabel) || fallbackDateLabel(data.date);
+    const studentName = clean(data.studentName);
     const classTime = Number(data.classTime || 0);
     const classText = classTime ? ' ' + classTime + '시 수업' : '';
     const kind = clean(data.kind);
@@ -1775,7 +2052,7 @@
       : (kind === 'pickup' ? '등원 픽업 학생' : '픽업 관리 학생');
 
     if (!items.length) {
-      return label + classText + '에는 등록된 ' + kindText + '이 없어요.';
+      return (studentName ? studentName + ' · ' : '') + label + classText + '에는 등록된 ' + kindText + '이 없어요.';
     }
 
     const grouped = new Map();
@@ -1787,7 +2064,7 @@
     });
 
     const lines = [
-      label + classText + ' ' + kindText + '은 ' + grouped.size + '명이에요.'
+      (studentName ? studentName + ' · ' : '') + label + classText + ' ' + kindText + '은 ' + grouped.size + '명이에요.'
     ];
 
     grouped.forEach(group => {
@@ -1873,15 +2150,27 @@
     if (!requestedTarget.ok) return requestedTarget;
 
     let rows = activePickupRows(weekData, studentId, lookupDate);
+    if (clean(opts.pickupId)) rows = rows.filter(row => clean(row && row.id) === clean(opts.pickupId));
     if (Number(opts.weekday || 0)) rows = rows.filter(row => Number(row && row.weekday) === Number(opts.weekday));
     if (requestedTarget.classTime) rows = rows.filter(row => Number(row && row.class_time) === requestedTarget.classTime);
 
     if (!rows.length) return { ok:false, message:clean(student.name) + ' 학생의 수정할 픽업 일정을 찾지 못했어요.' };
     if (rows.length > 1) {
-      const choices = rows.map(row =>
-        weekdayLabel(row.weekday) + ' ' + pickupClassTimeLabel(weekData, lookupDate, row.class_time)
-      ).join(' · ');
-      return { ok:false, message:clean(student.name) + ' 학생의 픽업 일정이 여러 개 있어요: ' + choices + '\n수업 요일과 시간을 함께 적어 주세요.' };
+      const choices = rows.map(row => {
+        const rowDate=nextOccurrenceKey(referenceDate,Number(row && row.weekday)) || lookupDate;
+        return {
+          id:clean(row && row.id),
+          label:weekdayLabel(row && row.weekday) + ' ' + pickupClassTimeLabel(weekData,rowDate,row && row.class_time)
+        };
+      }).filter(choice=>choice.id);
+      return {
+        ok:false,
+        code:'target_choice_required',
+        field:'target_choice',
+        targetType:'pickup',
+        choices,
+        message:clean(student.name) + ' 학생의 픽업 일정이 여러 개 있어요. 수정할 일정을 선택해 주세요.'
+      };
     }
 
     const item = rows[0];
@@ -1943,6 +2232,7 @@
     if (!requestedTarget.ok) return requestedTarget;
 
     let rows = activePickupRows(weekData, studentId, lookupDate);
+    if (clean(opts.pickupId)) rows = rows.filter(row => clean(row && row.id) === clean(opts.pickupId));
     if (Number(opts.weekday || 0)) rows = rows.filter(row => Number(row && row.weekday) === Number(opts.weekday));
     if (requestedTarget.classTime) rows = rows.filter(row => Number(row && row.class_time) === requestedTarget.classTime);
     if (clean(opts.pickupKind) === 'dropoff') {
@@ -1951,10 +2241,21 @@
 
     if (!rows.length) return { ok:false, message:clean(student.name) + ' 학생의 삭제할 픽업 일정을 찾지 못했어요.' };
     if (rows.length > 1) {
-      const choices = rows.map(row =>
-        weekdayLabel(row.weekday) + ' ' + pickupClassTimeLabel(weekData, lookupDate, row.class_time)
-      ).join(' · ');
-      return { ok:false, message:clean(student.name) + ' 학생의 픽업 일정이 여러 개 있어요: ' + choices + '\n삭제할 수업 요일과 시간을 함께 적어 주세요.' };
+      const choices = rows.map(row => {
+        const rowDate=nextOccurrenceKey(referenceDate,Number(row && row.weekday)) || lookupDate;
+        return {
+          id:clean(row && row.id),
+          label:weekdayLabel(row && row.weekday) + ' ' + pickupClassTimeLabel(weekData,rowDate,row && row.class_time)
+        };
+      }).filter(choice=>choice.id);
+      return {
+        ok:false,
+        code:'target_choice_required',
+        field:'target_choice',
+        targetType:'pickup',
+        choices,
+        message:clean(student.name) + ' 학생의 픽업 일정이 여러 개 있어요. 삭제할 일정을 선택해 주세요.'
+      };
     }
 
     const item = rows[0];
@@ -1982,23 +2283,73 @@
 
     const referenceDate = localDateKey(opts.date || opts.effectiveDate || new Date());
     const weekData = await loadFreshWeek(referenceDate);
+    const mode=timetableMode(weekData);
     let rows = arrays(weekData, 'waitlist').filter(row =>
       clean(row && row.student_name) === studentName
       && clean(row && row.status).toLowerCase() !== 'cancelled'
     );
+    if (clean(opts.waitlistId)) rows = rows.filter(row => clean(row && row.id) === clean(opts.waitlistId));
 
     const wantedWeekday = opts.date ? isoWeekday(referenceDate) : 0;
     if (wantedWeekday) rows = rows.filter(row => Number(row && row.target_weekday) === wantedWeekday);
-    if (Number(opts.timeSlot || 0)) rows = rows.filter(row => Number(row && row.target_time_slot) === Number(opts.timeSlot));
+
+    const requestedVisibleHour=Number(opts.classHour || 0);
+    const requestedMinute=Number(opts.classMinute || 0);
+    if(requestedVisibleHour){
+      rows=rows.filter(row=>{
+        const division=normalizeDivision(row && row.division);
+        const rowDate=wantedWeekday
+          ? referenceDate
+          : nextOccurrenceKey(referenceDate,Number(row && row.target_weekday));
+        const stored=timetableMemoTimeSlot(
+          mode,
+          division,
+          rowDate,
+          requestedVisibleHour,
+          requestedMinute
+        );
+        return stored>0 && Number(row && row.target_time_slot)===Number(stored);
+      });
+    }else if (Number(opts.timeSlot || 0)) {
+      rows = rows.filter(row => Number(row && row.target_time_slot) === Number(opts.timeSlot));
+    }
+
     if (requestedGroup(opts.classGroup)) rows = rows.filter(row => classGroup(row && row.target_class_group) === requestedGroup(opts.classGroup));
 
     if (!rows.length) return { ok:false, message:studentName + ' 학생의 취소 가능한 대기를 찾지 못했어요.' };
     if (rows.length > 1) {
-      const choices = rows.map(row => weekdayLabel(row.target_weekday) + ' ' + Number(row.target_time_slot) + '시').join(' · ');
-      return { ok:false, message:studentName + ' 학생의 대기가 여러 개 있어요: ' + choices + '\n취소할 요일과 시간을 함께 적어 주세요.' };
+      const choices = rows.map(row => {
+        const rowDate=wantedWeekday
+          ? referenceDate
+          : nextOccurrenceKey(referenceDate,Number(row && row.target_weekday));
+        const division=normalizeDivision(row && row.division);
+        const group=classGroup(row && row.target_class_group);
+        return {
+          id:clean(row && row.id),
+          label:divisionLabel(division) + ' · ' + weekdayLabel(row && row.target_weekday) + ' '
+            + timetableMemoTimeLabel(
+              division,
+              rowDate,
+              Number(row && row.target_time_slot),
+              mode
+            )
+            + ' ' + group + '반'
+        };
+      }).filter(choice=>choice.id);
+      return {
+        ok:false,
+        code:'target_choice_required',
+        field:'target_choice',
+        targetType:'waitlist',
+        choices,
+        message:studentName + ' 학생의 대기가 여러 개 있어요. 취소할 대기를 선택해 주세요.'
+      };
     }
 
     const item = rows[0];
+    const itemDate=wantedWeekday
+      ? referenceDate
+      : nextOccurrenceKey(referenceDate,Number(item.target_weekday));
     return {
       ok:true,
       command:{
@@ -2013,26 +2364,32 @@
         effectiveDate:referenceDate,
         isGuest:item && item.is_guest === true
       },
-      message:studentName + ' · ' + weekdayLabel(item.target_weekday) + ' ' + Number(item.target_time_slot) + '시\n대기를 취소할까요?'
+      message:studentName + ' · ' + weekdayLabel(item.target_weekday) + ' '
+        + timetableMemoTimeLabel(
+          normalizeDivision(item.division),
+          itemDate,
+          Number(item.target_time_slot),
+          mode
+        )
+        + '\n대기를 취소할까요?'
     };
   }
 
 
   async function preparePickupCommand(options) {
     const opts = options || {};
-    const weekday = Number(opts.weekday || 0);
+    const requestedWeekday = Number(opts.weekday || 0);
     const requestedClassTime = Number(opts.classTime || 0);
+    const sourceEnrollmentId = clean(opts.sourceEnrollmentId || opts.source_enrollment_id);
     const pickupLabel = clean(opts.pickupLabel);
     const pickupTime = clean(opts.pickupTime);
     const isDropoff = opts.isDropoff === true;
     const pickupGuide = isDropoff
-      ? '하원 픽업 등록은 학생 이름, 수업 요일·시간, 하원 장소를 함께 적어 주세요.\n예: 김민서 월요일 4시 수업 정문 하원 픽업 등록해줘'
-      : '등원 픽업 등록은 학생 이름, 수업 요일·시간, 픽업 장소, 픽업 시간을 함께 적어 주세요.\n예: 김민서 월요일 4시 수업 리슈빌 3시 30분 픽업 등록해줘';
+      ? '하원 픽업 등록은 학생 이름과 하원 장소를 알려 주세요.\n예: 김민서 정문 하원 픽업 등록해줘'
+      : '등원 픽업 등록은 학생 이름, 픽업 장소, 픽업 시간을 알려 주세요.\n예: 김민서 리슈빌 3시 30분 픽업 등록해줘';
 
     if (
       !clean(opts.studentName)
-      || weekday < 1 || weekday > 6
-      || !requestedClassTime
       || !pickupLabel
       || (!isDropoff && !/^\d{2}:\d{2}$/.test(pickupTime))
     ) {
@@ -2047,13 +2404,113 @@
     if (!studentId) return { ok:false, message:'학생 정보를 확인하지 못했어요.' };
     if (division !== 'kinder') return { ok:false, message:'픽업 등록은 유치부 학생만 지원해요.' };
 
-    const effectiveDate = nextOccurrenceKey(opts.effectiveDate || new Date(), weekday);
-    if (!effectiveDate) return { ok:false, message:'픽업 적용 요일을 확인하지 못했어요.' };
+    const referenceDate = localDateKey(opts.effectiveDate || new Date());
+    if (!referenceDate) return { ok:false, message:'픽업 적용 기준 날짜를 확인하지 못했어요.' };
 
-    const weekData = await loadFreshWeek(effectiveDate);
-    const requestedTarget = pickupStoredClassTarget(weekData, effectiveDate, opts);
-    if (!requestedTarget.ok) return requestedTarget;
-    const classTime = requestedTarget.classTime;
+    let weekday = requestedWeekday;
+    let classTime = 0;
+    let effectiveDate = '';
+    let weekData = null;
+    let targetLabel = '';
+
+    if (
+      !sourceEnrollmentId
+      && requestedWeekday >= 1 && requestedWeekday <= 6
+      && requestedClassTime > 0
+    ) {
+      effectiveDate = nextOccurrenceKey(referenceDate, requestedWeekday);
+      if (!effectiveDate) return { ok:false, message:'픽업 적용 요일을 확인하지 못했어요.' };
+      weekData = await loadFreshWeek(effectiveDate);
+      const requestedTarget = pickupStoredClassTarget(weekData, effectiveDate, opts);
+      if (!requestedTarget.ok) return requestedTarget;
+      classTime = requestedTarget.classTime;
+      targetLabel = requestedTarget.label;
+    } else {
+      const currentWeek = await loadFreshWeek(referenceDate);
+      let rows = activeStudentEnrollments(currentWeek, studentId, referenceDate)
+        .filter(row => Number(row && row.weekday) >= 1 && Number(row && row.weekday) <= 6 && Number(row && row.time_slot) > 0);
+
+      if (sourceEnrollmentId) {
+        rows = rows.filter(row => clean(row && row.id) === sourceEnrollmentId);
+      }
+      if (requestedWeekday >= 1 && requestedWeekday <= 6) {
+        rows = rows.filter(row => Number(row && row.weekday) === requestedWeekday);
+      }
+      if (requestedClassTime > 0) {
+        rows = rows.filter(row => {
+          const rowDate = nextOccurrenceKey(referenceDate, Number(row && row.weekday));
+          const requestedTarget = pickupStoredClassTarget(currentWeek, rowDate, {
+            classTime:requestedClassTime,
+            classMinute:Object.prototype.hasOwnProperty.call(opts,'classMinute') ? opts.classMinute : null
+          });
+          return requestedTarget.ok && Number(row && row.time_slot) === Number(requestedTarget.classTime);
+        });
+      }
+
+      const seen = new Set();
+      rows = rows.filter(row => {
+        const key = [Number(row && row.weekday), Number(row && row.time_slot)].join(':');
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }).sort((a,b) =>
+        Number(a && a.weekday)-Number(b && b.weekday)
+        || Number(a && a.time_slot)-Number(b && b.time_slot)
+      );
+
+      if (!rows.length) {
+        return {
+          ok:false,
+          message:sourceEnrollmentId
+            ? clean(student.name) + ' 학생의 선택한 정규 수업을 현재 시간표에서 찾지 못했어요.'
+            : clean(student.name) + ' 학생의 현재 정규 수업을 찾지 못했어요.'
+        };
+      }
+
+      if (rows.length > 1) {
+        const choices = rows.map(row => {
+          const rowDate = nextOccurrenceKey(referenceDate, Number(row && row.weekday)) || referenceDate;
+          return {
+            id:clean(row && row.id),
+            label:weekdayLabel(row && row.weekday) + ' ' + pickupClassTimeLabel(currentWeek,rowDate,row && row.time_slot)
+          };
+        }).filter(choice => choice.id);
+
+        if (choices.length > 1) {
+          return {
+            ok:false,
+            code:'target_choice_required',
+            field:'target_choice',
+            targetType:'pickup_class',
+            choiceKey:'sourceEnrollmentId',
+            choices,
+            message:clean(student.name) + ' 학생의 정규 수업이 여러 개 있어요. 픽업을 연결할 수업을 선택해 주세요.'
+          };
+        }
+      }
+
+      const selected = rows[0];
+      weekday = Number(selected && selected.weekday || 0);
+      classTime = Number(selected && selected.time_slot || 0);
+      effectiveDate = nextOccurrenceKey(referenceDate, weekday);
+      if (!effectiveDate || !classTime) {
+        return { ok:false, message:'픽업을 연결할 정규 수업 정보를 확인하지 못했어요.' };
+      }
+
+      weekData = await loadFreshWeek(effectiveDate);
+      const selectedStillActive = activeStudentEnrollments(weekData, studentId, effectiveDate)
+        .some(row =>
+          clean(row && row.id) === clean(selected && selected.id)
+          || (
+            Number(row && row.weekday) === weekday
+            && Number(row && row.time_slot) === classTime
+          )
+        );
+      if (!selectedStillActive) {
+        return { ok:false, message:clean(student.name) + ' 학생의 다음 수업일 정규 수업을 다시 확인해 주세요.' };
+      }
+      targetLabel = pickupClassTimeLabel(weekData, effectiveDate, classTime);
+    }
 
     const existing = activePickupRows(weekData, studentId, effectiveDate).find(row =>
       Number(row && row.weekday) === weekday && Number(row && row.class_time) === classTime
@@ -2085,18 +2542,19 @@
       command:{
         intent:'add_pickup', studentId, studentName:clean(student.name), division:'kinder',
         weekday, classTime,
-        timetableMode:requestedTarget.timetableMode,
+        timetableMode:timetableMode(weekData),
         pickupLabel:isDropoff ? '' : pickupLabel,
         pickupTime:isDropoff ? '' : pickupTime,
         dropoffLabel:isDropoff ? pickupLabel : '',
         effectiveDate, isDropoff
       },
-      message:clean(student.name) + ' · ' + weekdayLabel(weekday) + ' ' + requestedTarget.label + ' 수업'
+      message:clean(student.name) + ' · ' + weekdayLabel(weekday) + ' ' + targetLabel + ' 수업'
         + '\n' + pickupLabel
         + (isDropoff ? ' · 하원 픽업' : ' · ' + pickupTimeDisplay(pickupTime) + ' · 등원 픽업')
         + '\n등록할까요?\n\'확인\' 또는 \'취소\'라고 입력해 주세요.'
     };
   }
+
 
   async function prepareMakeupCommand(options) {
     const opts = options || {};
@@ -2128,7 +2586,30 @@
     }
 
     const target = chooseOpenSlot(availability, timeSlot, opts.classGroup, '');
-    if (!target.ok) return target;
+    if (!target.ok) {
+      if (target.code === 'class_group_required' && Array.isArray(target.choices) && target.choices.length > 1) {
+        return {
+          ok:false,
+          code:'class_group_required',
+          choices:target.choices.slice(),
+          commandDraft:{
+            intent:'choose_makeup_group',
+            targetIntent:'add_makeup',
+            studentId,
+            studentName:clean(student.name),
+            division,
+            sessionDate,
+            timeSlot,
+            classGroup:'',
+            allowedClassGroups:target.choices.slice()
+          },
+          message:
+            clean(student.name) + ' · ' + fallbackDateLabel(sessionDate) + ' ' + timeSlot + '시\n'
+            + target.message
+        };
+      }
+      return target;
+    }
 
     const slot = target.slot;
     const groupText = slot.grouped ? ' ' + classGroup(slot.classGroup) + '반' : '';
@@ -2146,6 +2627,455 @@
       message:
         clean(student.name) + ' · ' + fallbackDateLabel(sessionDate) + ' ' + timeSlot + '시' + groupText
         + '\n보강으로 등록할까요?\n\'확인\' 또는 \'취소\'라고 입력해 주세요.'
+    };
+  }
+
+
+  async function prepareMakeupUpdateCommand(options) {
+    const opts=options || {};
+    const resolved=resolveCommandStudent(opts.studentName,opts.selectedStudent);
+    if(!resolved.ok) return resolved;
+
+    const student=resolved.student;
+    const studentId=clean(student && student.id);
+    const studentName=clean(student && student.name);
+    const division=normalizeStudentDivision(student);
+    const effectiveDate=localDateKey(opts.effectiveDate || new Date());
+    const horizonEnd=addDaysKey(effectiveDate,56);
+    const oneTimeSessionId=clean(opts.oneTimeSessionId);
+    const sourceDate=opts.sourceDate ? localDateKey(opts.sourceDate) : '';
+    const sourceHour=Number(opts.sourceTimeSlot || 0);
+    const sourceMinute=Number(opts.sourceMinute || 0);
+    const sourceGroup=requestedGroup(opts.sourceClassGroup);
+    let targetDate=opts.targetDate ? localDateKey(opts.targetDate) : '';
+    const targetHourOrSlot=Number(opts.targetTimeSlot || 0);
+    const targetMinute=Number(opts.targetMinute || 0);
+    const targetTimeStored=opts.targetTimeStored===true;
+    const targetGroup=requestedGroup(opts.targetClassGroup);
+
+    if(!studentId || !division) return {ok:false,message:'학생의 수업 구분을 확인하지 못했어요.'};
+    if(!effectiveDate || !horizonEnd) return {ok:false,message:'보강 변경 기준 날짜를 확인하지 못했어요.'};
+
+    let sourceData;
+    if(sourceDate){
+      sourceData=await loadFreshWeek(sourceDate);
+    }else{
+      sourceData=await loadAvailabilityHorizon(effectiveDate,horizonEnd);
+    }
+    const sourceMode=timetableMode(sourceData);
+    let sourceRows=arrays(sourceData,'one_time_sessions').filter(row=>
+      clean(row && row.student_id)===studentId
+      && clean(row && row.session_type).toLowerCase()==='makeup'
+      && clean(row && row.status).toLowerCase()!=='cancelled'
+      && clean(row && row.session_date).slice(0,10)>=effectiveDate
+    );
+    if(sourceDate) sourceRows=sourceRows.filter(row=>clean(row && row.session_date).slice(0,10)===sourceDate);
+    if(oneTimeSessionId) sourceRows=sourceRows.filter(row=>clean(row && row.id)===oneTimeSessionId);
+    if(sourceHour){
+      sourceRows=sourceRows.filter(row=>{
+        const rowDate=clean(row && row.session_date).slice(0,10);
+        const stored=timetableMemoTimeSlot(sourceMode,division,rowDate,sourceHour,sourceMinute);
+        return stored>0 && Number(row && row.time_slot)===stored;
+      });
+    }
+    if(sourceGroup) sourceRows=sourceRows.filter(row=>classGroup(row && row.class_group)===sourceGroup);
+    sourceRows.sort((a,b)=>
+      clean(a && a.session_date).localeCompare(clean(b && b.session_date))
+      || structuredStoredTimeMinutes(
+        sourceMode,division,clean(a && a.session_date).slice(0,10),Number(a && a.time_slot)
+      )-structuredStoredTimeMinutes(
+        sourceMode,division,clean(b && b.session_date).slice(0,10),Number(b && b.time_slot)
+      )
+      || classGroup(a && a.class_group).localeCompare(classGroup(b && b.class_group))
+    );
+
+    if(!sourceRows.length){
+      return {ok:false,message:studentName+' 학생의 변경 가능한 보강 일정을 찾지 못했어요.'};
+    }
+    if(sourceRows.length>1){
+      return {
+        ok:false,
+        code:'target_choice_required',
+        field:'target_choice',
+        targetType:'makeup_source',
+        choiceKey:'oneTimeSessionId',
+        choices:sourceRows.slice(0,12).map(row=>{
+          const rowDate=clean(row && row.session_date).slice(0,10);
+          return {
+            id:clean(row && row.id),
+            label:fallbackDateLabel(rowDate)+' '
+              +timetableMemoTimeLabel(division,rowDate,Number(row && row.time_slot),sourceMode)
+              +' '+classGroup(row && row.class_group)+'반'
+          };
+        }).filter(choice=>choice.id),
+        message:studentName+' 학생의 변경할 보강이 여러 개 있어요. 변경할 보강을 선택해 주세요.'
+      };
+    }
+
+    const source=sourceRows[0];
+    const sourceId=clean(source && source.id);
+    const sourceSessionDate=clean(source && source.session_date).slice(0,10);
+    const sourceTimeSlot=Number(source && source.time_slot || 0);
+    const sourceClassGroup=classGroup(source && source.class_group);
+    const sourceTimeLabel=timetableMemoTimeLabel(division,sourceSessionDate,sourceTimeSlot,sourceMode);
+    if(!sourceId || !sourceSessionDate || !sourceTimeSlot){
+      return {ok:false,message:'기존 보강 정보를 확인하지 못했어요.'};
+    }
+
+    const hasExplicitTarget=
+      !!clean(opts.targetDate)
+      || targetHourOrSlot>0
+      || !!targetGroup;
+    if(!targetDate && hasExplicitTarget) targetDate=sourceSessionDate;
+    if(!targetDate){
+      return {
+        ok:false,
+        code:'target_date_required',
+        field:'target_date',
+        source:{
+          oneTimeSessionId:sourceId,
+          sessionDate:sourceSessionDate,
+          timeSlot:sourceTimeSlot,
+          classGroup:sourceClassGroup
+        },
+        message:studentName+' · '+fallbackDateLabel(sourceSessionDate)+' '+sourceTimeLabel+' '+sourceClassGroup+'반\n변경할 날짜를 선택해 주세요.'
+      };
+    }
+    if(targetDate<effectiveDate){
+      return {ok:false,message:'지난 날짜로는 보강을 변경할 수 없어요.'};
+    }
+
+    if(!targetHourOrSlot){
+      return {
+        ok:false,
+        code:'target_time_required',
+        field:'target_time',
+        source:{
+          oneTimeSessionId:sourceId,
+          sessionDate:sourceSessionDate,
+          timeSlot:sourceTimeSlot,
+          classGroup:sourceClassGroup
+        },
+        targetDate,
+        message:studentName+' · '+fallbackDateLabel(targetDate)+'\n변경할 시간을 선택해 주세요.'
+      };
+    }
+
+    const availability=await findAvailableSlots({
+      date:targetDate,
+      dateLabel:fallbackDateLabel(targetDate),
+      division,
+      purpose:'makeup',
+      viewMode:'schedule'
+    });
+    if(availability.closedDay) return {ok:false,message:describeAvailableSlots(availability)};
+
+    const targetMode=clean(availability.timetableMode) || 'hourly';
+    const targetTimeSlot=targetTimeStored
+      ? targetHourOrSlot
+      : timetableMemoTimeSlot(targetMode,division,targetDate,targetHourOrSlot,targetMinute);
+    if(targetTimeSlot<=0){
+      return {ok:false,message:'변경할 보강 시간을 확인하지 못했어요.'};
+    }
+
+    const target=chooseOpenSlot(
+      availability,
+      targetTimeSlot,
+      targetGroup,
+      sourceClassGroup
+    );
+    if(!target.ok){
+      if(target.code==='class_group_required' && Array.isArray(target.choices) && target.choices.length>1){
+        return {
+          ok:false,
+          code:'target_choice_required',
+          field:'target_choice',
+          targetType:'makeup_group',
+          choiceKey:'targetClassGroup',
+          choices:target.choices.map(group=>({id:group,label:group+'반'})),
+          message:studentName+' · '+fallbackDateLabel(targetDate)+' '
+            +timetableMemoTimeLabel(division,targetDate,targetTimeSlot,targetMode)
+            +'\n변경할 반을 선택해 주세요.'
+        };
+      }
+      return target;
+    }
+
+    const slot=target.slot;
+    const actualTargetGroup=classGroup(slot && slot.classGroup);
+    if(
+      sourceSessionDate===targetDate
+      && sourceTimeSlot===targetTimeSlot
+      && sourceClassGroup===actualTargetGroup
+    ){
+      return {ok:false,message:'현재 보강 일정과 변경할 일정이 같아요.'};
+    }
+
+    const targetWeek=sourceSessionDate===targetDate
+      ? sourceData
+      : await loadFreshWeek(targetDate);
+    const duplicate=arrays(targetWeek,'one_time_sessions').some(row=>
+      clean(row && row.id)!==sourceId
+      && clean(row && row.student_id)===studentId
+      && clean(row && row.session_date).slice(0,10)===targetDate
+      && Number(row && row.time_slot)===targetTimeSlot
+      && clean(row && row.status).toLowerCase()!=='cancelled'
+    );
+    if(duplicate){
+      return {ok:false,message:studentName+' 학생은 변경할 날짜와 시간에 이미 다른 수업이 등록되어 있어요.'};
+    }
+
+    const targetTimeLabel=timetableMemoTimeLabel(division,targetDate,targetTimeSlot,targetMode);
+    return {
+      ok:true,
+      command:{
+        intent:'update_makeup',
+        studentId,
+        studentName,
+        division,
+        oneTimeSessionId:sourceId,
+        sourceSessionDate,
+        sourceTimeSlot,
+        sourceClassGroup,
+        targetSessionDate:targetDate,
+        targetTimeSlot,
+        targetClassGroup:actualTargetGroup,
+        timetableMode:targetMode
+      },
+      message:[
+        studentName+' 보강 변경',
+        '현재: '+fallbackDateLabel(sourceSessionDate)+' '+sourceTimeLabel+' '+sourceClassGroup+'반',
+        '변경: '+fallbackDateLabel(targetDate)+' '+targetTimeLabel+' '+actualTargetGroup+'반',
+        '이렇게 변경할까요?'
+      ].join('\n')
+    };
+  }
+
+
+  async function prepareTrialUpdateCommand(options) {
+    const opts=options || {};
+    const guestName=clean(opts.guestName || opts.studentName);
+    const requestedDivision=normalizeDivision(opts.division);
+    const effectiveDate=localDateKey(opts.effectiveDate || new Date());
+    const horizonEnd=addDaysKey(effectiveDate,370);
+    const oneTimeSessionId=clean(opts.oneTimeSessionId);
+    const sourceDate=opts.sourceDate ? localDateKey(opts.sourceDate) : '';
+    const sourceHour=Number(opts.sourceTimeSlot || 0);
+    const sourceMinute=Number(opts.sourceMinute || 0);
+    const sourceGroup=requestedGroup(opts.sourceClassGroup);
+    let targetDate=opts.targetDate ? localDateKey(opts.targetDate) : '';
+    const targetHourOrSlot=Number(opts.targetTimeSlot || 0);
+    const targetMinute=Number(opts.targetMinute || 0);
+    const targetTimeStored=opts.targetTimeStored===true;
+    const targetGroup=requestedGroup(opts.targetClassGroup);
+
+    if(!guestName) return {ok:false,message:'변경할 체험 학생 이름을 확인하지 못했어요.'};
+    if(!effectiveDate || !horizonEnd) return {ok:false,message:'체험 변경 기준 날짜를 확인하지 못했어요.'};
+
+    const sameGuest=(value)=>clean(value).toLocaleLowerCase('ko-KR')===guestName.toLocaleLowerCase('ko-KR');
+    let sourceData=sourceDate
+      ? await loadFreshWeek(sourceDate)
+      : await loadAvailabilityHorizon(effectiveDate,horizonEnd);
+    const sourceMode=timetableMode(sourceData);
+
+    let sourceRows=arrays(sourceData,'one_time_sessions').filter(row=>
+      row && row.is_guest===true
+      && clean(row.session_type).toLowerCase()==='trial'
+      && clean(row.status).toLowerCase()!=='cancelled'
+      && sameGuest(row.student_name)
+      && clean(row.session_date).slice(0,10)>=effectiveDate
+    );
+    if(sourceDate) sourceRows=sourceRows.filter(row=>clean(row.session_date).slice(0,10)===sourceDate);
+    if(oneTimeSessionId) sourceRows=sourceRows.filter(row=>clean(row.id)===oneTimeSessionId);
+    if(requestedDivision) sourceRows=sourceRows.filter(row=>normalizeDivision(row.division)===requestedDivision);
+    if(sourceHour){
+      sourceRows=sourceRows.filter(row=>{
+        const rowDate=clean(row.session_date).slice(0,10);
+        const rowDivision=normalizeDivision(row.division);
+        const stored=timetableMemoTimeSlot(sourceMode,rowDivision,rowDate,sourceHour,sourceMinute);
+        return stored>0 && Number(row.time_slot)===stored;
+      });
+    }
+    if(sourceGroup) sourceRows=sourceRows.filter(row=>classGroup(row.class_group)===sourceGroup);
+    sourceRows.sort((a,b)=>
+      clean(a.session_date).localeCompare(clean(b.session_date))
+      || structuredStoredTimeMinutes(
+        sourceMode,normalizeDivision(a.division),clean(a.session_date).slice(0,10),Number(a.time_slot)
+      )-structuredStoredTimeMinutes(
+        sourceMode,normalizeDivision(b.division),clean(b.session_date).slice(0,10),Number(b.time_slot)
+      )
+      || classGroup(a.class_group).localeCompare(classGroup(b.class_group))
+    );
+
+    if(!sourceRows.length){
+      return {ok:false,message:guestName+' 학생의 변경 가능한 체험 일정을 찾지 못했어요.'};
+    }
+    if(sourceRows.length>1){
+      return {
+        ok:false,
+        code:'target_choice_required',
+        field:'target_choice',
+        targetType:'trial_source',
+        choiceKey:'oneTimeSessionId',
+        choices:sourceRows.slice(0,12).map(row=>{
+          const rowDate=clean(row.session_date).slice(0,10);
+          const rowDivision=normalizeDivision(row.division);
+          return {
+            id:clean(row.id),
+            label:divisionLabel(rowDivision)+' · '+fallbackDateLabel(rowDate)+' '
+              +timetableMemoTimeLabel(rowDivision,rowDate,Number(row.time_slot),sourceMode)
+              +' '+classGroup(row.class_group)+'반'
+          };
+        }).filter(choice=>choice.id),
+        message:guestName+' 학생의 변경할 체험이 여러 개 있어요. 변경할 체험을 선택해 주세요.'
+      };
+    }
+
+    const source=sourceRows[0];
+    const sourceId=clean(source.id);
+    const division=normalizeDivision(source.division);
+    const sourceSessionDate=clean(source.session_date).slice(0,10);
+    const sourceTimeSlot=Number(source.time_slot || 0);
+    const sourceClassGroup=classGroup(source.class_group);
+    const sourceTimeLabel=timetableMemoTimeLabel(division,sourceSessionDate,sourceTimeSlot,sourceMode);
+    if(!sourceId || !division || !sourceSessionDate || !sourceTimeSlot){
+      return {ok:false,message:'기존 체험 정보를 확인하지 못했어요.'};
+    }
+    if(requestedDivision && requestedDivision!==division){
+      return {ok:false,message:'요청한 유치부·초등부 구분과 기존 체험 정보가 달라요.'};
+    }
+
+    const hasExplicitTarget=!!clean(opts.targetDate) || targetHourOrSlot>0 || !!targetGroup;
+    if(!targetDate && hasExplicitTarget) targetDate=sourceSessionDate;
+    if(!targetDate){
+      return {
+        ok:false,
+        code:'target_date_required',
+        field:'target_date',
+        source:{
+          oneTimeSessionId:sourceId,
+          guestName,
+          division,
+          sessionDate:sourceSessionDate,
+          timeSlot:sourceTimeSlot,
+          classGroup:sourceClassGroup
+        },
+        message:guestName+' · '+fallbackDateLabel(sourceSessionDate)+' '+sourceTimeLabel+' '+sourceClassGroup+'반\n변경할 날짜를 선택해 주세요.'
+      };
+    }
+    if(targetDate<effectiveDate){
+      return {ok:false,message:'지난 날짜로는 체험수업을 변경할 수 없어요.'};
+    }
+
+    if(!targetHourOrSlot){
+      return {
+        ok:false,
+        code:'target_time_required',
+        field:'target_time',
+        source:{
+          oneTimeSessionId:sourceId,
+          guestName,
+          division,
+          sessionDate:sourceSessionDate,
+          timeSlot:sourceTimeSlot,
+          classGroup:sourceClassGroup
+        },
+        targetDate,
+        message:guestName+' · '+fallbackDateLabel(targetDate)+'\n변경할 시간을 선택해 주세요.'
+      };
+    }
+
+    const availability=await findAvailableSlots({
+      date:targetDate,
+      dateLabel:fallbackDateLabel(targetDate),
+      division,
+      purpose:'trial',
+      viewMode:'schedule'
+    });
+    if(availability.closedDay) return {ok:false,message:describeAvailableSlots(availability)};
+
+    const targetMode=clean(availability.timetableMode) || 'hourly';
+    const targetTimeSlot=targetTimeStored
+      ? targetHourOrSlot
+      : timetableMemoTimeSlot(targetMode,division,targetDate,targetHourOrSlot,targetMinute);
+    if(targetTimeSlot<=0){
+      return {ok:false,message:'변경할 체험 시간을 확인하지 못했어요.'};
+    }
+
+    const target=chooseOpenSlot(
+      availability,
+      targetTimeSlot,
+      targetGroup,
+      sourceClassGroup
+    );
+    if(!target.ok){
+      if(target.code==='class_group_required' && Array.isArray(target.choices) && target.choices.length>1){
+        return {
+          ok:false,
+          code:'target_choice_required',
+          field:'target_choice',
+          targetType:'trial_group',
+          choiceKey:'targetClassGroup',
+          choices:target.choices.map(group=>({id:group,label:group+'반'})),
+          message:guestName+' · '+fallbackDateLabel(targetDate)+' '
+            +timetableMemoTimeLabel(division,targetDate,targetTimeSlot,targetMode)
+            +'\n변경할 반을 선택해 주세요.'
+        };
+      }
+      return target;
+    }
+
+    const slot=target.slot;
+    const actualTargetGroup=classGroup(slot && slot.classGroup);
+    if(
+      sourceSessionDate===targetDate
+      && sourceTimeSlot===targetTimeSlot
+      && sourceClassGroup===actualTargetGroup
+    ){
+      return {ok:false,message:'현재 체험 일정과 변경할 일정이 같아요.'};
+    }
+
+    const targetWeek=sourceSessionDate===targetDate
+      ? sourceData
+      : await loadFreshWeek(targetDate);
+    const duplicate=arrays(targetWeek,'one_time_sessions').some(row=>
+      clean(row && row.id)!==sourceId
+      && row && row.is_guest===true
+      && clean(row.session_type).toLowerCase()==='trial'
+      && clean(row.status).toLowerCase()!=='cancelled'
+      && clean(row.student_name).toLocaleLowerCase('ko-KR')===guestName.toLocaleLowerCase('ko-KR')
+      && clean(row.session_date).slice(0,10)===targetDate
+      && Number(row.time_slot)===targetTimeSlot
+      && classGroup(row.class_group)===actualTargetGroup
+    );
+    if(duplicate){
+      return {ok:false,message:'같은 이름의 체험수업이 변경할 날짜와 시간에 이미 등록되어 있어요.'};
+    }
+
+    const targetTimeLabel=timetableMemoTimeLabel(division,targetDate,targetTimeSlot,targetMode);
+    return {
+      ok:true,
+      command:{
+        intent:'update_trial',
+        guestName,
+        studentName:guestName,
+        division,
+        oneTimeSessionId:sourceId,
+        sourceSessionDate,
+        sourceTimeSlot,
+        sourceClassGroup,
+        targetSessionDate:targetDate,
+        targetTimeSlot,
+        targetClassGroup:actualTargetGroup,
+        timetableMode:targetMode,
+        isGuest:true
+      },
+      message:[
+        guestName+' 체험수업 변경',
+        '현재: '+fallbackDateLabel(sourceSessionDate)+' '+sourceTimeLabel+' '+sourceClassGroup+'반',
+        '변경: '+fallbackDateLabel(targetDate)+' '+targetTimeLabel+' '+actualTargetGroup+'반',
+        '이렇게 변경할까요?'
+      ].join('\n')
     };
   }
 
@@ -2217,6 +3147,7 @@
     const effectiveDate = localDateKey(opts.effectiveDate || new Date());
     const sourceWeekday = Number(opts.sourceWeekday || 0);
     const sourceTimeSlot = Number(opts.sourceTimeSlot || 0);
+    const sourceEnrollmentId = clean(opts.sourceEnrollmentId);
     const targetWeekday = Number(opts.targetWeekday || 0);
     const targetTimeSlot = Number(opts.targetTimeSlot || 0);
 
@@ -2229,17 +3160,37 @@
     let sources = activeStudentEnrollments(currentWeek, studentId, effectiveDate)
       .filter(row => Number(row && row.weekday) === sourceWeekday);
     if (sourceTimeSlot) sources = sources.filter(row => Number(row && row.time_slot) === sourceTimeSlot);
+    if (sourceEnrollmentId) sources = sources.filter(row => clean(row && row.id) === sourceEnrollmentId);
 
     if (!sources.length) {
       const sourceText = weekdayLabel(sourceWeekday) + (sourceTimeSlot ? ' ' + sourceTimeSlot + '시' : '');
       return { ok:false, message:clean(student.name) + ' 학생의 ' + sourceText + ' 정규수업을 찾지 못했어요.' };
     }
     if (sources.length > 1) {
-      const times = sources.map(row => Number(row.time_slot) + '시').join(' · ');
+      const sourceDate = nextOccurrenceKey(effectiveDate, sourceWeekday);
+      const mode = timetableMode(currentWeek);
+      const choices = sources.slice(0, 8).map(row => ({
+        id:clean(row && row.id),
+        label:[
+          weekdayLabel(sourceWeekday),
+          timetableMemoTimeLabel(division, sourceDate, Number(row && row.time_slot), mode),
+          classGroup(row && row.class_group) + '반'
+        ].join(' · ')
+      })).filter(item => item.id && item.label);
+      if (choices.length > 1) {
+        return {
+          ok:false,
+          code:'target_choice_required',
+          field:'target_choice',
+          targetType:'regular_enrollment',
+          choiceKey:'sourceEnrollmentId',
+          choices,
+          message:clean(student.name) + ' 학생의 이동할 기존 수업을 선택해 주세요.'
+        };
+      }
       return {
         ok:false,
-        message:clean(student.name) + ' 학생은 ' + weekdayLabel(sourceWeekday) + ' 수업이 여러 개 있어요: ' + times
-          + '\n이동할 기존 시간도 함께 적어 주세요.'
+        message:clean(student.name) + ' 학생의 이동할 기존 수업을 한 개로 확인하지 못했어요.'
       };
     }
 
@@ -2274,7 +3225,37 @@
       opts.classGroup,
       classGroup(source && source.class_group)
     );
-    if (!target.ok) return target;
+    if (!target.ok) {
+      if (target.code === 'class_group_required' && Array.isArray(target.choices) && target.choices.length > 1) {
+        const sourceText = weekdayLabel(sourceWeekday) + ' ' + Number(source.time_slot) + '시';
+        return {
+          ok:false,
+          code:'class_group_required',
+          choices:target.choices.slice(),
+          commandDraft:{
+            intent:'choose_move_group',
+            targetIntent:'move_class',
+            studentId,
+            studentName:clean(student.name),
+            division,
+            sourceEnrollmentId:clean(source.id),
+            sourceWeekday,
+            sourceTimeSlot:Number(source.time_slot),
+            targetWeekday,
+            targetTimeSlot,
+            targetClassGroup:'',
+            targetCheckDate:targetDate,
+            effectiveDate,
+            allowedClassGroups:target.choices.slice()
+          },
+          message:
+            clean(student.name) + ' · ' + sourceText + ' → '
+            + weekdayLabel(targetWeekday) + ' ' + targetTimeSlot + '시\n'
+            + '이동할 반을 선택해 주세요.'
+        };
+      }
+      return target;
+    }
 
     const slot = target.slot;
     const sourceText = weekdayLabel(sourceWeekday) + ' ' + Number(source.time_slot) + '시';
@@ -2345,10 +3326,39 @@
 
     const weekData = await loadFreshWeek(sessionDate);
     const groupResult = chooseTargetGroup(weekData, division, sessionDate, targetTimeSlot, opts.classGroup);
-    if (!groupResult.ok) return groupResult;
 
     const studentId = clean(student && student.id);
     const studentName = clean(student && student.name) || guestName;
+
+    if (!groupResult.ok) {
+      if (groupResult.code === 'class_group_required' && Array.isArray(groupResult.choices) && groupResult.choices.length > 1) {
+        return {
+          ok:false,
+          code:'class_group_required',
+          choices:groupResult.choices.slice(),
+          commandDraft:{
+            intent:'choose_waitlist_group',
+            targetIntent:'add_waitlist',
+            studentId,
+            studentName,
+            guestName,
+            isGuest:!studentId,
+            division,
+            effectiveDate:sessionDate,
+            sessionDate,
+            targetWeekday,
+            targetTimeSlot,
+            targetClassGroup:'',
+            allowedClassGroups:groupResult.choices.slice()
+          },
+          message:
+            studentName + (studentId ? '' : ' (비재원)') + ' · '
+            + weekdayLabel(targetWeekday) + ' ' + targetTimeSlot + '시\n'
+            + groupResult.message
+        };
+      }
+      return groupResult;
+    }
     if (duplicateWaitlist(weekData, {
       studentId,
       guestName,
@@ -2413,7 +3423,30 @@
     if (availability.closedDay) return { ok:false, message:describeAvailableSlots(availability) };
 
     const target = chooseOpenSlot(availability, timeSlot, opts.classGroup, '');
-    if (!target.ok) return target;
+    if (!target.ok) {
+      if (target.code === 'class_group_required' && Array.isArray(target.choices) && target.choices.length > 1) {
+        return {
+          ok:false,
+          code:'class_group_required',
+          choices:target.choices.slice(),
+          commandDraft:{
+            intent:'choose_trial_group',
+            targetIntent:'add_trial',
+            guestName,
+            studentName:guestName,
+            division,
+            sessionDate,
+            timeSlot,
+            classGroup:'',
+            allowedClassGroups:target.choices.slice()
+          },
+          message:
+            guestName + ' · ' + fallbackDateLabel(sessionDate) + ' ' + timeSlot + '시\n'
+            + target.message
+        };
+      }
+      return target;
+    }
     const slot = target.slot;
 
     if (duplicateTrial(weekData, guestName, sessionDate, timeSlot, slot.classGroup)) {
@@ -3043,6 +4076,8 @@
     if (intent === 'cancel_pickup') return preparePickupCancelCommand(options);
     if (intent === 'cancel_waitlist') return prepareCancelWaitlistCommand(options);
     if (intent === 'add_makeup') return prepareMakeupCommand(options);
+    if (intent === 'update_makeup') return prepareMakeupUpdateCommand(options);
+    if (intent === 'update_trial') return prepareTrialUpdateCommand(options);
     if (intent === 'move_class') return prepareMoveCommand(options);
     if (intent === 'add_waitlist') return prepareWaitlistCommand(options);
     if (intent === 'add_trial') return prepareTrialCommand(options);
@@ -3368,6 +4403,23 @@
       } else {
         throw new Error('시간표 저장 기능을 아직 불러오지 못했습니다.');
       }
+    } else if (intent === 'update_makeup' || intent === 'update_trial') {
+      if (pc && typeof pc.updateOneTimeSession === 'function') {
+        result = await pc.updateOneTimeSession(item.oneTimeSessionId, {
+          sessionDate:item.targetSessionDate,
+          timeSlot:Number(item.targetTimeSlot),
+          classGroup:item.targetClassGroup || 'A'
+        });
+      } else if (phone && typeof phone.request === 'function') {
+        result = await phone.request('olli_schedule_update_one_time_session', {
+          p_one_time_session_id:item.oneTimeSessionId,
+          p_session_date:item.targetSessionDate,
+          p_time_slot:Number(item.targetTimeSlot),
+          p_class_group:item.targetClassGroup || 'A'
+        });
+      } else {
+        throw new Error((intent === 'update_trial' ? '체험' : '보강')+' 변경 저장 기능을 아직 불러오지 못했습니다.');
+      }
     } else if (intent === 'cancel_makeup' || intent === 'cancel_trial') {
       if (pc && typeof pc.cancelMakeup === 'function') {
         result = await pc.cancelMakeup(item.oneTimeSessionId);
@@ -3463,6 +4515,18 @@
       }
       return clean(item.studentName) + ' 학생의 ' + fallbackDateLabel(item.sessionDate) + ' ' + Number(item.timeSlot) + '시 보강을 등록했어요.';
     }
+    if (item.intent === 'update_makeup') {
+      return clean(item.studentName)+' 학생의 보강을 '
+        +fallbackDateLabel(item.targetSessionDate)+' '
+        +timetableMemoTimeLabel(item.division,item.targetSessionDate,item.targetTimeSlot,item.timetableMode)+' '
+        +classGroup(item.targetClassGroup)+'반으로 변경했어요.';
+    }
+    if (item.intent === 'update_trial') {
+      return clean(item.guestName || item.studentName)+' 학생의 체험수업을 '
+        +fallbackDateLabel(item.targetSessionDate)+' '
+        +timetableMemoTimeLabel(item.division,item.targetSessionDate,item.targetTimeSlot,item.timetableMode)+' '
+        +classGroup(item.targetClassGroup)+'반으로 변경했어요.';
+    }
     if (item.intent === 'move_class') {
       return clean(item.studentName) + ' 학생의 수업을 '
         + weekdayLabel(item.sourceWeekday) + ' ' + Number(item.sourceTimeSlot) + '시에서 '
@@ -3508,6 +4572,9 @@
     findRosterEntries,
     findPickups,
     findStudentSchedule,
+    normalizeStudentSearchName,
+    resolveStructuredStudentReference,
+    prepareStructuredTimeChoices,
     describeAvailableSlots,
     describeWeekAvailability,
     describeRecurringAvailability,

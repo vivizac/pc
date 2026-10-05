@@ -1,50 +1,37 @@
+'use strict';
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
-
 const talk=fs.readFileSync(path.join(__dirname,'../olli-talk-beta.js'),'utf8');
 
-test('mobile move cancel gate uses only shared cancellation parser',()=>{
-  const start=talk.indexOf('function isOlliTalkMoveCancelAgentCandidate');
-  const end=talk.indexOf('async function resolveOlliTalkTrialAddAgentTurn',start);
-  const block=talk.slice(start,end);
-  assert.match(block,/parseMoveCancelMutationIntent\(commandText\)/);
-  assert.match(block,/==='cancel_move'/);
-  assert.doesNotMatch(block,/parseScheduleMoveMutationIntent|prepareAction|move_class/);
+test('Mobile move cancel uses structured rule path before Agent classifier',()=>{
+  const ai=talk.slice(talk.indexOf('async function resolveOlliTalkAiTurn'),talk.indexOf('function getOlliTalkMentionMessageText'));
+  const structured=ai.indexOf("String(structuredCommand?.action || '').trim()==='cancel_move'");
+  const classifier=ai.indexOf('const routeClassifier=');
+  assert.ok(structured>=0 && classifier>structured);
+  assert.match(ai,/resolveOlliTalkStructuredMoveCancelTurn/);
 });
 
-test('mobile move cancel routes before student info and legacy preparation — shared dispatch contract',()=> {
-  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
-  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
-  const dispatch=talk.slice(dispatchStart,dispatchEnd);
-  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
-  const ai=talk.slice(aiStart,aiEnd);
-  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
-  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
-  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
-  assert.match(dispatch,/case 'move_cancel'/);
-  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
-  const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
-  assert.ok(classify>=0 && legacy>classify);
-
+test('Mobile dead move-cancel Agent candidate and bridge are removed',()=>{
+  assert.doesNotMatch(talk,/function isOlliTalkMoveCancelAgentCandidate/);
+  assert.doesNotMatch(talk,/async function resolveOlliTalkMoveCancelAgentTurn/);
+  const dispatch=talk.slice(talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn'),talk.indexOf('async function resolveOlliTalkContextualMakeupTurn'));
+  assert.doesNotMatch(dispatch,/case 'move_cancel'/);
 });
-test('mobile move cancel bridge uses source-bound production without second action save',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkMoveCancelAgentTurn');
+
+test('Mobile move cancel target choice remains deterministic without another Agent turn',()=>{
+  const start=talk.indexOf('async function resolveOlliTalkStructuredMoveCancelTurn');
   const end=talk.indexOf('function isOlliTalkPendingReasonCancel',start);
   const block=talk.slice(start,end);
-  assert.match(block,/mode:'move_cancel_prepare'/);
-  assert.match(block,/sourceMessageId=Number\(replyToMessageId \|\| 0\)/);
-  assert.match(block,/action_type \|\| ''\)\.trim\(\)!=='cancel_move'/);
-  assert.match(block,/assistantMessage:data\.message/);
-  assert.match(block,/recordAi:false/);
-  assert.doesNotMatch(block,/saveOlliTalkActionReply|olli_team_chat_send_action/);
+  assert.match(block,/mode:'structured_move_cancel_prepare'/);
+  assert.match(block,/structuredCommand/);
+  assert.match(block,/choiceRequired/);
+  assert.match(block,/saveOlliTalkStructuredTargetChoice/);
+  assert.doesNotMatch(block,/mode:'move_cancel_prepare'/);
 });
 
-test('mobile Bot path remains independent from move cancel Agent routing',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkBotTurn');
-  const end=talk.indexOf('function handleOlliTalkAiModeChanged',start);
-  const block=talk.slice(start,end);
-  assert.doesNotMatch(block,/resolveOlliTalkMoveCancelAgentTurn|isOlliTalkMoveCancelAgentCandidate|move_cancel_prepare/);
+test('Mobile Bot path remains independent from move cancel structured routing',()=>{
+  const block=talk.slice(talk.indexOf('async function resolveOlliTalkBotTurn'),talk.indexOf('function handleOlliTalkAiModeChanged'));
+  assert.doesNotMatch(block,/resolveOlliTalkStructuredMoveCancelTurn|move_cancel_prepare/);
 });

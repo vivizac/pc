@@ -112,6 +112,8 @@ async function prepareTrialCancelAction({
   sourceHour=0,
   sourceMinute=0,
   classGroup='AUTO',
+  oneTimeSessionId:selectedOneTimeSessionId='',
+  allowChoice=false,
   reason,
   currentDate,
   requestId,
@@ -147,6 +149,7 @@ async function prepareTrialCancelAction({
 
   const requestedTime=optionalTimeLabel(sourceHour,sourceMinute);
   const requestedGroup=normalizeGroup(classGroup);
+  const requestedOneTimeSessionId=clean(selectedOneTimeSessionId);
   const safeReason=normalizeTrialCancelReason(reason);
   const lookupDate=requestedDate?requestedDate.key:today.key;
 
@@ -177,6 +180,9 @@ async function prepareTrialCancelAction({
   if(requestedGroup!=='AUTO'){
     rows=rows.filter(row=>rowGroup(row)===requestedGroup);
   }
+  if(requestedOneTimeSessionId){
+    rows=rows.filter(row=>clean(row?.id)===requestedOneTimeSessionId);
+  }
 
   rows.sort((a,b)=>
     clean(a?.session_date).localeCompare(clean(b?.session_date)) ||
@@ -188,6 +194,29 @@ async function prepareTrialCancelAction({
     throw trialCancelError('취소할 체험수업을 찾지 못했습니다.',404,'OLLI_AGENT_TRIAL_CANCEL_NOT_FOUND');
   }
   if(rows.length>1){
+    if(allowChoice===true){
+      const choices=rows.slice(0,8).map(item=>{
+        const itemId=clean(item?.id);
+        const itemDate=clean(item?.session_date).slice(0,10);
+        const itemDivision=clean(item?.division).toLowerCase();
+        const itemTime=clean(rowVisibleTime(item,itemDivision,mode));
+        if(!itemId||!parseDateKey(itemDate)||!['elementary','kinder'].includes(itemDivision)||!itemTime) return null;
+        return {
+          id:itemId,
+          label:[dateLabel(itemDate),itemTime,rowGroup(item)+'반',itemDivision==='kinder'?'유치부':'초등부'].join(' · '),
+        };
+      }).filter(Boolean);
+      if(choices.length>1){
+        return {
+          ok:false,
+          code:'target_choice_required',
+          field:'target_choice',
+          choiceKey:'oneTimeSessionId',
+          choices,
+          message:guestName+' 학생의 취소 가능한 체험수업이 여러 개 있어요. 취소할 체험수업을 선택해 주세요.',
+        };
+      }
+    }
     throw trialCancelError('취소 가능한 체험수업이 여러 개 있습니다. 날짜와 시간을 함께 알려 주세요.',409,'OLLI_AGENT_TRIAL_CANCEL_AMBIGUOUS');
   }
 

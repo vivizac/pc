@@ -3,7 +3,7 @@
 
   if (global.OlliCommandRouter) return;
 
-  const VERSION = '2026-09-30-memo-auto-class-1';
+  const VERSION = '2026-10-03-structured-write-draft-core-1';
   let pendingWriteCommand = null;
   let pendingReasonCommand = null;
 
@@ -1218,6 +1218,93 @@
     return parseMultiWriteIntent(normalizedText) || parseSingleWriteIntent(normalizedText);
   }
 
+  const STRUCTURED_WRITE_DRAFT_REQUIRED_FIELDS = Object.freeze({
+    add_makeup:Object.freeze(['student','date','time']),
+    add_trial:Object.freeze(['student','date','time']),
+    add_waitlist:Object.freeze(['student','date','time'])
+  });
+
+  function createStructuredWriteDraft(systemCommand) {
+    const source = systemCommand && typeof systemCommand === 'object'
+      ? systemCommand
+      : {};
+    const classGroup = cleanText(source.classGroup || source.class_group).toUpperCase();
+
+    const sourceClassGroup=cleanText(source.sourceClassGroup || source.source_class_group).toUpperCase();
+    const targetClassGroup=cleanText(source.targetClassGroup || source.target_class_group).toUpperCase();
+    return Object.assign({}, source, {
+      action:cleanText(source.action || source.targetIntent || source.intent),
+      studentName:cleanText(source.studentName || source.student_name),
+      division:cleanText(source.division),
+      dateExpression:cleanText(source.dateExpression || source.date_expression),
+      timeSlot:Number(source.timeSlot || source.time_slot || 0),
+      classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+      oneTimeSessionId:cleanText(source.oneTimeSessionId || source.one_time_session_id),
+      sourceDateExpression:cleanText(source.sourceDateExpression || source.source_date_expression),
+      sourceTimeSlot:Number(source.sourceTimeSlot || source.source_time_slot || 0),
+      sourceMinute:Number(source.sourceMinute || source.source_minute || 0),
+      sourceClassGroup:/^[AB]$/.test(sourceClassGroup) ? sourceClassGroup : '',
+      targetDateExpression:cleanText(source.targetDateExpression || source.target_date_expression),
+      targetTimeSlot:Number(source.targetTimeSlot || source.target_time_slot || 0),
+      targetMinute:Number(source.targetMinute || source.target_minute || 0),
+      targetClassGroup:/^[AB]$/.test(targetClassGroup) ? targetClassGroup : '',
+      targetTimeStored:source.targetTimeStored===true,
+      reason:cleanText(source.reason)
+    });
+  }
+
+  function hasStructuredWriteDraftField(draft, field) {
+    if (!draft || typeof draft !== 'object') return false;
+    if (field === 'student') return !!cleanText(draft.studentName);
+    if (field === 'date') return !!cleanText(draft.dateExpression);
+    if (field === 'time') return Number(draft.timeSlot || 0) > 0;
+    if (field === 'class_group') return /^[AB]$/.test(cleanText(draft.classGroup).toUpperCase());
+    if (field === 'division') return !!cleanText(draft.division);
+    if (field === 'reason') return !!cleanText(draft.reason);
+    return false;
+  }
+
+  function getStructuredWriteDraftState(systemCommand) {
+    const draft = createStructuredWriteDraft(systemCommand);
+    const requiredFields = STRUCTURED_WRITE_DRAFT_REQUIRED_FIELDS[draft.action] || null;
+    if (!requiredFields) {
+      return {
+        supported:false,
+        draft,
+        requiredFields:[],
+        missingFields:[],
+        nextField:'',
+        complete:false
+      };
+    }
+
+    const missingFields = requiredFields.filter(field => !hasStructuredWriteDraftField(draft, field));
+    return {
+      supported:true,
+      draft,
+      requiredFields:requiredFields.slice(),
+      missingFields,
+      nextField:missingFields[0] || '',
+      complete:missingFields.length === 0
+    };
+  }
+
+  function updateStructuredWriteDraft(systemCommand, field, value) {
+    const draft = createStructuredWriteDraft(systemCommand);
+    const key = cleanText(field);
+
+    if (key === 'student') draft.studentName = cleanText(value);
+    else if (key === 'date') draft.dateExpression = cleanText(value);
+    else if (key === 'time') draft.timeSlot = Number(value || 0);
+    else if (key === 'class_group') {
+      const classGroup = cleanText(value).toUpperCase();
+      draft.classGroup = /^[AB]$/.test(classGroup) ? classGroup : '';
+    } else if (key === 'division') draft.division = cleanText(value);
+    else if (key === 'reason') draft.reason = cleanText(value);
+
+    return createStructuredWriteDraft(draft);
+  }
+
   function isConfirmCommand(text) {
     return /^(확인|확인해|확인해줘|진행|진행해|진행해줘|실행|실행해|실행해줘)$/i.test(compactText(text));
   }
@@ -1244,6 +1331,46 @@
       if (message) return message;
     }
     return cleanText(fallback) || '이 작업을 진행할까요?';
+  }
+
+  function structuredTargetChoiceResult(action, command, prepared) {
+    const choices=Array.isArray(prepared && prepared.choices)
+      ? prepared.choices
+        .map(item=>({
+          id:cleanText(item && item.id),
+          label:cleanText(item && item.label)
+        }))
+        .filter(item=>item.id && item.label)
+      : [];
+    if(choices.length<2) return null;
+    const draft=createStructuredWriteDraft(command);
+    const payload={
+      type:'structured_write_draft',
+      targetIntent:action,
+      field:'target_choice',
+      missingFields:['target_choice'],
+      draft,
+      choices,
+      choiceKey:cleanText(prepared && prepared.choiceKey)
+    };
+    return {
+      handled:true,
+      kind:'action_needs_field',
+      intent:action,
+      text:'',
+      message:String(prepared && prepared.message || '대상을 선택해 주세요.'),
+      clearInput:true,
+      payload,
+      action:{
+        status:'pending_fields',
+        intent:action,
+        field:'target_choice',
+        missingFields:['target_choice'],
+        command:Object.assign({},draft),
+        choices:choices.map(item=>Object.assign({},item)),
+        requiresReason:false
+      }
+    };
   }
 
   function multiWeekdayTimeMentions(value) {
@@ -1961,6 +2088,111 @@
     }
   }
 
+
+  function structuredReadMatchesParsed(command,parsed){
+    const action=cleanText(command?.action);
+    if(!parsed||action!==cleanText(parsed.intent)) return false;
+
+    const division=cleanText(command?.division);
+    const parsedDivision=cleanText(parsed?.division);
+    if(division!==parsedDivision) return false;
+
+    const classGroup=cleanText(command?.class_group || command?.classGroup).toUpperCase();
+    const parsedGroup=cleanText(parsed?.classGroup).toUpperCase();
+    if(classGroup!==parsedGroup) return false;
+
+    if(action==='find_available_slots'){
+      if(Number(command?.weekday||0)!==Number(parsed?.weekday||0)) return false;
+      if(Number(command?.time_slot||command?.timeSlot||0)!==Number(parsed?.timeSlot||0)) return false;
+      const purpose=cleanText(command?.availability_purpose || command?.availabilityPurpose) || 'unknown';
+      if(purpose!==(cleanText(parsed?.purpose)||'unknown')) return false;
+      const hasDate=!!cleanText(command?.date_expression || command?.dateExpression);
+      if((parsed?.scope==='date'||parsed?.scope==='week')!==hasDate) return false;
+      return true;
+    }
+
+    if(action==='find_roster_entries'){
+      if(cleanText(command?.roster_kind || command?.rosterKind)!==cleanText(parsed?.rosterKind)) return false;
+      if(Number(command?.weekday||0)!==Number(parsed?.weekday||0)) return false;
+      if(Number(command?.time_slot||command?.timeSlot||0)!==Number(parsed?.timeSlot||0)) return false;
+      const hasDate=!!cleanText(command?.date_expression || command?.dateExpression);
+      if(parsed?.scope==='date'&&!hasDate) return false;
+      if(parsed?.scope==='all'&&hasDate) return false;
+      return true;
+    }
+
+    if(action==='find_pickups'){
+      if(Number(command?.class_time||command?.classTime||0)!==Number(parsed?.classTime||0)) return false;
+      const kind=cleanText(command?.pickup_kind || command?.pickupKind);
+      const expectedKind=parsed?.kind==='dropoff'?'dropoff':(parsed?.kind==='pickup'?'arrival':'');
+      if(kind!==expectedKind) return false;
+      return !!cleanText(command?.date_expression || command?.dateExpression);
+    }
+
+    return false;
+  }
+
+  async function runStructuredMultiQuery(systemCommands,sourceText,context){
+    const commands=Array.isArray(systemCommands)?systemCommands.slice(0,3):[];
+    const parsed=parseQueryIntent(sourceText);
+    const queries=parsed?.intent==='multi_read_query'&&Array.isArray(parsed.queries)
+      ? parsed.queries
+      : [];
+
+    if(commands.length<2||commands.length>3||queries.length!==commands.length){
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:'multi_read_query',
+        text:'',
+        message:'복합 조회 구조가 원문과 일치하지 않아 실행하지 않았어요. 요청을 조금 더 구체적으로 알려 주세요.',
+        clearInput:true,
+        payload:{commands}
+      };
+    }
+
+    for(let index=0;index<commands.length;index+=1){
+      if(!structuredReadMatchesParsed(commands[index],queries[index])){
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'multi_read_query',
+          text:'',
+          message:'복합 조회 구조가 원문과 일치하지 않아 실행하지 않았어요. 요청을 조금 더 구체적으로 알려 주세요.',
+          clearInput:true,
+          payload:{commands}
+        };
+      }
+    }
+
+    const results=[];
+    for(const command of commands){
+      const result=await runStructuredQuery(command,context);
+      if(!result||result.handled!==true){
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'multi_read_query',
+          text:'',
+          message:'요청한 조회 항목을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:{commands,results}
+        };
+      }
+      results.push(result);
+    }
+
+    return {
+      handled:true,
+      kind:'command_result',
+      intent:'multi_read_query',
+      text:'',
+      message:results.map(item=>cleanText(item.message)).filter(Boolean).join('\n\n'),
+      clearInput:true,
+      payload:{commands,results}
+    };
+  }
+
   async function runSuggestedQuery(text, context) {
     const normalizedText = cleanText(text);
     if (!isOlliReplyCandidate(normalizedText)) return passThrough(normalizedText);
@@ -1983,6 +2215,1607 @@
       options.commands = (writeIntent.commands || []).map(item => resolveWriteIntentOptions(item, routeContext));
     }
     return options;
+  }
+
+
+  async function runStructuredQuery(systemCommand, context) {
+    const command=systemCommand && typeof systemCommand==='object' ? systemCommand : {};
+    const action=cleanText(command.action);
+    const supported=new Set(['get_student_schedule','find_available_slots','find_roster_entries','find_pickups']);
+    if(!supported.has(action)){
+      return {
+        handled:false,
+        kind:'pass_through',
+        intent:action,
+        text:'',
+        message:'',
+        clearInput:false,
+        payload:null
+      };
+    }
+
+    const routeContext=normalizeContext(context);
+    const schedule=global.OlliCommandSchedule;
+
+    if(action==='find_pickups'){
+      if(
+        !schedule
+        || typeof schedule.findPickups!=='function'
+        || typeof schedule.describePickups!=='function'
+      ){
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_pickups',
+          text:'',
+          message:'픽업 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:command
+        };
+      }
+
+      const studentName=cleanText(command.student_name || command.studentName);
+      const dateExpression=cleanText(command.date_expression || command.dateExpression);
+      const classTime=Number(command.class_time || command.classTime || 0);
+      const pickupKind=cleanText(command.pickup_kind || command.pickupKind);
+      const kind=pickupKind==='dropoff' ? 'dropoff' : (pickupKind==='arrival' ? 'pickup' : 'all');
+
+      try{
+        const dateSpec=dateExpression
+          ? parseDateExpression(compactText(dateExpression))
+          : {mode:'today',label:'오늘'};
+        if(!dateSpec) throw new Error('조회 날짜를 해석하지 못했습니다.');
+        const targetDate=resolveDateExpression(dateSpec,new Date());
+        if(!targetDate) throw new Error('조회 날짜를 해석하지 못했습니다.');
+        const dateLabel=cleanText(dateSpec.label) || (dateExpression || '오늘');
+
+        const result=await schedule.findPickups({
+          date:targetDate,
+          dateLabel,
+          studentName,
+          classTime,
+          kind
+        });
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_pickups',
+          text:'',
+          message:schedule.describePickups(result),
+          clearInput:true,
+          payload:{
+            action:'find_pickups',
+            studentName,
+            dateExpression,
+            dateLabel,
+            classTime,
+            pickupKind,
+            kind,
+            result
+          }
+        };
+      }catch(error){
+        console.warn('올리 구조화 픽업 조회 실패:',error);
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_pickups',
+          text:'',
+          message:'픽업 일정을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:command
+        };
+      }
+    }
+
+    if(action==='find_roster_entries'){
+      if(
+        !schedule
+        || typeof schedule.findRosterEntries!=='function'
+        || typeof schedule.describeRosterEntries!=='function'
+      ){
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_roster_entries',
+          text:'',
+          message:'학생 명단 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:command
+        };
+      }
+
+      const rosterKind=cleanText(command.roster_kind || command.rosterKind);
+      const allowedKinds=['class_roster','absence','makeup','trial','waitlist','move'];
+      if(!allowedKinds.includes(rosterKind)){
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_roster_entries',
+          text:'',
+          message:'확인할 명단 종류를 알려주세요.',
+          clearInput:true,
+          payload:command
+        };
+      }
+
+      const dateExpression=cleanText(command.date_expression || command.dateExpression);
+      const division=cleanText(command.division);
+      const weekday=Number(command.weekday || 0);
+      const timeSlot=Number(command.time_slot || command.timeSlot || 0);
+      const classGroup=cleanText(command.class_group || command.classGroup).toUpperCase();
+
+      try{
+        const compact=compactText(dateExpression);
+        const weekOnly=/^(?:이번주|이번주간|금주|다음주|차주|다다음주)$/.test(compact);
+        let scope='date';
+        let dateLabel='오늘';
+        let weekOffset=0;
+        let referenceDate=new Date();
+
+        if(weekOnly){
+          scope='week';
+          weekOffset=/다다음주/.test(compact) ? 2 : (/(?:다음주|차주)/.test(compact) ? 1 : 0);
+          dateLabel=weekOffset===2 ? '다다음 주' : (weekOffset===1 ? '다음 주' : '이번 주');
+          referenceDate=addDays(new Date(),weekOffset*7);
+        }else if(dateExpression){
+          const dateSpec=parseDateExpression(compact);
+          if(!dateSpec) throw new Error('조회 날짜를 해석하지 못했습니다.');
+          referenceDate=resolveDateExpression(dateSpec,new Date());
+          if(!referenceDate) throw new Error('조회 날짜를 해석하지 못했습니다.');
+          scope='date';
+          dateLabel=cleanText(dateSpec.label) || dateExpression;
+        }else if(rosterKind==='waitlist' || rosterKind==='move'){
+          scope='all';
+          dateLabel='현재';
+        }else if(weekday){
+          const weekdayNames=['','월요일','화요일','수요일','목요일','금요일','토요일'];
+          const dateSpec=parseDateExpression(weekdayNames[weekday] || '');
+          referenceDate=resolveDateExpression(dateSpec,new Date());
+          if(!referenceDate) throw new Error('조회 요일을 해석하지 못했습니다.');
+          scope='date';
+          dateLabel=weekdayNames[weekday];
+        }
+
+        const result=await schedule.findRosterEntries({
+          kind:rosterKind,
+          scope,
+          date:referenceDate,
+          dateLabel,
+          division,
+          timeSlot,
+          classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+          weekday
+        });
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_roster_entries',
+          text:'',
+          message:schedule.describeRosterEntries(result),
+          clearInput:true,
+          payload:{
+            action:'find_roster_entries',
+            rosterKind,
+            scope,
+            dateExpression,
+            dateLabel,
+            weekOffset,
+            weekday,
+            division,
+            timeSlot,
+            classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+            result
+          }
+        };
+      }catch(error){
+        console.warn('올리 구조화 학생 명단 조회 실패:',error);
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_roster_entries',
+          text:'',
+          message:'학생 명단을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:command
+        };
+      }
+    }
+
+    if(action==='find_available_slots'){
+      if(
+        !schedule
+        || typeof schedule.findAvailableSlots!=='function'
+        || typeof schedule.findWeekAvailability!=='function'
+        || typeof schedule.findRecurringAvailability!=='function'
+      ){
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_available_slots',
+          text:'',
+          message:'시간표 빈자리 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:command
+        };
+      }
+
+      const dateExpression=cleanText(command.date_expression || command.dateExpression);
+      const division=cleanText(command.division);
+      const weekday=Number(command.weekday || 0);
+      const timeSlot=Number(command.time_slot || command.timeSlot || 0);
+      const classGroup=cleanText(command.class_group || command.classGroup).toUpperCase();
+      const purposeRaw=cleanText(command.availability_purpose || command.availabilityPurpose);
+      const purpose=['makeup','trial','schedule_move','new_enrollment'].includes(purposeRaw)
+        ? purposeRaw
+        : 'unknown';
+
+      try{
+        const compact=compactText(dateExpression);
+        const weekOnly=/^(?:이번주|이번주간|금주|다음주|차주|다다음주)$/.test(compact);
+        let result;
+        let message;
+        let scope='recurring';
+        let dateLabel='';
+        let weekOffset=0;
+
+        if(weekOnly){
+          scope='week';
+          weekOffset=/다다음주/.test(compact) ? 2 : (/(?:다음주|차주)/.test(compact) ? 1 : 0);
+          dateLabel=weekOffset===2 ? '다다음 주' : (weekOffset===1 ? '다음 주' : '이번 주');
+          result=await schedule.findWeekAvailability({
+            date:new Date(),
+            weekOffset,
+            dateLabel,
+            division,
+            purpose,
+            viewMode:'availability',
+            timeSlot,
+            classGroup:/^[AB]$/.test(classGroup) ? classGroup : ''
+          });
+          message=typeof schedule.describeWeekAvailability==='function'
+            ? schedule.describeWeekAvailability(result)
+            : '주간 빈자리를 확인했어요.';
+        }else if(dateExpression){
+          scope='date';
+          const dateSpec=parseDateExpression(compact);
+          if(!dateSpec) throw new Error('조회 날짜를 해석하지 못했습니다.');
+          const targetDate=resolveDateExpression(dateSpec,new Date());
+          if(!targetDate) throw new Error('조회 날짜를 해석하지 못했습니다.');
+          dateLabel=cleanText(dateSpec.label);
+          result=await schedule.findAvailableSlots({
+            date:targetDate,
+            dateLabel,
+            division,
+            purpose,
+            viewMode:'availability',
+            timeSlot,
+            classGroup:/^[AB]$/.test(classGroup) ? classGroup : ''
+          });
+          message=typeof schedule.describeAvailableSlots==='function'
+            ? schedule.describeAvailableSlots(result)
+            : '시간표 빈자리를 확인했어요.';
+        }else{
+          scope='recurring';
+          const weekdayNames=['','월요일','화요일','수요일','목요일','금요일','토요일'];
+          dateLabel=weekday>=1 && weekday<=6 ? weekdayNames[weekday] : '';
+          result=await schedule.findRecurringAvailability({
+            date:new Date(),
+            weekday,
+            division,
+            purpose,
+            viewMode:'availability',
+            timeSlot,
+            classGroup:/^[AB]$/.test(classGroup) ? classGroup : ''
+          });
+          message=typeof schedule.describeRecurringAvailability==='function'
+            ? schedule.describeRecurringAvailability(result)
+            : '정규수업 기준 빈자리를 확인했어요.';
+        }
+
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_available_slots',
+          text:'',
+          message,
+          clearInput:true,
+          payload:{
+            action:'find_available_slots',
+            scope,
+            dateExpression,
+            dateLabel,
+            weekOffset,
+            weekday,
+            division,
+            purpose,
+            timeSlot,
+            classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+            result
+          }
+        };
+      }catch(error){
+        console.warn('올리 구조화 빈자리 조회 실패:',error);
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'find_available_slots',
+          text:'',
+          message:'시간표 빈자리를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:command
+        };
+      }
+    }
+
+    const studentName=cleanText(command.student_name || command.studentName);
+    const dateExpression=cleanText(command.date_expression || command.dateExpression);
+    if(!studentName){
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:'get_student_schedule',
+        text:'',
+        message:'시간표를 확인할 학생 이름을 알려주세요.',
+        clearInput:true,
+        payload:command
+      };
+    }
+    if(
+      !schedule
+      || typeof schedule.findStudentSchedule!=='function'
+      || typeof schedule.describeStudentSchedule!=='function'
+    ){
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:'get_student_schedule',
+        text:'',
+        message:'학생 시간표 조회 기능을 아직 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+        clearInput:true,
+        payload:command
+      };
+    }
+
+    try{
+      const dateSpec=dateExpression ? parseStudentSchedulePeriodSpec(dateExpression) : null;
+      const referenceDate=resolveStudentScheduleReferenceDate(dateSpec,new Date());
+      if(!referenceDate) throw new Error('시간표 기준 날짜를 해석하지 못했습니다.');
+      const result=await schedule.findStudentSchedule({
+        studentName,
+        selectedStudent:routeContext.selectedStudent || null,
+        referenceDate,
+        dateLabel:dateSpec ? cleanText(dateSpec.label) : '현재'
+      });
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:'get_student_schedule',
+        text:'',
+        message:schedule.describeStudentSchedule(result),
+        clearInput:true,
+        payload:{
+          action:'get_student_schedule',
+          studentName,
+          dateExpression,
+          result
+        }
+      };
+    }catch(error){
+      console.warn('올리 구조화 학생 시간표 조회 실패:',error);
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:'get_student_schedule',
+        text:'',
+        message:'학생 시간표를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+        clearInput:true,
+        payload:command
+      };
+    }
+  }
+
+
+  async function prepareStructuredAction(systemCommand, context) {
+    let command = systemCommand && typeof systemCommand === 'object'
+      ? Object.assign({},systemCommand)
+      : {};
+    const action = cleanText(command.action);
+    const routeContext = normalizeContext(context);
+    const schedule = global.OlliCommandSchedule;
+    const supported = new Set(['add_makeup','update_makeup','add_trial','update_trial','add_waitlist','cancel_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent']);
+
+    if (!supported.has(action)) {
+      return {
+        handled:false,
+        kind:'pass_through',
+        intent:action,
+        text:'',
+        message:'',
+        clearInput:false,
+        payload:null,
+        action:null
+      };
+    }
+
+    let writeDraftState = getStructuredWriteDraftState(command);
+    if (
+      (writeDraftState.supported || ['update_makeup','cancel_waitlist','update_pickup','cancel_pickup'].includes(action))
+      && cleanText(writeDraftState.draft.studentName)
+      && schedule
+      && typeof schedule.resolveStructuredStudentReference === 'function'
+    ) {
+      const studentReference=await schedule.resolveStructuredStudentReference({
+        action,
+        studentName:writeDraftState.draft.studentName,
+        division:writeDraftState.draft.division,
+        selectedStudent:routeContext.selectedStudent || null
+      });
+
+      if(studentReference?.code==='student_choice_required'){
+        const choices=Array.isArray(studentReference.choices)
+          ? studentReference.choices.map(item=>Object.assign({},item))
+          : [];
+        const payload={
+          type:'structured_write_draft',
+          targetIntent:action,
+          field:'student_choice',
+          missingFields:['student_choice'].concat(writeDraftState.missingFields.slice()),
+          draft:Object.assign({},writeDraftState.draft),
+          choices
+        };
+        return {
+          handled:true,
+          kind:'action_needs_field',
+          intent:action,
+          text:'',
+          message:String(studentReference.message || writeDraftState.draft.studentName+' 학생이 여러 명 있어요. 학생을 선택해 주세요.'),
+          clearInput:true,
+          payload,
+          action:{
+            status:'pending_fields',
+            intent:action,
+            field:'student_choice',
+            missingFields:payload.missingFields.slice(),
+            command:Object.assign({},writeDraftState.draft),
+            choices:choices.map(item=>Object.assign({},item)),
+            requiresReason:false
+          }
+        };
+      }
+
+      if(studentReference?.ok===false){
+        return {
+          handled:true,
+          kind:'action_rejected',
+          intent:action,
+          text:'',
+          message:String(studentReference.message || '학생 정보를 확인하지 못했어요.'),
+          clearInput:true,
+          payload:command,
+          action:null
+        };
+      }
+
+      if(studentReference?.ok===true && studentReference?.matched===true){
+        let resolvedDraft=updateStructuredWriteDraft(
+          writeDraftState.draft,
+          'student',
+          studentReference.studentName
+        );
+        if(cleanText(studentReference.division)){
+          resolvedDraft=updateStructuredWriteDraft(resolvedDraft,'division',studentReference.division);
+        }
+        command=Object.assign({},command,resolvedDraft,{
+          student_name:resolvedDraft.studentName,
+          date_expression:resolvedDraft.dateExpression,
+          time_slot:resolvedDraft.timeSlot,
+          class_group:resolvedDraft.classGroup
+        });
+        writeDraftState=getStructuredWriteDraftState(command);
+      }
+    }
+
+    if (writeDraftState.supported && !writeDraftState.complete) {
+      let field = writeDraftState.nextField;
+      const noun = action === 'add_trial'
+        ? '체험 등록'
+        : (action === 'add_waitlist' ? '대기 등록' : '보강 등록');
+      let draft=Object.assign({},writeDraftState.draft);
+      let choices=[];
+      let message = field === 'student'
+        ? noun + '할 학생을 알려주세요.'
+        : (field === 'date'
+          ? noun + '할 날짜를 선택해 주세요.'
+          : (field === 'time'
+            ? noun + '할 시간을 선택해 주세요.'
+            : noun + '에 필요한 정보를 알려주세요.'));
+
+      if(field==='time'){
+        if(!schedule || typeof schedule.prepareStructuredTimeChoices!=='function'){
+          return {
+            handled:true,
+            kind:'action_rejected',
+            intent:action,
+            text:'',
+            message:'시간표 시간 선택 기능을 아직 불러오지 못했어요.',
+            clearInput:true,
+            payload:command,
+            action:null
+          };
+        }
+        const dateSpec=parseDateExpression(compactText(draft.dateExpression));
+        const date=dateSpec ? resolveDateExpression(dateSpec,new Date()) : null;
+        if(!date){
+          return {
+            handled:true,
+            kind:'action_rejected',
+            intent:action,
+            text:'',
+            message:'선택한 날짜를 해석하지 못했어요. 날짜를 다시 선택해 주세요.',
+            clearInput:true,
+            payload:command,
+            action:null
+          };
+        }
+        const timeChoices=await schedule.prepareStructuredTimeChoices({
+          action,
+          studentName:draft.studentName,
+          division:draft.division,
+          date,
+          dateLabel:cleanText(dateSpec.label),
+          selectedStudent:routeContext.selectedStudent || null
+        });
+        if(!timeChoices?.ok){
+          if(timeChoices?.code==='division_required'){
+            if(action==='add_makeup'){
+              return {
+                handled:true,
+                kind:'action_rejected',
+                intent:action,
+                text:'',
+                message:draft.studentName+' 학생정보에서 유치부·초등부 구분을 확인하지 못했어요. 학생정보를 확인해 주세요.',
+                clearInput:true,
+                payload:command,
+                action:null
+              };
+            }
+            field='division';
+            choices=Array.isArray(timeChoices.choices) ? timeChoices.choices.slice() : ['kinder','elementary'];
+            message=String(timeChoices.message || draft.studentName+' 학생은 유치부인지 초등부인지 선택해 주세요.');
+          }else{
+            return {
+              handled:true,
+              kind:'action_rejected',
+              intent:action,
+              text:'',
+              message:String(timeChoices?.message || '선택 가능한 수업 시간을 확인하지 못했어요.'),
+              clearInput:true,
+              payload:command,
+              action:null
+            };
+          }
+        }else{
+          const absoluteDateExpression=(date.getMonth()+1)+'월 '+date.getDate()+'일';
+          draft=updateStructuredWriteDraft(draft,'date',absoluteDateExpression);
+          draft=updateStructuredWriteDraft(draft,'division',timeChoices.division);
+          choices=Array.isArray(timeChoices.choices)
+            ? timeChoices.choices.map(item=>Object.assign({},item))
+            : [];
+          message=String(timeChoices.message || noun+'할 시간을 선택해 주세요.');
+        }
+      }
+
+      const dynamicMissingFields=field==='division'
+        ? ['division'].concat(writeDraftState.missingFields.filter(item=>item!=='division'))
+        : writeDraftState.missingFields.slice();
+      const payload = {
+        type:'structured_write_draft',
+        targetIntent:action,
+        field,
+        missingFields:dynamicMissingFields,
+        draft,
+        choices
+      };
+
+      return {
+        handled:true,
+        kind:'action_needs_field',
+        intent:action,
+        text:'',
+        message,
+        clearInput:true,
+        payload,
+        action:{
+          status:'pending_fields',
+          intent:action,
+          field,
+          missingFields:dynamicMissingFields.slice(),
+          command:Object.assign({},draft),
+          choices:choices.map(item=>typeof item==='object' ? Object.assign({},item) : item),
+          requiresReason:false
+        }
+      };
+    }
+
+    if (action === 'move_class') {
+      const studentName=cleanText(command.student_name || command.studentName);
+      const sourceWeekday=Number(command.source_weekday || command.sourceWeekday || 0);
+      const sourceTimeSlot=Number(command.source_time_slot || command.sourceTimeSlot || 0);
+      const sourceEnrollmentId=cleanText(command.source_enrollment_id || command.sourceEnrollmentId);
+      const targetWeekday=Number(command.target_weekday || command.targetWeekday || 0);
+      const targetTimeSlot=Number(command.target_time_slot || command.targetTimeSlot || 0);
+      const classGroup=cleanText(command.class_group || command.classGroup).toUpperCase();
+
+      if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
+        return {
+          handled:true, kind:'action_rejected', intent:'move_class', text:'',
+          message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+          clearInput:true, payload:command, action:null
+        };
+      }
+
+      try {
+        const prepared=await schedule.prepareWriteCommand('move_class',{
+          type:'mutation',
+          intent:'move_class',
+          studentName,
+          sourceWeekday,
+          sourceTimeSlot,
+          sourceEnrollmentId,
+          targetWeekday,
+          targetTimeSlot,
+          classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+          selectedStudent:routeContext.selectedStudent || null,
+          effectiveDate:new Date(),
+          originalText:''
+        });
+
+        if (prepared?.code === 'target_choice_required') {
+          const choiceResult=structuredTargetChoiceResult('move_class',command,prepared);
+          if(choiceResult) return choiceResult;
+        }
+
+        if (prepared?.code === 'class_group_required' && prepared?.commandDraft) {
+          const choicePayload=Object.assign({},prepared.commandDraft,{
+            intent:'choose_move_group',
+            targetIntent:'move_class'
+          });
+          return {
+            handled:true,
+            kind:'action_choice',
+            intent:'choose_move_group',
+            text:'',
+            message:String(prepared.message || '이동할 반을 선택해 주세요.'),
+            clearInput:true,
+            payload:choicePayload,
+            action:{
+              status:'pending_choice',
+              intent:'choose_move_group',
+              command:Object.assign({},choicePayload),
+              choices:Array.isArray(prepared.choices) ? prepared.choices.slice() : ['A','B'],
+              requiresReason:false
+            }
+          };
+        }
+
+        if (!prepared || prepared.ok !== true || !prepared.command) {
+          return {
+            handled:true, kind:'action_rejected', intent:'move_class', text:'',
+            message:String(prepared && prepared.message || '작업을 준비하지 못했어요.'),
+            clearInput:true, payload:command, action:null
+          };
+        }
+
+        return {
+          handled:true,
+          kind:'action_pending',
+          intent:'move_class',
+          text:'',
+          message:confirmationMessage(prepared.command,schedule,prepared.message),
+          clearInput:true,
+          payload:prepared.command,
+          action:{
+            status:'pending',
+            intent:'move_class',
+            command:Object.assign({},prepared.command),
+            requiresReason:false
+          }
+        };
+      } catch(error) {
+        console.warn('올리 구조화 수업 이동 준비 실패:',error);
+        return {
+          handled:true, kind:'action_rejected', intent:'move_class', text:'',
+          message:String(error && (error.message || error) || '작업을 준비하지 못했어요.'),
+          clearInput:true, payload:command, action:null
+        };
+      }
+    }
+
+    if (action === 'mark_absent') {
+      const studentName=cleanText(command.student_name || command.studentName);
+      const dateExpression=cleanText(command.date_expression || command.dateExpression);
+      const timeSlot=Number(command.time_slot || command.timeSlot || 0);
+      const classGroup=cleanText(command.class_group || command.classGroup).toUpperCase();
+      const reason=cleanText(command.reason);
+      const dateSpec=dateExpression ? parseDateExpression(compactText(dateExpression)) : null;
+      const date=dateSpec ? resolveDateExpression(dateSpec,new Date()) : new Date();
+
+      if (!studentName) {
+        return {
+          handled:true, kind:'action_rejected', intent:'mark_absent', text:'',
+          message:'결석 처리할 학생을 알려주세요.',
+          clearInput:true, payload:command, action:null
+        };
+      }
+      if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
+        return {
+          handled:true, kind:'action_rejected', intent:'mark_absent', text:'',
+          message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+          clearInput:true, payload:command, action:null
+        };
+      }
+
+      try {
+        const prepared=await schedule.prepareWriteCommand('mark_absent',{
+          type:'mutation',
+          intent:'mark_absent',
+          studentName,
+          dateSpec,
+          dateLabel:dateSpec ? dateSpec.label : '오늘',
+          date,
+          timeSlot,
+          classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+          reason,
+          selectedStudent:routeContext.selectedStudent || null,
+          effectiveDate:new Date(),
+          originalText:''
+        });
+
+        if (!prepared || prepared.ok !== true || !prepared.command) {
+          return {
+            handled:true, kind:'action_rejected', intent:'mark_absent', text:'',
+            message:String(prepared && prepared.message || '작업을 준비하지 못했어요.'),
+            clearInput:true, payload:command, action:null
+          };
+        }
+
+        const preparedCommand=Object.assign({},prepared.command);
+        if(reason && !cleanText(preparedCommand.reason)) preparedCommand.reason=reason;
+        const requiresReason=commandRequiresReason(preparedCommand) && !cleanText(preparedCommand.reason);
+        return {
+          handled:true,
+          kind:requiresReason ? 'action_needs_reason' : 'action_pending',
+          intent:'mark_absent',
+          text:'',
+          message:requiresReason
+            ? reasonPrompt(preparedCommand,schedule)
+            : confirmationMessage(preparedCommand,schedule,prepared.message),
+          clearInput:true,
+          payload:preparedCommand,
+          action:{
+            status:'pending',
+            intent:'mark_absent',
+            command:Object.assign({},preparedCommand),
+            requiresReason
+          }
+        };
+      } catch(error) {
+        console.warn('올리 구조화 결석 준비 실패:',error);
+        return {
+          handled:true, kind:'action_rejected', intent:'mark_absent', text:'',
+          message:String(error && (error.message || error) || '작업을 준비하지 못했어요.'),
+          clearInput:true, payload:command, action:null
+        };
+      }
+    }
+
+    if (action === 'update_trial') {
+      const guestName=cleanText(command.guest_name || command.guestName || command.student_name || command.studentName);
+      const sourceDateExpression=cleanText(command.source_date_expression || command.sourceDateExpression);
+      const targetDateExpression=cleanText(command.target_date_expression || command.targetDateExpression);
+      const sourceDateSpec=sourceDateExpression ? parseDateExpression(compactText(sourceDateExpression)) : null;
+      const targetDateSpec=targetDateExpression ? parseDateExpression(compactText(targetDateExpression)) : null;
+      const sourceDate=sourceDateSpec ? resolveDateExpression(sourceDateSpec,new Date()) : null;
+      const targetDate=targetDateSpec ? resolveDateExpression(targetDateSpec,new Date()) : null;
+
+      if(!guestName){
+        return {
+          handled:true,kind:'action_rejected',intent:'update_trial',text:'',
+          message:'체험을 변경할 학생 이름을 알려주세요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+      if(sourceDateExpression && !sourceDate){
+        return {
+          handled:true,kind:'action_rejected',intent:'update_trial',text:'',
+          message:'기존 체험 날짜를 해석하지 못했어요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+      if(targetDateExpression && !targetDate){
+        return {
+          handled:true,kind:'action_rejected',intent:'update_trial',text:'',
+          message:'변경할 체험 날짜를 해석하지 못했어요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+      if(!schedule || typeof schedule.prepareWriteCommand!=='function'){
+        return {
+          handled:true,kind:'action_rejected',intent:'update_trial',text:'',
+          message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+
+      try{
+        const prepared=await schedule.prepareWriteCommand('update_trial',{
+          type:'mutation',
+          intent:'update_trial',
+          guestName,
+          studentName:guestName,
+          division:cleanText(command.division),
+          oneTimeSessionId:cleanText(command.one_time_session_id || command.oneTimeSessionId),
+          sourceDate,
+          sourceTimeSlot:Number(command.source_time_slot || command.sourceTimeSlot || 0),
+          sourceMinute:Number(command.source_minute || command.sourceMinute || 0),
+          sourceClassGroup:cleanText(command.source_class_group || command.sourceClassGroup),
+          targetDate,
+          targetTimeSlot:Number(command.target_time_slot || command.targetTimeSlot || 0),
+          targetMinute:Number(command.target_minute || command.targetMinute || 0),
+          targetClassGroup:cleanText(command.target_class_group || command.targetClassGroup),
+          targetTimeStored:command.targetTimeStored===true,
+          effectiveDate:new Date(),
+          originalText:''
+        });
+
+        if(prepared?.code==='target_choice_required'){
+          const choiceResult=structuredTargetChoiceResult('update_trial',command,prepared);
+          if(choiceResult) return choiceResult;
+        }
+
+        if(prepared?.code==='target_date_required'){
+          const draft=createStructuredWriteDraft(command);
+          draft.guestName=guestName;
+          draft.studentName=guestName;
+          draft.oneTimeSessionId=cleanText(prepared?.source?.oneTimeSessionId) || draft.oneTimeSessionId;
+          draft.division=cleanText(prepared?.source?.division) || draft.division;
+          const payload={
+            type:'structured_write_draft',
+            targetIntent:'update_trial',
+            field:'target_date',
+            missingFields:['target_date'],
+            draft
+          };
+          return {
+            handled:true,kind:'action_needs_field',intent:'update_trial',text:'',
+            message:String(prepared.message || '변경할 날짜를 선택해 주세요.'),
+            clearInput:true,payload,
+            action:{
+              status:'pending_fields',intent:'update_trial',field:'target_date',
+              missingFields:['target_date'],command:Object.assign({},draft),requiresReason:false
+            }
+          };
+        }
+
+        if(prepared?.code==='target_time_required'){
+          const draft=createStructuredWriteDraft(command);
+          draft.guestName=guestName;
+          draft.studentName=guestName;
+          draft.oneTimeSessionId=cleanText(prepared?.source?.oneTimeSessionId) || draft.oneTimeSessionId;
+          draft.division=cleanText(prepared?.source?.division) || draft.division;
+          draft.targetDateExpression=targetDateExpression;
+          const timeChoices=await schedule.prepareStructuredTimeChoices({
+            action:'update_trial',
+            studentName:guestName,
+            division:draft.division,
+            date:targetDate,
+            dateLabel:targetDateExpression || ''
+          });
+          if(!timeChoices?.ok){
+            return {
+              handled:true,kind:'action_rejected',intent:'update_trial',text:'',
+              message:String(timeChoices?.message || '변경할 시간을 확인하지 못했어요.'),
+              clearInput:true,payload:command,action:null
+            };
+          }
+          const payload={
+            type:'structured_write_draft',
+            targetIntent:'update_trial',
+            field:'target_time',
+            missingFields:['target_time'],
+            draft,
+            choices:Array.isArray(timeChoices.choices) ? timeChoices.choices.map(item=>Object.assign({},item)) : []
+          };
+          return {
+            handled:true,kind:'action_needs_field',intent:'update_trial',text:'',
+            message:String(timeChoices.message || prepared.message || '변경할 시간을 선택해 주세요.'),
+            clearInput:true,payload,
+            action:{
+              status:'pending_fields',intent:'update_trial',field:'target_time',
+              missingFields:['target_time'],command:Object.assign({},draft),
+              choices:payload.choices.map(item=>Object.assign({},item)),requiresReason:false
+            }
+          };
+        }
+
+        if(!prepared || prepared.ok!==true || !prepared.command){
+          return {
+            handled:true,kind:'action_rejected',intent:'update_trial',text:'',
+            message:String(prepared && prepared.message || '체험 변경 작업을 준비하지 못했어요.'),
+            clearInput:true,payload:command,action:null
+          };
+        }
+
+        return {
+          handled:true,
+          kind:'action_pending',
+          intent:'update_trial',
+          text:'',
+          message:confirmationMessage(prepared.command,schedule,prepared.message),
+          clearInput:true,
+          payload:prepared.command,
+          action:{
+            status:'pending',
+            intent:'update_trial',
+            command:Object.assign({},prepared.command),
+            requiresReason:false
+          }
+        };
+      }catch(error){
+        console.warn('올리 구조화 체험 변경 준비 실패:',error);
+        return {
+          handled:true,kind:'action_rejected',intent:'update_trial',text:'',
+          message:String(error && (error.message || error) || '체험 변경 작업을 준비하지 못했어요.'),
+          clearInput:true,payload:command,action:null
+        };
+      }
+    }
+
+    if (action === 'update_makeup') {
+      const studentName=cleanText(command.student_name || command.studentName);
+      const sourceDateExpression=cleanText(command.source_date_expression || command.sourceDateExpression);
+      const targetDateExpression=cleanText(command.target_date_expression || command.targetDateExpression);
+      const sourceDateSpec=sourceDateExpression ? parseDateExpression(compactText(sourceDateExpression)) : null;
+      const targetDateSpec=targetDateExpression ? parseDateExpression(compactText(targetDateExpression)) : null;
+      const sourceDate=sourceDateSpec ? resolveDateExpression(sourceDateSpec,new Date()) : null;
+      const targetDate=targetDateSpec ? resolveDateExpression(targetDateSpec,new Date()) : null;
+
+      if(!studentName){
+        return {
+          handled:true,kind:'action_rejected',intent:'update_makeup',text:'',
+          message:'보강을 변경할 학생을 알려주세요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+      if(sourceDateExpression && !sourceDate){
+        return {
+          handled:true,kind:'action_rejected',intent:'update_makeup',text:'',
+          message:'기존 보강 날짜를 해석하지 못했어요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+      if(targetDateExpression && !targetDate){
+        return {
+          handled:true,kind:'action_rejected',intent:'update_makeup',text:'',
+          message:'변경할 보강 날짜를 해석하지 못했어요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+      if(!schedule || typeof schedule.prepareWriteCommand!=='function'){
+        return {
+          handled:true,kind:'action_rejected',intent:'update_makeup',text:'',
+          message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+
+      try{
+        const prepared=await schedule.prepareWriteCommand('update_makeup',{
+          type:'mutation',
+          intent:'update_makeup',
+          studentName,
+          oneTimeSessionId:cleanText(command.one_time_session_id || command.oneTimeSessionId),
+          sourceDate,
+          sourceTimeSlot:Number(command.source_time_slot || command.sourceTimeSlot || 0),
+          sourceMinute:Number(command.source_minute || command.sourceMinute || 0),
+          sourceClassGroup:cleanText(command.source_class_group || command.sourceClassGroup),
+          targetDate,
+          targetTimeSlot:Number(command.target_time_slot || command.targetTimeSlot || 0),
+          targetMinute:Number(command.target_minute || command.targetMinute || 0),
+          targetClassGroup:cleanText(command.target_class_group || command.targetClassGroup),
+          targetTimeStored:command.targetTimeStored===true,
+          selectedStudent:routeContext.selectedStudent || null,
+          effectiveDate:new Date(),
+          originalText:''
+        });
+
+        if(prepared?.code==='target_choice_required'){
+          const choiceResult=structuredTargetChoiceResult('update_makeup',command,prepared);
+          if(choiceResult) return choiceResult;
+        }
+
+        if(prepared?.code==='target_date_required'){
+          const draft=createStructuredWriteDraft(command);
+          draft.oneTimeSessionId=cleanText(prepared?.source?.oneTimeSessionId) || draft.oneTimeSessionId;
+          const payload={
+            type:'structured_write_draft',
+            targetIntent:'update_makeup',
+            field:'target_date',
+            missingFields:['target_date'],
+            draft
+          };
+          return {
+            handled:true,kind:'action_needs_field',intent:'update_makeup',text:'',
+            message:String(prepared.message || '변경할 날짜를 선택해 주세요.'),
+            clearInput:true,payload,
+            action:{
+              status:'pending_fields',intent:'update_makeup',field:'target_date',
+              missingFields:['target_date'],command:Object.assign({},draft),requiresReason:false
+            }
+          };
+        }
+
+        if(prepared?.code==='target_time_required'){
+          const draft=createStructuredWriteDraft(command);
+          draft.oneTimeSessionId=cleanText(prepared?.source?.oneTimeSessionId) || draft.oneTimeSessionId;
+          draft.targetDateExpression=targetDateExpression;
+          const timeChoices=await schedule.prepareStructuredTimeChoices({
+            action:'update_makeup',
+            studentName,
+            selectedStudent:routeContext.selectedStudent || null,
+            division:cleanText(command.division),
+            date:targetDate,
+            dateLabel:targetDateExpression || '',
+          });
+          if(!timeChoices?.ok){
+            return {
+              handled:true,kind:'action_rejected',intent:'update_makeup',text:'',
+              message:String(timeChoices?.message || '변경할 시간을 확인하지 못했어요.'),
+              clearInput:true,payload:command,action:null
+            };
+          }
+          const payload={
+            type:'structured_write_draft',
+            targetIntent:'update_makeup',
+            field:'target_time',
+            missingFields:['target_time'],
+            draft,
+            choices:Array.isArray(timeChoices.choices) ? timeChoices.choices.map(item=>Object.assign({},item)) : []
+          };
+          return {
+            handled:true,kind:'action_needs_field',intent:'update_makeup',text:'',
+            message:String(timeChoices.message || prepared.message || '변경할 시간을 선택해 주세요.'),
+            clearInput:true,payload,
+            action:{
+              status:'pending_fields',intent:'update_makeup',field:'target_time',
+              missingFields:['target_time'],command:Object.assign({},draft),
+              choices:payload.choices.map(item=>Object.assign({},item)),requiresReason:false
+            }
+          };
+        }
+
+        if(!prepared || prepared.ok!==true || !prepared.command){
+          return {
+            handled:true,kind:'action_rejected',intent:'update_makeup',text:'',
+            message:String(prepared && prepared.message || '보강 변경 작업을 준비하지 못했어요.'),
+            clearInput:true,payload:command,action:null
+          };
+        }
+
+        return {
+          handled:true,
+          kind:'action_pending',
+          intent:'update_makeup',
+          text:'',
+          message:confirmationMessage(prepared.command,schedule,prepared.message),
+          clearInput:true,
+          payload:prepared.command,
+          action:{
+            status:'pending',
+            intent:'update_makeup',
+            command:Object.assign({},prepared.command),
+            requiresReason:false
+          }
+        };
+      }catch(error){
+        console.warn('올리 구조화 보강 변경 준비 실패:',error);
+        return {
+          handled:true,kind:'action_rejected',intent:'update_makeup',text:'',
+          message:String(error && (error.message || error) || '보강 변경 작업을 준비하지 못했어요.'),
+          clearInput:true,payload:command,action:null
+        };
+      }
+    }
+
+    if (action === 'cancel_waitlist') {
+      const studentName=cleanText(command.student_name || command.studentName);
+      const dateExpression=cleanText(command.date_expression || command.dateExpression);
+      const visibleHour=Number(command.time_slot || command.timeSlot || 0);
+      const classMinute=Number(command.class_minute || command.classMinute || 0);
+      const classGroup=cleanText(command.class_group || command.classGroup).toUpperCase();
+      const dateSpec=dateExpression ? parseDateExpression(compactText(dateExpression)) : null;
+      const date=dateSpec ? resolveDateExpression(dateSpec,new Date()) : null;
+
+      if(!studentName){
+        return {
+          handled:true,kind:'action_rejected',intent:'cancel_waitlist',text:'',
+          message:'대기를 취소할 학생을 알려주세요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+      if(dateExpression && !date){
+        return {
+          handled:true,kind:'action_rejected',intent:'cancel_waitlist',text:'',
+          message:'취소할 대기 날짜를 해석하지 못했어요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+      if(!schedule || typeof schedule.prepareWriteCommand!=='function'){
+        return {
+          handled:true,kind:'action_rejected',intent:'cancel_waitlist',text:'',
+          message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+
+      try{
+        const prepared=await schedule.prepareWriteCommand('cancel_waitlist',{
+          type:'mutation',
+          intent:'cancel_waitlist',
+          studentName,
+          division:cleanText(command.division),
+          date,
+          classHour:visibleHour,
+          classMinute,
+          classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+          waitlistId:cleanText(command.waitlist_id || command.waitlistId),
+          selectedStudent:routeContext.selectedStudent || null,
+          effectiveDate:new Date(),
+          originalText:''
+        });
+
+        if(prepared?.code==='target_choice_required'){
+          const choiceResult=structuredTargetChoiceResult('cancel_waitlist',command,prepared);
+          if(choiceResult) return choiceResult;
+        }
+        if(!prepared || prepared.ok!==true || !prepared.command){
+          return {
+            handled:true,kind:'action_rejected',intent:'cancel_waitlist',text:'',
+            message:String(prepared && prepared.message || '대기 취소 작업을 준비하지 못했어요.'),
+            clearInput:true,payload:command,action:null
+          };
+        }
+
+        return {
+          handled:true,
+          kind:'action_pending',
+          intent:'cancel_waitlist',
+          text:'',
+          message:confirmationMessage(prepared.command,schedule,prepared.message),
+          clearInput:true,
+          payload:prepared.command,
+          action:{
+            status:'pending',
+            intent:'cancel_waitlist',
+            command:Object.assign({},prepared.command),
+            requiresReason:false
+          }
+        };
+      }catch(error){
+        console.warn('올리 구조화 대기 취소 준비 실패:',error);
+        return {
+          handled:true,kind:'action_rejected',intent:'cancel_waitlist',text:'',
+          message:String(error && (error.message || error) || '대기 취소 작업을 준비하지 못했어요.'),
+          clearInput:true,payload:command,action:null
+        };
+      }
+    }
+
+    if (action === 'cancel_pickup') {
+      const studentName=cleanText(command.student_name || command.studentName);
+      const weekday=Number(command.weekday || 0);
+      const classTime=Number(command.class_time || command.classTime || 0);
+      const classMinute=Number(command.class_minute || command.classMinute || 0);
+      const pickupKind=cleanText(command.pickup_kind || command.pickupKind).toLowerCase();
+
+      if(!studentName){
+        return {
+          handled:true,kind:'action_rejected',intent:'cancel_pickup',text:'',
+          message:'픽업을 삭제할 학생을 알려주세요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+      if(!schedule || typeof schedule.prepareWriteCommand!=='function'){
+        return {
+          handled:true,kind:'action_rejected',intent:'cancel_pickup',text:'',
+          message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+
+      try{
+        const prepared=await schedule.prepareWriteCommand('cancel_pickup',{
+          type:'mutation',
+          intent:'cancel_pickup',
+          studentName,
+          weekday,
+          classTime,
+          classMinute,
+          pickupKind:pickupKind==='dropoff' ? 'dropoff' : 'all',
+          pickupId:cleanText(command.pickup_id || command.pickupId),
+          selectedStudent:routeContext.selectedStudent || null,
+          effectiveDate:new Date(),
+          originalText:''
+        });
+
+        if(prepared?.code==='target_choice_required'){
+          const choiceResult=structuredTargetChoiceResult('cancel_pickup',command,prepared);
+          if(choiceResult) return choiceResult;
+        }
+        if(!prepared || prepared.ok!==true || !prepared.command){
+          return {
+            handled:true,kind:'action_rejected',intent:'cancel_pickup',text:'',
+            message:String(prepared && prepared.message || '픽업 삭제 작업을 준비하지 못했어요.'),
+            clearInput:true,payload:command,action:null
+          };
+        }
+
+        const preparedIntent=cleanText(prepared.command.intent);
+        if(!['cancel_pickup','cancel_pickup_dropoff'].includes(preparedIntent)){
+          return {
+            handled:true,kind:'action_rejected',intent:'cancel_pickup',text:'',
+            message:'픽업 삭제 작업 종류를 확인하지 못했어요.',
+            clearInput:true,payload:command,action:null
+          };
+        }
+
+        return {
+          handled:true,
+          kind:'action_pending',
+          intent:preparedIntent,
+          text:'',
+          message:confirmationMessage(prepared.command,schedule,prepared.message),
+          clearInput:true,
+          payload:prepared.command,
+          action:{
+            status:'pending',
+            intent:preparedIntent,
+            command:Object.assign({},prepared.command),
+            requiresReason:false
+          }
+        };
+      }catch(error){
+        console.warn('올리 구조화 픽업 삭제 준비 실패:',error);
+        return {
+          handled:true,kind:'action_rejected',intent:'cancel_pickup',text:'',
+          message:String(error && (error.message || error) || '픽업 삭제 작업을 준비하지 못했어요.'),
+          clearInput:true,payload:command,action:null
+        };
+      }
+    }
+
+    if (action === 'update_pickup') {
+      const studentName=cleanText(command.student_name || command.studentName);
+      const weekday=Number(command.weekday || 0);
+      const classTime=Number(command.class_time || command.classTime || 0);
+      const classMinute=Number(command.class_minute || command.classMinute || 0);
+      const pickupKind=cleanText(command.pickup_kind || command.pickupKind).toLowerCase();
+      const pickupLabel=cleanText(command.pickup_label || command.pickupLabel);
+      const pickupTime=cleanText(command.pickup_time || command.pickupTime);
+
+      if(!studentName){
+        return {
+          handled:true,kind:'action_rejected',intent:'update_pickup',text:'',
+          message:'픽업을 수정할 학생을 알려주세요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+      if(!schedule || typeof schedule.prepareWriteCommand!=='function'){
+        return {
+          handled:true,kind:'action_rejected',intent:'update_pickup',text:'',
+          message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+          clearInput:true,payload:command,action:null
+        };
+      }
+
+      try{
+        const prepared=await schedule.prepareWriteCommand('update_pickup',{
+          type:'mutation',
+          intent:'update_pickup',
+          studentName,
+          weekday,
+          classTime,
+          classMinute,
+          pickupKind:pickupKind==='dropoff' ? 'dropoff' : 'arrival',
+          pickupLabel,
+          pickupTime,
+          pickupId:cleanText(command.pickup_id || command.pickupId),
+          selectedStudent:routeContext.selectedStudent || null,
+          effectiveDate:new Date(),
+          originalText:''
+        });
+
+        if(prepared?.code==='target_choice_required'){
+          const choiceResult=structuredTargetChoiceResult('update_pickup',command,prepared);
+          if(choiceResult) return choiceResult;
+        }
+        if(!prepared || prepared.ok!==true || !prepared.command){
+          return {
+            handled:true,kind:'action_rejected',intent:'update_pickup',text:'',
+            message:String(prepared && prepared.message || '픽업 수정 작업을 준비하지 못했어요.'),
+            clearInput:true,payload:command,action:null
+          };
+        }
+
+        const preparedIntent=cleanText(prepared.command.intent);
+        if(!['update_pickup_arrival','update_pickup_dropoff'].includes(preparedIntent)){
+          return {
+            handled:true,kind:'action_rejected',intent:'update_pickup',text:'',
+            message:'픽업 수정 작업 종류를 확인하지 못했어요.',
+            clearInput:true,payload:command,action:null
+          };
+        }
+
+        return {
+          handled:true,
+          kind:'action_pending',
+          intent:preparedIntent,
+          text:'',
+          message:confirmationMessage(prepared.command,schedule,prepared.message),
+          clearInput:true,
+          payload:prepared.command,
+          action:{
+            status:'pending',
+            intent:preparedIntent,
+            command:Object.assign({},prepared.command),
+            requiresReason:false
+          }
+        };
+      }catch(error){
+        console.warn('올리 구조화 픽업 수정 준비 실패:',error);
+        return {
+          handled:true,kind:'action_rejected',intent:'update_pickup',text:'',
+          message:String(error && (error.message || error) || '픽업 수정 작업을 준비하지 못했어요.'),
+          clearInput:true,payload:command,action:null
+        };
+      }
+    }
+
+    if (action === 'add_pickup') {
+      const studentName = cleanText(command.student_name || command.studentName);
+      const weekday = Number(command.weekday || 0);
+      const classTime = Number(command.class_time || command.classTime || 0);
+      const classMinute = Number(command.class_minute || command.classMinute || 0);
+      const pickupKind = cleanText(command.pickup_kind || command.pickupKind);
+      const pickupLabel = cleanText(command.pickup_label || command.pickupLabel);
+      const pickupTime = cleanText(command.pickup_time || command.pickupTime);
+
+      if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
+        return {
+          handled:true,
+          kind:'action_rejected',
+          intent:'add_pickup',
+          text:'',
+          message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+          clearInput:true,
+          payload:command,
+          action:null
+        };
+      }
+
+      try {
+        const prepared = await schedule.prepareWriteCommand('add_pickup', {
+          type:'mutation',
+          intent:'add_pickup',
+          studentName,
+          weekday,
+          classTime,
+          classMinute,
+          pickupLabel,
+          pickupTime,
+          sourceEnrollmentId:cleanText(command.source_enrollment_id || command.sourceEnrollmentId),
+          isDropoff:pickupKind === 'dropoff',
+          selectedStudent:routeContext.selectedStudent || null,
+          effectiveDate:new Date(),
+          originalText:''
+        });
+
+        if (prepared?.code === 'target_choice_required') {
+          const choiceResult=structuredTargetChoiceResult('add_pickup',command,prepared);
+          if(choiceResult) return choiceResult;
+        }
+
+        if (!prepared || prepared.ok !== true || !prepared.command) {
+          return {
+            handled:true,
+            kind:'action_rejected',
+            intent:'add_pickup',
+            text:'',
+            message:String(prepared && prepared.message || '작업을 준비하지 못했어요.'),
+            clearInput:true,
+            payload:command,
+            action:null
+          };
+        }
+
+        const preparedIntent=cleanText(prepared.command.intent) || 'add_pickup';
+        return {
+          handled:true,
+          kind:'action_pending',
+          intent:preparedIntent,
+          text:'',
+          message:confirmationMessage(prepared.command, schedule, prepared.message),
+          clearInput:true,
+          payload:prepared.command,
+          action:{
+            status:'pending',
+            intent:preparedIntent,
+            command:Object.assign({},prepared.command),
+            requiresReason:false
+          }
+        };
+      } catch (error) {
+        console.warn('올리 구조화 픽업 명령 준비 실패:',error);
+        return {
+          handled:true,
+          kind:'action_rejected',
+          intent:'add_pickup',
+          text:'',
+          message:String(error && (error.message || error) || '작업을 준비하지 못했어요.'),
+          clearInput:true,
+          payload:command,
+          action:null
+        };
+      }
+    }
+
+    const studentName = cleanText(command.student_name || command.studentName);
+    const division = cleanText(command.division);
+    const dateExpression = cleanText(command.date_expression || command.dateExpression);
+    const timeSlot = Number(command.time_slot || command.timeSlot || 0);
+    const classGroup = cleanText(command.class_group || command.classGroup).toUpperCase();
+    const dateSpec = dateExpression ? parseDateExpression(compactText(dateExpression)) : null;
+    const noun = action === 'add_trial' ? '체험 등록' : action === 'add_waitlist' ? '대기 등록' : '보강 등록';
+
+    if (!studentName || !dateSpec || !timeSlot) {
+      return {
+        handled:true,
+        kind:'action_rejected',
+        intent:action,
+        text:'',
+        message:noun + '에는 학생, 날짜, 시간이 필요해요.',
+        clearInput:true,
+        payload:command,
+        action:null
+      };
+    }
+
+    if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
+      return {
+        handled:true,
+        kind:'action_rejected',
+        intent:action,
+        text:'',
+        message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+        clearInput:true,
+        payload:command,
+        action:null
+      };
+    }
+
+    const options = {
+      type:'mutation',
+      intent:action,
+      studentName,
+      guestName:action === 'add_trial' ? studentName : '',
+      division,
+      dateSpec,
+      dateLabel:dateSpec.label,
+      date:resolveDateExpression(dateSpec,new Date()),
+      timeSlot,
+      classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+      selectedStudent:routeContext.selectedStudent || null,
+      effectiveDate:new Date(),
+      originalText:''
+    };
+
+    if (!options.date) {
+      return {
+        handled:true,
+        kind:'action_rejected',
+        intent:action,
+        text:'',
+        message:(action === 'add_trial' ? '체험' : action === 'add_waitlist' ? '대기' : '보강') + ' 날짜를 해석하지 못했어요.',
+        clearInput:true,
+        payload:command,
+        action:null
+      };
+    }
+
+    try {
+      const prepared = await schedule.prepareWriteCommand(action, options);
+      if (prepared?.code === 'class_group_required' && prepared?.commandDraft) {
+        if (
+          ['add_makeup','add_trial','add_waitlist'].includes(action)
+          && command?.batchStructured === true
+          && Number.isInteger(Number(command?.batchCommandIndex))
+          && Number(command.batchCommandIndex) >= 0
+        ) {
+          const batchChoiceDraft=Object.assign({},command,prepared.commandDraft,{
+            action,
+            batchStructured:true,
+            batchCommandIndex:Number(command.batchCommandIndex)
+          });
+          const choiceResult=structuredTargetChoiceResult(action,batchChoiceDraft,{
+            choiceKey:'classGroup',
+            choices:(Array.isArray(prepared.choices) ? prepared.choices : ['A','B'])
+              .map(group=>({id:cleanText(group).toUpperCase(),label:cleanText(group).toUpperCase()+'반'})),
+            message:String(prepared.message || '반을 선택해 주세요.')
+          });
+          if(choiceResult) return choiceResult;
+        }
+        const choiceIntent = action === 'add_trial' ? 'choose_trial_group' : action === 'add_waitlist' ? 'choose_waitlist_group' : 'choose_makeup_group';
+        const choicePayload = Object.assign({},prepared.commandDraft,{ intent:choiceIntent,targetIntent:action });
+        return {
+          handled:true,
+          kind:'action_choice',
+          intent:choiceIntent,
+          text:'',
+          message:String(prepared.message || '반을 선택해 주세요.'),
+          clearInput:true,
+          payload:choicePayload,
+          action:{
+            status:'pending_choice',
+            intent:choiceIntent,
+            command:Object.assign({},choicePayload),
+            choices:Array.isArray(prepared.choices) ? prepared.choices.slice() : ['A','B'],
+            requiresReason:false
+          }
+        };
+      }
+
+      if (!prepared || prepared.ok !== true || !prepared.command) {
+        return {
+          handled:true,
+          kind:'action_rejected',
+          intent:action,
+          text:'',
+          message:String(prepared && prepared.message || '작업을 준비하지 못했어요.'),
+          clearInput:true,
+          payload:command,
+          action:null
+        };
+      }
+
+      return {
+        handled:true,
+        kind:'action_pending',
+        intent:action,
+        text:'',
+        message:confirmationMessage(prepared.command, schedule, prepared.message),
+        clearInput:true,
+        payload:prepared.command,
+        action:{
+          status:'pending',
+          intent:action,
+          command:Object.assign({},prepared.command),
+          requiresReason:false
+        }
+      };
+    } catch (error) {
+      console.warn('올리 구조화 명령 준비 실패:',error);
+      return {
+        handled:true,
+        kind:'action_rejected',
+        intent:action,
+        text:'',
+        message:String(error && (error.message || error) || '작업을 준비하지 못했어요.'),
+        clearInput:true,
+        payload:command,
+        action:null
+      };
+    }
   }
 
 
@@ -2276,8 +4109,14 @@
     classifyRequest,
     runQuery,
     runSuggestedQuery,
+    runStructuredQuery,
+    runStructuredMultiQuery,
+    prepareStructuredAction,
     prepareAction,
     parseWriteIntent,
+    createStructuredWriteDraft,
+    getStructuredWriteDraftState,
+    updateStructuredWriteDraft,
     parseQueryIntent,
     parseStudentScheduleQueryIntent,
     parseMultiQueryIntent,

@@ -1,3 +1,5 @@
+'use strict';
+
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -5,46 +7,38 @@ const path=require('node:path');
 
 const talk=fs.readFileSync(path.join(__dirname,'../olli-talk-beta.js'),'utf8');
 
-test('mobile trial update gate uses only shared trial update candidate parser',()=>{
-  const start=talk.indexOf('function isOlliTalkTrialUpdateAgentCandidate');
-  const end=talk.indexOf('function isOlliTalkWaitlistAddAgentCandidate',start);
-  const block=talk.slice(start,end);
-  assert.match(block,/parseTrialUpdateMutationIntent\(commandText\)/);
-  assert.match(block,/==='update_trial'/);
-  assert.doesNotMatch(block,/parseWriteIntent|prepareAction|add_trial|cancel_trial/);
+test('Mobile trial update enters structured rule path before Agent classifier',()=>{
+  const ai=talk.slice(
+    talk.indexOf('async function resolveOlliTalkAiTurn'),
+    talk.indexOf('function getOlliTalkMentionMessageText')
+  );
+  const structured=ai.indexOf("['add_makeup','update_makeup','add_trial','update_trial'");
+  const classifier=ai.indexOf('const routeClassifier=');
+  assert.ok(structured>=0 && classifier>structured);
+  assert.match(ai,/prepareStructuredAction/);
 });
 
-test('mobile trial update routes before waitlist and legacy preparation — shared dispatch contract',()=> {
-  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
-  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
-  const dispatch=talk.slice(dispatchStart,dispatchEnd);
-  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
-  const ai=talk.slice(aiStart,aiEnd);
-  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
-  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
-  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
-  assert.match(dispatch,/case 'trial_update'/);
-  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
-  const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
-  assert.ok(classify>=0 && legacy>classify);
-
-});
-test('mobile trial update uses source-bound production mode and server-persisted card',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkTrialUpdateAgentTurn');
-  const end=talk.indexOf('async function resolveOlliTalkWaitlistAddAgentTurn',start);
-  const block=talk.slice(start,end);
-  assert.match(block,/mode:'trial_update_prepare'/);
-  assert.match(block,/sourceMessageId=Number\(replyToMessageId \|\| 0\)/);
-  assert.match(block,/action_type \|\| ''\)\.trim\(\)!=='update_trial'/);
-  assert.match(block,/assistantMessage:data\.message/);
-  assert.match(block,/recordAi:false/);
-  assert.doesNotMatch(block,/saveOlliTalkActionReply|olli_team_chat_send_action/);
+test('Mobile dead trial update Agent candidate and client bridge helper are removed',()=>{
+  for(const token of ['isOlliTalkTrialUpdateAgentCandidate','resolveOlliTalkTrialUpdateAgentTurn']){
+    assert.doesNotMatch(talk,new RegExp(token));
+  }
 });
 
-test('mobile Bot path is independent from trial update Agent routing',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkBotTurn');
-  const end=talk.indexOf('function handleOlliTalkAiModeChanged',start);
-  const block=talk.slice(start,end);
-  assert.doesNotMatch(block,/resolveOlliTalkTrialUpdateAgentTurn|isOlliTalkTrialUpdateAgentCandidate|trial_update_prepare/);
+test('Mobile shared dispatch has no trial update or trial cancel case while cancel fallback remains',()=>{
+  const dispatch=talk.slice(
+    talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn'),
+    talk.indexOf('async function resolveOlliTalkContextualMakeupTurn')
+  );
+  assert.doesNotMatch(dispatch,/case 'trial_update'/);
+  assert.doesNotMatch(dispatch,/case 'trial_cancel'/);
+  assert.match(talk,/__trialCancelAgent/);
+  assert.match(talk,/resolve(?:OlliTalk)?TrialCancelAgentTurn/);
+});
+
+test('Mobile structured trial update now uses only the common prepareStructuredAction path',()=>{
+  assert.doesNotMatch(talk,/async function resolveOlliTalkStructuredTrialUpdateTurn/);
+  assert.doesNotMatch(talk,/mode:'structured_trial_update_prepare'/);
+  const ai=talk.slice(talk.indexOf('async function resolveOlliTalkAiTurn'),talk.indexOf('function getOlliTalkMentionMessageText'));
+  assert.match(ai,/['"]update_trial['"]/);
+  assert.match(ai,/prepareStructuredAction\(structuredCommand/);
 });

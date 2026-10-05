@@ -8,6 +8,7 @@ const test = require('node:test');
 const {
   normalizeMentionConversation,
   resolveOlliSystemInterpretation,
+  OLLI_INTERPRETER_LANES,
   routeForSystemIntent,
   resolveContextualReadRewrite,
   resolveContextualMakeupRewrite,
@@ -16,8 +17,9 @@ const {
 
 
 
-test('unified interpreter runs on the first turn, anonymizes students, and restores rule system language', async () => {
+test('unified interpreter runs on the first turn without loading student data', async () => {
   let observed=null;
+  let studentLoadCalled=false;
   const result=await resolveOlliSystemInterpretation({
     requestContext:{
       sessionToken:'session',
@@ -27,31 +29,47 @@ test('unified interpreter runs on the first turn, anonymizes students, and resto
     sourceMessageId:10,
     currentMessage:'이민형 시간표 알려줘',
     conversation:[],
-    loadStudents:async()=>[
-      {id:'student-1',name:'이민형'},
-    ],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [{id:'student-1',name:'이민형'}];
+    },
     modelRunner:async(input)=>{
       observed=input;
       return {
+        lane:'routine',
         route:'rule',
         intent:'get_student_schedule',
-        standalone_command:'학생A 시간표 알려줘',
+        standalone_command:'이민형 시간표 알려줘',
+        structured_command:{
+          action:'get_student_schedule',
+          student_name:'이민형',
+          division:'',
+          date_expression:'',
+          time_slot:0,
+          class_group:'',
+        },
         context_used:false,
       };
     },
   });
 
   assert.ok(observed);
+  assert.equal(studentLoadCalled,false,'routine interpretation must not load the academy student list');
   assert.equal(observed.transcript,'');
-  assert.equal(observed.currentText,'학생A 시간표 알려줘');
+  assert.equal(observed.currentText,'이민형 시간표 알려줘');
+  assert.equal(result.lane,'routine');
   assert.equal(result.route,'rule');
   assert.equal(result.intent,'get_student_schedule');
   assert.equal(result.standaloneCommand,'이민형 시간표 알려줘');
+  assert.equal(result.structuredCommand.action,'get_student_schedule');
+  assert.equal(result.structuredCommand.studentName,'이민형');
+  assert.equal(result.structuredCommand.dateExpression,'');
   assert.equal(result.contextUsed,false);
 });
 
-test('unified interpreter resolves follow-up context before deterministic routing', async () => {
+test('unified interpreter resolves follow-up context from conversation text only', async () => {
   let observed=null;
+  let studentLoadCalled=false;
   const result=await resolveOlliSystemInterpretation({
     requestContext:{
       sessionToken:'session',
@@ -64,30 +82,1023 @@ test('unified interpreter resolves follow-up context before deterministic routin
       {role:'user',content:'이민형 시간표 알려줘'},
       {role:'assistant',content:'이민형님의 정규 수업은 월요일 4시 A반입니다.'},
     ],
-    loadStudents:async()=>[
-      {id:'student-1',name:'이민형'},
-    ],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [{id:'student-1',name:'이민형'}];
+    },
     modelRunner:async(input)=>{
       observed=input;
       return {
+        lane:'routine',
         route:'agent',
         intent:'get_student_schedule',
-        standalone_command:'학생A 지난주 시간표 알려줘',
+        standalone_command:'이민형 지난주 시간표 알려줘',
+        structured_command:{
+          action:'get_student_schedule',
+          student_name:'이민형',
+          division:'',
+          date_expression:'지난주',
+          time_slot:0,
+          class_group:'',
+        },
         context_used:true,
       };
     },
   });
 
-  assert.match(observed.transcript,/학생A 시간표 알려줘/);
-  assert.doesNotMatch(observed.transcript,/이민형/);
+  assert.equal(studentLoadCalled,false);
+  assert.match(observed.transcript,/이민형 시간표 알려줘/);
+  assert.match(observed.transcript,/이민형님의 정규 수업/);
+  assert.equal(result.lane,'routine');
   assert.equal(result.route,'rule','server route is derived from the intent contract, not model route text');
   assert.equal(result.intent,'get_student_schedule');
   assert.equal(result.standaloneCommand,'이민형 지난주 시간표 알려줘');
+  assert.equal(result.structuredCommand.action,'get_student_schedule');
+  assert.equal(result.structuredCommand.studentName,'이민형');
+  assert.equal(result.structuredCommand.dateExpression,'지난주');
+  assert.equal(result.contextUsed,true);
+});
+
+test('unified interpreter emits a structured add_makeup command from conversation context', async () => {
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:14,
+    currentMessage:'B반으로 해줘',
+    conversation:[
+      {role:'user',content:'민준이 다음주 수요일 5시 보강 등록해줘'},
+      {role:'assistant',content:'5시는 A반과 B반이 가능해요.'},
+    ],
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'add_makeup',
+      standalone_command:'민준이 다음주 수요일 5시 B반 보강 등록해줘',
+      structured_command:{
+        action:'add_makeup',
+        student_name:'민준',
+        division:'',
+        date_expression:'다음주 수요일',
+        time_slot:5,
+        class_group:'B',
+      },
+      reply:'',
+      context_used:true,
+    }),
+  });
+
+  assert.equal(result.lane,'routine');
+  assert.equal(result.intent,'add_makeup');
+  assert.deepEqual(result.structuredCommand,{
+    action:'add_makeup',
+    studentName:'민준',
+    division:'',
+    dateExpression:'다음주 수요일',
+    timeSlot:5,
+    classGroup:'B',
+    weekday:0,
+    classTime:0,
+    classMinute:0,
+    pickupKind:'',
+    pickupLabel:'',
+    pickupTime:'',
+    sourceDateExpression:'',
+    sourceWeekday:0,
+    sourceTimeSlot:0,
+    sourceMinute:0,
+    sourceClassGroup:'',
+    targetDateExpression:'',
+    targetWeekday:0,
+    targetTimeSlot:0,
+    targetMinute:0,
+    targetClassGroup:'',
+    reason:'',
+
+    memoNote:'',
+    availabilityPurpose:'unknown',
+    rosterKind:'',
+  });
+  assert.equal(result.contextUsed,true);
+});
+
+test('unified interpreter emits structured cancel_makeup facts without loading student data', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:115,
+    currentMessage:'민준이 다음주 화요일 4시 보강 취소해줘 사유 개인사정',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'cancel_makeup',
+      standalone_command:'민준 다음주 화요일 4시 보강 취소 사유: 개인사정',
+      structured_command:{
+        action:'cancel_makeup',
+        student_name:'민준',
+        division:'',
+        date_expression:'다음주 화요일',
+        time_slot:4,
+        class_group:'',
+        weekday:0,
+        class_time:0,
+        class_minute:0,
+        pickup_kind:'',
+        pickup_label:'',
+        pickup_time:'',
+        source_date_expression:'',
+        source_weekday:0,
+        source_time_slot:0,
+        source_minute:0,
+        source_class_group:'',
+        target_date_expression:'',
+        target_weekday:0,
+        target_time_slot:0,
+        target_minute:0,
+        target_class_group:'',
+        reason:'개인사정',
+        availability_purpose:'',
+        roster_kind:'',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.lane,'routine');
+  assert.equal(result.route,'rule');
+  assert.equal(result.intent,'cancel_makeup');
+  assert.equal(result.structuredCommand.action,'cancel_makeup');
+  assert.equal(result.structuredCommand.studentName,'민준');
+  assert.equal(result.structuredCommand.dateExpression,'다음주 화요일');
+  assert.equal(result.structuredCommand.timeSlot,4);
+  assert.equal(result.structuredCommand.reason,'개인사정');
+});
+
+test('unified interpreter emits structured cancel_waitlist facts without loading academy data', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:119,
+    currentMessage:'지우 목요일 5시 30분 B반 대기 취소해줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'cancel_waitlist',
+      standalone_command:'지우 목요일 5시 30분 B반 대기 취소해줘',
+      structured_command:{
+        action:'cancel_waitlist',
+        student_name:'지우',
+        division:'',
+        date_expression:'',
+        weekday:4,
+        time_slot:5,
+        class_minute:30,
+        class_group:'B',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.lane,'routine');
+  assert.equal(result.route,'rule');
+  assert.equal(result.intent,'cancel_waitlist');
+  assert.equal(result.structuredCommand.action,'cancel_waitlist');
+  assert.equal(result.structuredCommand.studentName,'지우');
+  assert.equal(result.structuredCommand.weekday,4);
+  assert.equal(result.structuredCommand.timeSlot,5);
+  assert.equal(result.structuredCommand.classMinute,30);
+  assert.equal(result.structuredCommand.classGroup,'B');
+});
+
+test('unified interpreter emits structured update_waitlist facts without loading academy data', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:118,
+    currentMessage:'지우 화요일 4시 대기를 목요일 5시 30분 B반으로 변경해줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'update_waitlist',
+      standalone_command:'지우 화요일 4시 대기를 목요일 5시 30분 B반으로 변경해줘',
+      structured_command:{
+        action:'update_waitlist',
+        student_name:'지우',
+        division:'',
+        source_date_expression:'',
+        source_weekday:2,
+        source_time_slot:4,
+        source_minute:0,
+        source_class_group:'',
+        target_date_expression:'',
+        target_weekday:4,
+        target_time_slot:5,
+        target_minute:30,
+        target_class_group:'B',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.lane,'routine');
+  assert.equal(result.route,'rule');
+  assert.equal(result.intent,'update_waitlist');
+  assert.equal(result.structuredCommand.action,'update_waitlist');
+  assert.equal(result.structuredCommand.studentName,'지우');
+  assert.equal(result.structuredCommand.sourceWeekday,2);
+  assert.equal(result.structuredCommand.sourceTimeSlot,4);
+  assert.equal(result.structuredCommand.targetWeekday,4);
+  assert.equal(result.structuredCommand.targetTimeSlot,5);
+  assert.equal(result.structuredCommand.targetMinute,30);
+  assert.equal(result.structuredCommand.targetClassGroup,'B');
+});
+
+test('unified interpreter emits structured cancel_trial facts without loading academy data', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:117,
+    currentMessage:'서준 다음주 화요일 4시 체험 취소해줘 사유 개인사정',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'cancel_trial',
+      standalone_command:'서준 다음주 화요일 4시 체험 취소 사유: 개인사정',
+      structured_command:{
+        action:'cancel_trial',
+        student_name:'서준',
+        division:'',
+        date_expression:'다음주 화요일',
+        time_slot:4,
+        class_minute:0,
+        class_group:'',
+        reason:'개인사정',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.lane,'routine');
+  assert.equal(result.route,'rule');
+  assert.equal(result.intent,'cancel_trial');
+  assert.equal(result.structuredCommand.action,'cancel_trial');
+  assert.equal(result.structuredCommand.studentName,'서준');
+  assert.equal(result.structuredCommand.dateExpression,'다음주 화요일');
+  assert.equal(result.structuredCommand.timeSlot,4);
+  assert.equal(result.structuredCommand.reason,'개인사정');
+});
+
+test('unified interpreter emits structured update_trial facts without loading academy data', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:116,
+    currentMessage:'서준 다음주 화요일 4시 체험을 다음주 목요일 5시 30분 B반으로 변경해줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'update_trial',
+      standalone_command:'서준 다음주 화요일 4시 체험을 다음주 목요일 5시 30분 B반으로 변경해줘',
+      structured_command:{
+        action:'update_trial',
+        student_name:'서준',
+        division:'',
+        source_date_expression:'다음주 화요일',
+        source_time_slot:4,
+        source_minute:0,
+        source_class_group:'',
+        target_date_expression:'다음주 목요일',
+        target_time_slot:5,
+        target_minute:30,
+        target_class_group:'B',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.lane,'routine');
+  assert.equal(result.route,'rule');
+  assert.equal(result.intent,'update_trial');
+  assert.equal(result.structuredCommand.action,'update_trial');
+  assert.equal(result.structuredCommand.studentName,'서준');
+  assert.equal(result.structuredCommand.sourceDateExpression,'다음주 화요일');
+  assert.equal(result.structuredCommand.sourceTimeSlot,4);
+  assert.equal(result.structuredCommand.targetDateExpression,'다음주 목요일');
+  assert.equal(result.structuredCommand.targetTimeSlot,5);
+  assert.equal(result.structuredCommand.targetMinute,30);
+  assert.equal(result.structuredCommand.targetClassGroup,'B');
+});
+
+test('unified interpreter emits a structured add_trial command without student data lookup', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:15,
+    currentMessage:'서준이 초등부 다음주 금요일 5시 체험 등록해줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'add_trial',
+      standalone_command:'서준이 초등부 다음주 금요일 5시 체험 등록해줘',
+      structured_command:{
+        action:'add_trial',
+        student_name:'서준',
+        division:'elementary',
+        date_expression:'다음주 금요일',
+        time_slot:5,
+        class_group:'',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'add_trial');
+  assert.deepEqual(result.structuredCommand,{
+    action:'add_trial',
+    studentName:'서준',
+    division:'elementary',
+    dateExpression:'다음주 금요일',
+    timeSlot:5,
+    classGroup:'',
+    weekday:0,
+    classTime:0,
+    classMinute:0,
+    pickupKind:'',
+    pickupLabel:'',
+    pickupTime:'',
+    sourceDateExpression:'',
+    sourceWeekday:0,
+    sourceTimeSlot:0,
+    sourceMinute:0,
+    sourceClassGroup:'',
+    targetDateExpression:'',
+    targetWeekday:0,
+    targetTimeSlot:0,
+    targetMinute:0,
+    targetClassGroup:'',
+    reason:'',
+
+    memoNote:'',
+    availabilityPurpose:'unknown',
+    rosterKind:'',
+  });
+});
+
+test('unified interpreter emits a structured add_waitlist command without student data lookup', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:16,
+    currentMessage:'지우 초등부 다음주 목요일 4시 대기 등록해줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'add_waitlist',
+      standalone_command:'지우 초등부 다음주 목요일 4시 대기 등록해줘',
+      structured_command:{
+        action:'add_waitlist',
+        student_name:'지우',
+        division:'elementary',
+        date_expression:'다음주 목요일',
+        time_slot:4,
+        class_group:'',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'add_waitlist');
+  assert.deepEqual(result.structuredCommand,{
+    action:'add_waitlist',
+    studentName:'지우',
+    division:'elementary',
+    dateExpression:'다음주 목요일',
+    timeSlot:4,
+    classGroup:'',
+    weekday:0,
+    classTime:0,
+    classMinute:0,
+    pickupKind:'',
+    pickupLabel:'',
+    pickupTime:'',
+    sourceDateExpression:'',
+    sourceWeekday:0,
+    sourceTimeSlot:0,
+    sourceMinute:0,
+    sourceClassGroup:'',
+    targetDateExpression:'',
+    targetWeekday:0,
+    targetTimeSlot:0,
+    targetMinute:0,
+    targetClassGroup:'',
+    reason:'',
+
+    memoNote:'',
+    availabilityPurpose:'unknown',
+    rosterKind:'',
+  });
+});
+
+test('unified interpreter emits structured pickup fields without student data lookup', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:17,
+    currentMessage:'민서 월요일 4시 30분 수업 리슈빌 3시 30분 픽업 등록해줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'add_pickup',
+      standalone_command:'민서 월요일 4시 30분 수업 리슈빌 3시 30분 픽업 등록해줘',
+      structured_command:{
+        action:'add_pickup',
+        student_name:'민서',
+        division:'',
+        date_expression:'',
+        time_slot:0,
+        class_group:'',
+        weekday:1,
+        class_time:4,
+        class_minute:30,
+        pickup_kind:'arrival',
+        pickup_label:'리슈빌',
+        pickup_time:'15:30',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'add_pickup');
+  assert.deepEqual(result.structuredCommand,{
+    action:'add_pickup',
+    studentName:'민서',
+    division:'',
+    dateExpression:'',
+    timeSlot:0,
+    classGroup:'',
+    weekday:1,
+    classTime:4,
+    classMinute:30,
+    pickupKind:'arrival',
+    pickupLabel:'리슈빌',
+    pickupTime:'15:30',
+    sourceDateExpression:'',
+    sourceWeekday:0,
+    sourceTimeSlot:0,
+    sourceMinute:0,
+    sourceClassGroup:'',
+    targetDateExpression:'',
+    targetWeekday:0,
+    targetTimeSlot:0,
+    targetMinute:0,
+    targetClassGroup:'',
+    reason:'',
+
+    memoNote:'',
+    availabilityPurpose:'unknown',
+    rosterKind:'',
+  });
+});
+
+test('unified interpreter emits a structured add_pickup command without student data lookup', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:17,
+    currentMessage:'민서 월요일 4시 수업 리슈빌 3시 30분 픽업 등록해줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'add_pickup',
+      standalone_command:'민서 월요일 4시 수업 리슈빌 3시 30분 픽업 등록해줘',
+      structured_command:{
+        action:'add_pickup',
+        student_name:'민서',
+        division:'',
+        date_expression:'',
+        time_slot:0,
+        class_group:'',
+        weekday:1,
+        class_time:4,
+        class_minute:0,
+        pickup_kind:'arrival',
+        pickup_label:'리슈빌',
+        pickup_time:'15:30',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'add_pickup');
+  assert.equal(result.structuredCommand.action,'add_pickup');
+  assert.equal(result.structuredCommand.studentName,'민서');
+  assert.equal(result.structuredCommand.weekday,1);
+  assert.equal(result.structuredCommand.classTime,4);
+  assert.equal(result.structuredCommand.classMinute,0);
+  assert.equal(result.structuredCommand.pickupKind,'arrival');
+  assert.equal(result.structuredCommand.pickupLabel,'리슈빌');
+  assert.equal(result.structuredCommand.pickupTime,'15:30');
+});
+
+test('unified interpreter emits structured class move fields without student data lookup', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:18,
+    currentMessage:'민준 월요일 4시 수업을 수요일 5시로 옮겨줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'move_class',
+      standalone_command:'민준 월요일 4시 수업을 수요일 5시로 옮겨줘',
+      structured_command:{
+        action:'move_class',
+        student_name:'민준',
+        division:'',
+        date_expression:'',
+        time_slot:0,
+        class_group:'',
+        weekday:0,
+        class_time:0,
+        class_minute:0,
+        pickup_kind:'',
+        pickup_label:'',
+        pickup_time:'',
+        source_weekday:1,
+        source_time_slot:4,
+        target_weekday:3,
+        target_time_slot:5,
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'move_class');
+  assert.deepEqual(result.structuredCommand,{
+    action:'move_class',
+    studentName:'민준',
+    division:'',
+    dateExpression:'',
+    timeSlot:0,
+    classGroup:'',
+    weekday:0,
+    classTime:0,
+    classMinute:0,
+    pickupKind:'',
+    pickupLabel:'',
+    pickupTime:'',
+    sourceDateExpression:'',
+    sourceWeekday:1,
+    sourceTimeSlot:4,
+    sourceMinute:0,
+    sourceClassGroup:'',
+    targetDateExpression:'',
+    targetWeekday:3,
+    targetTimeSlot:5,
+    targetMinute:0,
+    targetClassGroup:'',
+    reason:'',
+
+    memoNote:'',
+    availabilityPurpose:'unknown',
+    rosterKind:'',
+  });
+});
+
+test('unified interpreter emits a structured mark_absent command without loading student data', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:19,
+    currentMessage:'민준이 오늘 4시 결석 처리해줘 사유 감기',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'mark_absent',
+      standalone_command:'민준이 오늘 4시 결석 처리해줘 사유 감기',
+      structured_command:{
+        action:'mark_absent',
+        student_name:'민준',
+        division:'',
+        date_expression:'오늘',
+        time_slot:4,
+        class_group:'',
+        weekday:0,
+        class_time:0,
+        class_minute:0,
+        pickup_kind:'',
+        pickup_label:'',
+        pickup_time:'',
+        source_weekday:0,
+        source_time_slot:0,
+        target_weekday:0,
+        target_time_slot:0,
+        reason:'감기',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'mark_absent');
+  assert.deepEqual(result.structuredCommand,{
+    action:'mark_absent',
+    studentName:'민준',
+    division:'',
+    dateExpression:'오늘',
+    timeSlot:4,
+    classGroup:'',
+    weekday:0,
+    classTime:0,
+    classMinute:0,
+    pickupKind:'',
+    pickupLabel:'',
+    pickupTime:'',
+    sourceDateExpression:'',
+    sourceWeekday:0,
+    sourceTimeSlot:0,
+    sourceMinute:0,
+    sourceClassGroup:'',
+    targetDateExpression:'',
+    targetWeekday:0,
+    targetTimeSlot:0,
+    targetMinute:0,
+    targetClassGroup:'',
+    reason:'감기',
+
+    memoNote:'',
+    availabilityPurpose:'unknown',
+    rosterKind:'',
+  });
+});
+
+test('unified interpreter emits a structured find_available_slots query without reading academy data', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:20,
+    currentMessage:'다음주 초등부 보강 가능한 자리 알려줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'find_available_slots',
+      standalone_command:'다음주 초등부 보강 가능한 자리 알려줘',
+      structured_command:{
+        action:'find_available_slots',
+        student_name:'',
+        division:'elementary',
+        date_expression:'다음주',
+        time_slot:0,
+        class_group:'',
+        weekday:0,
+        class_time:0,
+        class_minute:0,
+        pickup_kind:'',
+        pickup_label:'',
+        pickup_time:'',
+        source_weekday:0,
+        source_time_slot:0,
+        target_weekday:0,
+        target_time_slot:0,
+        reason:'',
+        availability_purpose:'makeup',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'find_available_slots');
+  assert.equal(result.structuredCommand.action,'find_available_slots');
+  assert.equal(result.structuredCommand.division,'elementary');
+  assert.equal(result.structuredCommand.dateExpression,'다음주');
+  assert.equal(result.structuredCommand.weekday,0);
+  assert.equal(result.structuredCommand.timeSlot,0);
+  assert.equal(result.structuredCommand.classGroup,'');
+  assert.equal(result.structuredCommand.availabilityPurpose,'makeup');
+});
+
+test('unified interpreter emits a structured find_roster_entries query without reading student data', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:21,
+    currentMessage:'화요일 5시 B반 학생 누구야?',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'find_roster_entries',
+      standalone_command:'화요일 5시 B반 학생 누구야?',
+      structured_command:{
+        action:'find_roster_entries',
+        student_name:'',
+        division:'',
+        date_expression:'화요일',
+        time_slot:5,
+        class_group:'B',
+        weekday:2,
+        class_time:0,
+        class_minute:0,
+        pickup_kind:'',
+        pickup_label:'',
+        pickup_time:'',
+        source_weekday:0,
+        source_time_slot:0,
+        target_weekday:0,
+        target_time_slot:0,
+        reason:'',
+        availability_purpose:'',
+        roster_kind:'class_roster',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'find_roster_entries');
+  assert.equal(result.structuredCommand.action,'find_roster_entries');
+  assert.equal(result.structuredCommand.rosterKind,'class_roster');
+  assert.equal(result.structuredCommand.dateExpression,'화요일');
+  assert.equal(result.structuredCommand.weekday,2);
+  assert.equal(result.structuredCommand.timeSlot,5);
+  assert.equal(result.structuredCommand.classGroup,'B');
+});
+
+test('unified interpreter emits a structured find_pickups query without reading pickup data', async () => {
+  let studentLoadCalled=false;
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:22,
+    currentMessage:'민서 내일 4시 수업 하원 픽업 알려줘',
+    conversation:[],
+    loadStudents:async()=>{
+      studentLoadCalled=true;
+      return [];
+    },
+    modelRunner:async()=>({
+      lane:'routine',
+      route:'rule',
+      intent:'find_pickups',
+      standalone_command:'민서 내일 4시 수업 하원 픽업 알려줘',
+      structured_command:{
+        action:'find_pickups',
+        student_name:'민서',
+        division:'',
+        date_expression:'내일',
+        time_slot:0,
+        class_group:'',
+        weekday:0,
+        class_time:4,
+        class_minute:0,
+        pickup_kind:'dropoff',
+        pickup_label:'',
+        pickup_time:'',
+        source_weekday:0,
+        source_time_slot:0,
+        target_weekday:0,
+        target_time_slot:0,
+        reason:'',
+        availability_purpose:'',
+        roster_kind:'',
+      },
+      reply:'',
+      context_used:false,
+    }),
+  });
+
+  assert.equal(studentLoadCalled,false);
+  assert.equal(result.intent,'find_pickups');
+  assert.equal(result.structuredCommand.action,'find_pickups');
+  assert.equal(result.structuredCommand.studentName,'민서');
+  assert.equal(result.structuredCommand.dateExpression,'내일');
+  assert.equal(result.structuredCommand.classTime,4);
+  assert.equal(result.structuredCommand.pickupKind,'dropoff');
+});
+
+test('unified interpreter classifies feedback/data work separately from routine work', async () => {
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:12,
+    currentMessage:'민준이 최근 관찰노트 보고 성장피드백 작성해줘',
+    conversation:[],
+    modelRunner:async()=>({
+      lane:'feedback',
+      route:'chat',
+      intent:'complex_analysis',
+      standalone_command:'민준이 최근 관찰노트 보고 성장피드백 작성해줘',
+      structured_command:{
+        action:'none',
+        student_name:'',
+        date_expression:'',
+        time_slot:0,
+        class_group:'',
+      },
+      context_used:false,
+    }),
+  });
+
+  assert.equal(result.lane,'feedback');
+  assert.equal(result.route,'chat');
+  assert.equal(result.intent,'complex_analysis');
+});
+
+test('interpreter lane contract is explicit', () => {
+  assert.deepEqual(OLLI_INTERPRETER_LANES,['routine','feedback','chat']);
+});
+
+test('chat lane can return a direct reply without a second chat-model contract', async () => {
+  const result=await resolveOlliSystemInterpretation({
+    requestContext:{
+      sessionToken:'session',
+      academyId:'academy',
+      memberId:'member-a',
+    },
+    sourceMessageId:13,
+    currentMessage:'왜 그렇게 되는 거야?',
+    conversation:[
+      {role:'user',content:'앞에서 설명한 내용'},
+      {role:'assistant',content:'앞 설명'},
+    ],
+    modelRunner:async()=>({
+      lane:'chat',
+      route:'chat',
+      intent:'general_chat',
+      standalone_command:'왜 그렇게 되는 거야?',
+      structured_command:{
+        action:'none',
+        student_name:'',
+        date_expression:'',
+        time_slot:0,
+        class_group:'',
+      },
+      reply:'앞에서 설명한 이유를 이어서 설명할게요.',
+      context_used:true,
+    }),
+  });
+
+  assert.equal(result.lane,'chat');
+  assert.equal(result.reply,'앞에서 설명한 이유를 이어서 설명할게요.');
+  assert.equal(result.route,'chat');
   assert.equal(result.contextUsed,true);
 });
 
 test('unified interpreter has one deterministic route contract per system intent', () => {
   assert.equal(routeForSystemIntent('add_makeup'),'rule');
+  assert.equal(routeForSystemIntent('cancel_makeup'),'rule');
+  assert.equal(routeForSystemIntent('update_trial'),'rule');
+  assert.equal(routeForSystemIntent('cancel_trial'),'rule');
+  assert.equal(routeForSystemIntent('update_waitlist'),'rule');
+  assert.equal(routeForSystemIntent('cancel_waitlist'),'rule');
   assert.equal(routeForSystemIntent('get_student_schedule'),'rule');
   assert.equal(routeForSystemIntent('get_attendance'),'agent');
   assert.equal(routeForSystemIntent('set_attendance_status'),'agent');

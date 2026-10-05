@@ -7,6 +7,44 @@ on:
       - 'packages/common/**'
       - 'tests/timetable-memo-half-hour.test.cjs'
       - 'tests/pickup-half-hour.test.cjs'
+      - 'tests/olli-structured-command-router.test.cjs'
+      - 'tests/olli-structured-query-route.test.cjs'
+      - 'tests/team-talk-makeup-group-choice.test.cjs'
+      - 'tests/team-talk-structured-date-choice.test.cjs'
+      - 'supabase/migrations/20261003141000_team_chat_structured_date_choice.sql'
+      - 'tests/team-talk-structured-time-choice.test.cjs'
+      - 'supabase/migrations/20261004073600_team_chat_structured_time_choice.sql'
+      - 'tests/olli-structured-student-name.test.cjs'
+      - 'tests/team-talk-structured-student-choice.test.cjs'
+      - 'supabase/migrations/20261004081500_team_chat_structured_student_choice.sql'
+      - 'tests/team-talk-structured-division-choice.test.cjs'
+      - 'supabase/migrations/20261004084500_team_chat_structured_division_choice.sql'
+      - 'tests/olli-structured-missing-info-regression.test.cjs'
+      - 'tests/team-talk-structured-pickup-update.test.cjs'
+      - 'supabase/migrations/20261004093000_team_chat_structured_student_choice_update_pickup.sql'
+      - 'tests/team-talk-structured-pickup-cancel.test.cjs'
+      - 'supabase/migrations/20261004094500_team_chat_structured_student_choice_cancel_pickup.sql'
+      - 'tests/team-talk-structured-waitlist-cancel.test.cjs'
+      - 'supabase/migrations/20261004101500_team_chat_structured_student_choice_cancel_waitlist.sql'
+      - 'tests/team-talk-structured-target-choice.test.cjs'
+      - 'tests/team-talk-pending-text-input.test.cjs'
+      - 'tests/team-talk-structured-makeup-update.test.cjs'
+      - 'tests/team-talk-structured-trial-update.test.cjs'
+      - 'tests/team-talk-structured-waitlist-update-choice.test.cjs'
+      - 'tests/team-talk-structured-makeup-cancel-choice.test.cjs'
+      - 'tests/team-talk-structured-trial-cancel-choice.test.cjs'
+      - 'supabase/migrations/20261004121500_team_chat_structured_trial_update_choices.sql'
+      - 'supabase/migrations/20261004130000_team_chat_structured_waitlist_update_choices.sql'
+      - 'supabase/migrations/20261004113000_team_chat_structured_makeup_update_choices.sql'
+      - 'supabase/migrations/20261004104500_team_chat_structured_target_choice.sql'
+      - 'supabase/migrations/20261003022400_team_chat_makeup_group_choice.sql'
+      - 'supabase/migrations/20261003024500_team_chat_trial_group_choice.sql'
+      - 'supabase/migrations/20261003030000_team_chat_waitlist_group_choice.sql'
+      - 'supabase/migrations/20261003031500_team_chat_move_group_choice.sql'
+      - 'apps/pc/pc-team-talk.js'
+      - 'apps/mobile/olli-talk-beta.js'
+      - 'apps/mobile/api/olli-agent.js'
+      - 'apps/mobile/api/_lib/olli-agent/context-route.cjs'
       - 'apps/pc/scripts/stage-common.cjs'
       - 'apps/mobile/scripts/stage-common.cjs'
       - 'apps/pc/index.html'
@@ -57,7 +95,26 @@ jobs:
             tests/pc-build-closure.test.cjs \
             tests/mobile-entry-integrity.test.cjs \
             tests/timetable-memo-half-hour.test.cjs \
-            tests/pickup-half-hour.test.cjs
+            tests/pickup-half-hour.test.cjs \
+            tests/olli-structured-command-router.test.cjs \
+            tests/olli-structured-query-route.test.cjs \
+            tests/team-talk-makeup-group-choice.test.cjs \
+            tests/team-talk-structured-date-choice.test.cjs \
+            tests/team-talk-structured-time-choice.test.cjs \
+            tests/olli-structured-student-name.test.cjs \
+            tests/team-talk-structured-student-choice.test.cjs \
+            tests/team-talk-structured-division-choice.test.cjs \
+            tests/olli-structured-missing-info-regression.test.cjs \
+            tests/team-talk-structured-pickup-update.test.cjs \
+            tests/team-talk-structured-pickup-cancel.test.cjs \
+            tests/team-talk-structured-waitlist-cancel.test.cjs \
+            tests/team-talk-structured-target-choice.test.cjs \
+            tests/team-talk-pending-text-input.test.cjs \
+            tests/team-talk-structured-makeup-update.test.cjs \
+            tests/team-talk-structured-trial-update.test.cjs \
+            tests/team-talk-structured-waitlist-update-choice.test.cjs \
+            tests/team-talk-structured-makeup-cancel-choice.test.cjs \
+            tests/team-talk-structured-trial-cancel-choice.test.cjs
 
       - name: Reject platform adapters from common runtime manifests
         run: |

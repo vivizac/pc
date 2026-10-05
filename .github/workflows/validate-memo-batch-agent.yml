@@ -15,6 +15,8 @@ on:
       - 'apps/pc/tests/team-talk-memo-batch-agent-bridge.test.cjs'
       - 'apps/mobile/tests/team-talk-memo-batch-agent-bridge.test.cjs'
       - 'apps/mobile/tests/olli-agent-memo-batch-production-contract.test.cjs'
+      - 'apps/mobile/tests/olli-agent-timetable-memo-choice.test.cjs'
+      - 'supabase/migrations/20261004130000_team_chat_structured_waitlist_update_choices.sql'
       - '.github/workflows/validate-memo-batch-agent.yml'
 
 permissions:
@@ -47,3 +49,4 @@ jobs:
         run: |
           node --test tests/team-talk-memo-batch-agent-bridge.test.cjs
           node --test tests/olli-agent-memo-batch-production-contract.test.cjs
+          node --test tests/olli-agent-timetable-memo-choice.test.cjs

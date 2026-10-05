@@ -187,6 +187,61 @@ test('move cancel never guesses when multiple future moves remain',async()=>{
   assert.ok(!calls.some(c=>c.name==='olli_team_chat_send_action'));
 });
 
+test('structured move cancel returns finite reservation choices without mutation',async()=>{
+  const second=move({
+    id:'77777777-7777-4777-8777-777777777777',
+    source_enrollment_id:'88888888-8888-4888-8888-888888888888',
+    target_enrollment_id:'99999999-9999-4999-8999-999999999999',
+    effective_date:'2026-10-19',
+  });
+  const calls=[];
+  const rpc=async(name,params)=>{
+    calls.push({name,params});
+    if(name==='olli_student_data_access') return {ok:true,rows:[{id:'33333333-3333-4333-8333-333333333333',name:'실제학생',division:'elementary',status:'active',is_deleted:false}]};
+    if(name==='olli_schedule_week'){
+      const monday=String(params?.p_week_start||'');
+      if(monday==='2026-09-28') return {ok:true,week_start:monday,timetable_mode:'hourly',changes:[move(),second],enrollments:[]};
+      if(monday==='2026-10-05') return {ok:true,week_start:monday,timetable_mode:'hourly',changes:[move(),second],enrollments:[sourceEnrollment({time_slot:4})]};
+      if(monday==='2026-10-12') return {ok:true,week_start:monday,timetable_mode:'hourly',changes:[move(),second],enrollments:[
+        targetEnrollment({time_slot:5}),
+        {id:'88888888-8888-4888-8888-888888888888',student_id:'33333333-3333-4333-8333-333333333333',weekday:3,time_slot:4,class_group:'A'}
+      ]};
+      if(monday==='2026-10-19') return {ok:true,week_start:monday,timetable_mode:'hourly',changes:[move(),second],enrollments:[
+        {id:'99999999-9999-4999-8999-999999999999',student_id:'33333333-3333-4333-8333-333333333333',weekday:4,time_slot:5,class_group:'A'}
+      ]};
+      throw new Error('unexpected week '+monday);
+    }
+    if(name==='olli_team_chat_send_action') throw new Error('choice must not persist final action');
+    throw new Error('unexpected RPC: '+name);
+  };
+  const result=await prepareMoveCancelAction({
+    requestContext:requestContext(),subjectAccess:subjectAccess(),studentLabel:'학생A',division:'elementary',
+    currentDate:'2026-10-01',requestId:'move-cancel-choice',allowChoice:true,sanitizePayload:p=>p,callRpc:rpc,
+  });
+  assert.equal(result.code,'target_choice_required');
+  assert.equal(result.choiceKey,'changeId');
+  assert.equal(result.studentName,'실제학생');
+  assert.deepEqual(result.choices.map(item=>item.id),[
+    '44444444-4444-4444-8444-444444444444',
+    '77777777-7777-4777-8777-777777777777'
+  ]);
+  assert.ok(!calls.some(item=>item.name==='olli_team_chat_send_action'));
+});
+
+test('structured move cancel re-reads selected change id before pending confirmation',async()=>{
+  const {rpc,calls}=baseRpc();
+  await prepareMoveCancelAction({
+    requestContext:requestContext(),subjectAccess:subjectAccess(),studentLabel:'학생A',division:'elementary',
+    changeId:'44444444-4444-4444-8444-444444444444',allowChoice:true,
+    currentDate:'2026-10-01',requestId:'move-cancel-selected',replyToMessageId:91,
+    sanitizePayload:p=>p,callRpc:rpc,
+  });
+  const action=calls.find(item=>item.name==='olli_team_chat_send_action');
+  assert.ok(action);
+  assert.equal(action.params.p_action_payload.changeId,'44444444-4444-4444-8444-444444444444');
+  assert.equal(action.params.p_reply_to_message_id,91);
+});
+
 test('source weekday and visible half-hour select only the matching reservation',async()=>{
   const other=move({
     id:'77777777-7777-4777-8777-777777777777',

@@ -189,9 +189,27 @@
 .olliPcTeamTalkActionButton.primary{background:#1c1e21;color:#fff}
 .olliPcTeamTalkActionButton.primary:hover{background:#0f1012}
 .olliPcTeamTalkActionButton:disabled{opacity:.5;cursor:default}
+.olliPcTeamTalkActionCard.structuredDate{position:relative;width:min(260px,100%);display:grid;grid-template-columns:repeat(2,minmax(86px,1fr))}
+.olliPcTeamTalkActionCard.structuredDate .dateWide{grid-column:1/-1;width:100%}
+.olliPcTeamTalkDateInput{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;inset:auto 0 0 auto}
+.olliPcTeamTalkActionCard.structuredStudent{width:min(260px,100%);display:grid;grid-template-columns:1fr}
+.olliPcTeamTalkActionCard.structuredTarget{width:min(280px,100%);display:grid;grid-template-columns:1fr}
+.olliPcTeamTalkActionCard.structuredTarget .olliPcTeamTalkActionStatus{grid-column:1/-1}
+.olliPcTeamTalkActionButton.targetChoice{width:100%;min-height:38px;height:auto;padding:7px 10px;white-space:normal;line-height:1.35}
+.olliPcTeamTalkActionCard.structuredStudent .olliPcTeamTalkActionStatus{grid-column:1/-1}
+.olliPcTeamTalkActionButton.studentChoice{width:100%;min-height:38px;height:auto;padding:7px 10px}
+.olliPcTeamTalkActionCard.structuredDivision{width:min(260px,100%);display:grid;grid-template-columns:repeat(2,minmax(86px,1fr))}
+.olliPcTeamTalkActionButton.divisionChoice{width:100%;min-height:38px;height:auto;padding:7px 10px}
+.olliPcTeamTalkActionCard.structuredTime{width:min(260px,100%);display:grid;grid-template-columns:repeat(2,minmax(86px,1fr))}
+.olliPcTeamTalkActionCard.structuredTime .olliPcTeamTalkActionStatus{grid-column:1/-1}
+.olliPcTeamTalkActionButton.timeChoice{width:100%;min-height:38px;height:auto;padding:6px 10px;white-space:pre-line;line-height:1.3}
+.olliPcTeamTalkActionButton.timeChoice.closed{background:#eceef0;color:#9a9fa6}
 .olliPcTeamTalkActionStatus{display:inline-flex;align-items:center;min-height:31px;padding:0 11px;border-radius:9px;background:#f2f4f5;color:#777d85;font-size:calc(11.5px * var(--olli-text-scale));font-weight:600}
 .olliPcTeamTalkActionStatus.failed{background:#f6f1f1;color:#9b6666}
 
+.olliPcTeamTalkPendingInput{display:flex;justify-content:flex-start;margin:5px 0 0}
+.olliPcTeamTalkPendingInputButton{height:30px;border:1px solid rgba(28,35,42,.12);border-radius:10px;padding:0 12px;background:#fff;color:#30343a;font:600 calc(11.5px * var(--olli-text-scale)) 'Pretendard',sans-serif;cursor:pointer}
+.olliPcTeamTalkPendingInputButton:hover{background:#f6f7f8}
 .olliPcTeamTalkReplySuggestion{display:flex;justify-content:flex-end;align-self:flex-end;margin:4px 0 0}
 .olliPcTeamTalkReplySuggestionButton{
   height:24px;border:0;border-radius:999px;padding:0 8px;background:rgba(255,255,255,.56);

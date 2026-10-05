@@ -7,7 +7,7 @@ const talk=fs.readFileSync(path.join(__dirname,'../pc-team-talk.js'),'utf8');
 
 test('PC class-once gate uses only shared generic class parser',()=>{
   const start=talk.indexOf('function isClassOnceAgentCandidate');
-  const end=talk.indexOf('function isMoveAgentCandidate',start);
+  const end=talk.indexOf('function parseMakeupCancelAgentCandidate',start);
   const block=talk.slice(start,end);
   assert.match(block,/parseClassMutationIntent\(commandText\)/);
   assert.match(block,/=== 'add_class_once'/);
@@ -32,7 +32,7 @@ test('PC class-once route stays before move/makeup and before legacy preparation
 });
 test('PC class-once bridge uses source-bound production without second action save',()=>{
   const start=talk.indexOf('async function resolveClassOnceAgentTurn');
-  const end=talk.indexOf('async function resolveMoveAgentTurn',start);
+  const end=talk.indexOf('async function resolveStructuredMoveCancelTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'class_once_prepare'/);
   assert.match(block,/sourceMessageId = Number\(replyToMessageId \|\| 0\)/);

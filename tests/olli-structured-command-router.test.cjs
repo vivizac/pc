@@ -1,0 +1,2201 @@
+'use strict';
+
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const test = require('node:test');
+
+const router = require('../packages/common/olli-command-router-common.js');
+const root = path.resolve(__dirname,'..');
+const routerSource = fs.readFileSync(path.join(root,'packages/common/olli-command-router-common.js'),'utf8');
+const contextRouteSource = fs.readFileSync(path.join(root,'apps/mobile/api/_lib/olli-agent/context-route.cjs'),'utf8');
+const runtimeSource = fs.readFileSync(path.join(root,'apps/mobile/api/_lib/olli-agent/runtime.cjs'),'utf8');
+const apiSource = fs.readFileSync(path.join(root,'apps/mobile/api/olli-agent.js'),'utf8');
+const pcSource = fs.readFileSync(path.join(root,'apps/pc/pc-team-talk.js'),'utf8');
+const mobileSource = fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'utf8');
+
+test('structured add_makeup bypasses natural-language parsing and reaches existing schedule SOT', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+  let observed = null;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      observed = { intent, options };
+      return {
+        ok:true,
+        command:{
+          intent:'add_makeup',
+          studentId:'student-1',
+          studentName:'민준',
+          division:'elementary',
+          sessionDate:'2026-10-07',
+          timeSlot:5,
+          classGroup:'B',
+        },
+        message:'민준 · 10월 7일 5시 B반\n보강으로 등록할까요?',
+      };
+    },
+    writeConfirmationMessage() {
+      return '민준 · 10월 7일 5시 B반\n보강으로 등록할까요?';
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_makeup',
+      studentName:'민준',
+      dateExpression:'10월 7일',
+      timeSlot:5,
+      classGroup:'B',
+    }, {
+      source:'test',
+      selectedStudent:null,
+    });
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'add_makeup');
+    assert.equal(result.payload.intent,'add_makeup');
+
+    assert.ok(observed);
+    assert.equal(observed.intent,'add_makeup');
+    assert.equal(observed.options.studentName,'민준');
+    assert.equal(observed.options.timeSlot,5);
+    assert.equal(observed.options.classGroup,'B');
+    assert.equal(observed.options.dateSpec.mode,'month_day');
+    assert.equal(observed.options.dateSpec.month,10);
+    assert.equal(observed.options.dateSpec.day,7);
+    assert.ok(observed.options.date instanceof Date);
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
+
+test('structured write draft core orders missing add fields without requiring A/B early', () => {
+  const state = router.getStructuredWriteDraftState({
+    action:'add_makeup',
+    student_name:'민준',
+    date_expression:'',
+    time_slot:0,
+    class_group:'',
+  });
+
+  assert.equal(state.supported,true);
+  assert.deepEqual(state.requiredFields,['student','date','time']);
+  assert.deepEqual(state.missingFields,['date','time']);
+  assert.equal(state.nextField,'date');
+  assert.equal(state.complete,false);
+  assert.equal(state.draft.studentName,'민준');
+  assert.equal(state.draft.classGroup,'');
+});
+
+test('structured write draft core advances one missing field at a time and preserves normalized command facts', () => {
+  let draft = router.createStructuredWriteDraft({
+    action:'add_trial',
+    studentName:'서준',
+    division:'elementary',
+    class_group:'b',
+  });
+
+  let state = router.getStructuredWriteDraftState(draft);
+  assert.equal(state.nextField,'date');
+
+  draft = router.updateStructuredWriteDraft(draft,'date','내일');
+  state = router.getStructuredWriteDraftState(draft);
+  assert.deepEqual(state.missingFields,['time']);
+  assert.equal(state.nextField,'time');
+
+  draft = router.updateStructuredWriteDraft(draft,'time',5);
+  state = router.getStructuredWriteDraftState(draft);
+  assert.equal(state.complete,true);
+  assert.equal(state.nextField,'');
+  assert.equal(state.draft.dateExpression,'내일');
+  assert.equal(state.draft.timeSlot,5);
+  assert.equal(state.draft.classGroup,'B');
+  assert.equal(state.draft.division,'elementary');
+});
+
+test('structured write draft core stays inert for actions not migrated to the common draft flow yet', () => {
+  const state = router.getStructuredWriteDraftState({
+    action:'update_pickup',
+    studentName:'민준',
+  });
+
+  assert.equal(state.supported,false);
+  assert.equal(state.complete,false);
+  assert.deepEqual(state.requiredFields,[]);
+  assert.deepEqual(state.missingFields,[]);
+});
+
+test('structured command adapter does not claim unsupported actions', async () => {
+  const result = await router.prepareStructuredAction({
+    action:'update_waitlist',
+    studentName:'민준',
+  }, {});
+
+  assert.equal(result.handled,false);
+  assert.equal(result.kind,'pass_through');
+});
+
+test('structured write resolves decorated student names and asks for a card when the base name is ambiguous', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(options){
+      assert.equal(options.action,'add_makeup');
+      assert.equal(options.studentName,'이한율');
+      return {
+        ok:false,
+        code:'student_choice_required',
+        studentName:'이한율',
+        choices:[
+          {studentName:'이한율(6)',label:'이한율(6)',division:'elementary'},
+          {studentName:'이한율(2)',label:'이한율(2)',division:'elementary'}
+        ],
+        message:'이한율 학생이 여러 명 있어요. 학생을 선택해 주세요.'
+      };
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'add_makeup',
+      studentName:'이한율',
+      dateExpression:'',
+      timeSlot:0
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'student_choice');
+    assert.deepEqual(result.payload.choices.map(item=>item.studentName),['이한율(6)','이한율(2)']);
+    assert.equal(result.payload.draft.studentName,'이한율');
+    assert.match(result.message,/학생을 선택/);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured write canonicalizes a unique decorated student before asking for the next missing field', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(options){
+      assert.equal(options.studentName,'김채원');
+      return {
+        ok:true,
+        matched:true,
+        student:{id:'student-1',name:'토)김채원',division:'elementary'},
+        studentName:'토)김채원',
+        division:'elementary'
+      };
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'add_makeup',
+      studentName:'김채원',
+      dateExpression:'',
+      timeSlot:0
+    },{});
+
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'date');
+    assert.equal(result.payload.draft.studentName,'토)김채원');
+    assert.equal(result.payload.draft.division,'elementary');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured add_makeup returns a date draft state instead of rejecting missing date', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+  let prepareCalled = false;
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand() {
+      prepareCalled = true;
+      throw new Error('missing-field draft must stop before schedule preparation');
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_makeup',
+      studentName:'민준',
+      dateExpression:'',
+      timeSlot:5,
+      classGroup:'',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.intent,'add_makeup');
+    assert.match(result.message,/날짜를 선택/);
+    assert.equal(result.payload.type,'structured_write_draft');
+    assert.equal(result.payload.targetIntent,'add_makeup');
+    assert.equal(result.payload.field,'date');
+    assert.deepEqual(result.payload.missingFields,['date']);
+    assert.equal(result.payload.draft.studentName,'민준');
+    assert.equal(result.payload.draft.timeSlot,5);
+    assert.equal(result.action.status,'pending_fields');
+    assert.equal(result.action.field,'date');
+    assert.equal(prepareCalled,false);
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
+
+test('structured guest trial asks for division before time choices when student information cannot provide it', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(options){
+      return {
+        ok:true,
+        matched:false,
+        guest:true,
+        student:null,
+        studentName:options.studentName,
+        division:''
+      };
+    },
+    async prepareStructuredTimeChoices(){
+      return {
+        ok:false,
+        code:'division_required',
+        field:'division',
+        choices:['kinder','elementary'],
+        message:'서준 학생은 유치부인지 초등부인지 선택해 주세요.'
+      };
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'add_trial',
+      studentName:'서준',
+      dateExpression:'10월 6일',
+      timeSlot:0
+    },{});
+
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'division');
+    assert.deepEqual(result.payload.choices,['kinder','elementary']);
+    assert.deepEqual(result.payload.missingFields,['division','time']);
+    assert.equal(result.payload.draft.studentName,'서준');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured makeup never allows manual division fallback for an enrolled student', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(){
+      return {
+        ok:true,
+        matched:true,
+        student:{id:'student-1',name:'민준'},
+        studentName:'민준',
+        division:''
+      };
+    },
+    async prepareStructuredTimeChoices(){
+      return {
+        ok:false,
+        code:'division_required',
+        field:'division',
+        choices:['kinder','elementary']
+      };
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'add_makeup',
+      studentName:'민준',
+      dateExpression:'10월 6일',
+      timeSlot:0
+    },{});
+
+    assert.equal(result.kind,'action_rejected');
+    assert.match(result.message,/학생정보/);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured add_trial returns date then real SOT time choices as the shared draft order', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async prepareStructuredTimeChoices(options){
+      assert.equal(options.action,'add_trial');
+      assert.equal(options.studentName,'서준');
+      assert.equal(options.division,'elementary');
+      assert.ok(options.date instanceof Date);
+      return {
+        ok:true,
+        division:'elementary',
+        date:'2026-10-05',
+        dateLabel:'내일',
+        timetableMode:'half_hour',
+        choices:[
+          {timeSlot:4,label:'4시',status:'available',selectable:true,remaining:2,grouped:false},
+          {timeSlot:10,label:'4시 30분',status:'full',selectable:false,remaining:0,grouped:false}
+        ],
+        message:'서준 · 내일\n시간을 선택해 주세요.'
+      };
+    }
+  };
+
+  try{
+    const dateState = await router.prepareStructuredAction({
+      action:'add_trial',
+      studentName:'서준',
+      division:'elementary',
+      dateExpression:'',
+      timeSlot:0,
+    }, {});
+
+    assert.equal(dateState.kind,'action_needs_field');
+    assert.equal(dateState.payload.field,'date');
+    assert.deepEqual(dateState.payload.missingFields,['date','time']);
+
+    const withDate = router.updateStructuredWriteDraft(dateState.payload.draft,'date','내일');
+    const timeState = await router.prepareStructuredAction(withDate,{});
+
+    assert.equal(timeState.kind,'action_needs_field');
+    assert.equal(timeState.payload.field,'time');
+    assert.deepEqual(timeState.payload.missingFields,['time']);
+    assert.match(timeState.payload.draft.dateExpression,/^\d{1,2}월 \d{1,2}일$/);
+    assert.notEqual(timeState.payload.draft.dateExpression,'내일');
+    assert.equal(timeState.payload.draft.division,'elementary');
+    assert.equal(timeState.payload.choices.length,2);
+    assert.equal(timeState.payload.choices[0].label,'4시');
+    assert.equal(timeState.payload.choices[0].selectable,true);
+    assert.equal(timeState.payload.choices[1].label,'4시 30분');
+    assert.equal(timeState.payload.choices[1].selectable,false);
+    assert.match(timeState.message,/시간을 선택/);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured add_waitlist can represent a missing student without inventing one', async () => {
+  const result = await router.prepareStructuredAction({
+    action:'add_waitlist',
+    studentName:'',
+    division:'elementary',
+    dateExpression:'내일',
+    timeSlot:4,
+  }, {});
+
+  assert.equal(result.handled,true);
+  assert.equal(result.kind,'action_needs_field');
+  assert.equal(result.payload.field,'student');
+  assert.deepEqual(result.payload.missingFields,['student']);
+  assert.equal(result.payload.draft.studentName,'');
+  assert.match(result.message,/학생을 알려/);
+});
+
+test('structured add_makeup surfaces a persisted A/B choice instead of rejecting the command', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      assert.equal(intent,'add_makeup');
+      assert.equal(options.studentName,'민준');
+      assert.equal(options.classGroup,'');
+      return {
+        ok:false,
+        code:'class_group_required',
+        choices:['A','B'],
+        commandDraft:{
+          intent:'choose_makeup_group',
+          targetIntent:'add_makeup',
+          studentId:'student-1',
+          studentName:'민준',
+          division:'elementary',
+          sessionDate:'2026-10-07',
+          timeSlot:5,
+          classGroup:'',
+          allowedClassGroups:['A','B'],
+        },
+        message:'민준 · 10월 7일 5시\n반을 선택해 주세요.',
+      };
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_makeup',
+      studentName:'민준',
+      dateExpression:'10월 7일',
+      timeSlot:5,
+      classGroup:'',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_choice');
+    assert.equal(result.intent,'choose_makeup_group');
+    assert.equal(result.payload.intent,'choose_makeup_group');
+    assert.equal(result.payload.targetIntent,'add_makeup');
+    assert.deepEqual(result.payload.allowedClassGroups,['A','B']);
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
+
+test('structured add_trial bypasses natural-language parsing and reaches existing schedule SOT', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+  let observed = null;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      observed = { intent, options };
+      return {
+        ok:true,
+        command:{
+          intent:'add_trial',
+          guestName:'서준',
+          studentName:'서준',
+          division:'elementary',
+          sessionDate:'2026-10-09',
+          timeSlot:5,
+          classGroup:'A',
+        },
+        message:'서준 · 10월 9일 5시 A반\n체험수업으로 등록할까요?',
+      };
+    },
+    writeConfirmationMessage() {
+      return '서준 · 10월 9일 5시 A반\n체험수업으로 등록할까요?';
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_trial',
+      studentName:'서준',
+      division:'elementary',
+      dateExpression:'10월 9일',
+      timeSlot:5,
+      classGroup:'A',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'add_trial');
+    assert.equal(result.payload.intent,'add_trial');
+
+    assert.ok(observed);
+    assert.equal(observed.intent,'add_trial');
+    assert.equal(observed.options.guestName,'서준');
+    assert.equal(observed.options.studentName,'서준');
+    assert.equal(observed.options.division,'elementary');
+    assert.equal(observed.options.timeSlot,5);
+    assert.equal(observed.options.classGroup,'A');
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
+
+test('structured add_trial surfaces a persisted A/B choice instead of asking for typed A/B', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      assert.equal(intent,'add_trial');
+      assert.equal(options.guestName,'서준');
+      assert.equal(options.division,'elementary');
+      return {
+        ok:false,
+        code:'class_group_required',
+        choices:['A','B'],
+        commandDraft:{
+          intent:'choose_trial_group',
+          targetIntent:'add_trial',
+          guestName:'서준',
+          studentName:'서준',
+          division:'elementary',
+          sessionDate:'2026-10-09',
+          timeSlot:5,
+          classGroup:'',
+          allowedClassGroups:['A','B'],
+        },
+        message:'서준 · 10월 9일 5시\n반을 선택해 주세요.',
+      };
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_trial',
+      studentName:'서준',
+      division:'elementary',
+      dateExpression:'10월 9일',
+      timeSlot:5,
+      classGroup:'',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_choice');
+    assert.equal(result.intent,'choose_trial_group');
+    assert.equal(result.payload.intent,'choose_trial_group');
+    assert.equal(result.payload.targetIntent,'add_trial');
+    assert.deepEqual(result.payload.allowedClassGroups,['A','B']);
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
+
+test('structured add_waitlist bypasses natural-language parsing and reaches existing schedule SOT', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+  let observed = null;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      observed = { intent, options };
+      return {
+        ok:true,
+        command:{
+          intent:'add_waitlist',
+          studentId:'',
+          studentName:'지우',
+          guestName:'지우',
+          isGuest:true,
+          division:'elementary',
+          effectiveDate:'2026-10-08',
+          sessionDate:'2026-10-08',
+          targetWeekday:4,
+          targetTimeSlot:4,
+          targetClassGroup:'B',
+        },
+        message:'지우 (비재원) · 목요일 4시 B반\n대기로 등록할까요?',
+      };
+    },
+    writeConfirmationMessage() {
+      return '지우 (비재원) · 목요일 4시 B반\n대기로 등록할까요?';
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_waitlist',
+      studentName:'지우',
+      division:'elementary',
+      dateExpression:'10월 8일',
+      timeSlot:4,
+      classGroup:'B',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'add_waitlist');
+    assert.equal(result.payload.intent,'add_waitlist');
+
+    assert.ok(observed);
+    assert.equal(observed.intent,'add_waitlist');
+    assert.equal(observed.options.studentName,'지우');
+    assert.equal(observed.options.division,'elementary');
+    assert.equal(observed.options.timeSlot,4);
+    assert.equal(observed.options.classGroup,'B');
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
+
+test('structured add_waitlist surfaces a persisted A/B choice instead of asking for typed A/B', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      assert.equal(intent,'add_waitlist');
+      assert.equal(options.studentName,'지우');
+      assert.equal(options.division,'elementary');
+      return {
+        ok:false,
+        code:'class_group_required',
+        choices:['A','B'],
+        commandDraft:{
+          intent:'choose_waitlist_group',
+          targetIntent:'add_waitlist',
+          studentId:'',
+          studentName:'지우',
+          guestName:'지우',
+          isGuest:true,
+          division:'elementary',
+          effectiveDate:'2026-10-08',
+          sessionDate:'2026-10-08',
+          targetWeekday:4,
+          targetTimeSlot:4,
+          targetClassGroup:'',
+          allowedClassGroups:['A','B'],
+        },
+        message:'지우 (비재원) · 목요일 4시\n반을 선택해 주세요.',
+      };
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_waitlist',
+      studentName:'지우',
+      division:'elementary',
+      dateExpression:'10월 8일',
+      timeSlot:4,
+      classGroup:'',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_choice');
+    assert.equal(result.intent,'choose_waitlist_group');
+    assert.equal(result.payload.intent,'choose_waitlist_group');
+    assert.equal(result.payload.targetIntent,'add_waitlist');
+    assert.deepEqual(result.payload.allowedClassGroups,['A','B']);
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
+
+test('structured update_trial selects an ambiguous existing trial before target fields', async()=>{
+  const previous=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async prepareWriteCommand(intent,options){
+      assert.equal(intent,'update_trial');
+      assert.equal(options.guestName,'민서');
+      return {
+        ok:false,code:'target_choice_required',field:'target_choice',
+        choiceKey:'oneTimeSessionId',
+        choices:[
+          {id:'t1',label:'유치부 · 10월 6일 4시 A반'},
+          {id:'t2',label:'초등부 · 10월 8일 5시 A반'}
+        ],
+        message:'민서 학생의 변경할 체험이 여러 개 있어요. 변경할 체험을 선택해 주세요.'
+      };
+    }
+  };
+  try{
+    const result=await router.prepareStructuredAction({action:'update_trial',studentName:'민서'},{});
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'target_choice');
+    assert.equal(result.payload.choiceKey,'oneTimeSessionId');
+    assert.deepEqual(result.payload.choices.map(x=>x.id),['t1','t2']);
+  }finally{globalThis.OlliCommandSchedule=previous;}
+});
+
+test('structured update_trial asks target date then target time without requiring source date re-entry', async()=>{
+  const previous=globalThis.OlliCommandSchedule;
+  let phase=0;
+  globalThis.OlliCommandSchedule={
+    async prepareWriteCommand(intent,options){
+      phase+=1;
+      assert.equal(intent,'update_trial');
+      if(phase===1){
+        assert.equal(options.sourceDate,null);
+        return {
+          ok:false,code:'target_date_required',field:'target_date',
+          source:{oneTimeSessionId:'t1',guestName:'민서',division:'kinder',sessionDate:'2026-10-06',timeSlot:4,classGroup:'A'},
+          message:'변경할 날짜를 선택해 주세요.'
+        };
+      }
+      assert.ok(options.targetDate instanceof Date);
+      return {
+        ok:false,code:'target_time_required',field:'target_time',
+        source:{oneTimeSessionId:'t1',guestName:'민서',division:'kinder',sessionDate:'2026-10-06',timeSlot:4,classGroup:'A'},
+        targetDate:'2026-10-08',
+        message:'변경할 시간을 선택해 주세요.'
+      };
+    },
+    async prepareStructuredTimeChoices(options){
+      assert.equal(options.action,'update_trial');
+      assert.equal(options.division,'kinder');
+      return {
+        ok:true,division:'kinder',
+        choices:[{timeSlot:4,label:'4시',status:'available',selectable:true,remaining:2,grouped:false}],
+        message:'민서 · 10월 8일\n변경할 시간을 선택해 주세요.'
+      };
+    }
+  };
+  try{
+    let result=await router.prepareStructuredAction({action:'update_trial',studentName:'민서'},{});
+    assert.equal(result.payload.field,'target_date');
+    assert.equal(result.payload.draft.division,'kinder');
+
+    result=await router.prepareStructuredAction({
+      action:'update_trial',studentName:'민서',guestName:'민서',
+      oneTimeSessionId:'t1',division:'kinder',targetDateExpression:'10월 8일'
+    },{});
+    assert.equal(result.payload.field,'target_time');
+    assert.equal(result.payload.choices[0].timeSlot,4);
+  }finally{globalThis.OlliCommandSchedule=previous;}
+});
+
+test('structured update_makeup selects an ambiguous existing makeup before target fields', async()=>{
+  const previous=globalThis.OlliCommandSchedule;
+  let prepareCount=0;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(){
+      return {ok:true,matched:true,student:{id:'s1',name:'토)김채원',division:'elementary'},studentName:'토)김채원',division:'elementary'};
+    },
+    async prepareWriteCommand(intent,options){
+      prepareCount+=1;
+      assert.equal(intent,'update_makeup');
+      assert.equal(options.studentName,'토)김채원');
+      return {
+        ok:false,code:'target_choice_required',field:'target_choice',
+        choiceKey:'oneTimeSessionId',
+        choices:[
+          {id:'m1',label:'10월 6일 4시 A반'},
+          {id:'m2',label:'10월 8일 5시 B반'}
+        ],
+        message:'토)김채원 학생의 변경할 보강이 여러 개 있어요. 변경할 보강을 선택해 주세요.'
+      };
+    }
+  };
+  try{
+    const result=await router.prepareStructuredAction({action:'update_makeup',studentName:'김채원'},{});
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'target_choice');
+    assert.equal(result.payload.choiceKey,'oneTimeSessionId');
+    assert.deepEqual(result.payload.choices.map(x=>x.id),['m1','m2']);
+    assert.equal(prepareCount,1);
+  }finally{globalThis.OlliCommandSchedule=previous;}
+});
+
+test('structured update_makeup asks target date then target time with reusable cards', async()=>{
+  const previous=globalThis.OlliCommandSchedule;
+  let phase=0;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(){
+      return {ok:true,matched:true,student:{id:'s1',name:'민서',division:'elementary'},studentName:'민서',division:'elementary'};
+    },
+    async prepareWriteCommand(intent,options){
+      phase+=1;
+      if(phase===1){
+        assert.equal(options.oneTimeSessionId,'m1');
+        return {
+          ok:false,code:'target_date_required',field:'target_date',
+          source:{oneTimeSessionId:'m1',sessionDate:'2026-10-06',timeSlot:4,classGroup:'A'},
+          message:'변경할 날짜를 선택해 주세요.'
+        };
+      }
+      assert.ok(options.targetDate instanceof Date);
+      return {
+        ok:false,code:'target_time_required',field:'target_time',
+        source:{oneTimeSessionId:'m1',sessionDate:'2026-10-06',timeSlot:4,classGroup:'A'},
+        targetDate:'2026-10-08',
+        message:'변경할 시간을 선택해 주세요.'
+      };
+    },
+    async prepareStructuredTimeChoices(options){
+      assert.equal(options.action,'update_makeup');
+      return {
+        ok:true,choices:[
+          {timeSlot:4,label:'4시',status:'available',selectable:true,remaining:2,grouped:true},
+          {timeSlot:10,label:'4시 30분',status:'available',selectable:true,remaining:1,grouped:true}
+        ],
+        message:'민서 · 10월 8일\n변경할 시간을 선택해 주세요.'
+      };
+    }
+  };
+  try{
+    let result=await router.prepareStructuredAction({
+      action:'update_makeup',studentName:'민서',oneTimeSessionId:'m1'
+    },{});
+    assert.equal(result.payload.field,'target_date');
+    result=await router.prepareStructuredAction({
+      action:'update_makeup',studentName:'민서',oneTimeSessionId:'m1',targetDateExpression:'10월 8일'
+    },{});
+    assert.equal(result.payload.field,'target_time');
+    assert.equal(result.payload.choices[1].timeSlot,10);
+  }finally{globalThis.OlliCommandSchedule=previous;}
+});
+
+test('structured update_makeup carries selected target group into final confirmation', async()=>{
+  const previous=globalThis.OlliCommandSchedule;
+  let seenGroup='';
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(){
+      return {ok:true,matched:true,student:{id:'s1',name:'민서',division:'elementary'},studentName:'민서',division:'elementary'};
+    },
+    async prepareWriteCommand(intent,options){
+      seenGroup=options.targetClassGroup;
+      if(!seenGroup){
+        return {
+          ok:false,code:'target_choice_required',field:'target_choice',
+          choiceKey:'targetClassGroup',
+          choices:[{id:'A',label:'A반'},{id:'B',label:'B반'}],
+          message:'변경할 반을 선택해 주세요.'
+        };
+      }
+      return {
+        ok:true,
+        command:{
+          intent:'update_makeup',studentId:'s1',studentName:'민서',division:'elementary',
+          oneTimeSessionId:'m1',sourceSessionDate:'2026-10-06',sourceTimeSlot:4,sourceClassGroup:'A',
+          targetSessionDate:'2026-10-08',targetTimeSlot:5,targetClassGroup:seenGroup
+        },
+        message:'민서 보강 변경\n이렇게 변경할까요?'
+      };
+    },
+    writeConfirmationMessage(){return '민서 보강 변경\n이렇게 변경할까요?';}
+  };
+  try{
+    let result=await router.prepareStructuredAction({
+      action:'update_makeup',studentName:'민서',oneTimeSessionId:'m1',
+      targetDateExpression:'10월 8일',targetTimeSlot:5,targetTimeStored:true
+    },{});
+    assert.equal(result.payload.field,'target_choice');
+    assert.equal(result.payload.choiceKey,'targetClassGroup');
+
+    result=await router.prepareStructuredAction({
+      action:'update_makeup',studentName:'민서',oneTimeSessionId:'m1',
+      targetDateExpression:'10월 8일',targetTimeSlot:5,targetTimeStored:true,targetClassGroup:'B'
+    },{});
+    assert.equal(result.kind,'action_pending');
+    assert.equal(seenGroup,'B');
+    assert.equal(result.payload.targetClassGroup,'B');
+  }finally{globalThis.OlliCommandSchedule=previous;}
+});
+
+test('structured pickup update returns a selectable target card instead of asking for typed weekday/time', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(){
+      return {
+        ok:true,matched:true,
+        student:{id:'student-1',name:'민서',division:'kinder'},
+        studentName:'민서',division:'kinder'
+      };
+    },
+    async prepareWriteCommand(){
+      return {
+        ok:false,
+        code:'target_choice_required',
+        field:'target_choice',
+        choices:[
+          {id:'pickup-1',label:'월요일 4시'},
+          {id:'pickup-2',label:'목요일 5시 30분'}
+        ],
+        message:'민서 학생의 픽업 일정이 여러 개 있어요. 수정할 일정을 선택해 주세요.'
+      };
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'update_pickup',
+      studentName:'민서',
+      pickupKind:'arrival',
+      pickupLabel:'정문',
+      pickupTime:'15:30'
+    },{});
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'target_choice');
+    assert.deepEqual(result.payload.choices.map(item=>item.id),['pickup-1','pickup-2']);
+    assert.doesNotMatch(result.message,/적어 주세요/);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured pickup cancellation continues with a selected pickup id', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let seenId='';
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(){
+      return {
+        ok:true,matched:true,
+        student:{id:'student-1',name:'민서',division:'kinder'},
+        studentName:'민서',division:'kinder'
+      };
+    },
+    async prepareWriteCommand(intent,options){
+      seenId=options.pickupId;
+      return {
+        ok:true,
+        command:{
+          intent:'cancel_pickup',
+          studentId:'student-1',
+          studentName:'민서',
+          pickupId:options.pickupId,
+          weekday:1,classTime:4,effectiveDate:'2026-10-05'
+        },
+        message:'민서 · 월요일 4시\n픽업 일정을 삭제할까요?'
+      };
+    },
+    writeConfirmationMessage(){ return '픽업 일정을 삭제할까요?'; }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'cancel_pickup',
+      studentName:'민서',
+      pickupId:'pickup-2'
+    },{});
+    assert.equal(result.kind,'action_pending');
+    assert.equal(seenId,'pickup-2');
+    assert.equal(result.payload.pickupId,'pickup-2');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured waitlist cancellation returns target choices and continues with selected waitlist id', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let selectedId='';
+  let call=0;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(options){
+      return {ok:true,matched:false,guest:true,student:null,studentName:options.studentName,division:''};
+    },
+    async prepareWriteCommand(intent,options){
+      call+=1;
+      if(call===1){
+        return {
+          ok:false,
+          code:'target_choice_required',
+          field:'target_choice',
+          choices:[
+            {id:'wait-1',label:'유치부 · 화요일 4시 A반'},
+            {id:'wait-2',label:'유치부 · 목요일 5시 B반'}
+          ],
+          message:'서준 학생의 대기가 여러 개 있어요. 취소할 대기를 선택해 주세요.'
+        };
+      }
+      selectedId=options.waitlistId;
+      return {
+        ok:true,
+        command:{
+          intent:'cancel_waitlist',
+          studentId:'',
+          studentName:'서준',
+          division:'kinder',
+          waitlistId:options.waitlistId,
+          targetWeekday:4,targetTimeSlot:5,targetClassGroup:'B',
+          effectiveDate:'2026-10-08',isGuest:true
+        },
+        message:'서준 · 목요일 5시\n대기를 취소할까요?'
+      };
+    },
+    writeConfirmationMessage(){ return '대기를 취소할까요?'; }
+  };
+
+  try{
+    let result=await router.prepareStructuredAction({action:'cancel_waitlist',studentName:'서준'},{});
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'target_choice');
+    assert.equal(result.payload.choices.length,2);
+    result=await router.prepareStructuredAction({
+      action:'cancel_waitlist',
+      studentName:'서준',
+      waitlistId:'wait-2'
+    },{});
+    assert.equal(result.kind,'action_pending');
+    assert.equal(selectedId,'wait-2');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured cancel_waitlist reaches the common waitlist SOT with visible hour and minute', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let observed=null;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(){
+      return {
+        ok:true,
+        matched:true,
+        student:{id:'student-1',name:'토)김채원',division:'elementary'},
+        studentName:'토)김채원',
+        division:'elementary'
+      };
+    },
+    async prepareWriteCommand(intent,options){
+      observed={intent,options};
+      return {
+        ok:true,
+        command:{
+          intent:'cancel_waitlist',
+          studentId:'student-1',
+          studentName:'토)김채원',
+          division:'elementary',
+          waitlistId:'wait-1',
+          targetWeekday:2,
+          targetTimeSlot:10,
+          targetClassGroup:'A',
+          effectiveDate:'2026-10-06',
+          isGuest:false
+        },
+        message:'토)김채원 · 화요일 4시 30분\n대기를 취소할까요?'
+      };
+    },
+    writeConfirmationMessage(){ return '대기를 취소할까요?'; }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'cancel_waitlist',
+      studentName:'김채원',
+      dateExpression:'10월 6일',
+      timeSlot:4,
+      classMinute:30,
+      classGroup:'A'
+    },{});
+
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'cancel_waitlist');
+    assert.equal(result.payload.studentName,'토)김채원');
+    assert.ok(observed);
+    assert.equal(observed.intent,'cancel_waitlist');
+    assert.equal(observed.options.studentName,'토)김채원');
+    assert.equal(observed.options.classHour,4);
+    assert.equal(observed.options.classMinute,30);
+    assert.equal(observed.options.classGroup,'A');
+    assert.ok(observed.options.date instanceof Date);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured cancel_waitlist allows a non-enrolled guest name to reach waitlist SOT', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let observed=null;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(options){
+      return {
+        ok:true,
+        matched:false,
+        guest:true,
+        student:null,
+        studentName:options.studentName,
+        division:''
+      };
+    },
+    async prepareWriteCommand(intent,options){
+      observed={intent,options};
+      return {
+        ok:true,
+        command:{
+          intent:'cancel_waitlist',
+          studentId:'',
+          studentName:'서준',
+          division:'kinder',
+          waitlistId:'wait-guest',
+          targetWeekday:4,
+          targetTimeSlot:4,
+          targetClassGroup:'A',
+          effectiveDate:'2026-10-08',
+          isGuest:true
+        },
+        message:'서준 · 목요일 4시\n대기를 취소할까요?'
+      };
+    },
+    writeConfirmationMessage(){ return '대기를 취소할까요?'; }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'cancel_waitlist',
+      studentName:'서준'
+    },{});
+
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.payload.isGuest,true);
+    assert.ok(observed);
+    assert.equal(observed.options.studentName,'서준');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured cancel_waitlist uses the common student-choice state for duplicate enrolled display names', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let prepareCalled=false;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(){
+      return {
+        ok:false,
+        code:'student_choice_required',
+        studentName:'이한율',
+        choices:[
+          {studentName:'이한율(6)',label:'이한율(6)',division:'elementary'},
+          {studentName:'이한율(2)',label:'이한율(2)',division:'elementary'}
+        ],
+        message:'이한율 학생이 여러 명 있어요. 학생을 선택해 주세요.'
+      };
+    },
+    async prepareWriteCommand(){
+      prepareCalled=true;
+      throw new Error('student choice must stop before waitlist cancellation preparation');
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'cancel_waitlist',
+      studentName:'이한율'
+    },{});
+
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'student_choice');
+    assert.deepEqual(result.payload.choices.map(item=>item.studentName),['이한율(6)','이한율(2)']);
+    assert.equal(result.payload.draft.action,'cancel_waitlist');
+    assert.equal(prepareCalled,false);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured cancel_pickup reaches the existing pickup SOT and preserves whole-card deletion', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let observed=null;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(){
+      return {
+        ok:true,
+        matched:true,
+        student:{id:'student-1',name:'토)김채원',division:'kinder'},
+        studentName:'토)김채원',
+        division:'kinder'
+      };
+    },
+    async prepareWriteCommand(intent,options){
+      observed={intent,options};
+      return {
+        ok:true,
+        command:{
+          intent:'cancel_pickup',
+          studentId:'student-1',
+          studentName:'토)김채원',
+          pickupId:'pickup-1',
+          weekday:2,
+          classTime:8,
+          effectiveDate:'2026-10-06'
+        },
+        message:'토)김채원 · 화요일 4시 30분\n픽업 일정을 삭제할까요?'
+      };
+    },
+    writeConfirmationMessage(command){
+      return command.studentName+' 픽업 일정을 삭제할까요?';
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'cancel_pickup',
+      studentName:'김채원',
+      weekday:2,
+      classTime:4,
+      classMinute:30,
+      pickupKind:'all'
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'cancel_pickup');
+    assert.equal(result.payload.studentName,'토)김채원');
+    assert.ok(observed);
+    assert.equal(observed.intent,'cancel_pickup');
+    assert.equal(observed.options.studentName,'토)김채원');
+    assert.equal(observed.options.weekday,2);
+    assert.equal(observed.options.classTime,4);
+    assert.equal(observed.options.classMinute,30);
+    assert.equal(observed.options.pickupKind,'all');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured cancel_pickup preserves dropoff-only deletion semantics', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(){
+      return {
+        ok:true,matched:true,
+        student:{id:'student-1',name:'민서',division:'kinder'},
+        studentName:'민서',division:'kinder'
+      };
+    },
+    async prepareWriteCommand(intent,options){
+      assert.equal(intent,'cancel_pickup');
+      assert.equal(options.pickupKind,'dropoff');
+      return {
+        ok:true,
+        command:{
+          intent:'cancel_pickup_dropoff',
+          studentId:'student-1',
+          studentName:'민서',
+          pickupId:'pickup-1',
+          weekday:3,
+          classTime:4,
+          effectiveDate:'2026-10-07'
+        },
+        message:'민서 · 수요일 4시\n하원 픽업만 삭제할까요?'
+      };
+    },
+    writeConfirmationMessage(){ return '하원 픽업만 삭제할까요?'; }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'cancel_pickup',
+      studentName:'민서',
+      weekday:3,
+      classTime:4,
+      pickupKind:'dropoff'
+    },{});
+
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'cancel_pickup_dropoff');
+    assert.equal(result.payload.pickupId,'pickup-1');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured cancel_pickup reuses the common student-choice state for duplicate decorated names', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let prepareCalled=false;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(){
+      return {
+        ok:false,
+        code:'student_choice_required',
+        studentName:'이한율',
+        choices:[
+          {studentName:'이한율(6)',label:'이한율(6)',division:'kinder'},
+          {studentName:'이한율(2)',label:'이한율(2)',division:'kinder'}
+        ],
+        message:'이한율 학생이 여러 명 있어요. 학생을 선택해 주세요.'
+      };
+    },
+    async prepareWriteCommand(){
+      prepareCalled=true;
+      throw new Error('student choice must stop before pickup cancellation preparation');
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'cancel_pickup',
+      studentName:'이한율',
+      pickupKind:'all'
+    },{});
+
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'student_choice');
+    assert.deepEqual(result.payload.choices.map(item=>item.studentName),['이한율(6)','이한율(2)']);
+    assert.equal(result.payload.draft.action,'cancel_pickup');
+    assert.equal(result.payload.draft.pickupKind,'all');
+    assert.equal(prepareCalled,false);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured update_pickup reaches the existing pickup SOT and preserves arrival fields', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let observed=null;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(options){
+      return {
+        ok:true,
+        matched:true,
+        student:{id:'student-1',name:'토)김채원',division:'kinder'},
+        studentName:'토)김채원',
+        division:'kinder'
+      };
+    },
+    async prepareWriteCommand(intent,options){
+      observed={intent,options};
+      return {
+        ok:true,
+        command:{
+          intent:'update_pickup_arrival',
+          studentId:'student-1',
+          studentName:'토)김채원',
+          pickupId:'pickup-1',
+          weekday:2,
+          classTime:8,
+          pickupLabel:'정문',
+          pickupTime:'15:40'
+        },
+        message:'토)김채원 · 화요일 4시 30분\n등원 픽업을 정문 · 3시 40분으로 수정할까요?'
+      };
+    },
+    writeConfirmationMessage(command){
+      return command.studentName+' 픽업을 수정할까요?';
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'update_pickup',
+      studentName:'김채원',
+      weekday:2,
+      classTime:4,
+      classMinute:30,
+      pickupKind:'arrival',
+      pickupLabel:'정문',
+      pickupTime:'15:40'
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'update_pickup_arrival');
+    assert.equal(result.payload.studentName,'토)김채원');
+    assert.ok(observed);
+    assert.equal(observed.intent,'update_pickup');
+    assert.equal(observed.options.studentName,'토)김채원');
+    assert.equal(observed.options.weekday,2);
+    assert.equal(observed.options.classTime,4);
+    assert.equal(observed.options.classMinute,30);
+    assert.equal(observed.options.pickupKind,'arrival');
+    assert.equal(observed.options.pickupLabel,'정문');
+    assert.equal(observed.options.pickupTime,'15:40');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured update_pickup uses the common student-choice state for duplicate decorated names', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let prepareCalled=false;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(){
+      return {
+        ok:false,
+        code:'student_choice_required',
+        studentName:'이한율',
+        choices:[
+          {studentName:'이한율(6)',label:'이한율(6)',division:'kinder'},
+          {studentName:'이한율(2)',label:'이한율(2)',division:'kinder'}
+        ],
+        message:'이한율 학생이 여러 명 있어요. 학생을 선택해 주세요.'
+      };
+    },
+    async prepareWriteCommand(){
+      prepareCalled=true;
+      throw new Error('student choice must stop before pickup preparation');
+    }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'update_pickup',
+      studentName:'이한율',
+      pickupKind:'arrival',
+      pickupLabel:'정문',
+      pickupTime:'15:40'
+    },{});
+
+    assert.equal(result.kind,'action_needs_field');
+    assert.equal(result.payload.field,'student_choice');
+    assert.deepEqual(result.payload.choices.map(item=>item.studentName),['이한율(6)','이한율(2)']);
+    assert.equal(result.payload.draft.action,'update_pickup');
+    assert.equal(result.payload.draft.pickupLabel,'정문');
+    assert.equal(prepareCalled,false);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured update_pickup preserves dropoff semantics', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  globalThis.OlliCommandSchedule={
+    async resolveStructuredStudentReference(options){
+      return {
+        ok:true,matched:true,
+        student:{id:'student-1',name:'민서',division:'kinder'},
+        studentName:'민서',division:'kinder'
+      };
+    },
+    async prepareWriteCommand(intent,options){
+      assert.equal(intent,'update_pickup');
+      assert.equal(options.pickupKind,'dropoff');
+      assert.equal(options.pickupLabel,'후문');
+      return {
+        ok:true,
+        command:{
+          intent:'update_pickup_dropoff',
+          studentId:'student-1',
+          studentName:'민서',
+          pickupId:'pickup-1',
+          weekday:3,
+          classTime:4,
+          dropoffLabel:'후문'
+        },
+        message:'민서 · 수요일 4시\n하원 장소를 후문으로 수정할까요?'
+      };
+    },
+    writeConfirmationMessage(){ return '하원 장소를 수정할까요?'; }
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'update_pickup',
+      studentName:'민서',
+      weekday:3,
+      classTime:4,
+      pickupKind:'dropoff',
+      pickupLabel:'후문'
+    },{});
+
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'update_pickup_dropoff');
+    assert.equal(result.payload.dropoffLabel,'후문');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured add_pickup passes class and pickup clocks directly to existing schedule SOT', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+  let observed = null;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      observed = { intent, options };
+      return {
+        ok:true,
+        command:{
+          intent:'add_pickup',
+          studentId:'student-1',
+          studentName:'민서',
+          division:'kinder',
+          weekday:1,
+          classTime:10,
+          timetableMode:'half_hour',
+          pickupLabel:'리슈빌',
+          pickupTime:'15:30',
+          dropoffLabel:'',
+          effectiveDate:'2026-10-05',
+          isDropoff:false,
+        },
+        message:'민서 · 월요일 4시 30분 수업\n리슈빌 · 3시 30분 · 등원 픽업\n등록할까요?',
+      };
+    },
+    writeConfirmationMessage() {
+      return '';
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_pickup',
+      studentName:'민서',
+      weekday:1,
+      classTime:4,
+      classMinute:30,
+      pickupKind:'arrival',
+      pickupLabel:'리슈빌',
+      pickupTime:'15:30',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'add_pickup');
+    assert.equal(result.payload.intent,'add_pickup');
+
+    assert.ok(observed);
+    assert.equal(observed.intent,'add_pickup');
+    assert.equal(observed.options.studentName,'민서');
+    assert.equal(observed.options.weekday,1);
+    assert.equal(observed.options.classTime,4);
+    assert.equal(observed.options.classMinute,30);
+    assert.equal(observed.options.pickupLabel,'리슈빌');
+    assert.equal(observed.options.pickupTime,'15:30');
+    assert.equal(observed.options.isDropoff,false);
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
+
+test('structured add_pickup preserves dropoff semantics without inventing pickup time', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+  let observed = null;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      observed = { intent, options };
+      return {
+        ok:true,
+        command:{
+          intent:'add_pickup',
+          studentId:'student-1',
+          studentName:'민서',
+          division:'kinder',
+          weekday:1,
+          classTime:4,
+          timetableMode:'hourly',
+          pickupLabel:'',
+          pickupTime:'',
+          dropoffLabel:'정문',
+          effectiveDate:'2026-10-05',
+          isDropoff:true,
+        },
+        message:'민서 · 월요일 4시 수업\n정문 · 하원 픽업\n등록할까요?',
+      };
+    },
+    writeConfirmationMessage() {
+      return '';
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_pickup',
+      studentName:'민서',
+      weekday:1,
+      classTime:4,
+      classMinute:0,
+      pickupKind:'dropoff',
+      pickupLabel:'정문',
+      pickupTime:'',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.ok(observed);
+    assert.equal(observed.options.isDropoff,true);
+    assert.equal(observed.options.pickupLabel,'정문');
+    assert.equal(observed.options.pickupTime,'');
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
+
+test('structured add_pickup bypasses natural-language parsing and reaches existing pickup SOT', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+  let observed = null;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      observed = { intent, options };
+      return {
+        ok:true,
+        command:{
+          intent:'add_pickup',
+          studentId:'student-1',
+          studentName:'민서',
+          division:'kinder',
+          weekday:1,
+          classTime:4,
+          timetableMode:'hour',
+          pickupLabel:'리슈빌',
+          pickupTime:'15:30',
+          dropoffLabel:'',
+          effectiveDate:'2026-10-05',
+          isDropoff:false,
+        },
+        message:'민서 · 월요일 4시 수업\n리슈빌 · 3시 30분 · 등원 픽업\n등록할까요?',
+      };
+    },
+    writeConfirmationMessage() {
+      return '';
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_pickup',
+      studentName:'민서',
+      weekday:1,
+      classTime:4,
+      classMinute:0,
+      pickupKind:'arrival',
+      pickupLabel:'리슈빌',
+      pickupTime:'15:30',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'add_pickup');
+    assert.equal(result.payload.intent,'add_pickup');
+
+    assert.ok(observed);
+    assert.equal(observed.intent,'add_pickup');
+    assert.equal(observed.options.studentName,'민서');
+    assert.equal(observed.options.weekday,1);
+    assert.equal(observed.options.classTime,4);
+    assert.equal(observed.options.classMinute,0);
+    assert.equal(observed.options.pickupLabel,'리슈빌');
+    assert.equal(observed.options.pickupTime,'15:30');
+    assert.equal(observed.options.isDropoff,false);
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
+
+test('structured pickup preserves deterministic update intent when an existing pickup card is found', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      assert.equal(intent,'add_pickup');
+      assert.equal(options.studentName,'민서');
+      return {
+        ok:true,
+        command:{
+          intent:'update_pickup_arrival',
+          studentId:'student-1',
+          studentName:'민서',
+          pickupId:'pickup-1',
+          weekday:1,
+          classTime:4,
+          pickupLabel:'새 장소',
+          pickupTime:'15:40',
+        },
+        message:'민서 학생은 이미 이 수업의 픽업 카드가 있어요.\n등원 픽업 새 장소 · 3시 40분을 저장할까요?',
+      };
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'add_pickup',
+      studentName:'민서',
+      weekday:1,
+      classTime:4,
+      classMinute:0,
+      pickupKind:'arrival',
+      pickupLabel:'새 장소',
+      pickupTime:'15:40',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'update_pickup_arrival');
+    assert.equal(result.payload.intent,'update_pickup_arrival');
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
+
+test('structured pickup does not invent missing pickup details', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+  let observed=null;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      observed={intent,options};
+      return {ok:false,message:'등원 픽업 등록은 학생 이름, 수업 요일·시간, 픽업 장소, 픽업 시간을 함께 적어 주세요.'};
+    },
+  };
+
+  try {
+    const result=await router.prepareStructuredAction({
+      action:'add_pickup',
+      studentName:'민서',
+      weekday:1,
+      classTime:4,
+      classMinute:0,
+      pickupKind:'arrival',
+      pickupLabel:'',
+      pickupTime:'',
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_rejected');
+    assert.match(result.message,/픽업 장소, 픽업 시간을 함께/);
+    assert.equal(observed.options.pickupLabel,'');
+    assert.equal(observed.options.pickupTime,'');
+  } finally {
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured move_class reaches the existing schedule move SOT without reparsing Korean', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+  let observed = null;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      observed = { intent, options };
+      return {
+        ok:true,
+        command:{
+          intent:'move_class',
+          studentId:'student-1',
+          studentName:'민준',
+          division:'elementary',
+          sourceEnrollmentId:'enrollment-1',
+          sourceWeekday:1,
+          sourceTimeSlot:4,
+          targetWeekday:3,
+          targetTimeSlot:5,
+          targetClassGroup:'A',
+          targetCheckDate:'2026-10-07',
+          effectiveDate:'2026-10-03',
+        },
+        message:'민준 · 월요일 4시 → 수요일 5시 A반\n정규수업 시간을 변경할까요?',
+      };
+    },
+    writeConfirmationMessage() {
+      return '';
+    },
+  };
+
+  try {
+    const result = await router.prepareStructuredAction({
+      action:'move_class',
+      studentName:'민준',
+      sourceWeekday:1,
+      sourceTimeSlot:4,
+      targetWeekday:3,
+      targetTimeSlot:5,
+      classGroup:'',
+    }, {});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'move_class');
+    assert.equal(result.payload.intent,'move_class');
+
+    assert.ok(observed);
+    assert.equal(observed.intent,'move_class');
+    assert.equal(observed.options.studentName,'민준');
+    assert.equal(observed.options.sourceWeekday,1);
+    assert.equal(observed.options.sourceTimeSlot,4);
+    assert.equal(observed.options.targetWeekday,3);
+    assert.equal(observed.options.targetTimeSlot,5);
+    assert.equal(observed.options.classGroup,'');
+  } finally {
+    globalThis.OlliCommandSchedule = previousSchedule;
+  }
+});
+
+test('structured move_class surfaces existing source-class choices and resumes with stable enrollment id', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  const observed=[];
+
+  globalThis.OlliCommandSchedule={
+    async prepareWriteCommand(intent,options){
+      observed.push({intent,options});
+      if(!options.sourceEnrollmentId){
+        return {
+          ok:false,
+          code:'target_choice_required',
+          field:'target_choice',
+          targetType:'regular_enrollment',
+          choiceKey:'sourceEnrollmentId',
+          choices:[
+            {id:'enrollment-1',label:'월요일 · 4시 · A반'},
+            {id:'enrollment-2',label:'월요일 · 5시 · A반'}
+          ],
+          message:'민준 학생의 이동할 기존 수업을 선택해 주세요.'
+        };
+      }
+      return {
+        ok:true,
+        command:{
+          intent:'move_class',
+          studentId:'student-1',
+          studentName:'민준',
+          division:'elementary',
+          sourceEnrollmentId:options.sourceEnrollmentId,
+          sourceWeekday:1,
+          sourceTimeSlot:5,
+          targetWeekday:3,
+          targetTimeSlot:6,
+          targetClassGroup:'A',
+          targetCheckDate:'2026-10-07',
+          effectiveDate:'2026-10-04'
+        },
+        message:'민준 · 월요일 5시 → 수요일 6시 A반'
+      };
+    },
+    writeConfirmationMessage(){ return ''; }
+  };
+
+  try{
+    const first=await router.prepareStructuredAction({
+      action:'move_class',
+      studentName:'민준',
+      sourceWeekday:1,
+      sourceTimeSlot:0,
+      targetWeekday:3,
+      targetTimeSlot:6,
+      classGroup:''
+    },{});
+
+    assert.equal(first.handled,true);
+    assert.equal(first.kind,'action_needs_field');
+    assert.equal(first.payload.field,'target_choice');
+    assert.equal(first.payload.choiceKey,'sourceEnrollmentId');
+    assert.deepEqual(first.payload.choices.map(item=>item.id),['enrollment-1','enrollment-2']);
+    assert.doesNotMatch(first.message,/함께 적어/);
+
+    const resumed=await router.prepareStructuredAction({
+      ...first.payload.draft,
+      sourceEnrollmentId:'enrollment-2'
+    },{});
+
+    assert.equal(resumed.handled,true);
+    assert.equal(resumed.kind,'action_pending');
+    assert.equal(resumed.payload.sourceEnrollmentId,'enrollment-2');
+    assert.equal(observed.at(-1).options.sourceEnrollmentId,'enrollment-2');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured move_class surfaces an A/B choice without another AI turn', async () => {
+  const previousSchedule = globalThis.OlliCommandSchedule;
+
+  globalThis.OlliCommandSchedule = {
+    async prepareWriteCommand(intent, options) {
+      assert.equal(intent,'move_class');
+      assert.equal(options.studentName,'민준');
+      return {
+        ok:false,
+        code:'class_group_required',
+        choices:['A','B'],
+        commandDraft:{
+          intent:'choose_move_group',
+          targetIntent:'move_class',
+          studentId:'student-1',
+          studentName:'민준',
+          division:'elementary',
+          sourceEnrollmentId:'enrollment-1',
+          sourceWeekday:1,
+          sourceTimeSlot:4,
+          targetWeekday:3,
+          targetTimeSlot:5,
+          targetClassGroup:'',
+          targetCheckDate:'2026-10-07',
+          effectiveDate:'2026-10-03',
+          allowedClassGroups:['A','B'],
+        },
+        message:'민준 · 월요일 4시 → 수요일 5시\n이동할 반을 선택해 주세요.',
+      };
+    },
+  };
+
+  try {
+    const result=await router.prepareStructuredAction({
+      action:'move_class',
+      studentName:'민준',
+      sourceWeekday:1,
+      sourceTimeSlot:4,
+      targetWeekday:3,
+      targetTimeSlot:5,
+      classGroup:'',
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_choice');
+    assert.equal(result.intent,'choose_move_group');
+    assert.equal(result.payload.intent,'choose_move_group');
+    assert.equal(result.payload.targetIntent,'move_class');
+    assert.deepEqual(result.payload.allowedClassGroups,['A','B']);
+  } finally {
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured mark_absent passes a stated reason to the existing schedule SOT', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+  let observed=null;
+
+  globalThis.OlliCommandSchedule={
+    async prepareWriteCommand(intent,options){
+      observed={intent,options};
+      return {
+        ok:true,
+        command:{
+          intent:'mark_absent',
+          studentId:'student-1',
+          studentName:'민준',
+          division:'elementary',
+          sessionDate:'2026-10-03',
+          timeSlot:4,
+          classGroup:'A',
+          reason:'감기',
+        },
+        message:'민준 · 10월 3일 4시 A반\n결석 처리할까요?',
+      };
+    },
+    writeConfirmationMessage(){ return ''; },
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'mark_absent',
+      studentName:'민준',
+      dateExpression:'오늘',
+      timeSlot:4,
+      classGroup:'',
+      reason:'감기',
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_pending');
+    assert.equal(result.intent,'mark_absent');
+    assert.equal(result.payload.reason,'감기');
+    assert.ok(observed);
+    assert.equal(observed.intent,'mark_absent');
+    assert.equal(observed.options.studentName,'민준');
+    assert.equal(observed.options.reason,'감기');
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+test('structured mark_absent asks for a free-text reason without inventing one', async () => {
+  const previousSchedule=globalThis.OlliCommandSchedule;
+
+  globalThis.OlliCommandSchedule={
+    async prepareWriteCommand(){
+      return {
+        ok:true,
+        command:{
+          intent:'mark_absent',
+          studentId:'student-1',
+          studentName:'민준',
+          division:'elementary',
+          sessionDate:'2026-10-03',
+          timeSlot:4,
+          classGroup:'A',
+          reason:'',
+        },
+        message:'민준 · 10월 3일 4시 A반',
+      };
+    },
+    writeReasonPrompt(){ return '민준 학생의 결석 사유를 알려주세요.'; },
+  };
+
+  try{
+    const result=await router.prepareStructuredAction({
+      action:'mark_absent',
+      studentName:'민준',
+      dateExpression:'오늘',
+      timeSlot:4,
+      classGroup:'',
+      reason:'',
+    },{});
+
+    assert.equal(result.handled,true);
+    assert.equal(result.kind,'action_needs_reason');
+    assert.equal(result.intent,'mark_absent');
+    assert.equal(result.payload.reason,'');
+    assert.match(result.message,/결석 사유/);
+  }finally{
+    globalThis.OlliCommandSchedule=previousSchedule;
+  }
+});
+
+
+test('structured update_makeup bypasses Agents SDK and reuses the deterministic makeup-update SOT', () => {
+  assert.match(contextRouteSource,/update_makeup/);
+  assert.match(contextRouteSource,/source_date_expression/);
+  assert.match(contextRouteSource,/target_date_expression/);
+  assert.match(contextRouteSource,/source_class_group/);
+  assert.match(contextRouteSource,/target_class_group/);
+
+  assert.match(apiSource,/structured_makeup_update_prepare/);
+  assert.match(apiSource,/runStructuredMakeupUpdatePrepare/);
+
+  const runtimeStart=runtimeSource.indexOf('async function runStructuredMakeupUpdatePrepare');
+  const runtimeEnd=runtimeSource.indexOf('\nasync function ',runtimeStart+20);
+  assert.ok(runtimeStart>=0 && runtimeEnd>runtimeStart);
+  const runtimeBlock=runtimeSource.slice(runtimeStart,runtimeEnd);
+  assert.match(runtimeBlock,/resolveStudentReferences/);
+  assert.match(runtimeBlock,/prepareMakeupUpdateAction/);
+  assert.match(runtimeBlock,/validateMakeupSourceMessage/);
+  assert.doesNotMatch(runtimeBlock,/loadAgentsSdk|new Agent|runMakeupUpdatePrepareAgent/);
+
+  for(const source of [pcSource,mobileSource]){
+    assert.match(source,/prepareStructuredAction\(structuredCommand/);
+    assert.match(source,/['"]update_makeup['"]/);
+    assert.doesNotMatch(source,/structured_makeup_update_prepare/);
+    assert.doesNotMatch(source,/StructuredMakeupUpdateTurn/);
+  }
+});
+
+test('structured cancel_makeup bypasses Agents SDK and preserves source-bound reason validation', () => {
+  assert.match(contextRouteSource,/cancel_makeup/);
+  assert.match(apiSource,/structured_makeup_cancel_prepare/);
+  assert.match(apiSource,/runStructuredMakeupCancelPrepare/);
+
+  const runtimeStart=runtimeSource.indexOf('async function runStructuredMakeupCancelPrepare');
+  const runtimeEnd=runtimeSource.indexOf('\nasync function ',runtimeStart+20);
+  assert.ok(runtimeStart>=0 && runtimeEnd>runtimeStart);
+  const runtimeBlock=runtimeSource.slice(runtimeStart,runtimeEnd);
+  assert.match(runtimeBlock,/validateMakeupSourceMessage/);
+  assert.match(runtimeBlock,/validateMakeupReasonMessage/);
+  assert.match(runtimeBlock,/resolveStudentReferences/);
+  assert.match(runtimeBlock,/prepareMakeupCancelAction/);
+  assert.doesNotMatch(runtimeBlock,/loadAgentsSdk|new Agent|runMakeupCancelPrepareAgent/);
+
+  for(const source of [pcSource,mobileSource]){
+    assert.match(source,/structured_makeup_cancel_prepare/);
+    assert.match(source,/__structuredMakeupCancel/);
+    assert.match(source,/보강 취소 사유를 알려주세요/);
+  }
+
+  const pcStart=pcSource.indexOf('async function resolveStructuredMakeupCancelTurn');
+  const pcEnd=pcSource.indexOf('\n  async function ',pcStart+20);
+  assert.ok(pcStart>=0 && pcEnd>pcStart);
+  const pcBlock=pcSource.slice(pcStart,pcEnd);
+  assert.match(pcBlock,/mode:'structured_makeup_cancel_prepare'/);
+  assert.doesNotMatch(pcBlock,/mode:'makeup_cancel_prepare'/);
+
+  const mobileStart=mobileSource.indexOf('async function resolveOlliTalkStructuredMakeupCancelTurn');
+  const mobileEnd=mobileSource.indexOf('\n  async function ',mobileStart+20);
+  assert.ok(mobileStart>=0 && mobileEnd>mobileStart);
+  const mobileBlock=mobileSource.slice(mobileStart,mobileEnd);
+  assert.match(mobileBlock,/mode:'structured_makeup_cancel_prepare'/);
+  assert.doesNotMatch(mobileBlock,/mode:'makeup_cancel_prepare'/);
+});
+
+
+test('structured update_trial bypasses Agents SDK and reuses the deterministic trial-update SOT', () => {
+  assert.match(contextRouteSource,/update_trial/);
+  assert.match(contextRouteSource,/source_date_expression/);
+  assert.match(contextRouteSource,/target_date_expression/);
+  assert.match(apiSource,/structured_trial_update_prepare/);
+  assert.match(apiSource,/runStructuredTrialUpdatePrepare/);
+
+  const runtimeStart=runtimeSource.indexOf('async function runStructuredTrialUpdatePrepare');
+  const runtimeEnd=runtimeSource.indexOf('\nasync function ',runtimeStart+20);
+  assert.ok(runtimeStart>=0 && runtimeEnd>runtimeStart);
+  const runtimeBlock=runtimeSource.slice(runtimeStart,runtimeEnd);
+  assert.match(runtimeBlock,/validateTrialSourceMessage/);
+  assert.match(runtimeBlock,/prepareTrialGuestPrivacyInput/);
+  assert.match(runtimeBlock,/prepareTrialUpdateAction/);
+  assert.doesNotMatch(runtimeBlock,/loadAgentsSdk|new Agent|runTrialUpdatePrepareAgent/);
+
+  for(const source of [pcSource,mobileSource]){
+    assert.match(source,/prepareStructuredAction\(structuredCommand/);
+    assert.match(source,/['"]update_trial['"]/);
+    assert.doesNotMatch(source,/structured_trial_update_prepare/);
+    assert.doesNotMatch(source,/StructuredTrialUpdateTurn/);
+  }
+});
+
+test('structured cancel_trial bypasses Agents SDK and preserves source-bound reason validation', () => {
+  assert.match(contextRouteSource,/cancel_trial/);
+  assert.match(apiSource,/structured_trial_cancel_prepare/);
+  assert.match(apiSource,/runStructuredTrialCancelPrepare/);
+
+  const runtimeStart=runtimeSource.indexOf('async function runStructuredTrialCancelPrepare');
+  const runtimeEnd=runtimeSource.indexOf('\nasync function ',runtimeStart+20);
+  assert.ok(runtimeStart>=0 && runtimeEnd>runtimeStart);
+  const runtimeBlock=runtimeSource.slice(runtimeStart,runtimeEnd);
+  assert.match(runtimeBlock,/validateTrialSourceMessage/);
+  assert.match(runtimeBlock,/validateTrialReasonMessage/);
+  assert.match(runtimeBlock,/prepareTrialCancelPrivacyInput/);
+  assert.match(runtimeBlock,/prepareTrialCancelAction/);
+  assert.doesNotMatch(runtimeBlock,/loadAgentsSdk|new Agent|runTrialCancelPrepareAgent/);
+
+  for(const source of [pcSource,mobileSource]){
+    assert.match(source,/structured_trial_cancel_prepare/);
+    assert.match(source,/__structuredTrialCancel/);
+    assert.match(source,/체험 취소 사유를 알려주세요/);
+  }
+
+  const pcStart=pcSource.indexOf('async function resolveStructuredTrialCancelTurn');
+  const pcEnd=pcSource.indexOf('\n  async function ',pcStart+20);
+  assert.ok(pcStart>=0 && pcEnd>pcStart);
+  const pcBlock=pcSource.slice(pcStart,pcEnd);
+  assert.match(pcBlock,/mode:'structured_trial_cancel_prepare'/);
+  assert.doesNotMatch(pcBlock,/mode:'trial_cancel_prepare'/);
+
+  const mobileStart=mobileSource.indexOf('async function resolveOlliTalkStructuredTrialCancelTurn');
+  const mobileEnd=mobileSource.indexOf('\n  async function ',mobileStart+20);
+  assert.ok(mobileStart>=0 && mobileEnd>mobileStart);
+  const mobileBlock=mobileSource.slice(mobileStart,mobileEnd);
+  assert.match(mobileBlock,/mode:'structured_trial_cancel_prepare'/);
+  assert.doesNotMatch(mobileBlock,/mode:'trial_cancel_prepare'/);
+});
+
+
+test('structured update_waitlist bypasses Agents SDK and reuses the deterministic waitlist-update SOT', () => {
+  assert.match(contextRouteSource,/update_waitlist/);
+  assert.match(contextRouteSource,/source_weekday/);
+  assert.match(contextRouteSource,/target_weekday/);
+  assert.match(apiSource,/structured_waitlist_update_prepare/);
+  assert.match(apiSource,/runStructuredWaitlistUpdatePrepare/);
+
+  const runtimeStart=runtimeSource.indexOf('async function runStructuredWaitlistUpdatePrepare');
+  const runtimeEnd=runtimeSource.indexOf('\nasync function ',runtimeStart+20);
+  assert.ok(runtimeStart>=0 && runtimeEnd>runtimeStart);
+  const runtimeBlock=runtimeSource.slice(runtimeStart,runtimeEnd);
+  assert.match(runtimeBlock,/validateWaitlistSourceMessage/);
+  assert.match(runtimeBlock,/prepareStructuredWaitlistPrivacy/);
+  assert.match(runtimeBlock,/resolveWaitlistUpdatePrepareScope/);
+  assert.match(runtimeBlock,/prepareWaitlistUpdateAction/);
+  assert.doesNotMatch(runtimeBlock,/loadAgentsSdk|new Agent|runWaitlistUpdatePrepareAgent/);
+
+  const privacyStart=runtimeSource.indexOf('async function prepareStructuredWaitlistPrivacy');
+  const privacyEnd=runtimeSource.indexOf('\nasync function ',privacyStart+20);
+  assert.ok(privacyStart>=0 && privacyEnd>privacyStart);
+  const privacyBlock=runtimeSource.slice(privacyStart,privacyEnd);
+  assert.match(privacyBlock,/structuredCommand/);
+  assert.match(privacyBlock,/studentName/);
+  assert.match(privacyBlock,/prepareAgentPrivacyInput/);
+  assert.match(privacyBlock,/prepareWaitlistGuestPrivacyInput/);
+  assert.doesNotMatch(privacyBlock,/sourceMessageText/);
+
+  for(const source of [pcSource,mobileSource]){
+    assert.match(source,/structured_waitlist_update_prepare/);
+    assert.match(source,/structuredCommand/);
+  }
+
+  const pcStart=pcSource.indexOf('async function resolveStructuredWaitlistUpdateTurn');
+  const pcEnd=pcSource.indexOf('\n  async function ',pcStart+20);
+  assert.ok(pcStart>=0 && pcEnd>pcStart);
+  const pcBlock=pcSource.slice(pcStart,pcEnd);
+  assert.match(pcBlock,/mode:'structured_waitlist_update_prepare'/);
+  assert.doesNotMatch(pcBlock,/mode:'waitlist_update_prepare'/);
+
+  const mobileStart=mobileSource.indexOf('async function resolveOlliTalkStructuredWaitlistUpdateTurn');
+  const mobileEnd=mobileSource.indexOf('\n  async function ',mobileStart+20);
+  assert.ok(mobileStart>=0 && mobileEnd>mobileStart);
+  const mobileBlock=mobileSource.slice(mobileStart,mobileEnd);
+  assert.match(mobileBlock,/mode:'structured_waitlist_update_prepare'/);
+  assert.doesNotMatch(mobileBlock,/mode:'waitlist_update_prepare'/);
+});
+
+
+test('structured cancel_waitlist bypasses Agents SDK and reuses the deterministic waitlist-cancel SOT', () => {
+  assert.match(contextRouteSource,/cancel_waitlist/);
+  assert.match(apiSource,/structured_waitlist_cancel_prepare/);
+  assert.match(apiSource,/runStructuredWaitlistCancelPrepare/);
+
+  const runtimeStart=runtimeSource.indexOf('async function runStructuredWaitlistCancelPrepare');
+  const runtimeEnd=runtimeSource.indexOf('\nasync function ',runtimeStart+20);
+  assert.ok(runtimeStart>=0 && runtimeEnd>runtimeStart);
+  const runtimeBlock=runtimeSource.slice(runtimeStart,runtimeEnd);
+  assert.match(runtimeBlock,/validateWaitlistSourceMessage/);
+  assert.match(runtimeBlock,/prepareStructuredWaitlistCancelPrivacy/);
+  assert.match(runtimeBlock,/resolveWaitlistCancelPrepareScope/);
+  assert.match(runtimeBlock,/prepareWaitlistCancelAction/);
+  assert.doesNotMatch(runtimeBlock,/loadAgentsSdk|new Agent|runWaitlistCancelPrepareAgent/);
+
+  const privacyStart=runtimeSource.indexOf('async function prepareStructuredWaitlistCancelPrivacy');
+  const privacyEnd=runtimeSource.indexOf('\nfunction structuredWaitlistCancelDateKey',privacyStart+20);
+  assert.ok(privacyStart>=0 && privacyEnd>privacyStart);
+  const privacyBlock=runtimeSource.slice(privacyStart,privacyEnd);
+  assert.match(privacyBlock,/studentName/);
+  assert.match(privacyBlock,/prepareAgentPrivacyInput/);
+  assert.match(privacyBlock,/prepareWaitlistGuestPrivacyInput/);
+  assert.doesNotMatch(privacyBlock,/sourceMessageText/);
+
+  const dateStart=runtimeSource.indexOf('function structuredWaitlistCancelDateKey');
+  const dateEnd=runtimeSource.indexOf('\nasync function ',dateStart+20);
+  assert.ok(dateStart>=0 && dateEnd>dateStart);
+  const dateBlock=runtimeSource.slice(dateStart,dateEnd);
+  assert.match(dateBlock,/dateExpression/);
+  assert.match(dateBlock,/weekday/);
+  assert.match(dateBlock,/nextOccurrenceOnOrAfter/);
+
+  assert.doesNotMatch(pcSource,/resolveWaitlistCancelAgentTurn|waitlist_cancel_prepare/);
+  assert.doesNotMatch(mobileSource,/resolveOlliTalkWaitlistCancelAgentTurn|waitlist_cancel_prepare/);
+
+  assert.doesNotMatch(pcSource,/structuredCommand\?\.action\)===\'cancel_waitlist\'/);
+  assert.doesNotMatch(mobileSource,/structuredCommand\?\.action \|\| \'\'\)\.trim\(\)===\'cancel_waitlist\'/);
+  assert.match(pcSource,/\[[^\]]*'cancel_waitlist'[^\]]*\]/);
+  assert.match(mobileSource,/\[[^\]]*'cancel_waitlist'[^\]]*\]/);
+  assert.match(routerSource,/schedule\.prepareWriteCommand\('cancel_waitlist'/);
+});

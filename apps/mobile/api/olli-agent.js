@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     const mode = safeText(body.mode, 40);
     requestMode = mode || 'probe';
 
-    if (!['interpret', 'context_read', 'context_resolve', 'context_makeup_prepare', 'route_outcome', 'probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'timetable_read', 'schedule_read', 'attendance_read', 'pickup_read', 'timetable_admin_prepare', 'attendance_status_prepare', 'memo_prepare_probe', 'memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
+    if (!['interpret', 'context_read', 'context_resolve', 'context_makeup_prepare', 'route_outcome', 'probe', 'privacy_probe', 'profile_probe', 'schedule_probe', 'records_probe', 'availability_probe', 'attendance_probe', 'pickups_probe', 'timetable_read', 'schedule_read', 'attendance_read', 'pickup_read', 'timetable_admin_prepare', 'structured_timetable_admin_prepare', 'attendance_status_prepare', 'memo_prepare_probe', 'memo_prepare', 'structured_memo_prepare', 'batch_prepare', 'absence_prepare_probe', 'absence_prepare', 'class_once_prepare_probe', 'class_once_prepare', 'makeup_prepare_probe', 'makeup_update_prepare_probe', 'makeup_update_prepare', 'structured_makeup_update_prepare', 'structured_makeup_cancel_prepare', 'makeup_cancel_prepare_probe', 'makeup_cancel_prepare', 'makeup_prepare', 'trial_add_prepare_probe', 'trial_add_prepare', 'trial_cancel_prepare_probe', 'trial_cancel_prepare', 'structured_trial_cancel_prepare', 'trial_update_prepare_probe', 'trial_update_prepare', 'structured_trial_update_prepare', 'waitlist_add_prepare_probe', 'waitlist_add_prepare', 'waitlist_update_prepare_probe', 'waitlist_update_prepare', 'structured_waitlist_update_prepare', 'waitlist_cancel_prepare_probe', 'waitlist_cancel_prepare', 'structured_waitlist_cancel_prepare', 'move_prepare_probe', 'move_prepare', 'move_cancel_prepare_probe', 'move_cancel_prepare', 'structured_move_cancel_prepare', 'pickup_prepare_probe', 'pickup_update_prepare_probe', 'pickup_cancel_prepare_probe', 'pickup_cancel_prepare', 'pickup_update_prepare', 'pickup_prepare'].includes(mode)) {
       return res.status(400).json({
         error: '지원하지 않는 Olli Agent mode입니다. 현재 production prepare에는 memo_prepare, batch_prepare, absence_prepare, class_once_prepare, makeup/trial/waitlist/move/pickup prepare 계열이 포함됩니다.',
       });
@@ -84,11 +84,353 @@ export default async function handler(req, res) {
         ok:true,
         mode:'interpret',
         systemLanguage:{
+          lane:safeText(result?.lane,20),
           route:safeText(result?.route,20),
           intent:safeText(result?.intent,80),
           standaloneCommand:safeText(result?.standaloneCommand,5000),
+          structuredCommand:{
+            action:safeText(result?.structuredCommand?.action,40),
+            studentName:safeText(result?.structuredCommand?.studentName,200),
+            division:safeText(result?.structuredCommand?.division,20),
+            dateExpression:safeText(result?.structuredCommand?.dateExpression,200),
+            timeSlot:Number(result?.structuredCommand?.timeSlot || 0),
+            classGroup:safeText(result?.structuredCommand?.classGroup,10),
+            weekday:Number(result?.structuredCommand?.weekday || 0),
+            classTime:Number(result?.structuredCommand?.classTime || 0),
+            classMinute:Number(result?.structuredCommand?.classMinute || 0),
+            pickupKind:safeText(result?.structuredCommand?.pickupKind,20),
+            pickupLabel:safeText(result?.structuredCommand?.pickupLabel,500),
+            pickupTime:safeText(result?.structuredCommand?.pickupTime,20),
+            sourceDateExpression:safeText(result?.structuredCommand?.sourceDateExpression,200),
+            sourceWeekday:Number(result?.structuredCommand?.sourceWeekday || 0),
+            sourceTimeSlot:Number(result?.structuredCommand?.sourceTimeSlot || 0),
+            sourceMinute:Number(result?.structuredCommand?.sourceMinute || 0),
+            sourceClassGroup:safeText(result?.structuredCommand?.sourceClassGroup,10),
+            targetDateExpression:safeText(result?.structuredCommand?.targetDateExpression,200),
+            targetWeekday:Number(result?.structuredCommand?.targetWeekday || 0),
+            targetTimeSlot:Number(result?.structuredCommand?.targetTimeSlot || 0),
+            targetMinute:Number(result?.structuredCommand?.targetMinute || 0),
+            targetClassGroup:safeText(result?.structuredCommand?.targetClassGroup,10),
+            reason:safeText(result?.structuredCommand?.reason,1000),
+            memoNote:safeText(result?.structuredCommand?.memoNote,1000),
+            availabilityPurpose:safeText(result?.structuredCommand?.availabilityPurpose,40),
+            rosterKind:safeText(result?.structuredCommand?.rosterKind,40),
+          },
+          readCommands:(Array.isArray(result?.readCommands)?result.readCommands:[]).slice(0,3).map((command)=>({
+            action:safeText(command?.action,40),
+            studentName:safeText(command?.studentName,200),
+            division:safeText(command?.division,20),
+            dateExpression:safeText(command?.dateExpression,200),
+            timeSlot:Number(command?.timeSlot||0),
+            classGroup:safeText(command?.classGroup,10),
+            weekday:Number(command?.weekday||0),
+            classTime:Number(command?.classTime||0),
+            pickupKind:safeText(command?.pickupKind,20),
+            availabilityPurpose:safeText(command?.availabilityPurpose,40),
+            rosterKind:safeText(command?.rosterKind,40),
+          })),
+          batchCommands:(Array.isArray(result?.batchCommands)?result.batchCommands:[]).slice(0,3).map((command)=>({
+            action:safeText(command?.action,40),
+            studentName:safeText(command?.studentName,200),
+            division:safeText(command?.division,20),
+            dateExpression:safeText(command?.dateExpression,200),
+            timeSlot:Number(command?.timeSlot||0),
+            classGroup:safeText(command?.classGroup,10),
+            weekday:Number(command?.weekday||0),
+            classTime:Number(command?.classTime||0),
+            classMinute:Number(command?.classMinute||0),
+            pickupKind:safeText(command?.pickupKind,20),
+            pickupLabel:safeText(command?.pickupLabel,500),
+            pickupTime:safeText(command?.pickupTime,20),
+            sourceDateExpression:safeText(command?.sourceDateExpression,200),
+            sourceWeekday:Number(command?.sourceWeekday||0),
+            sourceTimeSlot:Number(command?.sourceTimeSlot||0),
+            sourceMinute:Number(command?.sourceMinute||0),
+            sourceClassGroup:safeText(command?.sourceClassGroup,10),
+            targetDateExpression:safeText(command?.targetDateExpression,200),
+            targetWeekday:Number(command?.targetWeekday||0),
+            targetTimeSlot:Number(command?.targetTimeSlot||0),
+            targetMinute:Number(command?.targetMinute||0),
+            targetClassGroup:safeText(command?.targetClassGroup,10),
+            reason:safeText(command?.reason,1000),
+            memoNote:safeText(command?.memoNote,1000),
+          })),
+          reply:safeText(result?.reply,5000),
           contextUsed:result?.contextUsed===true,
         },
+      });
+    }
+
+    if (mode === 'structured_makeup_update_prepare') {
+      const message=safeText(body.message,5000);
+      const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
+      const structuredCommand=body.structuredCommand && typeof body.structuredCommand==='object'
+        ? body.structuredCommand
+        : null;
+      if(!message){
+        return res.status(400).json({
+          error:'structured_makeup_update_prepare에는 원문 메시지가 필요합니다.',
+          code:'OLLI_ROUTINE_MAKEUP_UPDATE_MESSAGE_REQUIRED',
+        });
+      }
+      if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+        return res.status(400).json({
+          error:'structured_makeup_update_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+          code:'OLLI_ROUTINE_MAKEUP_UPDATE_SOURCE_REQUIRED',
+        });
+      }
+      if(safeText(structuredCommand?.action,40)!=='update_makeup'){
+        return res.status(400).json({
+          error:'structured_makeup_update_prepare에는 update_makeup 구조화 명령이 필요합니다.',
+          code:'OLLI_ROUTINE_MAKEUP_UPDATE_COMMAND_REQUIRED',
+        });
+      }
+
+      const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
+      const result=await runtimeModule.runStructuredMakeupUpdatePrepare({
+        requestContext,
+        structuredCommand,
+        sourceMessageId,
+        sourceMessageText:message,
+      });
+      return res.status(200).json({
+        ok:true,
+        mode:'structured_makeup_update_prepare',
+        ready:result?.ready===true,
+        message:result?.persistedMessage || null,
+        recoveredAfterPersist:result?.recoveredAfterPersist===true,
+      });
+    }
+
+    if (mode === 'structured_makeup_cancel_prepare') {
+      const message=safeText(body.message,5000);
+      const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
+      const reasonMessageId=Number(body.reasonMessageId || body.reason_message_id || 0);
+      const reasonMessageText=safeText(body.reasonMessageText || body.reason_message_text,5000);
+      const reason=safeText(body.reason,300);
+      const structuredCommand=body.structuredCommand && typeof body.structuredCommand==='object'
+        ? body.structuredCommand
+        : null;
+      if(!message){
+        return res.status(400).json({
+          error:'structured_makeup_cancel_prepare에는 원문 메시지가 필요합니다.',
+          code:'OLLI_ROUTINE_MAKEUP_CANCEL_MESSAGE_REQUIRED',
+        });
+      }
+      if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
+        return res.status(400).json({
+          error:'structured_makeup_cancel_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+          code:'OLLI_ROUTINE_MAKEUP_CANCEL_SOURCE_REQUIRED',
+        });
+      }
+      if(!Number.isSafeInteger(reasonMessageId) || reasonMessageId<=0 || !reasonMessageText || !reason){
+        return res.status(400).json({
+          error:'structured_makeup_cancel_prepare에는 저장된 취소 사유 메시지와 사유가 필요합니다.',
+          code:'OLLI_ROUTINE_MAKEUP_CANCEL_REASON_REQUIRED',
+        });
+      }
+      if(safeText(structuredCommand?.action,40)!=='cancel_makeup'){
+        return res.status(400).json({
+          error:'structured_makeup_cancel_prepare에는 cancel_makeup 구조화 명령이 필요합니다.',
+          code:'OLLI_ROUTINE_MAKEUP_CANCEL_COMMAND_REQUIRED',
+        });
+      }
+
+      const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
+      const result=await runtimeModule.runStructuredMakeupCancelPrepare({
+        requestContext,
+        structuredCommand,
+        sourceMessageId,
+        sourceMessageText:message,
+        reasonMessageId,
+        reasonMessageText,
+        reason,
+      });
+      return res.status(200).json({
+        ok:true,
+        mode:'structured_makeup_cancel_prepare',
+        ready:result?.ready===true,
+        message:result?.persistedMessage || null,
+        choiceRequired:result?.choiceRequired || null,
+        recoveredAfterPersist:result?.recoveredAfterPersist===true,
+      });
+    }
+
+    if (mode === 'structured_trial_cancel_prepare') {
+      const message=safeText(body.message,5000);
+      const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
+      const reasonMessageId=Number(body.reasonMessageId || body.reason_message_id || 0);
+      const reasonMessageText=safeText(body.reasonMessageText || body.reason_message_text,5000);
+      const reason=safeText(body.reason,300);
+      const structuredCommand=body.structuredCommand && typeof body.structuredCommand==='object'
+        ? body.structuredCommand
+        : null;
+      if(!message){
+        return res.status(400).json({
+          error:'structured_trial_cancel_prepare에는 원문 메시지가 필요합니다.',
+          code:'OLLI_ROUTINE_TRIAL_CANCEL_MESSAGE_REQUIRED',
+        });
+      }
+      if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
+        return res.status(400).json({
+          error:'structured_trial_cancel_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+          code:'OLLI_ROUTINE_TRIAL_CANCEL_SOURCE_REQUIRED',
+        });
+      }
+      if(!Number.isSafeInteger(reasonMessageId)||reasonMessageId<=0||!reasonMessageText||!reason){
+        return res.status(400).json({
+          error:'structured_trial_cancel_prepare에는 저장된 취소 사유 메시지와 사유가 필요합니다.',
+          code:'OLLI_ROUTINE_TRIAL_CANCEL_REASON_REQUIRED',
+        });
+      }
+      if(safeText(structuredCommand?.action,40)!=='cancel_trial'){
+        return res.status(400).json({
+          error:'structured_trial_cancel_prepare에는 cancel_trial 구조화 명령이 필요합니다.',
+          code:'OLLI_ROUTINE_TRIAL_CANCEL_COMMAND_REQUIRED',
+        });
+      }
+
+      const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
+      const result=await runtimeModule.runStructuredTrialCancelPrepare({
+        requestContext,
+        structuredCommand,
+        sourceMessageId,
+        sourceMessageText:message,
+        reasonMessageId,
+        reasonMessageText,
+        reason,
+      });
+      return res.status(200).json({
+        ok:true,
+        mode:'structured_trial_cancel_prepare',
+        ready:result?.ready===true,
+        message:result?.persistedMessage || null,
+        choiceRequired:result?.choiceRequired || null,
+        recoveredAfterPersist:result?.recoveredAfterPersist===true,
+      });
+    }
+
+    if (mode === 'structured_trial_update_prepare') {
+      const message=safeText(body.message,5000);
+      const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
+      const structuredCommand=body.structuredCommand && typeof body.structuredCommand==='object'
+        ? body.structuredCommand
+        : null;
+      if(!message){
+        return res.status(400).json({
+          error:'structured_trial_update_prepare에는 원문 메시지가 필요합니다.',
+          code:'OLLI_ROUTINE_TRIAL_UPDATE_MESSAGE_REQUIRED',
+        });
+      }
+      if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
+        return res.status(400).json({
+          error:'structured_trial_update_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+          code:'OLLI_ROUTINE_TRIAL_UPDATE_SOURCE_REQUIRED',
+        });
+      }
+      if(safeText(structuredCommand?.action,40)!=='update_trial'){
+        return res.status(400).json({
+          error:'structured_trial_update_prepare에는 update_trial 구조화 명령이 필요합니다.',
+          code:'OLLI_ROUTINE_TRIAL_UPDATE_COMMAND_REQUIRED',
+        });
+      }
+
+      const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
+      const result=await runtimeModule.runStructuredTrialUpdatePrepare({
+        requestContext,
+        structuredCommand,
+        sourceMessageId,
+        sourceMessageText:message,
+      });
+      return res.status(200).json({
+        ok:true,
+        mode:'structured_trial_update_prepare',
+        ready:result?.ready===true,
+        message:result?.persistedMessage || null,
+        recoveredAfterPersist:result?.recoveredAfterPersist===true,
+      });
+    }
+
+    if (mode === 'structured_waitlist_update_prepare') {
+      const message=safeText(body.message,5000);
+      const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
+      const structuredCommand=body.structuredCommand && typeof body.structuredCommand==='object'
+        ? body.structuredCommand
+        : null;
+      if(!message){
+        return res.status(400).json({
+          error:'structured_waitlist_update_prepare에는 원문 메시지가 필요합니다.',
+          code:'OLLI_ROUTINE_WAITLIST_UPDATE_MESSAGE_REQUIRED',
+        });
+      }
+      if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
+        return res.status(400).json({
+          error:'structured_waitlist_update_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+          code:'OLLI_ROUTINE_WAITLIST_UPDATE_SOURCE_REQUIRED',
+        });
+      }
+      if(safeText(structuredCommand?.action,40)!=='update_waitlist'){
+        return res.status(400).json({
+          error:'structured_waitlist_update_prepare에는 update_waitlist 구조화 명령이 필요합니다.',
+          code:'OLLI_ROUTINE_WAITLIST_UPDATE_COMMAND_REQUIRED',
+        });
+      }
+
+      const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
+      const result=await runtimeModule.runStructuredWaitlistUpdatePrepare({
+        requestContext,
+        structuredCommand,
+        sourceMessageId,
+        sourceMessageText:message,
+      });
+      return res.status(200).json({
+        ok:true,
+        mode:'structured_waitlist_update_prepare',
+        ready:result?.ready===true,
+        message:result?.persistedMessage || null,
+        choiceRequired:result?.choiceRequired || null,
+        recoveredAfterPersist:result?.recoveredAfterPersist===true,
+      });
+    }
+
+    if (mode === 'structured_waitlist_cancel_prepare') {
+      const message=safeText(body.message,5000);
+      const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
+      const structuredCommand=body.structuredCommand && typeof body.structuredCommand==='object'
+        ? body.structuredCommand
+        : null;
+      if(!message){
+        return res.status(400).json({
+          error:'structured_waitlist_cancel_prepare에는 원문 메시지가 필요합니다.',
+          code:'OLLI_ROUTINE_WAITLIST_CANCEL_MESSAGE_REQUIRED',
+        });
+      }
+      if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
+        return res.status(400).json({
+          error:'structured_waitlist_cancel_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+          code:'OLLI_ROUTINE_WAITLIST_CANCEL_SOURCE_REQUIRED',
+        });
+      }
+      if(safeText(structuredCommand?.action,40)!=='cancel_waitlist'){
+        return res.status(400).json({
+          error:'structured_waitlist_cancel_prepare에는 cancel_waitlist 구조화 명령이 필요합니다.',
+          code:'OLLI_ROUTINE_WAITLIST_CANCEL_COMMAND_REQUIRED',
+        });
+      }
+
+      const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
+      const result=await runtimeModule.runStructuredWaitlistCancelPrepare({
+        requestContext,
+        structuredCommand,
+        sourceMessageId,
+        sourceMessageText:message,
+      });
+      return res.status(200).json({
+        ok:true,
+        mode:'structured_waitlist_cancel_prepare',
+        ready:result?.ready===true,
+        message:result?.persistedMessage || null,
+        recoveredAfterPersist:result?.recoveredAfterPersist===true,
       });
     }
 
@@ -415,11 +757,47 @@ export default async function handler(req, res) {
       const privacyModule=await import('./_lib/olli-agent/privacy.cjs');
       const prepared=await privacyModule.prepareAgentPrivacyInput(message,requestContext);
       const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
-      const agentContext=contextModule.toAgentRunContext(requestContext);
       const result=await runtimeModule.runTimetableAdminPrepare({
-        agentContext,
         requestContext,
         preparedPrivacy:prepared,
+        sourceMessageId,
+        sourceMessageText:message,
+      });
+      return res.status(200).json({
+        ok:true,
+        mode,
+        ready:result?.ready===true,
+        message:result?.persistedMessage || null,
+        choiceRequired:result?.choiceRequired || null,
+        recoveredAfterPersist:result?.recoveredAfterPersist===true,
+      });
+    }
+
+    if (mode === 'structured_timetable_admin_prepare') {
+      const message=safeText(body.message,5000);
+      const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
+      const structuredCommand=body.structuredCommand && typeof body.structuredCommand==='object'
+        ? body.structuredCommand
+        : null;
+      if(!message){
+        return res.status(400).json({
+          error:'structured_timetable_admin_prepare에는 원문 메시지가 필요합니다.',
+          code:'OLLI_ROUTINE_TIMETABLE_ADMIN_MESSAGE_REQUIRED',
+        });
+      }
+      if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
+        return res.status(400).json({
+          error:'structured_timetable_admin_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+          code:'OLLI_ROUTINE_TIMETABLE_ADMIN_SOURCE_REQUIRED',
+        });
+      }
+      const privacyModule=await import('./_lib/olli-agent/privacy.cjs');
+      const prepared=await privacyModule.prepareAgentPrivacyInput(message,requestContext);
+      const runtimeModule=await import('./_lib/olli-agent/runtime.cjs');
+      const result=await runtimeModule.runStructuredTimetableAdminPrepare({
+        requestContext,
+        preparedPrivacy:prepared,
+        structuredCommand,
         sourceMessageId,
         sourceMessageText:message,
       });
@@ -490,23 +868,65 @@ export default async function handler(req, res) {
         });
       }
 
-      const commands = rawCommands.map((item) => ({
-        intent:safeText(item?.intent, 80),
-        text:safeText(item?.text, 5000),
-        reason:safeText(item?.reason, 300),
-        reasonMessageId:Number(item?.reasonMessageId || item?.reason_message_id || 0),
-        reasonMessageText:safeText(item?.reasonMessageText || item?.reason_message_text, 5000),
-        memoNote:safeText(item?.memoNote || item?.memo_note, 5000),
-        needsClarification:item?.needsClarification === true,
-        contextText:safeText(item?.contextText || item?.context_text, 5000),
-        clarificationMessageId:Number(item?.clarificationMessageId || item?.clarification_message_id || 0),
-        clarificationMessageText:safeText(item?.clarificationMessageText || item?.clarification_message_text, 5000),
-      }));
+      const commands = rawCommands.map((item) => {
+        const structured=item?.structuredCommand && typeof item.structuredCommand==='object'
+          ? item.structuredCommand
+          : {};
+        const selection=item?.structuredSelection && typeof item.structuredSelection==='object'
+          ? item.structuredSelection
+          : null;
+        return {
+          intent:safeText(item?.intent, 80),
+          text:safeText(item?.text, 5000),
+          reason:safeText(item?.reason, 300),
+          reasonMessageId:Number(item?.reasonMessageId || item?.reason_message_id || 0),
+          reasonMessageText:safeText(item?.reasonMessageText || item?.reason_message_text, 5000),
+          memoNote:safeText(item?.memoNote || item?.memo_note, 5000),
+          needsClarification:item?.needsClarification === true,
+          structuredCommand:{
+            action:safeText(structured.action,40),
+            studentName:safeText(structured.studentName || structured.student_name,200),
+            division:safeText(structured.division,20),
+            dateExpression:safeText(structured.dateExpression || structured.date_expression,200),
+            timeSlot:Number(structured.timeSlot || structured.time_slot || 0),
+            classGroup:safeText(structured.classGroup || structured.class_group,10).toUpperCase(),
+            weekday:Number(structured.weekday || 0),
+            classTime:Number(structured.classTime || structured.class_time || 0),
+            classMinute:Number(structured.classMinute || structured.class_minute || 0),
+            pickupKind:safeText(structured.pickupKind || structured.pickup_kind,20),
+            pickupLabel:safeText(structured.pickupLabel || structured.pickup_label,500),
+            pickupTime:safeText(structured.pickupTime || structured.pickup_time,20),
+            sourceDateExpression:safeText(structured.sourceDateExpression || structured.source_date_expression,200),
+            sourceWeekday:Number(structured.sourceWeekday || structured.source_weekday || 0),
+            sourceTimeSlot:Number(structured.sourceTimeSlot || structured.source_time_slot || 0),
+            sourceMinute:Number(structured.sourceMinute || structured.source_minute || 0),
+            sourceClassGroup:safeText(structured.sourceClassGroup || structured.source_class_group,10).toUpperCase(),
+            targetDateExpression:safeText(structured.targetDateExpression || structured.target_date_expression,200),
+            targetWeekday:Number(structured.targetWeekday || structured.target_weekday || 0),
+            targetTimeSlot:Number(structured.targetTimeSlot || structured.target_time_slot || 0),
+            targetMinute:Number(structured.targetMinute || structured.target_minute || 0),
+            targetClassGroup:safeText(structured.targetClassGroup || structured.target_class_group,10).toUpperCase(),
+            reason:safeText(structured.reason,1000),
+            memoNote:safeText(structured.memoNote || structured.memo_note,1000),
+          },
+          structuredSelection:selection
+            ? {
+                sessionDate:safeText(selection.sessionDate || selection.session_date,20),
+                timeSlot:Number(selection.timeSlot || selection.time_slot || 0),
+                classGroup:safeText(selection.classGroup || selection.class_group,10).toUpperCase(),
+                division:safeText(selection.division,20),
+                weekday:Number(selection.weekday || 0),
+                classTime:Number(selection.classTime || selection.class_time || 0),
+              }
+            : null,
+          contextText:safeText(item?.contextText || item?.context_text,5000),
+          clarificationMessageId:Number(item?.clarificationMessageId || item?.clarification_message_id || 0),
+          clarificationMessageText:safeText(item?.clarificationMessageText || item?.clarification_message_text,5000),
+        };
+      });
 
       const runtimeModule = await import('./_lib/olli-agent/runtime.cjs');
-      const agentContext = contextModule.toAgentRunContext(requestContext);
       const result = await runtimeModule.runBatchPrepare({
-        agentContext,
         requestContext,
         sourceMessageId,
         sourceMessageText:message,
@@ -520,7 +940,7 @@ export default async function handler(req, res) {
       });
     }
 
-    if (mode === 'privacy_probe' || mode === 'profile_probe' || mode === 'schedule_probe' || mode === 'records_probe' || mode === 'availability_probe' || mode === 'attendance_probe' || mode === 'pickups_probe' || mode === 'memo_prepare_probe' || mode === 'memo_prepare' || mode === 'absence_prepare_probe' || mode === 'absence_prepare' || mode === 'class_once_prepare_probe' || mode === 'class_once_prepare' || mode === 'makeup_prepare_probe' || mode === 'makeup_update_prepare_probe' || mode === 'makeup_update_prepare' || mode === 'makeup_cancel_prepare_probe' || mode === 'makeup_cancel_prepare' || mode === 'makeup_prepare' || mode === 'trial_add_prepare_probe' || mode === 'trial_add_prepare' || mode === 'trial_cancel_prepare_probe' || mode === 'trial_cancel_prepare' || mode === 'trial_update_prepare_probe' || mode === 'trial_update_prepare' || mode === 'waitlist_add_prepare_probe' || mode === 'waitlist_add_prepare' || mode === 'waitlist_update_prepare_probe' || mode === 'waitlist_update_prepare' || mode === 'waitlist_cancel_prepare_probe' || mode === 'waitlist_cancel_prepare' || mode === 'move_prepare_probe' || mode === 'move_prepare' || mode === 'move_cancel_prepare_probe' || mode === 'move_cancel_prepare' || mode === 'pickup_prepare_probe' || mode === 'pickup_update_prepare_probe' || mode === 'pickup_cancel_prepare_probe' || mode === 'pickup_cancel_prepare' || mode === 'pickup_update_prepare' || mode === 'pickup_prepare') {
+    if (mode === 'privacy_probe' || mode === 'profile_probe' || mode === 'schedule_probe' || mode === 'records_probe' || mode === 'availability_probe' || mode === 'attendance_probe' || mode === 'pickups_probe' || mode === 'memo_prepare_probe' || mode === 'memo_prepare' || mode === 'structured_memo_prepare' || mode === 'absence_prepare_probe' || mode === 'absence_prepare' || mode === 'class_once_prepare_probe' || mode === 'class_once_prepare' || mode === 'makeup_prepare_probe' || mode === 'makeup_update_prepare_probe' || mode === 'makeup_update_prepare' || mode === 'makeup_cancel_prepare_probe' || mode === 'makeup_cancel_prepare' || mode === 'makeup_prepare' || mode === 'trial_add_prepare_probe' || mode === 'trial_add_prepare' || mode === 'trial_cancel_prepare_probe' || mode === 'trial_cancel_prepare' || mode === 'trial_update_prepare_probe' || mode === 'trial_update_prepare' || mode === 'waitlist_add_prepare_probe' || mode === 'waitlist_add_prepare' || mode === 'waitlist_update_prepare_probe' || mode === 'waitlist_update_prepare' || mode === 'waitlist_cancel_prepare_probe' || mode === 'waitlist_cancel_prepare' || mode === 'move_prepare_probe' || mode === 'move_prepare' || mode === 'move_cancel_prepare_probe' || mode === 'move_cancel_prepare' || mode === 'structured_move_cancel_prepare' || mode === 'pickup_prepare_probe' || mode === 'pickup_update_prepare_probe' || mode === 'pickup_cancel_prepare_probe' || mode === 'pickup_cancel_prepare' || mode === 'pickup_update_prepare' || mode === 'pickup_prepare') {
       const message = safeText(body.message, 5000);
       if (!message) {
         return res.status(400).json({
@@ -530,7 +950,7 @@ export default async function handler(req, res) {
       }
 
       let prepared;
-      if (mode === 'memo_prepare_probe' || mode === 'memo_prepare') {
+      if (mode === 'memo_prepare_probe' || mode === 'memo_prepare' || mode === 'structured_memo_prepare') {
         const privacyModule = await import('./_lib/olli-agent/privacy.cjs');
         const memoNote = safeText(body.memoNote || body.memo_note, 5000);
         prepared = await privacyModule.prepareTimetableMemoPrivacyInput(
@@ -669,7 +1089,34 @@ export default async function handler(req, res) {
           mode:'memo_prepare',
           ready:probe.ready === true,
           message:probe.persistedMessage,
+          choiceRequired:probe.choiceRequired || null,
           recoveredAfterPersist:probe.recoveredAfterPersist === true,
+        });
+      } else if (mode === 'structured_memo_prepare') {
+        const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
+        const structuredCommand=body.structuredCommand && typeof body.structuredCommand==='object'
+          ? body.structuredCommand
+          : null;
+        if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
+          return res.status(400).json({
+            error:'structured_memo_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+            code:'OLLI_ROUTINE_TIMETABLE_MEMO_SOURCE_REQUIRED',
+          });
+        }
+        probe=await runtimeModule.runStructuredTimetableMemoPrepare({
+          requestContext,
+          preparedPrivacy:prepared,
+          structuredCommand,
+          sourceMessageId,
+          sourceMessageText:message,
+        });
+        return res.status(200).json({
+          ok:true,
+          mode:'structured_memo_prepare',
+          ready:probe.ready===true,
+          message:probe.persistedMessage,
+          choiceRequired:probe.choiceRequired || null,
+          recoveredAfterPersist:probe.recoveredAfterPersist===true,
         });
       } else if (mode === 'absence_prepare_probe') {
         const requestId=safeText(body.requestId || body.request_id,180);
@@ -1200,6 +1647,33 @@ export default async function handler(req, res) {
           mode:'move_cancel_prepare',
           ready:probe.ready===true,
           message:probe.persistedMessage,
+          choiceRequired:probe.choiceRequired || null,
+          recoveredAfterPersist:probe.recoveredAfterPersist===true,
+        });
+      } else if (mode === 'structured_move_cancel_prepare') {
+        const sourceMessageId=Number(body.sourceMessageId || body.source_message_id || 0);
+        const structuredCommand=body.structuredCommand && typeof body.structuredCommand==='object'
+          ? body.structuredCommand
+          : null;
+        if(!Number.isSafeInteger(sourceMessageId)||sourceMessageId<=0){
+          return res.status(400).json({
+            error:'structured_move_cancel_prepare에는 저장된 원문 Team Chat message id가 필요합니다.',
+            code:'OLLI_ROUTINE_MOVE_CANCEL_SOURCE_REQUIRED',
+          });
+        }
+        probe=await runtimeModule.runStructuredMoveCancelPrepare({
+          requestContext,
+          preparedPrivacy:prepared,
+          structuredCommand,
+          sourceMessageId,
+          sourceMessageText:message,
+        });
+        return res.status(200).json({
+          ok:true,
+          mode:'structured_move_cancel_prepare',
+          ready:probe.ready===true,
+          message:probe.persistedMessage,
+          choiceRequired:probe.choiceRequired || null,
           recoveredAfterPersist:probe.recoveredAfterPersist===true,
         });
       } else if (mode === 'pickup_prepare_probe') {

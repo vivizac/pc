@@ -9,6 +9,9 @@ const runtime=fs.readFileSync(path.join(root,'api/_lib/olli-agent/runtime.cjs'),
 const memoTool=fs.readFileSync(path.join(root,'api/_lib/olli-agent/tools/timetable-memo-tools.cjs'),'utf8');
 const privacy=fs.readFileSync(path.join(root,'api/_lib/olli-agent/privacy.cjs'),'utf8');
 const makeupCancel=fs.readFileSync(path.join(root,'api/_lib/olli-agent/tools/makeup-cancel-prepare-tools.cjs'),'utf8');
+const makeupTool=fs.readFileSync(path.join(root,'api/_lib/olli-agent/tools/makeup-prepare-tools.cjs'),'utf8');
+const pc=fs.readFileSync(path.resolve(root,'../pc/pc-team-talk.js'),'utf8');
+const mobile=fs.readFileSync(path.join(root,'olli-talk-beta.js'),'utf8');
 
 test('memo production validates stored source and returns persisted card',()=>{
   assert.match(endpoint,/'memo_prepare'/);
@@ -54,6 +57,23 @@ test('batch uses existing independent action types instead of storing batch_writ
     assert.ok(block.includes(intent),intent);
   }
   assert.doesNotMatch(endpoint,/p_action_type\s*:\s*['"]batch_write/);
+});
+
+test('batch incomplete makeup uses date/time buttons and server revalidates the chosen stored slot',()=>{
+  for(const source of [pc,mobile]){
+    assert.match(source,/batchStructured:true/);
+    assert.match(source,/structuredSelection:selection/);
+    assert.match(source,/StructuredMakeupChoice|StructuredMakeup/);
+    assert.match(source,/StructuredDateChoice/);
+    assert.match(source,/StructuredTimeChoice/);
+    assert.match(source,/StructuredTargetChoice/);
+  }
+  assert.match(endpoint,/structuredSelection/);
+  assert.match(runtime,/async function runBatchStructuredMakeupPrepare/);
+  assert.match(runtime,/selection:item\.structuredSelection/);
+  assert.match(runtime,/selectedTimeSlot:timeSlot/);
+  assert.match(makeupTool,/selectedTimeSlot = 0/);
+  assert.match(makeupTool,/selectedStoredTimeSlot/);
 });
 
 test('makeup cancel reason is private server context and absent from tool schema',()=>{

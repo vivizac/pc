@@ -130,6 +130,44 @@ test('trial cancel never guesses when multiple current guest trials match',async
   );
 });
 
+test('structured trial cancel can return finite current-trial choices without mutation',async()=>{
+  const {rpc,calls}=baseRpc({rows:[
+    row(),
+    row({id:'55555555-5555-4555-8555-555555555555',time_slot:2,class_group:'B'}),
+  ]});
+  const result=await prepareTrialCancelAction({
+    requestContext:requestContext(),trialAccess:trialAccess(),guestLabel:'학생A',
+    sourceDate:'2026-10-03',reason:'가족여행',currentDate:'2026-10-01',
+    requestId:'trial-cancel-choice',allowChoice:true,sanitizePayload:p=>p,callRpc:rpc,
+  });
+  assert.equal(result.ok,false);
+  assert.equal(result.code,'target_choice_required');
+  assert.equal(result.choiceKey,'oneTimeSessionId');
+  assert.deepEqual(result.choices.map(item=>item.id),[
+    '44444444-4444-4444-8444-444444444444',
+    '55555555-5555-4555-8555-555555555555'
+  ]);
+  assert.equal(calls.some(item=>item.name==='olli_team_chat_send_action'),false);
+});
+
+test('structured trial cancel re-reads a selected one-time session before pending confirmation',async()=>{
+  const {rpc,calls}=baseRpc({rows:[
+    row(),
+    row({id:'55555555-5555-4555-8555-555555555555',time_slot:2,class_group:'B'}),
+  ]});
+  const result=await prepareTrialCancelAction({
+    requestContext:requestContext(),trialAccess:trialAccess(),guestLabel:'학생A',
+    sourceDate:'2026-10-03',oneTimeSessionId:'55555555-5555-4555-8555-555555555555',
+    allowChoice:true,reason:'가족여행',currentDate:'2026-10-01',
+    requestId:'trial-cancel-choice-selected',replyToMessageId:88,sanitizePayload:p=>p,callRpc:rpc,
+  });
+  assert.equal(result.ok,true);
+  const action=calls.find(item=>item.name==='olli_team_chat_send_action');
+  assert.ok(action);
+  assert.equal(action.params.p_action_payload.oneTimeSessionId,'55555555-5555-4555-8555-555555555555');
+  assert.equal(action.params.p_reply_to_message_id,88);
+});
+
 test('trial cancel group filter resolves A/B without changing the stored trial',async()=>{
   const {rpc,calls}=baseRpc({
     rows:[

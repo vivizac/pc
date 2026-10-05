@@ -66,10 +66,13 @@ function detectWaitlistDivision(text){
   return '';
 }
 
-function prepareWaitlistGuestPrivacyInput(text){
+function prepareWaitlistGuestPrivacyInput(text,divisionOverride=''){
   const sourceText=String(text||'');
   const guestName=extractWaitlistGuestName(sourceText);
-  const division=detectWaitlistDivision(sourceText);
+  const selectedDivision=clean(divisionOverride).toLowerCase();
+  const division=['elementary','kinder'].includes(selectedDivision)
+    ? selectedDivision
+    : detectWaitlistDivision(sourceText);
   const subjectRef=createOpaqueSubjectRef();
   const prepared=preparePrivacySafeMessages({
     requestScope:{subjectRef},

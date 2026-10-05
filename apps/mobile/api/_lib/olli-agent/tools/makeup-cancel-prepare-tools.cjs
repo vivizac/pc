@@ -161,6 +161,8 @@ async function prepareMakeupCancelAction({
   sessionDate = '',
   classHour = 0,
   classMinute = 0,
+  oneTimeSessionId:selectedOneTimeSessionId = '',
+  allowChoice = false,
   reason,
   currentDate,
   requestId,
@@ -224,6 +226,7 @@ async function prepareMakeupCancelAction({
 
   const requestedGroup = normalizeRequestedGroup(classGroup);
   const requestedTime = requestedTimeLabel(classHour, classMinute);
+  const requestedOneTimeSessionId = clean(selectedOneTimeSessionId);
   const safeReason = normalizeMakeupCancelReason(reason);
 
   const student = await loadPrivateMakeupStudent({
@@ -275,6 +278,9 @@ async function prepareMakeupCancelAction({
   if (requestedGroup !== 'AUTO') {
     rows = rows.filter((row) => rowGroup(row) === requestedGroup);
   }
+  if (requestedOneTimeSessionId) {
+    rows = rows.filter((row) => clean(row?.id) === requestedOneTimeSessionId);
+  }
 
   rows.sort((a, b) =>
     clean(a?.session_date).localeCompare(clean(b?.session_date)) ||
@@ -290,6 +296,33 @@ async function prepareMakeupCancelAction({
     );
   }
   if (rows.length > 1) {
+    if (allowChoice === true) {
+      const choices = rows.slice(0, 8).map((item) => {
+        const itemId = clean(item?.id);
+        const itemDateKey = clean(item?.session_date).slice(0, 10);
+        const itemDate = parseDateKey(itemDateKey);
+        const itemSlot = Number(item?.time_slot || 0);
+        if (!itemId || !itemDate || !Number.isInteger(itemSlot) || itemSlot <= 0) return null;
+        const itemDateObj = new Date(itemDate.timestamp);
+        const itemWeekday = itemDateObj.getUTCDay() === 0 ? 7 : itemDateObj.getUTCDay();
+        const itemTimeText = clean(timeLabel(fixedDivision, itemWeekday, itemSlot, mode));
+        if (!itemTimeText) return null;
+        return {
+          id:itemId,
+          label:[dateLabel(itemDateKey), itemTimeText, rowGroup(item) + '반'].join(' · '),
+        };
+      }).filter(Boolean);
+      if (choices.length > 1) {
+        return {
+          ok:false,
+          code:'target_choice_required',
+          field:'target_choice',
+          choiceKey:'oneTimeSessionId',
+          choices,
+          message:student.name + ' 학생의 취소 가능한 보강이 여러 개 있어요. 취소할 보강을 선택해 주세요.',
+        };
+      }
+    }
     throw makeupCancelError(
       '취소할 보강이 여러 개 있습니다. 날짜와 시간을 함께 알려 주세요.',
       409,

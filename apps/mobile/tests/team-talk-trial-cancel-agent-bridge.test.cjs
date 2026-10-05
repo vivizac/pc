@@ -7,28 +7,22 @@ const talk=fs.readFileSync(path.join(__dirname,'../olli-talk-beta.js'),'utf8');
 
 test('mobile trial cancel candidate uses only shared trial cancel parser',()=>{
   const start=talk.indexOf('function parseOlliTalkTrialCancelAgentCandidate');
-  const end=talk.indexOf('function isOlliTalkTrialUpdateAgentCandidate',start);
+  const end=talk.indexOf('function parseOlliTalkMakeupAddDraftCandidate',start);
   const block=talk.slice(start,end);
   assert.match(block,/parseTrialCancelMutationIntent\(commandText\)/);
   assert.match(block,/==='cancel_trial'/);
   assert.doesNotMatch(block,/parseWriteIntent|prepareAction|add_trial|update_trial/);
 });
 
-test('mobile inline trial cancel reason routes directly to source-bound Agent — shared dispatch contract',()=> {
-  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
-  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
-  const dispatch=talk.slice(dispatchStart,dispatchEnd);
-  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
-  const ai=talk.slice(aiStart,aiEnd);
-  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
-  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
-  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
-  assert.match(dispatch,/case 'trial_cancel'/);
-  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+test('mobile trial cancel legacy reason compatibility stays outside the shared Agent switch',()=> {
+  const dispatch=talk.slice(talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn'),talk.indexOf('async function resolveOlliTalkAiTurn'));
+  const ai=talk.slice(talk.indexOf('async function resolveOlliTalkAiTurn'),talk.indexOf('function getOlliTalkMentionMessageText'));
+  assert.doesNotMatch(dispatch,/case 'trial_cancel'/);
+  assert.match(ai,/__trialCancelAgent/);
+  assert.match(ai,/resolveOlliTalkTrialCancelAgentTurn/);
+  const classify=ai.indexOf('const routeClassifier=');
   const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
   assert.ok(classify>=0 && legacy>classify);
-  assert.match(ai,/__trialCancelAgent/);
 });
 test('mobile two-turn trial cancellation preserves reason prompt then uses Agent on second message',()=>{
   const start=talk.indexOf('async function resolveOlliTalkAiTurn');
@@ -43,7 +37,7 @@ test('mobile two-turn trial cancellation preserves reason prompt then uses Agent
 
 test('mobile trial cancel resolver binds both saved messages and never saves a second card client-side',()=>{
   const start=talk.indexOf('async function resolveOlliTalkTrialCancelAgentTurn');
-  const end=talk.indexOf('async function resolveOlliTalkTrialUpdateAgentTurn',start);
+  const end=talk.indexOf('async function resolveOlliTalkStructuredWaitlistUpdateTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'trial_cancel_prepare'/);
   assert.match(block,/sourceMessageId:sourceId/);
