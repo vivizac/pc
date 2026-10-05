@@ -5980,7 +5980,7 @@
       sender.className = 'olliTalkBetaSender';
       const avatar = document.createElement('span');
       avatar.className = 'olliTalkBetaMemberAvatar olliTalkBetaAiAvatar';
-      avatar.textContent = '올리';
+      avatar.textContent = 'Olli';
       avatar.setAttribute('aria-hidden', 'true');
       sender.appendChild(avatar);
       sender.appendChild(createMessageText('span', 'olliTalkBetaSenderName', '올리'));
@@ -6044,7 +6044,7 @@
     sender.className = 'olliTalkBetaSender';
     const avatar = document.createElement('span');
     avatar.className = 'olliTalkBetaMemberAvatar olliTalkBetaAiAvatar';
-    avatar.textContent = '올리';
+    avatar.textContent = 'Olli';
     avatar.setAttribute('aria-hidden', 'true');
     sender.appendChild(avatar);
     sender.appendChild(createMessageText('span', 'olliTalkBetaSenderName', '올리'));
