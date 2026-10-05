@@ -1174,36 +1174,6 @@
     }
   }
 
-  function isOlliTalkPickupCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parsePickupCancelMutationIntent!=='function') return false;
-    try{
-      return String(router.parsePickupCancelMutationIntent(commandText)?.intent || '').trim()==='cancel_pickup';
-    }catch(error){
-      console.warn('올리톡 픽업 삭제 Agent 후보 판별 실패:',error);
-      return false;
-    }
-  }
-
-  function isOlliTalkPickupUpdateAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parsePickupUpdateMutationIntent!=='function') return false;
-    try{
-      return String(router.parsePickupUpdateMutationIntent(commandText)?.intent || '').trim()==='update_pickup';
-    }catch(error){
-      console.warn('올리톡 픽업 수정 Agent 후보 판별 실패:',error);
-      return false;
-    }
-  }
-
-  function isOlliTalkPickupAddAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parsePickupMutationIntent!=='function') return false;
-    try{
-      return String(router.parsePickupMutationIntent(commandText)?.intent || '').trim()==='add_pickup';
-    }catch(error){
-      console.warn('올리톡 픽업 등록 Agent 후보 판별 실패:',error);
-      return false;
-    }
-  }
-
   function parseOlliTalkAbsenceAgentCandidate(commandText,router=window.OlliCommandRouter){
     if(!router || typeof router.parseAbsenceMutationIntent!=='function') return null;
     try{
@@ -2114,98 +2084,6 @@
     };
   }
 
-  async function resolveOlliTalkPickupCancelAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('픽업 삭제 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'pickup_cancel_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '픽업 삭제 Agent 응답을 받지 못했습니다.');
-    }
-    const actionType=String(data.message.action.action_type || '').trim();
-    if(!['cancel_pickup','cancel_pickup_dropoff'].includes(actionType)){
-      throw new Error('픽업 삭제 Agent 작업 종류가 올바르지 않습니다.');
-    }
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
-  async function resolveOlliTalkPickupUpdateAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('픽업 수정 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'pickup_update_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '픽업 수정 Agent 응답을 받지 못했습니다.');
-    }
-    const actionType=String(data.message.action.action_type || '').trim();
-    if(!['update_pickup_arrival','update_pickup_dropoff'].includes(actionType)){
-      throw new Error('픽업 수정 Agent 작업 종류가 올바르지 않습니다.');
-    }
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
-  async function resolveOlliTalkPickupAddAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('픽업 등록 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'pickup_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '픽업 등록 Agent 응답을 받지 못했습니다.');
-    }
-    if(String(data.message.action.action_type || '').trim()!=='add_pickup'){
-      throw new Error('픽업 등록 Agent 작업 종류가 올바르지 않습니다.');
-    }
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
   async function resolveOlliTalkAbsenceAgentTurn({
     sourceText,
     sourceMessageId,
@@ -2484,9 +2362,6 @@
       case 'waitlist_cancel':{
         const turn=await resolveOlliTalkWaitlistCancelAgentTurn(commandText,context,replyToMessageId); return turn||null;
       }
-      case 'pickup_cancel': return resolveOlliTalkPickupCancelAgentTurn(commandText,context,replyToMessageId);
-      case 'pickup_update': return resolveOlliTalkPickupUpdateAgentTurn(commandText,context,replyToMessageId);
-      case 'pickup_add': return resolveOlliTalkPickupAddAgentTurn(commandText,context,replyToMessageId);
       case 'makeup_update': return resolveOlliTalkMakeupUpdateAgentTurn(commandText,context,replyToMessageId);
       case 'makeup_add': return resolveOlliTalkMakeupAddAgentTurn(commandText,context,replyToMessageId);
       case 'move_cancel': return resolveOlliTalkMoveCancelAgentTurn(commandText,context,replyToMessageId);

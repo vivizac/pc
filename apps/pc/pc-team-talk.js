@@ -2409,36 +2409,6 @@
     }
   }
 
-  function isPickupCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
-    if (!router || typeof router.parsePickupCancelMutationIntent !== 'function') return false;
-    try {
-      return clean(router.parsePickupCancelMutationIntent(commandText)?.intent) === 'cancel_pickup';
-    } catch (error) {
-      console.warn('PC 픽업 삭제 Agent 후보 판별 실패:', error?.message || error);
-      return false;
-    }
-  }
-
-  function isPickupUpdateAgentCandidate(commandText, router = global.OlliCommandRouter) {
-    if (!router || typeof router.parsePickupUpdateMutationIntent !== 'function') return false;
-    try {
-      return clean(router.parsePickupUpdateMutationIntent(commandText)?.intent) === 'update_pickup';
-    } catch (error) {
-      console.warn('PC 픽업 수정 Agent 후보 판별 실패:', error?.message || error);
-      return false;
-    }
-  }
-
-  function isPickupAddAgentCandidate(commandText, router = global.OlliCommandRouter) {
-    if (!router || typeof router.parsePickupMutationIntent !== 'function') return false;
-    try {
-      return clean(router.parsePickupMutationIntent(commandText)?.intent) === 'add_pickup';
-    } catch (error) {
-      console.warn('PC 픽업 Agent 후보 판별 실패:', error?.message || error);
-      return false;
-    }
-  }
-
   async function resolveAttendanceStatusAgentTurn(commandText, parsed, current, replyToMessageId) {
     const sourceMessageId=Number(replyToMessageId || 0);
     if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
@@ -3523,106 +3493,6 @@
     };
   }
 
-  async function resolvePickupCancelAgentTurn(commandText, current, replyToMessageId) {
-    const sourceMessageId = Number(replyToMessageId || 0);
-    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
-      throw new Error('픽업 삭제 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-
-    const response = await fetch('/api/olli-agent', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body:JSON.stringify({
-        mode:'pickup_cancel_prepare',
-        academyId:current?.academyId || '',
-        sessionToken:current?.sessionToken || '',
-        message:clean(commandText),
-        sourceMessageId
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || data?.ok !== true || !data?.message?.action) {
-      throw new Error(data?.error || data?.message || '픽업 삭제 Agent 응답을 받지 못했습니다.');
-    }
-
-    const actionType = clean(data.message.action.action_type);
-    if (!['cancel_pickup', 'cancel_pickup_dropoff'].includes(actionType)) {
-      throw new Error('픽업 삭제 Agent 작업 종류가 올바르지 않습니다.');
-    }
-
-    return {
-      assistantMessage:data.message,
-      replyText:clean(data.message.body),
-      recordAi:false
-    };
-  }
-
-  async function resolvePickupUpdateAgentTurn(commandText, current, replyToMessageId) {
-    const sourceMessageId = Number(replyToMessageId || 0);
-    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
-      throw new Error('픽업 수정 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-
-    const response = await fetch('/api/olli-agent', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body:JSON.stringify({
-        mode:'pickup_update_prepare',
-        academyId:current?.academyId || '',
-        sessionToken:current?.sessionToken || '',
-        message:clean(commandText),
-        sourceMessageId
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || data?.ok !== true || !data?.message?.action) {
-      throw new Error(data?.error || data?.message || '픽업 수정 Agent 응답을 받지 못했습니다.');
-    }
-
-    const actionType = clean(data.message.action.action_type);
-    if (!['update_pickup_arrival', 'update_pickup_dropoff'].includes(actionType)) {
-      throw new Error('픽업 수정 Agent 작업 종류가 올바르지 않습니다.');
-    }
-
-    return {
-      assistantMessage:data.message,
-      replyText:clean(data.message.body),
-      recordAi:false
-    };
-  }
-
-  async function resolvePickupAddAgentTurn(commandText, current, replyToMessageId) {
-    const sourceMessageId = Number(replyToMessageId || 0);
-    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
-      throw new Error('픽업 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-
-    const response = await fetch('/api/olli-agent', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body:JSON.stringify({
-        mode:'pickup_prepare',
-        academyId:current?.academyId || '',
-        sessionToken:current?.sessionToken || '',
-        message:clean(commandText),
-        sourceMessageId
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || data?.ok !== true || !data?.message?.action) {
-      throw new Error(data?.error || data?.message || '픽업 Agent 응답을 받지 못했습니다.');
-    }
-    if (clean(data.message.action.action_type) !== 'add_pickup') {
-      throw new Error('픽업 Agent 작업 종류가 올바르지 않습니다.');
-    }
-
-    return {
-      assistantMessage:data.message,
-      replyText:clean(data.message.body),
-      recordAi:false
-    };
-  }
-
   async function saveAssistantReply(current, body, replyToMessageId) {
     const payload = await rpc('olli_team_chat_send_ai', {
       p_session_token: current.sessionToken,
@@ -3847,9 +3717,6 @@
       case 'waitlist_cancel': {
         const turn=await resolveWaitlistCancelAgentTurn(commandText,current,replyToMessageId); return turn||null;
       }
-      case 'pickup_cancel': return resolvePickupCancelAgentTurn(commandText,current,replyToMessageId);
-      case 'pickup_update': return resolvePickupUpdateAgentTurn(commandText,current,replyToMessageId);
-      case 'pickup_add': return resolvePickupAddAgentTurn(commandText,current,replyToMessageId);
       case 'makeup_update': return resolveMakeupUpdateAgentTurn(commandText,current,replyToMessageId);
       case 'makeup_add': return resolveMakeupAddAgentTurn(commandText,current,replyToMessageId);
       case 'move_cancel': return resolveMoveCancelAgentTurn(commandText,current,replyToMessageId);

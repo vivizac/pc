@@ -27,3 +27,9 @@ test('other compatibility switch cases remain gated behind the narrow Agent clas
     assert.match(source,/interpreterRoute==='agent'/);
   }
 });
+
+
+test('pickup CRUD dead client Agent bridges are removed after structured migration',()=>{
+  assert.doesNotMatch(pc,/resolvePickup(?:Add|Update|Cancel)AgentTurn|isPickup(?:Add|Update|Cancel)AgentCandidate/);
+  assert.doesNotMatch(mobile,/resolveOlliTalkPickup(?:Add|Update|Cancel)AgentTurn|isOlliTalkPickup(?:Add|Update|Cancel)AgentCandidate/);
+});
