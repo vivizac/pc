@@ -416,11 +416,11 @@
     if (!raw || !hasMoveAction(compact) || hasRemoveAction(compact)) return null;
 
     const mentions = weekdayTimeMentions(raw);
-    if (mentions.length < 2) return null;
+    if (!mentions.length) return null;
 
-    const source = mentions[0];
-    const target = mentions[1];
-    if (!source.weekday || !target.weekday || !target.timeSlot) return null;
+    const source = mentions.length >= 2 ? mentions[0] : {weekday:0,timeSlot:0};
+    const target = mentions.length >= 2 ? mentions[1] : mentions[0];
+    if (!target.weekday || !target.timeSlot) return null;
 
     const studentName = extractStudentName(
       raw,
@@ -433,10 +433,10 @@
       type:'mutation',
       intent:'move_class',
       studentName,
-      sourceWeekday:source.weekday,
-      sourceTimeSlot:source.timeSlot,
-      targetWeekday:target.weekday,
-      targetTimeSlot:target.timeSlot,
+      sourceWeekday:Number(source.weekday || 0),
+      sourceTimeSlot:Number(source.timeSlot || 0),
+      targetWeekday:Number(target.weekday || 0),
+      targetTimeSlot:Number(target.timeSlot || 0),
       classGroup:firstClassGroup(raw),
       originalText:raw
     };
