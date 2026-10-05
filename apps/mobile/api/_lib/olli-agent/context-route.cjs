@@ -263,7 +263,7 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
     'If the deterministic system previously asked the user to choose using buttons, do not invent the choice. Button clicks are handled outside this interpreter.',
     'Feedback means analysis, summary, comparison, or writing based on saved feedback, observation notes, QuickNote/class notes, portfolios, or other student-record content.',
     'Chat means ordinary conversation unrelated to deterministic academy work or feedback-record analysis.',
-    'For routine, choose the closest allowed intent and leave reply empty. For feedback use intent complex_analysis and leave reply empty. For chat use intent general_chat and answer briefly in Korean.',
+    'For routine, choose the closest allowed intent. For feedback use intent complex_analysis. For chat use intent general_chat. Do not answer the user; another path handles chat and feedback responses.',
     'Allowed intents: '+OLLI_SYSTEM_LANGUAGE_INTENTS.join(', ')+'.',
     'Return only the required JSON.'
   ].join(' ');
@@ -279,12 +279,11 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
   const schema={
     type:'object',
     additionalProperties:false,
-    required:['lane','intent','standalone_command','reply','context_used'],
+    required:['lane','intent','standalone_command','context_used'],
     properties:{
       lane:{type:'string',enum:OLLI_INTERPRETER_LANES},
       intent:{type:'string',enum:OLLI_SYSTEM_LANGUAGE_INTENTS},
       standalone_command:{type:'string'},
-      reply:{type:'string'},
       context_used:{type:'boolean'},
     },
   };
