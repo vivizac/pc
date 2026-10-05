@@ -16,9 +16,9 @@ test('route classifier is classification-only and contains no network or mutatio
   assert.doesNotMatch(common,/runQuery\s*\(/);
 });
 
-test('classifier reuses existing deterministic router parsers',()=>{
+test('classifier reuses only attendance status parser for remaining write Agent route',()=>{
+  assert.match(common,/parseAttendanceStatusMutationIntent/);
   for(const parser of [
-    'parseAttendanceStatusMutationIntent',
     'parseClassLayoutMutationIntent',
     'parseMultiWriteIntent',
     'parseTimetableMemoDeleteMutationIntent',
@@ -28,12 +28,12 @@ test('classifier reuses existing deterministic router parsers',()=>{
     'parseMakeupMutationIntent',
     'parseScheduleMoveMutationIntent',
     'parseClassMutationIntent',
-    'parseQueryIntent',
-  ]){
-    assert.match(common,new RegExp(parser));
-  }
+    'parseQueryIntent'
+  ]) assert.doesNotMatch(common,new RegExp(parser));
 });
 
-test('classification phase preserves explicit-division gate for trial add',()=>{
-  assert.match(common,/\['elementary','kinder'\]\.includes/);
+test('classifier keeps attendance and pickup history read detectors only',()=>{
+  assert.match(common,/isStudentAttendanceReadCandidate/);
+  assert.match(common,/isStudentPickupReadCandidate/);
+  assert.doesNotMatch(common,/isStudentScheduleReadCandidate/);
 });

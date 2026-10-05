@@ -3877,66 +3877,19 @@
     return resolveBatchAgentTurn({sourceText:clean(commandText),sourceMessageId:sourceId,commands,current});
   }
 
-  async function resolveSharedAgentRouteTurn(route, commandText, current, replyToMessageId, batchCommands=[]) {
+  async function resolveSharedAgentRouteTurn(route, commandText, current, replyToMessageId) {
     if (!route || !route.key) return null;
     const parsed = route.parsed || null;
 
     switch (route.key) {
       case 'attendance_status':
         return resolveAttendanceStatusAgentTurn(commandText, parsed, current, replyToMessageId);
-      case 'timetable_admin':
-        return resolveTimetableAdminRuleTurn(commandText, parsed, current, replyToMessageId);
-      case 'batch_write':
-        return resolveBatchRuleTurn(parsed,commandText,current,replyToMessageId,batchCommands);
-      case 'timetable_memo':
-        return resolveTimetableMemoAgentTurn(commandText, parsed, current, replyToMessageId);
-      case 'trial_cancel':
-        if (!clean(parsed?.reason)) return null;
-        return resolveTrialCancelAgentTurn({
-          sourceText:clean(commandText),sourceMessageId:Number(replyToMessageId || 0),
-          reasonText:clean(parsed.reason),reasonMessageText:clean(commandText),
-          reasonMessageId:Number(replyToMessageId || 0),current
-        });
-      case 'makeup_cancel':
-        if (!clean(parsed?.reason)) return null;
-        return resolveMakeupCancelAgentTurn({
-          sourceText:clean(commandText),sourceMessageId:Number(replyToMessageId || 0),
-          reasonText:clean(parsed.reason),reasonMessageText:clean(commandText),
-          reasonMessageId:Number(replyToMessageId || 0),current
-        });
-      case 'absence':
-        if (!clean(parsed?.reason)) return null;
-        return resolveAbsenceAgentTurn({
-          sourceText:clean(commandText),sourceMessageId:Number(replyToMessageId || 0),
-          reasonText:clean(parsed.reason),reasonMessageText:clean(commandText),
-          reasonMessageId:Number(replyToMessageId || 0),current
-        });
-      case 'trial_add': return resolveTrialAddAgentTurn(commandText,current,replyToMessageId);
-      case 'trial_update': return resolveTrialUpdateAgentTurn(commandText,current,replyToMessageId);
-      case 'waitlist_add': {
-        const turn=await resolveWaitlistAddAgentTurn(commandText,current,replyToMessageId); return turn||null;
-      }
-      case 'waitlist_update': return resolveWaitlistUpdateAgentTurn(commandText,current,replyToMessageId);
-      case 'waitlist_cancel': {
-        const turn=await resolveWaitlistCancelAgentTurn(commandText,current,replyToMessageId); return turn||null;
-      }
-      case 'pickup_cancel': return resolvePickupCancelAgentTurn(commandText,current,replyToMessageId);
-      case 'pickup_update': return resolvePickupUpdateAgentTurn(commandText,current,replyToMessageId);
-      case 'pickup_add': return resolvePickupAddAgentTurn(commandText,current,replyToMessageId);
-      case 'makeup_update': return resolveMakeupUpdateAgentTurn(commandText,current,replyToMessageId);
-      case 'makeup_add': return resolveMakeupAddAgentTurn(commandText,current,replyToMessageId);
-      case 'move_cancel': return resolveMoveCancelAgentTurn(commandText,current,replyToMessageId);
-      case 'move': return resolveMoveAgentTurn(commandText,current,replyToMessageId);
-      case 'class_once': return resolveClassOnceAgentTurn(commandText,current,replyToMessageId);
-      case 'timetable_read':
-        return resolveSourceBoundReadAgentTurn({mode:'timetable_read',commandText,readIntent:parsed,current,replyToMessageId});
       case 'attendance_read':
         return resolveSourceBoundReadAgentTurn({mode:'attendance_read',commandText,current,replyToMessageId});
       case 'pickup_read':
         return resolveSourceBoundReadAgentTurn({mode:'pickup_read',commandText,current,replyToMessageId});
-      case 'schedule_read':
-        return resolveSourceBoundReadAgentTurn({mode:'schedule_read',commandText,current,replyToMessageId});
-      default: return null;
+      default:
+        return null;
     }
   }
 
@@ -4789,7 +4742,7 @@
       : null;
     if(interpreterRoute==='agent'){
       if(sharedRoute){
-        const routedTurn=await resolveSharedAgentRouteTurn(sharedRoute,commandText,current,replyToMessageId,batchCommands);
+        const routedTurn=await resolveSharedAgentRouteTurn(sharedRoute,commandText,current,replyToMessageId);
         if(routedTurn) return routedTurn;
       }
       const resolved=await resolveAiReply(rawCommandText,current);

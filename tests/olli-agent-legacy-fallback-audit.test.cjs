@@ -14,107 +14,55 @@ const mobile=fs.readFileSync(path.join(ROOT,'apps','mobile','olli-talk-beta.js')
 function classify(text){
   return classifier.classify(text,{router});
 }
-
-function functionSlice(source,startToken,endToken){
-  const start=source.indexOf(startToken);
-  assert.ok(start>=0,'missing start token: '+startToken);
-  const end=source.indexOf(endToken,start);
-  assert.ok(end>start,'missing end token: '+endToken);
-  return source.slice(start,end);
+function slice(source,start,end){
+  const a=source.indexOf(start);
+  const b=source.indexOf(end,a);
+  assert.ok(a>=0&&b>a);
+  return source.slice(a,b);
 }
 
-test('divisionless trial add is an intentional live legacy write dependency',()=>{
-  const input='민수 10월 5일 4시 체험 등록해줘';
-  const legacy=router.classifyRequest(input);
-  assert.equal(legacy.type,'mutation');
-  assert.equal(legacy.intent,'add_trial');
-  assert.equal(legacy.parsed.division,'');
-  assert.equal(classify(input),null);
+test('routine write families no longer enter current Agent classifier',()=>{
+  for(const input of [
+    '민수 오늘 4시 수업 결석 처리해줘',
+    '민수 10월 5일 체험 취소해줘',
+    '민수 10월 5일 보강 취소해줘',
+    '민수 초등부 10월 5일 4시 체험 등록해줘',
+    '민수 화요일 4시 픽업 등록해줘'
+  ]) assert.equal(classify(input),null,input);
 });
 
-test('reason-required writes intentionally fall through to legacy reason prompting when reason is missing',()=>{
-  const cases=[
-    ['민수 오늘 4시 수업 결석 처리해줘','absence'],
-    ['민수 10월 5일 체험 취소해줘','trial_cancel'],
-    ['민수 10월 5일 보강 취소해줘','makeup_cancel'],
-  ];
-  for(const [input,key] of cases){
-    const route=classify(input);
-    assert.equal(route?.key,key,input);
-    assert.equal(String(route?.parsed?.reason || '').trim(),'',input);
-  }
-
-  const pcDispatch=functionSlice(
-    pc,
-    'async function resolveSharedAgentRouteTurn',
-    'async function resolveAiTurn'
-  );
-  const mobileDispatch=functionSlice(
-    mobile,
-    'async function resolveOlliTalkSharedAgentRouteTurn',
-    'async function resolveOlliTalkAiTurn'
-  );
-
-  for(const source of [pcDispatch,mobileDispatch]){
-    assert.match(source,/case 'trial_cancel':[\s\S]*?return null/);
-    assert.match(source,/case 'makeup_cancel':[\s\S]*?return null/);
-    assert.match(source,/case 'absence':[\s\S]*?return null/);
+test('structured reason-required paths run before Agent classifier on PC and Mobile',()=>{
+  const pcTurn=slice(pc,'async function resolveAiTurn','function updateComposerState');
+  const mobileTurn=slice(mobile,'async function resolveOlliTalkAiTurn','function getOlliTalkMentionMessageText');
+  for(const source of [pcTurn,mobileTurn]){
+    const classifierPos=source.indexOf('const routeClassifier=');
+    assert.ok(classifierPos>=0);
+    assert.ok(source.indexOf('cancel_makeup')>=0 && source.indexOf('cancel_makeup')<classifierPos);
+    assert.ok(source.indexOf('cancel_trial')>=0 && source.indexOf('cancel_trial')<classifierPos);
   }
 });
 
-test('legacy parser-recognized reads are already classified before runQuery fallback',()=>{
+test('deterministic read families no longer enter Agent classifier',()=>{
   const cases=[
     ['오늘 초등부 4시 빈자리 알려줘','find_available_slots'],
     ['오늘 4시 체험 학생 누구야?','find_roster_entries'],
     ['오늘 4시 픽업 누구 있어?','find_pickups'],
-    ['월요일 4시 자리하고 화요일 5시 자리 알려줘','multi_read_query'],
+    ['월요일 4시 자리하고 화요일 5시 자리 알려줘','multi_read_query']
   ];
-
   for(const [input,intent] of cases){
-    const parsed=router.parseQueryIntent(input);
-    assert.equal(parsed?.intent,intent,input);
-    const route=classify(input);
-    assert.equal(route?.key,'timetable_read',input);
-    assert.equal(route?.parsed?.intent,intent,input);
+    assert.equal(router.parseQueryIntent(input)?.intent,intent,input);
+    assert.equal(classify(input),null,input);
   }
 });
 
-test('AI mode keeps shared Agent dispatch before legacy executor on both platforms',()=>{
-  const pcTurn=functionSlice(pc,'async function resolveAiTurn','function updateComposerState');
-  const mobileTurn=functionSlice(mobile,'async function resolveOlliTalkAiTurn','function getOlliTalkMentionMessageText');
-
-  for(const source of [pcTurn,mobileTurn]){
-    const classifyPos=source.indexOf('routeClassifier.classify(commandText,{router})');
-    const preparePos=source.indexOf('router.prepareAction(commandText');
-    const queryPos=source.indexOf('router.runQuery(commandText');
-    assert.ok(classifyPos>=0);
-    assert.ok(preparePos>classifyPos);
-    assert.ok(queryPos>preparePos);
+test('reply-button suggested query remains before general chat fallback',()=>{
+  for(const source of [
+    slice(pc,'async function resolveAiTurn','function updateComposerState'),
+    slice(mobile,'async function resolveOlliTalkAiTurn','function getOlliTalkMentionMessageText')
+  ]){
+    const suggested=source.indexOf('runSuggestedQuery(commandText');
+    const general=Math.max(source.indexOf('resolveAiReply(rawCommandText'),source.indexOf('resolveOlliTalkAiReply(rawCommandText'));
+    assert.ok(suggested>=0);
+    assert.ok(general>suggested);
   }
-});
-
-test('reply-button suggested query remains an intentional legacy dependency before general chat',()=>{
-  const pcTurn=functionSlice(pc,'async function resolveAiTurn','function updateComposerState');
-  const mobileTurn=functionSlice(mobile,'async function resolveOlliTalkAiTurn','function getOlliTalkMentionMessageText');
-
-  for(const source of [pcTurn,mobileTurn]){
-    const suggestedPos=source.indexOf('runSuggestedQuery(commandText');
-    const generalPos=source.indexOf('resolveAiReply(rawCommandText');
-    const mobileGeneralPos=source.indexOf('resolveOlliTalkAiReply(rawCommandText');
-    const fallbackPos=generalPos>=0 ? generalPos : mobileGeneralPos;
-    assert.ok(suggestedPos>=0);
-    assert.ok(fallbackPos>suggestedPos);
-  }
-});
-
-test('Mobile-only student info and makeup draft adapters remain outside shared/legacy executor ownership',()=>{
-  const turn=functionSlice(mobile,'async function resolveOlliTalkAiTurn','function getOlliTalkMentionMessageText');
-  const dispatchPos=turn.indexOf('resolveOlliTalkSharedAgentRouteTurn');
-  const draftPos=turn.indexOf('parseOlliTalkMakeupAddDraftCandidate',dispatchPos);
-  const studentInfoPos=turn.indexOf('resolveOlliTalkStudentInfoCommand',draftPos);
-  const preparePos=turn.indexOf('router.prepareAction(commandText',studentInfoPos);
-  assert.ok(dispatchPos>=0);
-  assert.ok(draftPos>dispatchPos);
-  assert.ok(studentInfoPos>draftPos);
-  assert.ok(preparePos>studentInfoPos);
 });
