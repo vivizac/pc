@@ -10,7 +10,7 @@ const js=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'utf8')
 const css=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.css'),'utf8');
 
 test('mobile Team Chat keeps both teacher and Olli mentions blue',()=>{
-  assert.match(css,/--olli-talk-olli-accent:#EC70AF/);
+  assert.match(css,/--olli-talk-olli-accent:color\(display-p3 \.9255 \.4392 \.6863\)/);
   assert.match(css,/\.olliTalkSelectedMentionToken,[\s\S]*\.olliTalkSelectedMentionToken\.olli\{\s*color:#1687F8/);
   assert.doesNotMatch(css,/\.olliTalkSelectedMentionToken\.olli\{\s*color:var\(--olli-talk-olli-accent\)/);
 });

@@ -5811,9 +5811,18 @@
     card.dataset.actionStatus=status;
 
     if(status!=='pending'){
-      const label=createMessageText('span','olliTalkBetaActionStatus',getOlliTalkActionStatusLabel(action));
-      if(status==='failed') label.classList.add('failed');
-      card.appendChild(label);
+      if(status==='completed'){
+        const confirmed=document.createElement('button');
+        confirmed.type='button';
+        confirmed.className='olliTalkBetaActionButton primary confirmed';
+        confirmed.textContent='확인';
+        confirmed.disabled=true;
+        card.appendChild(confirmed);
+      }else{
+        const label=createMessageText('span','olliTalkBetaActionStatus',getOlliTalkActionStatusLabel(action));
+        if(status==='failed') label.classList.add('failed');
+        card.appendChild(label);
+      }
       return card;
     }
 
@@ -5989,6 +5998,16 @@
 
     const diff = currentTime - previousTime;
     return diff >= 0 && diff < 60 * 1000;
+  }
+
+  function appendOlliTalkInlineSystemResult(messageElement, item){
+    const incomingLayout=messageElement?.querySelector?.('.olliTalkBetaIncomingLayout');
+    if(!incomingLayout) return false;
+    const bubble=createOlliTalkMessageBubble(item);
+    bubble.classList.add('olliTalkBetaSystemBubble','olliTalkBetaInlineSystemResult');
+    bubble.dataset.messageId=String(item?.id || '');
+    incomingLayout.appendChild(bubble);
+    return true;
   }
 
   function createOlliTalkMessageElement(item, currentMemberId, options = {}){
@@ -6207,7 +6226,21 @@
 
     let lastDateKey = '';
     let groupStartItem = null;
-    messages.forEach((item) => {
+    messages.forEach((item, index) => {
+      const previousItem=index>0 ? messages[index-1] : null;
+      const isInlineSystemResult=String(item?.message_type || 'text')==='system'
+        && String(previousItem?.message_type || '')==='ai'
+        && String(previousItem?.action?.status || '')==='completed';
+
+      if(isInlineSystemResult){
+        const previousMessage=list.lastElementChild;
+        if(previousMessage?.classList?.contains('olliTalkBetaMessage')
+          && appendOlliTalkInlineSystemResult(previousMessage,item)){
+          groupStartItem=null;
+          return;
+        }
+      }
+
       const dateKey = getOlliTalkDateKey(item?.created_at);
       const dateChanged = !!(dateKey && dateKey !== lastDateKey);
       if (dateChanged) {
