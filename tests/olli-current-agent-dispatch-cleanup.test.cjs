@@ -59,3 +59,30 @@ test('trial add and update dead client Agent bridges are removed after structure
   assert.doesNotMatch(pc,/resolveTrial(?:Add|Update)AgentTurn|isTrial(?:Add|Update)AgentCandidate/);
   assert.doesNotMatch(mobile,/resolveOlliTalkTrial(?:Add|Update)AgentTurn|isOlliTalkTrial(?:Add|Update)AgentCandidate/);
 });
+
+
+test('obsolete local Agent candidate duplicates and unreachable read switch cases are removed',()=>{
+  for(const token of [
+    'parseAttendanceStatusAgentCandidate',
+    'parseTimetableReadAgentCandidate',
+    'isStudentAttendanceReadCandidate',
+    'isStudentPickupReadCandidate',
+    'isStudentScheduleReadCandidate'
+  ]) assert.doesNotMatch(pc,new RegExp('function '+token+'\\b'));
+
+  for(const token of [
+    'parseOlliTalkAttendanceStatusAgentCandidate',
+    'parseOlliTalkTimetableReadAgentCandidate',
+    'isOlliTalkStudentAttendanceReadCandidate',
+    'isOlliTalkStudentPickupReadCandidate',
+    'isOlliTalkStudentScheduleReadCandidate'
+  ]) assert.doesNotMatch(mobile,new RegExp('function '+token+'\\b'));
+
+  const pcDispatch=pc.slice(pc.indexOf('async function resolveSharedAgentRouteTurn'),pc.indexOf('async function resolveContextualMakeupTurn'));
+  const mobileDispatch=mobile.slice(mobile.indexOf('async function resolveOlliTalkSharedAgentRouteTurn'),mobile.indexOf('async function resolveOlliTalkContextualMakeupTurn'));
+  for(const dispatch of [pcDispatch,mobileDispatch]){
+    assert.doesNotMatch(dispatch,/case 'timetable_read'|case 'schedule_read'/);
+    assert.match(dispatch,/case 'attendance_read'/);
+    assert.match(dispatch,/case 'pickup_read'/);
+  }
+});

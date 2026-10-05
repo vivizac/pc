@@ -1985,16 +1985,6 @@
     return { message };
   }
 
-  function parseAttendanceStatusAgentCandidate(commandText, router = global.OlliCommandRouter) {
-    if (!router || typeof router.parseAttendanceStatusMutationIntent !== 'function') return null;
-    try {
-      return router.parseAttendanceStatusMutationIntent(commandText) || null;
-    } catch (error) {
-      console.warn('PC 출석부 상태 변경 Agent 후보 판별 실패:', error?.message || error);
-      return null;
-    }
-  }
-
   function parseTimetableAdminRuleCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router) return null;
     try {
@@ -2014,43 +2004,6 @@
       console.warn('PC 시간표 관리 Agent 후보 판별 실패:', error?.message || error);
       return null;
     }
-  }
-
-  function parseTimetableReadAgentCandidate(commandText, router = global.OlliCommandRouter) {
-    if (!router || typeof router.parseQueryIntent !== 'function') return null;
-    try {
-      const parsed=router.parseQueryIntent(commandText);
-      return parsed && ['find_available_slots','find_roster_entries','find_pickups','multi_read_query'].includes(clean(parsed.intent))
-        ? parsed
-        : null;
-    } catch (error) {
-      console.warn('PC 시간표 읽기 Agent 후보 판별 실패:', error?.message || error);
-      return null;
-    }
-  }
-
-  function isStudentAttendanceReadCandidate(commandText) {
-    const compact=clean(commandText).replace(/\s+/g,'');
-    if (!compact) return false;
-    return /(?:출결|출석(?:기록|현황|내역)?|결석(?:기록|현황|내역|횟수))/.test(compact)
-      && /(?:알려|보여|확인|조회|기록|현황|내역|횟수|몇번|몇회|했어|했나|있어|어때)/.test(compact);
-  }
-
-  function isStudentPickupReadCandidate(commandText) {
-    const compact=clean(commandText).replace(/\s+/g,'');
-    return !!compact && (
-      /(?:픽업|하원).*(?:일정|시간|어디|몇시|확인|알려|보여|조회)/.test(compact)
-      || /(?:일정|시간|어디|몇시).*(?:픽업|하원)/.test(compact)
-    );
-  }
-
-  function isStudentScheduleReadCandidate(commandText) {
-    const compact=clean(commandText).replace(/\s+/g,'');
-    return !!compact && (
-      /시간표/.test(compact)
-      || /수업.*(?:언제|요일|몇시|시간|스케줄)/.test(compact)
-      || /(?:언제|요일|몇시|시간|스케줄).*수업/.test(compact)
-    );
   }
 
   function parseBatchAgentCandidate(commandText, router = global.OlliCommandRouter) {
@@ -3314,14 +3267,10 @@
           reasonMessageId:Number(replyToMessageId || 0),current
         });
       case 'class_once': return resolveClassOnceAgentTurn(commandText,current,replyToMessageId);
-      case 'timetable_read':
-        return resolveSourceBoundReadAgentTurn({mode:'timetable_read',commandText,readIntent:parsed,current,replyToMessageId});
       case 'attendance_read':
         return resolveSourceBoundReadAgentTurn({mode:'attendance_read',commandText,current,replyToMessageId});
       case 'pickup_read':
         return resolveSourceBoundReadAgentTurn({mode:'pickup_read',commandText,current,replyToMessageId});
-      case 'schedule_read':
-        return resolveSourceBoundReadAgentTurn({mode:'schedule_read',commandText,current,replyToMessageId});
       default: return null;
     }
   }
