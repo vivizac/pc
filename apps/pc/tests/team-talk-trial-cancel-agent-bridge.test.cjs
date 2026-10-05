@@ -14,21 +14,15 @@ test('PC trial cancel candidate uses only shared trial cancel parser',()=>{
   assert.doesNotMatch(block,/parseWriteIntent|prepareAction|add_trial|update_trial/);
 });
 
-test('PC inline trial cancel reason routes directly to source-bound Agent — shared dispatch contract', () => {
-  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
-  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
-  const dispatch=talk.slice(dispatchStart,dispatchEnd);
-  const aiStart=talk.indexOf('async function resolveAiTurn');
-  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
-  const ai=talk.slice(aiStart,aiEnd);
-  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
-  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
-  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
-  assert.match(dispatch,/case 'trial_cancel'/);
-  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+test('PC trial cancel legacy reason compatibility stays outside the shared Agent switch', () => {
+  const dispatch=talk.slice(talk.indexOf('async function resolveSharedAgentRouteTurn'),talk.indexOf('async function resolveAiTurn'));
+  const ai=talk.slice(talk.indexOf('async function resolveAiTurn'),talk.indexOf('function updateComposerState'));
+  assert.doesNotMatch(dispatch,/case 'trial_cancel'/);
+  assert.match(ai,/__trialCancelAgent/);
+  assert.match(ai,/resolveTrialCancelAgentTurn/);
+  const classify=ai.indexOf('const routeClassifier=');
   const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
   assert.ok(classify>=0 && legacy>classify);
-  assert.match(ai,/__trialCancelAgent/);
 });
 test('PC two-turn trial cancellation preserves reason prompt then uses Agent on second message',()=>{
   const start=talk.indexOf('async function resolveAiTurn');

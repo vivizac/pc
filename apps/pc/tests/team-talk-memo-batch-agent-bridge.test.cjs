@@ -40,6 +40,8 @@ test('PC batch remains rule-routed and uses batch_prepare',()=>{
   assert.match(talk,/assistantMessages:messages/);
   assert.match(talk,/function batchCommandNeedsClarification/);
   assert.match(talk,/function applyBatchClarification/);
+  const dispatch=talk.slice(talk.indexOf('async function resolveSharedAgentRouteTurn'),talk.indexOf('async function resolveContextualMakeupTurn'));
+  assert.doesNotMatch(dispatch,/case 'batch_write'/);
 });
 
 test('PC structured memo resume supports class and memoId choice without another model call',()=>{

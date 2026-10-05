@@ -1828,31 +1828,6 @@
     switch(route.key){
       case 'attendance_status':
         return resolveOlliTalkAttendanceStatusAgentTurn(commandText,parsed,context,replyToMessageId);
-      case 'timetable_admin':
-        return resolveOlliTalkTimetableAdminRuleTurn(commandText,parsed,context,replyToMessageId);
-      case 'batch_write':
-        return resolveOlliTalkBatchRuleTurn(parsed,commandText,context,replyToMessageId,batchCommands);
-      case 'trial_cancel':
-        if(!String(parsed?.reason || '').trim()) return null;
-        return resolveOlliTalkTrialCancelAgentTurn({
-          sourceText:String(commandText || '').trim(),sourceMessageId:Number(replyToMessageId || 0),
-          reasonText:String(parsed.reason || '').trim(),reasonMessageText:String(commandText || '').trim(),
-          reasonMessageId:Number(replyToMessageId || 0),context
-        });
-      case 'makeup_cancel':
-        if(!String(parsed?.reason || '').trim()) return null;
-        return resolveOlliTalkMakeupCancelAgentTurn({
-          sourceText:String(commandText || '').trim(),sourceMessageId:Number(replyToMessageId || 0),
-          reasonText:String(parsed.reason || '').trim(),reasonMessageText:String(commandText || '').trim(),
-          reasonMessageId:Number(replyToMessageId || 0),context
-        });
-      case 'absence':
-        if(!String(parsed?.reason || '').trim()) return null;
-        return resolveOlliTalkAbsenceAgentTurn({
-          sourceText:String(commandText || '').trim(),sourceMessageId:Number(replyToMessageId || 0),
-          reasonText:String(parsed.reason || '').trim(),reasonMessageText:String(commandText || '').trim(),
-          reasonMessageId:Number(replyToMessageId || 0),context
-        });
       case 'class_once': return resolveOlliTalkClassOnceAgentTurn(commandText,context,replyToMessageId);
       case 'attendance_read':
         return resolveOlliTalkSourceBoundReadAgentTurn({mode:'attendance_read',commandText,context,replyToMessageId});

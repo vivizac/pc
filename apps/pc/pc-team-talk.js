@@ -3176,31 +3176,6 @@
     switch (route.key) {
       case 'attendance_status':
         return resolveAttendanceStatusAgentTurn(commandText, parsed, current, replyToMessageId);
-      case 'timetable_admin':
-        return resolveTimetableAdminRuleTurn(commandText, parsed, current, replyToMessageId);
-      case 'batch_write':
-        return resolveBatchRuleTurn(parsed,commandText,current,replyToMessageId,batchCommands);
-      case 'trial_cancel':
-        if (!clean(parsed?.reason)) return null;
-        return resolveTrialCancelAgentTurn({
-          sourceText:clean(commandText),sourceMessageId:Number(replyToMessageId || 0),
-          reasonText:clean(parsed.reason),reasonMessageText:clean(commandText),
-          reasonMessageId:Number(replyToMessageId || 0),current
-        });
-      case 'makeup_cancel':
-        if (!clean(parsed?.reason)) return null;
-        return resolveMakeupCancelAgentTurn({
-          sourceText:clean(commandText),sourceMessageId:Number(replyToMessageId || 0),
-          reasonText:clean(parsed.reason),reasonMessageText:clean(commandText),
-          reasonMessageId:Number(replyToMessageId || 0),current
-        });
-      case 'absence':
-        if (!clean(parsed?.reason)) return null;
-        return resolveAbsenceAgentTurn({
-          sourceText:clean(commandText),sourceMessageId:Number(replyToMessageId || 0),
-          reasonText:clean(parsed.reason),reasonMessageText:clean(commandText),
-          reasonMessageId:Number(replyToMessageId || 0),current
-        });
       case 'class_once': return resolveClassOnceAgentTurn(commandText,current,replyToMessageId);
       case 'attendance_read':
         return resolveSourceBoundReadAgentTurn({mode:'attendance_read',commandText,current,replyToMessageId});

@@ -31,21 +31,16 @@ test('PC timetable admin bridge is source-bound and validates returned action ty
   assert.ok(block.includes('saveStructuredTargetChoice'));
 });
 
-test('PC timetable admin rule routing runs before batch and legacy write fallback — shared dispatch contract', () => {
+test('PC timetable admin rule routing bypasses the shared Agent switch and runs before classifier', () => {
   const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
   const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
   const dispatch=talk.slice(dispatchStart,dispatchEnd);
-  const aiStart=talk.indexOf('async function resolveAiTurn');
-  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
-  const ai=talk.slice(aiStart,aiEnd);
-  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
-  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
-  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
-  assert.match(dispatch,/case 'timetable_admin'/);
-  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
-  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(classify>=0 && legacy>classify);
-
+  const ai=talk.slice(talk.indexOf('async function resolveAiTurn'),talk.indexOf('function updateComposerState'));
+  assert.doesNotMatch(dispatch,/case 'timetable_admin'/);
+  const direct=ai.indexOf("['set_class_layout','set_class_teacher','set_teacher_override','set_session_order','set_normal_class_day'].includes(interpreterIntent)");
+  const classify=ai.indexOf('const routeClassifier=');
+  assert.ok(direct>=0 && classify>direct);
+  assert.match(ai,/return resolveTimetableAdminRuleTurn\(commandText,parsed,current,replyToMessageId\)/);
 });
 
 test('PC session order target choice resumes through deterministic timetable admin prepare',()=>{

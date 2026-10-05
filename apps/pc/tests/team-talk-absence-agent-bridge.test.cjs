@@ -15,21 +15,15 @@ test('PC absence candidate uses shared absence parser and requires a named stude
   assert.doesNotMatch(block,/prepareAction|parseMakeupMutationIntent/);
 });
 
-test('PC inline absence reason routes directly to source-bound Agent — shared dispatch contract', () => {
-  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
-  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
-  const dispatch=talk.slice(dispatchStart,dispatchEnd);
-  const aiStart=talk.indexOf('async function resolveAiTurn');
-  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
-  const ai=talk.slice(aiStart,aiEnd);
-  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
-  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
-  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
-  assert.match(dispatch,/case 'absence'/);
-  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
+test('PC absence legacy reason compatibility stays outside the shared Agent switch', () => {
+  const dispatch=talk.slice(talk.indexOf('async function resolveSharedAgentRouteTurn'),talk.indexOf('async function resolveAiTurn'));
+  const ai=talk.slice(talk.indexOf('async function resolveAiTurn'),talk.indexOf('function updateComposerState'));
+  assert.doesNotMatch(dispatch,/case 'absence'/);
+  assert.match(ai,/__absenceAgent/);
+  assert.match(ai,/resolveAbsenceAgentTurn/);
+  const classify=ai.indexOf('const routeClassifier=');
   const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
   assert.ok(classify>=0 && legacy>classify);
-  assert.match(ai,/__absenceAgent/);
 });
 test('PC two-turn absence keeps existing reason prompt then uses Agent for the second message',()=>{
   const start=talk.indexOf('async function resolveAiTurn');

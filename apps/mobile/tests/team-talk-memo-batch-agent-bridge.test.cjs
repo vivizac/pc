@@ -40,6 +40,8 @@ test('Mobile batch remains rule-routed and uses batch_prepare',()=>{
   assert.match(talk,/assistantMessages:messages/);
   assert.match(talk,/function olliTalkBatchCommandNeedsClarification/);
   assert.match(talk,/function applyOlliTalkBatchClarification/);
+  const dispatch=talk.slice(talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn'),talk.indexOf('async function resolveOlliTalkContextualMakeupTurn'));
+  assert.doesNotMatch(dispatch,/case 'batch_write'/);
 });
 
 test('Mobile structured memo resume supports repeated deterministic choices without another model call',()=>{

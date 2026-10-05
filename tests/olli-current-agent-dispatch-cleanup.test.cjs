@@ -94,3 +94,18 @@ test('dead structured trial and makeup update client resolvers are removed after
   assert.doesNotMatch(pc,/structured_(?:trial|makeup)_update_prepare/);
   assert.doesNotMatch(mobile,/structured_(?:trial|makeup)_update_prepare/);
 });
+
+
+test('shared Agent dispatch removes classifier-unreachable routine cases while preserving class_once for now',()=>{
+  const pcDispatch=pc.slice(pc.indexOf('async function resolveSharedAgentRouteTurn'),pc.indexOf('async function resolveContextualMakeupTurn'));
+  const mobileDispatch=mobile.slice(mobile.indexOf('async function resolveOlliTalkSharedAgentRouteTurn'),mobile.indexOf('async function resolveOlliTalkContextualMakeupTurn'));
+  for(const dispatch of [pcDispatch,mobileDispatch]){
+    for(const key of ['timetable_admin','batch_write','trial_cancel','makeup_cancel','absence']){
+      assert.doesNotMatch(dispatch,new RegExp("case '"+key+"'"));
+    }
+    assert.match(dispatch,/case 'attendance_status'/);
+    assert.match(dispatch,/case 'attendance_read'/);
+    assert.match(dispatch,/case 'pickup_read'/);
+    assert.match(dispatch,/case 'class_once'/);
+  }
+});

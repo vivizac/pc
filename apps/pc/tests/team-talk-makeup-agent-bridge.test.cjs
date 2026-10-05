@@ -28,7 +28,7 @@ test('PC makeup cancel legacy reason compatibility remains intact',()=>{
   assert.match(talk,/__makeupCancelAgent/);
   assert.match(talk,/mode:'makeup_cancel_prepare'/);
   const dispatch=talk.slice(talk.indexOf('async function resolveSharedAgentRouteTurn'),talk.indexOf('async function resolveContextualMakeupTurn'));
-  assert.match(dispatch,/case 'makeup_cancel'/);
+  assert.doesNotMatch(dispatch,/case 'makeup_cancel'/);
 });
 
 test('PC structured makeup cancel remains preferred in unified interpreter flow',()=>{

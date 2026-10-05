@@ -28,7 +28,7 @@ test('Mobile makeup cancel legacy reason compatibility remains intact',()=>{
   assert.match(talk,/__makeupCancelAgent/);
   assert.match(talk,/mode:'makeup_cancel_prepare'/);
   const dispatch=talk.slice(talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn'),talk.indexOf('async function resolveOlliTalkContextualMakeupTurn'));
-  assert.match(dispatch,/case 'makeup_cancel'/);
+  assert.doesNotMatch(dispatch,/case 'makeup_cancel'/);
 });
 
 test('Mobile incomplete makeup draft and contextual compatibility remain',()=>{
