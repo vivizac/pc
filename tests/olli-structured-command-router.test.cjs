@@ -2005,25 +2005,12 @@ test('structured update_makeup bypasses Agents SDK and reuses the deterministic 
   assert.doesNotMatch(runtimeBlock,/loadAgentsSdk|new Agent|runMakeupUpdatePrepareAgent/);
 
   for(const source of [pcSource,mobileSource]){
-    assert.match(source,/structured_makeup_update_prepare/);
-    assert.match(source,/structuredCommand/);
+    assert.match(source,/prepareStructuredAction\(structuredCommand/);
+    assert.match(source,/['"]update_makeup['"]/);
+    assert.doesNotMatch(source,/structured_makeup_update_prepare/);
+    assert.doesNotMatch(source,/StructuredMakeupUpdateTurn/);
   }
-
-  const pcStart=pcSource.indexOf('async function resolveStructuredMakeupUpdateTurn');
-  const pcEnd=pcSource.indexOf('\n  async function ',pcStart+20);
-  const pcBlock=pcSource.slice(pcStart,pcEnd);
-  assert.ok(pcStart>=0 && pcEnd>pcStart);
-  assert.match(pcBlock,/mode:'structured_makeup_update_prepare'/);
-  assert.doesNotMatch(pcBlock,/mode:'makeup_update_prepare'/);
-
-  const mobileStart=mobileSource.indexOf('async function resolveOlliTalkStructuredMakeupUpdateTurn');
-  const mobileEnd=mobileSource.indexOf('\n  async function ',mobileStart+20);
-  const mobileBlock=mobileSource.slice(mobileStart,mobileEnd);
-  assert.ok(mobileStart>=0 && mobileEnd>mobileStart);
-  assert.match(mobileBlock,/mode:'structured_makeup_update_prepare'/);
-  assert.doesNotMatch(mobileBlock,/mode:'makeup_update_prepare'/);
 });
-
 
 test('structured cancel_makeup bypasses Agents SDK and preserves source-bound reason validation', () => {
   assert.match(contextRouteSource,/cancel_makeup/);
@@ -2079,25 +2066,12 @@ test('structured update_trial bypasses Agents SDK and reuses the deterministic t
   assert.doesNotMatch(runtimeBlock,/loadAgentsSdk|new Agent|runTrialUpdatePrepareAgent/);
 
   for(const source of [pcSource,mobileSource]){
-    assert.match(source,/structured_trial_update_prepare/);
-    assert.match(source,/structuredCommand/);
+    assert.match(source,/prepareStructuredAction\(structuredCommand/);
+    assert.match(source,/['"]update_trial['"]/);
+    assert.doesNotMatch(source,/structured_trial_update_prepare/);
+    assert.doesNotMatch(source,/StructuredTrialUpdateTurn/);
   }
-
-  const pcStart=pcSource.indexOf('async function resolveStructuredTrialUpdateTurn');
-  const pcEnd=pcSource.indexOf('\n  async function ',pcStart+20);
-  assert.ok(pcStart>=0 && pcEnd>pcStart);
-  const pcBlock=pcSource.slice(pcStart,pcEnd);
-  assert.match(pcBlock,/mode:'structured_trial_update_prepare'/);
-  assert.doesNotMatch(pcBlock,/mode:'trial_update_prepare'/);
-
-  const mobileStart=mobileSource.indexOf('async function resolveOlliTalkStructuredTrialUpdateTurn');
-  const mobileEnd=mobileSource.indexOf('\n  async function ',mobileStart+20);
-  assert.ok(mobileStart>=0 && mobileEnd>mobileStart);
-  const mobileBlock=mobileSource.slice(mobileStart,mobileEnd);
-  assert.match(mobileBlock,/mode:'structured_trial_update_prepare'/);
-  assert.doesNotMatch(mobileBlock,/mode:'trial_update_prepare'/);
 });
-
 
 test('structured cancel_trial bypasses Agents SDK and preserves source-bound reason validation', () => {
   assert.match(contextRouteSource,/cancel_trial/);
