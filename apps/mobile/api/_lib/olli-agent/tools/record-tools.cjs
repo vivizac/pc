@@ -204,6 +204,183 @@ async function readRecentRecords({
   return sanitizePayload(payload);
 }
 
+
+const DEFAULT_ANALYSIS_MONTHS = 12;
+const MAX_ANALYSIS_RECORDS = 180;
+const ANALYSIS_SOURCE_LIMIT = 1000;
+
+function isoDateParts(year, month, day) {
+  const y=Number(year||0);
+  const m=Number(month||0);
+  const d=Number(day||0);
+  if(!Number.isInteger(y)||y<2000||y>2100||!Number.isInteger(m)||m<1||m>12||!Number.isInteger(d)||d<1||d>31) return '';
+  return String(y).padStart(4,'0')+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+}
+
+function analysisDateFromRow(row = {}) {
+  const lessonDate=clean(row.lesson_date);
+  if(/^\d{4}-\d{2}-\d{2}/.test(lessonDate)) return lessonDate.slice(0,10);
+
+  const storedDate=clean(row.date);
+  if(/^\d{4}-\d{2}-\d{2}/.test(storedDate)) return storedDate.slice(0,10);
+
+  const year=Number(row.year||0);
+  const explicitMonth=Number(row.month||0);
+  const explicitDay=Number(row.day||0);
+  if(year && explicitMonth){
+    return isoDateParts(year,explicitMonth,explicitDay||1);
+  }
+
+  if(year && storedDate){
+    const monthMatch=storedDate.match(/(\d{1,2})\s*월/);
+    const dayMatch=storedDate.match(/(\d{1,2})\s*일/);
+    if(monthMatch){
+      return isoDateParts(year,Number(monthMatch[1]),dayMatch ? Number(dayMatch[1]) : 1);
+    }
+  }
+
+  const created=clean(row.created_at);
+  if(/^\d{4}-\d{2}-\d{2}/.test(created)) return created.slice(0,10);
+  return '';
+}
+
+function normalizeFeedbackAnalysisRecord(row, recordType) {
+  const base=normalizeFeedbackRecord(row,recordType);
+  if(!base) return null;
+  return Object.assign(base,{
+    analysis_date:analysisDateFromRow(row),
+    feedback_type:clean(row.feedback_type),
+  });
+}
+
+function normalizeObservationAnalysisRecord(row) {
+  const base=normalizeObservationRecord(row);
+  if(!base) return null;
+  return Object.assign(base,{
+    analysis_date:analysisDateFromRow(row),
+  });
+}
+
+function isoDateTimestamp(value) {
+  const text=clean(value);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(text)) return 0;
+  const ms=Date.parse(text+'T00:00:00Z');
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function sampleAcrossPeriod(records, maxRecords) {
+  const rows=Array.isArray(records) ? records : [];
+  const limit=Math.min(MAX_ANALYSIS_RECORDS,Math.max(1,Math.trunc(Number(maxRecords)||MAX_ANALYSIS_RECORDS)));
+  if(rows.length<=limit) return rows;
+  if(limit===1) return [rows[rows.length-1]];
+  const picked=[];
+  const seen=new Set();
+  for(let i=0;i<limit;i+=1){
+    const index=Math.round(i*(rows.length-1)/(limit-1));
+    if(seen.has(index)) continue;
+    seen.add(index);
+    picked.push(rows[index]);
+  }
+  return picked;
+}
+
+async function readFeedbackAnalysisRecords({
+  requestContext,
+  subjectAccess,
+  studentLabel,
+  startDate,
+  endDate,
+  maxRecords = MAX_ANALYSIS_RECORDS,
+  sanitizePayload,
+  callRpc = callSupabaseRpc,
+}) {
+  const label=clean(studentLabel);
+  const subject=subjectAccess?.resolve?.(label);
+  if(!subject?.studentId){
+    throw recordToolError(
+      '현재 피드백 분석에서 확인할 수 없는 학생 참조입니다.',
+      400,
+      'OLLI_FEEDBACK_ANALYSIS_SUBJECT_NOT_AVAILABLE'
+    );
+  }
+  if(typeof sanitizePayload!=='function'){
+    throw recordToolError(
+      '피드백 분석 개인정보 필터가 준비되지 않았습니다.',
+      500,
+      'OLLI_FEEDBACK_ANALYSIS_PRIVACY_MISSING'
+    );
+  }
+
+  const fromMs=isoDateTimestamp(startDate);
+  const toMs=isoDateTimestamp(endDate);
+  if(!fromMs||!toMs||fromMs>toMs){
+    throw recordToolError(
+      '피드백 분석 기간이 올바르지 않습니다.',
+      400,
+      'OLLI_FEEDBACK_ANALYSIS_PERIOD_INVALID'
+    );
+  }
+
+  const commonParams={
+    p_session_token:requestContext.sessionToken,
+    p_academy_id:requestContext.academyId,
+    p_action:'read',
+    p_operation:'list',
+    p_identity:{student_id:subject.studentId},
+    p_payload:{},
+    p_limit:ANALYSIS_SOURCE_LIMIT,
+  };
+
+  const [general,growth,observations]=await Promise.all([
+    callRpc('olli_general_feedback_data_access',commonParams),
+    callRpc('olli_growth_feedback_data_access',commonParams),
+    callRpc('olli_note_archive_data_access',commonParams),
+  ]);
+  assertReadResult(general,'일반 피드백 기록');
+  assertReadResult(growth,'성장 피드백 기록');
+  assertReadResult(observations,'관찰노트 기록');
+
+  const combined=[
+    ...(Array.isArray(general.rows)?general.rows:[]).map((row)=>normalizeFeedbackAnalysisRecord(row,'feedback')).filter(Boolean),
+    ...(Array.isArray(growth.rows)?growth.rows:[]).map((row)=>normalizeFeedbackAnalysisRecord(row,'growth_feedback')).filter(Boolean),
+    ...(Array.isArray(observations.rows)?observations.rows:[]).map(normalizeObservationAnalysisRecord).filter(Boolean),
+  ];
+
+  const seen=new Set();
+  const inPeriod=combined
+    .filter((record)=>{
+      const dateMs=isoDateTimestamp(record.analysis_date);
+      return dateMs>=fromMs && dateMs<=toMs;
+    })
+    .filter((record)=>{
+      const key=[clean(record.record_type),clean(record.analysis_date),clean(record.content)].join('|');
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a,b)=>
+      isoDateTimestamp(a.analysis_date)-isoDateTimestamp(b.analysis_date) ||
+      clean(a.created_at).localeCompare(clean(b.created_at))
+    );
+
+  const records=sampleAcrossPeriod(inPeriod,maxRecords);
+  const sourceCounts=inPeriod.reduce((counts,record)=>{
+    const key=clean(record.record_type);
+    counts[key]=(counts[key]||0)+1;
+    return counts;
+  },{});
+
+  return sanitizePayload({
+    ok:true,
+    student_label:label,
+    period:{start_date:startDate,end_date:endDate},
+    records,
+    record_count:inPeriod.length,
+    sampled_record_count:records.length,
+    source_counts:sourceCounts,
+  });
+}
+
 function createGetRecentRecordsTool({
   tool,
   z,
@@ -251,4 +428,12 @@ module.exports = {
   mergeRecentRecords,
   readRecentRecords,
   createGetRecentRecordsTool,
+  DEFAULT_ANALYSIS_MONTHS,
+  MAX_ANALYSIS_RECORDS,
+  ANALYSIS_SOURCE_LIMIT,
+  analysisDateFromRow,
+  normalizeFeedbackAnalysisRecord,
+  normalizeObservationAnalysisRecord,
+  sampleAcrossPeriod,
+  readFeedbackAnalysisRecords,
 };
