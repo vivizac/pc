@@ -174,3 +174,85 @@ function handleMemoPauseAutoSaveBlur(target) {
   if (!inputType || currentMemoType !== inputType) return;
   flushMemoAutoSave();
 }
+
+async function finalizeObservationMemoSessionCheckpoint(options = {}) {
+  const student = currentMemoStudent ? { ...currentMemoStudent } : null;
+  if (!student?.id || !['elementary', 'kinder'].includes(currentMemoType)) {
+    return { checkpointed:false, state:'skipped' };
+  }
+  if (isObservationMemoAutoSaveBlocked()) {
+    return { checkpointed:false, state:'blocked-view' };
+  }
+
+  const studentId = String(student.id || '');
+  const memoType = currentMemoType;
+  const noteType = String(getObservationMemoEditState()?.noteType || 'elementary_observation');
+  const stillCurrent = () =>
+    currentMemoStudent &&
+    String(currentMemoStudent.id || '') === studentId &&
+    currentMemoType === memoType;
+
+  if (window.__olliObservationMemoAutoSaveTimer) {
+    clearTimeout(window.__olliObservationMemoAutoSaveTimer);
+    window.__olliObservationMemoAutoSaveTimer = null;
+  }
+
+  try {
+    if (window.__olliObservationMemoServerSavePromise) {
+      await window.__olliObservationMemoServerSavePromise;
+    }
+
+    if (stillCurrent() && hasObservationMemoDirtyChanges()) {
+      await saveObservationMemoServerSnapshot({ status: options.status === true });
+    }
+    if (window.__olliObservationMemoServerSavePromise) {
+      await window.__olliObservationMemoServerSavePromise;
+    }
+    if (stillCurrent() && hasObservationMemoDirtyChanges()) {
+      await saveObservationMemoServerSnapshot({ status: false });
+    }
+  } catch (error) {
+    console.warn('관찰노트 종료 전 최종 저장 확인 실패:', error?.message || error);
+  }
+
+  if (!stillCurrent()) return { checkpointed:false, state:'stale-session' };
+
+  const entry = typeof getMemoEntryByStudent === 'function'
+    ? (getMemoEntryByStudent(student, noteType) || {})
+    : {};
+  const syncStatus = String(entry.syncStatus || '');
+  if (
+    hasObservationMemoDirtyChanges() ||
+    ['pending', 'blocked', 'conflict'].includes(syncStatus)
+  ) {
+    return {
+      checkpointed:false,
+      state:syncStatus || 'unsynced',
+      revision:Number(entry.revision || 0)
+    };
+  }
+
+  if (typeof window.createObservationMemoExitCheckpoint !== 'function') {
+    return { checkpointed:false, state:'checkpoint-unavailable', revision:Number(entry.revision || 0) };
+  }
+
+  try {
+    const checkpoint = await window.createObservationMemoExitCheckpoint(student, noteType);
+    return {
+      checkpointed:checkpoint?.ok === true,
+      state:checkpoint?.created === false ? 'already-checkpointed' : 'checkpointed',
+      revision:Number(checkpoint?.revision || entry.revision || 0),
+      checkpoint
+    };
+  } catch (error) {
+    console.warn('관찰노트 종료 복구 지점 저장 실패:', error?.message || error);
+    return {
+      checkpointed:false,
+      state:'checkpoint-failed',
+      revision:Number(entry.revision || 0),
+      error
+    };
+  }
+}
+
+window.finalizeObservationMemoSessionCheckpoint = finalizeObservationMemoSessionCheckpoint;

@@ -160,7 +160,14 @@
     }
   }
 
-  async function loadObservationMemoVersionLineage(student, noteType) {
+  async function checkObservationMemoLineage(
+    student,
+    noteType,
+    localText,
+    remoteText,
+    localRevision,
+    remoteRevision
+  ) {
     if (typeof global.supabase !== 'function') return null;
     const academyId = currentAcademyId();
     const token = currentSessionToken();
@@ -168,47 +175,24 @@
     const type = String(noteType || '').trim();
     if (!academyId || !token || !studentId || !type) return null;
 
-    const response = await global.supabase('POST', 'rpc/olli_note_draft_version_list', {
+    const response = await global.supabase('POST', 'rpc/olli_note_draft_lineage_check', {
       p_session_token: token,
       p_academy_id: academyId,
       p_student_id: studentId,
       p_note_type: type,
-      p_limit: 50
+      p_local_content: String(localText || ''),
+      p_remote_content: String(remoteText || ''),
+      p_local_revision: memoRevision(localRevision),
+      p_remote_revision: memoRevision(remoteRevision)
     });
 
-    if (!response || response.ok === false || !Array.isArray(response.items)) return null;
-    return response.items;
-  }
-
-  function analyzeObservationMemoLineage(items, localText, remoteText, localRevision, remoteRevision) {
-    const versions = Array.isArray(items) ? items : [];
-    let localSeenRevision = 0;
-    let remotePriorRevision = 0;
-    let localExactRevision = false;
-
-    versions.forEach(item => {
-      const revision = memoRevision(item?.revision);
-      const content = String(item?.content || '');
-      if (content === localText) {
-        localSeenRevision = Math.max(localSeenRevision, revision);
-        if (revision === localRevision) localExactRevision = true;
-      }
-      if (revision < remoteRevision && content === remoteText) {
-        remotePriorRevision = Math.max(remotePriorRevision, revision);
-      }
-    });
-
-    const localKnown = localExactRevision || localSeenRevision > 0;
-    const remoteIsHistoricalReversion =
-      remotePriorRevision > 0 &&
-      localSeenRevision > remotePriorRevision;
-
+    if (!response || response.ok === false) return null;
     return {
-      localKnown,
-      localExactRevision,
-      localSeenRevision,
-      remotePriorRevision,
-      remoteIsHistoricalReversion
+      localKnown: response.local_known === true,
+      localExactRevision: response.local_exact_revision === true,
+      localSeenRevision: memoRevision(response.local_seen_revision),
+      remotePriorRevision: memoRevision(response.remote_prior_revision),
+      remoteIsHistoricalReversion: response.remote_is_historical_reversion === true
     };
   }
 
@@ -348,15 +332,22 @@
     }
 
     // Revision numbers created before the no-op fix cannot be trusted by themselves.
-    // Before replacing divergent local text, inspect immutable version history.
-    let lineageItems = null;
+    // Before replacing divergent local text, inspect immutable hash lineage.
+    let lineage = null;
     try {
-      lineageItems = await loadObservationMemoVersionLineage(student, resolvedType);
+      lineage = await checkObservationMemoLineage(
+        student,
+        resolvedType,
+        localText,
+        remoteText,
+        localRevision,
+        remoteRevision
+      );
     } catch (error) {
-      console.warn('관찰노트 버전 계보 확인 실패:', error?.message || error);
+      console.warn('관찰노트 hash 계보 확인 실패:', error?.message || error);
     }
 
-    if (!lineageItems) {
+    if (!lineage) {
       return markLocalProtectedConflict(
         student,
         row,
@@ -366,14 +357,6 @@
         resolvedType
       );
     }
-
-    const lineage = analyzeObservationMemoLineage(
-      lineageItems,
-      localText,
-      remoteText,
-      localRevision,
-      remoteRevision
-    );
 
     // Critical safety rule: if today's server text already existed at an older
     // revision and this device's text existed at a later revision, the numeric
