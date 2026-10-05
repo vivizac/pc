@@ -538,7 +538,7 @@
   box-sizing:border-box;
   display:grid;
   grid-template-columns:33px minmax(0,1fr) 44px 33px;
-  grid-template-rows:35px;
+  grid-template-rows:auto 35px;
   column-gap:7px;
   row-gap:0;
   align-items:center;
@@ -551,9 +551,9 @@
   min-height:79px;
   max-height:none;
   grid-template-columns:minmax(0,1fr) 44px 33px;
-  grid-template-rows:minmax(34px,auto) 33px;
+  grid-template-rows:auto minmax(34px,auto) 33px;
   column-gap:7px;
-  row-gap:5px;
+  row-gap:0;
   align-items:center;
   padding:7px 11px;
 }
@@ -563,7 +563,7 @@
   position:relative;
   z-index:2;
   grid-column:2;
-  grid-row:1;
+  grid-row:2;
   min-width:0;
   width:100%;
   min-height:34px;
@@ -571,7 +571,7 @@
 }
 #olliTalkBetaScreen.olliTalkKeyboardOpen .olliTalkComposerTextRow{
   grid-column:1 / -1;
-  grid-row:1;
+  grid-row:2;
 }
 
 #olliTalkBetaScreen .olliTalkSelectedMentionPrefix{
@@ -657,7 +657,7 @@
 #olliTalkBetaScreen .olliTalkFileAddBtn{
   display:inline-flex;
   grid-column:1;
-  grid-row:1;
+  grid-row:2;
   justify-self:start;
   margin:0;
 }
@@ -673,7 +673,7 @@
 #olliTalkBetaScreen .olliTalkQuickOrderBtn{
   display:inline-flex;
   grid-column:3;
-  grid-row:1;
+  grid-row:2;
   justify-self:end;
   width:44px;
   min-width:44px;
@@ -695,7 +695,7 @@
 #olliTalkBetaScreen .olliTalkMentionTriggerBtn{
   display:inline-flex;
   grid-column:4;
-  grid-row:1;
+  grid-row:2;
   justify-self:end;
   font-size:25px;
   font-weight:400;
@@ -712,7 +712,7 @@
 #olliTalkBetaScreen .olliTalkBetaSendBtn{
   display:none;
   grid-column:4;
-  grid-row:1;
+  grid-row:2;
   justify-self:end;
   background:var(--olli-talk-control-send-bg);
   color:var(--olli-talk-control-send-foreground);
@@ -720,16 +720,19 @@
 
 #olliTalkBetaScreen.olliTalkKeyboardOpen .olliTalkFileAddBtn{
   grid-column:1;
-  grid-row:2;
+  grid-row:3;
+  margin-top:5px;
 }
 #olliTalkBetaScreen.olliTalkKeyboardOpen .olliTalkQuickOrderBtn{
   grid-column:2;
-  grid-row:2;
+  grid-row:3;
+  margin-top:5px;
 }
 #olliTalkBetaScreen.olliTalkKeyboardOpen .olliTalkMentionTriggerBtn,
 #olliTalkBetaScreen.olliTalkKeyboardOpen .olliTalkBetaSendBtn{
   grid-column:3;
-  grid-row:2;
+  grid-row:3;
+  margin-top:5px;
 }
 
 #olliTalkBetaScreen.olliTalkKeyboardOpen .olliTalkMentionTriggerBtn{
@@ -1315,15 +1318,15 @@
 }
 
 #olliTalkBetaScreen .olliTalkMentionMenu{
-  position:absolute;
-  left:0;
-  right:0;
-  bottom:calc(100% + 9px);
-  z-index:4;
+  position:relative;
+  order:-1;
+  grid-column:1 / -1;
+  grid-row:1;
+  flex:0 0 100%;
   width:100%;
   max-height:190px;
   overflow:auto;
-  margin:0;
+  margin:0 0 9px;
   padding:4px 0 10px;
   border:0;
   border-radius:0;
@@ -1337,6 +1340,10 @@
   gap:8px;
   pointer-events:auto;
   -webkit-overflow-scrolling:touch;
+}
+#olliTalkBetaScreen .olliTalkBetaComposer:has(.olliTalkMentionMenu:not([hidden])){
+  height:auto;
+  max-height:none;
 }
 #olliTalkBetaScreen .olliTalkMentionMenu[hidden]{
   display:none;
