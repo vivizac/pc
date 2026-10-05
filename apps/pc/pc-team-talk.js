@@ -4360,6 +4360,11 @@
       return;
     }
 
+    const isOlliWorkflowFollowup = olliRequested && (
+      hasPendingOlliCommand()
+      || !!state.pendingActionReason
+      || !!state.pendingMakeupDialogue
+    );
     state.sendBusy = true;
     if (send) send.classList.add('sending');
     updateComposerState();
@@ -4380,7 +4385,7 @@
       updateComposerState();
       appendPersistedMessage(payload.message, current.memberId);
       let firstReplyStartedAt=0;
-      if (olliRequested && (olliAiMentionRequested || isAiEnabled())) {
+      if (olliRequested && !isOlliWorkflowFollowup) {
         state.assistantReplyPending = true;
         firstReplyStartedAt=Date.now();
         syncAssistantTypingIndicator();
@@ -4426,7 +4431,14 @@
             recordAiConversationTurn(commandText, turn.replyText);
           } else {
             const turn = await resolveBotTurn(commandText, current, Number(payload.message.id));
-            appendPersistedMessage(turn.assistantMessage, current.memberId);
+            if(firstReplyStartedAt){
+              const remaining=1000-(Date.now()-firstReplyStartedAt);
+              if(remaining>0) await new Promise(resolve=>setTimeout(resolve,remaining));
+              state.assistantReplyPending=false;
+              replaceAssistantTypingWithMessage(turn.assistantMessage,current.memberId);
+            }else{
+              appendPersistedMessage(turn.assistantMessage, current.memberId);
+            }
           }
         } catch (error) {
           console.warn(usingAi ? 'PC 올리톡 AI 응답 실패:' : 'PC 올리톡 올리봇 응답 실패:', error?.message || error);
