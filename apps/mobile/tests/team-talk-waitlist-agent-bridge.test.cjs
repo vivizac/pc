@@ -12,7 +12,7 @@ test('Mobile waitlist cancel keeps registered and guest requests on source-bound
   assert.ok(talk.includes("'structured_waitlist_cancel_prepare'"));
   assert.ok(talk.includes("structuredCommand"));
   const start=talk.indexOf('async function resolveOlliTalkWaitlistCancelAgentTurn');
-  const end=talk.indexOf('async function resolveOlliTalkMakeupAddAgentTurn',start);
+  const end=talk.indexOf('function isOlliTalkSafeMakeupClarification',start);
   const block=talk.slice(start,end);
   assert.doesNotMatch(block,/OLLI_AGENT_WAITLIST_REGISTERED_STUDENT_REQUIRED|return null/);
 });
