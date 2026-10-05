@@ -288,6 +288,203 @@ async function runRecentRecordsProbe({
 }
 
 
+function feedbackAnalysisModel(){
+  return String(
+    process.env.OPENAI_FEEDBACK_MODEL ||
+    process.env.OPENAI_AGENT_MODEL ||
+    process.env.OPENAI_MODEL ||
+    ''
+  ).trim() || 'gpt-5-mini';
+}
+
+function isoDateFromUtcDate(value){
+  return value.toISOString().slice(0,10);
+}
+
+function subtractMonthsIso(endDateText,months){
+  const end=new Date(String(endDateText||'')+'T00:00:00Z');
+  if(!Number.isFinite(end.getTime())) return '';
+  const originalDay=end.getUTCDate();
+  end.setUTCDate(1);
+  end.setUTCMonth(end.getUTCMonth()-Math.max(1,Math.trunc(Number(months)||1)));
+  const lastDay=new Date(Date.UTC(end.getUTCFullYear(),end.getUTCMonth()+1,0)).getUTCDate();
+  end.setUTCDate(Math.min(originalDay,lastDay));
+  return isoDateFromUtcDate(end);
+}
+
+function resolveFeedbackAnalysisWindow(text,todayText=todayInSeoul()){
+  const input=String(text||'').replace(/\s+/g,'');
+  const today=new Date(String(todayText||'')+'T00:00:00Z');
+  if(!Number.isFinite(today.getTime())){
+    throw runtimeError('피드백 분석 기준 날짜를 확인하지 못했습니다.',500,'OLLI_FEEDBACK_ANALYSIS_TODAY_INVALID');
+  }
+
+  if(/작년/.test(input)){
+    const year=today.getUTCFullYear()-1;
+    return {
+      startDate:String(year)+'-01-01',
+      endDate:String(year)+'-12-31',
+      label:'작년',
+      months:12,
+    };
+  }
+
+  if(/올해/.test(input)){
+    const year=today.getUTCFullYear();
+    return {
+      startDate:String(year)+'-01-01',
+      endDate:todayText,
+      label:'올해',
+      months:Math.max(1,today.getUTCMonth()+1),
+    };
+  }
+
+  const yearMatch=input.match(/(\d{1,2})년(?:간|동안)?/);
+  if(yearMatch){
+    const years=Math.min(5,Math.max(1,Number(yearMatch[1])||1));
+    const months=years*12;
+    return {
+      startDate:subtractMonthsIso(todayText,months),
+      endDate:todayText,
+      label:'최근 '+years+'년',
+      months,
+    };
+  }
+
+  const monthMatch=input.match(/(\d{1,2})개월(?:간|동안)?/);
+  if(monthMatch){
+    const months=Math.min(60,Math.max(1,Number(monthMatch[1])||1));
+    return {
+      startDate:subtractMonthsIso(todayText,months),
+      endDate:todayText,
+      label:'최근 '+months+'개월',
+      months,
+    };
+  }
+
+  return {
+    startDate:subtractMonthsIso(todayText,12),
+    endDate:todayText,
+    label:'최근 1년',
+    months:12,
+  };
+}
+
+async function runFeedbackAnalysis({
+  agentContext,
+  requestContext,
+  preparedPrivacy,
+}){
+  assertOpenAiKey();
+
+  const subjectRefs=Array.isArray(preparedPrivacy?.subjectRefs)
+    ? preparedPrivacy.subjectRefs
+    : [];
+  if(preparedPrivacy?.needsDisambiguation){
+    throw runtimeError(
+      '학생 이름을 한 명으로 구분할 수 없습니다. 전체 이름으로 다시 알려 주세요.',
+      409,
+      'OLLI_FEEDBACK_ANALYSIS_STUDENT_AMBIGUOUS'
+    );
+  }
+  if(subjectRefs.length!==1){
+    throw runtimeError(
+      '피드백 분석에서는 학생 한 명을 정확히 지정해 주세요.',
+      400,
+      'OLLI_FEEDBACK_ANALYSIS_SINGLE_STUDENT_REQUIRED'
+    );
+  }
+
+  const {readFeedbackAnalysisRecords,MAX_ANALYSIS_RECORDS}=require('./tools/record-tools.cjs');
+  const {sanitizeAgentToolPayload}=require('./privacy.cjs');
+  const period=resolveFeedbackAnalysisWindow(preparedPrivacy.safeText,todayInSeoul());
+  const payload=await readFeedbackAnalysisRecords({
+    requestContext,
+    subjectAccess:preparedPrivacy.subjectAccess,
+    studentLabel:subjectRefs[0].label,
+    startDate:period.startDate,
+    endDate:period.endDate,
+    maxRecords:MAX_ANALYSIS_RECORDS,
+    sanitizePayload(value){
+      return sanitizeAgentToolPayload(value,preparedPrivacy);
+    },
+  });
+
+  const records=Array.isArray(payload?.records)?payload.records:[];
+  const recordCount=Number(payload?.record_count||0);
+  const sampledRecordCount=Number(payload?.sampled_record_count||records.length||0);
+
+  if(!records.length){
+    return {
+      ready:true,
+      model:'',
+      output:restorePreparedSubjectLabels(
+        subjectRefs[0].label+'의 '+period.label+' 저장 피드백·관찰 기록을 찾지 못했어요.',
+        preparedPrivacy
+      ),
+      period,
+      recordCount:0,
+      sampledRecordCount:0,
+      nodeVersion:process.versions.node,
+    };
+  }
+
+  const {Agent,run}=await loadAgentsSdk();
+  const model=feedbackAnalysisModel();
+  const agent=new Agent({
+    name:'Olli Feedback Analysis',
+    model,
+    instructions:[
+      'You are Olli\'s student feedback analysis assistant.',
+      'The user message and all records are already privacy-sanitized. Never ask for or reveal real names, UUIDs, academy IDs, member IDs, or session tokens.',
+      'Analyze only the supplied saved records. Do not invent events, causes, diagnoses, personality traits, scores, or progress that are not supported by the records.',
+      'The records are ordered from older to newer and may include general feedback, growth feedback, and observation notes.',
+      'When the user asks about change over time, compare the earlier and later portions of the period and identify evidence-backed changes, recurring patterns, strengths that became more stable, and areas that still need support.',
+      'Treat sparse or uneven records cautiously and say when the evidence is limited.',
+      'Do not merely list every record. Synthesize the longitudinal change in clear Korean.',
+      'Prefer a concise answer with a short overall summary followed by the main changes and supporting examples/dates when useful.',
+      'Do not mention internal tool names, privacy labels, sampling implementation, or database structure.',
+    ].join(' '),
+    tools:[],
+  });
+
+  const input=[
+    '[사용자 요청]',
+    String(preparedPrivacy.safeText||'').trim(),
+    '',
+    '[분석 기간]',
+    period.label+' ('+period.startDate+' ~ '+period.endDate+')',
+    '',
+    '[기간 내 저장 기록 수]',
+    String(recordCount),
+    sampledRecordCount<recordCount ? '(분석 입력에는 기간 전체 흐름이 유지되도록 '+sampledRecordCount+'건을 분산 선택함)' : '',
+    '',
+    '[저장 기록 - 오래된 순서]',
+    JSON.stringify(records),
+  ].filter(Boolean).join('\n');
+
+  const result=await run(agent,input,{context:agentContext});
+  const finalOutput=String(result?.finalOutput||'').trim();
+  if(!finalOutput){
+    throw runtimeError(
+      '피드백 분석 AI 응답이 비어 있습니다.',
+      502,
+      'OLLI_FEEDBACK_ANALYSIS_EMPTY_RESPONSE'
+    );
+  }
+
+  return {
+    ready:true,
+    model,
+    output:restorePreparedSubjectLabels(finalOutput,preparedPrivacy),
+    period,
+    recordCount,
+    sampledRecordCount,
+    nodeVersion:process.versions.node,
+  };
+}
+
+
 function resolveAvailabilityScope(preparedPrivacy) {
   if (preparedPrivacy?.needsDisambiguation) {
     throw runtimeError(
@@ -7102,6 +7299,8 @@ module.exports = {
   parseAttendanceStatusSource,
   runAttendanceStatusPrepare,
   runRecentRecordsProbe,
+  resolveFeedbackAnalysisWindow,
+  runFeedbackAnalysis,
   resolveAvailabilityScope,
   runScheduleAvailabilityProbe,
   resolveAbsencePrepareScope,
