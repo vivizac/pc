@@ -4987,11 +4987,13 @@
     return '확인';
   }
 
-  function getOlliTalkActionStatusLabel(status){
-    const value=String(status || '').trim();
-    if(value==='completed') return '처리 완료';
-    if(value==='cancelled') return '취소됨';
-    if(value==='failed') return '처리 실패';
+  function getOlliTalkActionStatusLabel(action){
+    const status=String(action?.status || '').trim();
+    const displayLabel=String(action?.display_label || '').trim();
+    if(displayLabel) return displayLabel;
+    if(status==='completed') return '완료';
+    if(status==='cancelled') return '취소됨';
+    if(status==='failed') return '처리 실패';
     return '';
   }
 
@@ -5749,25 +5751,23 @@
     card.dataset.olliTalkActionId=String(action?.id || '').trim();
     card.dataset.actionStatus=status;
 
+    if(status!=='pending'){
+      const label=createMessageText('span','olliTalkBetaActionStatus',getOlliTalkActionStatusLabel(action));
+      if(status==='failed') label.classList.add('failed');
+      card.appendChild(label);
+      return card;
+    }
+
     const isSessionGroupChoice=['choose_makeup_group','choose_trial_group','choose_waitlist_group','choose_move_group'].includes(String(action?.action_type || '').trim());
-    const isStructuredChoice=['choose_structured_student','choose_structured_target','choose_structured_division','choose_structured_date','choose_structured_time'].includes(String(action?.action_type || '').trim());
     if(isSessionGroupChoice){
       ['A','B'].forEach(group=>{
         const button=document.createElement('button');
         button.type='button';
         button.className='olliTalkBetaActionButton primary';
         button.textContent=group+'반';
-        button.disabled=status!=='pending';
-        if(status==='pending') button.addEventListener('click',()=>handleOlliTalkSessionGroupChoice(action,group));
+        button.addEventListener('click',()=>handleOlliTalkSessionGroupChoice(action,group));
         card.appendChild(button);
       });
-      return card;
-    }
-
-    if(status!=='pending' && !isStructuredChoice){
-      const label=createMessageText('span','olliTalkBetaActionStatus',getOlliTalkActionStatusLabel(status));
-      if(status==='failed') label.classList.add('failed');
-      card.appendChild(label);
       return card;
     }
 

@@ -28,28 +28,27 @@ test('A/B selection preserves the original choice action and creates a new confi
   }
 });
 
-test('completed A/B choice cards remain visible but cannot be clicked again on PC and Mobile',()=>{
+test('resolved A/B choice cards render one selected-value status label instead of disabled choice buttons',()=>{
   const pcStart=pc.indexOf('function makeActionCard');
   const pcEnd=pc.indexOf('\n  function ',pcStart+20);
   const pcBlock=pc.slice(pcStart,pcEnd>pcStart?pcEnd:pc.length);
-  const pcGroup=pcBlock.indexOf('const isSessionGroupChoice=');
   const pcStatus=pcBlock.indexOf("if (status !== 'pending')");
-  assert.ok(pcGroup>=0 && pcStatus>pcGroup);
-  assert.match(pcBlock,/button\.disabled=status!=='pending'/);
-  assert.match(pcBlock,/if\(status==='pending'\) button\.addEventListener/);
+  const pcGroup=pcBlock.indexOf('const isSessionGroupChoice=');
+  assert.ok(pcStatus>=0 && pcGroup>pcStatus);
+  assert.match(pcBlock,/actionStatusLabel\(action\)/);
+  assert.match(pcBlock,/button\.textContent=group\+'반'/);
 
   const mobileStart=mobile.indexOf('function createOlliTalkActionCard');
   const mobileEnd=mobile.indexOf('\n  function ',mobileStart+20);
   const mobileBlock=mobile.slice(mobileStart,mobileEnd>mobileStart?mobileEnd:mobile.length);
-  const mobileGroup=mobileBlock.indexOf('const isSessionGroupChoice=');
   const mobileStatus=mobileBlock.indexOf("if(status!=='pending')");
-  assert.ok(mobileGroup>=0 && mobileStatus>mobileGroup);
-  assert.match(mobileBlock,/button\.disabled=status!=='pending'/);
-  assert.match(mobileBlock,/if\(status==='pending'\) button\.addEventListener/);
+  const mobileGroup=mobileBlock.indexOf('const isSessionGroupChoice=');
+  assert.ok(mobileStatus>=0 && mobileGroup>mobileStatus);
+  assert.match(mobileBlock,/getOlliTalkActionStatusLabel\(action\)/);
+  assert.match(mobileBlock,/button\.textContent=group\+'반'/);
 });
 
-
-test('all structured choice prompts remain visible after selection on PC and Mobile',()=>{
+test('structured choice prompts remain in history while resolved cards show the selected-value status label',()=>{
   for(const source of [pc,mobile]){
     for(const type of [
       'choose_structured_student','choose_structured_target','choose_structured_division',
@@ -57,18 +56,18 @@ test('all structured choice prompts remain visible after selection on PC and Mob
     ]){
       assert.match(source,new RegExp(type));
     }
-    assert.match(source,/isStructuredChoice=/);
-    assert.match(source,/status[^\n]*!==?['"]pending['"][^\n]*!isStructuredChoice/);
+    assert.match(source,/display_label/);
   }
 
-  assert.match(pc,/const interactive=clean\(action\?\.status\)==='pending'/);
-  assert.match(mobile,/const interactive=String\(action\?\.status \|\| ''\)\.trim\(\)==='pending'/);
-  assert.match(pc,/button\.disabled=!interactive/);
-  assert.match(mobile,/button\.disabled=!interactive/);
-  assert.match(pc,/button\.disabled=!selectable \|\| !interactive/);
-  assert.match(mobile,/button\.disabled=!selectable \|\| !interactive/);
-  assert.match(pc,/dateInput\.disabled=!interactive/);
-  assert.match(mobile,/dateInput\.disabled=!interactive/);
+  const pcStart=pc.indexOf('function makeActionCard');
+  const pcEnd=pc.indexOf('\n  function ',pcStart+20);
+  const pcBlock=pc.slice(pcStart,pcEnd>pcStart?pcEnd:pc.length);
+  assert.ok(pcBlock.indexOf("if (status !== 'pending')") < pcBlock.indexOf("choose_structured_student"));
+
+  const mobileStart=mobile.indexOf('function createOlliTalkActionCard');
+  const mobileEnd=mobile.indexOf('\n  function ',mobileStart+20);
+  const mobileBlock=mobile.slice(mobileStart,mobileEnd>mobileStart?mobileEnd:mobile.length);
+  assert.ok(mobileBlock.indexOf("if(status!=='pending')") < mobileBlock.indexOf("choose_structured_student"));
 });
 
 test('structured choice DB wrappers preserve the original message body while keeping existing validation logic',()=>{

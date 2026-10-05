@@ -516,11 +516,13 @@
     return '확인';
   }
 
-  function actionStatusLabel(status) {
-    const value = clean(status);
-    if (value === 'completed') return '처리 완료';
-    if (value === 'cancelled') return '취소됨';
-    if (value === 'failed') return '처리 실패';
+  function actionStatusLabel(action) {
+    const status = clean(action?.status);
+    const displayLabel = clean(action?.display_label);
+    if (displayLabel) return displayLabel;
+    if (status === 'completed') return '완료';
+    if (status === 'cancelled') return '취소됨';
+    if (status === 'failed') return '처리 실패';
     return '';
   }
 
@@ -1191,25 +1193,23 @@
     card.dataset.actionId = clean(action?.id);
     card.dataset.actionStatus = status;
 
+    if (status !== 'pending') {
+      const label = create('span', 'olliPcTeamTalkActionStatus', actionStatusLabel(action));
+      if (status === 'failed') label.classList.add('failed');
+      card.appendChild(label);
+      return card;
+    }
+
     const isSessionGroupChoice=['choose_makeup_group','choose_trial_group','choose_waitlist_group','choose_move_group'].includes(clean(action?.action_type));
-    const isStructuredChoice=['choose_structured_student','choose_structured_target','choose_structured_division','choose_structured_date','choose_structured_time'].includes(clean(action?.action_type));
     if(isSessionGroupChoice){
       ['A','B'].forEach(group=>{
         const button=document.createElement('button');
         button.type='button';
         button.className='olliPcTeamTalkActionButton primary';
         button.textContent=group+'반';
-        button.disabled=status!=='pending';
-        if(status==='pending') button.addEventListener('click',()=>handleSessionGroupChoice(action,group));
+        button.addEventListener('click',()=>handleSessionGroupChoice(action,group));
         card.appendChild(button);
       });
-      return card;
-    }
-
-    if (status !== 'pending' && !isStructuredChoice) {
-      const label = create('span', 'olliPcTeamTalkActionStatus', actionStatusLabel(status));
-      if (status === 'failed') label.classList.add('failed');
-      card.appendChild(label);
       return card;
     }
 
