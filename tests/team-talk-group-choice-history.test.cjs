@@ -47,3 +47,41 @@ test('completed A/B choice cards remain visible but cannot be clicked again on P
   assert.match(mobileBlock,/button\.disabled=status!=='pending'/);
   assert.match(mobileBlock,/if\(status==='pending'\) button\.addEventListener/);
 });
+
+
+test('all structured choice prompts remain visible after selection on PC and Mobile',()=>{
+  for(const source of [pc,mobile]){
+    for(const type of [
+      'choose_structured_student','choose_structured_target','choose_structured_division',
+      'choose_structured_date','choose_structured_time'
+    ]){
+      assert.match(source,new RegExp(type));
+    }
+    assert.match(source,/isStructuredChoice=/);
+    assert.match(source,/status[^\n]*!==?['"]pending['"][^\n]*!isStructuredChoice/);
+  }
+
+  assert.match(pc,/const interactive=clean\(action\?\.status\)==='pending'/);
+  assert.match(mobile,/const interactive=String\(action\?\.status \|\| ''\)\.trim\(\)==='pending'/);
+  assert.match(pc,/button\.disabled=!interactive/);
+  assert.match(mobile,/button\.disabled=!interactive/);
+  assert.match(pc,/button\.disabled=!selectable \|\| !interactive/);
+  assert.match(mobile,/button\.disabled=!selectable \|\| !interactive/);
+  assert.match(pc,/dateInput\.disabled=!interactive/);
+  assert.match(mobile,/dateInput\.disabled=!interactive/);
+});
+
+test('structured choice DB wrappers preserve the original message body while keeping existing validation logic',()=>{
+  const allChoiceMigration=fs.readFileSync(
+    path.join(root,'supabase/migrations/20261005150500_team_chat_preserve_all_choice_history.sql'),
+    'utf8'
+  );
+
+  for(const type of ['date','time','student','division','target']){
+    assert.match(allChoiceMigration,new RegExp('olli_team_chat_action_select_structured_'+type));
+    assert.match(allChoiceMigration,new RegExp('olli_team_chat_action_select_structured_'+type+'_history_impl_20261005'));
+  }
+  assert.match(allChoiceMigration,/v_original_body/);
+  assert.match(allChoiceMigration,/set body=v_original_body/);
+  assert.match(allChoiceMigration,/return v_result - 'message_body'/);
+});
