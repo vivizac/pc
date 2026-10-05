@@ -3500,6 +3500,7 @@
     if(
       interpreterLane==='routine'
       && interpreterIntent==='multi_read_query'
+      && readCommands.length>=2
       && router
       && typeof router.runStructuredMultiQuery==='function'
     ){
