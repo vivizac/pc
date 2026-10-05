@@ -112,6 +112,7 @@ export default async function handler(req, res) {
             targetMinute:Number(result?.structuredCommand?.targetMinute || 0),
             targetClassGroup:safeText(result?.structuredCommand?.targetClassGroup,10),
             reason:safeText(result?.structuredCommand?.reason,1000),
+            memoNote:safeText(result?.structuredCommand?.memoNote,1000),
             availabilityPurpose:safeText(result?.structuredCommand?.availabilityPurpose,40),
             rosterKind:safeText(result?.structuredCommand?.rosterKind,40),
           },
@@ -1659,6 +1660,7 @@ export default async function handler(req, res) {
           mode:'structured_move_cancel_prepare',
           ready:probe.ready===true,
           message:probe.persistedMessage,
+          choiceRequired:probe.choiceRequired || null,
           recoveredAfterPersist:probe.recoveredAfterPersist===true,
         });
       } else if (mode === 'pickup_prepare_probe') {
