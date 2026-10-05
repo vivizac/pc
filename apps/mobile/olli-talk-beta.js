@@ -5298,10 +5298,10 @@
       if(String(prepared.payload?.field || '').trim()==='division' && prepared.payload){
         return saveOlliTalkStructuredDivisionChoice(context,prepared.message || '유치부인지 초등부인지 선택해 주세요.',prepared.payload,null);
       }
-      if(String(prepared.payload?.field || '').trim()==='date' && prepared.payload){
+      if(['date','target_date'].includes(String(prepared.payload?.field || '').trim()) && prepared.payload){
         return saveOlliTalkStructuredDateChoice(context,prepared.message || '날짜를 선택해 주세요.',prepared.payload,null);
       }
-      if(String(prepared.payload?.field || '').trim()==='time' && prepared.payload){
+      if(['time','target_time'].includes(String(prepared.payload?.field || '').trim()) && prepared.payload){
         return saveOlliTalkStructuredTimeChoice(context,prepared.message || '시간을 선택해 주세요.',prepared.payload,null);
       }
       return saveOlliTalkOlliReply(context,String(prepared.message || '').trim() || '필요한 정보를 선택해 주세요.',null);
