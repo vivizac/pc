@@ -414,7 +414,7 @@
     const raw = cleanText(text);
     const compact = compactText(raw);
     if (!raw || !hasMoveAction(compact) || hasRemoveAction(compact)) return null;
-    if (isOlliReplyScheduleInquiry(raw)) return null;
+    if (isOlliReplyScheduleInquiry(raw) || parseAvailableSlotsIntent(raw) || parseRosterQueryIntent(raw)) return null;
 
     const mentions = weekdayTimeMentions(raw);
     if (!mentions.length && !/(?:수업|시간표)/.test(compact)) return null;
@@ -451,7 +451,11 @@
       || !hasMakeupWord(compact)
       || hasRemoveAction(compact)
       || hasMoveAction(compact)
-      || (!hasAddAction(compact) && isOlliReplyScheduleInquiry(raw))
+      || (!hasAddAction(compact) && (
+        isOlliReplyScheduleInquiry(raw)
+        || parseAvailableSlotsIntent(raw)
+        || parseRosterQueryIntent(raw)
+      ))
     ) return null;
 
     const dateSpec = parseDateExpression(compact);
@@ -565,7 +569,11 @@
       || !hasWaitlistWord(compact)
       || hasRemoveAction(compact)
       || hasMoveAction(compact)
-      || (!hasAddAction(compact) && isOlliReplyScheduleInquiry(raw))
+      || (!hasAddAction(compact) && (
+        isOlliReplyScheduleInquiry(raw)
+        || parseAvailableSlotsIntent(raw)
+        || parseRosterQueryIntent(raw)
+      ))
     ) return null;
 
     const dateSpec = parseDateExpression(compact);
@@ -598,7 +606,11 @@
       || !hasTrialWord(compact)
       || hasRemoveAction(compact)
       || hasMoveAction(compact)
-      || (!hasAddAction(compact) && isOlliReplyScheduleInquiry(raw))
+      || (!hasAddAction(compact) && (
+        isOlliReplyScheduleInquiry(raw)
+        || parseAvailableSlotsIntent(raw)
+        || parseRosterQueryIntent(raw)
+      ))
     ) return null;
 
     const dateSpec = parseDateExpression(compact);
