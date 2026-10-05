@@ -1,0 +1,13 @@
+-- Production migration marker for the observation memo checkpoint architecture.
+-- Applied in Supabase as: observation_memo_exit_checkpoint_history
+--
+-- Runtime contract:
+-- 1. student_note_drafts remains the current autosaved document (CAS/revision unchanged).
+-- 2. private.olli_note_draft_lineage stores revision + content hash for sync safety.
+-- 3. private.olli_note_draft_checkpoints stores full-text recovery checkpoints.
+-- 4. public.olli_note_draft_checkpoint_create creates a checkpoint when the memo session exits.
+-- 5. olli_note_draft_version_list / restore read recovery checkpoints, not every autosave.
+-- 6. full-text recovery checkpoints older than 30 days are removed.
+--
+-- The database change was applied through Supabase migration tooling before this repository
+-- marker was committed so Git and production retain the same migration intent.
