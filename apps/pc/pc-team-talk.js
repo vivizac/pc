@@ -1418,12 +1418,8 @@
     const bubbleRow = create('div', 'olliPcTeamTalkBubbleRow');
     const bubble = create('div', 'olliPcTeamTalkBubble olliPcTeamTalkTypingBubble');
     bubble.setAttribute('role', 'status');
-    bubble.setAttribute('aria-label', '올리가 답변을 작성하는 중');
-    for (let index = 0; index < 3; index += 1) {
-      const dot = create('span', 'olliPcTeamTalkTypingDot');
-      dot.setAttribute('aria-hidden', 'true');
-      bubble.appendChild(dot);
-    }
+    bubble.setAttribute('aria-label', '올리가 요청을 확인하는 중');
+    bubble.textContent = '확인중…';
     bubbleRow.appendChild(bubble);
     content.appendChild(bubbleRow);
     row.appendChild(content);
@@ -3430,11 +3426,46 @@
     const router = global.OlliCommandRouter;
     const schedule = global.OlliCommandSchedule;
     const rawCommandText=clean(commandText);
-    const interpretation=await interpretOlliSystemLanguage(
-      rawCommandText,
-      current,
-      replyToMessageId
-    );
+    let localRuleClassification=null;
+    let localRuleIntent='';
+    if(router && typeof router.classifyRequest==='function'){
+      try{
+        localRuleClassification=router.classifyRequest(rawCommandText);
+        localRuleIntent=clean(localRuleClassification?.intent);
+      }catch(_){
+        localRuleClassification=null;
+        localRuleIntent='';
+      }
+    }
+    if(!localRuleIntent && router && typeof router.parseStudentInfoLookupIntent==='function'){
+      try{
+        if(router.parseStudentInfoLookupIntent(rawCommandText)) localRuleIntent='open_student_info';
+      }catch(_){}
+    }
+    const localRuleHandled=!!localRuleIntent
+      && clean(localRuleClassification?.type || (localRuleIntent==='open_student_info' ? 'ui_query' : ''))!=='other';
+    const localStructuredCommand=localRuleHandled
+      && router
+      && typeof router.interpretedIntentToStructuredCommand==='function'
+      ? router.interpretedIntentToStructuredCommand(localRuleIntent,rawCommandText)
+      : null;
+    const interpretation=localRuleHandled
+      ? {
+          lane:'routine',
+          route:'rule',
+          intent:localRuleIntent,
+          standaloneCommand:rawCommandText,
+          structuredCommand:localStructuredCommand,
+          batchCommands:[],
+          readCommands:[],
+          reply:'',
+          contextUsed:false
+        }
+      : await interpretOlliSystemLanguage(
+          rawCommandText,
+          current,
+          replyToMessageId
+        );
     const interpreterLane=clean(interpretation.lane) || 'routine';
     const interpreterRoute=clean(interpretation.route);
     const interpreterIntent=clean(interpretation.intent);
@@ -4348,8 +4379,10 @@
       resizeComposer();
       updateComposerState();
       appendPersistedMessage(payload.message, current.memberId);
+      let firstReplyStartedAt=0;
       if (olliRequested && (olliAiMentionRequested || isAiEnabled())) {
         state.assistantReplyPending = true;
+        firstReplyStartedAt=Date.now();
         syncAssistantTypingIndicator();
       }
 
@@ -4376,6 +4409,10 @@
         try {
           if (usingAi) {
             const turn = await resolveAiTurn(commandText, current, Number(payload.message.id));
+            if(firstReplyStartedAt){
+              const remaining=1000-(Date.now()-firstReplyStartedAt);
+              if(remaining>0) await new Promise(resolve=>setTimeout(resolve,remaining));
+            }
             state.assistantReplyPending = false;
             const assistantMessages=Array.isArray(turn.assistantMessages) && turn.assistantMessages.length
               ? turn.assistantMessages
