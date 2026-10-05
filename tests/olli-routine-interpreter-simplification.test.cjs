@@ -16,10 +16,9 @@ assert.doesNotMatch(contextRoute,/Structured command pilot:/);
 assert.doesNotMatch(contextRoute,/batch_commands:\{/);
 assert.match(contextRoute,/required:\['lane','intent','standalone_command','reply','context_used'\]/);
 
-assert.match(common,/function prepareInterpretedAction\(intent, text, context\)/);
 assert.match(common,/function interpretedIntentToStructuredCommand\(intent, text\)/);
+assert.match(pc,/router\.interpretedIntentToStructuredCommand\(interpreterIntent,commandText\)/);
+assert.match(mobile,/router\.interpretedIntentToStructuredCommand\(interpreterIntent,commandText\)/);
 assert.match(common,/function parseCanonicalAddDraft\(text, intent\)/);
-assert.match(pc,/router\.prepareInterpretedAction\(interpreterIntent,commandText/);
-assert.match(mobile,/router\.prepareInterpretedAction\(interpreterIntent,commandText/);
 
 console.log('routine interpreter simplification regression: ok');
