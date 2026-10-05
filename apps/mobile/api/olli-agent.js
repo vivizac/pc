@@ -856,30 +856,65 @@ export default async function handler(req, res) {
         });
       }
 
-      const commands = rawCommands.map((item) => ({
-        intent:safeText(item?.intent, 80),
-        text:safeText(item?.text, 5000),
-        reason:safeText(item?.reason, 300),
-        reasonMessageId:Number(item?.reasonMessageId || item?.reason_message_id || 0),
-        reasonMessageText:safeText(item?.reasonMessageText || item?.reason_message_text, 5000),
-        memoNote:safeText(item?.memoNote || item?.memo_note, 5000),
-        needsClarification:item?.needsClarification === true,
-        structuredSelection:item?.structuredSelection && typeof item.structuredSelection==='object'
-          ? {
-              sessionDate:safeText(item.structuredSelection.sessionDate || item.structuredSelection.session_date, 20),
-              timeSlot:Number(item.structuredSelection.timeSlot || item.structuredSelection.time_slot || 0),
-              classGroup:safeText(item.structuredSelection.classGroup || item.structuredSelection.class_group, 10).toUpperCase(),
-            }
-          : null,
-        contextText:safeText(item?.contextText || item?.context_text, 5000),
-        clarificationMessageId:Number(item?.clarificationMessageId || item?.clarification_message_id || 0),
-        clarificationMessageText:safeText(item?.clarificationMessageText || item?.clarification_message_text, 5000),
-      }));
+      const commands = rawCommands.map((item) => {
+        const structured=item?.structuredCommand && typeof item.structuredCommand==='object'
+          ? item.structuredCommand
+          : {};
+        const selection=item?.structuredSelection && typeof item.structuredSelection==='object'
+          ? item.structuredSelection
+          : null;
+        return {
+          intent:safeText(item?.intent, 80),
+          text:safeText(item?.text, 5000),
+          reason:safeText(item?.reason, 300),
+          reasonMessageId:Number(item?.reasonMessageId || item?.reason_message_id || 0),
+          reasonMessageText:safeText(item?.reasonMessageText || item?.reason_message_text, 5000),
+          memoNote:safeText(item?.memoNote || item?.memo_note, 5000),
+          needsClarification:item?.needsClarification === true,
+          structuredCommand:{
+            action:safeText(structured.action,40),
+            studentName:safeText(structured.studentName || structured.student_name,200),
+            division:safeText(structured.division,20),
+            dateExpression:safeText(structured.dateExpression || structured.date_expression,200),
+            timeSlot:Number(structured.timeSlot || structured.time_slot || 0),
+            classGroup:safeText(structured.classGroup || structured.class_group,10).toUpperCase(),
+            weekday:Number(structured.weekday || 0),
+            classTime:Number(structured.classTime || structured.class_time || 0),
+            classMinute:Number(structured.classMinute || structured.class_minute || 0),
+            pickupKind:safeText(structured.pickupKind || structured.pickup_kind,20),
+            pickupLabel:safeText(structured.pickupLabel || structured.pickup_label,500),
+            pickupTime:safeText(structured.pickupTime || structured.pickup_time,20),
+            sourceDateExpression:safeText(structured.sourceDateExpression || structured.source_date_expression,200),
+            sourceWeekday:Number(structured.sourceWeekday || structured.source_weekday || 0),
+            sourceTimeSlot:Number(structured.sourceTimeSlot || structured.source_time_slot || 0),
+            sourceMinute:Number(structured.sourceMinute || structured.source_minute || 0),
+            sourceClassGroup:safeText(structured.sourceClassGroup || structured.source_class_group,10).toUpperCase(),
+            targetDateExpression:safeText(structured.targetDateExpression || structured.target_date_expression,200),
+            targetWeekday:Number(structured.targetWeekday || structured.target_weekday || 0),
+            targetTimeSlot:Number(structured.targetTimeSlot || structured.target_time_slot || 0),
+            targetMinute:Number(structured.targetMinute || structured.target_minute || 0),
+            targetClassGroup:safeText(structured.targetClassGroup || structured.target_class_group,10).toUpperCase(),
+            reason:safeText(structured.reason,1000),
+            memoNote:safeText(structured.memoNote || structured.memo_note,1000),
+          },
+          structuredSelection:selection
+            ? {
+                sessionDate:safeText(selection.sessionDate || selection.session_date,20),
+                timeSlot:Number(selection.timeSlot || selection.time_slot || 0),
+                classGroup:safeText(selection.classGroup || selection.class_group,10).toUpperCase(),
+                division:safeText(selection.division,20),
+                weekday:Number(selection.weekday || 0),
+                classTime:Number(selection.classTime || selection.class_time || 0),
+              }
+            : null,
+          contextText:safeText(item?.contextText || item?.context_text,5000),
+          clarificationMessageId:Number(item?.clarificationMessageId || item?.clarification_message_id || 0),
+          clarificationMessageText:safeText(item?.clarificationMessageText || item?.clarification_message_text,5000),
+        };
+      });
 
       const runtimeModule = await import('./_lib/olli-agent/runtime.cjs');
-      const agentContext = contextModule.toAgentRunContext(requestContext);
       const result = await runtimeModule.runBatchPrepare({
-        agentContext,
         requestContext,
         sourceMessageId,
         sourceMessageText:message,
