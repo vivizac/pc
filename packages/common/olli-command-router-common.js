@@ -454,7 +454,7 @@
       /(?:보강|보충(?:수업)?)(?:수업)?(?:으로|에|을|를|도)?/g,
       addActionPattern()
     );
-    if (!studentName || !dateSpec || !timeSlot) return null;
+    if (!studentName) return null;
 
     return {
       type:'mutation',
@@ -562,7 +562,7 @@
       /(?:대기(?:자|명단|리스트)?|웨이팅(?:리스트)?)(?:에|로|을|를)?/g,
       addActionPattern()
     );
-    if (!studentName || !dateSpec || !timeSlot) return null;
+    if (!studentName) return null;
 
     return {
       type:'mutation',
@@ -589,7 +589,7 @@
       /(?:체험\s*클래스|체험\s*수업|체험)(?:으로|에|을|를)?/g,
       addActionPattern()
     );
-    if (!guestName || !dateSpec || !timeSlot) return null;
+    if (!guestName) return null;
 
     return {
       type:'mutation',
