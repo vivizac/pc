@@ -594,11 +594,9 @@
   font-weight:500;
   line-height:1.45;
 }
-#olliTalkBetaScreen .olliTalkSelectedMentionToken{
-  color:#1687F8;
-}
+#olliTalkBetaScreen .olliTalkSelectedMentionToken,
 #olliTalkBetaScreen .olliTalkSelectedMentionToken.olli{
-  color:var(--olli-talk-olli-accent);
+  color:#1687F8;
 }
 #olliTalkBetaScreen .olliTalkSelectedMentionPrefix[hidden]{
   display:none;
@@ -1123,7 +1121,7 @@
   margin:12px auto 2px;
   padding:6px 10px;
   border-radius:999px;
-  background:#EC70AF;
+  background:linear-gradient(90deg,#EC70AF 0%,#EC70AF 34%,#ED7D95 52%,#F08E75 68%,#F1A159 83%,#F3B347 100%);
   color:#fff;
   font-size:calc(11px * var(--olli-text-scale, 1));
   font-weight:500;
@@ -1317,13 +1315,15 @@
 }
 
 #olliTalkBetaScreen .olliTalkMentionMenu{
-  position:relative;
-  order:-1;
-  flex:0 0 100%;
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:calc(100% + 9px);
+  z-index:4;
   width:100%;
   max-height:190px;
   overflow:auto;
-  margin:0 0 9px;
+  margin:0;
   padding:4px 0 10px;
   border:0;
   border-radius:0;
