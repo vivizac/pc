@@ -2098,10 +2098,18 @@
     const interpreterLane=String(interpretation.lane || '').trim() || 'routine';
     const interpreterRoute=String(interpretation.route || '').trim();
     const interpreterIntent=String(interpretation.intent || '').trim();
-    const structuredCommand=interpretation.structuredCommand || null;
+    let structuredCommand=interpretation.structuredCommand || null;
     const batchCommands=Array.isArray(interpretation.batchCommands)?interpretation.batchCommands:[];
     const readCommands=Array.isArray(interpretation.readCommands)?interpretation.readCommands:[];
     commandText=String(interpretation.standaloneCommand || rawCommandText).trim();
+    if(
+      interpreterLane==='routine'
+      && (!structuredCommand || !String(structuredCommand.action || '').trim() || String(structuredCommand.action || '').trim()==='none')
+      && router
+      && typeof router.interpretedIntentToStructuredCommand==='function'
+    ){
+      structuredCommand=router.interpretedIntentToStructuredCommand(interpreterIntent,commandText) || structuredCommand;
+    }
 
     if(options.allowSuggestedQuery && router && typeof router.runSuggestedQuery==='function'){
       const suggested=await router.runSuggestedQuery(commandText,{
