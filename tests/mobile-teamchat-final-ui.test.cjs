@@ -18,26 +18,29 @@ test('active mobile Team Chat composer is two rows with text first and controls 
   assert.match(css,/\.olliTalkKeyboardOpen \.olliTalkBetaSendBtn\{[\s\S]*grid-column:3;[\s\S]*grid-row:2;/);
 });
 
-test('mentions keep teacher blue and Olli pink while multiline text starts after the mention only on line one',()=>{
-  assert.match(css,/\.olliTalkSelectedMentionToken\{\s*color:#1687F8/);
-  assert.match(css,/\.olliTalkSelectedMentionToken\.olli\{\s*color:var\(--olli-talk-olli-accent\)/);
+test('teacher and Olli mentions are blue while multiline text starts after the mention only on line one',()=>{
+  assert.match(css,/\.olliTalkSelectedMentionToken,[\s\S]*\.olliTalkSelectedMentionToken\.olli\{\s*color:#1687F8/);
   assert.match(css,/text-indent:var\(--olli-talk-mention-indent,0px\)/);
   assert.match(js,/getElementById\('olliTalkComposerTextRow'\)/);
   assert.match(js,/getBoundingClientRect\(\)\.width/);
 });
 
-test('AI avatar says 올리 in pink and sender name returns to inherited original color',()=>{
-  assert.equal((js.match(/avatar\.textContent = '올리';/g)||[]).length,2);
-  assert.doesNotMatch(js,/avatar\.textContent = 'Olli';/);
-  assert.match(css,/\.olliTalkBetaAiAvatar\{\s*color:var\(--olli-talk-olli-accent\)/);
-  assert.doesNotMatch(css,/\.olliTalkBetaMessage\.ai \.olliTalkBetaSenderName\{\s*color:var\(--olli-talk-olli-accent\)/);
+test('mention menu is anchored above the composer instead of becoming a grid row below the input',()=>{
+  assert.match(css,/\.olliTalkMentionMenu\{[\s\S]*position:absolute;[\s\S]*bottom:calc\(100% \+ 9px\);/);
+  assert.doesNotMatch(css,/\.olliTalkMentionMenu\{[\s\S]*order:-1;/);
 });
 
-test('pink Team Chat system pill uses white text',()=>{
-  assert.match(css,/\.olliTalkBetaSystemMessage\{[\s\S]*background:#EC70AF;[\s\S]*color:#fff;/);
+test('AI avatar label is Olli while sender name remains the Korean display name',()=>{
+  assert.equal((js.match(/avatar\.textContent = 'Olli';/g)||[]).length,2);
+  assert.doesNotMatch(js,/avatar\.textContent = '올리';/);
+  assert.match(js,/createMessageText\('span', 'olliTalkBetaSenderName', '올리'\)/);
 });
 
-test('mobile Team Chat assets share final cache bust revision',()=>{
-  assert.match(html,/olli-talk-beta\.css\?v=20261005-teamchat-final-ui-1/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261005-teamchat-final-ui-1/);
+test('Team Chat system pill uses the sampled pink-to-orange gradient and white text',()=>{
+  assert.match(css,/\.olliTalkBetaSystemMessage\{[\s\S]*linear-gradient\(90deg,#EC70AF 0%,#EC70AF 34%,#ED7D95 52%,#F08E75 68%,#F1A159 83%,#F3B347 100%\);[\s\S]*color:#fff;/);
+});
+
+test('mobile Team Chat assets share visual-fix cache bust revision',()=>{
+  assert.match(html,/olli-talk-beta\.css\?v=20261005-teamchat-visual-fix-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261005-teamchat-visual-fix-1/);
 });
