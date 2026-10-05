@@ -19,6 +19,13 @@ test('roster owns its hamburger and memo owns its own back button', () => {
   assert.match(js, /function enforceObservationMemoPageOwnership\(\)[\s\S]*setObservationPersistentNavVisible\(true\)/);
 });
 
+test('memo top back waits for the final save and exit checkpoint before leaving the editor', () => {
+  assert.match(js, /async function showObservationMemoRoster\(event, options = \{\}\)/);
+  assert.match(js, /await finalizeObservationMemoBeforeRosterNavigation\(\)/);
+  assert.match(js, /finalizeObservationMemoSessionCheckpoint\(\{ reason:'roster-back' \}\)/);
+});
+
+
 test('memo bottom back button is fully removed', () => {
   assert.doesNotMatch(html, /id="memoRosterBackBtn"/);
   assert.doesNotMatch(html, /id="memoStudentSelectWrap"/);
