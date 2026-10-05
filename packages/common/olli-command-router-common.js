@@ -468,6 +468,38 @@
     };
   }
 
+  function parseUpdateSides(text) {
+    const raw=cleanText(text);
+    const parts=raw.split(/(?:에서|->|→|에서\s*)/);
+    const changeMatch=raw.match(/^(.*?)(?:에서)?\s*(?:을|를)?\s*(?:수정|변경|옮겨|옮기|이동|바꿔|바꾸|고쳐|고치)(?:줘요|해주세요|해줘|해줄래|할래|해|줘|주세요|어줘|아줘|어요|아요|기)?\s*(.*)$/);
+    let sourceText='';
+    let targetText='';
+    if(parts.length>=2){
+      sourceText=cleanText(parts[0]);
+      targetText=cleanText(parts.slice(1).join(' '));
+    }
+    if(changeMatch){
+      sourceText=cleanText(changeMatch[1]) || sourceText;
+      targetText=cleanText(changeMatch[2]) || targetText;
+    }
+    const sourceDate=parseDateExpression(compactText(sourceText));
+    const targetDate=parseDateExpression(compactText(targetText));
+    const sourceMention=weekdayTimeMentions(sourceText)[0] || null;
+    const targetMention=weekdayTimeMentions(targetText)[0] || null;
+    return {
+      sourceDateExpression:sourceDate ? sourceDate.label : '',
+      sourceWeekday:Number(sourceMention?.weekday || sourceDate?.weekday || 0),
+      sourceTimeSlot:firstTimeSlot(sourceText),
+      sourceMinute:firstTimeMinute(sourceText),
+      sourceClassGroup:firstClassGroup(sourceText),
+      targetDateExpression:targetDate ? targetDate.label : '',
+      targetWeekday:Number(targetMention?.weekday || targetDate?.weekday || 0),
+      targetTimeSlot:firstTimeSlot(targetText),
+      targetMinute:firstTimeMinute(targetText),
+      targetClassGroup:firstClassGroup(targetText)
+    };
+  }
+
   function parseMakeupUpdateMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
@@ -481,10 +513,13 @@
     );
     if (!studentName) return null;
 
+    const sides=parseUpdateSides(raw);
     return {
       type:'mutation',
       intent:'update_makeup',
       studentName,
+      division:detectDivision(compact),
+      ...sides,
       originalText:raw
     };
   }
@@ -558,11 +593,14 @@
     );
     if (!guestName) return null;
 
+    const sides=parseUpdateSides(raw);
     return {
       type:'mutation',
       intent:'update_trial',
       guestName,
       studentName:guestName,
+      division:detectDivision(compact),
+      ...sides,
       originalText:raw
     };
   }
@@ -686,10 +724,13 @@
     );
     if (!studentName) return null;
 
+    const sides=parseUpdateSides(raw);
     return {
       type:'mutation',
       intent:'update_waitlist',
       studentName,
+      division:detectDivision(compact),
+      ...sides,
       originalText:raw
     };
   }
