@@ -23,6 +23,14 @@ const CONTRACTS = Object.freeze({
 
   'Olli Student Schedule Probe': singleToolContract('get_student_schedule', 'read'),
   'Olli Recent Records Probe': singleToolContract('get_recent_records', 'read'),
+  'Olli Feedback Analysis': Object.freeze({
+    category:'analysis',
+    requiredTools:[],
+    allowedTools:[],
+    maxToolCalls:0,
+    requireFinalOutput:true,
+    forbidDuplicateTools:true,
+  }),
   'Olli Schedule Availability Probe': singleToolContract('get_schedule_availability', 'read'),
   'Olli Attendance Probe': singleToolContract('get_attendance', 'read'),
   'Olli Pickup Probe': singleToolContract('get_pickups', 'read'),
@@ -128,6 +136,12 @@ const REPRESENTATIVE_SCENARIOS = Object.freeze([
     kind: 'read',
     agent: 'Olli Pickup Probe',
     expectation: 'one get_pickups call',
+  }),
+  Object.freeze({
+    id:'feedback-longitudinal-analysis',
+    kind:'analysis',
+    agent:'Olli Feedback Analysis',
+    expectation:'records are read server-side before one no-tool analysis run',
   }),
   Object.freeze({
     id: 'write-stops-at-confirmation',
