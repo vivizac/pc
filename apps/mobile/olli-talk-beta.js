@@ -2410,6 +2410,32 @@
       });
     }
 
+
+    if(
+      interpreterLane==='routine'
+      && interpreterRoute==='rule'
+      && router
+      && typeof router.prepareInterpretedAction==='function'
+    ){
+      const prepared=await router.prepareInterpretedAction(interpreterIntent,commandText,{
+        source:'olli_talk_ai_canonical',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(prepared?.handled===true){
+        if(prepared.kind==='action_needs_field' && prepared.payload){
+          if(String(prepared.payload.field || '').trim()==='student_choice') return {assistantMessage:await saveOlliTalkStructuredStudentChoice(context,prepared.message || '학생을 선택해 주세요.',prepared.payload,replyToMessageId),replyText:String(prepared.message || ''),recordAi:false};
+          if(String(prepared.payload.field || '').trim()==='target_choice') return {assistantMessage:await saveOlliTalkStructuredTargetChoice(context,prepared.message || '대상을 선택해 주세요.',prepared.payload,replyToMessageId),replyText:String(prepared.message || ''),recordAi:false};
+          if(String(prepared.payload.field || '').trim()==='division') return {assistantMessage:await saveOlliTalkStructuredDivisionChoice(context,prepared.message || '유치부인지 초등부인지 선택해 주세요.',prepared.payload,replyToMessageId),replyText:String(prepared.message || ''),recordAi:false};
+          if(['date','target_date'].includes(String(prepared.payload.field || '').trim())) return {assistantMessage:await saveOlliTalkStructuredDateChoice(context,prepared.message || '날짜를 선택해 주세요.',prepared.payload,replyToMessageId),replyText:String(prepared.message || ''),recordAi:false};
+          if(['time','target_time'].includes(String(prepared.payload.field || '').trim())) return {assistantMessage:await saveOlliTalkStructuredTimeChoice(context,prepared.message || '시간을 선택해 주세요.',prepared.payload,replyToMessageId),replyText:String(prepared.message || ''),recordAi:false};
+        }
+        if(['action_pending','action_choice'].includes(prepared.kind) && prepared.payload){
+          return {assistantMessage:await saveOlliTalkActionReply(context,prepared.message || (prepared.kind==='action_choice' ? '반을 선택해 주세요.' : '이 작업을 진행할까요?'),prepared.payload,replyToMessageId),replyText:String(prepared.message || ''),recordAi:false};
+        }
+      }
+    }
+
     if(
       interpreterLane==='routine'
       && ['add_makeup','update_makeup','add_trial','update_trial','add_waitlist','cancel_waitlist','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent'].includes(String(structuredCommand?.action || '').trim())
