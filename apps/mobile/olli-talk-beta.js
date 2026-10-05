@@ -2679,6 +2679,19 @@
       availabilityPurpose:String(structuredRaw.availabilityPurpose || '').trim(),
       rosterKind:String(structuredRaw.rosterKind || '').trim()
     };
+    const readCommands=(Array.isArray(language.readCommands)?language.readCommands:[]).slice(0,3).map((command)=>({
+      action:String(command?.action || '').trim(),
+      studentName:String(command?.studentName || '').trim(),
+      division:String(command?.division || '').trim(),
+      dateExpression:String(command?.dateExpression || '').trim(),
+      timeSlot:Number(command?.timeSlot || 0),
+      classGroup:String(command?.classGroup || '').trim().toUpperCase(),
+      weekday:Number(command?.weekday || 0),
+      classTime:Number(command?.classTime || 0),
+      pickupKind:String(command?.pickupKind || '').trim(),
+      availabilityPurpose:String(command?.availabilityPurpose || '').trim(),
+      rosterKind:String(command?.rosterKind || '').trim()
+    }));
     const batchCommands=(Array.isArray(language.batchCommands)?language.batchCommands:[]).slice(0,3).map((command)=>({
       action:String(command?.action || '').trim(),
       studentName:String(command?.studentName || '').trim(),
@@ -2716,6 +2729,7 @@
       standaloneCommand,
       structuredCommand,
       batchCommands,
+      readCommands,
       reply,
       contextUsed:language.contextUsed===true
     };
@@ -2775,6 +2789,7 @@
     const interpreterIntent=String(interpretation.intent || '').trim();
     const structuredCommand=interpretation.structuredCommand || null;
     const batchCommands=Array.isArray(interpretation.batchCommands)?interpretation.batchCommands:[];
+    const readCommands=Array.isArray(interpretation.readCommands)?interpretation.readCommands:[];
     commandText=String(interpretation.standaloneCommand || rawCommandText).trim();
 
     if(options.allowSuggestedQuery && router && typeof router.runSuggestedQuery==='function'){
@@ -2824,6 +2839,27 @@
         replyText:resolved.message,
         recordAi:true
       };
+    }
+
+    if(
+      interpreterLane==='routine'
+      && interpreterIntent==='multi_read_query'
+      && router
+      && typeof router.runStructuredMultiQuery==='function'
+    ){
+      const queried=await router.runStructuredMultiQuery(readCommands,commandText,{
+        source:'olli_talk_ai_structured',
+        selectedStudent:null,
+        autoSubmitContext:null
+      });
+      if(queried?.handled===true){
+        const message=String(queried.message || '').trim() || '조회 결과를 확인했어요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
     }
 
     if(

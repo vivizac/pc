@@ -176,6 +176,8 @@ test('unified interpreter emits a structured add_makeup command from conversatio
     targetMinute:0,
     targetClassGroup:'',
     reason:'',
+
+    memoNote:'',
     availabilityPurpose:'unknown',
     rosterKind:'',
   });
@@ -503,6 +505,8 @@ test('unified interpreter emits a structured add_trial command without student d
     targetMinute:0,
     targetClassGroup:'',
     reason:'',
+
+    memoNote:'',
     availabilityPurpose:'unknown',
     rosterKind:'',
   });
@@ -567,6 +571,8 @@ test('unified interpreter emits a structured add_waitlist command without studen
     targetMinute:0,
     targetClassGroup:'',
     reason:'',
+
+    memoNote:'',
     availabilityPurpose:'unknown',
     rosterKind:'',
   });
@@ -637,6 +643,8 @@ test('unified interpreter emits structured pickup fields without student data lo
     targetMinute:0,
     targetClassGroup:'',
     reason:'',
+
+    memoNote:'',
     availabilityPurpose:'unknown',
     rosterKind:'',
   });
@@ -762,6 +770,8 @@ test('unified interpreter emits structured class move fields without student dat
     targetMinute:0,
     targetClassGroup:'',
     reason:'',
+
+    memoNote:'',
     availabilityPurpose:'unknown',
     rosterKind:'',
   });
@@ -837,6 +847,8 @@ test('unified interpreter emits a structured mark_absent command without loading
     targetMinute:0,
     targetClassGroup:'',
     reason:'감기',
+
+    memoNote:'',
     availabilityPurpose:'unknown',
     rosterKind:'',
   });

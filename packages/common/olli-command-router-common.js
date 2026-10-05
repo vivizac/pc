@@ -2088,6 +2088,111 @@
     }
   }
 
+
+  function structuredReadMatchesParsed(command,parsed){
+    const action=cleanText(command?.action);
+    if(!parsed||action!==cleanText(parsed.intent)) return false;
+
+    const division=cleanText(command?.division);
+    const parsedDivision=cleanText(parsed?.division);
+    if(division!==parsedDivision) return false;
+
+    const classGroup=cleanText(command?.class_group || command?.classGroup).toUpperCase();
+    const parsedGroup=cleanText(parsed?.classGroup).toUpperCase();
+    if(classGroup!==parsedGroup) return false;
+
+    if(action==='find_available_slots'){
+      if(Number(command?.weekday||0)!==Number(parsed?.weekday||0)) return false;
+      if(Number(command?.time_slot||command?.timeSlot||0)!==Number(parsed?.timeSlot||0)) return false;
+      const purpose=cleanText(command?.availability_purpose || command?.availabilityPurpose) || 'unknown';
+      if(purpose!==(cleanText(parsed?.purpose)||'unknown')) return false;
+      const hasDate=!!cleanText(command?.date_expression || command?.dateExpression);
+      if((parsed?.scope==='date'||parsed?.scope==='week')!==hasDate) return false;
+      return true;
+    }
+
+    if(action==='find_roster_entries'){
+      if(cleanText(command?.roster_kind || command?.rosterKind)!==cleanText(parsed?.rosterKind)) return false;
+      if(Number(command?.weekday||0)!==Number(parsed?.weekday||0)) return false;
+      if(Number(command?.time_slot||command?.timeSlot||0)!==Number(parsed?.timeSlot||0)) return false;
+      const hasDate=!!cleanText(command?.date_expression || command?.dateExpression);
+      if(parsed?.scope==='date'&&!hasDate) return false;
+      if(parsed?.scope==='all'&&hasDate) return false;
+      return true;
+    }
+
+    if(action==='find_pickups'){
+      if(Number(command?.class_time||command?.classTime||0)!==Number(parsed?.classTime||0)) return false;
+      const kind=cleanText(command?.pickup_kind || command?.pickupKind);
+      const expectedKind=parsed?.kind==='dropoff'?'dropoff':(parsed?.kind==='pickup'?'arrival':'');
+      if(kind!==expectedKind) return false;
+      return !!cleanText(command?.date_expression || command?.dateExpression);
+    }
+
+    return false;
+  }
+
+  async function runStructuredMultiQuery(systemCommands,sourceText,context){
+    const commands=Array.isArray(systemCommands)?systemCommands.slice(0,3):[];
+    const parsed=parseQueryIntent(sourceText);
+    const queries=parsed?.intent==='multi_read_query'&&Array.isArray(parsed.queries)
+      ? parsed.queries
+      : [];
+
+    if(commands.length<2||commands.length>3||queries.length!==commands.length){
+      return {
+        handled:true,
+        kind:'command_result',
+        intent:'multi_read_query',
+        text:'',
+        message:'복합 조회 구조가 원문과 일치하지 않아 실행하지 않았어요. 요청을 조금 더 구체적으로 알려 주세요.',
+        clearInput:true,
+        payload:{commands}
+      };
+    }
+
+    for(let index=0;index<commands.length;index+=1){
+      if(!structuredReadMatchesParsed(commands[index],queries[index])){
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'multi_read_query',
+          text:'',
+          message:'복합 조회 구조가 원문과 일치하지 않아 실행하지 않았어요. 요청을 조금 더 구체적으로 알려 주세요.',
+          clearInput:true,
+          payload:{commands}
+        };
+      }
+    }
+
+    const results=[];
+    for(const command of commands){
+      const result=await runStructuredQuery(command,context);
+      if(!result||result.handled!==true){
+        return {
+          handled:true,
+          kind:'command_result',
+          intent:'multi_read_query',
+          text:'',
+          message:'요청한 조회 항목을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          clearInput:true,
+          payload:{commands,results}
+        };
+      }
+      results.push(result);
+    }
+
+    return {
+      handled:true,
+      kind:'command_result',
+      intent:'multi_read_query',
+      text:'',
+      message:results.map(item=>cleanText(item.message)).filter(Boolean).join('\n\n'),
+      clearInput:true,
+      payload:{commands,results}
+    };
+  }
+
   async function runSuggestedQuery(text, context) {
     const normalizedText = cleanText(text);
     if (!isOlliReplyCandidate(normalizedText)) return passThrough(normalizedText);
@@ -4005,6 +4110,7 @@
     runQuery,
     runSuggestedQuery,
     runStructuredQuery,
+    runStructuredMultiQuery,
     prepareStructuredAction,
     prepareAction,
     parseWriteIntent,
