@@ -89,12 +89,13 @@ test('PC AI context starts with button activation, grows turn by turn, and reset
 });
 
 
-test('PC shows the saved user bubble immediately and only AI gets the animated typing indicator', () => {
+test('PC shows a one-second 확인중 state only for the first Olli response', () => {
   assert.match(talk, /appendPersistedMessage\(payload\.message, current\.memberId\)/);
-  assert.match(talk, /if \(olliRequested && isAiEnabled\(\)\) \{[\s\S]{0,140}state\.assistantReplyPending = true;[\s\S]{0,140}syncAssistantTypingIndicator\(\)/);
-  assert.doesNotMatch(talk, /if \(olliRequested\) \{\s*state\.assistantReplyPending = true/);
-  assert.match(talk, /finally \{[\s\S]{0,140}state\.assistantReplyPending = false;[\s\S]{0,140}syncAssistantTypingIndicator\(\)/);
-  assert.match(talk, /'olliPcTeamTalkTypingDot'/);
+  assert.match(talk, /const isOlliWorkflowFollowup = olliRequested/);
+  assert.match(talk, /if \(olliRequested && !isOlliWorkflowFollowup\) \{[\s\S]{0,180}state\.assistantReplyPending = true;[\s\S]{0,180}syncAssistantTypingIndicator\(\)/);
+  assert.match(talk, /bubble\.textContent = '확인중…'/);
+  assert.match(talk, /1000-\(Date\.now\(\)-firstReplyStartedAt\)/);
+  assert.doesNotMatch(talk, /olliPcTeamTalkTypingDot/);
 });
 
 
