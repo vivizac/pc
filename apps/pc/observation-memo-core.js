@@ -23,7 +23,7 @@
     if (global.__olliObservationMemoVersionHistoryLoaderAdded) return;
     global.__olliObservationMemoVersionHistoryLoaderAdded = true;
     const historyScript = document.createElement('script');
-    historyScript.src = 'observation-memo-version-history-common.js?v=20260908-history-1';
+    historyScript.src = 'observation-memo-version-history-common.js?v=20261005-exit-checkpoint-1';
     historyScript.async = false;
     historyScript.onerror = () => {
       global.__olliObservationMemoVersionHistoryLoaderAdded = false;
@@ -531,8 +531,12 @@ function openStudentMemoPageById(studentId) {
   }
 }
 
-function closeMemoPage() {
-  prepareObservationMemoPageClose();
+async function closeMemoPage() {
+  if (typeof window.finalizeObservationMemoSessionCheckpoint === 'function') {
+    await window.finalizeObservationMemoSessionCheckpoint({ reason:'memo-close' });
+  } else {
+    prepareObservationMemoPageClose();
+  }
   if (typeof closeObservationMemoVersionHistory === 'function') closeObservationMemoVersionHistory();
   returnFromObservationMemoScreen(() => loadRecords(''));
 }
