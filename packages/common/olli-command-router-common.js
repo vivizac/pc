@@ -445,13 +445,19 @@
   function parseMakeupMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !hasMakeupWord(compact) || hasRemoveAction(compact) || !hasAddAction(compact)) return null;
+    if (
+      !raw
+      || !hasMakeupWord(compact)
+      || hasRemoveAction(compact)
+      || hasMoveAction(compact)
+      || (!hasAddAction(compact) && isOlliReplyScheduleInquiry(raw))
+    ) return null;
 
     const dateSpec = parseDateExpression(compact);
     const timeSlot = firstTimeSlot(raw);
     const studentName = extractStudentName(
       raw,
-      /(?:보강|보충(?:수업)?)(?:수업)?(?:으로|에|을|를|도)?/g,
+      /(?:보강|보충(?:수업)?)(?:수업)?(?:으로|에|을|를|도)?(?:\s*(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요))?/g,
       addActionPattern()
     );
     if (!studentName) return null;
@@ -553,13 +559,19 @@
   function parseWaitlistMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !hasWaitlistWord(compact) || hasRemoveAction(compact) || !hasAddAction(compact)) return null;
+    if (
+      !raw
+      || !hasWaitlistWord(compact)
+      || hasRemoveAction(compact)
+      || hasMoveAction(compact)
+      || (!hasAddAction(compact) && isOlliReplyScheduleInquiry(raw))
+    ) return null;
 
     const dateSpec = parseDateExpression(compact);
     const timeSlot = firstTimeSlot(raw);
     const studentName = extractStudentName(
       raw,
-      /(?:대기(?:자|명단|리스트)?|웨이팅(?:리스트)?)(?:에|로|을|를)?/g,
+      /(?:대기(?:자|명단|리스트)?|웨이팅(?:리스트)?)(?:에|로|을|를)?(?:\s*(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요))?/g,
       addActionPattern()
     );
     if (!studentName) return null;
@@ -580,13 +592,19 @@
   function parseTrialMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !hasTrialWord(compact) || hasRemoveAction(compact) || !hasAddAction(compact)) return null;
+    if (
+      !raw
+      || !hasTrialWord(compact)
+      || hasRemoveAction(compact)
+      || hasMoveAction(compact)
+      || (!hasAddAction(compact) && isOlliReplyScheduleInquiry(raw))
+    ) return null;
 
     const dateSpec = parseDateExpression(compact);
     const timeSlot = firstTimeSlot(raw);
     const guestName = extractStudentName(
       raw,
-      /(?:체험\s*클래스|체험\s*수업|체험)(?:으로|에|을|를)?/g,
+      /(?:체험\s*클래스|체험\s*수업|체험)(?:으로|에|을|를)?(?:\s*(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요))?/g,
       addActionPattern()
     );
     if (!guestName) return null;
