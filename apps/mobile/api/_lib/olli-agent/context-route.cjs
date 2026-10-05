@@ -206,17 +206,17 @@ const OLLI_RULE_INTENTS = new Set([
   'mark_absent',
   'add_timetable_memo',
   'delete_timetable_memo',
-  'cancel_pending',
-]);
-
-const OLLI_AGENT_INTENTS = new Set([
-  'set_attendance_status',
   'set_class_layout',
   'set_class_teacher',
   'set_teacher_override',
   'set_session_order',
   'set_normal_class_day',
   'batch_write',
+  'cancel_pending',
+]);
+
+const OLLI_AGENT_INTENTS = new Set([
+  'set_attendance_status',
   'get_attendance',
   'get_pickups',
 ]);

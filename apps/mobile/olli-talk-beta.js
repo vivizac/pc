@@ -2488,6 +2488,32 @@
   }
 
 
+  async function resolveOlliTalkBatchRuleTurn(parsed,commandText,context,replyToMessageId,batchCommands=[]){
+    const sourceId=Number(replyToMessageId || 0);
+    const commands=buildOlliTalkBatchAgentCommands(parsed,sourceId,commandText,batchCommands);
+    if(commands.length!==(Array.isArray(parsed?.commands)?parsed.commands.length:0)){
+      throw new Error('복합명령 구조화 결과와 규칙 시스템 작업 수가 일치하지 않습니다.');
+    }
+    const missingIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
+    if(missingIndex>=0){
+      olliTalkPendingActionReason={intent:'batch_write',__batchAgent:{
+        sourceMessageId:sourceId,sourceMessageText:String(commandText || '').trim(),commands
+      }};
+      const prompt=olliTalkBatchReasonPrompt(commands[missingIndex]);
+      return {assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),replyText:prompt,recordAi:false};
+    }
+    const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
+    if(clarificationIndex>=0){
+      const pendingBatch={sourceMessageId:sourceId,sourceMessageText:String(commandText || '').trim(),commands};
+      olliTalkPendingActionReason={intent:'batch_write',__batchAgent:pendingBatch};
+      const assistantMessage=await startOlliTalkBatchStructuredChoice(context,pendingBatch,clarificationIndex);
+      return {assistantMessage,replyText:String(assistantMessage?.body || '').trim() || '보강 날짜를 선택해 주세요.',recordAi:false};
+    }
+    return resolveOlliTalkBatchAgentTurn({
+      sourceText:String(commandText || '').trim(),sourceMessageId:sourceId,commands,context
+    });
+  }
+
   async function resolveOlliTalkSharedAgentRouteTurn(route,commandText,context,replyToMessageId,batchCommands=[]){
     if(!route || !route.key) return null;
     const parsed=route.parsed || null;
@@ -2497,31 +2523,8 @@
         return resolveOlliTalkAttendanceStatusAgentTurn(commandText,parsed,context,replyToMessageId);
       case 'timetable_admin':
         return resolveOlliTalkTimetableAdminRuleTurn(commandText,parsed,context,replyToMessageId);
-      case 'batch_write':{
-        const sourceId=Number(replyToMessageId || 0);
-        const commands=buildOlliTalkBatchAgentCommands(parsed,sourceId,commandText,batchCommands);
-        if(commands.length!==(Array.isArray(parsed?.commands)?parsed.commands.length:0)){
-          throw new Error('복합명령 구조화 결과와 규칙 시스템 작업 수가 일치하지 않습니다.');
-        }
-        const missingIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
-        if(missingIndex>=0){
-          olliTalkPendingActionReason={intent:'batch_write',__batchAgent:{
-            sourceMessageId:sourceId,sourceMessageText:String(commandText || '').trim(),commands
-          }};
-          const prompt=olliTalkBatchReasonPrompt(commands[missingIndex]);
-          return {assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),replyText:prompt,recordAi:false};
-        }
-        const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
-        if(clarificationIndex>=0){
-          const pendingBatch={sourceMessageId:sourceId,sourceMessageText:String(commandText || '').trim(),commands};
-          olliTalkPendingActionReason={intent:'batch_write',__batchAgent:pendingBatch};
-          const assistantMessage=await startOlliTalkBatchStructuredChoice(context,pendingBatch,clarificationIndex);
-          return {assistantMessage,replyText:String(assistantMessage?.body || '').trim() || '보강 날짜를 선택해 주세요.',recordAi:false};
-        }
-        return resolveOlliTalkBatchAgentTurn({
-          sourceText:String(commandText || '').trim(),sourceMessageId:sourceId,commands,context
-        });
-      }
+      case 'batch_write':
+        return resolveOlliTalkBatchRuleTurn(parsed,commandText,context,replyToMessageId,batchCommands);
       case 'timetable_memo':
         return resolveOlliTalkTimetableMemoAgentTurn(commandText,parsed,context,replyToMessageId);
       case 'trial_cancel':
@@ -3385,6 +3388,35 @@
         replyText:confirmation,
         recordAi:false
       };
+    }
+
+    if(
+      interpreterRoute==='rule'
+      && ['set_class_layout','set_class_teacher','set_teacher_override','set_session_order','set_normal_class_day'].includes(interpreterIntent)
+    ){
+      const parsed=parseOlliTalkTimetableAdminRuleCandidate(commandText,router);
+      if(!parsed || String(parsed.intent || '').trim()!==interpreterIntent){
+        const message='시간표 관리 요청을 규칙 시스템에서 확인하지 못했어요. 날짜·시간·대상을 조금 더 구체적으로 알려 주세요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+      return resolveOlliTalkTimetableAdminRuleTurn(commandText,parsed,context,replyToMessageId);
+    }
+
+    if(interpreterRoute==='rule' && interpreterIntent==='batch_write'){
+      const parsed=parseOlliTalkBatchAgentCandidate(commandText,router);
+      if(!parsed){
+        const message='복합명령 구조가 원문과 일치하지 않아 실행하지 않았어요. 요청을 조금 더 구체적으로 알려 주세요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+      return resolveOlliTalkBatchRuleTurn(parsed,commandText,context,replyToMessageId,batchCommands);
     }
 
     const routeClassifier=window.OlliTeamTalkAgentRouteClassifier;
