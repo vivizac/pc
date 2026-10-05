@@ -7,7 +7,7 @@ const talk=fs.readFileSync(path.join(__dirname,'../pc-team-talk.js'),'utf8');
 
 test('PC trial cancel candidate uses only shared trial cancel parser',()=>{
   const start=talk.indexOf('function parseTrialCancelAgentCandidate');
-  const end=talk.indexOf('function isTrialUpdateAgentCandidate',start);
+  const end=talk.indexOf('function parseAbsenceAgentCandidate',start);
   const block=talk.slice(start,end);
   assert.match(block,/parseTrialCancelMutationIntent\(commandText\)/);
   assert.match(block,/=== 'cancel_trial'/);
@@ -43,7 +43,7 @@ test('PC two-turn trial cancellation preserves reason prompt then uses Agent on 
 
 test('PC trial cancel resolver sends command and reason message bindings and never saves a second card client-side',()=>{
   const start=talk.indexOf('async function resolveTrialCancelAgentTurn');
-  const end=talk.indexOf('async function resolveTrialUpdateAgentTurn',start);
+  const end=talk.indexOf('async function resolveStructuredTrialUpdateTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'trial_cancel_prepare'/);
   assert.match(block,/sourceMessageId:sourceId/);

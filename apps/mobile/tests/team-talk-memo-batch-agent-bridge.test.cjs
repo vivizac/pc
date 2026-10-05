@@ -22,7 +22,7 @@ test('Mobile dead memo Agent bridge is removed while structured server bridge re
   assert.doesNotMatch(dispatch,/case 'timetable_memo'/);
 
   const start=talk.indexOf('async function resolveOlliTalkStructuredTimetableMemoTurn');
-  const end=talk.indexOf('async function resolveOlliTalkTrialAddAgentTurn',start);
+  const end=talk.indexOf('function mergeOlliTalkStructuredTrialCancelCommand',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'structured_memo_prepare'/);
   assert.match(block,/memoNote/);
@@ -44,7 +44,7 @@ test('Mobile batch remains rule-routed and uses batch_prepare',()=>{
 
 test('Mobile structured memo resume supports repeated deterministic choices without another model call',()=>{
   const start=talk.indexOf('async function resolveOlliTalkStructuredTimetableMemoTurn');
-  const end=talk.indexOf('async function resolveOlliTalkTrialAddAgentTurn',start);
+  const end=talk.indexOf('function mergeOlliTalkStructuredTrialCancelCommand',start);
   const block=talk.slice(start,end);
   assert.match(block,/choiceRequired/);
   assert.match(block,/saveOlliTalkStructuredTargetChoice/);

@@ -2270,18 +2270,6 @@
     throw new Error('복합쓰기 선택 상태를 확인하지 못했습니다.');
   }
 
-  function isTrialAddAgentCandidate(commandText, router = global.OlliCommandRouter) {
-    if (!router || typeof router.parseTrialMutationIntent !== 'function') return false;
-    try {
-      const parsed = router.parseTrialMutationIntent(commandText);
-      const division = clean(parsed?.division).toLowerCase();
-      return clean(parsed?.intent) === 'add_trial' && ['elementary', 'kinder'].includes(division);
-    } catch (error) {
-      console.warn('PC 체험 등록 Agent 후보 판별 실패:', error?.message || error);
-      return false;
-    }
-  }
-
   function parseTrialCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router || typeof router.parseTrialCancelMutationIntent !== 'function') return null;
     try {
@@ -2290,16 +2278,6 @@
     } catch (error) {
       console.warn('PC 체험 취소 Agent 후보 판별 실패:', error?.message || error);
       return null;
-    }
-  }
-
-  function isTrialUpdateAgentCandidate(commandText, router = global.OlliCommandRouter) {
-    if (!router || typeof router.parseTrialUpdateMutationIntent !== 'function') return false;
-    try {
-      return clean(router.parseTrialUpdateMutationIntent(commandText)?.intent) === 'update_trial';
-    } catch (error) {
-      console.warn('PC 체험 변경 Agent 후보 판별 실패:', error?.message || error);
-      return false;
     }
   }
 
@@ -2795,38 +2773,6 @@
     };
   }
 
-  async function resolveTrialAddAgentTurn(commandText, current, replyToMessageId) {
-    const sourceMessageId = Number(replyToMessageId || 0);
-    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
-      throw new Error('체험 등록 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-
-    const response = await fetch('/api/olli-agent', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body:JSON.stringify({
-        mode:'trial_add_prepare',
-        academyId:current?.academyId || '',
-        sessionToken:current?.sessionToken || '',
-        message:clean(commandText),
-        sourceMessageId
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || data?.ok !== true || !data?.message?.action) {
-      throw new Error(data?.error || data?.message || '체험 등록 Agent 응답을 받지 못했습니다.');
-    }
-    if (clean(data.message.action.action_type) !== 'add_trial') {
-      throw new Error('체험 등록 Agent 작업 종류가 올바르지 않습니다.');
-    }
-
-    return {
-      assistantMessage:data.message,
-      replyText:clean(data.message.body),
-      recordAi:false
-    };
-  }
-
   function mergeStructuredTrialCancelCommand(previous,current){
     const before=previous && typeof previous==='object' ? previous : {};
     const next=current && typeof current==='object' ? current : {};
@@ -2974,38 +2920,6 @@
     }
     if(clean(data.message.action.action_type)!=='update_trial'){
       throw new Error('체험 변경 규칙 시스템 작업 종류가 올바르지 않습니다.');
-    }
-
-    return {
-      assistantMessage:data.message,
-      replyText:clean(data.message.body),
-      recordAi:false
-    };
-  }
-
-  async function resolveTrialUpdateAgentTurn(commandText, current, replyToMessageId) {
-    const sourceMessageId = Number(replyToMessageId || 0);
-    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
-      throw new Error('체험 변경 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-
-    const response = await fetch('/api/olli-agent', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body:JSON.stringify({
-        mode:'trial_update_prepare',
-        academyId:current?.academyId || '',
-        sessionToken:current?.sessionToken || '',
-        message:clean(commandText),
-        sourceMessageId
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || data?.ok !== true || !data?.message?.action) {
-      throw new Error(data?.error || data?.message || '체험 변경 Agent 응답을 받지 못했습니다.');
-    }
-    if (clean(data.message.action.action_type) !== 'update_trial') {
-      throw new Error('체험 변경 Agent 작업 종류가 올바르지 않습니다.');
     }
 
     return {
@@ -3399,8 +3313,6 @@
           reasonText:clean(parsed.reason),reasonMessageText:clean(commandText),
           reasonMessageId:Number(replyToMessageId || 0),current
         });
-      case 'trial_add': return resolveTrialAddAgentTurn(commandText,current,replyToMessageId);
-      case 'trial_update': return resolveTrialUpdateAgentTurn(commandText,current,replyToMessageId);
       case 'class_once': return resolveClassOnceAgentTurn(commandText,current,replyToMessageId);
       case 'timetable_read':
         return resolveSourceBoundReadAgentTurn({mode:'timetable_read',commandText,readIntent:parsed,current,replyToMessageId});

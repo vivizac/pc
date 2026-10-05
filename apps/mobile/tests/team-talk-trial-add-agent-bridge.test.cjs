@@ -1,3 +1,5 @@
+'use strict';
+
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -5,47 +7,32 @@ const path=require('node:path');
 
 const talk=fs.readFileSync(path.join(__dirname,'../olli-talk-beta.js'),'utf8');
 
-test('mobile trial add gate uses shared add parser and requires explicit division',()=>{
-  const start=talk.indexOf('function isOlliTalkTrialAddAgentCandidate');
-  const end=talk.indexOf('function parseOlliTalkTrialCancelAgentCandidate',start);
-  const block=talk.slice(start,end);
-  assert.match(block,/parseTrialMutationIntent\(commandText\)/);
-  assert.match(block,/==='add_trial'/);
-  assert.match(block,/\['elementary','kinder'\]\.includes\(division\)/);
-  assert.doesNotMatch(block,/parseWriteIntent|prepareAction|cancel_trial|update_trial/);
+test('Mobile trial add enters structured rule path before Agent classifier',()=>{
+  const ai=talk.slice(
+    talk.indexOf('async function resolveOlliTalkAiTurn'),
+    talk.indexOf('function getOlliTalkMentionMessageText')
+  );
+  const structured=ai.indexOf("['add_makeup','update_makeup','add_trial','update_trial'");
+  const classifier=ai.indexOf('const routeClassifier=');
+  assert.ok(structured>=0 && classifier>structured);
+  assert.match(ai,/prepareStructuredAction/);
 });
 
-test('mobile trial add routes before trial update and legacy preparation — shared dispatch contract',()=> {
-  const dispatchStart=talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn');
-  const dispatchEnd=talk.indexOf('async function resolveOlliTalkAiTurn',dispatchStart);
-  const dispatch=talk.slice(dispatchStart,dispatchEnd);
-  const aiStart=talk.indexOf('async function resolveOlliTalkAiTurn');
-  const aiEnd=talk.indexOf('function getOlliTalkMentionMessageText',aiStart);
-  const ai=talk.slice(aiStart,aiEnd);
-  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
-  assert.match(ai,/window\.OlliTeamTalkAgentRouteClassifier/);
-  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
-  assert.match(dispatch,/case 'trial_add'/);
-  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
-  const legacy=ai.indexOf("if(router && typeof router.prepareAction==='function')");
-  assert.ok(classify>=0 && legacy>classify);
-
-});
-test('mobile trial add uses source-bound production mode and server-persisted card',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkTrialAddAgentTurn');
-  const end=talk.indexOf('async function resolveOlliTalkTrialUpdateAgentTurn',start);
-  const block=talk.slice(start,end);
-  assert.match(block,/mode:'trial_add_prepare'/);
-  assert.match(block,/sourceMessageId=Number\(replyToMessageId \|\| 0\)/);
-  assert.match(block,/action_type \|\| ''\)\.trim\(\)!=='add_trial'/);
-  assert.match(block,/assistantMessage:data\.message/);
-  assert.match(block,/recordAi:false/);
-  assert.doesNotMatch(block,/saveOlliTalkActionReply|olli_team_chat_send_action/);
+test('Mobile dead trial add Agent candidate and client bridge helper are removed',()=>{
+  for(const token of ['isOlliTalkTrialAddAgentCandidate','resolveOlliTalkTrialAddAgentTurn']){
+    assert.doesNotMatch(talk,new RegExp(token));
+  }
 });
 
-test('mobile Bot path remains independent from trial add Agent routing',()=>{
-  const start=talk.indexOf('async function resolveOlliTalkBotTurn');
-  const end=talk.indexOf('function handleOlliTalkAiModeChanged',start);
-  const block=talk.slice(start,end);
-  assert.doesNotMatch(block,/resolveOlliTalkTrialAddAgentTurn|isOlliTalkTrialAddAgentCandidate|trial_add_prepare/);
+test('Mobile shared compatibility dispatch has no trial add Agent case and keeps trial cancel',()=>{
+  const dispatch=talk.slice(
+    talk.indexOf('async function resolveOlliTalkSharedAgentRouteTurn'),
+    talk.indexOf('async function resolveOlliTalkContextualMakeupTurn')
+  );
+  assert.doesNotMatch(dispatch,/case 'trial_add'/);
+  assert.match(dispatch,/case 'trial_cancel'/);
+});
+
+test('Mobile trial add compatibility prepare mode is no longer called by the client',()=>{
+  assert.doesNotMatch(talk,/mode:'trial_add_prepare'/);
 });

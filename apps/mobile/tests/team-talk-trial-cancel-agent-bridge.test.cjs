@@ -7,7 +7,7 @@ const talk=fs.readFileSync(path.join(__dirname,'../olli-talk-beta.js'),'utf8');
 
 test('mobile trial cancel candidate uses only shared trial cancel parser',()=>{
   const start=talk.indexOf('function parseOlliTalkTrialCancelAgentCandidate');
-  const end=talk.indexOf('function isOlliTalkTrialUpdateAgentCandidate',start);
+  const end=talk.indexOf('function parseOlliTalkMakeupAddDraftCandidate',start);
   const block=talk.slice(start,end);
   assert.match(block,/parseTrialCancelMutationIntent\(commandText\)/);
   assert.match(block,/==='cancel_trial'/);
@@ -43,7 +43,7 @@ test('mobile two-turn trial cancellation preserves reason prompt then uses Agent
 
 test('mobile trial cancel resolver binds both saved messages and never saves a second card client-side',()=>{
   const start=talk.indexOf('async function resolveOlliTalkTrialCancelAgentTurn');
-  const end=talk.indexOf('async function resolveOlliTalkTrialUpdateAgentTurn',start);
+  const end=talk.indexOf('async function resolveOlliTalkStructuredTrialUpdateTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'trial_cancel_prepare'/);
   assert.match(block,/sourceMessageId:sourceId/);

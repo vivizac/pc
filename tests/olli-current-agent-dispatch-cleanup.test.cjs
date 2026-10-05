@@ -53,3 +53,9 @@ test('waitlist CRUD dead client Agent bridges are removed after structured migra
   assert.doesNotMatch(pc,/resolveWaitlist(?:Add|Update|Cancel)AgentTurn|isWaitlist(?:Add|Update|Cancel)AgentCandidate/);
   assert.doesNotMatch(mobile,/resolveOlliTalkWaitlist(?:Add|Update|Cancel)AgentTurn|isOlliTalkWaitlist(?:Add|Update|Cancel)AgentCandidate/);
 });
+
+
+test('trial add and update dead client Agent bridges are removed after structured migration',()=>{
+  assert.doesNotMatch(pc,/resolveTrial(?:Add|Update)AgentTurn|isTrial(?:Add|Update)AgentCandidate/);
+  assert.doesNotMatch(mobile,/resolveOlliTalkTrial(?:Add|Update)AgentTurn|isOlliTalkTrial(?:Add|Update)AgentCandidate/);
+});

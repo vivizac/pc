@@ -1049,18 +1049,6 @@
     throw new Error('복합쓰기 선택 상태를 확인하지 못했습니다.');
   }
 
-  function isOlliTalkTrialAddAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parseTrialMutationIntent!=='function') return false;
-    try{
-      const parsed=router.parseTrialMutationIntent(commandText);
-      const division=String(parsed?.division || '').trim().toLowerCase();
-      return String(parsed?.intent || '').trim()==='add_trial' && ['elementary','kinder'].includes(division);
-    }catch(error){
-      console.warn('올리톡 체험 등록 Agent 후보 판별 실패:',error);
-      return false;
-    }
-  }
-
   function parseOlliTalkTrialCancelAgentCandidate(commandText,router=window.OlliCommandRouter){
     if(!router || typeof router.parseTrialCancelMutationIntent!=='function') return null;
     try{
@@ -1069,16 +1057,6 @@
     }catch(error){
       console.warn('올리톡 체험 취소 Agent 후보 판별 실패:',error);
       return null;
-    }
-  }
-
-  function isOlliTalkTrialUpdateAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parseTrialUpdateMutationIntent!=='function') return false;
-    try{
-      return String(router.parseTrialUpdateMutationIntent(commandText)?.intent || '').trim()==='update_trial';
-    }catch(error){
-      console.warn('올리톡 체험 변경 Agent 후보 판별 실패:',error);
-      return false;
     }
   }
 
@@ -1380,38 +1358,6 @@
     };
   }
 
-  async function resolveOlliTalkTrialAddAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('체험 등록 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'trial_add_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '체험 등록 Agent 응답을 받지 못했습니다.');
-    }
-    if(String(data.message.action.action_type || '').trim()!=='add_trial'){
-      throw new Error('체험 등록 Agent 작업 종류가 올바르지 않습니다.');
-    }
-
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
   function mergeOlliTalkStructuredTrialCancelCommand(previous,current){
     const before=previous && typeof previous==='object' ? previous : {};
     const next=current && typeof current==='object' ? current : {};
@@ -1559,38 +1505,6 @@
     }
     if(String(data.message.action.action_type || '').trim()!=='update_trial'){
       throw new Error('체험 변경 규칙 시스템 작업 종류가 올바르지 않습니다.');
-    }
-
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
-  async function resolveOlliTalkTrialUpdateAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('체험 변경 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'trial_update_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '체험 변경 Agent 응답을 받지 못했습니다.');
-    }
-    if(String(data.message.action.action_type || '').trim()!=='update_trial'){
-      throw new Error('체험 변경 Agent 작업 종류가 올바르지 않습니다.');
     }
 
     return {
@@ -2050,8 +1964,6 @@
           reasonText:String(parsed.reason || '').trim(),reasonMessageText:String(commandText || '').trim(),
           reasonMessageId:Number(replyToMessageId || 0),context
         });
-      case 'trial_add': return resolveOlliTalkTrialAddAgentTurn(commandText,context,replyToMessageId);
-      case 'trial_update': return resolveOlliTalkTrialUpdateAgentTurn(commandText,context,replyToMessageId);
       case 'class_once': return resolveOlliTalkClassOnceAgentTurn(commandText,context,replyToMessageId);
       case 'timetable_read':
         return resolveOlliTalkSourceBoundReadAgentTurn({mode:'timetable_read',commandText,readIntent:parsed,context,replyToMessageId});
