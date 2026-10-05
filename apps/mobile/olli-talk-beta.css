@@ -1118,18 +1118,9 @@
 }
 
 
-#olliTalkBetaScreen .olliTalkBetaSystemMessage{
-  align-self:center;
-  max-width:88%;
-  margin:12px auto 2px;
-  padding:6px 10px;
-  border-radius:999px;
-  background:linear-gradient(90deg,color(display-p3 .9255 .4392 .6863) 0%,color(display-p3 .9294 .4471 .6627) 34%,color(display-p3 .9373 .5216 .5294) 52%,color(display-p3 .9451 .5882 .4118) 68%,color(display-p3 .9451 .6549 .3216) 83%,color(display-p3 .9569 .7255 .2706) 100%);
+#olliTalkBetaScreen .olliTalkBetaMessage.ai .olliTalkBetaBubble.olliTalkBetaSystemBubble{
+  --olli-talk-bubble-bg:linear-gradient(90deg,color(display-p3 .9255 .4392 .6863) 0%,color(display-p3 .9294 .4471 .6627) 34%,color(display-p3 .9373 .5216 .5294) 52%,color(display-p3 .9451 .5882 .4118) 68%,color(display-p3 .9451 .6549 .3216) 83%,color(display-p3 .9569 .7255 .2706) 100%);
   color:#fff;
-  font-size:calc(11px * var(--olli-text-scale, 1));
-  font-weight:500;
-  line-height:1.35;
-  text-align:center;
 }
 
 #olliTalkBetaScreen .olliTalkBetaActionCard{
