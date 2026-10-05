@@ -86,3 +86,26 @@ test('batch parser keeps incomplete trial and waitlist registration as determini
   assert.equal(wait?.studentName,'하늘');
   assert.deepEqual(wait?.missingBatchFields,['date','time']);
 });
+
+
+test('canonical query parser distinguishes student schedule from class roster',()=>{
+  const student=router.parseQueryIntent('민준 다음주 시간표 조회');
+  const roster=router.parseQueryIntent('다음주 화요일 5시 초등부 수업 명단 조회');
+  assert.equal(student?.intent,'get_student_schedule');
+  assert.equal(student?.studentName,'민준');
+  assert.equal(roster?.intent,'find_roster_entries');
+  assert.equal(roster?.rosterKind,'class_roster');
+  assert.equal(roster?.timeSlot,5);
+});
+
+test('canonical multi-read parser splits requests and inherits shared date and division',()=>{
+  const parsed=router.parseQueryIntent(
+    '다음주 화요일 초등부 빈자리 조회 그리고 목요일 5시 수업 명단 조회'
+  );
+  assert.equal(parsed?.intent,'multi_read_query');
+  assert.equal(parsed?.queries?.length,2);
+  assert.equal(parsed.queries[0].intent,'find_available_slots');
+  assert.equal(parsed.queries[1].intent,'find_roster_entries');
+  assert.equal(parsed.queries[1].dateLabel,'다음 주 목요일');
+  assert.equal(parsed.queries[1].division,'elementary');
+});
