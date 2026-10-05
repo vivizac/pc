@@ -5637,6 +5637,438 @@ async function prepareBatchPrivacy(item, requestContext) {
   return privacy.prepareAgentPrivacyInput(text,requestContext);
 }
 
+
+function batchDateKey(value,currentDate,label='날짜') {
+  const expression=String(value==null?'':value).trim();
+  if(!expression) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(expression)){
+    const exact=new Date(expression+'T12:00:00Z');
+    if(!Number.isNaN(exact.getTime())&&exact.toISOString().slice(0,10)===expression){
+      return expression;
+    }
+  }
+  const router=loadSharedCommandRouter();
+  const spec=router.parseDateExpression(expression.replace(/\s+/g,''));
+  const base=new Date(String(currentDate||'')+'T12:00:00Z');
+  const resolved=spec&&!Number.isNaN(base.getTime())
+    ? router.resolveDateExpression(spec,base)
+    : null;
+  if(!resolved||Number.isNaN(resolved.getTime())){
+    throw runtimeError(
+      '복합명령의 '+label+' 표현을 확인하지 못했습니다.',
+      400,
+      'OLLI_ROUTINE_BATCH_DATE_INVALID'
+    );
+  }
+  return resolved.toISOString().slice(0,10);
+}
+
+function validateBatchStructuredCommand(item){
+  const intent=String(item?.intent||'').trim();
+  const command=item?.structuredCommand&&typeof item.structuredCommand==='object'
+    ? item.structuredCommand
+    : null;
+  if(!command||String(command.action||'').trim()!==intent){
+    throw runtimeError(
+      '복합명령 구조화 작업과 규칙 시스템 작업 종류가 일치하지 않습니다.',
+      409,
+      'OLLI_ROUTINE_BATCH_STRUCTURED_ACTION_MISMATCH'
+    );
+  }
+  const router=loadSharedCommandRouter();
+  const parsed=typeof router.parseWriteIntent==='function'
+    ? router.parseWriteIntent(String(item?.text||'').trim())
+    : null;
+  if(!parsed||String(parsed.intent||'').trim()!==intent||parsed.intent==='batch_write'){
+    throw runtimeError(
+      '저장된 복합명령 부분 원문과 구조화 작업 종류가 일치하지 않습니다.',
+      409,
+      'OLLI_ROUTINE_BATCH_SOURCE_INTENT_MISMATCH'
+    );
+  }
+  return command;
+}
+
+async function runBatchDirectPrepare({
+  requestContext,
+  preparedPrivacy,
+  item,
+  sourceMessageId,
+  commandIndex,
+}) {
+  const sourceId=Number(sourceMessageId||0);
+  const index=Number(commandIndex||0);
+  const intent=String(item?.intent||'').trim();
+  const command=validateBatchStructuredCommand(item);
+  const today=todayInSeoul();
+  const requestId='team-chat-batch:'+sourceId+':'+index+':'+intent;
+  let persistedMessage=null;
+  const capture=(message)=>{persistedMessage=pickupPersistedMessageForClient(message);};
+  const passthrough=(payload)=>payload;
+
+  if(intent==='add_makeup'&&item?.structuredSelection){
+    return runBatchStructuredMakeupPrepare({
+      requestContext,
+      preparedPrivacy,
+      selection:item.structuredSelection,
+      sourceMessageId:sourceId,
+      commandIndex:index,
+    });
+  }
+
+  if(intent==='add_makeup'){
+    const scope=resolveMakeupPrepareScope(preparedPrivacy);
+    const {prepareMakeupAction}=require('./tools/makeup-prepare-tools.cjs');
+    const sessionDate=batchDateKey(command.dateExpression,today,'보강 날짜');
+    await prepareMakeupAction({
+      requestContext,
+      subjectAccess:preparedPrivacy.subjectAccess,
+      studentLabel:scope.subjectLabel,
+      division:scope.division,
+      sessionDate,
+      classHour:Number(command.timeSlot||0),
+      classMinute:Number(command.classMinute||0),
+      classGroup:String(command.classGroup||'').trim().toUpperCase()||scope.classGroup||'AUTO',
+      currentDate:today,
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else if(intent==='update_makeup'){
+    const scope=resolveMakeupUpdatePrepareScope(preparedPrivacy);
+    const {prepareMakeupUpdateAction}=require('./tools/makeup-update-prepare-tools.cjs');
+    await prepareMakeupUpdateAction({
+      requestContext,
+      subjectAccess:preparedPrivacy.subjectAccess,
+      studentLabel:scope.subjectLabel,
+      division:scope.division,
+      sourceDate:batchDateKey(command.sourceDateExpression,today,'기존 보강 날짜'),
+      sourceHour:Number(command.sourceTimeSlot||0),
+      sourceMinute:Number(command.sourceMinute||0),
+      sourceGroup:String(command.sourceClassGroup||'').trim().toUpperCase()||'AUTO',
+      targetDate:batchDateKey(command.targetDateExpression,today,'변경할 보강 날짜'),
+      targetHour:Number(command.targetTimeSlot||0),
+      targetMinute:Number(command.targetMinute||0),
+      targetGroup:String(command.targetClassGroup||'').trim().toUpperCase()||'AUTO',
+      currentDate:today,
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else if(intent==='cancel_makeup'){
+    const scope=resolveMakeupUpdatePrepareScope(preparedPrivacy);
+    const {prepareMakeupCancelAction}=require('./tools/makeup-cancel-prepare-tools.cjs');
+    await prepareMakeupCancelAction({
+      requestContext,
+      subjectAccess:preparedPrivacy.subjectAccess,
+      studentLabel:scope.subjectLabel,
+      division:scope.division,
+      sessionDate:batchDateKey(command.dateExpression,today,'취소할 보강 날짜'),
+      classHour:Number(command.timeSlot||0),
+      classMinute:Number(command.classMinute||0),
+      classGroup:String(command.classGroup||'').trim().toUpperCase()||'AUTO',
+      reason:String(item?.reason||command.reason||'').trim(),
+      currentDate:today,
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else if(intent==='add_trial'){
+    const scope=resolveTrialAddPrepareScope(preparedPrivacy);
+    const {prepareTrialAddAction}=require('./tools/trial-add-prepare-tools.cjs');
+    await prepareTrialAddAction({
+      requestContext,
+      trialAccess:preparedPrivacy.trialAccess,
+      guestLabel:scope.guestLabel,
+      division:scope.division,
+      sessionDate:batchDateKey(command.dateExpression,today,'체험 날짜'),
+      classHour:Number(command.timeSlot||0),
+      classMinute:Number(command.classMinute||0),
+      classGroup:String(command.classGroup||'').trim().toUpperCase()||scope.classGroup||'AUTO',
+      currentDate:today,
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else if(intent==='update_trial'){
+    const scope=resolveTrialUpdatePrepareScope(preparedPrivacy);
+    const {prepareTrialUpdateAction}=require('./tools/trial-update-prepare-tools.cjs');
+    await prepareTrialUpdateAction({
+      requestContext,
+      trialAccess:preparedPrivacy.trialAccess,
+      guestLabel:scope.guestLabel,
+      sourceDate:batchDateKey(command.sourceDateExpression,today,'기존 체험 날짜'),
+      sourceHour:Number(command.sourceTimeSlot||0),
+      sourceMinute:Number(command.sourceMinute||0),
+      sourceGroup:String(command.sourceClassGroup||'').trim().toUpperCase()||'AUTO',
+      targetDate:batchDateKey(command.targetDateExpression,today,'변경할 체험 날짜'),
+      targetHour:Number(command.targetTimeSlot||0),
+      targetMinute:Number(command.targetMinute||0),
+      targetGroup:String(command.targetClassGroup||'').trim().toUpperCase()||'AUTO',
+      currentDate:today,
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else if(intent==='cancel_trial'){
+    const scope=resolveTrialCancelPrepareScope(preparedPrivacy);
+    const {prepareTrialCancelAction}=require('./tools/trial-cancel-prepare-tools.cjs');
+    await prepareTrialCancelAction({
+      requestContext,
+      trialAccess:preparedPrivacy.trialAccess,
+      guestLabel:scope.guestLabel,
+      sourceDate:batchDateKey(command.dateExpression,today,'취소할 체험 날짜'),
+      sourceHour:Number(command.timeSlot||0),
+      sourceMinute:Number(command.classMinute||0),
+      classGroup:String(command.classGroup||'').trim().toUpperCase()||'AUTO',
+      reason:String(item?.reason||command.reason||'').trim(),
+      currentDate:today,
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else if(intent==='add_waitlist'){
+    const scope=resolveWaitlistAddPrepareScope(preparedPrivacy);
+    const {prepareWaitlistAddAction}=require('./tools/waitlist-add-prepare-tools.cjs');
+    await prepareWaitlistAddAction({
+      requestContext,
+      subjectAccess:preparedPrivacy.subjectAccess,
+      guestAccess:preparedPrivacy.waitlistGuestAccess,
+      studentLabel:scope.subjectLabel,
+      division:scope.division,
+      sessionDate:batchDateKey(command.dateExpression,today,'대기 날짜'),
+      classHour:Number(command.timeSlot||0),
+      classMinute:Number(command.classMinute||0),
+      classGroup:String(command.classGroup||'').trim().toUpperCase()||scope.classGroup||'AUTO',
+      currentDate:today,
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else if(intent==='update_waitlist'){
+    const scope=resolveWaitlistUpdatePrepareScope(preparedPrivacy);
+    const {prepareWaitlistUpdateAction}=require('./tools/waitlist-update-prepare-tools.cjs');
+    await prepareWaitlistUpdateAction({
+      requestContext,
+      subjectAccess:preparedPrivacy.subjectAccess,
+      guestAccess:preparedPrivacy.waitlistGuestAccess,
+      studentLabel:scope.subjectLabel,
+      division:scope.division,
+      sourceDate:batchDateKey(command.sourceDateExpression,today,'기존 대기 날짜'),
+      sourceWeekday:Number(command.sourceWeekday||0),
+      sourceHour:Number(command.sourceTimeSlot||0),
+      sourceMinute:Number(command.sourceMinute||0),
+      sourceGroup:String(command.sourceClassGroup||'').trim().toUpperCase()||'AUTO',
+      targetDate:batchDateKey(command.targetDateExpression,today,'변경할 대기 날짜'),
+      targetWeekday:Number(command.targetWeekday||0),
+      targetHour:Number(command.targetTimeSlot||0),
+      targetMinute:Number(command.targetMinute||0),
+      targetGroup:String(command.targetClassGroup||'').trim().toUpperCase()||'AUTO',
+      currentDate:today,
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else if(intent==='cancel_waitlist'){
+    const scope=resolveWaitlistCancelPrepareScope(preparedPrivacy);
+    const {prepareWaitlistCancelAction}=require('./tools/waitlist-cancel-prepare-tools.cjs');
+    const waitlistDate=command.dateExpression
+      ? batchDateKey(command.dateExpression,today,'취소할 대기 날짜')
+      : '';
+    await prepareWaitlistCancelAction({
+      requestContext,
+      subjectAccess:preparedPrivacy.subjectAccess,
+      guestAccess:preparedPrivacy.waitlistGuestAccess,
+      studentLabel:scope.subjectLabel,
+      division:scope.division,
+      classGroup:String(command.classGroup||'').trim().toUpperCase()||scope.classGroup||'AUTO',
+      waitlistDate,
+      classHour:Number(command.timeSlot||0),
+      classMinute:Number(command.classMinute||0),
+      currentDate:today,
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else if(intent==='move_class'){
+    const scope=resolveMovePrepareScope(preparedPrivacy);
+    const {prepareMoveAction}=require('./tools/move-prepare-tools.cjs');
+    await prepareMoveAction({
+      requestContext,
+      subjectAccess:preparedPrivacy.subjectAccess,
+      studentLabel:scope.subjectLabel,
+      division:scope.division,
+      sourceWeekday:Number(command.sourceWeekday||0),
+      sourceHour:Number(command.sourceTimeSlot||0),
+      sourceMinute:Number(command.sourceMinute||0),
+      targetWeekday:Number(command.targetWeekday||0),
+      targetHour:Number(command.targetTimeSlot||0),
+      targetMinute:Number(command.targetMinute||0),
+      targetClassGroup:String(command.targetClassGroup||command.classGroup||'').trim().toUpperCase()||'AUTO',
+      currentDate:today,
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else if(intent==='cancel_move'){
+    const scope=resolveMoveCancelPrepareScope(preparedPrivacy);
+    const {prepareMoveCancelAction}=require('./tools/move-cancel-prepare-tools.cjs');
+    await prepareMoveCancelAction({
+      requestContext,
+      subjectAccess:preparedPrivacy.subjectAccess,
+      studentLabel:scope.subjectLabel,
+      division:scope.division,
+      sourceWeekday:Number(command.sourceWeekday||0),
+      sourceHour:Number(command.sourceTimeSlot||0),
+      sourceMinute:Number(command.sourceMinute||0),
+      currentDate:today,
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else if(intent==='add_pickup'){
+    const scope=resolvePickupPrepareScope(preparedPrivacy);
+    const selection=item?.structuredSelection&&typeof item.structuredSelection==='object'
+      ? item.structuredSelection
+      : {};
+    const {preparePickupAddAction}=require('./tools/pickup-prepare-tools.cjs');
+    await preparePickupAddAction({
+      requestContext,
+      subjectAccess:preparedPrivacy.subjectAccess,
+      studentLabel:scope.subjectLabel,
+      pickupKind:String(command.pickupKind||'').trim()||scope.pickupKind,
+      weekday:Number(selection.weekday||command.weekday||0),
+      classHour:Number(command.classTime||0),
+      classMinute:Number(command.classMinute||0),
+      selectedClassTime:Number(selection.classTime||0),
+      arrivalLabel:String(command.pickupLabel||'').trim(),
+      arrivalTime:String(command.pickupTime||'').trim(),
+      dropoffLabel:String(command.pickupLabel||'').trim(),
+      currentDate:today,
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else if(intent==='update_pickup'){
+    const scope=resolvePickupUpdatePrepareScope(preparedPrivacy);
+    const {preparePickupUpdateAction}=require('./tools/pickup-update-prepare-tools.cjs');
+    await preparePickupUpdateAction({
+      requestContext,
+      subjectAccess:preparedPrivacy.subjectAccess,
+      studentLabel:scope.subjectLabel,
+      updateKind:String(command.pickupKind||'').trim()||scope.updateKind,
+      weekday:Number(command.weekday||0),
+      classHour:Number(command.classTime||0),
+      classMinute:Number(command.classMinute||0),
+      arrivalLabel:String(command.pickupLabel||'').trim(),
+      arrivalTime:String(command.pickupTime||'').trim(),
+      dropoffLabel:String(command.pickupLabel||'').trim(),
+      currentDate:today,
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else if(intent==='cancel_pickup'){
+    const scope=resolvePickupCancelPrepareScope(preparedPrivacy);
+    const {preparePickupCancelAction}=require('./tools/pickup-cancel-prepare-tools.cjs');
+    await preparePickupCancelAction({
+      requestContext,
+      subjectAccess:preparedPrivacy.subjectAccess,
+      studentLabel:scope.subjectLabel,
+      cancelKind:String(command.pickupKind||'').trim()||scope.cancelKind,
+      weekday:Number(command.weekday||0),
+      classHour:Number(command.classTime||0),
+      classMinute:Number(command.classMinute||0),
+      currentDate:today,
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else if(intent==='add_timetable_memo'||intent==='delete_timetable_memo'){
+    const scope=resolveTimetableMemoScope(preparedPrivacy);
+    const {prepareTimetableMemoAction}=require('./tools/timetable-memo-tools.cjs');
+    await prepareTimetableMemoAction({
+      requestContext,
+      subjectAccess:preparedPrivacy.subjectAccess,
+      studentLabel:scope.subjectLabel,
+      division:scope.division,
+      operation:intent==='delete_timetable_memo'?'delete':'add',
+      sessionDate:batchDateKey(command.dateExpression,today,'메모 날짜'),
+      hour:Number(command.timeSlot||0),
+      minute:Number(command.classMinute||0),
+      classGroup:String(command.classGroup||'').trim().toUpperCase()||'AUTO',
+      memoNote:String(command.memoNote||item?.memoNote||'').trim(),
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else if(intent==='mark_absent'){
+    const scope=resolveAbsencePrepareScope(preparedPrivacy);
+    const {prepareAbsenceAction}=require('./tools/absence-prepare-tools.cjs');
+    await prepareAbsenceAction({
+      requestContext,
+      subjectAccess:preparedPrivacy.subjectAccess,
+      studentLabel:scope.subjectLabel,
+      division:scope.division,
+      sessionDate:batchDateKey(command.dateExpression,today,'결석 날짜'),
+      classHour:Number(command.timeSlot||0),
+      classMinute:Number(command.classMinute||0),
+      classGroup:String(command.classGroup||'').trim().toUpperCase()||scope.classGroup||'AUTO',
+      reason:String(item?.reason||command.reason||'').trim(),
+      currentDate:today,
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else if(intent==='add_class_once'){
+    const scope=resolveClassOncePrepareScope(preparedPrivacy);
+    const {prepareClassOnceAction}=require('./tools/class-once-prepare-tools.cjs');
+    await prepareClassOnceAction({
+      requestContext,
+      subjectAccess:preparedPrivacy.subjectAccess,
+      studentLabel:scope.subjectLabel,
+      division:scope.division,
+      requestedDivision:String(command.division||'').trim()||scope.requestedDivision,
+      sessionDate:batchDateKey(command.dateExpression,today,'1회 수업 날짜'),
+      classHour:Number(command.timeSlot||0),
+      classMinute:Number(command.classMinute||0),
+      classGroup:String(command.classGroup||'').trim().toUpperCase()||scope.classGroup||'AUTO',
+      currentDate:today,
+      requestId,
+      replyToMessageId:sourceId,
+      capturePersistedMessage:capture,
+      sanitizePayload:passthrough,
+    });
+  }else{
+    throw runtimeError('복합명령에서 지원하지 않는 작업입니다.',400,'OLLI_ROUTINE_BATCH_INTENT_UNSUPPORTED');
+  }
+
+  if(!persistedMessage){
+    throw runtimeError(
+      '복합명령 확인 카드 저장 결과를 확인하지 못했습니다.',
+      502,
+      'OLLI_ROUTINE_BATCH_PERSISTED_MESSAGE_MISSING'
+    );
+  }
+  return {ready:true,persistedMessage,recoveredAfterPersist:false};
+}
+
 async function runBatchStructuredMakeupPrepare({
   requestContext,
   preparedPrivacy,
@@ -5757,6 +6189,7 @@ async function runBatchPrepare({
         'OLLI_AGENT_BATCH_PART_BODY_MISMATCH'
       );
     }
+    validateBatchStructuredCommand(item);
     if(item?.needsClarification===true){
       throw runtimeError(
         '복합쓰기 작업에 필요한 추가 정보가 아직 없습니다.',
@@ -5852,64 +6285,13 @@ async function runBatchPrepare({
     const item=items[index];
     const intent=String(item.intent || '').trim();
     const privacy=await prepareBatchPrivacy(item,requestContext);
-    const common={
-      agentContext,
+    const result=await runBatchDirectPrepare({
       requestContext,
       preparedPrivacy:privacy,
-      requestId:'team-chat-batch:'+sourceId+':'+index+':'+intent,
-      replyToMessageId:sourceId,
-      requirePersistedMessage:true,
-    };
-    let result;
-
-    if(intent==='add_timetable_memo' || intent==='delete_timetable_memo'){
-      result=await runTimetableMemoPrepareAgent({
-        ...common,
-        memoNote:String(item.memoNote || '').trim(),
-      });
-    }else if(intent==='mark_absent'){
-      result=await runAbsencePrepareAgent({...common,reason:String(item.reason || '').trim()});
-    }else if(intent==='add_class_once'){
-      result=await runClassOncePrepareAgent(common);
-    }else if(intent==='add_makeup'){
-      if(item?.structuredSelection){
-        result=await runBatchStructuredMakeupPrepare({
-          requestContext,
-          preparedPrivacy:privacy,
-          selection:item.structuredSelection,
-          sourceMessageId:sourceId,
-          commandIndex:index,
-        });
-      }else{
-        result=await runMakeupPrepareAgent(common);
-      }
-    }else if(intent==='update_makeup'){
-      result=await runMakeupUpdatePrepareAgent(common);
-    }else if(intent==='cancel_makeup'){
-      result=await runMakeupCancelPrepareAgent({...common,reason:String(item.reason || '').trim()});
-    }else if(intent==='add_trial'){
-      result=await runTrialAddPrepareAgent(common);
-    }else if(intent==='update_trial'){
-      result=await runTrialUpdatePrepareAgent(common);
-    }else if(intent==='cancel_trial'){
-      result=await runTrialCancelPrepareAgent({...common,reason:String(item.reason || '').trim()});
-    }else if(intent==='add_waitlist'){
-      result=await runWaitlistAddPrepareAgent(common);
-    }else if(intent==='update_waitlist'){
-      result=await runWaitlistUpdatePrepareAgent(common);
-    }else if(intent==='cancel_waitlist'){
-      result=await runWaitlistCancelPrepareAgent(common);
-    }else if(intent==='move_class'){
-      result=await runMovePrepareAgent(common);
-    }else if(intent==='cancel_move'){
-      result=await runMoveCancelPrepareAgent(common);
-    }else if(intent==='add_pickup'){
-      result=await runPickupPrepareAgent(common);
-    }else if(intent==='update_pickup'){
-      result=await runPickupUpdatePrepareAgent(common);
-    }else if(intent==='cancel_pickup'){
-      result=await runPickupCancelPrepareAgent(common);
-    }
+      item,
+      sourceMessageId:sourceId,
+      commandIndex:index,
+    });
 
     const persisted=result?.persistedMessage;
     const actionType=String(persisted?.action?.action_type || '').trim();
