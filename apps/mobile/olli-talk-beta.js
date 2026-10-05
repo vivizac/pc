@@ -2135,14 +2135,6 @@
     }
 
     if(interpreterLane==='chat'){
-      const message=String(interpretation.reply || '').trim();
-      if(message){
-        return {
-          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
-          replyText:message,
-          recordAi:true
-        };
-      }
       const resolved=await resolveOlliTalkAiReply(rawCommandText,context);
       return {
         assistantMessage:await saveOlliTalkOlliReply(context,resolved.message,replyToMessageId),
