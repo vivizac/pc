@@ -416,11 +416,11 @@
     if (!raw || !hasMoveAction(compact) || hasRemoveAction(compact)) return null;
 
     const mentions = weekdayTimeMentions(raw);
-    if (mentions.length < 2) return null;
+    if (!mentions.length) return null;
 
-    const source = mentions[0];
-    const target = mentions[1];
-    if (!source.weekday || !target.weekday || !target.timeSlot) return null;
+    const source = mentions.length >= 2 ? mentions[0] : {weekday:0,timeSlot:0};
+    const target = mentions.length >= 2 ? mentions[1] : mentions[0];
+    if (!target.weekday || !target.timeSlot) return null;
 
     const studentName = extractStudentName(
       raw,
@@ -433,10 +433,10 @@
       type:'mutation',
       intent:'move_class',
       studentName,
-      sourceWeekday:source.weekday,
-      sourceTimeSlot:source.timeSlot,
-      targetWeekday:target.weekday,
-      targetTimeSlot:target.timeSlot,
+      sourceWeekday:Number(source.weekday || 0),
+      sourceTimeSlot:Number(source.timeSlot || 0),
+      targetWeekday:Number(target.weekday || 0),
+      targetTimeSlot:Number(target.timeSlot || 0),
       classGroup:firstClassGroup(raw),
       originalText:raw
     };
@@ -468,6 +468,64 @@
     };
   }
 
+  function parseUpdateSides(text) {
+    const raw=cleanText(text);
+    const actionMatch=raw.match(/(?:수정|변경|옮겨|옮기|이동|바꿔|바꾸|고쳐|고치)/);
+    const beforeAction=actionMatch ? raw.slice(0,actionMatch.index) : raw;
+    let sourceText='';
+    let targetText='';
+
+    const fromIndex=beforeAction.lastIndexOf('에서');
+    if(fromIndex>=0){
+      sourceText=cleanText(beforeAction.slice(0,fromIndex));
+      targetText=cleanText(beforeAction.slice(fromIndex+2));
+    }else{
+      const connectorMatches=Array.from(beforeAction.matchAll(/(?:을|를)\s+/g));
+      const connector=connectorMatches.length ? connectorMatches[connectorMatches.length-1] : null;
+      if(connector){
+        sourceText=cleanText(beforeAction.slice(0,connector.index));
+        targetText=cleanText(beforeAction.slice(Number(connector.index||0)+String(connector[0]||'').length));
+      }else{
+        sourceText=cleanText(beforeAction);
+      }
+    }
+
+    targetText=targetText
+      .replace(/(?:으로|로)\s*$/,'')
+      .trim();
+
+    const sourceDate=parseDateExpression(compactText(sourceText));
+    const targetDate=parseDateExpression(compactText(targetText));
+    const sourceMention=weekdayTimeMentions(sourceText)[0] || null;
+    const targetMention=weekdayTimeMentions(targetText)[0] || null;
+    let targetDateExpression=targetDate ? targetDate.label : '';
+    if(
+      sourceDate
+      && targetDate
+      && targetDate.mode==='upcoming_weekday'
+      && ['this_weekday','next_weekday','week_after_next_weekday'].includes(sourceDate.mode)
+    ){
+      const weekdayNames=['','월요일','화요일','수요일','목요일','금요일','토요일'];
+      const targetWeekday=Number(targetMention?.weekday || targetDate.weekday || 0);
+      const prefix=sourceDate.mode==='week_after_next_weekday'
+        ? '다다음 주 '
+        : (sourceDate.mode==='next_weekday' ? '다음 주 ' : '이번 주 ');
+      if(targetWeekday>=1 && targetWeekday<=6) targetDateExpression=prefix+weekdayNames[targetWeekday];
+    }
+    return {
+      sourceDateExpression:sourceDate ? sourceDate.label : '',
+      sourceWeekday:Number(sourceMention?.weekday || sourceDate?.weekday || 0),
+      sourceTimeSlot:firstTimeSlot(sourceText),
+      sourceMinute:firstTimeMinute(sourceText),
+      sourceClassGroup:firstClassGroup(sourceText),
+      targetDateExpression,
+      targetWeekday:Number(targetMention?.weekday || targetDate?.weekday || 0),
+      targetTimeSlot:firstTimeSlot(targetText),
+      targetMinute:firstTimeMinute(targetText),
+      targetClassGroup:firstClassGroup(targetText)
+    };
+  }
+
   function parseMakeupUpdateMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
@@ -481,10 +539,13 @@
     );
     if (!studentName) return null;
 
+    const sides=parseUpdateSides(raw);
     return {
       type:'mutation',
       intent:'update_makeup',
       studentName,
+      division:detectDivision(compact),
+      ...sides,
       originalText:raw
     };
   }
@@ -558,11 +619,14 @@
     );
     if (!guestName) return null;
 
+    const sides=parseUpdateSides(raw);
     return {
       type:'mutation',
       intent:'update_trial',
       guestName,
       studentName:guestName,
+      division:detectDivision(compact),
+      ...sides,
       originalText:raw
     };
   }
@@ -686,10 +750,13 @@
     );
     if (!studentName) return null;
 
+    const sides=parseUpdateSides(raw);
     return {
       type:'mutation',
       intent:'update_waitlist',
       studentName,
+      division:detectDivision(compact),
+      ...sides,
       originalText:raw
     };
   }
@@ -1149,33 +1216,18 @@
 
   function parseBatchDraftWriteIntent(text) {
     const raw=cleanText(text);
-    const compact=compactText(raw);
     if(!raw) return null;
 
-    if(hasMakeupWord(compact) && hasAddAction(compact) && !hasRemoveAction(compact)){
-      const studentName=extractStudentName(
-        raw,
-        /(?:보강|보충(?:수업)?)(?:수업)?(?:으로|에|을|를|도)?/g,
-        addActionPattern()
-      );
-      if(!studentName) return null;
-      const dateSpec=parseDateExpression(compact);
-      const timeSlot=firstTimeSlot(raw);
-      return {
-        type:'mutation',
-        intent:'add_makeup',
-        studentName,
-        dateSpec,
-        dateLabel:dateSpec ? dateSpec.label : '',
-        timeSlot,
-        classGroup:firstClassGroup(raw),
-        originalText:raw,
+    for(const intent of ['add_makeup','add_trial','add_waitlist']){
+      const draft=parseCanonicalAddDraft(raw,intent);
+      if(!draft) continue;
+      return Object.assign({},draft,{
         batchDraft:true,
         missingBatchFields:[
-          !dateSpec ? 'date' : '',
-          !timeSlot ? 'time' : ''
+          !draft.dateSpec ? 'date' : '',
+          !Number(draft.timeSlot || 0) ? 'time' : ''
         ].filter(Boolean)
-      };
+      });
     }
 
     return null;
@@ -1211,6 +1263,75 @@
     const commands = parts.map(part => parseSingleWriteIntent(part) || parseBatchDraftWriteIntent(part));
     if (commands.some(item => !item)) return null;
     return { type:'mutation', intent:'batch_write', commands, originalText:raw };
+  }
+
+  function parseCanonicalAddDraft(text, intent) {
+    const raw=cleanText(text);
+    const compact=compactText(raw);
+    const key=cleanText(intent);
+    let targetPattern=null;
+    if(key==='add_makeup' && hasMakeupWord(compact)){
+      targetPattern=/(?:보강|보충(?:수업)?)(?:수업)?(?:으로|에|을|를|도)?/g;
+    }else if(key==='add_trial' && hasTrialWord(compact)){
+      targetPattern=/(?:체험\s*클래스|체험\s*수업|체험)(?:으로|에|을|를)?/g;
+    }else if(key==='add_waitlist' && hasWaitlistWord(compact)){
+      targetPattern=/(?:대기(?:자|명단|리스트)?|웨이팅(?:리스트)?)(?:에|로|을|를)?/g;
+    }else{
+      return null;
+    }
+    if(!hasAddAction(compact) || hasRemoveAction(compact)) return null;
+    const studentName=extractStudentName(raw,targetPattern,addActionPattern());
+    if(!studentName) return null;
+    const dateSpec=parseDateExpression(compact);
+    return {
+      type:'mutation',
+      intent:key,
+      studentName,
+      guestName:key==='add_trial' ? studentName : '',
+      division:detectDivision(compact),
+      dateSpec,
+      dateLabel:dateSpec ? dateSpec.label : '',
+      timeSlot:firstTimeSlot(raw),
+      classGroup:firstClassGroup(raw),
+      originalText:raw,
+      canonicalDraft:true
+    };
+  }
+
+  function interpretedIntentToStructuredCommand(intent, text) {
+    const key=cleanText(intent);
+    const raw=cleanText(text);
+    if(!key || !raw) return null;
+    const parsed=parseSingleWriteIntent(raw)
+      || parseCanonicalAddDraft(raw,key);
+    if(!parsed || cleanText(parsed.intent)!==key) return null;
+    const dateExpression=cleanText(parsed.dateLabel || parsed.dateSpec?.label);
+    return {
+      action:key,
+      studentName:cleanText(parsed.studentName || parsed.guestName),
+      division:cleanText(parsed.division),
+      dateExpression,
+      timeSlot:Number(parsed.timeSlot || 0),
+      classGroup:cleanText(parsed.classGroup).toUpperCase(),
+      weekday:Number(parsed.weekday || 0),
+      classTime:Number(parsed.classTime || 0),
+      classMinute:Number(parsed.classMinute || parsed.timeMinute || 0),
+      pickupKind:cleanText(parsed.pickupKind || (parsed.isDropoff ? 'dropoff' : '')),
+      pickupLabel:cleanText(parsed.pickupLabel),
+      pickupTime:cleanText(parsed.pickupTime),
+      sourceDateExpression:cleanText(parsed.sourceDateExpression),
+      sourceWeekday:Number(parsed.sourceWeekday || 0),
+      sourceTimeSlot:Number(parsed.sourceTimeSlot || 0),
+      sourceMinute:Number(parsed.sourceMinute || 0),
+      sourceClassGroup:cleanText(parsed.sourceClassGroup).toUpperCase(),
+      targetDateExpression:cleanText(parsed.targetDateExpression),
+      targetWeekday:Number(parsed.targetWeekday || 0),
+      targetTimeSlot:Number(parsed.targetTimeSlot || 0),
+      targetMinute:Number(parsed.targetMinute || 0),
+      targetClassGroup:cleanText(parsed.targetClassGroup).toUpperCase(),
+      reason:cleanText(parsed.reason),
+      memoNote:cleanText(parsed.memoNote)
+    };
   }
 
   function parseWriteIntent(text) {
@@ -1391,6 +1512,44 @@
     const raw = cleanText(text);
     const compact = compactText(raw);
     if (!raw) return null;
+
+    const parts=raw
+      .split(/\s*(?:;|그리고|그다음|그 다음|\n)\s*[,，]?\s*/g)
+      .map(cleanText)
+      .filter(Boolean);
+    if(parts.length>=2 && parts.length<=3){
+      const sharedDivision=detectDivision(compact);
+      const divisionText=sharedDivision==='elementary' ? '초등부 ' : (sharedDivision==='kinder' ? '유치부 ' : '');
+      const firstDate=parseDateExpression(compact);
+      const scopeMatch=compact.match(/(다다음주|다음주|차주|이번주|이번주간|금주)/);
+      const sharedScope=cleanText(scopeMatch && scopeMatch[1]);
+      const queries=parts.map(part=>{
+        const partCompact=compactText(part);
+        let candidate=part;
+        const signals=olliReplyTemporalSignals(part);
+        if(!signals.date && !signals.weekday && firstDate){
+          candidate=cleanText(firstDate.label+' '+candidate);
+        }else if(
+          signals.weekday
+          && sharedScope
+          && !/(?:다다음주|다음주|차주|이번주|이번주간|금주)/.test(partCompact)
+        ){
+          candidate=cleanText(sharedScope+' '+candidate);
+        }
+        if(sharedDivision && !detectDivision(partCompact)) candidate=divisionText+candidate;
+        return parseRosterQueryIntent(candidate)
+          || parsePickupQueryIntent(candidate)
+          || parseAvailableSlotsIntent(candidate);
+      }).filter(Boolean);
+      if(queries.length===parts.length){
+        return {
+          type:'query',
+          intent:'multi_read_query',
+          queries,
+          originalText:raw
+        };
+      }
+    }
 
     const mentions = multiWeekdayTimeMentions(raw);
     if (mentions.length < 2 || mentions.length > 3) return null;
@@ -1720,7 +1879,7 @@
     studentName=cleanText(studentName)
       .replace(/(?:님|님의)$/,'')
       .trim();
-    if(!studentName) return null;
+    if(!studentName || /^(?:명단|목록|리스트|학생|원생|전체|수업|클래스)$/.test(studentName)) return null;
 
     const dateSpec=parseStudentSchedulePeriodSpec(raw);
     return {
@@ -1735,10 +1894,10 @@
 
   function parseQueryIntent(text) {
     const normalizedText = cleanText(text);
-    return parseStudentScheduleQueryIntent(normalizedText)
-      || parseMultiQueryIntent(normalizedText)
+    return parseMultiQueryIntent(normalizedText)
       || parseRosterQueryIntent(normalizedText)
       || parsePickupQueryIntent(normalizedText)
+      || parseStudentScheduleQueryIntent(normalizedText)
       || parseAvailableSlotsIntent(normalizedText);
   }
 
@@ -4113,6 +4272,7 @@
     runStructuredMultiQuery,
     prepareStructuredAction,
     prepareAction,
+    interpretedIntentToStructuredCommand,
     parseWriteIntent,
     createStructuredWriteDraft,
     getStructuredWriteDraftState,

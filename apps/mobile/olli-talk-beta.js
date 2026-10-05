@@ -884,10 +884,14 @@
   function buildOlliTalkBatchAgentCommands(batch,sourceMessageId,sourceMessageText,interpretedBatchCommands=[]){
     const parsed=Array.isArray(batch?.commands)?batch.commands:[];
     const structured=Array.isArray(interpretedBatchCommands)?interpretedBatchCommands:[];
-    if(structured.length!==parsed.length) return [];
+    const router=window.OlliCommandRouter;
     return parsed.map((command,index)=>{
-      const system=structured[index]&&typeof structured[index]==='object'?structured[index]:{};
       const intent=String(command?.intent || '').trim();
+      const provided=structured[index]&&typeof structured[index]==='object'?structured[index]:null;
+      const derived=router && typeof router.interpretedIntentToStructuredCommand==='function'
+        ? router.interpretedIntentToStructuredCommand(intent,String(command?.originalText || '').trim())
+        : null;
+      const system=provided && String(provided.action || '').trim()===intent ? provided : (derived || {});
       if(String(system?.action || '').trim()!==intent) return null;
       const reason=String(system?.reason || '').trim() || String(command?.reason || '').trim();
       const item={
@@ -2094,10 +2098,18 @@
     const interpreterLane=String(interpretation.lane || '').trim() || 'routine';
     const interpreterRoute=String(interpretation.route || '').trim();
     const interpreterIntent=String(interpretation.intent || '').trim();
-    const structuredCommand=interpretation.structuredCommand || null;
+    let structuredCommand=interpretation.structuredCommand || null;
     const batchCommands=Array.isArray(interpretation.batchCommands)?interpretation.batchCommands:[];
     const readCommands=Array.isArray(interpretation.readCommands)?interpretation.readCommands:[];
     commandText=String(interpretation.standaloneCommand || rawCommandText).trim();
+    if(
+      interpreterLane==='routine'
+      && (!structuredCommand || !String(structuredCommand.action || '').trim() || String(structuredCommand.action || '').trim()==='none')
+      && router
+      && typeof router.interpretedIntentToStructuredCommand==='function'
+    ){
+      structuredCommand=router.interpretedIntentToStructuredCommand(interpreterIntent,commandText) || structuredCommand;
+    }
 
     if(options.allowSuggestedQuery && router && typeof router.runSuggestedQuery==='function'){
       const suggested=await router.runSuggestedQuery(commandText,{
@@ -2123,14 +2135,6 @@
     }
 
     if(interpreterLane==='chat'){
-      const message=String(interpretation.reply || '').trim();
-      if(message){
-        return {
-          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
-          replyText:message,
-          recordAi:true
-        };
-      }
       const resolved=await resolveOlliTalkAiReply(rawCommandText,context);
       return {
         assistantMessage:await saveOlliTalkOlliReply(context,resolved.message,replyToMessageId),
@@ -2156,6 +2160,7 @@
     if(
       interpreterLane==='routine'
       && interpreterIntent==='multi_read_query'
+      && readCommands.length>=2
       && router
       && typeof router.runStructuredMultiQuery==='function'
     ){
@@ -2409,6 +2414,7 @@
         context,
       });
     }
+
 
     if(
       interpreterLane==='routine'

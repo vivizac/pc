@@ -51,5 +51,6 @@ test('routine interpreter is isolated on GPT-5.6 Luna with reasoning none',()=>{
   assert.match(block,/'gpt-5\.6-luna'/);
   assert.match(block,/reasoning:\{effort:'none'\}/);
   assert.doesNotMatch(block,/OPENAI_AGENT_MODEL \|\| process\.env\.OPENAI_MODEL/);
-  assert.match(block,/If the class is omitted, keep weekday\/class_time\/class_minute as 0/);
+  assert.match(block,/translation, not data extraction/);
+  assert.match(block,/deterministic system will ask for missing information with buttons/);
 });

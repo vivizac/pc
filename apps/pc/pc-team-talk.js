@@ -2097,10 +2097,14 @@
   function buildBatchAgentCommands(batch,sourceMessageId,sourceMessageText,interpretedBatchCommands=[]){
     const parsed=Array.isArray(batch?.commands)?batch.commands:[];
     const structured=Array.isArray(interpretedBatchCommands)?interpretedBatchCommands:[];
-    if(structured.length!==parsed.length) return [];
+    const router=global.OlliCommandRouter;
     return parsed.map((command,index)=>{
-      const system=structured[index]&&typeof structured[index]==='object'?structured[index]:{};
       const intent=clean(command?.intent);
+      const provided=structured[index]&&typeof structured[index]==='object'?structured[index]:null;
+      const derived=router && typeof router.interpretedIntentToStructuredCommand==='function'
+        ? router.interpretedIntentToStructuredCommand(intent,clean(command?.originalText))
+        : null;
+      const system=provided && clean(provided.action)===intent ? provided : (derived || {});
       if(clean(system?.action)!==intent) return null;
       const reason=clean(system?.reason) || clean(command?.reason);
       const item={
@@ -3434,10 +3438,18 @@
     const interpreterLane=clean(interpretation.lane) || 'routine';
     const interpreterRoute=clean(interpretation.route);
     const interpreterIntent=clean(interpretation.intent);
-    const structuredCommand=interpretation.structuredCommand || null;
+    let structuredCommand=interpretation.structuredCommand || null;
     const batchCommands=Array.isArray(interpretation.batchCommands)?interpretation.batchCommands:[];
     const readCommands=Array.isArray(interpretation.readCommands)?interpretation.readCommands:[];
     commandText=clean(interpretation.standaloneCommand) || rawCommandText;
+    if(
+      interpreterLane==='routine'
+      && (!structuredCommand || !clean(structuredCommand.action) || clean(structuredCommand.action)==='none')
+      && router
+      && typeof router.interpretedIntentToStructuredCommand==='function'
+    ){
+      structuredCommand=router.interpretedIntentToStructuredCommand(interpreterIntent,commandText) || structuredCommand;
+    }
 
     if (options.allowSuggestedQuery && router && typeof router.runSuggestedQuery === 'function') {
       const suggested = await router.runSuggestedQuery(commandText, {
@@ -3463,14 +3475,6 @@
     }
 
     if(interpreterLane==='chat'){
-      const message=clean(interpretation.reply);
-      if(message){
-        return {
-          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
-          replyText:message,
-          recordAi:true
-        };
-      }
       const resolved=await resolveAiReply(rawCommandText,current);
       return {
         assistantMessage:await saveAssistantReply(current,resolved.message,replyToMessageId),
@@ -3496,6 +3500,7 @@
     if(
       interpreterLane==='routine'
       && interpreterIntent==='multi_read_query'
+      && readCommands.length>=2
       && router
       && typeof router.runStructuredMultiQuery==='function'
     ){
@@ -3749,6 +3754,7 @@
         current,
       });
     }
+
 
     if(
       interpreterLane==='routine'
