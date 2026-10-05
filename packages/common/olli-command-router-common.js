@@ -414,13 +414,13 @@
     const raw = cleanText(text);
     const compact = compactText(raw);
     if (!raw || !hasMoveAction(compact) || hasRemoveAction(compact)) return null;
+    if (isOlliReplyScheduleInquiry(raw)) return null;
 
     const mentions = weekdayTimeMentions(raw);
-    if (!mentions.length) return null;
+    if (!mentions.length && !/(?:수업|시간표)/.test(compact)) return null;
 
     const source = mentions.length >= 2 ? mentions[0] : {weekday:0,timeSlot:0};
-    const target = mentions.length >= 2 ? mentions[1] : mentions[0];
-    if (!target.weekday || !target.timeSlot) return null;
+    const target = mentions.length >= 2 ? mentions[1] : (mentions[0] || {weekday:0,timeSlot:0});
 
     const studentName = extractStudentName(
       raw,
@@ -437,6 +437,7 @@
       sourceTimeSlot:Number(source.timeSlot || 0),
       targetWeekday:Number(target.weekday || 0),
       targetTimeSlot:Number(target.timeSlot || 0),
+      targetDateExpression:'',
       classGroup:firstClassGroup(raw),
       originalText:raw
     };
@@ -1360,7 +1361,8 @@
   const STRUCTURED_WRITE_DRAFT_REQUIRED_FIELDS = Object.freeze({
     add_makeup:Object.freeze(['student','date','time']),
     add_trial:Object.freeze(['student','date','time']),
-    add_waitlist:Object.freeze(['student','date','time'])
+    add_waitlist:Object.freeze(['student','date','time']),
+    move_class:Object.freeze(['student','target_date','target_time'])
   });
 
   function createStructuredWriteDraft(systemCommand) {
@@ -1397,6 +1399,8 @@
     if (field === 'student') return !!cleanText(draft.studentName);
     if (field === 'date') return !!cleanText(draft.dateExpression);
     if (field === 'time') return Number(draft.timeSlot || 0) > 0;
+    if (field === 'target_date') return !!cleanText(draft.targetDateExpression);
+    if (field === 'target_time') return Number(draft.targetTimeSlot || 0) > 0;
     if (field === 'class_group') return /^[AB]$/.test(cleanText(draft.classGroup).toUpperCase());
     if (field === 'division') return !!cleanText(draft.division);
     if (field === 'reason') return !!cleanText(draft.reason);
@@ -1435,6 +1439,8 @@
     if (key === 'student') draft.studentName = cleanText(value);
     else if (key === 'date') draft.dateExpression = cleanText(value);
     else if (key === 'time') draft.timeSlot = Number(value || 0);
+    else if (key === 'target_date') draft.targetDateExpression = cleanText(value);
+    else if (key === 'target_time') draft.targetTimeSlot = Number(value || 0);
     else if (key === 'class_group') {
       const classGroup = cleanText(value).toUpperCase();
       draft.classGroup = /^[AB]$/.test(classGroup) ? classGroup : '';
@@ -2897,7 +2903,9 @@
       let field = writeDraftState.nextField;
       const noun = action === 'add_trial'
         ? '체험 등록'
-        : (action === 'add_waitlist' ? '대기 등록' : '보강 등록');
+        : (action === 'add_waitlist'
+          ? '대기 등록'
+          : (action === 'move_class' ? '수업 이동' : '보강 등록'));
       let draft=Object.assign({},writeDraftState.draft);
       let choices=[];
       let message = field === 'student'
@@ -2906,9 +2914,13 @@
           ? noun + '할 날짜를 선택해 주세요.'
           : (field === 'time'
             ? noun + '할 시간을 선택해 주세요.'
-            : noun + '에 필요한 정보를 알려주세요.'));
+            : (field === 'target_date'
+              ? '수업을 이동할 적용 날짜를 선택해 주세요.'
+              : (field === 'target_time'
+                ? '이동할 수업 시간을 선택해 주세요.'
+                : noun + '에 필요한 정보를 알려주세요.'))));
 
-      if(field==='time'){
+      if(field==='time' || field==='target_time'){
         if(!schedule || typeof schedule.prepareStructuredTimeChoices!=='function'){
           return {
             handled:true,
@@ -2921,7 +2933,10 @@
             action:null
           };
         }
-        const dateSpec=parseDateExpression(compactText(draft.dateExpression));
+        const selectedDateExpression=field==='target_time'
+          ? draft.targetDateExpression
+          : draft.dateExpression;
+        const dateSpec=parseDateExpression(compactText(selectedDateExpression));
         const date=dateSpec ? resolveDateExpression(dateSpec,new Date()) : null;
         if(!date){
           return {
@@ -2929,7 +2944,9 @@
             kind:'action_rejected',
             intent:action,
             text:'',
-            message:'선택한 날짜를 해석하지 못했어요. 날짜를 다시 선택해 주세요.',
+            message:field==='target_time'
+            ? '선택한 이동 날짜를 해석하지 못했어요. 날짜를 다시 선택해 주세요.'
+            : '선택한 날짜를 해석하지 못했어요. 날짜를 다시 선택해 주세요.',
             clearInput:true,
             payload:command,
             action:null
