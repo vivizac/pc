@@ -218,6 +218,34 @@
     }
   }
 
+  async function createObservationMemoExitCheckpoint(student, noteType = '') {
+    if (!student?.id) return { ok:false, skipped:true, code:'STUDENT_ID_MISSING' };
+    if (!global.isSupabaseConfigured?.()) return { ok:false, skipped:true, code:'SUPABASE_UNAVAILABLE' };
+
+    const academyId = global.requireOlliAcademyId('관찰노트 복구 지점');
+    const token = sessionToken();
+    const type = String(noteType || global.getSupabaseNoteDraftType?.(student) || '').trim();
+    if (!academyId || !token || !type) {
+      return { ok:false, skipped:true, code:'SESSION_OR_NOTE_TYPE_MISSING' };
+    }
+
+    const response = await global.supabase('POST', 'rpc/olli_note_draft_checkpoint_create', {
+      p_session_token: token,
+      p_academy_id: academyId,
+      p_student_id: student.id,
+      p_note_type: type,
+      p_device_id: deviceId()
+    });
+    if (!response || response.ok === false) {
+      const error = new Error(response?.message || '관찰노트 복구 지점을 저장하지 못했습니다.');
+      error.code = response?.code || 'CHECKPOINT_SAVE_FAILED';
+      throw error;
+    }
+    return response;
+  }
+
+  global.createObservationMemoExitCheckpoint = createObservationMemoExitCheckpoint;
+
   global.saveStudentNoteDraftToSupabase = safeSaveNote;
 
   async function flushCasQueue() {
