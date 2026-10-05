@@ -7,7 +7,7 @@ const talk=fs.readFileSync(path.join(__dirname,'../olli-talk-beta.js'),'utf8');
 
 test('mobile class-once gate uses only shared generic class parser',()=>{
   const start=talk.indexOf('function isOlliTalkClassOnceAgentCandidate');
-  const end=talk.indexOf('function isOlliTalkMoveAgentCandidate',start);
+  const end=talk.indexOf('async function resolveOlliTalkAttendanceStatusAgentTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/parseClassMutationIntent\(commandText\)/);
   assert.match(block,/==='add_class_once'/);
@@ -32,7 +32,7 @@ test('mobile class-once route stays before move and legacy preparation — share
 });
 test('mobile class-once bridge uses source-bound production without second action save',()=>{
   const start=talk.indexOf('async function resolveOlliTalkClassOnceAgentTurn');
-  const end=talk.indexOf('async function resolveOlliTalkMoveAgentTurn',start);
+  const end=talk.indexOf('async function resolveOlliTalkStructuredMoveCancelTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'class_once_prepare'/);
   assert.match(block,/sourceMessageId=Number\(replyToMessageId \|\| 0\)/);
