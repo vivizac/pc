@@ -240,6 +240,18 @@ test('PC observation editor owns autosave input blur and composition-end events'
   assert.match(common, /saveObservationMemoServerSnapshot\(\{ status: true \}\)/);
 });
 
+test('memo exit creates a checkpoint only after the final autosave is settled', () => {
+  const common = read(files.common);
+  const pcCore = read(files.pcCore);
+
+  assert.match(common, /async function finalizeObservationMemoSessionCheckpoint\(options = \{\}\)/);
+  assert.match(common, /await window\.__olliObservationMemoServerSavePromise/);
+  assert.match(common, /createObservationMemoExitCheckpoint/);
+  assert.match(common, /\['pending', 'blocked', 'conflict'\]\.includes\(syncStatus\)/);
+  assert.match(pcCore, /async function closeMemoPage\(\)[\s\S]*await window\.finalizeObservationMemoSessionCheckpoint/);
+});
+
+
 test('observation view sync is platform-owned while shared common keeps only orchestration entry points', () => {
   const common = read(files.common);
   const pcCore = read(files.pcCore);
@@ -303,6 +315,8 @@ test('CAS save contract preserves revision, mutation and conflict states', () =>
   const source = read(files.save);
 
   assert.match(source, /rpc\/olli_note_draft_save_cas/);
+  assert.match(source, /rpc\/olli_note_draft_checkpoint_create/);
+  assert.match(source, /global\.createObservationMemoExitCheckpoint = createObservationMemoExitCheckpoint/);
   assert.match(source, /p_expected_revision:\s*memoRevision\(expectedRevision\)/);
   assert.match(source, /p_mutation_id:\s*mutationId \|\| createMutationId\(\)/);
   assert.match(source, /p_device_id:\s*device \|\| deviceId\(\)/);
@@ -496,7 +510,7 @@ test('integrated save guard advances the next request to the confirmed server re
 test('reconcile contract keeps ambiguous local drafts protected and checks immutable lineage', () => {
   const source = read(files.session);
 
-  assert.match(source, /rpc\/olli_note_draft_version_list/);
+  assert.match(source, /rpc\/olli_note_draft_lineage_check/);
   assert.match(source, /remoteIsHistoricalReversion/);
   assert.match(source, /'historical-reversion-conflict'/);
   assert.match(source, /'unverified-local-conflict'/);
