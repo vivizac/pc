@@ -5987,16 +5987,9 @@
 
   function createOlliTalkMessageElement(item, currentMemberId, options = {}){
     const type = String(item?.message_type || 'text');
-    const isAi = type === 'ai';
+    const isAi = type === 'ai' || type === 'system';
     const own = !isAi && String(item?.sender_member_id || '') === String(currentMemberId || '');
     const message = document.createElement('div');
-
-    if (type === 'system') {
-      message.className = 'olliTalkBetaSystemMessage';
-      message.textContent = String(item?.body || '');
-      message.dataset.dateKey = getOlliTalkDateKey(item?.created_at);
-      return message;
-    }
 
     const connectedToPrevious = options.connectedToPrevious === true;
     message.className = 'olliTalkBetaMessage ' + (isAi ? 'ai' : (own ? 'outgoing' : 'incoming'));
@@ -6027,7 +6020,9 @@
 
     const bubbleRow = document.createElement('div');
     bubbleRow.className = 'olliTalkBetaBubbleRow';
-    bubbleRow.appendChild(createOlliTalkMessageBubble(item, options));
+    const bubble = createOlliTalkMessageBubble(item, options);
+    if (type === 'system') bubble.classList.add('olliTalkBetaSystemBubble');
+    bubbleRow.appendChild(bubble);
 
     const bubbleMeta = document.createElement('div');
     bubbleMeta.className = 'olliTalkBetaBubbleMeta';

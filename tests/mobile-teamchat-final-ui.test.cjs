@@ -38,8 +38,11 @@ test('AI avatar label is Olli while sender name remains the Korean display name'
   assert.match(js,/createMessageText\('span', 'olliTalkBetaSenderName', '올리'\)/);
 });
 
-test('Team Chat system pill uses the sampled pink-to-orange gradient and white text',()=>{
-  assert.match(css,/\.olliTalkBetaSystemMessage\{[\s\S]*linear-gradient\(90deg,#EC70AF 0%,#EC70AF 34%,#ED7D95 52%,#F08E75 68%,#F1A159 83%,#F3B347 100%\);[\s\S]*color:#fff;/);
+test('Team Chat system notice renders as an Olli bubble while keeping the Display P3 gradient',()=>{
+  assert.match(js,/const isAi = type === 'ai' \|\| type === 'system';/);
+  assert.match(js,/if \(type === 'system'\) bubble\.classList\.add\('olliTalkBetaSystemBubble'\)/);
+  assert.doesNotMatch(js,/message\.className = 'olliTalkBetaSystemMessage'/);
+  assert.match(css,/\.olliTalkBetaSystemBubble\{[\s\S]*color\(display-p3[\s\S]*color:#fff;/);
 });
 
 test('mobile Team Chat assets share mention-restore cache bust revision',()=>{
