@@ -1075,7 +1075,7 @@
   padding:6px 10px;
   border-radius:999px;
   background:#EC70AF;
-  color:var(--olli-talk-system-pill-text);
+  color:#fff;
   font-size:calc(11px * var(--olli-text-scale, 1));
   font-weight:500;
   line-height:1.35;
