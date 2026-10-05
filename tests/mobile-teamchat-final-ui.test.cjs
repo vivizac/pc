@@ -45,6 +45,12 @@ test('Team Chat system notice renders as an Olli bubble while keeping the Displa
   assert.match(css,/\.olliTalkBetaSystemBubble\{[\s\S]*color\(display-p3[\s\S]*color:#fff;/);
 });
 
+test('completed repetitive-work result stays attached below the confirmed action without a new tail',()=>{
+  assert.match(js,/status==='completed'[\s\S]*confirmed\.textContent='확인';[\s\S]*confirmed\.disabled=true/);
+  assert.match(js,/isInlineSystemResult[\s\S]*appendOlliTalkInlineSystemResult\(previousMessage,item\)/);
+  assert.match(css,/\.olliTalkBetaInlineSystemResult::before,[\s\S]*content:none !important;/);
+});
+
 test('mobile Team Chat assets share mention-restore cache bust revision',()=>{
   assert.match(html,/olli-talk-beta\.css\?v=20261005-mention-menu-restore-1/);
   assert.match(html,/olli-talk-beta\.js\?v=20261005-mention-menu-restore-1/);
