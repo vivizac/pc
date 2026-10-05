@@ -1980,6 +1980,28 @@
     syncAssistantUi();
   }
 
+  async function resolveFeedbackAnalysis(commandText,rawCommandText,current,sourceMessageId) {
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'feedback_analysis',
+        academyId:current?.academyId || '',
+        sessionToken:current?.sessionToken || '',
+        message:clean(commandText),
+        sourceMessageText:clean(rawCommandText || commandText),
+        sourceMessageId:Number(sourceMessageId || 0)
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true){
+      throw new Error(data?.error || data?.message || '피드백 분석 응답을 받지 못했습니다.');
+    }
+    const message=clean(data?.output);
+    if(!message) throw new Error('피드백 분석 응답이 비어 있습니다.');
+    return {message};
+  }
+
   async function resolveAiReply(commandText, current) {
     const response = await fetch('/api/chat', {
       method:'POST',
@@ -3458,7 +3480,12 @@
     }
 
     if(interpreterLane==='feedback'){
-      const resolved=await resolveAiReply(rawCommandText,current);
+      const resolved=await resolveFeedbackAnalysis(
+        commandText,
+        rawCommandText,
+        current,
+        replyToMessageId
+      );
       return {
         assistantMessage:await saveAssistantReply(current,resolved.message,replyToMessageId),
         replyText:resolved.message,
