@@ -4195,6 +4195,10 @@
         cleanup();
         resolve(true);
       };
+      // IntersectionObserver already decides when the preview is close enough to load.
+      // Once hydration starts, force the <img> request to start even while the element is hidden.
+      // iOS can otherwise defer a hidden loading="lazy" image indefinitely.
+      image.loading='eager';
       image.hidden=true;
       image.onload=ready;
       image.onerror=fail;
