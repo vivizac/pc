@@ -610,6 +610,28 @@
     resetOlliTalkAiConversation();
   }
 
+  async function resolveOlliTalkFeedbackAnalysis(commandText,rawCommandText,context,sourceMessageId){
+    const response=await fetch('/api/olli-agent',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        mode:'feedback_analysis',
+        academyId:context?.academyId || '',
+        sessionToken:context?.sessionToken || '',
+        message:String(commandText || '').trim(),
+        sourceMessageText:String(rawCommandText || commandText || '').trim(),
+        sourceMessageId:Number(sourceMessageId || 0)
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok || data?.ok!==true){
+      throw new Error(data?.error || data?.message || '피드백 분석 응답을 받지 못했습니다.');
+    }
+    const message=String(data?.output || '').trim();
+    if(!message) throw new Error('피드백 분석 응답이 비어 있습니다.');
+    return {message};
+  }
+
   async function resolveOlliTalkAiReply(commandText, context){
     const response = await fetch('/api/chat', {
       method:'POST',
@@ -2118,7 +2140,12 @@
     }
 
     if(interpreterLane==='feedback'){
-      const resolved=await resolveOlliTalkAiReply(rawCommandText,context);
+      const resolved=await resolveOlliTalkFeedbackAnalysis(
+        commandText,
+        rawCommandText,
+        context,
+        replyToMessageId
+      );
       return {
         assistantMessage:await saveOlliTalkOlliReply(context,resolved.message,replyToMessageId),
         replyText:resolved.message,
