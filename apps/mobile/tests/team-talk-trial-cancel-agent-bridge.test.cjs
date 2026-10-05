@@ -43,7 +43,7 @@ test('mobile two-turn trial cancellation preserves reason prompt then uses Agent
 
 test('mobile trial cancel resolver binds both saved messages and never saves a second card client-side',()=>{
   const start=talk.indexOf('async function resolveOlliTalkTrialCancelAgentTurn');
-  const end=talk.indexOf('async function resolveOlliTalkStructuredTrialUpdateTurn',start);
+  const end=talk.indexOf('async function resolveOlliTalkStructuredWaitlistUpdateTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'trial_cancel_prepare'/);
   assert.match(block,/sourceMessageId:sourceId/);

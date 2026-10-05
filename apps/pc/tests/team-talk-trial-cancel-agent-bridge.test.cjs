@@ -43,7 +43,7 @@ test('PC two-turn trial cancellation preserves reason prompt then uses Agent on 
 
 test('PC trial cancel resolver sends command and reason message bindings and never saves a second card client-side',()=>{
   const start=talk.indexOf('async function resolveTrialCancelAgentTurn');
-  const end=talk.indexOf('async function resolveStructuredTrialUpdateTurn',start);
+  const end=talk.indexOf('async function resolveStructuredWaitlistUpdateTurn',start);
   const block=talk.slice(start,end);
   assert.match(block,/mode:'trial_cancel_prepare'/);
   assert.match(block,/sourceMessageId:sourceId/);
