@@ -2090,11 +2090,46 @@
     const router=window.OlliCommandRouter;
     const schedule=window.OlliCommandSchedule;
     const rawCommandText=String(commandText || '').trim();
-    const interpretation=await interpretOlliTalkSystemLanguage(
-      rawCommandText,
-      context,
-      replyToMessageId
-    );
+    let localRuleClassification=null;
+    let localRuleIntent='';
+    if(router && typeof router.classifyRequest==='function'){
+      try{
+        localRuleClassification=router.classifyRequest(rawCommandText);
+        localRuleIntent=String(localRuleClassification?.intent || '').trim();
+      }catch(_){
+        localRuleClassification=null;
+        localRuleIntent='';
+      }
+    }
+    if(!localRuleIntent && router && typeof router.parseStudentInfoLookupIntent==='function'){
+      try{
+        if(router.parseStudentInfoLookupIntent(rawCommandText)) localRuleIntent='open_student_info';
+      }catch(_){}
+    }
+    const localRuleHandled=!!localRuleIntent
+      && String(localRuleClassification?.type || (localRuleIntent==='open_student_info' ? 'ui_query' : '')).trim()!=='other';
+    const localStructuredCommand=localRuleHandled
+      && router
+      && typeof router.interpretedIntentToStructuredCommand==='function'
+      ? router.interpretedIntentToStructuredCommand(localRuleIntent,rawCommandText)
+      : null;
+    const interpretation=localRuleHandled
+      ? {
+          lane:'routine',
+          route:'rule',
+          intent:localRuleIntent,
+          standaloneCommand:rawCommandText,
+          structuredCommand:localStructuredCommand,
+          batchCommands:[],
+          readCommands:[],
+          reply:'',
+          contextUsed:false
+        }
+      : await interpretOlliTalkSystemLanguage(
+          rawCommandText,
+          context,
+          replyToMessageId
+        );
     const interpreterLane=String(interpretation.lane || '').trim() || 'routine';
     const interpreterRoute=String(interpretation.route || '').trim();
     const interpreterIntent=String(interpretation.intent || '').trim();
@@ -6005,6 +6040,9 @@
     if(!incomingLayout) return false;
     const bubble=createOlliTalkMessageBubble(item);
     bubble.classList.add('olliTalkBetaSystemBubble','olliTalkBetaInlineSystemResult');
+    if (/작업\s*요청.*취소/.test(String(item?.body || ''))) {
+      bubble.classList.add('olliTalkBetaCancelSystemBubble');
+    }
     bubble.dataset.messageId=String(item?.id || '');
     incomingLayout.appendChild(bubble);
     return true;
@@ -6046,7 +6084,12 @@
     const bubbleRow = document.createElement('div');
     bubbleRow.className = 'olliTalkBetaBubbleRow';
     const bubble = createOlliTalkMessageBubble(item, options);
-    if (type === 'system') bubble.classList.add('olliTalkBetaSystemBubble');
+    if (type === 'system') {
+      bubble.classList.add('olliTalkBetaSystemBubble');
+      if (/작업\s*요청.*취소/.test(String(item?.body || ''))) {
+        bubble.classList.add('olliTalkBetaCancelSystemBubble');
+      }
+    }
     bubbleRow.appendChild(bubble);
 
     const bubbleMeta = document.createElement('div');
@@ -6105,13 +6148,8 @@
     const bubble = document.createElement('div');
     bubble.className = 'olliTalkBetaBubble olliTalkBetaTypingBubble';
     bubble.setAttribute('role', 'status');
-    bubble.setAttribute('aria-label', '올리가 답변을 작성하는 중');
-    for (let index = 0; index < 3; index += 1) {
-      const dot = document.createElement('span');
-      dot.className = 'olliTalkBetaTypingDot';
-      dot.setAttribute('aria-hidden', 'true');
-      bubble.appendChild(dot);
-    }
+    bubble.setAttribute('aria-label', '올리가 요청을 확인하는 중');
+    bubble.textContent = '확인중…';
     bubbleRow.appendChild(bubble);
     incomingLayout.append(sender, bubbleRow);
     message.appendChild(incomingLayout);
@@ -7039,8 +7077,10 @@
       resizeInput();
       updateOlliTalkBetaComposerState();
       appendOlliTalkPersistedMessage(payload.message, context.memberId);
+      let olliTalkFirstReplyStartedAt=0;
       if (olliRequested && (olliAiMentionRequested || isOlliTalkAiEnabled())) {
         olliTalkAssistantReplyPending = true;
+        olliTalkFirstReplyStartedAt=Date.now();
         syncOlliTalkAssistantTypingIndicator();
       }
 
@@ -7078,6 +7118,10 @@
         try {
           if(usingAi){
             const turn=await resolveOlliTalkAiTurn(commandText,context,Number(payload.message.id));
+            if(olliTalkFirstReplyStartedAt){
+              const remaining=1000-(Date.now()-olliTalkFirstReplyStartedAt);
+              if(remaining>0) await new Promise(resolve=>setTimeout(resolve,remaining));
+            }
             olliTalkAssistantReplyPending=false;
             const assistantMessages=Array.isArray(turn.assistantMessages) && turn.assistantMessages.length
               ? turn.assistantMessages
