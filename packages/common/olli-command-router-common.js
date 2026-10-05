@@ -1513,6 +1513,44 @@
     const compact = compactText(raw);
     if (!raw) return null;
 
+    const parts=raw
+      .split(/\s*(?:;|그리고|그다음|그 다음|\n)\s*[,，]?\s*/g)
+      .map(cleanText)
+      .filter(Boolean);
+    if(parts.length>=2 && parts.length<=3){
+      const sharedDivision=detectDivision(compact);
+      const divisionText=sharedDivision==='elementary' ? '초등부 ' : (sharedDivision==='kinder' ? '유치부 ' : '');
+      const firstDate=parseDateExpression(compact);
+      const scopeMatch=compact.match(/(다다음주|다음주|차주|이번주|이번주간|금주)/);
+      const sharedScope=cleanText(scopeMatch && scopeMatch[1]);
+      const queries=parts.map(part=>{
+        const partCompact=compactText(part);
+        let candidate=part;
+        if(sharedDivision && !detectDivision(partCompact)) candidate=divisionText+candidate;
+        const signals=olliReplyTemporalSignals(part);
+        if(!signals.date && !signals.weekday && firstDate){
+          candidate=cleanText(firstDate.label+' '+candidate);
+        }else if(
+          signals.weekday
+          && sharedScope
+          && !/(?:다다음주|다음주|차주|이번주|이번주간|금주)/.test(partCompact)
+        ){
+          candidate=cleanText(sharedScope+' '+candidate);
+        }
+        return parseRosterQueryIntent(candidate)
+          || parsePickupQueryIntent(candidate)
+          || parseAvailableSlotsIntent(candidate);
+      }).filter(Boolean);
+      if(queries.length===parts.length){
+        return {
+          type:'query',
+          intent:'multi_read_query',
+          queries,
+          originalText:raw
+        };
+      }
+    }
+
     const mentions = multiWeekdayTimeMentions(raw);
     if (mentions.length < 2 || mentions.length > 3) return null;
 
@@ -1841,7 +1879,7 @@
     studentName=cleanText(studentName)
       .replace(/(?:님|님의)$/,'')
       .trim();
-    if(!studentName) return null;
+    if(!studentName || /^(?:명단|목록|리스트|학생|원생|전체|수업|클래스)$/.test(studentName)) return null;
 
     const dateSpec=parseStudentSchedulePeriodSpec(raw);
     return {
@@ -1856,11 +1894,11 @@
 
   function parseQueryIntent(text) {
     const normalizedText = cleanText(text);
-    return parseStudentScheduleQueryIntent(normalizedText)
-      || parseMultiQueryIntent(normalizedText)
+    return parseMultiQueryIntent(normalizedText)
       || parseRosterQueryIntent(normalizedText)
       || parsePickupQueryIntent(normalizedText)
-      || parseAvailableSlotsIntent(normalizedText);
+      || parseAvailableSlotsIntent(normalizedText)
+      || parseStudentScheduleQueryIntent(normalizedText);
   }
 
   function classifyRequest(text) {
