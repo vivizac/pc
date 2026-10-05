@@ -409,13 +409,13 @@
     const dateLabel=clean(opts.dateLabel) || fallbackDateLabel(dateKey);
     let division=normalizeDivision(opts.division);
 
-    if(!['add_makeup','update_makeup','add_trial','update_trial','add_waitlist'].includes(action)){
+    if(!['add_makeup','update_makeup','add_trial','update_trial','add_waitlist','move_class'].includes(action)){
       return {ok:false,code:'unsupported_action',message:'시간 선택을 지원하지 않는 작업입니다.'};
     }
     if(!studentName) return {ok:false,code:'student_required',message:'시간을 선택할 학생을 확인하지 못했어요.'};
     if(!dateKey) return {ok:false,code:'date_required',message:'시간을 선택할 날짜를 확인하지 못했어요.'};
 
-    if(['add_makeup','update_makeup'].includes(action)){
+    if(['add_makeup','update_makeup','move_class'].includes(action)){
       const resolved=resolveCommandStudent(studentName,selected);
       if(!resolved.ok) return resolved;
       const studentDivision=normalizeStudentDivision(resolved.student);
@@ -450,7 +450,11 @@
       };
     }
 
-    const purpose=['add_makeup','update_makeup'].includes(action) ? 'makeup' : (['add_trial','update_trial'].includes(action) ? 'trial' : 'unknown');
+    const purpose=action==='move_class'
+      ? 'schedule_move'
+      : (['add_makeup','update_makeup'].includes(action)
+        ? 'makeup'
+        : (['add_trial','update_trial'].includes(action) ? 'trial' : 'unknown'));
     const availability=await findAvailableSlots({
       date:dateKey,
       dateLabel,
@@ -3150,6 +3154,7 @@
     const sourceEnrollmentId = clean(opts.sourceEnrollmentId);
     const targetWeekday = Number(opts.targetWeekday || 0);
     const targetTimeSlot = Number(opts.targetTimeSlot || 0);
+    const explicitTargetDate = localDateKey(opts.targetDate);
 
     if (!studentId || !division) return { ok:false, message:'학생의 수업 구분을 확인하지 못했어요.' };
     if (!effectiveDate || !targetWeekday || !targetTimeSlot) {
@@ -3215,7 +3220,7 @@
       return { ok:false, message:clean(student.name) + ' 학생은 이미 ' + weekdayLabel(targetWeekday) + ' ' + targetTimeSlot + '시에 정규수업이 있어요.' };
     }
 
-    const targetDate = nextOccurrenceKey(effectiveDate, targetWeekday);
+    const targetDate = explicitTargetDate || nextOccurrenceKey(effectiveDate, targetWeekday);
     const availability = await findAvailableSlots({
       date: targetDate,
       dateLabel:weekdayLabel(targetWeekday),
