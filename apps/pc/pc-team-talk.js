@@ -2354,16 +2354,6 @@
     }
   }
 
-  function isMakeupAddAgentCandidate(commandText, router = global.OlliCommandRouter) {
-    if (!router || typeof router.parseMakeupMutationIntent !== 'function') return false;
-    try {
-      return clean(router.parseMakeupMutationIntent(commandText)?.intent) === 'add_makeup';
-    } catch (error) {
-      console.warn('PC 보강 등록 Agent 후보 판별 실패:', error?.message || error);
-      return false;
-    }
-  }
-
   function parseMakeupCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
     if (!router || typeof router.parseMakeupCancelMutationIntent !== 'function') return null;
     try {
@@ -2377,16 +2367,6 @@
 
   function isMakeupCancelAgentCandidate(commandText, router = global.OlliCommandRouter) {
     return !!parseMakeupCancelAgentCandidate(commandText, router);
-  }
-
-  function isMakeupUpdateAgentCandidate(commandText, router = global.OlliCommandRouter) {
-    if (!router || typeof router.parseMakeupUpdateMutationIntent !== 'function') return false;
-    try {
-      return clean(router.parseMakeupUpdateMutationIntent(commandText)?.intent) === 'update_makeup';
-    } catch (error) {
-      console.warn('PC 보강 변경 Agent 후보 판별 실패:', error?.message || error);
-      return false;
-    }
   }
 
   async function resolveAttendanceStatusAgentTurn(commandText, parsed, current, replyToMessageId) {
@@ -2688,32 +2668,6 @@
     };
   }
 
-  async function resolveMakeupAddAgentTurn(commandText, current, replyToMessageId) {
-    const sourceMessageId = Number(replyToMessageId || 0);
-    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
-      throw new Error('보강 등록 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-
-    const response = await fetch('/api/olli-agent', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body:JSON.stringify({
-        mode:'makeup_prepare',
-        academyId:current?.academyId || '',
-        sessionToken:current?.sessionToken || '',
-        message:clean(commandText),
-        sourceMessageId
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    return resolveMakeupAgentResponse({
-      response,
-      data,
-      current,
-      replyToMessageId,
-    });
-  }
-
   function mergeStructuredMakeupCancelCommand(previous,current){
     const before=previous && typeof previous==='object' ? previous : {};
     const next=current && typeof current==='object' ? current : {};
@@ -2864,38 +2818,6 @@
     if(clean(data.message.action.action_type)!=='update_makeup'){
       throw new Error('보강 변경 규칙 시스템 작업 종류가 올바르지 않습니다.');
     }
-    return {
-      assistantMessage:data.message,
-      replyText:clean(data.message.body),
-      recordAi:false
-    };
-  }
-
-  async function resolveMakeupUpdateAgentTurn(commandText, current, replyToMessageId) {
-    const sourceMessageId = Number(replyToMessageId || 0);
-    if (!Number.isSafeInteger(sourceMessageId) || sourceMessageId <= 0) {
-      throw new Error('보강 변경 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-
-    const response = await fetch('/api/olli-agent', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body:JSON.stringify({
-        mode:'makeup_update_prepare',
-        academyId:current?.academyId || '',
-        sessionToken:current?.sessionToken || '',
-        message:clean(commandText),
-        sourceMessageId
-      })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || data?.ok !== true || !data?.message?.action) {
-      throw new Error(data?.error || data?.message || '보강 변경 Agent 응답을 받지 못했습니다.');
-    }
-    if (clean(data.message.action.action_type) !== 'update_makeup') {
-      throw new Error('보강 변경 Agent 작업 종류가 올바르지 않습니다.');
-    }
-
     return {
       assistantMessage:data.message,
       replyText:clean(data.message.body),
@@ -3616,8 +3538,6 @@
       case 'waitlist_cancel': {
         const turn=await resolveWaitlistCancelAgentTurn(commandText,current,replyToMessageId); return turn||null;
       }
-      case 'makeup_update': return resolveMakeupUpdateAgentTurn(commandText,current,replyToMessageId);
-      case 'makeup_add': return resolveMakeupAddAgentTurn(commandText,current,replyToMessageId);
       case 'class_once': return resolveClassOnceAgentTurn(commandText,current,replyToMessageId);
       case 'timetable_read':
         return resolveSourceBoundReadAgentTurn({mode:'timetable_read',commandText,readIntent:parsed,current,replyToMessageId});

@@ -39,3 +39,11 @@ test('move and move-cancel dead client Agent bridges are removed after structure
   assert.doesNotMatch(pc,/resolveMove(?:Cancel)?AgentTurn|isMove(?:Cancel)?AgentCandidate/);
   assert.doesNotMatch(mobile,/resolveOlliTalkMove(?:Cancel)?AgentTurn|isOlliTalkMove(?:Cancel)?AgentCandidate/);
 });
+
+
+test('makeup add/update dead client Agent bridges are removed while cancel compatibility remains',()=>{
+  assert.doesNotMatch(pc,/resolveMakeup(?:Add|Update)AgentTurn|isMakeup(?:Add|Update)AgentCandidate/);
+  assert.doesNotMatch(mobile,/resolveOlliTalkMakeup(?:Add|Update)AgentTurn|isOlliTalkMakeup(?:Add|Update)AgentCandidate/);
+  assert.match(pc,/resolveMakeupCancelAgentTurn/);
+  assert.match(mobile,/resolveOlliTalkMakeupCancelAgentTurn/);
+});

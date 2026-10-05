@@ -1,161 +1,48 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
+'use strict';
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const talk=fs.readFileSync(path.join(__dirname,'../pc-team-talk.js'),'utf8');
 
-const talk = fs.readFileSync(path.join(__dirname,'../pc-team-talk.js'),'utf8');
+test('PC makeup add/update use structured rule path before Agent classifier',()=>{
+  const ai=talk.slice(talk.indexOf('async function resolveAiTurn'),talk.indexOf('function updateComposerState'));
+  const classifier=ai.indexOf('const routeClassifier=');
+  const structured=ai.indexOf("['add_makeup','update_makeup'");
+  assert.ok(structured>=0 && classifier>structured);
+  assert.match(ai,/prepareStructuredAction/);
+});
 
-test('PC AI makeup add is routed before legacy action preparation — shared dispatch contract', () => {
-  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
-  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
-  const dispatch=talk.slice(dispatchStart,dispatchEnd);
-  const aiStart=talk.indexOf('async function resolveAiTurn');
-  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
-  const ai=talk.slice(aiStart,aiEnd);
-  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
-  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
-  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
-  assert.match(dispatch,/case 'makeup_add'/);
+test('PC dead makeup add/update Agent candidates and helpers are removed',()=>{
+  for(const token of [
+    'isMakeupAddAgentCandidate','isMakeupUpdateAgentCandidate',
+    'resolveMakeupAddAgentTurn','resolveMakeupUpdateAgentTurn'
+  ]) assert.doesNotMatch(talk,new RegExp(token));
+  const dispatch=talk.slice(talk.indexOf('async function resolveSharedAgentRouteTurn'),talk.indexOf('async function resolveContextualMakeupTurn'));
+  assert.doesNotMatch(dispatch,/case 'makeup_add'|case 'makeup_update'/);
+});
+
+test('PC makeup cancel legacy reason compatibility remains intact',()=>{
+  assert.match(talk,/function parseMakeupCancelAgentCandidate/);
+  assert.match(talk,/async function resolveMakeupCancelAgentTurn/);
+  assert.match(talk,/__makeupCancelAgent/);
+  assert.match(talk,/mode:'makeup_cancel_prepare'/);
+  const dispatch=talk.slice(talk.indexOf('async function resolveSharedAgentRouteTurn'),talk.indexOf('async function resolveContextualMakeupTurn'));
   assert.match(dispatch,/case 'makeup_cancel'/);
-  assert.match(dispatch,/case 'makeup_update'/);
-  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
-  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(classify>=0 && legacy>classify);
-  assert.match(ai,/__makeupCancelAgent/);
-});
-test('PC makeup Agent gate uses shared add_makeup parser only as candidate detection', () => {
-  assert.match(talk,/parseMakeupMutationIntent\(commandText\)/);
-  const start=talk.indexOf('function isMakeupAddAgentCandidate');
-  const end=talk.indexOf('function parseMakeupCancelAgentCandidate',start);
-  const block=talk.slice(start,end);
-  assert.match(block,/=== 'add_makeup'/);
-  assert.doesNotMatch(block,/parseMakeupCancelMutationIntent|cancel_makeup|update_makeup/);
 });
 
-test('PC makeup bridge uses source message id and shared Agent response handler', () => {
-  const start=talk.indexOf('async function resolveMakeupAddAgentTurn');
-  const end=talk.indexOf('async function resolveMakeupCancelAgentTurn',start);
-  const block=talk.slice(start,end);
-  const helperStart=talk.indexOf('async function resolveMakeupAgentResponse');
-  const helperEnd=talk.indexOf('async function resolveMakeupAddAgentTurn',helperStart);
-  const helper=talk.slice(helperStart,helperEnd);
-  assert.match(block,/mode:'makeup_prepare'/);
-  assert.match(block,/sourceMessageId = Number\(replyToMessageId \|\| 0\)/);
-  assert.match(block,/return resolveMakeupAgentResponse/);
-  assert.match(helper,/action_type\) !== 'add_makeup'/);
-  assert.match(helper,/assistantMessage:data\.message/);
-  assert.match(helper,/recordAi:false/);
-  assert.doesNotMatch(block,/saveAssistantAction|olli_team_chat_send_action/);
+test('PC structured makeup cancel remains preferred in unified interpreter flow',()=>{
+  const ai=talk.slice(talk.indexOf('async function resolveAiTurn'),talk.indexOf('function updateComposerState'));
+  const structured=ai.indexOf("clean(structuredCommand?.action)==='cancel_makeup'");
+  const classifier=ai.indexOf('const routeClassifier=');
+  assert.ok(structured>=0 && classifier>structured);
+  assert.match(ai,/resolveStructuredMakeupCancelTurn/);
 });
 
-test('PC bot path remains independent from makeup Agent production routing', () => {
-  const start=talk.indexOf('async function resolveBotTurn');
-  const end=talk.indexOf('function buildAiConversationMessages',start);
-  const block=talk.slice(start,end);
-  assert.doesNotMatch(block,/resolveMakeupAddAgentTurn|resolveMakeupCancelAgentTurn|resolveMakeupUpdateAgentTurn|isMakeupAddAgentCandidate|isMakeupCancelAgentCandidate|isMakeupUpdateAgentCandidate|makeup_prepare|makeup_cancel_prepare|makeup_update_prepare/);
-});
-
-
-test('PC makeup cancel preserves inline and two-turn reason Agent routing — shared dispatch contract', () => {
-  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
-  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
-  const dispatch=talk.slice(dispatchStart,dispatchEnd);
-  const aiStart=talk.indexOf('async function resolveAiTurn');
-  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
-  const ai=talk.slice(aiStart,aiEnd);
-  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
-  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
-  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
-  assert.match(dispatch,/case 'makeup_add'/);
-  assert.match(dispatch,/case 'makeup_cancel'/);
-  assert.match(dispatch,/case 'makeup_update'/);
-  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
-  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(classify>=0 && legacy>classify);
-  assert.match(ai,/__makeupCancelAgent/);
-});
-test('PC makeup cancel Agent gate uses only the shared cancel parser as candidate detection', () => {
-  const start=talk.indexOf('function parseMakeupCancelAgentCandidate');
-  const end=talk.indexOf('function isMakeupUpdateAgentCandidate',start);
-  const block=talk.slice(start,end);
-  assert.match(block,/parseMakeupCancelMutationIntent\(commandText\)/);
-  assert.match(block,/=== 'cancel_makeup'/);
-  assert.doesNotMatch(block,/parseMakeupMutationIntent|add_makeup|update_makeup/);
-});
-
-test('PC makeup cancel bridge binds command and reason messages to server Agent', () => {
-  const start=talk.indexOf('async function resolveMakeupCancelAgentTurn');
-  const end=talk.indexOf('async function resolveMakeupUpdateAgentTurn',start);
-  const block=talk.slice(start,end);
-  assert.match(block,/mode:'makeup_cancel_prepare'/);
-  assert.match(block,/sourceMessageId:sourceId/);
-  assert.match(block,/reasonMessageId:reasonId/);
-  assert.match(block,/reasonMessageText:clean\(reasonMessageText\)/);
-  assert.match(block,/reason:clean\(reasonText\)/);
-  assert.match(block,/action_type\) !== 'cancel_makeup'/);
-  assert.match(block,/assistantMessage:data\.message/);
-  assert.doesNotMatch(block,/saveAssistantAction|olli_team_chat_send_action/);
-});
-
-
-test('PC AI makeup update is routed before legacy action preparation — shared dispatch contract', () => {
-  const dispatchStart=talk.indexOf('async function resolveSharedAgentRouteTurn');
-  const dispatchEnd=talk.indexOf('async function resolveAiTurn',dispatchStart);
-  const dispatch=talk.slice(dispatchStart,dispatchEnd);
-  const aiStart=talk.indexOf('async function resolveAiTurn');
-  const aiEnd=talk.indexOf('function updateComposerState',aiStart);
-  const ai=talk.slice(aiStart,aiEnd);
-  assert.ok(dispatchStart>=0 && dispatchEnd>dispatchStart);
-  assert.match(ai,/global\.OlliTeamTalkAgentRouteClassifier/);
-  assert.match(ai,/routeClassifier\.classify\(commandText,\{router\}\)/);
-  assert.match(dispatch,/case 'makeup_add'/);
-  assert.match(dispatch,/case 'makeup_cancel'/);
-  assert.match(dispatch,/case 'makeup_update'/);
-  const classify=ai.indexOf('routeClassifier.classify(commandText,{router})');
-  const legacy=ai.indexOf("if (router && typeof router.prepareAction === 'function')");
-  assert.ok(classify>=0 && legacy>classify);
-  assert.match(ai,/__makeupCancelAgent/);
-});
-test('PC makeup update gate uses only shared update parser as candidate detection', () => {
-  const start=talk.indexOf('function isMakeupUpdateAgentCandidate');
-  const end=talk.indexOf('async function resolveAttendanceStatusAgentTurn',start);
-  const block=talk.slice(start,end);
-  assert.match(block,/parseMakeupUpdateMutationIntent\(commandText\)/);
-  assert.match(block,/=== 'update_makeup'/);
-  assert.doesNotMatch(block,/parseMakeupMutationIntent|parseMakeupCancelMutationIntent|add_makeup|cancel_makeup/);
-});
-
-test('PC makeup update bridge uses source message id and server-persisted update action', () => {
-  const start=talk.indexOf('async function resolveMakeupUpdateAgentTurn');
-  const end=talk.indexOf('async function resolveTrialAddAgentTurn',start);
-  const block=talk.slice(start,end);
-  assert.match(block,/mode:'makeup_update_prepare'/);
-  assert.match(block,/sourceMessageId = Number\(replyToMessageId \|\| 0\)/);
-  assert.match(block,/action_type\) !== 'update_makeup'/);
-  assert.match(block,/assistantMessage:data\.message/);
-  assert.match(block,/recordAi:false/);
-  assert.doesNotMatch(block,/saveAssistantAction|olli_team_chat_send_action/);
-});
-
-
-test('PC makeup clarification and blocked outcomes remain in contextual continuation', () => {
+test('PC contextual makeup compatibility remains but unified interpreter owns current follow-ups',()=>{
   assert.match(talk,/pendingMakeupDialogue/);
-  assert.match(talk,/\['needs_clarification','blocked'\]\.includes\(interactionStatus\)/);
-  assert.match(talk,/state\.pendingMakeupDialogue=\{ active:true, status:interactionStatus, prompt:aiReply \};/);
   assert.match(talk,/mode:'context_makeup_prepare'/);
-  assert.match(talk,/conversation:state\.aiConversationMessages\.map/);
-  assert.match(talk,/resolveContextualMakeupTurn/);
-});
-
-
-test('PC unified interpreter owns makeup follow-ups before deterministic execution', () => {
-  const start=talk.indexOf('async function resolveAiTurn');
-  const end=talk.indexOf('function updateComposerState',start);
-  const block=talk.slice(start,end);
-  const interpret=block.indexOf('interpretOlliSystemLanguage(');
-  const prepare=block.indexOf("router.prepareAction(commandText");
-  assert.ok(interpret>=0 && prepare>interpret);
-  assert.doesNotMatch(block,/resolveContextualMakeupTurn\(/);
-  assert.match(block,/interpreterIntent==='cancel_pending'/);
-  assert.match(block,/state\.pendingMakeupDialogue=null/);
+  const ai=talk.slice(talk.indexOf('async function resolveAiTurn'),talk.indexOf('function updateComposerState'));
+  assert.doesNotMatch(ai,/resolveContextualMakeupTurn\(/);
+  assert.match(ai,/interpreterIntent==='cancel_pending'/);
 });

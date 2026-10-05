@@ -1112,16 +1112,6 @@
     }
   }
 
-  function isOlliTalkMakeupAddAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parseMakeupMutationIntent!=='function') return false;
-    try{
-      return String(router.parseMakeupMutationIntent(commandText)?.intent || '').trim()==='add_makeup';
-    }catch(error){
-      console.warn('올리톡 보강 등록 Agent 후보 판별 실패:',error);
-      return false;
-    }
-  }
-
   function parseOlliTalkMakeupAddDraftCandidate(commandText,router=window.OlliCommandRouter){
     if(!router || typeof router.parseBatchDraftWriteIntent!=='function') return null;
     try{
@@ -1161,16 +1151,6 @@
     }catch(error){
       console.warn('올리톡 보강 취소 Agent 후보 판별 실패:',error);
       return null;
-    }
-  }
-
-  function isOlliTalkMakeupUpdateAgentCandidate(commandText,router=window.OlliCommandRouter){
-    if(!router || typeof router.parseMakeupUpdateMutationIntent!=='function') return false;
-    try{
-      return String(router.parseMakeupUpdateMutationIntent(commandText)?.intent || '').trim()==='update_makeup';
-    }catch(error){
-      console.warn('올리톡 보강 변경 Agent 후보 판별 실패:',error);
-      return false;
     }
   }
 
@@ -1855,31 +1835,6 @@
     };
   }
 
-  async function resolveOlliTalkMakeupAddAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('보강 등록 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'makeup_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    return resolveOlliTalkMakeupAgentResponse({
-      response,
-      data,
-      context,
-      replyToMessageId,
-    });
-  }
-
   function mergeOlliTalkStructuredMakeupCancelCommand(previous,current){
     const before=previous && typeof previous==='object' ? previous : {};
     const next=current && typeof current==='object' ? current : {};
@@ -2026,36 +1981,6 @@
     }
     if(String(data.message.action.action_type || '').trim()!=='update_makeup'){
       throw new Error('보강 변경 규칙 시스템 작업 종류가 올바르지 않습니다.');
-    }
-    return {
-      assistantMessage:data.message,
-      replyText:String(data.message.body || '').trim(),
-      recordAi:false
-    };
-  }
-
-  async function resolveOlliTalkMakeupUpdateAgentTurn(commandText,context,replyToMessageId){
-    const sourceMessageId=Number(replyToMessageId || 0);
-    if(!Number.isSafeInteger(sourceMessageId) || sourceMessageId<=0){
-      throw new Error('보강 변경 요청의 원문 메시지를 확인하지 못했습니다.');
-    }
-    const response=await fetch('/api/olli-agent',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        mode:'makeup_update_prepare',
-        academyId:context?.academyId || '',
-        sessionToken:context?.sessionToken || '',
-        message:String(commandText || '').trim(),
-        sourceMessageId
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || data?.ok!==true || !data?.message?.action){
-      throw new Error(data?.error || data?.message || '보강 변경 Agent 응답을 받지 못했습니다.');
-    }
-    if(String(data.message.action.action_type || '').trim()!=='update_makeup'){
-      throw new Error('보강 변경 Agent 작업 종류가 올바르지 않습니다.');
     }
     return {
       assistantMessage:data.message,
@@ -2261,8 +2186,6 @@
       case 'waitlist_cancel':{
         const turn=await resolveOlliTalkWaitlistCancelAgentTurn(commandText,context,replyToMessageId); return turn||null;
       }
-      case 'makeup_update': return resolveOlliTalkMakeupUpdateAgentTurn(commandText,context,replyToMessageId);
-      case 'makeup_add': return resolveOlliTalkMakeupAddAgentTurn(commandText,context,replyToMessageId);
       case 'class_once': return resolveOlliTalkClassOnceAgentTurn(commandText,context,replyToMessageId);
       case 'timetable_read':
         return resolveOlliTalkSourceBoundReadAgentTurn({mode:'timetable_read',commandText,readIntent:parsed,context,replyToMessageId});
