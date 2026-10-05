@@ -3475,14 +3475,6 @@
     }
 
     if(interpreterLane==='chat'){
-      const message=clean(interpretation.reply);
-      if(message){
-        return {
-          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
-          replyText:message,
-          recordAi:true
-        };
-      }
       const resolved=await resolveAiReply(rawCommandText,current);
       return {
         assistantMessage:await saveAssistantReply(current,resolved.message,replyToMessageId),
