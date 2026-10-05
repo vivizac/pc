@@ -57,13 +57,16 @@
   }
   function sourceLabel(item) {
     const source = clean(item?.source);
+    if (source === 'memo_exit') return '메모 종료 저장';
+    if (source === 'pre_restore') return '복구 전 저장';
+    if (source === 'legacy_daily_checkpoint') return '이전 저장 기록';
+    if (source === 'migration_current' || source === 'backfill_current') return '기준 저장본';
     if (source === 'history_restore') {
       const from = revision(item?.source_revision);
       return from > 0 ? `버전 ${from}에서 복구` : '이전 기록에서 복구';
     }
-    if (source === 'backfill_current') return '기준 저장본';
     if (source === 'insert') return '첫 저장';
-    return '자동 저장';
+    return '저장 기록';
   }
   function setStatus(message) {
     try { if (typeof global.setMemoSaveStatus === 'function') global.setMemoSaveStatus(message || ''); } catch (_) {}
