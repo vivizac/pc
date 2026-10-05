@@ -3152,31 +3152,36 @@
     const targetTimeSlot = Number(opts.targetTimeSlot || 0);
 
     if (!studentId || !division) return { ok:false, message:'학생의 수업 구분을 확인하지 못했어요.' };
-    if (!effectiveDate || !sourceWeekday || !targetWeekday || !targetTimeSlot) {
+    if (!effectiveDate || !targetWeekday || !targetTimeSlot) {
       return { ok:false, message:'이동할 요일과 시간을 확인해 주세요.' };
     }
 
     const currentWeek = await loadFreshWeek(effectiveDate);
-    let sources = activeStudentEnrollments(currentWeek, studentId, effectiveDate)
-      .filter(row => Number(row && row.weekday) === sourceWeekday);
+    let sources = activeStudentEnrollments(currentWeek, studentId, effectiveDate);
+    if (sourceWeekday) sources = sources.filter(row => Number(row && row.weekday) === sourceWeekday);
     if (sourceTimeSlot) sources = sources.filter(row => Number(row && row.time_slot) === sourceTimeSlot);
     if (sourceEnrollmentId) sources = sources.filter(row => clean(row && row.id) === sourceEnrollmentId);
 
     if (!sources.length) {
-      const sourceText = weekdayLabel(sourceWeekday) + (sourceTimeSlot ? ' ' + sourceTimeSlot + '시' : '');
+      const sourceText = sourceWeekday
+        ? weekdayLabel(sourceWeekday) + (sourceTimeSlot ? ' ' + sourceTimeSlot + '시' : '')
+        : '현재';
       return { ok:false, message:clean(student.name) + ' 학생의 ' + sourceText + ' 정규수업을 찾지 못했어요.' };
     }
     if (sources.length > 1) {
-      const sourceDate = nextOccurrenceKey(effectiveDate, sourceWeekday);
       const mode = timetableMode(currentWeek);
-      const choices = sources.slice(0, 8).map(row => ({
-        id:clean(row && row.id),
-        label:[
-          weekdayLabel(sourceWeekday),
-          timetableMemoTimeLabel(division, sourceDate, Number(row && row.time_slot), mode),
-          classGroup(row && row.class_group) + '반'
-        ].join(' · ')
-      })).filter(item => item.id && item.label);
+      const choices = sources.slice(0, 8).map(row => {
+        const rowWeekday=Number(row && row.weekday || 0);
+        const sourceDate=nextOccurrenceKey(effectiveDate,rowWeekday);
+        return {
+          id:clean(row && row.id),
+          label:[
+            weekdayLabel(rowWeekday),
+            timetableMemoTimeLabel(division, sourceDate, Number(row && row.time_slot), mode),
+            classGroup(row && row.class_group) + '반'
+          ].join(' · ')
+        };
+      }).filter(item => item.id && item.label);
       if (choices.length > 1) {
         return {
           ok:false,
