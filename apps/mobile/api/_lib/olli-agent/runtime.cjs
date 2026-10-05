@@ -5611,9 +5611,15 @@ async function prepareBatchPrivacy(item, requestContext) {
   const text=String(item?.contextText || item?.text || '').trim();
   const reason=String(item?.reason || '').trim();
   const memoNote=String(item?.memoNote || '').trim();
+  const selectedDivision=String(
+    item?.structuredSelection?.division
+    || item?.structuredCommand?.division
+    || item?.division
+    || ''
+  ).trim().toLowerCase();
 
   if(intent==='add_trial' || intent==='update_trial'){
-    return require('./trial-guest-privacy.cjs').prepareTrialGuestPrivacyInput(text);
+    return require('./trial-guest-privacy.cjs').prepareTrialGuestPrivacyInput(text,selectedDivision);
   }
   if(intent==='cancel_trial'){
     return require('./trial-guest-privacy.cjs').prepareTrialCancelPrivacyInput(text,reason);
@@ -5632,7 +5638,7 @@ async function prepareBatchPrivacy(item, requestContext) {
   if(['add_waitlist','update_waitlist','cancel_waitlist'].includes(intent)){
     const registered=await privacy.prepareAgentPrivacyInput(text,requestContext);
     if(Array.isArray(registered?.subjectRefs) && registered.subjectRefs.length>0) return registered;
-    return require('./waitlist-guest-privacy.cjs').prepareWaitlistGuestPrivacyInput(text);
+    return require('./waitlist-guest-privacy.cjs').prepareWaitlistGuestPrivacyInput(text,selectedDivision);
   }
   return privacy.prepareAgentPrivacyInput(text,requestContext);
 }
@@ -5677,7 +5683,7 @@ function validateBatchStructuredCommand(item){
   }
   const router=loadSharedCommandRouter();
   const parsed=typeof router.parseWriteIntent==='function'
-    ? router.parseWriteIntent(String(item?.text||'').trim())
+    ? router.parseWriteIntent(String(item?.contextText||item?.text||'').trim())
     : null;
   if(!parsed||String(parsed.intent||'').trim()!==intent||parsed.intent==='batch_write'){
     throw runtimeError(
@@ -5758,7 +5764,7 @@ async function runBatchDirectPrepare({
       sanitizePayload:passthrough,
     });
   }else if(intent==='cancel_makeup'){
-    const scope=resolveMakeupUpdatePrepareScope(preparedPrivacy);
+    const scope=resolveMakeupCancelPrepareScope(preparedPrivacy);
     const {prepareMakeupCancelAction}=require('./tools/makeup-cancel-prepare-tools.cjs');
     await prepareMakeupCancelAction({
       requestContext,

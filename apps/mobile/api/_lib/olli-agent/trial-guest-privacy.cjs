@@ -74,10 +74,13 @@ function detectTrialDivision(text) {
   return '';
 }
 
-function prepareTrialGuestPrivacyInput(text) {
+function prepareTrialGuestPrivacyInput(text,divisionOverride='') {
   const sourceText=String(text || '');
   const guestName=extractTrialGuestName(sourceText);
-  const division=detectTrialDivision(sourceText);
+  const selectedDivision=clean(divisionOverride).toLowerCase();
+  const division=['elementary','kinder'].includes(selectedDivision)
+    ? selectedDivision
+    : detectTrialDivision(sourceText);
   const subjectRef=createOpaqueSubjectRef();
   const subject={name:guestName};
   const prepared=preparePrivacySafeMessages({
