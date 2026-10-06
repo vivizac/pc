@@ -11,6 +11,7 @@
   --olli-pc-talk-incoming-text:#201818;
   --olli-pc-talk-outgoing-bg:#FEE500;
   --olli-pc-talk-outgoing-text:#201818;
+  --olli-pc-talk-olli-accent:color(display-p3 .9255 .4392 .6863);
   display:none;padding:18px 20px 22px;background:#f5f6f8;overflow:hidden;
 }
 #olliPcTeamTalkScreen[data-olli-talk-theme="light"]{
@@ -126,7 +127,7 @@
 .olliPcTeamTalkSender{display:flex;align-items:center;min-height:17px;margin:0 0 5px 2px;color:var(--olli-pc-talk-system-text);font-size:calc(12px * var(--olli-text-scale));font-weight:500;line-height:1.2}
 .olliPcTeamTalkAvatar,.olliPcTeamTalkAvatarSpacer{width:32px;height:32px;flex:0 0 32px}
 .olliPcTeamTalkAvatar{display:grid;place-items:center;overflow:hidden;border-radius:10px;background:#fff;color:#555;font-size:10px;font-weight:650;border:1px solid rgba(0,0,0,.08)}
-.olliPcTeamTalkAvatar.ai{background:#fff;color:#555;font-size:9px}
+.olliPcTeamTalkAvatar.ai{background:#fff;color:var(--olli-pc-talk-olli-accent);font-size:9px}
 .olliPcTeamTalkAvatarSpacer{display:block}
 .olliPcTeamTalkSenderName{align-self:center}
 .olliPcTeamTalkBubbleRow{max-width:100%;display:flex;align-items:flex-end;gap:6px}
