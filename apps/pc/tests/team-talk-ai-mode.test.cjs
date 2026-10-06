@@ -89,13 +89,12 @@ test('PC AI context starts with button activation, grows turn by turn, and reset
 });
 
 
-test('PC shows a one-second 확인중 state only for the first Olli response', () => {
+test('PC shows a one-second three-dot typing state only for the first Olli response', () => {
   assert.match(talk, /appendPersistedMessage\(payload\.message, current\.memberId\)/);
   assert.match(talk, /const isOlliWorkflowFollowup = olliRequested/);
   assert.match(talk, /if \(olliRequested && !isOlliWorkflowFollowup\) \{[\s\S]{0,180}state\.assistantReplyPending = true;[\s\S]{0,180}syncAssistantTypingIndicator\(\)/);
-  assert.match(talk, /bubble\.textContent = '확인중…'/);
+  assert.match(talk, /create\('span', 'olliPcTeamTalkTypingDot'\)/);
   assert.match(talk, /1000-\(Date\.now\(\)-firstReplyStartedAt\)/);
-  assert.doesNotMatch(talk, /olliPcTeamTalkTypingDot/);
 });
 
 
