@@ -444,6 +444,69 @@
     return selected?.is_olli_ai === true;
   }
 
+  function activateOlliTalkAiMentionFromVoice(){
+    const wasAiSelected = hasOlliTalkAiMentionSelection();
+    olliTalkMentionModeActive = true;
+    olliTalkMentionSelections.set(OLLI_TALK_AI_MENTION_ID, OLLI_TALK_AI_MENTION);
+    if (!wasAiSelected) resetOlliTalkAiConversation();
+    syncOlliTalkSelectedMentionPrefix();
+    hideOlliTalkMentionMenu();
+    resizeInput();
+    updateOlliTalkBetaComposerState();
+  }
+
+  function parseOlliTalkVoiceTranscript(value){
+    const transcript=String(value || '').trim();
+    if(!transcript) return {mentionOlli:false,text:''};
+
+    const wake=transcript.match(/^\s*(?:@?\s*올리\s*야|@?\s*올리|오리\s*야)(?=\s|[,，.。!?！？:]|$)\s*[,，.。!?！？:]?\s*/i);
+    if(!wake) return {mentionOlli:false,text:transcript};
+    return {
+      mentionOlli:true,
+      text:transcript.slice(wake[0].length).trimStart()
+    };
+  }
+
+  function finalizeOlliTalkVoiceTranscript(transcript,meta={}){
+    const parsed=parseOlliTalkVoiceTranscript(transcript);
+    if(!parsed.mentionOlli) return parsed.text;
+
+    activateOlliTalkAiMentionFromVoice();
+
+    if(parsed.text) return parsed.text;
+
+    const target=meta?.target || getOlliTalkBetaInput();
+    if(target){
+      target.value=String(meta?.baseText || '');
+      target.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+    return '';
+  }
+
+  async function toggleOlliTalkVoiceInput(event){
+    if(event){
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const input=getOlliTalkBetaInput();
+    const button=document.getElementById('olliTalkBetaVoiceBtn');
+    const voice=window.KcfVoiceTranscription;
+    if(!input || !button) return false;
+
+    if(!voice || typeof voice.toggleForTarget!=='function'){
+      if(typeof window.showPushToast==='function') window.showPushToast('음성 입력을 아직 준비하지 못했어요.');
+      else alert('음성 입력을 아직 준비하지 못했어요.');
+      return false;
+    }
+
+    await voice.toggleForTarget(input,button,{
+      showPanel:false,
+      deferTranscriptUntilFinalized:false,
+      finalizeTranscript:finalizeOlliTalkVoiceTranscript
+    },event);
+    return true;
+  }
+
   function hasOlliTalkPendingCommand(){
     const router = window.OlliCommandRouter;
     if (!router) return false;
@@ -7735,6 +7798,7 @@
     const input = getOlliTalkBetaInput();
     const sendButton = getOlliTalkBetaSendButton();
     const mentionTriggerButton = document.getElementById('olliTalkMentionTriggerBtn');
+    const voiceButton = document.getElementById('olliTalkBetaVoiceBtn');
     const searchInput = document.getElementById('olliTalkSearchInput');
     const searchNextButton = document.getElementById('olliTalkSearchNextBtn');
     const searchCloseButton = document.getElementById('olliTalkSearchCloseBtn');
@@ -7781,6 +7845,7 @@
       });
     }
 
+    if(voiceButton)voiceButton.addEventListener('click',toggleOlliTalkVoiceInput);
     if(archiveButton)archiveButton.addEventListener('click',openOlliTalkArchivePage);
     if(archiveBackButton)archiveBackButton.addEventListener('click',closeOlliTalkArchivePage);
     if(archiveMaterialCreateButton)archiveMaterialCreateButton.addEventListener('click',event=>{
