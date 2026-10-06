@@ -106,3 +106,19 @@ test('mobile Team Chat keeps new AI and teacher messages above the composer inst
   assert.match(js,/latestOlliTalkRenderedMessage\(chatArea\)/);
   assert.match(js,/if \(shouldFollowBottom\) \{[\s\S]*scrollOlliTalkMessageAboveComposer\(latest\)/);
 });
+
+
+test('makeup cancellation reason prompt offers no-reason and direct-input choices without Luna',()=>{
+  assert.match(js,/noReason\.textContent='사유 없음'/);
+  assert.match(js,/inputButton\.textContent='사유 입력'/);
+  assert.match(js,/pendingStructuredMakeupCancel=olliTalkPendingActionReason\?\.__structuredMakeupCancel/);
+  assert.match(js,/return resolveOlliTalkStructuredMakeupCancelTurn\(\{/);
+  assert.match(js,/return saveOlliTalkPendingTextInputReply\(context,reasonMessage,replyToMessageId\)/);
+  assert.match(pcJs,/noReason\.textContent='사유 없음'/);
+  assert.match(pcJs,/inputButton\.textContent='사유 입력'/);
+  assert.match(pcJs,/pendingStructuredMakeupCancel=state\.pendingActionReason\?\.__structuredMakeupCancel/);
+  assert.match(pcJs,/return resolveStructuredMakeupCancelTurn\(\{/);
+  assert.match(pcJs,/return savePendingTextInputReply\(current,reasonMessage,replyToMessageId\)/);
+  assert.match(css,/\.olliTalkBetaPendingInput\{[\s\S]*gap:6px/);
+  assert.match(pcCss,/\.olliPcTeamTalkPendingInput\{[^}]*gap:6px/);
+});
