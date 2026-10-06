@@ -21,8 +21,8 @@ test('materialized Mobile source exists and the old gitlink metadata is gone', (
 
 test('Mobile runtime manifest is unique and fully backed by packages/common', () => {
   const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
-  assert.equal(manifest.files.length, 46);
-  assert.equal(new Set(manifest.files).size, 46);
+  assert.equal(manifest.files.length, 48);
+  assert.equal(new Set(manifest.files).size, 48);
   for (const file of manifest.files) {
     assert.ok(fs.existsSync(path.join(COMMON, file)), 'missing common source: ' + file);
   }
@@ -41,7 +41,7 @@ test('staging copies exactly the canonical common bytes and never needs a tracke
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'olli-mobile-common-'));
   try {
     const result = stageCommon({ mobileDir: temp, commonDir: COMMON, manifestPath: MANIFEST_PATH });
-    assert.equal(result.count, 46);
+    assert.equal(result.count, 48);
     for (const file of result.files) {
       const source = fs.readFileSync(path.join(COMMON, file));
       const target = fs.readFileSync(path.join(temp, file));
