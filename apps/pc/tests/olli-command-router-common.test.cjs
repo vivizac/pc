@@ -984,3 +984,65 @@ test('incomplete dropoff pickup request is still recognized as a write command',
   assert.equal(preparedIntent, 'add_pickup');
   assert.match(result.message, /픽업/);
 });
+
+
+test('structured makeup cancellation validates the student before asking for a reason', async () => {
+  let prepareCount = 0;
+  const router = loadRouter({
+    async prepareWriteCommand(intent, options) {
+      prepareCount += 1;
+      assert.equal(intent, 'cancel_makeup');
+      assert.equal(options.studentName, '없는학생');
+      return { ok:false, message:'없는학생 학생을 찾지 못했어요.' };
+    }
+  });
+
+  const result = await router.prepareStructuredAction({
+    action:'cancel_makeup',
+    studentName:'없는학생',
+    dateExpression:'내일',
+    timeSlot:1
+  }, { source:'test' });
+
+  assert.equal(prepareCount, 1);
+  assert.equal(result.handled, true);
+  assert.equal(result.kind, 'action_rejected');
+  assert.equal(result.intent, 'cancel_makeup');
+  assert.match(result.message, /찾지 못했어요/);
+});
+
+test('structured makeup cancellation asks for a reason only after a valid student and makeup are resolved', async () => {
+  const router = loadRouter({
+    async prepareWriteCommand(intent, options) {
+      return {
+        ok:true,
+        command:{
+          intent,
+          studentId:'student-test',
+          studentName:'테스트',
+          oneTimeSessionId:'makeup-1',
+          sessionDate:'2026-10-07',
+          timeSlot:1,
+          classGroup:'A',
+          reason:options.reason || ''
+        },
+        message:'이 보강을 취소할까요?'
+      };
+    },
+    writeReasonPrompt(command) {
+      return command.studentName + ' 학생의 보강 취소 사유를 알려주세요.';
+    }
+  });
+
+  const result = await router.prepareStructuredAction({
+    action:'cancel_makeup',
+    studentName:'테스트',
+    dateExpression:'내일',
+    timeSlot:1
+  }, { source:'test' });
+
+  assert.equal(result.kind, 'action_needs_reason');
+  assert.equal(result.payload.studentName, '테스트');
+  assert.equal(result.payload.oneTimeSessionId, 'makeup-1');
+  assert.match(result.message, /보강 취소 사유/);
+});
