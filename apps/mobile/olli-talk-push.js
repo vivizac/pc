@@ -4,6 +4,7 @@
   let registrationPromise = null;
   let publicKeyPromise = null;
   let lastPassiveSubscriptionSyncAt = 0;
+  let workBadgeRefreshTimer = null;
 
   function context(){
     let academyId = '';
@@ -87,7 +88,7 @@
     if (!supportsPush()) throw new Error('이 기기에서는 푸시 알림을 사용할 수 없습니다.');
     if (!registrationPromise) {
       registrationPromise = navigator.serviceWorker
-        .register('./olli-push-sw.js?v=20260929-team-chat-notification-root-1', { scope: './' })
+        .register('./olli-push-sw.js?v=20261006-live-badge-refresh-1', { scope: './' })
         .then(() => navigator.serviceWorker.ready)
         .catch((error) => {
           registrationPromise = null;
@@ -350,6 +351,31 @@
     setTimeout(()=>window.openOlliTalkArchivePage?.(null,{tab:'materials'}),220);
   }
 
+  function scheduleWorkBadgeRefresh(delay = 0){
+    if (document.hidden) return false;
+    if (workBadgeRefreshTimer !== null) clearTimeout(workBadgeRefreshTimer);
+    workBadgeRefreshTimer = setTimeout(() => {
+      workBadgeRefreshTimer = null;
+      if (document.hidden) return;
+      const refresh = window.refreshOlliTalkMentionBadge;
+      if (typeof refresh !== 'function') return;
+      try {
+        const pending = refresh();
+        if (pending && typeof pending.catch === 'function') {
+          pending.catch((error) => console.warn('Work 알림 배지 자동 갱신 실패:', error));
+        }
+      } catch (error) {
+        console.warn('Work 알림 배지 자동 갱신 실패:', error);
+      }
+    }, Math.max(0, Number(delay || 0)));
+    return true;
+  }
+
+  function handleOlliPushResume(){
+    passiveSyncSubscription();
+    scheduleWorkBadgeRefresh(0);
+  }
+
   function passiveSyncSubscription(){
     if (document.hidden || !supportsPush()) return false;
 
@@ -386,15 +412,21 @@
     }
 
     window.addEventListener('olli:realtime-status', (event) => {
-      if (event?.detail?.status === 'SUBSCRIBED') passiveSyncSubscription();
+      if (event?.detail?.status === 'SUBSCRIBED') {
+        passiveSyncSubscription();
+        scheduleWorkBadgeRefresh(0);
+      }
     });
-    window.addEventListener('focus', passiveSyncSubscription);
+    window.addEventListener('focus', handleOlliPushResume);
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) passiveSyncSubscription();
+      if (!document.hidden) handleOlliPushResume();
     });
 
     navigator.serviceWorker?.addEventListener?.('message', (event) => {
-      if (event?.data?.type === 'OLLI_TALK_OPEN_FROM_NOTIFICATION') {
+      if (event?.data?.type === 'OLLI_WORK_BADGE_PUSH') {
+        setAppBadge(event.data.badgeCount);
+        scheduleWorkBadgeRefresh(40);
+      } else if (event?.data?.type === 'OLLI_TALK_OPEN_FROM_NOTIFICATION') {
         openFromNotification(event.data.messageId);
       } else if(event?.data?.type==='OLLI_WORK_OPEN_MATERIALS'){
         openMaterialsFromNotification();
