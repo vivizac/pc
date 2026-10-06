@@ -11,15 +11,17 @@ const mobile=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'ut
 const pcCss=fs.readFileSync(path.join(root,'apps/pc/pc-team-talk.css'),'utf8');
 const mobileCss=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.css'),'utf8');
 
-test('free-text reason prompts render an input button on both PC and Mobile',()=>{
+test('reason prompts render no-reason and direct-input buttons on both PC and Mobile',()=>{
   assert.match(pc,/pendingTextInputMessageId/);
   assert.match(pc,/savePendingTextInputReply/);
   assert.match(pc,/makePendingTextInputButton/);
-  assert.match(pc,/button\.textContent='입력하기'/);
+  assert.match(pc,/noReason\.textContent='사유 없음'/);
+  assert.match(pc,/inputButton\.textContent='사유 입력'/);
   assert.match(mobile,/olliTalkPendingTextInputMessageId/);
   assert.match(mobile,/saveOlliTalkPendingTextInputReply/);
   assert.match(mobile,/createOlliTalkPendingTextInputButton/);
-  assert.match(mobile,/button\.textContent='입력하기'/);
+  assert.match(mobile,/noReason\.textContent='사유 없음'/);
+  assert.match(mobile,/inputButton\.textContent='사유 입력'/);
 });
 
 test('input buttons focus the existing Team Chat composer instead of creating a second input surface',()=>{
