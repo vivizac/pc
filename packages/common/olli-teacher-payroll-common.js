@@ -119,21 +119,27 @@
   }
 
   function calculateCard(card){
-    if(!card) return { amount:0,totalHours:0 };
+    if(!card) return { amount:0,totalHours:0,payType:'hourly' };
+    const monthlySalary = Math.max(0,Number(card.querySelector('[data-payroll-monthly-salary]')?.value || 0));
     const hourlyWage = Math.max(0,Number(card.querySelector('[data-payroll-hourly-wage]')?.value || 0));
+    const monthlyMode = monthlySalary > 0;
     let totalHours = 0;
     WEEKDAYS.forEach(day => {
       const input = card.querySelector('[data-payroll-day-hours="'+day.key+'"]');
       const dayHours = Math.max(0,Math.min(24,Number(input?.value || 0)));
       const workdays = Math.max(0,Number(card.dataset['workdays'+day.key] || 0));
       totalHours += workdays * dayHours;
+      if(input) input.disabled = monthlyMode;
     });
-    const amount = Math.round(totalHours * hourlyWage);
+    const hourlyInput = card.querySelector('[data-payroll-hourly-wage]');
+    if(hourlyInput) hourlyInput.disabled = monthlyMode;
+    card.classList.toggle('is-monthly',monthlyMode);
+    const amount = monthlyMode ? Math.round(monthlySalary) : Math.round(totalHours * hourlyWage);
     const hoursNode = card.querySelector('[data-payroll-total-hours]');
     const amountNode = card.querySelector('[data-payroll-total-amount]');
-    if(hoursNode) hoursNode.textContent = (Math.round(totalHours*100)/100).toLocaleString('ko-KR') + '시간';
+    if(hoursNode) hoursNode.textContent = monthlyMode ? '월급제' : (Math.round(totalHours*100)/100).toLocaleString('ko-KR') + '시간';
     if(amountNode) amountNode.textContent = money(amount);
-    return {amount,totalHours};
+    return {amount,totalHours:monthlyMode?0:totalHours,payType:monthlyMode?'monthly':'hourly'};
   }
 
   function paydayOptions(selected){
@@ -148,8 +154,12 @@
   function renderTeacherCard(teacher){
     const teacherId = String(teacher?.teacher_member_id || '');
     const name = String(teacher?.teacher_name || '선생님').trim() || '선생님';
+    const monthlySalary = Math.max(0,Number(teacher?.monthly_salary || 0));
     const wage = Math.max(0,Number(teacher?.hourly_wage || 0));
     const payday = Math.max(1,Math.min(31,Number(teacher?.payday || 15)));
+    const payType = String(teacher?.pay_type || (monthlySalary > 0 ? 'monthly' : 'hourly'));
+    const periodStart = String(teacher?.period_start || '').trim();
+    const periodEnd = String(teacher?.period_end || '').trim();
     const weekdayHours = normalizedWeekdayHours(teacher?.weekday_hours);
     const workdayCount = Math.max(0,Number(teacher?.workday_count || 0));
     const totalHours = Math.max(0,Number(teacher?.total_hours || 0));
@@ -167,9 +177,12 @@
 
     return '<section class="olliPayrollTeacherCard" data-payroll-teacher-card data-teacher-id="'+esc(teacherId)+'"'+attrs+'>'
       + '<div class="olliPayrollTeacherHead"><div><div class="olliPayrollTeacherName">'+esc(name)+'</div>'
-      + '<div class="olliPayrollWorkdays">이번 달 출근 <strong>'+workdayCount+'일</strong> · 시간표 자동 계산</div></div>'
+      + '<div class="olliPayrollWorkdays">'+(payType==='monthly'
+        ? '월급제 · 근무일수와 시간 계산 없음'
+        : ((periodStart&&periodEnd?esc(periodStart)+' ~ '+esc(periodEnd)+' · ':'')+'출근 <strong>'+workdayCount+'일</strong> · 시간표 자동 계산'))+'</div></div>'
       + '<span class="olliPayrollSaveState" data-payroll-save-state></span></div>'
       + '<div class="olliPayrollFieldGrid">'
+      + '<label class="olliPayrollField full"><span>월급</span><div class="olliPayrollInputWrap"><input inputmode="numeric" min="0" step="1000" type="number" value="'+monthlySalary+'" data-payroll-monthly-salary><span>원</span></div><small class="olliPayrollFieldGuide">월급을 입력하면 시급·근무시간 계산 대신 이 금액으로 지급됩니다.</small></label>'
       + '<label class="olliPayrollField"><span>시급</span><div class="olliPayrollInputWrap"><input inputmode="numeric" min="0" step="100" type="number" value="'+wage+'" data-payroll-hourly-wage><span>원</span></div></label>'
       + '<label class="olliPayrollField"><span>급여일</span><select data-payroll-payday>'+paydayOptions(payday)+'</select></label>'
       + '</div>'
@@ -190,9 +203,9 @@
     state.month = /^\d{4}-\d{2}$/.test(month) ? month : currentMonthValue();
 
     els.body.innerHTML = '<div class="olliPayrollPage">'
-      + '<div class="olliPayrollIntro"><div class="olliPayrollIntroTitle">시간표를 기준으로<br>한 달 급여를 계산합니다.</div>'
-      + '<div class="olliPayrollIntroText">같은 날 수업이 여러 개여도 출근은 1일로 계산합니다. 휴원일과 날짜별 대체 담임도 자동 반영됩니다.</div></div>'
-      + '<label class="olliPayrollMonthField"><span>계산 월</span><input type="month" value="'+esc(state.month)+'" data-payroll-month></label>'
+      + '<div class="olliPayrollIntro"><div class="olliPayrollIntroTitle">지급일을 기준으로<br>급여를 계산합니다.</div>'
+      + '<div class="olliPayrollIntroText">시급제는 전월 지급일의 하루 전부터 이번 지급일까지 시간표를 계산합니다. 월급제는 근무일수·시간과 관계없이 입력한 월급을 그대로 사용합니다.</div></div>'
+      + '<label class="olliPayrollMonthField"><span>지급 월</span><input type="month" value="'+esc(state.month)+'" data-payroll-month></label>'
       + (teachers.length ? teachers.map(renderTeacherCard).join('') : '<div class="olliPayrollEmpty">급여를 설정할 선생님이 없습니다.</div>')
       + '</div>';
 
@@ -205,7 +218,7 @@
     });
 
     els.body.querySelectorAll('[data-payroll-teacher-card]').forEach(card => {
-      card.querySelectorAll('[data-payroll-hourly-wage],[data-payroll-day-hours]').forEach(input => {
+      card.querySelectorAll('[data-payroll-monthly-salary],[data-payroll-hourly-wage],[data-payroll-day-hours]').forEach(input => {
         input.addEventListener('input',()=>calculateCard(card));
       });
       card.querySelector('[data-payroll-save]')?.addEventListener('click',()=>saveTeacher(card));
@@ -256,15 +269,17 @@
     WEEKDAYS.forEach(day=>{
       weekdayHours[day.key]=Math.max(0,Math.min(24,Number(card.querySelector('[data-payroll-day-hours="'+day.key+'"]')?.value || 0)));
     });
+    const monthlySalary=Math.max(0,Math.round(Number(card.querySelector('[data-payroll-monthly-salary]')?.value || 0)));
     const wage=Math.max(0,Math.round(Number(card.querySelector('[data-payroll-hourly-wage]')?.value || 0)));
     const payday=Math.max(1,Math.min(31,Math.round(Number(card.querySelector('[data-payroll-payday]')?.value || 15))));
     if(button){button.disabled=true;button.textContent='저장 중';}
     if(status) status.textContent='';
     try{
-      const payload=await rpc('olli_teacher_payroll_setting_upsert',{
+      const payload=await rpc('olli_teacher_payroll_setting_upsert_v2',{
         p_session_token:sessionToken(),
         p_academy_id:academyId(),
         p_teacher_member_id:teacherId,
+        p_monthly_salary:monthlySalary,
         p_hourly_wage:wage,
         p_payday:payday,
         p_weekday_hours:weekdayHours,
