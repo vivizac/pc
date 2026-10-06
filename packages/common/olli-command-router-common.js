@@ -1305,7 +1305,20 @@
     if (!raw) return null;
     const parts = raw.split(/\s*(?:;|그리고|그다음|그 다음|하고|\n)\s*[,，]?\s*/g).map(cleanText).filter(Boolean);
     if (parts.length < 2 || parts.length > 3) return null;
-    const commands = parts.map(part => parseSingleWriteIntent(part) || parseBatchDraftWriteIntent(part));
+    const commands = parts.map(part => {
+      const parsed=parseSingleWriteIntent(part) || parseBatchDraftWriteIntent(part);
+      if(!parsed) return null;
+      if(['add_makeup','add_trial','add_waitlist'].includes(cleanText(parsed.intent))){
+        const missingBatchFields=[
+          !parsed.dateSpec ? 'date' : '',
+          !Number(parsed.timeSlot || 0) ? 'time' : ''
+        ].filter(Boolean);
+        if(missingBatchFields.length){
+          return Object.assign({},parsed,{batchDraft:true,missingBatchFields});
+        }
+      }
+      return parsed;
+    });
     if (commands.some(item => !item)) return null;
     return { type:'mutation', intent:'batch_write', commands, originalText:raw };
   }
