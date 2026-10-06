@@ -176,8 +176,12 @@
   }
 
   function firstTimeSlot(value) {
-    const match = cleanText(value).match(/(\d{1,2})\s*시/);
-    return Number(match && match[1] || 0);
+    const raw=cleanText(value);
+    const match=raw.match(/(?:오전|오후)?\s*(\d{1,2})\s*(?:시|:\s*\d{1,2})/);
+    let hour=Number(match && match[1] || 0);
+    if(!hour) return 0;
+    if(hour>12) hour-=12;
+    return hour;
   }
 
   function firstTimeMinute(value) {
@@ -262,7 +266,8 @@
       .replace(/\d{1,2}\s*월\s*\d{1,2}\s*일/g, ' ')
       .replace(/\d{1,2}\s*\/\s*\d{1,2}\s*일/g, ' ')
       .replace(/(?:^|\s)\d{1,2}\s*일(?=\s|$)/g, ' ')
-      .replace(/\d{1,2}\s*시(?:에서|으로|에|로)?/g, ' ')
+      .replace(/(?:오전|오후)?\s*\d{1,2}\s*:\s*\d{1,2}(?:\s*(?:에서|으로|에|로))?/g, ' ')
+      .replace(/(?:오전|오후)?\s*\d{1,2}\s*시(?:\s*\d{1,2}\s*분)?(?:에서|으로|에|로)?/g, ' ')
       .replace(/[AaBb]\s*반/g, ' ')
       .replace(/(?:타임|시간대)/g, ' ')
       .replace(/(?:잡혀\s*있는|잡혀있는|잡혀\s*있던|등록되어\s*있는|등록되어있는|등록된|예약되어\s*있는|예약되어있는|예약된|예정된)/g, ' ')
@@ -273,6 +278,7 @@
   function cleanupStudentName(value) {
     return cleanText(value)
       .replace(/^(?:학생|원생)\s*/, '')
+      .replace(/(?:^|\s)(?:학생|원생)(?:의|을|를|은|는|이|가|에게|한테)?(?=\s|$)/g, ' ')
       .replace(/(?:의|꺼|것)$/, '')
       .replace(/\s*(?:학생|원생)$/, '')
       .replace(/^(?:의|꺼|것)\s*/, '')

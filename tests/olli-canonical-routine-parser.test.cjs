@@ -120,3 +120,22 @@ test('canonical student possessive wording keeps the real student name',()=>{
   assert.equal(command?.dateExpression,'내일');
   assert.equal(command?.timeSlot,3);
 });
+
+
+test('canonical makeup accepts student role particles and afternoon time wording',()=>{
+  const command=router.interpretedIntentToStructuredCommand(
+    'add_makeup',
+    '금우주 학생의 수요일 오후 5시 보강 등록'
+  );
+  assert.equal(command?.studentName,'금우주');
+  assert.equal(command?.timeSlot,5);
+});
+
+test('canonical makeup accepts 24-hour clock without polluting the student name',()=>{
+  const command=router.interpretedIntentToStructuredCommand(
+    'add_makeup',
+    '금우주 학생을 수요일 16:00에 보강 등록'
+  );
+  assert.equal(command?.studentName,'금우주');
+  assert.equal(command?.timeSlot,4);
+});

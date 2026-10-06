@@ -253,6 +253,7 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
     'Classify the request as routine, feedback, or chat.',
     'For routine, rewrite it as one short canonical Korean command for the deterministic rule parser and choose the closest allowed intent.',
     'Keep every fact the user stated; never invent missing facts. Use clear action words such as 등록, 변경, 이동, 취소, 삭제, 결석 처리, 조회.',
+    'In routine canonical commands, write the student name alone without 학생/원생 or particles, and keep class times as Korean hour expressions such as 4시 or 5시 instead of 16:00 or 오후 4시.',
     'Use prior conversation only for incomplete follow-ups such as "그럼 다음 날" or "그거 취소". Otherwise interpret the current message alone.',
     'For multiple requests, preserve order and connect them with "그리고".',
     'Feedback means analysis or writing from saved student records; use intent complex_analysis. Chat means other conversation; use intent general_chat.',
