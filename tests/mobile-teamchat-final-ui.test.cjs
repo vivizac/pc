@@ -99,12 +99,15 @@ test('cancelled system request uses a normal white bubble with dark text on mobi
 });
 
 
-test('mobile Team Chat keeps new AI and teacher messages above the composer instead of forcing raw scrollHeight',()=>{
+test('mobile Team Chat keeps the newest bubble anchored above the fixed one-row or two-row composer height',()=>{
+  assert.match(js,/const OLLI_TALK_COMPOSER_IDLE_HEIGHT = 47/);
+  assert.match(js,/const OLLI_TALK_COMPOSER_ACTIVE_HEIGHT = 79/);
+  assert.match(js,/function getOlliTalkComposerLayoutGeometry\(\)/);
+  assert.match(js,/composerTop = viewportRect\.bottom - bottomGap - composerHeight/);
   assert.match(js,/function scrollOlliTalkMessageAboveComposer\(message\)/);
-  assert.match(js,/const visibleBottom = Number\.isFinite\(composerTop\)[\s\S]*Math\.min\(chatRect\.bottom, composerTop\) - 10/);
+  assert.match(js,/geometry\.composerTop - OLLI_TALK_COMPOSER_MESSAGE_GAP/);
   assert.match(js,/scheduleOlliTalkMessageAboveComposer\(next\)/);
-  assert.match(js,/latestOlliTalkRenderedMessage\(chatArea\)/);
-  assert.match(js,/if \(shouldFollowBottom\) \{[\s\S]*scrollOlliTalkMessageAboveComposer\(latest\)/);
+  assert.match(js,/scheduleOlliTalkLatestMessageAnchor\(\)/);
 });
 
 
@@ -141,32 +144,24 @@ test('makeup cancellation preflights student and schedule before showing reason 
 });
 
 
-test('two-row composer and keyboard viewport never own Team Chat scrollTop',()=>{
-  const start=js.indexOf('function finishOlliTalkViewportTransition(){');
-  const end=js.indexOf('\n  function scheduleOlliTalkViewportSettle()',start);
-  assert.ok(start>=0 && end>start);
-  const body=js.slice(start,end);
-  assert.doesNotMatch(body,/scrollTop\s*=/);
-  assert.doesNotMatch(js,/startScrollTop \+ delta/);
-  assert.doesNotMatch(js,/olliTalkViewportTransitionComposerTop/);
-  assert.match(js,/const measuredReserve = Math\.max\([\s\S]*const keyboardOffset = keyboardTracking \? getOlliTalkKeyboardOffset\(\) : 0;[\s\S]*measuredReserve - keyboardOffset/);
+test('Team Chat keyboard layout has one direct viewport path without delayed settle or drag correction',()=>{
+  assert.doesNotMatch(js,/olliTalkViewportSettleTimer/);
+  assert.doesNotMatch(js,/olliTalkKeyboardBaselineBottom/);
+  assert.doesNotMatch(js,/olliTalkChatGestureActive/);
+  assert.doesNotMatch(js,/beginOlliTalkChatGesture/);
+  assert.doesNotMatch(js,/scheduleOlliTalkViewportSettle/);
+  assert.doesNotMatch(js,/setTimeout\(syncViewport/);
+  assert.match(js,/window\.visualViewport\.addEventListener\('resize', \(\) => syncViewport\(\)/);
+  assert.match(js,/window\.visualViewport\.addEventListener\('scroll', \(\) => syncViewport\(\)/);
+  assert.match(js,/input\.addEventListener\('focus',[\s\S]*syncViewport\(\{anchorLatest:true\}\)/);
+  assert.match(js,/input\.addEventListener\('blur',[\s\S]*syncViewport\(\{anchorLatest:true\}\)/);
 });
 
-test('chat drag blocks iOS VisualViewport corrections until the gesture settles',()=>{
-  assert.match(js,/let olliTalkChatGestureActive = false/);
-  assert.match(js,/if \(olliTalkChatGestureActive\) \{[\s\S]*olliTalkLastViewportSignature = signature;[\s\S]*return;/);
-  assert.match(js,/chatArea\.addEventListener\('touchstart', beginOlliTalkChatGesture/);
-  assert.match(js,/window\.addEventListener\('touchend', endOlliTalkChatGesture/);
-  assert.match(js,/syncOlliTalkComposerViewport\(\{ force:true \}\)/);
-});
-
-test('Work navigation reset clears only transient chat gesture state',()=>{
-  const start=js.indexOf('function resetOlliTalkAfterPageTransition(){');
-  const end=js.indexOf('\n  }',start);
-  assert.ok(start>=0 && end>start);
-  const body=js.slice(start,end);
-  assert.match(body,/olliTalkChatGestureActive = false/);
-  assert.doesNotMatch(js,/olliTalkViewportTransitionComposerTop/);
+test('mention menu growth does not increase the reserved chat height beyond the active two-row composer contract',()=>{
+  assert.match(js,/const composerHeight = active[\s\S]*OLLI_TALK_COMPOSER_ACTIVE_HEIGHT[\s\S]*OLLI_TALK_COMPOSER_IDLE_HEIGHT/);
+  assert.match(js,/reserve: bottomGap \+ composerHeight \+ OLLI_TALK_COMPOSER_MESSAGE_GAP/);
+  assert.doesNotMatch(js,/composerRect\.top/);
+  assert.doesNotMatch(js,/ResizeObserver/);
   assert.match(js,/window\.openOlliTalkBetaPage = openOlliTalkBetaPage/);
 });
 
@@ -183,6 +178,6 @@ test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into 
   assert.doesNotMatch(js,/toggleOlliTalkVoiceInput[\s\S]{0,1600}sendOlliTalkBetaMessage\(/);
   assert.match(css,/\.olliTalkBetaVoiceBtn\{[\s\S]*?width:33px;[\s\S]*?height:33px;/);
   assert.match(css,/\.olliTalkBetaVoiceBtn\.active\{[\s\S]*?background:#0A84FF;[\s\S]*?color:#fff;/);
-  assert.match(html,/olli-talk-beta\.css\?v=20261006-action-spacing-1/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261006-stable-two-row-scroll-1/);
+  assert.match(html,/olli-talk-beta\.css\?v=20261006-stable-anchor-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261006-stable-anchor-1/);
 });

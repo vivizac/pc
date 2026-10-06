@@ -1654,15 +1654,6 @@
   transition:none;
 }
 
-#olliTalkBetaScreen.olliTalkViewportMoving .olliTalkBetaComposerWrap{
-  opacity:0;
-  transition:none;
-}
-
-#olliTalkBetaScreen.olliTalkViewportMoving .olliTalkBetaComposer{
-  transition:none;
-}
-
 
 /* 비비작 팀톡 자료실 */
 #olliTalkArchiveScreen{padding-top:0;align-items:stretch;background:#fff;z-index:7300;font-family:'Pretendard',sans-serif}
