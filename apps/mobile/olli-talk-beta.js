@@ -3255,9 +3255,7 @@
       image.hidden=false;
       card.classList.add('hasImage');
       if(keepBottom&&chatArea?.isConnected){
-        requestAnimationFrame(()=>{
-          if(chatArea.isConnected)chatArea.scrollTop=chatArea.scrollHeight;
-        });
+        scheduleOlliTalkLatestMessageAnchor();
       }
     },{once:true});
     image.addEventListener('error',()=>{
@@ -3302,10 +3300,8 @@
     }
     setOlliTalkLinkPreviewImage(card,imageSource,{local:localImage,followBottom:keepBottom});
     if(keepBottom&&chatArea?.isConnected){
-      requestAnimationFrame(()=>{
-        if(chatArea.isConnected)chatArea.scrollTop=chatArea.scrollHeight;
-      });
-    }
+        scheduleOlliTalkLatestMessageAnchor();
+      }
     return true;
   }
 
@@ -6738,7 +6734,7 @@
       resizeInput();
       updateOlliTalkBetaComposerState();
       input.blur();
-      [0, 80, 180].forEach(delay => setTimeout(syncViewport, delay));
+      syncViewport({anchorLatest:true});
       return false;
     }
 
@@ -6762,7 +6758,7 @@
       await loadOlliTalkMembers();
       renderOlliTalkMentionMenu();
     }
-    [0, 80, 180].forEach(delay => setTimeout(syncViewport, delay));
+    syncViewport({anchorLatest:true});
     return true;
   }
 
