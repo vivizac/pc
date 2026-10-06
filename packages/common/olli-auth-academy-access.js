@@ -21,7 +21,7 @@ function renderOlliOwnerExistingAcademyLookupResult(academy, options) {
     box.innerHTML = '<div class="olliInfoHead">기존 학원 선택 완료</div>'
       + '<div class="olliInfoItem">학원명: <strong>' + settingsEscapeHtml(academy.academy_name || '이름 없음') + '</strong></div>'
       + '<div class="olliInfoItem">학원 아이디: <strong>' + settingsEscapeHtml(academy.academy_code || '') + '</strong></div>'
-      + '<div class="olliSuccessBox">이 학원에 원장 연결 요청을 보낼 수 있습니다.</div>';
+      + '<div class="olliSuccessBox">기존 학원의 원장 권한은 연결 요청으로 추가할 수 없습니다. 현재 원장이 설정의 원장권한 넘기기를 사용해 주세요.</div>';
     return;
   }
   box.removeAttribute('data-academy-code');
@@ -40,7 +40,6 @@ function selectOlliOwnerExistingAcademyLookupResult(academyId, academyCode, acad
   if (input) input.value = academy.academy_code || academy.academy_name || '';
   renderOlliOwnerExistingAcademyLookupResult(academy);
   localStorage.setItem('olli_pending_academy_code', academy.academy_code || '');
-  localStorage.setItem('olli_pending_academy_access_role', 'owner');
   return academy;
 }
 window.selectOlliOwnerExistingAcademyLookupResult = selectOlliOwnerExistingAcademyLookupResult;
@@ -87,7 +86,6 @@ async function lookupOlliOwnerExistingAcademy() {
     renderOlliOwnerExistingAcademyLookupResults(academies, academyCode);
     if (academies.length === 1) {
       localStorage.setItem('olli_pending_academy_code', academies[0].academy_code || academyCode);
-      localStorage.setItem('olli_pending_academy_access_role', 'owner');
       return academies[0];
     }
     return null;
@@ -100,77 +98,9 @@ async function lookupOlliOwnerExistingAcademy() {
 }
 
 async function submitOlliOwnerExistingAcademyRequest() {
-  const academyCodeInput = document.getElementById('olliOwnerExistingAcademyCodeInput');
-  const btn = document.getElementById('olliOwnerExistingRequestBtn');
-  const academyCode = String(academyCodeInput?.value || '').trim().toUpperCase();
-  const sessionToken = String(localStorage.getItem(OLLI_ACCOUNT_SESSION_TOKEN_KEY) || '').trim();
-
-  if (!sessionToken) {
-    alert('개인계정 로그인 후 원장 연결 요청을 보낼 수 있습니다. 먼저 계정으로 로그인해 주세요.');
-    showOlliOwnerLogin();
-    return;
-  }
-  if (!academyCode) {
-    alert('학원 아이디 또는 학원명을 입력해 주세요.');
-    return;
-  }
-  if (!isSupabaseConfigured()) {
-    alert('Supabase 설정이 필요합니다.');
-    return;
-  }
-
-  try {
-    if (btn) {
-      btn.disabled = true;
-      btn.textContent = '요청 보내는 중...';
-    }
-
-    let academy = null;
-    const lookupBox = document.getElementById('olliOwnerExistingAcademyLookupResult');
-    const selectedCode = String(lookupBox?.getAttribute('data-academy-code') || '').trim();
-    const selectedId = String(lookupBox?.getAttribute('data-academy-id') || '').trim();
-    if (selectedCode || selectedId) {
-      academy = {
-        academy_code: selectedCode || academyCode,
-        academy_name: lookupBox.getAttribute('data-academy-name') || '',
-        academy_id: selectedId
-      };
-    } else {
-      academy = await findOlliAcademyByCodeForAccountAccess(academyCode);
-      renderOlliOwnerExistingAcademyLookupResult(academy);
-    }
-
-    const result = await callOlliRpc('olli_request_academy_access', {
-      p_session_token: sessionToken,
-      p_academy_code: academy.academy_code || academyCode,
-      p_requested_role: 'owner'
-    });
-
-    if (!result || result.ok !== true) {
-      throw new Error((result && result.message) || '기존 학원 원장 연결 요청을 저장하지 못했습니다.');
-    }
-
-    localStorage.setItem('olli_pending_academy_code', academy.academy_code || academyCode);
-    localStorage.setItem('olli_pending_academy_access_role', 'owner');
-    localStorage.removeItem('olli_pending_teacher_name');
-
-    showOlliApprovalWaiting((result.academy_name || academy.academy_name || academyCode) + ' 학원에 원장 연결 요청을 보냈습니다. 승인되면 이 개인계정에 원장 권한으로 연결됩니다.');
-  } catch (err) {
-    const message = String(err && (err.message || err) || '');
-    const alreadyApproved = /이미.*승인|이미.*연결|already.*approved|already.*connected|duplicate|already exists/i.test(message);
-    if (alreadyApproved) {
-      const approved = await checkOlliAccountAcademyAccessApproval({ silent: true });
-      if (approved) return;
-      showOlliApprovalWaiting('이미 승인 요청이 있거나 승인된 계정입니다. 승인 상태를 확인하고 있습니다.');
-      return;
-    }
-    alert('원장 연결 요청 실패\n' + (err.message || err));
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = '원장 연결 요청';
-    }
-  }
+  localStorage.removeItem('olli_pending_academy_access_role');
+  alert('기존 학원의 원장 권한은 일반 연결 요청으로 추가할 수 없습니다.\n현재 원장이 설정의 원장권한 넘기기를 사용해 주세요.');
+  return false;
 }
 
 function clearOlliAcademyLookupResult() {
