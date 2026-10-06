@@ -494,7 +494,7 @@
       intent:'add_makeup',
       studentName,
       dateSpec,
-      dateLabel:dateSpec.label,
+      dateLabel:dateSpec ? dateSpec.label : '',
       timeSlot,
       classGroup:firstClassGroup(raw),
       originalText:raw
@@ -609,7 +609,7 @@
       studentName,
       division:detectDivision(compact),
       dateSpec,
-      dateLabel:dateSpec.label,
+      dateLabel:dateSpec ? dateSpec.label : '',
       timeSlot,
       classGroup:firstClassGroup(raw),
       originalText:raw
@@ -642,7 +642,7 @@
       guestName,
       division:detectDivision(compact),
       dateSpec,
-      dateLabel:dateSpec.label,
+      dateLabel:dateSpec ? dateSpec.label : '',
       timeSlot,
       classGroup:firstClassGroup(raw),
       originalText:raw
@@ -958,7 +958,7 @@
       studentName,
       division:detectDivision(compact),
       dateSpec,
-      dateLabel:dateSpec.label,
+      dateLabel:dateSpec ? dateSpec.label : '',
       timeSlot,
       classGroup:firstClassGroup(raw),
       originalText:raw
@@ -1055,7 +1055,7 @@
       division,
       split,
       dateSpec,
-      dateLabel:dateSpec.label,
+      dateLabel:dateSpec ? dateSpec.label : '',
       timeSlot,
       timeMinute:firstTimeMinute(raw),
       originalText:raw
@@ -1161,7 +1161,7 @@
       intent:'set_normal_class_day',
       normalClass:normal,
       dateSpec,
-      dateLabel:dateSpec.label,
+      dateLabel:dateSpec ? dateSpec.label : '',
       originalText:raw
     };
   }
@@ -1879,7 +1879,7 @@
       type:'query',
       intent:'find_pickups',
       dateSpec,
-      dateLabel:dateSpec.label,
+      dateLabel:dateSpec ? dateSpec.label : '',
       classTime,
       kind,
       originalText:raw
@@ -3941,7 +3941,7 @@
       guestName:action === 'add_trial' ? studentName : '',
       division,
       dateSpec,
-      dateLabel:dateSpec.label,
+      dateLabel:dateSpec ? dateSpec.label : '',
       date:resolveDateExpression(dateSpec,new Date()),
       timeSlot,
       classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
