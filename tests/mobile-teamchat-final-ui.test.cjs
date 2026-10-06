@@ -20,6 +20,15 @@ test('active mobile Team Chat composer is two rows with text first and controls 
   assert.match(css,/\.olliTalkKeyboardOpen \.olliTalkBetaSendBtn\{[\s\S]*grid-column:3;[\s\S]*grid-row:2;/);
 });
 
+
+test('active Team Chat keeps @ visible until the input has a sendable message',()=>{
+  assert.match(js,/screen\.classList\.toggle\('olliTalkCanSend', canSend\)/);
+  assert.match(css,/\.olliTalkKeyboardOpen \.olliTalkMentionTriggerBtn\{\s*display:inline-flex;/);
+  assert.match(css,/\.olliTalkKeyboardOpen \.olliTalkBetaSendBtn\{\s*display:none;/);
+  assert.match(css,/\.olliTalkKeyboardOpen\.olliTalkCanSend \.olliTalkMentionTriggerBtn\{\s*display:none;/);
+  assert.match(css,/\.olliTalkKeyboardOpen\.olliTalkCanSend \.olliTalkBetaSendBtn\{\s*display:inline-flex;/);
+});
+
 test('teacher and Olli mentions are blue while multiline text starts after the mention only on line one',()=>{
   assert.match(css,/\.olliTalkSelectedMentionToken,[\s\S]*\.olliTalkSelectedMentionToken\.olli\{\s*color:#1687F8/);
   assert.match(css,/text-indent:var\(--olli-talk-mention-indent,0px\)/);
