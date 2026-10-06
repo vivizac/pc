@@ -183,6 +183,6 @@ test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into 
   assert.doesNotMatch(js,/toggleOlliTalkVoiceInput[\s\S]{0,1600}sendOlliTalkBetaMessage\(/);
   assert.match(css,/\.olliTalkBetaVoiceBtn\{[\s\S]*?width:33px;[\s\S]*?height:33px;/);
   assert.match(css,/\.olliTalkBetaVoiceBtn\.active\{[\s\S]*?background:#0A84FF;[\s\S]*?color:#fff;/);
-  assert.match(html,/olli-talk-beta\.css\?v=20261006-teamchat-voice-1/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261006-teamchat-voice-1/);
+  assert.match(html,/olli-talk-beta\.css\?v=20261006-action-spacing-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261006-stable-two-row-scroll-1/);
 });
