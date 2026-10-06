@@ -47,6 +47,27 @@ test('Olli Talk Web Push explicitly requests audible notifications', () => {
   assert.match(push, /olli-push-sw\.js\?v=20261006-live-badge-refresh-1/);
 });
 
+test('foreground push plays a local Olli chime only while the app is visible and notifications are enabled', () => {
+  assert.match(push, /function playForegroundNotificationSound\(\)/);
+  assert.match(push, /document\.hidden \|\| document\.visibilityState !== 'visible'/);
+  assert.match(push, /isOlliNotificationEnabled\(\)/);
+  assert.match(push, /window\.AudioContext \|\| window\.webkitAudioContext/);
+  assert.match(push, /oscillator\.frequency\.setValueAtTime/);
+  assert.match(push, /event\?\.data\?\.type === 'OLLI_WORK_BADGE_PUSH'[\s\S]*?playForegroundNotificationSound\(\)/);
+});
+
+test('iOS audio is unlocked from a real user gesture before later foreground push playback', () => {
+  assert.match(push, /function unlockForegroundNotificationAudio\(\)/);
+  assert.match(push, /function bindForegroundNotificationAudioUnlock\(\)/);
+  assert.match(push, /addEventListener\('pointerdown', unlock/);
+  assert.match(push, /addEventListener\('touchend', unlock/);
+  assert.match(push, /if \(interactive\) unlockForegroundNotificationAudio\(\)/);
+});
+
+test('foreground notification sound bundle is cache-busted', () => {
+  assert.match(html, /olli-talk-push\.js\?v=20261006-foreground-sound-1/);
+});
+
 
 test('composer @ button focuses input, opens teacher picker and inserts only @teacher-name', () => {
   assert.match(talk, /function openOlliTalkMentionPicker\(/);
@@ -110,7 +131,6 @@ test('Work Hub material read keeps using the dedicated material read RPC', () =>
   assert.match(materialRead, /await refreshOlliTalkMentionBadge\(\)/);
 });
 
-test('live Work badge refresh bundle is cache-busted', () => {
-  assert.match(html, /olli-talk-push\.js\?v=20261006-live-badge-refresh-1/);
+test('live Work badge refresh keeps the service worker cache-busted', () => {
   assert.match(push, /olli-push-sw\.js\?v=20261006-live-badge-refresh-1/);
 });
