@@ -1426,8 +1426,12 @@
     const bubbleRow = create('div', 'olliPcTeamTalkBubbleRow');
     const bubble = create('div', 'olliPcTeamTalkBubble olliPcTeamTalkTypingBubble');
     bubble.setAttribute('role', 'status');
-    bubble.setAttribute('aria-label', '올리가 요청을 확인하는 중');
-    bubble.textContent = '확인중…';
+    bubble.setAttribute('aria-label', '올리가 답변을 작성하는 중');
+    for (let index = 0; index < 3; index += 1) {
+      const dot = create('span', 'olliPcTeamTalkTypingDot');
+      dot.setAttribute('aria-hidden', 'true');
+      bubble.appendChild(dot);
+    }
     bubbleRow.appendChild(bubble);
     content.appendChild(bubbleRow);
     row.appendChild(content);
