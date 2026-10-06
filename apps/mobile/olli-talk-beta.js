@@ -7518,7 +7518,7 @@
       olliTalkCurrentPayload=openCachedPayload;
       renderOlliTalkCachedMemberCount(openCachedPayload);
       renderOlliTalkServerMessages(openCachedPayload,{
-        scrollMode:'bottom',
+        scrollMode:'preserve',
         messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT,
         deferHydration:true
       });
@@ -7531,6 +7531,14 @@
     screen.setAttribute('aria-hidden', 'false');
     screen?.style.setProperty('--olli-talk-composer-bottom', '0px');
     resetOlliTalkAfterPageTransition();
+
+    // 첫 paint 전에 최신 메시지 위치를 확정해 진입 직후 화면이 아래로 끌려가는 현상을 막습니다.
+    if(openCachedPayload){
+      const chatArea=document.getElementById('olliTalkBetaChatArea');
+      const latest=latestOlliTalkRenderedMessage(chatArea);
+      if(latest) scrollOlliTalkMessageAboveComposer(latest);
+      else if(chatArea) chatArea.scrollTop=chatArea.scrollHeight;
+    }
 
     if (shouldSlide) {
       document.querySelectorAll('.pageScreen').forEach((candidate) => {
@@ -7572,7 +7580,7 @@
           localFirst:false,
           cachedPayload:openCachedPayload,
           messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT,
-          scrollMode:'bottom'
+          scrollMode:'follow-if-near-bottom'
         });
       },0);
     });
