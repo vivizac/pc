@@ -53,8 +53,34 @@
     return /(?:보강|대기|체험|체함|빈자리|여석|자리)/.test(compactText(value));
   }
 
+  function commandTail(value) {
+    return compactText(value).replace(/[?？!！.。]+$/g, '');
+  }
+
+  function hasExplicitAddRequest(value) {
+    const compact=commandTail(value);
+    return /(?:등록|추가|입력|기입|기재|예약|신청|배정|생성|기록|반영|저장)(?:(?:좀|한번))?(?:해)?(?:줘|주세요|줘요|줄래|해줘|해주세요|해줄래|할래|해요|해)$/.test(compact)
+      || /(?:넣|잡|적|만들)(?:어|아)?(?:(?:좀|한번))?(?:줘|주세요|줘요|줄래|해줘|해주세요|해줄래|할래|해요|해)$/.test(compact)
+      || /(?:올려|걸어)(?:(?:좀|한번))?(?:줘|주세요|줘요|줄래|해줘|해주세요|해줄래|할래|해요|해)$/.test(compact);
+  }
+
+  function hasExplicitRemoveRequest(value) {
+    const compact=commandTail(value);
+    return /(?:취소|삭제|제거|해제|없애)(?:(?:좀|한번))?(?:해)?(?:줘|주세요|줘요|줄래|해줘|해주세요|해줄래|할래|해요|해)$/.test(compact)
+      || /(?:지워|지우|빼)(?:(?:좀|한번))?(?:줘|주세요|줘요|줄래|해줘|해주세요|해줄래|할래|해요|해)$/.test(compact);
+  }
+
+  function hasExplicitUpdateRequest(value) {
+    const compact=commandTail(value);
+    return /(?:수정|변경|이동)(?:(?:좀|한번))?(?:시켜)?(?:해)?(?:줘|주세요|줘요|줄래|해줘|해주세요|해줄래|할래|해요|해)$/.test(compact)
+      || /(?:옮겨|바꿔|고쳐)(?:(?:좀|한번))?(?:줘|주세요|줘요|줄래|해줘|해주세요|해줄래|할래|해요|해)$/.test(compact)
+      || /(?:옮기|바꾸|고치)(?:어|아)?(?:(?:좀|한번))?(?:줘|주세요|줘요|줄래|해줘|해주세요|해줄래|할래|해요|해)$/.test(compact);
+  }
+
   function isExplicitWriteCommand(value) {
-    return /(?:등록|추가|넣|예약|신청|배정|저장|취소|삭제|지워|지우|제거|빼|해제|없애|옮겨|변경|이동|바꿔|바꾸)(?:해줘|해주세요|해줄래|할래|줘|주세요|하자|해요|해)[.!。]?$/i.test(compactText(value));
+    return hasExplicitAddRequest(value)
+      || hasExplicitRemoveRequest(value)
+      || hasExplicitUpdateRequest(value);
   }
 
   function isOlliReplyScheduleInquiry(value) {
@@ -413,7 +439,7 @@
   function parseScheduleMoveMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !hasMoveAction(compact) || hasRemoveAction(compact)) return null;
+    if (!raw || !hasMoveAction(compact) || hasRemoveAction(compact) || !hasExplicitUpdateRequest(raw)) return null;
     if (isOlliReplyScheduleInquiry(raw) || parseAvailableSlotsIntent(raw) || parseRosterQueryIntent(raw)) return null;
 
     const mentions = weekdayTimeMentions(raw);
@@ -451,11 +477,7 @@
       || !hasMakeupWord(compact)
       || hasRemoveAction(compact)
       || hasMoveAction(compact)
-      || (!hasAddAction(compact) && (
-        isOlliReplyScheduleInquiry(raw)
-        || parseAvailableSlotsIntent(raw)
-        || parseRosterQueryIntent(raw)
-      ))
+      || !hasExplicitAddRequest(raw)
     ) return null;
 
     const dateSpec = parseDateExpression(compact);
@@ -541,7 +563,7 @@
     const raw = cleanText(text);
     const compact = compactText(raw);
     const hasUpdateAction = /(?:수정|변경|옮|이동|바꿔|바꾸|고쳐|고치)/.test(compact);
-    if (!raw || !hasMakeupWord(compact) || hasRemoveAction(compact) || !hasUpdateAction) return null;
+    if (!raw || !hasMakeupWord(compact) || hasRemoveAction(compact) || !hasUpdateAction || !hasExplicitUpdateRequest(raw)) return null;
 
     const studentName = extractStudentName(
       raw,
@@ -569,11 +591,7 @@
       || !hasWaitlistWord(compact)
       || hasRemoveAction(compact)
       || hasMoveAction(compact)
-      || (!hasAddAction(compact) && (
-        isOlliReplyScheduleInquiry(raw)
-        || parseAvailableSlotsIntent(raw)
-        || parseRosterQueryIntent(raw)
-      ))
+      || !hasExplicitAddRequest(raw)
     ) return null;
 
     const dateSpec = parseDateExpression(compact);
@@ -606,11 +624,7 @@
       || !hasTrialWord(compact)
       || hasRemoveAction(compact)
       || hasMoveAction(compact)
-      || (!hasAddAction(compact) && (
-        isOlliReplyScheduleInquiry(raw)
-        || parseAvailableSlotsIntent(raw)
-        || parseRosterQueryIntent(raw)
-      ))
+      || !hasExplicitAddRequest(raw)
     ) return null;
 
     const dateSpec = parseDateExpression(compact);
@@ -639,7 +653,7 @@
     const raw = cleanText(text);
     const compact = compactText(raw);
     const hasUpdateAction = /(?:수정|변경|옮|이동|바꿔|바꾸|고쳐|고치)/.test(compact);
-    if (!raw || !hasTrialWord(compact) || hasRemoveAction(compact) || !hasUpdateAction) return null;
+    if (!raw || !hasTrialWord(compact) || hasRemoveAction(compact) || !hasUpdateAction || !hasExplicitUpdateRequest(raw)) return null;
 
     const guestName = cleanupStudentName(
       extractStudentName(
@@ -666,7 +680,7 @@
     const reasonInfo = extractExplicitReason(text);
     const raw = reasonInfo.commandText;
     const compact = compactText(raw);
-    if (!raw || !hasMakeupWord(compact) || !hasRemoveAction(compact)) return null;
+    if (!raw || !hasMakeupWord(compact) || !hasRemoveAction(compact) || !hasExplicitRemoveRequest(raw)) return null;
 
     const dateSpec = parseDateExpression(compact);
     const studentName = extractStudentName(
@@ -693,7 +707,7 @@
     const reasonInfo = extractExplicitReason(text);
     const raw = reasonInfo.commandText;
     const compact = compactText(raw);
-    if (!raw || !hasTrialWord(compact) || !hasRemoveAction(compact)) return null;
+    if (!raw || !hasTrialWord(compact) || !hasRemoveAction(compact) || !hasExplicitRemoveRequest(raw)) return null;
 
     const dateSpec = parseDateExpression(compact);
     const guestName = extractStudentName(
@@ -746,7 +760,7 @@
   function parseMoveCancelMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !hasMoveAction(compact) || !hasRemoveAction(compact)) return null;
+    if (!raw || !hasMoveAction(compact) || !hasRemoveAction(compact) || !hasExplicitRemoveRequest(raw)) return null;
 
     const mentions = weekdayTimeMentions(raw);
     const source = mentions[0] || { weekday:0, timeSlot:0 };
@@ -772,7 +786,7 @@
     const raw = cleanText(text);
     const compact = compactText(raw);
     const hasUpdateAction = /(?:수정|변경|옮|이동|바꿔|바꾸|고쳐|고치)/.test(compact);
-    if (!raw || !hasWaitlistWord(compact) || hasRemoveAction(compact) || !hasUpdateAction) return null;
+    if (!raw || !hasWaitlistWord(compact) || hasRemoveAction(compact) || !hasUpdateAction || !hasExplicitUpdateRequest(raw)) return null;
 
     const studentName = extractStudentName(
       raw,
@@ -795,7 +809,7 @@
   function parseWaitlistCancelMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !hasWaitlistWord(compact) || !hasRemoveAction(compact)) return null;
+    if (!raw || !hasWaitlistWord(compact) || !hasRemoveAction(compact) || !hasExplicitRemoveRequest(raw)) return null;
     const studentName = extractStudentName(
       raw,
       /(?:대기(?:자|명단|리스트)?|웨이팅(?:리스트)?)(?:을|를|에서)?/g,
@@ -1411,7 +1425,9 @@
     if (field === 'student') return !!cleanText(draft.studentName);
     if (field === 'date') return !!cleanText(draft.dateExpression);
     if (field === 'time') return Number(draft.timeSlot || 0) > 0;
-    if (field === 'target_date') return !!cleanText(draft.targetDateExpression);
+    if (field === 'target_date') {
+      return !!cleanText(draft.targetDateExpression) || Number(draft.targetWeekday || 0) > 0;
+    }
     if (field === 'target_time') return Number(draft.targetTimeSlot || 0) > 0;
     if (field === 'class_group') return /^[AB]$/.test(cleanText(draft.classGroup).toUpperCase());
     if (field === 'division') return !!cleanText(draft.division);
