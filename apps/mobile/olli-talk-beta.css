@@ -619,7 +619,7 @@
   background:transparent;
   color:var(--olli-talk-control-input-text);
   font-family:inherit;
-  font-size:calc(15px * var(--olli-text-scale, 1));
+  font-size:calc(14.5px * var(--olli-text-scale, 1));
   font-weight:400;
   line-height:1.45;
   text-indent:var(--olli-talk-mention-indent,0px);
@@ -921,11 +921,11 @@
   --olli-talk-bubble-bg:#fff;
   position:relative;
   max-width:min(78vw, 560px);
-  padding:8px 13px;
-  border-radius:14px;
+  padding:7px 12px;
+  border-radius:13px;
   background:var(--olli-talk-bubble-bg);
   color:#201818;
-  font-size:calc(14.5px * var(--olli-text-scale, 1));
+  font-size:calc(14px * var(--olli-text-scale, 1));
   font-weight:400;
   line-height:1.48;
   letter-spacing:-.012em;
