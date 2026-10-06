@@ -122,3 +122,20 @@ test('makeup cancellation reason prompt offers no-reason and direct-input choice
   assert.match(css,/\.olliTalkBetaPendingInput\{[\s\S]*gap:6px/);
   assert.match(pcCss,/\.olliPcTeamTalkPendingInput\{[^}]*gap:6px/);
 });
+
+
+test('makeup cancellation preflights student and schedule before showing reason controls',()=>{
+  const preflightIndex=js.indexOf("preflight=await router.prepareStructuredAction(merged");
+  const pendingIndex=js.indexOf("olliTalkPendingActionReason={",preflightIndex);
+  assert.ok(preflightIndex>=0);
+  assert.ok(pendingIndex>preflightIndex);
+  assert.match(js,/preflight\?\.handled===true && preflight\.kind==='action_rejected'/);
+  assert.match(js,/rejectedMessage[\s\S]*saveOlliTalkOlliReply/);
+
+  const pcPreflightIndex=pcJs.indexOf("preflight=await router.prepareStructuredAction(merged");
+  const pcPendingIndex=pcJs.indexOf("state.pendingActionReason={",pcPreflightIndex);
+  assert.ok(pcPreflightIndex>=0);
+  assert.ok(pcPendingIndex>pcPreflightIndex);
+  assert.match(pcJs,/preflight\?\.handled===true && preflight\.kind==='action_rejected'/);
+  assert.match(pcJs,/rejectedMessage[\s\S]*saveAssistantReply/);
+});
