@@ -150,3 +150,14 @@ test('keyboard viewport settle preserves the visible anchor instead of snapping 
   assert.doesNotMatch(body,/scrollTop\s*=\s*chatArea\.scrollHeight/);
   assert.doesNotMatch(js,/olliTalkFollowBottomAfterViewportSettle/);
 });
+
+
+test('Work navigation reset does not reference removed viewport follow state',()=>{
+  const start=js.indexOf('function resetOlliTalkAfterPageTransition(){');
+  const end=js.indexOf('\n  }',start);
+  assert.ok(start>=0 && end>start);
+  const body=js.slice(start,end);
+  assert.doesNotMatch(body,/olliTalkFollowBottomAfterViewportSettle/);
+  assert.doesNotMatch(js,/\bolliTalkFollowBottomAfterViewportSettle\b/);
+  assert.match(js,/window\.openOlliTalkBetaPage = openOlliTalkBetaPage/);
+});
