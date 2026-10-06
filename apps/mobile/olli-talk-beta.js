@@ -168,7 +168,16 @@
   function syncOlliTalkChatToComposer(){
     olliTalkChatMeasureRaf = 0;
     const screen = getScreen();
-    if (!screen || !isOlliTalkBetaVisible()) return;
+    if (!screen) return;
+
+    // 평상시에는 CSS 기본 reserve만 사용합니다.
+    // 키보드가 열린 동안에만 visualViewport 기준의 동적 reserve를 인라인으로 둡니다.
+    if (!isOlliTalkComposerActive()) {
+      screen.style.removeProperty('--olli-talk-chat-reserve');
+      return;
+    }
+
+    if (!isOlliTalkBetaVisible()) return;
     const geometry = getOlliTalkComposerLayoutGeometry();
     if (!geometry) return;
     screen.style.setProperty('--olli-talk-chat-reserve', Math.max(0, Math.ceil(geometry.reserve)) + 'px');
@@ -7380,6 +7389,7 @@
 
     const screen = getScreen();
     if (!screen) return;
+    screen.style.removeProperty('--olli-talk-chat-reserve');
     syncOlliTalkContrastTheme();
     closeOlliTalkSearch({ blur:false });
     olliTalkHistoryExhausted=false;
@@ -7461,6 +7471,9 @@
       event.preventDefault();
       event.stopPropagation();
     }
+
+    const screen = getScreen();
+    screen?.style.removeProperty('--olli-talk-chat-reserve');
 
     const input = document.getElementById('olliTalkBetaInput');
     if (input) input.blur();

@@ -75,7 +75,7 @@ test('completed or cancelled repetitive-work result stays attached below the act
 
 test('mobile Team Chat assets share mention-restore cache bust revision',()=>{
   assert.match(html,/olli-talk-beta\\.css\\?v=20261006-layout-stability-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-layout-stability-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-reserve-reset-1/);
 });
 
 
@@ -152,6 +152,25 @@ test('makeup cancellation preflights student and schedule before showing reason 
 });
 
 
+test('Team Chat idle state never keeps a dynamic inline chat reserve',()=>{
+  const syncStart=js.indexOf('function syncOlliTalkChatToComposer(){');
+  const syncEnd=js.indexOf('\n  function scheduleOlliTalkChatToComposer()',syncStart);
+  assert.ok(syncStart>=0 && syncEnd>syncStart);
+  const syncBody=js.slice(syncStart,syncEnd);
+  assert.match(syncBody,/if \(!isOlliTalkComposerActive\(\)\) \{[\s\S]*removeProperty\('--olli-talk-chat-reserve'\)[\s\S]*return;/);
+  assert.match(syncBody,/setProperty\('--olli-talk-chat-reserve'/);
+});
+
+test('Team Chat clears stale chat reserve both before opening and when leaving',()=>{
+  assert.match(js,/const screen = getScreen\(\);[\s\S]{0,180}screen\.style\.removeProperty\('--olli-talk-chat-reserve'\);[\s\S]{0,180}syncOlliTalkContrastTheme\(\)/);
+  const closeStart=js.indexOf('async function closeOlliTalkBetaPage(event){');
+  const closeEnd=js.indexOf('\n  async function openOlliTalkContextPage',closeStart);
+  assert.ok(closeStart>=0 && closeEnd>closeStart);
+  const closeBody=js.slice(closeStart,closeEnd);
+  assert.match(closeBody,/screen\?\.style\.removeProperty\('--olli-talk-chat-reserve'\)/);
+  assert.match(closeBody,/if \(input\) input\.blur\(\)/);
+});
+
 test('Team Chat first layout uses the real idle composer reserve before JavaScript measurement',()=>{
   assert.match(css,/--olli-talk-chat-reserve:calc\(var\(--olli-phone-guide-bottom, max\(10px, env\(safe-area-inset-bottom\)\)\) \+ 57px\)/);
 });
@@ -222,7 +241,7 @@ test('Team Chat send keeps the established pointerdown flow without extra touch 
   assert.doesNotMatch(js,/sendButton\.addEventListener\('touchstart'/);
   assert.match(js,/sendButton\.addEventListener\('pointerdown', event => \{[\s\S]*sendOlliTalkBetaMessage\(event\)/);
   assert.match(js,/await loadOlliTalkBetaMessages\([\s\S]{0,700}input\.focus\(\{ preventScroll:true \}\)/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-layout-stability-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-reserve-reset-1/);
 });
 
 test('Team Chat groups adjacent messages only when sender and displayed minute are identical',()=>{
@@ -235,7 +254,7 @@ test('Team Chat groups adjacent messages only when sender and displayed minute a
   assert.match(js,/if \(!connectedToNext\) \{[\s\S]*olliTalkBetaMessageTime/);
   assert.match(css,/\.olliTalkBetaMessageConnected \.olliTalkBetaSender\{[\s\S]*display:none;/);
   assert.match(html,/olli-talk-beta\\.css\\?v=20261006-layout-stability-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-layout-stability-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-reserve-reset-1/);
 });
 
 test('Team Chat voice capture anchors directly to the screen bottom instead of following the shrinking visual viewport',()=>{
@@ -247,7 +266,7 @@ test('Team Chat send starts on pointerdown before the active composer can blur a
   assert.match(js,/sendButton\.addEventListener\('pointerdown', event => \{[\s\S]*sendOlliTalkBetaMessage\(event\)/);
   assert.match(js,/sendButton\.addEventListener\('click', event => \{[\s\S]*if \(event\.detail !== 0\)/);
   assert.match(js,/async function sendOlliTalkBetaMessage\(event\)\{[\s\S]*event\.preventDefault\(\);[\s\S]*event\.stopPropagation\(\);/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-layout-stability-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-reserve-reset-1/);
 });
 
 test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into a real mention',()=>{
@@ -266,7 +285,7 @@ test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into 
   assert.doesNotMatch(css,/\.olliTalkBetaVoiceBtn\.active\{[\s\S]*?background:#0A84FF;/);
   assert.match(js,/showPanel:true,[\s\S]*panelHost:composer/);
   assert.match(html,/olli-talk-beta\\.css\\?v=20261006-layout-stability-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-layout-stability-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-reserve-reset-1/);
 });
 
 
