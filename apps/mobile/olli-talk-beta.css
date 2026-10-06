@@ -736,10 +736,18 @@
 }
 
 #olliTalkBetaScreen.olliTalkKeyboardOpen .olliTalkMentionTriggerBtn{
-  display:none;
+  display:inline-flex;
 }
 
 #olliTalkBetaScreen.olliTalkKeyboardOpen .olliTalkBetaSendBtn{
+  display:none;
+}
+
+#olliTalkBetaScreen.olliTalkKeyboardOpen.olliTalkCanSend .olliTalkMentionTriggerBtn{
+  display:none;
+}
+
+#olliTalkBetaScreen.olliTalkKeyboardOpen.olliTalkCanSend .olliTalkBetaSendBtn{
   display:inline-flex;
 }
 
@@ -1540,10 +1548,18 @@
 }
 
 #olliTalkBetaScreen.olliTalkKeyboardOpen .olliTalkMentionTriggerBtn{
-  display:none;
+  display:inline-flex;
 }
 
 #olliTalkBetaScreen.olliTalkKeyboardOpen .olliTalkBetaSendBtn{
+  display:none;
+}
+
+#olliTalkBetaScreen.olliTalkKeyboardOpen.olliTalkCanSend .olliTalkMentionTriggerBtn{
+  display:none;
+}
+
+#olliTalkBetaScreen.olliTalkKeyboardOpen.olliTalkCanSend .olliTalkBetaSendBtn{
   display:inline-flex;
 }
 
