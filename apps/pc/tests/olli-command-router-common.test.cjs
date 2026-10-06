@@ -122,10 +122,12 @@ test('specific class move wording parses as a write command', () => {
 });
 
 
-test('class move keyword can enter a partial rule draft while read questions stay queries', () => {
+test('class move requires an explicit action ending while still allowing missing target fields', () => {
   const router = loadRouter();
 
-  const partial = router.parseScheduleMoveMutationIntent('류다연 수업이동');
+  assert.equal(router.parseScheduleMoveMutationIntent('류다연 수업이동'), null);
+
+  const partial = router.parseScheduleMoveMutationIntent('류다연 수업이동 해줘');
   assert.equal(partial.intent, 'move_class');
   assert.equal(partial.studentName, '류다연');
   assert.equal(partial.targetWeekday, 0);
@@ -148,30 +150,46 @@ test('makeup write wording parses date, time, and optional class group', () => {
 });
 
 
-test('routine add intent no longer requires date and time before entering the rule draft flow', () => {
+test('routine add requires domain plus explicit action ending but not date or time', () => {
   const router = loadRouter();
 
   const makeup = router.parseMakeupMutationIntent('류다연 보강 등록해줘');
   assert.equal(makeup.intent, 'add_makeup');
   assert.equal(makeup.studentName, '류다연');
   assert.equal(makeup.dateSpec, null);
+  assert.equal(makeup.dateLabel, '');
   assert.equal(makeup.timeSlot, 0);
 
-  const shortMakeup = router.parseMakeupMutationIntent('류다연 보강');
-  assert.equal(shortMakeup.intent, 'add_makeup');
-  assert.equal(shortMakeup.studentName, '류다연');
+  const makeupNatural = router.parseMakeupMutationIntent('류다연 보강 잡아줘');
+  assert.equal(makeupNatural.intent, 'add_makeup');
+  assert.equal(makeupNatural.studentName, '류다연');
 
-  const trial = router.parseTrialMutationIntent('서준 체험');
+  const trial = router.parseTrialMutationIntent('서준 체험 등록해줘');
   assert.equal(trial.intent, 'add_trial');
   assert.equal(trial.guestName, '서준');
   assert.equal(trial.dateSpec, null);
   assert.equal(trial.timeSlot, 0);
 
-  const waitlist = router.parseWaitlistMutationIntent('지우 대기');
+  const waitlist = router.parseWaitlistMutationIntent('지우 대기 넣어줘');
   assert.equal(waitlist.intent, 'add_waitlist');
   assert.equal(waitlist.studentName, '지우');
   assert.equal(waitlist.dateSpec, null);
   assert.equal(waitlist.timeSlot, 0);
+});
+
+test('ambiguous routine wording falls through instead of being guessed as a write command', () => {
+  const router = loadRouter();
+
+  assert.equal(router.parseMakeupMutationIntent('류다연 보강'), null);
+  assert.equal(router.parseTrialMutationIntent('서준 체험'), null);
+  assert.equal(router.parseWaitlistMutationIntent('지우 대기'), null);
+  assert.equal(router.parseMakeupMutationIntent('어제 보강 잡았던 학생 이름이 뭐야?'), null);
+
+  const ambiguous = router.classifyRequest('류다연 보강 부탁해');
+  assert.equal(ambiguous.type, 'other');
+
+  const historical = router.classifyRequest('어제 보강 잡았던 학생 이름이 뭐야?');
+  assert.notEqual(historical.intent, 'add_makeup');
 });
 
 test('single domain keyword rule does not steal availability questions', () => {
