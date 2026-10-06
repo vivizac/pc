@@ -2359,10 +2359,31 @@
         };
       }
 
-      const merged=mergeOlliTalkStructuredMakeupCancelCommand(
+      let merged=mergeOlliTalkStructuredMakeupCancelCommand(
         pending?.structuredCommand,
         structuredCommand
       );
+
+      let preflight=null;
+      if(!pending && router && typeof router.prepareStructuredAction==='function'){
+        preflight=await router.prepareStructuredAction(merged,{
+          source:'olli_talk_ai_structured_preflight',
+          selectedStudent:null,
+          autoSubmitContext:null
+        });
+        if(preflight?.handled===true && preflight.kind==='action_rejected'){
+          const rejectedMessage=String(preflight.message || '').trim() || '보강 취소 작업을 준비하지 못했어요.';
+          return {
+            assistantMessage:await saveOlliTalkOlliReply(context,rejectedMessage,replyToMessageId),
+            replyText:rejectedMessage,
+            recordAi:false
+          };
+        }
+        if(preflight?.handled===true && preflight.payload){
+          merged=mergeOlliTalkStructuredMakeupCancelCommand(merged,preflight.payload);
+        }
+      }
+
       const reason=String(merged.reason || '').trim();
       if(!reason){
         const sourceMessageId=Number(replyToMessageId || 0);
@@ -2374,7 +2395,8 @@
             structuredCommand:merged
           }
         };
-        const reasonMessage=(String(merged.studentName || '').trim() || '학생')+' 학생의 보강 취소 사유를 알려주세요.';
+        const reasonMessage=String(preflight?.message || '').trim()
+          || (String(merged.studentName || '').trim() || '학생')+' 학생의 보강 취소 사유를 알려주세요.';
         return saveOlliTalkPendingTextInputReply(context,reasonMessage,replyToMessageId);
       }
 
