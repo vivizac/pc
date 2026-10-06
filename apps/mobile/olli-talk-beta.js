@@ -2975,6 +2975,8 @@
 
     const hasText = String(input.value || '').trim().length > 0;
     const canSend = olliTalkMentionModeActive ? isOlliTalkMentionMessageReady() : hasText;
+    const screen = getScreen();
+    if (screen) screen.classList.toggle('olliTalkCanSend', canSend);
     sendButton.disabled = !canSend;
     sendButton.setAttribute('aria-disabled', canSend ? 'false' : 'true');
     syncOlliTalkSelectedMentionPrefix();
