@@ -7,11 +7,13 @@ const root = path.resolve(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
 const migration = read('supabase/migrations/20261006150241_teacher_payroll_calculator.sql');
+const ownerPayrollMigration = read('supabase/migrations/20261006153614_harden_owner_roles_and_payroll_cycle.sql');
 const common = read('packages/common/olli-teacher-payroll-common.js');
 const pcHtml = read('apps/pc/index.html');
 const mobileHtml = read('apps/mobile/index.html');
 const pcChat = read('apps/pc/pc-team-talk.js');
 const mobileChat = read('apps/mobile/olli-talk-beta.js');
+const authAccess = read('packages/common/olli-auth-academy-access.js');
 
 test('payroll data stays in private schema and amount lookup is owner-gated', () => {
   assert.match(migration, /create table if not exists private\.olli_teacher_payroll_settings/);
@@ -90,4 +92,35 @@ test('settings row is hidden by the existing owner-only permission contract', ()
 test('owner login sync is fallback protection in addition to database cron', () => {
   assert.match(common, /async function syncDueNotifications\(\)[\s\S]*!isOwner\(\)[\s\S]*olli_teacher_payroll_due_sync/);
   assert.match(common, /setTimeout\(\(\)=>\{ syncDueNotifications\(\); \},1200\)/);
+});
+
+
+test('hourly payroll uses payday-cycle range from prior payday minus one day through current payday', () => {
+  assert.match(ownerPayrollMigration, /v_prev_pay_date :=[\s\S]*v_period_start := \(v_prev_pay_date - interval '1 day'\)::date/);
+  assert.match(ownerPayrollMigration, /generate_series\(v_period_start::timestamp, v_period_end::timestamp/);
+  assert.match(ownerPayrollMigration, /'period_start',v_period_start/);
+  assert.match(ownerPayrollMigration, /'period_end',v_period_end/);
+});
+
+test('monthly salary overrides hourly workday calculation and is persisted separately', () => {
+  assert.match(ownerPayrollMigration, /add column if not exists monthly_salary bigint not null default 0/);
+  assert.match(ownerPayrollMigration, /if v_monthly_salary > 0 then[\s\S]*v_pay_type := 'monthly'[\s\S]*v_amount := v_monthly_salary/);
+  assert.match(ownerPayrollMigration, /olli_teacher_payroll_setting_upsert_v2/);
+  assert.match(common, /data-payroll-monthly-salary/);
+  assert.match(common, /monthlySalary > 0/);
+  assert.match(common, /olli_teacher_payroll_setting_upsert_v2/);
+});
+
+test('general academy access paths cannot create owner role', () => {
+  assert.match(ownerPayrollMigration, /olli_request_academy_access[\s\S]*v_role not in \('manager','teacher'\)/);
+  assert.match(ownerPayrollMigration, /olli_approve_academy_access_request[\s\S]*v_role not in \('manager','teacher'\)/);
+  assert.match(ownerPayrollMigration, /olli_set_account_membership_role[\s\S]*v_role not in \('manager','teacher'\)/);
+  assert.match(ownerPayrollMigration, /olli_transfer_academy_owner[\s\S]*set role='owner'/);
+  assert.doesNotMatch(authAccess, /p_requested_role:\s*'owner'/);
+  assert.match(authAccess, /원장권한 넘기기를 사용해 주세요/);
+});
+
+test('legacy teacher approval paths sanitize owner requests back to teacher or manager', () => {
+  assert.match(ownerPayrollMigration, /approve_teacher_request[\s\S]*req\.requested_role in \('teacher','manager'\)[\s\S]*else 'teacher'/);
+  assert.match(ownerPayrollMigration, /olli_admin_approve_teacher_approval_request[\s\S]*if v_role not in \('teacher','manager'\) then v_role := 'teacher'/);
 });
