@@ -35,94 +35,6 @@ create table if not exists private.olli_teacher_payroll_notifications (
 create index if not exists olli_teacher_payroll_notifications_academy_month_idx
   on private.olli_teacher_payroll_notifications (academy_id, payroll_month, teacher_member_id);
 
-alter table public.olli_team_chat_bot_events
-  drop constraint if exists olli_team_chat_bot_events_event_type_check;
-
-alter table public.olli_team_chat_bot_events
-  add constraint olli_team_chat_bot_events_event_type_check
-  check (event_type = any (array[
-    'registration_add'::text,
-    'registration_cancel'::text,
-    'trial_add'::text,
-    'trial_cancel'::text,
-    'wait_add'::text,
-    'wait_cancel'::text,
-    'pickup_add'::text,
-    'pickup_cancel'::text,
-    'payroll_due'::text
-  ]));
-
-create or replace function public.olli_team_chat_system_push_targets(
-  p_academy_id uuid,
-  p_message_id bigint,
-  p_member_id uuid
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path to ''
-as $function$
-declare
-  v_body text;
-  v_targets jsonb;
-begin
-  if p_academy_id is null or p_message_id is null or p_member_id is null then
-    raise exception '시스템 알림 대상 정보가 없습니다.';
-  end if;
-
-  select m.body into v_body
-  from public.olli_team_chat_messages m
-  join public.olli_team_chat_bot_events e
-    on e.academy_id=m.academy_id
-   and e.message_id=m.id
-   and e.target_member_id=p_member_id
-  where m.academy_id=p_academy_id
-    and m.id=p_message_id
-    and (
-      m.message_type='system'
-      or (m.message_type='ai' and e.event_type='payroll_due')
-    )
-    and m.deleted_at is null
-  limit 1;
-
-  if v_body is null then
-    raise exception '시스템 알림 메시지를 찾을 수 없습니다.';
-  end if;
-
-  select coalesce(jsonb_agg(jsonb_build_object(
-    'subscription_id',s.id,
-    'member_id',s.member_id,
-    'endpoint',s.endpoint,
-    'p256dh',s.p256dh,
-    'auth',s.auth
-  ) order by s.id),'[]'::jsonb)
-  into v_targets
-  from public.olli_team_chat_push_subscriptions s
-  join public.academy_members m
-    on m.id=s.member_id
-   and m.academy_id=s.academy_id
-   and m.status='active'
-  where s.academy_id=p_academy_id
-    and s.member_id=p_member_id
-    and s.disabled_at is null
-    and not exists (
-      select 1
-      from public.olli_team_chat_push_deliveries d
-      where d.academy_id=p_academy_id
-        and d.message_id=p_message_id
-        and d.subscription_id=s.id
-    );
-
-  return jsonb_build_object(
-    'ok',true,
-    'body',v_body,
-    'message_id',p_message_id,
-    'target_member_id',p_member_id,
-    'targets',v_targets
-  );
-end;
-$function$;
-
 revoke all on private.olli_teacher_payroll_settings from anon, authenticated;
 revoke all on private.olli_teacher_payroll_notifications from anon, authenticated;
 
@@ -488,8 +400,6 @@ declare
   v_message_id bigint;
   v_created integer := 0;
   v_teacher_label text;
-  v_owner record;
-  v_secret text;
 begin
   for v_row in
     select s.academy_id,s.teacher_member_id,s.payday,m.display_name
@@ -560,60 +470,6 @@ begin
     from public.academy_members m
     where m.academy_id=v_row.academy_id and m.status='active' and m.role='owner'
     on conflict (academy_id,message_id,member_id) do nothing;
-
-    begin
-      select ds.decrypted_secret
-        into v_secret
-      from vault.decrypted_secrets ds
-      where ds.name='olli_team_chat_system_push_secret_20260921'
-      order by ds.created_at desc
-      limit 1;
-
-      for v_owner in
-        select m.id
-        from public.academy_members m
-        where m.academy_id=v_row.academy_id
-          and m.status='active'
-          and m.role='owner'
-      loop
-        insert into public.olli_team_chat_bot_events(
-          academy_id,event_key,event_type,source_table,source_id,message_id,target_member_id,
-          class_date,division,weekday,time_slot,class_group
-        )
-        values (
-          v_row.academy_id,
-          'payroll_due:'||v_notification_id::text||':'||v_owner.id::text,
-          'payroll_due',
-          'olli_teacher_payroll_notifications',
-          v_notification_id::text,
-          v_message_id,
-          v_owner.id,
-          v_today,
-          null,
-          null,
-          null,
-          'A'
-        )
-        on conflict (academy_id,event_key) do nothing;
-
-        if nullif(v_secret,'') is not null then
-          perform net.http_post(
-            url := 'https://fvkxipjwgeyosgnfhdnx.supabase.co/functions/v1/olli-team-chat-push',
-            headers := jsonb_build_object('Content-Type','application/json'),
-            body := jsonb_build_object(
-              'action','dispatch-system',
-              'academy_id',v_row.academy_id,
-              'message_id',v_message_id,
-              'target_member_id',v_owner.id,
-              'internal_token',v_secret
-            ),
-            timeout_milliseconds := 8000
-          );
-        end if;
-      end loop;
-    exception when others then
-      null;
-    end;
 
     v_created := v_created + 1;
   end loop;
