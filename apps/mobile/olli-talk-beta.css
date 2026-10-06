@@ -1310,6 +1310,7 @@
 #olliTalkBetaScreen .olliTalkBetaPendingInput{
   display:flex;
   justify-content:flex-start;
+  gap:6px;
   margin:5px 0 0;
 }
 #olliTalkBetaScreen .olliTalkBetaPendingInputButton{
