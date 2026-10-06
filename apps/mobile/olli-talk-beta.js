@@ -7669,6 +7669,11 @@
     }
 
     if (input) {
+      input.addEventListener('pointerdown', event => {
+        if (document.activeElement === input) return;
+        event.preventDefault();
+        try { input.focus({ preventScroll:true }); } catch (_) { input.focus(); }
+      });
       input.addEventListener('input', () => {
         resizeInput();
         updateOlliTalkBetaComposerState();
