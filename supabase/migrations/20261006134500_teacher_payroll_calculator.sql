@@ -776,8 +776,7 @@ begin
     'messages',v_messages
   );
 end;
-$function$
-
+$function$;
 
 CREATE OR REPLACE FUNCTION public.olli_team_chat_list(p_session_token text, p_academy_id uuid, p_before_message_id bigint DEFAULT NULL::bigint, p_limit integer DEFAULT 50)
  RETURNS jsonb
@@ -939,8 +938,7 @@ begin
     'messages',v_messages
   );
 end;
-$function$
-
+$function$;
 
 -- payroll owner-only Team Chat visibility end
 do $cron_setup$
