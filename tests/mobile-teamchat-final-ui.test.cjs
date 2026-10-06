@@ -75,7 +75,7 @@ test('completed or cancelled repetitive-work result stays attached below the act
 
 test('mobile Team Chat assets share mention-restore cache bust revision',()=>{
   assert.match(html,/olli-talk-beta\\.css\\?v=20261006-typing-dot-3px-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-work-button-parse-fix-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-chat-layout-stability-1/);
 });
 
 
@@ -151,6 +151,57 @@ test('makeup cancellation preflights student and schedule before showing reason 
   assert.match(pcJs,/rejectedMessage[\s\S]*saveAssistantReply/);
 });
 
+
+test('Team Chat unread-only realtime updates never rebuild the whole message list',()=>{
+  assert.match(js,/function areOlliTalkMessagePayloadsRenderEquivalent\(left,right\)/);
+  assert.match(js,/const \{ unread_count, \.\.\.renderable \}=item/);
+  assert.match(js,/const renderChanged=!basePayload\|\|!areOlliTalkMessagePayloadsRenderEquivalent\(basePayload,mergedPayload\)/);
+  assert.match(js,/if\(options\.render!==false&&renderChanged\)/);
+  assert.match(js,/if\(options\.render!==false&&changed\)syncOlliTalkRenderedUnreadCounts\(mergedPayload\)/);
+  assert.match(js,/function syncOlliTalkRenderedUnreadCounts\(payload\)[\s\S]*badge\.style\.visibility='hidden'/);
+});
+
+test('Team Chat same-minute grouping hides the previous time without removing its layout slot',()=>{
+  const markStart=js.indexOf('function markOlliTalkRenderedMessageConnectedToNext(message){');
+  const markEnd=js.indexOf('\n  function appendOlliTalkInlineSystemResult',markStart);
+  assert.ok(markStart>=0&&markEnd>markStart);
+  const markBody=js.slice(markStart,markEnd);
+  assert.match(markBody,/time\.style\.visibility='hidden'/);
+  assert.doesNotMatch(markBody,/\.remove\(\)/);
+  assert.match(js,/const messageTime=createMessageText\('div','olliTalkBetaMessageTime'/);
+  assert.match(js,/if\(connectedToNext\)\{[\s\S]*messageTime\.style\.visibility='hidden'/);
+});
+
+test('Team Chat typing indicator uses one anchor owner and preserves its bottom when the reply replaces it',()=>{
+  assert.match(js,/function syncOlliTalkAssistantTypingIndicator\(options = \{\}\)/);
+  assert.match(js,/if\(options\.anchor!==false\) scheduleOlliTalkMessageAboveComposer\(typing\)/);
+  assert.match(js,/syncOlliTalkAssistantTypingIndicator\(\{anchor:false\}\)/);
+  const replaceStart=js.indexOf('function replaceOlliTalkAssistantTypingWithMessage(item, currentMemberId){');
+  const replaceEnd=js.indexOf('\n  function appendOlliTalkPersistedMessage',replaceStart);
+  assert.ok(replaceStart>=0&&replaceEnd>replaceStart);
+  const replaceBody=js.slice(replaceStart,replaceEnd);
+  assert.match(replaceBody,/const typingBottom=typing\.getBoundingClientRect\(\)\.bottom/);
+  assert.match(replaceBody,/const growth=nextBottom-typingBottom/);
+  assert.match(replaceBody,/if\(growth>0\.5\)/);
+  assert.doesNotMatch(replaceBody,/scheduleOlliTalkMessageAboveComposer\(next\)/);
+});
+
+test('Team Chat link preview follows the bottom only once after its final layout settles',()=>{
+  assert.match(js,/return 'ready'/);
+  assert.match(js,/return 'pending'/);
+  assert.match(js,/const followFinalLayout=\(\)=>\{/);
+  assert.match(js,/const imageState=setOlliTalkLinkPreviewImage/);
+  assert.match(js,/imageState!=='pending'/);
+  const applyStart=js.indexOf('function applyOlliTalkLinkPreview(card,url,preview){');
+  const applyEnd=js.indexOf('\n  function loadOlliTalkLinkPreview',applyStart);
+  assert.ok(applyStart>=0&&applyEnd>applyStart);
+  const applyBody=js.slice(applyStart,applyEnd);
+  assert.equal((applyBody.match(/scheduleOlliTalkLatestMessageAnchor\(\)/g)||[]).length,1);
+  const imageStart=js.indexOf('async function hydrateOlliTalkAttachmentImage(frame,image,attachment){');
+  const imageEnd=js.indexOf('\n  function observeOlliTalkAttachmentImage',imageStart);
+  assert.ok(imageStart>=0&&imageEnd>imageStart);
+  assert.doesNotMatch(js.slice(imageStart,imageEnd),/scheduleOlliTalkLatestMessageAnchor/);
+});
 
 test('mobile Team Chat runtime JavaScript parses without syntax errors',()=>{
   assert.doesNotThrow(()=>new Function(js));
@@ -245,7 +296,7 @@ test('Team Chat send keeps the established pointerdown flow without extra touch 
   assert.doesNotMatch(js,/sendButton\.addEventListener\('touchstart'/);
   assert.match(js,/sendButton\.addEventListener\('pointerdown', event => \{[\s\S]*sendOlliTalkBetaMessage\(event\)/);
   assert.match(js,/await loadOlliTalkBetaMessages\([\s\S]{0,700}input\.focus\(\{ preventScroll:true \}\)/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-work-button-parse-fix-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-chat-layout-stability-1/);
 });
 
 test('Team Chat groups adjacent messages only when sender and displayed minute are identical',()=>{
@@ -255,10 +306,11 @@ test('Team Chat groups adjacent messages only when sender and displayed minute a
   assert.match(js,/isOlliTalkConnectedRenderedMessage\(lastRendered, item, currentMemberId\)/);
   assert.match(js,/markOlliTalkRenderedMessageConnectedToNext\(lastRendered\)/);
   assert.match(js,/const connectedToNext = isOlliTalkConnectedMessage\(item, nextItem, currentMemberId\)/);
-  assert.match(js,/if \(!connectedToNext\) \{[\s\S]*olliTalkBetaMessageTime/);
+  assert.match(js,/const messageTime=createMessageText\('div','olliTalkBetaMessageTime'/);
+  assert.match(js,/if\(connectedToNext\)\{[\s\S]*messageTime\.style\.visibility='hidden'/);
   assert.match(css,/\.olliTalkBetaMessageConnected \.olliTalkBetaSender\{[\s\S]*display:none;/);
   assert.match(html,/olli-talk-beta\\.css\\?v=20261006-typing-dot-3px-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-work-button-parse-fix-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-chat-layout-stability-1/);
 });
 
 test('Team Chat voice capture anchors directly to the screen bottom instead of following the shrinking visual viewport',()=>{
@@ -270,7 +322,7 @@ test('Team Chat send starts on pointerdown before the active composer can blur a
   assert.match(js,/sendButton\.addEventListener\('pointerdown', event => \{[\s\S]*sendOlliTalkBetaMessage\(event\)/);
   assert.match(js,/sendButton\.addEventListener\('click', event => \{[\s\S]*if \(event\.detail !== 0\)/);
   assert.match(js,/async function sendOlliTalkBetaMessage\(event\)\{[\s\S]*event\.preventDefault\(\);[\s\S]*event\.stopPropagation\(\);/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-work-button-parse-fix-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-chat-layout-stability-1/);
 });
 
 test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into a real mention',()=>{
@@ -289,7 +341,7 @@ test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into 
   assert.doesNotMatch(css,/\.olliTalkBetaVoiceBtn\.active\{[\s\S]*?background:#0A84FF;/);
   assert.match(js,/showPanel:true,[\s\S]*panelHost:composer/);
   assert.match(html,/olli-talk-beta\\.css\\?v=20261006-typing-dot-3px-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-work-button-parse-fix-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-chat-layout-stability-1/);
 });
 
 

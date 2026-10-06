@@ -3130,6 +3130,64 @@
     }catch(_){return false}
   }
 
+  function getOlliTalkRenderableMessageSnapshot(item){
+    if(!item||typeof item!=='object')return item;
+    const { unread_count, ...renderable }=item;
+    return renderable;
+  }
+
+  function areOlliTalkMessagePayloadsRenderEquivalent(left,right){
+    if(!left||!right)return false;
+    if(String(left.current_member_id||'')!==String(right.current_member_id||''))return false;
+    const leftMessages=Array.isArray(left.messages)?left.messages:[];
+    const rightMessages=Array.isArray(right.messages)?right.messages:[];
+    if(leftMessages.length!==rightMessages.length)return false;
+    try{
+      return leftMessages.every((item,index)=>
+        JSON.stringify(getOlliTalkRenderableMessageSnapshot(item))
+          ===JSON.stringify(getOlliTalkRenderableMessageSnapshot(rightMessages[index]))
+      );
+    }catch(_){return false}
+  }
+
+  function syncOlliTalkRenderedUnreadCounts(payload){
+    const chatArea=document.getElementById('olliTalkBetaChatArea');
+    if(!chatArea)return false;
+    const messages=Array.isArray(payload?.messages)?payload.messages:[];
+    const byId=new Map(messages.map(item=>[String(item?.id||''),item]).filter(([id])=>!!id));
+
+    chatArea.querySelectorAll('.olliTalkBetaMessage[data-message-id]').forEach(row=>{
+      const item=byId.get(String(row.dataset.messageId||''));
+      if(!item)return;
+      const type=String(item?.message_type||'text');
+      if(type==='ai'||type==='system')return;
+
+      const count=Math.max(0,Number(item?.unread_count||0));
+      const meta=row.querySelector('.olliTalkBetaBubbleMeta');
+      if(!meta)return;
+      let badge=meta.querySelector('.olliTalkBetaUnreadCount');
+
+      if(count>0){
+        if(!badge){
+          badge=createMessageText('span','olliTalkBetaUnreadCount',String(count));
+          meta.insertBefore(badge,meta.firstChild);
+        }else{
+          badge.textContent=String(count);
+        }
+        badge.style.visibility='';
+        badge.removeAttribute('aria-hidden');
+        return;
+      }
+
+      // 읽음 완료 시 기존 badge의 폭은 그대로 둬서 말풍선 줄바꿈/높이가 흔들리지 않게 합니다.
+      if(badge){
+        badge.style.visibility='hidden';
+        badge.setAttribute('aria-hidden','true');
+      }
+    });
+    return true;
+  }
+
   function mergeOlliTalkMessagePayloads(basePayload,nextPayload){
     const deletedIds=new Set(
       (Array.isArray(nextPayload?.deleted_message_ids)?nextPayload.deleted_message_ids:[])
@@ -3291,21 +3349,22 @@
   }
 
   function setOlliTalkLinkPreviewImage(card,src,options={}){
-    if(!card)return false;
+    if(!card)return 'none';
     const source=String(src||'').trim();
     const existing=card.querySelector('.olliTalkBetaLinkPreviewImage');
 
     if(!source){
       if(existing)existing.remove();
       card.classList.remove('hasImage');
-      return false;
+      return 'none';
     }
     if(existing?.dataset?.previewSrc===source){
       if(existing.complete&&existing.naturalWidth>0){
         existing.hidden=false;
         card.classList.add('hasImage');
+        return 'ready';
       }
-      return true;
+      return 'pending';
     }
     if(existing)existing.remove();
 
@@ -3317,23 +3376,27 @@
     image.referrerPolicy='no-referrer';
     image.hidden=true;
     image.dataset.previewSrc=source;
-    image.addEventListener('load',()=>{
-      if(!image.isConnected)return;
+
+    const followFinalLayout=()=>{
       const chatArea=document.getElementById('olliTalkBetaChatArea');
       const keepBottom=options.followBottom===true&&!!chatArea&&isOlliTalkChatNearBottom(chatArea,120);
+      if(keepBottom&&chatArea?.isConnected) scheduleOlliTalkLatestMessageAnchor();
+    };
+
+    image.addEventListener('load',()=>{
+      if(!image.isConnected)return;
       image.hidden=false;
       card.classList.add('hasImage');
-      if(keepBottom&&chatArea?.isConnected){
-        scheduleOlliTalkLatestMessageAnchor();
-      }
+      followFinalLayout();
     },{once:true});
     image.addEventListener('error',()=>{
       if(image.isConnected)image.remove();
       card.classList.remove('hasImage');
+      followFinalLayout();
     },{once:true});
     image.src=source;
     card.insertBefore(image,card.firstChild);
-    return true;
+    return 'pending';
   }
 
   function applyOlliTalkLinkPreview(card,url,preview){
@@ -3368,10 +3431,10 @@
     }else{
       imageSource=String(preview.image||'').trim();
     }
-    setOlliTalkLinkPreviewImage(card,imageSource,{local:localImage,followBottom:keepBottom});
-    if(keepBottom&&chatArea?.isConnected){
-        scheduleOlliTalkLatestMessageAnchor();
-      }
+    const imageState=setOlliTalkLinkPreviewImage(card,imageSource,{local:localImage,followBottom:keepBottom});
+    if(keepBottom&&chatArea?.isConnected&&imageState!=='pending'){
+      scheduleOlliTalkLatestMessageAnchor();
+    }
     return true;
   }
 
@@ -6057,7 +6120,11 @@
   function markOlliTalkRenderedMessageConnectedToNext(message){
     if (!message?.classList?.contains('olliTalkBetaMessage')) return;
     message.classList.add('olliTalkBetaMessageConnectedNext');
-    message.querySelector?.('.olliTalkBetaMessageTime')?.remove();
+    const time=message.querySelector?.('.olliTalkBetaMessageTime');
+    if(time){
+      time.style.visibility='hidden';
+      time.setAttribute('aria-hidden','true');
+    }
   }
 
   function appendOlliTalkInlineSystemResult(messageElement, item){
@@ -6129,9 +6196,12 @@
     if (unreadCount > 0) {
       bubbleMeta.appendChild(createMessageText('span', 'olliTalkBetaUnreadCount', String(unreadCount)));
     }
-    if (!connectedToNext) {
-      bubbleMeta.appendChild(createMessageText('div', 'olliTalkBetaMessageTime', formatOlliTalkBetaMessageTime(item?.created_at)));
+    const messageTime=createMessageText('div','olliTalkBetaMessageTime',formatOlliTalkBetaMessageTime(item?.created_at));
+    if(connectedToNext){
+      messageTime.style.visibility='hidden';
+      messageTime.setAttribute('aria-hidden','true');
     }
+    bubbleMeta.appendChild(messageTime);
     bubbleRow.appendChild(bubbleMeta);
     if (isAi || !own) {
       const incomingLayout = message.querySelector('.olliTalkBetaIncomingLayout');
@@ -6241,7 +6311,7 @@
     return rows[rows.length - 1] || null;
   }
 
-  function syncOlliTalkAssistantTypingIndicator(){
+  function syncOlliTalkAssistantTypingIndicator(options = {}){
     const chatArea = document.getElementById('olliTalkBetaChatArea');
     if (!chatArea) return;
     chatArea.querySelectorAll('[data-olli-assistant-typing]').forEach(node => node.remove());
@@ -6255,7 +6325,7 @@
     }
     const typing = createOlliTalkAssistantTypingElement();
     list.appendChild(typing);
-    scheduleOlliTalkMessageAboveComposer(typing);
+    if(options.anchor!==false) scheduleOlliTalkMessageAboveComposer(typing);
   }
 
   function replaceOlliTalkAssistantTypingWithMessage(item, currentMemberId){
@@ -6265,11 +6335,24 @@
     if(String(item?.message_type || '').trim()==='ai' && Number(item?.reply_to_message_id || 0)>0){
       removeOlliTalkReplySuggestion(String(Number(item.reply_to_message_id)));
     }
+
+    if(!typing){
+      return appendOlliTalkPersistedMessage(item,currentMemberId);
+    }
+
+    const typingBottom=typing.getBoundingClientRect().bottom;
     const next = createOlliTalkMessageElement(item, currentMemberId, { connectedToPrevious:false });
-    if (typing) typing.replaceWith(next);
-    else appendOlliTalkPersistedMessage(item, currentMemberId);
+    typing.replaceWith(next);
     chatArea.dataset.previewReady = '';
-    scheduleOlliTalkMessageAboveComposer(next);
+
+    // ...가 이미 입력창 위에 고정된 위치를 그대로 유지하고,
+    // 실제 답변이 더 커진 만큼만 위로 보정합니다. 별도의 두 번째 bottom-anchor는 호출하지 않습니다.
+    const nextBottom=next.getBoundingClientRect().bottom;
+    const growth=nextBottom-typingBottom;
+    if(growth>0.5){
+      const maxScroll=Math.max(0,chatArea.scrollHeight-chatArea.clientHeight);
+      chatArea.scrollTop=Math.max(0,Math.min(maxScroll,chatArea.scrollTop+growth));
+    }
     return true;
   }
 
@@ -6386,7 +6469,7 @@
 
     chatArea.replaceChildren(list);
     chatArea.dataset.previewReady = '';
-    if (olliTalkAssistantReplyPending) syncOlliTalkAssistantTypingIndicator();
+    if (olliTalkAssistantReplyPending) syncOlliTalkAssistantTypingIndicator({anchor:false});
     scheduleOlliTalkChatToComposer();
 
     // 첫 진입은 같은 task 안에서 최신 메시지 위치를 확정합니다.
@@ -6977,9 +7060,10 @@
       const pageMessages=Array.isArray(payload.messages)?payload.messages:[];
       const mergedPayload=basePayload?mergeOlliTalkMessagePayloads(basePayload,payload):payload;
       const changed=!basePayload||!areOlliTalkMessagePayloadsEquivalent(basePayload,mergedPayload);
+      const renderChanged=!basePayload||!areOlliTalkMessagePayloadsRenderEquivalent(basePayload,mergedPayload);
       olliTalkHistoryExhausted=pageMessages.length<100;
       writeOlliTalkMessageCache(context,mergedPayload);
-      if(options.render!==false&&changed){
+      if(options.render!==false&&renderChanged){
         const activeRenderLimit=Math.max(0,Math.floor(Math.max(Number(options.messageLimit)||0,Number(olliTalkRenderedMessageLimit)||0)));
         renderOlliTalkServerMessages(mergedPayload,{
           scrollMode:options.scrollMode||'bottom',
@@ -6987,6 +7071,7 @@
         });
       }else{
         olliTalkCurrentPayload=mergedPayload;
+        if(options.render!==false&&changed)syncOlliTalkRenderedUnreadCounts(mergedPayload);
       }
       const latestMessageId = pageMessages.length
         ? Number(pageMessages[pageMessages.length - 1]?.id || 0)
