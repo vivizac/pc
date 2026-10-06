@@ -37,7 +37,10 @@ test('payday sync refreshes the amount snapshot without creating duplicate chat 
   assert.match(migration, /on conflict \(academy_id,teacher_member_id,payroll_month\)[\s\S]*do update set[\s\S]*amount=excluded\.amount/);
   assert.match(migration, /returning id,message_id into v_notification_id,v_message_id/);
   assert.match(migration, /if v_message_id is not null then continue; end if/);
-  assert.match(migration, /'olli-teacher-payroll-daily'[\s\S]*'7 0 \* \* \*'/);
+  assert.match(migration, /'olli-teacher-payroll-hourly'[\s\S]*'7 \* \* \* \*'/);
+  assert.match(migration, /on conflict \(academy_id,event_key\) do nothing/);
+  assert.match(migration, /where m\.academy_id=v_row\.academy_id[\s\S]*m\.role='owner'/);
+  assert.match(migration, /'action','dispatch-system'[\s\S]*'target_member_id',v_owner\.id/);
 });
 
 test('settings entry and shared runtime are wired on PC and mobile', () => {
