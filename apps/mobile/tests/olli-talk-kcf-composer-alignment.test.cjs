@@ -37,12 +37,13 @@ test('QuickNote and Team Chat center their one-line composer controls vertically
   assert.match(talk, /\.olliTalkBetaComposer\{[\s\S]*?height:var\(--olli-phone-bottom-control-height, 47px\);[\s\S]*?align-items:center;/);
   assert.match(talk, /olliTalkKeyboardOpen \.olliTalkBetaComposer\{[\s\S]*?height:auto;[\s\S]*?align-items:flex-end;/);
 });
-test('Olli Talk right-side voice/send button coordinates match 1-minute feedback', () => {
-  assert.match(talk, /\.olliTalkBetaComposer\{[\s\S]*?height:var\(--olli-phone-bottom-control-height, 47px\);[\s\S]*?gap:0;[\s\S]*?padding:6px 11px 6px;/);
-  assert.match(talk, /\.olliTalkBetaVoiceBtn\{[\s\S]*?margin-right:12px;/);
-  assert.match(talk, /\.olliTalkBetaVoiceBtn,\s*#olliTalkBetaScreen \.olliTalkBetaSendBtn\{[\s\S]*?width:33px;[\s\S]*?height:33px;/);
-  assert.match(kcf, /\.kcfVoiceBtn \{[\s\S]*?width:33px;[\s\S]*?height:33px;[\s\S]*?margin-right:12px;/);
-  assert.match(kcf, /\.kcfComposer \{[\s\S]*?height:var\(--olli-phone-bottom-control-height, 47px\);[\s\S]*?padding:4px 11px 3px;/);
+test('Olli Talk microphone matches the QuickNote microphone size and icon treatment', () => {
+  assert.match(talk, /\.olliTalkBetaVoiceBtn\{[\s\S]*?width:33px;[\s\S]*?height:33px;/);
+  assert.match(talk, /\.olliTalkBetaVoiceBtn svg\{[\s\S]*?width:26px;[\s\S]*?height:26px;[\s\S]*?stroke-width:1\.9/);
+  assert.match(talk, /\.olliTalkBetaVoiceBtn\.active\{[\s\S]*?background:#0A84FF;[\s\S]*?color:#fff/);
+  assert.match(kcf, /\.kcfVoiceBtn \{[\s\S]*?width:33px;[\s\S]*?height:33px;/);
+  assert.match(kcf, /\.kcfVoiceBtn svg \{[\s\S]*?width:26px;[\s\S]*?height:26px;[\s\S]*?stroke-width:1\.9/);
+  assert.match(kcf, /\.kcfVoiceBtn\.active \{[\s\S]*?background:#0A84FF;[\s\S]*?color:#fff/);
 });
 
 test('Olli Talk input left inset follows 1-minute feedback input inset', () => {
