@@ -23,12 +23,12 @@ test('iPhone push permission is requested only from the installed home-screen ap
   assert.match(push, /홈 화면에 추가/);
 });
 
-test('service worker shows a system notification only when no visible Olli window exists', () => {
+test('service worker keeps Web Push visible and forwards notification clicks', () => {
   assert.match(sw, /addEventListener\('push'/);
-  assert.match(sw, /hasVisibleWindow/);
   assert.match(sw, /showNotification/);
   assert.match(sw, /notificationclick/);
   assert.match(sw, /OLLI_TALK_OPEN_FROM_NOTIFICATION/);
+  assert.doesNotMatch(sw, /hasVisibleWindow/);
 });
 
 test('push dispatch follows recipient registration for both targeted and broadcast chat', () => {
@@ -44,7 +44,7 @@ test('push dispatch follows recipient registration for both targeted and broadca
 test('Olli Talk Web Push explicitly requests audible notifications', () => {
   const serviceWorker = fs.readFileSync(path.join(root, 'olli-push-sw.js'), 'utf8');
   assert.match(serviceWorker, /showNotification\([\s\S]*?silent:\s*false/);
-  assert.match(push, /olli-push-sw\.js\?v=20260924-app-badge-1/);
+  assert.match(push, /olli-push-sw\.js\?v=20261006-live-badge-refresh-1/);
 });
 
 
@@ -59,12 +59,28 @@ test('composer @ button focuses input, opens teacher picker and inserts only @te
 });
 
 
-test('push payload carries per-recipient unread badge count and service worker applies app icon badge', () => {
+test('push payload carries per-recipient unread count and service worker synchronizes the app badge', () => {
   const edge=fs.readFileSync(path.join(root,'supabase','functions','olli-team-chat-push','index.ts'),'utf8');
   assert.match(edge, /target\?\.unread_count/);
   assert.match(edge, /badgeCount/);
   assert.match(sw, /self\.navigator\?\.setAppBadge/);
+  assert.match(sw, /self\.navigator\?\.clearAppBadge/);
   assert.match(sw, /data\.badgeCount/);
+});
+
+test('push arrival tells open Olli clients to refresh Work badges without entering Work', () => {
+  assert.match(sw, /OLLI_WORK_BADGE_PUSH/);
+  assert.match(sw, /clients\.matchAll\(\{ type: 'window', includeUncontrolled: true \}\)/);
+  assert.match(push, /event\?\.data\?\.type === 'OLLI_WORK_BADGE_PUSH'/);
+  assert.match(push, /window\.refreshOlliTalkMentionBadge/);
+  assert.match(push, /scheduleWorkBadgeRefresh\(40\)/);
+});
+
+test('app focus and visibility resume refresh Work and Work Hub badges from server truth', () => {
+  assert.match(push, /function handleOlliPushResume\(\)/);
+  assert.match(push, /window\.addEventListener\('focus', handleOlliPushResume\)/);
+  assert.match(push, /if \(!document\.hidden\) handleOlliPushResume\(\)/);
+  assert.match(push, /scheduleWorkBadgeRefresh\(0\)/);
 });
 
 
@@ -94,6 +110,7 @@ test('Work Hub material read keeps using the dedicated material read RPC', () =>
   assert.match(materialRead, /await refreshOlliTalkMentionBadge\(\)/);
 });
 
-test('split Work and Work Hub badge bundle is cache-busted', () => {
-  assert.match(html, /olli-talk-beta\.js\?v=20261002-workhub-material-badge-1/);
+test('live Work badge refresh bundle is cache-busted', () => {
+  assert.match(html, /olli-talk-push\.js\?v=20261006-live-badge-refresh-1/);
+  assert.match(push, /olli-push-sw\.js\?v=20261006-live-badge-refresh-1/);
 });
