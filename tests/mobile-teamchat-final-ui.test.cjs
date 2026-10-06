@@ -141,24 +141,32 @@ test('makeup cancellation preflights student and schedule before showing reason 
 });
 
 
-test('keyboard viewport settle preserves the visible anchor instead of snapping to the bottom',()=>{
+test('two-row composer and keyboard viewport never own Team Chat scrollTop',()=>{
   const start=js.indexOf('function finishOlliTalkViewportTransition(){');
   const end=js.indexOf('\n  function scheduleOlliTalkViewportSettle()',start);
   assert.ok(start>=0 && end>start);
   const body=js.slice(start,end);
-  assert.match(body,/startScrollTop \+ delta/);
-  assert.doesNotMatch(body,/scrollTop\s*=\s*chatArea\.scrollHeight/);
-  assert.doesNotMatch(js,/olliTalkFollowBottomAfterViewportSettle/);
+  assert.doesNotMatch(body,/scrollTop\s*=/);
+  assert.doesNotMatch(js,/startScrollTop \+ delta/);
+  assert.doesNotMatch(js,/olliTalkViewportTransitionComposerTop/);
+  assert.match(js,/const measuredReserve = Math\.max\([\s\S]*const keyboardOffset = keyboardTracking \? getOlliTalkKeyboardOffset\(\) : 0;[\s\S]*measuredReserve - keyboardOffset/);
 });
 
+test('chat drag blocks iOS VisualViewport corrections until the gesture settles',()=>{
+  assert.match(js,/let olliTalkChatGestureActive = false/);
+  assert.match(js,/if \(olliTalkChatGestureActive\) \{[\s\S]*olliTalkLastViewportSignature = signature;[\s\S]*return;/);
+  assert.match(js,/chatArea\.addEventListener\('touchstart', beginOlliTalkChatGesture/);
+  assert.match(js,/window\.addEventListener\('touchend', endOlliTalkChatGesture/);
+  assert.match(js,/syncOlliTalkComposerViewport\(\{ force:true \}\)/);
+});
 
-test('Work navigation reset does not reference removed viewport follow state',()=>{
+test('Work navigation reset clears only transient chat gesture state',()=>{
   const start=js.indexOf('function resetOlliTalkAfterPageTransition(){');
   const end=js.indexOf('\n  }',start);
   assert.ok(start>=0 && end>start);
   const body=js.slice(start,end);
-  assert.doesNotMatch(body,/olliTalkFollowBottomAfterViewportSettle/);
-  assert.doesNotMatch(js,/\bolliTalkFollowBottomAfterViewportSettle\b/);
+  assert.match(body,/olliTalkChatGestureActive = false/);
+  assert.doesNotMatch(js,/olliTalkViewportTransitionComposerTop/);
   assert.match(js,/window\.openOlliTalkBetaPage = openOlliTalkBetaPage/);
 });
 
