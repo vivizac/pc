@@ -153,6 +153,7 @@ test('Team Chat keyboard layout has one direct viewport path without delayed set
   assert.doesNotMatch(js,/setTimeout\(syncViewport/);
   assert.match(js,/window\.visualViewport\.addEventListener\('resize', \(\) => syncViewport\(\)/);
   assert.match(js,/window\.visualViewport\.addEventListener\('scroll', \(\) => syncViewport\(\)/);
+  assert.match(js,/input\.addEventListener\('pointerdown', event => \{[\s\S]*document\.activeElement === input[\s\S]*event\.preventDefault\(\)[\s\S]*input\.focus\(\{ preventScroll:true \}\)/);
   assert.match(js,/input\.addEventListener\('focus',[\s\S]*syncViewport\(\{anchorLatest:true\}\)/);
   assert.match(js,/input\.addEventListener\('blur',[\s\S]*syncViewport\(\{anchorLatest:true\}\)/);
 });
@@ -180,7 +181,7 @@ test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into 
   assert.doesNotMatch(css,/\.olliTalkBetaVoiceBtn\.active\{[\s\S]*?background:#0A84FF;/);
   assert.match(js,/showPanel:true,[\s\S]*panelHost:composer/);
   assert.match(html,/olli-talk-beta\.css\?v=20261006-stable-anchor-1/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261006-stable-anchor-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261006-input-prevent-scroll-1/);
 });
 
 
