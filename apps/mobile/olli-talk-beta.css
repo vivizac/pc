@@ -1029,8 +1029,8 @@
   padding:6px 8px;
 }
 #olliTalkBetaScreen .olliTalkBetaTypingDot{
-  width:2px;
-  height:2px;
+  width:3px;
+  height:3px;
   display:block;
   border-radius:50%;
   background:#8f949b;

@@ -74,7 +74,7 @@ test('completed or cancelled repetitive-work result stays attached below the act
 });
 
 test('mobile Team Chat assets share mention-restore cache bust revision',()=>{
-  assert.match(html,/olli-talk-beta\\.css\\?v=20261006-layout-stability-1/);
+  assert.match(html,/olli-talk-beta\\.css\\?v=20261006-typing-dot-3px-1/);
   assert.match(html,/olli-talk-beta\\.js\\?v=20261006-reserve-reset-1/);
 });
 
@@ -89,7 +89,7 @@ test('first Olli response shows smaller three-dot typing indicator for at least 
   assert.match(js,/isOlliWorkflowFollowup[\s\S]*1000-\(Date\.now\(\)-olliTalkFirstReplyStartedAt\)/);
   assert.match(pcJs,/create\('span', 'olliPcTeamTalkTypingDot'\)/);
   assert.match(pcJs,/isOlliWorkflowFollowup[\s\S]*1000-\(Date\.now\(\)-firstReplyStartedAt\)/);
-  assert.match(css,/\.olliTalkBetaTypingDot\{[\s\S]*width:2px;[\s\S]*height:2px;/);
+  assert.match(css,/\.olliTalkBetaTypingDot\{[\s\S]*width:3px;[\s\S]*height:3px;/);
   assert.match(pcCss,/\.olliPcTeamTalkTypingDot\{[^}]*width:2px;[^}]*height:2px;/);
 });
 
@@ -253,13 +253,13 @@ test('Team Chat groups adjacent messages only when sender and displayed minute a
   assert.match(js,/const connectedToNext = isOlliTalkConnectedMessage\(item, nextItem, currentMemberId\)/);
   assert.match(js,/if \(!connectedToNext\) \{[\s\S]*olliTalkBetaMessageTime/);
   assert.match(css,/\.olliTalkBetaMessageConnected \.olliTalkBetaSender\{[\s\S]*display:none;/);
-  assert.match(html,/olli-talk-beta\\.css\\?v=20261006-layout-stability-1/);
+  assert.match(html,/olli-talk-beta\\.css\\?v=20261006-typing-dot-3px-1/);
   assert.match(html,/olli-talk-beta\\.js\\?v=20261006-reserve-reset-1/);
 });
 
 test('Team Chat voice capture anchors directly to the screen bottom instead of following the shrinking visual viewport',()=>{
   assert.match(css,/#olliTalkBetaScreen\.kcfVoiceCaptureMode \.olliTalkBetaComposerLayer\{[\s\S]*position:absolute;[\s\S]*inset:0;[\s\S]*width:auto;[\s\S]*height:auto;/);
-  assert.match(html,/olli-talk-beta\\.css\\?v=20261006-layout-stability-1/);
+  assert.match(html,/olli-talk-beta\\.css\\?v=20261006-typing-dot-3px-1/);
 });
 
 test('Team Chat send starts on pointerdown before the active composer can blur and collapse',()=>{
@@ -284,7 +284,7 @@ test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into 
   assert.match(css,/\.olliTalkBetaVoiceBtn\{[\s\S]*?width:33px;[\s\S]*?height:33px;/);
   assert.doesNotMatch(css,/\.olliTalkBetaVoiceBtn\.active\{[\s\S]*?background:#0A84FF;/);
   assert.match(js,/showPanel:true,[\s\S]*panelHost:composer/);
-  assert.match(html,/olli-talk-beta\\.css\\?v=20261006-layout-stability-1/);
+  assert.match(html,/olli-talk-beta\\.css\\?v=20261006-typing-dot-3px-1/);
   assert.match(html,/olli-talk-beta\\.js\\?v=20261006-reserve-reset-1/);
 });
 
