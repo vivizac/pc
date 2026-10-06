@@ -370,9 +370,7 @@ function queueGeneralSave(){
       p_session_token: sessionToken(),
       p_academy_id: id,
       p_background: legacySettingsBackground(state.background),
-      p_bot_notifications_enabled: !!state.botNotificationsEnabled,
-      // Legacy RPC compatibility only. AI/rule routing is no longer a user setting.
-      p_ai_enabled: true
+      p_bot_notifications_enabled: !!state.botNotificationsEnabled
     });
     if (!result?.ok) throw new Error(clean(result?.message) || '팀톡 설정을 저장하지 못했습니다.');
     state.botNotificationsEnabled = !!result.bot_notifications_enabled;
