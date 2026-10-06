@@ -1128,9 +1128,17 @@
   color:#201818;
 }
 
-#olliTalkBetaScreen .olliTalkBetaInlineSystemResult{
-  align-self:flex-start;
-  margin-top:6px;
+#olliTalkBetaScreen .olliTalkBetaIncomingLayout .olliTalkBetaInlineSystemResult{
+  grid-column:2;
+  grid-row:4;
+  justify-self:start;
+  align-self:start;
+  width:max-content;
+  max-width:min(78vw, 560px);
+  margin-top:1px;
+  white-space:pre-wrap;
+  word-break:keep-all;
+  overflow-wrap:anywhere;
 }
 
 #olliTalkBetaScreen .olliTalkBetaInlineSystemResult::before,
