@@ -685,16 +685,35 @@
     return true;
   }
 
+  function submitOlliTalkNoReason(){
+    const input=getOlliTalkBetaInput();
+    if(!input || !olliTalkPendingActionReason || olliTalkSendInFlight) return false;
+    input.value='사유 없음';
+    resizeInput();
+    updateOlliTalkBetaComposerState();
+    sendOlliTalkBetaMessage().catch(error=>console.warn('올리톡 사유 없음 처리 실패:',error));
+    return true;
+  }
+
   function createOlliTalkPendingTextInputButton(){
     const wrap=document.createElement('div');
     wrap.className='olliTalkBetaPendingInput';
-    const button=document.createElement('button');
-    button.type='button';
-    button.className='olliTalkBetaPendingInputButton';
-    button.textContent='입력하기';
-    button.setAttribute('aria-label','요청한 내용을 입력하기');
-    button.addEventListener('click',focusOlliTalkPendingTextInput);
-    wrap.appendChild(button);
+
+    const noReason=document.createElement('button');
+    noReason.type='button';
+    noReason.className='olliTalkBetaPendingInputButton';
+    noReason.textContent='사유 없음';
+    noReason.setAttribute('aria-label','사유 없이 진행');
+    noReason.addEventListener('click',submitOlliTalkNoReason);
+
+    const inputButton=document.createElement('button');
+    inputButton.type='button';
+    inputButton.className='olliTalkBetaPendingInputButton';
+    inputButton.textContent='사유 입력';
+    inputButton.setAttribute('aria-label','사유를 직접 입력');
+    inputButton.addEventListener('click',focusOlliTalkPendingTextInput);
+
+    wrap.append(noReason,inputButton);
     return wrap;
   }
 
@@ -2090,6 +2109,33 @@
     const router=window.OlliCommandRouter;
     const schedule=window.OlliCommandSchedule;
     const rawCommandText=String(commandText || '').trim();
+
+    const pendingStructuredMakeupCancel=olliTalkPendingActionReason?.__structuredMakeupCancel || null;
+    if(
+      String(olliTalkPendingActionReason?.intent || '').trim()==='cancel_makeup'
+      && pendingStructuredMakeupCancel
+    ){
+      if(isOlliTalkPendingReasonCancel(rawCommandText)){
+        olliTalkPendingActionReason=null;
+        const message='작업 준비를 취소했어요.';
+        return {
+          assistantMessage:await saveOlliTalkOlliReply(context,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+      olliTalkPendingActionReason=null;
+      return resolveOlliTalkStructuredMakeupCancelTurn({
+        structuredCommand:pendingStructuredMakeupCancel.structuredCommand,
+        sourceText:String(pendingStructuredMakeupCancel.sourceMessageText || '').trim(),
+        sourceMessageId:Number(pendingStructuredMakeupCancel.sourceMessageId || 0),
+        reasonText:rawCommandText,
+        reasonMessageText:rawCommandText,
+        reasonMessageId:Number(replyToMessageId || 0),
+        context,
+      });
+    }
+
     let localRuleClassification=null;
     let localRuleIntent='';
     if(router && typeof router.classifyRequest==='function'){
@@ -2329,11 +2375,7 @@
           }
         };
         const reasonMessage=(String(merged.studentName || '').trim() || '학생')+' 학생의 보강 취소 사유를 알려주세요.';
-        return {
-          assistantMessage:await saveOlliTalkOlliReply(context,reasonMessage,replyToMessageId),
-          replyText:reasonMessage,
-          recordAi:false
-        };
+        return saveOlliTalkPendingTextInputReply(context,reasonMessage,replyToMessageId);
       }
 
       const sourceMessageId=pending
