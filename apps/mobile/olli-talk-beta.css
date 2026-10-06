@@ -1274,7 +1274,7 @@
 }
 #olliTalkBetaScreen .olliTalkBetaActionButton.timeChoice .timeChoiceStatus{
   position:absolute;
-  right:10px;
+  left:calc(50% + 18px);
   top:50%;
   transform:translateY(-50%);
   white-space:nowrap;
