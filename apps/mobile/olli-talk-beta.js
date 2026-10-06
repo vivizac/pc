@@ -7891,14 +7891,7 @@
       });
     }
 
-    const beginOlliTalkChatGesture = () => {
-      if (olliTalkChatGestureSettleTimer) {
-        clearTimeout(olliTalkChatGestureSettleTimer);
-        olliTalkChatGestureSettleTimer = null;
-      }
-      olliTalkChatGestureActive = true;
-    };
-    const endOlliTalkChatGesture = () => {
+    const settleOlliTalkChatGesture = (delay = 180) => {
       if (!olliTalkChatGestureActive && !olliTalkChatGestureSettleTimer) return;
       if (olliTalkChatGestureSettleTimer) clearTimeout(olliTalkChatGestureSettleTimer);
       olliTalkChatGestureSettleTimer = setTimeout(() => {
@@ -7907,8 +7900,16 @@
         syncOlliTalkComposerViewport({ force:true });
         syncViewport();
         scheduleOlliTalkChatToComposer();
-      }, 120);
+      }, Math.max(0, Number(delay) || 0));
     };
+    const beginOlliTalkChatGesture = () => {
+      if (olliTalkChatGestureSettleTimer) {
+        clearTimeout(olliTalkChatGestureSettleTimer);
+        olliTalkChatGestureSettleTimer = null;
+      }
+      olliTalkChatGestureActive = true;
+    };
+    const endOlliTalkChatGesture = () => settleOlliTalkChatGesture(180);
 
     const chatArea = document.getElementById('olliTalkBetaChatArea');
     if (chatArea) {
@@ -7919,6 +7920,7 @@
       window.addEventListener('touchend', endOlliTalkChatGesture, { passive:true });
       window.addEventListener('touchcancel', endOlliTalkChatGesture, { passive:true });
       chatArea.addEventListener('scroll',()=>{
+        if(olliTalkChatGestureActive)settleOlliTalkChatGesture(180);
         if(chatArea.scrollTop>96||olliTalkHistoryLoading||olliTalkHistoryExhausted)return;
         if(olliTalkHistoryScrollRaf)return;
         olliTalkHistoryScrollRaf=requestAnimationFrame(()=>{
