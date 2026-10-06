@@ -1540,7 +1540,7 @@
 #olliTalkBetaScreen .olliTalkBetaAiIncomingLayout .olliTalkBetaAiAvatar{
   background:#fff;
   border:0;
-  color:#111;
+  color:var(--olli-talk-olli-accent);
   font-family:'Montserrat','Pretendard',sans-serif;
   font-size:10px;
   font-weight:600;
