@@ -7,23 +7,24 @@ const api = fs.readFileSync('api/chat.js', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
 const css = fs.readFileSync('olli-talk-beta.css', 'utf8');
 
-test('phone keeps direct @올리 routing and restores picker-selected Olli AI routing', () => {
+
+test('phone routes Olli activation through direct or picker @올리 without an AI mode setting', () => {
   assert.doesNotMatch(html, /id="olliTalkOlliTriggerBtn"/);
   assert.doesNotMatch(talk, /toggleOlliTalkOlliMode/);
   assert.match(talk, /const directOlliRequested = \/\^\\s\*@올리/);
   assert.match(talk, /const olliRequested = olliAiMentionRequested \|\| directOlliRequested/);
-  assert.match(talk, /const usingAi = olliAiMentionRequested \|\| isOlliTalkAiEnabled\(\)/);
+  assert.doesNotMatch(talk, /isOlliTalkAiEnabled/);
   assert.match(talk, /resolveOlliTalkAiTurn/);
-  assert.match(talk, /resolveOlliTalkBotTurn/);
 });
 
-test('phone mention picker exposes Olli as a virtual AI target, never as a teacher recipient', () => {
+
+test('phone mention picker exposes Olli as a virtual assistant target, never as a teacher recipient', () => {
   assert.match(talk, /const OLLI_TALK_AI_MENTION_ID = '__olli_ai__'/);
   assert.match(talk, /display_name:'올리'[\s\S]{0,100}is_olli_ai:true/);
   assert.match(talk, /const candidates = \[OLLI_TALK_AI_MENTION, \.\.\.olliTalkMembers\]/);
   assert.match(talk, /mentionLabel = member\?\.is_olli_ai === true \? '@올리 · AI'/);
   assert.match(talk, /if \(member\?\.is_olli_ai === true\) return/);
-  assert.match(talk, /olliAiMentionRequested && !isOlliTalkAiEnabled\(\)/);
+  assert.doesNotMatch(talk, /설정에서 올리 AI를 켜/);
 });
 
 test('selected mention is a blue prefix token before the textarea', () => {
@@ -35,19 +36,22 @@ test('selected mention is a blue prefix token before the textarea', () => {
   assert.match(css, /\.olliTalkSelectedMentionPrefix\{[\s\S]*?margin-right:\.38em[\s\S]*?color:#1687F8/);
 });
 
-test('Olli AI mention keeps bounded conversation context only while that mention stays active', () => {
+
+test('Olli mention keeps bounded conversation context only while that mention stays active', () => {
   assert.match(talk, /let olliTalkAiConversationMessages = \[\]/);
   assert.match(talk, /function buildOlliTalkAiConversationMessages\(commandText, context\)/);
   assert.match(talk, /messages:buildOlliTalkAiConversationMessages\(commandText, context\)/);
   assert.match(talk, /if \(olliTalkAiConversationMessages\.length > 12\)/);
   assert.match(talk, /recordOlliTalkAiConversationTurn\(commandText, turn\.replyText\)/);
-  assert.match(talk, /function handleOlliTalkAiModeChanged\(\)[\s\S]*?resetOlliTalkAiConversation\(\)/);
+  assert.doesNotMatch(talk, /handleOlliTalkAiModeChanged|olli-team-talk-ai-mode-changed/);
 });
 
-test('AI server still gates talk requests by the Team Chat AI setting', () => {
+
+test('AI server accepts talk requests without a Team Chat AI setting gate', () => {
   assert.match(api, /'talk',\s*\]\);/);
-  assert.match(api, /if \(promptType === 'talk'\) \{\s*await assertTeamTalkAiEnabled\(body\);/);
-  assert.match(api, /data\?\.ai_enabled !== true/);
+  assert.doesNotMatch(api, /assertTeamTalkAiEnabled/);
+  assert.doesNotMatch(api, /ai_enabled !== true/);
+  assert.doesNotMatch(api, /TEAM_TALK_SETTINGS_RPC_URL/);
 });
 
 test('normal phone messages still register notification recipients and create tasks', () => {
@@ -75,7 +79,8 @@ test('waitlist cancellation Agent bridge remains intact while restoring mentions
   assert.match(talk, /action_type \|\| ''\)\.trim\(\)!=='cancel_waitlist'/);
 });
 
-test('restored Team Chat assets are cache-busted', () => {
-  assert.match(html, /olli-talk-beta\.js\?v=20261002-makeup-draft-route-1/);
-  assert.match(html, /olli-talk-beta\.css\?v=20261002-makeup-draft-route-1/);
+
+test('mention-only Team Chat assets are cache-busted', () => {
+  assert.match(html, /olli-talk-beta\.js\?v=20261006-mention-only-1/);
+  assert.match(html, /olli-talk-beta\.css\?v=20261006-action-spacing-1/);
 });
