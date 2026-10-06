@@ -47,11 +47,13 @@ test('Olli mention keeps bounded conversation context only while that mention st
 });
 
 
-test('AI server accepts talk requests without a Team Chat AI setting gate', () => {
+test('AI server keeps Team Talk access control without an AI mode setting gate', () => {
   assert.match(api, /'talk',\s*\]\);/);
+  assert.match(api, /async function assertTeamTalkAccess\(body = \{\}\)/);
+  assert.match(api, /if \(promptType === 'talk'\) \{\s*await assertTeamTalkAccess\(body\);/);
   assert.doesNotMatch(api, /assertTeamTalkAiEnabled/);
   assert.doesNotMatch(api, /ai_enabled !== true/);
-  assert.doesNotMatch(api, /TEAM_TALK_SETTINGS_RPC_URL/);
+  assert.doesNotMatch(api, /현재 학원 설정에서 올리 AI가 꺼져/);
 });
 
 test('normal phone messages still register notification recipients and create tasks', () => {
