@@ -7220,6 +7220,11 @@
         alert('메시지는 전송됐지만 ' + followupErrors.join(', ') + '에 실패했습니다.');
       }
 
+      try {
+        input.focus({ preventScroll:true });
+      } catch(e) {
+        input.focus();
+      }
     } catch(error) {
       olliTalkAssistantReplyPending = false;
       syncOlliTalkAssistantTypingIndicator();
@@ -7802,31 +7807,20 @@
     }
 
     if (sendButton) {
-      const startSendFromControl = event => {
-        if (event) event.stopPropagation();
-        sendOlliTalkBetaMessage().catch(error => console.warn('올리톡 메시지 전송 시작 실패:', error));
-      };
-
-      sendButton.addEventListener('touchstart', event => {
-        if (event.touches && event.touches.length !== 1) return;
-        startSendFromControl(event);
-      }, { passive:true });
-
       sendButton.addEventListener('pointerdown', event => {
-        if (event.pointerType === 'touch') return;
         if (event.isPrimary === false) return;
         if (event.pointerType === 'mouse' && event.button !== 0) return;
-        startSendFromControl(event);
+        sendOlliTalkBetaMessage(event).catch(error => console.warn('올리톡 메시지 전송 시작 실패:', error));
       });
-
       sendButton.addEventListener('click', event => {
-        // Touch/pointer input already started the send before focus can leave the textarea.
+        // Pointer input is handled on pointerdown so the active two-row composer
+        // cannot collapse and hide the send button before the click is delivered.
         if (event.detail !== 0) {
           event.preventDefault();
           event.stopPropagation();
           return;
         }
-        startSendFromControl(event);
+        sendOlliTalkBetaMessage(event).catch(error => console.warn('올리톡 메시지 전송 시작 실패:', error));
       });
     }
 

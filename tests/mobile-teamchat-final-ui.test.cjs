@@ -75,7 +75,7 @@ test('completed or cancelled repetitive-work result stays attached below the act
 
 test('mobile Team Chat assets share mention-restore cache bust revision',()=>{
   assert.match(html,/olli-talk-beta\\.css\\?v=20261006-minute-grouping-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-minute-grouping-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-chat-input-fixes-2/);
 });
 
 
@@ -181,13 +181,11 @@ test('Team Chat mention placeholder shortens to the actual remaining width with 
   assert.match(css,/\.olliTalkMentionAwaitingMessage \.olliTalkBetaInput\{[\s\S]*white-space:nowrap;[\s\S]*overflow-x:hidden;/);
 });
 
-test('Team Chat touch send starts immediately and then allows the textarea to blur naturally',()=>{
-  assert.match(js,/sendButton\.addEventListener\('touchstart', event => \{[\s\S]*startSendFromControl\(event\)[\s\S]*passive:true/);
-  assert.match(js,/const startSendFromControl = event => \{[\s\S]*sendOlliTalkBetaMessage\(\)/);
-  assert.doesNotMatch(js,/const startSendFromControl = event => \{[\s\S]{0,500}input\.focus/);
-  assert.doesNotMatch(js,/await loadOlliTalkBetaMessages\([\s\S]{0,500}input\.focus/);
-  assert.match(js,/sendButton\.addEventListener\('pointerdown', event => \{[\s\S]*event\.pointerType === 'touch'\) return/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261006-send-sequence-2/);
+test('Team Chat send keeps the established pointerdown flow without extra touch timing overrides',()=>{
+  assert.doesNotMatch(js,/sendButton\.addEventListener\('touchstart'/);
+  assert.match(js,/sendButton\.addEventListener\('pointerdown', event => \{[\s\S]*sendOlliTalkBetaMessage\(event\)/);
+  assert.match(js,/await loadOlliTalkBetaMessages\([\s\S]{0,700}input\.focus\(\{ preventScroll:true \}\)/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261006-chat-input-fixes-2/);
 });
 
 test('Team Chat groups adjacent messages only when sender and displayed minute are identical',()=>{
@@ -200,7 +198,7 @@ test('Team Chat groups adjacent messages only when sender and displayed minute a
   assert.match(js,/if \(!connectedToNext\) \{[\s\S]*olliTalkBetaMessageTime/);
   assert.match(css,/\.olliTalkBetaMessageConnected \.olliTalkBetaSender\{[\s\S]*display:none;/);
   assert.match(html,/olli-talk-beta\\.css\\?v=20261006-chat-input-fixes-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-chat-input-fixes-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-chat-input-fixes-2/);
 });
 
 test('Team Chat voice capture anchors directly to the screen bottom instead of following the shrinking visual viewport',()=>{
@@ -212,7 +210,7 @@ test('Team Chat send starts on pointerdown before the active composer can blur a
   assert.match(js,/sendButton\.addEventListener\('pointerdown', event => \{[\s\S]*sendOlliTalkBetaMessage\(event\)/);
   assert.match(js,/sendButton\.addEventListener\('click', event => \{[\s\S]*if \(event\.detail !== 0\)/);
   assert.match(js,/async function sendOlliTalkBetaMessage\(event\)\{[\s\S]*event\.preventDefault\(\);[\s\S]*event\.stopPropagation\(\);/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-minute-grouping-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-chat-input-fixes-2/);
 });
 
 test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into a real mention',()=>{
@@ -231,7 +229,7 @@ test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into 
   assert.doesNotMatch(css,/\.olliTalkBetaVoiceBtn\.active\{[\s\S]*?background:#0A84FF;/);
   assert.match(js,/showPanel:true,[\s\S]*panelHost:composer/);
   assert.match(html,/olli-talk-beta\\.css\\?v=20261006-minute-grouping-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-minute-grouping-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-chat-input-fixes-2/);
 });
 
 
