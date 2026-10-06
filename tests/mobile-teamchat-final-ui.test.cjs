@@ -176,12 +176,12 @@ test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into 
   assert.match(js,/올리\\s\*야/);
   assert.match(js,/오리\\s\*야/);
   assert.match(js,/if\(!parsed\.mentionOlli\) return parsed\.text/);
-  assert.doesNotMatch(js,/toggleOlliTalkVoiceInput[\s\S]{0,1600}sendOlliTalkBetaMessage\(/);
+  assert.doesNotMatch(js,/toggleOlliTalkVoiceInput[\s\S]{0,1600}sendOlliTalkBetaMessage\(/);\n  assert.match(js,/voiceButton\.addEventListener\('pointerdown',event=>\{[\s\S]*toggleOlliTalkVoiceInput\(event\)/);\n  assert.match(js,/voiceButton\.addEventListener\('click',event=>\{[\s\S]*if\(event\.detail!==0\)/);
   assert.match(css,/\.olliTalkBetaVoiceBtn\{[\s\S]*?width:33px;[\s\S]*?height:33px;/);
   assert.doesNotMatch(css,/\.olliTalkBetaVoiceBtn\.active\{[\s\S]*?background:#0A84FF;/);
   assert.match(js,/showPanel:true,[\s\S]*panelHost:composer/);
   assert.match(html,/olli-talk-beta\.css\?v=20261006-stable-anchor-1/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261006-input-prevent-scroll-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261006-voice-pointerdown-1/);
 });
 
 
