@@ -75,7 +75,7 @@ test('completed or cancelled repetitive-work result stays attached below the act
 
 test('mobile Team Chat assets share mention-restore cache bust revision',()=>{
   assert.match(html,/olli-talk-beta\\.css\\?v=20261006-minute-grouping-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-chat-input-fixes-2/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-single-scroll-owner-1/);
 });
 
 
@@ -99,15 +99,23 @@ test('cancelled system request uses a normal white bubble with dark text on mobi
 });
 
 
-test('mobile Team Chat keeps the newest bubble anchored above the fixed one-row or two-row composer height',()=>{
+test('mobile Team Chat resolves initial and new-message bottom anchors before the next paint',()=>{
   assert.match(js,/const OLLI_TALK_COMPOSER_IDLE_HEIGHT = 47/);
   assert.match(js,/const OLLI_TALK_COMPOSER_ACTIVE_HEIGHT = 79/);
   assert.match(js,/function getOlliTalkComposerLayoutGeometry\(\)/);
   assert.match(js,/composerTop = viewportRect\.bottom - bottomGap - composerHeight/);
   assert.match(js,/function scrollOlliTalkMessageAboveComposer\(message\)/);
   assert.match(js,/geometry\.composerTop - OLLI_TALK_COMPOSER_MESSAGE_GAP/);
+  const anchorStart=js.indexOf('function scheduleOlliTalkMessageAboveComposer(message){');
+  const anchorEnd=js.indexOf('\n  function scheduleOlliTalkLatestMessageAnchor()',anchorStart);
+  assert.ok(anchorStart>=0 && anchorEnd>anchorStart);
+  const anchorBody=js.slice(anchorStart,anchorEnd);
+  assert.match(anchorBody,/syncOlliTalkChatToComposer\(\)/);
+  assert.match(anchorBody,/scrollOlliTalkMessageAboveComposer\(message\)/);
+  assert.doesNotMatch(anchorBody,/requestAnimationFrame/);
+  assert.match(js,/if\(openCachedPayload\)\{[\s\S]*scheduleOlliTalkLatestMessageAnchor\(\)/);
+  assert.match(js,/if\(scrollMode==='initial-latest'\)\{[\s\S]*scheduleOlliTalkLatestMessageAnchor\(\)/);
   assert.match(js,/scheduleOlliTalkMessageAboveComposer\(next\)/);
-  assert.match(js,/scheduleOlliTalkLatestMessageAnchor\(\)/);
 });
 
 
@@ -144,7 +152,7 @@ test('makeup cancellation preflights student and schedule before showing reason 
 });
 
 
-test('Team Chat keyboard layout has one direct viewport path without delayed settle or drag correction',()=>{
+test('Team Chat viewport and keyboard changes never own chat scroll position',()=>{
   assert.doesNotMatch(js,/olliTalkViewportSettleTimer/);
   assert.doesNotMatch(js,/olliTalkKeyboardBaselineBottom/);
   assert.doesNotMatch(js,/olliTalkChatGestureActive/);
@@ -154,8 +162,15 @@ test('Team Chat keyboard layout has one direct viewport path without delayed set
   assert.match(js,/window\.visualViewport\.addEventListener\('resize', \(\) => syncViewport\(\)/);
   assert.match(js,/window\.visualViewport\.addEventListener\('scroll', \(\) => syncViewport\(\)/);
   assert.match(js,/input\.addEventListener\('pointerdown', event => \{[\s\S]*document\.activeElement === input[\s\S]*event\.preventDefault\(\)[\s\S]*input\.focus\(\{ preventScroll:true \}\)/);
-  assert.match(js,/input\.addEventListener\('focus',[\s\S]*syncViewport\(\{anchorLatest:true\}\)/);
-  assert.match(js,/input\.addEventListener\('blur',[\s\S]*syncViewport\(\{anchorLatest:true\}\)/);
+  assert.match(js,/input\.addEventListener\('focus',[\s\S]*syncViewport\(\)/);
+  assert.match(js,/input\.addEventListener\('blur',[\s\S]*syncViewport\(\)/);
+  const viewportStart=js.indexOf('function syncViewport(){');
+  const viewportEnd=js.indexOf('\n  function bindViewport()',viewportStart);
+  assert.ok(viewportStart>=0 && viewportEnd>viewportStart);
+  const viewportBody=js.slice(viewportStart,viewportEnd);
+  assert.doesNotMatch(viewportBody,/scrollTop\s*=/);
+  assert.doesNotMatch(viewportBody,/scheduleOlliTalkLatestMessageAnchor/);
+  assert.doesNotMatch(js,/syncViewport\(\{anchorLatest:true\}\)/);
 });
 
 test('mention menu growth does not increase the reserved chat height beyond the active two-row composer contract',()=>{
@@ -185,7 +200,7 @@ test('Team Chat send keeps the established pointerdown flow without extra touch 
   assert.doesNotMatch(js,/sendButton\.addEventListener\('touchstart'/);
   assert.match(js,/sendButton\.addEventListener\('pointerdown', event => \{[\s\S]*sendOlliTalkBetaMessage\(event\)/);
   assert.match(js,/await loadOlliTalkBetaMessages\([\s\S]{0,700}input\.focus\(\{ preventScroll:true \}\)/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261006-chat-input-fixes-2/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-single-scroll-owner-1/);
 });
 
 test('Team Chat groups adjacent messages only when sender and displayed minute are identical',()=>{
@@ -198,7 +213,7 @@ test('Team Chat groups adjacent messages only when sender and displayed minute a
   assert.match(js,/if \(!connectedToNext\) \{[\s\S]*olliTalkBetaMessageTime/);
   assert.match(css,/\.olliTalkBetaMessageConnected \.olliTalkBetaSender\{[\s\S]*display:none;/);
   assert.match(html,/olli-talk-beta\\.css\\?v=20261006-chat-input-fixes-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-chat-input-fixes-2/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-single-scroll-owner-1/);
 });
 
 test('Team Chat voice capture anchors directly to the screen bottom instead of following the shrinking visual viewport',()=>{
@@ -210,7 +225,7 @@ test('Team Chat send starts on pointerdown before the active composer can blur a
   assert.match(js,/sendButton\.addEventListener\('pointerdown', event => \{[\s\S]*sendOlliTalkBetaMessage\(event\)/);
   assert.match(js,/sendButton\.addEventListener\('click', event => \{[\s\S]*if \(event\.detail !== 0\)/);
   assert.match(js,/async function sendOlliTalkBetaMessage\(event\)\{[\s\S]*event\.preventDefault\(\);[\s\S]*event\.stopPropagation\(\);/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-chat-input-fixes-2/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-single-scroll-owner-1/);
 });
 
 test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into a real mention',()=>{
@@ -229,7 +244,7 @@ test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into 
   assert.doesNotMatch(css,/\.olliTalkBetaVoiceBtn\.active\{[\s\S]*?background:#0A84FF;/);
   assert.match(js,/showPanel:true,[\s\S]*panelHost:composer/);
   assert.match(html,/olli-talk-beta\\.css\\?v=20261006-minute-grouping-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-chat-input-fixes-2/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-single-scroll-owner-1/);
 });
 
 

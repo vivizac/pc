@@ -194,13 +194,10 @@
     layer.style.setProperty('--olli-talk-composer-vv-height', Math.max(1, Math.round(height)) + 'px');
   }
 
-  function syncViewport(options = {}){
+  function syncViewport(){
     const screen = getScreen();
     if (!screen) return;
-    const chatArea = document.getElementById('olliTalkBetaChatArea');
     const inputFocused = isOlliTalkComposerActive();
-    const keepLatest = options.anchorLatest === true
-      || (!!chatArea && isOlliTalkChatNearBottom(chatArea, 120));
 
     syncOlliTalkComposerViewport();
     screen.classList.toggle('olliTalkKeyboardOpen', inputFocused);
@@ -208,10 +205,6 @@
     syncOlliTalkChatToComposer();
     updateOlliTalkBetaComposerState();
     syncOlliTalkInputPlaceholder();
-
-    if (keepLatest && isOlliTalkBetaVisible()) {
-      scheduleOlliTalkLatestMessageAnchor();
-    }
   }
 
   function bindViewport(){
@@ -4762,7 +4755,7 @@
     const archive=document.getElementById('olliTalkArchiveScreen'),talk=getScreen();
     if(archive){archive.style.display='none';archive.setAttribute('aria-hidden','true')}
     if(talk){talk.style.display='flex';talk.setAttribute('aria-hidden','false')}
-    syncViewport({anchorLatest:true});
+    syncViewport();
   }
   async function callOlliTalkFileApi(action,payload,context){
     const response=await fetch('/api/team-talk-file',{
@@ -6200,23 +6193,17 @@
   }
 
   function scheduleOlliTalkMessageAboveComposer(message){
-    scheduleOlliTalkChatToComposer();
-    requestAnimationFrame(() => {
-      scrollOlliTalkMessageAboveComposer(message);
-    });
+    syncOlliTalkChatToComposer();
+    return scrollOlliTalkMessageAboveComposer(message);
   }
 
   function scheduleOlliTalkLatestMessageAnchor(){
     const chatArea = document.getElementById('olliTalkBetaChatArea');
-    if (!chatArea?.isConnected) return;
+    if (!chatArea?.isConnected) return false;
     const latest = latestOlliTalkRenderedMessage(chatArea);
-    if (latest) {
-      scheduleOlliTalkMessageAboveComposer(latest);
-      return;
-    }
-    requestAnimationFrame(() => {
-      if (chatArea.isConnected) chatArea.scrollTop = chatArea.scrollHeight;
-    });
+    if (latest) return scheduleOlliTalkMessageAboveComposer(latest);
+    chatArea.scrollTop = chatArea.scrollHeight;
+    return true;
   }
 
   function latestOlliTalkRenderedMessage(chatArea){
@@ -6374,8 +6361,8 @@
     if (olliTalkAssistantReplyPending) syncOlliTalkAssistantTypingIndicator();
     scheduleOlliTalkChatToComposer();
 
-    // 팀챗 첫 진입은 다음 frame에서 아래로 당기지 않고,
-    // 현재 task 안에서 최신 메시지 위치를 확정해 첫 paint부터 안정적으로 보여줍니다.
+    // 첫 진입은 같은 task 안에서 최신 메시지 위치를 확정합니다.
+    // 다음 frame으로 하단 보정을 미루지 않아 첫 paint 뒤에 채팅이 내려가는 현상을 막습니다.
     if(scrollMode==='initial-latest'){
       syncOlliTalkChatToComposer();
       scheduleOlliTalkLatestMessageAnchor();
@@ -6831,7 +6818,7 @@
       resizeInput();
       updateOlliTalkBetaComposerState();
       input.blur();
-      syncViewport({anchorLatest:true});
+      syncViewport();
       return false;
     }
 
@@ -6855,7 +6842,7 @@
       await loadOlliTalkMembers();
       renderOlliTalkMentionMenu();
     }
-    syncViewport({anchorLatest:true});
+    syncViewport();
     return true;
   }
 
@@ -7427,8 +7414,13 @@
 
     bindViewport();
     resizeInput();
-    syncViewport({anchorLatest:true});
+    syncViewport();
     updateOlliTalkBetaComposerState();
+
+    if(openCachedPayload){
+      syncOlliTalkChatToComposer();
+      scheduleOlliTalkLatestMessageAnchor();
+    }
 
     requestAnimationFrame(() => {
       // rAF 뒤의 macrotask에서 시작해 로컬 DOM의 첫 paint를 먼저 보장합니다.
@@ -7791,10 +7783,10 @@
         renderOlliTalkMentionMenu();
       });
       input.addEventListener('focus', () => {
-        syncViewport({anchorLatest:true});
+        syncViewport();
       }, true);
       input.addEventListener('blur', () => {
-        syncViewport({anchorLatest:true});
+        syncViewport();
       });
       input.addEventListener('click', renderOlliTalkMentionMenu);
       input.addEventListener('keyup', event => {
