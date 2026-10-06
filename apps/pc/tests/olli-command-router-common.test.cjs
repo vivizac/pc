@@ -448,6 +448,18 @@ test('makeup cancellation wording parses optional date and time', () => {
   assert.equal(short.timeSlot, 0);
 });
 
+
+test('spaced makeup cancellation ending stays rule-first and keeps the student name clean', () => {
+  const router = loadRouter();
+  const classified = router.classifyRequest('테스트 내일 1시 보강 취소 해줘');
+
+  assert.equal(classified.type, 'mutation');
+  assert.equal(classified.intent, 'cancel_makeup');
+  assert.equal(classified.parsed.studentName, '테스트');
+  assert.equal(classified.parsed.dateSpec.mode, 'tomorrow');
+  assert.equal(classified.parsed.timeSlot, 1);
+});
+
 test('slash month/day does not become part of a registered student name during makeup cancellation', () => {
   const router = loadRouter();
 
