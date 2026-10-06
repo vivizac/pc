@@ -262,7 +262,7 @@ function detailHtml(){
     + '</section>'
     + '<section class="olliTeamTalkSettingsCard">'
     + '<div class="olliTeamTalkSettingsSwitchRow">'
-    + '<div><strong>올리봇 알림</strong><small>AI 사용 여부와 관계없이 등록과 취소가 생기면 팀톡에 자동으로 알려줍니다.</small></div>'
+    + '<div><strong>올리봇 알림</strong><small>등록과 취소가 생기면 팀톡에 자동으로 알려줍니다.</small></div>'
     + '<button class="olliTeamTalkSwitch ' + (state.botNotificationsEnabled ? 'on' : '') + '" type="button" aria-pressed="' + (state.botNotificationsEnabled ? 'true' : 'false') + '" onclick="olliTeamTalkToggleBotNotifications()"' + disabled + '><span></span></button>'
     + '</div>'
     + '<div class="olliTeamTalkEventChips"><span>신규 등록</span><span>체험 등록</span><span>대기 등록</span><span>픽업 등록</span><span>등록 취소</span><span>체험 취소</span><span>대기 취소</span><span>픽업 취소</span></div>'
