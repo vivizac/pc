@@ -61,3 +61,17 @@ test('class move reuses structured target-time choice and schedule_move availabi
   assert.match(moveMigration,/olli_team_chat_action_select_structured_time/);
   assert.doesNotMatch(moveMigration,/olli_schedule_execute\s*\(/);
 });
+
+
+test('closed time choices keep the time centered and render 마감 on the same row at the right edge',()=>{
+  for(const source of [pc,mobile]){
+    assert.match(source,/withStatusLabel/);
+    assert.match(source,/timeChoiceLabel/);
+    assert.match(source,/timeChoiceStatus/);
+    assert.match(source,/마감/);
+  }
+  assert.match(pcCss,/timeChoice\.withStatusLabel\{[^}]*position:relative;[^}]*justify-content:center/);
+  assert.match(pcCss,/timeChoice \.timeChoiceStatus\{[^}]*position:absolute;[^}]*right:10px;[^}]*top:50%/);
+  assert.match(mobileCss,/timeChoice\.withStatusLabel\{[^}]*position:relative;[^}]*justify-content:center/);
+  assert.match(mobileCss,/timeChoice \.timeChoiceStatus\{[^}]*position:absolute;[^}]*right:10px;[^}]*top:50%/);
+});
