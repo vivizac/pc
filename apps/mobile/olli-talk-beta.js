@@ -7386,7 +7386,6 @@
 
   function resetOlliTalkAfterPageTransition(){
     olliTalkLastComposerTop = null;
-    olliTalkFollowBottomAfterViewportSettle = false;
     resetOlliTalkViewportTransitionAnchor();
   }
 
