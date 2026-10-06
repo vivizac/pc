@@ -51,3 +51,13 @@ test('PC and Mobile render server display_label first and never fall back to gen
     assert.doesNotMatch(source,/completed['"]\)\s*return ['"]처리 완료['"]/);
   }
 });
+
+test('Mobile consumes display_label as the selected button value and not as a final completion button',()=>{
+  assert.match(mobile,/function getOlliTalkSelectedChoiceButtonLabel\(action\)/);
+  assert.match(mobile,/displayLabel\.replace\(\/\\s\*선택\\s\*\$\//);
+  const start=mobile.indexOf('function createOlliTalkActionCard');
+  const end=mobile.indexOf('\n  function ',start+20);
+  const block=mobile.slice(start,end>start?end:mobile.length);
+  assert.match(block,/selectedChoice/);
+  assert.match(block,/return null;/);
+});

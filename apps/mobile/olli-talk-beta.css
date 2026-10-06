@@ -1396,7 +1396,9 @@
 }
 
 #olliTalkBetaScreen .olliTalkBetaPendingInput{
+  width:min(280px,82vw);
   display:flex;
+  flex-wrap:wrap;
   justify-content:flex-start;
   gap:6px;
   margin:5px 0 0;
@@ -1410,6 +1412,53 @@
   color:#30343a;
   font-size:calc(11.5px * var(--olli-text-scale, 1));
   font-weight:600;
+}
+#olliTalkBetaScreen .olliTalkBetaPendingReasonForm{
+  flex:0 0 100%;
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-top:2px;
+}
+#olliTalkBetaScreen .olliTalkBetaPendingReasonForm[hidden]{
+  display:none;
+}
+#olliTalkBetaScreen .olliTalkBetaPendingReasonField{
+  min-width:0;
+  flex:1;
+  height:36px;
+  box-sizing:border-box;
+  border:1px solid rgba(28,35,42,.13);
+  border-radius:11px;
+  padding:0 11px;
+  background:#fff;
+  color:#20242a;
+  font:inherit;
+  font-size:calc(12px * var(--olli-text-scale, 1));
+  outline:none;
+}
+#olliTalkBetaScreen .olliTalkBetaPendingReasonField:focus{
+  border-color:rgba(28,35,42,.28);
+}
+#olliTalkBetaScreen .olliTalkBetaPendingReasonSubmit{
+  flex:0 0 auto;
+  height:36px;
+  min-width:52px;
+  border:0;
+  border-radius:11px;
+  padding:0 12px;
+  background:#111;
+  color:#fff;
+  font-size:calc(11.5px * var(--olli-text-scale, 1));
+  font-weight:650;
+}
+#olliTalkBetaScreen .olliTalkBetaPendingInput.busy{
+  opacity:.62;
+}
+#olliTalkBetaScreen .olliTalkBetaActionButton.selectedChoice:disabled{
+  opacity:1;
+  cursor:default;
 }
 
 #olliTalkBetaScreen .olliTalkBetaSendBtn.sending{

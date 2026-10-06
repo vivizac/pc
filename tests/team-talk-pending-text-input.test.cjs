@@ -24,13 +24,25 @@ test('reason prompts render no-reason and direct-input buttons on both PC and Mo
   assert.match(mobile,/inputButton\.textContent='사유 입력'/);
 });
 
-test('input buttons focus the existing Team Chat composer instead of creating a second input surface',()=>{
+test('PC keeps its existing composer flow while Mobile opens a dedicated inline reason input',()=>{
   assert.match(pc,/byId\('olliPcTeamTalkInput'\)/);
-  assert.match(mobile,/getOlliTalkBetaInput\(\)/);
   assert.match(pc,/input\.focus/);
-  assert.match(mobile,/input\.focus/);
-  assert.doesNotMatch(pc,/PendingInput[\s\S]{0,500}createElement\('textarea'\)/);
-  assert.doesNotMatch(mobile,/PendingTextInput[\s\S]{0,700}createElement\('textarea'\)/);
+  assert.match(mobile,/function openOlliTalkPendingReasonInput/);
+  assert.match(mobile,/className='olliTalkBetaPendingReasonForm'/);
+  assert.match(mobile,/className='olliTalkBetaPendingReasonField'/);
+  assert.match(mobile,/placeholder='취소 사유를 입력하세요'/);
+  assert.doesNotMatch(mobile,/function focusOlliTalkPendingTextInput/);
+});
+
+test('Mobile inline reason submit saves the reason message and routes directly through pending rule state',()=>{
+  assert.match(mobile,/function resolveOlliTalkPendingReasonDirectTurn/);
+  assert.match(mobile,/function submitOlliTalkPendingReasonText/);
+  assert.match(mobile,/p_body:reason/);
+  assert.match(mobile,/resolveOlliTalkPendingReasonDirectTurn\([\s\S]{0,180}Number\(payload\.message\.id/);
+  assert.match(mobile,/__structuredMakeupCancel/);
+  assert.match(mobile,/__structuredTrialCancel/);
+  assert.match(mobile,/saveOlliTalkActionReply\(context,confirmation,command,replyToMessageId\)/);
+  assert.doesNotMatch(mobile,/input\.value='사유 없음'/);
 });
 
 test('reason-required paths use the shared pending text-input reply helper',()=>{
@@ -38,4 +50,7 @@ test('reason-required paths use the shared pending text-input reply helper',()=>
   assert.match(mobile,/action_needs_reason[\s\S]{0,500}saveOlliTalkPendingTextInputReply/);
   assert.match(pcCss,/olliPcTeamTalkPendingInputButton/);
   assert.match(mobileCss,/olliTalkBetaPendingInputButton/);
+  assert.match(mobileCss,/olliTalkBetaPendingReasonForm/);
+  assert.match(mobileCss,/olliTalkBetaPendingReasonField/);
+  assert.match(mobileCss,/olliTalkBetaPendingReasonSubmit/);
 });

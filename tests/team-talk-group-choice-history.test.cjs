@@ -28,27 +28,24 @@ test('A/B selection preserves the original choice action and creates a new confi
   }
 });
 
-test('resolved A/B choice cards render one selected-value status label instead of disabled choice buttons',()=>{
+test('resolved A/B choice history keeps the selected value visible',()=>{
   const pcStart=pc.indexOf('function makeActionCard');
   const pcEnd=pc.indexOf('\n  function ',pcStart+20);
   const pcBlock=pc.slice(pcStart,pcEnd>pcStart?pcEnd:pc.length);
-  const pcStatus=pcBlock.indexOf("if (status !== 'pending')");
-  const pcGroup=pcBlock.indexOf('const isSessionGroupChoice=');
-  assert.ok(pcStatus>=0 && pcGroup>pcStatus);
   assert.match(pcBlock,/actionStatusLabel\(action\)/);
-  assert.match(pcBlock,/button\.textContent=group\+'반'/);
 
   const mobileStart=mobile.indexOf('function createOlliTalkActionCard');
   const mobileEnd=mobile.indexOf('\n  function ',mobileStart+20);
   const mobileBlock=mobile.slice(mobileStart,mobileEnd>mobileStart?mobileEnd:mobile.length);
-  const mobileStatus=mobileBlock.indexOf("if(status!=='pending')");
-  const mobileGroup=mobileBlock.indexOf('const isSessionGroupChoice=');
-  assert.ok(mobileStatus>=0 && mobileGroup>mobileStatus);
-  assert.match(mobileBlock,/getOlliTalkActionStatusLabel\(action\)/);
+  assert.match(mobile,/function isOlliTalkChoiceActionType/);
+  assert.match(mobile,/function getOlliTalkSelectedChoiceButtonLabel/);
+  assert.match(mobileBlock,/selectedChoice/);
+  assert.match(mobileBlock,/selected\.textContent=getOlliTalkSelectedChoiceButtonLabel\(action\)/);
+  assert.match(mobileBlock,/selected\.disabled=true/);
   assert.match(mobileBlock,/button\.textContent=group\+'반'/);
 });
 
-test('structured choice prompts remain in history while resolved cards show the selected-value status label',()=>{
+test('structured choice prompts remain in history while Mobile keeps the selected button value visible',()=>{
   for(const source of [pc,mobile]){
     for(const type of [
       'choose_structured_student','choose_structured_target','choose_structured_division',
@@ -83,4 +80,14 @@ test('structured choice DB wrappers preserve the original message body while kee
   assert.match(allChoiceMigration,/v_original_body/);
   assert.match(allChoiceMigration,/set body=v_original_body/);
   assert.match(allChoiceMigration,/return v_result - 'message_body'/);
+});
+
+test('Mobile removes resolved final confirmation cards because the inline system result is the completion UI',()=>{
+  const start=mobile.indexOf('function createOlliTalkActionCard');
+  const end=mobile.indexOf('\n  function ',start+20);
+  const block=mobile.slice(start,end>start?end:mobile.length);
+  assert.match(block,/status==='completed' && isOlliTalkChoiceActionType/);
+  assert.match(block,/if\(status==='failed'\)/);
+  assert.match(block,/return null;/);
+  assert.doesNotMatch(block,/confirmed\.textContent='확인'/);
 });
