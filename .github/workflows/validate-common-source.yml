@@ -5,6 +5,8 @@ on:
   pull_request:
     paths:
       - 'packages/common/**'
+      - 'tests/teacher-payroll-contract.test.cjs'
+      - 'supabase/migrations/20261006134500_teacher_payroll_calculator.sql'
       - 'tests/timetable-memo-half-hour.test.cjs'
       - 'tests/pickup-half-hour.test.cjs'
       - 'tests/olli-structured-command-router.test.cjs'
@@ -59,6 +61,8 @@ on:
     branches: [main]
     paths:
       - 'packages/common/**'
+      - 'tests/teacher-payroll-contract.test.cjs'
+      - 'supabase/migrations/20261006134500_teacher_payroll_calculator.sql'
       - 'tests/timetable-memo-half-hour.test.cjs'
       - 'tests/pickup-half-hour.test.cjs'
       - 'apps/pc/scripts/stage-common.cjs'
@@ -117,6 +121,7 @@ jobs:
             tests/team-talk-structured-waitlist-update-choice.test.cjs \
             tests/team-talk-structured-makeup-cancel-choice.test.cjs \
             tests/team-talk-structured-trial-cancel-choice.test.cjs
+            tests/teacher-payroll-contract.test.cjs
 
       - name: Reject platform adapters from common runtime manifests
         run: |
