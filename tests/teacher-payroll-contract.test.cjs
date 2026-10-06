@@ -6,7 +6,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
-const migration = read('supabase/migrations/20261006134500_teacher_payroll_calculator.sql');
+const migration = read('supabase/migrations/20261006150241_teacher_payroll_calculator.sql');
 const common = read('packages/common/olli-teacher-payroll-common.js');
 const pcHtml = read('apps/pc/index.html');
 const mobileHtml = read('apps/mobile/index.html');
