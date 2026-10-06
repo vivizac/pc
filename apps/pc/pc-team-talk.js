@@ -1167,9 +1167,17 @@
         const label=clean(choice?.label) || Number(choice?.timeSlot || 0)+'시';
         const status=clean(choice?.status);
         const selectable=choice?.selectable===true;
-        button.textContent=status==='full'
-          ? label+'\n'+(clean(payload?.targetIntent)==='add_waitlist' ? '대기 가능' : '마감')
-          : label;
+        const waitlistFull=status==='full'
+          && clean(payload?.targetIntent)==='add_waitlist';
+        if(status==='full' && !waitlistFull){
+          button.classList.add('withStatusLabel');
+          button.append(
+            create('span','timeChoiceLabel',label),
+            create('span','timeChoiceStatus','마감')
+          );
+        }else{
+          button.textContent=waitlistFull ? label+'\n대기 가능' : label;
+        }
         button.disabled=!selectable || !interactive;
         if(!selectable) button.classList.add('closed');
         if(selectable && interactive) button.addEventListener('click',()=>handleStructuredTimeChoice(action,Number(choice?.timeSlot || 0)));
