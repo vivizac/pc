@@ -460,6 +460,38 @@ test('spaced makeup cancellation ending stays rule-first and keeps the student n
   assert.equal(classified.parsed.timeSlot, 1);
 });
 
+
+test('shared command-tail normalization keeps request words out of student names', () => {
+  const router = loadRouter();
+
+  const makeupAdd = router.parseMakeupMutationIntent('김민준 내일 4시 보강 등록 해줘');
+  assert.equal(makeupAdd.studentName, '김민준');
+
+  const makeupAddPolite = router.parseMakeupMutationIntent('김민준 내일 4시 보강 등록 좀 해 주세요');
+  assert.equal(makeupAddPolite.studentName, '김민준');
+
+  const waitlistAdd = router.parseWaitlistMutationIntent('김민준 내일 4시 대기 등록 해줘');
+  assert.equal(waitlistAdd.studentName, '김민준');
+
+  const trialAdd = router.parseTrialMutationIntent('김민준 내일 4시 체험 등록 해줘');
+  assert.equal(trialAdd.guestName, '김민준');
+
+  const makeupUpdate = router.parseMakeupUpdateMutationIntent('김민준 보강 변경 해줘');
+  assert.equal(makeupUpdate.studentName, '김민준');
+
+  const makeupCancel = router.parseMakeupCancelMutationIntent('김민준 내일 4시 보강 취소 해줘');
+  assert.equal(makeupCancel.studentName, '김민준');
+});
+
+test('student extraction rejects leftover command words instead of treating them as a name', () => {
+  const router = loadRouter();
+
+  assert.equal(
+    router.parseMakeupCancelMutationIntent('테스트 보강 취소 해줘 해줘'),
+    null
+  );
+});
+
 test('slash month/day does not become part of a registered student name during makeup cancellation', () => {
   const router = loadRouter();
 
