@@ -66,3 +66,28 @@ test('broken Team Chat thumbnails stay hidden until a real image load succeeds',
   assert.match(html,/olli-talk-beta\.js\?v=[^"']+/);
   assert.match(html,/olli-talk-beta\.css\?v=[^"']+/);
 });
+
+
+test('Team Chat image frames keep stable geometry through hydration and viewport release',()=>{
+  const css=fs.readFileSync('olli-talk-beta.css','utf8');
+  const html=fs.readFileSync('index.html','utf8');
+
+  const createStart=beta.indexOf('function createOlliTalkAttachmentMessageBubble');
+  const createEnd=beta.indexOf('function getOlliTalkArchiveCacheKey',createStart);
+  const createBody=beta.slice(createStart,createEnd);
+  assert.ok(createStart>=0&&createEnd>createStart);
+  assert.match(createBody,/if\(imageWidth&&imageHeight\)[\s\S]*frame\.style\.aspectRatio/);
+  assert.match(createBody,/frame\.classList\.add\('fallbackRatio'\)/);
+  assert.match(createBody,/frame\.style\.aspectRatio='4 \/ 3'/);
+
+  const releaseStart=beta.indexOf('function releaseOlliTalkAttachmentImageFrame');
+  const releaseEnd=beta.indexOf('function loadOlliTalkThumbnailIntoImage',releaseStart);
+  const releaseBody=beta.slice(releaseStart,releaseEnd);
+  assert.ok(releaseStart>=0&&releaseEnd>releaseStart);
+  assert.doesNotMatch(releaseBody,/style\.aspectRatio/);
+
+  assert.doesNotMatch(css,/\.olliTalkBetaAttachmentImageFrame\.ready\{[^}]*min-height:0/);
+  assert.match(css,/\.olliTalkBetaAttachmentImageFrame\.fallbackRatio \.olliTalkBetaAttachmentImage\{[^}]*height:100%;[^}]*max-height:none;[^}]*object-fit:contain/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261007-image-frame-stability-1/);
+  assert.match(html,/olli-talk-beta\.css\?v=20261007-image-frame-stability-1/);
+});

@@ -4555,7 +4555,14 @@
       frame.className='olliTalkBetaAttachmentImageFrame';
       const imageWidth=Math.max(0,Number(attachment?.image_width||0));
       const imageHeight=Math.max(0,Number(attachment?.image_height||0));
-      if(imageWidth&&imageHeight)frame.style.aspectRatio=`${imageWidth} / ${imageHeight}`;
+      if(imageWidth&&imageHeight){
+        frame.style.aspectRatio=`${imageWidth} / ${imageHeight}`;
+      }else{
+        // 오래된 첨부처럼 크기 메타데이터가 없어도 첫 paint부터 프레임 크기를 고정합니다.
+        // 실제 이미지가 로드되거나 viewport 밖에서 src가 해제되어도 이 비율은 바꾸지 않습니다.
+        frame.classList.add('fallbackRatio');
+        frame.style.aspectRatio='4 / 3';
+      }
       const fallback=createMessageText('span','olliTalkBetaAttachmentImageFallback','이미지 불러오는 중…');
       const image=document.createElement('img');
       image.className='olliTalkBetaAttachmentImage';

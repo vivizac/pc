@@ -1783,8 +1783,8 @@
 #olliTalkBetaScreen .olliTalkBetaAttachmentMeta{margin-top:3px;font-size:11px;opacity:.5}
 #olliTalkBetaScreen .olliTalkBetaMessage .olliTalkBetaBubble.olliTalkBetaImageAttachmentBubble{--olli-talk-bubble-bg:transparent;background:transparent;padding:0;overflow:hidden}
 #olliTalkBetaScreen .olliTalkBetaAttachmentImageFrame{width:min(64vw,280px);min-height:120px;border-radius:14px;overflow:hidden;background:#eef2f5;display:flex;align-items:center;justify-content:center}
-#olliTalkBetaScreen .olliTalkBetaAttachmentImageFrame.ready{min-height:0}
 #olliTalkBetaScreen .olliTalkBetaAttachmentImage{display:block;width:100%;height:auto;max-height:360px;object-fit:contain;background:#eef2f5}
+#olliTalkBetaScreen .olliTalkBetaAttachmentImageFrame.fallbackRatio .olliTalkBetaAttachmentImage{height:100%;max-height:none;object-fit:contain}
 #olliTalkBetaScreen .olliTalkBetaAttachmentImage[hidden]{display:none}
 #olliTalkBetaScreen .olliTalkBetaAttachmentImageFallback:not([hidden]){display:flex;align-items:center;justify-content:center;min-height:120px;padding:18px;color:#8b9198;font-size:12px;text-align:center}
 
