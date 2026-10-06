@@ -63,7 +63,7 @@
   --olli-talk-composer-vv-top:0px;
   --olli-talk-composer-vv-width:100vw;
   --olli-talk-composer-vv-height:100vh;
-  --olli-talk-chat-reserve:74px;
+  --olli-talk-chat-reserve:calc(var(--olli-phone-guide-bottom, max(10px, env(safe-area-inset-bottom))) + 57px);
   padding-top:0;
   align-items:stretch;
   background:var(--olli-talk-bg);

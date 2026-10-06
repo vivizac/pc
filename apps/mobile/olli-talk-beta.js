@@ -7,6 +7,7 @@
   let olliTalkBetaReturnPageId = 'recordRoomScreen';
   let olliTalkBetaViewportBound = false;
   let olliTalkChatMeasureRaf = 0;
+  let olliTalkKeyboardFollowLatest = false;
   let olliTalkArchiveTab = 'materials';
   let olliTalkArchivePayload = null;
   let olliTalkArchiveLoadSequence = 0;
@@ -212,7 +213,12 @@
     olliTalkBetaViewportBound = true;
     window.addEventListener('resize', () => syncViewport(), { passive:true });
     if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', () => syncViewport(), { passive:true });
+      window.visualViewport.addEventListener('resize', () => {
+        syncViewport();
+        if (olliTalkKeyboardFollowLatest && isOlliTalkComposerActive()) {
+          scheduleOlliTalkLatestMessageAnchor();
+        }
+      }, { passive:true });
       window.visualViewport.addEventListener('scroll', () => syncViewport(), { passive:true });
     }
   }
@@ -3325,7 +3331,8 @@
     if(!preview||!card?.isConnected)return false;
 
     const chatArea=document.getElementById('olliTalkBetaChatArea');
-    const keepBottom=!!chatArea&&isOlliTalkChatNearBottom(chatArea,120);
+    const suppressAutoAnchor=String(card.dataset.olliSuppressAutoAnchor||'')==='1';
+    const keepBottom=!suppressAutoAnchor&&!!chatArea&&isOlliTalkChatNearBottom(chatArea,120);
     const title=card.querySelector('.olliTalkBetaLinkPreviewTitle');
     const description=card.querySelector('.olliTalkBetaLinkPreviewDescription');
     const domain=card.querySelector('.olliTalkBetaLinkPreviewDomain');
@@ -4972,7 +4979,11 @@
     screen.querySelectorAll('[data-olli-deferred-preview="1"]').forEach(card=>{
       card.removeAttribute('data-olli-deferred-preview');
       const url=String(card.dataset.previewUrl||'').trim();
-      if(url)hydrateOlliTalkLinkPreview(card,url);
+      if(!url)return;
+      card.dataset.olliSuppressAutoAnchor='1';
+      Promise.resolve(hydrateOlliTalkLinkPreview(card,url)).finally(()=>{
+        if(card?.isConnected)delete card.dataset.olliSuppressAutoAnchor;
+      });
     });
 
     screen.querySelectorAll('[data-olli-deferred-image="1"]').forEach(frame=>{
@@ -6365,7 +6376,7 @@
     // 다음 frame으로 하단 보정을 미루지 않아 첫 paint 뒤에 채팅이 내려가는 현상을 막습니다.
     if(scrollMode==='initial-latest'){
       syncOlliTalkChatToComposer();
-      scheduleOlliTalkLatestMessageAnchor();
+      if (isOlliTalkBetaVisible()) scheduleOlliTalkLatestMessageAnchor();
       return;
     }
 
@@ -7783,9 +7794,12 @@
         renderOlliTalkMentionMenu();
       });
       input.addEventListener('focus', () => {
+        olliTalkKeyboardFollowLatest = true;
         syncViewport();
+        scheduleOlliTalkLatestMessageAnchor();
       }, true);
       input.addEventListener('blur', () => {
+        olliTalkKeyboardFollowLatest = false;
         syncViewport();
       });
       input.addEventListener('click', renderOlliTalkMentionMenu);
