@@ -210,6 +210,28 @@ test('ambiguous routine wording falls through to Luna instead of being guessed a
   assert.equal(clearUpdate.intent, 'update_makeup');
 });
 
+
+test('context-dependent routine references are never executed directly by the local rule classifier', () => {
+  const router = loadRouter();
+  const cases = [
+    '그 학생 보강 등록해줘',
+    '그거 보강 취소해줘',
+    '아까 말한 학생 체험 변경해줘',
+    '방금 얘기한 아이 대기 등록해줘',
+    '그 학생 시간표 알려줘'
+  ];
+
+  cases.forEach((text) => {
+    const result = router.classifyRequest(text);
+    assert.equal(result.type, 'other', text);
+    assert.equal(result.intent, '', text);
+  });
+
+  const explicit = router.classifyRequest('류다연 보강 등록해줘');
+  assert.equal(explicit.type, 'mutation');
+  assert.equal(explicit.intent, 'add_makeup');
+});
+
 test('single domain keyword rule does not steal availability questions', () => {
   const router = loadRouter();
   const classified = router.classifyRequest('오늘 보강 가능한 시간 알려줘');
