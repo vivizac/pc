@@ -7472,8 +7472,8 @@
       event.stopPropagation();
     }
 
-    const screen = getScreen();
-    screen?.style.removeProperty('--olli-talk-chat-reserve');
+    const talkScreen = getScreen();
+    talkScreen?.style.removeProperty('--olli-talk-chat-reserve');
 
     const input = document.getElementById('olliTalkBetaInput');
     if (input) input.blur();
