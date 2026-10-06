@@ -59,9 +59,9 @@
 
   function hasExplicitAddRequest(value) {
     const compact=commandTail(value);
-    return /(?:등록|추가|입력|기입|기재|예약|신청|배정|생성|기록|반영|저장)(?:(?:좀|한번))?(?:해)?(?:줘|주세요|줘요|줄래|해줘|해주세요|해줄래|할래|해요|해)$/.test(compact)
-      || /(?:넣|잡|적|만들)(?:어|아)?(?:(?:좀|한번))?(?:줘|주세요|줘요|줄래|해줘|해주세요|해줄래|할래|해요|해)$/.test(compact)
-      || /(?:올려|걸어)(?:(?:좀|한번))?(?:줘|주세요|줘요|줄래|해줘|해주세요|해줄래|할래|해요|해)$/.test(compact);
+    return /(?:등록|추가|입력|기입|기재|예약|신청|배정|생성|기록|반영|저장)(?:(?:좀|한번))?(?:(?:해)?(?:놔|놓아|둬|두어)(?:줘요|주세요|줘|줄래)?|(?:해)?둘래|(?:해)?(?:줘요|주세요|줘|줄래|해줄래|할래|해요|해))$/.test(compact)
+      || /(?:넣|잡|적|만들)(?:어|아)?(?:(?:좀|한번))?(?:(?:놔|놓아|둬|두어)(?:줘요|주세요|줘|줄래)?|둘래|(?:줘요|주세요|줘|줄래|해줄래|할래|해요|해))$/.test(compact)
+      || /(?:올려|걸어)(?:(?:좀|한번))?(?:줘요|주세요|줘|줄래|해줄래|할래|해요|해)$/.test(compact);
   }
 
   function hasExplicitRemoveRequest(value) {
@@ -439,7 +439,7 @@
   function parseScheduleMoveMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !hasMoveAction(compact) || hasRemoveAction(compact) || !hasExplicitUpdateRequest(raw)) return null;
+    if (!raw || !hasMoveAction(compact) || hasRemoveAction(compact)) return null;
     if (isOlliReplyScheduleInquiry(raw) || parseAvailableSlotsIntent(raw) || parseRosterQueryIntent(raw)) return null;
 
     const mentions = weekdayTimeMentions(raw);
@@ -477,7 +477,7 @@
       || !hasMakeupWord(compact)
       || hasRemoveAction(compact)
       || hasMoveAction(compact)
-      || !hasExplicitAddRequest(raw)
+      || !hasAddAction(compact)
     ) return null;
 
     const dateSpec = parseDateExpression(compact);
@@ -563,7 +563,7 @@
     const raw = cleanText(text);
     const compact = compactText(raw);
     const hasUpdateAction = /(?:수정|변경|옮|이동|바꿔|바꾸|고쳐|고치)/.test(compact);
-    if (!raw || !hasMakeupWord(compact) || hasRemoveAction(compact) || !hasUpdateAction || !hasExplicitUpdateRequest(raw)) return null;
+    if (!raw || !hasMakeupWord(compact) || hasRemoveAction(compact) || !hasUpdateAction) return null;
 
     const studentName = extractStudentName(
       raw,
@@ -591,7 +591,7 @@
       || !hasWaitlistWord(compact)
       || hasRemoveAction(compact)
       || hasMoveAction(compact)
-      || !hasExplicitAddRequest(raw)
+      || !hasAddAction(compact)
     ) return null;
 
     const dateSpec = parseDateExpression(compact);
@@ -624,7 +624,7 @@
       || !hasTrialWord(compact)
       || hasRemoveAction(compact)
       || hasMoveAction(compact)
-      || !hasExplicitAddRequest(raw)
+      || !hasAddAction(compact)
     ) return null;
 
     const dateSpec = parseDateExpression(compact);
@@ -653,7 +653,7 @@
     const raw = cleanText(text);
     const compact = compactText(raw);
     const hasUpdateAction = /(?:수정|변경|옮|이동|바꿔|바꾸|고쳐|고치)/.test(compact);
-    if (!raw || !hasTrialWord(compact) || hasRemoveAction(compact) || !hasUpdateAction || !hasExplicitUpdateRequest(raw)) return null;
+    if (!raw || !hasTrialWord(compact) || hasRemoveAction(compact) || !hasUpdateAction) return null;
 
     const guestName = cleanupStudentName(
       extractStudentName(
@@ -680,7 +680,7 @@
     const reasonInfo = extractExplicitReason(text);
     const raw = reasonInfo.commandText;
     const compact = compactText(raw);
-    if (!raw || !hasMakeupWord(compact) || !hasRemoveAction(compact) || !hasExplicitRemoveRequest(raw)) return null;
+    if (!raw || !hasMakeupWord(compact) || !hasRemoveAction(compact)) return null;
 
     const dateSpec = parseDateExpression(compact);
     const studentName = extractStudentName(
@@ -707,7 +707,7 @@
     const reasonInfo = extractExplicitReason(text);
     const raw = reasonInfo.commandText;
     const compact = compactText(raw);
-    if (!raw || !hasTrialWord(compact) || !hasRemoveAction(compact) || !hasExplicitRemoveRequest(raw)) return null;
+    if (!raw || !hasTrialWord(compact) || !hasRemoveAction(compact)) return null;
 
     const dateSpec = parseDateExpression(compact);
     const guestName = extractStudentName(
@@ -760,7 +760,7 @@
   function parseMoveCancelMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !hasMoveAction(compact) || !hasRemoveAction(compact) || !hasExplicitRemoveRequest(raw)) return null;
+    if (!raw || !hasMoveAction(compact) || !hasRemoveAction(compact)) return null;
 
     const mentions = weekdayTimeMentions(raw);
     const source = mentions[0] || { weekday:0, timeSlot:0 };
@@ -786,7 +786,7 @@
     const raw = cleanText(text);
     const compact = compactText(raw);
     const hasUpdateAction = /(?:수정|변경|옮|이동|바꿔|바꾸|고쳐|고치)/.test(compact);
-    if (!raw || !hasWaitlistWord(compact) || hasRemoveAction(compact) || !hasUpdateAction || !hasExplicitUpdateRequest(raw)) return null;
+    if (!raw || !hasWaitlistWord(compact) || hasRemoveAction(compact) || !hasUpdateAction) return null;
 
     const studentName = extractStudentName(
       raw,
@@ -809,7 +809,7 @@
   function parseWaitlistCancelMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !hasWaitlistWord(compact) || !hasRemoveAction(compact) || !hasExplicitRemoveRequest(raw)) return null;
+    if (!raw || !hasWaitlistWord(compact) || !hasRemoveAction(compact)) return null;
     const studentName = extractStudentName(
       raw,
       /(?:대기(?:자|명단|리스트)?|웨이팅(?:리스트)?)(?:을|를|에서)?/g,
@@ -1384,6 +1384,23 @@
     return parseMultiWriteIntent(normalizedText) || parseSingleWriteIntent(normalizedText);
   }
 
+  function isHighConfidenceDirectWrite(text, parsed) {
+    const intent=cleanText(parsed && parsed.intent);
+    if(!intent) return false;
+    if(intent==='batch_write') return isExplicitWriteCommand(text);
+    if(['add_makeup','add_trial','add_waitlist'].includes(intent)) return hasExplicitAddRequest(text);
+    if(['update_makeup','update_trial','update_waitlist','move_class'].includes(intent)) return hasExplicitUpdateRequest(text);
+    if(['cancel_makeup','cancel_trial','cancel_waitlist','cancel_move'].includes(intent)) return hasExplicitRemoveRequest(text);
+    return true;
+  }
+
+  function parseDirectWriteIntent(text) {
+    const normalizedText=cleanText(text);
+    const parsed=parseWriteIntent(normalizedText);
+    if(!parsed || !isHighConfidenceDirectWrite(normalizedText,parsed)) return null;
+    return parsed;
+  }
+
   const STRUCTURED_WRITE_DRAFT_REQUIRED_FIELDS = Object.freeze({
     add_makeup:Object.freeze(['student','date','time']),
     add_trial:Object.freeze(['student','date','time']),
@@ -1955,7 +1972,7 @@
 
   function classifyRequest(text) {
     const normalizedText = cleanText(text);
-    const writeIntent = parseWriteIntent(normalizedText);
+    const writeIntent = parseDirectWriteIntent(normalizedText);
     if (writeIntent) {
       return {
         type:'mutation',
@@ -4053,7 +4070,7 @@
     const normalizedText = cleanText(text);
     const routeContext = normalizeContext(context);
     const schedule = global.OlliCommandSchedule;
-    const writeIntent = parseWriteIntent(normalizedText);
+    const writeIntent = parseDirectWriteIntent(normalizedText);
 
     if (!writeIntent) {
       return {
@@ -4262,7 +4279,7 @@
 
     if (pendingWriteCommand) pendingWriteCommand = null;
 
-    const writeIntent = parseWriteIntent(normalizedText);
+    const writeIntent = parseDirectWriteIntent(normalizedText);
     if (writeIntent) {
       if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
         return {
