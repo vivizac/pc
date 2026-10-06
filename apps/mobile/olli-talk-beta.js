@@ -5947,18 +5947,44 @@
     return 'incoming:' + (senderMemberId || String(item?.sender_name || '').trim() || 'unknown');
   }
 
+  function getOlliTalkMessageMinuteKey(value){
+    const date = new Date(value || 0);
+    if (!Number.isFinite(date.getTime())) return '';
+    return [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0'),
+      String(date.getHours()).padStart(2, '0'),
+      String(date.getMinutes()).padStart(2, '0')
+    ].join(':');
+  }
+
   function isOlliTalkConnectedMessage(previousItem, item, currentMemberId){
     if (!previousItem || !item) return false;
     const previousKey = getOlliTalkMessageGroupKey(previousItem, currentMemberId);
     const currentKey = getOlliTalkMessageGroupKey(item, currentMemberId);
     if (!previousKey || previousKey !== currentKey) return false;
 
-    const previousTime = new Date(previousItem?.created_at || 0).getTime();
-    const currentTime = new Date(item?.created_at || 0).getTime();
-    if (!Number.isFinite(previousTime) || !Number.isFinite(currentTime)) return false;
+    const previousMinute = getOlliTalkMessageMinuteKey(previousItem?.created_at);
+    const currentMinute = getOlliTalkMessageMinuteKey(item?.created_at);
+    return !!previousMinute && previousMinute === currentMinute;
+  }
 
-    const diff = currentTime - previousTime;
-    return diff >= 0 && diff < 60 * 1000;
+  function isOlliTalkConnectedRenderedMessage(previousMessage, item, currentMemberId){
+    if (!previousMessage?.classList?.contains('olliTalkBetaMessage') || !item) return false;
+    const previousKey = String(previousMessage.dataset?.groupKey || '');
+    const currentKey = getOlliTalkMessageGroupKey(item, currentMemberId);
+    if (!previousKey || previousKey !== currentKey) return false;
+
+    const previousMinute = String(previousMessage.dataset?.minuteKey || '');
+    const currentMinute = getOlliTalkMessageMinuteKey(item?.created_at);
+    return !!previousMinute && previousMinute === currentMinute;
+  }
+
+  function markOlliTalkRenderedMessageConnectedToNext(message){
+    if (!message?.classList?.contains('olliTalkBetaMessage')) return;
+    message.classList.add('olliTalkBetaMessageConnectedNext');
+    message.querySelector?.('.olliTalkBetaMessageTime')?.remove();
   }
 
   function appendOlliTalkInlineSystemResult(messageElement, item){
@@ -5981,10 +6007,14 @@
     const message = document.createElement('div');
 
     const connectedToPrevious = options.connectedToPrevious === true;
+    const connectedToNext = options.connectedToNext === true;
     message.className = 'olliTalkBetaMessage ' + (isAi ? 'ai' : (own ? 'outgoing' : 'incoming'));
     message.classList.add(connectedToPrevious ? 'olliTalkBetaMessageConnected' : 'olliTalkBetaMessageGroupStart');
+    if (connectedToNext) message.classList.add('olliTalkBetaMessageConnectedNext');
     message.dataset.messageId = String(item?.id || '');
     message.dataset.dateKey = getOlliTalkDateKey(item?.created_at);
+    message.dataset.groupKey = getOlliTalkMessageGroupKey(item, currentMemberId);
+    message.dataset.minuteKey = getOlliTalkMessageMinuteKey(item?.created_at);
 
     if (isAi) {
       const incomingLayout = document.createElement('div');
@@ -6024,7 +6054,9 @@
     if (unreadCount > 0) {
       bubbleMeta.appendChild(createMessageText('span', 'olliTalkBetaUnreadCount', String(unreadCount)));
     }
-    bubbleMeta.appendChild(createMessageText('div', 'olliTalkBetaMessageTime', formatOlliTalkBetaMessageTime(item?.created_at)));
+    if (!connectedToNext) {
+      bubbleMeta.appendChild(createMessageText('div', 'olliTalkBetaMessageTime', formatOlliTalkBetaMessageTime(item?.created_at)));
+    }
     bubbleRow.appendChild(bubbleMeta);
     if (isAi || !own) {
       const incomingLayout = message.querySelector('.olliTalkBetaIncomingLayout');
@@ -6182,17 +6214,23 @@
     }
 
     const itemDateKey = getOlliTalkDateKey(item?.created_at);
-    const renderedMessages = Array.from(list.querySelectorAll('[data-message-id]'));
+    const renderedMessages = Array.from(list.children)
+      .filter(node => node?.classList?.contains('olliTalkBetaMessage') && node?.dataset?.messageId);
     const lastRendered = renderedMessages[renderedMessages.length - 1] || null;
     const lastDateKey = String(lastRendered?.dataset?.dateKey || '');
-    if (itemDateKey && itemDateKey !== lastDateKey) {
+    const dateChanged = !!(itemDateKey && itemDateKey !== lastDateKey);
+    if (dateChanged) {
       const divider = document.createElement('div');
       divider.className = 'olliTalkBetaDateDivider';
       divider.appendChild(createMessageText('span', '', formatOlliTalkDateLabel(item?.created_at)));
       list.appendChild(divider);
     }
 
-    const next = createOlliTalkMessageElement(item, currentMemberId, { connectedToPrevious:false });
+    const connectedToPrevious = !dateChanged
+      && isOlliTalkConnectedRenderedMessage(lastRendered, item, currentMemberId);
+    if (connectedToPrevious) markOlliTalkRenderedMessageConnectedToNext(lastRendered);
+
+    const next = createOlliTalkMessageElement(item, currentMemberId, { connectedToPrevious });
     list.appendChild(next);
     if(String(item?.message_type || '').trim()==='ai' && Number(item?.reply_to_message_id || 0)>0){
       removeOlliTalkReplySuggestion(String(Number(item.reply_to_message_id)));
@@ -6232,7 +6270,6 @@
     list.className = 'olliTalkBetaMessageList';
 
     let lastDateKey = '';
-    let groupStartItem = null;
     messages.forEach((item, index) => {
       const previousItem=index>0 ? messages[index-1] : null;
       const previousActionStatus=String(previousItem?.action?.status || '').trim();
@@ -6244,7 +6281,6 @@
         const previousMessage=list.lastElementChild;
         if(previousMessage?.classList?.contains('olliTalkBetaMessage')
           && appendOlliTalkInlineSystemResult(previousMessage,item)){
-          groupStartItem=null;
           return;
         }
       }
@@ -6257,21 +6293,18 @@
         divider.appendChild(createMessageText('span', '', formatOlliTalkDateLabel(item?.created_at)));
         list.appendChild(divider);
         lastDateKey = dateKey;
-        groupStartItem = null;
       }
 
-      const connectedToPrevious = isOlliTalkConnectedMessage(groupStartItem, item, currentMemberId);
+      const connectedToPrevious = !dateChanged
+        && isOlliTalkConnectedMessage(previousItem, item, currentMemberId);
+      const nextItem = index + 1 < messages.length ? messages[index + 1] : null;
+      const connectedToNext = isOlliTalkConnectedMessage(item, nextItem, currentMemberId);
       list.appendChild(createOlliTalkMessageElement(item, currentMemberId, {
         connectedToPrevious,
+        connectedToNext,
         olliReplyTargetIds,
         deferHydration:options.deferHydration===true
       }));
-
-      if (String(item?.message_type || 'text') === 'system') {
-        groupStartItem = null;
-      } else if (!connectedToPrevious) {
-        groupStartItem = item;
-      }
     });
 
     chatArea.replaceChildren(list);

@@ -74,8 +74,8 @@ test('completed or cancelled repetitive-work result stays attached below the act
 });
 
 test('mobile Team Chat assets share mention-restore cache bust revision',()=>{
-  assert.match(html,/olli-talk-beta\.css\?v=20261005-mention-menu-restore-1/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261005-mention-menu-restore-1/);
+  assert.match(html,/olli-talk-beta\\.css\\?v=20261006-minute-grouping-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-minute-grouping-1/);
 });
 
 
@@ -167,16 +167,29 @@ test('mention menu growth does not increase the reserved chat height beyond the 
 });
 
 
+test('Team Chat groups adjacent messages only when sender and displayed minute are identical',()=>{
+  assert.match(js,/function getOlliTalkMessageMinuteKey\(value\)/);
+  assert.match(js,/previousMinute === currentMinute/);
+  assert.doesNotMatch(js,/diff >= 0 && diff < 60 \* 1000/);
+  assert.match(js,/isOlliTalkConnectedRenderedMessage\(lastRendered, item, currentMemberId\)/);
+  assert.match(js,/markOlliTalkRenderedMessageConnectedToNext\(lastRendered\)/);
+  assert.match(js,/const connectedToNext = isOlliTalkConnectedMessage\(item, nextItem, currentMemberId\)/);
+  assert.match(js,/if \(!connectedToNext\) \{[\s\S]*olliTalkBetaMessageTime/);
+  assert.match(css,/\.olliTalkBetaMessageConnected \.olliTalkBetaSender\{[\s\S]*display:none;/);
+  assert.match(html,/olli-talk-beta\.css\?v=20261006-minute-grouping-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261006-minute-grouping-1/);
+});
+
 test('Team Chat voice capture anchors directly to the screen bottom instead of following the shrinking visual viewport',()=>{
   assert.match(css,/#olliTalkBetaScreen\.kcfVoiceCaptureMode \.olliTalkBetaComposerLayer\{[\s\S]*position:absolute;[\s\S]*inset:0;[\s\S]*width:auto;[\s\S]*height:auto;/);
-  assert.match(html,/olli-talk-beta\.css\?v=20261006-voice-bottom-lock-1/);
+  assert.match(html,/olli-talk-beta\\.css\\?v=20261006-minute-grouping-1/);
 });
 
 test('Team Chat send starts on pointerdown before the active composer can blur and collapse',()=>{
   assert.match(js,/sendButton\.addEventListener\('pointerdown', event => \{[\s\S]*sendOlliTalkBetaMessage\(event\)/);
   assert.match(js,/sendButton\.addEventListener\('click', event => \{[\s\S]*if \(event\.detail !== 0\)/);
   assert.match(js,/async function sendOlliTalkBetaMessage\(event\)\{[\s\S]*event\.preventDefault\(\);[\s\S]*event\.stopPropagation\(\);/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261006-send-pointerdown-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-minute-grouping-1/);
 });
 
 test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into a real mention',()=>{
@@ -194,8 +207,8 @@ test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into 
   assert.match(css,/\.olliTalkBetaVoiceBtn\{[\s\S]*?width:33px;[\s\S]*?height:33px;/);
   assert.doesNotMatch(css,/\.olliTalkBetaVoiceBtn\.active\{[\s\S]*?background:#0A84FF;/);
   assert.match(js,/showPanel:true,[\s\S]*panelHost:composer/);
-  assert.match(html,/olli-talk-beta\.css\?v=20261006-stable-anchor-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-send-pointerdown-1/);
+  assert.match(html,/olli-talk-beta\\.css\\?v=20261006-minute-grouping-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-minute-grouping-1/);
 });
 
 

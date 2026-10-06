@@ -1005,6 +1005,15 @@
   content:none;
 }
 
+#olliTalkBetaScreen .olliTalkBetaMessageConnected .olliTalkBetaSender{
+  display:none;
+}
+
+#olliTalkBetaScreen .olliTalkBetaMessageConnected .olliTalkBetaIncomingLayout{
+  grid-template-rows:0 auto;
+  row-gap:0;
+}
+
 #olliTalkBetaScreen .olliTalkBetaTypingBubble{
   min-width:26px;
   min-height:24px;
