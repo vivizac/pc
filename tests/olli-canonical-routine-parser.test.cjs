@@ -139,3 +139,24 @@ test('canonical makeup accepts 24-hour clock without polluting the student name'
   assert.equal(command?.studentName,'금우주');
   assert.equal(command?.timeSlot,4);
 });
+
+
+test('canonical makeup action words stay distinct',()=>{
+  assert.equal(router.interpretedIntentToStructuredCommand('add_makeup','금우주 4시'),null);
+  assert.equal(router.interpretedIntentToStructuredCommand('add_makeup','금우주 4시 보강'),null);
+
+  const add=router.interpretedIntentToStructuredCommand('add_makeup','금우주 4시 보강 잡아줘');
+  assert.equal(add?.action,'add_makeup');
+  assert.equal(add?.studentName,'금우주');
+  assert.equal(add?.timeSlot,4);
+
+  const cancel=router.interpretedIntentToStructuredCommand('cancel_makeup','금우주 4시 보강 취소');
+  assert.equal(cancel?.action,'cancel_makeup');
+  assert.equal(cancel?.studentName,'금우주');
+  assert.equal(cancel?.timeSlot,4);
+
+  const update=router.interpretedIntentToStructuredCommand('update_makeup','금우주 4시 보강 변경');
+  assert.equal(update?.action,'update_makeup');
+  assert.equal(update?.studentName,'금우주');
+  assert.equal(update?.sourceTimeSlot,4);
+});
