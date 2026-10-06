@@ -16,7 +16,6 @@
     messageLoadSequence: 0,
     archiveLoadSequence: 0,
     sendBusy: false,
-    olliModeActive: false,
     olliAiMentionSelected: false,
     assistantReplyPending: false,
     aiConversationMessages: [],
@@ -1297,27 +1296,21 @@
       return;
     }
 
-    const usingAi = isAiEnabled();
     state.olliReplyBusy.add(messageId);
     button.disabled = true;
     button.textContent = '응답 중';
 
     try {
-      if (usingAi) {
-        state.assistantReplyPending = true;
-        syncAssistantTypingIndicator();
-        const turn = await resolveAiTurn(commandText, current, Number(messageId), { allowSuggestedQuery:true });
-        state.assistantReplyPending = false;
-        replaceAssistantTypingWithMessage(turn.assistantMessage, current.memberId);
-        if (turn.recordAi) recordAiConversationTurn(commandText, turn.replyText);
-      } else {
-        const turn = await resolveBotTurn(commandText, current, Number(messageId), { allowSuggestedQuery:true });
-        appendPersistedMessage(turn.assistantMessage, current.memberId);
-      }
+      state.assistantReplyPending = true;
+      syncAssistantTypingIndicator();
+      const turn = await resolveAiTurn(commandText, current, Number(messageId), { allowSuggestedQuery:true });
+      state.assistantReplyPending = false;
+      replaceAssistantTypingWithMessage(turn.assistantMessage, current.memberId);
+      if (turn.recordAi) recordAiConversationTurn(commandText, turn.replyText);
       removeOlliReplySuggestion(messageId);
       await loadMessages({ showLoading:false, followBottom:true, render:false });
     } catch (error) {
-      console.warn(usingAi ? 'PC 올리 응답 버튼 AI 처리 실패:' : 'PC 올리 응답 버튼 봇 처리 실패:', error?.message || error);
+      console.warn('PC 올리 응답 처리 실패:', error?.message || error);
       alert('올리 응답을 받지 못했습니다.\n' + (error?.message || error));
       button.disabled = false;
       button.textContent = '올리 응답';
@@ -1801,11 +1794,6 @@
     input.style.height = `${Math.min(input.scrollHeight, 118)}px`;
   }
 
-  function isAiEnabled() {
-    try { return global.OlliTeamTalkSettings?.state?.aiEnabled === true; }
-    catch (_) { return false; }
-  }
-
   function hasOlliAiMention(value) {
     return /(^|\s)@올리(?=\s|$|[,.!?，。！？])/.test(String(value || ''));
   }
@@ -1815,46 +1803,6 @@
       .replace(/(^|\s)@올리(?=\s|$|[,.!?，。！？])/, '$1')
       .replace(/\s+/g, ' ')
       .trim();
-  }
-
-  function syncAssistantUi() {
-    const button = byId('olliPcTeamTalkOlli');
-    const input = byId('olliPcTeamTalkInput');
-    const aiEnabled = isAiEnabled();
-    if (button) {
-      button.textContent = aiEnabled ? 'AI' : '봇';
-      button.classList.toggle('active', state.olliModeActive);
-      button.setAttribute('aria-pressed', state.olliModeActive ? 'true' : 'false');
-      button.setAttribute('aria-label', state.olliModeActive
-        ? (aiEnabled ? '올리 AI 호출 해제' : '올리봇 호출 해제')
-        : (aiEnabled ? '올리 AI 호출' : '올리봇 호출'));
-    }
-    if (input) {
-      input.placeholder = state.olliModeActive
-        ? (aiEnabled ? 'AI에게 물어보세요' : '올리에게 요청하세요')
-        : '메시지를 입력하세요';
-    }
-  }
-
-  function setOlliMode(active, options = {}) {
-    const nextActive = !!active;
-    if (nextActive !== state.olliModeActive) {
-      state.aiConversationMessages = [];
-      state.pendingMakeupDialogue = null;
-    }
-    state.olliModeActive = nextActive;
-    syncAssistantUi();
-    const input = byId('olliPcTeamTalkInput');
-    if (input && options.focus !== false) input.focus();
-    return state.olliModeActive;
-  }
-
-  function toggleOlliMode(event) {
-    event?.preventDefault?.();
-    event?.stopPropagation?.();
-    const menu = byId('olliPcTeamTalkMentionMenu');
-    if (menu) menu.hidden = true;
-    return setOlliMode(!state.olliModeActive);
   }
 
   function hasPendingOlliCommand() {
@@ -1966,12 +1914,10 @@
 
   function buildAiConversationMessages(commandText) {
     const currentMessage = { role:'user', content:clean(commandText) };
-    if (!state.olliModeActive) return [currentMessage];
     return state.aiConversationMessages.concat(currentMessage);
   }
 
   function recordAiConversationTurn(commandText, replyText) {
-    if (!state.olliModeActive || !isAiEnabled()) return;
     const userText = clean(commandText);
     const assistantText = clean(replyText);
     if (!userText || !assistantText) return;
@@ -1979,13 +1925,6 @@
       { role:'user', content:userText },
       { role:'assistant', content:assistantText }
     );
-  }
-
-  function handleAiModeChanged() {
-    state.aiConversationMessages = [];
-    state.pendingActionReason = null;
-    state.pendingMakeupDialogue = null;
-    syncAssistantUi();
   }
 
   async function resolveFeedbackAnalysis(commandText,rawCommandText,current,sourceMessageId) {
@@ -4337,8 +4276,8 @@
     olliButton.type = 'button';
     olliButton.className = 'olliPcTeamTalkMentionOption';
     olliButton.append(
-      create('span', 'olliPcTeamTalkMentionAvatar', 'AI'),
-      create('span', '', '올리 · AI')
+      create('span', 'olliPcTeamTalkMentionAvatar', 'Olli'),
+      create('span', '', '올리')
     );
     olliButton.addEventListener('click', () => {
       const input = byId('olliPcTeamTalkInput');
@@ -4412,20 +4351,18 @@
     const send = byId('olliPcTeamTalkSend');
     const rawBody = clean(input?.value);
     const olliAiMentionRequested = state.olliAiMentionSelected && hasOlliAiMention(rawBody);
-    const olliRequested = state.olliModeActive || olliAiMentionRequested || /^\s*@올리(?:\s|$)/.test(rawBody);
+    const directOlliRequested = /^\s*@올리(?:\s|$)/.test(rawBody);
+    const pendingOlliWorkflow = hasPendingOlliCommand()
+      || !!state.pendingActionReason
+      || !!state.pendingMakeupDialogue;
+    const olliRequested = olliAiMentionRequested || directOlliRequested || pendingOlliWorkflow;
     const commandText = olliRequested
-      ? (olliAiMentionRequested
+      ? (olliAiMentionRequested || directOlliRequested
         ? stripOlliAiMention(rawBody)
-        : rawBody.replace(/^\s*@올리(?:\s+|$)/, '').trim())
+        : rawBody)
       : '';
     const body = olliRequested ? ('@올리 ' + commandText).trim() : rawBody;
     if (!input || !rawBody || (olliRequested && !commandText)) {
-      updateComposerState();
-      return;
-    }
-
-    if (olliAiMentionRequested && !isAiEnabled()) {
-      alert('올리 AI를 사용하려면 설정에서 올리 AI를 켜 주세요.');
       updateComposerState();
       return;
     }
@@ -4457,6 +4394,7 @@
 
       input.value = '';
       state.olliAiMentionSelected = false;
+      if (!olliRequested) state.aiConversationMessages = [];
       resizeComposer();
       updateComposerState();
       appendPersistedMessage(payload.message, current.memberId);
@@ -4486,10 +4424,8 @@
       }
 
       if (olliRequested) {
-        const usingAi = olliAiMentionRequested || isAiEnabled();
         try {
-          if (usingAi) {
-            const turn = await resolveAiTurn(commandText, current, Number(payload.message.id));
+          const turn = await resolveAiTurn(commandText, current, Number(payload.message.id));
             if(firstReplyStartedAt){
               const remaining=1000-(Date.now()-firstReplyStartedAt);
               if(remaining>0) await new Promise(resolve=>setTimeout(resolve,remaining));
@@ -4504,21 +4440,10 @@
             }else{
               syncAssistantTypingIndicator();
             }
-            recordAiConversationTurn(commandText, turn.replyText);
-          } else {
-            const turn = await resolveBotTurn(commandText, current, Number(payload.message.id));
-            if(firstReplyStartedAt){
-              const remaining=1000-(Date.now()-firstReplyStartedAt);
-              if(remaining>0) await new Promise(resolve=>setTimeout(resolve,remaining));
-              state.assistantReplyPending=false;
-              replaceAssistantTypingWithMessage(turn.assistantMessage,current.memberId);
-            }else{
-              appendPersistedMessage(turn.assistantMessage, current.memberId);
-            }
-          }
+          recordAiConversationTurn(commandText, turn.replyText);
         } catch (error) {
-          console.warn(usingAi ? 'PC 올리톡 AI 응답 실패:' : 'PC 올리톡 올리봇 응답 실패:', error?.message || error);
-          alert((usingAi ? 'AI' : '올리봇') + ' 응답을 받지 못했습니다.\n' + (error?.message || error));
+          console.warn('PC 올리톡 응답 실패:', error?.message || error);
+          alert('올리 응답을 받지 못했습니다.\n' + (error?.message || error));
         } finally {
           if (state.assistantReplyPending) {
             state.assistantReplyPending = false;
@@ -4629,7 +4554,6 @@
     const input = byId('olliPcTeamTalkInput');
     const send = byId('olliPcTeamTalkSend');
     const mention = byId('olliPcTeamTalkMention');
-    const olli = byId('olliPcTeamTalkOlli');
     const addFile = byId('olliPcTeamTalkAddFile');
     const composerFile = byId('olliPcTeamTalkComposerFile');
     const archiveUpload = byId('olliPcTeamTalkArchiveUpload');
@@ -4660,10 +4584,6 @@
     if (mention && !mention.dataset.bound) {
       mention.dataset.bound = '1';
       mention.addEventListener('click', toggleMentionMenu);
-    }
-    if (olli && !olli.dataset.bound) {
-      olli.dataset.bound = '1';
-      olli.addEventListener('click', toggleOlliMode);
     }
     if (addFile && !addFile.dataset.bound) {
       addFile.dataset.bound = '1';
@@ -4764,7 +4684,6 @@
     screen.setAttribute('aria-hidden', 'false');
     bindEvents();
     bindRealtime();
-    syncAssistantUi();
     resizeComposer();
     updateComposerState();
     setWorkspaceTab(state.workspaceTab);
@@ -4782,8 +4701,6 @@
     state.started = true;
     bindEvents();
     bindRealtime();
-    syncAssistantUi();
-    global.addEventListener('olli-team-talk-ai-mode-changed', handleAiModeChanged);
     refreshBadge();
     primeDesktopNotificationState();
     global.addEventListener('storage', (event) => {
