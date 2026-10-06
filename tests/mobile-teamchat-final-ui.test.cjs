@@ -49,6 +49,15 @@ test('AI avatar label is Olli while sender name remains the Korean display name'
   assert.match(js,/createMessageText\('span', 'olliTalkBetaSenderName', '올리'\)/);
 });
 
+
+test('Olli profile text uses the strongest completed-bubble pink without a later black override',()=>{
+  assert.match(css,/--olli-talk-olli-accent:color\(display-p3 \.9255 \.4392 \.6863\)/);
+  assert.match(css,/\.olliTalkBetaAiIncomingLayout \.olliTalkBetaAiAvatar\{[\s\S]*color:var\(--olli-talk-olli-accent\)/);
+  assert.doesNotMatch(css,/\.olliTalkBetaAiIncomingLayout \.olliTalkBetaAiAvatar\{[\s\S]{0,120}color:#111/);
+  assert.match(pcCss,/--olli-pc-talk-olli-accent:color\(display-p3 \.9255 \.4392 \.6863\)/);
+  assert.match(pcCss,/\.olliPcTeamTalkAvatar\.ai\{[^}]*color:var\(--olli-pc-talk-olli-accent\)/);
+});
+
 test('Team Chat system notice renders as an Olli bubble while keeping the Display P3 gradient',()=>{
   assert.match(js,/const isAi = type === 'ai' \|\| type === 'system';/);
   assert.match(js,/if \(type === 'system'\) \{[\s\S]*bubble\.classList\.add\('olliTalkBetaSystemBubble'\)/);
