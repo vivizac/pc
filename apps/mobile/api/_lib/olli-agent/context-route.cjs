@@ -281,25 +281,44 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
   };
 
   const startedAt=startPerfTimer();
-  let response;
-  try{
-    response=await fetch('https://api.openai.com/v1/responses',{
-      method:'POST',
-      headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiKey},
-      body:JSON.stringify({
-        model,
-        input:[
-          {role:'system',content:[{type:'input_text',text:system}]},
-          {role:'user',content:[{type:'input_text',text:user}]},
-        ],
-        reasoning:{effort:'none'},
-        max_output_tokens:160,
-        text:{format:{type:'json_schema',name:'olli_system_language',strict:true,schema}},
-      }),
-    });
-  }catch(error){
-    emitPerfLog({phase:'interpreter_openai',status:'error',durationMs:perfDurationMs(startedAt),errorCode:error?.code || error?.name});
-    throw error;
+  let response=null;
+  let interpreterAttempts=0;
+  while(interpreterAttempts<2){
+    interpreterAttempts+=1;
+    try{
+      response=await fetch('https://api.openai.com/v1/responses',{
+        method:'POST',
+        headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiKey},
+        body:JSON.stringify({
+          model,
+          input:[
+            {role:'system',content:[{type:'input_text',text:system}]},
+            {role:'user',content:[{type:'input_text',text:user}]},
+          ],
+          reasoning:{effort:'none'},
+          max_output_tokens:160,
+          text:{format:{type:'json_schema',name:'olli_system_language',strict:true,schema}},
+        }),
+      });
+    }catch(error){
+      if(interpreterAttempts<2){
+        await new Promise(resolve=>setTimeout(resolve,200));
+        continue;
+      }
+      emitPerfLog({
+        phase:'interpreter_openai',
+        status:'error',
+        durationMs:perfDurationMs(startedAt),
+        errorCode:error?.code || error?.name,
+        retryCount:interpreterAttempts-1,
+      });
+      throw error;
+    }
+
+    const retryableStatus=response.status===429 || response.status>=500;
+    if(response.ok || !retryableStatus || interpreterAttempts>=2) break;
+    await response.text().catch(()=>{});
+    await new Promise(resolve=>setTimeout(resolve,200));
   }
 
   const raw=await response.text();
