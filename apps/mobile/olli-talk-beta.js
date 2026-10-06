@@ -391,11 +391,6 @@
     );
   }
 
-  function isOlliTalkAiEnabled(){
-    try { return window.OlliTeamTalkSettings?.state?.aiEnabled === true; }
-    catch (_) { return false; }
-  }
-
   function stripOlliTalkOlliPrefix(value){
     return String(value || '').replace(/^\s*@올리(?:\s+|$)/, '').trim();
   }
@@ -653,11 +648,6 @@
       console.warn('올리톡 올리 업무 처리 실패:',error);
       return saveReply(String(error?.message || error || '요청을 처리하지 못했어요.'));
     }
-  }
-
-  function handleOlliTalkAiModeChanged(){
-    olliTalkPendingActionReason = null;
-    resetOlliTalkAiConversation();
   }
 
   async function resolveOlliTalkFeedbackAnalysis(commandText,rawCommandText,context,sourceMessageId){
@@ -6074,29 +6064,23 @@
       return;
     }
 
-    const usingAi=isOlliTalkAiEnabled();
     olliTalkOlliReplyBusy.add(messageId);
     button.disabled=true;
     button.textContent='응답 중';
 
     try{
-      if(usingAi){
-        olliTalkAssistantReplyPending=true;
-        syncOlliTalkAssistantTypingIndicator();
-        const turn=await resolveOlliTalkAiTurn(commandText,context,Number(messageId),{allowSuggestedQuery:true});
-        olliTalkAssistantReplyPending=false;
-        const assistantMessages=Array.isArray(turn.assistantMessages) && turn.assistantMessages.length
-          ? turn.assistantMessages
-          : [turn.assistantMessage].filter(Boolean);
-        if(assistantMessages.length){
-          replaceOlliTalkAssistantTypingWithMessage(assistantMessages[0],context.memberId);
-          assistantMessages.slice(1).forEach(message=>appendOlliTalkPersistedMessage(message,context.memberId));
-        }else{
-          syncOlliTalkAssistantTypingIndicator();
-        }
+      olliTalkAssistantReplyPending=true;
+      syncOlliTalkAssistantTypingIndicator();
+      const turn=await resolveOlliTalkAiTurn(commandText,context,Number(messageId),{allowSuggestedQuery:true});
+      olliTalkAssistantReplyPending=false;
+      const assistantMessages=Array.isArray(turn.assistantMessages) && turn.assistantMessages.length
+        ? turn.assistantMessages
+        : [turn.assistantMessage].filter(Boolean);
+      if(assistantMessages.length){
+        replaceOlliTalkAssistantTypingWithMessage(assistantMessages[0],context.memberId);
+        assistantMessages.slice(1).forEach(message=>appendOlliTalkPersistedMessage(message,context.memberId));
       }else{
-        const turn=await resolveOlliTalkBotTurn(commandText,context,Number(messageId),{allowSuggestedQuery:true});
-        appendOlliTalkPersistedMessage(turn.assistantMessage,context.memberId);
+        syncOlliTalkAssistantTypingIndicator();
       }
 
       removeOlliTalkReplySuggestion(messageId);
@@ -6107,7 +6091,7 @@
         render:false
       });
     }catch(error){
-      console.warn(usingAi ? '올리 응답 버튼 AI 처리 실패:' : '올리 응답 버튼 봇 처리 실패:',error);
+      console.warn('올리 응답 버튼 처리 실패:',error);
       alert('올리 응답을 받지 못했습니다.\n'+(error?.message || error));
       button.disabled=false;
       button.textContent='올리 응답';
@@ -7202,12 +7186,6 @@
       return;
     }
 
-    if (olliAiMentionRequested && !isOlliTalkAiEnabled()) {
-      alert('올리 AI를 사용하려면 설정에서 올리 AI를 켜 주세요.');
-      updateOlliTalkBetaComposerState();
-      return;
-    }
-
     const context = getOlliTalkBetaContext();
     if (!context.sessionToken || !context.academyId) {
       alert('올리톡을 사용하려면 계정 로그인이 필요합니다.');
@@ -7291,10 +7269,8 @@
       }
 
       if (olliRequested) {
-        const usingAi = olliAiMentionRequested || isOlliTalkAiEnabled();
         try {
-          if(usingAi){
-            const turn=await resolveOlliTalkAiTurn(commandText,context,Number(payload.message.id));
+          const turn=await resolveOlliTalkAiTurn(commandText,context,Number(payload.message.id));
             if(olliTalkFirstReplyStartedAt){
               const remaining=1000-(Date.now()-olliTalkFirstReplyStartedAt);
               if(remaining>0) await new Promise(resolve=>setTimeout(resolve,remaining));
@@ -7309,20 +7285,9 @@
             }else{
               syncOlliTalkAssistantTypingIndicator();
             }
-            recordOlliTalkAiConversationTurn(commandText, turn.replyText);
-          }else{
-            const turn=await resolveOlliTalkBotTurn(commandText,context,Number(payload.message.id));
-            if(olliTalkFirstReplyStartedAt){
-              const remaining=1000-(Date.now()-olliTalkFirstReplyStartedAt);
-              if(remaining>0) await new Promise(resolve=>setTimeout(resolve,remaining));
-              olliTalkAssistantReplyPending=false;
-              replaceOlliTalkAssistantTypingWithMessage(turn.assistantMessage,context.memberId);
-            }else{
-              appendOlliTalkPersistedMessage(turn.assistantMessage,context.memberId);
-            }
-          }
+          recordOlliTalkAiConversationTurn(commandText, turn.replyText);
         } catch(error) {
-          console.warn(usingAi ? '올리톡 AI 응답 실패:' : '올리톡 올리봇 응답 실패:', error);
+          console.warn('올리톡 응답 실패:', error);
           followupErrors.push(usingAi ? 'AI 응답' : '올리봇 응답');
         } finally {
           if (olliTalkAssistantReplyPending) {
@@ -7806,7 +7771,6 @@
 
   function init(){
     syncOlliTalkContrastTheme();
-    window.addEventListener('olli-team-talk-ai-mode-changed', handleOlliTalkAiModeChanged);
     const input = getOlliTalkBetaInput();
     const sendButton = getOlliTalkBetaSendButton();
     const mentionTriggerButton = document.getElementById('olliTalkMentionTriggerBtn');
