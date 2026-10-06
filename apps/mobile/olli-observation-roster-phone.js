@@ -133,8 +133,16 @@ function getObservationRosterLessonDays(student) {
     .filter(Boolean);
 }
 
+function getObservationRosterWeekdayOrder() {
+  const baseOrder = ['월','화','수','목','금','토','일'];
+  const todayDay = getObservationRosterTodayDay();
+  const todayIndex = baseOrder.indexOf(todayDay);
+  if (todayIndex < 0) return baseOrder;
+  return baseOrder.slice(todayIndex).concat(baseOrder.slice(0, todayIndex));
+}
+
 function getObservationRosterLessonDayRank(student) {
-  const order = ['월','화','수','목','금','토','일'];
+  const order = getObservationRosterWeekdayOrder();
   const ranks = getObservationRosterLessonDays(student)
     .map(day => order.indexOf(day))
     .filter(rank => rank >= 0);
