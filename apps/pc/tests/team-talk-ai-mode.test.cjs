@@ -11,6 +11,7 @@ test('shared Team Talk settings no longer expose an AI or rule-mode toggle', () 
   assert.doesNotMatch(settings, /olliTeamTalkToggleAi/);
   assert.doesNotMatch(settings, /olli-team-talk-ai-mode-changed/);
   assert.doesNotMatch(settings, /<strong>올리 AI<\/strong>/);
+  assert.doesNotMatch(settings, /p_ai_enabled|ai_enabled/);
   assert.match(settings, /botNotificationsEnabled:\s*false/);
 });
 
