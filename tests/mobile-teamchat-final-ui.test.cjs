@@ -167,6 +167,27 @@ test('mention menu growth does not increase the reserved chat height beyond the 
 });
 
 
+test('Team Chat connected incoming bubbles use the visible sender identity and omit repeated sender DOM',()=>{
+  assert.match(js,/return 'incoming:' \+ \(senderName \|\| senderMemberId \|\| 'unknown'\)/);
+  assert.match(js,/if \(!connectedToPrevious\) incomingLayout\.appendChild\(createOlliTalkSenderProfile\(senderName\)\)/);
+  assert.match(js,/if \(!connectedToPrevious\) \{[\s\S]*avatar\.textContent = 'Olli'/);
+});
+
+test('Team Chat mention placeholder shortens to the actual remaining width with an ellipsis',()=>{
+  assert.match(js,/const OLLI_TALK_INPUT_PLACEHOLDER = '메시지를 입력하세요'/);
+  assert.match(js,/function syncOlliTalkInputPlaceholder\(\)/);
+  assert.match(js,/availableWidth = Math\.max\(0, input\.clientWidth - mentionIndent/);
+  assert.match(js,/input\.placeholder = low > 0 \? full\.slice\(0, low\) \+ ellipsis : ellipsis/);
+  assert.match(css,/\.olliTalkMentionAwaitingMessage \.olliTalkBetaInput\{[\s\S]*white-space:nowrap;[\s\S]*overflow-x:hidden;/);
+});
+
+test('Team Chat touch send starts before iOS can move focus away from the textarea',()=>{
+  assert.match(js,/sendButton\.addEventListener\('touchstart', event => \{[\s\S]*startSendFromControl\(event\)[\s\S]*passive:false/);
+  assert.match(js,/if \(input && document\.activeElement !== input\)[\s\S]*input\.focus\(\{ preventScroll:true \}\)/);
+  assert.match(js,/sendButton\.addEventListener\('pointerdown', event => \{[\s\S]*event\.pointerType === 'touch'\) return/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261006-chat-input-fixes-1/);
+});
+
 test('Team Chat groups adjacent messages only when sender and displayed minute are identical',()=>{
   assert.match(js,/function getOlliTalkMessageMinuteKey\(value\)/);
   assert.match(js,/previousMinute === currentMinute/);
@@ -176,8 +197,8 @@ test('Team Chat groups adjacent messages only when sender and displayed minute a
   assert.match(js,/const connectedToNext = isOlliTalkConnectedMessage\(item, nextItem, currentMemberId\)/);
   assert.match(js,/if \(!connectedToNext\) \{[\s\S]*olliTalkBetaMessageTime/);
   assert.match(css,/\.olliTalkBetaMessageConnected \.olliTalkBetaSender\{[\s\S]*display:none;/);
-  assert.match(html,/olli-talk-beta\.css\?v=20261006-minute-grouping-1/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261006-minute-grouping-1/);
+  assert.match(html,/olli-talk-beta\\.css\\?v=20261006-chat-input-fixes-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-chat-input-fixes-1/);
 });
 
 test('Team Chat voice capture anchors directly to the screen bottom instead of following the shrinking visual viewport',()=>{

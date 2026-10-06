@@ -207,6 +207,7 @@
     if (!inputFocused) hideOlliTalkMentionMenu();
     syncOlliTalkChatToComposer();
     updateOlliTalkBetaComposerState();
+    syncOlliTalkInputPlaceholder();
 
     if (keepLatest && isOlliTalkBetaVisible()) {
       scheduleOlliTalkLatestMessageAnchor();
@@ -223,11 +224,67 @@
     }
   }
 
+  const OLLI_TALK_INPUT_PLACEHOLDER = '메시지를 입력하세요';
+  let olliTalkPlaceholderCanvas = null;
+
+  function measureOlliTalkInputText(text, input){
+    if (!input) return 0;
+    if (!olliTalkPlaceholderCanvas) olliTalkPlaceholderCanvas = document.createElement('canvas');
+    const context = olliTalkPlaceholderCanvas.getContext?.('2d');
+    if (!context) return String(text || '').length * 8;
+    const style = getComputedStyle(input);
+    context.font = [
+      style.fontStyle || 'normal',
+      style.fontWeight || '400',
+      style.fontSize || '14px',
+      style.fontFamily || 'sans-serif'
+    ].join(' ');
+    return context.measureText(String(text || '')).width;
+  }
+
+  function syncOlliTalkInputPlaceholder(){
+    const input = getOlliTalkBetaInput();
+    const row = document.getElementById('olliTalkComposerTextRow');
+    const prefix = getOlliTalkSelectedMentionPrefix();
+    if (!input || !row) return;
+
+    if (!olliTalkMentionModeActive || !prefix || prefix.hidden) {
+      input.placeholder = OLLI_TALK_INPUT_PLACEHOLDER;
+      return;
+    }
+
+    const rowStyle = getComputedStyle(row);
+    const inputStyle = getComputedStyle(input);
+    const mentionIndent = parseFloat(rowStyle.getPropertyValue('--olli-talk-mention-indent')) || 0;
+    const paddingLeft = parseFloat(inputStyle.paddingLeft) || 0;
+    const paddingRight = parseFloat(inputStyle.paddingRight) || 0;
+    const availableWidth = Math.max(0, input.clientWidth - mentionIndent - paddingLeft - paddingRight - 4);
+    const full = OLLI_TALK_INPUT_PLACEHOLDER;
+
+    if (measureOlliTalkInputText(full, input) <= availableWidth) {
+      input.placeholder = full;
+      return;
+    }
+
+    const ellipsis = '…';
+    const ellipsisWidth = measureOlliTalkInputText(ellipsis, input);
+    let low = 0;
+    let high = full.length;
+    while (low < high) {
+      const mid = Math.ceil((low + high) / 2);
+      const width = measureOlliTalkInputText(full.slice(0, mid), input) + ellipsisWidth;
+      if (width <= availableWidth) low = mid;
+      else high = mid - 1;
+    }
+    input.placeholder = low > 0 ? full.slice(0, low) + ellipsis : ellipsis;
+  }
+
   function resizeInput(){
     const input = document.getElementById('olliTalkBetaInput');
     if (!input) return;
     input.style.height = 'auto';
     input.style.height = Math.min(input.scrollHeight, 112) + 'px';
+    syncOlliTalkInputPlaceholder();
   }
 
   function getOlliTalkBetaInput(){
@@ -266,6 +323,7 @@
     if (!textRow) return;
     if (prefix.hidden) {
       textRow.style.setProperty('--olli-talk-mention-indent', '0px');
+      syncOlliTalkInputPlaceholder();
       return;
     }
 
@@ -274,6 +332,7 @@
       '--olli-talk-mention-indent',
       Math.max(0, mentionWidth + 8) + 'px'
     );
+    syncOlliTalkInputPlaceholder();
   }
 
   function isOlliTalkAiMentionConversationActive(){
@@ -5942,9 +6001,10 @@
     if (type === 'system') return '';
     if (type === 'ai') return 'ai:olli';
     const senderMemberId = String(item?.sender_member_id || '').trim();
+    const senderName = String(item?.sender_name || '').trim();
     const currentId = String(currentMemberId || '').trim();
     if (senderMemberId && senderMemberId === currentId) return 'outgoing:' + senderMemberId;
-    return 'incoming:' + (senderMemberId || String(item?.sender_name || '').trim() || 'unknown');
+    return 'incoming:' + (senderName || senderMemberId || 'unknown');
   }
 
   function getOlliTalkMessageMinuteKey(value){
@@ -6019,21 +6079,23 @@
     if (isAi) {
       const incomingLayout = document.createElement('div');
       incomingLayout.className = 'olliTalkBetaIncomingLayout olliTalkBetaAiIncomingLayout';
-      const sender = document.createElement('div');
-      sender.className = 'olliTalkBetaSender';
-      const avatar = document.createElement('span');
-      avatar.className = 'olliTalkBetaMemberAvatar olliTalkBetaAiAvatar';
-      avatar.textContent = 'Olli';
-      avatar.setAttribute('aria-hidden', 'true');
-      sender.appendChild(avatar);
-      sender.appendChild(createMessageText('span', 'olliTalkBetaSenderName', '올리'));
-      incomingLayout.appendChild(sender);
+      if (!connectedToPrevious) {
+        const sender = document.createElement('div');
+        sender.className = 'olliTalkBetaSender';
+        const avatar = document.createElement('span');
+        avatar.className = 'olliTalkBetaMemberAvatar olliTalkBetaAiAvatar';
+        avatar.textContent = 'Olli';
+        avatar.setAttribute('aria-hidden', 'true');
+        sender.appendChild(avatar);
+        sender.appendChild(createMessageText('span', 'olliTalkBetaSenderName', '올리'));
+        incomingLayout.appendChild(sender);
+      }
       message.appendChild(incomingLayout);
     } else if (!own) {
       const senderName = String(item?.sender_name || '선생님').trim() || '선생님';
       const incomingLayout = document.createElement('div');
       incomingLayout.className = 'olliTalkBetaIncomingLayout';
-      incomingLayout.appendChild(createOlliTalkSenderProfile(senderName));
+      if (!connectedToPrevious) incomingLayout.appendChild(createOlliTalkSenderProfile(senderName));
       message.appendChild(incomingLayout);
     }
 
@@ -7745,20 +7807,37 @@
     }
 
     if (sendButton) {
+      const startSendFromControl = event => {
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        if (input && document.activeElement !== input) {
+          try { input.focus({ preventScroll:true }); } catch (_) { input.focus(); }
+        }
+        sendOlliTalkBetaMessage().catch(error => console.warn('올리톡 메시지 전송 시작 실패:', error));
+      };
+
+      sendButton.addEventListener('touchstart', event => {
+        if (event.touches && event.touches.length !== 1) return;
+        startSendFromControl(event);
+      }, { passive:false });
+
       sendButton.addEventListener('pointerdown', event => {
+        if (event.pointerType === 'touch') return;
         if (event.isPrimary === false) return;
         if (event.pointerType === 'mouse' && event.button !== 0) return;
-        sendOlliTalkBetaMessage(event).catch(error => console.warn('올리톡 메시지 전송 시작 실패:', error));
+        startSendFromControl(event);
       });
+
       sendButton.addEventListener('click', event => {
-        // Pointer input is handled on pointerdown so the active two-row composer
-        // cannot collapse and hide the send button before the click is delivered.
+        // Touch/pointer input already started the send before focus can leave the textarea.
         if (event.detail !== 0) {
           event.preventDefault();
           event.stopPropagation();
           return;
         }
-        sendOlliTalkBetaMessage(event).catch(error => console.warn('올리톡 메시지 전송 시작 실패:', error));
+        startSendFromControl(event);
       });
     }
 

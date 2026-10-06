@@ -656,6 +656,11 @@
   color:var(--olli-talk-control-input-placeholder);
 }
 
+#olliTalkBetaScreen.olliTalkMentionAwaitingMessage .olliTalkBetaInput{
+  white-space:nowrap;
+  overflow-x:hidden;
+}
+
 #olliTalkBetaScreen .olliTalkFileAddBtn,
 #olliTalkBetaScreen .olliTalkQuickOrderBtn,
 #olliTalkBetaScreen .olliTalkBetaVoiceBtn,
