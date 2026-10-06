@@ -75,7 +75,7 @@ test('leaving and reopening Team Chat rebuilds payroll buttons in the hidden sta
 
 
 test('payday reminders remain owner-only in Team Chat history while normal management messages stay unchanged', () => {
-  assert.equal((migration.match(/private\.olli_teacher_payroll_notifications payroll_notice/g)||[]).length, 3);
+  assert.equal((migration.match(/private\.olli_teacher_payroll_notifications payroll_notice/g)||[]).length, 5);
   assert.match(migration, /v_member\.role='owner'[\s\S]*not exists \([\s\S]*payroll_notice\.message_id=msg\.id/);
 });
 
