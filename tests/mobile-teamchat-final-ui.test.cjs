@@ -177,7 +177,15 @@ test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into 
   assert.match(js,/if\(!parsed\.mentionOlli\) return parsed\.text/);
   assert.doesNotMatch(js,/toggleOlliTalkVoiceInput[\s\S]{0,1600}sendOlliTalkBetaMessage\(/);
   assert.match(css,/\.olliTalkBetaVoiceBtn\{[\s\S]*?width:33px;[\s\S]*?height:33px;/);
-  assert.match(css,/\.olliTalkBetaVoiceBtn\.active\{[\s\S]*?background:#0A84FF;[\s\S]*?color:#fff;/);
+  assert.doesNotMatch(css,/\.olliTalkBetaVoiceBtn\.active\{[\s\S]*?background:#0A84FF;/);
+  assert.match(js,/showPanel:true,[\s\S]*panelHost:composer/);
   assert.match(html,/olli-talk-beta\.css\?v=20261006-stable-anchor-1/);
   assert.match(html,/olli-talk-beta\.js\?v=20261006-stable-anchor-1/);
+});
+
+
+test('Team Chat mention icon is larger without added visual weight and voice controls align with QuickNote spacing',()=>{
+  assert.match(css,/\.olliTalkMentionTriggerBtn\{[\s\S]*font-size:30px;[\s\S]*font-weight:350;[\s\S]*-webkit-text-stroke:0;/);
+  assert.match(css,/\.olliTalkBetaVoiceBtn\{[\s\S]*left:-6px;/);
+  assert.match(css,/\.olliTalkQuickOrderBtn\{[\s\S]*left:-6px;/);
 });

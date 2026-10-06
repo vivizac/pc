@@ -679,6 +679,7 @@
   grid-column:4;
   grid-row:2;
   justify-self:end;
+  left:-6px;
   background:transparent;
   color:var(--olli-talk-control-foreground);
   cursor:pointer;
@@ -721,6 +722,7 @@
   grid-column:3;
   grid-row:2;
   justify-self:end;
+  left:-6px;
   width:44px;
   min-width:44px;
   padding:0;
@@ -743,11 +745,11 @@
   grid-column:5;
   grid-row:2;
   justify-self:end;
-  font-size:25px;
-  font-weight:400;
+  font-size:30px;
+  font-weight:350;
   line-height:1;
   letter-spacing:-.04em;
-  -webkit-text-stroke:0.1px currentColor;
+  -webkit-text-stroke:0;
 }
 #olliTalkBetaScreen .olliTalkFileAddBtn:active,
 #olliTalkBetaScreen .olliTalkQuickOrderBtn:active,
