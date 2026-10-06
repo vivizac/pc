@@ -13,7 +13,6 @@
   let olliTalkChatTrackingBound = false;
   let olliTalkComposerResizeObserver = null;
   let olliTalkLastComposerTop = null;
-  let olliTalkFollowBottomAfterViewportSettle = false;
   let olliTalkViewportTransitionComposerTop = null;
   let olliTalkViewportTransitionChatScrollTop = null;
   let olliTalkViewportTransitionUserTouchedChat = false;
@@ -160,7 +159,6 @@
     olliTalkViewportTransitionComposerTop = composerTop;
     olliTalkViewportTransitionChatScrollTop = Math.max(0, Number(chatArea.scrollTop || 0));
     olliTalkViewportTransitionUserTouchedChat = false;
-    olliTalkFollowBottomAfterViewportSettle = isOlliTalkChatNearBottom(chatArea);
   }
 
   function syncOlliTalkChatToComposer(options = {}){
@@ -273,10 +271,8 @@
     const delta = Number.isFinite(startTop) && Number.isFinite(finalTop)
       ? startTop - finalTop
       : 0;
-    const followBottom = olliTalkFollowBottomAfterViewportSettle === true;
     const userTouched = olliTalkViewportTransitionUserTouchedChat === true;
 
-    olliTalkFollowBottomAfterViewportSettle = false;
     syncOlliTalkChatToComposer();
 
     requestAnimationFrame(() => {
@@ -285,9 +281,7 @@
         return;
       }
 
-      if (followBottom) {
-        chatArea.scrollTop = chatArea.scrollHeight;
-      } else if (Number.isFinite(startScrollTop) && Math.abs(delta) > 0.5) {
+      if (Number.isFinite(startScrollTop) && Math.abs(delta) > 0.5) {
         const maxScroll = Math.max(0, chatArea.scrollHeight - chatArea.clientHeight);
         chatArea.scrollTop = Math.max(0, Math.min(maxScroll, startScrollTop + delta));
       }
