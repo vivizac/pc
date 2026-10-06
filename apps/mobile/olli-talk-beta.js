@@ -5818,9 +5818,17 @@
         const label=String(choice?.label || '').trim() || Number(choice?.timeSlot || 0)+'시';
         const status=String(choice?.status || '').trim();
         const selectable=choice?.selectable===true;
-        button.textContent=status==='full'
-          ? label+'\n'+(String(payload?.targetIntent || '').trim()==='add_waitlist' ? '대기 가능' : '마감')
-          : label;
+        const waitlistFull=status==='full'
+          && String(payload?.targetIntent || '').trim()==='add_waitlist';
+        if(status==='full' && !waitlistFull){
+          button.classList.add('withStatusLabel');
+          button.append(
+            createMessageText('span','timeChoiceLabel',label),
+            createMessageText('span','timeChoiceStatus','마감')
+          );
+        }else{
+          button.textContent=waitlistFull ? label+'\n대기 가능' : label;
+        }
         button.disabled=!selectable || !interactive;
         if(!selectable) button.classList.add('closed');
         if(selectable && interactive) button.addEventListener('click',()=>handleOlliTalkStructuredTimeChoice(action,Number(choice?.timeSlot || 0)));
