@@ -304,13 +304,46 @@ async function defaultOlliInterpreterRunner({ transcript, currentText }) {
   const raw=await response.text();
   let data={};
   try{data=raw?JSON.parse(raw):{};}catch(_){}
+
+  const requestId=clean(response.headers?.get?.('x-request-id'));
+  const processingHeader=clean(response.headers?.get?.('openai-processing-ms'));
+  const remainingRequestsHeader=clean(response.headers?.get?.('x-ratelimit-remaining-requests'));
+  const remainingTokensHeader=clean(response.headers?.get?.('x-ratelimit-remaining-tokens'));
+  const openaiProcessingMs=processingHeader && Number.isFinite(Number(processingHeader))
+    ? Number(processingHeader)
+    : null;
+  const rateLimitRemainingRequests=remainingRequestsHeader && Number.isFinite(Number(remainingRequestsHeader))
+    ? Number(remainingRequestsHeader)
+    : null;
+  const rateLimitRemainingTokens=remainingTokensHeader && Number.isFinite(Number(remainingTokensHeader))
+    ? Number(remainingTokensHeader)
+    : null;
+  const usage=data?.usage && typeof data.usage==='object' ? data.usage : {};
+  const inputDetails=usage?.input_tokens_details && typeof usage.input_tokens_details==='object'
+    ? usage.input_tokens_details
+    : {};
+  const perfDetails={
+    durationMs:perfDurationMs(startedAt),
+    httpStatus:response.status,
+    requestId,
+    openaiProcessingMs,
+    rateLimitRemainingRequests,
+    rateLimitRemainingTokens,
+    inputTokens:Number(usage.input_tokens || 0),
+    cachedInputTokens:Number(inputDetails.cached_tokens || 0),
+    outputTokens:Number(usage.output_tokens || 0),
+    totalTokens:Number(usage.total_tokens || 0),
+    inputChars:system.length+user.length,
+    instructionsChars:system.length,
+  };
+
   if(!response.ok){
-    emitPerfLog({phase:'interpreter_openai',status:'error',durationMs:perfDurationMs(startedAt),httpStatus:response.status});
+    emitPerfLog(Object.assign({phase:'interpreter_openai',status:'error'},perfDetails));
     const error=new Error(data?.error?.message || data?.message || '올리 공통 해석 AI 요청에 실패했습니다.');
     error.code='OLLI_INTERPRETER_OPENAI_FAILED';
     throw error;
   }
-  emitPerfLog({phase:'interpreter_openai',status:'ok',durationMs:perfDurationMs(startedAt),httpStatus:response.status});
+  emitPerfLog(Object.assign({phase:'interpreter_openai',status:'ok'},perfDetails));
   const parsed=parseStructuredOutput(data);
   if(!parsed){
     const error=new Error('올리 공통 해석 결과를 읽지 못했습니다.');
