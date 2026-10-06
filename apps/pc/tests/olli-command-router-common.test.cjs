@@ -122,16 +122,21 @@ test('specific class move wording parses as a write command', () => {
 });
 
 
-test('class move requires an explicit action ending while still allowing missing target fields', () => {
+test('direct class move requires an explicit action ending while canonical parsing stays flexible', () => {
   const router = loadRouter();
 
-  assert.equal(router.parseScheduleMoveMutationIntent('류다연 수업이동'), null);
+  const ambiguous = router.classifyRequest('류다연 수업이동');
+  assert.equal(ambiguous.type, 'other');
 
-  const partial = router.parseScheduleMoveMutationIntent('류다연 수업이동 해줘');
-  assert.equal(partial.intent, 'move_class');
-  assert.equal(partial.studentName, '류다연');
-  assert.equal(partial.targetWeekday, 0);
-  assert.equal(partial.targetTimeSlot, 0);
+  const direct = router.classifyRequest('류다연 수업이동 해줘');
+  assert.equal(direct.type, 'mutation');
+  assert.equal(direct.intent, 'move_class');
+  assert.equal(direct.parsed.studentName, '류다연');
+  assert.equal(direct.parsed.targetWeekday, 0);
+  assert.equal(direct.parsed.targetTimeSlot, 0);
+
+  const canonical = router.parseScheduleMoveMutationIntent('류다연 수업이동');
+  assert.equal(canonical.intent, 'move_class');
 
   const query = router.classifyRequest('오늘 수업 이동 가능한 시간 알려줘');
   assert.equal(query.type, 'query');
@@ -177,19 +182,28 @@ test('routine add requires domain plus explicit action ending but not date or ti
   assert.equal(waitlist.timeSlot, 0);
 });
 
-test('ambiguous routine wording falls through instead of being guessed as a write command', () => {
+test('ambiguous routine wording falls through to Luna instead of being guessed as a write command', () => {
   const router = loadRouter();
 
-  assert.equal(router.parseMakeupMutationIntent('류다연 보강'), null);
-  assert.equal(router.parseTrialMutationIntent('서준 체험'), null);
-  assert.equal(router.parseWaitlistMutationIntent('지우 대기'), null);
-  assert.equal(router.parseMakeupMutationIntent('어제 보강 잡았던 학생 이름이 뭐야?'), null);
-
-  const ambiguous = router.classifyRequest('류다연 보강 부탁해');
-  assert.equal(ambiguous.type, 'other');
+  for (const text of ['류다연 보강','서준 체험','지우 대기','류다연 보강 부탁해']) {
+    const result = router.classifyRequest(text);
+    assert.equal(result.type, 'other', text);
+  }
 
   const historical = router.classifyRequest('어제 보강 잡았던 학생 이름이 뭐야?');
   assert.notEqual(historical.intent, 'add_makeup');
+
+  const clearAdd = router.classifyRequest('류다연 보강 잡아줘');
+  assert.equal(clearAdd.type, 'mutation');
+  assert.equal(clearAdd.intent, 'add_makeup');
+
+  const clearCancel = router.classifyRequest('류다연 보강 취소해줘');
+  assert.equal(clearCancel.type, 'mutation');
+  assert.equal(clearCancel.intent, 'cancel_makeup');
+
+  const clearUpdate = router.classifyRequest('류다연 보강 변경해줘');
+  assert.equal(clearUpdate.type, 'mutation');
+  assert.equal(clearUpdate.intent, 'update_makeup');
 });
 
 test('single domain keyword rule does not steal availability questions', () => {
