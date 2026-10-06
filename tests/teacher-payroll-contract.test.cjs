@@ -72,3 +72,23 @@ test('leaving and reopening Team Chat rebuilds payroll buttons in the hidden sta
   assert.match(mobileChat, /async function openOlliTalkBetaPage\(event\)[\s\S]*renderOlliTalkServerMessages\(openCachedPayload/);
   assert.match(common, /button\.dataset\.revealed='0'/);
 });
+
+
+test('payday reminders remain owner-only in Team Chat history while normal management messages stay unchanged', () => {
+  assert.equal((migration.match(/private\.olli_teacher_payroll_notifications payroll_notice/g)||[]).length, 3);
+  assert.match(migration, /v_member\.role='owner'[\s\S]*not exists \([\s\S]*payroll_notice\.message_id=msg\.id/);
+});
+
+test('payday date calculation clamps 29-31 to the actual last day of short months', () => {
+  assert.match(migration, /least\(v_row\.payday,extract\(day from v_month_end\)::integer\)/);
+});
+
+test('settings row is hidden by the existing owner-only permission contract', () => {
+  assert.match(pcHtml, /data-owner-only="true"[^>]*>[\s\S]{0,900}선생님 급여 계산/);
+  assert.match(mobileHtml, /data-owner-only="true"[^>]*>[\s\S]{0,900}선생님 급여 계산/);
+});
+
+test('owner login sync is fallback protection in addition to database cron', () => {
+  assert.match(common, /async function syncDueNotifications\(\)[\s\S]*!isOwner\(\)[\s\S]*olli_teacher_payroll_due_sync/);
+  assert.match(common, /setTimeout\(\(\)=>\{ syncDueNotifications\(\); \},1200\)/);
+});
