@@ -123,6 +123,19 @@ test('memo navigation opens the screen shell before optional initialization', ()
 });
 
 
+test('Mobile observation weekday sort starts from the current weekday', () => {
+  const roster = fs.readFileSync(path.join(MOBILE, 'olli-observation-roster-phone.js'), 'utf8');
+  const html = fs.readFileSync(path.join(MOBILE, 'index.html'), 'utf8');
+
+  assert.match(roster, /function getObservationRosterWeekdayOrder\(\)/);
+  assert.match(roster, /const baseOrder = \['월','화','수','목','금','토','일'\]/);
+  assert.match(roster, /const todayDay = getObservationRosterTodayDay\(\)/);
+  assert.match(roster, /return baseOrder\.slice\(todayIndex\)\.concat\(baseOrder\.slice\(0, todayIndex\)\)/);
+  assert.match(roster, /const order = getObservationRosterWeekdayOrder\(\)/);
+  assert.match(html, /olli-observation-roster-phone\.js\?v=20261006-today-weekday-first-1/);
+});
+
+
 test('memo utility controls are fixed markup and never dynamically mounted', () => {
   const utility = fs.readFileSync(path.join(MOBILE, 'olli-record-utility-touch.js'), 'utf8');
   const roster = fs.readFileSync(path.join(MOBILE, 'olli-observation-roster-phone.js'), 'utf8');
