@@ -6309,9 +6309,10 @@
     let groupStartItem = null;
     messages.forEach((item, index) => {
       const previousItem=index>0 ? messages[index-1] : null;
+      const previousActionStatus=String(previousItem?.action?.status || '').trim();
       const isInlineSystemResult=String(item?.message_type || 'text')==='system'
         && String(previousItem?.message_type || '')==='ai'
-        && String(previousItem?.action?.status || '')==='completed';
+        && ['completed','cancelled'].includes(previousActionStatus);
 
       if(isInlineSystemResult){
         const previousMessage=list.lastElementChild;
