@@ -6156,12 +6156,54 @@
     const bubble = document.createElement('div');
     bubble.className = 'olliTalkBetaBubble olliTalkBetaTypingBubble';
     bubble.setAttribute('role', 'status');
-    bubble.setAttribute('aria-label', '올리가 요청을 확인하는 중');
-    bubble.textContent = '확인중…';
+    bubble.setAttribute('aria-label', '올리가 답변을 작성하는 중');
+    for (let index = 0; index < 3; index += 1) {
+      const dot = document.createElement('span');
+      dot.className = 'olliTalkBetaTypingDot';
+      dot.setAttribute('aria-hidden', 'true');
+      bubble.appendChild(dot);
+    }
     bubbleRow.appendChild(bubble);
     incomingLayout.append(sender, bubbleRow);
     message.appendChild(incomingLayout);
     return message;
+  }
+
+  function scrollOlliTalkMessageAboveComposer(message){
+    const chatArea = document.getElementById('olliTalkBetaChatArea');
+    const screen = getScreen();
+    const composerWrap = screen?.querySelector('.olliTalkBetaComposerWrap');
+    if (!chatArea?.isConnected || !message?.isConnected) return false;
+
+    const chatRect = chatArea.getBoundingClientRect();
+    const messageRect = message.getBoundingClientRect();
+    const composerRect = composerWrap?.getBoundingClientRect?.();
+    const composerTop = Number(composerRect?.top);
+    const visibleBottom = Number.isFinite(composerTop) && composerTop > chatRect.top
+      ? Math.min(chatRect.bottom, composerTop) - 10
+      : chatRect.bottom - 10;
+    const overflow = messageRect.bottom - visibleBottom;
+    if (overflow <= 0.5) return true;
+
+    const maxScroll = Math.max(0, chatArea.scrollHeight - chatArea.clientHeight);
+    chatArea.scrollTop = Math.max(0, Math.min(maxScroll, chatArea.scrollTop + overflow));
+    return true;
+  }
+
+  function scheduleOlliTalkMessageAboveComposer(message){
+    scheduleOlliTalkChatToComposer();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollOlliTalkMessageAboveComposer(message);
+      });
+    });
+  }
+
+  function latestOlliTalkRenderedMessage(chatArea){
+    const rows = chatArea
+      ? Array.from(chatArea.querySelectorAll('.olliTalkBetaMessage, .olliTalkBetaSystemMessage'))
+      : [];
+    return rows[rows.length - 1] || null;
   }
 
   function syncOlliTalkAssistantTypingIndicator(){
@@ -6176,11 +6218,9 @@
       list.className = 'olliTalkBetaMessageList';
       chatArea.replaceChildren(list);
     }
-    list.appendChild(createOlliTalkAssistantTypingElement());
-    scheduleOlliTalkChatToComposer();
-    requestAnimationFrame(() => {
-      if (chatArea.isConnected) chatArea.scrollTop = chatArea.scrollHeight;
-    });
+    const typing = createOlliTalkAssistantTypingElement();
+    list.appendChild(typing);
+    scheduleOlliTalkMessageAboveComposer(typing);
   }
 
   function replaceOlliTalkAssistantTypingWithMessage(item, currentMemberId){
@@ -6194,10 +6234,7 @@
     if (typing) typing.replaceWith(next);
     else appendOlliTalkPersistedMessage(item, currentMemberId);
     chatArea.dataset.previewReady = '';
-    scheduleOlliTalkChatToComposer();
-    requestAnimationFrame(() => {
-      if (chatArea.isConnected) chatArea.scrollTop = chatArea.scrollHeight;
-    });
+    scheduleOlliTalkMessageAboveComposer(next);
     return true;
   }
 
@@ -6229,15 +6266,13 @@
       list.appendChild(divider);
     }
 
-    list.appendChild(createOlliTalkMessageElement(item, currentMemberId, { connectedToPrevious:false }));
+    const next = createOlliTalkMessageElement(item, currentMemberId, { connectedToPrevious:false });
+    list.appendChild(next);
     if(String(item?.message_type || '').trim()==='ai' && Number(item?.reply_to_message_id || 0)>0){
       removeOlliTalkReplySuggestion(String(Number(item.reply_to_message_id)));
     }
     chatArea.dataset.previewReady = '';
-    scheduleOlliTalkChatToComposer();
-    requestAnimationFrame(() => {
-      if (chatArea.isConnected) chatArea.scrollTop = chatArea.scrollHeight;
-    });
+    scheduleOlliTalkMessageAboveComposer(next);
     return true;
   }
 
@@ -6329,7 +6364,9 @@
       requestAnimationFrame(() => {
         if (!chatArea.isConnected) return;
         if (shouldFollowBottom) {
-          chatArea.scrollTop = chatArea.scrollHeight;
+          const latest = latestOlliTalkRenderedMessage(chatArea);
+          if (latest) scrollOlliTalkMessageAboveComposer(latest);
+          else chatArea.scrollTop = chatArea.scrollHeight;
           return;
         }
         if(scrollMode==='preserve-prepend'){
