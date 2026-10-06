@@ -83,6 +83,12 @@
       || hasExplicitUpdateRequest(value);
   }
 
+  function requiresConversationContext(value) {
+    const compact=compactText(value);
+    if(!compact) return false;
+    return /(?:그학생|그원생|그아이|그애|걔|얘|그거|그것|아까(?:말한|얘기한|이야기한)?(?:학생|원생|아이|애)?|방금(?:말한|얘기한|이야기한)?(?:학생|원생|아이|애)?|전에말한(?:학생|원생|아이|애)?)/.test(compact);
+  }
+
   function isOlliReplyScheduleInquiry(value) {
     const raw = cleanText(value);
     const compact = compactText(raw);
@@ -1993,6 +1999,14 @@
 
   function classifyRequest(text) {
     const normalizedText = cleanText(text);
+    if (requiresConversationContext(normalizedText)) {
+      return {
+        type:'other',
+        intent:'',
+        parsed:null
+      };
+    }
+
     const writeIntent = parseDirectWriteIntent(normalizedText);
     if (writeIntent) {
       return {
