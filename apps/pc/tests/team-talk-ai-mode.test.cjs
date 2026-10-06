@@ -104,3 +104,14 @@ test('PC swaps the AI typing row directly into the saved AI bubble without rebui
   assert.match(talk, /loadMessages\(\{ showLoading: false, followBottom: true, render:false \}\)/);
   assert.match(talk, /if \(options\.render === false\) state\.messages/);
 });
+
+
+test('PC pending makeup cancellation reason bypasses interpreter and keeps reason controls', () => {
+  const pendingIndex = talk.indexOf('pendingStructuredMakeupCancel=state.pendingActionReason?.__structuredMakeupCancel');
+  const interpretIndex = talk.indexOf('await interpretOlliSystemLanguage', pendingIndex);
+  assert.ok(pendingIndex >= 0);
+  assert.ok(interpretIndex > pendingIndex);
+  assert.match(talk,/return resolveStructuredMakeupCancelTurn\(\{/);
+  assert.match(talk,/noReason\.textContent='사유 없음'/);
+  assert.match(talk,/inputButton\.textContent='사유 입력'/);
+});
