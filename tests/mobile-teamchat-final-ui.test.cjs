@@ -139,3 +139,14 @@ test('makeup cancellation preflights student and schedule before showing reason 
   assert.match(pcJs,/preflight\?\.handled===true && preflight\.kind==='action_rejected'/);
   assert.match(pcJs,/rejectedMessage[\s\S]*saveAssistantReply/);
 });
+
+
+test('keyboard viewport settle preserves the visible anchor instead of snapping to the bottom',()=>{
+  const start=js.indexOf('function finishOlliTalkViewportTransition(){');
+  const end=js.indexOf('\n  function scheduleOlliTalkViewportSettle()',start);
+  assert.ok(start>=0 && end>start);
+  const body=js.slice(start,end);
+  assert.match(body,/startScrollTop \+ delta/);
+  assert.doesNotMatch(body,/scrollTop\s*=\s*chatArea\.scrollHeight/);
+  assert.doesNotMatch(js,/olliTalkFollowBottomAfterViewportSettle/);
+});
