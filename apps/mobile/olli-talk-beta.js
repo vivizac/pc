@@ -7622,7 +7622,23 @@
       });
     }
 
-    if(voiceButton)voiceButton.addEventListener('click',toggleOlliTalkVoiceInput);
+    if(voiceButton){
+      voiceButton.addEventListener('pointerdown',event=>{
+        if(event.isPrimary===false)return;
+        if(event.pointerType==='mouse' && event.button!==0)return;
+        toggleOlliTalkVoiceInput(event).catch(error=>console.warn('올리톡 음성 입력 시작 실패:',error));
+      });
+      voiceButton.addEventListener('click',event=>{
+        // Pointer input is handled on pointerdown so the active two-row composer
+        // cannot collapse between press and click. Keep keyboard activation.
+        if(event.detail!==0){
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        toggleOlliTalkVoiceInput(event).catch(error=>console.warn('올리톡 음성 입력 시작 실패:',error));
+      });
+    }
     if(archiveButton)archiveButton.addEventListener('click',openOlliTalkArchivePage);
     if(archiveBackButton)archiveBackButton.addEventListener('click',closeOlliTalkArchivePage);
     if(archiveMaterialCreateButton)archiveMaterialCreateButton.addEventListener('click',event=>{
