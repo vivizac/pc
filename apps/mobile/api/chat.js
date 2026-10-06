@@ -111,7 +111,7 @@ async function assertTeamTalkAccess(body = {}) {
   }
 
   // Reuse the membership-protected Team Talk RPC only as an access check.
-  // The legacy ai_enabled value is intentionally ignored.
+  // Legacy mode fields returned by this RPC are intentionally ignored.
   const response = await fetch(TEAM_TALK_ACCESS_RPC_URL, {
     method:'POST',
     headers:{
