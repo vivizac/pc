@@ -47,9 +47,11 @@ test('Team Chat system notice renders as an Olli bubble while keeping the Displa
   assert.match(css,/\.olliTalkBetaSystemBubble\{[\s\S]*color\(display-p3[\s\S]*color:#fff;/);
 });
 
-test('completed repetitive-work result stays attached below the confirmed action without a new tail',()=>{
+test('completed or cancelled repetitive-work result stays attached below the action without a new tail',()=>{
   assert.match(js,/status==='completed'[\s\S]*confirmed\.textContent='확인';[\s\S]*confirmed\.disabled=true/);
+  assert.match(js,/\['completed','cancelled'\]\.includes\(previousActionStatus\)/);
   assert.match(js,/isInlineSystemResult[\s\S]*appendOlliTalkInlineSystemResult\(previousMessage,item\)/);
+  assert.match(css,/\.olliTalkBetaIncomingLayout \.olliTalkBetaInlineSystemResult\{[\s\S]*grid-column:2;[\s\S]*grid-row:4;[\s\S]*width:max-content;/);
   assert.match(css,/\.olliTalkBetaInlineSystemResult::before,[\s\S]*content:none !important;/);
 });
 
