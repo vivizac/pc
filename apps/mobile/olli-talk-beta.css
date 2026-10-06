@@ -1237,6 +1237,24 @@
   white-space:pre-line;
   line-height:1.3;
 }
+#olliTalkBetaScreen .olliTalkBetaActionButton.timeChoice.withStatusLabel{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  white-space:normal;
+}
+#olliTalkBetaScreen .olliTalkBetaActionButton.timeChoice .timeChoiceLabel{
+  display:block;
+  text-align:center;
+}
+#olliTalkBetaScreen .olliTalkBetaActionButton.timeChoice .timeChoiceStatus{
+  position:absolute;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%);
+  white-space:nowrap;
+}
 #olliTalkBetaScreen .olliTalkBetaActionButton.timeChoice.closed{
   background:#eceef0;
   color:#9a9fa6;
