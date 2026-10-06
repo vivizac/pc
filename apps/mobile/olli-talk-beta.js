@@ -7712,7 +7712,21 @@
     }
 
     if (sendButton) {
-      sendButton.addEventListener('click', sendOlliTalkBetaMessage);
+      sendButton.addEventListener('pointerdown', event => {
+        if (event.isPrimary === false) return;
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+        sendOlliTalkBetaMessage(event).catch(error => console.warn('올리톡 메시지 전송 시작 실패:', error));
+      });
+      sendButton.addEventListener('click', event => {
+        // Pointer input is handled on pointerdown so the active two-row composer
+        // cannot collapse and hide the send button before the click is delivered.
+        if (event.detail !== 0) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        sendOlliTalkBetaMessage(event).catch(error => console.warn('올리톡 메시지 전송 시작 실패:', error));
+      });
     }
 
     updateOlliTalkBetaComposerState();

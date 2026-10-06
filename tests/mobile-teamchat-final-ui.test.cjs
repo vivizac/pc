@@ -167,6 +167,13 @@ test('mention menu growth does not increase the reserved chat height beyond the 
 });
 
 
+test('Team Chat send starts on pointerdown before the active composer can blur and collapse',()=>{
+  assert.match(js,/sendButton\.addEventListener\('pointerdown', event => \{[\s\S]*sendOlliTalkBetaMessage\(event\)/);
+  assert.match(js,/sendButton\.addEventListener\('click', event => \{[\s\S]*if \(event\.detail !== 0\)/);
+  assert.match(js,/async function sendOlliTalkBetaMessage\(event\)\{[\s\S]*event\.preventDefault\(\);[\s\S]*event\.stopPropagation\(\);/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261006-send-pointerdown-1/);
+});
+
 test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into a real mention',()=>{
   assert.match(html,/id="olliTalkBetaVoiceBtn"[\s\S]*?<rect x="8" y="3" width="8" height="13" rx="4"/);
   assert.match(js,/voice\.toggleForTarget\(input,button,\{/);
@@ -183,7 +190,7 @@ test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into 
   assert.doesNotMatch(css,/\.olliTalkBetaVoiceBtn\.active\{[\s\S]*?background:#0A84FF;/);
   assert.match(js,/showPanel:true,[\s\S]*panelHost:composer/);
   assert.match(html,/olli-talk-beta\.css\?v=20261006-stable-anchor-1/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261006-voice-pointerdown-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261006-send-pointerdown-1/);
 });
 
 
