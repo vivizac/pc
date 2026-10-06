@@ -7239,7 +7239,7 @@
     return target;
   }
 
-  async function slideOlliTalkOutTo(targetScreen){  async function slideOlliTalkOutTo(targetScreen){
+  async function slideOlliTalkOutTo(targetScreen){
     const screen = getScreen();
     if (!screen) return;
 
@@ -7688,7 +7688,7 @@
       });
     }
 
-    if (mentionTriggerButton) {    if (mentionTriggerButton) {
+    if (mentionTriggerButton) {
       mentionTriggerButton.addEventListener('click', openOlliTalkMentionPicker);
     }
 
