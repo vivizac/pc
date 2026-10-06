@@ -5,6 +5,9 @@
   let publicKeyPromise = null;
   let lastPassiveSubscriptionSyncAt = 0;
   let workBadgeRefreshTimer = null;
+  let notificationAudioContext = null;
+  let notificationAudioUnlocked = false;
+  let notificationSoundLastPlayedAt = 0;
 
   function context(){
     let academyId = '';
@@ -75,6 +78,111 @@
     return 'serviceWorker' in navigator
       && 'PushManager' in window
       && 'Notification' in window;
+  }
+
+  function isOlliNotificationEnabled(){
+    try {
+      const cached = typeof window.settingsGetCachedState === 'function'
+        ? window.settingsGetCachedState()
+        : {};
+      return cached?.notificationEnabled !== false;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  function getNotificationAudioContext(){
+    if (notificationAudioContext) return notificationAudioContext;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (typeof AudioContextClass !== 'function') return null;
+    try {
+      notificationAudioContext = new AudioContextClass();
+      return notificationAudioContext;
+    } catch (error) {
+      console.warn('올리 알림 사운드 초기화 실패:', error);
+      return null;
+    }
+  }
+
+  async function unlockForegroundNotificationAudio(){
+    if (notificationAudioUnlocked) return true;
+    const audio = getNotificationAudioContext();
+    if (!audio) return false;
+
+    try {
+      if (audio.state === 'suspended') await audio.resume();
+      if (audio.state !== 'running') return false;
+
+      // iOS 웹앱은 사용자 동작 안에서 오디오를 한 번 활성화해야
+      // 이후 푸시 수신 시 전면 알림음을 재생할 수 있습니다.
+      const oscillator = audio.createOscillator();
+      const gain = audio.createGain();
+      gain.gain.setValueAtTime(0.0001, audio.currentTime);
+      oscillator.connect(gain);
+      gain.connect(audio.destination);
+      oscillator.start(audio.currentTime);
+      oscillator.stop(audio.currentTime + 0.01);
+      notificationAudioUnlocked = true;
+      return true;
+    } catch (error) {
+      console.warn('올리 알림 사운드 활성화 실패:', error);
+      return false;
+    }
+  }
+
+  function bindForegroundNotificationAudioUnlock(){
+    const unlock = () => {
+      unlockForegroundNotificationAudio().then((ready) => {
+        if (!ready) return;
+        window.removeEventListener('pointerdown', unlock, true);
+        window.removeEventListener('touchend', unlock, true);
+        window.removeEventListener('keydown', unlock, true);
+      }).catch(() => {});
+    };
+    window.addEventListener('pointerdown', unlock, { capture:true, passive:true });
+    window.addEventListener('touchend', unlock, { capture:true, passive:true });
+    window.addEventListener('keydown', unlock, true);
+  }
+
+  async function playForegroundNotificationSound(){
+    if (document.hidden || document.visibilityState !== 'visible') return false;
+    if (!isOlliNotificationEnabled()) return false;
+
+    const now = Date.now();
+    if (now - notificationSoundLastPlayedAt < 700) return false;
+
+    const audio = getNotificationAudioContext();
+    if (!audio) return false;
+
+    try {
+      if (audio.state === 'suspended') await audio.resume();
+      if (audio.state !== 'running') return false;
+
+      notificationSoundLastPlayedAt = now;
+      const start = audio.currentTime + 0.01;
+      const tones = [
+        { frequency: 880, at: start, duration: 0.13 },
+        { frequency: 1174.66, at: start + 0.14, duration: 0.18 }
+      ];
+
+      tones.forEach((tone) => {
+        const oscillator = audio.createOscillator();
+        const gain = audio.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(tone.frequency, tone.at);
+        gain.gain.setValueAtTime(0.0001, tone.at);
+        gain.gain.exponentialRampToValueAtTime(0.075, tone.at + 0.018);
+        gain.gain.exponentialRampToValueAtTime(0.0001, tone.at + tone.duration);
+        oscillator.connect(gain);
+        gain.connect(audio.destination);
+        oscillator.start(tone.at);
+        oscillator.stop(tone.at + tone.duration + 0.02);
+      });
+      return true;
+    } catch (error) {
+      console.warn('올리 전면 알림 사운드 재생 실패:', error);
+      return false;
+    }
   }
 
   function base64UrlToUint8Array(base64Url){
@@ -166,6 +274,7 @@
 
   async function ensureSubscription(options = {}){
     const interactive = options.interactive === true;
+    if (interactive) unlockForegroundNotificationAudio().catch(() => {});
 
     if (!supportsPush()) {
       setButtonState('unsupported');
@@ -401,6 +510,7 @@
   }
 
   function bind(){
+    bindForegroundNotificationAudioUnlock();
     const button = getButton();
     if (button && !button.__olliPushBound) {
       button.__olliPushBound = true;
@@ -425,6 +535,7 @@
     navigator.serviceWorker?.addEventListener?.('message', (event) => {
       if (event?.data?.type === 'OLLI_WORK_BADGE_PUSH') {
         setAppBadge(event.data.badgeCount);
+        playForegroundNotificationSound().catch(() => {});
         scheduleWorkBadgeRefresh(40);
       } else if (event?.data?.type === 'OLLI_TALK_OPEN_FROM_NOTIFICATION') {
         openFromNotification(event.data.messageId);
@@ -464,6 +575,7 @@
     dispatch,
     dispatchMaterial,
     setAppBadge,
+    playForegroundNotificationSound,
     syncState: () => ensureSubscription({ interactive: false }),
   });
 
