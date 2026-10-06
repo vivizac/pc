@@ -121,6 +121,28 @@ test('specific class move wording parses as a write command', () => {
   assert.equal(parsed.targetTimeSlot, 4);
 });
 
+
+test('direct class move requires an explicit action ending while canonical parsing stays flexible', () => {
+  const router = loadRouter();
+
+  const ambiguous = router.classifyRequest('류다연 수업이동');
+  assert.equal(ambiguous.type, 'other');
+
+  const direct = router.classifyRequest('류다연 수업이동 해줘');
+  assert.equal(direct.type, 'mutation');
+  assert.equal(direct.intent, 'move_class');
+  assert.equal(direct.parsed.studentName, '류다연');
+  assert.equal(direct.parsed.targetWeekday, 0);
+  assert.equal(direct.parsed.targetTimeSlot, 0);
+
+  const canonical = router.parseScheduleMoveMutationIntent('류다연 수업이동');
+  assert.equal(canonical.intent, 'move_class');
+
+  const query = router.classifyRequest('오늘 수업 이동 가능한 시간 알려줘');
+  assert.equal(query.type, 'query');
+  assert.equal(query.intent, 'find_available_slots');
+});
+
 test('makeup write wording parses date, time, and optional class group', () => {
   const router = loadRouter();
   const parsed = router.parseMakeupMutationIntent('김태리 다음 주 월요일 4시 B반 보강 넣어줘');
@@ -130,6 +152,69 @@ test('makeup write wording parses date, time, and optional class group', () => {
   assert.equal(parsed.dateSpec.weekday, 1);
   assert.equal(parsed.timeSlot, 4);
   assert.equal(parsed.classGroup, 'B');
+});
+
+
+test('routine add requires domain plus explicit action ending but not date or time', () => {
+  const router = loadRouter();
+
+  const makeup = router.parseMakeupMutationIntent('류다연 보강 등록해줘');
+  assert.equal(makeup.intent, 'add_makeup');
+  assert.equal(makeup.studentName, '류다연');
+  assert.equal(makeup.dateSpec, null);
+  assert.equal(makeup.dateLabel, '');
+  assert.equal(makeup.timeSlot, 0);
+
+  const makeupNatural = router.parseMakeupMutationIntent('류다연 보강 잡아줘');
+  assert.equal(makeupNatural.intent, 'add_makeup');
+  assert.equal(makeupNatural.studentName, '류다연');
+
+  const trial = router.parseTrialMutationIntent('서준 체험 등록해줘');
+  assert.equal(trial.intent, 'add_trial');
+  assert.equal(trial.guestName, '서준');
+  assert.equal(trial.dateSpec, null);
+  assert.equal(trial.timeSlot, 0);
+
+  const waitlist = router.parseWaitlistMutationIntent('지우 대기 넣어줘');
+  assert.equal(waitlist.intent, 'add_waitlist');
+  assert.equal(waitlist.studentName, '지우');
+  assert.equal(waitlist.dateSpec, null);
+  assert.equal(waitlist.timeSlot, 0);
+});
+
+test('ambiguous routine wording falls through to Luna instead of being guessed as a write command', () => {
+  const router = loadRouter();
+
+  for (const text of ['류다연 보강','서준 체험','지우 대기','류다연 보강 부탁해']) {
+    const result = router.classifyRequest(text);
+    assert.equal(result.type, 'other', text);
+  }
+
+  const historical = router.classifyRequest('어제 보강 잡았던 학생 이름이 뭐야?');
+  assert.notEqual(historical.intent, 'add_makeup');
+
+  const cancelWithReason = router.classifyRequest('류다연 보강 취소해줘 사유 감기');
+  assert.equal(cancelWithReason.type, 'mutation');
+  assert.equal(cancelWithReason.intent, 'cancel_makeup');
+
+  const clearAdd = router.classifyRequest('류다연 보강 잡아줘');
+  assert.equal(clearAdd.type, 'mutation');
+  assert.equal(clearAdd.intent, 'add_makeup');
+
+  const clearCancel = router.classifyRequest('류다연 보강 취소해줘');
+  assert.equal(clearCancel.type, 'mutation');
+  assert.equal(clearCancel.intent, 'cancel_makeup');
+
+  const clearUpdate = router.classifyRequest('류다연 보강 변경해줘');
+  assert.equal(clearUpdate.type, 'mutation');
+  assert.equal(clearUpdate.intent, 'update_makeup');
+});
+
+test('single domain keyword rule does not steal availability questions', () => {
+  const router = loadRouter();
+  const classified = router.classifyRequest('오늘 보강 가능한 시간 알려줘');
+  assert.equal(classified.type, 'query');
+  assert.equal(classified.intent, 'find_available_slots');
 });
 
 test('timetable memo add and delete wording parses target and memo content', () => {
@@ -218,7 +303,7 @@ test('write command requires confirmation before execution', async () => {
     }
   });
 
-  const first = await router.route('최민기 월요일 수업을 수요일 4시로 변경', {
+  const first = await router.route('최민기 월요일 수업을 수요일 4시로 변경해줘', {
     source:'one_minute_feedback'
   });
   assert.equal(first.handled, true);

@@ -9,6 +9,8 @@ const root=path.resolve(__dirname,'..');
 const html=fs.readFileSync(path.join(root,'apps/mobile/index.html'),'utf8');
 const css=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.css'),'utf8');
 const js=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'utf8');
+const pcJs=fs.readFileSync(path.join(root,'apps/pc/pc-team-talk.js'),'utf8');
+const pcCss=fs.readFileSync(path.join(root,'apps/pc/pc-team-talk.css'),'utf8');
 
 test('active mobile Team Chat composer is two rows with text first and controls second',()=>{
   assert.match(html,/class="olliTalkComposerTextRow" id="olliTalkComposerTextRow"/);
@@ -40,7 +42,7 @@ test('AI avatar label is Olli while sender name remains the Korean display name'
 
 test('Team Chat system notice renders as an Olli bubble while keeping the Display P3 gradient',()=>{
   assert.match(js,/const isAi = type === 'ai' \|\| type === 'system';/);
-  assert.match(js,/if \(type === 'system'\) bubble\.classList\.add\('olliTalkBetaSystemBubble'\)/);
+  assert.match(js,/if \(type === 'system'\) \{[\s\S]*bubble\.classList\.add\('olliTalkBetaSystemBubble'\)/);
   assert.doesNotMatch(js,/message\.className = 'olliTalkBetaSystemMessage'/);
   assert.match(css,/\.olliTalkBetaSystemBubble\{[\s\S]*color\(display-p3[\s\S]*color:#fff;/);
 });
@@ -54,4 +56,26 @@ test('completed repetitive-work result stays attached below the confirmed action
 test('mobile Team Chat assets share mention-restore cache bust revision',()=>{
   assert.match(html,/olli-talk-beta\.css\?v=20261005-mention-menu-restore-1/);
   assert.match(html,/olli-talk-beta\.js\?v=20261005-mention-menu-restore-1/);
+});
+
+
+test('Team Chat runs deterministic rules before calling Luna on both phone and PC',()=>{
+  assert.match(js,/router\.classifyRequest\(rawCommandText\)[\s\S]*localRuleHandled[\s\S]*await interpretOlliTalkSystemLanguage/);
+  assert.match(pcJs,/router\.classifyRequest\(rawCommandText\)[\s\S]*localRuleHandled[\s\S]*await interpretOlliSystemLanguage/);
+});
+
+test('first Olli response shows 확인중 for at least one second and follow-up workflows skip that delay',()=>{
+  assert.match(js,/bubble\.textContent = '확인중…'/);
+  assert.match(js,/isOlliWorkflowFollowup[\s\S]*1000-\(Date\.now\(\)-olliTalkFirstReplyStartedAt\)/);
+  assert.doesNotMatch(js,/olliTalkBetaTypingDot/);
+  assert.match(pcJs,/bubble\.textContent = '확인중…'/);
+  assert.match(pcJs,/isOlliWorkflowFollowup[\s\S]*1000-\(Date\.now\(\)-firstReplyStartedAt\)/);
+  assert.doesNotMatch(pcJs,/olliPcTeamTalkTypingDot/);
+  assert.doesNotMatch(css,/olliTalkBetaTypingDot/);
+  assert.doesNotMatch(pcCss,/olliPcTeamTalkTypingDot/);
+});
+
+test('cancelled system request uses a normal white bubble with dark text on mobile',()=>{
+  assert.match(js,/\/작업\\s\*요청\.\*취소\/\.test[\s\S]*olliTalkBetaCancelSystemBubble/);
+  assert.match(css,/\.olliTalkBetaCancelSystemBubble\{[\s\S]*--olli-talk-bubble-bg:#fff;[\s\S]*color:#201818;/);
 });

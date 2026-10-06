@@ -53,8 +53,34 @@
     return /(?:보강|대기|체험|체함|빈자리|여석|자리)/.test(compactText(value));
   }
 
+  function commandTail(value) {
+    return compactText(value).replace(/[?？!！.。]+$/g, '');
+  }
+
+  function hasExplicitAddRequest(value) {
+    const compact=commandTail(value);
+    return /(?:등록|추가|입력|기입|기재|예약|신청|배정|생성|기록|반영|저장)(?:(?:좀|한번))?(?:(?:해)?(?:놔|놓아|둬|두어)(?:줘요|주세요|줘|줄래)?|(?:해)?둘래|(?:해)?(?:줘요|주세요|줘|줄래|해줄래|할래|해요|해))$/.test(compact)
+      || /(?:넣|잡|적|만들)(?:어|아)?(?:(?:좀|한번))?(?:(?:놔|놓아|둬|두어)(?:줘요|주세요|줘|줄래)?|둘래|(?:줘요|주세요|줘|줄래|해줄래|할래|해요|해))$/.test(compact)
+      || /(?:올려|걸어)(?:(?:좀|한번))?(?:줘요|주세요|줘|줄래|해줄래|할래|해요|해)$/.test(compact);
+  }
+
+  function hasExplicitRemoveRequest(value) {
+    const compact=commandTail(value);
+    return /(?:취소|삭제|제거|해제|없애)(?:(?:좀|한번))?(?:해)?(?:줘|주세요|줘요|줄래|해줘|해주세요|해줄래|할래|해요|해)$/.test(compact)
+      || /(?:지워|지우|빼)(?:(?:좀|한번))?(?:줘|주세요|줘요|줄래|해줘|해주세요|해줄래|할래|해요|해)$/.test(compact);
+  }
+
+  function hasExplicitUpdateRequest(value) {
+    const compact=commandTail(value);
+    return /(?:수정|변경|이동)(?:(?:좀|한번))?(?:시켜)?(?:해)?(?:줘|주세요|줘요|줄래|해줘|해주세요|해줄래|할래|해요|해)$/.test(compact)
+      || /(?:옮겨|바꿔|고쳐)(?:(?:좀|한번))?(?:줘|주세요|줘요|줄래|해줘|해주세요|해줄래|할래|해요|해)$/.test(compact)
+      || /(?:옮기|바꾸|고치)(?:어|아)?(?:(?:좀|한번))?(?:줘|주세요|줘요|줄래|해줘|해주세요|해줄래|할래|해요|해)$/.test(compact);
+  }
+
   function isExplicitWriteCommand(value) {
-    return /(?:등록|추가|넣|예약|신청|배정|저장|취소|삭제|지워|지우|제거|빼|해제|없애|옮겨|변경|이동|바꿔|바꾸)(?:해줘|해주세요|해줄래|할래|줘|주세요|하자|해요|해)[.!。]?$/i.test(compactText(value));
+    return hasExplicitAddRequest(value)
+      || hasExplicitRemoveRequest(value)
+      || hasExplicitUpdateRequest(value);
   }
 
   function isOlliReplyScheduleInquiry(value) {
@@ -420,13 +446,13 @@
     const raw = cleanText(text);
     const compact = compactText(raw);
     if (!raw || !hasMoveAction(compact) || hasRemoveAction(compact)) return null;
+    if (isOlliReplyScheduleInquiry(raw) || parseAvailableSlotsIntent(raw) || parseRosterQueryIntent(raw)) return null;
 
     const mentions = weekdayTimeMentions(raw);
-    if (!mentions.length) return null;
+    if (!mentions.length && !/(?:수업|시간표)/.test(compact)) return null;
 
     const source = mentions.length >= 2 ? mentions[0] : {weekday:0,timeSlot:0};
-    const target = mentions.length >= 2 ? mentions[1] : mentions[0];
-    if (!target.weekday || !target.timeSlot) return null;
+    const target = mentions.length >= 2 ? mentions[1] : (mentions[0] || {weekday:0,timeSlot:0});
 
     const studentName = extractStudentName(
       raw,
@@ -443,6 +469,7 @@
       sourceTimeSlot:Number(source.timeSlot || 0),
       targetWeekday:Number(target.weekday || 0),
       targetTimeSlot:Number(target.timeSlot || 0),
+      targetDateExpression:'',
       classGroup:firstClassGroup(raw),
       originalText:raw
     };
@@ -451,23 +478,29 @@
   function parseMakeupMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !hasMakeupWord(compact) || hasRemoveAction(compact) || !hasAddAction(compact)) return null;
+    if (
+      !raw
+      || !hasMakeupWord(compact)
+      || hasRemoveAction(compact)
+      || hasMoveAction(compact)
+      || !hasAddAction(compact)
+    ) return null;
 
     const dateSpec = parseDateExpression(compact);
     const timeSlot = firstTimeSlot(raw);
     const studentName = extractStudentName(
       raw,
-      /(?:보강|보충(?:수업)?)(?:수업)?(?:으로|에|을|를|도)?/g,
+      /(?:보강|보충(?:수업)?)(?:수업)?(?:으로|에|을|를|도)?(?:\s*(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요))?/g,
       addActionPattern()
     );
-    if (!studentName || !dateSpec || !timeSlot) return null;
+    if (!studentName) return null;
 
     return {
       type:'mutation',
       intent:'add_makeup',
       studentName,
       dateSpec,
-      dateLabel:dateSpec.label,
+      dateLabel:dateSpec ? dateSpec.label : '',
       timeSlot,
       classGroup:firstClassGroup(raw),
       originalText:raw
@@ -559,16 +592,22 @@
   function parseWaitlistMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !hasWaitlistWord(compact) || hasRemoveAction(compact) || !hasAddAction(compact)) return null;
+    if (
+      !raw
+      || !hasWaitlistWord(compact)
+      || hasRemoveAction(compact)
+      || hasMoveAction(compact)
+      || !hasAddAction(compact)
+    ) return null;
 
     const dateSpec = parseDateExpression(compact);
     const timeSlot = firstTimeSlot(raw);
     const studentName = extractStudentName(
       raw,
-      /(?:대기(?:자|명단|리스트)?|웨이팅(?:리스트)?)(?:에|로|을|를)?/g,
+      /(?:대기(?:자|명단|리스트)?|웨이팅(?:리스트)?)(?:에|로|을|를)?(?:\s*(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요))?/g,
       addActionPattern()
     );
-    if (!studentName || !dateSpec || !timeSlot) return null;
+    if (!studentName) return null;
 
     return {
       type:'mutation',
@@ -576,7 +615,7 @@
       studentName,
       division:detectDivision(compact),
       dateSpec,
-      dateLabel:dateSpec.label,
+      dateLabel:dateSpec ? dateSpec.label : '',
       timeSlot,
       classGroup:firstClassGroup(raw),
       originalText:raw
@@ -586,16 +625,22 @@
   function parseTrialMutationIntent(text) {
     const raw = cleanText(text);
     const compact = compactText(raw);
-    if (!raw || !hasTrialWord(compact) || hasRemoveAction(compact) || !hasAddAction(compact)) return null;
+    if (
+      !raw
+      || !hasTrialWord(compact)
+      || hasRemoveAction(compact)
+      || hasMoveAction(compact)
+      || !hasAddAction(compact)
+    ) return null;
 
     const dateSpec = parseDateExpression(compact);
     const timeSlot = firstTimeSlot(raw);
     const guestName = extractStudentName(
       raw,
-      /(?:체험\s*클래스|체험\s*수업|체험)(?:으로|에|을|를)?/g,
+      /(?:체험\s*클래스|체험\s*수업|체험)(?:으로|에|을|를)?(?:\s*(?:해줘요|해주세요|해줘|해줄래|할래|해|줘|주세요))?/g,
       addActionPattern()
     );
-    if (!guestName || !dateSpec || !timeSlot) return null;
+    if (!guestName) return null;
 
     return {
       type:'mutation',
@@ -603,7 +648,7 @@
       guestName,
       division:detectDivision(compact),
       dateSpec,
-      dateLabel:dateSpec.label,
+      dateLabel:dateSpec ? dateSpec.label : '',
       timeSlot,
       classGroup:firstClassGroup(raw),
       originalText:raw
@@ -919,7 +964,7 @@
       studentName,
       division:detectDivision(compact),
       dateSpec,
-      dateLabel:dateSpec.label,
+      dateLabel:dateSpec ? dateSpec.label : '',
       timeSlot,
       classGroup:firstClassGroup(raw),
       originalText:raw
@@ -1016,7 +1061,7 @@
       division,
       split,
       dateSpec,
-      dateLabel:dateSpec.label,
+      dateLabel:dateSpec ? dateSpec.label : '',
       timeSlot,
       timeMinute:firstTimeMinute(raw),
       originalText:raw
@@ -1122,7 +1167,7 @@
       intent:'set_normal_class_day',
       normalClass:normal,
       dateSpec,
-      dateLabel:dateSpec.label,
+      dateLabel:dateSpec ? dateSpec.label : '',
       originalText:raw
     };
   }
@@ -1266,7 +1311,20 @@
     if (!raw) return null;
     const parts = raw.split(/\s*(?:;|그리고|그다음|그 다음|하고|\n)\s*[,，]?\s*/g).map(cleanText).filter(Boolean);
     if (parts.length < 2 || parts.length > 3) return null;
-    const commands = parts.map(part => parseSingleWriteIntent(part) || parseBatchDraftWriteIntent(part));
+    const commands = parts.map(part => {
+      const parsed=parseSingleWriteIntent(part) || parseBatchDraftWriteIntent(part);
+      if(!parsed) return null;
+      if(['add_makeup','add_trial','add_waitlist'].includes(cleanText(parsed.intent))){
+        const missingBatchFields=[
+          !parsed.dateSpec ? 'date' : '',
+          !Number(parsed.timeSlot || 0) ? 'time' : ''
+        ].filter(Boolean);
+        if(missingBatchFields.length){
+          return Object.assign({},parsed,{batchDraft:true,missingBatchFields});
+        }
+      }
+      return parsed;
+    });
     if (commands.some(item => !item)) return null;
     return { type:'mutation', intent:'batch_write', commands, originalText:raw };
   }
@@ -1345,10 +1403,30 @@
     return parseMultiWriteIntent(normalizedText) || parseSingleWriteIntent(normalizedText);
   }
 
+  function isHighConfidenceDirectWrite(text, parsed) {
+    const intent=cleanText(parsed && parsed.intent);
+    if(!intent) return false;
+    if(intent==='batch_write') return isExplicitWriteCommand(text);
+    if(['add_makeup','add_trial','add_waitlist'].includes(intent)) return hasExplicitAddRequest(text);
+    if(['update_makeup','update_trial','update_waitlist','move_class'].includes(intent)) return hasExplicitUpdateRequest(text);
+    if(['cancel_makeup','cancel_trial','cancel_waitlist','cancel_move'].includes(intent)) {
+      return hasExplicitRemoveRequest(extractExplicitReason(text).commandText);
+    }
+    return true;
+  }
+
+  function parseDirectWriteIntent(text) {
+    const normalizedText=cleanText(text);
+    const parsed=parseWriteIntent(normalizedText);
+    if(!parsed || !isHighConfidenceDirectWrite(normalizedText,parsed)) return null;
+    return parsed;
+  }
+
   const STRUCTURED_WRITE_DRAFT_REQUIRED_FIELDS = Object.freeze({
     add_makeup:Object.freeze(['student','date','time']),
     add_trial:Object.freeze(['student','date','time']),
-    add_waitlist:Object.freeze(['student','date','time'])
+    add_waitlist:Object.freeze(['student','date','time']),
+    move_class:Object.freeze(['student','target_date','target_time'])
   });
 
   function createStructuredWriteDraft(systemCommand) {
@@ -1385,6 +1463,10 @@
     if (field === 'student') return !!cleanText(draft.studentName);
     if (field === 'date') return !!cleanText(draft.dateExpression);
     if (field === 'time') return Number(draft.timeSlot || 0) > 0;
+    if (field === 'target_date') {
+      return !!cleanText(draft.targetDateExpression) || Number(draft.targetWeekday || 0) > 0;
+    }
+    if (field === 'target_time') return Number(draft.targetTimeSlot || 0) > 0;
     if (field === 'class_group') return /^[AB]$/.test(cleanText(draft.classGroup).toUpperCase());
     if (field === 'division') return !!cleanText(draft.division);
     if (field === 'reason') return !!cleanText(draft.reason);
@@ -1423,6 +1505,8 @@
     if (key === 'student') draft.studentName = cleanText(value);
     else if (key === 'date') draft.dateExpression = cleanText(value);
     else if (key === 'time') draft.timeSlot = Number(value || 0);
+    else if (key === 'target_date') draft.targetDateExpression = cleanText(value);
+    else if (key === 'target_time') draft.targetTimeSlot = Number(value || 0);
     else if (key === 'class_group') {
       const classGroup = cleanText(value).toUpperCase();
       draft.classGroup = /^[AB]$/.test(classGroup) ? classGroup : '';
@@ -1833,7 +1917,7 @@
       type:'query',
       intent:'find_pickups',
       dateSpec,
-      dateLabel:dateSpec.label,
+      dateLabel:dateSpec ? dateSpec.label : '',
       classTime,
       kind,
       originalText:raw
@@ -1909,7 +1993,7 @@
 
   function classifyRequest(text) {
     const normalizedText = cleanText(text);
-    const writeIntent = parseWriteIntent(normalizedText);
+    const writeIntent = parseDirectWriteIntent(normalizedText);
     if (writeIntent) {
       return {
         type:'mutation',
@@ -2885,7 +2969,9 @@
       let field = writeDraftState.nextField;
       const noun = action === 'add_trial'
         ? '체험 등록'
-        : (action === 'add_waitlist' ? '대기 등록' : '보강 등록');
+        : (action === 'add_waitlist'
+          ? '대기 등록'
+          : (action === 'move_class' ? '수업 이동' : '보강 등록'));
       let draft=Object.assign({},writeDraftState.draft);
       let choices=[];
       let message = field === 'student'
@@ -2894,9 +2980,13 @@
           ? noun + '할 날짜를 선택해 주세요.'
           : (field === 'time'
             ? noun + '할 시간을 선택해 주세요.'
-            : noun + '에 필요한 정보를 알려주세요.'));
+            : (field === 'target_date'
+              ? '수업을 이동할 적용 날짜를 선택해 주세요.'
+              : (field === 'target_time'
+                ? '이동할 수업 시간을 선택해 주세요.'
+                : noun + '에 필요한 정보를 알려주세요.'))));
 
-      if(field==='time'){
+      if(field==='time' || field==='target_time'){
         if(!schedule || typeof schedule.prepareStructuredTimeChoices!=='function'){
           return {
             handled:true,
@@ -2909,7 +2999,10 @@
             action:null
           };
         }
-        const dateSpec=parseDateExpression(compactText(draft.dateExpression));
+        const selectedDateExpression=field==='target_time'
+          ? draft.targetDateExpression
+          : draft.dateExpression;
+        const dateSpec=parseDateExpression(compactText(selectedDateExpression));
         const date=dateSpec ? resolveDateExpression(dateSpec,new Date()) : null;
         if(!date){
           return {
@@ -2917,7 +3010,9 @@
             kind:'action_rejected',
             intent:action,
             text:'',
-            message:'선택한 날짜를 해석하지 못했어요. 날짜를 다시 선택해 주세요.',
+            message:field==='target_time'
+            ? '선택한 이동 날짜를 해석하지 못했어요. 날짜를 다시 선택해 주세요.'
+            : '선택한 날짜를 해석하지 못했어요. 날짜를 다시 선택해 주세요.',
             clearInput:true,
             payload:command,
             action:null
@@ -2933,7 +3028,7 @@
         });
         if(!timeChoices?.ok){
           if(timeChoices?.code==='division_required'){
-            if(action==='add_makeup'){
+            if(action==='add_makeup' || action==='move_class'){
               return {
                 handled:true,
                 kind:'action_rejected',
@@ -2962,7 +3057,11 @@
           }
         }else{
           const absoluteDateExpression=(date.getMonth()+1)+'월 '+date.getDate()+'일';
-          draft=updateStructuredWriteDraft(draft,'date',absoluteDateExpression);
+          draft=updateStructuredWriteDraft(
+            draft,
+            field==='target_time' ? 'target_date' : 'date',
+            absoluteDateExpression
+          );
           draft=updateStructuredWriteDraft(draft,'division',timeChoices.division);
           choices=Array.isArray(timeChoices.choices)
             ? timeChoices.choices.map(item=>Object.assign({},item))
@@ -3008,7 +3107,10 @@
       const sourceWeekday=Number(command.source_weekday || command.sourceWeekday || 0);
       const sourceTimeSlot=Number(command.source_time_slot || command.sourceTimeSlot || 0);
       const sourceEnrollmentId=cleanText(command.source_enrollment_id || command.sourceEnrollmentId);
-      const targetWeekday=Number(command.target_weekday || command.targetWeekday || 0);
+      const targetDateExpression=cleanText(command.target_date_expression || command.targetDateExpression);
+      const targetDateSpec=targetDateExpression ? parseDateExpression(compactText(targetDateExpression)) : null;
+      const targetDate=targetDateSpec ? resolveDateExpression(targetDateSpec,new Date()) : null;
+      const targetWeekday=Number(command.target_weekday || command.targetWeekday || (targetDate ? isoWeekdayOf(targetDate) : 0));
       const targetTimeSlot=Number(command.target_time_slot || command.targetTimeSlot || 0);
       const classGroup=cleanText(command.class_group || command.classGroup).toUpperCase();
 
@@ -3030,9 +3132,10 @@
           sourceEnrollmentId,
           targetWeekday,
           targetTimeSlot,
+          targetDate,
           classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
           selectedStudent:routeContext.selectedStudent || null,
-          effectiveDate:new Date(),
+          effectiveDate:targetDate || new Date(),
           originalText:''
         });
 
@@ -3876,7 +3979,7 @@
       guestName:action === 'add_trial' ? studentName : '',
       division,
       dateSpec,
-      dateLabel:dateSpec.label,
+      dateLabel:dateSpec ? dateSpec.label : '',
       date:resolveDateExpression(dateSpec,new Date()),
       timeSlot,
       classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
@@ -3988,7 +4091,7 @@
     const normalizedText = cleanText(text);
     const routeContext = normalizeContext(context);
     const schedule = global.OlliCommandSchedule;
-    const writeIntent = parseWriteIntent(normalizedText);
+    const writeIntent = parseDirectWriteIntent(normalizedText);
 
     if (!writeIntent) {
       return {
@@ -4197,7 +4300,7 @@
 
     if (pendingWriteCommand) pendingWriteCommand = null;
 
-    const writeIntent = parseWriteIntent(normalizedText);
+    const writeIntent = parseDirectWriteIntent(normalizedText);
     if (writeIntent) {
       if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
         return {

@@ -657,10 +657,10 @@
       if(clean(prepared.payload?.field)==='division' && prepared.payload){
         return saveStructuredDivisionChoice(current,prepared.message || '유치부인지 초등부인지 선택해 주세요.',prepared.payload,null);
       }
-      if(clean(prepared.payload?.field)==='date' && prepared.payload){
+      if(['date','target_date'].includes(clean(prepared.payload?.field)) && prepared.payload){
         return saveStructuredDateChoice(current,prepared.message || '날짜를 선택해 주세요.',prepared.payload,null);
       }
-      if(clean(prepared.payload?.field)==='time' && prepared.payload){
+      if(['time','target_time'].includes(clean(prepared.payload?.field)) && prepared.payload){
         return saveStructuredTimeChoice(current,prepared.message || '시간을 선택해 주세요.',prepared.payload,null);
       }
       return saveAssistantReply(current,clean(prepared.message) || '필요한 정보를 선택해 주세요.',null);
@@ -1167,9 +1167,17 @@
         const label=clean(choice?.label) || Number(choice?.timeSlot || 0)+'시';
         const status=clean(choice?.status);
         const selectable=choice?.selectable===true;
-        button.textContent=status==='full'
-          ? label+'\n'+(clean(payload?.targetIntent)==='add_waitlist' ? '대기 가능' : '마감')
-          : label;
+        const waitlistFull=status==='full'
+          && clean(payload?.targetIntent)==='add_waitlist';
+        if(status==='full' && !waitlistFull){
+          button.classList.add('withStatusLabel');
+          button.append(
+            create('span','timeChoiceLabel',label),
+            create('span','timeChoiceStatus','마감')
+          );
+        }else{
+          button.textContent=waitlistFull ? label+'\n대기 가능' : label;
+        }
         button.disabled=!selectable || !interactive;
         if(!selectable) button.classList.add('closed');
         if(selectable && interactive) button.addEventListener('click',()=>handleStructuredTimeChoice(action,Number(choice?.timeSlot || 0)));
@@ -1418,12 +1426,8 @@
     const bubbleRow = create('div', 'olliPcTeamTalkBubbleRow');
     const bubble = create('div', 'olliPcTeamTalkBubble olliPcTeamTalkTypingBubble');
     bubble.setAttribute('role', 'status');
-    bubble.setAttribute('aria-label', '올리가 답변을 작성하는 중');
-    for (let index = 0; index < 3; index += 1) {
-      const dot = create('span', 'olliPcTeamTalkTypingDot');
-      dot.setAttribute('aria-hidden', 'true');
-      bubble.appendChild(dot);
-    }
+    bubble.setAttribute('aria-label', '올리가 요청을 확인하는 중');
+    bubble.textContent = '확인중…';
     bubbleRow.appendChild(bubble);
     content.appendChild(bubbleRow);
     row.appendChild(content);
@@ -3430,11 +3434,46 @@
     const router = global.OlliCommandRouter;
     const schedule = global.OlliCommandSchedule;
     const rawCommandText=clean(commandText);
-    const interpretation=await interpretOlliSystemLanguage(
-      rawCommandText,
-      current,
-      replyToMessageId
-    );
+    let localRuleClassification=null;
+    let localRuleIntent='';
+    if(router && typeof router.classifyRequest==='function'){
+      try{
+        localRuleClassification=router.classifyRequest(rawCommandText);
+        localRuleIntent=clean(localRuleClassification?.intent);
+      }catch(_){
+        localRuleClassification=null;
+        localRuleIntent='';
+      }
+    }
+    if(!localRuleIntent && router && typeof router.parseStudentInfoLookupIntent==='function'){
+      try{
+        if(router.parseStudentInfoLookupIntent(rawCommandText)) localRuleIntent='open_student_info';
+      }catch(_){}
+    }
+    const localRuleHandled=!!localRuleIntent
+      && clean(localRuleClassification?.type || (localRuleIntent==='open_student_info' ? 'ui_query' : ''))!=='other';
+    const localStructuredCommand=localRuleHandled
+      && router
+      && typeof router.interpretedIntentToStructuredCommand==='function'
+      ? router.interpretedIntentToStructuredCommand(localRuleIntent,rawCommandText)
+      : null;
+    const interpretation=localRuleHandled
+      ? {
+          lane:'routine',
+          route:'rule',
+          intent:localRuleIntent,
+          standaloneCommand:rawCommandText,
+          structuredCommand:localStructuredCommand,
+          batchCommands:[],
+          readCommands:[],
+          reply:'',
+          contextUsed:false
+        }
+      : await interpretOlliSystemLanguage(
+          rawCommandText,
+          current,
+          replyToMessageId
+        );
     const interpreterLane=clean(interpretation.lane) || 'routine';
     const interpreterRoute=clean(interpretation.route);
     const interpreterIntent=clean(interpretation.intent);
@@ -4329,6 +4368,11 @@
       return;
     }
 
+    const isOlliWorkflowFollowup = olliRequested && (
+      hasPendingOlliCommand()
+      || !!state.pendingActionReason
+      || !!state.pendingMakeupDialogue
+    );
     state.sendBusy = true;
     if (send) send.classList.add('sending');
     updateComposerState();
@@ -4348,8 +4392,10 @@
       resizeComposer();
       updateComposerState();
       appendPersistedMessage(payload.message, current.memberId);
-      if (olliRequested && (olliAiMentionRequested || isAiEnabled())) {
+      let firstReplyStartedAt=0;
+      if (olliRequested && !isOlliWorkflowFollowup) {
         state.assistantReplyPending = true;
+        firstReplyStartedAt=Date.now();
         syncAssistantTypingIndicator();
       }
 
@@ -4376,6 +4422,10 @@
         try {
           if (usingAi) {
             const turn = await resolveAiTurn(commandText, current, Number(payload.message.id));
+            if(firstReplyStartedAt){
+              const remaining=1000-(Date.now()-firstReplyStartedAt);
+              if(remaining>0) await new Promise(resolve=>setTimeout(resolve,remaining));
+            }
             state.assistantReplyPending = false;
             const assistantMessages=Array.isArray(turn.assistantMessages) && turn.assistantMessages.length
               ? turn.assistantMessages
@@ -4389,7 +4439,14 @@
             recordAiConversationTurn(commandText, turn.replyText);
           } else {
             const turn = await resolveBotTurn(commandText, current, Number(payload.message.id));
-            appendPersistedMessage(turn.assistantMessage, current.memberId);
+            if(firstReplyStartedAt){
+              const remaining=1000-(Date.now()-firstReplyStartedAt);
+              if(remaining>0) await new Promise(resolve=>setTimeout(resolve,remaining));
+              state.assistantReplyPending=false;
+              replaceAssistantTypingWithMessage(turn.assistantMessage,current.memberId);
+            }else{
+              appendPersistedMessage(turn.assistantMessage, current.memberId);
+            }
           }
         } catch (error) {
           console.warn(usingAi ? 'PC 올리톡 AI 응답 실패:' : 'PC 올리톡 올리봇 응답 실패:', error?.message || error);

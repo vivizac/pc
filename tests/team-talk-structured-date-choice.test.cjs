@@ -11,6 +11,7 @@ const mobile=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'ut
 const pcCss=fs.readFileSync(path.join(root,'apps/pc/pc-team-talk.css'),'utf8');
 const mobileCss=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.css'),'utf8');
 const migration=fs.readFileSync(path.join(root,'supabase/migrations/20261003141000_team_chat_structured_date_choice.sql'),'utf8');
+const moveMigration=fs.readFileSync(path.join(root,'supabase/migrations/20261006112000_team_chat_move_structured_choices.sql'),'utf8');
 
 test('PC and Mobile persist structured date cards and select dates without AI',()=>{
   for(const source of [pc,mobile]){
@@ -41,4 +42,14 @@ test('date choice cards use a compact two-column layout with a full-width calend
   assert.match(pcCss,/dateWide[^}]*grid-column:1\/-1/);
   assert.match(mobileCss,/structuredDate[^{]*\{[^}]*grid-template-columns:repeat\(2/);
   assert.match(mobileCss,/dateWide[^}]*grid-column:1\/-1/);
+});
+
+
+test('class move reuses the structured target-date choice without executing a mutation',()=>{
+  assert.match(moveMigration,/target_date/);
+  assert.match(moveMigration,/move_class/);
+  assert.match(moveMigration,/olli_team_chat_send_structured_date_choice/);
+  assert.match(moveMigration,/olli_team_chat_action_select_structured_date/);
+  assert.doesNotMatch(moveMigration,/olli_schedule_execute\s*\(/);
+  assert.doesNotMatch(moveMigration,/olli_team_chat_action_execute\s*\(/);
 });

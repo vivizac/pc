@@ -2090,11 +2090,46 @@
     const router=window.OlliCommandRouter;
     const schedule=window.OlliCommandSchedule;
     const rawCommandText=String(commandText || '').trim();
-    const interpretation=await interpretOlliTalkSystemLanguage(
-      rawCommandText,
-      context,
-      replyToMessageId
-    );
+    let localRuleClassification=null;
+    let localRuleIntent='';
+    if(router && typeof router.classifyRequest==='function'){
+      try{
+        localRuleClassification=router.classifyRequest(rawCommandText);
+        localRuleIntent=String(localRuleClassification?.intent || '').trim();
+      }catch(_){
+        localRuleClassification=null;
+        localRuleIntent='';
+      }
+    }
+    if(!localRuleIntent && router && typeof router.parseStudentInfoLookupIntent==='function'){
+      try{
+        if(router.parseStudentInfoLookupIntent(rawCommandText)) localRuleIntent='open_student_info';
+      }catch(_){}
+    }
+    const localRuleHandled=!!localRuleIntent
+      && String(localRuleClassification?.type || (localRuleIntent==='open_student_info' ? 'ui_query' : '')).trim()!=='other';
+    const localStructuredCommand=localRuleHandled
+      && router
+      && typeof router.interpretedIntentToStructuredCommand==='function'
+      ? router.interpretedIntentToStructuredCommand(localRuleIntent,rawCommandText)
+      : null;
+    const interpretation=localRuleHandled
+      ? {
+          lane:'routine',
+          route:'rule',
+          intent:localRuleIntent,
+          standaloneCommand:rawCommandText,
+          structuredCommand:localStructuredCommand,
+          batchCommands:[],
+          readCommands:[],
+          reply:'',
+          contextUsed:false
+        }
+      : await interpretOlliTalkSystemLanguage(
+          rawCommandText,
+          context,
+          replyToMessageId
+        );
     const interpreterLane=String(interpretation.lane || '').trim() || 'routine';
     const interpreterRoute=String(interpretation.route || '').trim();
     const interpreterIntent=String(interpretation.intent || '').trim();
@@ -5263,10 +5298,10 @@
       if(String(prepared.payload?.field || '').trim()==='division' && prepared.payload){
         return saveOlliTalkStructuredDivisionChoice(context,prepared.message || '유치부인지 초등부인지 선택해 주세요.',prepared.payload,null);
       }
-      if(String(prepared.payload?.field || '').trim()==='date' && prepared.payload){
+      if(['date','target_date'].includes(String(prepared.payload?.field || '').trim()) && prepared.payload){
         return saveOlliTalkStructuredDateChoice(context,prepared.message || '날짜를 선택해 주세요.',prepared.payload,null);
       }
-      if(String(prepared.payload?.field || '').trim()==='time' && prepared.payload){
+      if(['time','target_time'].includes(String(prepared.payload?.field || '').trim()) && prepared.payload){
         return saveOlliTalkStructuredTimeChoice(context,prepared.message || '시간을 선택해 주세요.',prepared.payload,null);
       }
       return saveOlliTalkOlliReply(context,String(prepared.message || '').trim() || '필요한 정보를 선택해 주세요.',null);
@@ -5783,9 +5818,17 @@
         const label=String(choice?.label || '').trim() || Number(choice?.timeSlot || 0)+'시';
         const status=String(choice?.status || '').trim();
         const selectable=choice?.selectable===true;
-        button.textContent=status==='full'
-          ? label+'\n'+(String(payload?.targetIntent || '').trim()==='add_waitlist' ? '대기 가능' : '마감')
-          : label;
+        const waitlistFull=status==='full'
+          && String(payload?.targetIntent || '').trim()==='add_waitlist';
+        if(status==='full' && !waitlistFull){
+          button.classList.add('withStatusLabel');
+          button.append(
+            createMessageText('span','timeChoiceLabel',label),
+            createMessageText('span','timeChoiceStatus','마감')
+          );
+        }else{
+          button.textContent=waitlistFull ? label+'\n대기 가능' : label;
+        }
         button.disabled=!selectable || !interactive;
         if(!selectable) button.classList.add('closed');
         if(selectable && interactive) button.addEventListener('click',()=>handleOlliTalkStructuredTimeChoice(action,Number(choice?.timeSlot || 0)));
@@ -6005,6 +6048,9 @@
     if(!incomingLayout) return false;
     const bubble=createOlliTalkMessageBubble(item);
     bubble.classList.add('olliTalkBetaSystemBubble','olliTalkBetaInlineSystemResult');
+    if (/작업\s*요청.*취소/.test(String(item?.body || ''))) {
+      bubble.classList.add('olliTalkBetaCancelSystemBubble');
+    }
     bubble.dataset.messageId=String(item?.id || '');
     incomingLayout.appendChild(bubble);
     return true;
@@ -6046,7 +6092,12 @@
     const bubbleRow = document.createElement('div');
     bubbleRow.className = 'olliTalkBetaBubbleRow';
     const bubble = createOlliTalkMessageBubble(item, options);
-    if (type === 'system') bubble.classList.add('olliTalkBetaSystemBubble');
+    if (type === 'system') {
+      bubble.classList.add('olliTalkBetaSystemBubble');
+      if (/작업\s*요청.*취소/.test(String(item?.body || ''))) {
+        bubble.classList.add('olliTalkBetaCancelSystemBubble');
+      }
+    }
     bubbleRow.appendChild(bubble);
 
     const bubbleMeta = document.createElement('div');
@@ -6105,13 +6156,8 @@
     const bubble = document.createElement('div');
     bubble.className = 'olliTalkBetaBubble olliTalkBetaTypingBubble';
     bubble.setAttribute('role', 'status');
-    bubble.setAttribute('aria-label', '올리가 답변을 작성하는 중');
-    for (let index = 0; index < 3; index += 1) {
-      const dot = document.createElement('span');
-      dot.className = 'olliTalkBetaTypingDot';
-      dot.setAttribute('aria-hidden', 'true');
-      bubble.appendChild(dot);
-    }
+    bubble.setAttribute('aria-label', '올리가 요청을 확인하는 중');
+    bubble.textContent = '확인중…';
     bubbleRow.appendChild(bubble);
     incomingLayout.append(sender, bubbleRow);
     message.appendChild(incomingLayout);
@@ -7010,6 +7056,11 @@
       sendButton.classList.add('sending');
     }
 
+    const isOlliWorkflowFollowup = olliRequested && (
+      hasOlliTalkPendingCommand()
+      || !!olliTalkPendingActionReason
+      || !!olliTalkPendingMakeupDialogue
+    );
     const clientMessageId = createOlliTalkClientMessageId();
 
     try {
@@ -7039,8 +7090,10 @@
       resizeInput();
       updateOlliTalkBetaComposerState();
       appendOlliTalkPersistedMessage(payload.message, context.memberId);
-      if (olliRequested && (olliAiMentionRequested || isOlliTalkAiEnabled())) {
+      let olliTalkFirstReplyStartedAt=0;
+      if (olliRequested && !isOlliWorkflowFollowup) {
         olliTalkAssistantReplyPending = true;
+        olliTalkFirstReplyStartedAt=Date.now();
         syncOlliTalkAssistantTypingIndicator();
       }
 
@@ -7078,6 +7131,10 @@
         try {
           if(usingAi){
             const turn=await resolveOlliTalkAiTurn(commandText,context,Number(payload.message.id));
+            if(olliTalkFirstReplyStartedAt){
+              const remaining=1000-(Date.now()-olliTalkFirstReplyStartedAt);
+              if(remaining>0) await new Promise(resolve=>setTimeout(resolve,remaining));
+            }
             olliTalkAssistantReplyPending=false;
             const assistantMessages=Array.isArray(turn.assistantMessages) && turn.assistantMessages.length
               ? turn.assistantMessages
@@ -7091,7 +7148,14 @@
             recordOlliTalkAiConversationTurn(commandText, turn.replyText);
           }else{
             const turn=await resolveOlliTalkBotTurn(commandText,context,Number(payload.message.id));
-            appendOlliTalkPersistedMessage(turn.assistantMessage,context.memberId);
+            if(olliTalkFirstReplyStartedAt){
+              const remaining=1000-(Date.now()-olliTalkFirstReplyStartedAt);
+              if(remaining>0) await new Promise(resolve=>setTimeout(resolve,remaining));
+              olliTalkAssistantReplyPending=false;
+              replaceOlliTalkAssistantTypingWithMessage(turn.assistantMessage,context.memberId);
+            }else{
+              appendOlliTalkPersistedMessage(turn.assistantMessage,context.memberId);
+            }
           }
         } catch(error) {
           console.warn(usingAi ? '올리톡 AI 응답 실패:' : '올리톡 올리봇 응답 실패:', error);
