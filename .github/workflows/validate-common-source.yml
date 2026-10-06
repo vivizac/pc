@@ -120,7 +120,7 @@ jobs:
             tests/team-talk-structured-trial-update.test.cjs \
             tests/team-talk-structured-waitlist-update-choice.test.cjs \
             tests/team-talk-structured-makeup-cancel-choice.test.cjs \
-            tests/team-talk-structured-trial-cancel-choice.test.cjs
+            tests/team-talk-structured-trial-cancel-choice.test.cjs \
             tests/teacher-payroll-contract.test.cjs
 
       - name: Reject platform adapters from common runtime manifests
