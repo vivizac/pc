@@ -502,6 +502,13 @@
   background:transparent; overflow:visible; pointer-events:none; z-index:60;
 }
 
+#olliTalkBetaScreen.kcfVoiceCaptureMode .olliTalkBetaComposerLayer{
+  position:absolute;
+  inset:0;
+  width:auto;
+  height:auto;
+}
+
 #olliTalkBetaScreen .olliTalkBetaEdgeBlurBottom{
   bottom:0;
   height:104px;

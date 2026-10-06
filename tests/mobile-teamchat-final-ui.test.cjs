@@ -167,6 +167,11 @@ test('mention menu growth does not increase the reserved chat height beyond the 
 });
 
 
+test('Team Chat voice capture anchors directly to the screen bottom instead of following the shrinking visual viewport',()=>{
+  assert.match(css,/#olliTalkBetaScreen\.kcfVoiceCaptureMode \.olliTalkBetaComposerLayer\{[\s\S]*position:absolute;[\s\S]*inset:0;[\s\S]*width:auto;[\s\S]*height:auto;/);
+  assert.match(html,/olli-talk-beta\.css\?v=20261006-voice-bottom-lock-1/);
+});
+
 test('Team Chat send starts on pointerdown before the active composer can blur and collapse',()=>{
   assert.match(js,/sendButton\.addEventListener\('pointerdown', event => \{[\s\S]*sendOlliTalkBetaMessage\(event\)/);
   assert.match(js,/sendButton\.addEventListener\('click', event => \{[\s\S]*if \(event\.detail !== 0\)/);
