@@ -1,8 +1,6 @@
 const SUPABASE_URL = 'https://fvkxipjwgeyosgnfhdnx.supabase.co';
 const SERVER_PROMPT_RPC_URL =
   `${SUPABASE_URL}/rest/v1/rpc/olli_server_get_ai_prompt`;
-const TEAM_TALK_SETTINGS_RPC_URL =
-  `${SUPABASE_URL}/rest/v1/rpc/olli_team_talk_settings_get`;
 const ALLOWED_PROMPT_TYPES = new Set([
   'class',
   'fail',
@@ -92,53 +90,6 @@ async function writeUsageLog(entry) {
   } catch (error) {
     console.warn('[OLLI AI] usage log write failed:', error?.message || error);
   }
-}
-
-async function assertTeamTalkAiEnabled(body = {}) {
-  const serverKey = getServerKey();
-  const sessionToken = String(body.sessionToken || body.session_token || '').trim();
-  const academyId = String(body.academyId || body.academy_id || '').trim();
-
-  if (!serverKey) {
-    const error = new Error('SUPABASE_SECRET_KEY가 서버 환경변수에 설정되지 않았습니다.');
-    error.statusCode = 500;
-    throw error;
-  }
-  if (!sessionToken || !academyId) {
-    const error = new Error('올리 AI를 사용하려면 로그인 세션과 학원 정보가 필요합니다.');
-    error.statusCode = 401;
-    throw error;
-  }
-
-  const response = await fetch(TEAM_TALK_SETTINGS_RPC_URL, {
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      apikey:serverKey,
-      Authorization:`Bearer ${serverKey}`
-    },
-    body:JSON.stringify({
-      p_session_token:sessionToken,
-      p_academy_id:academyId
-    })
-  });
-
-  const raw = await response.text();
-  let data;
-  try { data = raw ? JSON.parse(raw) : {}; }
-  catch { data = { raw }; }
-
-  if (!response.ok) {
-    const error = new Error(data?.message || data?.error || '올리 AI 사용 권한을 확인하지 못했습니다.');
-    error.statusCode = response.status === 401 ? 401 : 403;
-    throw error;
-  }
-  if (!data?.ok || data?.ai_enabled !== true) {
-    const error = new Error('현재 학원 설정에서 올리 AI가 꺼져 있습니다.');
-    error.statusCode = 403;
-    throw error;
-  }
-  return true;
 }
 
 async function loadSystemPrompt(promptType) {
@@ -546,10 +497,6 @@ export default async function handler(req, res) {
       return res.status(400).json({
         error: 'messages 형식이 올바르지 않습니다.',
       });
-    }
-
-    if (promptType === 'talk') {
-      await assertTeamTalkAiEnabled(body);
     }
 
     let systemPrompt;
