@@ -6476,6 +6476,16 @@
     if (olliTalkAssistantReplyPending) syncOlliTalkAssistantTypingIndicator();
     scheduleOlliTalkChatToComposer();
 
+    // 팀챗 첫 진입은 다음 frame에서 아래로 당기지 않고,
+    // 현재 task 안에서 최신 메시지 위치를 확정해 첫 paint부터 안정적으로 보여줍니다.
+    if(scrollMode==='initial-latest'){
+      syncOlliTalkChatToComposer();
+      const latest=latestOlliTalkRenderedMessage(chatArea);
+      if(latest) scrollOlliTalkMessageAboveComposer(latest);
+      else chatArea.scrollTop=chatArea.scrollHeight;
+      return;
+    }
+
     const searchBar = document.getElementById('olliTalkSearchBar');
     const searchInput = document.getElementById('olliTalkSearchInput');
     const hasActiveSearch = !!searchBar && !searchBar.hidden && !!String(searchInput?.value || '').trim();
@@ -7518,7 +7528,7 @@
       olliTalkCurrentPayload=openCachedPayload;
       renderOlliTalkCachedMemberCount(openCachedPayload);
       renderOlliTalkServerMessages(openCachedPayload,{
-        scrollMode:'preserve',
+        scrollMode:'initial-latest',
         messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT,
         deferHydration:true
       });
@@ -7580,7 +7590,7 @@
           localFirst:false,
           cachedPayload:openCachedPayload,
           messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT,
-          scrollMode:'follow-if-near-bottom'
+          scrollMode:openCachedPayload ? 'follow-if-near-bottom' : 'initial-latest'
         });
       },0);
     });
