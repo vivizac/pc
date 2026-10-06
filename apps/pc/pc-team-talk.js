@@ -1397,6 +1397,10 @@
     content.appendChild(bubbleRow);
     if (item?.action) content.appendChild(makeActionCard(item.action));
     if (shouldShowPendingTextInput(item)) content.appendChild(makePendingTextInputButton());
+    if (global.OlliTeacherPayroll?.createTeamChatPayrollButton) {
+      const payrollButton = global.OlliTeacherPayroll.createTeamChatPayrollButton(item, 'pc');
+      if (payrollButton) content.appendChild(payrollButton);
+    }
     row.appendChild(content);
     if (shouldOfferOlliReply(item, own, options.olliReplyTargetIds)) {
       row.appendChild(makeOlliReplySuggestion(item));

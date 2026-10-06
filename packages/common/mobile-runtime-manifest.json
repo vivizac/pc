@@ -50,6 +50,8 @@
     "olli-record-student-picker.js",
     "olli-student-bulk-edit-parser.js",
     "olli-data-record-list.js",
-    "olli-feedback-photo-storage-common.js"
+    "olli-feedback-photo-storage-common.js",
+    "olli-teacher-payroll-common.js",
+    "olli-teacher-payroll-common.css"
   ]
 }

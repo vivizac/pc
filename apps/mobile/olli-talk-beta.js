@@ -6142,11 +6142,19 @@
         if (item?.material_request_id && item?.material_event_id) {
           incomingLayout.appendChild(createOlliTalkMaterialConfirmCard(item));
         }
+        if (window.OlliTeacherPayroll?.createTeamChatPayrollButton) {
+          const payrollButton = window.OlliTeacherPayroll.createTeamChatPayrollButton(item, 'mobile');
+          if (payrollButton) incomingLayout.appendChild(payrollButton);
+        }
       } else {
         message.appendChild(bubbleRow);
         if (item?.action) message.appendChild(createOlliTalkActionCard(item.action));
         if (item?.material_request_id && item?.material_event_id) {
           message.appendChild(createOlliTalkMaterialConfirmCard(item));
+        }
+        if (window.OlliTeacherPayroll?.createTeamChatPayrollButton) {
+          const payrollButton = window.OlliTeacherPayroll.createTeamChatPayrollButton(item, 'mobile');
+          if (payrollButton) message.appendChild(payrollButton);
         }
       }
     } else {
