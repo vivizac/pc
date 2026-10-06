@@ -161,3 +161,20 @@ test('Work navigation reset does not reference removed viewport follow state',()
   assert.doesNotMatch(js,/\bolliTalkFollowBottomAfterViewportSettle\b/);
   assert.match(js,/window\.openOlliTalkBetaPage = openOlliTalkBetaPage/);
 });
+
+
+test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into a real mention',()=>{
+  assert.match(html,/id="olliTalkBetaVoiceBtn"[\s\S]*?<rect x="8" y="3" width="8" height="13" rx="4"/);
+  assert.match(js,/voice\.toggleForTarget\(input,button,\{/);
+  assert.match(js,/finalizeTranscript:finalizeOlliTalkVoiceTranscript/);
+  assert.match(js,/oll[iI]TalkMentionSelections\.set\(OLLI_TALK_AI_MENTION_ID, OLLI_TALK_AI_MENTION\)/);
+  assert.match(js,/oll[iI]TalkMentionModeActive = true/);
+  assert.match(js,/올리\\s\*야/);
+  assert.match(js,/오리\\s\*야/);
+  assert.match(js,/if\(!parsed\.mentionOlli\) return parsed\.text/);
+  assert.doesNotMatch(js,/toggleOlliTalkVoiceInput[\s\S]{0,1600}sendOlliTalkBetaMessage\(/);
+  assert.match(css,/\.olliTalkBetaVoiceBtn\{[\s\S]*?width:33px;[\s\S]*?height:33px;/);
+  assert.match(css,/\.olliTalkBetaVoiceBtn\.active\{[\s\S]*?background:#0A84FF;[\s\S]*?color:#fff;/);
+  assert.match(html,/olli-talk-beta\.css\?v=20261006-teamchat-voice-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261006-teamchat-voice-1/);
+});
