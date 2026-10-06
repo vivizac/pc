@@ -3707,10 +3707,31 @@
         };
       }
 
-      const merged=mergeStructuredMakeupCancelCommand(
+      let merged=mergeStructuredMakeupCancelCommand(
         pending?.structuredCommand,
         structuredCommand
       );
+
+      let preflight=null;
+      if(!pending && router && typeof router.prepareStructuredAction==='function'){
+        preflight=await router.prepareStructuredAction(merged,{
+          source:'olli_talk_ai_structured_preflight',
+          selectedStudent:null,
+          autoSubmitContext:null
+        });
+        if(preflight?.handled===true && preflight.kind==='action_rejected'){
+          const rejectedMessage=clean(preflight.message) || '보강 취소 작업을 준비하지 못했어요.';
+          return {
+            assistantMessage:await saveAssistantReply(current,rejectedMessage,replyToMessageId),
+            replyText:rejectedMessage,
+            recordAi:false
+          };
+        }
+        if(preflight?.handled===true && preflight.payload){
+          merged=mergeStructuredMakeupCancelCommand(merged,preflight.payload);
+        }
+      }
+
       const reason=clean(merged.reason);
       if(!reason){
         const sourceMessageId=Number(replyToMessageId || 0);
@@ -3722,7 +3743,8 @@
             structuredCommand:merged
           }
         };
-        const reasonMessage=(clean(merged.studentName) || '학생')+' 학생의 보강 취소 사유를 알려주세요.';
+        const reasonMessage=clean(preflight?.message)
+          || (clean(merged.studentName) || '학생')+' 학생의 보강 취소 사유를 알려주세요.';
         return savePendingTextInputReply(current,reasonMessage,replyToMessageId);
       }
 
