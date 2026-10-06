@@ -3066,15 +3066,34 @@
     return true;
   }
 
+  function submitPendingNoReason() {
+    const input=byId('olliPcTeamTalkInput');
+    if(!input || !state.pendingActionReason || state.sendBusy) return false;
+    input.value='사유 없음';
+    resizeComposer();
+    updateComposerState();
+    sendMessage().catch(error=>console.warn('PC 올리톡 사유 없음 처리 실패:',error));
+    return true;
+  }
+
   function makePendingTextInputButton() {
     const wrap=create('div','olliPcTeamTalkPendingInput');
-    const button=document.createElement('button');
-    button.type='button';
-    button.className='olliPcTeamTalkPendingInputButton';
-    button.textContent='입력하기';
-    button.setAttribute('aria-label','요청한 내용을 입력하기');
-    button.addEventListener('click',focusPendingTextInput);
-    wrap.appendChild(button);
+
+    const noReason=document.createElement('button');
+    noReason.type='button';
+    noReason.className='olliPcTeamTalkPendingInputButton';
+    noReason.textContent='사유 없음';
+    noReason.setAttribute('aria-label','사유 없이 진행');
+    noReason.addEventListener('click',submitPendingNoReason);
+
+    const inputButton=document.createElement('button');
+    inputButton.type='button';
+    inputButton.className='olliPcTeamTalkPendingInputButton';
+    inputButton.textContent='사유 입력';
+    inputButton.setAttribute('aria-label','사유를 직접 입력');
+    inputButton.addEventListener('click',focusPendingTextInput);
+
+    wrap.append(noReason,inputButton);
     return wrap;
   }
 
@@ -3438,6 +3457,33 @@
     const router = global.OlliCommandRouter;
     const schedule = global.OlliCommandSchedule;
     const rawCommandText=clean(commandText);
+
+    const pendingStructuredMakeupCancel=state.pendingActionReason?.__structuredMakeupCancel || null;
+    if(
+      clean(state.pendingActionReason?.intent)==='cancel_makeup'
+      && pendingStructuredMakeupCancel
+    ){
+      if(isPendingReasonCancel(rawCommandText)){
+        state.pendingActionReason=null;
+        const message='작업 준비를 취소했어요.';
+        return {
+          assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+          replyText:message,
+          recordAi:false
+        };
+      }
+      state.pendingActionReason=null;
+      return resolveStructuredMakeupCancelTurn({
+        structuredCommand:pendingStructuredMakeupCancel.structuredCommand,
+        sourceText:clean(pendingStructuredMakeupCancel.sourceMessageText),
+        sourceMessageId:Number(pendingStructuredMakeupCancel.sourceMessageId || 0),
+        reasonText:rawCommandText,
+        reasonMessageText:rawCommandText,
+        reasonMessageId:Number(replyToMessageId || 0),
+        current,
+      });
+    }
+
     let localRuleClassification=null;
     let localRuleIntent='';
     if(router && typeof router.classifyRequest==='function'){
@@ -3677,11 +3723,7 @@
           }
         };
         const reasonMessage=(clean(merged.studentName) || '학생')+' 학생의 보강 취소 사유를 알려주세요.';
-        return {
-          assistantMessage:await saveAssistantReply(current,reasonMessage,replyToMessageId),
-          replyText:reasonMessage,
-          recordAi:false
-        };
+        return savePendingTextInputReply(current,reasonMessage,replyToMessageId);
       }
 
       const sourceMessageId=pending
