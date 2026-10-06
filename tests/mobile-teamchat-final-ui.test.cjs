@@ -64,18 +64,25 @@ test('Team Chat runs deterministic rules before calling Luna on both phone and P
   assert.match(pcJs,/router\.classifyRequest\(rawCommandText\)[\s\S]*localRuleHandled[\s\S]*await interpretOlliSystemLanguage/);
 });
 
-test('first Olli response shows 확인중 for at least one second and follow-up workflows skip that delay',()=>{
-  assert.match(js,/bubble\.textContent = '확인중…'/);
+test('first Olli response shows smaller three-dot typing indicator for at least one second',()=>{
+  assert.match(js,/dot\.className = 'olliTalkBetaTypingDot'/);
   assert.match(js,/isOlliWorkflowFollowup[\s\S]*1000-\(Date\.now\(\)-olliTalkFirstReplyStartedAt\)/);
-  assert.doesNotMatch(js,/olliTalkBetaTypingDot/);
-  assert.match(pcJs,/bubble\.textContent = '확인중…'/);
+  assert.match(pcJs,/create\('span', 'olliPcTeamTalkTypingDot'\)/);
   assert.match(pcJs,/isOlliWorkflowFollowup[\s\S]*1000-\(Date\.now\(\)-firstReplyStartedAt\)/);
-  assert.doesNotMatch(pcJs,/olliPcTeamTalkTypingDot/);
-  assert.doesNotMatch(css,/olliTalkBetaTypingDot/);
-  assert.doesNotMatch(pcCss,/olliPcTeamTalkTypingDot/);
+  assert.match(css,/\.olliTalkBetaTypingDot\{[\s\S]*width:2px;[\s\S]*height:2px;/);
+  assert.match(pcCss,/\.olliPcTeamTalkTypingDot\{[^}]*width:2px;[^}]*height:2px;/);
 });
 
 test('cancelled system request uses a normal white bubble with dark text on mobile',()=>{
   assert.match(js,/\/작업\\s\*요청\.\*취소\/\.test[\s\S]*olliTalkBetaCancelSystemBubble/);
   assert.match(css,/\.olliTalkBetaCancelSystemBubble\{[\s\S]*--olli-talk-bubble-bg:#fff;[\s\S]*color:#201818;/);
+});
+
+
+test('mobile Team Chat keeps new AI and teacher messages above the composer instead of forcing raw scrollHeight',()=>{
+  assert.match(js,/function scrollOlliTalkMessageAboveComposer\(message\)/);
+  assert.match(js,/const visibleBottom = Number\.isFinite\(composerTop\)[\s\S]*Math\.min\(chatRect\.bottom, composerTop\) - 10/);
+  assert.match(js,/scheduleOlliTalkMessageAboveComposer\(next\)/);
+  assert.match(js,/latestOlliTalkRenderedMessage\(chatArea\)/);
+  assert.match(js,/if \(shouldFollowBottom\) \{[\s\S]*scrollOlliTalkMessageAboveComposer\(latest\)/);
 });
