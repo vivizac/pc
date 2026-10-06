@@ -455,11 +455,43 @@
     updateOlliTalkBetaComposerState();
   }
 
+  const OLLI_TALK_VOICE_WAKE_ROOTS = new Set([
+    '올리',
+    '오리',
+    '울리',
+    '얼리',
+    '올릴',
+    '오릴'
+  ]);
+
+  function matchOlliTalkVoiceWakePrefix(transcript){
+    const source=String(transcript || '');
+
+    // 정확한 "올리"는 STT가 호격 어미를 생략해도 호출어로 인정합니다.
+    const exact=source.match(/^\s*@?\s*올리(?:\s*(?:야(?:아+)?|이야|일야|일이야|아))?(?=\s|[,，.。!?！？:]|$)\s*[,，.。!?！？:]?\s*/i);
+    if(exact) return exact;
+
+    // 오인식 후보는 문장 맨 앞 + 호격 어미가 있을 때만 허용합니다.
+    // 그래서 본문 중간의 일반 명사 "오리" 등은 바꾸지 않습니다.
+    const spoken=source.match(/^\s*@?\s*([가-힣]{2,3}?)(?:\s*(?:야(?:아+)?|이야|일야|일이야|아))(?=\s|[,，.。!?！？:]|$)\s*[,，.。!?！？:]?\s*/i);
+    if(spoken && OLLI_TALK_VOICE_WAKE_ROOTS.has(String(spoken[1] || '').normalize('NFC'))){
+      return spoken;
+    }
+
+    // 사용자가 직접 @를 말하거나 입력한 경우에는 호격 어미가 없어도 가까운 호출어를 인정합니다.
+    const explicit=source.match(/^\s*@\s*([가-힣]{2,3})(?=\s|[,，.。!?！？:]|$)\s*[,，.。!?！？:]?\s*/i);
+    if(explicit && OLLI_TALK_VOICE_WAKE_ROOTS.has(String(explicit[1] || '').normalize('NFC'))){
+      return explicit;
+    }
+
+    return null;
+  }
+
   function parseOlliTalkVoiceTranscript(value){
     const transcript=String(value || '').trim();
     if(!transcript) return {mentionOlli:false,text:''};
 
-    const wake=transcript.match(/^\s*(?:@?\s*올리\s*야|@?\s*올리|오리\s*야)(?=\s|[,，.。!?！？:]|$)\s*[,，.。!?！？:]?\s*/i);
+    const wake=matchOlliTalkVoiceWakePrefix(transcript);
     if(!wake) return {mentionOlli:false,text:transcript};
     return {
       mentionOlli:true,
