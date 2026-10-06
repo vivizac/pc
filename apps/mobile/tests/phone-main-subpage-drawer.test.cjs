@@ -107,3 +107,15 @@ test('Work tabs expose one shared unread mention badge source', () => {
   assert.match(kcfCss, /\.olliWorkNotificationBadge\{[\s\S]*background:#0A84FF;/);
   assert.match(talkJs, /document\.querySelectorAll\('\[data-olli-work-badge\], #kcfOlliTalkBadge'\)/);
 });
+
+
+test('opening the Attendance drawer starts after one animation frame, not two', () => {
+  assert.match(
+    drawerJs,
+    /void mainPage\.offsetWidth;[\s\S]*requestAnimationFrame\(\(\) => \{[\s\S]*mainPage\.classList\.add\(OPEN_CLASS\)/
+  );
+  assert.doesNotMatch(
+    drawerJs,
+    /void mainPage\.offsetWidth;\s*requestAnimationFrame\(\(\) => \{\s*requestAnimationFrame/
+  );
+});

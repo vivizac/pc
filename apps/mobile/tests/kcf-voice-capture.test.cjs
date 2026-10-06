@@ -5,6 +5,8 @@ const fs = require('node:fs');
 const voice = fs.readFileSync('kcf-voice-transcription.js', 'utf8');
 const css = fs.readFileSync('kinder-feedback.css', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
+const talkJs = fs.readFileSync('olli-talk-beta.js', 'utf8');
+const talkCss = fs.readFileSync('olli-talk-beta.css', 'utf8');
 
 test('voice capture has dedicated close waveform stop and send controls', () => {
   assert.match(html, /id="kcfVoiceCapture"/);
@@ -184,4 +186,16 @@ test('QuickNote voice end returns to the shared composer sheet without focusing 
   assert.match(focus, /global\.openKinderChatFeedbackComposerSheet\(\)/);
   assert.match(focus, /return;/);
   assert.doesNotMatch(focus, /updateKinderChatFeedbackKeyboardOffset/);
+});
+
+
+test('Team Chat reuses the QuickNote recording panel and returns to the focused text input after ending', () => {
+  assert.match(talkJs, /showPanel:true,[\s\S]*panelHost:composer/);
+  assert.match(voice, /closest\('#studentMemoScreen, #olliTalkBetaScreen'\)/);
+  assert.match(css, /:is\(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen\) \.kcfVoiceCapture/);
+  assert.match(talkCss, /\.olliTalkBetaComposer\.kcfVoiceCaptureMode[\s\S]*display:flex/);
+  assert.match(talkCss, /\.olliTalkBetaComposer\.kcfVoiceCaptureMode > :not\(\.kcfVoiceCapture\)[\s\S]*display:none !important/);
+  assert.doesNotMatch(talkCss, /\.olliTalkBetaVoiceBtn\.active\{[\s\S]*background:#0A84FF/);
+  assert.match(voice, /function sendFromPanel\(event\)[\s\S]*focusQuickNoteInputAfterVoiceEnd\(target\)[\s\S]*stop\(\)/);
+  assert.match(voice, /function finishStop\(\)[\s\S]*renderTranscript\(true\)[\s\S]*inlineTarget\?\.focus/);
 });

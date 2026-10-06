@@ -694,10 +694,10 @@
   justify-content:flex-start;
 }
 
-:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCapture[hidden] {
+:is(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen) .kcfVoiceCapture[hidden] {
   display:none !important;
 }
-:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCapture {
+:is(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen) .kcfVoiceCapture {
   width:100%;
   min-width:0;
   height:34px;
@@ -734,7 +734,7 @@
 #kinderChatFeedbackScreen .kcfComposer.kcfVoiceCaptureMode > .kcfComposerBottom {
   display:none !important;
 }
-:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCaptureCircle {
+:is(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen) .kcfVoiceCaptureCircle {
   width:33px;
   height:33px;
   min-width:33px;
@@ -747,12 +747,12 @@
   cursor:pointer;
   -webkit-tap-highlight-color:transparent;
 }
-:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCaptureClose,
-:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCaptureStop {
+:is(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen) .kcfVoiceCaptureClose,
+:is(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen) .kcfVoiceCaptureStop {
   background:#f1f1f1;
   color:#111;
 }
-:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCaptureClose svg {
+:is(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen) .kcfVoiceCaptureClose svg {
   width:25px;
   height:25px;
   stroke:currentColor;
@@ -760,7 +760,7 @@
   stroke-width:2;
   stroke-linecap:round;
 }
-:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCaptureStop span {
+:is(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen) .kcfVoiceCaptureStop span {
   width:14px;
   height:16px;
   border-radius:0;
@@ -771,21 +771,21 @@
     currentColor 10px 14px
   );
 }
-:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCaptureSend {
+:is(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen) .kcfVoiceCaptureSend {
   background:#0A84FF;
   color:#fff;
 }
-:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCaptureSend span {
+:is(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen) .kcfVoiceCaptureSend span {
   width:15px;
   height:15px;
   border-radius:3px;
   background:currentColor;
 }
-:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCaptureCircle:disabled {
+:is(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen) .kcfVoiceCaptureCircle:disabled {
   opacity:.36;
   cursor:default;
 }
-:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceWave {
+:is(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen) .kcfVoiceWave {
   flex:1 1 auto;
   min-width:0;
   height:32px;
@@ -795,7 +795,7 @@
   gap:3px;
   overflow:hidden;
 }
-:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceWaveBar {
+:is(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen) .kcfVoiceWaveBar {
   width:3px;
   min-width:3px;
   height:3px;
@@ -804,18 +804,18 @@
   opacity:.9;
   transition:height 70ms linear, opacity .16s ease;
 }
-:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCapture.connecting .kcfVoiceWaveBar {
+:is(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen) .kcfVoiceCapture.connecting .kcfVoiceWaveBar {
   opacity:.38;
 }
-:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCapture.stopped .kcfVoiceWaveBar {
+:is(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen) .kcfVoiceCapture.stopped .kcfVoiceWaveBar {
   opacity:.48;
 }
-:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCapture.stopping .kcfVoiceWaveBar {
+:is(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen) .kcfVoiceCapture.stopping .kcfVoiceWaveBar {
   opacity:.6;
 }
 
 
-:is(#kinderChatFeedbackScreen, #studentMemoScreen) .kcfVoiceCapture.paused .kcfVoiceWaveBar {
+:is(#kinderChatFeedbackScreen, #studentMemoScreen, #olliTalkBetaScreen) .kcfVoiceCapture.paused .kcfVoiceWaveBar {
   opacity:.34;
 }
 

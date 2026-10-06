@@ -91,7 +91,8 @@
 
   function screen() {
     if (state.inlineMode && state.showInlinePanel && state.targetInput) {
-      return state.targetInput.closest('#studentMemoScreen') || document.getElementById('studentMemoScreen');
+      return state.targetInput.closest('#studentMemoScreen, #olliTalkBetaScreen')
+        || document.getElementById('studentMemoScreen');
     }
     return document.getElementById('kinderChatFeedbackScreen');
   }

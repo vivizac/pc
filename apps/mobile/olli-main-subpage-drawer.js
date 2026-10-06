@@ -606,11 +606,9 @@
 
     void mainPage.offsetWidth;
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (!drawerState || navigationInFlight) return;
-        mainPage.classList.add(OPEN_CLASS);
-        companion?.classList.add(OPEN_CLASS);
-      });
+      if (!drawerState || navigationInFlight) return;
+      mainPage.classList.add(OPEN_CLASS);
+      companion?.classList.add(OPEN_CLASS);
     });
     return true;
   }

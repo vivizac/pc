@@ -397,8 +397,9 @@
     }
     const input=getOlliTalkBetaInput();
     const button=document.getElementById('olliTalkBetaVoiceBtn');
+    const composer=input?.closest?.('.olliTalkBetaComposer') || null;
     const voice=window.KcfVoiceTranscription;
-    if(!input || !button) return false;
+    if(!input || !button || !composer) return false;
 
     if(!voice || typeof voice.toggleForTarget!=='function'){
       if(typeof window.showPushToast==='function') window.showPushToast('음성 입력을 아직 준비하지 못했어요.');
@@ -407,7 +408,8 @@
     }
 
     await voice.toggleForTarget(input,button,{
-      showPanel:false,
+      showPanel:true,
+      panelHost:composer,
       deferTranscriptUntilFinalized:false,
       finalizeTranscript:finalizeOlliTalkVoiceTranscript
     },event);

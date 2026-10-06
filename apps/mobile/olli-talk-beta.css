@@ -558,6 +558,25 @@
   padding:7px 11px;
 }
 
+#olliTalkBetaScreen .olliTalkBetaComposer.kcfVoiceCaptureMode,
+#olliTalkBetaScreen.olliTalkKeyboardOpen .olliTalkBetaComposer.kcfVoiceCaptureMode{
+  display:flex;
+  align-items:center;
+  gap:0;
+  height:var(--olli-phone-bottom-control-height, 47px);
+  min-height:var(--olli-phone-bottom-control-height, 47px);
+  max-height:var(--olli-phone-bottom-control-height, 47px);
+  padding:6px 11px 5px;
+}
+#olliTalkBetaScreen .olliTalkBetaComposer.kcfVoiceCaptureMode > :not(.kcfVoiceCapture){
+  display:none !important;
+}
+#olliTalkBetaScreen .olliTalkBetaComposer.kcfVoiceCaptureMode > .kcfVoiceCapture{
+  position:relative;
+  z-index:2;
+  flex:1 1 auto;
+}
+
 #olliTalkBetaScreen .olliTalkComposerTextRow{
   --olli-talk-mention-indent:0px;
   position:relative;
@@ -680,10 +699,6 @@
 #olliTalkBetaScreen .olliTalkBetaVoiceBtn.connecting,
 #olliTalkBetaScreen .olliTalkBetaVoiceBtn.processing{
   opacity:.45;
-}
-#olliTalkBetaScreen .olliTalkBetaVoiceBtn.active{
-  background:#0A84FF;
-  color:#fff;
 }
 #olliTalkBetaScreen .olliTalkFileAddBtn{
   display:inline-flex;
