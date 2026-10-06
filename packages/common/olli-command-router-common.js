@@ -319,11 +319,45 @@
       .trim();
   }
 
+  function stripTrailingCommandRequest(value) {
+    let text = cleanText(value).replace(/[?？!！.。]+$/g, '').trim();
+    if (!text) return '';
+
+    const patterns = [
+      /(?:등록|추가|입력|기입|기재|예약|신청|배정|생성|기록|반영|저장)\s*(?:좀|한번)?\s*(?:(?:해\s*)?(?:놔|놓아|둬|두어)(?:\s*(?:줘요|주세요|줘|줄래))?|(?:해\s*)?둘래|(?:해\s*)?(?:줘요|주세요|줘|줄래|해줄래|할래|해요|해))?\s*$/i,
+      /(?:넣|잡|적|만들)(?:어|아)?\s*(?:좀|한번)?\s*(?:(?:놔|놓아|둬|두어)(?:\s*(?:줘요|주세요|줘|줄래))?|둘래|(?:줘요|주세요|줘|줄래|해줄래|할래|해요|해))?\s*$/i,
+      /(?:올려|걸어)\s*(?:좀|한번)?\s*(?:(?:놔|놓아|둬|두어)(?:\s*(?:줘요|주세요|줘|줄래))?|둘래|(?:줘요|주세요|줘|줄래|해줄래|할래|해요|해))?\s*$/i,
+      /(?:취소|삭제|제거|해제|없애)\s*(?:좀|한번)?\s*(?:해\s*)?(?:줘요|주세요|줘|줄래|해줘|해주세요|해줄래|할래|해요|해)?\s*$/i,
+      /(?:지워|지우|빼)\s*(?:좀|한번)?\s*(?:줘요|주세요|줘|줄래|해줘|해주세요|해줄래|할래|해요|해)?\s*$/i,
+      /(?:수정|변경|이동)\s*(?:좀|한번)?\s*(?:시켜\s*)?(?:해\s*)?(?:줘요|주세요|줘|줄래|해줘|해주세요|해줄래|할래|해요|해)?\s*$/i,
+      /(?:옮겨|바꿔|고쳐)\s*(?:좀|한번)?\s*(?:줘요|주세요|줘|줄래|해줘|해주세요|해줄래|할래|해요|해)?\s*$/i,
+      /(?:옮기|바꾸|고치)(?:어|아)?\s*(?:좀|한번)?\s*(?:줘요|주세요|줘|줄래|해줘|해주세요|해줄래|할래|해요|해)?\s*$/i,
+      /(?:처리)\s*(?:좀|한번)?\s*(?:해\s*)?(?:줘요|주세요|줘|줄래|해줘|해주세요|해줄래|할래|해요|해)?\s*$/i
+    ];
+
+    for (const pattern of patterns) {
+      if (!pattern.test(text)) continue;
+      text = text.replace(pattern, ' ').replace(/\s+/g, ' ').trim();
+      break;
+    }
+    return text;
+  }
+
+  function hasResidualCommandToken(value) {
+    const text = cleanText(value);
+    if (!text) return false;
+    return /(?:^|\s)(?:등록|추가|입력|기입|기재|예약|신청|배정|생성|기록|반영|저장|취소|삭제|제거|해제|없애|수정|변경|이동|처리|지워|지우|빼|옮겨|바꿔|고쳐|해줘|해주세요|해줘요|해줄래|주세요|줘요|줘|줄래|할래)(?=\s|$)/i.test(text)
+      || /(?:해\s*줘|해\s*주세요|해\s*줘요|해\s*줄래|해\s*요|해)\s*$/i.test(text);
+  }
+
   function extractStudentName(value, domainPattern, actionPattern) {
-    let stripped = stripCommonCommandParts(value);
+    let stripped = stripTrailingCommandRequest(value);
+    stripped = stripCommonCommandParts(stripped);
     if (domainPattern) stripped = stripped.replace(domainPattern, ' ');
     if (actionPattern) stripped = stripped.replace(actionPattern, ' ');
-    return cleanupStudentName(stripped);
+    stripped = cleanupStudentName(stripped);
+    if (hasResidualCommandToken(stripped)) return '';
+    return stripped;
   }
 
   const WEEKDAY_MAP = Object.freeze({ 월:1, 화:2, 수:3, 목:4, 금:5, 토:6 });
