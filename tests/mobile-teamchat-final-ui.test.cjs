@@ -181,11 +181,13 @@ test('Team Chat mention placeholder shortens to the actual remaining width with 
   assert.match(css,/\.olliTalkMentionAwaitingMessage \.olliTalkBetaInput\{[\s\S]*white-space:nowrap;[\s\S]*overflow-x:hidden;/);
 });
 
-test('Team Chat touch send starts before iOS can move focus away from the textarea',()=>{
-  assert.match(js,/sendButton\.addEventListener\('touchstart', event => \{[\s\S]*startSendFromControl\(event\)[\s\S]*passive:false/);
-  assert.match(js,/if \(input && document\.activeElement !== input\)[\s\S]*input\.focus\(\{ preventScroll:true \}\)/);
+test('Team Chat touch send starts immediately and then allows the textarea to blur naturally',()=>{
+  assert.match(js,/sendButton\.addEventListener\('touchstart', event => \{[\s\S]*startSendFromControl\(event\)[\s\S]*passive:true/);
+  assert.match(js,/const startSendFromControl = event => \{[\s\S]*sendOlliTalkBetaMessage\(\)/);
+  assert.doesNotMatch(js,/const startSendFromControl = event => \{[\s\S]{0,500}input\.focus/);
+  assert.doesNotMatch(js,/await loadOlliTalkBetaMessages\([\s\S]{0,500}input\.focus/);
   assert.match(js,/sendButton\.addEventListener\('pointerdown', event => \{[\s\S]*event\.pointerType === 'touch'\) return/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261006-chat-input-fixes-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261006-send-sequence-2/);
 });
 
 test('Team Chat groups adjacent messages only when sender and displayed minute are identical',()=>{

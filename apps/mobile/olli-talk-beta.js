@@ -7220,11 +7220,6 @@
         alert('메시지는 전송됐지만 ' + followupErrors.join(', ') + '에 실패했습니다.');
       }
 
-      try {
-        input.focus({ preventScroll:true });
-      } catch(e) {
-        input.focus();
-      }
     } catch(error) {
       olliTalkAssistantReplyPending = false;
       syncOlliTalkAssistantTypingIndicator();
@@ -7808,20 +7803,14 @@
 
     if (sendButton) {
       const startSendFromControl = event => {
-        if (event) {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-        if (input && document.activeElement !== input) {
-          try { input.focus({ preventScroll:true }); } catch (_) { input.focus(); }
-        }
+        if (event) event.stopPropagation();
         sendOlliTalkBetaMessage().catch(error => console.warn('올리톡 메시지 전송 시작 실패:', error));
       };
 
       sendButton.addEventListener('touchstart', event => {
         if (event.touches && event.touches.length !== 1) return;
         startSendFromControl(event);
-      }, { passive:false });
+      }, { passive:true });
 
       sendButton.addEventListener('pointerdown', event => {
         if (event.pointerType === 'touch') return;
