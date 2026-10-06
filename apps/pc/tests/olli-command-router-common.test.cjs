@@ -193,6 +193,10 @@ test('ambiguous routine wording falls through to Luna instead of being guessed a
   const historical = router.classifyRequest('어제 보강 잡았던 학생 이름이 뭐야?');
   assert.notEqual(historical.intent, 'add_makeup');
 
+  const cancelWithReason = router.classifyRequest('류다연 보강 취소해줘 사유 감기');
+  assert.equal(cancelWithReason.type, 'mutation');
+  assert.equal(cancelWithReason.intent, 'cancel_makeup');
+
   const clearAdd = router.classifyRequest('류다연 보강 잡아줘');
   assert.equal(clearAdd.type, 'mutation');
   assert.equal(clearAdd.intent, 'add_makeup');
@@ -299,7 +303,7 @@ test('write command requires confirmation before execution', async () => {
     }
   });
 
-  const first = await router.route('최민기 월요일 수업을 수요일 4시로 변경', {
+  const first = await router.route('최민기 월요일 수업을 수요일 4시로 변경해줘', {
     source:'one_minute_feedback'
   });
   assert.equal(first.handled, true);
