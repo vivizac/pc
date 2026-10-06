@@ -1390,7 +1390,9 @@
     if(intent==='batch_write') return isExplicitWriteCommand(text);
     if(['add_makeup','add_trial','add_waitlist'].includes(intent)) return hasExplicitAddRequest(text);
     if(['update_makeup','update_trial','update_waitlist','move_class'].includes(intent)) return hasExplicitUpdateRequest(text);
-    if(['cancel_makeup','cancel_trial','cancel_waitlist','cancel_move'].includes(intent)) return hasExplicitRemoveRequest(text);
+    if(['cancel_makeup','cancel_trial','cancel_waitlist','cancel_move'].includes(intent)) {
+      return hasExplicitRemoveRequest(extractExplicitReason(text).commandText);
+    }
     return true;
   }
 
