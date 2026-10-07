@@ -57,8 +57,8 @@ test('settings entry and shared runtime are wired on PC and mobile', () => {
   for (const html of [pcHtml, mobileHtml]) {
     assert.match(html, /급여 및 지출 관리/);
     assert.match(html, /openOlliTeacherPayrollSettings\(\)/);
-    assert.match(html, /olli-teacher-payroll-common\.js\?v=20261007-finance-2/);
-    assert.match(html, /olli-teacher-payroll-common\.css\?v=20261007-finance-1/);
+    assert.match(html, /olli-teacher-payroll-common\.js\?v=20261007-finance-3/);
+    assert.match(html, /olli-teacher-payroll-common\.css\?v=20261007-finance-2/);
   }
 });
 

@@ -66,6 +66,54 @@
     return Math.max(0,Math.round(Number(value || 0))).toLocaleString('ko-KR') + '원';
   }
 
+  function currencyInputValue(value){
+    if(value==null || value==='') return '';
+    const digits=String(value).replace(/[^0-9]/g,'');
+    if(!digits) return '';
+    return Math.min(1000000000,Number(digits || 0)).toLocaleString('ko-KR');
+  }
+
+  function currencyInputAmount(value){
+    const digits=String(value == null ? '' : value).replace(/[^0-9]/g,'');
+    if(!digits) return NaN;
+    return Math.round(Number(digits));
+  }
+
+  function formatCurrencyInput(input){
+    if(!input) return;
+    const formatted=currencyInputValue(input.value);
+    if(input.value!==formatted) input.value=formatted;
+  }
+
+  function bindCurrencyInput(input){
+    if(!input || input.dataset.currencyBound==='1') return;
+    input.dataset.currencyBound='1';
+    input.addEventListener('input',()=>formatCurrencyInput(input));
+    input.addEventListener('blur',()=>formatCurrencyInput(input));
+    formatCurrencyInput(input);
+  }
+
+  function monthDisplayLabel(value){
+    const match=String(value || '').match(/^(\d{4})-(\d{2})$/);
+    return match ? Number(match[1])+'년 '+Number(match[2])+'월' : '월 선택';
+  }
+
+  function monthPickerBody(year){
+    const selected=String(state.month || currentMonthValue()).split('-');
+    const selectedYear=Number(selected[0] || year);
+    const selectedMonth=Number(selected[1] || 0);
+    let months='';
+    for(let month=1;month<=12;month+=1){
+      const active=Number(year)===selectedYear && month===selectedMonth;
+      months+='<button type="button" class="olliPayrollMonthOption'+(active?' is-active':'')+'" data-payroll-month-option="'+month+'">'+month+'월</button>';
+    }
+    return '<div class="olliPayrollMonthPickerHead">'
+      + '<button type="button" data-payroll-year-step="-1" aria-label="이전 연도">‹</button>'
+      + '<strong data-payroll-picker-year-label>'+year+'년</strong>'
+      + '<button type="button" data-payroll-year-step="1" aria-label="다음 연도">›</button>'
+      + '</div><div class="olliPayrollMonthOptions">'+months+'</div>';
+  }
+
   function hours(value){
     const n = Number(value || 0);
     return Number.isFinite(n) ? (Math.round(n * 100) / 100) : 0;
@@ -207,8 +255,7 @@
       const count = workdaysFor(teacher,day.key);
       return '<label class="olliPayrollDayField">'
         + '<span class="olliPayrollDayLabel">'+day.label+' <small>'+count+'회</small></span>'
-        + '<input inputmode="decimal" min="0" max="24" step="0.5" type="number" value="'+weekdayHours[day.key]+'" data-payroll-day-hours="'+day.key+'"'+disabledAttr+'>'
-        + '<span class="olliPayrollUnit">시간</span>'
+        + '<span class="olliPayrollDayHours"><input inputmode="decimal" min="0" max="24" step="0.5" type="number" value="'+weekdayHours[day.key]+'" data-payroll-day-hours="'+day.key+'"'+disabledAttr+'><span class="olliPayrollUnit">시간</span></span>'
         + '</label>';
     }).join('');
 
@@ -281,6 +328,12 @@
     const revision=Math.max(0,Number(item?.revision || 0));
     const missing=recurrence==='monthly' && !entered;
     const endLabel=recurrence==='one_time' ? '삭제' : '종료';
+    const materialMode=systemKey==='materials'
+      ? '<select class="olliExpenseRecurrenceSelect" data-expense-recurrence aria-label="재료비 입력 방식">'
+        + '<option value="recurring"'+(recurrence==='recurring'?' selected':'')+'>매달 유지</option>'
+        + '<option value="monthly"'+(recurrence==='monthly'?' selected':'')+'>이번 달 입력</option>'
+        + '</select>'
+      : '<span>'+esc(expenseModeText(item))+'</span>';
 
     return '<div class="olliExpenseRow'+(missing?' is-missing':'')+'" data-expense-row'
       +' data-item-id="'+esc(itemId)+'"'
@@ -294,11 +347,11 @@
       + (custom
         ? '<input class="olliExpenseNameInput" type="text" maxlength="80" value="'+esc(name)+'" data-expense-name aria-label="지출 항목 이름">'
         : '<div class="olliExpenseName">'+esc(name)+'</div>')
-      + '<div class="olliExpenseMeta"><span>'+esc(expenseCategoryLabel(category))+'</span><span>'+esc(expenseModeText(item))+'</span></div>'
+      + '<div class="olliExpenseMeta"><span>'+esc(expenseCategoryLabel(category))+'</span>'+materialMode+'</div>'
       + '</div>'
       + '<div class="olliExpenseAmountWrap">'
-      + '<input class="olliExpenseAmountInput" inputmode="numeric" min="0" max="1000000000" step="1000" type="number"'
-      + ' value="'+esc(amount)+'" placeholder="'+(missing?'미입력':'금액')+'" data-expense-amount>'
+      + '<input class="olliExpenseAmountInput" inputmode="numeric" maxlength="13" type="text" autocomplete="off"'
+      + ' value="'+esc(currencyInputValue(amount))+'" placeholder="'+(missing?'미입력':'금액')+'" data-expense-amount>'
       + '<span>원</span></div>'
       + '<div class="olliExpenseRowActions">'
       + '<button type="button" class="olliExpenseSaveButton" data-expense-save>저장</button>'
@@ -310,12 +363,14 @@
   function renderExpenseSection(){
     const expenses=financeExpensePayload();
     const items=Array.isArray(expenses.items) ? expenses.items : [];
-    const basic=items.filter(item=>String(item?.system_key || ''));
+    const basicOrder={rent:10,maintenance:20,materials:30,franchise_royalty:40,tax_accounting:50};
+    const basic=items.filter(item=>String(item?.system_key || ''))
+      .sort((a,b)=>(basicOrder[String(a?.system_key || '')] || 999)-(basicOrder[String(b?.system_key || '')] || 999));
     const custom=items.filter(item=>!String(item?.system_key || ''));
     const missing=Math.max(0,Number(expenses.missing_monthly_count || 0));
     return '<section class="olliExpenseSection" data-expense-section>'
       + '<div class="olliExpenseSectionHead"><div><div class="olliExpenseSectionTitle">운영 지출</div>'
-      + '<div class="olliExpenseSectionText">월세와 광고처럼 유지되는 비용은 다음 달에도 이어지고, 관리비와 재료비는 매달 새로 입력합니다.</div></div>'
+      + '<div class="olliExpenseSectionText">월세처럼 유지되는 비용은 다음 달에도 이어집니다. 재료비는 매달 유지 또는 이번 달 입력 방식으로 선택할 수 있습니다.</div></div>'
       + '<div class="olliExpenseHeadSide"><div class="olliExpenseTotal"><span>운영 지출</span><strong>'+money(expenses.total_amount || 0)+'</strong></div>'
       + '<button type="button" class="olliExpenseHistoryToggle'+(state.expenseHistoryOpen?' is-active':'')+'" data-expense-history-toggle>변경 기록</button></div></div>'
       + (missing?'<div class="olliExpenseMissingNotice">이번 달 아직 입력하지 않은 월별 지출이 <strong>'+missing+'개</strong> 있습니다. 현재 총액에는 포함되지 않습니다.</div>':'')
@@ -352,7 +407,7 @@
       + '<div class="olliExpenseAddTitle">'+preset.title+'</div>'
       + '<div class="olliExpenseAddGrid">'
       + '<label><span>항목 이름</span><input type="text" maxlength="80" placeholder="'+preset.namePlaceholder+'" data-expense-new-name></label>'
-      + '<label><span>금액</span><div class="olliExpenseAddAmount"><input type="number" inputmode="numeric" min="0" max="1000000000" step="1000" placeholder="0" data-expense-new-amount><span>원</span></div></label>'
+      + '<label><span>금액</span><div class="olliExpenseAddAmount"><input type="text" inputmode="numeric" maxlength="13" autocomplete="off" placeholder="0" data-expense-new-amount><span>원</span></div></label>'
       + recurrenceField
       + '</div><div class="olliExpenseAddFooter">'
       + '<button type="button" class="secondary" data-expense-add-cancel>취소</button>'
@@ -361,6 +416,7 @@
     const card=target.querySelector('[data-expense-add-card]');
     target.querySelector('[data-expense-add-cancel]')?.addEventListener('click',()=>{ target.innerHTML=''; });
     target.querySelector('[data-expense-add-save]')?.addEventListener('click',()=>createExpenseItem(card));
+    bindCurrencyInput(target.querySelector('[data-expense-new-amount]'));
     target.querySelector('[data-expense-new-name]')?.focus();
   }
 
@@ -412,7 +468,7 @@
     const recurrence=String(card.querySelector('[data-expense-new-recurrence]')?.value || card.dataset.defaultRecurrence || '').trim();
     if(!name){ alert('지출 항목 이름을 입력해 주세요.'); return false; }
     if(rawAmount===''){ alert('금액을 입력해 주세요.'); return false; }
-    const amount=Math.round(Number(rawAmount));
+    const amount=currencyInputAmount(rawAmount);
     if(!Number.isFinite(amount) || amount<0 || amount>1000000000){ alert('지출 금액을 확인해 주세요.'); return false; }
     const requestKey=['new',category,recurrence,state.month,name,amount].join('|');
     const requestId=expenseMutationId(card,requestKey,'save');
@@ -452,7 +508,7 @@
     if(!row || !isOwner()) return false;
     const rawAmount=String(row.querySelector('[data-expense-amount]')?.value || '').trim();
     if(rawAmount===''){ alert('금액을 입력해 주세요.'); return false; }
-    const amount=Math.round(Number(rawAmount));
+    const amount=currencyInputAmount(rawAmount);
     if(!Number.isFinite(amount) || amount<0 || amount>1000000000){ alert('지출 금액을 확인해 주세요.'); return false; }
 
     const itemId=String(row.dataset.itemId || '').trim();
@@ -460,7 +516,7 @@
     const custom=row.dataset.custom==='1';
     const revision=Math.max(0,Number(row.dataset.revision || 0));
     const category=String(row.dataset.category || '').trim();
-    const recurrence=String(row.dataset.recurrence || '').trim();
+    const recurrence=String(row.querySelector('[data-expense-recurrence]')?.value || row.dataset.recurrence || '').trim();
     const startMonth=String(row.dataset.startMonth || state.month).trim();
     const name=custom
       ? String(row.querySelector('[data-expense-name]')?.value || '').trim()
@@ -697,6 +753,7 @@
   function bindExpenseEvents(body){
     if(!body) return;
     body.querySelectorAll('[data-expense-row]').forEach(row=>{
+      bindCurrencyInput(row.querySelector('[data-expense-amount]'));
       row.querySelector('[data-expense-save]')?.addEventListener('click',()=>saveExpenseRow(row));
       row.querySelector('[data-expense-end]')?.addEventListener('click',()=>endExpenseItem(row));
     });
@@ -780,6 +837,53 @@
     setFinanceTab(state.financeTab,body);
   }
 
+  function renderMonthPickerYear(panel,year){
+    if(!panel) return;
+    const safeYear=Math.max(2000,Math.min(2100,Math.round(Number(year) || Number(String(state.month || currentMonthValue()).slice(0,4)))));
+    panel.dataset.pickerYear=String(safeYear);
+    panel.innerHTML=monthPickerBody(safeYear);
+  }
+
+  function bindMonthPicker(body){
+    if(!body) return;
+    const field=body.querySelector('.olliPayrollMonthField');
+    const toggle=field?.querySelector('[data-payroll-month-toggle]');
+    const panel=field?.querySelector('[data-payroll-month-picker]');
+    if(!field || !toggle || !panel) return;
+
+    toggle.addEventListener('click',()=>{
+      const open=panel.hidden;
+      if(open){
+        renderMonthPickerYear(panel,Number(String(state.month || currentMonthValue()).slice(0,4)));
+      }
+      panel.hidden=!open;
+      toggle.setAttribute('aria-expanded',open?'true':'false');
+      field.classList.toggle('is-picker-open',open);
+    });
+
+    panel.addEventListener('click',(event)=>{
+      const yearStep=event.target.closest('[data-payroll-year-step]');
+      if(yearStep){
+        const nextYear=Number(panel.dataset.pickerYear || String(state.month).slice(0,4))
+          + Number(yearStep.dataset.payrollYearStep || 0);
+        renderMonthPickerYear(panel,nextYear);
+        return;
+      }
+      const monthButton=event.target.closest('[data-payroll-month-option]');
+      if(!monthButton) return;
+      const year=Math.max(2000,Math.min(2100,Number(panel.dataset.pickerYear || 0)));
+      const month=Math.max(1,Math.min(12,Number(monthButton.dataset.payrollMonthOption || 0)));
+      const next=year+'-'+String(month).padStart(2,'0');
+      panel.hidden=true;
+      toggle.setAttribute('aria-expanded','false');
+      field.classList.remove('is-picker-open');
+      if(next!==state.month){
+        state.month=next;
+        loadOverview();
+      }
+    });
+  }
+
   function render(){
     const els = detailElements();
     if(!els.body) return;
@@ -791,7 +895,11 @@
 
     els.body.innerHTML = '<div class="olliPayrollPage">'
       + '<div class="olliFinanceTop">'
-      + '<label class="olliPayrollMonthField"><span>조회 월</span><input type="month" value="'+esc(state.month)+'" data-payroll-month></label>'
+      + '<div class="olliPayrollMonthField"><span>조회 월</span>'
+      + '<input class="olliPayrollNativeMonth" type="month" value="'+esc(state.month)+'" data-payroll-month>'
+      + '<button type="button" class="olliPayrollMonthToggle" data-payroll-month-toggle aria-haspopup="dialog" aria-expanded="false"><span>'+esc(monthDisplayLabel(state.month))+'</span><i aria-hidden="true"></i></button>'
+      + '<div class="olliPayrollMonthPicker" data-payroll-month-picker data-picker-year="Number(String(state.month || currentMonthValue()).slice(0,4))" hidden>'+monthPickerBody(Number(String(state.month || currentMonthValue()).slice(0,4)))+'</div>'
+      + '</div>'
       + renderFinanceSummary()
       + '</div>'
       + financeTabHtml()
@@ -809,6 +917,7 @@
       }
     });
 
+    bindMonthPicker(els.body);
     bindFinanceTabs(els.body);
     bindExpenseEvents(els.body);
     if(state.expenseHistoryOpen) loadExpenseHistory();

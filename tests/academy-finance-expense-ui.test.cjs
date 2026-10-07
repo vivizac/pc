@@ -7,6 +7,7 @@ const root = path.resolve(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
 const migration = read('supabase/migrations/20261007170000_academy_finance_expenses.sql');
+const materialsModeMigration = read('supabase/migrations/20261007215500_materials_expense_mode.sql');
 const common = read('packages/common/olli-teacher-payroll-common.js');
 const css = read('packages/common/olli-teacher-payroll-common.css');
 
@@ -283,7 +284,8 @@ test('expense history UI is scoped and remains usable on mobile', () => {
 
 test('finance summary distinguishes incomplete monthly expenses from a complete total', () => {
   assert.match(common, /const missingMonthly=Math\.max\(0,Number\(expenses\.missing_monthly_count \|\| 0\)\)/);
-  assert.match(common, /missingMonthly>0 \? '현재 입력 기준 총 지출' : '총 지출'/);
+  assert.match(common, /future\?'현재 입력 기준 예상 총지출':'현재 입력 기준 총지출'/);
+  assert.match(common, /future\?'예상 총지출':'총지출'/);
   assert.match(common, /'월별 지출 미입력 '\+missingMonthly\+'건'/);
   assert.match(common, /'월별 지출 입력 완료'/);
   assert.match(common, /class="olliFinanceSummary'\+\(missingMonthly>0\?' is-incomplete':' is-complete'\)/);
@@ -304,3 +306,41 @@ test('finance completeness status has subtle complete and incomplete styles', ()
   assert.match(css, /\.olliFinanceSummary\.is-incomplete \.olliFinanceSummaryStatus\{/);
 });
 
+
+
+test('expense currency inputs format with thousands separators on PC and mobile', () => {
+  assert.match(common, /function currencyInputValue\(value\)/);
+  assert.match(common, /function currencyInputAmount\(value\)/);
+  assert.match(common, /data-expense-amount/);
+  assert.match(common, /maxlength="13" type="text" autocomplete="off"/);
+  assert.match(common, /data-expense-new-amount/);
+  assert.match(common, /bindCurrencyInput\(row\.querySelector\('\[data-expense-amount\]'\)\)/);
+});
+
+test('materials appears before franchise royalty and can switch monthly entry mode atomically', () => {
+  assert.match(common, /basicOrder=\{rent:10,maintenance:20,materials:30,franchise_royalty:40/);
+  assert.match(common, /data-expense-recurrence/);
+  assert.match(common, />매달 유지<\/option>/);
+  assert.match(common, />이번 달 입력<\/option>/);
+  assert.match(common, /row\.querySelector\('\[data-expense-recurrence\]'\)\?\.value/);
+  assert.match(materialsModeMigration, /v_item\.system_key='materials'/);
+  assert.match(materialsModeMigration, /v_recurrence not in \('recurring','monthly'\)/);
+  assert.match(materialsModeMigration, /set recurrence_mode=v_recurrence/);
+});
+
+test('mobile payroll workday cards keep day count and hours on one large row', () => {
+  assert.match(common, /class="olliPayrollDayHours"/);
+  assert.match(css, /\.olliPayrollDayField\{display:grid;grid-template-columns:minmax\(0,1fr\) auto;align-items:center;min-height:70px/);
+  assert.match(css, /\.olliPayrollDayLabel\{grid-column:auto;margin:0;font-size:19px/);
+  assert.match(css, /\.olliPayrollDayField input\{width:48px;text-align:right;font-size:22px/);
+});
+
+test('mobile month control is a button with a full-width picker below it', () => {
+  assert.match(common, /data-payroll-month-toggle/);
+  assert.match(common, /data-payroll-month-picker/);
+  assert.match(common, /function bindMonthPicker\(body\)/);
+  assert.match(common, /data-payroll-year-step/);
+  assert.match(common, /data-payroll-month-option/);
+  assert.match(css, /\.olliPayrollMonthToggle\{display:inline-flex/);
+  assert.match(css, /\.olliPayrollMonthPicker:not\(\[hidden\]\)\{position:absolute;left:0;right:0;top:calc\(100% \+ 12px\)/);
+});
