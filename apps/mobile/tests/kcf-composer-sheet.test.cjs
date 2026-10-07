@@ -36,9 +36,13 @@ test('normal sheet owns plus Class mic send and has no Class roster state', () =
   assert.match(normalJs, /id="kcfNormalSheetClassBtn"[^>]*>Class<\/button>/);
   assert.match(normalJs, /id="kcfNormalSheetVoiceBtn"/);
   assert.match(normalJs, /id="kcfNormalSheetSendBtn"/);
+  assert.match(normalJs, /id="kcfNormalSheetCloseBtn"[^>]*aria-label="입력창 닫기"/);
   assert.doesNotMatch(normalJs, /kcfAutoStudentRoster|kcfTeacherSheetRosterHost|mountRoster|restoreRoster/);
   assert.match(normalCss, /\.kcfNormalSheetClassBtn \{[\s\S]*?min-width:52px;/);
   assert.match(normalCss, /\.kcfNormalSheetSendBtn \{[\s\S]*?width:33px;[\s\S]*?height:33px;/);
+  assert.match(normalCss, /\.kcfNormalSheetBottom \{[\s\S]*?gap:4px;[\s\S]*?padding:0 11px;/);
+  assert.match(normalCss, /\.kcfNormalSheetClassBtn \{[\s\S]*?margin-left:8px;[\s\S]*?margin-right:12px;/);
+  assert.match(normalCss, /\.kcfNormalSheetVoiceBtn \{[\s\S]*?margin-right:12px;/);
 });
 
 test('Class sheet owns only C roster send and rejects normal-mode open', () => {
@@ -48,6 +52,18 @@ test('Class sheet owns only C roster send and rejects normal-mode open', () => {
   assert.doesNotMatch(teacherJs, /kcfTeacherSheetAttachBtn|kcfTeacherSheetVoiceBtn|kcfTeacherSheetNormalSpacer/);
   assert.match(teacherJs, /function open\(\)\{\s*if \(!modeEnabled\(\)\) return false;/);
   assert.match(teacherCss, /\.kcfTeacherSheetModeBtn \{[\s\S]*?width:33px;[\s\S]*?background:#111;[\s\S]*?color:#fff;/);
+});
+
+test('normal sheet activation does not force textarea scroll after focus', () => {
+  const focusBlock = normalJs.match(/function focusEditor\(\)[\s\S]*?\n  \}/)?.[0] || '';
+  const openStart = normalJs.indexOf('function open(event)');
+  const openEnd = normalJs.indexOf('\n  function close(options)', openStart);
+  const openBlock = openStart >= 0 && openEnd > openStart ? normalJs.slice(openStart, openEnd) : '';
+  assert.match(focusBlock, /selectionEnd:true/);
+  assert.doesNotMatch(focusBlock, /scrollToEnd:true/);
+  assert.match(openBlock, /selectionEnd:true/);
+  assert.doesNotMatch(openBlock, /scrollToEnd:true/);
+  assert.match(normalCss, /\.kcfNormalSheetCloseBtn \{[\s\S]*?top:20px;[\s\S]*?right:22px;/);
 });
 
 test('normal Class button leaves normal sheet and delegates activation to Teacher mode', () => {
