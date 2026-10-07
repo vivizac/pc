@@ -70,7 +70,7 @@
     if(value==null || value==='') return '';
     const digits=String(value).replace(/[^0-9]/g,'');
     if(!digits) return '';
-    return Math.min(1000000000,Number(digits || 0)).toLocaleString('ko-KR');
+    return Number(digits || 0).toLocaleString('ko-KR');
   }
 
   function currencyInputAmount(value){
@@ -892,13 +892,14 @@
     const teachers = Array.isArray(payroll.teachers) ? payroll.teachers : [];
     const month = String(payload.month || payroll.month || state.month || currentMonthValue()).slice(0,7);
     state.month = /^\d{4}-\d{2}$/.test(month) ? month : currentMonthValue();
+    const pickerYear = Number(String(state.month || currentMonthValue()).slice(0,4));
 
     els.body.innerHTML = '<div class="olliPayrollPage">'
       + '<div class="olliFinanceTop">'
       + '<div class="olliPayrollMonthField"><span>조회 월</span>'
       + '<input class="olliPayrollNativeMonth" type="month" value="'+esc(state.month)+'" data-payroll-month>'
       + '<button type="button" class="olliPayrollMonthToggle" data-payroll-month-toggle aria-haspopup="dialog" aria-expanded="false"><span>'+esc(monthDisplayLabel(state.month))+'</span><i aria-hidden="true"></i></button>'
-      + '<div class="olliPayrollMonthPicker" data-payroll-month-picker data-picker-year="Number(String(state.month || currentMonthValue()).slice(0,4))" hidden>'+monthPickerBody(Number(String(state.month || currentMonthValue()).slice(0,4)))+'</div>'
+      + '<div class="olliPayrollMonthPicker" data-payroll-month-picker data-picker-year="'+pickerYear+'" hidden>'+monthPickerBody(pickerYear)+'</div>'
       + '</div>'
       + renderFinanceSummary()
       + '</div>'
