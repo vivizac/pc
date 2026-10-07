@@ -49,10 +49,10 @@ test('payday sync refreshes the amount snapshot without creating duplicate chat 
 
 test('settings entry and shared runtime are wired on PC and mobile', () => {
   for (const html of [pcHtml, mobileHtml]) {
-    assert.match(html, /선생님 급여 계산/);
+    assert.match(html, /급여 및 지출 관리/);
     assert.match(html, /openOlliTeacherPayrollSettings\(\)/);
-    assert.match(html, /olli-teacher-payroll-common\.js/);
-    assert.match(html, /olli-teacher-payroll-common\.css/);
+    assert.match(html, /olli-teacher-payroll-common\.js\?v=20261007-finance-1/);
+    assert.match(html, /olli-teacher-payroll-common\.css\?v=20261007-finance-1/);
   }
 });
 
@@ -88,8 +88,8 @@ test('payday date calculation clamps 29-31 to the actual last day of short month
 });
 
 test('settings row is hidden by the existing owner-only permission contract', () => {
-  assert.match(pcHtml, /data-owner-only="true"[^>]*>[\s\S]{0,900}선생님 급여 계산/);
-  assert.match(mobileHtml, /data-owner-only="true"[^>]*>[\s\S]{0,900}선생님 급여 계산/);
+  assert.match(pcHtml, /data-owner-only="true"[^>]*>[\s\S]{0,900}급여 및 지출 관리/);
+  assert.match(mobileHtml, /data-owner-only="true"[^>]*>[\s\S]{0,900}급여 및 지출 관리/);
 });
 
 test('owner login sync is fallback protection in addition to database cron', () => {
