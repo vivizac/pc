@@ -1845,21 +1845,6 @@
 #olliTalkBetaScreen .olliTalkBetaComposerWrap{
   transition:none;
 }
-#olliTalkBetaScreen.olliTalkKeyboardMotion .olliTalkBetaComposerWrap{
-  transition:bottom 140ms cubic-bezier(.22,.61,.36,1);
-  will-change:bottom;
-}
-#olliTalkBetaScreen.olliTalkKeyboardMotion .olliTalkBetaComposer{
-  transition:min-height 140ms cubic-bezier(.22,.61,.36,1);
-}
-
-
-@media (prefers-reduced-motion: reduce){
-  #olliTalkBetaScreen.olliTalkKeyboardMotion .olliTalkBetaComposerWrap,
-  #olliTalkBetaScreen.olliTalkKeyboardMotion .olliTalkBetaComposer{
-    transition:none;
-  }
-}
 
 
 /* 비비작 팀톡 자료실 */
