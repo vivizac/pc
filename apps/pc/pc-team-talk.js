@@ -1197,6 +1197,7 @@
   function makeActionCard(action) {
     const card = create('div', 'olliPcTeamTalkActionCard');
     const status = clean(action?.status) || 'pending';
+    if(clean(action?.action_type)==='choose_reason') card.classList.add('reasonChoice');
     card.dataset.actionId = clean(action?.id);
     card.dataset.actionStatus = status;
 
@@ -1217,7 +1218,6 @@
     }
 
     if(clean(action?.action_type)==='choose_reason'){
-      card.classList.add('reasonChoice');
       card.appendChild(makePendingTextInputButton(action));
       return card;
     }
