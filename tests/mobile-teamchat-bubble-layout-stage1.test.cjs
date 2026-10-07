@@ -21,9 +21,10 @@ test('Team Chat text wraps at the character that exceeds the bubble width',()=>{
   assert.match(outgoing,/max-width:min\(64vw, 450px\)/);
 });
 
-test('grouped message spacing and inline completion spacing are both 6px',()=>{
+test('grouped message spacing stays 6px and inline completion delegates spacing to the shared flow',()=>{
   assert.match(css,/\.olliTalkBetaMessageStack\{[\s\S]*?gap:6px;/);
-  assert.match(css,/\.olliTalkBetaMessage \.olliTalkBetaInlineSystemResult\{[\s\S]*?margin-top:6px;/);
+  assert.match(css,/\.olliTalkBetaMessageFlow\{[\s\S]*?gap:6px;/);
+  assert.match(css,/\.olliTalkBetaMessage \.olliTalkBetaInlineSystemResult\{[\s\S]*?margin-top:0;/);
 });
 
 test('sender name is smaller and sits slightly lower',()=>{
@@ -45,7 +46,7 @@ test('group timestamp is synchronized so only the last message stays visible',()
   assert.match(js,/stack\.appendChild\(message\);[\s\S]{0,100}syncOlliTalkRenderedGroupTime\(group\)/);
 });
 
-test('mobile Team Chat loads the stage-1 bubble layout assets',()=>{
-  assert.match(html,/olli-talk-beta\.css\?v=20261007-bubble-layout-stage1-1/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261007-bubble-layout-stage1-1/);
+test('mobile Team Chat loads the stage-2 grouped flow assets',()=>{
+  assert.match(html,/olli-talk-beta\.css\?v=20261007-bubble-flow-stage2-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261007-bubble-flow-stage2-1/);
 });
