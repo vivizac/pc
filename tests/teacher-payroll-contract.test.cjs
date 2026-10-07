@@ -23,6 +23,7 @@ const migration = [
   payrollPreviewMigration
 ].join('\n');
 const common = read('packages/common/olli-teacher-payroll-common.js');
+const commonCss = read('packages/common/olli-teacher-payroll-common.css');
 const pcHtml = read('apps/pc/index.html');
 const mobileHtml = read('apps/mobile/index.html');
 const pcChat = read('apps/pc/pc-team-talk.js');
@@ -62,7 +63,7 @@ test('settings entry and shared runtime are wired on PC and mobile', () => {
     assert.match(html, /급여 및 지출 관리/);
     assert.match(html, /openOlliTeacherPayrollSettings\(\)/);
     assert.match(html, /olli-teacher-payroll-common\.js\?v=20261008-payroll-preview-1/);
-    assert.match(html, /olli-teacher-payroll-common\.css\?v=20261008-payroll-preview-1/);
+    assert.match(html, /olli-teacher-payroll-common\.css\?v=20261008-statement-layout-2/);
   }
 });
 
@@ -302,4 +303,21 @@ test('preview message opens the same statement UI through a separate owner-only 
   assert.match(common, /payload\?\.preview===true/);
   assert.match(common, /olliPayrollStatementPreviewBadge/);
   assert.match(payrollPreviewMigration, /'preview',true/);
+});
+
+
+test('payroll statement stays centered and keeps work totals on the same row on mobile', () => {
+  assert.match(commonCss, /\.olliPayrollStatementOverlay\{[^}]*align-items:center[^}]*justify-content:center/);
+  assert.match(commonCss, /@media\(max-width:560px\)\{[\s\S]*\.olliPayrollStatementOverlay\{align-items:center;justify-content:center/);
+  assert.match(commonCss, /\.olliPayrollStatementWorkRow\{grid-template-columns:58px minmax\(0,1fr\) auto/);
+  assert.match(commonCss, /\.olliPayrollStatementWorkTotal\{grid-column:auto;text-align:right\}/);
+});
+
+test('payroll statement body text follows Team Chat bubble sizing while guide text stays compact', () => {
+  assert.match(commonCss, /--olli-payroll-statement-body-font:calc\(14\.5px \* var\(--olli-text-scale,1\)\)/);
+  assert.match(commonCss, /--olli-payroll-statement-body-font:calc\(14px \* var\(--olli-text-scale,1\)\)/);
+  assert.match(commonCss, /\.olliPayrollStatementDate\{[^}]*font-size:var\(--olli-payroll-statement-body-font\)/);
+  assert.match(commonCss, /\.olliPayrollStatementWorkTotal\{[^}]*font-size:var\(--olli-payroll-statement-body-font\)/);
+  assert.match(commonCss, /\.olliPayrollStatementCalcLine\{[^}]*font-size:var\(--olli-payroll-statement-body-font\)/);
+  assert.match(commonCss, /\.olliPayrollStatementGuide\{[^}]*font-size:11px/);
 });
