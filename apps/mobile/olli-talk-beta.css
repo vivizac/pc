@@ -899,7 +899,7 @@
   min-width:0;
   display:flex;
   flex-direction:column;
-  gap:4px;
+  gap:6px;
 }
 
 #olliTalkBetaScreen .olliTalkBetaMessageGroup.outgoing > .olliTalkBetaMessageStack{
@@ -911,6 +911,23 @@
   display:flex;
   flex-direction:column;
   margin-top:0;
+}
+
+#olliTalkBetaScreen .olliTalkBetaMessageFlow{
+  width:100%;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:6px;
+}
+
+#olliTalkBetaScreen .olliTalkBetaMessage.outgoing > .olliTalkBetaMessageFlow{
+  align-items:flex-end;
+}
+
+#olliTalkBetaScreen .olliTalkBetaMessageFlow > .olliTalkBetaPendingInput{
+  margin:0;
 }
 
 #olliTalkBetaScreen .olliTalkBetaMessage.incoming,
@@ -981,7 +998,7 @@
 #olliTalkBetaScreen .olliTalkBetaBubble{
   --olli-talk-bubble-bg:#fff;
   position:relative;
-  max-width:min(78vw, 560px);
+  max-width:min(74vw, 520px);
   padding:7px 12px;
   border-radius:13px;
   background:var(--olli-talk-bubble-bg);
@@ -993,7 +1010,7 @@
   white-space:pre-wrap;
   overflow:visible;
   overflow-wrap:anywhere;
-  word-break:keep-all;
+  word-break:break-all;
 }
 
 #olliTalkBetaScreen .olliTalkBetaMessage.incoming .olliTalkBetaBubble,
@@ -1004,7 +1021,7 @@
 
 #olliTalkBetaScreen .olliTalkBetaMessage.outgoing .olliTalkBetaBubble{
   --olli-talk-bubble-bg:var(--olli-talk-outgoing-bg);
-  max-width:min(68vw, 480px);
+  max-width:min(64vw, 450px);
   color:var(--olli-talk-outgoing-text);
 }
 
@@ -1231,11 +1248,32 @@
 #olliTalkBetaScreen .olliTalkBetaMessage .olliTalkBetaInlineSystemResult{
   align-self:flex-start;
   width:max-content;
-  max-width:min(78vw, 560px);
-  margin-top:4px;
+  max-width:min(74vw, 520px);
+  margin-top:0;
   white-space:pre-wrap;
-  word-break:keep-all;
+  word-break:break-all;
   overflow-wrap:anywhere;
+}
+
+#olliTalkBetaScreen .olliTalkBetaInlineSystemResultRow{
+  margin:0;
+}
+
+#olliTalkBetaScreen .olliTalkBetaSelectedChoiceRow{
+  margin:0;
+}
+
+#olliTalkBetaScreen .olliTalkBetaSelectedChoiceBubble{
+  --olli-talk-bubble-bg:var(--olli-talk-incoming-bg);
+  width:max-content;
+  max-width:min(74vw, 520px);
+  color:var(--olli-talk-incoming-text);
+  font-weight:400;
+}
+
+#olliTalkBetaScreen .olliTalkBetaSelectedChoiceBubble::before,
+#olliTalkBetaScreen .olliTalkBetaSelectedChoiceBubble::after{
+  content:none !important;
 }
 
 #olliTalkBetaScreen .olliTalkBetaMessage .olliTalkBetaInlineSystemResult:not(.olliTalkBetaCancelSystemBubble){
@@ -1249,11 +1287,11 @@
 
 #olliTalkBetaScreen .olliTalkBetaActionCard{
   width:max-content;
-  max-width:min(78vw, 560px);
+  max-width:min(74vw, 520px);
   display:flex;
   align-items:center;
   gap:6px;
-  margin:1px 0 0;
+  margin:0;
   padding:5px;
   border:1px solid #e5e7ea;
   border-radius:13px;
@@ -1409,13 +1447,6 @@
 #olliTalkBetaScreen .olliTalkBetaActionCard.reasonChoice .olliTalkBetaPendingInput{
   margin:0;
 }
-#olliTalkBetaScreen .olliTalkBetaActionCard.reasonChoice .olliTalkBetaActionButton.selectedChoice{
-  max-width:min(280px,82vw);
-  height:auto;
-  min-height:34px;
-  white-space:normal;
-  overflow-wrap:anywhere;
-}
 #olliTalkBetaScreen .olliTalkBetaPendingInput{
   width:min(280px,82vw);
   display:flex;
@@ -1477,13 +1508,6 @@
 #olliTalkBetaScreen .olliTalkBetaPendingInput.busy{
   opacity:.62;
 }
-#olliTalkBetaScreen .olliTalkBetaActionButton.selectedChoice:disabled{
-  background:#818284;
-  color:#fff;
-  opacity:1;
-  cursor:default;
-}
-
 #olliTalkBetaScreen .olliTalkBetaSendBtn.sending{
   opacity:.55;
 }
@@ -1688,9 +1712,10 @@
   grid-row:1;
   align-self:end;
   color:var(--olli-talk-system-text);
-  font-size:calc(11px * var(--olli-text-scale, 1));
+  font-size:calc(10px * var(--olli-text-scale, 1));
   font-weight:500;
   line-height:1.2;
+  transform:translateY(1px);
 }
 
 #olliTalkBetaScreen .olliTalkBetaIncomingLayout > .olliTalkBetaMessageStack{
