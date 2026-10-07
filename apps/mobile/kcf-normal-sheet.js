@@ -100,7 +100,7 @@
     var input = editor();
     var keyboard = global.OlliMobileKeyboardActivation;
     if (!input || !state.open || !keyboard) return false;
-    keyboard.focus(input, { selectionEnd:true, scrollToEnd:true });
+    keyboard.focus(input, { selectionEnd:true });
     scheduleViewportSync();
     return document.activeElement === input;
   }
@@ -117,6 +117,7 @@
       '<section class="kcfNormalSheet" role="dialog" aria-modal="true" aria-label="퀵노트 일반 입력">',
       '  <div class="kcfNormalSheetBody">',
       '    <textarea id="kcfNormalSheetInput" class="kcfNormalSheetInput" aria-label="퀵노트 일반 입력"></textarea>',
+      '    <button id="kcfNormalSheetCloseBtn" class="kcfNormalSheetCloseBtn" type="button" aria-label="입력창 닫기" title="입력창 닫기">×</button>',
       '    <div id="kcfNormalSheetWarning" class="kcfNormalSheetWarning" aria-live="polite"></div>',
       '    <div class="kcfNormalSheetBottom">',
       '      <button id="kcfNormalSheetAttachBtn" class="kcfNormalSheetAttachBtn" type="button" aria-label="사진 추가" title="사진 추가">',
@@ -159,6 +160,16 @@
         scheduleViewportSync();
       });
       input.addEventListener('focus', scheduleViewportSync);
+    }
+
+    var closeBtn = document.getElementById('kcfNormalSheetCloseBtn');
+    if (closeBtn) {
+      closeBtn.addEventListener('pointerdown', function(event){ if (event.cancelable) event.preventDefault(); });
+      closeBtn.addEventListener('click', function(event){
+        event.preventDefault();
+        syncToBase();
+        close({ sync:false });
+      });
     }
 
     var attach = document.getElementById('kcfNormalSheetAttachBtn');
@@ -261,7 +272,6 @@
     return !!keyboard.activate(event, {
       input:editor,
       selectionEnd:true,
-      scrollToEnd:true,
       afterFocus:function(){ scheduleViewportSync(); }
     });
   }
