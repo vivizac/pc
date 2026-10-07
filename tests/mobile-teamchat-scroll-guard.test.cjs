@@ -58,6 +58,25 @@ test('Team Chat direct input focus keeps preventScroll and the new script cache 
   assert.match(html,/olli-talk-beta\.js\?v=20261007-scroll-guard-1/);
 });
 
+test('Team Chat keyboard focus does not duplicate chat anchoring across focus and visualViewport scroll',()=>{
+  const focusStart=js.indexOf("input.addEventListener('focus'");
+  const focusEnd=js.indexOf("input.addEventListener('blur'",focusStart);
+  assert.ok(focusStart>=0 && focusEnd>focusStart);
+  const focusBody=js.slice(focusStart,focusEnd);
+  assert.match(focusBody,/isOlliTalkChatNearBottom\(chatArea,120\)/);
+  assert.doesNotMatch(focusBody,/scheduleOlliTalkLatestMessageAnchor/);
+
+  const viewportStart=js.indexOf('function bindViewport(){');
+  const viewportEnd=js.indexOf('\n  const OLLI_TALK_INPUT_PLACEHOLDER',viewportStart);
+  assert.ok(viewportStart>=0 && viewportEnd>viewportStart);
+  const viewportBody=js.slice(viewportStart,viewportEnd);
+  assert.match(viewportBody,/visualViewport\.addEventListener\('resize',[\s\S]*scheduleOlliTalkLatestMessageAnchor/);
+  assert.match(viewportBody,/visualViewport\.addEventListener\('scroll',[\s\S]*syncOlliTalkComposerViewport\(\)/);
+  const scrollHandler=viewportBody.slice(viewportBody.indexOf("visualViewport.addEventListener('scroll'"));
+  assert.doesNotMatch(scrollHandler,/syncViewport\(\)/);
+  assert.doesNotMatch(scrollHandler,/scheduleOlliTalkLatestMessageAnchor\(\)/);
+});
+
 test('Team Chat gesture state is cleared when entering or leaving the page',()=>{
   const openStart=js.indexOf('async function openOlliTalkBetaPage(event){');
   const openEnd=js.indexOf('\n  async function closeOlliTalkBetaPage',openStart);
