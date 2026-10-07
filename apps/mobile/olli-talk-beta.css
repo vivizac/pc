@@ -536,6 +536,11 @@
   bottom:4px;
   padding-bottom:0;
 }
+#olliTalkBetaScreen.olliTalkReasonInputActive .olliTalkBetaComposerWrap{
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+}
 
 #olliTalkBetaScreen .olliTalkBetaComposer{
   position:relative;

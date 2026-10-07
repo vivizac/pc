@@ -58,6 +58,10 @@
   let olliTalkPendingActionReason = null;
   let olliTalkPendingTextInputMessageId = '';
   let olliTalkPendingReasonSubmitInFlight = false;
+  let olliTalkPendingReasonInputField = null;
+  let olliTalkPendingReasonAnchorPending = false;
+  let olliTalkPendingReasonAnchorTimer = null;
+  let olliTalkPendingReasonFocusRaf = 0;
   let olliTalkPendingMakeupDialogue = null;
   const olliTalkActionBusy = new Set();
   const olliTalkOlliReplyBusy = new Set();
@@ -224,17 +228,18 @@
   function bindViewport(){
     if (olliTalkBetaViewportBound) return;
     olliTalkBetaViewportBound = true;
-    window.addEventListener('resize', () => syncViewport(), { passive:true });
+    window.addEventListener('resize', () => {
+      syncViewport();
+      scheduleOlliTalkPendingReasonAnchorAfterViewport();
+    }, { passive:true });
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
         syncViewport();
 
-        const activeElement=document.activeElement;
-        if(
-          !olliTalkChatGestureActive
-          && activeElement?.classList?.contains('olliTalkBetaPendingReasonField')
-        ){
-          scheduleOlliTalkPendingReasonFieldAboveKeyboard(activeElement);
+        if(isOlliTalkPendingReasonInputActive()){
+          // visualViewport는 위치를 계산할 뿐 chatArea.scrollTop을 직접 소유하지 않습니다.
+          // 키보드 애니메이션이 끝난 뒤 한 번만 사유 입력칸을 내부 anchor 합니다.
+          scheduleOlliTalkPendingReasonAnchorAfterViewport();
           return;
         }
 
@@ -894,6 +899,7 @@
         const active=document.activeElement;
         if(active && wrap?.contains?.(active) && typeof active.blur==='function') active.blur();
 
+        closeOlliTalkPendingReasonInputMode({blur:true});
         olliTalkPendingActionReason=null;
         olliTalkPendingTextInputMessageId='';
         replaceOlliTalkReasonChoiceWithSelection(wrap,payload.reason_action);
@@ -920,6 +926,7 @@
         reasonMessageId,
         pending
       );
+      closeOlliTalkPendingReasonInputMode({blur:true});
       olliTalkPendingTextInputMessageId='';
 
       await loadOlliTalkBetaMessages({
@@ -940,38 +947,99 @@
     }finally{
       olliTalkPendingReasonSubmitInFlight=false;
       wrap?.classList?.remove('busy');
+      if(isOlliTalkPendingReasonInputActive()){
+        wrap?.querySelectorAll?.('button,input').forEach(control=>{control.disabled=false});
+      }
     }
   }
 
-  function scrollOlliTalkPendingReasonFieldAboveKeyboard(field){
+  function isOlliTalkPendingReasonInputActive(){
+    return !!(
+      olliTalkPendingReasonInputField?.isConnected
+      && getScreen()?.classList?.contains('olliTalkReasonInputActive')
+    );
+  }
+
+  function clearOlliTalkPendingReasonTimers(){
+    if(olliTalkPendingReasonAnchorTimer){
+      clearTimeout(olliTalkPendingReasonAnchorTimer);
+      olliTalkPendingReasonAnchorTimer=null;
+    }
+    if(olliTalkPendingReasonFocusRaf){
+      cancelAnimationFrame(olliTalkPendingReasonFocusRaf);
+      olliTalkPendingReasonFocusRaf=0;
+    }
+  }
+
+  function closeOlliTalkPendingReasonInputMode(options={}){
+    const field=olliTalkPendingReasonInputField;
+    clearOlliTalkPendingReasonTimers();
+    olliTalkPendingReasonAnchorPending=false;
+    olliTalkPendingReasonInputField=null;
+    getScreen()?.classList?.remove('olliTalkReasonInputActive');
+
+    if(options.blur!==false && field && document.activeElement===field){
+      field.blur();
+    }
+    scheduleOlliTalkChatToComposer();
+  }
+
+  function anchorOlliTalkPendingReasonInput(field){
     const chatArea=document.getElementById('olliTalkBetaChatArea');
     if(!chatArea?.isConnected || !field?.isConnected) return false;
 
-    const chatRect=chatArea.getBoundingClientRect();
-    const geometry=getOlliTalkComposerLayoutGeometry();
     const viewport=window.visualViewport;
-    const keyboardTop=viewport
+    const chatRect=chatArea.getBoundingClientRect();
+    const viewportBottom=viewport
       ? Number(viewport.offsetTop || 0)+Number(viewport.height || 0)
-      : chatRect.bottom;
-    const visibleBottom=geometry
-      ? Math.min(chatRect.bottom,keyboardTop,geometry.composerTop-OLLI_TALK_COMPOSER_MESSAGE_GAP)
-      : Math.min(chatRect.bottom,keyboardTop)-OLLI_TALK_COMPOSER_MESSAGE_GAP;
+      : Number(window.innerHeight || chatRect.bottom);
+    const visibleBottom=Math.min(chatRect.bottom,viewportBottom)-OLLI_TALK_COMPOSER_MESSAGE_GAP;
     const fieldRect=field.getBoundingClientRect();
     const overflow=fieldRect.bottom-visibleBottom;
     if(overflow<=0.5) return true;
 
     const maxScroll=Math.max(0,chatArea.scrollHeight-chatArea.clientHeight);
-    chatArea.scrollTop=Math.max(
-      0,
-      Math.min(maxScroll,chatArea.scrollTop+overflow)
-    );
+    chatArea.scrollTop=Math.max(0,Math.min(maxScroll,chatArea.scrollTop+overflow));
     return true;
   }
 
-  function scheduleOlliTalkPendingReasonFieldAboveKeyboard(field){
-    requestAnimationFrame(()=>{
-      if(document.activeElement!==field) return;
-      scrollOlliTalkPendingReasonFieldAboveKeyboard(field);
+  function scheduleOlliTalkPendingReasonAnchorAfterViewport(){
+    if(
+      !olliTalkPendingReasonAnchorPending
+      || !isOlliTalkPendingReasonInputActive()
+      || olliTalkChatGestureActive
+    ) return false;
+
+    if(olliTalkPendingReasonAnchorTimer) clearTimeout(olliTalkPendingReasonAnchorTimer);
+    olliTalkPendingReasonAnchorTimer=setTimeout(()=>{
+      olliTalkPendingReasonAnchorTimer=null;
+      const field=olliTalkPendingReasonInputField;
+      if(
+        !olliTalkPendingReasonAnchorPending
+        || !field?.isConnected
+        || document.activeElement!==field
+      ) return;
+
+      // 키보드 resize가 안정된 뒤 딱 한 번만 chatArea 내부를 이동합니다.
+      olliTalkPendingReasonAnchorPending=false;
+      anchorOlliTalkPendingReasonInput(field);
+    },72);
+    return true;
+  }
+
+  function focusOlliTalkPendingReasonInputAfterLayout(field){
+    clearOlliTalkPendingReasonTimers();
+    olliTalkPendingReasonAnchorPending=true;
+
+    // 입력칸 DOM/레이아웃을 먼저 한 frame 보여준 다음 키보드를 엽니다.
+    olliTalkPendingReasonFocusRaf=requestAnimationFrame(()=>{
+      olliTalkPendingReasonFocusRaf=requestAnimationFrame(()=>{
+        olliTalkPendingReasonFocusRaf=0;
+        if(!isOlliTalkPendingReasonInputActive() || !field?.isConnected) return;
+        try{field.focus({preventScroll:true})}catch(_){field.focus()}
+        // visualViewport가 없는 환경의 fallback. 실제 scroll write는 역시 한 번만 일어납니다.
+        if(!window.visualViewport) scheduleOlliTalkPendingReasonAnchorAfterViewport();
+      });
     });
   }
 
@@ -985,13 +1053,18 @@
     const field=form?.querySelector?.('.olliTalkBetaPendingReasonField');
     if(!form || !field) return false;
 
+    const standardInput=getOlliTalkBetaInput();
+    if(standardInput && document.activeElement===standardInput) standardInput.blur();
+
     form.hidden=false;
     event.currentTarget.setAttribute('aria-expanded','true');
+    olliTalkPendingReasonInputField=field;
+    getScreen()?.classList?.add('olliTalkReasonInputActive');
+    olliTalkKeyboardFollowLatest=false;
+    hideOlliTalkMentionMenu();
+    scheduleOlliTalkChatToComposer();
 
-    // iOS가 페이지/채팅 컨테이너 자체를 자동으로 끌어올리는 것은 막고,
-    // 키보드가 실제로 열린 뒤 visualViewport 기준으로 채팅 내부만 이동시킨다.
-    try{field.focus({preventScroll:true})}catch(_){field.focus()}
-    scheduleOlliTalkPendingReasonFieldAboveKeyboard(field);
+    focusOlliTalkPendingReasonInputAfterLayout(field);
     return true;
   }
 
@@ -1027,6 +1100,17 @@
     field.maxLength=200;
     field.placeholder='취소 사유를 입력하세요';
     field.setAttribute('aria-label','취소 사유 입력');
+    field.addEventListener('pointerdown',event=>{
+      if(document.activeElement===field) return;
+      event.preventDefault();
+      if(!isOlliTalkPendingReasonInputActive()){
+        olliTalkPendingReasonInputField=field;
+        getScreen()?.classList?.add('olliTalkReasonInputActive');
+      }
+      try{field.focus({preventScroll:true})}catch(_){field.focus()}
+      olliTalkPendingReasonAnchorPending=true;
+      scheduleOlliTalkPendingReasonAnchorAfterViewport();
+    });
 
     const submit=document.createElement('button');
     submit.type='submit';
@@ -6947,7 +7031,9 @@
       removeOlliTalkReplySuggestion(String(Number(item.reply_to_message_id)));
     }
     chatArea.dataset.previewReady='';
-    scheduleOlliTalkMessageAboveComposer(next);
+    if(!isOlliTalkPendingReasonInputActive()){
+      scheduleOlliTalkMessageAboveComposer(next);
+    }
     return true;
   }
 
@@ -8136,6 +8222,7 @@
     olliTalkChatGestureSettleTimer = null;
     olliTalkChatGestureActive = false;
     talkScreen?.style.removeProperty('--olli-talk-chat-reserve');
+    closeOlliTalkPendingReasonInputMode({blur:true});
 
     const input = document.getElementById('olliTalkBetaInput');
     if (input) input.blur();
