@@ -13,10 +13,10 @@ const MANIFEST = path.join(COMMON, 'pc-runtime-manifest.json');
 const CONFIG = path.join(PC, 'vercel.json');
 const { stageCommon } = require(path.join(PC, 'scripts', 'stage-common.cjs'));
 
-test('PC common runtime manifest is the single tracked source for all 51 shared files', () => {
+test('PC common runtime manifest is the single tracked source for all 67 shared files', () => {
   const manifest = JSON.parse(fs.readFileSync(MANIFEST, 'utf8'));
-  assert.equal(manifest.files.length, 51);
-  assert.equal(new Set(manifest.files).size, 51);
+  assert.equal(manifest.files.length, 67);
+  assert.equal(new Set(manifest.files).size, 67);
   for (const file of manifest.files) {
     assert.equal(fs.existsSync(path.join(COMMON, file)), true, 'missing common source: ' + file);
     assert.equal(fs.existsSync(path.join(PC, file)), false, 'duplicate tracked PC common file remains: ' + file);
@@ -27,7 +27,7 @@ test('PC common staging materializes all canonical bytes into an empty app targe
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'olli-pc-common-'));
   try {
     const result = stageCommon({ pcDir: temp, commonDir: COMMON, manifestPath: MANIFEST });
-    assert.equal(result.count, 51);
+    assert.equal(result.count, 67);
     for (const file of result.files) {
       assert.equal(
         fs.readFileSync(path.join(temp, file)).equals(fs.readFileSync(path.join(COMMON, file))),
