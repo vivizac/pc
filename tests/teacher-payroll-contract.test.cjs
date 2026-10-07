@@ -8,11 +8,13 @@ const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
 const activeWorkdayMigration = read('supabase/migrations/20261007052135_teacher_payroll_active_workdays.sql');
 const substitutePayrollMigration = read('supabase/migrations/20261007171000_teacher_payroll_substitute_slot_hours.sql');
+const finalizedPayrollMigration = read('supabase/migrations/20261007172000_teacher_payroll_finalized_periods.sql');
 const migration = [
   read('supabase/migrations/20261006150241_teacher_payroll_calculator.sql'),
   read('supabase/migrations/20261006153614_harden_owner_roles_and_payroll_cycle.sql'),
   activeWorkdayMigration,
-  substitutePayrollMigration
+  substitutePayrollMigration,
+  finalizedPayrollMigration
 ].join('\n');
 const common = read('packages/common/olli-teacher-payroll-common.js');
 const pcHtml = read('apps/pc/index.html');
@@ -175,5 +177,51 @@ test('substitute payroll warns instead of silently paying zero when settings are
   assert.match(common, /function renderPayrollWarnings\(payroll\)/);
   assert.match(common, /대체 <strong>'\+hours\(substituteHours\)/);
   assert.match(common, /대체근무 급여 설정을 확인해 주세요/);
+});
+
+test('payroll periods keep a private immutable snapshot after payday', () => {
+  assert.match(finalizedPayrollMigration, /create table if not exists private\.olli_teacher_payroll_periods/);
+  assert.match(finalizedPayrollMigration, /snapshot jsonb not null/);
+  assert.match(finalizedPayrollMigration, /finalized_at timestamptz/);
+  assert.match(finalizedPayrollMigration, /unique \(academy_id,teacher_member_id,payroll_month\)/);
+  assert.match(finalizedPayrollMigration, /alter table private\.olli_teacher_payroll_periods enable row level security/);
+  assert.match(finalizedPayrollMigration, /revoke all on table private\.olli_teacher_payroll_periods from public,anon,authenticated/);
+});
+
+test('payday cron refreshes the open snapshot and freezes it on the following day', () => {
+  assert.match(finalizedPayrollMigration, /olli_teacher_payroll_period_capture/);
+  assert.match(finalizedPayrollMigration, /Keep today's payroll period fresh through the pay date/);
+  assert.match(finalizedPayrollMigration, /p\.pay_date<v_today/);
+  assert.match(finalizedPayrollMigration, /finalized_at=coalesce\(p\.finalized_at,now\(\)\)/);
+  assert.match(finalizedPayrollMigration, /where private\.olli_teacher_payroll_periods\.finalized_at is null/);
+});
+
+test('missed pay-date cron gets a next-day snapshot fallback before finalization', () => {
+  assert.match(finalizedPayrollMigration, /If the cron missed the whole pay date/);
+  assert.match(finalizedPayrollMigration, /v_candidate_pay_date=\(v_today - interval '1 day'\)::date/);
+  assert.match(finalizedPayrollMigration, /not exists \([\s\S]*private\.olli_teacher_payroll_periods/);
+});
+
+test('historical payroll overview prefers finalized snapshots and preserves former teachers', () => {
+  assert.match(finalizedPayrollMigration, /period_candidates as \(/);
+  assert.match(finalizedPayrollMigration, /select p\.teacher_member_id[\s\S]*from private\.olli_teacher_payroll_periods p/);
+  assert.match(finalizedPayrollMigration, /when p\.finalized_at is not null then[\s\S]*p\.snapshot/);
+  assert.match(finalizedPayrollMigration, /'snapshot_status','finalized'/);
+  assert.match(finalizedPayrollMigration, /'historical_payroll_unfinalized'/);
+});
+
+test('ordinary payroll setting save is blocked for a finalized historical month', () => {
+  assert.match(finalizedPayrollMigration, /확정된 과거 급여는 일반 급여 설정 저장으로 변경할 수 없습니다/);
+  assert.match(finalizedPayrollMigration, /p\.payroll_month=v_month[\s\S]*p\.finalized_at is not null/);
+  assert.match(common, /data-payroll-finalized=/);
+  assert.match(common, /if\(card\.dataset\.payrollFinalized==='1'\) return false/);
+  assert.match(common, /olliPayrollFinalizedBadge/);
+  assert.match(common, /확정 급여/);
+  assert.match(common, /확정됨/);
+});
+
+test('payroll notification mention uses the actual message-member primary key', () => {
+  assert.match(finalizedPayrollMigration, /on conflict \(message_id,member_id\) do nothing/);
+  assert.doesNotMatch(finalizedPayrollMigration, /on conflict \(academy_id,message_id,member_id\)/);
 });
 
