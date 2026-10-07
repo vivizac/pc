@@ -36,3 +36,59 @@
 .olliPayrollTalkButton{height:34px;padding:0 14px;border:1px solid rgba(10,132,255,.18);border-radius:12px;background:#eef6ff;color:#0a84ff;font-family:inherit;font-size:12px;font-weight:760;letter-spacing:-.025em;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .olliPayrollTalkButton:disabled{opacity:.6}
 @media(max-width:560px){.olliPayrollPage{padding-bottom:28px}.olliPayrollTeacherCard{padding:16px;border-radius:22px}.olliPayrollDayGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.olliPayrollFieldGrid{grid-template-columns:1fr}.olliPayrollIntroTitle{font-size:20px}}
+
+.olliExpenseSection{margin:0 0 24px}
+.olliExpenseSectionHead{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin:0 0 14px;padding:18px;border:1px solid #e9e9e9;border-radius:22px;background:#fff}
+.olliExpenseSectionTitle{font-size:19px;font-weight:780;letter-spacing:-.045em;color:#151515}
+.olliExpenseSectionText{max-width:470px;margin-top:6px;color:#858585;font-size:12.5px;line-height:1.55;letter-spacing:-.025em}
+.olliExpenseTotal{flex:0 0 auto;min-width:145px;padding:11px 13px;border-radius:15px;background:#f3f8f6;text-align:right}
+.olliExpenseTotal span{display:block;color:#71837c;font-size:11px;font-weight:700}
+.olliExpenseTotal strong{display:block;margin-top:4px;color:#111;font-size:17px;letter-spacing:-.025em}
+.olliExpenseMissingNotice{margin:-4px 0 14px;padding:11px 13px;border-radius:14px;background:#fff8eb;color:#8b6c2d;font-size:12px;line-height:1.45}
+.olliExpenseMissingNotice strong{color:#5d4518}
+.olliExpenseGroup{margin-top:14px}
+.olliExpenseGroupTitle{margin:0 2px 8px;color:#777;font-size:12px;font-weight:750}
+.olliExpenseRow{display:grid;grid-template-columns:minmax(0,1fr) 180px auto;align-items:center;gap:10px;margin-bottom:8px;padding:12px 12px 12px 14px;border:1px solid #ececec;border-radius:17px;background:#fff}
+.olliExpenseRow.is-missing{border-style:dashed;background:#fffdf8}
+.olliExpenseRowMain{min-width:0}
+.olliExpenseName{font-size:14px;font-weight:760;letter-spacing:-.035em;color:#151515}
+.olliExpenseNameInput{width:100%;min-width:0;padding:0;border:0;background:transparent;outline:none;color:#151515;font-family:inherit;font-size:14px;font-weight:760;letter-spacing:-.035em}
+.olliExpenseMeta{display:flex;flex-wrap:wrap;gap:5px 8px;margin-top:5px;color:#999;font-size:10.5px;font-weight:650}
+.olliExpenseMeta span+span:before{content:"·";margin-right:8px;color:#c4c4c4}
+.olliExpenseAmountWrap{display:flex;align-items:center;height:42px;padding:0 11px;border:1px solid #e8e8e8;border-radius:13px;background:#fafafa}
+.olliExpenseAmountInput{min-width:0;width:100%;border:0;background:transparent;outline:none;color:#111;font-family:inherit;font-size:14px;font-weight:720;text-align:right}
+.olliExpenseAmountInput::placeholder{color:#b9b9b9;font-weight:600}
+.olliExpenseAmountWrap>span{margin-left:5px;color:#777;font-size:11px}
+.olliExpenseRowActions{display:flex;gap:6px}
+.olliExpenseSaveButton,.olliExpenseEndButton{height:38px;padding:0 12px;border-radius:12px;font-family:inherit;font-size:11.5px;font-weight:750;cursor:pointer}
+.olliExpenseSaveButton{border:0;background:#111;color:#fff}
+.olliExpenseEndButton{border:1px solid #e6e6e6;background:#fff;color:#888}
+.olliExpenseSaveButton:disabled,.olliExpenseEndButton:disabled{opacity:.5;cursor:default}
+.olliExpenseEmpty{padding:24px 14px;border:1px dashed #e6e6e6;border-radius:16px;text-align:center;color:#999;font-size:12px}
+.olliExpenseEmpty.compact{padding:18px 14px}
+.olliExpenseAddActions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.olliExpenseAddActions button{height:38px;padding:0 13px;border:1px solid #e5e5e5;border-radius:12px;background:#fff;color:#444;font-family:inherit;font-size:11.5px;font-weight:720;cursor:pointer}
+.olliExpenseAddForm{margin-top:10px;padding:14px;border:1px solid #e8e8e8;border-radius:18px;background:#f8f8f8}
+.olliExpenseAddTitle{font-size:13px;font-weight:780;color:#222}
+.olliExpenseAddGrid{display:grid;grid-template-columns:1.2fr 1fr;gap:9px;margin-top:11px}
+.olliExpenseAddGrid>label{min-width:0}
+.olliExpenseAddGrid>label>span{display:block;margin-bottom:6px;color:#777;font-size:10.5px;font-weight:700}
+.olliExpenseAddGrid input,.olliExpenseAddGrid select{width:100%;height:40px;box-sizing:border-box;border:1px solid #e2e2e2;border-radius:12px;background:#fff;padding:0 10px;outline:none;color:#111;font-family:inherit;font-size:13px}
+.olliExpenseAddAmount{display:flex;align-items:center;height:40px;box-sizing:border-box;border:1px solid #e2e2e2;border-radius:12px;background:#fff;padding:0 10px}
+.olliExpenseAddAmount input{height:auto;min-width:0;flex:1;border:0;border-radius:0;padding:0;text-align:right}
+.olliExpenseAddAmount span{margin-left:5px;color:#777;font-size:11px}
+.olliExpenseAddFooter{display:flex;justify-content:flex-end;gap:7px;margin-top:11px}
+.olliExpenseAddFooter button{height:38px;padding:0 15px;border-radius:12px;font-family:inherit;font-size:11.5px;font-weight:750;cursor:pointer}
+.olliExpenseAddFooter .secondary{border:1px solid #e2e2e2;background:#fff;color:#777}
+.olliExpenseAddFooter .primary{border:0;background:#111;color:#fff}
+.olliExpenseAddFooter button:disabled{opacity:.5;cursor:default}
+
+@media(max-width:560px){
+  .olliExpenseSectionHead{display:block;padding:16px}
+  .olliExpenseTotal{margin-top:12px;text-align:left}
+  .olliExpenseRow{grid-template-columns:minmax(0,1fr) 118px;gap:8px}
+  .olliExpenseRowActions{grid-column:1 / -1;justify-content:flex-end}
+  .olliExpenseAmountWrap{height:40px}
+  .olliExpenseAddGrid{grid-template-columns:1fr}
+}
+
