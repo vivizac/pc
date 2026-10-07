@@ -155,6 +155,100 @@
     beginOlliTalkKeyboardMotion();
   }
 
+  const OLLI_TALK_KEYBOARD_VISUAL_DURATION_MS = 140;
+  let olliTalkComposerVisualAnimation = null;
+  let olliTalkMessagesVisualAnimation = null;
+
+  function prefersReducedOlliTalkMotion(){
+    try { return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches; }
+    catch (_) { return false; }
+  }
+
+  function captureOlliTalkKeyboardVisualFrame(){
+    const screen = getScreen();
+    const composerWrap = screen?.querySelector('.olliTalkBetaComposerWrap') || null;
+    const chatArea = document.getElementById('olliTalkBetaChatArea');
+    const messageList = chatArea?.querySelector('.olliTalkBetaMessageList') || null;
+    const messageAnchor = chatArea ? latestOlliTalkRenderedMessage(chatArea) : null;
+    return {
+      composerWrap,
+      composerTop: composerWrap?.isConnected ? composerWrap.getBoundingClientRect().top : null,
+      messageList,
+      messageAnchor,
+      messageTop: messageAnchor?.isConnected ? messageAnchor.getBoundingClientRect().top : null
+    };
+  }
+
+  function cancelOlliTalkComposerVisualAnimation(){
+    try { olliTalkComposerVisualAnimation?.cancel(); } catch (_) {}
+    olliTalkComposerVisualAnimation = null;
+  }
+
+  function cancelOlliTalkMessagesVisualAnimation(){
+    try { olliTalkMessagesVisualAnimation?.cancel(); } catch (_) {}
+    olliTalkMessagesVisualAnimation = null;
+  }
+
+  function cancelOlliTalkKeyboardVisualAnimations(){
+    cancelOlliTalkComposerVisualAnimation();
+    cancelOlliTalkMessagesVisualAnimation();
+  }
+
+  function animateOlliTalkKeyboardVisualFrame(frame, options = {}){
+    if (!frame || prefersReducedOlliTalkMotion()) return;
+    const animateMessages = options.messages !== false;
+    const easing = 'cubic-bezier(.22,.61,.36,1)';
+
+    const composerWrap = frame.composerWrap;
+    if (
+      composerWrap?.isConnected
+      && Number.isFinite(frame.composerTop)
+      && typeof composerWrap.animate === 'function'
+    ) {
+      const nextTop = composerWrap.getBoundingClientRect().top;
+      const deltaY = frame.composerTop - nextTop;
+      if (Math.abs(deltaY) > 0.5) {
+        const animation = composerWrap.animate(
+          [
+            { transform:`translate3d(0,${deltaY}px,0)` },
+            { transform:'translate3d(0,0,0)' }
+          ],
+          { duration:OLLI_TALK_KEYBOARD_VISUAL_DURATION_MS, easing }
+        );
+        olliTalkComposerVisualAnimation = animation;
+        animation.onfinish = animation.oncancel = () => {
+          if (olliTalkComposerVisualAnimation === animation) olliTalkComposerVisualAnimation = null;
+        };
+      }
+    }
+
+    const messageAnchor = frame.messageAnchor;
+    const messageList = frame.messageList;
+    if (
+      animateMessages
+      && messageList?.isConnected
+      && messageAnchor?.isConnected
+      && Number.isFinite(frame.messageTop)
+      && typeof messageList.animate === 'function'
+    ) {
+      const nextTop = messageAnchor.getBoundingClientRect().top;
+      const deltaY = frame.messageTop - nextTop;
+      if (Math.abs(deltaY) > 0.5) {
+        const animation = messageList.animate(
+          [
+            { transform:`translate3d(0,${deltaY}px,0)` },
+            { transform:'translate3d(0,0,0)' }
+          ],
+          { duration:OLLI_TALK_KEYBOARD_VISUAL_DURATION_MS, easing }
+        );
+        olliTalkMessagesVisualAnimation = animation;
+        animation.onfinish = animation.oncancel = () => {
+          if (olliTalkMessagesVisualAnimation === animation) olliTalkMessagesVisualAnimation = null;
+        };
+      }
+    }
+  }
+
   function isOlliTalkChatNearBottom(chatArea, threshold = 96){
     if (!chatArea) return true;
     const distance = Math.max(0, chatArea.scrollHeight - chatArea.clientHeight - chatArea.scrollTop);
@@ -248,11 +342,16 @@
     if (olliTalkBetaViewportBound) return;
     olliTalkBetaViewportBound = true;
     window.addEventListener('resize', () => {
+      const motionFrame = captureOlliTalkKeyboardVisualFrame();
+      cancelOlliTalkKeyboardVisualAnimations();
       syncViewport();
       scheduleOlliTalkPendingReasonAnchorAfterViewport();
+      animateOlliTalkKeyboardVisualFrame(motionFrame);
     }, { passive:true });
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
+        const motionFrame = captureOlliTalkKeyboardVisualFrame();
+        cancelOlliTalkKeyboardVisualAnimations();
         continueOlliTalkKeyboardMotion();
         syncViewport();
 
@@ -260,6 +359,7 @@
           // visualViewport는 위치를 계산할 뿐 chatArea.scrollTop을 직접 소유하지 않습니다.
           // 키보드 애니메이션이 끝난 뒤 한 번만 사유 입력칸을 내부 anchor 합니다.
           scheduleOlliTalkPendingReasonAnchorAfterViewport();
+          animateOlliTalkKeyboardVisualFrame(motionFrame, { messages:false });
           return;
         }
 
@@ -272,11 +372,15 @@
           // focus와 visualViewport.scroll은 chat scrollTop을 소유하지 않습니다.
           scheduleOlliTalkLatestMessageAnchor();
         }
+        animateOlliTalkKeyboardVisualFrame(motionFrame);
       }, { passive:true });
       window.visualViewport.addEventListener('scroll', () => {
         // iOS visualViewport pan은 composer 좌표만 갱신합니다.
-        // 채팅 reserve/scrollTop까지 다시 보정하지 않습니다.
+        // 진행 중인 message FLIP은 끊지 않고 composer만 새 좌표에 이어 붙입니다.
+        const motionFrame = captureOlliTalkKeyboardVisualFrame();
+        cancelOlliTalkComposerVisualAnimation();
         syncOlliTalkComposerViewport();
+        animateOlliTalkKeyboardVisualFrame(motionFrame, { messages:false });
       }, { passive:true });
     }
   }
@@ -8303,6 +8407,7 @@
     if (input) input.blur();
     if (olliTalkKeyboardMotionTimer) clearTimeout(olliTalkKeyboardMotionTimer);
     olliTalkKeyboardMotionTimer = null;
+    cancelOlliTalkKeyboardVisualAnimations();
     talkScreen?.classList.remove('olliTalkKeyboardMotion');
     closeOlliTalkSearch();
     closeOlliTalkPhotoViewer(null,{restore:false});
@@ -8693,16 +8798,22 @@
       });
       input.addEventListener('focus', () => {
         const chatArea = document.getElementById('olliTalkBetaChatArea');
+        const motionFrame = captureOlliTalkKeyboardVisualFrame();
+        cancelOlliTalkKeyboardVisualAnimations();
         olliTalkKeyboardFollowLatest = !chatArea || isOlliTalkChatNearBottom(chatArea,120);
         beginOlliTalkKeyboardMotion();
         // focus 자체는 채팅 scrollTop을 움직이지 않습니다.
         // 실제 키보드 높이 변화는 visualViewport.resize 한 경로에서만 따라갑니다.
         syncViewport();
+        animateOlliTalkKeyboardVisualFrame(motionFrame);
       }, true);
       input.addEventListener('blur', () => {
+        const motionFrame = captureOlliTalkKeyboardVisualFrame();
+        cancelOlliTalkKeyboardVisualAnimations();
         olliTalkKeyboardFollowLatest = false;
         beginOlliTalkKeyboardMotion();
         syncViewport();
+        animateOlliTalkKeyboardVisualFrame(motionFrame);
       });
       input.addEventListener('click', renderOlliTalkMentionMenu);
       input.addEventListener('keyup', event => {
