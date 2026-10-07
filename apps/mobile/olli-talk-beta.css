@@ -1259,6 +1259,23 @@
   margin:0;
 }
 
+#olliTalkBetaScreen .olliTalkBetaSelectedChoiceRow{
+  margin:0;
+}
+
+#olliTalkBetaScreen .olliTalkBetaSelectedChoiceBubble{
+  --olli-talk-bubble-bg:var(--olli-talk-incoming-bg);
+  width:max-content;
+  max-width:min(74vw, 520px);
+  color:var(--olli-talk-incoming-text);
+  font-weight:400;
+}
+
+#olliTalkBetaScreen .olliTalkBetaSelectedChoiceBubble::before,
+#olliTalkBetaScreen .olliTalkBetaSelectedChoiceBubble::after{
+  content:none !important;
+}
+
 #olliTalkBetaScreen .olliTalkBetaMessage .olliTalkBetaInlineSystemResult:not(.olliTalkBetaCancelSystemBubble){
   font-weight:450;
 }
@@ -1430,13 +1447,6 @@
 #olliTalkBetaScreen .olliTalkBetaActionCard.reasonChoice .olliTalkBetaPendingInput{
   margin:0;
 }
-#olliTalkBetaScreen .olliTalkBetaActionCard.reasonChoice .olliTalkBetaActionButton.selectedChoice{
-  max-width:min(280px,82vw);
-  height:auto;
-  min-height:34px;
-  white-space:normal;
-  overflow-wrap:anywhere;
-}
 #olliTalkBetaScreen .olliTalkBetaPendingInput{
   width:min(280px,82vw);
   display:flex;
@@ -1498,13 +1508,6 @@
 #olliTalkBetaScreen .olliTalkBetaPendingInput.busy{
   opacity:.62;
 }
-#olliTalkBetaScreen .olliTalkBetaActionButton.selectedChoice:disabled{
-  background:#818284;
-  color:#fff;
-  opacity:1;
-  cursor:default;
-}
-
 #olliTalkBetaScreen .olliTalkBetaSendBtn.sending{
   opacity:.55;
 }
