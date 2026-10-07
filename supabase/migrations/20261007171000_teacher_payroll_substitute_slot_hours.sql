@@ -171,6 +171,21 @@ revoke all on function private.olli_teacher_payroll_override_snapshot(uuid,date,
   from public,anon,authenticated;
 
 -- Backfill existing date-specific substitutions where the source schedule can be resolved.
+with snapshots as (
+  select
+    o.id,
+    private.olli_teacher_payroll_override_snapshot(
+      o.academy_id,
+      o.session_date,
+      o.division,
+      o.time_slot,
+      o.class_group,
+      o.regular_teacher_member_id,
+      o.regular_teacher_name
+    ) as snapshot
+  from public.olli_schedule_teacher_overrides o
+  where o.payroll_hours is null
+)
 update public.olli_schedule_teacher_overrides o
 set
   regular_teacher_member_id=coalesce(
@@ -185,18 +200,8 @@ set
     when coalesce((s.snapshot->>'ready')::boolean,false) then coalesce(o.updated_at,o.created_at,now())
     else null
   end
-from lateral (
-  select private.olli_teacher_payroll_override_snapshot(
-    o.academy_id,
-    o.session_date,
-    o.division,
-    o.time_slot,
-    o.class_group,
-    o.regular_teacher_member_id,
-    o.regular_teacher_name
-  ) as snapshot
-) s
-where o.payroll_hours is null;
+from snapshots s
+where s.id=o.id;
 
 create or replace function public.olli_schedule_set_teacher_override(
   p_session_token text,
