@@ -293,6 +293,33 @@
 #recordRoomScreen .olliTtStudent.regular.absent .olliTtStudentMore { color:rgba(255,255,255,.9); }
 #recordRoomScreen .olliTtStudent.regular.absent .olliTtSecondSessionMark,
 #recordRoomScreen .olliTtStudent.regular.absent .olliTtReservation { color:#fff; }
+#recordRoomScreen .olliTtStudent.regular.pausedStudent,
+#recordRoomScreen .olliTtStudent.regular.pausedStudent.attended,
+#recordRoomScreen .olliTtStudent.regular.pausedStudent.absent,
+#recordRoomScreen .olliTtStudent.regular.pausedStudent.absenceUpcoming {
+  color:#737b84;
+  border-color:#d5d9de;
+  background:#eceff1;
+  box-shadow:none;
+}
+#recordRoomScreen .olliTtStudent.regular.pausedStudent .olliTtStudentMore { color:#9299a2; }
+#recordRoomScreen .olliTtStudent.regular.pausedStudent .olliTtSecondSessionMark,
+#recordRoomScreen .olliTtStudent.regular.pausedStudent .olliTtReservation { color:inherit; }
+#recordRoomScreen .olliTtPauseBadge {
+  margin-left:4px;
+  padding:1px 4px;
+  border:1px solid #cfd4da;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  color:#7f8790;
+  background:#f7f8f9;
+  font-size:calc(7px * var(--olli-text-scale));
+  font-weight:800;
+  line-height:1.15;
+  vertical-align:1px;
+}
+
 #recordRoomScreen .olliTtStudent:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(26, 38, 58, .09); }
 #recordRoomScreen .olliTtStudentTag { float: right; margin-left: 3px; padding: 1px 3px; border: 0; border-radius: 999px; color: #fff; font: 800 calc(7px * var(--olli-text-scale)) 'Pretendard', sans-serif; cursor: pointer; }
 #recordRoomScreen button.olliTtStudentTag { flex: 0 0 auto; margin: 3px 2px 3px 3px; }
@@ -440,8 +467,173 @@
   cursor: pointer;
 }
 #olliPcShell .olliTtQuickStudent:hover { color: #0877df; background: #edf6ff; }
-#olliPcShell .olliTtQuickStudentSchedule { max-width: 94px; overflow: hidden; color: #9aa1aa; text-overflow: ellipsis; white-space: nowrap; font-size: calc(9px * var(--olli-text-scale)); font-weight: 650; }
+#olliPcShell .olliTtQuickStudent { position: relative; padding-left: 34px; justify-content: flex-start; }
+#olliPcShell .olliTtQuickStudentMain { min-width: 0; display: flex; align-items: baseline; gap: 6px; overflow: hidden; }
+#olliPcShell .olliTtQuickStudentName { flex: 0 0 auto; color: inherit; white-space: nowrap; }
+#olliPcShell .olliTtQuickStudentSchedule { min-width: 0; max-width: none; overflow: hidden; color: #9aa1aa; text-overflow: ellipsis; white-space: nowrap; font-size: calc(9px * var(--olli-text-scale)); font-weight: 650; }
+#olliPcShell .olliTtQuickStudentMore {
+  position: absolute;
+  left: 7px;
+  top: 50%;
+  width: 24px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #7f8791;
+  background: transparent;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: opacity .14s ease, background .14s ease, color .14s ease;
+  cursor: pointer;
+}
+#olliPcShell .olliTtQuickStudent:hover .olliTtQuickStudentMore,
+#olliPcShell .olliTtQuickStudent:focus-within .olliTtQuickStudentMore,
+#olliPcShell .olliTtQuickStudentMore[aria-expanded="true"] { opacity: 1; pointer-events: auto; }
+#olliPcShell .olliTtQuickStudentMore:hover,
+#olliPcShell .olliTtQuickStudentMore:focus-visible { color: #20252c; background: rgba(0,0,0,.055); outline: none; }
+#olliPcShell .olliTtQuickStudentMore svg { width: 17px; height: 17px; fill: currentColor; stroke: none; }
 #olliPcShell .olliTtQuickEmpty { padding: 25px 8px; color: #a3a8b0; text-align: center; font-size: calc(11px * var(--olli-text-scale)); }
+
+.olliTtStudentActionOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 120320;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 16px 104px;
+  background: rgba(0,0,0,.22);
+}
+.olliTtStudentActionOverlay.show { display: flex; }
+.olliTtStudentActionCard {
+  width: min(338px, calc(100vw - 32px));
+  padding: 8px 0;
+  border-radius: 28px;
+  overflow: hidden;
+  background: rgba(255,255,255,.96);
+  box-shadow: 0 18px 50px rgba(0,0,0,.16), 0 4px 14px rgba(0,0,0,.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.olliTtStudentActionTitle {
+  padding: 12px 22px 4px;
+  color: #666;
+  font-size: calc(14px * var(--olli-text-scale));
+  font-weight: 500;
+}
+.olliTtStudentActionBtn {
+  width: 100%;
+  height: 56px;
+  padding: 0 22px;
+  border: 0;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  color: #111;
+  background: transparent;
+  text-align: left;
+  font: 500 calc(17px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  cursor: pointer;
+}
+.olliTtStudentActionBtn + .olliTtStudentActionBtn { border-top: 1px solid rgba(0,0,0,.05); }
+.olliTtStudentActionBtn.danger { color: #e04444; }
+.olliTtStudentActionBtn svg {
+  width: 23px;
+  height: 23px;
+  flex: 0 0 23px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.olliTtStudentActionBtn:hover,
+.olliTtStudentActionBtn:focus-visible { background: rgba(0,0,0,.035); outline: none; }
+.olliTtStudentActionCancelBtn {
+  width: calc(100% - 24px);
+  height: 46px;
+  margin: 8px 12px 4px;
+  border: 0;
+  border-radius: 14px;
+  color: #444;
+  background: #f2f2f2;
+  font: 600 calc(15px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  cursor: pointer;
+}
+.olliTtStudentActionCancelBtn:hover,
+.olliTtStudentActionCancelBtn:focus-visible { background: #e9e9e9; outline: none; }
+
+#olliPcShell .olliTtQuickInactiveSections { margin-top: 14px; padding-top: 6px; border-top: 1px solid #eef0f2; }
+#olliPcShell .olliTtQuickStatusSection { width: 100%; }
+#olliPcShell .olliTtQuickStatusSection + .olliTtQuickStatusSection { margin-top: 2px; }
+#olliPcShell .olliTtQuickStatusToggle {
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 8px;
+  border: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #7b828b;
+  background: transparent;
+  text-align: left;
+  font: 650 calc(11px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  cursor: pointer;
+}
+#olliPcShell .olliTtQuickStatusToggle small { color: #a2a8b0; font-size: calc(9px * var(--olli-text-scale)); font-weight: 650; }
+#olliPcShell .olliTtQuickStatusTriangle {
+  width: 0;
+  height: 0;
+  margin-left: auto;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid #a0a6ad;
+  transform: rotate(0deg);
+  transition: transform .16s ease;
+}
+#olliPcShell .olliTtQuickStatusSection.open .olliTtQuickStatusTriangle { transform: rotate(90deg); }
+#olliPcShell .olliTtQuickStatusBody { display: none; padding-bottom: 4px; }
+#olliPcShell .olliTtQuickStatusSection.open .olliTtQuickStatusBody { display: block; }
+#olliPcShell .olliTtQuickStudent.isInactive .olliTtQuickStudentName { color: #8f969e; }
+#olliPcShell .olliTtQuickStudent.isInactive:hover .olliTtQuickStudentName { color: #68717b; }
+#olliPcShell .olliTtQuickStatusEmpty { padding: 8px 10px 12px; color: #a7adb4; font-size: calc(10px * var(--olli-text-scale)); font-weight: 560; }
+
+.olliTtPauseChoiceGuide {
+  margin: 4px 22px 10px;
+  color: #858b93;
+  font-size: calc(12px * var(--olli-text-scale));
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: -.025em;
+}
+.olliTtPauseChoiceBtn {
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 22px;
+  border: 0;
+  border-top: 1px solid rgba(0,0,0,.05);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+  color: #111;
+  background: transparent;
+  text-align: left;
+  font-family: 'Pretendard', sans-serif;
+  cursor: pointer;
+}
+.olliTtPauseChoiceBtn strong { font-size: calc(16px * var(--olli-text-scale)); font-weight: 650; }
+.olliTtPauseChoiceBtn span { color: #8a9098; font-size: calc(11px * var(--olli-text-scale)); font-weight: 520; }
+.olliTtPauseChoiceBtn.remove strong { color: #d94a4a; }
+.olliTtPauseChoiceBtn:hover,
+.olliTtPauseChoiceBtn:focus-visible { background: rgba(0,0,0,.035); outline: none; }
+
 
 /* 시간표와 같은 출석 데이터를 쓰는 월간 출석부 */
 #recordRoomScreen .olliTtAttendanceRegister{min-height:0;border:1px solid #e4e7eb;border-radius:21px;display:flex;flex:1;flex-direction:column;overflow:hidden;background:#fff;box-shadow:0 7px 20px rgba(27,39,58,.045)}
