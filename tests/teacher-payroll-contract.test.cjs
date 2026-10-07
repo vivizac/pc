@@ -11,6 +11,7 @@ const substitutePayrollMigration = read('supabase/migrations/20261007171000_teac
 const finalizedPayrollMigration = read('supabase/migrations/20261007172000_teacher_payroll_finalized_periods.sql');
 const monthlyPayoutMigration = read('supabase/migrations/20261007202000_teacher_payroll_monthly_payout_snapshots.sql');
 const freelancerStatementMigration = read('supabase/migrations/20261007230500_teacher_payroll_freelancer_statements.sql');
+const payrollPreviewMigration = read('supabase/migrations/20261008003000_teacher_payroll_statement_preview.sql');
 const migration = [
   read('supabase/migrations/20261006150241_teacher_payroll_calculator.sql'),
   read('supabase/migrations/20261006153614_harden_owner_roles_and_payroll_cycle.sql'),
@@ -18,7 +19,8 @@ const migration = [
   substitutePayrollMigration,
   finalizedPayrollMigration,
   monthlyPayoutMigration,
-  freelancerStatementMigration
+  freelancerStatementMigration,
+  payrollPreviewMigration
 ].join('\n');
 const common = read('packages/common/olli-teacher-payroll-common.js');
 const pcHtml = read('apps/pc/index.html');
@@ -59,8 +61,8 @@ test('settings entry and shared runtime are wired on PC and mobile', () => {
   for (const html of [pcHtml, mobileHtml]) {
     assert.match(html, /급여 및 지출 관리/);
     assert.match(html, /openOlliTeacherPayrollSettings\(\)/);
-    assert.match(html, /olli-teacher-payroll-common\.js\?v=20261007-payroll-statement-1/);
-    assert.match(html, /olli-teacher-payroll-common\.css\?v=20261007-payroll-statement-1/);
+    assert.match(html, /olli-teacher-payroll-common\.js\?v=20261008-payroll-preview-1/);
+    assert.match(html, /olli-teacher-payroll-common\.css\?v=20261008-payroll-preview-1/);
   }
 });
 
@@ -272,4 +274,32 @@ test('payday edits remain live through the pay date and freeze on the following 
   assert.match(freelancerStatementMigration, /지급일 다음 날 첫 동기화 때 한 번 더 최신 계산을 저장한 뒤 고정합니다/);
   assert.match(freelancerStatementMigration, /p\.pay_date<v_today/);
   assert.match(freelancerStatementMigration, /finalized_at=coalesce\(p\.finalized_at,now\(\)\)/);
+});
+
+
+test('owner can create a Team Chat payroll statement preview without marking a real statement sent', () => {
+  assert.match(common, /data-payroll-preview/);
+  assert.match(common, /명세서 미리보기/);
+  assert.match(common, /olli_teacher_payroll_statement_preview_send/);
+  assert.match(common, /if\(card\.dataset\.payrollFinalized!=='1'\)[\s\S]*saveTeacher\(card\)/);
+  assert.match(common, /openTeamChatAfterPayrollPreview/);
+  assert.match(payrollPreviewMigration, /create table if not exists private\.olli_teacher_payroll_statement_previews/);
+  assert.match(payrollPreviewMigration, /실제 선생님에게는 전송되지 않습니다/);
+  assert.doesNotMatch(payrollPreviewMigration, /statement_message_version=1/);
+});
+
+test('preview Team Chat message is visible only to the owner who created it', () => {
+  assert.match(payrollPreviewMigration, /preview\.created_by_member_id=p_member_id/);
+  assert.match(payrollPreviewMigration, /p_member_role='owner'/);
+  assert.match(payrollPreviewMigration, /insert into public\.olli_team_chat_mentions[\s\S]*v_owner\.id/);
+  assert.match(payrollPreviewMigration, /급여명세서 미리보기는 원장만 확인할 수 있습니다/);
+});
+
+test('preview message opens the same statement UI through a separate owner-only RPC', () => {
+  assert.match(common, /function isPayrollPreviewMessage\(item\)/);
+  assert.match(common, /미리보기 열기/);
+  assert.match(common, /olli_teacher_payroll_statement_preview_get/);
+  assert.match(common, /payload\?\.preview===true/);
+  assert.match(common, /olliPayrollStatementPreviewBadge/);
+  assert.match(payrollPreviewMigration, /'preview',true/);
 });

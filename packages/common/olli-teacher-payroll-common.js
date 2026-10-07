@@ -295,7 +295,10 @@
         ? '공제 전 '+money(Number(teacher?.gross_amount || 0))+' · 3.3% 공제 '+money(Number(teacher?.deduction_amount || 0))
         : '공제 없음 · 공제 전 급여와 실지급액이 같습니다.')
       + '</div>'
+      + '<div class="olliPayrollActionRow">'
+      + '<button class="olliPayrollPreviewButton" type="button" data-payroll-preview>명세서 미리보기</button>'
       + '<button class="olliPayrollSaveButton" type="button" data-payroll-save'+disabledAttr+'>'+(finalized?'확정됨':'저장')+'</button>'
+      + '</div>'
       + '</section>';
   }
 
@@ -948,6 +951,7 @@
       });
       card.querySelector('[data-payroll-deduction-mode]')?.addEventListener('change',()=>calculateCard(card));
       card.querySelector('[data-payroll-save]')?.addEventListener('click',()=>saveTeacher(card));
+      card.querySelector('[data-payroll-preview]')?.addEventListener('click',()=>previewTeacherStatement(card));
       calculateCard(card);
     });
   }
@@ -1030,10 +1034,73 @@
     }
   }
 
+  async function openTeamChatAfterPayrollPreview(){
+    if(global.OlliPcTeamTalk?.open){
+      await global.OlliPcTeamTalk.open();
+      return true;
+    }
+    if(typeof global.openOlliTalkBetaPage==='function'){
+      await global.openOlliTalkBetaPage();
+      return true;
+    }
+    return false;
+  }
+
+  async function previewTeacherStatement(card){
+    if(!card || !isOwner()) return false;
+    const teacherId=String(card.dataset.teacherId || '').trim();
+    if(!teacherId) return false;
+    const previewButton=card.querySelector('[data-payroll-preview]');
+    const original=previewButton?.textContent || '명세서 미리보기';
+
+    if(previewButton){
+      previewButton.disabled=true;
+      previewButton.textContent='준비 중';
+    }
+
+    try{
+      // 미확정 월은 현재 입력값을 먼저 저장한 뒤 저장된 값으로 미리보기를 만듭니다.
+      if(card.dataset.payrollFinalized!=='1'){
+        const saved=await saveTeacher(card);
+        if(!saved) return false;
+      }
+
+      const payload=await rpc('olli_teacher_payroll_statement_preview_send',{
+        p_session_token:sessionToken(),
+        p_academy_id:academyId(),
+        p_teacher_member_id:teacherId,
+        p_month:monthDateValue(state.month)
+      });
+      if(!payload?.ok) throw new Error(payload?.message || '급여명세서 미리보기를 만들지 못했습니다.');
+
+      const opened=await openTeamChatAfterPayrollPreview();
+      if(!opened) alert('팀챗에 급여명세서 미리보기를 만들었습니다.');
+      return true;
+    }catch(error){
+      console.warn('급여명세서 미리보기 생성 실패:',error);
+      alert('급여명세서 미리보기 생성 실패\n'+(error?.message || error));
+      return false;
+    }finally{
+      if(previewButton?.isConnected){
+        previewButton.disabled=false;
+        previewButton.textContent=original;
+      }
+    }
+  }
+
   async function open(){
     openDetailShell();
     await syncDueNotifications();
     return loadOverview();
+  }
+
+  function isPayrollPreviewMessage(item){
+    if(String(item?.message_type || '').trim() !== 'ai') return false;
+    if(String(item?.sender_name || '').trim() !== '올리') return false;
+    const body=String(item?.body || '').trim();
+    const previewId=String(item?.client_message_id || '').trim();
+    return /^\[미리보기\] \d{1,2}월 \d{1,2}일 급여 지급 안내(?:\n|$)/.test(body)
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(previewId);
   }
 
   function isPayrollMessage(item){
@@ -1105,14 +1172,15 @@
     const totalHours=Math.max(0,Number(statement.total_hours || 0));
     const hourlyWage=Math.max(0,Number(statement.hourly_wage || 0));
     const monthlySalary=Math.max(0,Number(statement.monthly_salary || 0));
+    const preview=payload?.preview===true;
 
     closePayrollStatement();
     const overlay=document.createElement('div');
-    overlay.className='olliPayrollStatementOverlay';
-    overlay.innerHTML='<section class="olliPayrollStatementPanel" role="dialog" aria-modal="true" aria-label="'+esc(payLabel+' 지급 급여명세서')+'">'
+    overlay.className='olliPayrollStatementOverlay'+(preview?' is-preview':'');
+    overlay.innerHTML='<section class="olliPayrollStatementPanel" role="dialog" aria-modal="true" aria-label="'+esc((preview?'미리보기 · ':'')+payLabel+' 지급 급여명세서')+'">'
       + '<div class="olliPayrollStatementHead">'
-      + '<div><div class="olliPayrollStatementTitle">'+esc(payLabel)+' 지급 급여명세서</div>'
-      + '<div class="olliPayrollStatementSub">'+esc(teacherName)+(periodStart&&periodEnd?' · 계산기간 '+esc(periodStart+'~'+periodEnd):'')+'</div></div>'
+      + '<div><div class="olliPayrollStatementTitle">'+(preview?'<span class="olliPayrollStatementPreviewBadge">미리보기</span>':'')+esc(payLabel)+' 지급 급여명세서</div>'
+      + '<div class="olliPayrollStatementSub">'+esc(teacherName)+(periodStart&&periodEnd?' · 계산기간 '+esc(periodStart+'~'+periodEnd):'')+(preview?' · 실제 선생님에게 전송되지 않음':'')+'</div></div>'
       + '<button type="button" class="olliPayrollStatementClose" aria-label="닫기">×</button></div>'
       + '<div class="olliPayrollStatementScroll">'
       + '<div class="olliPayrollStatementSection"><h3>정기근무</h3>'
@@ -1141,17 +1209,27 @@
     overlay.querySelector('.olliPayrollStatementClose')?.focus();
   }
 
-  async function openPayrollStatement(notificationId,button){
-    const id=String(notificationId || '').trim();
+  async function openPayrollStatement(statementId,button,preview=false){
+    const id=String(statementId || '').trim();
     if(!id) return false;
-    const original=button?.textContent || '급여명세서 보기';
+    const original=button?.textContent || (preview?'미리보기 열기':'급여명세서 보기');
     if(button){button.disabled=true;button.textContent='불러오는 중';}
     try{
-      const payload=await rpc('olli_teacher_payroll_statement_get',{
-        p_session_token:sessionToken(),
-        p_academy_id:academyId(),
-        p_notification_id:id
-      });
+      const rpcName=preview
+        ? 'olli_teacher_payroll_statement_preview_get'
+        : 'olli_teacher_payroll_statement_get';
+      const args=preview
+        ? {
+            p_session_token:sessionToken(),
+            p_academy_id:academyId(),
+            p_preview_id:id
+          }
+        : {
+            p_session_token:sessionToken(),
+            p_academy_id:academyId(),
+            p_notification_id:id
+          };
+      const payload=await rpc(rpcName,args);
       if(!payload?.ok) throw new Error(payload?.message || '급여명세서를 불러오지 못했습니다.');
       renderPayrollStatementModal(payload);
       return true;
@@ -1165,16 +1243,18 @@
   }
 
   function createTeamChatPayrollButton(item,platform){
-    if(!isPayrollMessage(item)) return null;
+    const preview=isPayrollPreviewMessage(item);
+    if(!preview && !isPayrollMessage(item)) return null;
     const wrap=document.createElement('div');
     wrap.className='olliPayrollTalkCard '+(platform==='pc'?'pc':'mobile');
     const button=document.createElement('button');
     button.type='button';
-    button.className='olliPayrollTalkButton';
-    button.textContent='급여명세서 보기';
+    button.className='olliPayrollTalkButton'+(preview?' preview':'');
+    button.textContent=preview?'미리보기 열기':'급여명세서 보기';
     button.addEventListener('click',()=>openPayrollStatement(
       String(item?.client_message_id || '').trim(),
-      button
+      button,
+      preview
     ));
     wrap.appendChild(button);
     return wrap;
@@ -1206,6 +1286,7 @@
     loadOverview,
     syncDueNotifications,
     isPayrollMessage,
+    isPayrollPreviewMessage,
     createTeamChatPayrollButton
   };
 
