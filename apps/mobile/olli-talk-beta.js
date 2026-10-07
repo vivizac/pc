@@ -597,20 +597,96 @@
     return payload.message;
   }
 
-  async function saveOlliTalkPendingTextInputReply(context,message,replyToMessageId){
+  async function saveOlliTalkPendingTextInputReply(context,message,replyToMessageId,pendingOverride=null){
     const text=String(message || '').trim() || '내용을 입력해 주세요.';
-    const assistantMessage=await saveOlliTalkOlliReply(context,text,replyToMessageId);
-    olliTalkPendingTextInputMessageId=String(assistantMessage?.id || '').trim();
+    const pending=pendingOverride && typeof pendingOverride==='object'
+      ? pendingOverride
+      : olliTalkPendingActionReason;
+    if(!pending || typeof pending!=='object'){
+      throw new Error('사유 선택 작업 정보를 확인하지 못했습니다.');
+    }
+    const payload=await callOlliTalkRpc('olli_team_chat_send_reason_choice',{
+      p_session_token:context.sessionToken,
+      p_academy_id:context.academyId,
+      p_body:text,
+      p_pending:pending,
+      p_client_message_id:createOlliTalkClientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if(!payload?.ok || !payload?.message?.action || String(payload.message.action.action_type || '').trim()!=='choose_reason'){
+      throw new Error(payload?.message || '사유 선택 카드를 저장하지 못했습니다.');
+    }
+    olliTalkPendingTextInputMessageId='';
     return {
-      assistantMessage,
+      assistantMessage:payload.message,
       replyText:text,
       recordAi:false
     };
   }
 
-  async function resolveOlliTalkPendingReasonDirectTurn(reasonText,context,replyToMessageId){
+  async function continueOlliTalkBatchReasonChoice(reason,pending,context,reasonMessageId){
+    const pendingBatch=pending?.__batchAgent;
+    if(!pendingBatch) throw new Error('복합명령 사유 선택 상태를 확인하지 못했습니다.');
+
+    const commands=Array.isArray(pendingBatch.commands)
+      ? pendingBatch.commands.map(item=>Object.assign({},item,{
+          structuredCommand:item?.structuredCommand && typeof item.structuredCommand==='object'
+            ? Object.assign({},item.structuredCommand)
+            : item?.structuredCommand
+        }))
+      : [];
+    const reasonIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
+    if(reasonIndex<0) throw new Error('사유를 적용할 복합명령을 찾지 못했습니다.');
+
+    commands[reasonIndex].reason=reason;
+    commands[reasonIndex].reasonMessageId=Number(reasonMessageId || 0);
+    commands[reasonIndex].reasonMessageText=reason;
+    if(commands[reasonIndex].structuredCommand && typeof commands[reasonIndex].structuredCommand==='object'){
+      commands[reasonIndex].structuredCommand.reason=reason;
+    }
+
+    const nextPending={
+      sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+      sourceMessageText:String(pendingBatch.sourceMessageText || '').trim(),
+      commands
+    };
+    const nextReasonIndex=commands.findIndex(item=>olliTalkBatchCommandNeedsReason(item) && !String(item.reason || '').trim());
+    if(nextReasonIndex>=0){
+      olliTalkPendingActionReason={intent:'batch_write',__batchAgent:nextPending};
+      const prompt=olliTalkBatchReasonPrompt(commands[nextReasonIndex]);
+      return saveOlliTalkPendingTextInputReply(
+        context,
+        prompt,
+        reasonMessageId,
+        olliTalkPendingActionReason
+      );
+    }
+
+    const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
+    if(clarificationIndex>=0){
+      olliTalkPendingActionReason={intent:'batch_write',__batchAgent:nextPending};
+      const assistantMessage=await startOlliTalkBatchStructuredChoice(context,nextPending,clarificationIndex);
+      return {
+        assistantMessage,
+        replyText:String(assistantMessage?.body || '').trim() || '필요한 정보를 선택해 주세요.',
+        recordAi:false
+      };
+    }
+
+    olliTalkPendingActionReason=null;
+    return resolveOlliTalkBatchAgentTurn({
+      sourceText:nextPending.sourceMessageText,
+      sourceMessageId:nextPending.sourceMessageId,
+      commands,
+      context
+    });
+  }
+
+  async function resolveOlliTalkPendingReasonDirectTurn(reasonText,context,replyToMessageId,pendingOverride=null){
     const reason=String(reasonText || '').trim();
-    const pending=olliTalkPendingActionReason;
+    const pending=pendingOverride && typeof pendingOverride==='object'
+      ? pendingOverride
+      : olliTalkPendingActionReason;
     if(!reason || !pending) throw new Error('진행 중인 사유 입력 작업을 찾지 못했습니다.');
 
     if(isOlliTalkPendingReasonCancel(reason)){
@@ -691,9 +767,13 @@
       });
     }
 
-    // 복합명령은 기존 다단계 상태 머신을 그대로 사용합니다.
     if(intent==='batch_write' && pending.__batchAgent){
-      return resolveOlliTalkAiTurn(reason,context,replyToMessageId);
+      return continueOlliTalkBatchReasonChoice(
+        reason,
+        pending,
+        context,
+        Number(replyToMessageId || 0)
+      );
     }
 
     const schedule=window.OlliCommandSchedule;
@@ -707,9 +787,10 @@
     };
   }
 
-  async function submitOlliTalkPendingReasonText(reasonText,wrap){
+  async function submitOlliTalkPendingReasonText(reasonText,wrap,action){
     const reason=String(reasonText || '').trim();
-    if(!reason || !olliTalkPendingActionReason || olliTalkPendingReasonSubmitInFlight) return false;
+    const actionId=String(action?.id || '').trim();
+    if(!reason || !actionId || olliTalkPendingReasonSubmitInFlight) return false;
 
     const context=getOlliTalkBetaContext();
     if(!context.sessionToken || !context.academyId){
@@ -722,52 +803,46 @@
     wrap?.querySelectorAll?.('button,input').forEach(control=>{control.disabled=true});
 
     try{
-      const payload=await callOlliTalkRpc('olli_team_chat_send',{
+      const payload=await callOlliTalkRpc('olli_team_chat_action_select_reason',{
         p_session_token:context.sessionToken,
         p_academy_id:context.academyId,
-        p_body:reason,
-        p_client_message_id:createOlliTalkClientMessageId(),
-        p_reply_to_message_id:null
+        p_action_id:actionId,
+        p_reason:reason
       });
-      if(!payload?.ok || !payload?.message){
-        throw new Error(payload?.message || '취소 사유를 저장하지 못했습니다.');
+      const pending=payload?.pending;
+      const reasonMessageId=Number(payload?.action?.message_id || 0);
+      if(!payload?.ok || !payload?.action || !pending || !Number.isSafeInteger(reasonMessageId) || reasonMessageId<=0){
+        throw new Error(payload?.message || '취소 사유를 선택하지 못했습니다.');
       }
 
-      appendOlliTalkPersistedMessage(payload.message,context.memberId);
-      const turn=await resolveOlliTalkPendingReasonDirectTurn(
+      olliTalkPendingActionReason=pending;
+      await resolveOlliTalkPendingReasonDirectTurn(
         reason,
         context,
-        Number(payload.message.id || 0)
+        reasonMessageId,
+        pending
       );
-      const assistantMessages=Array.isArray(turn?.assistantMessages) && turn.assistantMessages.length
-        ? turn.assistantMessages
-        : [turn?.assistantMessage].filter(Boolean);
-      assistantMessages.forEach(message=>appendOlliTalkPersistedMessage(message,context.memberId));
       olliTalkPendingTextInputMessageId='';
 
       await loadOlliTalkBetaMessages({
         showLoading:false,
         localFirst:false,
-        scrollMode:'follow-if-near-bottom',
-        render:false
+        scrollMode:'follow-if-near-bottom'
       });
       return true;
     }catch(error){
-      console.warn('올리톡 전용 사유 입력 처리 실패:',error);
+      console.warn('올리톡 전용 사유 선택 처리 실패:',error);
       alert(error?.message || '취소 사유를 처리하지 못했습니다.');
-      wrap?.querySelectorAll?.('button,input').forEach(control=>{control.disabled=false});
+      await loadOlliTalkBetaMessages({
+        showLoading:false,
+        localFirst:false,
+        scrollMode:'follow-if-near-bottom'
+      }).catch(()=>{});
       return false;
     }finally{
       olliTalkPendingReasonSubmitInFlight=false;
       wrap?.classList?.remove('busy');
     }
-  }
-
-  function submitOlliTalkNoReason(event){
-    const wrap=event?.currentTarget?.closest?.('.olliTalkBetaPendingInput') || null;
-    submitOlliTalkPendingReasonText('사유 없음',wrap)
-      .catch(error=>console.warn('올리톡 사유 없음 처리 실패:',error));
-    return true;
   }
 
   function openOlliTalkPendingReasonInput(event){
@@ -781,7 +856,7 @@
     return true;
   }
 
-  function createOlliTalkPendingTextInputButton(){
+  function createOlliTalkPendingTextInputButton(action){
     const wrap=document.createElement('div');
     wrap.className='olliTalkBetaPendingInput';
 
@@ -790,7 +865,10 @@
     noReason.className='olliTalkBetaPendingInputButton';
     noReason.textContent='사유 없음';
     noReason.setAttribute('aria-label','사유 없이 진행');
-    noReason.addEventListener('click',submitOlliTalkNoReason);
+    noReason.addEventListener('click',()=>{
+      submitOlliTalkPendingReasonText('사유 없음',wrap,action)
+        .catch(error=>console.warn('올리톡 사유 없음 처리 실패:',error));
+    });
 
     const inputButton=document.createElement('button');
     inputButton.type='button';
@@ -815,7 +893,7 @@
     submit.type='submit';
     submit.className='olliTalkBetaPendingReasonSubmit';
     submit.textContent='확인';
-    submit.setAttribute('aria-label','취소 사유 보내기');
+    submit.setAttribute('aria-label','취소 사유 선택');
 
     form.addEventListener('submit',event=>{
       event.preventDefault();
@@ -824,8 +902,8 @@
         field.focus();
         return;
       }
-      submitOlliTalkPendingReasonText(reason,wrap).catch(error=>{
-        console.warn('올리톡 전용 사유 입력 전송 실패:',error);
+      submitOlliTalkPendingReasonText(reason,wrap,action).catch(error=>{
+        console.warn('올리톡 전용 사유 입력 선택 실패:',error);
       });
     });
 
@@ -836,6 +914,7 @@
 
   function shouldShowOlliTalkPendingTextInput(item){
     return !!olliTalkPendingActionReason
+      && !item?.action
       && String(item?.message_type || '').trim()==='ai'
       && String(item?.id || '').trim()===String(olliTalkPendingTextInputMessageId || '').trim();
   }
@@ -1991,7 +2070,7 @@
         sourceMessageId:sourceId,sourceMessageText:String(commandText || '').trim(),commands
       }};
       const prompt=olliTalkBatchReasonPrompt(commands[missingIndex]);
-      return {assistantMessage:await saveOlliTalkOlliReply(context,prompt,replyToMessageId),replyText:prompt,recordAi:false};
+      return saveOlliTalkPendingTextInputReply(context,prompt,replyToMessageId,olliTalkPendingActionReason);
     }
     const clarificationIndex=commands.findIndex(olliTalkBatchCommandNeedsClarification);
     if(clarificationIndex>=0){
@@ -2604,11 +2683,7 @@
           }
         };
         const reasonMessage=(String(merged.studentName || '').trim() || '체험 학생')+' 체험 취소 사유를 알려주세요.';
-        return {
-          assistantMessage:await saveOlliTalkOlliReply(context,reasonMessage,replyToMessageId),
-          replyText:reasonMessage,
-          recordAi:false
-        };
+        return saveOlliTalkPendingTextInputReply(context,reasonMessage,replyToMessageId,olliTalkPendingActionReason);
       }
 
       const sourceMessageId=pending
@@ -5339,7 +5414,7 @@
     return [
       'choose_makeup_group','choose_trial_group','choose_waitlist_group','choose_move_group',
       'choose_structured_student','choose_structured_target','choose_structured_division',
-      'choose_structured_date','choose_structured_time'
+      'choose_structured_date','choose_structured_time','choose_reason'
     ].includes(String(actionType || '').trim());
   }
 
@@ -6140,6 +6215,12 @@
       }
       // 최종 등록/취소/변경 결과는 바로 아래 시스템 말풍선이 담당합니다.
       return null;
+    }
+
+    if(String(action?.action_type || '').trim()==='choose_reason'){
+      card.classList.add('reasonChoice');
+      card.appendChild(createOlliTalkPendingTextInputButton(action));
+      return card;
     }
 
     const isSessionGroupChoice=['choose_makeup_group','choose_trial_group','choose_waitlist_group','choose_move_group'].includes(String(action?.action_type || '').trim());
