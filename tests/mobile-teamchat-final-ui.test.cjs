@@ -74,9 +74,9 @@ test('completed or cancelled repetitive-work result stays attached to its messag
   assert.match(css,/\.olliTalkBetaInlineSystemResult::before,[\s\S]*content:none !important;/);
 });
 
-test('mobile Team Chat assets use the minute-group renderer revision',()=>{
-  assert.match(html,/olli-talk-beta\\.css\\?v=20261007-minute-group-container-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-minute-group-container-1/);
+test('mobile Team Chat assets use the current UI polish revision',()=>{
+  assert.match(html,/olli-talk-beta\\.css\\?v=20261007-teamchat-ui-polish-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-teamchat-ui-polish-1/);
 });
 
 
@@ -174,6 +174,34 @@ test('Team Chat same-minute messages share one sender group and append only mess
   assert.doesNotMatch(css,/\.olliTalkBetaMessageConnected/);
   assert.doesNotMatch(css,/\.olliTalkBetaMessageConnected[\s\S]{0,180}\.olliTalkBetaSender\{[\s\S]*display:none/);
   assert.match(css,/\.olliTalkBetaMessageStack\{[\s\S]*gap:4px/);
+});
+
+test('Team Chat group headers are lighter and separate groups more clearly without changing same-minute spacing',()=>{
+  assert.match(css,/\.olliTalkBetaMessageGroup\{[\s\S]*margin-top:14px;/);
+  assert.match(css,/\.olliTalkBetaIncomingLayout \.olliTalkBetaSenderName\{[\s\S]*font-size:calc\(11px \* var\(--olli-text-scale, 1\)\);[\s\S]*font-weight:500;/);
+  assert.match(css,/\.olliTalkBetaMessageStack\{[\s\S]*gap:4px;/);
+});
+
+test('completed choice buttons and inline confirmation bubbles use the requested visual states only',()=>{
+  assert.match(css,/\.olliTalkBetaActionButton\.selectedChoice:disabled\{[\s\S]*background:#818284;[\s\S]*color:#fff;[\s\S]*opacity:1;/);
+  assert.match(css,/\.olliTalkBetaMessage \.olliTalkBetaInlineSystemResult\{[\s\S]*margin-top:4px;/);
+  assert.match(css,/\.olliTalkBetaActionCard\{[\s\S]*gap:6px;/);
+});
+
+test('closing mention mode removes the active at-sign draft before blurring the composer',()=>{
+  const clearStart=js.indexOf('function clearOlliTalkMentionDraft(){');
+  const clearEnd=js.indexOf('\n  async function openOlliTalkMentionPicker',clearStart);
+  assert.ok(clearStart>=0&&clearEnd>clearStart);
+  const clearBody=js.slice(clearStart,clearEnd);
+  assert.match(clearBody,/const activeQuery = currentMentionQuery\(\)/);
+  assert.match(clearBody,/input\.setRangeText\('', activeQuery\.start, activeQuery\.end, 'end'\)/);
+  assert.match(js,/if \(olliTalkMentionModeActive\) \{[\s\S]*clearOlliTalkMentionDraft\(\);[\s\S]*input\.blur\(\)/);
+});
+
+test('quick order keeps its existing action while using the Work Hub star icon',()=>{
+  assert.match(html,/id="olliTalkQuickOrderBtn" onclick="openOlliTalkQuickOrder\(event\)"[^>]*><svg[^>]*class="olliTalkQuickOrderIcon"[^>]*><path d="M12 3\.5l2\.63 5\.33 5\.88\.85-4\.25 4\.14 1 5\.85L12 16\.9l-5\.26 2\.77 1-5\.85-4\.25-4\.14 5\.88-.85L12 3\.5Z"/);
+  assert.match(css,/\.olliTalkQuickOrderBtn \.olliTalkQuickOrderIcon\{[\s\S]*fill:#111;[\s\S]*stroke:#111;/);
+  assert.doesNotMatch(html,/id="olliTalkQuickOrderBtn"[^>]*>[\s\S]{0,900}viewBox="0 0 86 99"/);
 });
 
 test('Team Chat typing indicator uses one anchor owner and preserves its bottom when the reply replaces it',()=>{
