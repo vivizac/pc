@@ -52,6 +52,22 @@
     "olli-data-record-list.js",
     "olli-feedback-photo-storage-common.js",
     "olli-teacher-payroll-common.js",
-    "olli-teacher-payroll-common.css"
+    "olli-teacher-payroll-common.css",
+    "olli-team-talk-avatar-catalog.js",
+    "team-talk-avatars/avatar-01.webp",
+    "team-talk-avatars/avatar-02.webp",
+    "team-talk-avatars/avatar-03.webp",
+    "team-talk-avatars/avatar-04.webp",
+    "team-talk-avatars/avatar-05.webp",
+    "team-talk-avatars/avatar-06.webp",
+    "team-talk-avatars/avatar-07.webp",
+    "team-talk-avatars/avatar-08.webp",
+    "team-talk-avatars/avatar-09.webp",
+    "team-talk-avatars/avatar-10.webp",
+    "team-talk-avatars/avatar-11.webp",
+    "team-talk-avatars/avatar-12.webp",
+    "team-talk-avatars/avatar-13.webp",
+    "team-talk-avatars/avatar-14.webp",
+    "team-talk-avatars/avatar-15.webp"
   ]
 }
