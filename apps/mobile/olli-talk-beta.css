@@ -1406,6 +1406,9 @@
   color:#9b6666;
 }
 
+#olliTalkBetaScreen .olliTalkBetaActionCard.reasonChoice .olliTalkBetaPendingInput{
+  margin:0;
+}
 #olliTalkBetaScreen .olliTalkBetaPendingInput{
   width:min(280px,82vw);
   display:flex;
