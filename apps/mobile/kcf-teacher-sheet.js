@@ -111,7 +111,7 @@
     var input = editor();
     var keyboard = global.OlliMobileKeyboardActivation;
     if (!input || !state.open || !keyboard) return false;
-    keyboard.focus(input, { selectionEnd:true, scrollToEnd:true });
+    keyboard.focus(input, { selectionEnd:true });
     scheduleViewportSync();
     return document.activeElement === input;
   }
@@ -271,7 +271,6 @@
     return !!keyboard.activate(event, {
       input:editor,
       selectionEnd:true,
-      scrollToEnd:true,
       afterFocus:function(){ scheduleViewportSync(); }
     });
   }

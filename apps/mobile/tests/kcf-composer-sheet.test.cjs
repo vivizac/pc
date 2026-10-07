@@ -66,6 +66,17 @@ test('normal sheet activation does not force textarea scroll after focus', () =>
   assert.match(normalCss, /\.kcfNormalSheetCloseBtn \{[\s\S]*?top:20px;[\s\S]*?right:22px;/);
 });
 
+test('Class sheet activation does not force textarea scroll after focus', () => {
+  const focusBlock = teacherJs.match(/function focusEditor\(\)[\s\S]*?\n  \}/)?.[0] || '';
+  const openStart = teacherJs.indexOf('function open(event)');
+  const openEnd = teacherJs.indexOf('\n  function close(options)', openStart);
+  const openBlock = openStart >= 0 && openEnd > openStart ? teacherJs.slice(openStart, openEnd) : '';
+  assert.match(focusBlock, /selectionEnd:true/);
+  assert.doesNotMatch(focusBlock, /scrollToEnd:true/);
+  assert.match(openBlock, /selectionEnd:true/);
+  assert.doesNotMatch(openBlock, /scrollToEnd:true/);
+});
+
 test('normal Class button leaves normal sheet and delegates activation to Teacher mode', () => {
   const click = normalJs.match(/classBtn\.addEventListener\('click',[\s\S]*?\n      \}\);/)?.[0] || '';
   assert.match(click, /syncToBase\(\)/);
