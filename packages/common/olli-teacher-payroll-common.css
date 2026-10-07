@@ -92,3 +92,33 @@
   .olliExpenseAddGrid{grid-template-columns:1fr}
 }
 
+.olliFinanceTop{margin-bottom:18px}
+.olliFinanceSummary{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:10px;margin-top:10px}
+.olliFinanceSummaryHero,.olliFinanceSummaryBreakdown>div{border:1px solid #e8e8e8;border-radius:18px;background:#fff}
+.olliFinanceSummaryHero{display:flex;flex-direction:column;justify-content:center;min-height:94px;padding:17px 18px}
+.olliFinanceSummaryHero span{color:#7d7d7d;font-size:11.5px;font-weight:700}
+.olliFinanceSummaryHero strong{display:block;margin-top:7px;color:#111;font-size:26px;line-height:1.15;letter-spacing:-.04em}
+.olliFinanceSummaryBreakdown{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.olliFinanceSummaryBreakdown>div{display:flex;flex-direction:column;justify-content:center;min-width:0;padding:15px}
+.olliFinanceSummaryBreakdown span{color:#8a8a8a;font-size:11px;font-weight:700}
+.olliFinanceSummaryBreakdown strong{display:block;margin-top:6px;color:#222;font-size:15px;line-height:1.2;letter-spacing:-.03em;word-break:break-all}
+.olliFinanceColumns{display:block}
+.olliFinanceExpensesColumn,.olliFinancePayrollColumn{min-width:0}
+.olliFinancePayrollSection{min-width:0}
+
+body.olliPcApp .olliPayrollPage{width:100%;max-width:none;padding-left:0;padding-right:0}
+body.olliPcApp .olliFinanceColumns{display:grid;grid-template-columns:minmax(0,.47fr) minmax(0,.53fr);gap:18px;align-items:start}
+body.olliPcApp .olliFinanceExpensesColumn .olliExpenseSection{margin-bottom:0}
+body.olliPcApp .olliFinancePayrollColumn .olliPayrollIntro{padding-top:2px}
+body.olliPcApp .olliFinanceExpensesColumn .olliExpenseRow{grid-template-columns:minmax(0,1fr) 145px;gap:8px}
+body.olliPcApp .olliFinanceExpensesColumn .olliExpenseRowActions{grid-column:1 / -1;justify-content:flex-end}
+body.olliPcApp .olliFinanceExpensesColumn .olliExpenseSectionHead{display:block}
+body.olliPcApp .olliFinanceExpensesColumn .olliExpenseTotal{margin-top:12px;text-align:left}
+body.olliPcApp .olliFinanceExpensesColumn .olliExpenseAddGrid{grid-template-columns:1fr}
+body.olliPcApp .olliFinancePayrollColumn .olliPayrollTeacherCard{margin-bottom:12px}
+
+@media(max-width:720px){
+  .olliFinanceSummary{grid-template-columns:1fr}
+  .olliFinanceSummaryBreakdown{grid-template-columns:1fr 1fr}
+}
+
