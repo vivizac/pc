@@ -8563,7 +8563,13 @@
         olliTalkChatGestureSettleTimer = null;
         olliTalkChatGestureActive = true;
       };
-      const endOlliTalkChatGesture = () => settleOlliTalkChatGesture(180);
+      const endOlliTalkChatGesture = () => {
+        // window의 pointerup/touchend는 입력창·버튼 터치에도 발생합니다.
+        // 실제 chatArea 제스처가 시작된 경우에만 종료 보정을 실행해
+        // 키보드가 올라오는 중 composer를 다시 강제 보정하지 않습니다.
+        if (!olliTalkChatGestureActive) return;
+        settleOlliTalkChatGesture(180);
+      };
 
       chatArea.addEventListener('pointerdown', beginOlliTalkChatGesture, { passive:true });
       chatArea.addEventListener('touchstart', beginOlliTalkChatGesture, { passive:true });
