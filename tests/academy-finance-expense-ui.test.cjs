@@ -116,7 +116,7 @@ test('mobile tab state survives finance rerenders and only toggles the lower con
   assert.match(common, /state\.financeTab=next/);
   assert.match(common, /bindFinanceTabs\(els\.body\)/);
   const tabStart = common.indexOf('function setFinanceTab');
-  const tabEnd = common.indexOf('\\n  function bindFinanceTabs', tabStart);
+  const tabEnd = common.indexOf('\n  function bindFinanceTabs', tabStart);
   assert.ok(tabStart >= 0 && tabEnd > tabStart);
   const tabCode = common.slice(tabStart, tabEnd);
   assert.doesNotMatch(tabCode, /loadOverview|rpc\(/);
@@ -137,7 +137,7 @@ test('combined total is server-owned and equals operating expense plus payroll',
   assert.match(migration, /'total_amount',v_payroll_total\+v_expense_total/);
 
   const start = common.indexOf('function renderFinanceSummary');
-  const end = common.indexOf('\\n  function renderPayrollSection', start);
+  const end = common.indexOf('\n  function renderPayrollSection', start);
   assert.ok(start >= 0 && end > start);
   const summaryCode = common.slice(start, end);
   assert.match(summaryCode, /payload\.expense_total_amount/);
@@ -148,9 +148,9 @@ test('combined total is server-owned and equals operating expense plus payroll',
 
 test('saved expense and payroll changes both refresh the combined finance overview', () => {
   const expenseSaveStart = common.indexOf('async function saveExpenseRow');
-  const expenseEnd = common.indexOf('\\n  async function endExpenseItem', expenseSaveStart);
+  const expenseEnd = common.indexOf('\n  async function endExpenseItem', expenseSaveStart);
   const payrollSaveStart = common.indexOf('async function saveTeacher');
-  const payrollEnd = common.indexOf('\\n  async function open()', payrollSaveStart);
+  const payrollEnd = common.indexOf('\n  async function open()', payrollSaveStart);
   assert.ok(expenseSaveStart >= 0 && expenseEnd > expenseSaveStart);
   assert.ok(payrollSaveStart >= 0 && payrollEnd > payrollSaveStart);
   assert.match(common.slice(expenseSaveStart, expenseEnd), /await loadOverview\(\)/);
