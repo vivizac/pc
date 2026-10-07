@@ -211,8 +211,10 @@ test('expense audit events are private, ordered, and capture before and after st
   assert.match(migration, /create table private\.olli_academy_expense_events/);
   assert.match(migration, /event_seq bigint generated always as identity unique/);
   assert.match(migration, /event_type in \('create','update','end','restore'\)/);
+  assert.match(migration, /changed_by_name_snapshot text not null/);
   assert.match(migration, /before_state jsonb null/);
   assert.match(migration, /after_state jsonb not null/);
+  assert.match(migration, /olli_academy_expense_events_request_uidx/);
   assert.match(migration, /alter table private\.olli_academy_expense_events enable row level security/);
   assert.match(migration, /revoke all on table private\.olli_academy_expense_events from public,anon,authenticated/);
   assert.match(migration, /order by e\.event_seq desc/);
@@ -252,6 +254,7 @@ test('recurring expense restore can remove a newly-created effective value and r
 
 test('operating expense UI exposes selected-month history and safe restore', () => {
   assert.match(common, /expenseHistoryOpen: false/);
+  assert.match(common, /expenseHistoryRequestSeq: 0/);
   assert.match(common, /data-expense-history-toggle>변경 기록/);
   assert.match(common, /function loadExpenseHistory\(\)/);
   assert.match(common, /rpc\('olli_academy_expense_history'/);
@@ -259,6 +262,7 @@ test('operating expense UI exposes selected-month history and safe restore', () 
   assert.match(common, /rpc\('olli_academy_expense_restore'/);
   assert.match(common, /이 변경 직전 상태로 복구할까요/);
   assert.match(common, /복구 자체도 변경 기록에 남습니다/);
+  assert.match(common, /state\.expenseHistoryRequestSeq!==requestSeq/);
 });
 
 test('expense history restore reuses revision and request-id conflict protections', () => {
