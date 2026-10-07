@@ -7633,7 +7633,7 @@
     if (!input) return false;
 
     if (olliTalkMentionModeActive) {
-      stopOlliTalkComposerActivationEvent(event);
+      window.OlliMobileKeyboardActivation?.stopEvent(event);
       clearOlliTalkMentionDraft();
       olliTalkMentionModeActive = false;
       hideOlliTalkMentionMenu();

@@ -27,6 +27,8 @@ test('Team Chat only settles a gesture that actually started in chatArea',()=>{
 test('Team Chat inactive input and mention button use the shared mobile keyboard activation core',()=>{
   assert.match(js,/function activateOlliTalkComposerInput\(event\)[\s\S]*window\.OlliMobileKeyboardActivation[\s\S]*keyboard\.activate\(event/);
   assert.doesNotMatch(js,/function stopOlliTalkComposerActivationEvent/);
+  assert.doesNotMatch(js,/stopOlliTalkComposerActivationEvent\(event\)/);
+  assert.match(js,/if \(olliTalkMentionModeActive\) \{[\s\S]*OlliMobileKeyboardActivation\?\.stopEvent\(event\)[\s\S]*olliTalkMentionModeActive = false/);
   assert.doesNotMatch(js,/function focusOlliTalkComposerInput/);
   assert.match(js,/composerActivateButton\.addEventListener\('click',[\s\S]*activateOlliTalkComposerInput\(event\)/);
   assert.match(js,/mentionTriggerButton\.addEventListener\('click', openOlliTalkMentionPicker\)/);
