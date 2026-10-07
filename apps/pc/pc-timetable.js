@@ -134,6 +134,7 @@
     sidebarFilter: 'all',
     sidebarQuery: '',
     sidebarActionStudentId: '',
+    sidebarInactiveOpen: { paused: false, withdrawn: false },
     pane: 'schedule',
     scheduleDivision: 'elementary',
     pickupCollapsed: false,
@@ -454,9 +455,27 @@
       try { await global.loadStudentsFromSupabase(options); } catch (error) { console.warn('담임 학생정보 동기화 실패:', error); }
     }
   }
+  function managedStudents() {
+    const elementary = typeof global.getStudentsByType === 'function' ? global.getStudentsByType('elementary') : [];
+    const kinder = typeof global.getStudentsByType === 'function' ? global.getStudentsByType('kinder') : [];
+    return [...(Array.isArray(elementary) ? elementary : []), ...(Array.isArray(kinder) ? kinder : [])];
+  }
+  function studentStatus(student) {
+    try {
+      if (typeof global.getStudentStatus === 'function') return clean(global.getStudentStatus(student)) || 'active';
+    } catch (_) {}
+    return clean(student && student.status) || 'active';
+  }
+  function studentByAnyId(studentId) {
+    const id = clean(studentId);
+    return managedStudents().find((student) => clean(student.id) === id) || null;
+  }
   function studentById(studentId) {
     const id = clean(studentId);
-    return service.activeStudents().find((student) => clean(student.id) === id) || null;
+    const active = service.activeStudents().find((student) => clean(student.id) === id);
+    if (active) return active;
+    const inactive = studentByAnyId(id);
+    return inactive && studentStatus(inactive) === 'paused' ? inactive : null;
   }
   function divisionOf(student) { return clean(student && (student.type || student.division)) === 'kinder' ? 'kinder' : 'elementary'; }
   function divisionLabel(division) { return division === 'kinder' ? '유치부' : '초등부'; }
@@ -1513,7 +1532,7 @@
     const referenceDate = currentWeekEndDate();
     const rows = enrollments().filter((item) => clean(item.student_id) === clean(studentId) && enrollmentEffectiveOn(item, referenceDate));
     if (!rows.length) return '';
-    const student = studentById(studentId);
+    const student = studentByAnyId(studentId) || studentById(studentId);
     return rows.sort((a, b) => Number(a.weekday) - Number(b.weekday) || Number(a.time_slot) - Number(b.time_slot))
       .map((item) => `${weekdayLabel(item.weekday)} ${scheduleSlotLabel(divisionOf(student), item.time_slot, item.class_group, item.weekday)}${classGroupLabel(divisionOf(student), item.class_group) ? ` ${classGroupLabel(divisionOf(student), item.class_group)}` : ''}`).join(' · ');
   }
@@ -1574,28 +1593,46 @@
     overlay.setAttribute('aria-hidden', 'true');
     overlay.innerHTML = `
       <div class="olliTtStudentActionCard" role="dialog" aria-modal="true" aria-labelledby="olliTtStudentActionTitle">
-        <div class="olliTtStudentActionTitle" id="olliTtStudentActionTitle">학생 관리</div>
-        <button type="button" class="olliTtStudentActionBtn" data-tt-student-action="active">
-          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 12h12"></path><path d="M12 6v12"></path></svg>
-          <span>재등록</span>
-        </button>
-        <button type="button" class="olliTtStudentActionBtn" data-tt-student-action="paused">
-          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 5v14"></path><path d="M14 5v14"></path></svg>
-          <span>휴원</span>
-        </button>
-        <button type="button" class="olliTtStudentActionBtn" data-tt-student-action="withdrawn">
-          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path><path d="M4 12h10"></path><path d="M16 5h3a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-3"></path></svg>
-          <span>퇴원</span>
-        </button>
-        <button type="button" class="olliTtStudentActionBtn danger" data-tt-student-action="delete">
-          <svg aria-hidden="true" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
-          <span>삭제</span>
-        </button>
-        <button type="button" class="olliTtStudentActionCancelBtn" data-tt-student-action-close>취소</button>
+        <div data-tt-student-action-main>
+          <div class="olliTtStudentActionTitle" id="olliTtStudentActionTitle">학생 관리</div>
+          <button type="button" class="olliTtStudentActionBtn" data-tt-student-action="active">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 12h12"></path><path d="M12 6v12"></path></svg>
+            <span>재등록</span>
+          </button>
+          <button type="button" class="olliTtStudentActionBtn" data-tt-student-action="paused">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 5v14"></path><path d="M14 5v14"></path></svg>
+            <span>휴원</span>
+          </button>
+          <button type="button" class="olliTtStudentActionBtn" data-tt-student-action="withdrawn">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path><path d="M4 12h10"></path><path d="M16 5h3a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-3"></path></svg>
+            <span>퇴원</span>
+          </button>
+          <button type="button" class="olliTtStudentActionBtn danger" data-tt-student-action="delete">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+            <span>삭제</span>
+          </button>
+          <button type="button" class="olliTtStudentActionCancelBtn" data-tt-student-action-close>취소</button>
+        </div>
+        <div class="olliTtPauseChoice" data-tt-pause-choice hidden>
+          <div class="olliTtStudentActionTitle" data-tt-pause-title>휴원</div>
+          <div class="olliTtPauseChoiceGuide">휴원 중에도 현재 수업 자리를 비워둘 수 있어요.<br>짧은 휴원이라면 자리를 유지해야 다른 학생이 등록되지 않습니다.</div>
+          <button type="button" class="olliTtPauseChoiceBtn" data-tt-pause-schedule="keep">
+            <strong>시간표 유지</strong><span>현재 요일·시간을 그대로 예약해 둡니다.</span>
+          </button>
+          <button type="button" class="olliTtPauseChoiceBtn remove" data-tt-pause-schedule="remove">
+            <strong>시간표에서 삭제</strong><span>오늘부터 정규수업 자리를 비웁니다.</span>
+          </button>
+          <button type="button" class="olliTtStudentActionCancelBtn" data-tt-pause-choice-cancel>취소</button>
+        </div>
       </div>`;
     overlay.addEventListener('click', (event) => {
-      if (event.target === overlay || event.target.closest('[data-tt-student-action-close]')) {
+      if (event.target === overlay || event.target.closest('[data-tt-student-action-close]') || event.target.closest('[data-tt-pause-choice-cancel]')) {
         closeSidebarStudentActionMenu();
+        return;
+      }
+      const pauseButton = event.target.closest('[data-tt-pause-schedule]');
+      if (pauseButton) {
+        applyPausedStudentChoice(pauseButton.dataset.ttPauseSchedule);
         return;
       }
       const actionButton = event.target.closest('[data-tt-student-action]');
@@ -1606,6 +1643,16 @@
     });
     document.body.appendChild(overlay);
     return overlay;
+  }
+
+  function resetSidebarStudentActionMenuView(overlay, student) {
+    if (!overlay) return;
+    const main = overlay.querySelector('[data-tt-student-action-main]');
+    const choice = overlay.querySelector('[data-tt-pause-choice]');
+    if (main) main.hidden = false;
+    if (choice) choice.hidden = true;
+    const title = overlay.querySelector('#olliTtStudentActionTitle');
+    if (title) title.textContent = `${clean(student && student.name) || '학생'} 관리`;
   }
 
   function closeSidebarStudentActionMenu() {
@@ -1620,12 +1667,11 @@
   function openSidebarStudentActionMenu(studentId, event) {
     event?.preventDefault?.();
     event?.stopPropagation?.();
-    const student = studentById(studentId);
+    const student = studentByAnyId(studentId);
     if (!student) return;
     state.sidebarActionStudentId = clean(studentId);
     const overlay = ensureSidebarStudentActionMenu();
-    const title = overlay.querySelector('#olliTtStudentActionTitle');
-    if (title) title.textContent = `${clean(student.name)} 관리`;
+    resetSidebarStudentActionMenuView(overlay, student);
     overlay.classList.add('show');
     overlay.setAttribute('aria-hidden', 'false');
     document.querySelectorAll('[data-tt-sidebar-actions]').forEach((button) => {
@@ -1634,16 +1680,108 @@
     requestAnimationFrame(() => overlay.querySelector('[data-tt-student-action]')?.focus?.());
   }
 
+  function openPauseScheduleChoice(student) {
+    const overlay = ensureSidebarStudentActionMenu();
+    const main = overlay.querySelector('[data-tt-student-action-main]');
+    const choice = overlay.querySelector('[data-tt-pause-choice]');
+    if (main) main.hidden = true;
+    if (choice) choice.hidden = false;
+    const title = overlay.querySelector('[data-tt-pause-title]');
+    if (title) title.textContent = `${clean(student && student.name) || '학생'} 휴원`;
+    requestAnimationFrame(() => overlay.querySelector('[data-tt-pause-schedule="keep"]')?.focus?.());
+  }
+
+  function futureOrCurrentStudentEnrollments(studentId) {
+    const today = todayKey();
+    return studentEnrollments(studentId).filter((item) => {
+      const start = clean(item && item.effective_from);
+      const end = clean(item && item.effective_to);
+      return !end || end >= today || (start && start >= today);
+    });
+  }
+
+  async function removeStudentTimetableForPause(studentId) {
+    const today = todayKey();
+    const rows = futureOrCurrentStudentEnrollments(studentId);
+    if (!rows.length) return { removed: 0, cancelledChanges: 0 };
+
+    const scheduled = changes().filter((item) => clean(item.student_id) === clean(studentId) && clean(item.status) === 'scheduled');
+    const targetEnrollmentIds = new Set(scheduled.map((item) => clean(item.target_enrollment_id)).filter(Boolean));
+    const cancelled = new Set();
+
+    for (const change of scheduled) {
+      const id = clean(change.id);
+      if (!id || cancelled.has(id)) continue;
+      await service.cancelChange(id);
+      cancelled.add(id);
+    }
+
+    let removed = 0;
+    for (const row of rows) {
+      const enrollmentId = clean(row.id);
+      if (!enrollmentId || targetEnrollmentIds.has(enrollmentId)) continue;
+      const start = clean(row.effective_from);
+      const removalDate = start && start > today ? start : today;
+      await service.removeEnrollment(studentId, enrollmentId, removalDate);
+      removed += 1;
+    }
+    return { removed, cancelledChanges: cancelled.size };
+  }
+
+  async function applyPausedStudentChoice(scope) {
+    const studentId = clean(state.sidebarActionStudentId);
+    const student = studentByAnyId(studentId);
+    if (!student || (scope !== 'keep' && scope !== 'remove')) return;
+
+    const statusFn = typeof global.setStudentStatusById === 'function'
+      ? global.setStudentStatusById
+      : (typeof setStudentStatusById === 'function' ? setStudentStatusById : null);
+    if (!statusFn) {
+      alert('학생 휴원 기능을 불러오지 못했습니다.');
+      return;
+    }
+
+    closeSidebarStudentActionMenu();
+    try {
+      await statusFn(studentId, 'paused', { closeActionMenu: false });
+
+      if (scope === 'remove') {
+        const result = await withSaving(() => removeStudentTimetableForPause(studentId));
+        if (result === null) {
+          notify(`${clean(student.name)} 학생은 휴원 처리되었지만 시간표 자리는 유지되었습니다.`);
+        } else {
+          notify(`${clean(student.name)} 학생을 휴원 처리하고 시간표에서 제외했어요.`);
+        }
+      } else {
+        notify(`${clean(student.name)} 학생을 휴원 처리하고 기존 수업 자리를 유지했어요.`);
+      }
+
+      state.sidebarInactiveOpen.paused = false;
+      await refreshStudentsFromServer({ skipLifecycleSync: true });
+      renderSidebar();
+      if (state.pane === 'attendance') renderAttendanceRegister();
+      else renderTimetable();
+    } catch (error) {
+      console.error('학생 휴원 처리 실패:', error);
+      alert(error?.message || '학생 휴원 처리를 완료하지 못했습니다.');
+    }
+  }
+
   async function runSidebarStudentAction(action) {
     const studentId = clean(state.sidebarActionStudentId);
     if (!studentId) return;
-    const student = studentById(studentId);
+    const student = studentByAnyId(studentId);
     if (!student) {
       closeSidebarStudentActionMenu();
       return;
     }
 
     try {
+      if (action === 'paused') {
+        openPauseScheduleChoice(student);
+        return;
+      }
+
       if (action === 'delete') {
         const ok = confirm('삭제 시 통계에서 제외됩니다.\n실제 수업한 학생은 퇴원으로 처리해 주세요.');
         if (!ok) return;
@@ -1654,16 +1792,19 @@
         closeSidebarStudentActionMenu();
         await deleteFn(studentId);
       } else {
-        const status = action === 'paused' || action === 'withdrawn' ? action : 'active';
+        const status = action === 'withdrawn' ? 'withdrawn' : 'active';
         const statusFn = typeof global.setStudentStatusById === 'function'
           ? global.setStudentStatusById
           : (typeof setStudentStatusById === 'function' ? setStudentStatusById : null);
         if (!statusFn) throw new Error('학생 재원 상태 변경 기능을 불러오지 못했습니다.');
         closeSidebarStudentActionMenu();
         await statusFn(studentId, status, { closeActionMenu: false });
+        if (status === 'withdrawn') state.sidebarInactiveOpen.withdrawn = false;
       }
+      await refreshStudentsFromServer({ skipLifecycleSync: true });
       renderSidebar();
       if (state.pane === 'attendance') renderAttendanceRegister();
+      else renderTimetable();
     } catch (error) {
       console.error('사이드바 학생 관리 실패:', error);
       alert(error?.message || '학생 관리 작업을 완료하지 못했습니다.');
@@ -1672,12 +1813,14 @@
 
   function activateSidebarStudentCard(card) {
     if (!card) return;
+    const student = studentByAnyId(card.dataset.ttSidebarStudent);
+    if (!student) return;
     if (state.pane === 'schedule') {
+      if (studentStatus(student) === 'withdrawn') return;
       openMove(card.dataset.ttSidebarStudent);
       return;
     }
-    const student = studentById(card.dataset.ttSidebarStudent);
-    state.sidebarQuery = clean(student && student.name);
+    state.sidebarQuery = clean(student.name);
     const body = document.getElementById('olliPcContextBody');
     const input = body?.querySelector('#olliTtQuickSearch');
     if (input) input.value = state.sidebarQuery;
@@ -1685,19 +1828,55 @@
     renderAttendanceRegister();
   }
 
+  function sidebarStudentCardHtml(student, inactive = false) {
+    return `<div class="olliTtQuickStudent${inactive ? ' isInactive' : ''}" data-tt-sidebar-student="${esc(student.id)}" data-tt-sidebar-status="${esc(studentStatus(student))}" role="button" tabindex="0"><button type="button" class="olliTtQuickStudentMore" data-tt-sidebar-actions="${esc(student.id)}" aria-label="${esc(student.name)} 학생 관리" aria-haspopup="dialog" aria-expanded="false"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.55"></circle><circle cx="12" cy="12" r="1.55"></circle><circle cx="19" cy="12" r="1.55"></circle></svg></button><span class="olliTtQuickStudentMain"><span class="olliTtQuickStudentName">${esc(student.name)}</span><span class="olliTtQuickStudentSchedule">${esc(studentScheduleText(student.id))}</span></span></div>`;
+  }
+
+  function sidebarInactiveSectionHtml(status, label, students) {
+    const open = Boolean(state.sidebarInactiveOpen[status]);
+    const body = students.length
+      ? students.map((student) => sidebarStudentCardHtml(student, true)).join('')
+      : `<div class="olliTtQuickStatusEmpty">${label} 학생이 없습니다.</div>`;
+    return `<div class="olliTtQuickStatusSection${open ? ' open' : ''}" data-tt-sidebar-status-section="${status}"><button type="button" class="olliTtQuickStatusToggle" data-tt-sidebar-status-toggle="${status}" aria-expanded="${open ? 'true' : 'false'}"><span>${label}</span><small>${students.length}명</small><span class="olliTtQuickStatusTriangle" aria-hidden="true"></span></button><div class="olliTtQuickStatusBody">${body}</div></div>`;
+  }
+
   function renderSidebarResults(body) {
     if (!body || !state.active || state.view !== 'schedule') return;
     const results = body.querySelector('[data-tt-sidebar-results]');
     if (!results) return;
-    const students = service.activeStudents().filter((student) => {
-      const division = divisionOf(student);
-      return !state.sidebarQuery || clean(student.name).includes(state.sidebarQuery);
-    });
-    const elementary = students.filter((student) => divisionOf(student) === 'elementary');
-    const kinder = students.filter((student) => divisionOf(student) === 'kinder');
-    const groupHtml = (list, division) => list.length ? `<div class="olliTtQuickGroup"><div class="olliTtQuickGroupTitle">${divisionLabel(division)} · ${list.length}명</div>${list.map((student) => `<div class="olliTtQuickStudent" data-tt-sidebar-student="${esc(student.id)}" role="button" tabindex="0"><button type="button" class="olliTtQuickStudentMore" data-tt-sidebar-actions="${esc(student.id)}" aria-label="${esc(student.name)} 학생 관리" aria-haspopup="dialog" aria-expanded="false"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.55"></circle><circle cx="12" cy="12" r="1.55"></circle><circle cx="19" cy="12" r="1.55"></circle></svg></button><span class="olliTtQuickStudentMain"><span class="olliTtQuickStudentName">${esc(student.name)}</span><span class="olliTtQuickStudentSchedule">${esc(studentScheduleText(student.id))}</span></span></div>`).join('')}</div>` : '';
-    results.innerHTML = students.length ? groupHtml(elementary, 'elementary') + groupHtml(kinder, 'kinder') : '<div class="olliTtQuickEmpty">조건에 맞는 학생이 없습니다.</div>';
 
+    const query = clean(state.sidebarQuery);
+    const activeStudents = service.activeStudents().filter((student) => !query || clean(student.name).includes(query));
+    const allStudents = managedStudents().filter((student) => !query || clean(student.name).includes(query));
+    const elementary = activeStudents.filter((student) => divisionOf(student) === 'elementary');
+    const kinder = activeStudents.filter((student) => divisionOf(student) === 'kinder');
+    const paused = allStudents.filter((student) => studentStatus(student) === 'paused')
+      .sort((a, b) => clean(a.name).localeCompare(clean(b.name), 'ko'));
+    const withdrawn = allStudents.filter((student) => {
+      if (studentStatus(student) !== 'withdrawn') return false;
+      try {
+        return typeof global.isWithdrawnVisibleInAttendance !== 'function' || global.isWithdrawnVisibleInAttendance(student);
+      } catch (_) {
+        return true;
+      }
+    }).sort((a, b) => clean(a.name).localeCompare(clean(b.name), 'ko'));
+
+    const groupHtml = (list, division) => list.length
+      ? `<div class="olliTtQuickGroup"><div class="olliTtQuickGroupTitle">${divisionLabel(division)} · ${list.length}명</div>${list.map((student) => sidebarStudentCardHtml(student)).join('')}</div>`
+      : '';
+    const activeHtml = groupHtml(elementary, 'elementary') + groupHtml(kinder, 'kinder');
+    results.innerHTML = (activeHtml || '<div class="olliTtQuickEmpty">조건에 맞는 재원생이 없습니다.</div>')
+      + '<div class="olliTtQuickInactiveSections">'
+      + sidebarInactiveSectionHtml('paused', '휴원', paused)
+      + sidebarInactiveSectionHtml('withdrawn', '퇴원', withdrawn)
+      + '</div>';
+
+    results.querySelectorAll('[data-tt-sidebar-status-toggle]').forEach((button) => button.addEventListener('click', () => {
+      const status = clean(button.dataset.ttSidebarStatusToggle);
+      if (status !== 'paused' && status !== 'withdrawn') return;
+      state.sidebarInactiveOpen[status] = !state.sidebarInactiveOpen[status];
+      renderSidebarResults(body);
+    }));
     results.querySelectorAll('[data-tt-sidebar-actions]').forEach((button) => button.addEventListener('click', (event) => {
       openSidebarStudentActionMenu(button.dataset.ttSidebarActions, event);
     }));
