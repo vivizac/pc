@@ -7615,6 +7615,12 @@
     syncOlliTalkSelectedMentionPrefix();
   }
 
+  function stopOlliTalkComposerActivationEvent(event){
+    if (!event) return;
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
   function focusOlliTalkComposerInput(){
     const input = getOlliTalkBetaInput();
     if (!input) return null;
@@ -7622,16 +7628,22 @@
     return input;
   }
 
-  async function openOlliTalkMentionPicker(event){
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
+  function activateOlliTalkComposerInput(event){
+    stopOlliTalkComposerActivationEvent(event);
+    const input = focusOlliTalkComposerInput();
+    if (!input) return null;
+    resizeInput();
+    updateOlliTalkBetaComposerState();
+    syncViewport();
+    return input;
+  }
 
+  async function openOlliTalkMentionPicker(event){
     const input = getOlliTalkBetaInput();
     if (!input) return false;
 
     if (olliTalkMentionModeActive) {
+      stopOlliTalkComposerActivationEvent(event);
       clearOlliTalkMentionDraft();
       olliTalkMentionModeActive = false;
       hideOlliTalkMentionMenu();
@@ -7643,7 +7655,6 @@
     }
 
     olliTalkMentionModeActive = true;
-    updateOlliTalkBetaComposerState();
 
     const caret = Number.isFinite(input.selectionStart) ? input.selectionStart : input.value.length;
     const activeQuery = currentMentionQuery();
@@ -7653,9 +7664,7 @@
       input.setRangeText(insertion, caret, caret, 'end');
     }
 
-    focusOlliTalkComposerInput();
-    resizeInput();
-    updateOlliTalkBetaComposerState();
+    activateOlliTalkComposerInput(event);
 
     renderOlliTalkMentionMenu();
     if (!olliTalkMembers.length) {
@@ -8495,6 +8504,7 @@
     const input = getOlliTalkBetaInput();
     const sendButton = getOlliTalkBetaSendButton();
     const mentionTriggerButton = document.getElementById('olliTalkMentionTriggerBtn');
+    const composerActivateButton = document.getElementById('olliTalkComposerActivateBtn');
     const voiceButton = document.getElementById('olliTalkBetaVoiceBtn');
     const searchInput = document.getElementById('olliTalkSearchInput');
     const searchNextButton = document.getElementById('olliTalkSearchNextBtn');
@@ -8683,12 +8693,16 @@
         olliTalkKeyboardFollowLatest = false;
         syncViewport();
       });
-      input.addEventListener('click', () => {
-        focusOlliTalkComposerInput();
-        renderOlliTalkMentionMenu();
-      });
+      input.addEventListener('click', renderOlliTalkMentionMenu);
       input.addEventListener('keyup', event => {
         if (event.key === 'Escape') hideOlliTalkMentionMenu();
+      });
+    }
+
+    if (composerActivateButton) {
+      composerActivateButton.addEventListener('click', event => {
+        activateOlliTalkComposerInput(event);
+        renderOlliTalkMentionMenu();
       });
     }
 

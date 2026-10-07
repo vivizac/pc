@@ -53,15 +53,19 @@ test('Team Chat keeps the chat scroller independent and reserves composer space 
   assert.doesNotMatch(syncBody,/scrollTop\s*=/);
 });
 
-test('Team Chat input has no separate pointerdown focus path and uses shared click focus',()=>{
+test('Team Chat keeps textarea free of activation hacks and delegates first touch to a button',()=>{
   const start=js.indexOf("if (input) {",js.indexOf("function init(){"));
-  const end=js.indexOf("\n    if (mentionTriggerButton)",start);
+  const end=js.indexOf("\n    if (composerActivateButton)",start);
   assert.ok(start>=0 && end>start);
   const body=js.slice(start,end);
   assert.doesNotMatch(body,/input\.addEventListener\('pointerdown'/);
-  assert.match(body,/input\.addEventListener\('click',[\s\S]*focusOlliTalkComposerInput\(\)/);
-  assert.match(js,/function focusOlliTalkComposerInput\(\)[\s\S]*input\.focus\(\{ preventScroll:true \}\)/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261008-shared-focus-1/);
+  assert.doesNotMatch(body,/focusOlliTalkComposerInput\(\)/);
+  assert.match(body,/input\.addEventListener\('click', renderOlliTalkMentionMenu\)/);
+  assert.match(html,/id="olliTalkComposerActivateBtn"/);
+  assert.match(css,/\.olliTalkComposerActivateBtn\{[\s\S]*position:absolute;[\s\S]*inset:0;[\s\S]*z-index:4/);
+  assert.match(css,/\.olliTalkKeyboardOpen \.olliTalkComposerActivateBtn\{[\s\S]*visibility:hidden;[\s\S]*pointer-events:none/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261008-unified-activation-1/);
+  assert.match(html,/olli-talk-beta\.css\?v=20261008-unified-activation-1/);
 });
 
 test('Team Chat keyboard focus does not duplicate chat anchoring across focus and visualViewport scroll',()=>{
