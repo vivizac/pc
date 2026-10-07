@@ -995,6 +995,11 @@
   flex-direction:row-reverse;
 }
 
+#olliTalkBetaScreen .olliTalkBetaMessage.incoming .olliTalkBetaBubbleRow,
+#olliTalkBetaScreen .olliTalkBetaMessage.ai .olliTalkBetaBubbleRow{
+  gap:3px;
+}
+
 #olliTalkBetaScreen .olliTalkBetaBubble{
   --olli-talk-bubble-bg:#fff;
   position:relative;
@@ -1016,6 +1021,7 @@
 #olliTalkBetaScreen .olliTalkBetaMessage.incoming .olliTalkBetaBubble,
 #olliTalkBetaScreen .olliTalkBetaMessage.ai .olliTalkBetaBubble{
   --olli-talk-bubble-bg:var(--olli-talk-incoming-bg);
+  max-width:min(78vw, 540px);
   color:var(--olli-talk-incoming-text);
 }
 
@@ -1176,6 +1182,7 @@
   font-size:calc(10px * var(--olli-text-scale, 1));
   font-weight:400;
   line-height:1;
+  letter-spacing:-.04em;
   white-space:nowrap;
 }
 
@@ -1688,10 +1695,12 @@
   display:grid;
   grid-template-columns:36px minmax(0,1fr);
   grid-template-rows:auto auto;
-  column-gap:9px;
+  column-gap:5px;
   row-gap:5px;
   align-items:start;
-  max-width:100%;
+  width:calc(100% + 4px);
+  max-width:calc(100% + 4px);
+  margin-left:-4px;
 }
 
 #olliTalkBetaScreen .olliTalkBetaIncomingLayout .olliTalkBetaSender{
