@@ -21,7 +21,8 @@ alter table private.olli_teacher_payroll_notifications
   add column if not exists deduction_mode text not null default 'none',
   add column if not exists deduction_amount bigint not null default 0,
   add column if not exists net_amount bigint not null default 0,
-  add column if not exists statement_snapshot jsonb not null default '{}'::jsonb;
+  add column if not exists statement_snapshot jsonb not null default '{}'::jsonb,
+  add column if not exists statement_message_version smallint not null default 0;
 
 update private.olli_teacher_payroll_notifications
 set gross_amount=case when gross_amount=0 then amount else gross_amount end,
@@ -708,7 +709,8 @@ begin
     returning id into v_message_id;
 
     update private.olli_teacher_payroll_notifications
-    set message_id=v_message_id
+    set message_id=v_message_id,
+        statement_message_version=1
     where id=v_notification.id;
 
     insert into public.olli_team_chat_mentions(
@@ -987,7 +989,16 @@ as $function$
       from private.olli_teacher_payroll_notifications n
       where n.academy_id=p_academy_id
         and n.message_id=p_message_id
-        and n.teacher_member_id=p_member_id
+        and (
+          (
+            n.statement_message_version>=1
+            and n.teacher_member_id=p_member_id
+          )
+          or (
+            n.statement_message_version=0
+            and p_member_role='owner'
+          )
+        )
     )
     when p_audience='all' then true
     when p_audience='management' and p_member_role in ('owner','manager') then true
