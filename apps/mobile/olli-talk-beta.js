@@ -5524,12 +5524,27 @@
     return button;
   }
 
+  function formatOlliTalkMobileBubbleText(item,inputText){
+    let text=String(inputText || '');
+
+    // 모바일 시스템 완료 말풍선은 색상 자체로 완료 상태가 구분되므로
+    // 서버 메시지에 포함된 앞쪽 체크 기호는 화면에서만 제거합니다.
+    if(String(item?.message_type || '').trim()==='system'){
+      text=text.replace(/^\s*[✓✔]\s*/,'');
+    }
+
+    // 규칙 시스템의 반별 잔여 자리 안내는 설명 문장 다음 줄에서 시작합니다.
+    // 예: "5시는 반이 나뉘어 있어요.\nA반 2자리 · B반 2자리"
+    text=text.replace(/([.!?。])\s+(?=A반\s*\d+\s*자리)/g,'$1\n');
+    return text;
+  }
+
   function createOlliTalkMessageBubble(input, options = {}){
     const item=input&&typeof input==='object'?input:null;
     if(item?.attachment)return createOlliTalkAttachmentMessageBubble(item, options);
     const bubble=document.createElement('div');
     bubble.className='olliTalkBetaBubble';
-    const text=String(item?item.body:(input||''));
+    const text=formatOlliTalkMobileBubbleText(item,String(item?item.body:(input||'')));
 
     const studentInfoLink=parseOlliTalkStudentInfoLink(text);
     if(studentInfoLink){
