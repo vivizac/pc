@@ -228,6 +228,16 @@
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
         syncViewport();
+
+        const activeElement=document.activeElement;
+        if(
+          !olliTalkChatGestureActive
+          && activeElement?.classList?.contains('olliTalkBetaPendingReasonField')
+        ){
+          scheduleOlliTalkPendingReasonFieldAboveKeyboard(activeElement);
+          return;
+        }
+
         if (
           !olliTalkChatGestureActive
           && olliTalkKeyboardFollowLatest
@@ -858,6 +868,34 @@
     }
   }
 
+  function scrollOlliTalkPendingReasonFieldAboveKeyboard(field){
+    const chatArea=document.getElementById('olliTalkBetaChatArea');
+    if(!chatArea?.isConnected || !field?.isConnected) return false;
+
+    const viewport=window.visualViewport;
+    const visibleBottom=viewport
+      ? Number(viewport.offsetTop || 0)+Number(viewport.height || 0)
+      : window.innerHeight;
+    const fieldRect=field.getBoundingClientRect();
+    const margin=12;
+    const overflow=fieldRect.bottom-(visibleBottom-margin);
+    if(overflow<=0.5) return true;
+
+    const maxScroll=Math.max(0,chatArea.scrollHeight-chatArea.clientHeight);
+    chatArea.scrollTop=Math.max(
+      0,
+      Math.min(maxScroll,chatArea.scrollTop+overflow)
+    );
+    return true;
+  }
+
+  function scheduleOlliTalkPendingReasonFieldAboveKeyboard(field){
+    requestAnimationFrame(()=>{
+      if(document.activeElement!==field) return;
+      scrollOlliTalkPendingReasonFieldAboveKeyboard(field);
+    });
+  }
+
   function openOlliTalkPendingReasonInput(event){
     if(event){
       event.preventDefault();
@@ -868,19 +906,13 @@
     const field=form?.querySelector?.('.olliTalkBetaPendingReasonField');
     if(!form || !field) return false;
 
-    const chatArea=document.getElementById('olliTalkBetaChatArea');
-    const preservedScrollTop=chatArea ? chatArea.scrollTop : null;
-
     form.hidden=false;
     event.currentTarget.setAttribute('aria-expanded','true');
-    try{field.focus({preventScroll:true})}catch(_){field.focus()}
 
-    if(chatArea && Number.isFinite(preservedScrollTop)){
-      chatArea.scrollTop=preservedScrollTop;
-      requestAnimationFrame(()=>{
-        if(document.activeElement===field) chatArea.scrollTop=preservedScrollTop;
-      });
-    }
+    // iOS가 페이지/채팅 컨테이너 자체를 자동으로 끌어올리는 것은 막고,
+    // 키보드가 실제로 열린 뒤 visualViewport 기준으로 채팅 내부만 이동시킨다.
+    try{field.focus({preventScroll:true})}catch(_){field.focus()}
+    scheduleOlliTalkPendingReasonFieldAboveKeyboard(field);
     return true;
   }
 
