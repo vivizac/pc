@@ -43,7 +43,7 @@ begin
 
   v_pay_date := (v_month + (least(v_payday,extract(day from v_month_end)::integer)-1) * interval '1 day')::date;
   v_prev_pay_date := (v_prev_month + (least(v_payday,extract(day from v_prev_month_end)::integer)-1) * interval '1 day')::date;
-  v_period_start := (v_prev_pay_date - interval '1 day')::date;
+  v_period_start := (v_prev_pay_date + interval '1 day')::date;
   v_period_end := v_pay_date;
 
   with dates as (
