@@ -872,13 +872,17 @@
     const chatArea=document.getElementById('olliTalkBetaChatArea');
     if(!chatArea?.isConnected || !field?.isConnected) return false;
 
+    const chatRect=chatArea.getBoundingClientRect();
+    const geometry=getOlliTalkComposerLayoutGeometry();
     const viewport=window.visualViewport;
-    const visibleBottom=viewport
+    const keyboardTop=viewport
       ? Number(viewport.offsetTop || 0)+Number(viewport.height || 0)
-      : window.innerHeight;
+      : chatRect.bottom;
+    const visibleBottom=geometry
+      ? Math.min(chatRect.bottom,keyboardTop,geometry.composerTop-OLLI_TALK_COMPOSER_MESSAGE_GAP)
+      : Math.min(chatRect.bottom,keyboardTop)-OLLI_TALK_COMPOSER_MESSAGE_GAP;
     const fieldRect=field.getBoundingClientRect();
-    const margin=12;
-    const overflow=fieldRect.bottom-(visibleBottom-margin);
+    const overflow=fieldRect.bottom-visibleBottom;
     if(overflow<=0.5) return true;
 
     const maxScroll=Math.max(0,chatArea.scrollHeight-chatArea.clientHeight);
