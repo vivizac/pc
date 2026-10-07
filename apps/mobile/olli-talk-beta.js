@@ -224,7 +224,10 @@
   function bindViewport(){
     if (olliTalkBetaViewportBound) return;
     olliTalkBetaViewportBound = true;
-    window.addEventListener('resize', () => syncViewport(), { passive:true });
+    window.addEventListener('resize', () => {
+      syncViewport();
+      requestAnimationFrame(()=>fitOlliTalkTextBubbles(document.getElementById('olliTalkBetaChatArea')));
+    }, { passive:true });
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
         syncViewport();
@@ -5312,6 +5315,7 @@
 
     const url = getOlliTalkUrlFromText(text);
     if (!url) {
+      bubble.classList.add('olliTalkBetaTextBubble');
       bubble.textContent = text;
       return bubble;
     }
@@ -5325,6 +5329,104 @@
     }
     bubble.appendChild(createOlliTalkLinkPreviewCard(url, options));
     return bubble;
+  }
+
+  function getOlliTalkRenderedTextLines(bubble){
+    if(!bubble?.isConnected) return [];
+    const range=document.createRange();
+    range.selectNodeContents(bubble);
+    const rects=Array.from(range.getClientRects())
+      .filter(rect=>Number(rect?.width || 0)>0.25 && Number(rect?.height || 0)>0.25)
+      .sort((a,b)=>(Number(a.top)-Number(b.top)) || (Number(a.left)-Number(b.left)));
+    range.detach?.();
+    if(!rects.length) return [];
+
+    const lines=[];
+    rects.forEach(rect=>{
+      const top=Number(rect.top || 0);
+      const left=Number(rect.left || 0);
+      const right=Number(rect.right || (left + Number(rect.width || 0)));
+      const last=lines[lines.length-1];
+      if(last && Math.abs(top-last.top)<=1.5){
+        last.left=Math.min(last.left,left);
+        last.right=Math.max(last.right,right);
+        return;
+      }
+      lines.push({top,left,right});
+    });
+    return lines.map(line=>({
+      top:line.top,
+      width:Math.max(0,line.right-line.left)
+    }));
+  }
+
+  function fitOlliTalkTextBubbleWidth(bubble){
+    if(
+      !bubble?.isConnected
+      || !bubble.classList?.contains('olliTalkBetaTextBubble')
+      || bubble.classList.contains('olliTalkBetaSystemBubble')
+      || bubble.classList.contains('olliTalkBetaTypingBubble')
+    ) return false;
+
+    // 먼저 CSS의 원래 max-width 기준으로 줄바꿈을 확정한 뒤,
+    // 그 줄 수를 유지할 수 있는 실제 가장 긴 줄 폭으로 말풍선만 줄입니다.
+    bubble.style.removeProperty('width');
+    const beforeRect=bubble.getBoundingClientRect();
+    if(!(Number(beforeRect.width)>0)) return false;
+
+    const beforeLines=getOlliTalkRenderedTextLines(bubble);
+    if(beforeLines.length<2) return false;
+
+    const style=getComputedStyle(bubble);
+    const paddingX=(parseFloat(style.paddingLeft)||0)+(parseFloat(style.paddingRight)||0);
+    const borderX=(parseFloat(style.borderLeftWidth)||0)+(parseFloat(style.borderRightWidth)||0);
+    const longestLine=Math.max(...beforeLines.map(line=>Number(line.width)||0));
+    if(!(longestLine>0)) return false;
+
+    // 2px 여유를 둬 fractional pixel/폰트 렌더링 차이로 한 줄이 더 생기는 것을 막습니다.
+    const targetOuter=Math.min(
+      Number(beforeRect.width),
+      Math.ceil(longestLine + paddingX + borderX + 2)
+    );
+    if(Number(beforeRect.width)-targetOuter<2) return false;
+
+    const borderBox=String(style.boxSizing || '').toLowerCase()==='border-box';
+    const toCssWidth=outer=>Math.max(
+      1,
+      borderBox ? outer : outer-paddingX-borderX
+    );
+
+    const baselineHeight=Number(beforeRect.height || 0);
+    const baselineLineCount=beforeLines.length;
+    for(let safety=0;safety<=6;safety+=1){
+      const outer=Math.min(Number(beforeRect.width),targetOuter+safety);
+      bubble.style.width=Math.ceil(toCssWidth(outer))+'px';
+      const nextLines=getOlliTalkRenderedTextLines(bubble);
+      const nextHeight=Number(bubble.getBoundingClientRect().height || 0);
+      if(
+        nextLines.length<=baselineLineCount
+        && nextHeight<=baselineHeight+1.5
+      ){
+        return true;
+      }
+    }
+
+    // 예상보다 줄 수가 늘면 기존 CSS 폭으로 즉시 복구합니다.
+    bubble.style.removeProperty('width');
+    return false;
+  }
+
+  function fitOlliTalkTextBubbles(root){
+    if(!root) return 0;
+    const selector='.olliTalkBetaTextBubble';
+    const bubbles=[];
+    if(root.matches?.(selector)) bubbles.push(root);
+    root.querySelectorAll?.(selector).forEach(bubble=>bubbles.push(bubble));
+    let changed=0;
+    bubbles.forEach(bubble=>{
+      if(fitOlliTalkTextBubbleWidth(bubble)) changed+=1;
+    });
+    return changed;
   }
 
   function hydrateOlliTalkDeferredFirstPaintAssets(){
@@ -6486,6 +6588,7 @@
       groupStart
     });
     stack.appendChild(message);
+    if(message.isConnected) fitOlliTalkTextBubbles(message);
     return message;
   }
 
@@ -6806,6 +6909,7 @@
     });
 
     chatArea.replaceChildren(list);
+    fitOlliTalkTextBubbles(list);
     chatArea.dataset.previewReady = '';
     if (olliTalkAssistantReplyPending) syncOlliTalkAssistantTypingIndicator({anchor:false});
     scheduleOlliTalkChatToComposer();
@@ -8349,6 +8453,11 @@
     bindOlliTalkMentionBadgeRealtime();
     refreshOlliTalkMentionBadge().catch(() => {});
     syncViewport();
+    if(document.fonts?.ready?.then){
+      document.fonts.ready.then(()=>{
+        fitOlliTalkTextBubbles(document.getElementById('olliTalkBetaChatArea'));
+      }).catch(()=>{});
+    }
   }
 
   window.setOlliTalkBackgroundColor = (color) => {
