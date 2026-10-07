@@ -1182,8 +1182,12 @@
   font-size:calc(10px * var(--olli-text-scale, 1));
   font-weight:400;
   line-height:1;
-  letter-spacing:-.04em;
   white-space:nowrap;
+}
+
+#olliTalkBetaScreen .olliTalkBetaMessage.incoming .olliTalkBetaMessageTime,
+#olliTalkBetaScreen .olliTalkBetaMessage.ai .olliTalkBetaMessageTime{
+  letter-spacing:-.04em;
 }
 
 #olliTalkBetaScreen .olliTalkBetaUnreadDivider{
