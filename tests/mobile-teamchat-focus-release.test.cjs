@@ -24,19 +24,11 @@ test('Team Chat only settles a gesture that actually started in chatArea',()=>{
   assert.match(body,/window\.addEventListener\('touchend', endOlliTalkChatGesture/);
 });
 
-test('Team Chat inactive input and mention button share one controlled activation pipeline',()=>{
-  assert.match(js,/function stopOlliTalkComposerActivationEvent\(event\)[\s\S]*event\.preventDefault\(\)[\s\S]*event\.stopPropagation\(\)/);
-  assert.match(js,/function activateOlliTalkComposerInput\(event\)[\s\S]*stopOlliTalkComposerActivationEvent\(event\)[\s\S]*focusOlliTalkComposerInput\(\)[\s\S]*resizeInput\(\)[\s\S]*updateOlliTalkBetaComposerState\(\)[\s\S]*syncViewport\(\)/);
+test('Team Chat inactive input and mention button use the shared mobile keyboard activation core',()=>{
+  assert.match(js,/function activateOlliTalkComposerInput\(event\)[\s\S]*window\.OlliMobileKeyboardActivation[\s\S]*keyboard\.activate\(event/);
+  assert.doesNotMatch(js,/function stopOlliTalkComposerActivationEvent/);
+  assert.doesNotMatch(js,/function focusOlliTalkComposerInput/);
   assert.match(js,/composerActivateButton\.addEventListener\('click',[\s\S]*activateOlliTalkComposerInput\(event\)/);
   assert.match(js,/mentionTriggerButton\.addEventListener\('click', openOlliTalkMentionPicker\)/);
   assert.match(js,/async function openOlliTalkMentionPicker\(event\)[\s\S]*activateOlliTalkComposerInput\(event\)/);
-
-  const initStart=js.indexOf('function init(){');
-  const inputStart=js.indexOf("if (input) {",initStart);
-  const inputEnd=js.indexOf("\n    if (composerActivateButton)",inputStart);
-  assert.ok(initStart>=0 && inputStart>=0 && inputEnd>inputStart);
-  const inputBody=js.slice(inputStart,inputEnd);
-  assert.doesNotMatch(inputBody,/input\.addEventListener\('pointerdown'/);
-  assert.doesNotMatch(inputBody,/input\.addEventListener\('click',[\s\S]*focusOlliTalkComposerInput/);
-  assert.match(inputBody,/input\.addEventListener\('click', renderOlliTalkMentionMenu\)/);
 });
