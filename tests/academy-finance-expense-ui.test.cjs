@@ -207,3 +207,73 @@ test('expense mutation storage stays private and old split-write RPCs are not ex
   assert.doesNotMatch(migration, /create or replace function public\.olli_academy_expense_item_save/);
 });
 
+test('expense audit events are private, ordered, and capture before and after states', () => {
+  assert.match(migration, /create table private\.olli_academy_expense_events/);
+  assert.match(migration, /event_seq bigint generated always as identity unique/);
+  assert.match(migration, /event_type in \('create','update','end','restore'\)/);
+  assert.match(migration, /before_state jsonb null/);
+  assert.match(migration, /after_state jsonb not null/);
+  assert.match(migration, /alter table private\.olli_academy_expense_events enable row level security/);
+  assert.match(migration, /revoke all on table private\.olli_academy_expense_events from public,anon,authenticated/);
+  assert.match(migration, /order by e\.event_seq desc/);
+});
+
+test('expense saves and ends write immutable audit events inside the same transaction', () => {
+  assert.match(migration, /insert into private\.olli_academy_expense_events\([\s\S]*case when v_created then 'create' else 'update' end/);
+  assert.match(migration, /insert into private\.olli_academy_expense_events\([\s\S]*'end'/);
+  assert.match(migration, /private\.olli_academy_expense_audit_state/);
+  assert.match(migration, /'event_id',v_event_id/);
+});
+
+test('expense history RPC only exposes owner-authorized audit records for the selected month', () => {
+  assert.match(migration, /create or replace function public\.olli_academy_expense_history/);
+  assert.match(migration, /private\.olli_academy_finance_owner_member\(/);
+  assert.match(migration, /where r\.event_month=v_month/);
+  assert.match(migration, /'can_restore',f\.item_rank=1 and f\.event_type<>'create'/);
+  assert.match(migration, /'current_revision'/);
+});
+
+test('expense restore only undoes the latest non-create event and records the restore itself', () => {
+  assert.match(migration, /create or replace function public\.olli_academy_expense_restore/);
+  assert.match(migration, /가장 최근 변경부터 복구해 주세요/);
+  assert.match(migration, /if v_event\.event_type='create' or v_event\.before_state is null/);
+  assert.match(migration, /v_item\.revision<>p_expected_revision/);
+  assert.match(migration, /event_type,event_month,request_id,[\s\S]*'restore'/);
+  assert.match(migration, /restore_of_event_id/);
+});
+
+test('recurring expense restore can remove a newly-created effective value and resume inheritance', () => {
+  assert.match(migration, /v_before_exact_exists/);
+  assert.match(migration, /if v_before_exact_exists then/);
+  assert.match(migration, /delete from private\.olli_academy_expense_values v[\s\S]*v\.effective_month=v_event_month/);
+  assert.match(migration, /effective_value_month/);
+  assert.match(migration, /effective_amount/);
+});
+
+test('operating expense UI exposes selected-month history and safe restore', () => {
+  assert.match(common, /expenseHistoryOpen: false/);
+  assert.match(common, /data-expense-history-toggle>변경 기록/);
+  assert.match(common, /function loadExpenseHistory\(\)/);
+  assert.match(common, /rpc\('olli_academy_expense_history'/);
+  assert.match(common, /function restoreExpenseHistory\(button\)/);
+  assert.match(common, /rpc\('olli_academy_expense_restore'/);
+  assert.match(common, /이 변경 직전 상태로 복구할까요/);
+  assert.match(common, /복구 자체도 변경 기록에 남습니다/);
+});
+
+test('expense history restore reuses revision and request-id conflict protections', () => {
+  assert.match(common, /p_expected_revision:revision/);
+  assert.match(common, /expenseMutationId\(button,requestKey,'restore'\)/);
+  assert.match(common, /handleExpenseConflict\(payload,button,'restore'\)/);
+  assert.match(common, /const reloaded=await loadOverview\(\)/);
+  assert.match(migration, /operation in \('save','end','restore'\)/);
+  assert.match(migration, /v_existing_mutation\.operation<>'restore'/);
+});
+
+test('expense history UI is scoped and remains usable on mobile', () => {
+  assert.match(css, /\.olliExpenseHistoryPanel\{display:none/);
+  assert.match(css, /\.olliExpenseHistoryPanel\.is-open\{display:block\}/);
+  assert.match(css, /\.olliExpenseRestoreButton\{/);
+  assert.match(css, /@media\(max-width:560px\)\{[\s\S]*\.olliExpenseHistoryHead\{display:block\}/);
+});
+
