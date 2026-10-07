@@ -6511,15 +6511,41 @@
     return message;
   }
 
+  function getOlliTalkMessageFlow(messageElement){
+    return messageElement?.querySelector?.(':scope > .olliTalkBetaMessageFlow') || null;
+  }
+
+  function moveOlliTalkMessageMetaToRow(messageElement,row,createdAt){
+    if(!messageElement || !row) return false;
+    const meta=messageElement.querySelector?.('.olliTalkBetaBubbleMeta');
+    if(!meta) return false;
+    const time=meta.querySelector?.('.olliTalkBetaMessageTime');
+    if(time && createdAt){
+      time.textContent=formatOlliTalkBetaMessageTime(createdAt);
+      time.style.visibility='';
+      time.removeAttribute('aria-hidden');
+    }
+    row.appendChild(meta);
+    return true;
+  }
+
   function appendOlliTalkInlineSystemResult(messageElement,item){
     if(!messageElement?.classList?.contains('olliTalkBetaMessage')) return false;
+    const flow=getOlliTalkMessageFlow(messageElement);
+    if(!flow) return false;
+
+    const row=document.createElement('div');
+    row.className='olliTalkBetaBubbleRow olliTalkBetaInlineSystemResultRow';
+
     const bubble=createOlliTalkMessageBubble(item);
     bubble.classList.add('olliTalkBetaSystemBubble','olliTalkBetaInlineSystemResult');
     if(/작업\s*요청.*취소/.test(String(item?.body || ''))){
       bubble.classList.add('olliTalkBetaCancelSystemBubble');
     }
     bubble.dataset.messageId=String(item?.id || '');
-    messageElement.appendChild(bubble);
+    row.appendChild(bubble);
+    flow.appendChild(row);
+    moveOlliTalkMessageMetaToRow(messageElement,row,item?.created_at);
     return true;
   }
 
@@ -6535,6 +6561,9 @@
     message.dataset.dateKey=getOlliTalkDateKey(item?.created_at);
     message.dataset.groupKey=getOlliTalkMessageGroupKey(item,currentMemberId);
     message.dataset.minuteKey=getOlliTalkMessageMinuteKey(item?.created_at);
+
+    const flow=document.createElement('div');
+    flow.className='olliTalkBetaMessageFlow';
 
     const bubbleRow=document.createElement('div');
     bubbleRow.className='olliTalkBetaBubbleRow';
@@ -6560,13 +6589,15 @@
     }
     bubbleMeta.appendChild(messageTime);
     bubbleRow.appendChild(bubbleMeta);
-    message.appendChild(bubbleRow);
+    flow.appendChild(bubbleRow);
 
     if(item?.action){
       const actionCard=createOlliTalkActionCard(item.action);
-      if(actionCard) message.appendChild(actionCard);
+      if(actionCard) flow.appendChild(actionCard);
     }
-    if(shouldShowOlliTalkPendingTextInput(item)) message.appendChild(createOlliTalkPendingTextInputButton());
+    if(shouldShowOlliTalkPendingTextInput(item)) flow.appendChild(createOlliTalkPendingTextInputButton());
+    message.appendChild(flow);
+
     if(item?.material_request_id && item?.material_event_id){
       message.appendChild(createOlliTalkMaterialConfirmCard(item));
     }
