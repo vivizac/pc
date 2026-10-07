@@ -74,3 +74,29 @@ test('expense UI styling is scoped to its own classes and keeps the current stac
   assert.match(css, /@media\(max-width:560px\)/);
   assert.doesNotMatch(css, /\.olliPayrollPage\{[^}]*grid-template-columns/);
 });
+
+test('finance summary shows operating expense, payroll, and combined monthly totals', () => {
+  assert.match(common, /function renderFinanceSummary\(\)/);
+  assert.match(common, /payload\.expense_total_amount/);
+  assert.match(common, /payload\.payroll_total_amount/);
+  assert.match(common, /payload\.total_amount/);
+  assert.match(common, />운영 지출</);
+  assert.match(common, />선생님 급여</);
+  assert.match(common, /총 지출/);
+});
+
+test('PC uses two finance columns while non-PC layout remains stacked', () => {
+  assert.match(common, /class="olliFinanceColumns"/);
+  assert.match(common, /class="olliFinanceExpensesColumn"/);
+  assert.match(common, /class="olliFinancePayrollColumn"/);
+  assert.match(css, /\.olliFinanceColumns\{display:block\}/);
+  assert.match(css, /body\.olliPcApp \.olliFinanceColumns\{display:grid;grid-template-columns:minmax\(0,\.47fr\) minmax\(0,\.53fr\)/);
+  assert.match(css, /body\.olliPcApp \.olliPayrollPage\{width:100%;max-width:none/);
+});
+
+test('PC expense column adapts row actions without changing the shared mobile row model', () => {
+  assert.match(css, /body\.olliPcApp \.olliFinanceExpensesColumn \.olliExpenseRow\{grid-template-columns:minmax\(0,1fr\) 145px/);
+  assert.match(css, /body\.olliPcApp \.olliFinanceExpensesColumn \.olliExpenseRowActions\{grid-column:1 \/ -1/);
+  assert.doesNotMatch(css, /body:not\(\.olliPcApp\) \.olliFinanceColumns\{display:grid/);
+});
+
