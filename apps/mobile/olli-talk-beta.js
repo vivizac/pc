@@ -6194,6 +6194,7 @@
     const card=document.createElement('div');
     const status=String(action?.status || 'pending').trim() || 'pending';
     card.className='olliTalkBetaActionCard';
+    if(String(action?.action_type || '').trim()==='choose_reason') card.classList.add('reasonChoice');
     card.dataset.olliTalkActionId=String(action?.id || '').trim();
     card.dataset.actionStatus=status;
 
@@ -6218,7 +6219,6 @@
     }
 
     if(String(action?.action_type || '').trim()==='choose_reason'){
-      card.classList.add('reasonChoice');
       card.appendChild(createOlliTalkPendingTextInputButton(action));
       return card;
     }
