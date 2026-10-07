@@ -172,33 +172,35 @@
     const totalAmount = Math.max(0,Number(teacher?.total_amount || 0));
     const substituteHours = Math.max(0,Number(teacher?.substitute_hours || 0));
     const substituteSlotCount = Math.max(0,Number(teacher?.substitute_slot_count || 0));
+    const finalized = teacher?.is_finalized===true;
+    const disabledAttr = finalized ? ' disabled' : '';
 
     const attrs = WEEKDAYS.map(day => ' data-workdays'+day.key+'="'+workdaysFor(teacher,day.key)+'"').join('');
     const dayInputs = WEEKDAYS.map(day => {
       const count = workdaysFor(teacher,day.key);
       return '<label class="olliPayrollDayField">'
         + '<span class="olliPayrollDayLabel">'+day.label+' <small>'+count+'회</small></span>'
-        + '<input inputmode="decimal" min="0" max="24" step="0.5" type="number" value="'+weekdayHours[day.key]+'" data-payroll-day-hours="'+day.key+'">'
+        + '<input inputmode="decimal" min="0" max="24" step="0.5" type="number" value="'+weekdayHours[day.key]+'" data-payroll-day-hours="'+day.key+'"'+disabledAttr+'>'
         + '<span class="olliPayrollUnit">시간</span>'
         + '</label>';
     }).join('');
 
-    return '<section class="olliPayrollTeacherCard" data-payroll-teacher-card data-teacher-id="'+esc(teacherId)+'"'+attrs+'>'
-      + '<div class="olliPayrollTeacherHead"><div><div class="olliPayrollTeacherName">'+esc(name)+'</div>'
+    return '<section class="olliPayrollTeacherCard'+(finalized?' is-finalized':'')+'" data-payroll-teacher-card data-payroll-finalized="'+(finalized?'1':'0')+'" data-teacher-id="'+esc(teacherId)+'"'+attrs+'>'
+      + '<div class="olliPayrollTeacherHead"><div><div class="olliPayrollTeacherName">'+esc(name)+(finalized?'<span class="olliPayrollFinalizedBadge">급여 확정</span>':'')+'</div>'
       + '<div class="olliPayrollWorkdays"><strong>'+esc(payrollPeriodLabel(teacher))+'</strong> · 근무 <strong>'+workdayCount+'일</strong>'
       + (substituteHours>0?' · 대체 <strong>'+hours(substituteHours).toLocaleString('ko-KR')+'시간</strong> 포함':'')
-      + ' · 시간표 자동 계산</div></div>'
+      + (finalized?' · 확정본':' · 시간표 자동 계산')+'</div></div>'
       + '<span class="olliPayrollSaveState" data-payroll-save-state></span></div>'
       + '<div class="olliPayrollFieldGrid">'
-      + '<label class="olliPayrollField"><span>월급</span><div class="olliPayrollInputWrap"><input inputmode="numeric" min="0" step="10000" type="number" value="'+monthlySalary+'" data-payroll-monthly-salary><span>원</span></div></label>'
-      + '<label class="olliPayrollField"><span>시급</span><div class="olliPayrollInputWrap"><input inputmode="numeric" min="0" step="100" type="number" value="'+wage+'" data-payroll-hourly-wage><span>원</span></div></label>'
-      + '<label class="olliPayrollField"><span>급여일</span><select data-payroll-payday>'+paydayOptions(payday)+'</select></label>'
+      + '<label class="olliPayrollField"><span>월급</span><div class="olliPayrollInputWrap"><input inputmode="numeric" min="0" step="10000" type="number" value="'+monthlySalary+'" data-payroll-monthly-salary'+disabledAttr+'><span>원</span></div></label>'
+      + '<label class="olliPayrollField"><span>시급</span><div class="olliPayrollInputWrap"><input inputmode="numeric" min="0" step="100" type="number" value="'+wage+'" data-payroll-hourly-wage'+disabledAttr+'><span>원</span></div></label>'
+      + '<label class="olliPayrollField"><span>급여일</span><select data-payroll-payday'+disabledAttr+'>'+paydayOptions(payday)+'</select></label>'
       + '</div>'
       + '<div class="olliPayrollDayTitle">요일별 근무시간</div>'
       + '<div class="olliPayrollDayGrid">'+dayInputs+'</div>'
       + '<div class="olliPayrollSummary"><div><span>총 근무시간</span><strong data-payroll-total-hours>'+hours(totalHours).toLocaleString('ko-KR')+'시간</strong></div>'
-      + '<div><span>예상 급여</span><strong data-payroll-total-amount>'+money(totalAmount)+'</strong></div></div>'
-      + '<button class="olliPayrollSaveButton" type="button" data-payroll-save>저장</button>'
+      + '<div><span>'+(finalized?'확정 급여':'예상 급여')+'</span><strong data-payroll-total-amount>'+money(totalAmount)+'</strong></div></div>'
+      + '<button class="olliPayrollSaveButton" type="button" data-payroll-save'+disabledAttr+'>'+(finalized?'확정됨':'저장')+'</button>'
       + '</section>';
   }
 
@@ -589,6 +591,7 @@
 
   async function saveTeacher(card){
     if(!card || !isOwner()) return false;
+    if(card.dataset.payrollFinalized==='1') return false;
     const teacherId=String(card.dataset.teacherId || '').trim();
     if(!teacherId) return false;
     const button=card.querySelector('[data-payroll-save]');
