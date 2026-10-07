@@ -6,7 +6,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
-const activeWorkdayMigration = read('supabase/migrations/20261007050000_teacher_payroll_active_workdays.sql');
+const activeWorkdayMigration = read('supabase/migrations/20261007052135_teacher_payroll_active_workdays.sql');
 const migration = [
   read('supabase/migrations/20261006150241_teacher_payroll_calculator.sql'),
   read('supabase/migrations/20261006153614_harden_owner_roles_and_payroll_cycle.sql'),
