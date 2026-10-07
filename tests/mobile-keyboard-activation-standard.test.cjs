@@ -56,7 +56,7 @@ test('shared keyboard activation script loads before every consumer',()=>{
   assert.ok(coreIndex>=0);
   for(const token of [
     'kinder-feedback.js?v=20261008-keyboard-standard-1',
-    'olli-talk-beta.js?v=20261008-keyboard-standard-1',
+    'olli-talk-beta.js?v=20261008-mention-reactivation-1',
     'olli-record-search-controls.js?v=20261008-keyboard-standard-1',
     'kcf-normal-sheet.js?v=20261008-keyboard-standard-1',
     'kcf-teacher-sheet.js?v=20261008-keyboard-standard-1'
