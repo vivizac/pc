@@ -54,7 +54,7 @@ test('operating expense UI loads through finance overview without replacing payr
 test('monthly costs remain visibly missing until explicitly entered', () => {
   assert.match(common, /const amount=entered \? Math\.max\(0,Math\.round\(Number\(item\?\.amount \|\| 0\)\)\) : '';/);
   assert.match(common, /const missing=recurrence==='monthly' && !entered/);
-  assert.match(common, /placeholder="\+?\(missing\?'미입력':'금액'\)/);
+  assert.ok(common.includes("placeholder=\"'+(missing?'미입력':'금액')+'\""));
   assert.match(common, /이번 달 아직 입력하지 않은 월별 지출/);
 });
 
