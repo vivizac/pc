@@ -15,7 +15,9 @@
     payload: null,
     loading: false,
     syncingDue: false,
-    financeTab: 'expenses'
+    financeTab: 'expenses',
+    expenseHistoryOpen: false,
+    expenseHistoryLoading: false
   };
 
   function currentMonthValue(){
@@ -287,7 +289,8 @@
     return '<section class="olliExpenseSection" data-expense-section>'
       + '<div class="olliExpenseSectionHead"><div><div class="olliExpenseSectionTitle">운영 지출</div>'
       + '<div class="olliExpenseSectionText">월세와 광고처럼 유지되는 비용은 다음 달에도 이어지고, 관리비와 재료비는 매달 새로 입력합니다.</div></div>'
-      + '<div class="olliExpenseTotal"><span>운영 지출</span><strong>'+money(expenses.total_amount || 0)+'</strong></div></div>'
+      + '<div class="olliExpenseHeadSide"><div class="olliExpenseTotal"><span>운영 지출</span><strong>'+money(expenses.total_amount || 0)+'</strong></div>'
+      + '<button type="button" class="olliExpenseHistoryToggle'+(state.expenseHistoryOpen?' is-active':'')+'" data-expense-history-toggle>변경 기록</button></div></div>'
       + (missing?'<div class="olliExpenseMissingNotice">이번 달 아직 입력하지 않은 월별 지출이 <strong>'+missing+'개</strong> 있습니다.</div>':'')
       + '<div class="olliExpenseGroup"><div class="olliExpenseGroupTitle">기본 지출</div>'
       + (basic.length?basic.map(renderExpenseItem).join(''):'<div class="olliExpenseEmpty">기본 지출 항목을 불러오지 못했습니다.</div>')
@@ -299,6 +302,9 @@
       + '<button type="button" data-expense-add="program">+ 프로그램 추가</button>'
       + '<button type="button" data-expense-add="other">+ 기타 지출</button>'
       + '</div><div data-expense-add-form></div></div>'
+      + '<div class="olliExpenseHistoryPanel'+(state.expenseHistoryOpen?' is-open':'')+'" data-expense-history-panel>'
+      + (state.expenseHistoryOpen?'<div class="olliExpenseHistoryLoading">변경 기록을 불러오는 중...</div>':'')
+      + '</div>'
       + '</section>';
   }
 
@@ -344,7 +350,9 @@
 
   function expenseMutationId(node,key,kind){
     if(!node) return newExpenseRequestId();
-    const prefix=kind==='end' ? '__olliExpenseEnd' : '__olliExpenseSave';
+    const prefix=kind==='end'
+      ? '__olliExpenseEnd'
+      : (kind==='restore' ? '__olliExpenseRestore' : '__olliExpenseSave');
     if(node[prefix+'Key']!==key || !node[prefix+'Id']){
       node[prefix+'Key']=key;
       node[prefix+'Id']=newExpenseRequestId();
@@ -354,7 +362,9 @@
 
   function clearExpenseMutationId(node,kind){
     if(!node) return;
-    const prefix=kind==='end' ? '__olliExpenseEnd' : '__olliExpenseSave';
+    const prefix=kind==='end'
+      ? '__olliExpenseEnd'
+      : (kind==='restore' ? '__olliExpenseRestore' : '__olliExpenseSave');
     delete node[prefix+'Key'];
     delete node[prefix+'Id'];
   }
@@ -505,6 +515,155 @@
     }
   }
 
+  function expenseHistoryTime(value){
+    const raw=String(value || '').trim();
+    if(!raw) return '';
+    const date=new Date(raw);
+    if(Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString('ko-KR',{
+      month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'
+    });
+  }
+
+  function expenseHistoryAmount(stateValue){
+    if(!stateValue || stateValue.effective_amount==null) return null;
+    const amount=Number(stateValue.effective_amount);
+    return Number.isFinite(amount) ? money(amount) : null;
+  }
+
+  function expenseHistorySummary(item){
+    const type=String(item?.event_type || '');
+    const before=item?.before_state && typeof item.before_state==='object' ? item.before_state : null;
+    const after=item?.after_state && typeof item.after_state==='object' ? item.after_state : null;
+    const beforeName=String(before?.name || '');
+    const afterName=String(after?.name || beforeName || '지출 항목');
+    const beforeAmount=expenseHistoryAmount(before);
+    const afterAmount=expenseHistoryAmount(after);
+
+    if(type==='create') return afterName+' 추가'+(afterAmount?' · '+afterAmount:'');
+    if(type==='end') return afterName+' 종료';
+    if(type==='restore') return afterName+' 이전 상태로 복구';
+
+    const parts=[];
+    if(beforeName && afterName && beforeName!==afterName){
+      parts.push(beforeName+' → '+afterName);
+    }else{
+      parts.push(afterName);
+    }
+    if(beforeAmount!==afterAmount){
+      parts.push((beforeAmount || '미입력')+' → '+(afterAmount || '미입력'));
+    }else if(afterAmount){
+      parts.push(afterAmount);
+    }
+    return parts.join(' · ');
+  }
+
+  function renderExpenseHistoryEvents(events){
+    const list=Array.isArray(events) ? events : [];
+    if(!list.length){
+      return '<div class="olliExpenseHistoryEmpty">이 달에 저장된 변경 기록이 없습니다.</div>';
+    }
+    return list.map(item=>{
+      const canRestore=item?.can_restore===true;
+      const eventId=String(item?.event_id || '');
+      const revision=Math.max(0,Number(item?.current_revision || 0));
+      const meta=[String(item?.actor_name || '원장'),expenseHistoryTime(item?.created_at)].filter(Boolean).join(' · ');
+      return '<div class="olliExpenseHistoryRow">'
+        + '<div class="olliExpenseHistoryRowMain"><div class="olliExpenseHistorySummary">'+esc(expenseHistorySummary(item))+'</div>'
+        + '<div class="olliExpenseHistoryMeta">'+esc(meta)+'</div></div>'
+        + (canRestore
+          ? '<button type="button" class="olliExpenseRestoreButton" data-expense-restore data-event-id="'+esc(eventId)+'" data-revision="'+esc(revision)+'">이전 상태로 복구</button>'
+          : '')
+        + '</div>';
+    }).join('');
+  }
+
+  async function loadExpenseHistory(){
+    if(!state.expenseHistoryOpen || state.expenseHistoryLoading) return false;
+    const panel=detailElements().body?.querySelector('[data-expense-history-panel]');
+    if(!panel) return false;
+    const month=state.month;
+    state.expenseHistoryLoading=true;
+    panel.classList.add('is-open');
+    panel.innerHTML='<div class="olliExpenseHistoryLoading">변경 기록을 불러오는 중...</div>';
+    try{
+      const payload=await rpc('olli_academy_expense_history',{
+        p_session_token:sessionToken(),
+        p_academy_id:academyId(),
+        p_month:monthDateValue(month),
+        p_item_id:null,
+        p_limit:50
+      });
+      if(!payload?.ok) throw new Error(payload?.message || '변경 기록을 불러오지 못했습니다.');
+      if(!state.expenseHistoryOpen || state.month!==month) return false;
+      const currentPanel=detailElements().body?.querySelector('[data-expense-history-panel]');
+      if(!currentPanel) return false;
+      currentPanel.innerHTML='<div class="olliExpenseHistoryHead"><strong>'+esc(month.replace('-', '.'))+' 변경 기록</strong><span>가장 최근 변경부터 안전하게 복구할 수 있습니다.</span></div>'
+        + renderExpenseHistoryEvents(payload.events);
+      currentPanel.querySelectorAll('[data-expense-restore]').forEach(button=>{
+        button.addEventListener('click',()=>restoreExpenseHistory(button));
+      });
+      return true;
+    }catch(error){
+      const currentPanel=detailElements().body?.querySelector('[data-expense-history-panel]');
+      if(currentPanel && state.expenseHistoryOpen && state.month===month){
+        currentPanel.innerHTML='<div class="olliExpenseHistoryEmpty">변경 기록을 불러오지 못했습니다.<br><small>'+esc(error?.message || error)+'</small></div>';
+      }
+      return false;
+    }finally{
+      state.expenseHistoryLoading=false;
+    }
+  }
+
+  function toggleExpenseHistory(){
+    state.expenseHistoryOpen=!state.expenseHistoryOpen;
+    const body=detailElements().body;
+    const panel=body?.querySelector('[data-expense-history-panel]');
+    const button=body?.querySelector('[data-expense-history-toggle]');
+    button?.classList.toggle('is-active',state.expenseHistoryOpen);
+    if(!panel) return;
+    panel.classList.toggle('is-open',state.expenseHistoryOpen);
+    if(!state.expenseHistoryOpen){
+      panel.innerHTML='';
+      return;
+    }
+    loadExpenseHistory();
+  }
+
+  async function restoreExpenseHistory(button){
+    if(!button || !isOwner()) return false;
+    const eventId=String(button.dataset.eventId || '').trim();
+    const revision=Math.max(0,Number(button.dataset.revision || 0));
+    if(!eventId) return false;
+    if(!global.confirm('이 변경 직전 상태로 복구할까요?\n복구 자체도 변경 기록에 남습니다.')) return false;
+
+    const requestKey=['restore',eventId,revision].join('|');
+    const requestId=expenseMutationId(button,requestKey,'restore');
+    button.disabled=true;
+    button.textContent='복구 중';
+    try{
+      const payload=await rpc('olli_academy_expense_restore',{
+        p_session_token:sessionToken(),
+        p_academy_id:academyId(),
+        p_request_id:requestId,
+        p_expected_revision:revision,
+        p_event_id:eventId
+      });
+      if(await handleExpenseConflict(payload,button,'restore')) return false;
+      if(!payload?.ok) throw new Error(payload?.message || '지출 변경을 복구하지 못했습니다.');
+      const reloaded=await loadOverview();
+      if(!reloaded) return false;
+      clearExpenseMutationId(button,'restore');
+      return true;
+    }catch(error){
+      alert('지출 복구 실패\n'+(error?.message || error));
+      return false;
+    }finally{
+      button.disabled=false;
+      button.textContent='이전 상태로 복구';
+    }
+  }
+
   function bindExpenseEvents(body){
     if(!body) return;
     body.querySelectorAll('[data-expense-row]').forEach(row=>{
@@ -514,6 +673,7 @@
     body.querySelectorAll('[data-expense-add]').forEach(button=>{
       button.addEventListener('click',()=>showExpenseAddForm(String(button.dataset.expenseAdd || 'other')));
     });
+    body.querySelector('[data-expense-history-toggle]')?.addEventListener('click',toggleExpenseHistory);
   }
 
   function renderFinanceSummary(){
@@ -610,6 +770,7 @@
 
     bindFinanceTabs(els.body);
     bindExpenseEvents(els.body);
+    if(state.expenseHistoryOpen) loadExpenseHistory();
 
     els.body.querySelectorAll('[data-payroll-teacher-card]').forEach(card => {
       card.querySelectorAll('[data-payroll-monthly-salary],[data-payroll-hourly-wage],[data-payroll-day-hours]').forEach(input => {
