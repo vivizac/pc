@@ -41,9 +41,13 @@ test('QuickNote inline input activates from a button click and sheets use the sh
   assert.match(quick,/inputActivateButton\.addEventListener\('click',[\s\S]*openKinderChatFeedbackComposerSheet\(event\)/);
   assert.doesNotMatch(quick,/composerBottom\.addEventListener\('pointerdown'/);
   for(const source of [normal,teacher]){
-    assert.match(source,/function open\(event\)[\s\S]*OlliMobileKeyboardActivation[\s\S]*keyboard\.activate\(event/);
-    assert.doesNotMatch(source,/setTimeout\(focusEditor, 40\)/);
-    assert.doesNotMatch(source,/requestAnimationFrame\(function\(\)\{[\s\S]*focusEditor\(\)/);
+    const openStart=source.indexOf('function open(event)');
+    const openEnd=source.indexOf('\n  function close(options)',openStart);
+    assert.ok(openStart>=0 && openEnd>openStart);
+    const openBody=source.slice(openStart,openEnd);
+    assert.match(openBody,/OlliMobileKeyboardActivation[\s\S]*keyboard\.activate\(event/);
+    assert.doesNotMatch(openBody,/setTimeout\(focusEditor, 40\)/);
+    assert.doesNotMatch(openBody,/requestAnimationFrame\([\s\S]*focusEditor\(\)/);
   }
 });
 
