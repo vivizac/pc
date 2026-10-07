@@ -482,11 +482,11 @@ function getKinderChatFeedbackComposerSheetForMode() {
     ? window.KcfTeacherSheet
     : window.KcfNormalSheet;
 }
-function openKinderChatFeedbackComposerSheet() {
+function openKinderChatFeedbackComposerSheet(event) {
   const sheet = getKinderChatFeedbackComposerSheetForMode();
   if (!sheet || typeof sheet.open !== 'function') return false;
   if (typeof sheet.isOpen === 'function' && sheet.isOpen()) return true;
-  return sheet.open() !== false;
+  return sheet.open(event) !== false;
 }
 function focusKinderChatFeedbackInput() {
   openKinderChatFeedbackComposerSheet();
@@ -2307,7 +2307,7 @@ function submitKinderChatFeedbackGrowthSheet() {
 }
 document.addEventListener('DOMContentLoaded', () => {
   const input = document.getElementById('kcfInput');
-  const composerBottom = document.querySelector('#kinderChatFeedbackScreen .kcfComposerBottom');
+  const inputActivateButton = document.getElementById('kcfInputActivateBtn');
   if (input) {
     loadKinderChatFeedbackDraft();
     input.addEventListener('input', () => {
@@ -2316,14 +2316,9 @@ document.addEventListener('DOMContentLoaded', () => {
       setKinderChatFeedbackWarning('');
     });
   }
-  if (composerBottom) {
-    composerBottom.addEventListener('pointerdown', event => {
-      const interactive = event.target && event.target.closest
-        ? event.target.closest('button, input, .kcfAutoStudentChip, .memoStudentSelectPopup')
-        : null;
-      if (interactive) return;
-      event.preventDefault();
-      openKinderChatFeedbackComposerSheet();
+  if (inputActivateButton) {
+    inputActivateButton.addEventListener('click', event => {
+      openKinderChatFeedbackComposerSheet(event);
     });
   }
   document.querySelectorAll('.kcfKeywordBtn').forEach(btn => {
