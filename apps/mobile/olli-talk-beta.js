@@ -8,6 +8,8 @@
   let olliTalkBetaViewportBound = false;
   let olliTalkChatMeasureRaf = 0;
   let olliTalkKeyboardFollowLatest = false;
+  let olliTalkChatGestureActive = false;
+  let olliTalkChatGestureSettleTimer = null;
   let olliTalkArchiveTab = 'materials';
   let olliTalkArchivePayload = null;
   let olliTalkArchiveLoadSequence = 0;
@@ -189,7 +191,8 @@
     olliTalkChatMeasureRaf = requestAnimationFrame(syncOlliTalkChatToComposer);
   }
 
-  function syncOlliTalkComposerViewport(){
+  function syncOlliTalkComposerViewport(options = {}){
+    if (olliTalkChatGestureActive && options.force !== true) return;
     const layer = document.getElementById('olliTalkBetaComposerLayer');
     if (!layer) return;
     const viewport = window.visualViewport;
@@ -225,11 +228,21 @@
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
         syncViewport();
-        if (olliTalkKeyboardFollowLatest && isOlliTalkComposerActive()) {
+        if (
+          !olliTalkChatGestureActive
+          && olliTalkKeyboardFollowLatest
+          && isOlliTalkComposerActive()
+        ) {
+          // 키보드가 실제로 viewport를 줄인 뒤 이 경로만 채팅 위치를 맞춥니다.
+          // focus와 visualViewport.scroll은 chat scrollTop을 소유하지 않습니다.
           scheduleOlliTalkLatestMessageAnchor();
         }
       }, { passive:true });
-      window.visualViewport.addEventListener('scroll', () => syncViewport(), { passive:true });
+      window.visualViewport.addEventListener('scroll', () => {
+        // iOS visualViewport pan은 composer 좌표만 갱신합니다.
+        // 채팅 reserve/scrollTop까지 다시 보정하지 않습니다.
+        syncOlliTalkComposerViewport();
+      }, { passive:true });
     }
   }
 
@@ -7812,6 +7825,9 @@
 
     const screen = getScreen();
     if (!screen) return;
+    if (olliTalkChatGestureSettleTimer) clearTimeout(olliTalkChatGestureSettleTimer);
+    olliTalkChatGestureSettleTimer = null;
+    olliTalkChatGestureActive = false;
     screen.style.removeProperty('--olli-talk-chat-reserve');
     syncOlliTalkContrastTheme();
     closeOlliTalkSearch({ blur:false });
@@ -7896,6 +7912,9 @@
     }
 
     const talkScreen = getScreen();
+    if (olliTalkChatGestureSettleTimer) clearTimeout(olliTalkChatGestureSettleTimer);
+    olliTalkChatGestureSettleTimer = null;
+    olliTalkChatGestureActive = false;
     talkScreen?.style.removeProperty('--olli-talk-chat-reserve');
 
     const input = document.getElementById('olliTalkBetaInput');
@@ -8208,7 +8227,31 @@
 
     const chatArea = document.getElementById('olliTalkBetaChatArea');
     if (chatArea) {
+      const settleOlliTalkChatGesture = (delay = 180) => {
+        if (olliTalkChatGestureSettleTimer) clearTimeout(olliTalkChatGestureSettleTimer);
+        olliTalkChatGestureSettleTimer = setTimeout(() => {
+          olliTalkChatGestureSettleTimer = null;
+          olliTalkChatGestureActive = false;
+          syncOlliTalkComposerViewport({ force:true });
+          syncOlliTalkChatToComposer();
+        }, Math.max(0, Number(delay) || 0));
+      };
+      const beginOlliTalkChatGesture = () => {
+        if (olliTalkChatGestureSettleTimer) clearTimeout(olliTalkChatGestureSettleTimer);
+        olliTalkChatGestureSettleTimer = null;
+        olliTalkChatGestureActive = true;
+      };
+      const endOlliTalkChatGesture = () => settleOlliTalkChatGesture(180);
+
+      chatArea.addEventListener('pointerdown', beginOlliTalkChatGesture, { passive:true });
+      chatArea.addEventListener('touchstart', beginOlliTalkChatGesture, { passive:true });
+      window.addEventListener('pointerup', endOlliTalkChatGesture, { passive:true });
+      window.addEventListener('pointercancel', endOlliTalkChatGesture, { passive:true });
+      window.addEventListener('touchend', endOlliTalkChatGesture, { passive:true });
+      window.addEventListener('touchcancel', endOlliTalkChatGesture, { passive:true });
+
       chatArea.addEventListener('scroll',()=>{
+        if(olliTalkChatGestureActive) settleOlliTalkChatGesture(180);
         if(chatArea.scrollTop>96||olliTalkHistoryLoading||olliTalkHistoryExhausted)return;
         if(olliTalkHistoryScrollRaf)return;
         olliTalkHistoryScrollRaf=requestAnimationFrame(()=>{
@@ -8219,20 +8262,55 @@
     }
 
     if (input) {
+      let composerTouchStartX = null;
+      let composerTouchStartY = null;
+      const composer = input.closest('.olliTalkBetaComposer');
+
       input.addEventListener('pointerdown', event => {
         if (document.activeElement === input) return;
         event.preventDefault();
         try { input.focus({ preventScroll:true }); } catch (_) { input.focus(); }
       });
+
+      if (composer) {
+        composer.addEventListener('touchstart', event => {
+          const touch = event.touches?.[0];
+          composerTouchStartX = touch ? Number(touch.clientX) : null;
+          composerTouchStartY = touch ? Number(touch.clientY) : null;
+        }, { passive:true });
+
+        composer.addEventListener('touchmove', event => {
+          if (!getScreen()?.classList.contains('olliTalkKeyboardOpen')) return;
+          const touch = event.touches?.[0];
+          if (!touch || !Number.isFinite(composerTouchStartX) || !Number.isFinite(composerTouchStartY)) return;
+          const deltaX = Math.abs(Number(touch.clientX) - composerTouchStartX);
+          const deltaY = Math.abs(Number(touch.clientY) - composerTouchStartY);
+          if (deltaY < 6 || deltaY <= deltaX) return;
+
+          // 입력창/버튼 영역에서 시작한 세로 드래그가 iOS page/WKScrollView pan으로
+          // 번지지 않게 막습니다. chatArea 자체의 스크롤은 건드리지 않습니다.
+          event.preventDefault();
+        }, { passive:false });
+
+        const clearComposerTouch = () => {
+          composerTouchStartX = null;
+          composerTouchStartY = null;
+        };
+        composer.addEventListener('touchend', clearComposerTouch, { passive:true });
+        composer.addEventListener('touchcancel', clearComposerTouch, { passive:true });
+      }
+
       input.addEventListener('input', () => {
         resizeInput();
         updateOlliTalkBetaComposerState();
         renderOlliTalkMentionMenu();
       });
       input.addEventListener('focus', () => {
-        olliTalkKeyboardFollowLatest = true;
+        const chatArea = document.getElementById('olliTalkBetaChatArea');
+        olliTalkKeyboardFollowLatest = !chatArea || isOlliTalkChatNearBottom(chatArea,120);
+        // focus 자체는 채팅 scrollTop을 움직이지 않습니다.
+        // 실제 키보드 높이 변화는 visualViewport.resize 한 경로에서만 따라갑니다.
         syncViewport();
-        scheduleOlliTalkLatestMessageAnchor();
       }, true);
       input.addEventListener('blur', () => {
         olliTalkKeyboardFollowLatest = false;
