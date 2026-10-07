@@ -64,7 +64,7 @@ test('Team Chat keeps textarea free of activation hacks and delegates first touc
   assert.match(html,/id="olliTalkComposerActivateBtn"/);
   assert.match(css,/\.olliTalkComposerActivateBtn\{[\s\S]*position:absolute;[\s\S]*inset:0;[\s\S]*z-index:4/);
   assert.match(css,/\.olliTalkKeyboardOpen \.olliTalkComposerActivateBtn\{[\s\S]*visibility:hidden;[\s\S]*pointer-events:none/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261008-single-raf-motion-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261008-single-raf-motion-2/);
   assert.match(html,/olli-talk-beta\.css\?v=20261008-flip-motion-1/);
 });
 
@@ -99,7 +99,7 @@ test('Team Chat gesture state is cleared when entering or leaving the page',()=>
 
 
 test('Team Chat coalesces keyboard events into one continuous RAF motion controller',()=>{
-  assert.match(js,/const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 56/);
+  assert.match(js,/const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 12/);
   assert.match(js,/function scheduleOlliTalkKeyboardViewportUpdate\(options = \{\}\)[\s\S]*requestAnimationFrame\(flushOlliTalkKeyboardViewportUpdate\)/);
   assert.match(js,/function stepOlliTalkKeyboardVisualController\(timestamp\)[\s\S]*Math\.exp\(-dt \/ OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS\)[\s\S]*requestAnimationFrame\(stepOlliTalkKeyboardVisualController\)/);
   assert.match(js,/function preserveOlliTalkKeyboardVisualFrame\(frame[\s\S]*olliTalkComposerVisualOffsetY \+= deltaY[\s\S]*olliTalkMessagesVisualOffsetY \+= deltaY/);
