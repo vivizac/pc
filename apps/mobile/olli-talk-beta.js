@@ -233,10 +233,16 @@
           && olliTalkKeyboardFollowLatest
           && isOlliTalkComposerActive()
         ) {
+          // 키보드가 실제로 viewport를 줄인 뒤 이 경로만 채팅 위치를 맞춥니다.
+          // focus와 visualViewport.scroll은 chat scrollTop을 소유하지 않습니다.
           scheduleOlliTalkLatestMessageAnchor();
         }
       }, { passive:true });
-      window.visualViewport.addEventListener('scroll', () => syncViewport(), { passive:true });
+      window.visualViewport.addEventListener('scroll', () => {
+        // iOS visualViewport pan은 composer 좌표만 갱신합니다.
+        // 채팅 reserve/scrollTop까지 다시 보정하지 않습니다.
+        syncOlliTalkComposerViewport();
+      }, { passive:true });
     }
   }
 
@@ -8300,9 +8306,11 @@
         renderOlliTalkMentionMenu();
       });
       input.addEventListener('focus', () => {
-        olliTalkKeyboardFollowLatest = true;
+        const chatArea = document.getElementById('olliTalkBetaChatArea');
+        olliTalkKeyboardFollowLatest = !chatArea || isOlliTalkChatNearBottom(chatArea,120);
+        // focus 자체는 채팅 scrollTop을 움직이지 않습니다.
+        // 실제 키보드 높이 변화는 visualViewport.resize 한 경로에서만 따라갑니다.
         syncViewport();
-        scheduleOlliTalkLatestMessageAnchor();
       }, true);
       input.addEventListener('blur', () => {
         olliTalkKeyboardFollowLatest = false;
