@@ -98,6 +98,8 @@
 .olliFinanceSummaryHero{display:flex;flex-direction:column;justify-content:center;min-height:94px;padding:17px 18px}
 .olliFinanceSummaryHero span{color:#7d7d7d;font-size:11.5px;font-weight:700}
 .olliFinanceSummaryHero strong{display:block;margin-top:7px;color:#111;font-size:26px;line-height:1.15;letter-spacing:-.04em}
+.olliFinanceSummaryStatus{display:inline-flex;align-items:center;align-self:flex-start;min-height:24px;margin-top:10px;padding:0 9px;border-radius:999px;background:#f0f5f3;color:#647b72;font-size:10.5px;font-weight:740}
+.olliFinanceSummary.is-incomplete .olliFinanceSummaryStatus{background:#fff5e5;color:#8a6422}
 .olliFinanceSummaryBreakdown{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .olliFinanceSummaryBreakdown>div{display:flex;flex-direction:column;justify-content:center;min-width:0;padding:15px}
 .olliFinanceSummaryBreakdown span{color:#8a8a8a;font-size:11px;font-weight:700}
@@ -166,4 +168,3 @@ body.olliPcApp .olliFinancePayrollColumn{display:block}
   .olliExpenseHistoryRow{align-items:flex-start}
   .olliExpenseRestoreButton{max-width:112px}
 }
-
