@@ -87,6 +87,7 @@ create index olli_academy_expense_mutations_created_idx
 
 create table private.olli_academy_expense_events (
   id uuid primary key default gen_random_uuid(),
+  event_seq bigint generated always as identity unique,
   academy_id uuid not null references public.academies(id) on delete cascade,
   expense_item_id uuid not null,
   event_type text not null,
@@ -112,10 +113,10 @@ create table private.olli_academy_expense_events (
 );
 
 create index olli_academy_expense_events_month_idx
-  on private.olli_academy_expense_events(academy_id,event_month,created_at desc);
+  on private.olli_academy_expense_events(academy_id,event_month,event_seq desc);
 
 create index olli_academy_expense_events_item_idx
-  on private.olli_academy_expense_events(academy_id,expense_item_id,created_at desc);
+  on private.olli_academy_expense_events(academy_id,expense_item_id,event_seq desc);
 
 alter table private.olli_academy_expense_items enable row level security;
 alter table private.olli_academy_expense_values enable row level security;
@@ -882,7 +883,7 @@ begin
       e.*,
       row_number() over (
         partition by e.expense_item_id
-        order by e.created_at desc,e.id desc
+        order by e.event_seq desc
       ) as item_rank
     from private.olli_academy_expense_events e
     where e.academy_id=p_academy_id
@@ -897,13 +898,14 @@ begin
      and m.academy_id=r.academy_id
     where r.event_month=v_month
       and (p_item_id is null or r.expense_item_id=p_item_id)
-    order by r.created_at desc,r.id desc
+    order by r.event_seq desc
     limit v_limit
   )
   select coalesce(
     jsonb_agg(
       jsonb_build_object(
         'event_id',f.id,
+        'event_seq',f.event_seq,
         'item_id',f.expense_item_id,
         'event_type',f.event_type,
         'event_month',to_char(f.event_month,'YYYY-MM'),
@@ -923,7 +925,7 @@ begin
           0
         )
       )
-      order by f.created_at desc,f.id desc
+      order by f.event_seq desc
     ),
     '[]'::jsonb
   )
@@ -1028,7 +1030,7 @@ begin
   from private.olli_academy_expense_events e
   where e.academy_id=p_academy_id
     and e.expense_item_id=v_event.expense_item_id
-  order by e.created_at desc,e.id desc
+  order by e.event_seq desc
   limit 1;
 
   if v_latest_event_id is distinct from v_event.id then
