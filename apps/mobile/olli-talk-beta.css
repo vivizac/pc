@@ -926,6 +926,10 @@
   align-items:flex-end;
 }
 
+#olliTalkBetaScreen .olliTalkBetaMessageFlow > .olliTalkBetaPendingInput{
+  margin:0;
+}
+
 #olliTalkBetaScreen .olliTalkBetaMessage.incoming,
 #olliTalkBetaScreen .olliTalkBetaMessage.ai{
   align-items:flex-start;
