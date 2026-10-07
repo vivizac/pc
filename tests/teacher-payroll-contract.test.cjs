@@ -62,8 +62,8 @@ test('team chat salary reveal is transient and owner-only', () => {
   assert.ok(start >= 0 && end > start);
   const revealCode = common.slice(start, end);
   assert.doesNotMatch(revealCode, /localStorage|sessionStorage/);
-  assert.match(pcChat, /createTeamChatPayrollButton\(item, 'pc'\)/);
-  assert.match(mobileChat, /createTeamChatPayrollButton\(item, 'mobile'\)/);
+  assert.match(pcChat, /createTeamChatPayrollButton\(item,\s*'pc'\)/);
+  assert.match(mobileChat, /createTeamChatPayrollButton\(item,\s*'mobile'\)/);
 });
 
 test('leaving and reopening Team Chat rebuilds payroll buttons in the hidden state', () => {
