@@ -17,7 +17,8 @@
     syncingDue: false,
     financeTab: 'expenses',
     expenseHistoryOpen: false,
-    expenseHistoryLoading: false
+    expenseHistoryLoading: false,
+    expenseHistoryRequestSeq: 0
   };
 
   function currentMonthValue(){
@@ -579,10 +580,11 @@
   }
 
   async function loadExpenseHistory(){
-    if(!state.expenseHistoryOpen || state.expenseHistoryLoading) return false;
+    if(!state.expenseHistoryOpen) return false;
     const panel=detailElements().body?.querySelector('[data-expense-history-panel]');
     if(!panel) return false;
     const month=state.month;
+    const requestSeq=++state.expenseHistoryRequestSeq;
     state.expenseHistoryLoading=true;
     panel.classList.add('is-open');
     panel.innerHTML='<div class="olliExpenseHistoryLoading">변경 기록을 불러오는 중...</div>';
@@ -595,7 +597,7 @@
         p_limit:50
       });
       if(!payload?.ok) throw new Error(payload?.message || '변경 기록을 불러오지 못했습니다.');
-      if(!state.expenseHistoryOpen || state.month!==month) return false;
+      if(!state.expenseHistoryOpen || state.month!==month || state.expenseHistoryRequestSeq!==requestSeq) return false;
       const currentPanel=detailElements().body?.querySelector('[data-expense-history-panel]');
       if(!currentPanel) return false;
       currentPanel.innerHTML='<div class="olliExpenseHistoryHead"><strong>'+esc(month.replace('-', '.'))+' 변경 기록</strong><span>가장 최근 변경부터 안전하게 복구할 수 있습니다.</span></div>'
@@ -606,12 +608,12 @@
       return true;
     }catch(error){
       const currentPanel=detailElements().body?.querySelector('[data-expense-history-panel]');
-      if(currentPanel && state.expenseHistoryOpen && state.month===month){
+      if(currentPanel && state.expenseHistoryOpen && state.month===month && state.expenseHistoryRequestSeq===requestSeq){
         currentPanel.innerHTML='<div class="olliExpenseHistoryEmpty">변경 기록을 불러오지 못했습니다.<br><small>'+esc(error?.message || error)+'</small></div>';
       }
       return false;
     }finally{
-      state.expenseHistoryLoading=false;
+      if(state.expenseHistoryRequestSeq===requestSeq) state.expenseHistoryLoading=false;
     }
   }
 
@@ -624,6 +626,8 @@
     if(!panel) return;
     panel.classList.toggle('is-open',state.expenseHistoryOpen);
     if(!state.expenseHistoryOpen){
+      state.expenseHistoryRequestSeq+=1;
+      state.expenseHistoryLoading=false;
       panel.innerHTML='';
       return;
     }
