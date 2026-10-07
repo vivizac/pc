@@ -212,6 +212,7 @@
 .olliPcTeamTalkActionStatus.failed{background:#f6f1f1;color:#9b6666}
 .olliPcTeamTalkActionButton.selectedChoice:disabled{background:#818284;color:#fff;opacity:1;cursor:default}
 .olliPcTeamTalkActionCard.reasonChoice .olliPcTeamTalkPendingInput{margin:0}
+.olliPcTeamTalkActionCard.reasonChoice .olliPcTeamTalkActionButton.selectedChoice{max-width:280px;height:auto;min-height:32px;white-space:normal;overflow-wrap:anywhere}
 
 .olliPcTeamTalkPendingInput{width:min(280px,100%);display:flex;flex-wrap:wrap;justify-content:flex-start;gap:6px;margin:5px 0 0}
 .olliPcTeamTalkPendingInputButton{height:30px;border:1px solid rgba(28,35,42,.12);border-radius:10px;padding:0 12px;background:#fff;color:#30343a;font:600 calc(11.5px * var(--olli-text-scale)) 'Pretendard',sans-serif;cursor:pointer}
