@@ -6,10 +6,11 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
+const activeWorkdayMigration = read('supabase/migrations/20261007050000_teacher_payroll_active_workdays.sql');
 const migration = [
   read('supabase/migrations/20261006150241_teacher_payroll_calculator.sql'),
   read('supabase/migrations/20261006153614_harden_owner_roles_and_payroll_cycle.sql'),
-  read('supabase/migrations/20261007050000_teacher_payroll_active_workdays.sql')
+  activeWorkdayMigration
 ].join('\n');
 const common = read('packages/common/olli-teacher-payroll-common.js');
 const pcHtml = read('apps/pc/index.html');
@@ -104,6 +105,12 @@ test('monthly salary is editable and saved through the payroll v2 RPC', () => {
   assert.match(common, /olli_teacher_payroll_setting_upsert_v2/);
   assert.match(common, /p_monthly_salary:monthlySalary/);
   assert.match(common, /monthlySalary > 0 \? Math\.round\(monthlySalary\)/);
+});
+
+test('payroll period starts the day after the previous payday and ends on the current payday', () => {
+  assert.match(activeWorkdayMigration, /v_period_start := \(v_prev_pay_date \+ interval '1 day'\)::date;/);
+  assert.match(activeWorkdayMigration, /v_period_end := v_pay_date;/);
+  assert.doesNotMatch(activeWorkdayMigration, /v_period_start := \(v_prev_pay_date - interval '1 day'\)::date;/);
 });
 
 test('payroll counts only occupied teaching slots and preserves date substitute ownership', () => {
