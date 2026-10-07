@@ -170,6 +170,8 @@
     const workdayCount = Math.max(0,Number(teacher?.workday_count || 0));
     const totalHours = Math.max(0,Number(teacher?.total_hours || 0));
     const totalAmount = Math.max(0,Number(teacher?.total_amount || 0));
+    const substituteHours = Math.max(0,Number(teacher?.substitute_hours || 0));
+    const substituteSlotCount = Math.max(0,Number(teacher?.substitute_slot_count || 0));
 
     const attrs = WEEKDAYS.map(day => ' data-workdays'+day.key+'="'+workdaysFor(teacher,day.key)+'"').join('');
     const dayInputs = WEEKDAYS.map(day => {
@@ -183,7 +185,9 @@
 
     return '<section class="olliPayrollTeacherCard" data-payroll-teacher-card data-teacher-id="'+esc(teacherId)+'"'+attrs+'>'
       + '<div class="olliPayrollTeacherHead"><div><div class="olliPayrollTeacherName">'+esc(name)+'</div>'
-      + '<div class="olliPayrollWorkdays"><strong>'+esc(payrollPeriodLabel(teacher))+'</strong> · 근무 <strong>'+workdayCount+'일</strong> · 시간표 자동 계산</div></div>'
+      + '<div class="olliPayrollWorkdays"><strong>'+esc(payrollPeriodLabel(teacher))+'</strong> · 근무 <strong>'+workdayCount+'일</strong>'
+      + (substituteHours>0?' · 대체 <strong>'+hours(substituteHours).toLocaleString('ko-KR')+'시간</strong> 포함':'')
+      + ' · 시간표 자동 계산</div></div>'
       + '<span class="olliPayrollSaveState" data-payroll-save-state></span></div>'
       + '<div class="olliPayrollFieldGrid">'
       + '<label class="olliPayrollField"><span>월급</span><div class="olliPayrollInputWrap"><input inputmode="numeric" min="0" step="10000" type="number" value="'+monthlySalary+'" data-payroll-monthly-salary><span>원</span></div></label>'
@@ -462,10 +466,19 @@
       + '</div></section>';
   }
 
-  function renderPayrollSection(teachers){
+  function renderPayrollWarnings(payroll){
+    const warnings=Array.isArray(payroll?.warnings) ? payroll.warnings : [];
+    if(!warnings.length) return '';
+    return '<div class="olliPayrollWarnings">'
+      + warnings.map(item=>'<div class="olliPayrollWarning">'+esc(item?.message || '대체근무 급여 설정을 확인해 주세요.')+'</div>').join('')
+      + '</div>';
+  }
+
+  function renderPayrollSection(payroll,teachers){
     return '<section class="olliFinancePayrollSection">'
       + '<div class="olliPayrollIntro"><div class="olliPayrollIntroTitle">선생님 급여</div>'
       + '<div class="olliPayrollIntroText">시간표를 기준으로 계산하며 휴원일과 날짜별 대체 담임을 자동 반영합니다.</div></div>'
+      + renderPayrollWarnings(payroll)
       + (teachers.length ? teachers.map(renderTeacherCard).join('') : '<div class="olliPayrollEmpty">급여를 설정할 선생님이 없습니다.</div>')
       + '</section>';
   }
@@ -517,7 +530,7 @@
       + financeTabHtml()
       + '<div class="olliFinanceColumns">'
       + '<div class="olliFinanceExpensesColumn'+(state.financeTab==='expenses'?' is-active':'')+'">'+renderExpenseSection()+'</div>'
-      + '<div class="olliFinancePayrollColumn'+(state.financeTab==='payroll'?' is-active':'')+'">'+renderPayrollSection(teachers)+'</div>'
+      + '<div class="olliFinancePayrollColumn'+(state.financeTab==='payroll'?' is-active':'')+'">'+renderPayrollSection(payroll,teachers)+'</div>'
       + '</div>'
       + '</div>';
 
