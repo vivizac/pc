@@ -8219,11 +8219,44 @@
     }
 
     if (input) {
+      let composerTouchStartX = null;
+      let composerTouchStartY = null;
+      const composer = input.closest('.olliTalkBetaComposer');
+
       input.addEventListener('pointerdown', event => {
         if (document.activeElement === input) return;
         event.preventDefault();
         try { input.focus({ preventScroll:true }); } catch (_) { input.focus(); }
       });
+
+      if (composer) {
+        composer.addEventListener('touchstart', event => {
+          const touch = event.touches?.[0];
+          composerTouchStartX = touch ? Number(touch.clientX) : null;
+          composerTouchStartY = touch ? Number(touch.clientY) : null;
+        }, { passive:true });
+
+        composer.addEventListener('touchmove', event => {
+          if (!getScreen()?.classList.contains('olliTalkKeyboardOpen')) return;
+          const touch = event.touches?.[0];
+          if (!touch || !Number.isFinite(composerTouchStartX) || !Number.isFinite(composerTouchStartY)) return;
+          const deltaX = Math.abs(Number(touch.clientX) - composerTouchStartX);
+          const deltaY = Math.abs(Number(touch.clientY) - composerTouchStartY);
+          if (deltaY < 6 || deltaY <= deltaX) return;
+
+          // 입력창/버튼 영역에서 시작한 세로 드래그가 iOS page/WKScrollView pan으로
+          // 번지지 않게 막습니다. chatArea 자체의 스크롤은 건드리지 않습니다.
+          event.preventDefault();
+        }, { passive:false });
+
+        const clearComposerTouch = () => {
+          composerTouchStartX = null;
+          composerTouchStartY = null;
+        };
+        composer.addEventListener('touchend', clearComposerTouch, { passive:true });
+        composer.addEventListener('touchcancel', clearComposerTouch, { passive:true });
+      }
+
       input.addEventListener('input', () => {
         resizeInput();
         updateOlliTalkBetaComposerState();
