@@ -331,7 +331,7 @@ begin
     where m.academy_id=v_row.academy_id
       and m.status='active'
       and m.role='owner'
-    on conflict (academy_id,message_id,member_id) do nothing;
+    on conflict (message_id,member_id) do nothing;
 
     v_created := v_created + 1;
   end loop;
