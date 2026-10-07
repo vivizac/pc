@@ -281,3 +281,26 @@ test('expense history UI is scoped and remains usable on mobile', () => {
   assert.match(css, /@media\(max-width:560px\)\{[\s\S]*\.olliExpenseHistoryHead\{display:block\}/);
 });
 
+test('finance summary distinguishes incomplete monthly expenses from a complete total', () => {
+  assert.match(common, /const missingMonthly=Math\.max\(0,Number\(expenses\.missing_monthly_count \|\| 0\)\)/);
+  assert.match(common, /missingMonthly>0 \? '현재 입력 기준 총 지출' : '총 지출'/);
+  assert.match(common, /'월별 지출 미입력 '\+missingMonthly\+'건'/);
+  assert.match(common, /'월별 지출 입력 완료'/);
+  assert.match(common, /class="olliFinanceSummary'\+\(missingMonthly>0\?' is-incomplete':' is-complete'\)/);
+});
+
+test('missing monthly expenses explicitly state that they are excluded from the current total', () => {
+  assert.match(common, /현재 총액에는 포함되지 않습니다/);
+  assert.match(common, /이번 달 아직 입력하지 않은 월별 지출/);
+});
+
+test('finance month selector uses the broader 조회 월 label', () => {
+  assert.match(common, /<span>조회 월<\/span>/);
+  assert.doesNotMatch(common, /<span>계산 월<\/span>/);
+});
+
+test('finance completeness status has subtle complete and incomplete styles', () => {
+  assert.match(css, /\.olliFinanceSummaryStatus\{/);
+  assert.match(css, /\.olliFinanceSummary\.is-incomplete \.olliFinanceSummaryStatus\{/);
+});
+
