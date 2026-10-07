@@ -54,7 +54,7 @@
   }
 
   async function rpc(name,args){
-    if(typeof global.callOlliRpc !== 'function') throw new Error('급여 기능의 서버 연결을 찾지 못했습니다.');
+    if(typeof global.callOlliRpc !== 'function') throw new Error('급여 및 지출 기능의 서버 연결을 찾지 못했습니다.');
     return global.callOlliRpc(name,args || {});
   }
 
@@ -83,7 +83,7 @@
       try{ global.olliPcSettingsLayoutBeforeOpenDetail('teacherPayroll'); }catch(_){}
     }
     if(els.settings) els.settings.style.display='flex';
-    if(els.title) els.title.textContent='선생님 급여 계산';
+    if(els.title) els.title.textContent='급여 및 지출 관리';
     els.detail.style.display='flex';
     els.detail.style.position='fixed';
     els.detail.style.inset='0';
@@ -184,18 +184,268 @@
       + '</section>';
   }
 
+  function financePayrollPayload(){
+    const payload=state.payload || {};
+    return payload.payroll && typeof payload.payroll==='object' ? payload.payroll : payload;
+  }
+
+  function financeExpensePayload(){
+    const payload=state.payload || {};
+    return payload.expenses && typeof payload.expenses==='object'
+      ? payload.expenses
+      : {items:[],total_amount:0,missing_monthly_count:0};
+  }
+
+  function expenseCategoryLabel(value){
+    return ({
+      rent:'월세',
+      maintenance:'관리비',
+      franchise_royalty:'가맹·로열티',
+      materials:'재료비',
+      tax_accounting:'세무·기장료',
+      advertising:'광고',
+      program:'프로그램·구독',
+      other:'기타'
+    })[String(value || '')] || '지출';
+  }
+
+  function expenseModeText(item){
+    const mode=String(item?.recurrence_mode || '');
+    const entered=item?.is_entered===true;
+    const valueMonth=String(item?.value_month || '');
+    if(mode==='monthly') return entered ? '이번 달 입력' : '미입력';
+    if(mode==='one_time') return '이번 달만';
+    if(entered && valueMonth && valueMonth!==state.month) return valueMonth.replace('-', '.')+'부터 유지';
+    return entered ? '매달 유지' : '미설정';
+  }
+
+  function renderExpenseItem(item){
+    const itemId=String(item?.item_id || '');
+    const systemKey=String(item?.system_key || '');
+    const category=String(item?.category || 'other');
+    const recurrence=String(item?.recurrence_mode || 'recurring');
+    const startMonth=String(item?.start_month || state.month || '');
+    const name=String(item?.name || expenseCategoryLabel(category)).trim() || expenseCategoryLabel(category);
+    const entered=item?.is_entered===true;
+    const amount=entered ? Math.max(0,Math.round(Number(item?.amount || 0))) : '';
+    const custom=!systemKey && !!itemId;
+    const missing=recurrence==='monthly' && !entered;
+    const endLabel=recurrence==='one_time' ? '삭제' : '종료';
+
+    return '<div class="olliExpenseRow'+(missing?' is-missing':'')+'" data-expense-row'
+      +' data-item-id="'+esc(itemId)+'"'
+      +' data-system-key="'+esc(systemKey)+'"'
+      +' data-category="'+esc(category)+'"'
+      +' data-recurrence="'+esc(recurrence)+'"'
+      +' data-start-month="'+esc(startMonth)+'"'
+      +' data-custom="'+(custom?'1':'0')+'">'
+      + '<div class="olliExpenseRowMain">'
+      + (custom
+        ? '<input class="olliExpenseNameInput" type="text" maxlength="80" value="'+esc(name)+'" data-expense-name aria-label="지출 항목 이름">'
+        : '<div class="olliExpenseName">'+esc(name)+'</div>')
+      + '<div class="olliExpenseMeta"><span>'+esc(expenseCategoryLabel(category))+'</span><span>'+esc(expenseModeText(item))+'</span></div>'
+      + '</div>'
+      + '<div class="olliExpenseAmountWrap">'
+      + '<input class="olliExpenseAmountInput" inputmode="numeric" min="0" max="1000000000" step="1000" type="number"'
+      + ' value="'+esc(amount)+'" placeholder="'+(missing?'미입력':'금액')+'" data-expense-amount>'
+      + '<span>원</span></div>'
+      + '<div class="olliExpenseRowActions">'
+      + '<button type="button" class="olliExpenseSaveButton" data-expense-save>저장</button>'
+      + (custom?'<button type="button" class="olliExpenseEndButton" data-expense-end>'+endLabel+'</button>':'')
+      + '</div>'
+      + '</div>';
+  }
+
+  function renderExpenseSection(){
+    const expenses=financeExpensePayload();
+    const items=Array.isArray(expenses.items) ? expenses.items : [];
+    const basic=items.filter(item=>String(item?.system_key || ''));
+    const custom=items.filter(item=>!String(item?.system_key || ''));
+    const missing=Math.max(0,Number(expenses.missing_monthly_count || 0));
+    return '<section class="olliExpenseSection" data-expense-section>'
+      + '<div class="olliExpenseSectionHead"><div><div class="olliExpenseSectionTitle">운영 지출</div>'
+      + '<div class="olliExpenseSectionText">월세와 광고처럼 유지되는 비용은 다음 달에도 이어지고, 관리비와 재료비는 매달 새로 입력합니다.</div></div>'
+      + '<div class="olliExpenseTotal"><span>운영 지출</span><strong>'+money(expenses.total_amount || 0)+'</strong></div></div>'
+      + (missing?'<div class="olliExpenseMissingNotice">이번 달 아직 입력하지 않은 월별 지출이 <strong>'+missing+'개</strong> 있습니다.</div>':'')
+      + '<div class="olliExpenseGroup"><div class="olliExpenseGroupTitle">기본 지출</div>'
+      + (basic.length?basic.map(renderExpenseItem).join(''):'<div class="olliExpenseEmpty">기본 지출 항목을 불러오지 못했습니다.</div>')
+      + '</div>'
+      + '<div class="olliExpenseGroup"><div class="olliExpenseGroupTitle">추가 지출</div>'
+      + (custom.length?custom.map(renderExpenseItem).join(''):'<div class="olliExpenseEmpty compact">추가한 광고·프로그램·기타 지출이 없습니다.</div>')
+      + '<div class="olliExpenseAddActions">'
+      + '<button type="button" data-expense-add="advertising">+ 광고 추가</button>'
+      + '<button type="button" data-expense-add="program">+ 프로그램 추가</button>'
+      + '<button type="button" data-expense-add="other">+ 기타 지출</button>'
+      + '</div><div data-expense-add-form></div></div>'
+      + '</section>';
+  }
+
+  function expenseAddPreset(kind){
+    if(kind==='advertising') return {title:'광고 추가',category:'advertising',recurrence:'recurring',namePlaceholder:'예: 당근 광고'};
+    if(kind==='program') return {title:'프로그램·구독 추가',category:'program',recurrence:'recurring',namePlaceholder:'예: Adobe'};
+    return {title:'기타 지출 추가',category:'other',recurrence:'one_time',namePlaceholder:'예: 프린터 구입'};
+  }
+
+  function showExpenseAddForm(kind){
+    const target=detailElements().body?.querySelector('[data-expense-add-form]');
+    if(!target) return;
+    const preset=expenseAddPreset(kind);
+    const recurrenceField=preset.category==='other'
+      ? '<label><span>방식</span><select data-expense-new-recurrence><option value="one_time">이번 달만</option><option value="recurring">매달 유지</option><option value="monthly">매월 입력</option></select></label>'
+      : '';
+    target.innerHTML='<div class="olliExpenseAddForm" data-expense-add-card data-category="'+preset.category+'" data-default-recurrence="'+preset.recurrence+'">'
+      + '<div class="olliExpenseAddTitle">'+preset.title+'</div>'
+      + '<div class="olliExpenseAddGrid">'
+      + '<label><span>항목 이름</span><input type="text" maxlength="80" placeholder="'+preset.namePlaceholder+'" data-expense-new-name></label>'
+      + '<label><span>금액</span><div class="olliExpenseAddAmount"><input type="number" inputmode="numeric" min="0" max="1000000000" step="1000" placeholder="0" data-expense-new-amount><span>원</span></div></label>'
+      + recurrenceField
+      + '</div><div class="olliExpenseAddFooter">'
+      + '<button type="button" class="secondary" data-expense-add-cancel>취소</button>'
+      + '<button type="button" class="primary" data-expense-add-save>추가</button>'
+      + '</div></div>';
+    const card=target.querySelector('[data-expense-add-card]');
+    target.querySelector('[data-expense-add-cancel]')?.addEventListener('click',()=>{ target.innerHTML=''; });
+    target.querySelector('[data-expense-add-save]')?.addEventListener('click',()=>createExpenseItem(card));
+    target.querySelector('[data-expense-new-name]')?.focus();
+  }
+
+  async function createExpenseItem(card){
+    if(!card || !isOwner()) return false;
+    const name=String(card.querySelector('[data-expense-new-name]')?.value || '').trim();
+    const rawAmount=String(card.querySelector('[data-expense-new-amount]')?.value || '').trim();
+    const category=String(card.dataset.category || '').trim();
+    const recurrence=String(card.querySelector('[data-expense-new-recurrence]')?.value || card.dataset.defaultRecurrence || '').trim();
+    if(!name){ alert('지출 항목 이름을 입력해 주세요.'); return false; }
+    if(rawAmount===''){ alert('금액을 입력해 주세요.'); return false; }
+    const amount=Math.round(Number(rawAmount));
+    if(!Number.isFinite(amount) || amount<0 || amount>1000000000){ alert('지출 금액을 확인해 주세요.'); return false; }
+    const button=card.querySelector('[data-expense-add-save]');
+    if(button){button.disabled=true;button.textContent='추가 중';}
+    try{
+      const payload=await rpc('olli_academy_expense_item_save',{
+        p_session_token:sessionToken(),
+        p_academy_id:academyId(),
+        p_item_id:null,
+        p_category:category,
+        p_name:name,
+        p_recurrence_mode:recurrence,
+        p_start_month:monthDateValue(state.month),
+        p_initial_amount:amount
+      });
+      if(!payload?.ok) throw new Error(payload?.message || '지출 항목을 추가하지 못했습니다.');
+      await loadOverview();
+      return true;
+    }catch(error){
+      alert('지출 항목 추가 실패\n'+(error?.message || error));
+      return false;
+    }finally{
+      if(button){button.disabled=false;button.textContent='추가';}
+    }
+  }
+
+  async function saveExpenseRow(row){
+    if(!row || !isOwner()) return false;
+    const rawAmount=String(row.querySelector('[data-expense-amount]')?.value || '').trim();
+    if(rawAmount===''){ alert('금액을 입력해 주세요.'); return false; }
+    const amount=Math.round(Number(rawAmount));
+    if(!Number.isFinite(amount) || amount<0 || amount>1000000000){ alert('지출 금액을 확인해 주세요.'); return false; }
+
+    const itemId=String(row.dataset.itemId || '').trim();
+    const systemKey=String(row.dataset.systemKey || '').trim();
+    const custom=row.dataset.custom==='1';
+    const name=String(row.querySelector('[data-expense-name]')?.value || '').trim();
+    const saveButton=row.querySelector('[data-expense-save]');
+    if(custom && !name){ alert('지출 항목 이름을 입력해 주세요.'); return false; }
+    if(saveButton){saveButton.disabled=true;saveButton.textContent='저장 중';}
+    try{
+      if(custom){
+        const savedItem=await rpc('olli_academy_expense_item_save',{
+          p_session_token:sessionToken(),
+          p_academy_id:academyId(),
+          p_item_id:itemId,
+          p_category:String(row.dataset.category || ''),
+          p_name:name,
+          p_recurrence_mode:String(row.dataset.recurrence || ''),
+          p_start_month:monthDateValue(row.dataset.startMonth || state.month),
+          p_initial_amount:null
+        });
+        if(!savedItem?.ok) throw new Error(savedItem?.message || '지출 항목 이름을 저장하지 못했습니다.');
+      }
+
+      const payload=await rpc('olli_academy_expense_value_set',{
+        p_session_token:sessionToken(),
+        p_academy_id:academyId(),
+        p_item_id:itemId || null,
+        p_system_key:systemKey || null,
+        p_month:monthDateValue(state.month),
+        p_amount:amount,
+        p_note:null
+      });
+      if(!payload?.ok) throw new Error(payload?.message || '지출 금액을 저장하지 못했습니다.');
+      await loadOverview();
+      return true;
+    }catch(error){
+      alert('지출 저장 실패\n'+(error?.message || error));
+      return false;
+    }finally{
+      if(saveButton){saveButton.disabled=false;saveButton.textContent='저장';}
+    }
+  }
+
+  async function endExpenseItem(row){
+    if(!row || !isOwner() || row.dataset.custom!=='1') return false;
+    const itemId=String(row.dataset.itemId || '').trim();
+    const name=String(row.querySelector('[data-expense-name]')?.value || '지출 항목').trim() || '지출 항목';
+    const recurrence=String(row.dataset.recurrence || '');
+    const question=recurrence==='one_time'
+      ? name+' 항목을 목록에서 삭제할까요?\n저장 기록은 보존됩니다.'
+      : name+' 항목을 '+state.month+'부터 종료할까요?\n이전 달 기록은 그대로 유지됩니다.';
+    if(!global.confirm(question)) return false;
+    const button=row.querySelector('[data-expense-end]');
+    if(button){button.disabled=true;button.textContent='처리 중';}
+    try{
+      const payload=await rpc('olli_academy_expense_item_end',{
+        p_session_token:sessionToken(),
+        p_academy_id:academyId(),
+        p_item_id:itemId,
+        p_end_month:monthDateValue(state.month)
+      });
+      if(!payload?.ok) throw new Error(payload?.message || '지출 항목을 종료하지 못했습니다.');
+      await loadOverview();
+      return true;
+    }catch(error){
+      alert('지출 항목 처리 실패\n'+(error?.message || error));
+      return false;
+    }finally{
+      if(button){button.disabled=false;button.textContent=recurrence==='one_time'?'삭제':'종료';}
+    }
+  }
+
+  function bindExpenseEvents(body){
+    if(!body) return;
+    body.querySelectorAll('[data-expense-row]').forEach(row=>{
+      row.querySelector('[data-expense-save]')?.addEventListener('click',()=>saveExpenseRow(row));
+      row.querySelector('[data-expense-end]')?.addEventListener('click',()=>endExpenseItem(row));
+    });
+    body.querySelectorAll('[data-expense-add]').forEach(button=>{
+      button.addEventListener('click',()=>showExpenseAddForm(String(button.dataset.expenseAdd || 'other')));
+    });
+  }
+
   function render(){
     const els = detailElements();
     if(!els.body) return;
     const payload = state.payload || {};
-    const teachers = Array.isArray(payload.teachers) ? payload.teachers : [];
-    const month = String(payload.month || state.month || currentMonthValue()).slice(0,7);
+    const payroll = financePayrollPayload();
+    const teachers = Array.isArray(payroll.teachers) ? payroll.teachers : [];
+    const month = String(payload.month || payroll.month || state.month || currentMonthValue()).slice(0,7);
     state.month = /^\d{4}-\d{2}$/.test(month) ? month : currentMonthValue();
 
     els.body.innerHTML = '<div class="olliPayrollPage">'
-      + '<div class="olliPayrollIntro"><div class="olliPayrollIntroTitle">시간표를 기준으로<br>한 달 급여를 계산합니다.</div>'
-      + '<div class="olliPayrollIntroText">같은 날 수업이 여러 개여도 출근은 1일로 계산합니다. 휴원일과 날짜별 대체 담임도 자동 반영됩니다.</div></div>'
       + '<label class="olliPayrollMonthField"><span>계산 월</span><input type="month" value="'+esc(state.month)+'" data-payroll-month></label>'
+      + renderExpenseSection()
+      + '<div class="olliPayrollIntro"><div class="olliPayrollIntroTitle">선생님 급여</div>'
+      + '<div class="olliPayrollIntroText">시간표를 기준으로 계산하며 휴원일과 날짜별 대체 담임을 자동 반영합니다.</div></div>'
       + (teachers.length ? teachers.map(renderTeacherCard).join('') : '<div class="olliPayrollEmpty">급여를 설정할 선생님이 없습니다.</div>')
       + '</div>';
 
@@ -206,6 +456,8 @@
         loadOverview();
       }
     });
+
+    bindExpenseEvents(els.body);
 
     els.body.querySelectorAll('[data-payroll-teacher-card]').forEach(card => {
       card.querySelectorAll('[data-payroll-monthly-salary],[data-payroll-hourly-wage],[data-payroll-day-hours]').forEach(input => {
@@ -220,7 +472,7 @@
     const els = openDetailShell();
     if(!els || state.loading) return false;
     if(!isOwner()){
-      els.body.innerHTML='<div class="olliPayrollEmpty">선생님 급여 설정은 원장만 확인할 수 있습니다.</div>';
+      els.body.innerHTML='<div class="olliPayrollEmpty">급여 및 지출 관리는 원장만 확인할 수 있습니다.</div>';
       return false;
     }
     const academy = academyId();
@@ -230,19 +482,19 @@
       return false;
     }
     state.loading=true;
-    els.body.innerHTML='<div class="settingsLoadingText">급여 정보를 계산하고 있습니다...</div>';
+    els.body.innerHTML='<div class="settingsLoadingText">급여와 지출 정보를 불러오고 있습니다...</div>';
     try{
-      const payload=await rpc('olli_teacher_payroll_overview',{
+      const payload=await rpc('olli_academy_finance_overview',{
         p_session_token:token,
         p_academy_id:academy,
         p_month:monthDateValue(state.month)
       });
-      if(!payload?.ok) throw new Error(payload?.message || '급여 정보를 불러오지 못했습니다.');
+      if(!payload?.ok) throw new Error(payload?.message || '급여와 지출 정보를 불러오지 못했습니다.');
       state.payload=payload;
       render();
       return true;
     }catch(error){
-      els.body.innerHTML='<div class="olliPayrollEmpty">급여 정보를 불러오지 못했습니다.<br><small>'+esc(error?.message || error)+'</small></div>';
+      els.body.innerHTML='<div class="olliPayrollEmpty">급여와 지출 정보를 불러오지 못했습니다.<br><small>'+esc(error?.message || error)+'</small></div>';
       return false;
     }finally{
       state.loading=false;
