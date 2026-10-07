@@ -45,9 +45,10 @@ test('operating expense UI loads through finance overview without replacing payr
   assert.match(common, /\+ 광고 추가/);
   assert.match(common, /\+ 프로그램 추가/);
   assert.match(common, /\+ 기타 지출/);
-  assert.match(common, /rpc\('olli_academy_expense_value_set'/);
-  assert.match(common, /rpc\('olli_academy_expense_item_save'/);
+  assert.match(common, /rpc\('olli_academy_expense_save'/);
   assert.match(common, /rpc\('olli_academy_expense_item_end'/);
+  assert.doesNotMatch(common, /rpc\('olli_academy_expense_value_set'/);
+  assert.doesNotMatch(common, /rpc\('olli_academy_expense_item_save'/);
   assert.match(common, /rpc\('olli_teacher_payroll_setting_upsert_v2'/);
 });
 
@@ -58,10 +59,15 @@ test('monthly costs remain visibly missing until explicitly entered', () => {
   assert.match(common, /이번 달 아직 입력하지 않은 월별 지출/);
 });
 
-test('custom expense rows can rename, save amount, and end without hard delete UI', () => {
+test('custom expense rows rename and save the amount in one atomic RPC', () => {
   assert.match(common, /data-expense-name/);
-  assert.match(common, /if\(custom\)\{[\s\S]*olli_academy_expense_item_save/);
-  assert.match(common, /olli_academy_expense_value_set/);
+  assert.match(common, /data-revision=/);
+  const saveStart = common.indexOf('async function saveExpenseRow');
+  const saveEnd = common.indexOf('\n  async function endExpenseItem', saveStart);
+  assert.ok(saveStart >= 0 && saveEnd > saveStart);
+  const saveCode = common.slice(saveStart, saveEnd);
+  assert.match(saveCode, /rpc\('olli_academy_expense_save'/);
+  assert.equal((saveCode.match(/rpc\(/g) || []).length, 1);
   assert.match(common, /olli_academy_expense_item_end/);
   assert.match(common, /이전 달 기록은 그대로 유지됩니다/);
   assert.doesNotMatch(common, /olli_academy_expense_item_delete/);
@@ -162,5 +168,42 @@ test('changing the selected month refreshes payroll and expenses together', () =
   assert.match(common, /data-payroll-month/);
   assert.match(common, /state\.month = next;\s*loadOverview\(\)/);
   assert.match(migration, /v_month date := date_trunc\('month',coalesce\(p_month,current_date\)\)::date/);
+});
+
+test('expense items carry one optimistic revision across name, amount, and end mutations', () => {
+  assert.match(migration, /revision bigint not null default 0/);
+  assert.match(migration, /olli_academy_expense_items_revision_check check \(revision >= 0\)/);
+  assert.match(migration, /'revision',r\.revision/);
+  assert.match(migration, /v_item\.revision<>p_expected_revision/);
+  assert.match(migration, /set revision=revision\+1/);
+  assert.match(common, /const revision=Math\.max\(0,Number\(item\?\.revision \|\| 0\)\)/);
+  assert.match(common, /p_expected_revision:revision/);
+});
+
+test('expense mutation requests are idempotent and reject request-id reuse with different payloads', () => {
+  assert.match(migration, /create table private\.olli_academy_expense_mutations/);
+  assert.match(migration, /primary key \(academy_id,request_id\)/);
+  assert.match(migration, /expense-request:/);
+  assert.match(migration, /v_existing_mutation\.request_payload<>v_request_payload/);
+  assert.match(migration, /'replayed',true/);
+  assert.match(common, /function newExpenseRequestId\(\)/);
+  assert.match(common, /function expenseMutationId\(node,key,kind\)/);
+  assert.match(common, /p_request_id:requestId/);
+});
+
+test('stale expense edits reload the latest state instead of overwriting another device', () => {
+  assert.match(migration, /'conflict',true/);
+  assert.match(migration, /다른 기기에서 이 지출 항목을 먼저 변경했습니다/);
+  assert.match(common, /function handleExpenseConflict\(payload,node,kind\)/);
+  assert.match(common, /await loadOverview\(\)/);
+  assert.match(common, /다른 기기에서 지출 내용이 변경되었습니다/);
+});
+
+test('expense mutation storage stays private and old split-write RPCs are not exposed', () => {
+  assert.match(migration, /alter table private\.olli_academy_expense_mutations enable row level security/);
+  assert.match(migration, /revoke all on table private\.olli_academy_expense_mutations from public,anon,authenticated/);
+  assert.match(migration, /create or replace function public\.olli_academy_expense_save/);
+  assert.doesNotMatch(migration, /create or replace function public\.olli_academy_expense_value_set/);
+  assert.doesNotMatch(migration, /create or replace function public\.olli_academy_expense_item_save/);
 });
 
