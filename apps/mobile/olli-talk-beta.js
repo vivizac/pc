@@ -155,7 +155,7 @@
     beginOlliTalkKeyboardMotion();
   }
 
-  const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 56;
+  const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 12;
   let olliTalkKeyboardVisualRaf = 0;
   let olliTalkKeyboardViewportRaf = 0;
   let olliTalkKeyboardVisualLastTs = 0;
