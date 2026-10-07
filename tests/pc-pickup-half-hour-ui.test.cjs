@@ -92,6 +92,12 @@ test('PC half-hour timetable keeps scrolling but hides the scrollbar UI', () => 
   assert.match(css, /\.olliTtSection:has\(\.olliTtHalfHourGrid\) \.olliTtScroll \{[\s\S]*?scrollbar-width: none;[\s\S]*?-ms-overflow-style: none;/);
   assert.match(css, /\.olliTtSection:has\(\.olliTtHalfHourGrid\) \.olliTtScroll::\-webkit-scrollbar \{[\s\S]*?width: 0;[\s\S]*?display: none;/);
   assert.doesNotMatch(css, /olliTtHalfHourExternalScroll|olliTtHalfHourShell/);
-  assert.match(index, /pc-timetable\.css\?v=20261002-half-hour-hidden-scrollbar-1/);
+  assert.match(index, /pc-timetable\.css\?v=20261007-holiday-cell-1/);
   assert.match(index, /pc-timetable\.js\?v=20261002-half-hour-hidden-scrollbar-1/);
+});
+
+
+test('PC holiday class cells use the same grey cell background as holiday pickup cells', () => {
+  assert.match(css, /\.olliTtCell\.holiday, #recordRoomScreen \.olliTtCell\.holiday:hover \{ background:#eceff1;/);
+  assert.match(css, /\.olliTtPickupCell\.holiday, #recordRoomScreen \.olliTtPickupCell\.holiday:hover \{ background:#eceff1;/);
 });
