@@ -94,6 +94,7 @@ create table private.olli_academy_expense_events (
   event_month date not null,
   request_id uuid null,
   changed_by_member_id uuid null references public.academy_members(id) on delete set null,
+  changed_by_name_snapshot text not null,
   before_state jsonb null,
   after_state jsonb not null,
   restore_of_event_id uuid null references private.olli_academy_expense_events(id) on delete set null,
@@ -693,7 +694,7 @@ begin
 
   insert into private.olli_academy_expense_events(
     academy_id,expense_item_id,event_type,event_month,request_id,
-    changed_by_member_id,before_state,after_state
+    changed_by_member_id,changed_by_name_snapshot,before_state,after_state
   ) values (
     p_academy_id,
     v_item.id,
@@ -701,6 +702,13 @@ begin
     v_month,
     p_request_id,
     v_owner_id,
+    coalesce(
+      (select nullif(btrim(m.display_name),'')
+       from public.academy_members m
+       where m.id=v_owner_id
+       limit 1),
+      '원장'
+    ),
     v_before_state,
     v_after_state
   )
@@ -830,10 +838,18 @@ begin
 
   insert into private.olli_academy_expense_events(
     academy_id,expense_item_id,event_type,event_month,request_id,
-    changed_by_member_id,before_state,after_state
+    changed_by_member_id,changed_by_name_snapshot,before_state,after_state
   ) values (
     p_academy_id,v_item.id,'end',v_month,p_request_id,
-    v_owner_id,v_before_state,v_after_state
+    v_owner_id,
+    coalesce(
+      (select nullif(btrim(m.display_name),'')
+       from public.academy_members m
+       where m.id=v_owner_id
+       limit 1),
+      '원장'
+    ),
+    v_before_state,v_after_state
   )
   returning id into v_event_id;
 
@@ -891,7 +907,7 @@ begin
   filtered as (
     select
       r.*,
-      coalesce(m.display_name,'원장') as actor_name
+      coalesce(r.changed_by_name_snapshot,m.display_name,'원장') as actor_name
     from ranked r
     left join public.academy_members m
       on m.id=r.changed_by_member_id
@@ -1155,10 +1171,18 @@ begin
 
   insert into private.olli_academy_expense_events(
     academy_id,expense_item_id,event_type,event_month,request_id,
-    changed_by_member_id,before_state,after_state,restore_of_event_id
+    changed_by_member_id,changed_by_name_snapshot,before_state,after_state,restore_of_event_id
   ) values (
     p_academy_id,v_item.id,'restore',v_event_month,p_request_id,
-    v_owner_id,v_before_state,v_after_state,v_event.id
+    v_owner_id,
+    coalesce(
+      (select nullif(btrim(m.display_name),'')
+       from public.academy_members m
+       where m.id=v_owner_id
+       limit 1),
+      '원장'
+    ),
+    v_before_state,v_after_state,v_event.id
   )
   returning id into v_restore_event_id;
 
