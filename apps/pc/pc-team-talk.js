@@ -364,6 +364,41 @@
     }
   }
 
+  function memberAvatarKey(memberId,senderName){
+    const id=clean(memberId);
+    const member=state.members.find(item=>clean(item?.member_id)===id);
+    const catalog=global.OlliTeamTalkAvatars;
+    return catalog?.normalizeKey?.(member?.avatar_key)
+      ||catalog?.fallbackKey?.(id||clean(senderName))
+      ||'';
+  }
+
+  function syncMemberAvatarElement(avatar,memberId,senderName){
+    if(!avatar)return;
+    const catalog=global.OlliTeamTalkAvatars;
+    const key=memberAvatarKey(memberId,senderName);
+    avatar.dataset.memberId=clean(memberId);
+    avatar.dataset.senderName=clean(senderName);
+    avatar.replaceChildren();
+    if(key&&catalog?.src){
+      const image=document.createElement('img');
+      image.alt='';
+      image.setAttribute('aria-hidden','true');
+      image.src=catalog.src(key,memberId||senderName);
+      avatar.appendChild(image);
+    }else{
+      avatar.textContent=(clean(senderName)||'선생님').slice(0,1);
+    }
+  }
+
+  function hydrateMemberAvatars(){
+    const root=byId('olliPcTeamTalkMessages');
+    if(!root)return;
+    root.querySelectorAll('.olliPcTeamTalkAvatar[data-member-id]').forEach(avatar=>{
+      syncMemberAvatarElement(avatar,avatar.dataset.memberId,avatar.dataset.senderName);
+    });
+  }
+
   async function loadMembers() {
     const current = context();
     const count = byId('olliPcTeamTalkMemberCount');
@@ -378,6 +413,7 @@
         p_academy_id: current.academyId
       });
       state.members = Array.isArray(payload?.members) ? payload.members : [];
+      hydrateMemberAvatars();
       if (count) count.textContent = state.members.length ? `선생님 ${state.members.length}명` : '';
       renderMentionMenu();
       return state.members;
@@ -1391,7 +1427,8 @@
     if (!own) {
       const senderName = isAi ? '올리' : (clean(item?.sender_name) || '선생님');
       if (!connectedToPrevious) {
-        const avatar = create('span', `olliPcTeamTalkAvatar${isAi ? ' ai' : ''}`, isAi ? 'Olli' : senderName.slice(0, 1));
+        const avatar = create('span', `olliPcTeamTalkAvatar${isAi ? ' ai' : ''}`, isAi ? 'Olli' : '');
+        if(!isAi)syncMemberAvatarElement(avatar,item?.sender_member_id,senderName);
         row.appendChild(avatar);
         const sender = create('div', 'olliPcTeamTalkSender');
         sender.appendChild(create('span', 'olliPcTeamTalkSenderName', senderName));
