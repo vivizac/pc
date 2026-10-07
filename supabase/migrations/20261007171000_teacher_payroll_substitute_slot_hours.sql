@@ -508,20 +508,39 @@ begin
   regular_slot_shares as (
     select
       r.*,
-      greatest(
-        0,
-        least(
-          24,
-          coalesce(nullif(rs.weekday_hours->>r.weekday::text,'')::numeric,0)
+      coalesce(
+        day_snapshot.payroll_source_weekday_hours,
+        greatest(
+          0,
+          least(
+            24,
+            coalesce(nullif(rs.weekday_hours->>r.weekday::text,'')::numeric,0)
+          )
         )
       ) as regular_day_hours,
-      count(*) over (
-        partition by r.session_date,r.weekday,r.regular_teacher_member_id
+      coalesce(
+        day_snapshot.payroll_source_slot_count,
+        count(*) over (
+          partition by r.session_date,r.weekday,r.regular_teacher_member_id
+        )
       ) as regular_active_slot_count
     from regular_slots r
     left join private.olli_teacher_payroll_settings rs
       on rs.academy_id=p_academy_id
      and rs.teacher_member_id=r.regular_teacher_member_id
+    left join lateral (
+      select
+        o.payroll_source_weekday_hours,
+        o.payroll_source_slot_count
+      from public.olli_schedule_teacher_overrides o
+      where o.academy_id=p_academy_id
+        and o.session_date=r.session_date
+        and coalesce(o.payroll_source_teacher_member_id,o.regular_teacher_member_id)=r.regular_teacher_member_id
+        and o.payroll_source_weekday_hours is not null
+        and o.payroll_source_slot_count is not null
+      order by o.payroll_snapshot_at desc nulls last,o.updated_at desc,o.id
+      limit 1
+    ) day_snapshot on true
   ),
   assigned_slots as (
     select
