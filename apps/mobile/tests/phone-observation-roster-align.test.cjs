@@ -143,7 +143,7 @@ test('roster sort prefix uses the same gray as student guide text while the sort
 test('observation roster student rows match the compact attendance card height', () => {
   const rosterRow = ruleBody(rosterCss, '#observationRosterScreen .memoBodyRosterRow');
   const rosterButton = ruleBody(rosterCss, '#observationRosterScreen .memoBodyRosterStudentBtn');
-  assert.match(rosterRow, /min-height:48px;/);
-  assert.match(rosterButton, /min-height:48px;/);
-  assert.match(baseCss, /\.elementaryStudentRow,[\s\S]*?\.kinderStudentRow \{[\s\S]*?min-height:48px;[\s\S]*?padding:6px 10px 6px 10px;/);
+  assert.match(rosterRow, /min-height:50px;/);
+  assert.match(rosterButton, /min-height:50px;/);
+  assert.match(baseCss, /\.elementaryStudentRow,[\s\S]*?\.kinderStudentRow \{[\s\S]*?min-height:50px;[\s\S]*?padding:6px 10px 6px 10px;/);
 });

@@ -150,5 +150,10 @@ test('attendance day sort splits the same time into class groups only when multi
 
 test('attendance action popup aligns to the left add button and student rows use compact spacing', () => {
   assert.match(baseCss, /#recordRoomScreen > #studentActionOverlay \{[\s\S]*?justify-content: flex-start;[\s\S]*?padding-left: 21px;/);
-  assert.match(baseCss, /\.elementaryStudentRow,[\s\S]*?\.kinderStudentRow \{[\s\S]*?min-height:48px;[\s\S]*?padding:6px 10px 6px 10px;[\s\S]*?margin-bottom:0;/);
+  assert.match(baseCss, /\.elementaryStudentRow,[\s\S]*?\.kinderStudentRow \{[\s\S]*?min-height:50px;[\s\S]*?padding:6px 10px 6px 10px;[\s\S]*?margin-bottom:0;/);
+});
+
+
+test('attendance day-sort time and class divider matches division label weight', () => {
+  assert.match(adapter, /recordTodaySessionDivider[\s\S]*?font-weight:600/);
 });

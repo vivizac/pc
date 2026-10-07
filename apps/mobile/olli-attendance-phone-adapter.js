@@ -627,7 +627,7 @@
     return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   }
   function renderSessionDivider(label) {
-    return `<div class="recordTodaySessionDivider" style="display:flex;align-items:center;gap:10px;margin:13px 14px 8px;color:#8a8a8a;font-size:12px;font-weight:700;letter-spacing:-.02em;line-height:1.2;"><span aria-hidden="true" style="height:1px;background:#e9e9e9;flex:1 1 auto;"></span><span>${escapeInlineText(label)}</span><span aria-hidden="true" style="height:1px;background:#e9e9e9;flex:1 1 auto;"></span></div>`;
+    return `<div class="recordTodaySessionDivider" style="display:flex;align-items:center;gap:10px;margin:13px 14px 8px;color:#8a8a8a;font-size:12px;font-weight:600;letter-spacing:-.02em;line-height:1.2;"><span aria-hidden="true" style="height:1px;background:#e9e9e9;flex:1 1 auto;"></span><span>${escapeInlineText(label)}</span><span aria-hidden="true" style="height:1px;background:#e9e9e9;flex:1 1 auto;"></span></div>`;
   }
   function stripLessonTimeFromMeta(html) {
     const source = String(html || '');
