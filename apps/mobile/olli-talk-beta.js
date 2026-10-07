@@ -179,11 +179,19 @@
     };
   }
 
-  function cancelOlliTalkKeyboardVisualAnimations(){
+  function cancelOlliTalkComposerVisualAnimation(){
     try { olliTalkComposerVisualAnimation?.cancel(); } catch (_) {}
-    try { olliTalkMessagesVisualAnimation?.cancel(); } catch (_) {}
     olliTalkComposerVisualAnimation = null;
+  }
+
+  function cancelOlliTalkMessagesVisualAnimation(){
+    try { olliTalkMessagesVisualAnimation?.cancel(); } catch (_) {}
     olliTalkMessagesVisualAnimation = null;
+  }
+
+  function cancelOlliTalkKeyboardVisualAnimations(){
+    cancelOlliTalkComposerVisualAnimation();
+    cancelOlliTalkMessagesVisualAnimation();
   }
 
   function animateOlliTalkKeyboardVisualFrame(frame, options = {}){
@@ -334,8 +342,11 @@
     if (olliTalkBetaViewportBound) return;
     olliTalkBetaViewportBound = true;
     window.addEventListener('resize', () => {
+      const motionFrame = captureOlliTalkKeyboardVisualFrame();
+      cancelOlliTalkKeyboardVisualAnimations();
       syncViewport();
       scheduleOlliTalkPendingReasonAnchorAfterViewport();
+      animateOlliTalkKeyboardVisualFrame(motionFrame);
     }, { passive:true });
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
@@ -365,9 +376,9 @@
       }, { passive:true });
       window.visualViewport.addEventListener('scroll', () => {
         // iOS visualViewport pan은 composer 좌표만 갱신합니다.
-        // 채팅 reserve/scrollTop까지 다시 보정하지 않습니다.
+        // 진행 중인 message FLIP은 끊지 않고 composer만 새 좌표에 이어 붙입니다.
         const motionFrame = captureOlliTalkKeyboardVisualFrame();
-        cancelOlliTalkKeyboardVisualAnimations();
+        cancelOlliTalkComposerVisualAnimation();
         syncOlliTalkComposerViewport();
         animateOlliTalkKeyboardVisualFrame(motionFrame, { messages:false });
       }, { passive:true });
