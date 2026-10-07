@@ -38,6 +38,11 @@ begin
   end if;
 end $$;
 
+create index if not exists olli_schedule_teacher_overrides_payroll_source_idx
+  on public.olli_schedule_teacher_overrides
+  (academy_id,session_date,payroll_source_teacher_member_id)
+  where payroll_source_teacher_member_id is not null;
+
 create or replace function private.olli_teacher_payroll_override_snapshot(
   p_academy_id uuid,
   p_session_date date,
