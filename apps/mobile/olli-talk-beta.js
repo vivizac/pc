@@ -6433,6 +6433,27 @@
     }
   }
 
+  function syncOlliTalkRenderedGroupTime(group){
+    if(!group?.classList?.contains('olliTalkBetaMessageGroup')) return false;
+    const messages=Array.from(
+      group.querySelectorAll('.olliTalkBetaMessage[data-message-id]')
+    );
+    if(!messages.length) return false;
+
+    messages.forEach((message,index)=>{
+      const time=message.querySelector?.('.olliTalkBetaMessageTime');
+      if(!time) return;
+      const isLast=index===messages.length-1;
+      time.style.visibility=isLast ? '' : 'hidden';
+      if(isLast){
+        time.removeAttribute('aria-hidden');
+      }else{
+        time.setAttribute('aria-hidden','true');
+      }
+    });
+    return true;
+  }
+
   function createOlliTalkMessageGroupElement(item,currentMemberId){
     const type=String(item?.message_type || 'text');
     const isAi=type==='ai' || type==='system';
@@ -6486,6 +6507,7 @@
       groupStart
     });
     stack.appendChild(message);
+    syncOlliTalkRenderedGroupTime(group);
     return message;
   }
 
