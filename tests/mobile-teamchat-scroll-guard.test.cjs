@@ -53,20 +53,15 @@ test('Team Chat keeps the chat scroller independent and reserves composer space 
   assert.doesNotMatch(syncBody,/scrollTop\s*=/);
 });
 
-test('Team Chat defers first input focus until click release and keeps preventScroll',()=>{
+test('Team Chat input has no separate pointerdown focus path and uses shared click focus',()=>{
   const start=js.indexOf("if (input) {",js.indexOf("function init(){"));
   const end=js.indexOf("\n    if (mentionTriggerButton)",start);
   assert.ok(start>=0 && end>start);
   const body=js.slice(start,end);
-  const pointerStart=body.indexOf("input.addEventListener('pointerdown'");
-  const pointerEnd=body.indexOf("\n\n      if (composer)",pointerStart);
-  assert.ok(pointerStart>=0 && pointerEnd>pointerStart);
-  const pointerBody=body.slice(pointerStart,pointerEnd);
-
-  assert.match(pointerBody,/event\.preventDefault\(\)/);
-  assert.doesNotMatch(pointerBody,/input\.focus\(/);
-  assert.match(body,/input\.addEventListener\('click', \(\) => \{[\s\S]*input\.focus\(\{ preventScroll:true \}\)/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261008-click-focus-1/);
+  assert.doesNotMatch(body,/input\.addEventListener\('pointerdown'/);
+  assert.match(body,/input\.addEventListener\('click',[\s\S]*focusOlliTalkComposerInput\(\)/);
+  assert.match(js,/function focusOlliTalkComposerInput\(\)[\s\S]*input\.focus\(\{ preventScroll:true \}\)/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261008-shared-focus-1/);
 });
 
 test('Team Chat keyboard focus does not duplicate chat anchoring across focus and visualViewport scroll',()=>{

@@ -7615,6 +7615,13 @@
     syncOlliTalkSelectedMentionPrefix();
   }
 
+  function focusOlliTalkComposerInput(){
+    const input = getOlliTalkBetaInput();
+    if (!input) return null;
+    try { input.focus({ preventScroll:true }); } catch (_) { input.focus(); }
+    return input;
+  }
+
   async function openOlliTalkMentionPicker(event){
     if (event) {
       event.preventDefault();
@@ -7646,7 +7653,7 @@
       input.setRangeText(insertion, caret, caret, 'end');
     }
 
-    try { input.focus({ preventScroll:true }); } catch (_) { input.focus(); }
+    focusOlliTalkComposerInput();
     resizeInput();
     updateOlliTalkBetaComposerState();
 
@@ -8632,13 +8639,6 @@
       let composerTouchStartY = null;
       const composer = input.closest('.olliTalkBetaComposer');
 
-      input.addEventListener('pointerdown', event => {
-        if (document.activeElement === input) return;
-        // @ 버튼처럼 손을 떼고 click이 확정될 때까지 포커스를 시작하지 않습니다.
-        // iOS의 pointerdown 기본 포커스만 막아 composer/page가 먼저 움직이는 것을 방지합니다.
-        event.preventDefault();
-      });
-
       if (composer) {
         composer.addEventListener('touchstart', event => {
           const touch = event.touches?.[0];
@@ -8684,9 +8684,7 @@
         syncViewport();
       });
       input.addEventListener('click', () => {
-        if (document.activeElement !== input) {
-          try { input.focus({ preventScroll:true }); } catch (_) { input.focus(); }
-        }
+        focusOlliTalkComposerInput();
         renderOlliTalkMentionMenu();
       });
       input.addEventListener('keyup', event => {

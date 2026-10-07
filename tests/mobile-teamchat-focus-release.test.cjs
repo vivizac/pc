@@ -24,25 +24,19 @@ test('Team Chat only settles a gesture that actually started in chatArea',()=>{
   assert.match(body,/window\.addEventListener\('touchend', endOlliTalkChatGesture/);
 });
 
-test('Team Chat composer taps do not mark chat gesture ownership',()=>{
+test('Team Chat composer and mention button share the same click-time focus helper',()=>{
+  const helperStart=js.indexOf('function focusOlliTalkComposerInput(){');
+  const helperEnd=js.indexOf('\n  async function openOlliTalkMentionPicker',helperStart);
+  assert.ok(helperStart>=0 && helperEnd>helperStart);
+  const helper=js.slice(helperStart,helperEnd);
+  assert.match(helper,/input\.focus\(\{ preventScroll:true \}\)/);
+
   const initStart=js.indexOf('function init(){');
   const inputStart=js.indexOf("if (input) {",initStart);
   const inputEnd=js.indexOf("\n    if (mentionTriggerButton)",inputStart);
-  assert.ok(initStart>=0 && inputStart>=0 && inputEnd>inputStart);
   const inputBody=js.slice(inputStart,inputEnd);
-
-  assert.match(
-    inputBody,
-    /input\.addEventListener\('pointerdown', event => \{[\s\S]*event\.preventDefault\(\);[\s\S]*\}\);/
-  );
-  const pointerStart=inputBody.indexOf("input.addEventListener('pointerdown'");
-  const pointerEnd=inputBody.indexOf("\n\n      if (composer)",pointerStart);
-  assert.ok(pointerStart>=0 && pointerEnd>pointerStart);
-  assert.doesNotMatch(inputBody.slice(pointerStart,pointerEnd),/input\.focus\(/);
-  assert.match(
-    inputBody,
-    /input\.addEventListener\('click', \(\) => \{[\s\S]*input\.focus\(\{ preventScroll:true \}\)[\s\S]*renderOlliTalkMentionMenu\(\)/
-  );
-  assert.doesNotMatch(inputBody,/olliTalkChatGestureActive\s*=\s*true/);
-  assert.doesNotMatch(inputBody,/settleOlliTalkChatGesture\(/);
+  assert.doesNotMatch(inputBody,/input\.addEventListener\('pointerdown'/);
+  assert.match(inputBody,/input\.addEventListener\('click',[\s\S]*focusOlliTalkComposerInput\(\)/);
+  assert.match(js,/mentionTriggerButton\.addEventListener\('click', openOlliTalkMentionPicker\)/);
+  assert.match(js,/async function openOlliTalkMentionPicker\(event\)[\s\S]*focusOlliTalkComposerInput\(\)/);
 });
