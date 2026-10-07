@@ -1409,6 +1409,13 @@
 #olliTalkBetaScreen .olliTalkBetaActionCard.reasonChoice .olliTalkBetaPendingInput{
   margin:0;
 }
+#olliTalkBetaScreen .olliTalkBetaActionCard.reasonChoice .olliTalkBetaActionButton.selectedChoice{
+  max-width:min(280px,82vw);
+  height:auto;
+  min-height:34px;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
 #olliTalkBetaScreen .olliTalkBetaPendingInput{
   width:min(280px,82vw);
   display:flex;
