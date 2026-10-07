@@ -249,6 +249,7 @@
     const entered=item?.is_entered===true;
     const amount=entered ? Math.max(0,Math.round(Number(item?.amount || 0))) : '';
     const custom=!systemKey && !!itemId;
+    const revision=Math.max(0,Number(item?.revision || 0));
     const missing=recurrence==='monthly' && !entered;
     const endLabel=recurrence==='one_time' ? '삭제' : '종료';
 
@@ -329,6 +330,42 @@
     target.querySelector('[data-expense-new-name]')?.focus();
   }
 
+  function newExpenseRequestId(){
+    if(global.crypto?.randomUUID) return global.crypto.randomUUID();
+    const bytes=new Uint8Array(16);
+    if(global.crypto?.getRandomValues) global.crypto.getRandomValues(bytes);
+    else for(let i=0;i<bytes.length;i+=1) bytes[i]=Math.floor(Math.random()*256);
+    bytes[6]=(bytes[6]&15)|64;
+    bytes[8]=(bytes[8]&63)|128;
+    const hex=[...bytes].map(v=>v.toString(16).padStart(2,'0')).join('');
+    return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);
+  }
+
+  function expenseMutationId(node,key,kind){
+    if(!node) return newExpenseRequestId();
+    const prefix=kind==='end' ? '__olliExpenseEnd' : '__olliExpenseSave';
+    if(node[prefix+'Key']!==key || !node[prefix+'Id']){
+      node[prefix+'Key']=key;
+      node[prefix+'Id']=newExpenseRequestId();
+    }
+    return node[prefix+'Id'];
+  }
+
+  function clearExpenseMutationId(node,kind){
+    if(!node) return;
+    const prefix=kind==='end' ? '__olliExpenseEnd' : '__olliExpenseSave';
+    delete node[prefix+'Key'];
+    delete node[prefix+'Id'];
+  }
+
+  async function handleExpenseConflict(payload,node,kind){
+    if(!payload?.conflict) return false;
+    clearExpenseMutationId(node,kind);
+    await loadOverview();
+    alert(payload?.message || '다른 기기에서 지출 내용이 변경되었습니다. 최신 값을 다시 불러왔습니다.');
+    return true;
+  }
+
   async function createExpenseItem(card){
     if(!card || !isOwner()) return false;
     const name=String(card.querySelector('[data-expense-new-name]')?.value || '').trim();
@@ -339,20 +376,29 @@
     if(rawAmount===''){ alert('금액을 입력해 주세요.'); return false; }
     const amount=Math.round(Number(rawAmount));
     if(!Number.isFinite(amount) || amount<0 || amount>1000000000){ alert('지출 금액을 확인해 주세요.'); return false; }
+    const requestKey=['new',category,recurrence,state.month,name,amount].join('|');
+    const requestId=expenseMutationId(card,requestKey,'save');
     const button=card.querySelector('[data-expense-add-save]');
     if(button){button.disabled=true;button.textContent='추가 중';}
     try{
-      const payload=await rpc('olli_academy_expense_item_save',{
+      const payload=await rpc('olli_academy_expense_save',{
         p_session_token:sessionToken(),
         p_academy_id:academyId(),
+        p_request_id:requestId,
+        p_expected_revision:0,
         p_item_id:null,
+        p_system_key:null,
         p_category:category,
         p_name:name,
         p_recurrence_mode:recurrence,
         p_start_month:monthDateValue(state.month),
-        p_initial_amount:amount
+        p_month:monthDateValue(state.month),
+        p_amount:amount,
+        p_note:null
       });
+      if(await handleExpenseConflict(payload,card,'save')) return false;
       if(!payload?.ok) throw new Error(payload?.message || '지출 항목을 추가하지 못했습니다.');
+      clearExpenseMutationId(card,'save');
       await loadOverview();
       return true;
     }catch(error){
@@ -373,35 +419,41 @@
     const itemId=String(row.dataset.itemId || '').trim();
     const systemKey=String(row.dataset.systemKey || '').trim();
     const custom=row.dataset.custom==='1';
-    const name=String(row.querySelector('[data-expense-name]')?.value || '').trim();
+    const revision=Math.max(0,Number(row.dataset.revision || 0));
+    const category=String(row.dataset.category || '').trim();
+    const recurrence=String(row.dataset.recurrence || '').trim();
+    const startMonth=String(row.dataset.startMonth || state.month).trim();
+    const name=custom
+      ? String(row.querySelector('[data-expense-name]')?.value || '').trim()
+      : '';
     const saveButton=row.querySelector('[data-expense-save]');
     if(custom && !name){ alert('지출 항목 이름을 입력해 주세요.'); return false; }
+
+    const requestKey=[
+      'save',itemId,systemKey,revision,category,recurrence,startMonth,state.month,name,amount
+    ].join('|');
+    const requestId=expenseMutationId(row,requestKey,'save');
+
     if(saveButton){saveButton.disabled=true;saveButton.textContent='저장 중';}
     try{
-      if(custom){
-        const savedItem=await rpc('olli_academy_expense_item_save',{
-          p_session_token:sessionToken(),
-          p_academy_id:academyId(),
-          p_item_id:itemId,
-          p_category:String(row.dataset.category || ''),
-          p_name:name,
-          p_recurrence_mode:String(row.dataset.recurrence || ''),
-          p_start_month:monthDateValue(row.dataset.startMonth || state.month),
-          p_initial_amount:null
-        });
-        if(!savedItem?.ok) throw new Error(savedItem?.message || '지출 항목 이름을 저장하지 못했습니다.');
-      }
-
-      const payload=await rpc('olli_academy_expense_value_set',{
+      const payload=await rpc('olli_academy_expense_save',{
         p_session_token:sessionToken(),
         p_academy_id:academyId(),
+        p_request_id:requestId,
+        p_expected_revision:revision,
         p_item_id:itemId || null,
         p_system_key:systemKey || null,
+        p_category:category,
+        p_name:name,
+        p_recurrence_mode:recurrence,
+        p_start_month:monthDateValue(startMonth),
         p_month:monthDateValue(state.month),
         p_amount:amount,
         p_note:null
       });
+      if(await handleExpenseConflict(payload,row,'save')) return false;
       if(!payload?.ok) throw new Error(payload?.message || '지출 금액을 저장하지 못했습니다.');
+      clearExpenseMutationId(row,'save');
       await loadOverview();
       return true;
     }catch(error){
@@ -415,22 +467,30 @@
   async function endExpenseItem(row){
     if(!row || !isOwner() || row.dataset.custom!=='1') return false;
     const itemId=String(row.dataset.itemId || '').trim();
+    const revision=Math.max(0,Number(row.dataset.revision || 0));
     const name=String(row.querySelector('[data-expense-name]')?.value || '지출 항목').trim() || '지출 항목';
     const recurrence=String(row.dataset.recurrence || '');
     const question=recurrence==='one_time'
       ? name+' 항목을 목록에서 삭제할까요?\n저장 기록은 보존됩니다.'
       : name+' 항목을 '+state.month+'부터 종료할까요?\n이전 달 기록은 그대로 유지됩니다.';
     if(!global.confirm(question)) return false;
+
+    const requestKey=['end',itemId,revision,state.month].join('|');
+    const requestId=expenseMutationId(row,requestKey,'end');
     const button=row.querySelector('[data-expense-end]');
     if(button){button.disabled=true;button.textContent='처리 중';}
     try{
       const payload=await rpc('olli_academy_expense_item_end',{
         p_session_token:sessionToken(),
         p_academy_id:academyId(),
+        p_request_id:requestId,
+        p_expected_revision:revision,
         p_item_id:itemId,
         p_end_month:monthDateValue(state.month)
       });
+      if(await handleExpenseConflict(payload,row,'end')) return false;
       if(!payload?.ok) throw new Error(payload?.message || '지출 항목을 종료하지 못했습니다.');
+      clearExpenseMutationId(row,'end');
       await loadOverview();
       return true;
     }catch(error){
