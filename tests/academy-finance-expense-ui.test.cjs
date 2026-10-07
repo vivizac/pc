@@ -1,0 +1,76 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const root = path.resolve(__dirname, '..');
+const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
+
+const migration = read('supabase/migrations/20261007062000_academy_finance_expenses.sql');
+const common = read('packages/common/olli-teacher-payroll-common.js');
+const css = read('packages/common/olli-teacher-payroll-common.css');
+
+test('academy expenses stay private and public RPCs remain owner-gated', () => {
+  assert.match(migration, /create table private\.olli_academy_expense_items/);
+  assert.match(migration, /create table private\.olli_academy_expense_values/);
+  assert.match(migration, /alter table private\.olli_academy_expense_items enable row level security/);
+  assert.match(migration, /alter table private\.olli_academy_expense_values enable row level security/);
+  assert.match(migration, /private\.olli_academy_finance_owner_member/);
+  assert.match(migration, /m\.role='owner'/);
+  assert.match(migration, /급여 및 지출 관리는 원장만 확인할 수 있습니다/);
+  assert.match(migration, /revoke all on function public\.olli_academy_finance_overview[\s\S]*from public/);
+});
+
+test('default expenses distinguish recurring and monthly-entry costs', () => {
+  assert.match(migration, /'rent'::text,'월세'::text,'rent'::text,'recurring'/);
+  assert.match(migration, /'maintenance','관리비','maintenance','monthly'/);
+  assert.match(migration, /'franchise_royalty','가맹·로열티','franchise_royalty','recurring'/);
+  assert.match(migration, /'materials','재료비','materials','monthly'/);
+  assert.match(migration, /'tax_accounting','세무·기장료','tax_accounting','recurring'/);
+  assert.match(migration, /d\.recurrence_mode='recurring' and v\.effective_month<=v_month/);
+  assert.match(migration, /d\.recurrence_mode='monthly' and v\.effective_month=v_month/);
+});
+
+test('finance overview reuses payroll overview and returns three totals', () => {
+  assert.match(migration, /public\.olli_teacher_payroll_overview\(p_session_token,p_academy_id,v_month\)/);
+  assert.match(migration, /'payroll_total_amount',v_payroll_total/);
+  assert.match(migration, /'expense_total_amount',v_expense_total/);
+  assert.match(migration, /'total_amount',v_payroll_total\+v_expense_total/);
+});
+
+test('operating expense UI loads through finance overview without replacing payroll save RPC', () => {
+  assert.match(common, /rpc\('olli_academy_finance_overview'/);
+  assert.match(common, /function renderExpenseSection\(\)/);
+  assert.match(common, />운영 지출</);
+  assert.match(common, /\+ 광고 추가/);
+  assert.match(common, /\+ 프로그램 추가/);
+  assert.match(common, /\+ 기타 지출/);
+  assert.match(common, /rpc\('olli_academy_expense_value_set'/);
+  assert.match(common, /rpc\('olli_academy_expense_item_save'/);
+  assert.match(common, /rpc\('olli_academy_expense_item_end'/);
+  assert.match(common, /rpc\('olli_teacher_payroll_setting_upsert_v2'/);
+});
+
+test('monthly costs remain visibly missing until explicitly entered', () => {
+  assert.match(common, /const amount=entered \? Math\.max\(0,Math\.round\(Number\(item\?\.amount \|\| 0\)\)\) : '';/);
+  assert.match(common, /const missing=recurrence==='monthly' && !entered/);
+  assert.match(common, /placeholder="\+?\(missing\?'미입력':'금액'\)/);
+  assert.match(common, /이번 달 아직 입력하지 않은 월별 지출/);
+});
+
+test('custom expense rows can rename, save amount, and end without hard delete UI', () => {
+  assert.match(common, /data-expense-name/);
+  assert.match(common, /if\(custom\)\{[\s\S]*olli_academy_expense_item_save/);
+  assert.match(common, /olli_academy_expense_value_set/);
+  assert.match(common, /olli_academy_expense_item_end/);
+  assert.match(common, /이전 달 기록은 그대로 유지됩니다/);
+  assert.doesNotMatch(common, /olli_academy_expense_item_delete/);
+});
+
+test('expense UI styling is scoped to its own classes and keeps the current stacked layout', () => {
+  assert.match(css, /\.olliExpenseSection\{/);
+  assert.match(css, /\.olliExpenseRow\{/);
+  assert.match(css, /\.olliExpenseAddForm\{/);
+  assert.match(css, /@media\(max-width:560px\)/);
+  assert.doesNotMatch(css, /\.olliPayrollPage\{[^}]*grid-template-columns/);
+});
