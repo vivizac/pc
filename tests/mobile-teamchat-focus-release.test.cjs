@@ -31,6 +31,7 @@ test('Team Chat inactive input and mention button use the shared mobile keyboard
   assert.match(js,/if \(olliTalkMentionModeActive\) \{[\s\S]*OlliMobileKeyboardActivation\?\.stopEvent\(event\)[\s\S]*olliTalkMentionModeActive = false/);
   assert.doesNotMatch(js,/function focusOlliTalkComposerInput/);
   assert.match(js,/composerActivateButton\.addEventListener\('click',[\s\S]*activateOlliTalkComposerInput\(event\)/);
-  assert.match(js,/mentionTriggerButton\.addEventListener\('click', openOlliTalkMentionPicker\)/);
+  assert.match(js,/mentionTriggerButton\.addEventListener\('pointerdown',[\s\S]*openOlliTalkMentionPicker\(event\)/);
+  assert.match(js,/mentionTriggerButton\.addEventListener\('click',[\s\S]*event\.detail !== 0[\s\S]*openOlliTalkMentionPicker\(event\)/);
   assert.match(js,/async function openOlliTalkMentionPicker\(event\)[\s\S]*activateOlliTalkComposerInput\(event\)/);
 });
