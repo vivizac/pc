@@ -55,7 +55,7 @@ test('Team Chat keeps the chat scroller independent and reserves composer space 
 
 test('Team Chat direct input focus keeps preventScroll and the new script cache is active',()=>{
   assert.match(js,/input\.addEventListener\('pointerdown', event => \{[\s\S]*event\.preventDefault\(\)[\s\S]*input\.focus\(\{ preventScroll:true \}\)/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261007-scroll-guard-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261007-bubble-layout-stage1-1/);
 });
 
 test('Team Chat keyboard focus does not duplicate chat anchoring across focus and visualViewport scroll',()=>{
