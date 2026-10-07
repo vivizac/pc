@@ -310,6 +310,13 @@ function bindRecordSearchInput() {
   input.setAttribute('autocapitalize', 'off');
   input.setAttribute('spellcheck', 'false');
 
+  input.addEventListener('pointerdown', function(event) {
+    if (isRecordSearchOpen()) return;
+    // 닫힌 검색창에서는 iOS가 손을 누르는 순간 input을 먼저 활성화하지 않게 하고,
+    // 기존 click 경로가 손을 뗀 뒤 검색 UI와 키보드를 열도록 맡깁니다.
+    if (event.cancelable) event.preventDefault();
+  });
+
   input.addEventListener('input', function() {
     syncRecordSearchQueryState();
     searchRecords();
