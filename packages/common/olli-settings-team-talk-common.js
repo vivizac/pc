@@ -31,6 +31,7 @@ const CACHE_PREFIX = 'olli_team_talk_settings_v2_';
 const state = {
   background: DEFAULT_BACKGROUND,
   botNotificationsEnabled: false,
+  avatarKey: '',
   loadedAcademyId: '',
   loading: false,
   saving: false,
@@ -99,6 +100,7 @@ function writeCache(id){
       background: state.background,
       background_reset_version: BACKGROUND_RESET_VERSION,
       bot_notifications_enabled: !!state.botNotificationsEnabled,
+      avatar_key: state.avatarKey || '',
       updated_at: new Date().toISOString()
     }));
   } catch (_) {}
@@ -191,10 +193,10 @@ function updateSettingsRowValue(){
   if (value) value.textContent = settingsSummary();
 }
 function rowHtml(){
-  return '<div class="settingsRow" data-owner-manager-only="true" id="settingsTeamTalkRow" onclick="openOlliTeamTalkSettings()" role="button">'
+  return '<div class="settingsRow" id="settingsTeamTalkRow" onclick="openOlliTeamTalkSettings()" role="button">'
     + '<div class="settingsRowLeft">'
     + '<span class="settingsRowIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-7l-4.2 3v-3H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z"></path><circle cx="9" cy="11" r=".8"></circle><circle cx="12" cy="11" r=".8"></circle><circle cx="15" cy="11" r=".8"></circle></svg></span>'
-    + '<span class="settingsRowTitle">팀톡 배경설정</span>'
+    + '<span class="settingsRowTitle">팀챗 설정</span>'
     + '</div>'
     + '<span class="settingsRowValue" id="settingsTeamTalkValue">' + settingsSummary() + '</span>'
     + '<svg class="settingsChevron" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"></path></svg>'
@@ -229,6 +231,25 @@ function statusHtml(){
 function escapeHtml(value){
   return String(value ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
 }
+function avatarOption(key){
+  const catalog = global.OlliTeamTalkAvatars;
+  const normalized = catalog?.normalizeKey?.(key) || '';
+  if (!normalized) return '';
+  const selected = state.avatarKey === normalized;
+  return '<button class="olliTeamTalkAvatarOption ' + (selected ? 'active' : '') + '" type="button" data-team-talk-avatar-option="' + normalized + '" aria-label="프로필 아이콘 선택" onclick="olliTeamTalkSelectAvatar(this.dataset.teamTalkAvatarOption)">'
+    + '<img src="' + escapeHtml(catalog.src(normalized, normalized)) + '" alt="">'
+    + '<span class="olliTeamTalkAvatarCheck" aria-hidden="true">' + (selected ? '✓' : '') + '</span>'
+    + '</button>';
+}
+function avatarSettingsHtml(){
+  const catalog = global.OlliTeamTalkAvatars;
+  const keys = Array.isArray(catalog?.keys) ? catalog.keys : [];
+  return '<section class="olliTeamTalkSettingsCard">'
+    + '<div class="olliTeamTalkSettingsHead"><div><strong>아이콘 설정</strong><small>팀챗에서 내 이름 앞에 표시할 프로필 아이콘을 선택합니다.</small></div></div>'
+    + '<div class="olliTeamTalkAvatarGrid">' + keys.map(avatarOption).join('') + '</div>'
+    + '</section>';
+}
+
 function themeOption(mode, label, detail){
   const selected = state.background === mode;
   const color = backgroundColor(mode);
@@ -244,7 +265,8 @@ function themeOption(mode, label, detail){
 function detailHtml(){
   const disabled = canEdit() ? '' : ' disabled';
   return '<div class="olliTeamTalkSettingsPage">'
-    + '<div class="settingsDetailIntro"><div class="settingsDetailTitle">팀톡 배경을<br>이 기기에서 설정합니다.</div></div>'
+    + '<div class="settingsDetailIntro"><div class="settingsDetailTitle">팀챗을<br>내 스타일로 설정합니다.</div></div>'
+    + avatarSettingsHtml()
     + '<section class="olliTeamTalkSettingsCard">'
     + '<div class="olliTeamTalkSettingsHead"><div><strong>배경 스타일</strong><small>PC와 핸드폰은 서로 연동하지 않고 각각 따로 저장됩니다. 배경에 맞춰 날짜·시간·시스템 글자색도 자동으로 바뀝니다.</small></div></div>'
     + '<div class="olliTeamTalkThemeGroupLabel olli">올리 스타일</div>'
@@ -268,7 +290,7 @@ function detailHtml(){
     + '<div class="olliTeamTalkEventChips"><span>신규 등록</span><span>체험 등록</span><span>대기 등록</span><span>픽업 등록</span><span>등록 취소</span><span>체험 취소</span><span>대기 취소</span><span>픽업 취소</span></div>'
     + '<div class="olliTeamTalkSettingsNotice"><strong>팀톡 메시지는 모두 볼 수 있습니다.</strong><br>휴대폰 알림은 해당 날짜의 클래스 담당 선생님에게만 전송됩니다. 당일 대체 담임이 지정된 경우 대체 담임을 우선합니다. 담당 선생님이 지정되지 않은 클래스는 팀톡 메시지만 남습니다.</div>'
     + '</section>'
-    + (!canEdit() ? '<div class="olliTeamTalkSettingsNotice">팀톡 설정 변경은 원장 또는 관리자만 할 수 있습니다.</div>' : '')
+    + (!canEdit() ? '<div class="olliTeamTalkSettingsNotice">프로필 아이콘은 직접 변경할 수 있습니다. 배경과 알림 설정은 원장 또는 관리자만 변경할 수 있습니다.</div>' : '')
     + statusHtml()
     + '</div>';
 }
@@ -296,6 +318,18 @@ async function loadRemote(force){
       state.botNotificationsEnabled = !!result.bot_notifications_enabled;
     }
 
+    try {
+      const avatarResult = await rpc('olli_team_talk_avatar_get', {
+        p_session_token: sessionToken(),
+        p_academy_id: id
+      });
+      if (avatarResult?.ok) {
+        state.avatarKey = global.OlliTeamTalkAvatars?.normalizeKey?.(avatarResult.avatar_key) || state.avatarKey;
+      }
+    } catch (error) {
+      state.lastError = clean(error?.message || error);
+    }
+
     let backgroundResult = null;
     try {
       backgroundResult = await rpc('olli_team_talk_background_get', {
@@ -319,11 +353,53 @@ async function loadRemote(force){
     state.loading = false;
     updateSettingsRowValue();
     if (document.getElementById('settingsDetailScreen')?.style.display !== 'none'
-        && clean(document.getElementById('settingsDetailTitlePill')?.textContent) === '팀톡 배경설정') {
+        && clean(document.getElementById('settingsDetailTitlePill')?.textContent) === '팀챗 설정') {
       renderDetail();
     }
   }
   return state;
+}
+
+function queueAvatarSave(key){
+  const id = academyId();
+  const catalog = global.OlliTeamTalkAvatars;
+  const requested = catalog?.normalizeKey?.(key) || '';
+  if (!id || !requested || state.saving) return Promise.resolve(false);
+  if (requested === state.avatarKey) return Promise.resolve(true);
+  const previous = state.avatarKey;
+  state.avatarKey = requested;
+  state.saving = true;
+  state.lastError = '';
+  writeCache(id);
+  renderDetail();
+
+  saveQueue = saveQueue.then(async () => {
+    const result = await rpc('olli_team_talk_avatar_update', {
+      p_session_token: sessionToken(),
+      p_academy_id: id,
+      p_avatar_key: requested
+    });
+    if (!result?.ok) throw new Error(clean(result?.message) || '프로필 아이콘을 저장하지 못했습니다.');
+    state.avatarKey = catalog.normalizeKey(result.avatar_key) || requested;
+    state.loadedAcademyId = id;
+    writeCache(id);
+    try {
+      global.dispatchEvent(new CustomEvent('olli-team-talk-avatar-changed', {
+        detail:{ member_id:clean(result.member_id), avatar_key:state.avatarKey }
+      }));
+    } catch (_) {}
+    return true;
+  }).catch(error => {
+    state.avatarKey = previous;
+    state.lastError = clean(error?.message || error) || '프로필 아이콘을 저장하지 못했습니다.';
+    writeCache(id);
+    return false;
+  }).finally(() => {
+    state.saving = false;
+    updateSettingsRowValue();
+    if (clean(document.getElementById('settingsDetailTitlePill')?.textContent) === '팀챗 설정') renderDetail();
+  });
+  return saveQueue;
 }
 
 function queueBackgroundSave(){
@@ -352,7 +428,7 @@ function queueBackgroundSave(){
   }).finally(() => {
     state.saving = false;
     updateSettingsRowValue();
-    if (clean(document.getElementById('settingsDetailTitlePill')?.textContent) === '팀톡 배경설정') renderDetail();
+    if (clean(document.getElementById('settingsDetailTitlePill')?.textContent) === '팀챗 설정') renderDetail();
   });
   return saveQueue;
 }
@@ -381,11 +457,14 @@ function queueGeneralSave(){
   }).finally(() => {
     state.saving = false;
     updateSettingsRowValue();
-    if (clean(document.getElementById('settingsDetailTitlePill')?.textContent) === '팀톡 배경설정') renderDetail();
+    if (clean(document.getElementById('settingsDetailTitlePill')?.textContent) === '팀챗 설정') renderDetail();
   });
   return saveQueue;
 }
 
+function selectAvatar(key){
+  return queueAvatarSave(key);
+}
 function selectBackground(mode){
   if (!canEdit()) return;
   state.background = normalizeBackground(mode);
@@ -406,7 +485,7 @@ function registerSettingsDetail(){
   try {
     if (typeof settingsDetailData === 'undefined' || !settingsDetailData) return false;
     settingsDetailData.teamTalk = {
-      title:'팀톡 배경설정',
+      title:'팀챗 설정',
       html:detailHtml,
       instantRender:true,
       beforeOpen:async function(){ await loadRemote(true); }
@@ -474,7 +553,7 @@ function openDetailFallback(){
   if (!detail || !body) return false;
 
   if (settings) settings.style.display = 'flex';
-  if (titlePill) titlePill.textContent = '팀톡 배경설정';
+  if (titlePill) titlePill.textContent = '팀챗 설정';
   body.innerHTML = detailHtml();
 
   detail.style.display = 'flex';
@@ -519,6 +598,7 @@ function refreshForAcademy(){
   const id = academyId();
   if (!id) return;
   if (state.loadedAcademyId && state.loadedAcademyId !== id) {
+    state.avatarKey = '';
     state.loadedAcademyId = '';
     state.background = DEFAULT_BACKGROUND;
     state.botNotificationsEnabled = false;
@@ -544,6 +624,7 @@ function init(){
 
 global.openOlliTeamTalkSettings = openDetail;
 global.closeOlliTeamTalkSettings = closeDetail;
+global.olliTeamTalkSelectAvatar = selectAvatar;
 global.olliTeamTalkSelectBackground = selectBackground;
 global.olliTeamTalkToggleBotNotifications = toggleBot;
 global.OlliTeamTalkSettings = {
@@ -554,6 +635,7 @@ global.OlliTeamTalkSettings = {
   darkBlueColor: DARK_BLUE_BG,
   olliBlueColor: OLLI_BLUE,
   platform: currentPlatform,
+  avatarKey:function(){ return state.avatarKey || ''; },
   load: loadRemote,
   applyBackground,
   refreshForAcademy,
