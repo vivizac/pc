@@ -259,6 +259,7 @@
       +' data-category="'+esc(category)+'"'
       +' data-recurrence="'+esc(recurrence)+'"'
       +' data-start-month="'+esc(startMonth)+'"'
+      +' data-revision="'+esc(revision)+'"'
       +' data-custom="'+(custom?'1':'0')+'">'
       + '<div class="olliExpenseRowMain">'
       + (custom
