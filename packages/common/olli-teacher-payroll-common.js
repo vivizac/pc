@@ -292,7 +292,7 @@
       + '<div class="olliExpenseSectionText">월세와 광고처럼 유지되는 비용은 다음 달에도 이어지고, 관리비와 재료비는 매달 새로 입력합니다.</div></div>'
       + '<div class="olliExpenseHeadSide"><div class="olliExpenseTotal"><span>운영 지출</span><strong>'+money(expenses.total_amount || 0)+'</strong></div>'
       + '<button type="button" class="olliExpenseHistoryToggle'+(state.expenseHistoryOpen?' is-active':'')+'" data-expense-history-toggle>변경 기록</button></div></div>'
-      + (missing?'<div class="olliExpenseMissingNotice">이번 달 아직 입력하지 않은 월별 지출이 <strong>'+missing+'개</strong> 있습니다.</div>':'')
+      + (missing?'<div class="olliExpenseMissingNotice">이번 달 아직 입력하지 않은 월별 지출이 <strong>'+missing+'개</strong> 있습니다. 현재 총액에는 포함되지 않습니다.</div>':'')
       + '<div class="olliExpenseGroup"><div class="olliExpenseGroupTitle">기본 지출</div>'
       + (basic.length?basic.map(renderExpenseItem).join(''):'<div class="olliExpenseEmpty">기본 지출 항목을 불러오지 못했습니다.</div>')
       + '</div>'
@@ -682,14 +682,21 @@
 
   function renderFinanceSummary(){
     const payload=state.payload || {};
-    const expenseTotal=Math.max(0,Number(payload.expense_total_amount || financeExpensePayload().total_amount || 0));
+    const expenses=financeExpensePayload();
+    const expenseTotal=Math.max(0,Number(payload.expense_total_amount || expenses.total_amount || 0));
     const payrollTotal=Math.max(0,Number(payload.payroll_total_amount || 0));
     const total=Math.max(0,Number(payload.total_amount || (expenseTotal+payrollTotal)));
+    const missingMonthly=Math.max(0,Number(expenses.missing_monthly_count || 0));
     const parts=String(state.month || '').split('-');
     const monthLabel=parts.length===2 ? Number(parts[0])+'년 '+Number(parts[1])+'월' : '이번 달';
+    const totalLabel=missingMonthly>0 ? '현재 입력 기준 총 지출' : '총 지출';
+    const completionText=missingMonthly>0
+      ? '월별 지출 미입력 '+missingMonthly+'건'
+      : '월별 지출 입력 완료';
 
-    return '<section class="olliFinanceSummary" data-finance-summary>'
-      + '<div class="olliFinanceSummaryHero"><span>'+esc(monthLabel)+' 총 지출</span><strong>'+money(total)+'</strong></div>'
+    return '<section class="olliFinanceSummary'+(missingMonthly>0?' is-incomplete':' is-complete')+'" data-finance-summary>'
+      + '<div class="olliFinanceSummaryHero"><span>'+esc(monthLabel)+' '+totalLabel+'</span><strong>'+money(total)+'</strong>'
+      + '<div class="olliFinanceSummaryStatus">'+esc(completionText)+'</div></div>'
       + '<div class="olliFinanceSummaryBreakdown">'
       + '<div><span>운영 지출</span><strong>'+money(expenseTotal)+'</strong></div>'
       + '<div><span>선생님 급여</span><strong>'+money(payrollTotal)+'</strong></div>'
@@ -754,7 +761,7 @@
 
     els.body.innerHTML = '<div class="olliPayrollPage">'
       + '<div class="olliFinanceTop">'
-      + '<label class="olliPayrollMonthField"><span>계산 월</span><input type="month" value="'+esc(state.month)+'" data-payroll-month></label>'
+      + '<label class="olliPayrollMonthField"><span>조회 월</span><input type="month" value="'+esc(state.month)+'" data-payroll-month></label>'
       + renderFinanceSummary()
       + '</div>'
       + financeTabHtml()
