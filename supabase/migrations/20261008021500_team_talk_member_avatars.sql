@@ -32,7 +32,7 @@ set team_talk_avatar_key = case m.display_name
 end
 from public.academies a
 where a.id = m.academy_id
-  and a.academy_name = '비비작아이성향미술학원'
+  and a.id = '6871d975-6c50-426d-97b1-81ac4e35ba27'::uuid
   and a.deleted_at is null
   and m.display_name in ('루루','최민기','송지원','조영아','김다미');
 

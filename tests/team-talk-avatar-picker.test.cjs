@@ -72,7 +72,7 @@ test('avatar persistence assigns random defaults globally and only seeds Vivizac
   assert.match(migration,/'avatar_key', m\.team_talk_avatar_key/);
   assert.match(migration,/create or replace function public\.olli_team_talk_avatar_get/);
   assert.match(migration,/create or replace function public\.olli_team_talk_avatar_update/);
-  assert.match(migration,/a\.academy_name = '비비작아이성향미술학원'/);
+  assert.match(migration,/a\.id = '6871d975-6c50-426d-97b1-81ac4e35ba27'::uuid/);\n  assert.doesNotMatch(migration,/a\\.academy_name = '비비작아이성향미술학원'/);
   assert.match(migration,/when '루루' then 'avatar-13'/);
   assert.match(migration,/when '최민기' then 'avatar-11'/);
   assert.match(migration,/when '송지원' then 'avatar-01'/);
