@@ -8294,9 +8294,6 @@
     }
 
     const talkScreen = getScreen();
-    if (olliTalkKeyboardMotionTimer) clearTimeout(olliTalkKeyboardMotionTimer);
-    olliTalkKeyboardMotionTimer = null;
-    talkScreen?.classList.remove('olliTalkKeyboardMotion');
     if (olliTalkChatGestureSettleTimer) clearTimeout(olliTalkChatGestureSettleTimer);
     olliTalkChatGestureSettleTimer = null;
     olliTalkChatGestureActive = false;
@@ -8305,6 +8302,9 @@
 
     const input = document.getElementById('olliTalkBetaInput');
     if (input) input.blur();
+    if (olliTalkKeyboardMotionTimer) clearTimeout(olliTalkKeyboardMotionTimer);
+    olliTalkKeyboardMotionTimer = null;
+    talkScreen?.classList.remove('olliTalkKeyboardMotion');
     closeOlliTalkSearch();
     closeOlliTalkPhotoViewer(null,{restore:false});
     disconnectOlliTalkImageViewportObserver('chat');
