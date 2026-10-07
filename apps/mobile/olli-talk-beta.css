@@ -441,6 +441,11 @@
   background:transparent;
   transition:none;
 }
+
+#olliTalkBetaScreen.olliTalkKeyboardMotion .olliTalkBetaChatArea{
+  transition:padding-bottom 140ms cubic-bezier(.22,.61,.36,1);
+  will-change:padding-bottom;
+}
 /* iOS에서 채팅 드래그가 page/visualViewport로 넘어가지 않도록
    항상 내부에 최소 스크롤 범위를 유지한다. */
 #olliTalkBetaScreen .olliTalkBetaChatArea::after{
@@ -1843,6 +1848,22 @@
 
 #olliTalkBetaScreen .olliTalkBetaComposerWrap{
   transition:none;
+}
+#olliTalkBetaScreen.olliTalkKeyboardMotion .olliTalkBetaComposerWrap{
+  transition:bottom 140ms cubic-bezier(.22,.61,.36,1);
+  will-change:bottom;
+}
+#olliTalkBetaScreen.olliTalkKeyboardMotion .olliTalkBetaComposer{
+  transition:min-height 140ms cubic-bezier(.22,.61,.36,1);
+}
+
+
+@media (prefers-reduced-motion: reduce){
+  #olliTalkBetaScreen.olliTalkKeyboardMotion .olliTalkBetaChatArea,
+  #olliTalkBetaScreen.olliTalkKeyboardMotion .olliTalkBetaComposerWrap,
+  #olliTalkBetaScreen.olliTalkKeyboardMotion .olliTalkBetaComposer{
+    transition:none;
+  }
 }
 
 
