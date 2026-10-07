@@ -268,7 +268,9 @@
       (Array.isArray(pickupDropoffContext && pickupDropoffContext.flags) ? pickupDropoffContext.flags : [])
         .map((item) => [clean(item && item.id), {
           isDropoff:item && item.is_dropoff === true,
-          dropoffLabel:clean(item && item.dropoff_label)
+          dropoffLabel:clean(item && item.dropoff_label),
+          dropoffTime:clean(item && item.dropoff_time),
+          pickupScope:clean(item && item.pickup_scope) || 'weekly'
         }])
     );
     data.pickups = (Array.isArray(data.pickups) ? data.pickups : []).map((item) => {
@@ -276,7 +278,9 @@
       return {
         ...item,
         is_dropoff:dropoff.isDropoff === true,
-        dropoff_label:clean(dropoff.dropoffLabel)
+        dropoff_label:clean(dropoff.dropoffLabel),
+        dropoff_time:clean(dropoff.dropoffTime),
+        pickup_scope:clean(dropoff.pickupScope) || 'weekly'
       };
     });
     const attendanceOverrides = await attendanceOverridesPromise;
@@ -550,14 +554,16 @@
   }
 
   async function savePickup(options) {
-    return rpc('olli_schedule_save_pickup_v3', contextPayload({
+    return rpc('olli_schedule_save_pickup_v4', contextPayload({
       p_student_id: options.studentId,
       p_weekday: Number(options.weekday),
       p_class_time: Number(options.classTime),
       p_arrival_label: options.pickupLabel || null,
       p_pickup_time: options.pickupTime || null,
       p_dropoff_label: options.dropoffLabel || null,
-      p_effective_date: options.effectiveDate
+      p_dropoff_time: options.dropoffTime || null,
+      p_effective_date: options.effectiveDate,
+      p_pickup_scope: options.pickupScope === 'daily' ? 'daily' : 'weekly'
     }));
   }
 

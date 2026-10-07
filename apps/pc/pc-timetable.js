@@ -205,6 +205,9 @@
 
     state.dialog.studentId = studentId;
     state.dialog.query = clean(student.name);
+    if (state.dialog.kind === 'pickupAdd') {
+      applyRecurringPickupTemplate(state.dialog, studentId);
+    }
     renderDialog();
 
     requestAnimationFrame(() => {
@@ -1007,14 +1010,60 @@
     if (actual) return kind === 'makeup' ? 'makeup' : 'present';
     return '';
   }
-  function pickupActiveOn(item, date) {
+  function pickupEffectiveOn(item, date) {
     const key = dateKey(date);
-    return Number(item.weekday) === date.getDay()
-      && clean(item.effective_from) <= key
+    return clean(item.effective_from) <= key
       && (!clean(item.effective_to) || clean(item.effective_to) >= key);
   }
+  function pickupActiveOn(item, date) {
+    return Number(item.weekday) === date.getDay() && pickupEffectiveOn(item, date);
+  }
+  function pickupScope(item) {
+    return clean(item && item.pickup_scope) === 'daily' ? 'daily' : 'weekly';
+  }
   function slotPickups(date, classTime) {
-    return pickups().filter((item) => Number(item.class_time) === Number(classTime) && pickupActiveOn(item, date));
+    const rows = pickups().filter((item) => Number(item.class_time) === Number(classTime) && pickupActiveOn(item, date));
+    const dailyStudentIds = new Set(
+      rows.filter((item) => pickupScope(item) === 'daily').map((item) => clean(item.student_id)).filter(Boolean)
+    );
+    return rows.filter((item) => pickupScope(item) === 'daily' || !dailyStudentIds.has(clean(item.student_id)));
+  }
+  function recurringPickupTemplateForStudent(studentId, dialog) {
+    const id = clean(studentId);
+    if (!id || !dialog) return null;
+    const date = parseDate(dialog.date);
+    const candidates = pickups().filter((item) =>
+      clean(item.student_id) === id
+      && pickupScope(item) === 'weekly'
+      && pickupEffectiveOn(item, date)
+    );
+    if (!candidates.length) return null;
+    const exact = candidates.find((item) =>
+      Number(item.weekday) === Number(dialog.weekday)
+      && Number(item.class_time) === Number(dialog.classTime)
+    );
+    if (exact) return exact;
+    const sameClassTime = candidates.filter((item) => Number(item.class_time) === Number(dialog.classTime));
+    if (sameClassTime.length === 1) return sameClassTime[0];
+    const sameWeekday = candidates.filter((item) => Number(item.weekday) === Number(dialog.weekday));
+    if (sameWeekday.length === 1) return sameWeekday[0];
+    return candidates.length === 1 ? candidates[0] : null;
+  }
+  function applyRecurringPickupTemplate(dialog, studentId) {
+    const template = recurringPickupTemplateForStudent(studentId, dialog);
+    dialog.loadedPickupTemplateId = template ? clean(template.id) : '';
+    if (!template) {
+      dialog.pickupLabel = '';
+      dialog.pickupTime = '';
+      dialog.dropoffLabel = '';
+      dialog.dropoffTime = '';
+      return false;
+    }
+    dialog.pickupLabel = template.is_dropoff === true ? '' : clean(template.pickup_label);
+    dialog.pickupTime = template.is_dropoff === true ? '' : pickupTimeInputValue(template.pickup_time);
+    dialog.dropoffLabel = clean(template.dropoff_label) || (template.is_dropoff === true ? clean(template.pickup_label) : '');
+    dialog.dropoffTime = pickupTimeInputValue(template.dropoff_time);
+    return true;
   }
   function pickupTimeLabel(value) {
     const match = clean(value).match(/^(\d{1,2}):(\d{2})/);
@@ -1688,7 +1737,8 @@
     const date = clean(dataset.date);
     state.dialog = {
       kind: 'pickupAdd', date, weekday: Number(dataset.weekday), classTime: Number(dataset.classTime),
-      studentId: '', query: '', pickupLabel: '', pickupTime: '', dropoffLabel: ''
+      studentId: '', query: '', pickupLabel: '', pickupTime: '', dropoffLabel: '', dropoffTime: '',
+      loadedPickupTemplateId: ''
     };
     openOverlay();
   }
@@ -2157,10 +2207,12 @@
       + '</div></section>'
       + '<section class="olliTtPickupAddSection dropoff">'
       + '<div class="olliTtPickupManageSectionHead"><strong>하원 설정</strong><span>하원만 등록하거나 등원과 함께 등록할 수 있습니다.</span></div>'
-      + `<label class="olliTtPickupAddDropoffField"><span>하원 장소</span><input type="text" maxlength="80" data-tt-pickup-dropoff-label value="${esc(dialog.dropoffLabel)}" placeholder="예: 집 앞, 리슈빌 정문"></label>`
-      + '</section>'
-      + (selected ? `<div class="olliTtStatusNotice">${esc(selected.name)} 학생은 등원 또는 하원 중 하나만 입력해도 등록할 수 있습니다.</div>` : '')
-      + '<div class="olliTtDialogActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary" data-tt-save-pickup>픽업 등록</button></div></div>';
+      + '<div class="olliTtPickupAddDropoffGrid">'
+      + `<label><span>하원 장소</span><input type="text" maxlength="80" data-tt-pickup-dropoff-label value="${esc(dialog.dropoffLabel)}" placeholder="예: 집 앞, 리슈빌 정문"></label>`
+      + `<label><span>하원 시간</span><input type="text" class="olliTtClockOnlyTime" data-tt-pickup-dropoff-time value="${esc(dialog.dropoffTime || '')}" placeholder="시간 선택" readonly aria-label="하원 시간 선택"></label>`
+      + '</div></section>'
+      + (selected ? `<div class="olliTtStatusNotice">${dialog.loadedPickupTemplateId ? '기존 매주 픽업 설정을 불러왔습니다. ' : ''}${esc(selected.name)} 학생은 등원 또는 하원 중 하나만 입력해도 등록할 수 있습니다.</div>` : '')
+      + '<div class="olliTtDialogActions olliTtPickupApplyActions"><button type="button" class="olliTtDialogCancel" data-tt-dialog-close>취소</button><button type="button" class="olliTtDialogPrimary secondary" data-tt-save-pickup-scope="daily">당일 설정</button><button type="button" class="olliTtDialogPrimary" data-tt-save-pickup-scope="weekly">매주 적용</button></div></div>';
   }
 
   function pickupManageDirtyState(dialog) {
@@ -2481,6 +2533,10 @@
       if (state.dialog.kind === 'pickupManage' || state.dialog.kind === 'pickupAdd') state.dialog.dropoffLabel = pickupDropoffLabel.value;
       if (state.dialog.kind === 'pickupManage') refreshPickupManageActionState(dialog);
     });
+    const pickupDropoffTime = dialog.querySelector('[data-tt-pickup-dropoff-time]');
+    bindClockOnlyTimeInput(pickupDropoffTime, (value) => {
+      if (state.dialog && state.dialog.kind === 'pickupAdd') state.dialog.dropoffTime = value;
+    });
     const pickupArrivalLabel = dialog.querySelector('[data-tt-pickup-arrival-label]');
     if (pickupArrivalLabel) pickupArrivalLabel.addEventListener('input', () => {
       if (state.dialog && state.dialog.kind === 'pickupManage') {
@@ -2557,8 +2613,9 @@
     if (splitKinderClassButton) splitKinderClassButton.addEventListener('click', splitKinderClass);
     const mergeKinderClassButton = dialog.querySelector('[data-tt-merge-kinder-class]');
     if (mergeKinderClassButton) mergeKinderClassButton.addEventListener('click', mergeKinderClass);
-    const savePickupButton = dialog.querySelector('[data-tt-save-pickup]');
-    if (savePickupButton) savePickupButton.addEventListener('click', savePickup);
+    dialog.querySelectorAll('[data-tt-save-pickup-scope]').forEach((button) => {
+      button.addEventListener('click', () => savePickup(button.dataset.ttSavePickupScope));
+    });
     const saveArrivalButton = dialog.querySelector('[data-tt-save-arrival]');
     if (saveArrivalButton) saveArrivalButton.addEventListener('click', savePickupArrival);
     const registerDropoffButton = dialog.querySelector('[data-tt-register-dropoff]');
@@ -3048,16 +3105,19 @@ ${combined.memoError}`);
     }
   }
 
-  async function savePickup() {
+  async function savePickup(scope) {
     const dialog = state.dialog;
     if (!dialog || dialog.kind !== 'pickupAdd') return;
+    const pickupScope = scope === 'daily' ? 'daily' : 'weekly';
     const root = document.getElementById('olliTtDialog');
     const pickupLabelInput = root && root.querySelector('[data-tt-pickup-label]');
     const pickupTimeInput = root && root.querySelector('[data-tt-pickup-time]');
     const dropoffLabelInput = root && root.querySelector('[data-tt-pickup-dropoff-label]');
+    const dropoffTimeInput = root && root.querySelector('[data-tt-pickup-dropoff-time]');
     dialog.pickupLabel = clean(pickupLabelInput ? pickupLabelInput.value : dialog.pickupLabel);
     dialog.pickupTime = clean(pickupTimeInput ? pickupTimeInput.value : dialog.pickupTime);
     dialog.dropoffLabel = clean(dropoffLabelInput ? dropoffLabelInput.value : dialog.dropoffLabel);
+    dialog.dropoffTime = clean(dropoffTimeInput ? dropoffTimeInput.value : dialog.dropoffTime);
     if (!clean(dialog.studentId)) {
       const activeButton = root && root.querySelector('[data-tt-pickup-student].active');
       if (activeButton) dialog.studentId = clean(activeButton.dataset.ttPickupStudent);
@@ -3073,9 +3133,10 @@ ${combined.memoError}`);
     }
     if (!clean(dialog.studentId)) { alert('픽업할 학생을 선택해 주세요.'); return; }
     const hasArrivalInput = Boolean(dialog.pickupLabel || dialog.pickupTime);
-    const hasDropoff = Boolean(dialog.dropoffLabel);
+    const hasDropoffInput = Boolean(dialog.dropoffLabel || dialog.dropoffTime);
     if (hasArrivalInput && (!dialog.pickupLabel || !dialog.pickupTime)) { alert('등원 픽업은 장소와 시간을 모두 입력해 주세요.'); return; }
-    if (!hasArrivalInput && !hasDropoff) { alert('등원 또는 하원 중 하나 이상을 입력해 주세요.'); return; }
+    if (dialog.dropoffTime && !dialog.dropoffLabel) { alert('하원 시간을 입력하려면 하원 장소도 입력해 주세요.'); return; }
+    if (!hasArrivalInput && !hasDropoffInput) { alert('등원 또는 하원 중 하나 이상을 입력해 주세요.'); return; }
     const student = studentById(dialog.studentId);
     const result = await withSaving(() => service.savePickup({
       studentId: dialog.studentId,
@@ -3083,10 +3144,16 @@ ${combined.memoError}`);
       classTime: dialog.classTime,
       pickupLabel: hasArrivalInput ? dialog.pickupLabel : '',
       pickupTime: hasArrivalInput ? dialog.pickupTime : null,
-      dropoffLabel: hasDropoff ? dialog.dropoffLabel : '',
-      effectiveDate: dialog.date
+      dropoffLabel: hasDropoffInput ? dialog.dropoffLabel : '',
+      dropoffTime: hasDropoffInput ? dialog.dropoffTime : null,
+      effectiveDate: dialog.date,
+      pickupScope
     }));
-    if (result) notify(`${student.name} 학생의 픽업 정보를 등록했어요.`);
+    if (result) {
+      notify(pickupScope === 'daily'
+        ? `${student.name} 학생의 ${koreanDate(dialog.date)} 당일 픽업을 등록했어요.`
+        : `${student.name} 학생의 매주 픽업 정보를 등록했어요.`);
+    }
   }
 
   async function savePickupArrival() {
