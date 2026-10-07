@@ -996,7 +996,8 @@
 }
 
 #olliTalkBetaScreen .olliTalkBetaMessage.incoming .olliTalkBetaBubbleRow,
-#olliTalkBetaScreen .olliTalkBetaMessage.ai .olliTalkBetaBubbleRow{
+#olliTalkBetaScreen .olliTalkBetaMessage.ai .olliTalkBetaBubbleRow,
+#olliTalkBetaScreen .olliTalkBetaMessage.outgoing .olliTalkBetaBubbleRow{
   gap:3px;
 }
 
@@ -1186,8 +1187,18 @@
 }
 
 #olliTalkBetaScreen .olliTalkBetaMessage.incoming .olliTalkBetaMessageTime,
-#olliTalkBetaScreen .olliTalkBetaMessage.ai .olliTalkBetaMessageTime{
+#olliTalkBetaScreen .olliTalkBetaMessage.ai .olliTalkBetaMessageTime,
+#olliTalkBetaScreen .olliTalkBetaMessage.outgoing .olliTalkBetaMessageTime{
   letter-spacing:-.04em;
+}
+
+#olliTalkBetaScreen .olliTalkBetaMessage.incoming .olliTalkBetaBubbleMeta,
+#olliTalkBetaScreen .olliTalkBetaMessage.ai .olliTalkBetaBubbleMeta{
+  align-items:flex-start;
+}
+
+#olliTalkBetaScreen .olliTalkBetaMessage.outgoing .olliTalkBetaBubbleMeta{
+  align-items:flex-end;
 }
 
 #olliTalkBetaScreen .olliTalkBetaUnreadDivider{
