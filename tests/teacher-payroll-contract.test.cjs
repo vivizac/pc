@@ -6,7 +6,11 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
-const migration = read('supabase/migrations/20261006150241_teacher_payroll_calculator.sql');
+const migration = [
+  read('supabase/migrations/20261006150241_teacher_payroll_calculator.sql'),
+  read('supabase/migrations/20261006153614_harden_owner_roles_and_payroll_cycle.sql'),
+  read('supabase/migrations/20261007050000_teacher_payroll_active_workdays.sql')
+].join('\n');
 const common = read('packages/common/olli-teacher-payroll-common.js');
 const pcHtml = read('apps/pc/index.html');
 const mobileHtml = read('apps/mobile/index.html');
@@ -90,4 +94,24 @@ test('settings row is hidden by the existing owner-only permission contract', ()
 test('owner login sync is fallback protection in addition to database cron', () => {
   assert.match(common, /async function syncDueNotifications\(\)[\s\S]*!isOwner\(\)[\s\S]*olli_teacher_payroll_due_sync/);
   assert.match(common, /setTimeout\(\(\)=>\{ syncDueNotifications\(\); \},1200\)/);
+});
+
+
+test('monthly salary is editable and saved through the payroll v2 RPC', () => {
+  assert.match(migration, /monthly_salary bigint not null default 0/);
+  assert.match(migration, /olli_teacher_payroll_setting_upsert_v2/);
+  assert.match(common, /data-payroll-monthly-salary/);
+  assert.match(common, /olli_teacher_payroll_setting_upsert_v2/);
+  assert.match(common, /p_monthly_salary:monthlySalary/);
+  assert.match(common, /monthlySalary > 0 \? Math\.round\(monthlySalary\)/);
+});
+
+test('payroll counts only occupied teaching slots and preserves date substitute ownership', () => {
+  assert.match(migration, /active_slots as \(/);
+  assert.match(migration, /public\.olli_schedule_enrollments e/);
+  assert.match(migration, /e\.effective_from<=rd\.session_date/);
+  assert.match(migration, /public\.olli_schedule_one_time_sessions o/);
+  assert.match(migration, /o\.status<>'cancelled'/);
+  assert.match(migration, /when o\.id is not null then coalesce\(o\.teacher_member_id,override_member\.teacher_member_id\)/);
+  assert.match(migration, /else coalesce\(ct\.teacher_member_id,class_member\.teacher_member_id\)/);
 });
