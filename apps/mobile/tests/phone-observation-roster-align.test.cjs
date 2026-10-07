@@ -138,3 +138,12 @@ test('roster sort prefix uses the same gray as student guide text while the sort
   assert.match(html, /olli-observation-roster-phone\.js\?v=20260928-sort-prefix-gray-1/);
   assert.match(html, /olli-observation-roster-phone\.css\?v=20260928-sort-prefix-gray-1/);
 });
+
+
+test('observation roster student rows match the compact attendance card height', () => {
+  const rosterRow = ruleBody(rosterCss, '#observationRosterScreen .memoBodyRosterRow');
+  const rosterButton = ruleBody(rosterCss, '#observationRosterScreen .memoBodyRosterStudentBtn');
+  assert.match(rosterRow, /min-height:48px;/);
+  assert.match(rosterButton, /min-height:48px;/);
+  assert.match(baseCss, /\.elementaryStudentRow,[\s\S]*?\.kinderStudentRow \{[\s\S]*?min-height:48px;[\s\S]*?padding:6px 10px 6px 10px;/);
+});

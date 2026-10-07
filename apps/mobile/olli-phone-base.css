@@ -266,8 +266,8 @@ background: #FEFEFE ;
 
 .elementaryStudentRow,
 .kinderStudentRow {
-  width:100%; background:#fff; border:none; padding:8px 10px 8px 10px; font-size:calc(16px * var(--olli-text-scale)); font-weight:450; color:#111;
-  text-align:left; cursor:pointer; font-family:inherit; border-radius:0; margin-bottom:2px;
+  width:100%; min-height:48px; background:#fff; border:none; padding:6px 10px 6px 10px; font-size:calc(16px * var(--olli-text-scale)); font-weight:450; color:#111;
+  text-align:left; cursor:pointer; font-family:inherit; border-radius:0; margin-bottom:0;
   display:flex; align-items:center;
   -webkit-touch-callout:none;
   -webkit-user-select:none;
@@ -865,6 +865,8 @@ background: #FEFEFE ;
 }
 #recordRoomScreen > #studentActionOverlay {
   z-index: 120300;
+  justify-content: flex-start;
+  padding-left: 21px;
 }
 .studentActionCard {
   width: 100%;

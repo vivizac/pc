@@ -6,6 +6,7 @@ const adapter = fs.readFileSync('olli-attendance-phone-adapter.js', 'utf8');
 const navigation = fs.readFileSync('olli-record-room-navigation.js', 'utf8');
 const observationRuntime = fs.readFileSync('olli-observation-runtime.js', 'utf8');
 const html = fs.readFileSync('index.html', 'utf8');
+const baseCss = fs.readFileSync('olli-phone-base.css', 'utf8');
 
 test('attendance local snapshot hydrates month and week caches before server work', () => {
   assert.match(adapter, /function hydrateCurrentMonthFromLocal\(/);
@@ -136,4 +137,18 @@ test('attendance student action overlay belongs to the attendance page only', ()
 test('attendance student action ownership assets are cache-busted', () => {
   assert.match(html, /olli-data-student-operations\.js\?v=20260926-student-action-owner-1/);
   assert.match(html, /olli-phone-base\.css\?v=20260926-student-action-owner-1/);
+});
+
+
+test('attendance day sort splits the same time into class groups only when multiple groups exist', () => {
+  assert.match(adapter, /function getRegularClassGroup\(student\)/);
+  assert.match(adapter, /const groupsBySlot = new Map\(\)/);
+  assert.match(adapter, /const key = `\$\{slotKey\}\|\$\{classGroup\}`/);
+  assert.match(adapter, /const divided = \(groupsBySlot\.get\(group\.slotKey\)\?\.size \|\| 0\) > 1/);
+  assert.match(adapter, /divided \? `·\$\{group\.classGroup\}반` : ''/);
+});
+
+test('attendance action popup aligns to the left add button and student rows use compact spacing', () => {
+  assert.match(baseCss, /#recordRoomScreen > #studentActionOverlay \{[\s\S]*?justify-content: flex-start;[\s\S]*?padding-left: 21px;/);
+  assert.match(baseCss, /\.elementaryStudentRow,[\s\S]*?\.kinderStudentRow \{[\s\S]*?min-height:48px;[\s\S]*?padding:6px 10px 6px 10px;[\s\S]*?margin-bottom:0;/);
 });

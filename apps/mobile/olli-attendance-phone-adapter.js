@@ -660,20 +660,35 @@
     const legacy = getLegacyTodayTime(student, new Date());
     return Number.isFinite(Number(legacy)) ? Number(legacy) : null;
   }
+  function getRegularClassGroup(student) {
+    const direct = clean(student?.__olliAttendanceRegularClassGroup);
+    if (direct) return direct.toUpperCase();
+    const entry = getTodayScheduleEntry(student?.id).regular;
+    return (clean(entry?.class_group) || 'A').toUpperCase();
+  }
   function renderRegularTimeGroups(renderRows, students) {
-    const groups = [];
-    let currentKey = null;
+    const grouped = new Map();
+    const groupsBySlot = new Map();
     (students || []).forEach(student => {
       const slot = getRegularTimeSlot(student);
-      const key = Number.isFinite(slot) ? String(slot) : 'unknown';
-      if (!groups.length || currentKey !== key) {
-        groups.push({ key, slot, students: [] });
-        currentKey = key;
-      }
-      groups[groups.length - 1].students.push(student);
+      const slotKey = Number.isFinite(slot) ? String(slot) : 'unknown';
+      const classGroup = getRegularClassGroup(student);
+      const key = `${slotKey}|${classGroup}`;
+      if (!grouped.has(key)) grouped.set(key, { key, slotKey, slot, classGroup, students: [] });
+      grouped.get(key).students.push(student);
+      if (!groupsBySlot.has(slotKey)) groupsBySlot.set(slotKey, new Set());
+      groupsBySlot.get(slotKey).add(classGroup);
+    });
+    const groups = Array.from(grouped.values()).sort((a, b) => {
+      const aTime = Number.isFinite(a.slot) ? a.slot : Number.MAX_SAFE_INTEGER;
+      const bTime = Number.isFinite(b.slot) ? b.slot : Number.MAX_SAFE_INTEGER;
+      return aTime - bTime || a.classGroup.localeCompare(b.classGroup, 'ko');
     });
     return groups.map(group => {
-      const label = Number.isFinite(group.slot) ? `${group.slot}시` : '시간 미정';
+      const divided = (groupsBySlot.get(group.slotKey)?.size || 0) > 1;
+      const label = Number.isFinite(group.slot)
+        ? `${group.slot}시${divided ? `·${group.classGroup}반` : ''}`
+        : '시간 미정';
       return `${renderSessionDivider(label)}${renderRowsForSession(renderRows, group.students, 'regular')}`;
     }).join('');
   }
