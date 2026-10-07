@@ -55,6 +55,6 @@ test('shared Olli flow owns vertical spacing instead of child margins',()=>{
 });
 
 test('Team Chat loads the stage-2 grouped flow assets',()=>{
-  assert.match(html,/olli-talk-beta\.css\?v=20261007-bubble-flow-stage2-1/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261007-bubble-flow-stage2-1/);
+  assert.match(html,/olli-talk-beta\.css\?v=20261007-choice-bubble-stage3-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261007-choice-bubble-stage3-1/);
 });
