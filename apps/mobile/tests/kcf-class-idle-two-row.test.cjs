@@ -13,7 +13,8 @@ const html = fs.readFileSync('index.html', 'utf8');
 test('closed Class mode keeps the inline composer in two rows', () => {
   assert.match(css, /kcfTeacherRosterMode \.kcfComposer \{[\s\S]*?height:auto;[\s\S]*?max-height:none;/);
   assert.match(css, /kcfTeacherRosterMode \.kcfComposerBottom \{[\s\S]*?display:grid;[\s\S]*?grid-template-columns:33px minmax\(0,1fr\) 33px;[\s\S]*?grid-template-rows:minmax\(34px, auto\) 38px;/);
-  assert.match(css, /kcfTeacherRosterMode \.kcfInput \{[\s\S]*?grid-column:1 \/ -1;[\s\S]*?grid-row:1;/);
+  assert.match(css, /kcfTeacherRosterMode \.kcfInputActivateWrap \{[\s\S]*?grid-column:1 \/ -1;[\s\S]*?grid-row:1;[\s\S]*?width:100%;[\s\S]*?min-width:0;/);
+  assert.match(css, /kcfTeacherRosterMode \.kcfInput \{[\s\S]*?width:100%;[\s\S]*?height:34px;/);
   assert.match(css, /kcfTeacherRosterMode \.kcfAutoStudentRoster \{[\s\S]*?grid-column:2;[\s\S]*?grid-row:2;[\s\S]*?position:static;/);
 });
 
