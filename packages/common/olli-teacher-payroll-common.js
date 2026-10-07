@@ -14,7 +14,8 @@
     month: currentMonthValue(),
     payload: null,
     loading: false,
-    syncingDue: false
+    syncingDue: false,
+    financeTab: 'expenses'
   };
 
   function currentMonthValue(){
@@ -469,6 +470,36 @@
       + '</section>';
   }
 
+  function financeTabHtml(){
+    const active=state.financeTab==='payroll' ? 'payroll' : 'expenses';
+    return '<div class="olliFinanceTabs" role="tablist" aria-label="급여 및 지출 보기">'
+      + '<button type="button" role="tab" class="'+(active==='expenses'?'is-active':'')+'" aria-selected="'+(active==='expenses'?'true':'false')+'" data-finance-tab="expenses">운영 지출</button>'
+      + '<button type="button" role="tab" class="'+(active==='payroll'?'is-active':'')+'" aria-selected="'+(active==='payroll'?'true':'false')+'" data-finance-tab="payroll">선생님 급여</button>'
+      + '</div>';
+  }
+
+  function setFinanceTab(tab,body){
+    const next=tab==='payroll' ? 'payroll' : 'expenses';
+    state.financeTab=next;
+    const root=body || detailElements().body;
+    if(!root) return;
+    root.querySelectorAll('[data-finance-tab]').forEach(button=>{
+      const active=String(button.dataset.financeTab || '')===next;
+      button.classList.toggle('is-active',active);
+      button.setAttribute('aria-selected',active?'true':'false');
+    });
+    root.querySelector('.olliFinanceExpensesColumn')?.classList.toggle('is-active',next==='expenses');
+    root.querySelector('.olliFinancePayrollColumn')?.classList.toggle('is-active',next==='payroll');
+  }
+
+  function bindFinanceTabs(body){
+    if(!body) return;
+    body.querySelectorAll('[data-finance-tab]').forEach(button=>{
+      button.addEventListener('click',()=>setFinanceTab(String(button.dataset.financeTab || ''),body));
+    });
+    setFinanceTab(state.financeTab,body);
+  }
+
   function render(){
     const els = detailElements();
     if(!els.body) return;
@@ -483,9 +514,10 @@
       + '<label class="olliPayrollMonthField"><span>계산 월</span><input type="month" value="'+esc(state.month)+'" data-payroll-month></label>'
       + renderFinanceSummary()
       + '</div>'
+      + financeTabHtml()
       + '<div class="olliFinanceColumns">'
-      + '<div class="olliFinanceExpensesColumn">'+renderExpenseSection()+'</div>'
-      + '<div class="olliFinancePayrollColumn">'+renderPayrollSection(teachers)+'</div>'
+      + '<div class="olliFinanceExpensesColumn'+(state.financeTab==='expenses'?' is-active':'')+'">'+renderExpenseSection()+'</div>'
+      + '<div class="olliFinancePayrollColumn'+(state.financeTab==='payroll'?' is-active':'')+'">'+renderPayrollSection(teachers)+'</div>'
       + '</div>'
       + '</div>';
 
@@ -497,6 +529,7 @@
       }
     });
 
+    bindFinanceTabs(els.body);
     bindExpenseEvents(els.body);
 
     els.body.querySelectorAll('[data-payroll-teacher-card]').forEach(card => {
