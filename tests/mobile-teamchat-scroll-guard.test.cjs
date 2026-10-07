@@ -104,6 +104,8 @@ test('Team Chat visibly interpolates composer and message movement without delay
   assert.match(js,/function animateOlliTalkKeyboardVisualFrame\(frame[\s\S]*composerWrap\.animate\([\s\S]*translate3d/);
   assert.match(js,/messageList\.animate\([\s\S]*translate3d/);
   assert.match(js,/visualViewport\.addEventListener\('resize',[\s\S]*captureOlliTalkKeyboardVisualFrame\(\)[\s\S]*syncViewport\(\)[\s\S]*scheduleOlliTalkLatestMessageAnchor\(\)[\s\S]*animateOlliTalkKeyboardVisualFrame\(motionFrame\)/);
+  assert.match(js,/visualViewport\.addEventListener\('scroll',[\s\S]*cancelOlliTalkComposerVisualAnimation\(\)[\s\S]*messages:false/);
+  assert.doesNotMatch(js,/visualViewport\.addEventListener\('scroll',[\s\S]*cancelOlliTalkMessagesVisualAnimation\(\)/);
   assert.doesNotMatch(css,/#olliTalkBetaScreen\.olliTalkKeyboardMotion \.olliTalkBetaComposerWrap\{[\s\S]*transition:bottom/);
   assert.doesNotMatch(css,/#olliTalkBetaScreen\.olliTalkKeyboardMotion \.olliTalkBetaComposer\{[\s\S]*transition:min-height/);
 });
