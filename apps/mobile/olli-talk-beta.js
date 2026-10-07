@@ -5620,41 +5620,78 @@
     chatArea.dataset.previewReady = '';
   }
 
-  function getOlliTalkProfile(senderName){
-    const rawName = String(senderName || '').trim();
-    const normalized = rawName.replace(/\s+/g, '');
-    if (normalized === '하주영' || normalized === '루루') {
-      return { displayName:'루루', avatar:'olli-talk-profile-hajuyoung.jpg' };
-    }
-    if (normalized === '영앙' || normalized === '영양' || normalized === '조영아') {
-      return { displayName:'조영아', avatar:'olli-talk-profile-joyeonga.jpg' };
-    }
-    if (normalized === '최민기' || normalized === '원장') {
-      return { displayName:'원장', avatar:'', initials:'원장' };
-    }
-    return { displayName:rawName || '선생님', avatar:'', initials:(rawName || '선생님').slice(0, 1) };
+  function getOlliTalkDisplayName(senderName){
+    const rawName=String(senderName || '').trim();
+    const normalized=rawName.replace(/\s+/g,'');
+    if(normalized==='하주영'||normalized==='루루')return '루루';
+    if(normalized==='영앙'||normalized==='영양'||normalized==='조영아')return '조영아';
+    if(normalized==='최민기'||normalized==='원장')return '원장';
+    return rawName||'선생님';
   }
 
-  function createOlliTalkSenderProfile(senderName){
-    const profile = getOlliTalkProfile(senderName);
-    const sender = document.createElement('div');
-    sender.className = 'olliTalkBetaSender';
+  function getOlliTalkMemberAvatarKey(senderMemberId,senderName){
+    const memberId=String(senderMemberId || '').trim();
+    const member=olliTalkMembers.find(item=>String(item?.member_id || '').trim()===memberId);
+    const catalog=window.OlliTeamTalkAvatars;
+    return catalog?.normalizeKey?.(member?.avatar_key)
+      ||catalog?.fallbackKey?.(memberId || String(senderName || '').trim())
+      ||'';
+  }
 
-    const avatar = document.createElement('span');
-    avatar.className = 'olliTalkBetaMemberAvatar';
-    if (profile.avatar) {
-      const img = document.createElement('img');
-      img.alt = '';
-      img.setAttribute('aria-hidden', 'true');
-      img.src = profile.avatar;
+  function getOlliTalkProfile(senderName,senderMemberId){
+    const displayName=getOlliTalkDisplayName(senderName);
+    const catalog=window.OlliTeamTalkAvatars;
+    const avatarKey=getOlliTalkMemberAvatarKey(senderMemberId,senderName);
+    return {
+      displayName,
+      avatarKey,
+      avatar:avatarKey&&catalog?.src ? catalog.src(avatarKey,senderMemberId||senderName) : '',
+      initials:displayName.slice(0,1)
+    };
+  }
+
+  function syncOlliTalkMemberAvatarElement(avatar,senderName,senderMemberId){
+    if(!avatar)return;
+    const profile=getOlliTalkProfile(senderName,senderMemberId);
+    avatar.dataset.memberId=String(senderMemberId || '').trim();
+    avatar.dataset.senderName=String(senderName || '').trim();
+    avatar.replaceChildren();
+    avatar.classList.remove('textAvatar');
+    if(profile.avatar){
+      const img=document.createElement('img');
+      img.alt='';
+      img.setAttribute('aria-hidden','true');
+      img.src=profile.avatar;
       avatar.appendChild(img);
-    } else {
+    }else{
       avatar.classList.add('textAvatar');
-      avatar.textContent = profile.initials || profile.displayName.slice(0, 1);
+      avatar.textContent=profile.initials;
     }
+  }
+
+  function hydrateOlliTalkMemberAvatars(){
+    const screen=getScreen();
+    if(!screen)return;
+    screen.querySelectorAll('.olliTalkBetaMemberAvatar[data-member-id]').forEach(avatar=>{
+      syncOlliTalkMemberAvatarElement(
+        avatar,
+        avatar.dataset.senderName || '',
+        avatar.dataset.memberId || ''
+      );
+    });
+  }
+
+  function createOlliTalkSenderProfile(senderName,senderMemberId){
+    const profile=getOlliTalkProfile(senderName,senderMemberId);
+    const sender=document.createElement('div');
+    sender.className='olliTalkBetaSender';
+
+    const avatar=document.createElement('span');
+    avatar.className='olliTalkBetaMemberAvatar';
+    syncOlliTalkMemberAvatarElement(avatar,senderName,senderMemberId);
 
     sender.appendChild(avatar);
-    sender.appendChild(createMessageText('span', 'olliTalkBetaSenderName', profile.displayName));
+    sender.appendChild(createMessageText('span','olliTalkBetaSenderName',profile.displayName));
     return sender;
   }
 
@@ -6737,7 +6774,7 @@
         incomingLayout.appendChild(sender);
       }else{
         const senderName=String(item?.sender_name || '선생님').trim() || '선생님';
-        incomingLayout.appendChild(createOlliTalkSenderProfile(senderName));
+        incomingLayout.appendChild(createOlliTalkSenderProfile(senderName,item?.sender_member_id));
       }
 
       incomingLayout.appendChild(stack);
@@ -7455,6 +7492,7 @@
         p_academy_id: context.academyId
       });
       olliTalkMembers = Array.isArray(payload?.members) ? payload.members : [];
+      hydrateOlliTalkMemberAvatars();
       const memberCount=applyOlliTalkMemberCount(olliTalkMembers.length);
       const cacheBase = olliTalkCurrentPayload || cached || {
         ok:true,
