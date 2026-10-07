@@ -49,11 +49,22 @@ begin
   end if;
 
   v_target:=lower(btrim(coalesce(v_pending->>'intent','')));
+  if v_target='batch_write' then
+    if jsonb_typeof(v_pending#>'{__batchAgent,commands}') <> 'array' then
+      raise exception '복합명령 사유 선택 정보를 확인하지 못했습니다.';
+    end if;
+    select lower(btrim(coalesce(item.value->>'intent','')))
+    into v_target
+    from jsonb_array_elements(v_pending#>'{__batchAgent,commands}') as item(value)
+    where lower(btrim(coalesce(item.value->>'intent',''))) in ('cancel_makeup','cancel_trial','mark_absent')
+      and nullif(btrim(coalesce(item.value->>'reason','')),'') is null
+    limit 1;
+  end if;
   if v_target not in ('cancel_makeup','cancel_trial','mark_absent') then
     raise exception '사유 선택 대상 작업이 올바르지 않습니다.';
   end if;
 
-  v_base_payload:=v_pending || jsonb_build_object('intent',v_target);
+  v_base_payload:=jsonb_build_object('intent',v_target);
   v_result:=public.olli_team_chat_send_action(
     p_session_token,
     p_academy_id,
@@ -173,9 +184,21 @@ begin
      or jsonb_typeof(v_payload) <> 'object'
      or lower(btrim(coalesce(v_payload->>'intent',''))) <> 'choose_reason'
      or v_target not in ('cancel_makeup','cancel_trial','mark_absent')
-     or jsonb_typeof(v_pending) <> 'object'
-     or lower(btrim(coalesce(v_pending->>'intent',''))) <> v_target then
+     or jsonb_typeof(v_pending) <> 'object' then
     raise exception '현재 작업은 사유 선택 상태가 아닙니다.';
+  end if;
+
+  if lower(btrim(coalesce(v_pending->>'intent','')))='batch_write' then
+    if jsonb_typeof(v_pending#>'{__batchAgent,commands}') <> 'array'
+       or not exists (
+         select 1
+         from jsonb_array_elements(v_pending#>'{__batchAgent,commands}') as item(value)
+         where lower(btrim(coalesce(item.value->>'intent','')))=v_target
+       ) then
+      raise exception '복합명령 사유 선택 상태가 올바르지 않습니다.';
+    end if;
+  elsif lower(btrim(coalesce(v_pending->>'intent',''))) <> v_target then
+    raise exception '사유 선택 대상 작업이 일치하지 않습니다.';
   end if;
 
   if v_action.status='completed'
