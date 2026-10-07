@@ -1091,10 +1091,10 @@
       const sessionKey = dateKey(date);
       const currentDayKey = todayKey();
       const absent = sessionKey === currentDayKey && attendanceStatus === 'absent';
-      const upcomingAbsence = sessionKey > currentDayKey && attendanceStatus === 'absent';
+      const mutedAbsence = sessionKey !== currentDayKey && attendanceStatus === 'absent';
       const attended = isToday(date) && attendanceStatus === 'present';
       const secondSessionMark = isSecondWeeklySession(item, date) ? '<strong class="olliTtSecondSessionMark" aria-label="주 2회차">▲</strong>' : '';
-      return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}${absent ? ' absent' : ''}${upcomingAbsence ? ' absenceUpcoming' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${sessionKey}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(item.student_name)}${secondSessionMark}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
+      return `<div class="olliTtStudent regular ${division}${scheduled ? ' scheduled' : ''}${attended ? ' attended' : ''}${absent ? ' absent' : ''}${mutedAbsence ? ' absenceUpcoming' : ''}"><button type="button" class="olliTtAttendanceBtn" data-tt-attendance="regular" data-student-id="${esc(item.student_id)}" data-session-date="${sessionKey}" data-time="${attendanceTime}" data-class-group="${esc(entryClassGroup)}">${esc(item.student_name)}${secondSessionMark}${scheduleText}</button><button type="button" class="olliTtStudentMore" data-tt-entry="regular" data-student-id="${esc(item.student_id)}" data-enrollment-id="${esc(item.id)}" data-session-date="${sessionKey}" aria-label="${esc(item.student_name)} 수업 설정">☰</button></div>`;
     }).join('');
     const waitHtml = waits.map((item) => {
       const displayName = `${item.student_name}${item.is_guest === true ? ' (비)' : ''}`;
@@ -1878,8 +1878,12 @@
     }).join('')}</div></div>` : '';
     const scheduledHtml = moveStatusHtml + legacyDeleteHtml;
     const isMakeup = dialog.actionType === 'makeup';
+    const absenceChangedForSave = dialog.actionType === 'move'
+      && Boolean(dialog.absenceSelected) !== Boolean(dialog.originalAbsenceSelected);
     const moveSaveLabel = dialog.actionType === 'move'
-      ? (isReservedAction ? '예약 이동' : '지금 바로 이동')
+      ? (absenceChangedForSave
+        ? (dialog.absenceSelected ? '결석 저장' : '결석 취소')
+        : (isReservedAction ? '예약 이동' : '지금 바로 이동'))
       : '저장';
     const effectiveDateLabel = dialog.actionType === 'move' ? '수업 이동 적용일' : '적용 날짜';
     const effectiveDateGuide = dialog.actionType === 'move'
