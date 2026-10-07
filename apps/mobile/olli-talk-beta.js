@@ -135,6 +135,25 @@
   const OLLI_TALK_COMPOSER_IDLE_HEIGHT = 47;
   const OLLI_TALK_COMPOSER_ACTIVE_HEIGHT = 79;
   const OLLI_TALK_COMPOSER_MESSAGE_GAP = 10;
+  const OLLI_TALK_KEYBOARD_MOTION_SETTLE_MS = 320;
+  let olliTalkKeyboardMotionTimer = null;
+
+  function beginOlliTalkKeyboardMotion(){
+    const screen = getScreen();
+    if (!screen) return;
+    screen.classList.add('olliTalkKeyboardMotion');
+    if (olliTalkKeyboardMotionTimer) clearTimeout(olliTalkKeyboardMotionTimer);
+    olliTalkKeyboardMotionTimer = setTimeout(() => {
+      olliTalkKeyboardMotionTimer = null;
+      screen.classList.remove('olliTalkKeyboardMotion');
+    }, OLLI_TALK_KEYBOARD_MOTION_SETTLE_MS);
+  }
+
+  function continueOlliTalkKeyboardMotion(){
+    const screen = getScreen();
+    if (!screen?.classList.contains('olliTalkKeyboardMotion')) return;
+    beginOlliTalkKeyboardMotion();
+  }
 
   function isOlliTalkChatNearBottom(chatArea, threshold = 96){
     if (!chatArea) return true;
@@ -234,6 +253,7 @@
     }, { passive:true });
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
+        continueOlliTalkKeyboardMotion();
         syncViewport();
 
         if(isOlliTalkPendingReasonInputActive()){
@@ -8281,6 +8301,9 @@
 
     const input = document.getElementById('olliTalkBetaInput');
     if (input) input.blur();
+    if (olliTalkKeyboardMotionTimer) clearTimeout(olliTalkKeyboardMotionTimer);
+    olliTalkKeyboardMotionTimer = null;
+    talkScreen?.classList.remove('olliTalkKeyboardMotion');
     closeOlliTalkSearch();
     closeOlliTalkPhotoViewer(null,{restore:false});
     disconnectOlliTalkImageViewportObserver('chat');
@@ -8671,12 +8694,14 @@
       input.addEventListener('focus', () => {
         const chatArea = document.getElementById('olliTalkBetaChatArea');
         olliTalkKeyboardFollowLatest = !chatArea || isOlliTalkChatNearBottom(chatArea,120);
+        beginOlliTalkKeyboardMotion();
         // focus 자체는 채팅 scrollTop을 움직이지 않습니다.
         // 실제 키보드 높이 변화는 visualViewport.resize 한 경로에서만 따라갑니다.
         syncViewport();
       }, true);
       input.addEventListener('blur', () => {
         olliTalkKeyboardFollowLatest = false;
+        beginOlliTalkKeyboardMotion();
         syncViewport();
       });
       input.addEventListener('click', renderOlliTalkMentionMenu);
@@ -8693,7 +8718,21 @@
     }
 
     if (mentionTriggerButton) {
-      mentionTriggerButton.addEventListener('click', openOlliTalkMentionPicker);
+      mentionTriggerButton.addEventListener('pointerdown', event => {
+        if (event.isPrimary === false) return;
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+        openOlliTalkMentionPicker(event).catch(error => console.warn('올리톡 멘션 전환 실패:', error));
+      });
+      mentionTriggerButton.addEventListener('click', event => {
+        // Pointer input is already handled before blur/layout changes can move the button.
+        // Keep click only for keyboard/synthetic activation.
+        if (event.detail !== 0) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        openOlliTalkMentionPicker(event).catch(error => console.warn('올리톡 멘션 전환 실패:', error));
+      });
     }
 
     if (sendButton) {
