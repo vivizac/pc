@@ -859,13 +859,28 @@
   }
 
   function openOlliTalkPendingReasonInput(event){
+    if(event){
+      event.preventDefault();
+      event.stopPropagation();
+    }
     const wrap=event?.currentTarget?.closest?.('.olliTalkBetaPendingInput');
     const form=wrap?.querySelector?.('.olliTalkBetaPendingReasonForm');
     const field=form?.querySelector?.('.olliTalkBetaPendingReasonField');
     if(!form || !field) return false;
+
+    const chatArea=document.getElementById('olliTalkBetaChatArea');
+    const preservedScrollTop=chatArea ? chatArea.scrollTop : null;
+
     form.hidden=false;
     event.currentTarget.setAttribute('aria-expanded','true');
-    try{field.focus({preventScroll:false})}catch(_){field.focus()}
+    try{field.focus({preventScroll:true})}catch(_){field.focus()}
+
+    if(chatArea && Number.isFinite(preservedScrollTop)){
+      chatArea.scrollTop=preservedScrollTop;
+      requestAnimationFrame(()=>{
+        if(document.activeElement===field) chatArea.scrollTop=preservedScrollTop;
+      });
+    }
     return true;
   }
 
@@ -912,7 +927,7 @@
       event.preventDefault();
       const reason=String(field.value || '').trim();
       if(!reason){
-        field.focus();
+        try{field.focus({preventScroll:true})}catch(_){field.focus()}
         return;
       }
       submitOlliTalkPendingReasonText(reason,wrap,action).catch(error=>{
