@@ -47,6 +47,6 @@ test('group timestamp is synchronized so only the last message stays visible',()
 });
 
 test('mobile Team Chat loads the stage-2 grouped flow assets',()=>{
-  assert.match(html,/olli-talk-beta\.css\?v=20261007-bubble-flow-stage2-1/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261007-bubble-flow-stage2-1/);
+  assert.match(html,/olli-talk-beta\.css\?v=20261007-choice-bubble-stage3-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261007-choice-bubble-stage3-1/);
 });
