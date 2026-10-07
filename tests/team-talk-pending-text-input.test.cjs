@@ -24,21 +24,27 @@ test('reason prompts render no-reason and direct-input buttons on both PC and Mo
   assert.match(mobile,/inputButton\.textContent='사유 입력'/);
 });
 
-test('PC keeps its existing composer flow while Mobile opens a dedicated inline reason input',()=>{
-  assert.match(pc,/byId\('olliPcTeamTalkInput'\)/);
-  assert.match(pc,/input\.focus/);
+test('PC and Mobile open dedicated inline reason inputs inside the Olli action card',()=>{
+  assert.match(pc,/function openPendingReasonInput/);
+  assert.match(pc,/className='olliPcTeamTalkPendingReasonForm'/);
+  assert.match(pc,/className='olliPcTeamTalkPendingReasonField'/);
+  assert.match(pc,/placeholder='취소 사유를 입력하세요'/);
   assert.match(mobile,/function openOlliTalkPendingReasonInput/);
   assert.match(mobile,/className='olliTalkBetaPendingReasonForm'/);
   assert.match(mobile,/className='olliTalkBetaPendingReasonField'/);
   assert.match(mobile,/placeholder='취소 사유를 입력하세요'/);
-  assert.doesNotMatch(mobile,/function focusOlliTalkPendingTextInput/);
 });
 
-test('Mobile inline reason submit saves the reason message and routes directly through pending rule state',()=>{
+test('Mobile inline reason submit persists a reason choice without creating a user chat message or AI reparse',()=>{
   assert.match(mobile,/function resolveOlliTalkPendingReasonDirectTurn/);
   assert.match(mobile,/function submitOlliTalkPendingReasonText/);
-  assert.match(mobile,/p_body:reason/);
-  assert.match(mobile,/resolveOlliTalkPendingReasonDirectTurn\([\s\S]{0,180}Number\(payload\.message\.id/);
+  const start=mobile.indexOf('async function submitOlliTalkPendingReasonText');
+  const end=mobile.indexOf('function openOlliTalkPendingReasonInput',start);
+  const submit=mobile.slice(start,end);
+  assert.match(submit,/olli_team_chat_action_select_reason/);
+  assert.match(submit,/p_reason:reason/);
+  assert.doesNotMatch(submit,/olli_team_chat_send['"]/);
+  assert.doesNotMatch(submit,/resolveOlliTalkAiTurn/);
   assert.match(mobile,/__structuredMakeupCancel/);
   assert.match(mobile,/__structuredTrialCancel/);
   assert.match(mobile,/saveOlliTalkActionReply\(context,confirmation,command,replyToMessageId\)/);

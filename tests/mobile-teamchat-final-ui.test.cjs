@@ -74,9 +74,9 @@ test('completed or cancelled repetitive-work result stays attached to its messag
   assert.match(css,/\.olliTalkBetaInlineSystemResult::before,[\s\S]*content:none !important;/);
 });
 
-test('mobile Team Chat assets use the current UI polish revision',()=>{
-  assert.match(html,/olli-talk-beta\\.css\\?v=20261007-teamchat-ui-polish-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-teamchat-ui-polish-1/);
+test('mobile Team Chat assets use the current reason-choice revision',()=>{
+  assert.match(html,/olli-talk-beta\\.css\\?v=20261007-reason-choice-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-reason-choice-1/);
 });
 
 
