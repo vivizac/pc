@@ -6320,20 +6320,18 @@
     return !!previousMinute && previousMinute === currentMinute;
   }
 
-  function isOlliTalkConnectedRenderedMessage(previousMessage, item, currentMemberId){
-    if (!previousMessage?.classList?.contains('olliTalkBetaMessage') || !item) return false;
-    const previousKey = String(previousMessage.dataset?.groupKey || '');
-    const currentKey = getOlliTalkMessageGroupKey(item, currentMemberId);
-    if (!previousKey || previousKey !== currentKey) return false;
-
-    const previousMinute = String(previousMessage.dataset?.minuteKey || '');
-    const currentMinute = getOlliTalkMessageMinuteKey(item?.created_at);
-    return !!previousMinute && previousMinute === currentMinute;
+  function isOlliTalkRenderedMessageGroupMatch(group,item,currentMemberId){
+    if(!group?.classList?.contains('olliTalkBetaMessageGroup') || !item) return false;
+    const currentKey=getOlliTalkMessageGroupKey(item,currentMemberId);
+    const currentMinute=getOlliTalkMessageMinuteKey(item?.created_at);
+    return !!currentKey
+      && String(group.dataset.groupKey || '')===currentKey
+      && !!currentMinute
+      && String(group.dataset.minuteKey || '')===currentMinute;
   }
 
-  function markOlliTalkRenderedMessageConnectedToNext(message){
-    if (!message?.classList?.contains('olliTalkBetaMessage')) return;
-    message.classList.add('olliTalkBetaMessageConnectedNext');
+  function hideOlliTalkRenderedMessageTime(message){
+    if(!message?.classList?.contains('olliTalkBetaMessage')) return;
     const time=message.querySelector?.('.olliTalkBetaMessageTime');
     if(time){
       time.style.visibility='hidden';
@@ -6341,114 +6339,124 @@
     }
   }
 
-  function appendOlliTalkInlineSystemResult(messageElement, item){
-    const incomingLayout=messageElement?.querySelector?.('.olliTalkBetaIncomingLayout');
-    if(!incomingLayout) return false;
+  function createOlliTalkMessageGroupElement(item,currentMemberId){
+    const type=String(item?.message_type || 'text');
+    const isAi=type==='ai' || type==='system';
+    const own=!isAi && String(item?.sender_member_id || '')===String(currentMemberId || '');
+    const mode=isAi ? 'ai' : (own ? 'outgoing' : 'incoming');
+
+    const group=document.createElement('div');
+    group.className='olliTalkBetaMessageGroup '+mode;
+    group.dataset.groupKey=getOlliTalkMessageGroupKey(item,currentMemberId);
+    group.dataset.minuteKey=getOlliTalkMessageMinuteKey(item?.created_at);
+    group.dataset.dateKey=getOlliTalkDateKey(item?.created_at);
+
+    const stack=document.createElement('div');
+    stack.className='olliTalkBetaMessageStack';
+
+    if(isAi || !own){
+      const incomingLayout=document.createElement('div');
+      incomingLayout.className='olliTalkBetaIncomingLayout'+(isAi ? ' olliTalkBetaAiIncomingLayout' : '');
+
+      if(isAi){
+        const sender=document.createElement('div');
+        sender.className='olliTalkBetaSender';
+        const avatar=document.createElement('span');
+        avatar.className='olliTalkBetaMemberAvatar olliTalkBetaAiAvatar';
+        avatar.textContent='Olli';
+        avatar.setAttribute('aria-hidden','true');
+        sender.appendChild(avatar);
+        sender.appendChild(createMessageText('span','olliTalkBetaSenderName','올리'));
+        incomingLayout.appendChild(sender);
+      }else{
+        const senderName=String(item?.sender_name || '선생님').trim() || '선생님';
+        incomingLayout.appendChild(createOlliTalkSenderProfile(senderName));
+      }
+
+      incomingLayout.appendChild(stack);
+      group.appendChild(incomingLayout);
+    }else{
+      group.appendChild(stack);
+    }
+
+    return group;
+  }
+
+  function appendOlliTalkMessageToGroup(group,item,currentMemberId,options={}){
+    if(!group || !item) return null;
+    const stack=group.querySelector('.olliTalkBetaMessageStack');
+    if(!stack) return null;
+    const groupStart=!stack.querySelector('.olliTalkBetaMessage[data-message-id]');
+    const message=createOlliTalkMessageElement(item,currentMemberId,{
+      ...options,
+      groupStart
+    });
+    stack.appendChild(message);
+    return message;
+  }
+
+  function appendOlliTalkInlineSystemResult(messageElement,item){
+    if(!messageElement?.classList?.contains('olliTalkBetaMessage')) return false;
     const bubble=createOlliTalkMessageBubble(item);
     bubble.classList.add('olliTalkBetaSystemBubble','olliTalkBetaInlineSystemResult');
-    if (/작업\s*요청.*취소/.test(String(item?.body || ''))) {
+    if(/작업\s*요청.*취소/.test(String(item?.body || ''))){
       bubble.classList.add('olliTalkBetaCancelSystemBubble');
     }
     bubble.dataset.messageId=String(item?.id || '');
-    incomingLayout.appendChild(bubble);
+    messageElement.appendChild(bubble);
     return true;
   }
 
-  function createOlliTalkMessageElement(item, currentMemberId, options = {}){
-    const type = String(item?.message_type || 'text');
-    const isAi = type === 'ai' || type === 'system';
-    const own = !isAi && String(item?.sender_member_id || '') === String(currentMemberId || '');
-    const message = document.createElement('div');
+  function createOlliTalkMessageElement(item,currentMemberId,options={}){
+    const type=String(item?.message_type || 'text');
+    const isAi=type==='ai' || type==='system';
+    const own=!isAi && String(item?.sender_member_id || '')===String(currentMemberId || '');
+    const message=document.createElement('div');
 
-    const connectedToPrevious = options.connectedToPrevious === true;
-    const connectedToNext = options.connectedToNext === true;
-    message.className = 'olliTalkBetaMessage ' + (isAi ? 'ai' : (own ? 'outgoing' : 'incoming'));
-    message.classList.add(connectedToPrevious ? 'olliTalkBetaMessageConnected' : 'olliTalkBetaMessageGroupStart');
-    if (connectedToNext) message.classList.add('olliTalkBetaMessageConnectedNext');
-    message.dataset.messageId = String(item?.id || '');
-    message.dataset.dateKey = getOlliTalkDateKey(item?.created_at);
-    message.dataset.groupKey = getOlliTalkMessageGroupKey(item, currentMemberId);
-    message.dataset.minuteKey = getOlliTalkMessageMinuteKey(item?.created_at);
+    message.className='olliTalkBetaMessage '+(isAi ? 'ai' : (own ? 'outgoing' : 'incoming'));
+    if(options.groupStart===true) message.classList.add('olliTalkBetaMessageGroupStart');
+    message.dataset.messageId=String(item?.id || '');
+    message.dataset.dateKey=getOlliTalkDateKey(item?.created_at);
+    message.dataset.groupKey=getOlliTalkMessageGroupKey(item,currentMemberId);
+    message.dataset.minuteKey=getOlliTalkMessageMinuteKey(item?.created_at);
 
-    if (isAi) {
-      const incomingLayout = document.createElement('div');
-      incomingLayout.className = 'olliTalkBetaIncomingLayout olliTalkBetaAiIncomingLayout';
-      if (!connectedToPrevious) {
-        const sender = document.createElement('div');
-        sender.className = 'olliTalkBetaSender';
-        const avatar = document.createElement('span');
-        avatar.className = 'olliTalkBetaMemberAvatar olliTalkBetaAiAvatar';
-        avatar.textContent = 'Olli';
-        avatar.setAttribute('aria-hidden', 'true');
-        sender.appendChild(avatar);
-        sender.appendChild(createMessageText('span', 'olliTalkBetaSenderName', '올리'));
-        incomingLayout.appendChild(sender);
-      }
-      message.appendChild(incomingLayout);
-    } else if (!own) {
-      const senderName = String(item?.sender_name || '선생님').trim() || '선생님';
-      const incomingLayout = document.createElement('div');
-      incomingLayout.className = 'olliTalkBetaIncomingLayout';
-      if (!connectedToPrevious) incomingLayout.appendChild(createOlliTalkSenderProfile(senderName));
-      message.appendChild(incomingLayout);
-    }
-
-    const bubbleRow = document.createElement('div');
-    bubbleRow.className = 'olliTalkBetaBubbleRow';
-    const bubble = createOlliTalkMessageBubble(item, options);
-    if (type === 'system') {
+    const bubbleRow=document.createElement('div');
+    bubbleRow.className='olliTalkBetaBubbleRow';
+    const bubble=createOlliTalkMessageBubble(item,options);
+    if(type==='system'){
       bubble.classList.add('olliTalkBetaSystemBubble');
-      if (/작업\s*요청.*취소/.test(String(item?.body || ''))) {
+      if(/작업\s*요청.*취소/.test(String(item?.body || ''))){
         bubble.classList.add('olliTalkBetaCancelSystemBubble');
       }
     }
     bubbleRow.appendChild(bubble);
 
-    const bubbleMeta = document.createElement('div');
-    bubbleMeta.className = 'olliTalkBetaBubbleMeta';
-    const unreadCount = isAi ? 0 : Math.max(0, Number(item?.unread_count || 0));
-    if (unreadCount > 0) {
-      bubbleMeta.appendChild(createMessageText('span', 'olliTalkBetaUnreadCount', String(unreadCount)));
+    const bubbleMeta=document.createElement('div');
+    bubbleMeta.className='olliTalkBetaBubbleMeta';
+    const unreadCount=isAi ? 0 : Math.max(0,Number(item?.unread_count || 0));
+    if(unreadCount>0){
+      bubbleMeta.appendChild(createMessageText('span','olliTalkBetaUnreadCount',String(unreadCount)));
     }
     const messageTime=createMessageText('div','olliTalkBetaMessageTime',formatOlliTalkBetaMessageTime(item?.created_at));
-    if(connectedToNext){
+    if(options.hideTime===true){
       messageTime.style.visibility='hidden';
       messageTime.setAttribute('aria-hidden','true');
     }
     bubbleMeta.appendChild(messageTime);
     bubbleRow.appendChild(bubbleMeta);
-    if (isAi || !own) {
-      const incomingLayout = message.querySelector('.olliTalkBetaIncomingLayout');
-      if (incomingLayout) {
-        incomingLayout.appendChild(bubbleRow);
-        if (item?.action) {
-          const actionCard=createOlliTalkActionCard(item.action);
-          if(actionCard) incomingLayout.appendChild(actionCard);
-        }
-        if (shouldShowOlliTalkPendingTextInput(item)) incomingLayout.appendChild(createOlliTalkPendingTextInputButton());
-        if (item?.material_request_id && item?.material_event_id) {
-          incomingLayout.appendChild(createOlliTalkMaterialConfirmCard(item));
-        }
-        if (window.OlliTeacherPayroll?.createTeamChatPayrollButton) {
-          const payrollButton = window.OlliTeacherPayroll.createTeamChatPayrollButton(item, 'mobile');
-          if (payrollButton) incomingLayout.appendChild(payrollButton);
-        }
-      } else {
-        message.appendChild(bubbleRow);
-        if (item?.action) {
-          const actionCard=createOlliTalkActionCard(item.action);
-          if(actionCard) message.appendChild(actionCard);
-        }
-        if (item?.material_request_id && item?.material_event_id) {
-          message.appendChild(createOlliTalkMaterialConfirmCard(item));
-        }
-        if (window.OlliTeacherPayroll?.createTeamChatPayrollButton) {
-          const payrollButton = window.OlliTeacherPayroll.createTeamChatPayrollButton(item, 'mobile');
-          if (payrollButton) message.appendChild(payrollButton);
-        }
-      }
-    } else {
-      message.appendChild(bubbleRow);
+    message.appendChild(bubbleRow);
+
+    if(item?.action){
+      const actionCard=createOlliTalkActionCard(item.action);
+      if(actionCard) message.appendChild(actionCard);
+    }
+    if(shouldShowOlliTalkPendingTextInput(item)) message.appendChild(createOlliTalkPendingTextInputButton());
+    if(item?.material_request_id && item?.material_event_id){
+      message.appendChild(createOlliTalkMaterialConfirmCard(item));
+    }
+    if(window.OlliTeacherPayroll?.createTeamChatPayrollButton){
+      const payrollButton=window.OlliTeacherPayroll.createTeamChatPayrollButton(item,'mobile');
+      if(payrollButton) message.appendChild(payrollButton);
     }
 
     if(shouldOfferOlliTalkReply(item,own,options.olliReplyTargetIds)){
@@ -6561,13 +6569,15 @@
     }
 
     const typingBottom=typing.getBoundingClientRect().bottom;
-    const next = createOlliTalkMessageElement(item, currentMemberId, { connectedToPrevious:false });
-    typing.replaceWith(next);
+    const group=createOlliTalkMessageGroupElement(item,currentMemberId);
+    const next=appendOlliTalkMessageToGroup(group,item,currentMemberId);
+    if(!next) return false;
+    typing.replaceWith(group);
     chatArea.dataset.previewReady = '';
 
     // ...가 이미 입력창 위에 고정된 위치를 그대로 유지하고,
     // 실제 답변이 더 커진 만큼만 위로 보정합니다. 별도의 두 번째 bottom-anchor는 호출하지 않습니다.
-    const nextBottom=next.getBoundingClientRect().bottom;
+    const nextBottom=group.getBoundingClientRect().bottom;
     const growth=nextBottom-typingBottom;
     if(growth>0.5){
       const maxScroll=Math.max(0,chatArea.scrollHeight-chatArea.clientHeight);
@@ -6576,115 +6586,129 @@
     return true;
   }
 
-  function appendOlliTalkPersistedMessage(item, currentMemberId){
-    const chatArea = document.getElementById('olliTalkBetaChatArea');
-    if (!chatArea || !item) return false;
-    const messageId = String(item?.id || '').trim();
-    if (messageId) {
-      const duplicate = Array.from(chatArea.querySelectorAll('[data-message-id]'))
-        .some(node => String(node.dataset.messageId || '') === messageId);
-      if (duplicate) return true;
+  function appendOlliTalkPersistedMessage(item,currentMemberId){
+    const chatArea=document.getElementById('olliTalkBetaChatArea');
+    if(!chatArea || !item) return false;
+    const messageId=String(item?.id || '').trim();
+    if(messageId){
+      const duplicate=Array.from(chatArea.querySelectorAll('[data-message-id]'))
+        .some(node=>String(node.dataset.messageId || '')===messageId);
+      if(duplicate) return true;
     }
 
-    let list = chatArea.querySelector('.olliTalkBetaMessageList');
-    if (!list) {
-      list = document.createElement('div');
-      list.className = 'olliTalkBetaMessageList';
+    let list=chatArea.querySelector('.olliTalkBetaMessageList');
+    if(!list){
+      list=document.createElement('div');
+      list.className='olliTalkBetaMessageList';
       chatArea.replaceChildren(list);
     }
 
-    const itemDateKey = getOlliTalkDateKey(item?.created_at);
-    const renderedMessages = Array.from(list.children)
-      .filter(node => node?.classList?.contains('olliTalkBetaMessage') && node?.dataset?.messageId);
-    const lastRendered = renderedMessages[renderedMessages.length - 1] || null;
-    const lastDateKey = String(lastRendered?.dataset?.dateKey || '');
-    const dateChanged = !!(itemDateKey && itemDateKey !== lastDateKey);
-    if (dateChanged) {
-      const divider = document.createElement('div');
-      divider.className = 'olliTalkBetaDateDivider';
-      divider.appendChild(createMessageText('span', '', formatOlliTalkDateLabel(item?.created_at)));
+    const renderedMessages=Array.from(list.querySelectorAll('.olliTalkBetaMessage[data-message-id]'));
+    const lastRendered=renderedMessages[renderedMessages.length-1] || null;
+    const lastGroup=lastRendered?.closest?.('.olliTalkBetaMessageGroup') || null;
+    const itemDateKey=getOlliTalkDateKey(item?.created_at);
+    const lastDateKey=String(lastRendered?.dataset?.dateKey || '');
+    const dateChanged=!!(itemDateKey && itemDateKey!==lastDateKey);
+
+    if(dateChanged){
+      const divider=document.createElement('div');
+      divider.className='olliTalkBetaDateDivider';
+      divider.appendChild(createMessageText('span','',formatOlliTalkDateLabel(item?.created_at)));
       list.appendChild(divider);
     }
 
-    const connectedToPrevious = !dateChanged
-      && isOlliTalkConnectedRenderedMessage(lastRendered, item, currentMemberId);
-    if (connectedToPrevious) markOlliTalkRenderedMessageConnectedToNext(lastRendered);
+    const sameGroup=!dateChanged && isOlliTalkRenderedMessageGroupMatch(lastGroup,item,currentMemberId);
+    let group=lastGroup;
+    if(sameGroup && lastRendered){
+      hideOlliTalkRenderedMessageTime(lastRendered);
+    }else{
+      group=createOlliTalkMessageGroupElement(item,currentMemberId);
+      list.appendChild(group);
+    }
 
-    const next = createOlliTalkMessageElement(item, currentMemberId, { connectedToPrevious });
-    list.appendChild(next);
+    const next=appendOlliTalkMessageToGroup(group,item,currentMemberId);
+    if(!next) return false;
+
     if(String(item?.message_type || '').trim()==='ai' && Number(item?.reply_to_message_id || 0)>0){
       removeOlliTalkReplySuggestion(String(Number(item.reply_to_message_id)));
     }
-    chatArea.dataset.previewReady = '';
+    chatArea.dataset.previewReady='';
     scheduleOlliTalkMessageAboveComposer(next);
     return true;
   }
 
-  function renderOlliTalkServerMessages(payload, options = {}){
-    const chatArea = document.getElementById('olliTalkBetaChatArea');
-    if (!chatArea) return;
+  function renderOlliTalkServerMessages(payload,options={}){
+    const chatArea=document.getElementById('olliTalkBetaChatArea');
+    if(!chatArea) return;
     disconnectOlliTalkImageViewportObserver('chat');
 
-    const scrollMode = String(options.scrollMode || 'bottom');
-    const previousScrollTop = Math.max(0, Number(chatArea.scrollTop || 0));
-    const previousScrollHeight = Math.max(0, Number(chatArea.scrollHeight || 0));
-    const wasNearBottom = isOlliTalkChatNearBottom(chatArea);
+    const scrollMode=String(options.scrollMode || 'bottom');
+    const previousScrollTop=Math.max(0,Number(chatArea.scrollTop || 0));
+    const previousScrollHeight=Math.max(0,Number(chatArea.scrollHeight || 0));
+    const wasNearBottom=isOlliTalkChatNearBottom(chatArea);
 
-    olliTalkCurrentPayload=payload||null;
-    const allMessages = Array.isArray(payload?.messages) ? payload.messages : [];
-    const requestedMessageLimit=Math.max(0,Math.floor(Number(options.messageLimit)||0));
-    const messages=requestedMessageLimit>0&&allMessages.length>requestedMessageLimit
+    olliTalkCurrentPayload=payload || null;
+    const allMessages=Array.isArray(payload?.messages) ? payload.messages : [];
+    const requestedMessageLimit=Math.max(0,Math.floor(Number(options.messageLimit) || 0));
+    const messages=requestedMessageLimit>0 && allMessages.length>requestedMessageLimit
       ? allMessages.slice(-requestedMessageLimit)
       : allMessages;
     olliTalkRenderedMessageLimit=messages.length;
-    const currentMemberId = String(payload?.current_member_id || getOlliTalkBetaContext().memberId || '').trim();
-    const olliReplyTargetIds = getOlliTalkReplyTargetIds(allMessages);
+    const currentMemberId=String(payload?.current_member_id || getOlliTalkBetaContext().memberId || '').trim();
+    const olliReplyTargetIds=getOlliTalkReplyTargetIds(allMessages);
 
-    if (!messages.length) {
-      chatArea.replaceChildren(createOlliTalkEmptyState('아직 대화가 없어요', '첫 메시지를 보내 올리톡을 시작해 보세요.'));
-      chatArea.dataset.previewReady = '';
+    if(!messages.length){
+      chatArea.replaceChildren(createOlliTalkEmptyState('아직 대화가 없어요','첫 메시지를 보내 올리톡을 시작해 보세요.'));
+      chatArea.dataset.previewReady='';
       return;
     }
 
-    const list = document.createElement('div');
-    list.className = 'olliTalkBetaMessageList';
+    const list=document.createElement('div');
+    list.className='olliTalkBetaMessageList';
 
-    let lastDateKey = '';
-    messages.forEach((item, index) => {
+    let lastDateKey='';
+    let activeGroup=null;
+    let lastRenderedMessage=null;
+
+    messages.forEach((item,index)=>{
       const previousItem=index>0 ? messages[index-1] : null;
       const previousActionStatus=String(previousItem?.action?.status || '').trim();
       const isInlineSystemResult=String(item?.message_type || 'text')==='system'
         && String(previousItem?.message_type || '')==='ai'
         && ['completed','cancelled'].includes(previousActionStatus);
 
-      if(isInlineSystemResult){
-        const previousMessage=list.lastElementChild;
-        if(previousMessage?.classList?.contains('olliTalkBetaMessage')
-          && appendOlliTalkInlineSystemResult(previousMessage,item)){
-          return;
-        }
+      if(isInlineSystemResult && lastRenderedMessage && appendOlliTalkInlineSystemResult(lastRenderedMessage,item)){
+        activeGroup=null;
+        return;
       }
 
-      const dateKey = getOlliTalkDateKey(item?.created_at);
-      const dateChanged = !!(dateKey && dateKey !== lastDateKey);
-      if (dateChanged) {
-        const divider = document.createElement('div');
-        divider.className = 'olliTalkBetaDateDivider';
-        divider.appendChild(createMessageText('span', '', formatOlliTalkDateLabel(item?.created_at)));
+      const dateKey=getOlliTalkDateKey(item?.created_at);
+      const dateChanged=!!(dateKey && dateKey!==lastDateKey);
+      if(dateChanged){
+        const divider=document.createElement('div');
+        divider.className='olliTalkBetaDateDivider';
+        divider.appendChild(createMessageText('span','',formatOlliTalkDateLabel(item?.created_at)));
         list.appendChild(divider);
-        lastDateKey = dateKey;
+        lastDateKey=dateKey;
+        activeGroup=null;
       }
 
-      const connectedToPrevious = !dateChanged
-        && isOlliTalkConnectedMessage(previousItem, item, currentMemberId);
-      const nextItem = index + 1 < messages.length ? messages[index + 1] : null;
-      const connectedToNext = isOlliTalkConnectedMessage(item, nextItem, currentMemberId);
-      list.appendChild(createOlliTalkMessageElement(item, currentMemberId, {
-        connectedToPrevious,
-        connectedToNext,
+      const sameGroup=!dateChanged
+        && !!activeGroup
+        && isOlliTalkConnectedMessage(previousItem,item,currentMemberId)
+        && isOlliTalkRenderedMessageGroupMatch(activeGroup,item,currentMemberId);
+      if(!sameGroup){
+        activeGroup=createOlliTalkMessageGroupElement(item,currentMemberId);
+        list.appendChild(activeGroup);
+      }
+
+      const nextItem=index+1<messages.length ? messages[index+1] : null;
+      const continuesGroup=isOlliTalkConnectedMessage(item,nextItem,currentMemberId);
+      lastRenderedMessage=appendOlliTalkMessageToGroup(activeGroup,item,currentMemberId,{
+        hideTime:continuesGroup,
         olliReplyTargetIds,
         deferHydration:options.deferHydration===true
-      }));
+      });
     });
 
     chatArea.replaceChildren(list);

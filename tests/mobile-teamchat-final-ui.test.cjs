@@ -65,17 +65,18 @@ test('Team Chat system notice renders as an Olli bubble while keeping the Displa
   assert.match(css,/\.olliTalkBetaSystemBubble\{[\s\S]*color\(display-p3[\s\S]*color:#fff;/);
 });
 
-test('completed or cancelled repetitive-work result stays attached below the action without a new tail',()=>{
-  assert.match(js,/status==='completed'[\s\S]*confirmed\.textContent='확인';[\s\S]*confirmed\.disabled=true/);
+test('completed or cancelled repetitive-work result stays attached to its message without an extra tail',()=>{
+  assert.match(js,/status==='completed' && isOlliTalkChoiceActionType/);
+  assert.match(js,/return null;/);
   assert.match(js,/\['completed','cancelled'\]\.includes\(previousActionStatus\)/);
-  assert.match(js,/isInlineSystemResult[\s\S]*appendOlliTalkInlineSystemResult\(previousMessage,item\)/);
-  assert.match(css,/\.olliTalkBetaIncomingLayout \.olliTalkBetaInlineSystemResult\{[\s\S]*grid-column:2;[\s\S]*grid-row:4;[\s\S]*width:max-content;/);
+  assert.match(js,/isInlineSystemResult[\s\S]*appendOlliTalkInlineSystemResult\(lastRenderedMessage,item\)/);
+  assert.match(css,/\.olliTalkBetaMessage \.olliTalkBetaInlineSystemResult\{[\s\S]*align-self:flex-start;[\s\S]*width:max-content;/);
   assert.match(css,/\.olliTalkBetaInlineSystemResult::before,[\s\S]*content:none !important;/);
 });
 
-test('mobile Team Chat assets share mention-restore cache bust revision',()=>{
-  assert.match(html,/olli-talk-beta\\.css\\?v=20261006-typing-dot-3px-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-chat-layout-stability-1/);
+test('mobile Team Chat assets use the minute-group renderer revision',()=>{
+  assert.match(html,/olli-talk-beta\\.css\\?v=20261007-minute-group-container-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-minute-group-container-1/);
 });
 
 
@@ -161,15 +162,18 @@ test('Team Chat unread-only realtime updates never rebuild the whole message lis
   assert.match(js,/function syncOlliTalkRenderedUnreadCounts\(payload\)[\s\S]*badge\.style\.visibility='hidden'/);
 });
 
-test('Team Chat same-minute grouping hides the previous time without removing its layout slot',()=>{
-  const markStart=js.indexOf('function markOlliTalkRenderedMessageConnectedToNext(message){');
-  const markEnd=js.indexOf('\n  function appendOlliTalkInlineSystemResult',markStart);
-  assert.ok(markStart>=0&&markEnd>markStart);
-  const markBody=js.slice(markStart,markEnd);
-  assert.match(markBody,/time\.style\.visibility='hidden'/);
-  assert.doesNotMatch(markBody,/\.remove\(\)/);
-  assert.match(js,/const messageTime=createMessageText\('div','olliTalkBetaMessageTime'/);
-  assert.match(js,/if\(connectedToNext\)\{[\s\S]*messageTime\.style\.visibility='hidden'/);
+test('Team Chat same-minute messages share one sender group and append only message items',()=>{
+  assert.match(js,/function createOlliTalkMessageGroupElement\(item,currentMemberId\)/);
+  assert.match(js,/group\.className='olliTalkBetaMessageGroup '\+mode/);
+  assert.match(js,/stack\.className='olliTalkBetaMessageStack'/);
+  assert.match(js,/incomingLayout\.appendChild\(stack\)/);
+  assert.match(js,/function appendOlliTalkMessageToGroup\(group,item,currentMemberId,options=\{\}\)/);
+  assert.match(js,/const sameGroup=!dateChanged && isOlliTalkRenderedMessageGroupMatch\(lastGroup,item,currentMemberId\)/);
+  assert.match(js,/hideOlliTalkRenderedMessageTime\(lastRendered\)/);
+  assert.doesNotMatch(js,/olliTalkBetaMessageConnected/);
+  assert.doesNotMatch(css,/\.olliTalkBetaMessageConnected/);
+  assert.doesNotMatch(css,/\.olliTalkBetaMessageConnected[\s\S]{0,180}\.olliTalkBetaSender\{[\s\S]*display:none/);
+  assert.match(css,/\.olliTalkBetaMessageStack\{[\s\S]*gap:4px/);
 });
 
 test('Team Chat typing indicator uses one anchor owner and preserves its bottom when the reply replaces it',()=>{
