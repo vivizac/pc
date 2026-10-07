@@ -236,7 +236,7 @@ test('ordinary payroll setting save is blocked for a finalized historical month'
   assert.match(common, /data-payroll-finalized=/);
   assert.match(common, /if\(card\.dataset\.payrollFinalized==='1'\) return false/);
   assert.match(common, /olliPayrollFinalizedBadge/);
-  assert.match(common, /확정 급여/);
+  assert.match(common, /급여 확정/);
   assert.match(common, /확정됨/);
 });
 
