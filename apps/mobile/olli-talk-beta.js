@@ -7819,6 +7819,9 @@
 
     const screen = getScreen();
     if (!screen) return;
+    if (olliTalkChatGestureSettleTimer) clearTimeout(olliTalkChatGestureSettleTimer);
+    olliTalkChatGestureSettleTimer = null;
+    olliTalkChatGestureActive = false;
     screen.style.removeProperty('--olli-talk-chat-reserve');
     syncOlliTalkContrastTheme();
     closeOlliTalkSearch({ blur:false });
@@ -7903,6 +7906,9 @@
     }
 
     const talkScreen = getScreen();
+    if (olliTalkChatGestureSettleTimer) clearTimeout(olliTalkChatGestureSettleTimer);
+    olliTalkChatGestureSettleTimer = null;
+    olliTalkChatGestureActive = false;
     talkScreen?.style.removeProperty('--olli-talk-chat-reserve');
 
     const input = document.getElementById('olliTalkBetaInput');
