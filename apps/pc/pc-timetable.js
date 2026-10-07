@@ -755,6 +755,7 @@
         state.data = cached;
         state.dataWeek = requestedWeek;
         state.dataAcademyId = requestedAcademyId;
+        renderSidebar();
       } else {
         state.data = null;
         state.dataWeek = '';

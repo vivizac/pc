@@ -467,13 +467,14 @@
   cursor: pointer;
 }
 #olliPcShell .olliTtQuickStudent:hover { color: #0877df; background: #edf6ff; }
-#olliPcShell .olliTtQuickStudent { position: relative; padding-left: 34px; justify-content: flex-start; }
+#olliPcShell .olliTtQuickStudent { position: relative; padding: 7px 34px 7px 9px; justify-content: flex-start; }
 #olliPcShell .olliTtQuickStudentMain { min-width: 0; display: flex; align-items: baseline; gap: 6px; overflow: hidden; }
 #olliPcShell .olliTtQuickStudentName { flex: 0 0 auto; color: inherit; white-space: nowrap; }
 #olliPcShell .olliTtQuickStudentSchedule { min-width: 0; max-width: none; overflow: hidden; color: #9aa1aa; text-overflow: ellipsis; white-space: nowrap; font-size: calc(9px * var(--olli-text-scale)); font-weight: 650; }
 #olliPcShell .olliTtQuickStudentMore {
   position: absolute;
-  left: 7px;
+  left: auto;
+  right: 7px;
   top: 50%;
   width: 24px;
   height: 28px;
@@ -505,47 +506,47 @@
   inset: 0;
   z-index: 120320;
   align-items: flex-end;
-  justify-content: center;
-  padding: 0 16px 104px;
-  background: rgba(0,0,0,.22);
+  justify-content: flex-start;
+  padding: 0 16px 88px calc(var(--pc-sidebar-w) + 14px);
+  background: linear-gradient(to right, transparent 0 var(--pc-sidebar-w), rgba(0,0,0,.20) var(--pc-sidebar-w) 100%);
 }
 .olliTtStudentActionOverlay.show { display: flex; }
 .olliTtStudentActionCard {
-  width: min(338px, calc(100vw - 32px));
-  padding: 8px 0;
-  border-radius: 28px;
+  width: min(292px, calc(100vw - var(--pc-sidebar-w) - 44px));
+  padding: 6px 0;
+  border-radius: 22px;
   overflow: hidden;
   background: rgba(255,255,255,.96);
-  box-shadow: 0 18px 50px rgba(0,0,0,.16), 0 4px 14px rgba(0,0,0,.08);
+  box-shadow: 0 16px 44px rgba(0,0,0,.15), 0 3px 12px rgba(0,0,0,.07);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
 .olliTtStudentActionTitle {
-  padding: 12px 22px 4px;
+  padding: 10px 18px 3px;
   color: #666;
-  font-size: calc(14px * var(--olli-text-scale));
+  font-size: calc(12.5px * var(--olli-text-scale));
   font-weight: 500;
 }
 .olliTtStudentActionBtn {
   width: 100%;
-  height: 56px;
-  padding: 0 22px;
+  height: 48px;
+  padding: 0 18px;
   border: 0;
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
   color: #111;
   background: transparent;
   text-align: left;
-  font: 500 calc(17px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  font: 500 calc(15px * var(--olli-text-scale)) 'Pretendard', sans-serif;
   cursor: pointer;
 }
 .olliTtStudentActionBtn + .olliTtStudentActionBtn { border-top: 1px solid rgba(0,0,0,.05); }
 .olliTtStudentActionBtn.danger { color: #e04444; }
 .olliTtStudentActionBtn svg {
-  width: 23px;
-  height: 23px;
-  flex: 0 0 23px;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -555,14 +556,14 @@
 .olliTtStudentActionBtn:hover,
 .olliTtStudentActionBtn:focus-visible { background: rgba(0,0,0,.035); outline: none; }
 .olliTtStudentActionCancelBtn {
-  width: calc(100% - 24px);
-  height: 46px;
-  margin: 8px 12px 4px;
+  width: calc(100% - 20px);
+  height: 40px;
+  margin: 6px 10px 3px;
   border: 0;
-  border-radius: 14px;
+  border-radius: 12px;
   color: #444;
   background: #f2f2f2;
-  font: 600 calc(15px * var(--olli-text-scale)) 'Pretendard', sans-serif;
+  font: 600 calc(13.5px * var(--olli-text-scale)) 'Pretendard', sans-serif;
   cursor: pointer;
 }
 .olliTtStudentActionCancelBtn:hover,
@@ -604,17 +605,17 @@
 #olliPcShell .olliTtQuickStatusEmpty { padding: 8px 10px 12px; color: #a7adb4; font-size: calc(10px * var(--olli-text-scale)); font-weight: 560; }
 
 .olliTtPauseChoiceGuide {
-  margin: 4px 22px 10px;
+  margin: 3px 18px 8px;
   color: #858b93;
-  font-size: calc(12px * var(--olli-text-scale));
+  font-size: calc(11px * var(--olli-text-scale));
   font-weight: 500;
   line-height: 1.5;
   letter-spacing: -.025em;
 }
 .olliTtPauseChoiceBtn {
   width: 100%;
-  min-height: 64px;
-  padding: 10px 22px;
+  min-height: 56px;
+  padding: 8px 18px;
   border: 0;
   border-top: 1px solid rgba(0,0,0,.05);
   display: flex;
@@ -628,8 +629,8 @@
   font-family: 'Pretendard', sans-serif;
   cursor: pointer;
 }
-.olliTtPauseChoiceBtn strong { font-size: calc(16px * var(--olli-text-scale)); font-weight: 650; }
-.olliTtPauseChoiceBtn span { color: #8a9098; font-size: calc(11px * var(--olli-text-scale)); font-weight: 520; }
+.olliTtPauseChoiceBtn strong { font-size: calc(14px * var(--olli-text-scale)); font-weight: 650; }
+.olliTtPauseChoiceBtn span { color: #8a9098; font-size: calc(10px * var(--olli-text-scale)); font-weight: 520; }
 .olliTtPauseChoiceBtn.remove strong { color: #d94a4a; }
 .olliTtPauseChoiceBtn:hover,
 .olliTtPauseChoiceBtn:focus-visible { background: rgba(0,0,0,.035); outline: none; }
