@@ -398,8 +398,9 @@
       });
       if(await handleExpenseConflict(payload,card,'save')) return false;
       if(!payload?.ok) throw new Error(payload?.message || '지출 항목을 추가하지 못했습니다.');
+      const reloaded=await loadOverview();
+      if(!reloaded) return false;
       clearExpenseMutationId(card,'save');
-      await loadOverview();
       return true;
     }catch(error){
       alert('지출 항목 추가 실패\n'+(error?.message || error));
@@ -453,8 +454,9 @@
       });
       if(await handleExpenseConflict(payload,row,'save')) return false;
       if(!payload?.ok) throw new Error(payload?.message || '지출 금액을 저장하지 못했습니다.');
+      const reloaded=await loadOverview();
+      if(!reloaded) return false;
       clearExpenseMutationId(row,'save');
-      await loadOverview();
       return true;
     }catch(error){
       alert('지출 저장 실패\n'+(error?.message || error));
@@ -490,8 +492,9 @@
       });
       if(await handleExpenseConflict(payload,row,'end')) return false;
       if(!payload?.ok) throw new Error(payload?.message || '지출 항목을 종료하지 못했습니다.');
+      const reloaded=await loadOverview();
+      if(!reloaded) return false;
       clearExpenseMutationId(row,'end');
-      await loadOverview();
       return true;
     }catch(error){
       alert('지출 항목 처리 실패\n'+(error?.message || error));
