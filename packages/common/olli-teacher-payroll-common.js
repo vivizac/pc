@@ -151,7 +151,31 @@
   function payrollPeriodLabel(teacher){
     const start=shortMonthDay(teacher?.period_start);
     const end=shortMonthDay(teacher?.period_end);
-    return start && end ? start+'~'+end : '급여기간';
+    return start && end ? start+'~'+end : '';
+  }
+
+  function todayDateValue(){
+    const now=new Date();
+    return now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  }
+
+  function selectedMonthIsFuture(){
+    return String(state.month || '') > currentMonthValue();
+  }
+
+  function payrollPayDateLabel(teacher){
+    const raw=String(teacher?.pay_date || '').trim();
+    const match=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!match) return '';
+    const label=Number(match[2])+'월 '+Number(match[3])+'일';
+    return label+(raw>todayDateValue() ? ' 지급 예정' : ' 지급');
+  }
+
+  function payrollAmountLabel(teacher){
+    const raw=String(teacher?.pay_date || '').trim();
+    return teacher?.is_finalized===true || (raw && raw<=todayDateValue())
+      ? '지급 급여'
+      : '예상 급여';
   }
 
   function paydayOptions(selected){
@@ -190,9 +214,11 @@
 
     return '<section class="olliPayrollTeacherCard'+(finalized?' is-finalized':'')+'" data-payroll-teacher-card data-payroll-finalized="'+(finalized?'1':'0')+'" data-teacher-id="'+esc(teacherId)+'"'+attrs+'>'
       + '<div class="olliPayrollTeacherHead"><div><div class="olliPayrollTeacherName">'+esc(name)+(finalized?'<span class="olliPayrollFinalizedBadge">급여 확정</span>':'')+'</div>'
-      + '<div class="olliPayrollWorkdays"><strong>'+esc(payrollPeriodLabel(teacher))+'</strong> · 근무 <strong>'+workdayCount+'일</strong>'
+      + '<div class="olliPayrollWorkdays"><strong>'+esc(payrollPayDateLabel(teacher) || (state.month.replace('-', '.')+' 지급'))+'</strong>'
+      + (payrollPeriodLabel(teacher)?' · 계산기간 '+esc(payrollPeriodLabel(teacher)):'')
+      + ' · 근무 <strong>'+workdayCount+'일</strong>'
       + (substituteHours>0?' · 대체 <strong>'+hours(substituteHours).toLocaleString('ko-KR')+'시간</strong> 포함':'')
-      + (finalized?' · 확정본':' · 시간표 자동 계산')+'</div></div>'
+      + (finalized?' · 금액 고정':' · 시간표 기준 계산')+'</div></div>'
       + '<span class="olliPayrollSaveState" data-payroll-save-state></span></div>'
       + '<div class="olliPayrollFieldGrid">'
       + '<label class="olliPayrollField"><span>월급</span><div class="olliPayrollInputWrap"><input inputmode="numeric" min="0" step="10000" type="number" value="'+monthlySalary+'" data-payroll-monthly-salary'+disabledAttr+'><span>원</span></div></label>'
@@ -202,7 +228,7 @@
       + '<div class="olliPayrollDayTitle">요일별 근무시간</div>'
       + '<div class="olliPayrollDayGrid">'+dayInputs+'</div>'
       + '<div class="olliPayrollSummary"><div><span>총 근무시간</span><strong data-payroll-total-hours>'+hours(totalHours).toLocaleString('ko-KR')+'시간</strong></div>'
-      + '<div><span>'+(finalized?'확정 급여':'예상 급여')+'</span><strong data-payroll-total-amount>'+money(totalAmount)+'</strong></div></div>'
+      + '<div><span>'+esc(payrollAmountLabel(teacher))+'</span><strong data-payroll-total-amount>'+money(totalAmount)+'</strong></div></div>'
       + '<button class="olliPayrollSaveButton" type="button" data-payroll-save'+disabledAttr+'>'+(finalized?'확정됨':'저장')+'</button>'
       + '</section>';
   }
@@ -689,22 +715,26 @@
     const missingMonthly=Math.max(0,Number(expenses.missing_monthly_count || 0));
     const parts=String(state.month || '').split('-');
     const monthLabel=parts.length===2 ? Number(parts[0])+'년 '+Number(parts[1])+'월' : '이번 달';
-    const totalLabel=missingMonthly>0 ? '현재 입력 기준 총 지출' : '총 지출';
+    const future=selectedMonthIsFuture();
+    const totalLabel=missingMonthly>0
+      ? (future?'현재 입력 기준 예상 총지출':'현재 입력 기준 총지출')
+      : (future?'예상 총지출':'총지출');
     const completionText=missingMonthly>0
       ? '월별 지출 미입력 '+missingMonthly+'건'
-      : '월별 지출 입력 완료';
+      : (future?'현재 설정 기준 예상 금액':'월별 지출 입력 완료');
 
     return '<section class="olliFinanceSummary'+(missingMonthly>0?' is-incomplete':' is-complete')+'" data-finance-summary>'
       + '<div class="olliFinanceSummaryHero"><span>'+esc(monthLabel)+' '+totalLabel+'</span><strong>'+money(total)+'</strong>'
       + '<div class="olliFinanceSummaryStatus">'+esc(completionText)+'</div></div>'
       + '<div class="olliFinanceSummaryBreakdown">'
-      + '<div><span>운영 지출</span><strong>'+money(expenseTotal)+'</strong></div>'
-      + '<div><span>선생님 급여</span><strong>'+money(payrollTotal)+'</strong></div>'
+      + '<div><span>운영 지출'+(future?' · 예상':'')+'</span><strong>'+money(expenseTotal)+'</strong></div>'
+      + '<div><span>선생님 급여'+(future?' · 예상':'')+'</span><strong>'+money(payrollTotal)+'</strong></div>'
       + '</div></section>';
   }
 
   function renderPayrollWarnings(payroll){
-    const warnings=Array.isArray(payroll?.warnings) ? payroll.warnings : [];
+    const warnings=(Array.isArray(payroll?.warnings) ? payroll.warnings : [])
+      .filter(item=>String(item?.type || '')!=='historical_payroll_unfinalized');
     if(!warnings.length) return '';
     return '<div class="olliPayrollWarnings">'
       + warnings.map(item=>'<div class="olliPayrollWarning">'+esc(item?.message || '대체근무 급여 설정을 확인해 주세요.')+'</div>').join('')
@@ -714,7 +744,7 @@
   function renderPayrollSection(payroll,teachers){
     return '<section class="olliFinancePayrollSection">'
       + '<div class="olliPayrollIntro"><div class="olliPayrollIntroTitle">선생님 급여</div>'
-      + '<div class="olliPayrollIntroText">시간표를 기준으로 계산하며 휴원일과 날짜별 대체 담임을 자동 반영합니다.</div></div>'
+      + '<div class="olliPayrollIntroText">선택한 달에 실제 지급되는 급여를 보여줍니다. 지급 전에는 예상 금액, 지급 후에는 고정된 금액을 표시합니다.</div></div>'
       + renderPayrollWarnings(payroll)
       + (teachers.length ? teachers.map(renderTeacherCard).join('') : '<div class="olliPayrollEmpty">급여를 설정할 선생님이 없습니다.</div>')
       + '</section>';
@@ -868,6 +898,7 @@
 
   async function open(){
     openDetailShell();
+    await syncDueNotifications();
     return loadOverview();
   }
 

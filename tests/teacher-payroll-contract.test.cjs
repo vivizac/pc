@@ -9,12 +9,14 @@ const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 const activeWorkdayMigration = read('supabase/migrations/20261007052135_teacher_payroll_active_workdays.sql');
 const substitutePayrollMigration = read('supabase/migrations/20261007171000_teacher_payroll_substitute_slot_hours.sql');
 const finalizedPayrollMigration = read('supabase/migrations/20261007172000_teacher_payroll_finalized_periods.sql');
+const monthlyPayoutMigration = read('supabase/migrations/20261007202000_teacher_payroll_monthly_payout_snapshots.sql');
 const migration = [
   read('supabase/migrations/20261006150241_teacher_payroll_calculator.sql'),
   read('supabase/migrations/20261006153614_harden_owner_roles_and_payroll_cycle.sql'),
   activeWorkdayMigration,
   substitutePayrollMigration,
-  finalizedPayrollMigration
+  finalizedPayrollMigration,
+  monthlyPayoutMigration
 ].join('\n');
 const common = read('packages/common/olli-teacher-payroll-common.js');
 const pcHtml = read('apps/pc/index.html');
@@ -55,7 +57,7 @@ test('settings entry and shared runtime are wired on PC and mobile', () => {
   for (const html of [pcHtml, mobileHtml]) {
     assert.match(html, /급여 및 지출 관리/);
     assert.match(html, /openOlliTeacherPayrollSettings\(\)/);
-    assert.match(html, /olli-teacher-payroll-common\.js\?v=20261007-finance-1/);
+    assert.match(html, /olli-teacher-payroll-common\.js\?v=20261007-finance-2/);
     assert.match(html, /olli-teacher-payroll-common\.css\?v=20261007-finance-1/);
   }
 });
@@ -196,10 +198,20 @@ test('payday cron refreshes the open snapshot and freezes it on the following da
   assert.match(finalizedPayrollMigration, /where private\.olli_teacher_payroll_periods\.finalized_at is null/);
 });
 
-test('missed pay-date cron gets a next-day snapshot fallback before finalization', () => {
-  assert.match(finalizedPayrollMigration, /If the cron missed the whole pay date/);
-  assert.match(finalizedPayrollMigration, /v_candidate_pay_date=\(v_today - interval '1 day'\)::date/);
-  assert.match(finalizedPayrollMigration, /not exists \([\s\S]*private\.olli_teacher_payroll_periods/);
+test('missed payout snapshots are backfilled after the payout date and then frozen', () => {
+  assert.match(monthlyPayoutMigration, /v_candidate_pay_date<v_today/);
+  assert.match(monthlyPayoutMigration, /not exists \([\s\S]*private\.olli_teacher_payroll_periods/);
+  assert.match(monthlyPayoutMigration, /olli_teacher_payroll_period_capture/);
+  assert.match(monthlyPayoutMigration, /finalized_at=coalesce\(p\.finalized_at,now\(\)\)/);
+});
+
+test('future payout month is presented as an estimate while paid months use payout wording', () => {
+  assert.match(common, /function selectedMonthIsFuture\(\)/);
+  assert.match(common, /지급 예정/);
+  assert.match(common, /예상 총지출/);
+  assert.match(common, /function payrollAmountLabel\(teacher\)/);
+  assert.match(common, /지급 급여/);
+  assert.match(common, /historical_payroll_unfinalized/);
 });
 
 test('historical payroll overview prefers finalized snapshots and preserves former teachers', () => {
