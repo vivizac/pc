@@ -105,6 +105,8 @@ create table private.olli_academy_expense_events (
     on delete cascade,
   constraint olli_academy_expense_events_type_check
     check (event_type in ('create','update','end','restore')),
+  constraint olli_academy_expense_events_actor_name_check
+    check (char_length(btrim(changed_by_name_snapshot)) between 1 and 80),
   constraint olli_academy_expense_events_month_check
     check (event_month=date_trunc('month',event_month)::date),
   constraint olli_academy_expense_events_before_check
@@ -118,6 +120,10 @@ create index olli_academy_expense_events_month_idx
 
 create index olli_academy_expense_events_item_idx
   on private.olli_academy_expense_events(academy_id,expense_item_id,event_seq desc);
+
+create unique index olli_academy_expense_events_request_uidx
+  on private.olli_academy_expense_events(academy_id,request_id)
+  where request_id is not null;
 
 alter table private.olli_academy_expense_items enable row level security;
 alter table private.olli_academy_expense_values enable row level security;
