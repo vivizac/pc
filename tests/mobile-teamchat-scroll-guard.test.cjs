@@ -64,7 +64,7 @@ test('Team Chat keeps textarea free of activation hacks and delegates first touc
   assert.match(html,/id="olliTalkComposerActivateBtn"/);
   assert.match(css,/\.olliTalkComposerActivateBtn\{[\s\S]*position:absolute;[\s\S]*inset:0;[\s\S]*z-index:4/);
   assert.match(css,/\.olliTalkKeyboardOpen \.olliTalkComposerActivateBtn\{[\s\S]*visibility:hidden;[\s\S]*pointer-events:none/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261008-keyboard-standard-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261008-mention-reactivation-1/);
   assert.match(html,/olli-talk-beta\.css\?v=20261008-unified-activation-1/);
 });
 
