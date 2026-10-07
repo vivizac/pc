@@ -7555,7 +7555,7 @@
     hideOlliTalkMentionMenu();
     resizeInput();
     updateOlliTalkBetaComposerState();
-    try { input.focus({ preventScroll:true }); } catch(e) { input.focus(); }
+    window.OlliMobileKeyboardActivation?.focus(input);
   }
 
   function renderOlliTalkMentionMenu(){
@@ -7615,27 +7615,17 @@
     syncOlliTalkSelectedMentionPrefix();
   }
 
-  function stopOlliTalkComposerActivationEvent(event){
-    if (!event) return;
-    event.preventDefault();
-    event.stopPropagation();
-  }
-
-  function focusOlliTalkComposerInput(){
-    const input = getOlliTalkBetaInput();
-    if (!input) return null;
-    try { input.focus({ preventScroll:true }); } catch (_) { input.focus(); }
-    return input;
-  }
-
   function activateOlliTalkComposerInput(event){
-    stopOlliTalkComposerActivationEvent(event);
-    const input = focusOlliTalkComposerInput();
-    if (!input) return null;
-    resizeInput();
-    updateOlliTalkBetaComposerState();
-    syncViewport();
-    return input;
+    const keyboard = window.OlliMobileKeyboardActivation;
+    if (!keyboard) return null;
+    return keyboard.activate(event, {
+      input:getOlliTalkBetaInput,
+      afterFocus:() => {
+        resizeInput();
+        updateOlliTalkBetaComposerState();
+        syncViewport();
+      }
+    });
   }
 
   async function openOlliTalkMentionPicker(event){
@@ -8038,11 +8028,7 @@
         alert('메시지는 전송됐지만 ' + followupErrors.join(', ') + '에 실패했습니다.');
       }
 
-      try {
-        input.focus({ preventScroll:true });
-      } catch(e) {
-        input.focus();
-      }
+      window.OlliMobileKeyboardActivation?.focus(input);
     } catch(error) {
       olliTalkAssistantReplyPending = false;
       syncOlliTalkAssistantTypingIndicator();
