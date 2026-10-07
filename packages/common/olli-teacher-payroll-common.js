@@ -137,6 +137,19 @@
     return {amount,totalHours};
   }
 
+  function shortMonthDay(value){
+    const raw=String(value || '').trim();
+    const match=raw.match(/^\d{4}-(\d{2})-(\d{2})$/);
+    if(!match) return '';
+    return String(Number(match[1]))+'/'+String(Number(match[2]));
+  }
+
+  function payrollPeriodLabel(teacher){
+    const start=shortMonthDay(teacher?.period_start);
+    const end=shortMonthDay(teacher?.period_end);
+    return start && end ? start+'~'+end : '급여기간';
+  }
+
   function paydayOptions(selected){
     const value = Math.max(1,Math.min(31,Number(selected || 15)));
     let html='';
@@ -169,7 +182,7 @@
 
     return '<section class="olliPayrollTeacherCard" data-payroll-teacher-card data-teacher-id="'+esc(teacherId)+'"'+attrs+'>'
       + '<div class="olliPayrollTeacherHead"><div><div class="olliPayrollTeacherName">'+esc(name)+'</div>'
-      + '<div class="olliPayrollWorkdays">이번 달 출근 <strong>'+workdayCount+'일</strong> · 시간표 자동 계산</div></div>'
+      + '<div class="olliPayrollWorkdays"><strong>'+esc(payrollPeriodLabel(teacher))+'</strong> · 근무 <strong>'+workdayCount+'일</strong> · 시간표 자동 계산</div></div>'
       + '<span class="olliPayrollSaveState" data-payroll-save-state></span></div>'
       + '<div class="olliPayrollFieldGrid">'
       + '<label class="olliPayrollField"><span>월급</span><div class="olliPayrollInputWrap"><input inputmode="numeric" min="0" step="10000" type="number" value="'+monthlySalary+'" data-payroll-monthly-salary><span>원</span></div></label>'
