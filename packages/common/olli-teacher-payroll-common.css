@@ -132,3 +132,6 @@ body.olliPcApp .olliFinanceTabs{display:none}
 body.olliPcApp .olliFinanceExpensesColumn,
 body.olliPcApp .olliFinancePayrollColumn{display:block}
 
+.olliPayrollWarnings{display:grid;gap:7px;margin:0 0 12px}
+.olliPayrollWarning{padding:11px 12px;border-radius:14px;background:#fff6e8;color:#8a641f;font-size:11.5px;line-height:1.5;font-weight:650}
+
