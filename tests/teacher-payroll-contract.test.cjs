@@ -7,10 +7,12 @@ const root = path.resolve(__dirname, '..');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
 const activeWorkdayMigration = read('supabase/migrations/20261007052135_teacher_payroll_active_workdays.sql');
+const substitutePayrollMigration = read('supabase/migrations/20261007171000_teacher_payroll_substitute_slot_hours.sql');
 const migration = [
   read('supabase/migrations/20261006150241_teacher_payroll_calculator.sql'),
   read('supabase/migrations/20261006153614_harden_owner_roles_and_payroll_cycle.sql'),
-  activeWorkdayMigration
+  activeWorkdayMigration,
+  substitutePayrollMigration
 ].join('\n');
 const common = read('packages/common/olli-teacher-payroll-common.js');
 const pcHtml = read('apps/pc/index.html');
@@ -139,5 +141,39 @@ test('payroll period presentation reuses server-calculated boundaries without cl
   assert.ok(start >= 0 && end > start);
   const labelCode = common.slice(start, end);
   assert.doesNotMatch(labelCode, /setDate|Date\(|getDate|payday/);
+});
+
+test('substitute payroll snapshots transfer the regular teacher slot share', () => {
+  assert.match(substitutePayrollMigration, /add column if not exists payroll_hours numeric\(10,4\)/);
+  assert.match(substitutePayrollMigration, /olli_teacher_payroll_override_snapshot/);
+  assert.match(substitutePayrollMigration, /v_payroll_hours := round\(v_daily_hours \/ v_slot_count,4\)/);
+  assert.match(substitutePayrollMigration, /payroll_source_weekday_hours/);
+  assert.match(substitutePayrollMigration, /payroll_source_slot_count/);
+  assert.match(substitutePayrollMigration, /payroll_snapshot_at/);
+});
+
+test('partial substitutions deduct only the transferred slot hours from the regular teacher', () => {
+  assert.match(substitutePayrollMigration, /regular_slot_hours/);
+  assert.match(substitutePayrollMigration, /snapshot_payroll_hours/);
+  assert.match(substitutePayrollMigration, /coalesce\(a\.snapshot_payroll_hours,a\.regular_slot_hours\) as substitute_hours/);
+  assert.match(substitutePayrollMigration, /a\.regular_teacher_member_id=p_teacher_member_id/);
+  assert.match(substitutePayrollMigration, /a\.substitute_teacher_member_id=p_teacher_member_id/);
+});
+
+test('substitute work is added on top of the substitute teacher own regular work', () => {
+  assert.match(substitutePayrollMigration, /sum\(t\.regular_hours\) as regular_hours/);
+  assert.match(substitutePayrollMigration, /sum\(t\.substitute_hours\) as substitute_hours/);
+  assert.match(substitutePayrollMigration, /sum\(c\.regular_hours\+c\.substitute_hours\)/);
+  assert.match(substitutePayrollMigration, /'regular_hours',v_regular_hours/);
+  assert.match(substitutePayrollMigration, /'substitute_hours',v_substitute_hours/);
+});
+
+test('substitute payroll warns instead of silently paying zero when settings are missing', () => {
+  assert.match(substitutePayrollMigration, /'has_unpriced_substitute_work'/);
+  assert.match(substitutePayrollMigration, /'substitute_wage_missing'/);
+  assert.match(substitutePayrollMigration, /'substitute_hours_unresolved'/);
+  assert.match(common, /function renderPayrollWarnings\(payroll\)/);
+  assert.match(common, /대체 <strong>'\+hours\(substituteHours\)/);
+  assert.match(common, /대체근무 급여 설정을 확인해 주세요/);
 });
 
