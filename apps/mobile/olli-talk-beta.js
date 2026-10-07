@@ -7147,8 +7147,13 @@
     const input = getOlliTalkBetaInput();
     if (!input) return;
 
+    const activeQuery = currentMentionQuery();
+    if (activeQuery) {
+      input.setRangeText('', activeQuery.start, activeQuery.end, 'end');
+    }
     const value = String(input.value || '')
       .replace(/(^|\s)@[^\s@]*$/g, '$1')
+      .replace(/(^|\s)@(?=\s|$)/g, '$1')
       .replace(/\s+/g, ' ')
       .trimStart();
     input.value = value;
