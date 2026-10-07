@@ -2920,7 +2920,7 @@
     const action = cleanText(command.action);
     const routeContext = normalizeContext(context);
     const schedule = global.OlliCommandSchedule;
-    const supported = new Set(['add_makeup','update_makeup','add_trial','update_trial','add_waitlist','cancel_waitlist','cancel_makeup','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent']);
+    const supported = new Set(['add_makeup','update_makeup','add_trial','update_trial','add_waitlist','cancel_waitlist','cancel_makeup','cancel_trial','add_pickup','update_pickup','cancel_pickup','move_class','mark_absent']);
 
     if (!supported.has(action)) {
       return {
@@ -3328,6 +3328,91 @@
         return {
           handled:true, kind:'action_rejected', intent:'cancel_makeup', text:'',
           message:String(error && (error.message || error) || '보강 취소 작업을 준비하지 못했어요.'),
+          clearInput:true, payload:command, action:null
+        };
+      }
+    }
+
+    if (action === 'cancel_trial') {
+      const studentName=cleanText(command.student_name || command.studentName || command.guestName);
+      const division=cleanText(command.division).toLowerCase();
+      const dateExpression=cleanText(command.date_expression || command.dateExpression);
+      const timeSlot=Number(command.time_slot || command.timeSlot || 0);
+      const classGroup=cleanText(command.class_group || command.classGroup).toUpperCase();
+      const reason=cleanText(command.reason);
+      const dateSpec=dateExpression ? parseDateExpression(compactText(dateExpression)) : null;
+      const date=dateSpec ? resolveDateExpression(dateSpec,new Date()) : null;
+
+      if (!studentName) {
+        return {
+          handled:true, kind:'action_rejected', intent:'cancel_trial', text:'',
+          message:'체험을 취소할 학생을 알려주세요.',
+          clearInput:true, payload:command, action:null
+        };
+      }
+      if (dateExpression && !date) {
+        return {
+          handled:true, kind:'action_rejected', intent:'cancel_trial', text:'',
+          message:'취소할 체험 날짜를 해석하지 못했어요.',
+          clearInput:true, payload:command, action:null
+        };
+      }
+      if (!schedule || typeof schedule.prepareWriteCommand !== 'function') {
+        return {
+          handled:true, kind:'action_rejected', intent:'cancel_trial', text:'',
+          message:'시간표 작업 준비 기능을 아직 불러오지 못했어요.',
+          clearInput:true, payload:command, action:null
+        };
+      }
+
+      try {
+        const prepared=await schedule.prepareWriteCommand('cancel_trial',{
+          type:'mutation',
+          intent:'cancel_trial',
+          guestName:studentName,
+          studentName,
+          division,
+          date,
+          timeSlot,
+          classGroup:/^[AB]$/.test(classGroup) ? classGroup : '',
+          reason,
+          effectiveDate:new Date(),
+          originalText:''
+        });
+
+        if (!prepared || prepared.ok !== true || !prepared.command) {
+          return {
+            handled:true, kind:'action_rejected', intent:'cancel_trial', text:'',
+            message:String(prepared && prepared.message || '체험 취소 작업을 준비하지 못했어요.'),
+            clearInput:true, payload:command, action:null
+          };
+        }
+
+        const preparedCommand=Object.assign({},prepared.command);
+        if(reason && !cleanText(preparedCommand.reason)) preparedCommand.reason=reason;
+        const requiresReason=commandRequiresReason(preparedCommand) && !cleanText(preparedCommand.reason);
+        return {
+          handled:true,
+          kind:requiresReason ? 'action_needs_reason' : 'action_pending',
+          intent:'cancel_trial',
+          text:'',
+          message:requiresReason
+            ? reasonPrompt(preparedCommand,schedule)
+            : confirmationMessage(preparedCommand,schedule,prepared.message),
+          clearInput:true,
+          payload:preparedCommand,
+          action:{
+            status:'pending',
+            intent:'cancel_trial',
+            command:Object.assign({},preparedCommand),
+            requiresReason
+          }
+        };
+      } catch(error) {
+        console.warn('올리 구조화 체험 취소 준비 실패:',error);
+        return {
+          handled:true, kind:'action_rejected', intent:'cancel_trial', text:'',
+          message:String(error && (error.message || error) || '체험 취소 작업을 준비하지 못했어요.'),
           clearInput:true, payload:command, action:null
         };
       }

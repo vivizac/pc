@@ -810,6 +810,56 @@
     };
   }
 
+  function getOlliTalkFastCancelReasonCommand(pending,reason=''){
+    if(!pending || typeof pending!=='object') return null;
+    const intent=String(pending.intent || '').trim();
+    if(!['cancel_makeup','cancel_trial'].includes(intent)) return null;
+    if(intent==='batch_write' || pending.__batchAgent) return null;
+
+    const nested=intent==='cancel_makeup'
+      ? pending?.__structuredMakeupCancel?.structuredCommand
+      : pending?.__structuredTrialCancel?.structuredCommand;
+    const source=nested && typeof nested==='object' ? nested : pending;
+    const command=Object.assign({},source);
+    const commandIntent=String(command.intent || command.action || '').trim();
+    if(commandIntent!==intent) return null;
+    if(!String(command.oneTimeSessionId || command.one_time_session_id || '').trim()) return null;
+    if(!String(command.sessionDate || command.session_date || '').trim()) return null;
+    if(Number(command.timeSlot || command.time_slot || 0)<=0) return null;
+
+    delete command.__structuredMakeupCancel;
+    delete command.__structuredTrialCancel;
+    delete command.__makeupCancelAgent;
+    delete command.__trialCancelAgent;
+    command.intent=intent;
+    command.reason=String(reason || '').trim();
+    return command;
+  }
+
+  function getOlliTalkFastCancelConfirmation(pending,reason){
+    const command=getOlliTalkFastCancelReasonCommand(pending,reason);
+    if(!command) return '';
+    const schedule=window.OlliCommandSchedule;
+    const confirmation=String(schedule?.writeConfirmationMessage?.(command) || '').trim();
+    if(confirmation) return confirmation;
+
+    const name=String(command.studentName || command.guestName || '학생').trim() || '학생';
+    const kind=command.intent==='cancel_trial' ? '체험수업' : '보강';
+    return name+' 학생의 '+kind+'을 '+String(reason || '').trim()+' 사유로 취소할까요?';
+  }
+
+  function replaceOlliTalkReasonChoiceWithSelection(wrap,reasonAction){
+    const card=wrap?.closest?.('.olliTalkBetaActionCard');
+    if(!card || !reasonAction) return false;
+    const selectedAction=Object.assign({},reasonAction,{
+      display_label:String(reasonAction.display_label || reasonAction.selected_reason || '').trim()
+    });
+    const replacement=createOlliTalkActionCard(selectedAction);
+    if(!replacement) return false;
+    card.replaceWith(replacement);
+    return true;
+  }
+
   async function submitOlliTalkPendingReasonText(reasonText,wrap,action){
     const reason=String(reasonText || '').trim();
     const actionId=String(action?.id || '').trim();
@@ -826,6 +876,31 @@
     wrap?.querySelectorAll?.('button,input').forEach(control=>{control.disabled=true});
 
     try{
+      const fastPending=olliTalkPendingActionReason;
+      const fastCommand=getOlliTalkFastCancelReasonCommand(fastPending,reason);
+      if(fastCommand){
+        const confirmationBody=getOlliTalkFastCancelConfirmation(fastPending,reason);
+        const payload=await callOlliTalkRpc('olli_team_chat_action_select_reason_prepare_cancel',{
+          p_session_token:context.sessionToken,
+          p_academy_id:context.academyId,
+          p_action_id:actionId,
+          p_reason:reason,
+          p_confirmation_body:confirmationBody
+        });
+        if(!payload?.ok || !payload?.reason_action || !payload?.confirmation_message?.action){
+          throw new Error(payload?.message || '취소 확인 작업을 준비하지 못했습니다.');
+        }
+
+        const active=document.activeElement;
+        if(active && wrap?.contains?.(active) && typeof active.blur==='function') active.blur();
+
+        olliTalkPendingActionReason=null;
+        olliTalkPendingTextInputMessageId='';
+        replaceOlliTalkReasonChoiceWithSelection(wrap,payload.reason_action);
+        appendOlliTalkPersistedMessage(payload.confirmation_message,context.memberId);
+        return true;
+      }
+
       const payload=await callOlliTalkRpc('olli_team_chat_action_select_reason',{
         p_session_token:context.sessionToken,
         p_academy_id:context.academyId,
@@ -2731,10 +2806,31 @@
         };
       }
 
-      const merged=mergeOlliTalkStructuredTrialCancelCommand(
+      let merged=mergeOlliTalkStructuredTrialCancelCommand(
         pending?.structuredCommand,
         structuredCommand
       );
+
+      let preflight=null;
+      if(!pending && router && typeof router.prepareStructuredAction==='function'){
+        preflight=await router.prepareStructuredAction(merged,{
+          source:'olli_talk_ai_structured_preflight',
+          selectedStudent:null,
+          autoSubmitContext:null
+        });
+        if(preflight?.handled===true && preflight.kind==='action_rejected'){
+          const rejectedMessage=String(preflight.message || '').trim() || '체험 취소 작업을 준비하지 못했어요.';
+          return {
+            assistantMessage:await saveOlliTalkOlliReply(context,rejectedMessage,replyToMessageId),
+            replyText:rejectedMessage,
+            recordAi:false
+          };
+        }
+        if(preflight?.handled===true && preflight.payload){
+          merged=mergeOlliTalkStructuredTrialCancelCommand(merged,preflight.payload);
+        }
+      }
+
       const reason=String(merged.reason || '').trim();
       if(!reason){
         const sourceMessageId=Number(replyToMessageId || 0);
@@ -2746,7 +2842,8 @@
             structuredCommand:merged
           }
         };
-        const reasonMessage=(String(merged.studentName || '').trim() || '체험 학생')+' 체험 취소 사유를 알려주세요.';
+        const reasonMessage=String(preflight?.message || '').trim()
+          || (String(merged.studentName || '').trim() || '체험 학생')+' 체험 취소 사유를 알려주세요.';
         return saveOlliTalkPendingTextInputReply(context,reasonMessage,replyToMessageId,olliTalkPendingActionReason);
       }
 
