@@ -135,6 +135,26 @@
   const OLLI_TALK_COMPOSER_IDLE_HEIGHT = 47;
   const OLLI_TALK_COMPOSER_ACTIVE_HEIGHT = 79;
   const OLLI_TALK_COMPOSER_MESSAGE_GAP = 10;
+  const OLLI_TALK_KEYBOARD_MOTION_HOLD_MS = 420;
+  let olliTalkKeyboardMotionTimer = null;
+
+  function beginOlliTalkKeyboardMotion(){
+    const screen = getScreen();
+    if (!screen) return;
+    screen.classList.add('olliTalkKeyboardMotion');
+    if (olliTalkKeyboardMotionTimer) clearTimeout(olliTalkKeyboardMotionTimer);
+    olliTalkKeyboardMotionTimer = setTimeout(() => {
+      olliTalkKeyboardMotionTimer = null;
+      screen.classList.remove('olliTalkKeyboardMotion');
+    }, OLLI_TALK_KEYBOARD_MOTION_HOLD_MS);
+  }
+
+  function continueOlliTalkKeyboardMotion(){
+    const screen = getScreen();
+    if (!screen?.classList.contains('olliTalkKeyboardMotion')) return;
+    beginOlliTalkKeyboardMotion();
+  }
+
 
   function isOlliTalkChatNearBottom(chatArea, threshold = 96){
     if (!chatArea) return true;
@@ -234,6 +254,7 @@
     }, { passive:true });
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
+        continueOlliTalkKeyboardMotion();
         syncViewport();
 
         if(isOlliTalkPendingReasonInputActive()){
@@ -8273,6 +8294,9 @@
     }
 
     const talkScreen = getScreen();
+    if (olliTalkKeyboardMotionTimer) clearTimeout(olliTalkKeyboardMotionTimer);
+    olliTalkKeyboardMotionTimer = null;
+    talkScreen?.classList.remove('olliTalkKeyboardMotion');
     if (olliTalkChatGestureSettleTimer) clearTimeout(olliTalkChatGestureSettleTimer);
     olliTalkChatGestureSettleTimer = null;
     olliTalkChatGestureActive = false;
@@ -8671,12 +8695,14 @@
       input.addEventListener('focus', () => {
         const chatArea = document.getElementById('olliTalkBetaChatArea');
         olliTalkKeyboardFollowLatest = !chatArea || isOlliTalkChatNearBottom(chatArea,120);
+        beginOlliTalkKeyboardMotion();
         // focus 자체는 채팅 scrollTop을 움직이지 않습니다.
         // 실제 키보드 높이 변화는 visualViewport.resize 한 경로에서만 따라갑니다.
         syncViewport();
       }, true);
       input.addEventListener('blur', () => {
         olliTalkKeyboardFollowLatest = false;
+        beginOlliTalkKeyboardMotion();
         syncViewport();
       });
       input.addEventListener('click', renderOlliTalkMentionMenu);
