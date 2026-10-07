@@ -24,16 +24,17 @@ test('Team Chat only settles a gesture that actually started in chatArea',()=>{
   assert.match(body,/window\.addEventListener\('touchend', endOlliTalkChatGesture/);
 });
 
-test('Team Chat composer leaves textarea pointer focus to iOS native behavior',()=>{
+test('Team Chat composer taps do not mark chat gesture ownership',()=>{
   const initStart=js.indexOf('function init(){');
   const inputStart=js.indexOf("if (input) {",initStart);
   const inputEnd=js.indexOf("\n    if (mentionTriggerButton)",inputStart);
   assert.ok(initStart>=0 && inputStart>=0 && inputEnd>inputStart);
   const inputBody=js.slice(inputStart,inputEnd);
 
-  assert.doesNotMatch(inputBody,/input\.addEventListener\('pointerdown'/);
-  assert.doesNotMatch(inputBody,/event\.preventDefault\(\)[\s\S]*input\.focus\(/);
-  assert.match(inputBody,/input\.addEventListener\('focus'/);
+  assert.match(
+    inputBody,
+    /input\.addEventListener\('pointerdown', event => \{[\s\S]*input\.focus\(\{ preventScroll:true \}\)/
+  );
   assert.doesNotMatch(inputBody,/olliTalkChatGestureActive\s*=\s*true/);
   assert.doesNotMatch(inputBody,/settleOlliTalkChatGesture\(/);
 });

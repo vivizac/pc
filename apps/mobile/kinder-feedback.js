@@ -2317,7 +2317,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   if (composerBottom) {
-    composerBottom.addEventListener('click', event => {
+    composerBottom.addEventListener('pointerdown', event => {
       const interactive = event.target && event.target.closest
         ? event.target.closest('button, input, .kcfAutoStudentChip, .memoStudentSelectPopup')
         : null;
