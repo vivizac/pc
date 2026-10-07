@@ -8634,8 +8634,9 @@
 
       input.addEventListener('pointerdown', event => {
         if (document.activeElement === input) return;
+        // @ 버튼처럼 손을 떼고 click이 확정될 때까지 포커스를 시작하지 않습니다.
+        // iOS의 pointerdown 기본 포커스만 막아 composer/page가 먼저 움직이는 것을 방지합니다.
         event.preventDefault();
-        try { input.focus({ preventScroll:true }); } catch (_) { input.focus(); }
       });
 
       if (composer) {
@@ -8682,7 +8683,12 @@
         olliTalkKeyboardFollowLatest = false;
         syncViewport();
       });
-      input.addEventListener('click', renderOlliTalkMentionMenu);
+      input.addEventListener('click', () => {
+        if (document.activeElement !== input) {
+          try { input.focus({ preventScroll:true }); } catch (_) { input.focus(); }
+        }
+        renderOlliTalkMentionMenu();
+      });
       input.addEventListener('keyup', event => {
         if (event.key === 'Escape') hideOlliTalkMentionMenu();
       });

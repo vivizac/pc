@@ -33,7 +33,15 @@ test('Team Chat composer taps do not mark chat gesture ownership',()=>{
 
   assert.match(
     inputBody,
-    /input\.addEventListener\('pointerdown', event => \{[\s\S]*input\.focus\(\{ preventScroll:true \}\)/
+    /input\.addEventListener\('pointerdown', event => \{[\s\S]*event\.preventDefault\(\);[\s\S]*\}\);/
+  );
+  const pointerStart=inputBody.indexOf("input.addEventListener('pointerdown'");
+  const pointerEnd=inputBody.indexOf("\n\n      if (composer)",pointerStart);
+  assert.ok(pointerStart>=0 && pointerEnd>pointerStart);
+  assert.doesNotMatch(inputBody.slice(pointerStart,pointerEnd),/input\.focus\(/);
+  assert.match(
+    inputBody,
+    /input\.addEventListener\('click', \(\) => \{[\s\S]*input\.focus\(\{ preventScroll:true \}\)[\s\S]*renderOlliTalkMentionMenu\(\)/
   );
   assert.doesNotMatch(inputBody,/olliTalkChatGestureActive\s*=\s*true/);
   assert.doesNotMatch(inputBody,/settleOlliTalkChatGesture\(/);
