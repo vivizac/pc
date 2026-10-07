@@ -1201,9 +1201,24 @@
     card.dataset.actionStatus = status;
 
     if (status !== 'pending') {
+      if(status==='completed' && clean(action?.action_type)==='choose_reason'){
+        const selected=document.createElement('button');
+        selected.type='button';
+        selected.className='olliPcTeamTalkActionButton primary selectedChoice';
+        selected.textContent=actionStatusLabel(action) || '사유 선택';
+        selected.disabled=true;
+        card.appendChild(selected);
+        return card;
+      }
       const label = create('span', 'olliPcTeamTalkActionStatus', actionStatusLabel(action));
       if (status === 'failed') label.classList.add('failed');
       card.appendChild(label);
+      return card;
+    }
+
+    if(clean(action?.action_type)==='choose_reason'){
+      card.classList.add('reasonChoice');
+      card.appendChild(makePendingTextInputButton(action));
       return card;
     }
 
@@ -1396,7 +1411,7 @@
     bubbleRow.appendChild(meta);
     content.appendChild(bubbleRow);
     if (item?.action) content.appendChild(makeActionCard(item.action));
-    if (shouldShowPendingTextInput(item)) content.appendChild(makePendingTextInputButton());
+    if (shouldShowPendingTextInput(item)) content.appendChild(makePendingTextInputButton(null));
     if (global.OlliTeacherPayroll?.createTeamChatPayrollButton) {
       const payrollButton = global.OlliTeacherPayroll.createTeamChatPayrollButton(item, 'pc');
       if (payrollButton) content.appendChild(payrollButton);
@@ -2897,35 +2912,248 @@
     return payload.message;
   }
 
-  async function savePendingTextInputReply(current,message,replyToMessageId) {
+  async function savePendingTextInputReply(current,message,replyToMessageId,pendingOverride=null) {
     const text=clean(message) || '내용을 입력해 주세요.';
-    const assistantMessage=await saveAssistantReply(current,text,replyToMessageId);
-    state.pendingTextInputMessageId=clean(assistantMessage?.id);
+    const pending=pendingOverride && typeof pendingOverride==='object'
+      ? pendingOverride
+      : state.pendingActionReason;
+    if(!pending || typeof pending!=='object'){
+      throw new Error('사유 선택 작업 정보를 확인하지 못했습니다.');
+    }
+    const payload=await rpc('olli_team_chat_send_reason_choice',{
+      p_session_token:current.sessionToken,
+      p_academy_id:current.academyId,
+      p_body:text,
+      p_pending:pending,
+      p_client_message_id:clientMessageId(),
+      p_reply_to_message_id:Number(replyToMessageId || 0) || null
+    });
+    if(!payload?.ok || !payload?.message?.action || clean(payload.message.action.action_type)!=='choose_reason'){
+      throw new Error(payload?.message || '사유 선택 카드를 저장하지 못했습니다.');
+    }
+    state.pendingTextInputMessageId='';
     return {
-      assistantMessage,
+      assistantMessage:payload.message,
       replyText:text,
       recordAi:false
     };
   }
 
-  function focusPendingTextInput() {
-    const input=byId('olliPcTeamTalkInput');
-    if(!input) return false;
-    try { input.focus({preventScroll:true}); } catch (_) { input.focus(); }
+  async function continueBatchReasonChoice(reason,pending,current,reasonMessageId) {
+    const pendingBatch=pending?.__batchAgent;
+    if(!pendingBatch) throw new Error('복합명령 사유 선택 상태를 확인하지 못했습니다.');
+
+    const commands=Array.isArray(pendingBatch.commands)
+      ? pendingBatch.commands.map(item=>Object.assign({},item,{
+          structuredCommand:item?.structuredCommand && typeof item.structuredCommand==='object'
+            ? Object.assign({},item.structuredCommand)
+            : item?.structuredCommand
+        }))
+      : [];
+    const reasonIndex=commands.findIndex(item=>batchCommandNeedsReason(item) && !clean(item.reason));
+    if(reasonIndex<0) throw new Error('사유를 적용할 복합명령을 찾지 못했습니다.');
+
+    commands[reasonIndex].reason=reason;
+    commands[reasonIndex].reasonMessageId=Number(reasonMessageId || 0);
+    commands[reasonIndex].reasonMessageText=reason;
+    if(commands[reasonIndex].structuredCommand && typeof commands[reasonIndex].structuredCommand==='object'){
+      commands[reasonIndex].structuredCommand.reason=reason;
+    }
+
+    const nextPending={
+      sourceMessageId:Number(pendingBatch.sourceMessageId || 0),
+      sourceMessageText:clean(pendingBatch.sourceMessageText),
+      commands
+    };
+    const nextReasonIndex=commands.findIndex(item=>batchCommandNeedsReason(item) && !clean(item.reason));
+    if(nextReasonIndex>=0){
+      state.pendingActionReason={intent:'batch_write',__batchAgent:nextPending};
+      const prompt=batchReasonPrompt(commands[nextReasonIndex]);
+      return savePendingTextInputReply(
+        current,
+        prompt,
+        reasonMessageId,
+        state.pendingActionReason
+      );
+    }
+
+    const clarificationIndex=commands.findIndex(batchCommandNeedsClarification);
+    if(clarificationIndex>=0){
+      state.pendingActionReason={intent:'batch_write',__batchAgent:nextPending};
+      const assistantMessage=await startBatchStructuredChoice(current,nextPending,clarificationIndex);
+      return {
+        assistantMessage,
+        replyText:clean(assistantMessage?.body) || '필요한 정보를 선택해 주세요.',
+        recordAi:false
+      };
+    }
+
+    state.pendingActionReason=null;
+    return resolveBatchAgentTurn({
+      sourceText:nextPending.sourceMessageText,
+      sourceMessageId:nextPending.sourceMessageId,
+      commands,
+      current
+    });
+  }
+
+  async function resolvePendingReasonDirectTurn(reasonText,current,replyToMessageId,pendingOverride=null) {
+    const reason=clean(reasonText);
+    const pending=pendingOverride && typeof pendingOverride==='object'
+      ? pendingOverride
+      : state.pendingActionReason;
+    if(!reason || !pending) throw new Error('진행 중인 사유 입력 작업을 찾지 못했습니다.');
+
+    if(isPendingReasonCancel(reason)){
+      state.pendingActionReason=null;
+      const message='작업 준비를 취소했어요.';
+      return {
+        assistantMessage:await saveAssistantReply(current,message,replyToMessageId),
+        replyText:message,
+        recordAi:false
+      };
+    }
+
+    const intent=clean(pending.intent);
+    const structuredMakeup=pending.__structuredMakeupCancel || null;
+    if(intent==='cancel_makeup' && structuredMakeup){
+      state.pendingActionReason=null;
+      return resolveStructuredMakeupCancelTurn({
+        structuredCommand:structuredMakeup.structuredCommand,
+        sourceText:clean(structuredMakeup.sourceMessageText),
+        sourceMessageId:Number(structuredMakeup.sourceMessageId || 0),
+        reasonText:reason,
+        reasonMessageText:reason,
+        reasonMessageId:Number(replyToMessageId || 0),
+        current,
+      });
+    }
+
+    const structuredTrial=pending.__structuredTrialCancel || null;
+    if(intent==='cancel_trial' && structuredTrial){
+      state.pendingActionReason=null;
+      return resolveStructuredTrialCancelTurn({
+        structuredCommand:structuredTrial.structuredCommand,
+        sourceText:clean(structuredTrial.sourceMessageText),
+        sourceMessageId:Number(structuredTrial.sourceMessageId || 0),
+        reasonText:reason,
+        reasonMessageText:reason,
+        reasonMessageId:Number(replyToMessageId || 0),
+        current,
+      });
+    }
+
+    const trialCancelAgent=pending.__trialCancelAgent || null;
+    if(intent==='cancel_trial' && trialCancelAgent){
+      state.pendingActionReason=null;
+      return resolveTrialCancelAgentTurn({
+        sourceText:clean(trialCancelAgent.sourceMessageText),
+        sourceMessageId:Number(trialCancelAgent.sourceMessageId || 0),
+        reasonText:reason,
+        reasonMessageText:reason,
+        reasonMessageId:Number(replyToMessageId || 0),
+        current,
+      });
+    }
+
+    const makeupCancelAgent=pending.__makeupCancelAgent || null;
+    if(intent==='cancel_makeup' && makeupCancelAgent){
+      state.pendingActionReason=null;
+      return resolveMakeupCancelAgentTurn({
+        sourceText:clean(makeupCancelAgent.sourceMessageText),
+        sourceMessageId:Number(makeupCancelAgent.sourceMessageId || 0),
+        reasonText:reason,
+        reasonMessageText:reason,
+        reasonMessageId:Number(replyToMessageId || 0),
+        current,
+      });
+    }
+
+    const absenceAgent=pending.__absenceAgent || null;
+    if(intent==='mark_absent' && absenceAgent){
+      state.pendingActionReason=null;
+      return resolveAbsenceAgentTurn({
+        sourceText:clean(absenceAgent.sourceMessageText),
+        sourceMessageId:Number(absenceAgent.sourceMessageId || 0),
+        reasonText:reason,
+        reasonMessageText:reason,
+        reasonMessageId:Number(replyToMessageId || 0),
+        current,
+      });
+    }
+
+    if(intent==='batch_write' && pending.__batchAgent){
+      return continueBatchReasonChoice(reason,pending,current,Number(replyToMessageId || 0));
+    }
+
+    const schedule=global.OlliCommandSchedule;
+    const command=Object.assign({},pending,{reason});
+    state.pendingActionReason=null;
+    const confirmation=clean(schedule?.writeConfirmationMessage?.(command)) || '이 작업을 진행할까요?';
+    return {
+      assistantMessage:await saveAssistantAction(current,confirmation,command,replyToMessageId),
+      replyText:confirmation,
+      recordAi:false
+    };
+  }
+
+  async function submitPendingReasonText(reasonText,wrap,action) {
+    const reason=clean(reasonText);
+    const actionId=clean(action?.id);
+    if(!reason || !actionId || state.sendBusy) return false;
+
+    const current=context();
+    if(!current.sessionToken || !current.academyId){
+      alert('팀톡을 사용하려면 계정 로그인이 필요합니다.');
+      return false;
+    }
+
+    state.sendBusy=true;
+    wrap?.classList?.add('busy');
+    wrap?.querySelectorAll?.('button,input').forEach(control=>{control.disabled=true});
+
+    try{
+      const payload=await rpc('olli_team_chat_action_select_reason',{
+        p_session_token:current.sessionToken,
+        p_academy_id:current.academyId,
+        p_action_id:actionId,
+        p_reason:reason
+      });
+      const pending=payload?.pending;
+      const reasonMessageId=Number(payload?.action?.message_id || 0);
+      if(!payload?.ok || !payload?.action || !pending || !Number.isSafeInteger(reasonMessageId) || reasonMessageId<=0){
+        throw new Error(payload?.message || '취소 사유를 선택하지 못했습니다.');
+      }
+
+      state.pendingActionReason=pending;
+      await resolvePendingReasonDirectTurn(reason,current,reasonMessageId,pending);
+      state.pendingTextInputMessageId='';
+      await loadMessages({showLoading:false,followBottom:true});
+      return true;
+    }catch(error){
+      console.warn('PC 올리톡 전용 사유 선택 처리 실패:',error?.message || error);
+      alert(error?.message || '취소 사유를 처리하지 못했습니다.');
+      await loadMessages({showLoading:false,followBottom:true}).catch(()=>{});
+      return false;
+    }finally{
+      state.sendBusy=false;
+      wrap?.classList?.remove('busy');
+      updateComposerState();
+    }
+  }
+
+  function openPendingReasonInput(event) {
+    const wrap=event?.currentTarget?.closest?.('.olliPcTeamTalkPendingInput');
+    const form=wrap?.querySelector?.('.olliPcTeamTalkPendingReasonForm');
+    const field=form?.querySelector?.('.olliPcTeamTalkPendingReasonField');
+    if(!form || !field) return false;
+    form.hidden=false;
+    event.currentTarget.setAttribute('aria-expanded','true');
+    try { field.focus({preventScroll:true}); } catch (_) { field.focus(); }
     return true;
   }
 
-  function submitPendingNoReason() {
-    const input=byId('olliPcTeamTalkInput');
-    if(!input || !state.pendingActionReason || state.sendBusy) return false;
-    input.value='사유 없음';
-    resizeComposer();
-    updateComposerState();
-    sendMessage().catch(error=>console.warn('PC 올리톡 사유 없음 처리 실패:',error));
-    return true;
-  }
-
-  function makePendingTextInputButton() {
+  function makePendingTextInputButton(action) {
     const wrap=create('div','olliPcTeamTalkPendingInput');
 
     const noReason=document.createElement('button');
@@ -2933,21 +3161,56 @@
     noReason.className='olliPcTeamTalkPendingInputButton';
     noReason.textContent='사유 없음';
     noReason.setAttribute('aria-label','사유 없이 진행');
-    noReason.addEventListener('click',submitPendingNoReason);
+    noReason.addEventListener('click',()=>{
+      submitPendingReasonText('사유 없음',wrap,action)
+        .catch(error=>console.warn('PC 올리톡 사유 없음 처리 실패:',error));
+    });
 
     const inputButton=document.createElement('button');
     inputButton.type='button';
     inputButton.className='olliPcTeamTalkPendingInputButton';
     inputButton.textContent='사유 입력';
     inputButton.setAttribute('aria-label','사유를 직접 입력');
-    inputButton.addEventListener('click',focusPendingTextInput);
+    inputButton.setAttribute('aria-expanded','false');
+    inputButton.addEventListener('click',openPendingReasonInput);
 
-    wrap.append(noReason,inputButton);
+    const form=document.createElement('form');
+    form.className='olliPcTeamTalkPendingReasonForm';
+    form.hidden=true;
+
+    const field=document.createElement('input');
+    field.type='text';
+    field.className='olliPcTeamTalkPendingReasonField';
+    field.maxLength=200;
+    field.placeholder='취소 사유를 입력하세요';
+    field.setAttribute('aria-label','취소 사유 입력');
+
+    const submit=document.createElement('button');
+    submit.type='submit';
+    submit.className='olliPcTeamTalkPendingReasonSubmit';
+    submit.textContent='확인';
+    submit.setAttribute('aria-label','취소 사유 선택');
+
+    form.addEventListener('submit',event=>{
+      event.preventDefault();
+      const reason=clean(field.value);
+      if(!reason){
+        field.focus();
+        return;
+      }
+      submitPendingReasonText(reason,wrap,action).catch(error=>{
+        console.warn('PC 올리톡 전용 사유 입력 선택 실패:',error);
+      });
+    });
+
+    form.append(field,submit);
+    wrap.append(noReason,inputButton,form);
     return wrap;
   }
 
   function shouldShowPendingTextInput(item) {
     return !!state.pendingActionReason
+      && !item?.action
       && clean(item?.message_type)==='ai'
       && clean(item?.id)===clean(state.pendingTextInputMessageId);
   }
@@ -3073,7 +3336,7 @@
         sourceMessageId:sourceId,sourceMessageText:clean(commandText),commands
       }};
       const prompt=batchReasonPrompt(commands[missingIndex]);
-      return {assistantMessage:await saveAssistantReply(current,prompt,replyToMessageId),replyText:prompt,recordAi:false};
+      return savePendingTextInputReply(current,prompt,replyToMessageId,state.pendingActionReason);
     }
     const clarificationIndex=commands.findIndex(batchCommandNeedsClarification);
     if(clarificationIndex>=0){
@@ -3684,11 +3947,7 @@
           }
         };
         const reasonMessage=(clean(merged.studentName) || '체험 학생')+' 체험 취소 사유를 알려주세요.';
-        return {
-          assistantMessage:await saveAssistantReply(current,reasonMessage,replyToMessageId),
-          replyText:reasonMessage,
-          recordAi:false
-        };
+        return savePendingTextInputReply(current,reasonMessage,replyToMessageId,state.pendingActionReason);
       }
 
       const sourceMessageId=pending
