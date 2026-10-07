@@ -127,6 +127,7 @@
 .olliPcTeamTalkSender{display:flex;align-items:center;min-height:17px;margin:0 0 5px 2px;color:var(--olli-pc-talk-system-text);font-size:calc(12px * var(--olli-text-scale));font-weight:500;line-height:1.2}
 .olliPcTeamTalkAvatar,.olliPcTeamTalkAvatarSpacer{width:32px;height:32px;flex:0 0 32px}
 .olliPcTeamTalkAvatar{display:grid;place-items:center;overflow:hidden;border-radius:10px;background:#fff;color:#555;font-size:10px;font-weight:650;border:1px solid rgba(0,0,0,.08)}
+.olliPcTeamTalkAvatar img{width:100%;height:100%;display:block;object-fit:cover}
 .olliPcTeamTalkAvatar.ai{background:#fff;color:var(--olli-pc-talk-olli-accent);font-size:9px}
 .olliPcTeamTalkAvatarSpacer{display:block}
 .olliPcTeamTalkSenderName{align-self:center}
