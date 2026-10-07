@@ -155,9 +155,16 @@
     beginOlliTalkKeyboardMotion();
   }
 
-  const OLLI_TALK_KEYBOARD_VISUAL_DURATION_MS = 140;
-  let olliTalkComposerVisualAnimation = null;
-  let olliTalkMessagesVisualAnimation = null;
+  const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 56;
+  let olliTalkKeyboardVisualRaf = 0;
+  let olliTalkKeyboardViewportRaf = 0;
+  let olliTalkKeyboardVisualLastTs = 0;
+  let olliTalkComposerVisualOffsetY = 0;
+  let olliTalkMessagesVisualOffsetY = 0;
+  let olliTalkViewportNeedsFullSync = false;
+  let olliTalkViewportNeedsComposerSync = false;
+  let olliTalkViewportNeedsLatestAnchor = false;
+  let olliTalkViewportNeedsPendingReasonAnchor = false;
 
   function prefersReducedOlliTalkMotion(){
     try { return !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches; }
@@ -179,74 +186,151 @@
     };
   }
 
-  function cancelOlliTalkComposerVisualAnimation(){
-    try { olliTalkComposerVisualAnimation?.cancel(); } catch (_) {}
-    olliTalkComposerVisualAnimation = null;
+  function applyOlliTalkKeyboardVisualOffsets(){
+    const screen = getScreen();
+    const composerWrap = screen?.querySelector('.olliTalkBetaComposerWrap') || null;
+    const chatArea = document.getElementById('olliTalkBetaChatArea');
+    const messageList = chatArea?.querySelector('.olliTalkBetaMessageList') || null;
+
+    if (composerWrap) {
+      composerWrap.style.transform = Math.abs(olliTalkComposerVisualOffsetY) > 0.01
+        ? `translate3d(0,${olliTalkComposerVisualOffsetY.toFixed(3)}px,0)`
+        : '';
+    }
+    if (messageList) {
+      messageList.style.transform = Math.abs(olliTalkMessagesVisualOffsetY) > 0.01
+        ? `translate3d(0,${olliTalkMessagesVisualOffsetY.toFixed(3)}px,0)`
+        : '';
+    }
   }
 
-  function cancelOlliTalkMessagesVisualAnimation(){
-    try { olliTalkMessagesVisualAnimation?.cancel(); } catch (_) {}
-    olliTalkMessagesVisualAnimation = null;
+  function stopOlliTalkKeyboardVisualController(options = {}){
+    if (olliTalkKeyboardVisualRaf) cancelAnimationFrame(olliTalkKeyboardVisualRaf);
+    if (olliTalkKeyboardViewportRaf) cancelAnimationFrame(olliTalkKeyboardViewportRaf);
+    olliTalkKeyboardVisualRaf = 0;
+    olliTalkKeyboardViewportRaf = 0;
+    olliTalkKeyboardVisualLastTs = 0;
+    olliTalkViewportNeedsFullSync = false;
+    olliTalkViewportNeedsComposerSync = false;
+    olliTalkViewportNeedsLatestAnchor = false;
+    olliTalkViewportNeedsPendingReasonAnchor = false;
+    if (options.reset !== false) {
+      olliTalkComposerVisualOffsetY = 0;
+      olliTalkMessagesVisualOffsetY = 0;
+      applyOlliTalkKeyboardVisualOffsets();
+    }
   }
 
-  function cancelOlliTalkKeyboardVisualAnimations(){
-    cancelOlliTalkComposerVisualAnimation();
-    cancelOlliTalkMessagesVisualAnimation();
+  function stepOlliTalkKeyboardVisualController(timestamp){
+    olliTalkKeyboardVisualRaf = 0;
+    if (prefersReducedOlliTalkMotion()) {
+      olliTalkComposerVisualOffsetY = 0;
+      olliTalkMessagesVisualOffsetY = 0;
+      applyOlliTalkKeyboardVisualOffsets();
+      olliTalkKeyboardVisualLastTs = 0;
+      return;
+    }
+
+    const previous = olliTalkKeyboardVisualLastTs || timestamp;
+    const dt = Math.max(1,Math.min(34,timestamp - previous));
+    olliTalkKeyboardVisualLastTs = timestamp;
+    const follow = 1 - Math.exp(-dt / OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS);
+
+    olliTalkComposerVisualOffsetY += (0 - olliTalkComposerVisualOffsetY) * follow;
+    olliTalkMessagesVisualOffsetY += (0 - olliTalkMessagesVisualOffsetY) * follow;
+
+    if (Math.abs(olliTalkComposerVisualOffsetY) < 0.18) olliTalkComposerVisualOffsetY = 0;
+    if (Math.abs(olliTalkMessagesVisualOffsetY) < 0.18) olliTalkMessagesVisualOffsetY = 0;
+    applyOlliTalkKeyboardVisualOffsets();
+
+    if (olliTalkComposerVisualOffsetY !== 0 || olliTalkMessagesVisualOffsetY !== 0) {
+      olliTalkKeyboardVisualRaf = requestAnimationFrame(stepOlliTalkKeyboardVisualController);
+    } else {
+      olliTalkKeyboardVisualLastTs = 0;
+    }
   }
 
-  function animateOlliTalkKeyboardVisualFrame(frame, options = {}){
+  function ensureOlliTalkKeyboardVisualController(){
+    if (prefersReducedOlliTalkMotion()) {
+      olliTalkComposerVisualOffsetY = 0;
+      olliTalkMessagesVisualOffsetY = 0;
+      applyOlliTalkKeyboardVisualOffsets();
+      return;
+    }
+    if (!olliTalkKeyboardVisualRaf) {
+      olliTalkKeyboardVisualRaf = requestAnimationFrame(stepOlliTalkKeyboardVisualController);
+    }
+  }
+
+  function preserveOlliTalkKeyboardVisualFrame(frame, options = {}){
     if (!frame || prefersReducedOlliTalkMotion()) return;
     const animateMessages = options.messages !== false;
-    const easing = 'cubic-bezier(.22,.61,.36,1)';
 
-    const composerWrap = frame.composerWrap;
-    if (
-      composerWrap?.isConnected
-      && Number.isFinite(frame.composerTop)
-      && typeof composerWrap.animate === 'function'
-    ) {
-      const nextTop = composerWrap.getBoundingClientRect().top;
+    if (frame.composerWrap?.isConnected && Number.isFinite(frame.composerTop)) {
+      const nextTop = frame.composerWrap.getBoundingClientRect().top;
       const deltaY = frame.composerTop - nextTop;
-      if (Math.abs(deltaY) > 0.5) {
-        const animation = composerWrap.animate(
-          [
-            { transform:`translate3d(0,${deltaY}px,0)` },
-            { transform:'translate3d(0,0,0)' }
-          ],
-          { duration:OLLI_TALK_KEYBOARD_VISUAL_DURATION_MS, easing }
-        );
-        olliTalkComposerVisualAnimation = animation;
-        animation.onfinish = animation.oncancel = () => {
-          if (olliTalkComposerVisualAnimation === animation) olliTalkComposerVisualAnimation = null;
-        };
+      if (Number.isFinite(deltaY) && Math.abs(deltaY) > 0.01) {
+        olliTalkComposerVisualOffsetY += deltaY;
       }
     }
 
-    const messageAnchor = frame.messageAnchor;
-    const messageList = frame.messageList;
     if (
       animateMessages
-      && messageList?.isConnected
-      && messageAnchor?.isConnected
+      && frame.messageList?.isConnected
+      && frame.messageAnchor?.isConnected
       && Number.isFinite(frame.messageTop)
-      && typeof messageList.animate === 'function'
     ) {
-      const nextTop = messageAnchor.getBoundingClientRect().top;
+      const nextTop = frame.messageAnchor.getBoundingClientRect().top;
       const deltaY = frame.messageTop - nextTop;
-      if (Math.abs(deltaY) > 0.5) {
-        const animation = messageList.animate(
-          [
-            { transform:`translate3d(0,${deltaY}px,0)` },
-            { transform:'translate3d(0,0,0)' }
-          ],
-          { duration:OLLI_TALK_KEYBOARD_VISUAL_DURATION_MS, easing }
-        );
-        olliTalkMessagesVisualAnimation = animation;
-        animation.onfinish = animation.oncancel = () => {
-          if (olliTalkMessagesVisualAnimation === animation) olliTalkMessagesVisualAnimation = null;
-        };
+      if (Number.isFinite(deltaY) && Math.abs(deltaY) > 0.01) {
+        olliTalkMessagesVisualOffsetY += deltaY;
       }
     }
+
+    applyOlliTalkKeyboardVisualOffsets();
+    ensureOlliTalkKeyboardVisualController();
+  }
+
+  function flushOlliTalkKeyboardViewportUpdate(){
+    olliTalkKeyboardViewportRaf = 0;
+    const fullSync = olliTalkViewportNeedsFullSync;
+    const composerSync = olliTalkViewportNeedsComposerSync;
+    const anchorLatest = olliTalkViewportNeedsLatestAnchor;
+    const anchorPendingReason = olliTalkViewportNeedsPendingReasonAnchor;
+    olliTalkViewportNeedsFullSync = false;
+    olliTalkViewportNeedsComposerSync = false;
+    olliTalkViewportNeedsLatestAnchor = false;
+    olliTalkViewportNeedsPendingReasonAnchor = false;
+
+    const motionFrame = captureOlliTalkKeyboardVisualFrame();
+
+    if (fullSync) syncViewport();
+    else if (composerSync) syncOlliTalkComposerViewport();
+
+    if (anchorPendingReason) scheduleOlliTalkPendingReasonAnchorAfterViewport();
+
+    let animateMessages = true;
+    if (isOlliTalkPendingReasonInputActive()) {
+      animateMessages = false;
+    } else if (
+      anchorLatest
+      && !olliTalkChatGestureActive
+      && olliTalkKeyboardFollowLatest
+      && isOlliTalkComposerActive()
+    ) {
+      scheduleOlliTalkLatestMessageAnchor();
+    }
+
+    preserveOlliTalkKeyboardVisualFrame(motionFrame,{messages:animateMessages});
+  }
+
+  function scheduleOlliTalkKeyboardViewportUpdate(options = {}){
+    if (options.fullSync === true) olliTalkViewportNeedsFullSync = true;
+    if (options.composerSync === true) olliTalkViewportNeedsComposerSync = true;
+    if (options.anchorLatest === true) olliTalkViewportNeedsLatestAnchor = true;
+    if (options.pendingReason === true) olliTalkViewportNeedsPendingReasonAnchor = true;
+    if (olliTalkKeyboardViewportRaf) return;
+    olliTalkKeyboardViewportRaf = requestAnimationFrame(flushOlliTalkKeyboardViewportUpdate);
   }
 
   function isOlliTalkChatNearBottom(chatArea, threshold = 96){
@@ -342,45 +426,24 @@
     if (olliTalkBetaViewportBound) return;
     olliTalkBetaViewportBound = true;
     window.addEventListener('resize', () => {
-      const motionFrame = captureOlliTalkKeyboardVisualFrame();
-      cancelOlliTalkKeyboardVisualAnimations();
-      syncViewport();
-      scheduleOlliTalkPendingReasonAnchorAfterViewport();
-      animateOlliTalkKeyboardVisualFrame(motionFrame);
+      scheduleOlliTalkKeyboardViewportUpdate({
+        fullSync:true,
+        pendingReason:true
+      });
     }, { passive:true });
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => {
-        const motionFrame = captureOlliTalkKeyboardVisualFrame();
-        cancelOlliTalkKeyboardVisualAnimations();
         continueOlliTalkKeyboardMotion();
-        syncViewport();
-
-        if(isOlliTalkPendingReasonInputActive()){
-          // visualViewport는 위치를 계산할 뿐 chatArea.scrollTop을 직접 소유하지 않습니다.
-          // 키보드 애니메이션이 끝난 뒤 한 번만 사유 입력칸을 내부 anchor 합니다.
-          scheduleOlliTalkPendingReasonAnchorAfterViewport();
-          animateOlliTalkKeyboardVisualFrame(motionFrame, { messages:false });
-          return;
-        }
-
-        if (
-          !olliTalkChatGestureActive
-          && olliTalkKeyboardFollowLatest
-          && isOlliTalkComposerActive()
-        ) {
-          // 키보드가 실제로 viewport를 줄인 뒤 이 경로만 채팅 위치를 맞춥니다.
-          // focus와 visualViewport.scroll은 chat scrollTop을 소유하지 않습니다.
-          scheduleOlliTalkLatestMessageAnchor();
-        }
-        animateOlliTalkKeyboardVisualFrame(motionFrame);
+        scheduleOlliTalkKeyboardViewportUpdate({
+          fullSync:true,
+          anchorLatest:true,
+          pendingReason:true
+        });
       }, { passive:true });
       window.visualViewport.addEventListener('scroll', () => {
-        // iOS visualViewport pan은 composer 좌표만 갱신합니다.
-        // 진행 중인 message FLIP은 끊지 않고 composer만 새 좌표에 이어 붙입니다.
-        const motionFrame = captureOlliTalkKeyboardVisualFrame();
-        cancelOlliTalkComposerVisualAnimation();
-        syncOlliTalkComposerViewport();
-        animateOlliTalkKeyboardVisualFrame(motionFrame, { messages:false });
+        // iOS visualViewport pan은 composer 좌표만 갱신하고
+        // 같은 RAF 컨트롤러가 현재 움직임을 끊지 않고 이어갑니다.
+        scheduleOlliTalkKeyboardViewportUpdate({composerSync:true});
       }, { passive:true });
     }
   }
@@ -8407,7 +8470,7 @@
     if (input) input.blur();
     if (olliTalkKeyboardMotionTimer) clearTimeout(olliTalkKeyboardMotionTimer);
     olliTalkKeyboardMotionTimer = null;
-    cancelOlliTalkKeyboardVisualAnimations();
+    stopOlliTalkKeyboardVisualController();
     talkScreen?.classList.remove('olliTalkKeyboardMotion');
     closeOlliTalkSearch();
     closeOlliTalkPhotoViewer(null,{restore:false});
@@ -8798,22 +8861,15 @@
       });
       input.addEventListener('focus', () => {
         const chatArea = document.getElementById('olliTalkBetaChatArea');
-        const motionFrame = captureOlliTalkKeyboardVisualFrame();
-        cancelOlliTalkKeyboardVisualAnimations();
         olliTalkKeyboardFollowLatest = !chatArea || isOlliTalkChatNearBottom(chatArea,120);
         beginOlliTalkKeyboardMotion();
-        // focus 자체는 채팅 scrollTop을 움직이지 않습니다.
-        // 실제 키보드 높이 변화는 visualViewport.resize 한 경로에서만 따라갑니다.
-        syncViewport();
-        animateOlliTalkKeyboardVisualFrame(motionFrame);
+        // focus/resize/scroll 모두 같은 RAF 업데이트 경로를 사용합니다.
+        scheduleOlliTalkKeyboardViewportUpdate({fullSync:true});
       }, true);
       input.addEventListener('blur', () => {
-        const motionFrame = captureOlliTalkKeyboardVisualFrame();
-        cancelOlliTalkKeyboardVisualAnimations();
         olliTalkKeyboardFollowLatest = false;
         beginOlliTalkKeyboardMotion();
-        syncViewport();
-        animateOlliTalkKeyboardVisualFrame(motionFrame);
+        scheduleOlliTalkKeyboardViewportUpdate({fullSync:true});
       });
       input.addEventListener('click', renderOlliTalkMentionMenu);
       input.addEventListener('keyup', event => {

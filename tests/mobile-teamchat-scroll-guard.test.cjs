@@ -64,7 +64,7 @@ test('Team Chat keeps textarea free of activation hacks and delegates first touc
   assert.match(html,/id="olliTalkComposerActivateBtn"/);
   assert.match(css,/\.olliTalkComposerActivateBtn\{[\s\S]*position:absolute;[\s\S]*inset:0;[\s\S]*z-index:4/);
   assert.match(css,/\.olliTalkKeyboardOpen \.olliTalkComposerActivateBtn\{[\s\S]*visibility:hidden;[\s\S]*pointer-events:none/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261008-flip-motion-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261008-single-raf-motion-1/);
   assert.match(html,/olli-talk-beta\.css\?v=20261008-flip-motion-1/);
 });
 
@@ -98,14 +98,14 @@ test('Team Chat gesture state is cleared when entering or leaving the page',()=>
 });
 
 
-test('Team Chat visibly interpolates composer and message movement without delaying layout geometry',()=>{
-  assert.match(js,/const OLLI_TALK_KEYBOARD_VISUAL_DURATION_MS = 140/);
-  assert.match(js,/function captureOlliTalkKeyboardVisualFrame\(\)[\s\S]*getBoundingClientRect\(\)\.top/);
-  assert.match(js,/function animateOlliTalkKeyboardVisualFrame\(frame[\s\S]*composerWrap\.animate\([\s\S]*translate3d/);
-  assert.match(js,/messageList\.animate\([\s\S]*translate3d/);
-  assert.match(js,/visualViewport\.addEventListener\('resize',[\s\S]*captureOlliTalkKeyboardVisualFrame\(\)[\s\S]*syncViewport\(\)[\s\S]*scheduleOlliTalkLatestMessageAnchor\(\)[\s\S]*animateOlliTalkKeyboardVisualFrame\(motionFrame\)/);
-  assert.match(js,/visualViewport\.addEventListener\('scroll',[\s\S]*cancelOlliTalkComposerVisualAnimation\(\)[\s\S]*messages:false/);
-  assert.doesNotMatch(js,/visualViewport\.addEventListener\('scroll',[\s\S]*cancelOlliTalkMessagesVisualAnimation\(\)/);
-  assert.doesNotMatch(css,/#olliTalkBetaScreen\.olliTalkKeyboardMotion \.olliTalkBetaComposerWrap\{[\s\S]*transition:bottom/);
-  assert.doesNotMatch(css,/#olliTalkBetaScreen\.olliTalkKeyboardMotion \.olliTalkBetaComposer\{[\s\S]*transition:min-height/);
+test('Team Chat coalesces keyboard events into one continuous RAF motion controller',()=>{
+  assert.match(js,/const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 56/);
+  assert.match(js,/function scheduleOlliTalkKeyboardViewportUpdate\(options = \{\}\)[\s\S]*requestAnimationFrame\(flushOlliTalkKeyboardViewportUpdate\)/);
+  assert.match(js,/function stepOlliTalkKeyboardVisualController\(timestamp\)[\s\S]*Math\.exp\(-dt \/ OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS\)[\s\S]*requestAnimationFrame\(stepOlliTalkKeyboardVisualController\)/);
+  assert.match(js,/function preserveOlliTalkKeyboardVisualFrame\(frame[\s\S]*olliTalkComposerVisualOffsetY \+= deltaY[\s\S]*olliTalkMessagesVisualOffsetY \+= deltaY/);
+  assert.match(js,/visualViewport\.addEventListener\('resize',[\s\S]*scheduleOlliTalkKeyboardViewportUpdate\(\{[\s\S]*anchorLatest:true/);
+  assert.match(js,/visualViewport\.addEventListener\('scroll',[\s\S]*scheduleOlliTalkKeyboardViewportUpdate\(\{composerSync:true\}\)/);
+  assert.doesNotMatch(js,/\.animate\(\s*\[/);
+  assert.doesNotMatch(js,/VisualAnimation\?\.cancel|KeyboardVisualAnimations\(\)/);
+  assert.match(js,/stopOlliTalkKeyboardVisualController\(\)/);
 });
