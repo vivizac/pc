@@ -109,14 +109,9 @@
 
   function focusEditor(){
     var input = editor();
-    if (!input || !state.open) return false;
-    try { input.focus({ preventScroll:true }); } catch (_) { try { input.focus(); } catch (ignore) {} }
-    if (document.activeElement !== input) {
-      try { input.focus(); } catch (_) {}
-    }
-    var end = String(input.value || '').length;
-    try { input.setSelectionRange(end, end); } catch (_) {}
-    try { input.scrollTop = input.scrollHeight; } catch (_) {}
+    var keyboard = global.OlliMobileKeyboardActivation;
+    if (!input || !state.open || !keyboard) return false;
+    keyboard.focus(input, { selectionEnd:true, scrollToEnd:true });
     scheduleViewportSync();
     return document.activeElement === input;
   }
@@ -203,7 +198,7 @@
           await global.toggleKinderChatFeedbackTeacherMode(event);
         }
         if (!modeEnabled() && global.KcfNormalSheet && typeof global.KcfNormalSheet.open === 'function') {
-          global.KcfNormalSheet.open();
+          global.KcfNormalSheet.open(event);
         }
       });
     }
@@ -252,7 +247,7 @@
     return root;
   }
 
-  function open(){
+  function open(event){
     if (!modeEnabled()) return false;
     try {
       if (typeof global.warmKinderChatFeedbackPromptCache === 'function') {
@@ -271,14 +266,14 @@
     syncFromBase();
     syncViewport();
 
-    // Focus synchronously first so iOS shows the cursor/keyboard in the same tap.
-    focusEditor();
-    requestAnimationFrame(function(){
-      syncViewport();
-      focusEditor();
+    var keyboard = global.OlliMobileKeyboardActivation;
+    if (!keyboard) return false;
+    return !!keyboard.activate(event, {
+      input:editor,
+      selectionEnd:true,
+      scrollToEnd:true,
+      afterFocus:function(){ scheduleViewportSync(); }
     });
-    setTimeout(focusEditor, 40);
-    return true;
   }
 
   function close(options){

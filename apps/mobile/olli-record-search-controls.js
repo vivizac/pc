@@ -151,31 +151,27 @@ function shouldKeepRecordSearchOpenWithoutKeyboard() {
     String(input.value || '').trim()
   );
 }
-function focusRecordSearchInput() {
-  const input = getRecordSearchInput();
-  const screen = getRecordSearchScreen();
-  if (!input) return;
-  if (screen) screen.classList.remove('record-keyboard-closing');
-  try { input.focus({ preventScroll: true }); } catch(err) { input.focus(); }
-  try { input.setSelectionRange(input.value.length, input.value.length); } catch(err) {}
-  setRecordKeyboardOffset();
-}
 function handleSearchPillClick(event) {
-  if (event) event.stopPropagation();
+  const keyboard = window.OlliMobileKeyboardActivation;
+  if (!keyboard) return false;
   const screen = getRecordSearchScreen();
-  syncRecordControlRail();
-  setRecordSearchDrawerStripHidden(true);
 
-  // iOS 키보드가 열리기 전 visual viewport 하단을 기준값으로 고정합니다.
-  captureRecordSearchViewportBaseline(true);
-  window.__olliRecordKeyboardLastOffset = 0;
-
-  // 터치 시점에는 검색 상태를 바꾸지 않고 input focus만 먼저 줍니다.
-  // 실제 검색 UI 전환은 setRecordKeyboardOffset()에서 viewport 축소가 확인된 뒤 실행합니다.
-  if (screen) screen.classList.remove('record-keyboard-closing');
-  focusRecordSearchInput();
-  setTimeout(setRecordKeyboardOffset, 120);
-  setTimeout(setRecordKeyboardOffset, 280);
+  return !!keyboard.activate(event, {
+    input:getRecordSearchInput,
+    selectionEnd:true,
+    beforeFocus:function() {
+      syncRecordControlRail();
+      setRecordSearchDrawerStripHidden(true);
+      captureRecordSearchViewportBaseline(true);
+      window.__olliRecordKeyboardLastOffset = 0;
+      if (screen) screen.classList.remove('record-keyboard-closing');
+    },
+    afterFocus:function() {
+      setRecordKeyboardOffset();
+      setTimeout(setRecordKeyboardOffset, 120);
+      setTimeout(setRecordKeyboardOffset, 280);
+    }
+  });
 }
 function closeSearch(event) {
   if (event) event.stopPropagation();
@@ -199,7 +195,6 @@ function closeSearch(event) {
   if (pill) pill.classList.remove('active');
   if (input) {
     input.value = '';
-    input.style.removeProperty('pointer-events');
     try { input.blur(); } catch(err) {}
   }
 
@@ -266,7 +261,6 @@ function restoreRecordSearchAfterAppReturn() {
   if (userSearchingNow) return;
 
   if (input) {
-    input.style.removeProperty('pointer-events');
     if (document.activeElement === input) {
       try { input.blur(); } catch(err) {}
     }
@@ -289,14 +283,6 @@ function restoreRecordSearchAfterAppReturn() {
   if (recordVisibleNow && list && list.children.length === 0 && !query) {
     loadRecords('');
   }
-}
-function openRecordSearchFromInputFallback(event) {
-  if (isRecordSearchOpen()) return;
-  if (event) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-  handleSearchPillClick(event);
 }
 function bindRecordSearchInput() {
   const input = getRecordSearchInput();
@@ -326,7 +312,6 @@ function bindRecordSearchInput() {
     setTimeout(setRecordKeyboardOffset, 160);
     setTimeout(setRecordKeyboardOffset, 300);
   }, true);
-  input.addEventListener('click', openRecordSearchFromInputFallback, true);
   input.addEventListener('blur', function() {
     const screen = getRecordSearchScreen();
     if (screen && screen.classList.contains('record-keyboard-open')) {
