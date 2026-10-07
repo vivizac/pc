@@ -130,3 +130,37 @@ test('finance tabs are visible on mobile and hidden on the PC two-column layout'
   assert.match(css, /body\.olliPcApp \.olliFinanceExpensesColumn,[\s\S]*body\.olliPcApp \.olliFinancePayrollColumn\{display:block\}/);
 });
 
+test('combined total is server-owned and equals operating expense plus payroll', () => {
+  assert.match(migration, /v_expense_total := coalesce\(\(v_expenses->>'total_amount'\)::bigint,0\)/);
+  assert.match(migration, /'payroll_total_amount',v_payroll_total/);
+  assert.match(migration, /'expense_total_amount',v_expense_total/);
+  assert.match(migration, /'total_amount',v_payroll_total\+v_expense_total/);
+
+  const start = common.indexOf('function renderFinanceSummary');
+  const end = common.indexOf('\\n  function renderPayrollSection', start);
+  assert.ok(start >= 0 && end > start);
+  const summaryCode = common.slice(start, end);
+  assert.match(summaryCode, /payload\.expense_total_amount/);
+  assert.match(summaryCode, /payload\.payroll_total_amount/);
+  assert.match(summaryCode, /payload\.total_amount/);
+  assert.doesNotMatch(summaryCode, /querySelectorAll\('\[data-payroll-teacher-card\]'\)/);
+});
+
+test('saved expense and payroll changes both refresh the combined finance overview', () => {
+  const expenseSaveStart = common.indexOf('async function saveExpenseRow');
+  const expenseEnd = common.indexOf('\\n  async function endExpenseItem', expenseSaveStart);
+  const payrollSaveStart = common.indexOf('async function saveTeacher');
+  const payrollEnd = common.indexOf('\\n  async function open()', payrollSaveStart);
+  assert.ok(expenseSaveStart >= 0 && expenseEnd > expenseSaveStart);
+  assert.ok(payrollSaveStart >= 0 && payrollEnd > payrollSaveStart);
+  assert.match(common.slice(expenseSaveStart, expenseEnd), /await loadOverview\(\)/);
+  assert.match(common.slice(payrollSaveStart, payrollEnd), /await loadOverview\(\)/);
+  assert.match(common, /rpc\('olli_academy_finance_overview'/);
+});
+
+test('changing the selected month refreshes payroll and expenses together', () => {
+  assert.match(common, /data-payroll-month/);
+  assert.match(common, /state\.month = next;\s*loadOverview\(\)/);
+  assert.match(migration, /v_month date := date_trunc\('month',coalesce\(p_month,current_date\)\)::date/);
+});
+
