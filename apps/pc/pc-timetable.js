@@ -133,6 +133,7 @@
     loadToken: 0,
     sidebarFilter: 'all',
     sidebarQuery: '',
+    sidebarActionStudentId: '',
     pane: 'schedule',
     scheduleDivision: 'elementary',
     pickupCollapsed: false,
@@ -1564,6 +1565,126 @@
     renderSidebarResults(body);
   }
 
+  function ensureSidebarStudentActionMenu() {
+    let overlay = document.getElementById('olliTtStudentActionOverlay');
+    if (overlay) return overlay;
+    overlay = document.createElement('div');
+    overlay.id = 'olliTtStudentActionOverlay';
+    overlay.className = 'olliTtStudentActionOverlay';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.innerHTML = `
+      <div class="olliTtStudentActionCard" role="dialog" aria-modal="true" aria-labelledby="olliTtStudentActionTitle">
+        <div class="olliTtStudentActionTitle" id="olliTtStudentActionTitle">학생 관리</div>
+        <button type="button" class="olliTtStudentActionBtn" data-tt-student-action="active">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 12h12"></path><path d="M12 6v12"></path></svg>
+          <span>재등록</span>
+        </button>
+        <button type="button" class="olliTtStudentActionBtn" data-tt-student-action="paused">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 5v14"></path><path d="M14 5v14"></path></svg>
+          <span>휴원</span>
+        </button>
+        <button type="button" class="olliTtStudentActionBtn" data-tt-student-action="withdrawn">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path><path d="M4 12h10"></path><path d="M16 5h3a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-3"></path></svg>
+          <span>퇴원</span>
+        </button>
+        <button type="button" class="olliTtStudentActionBtn danger" data-tt-student-action="delete">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+          <span>삭제</span>
+        </button>
+        <button type="button" class="olliTtStudentActionCancelBtn" data-tt-student-action-close>취소</button>
+      </div>`;
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay || event.target.closest('[data-tt-student-action-close]')) {
+        closeSidebarStudentActionMenu();
+        return;
+      }
+      const actionButton = event.target.closest('[data-tt-student-action]');
+      if (actionButton) runSidebarStudentAction(actionButton.dataset.ttStudentAction);
+    });
+    overlay.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeSidebarStudentActionMenu();
+    });
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+
+  function closeSidebarStudentActionMenu() {
+    state.sidebarActionStudentId = '';
+    const overlay = document.getElementById('olliTtStudentActionOverlay');
+    if (!overlay) return;
+    overlay.classList.remove('show');
+    overlay.setAttribute('aria-hidden', 'true');
+    document.querySelectorAll('[data-tt-sidebar-actions][aria-expanded="true"]').forEach((button) => button.setAttribute('aria-expanded', 'false'));
+  }
+
+  function openSidebarStudentActionMenu(studentId, event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    const student = studentById(studentId);
+    if (!student) return;
+    state.sidebarActionStudentId = clean(studentId);
+    const overlay = ensureSidebarStudentActionMenu();
+    const title = overlay.querySelector('#olliTtStudentActionTitle');
+    if (title) title.textContent = `${clean(student.name)} 관리`;
+    overlay.classList.add('show');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.querySelectorAll('[data-tt-sidebar-actions]').forEach((button) => {
+      button.setAttribute('aria-expanded', clean(button.dataset.ttSidebarActions) === state.sidebarActionStudentId ? 'true' : 'false');
+    });
+    requestAnimationFrame(() => overlay.querySelector('[data-tt-student-action]')?.focus?.());
+  }
+
+  async function runSidebarStudentAction(action) {
+    const studentId = clean(state.sidebarActionStudentId);
+    if (!studentId) return;
+    const student = studentById(studentId);
+    if (!student) {
+      closeSidebarStudentActionMenu();
+      return;
+    }
+
+    try {
+      if (action === 'delete') {
+        const ok = confirm('삭제 시 통계에서 제외됩니다.\n실제 수업한 학생은 퇴원으로 처리해 주세요.');
+        if (!ok) return;
+        const deleteFn = typeof global.deleteStudentById === 'function'
+          ? global.deleteStudentById
+          : (typeof deleteStudentById === 'function' ? deleteStudentById : null);
+        if (!deleteFn) throw new Error('학생 삭제 기능을 불러오지 못했습니다.');
+        closeSidebarStudentActionMenu();
+        await deleteFn(studentId);
+      } else {
+        const status = action === 'paused' || action === 'withdrawn' ? action : 'active';
+        const statusFn = typeof global.setStudentStatusById === 'function'
+          ? global.setStudentStatusById
+          : (typeof setStudentStatusById === 'function' ? setStudentStatusById : null);
+        if (!statusFn) throw new Error('학생 재원 상태 변경 기능을 불러오지 못했습니다.');
+        closeSidebarStudentActionMenu();
+        await statusFn(studentId, status, { closeActionMenu: false });
+      }
+      renderSidebar();
+      if (state.pane === 'attendance') renderAttendanceRegister();
+    } catch (error) {
+      console.error('사이드바 학생 관리 실패:', error);
+      alert(error?.message || '학생 관리 작업을 완료하지 못했습니다.');
+    }
+  }
+
+  function activateSidebarStudentCard(card) {
+    if (!card) return;
+    if (state.pane === 'schedule') {
+      openMove(card.dataset.ttSidebarStudent);
+      return;
+    }
+    const student = studentById(card.dataset.ttSidebarStudent);
+    state.sidebarQuery = clean(student && student.name);
+    const body = document.getElementById('olliPcContextBody');
+    const input = body?.querySelector('#olliTtQuickSearch');
+    if (input) input.value = state.sidebarQuery;
+    renderSidebarResults(body);
+    renderAttendanceRegister();
+  }
+
   function renderSidebarResults(body) {
     if (!body || !state.active || state.view !== 'schedule') return;
     const results = body.querySelector('[data-tt-sidebar-results]');
@@ -1574,19 +1695,24 @@
     });
     const elementary = students.filter((student) => divisionOf(student) === 'elementary');
     const kinder = students.filter((student) => divisionOf(student) === 'kinder');
-    const groupHtml = (list, division) => list.length ? `<div class="olliTtQuickGroup"><div class="olliTtQuickGroupTitle">${divisionLabel(division)} · ${list.length}명</div>${list.map((student) => `<button type="button" class="olliTtQuickStudent" data-tt-sidebar-student="${esc(student.id)}"><span>${esc(student.name)}</span><span class="olliTtQuickStudentSchedule">${esc(studentScheduleText(student.id))}</span></button>`).join('')}</div>` : '';
+    const groupHtml = (list, division) => list.length ? `<div class="olliTtQuickGroup"><div class="olliTtQuickGroupTitle">${divisionLabel(division)} · ${list.length}명</div>${list.map((student) => `<div class="olliTtQuickStudent" data-tt-sidebar-student="${esc(student.id)}" role="button" tabindex="0"><button type="button" class="olliTtQuickStudentMore" data-tt-sidebar-actions="${esc(student.id)}" aria-label="${esc(student.name)} 학생 관리" aria-haspopup="dialog" aria-expanded="false"><svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.55"></circle><circle cx="12" cy="12" r="1.55"></circle><circle cx="19" cy="12" r="1.55"></circle></svg></button><span class="olliTtQuickStudentMain"><span class="olliTtQuickStudentName">${esc(student.name)}</span><span class="olliTtQuickStudentSchedule">${esc(studentScheduleText(student.id))}</span></span></div>`).join('')}</div>` : '';
     results.innerHTML = students.length ? groupHtml(elementary, 'elementary') + groupHtml(kinder, 'kinder') : '<div class="olliTtQuickEmpty">조건에 맞는 학생이 없습니다.</div>';
-    results.querySelectorAll('[data-tt-sidebar-student]').forEach((button) => button.addEventListener('click', () => {
-      if (state.pane === 'schedule') openMove(button.dataset.ttSidebarStudent);
-      else {
-        const student = studentById(button.dataset.ttSidebarStudent);
-        state.sidebarQuery = clean(student && student.name);
-        const input = body.querySelector('#olliTtQuickSearch');
-        if (input) input.value = state.sidebarQuery;
-        renderSidebarResults(body);
-        renderAttendanceRegister();
-      }
+
+    results.querySelectorAll('[data-tt-sidebar-actions]').forEach((button) => button.addEventListener('click', (event) => {
+      openSidebarStudentActionMenu(button.dataset.ttSidebarActions, event);
     }));
+    results.querySelectorAll('[data-tt-sidebar-student]').forEach((card) => {
+      card.addEventListener('click', (event) => {
+        if (event.target.closest('[data-tt-sidebar-actions]')) return;
+        activateSidebarStudentCard(card);
+      });
+      card.addEventListener('keydown', (event) => {
+        if (event.target.closest('[data-tt-sidebar-actions]')) return;
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        activateSidebarStudentCard(card);
+      });
+    });
   }
 
   function closeDialog() {

@@ -877,6 +877,11 @@ background: #FEFEFE ;
   -webkit-backdrop-filter: blur(16px);
   overflow: hidden;
 }
+#recordRoomScreen > #studentActionOverlay .studentActionCard {
+  width: 65%;
+  max-width: 338px;
+}
+
 .studentActionTitle {
   padding: 12px 22px 4px;
   font-size: calc(14px * var(--olli-text-scale));
