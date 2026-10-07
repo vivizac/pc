@@ -122,3 +122,22 @@ test('payroll counts only occupied teaching slots and preserves date substitute 
   assert.match(migration, /when o\.id is not null then coalesce\(o\.teacher_member_id,override_member\.teacher_member_id\)/);
   assert.match(migration, /else coalesce\(ct\.teacher_member_id,class_member\.teacher_member_id\)/);
 });
+
+test('teacher card shows the actual payroll period instead of calendar-month wording', () => {
+  assert.match(common, /function payrollPeriodLabel\(teacher\)/);
+  assert.match(common, /teacher\?\.period_start/);
+  assert.match(common, /teacher\?\.period_end/);
+  assert.match(common, /근무 <strong>'\+workdayCount\+'일<\/strong>/);
+  assert.doesNotMatch(common, /이번 달 출근/);
+});
+
+test('payroll period presentation reuses server-calculated boundaries without client date math', () => {
+  assert.match(migration, /'period_start',calc\.data->>'period_start'/);
+  assert.match(migration, /'period_end',calc\.data->>'period_end'/);
+  const start = common.indexOf('function payrollPeriodLabel');
+  const end = common.indexOf('\n  function paydayOptions', start);
+  assert.ok(start >= 0 && end > start);
+  const labelCode = common.slice(start, end);
+  assert.doesNotMatch(labelCode, /setDate|Date\(|getDate|payday/);
+});
+
