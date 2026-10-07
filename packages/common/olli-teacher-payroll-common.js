@@ -445,6 +445,30 @@
     });
   }
 
+  function renderFinanceSummary(){
+    const payload=state.payload || {};
+    const expenseTotal=Math.max(0,Number(payload.expense_total_amount || financeExpensePayload().total_amount || 0));
+    const payrollTotal=Math.max(0,Number(payload.payroll_total_amount || 0));
+    const total=Math.max(0,Number(payload.total_amount || (expenseTotal+payrollTotal)));
+    const parts=String(state.month || '').split('-');
+    const monthLabel=parts.length===2 ? Number(parts[0])+'년 '+Number(parts[1])+'월' : '이번 달';
+
+    return '<section class="olliFinanceSummary" data-finance-summary>'
+      + '<div class="olliFinanceSummaryHero"><span>'+esc(monthLabel)+' 총 지출</span><strong>'+money(total)+'</strong></div>'
+      + '<div class="olliFinanceSummaryBreakdown">'
+      + '<div><span>운영 지출</span><strong>'+money(expenseTotal)+'</strong></div>'
+      + '<div><span>선생님 급여</span><strong>'+money(payrollTotal)+'</strong></div>'
+      + '</div></section>';
+  }
+
+  function renderPayrollSection(teachers){
+    return '<section class="olliFinancePayrollSection">'
+      + '<div class="olliPayrollIntro"><div class="olliPayrollIntroTitle">선생님 급여</div>'
+      + '<div class="olliPayrollIntroText">시간표를 기준으로 계산하며 휴원일과 날짜별 대체 담임을 자동 반영합니다.</div></div>'
+      + (teachers.length ? teachers.map(renderTeacherCard).join('') : '<div class="olliPayrollEmpty">급여를 설정할 선생님이 없습니다.</div>')
+      + '</section>';
+  }
+
   function render(){
     const els = detailElements();
     if(!els.body) return;
@@ -455,11 +479,14 @@
     state.month = /^\d{4}-\d{2}$/.test(month) ? month : currentMonthValue();
 
     els.body.innerHTML = '<div class="olliPayrollPage">'
+      + '<div class="olliFinanceTop">'
       + '<label class="olliPayrollMonthField"><span>계산 월</span><input type="month" value="'+esc(state.month)+'" data-payroll-month></label>'
-      + renderExpenseSection()
-      + '<div class="olliPayrollIntro"><div class="olliPayrollIntroTitle">선생님 급여</div>'
-      + '<div class="olliPayrollIntroText">시간표를 기준으로 계산하며 휴원일과 날짜별 대체 담임을 자동 반영합니다.</div></div>'
-      + (teachers.length ? teachers.map(renderTeacherCard).join('') : '<div class="olliPayrollEmpty">급여를 설정할 선생님이 없습니다.</div>')
+      + renderFinanceSummary()
+      + '</div>'
+      + '<div class="olliFinanceColumns">'
+      + '<div class="olliFinanceExpensesColumn">'+renderExpenseSection()+'</div>'
+      + '<div class="olliFinancePayrollColumn">'+renderPayrollSection(teachers)+'</div>'
+      + '</div>'
       + '</div>';
 
     els.body.querySelector('[data-payroll-month]')?.addEventListener('change',function(event){
