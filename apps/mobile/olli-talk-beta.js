@@ -8632,12 +8632,6 @@
       let composerTouchStartY = null;
       const composer = input.closest('.olliTalkBetaComposer');
 
-      input.addEventListener('pointerdown', event => {
-        if (document.activeElement === input) return;
-        event.preventDefault();
-        try { input.focus({ preventScroll:true }); } catch (_) { input.focus(); }
-      });
-
       if (composer) {
         composer.addEventListener('touchstart', event => {
           const touch = event.touches?.[0];
