@@ -10,13 +10,15 @@ const activeWorkdayMigration = read('supabase/migrations/20261007052135_teacher_
 const substitutePayrollMigration = read('supabase/migrations/20261007171000_teacher_payroll_substitute_slot_hours.sql');
 const finalizedPayrollMigration = read('supabase/migrations/20261007172000_teacher_payroll_finalized_periods.sql');
 const monthlyPayoutMigration = read('supabase/migrations/20261007202000_teacher_payroll_monthly_payout_snapshots.sql');
+const freelancerStatementMigration = read('supabase/migrations/20261007230500_teacher_payroll_freelancer_statements.sql');
 const migration = [
   read('supabase/migrations/20261006150241_teacher_payroll_calculator.sql'),
   read('supabase/migrations/20261006153614_harden_owner_roles_and_payroll_cycle.sql'),
   activeWorkdayMigration,
   substitutePayrollMigration,
   finalizedPayrollMigration,
-  monthlyPayoutMigration
+  monthlyPayoutMigration,
+  freelancerStatementMigration
 ].join('\n');
 const common = read('packages/common/olli-teacher-payroll-common.js');
 const pcHtml = read('apps/pc/index.html');
@@ -57,36 +59,38 @@ test('settings entry and shared runtime are wired on PC and mobile', () => {
   for (const html of [pcHtml, mobileHtml]) {
     assert.match(html, /급여 및 지출 관리/);
     assert.match(html, /openOlliTeacherPayrollSettings\(\)/);
-    assert.match(html, /olli-teacher-payroll-common\.js\?v=20261007-finance-3/);
-    assert.match(html, /olli-teacher-payroll-common\.css\?v=20261007-finance-2/);
+    assert.match(html, /olli-teacher-payroll-common\.js\?v=20261007-payroll-statement-1/);
+    assert.match(html, /olli-teacher-payroll-common\.css\?v=20261007-payroll-statement-1/);
   }
 });
 
-test('team chat salary reveal is transient and owner-only', () => {
+test('team chat payroll statement opens only through the private statement RPC', () => {
   assert.match(common, /function isPayrollMessage\(item\)/);
-  assert.match(common, /if\(!isOwner\(\)\) return false/);
-  assert.match(common, /button\.textContent='선생님 급여'/);
-  assert.match(common, /button\.dataset\.revealed='0'/);
-  assert.match(common, /olli_teacher_payroll_notification_amount_get/);
+  assert.match(common, /button\.textContent='급여명세서 보기'/);
+  assert.match(common, /olli_teacher_payroll_statement_get/);
+  assert.match(common, /function renderPayrollStatementModal\(payload\)/);
   const start = common.indexOf('function createTeamChatPayrollButton');
   const end = common.indexOf('\n  async function syncDueNotifications', start);
   assert.ok(start >= 0 && end > start);
-  const revealCode = common.slice(start, end);
-  assert.doesNotMatch(revealCode, /localStorage|sessionStorage/);
+  const statementCode = common.slice(start, end);
+  assert.doesNotMatch(statementCode, /localStorage|sessionStorage/);
   assert.match(pcChat, /createTeamChatPayrollButton\(item,\s*'pc'\)/);
   assert.match(mobileChat, /createTeamChatPayrollButton\(item,\s*'mobile'\)/);
 });
 
-test('leaving and reopening Team Chat rebuilds payroll buttons in the hidden state', () => {
+test('leaving and reopening Team Chat rebuilds payroll statement buttons from server messages', () => {
   assert.match(pcChat, /async function open\(\)[\s\S]*loadMessages\(\{ showLoading: true, followBottom: true \}\)/);
   assert.match(mobileChat, /async function openOlliTalkBetaPage\(event\)[\s\S]*renderOlliTalkServerMessages\(openCachedPayload/);
-  assert.match(common, /button\.dataset\.revealed='0'/);
+  assert.match(common, /button\.textContent='급여명세서 보기'/);
 });
 
 
-test('payday reminders remain owner-only in Team Chat history while normal management messages stay unchanged', () => {
-  assert.equal((migration.match(/private\.olli_teacher_payroll_notifications payroll_notice/g)||[]).length, 5);
-  assert.match(migration, /v_member\.role='owner'[\s\S]*not exists \([\s\S]*payroll_notice\.message_id=msg\.id/);
+test('new payroll statements are visible only to the target teacher while legacy notices stay owner-only', () => {
+  assert.match(freelancerStatementMigration, /statement_message_version smallint not null default 0/);
+  assert.match(freelancerStatementMigration, /statement_message_version=1/);
+  assert.match(freelancerStatementMigration, /n\.statement_message_version>=1[\s\S]*n\.teacher_member_id=p_member_id/);
+  assert.match(freelancerStatementMigration, /n\.statement_message_version=0[\s\S]*p_member_role='owner'/);
+  assert.match(freelancerStatementMigration, /olli_team_chat_message_visible_to_member/);
 });
 
 test('payday date calculation clamps 29-31 to the actual last day of short months', () => {
@@ -104,13 +108,17 @@ test('owner login sync is fallback protection in addition to database cron', () 
 });
 
 
-test('monthly salary is editable and saved through the payroll v2 RPC', () => {
+test('monthly salary and freelancer withholding are saved through payroll v3', () => {
   assert.match(migration, /monthly_salary bigint not null default 0/);
-  assert.match(migration, /olli_teacher_payroll_setting_upsert_v2/);
+  assert.match(freelancerStatementMigration, /deduction_mode text not null default 'none'/);
+  assert.match(freelancerStatementMigration, /olli_teacher_payroll_setting_upsert_v3/);
   assert.match(common, /data-payroll-monthly-salary/);
-  assert.match(common, /olli_teacher_payroll_setting_upsert_v2/);
-  assert.match(common, /p_monthly_salary:monthlySalary/);
-  assert.match(common, /monthlySalary > 0 \? Math\.round\(monthlySalary\)/);
+  assert.match(common, /data-payroll-deduction-mode/);
+  assert.match(common, /프리랜서 3\.3%/);
+  assert.match(common, /olli_teacher_payroll_setting_upsert_v3/);
+  assert.match(common, /p_deduction_mode:deductionMode/);
+  assert.match(common, /Math\.round\(grossAmount\*0\.033\)/);
+  assert.doesNotMatch(common, /4대보험/);
 });
 
 test('payroll period starts the day after the previous payday and ends on the current payday', () => {
@@ -237,3 +245,31 @@ test('payroll notification mention uses the actual message-member primary key', 
   assert.doesNotMatch(finalizedPayrollMigration, /on conflict \(academy_id,message_id,member_id\)/);
 });
 
+
+
+test('payday statement is scheduled for 10 AM Korea time and created once per teacher-month', () => {
+  assert.match(freelancerStatementMigration, /olli-teacher-payroll-statement-10am/);
+  assert.match(freelancerStatementMigration, /'0 1 \* \* \*'/);
+  assert.match(freelancerStatementMigration, /olli_teacher_payroll_send_due_statements/);
+  assert.match(freelancerStatementMigration, /if v_notification\.id is null or v_notification\.message_id is not null then/);
+  assert.match(freelancerStatementMigration, /10월|급여 지급 안내|급여 지급 안내/);
+});
+
+test('payroll statement shows regular and substitute dates with holiday and absence states', () => {
+  assert.match(freelancerStatementMigration, /'regular_days',v_regular_days/);
+  assert.match(freelancerStatementMigration, /'substitute_days',v_substitute_days/);
+  assert.match(freelancerStatementMigration, /when r\.is_holiday then 'holiday'/);
+  assert.match(freelancerStatementMigration, /then 'absent'/);
+  assert.match(common, /olliPayrollStatementDate holiday/);
+  assert.match(common, /olliPayrollStatementDate absent/);
+  assert.match(common, /공휴일/);
+  assert.match(common, /결근일/);
+  assert.match(common, /workedRows\.length\+'회 · '\+statementHours\(totalHours\)\+'시간'/);
+});
+
+test('payday edits remain live through the pay date and freeze on the following day', () => {
+  assert.match(freelancerStatementMigration, /if v_pay_date=v_today then[\s\S]*olli_teacher_payroll_notification_refresh/);
+  assert.match(freelancerStatementMigration, /지급일 다음 날 첫 동기화 때 한 번 더 최신 계산을 저장한 뒤 고정합니다/);
+  assert.match(freelancerStatementMigration, /p\.pay_date<v_today/);
+  assert.match(freelancerStatementMigration, /finalized_at=coalesce\(p\.finalized_at,now\(\)\)/);
+});
