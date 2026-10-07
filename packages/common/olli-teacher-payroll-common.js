@@ -171,9 +171,10 @@
   }
 
   function calculateCard(card){
-    if(!card) return { amount:0,totalHours:0 };
+    if(!card) return { grossAmount:0,deductionAmount:0,amount:0,totalHours:0 };
     const monthlySalary = Math.max(0,Number(card.querySelector('[data-payroll-monthly-salary]')?.value || 0));
     const hourlyWage = Math.max(0,Number(card.querySelector('[data-payroll-hourly-wage]')?.value || 0));
+    const deductionMode = String(card.querySelector('[data-payroll-deduction-mode]')?.value || 'none');
     let totalHours = 0;
     WEEKDAYS.forEach(day => {
       const input = card.querySelector('[data-payroll-day-hours="'+day.key+'"]');
@@ -181,12 +182,20 @@
       const workdays = Math.max(0,Number(card.dataset['workdays'+day.key] || 0));
       totalHours += workdays * dayHours;
     });
-    const amount = monthlySalary > 0 ? Math.round(monthlySalary) : Math.round(totalHours * hourlyWage);
+    const grossAmount = monthlySalary > 0 ? Math.round(monthlySalary) : Math.round(totalHours * hourlyWage);
+    const deductionAmount = deductionMode==='freelancer_33' ? Math.round(grossAmount*0.033) : 0;
+    const amount = Math.max(0,grossAmount-deductionAmount);
     const hoursNode = card.querySelector('[data-payroll-total-hours]');
     const amountNode = card.querySelector('[data-payroll-total-amount]');
+    const deductionNode = card.querySelector('[data-payroll-deduction-preview]');
     if(hoursNode) hoursNode.textContent = (Math.round(totalHours*100)/100).toLocaleString('ko-KR') + '시간';
     if(amountNode) amountNode.textContent = money(amount);
-    return {amount,totalHours};
+    if(deductionNode){
+      deductionNode.textContent = deductionMode==='freelancer_33'
+        ? '공제 전 '+money(grossAmount)+' · 3.3% 공제 '+money(deductionAmount)
+        : '공제 없음 · 공제 전 급여와 실지급액이 같습니다.';
+    }
+    return {grossAmount,deductionAmount,amount,totalHours};
   }
 
   function shortMonthDay(value){
@@ -241,6 +250,7 @@
     const monthlySalary = Math.max(0,Number(teacher?.monthly_salary || 0));
     const wage = Math.max(0,Number(teacher?.hourly_wage || 0));
     const payday = Math.max(1,Math.min(31,Number(teacher?.payday || 15)));
+    const deductionMode = String(teacher?.deduction_mode || 'none')==='freelancer_33' ? 'freelancer_33' : 'none';
     const weekdayHours = normalizedWeekdayHours(teacher?.weekday_hours);
     const workdayCount = Math.max(0,Number(teacher?.workday_count || 0));
     const totalHours = Math.max(0,Number(teacher?.total_hours || 0));
@@ -271,11 +281,20 @@
       + '<label class="olliPayrollField"><span>월급</span><div class="olliPayrollInputWrap"><input inputmode="numeric" min="0" step="10000" type="number" value="'+monthlySalary+'" data-payroll-monthly-salary'+disabledAttr+'><span>원</span></div></label>'
       + '<label class="olliPayrollField"><span>시급</span><div class="olliPayrollInputWrap"><input inputmode="numeric" min="0" step="100" type="number" value="'+wage+'" data-payroll-hourly-wage'+disabledAttr+'><span>원</span></div></label>'
       + '<label class="olliPayrollField"><span>급여일</span><select data-payroll-payday'+disabledAttr+'>'+paydayOptions(payday)+'</select></label>'
+      + '<label class="olliPayrollField olliPayrollDeductionField"><span>공제 방식</span><select data-payroll-deduction-mode'+disabledAttr+'>'
+      + '<option value="none"'+(deductionMode==='none'?' selected':'')+'>공제 없음</option>'
+      + '<option value="freelancer_33"'+(deductionMode==='freelancer_33'?' selected':'')+'>프리랜서 3.3%</option>'
+      + '</select></label>'
       + '</div>'
       + '<div class="olliPayrollDayTitle">요일별 근무시간</div>'
       + '<div class="olliPayrollDayGrid">'+dayInputs+'</div>'
       + '<div class="olliPayrollSummary"><div><span>총 근무시간</span><strong data-payroll-total-hours>'+hours(totalHours).toLocaleString('ko-KR')+'시간</strong></div>'
       + '<div><span>'+esc(payrollAmountLabel(teacher))+'</span><strong data-payroll-total-amount>'+money(totalAmount)+'</strong></div></div>'
+      + '<div class="olliPayrollDeductionPreview" data-payroll-deduction-preview>'
+      + (deductionMode==='freelancer_33'
+        ? '공제 전 '+money(Number(teacher?.gross_amount || 0))+' · 3.3% 공제 '+money(Number(teacher?.deduction_amount || 0))
+        : '공제 없음 · 공제 전 급여와 실지급액이 같습니다.')
+      + '</div>'
       + '<button class="olliPayrollSaveButton" type="button" data-payroll-save'+disabledAttr+'>'+(finalized?'확정됨':'저장')+'</button>'
       + '</section>';
   }
@@ -927,6 +946,7 @@
       card.querySelectorAll('[data-payroll-monthly-salary],[data-payroll-hourly-wage],[data-payroll-day-hours]').forEach(input => {
         input.addEventListener('input',()=>calculateCard(card));
       });
+      card.querySelector('[data-payroll-deduction-mode]')?.addEventListener('change',()=>calculateCard(card));
       card.querySelector('[data-payroll-save]')?.addEventListener('click',()=>saveTeacher(card));
       calculateCard(card);
     });
@@ -979,10 +999,13 @@
     const monthlySalary=Math.max(0,Math.round(Number(card.querySelector('[data-payroll-monthly-salary]')?.value || 0)));
     const wage=Math.max(0,Math.round(Number(card.querySelector('[data-payroll-hourly-wage]')?.value || 0)));
     const payday=Math.max(1,Math.min(31,Math.round(Number(card.querySelector('[data-payroll-payday]')?.value || 15))));
+    const deductionMode=String(card.querySelector('[data-payroll-deduction-mode]')?.value || 'none')==='freelancer_33'
+      ? 'freelancer_33'
+      : 'none';
     if(button){button.disabled=true;button.textContent='저장 중';}
     if(status) status.textContent='';
     try{
-      const payload=await rpc('olli_teacher_payroll_setting_upsert_v2',{
+      const payload=await rpc('olli_teacher_payroll_setting_upsert_v3',{
         p_session_token:sessionToken(),
         p_academy_id:academyId(),
         p_teacher_member_id:teacherId,
@@ -990,6 +1013,7 @@
         p_hourly_wage:wage,
         p_payday:payday,
         p_weekday_hours:weekdayHours,
+        p_deduction_mode:deductionMode,
         p_month:monthDateValue(state.month)
       });
       if(!payload?.ok) throw new Error(payload?.message || '급여 설정을 저장하지 못했습니다.');
@@ -1013,13 +1037,131 @@
   }
 
   function isPayrollMessage(item){
-    if(!isOwner()) return false;
     if(String(item?.message_type || '').trim() !== 'ai') return false;
     if(String(item?.sender_name || '').trim() !== '올리') return false;
     const body=String(item?.body || '').trim();
     const notificationId=String(item?.client_message_id || '').trim();
-    return /^오늘은 .+선생님 \d{1,2}월 급여일 입니다\.$/.test(body)
+    return /^\d{1,2}월 \d{1,2}일 급여 지급 안내(?:\n|$)/.test(body)
       && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(notificationId);
+  }
+
+  function statementDayNumber(value){
+    const match=String(value || '').match(/^\d{4}-\d{2}-(\d{2})$/);
+    return match ? String(Number(match[1])) : '';
+  }
+
+  function statementHours(value){
+    const n=Math.max(0,Number(value || 0));
+    return (Math.round(n*100)/100).toLocaleString('ko-KR');
+  }
+
+  function payrollStatementRows(days,type){
+    const source=Array.isArray(days) ? days : [];
+    const groups=WEEKDAYS.map(day=>{
+      const rows=source.filter(item=>Number(item?.weekday)===Number(day.key))
+        .sort((a,b)=>String(a?.date || '').localeCompare(String(b?.date || '')));
+      if(!rows.length) return '';
+      const workedRows=type==='regular'
+        ? rows.filter(item=>String(item?.status || '')==='normal' && Number(item?.hours || 0)>0)
+        : rows.filter(item=>Number(item?.hours || 0)>0);
+      const totalHours=workedRows.reduce((sum,item)=>sum+Math.max(0,Number(item?.hours || 0)),0);
+      const dateHtml=rows.map(item=>{
+        const dayNumber=statementDayNumber(item?.date);
+        const status=String(item?.status || '');
+        if(type==='regular' && status==='holiday'){
+          return '<span class="olliPayrollStatementDate holiday" aria-label="'+dayNumber+'일 공휴일">'+dayNumber+'</span>';
+        }
+        if(type==='regular' && status==='absent'){
+          return '<span class="olliPayrollStatementDate absent" aria-label="'+dayNumber+'일 결근일">'+dayNumber+'</span>';
+        }
+        return '<span class="olliPayrollStatementDate">'+dayNumber+'</span>';
+      }).join('');
+      return '<div class="olliPayrollStatementWorkRow">'
+        + '<strong>'+day.label+'요일</strong>'
+        + '<div class="olliPayrollStatementDates">'+dateHtml+'</div>'
+        + '<span class="olliPayrollStatementWorkTotal">'+workedRows.length+'회 · '+statementHours(totalHours)+'시간</span>'
+        + '</div>';
+    }).filter(Boolean).join('');
+    return groups || '<div class="olliPayrollStatementEmpty">해당 근무가 없습니다.</div>';
+  }
+
+  function closePayrollStatement(){
+    document.querySelectorAll('.olliPayrollStatementOverlay').forEach(node=>node.remove());
+  }
+
+  function renderPayrollStatementModal(payload){
+    const statement=payload?.statement && typeof payload.statement==='object' ? payload.statement : {};
+    const payDate=String(statement.pay_date || '');
+    const payMatch=payDate.match(/^\d{4}-(\d{2})-(\d{2})$/);
+    const payLabel=payMatch ? Number(payMatch[1])+'월 '+Number(payMatch[2])+'일' : '급여';
+    const teacherName=String(statement.teacher_name || '선생님').trim() || '선생님';
+    const periodStart=shortMonthDay(statement.period_start);
+    const periodEnd=shortMonthDay(statement.period_end);
+    const payType=String(statement.pay_type || 'hourly');
+    const deductionMode=String(statement.deduction_mode || 'none');
+    const gross=Math.max(0,Number(statement.gross_amount || 0));
+    const deduction=Math.max(0,Number(statement.deduction_amount || 0));
+    const net=Math.max(0,Number(statement.net_amount || 0));
+    const totalHours=Math.max(0,Number(statement.total_hours || 0));
+    const hourlyWage=Math.max(0,Number(statement.hourly_wage || 0));
+    const monthlySalary=Math.max(0,Number(statement.monthly_salary || 0));
+
+    closePayrollStatement();
+    const overlay=document.createElement('div');
+    overlay.className='olliPayrollStatementOverlay';
+    overlay.innerHTML='<section class="olliPayrollStatementPanel" role="dialog" aria-modal="true" aria-label="'+esc(payLabel+' 지급 급여명세서')+'">'
+      + '<div class="olliPayrollStatementHead">'
+      + '<div><div class="olliPayrollStatementTitle">'+esc(payLabel)+' 지급 급여명세서</div>'
+      + '<div class="olliPayrollStatementSub">'+esc(teacherName)+(periodStart&&periodEnd?' · 계산기간 '+esc(periodStart+'~'+periodEnd):'')+'</div></div>'
+      + '<button type="button" class="olliPayrollStatementClose" aria-label="닫기">×</button></div>'
+      + '<div class="olliPayrollStatementScroll">'
+      + '<div class="olliPayrollStatementSection"><h3>정기근무</h3>'
+      + payrollStatementRows(statement.regular_days,'regular')+'</div>'
+      + '<div class="olliPayrollStatementSection"><h3>대체근무</h3>'
+      + payrollStatementRows(statement.substitute_days,'substitute')+'</div>'
+      + '<div class="olliPayrollStatementSection totals"><h3>급여 계산</h3>'
+      + (payType==='monthly'
+        ? '<div class="olliPayrollStatementCalcLine"><span>월급</span><strong>'+money(monthlySalary || gross)+'</strong></div>'
+        : '<div class="olliPayrollStatementCalcLine"><span>총 '+statementHours(totalHours)+'시간 × '+money(hourlyWage)+' (시급)</span><strong>'+money(gross)+'</strong></div>')
+      + (deductionMode==='freelancer_33'
+        ? '<div class="olliPayrollStatementCalcLine"><span>프리랜서 3.3% 공제</span><strong>- '+money(deduction)+'</strong></div>'
+        : '')
+      + '<div class="olliPayrollStatementPay"><span>당일 지급 급여</span><strong>'+money(net)+'</strong></div>'
+      + '</div>'
+      + '<div class="olliPayrollStatementGuide">'
+      + '<span class="olliPayrollStatementGuideItem"><i class="holiday"></i>공휴일</span>'
+      + '<span class="olliPayrollStatementGuideItem"><i class="absent"></i>결근일</span>'
+      + '</div>'
+      + '</div></section>';
+    overlay.addEventListener('click',event=>{
+      if(event.target===overlay || event.target.closest('.olliPayrollStatementClose')) closePayrollStatement();
+    });
+    document.body.appendChild(overlay);
+    requestAnimationFrame(()=>overlay.classList.add('show'));
+    overlay.querySelector('.olliPayrollStatementClose')?.focus();
+  }
+
+  async function openPayrollStatement(notificationId,button){
+    const id=String(notificationId || '').trim();
+    if(!id) return false;
+    const original=button?.textContent || '급여명세서 보기';
+    if(button){button.disabled=true;button.textContent='불러오는 중';}
+    try{
+      const payload=await rpc('olli_teacher_payroll_statement_get',{
+        p_session_token:sessionToken(),
+        p_academy_id:academyId(),
+        p_notification_id:id
+      });
+      if(!payload?.ok) throw new Error(payload?.message || '급여명세서를 불러오지 못했습니다.');
+      renderPayrollStatementModal(payload);
+      return true;
+    }catch(error){
+      console.warn('급여명세서 확인 실패:',error);
+      alert(error?.message || '급여명세서를 불러오지 못했습니다.');
+      return false;
+    }finally{
+      if(button){button.disabled=false;button.textContent=original;}
+    }
   }
 
   function createTeamChatPayrollButton(item,platform){
@@ -1029,34 +1171,11 @@
     const button=document.createElement('button');
     button.type='button';
     button.className='olliPayrollTalkButton';
-    button.textContent='선생님 급여';
-    button.dataset.revealed='0';
-    button.addEventListener('click',async function(){
-      if(button.dataset.revealed==='1'){
-        button.dataset.revealed='0';
-        button.textContent='선생님 급여';
-        return;
-      }
-      button.disabled=true;
-      const original='선생님 급여';
-      button.textContent='확인 중';
-      try{
-        const payload=await rpc('olli_teacher_payroll_notification_amount_get',{
-          p_session_token:sessionToken(),
-          p_academy_id:academyId(),
-          p_notification_id:String(item.client_message_id || '').trim()
-        });
-        if(!payload?.ok) throw new Error(payload?.message || '급여 금액을 확인하지 못했습니다.');
-        button.textContent=money(payload.amount);
-        button.dataset.revealed='1';
-      }catch(error){
-        console.warn('선생님 급여 금액 확인 실패:',error);
-        button.textContent=original;
-        button.dataset.revealed='0';
-      }finally{
-        button.disabled=false;
-      }
-    });
+    button.textContent='급여명세서 보기';
+    button.addEventListener('click',()=>openPayrollStatement(
+      String(item?.client_message_id || '').trim(),
+      button
+    ));
     wrap.appendChild(button);
     return wrap;
   }
