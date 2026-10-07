@@ -75,8 +75,8 @@ test('completed or cancelled repetitive-work result stays attached to its messag
 });
 
 test('mobile Team Chat assets use the current guarded scroll revision',()=>{
-  assert.match(html,/olli-talk-beta\\.css\\?v=20261007-bubble-flow-stage2-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-bubble-flow-stage2-1/);
+  assert.match(html,/olli-talk-beta\\.css\\?v=20261007-choice-bubble-stage3-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-choice-bubble-stage3-1/);
 });
 
 
@@ -182,11 +182,15 @@ test('Team Chat group headers are lighter and separate groups more clearly witho
   assert.match(css,/\.olliTalkBetaMessageStack\{[\s\S]*gap:6px;/);
 });
 
-test('completed choice buttons and inline confirmation bubbles use the requested visual states only',()=>{
-  assert.match(css,/\.olliTalkBetaActionButton\.selectedChoice:disabled\{[\s\S]*background:#818284;[\s\S]*color:#fff;[\s\S]*opacity:1;/);
+test('completed choices become normal Olli bubbles while pending choices stay action buttons',()=>{
+  assert.match(js,/selectedRow\.className='olliTalkBetaBubbleRow olliTalkBetaSelectedChoiceRow'/);
+  assert.match(js,/olliTalkBetaBubble olliTalkBetaSelectedChoiceBubble/);
+  assert.match(js,/getOlliTalkSelectedChoiceButtonLabel\(action\)/);
+  assert.doesNotMatch(js,/selected\.className='olliTalkBetaActionButton primary selectedChoice'/);
+  assert.match(css,/\.olliTalkBetaSelectedChoiceBubble\{[\s\S]*--olli-talk-bubble-bg:var\(--olli-talk-incoming-bg\);/);
+  assert.match(css,/\.olliTalkBetaSelectedChoiceBubble::before,[\s\S]*content:none !important;/);
   assert.match(css,/\.olliTalkBetaMessageFlow\{[\s\S]*gap:6px;/);
   assert.match(css,/\.olliTalkBetaMessage \.olliTalkBetaInlineSystemResult\{[\s\S]*margin-top:0;/);
-  assert.match(css,/\.olliTalkBetaActionCard\{[\s\S]*gap:6px;/);
 });
 
 test('closing mention mode removes the active at-sign draft before blurring the composer',()=>{
@@ -334,7 +338,7 @@ test('Team Chat send keeps the established pointerdown flow without extra touch 
   assert.doesNotMatch(js,/sendButton\.addEventListener\('touchstart'/);
   assert.match(js,/sendButton\.addEventListener\('pointerdown', event => \{[\s\S]*sendOlliTalkBetaMessage\(event\)/);
   assert.match(js,/await loadOlliTalkBetaMessages\([\s\S]{0,700}input\.focus\(\{ preventScroll:true \}\)/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-bubble-flow-stage2-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-choice-bubble-stage3-1/);
 });
 
 test('Team Chat groups adjacent messages only when sender and displayed minute are identical',()=>{
@@ -347,20 +351,20 @@ test('Team Chat groups adjacent messages only when sender and displayed minute a
   assert.match(js,/const messageTime=createMessageText\('div','olliTalkBetaMessageTime'/);
   assert.match(js,/if\(connectedToNext\)\{[\s\S]*messageTime\.style\.visibility='hidden'/);
   assert.match(css,/\.olliTalkBetaMessageConnected \.olliTalkBetaSender\{[\s\S]*display:none;/);
-  assert.match(html,/olli-talk-beta\\.css\\?v=20261007-bubble-flow-stage2-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-bubble-flow-stage2-1/);
+  assert.match(html,/olli-talk-beta\\.css\\?v=20261007-choice-bubble-stage3-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-choice-bubble-stage3-1/);
 });
 
 test('Team Chat voice capture anchors directly to the screen bottom instead of following the shrinking visual viewport',()=>{
   assert.match(css,/#olliTalkBetaScreen\.kcfVoiceCaptureMode \.olliTalkBetaComposerLayer\{[\s\S]*position:absolute;[\s\S]*inset:0;[\s\S]*width:auto;[\s\S]*height:auto;/);
-  assert.match(html,/olli-talk-beta\\.css\\?v=20261007-bubble-flow-stage2-1/);
+  assert.match(html,/olli-talk-beta\\.css\\?v=20261007-choice-bubble-stage3-1/);
 });
 
 test('Team Chat send starts on pointerdown before the active composer can blur and collapse',()=>{
   assert.match(js,/sendButton\.addEventListener\('pointerdown', event => \{[\s\S]*sendOlliTalkBetaMessage\(event\)/);
   assert.match(js,/sendButton\.addEventListener\('click', event => \{[\s\S]*if \(event\.detail !== 0\)/);
   assert.match(js,/async function sendOlliTalkBetaMessage\(event\)\{[\s\S]*event\.preventDefault\(\);[\s\S]*event\.stopPropagation\(\);/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-bubble-flow-stage2-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-choice-bubble-stage3-1/);
 });
 
 test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into a real mention',()=>{
@@ -378,8 +382,8 @@ test('Team Chat microphone reuses QuickNote voice and turns Olli wake word into 
   assert.match(css,/\.olliTalkBetaVoiceBtn\{[\s\S]*?width:33px;[\s\S]*?height:33px;/);
   assert.doesNotMatch(css,/\.olliTalkBetaVoiceBtn\.active\{[\s\S]*?background:#0A84FF;/);
   assert.match(js,/showPanel:true,[\s\S]*panelHost:composer/);
-  assert.match(html,/olli-talk-beta\\.css\\?v=20261007-bubble-flow-stage2-1/);
-  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-bubble-flow-stage2-1/);
+  assert.match(html,/olli-talk-beta\\.css\\?v=20261007-choice-bubble-stage3-1/);
+  assert.match(html,/olli-talk-beta\\.js\\?v=20261007-choice-bubble-stage3-1/);
 });
 
 
