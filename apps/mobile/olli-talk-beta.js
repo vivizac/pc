@@ -6213,13 +6213,18 @@
 
     if(status!=='pending'){
       if(status==='completed' && isOlliTalkChoiceActionType(action?.action_type)){
-        const selected=document.createElement('button');
-        selected.type='button';
-        selected.className='olliTalkBetaActionButton primary selectedChoice';
-        selected.textContent=getOlliTalkSelectedChoiceButtonLabel(action);
-        selected.disabled=true;
-        card.appendChild(selected);
-        return card;
+        const selectedRow=document.createElement('div');
+        selectedRow.className='olliTalkBetaBubbleRow olliTalkBetaSelectedChoiceRow';
+        selectedRow.dataset.olliTalkActionId=String(action?.id || '').trim();
+        selectedRow.dataset.actionStatus=status;
+
+        const selectedBubble=createMessageText(
+          'div',
+          'olliTalkBetaBubble olliTalkBetaSelectedChoiceBubble',
+          getOlliTalkSelectedChoiceButtonLabel(action)
+        );
+        selectedRow.appendChild(selectedBubble);
+        return selectedRow;
       }
       if(status==='failed'){
         const label=createMessageText('span','olliTalkBetaActionStatus',getOlliTalkActionStatusLabel(action));
@@ -6591,12 +6596,26 @@
     bubbleRow.appendChild(bubbleMeta);
     flow.appendChild(bubbleRow);
 
+    let selectedChoiceRow=null;
     if(item?.action){
       const actionCard=createOlliTalkActionCard(item.action);
-      if(actionCard) flow.appendChild(actionCard);
+      if(actionCard){
+        flow.appendChild(actionCard);
+        if(actionCard.classList?.contains('olliTalkBetaSelectedChoiceRow')){
+          selectedChoiceRow=actionCard;
+        }
+      }
     }
     if(shouldShowOlliTalkPendingTextInput(item)) flow.appendChild(createOlliTalkPendingTextInputButton());
     message.appendChild(flow);
+
+    if(selectedChoiceRow){
+      moveOlliTalkMessageMetaToRow(
+        message,
+        selectedChoiceRow,
+        item?.action?.resolved_at || item?.action?.updated_at || item?.created_at
+      );
+    }
 
     if(item?.material_request_id && item?.material_event_id){
       message.appendChild(createOlliTalkMaterialConfirmCard(item));
