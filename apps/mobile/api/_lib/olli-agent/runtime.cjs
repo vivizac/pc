@@ -2087,6 +2087,55 @@ async function runTrialCancelPrepareAgent({
   return {ready:true,model,output:finalOutput,nodeVersion:process.versions.node,persistedMessage,recoveredAfterPersist:!!runError};
 }
 
+async function validatePersistedReasonChoiceMessage({
+  requestContext,
+  reasonMessageId,
+  reason,
+  normalizeReason,
+  callRpc,
+  label,
+  codePrefix,
+}){
+  const sourceId=Number(reasonMessageId||0);
+  if(!Number.isSafeInteger(sourceId)||sourceId<=0) return null;
+  const rpc=typeof callRpc==='function'
+    ? callRpc
+    : require('./supabase-rpc.cjs').callSupabaseRpc;
+  const payload=await rpc('olli_team_chat_list',{
+    p_session_token:requestContext.sessionToken,
+    p_academy_id:requestContext.academyId,
+    p_before_message_id:sourceId+1,
+    p_limit:1,
+  });
+  if(!payload?.ok){
+    throw runtimeError(
+      payload?.message || label+' 메시지를 확인하지 못했습니다.',
+      403,
+      payload?.code || codePrefix+'_READ_FAILED'
+    );
+  }
+  if(String(payload.current_member_id||'').trim()!==String(requestContext.memberId||'').trim()){
+    throw runtimeError(label+' 요청자 정보를 확인하지 못했습니다.',403,codePrefix+'_CONTEXT_MISMATCH');
+  }
+
+  const source=(Array.isArray(payload.messages)?payload.messages:[])
+    .find(item=>Number(item?.id||0)===sourceId)||null;
+  if(!source) throw runtimeError(label+' 메시지를 찾지 못했습니다.',404,codePrefix+'_NOT_FOUND');
+
+  const action=source?.action;
+  if(String(action?.action_type||'').trim()!=='choose_reason') return null;
+  if(String(source?.message_type||'').trim()!=='ai' || String(action?.status||'').trim()!=='completed'){
+    throw runtimeError(label+' 선택 상태가 완료되지 않았습니다.',409,codePrefix+'_CHOICE_PENDING');
+  }
+
+  const normalizedReason=normalizeReason(reason);
+  const selectedReason=normalizeReason(String(action?.display_label||'').trim());
+  if(!selectedReason || selectedReason!==normalizedReason){
+    throw runtimeError(label+' 선택값이 저장된 Team Chat 상태와 일치하지 않습니다.',409,codePrefix+'_CHOICE_MISMATCH');
+  }
+  return {source,reason:normalizedReason};
+}
+
 async function validateTrialReasonMessage({
   requestContext,
   reasonMessageId,
@@ -2094,6 +2143,19 @@ async function validateTrialReasonMessage({
   reason,
   callRpc,
 }){
+  const {normalizeTrialCancelReason}=require('./tools/trial-cancel-prepare-tools.cjs');
+  const normalizedReason=normalizeTrialCancelReason(reason);
+  const selected=await validatePersistedReasonChoiceMessage({
+    requestContext,
+    reasonMessageId,
+    reason,
+    normalizeReason:normalizeTrialCancelReason,
+    callRpc,
+    label:'체험 취소 사유',
+    codePrefix:'OLLI_AGENT_TRIAL_REASON',
+  });
+  if(selected) return selected;
+
   let source;
   try{
     source=await validatePickupSourceMessage({
@@ -2115,8 +2177,6 @@ async function validateTrialReasonMessage({
     throw runtimeError(message,Number(error?.statusCode||400),trialCode);
   }
 
-  const {normalizeTrialCancelReason}=require('./tools/trial-cancel-prepare-tools.cjs');
-  const normalizedReason=normalizeTrialCancelReason(reason);
   const storedText=normalizePickupSourceMessageText(source?.body);
   const requestedText=normalizePickupSourceMessageText(reasonMessageText);
   if(!storedText||!requestedText||storedText!==requestedText||!requestedText.includes(normalizedReason)){
@@ -5167,6 +5227,19 @@ async function validateAbsenceReasonMessage({
   reason,
   callRpc,
 }) {
+  const {normalizeAbsenceReason}=require('./tools/absence-prepare-tools.cjs');
+  const normalizedReason=normalizeAbsenceReason(reason);
+  const selected=await validatePersistedReasonChoiceMessage({
+    requestContext,
+    reasonMessageId,
+    reason,
+    normalizeReason:normalizeAbsenceReason,
+    callRpc,
+    label:'결석 사유',
+    codePrefix:'OLLI_AGENT_ABSENCE_REASON',
+  });
+  if(selected) return selected;
+
   let source;
   try{
     source=await validatePickupSourceMessage({
@@ -5185,8 +5258,6 @@ async function validateAbsenceReasonMessage({
     throw runtimeError(message,Number(error?.statusCode||400),code);
   }
 
-  const {normalizeAbsenceReason}=require('./tools/absence-prepare-tools.cjs');
-  const normalizedReason=normalizeAbsenceReason(reason);
   const storedText=normalizePickupSourceMessageText(source?.body);
   const requestedText=normalizePickupSourceMessageText(reasonMessageText);
   if(!storedText||!requestedText||storedText!==requestedText||!requestedText.includes(normalizedReason)){
@@ -5589,6 +5660,19 @@ async function validateMakeupReasonMessage({
   reason,
   callRpc,
 }) {
+  const {normalizeMakeupCancelReason}=require('./tools/makeup-cancel-prepare-tools.cjs');
+  const normalizedReason=normalizeMakeupCancelReason(reason);
+  const selected=await validatePersistedReasonChoiceMessage({
+    requestContext,
+    reasonMessageId,
+    reason,
+    normalizeReason:normalizeMakeupCancelReason,
+    callRpc,
+    label:'보강 취소 사유',
+    codePrefix:'OLLI_AGENT_MAKEUP_REASON',
+  });
+  if(selected) return selected;
+
   let source;
   try {
     source = await validatePickupSourceMessage({
@@ -5611,8 +5695,6 @@ async function validateMakeupReasonMessage({
     throw runtimeError(message, Number(error?.statusCode || 400), code);
   }
 
-  const { normalizeMakeupCancelReason } = require('./tools/makeup-cancel-prepare-tools.cjs');
-  const normalizedReason = normalizeMakeupCancelReason(reason);
   const storedText = normalizePickupSourceMessageText(source?.body);
   const requestedText = normalizePickupSourceMessageText(reasonMessageText);
   if (
