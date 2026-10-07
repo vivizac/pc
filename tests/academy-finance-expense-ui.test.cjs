@@ -100,3 +100,33 @@ test('PC expense column adapts row actions without changing the shared mobile ro
   assert.doesNotMatch(css, /body:not\(\.olliPcApp\) \.olliFinanceColumns\{display:grid/);
 });
 
+test('mobile switches between operating expense and payroll tabs while keeping the shared summary above', () => {
+  assert.match(common, /financeTab: 'expenses'/);
+  assert.match(common, /function financeTabHtml\(\)/);
+  assert.match(common, /data-finance-tab="expenses">운영 지출/);
+  assert.match(common, /data-finance-tab="payroll">선생님 급여/);
+  assert.match(common, /function setFinanceTab\(tab,body\)/);
+  assert.match(common, /function bindFinanceTabs\(body\)/);
+  assert.match(common, /renderFinanceSummary\(\)[\s\S]*financeTabHtml\(\)[\s\S]*class="olliFinanceColumns"/);
+});
+
+test('mobile tab state survives finance rerenders and only toggles the lower content columns', () => {
+  assert.match(common, /state\.financeTab==='expenses'\?' is-active':''/);
+  assert.match(common, /state\.financeTab==='payroll'\?' is-active':''/);
+  assert.match(common, /state\.financeTab=next/);
+  assert.match(common, /bindFinanceTabs\(els\.body\)/);
+  const tabStart = common.indexOf('function setFinanceTab');
+  const tabEnd = common.indexOf('\\n  function bindFinanceTabs', tabStart);
+  assert.ok(tabStart >= 0 && tabEnd > tabStart);
+  const tabCode = common.slice(tabStart, tabEnd);
+  assert.doesNotMatch(tabCode, /loadOverview|rpc\(/);
+});
+
+test('finance tabs are visible on mobile and hidden on the PC two-column layout', () => {
+  assert.match(css, /\.olliFinanceTabs\{display:flex/);
+  assert.match(css, /\.olliFinanceExpensesColumn,\.olliFinancePayrollColumn\{display:none\}/);
+  assert.match(css, /\.olliFinanceExpensesColumn\.is-active,\.olliFinancePayrollColumn\.is-active\{display:block\}/);
+  assert.match(css, /body\.olliPcApp \.olliFinanceTabs\{display:none\}/);
+  assert.match(css, /body\.olliPcApp \.olliFinanceExpensesColumn,[\s\S]*body\.olliPcApp \.olliFinancePayrollColumn\{display:block\}/);
+});
+
