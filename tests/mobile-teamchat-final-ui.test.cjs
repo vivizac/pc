@@ -273,10 +273,15 @@ test('Team Chat deferred first-paint link previews do not pull the chat bottom a
   assert.match(js,/const keepBottom=!suppressAutoAnchor&&!!chatArea&&isOlliTalkChatNearBottom/);
 });
 
-test('Team Chat keyboard opening follows the latest bubble without restoring generic viewport anchoring',()=>{
+test('Team Chat keyboard opening has one chat-scroll owner after focus',()=>{
   assert.match(js,/let olliTalkKeyboardFollowLatest = false/);
-  assert.match(js,/visualViewport\.addEventListener\('resize',[\s\S]*olliTalkKeyboardFollowLatest && isOlliTalkComposerActive\(\)[\s\S]*scheduleOlliTalkLatestMessageAnchor\(\)/);
-  assert.match(js,/input\.addEventListener\('focus',[\s\S]*olliTalkKeyboardFollowLatest = true;[\s\S]*scheduleOlliTalkLatestMessageAnchor\(\)/);
+  assert.match(js,/visualViewport\.addEventListener\('resize',[\s\S]*olliTalkKeyboardFollowLatest[\s\S]*isOlliTalkComposerActive\(\)[\s\S]*scheduleOlliTalkLatestMessageAnchor\(\)/);
+  assert.match(js,/input\.addEventListener\('focus',[\s\S]*isOlliTalkChatNearBottom\(chatArea,120\)[\s\S]*syncViewport\(\)/);
+  const focusStart=js.indexOf("input.addEventListener('focus'");
+  const focusEnd=js.indexOf("input.addEventListener('blur'",focusStart);
+  assert.ok(focusStart>=0 && focusEnd>focusStart);
+  assert.doesNotMatch(js.slice(focusStart,focusEnd),/scheduleOlliTalkLatestMessageAnchor/);
+  assert.match(js,/visualViewport\.addEventListener\('scroll',[\s\S]*syncOlliTalkComposerViewport\(\)/);
   assert.match(js,/input\.addEventListener\('blur',[\s\S]*olliTalkKeyboardFollowLatest = false;[\s\S]*syncViewport\(\)/);
 });
 
