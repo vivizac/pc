@@ -88,6 +88,6 @@ test('Team Chat image frames keep stable geometry through hydration and viewport
 
   assert.doesNotMatch(css,/\.olliTalkBetaAttachmentImageFrame\.ready\{[^}]*min-height:0/);
   assert.match(css,/\.olliTalkBetaAttachmentImageFrame\.fallbackRatio \.olliTalkBetaAttachmentImage\{[^}]*height:100%;[^}]*max-height:none;[^}]*object-fit:contain/);
-  assert.match(html,/olli-talk-beta\.js\?v=20261007-scroll-guard-1/);
-  assert.match(html,/olli-talk-beta\.css\?v=20261007-reason-choice-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261007-bubble-layout-stage1-1/);
+  assert.match(html,/olli-talk-beta\.css\?v=20261007-bubble-layout-stage1-1/);
 });
