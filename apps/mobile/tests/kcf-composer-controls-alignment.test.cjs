@@ -190,6 +190,36 @@ test('empty roster has no inline guide, while existing student cards and complet
   assert.doesNotMatch(runtime, /kcfTeacherSheetEmptyRosterGuide/);
 });
 
+test('active QuickNote placeholder matches Team Chat size and elides only when narrow',()=>{
+  const from=sheet.indexOf('  function fitEditorPlaceholder(){');
+  const to=sheet.indexOf('  function syncFromBase(options){',from);
+  assert.ok(from>=0&&to>from);
+  const fakeInput={clientWidth:200,placeholder:''};
+  const fakeContext={font:'',measureText(text){return {width:String(text).length*10};}};
+  const state={placeholderCanvas:null};
+  const fakeDocument={createElement(tag){assert.equal(tag,'canvas');return {getContext(){return fakeContext;}};}};
+  const fakeGlobal={getComputedStyle(){return {paddingLeft:'8px',paddingRight:'8px',fontWeight:'400',fontSize:'16px',fontFamily:'sans-serif'};}};
+  const fit=new Function('editor','state','document','global',
+    sheet.slice(from,to)+'\nreturn fitEditorPlaceholder;')(()=>fakeInput,state,fakeDocument,fakeGlobal);
+  fit();
+  assert.equal(fakeInput.placeholder,'수업기록을 적어주세요');
+  fakeInput.clientWidth=74;
+  fit();
+  assert.ok(fakeInput.placeholder.endsWith('…'));
+  assert.ok(fakeInput.placeholder.length < '수업기록을 적어주세요'.length);
+  assert.ok(fakeContext.measureText(fakeInput.placeholder).width <= 54);
+  assert.match(sheetCss,/\.kcfTeacherSheetInput::placeholder \{[\s\S]*?font-size:calc\(14\.5px \* var\(--olli-text-scale, 1\)\)/);
+  assert.doesNotMatch(sheet,/학생 이름과 수업기록을 적어주세요/);
+});
+
+test('Today Records title uses the same safe-area top anchor as observation student list',()=>{
+  const observation=fs.readFileSync('olli-observation-roster-phone.css','utf8');
+  assert.ok(observation.includes('var(--vivizac-note-header-h'));
+  assert.match(observation,/padding:calc\(var\(--vivizac-note-header-h\) \+ max\(18px, calc\(env\(safe-area-inset-top\) \+ 6px\)\) \+ 6px\)/);
+  assert.match(todayCss,/padding:calc\(var\(--vivizac-note-header-h, 60px\) \+ max\(18px, calc\(env\(safe-area-inset-top\) \+ 6px\)\) \+ 8px\)/);
+  assert.match(todayCss,/padding:0 2px 15px 12px;/);
+});
+
 test('mode selector uses a real vector chevron, not a text glyph',()=>{
   assert.match(html, /class="kcfModeChevron" viewBox="0 0 24 24"/);
   assert.match(html, /<path d="m6 9 6 6 6-6"\/>/);
