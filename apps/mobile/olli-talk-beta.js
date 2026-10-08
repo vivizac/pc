@@ -35,6 +35,9 @@
   let olliTalkArchiveFileTransferSequence = 0;
   const OLLI_TALK_TRANSFER_RING_CIRCUMFERENCE = 2 * Math.PI * 31;
   let olliTalkMembers = [];
+  // Temporary visual-only avatar check. These messages are never sent, cached, or written to Supabase.
+  const OLLI_TALK_AVATAR_PREVIEW_ENABLED = true;
+  const OLLI_TALK_AVATAR_PREVIEW_MEMBER_ID = '__olli_avatar_preview__';
   const OLLI_TALK_AI_MENTION_ID = '__olli_ai__';
   const OLLI_TALK_AI_MENTION = Object.freeze({
     member_id:OLLI_TALK_AI_MENTION_ID,
@@ -6987,6 +6990,65 @@
     return message;
   }
 
+  function clearOlliTalkAvatarPreviewMessages(){
+    const chatArea=document.getElementById('olliTalkBetaChatArea');
+    if(!chatArea)return;
+    chatArea.querySelectorAll('[data-olli-avatar-preview="1"]').forEach(node=>node.remove());
+  }
+
+  function renderOlliTalkAvatarPreviewMessages(){
+    if(!OLLI_TALK_AVATAR_PREVIEW_ENABLED || !isOlliTalkBetaVisible())return false;
+    const chatArea=document.getElementById('olliTalkBetaChatArea');
+    if(!chatArea)return false;
+
+    clearOlliTalkAvatarPreviewMessages();
+
+    const members=Array.from(new Map(
+      (Array.isArray(olliTalkMembers)?olliTalkMembers:[])
+        .filter(member=>member && member.is_olli_ai!==true && String(member.member_id||'').trim())
+        .map(member=>[String(member.member_id).trim(),member])
+    ).values());
+    if(!members.length)return false;
+
+    let list=chatArea.querySelector('.olliTalkBetaMessageList');
+    if(!list){
+      list=document.createElement('div');
+      list.className='olliTalkBetaMessageList';
+      chatArea.replaceChildren(list);
+    }
+
+    const createdAt=new Date().toISOString();
+    members.forEach((member,index)=>{
+      const memberId=String(member.member_id||'').trim();
+      const senderName=String(
+        member.display_name
+        ||member.member_name
+        ||member.name
+        ||'선생님'
+      ).trim()||'선생님';
+      const item={
+        id:'avatar-preview-'+memberId,
+        client_message_id:'avatar-preview-'+memberId,
+        sender_member_id:memberId,
+        sender_name:senderName,
+        message_type:'text',
+        body:'아이콘 확인용 메시지입니다.',
+        unread_count:0,
+        created_at:createdAt
+      };
+      const group=createOlliTalkMessageGroupElement(item,OLLI_TALK_AVATAR_PREVIEW_MEMBER_ID);
+      group.dataset.olliAvatarPreview='1';
+      group.dataset.olliAvatarPreviewIndex=String(index);
+      appendOlliTalkMessageToGroup(group,item,OLLI_TALK_AVATAR_PREVIEW_MEMBER_ID);
+      list.appendChild(group);
+    });
+
+    chatArea.dataset.previewReady='';
+    scheduleOlliTalkChatToComposer();
+    scheduleOlliTalkLatestMessageAnchor();
+    return true;
+  }
+
   function getOlliTalkMessageFlow(messageElement){
     return messageElement?.querySelector?.(':scope > .olliTalkBetaMessageFlow') || null;
   }
@@ -8437,17 +8499,26 @@
 
         hydrateOlliTalkDeferredFirstPaintAssets();
         bindOlliTalkRealtime();
-        loadOlliTalkMembers().then(() => renderOlliTalkMentionMenu()).catch(() => {});
+        const memberLoadPromise=loadOlliTalkMembers()
+          .then(members=>{
+            renderOlliTalkMentionMenu();
+            return members;
+          })
+          .catch(()=>[]);
         refreshOlliTalkMentionBadge().catch(() => {});
         if (typeof window.OlliRealtime?.ensureConnected === 'function') {
           window.OlliRealtime.ensureConnected({ force:false, reason:'olli_talk_open' }).catch(() => {});
         }
-        loadOlliTalkBetaMessages({
+        const messageLoadPromise=loadOlliTalkBetaMessages({
           showLoading:!openCachedPayload,
           localFirst:false,
           cachedPayload:openCachedPayload,
           messageLimit:OLLI_TALK_INITIAL_RENDER_LIMIT,
           scrollMode:openCachedPayload ? 'follow-if-near-bottom' : 'initial-latest'
+        });
+        Promise.allSettled([memberLoadPromise,messageLoadPromise]).then(()=>{
+          if(!isOlliTalkBetaVisible())return;
+          renderOlliTalkAvatarPreviewMessages();
         });
       },0);
     });
