@@ -158,7 +158,7 @@
     beginOlliTalkKeyboardMotion();
   }
 
-  const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 12;
+  const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 32;
   let olliTalkKeyboardVisualRaf = 0;
   let olliTalkKeyboardViewportRaf = 0;
   let olliTalkKeyboardVisualLastTs = 0;
@@ -312,9 +312,8 @@
 
     if (anchorPendingReason) scheduleOlliTalkPendingReasonAnchorAfterViewport();
 
-    // In one keyboard frame, either scroll to the latest message or animate
-    // its layout movement: never apply both competing corrections.
-    let anchoredLatest = false;
+    // The latest-message anchor alone owns scrollTop. Our FLIP controller
+    // only paints the displacement, and never scrolls a second time.
     if (
       !isOlliTalkPendingReasonInputActive()
       && anchorLatest
@@ -322,16 +321,11 @@
       && olliTalkKeyboardFollowLatest
       && isOlliTalkComposerActive()
     ) {
-      const chatArea = document.getElementById('olliTalkBetaChatArea');
-      const beforeScrollTop = chatArea?.scrollTop;
       scheduleOlliTalkLatestMessageAnchor();
-      // A successful anchor check is not necessarily a scroll change.
-      // Let CSS/layout movement animate when the scroll position did not move.
-      anchoredLatest = !!chatArea && Math.abs(chatArea.scrollTop - beforeScrollTop) > 0.5;
     }
 
     preserveOlliTalkKeyboardVisualFrame(motionFrame,{
-      messages: !isOlliTalkPendingReasonInputActive() && !anchoredLatest
+      messages: !isOlliTalkPendingReasonInputActive() && !olliTalkChatGestureActive
     });
   }
 
@@ -7897,6 +7891,9 @@
     const input = getOlliTalkBetaInput();
     if (!input) return false;
 
+    // Capture the frame before shared keyboard focus expands the composer.
+    const activationMotionFrame = captureOlliTalkKeyboardVisualFrame();
+
     if (useMention && olliTalkMentionModeActive) {
       window.OlliMobileKeyboardActivation?.stopEvent(event);
       clearOlliTalkMentionDraft();
@@ -7906,6 +7903,7 @@
       updateOlliTalkBetaComposerState();
       input.blur();
       syncViewport();
+      preserveOlliTalkKeyboardVisualFrame(activationMotionFrame);
       return false;
     }
 
@@ -7925,11 +7923,15 @@
     if (!activated) return false;
 
     renderOlliTalkMentionMenu();
+    syncViewport();
+    // Paint the first motion before the pending viewport RAF. It must see
+    // both the original one-row position and the new focused position.
+    preserveOlliTalkKeyboardVisualFrame(activationMotionFrame);
     if (!olliTalkMembers.length) {
       await loadOlliTalkMembers();
       renderOlliTalkMentionMenu();
+      syncViewport();
     }
-    syncViewport();
     return true;
   }
 
