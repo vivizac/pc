@@ -37,6 +37,7 @@
     var height = viewport ? Number(viewport.height || global.innerHeight || 0) : Math.max(global.innerHeight || 0, document.documentElement.clientHeight || 0);
     root.style.setProperty('--kcf-teacher-vv-width', Math.max(1, Math.round(width)) + 'px');
     root.style.setProperty('--kcf-teacher-vv-height', Math.max(1, Math.round(height)) + 'px');
+    fitEditorPlaceholder();
   }
 
   function scheduleViewportSync(){
@@ -94,13 +95,37 @@
     target.dispatchEvent(new Event('input', { bubbles:true }));
   }
 
+  function fitEditorPlaceholder(){
+    var input = editor();
+    if (!input) return;
+    var full = '수업기록을 적어주세요';
+    var style = global.getComputedStyle ? global.getComputedStyle(input) : null;
+    var available = input.clientWidth - (parseFloat(style && style.paddingLeft) || 0)
+      - (parseFloat(style && style.paddingRight) || 0) - 4;
+    if (!(available > 0)) { input.placeholder = full; return; }
+    if (!state.placeholderCanvas) state.placeholderCanvas = document.createElement('canvas');
+    var ctx = state.placeholderCanvas.getContext && state.placeholderCanvas.getContext('2d');
+    if (!ctx) { input.placeholder = full; return; }
+    ctx.font = (style && style.fontWeight || '400') + ' '
+      + (style && style.fontSize || '16px') + ' '
+      + (style && style.fontFamily || 'sans-serif');
+    if (ctx.measureText(full).width <= available) { input.placeholder = full; return; }
+    var low = 0, high = full.length, ellipsis = '…', extra = ctx.measureText(ellipsis).width;
+    while (low < high) {
+      var mid = Math.ceil((low + high) / 2);
+      if (ctx.measureText(full.slice(0, mid)).width + extra <= available) low = mid;
+      else high = mid - 1;
+    }
+    input.placeholder = low ? full.slice(0, low) + ellipsis : ellipsis;
+  }
+
   function syncFromBase(options){
     var opts = options || {};
     var source = baseInput();
     var target = editor();
     if (!source || !target) return;
     if (target.value !== source.value) target.value = source.value;
-    target.placeholder = source.placeholder || '수업기록을 적어주세요';
+    fitEditorPlaceholder();
     syncWarning();
     if (opts.focus === true && state.open) focusEditor();
   }
@@ -281,7 +306,7 @@
       '    <div id="kcfTeacherSheetRosterHost" class="kcfTeacherSheetRosterHost" hidden></div>',
       '    <div class="kcfTeacherSheetBottom">',
       '      <div id="kcfTeacherSheetAttachHost" class="kcfTeacherSheetControlHost"></div>',
-      '      <div class="kcfTeacherSheetSpacer"><span id="kcfTeacherSheetEmptyRosterGuide" class="kcfTeacherSheetEmptyRosterGuide" aria-live="polite" hidden>오늘 수업 기록 학생이 없습니다.</span></div>',
+      '      <div class="kcfTeacherSheetSpacer"></div>',
       '      <div id="kcfTeacherSheetModeHost" class="kcfTeacherSheetControlHost"></div>',
       '      <div id="kcfTeacherSheetVoiceHost" class="kcfTeacherSheetControlHost"></div>',
       '      <button id="kcfTeacherSheetSendBtn" class="kcfTeacherSheetSendBtn" type="button" aria-label="피드백 전송">',
