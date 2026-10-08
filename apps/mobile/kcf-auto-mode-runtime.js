@@ -522,6 +522,7 @@
     if (rosterLoadPromise) return rosterLoadPromise;
 
     state.rosterStatus = 'loading';
+    if (state.enabled) renderAutoRoster();
     rosterLoadPromise = Promise.resolve()
       .then(loadTodayScheduleQueue)
       .then(function(queue) {
@@ -530,6 +531,7 @@
       .catch(function(err) {
         state.rosterStatus = 'error';
         state.rosterDateKey = today;
+        if (state.enabled) renderAutoRoster();
         console.warn('1분 피드백 Teacher 학생 미리 불러오기 실패:', err && (err.message || err));
         return null;
       })
@@ -768,6 +770,15 @@
     var scroller = roster.querySelector('.kcfAutoStudentRosterScroller');
     if (!scroller) return;
     scroller.innerHTML = '';
+    var hasAssignedStudents = state.queue.length > 0;
+    // Only the confirmed empty schedule receives the guide. Loading, errors, and
+    // an already-completed class must never be reported as "no students".
+    var noStudents = state.enabled && state.rosterStatus === 'empty' && !hasAssignedStudents;
+    var sheetRoster = document.getElementById('kcfTeacherSheetRosterHost');
+    var sheetGuide = document.getElementById('kcfTeacherSheetEmptyRosterGuide');
+    if (sheetRoster) sheetRoster.hidden = !state.enabled || !hasAssignedStudents;
+    if (sheetGuide) sheetGuide.hidden = !noStudents;
+    roster.hidden = !state.enabled || !hasAssignedStudents;
 
     var remaining = state.queue
       .filter(function(item) { return !state.completedIds.has(item.studentId); })
@@ -778,6 +789,7 @@
       });
 
     if (!remaining.length) {
+      if (!hasAssignedStudents) return;
       var empty = document.createElement('span');
       empty.className = 'kcfAutoStudentRosterEmpty';
       empty.textContent = '오늘 학생 선택 완료';
@@ -810,7 +822,7 @@
       screen.classList.toggle('kcfTeacherRosterMode', state.enabled);
       screen.classList.toggle('kcfAutoRosterMode', state.enabled); // legacy CSS compatibility
     }
-    if (roster) roster.hidden = !state.enabled;
+    if (roster) roster.hidden = !state.enabled || !state.queue.length;
     var input = document.getElementById('kcfInput');
     if (input && !state.editing) {
       input.placeholder = state.manualEntry ? '학생 이름과 수업기록을 적어주세요' : '수업기록을 적어주세요';
@@ -1328,7 +1340,8 @@
       return true;
     },
     preloadRoster: preloadTodayScheduleQueue,
-    getRosterStatus: function() { return state.rosterStatus; }
+    getRosterStatus: function() { return state.rosterStatus; },
+    refreshRoster: renderAutoRoster
   };
   global.KcfAutoMode = global.KcfTeacherMode; // legacy alias
 

@@ -23,14 +23,20 @@ test('active sheet has the same five control slots, reusing existing DOM nodes',
   assert.match(sheet, /id="kcfTeacherSheetAttachHost"/);
   assert.match(sheet, /id="kcfTeacherSheetModeHost"/);
   assert.match(sheet, /id="kcfTeacherSheetRosterHost"/);
+  assert.match(sheet, /id="kcfTeacherSheetEmptyRosterGuide"/);
+  assert.match(sheet, /오늘 수업 기록 학생이 없습니다\./);
+  assert.match(sheetCss, /\.kcfTeacherSheetRosterHost\[hidden\]\{display:none;\}/);
+  assert.match(sheet, /teacherMode\.refreshRoster\(\)/);
+  assert.match(sheetCss, /#kcfTeacherSheetEmptyRosterGuide\{grid-column:2;/);
   assert.match(sheet, /id="kcfTeacherSheetVoiceHost"/);
   assert.match(sheet, /id="kcfTeacherSheetSendBtn"/);
   // + → roster → mode → microphone → send, also while active.
-  assert.ok(sheet.indexOf('id="kcfTeacherSheetAttachHost"') < sheet.indexOf('id="kcfTeacherSheetRosterHost"'));
-  assert.ok(sheet.indexOf('id="kcfTeacherSheetRosterHost"') < sheet.indexOf('id="kcfTeacherSheetModeHost"'));
+  assert.ok(sheet.indexOf('id="kcfTeacherSheetRosterHost"') < sheet.indexOf('class="kcfTeacherSheetBottom"'));
+  assert.ok(sheet.indexOf('id="kcfTeacherSheetAttachHost"') < sheet.indexOf('id="kcfTeacherSheetModeHost"'));
+  assert.ok(sheet.indexOf('id="kcfTeacherSheetEmptyRosterGuide"') < sheet.indexOf('id="kcfTeacherSheetModeHost"'));
   assert.ok(sheet.indexOf('id="kcfTeacherSheetModeHost"') < sheet.indexOf('id="kcfTeacherSheetVoiceHost"'));
   assert.ok(sheet.indexOf('id="kcfTeacherSheetVoiceHost"') < sheet.indexOf('id="kcfTeacherSheetSendBtn"'));
-  assert.match(autoCss, /kcfTeacherRosterMode \.kcfAutoStudentRoster \{[\s\S]*?grid-column:2;/);
+  assert.match(autoCss, /kcfTeacherRosterMode \.kcfAutoStudentRoster \{[\s\S]*?grid-column:1 \/ -1;[\s\S]*?grid-row:2;/);
   assert.match(autoCss, /kcfTeacherRosterMode \.kcfComposerModeBtn \{[\s\S]*?grid-column:3;/);
 
   assert.match(sheetCss, /grid-template-columns:33px minmax\(0,1fr\) 88px 33px 33px;/);
