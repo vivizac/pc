@@ -214,16 +214,6 @@ async function confirmStudent() {
   const selectedGroup = type === 'elementary' ? (extraInfo.group || '') : '';
   const selectedGroupMonths = type === 'elementary' ? elementaryGroupMonthsToText(extraInfo.group_months || extraInfo.feedback_months || getElementaryGroupFeedbackMonths(selectedGroup)) : '';
 
-  let registrationRouting = null;
-  if (typeof window.olliPrepareStudentRegistrationRouting === 'function') {
-    try {
-      registrationRouting = await window.olliPrepareStudentRegistrationRouting(type);
-    } catch (error) {
-      alert(error?.message || error || '선택한 수업 클래스를 확인하지 못했습니다.');
-      return;
-    }
-  }
-
   const trialRegistration = window.__olliPendingTrialRegistration;
   if (trialRegistration && trialRegistration.previewStatus === 'loading') {
     alert('체험 피드백을 불러오는 중이에요. 잠시 기다려 주세요.');
@@ -236,6 +226,17 @@ async function confirmStudent() {
   if (trialRegistration && (trialRegistration.name !== name || trialRegistration.division !== type)) {
     alert('체험수업과 동일한 학생 이름과 학부로 등록해 주세요.'); return;
   }
+
+  let registrationRouting = null;
+  if (typeof window.olliPrepareStudentRegistrationRouting === 'function') {
+    try {
+      registrationRouting = await window.olliPrepareStudentRegistrationRouting(type);
+    } catch (error) {
+      alert(error?.message || error || '선택한 수업 클래스를 확인하지 못했습니다.');
+      return;
+    }
+  }
+
   const newStudent = {
     id: uid(),
     type,
