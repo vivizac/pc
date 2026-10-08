@@ -24,17 +24,13 @@ test('active sheet has the same five control slots, reusing existing DOM nodes',
   assert.match(sheet, /id="kcfTeacherSheetAttachHost"/);
   assert.match(sheet, /id="kcfTeacherSheetModeHost"/);
   assert.match(sheet, /id="kcfTeacherSheetRosterHost"/);
-  assert.match(sheet, /id="kcfTeacherSheetEmptyRosterGuide"/);
-  assert.match(sheet, /오늘 수업 기록 학생이 없습니다\./);
   assert.match(sheetCss, /\.kcfTeacherSheetRosterHost\[hidden\]\{display:none;\}/);
   assert.match(sheet, /teacherMode\.refreshRoster\(\)/);
-  assert.match(sheetCss, /#kcfTeacherSheetEmptyRosterGuide\{color:/);
   assert.match(sheet, /id="kcfTeacherSheetVoiceHost"/);
   assert.match(sheet, /id="kcfTeacherSheetSendBtn"/);
   // + → roster → mode → microphone → send, also while active.
   assert.ok(sheet.indexOf('id="kcfTeacherSheetRosterHost"') < sheet.indexOf('class="kcfTeacherSheetBottom"'));
   assert.ok(sheet.indexOf('id="kcfTeacherSheetAttachHost"') < sheet.indexOf('id="kcfTeacherSheetModeHost"'));
-  assert.ok(sheet.indexOf('id="kcfTeacherSheetEmptyRosterGuide"') < sheet.indexOf('id="kcfTeacherSheetModeHost"'));
   assert.ok(sheet.indexOf('id="kcfTeacherSheetModeHost"') < sheet.indexOf('id="kcfTeacherSheetVoiceHost"'));
   assert.ok(sheet.indexOf('id="kcfTeacherSheetVoiceHost"') < sheet.indexOf('id="kcfTeacherSheetSendBtn"'));
   assert.match(sheetCss, /\.kcfTeacherSheetBottom \{[\s\S]*?display:flex;/);
@@ -65,17 +61,16 @@ test('empty student guide never replaces or moves the four permanent actions',()
   const bottomEnd=sheet.indexOf("'    </div>'",bottomStart);
   assert.ok(bottomStart>0&&bottomEnd>bottomStart);
   const bottomMarkup=sheet.slice(bottomStart,bottomEnd);
-  const order=['kcfTeacherSheetAttachHost','kcfTeacherSheetEmptyRosterGuide','kcfTeacherSheetModeHost','kcfTeacherSheetVoiceHost','kcfTeacherSheetSendBtn'];
+  const order=['kcfTeacherSheetAttachHost','kcfTeacherSheetModeHost','kcfTeacherSheetVoiceHost','kcfTeacherSheetSendBtn'];
   const offsets=order.map(id=>bottomMarkup.indexOf('id="'+id+'"'));
   assert.ok(offsets.every(n=>n>=0));
   assert.ok(offsets.every((value,i)=>i===0||offsets[i-1]<value));
   assert.match(sheetCss, /\.kcfTeacherSheetBottom \{[\s\S]*?display:flex;/);
   assert.match(sheetCss, /\.kcfTeacherSheetSpacer\{flex:1 1 auto;min-width:0;\}/);
-  assert.match(sheetCss, /#kcfTeacherSheetModeHost\{flex:0 0 auto;margin-left:8px;margin-right:12px;\}/);
+  assert.match(sheetCss, /#kcfTeacherSheetModeHost\{flex:0 0 auto;margin:0;\}/);
   assert.match(sheetCss, /#kcfTeacherSheetVoiceHost\{flex:0 0 33px;margin-right:12px;\}/);
   assert.match(sheetCss, /\.kcfTeacherSheetSendBtn\{flex:0 0 33px;\}/);
   assert.doesNotMatch(sheetCss, /grid-template-rows:40px;/);
-  assert.ok(sheetCss.includes('#kcfTeacherSheetEmptyRosterGuide[hidden]{display:none;}'));
   assert.doesNotMatch(bottomMarkup, /kcfTeacherSheet(?:Attach|Mode|Voice)Host[^>]*hidden/);
   assert.match(sheet, /\['kcfAttachBtn','kcfTeacherSheetAttachHost'\]/);
   assert.match(sheet, /\['kcfModeSwitchBtn','kcfTeacherSheetModeHost'\]/);
@@ -156,51 +151,16 @@ test('the very same button nodes move to the sheet and return home; microphone s
   assert.equal(composer.children.map(c=>c.id).join(','),'kcfAttachBtn,kcfModeSwitchBtn,kcfVoiceBtn');
 });
 
-test('no-students guide reacts only to a confirmed empty roster, not loading, error, or finished entries',()=>{
+test('empty-roster guide is fully removed, while student cards and all four controls remain',()=>{
   const runtime=fs.readFileSync('kcf-auto-mode-runtime.js','utf8');
-  const start=runtime.indexOf('function renderAutoRoster() {');
-  const end=runtime.indexOf('function syncAutoButton()',start);
-  assert.ok(start>0&&end>start);
-  const guide={hidden:true};
-  const sheetHost={hidden:true};
-  const roster={hidden:true,querySelector(){return scroller;}};
-  const scroller={children:[],_html:'',set innerHTML(value){this._html=value;this.children=[];},get innerHTML(){return this._html;},appendChild(child){this.children.push(child);}};
-  const state={enabled:true,queue:[],rosterStatus:'empty',completedIds:new Set(),selectedStudentId:''};
-  const doc={getElementById(id){return id==='kcfTeacherSheetRosterHost'?sheetHost:id==='kcfTeacherSheetEmptyRosterGuide'?guide:null;},createElement(tag){return {tagName:tag,dataset:{},attributes:{},setAttribute(n,v){this.attributes[n]=v;},addEventListener(){},textContent:'',className:''};}};
-  const render=new Function('state','document','ensureAutoRoster','clean','global','selectAutoStudent',
-    runtime.slice(start,end)+'return renderAutoRoster;')(state,doc,()=>roster,v=>String(v||'').trim(),{__kcfSelectedStudentId:''},()=>{});
-  render();
-  assert.equal(guide.hidden,false);
-  assert.equal(sheetHost.hidden,true);
-  assert.equal(roster.hidden,true);
-  assert.equal(scroller.children.length,0);
-  state.rosterStatus='loading';
-  render();
-  assert.equal(guide.hidden,true);
-  state.rosterStatus='error';
-  render();
-  assert.equal(guide.hidden,true);
-  state.rosterStatus='ready';
-  state.queue=[{studentId:'s1',name:'서아',timeSlot:16}];
-  render();
-  assert.equal(guide.hidden,true);
-  assert.equal(sheetHost.hidden,false);
-  assert.equal(roster.hidden,false);
-  assert.equal(scroller.children[0].textContent,'서아');
-  state.completedIds.add('s1');
-  render();
-  assert.equal(guide.hidden,true);
-  assert.equal(scroller.children[0].textContent,'오늘 학생 선택 완료');
-  state.rosterStatus='empty';
-  state.queue=[];
-  render();
-  assert.equal(guide.hidden,false);
-  state.enabled=false;
-  render();
-  assert.equal(guide.hidden,true);
-  assert.equal(roster.hidden,true);
-  assert.match(runtime, /state\.rosterStatus = 'loading';\s*if \(state\.enabled\) renderAutoRoster\(\);/);
-  assert.match(runtime, /state\.rosterStatus = 'error';[\s\S]*?if \(state\.enabled\) renderAutoRoster\(\);/);
+  assert.doesNotMatch(sheet, /kcfTeacherSheetEmptyRosterGuide|오늘 수업 기록 학생이 없습니다/);
+  assert.doesNotMatch(sheetCss, /kcfTeacherSheetEmptyRosterGuide/);
+  assert.doesNotMatch(runtime, /kcfTeacherSheetEmptyRosterGuide/);
+  assert.match(runtime, /if \(sheetRoster\) sheetRoster.hidden = !state.enabled \|\| !hasAssignedStudents;/);
+  for(const id of ['kcfTeacherSheetAttachHost','kcfTeacherSheetModeHost','kcfTeacherSheetVoiceHost','kcfTeacherSheetSendBtn']){
+    assert.ok(sheet.includes('id="'+id+'"'));
+  }
+  assert.match(sheetCss, /#kcfTeacherSheetAttachHost #kcfAttachBtn svg\{width:24px;height:24px;/);
 });
 test('mode selector uses a real vector chevron, not a text glyph',()=>{
   assert.match(html, /class="kcfModeChevron" viewBox="0 0 24 24"/);
@@ -214,7 +174,8 @@ test('Today Records title aligns with observation roster title left edge',()=>{
   const target=observationOuterPadding+observationHeaderMargin+observationTitleShift;
   const todayOuterPadding=18,todayHeadPadding=12;
   assert.equal(target,todayOuterPadding+todayHeadPadding);
-  assert.match(todayCss, /padding:0 2px 15px 12px;/);
+  assert.match(todayCss, /padding:2px 2px 15px 12px;/);
+  assert.match(todayCss, /padding:calc\(var\(--vivizac-note-header-h, 66px\) \+ max\(18px, calc\(env\(safe-area-inset-top\) \+ 6px\)\) \+ 6px\) 18px 176px;/);
 });
 
 test('close restores controls and closes state before blurring the textarea',()=>{
