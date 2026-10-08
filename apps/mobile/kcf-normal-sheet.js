@@ -9,6 +9,7 @@
     submitting:false,
     warningObserver:null,
     viewportFrame:0,
+    caretRevealTimer:0,
     suppressBlurSync:false
   };
 
@@ -101,6 +102,22 @@
     return document.activeElement === input;
   }
 
+  function finishSheetEntrance(){
+    var root = overlay();
+    if (state.open && root && root.classList.contains('show')) {
+      root.classList.add('entrance-complete');
+    }
+  }
+
+  function scheduleSheetCaretReveal(){
+    if (state.caretRevealTimer) clearTimeout(state.caretRevealTimer);
+    // Fallback if the browser suppresses transitionend (e.g. reduced motion).
+    state.caretRevealTimer = setTimeout(function(){
+      state.caretRevealTimer = 0;
+      finishSheetEntrance();
+    }, 320);
+  }
+
   function ensureSheet(){
     var existing = overlay();
     if (existing) return existing;
@@ -136,6 +153,16 @@
       '</section>'
     ].join('');
     document.body.appendChild(root);
+
+    var panel = root.querySelector('.kcfNormalSheet');
+    if (panel) {
+      panel.addEventListener('transitionend', function(event){
+        if (event.target !== panel || event.propertyName !== 'transform') return;
+        if (state.caretRevealTimer) clearTimeout(state.caretRevealTimer);
+        state.caretRevealTimer = 0;
+        finishSheetEntrance();
+      });
+    }
 
     var input = editor();
     if (input) {
@@ -255,7 +282,9 @@
     var root = ensureSheet();
     if (!root) return false;
     state.open = true;
+    root.classList.remove('entrance-complete');
     root.classList.add('show');
+    scheduleSheetCaretReveal();
     root.setAttribute('aria-hidden', 'false');
     document.documentElement.classList.add('kcfNormalSheetOpen');
     document.body.classList.add('kcfNormalSheetOpen');
@@ -284,9 +313,11 @@
       state.suppressBlurSync = false;
     }
     state.open = false;
+    if (state.caretRevealTimer) clearTimeout(state.caretRevealTimer);
+    state.caretRevealTimer = 0;
     var root = overlay();
     if (root) {
-      root.classList.remove('show');
+      root.classList.remove('show', 'entrance-complete');
       root.setAttribute('aria-hidden', 'true');
     }
     unbindWarning();
