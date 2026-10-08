@@ -858,7 +858,7 @@
   min-height:34px;
   max-height:34px;
 }
-#kinderChatFeedbackScreen .kcfInput::placeholder { color:#b8b8b8; }
+#kinderChatFeedbackScreen .kcfInput::placeholder { color:#b8b8b8; font-size:calc(14.5px * var(--olli-text-scale, 1)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 #kinderChatFeedbackScreen .kcfInputActivateBtn {
   position:absolute;
   inset:0;
