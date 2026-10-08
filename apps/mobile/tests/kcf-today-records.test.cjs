@@ -28,13 +28,13 @@ function makeHarness(initialItems){
     document,()=>items,text=>String(text||'').includes('CHECK_ME')?['issue']:[],()=>false,
     escapeHtml,()=>'',escapeHtml,()=>'<svg></svg>',
     async id=>{copied++;items.find(item=>item.id===id).copiedAt='2026-10-08T12:00:00Z';return true;},
-    ()=>{opened++;}, fn=>fn(),id=>{edited=id;},()=>null,async()=>true,async()=>true
+    ()=>{opened++;}, fn=>fn(),id=>{edited=id;},()=>null,async()=>true,async()=>true,{escape:String}
   ];
   const names=['document','getKinderChatFeedbackTodayItems','getSuspiciousFeedbackSegments',
     'isTodayFeedbackLoadFailItem','renderSuspiciousFeedbackText','buildTodayFeedbackIssueHtml',
     'escapeHtml','getKinderChatFeedbackInboxCopyIconSvg','copyKinderChatFeedbackInbox',
     'openKinderChatFeedbackInbox','requestAnimationFrame','editKinderChatFeedbackInboxItem',
-    'getKinderChatFeedbackLiveItem','saveKinderChatFeedbackLive','saveTodayFeedbackItem'];
+    'getKinderChatFeedbackLiveItem','saveKinderChatFeedbackLive','saveTodayFeedbackItem','CSS'];
   const render=new Function(...names,feedback.slice(from,to)+'\nreturn renderKinderChatFeedbackTodayRecords;')(...dependencies);
   const tap=(id,action)=>{
     assert.ok(listener);
