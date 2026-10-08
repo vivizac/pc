@@ -305,6 +305,7 @@ function openKinderChatFeedbackPage(options = {}) {
   if (page) page.style.display = 'flex';
   restoreKinderChatFeedbackLiveSession();
   setKinderChatFeedbackPersistentTopVisible(true);
+  if (document.body.classList.contains('kcfContinuousMode')) renderKinderChatFeedbackTodayRecords();
   loadKinderChatFeedbackDraft();
   applyKinderChatFeedbackGuideVisibility();
   syncKinderChatFeedbackManualSelectionUi();
@@ -1259,6 +1260,8 @@ function syncKinderChatFeedbackLiveItemToInbox(item) {
     studentName:String(item.studentName || ''),
     studentDivision:item.studentDivision === 'kinder' ? 'kinder' : 'elementary',
     studentId:String(item.studentId || item.savedStudentId || ''),
+    trialSessionId:String(item.trialSessionId || ''),
+    rosterSelectionId:String(item.rosterSelectionId || ''),
     feedbackType:String(item.feedbackType || 'class'),
     label:String(item.label || '피드백'),
     sourcePage:'kinderChatFeedback',
@@ -1288,6 +1291,7 @@ function syncKinderChatFeedbackLiveItemToInbox(item) {
   else safeList.unshift(mirror);
   setTodayFeedbackItemsRaw(safeList);
   try { updateKinderChatFeedbackBadge(); } catch(e) {}
+  if (document.body.classList.contains('kcfContinuousMode')) renderKinderChatFeedbackTodayRecords();
   return true;
 }
 function getKinderChatFeedbackLiveRow(id) {
@@ -1933,6 +1937,126 @@ function clearKinderChatFeedbackKeyword() {
   document.querySelectorAll('.kcfKeywordBtn').forEach(btn => btn.classList.remove('active'));
   renderKinderChatFeedbackGuide('');
 }
+
+/* 연속기록: 기존 퀵노트 피드백/복사 상태를 읽는 전용 목록 화면.
+ * 서버 저장과 원생 명단은 수정하지 않고 임시보관함의 공통 기능을 재사용한다.
+ */
+let kcfTodayRecordsExpandedId = '';
+
+function getKinderChatFeedbackTodayRecordState(item) {
+  const status = String(item?.status || '');
+  if (status === 'streaming' || status === 'generating') return {label:'AI 작성 중',kind:'working'};
+  if (status === 'error' || status === 'interrupted') return {label:'작성 오류',kind:'error'};
+  if (status === 'review' || getSuspiciousFeedbackSegments(item?.resultText || '').length) {
+    return {label:'내용 확인 필요',kind:'attention'};
+  }
+  if (item?.saved || item?.reviewed) return {label:'저장 완료',kind:'saved'};
+  if (String(item?.resultText || '').trim()) return {label:'저장 확인 필요',kind:'attention'};
+  return {label:'AI 작성 중',kind:'working'};
+}
+
+function renderKinderChatFeedbackTodayRecords() {
+  const view = document.getElementById('kcfTodayRecordsView');
+  const list = document.getElementById('kcfTodayRecordsItems');
+  const summary = document.getElementById('kcfTodayRecordsSummary');
+  if (!view || !list || !summary) return;
+  if (!view.__kcfActionsBound) {
+    view.__kcfActionsBound = true;
+    view.addEventListener('click', function(event) {
+      const button = event.target.closest('button[data-kcf-record-action]');
+      if (!button || !view.contains(button)) return;
+      const id = button.dataset.kcfRecordId || '';
+      if (!id) return;
+      const action = button.dataset.kcfRecordAction;
+      if (action === 'toggle') {
+        kcfTodayRecordsExpandedId = kcfTodayRecordsExpandedId === id ? '' : id;
+        renderKinderChatFeedbackTodayRecords();
+      } else if (action === 'copy') {
+        button.disabled = true;
+        copyKinderChatFeedbackInbox(id).then(function(ok) {
+          if (ok) renderKinderChatFeedbackTodayRecords();
+          else button.disabled = false;
+        }).catch(function() { button.disabled = false; });
+      } else if (action === 'edit') {
+        // Reuse the existing editor + server-side edit verification, not a second save path.
+        openKinderChatFeedbackInbox();
+        requestAnimationFrame(function() {
+          const card = document.querySelector('#kcfInboxOverlay [data-kcf-feedback-id="' + CSS.escape(id) + '"]');
+          if (card) {
+            card.scrollIntoView({block:'center',behavior:'auto'});
+            editKinderChatFeedbackInboxItem(id);
+          }
+        });
+      } else if (action === 'retry') {
+        button.disabled = true;
+        const live = getKinderChatFeedbackLiveItem(id);
+        const request = live ? saveKinderChatFeedbackLive(id) : saveTodayFeedbackItem(id);
+        Promise.resolve(request).then(function(ok) {
+          if (ok) renderKinderChatFeedbackTodayRecords();
+          else button.disabled = false;
+        }).catch(function() { button.disabled = false; });
+      }
+    });
+  }
+  // A completed edit in the original inbox is not overwritten while another overlay owns focus.
+  const currentScroll = view.scrollTop;
+  const items = getKinderChatFeedbackTodayItems().slice().sort(function(a,b) {
+    return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
+  });
+  const busy = items.filter(function(item) { return getKinderChatFeedbackTodayRecordState(item).kind === 'working'; }).length;
+  const attention = items.filter(function(item) {
+    const k = getKinderChatFeedbackTodayRecordState(item).kind;
+    return k === 'attention' || k === 'error';
+  }).length;
+  const uncopied = items.filter(function(item) { return !item.copiedAt && !!item.resultText; }).length;
+  summary.textContent = items.length
+    ? items.length + '명 · 작성 중 ' + busy + ' · 확인 필요 ' + attention + ' · 미복사 ' + uncopied
+    : '오늘 작성한 기록이 없습니다.';
+  if (!items.length) {
+    list.innerHTML = '<div class="kcfTodayRecordsEmpty">학생 기록을 전송하면 이곳에 피드백이 정리됩니다.</div>';
+    return;
+  }
+  list.innerHTML = items.map(function(item) {
+    const id = String(item.id || '');
+    const name = escapeHtml(String(item.studentName || '학생'));
+    const state = getKinderChatFeedbackTodayRecordState(item);
+    const expanded = kcfTodayRecordsExpandedId === id;
+    const busy = state.kind === 'working';
+    const canCopy = !!String(item.resultText || '').trim()
+      && !busy && state.kind !== 'error'
+      && !isTodayFeedbackLoadFailItem(item)
+      && !getSuspiciousFeedbackSegments(item.resultText || '').length;
+    const copied = !!item.copiedAt;
+    const trial = !!item.trialSessionId;
+    const safeId = escapeHtml(id);
+    const content = String(item.resultText || item.errorMessage || (busy ? '올리가 피드백을 정리하고 있어요.' : '작성된 내용이 없습니다.'));
+    const needsRetry = !!item.resultText && !item.saved && !busy && state.kind !== 'error';
+    const detail = item.resultText ? renderSuspiciousFeedbackText(item.resultText) : escapeHtml(content);
+    const issue = !!item.resultText ? buildTodayFeedbackIssueHtml(getSuspiciousFeedbackSegments(item.resultText)) : '';
+    const copyTitle = copied ? '복사 완료 · 다시 복사' : '피드백 복사';
+    return '<article class="kcfTodayRecord" data-kcf-today-id="' + safeId + '">' +
+      '<div class="kcfTodayRecordTop">' +
+        '<button type="button" class="kcfTodayRecordOpen" data-kcf-record-action="toggle" data-kcf-record-id="' + safeId + '" aria-expanded="' + expanded + '">' +
+          '<span class="kcfTodayRecordName">' + name + (trial ? ' <small>· 체험</small>' : '') + '</span>' +
+          '<span class="kcfTodayRecordStatus ' + state.kind + '">' + escapeHtml(state.label) + '</span>' +
+        '</button>' +
+        '<button type="button" class="kcfTodayRecordCopy' + (copied ? ' copied' : '') + '" data-kcf-record-action="copy" data-kcf-record-id="' + safeId + '" title="' + copyTitle + '" aria-label="' + name + ' ' + copyTitle + '"' + (canCopy ? '' : ' disabled') + '>' +
+          getKinderChatFeedbackInboxCopyIconSvg() +
+        '</button>' +
+      '</div>' +
+      (expanded ? '<div class="kcfTodayRecordDetail">' +
+        '<div class="kcfTodayRecordText">' + detail + '</div>' +
+        issue +
+        '<div class="kcfTodayRecordActions">' +
+          (item.resultText && !busy && state.kind !== 'error' ? '<button type="button" data-kcf-record-action="edit" data-kcf-record-id="' + safeId + '">수정</button>' : '') +
+          (needsRetry ? '<button type="button" data-kcf-record-action="retry" data-kcf-record-id="' + safeId + '">저장 재시도</button>' : '') +
+        '</div></div>' : '') +
+    '</article>';
+  }).join('');
+  view.scrollTop = currentScroll;
+}
+window.renderKinderChatFeedbackTodayRecords = renderKinderChatFeedbackTodayRecords;
+
 function getKinderChatFeedbackStatusLabel(status) {
   if (status === 'generating') return '정리 중';
   if (status === 'error') return '오류';
@@ -1961,6 +2085,7 @@ function markKinderChatFeedbackInboxCopied(id) {
     return { ...item, copiedAt:new Date().toISOString() };
   });
   if (changed) setTodayFeedbackItemsRaw(next);
+  if (changed && document.body.classList.contains('kcfContinuousMode')) renderKinderChatFeedbackTodayRecords();
   return changed;
 }
 function getKinderChatFeedbackInboxDisplayLabel(item) {
@@ -2196,7 +2321,13 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
       return;
     }
     try {
-      patchedSavedRow = await patchSavedTodayFeedbackItem(originalItem, nextText);
+      patchedSavedRow = originalItem?.trialSessionId
+        ? await saveKcfTrialFeedbackOnServer({
+            ...originalItem,
+            academyId: originalItem.savedAcademyId || originalItem.academyId,
+            savedRowId: savedRecordId
+          }, nextText, true)
+        : await patchSavedTodayFeedbackItem(originalItem, nextText);
     } catch (err) {
       console.error('저장된 1분 피드백 수정 오류:', err);
       setKinderChatFeedbackWarning(`수정 저장 중 오류가 발생했어요. ${err.message || ''}`.trim());
@@ -2213,6 +2344,7 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
     updatedItem = {
       ...item,
       resultText: nextText,
+      copiedAt: nextText === item.resultText ? item.copiedAt : '',
       suspiciousSegments: segments,
       status: nextStatus,
       reviewed: wasServerSaved ? true : false,
@@ -2228,6 +2360,18 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
   });
   if (!changed) return;
   setTodayFeedbackItemsRaw(nextList);
+  const liveItem = getKinderChatFeedbackLiveItem(id);
+  if (liveItem) {
+    liveItem.resultText = nextText;
+    liveItem.status = nextStatus;
+    liveItem.suspiciousSegments = segments;
+    if (nextText !== originalItem?.resultText) liveItem.copiedAt = '';
+    liveItem.updatedAt = now;
+    persistKinderChatFeedbackLiveSessionNow();
+    const liveBubble = getKinderChatFeedbackLiveRow(id)?.querySelector('.kcfLiveBubble');
+    if (liveBubble) renderKinderChatFeedbackLiveResultText(liveBubble, nextText);
+  }
+  if (document.body.classList.contains('kcfContinuousMode')) renderKinderChatFeedbackTodayRecords();
   try { updateNotificationButtons(); } catch(e) {}
   try { renderTodayFeedbackPage(); } catch(e) {}
   try { updateKinderChatFeedbackBadge(); } catch(e) {}

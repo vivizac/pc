@@ -1,0 +1,28 @@
+/* QuickNote 연속기록의 전용 목록. 대화 DOM/서버 저장 코드는 그대로 둔다. */
+#kinderChatFeedbackScreen .kcfTodayRecordsView{display:none;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:112px 18px 176px;background:#fff;position:relative;z-index:1;box-sizing:border-box;}
+#kinderChatFeedbackScreen .kcfTodayRecordsView[hidden]{display:none!important;}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfChatArea{display:none;}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfTodayRecordsView:not([hidden]){display:block;}
+.kcfTodayRecordsHead{display:flex;flex-direction:column;gap:5px;padding:0 2px 15px;border-bottom:1px solid #e9ebee;}
+.kcfTodayRecordsTitle{font-size:calc(20px * var(--olli-text-scale));font-weight:600;color:#1b1c20;letter-spacing:-.035em;}
+.kcfTodayRecordsSummary{font-size:calc(12px * var(--olli-text-scale));font-weight:400;color:#858992;line-height:1.5;}
+.kcfTodayRecordsItems{display:flex;flex-direction:column;gap:0;}
+.kcfTodayRecord{border-bottom:1px solid #f0f1f3;padding:7px 2px 9px;}
+.kcfTodayRecordTop{display:flex;align-items:center;gap:10px;min-height:56px;}
+.kcfTodayRecordOpen{flex:1;min-width:0;min-height:50px;text-align:left;display:flex;flex-direction:column;justify-content:center;gap:5px;border:0;background:none;color:inherit;padding:6px 2px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.kcfTodayRecordName{color:#1b1d22;font-size:calc(15px * var(--olli-text-scale));font-weight:580;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.kcfTodayRecordName small{font-size:calc(12px * var(--olli-text-scale));font-weight:400;color:#8e8e93;}
+.kcfTodayRecordStatus{font-size:calc(12px * var(--olli-text-scale));color:#81858d;line-height:1.3;}
+.kcfTodayRecordStatus.attention,.kcfTodayRecordStatus.error{color:#b26e25;}
+.kcfTodayRecordStatus.working{color:#6f7580;}
+.kcfTodayRecordCopy{width:42px;height:42px;flex:0 0 42px;border:1px solid #dce0e5;border-radius:50%;background:#fff;color:#8e8e93;display:inline-flex;align-items:center;justify-content:center;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background-color .16s,border-color .16s,color .16s;}
+.kcfTodayRecordCopy svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round;}
+.kcfTodayRecordCopy.copied{background:#0A84FF;border-color:#0A84FF;color:#fff;}
+.kcfTodayRecordCopy:disabled{opacity:.36;cursor:default;}
+.kcfTodayRecordCopy.copied:disabled{opacity:.65;}
+.kcfTodayRecordDetail{padding:4px 1px 12px;}
+.kcfTodayRecordText{font-size:calc(14px * var(--olli-text-scale));font-weight:400;line-height:1.73;color:#25252a;white-space:pre-wrap;overflow-wrap:anywhere;word-break:keep-all;}
+.kcfTodayRecordActions{display:flex;justify-content:flex-end;gap:8px;margin-top:13px;}
+.kcfTodayRecordActions button{font:inherit;font-size:calc(12px * var(--olli-text-scale));font-weight:450;border:1px solid #e5e7eb;background:#fff;color:#535964;border-radius:10px;padding:8px 13px;min-height:38px;}
+.kcfTodayRecordsEmpty{padding:58px 14px;color:#989ba3;text-align:center;font-size:calc(13px * var(--olli-text-scale));line-height:1.6;}
+@media (min-width:700px){#kinderChatFeedbackScreen .kcfTodayRecordsView{padding-inline:26px;}}
