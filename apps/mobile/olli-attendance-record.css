@@ -194,7 +194,7 @@
 /* 요일 정렬: 오늘 등원생 + 아래쪽 오늘 보강 */
 .recordTodaySortGuide {
   padding: 8px 14px 6px;
-  color: #8a8a8a;
+  color: #8f8f8f;
   font-size: calc(12px * var(--olli-text-scale));
   font-weight: 600;
   letter-spacing: -.02em;
@@ -206,7 +206,7 @@
 }
 .recordTodayMakeupTitle {
   padding: 8px 14px 6px;
-  color: #8a8a8a;
+  color: #8f8f8f;
   font-size: calc(12px * var(--olli-text-scale));
   font-weight: 700;
   letter-spacing: -.02em;
