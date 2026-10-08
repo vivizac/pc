@@ -7,7 +7,7 @@ const base = read('kinder-feedback.js');
 const sheet = read('kcf-teacher-sheet.js');
 const runtime = read('kcf-auto-mode-runtime.js');
 const css = read('kcf-teacher-sheet.css');
-const reg = read('olli-feedback-registration-runtime.js');
+const reg = read('../../packages/common/olli-feedback-registration-runtime.js');
 
 test('QuickNote uses a single Class sheet and fully removes normal-mode assets', () => {
   assert.ok(html.includes('kcf-teacher-sheet.js?v=20261008-continuous-1'));
