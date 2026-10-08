@@ -21,6 +21,12 @@ test('QuickNote normal and Class sheets keep the page visible under a subtle dim
   assert.match(teacherOpen,/pointer-events:none !important/);
   assert.doesNotMatch(teacherOpen,/visibility:hidden|opacity:0/);
 
-  assert.match(html,/kcf-normal-sheet\.css\?v=20261008-dim-backdrop-1/);
-  assert.match(html,/kcf-teacher-sheet\.css\?v=20261008-dim-backdrop-1/);
+  assert.match(normal,/\.kcfNormalSheet\s*\{[\s\S]*border-radius:28px 28px 0 0;[\s\S]*transform:translateY\(100%\);[\s\S]*transition:transform \.24s cubic-bezier\(\.22,\.61,\.36,1\)/);
+  assert.match(normal,/\.kcfNormalSheetOverlay\.show \.kcfNormalSheet\s*\{[\s\S]*transform:translateY\(0\)/);
+  assert.match(normal,/transition:visibility 0s linear \.24s/);
+  assert.match(html,/kcf-normal-sheet\.css\?v=20261008-sheet-motion-1/);
+  assert.match(teacher,/\.kcfTeacherSheet\s*\{[\s\S]*border-radius:28px 28px 0 0;[\s\S]*transform:translateY\(100%\);[\s\S]*transition:transform \.24s cubic-bezier\(\.22,\.61,\.36,1\)/);
+  assert.match(teacher,/\.kcfTeacherSheetOverlay\.show \.kcfTeacherSheet\s*\{[\s\S]*transform:translateY\(0\)/);
+  assert.match(teacher,/transition:visibility 0s linear \.24s/);
+  assert.match(html,/kcf-teacher-sheet\.css\?v=20261008-sheet-motion-1/);
 });
