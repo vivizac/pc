@@ -52,7 +52,7 @@ const second={id:'job-b',studentName:'하린',createdAt:'2026-10-08T10:01:00Z',
 test('mode switch uses a separate Today Records surface, not a chat row style hack',()=>{
   assert.match(page,/id="kcfChatArea"/);
   assert.match(page,/id="kcfTodayRecordsView"[^>]*hidden/);
-  assert.match(page,/kcf-today-records\.css\?v=20261008-1/);
+  assert.match(page,/kcf-today-records\.css\?v=20261008-header-align-2/);
   assert.match(sheet,/todayView\.hidden = !continuous;/);
   assert.match(css,/body\.kcfContinuousMode #kinderChatFeedbackScreen \.kcfChatArea\{display:none;\}/);
   assert.match(css,/body\.kcfContinuousMode #kinderChatFeedbackScreen \.kcfTodayRecordsView:not\(\[hidden\]\)\{display:block;\}/);
