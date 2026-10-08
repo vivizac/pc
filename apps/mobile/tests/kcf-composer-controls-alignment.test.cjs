@@ -90,7 +90,7 @@ test('the very same button nodes move to the sheet and return home; microphone s
   const global={KcfVoiceTranscription:{toggle(){voiceCalls++;}}};
   let restore;
   const close=()=>{closeCalls++;state.open=false;restore();};
-  const funcs=new Function('document','state','global','close',sheet.slice(start,end)+'\nreturn {mountSheetControls,restoreSheetControls};')(doc,state,global,close);
+  const funcs=new Function('document','state','global','close','function sheetHost(id){return document.getElementById(id);}\n'+sheet.slice(start,end)+'\nreturn {mountSheetControls,restoreSheetControls};')(doc,state,global,close);
   restore=funcs.restoreSheetControls;
   funcs.mountSheetControls();
   assert.equal(state.portaledControls.length,4);
