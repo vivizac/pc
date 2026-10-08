@@ -73,10 +73,47 @@ test('viewport resizing restores the bottom after geometry sync but before FLIP 
   const restorePos=flush.indexOf('if (fullSync) restoreOlliTalkKeyboardCloseLatest();');
   const paintPos=flush.indexOf('preserveOlliTalkKeyboardVisualFrame(motionFrame');
   assert.ok(syncPos>=0&&restorePos>syncPos&&paintPos>restorePos);
-  assert.match(source,/\/\/ One final bottom reconciliation after iOS visualViewport finishes closing\./);
-  assert.match(source,/restoreOlliTalkKeyboardCloseLatest\(\);\s*preserveOlliTalkKeyboardVisualFrame\(closingFrame\)/);
+  assert.match(source,/\/\/ Hold the two-line composer through keyboard descent;/);
+  assert.match(source,/if \(olliTalkKeyboardCollapsePending\) \{[\s\S]*?olliTalkKeyboardCollapsePending = false;[\s\S]*?syncViewport\(\);/);
+  assert.match(source,/if \(closingFrame\) preserveOlliTalkKeyboardVisualFrame\(closingFrame\);/);
   assert.match(source,/if \(isOlliTalkComposerActive\(\)\) olliTalkKeyboardUserNavigatedChat = true;/);
 });
+test('blur keeps two rows throughout keyboard descent, then collapses after viewport settles',()=>{
+  const begin=snippet('  function beginOlliTalkKeyboardMotion(){','  function continueOlliTalkKeyboardMotion(){');
+  const sync=snippet('  function syncViewport(){','  function bindViewport(){');
+  assert.match(source,/olliTalkKeyboardCollapsePending = true;\s*beginOlliTalkKeyboardMotion\(\);/);
+  const run = new Function([
+    'let olliTalkKeyboardCollapsePending = true;',
+    'let olliTalkKeyboardClosingReturnLatest = true;',
+    'let olliTalkKeyboardMotionTimer = null;',
+    'const OLLI_TALK_KEYBOARD_MOTION_SETTLE_MS = 320;',
+    'const active = new Set(["olliTalkKeyboardOpen"]);',
+    'const screen={classList:{add(n){active.add(n);},remove(n){active.delete(n);},contains(n){return active.has(n);},toggle(n,v){if(v)active.add(n);else active.delete(n);}}};',
+    'const getScreen=()=>screen;',
+    'const isOlliTalkComposerActive=()=>false;',
+    'const syncOlliTalkComposerViewport=()=>{};',
+    'const hideOlliTalkMentionMenu=()=>{};',
+    'const syncOlliTalkChatToComposer=()=>{};',
+    'const updateOlliTalkBetaComposerState=()=>{};',
+    'const syncOlliTalkInputPlaceholder=()=>{};',
+    'let later=null,restored=0,painted=0;',
+    'const clearTimeout=()=>{};',
+    'const setTimeout=(fn)=>{later=fn;return 1;};',
+    'const captureOlliTalkKeyboardVisualFrame=()=>({original:true});',
+    'const restoreOlliTalkKeyboardCloseLatest=()=>{restored++;};',
+    'const preserveOlliTalkKeyboardVisualFrame=()=>{painted++;};',
+    begin,sync,
+    'syncViewport();',
+    'const during=active.has("olliTalkKeyboardOpen");',
+    'beginOlliTalkKeyboardMotion();',
+    'syncViewport();',
+    'const still=active.has("olliTalkKeyboardOpen");',
+    'later();',
+    'return {during,still,after:active.has("olliTalkKeyboardOpen"),pending:olliTalkKeyboardCollapsePending,restored,painted};'
+  ].join('\n'))();
+  assert.deepEqual(run,{during:true,still:true,after:false,pending:false,restored:1,painted:1});
+});
+
 test('keyboard follow timing remains unchanged during opening and closing',()=>{
   assert.match(source,/const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 32;/);
   assert.match(source,/const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 42;/);
