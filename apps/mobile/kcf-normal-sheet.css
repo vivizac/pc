@@ -27,13 +27,11 @@ body.kcfNormalSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   visibility:hidden;
   pointer-events:none;
   background:rgba(0,0,0,.14);
-  transition:visibility 0s linear .24s;
 }
 
 .kcfNormalSheetOverlay.show {
   visibility:visible;
   pointer-events:auto;
-  transition-delay:0s;
 }
 
 .kcfNormalSheet {
@@ -54,6 +52,16 @@ body.kcfNormalSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
 
 .kcfNormalSheetOverlay.show .kcfNormalSheet {
   transform:translateY(0);
+}
+
+/* Closing is instant; only opening slides upward. */
+.kcfNormalSheetOverlay:not(.show) .kcfNormalSheet {
+  transition:none;
+}
+
+/* Keep native focus/keyboard on the user gesture; reveal the caret only after entrance ends. */
+.kcfNormalSheetOverlay.show:not(.entrance-complete) .kcfNormalSheetInput {
+  caret-color:transparent;
 }
 
 .kcfNormalSheetBody {
