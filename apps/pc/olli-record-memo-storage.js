@@ -38,6 +38,7 @@ installObservationMemoStorage({
 });
 
 function openStudentModal() {
+  window.__olliPendingTrialRegistration = null;
   const targetView = (currentRecordView === 'elementary' || currentRecordView === 'kinder')
     ? currentRecordView
     : ((currentObservationView === 'elementary' || currentObservationView === 'kinder') ? currentObservationView : 'elementary');
