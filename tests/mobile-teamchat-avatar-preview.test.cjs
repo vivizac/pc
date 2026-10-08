@@ -1,0 +1,21 @@
+'use strict';
+
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const test=require('node:test');
+
+const root=path.resolve(__dirname,'..');
+const talk=fs.readFileSync(path.join(root,'apps/mobile/olli-talk-beta.js'),'utf8');
+const html=fs.readFileSync(path.join(root,'apps/mobile/index.html'),'utf8');
+
+test('Team Chat avatar check messages stay visual-only and reuse the real member renderer',()=>{
+  assert.match(talk,/const OLLI_TALK_AVATAR_PREVIEW_ENABLED = true/);
+  assert.match(talk,/function renderOlliTalkAvatarPreviewMessages\(\)/);
+  assert.match(talk,/createOlliTalkMessageGroupElement\(item,OLLI_TALK_AVATAR_PREVIEW_MEMBER_ID\)/);
+  assert.match(talk,/appendOlliTalkMessageToGroup\(group,item,OLLI_TALK_AVATAR_PREVIEW_MEMBER_ID\)/);
+  assert.match(talk,/body:'아이콘 확인용 메시지입니다\.'/);
+  assert.match(talk,/Promise\.allSettled\(\[memberLoadPromise,messageLoadPromise\]\)/);
+  assert.match(talk,/group\.dataset\.olliAvatarPreview='1'/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261008-avatar-preview-1/);
+});
