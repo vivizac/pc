@@ -53,6 +53,17 @@ test('settings entry is Team Chat settings and avatar picker is available to eve
   assert.match(pcSettingsCss,/\.olliTeamTalkAvatarGrid/);
 });
 
+test('mobile Team Chat avatar preview messages are visual-only and use the real member renderer',()=>{
+  assert.match(mobileTalk,/const OLLI_TALK_AVATAR_PREVIEW_ENABLED = true/);
+  assert.match(mobileTalk,/function renderOlliTalkAvatarPreviewMessages\(\)/);
+  assert.match(mobileTalk,/createOlliTalkMessageGroupElement\(item,OLLI_TALK_AVATAR_PREVIEW_MEMBER_ID\)/);
+  assert.match(mobileTalk,/appendOlliTalkMessageToGroup\(group,item,OLLI_TALK_AVATAR_PREVIEW_MEMBER_ID\)/);
+  assert.match(mobileTalk,/body:'아이콘 확인용 메시지입니다\.'/);
+  assert.match(mobileTalk,/Promise\.allSettled\(\[memberLoadPromise,messageLoadPromise\]\)/);
+  assert.doesNotMatch(mobileTalk,/avatar-preview-[\s\S]{0,500}callOlliTalkRpc\('olli_team_chat_send'/);
+  assert.match(mobileHtml,/olli-talk-beta\.js\?v=20261008-avatar-preview-1/);
+});
+
 test('PC and mobile Team Chat render member avatar keys instead of name initials when catalog is available',()=>{
   assert.match(mobileTalk,/getOlliTalkMemberAvatarKey/);
   assert.match(mobileTalk,/item\?\.sender_member_id/);
