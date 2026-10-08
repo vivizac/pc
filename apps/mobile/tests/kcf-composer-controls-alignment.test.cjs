@@ -6,6 +6,7 @@ const html = fs.readFileSync('index.html', 'utf8');
 const sheet = fs.readFileSync('kcf-teacher-sheet.js', 'utf8');
 const sheetCss = fs.readFileSync('kcf-teacher-sheet.css', 'utf8');
 const autoCss = fs.readFileSync('kcf-auto-mode.css', 'utf8');
+const feedbackCss = fs.readFileSync('kinder-feedback.css', 'utf8');
 const todayCss = fs.readFileSync('kcf-today-records.css', 'utf8');
 
 test('the original Plus and microphone remain present and visible in the idle toolbar',()=>{
@@ -13,8 +14,8 @@ test('the original Plus and microphone remain present and visible in the idle to
   assert.match(html, /id="kcfVoiceBtn"/);
   assert.match(html, /id="kcfModeSwitchBtn"/);
   assert.doesNotMatch(autoCss, /kcfTeacherRosterMode \.kcfComposerBottom \{/);
-  assert.match(autoCss, /\.kcfAttachBtn \{[\s\S]*?display:inline-flex;/);
-  assert.match(autoCss, /\.kcfVoiceBtn \{[\s\S]*?display:inline-flex;/);
+  assert.match(feedbackCss, /\.kcfAttachBtn \{[\s\S]*?display:inline-flex;/);
+  assert.match(feedbackCss, /\.kcfVoiceBtn \{[\s\S]*?display:inline-flex;/);
   assert.doesNotMatch(autoCss, /\.kcfVoiceBtn \{\s*display:none;/);
   assert.doesNotMatch(autoCss, /\.kcfAttachBtn \{\s*display:none;/);
 });
