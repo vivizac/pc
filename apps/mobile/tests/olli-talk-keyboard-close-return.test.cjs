@@ -87,7 +87,7 @@ test('the two-row composer stays expanded during keyboard descent, then collapse
   assert.ok(mainOpen>0);
   const screen={classList:{active:false,toggle(name,value){if(name==='olliTalkKeyboardOpen')this.active=value;}}};
   const simulate=new Function('screen','focused','closing',
-    'const getScreen=()=>screen;const isOlliTalkComposerActive=()=>focused;'
+    'let olliTalkKeyboardClosing=closing;const getScreen=()=>screen;const isOlliTalkComposerActive=()=>focused;'
     +'const syncOlliTalkComposerViewport=()=>{};const hideOlliTalkMentionMenu=()=>{};'
     +'const syncOlliTalkChatToComposer=()=>{};const updateOlliTalkBetaComposerState=()=>{};'
     +'const syncOlliTalkInputPlaceholder=()=>{};'
