@@ -31,7 +31,7 @@ function runFollowFrames(keyboardOpen) {
 
 test('opening follows more gently without changing the closing response',()=>{
   assert.match(source,/const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 32;/);
-  assert.match(source,/const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 44;/);
+  assert.match(source,/const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 41;/);
   const opening = runFollowFrames(true);
   const closing = runFollowFrames(false);
   assert.ok(opening.composer < closing.composer, 'opening offsets should settle more slowly');
@@ -46,5 +46,5 @@ test('the source still uses a single FLIP controller without duplicating scrolli
   assert.match(source,/olliTalkMessagesVisualOffsetY \+= \(0 - olliTalkMessagesVisualOffsetY\) \* follow;/);
   assert.match(source,/if \(prefersReducedOlliTalkMotion\(\)\) \{[\s\S]*?olliTalkKeyboardVisualLastTs = 0;/);
   assert.match(source,/\/\/ The latest-message anchor alone owns scrollTop\./);
-  assert.match(html,/olli-talk-beta\.js\?v=20261008-keyboard-close-return-1/);
+  assert.match(html,/olli-talk-beta\.js\?v=20261008-two-row-close-1/);
 });
