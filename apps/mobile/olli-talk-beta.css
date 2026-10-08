@@ -998,6 +998,9 @@
   height:100%;
   display:block;
   object-fit:cover;
+  /* Enlarge only the artwork, hiding baked-in pale margins inside the clipped avatar tile. */
+  transform:scale(1.18);
+  transform-origin:center;
 }
 
 #olliTalkBetaScreen .olliTalkBetaMemberAvatar.textAvatar{
