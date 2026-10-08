@@ -30,11 +30,14 @@ test('Team Chat inactive input and mention button use the shared mobile keyboard
   assert.doesNotMatch(js,/stopOlliTalkComposerActivationEvent\(event\)/);
   assert.match(js,/if \(olliTalkMentionModeActive\) \{[\s\S]*OlliMobileKeyboardActivation\?\.stopEvent\(event\)[\s\S]*olliTalkMentionModeActive = false/);
   assert.doesNotMatch(js,/function focusOlliTalkComposerInput/);
-  assert.match(js,/function runOlliTalkComposerActivation\(event, mode\)[\s\S]*mode === 'mention'[\s\S]*openOlliTalkMentionPicker\(event\)[\s\S]*activateOlliTalkComposerInput\(event\)/);
+  assert.match(js,/async function runOlliTalkComposerControl\(event, options = \{\}\)[\s\S]*const useMention = options\.mention === true[\s\S]*activateOlliTalkComposerInput\(event\)[\s\S]*renderOlliTalkMentionMenu\(\)[\s\S]*loadOlliTalkMembers\(\)[\s\S]*syncViewport\(\)/);
+  assert.match(js,/if \(useMention && olliTalkMentionModeActive\)[\s\S]*clearOlliTalkMentionDraft\(\)[\s\S]*input\.blur\(\)/);
+  assert.match(js,/if \(useMention\) \{[\s\S]*olliTalkMentionModeActive = true[\s\S]*input\.setRangeText\(insertion/);
+  assert.match(js,/function runOlliTalkComposerActivation\(event, mode\)[\s\S]*runOlliTalkComposerControl\(event, \{ mention:mode === 'mention' \}\)/);
   assert.match(js,/function bindOlliTalkComposerActivationControl\(target, mode\)[\s\S]*target\.addEventListener\('click'[\s\S]*runOlliTalkComposerActivation\(event, mode\)/);
   assert.match(js,/bindOlliTalkComposerActivationControl\(composerActivateButton, 'input'\)/);
   assert.match(js,/bindOlliTalkComposerActivationControl\(mentionTriggerButton, 'mention'\)/);
   assert.doesNotMatch(js,/composerActivateButton\.addEventListener\('pointerdown'/);
   assert.doesNotMatch(js,/mentionTriggerButton\.addEventListener\('pointerdown'/);
-  assert.match(js,/async function openOlliTalkMentionPicker\(event\)[\s\S]*activateOlliTalkComposerInput\(event\)/);
+  assert.match(js,/async function openOlliTalkMentionPicker\(event\)[\s\S]*runOlliTalkComposerControl\(event, \{ mention:true \}\)/);
 });
