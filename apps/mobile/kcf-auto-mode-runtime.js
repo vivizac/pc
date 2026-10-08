@@ -266,6 +266,18 @@
   }
 
   function scheduleStudentForRow(row, byId) {
+    // Guest trials have a stable one-time session UUID, not a registered student UUID.
+    // Keep their identity separate to avoid foreign-key and student-directory pollution.
+    if (row && row.is_guest === true && clean(row.session_type) === 'trial') {
+      var sessionId = clean(row.id);
+      var guestName = clean(row.student_name);
+      if (!sessionId || !guestName) return null;
+      var division = clean(row.division) === 'kinder' ? 'kinder' : 'elementary';
+      return {
+        id: 'trial:' + sessionId, name:guestName, type:division, division:division,
+        status:'trial', __olliTrialSessionId:sessionId
+      };
+    }
     var studentId = clean(row && row.student_id);
     if (!studentId) return null;
     var localStudent = byId && byId[studentId];
@@ -308,7 +320,8 @@
       feedbackTeacherMemberId: feedbackTeacher.memberId,
       teacherName: feedbackTeacher.name,
       teacherMemberId: feedbackTeacher.memberId,
-      sourceKind: sourceKind || 'regular'
+      sourceKind: sourceKind || 'regular',
+      trialSessionId: clean(student.__olliTrialSessionId)
     };
   }
 
@@ -342,7 +355,7 @@
       if (clean(row.status).toLowerCase() === 'cancelled') return;
       var student = scheduleStudentForRow(row, byId);
       if (!student) return;
-      var next = makeQueueItem(student, row, week, clean(row.session_kind || 'one_time'));
+      var next = makeQueueItem(student, row, week, clean(row.session_type) === 'trial' ? 'trial' : clean(row.session_kind || 'one_time'));
       if (!queueItemMatchesCurrentMember(next)) return;
       var current = selectedByStudent.get(next.studentId);
       if (shouldReplaceQueueItem(current, next)) selectedByStudent.set(next.studentId, next);
@@ -777,7 +790,7 @@
       button.setAttribute('role', 'button');
       var isSelected = item.studentId === clean(state.selectedStudentId || global.__kcfSelectedStudentId);
       button.className = 'kcfAutoStudentChip' + (isSelected ? ' selected' : '');
-      button.textContent = item.name;
+      button.textContent = item.name + (item.trialSessionId ? ' · 체험' : '');
       button.dataset.studentId = item.studentId;
       button.setAttribute('aria-label', item.name + ' 선택');
       button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
@@ -1246,7 +1259,8 @@
     return {
       studentId: item.studentId,
       studentName: item.name,
-      studentDivision: clean(item.studentDivision || studentDivision(item.student))
+      studentDivision: clean(item.studentDivision || studentDivision(item.student)),
+      trialSessionId: clean(item.trialSessionId)
     };
   }
 
