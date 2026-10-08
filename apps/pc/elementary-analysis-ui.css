@@ -493,3 +493,20 @@ border-color: #F0F0F0;
   text-overflow: clip;
   text-align: left;
 }
+
+/* PC: keep the analysis questionnaire within the content area, clear of the sidebar. */
+@media (min-width: 900px) {
+  body.olliPcApp #elementaryAnalysisModal .analysisSheetPanel {
+    left: auto;
+    right: 24px;
+    width: min(760px, calc(100vw - 304px));
+    max-width: 760px;
+    border-radius: 24px 24px 0 0;
+  }
+  body.olliPcApp #elementaryAnalysisModal .analysisSheetActions {
+    left: auto;
+    right: 24px;
+    width: min(760px, calc(100vw - 304px));
+    border-radius: 0;
+  }
+}
