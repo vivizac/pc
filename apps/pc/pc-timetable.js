@@ -2057,8 +2057,8 @@
       alert('학생추가 화면을 열 수 없습니다.'); return;
     }
     closeDialog();
-    window.currentRecordView = division;
-    window.currentObservationView = division;
+    currentRecordView = division;
+    currentObservationView = division;
     window.openStudentModal();
     const input = document.getElementById('studentNameInput');
     if (input) input.value = name;
