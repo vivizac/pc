@@ -142,6 +142,7 @@
   const OLLI_TALK_COMPOSER_MESSAGE_GAP = 10;
   const OLLI_TALK_KEYBOARD_MOTION_SETTLE_MS = 320;
   let olliTalkKeyboardMotionTimer = null;
+  let olliTalkKeyboardCollapsePending = false;
 
   function beginOlliTalkKeyboardMotion(){
     const screen = getScreen();
@@ -151,13 +152,19 @@
     olliTalkKeyboardMotionTimer = setTimeout(() => {
       olliTalkKeyboardMotionTimer = null;
       screen.classList.remove('olliTalkKeyboardMotion');
-      // One final bottom reconciliation after iOS visualViewport finishes closing.
+      // Hold the two-line composer through keyboard descent; collapse only
+      // when the last visualViewport movement has settled.
+      const needsFinalLayout = olliTalkKeyboardCollapsePending || olliTalkKeyboardClosingReturnLatest;
+      const closingFrame = needsFinalLayout ? captureOlliTalkKeyboardVisualFrame() : null;
+      if (olliTalkKeyboardCollapsePending) {
+        olliTalkKeyboardCollapsePending = false;
+        syncViewport();
+      }
       if (olliTalkKeyboardClosingReturnLatest) {
-        const closingFrame = captureOlliTalkKeyboardVisualFrame();
         restoreOlliTalkKeyboardCloseLatest();
-        preserveOlliTalkKeyboardVisualFrame(closingFrame);
         olliTalkKeyboardClosingReturnLatest = false;
       }
+      if (closingFrame) preserveOlliTalkKeyboardVisualFrame(closingFrame);
     }, OLLI_TALK_KEYBOARD_MOTION_SETTLE_MS);
   }
 
@@ -170,7 +177,7 @@
   const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 32;
   // iOS keyboard opening: lag the same composer + message pair just slightly.
   // Closing keeps the original response speed.
-  const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 44;
+  const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 42;
   let olliTalkKeyboardVisualRaf = 0;
   let olliTalkKeyboardViewportRaf = 0;
   let olliTalkKeyboardVisualLastTs = 0;
@@ -455,7 +462,7 @@
     const inputFocused = isOlliTalkComposerActive();
 
     syncOlliTalkComposerViewport();
-    screen.classList.toggle('olliTalkKeyboardOpen', inputFocused);
+    screen.classList.toggle('olliTalkKeyboardOpen', inputFocused || olliTalkKeyboardCollapsePending);
     if (!inputFocused) hideOlliTalkMentionMenu();
     syncOlliTalkChatToComposer();
     updateOlliTalkBetaComposerState();
@@ -8620,6 +8627,7 @@
     if (input) input.blur();
     olliTalkKeyboardClosingReturnLatest = false;
     olliTalkKeyboardUserNavigatedChat = false;
+    olliTalkKeyboardCollapsePending = false;
     if (olliTalkKeyboardMotionTimer) clearTimeout(olliTalkKeyboardMotionTimer);
     olliTalkKeyboardMotionTimer = null;
     stopOlliTalkKeyboardVisualController();
@@ -9016,6 +9024,7 @@
         const chatArea = document.getElementById('olliTalkBetaChatArea');
         olliTalkKeyboardClosingReturnLatest = false;
         olliTalkKeyboardUserNavigatedChat = false;
+        olliTalkKeyboardCollapsePending = false;
         olliTalkKeyboardFollowLatest = !chatArea || isOlliTalkChatNearBottom(chatArea,120);
         beginOlliTalkKeyboardMotion();
         // focus/resize/scroll 모두 같은 RAF 업데이트 경로를 사용합니다.
@@ -9025,6 +9034,7 @@
         olliTalkKeyboardClosingReturnLatest = olliTalkKeyboardFollowLatest
           && !olliTalkKeyboardUserNavigatedChat && !olliTalkChatGestureActive;
         olliTalkKeyboardFollowLatest = false;
+        olliTalkKeyboardCollapsePending = true;
         beginOlliTalkKeyboardMotion();
         scheduleOlliTalkKeyboardViewportUpdate({fullSync:true});
       });
