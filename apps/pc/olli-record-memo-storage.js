@@ -82,9 +82,96 @@ function openStudentModal() {
 
   setTimeout(() => nameInput.focus(), 50);
 }
+
+function olliTrialFeedbackPreviewActive(context) {
+  const modal = document.getElementById('studentModal');
+  return window.__olliPendingTrialRegistration === context
+    && !!modal && modal.style.display !== 'none';
+}
+
+async function olliTrialFeedbackLoadPreview(context) {
+  const section = document.getElementById('olliTrialFeedbackPreview');
+  const status = section?.querySelector('[data-trial-preview-status]');
+  const list = section?.querySelector('[data-trial-preview-list]');
+  const skip = section?.querySelector('[data-trial-preview-skip]');
+  if (!status || !list || !skip) return;
+  context.previewStatus = 'loading';
+  skip.hidden = true;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    if (!olliTrialFeedbackPreviewActive(context)) return;
+    status.textContent = attempt === 1
+      ? '체험 피드백을 불러오는 중입니다. (1/3)'
+      : '체험 피드백 불러오기에 실패했어요. 다시 시도합니다. (' + attempt + '/3)';
+    try {
+      if (typeof window.OlliTimetableService?.previewTrialFeedback !== 'function') {
+        throw new Error('체험 피드백 조회 모듈이 없습니다.');
+      }
+      const result = await window.OlliTimetableService.previewTrialFeedback(context.trialSessionId);
+      if (!Array.isArray(result?.feedbacks)) throw new Error('피드백 조회 응답이 올바르지 않습니다.');
+      if (!olliTrialFeedbackPreviewActive(context)) return;
+      context.feedbacks = result.feedbacks;
+      context.previewStatus = 'ready';
+      list.textContent = '';
+      context.feedbacks.forEach((feedback) => {
+        const entry = document.createElement('div');
+        entry.className = 'olliTrialFeedbackRecord';
+        entry.textContent = String(feedback?.content || '');
+        list.appendChild(entry);
+      });
+      list.hidden = !context.feedbacks.length;
+      status.textContent = context.feedbacks.length
+        ? '체험 피드백 ' + context.feedbacks.length + '건을 불러왔어요. 학생 추가 시 해당 학생의 피드백으로 연결됩니다.'
+        : '저장된 체험 피드백이 없어요. 학생 추가를 계속 진행할 수 있습니다.';
+      return;
+    } catch (_) {
+      if (!olliTrialFeedbackPreviewActive(context)) return;
+      if (attempt === 3) {
+        context.previewStatus = 'failed';
+        status.textContent = '체험 피드백 불러오기를 3번 시도했지만 실패했어요. 다음에 다시 시도해 주세요. 피드백 없이 등록하려면 아래의 ‘피드백 없이 계속 진행’을 눌러 주세요. 기존 체험 피드백은 그대로 보존됩니다.';
+        skip.hidden = false;
+        return;
+      }
+      status.textContent = '체험 피드백 불러오기 실패 (' + attempt + '/3). 다시 시도합니다.';
+      await new Promise(resolve => setTimeout(resolve, 450));
+    }
+  }
+}
+
+function olliBeginTrialRegistration(details) {
+  const row = document.querySelector('#studentModal .studentPopupNameTeacherRow');
+  if (!row || !details?.trialSessionId) return false;
+  document.getElementById('olliTrialFeedbackPreview')?.remove();
+  const context = {
+    trialSessionId: String(details.trialSessionId),
+    name: String(details.name || '').trim(),
+    division: String(details.division || ''),
+    previewStatus: 'loading',
+    feedbacks: []
+  };
+  window.__olliPendingTrialRegistration = context;
+  const section = document.createElement('section');
+  section.id = 'olliTrialFeedbackPreview';
+  section.innerHTML = '<div class="olliTrialFeedbackTitle">체험수업 피드백</div>'
+    + '<div class="olliTrialFeedbackStatus" role="status" aria-live="polite" data-trial-preview-status></div>'
+    + '<div class="olliTrialFeedbackList" data-trial-preview-list hidden></div>'
+    + '<button type="button" class="olliTrialFeedbackSkip" data-trial-preview-skip hidden>피드백 없이 계속 진행</button>';
+  row.insertAdjacentElement('afterend', section);
+  section.querySelector('[data-trial-preview-skip]').addEventListener('click', () => {
+    if (!olliTrialFeedbackPreviewActive(context) || context.previewStatus !== 'failed') return;
+    context.previewStatus = 'skipped';
+    section.querySelector('[data-trial-preview-skip]').hidden = true;
+    section.querySelector('[data-trial-preview-status]').textContent =
+      '피드백 없이 학생 추가를 진행합니다. 체험 피드백 원본은 보존되며, 나중에 별도 연결이 필요합니다.';
+  });
+  void olliTrialFeedbackLoadPreview(context);
+  return true;
+}
+window.olliBeginTrialRegistration = olliBeginTrialRegistration;
+
 function closeStudentModal() {
-  hideModalOnly('studentModal');
   window.__olliPendingTrialRegistration = null;
+  document.getElementById('olliTrialFeedbackPreview')?.remove();
+  hideModalOnly('studentModal');
 }
 async function confirmStudent() {
   const name = document.getElementById('studentNameInput').value.trim();
@@ -138,6 +225,14 @@ async function confirmStudent() {
   }
 
   const trialRegistration = window.__olliPendingTrialRegistration;
+  if (trialRegistration && trialRegistration.previewStatus === 'loading') {
+    alert('체험 피드백을 불러오는 중이에요. 잠시 기다려 주세요.');
+    return;
+  }
+  if (trialRegistration && trialRegistration.previewStatus === 'failed') {
+    alert('체험 피드백 불러오기가 3번 실패했어요. 나중에 다시 시도하거나 ‘피드백 없이 계속 진행’을 선택해 주세요.');
+    return;
+  }
   if (trialRegistration && (trialRegistration.name !== name || trialRegistration.division !== type)) {
     alert('체험수업과 동일한 학생 이름과 학부로 등록해 주세요.'); return;
   }
@@ -167,13 +262,15 @@ async function confirmStudent() {
 
   try {
     const savedStudent = await ensureStudentSavedToSupabase(newStudent);
-    if (trialRegistration) {
+    if (trialRegistration && trialRegistration.previewStatus === 'ready') {
       try {
         if (!window.OlliTimetableService?.linkTrialFeedback) throw new Error('체험 피드백 연결 모듈을 찾지 못했습니다.');
         await window.OlliTimetableService.linkTrialFeedback(trialRegistration.trialSessionId, savedStudent.id);
       } catch (error) {
         alert('학생 등록은 완료되었지만 체험 피드백 연결에 실패했습니다. 체험 피드백 원본은 보존됩니다.\\n\\n' + (error?.message || error));
       }
+    } else if (trialRegistration?.previewStatus === 'skipped') {
+      showPushToast('체험 피드백 없이 학생을 추가했습니다. 체험 피드백 원본은 그대로 보존됩니다.');
     }
     closeStudentModal();
     await loadRecords('');

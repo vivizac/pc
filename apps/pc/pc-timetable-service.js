@@ -371,6 +371,12 @@
     }));
   }
 
+  async function previewTrialFeedback(trialSessionId) {
+    return rpc('olli_trial_feedback_preview', contextPayload({
+      p_trial_session_id: trialSessionId
+    }));
+  }
+
   async function linkTrialFeedback(trialSessionId, studentId) {
     return rpc('olli_trial_feedback_link_student', contextPayload({
       p_trial_session_id: trialSessionId, p_student_id: studentId
@@ -645,6 +651,7 @@
     changeSchedule,
     postponeFirstClass,
     linkTrialFeedback,
+    previewTrialFeedback,
     resolveWaitlist,
     addMakeup,
     addWaitlist,

@@ -105,3 +105,11 @@ body.olliPcApp #recordAcademyDashboard .recordAcademyConsultSection{
   font-weight:800;
   white-space:nowrap;
 }
+/* Trial feedback preview inside the existing PC student registration form. */
+#studentModal .olliTrialFeedbackPreview{margin:10px 0 16px;padding:13px 15px;border:1px solid #e5e9ed;border-radius:13px;background:#fff;color:#303942}
+#studentModal .olliTrialFeedbackTitle{margin-bottom:7px;font-size:13px;font-weight:700}
+#studentModal .olliTrialFeedbackStatus{font-size:12px;line-height:1.65;color:#67727c}
+#studentModal .olliTrialFeedbackList{display:grid;gap:8px;max-height:164px;overflow-y:auto;margin-top:9px}
+#studentModal .olliTrialFeedbackList[hidden],#studentModal .olliTrialFeedbackSkip[hidden]{display:none}
+#studentModal .olliTrialFeedbackRecord{white-space:pre-wrap;overflow-wrap:anywhere;padding:9px 11px;border-radius:9px;background:#f6f8fa;font-size:12px;line-height:1.65}
+#studentModal .olliTrialFeedbackSkip{margin-top:10px;padding:9px 12px;border:1px solid #dbe2e8;border-radius:9px;background:#f7f8fa;color:#36414b;font:inherit;font-size:12px;cursor:pointer}

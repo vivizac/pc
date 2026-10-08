@@ -2062,7 +2062,11 @@
     window.openStudentModal();
     const input = document.getElementById('studentNameInput');
     if (input) input.value = name;
-    window.__olliPendingTrialRegistration = {trialSessionId:clean(item.id),name,division};
+    if (typeof window.olliBeginTrialRegistration !== 'function'
+        || !window.olliBeginTrialRegistration({trialSessionId:clean(item.id),name,division})) {
+      alert('체험 피드백 조회 화면을 열지 못했습니다. 학생추가 팝업을 다시 열어 주세요.');
+      window.closeStudentModal();
+    }
   }
 
   function openPickupAdd(dataset) {
