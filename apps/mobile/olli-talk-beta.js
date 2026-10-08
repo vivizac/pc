@@ -7877,6 +7877,35 @@
     });
   }
 
+  function runOlliTalkComposerActivation(event, mode){
+    if (mode === 'mention') return openOlliTalkMentionPicker(event);
+    const input = activateOlliTalkComposerInput(event);
+    if (!input) return false;
+    renderOlliTalkMentionMenu();
+    return true;
+  }
+
+  function bindOlliTalkComposerActivationControl(target, mode){
+    if (!target || target.dataset.olliComposerActivationBound === '1') return;
+    target.dataset.olliComposerActivationBound = '1';
+    target.addEventListener('click', event => {
+      try {
+        const result = runOlliTalkComposerActivation(event, mode);
+        if (result && typeof result.catch === 'function') {
+          result.catch(error => console.warn(
+            mode === 'mention' ? '올리톡 멘션 전환 실패:' : '올리톡 입력창 활성화 실패:',
+            error
+          ));
+        }
+      } catch(error) {
+        console.warn(
+          mode === 'mention' ? '올리톡 멘션 전환 실패:' : '올리톡 입력창 활성화 실패:',
+          error
+        );
+      }
+    });
+  }
+
   async function openOlliTalkMentionPicker(event){
     const input = getOlliTalkBetaInput();
     if (!input) return false;
@@ -8948,43 +8977,8 @@
       });
     }
 
-    if (composerActivateButton) {
-      composerActivateButton.addEventListener('pointerdown', event => {
-        if (event.isPrimary === false) return;
-        if (event.pointerType === 'mouse' && event.button !== 0) return;
-        activateOlliTalkComposerInput(event);
-        renderOlliTalkMentionMenu();
-      });
-      composerActivateButton.addEventListener('click', event => {
-        // Pointer input is handled before iOS focus/viewport changes can move the chat.
-        // Keep click only for keyboard/synthetic activation.
-        if (event.detail !== 0) {
-          event.preventDefault();
-          event.stopPropagation();
-          return;
-        }
-        activateOlliTalkComposerInput(event);
-        renderOlliTalkMentionMenu();
-      });
-    }
-
-    if (mentionTriggerButton) {
-      mentionTriggerButton.addEventListener('pointerdown', event => {
-        if (event.isPrimary === false) return;
-        if (event.pointerType === 'mouse' && event.button !== 0) return;
-        openOlliTalkMentionPicker(event).catch(error => console.warn('올리톡 멘션 전환 실패:', error));
-      });
-      mentionTriggerButton.addEventListener('click', event => {
-        // Pointer input is already handled before blur/layout changes can move the button.
-        // Keep click only for keyboard/synthetic activation.
-        if (event.detail !== 0) {
-          event.preventDefault();
-          event.stopPropagation();
-          return;
-        }
-        openOlliTalkMentionPicker(event).catch(error => console.warn('올리톡 멘션 전환 실패:', error));
-      });
-    }
+    bindOlliTalkComposerActivationControl(composerActivateButton, 'input');
+    bindOlliTalkComposerActivationControl(mentionTriggerButton, 'mention');
 
     if (sendButton) {
       sendButton.addEventListener('pointerdown', event => {
