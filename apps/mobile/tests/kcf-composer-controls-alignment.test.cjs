@@ -6,15 +6,16 @@ const html = fs.readFileSync('index.html', 'utf8');
 const sheet = fs.readFileSync('kcf-teacher-sheet.js', 'utf8');
 const sheetCss = fs.readFileSync('kcf-teacher-sheet.css', 'utf8');
 const autoCss = fs.readFileSync('kcf-auto-mode.css', 'utf8');
+const feedbackCss = fs.readFileSync('kinder-feedback.css', 'utf8');
 const todayCss = fs.readFileSync('kcf-today-records.css', 'utf8');
 
 test('the original Plus and microphone remain present and visible in the idle toolbar',()=>{
   assert.match(html, /id="kcfAttachBtn"/);
   assert.match(html, /id="kcfVoiceBtn"/);
   assert.match(html, /id="kcfModeSwitchBtn"/);
-  assert.match(autoCss, /grid-template-columns:33px minmax\(0,1fr\) 88px 33px 33px;/);
-  assert.match(autoCss, /\.kcfAttachBtn \{[\s\S]*?display:inline-flex;/);
-  assert.match(autoCss, /\.kcfVoiceBtn \{[\s\S]*?display:inline-flex;/);
+  assert.doesNotMatch(autoCss, /kcfTeacherRosterMode \.kcfComposerBottom \{/);
+  assert.match(feedbackCss, /\.kcfAttachBtn \{[\s\S]*?display:inline-flex;/);
+  assert.match(feedbackCss, /\.kcfVoiceBtn \{[\s\S]*?display:inline-flex;/);
   assert.doesNotMatch(autoCss, /\.kcfVoiceBtn \{\s*display:none;/);
   assert.doesNotMatch(autoCss, /\.kcfAttachBtn \{\s*display:none;/);
 });
@@ -27,7 +28,7 @@ test('active sheet has the same five control slots, reusing existing DOM nodes',
   assert.match(sheet, /오늘 수업 기록 학생이 없습니다\./);
   assert.match(sheetCss, /\.kcfTeacherSheetRosterHost\[hidden\]\{display:none;\}/);
   assert.match(sheet, /teacherMode\.refreshRoster\(\)/);
-  assert.match(sheetCss, /#kcfTeacherSheetEmptyRosterGuide\{grid-column:2;/);
+  assert.match(sheetCss, /#kcfTeacherSheetEmptyRosterGuide\{color:/);
   assert.match(sheet, /id="kcfTeacherSheetVoiceHost"/);
   assert.match(sheet, /id="kcfTeacherSheetSendBtn"/);
   // + → roster → mode → microphone → send, also while active.
@@ -36,10 +37,9 @@ test('active sheet has the same five control slots, reusing existing DOM nodes',
   assert.ok(sheet.indexOf('id="kcfTeacherSheetEmptyRosterGuide"') < sheet.indexOf('id="kcfTeacherSheetModeHost"'));
   assert.ok(sheet.indexOf('id="kcfTeacherSheetModeHost"') < sheet.indexOf('id="kcfTeacherSheetVoiceHost"'));
   assert.ok(sheet.indexOf('id="kcfTeacherSheetVoiceHost"') < sheet.indexOf('id="kcfTeacherSheetSendBtn"'));
-  assert.match(autoCss, /kcfTeacherRosterMode \.kcfAutoStudentRoster \{[\s\S]*?grid-column:1 \/ -1;[\s\S]*?grid-row:2;/);
-  assert.match(autoCss, /kcfTeacherRosterMode \.kcfComposerModeBtn \{[\s\S]*?grid-column:3;/);
-
-  assert.match(sheetCss, /grid-template-columns:33px minmax\(0,1fr\) 88px 33px 33px;/);
+  assert.match(sheetCss, /\.kcfTeacherSheetBottom \{[\s\S]*?display:flex;/);
+  assert.match(sheetCss, /\.kcfTeacherSheetSpacer\{flex:1 1 auto;min-width:0;\}/);
+  assert.doesNotMatch(sheetCss, /grid-template-columns:33px minmax\(0,1fr\) 88px 33px 33px;/);
   assert.match(sheet, /\['kcfAttachBtn','kcfTeacherSheetAttachHost'\]/);
   assert.match(sheet, /\['kcfModeSwitchBtn','kcfTeacherSheetModeHost'\]/);
   assert.match(sheet, /\['kcfVoiceBtn','kcfTeacherSheetVoiceHost'\]/);
@@ -69,12 +69,12 @@ test('empty student guide never replaces or moves the four permanent actions',()
   const offsets=order.map(id=>bottomMarkup.indexOf('id="'+id+'"'));
   assert.ok(offsets.every(n=>n>=0));
   assert.ok(offsets.every((value,i)=>i===0||offsets[i-1]<value));
-  assert.match(sheetCss, /grid-template-columns:33px minmax\(0,1fr\) 88px 33px 33px;/);
-  assert.match(sheetCss, /grid-template-rows:40px;/);
-  for(const [id,col] of [['kcfTeacherSheetAttachHost',1],['kcfTeacherSheetEmptyRosterGuide',2],['kcfTeacherSheetModeHost',3],['kcfTeacherSheetVoiceHost',4]]){
-    assert.ok(sheetCss.includes('#'+id+'{grid-column:'+col+';grid-row:1;'));
-  }
-  assert.ok(sheetCss.includes('.kcfTeacherSheetSendBtn{grid-column:5;grid-row:1;}'));
+  assert.match(sheetCss, /\.kcfTeacherSheetBottom \{[\s\S]*?display:flex;/);
+  assert.match(sheetCss, /\.kcfTeacherSheetSpacer\{flex:1 1 auto;min-width:0;\}/);
+  assert.match(sheetCss, /#kcfTeacherSheetModeHost\{flex:0 0 auto;margin-left:8px;margin-right:12px;\}/);
+  assert.match(sheetCss, /#kcfTeacherSheetVoiceHost\{flex:0 0 33px;margin-right:12px;\}/);
+  assert.match(sheetCss, /\.kcfTeacherSheetSendBtn\{flex:0 0 33px;\}/);
+  assert.doesNotMatch(sheetCss, /grid-template-rows:40px;/);
   assert.ok(sheetCss.includes('#kcfTeacherSheetEmptyRosterGuide[hidden]{display:none;}'));
   assert.doesNotMatch(bottomMarkup, /kcfTeacherSheet(?:Attach|Mode|Voice)Host[^>]*hidden/);
   assert.match(sheet, /\['kcfAttachBtn','kcfTeacherSheetAttachHost'\]/);

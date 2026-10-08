@@ -8,6 +8,8 @@
   let olliTalkBetaViewportBound = false;
   let olliTalkChatMeasureRaf = 0;
   let olliTalkKeyboardFollowLatest = false;
+  let olliTalkKeyboardClosingReturnLatest = false;
+  let olliTalkKeyboardUserNavigatedChat = false;
   let olliTalkChatGestureActive = false;
   let olliTalkChatGestureSettleTimer = null;
   let olliTalkArchiveTab = 'materials';
@@ -149,6 +151,13 @@
     olliTalkKeyboardMotionTimer = setTimeout(() => {
       olliTalkKeyboardMotionTimer = null;
       screen.classList.remove('olliTalkKeyboardMotion');
+      // One final bottom reconciliation after iOS visualViewport finishes closing.
+      if (olliTalkKeyboardClosingReturnLatest) {
+        const closingFrame = captureOlliTalkKeyboardVisualFrame();
+        restoreOlliTalkKeyboardCloseLatest();
+        preserveOlliTalkKeyboardVisualFrame(closingFrame);
+        olliTalkKeyboardClosingReturnLatest = false;
+      }
     }, OLLI_TALK_KEYBOARD_MOTION_SETTLE_MS);
   }
 
@@ -316,6 +325,10 @@
     if (fullSync) syncViewport();
     else if (composerSync) syncOlliTalkComposerViewport();
 
+    // Focus opening anchors messages above the composer; blur must reverse it.
+    // Run after layout reserve updates, before the shared FLIP capture is painted.
+    if (fullSync) restoreOlliTalkKeyboardCloseLatest();
+
     if (anchorPendingReason) scheduleOlliTalkPendingReasonAnchorAfterViewport();
 
     // The latest-message anchor alone owns scrollTop. Our FLIP controller
@@ -348,6 +361,16 @@
     if (!chatArea) return true;
     const distance = Math.max(0, chatArea.scrollHeight - chatArea.clientHeight - chatArea.scrollTop);
     return distance <= Math.max(0, Number(threshold) || 0);
+  }
+
+  function restoreOlliTalkKeyboardCloseLatest(){
+    // Never alter the reader's scroll position if they were viewing older chat.
+    if (!olliTalkKeyboardClosingReturnLatest || isOlliTalkComposerActive() || olliTalkChatGestureActive) return false;
+    if (isOlliTalkPendingReasonInputActive() || !isOlliTalkBetaVisible()) return false;
+    const chatArea = document.getElementById('olliTalkBetaChatArea');
+    if (!chatArea?.isConnected) return false;
+    chatArea.scrollTop = chatArea.scrollHeight;
+    return true;
   }
 
   function isOlliTalkComposerActive(){
@@ -8595,6 +8618,8 @@
 
     const input = document.getElementById('olliTalkBetaInput');
     if (input) input.blur();
+    olliTalkKeyboardClosingReturnLatest = false;
+    olliTalkKeyboardUserNavigatedChat = false;
     if (olliTalkKeyboardMotionTimer) clearTimeout(olliTalkKeyboardMotionTimer);
     olliTalkKeyboardMotionTimer = null;
     stopOlliTalkKeyboardVisualController();
@@ -8918,6 +8943,7 @@
         }, Math.max(0, Number(delay) || 0));
       };
       const beginOlliTalkChatGesture = () => {
+        if (isOlliTalkComposerActive()) olliTalkKeyboardUserNavigatedChat = true;
         if (olliTalkChatGestureSettleTimer) clearTimeout(olliTalkChatGestureSettleTimer);
         olliTalkChatGestureSettleTimer = null;
         olliTalkChatGestureActive = true;
@@ -8988,12 +9014,16 @@
       });
       input.addEventListener('focus', () => {
         const chatArea = document.getElementById('olliTalkBetaChatArea');
+        olliTalkKeyboardClosingReturnLatest = false;
+        olliTalkKeyboardUserNavigatedChat = false;
         olliTalkKeyboardFollowLatest = !chatArea || isOlliTalkChatNearBottom(chatArea,120);
         beginOlliTalkKeyboardMotion();
         // focus/resize/scroll 모두 같은 RAF 업데이트 경로를 사용합니다.
         scheduleOlliTalkKeyboardViewportUpdate({fullSync:true});
       }, true);
       input.addEventListener('blur', () => {
+        olliTalkKeyboardClosingReturnLatest = olliTalkKeyboardFollowLatest
+          && !olliTalkKeyboardUserNavigatedChat && !olliTalkChatGestureActive;
         olliTalkKeyboardFollowLatest = false;
         beginOlliTalkKeyboardMotion();
         scheduleOlliTalkKeyboardViewportUpdate({fullSync:true});
