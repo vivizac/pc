@@ -368,13 +368,6 @@
       try { window.KcfAutoMode.onFeedbackRequestStarted(requestOptions, feedbackItem); }
       catch (err) { console.warn('1분 피드백 요청 시작 후 상태 반영 실패:', err); }
     }
-    if (window.KcfAutoMode && typeof window.KcfAutoMode.completeSuccessfulSubmit === 'function') {
-      try { window.KcfAutoMode.completeSuccessfulSubmit(autoSubmitContext || null); }
-      catch (err) { console.warn('1분 피드백 요청 시작 후 Class 상태 정리 실패:', err); }
-    } else if (window.KcfTeacherSheet && typeof window.KcfTeacherSheet.onSuccessfulSubmit === 'function') {
-      try { window.KcfTeacherSheet.onSuccessfulSubmit(); }
-      catch (err) { console.warn('1분 피드백 요청 시작 후 입력 바텀시트 닫기 실패:', err); }
-    }
 
     var autoSelection = null;
     try {
@@ -402,6 +395,14 @@
     catch (err) { console.warn('1분 피드백 요청 시작 후 임시 입력 초기화 실패:', err); }
     try { if (typeof clearKinderChatFeedbackKeyword === 'function') clearKinderChatFeedbackKeyword(); }
     catch (err) { console.warn('1분 피드백 요청 시작 후 키워드 초기화 실패:', err); }
+    if (window.KcfAutoMode && typeof window.KcfAutoMode.completeSuccessfulSubmit === 'function') {
+      try { window.KcfAutoMode.completeSuccessfulSubmit(autoSubmitContext || null); }
+      catch (err) { console.warn('1분 피드백 요청 시작 후 Class 상태 정리 실패:', err); }
+    } else if (window.KcfTeacherSheet && typeof window.KcfTeacherSheet.onSuccessfulSubmit === 'function') {
+      try { window.KcfTeacherSheet.onSuccessfulSubmit(); }
+      catch (err) { console.warn('1분 피드백 요청 시작 후 입력 바텀시트 닫기 실패:', err); }
+    }
+
     try { if (typeof updateKinderChatFeedbackBadge === 'function') updateKinderChatFeedbackBadge(); }
     catch (err) { console.warn('1분 피드백 요청 시작 후 배지 갱신 실패:', err); }
   }
