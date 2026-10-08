@@ -19,14 +19,13 @@ test('QuickNote replaces the old one-minute header with QuickNote and Work tabs'
   assert.match(html, /<div class="recordUtilityLabel">퀵노트<\/div>/);
 });
 
-test('normal keyboard-open QuickNote restores the two-row source layout while Class is excluded', () => {
-  assert.match(kcfCss, /\.kcfKeyboardOpen:not\(\.kcfTeacherRosterMode\) \.kcfComposerBottom \{[\s\S]*display:grid;[\s\S]*grid-template-rows:34px 38px;/);
-  assert.match(kcfCss, /\.kcfKeyboardOpen:not\(\.kcfTeacherRosterMode\) \.kcfInput \{[\s\S]*grid-column:1 \/ -1;[\s\S]*grid-row:1;/);
-  assert.match(kcfCss, /\.kcfKeyboardOpen:not\(\.kcfTeacherRosterMode\) \.kcfAttachBtn \{[\s\S]*grid-column:1;[\s\S]*grid-row:2;/);
-  assert.match(kcfCss, /\.kcfKeyboardOpen:not\(\.kcfTeacherRosterMode\) \.kcfTeacherBtn \{[\s\S]*grid-column:2;[\s\S]*grid-row:2;/);
-  assert.match(kcfCss, /\.kcfKeyboardOpen:not\(\.kcfTeacherRosterMode\) \.kcfVoiceBtn \{[\s\S]*grid-column:4;[\s\S]*grid-row:2;/);
-  assert.match(kcfCss, /\.kcfKeyboardOpen:not\(\.kcfTeacherRosterMode\) \.kcfSendBtn \{[\s\S]*grid-column:5;[\s\S]*grid-row:2;/);
-  assert.doesNotMatch(kcfJs, /\? 52 : 34/);
+test('QuickNote uses the Class input automatically and exposes a dialogue/continuous-record mode selector', () => {
+  const rosterCss = fs.readFileSync('kcf-auto-mode.css', 'utf8');
+  assert.match(html, /id="kcfModeSwitchBtn"/);
+  assert.doesNotMatch(html, /id="kcfTeacherBtn"/);
+  assert.match(rosterCss, /kcfTeacherRosterMode \.kcfComposerBottom \{[\s\S]*grid-template-columns:90px minmax\(0,1fr\) 33px/);
+  assert.match(rosterCss, /kcfTeacherRosterMode \.kcfAutoStudentRoster \{[\s\S]*grid-column:2;[\s\S]*grid-row:2;/);
+  assert.match(kcfJs, /function openKinderChatFeedbackComposerSheet\(event\)/);
   assert.match(kcfJs, /function autoResizeKinderChatFeedbackInput\(input\)[\s\S]*const height = 34;/);
 });
 

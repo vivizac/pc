@@ -472,21 +472,12 @@ function autoResizeKinderChatFeedbackInput(input) {
   input.style.overflowY = 'hidden';
 }
 window.autoResizeKinderChatFeedbackInput = autoResizeKinderChatFeedbackInput;
-function isKinderChatFeedbackClassModeEnabled() {
-  const mode = getKinderChatFeedbackTeacherMode();
-  try { return !!(mode && typeof mode.isEnabled === 'function' && mode.isEnabled()); }
-  catch(e) { return false; }
-}
-function getKinderChatFeedbackComposerSheetForMode() {
-  return isKinderChatFeedbackClassModeEnabled()
-    ? window.KcfTeacherSheet
-    : window.KcfNormalSheet;
-}
 function openKinderChatFeedbackComposerSheet(event) {
-  const sheet = getKinderChatFeedbackComposerSheetForMode();
+  const mode = getKinderChatFeedbackTeacherMode();
+  if (mode && typeof mode.activateForComposer === 'function') mode.activateForComposer(event);
+  const sheet = window.KcfTeacherSheet;
   if (!sheet || typeof sheet.open !== 'function') return false;
-  if (typeof sheet.isOpen === 'function' && sheet.isOpen()) return true;
-  return sheet.open(event) !== false;
+  return typeof sheet.isOpen === 'function' && sheet.isOpen() ? true : sheet.open(event) !== false;
 }
 function focusKinderChatFeedbackInput() {
   openKinderChatFeedbackComposerSheet();
@@ -1022,6 +1013,8 @@ function serializeKinderChatFeedbackLiveItem(item){
     studentName:String(item.studentName || ''),
     studentDivision:item.studentDivision === 'kinder' ? 'kinder' : 'elementary',
     studentId:String(item.studentId || ''),
+    trialSessionId:String(item.trialSessionId || ''),
+    rosterSelectionId:String(item.rosterSelectionId || ''),
     feedbackType:String(item.feedbackType || 'class'),
     label:String(item.label || '피드백'),
     sourcePage:String(item.sourcePage || 'kinderChatFeedback'),
@@ -1355,16 +1348,27 @@ function createKinderChatFeedbackLiveMessage(options = {}) {
   const inboxBtn = createKinderChatFeedbackLiveActionButton('임시보관함', 'kcfLiveNormalAction kcfLiveInboxBtn');
   const copyBtn = createKinderChatFeedbackLiveActionButton('복사', 'kcfLiveNormalAction kcfLiveCopyBtn');
   const editBtn = createKinderChatFeedbackLiveActionButton('수정', 'kcfLiveNormalAction kcfLiveEditBtn');
+  const retryBtn = createKinderChatFeedbackLiveActionButton('저장 재시도', 'kcfLiveNormalAction kcfTrialRetryBtn');
   const cancelBtn = createKinderChatFeedbackLiveActionButton('취소', 'kcfLiveEditAction kcfLiveCancelBtn');
   const doneBtn = createKinderChatFeedbackLiveActionButton('완료', 'kcfLiveEditAction kcfLiveDoneBtn');
 
   inboxBtn.addEventListener('click', () => openKinderChatFeedbackInbox());
   copyBtn.addEventListener('click', () => copyKinderChatFeedbackLive(options.id, copyBtn));
   editBtn.addEventListener('click', () => editKinderChatFeedbackLive(options.id));
+  retryBtn.addEventListener('click', async () => {
+    retryBtn.disabled = true;
+    try {
+      if (await saveKinderChatFeedbackLive(options.id)) {
+        try { showPushToast('체험 피드백을 서버에 저장했어요.'); } catch (_) {}
+      }
+    } finally {
+      refreshKinderChatFeedbackLiveActions(getKinderChatFeedbackLiveItem(options.id));
+    }
+  });
   cancelBtn.addEventListener('click', () => cancelKinderChatFeedbackLiveEdit(options.id));
   doneBtn.addEventListener('click', () => confirmKinderChatFeedbackLiveEdit(options.id, doneBtn));
 
-  actions.append(inboxBtn, copyBtn, editBtn, cancelBtn, doneBtn);
+  actions.append(inboxBtn, copyBtn, editBtn, retryBtn, cancelBtn, doneBtn);
   row.append(studentTitle, bubble, editArea, actions);
   area.appendChild(row);
   requestAnimationFrame(() => { area.scrollTop = area.scrollHeight; });
@@ -1393,6 +1397,11 @@ function refreshKinderChatFeedbackLiveActions(item) {
   const inboxBtn = row.querySelector('.kcfLiveInboxBtn');
   const copyBtn = row.querySelector('.kcfLiveCopyBtn');
   const editBtn = row.querySelector('.kcfLiveEditBtn');
+  const retryBtn = row.querySelector('.kcfTrialRetryBtn');
+  if (retryBtn) {
+    retryBtn.style.display = item.trialSessionId && !item.saved ? '' : 'none';
+    retryBtn.disabled = !item.resultText || item.status === 'streaming';
+  }
   if (inboxBtn) inboxBtn.disabled = !item.resultText || item.status === 'streaming';
   if (copyBtn) copyBtn.disabled = !item.resultText || !!segments.length;
   if (editBtn) editBtn.disabled = !item.resultText || item.status === 'streaming';
@@ -1467,7 +1476,9 @@ async function confirmKinderChatFeedbackLiveEdit(id, btn) {
       btn.textContent = '저장 중...';
     }
     try {
-      patchedSavedRow = await patchSavedTodayFeedbackItem(item, nextText);
+      patchedSavedRow = item.trialSessionId
+        ? await saveKcfTrialFeedbackOnServer(item, nextText, true)
+        : await patchSavedTodayFeedbackItem(item, nextText);
     } catch (err) {
       console.error('LIVE 저장 피드백 수정 오류:', err);
       if (btn) {
@@ -1506,10 +1517,59 @@ async function confirmKinderChatFeedbackLiveEdit(id, btn) {
   }
   return true;
 }
+async function saveKcfTrialFeedbackOnServer(item, content, update = false) {
+  const data = window.OlliAttendanceData;
+  const academyId = String(item?.academyId || data?.currentAcademyId?.() || '').trim();
+  const sessionToken = String(data?.currentSessionToken?.() || '').trim();
+  const trialId = String(item?.trialSessionId || '').trim();
+  if (!academyId || !sessionToken || !trialId || typeof window.supabase !== 'function') {
+    throw new Error('체험학생 피드백 저장을 위한 학원·세션 정보가 없습니다.');
+  }
+  const editing = update === true;
+  const resource = editing ? 'rpc/olli_trial_feedback_update' : 'rpc/olli_trial_feedback_save';
+  const payload = editing ? {
+    p_session_token:sessionToken, p_academy_id:academyId,
+    p_trial_feedback_id:String(item.savedRowId || '').trim(),
+    p_content:String(content || '')
+  } : {
+    p_session_token:sessionToken, p_academy_id:academyId,
+    p_trial_session_id:trialId, p_client_job_id:String(item.id || ''),
+    p_content:String(content || '')
+  };
+  const response = await window.supabase('POST', resource, payload);
+  const result = Array.isArray(response) && response.length === 1 ? response[0] : response;
+  if (!result || result.ok !== true || !result.id) {
+    throw new Error(String(result?.message || '체험학생 피드백을 저장하지 못했습니다.'));
+  }
+  return { id:String(result.id), content:String(content || ''), academy_id:academyId, trial_session_id:trialId };
+}
+
 async function saveKinderChatFeedbackLive(id, selectedStudentId = '') {
   const item = getKinderChatFeedbackLiveItem(id);
   if (!item || !String(item.resultText || '').trim() || item.status === 'streaming') return false;
   if (item.saved || item.reviewed) return true;
+
+  if (item.trialSessionId) {
+    try {
+      const savedRow = await saveKcfTrialFeedbackOnServer(item, item.resultText);
+      item.saved = true;
+      item.reviewed = true;
+      item.savedRowId = savedRow.id;
+      item.savedRow = savedRow;
+      item.savedSourceTable = 'olli_trial_feedbacks';
+      item.savedAcademyId = savedRow.academy_id;
+      item.savedAt = new Date().toISOString();
+      item.updatedAt = item.savedAt;
+      persistKinderChatFeedbackLiveSessionNow();
+      syncKinderChatFeedbackLiveItemToInbox(item);
+      refreshKinderChatFeedbackLiveActions(item);
+      return true;
+    } catch (error) {
+      console.warn('체험학생 피드백 서버 저장 실패:', error);
+      try { showPushToast('체험학생 피드백 저장에 실패했어요. 임시보관함에서 다시 확인해 주세요.'); } catch (_) {}
+      return false;
+    }
+  }
 
   let finalStudentId = String(selectedStudentId || item.studentId || item.savedStudentId || '').trim();
   if (!finalStudentId) {
@@ -1584,6 +1644,8 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
     studentName: normalizeTodayFeedbackStudentName(options.studentName || '') || '학생',
     studentDivision: options.studentDivision === 'kinder' ? 'kinder' : 'elementary',
     studentId: String(options.studentId || ''),
+    trialSessionId:String(options.trialSessionId || ''),
+    rosterSelectionId:String(options.rosterSelectionId || ''),
     feedbackType: options.feedbackType || 'class',
     label: options.label || '피드백',
     sourcePage: 'kinderChatFeedback',
@@ -1706,7 +1768,7 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
       if (successTeacherMode && typeof successTeacherMode.onFeedbackRequestResult === 'function') {
         successTeacherMode.onFeedbackRequestResult({
           id:item.id,
-          studentId:item.studentId,
+          studentId:item.studentId || item.rosterSelectionId,
           studentName:item.studentName,
           studentDivision:item.studentDivision,
           status:item.suspiciousSegments.length ? 'review' : 'done'
@@ -1723,7 +1785,12 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
         liveUi.bubble.setAttribute('aria-busy', 'false');
       }
       syncKinderChatFeedbackLiveItemToInbox(item);
-      await saveKinderChatFeedbackLive(item.id, item.studentId);
+      const saved = await saveKinderChatFeedbackLive(item.id, item.studentId);
+      if (item.trialSessionId && saved !== true && successTeacherMode) {
+        successTeacherMode.onFeedbackRequestResult({
+          id:item.id, studentId:item.rosterSelectionId, status:'error'
+        });
+      }
       syncKinderChatFeedbackLiveItemToInbox(item);
       showKinderChatFeedbackLiveActions(item);
       if (liveUi.area) liveUi.area.scrollTop = liveUi.area.scrollHeight;
@@ -1743,7 +1810,7 @@ function startKinderChatFeedbackLiveRequest(options = {}) {
       if (failureTeacherMode && typeof failureTeacherMode.onFeedbackRequestResult === 'function') {
         failureTeacherMode.onFeedbackRequestResult({
           id:item.id,
-          studentId:item.studentId,
+          studentId:item.studentId || item.rosterSelectionId,
           studentName:item.studentName,
           studentDivision:item.studentDivision,
           status:'error',

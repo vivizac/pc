@@ -13,7 +13,6 @@ const talk=read('apps/mobile/olli-talk-beta.js');
 const record=read('apps/mobile/olli-record-search-controls.js');
 const quick=read('apps/mobile/kinder-feedback.js');
 const quickCss=read('apps/mobile/kinder-feedback.css');
-const normal=read('apps/mobile/kcf-normal-sheet.js');
 const teacher=read('apps/mobile/kcf-teacher-sheet.js');
 
 test('mobile keyboard activation core owns stop, preventScroll focus, and activation order',()=>{
@@ -40,7 +39,7 @@ test('QuickNote inline input activates from a button click and sheets use the sh
   assert.match(quickCss,/\.kcfInputActivateBtn\s*\{[\s\S]*position:absolute;[\s\S]*inset:0/);
   assert.match(quick,/inputActivateButton\.addEventListener\('click',[\s\S]*openKinderChatFeedbackComposerSheet\(event\)/);
   assert.doesNotMatch(quick,/composerBottom\.addEventListener\('pointerdown'/);
-  for(const source of [normal,teacher]){
+  for(const source of [teacher]){
     const openStart=source.indexOf('function open(event)');
     const openEnd=source.indexOf('\n  function close(options)',openStart);
     assert.ok(openStart>=0 && openEnd>openStart);
@@ -55,11 +54,10 @@ test('shared keyboard activation script loads before every consumer',()=>{
   const coreIndex=html.indexOf('olli-mobile-keyboard-activation.js?v=20261008-standard-1');
   assert.ok(coreIndex>=0);
   for(const token of [
-    'kinder-feedback.js?v=20261008-keyboard-standard-1',
-    'olli-talk-beta.js?v=20261008-native-motion-1',
+    'kinder-feedback.js?v=20261008-continuous-1',
+    'olli-talk-beta.js?v=20261008-visible-motion-1',
     'olli-record-search-controls.js?v=20261008-keyboard-standard-1',
-    'kcf-normal-sheet.js?v=20261008-caret-stable-1',
-    'kcf-teacher-sheet.js?v=20261008-caret-stable-1'
+    'kcf-teacher-sheet.js?v=20261008-continuous-1'
   ]){
     const index=html.indexOf(token);
     assert.ok(index>coreIndex, token+' must load after keyboard core');

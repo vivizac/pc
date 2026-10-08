@@ -1,4 +1,4 @@
-/* QuickNote Class-mode bottom sheet. Normal mode uses kcf-normal-sheet.css. */
+/* QuickNote single Class sheet for conversation and continuous record. */
 html.kcfTeacherSheetOpen,
 body.kcfTeacherSheetOpen {
   width:100%;
@@ -125,36 +125,20 @@ body.kcfTeacherSheetOpen #kinderChatFeedbackScreen .kcfComposerLayer {
   padding:0;
 }
 
-.kcfTeacherSheetSendBtn,
-.kcfTeacherSheetModeBtn {
-  -webkit-tap-highlight-color:transparent;
-  touch-action:manipulation;
-}
-
-.kcfTeacherSheetModeBtn {
-  -webkit-tap-highlight-color:transparent;
-  touch-action:manipulation;
-}
-
-.kcfTeacherSheetModeBtn {
-  width:33px;
-  height:33px;
-  min-width:33px;
-  max-width:33px;
-  border:0;
-  border-radius:50%;
-  padding:0;
-  background:#111;
-  color:#fff;
-  font-family:inherit;
-  font-size:calc(11px * var(--olli-text-scale));
-  font-weight:650;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  flex:0 0 33px;
-  z-index:3;
-}
+.kcfTeacherSheetSendBtn,.kcfComposerModeBtn{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+.kcfComposerModeBtn{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:55px;height:33px;padding:0 9px;border:0;border-radius:11px;background:#f1f2f4;color:#535965;font:inherit;font-size:calc(11px * var(--olli-text-scale));font-weight:600;white-space:nowrap;position:relative;z-index:5;}
+.kcfModeChevron{font-size:14px;line-height:1;color:#777;}
+.kcfComposerModeMenu{position:absolute;bottom:calc(100% + 6px);left:0;z-index:100;display:flex;flex-direction:column;min-width:108px;padding:4px;border:1px solid #e9eaed;border-radius:12px;background:#fff;box-shadow:0 8px 26px rgba(0,0,0,.12);}
+.kcfComposerModeOption{width:100%;min-height:38px;border:0;padding:0 10px;text-align:left;border-radius:8px;background:transparent;color:#222;font:inherit;font-size:13px;}
+.kcfComposerModeOption[aria-checked="true"]{background:#f1f3f6;color:#1677ff;font-weight:650;}
+#kinderChatFeedbackScreen .kcfComposerBottom{position:relative;}
+#kinderChatFeedbackScreen .kcfComposerBottom>.kcfComposerModeBtn{z-index:6;}
+.kcfTeacherSheetBottom>.kcfComposerModeBtn{z-index:6;}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfMsgRow:not(.kcfLiveResponseRow){display:none;}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow{align-items:stretch;padding:13px;border:1px solid #edf0f3;border-radius:15px;background:#fff;margin:8px 0;}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveStudentTitle{margin:0 0 8px;font-size:14px;}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfLiveResponseRow .kcfLiveBubble{max-width:none;width:100%;border-radius:10px;background:#f6f7f9;color:#252525;box-sizing:border-box;}
+body.kcfContinuousMode #kinderChatFeedbackScreen .kcfCenterIntro{display:none;}
 
 .kcfTeacherSheetRosterHost {
   flex:1 1 auto;
