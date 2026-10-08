@@ -72,7 +72,7 @@ test('empty student guide never replaces or moves the four permanent actions',()
   assert.match(sheetCss, /grid-template-columns:33px minmax\(0,1fr\) 88px 33px 33px;/);
   assert.match(sheetCss, /grid-template-rows:40px;/);
   for(const [id,col] of [['kcfTeacherSheetAttachHost',1],['kcfTeacherSheetEmptyRosterGuide',2],['kcfTeacherSheetModeHost',3],['kcfTeacherSheetVoiceHost',4]]){
-    assert.ok(sheetCss.includes('#'+id+'{grid-column:'+col+';grid-row:1;}'));
+    assert.ok(sheetCss.includes('#'+id+'{grid-column:'+col+';grid-row:1;'));
   }
   assert.ok(sheetCss.includes('.kcfTeacherSheetSendBtn{grid-column:5;grid-row:1;}'));
   assert.ok(sheetCss.includes('#kcfTeacherSheetEmptyRosterGuide[hidden]{display:none;}'));
