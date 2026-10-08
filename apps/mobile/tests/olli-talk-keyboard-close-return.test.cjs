@@ -51,6 +51,8 @@ test('blur remembers whether following latest before it clears the active follow
     const get=new Function('input','latest','manual','gesture', [
       'let olliTalkKeyboardFollowLatest=latest;',
       'let olliTalkKeyboardClosingReturnLatest=false;',
+      'let olliTalkComposerCollapsePending=false;',
+      'const getScreen=()=>({classList:{contains:()=>true}});',
       'let olliTalkKeyboardUserNavigatedChat=manual;',
       'let olliTalkChatGestureActive=gesture;',
       'let motion=0,updates=0;',
@@ -73,13 +75,15 @@ test('viewport resizing restores the bottom after geometry sync but before FLIP 
   const restorePos=flush.indexOf('if (fullSync) restoreOlliTalkKeyboardCloseLatest();');
   const paintPos=flush.indexOf('preserveOlliTalkKeyboardVisualFrame(motionFrame');
   assert.ok(syncPos>=0&&restorePos>syncPos&&paintPos>restorePos);
-  assert.match(source,/\/\/ One final bottom reconciliation after iOS visualViewport finishes closing\./);
-  assert.match(source,/restoreOlliTalkKeyboardCloseLatest\(\);\s*preserveOlliTalkKeyboardVisualFrame\(closingFrame\)/);
+  assert.match(source,/const finishCollapse = olliTalkComposerCollapsePending;/);
+  assert.match(source,/olliTalkComposerCollapsePending = false;\s*syncViewport\(\);/);
+  assert.match(source,/if \(finishLatest\) \{\s*restoreOlliTalkKeyboardCloseLatest\(\);/);
+  assert.match(source,/if \(closingFrame\) preserveOlliTalkKeyboardVisualFrame\(closingFrame\);/);
   assert.match(source,/if \(isOlliTalkComposerActive\(\)\) olliTalkKeyboardUserNavigatedChat = true;/);
 });
 test('keyboard follow timing remains unchanged during opening and closing',()=>{
   assert.match(source,/const OLLI_TALK_KEYBOARD_FOLLOW_TAU_MS = 32;/);
-  assert.match(source,/const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 44;/);
+  assert.match(source,/const OLLI_TALK_KEYBOARD_OPEN_FOLLOW_TAU_MS = 41;/);
   assert.match(source,/olliTalkComposerVisualOffsetY \+= \(0 - olliTalkComposerVisualOffsetY\) \* follow;/);
   assert.match(source,/olliTalkMessagesVisualOffsetY \+= \(0 - olliTalkMessagesVisualOffsetY\) \* follow;/);
 });
