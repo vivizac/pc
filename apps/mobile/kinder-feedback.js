@@ -2008,9 +2008,12 @@ function renderKinderChatFeedbackTodayRecords() {
     const k = getKinderChatFeedbackTodayRecordState(item).kind;
     return k === 'attention' || k === 'error';
   }).length;
-  const uncopied = items.filter(function(item) { return !item.copiedAt && !!item.resultText; }).length;
+  const uncopied = items.filter(function(item) {
+    const state = getKinderChatFeedbackTodayRecordState(item);
+    return !item.copiedAt && !!item.resultText && state.kind !== 'working' && state.kind !== 'error';
+  }).length;
   summary.textContent = items.length
-    ? items.length + '명 · 작성 중 ' + busy + ' · 확인 필요 ' + attention + ' · 미복사 ' + uncopied
+    ? items.length + '건 · 작성 중 ' + busy + ' · 확인 필요 ' + attention + ' · 미복사 ' + uncopied
     : '오늘 작성한 기록이 없습니다.';
   if (!items.length) {
     list.innerHTML = '<div class="kcfTodayRecordsEmpty">학생 기록을 전송하면 이곳에 피드백이 정리됩니다.</div>';
@@ -2416,7 +2419,10 @@ async function confirmKinderChatFeedbackInboxEdit(id) {
     if (deleteBtn) deleteBtn.style.display = 'inline-flex';
     if (doneBtn) doneBtn.style.display = 'none';
     if (cancelBtn) cancelBtn.style.display = 'none';
-    if (copyBtn) copyBtn.disabled = !!segments.length;
+    if (copyBtn) {
+      copyBtn.disabled = !!segments.length;
+      copyBtn.classList.toggle('copied', !!updatedItem.copiedAt);
+    }
   }
 }
 
