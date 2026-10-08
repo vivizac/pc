@@ -8878,7 +8878,20 @@
     }
 
     if (composerActivateButton) {
+      composerActivateButton.addEventListener('pointerdown', event => {
+        if (event.isPrimary === false) return;
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+        activateOlliTalkComposerInput(event);
+        renderOlliTalkMentionMenu();
+      });
       composerActivateButton.addEventListener('click', event => {
+        // Pointer input is handled before iOS focus/viewport changes can move the chat.
+        // Keep click only for keyboard/synthetic activation.
+        if (event.detail !== 0) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
         activateOlliTalkComposerInput(event);
         renderOlliTalkMentionMenu();
       });
