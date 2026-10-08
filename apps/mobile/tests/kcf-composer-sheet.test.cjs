@@ -10,7 +10,7 @@ const css = read('kcf-teacher-sheet.css');
 const reg = read('../../packages/common/olli-feedback-registration-runtime.js');
 
 test('QuickNote uses a single Class sheet and fully removes normal-mode assets', () => {
-  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261008-original-editor-1'));
+  assert.ok(html.includes('kcf-teacher-sheet.js?v=20261008-control-polish-2'));
   assert.ok(!html.includes('kcf-normal-sheet'));
   assert.ok(!fs.existsSync('kcf-normal-sheet.js'));
   assert.ok(!fs.existsSync('kcf-normal-sheet.css'));
@@ -39,7 +39,7 @@ test('Class controls are replaced with dialogue and continuous-record selection'
 
 test('student names can be toggled off to manually write feedback for other classes', () => {
   assert.ok(runtime.includes('if (nextId === currentId) { deselectAutoStudent(); return; }'));
-  assert.ok(runtime.includes("input.placeholder = '학생 이름과 수업기록을 적어주세요'"));
+  assert.ok(runtime.includes("input.placeholder = '수업기록을 적어주세요'"));
   assert.ok(reg.includes('resolveKcfInlineFeedbackTarget(text)'));
   assert.ok(reg.includes('window.__olliPhoneInlineStudentFeedbackEnabled === true'));
 });
